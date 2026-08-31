@@ -1144,7 +1144,7 @@ class TradeUIComponent {
     try { if (window.parent && window.parent !== window) roots.push(window.parent); } catch (错误) {}
     try { if (window.top && window.top !== window && !roots.includes(window.top)) roots.push(window.top); } catch (错误) {}
     return roots.map(root => root && root.__LWCS_ERA_RUNTIME_INTEGRATION_V1__)
-      .find(runtime => runtime && typeof runtime.resolveEraAtTick === 'function') || null;
+      .find(runtime => runtime && typeof runtime.getEraContext === 'function') || null;
   }
 
   get eraCurrencyRegistry() {
@@ -1157,8 +1157,9 @@ class TradeUIComponent {
 
   get currentEraId() {
     const integration = this.eraRuntimeIntegration;
-    const tick = Math.max(0, Number(this.worldData?.时间?.tick || 0));
-    try { return integration?.resolveEraAtTick(tick)?.eraId || 'current'; } catch (错误) { return 'current'; }
+    const tick = Number(this.worldData?.时间?.tick);
+    if (!Number.isFinite(tick) || tick < 0) return '';
+    try { return integration?.getEraContext(tick, { dataRoot: this.rootData })?.resourceEra || ''; } catch (错误) { return ''; }
   }
 
   get activeCharBasePath() {
@@ -1179,14 +1180,14 @@ class TradeUIComponent {
     const merged = `${storeText}|${locText}|${storeFaction}`;
     const registry = this.eraCurrencyRegistry;
     const result = registry?.resolveTradeCurrency(this.currentEraId, '', merged);
-    return result?.status === 'resolved' ? result.currency : (this.currentEraId === 'dldl' || this.currentEraId === 'jueshitangmen' ? '金魂币' : '联邦币');
+    return result?.status === 'resolved' ? result.currency : '';
   }
 
   resolveTradeCurrency(item = {}, storeName = '', loc = '', storeData = null) {
     const explicit = String(item?.货币 || item?.默认货币 || '').trim();
     const merged = `${String(storeName || '')}|${String(loc || this.charData?.状态?.位置 || '')}|${String(storeData?.所属势力 || '')}`;
     const result = this.eraCurrencyRegistry?.resolveTradeCurrency(this.currentEraId, explicit, merged);
-    return result?.currency || this.getDefaultCurrencyByContext(storeName, loc, storeData);
+    return result?.status === 'resolved' ? result.currency : '';
   }
 
   isCurrencySpendable(currency) {

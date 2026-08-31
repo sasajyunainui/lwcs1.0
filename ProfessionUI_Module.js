@@ -1805,7 +1805,21 @@ class ProfessionUIComponent {
 
   // --- 副职业算法核心 ---
   clamp(num, min, max) { return Math.max(min, Math.min(max, num)); }
-  formatFedCoin(amount) { return `${Number(amount || 0).toLocaleString()} 联邦币`; }
+  getLegalCurrency() {
+    const hosts = [globalThis];
+    try { if (window && !hosts.includes(window)) hosts.push(window); } catch (错误) {}
+    try { if (window.parent && !hosts.includes(window.parent)) hosts.push(window.parent); } catch (错误) {}
+    try { if (window.top && !hosts.includes(window.top)) hosts.push(window.top); } catch (错误) {}
+    const integration = hosts.map(host => host?.__LWCS_ERA_RUNTIME_INTEGRATION_V1__).find(api => typeof api?.getEraContext === 'function');
+    const registry = hosts.map(host => host?.__LWCS_ERA_CURRENCY_REGISTRY_V1__).find(api => typeof api?.resolveFiatCurrency === 'function');
+    const tick = Number(this.rootData?.world?.时间?.tick);
+    if (!integration || !registry || !Number.isFinite(tick)) throw new Error('副职业时代货币未就绪');
+    const eraId = integration.getEraContext(tick, { dataRoot: this.rootData }).resourceEra;
+    const result = registry.resolveFiatCurrency(eraId, this.charData?.状态?.位置 || '');
+    if (result?.status !== 'resolved') throw new Error('副职业法定货币无法解析');
+    return result.currency;
+  }
+  formatCurrency(amount) { return `${Number(amount || 0).toLocaleString()} ${this.getLegalCurrency()}`; }
   escapeJsonPointer(str) { return String(str).replace(/~/g, '~0').replace(/\//g, '~1'); }
 
   读取核心技艺文本(副职业名, 等级) {
@@ -2262,7 +2276,7 @@ class ProfessionUIComponent {
       品质: definition.品质 || '普通',
       描述: `${definition?.描述 ? definition.描述 + ' | ' : ''}${repairDesc.desc || '已完成标准检修'}`,
       基础价格: Math.max(1, Math.floor(Number(definition.基础价格 || 1))),
-      默认货币: definition.默认货币 || '联邦币',
+      默认货币: definition.默认货币 || this.getLegalCurrency(),
       基础耐久: Math.max(100, Math.floor(Number(definition.基础耐久 || 100))),
     };
     if (分类 === '锻造金属') 新定义.阶位 = Math.max(0, Math.min(5, Math.floor(Number(definition.阶位 || this.getItemTier(targetName) || 0))));
@@ -2554,7 +2568,8 @@ class ProfessionUIComponent {
 
   buildCommissionFeePatches(fee) {
     const amount = Math.max(0, Number(fee || 0));
-    return amount <= 0 ? [] : [{ op: 'replace', path: `${this.activeCharBasePath}/财富/联邦币`, value: Math.max(0, Number(this.charData.财富?.联邦币 || 0) - amount) }];
+    const 货币 = this.getLegalCurrency();
+    return amount <= 0 ? [] : [{ op: 'replace', path: `${this.activeCharBasePath}/财富/${this.escapeJsonPointer(货币)}`, value: Math.max(0, Number(this.charData.财富?.[货币] || 0) - amount) }];
   }
 
   toggleCommissionFields() {
@@ -2600,7 +2615,7 @@ class ProfessionUIComponent {
     const type = this.getCommissionType();
     const targetNpcName = this.getTargetNpcName();
     const currentLoc = String(this.charData?.状态?.位置 || '');
-    const wealth = Number(this.charData?.财富?.联邦币 || 0);
+    const wealth = Number(this.charData?.财富?.[this.getLegalCurrency()] || 0);
     const fusion = this.getFusionContext(runtime, materialNames);
     const 魂导等级 = cfg.mode === 'manufacture' ? this.读取目标魂导等级(targetName, materialNames) : 0;
     const ctx = {
@@ -2637,7 +2652,7 @@ class ProfessionUIComponent {
     if (ctx.isOfficial) {
       ctx.executorName = `${jobDisplayName}协会`; ctx.executorRuntime = this.buildOfficialCommissionRuntime(cfg.jobName); ctx.validationRuntime = ctx.executorRuntime;
       ctx.successRate = 85; ctx.commissionFee = Number(OFFICIAL_COMMISSION_FEES[tier] || 0);
-      ctx.note = `官方代工按共享设施、身份权限与工序规模结算。当前代工费 ${this.formatFedCoin(ctx.commissionFee)}。`;
+      ctx.note = `官方代工按共享设施、身份权限与工序规模结算。当前代工费 ${this.formatCurrency(ctx.commissionFee)}。`;
       if (魂导等级 > 0) ctx.error = '官方工坊不受理魂导器单人制造，请指定具备魂导师等级的执行者。';
       else if (ctx.fusionCount > 3) ctx.error = `官方流水线拒收 ${ctx.fusionCount} 级复合工序，当前超出协会工艺上限。`;
     } else if (ctx.isPrivate) {
@@ -2666,13 +2681,13 @@ class ProfessionUIComponent {
             else if (ctx.relScore >= 50) ctx.commissionFee = Math.floor(ctx.commissionFee * 0.5);
             const baseRate = this.getModeSuccessRateForRuntime(cfg.mode, npc执行运行时, tier, materialNames, ctx.fusionCount, targetName);
             ctx.successRate = this.clamp(baseRate + Math.floor(ctx.relScore / 10), 0, 100);
-            ctx.note = `私人代工由【${targetNpcName}】执行，好感度 ${ctx.relScore}，代工费 ${this.formatFedCoin(ctx.commissionFee)}，结果按执行者能力与关系结算。`;
+            ctx.note = `私人代工由【${targetNpcName}】执行，好感度 ${ctx.relScore}，代工费 ${this.formatCurrency(ctx.commissionFee)}，结果按执行者能力与关系结算。`;
           }
         }
       }
     }
     ctx.hasEnoughFunds = wealth >= ctx.commissionFee;
-    if (ctx.isCommission && !ctx.error && !ctx.hasEnoughFunds) ctx.error = `资金不足，当前委托需要 ${this.formatFedCoin(ctx.commissionFee)}。`;
+    if (ctx.isCommission && !ctx.error && !ctx.hasEnoughFunds) ctx.error = `资金不足，当前委托需要 ${this.formatCurrency(ctx.commissionFee)}。`;
     return ctx;
   }
 
@@ -2870,6 +2885,9 @@ class ProfessionUIComponent {
 
   validateGenericRules(cfg, runtime, tier, materialNames, targetName) {
     if (!targetName.trim()) return '请先填写目标/对象名称。';
+    if (['manufacture', 'design'].includes(cfg.mode) && /(?:五|六|5|6)(?:级|字)斗铠|(?:神级|超神级)机甲/.test(targetName)) {
+      return '五、六级斗铠与神级、超神级机甲只能由斗罗四时代的本人温养升级获得，副职业不开放制造或设计。';
+    }
     const jobDisplayName = this.读取副职业显示名(cfg.jobName);
     let recipe = null;
     if (cfg.mode === 'manufacture') {
@@ -2951,7 +2969,7 @@ class ProfessionUIComponent {
     let rateText = '-', fusionText = '-', maxQText = '-', noteText = '-';
     let 当前成功率数值 = 0;
     let costText = commissionCtx.isCommission ? `<span class="val-cyan">委托模式不扣副职业资源</span>` : this.formatResourceCost(costs);
-    let feeText = commissionCtx.isCommission ? (commissionCtx.commissionFee > 0 ? `<span class="val-highlight">${this.formatFedCoin(commissionCtx.commissionFee)}</span>` : `<span class="val-green">免单</span>`) : `<span class="val-cyan">无</span>`;
+    let feeText = commissionCtx.isCommission ? (commissionCtx.commissionFee > 0 ? `<span class="val-highlight">${this.formatCurrency(commissionCtx.commissionFee)}</span>` : `<span class="val-green">免单</span>`) : `<span class="val-cyan">无</span>`;
 
     if (this.activeMode === 'forge') {
       if (!ruleError) ruleError = this.validateForgeRules(effectiveRuntime, tier, materialNames, targetName, { isCommission: commissionCtx.isCommission });
@@ -3003,7 +3021,7 @@ class ProfessionUIComponent {
         材料库存快照: this.构建材料库存快照(materialNames),
         资源状态: this.获取恢复状态快照(),
         资金单次消耗: commissionCtx.isCommission ? Number(commissionCtx.commissionFee || 0) : 0,
-        当前资金: Number(this.charData?.财富?.联邦币 || 0),
+        当前资金: Number(this.charData?.财富?.[this.getLegalCurrency()] || 0),
       });
       const 期望成功数 = Number((Number(连续估算结果.可执行次数 || 0) * Math.max(0, 当前成功率数值) / 100).toFixed(2));
       const 恢复安排文本 = commissionCtx.isCommission ? '委托执行' : `冥想${连续估算结果.冥想小时}h 睡眠${连续估算结果.睡眠小时}h`;
@@ -3094,7 +3112,7 @@ class ProfessionUIComponent {
       品质: this.规范化物品经济品质(safeItem.品质 || this.getTierQualityLabel(this.activeMode, this.getItemTier(itemName)), itemName, 分类),
       描述: safeItem.描述 || `副职业产物【${itemName}】`,
       基础价格: Math.max(1, Math.floor(Number(safeItem.基础价格 || 1))),
-      默认货币: safeItem.默认货币 || '联邦币',
+      默认货币: safeItem.默认货币 || this.getLegalCurrency(),
     };
     if (分类 === '锻造金属') definition.阶位 = Math.max(0, Math.floor(Number(safeItem.阶位 || this.getItemTier(itemName) || 0)));
     if (Number(safeItem.魂导等级 || 0) > 0) definition.魂导等级 = Math.max(1, Math.min(12, Math.floor(Number(safeItem.魂导等级 || 0))));
@@ -3325,7 +3343,8 @@ class ProfessionUIComponent {
     const 材料库存快照 = this.构建材料库存快照(materialNames);
     const 资源状态 = this.获取恢复状态快照();
     const 资金单次消耗 = 是否代工 ? Math.max(0, Number(commissionCtx.commissionFee || 0)) : 0;
-    let 当前资金 = Math.max(0, Number(this.charData?.财富?.联邦币 || 0));
+    const 代工货币 = this.getLegalCurrency();
+    let 当前资金 = Math.max(0, Number(this.charData?.财富?.[代工货币] || 0));
     let 剩余小时 = 总小时;
 
     const 统计 = {
@@ -3437,7 +3456,7 @@ class ProfessionUIComponent {
 
     let patchOps = [];
     if (!是否代工) patchOps.push(...this.buildResourceFinalPatches(资源状态));
-    else if (资金单次消耗 > 0) patchOps.push({ op: 'replace', path: `${this.activeCharBasePath}/财富/联邦币`, value: 当前资金 });
+    else if (资金单次消耗 > 0) patchOps.push({ op: 'replace', path: `${this.activeCharBasePath}/财富/${this.escapeJsonPointer(代工货币)}`, value: 当前资金 });
     patchOps.push(...this.buildMaterialFinalPatches(材料库存快照, materialNames));
 
     Object.entries(产物汇总).forEach(([产物名, 数据]) => {
@@ -3487,7 +3506,7 @@ class ProfessionUIComponent {
         ? `我要委托【${commissionCtx.executorName}】连续代工${本次工序显示名}${连续时长文本}，目标是【${targetName}】`
         : `我要连续进行${本次工序显示名}${连续时长文本}，目标是【${targetName}】`);
     const consumptionText = commissionCtx.isCommission
-      ? `连续代工单次费用：${this.formatFedCoin(commissionCtx.commissionFee)}。本轮执行 ${统计.执行次数} 次，累计扣费 ${this.formatFedCoin(统计.执行次数 * Number(commissionCtx.commissionFee || 0))}。`
+      ? `连续代工单次费用：${this.formatCurrency(commissionCtx.commissionFee)}。本轮执行 ${统计.执行次数} 次，累计扣费 ${this.formatCurrency(统计.执行次数 * Number(commissionCtx.commissionFee || 0))}。`
       : `单次消耗：${this.formatResourceCost(costs)}。本轮执行 ${统计.执行次数} 次后，剩余资源为 体:${Math.floor(资源状态.体力)} / 魂:${Math.floor(资源状态.魂力)} / 精:${Math.floor(资源状态.精神力)}。`;
     const sysPrompt = `${PROF_HIDDEN_ARBITRATION_NARRATION_RULES}\n\n[执行来源]\n本次执行者：${commissionCtx.executorName}。${commissionCtx.note}\n\n${连续结果播报}\n\n[副职业资源消耗]\n${consumptionText}\n\n本次资源、材料、产物与副职业进度已由前端结算写回；连续时长只用于本轮时间裁定。正文只承接自然剧情，不输出变量维护指令。`;
     this.submitAction(`${actionLead}，材料：${materialText}。`, sysPrompt, `prof_${cfg.mode}_continuous`, patchOps);
@@ -3531,7 +3550,7 @@ class ProfessionUIComponent {
         if (!commissionCtx.isCommission) expGain *= 2;
         resultLog = `[大成功] ${commissionCtx.executorName}触发极限锻压，成功打造出【${targetName}】。品质系数 ${finalQ.toFixed(2)}。`;
       } else {
-        const feeMsg = commissionCtx.isCommission ? (commissionCtx.commissionFee > 0 ? ` 已支付代工费 ${this.formatFedCoin(commissionCtx.commissionFee)}。` : ' 本次代工因好感度优惠免单。') : '';
+        const feeMsg = commissionCtx.isCommission ? (commissionCtx.commissionFee > 0 ? ` 已支付代工费 ${this.formatCurrency(commissionCtx.commissionFee)}。` : ' 本次代工因好感度优惠免单。') : '';
         resultLog = `${commissionCtx.isCommission ? '[委托成功]' : '[打造成功]'} ${commissionCtx.executorName}成功完成【${targetName}】的锻造，品质系数 ${finalQ.toFixed(2)}。${feeMsg}`;
       }
       expGain = this.applyProfessionExpGainMultiplier(expGain, commissionCtx);
@@ -3564,7 +3583,7 @@ class ProfessionUIComponent {
     const materialText = materialNames.map(name => `${qty}份${name}`).join('、');
     const officialLocationName = this.getOfficialCommissionLocation(cfg.jobName);
     const actionLead = commissionCtx.isOfficial ? `我要在${officialLocationName}办理官方代工，委托完成【${targetName}】的${cfg.displayName}` : (commissionCtx.isPrivate ? `我要委托【${commissionCtx.executorName}】代工${cfg.displayName}，目标是【${targetName}】` : `我要进行${cfg.displayName}，目标是【${targetName}】`);
-    const consumptionText = commissionCtx.isCommission ? `本次代工费：${this.formatFedCoin(commissionCtx.commissionFee)}。材料仍由委托人提供。` : `本次消耗：${this.formatResourceCost(costs)}。`;
+    const consumptionText = commissionCtx.isCommission ? `本次代工费：${this.formatCurrency(commissionCtx.commissionFee)}。材料仍由委托人提供。` : `本次消耗：${this.formatResourceCost(costs)}。`;
     const sysPrompt = `${PROF_HIDDEN_ARBITRATION_NARRATION_RULES}\n\n[执行来源]\n本次执行者：${commissionCtx.executorName}。${commissionCtx.note}\n\n${resultLog}\n\n[副职业资源消耗]\n${consumptionText}\n\n本次资源、材料、产物与副职业进度已由前端结算写回；正文只承接自然剧情，不输出变量维护指令。`;
     this.submitAction(`${actionLead}，材料为：${materialText}。`, sysPrompt, 'prof_forge', patchOps);
   }
@@ -3643,7 +3662,7 @@ class ProfessionUIComponent {
         if (progress.newLv > progress.oldLv) resultLog += `\n\n[副职业突破] ${进度副职业}等级提升至 Lv.${progress.newLv}。`;
       }
       if (isGreatSuccess) resultLog = `[大成功] ${commissionCtx.executorName}以极高完成度完成了【${targetName}】的${本次工序显示名}操作，品质系数 ${finalQ.toFixed(2)}。`;
-      else if (commissionCtx.isCommission) resultLog += (commissionCtx.commissionFee > 0 ? ` 已支付代工费 ${this.formatFedCoin(commissionCtx.commissionFee)}。` : ' 本次代工因好感度优惠免单。');
+      else if (commissionCtx.isCommission) resultLog += (commissionCtx.commissionFee > 0 ? ` 已支付代工费 ${this.formatCurrency(commissionCtx.commissionFee)}。` : ' 本次代工因好感度优惠免单。');
     } else {
       resultLog = `[${commissionCtx.isCommission ? '委托失败' : 本次工序显示名 + '失败'}] ${commissionCtx.executorName}尝试处理【${targetName}】失败。Roll ${roll} > 成功率 ${successRate}。`;
     }
@@ -3653,7 +3672,7 @@ class ProfessionUIComponent {
     const materialText = materialNames.length > 0 ? materialNames.map(name => `${qty}份${name}`).join('、') : '无显式材料';
     const officialLocationName = this.getOfficialCommissionLocation(cfg.jobName);
     const actionLead = commissionCtx.isOfficial ? `我要在${officialLocationName}办理官方代工，委托执行${本次工序显示名}，目标是【${targetName}】` : (commissionCtx.isPrivate ? `我要委托【${commissionCtx.executorName}】代工${本次工序显示名}，目标是【${targetName}】` : `我要进行${本次工序显示名}，目标是【${targetName}】`);
-    const consumptionText = commissionCtx.isCommission ? `本次代工费：${this.formatFedCoin(commissionCtx.commissionFee)}。材料与目标物仍由委托人提供。` : `本次消耗：${this.formatResourceCost(costs)}。`;
+    const consumptionText = commissionCtx.isCommission ? `本次代工费：${this.formatCurrency(commissionCtx.commissionFee)}。材料与目标物仍由委托人提供。` : `本次消耗：${this.formatResourceCost(costs)}。`;
     const sysPrompt = `${PROF_HIDDEN_ARBITRATION_NARRATION_RULES}\n\n[执行来源]\n本次执行者：${commissionCtx.executorName}。${commissionCtx.note}\n\n${resultLog}\n\n[副职业资源消耗]\n${consumptionText}\n\n本次资源、材料、产物与副职业进度已由前端结算写回；正文只承接自然剧情，不输出变量维护指令。`;
     this.submitAction(`${actionLead}，材料：${materialText}。`, sysPrompt, `prof_${cfg.mode}`, patchOps);
   }

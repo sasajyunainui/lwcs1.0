@@ -317,6 +317,15 @@ function 创建空装备属性加成_V1(包含等效等级 = false) {
   return 加成;
 }
 
+function 计算百分比装备属性加成_V1(属性基线 = {}, 比例 = 0, 包含等效等级 = false) {
+  const 安全比例 = Math.max(0, Number(比例 || 0));
+  const 加成 = 创建空装备属性加成_V1(包含等效等级);
+  ['魂力上限', '精神力上限', '力量', '防御', '敏捷', '体力上限'].forEach(字段 => {
+    加成[字段] = Math.floor(Math.max(0, Number(属性基线?.[字段] || 0)) * 安全比例);
+  });
+  return 加成;
+}
+
 function 读取装备品质档位_V1(品质 = 0) {
   const 数值 = Number(品质 || 0);
   if (数值 < 1.0) return 0;
@@ -328,6 +337,9 @@ function 读取装备品质档位_V1(品质 = 0) {
 
 function 计算斗铠属性加成_V1(斗铠 = {}) {
   if (!(Number(斗铠?.等级 || 0) > 0)) {
+    return { 属性加成: 创建空装备属性加成_V1(true), 已排异: false };
+  }
+  if (Number(斗铠?.等级 || 0) >= 5) {
     return { 属性加成: 创建空装备属性加成_V1(true), 已排异: false };
   }
 
@@ -392,13 +404,17 @@ function 计算当前装备生效属性加成_V1(角色或装备 = {}) {
     });
   };
   if (装备?.斗铠?.装备状态 === '已装备') {
-    追加加成(计算斗铠属性加成_V1(装备.斗铠).属性加成);
+    追加加成(Number(装备.斗铠.等级 || 0) >= 5
+      ? 装备.斗铠._属性加成
+      : 计算斗铠属性加成_V1(装备.斗铠).属性加成);
   }
   if (装备?.防具?.装备状态 === '已装备') {
     追加加成(计算装备属性加成_V1(装备.防具, 角色或装备));
   }
   if (装备?.机甲?.装备状态 === '已装备') {
-    追加加成(计算机甲属性加成_V1(装备.机甲));
+    追加加成(['神级', '超神级'].includes(String(装备.机甲.等级 || ''))
+      ? 装备.机甲._属性加成
+      : 计算机甲属性加成_V1(装备.机甲));
   }
   return 总加成;
 }
@@ -2148,6 +2164,140 @@ function getBaseStats(lv) {
 globalThis.__LWCS_GET_BASE_STATS__ = getBaseStats;
 try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_GET_BASE_STATS__ = getBaseStats; } catch (错误) {}
 try { if (globalThis.top && globalThis.top !== globalThis) globalThis.top.__LWCS_GET_BASE_STATS__ = getBaseStats; } catch (错误) {}
+
+function 读取旅行能力_V1(角色 = {}) {
+  const 装备 = 角色?.装备 && typeof 角色.装备 === 'object' && !Array.isArray(角色.装备) ? 角色.装备 : {};
+  const 斗铠 = 装备.斗铠 && typeof 装备.斗铠 === 'object' && !Array.isArray(装备.斗铠) ? 装备.斗铠 : {};
+  const 机甲 = 装备.机甲 && typeof 装备.机甲 === 'object' && !Array.isArray(装备.机甲) ? 装备.机甲 : {};
+  const 斗铠部件 = Object.values(斗铠.部件 && typeof 斗铠.部件 === 'object' ? 斗铠.部件 : {});
+  const 斗铠完整 = 斗铠部件.length >= 10 && 斗铠部件.every(部件 => 部件 && !/未打造|重创|损毁|报废|不可用|故障/.test(String(部件.状态 || '')));
+  const 机甲等级 = String(机甲.等级 || '无');
+  const 机甲可用 = 机甲等级 !== '无'
+    && 机甲.装备状态 === '已装备'
+    && !/重创|损毁|报废|不可用|故障/.test(String(机甲.状态 || ''));
+  const 魂导器装配 = 装备.魂导器?.装配 && typeof 装备.魂导器.装配 === 'object' && !Array.isArray(装备.魂导器.装配)
+    ? 装备.魂导器.装配
+    : {};
+  const 飞行魂导器 = Object.values(魂导器装配).reduce((当前, 物品) => {
+    if (!物品 || typeof 物品 !== 'object' || Array.isArray(物品)) return 当前;
+    const 等级 = Math.max(0, Math.min(12, Math.floor(Number(物品.魂导等级 || 0))));
+    const 名称 = String(物品.名称 || 物品.name || '').trim();
+    const 分类 = String(物品.物品分类 || 物品.分类 || 物品.类型 || '').trim();
+    const 技能名 = 物品.装备技能 && typeof 物品.装备技能 === 'object' && !Array.isArray(物品.装备技能)
+      ? Object.keys(物品.装备技能).join(' ')
+      : '';
+    const 状态 = String(物品.装备状态 || 物品.状态 || '已装配');
+    if (等级 < 3 || 等级 > 9 || 等级 <= 当前.等级) return 当前;
+    if (!/飞行魂导器|飞翼魂导器|魂导飞行器|飞行翼|光翼/.test(`${名称} ${分类} ${技能名}`)) return 当前;
+    if (/损毁|报废|不可用|故障|未装配/.test(状态)) return 当前;
+    return { 等级, 名称: 名称 || `${等级}级飞行魂导器` };
+  }, { 等级: 0, 名称: '' });
+  return {
+    等级: Math.max(0, Math.floor(Number(角色?.属性?.等级 || 0))),
+    敏捷: Math.max(0, Number(角色?.属性?.敏捷 || 0)),
+    魂力: Math.max(0, Number(角色?.属性?.魂力 || 0)),
+    体力: Math.max(0, Number(角色?.属性?.体力 || 0)),
+    有斗铠: Number(斗铠.等级 || 0) > 0 && 斗铠.装备状态 === '已装备' && String(斗铠.名称 || '无') !== '无' && 斗铠完整,
+    斗铠等级: Math.max(0, Math.floor(Number(斗铠.等级 || 0))),
+    有机甲: 机甲可用,
+    机甲等级,
+    有神级机甲: 机甲可用 && ['神级', '超神级'].includes(机甲等级),
+    飞行魂导器等级: 飞行魂导器.等级,
+    飞行魂导器名称: 飞行魂导器.名称,
+  };
+}
+
+const 飞行魂导器每tick消耗锚点_V1 = Object.freeze({ 3: 4500, 5: 2500, 7: 90000 / 7, 9: 1800 });
+
+function 读取飞行魂导器每tick消耗_V1(等级 = 0) {
+  const 安全等级 = Math.max(3, Math.min(9, Math.floor(Number(等级 || 0))));
+  if (飞行魂导器每tick消耗锚点_V1[安全等级]) return 飞行魂导器每tick消耗锚点_V1[安全等级];
+  const 左等级 = 安全等级 < 5 ? 3 : 安全等级 < 7 ? 5 : 7;
+  const 右等级 = 左等级 + 2;
+  return Math.sqrt(飞行魂导器每tick消耗锚点_V1[左等级] * 飞行魂导器每tick消耗锚点_V1[右等级]);
+}
+
+function 计算旅行参数_V1(输入 = {}) {
+  const 方法 = String(输入.method || '').trim();
+  const 可计算方法 = new Set(['肉身飞行', '飞行魂导器', '斗铠飞行', '机甲飞行']);
+  if (!可计算方法.has(方法)) return { recognized: false, ok: false, reason: 'travel_method_unrecognized' };
+  const 能力 = 读取旅行能力_V1(输入.character || {});
+  const 距离 = Math.max(0, Number(输入.distance || 0));
+  const 距离缩放 = Math.max(0.003, Math.min(100, Number(输入.distanceScale || 1) || 1));
+  const 缩放距离 = 距离 * 距离缩放;
+  const 地图ID = String(输入.mapId || '').trim();
+  const 时代ID = String(输入.eraId || '').trim();
+  const 星际地图 = 地图ID === 'map_zjdl_stellar';
+  let 系数 = 0;
+  let 魂力 = 0;
+  let 体力 = 0;
+  let 说明 = '';
+  if (方法 === '肉身飞行') {
+    if (能力.等级 < 70) return { recognized: true, ok: false, reason: '肉身飞行至少需要70级魂力修为', capability: 能力 };
+    系数 = 0.034 / Math.sqrt(Math.max(0.01, 能力.敏捷 / 3500));
+    魂力 = Math.floor(缩放距离 * 20);
+    体力 = Math.max(1, Math.floor(缩放距离 * 5));
+    说明 = '肉身飞行';
+  } else if (方法 === '飞行魂导器') {
+    const 魂导等级 = 能力.飞行魂导器等级;
+    if (能力.等级 < 30) return { recognized: true, ok: false, reason: '飞行魂导器至少需要30级魂力修为', capability: 能力 };
+    if (魂导等级 < 3 || 魂导等级 > 9) return { recognized: true, ok: false, reason: '需装配3至9级可用飞行魂导器', capability: 能力 };
+    const 标准敏捷 = Math.max(1, Number(getBaseStats(魂导等级 * 10)?.agi || 1));
+    const 敏捷修正 = Math.max(0.5, Math.min(1.5, 1 + 0.25 * (Math.sqrt(Math.max(0, 能力.敏捷) / 标准敏捷) - 1)));
+    const 基础速度比 = 0.5 + (魂导等级 - 3) * 0.25;
+    const 超阶数 = Math.max(0, 魂导等级 - Math.floor(能力.等级 / 10));
+    const 有效速度比 = Math.max(0.05, 基础速度比 * 敏捷修正 * Math.pow(0.75, 超阶数));
+    系数 = 0.034 / 有效速度比;
+    const 临时tick = Math.max(1, Math.floor(缩放距离 * 系数));
+    魂力 = Math.max(1, Math.round(临时tick * 读取飞行魂导器每tick消耗_V1(魂导等级) * Math.pow(2, 超阶数)));
+    const 标准名称 = `${魂导等级}级飞行魂导器`;
+    说明 = 能力.飞行魂导器名称 && 能力.飞行魂导器名称 !== 标准名称 ? `${标准名称}·${能力.飞行魂导器名称}` : 标准名称;
+  } else if (方法 === '斗铠飞行') {
+    if (!能力.有斗铠) return { recognized: true, ok: false, reason: '需穿戴完整且可用的斗铠', capability: 能力 };
+    系数 = 0.03;
+    魂力 = Math.floor(缩放距离 * 12);
+    体力 = Math.max(1, Math.floor(缩放距离 * 2));
+    说明 = '斗铠飞行';
+  } else {
+    if (!能力.有机甲) return { recognized: true, ok: false, reason: '需实际装备可用机甲', capability: 能力 };
+    if (星际地图) {
+      if (时代ID !== 'zjdl') return { recognized: true, ok: false, reason: '神级机甲星际移动仅在斗罗四时代可用', capability: 能力 };
+      if (!能力.有神级机甲) return { recognized: true, ok: false, reason: '星际移动需实际装备神级或超神级机甲', capability: 能力 };
+      const 相邻星球 = 距离 <= 1200;
+      系数 = 能力.机甲等级 === '超神级'
+        ? (相邻星球 ? 0.0777778 : 0.2333333)
+        : (相邻星球 ? 0.1166667 : 0.35);
+      const 临时tick = Math.max(1, Math.floor(缩放距离 * 系数));
+      魂力 = 临时tick * (能力.机甲等级 === '超神级' ? 50000 : 100000);
+      说明 = `${能力.机甲等级}机甲星际移动`;
+    } else {
+      系数 = 0.034;
+      魂力 = Math.floor(缩放距离 * 10);
+      体力 = Math.max(1, Math.floor(缩放距离));
+      说明 = '机甲飞行';
+    }
+  }
+  const ticks = Math.max(1, Math.floor(缩放距离 * 系数));
+  return {
+    recognized: true,
+    ok: true,
+    method: 方法,
+    ticks,
+    coefficient: 系数,
+    costs: { sp: 魂力, vit: 体力 },
+    note: 说明,
+    capability: 能力,
+  };
+}
+
+const 旅行能力运行时_V1 = Object.freeze({
+  version: '1.0.0',
+  读取旅行能力: 读取旅行能力_V1,
+  计算旅行参数: 计算旅行参数_V1,
+});
+globalThis.__LWCS_TRAVEL_CAPABILITY_RUNTIME_V1__ = 旅行能力运行时_V1;
+try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_TRAVEL_CAPABILITY_RUNTIME_V1__ = 旅行能力运行时_V1; } catch (错误) {}
+try { if (globalThis.top && globalThis.top !== globalThis) globalThis.top.__LWCS_TRAVEL_CAPABILITY_RUNTIME_V1__ = 旅行能力运行时_V1; } catch (错误) {}
 
 function hashBattleSeedValue(seedText = '') {
   const text = String(seedText || '');

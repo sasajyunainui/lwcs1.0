@@ -64,11 +64,25 @@
     '龙马星系/御空族七十六号星球': 'MAP_ZJDL_YUKONG76.webp'
   });
   const DEFAULT_MAIN_MAP_ID = 'map_terrestrial_world';
-  function getEraMapProfileFromRoot(rootData = null) {
+  function getEraContextFromRoot(rootData = null) {
     const tick = toNumber(deepGet(rootData || {}, 'world.时间.tick', NaN), NaN);
     if (!Number.isFinite(tick)) return null;
     const candidates = [window, window.parent, window.top];
     for (const host of candidates) {
+      try {
+        const integration = host && host.__LWCS_ERA_RUNTIME_INTEGRATION_V1__;
+        if (integration && typeof integration.getEraContext === 'function') {
+          const context = integration.getEraContext(tick, { dataRoot: rootData });
+          if (context && context.resourceEra) return context;
+        }
+      } catch (_) {}
+    }
+    return null;
+  }
+  function getEraMapProfileFromRoot(rootData = null) {
+    const tick = toNumber(deepGet(rootData || {}, 'world.时间.tick', NaN), NaN);
+    if (!Number.isFinite(tick)) return null;
+    for (const host of [window, window.parent, window.top]) {
       try {
         const integration = host && host.__LWCS_ERA_RUNTIME_INTEGRATION_V1__;
         if (integration && typeof integration.getMapProfileForTick === 'function') {
@@ -78,6 +92,24 @@
       } catch (_) {}
     }
     return null;
+  }
+
+  function getTravelCurrency(snapshot = null) {
+    const rootData = snapshot && snapshot.rootData && typeof snapshot.rootData === 'object' ? snapshot.rootData : {};
+    const eraId = getEraContextFromRoot(rootData)?.resourceEra || '';
+    const contextText = [
+      deepGet(snapshot, 'activeChar.状态.位置', ''),
+      deepGet(snapshot, 'mapMeta.name', ''),
+      deepGet(snapshot, 'previewMeta.anchor_name', ''),
+    ].map(value => toText(value, '')).filter(Boolean).join(' ');
+    for (const host of [window, window.parent, window.top]) {
+      try {
+        const registry = host && host.__LWCS_ERA_CURRENCY_REGISTRY_V1__;
+        const result = registry?.resolveFiatCurrency?.(eraId, contextText);
+        if (result?.status === 'resolved') return { eraId, currency: result.currency };
+      } catch (_) {}
+    }
+    return { eraId, currency: '' };
   }
 
   function resolveMapProfile(mapId = '', snapshot = null, rootData = null) {
@@ -98,6 +130,12 @@
       if (asset) return asset;
     }
     return '';
+  }
+
+  function isZJDLPlanetSurface(locationPath = mapState.previewTrail) {
+    return (Array.isArray(locationPath) ? locationPath : [locationPath]).some(segment =>
+      /(?:斗罗星|天斗星|天罗星|龙源星|森罗星|精灵星|天堂星|天龙星|天马星|星球)$/.test(toText(segment, '').trim())
+    );
   }
 
   function getMapAssetUrl(profile = null, locationPath = []) {
@@ -3304,7 +3342,7 @@
           名称: 商品名,
           库存: Number(商品 && 商品.库存 || 0),
           价格: Number(商品 && 商品.价格 || 0),
-          货币: toText(商品 && 商品.货币, '联邦币')
+          货币: toText(商品 && 商品.货币, getTravelCurrency(snapshot).currency || '未解析')
         }));
       return { 商店表: 商店名 ? 商店表 : {}, 商店名, 商品列表, 来源地点, 需要移动 };
     };
@@ -3906,7 +3944,7 @@
       activeChar: {
         状态: { 位置: '' },
         属性: { 魂力: 0, 体力: 0 },
-        财富: { 联邦币: 0 },
+        财富: {},
         装备: { 斗铠: {}, 机甲: {} }
       },
       currentLoc: '',
@@ -6902,12 +6940,21 @@
 
   function chooseMapTravelMethod(distance, travelContext = null) {
     const ctx = travelContext || buildMapTravelContext(null, mapState.currentMapId);
-    if (ctx && ctx.isStellar) {
-      if (distance > 700) return '星际跃迁';
-      if (distance > 180) return '星际航线';
-      return '星际航行';
+    if (ctx?.eraId === 'zjdl' && ctx.isStellar) {
+      return distance > 700 ? '宇宙飞船跃迁' : '宇宙飞船';
     }
-    if (ctx && ctx.shipEligible) return '远洋巨轮';
+    if (ctx?.eraId === 'dldl') {
+      if (ctx.shipEligible) return '远洋海船';
+      return distance <= 35 ? '步行' : '马车';
+    }
+    if (ctx?.eraId === 'jueshitangmen') {
+      if (ctx.shipEligible) return '远洋巨轮';
+      if (distance <= 35) return '步行';
+      return distance <= 180 ? '魂导蒸汽车' : '魂导列车';
+    }
+    if (ctx?.eraId === 'zjdl') return distance <= 35 ? '步行' : '飞机';
+    if (ctx?.eraId !== 'current') return '步行';
+    if (ctx?.shipEligible) return '远洋巨轮';
     if (distance <= 35) return '步行';
     if (distance <= 120) return '魂导汽车';
     if (distance <= 450) return '魂导列车';
@@ -6932,30 +6979,36 @@
     return mapState.selectedNode === getVisibleCurrentNode();
   }
 
+  function getTravelCapabilityRuntime() {
+    for (const host of [window, window.parent, window.top]) {
+      try {
+        const runtime = host && host.__LWCS_TRAVEL_CAPABILITY_RUNTIME_V1__;
+        if (runtime && typeof runtime.读取旅行能力 === 'function' && typeof runtime.计算旅行参数 === 'function') return runtime;
+      } catch (_) {}
+    }
+    return null;
+  }
+
   function getTravelMethodVariantInfo(snapshot) {
     const activeChar = snapshot && snapshot.activeChar && typeof snapshot.activeChar === 'object' ? snapshot.activeChar : {};
-    const stat = activeChar.属性 || {};
-    const equip = activeChar.装备 || {};
-    const armorLv = Number(toNumber(deepGet(equip, '斗铠.等级', 0), 0));
-    const armorName = toText(deepGet(equip, '斗铠.名称', '无'), '无');
-    const armorFullSet = deepGet(equip, '斗铠.完整套装', undefined);
-    const mechLv = toText(deepGet(equip, '机甲.等级', '无'), '无');
-    const mechStatus = toText(deepGet(equip, '机甲.状态', '完好'), '完好');
+    const capability = getTravelCapabilityRuntime()?.读取旅行能力(activeChar) || {};
     return {
-      lv: Number(toNumber(stat.等级, 0)),
-      hasDoukai: armorLv > 0
-        && armorName !== '无'
-        && (armorFullSet === undefined || armorFullSet === null ? true : !!armorFullSet),
-      hasMecha: mechLv !== '无'
-        && !/损毁|报废|不可用|故障/.test(mechStatus)
+      lv: Number(toNumber(capability.等级, 0)),
+      hasDoukai: capability.有斗铠 === true,
+      hasMecha: capability.有机甲 === true,
+      hasGodMecha: capability.有神级机甲 === true,
+      mechLevel: toText(capability.机甲等级, '无'),
+      flightSoulGuideLevel: Number(toNumber(capability.飞行魂导器等级, 0)),
+      flightSoulGuideName: toText(capability.飞行魂导器名称, ''),
     };
   }
 
   function resolveTravelMethodVariant(method, snapshot) {
     if (method !== '飞行(机甲/斗铠)') return method;
-    const { lv, hasDoukai, hasMecha } = getTravelMethodVariantInfo(snapshot);
+    const { lv, hasDoukai, hasMecha, flightSoulGuideLevel } = getTravelMethodVariantInfo(snapshot);
     if (hasDoukai) return '斗铠飞行';
     if (hasMecha) return '机甲飞行';
+    if (lv >= 30 && flightSoulGuideLevel > 0) return '飞行魂导器';
     return lv >= 70 ? '肉身飞行' : method;
   }
 
@@ -6990,19 +7043,27 @@
     // 原著比例尺纠正 (1 Tick = 10分钟)：东海到天海(178px)大巴4h=24ticks；明斗到明都(1100px)飞行2h=12 ticks
     let coefficient = {
       '步行': 1.5,             // 跨城约两天(44小时)
+      '马车': 0.5,
       '校园短驳车': 0.25,      
+      '魂导蒸汽车': 0.16,
       '魂导汽车': 0.135,       // 原著4小时
       '魂导列车': 0.06,        // 极速列车，跨城一个多小时
+      '远洋海船': 0.35,
       '远洋巨轮': 0.25,        // 跨海数天
+      '飞机': 0.025,
       '斗铠飞行': 0.03,        // 比肉身稍快
+      '飞行魂导器': 0.054,
       '机甲飞行': 0.034,       
       '肉身飞行': 0.034,       // 原著：明斗山脉(1420,649)到明都(1103,496)距离约352px，2小时(12 ticks)
       '空间传送(极限斗罗)': 0.005, // 瞬息即至(半小时内)
-      '星际航行': 0.08,
-      '星际航线': 0.035,
-      '星际跃迁': 0.008
+      '宇宙飞船': 0.035,
+      '宇宙飞船跃迁': 0.008
     }[actualMethod] ?? 1;
-    if (travelContext && travelContext.routeProfile && travelContext.routeProfile.requiresSea && actualMethod === '远洋巨轮') {
+    if (actualMethod === '飞行魂导器') {
+      const { flightSoulGuideLevel } = getTravelMethodVariantInfo(snapshot);
+      coefficient = Math.max(0.018, 0.066 - flightSoulGuideLevel * 0.004);
+    }
+    if (travelContext && travelContext.routeProfile && travelContext.routeProfile.requiresSea && ['远洋海船', '远洋巨轮'].includes(actualMethod)) {
       const totalCells = Math.max(1, travelContext.routeProfile.landCells + travelContext.routeProfile.waterCells);
       const landRatio = travelContext.routeProfile.landCells / totalCells;
       const waterRatio = travelContext.routeProfile.waterCells / totalCells;
@@ -7019,42 +7080,98 @@
       if (depth >= 2) localScale = Math.max(0.003, localScale * 0.75);
     }
 
-    const costs = calculateTravelCost(actualMethod, distance, snapshot, { distanceScale: localScale });
-    const ticks = Math.max(1, Math.floor(distance * coefficient * localScale));
+    const runtimeResult = getTravelCapabilityRuntime()?.计算旅行参数({
+      method: actualMethod,
+      distance,
+      distanceScale: localScale,
+      mapId: mapState.currentMapId,
+      eraId: travelContext.eraId,
+      character: snapshot.activeChar,
+    });
+    if (runtimeResult?.recognized && runtimeResult.ok) coefficient = runtimeResult.coefficient;
+    const ticks = runtimeResult?.recognized && runtimeResult.ok
+      ? runtimeResult.ticks
+      : Math.max(1, Math.floor(distance * coefficient * localScale));
+    const costs = calculateTravelCost(actualMethod, distance, snapshot, {
+      distanceScale: localScale,
+      estimatedTicks: ticks,
+      mapId: mapState.currentMapId,
+      eraId: travelContext.eraId,
+      runtimeResult,
+    });
     const coordText = formatMapImageCoord(end, '');
-    return { method: actualMethod, ticks, distance, duration: formatMapTravelDuration(ticks), coordText, costs, routePlanText: toText(travelContext && travelContext.routePlanText, ''), routeProfile: travelContext && travelContext.routeProfile ? travelContext.routeProfile : null };
+    return { method: actualMethod, ticks, distance, distanceScale: localScale, duration: formatMapTravelDuration(ticks), coordText, costs, routePlanText: toText(travelContext && travelContext.routePlanText, ''), routeProfile: travelContext && travelContext.routeProfile ? travelContext.routeProfile : null };
   }
 
   function calculateTravelCost(method, distance, snapshot, options = {}) {
     const activeChar = snapshot && snapshot.activeChar && typeof snapshot.activeChar === 'object' ? snapshot.activeChar : {};
     const stat = activeChar.属性 || {};
     const wealth = activeChar.财富 || {};
-    const { lv, hasDoukai, hasMecha } = getTravelMethodVariantInfo(snapshot);
+    const { lv, hasDoukai, hasMecha, flightSoulGuideLevel, flightSoulGuideName } = getTravelMethodVariantInfo(snapshot);
     const resolvedMethod = resolveTravelMethodVariant(method, snapshot);
     const distanceScale = Math.max(0.01, Number(toNumber(options && options.distanceScale, 1), 1));
     const scaledDistance = Math.max(0, Number(distance || 0) * distanceScale);
 
-    let fedCoin = 0;
+    const { eraId, currency } = getTravelCurrency(snapshot);
+    let coin = 0;
     let sp = 0;
     let vit = 0;
     let canAfford = true;
     let reason = '';
     let note = '';
+    const runtimeResult = options.runtimeResult || getTravelCapabilityRuntime()?.计算旅行参数({
+      method: resolvedMethod,
+      distance,
+      distanceScale,
+      mapId: options.mapId || mapState.currentMapId,
+      eraId: options.eraId || eraId,
+      character: activeChar,
+    });
 
-    if (['星际航行', '星际航线', '星际跃迁'].includes(resolvedMethod)) {
-      return { fedCoin: 0, sp: 0, vit: 0, canAfford: true, reason: '', text: '按星际节点航线结算', note: '星际航行' };
-    }
-
-    if (resolvedMethod === '步行') {
+    if (runtimeResult?.recognized) {
+      if (!runtimeResult.ok) {
+        canAfford = false;
+        reason = runtimeResult.reason || '当前旅行方式不可用';
+      } else {
+        sp = Math.max(0, Math.floor(toNumber(runtimeResult.costs?.sp, 0)));
+        vit = Math.max(0, Math.floor(toNumber(runtimeResult.costs?.vit, 0)));
+        note = toText(runtimeResult.note, resolvedMethod);
+      }
+    } else if (resolvedMethod === '步行') {
       vit = Math.max(1, Math.round(scaledDistance * 3.75));
+    } else if (resolvedMethod === '马车') {
+      coin = Math.max(1, Math.ceil(scaledDistance / 40));
+      note = '马车车资';
     } else if (resolvedMethod === '校园短驳车') {
-      fedCoin = Math.max(1, Math.floor(scaledDistance * 2));
+      coin = Math.max(1, Math.floor(scaledDistance * 2));
       note = '校内通勤';
-    } else if (['魂导列车', '魂导汽车', '远洋巨轮'].includes(resolvedMethod)) {
-      fedCoin = Math.floor(scaledDistance * 10);
+    } else if (resolvedMethod === '魂导蒸汽车') {
+      coin = Math.max(1, Math.ceil(scaledDistance / 20));
+    } else if (['魂导列车', '魂导汽车', '远洋海船', '远洋巨轮'].includes(resolvedMethod)) {
+      coin = eraId === 'dldl' || eraId === 'jueshitangmen'
+        ? Math.max(1, Math.ceil(scaledDistance / 10))
+        : Math.max(1, Math.floor(scaledDistance * 10));
       if (resolvedMethod === '魂导汽车' && 背包有可用魂导汽车(activeChar)) {
-        fedCoin = Math.max(1, Math.floor(fedCoin / 3));
+        coin = Math.max(1, Math.floor(coin / 3));
         note = '自备车辆';
+      }
+    } else if (resolvedMethod === '飞机') {
+      coin = Math.max(1, Math.floor(scaledDistance * 15));
+      note = '航空客运';
+    } else if (resolvedMethod === '宇宙飞船' || resolvedMethod === '宇宙飞船跃迁') {
+      coin = Math.max(1, Math.floor(scaledDistance * (resolvedMethod === '宇宙飞船跃迁' ? 40 : 20)));
+      note = resolvedMethod === '宇宙飞船跃迁' ? '星际跃迁航线' : '星际客运航线';
+    } else if (resolvedMethod === '飞行魂导器') {
+      if (lv < 30) {
+        canAfford = false;
+        reason = '飞行魂导器至少需要30级魂力修为';
+      } else if (flightSoulGuideLevel <= 0) {
+        canAfford = false;
+        reason = '需装配可用的飞行魂导器';
+      } else {
+        const travelTicks = Math.max(1, toNumber(options && options.estimatedTicks, 1));
+        sp = Math.max(1, Math.ceil(travelTicks * Math.max(3, 13 - flightSoulGuideLevel)));
+        note = `${flightSoulGuideLevel}级飞行魂导器${flightSoulGuideName ? `·${flightSoulGuideName}` : ''}`;
       }
     } else if (resolvedMethod === '斗铠飞行') {
       if (!hasDoukai) {
@@ -7072,7 +7189,7 @@
       } else {
         sp = Math.floor(scaledDistance * 10);
         vit = Math.max(1, Math.floor(scaledDistance));
-        fedCoin = Math.max(1, Math.floor(scaledDistance * 3));
+        coin = Math.max(1, Math.floor(scaledDistance * 3));
         note = '机甲飞行';
       }
     } else if (resolvedMethod === '肉身飞行') {
@@ -7092,19 +7209,20 @@
       }
     }
 
-    const curCoin = Number(toNumber(wealth.联邦币, 0));
+    if (coin > 0 && !currency) { canAfford = false; reason = '当前时代货币未就绪'; }
+    const curCoin = Number(toNumber(wealth[currency], 0));
     const curSp = Number(toNumber(stat.魂力, 0));
     const curVit = Number(toNumber(stat.体力, 0));
-    if (canAfford && fedCoin > curCoin) { canAfford = false; reason = '联邦币不足'; }
+    if (canAfford && coin > curCoin) { canAfford = false; reason = `${currency}不足`; }
     if (canAfford && sp > curSp) { canAfford = false; reason = '魂力不足'; }
     if (canAfford && vit > curVit) { canAfford = false; reason = '体力不足'; }
 
     const parts = [];
-    if (fedCoin > 0) parts.push(`${fedCoin.toLocaleString()}联邦币`);
+    if (coin > 0) parts.push(`${coin.toLocaleString()}${currency}`);
     if (sp > 0) parts.push(`${sp}魂力`);
     if (vit > 0) parts.push(`${vit}体力`);
     const text = parts.length ? `${parts.join(' · ')}${note ? ` · ${note}` : ''}` : (note || '无消耗');
-    return { fedCoin, sp, vit, canAfford, reason, text, note };
+    return { currency, coin, sp, vit, canAfford, reason, text, note };
   }
 
   function 背包有可用魂导汽车(角色 = {}) {
@@ -7122,7 +7240,7 @@
     const safeMapId = toText(mapId || (activeSnapshot && activeSnapshot.currentMapId), DEFAULT_MAIN_MAP_ID);
     const profile = resolveMapProfile(safeMapId, activeSnapshot, activeSnapshot && activeSnapshot.rootData);
     const level = toText(activeSnapshot && activeSnapshot.mapLevel, inferMapLevelFromId(safeMapId));
-    const isStellar = profile && profile.topology === 'stellar';
+    const isStellar = profile && profile.topology === 'stellar' && !isZJDLPlanetSurface();
     const isWorld = !isStellar && (isMainMapId(safeMapId) || level === 'world' || level === 'continent');
     const isFacility = level === 'facility' || level === 'district' || level === 'city';
     const routeProfile = isWorld && profile && profile.terrainSource === 'manual-and-image' ? buildWorldTravelRouteProfile(startCoord, endCoord, safeMapId) : null;
@@ -7138,7 +7256,8 @@
       routePlanText: routeProfile ? routeProfile.summary : '',
       shipEligible: isWorld && requiresSea,
       railEligible: isWorld && !mapState.selectedFreePoint && !requiresSea,
-      stellarEligible: !!isStellar
+      stellarEligible: !!isStellar,
+      eraId: getEraContextFromRoot(activeSnapshot?.rootData || {})?.resourceEra || '',
     };
   }
 
@@ -7146,23 +7265,52 @@
   function getAvailableTravelMethods(distance, mapId, snapshot = null, precomputedContext = null) {
     const ctx = precomputedContext || buildMapTravelContext(snapshot, mapId);
     const methods = [];
-    const { lv, hasDoukai, hasMecha } = getTravelMethodVariantInfo(snapshot);
+    const { lv, hasDoukai, hasMecha, hasGodMecha, flightSoulGuideLevel } = getTravelMethodVariantInfo(snapshot);
     const pushMethod = method => {
       if (method && !methods.includes(method)) methods.push(method);
     };
-    const pushFlightMethods = () => {
+    const pushFlightMethods = (includeMecha = true) => {
       if (hasDoukai) pushMethod('斗铠飞行');
-      if (hasMecha) pushMethod('机甲飞行');
+      if (includeMecha && hasMecha) pushMethod('机甲飞行');
+      if (lv >= 30 && flightSoulGuideLevel > 0) pushMethod('飞行魂导器');
       if (lv >= 70) pushMethod('肉身飞行');
     };
 
-    if (ctx.isStellar) {
-      pushMethod('星际航行');
-      if (distance > 180) pushMethod('星际航线');
-      if (distance > 700 && lv >= 90) pushMethod('星际跃迁');
+    if (ctx.eraId === 'zjdl' && ctx.isStellar) {
+      pushMethod('宇宙飞船');
+      if (distance > 700) pushMethod('宇宙飞船跃迁');
+      if (hasGodMecha) pushMethod('机甲飞行');
       return methods;
     }
-    
+
+    if (ctx.eraId === 'dldl') {
+      pushMethod('步行');
+      if (!ctx.isFacility) pushMethod(ctx.shipEligible ? '远洋海船' : '马车');
+      pushFlightMethods(false);
+      if (ctx.isWorld && distance > 950 && lv >= 98) pushMethod('空间传送(极限斗罗)');
+      return methods;
+    }
+
+    if (ctx.eraId === 'jueshitangmen') {
+      pushMethod('步行');
+      if (!ctx.isFacility) pushMethod('魂导蒸汽车');
+      if (ctx.isWorld && ctx.railEligible) pushMethod('魂导列车');
+      if (ctx.isWorld && ctx.shipEligible) pushMethod('远洋巨轮');
+      pushFlightMethods(false);
+      if (ctx.isWorld && distance > 950 && lv >= 98) pushMethod('空间传送(极限斗罗)');
+      return methods;
+    }
+
+    if (ctx.eraId === 'zjdl') {
+      pushMethod('步行');
+      if (ctx.isFacility && distance > 18) pushMethod('校园短驳车');
+      if (!ctx.isFacility && distance > 25) pushMethod('飞机');
+      pushFlightMethods();
+      return methods;
+    }
+
+    if (ctx.eraId !== 'current') return ['步行'];
+
     if (ctx.isFacility) {
       pushMethod('步行');
       if (distance > 18) pushMethod('校园短驳车');
@@ -7204,10 +7352,25 @@
     if (!preview) return null;
     const targetCoord = getSelectedCoord();
     const coordSystem = MAP_COORD_SYSTEM_IMAGE;
-    if (mapState.selectedFreePoint) {
-      return { target_loc: '无', target_x: roundCoord(mapState.selectedFreePoint.x), target_y: roundCoord(mapState.selectedFreePoint.y), coord_system: coordSystem, method: preview.method, est_ticks: preview.ticks, est_duration: preview.duration, coord_text: preview.coordText, costs: preview.costs, route_plan: toText(preview.routePlanText, '') };
-    }
-    return { target_loc: mapState.selectedNode, target_x: targetCoord ? roundCoord(targetCoord.x) : -1, target_y: targetCoord ? roundCoord(targetCoord.y) : -1, coord_system: coordSystem, method: preview.method, est_ticks: preview.ticks, est_duration: preview.duration, coord_text: preview.coordText, costs: preview.costs, route_plan: toText(preview.routePlanText, '') };
+    const startCoord = getCurrentCoord();
+    const request = {
+      map_id: mapState.currentMapId,
+      distance: preview.distance,
+      distance_scale: preview.distanceScale,
+      start_x: startCoord ? roundCoord(startCoord.x) : -1,
+      start_y: startCoord ? roundCoord(startCoord.y) : -1,
+      target_x: targetCoord ? roundCoord(targetCoord.x) : -1,
+      target_y: targetCoord ? roundCoord(targetCoord.y) : -1,
+      coord_system: coordSystem,
+      method: preview.method,
+      est_ticks: preview.ticks,
+      est_duration: preview.duration,
+      coord_text: preview.coordText,
+      costs: preview.costs,
+      route_plan: toText(preview.routePlanText, ''),
+    };
+    request.target_loc = mapState.selectedFreePoint ? '无' : mapState.selectedNode;
+    return request;
   }
 
   function hasPendingTravelRequestForTarget() {

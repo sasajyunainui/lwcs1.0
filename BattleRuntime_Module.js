@@ -3508,11 +3508,19 @@
     if (!diagnostic) return null;
     const applicationId = String(criteria.applicationId || '').trim();
     const sourceFactId = String(criteria.sourceFactId || '').trim();
+    const sourceActionId = String(criteria.sourceActionId || '').trim();
+    const sourceEventId = String(criteria.sourceEventId || '').trim();
+    const stateName = String(criteria.stateName || '').trim();
+    const targetName = String(criteria.targetName || '').trim();
     const entries = Array.isArray(diagnostic.状态来源登记) ? diagnostic.状态来源登记 : [];
-    if (!applicationId && !sourceFactId) return null;
+    if (!applicationId && !sourceFactId && !sourceActionId && !sourceEventId) return null;
     return [...entries].reverse().find(item =>
       (!applicationId || String(item?.applicationId || '').trim() === applicationId) &&
-      (!sourceFactId || String(item?.sourceFactId || '').trim() === sourceFactId)
+      (!sourceFactId || String(item?.sourceFactId || '').trim() === sourceFactId) &&
+      (!sourceActionId || String(item?.sourceActionId || '').trim() === sourceActionId) &&
+      (!sourceEventId || String(item?.sourceEventId || '').trim() === sourceEventId) &&
+      (!stateName || String(item?.stateName || '').trim() === stateName) &&
+      (!targetName || String(item?.targetName || '').trim() === targetName)
     ) || null;
   }
 
@@ -8224,6 +8232,17 @@
           : 'state_replace';
       const state = afterState ?? beforeState ?? {};
       const stateName = structuredStateIdentity(stateKey, state);
+      const removedStateSource = eventKind === 'state_remove'
+        ? findStateSource(combatData, {
+            applicationId: String(beforeState?.__状态来源窗口?.[0] || beforeState?.__状态来源键 || '').trim(),
+            sourceFactId: String(beforeState?.sourceFactId || beforeState?.来源事实ID || '').trim(),
+            sourceActionId: String(beforeState?.sourceActionId || '').trim(),
+            sourceEventId: String(beforeState?.sourceEventId || '').trim(),
+            stateName,
+            targetName: previewRuntime.unitName(target),
+          })
+        : null;
+      const removedApplicationId = String(removedStateSource?.applicationId || '').trim();
       const stateContribution = structuredContributionForTarget(
         contributions,
         targetId,
@@ -8251,6 +8270,7 @@
         primaryOutcome: eventKind,
         operation,
         duration: Math.max(0, Number(afterState?.duration ?? afterState?.持续回合 ?? 0)),
+        ...(removedApplicationId ? { applicationId: removedApplicationId } : {}),
         meta: {
           source: 'structured_runtime',
           effectInstanceId: String(stateContribution?.effectInstanceId || '').trim(),
@@ -8261,6 +8281,12 @@
           after: afterState === undefined ? null : cloneValue(afterState),
           evidence: cloneValue(stateContribution?.evidence || {}),
           operation,
+          ...(removedApplicationId ? {
+            applicationId: removedApplicationId,
+            stateSourceActionId: String(removedStateSource?.sourceActionId || '').trim(),
+            stateSourceEventId: String(removedStateSource?.sourceEventId || '').trim(),
+            stateSourceEffectId: String(removedStateSource?.sourceEffectId || '').trim(),
+          } : {}),
         },
       }));
     });
@@ -13211,7 +13237,7 @@
                 ? settlementFacts.filter(item =>
                     item?.eventKind === 'hit_result' &&
                     matchesSettledAction(item) &&
-                    isUnitIdentityMatch(item?.targetName || item?.targetId || '', observation?.targetId || '') &&
+                    isUnitIdentityMatch(item?.targetId || item?.targetName || '', observation?.targetId || '') &&
                     Number(item?.meta?.effectIndex ?? item?.effectIndex ?? -1) === Number(observation?.effectIndex ?? -2)
                   )
                 : [settlementFacts.find(item => withdrawalObservation
@@ -13220,7 +13246,7 @@
                       matchesSettledAction(item)
                     : item?.eventKind === 'state_apply' &&
                       matchesSettledAction(item) &&
-                      isUnitIdentityMatch(item?.targetName || item?.targetId || '', observation?.targetId || '') &&
+                      isUnitIdentityMatch(item?.targetId || item?.targetName || '', observation?.targetId || '') &&
                       String(item?.meta?.stateName || '').trim() === String(observation?.stateName || '').trim()
                 )].filter(Boolean);
               events.forEach(event => {
@@ -13230,6 +13256,11 @@
                     ? String(event?.result || '').trim() === 'withdrawn'
                     : String(event?.result || '').trim() === 'applied';
                 const previous = beliefByActor.get(actorId) || initialBeliefFor(actorId);
+                const previousRecord = previous?.mechanics?.[observation.mechanicKey] || {};
+                const previousMass = Number(previousRecord.alpha || 0) + Number(previousRecord.beta || 0);
+                const posteriorBefore = previousMass > 0
+                  ? Number(previousRecord.alpha || 0) / previousMass
+                  : Number(observation?.posterior ?? observation?.estimatedProbability ?? 0);
                 const next = decisionRuntime.updateMechanicBelief(previous, { ...observation, success });
                 setVisibleBelief(actorId, next);
                 const history = strategicHistoryByActor.get(actorId) || [];
@@ -13250,6 +13281,9 @@
                   targetId: observation.targetId,
                   stateName: observation.stateName,
                   success,
+                  estimatedProbability: Number(observation?.estimatedProbability ?? 0),
+                  decisionProbability: Number(observation?.posterior ?? observation?.estimatedProbability ?? 0),
+                  posteriorBefore,
                   posterior,
                   sourceEventId: String(event?.eventId || '').trim(),
                 });
@@ -13318,9 +13352,15 @@
                     beliefState: previous,
                   });
                   const success = String(event?.result || '').trim().toLowerCase() === 'hit';
+                  const previousRecord = previous?.mechanics?.[mechanicKey] || {};
+                  const previousMass = Number(previousRecord.alpha || 0) + Number(previousRecord.beta || 0);
+                  const estimatedProbability = Number(predicted?.hitProbability ?? 0.65);
+                  const posteriorBefore = previousMass > 0
+                    ? Number(previousRecord.alpha || 0) / previousMass
+                    : estimatedProbability;
                   const next = decisionRuntime.updateMechanicBelief(previous, {
                     mechanicKey,
-                    estimatedProbability: Number(predicted?.hitProbability ?? 0.65),
+                    estimatedProbability,
                     success,
                   });
                   setVisibleBelief(hostId, next);
@@ -13341,6 +13381,9 @@
                     damageClass: className,
                     targetId,
                     success,
+                    estimatedProbability,
+                    decisionProbability: posteriorBefore,
+                    posteriorBefore,
                     posterior,
                     sourceEventId: String(event?.eventId || '').trim(),
                   });

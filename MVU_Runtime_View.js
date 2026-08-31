@@ -135,6 +135,30 @@ function 读取视图时代运行时集成_V1() {
   ) || null;
 }
 
+function 读取视图时代货币注册表_V1() {
+  const 候选列表 = [globalThis];
+  try { if (globalThis.parent && globalThis.parent !== globalThis) 候选列表.push(globalThis.parent); } catch (错误) {}
+  try { if (globalThis.top && globalThis.top !== globalThis && !候选列表.includes(globalThis.top)) 候选列表.push(globalThis.top); } catch (错误) {}
+  return 候选列表.map(候选 => 候选?.__LWCS_ERA_CURRENCY_REGISTRY_V1__).find(接口 =>
+    接口 && typeof 接口.listCurrencies === 'function'
+  ) || null;
+}
+
+function 读取视图时代货币名称_V1(数据根 = null, 当前tick = null) {
+  const 根 = 数据根 && typeof 数据根 === 'object' ? 数据根 : 读取视图活动数据根_V1();
+  const tick = Number(当前tick ?? 根?.world?.时间?.tick);
+  const 集成 = 读取视图时代运行时集成_V1();
+  const 注册表 = 读取视图时代货币注册表_V1();
+  if (!集成 || !注册表 || !Number.isFinite(tick) || tick < 0) return [];
+  try {
+    const 时代 = 集成.getEraContext(tick, { dataRoot: 根 }).resourceEra;
+    const 结果 = 注册表.listCurrencies(时代);
+    return 结果.status === 'resolved' ? 结果.currencies.map(货币 => String(货币?.名称 || '').trim()).filter(Boolean) : [];
+  } catch (错误) {
+    return [];
+  }
+}
+
 function 读取视图活动数据根_V1() {
   const 活动根 = globalThis.__LWCS_MVU_VIEW_ACTIVE_DATA_ROOT_V1__;
   if (活动根 && typeof 活动根 === 'object') return 活动根;
@@ -6178,19 +6202,6 @@ function 构建MVU剩余资源摘要_V1(角色 = {}) {
   ].filter(Boolean).join('｜');
 }
 
-function 构建MVU剧情提示财富_V1(角色 = {}) {
-  const 财富 = 角色?.财富 && typeof 角色.财富 === 'object' ? 角色.财富 : {};
-  const 势力表 = 角色?.社交?.势力 && typeof 角色.社交.势力 === 'object' ? 角色.社交.势力 : {};
-  const 所属势力文本 = Object.keys(势力表).join(' ');
-  const 片段列表 = [];
-  追加MVU剧情提示片段_V1(片段列表, '联邦币', 财富.联邦币, { 允许零: true });
-  追加MVU剧情提示片段_V1(片段列表, '星罗币', 财富.星罗币, { 允许零: true });
-  if (所属势力文本.includes('唐门')) 追加MVU剧情提示片段_V1(片段列表, '唐门积分', 财富.唐门积分, { 允许零: true });
-  if (所属势力文本.includes('史莱克')) 追加MVU剧情提示片段_V1(片段列表, '学院积分', 财富.学院积分, { 允许零: true });
-  追加MVU剧情提示片段_V1(片段列表, '战功', 财富.战功);
-  return 片段列表.join('；');
-}
-
 function 构建MVU剧情提示身份关系_V1(角色 = {}, 角色名 = '', 角色名列表 = []) {
   const 社交 = 角色?.社交 && typeof 角色.社交 === 'object' ? 角色.社交 : {};
   const 片段列表 = [];
@@ -7382,9 +7393,10 @@ function 构建MVU角色卡物品定义摘要_V1(物品名 = '', 物品定义源
   };
 }
 
-function 构建MVU角色卡表格数据_V1(角色表 = {}, 当前tick = null, 物品定义源 = {}) {
+function 构建MVU角色卡表格数据_V1(角色表 = {}, 当前tick = null, 物品定义源 = {}, 数据根 = null) {
   const 覆盖器 = 创建MVU角色卡覆盖记录器_V1();
   const 覆盖统计 = { 有效字段数: 0, 排除字段数: 0, 扩展字段数: 0, 遗漏字段数: 0 };
+  const 当前时代货币 = new Set(读取视图时代货币名称_V1(数据根, 当前tick));
   const 表 = {
     基础: [],
     现场: [],
@@ -7528,7 +7540,9 @@ function 构建MVU角色卡表格数据_V1(角色表 = {}, 当前tick = null, �
       if (已占用物品名.has(String(名称 || '').trim())) return;
       添加MVU角色卡表格行_V1(表.背包, { 角色: 角色名, 物品: 名称, 数量: 内容?.数量, 批次: 清理MVU角色卡持有状态详情_V1(内容?.批次) }, 覆盖器, []);
     });
-    Object.entries(构建MVU正文财富摘要_V1(角色)).forEach(([名称, 内容]) => 添加MVU角色卡表格行_V1(表.财富, { 角色: 角色名, 项目: 名称, 数量: 内容 }, 覆盖器, []));
+    Object.entries(构建MVU正文财富摘要_V1(角色))
+      .filter(([名称]) => 当前时代货币.has(名称))
+      .forEach(([名称, 内容]) => 添加MVU角色卡表格行_V1(表.财富, { 角色: 角色名, 项目: 名称, 数量: 内容 }, 覆盖器, []));
     ['装备', '魂骨', '背包', '财富'].forEach(字段 => 覆盖器.markSubtree(字段));
     Object.entries(角色?.我的任务 || {}).forEach(([任务, 内容]) => 添加MVU角色卡表格行_V1(表.任务, { 角色: 角色名, 任务, 任务线: 内容?.任务线, 状态: 内容?.状态, 进度: 内容?.当前进度, 描述: 内容?.描述, 截止tick: 内容?.截止tick, 奖励币: 内容?.奖励币, 奖励声望: 内容?.奖励声望 }, 覆盖器, []));
     (Array.isArray(角色?.已掌握情报) ? 角色.已掌握情报 : []).forEach((内容, 索引) => 添加MVU角色卡表格行_V1(表.情报, { 角色: 角色名, 条目: `情报${索引 + 1}`, 内容 }, 覆盖器, []));
@@ -7576,8 +7590,8 @@ function 构建MVU角色卡表格数据_V1(角色表 = {}, 当前tick = null, �
   return { 表, 覆盖率: 覆盖统计 };
 }
 
-function 构建MVU角色卡表格文本_V1(角色表 = {}, 当前tick = null, 物品定义源 = {}) {
-  const { 表 } = 构建MVU角色卡表格数据_V1(角色表, 当前tick, 物品定义源);
+function 构建MVU角色卡表格文本_V1(角色表 = {}, 当前tick = null, 物品定义源 = {}, 数据根 = null) {
+  const { 表 } = 构建MVU角色卡表格数据_V1(角色表, 当前tick, 物品定义源, 数据根);
   return [
     渲染MVU角色卡表格_V1('角色基础表', ['角色', '性别', '年龄', '生日', '等级', '精神境界', '魂核', '主身份', '家世', '外貌', '穿搭', '性格', '名望', '邪魂师'], 表.基础),
     渲染MVU角色卡表格_V1('角色状态表', ['角色', '当前地点', '生死', '死亡类型', '伤势', '剩余资源'], 表.现场),
@@ -7606,16 +7620,16 @@ function 构建MVU角色卡表格文本_V1(角色表 = {}, 当前tick = null, �
 function 生成MVU角色卡覆盖率检查_V1(数据输入 = null, userInput = '', plotText = '') {
   const 正文视图 = 生成MVU正文视图_V1(数据输入, userInput, plotText);
   const 当前tick = 正文视图?.world?.时间?.tick ?? null;
-  const { 表, 覆盖率 } = 构建MVU角色卡表格数据_V1(正文视图?.char || {}, 当前tick);
+  const { 表, 覆盖率 } = 构建MVU角色卡表格数据_V1(正文视图?.char || {}, 当前tick, {}, 正文视图);
   return {
     ...覆盖率,
     表行数: Object.fromEntries(Object.entries(表).map(([表名, 行列表]) => [表名, Array.isArray(行列表) ? 行列表.length : 0])),
   };
 }
 
-function 构建MVU正文角色卡_V1(角色名 = '', 角色 = {}, 正文角色表 = {}, 当前tick = null) {
+function 构建MVU正文角色卡_V1(角色名 = '', 角色 = {}, 正文角色表 = {}, 当前tick = null, 数据根 = null) {
   const 角色键 = String(角色名 || '').trim();
-  return 角色键 ? 构建MVU角色卡表格文本_V1({ [角色键]: 角色 }, 当前tick) : '无';
+  return 角色键 ? 构建MVU角色卡表格文本_V1({ [角色键]: 角色 }, 当前tick, {}, 数据根) : '无';
 }
 
 function 生成MVU玩家角色表_V1(数据输入 = null) {
@@ -7626,7 +7640,7 @@ function 生成MVU玩家角色表_V1(数据输入 = null) {
   const 玩家名 = 配置玩家名 && 角色表[配置玩家名] ? 配置玩家名 : 标记玩家名;
   const 玩家 = 数据根?.char?.[玩家名];
   if (!玩家名 || !玩家 || typeof 玩家 !== 'object') return '无';
-  return 构建MVU正文角色卡_V1(玩家名, 玩家, 数据根.char || {}, 数据根?.world?.时间?.tick ?? null);
+  return 构建MVU正文角色卡_V1(玩家名, 玩家, 数据根.char || {}, 数据根?.world?.时间?.tick ?? null, 数据根);
 }
 
 function 构建MVU正文角色卡主体行列表_V1(角色名 = '', 角色 = {}, 正文角色表 = {}, 当前tick = null) {
@@ -7657,7 +7671,7 @@ function 生成MVU正文提示文本_V1(数据输入 = null, userInput = '', plo
     : 生成MVU正文视图_V1(数据输入, userInput, plotText);
   const 当前tick = 正文视图.world?.时间?.tick ?? null;
   const 数据根 = 读取运行时Mvu数据根_V1(数据输入) || 数据输入 || {};
-  const 角色卡文本 = 构建MVU角色卡表格文本_V1(正文视图.char || {}, 当前tick, 数据根?.物品 || {});
+  const 角色卡文本 = 构建MVU角色卡表格文本_V1(正文视图.char || {}, 当前tick, 数据根?.物品 || {}, 数据根);
   return [
     '【角色卡】',
     角色卡文本,
@@ -8494,77 +8508,6 @@ function refreshFlatLocationsFromTree(node, name) {
       refreshFlatLocationsFromTree(node.子节点[childName], childName);
     }
   }
-}
-
-function calculateTravelResourceCost(method, distance, char = {}) {
-  const 属性 = char.属性 || {};
-  const 财富 = char.财富 || {};
-  const 装备 = char.装备 || {};
-  const lv = Number(属性.等级 || 0);
-  const hasDoukai = Number(装备?.斗铠?.等级 || 0) > 0 && String(装备?.斗铠?.装备状态 || '未装备') === '已装备';
-  const hasMecha =
-    String(装备?.机甲?.等级 || '无') !== '无' && String(装备?.机甲?.装备状态 || '未装备') === '已装备';
-
-  let fedCoin = 0;
-  let sp = 0;
-  let vit = 0;
-  let canAfford = true;
-  let reason = '';
-  let note = '';
-
-  if (method === '步行') {
-    vit = Math.max(1, Math.floor(distance * 4));
-  } else if (method === '校园短驳车') {
-    fedCoin = Math.max(1, Math.floor(distance * 2));
-    note = '校内通勤';
-  } else if (['魂导列车', '魂导汽车', '远洋巨轮'].includes(method)) {
-    fedCoin = Math.floor(distance * 10);
-  } else if (method === '飞行(机甲/斗铠)') {
-    if (hasDoukai) {
-      sp = Math.floor(distance * 12);
-      vit = Math.max(1, Math.floor(distance * 2));
-      note = '斗铠飞行';
-    } else if (hasMecha) {
-      sp = Math.floor(distance * 10);
-      vit = Math.max(1, Math.floor(distance));
-      fedCoin = Math.max(1, Math.floor(distance * 3));
-      note = '机甲飞行';
-    } else if (lv >= 70) {
-      sp = Math.floor(distance * 20);
-      vit = Math.max(1, Math.floor(distance * 5));
-      note = '肉身飞行';
-    } else {
-      canAfford = false;
-      reason = '需70级以上或装备机甲/斗铠';
-    }
-  } else if (method === '空间传送(极限斗罗)') {
-    if (lv >= 98) {
-      note = '极限传送';
-    } else {
-      canAfford = false;
-      reason = '需极限斗罗或特殊权限';
-    }
-  } else if (method === '空间传送(神级)') {
-    note = '神级传送';
-  }
-
-  const curCoin = Number(财富.联邦币 || 0);
-  const curSp = Number(属性.魂力 || 0);
-  const curVit = Number(属性.体力 || 0);
-  if (canAfford && fedCoin > curCoin) {
-    canAfford = false;
-    reason = '联邦币不足';
-  }
-  if (canAfford && sp > curSp) {
-    canAfford = false;
-    reason = '魂力不足';
-  }
-  if (canAfford && vit > curVit) {
-    canAfford = false;
-    reason = '体力不足';
-  }
-
-  return { fedCoin, sp, vit, canAfford, reason, note };
 }
 
 function findMapNodeEntry(targetName, sd) {

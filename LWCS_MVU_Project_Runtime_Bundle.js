@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:8e5cd494e98126942370ef6ecc4587234bf055ca72b28fc9c78d101d3c0ad979|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:f2a8b5e80ccd7223a81b3635902c42e44a4151eb11b623881a23f9ba620422af|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:e89899d36c1d5d95ea55b0eefb95b3da569feed05e74ae3c384a85f5f2d61671|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:d4c5e7ce2a458b4fa7720ac08f633e9e2aef0603445dfb68c3f09383f074de0a|MVU_Schema_Runtime.js:70101553f5ae833431197ad24ce19e95f58c657efdf7f5b91a94fca25bfa9cce|MVU_Competition_Runtime.js:05e0687c9c59fd58ae2be28a44634c27c005562d1da99c69983710962b26c318|MVU_Runtime_View.js:371ffe4ce2ee0a8d6a9c0559abb8d37e520928e75902fc742b5f4a7113591d13 */
+/* sources-sha256: LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:8e5cd494e98126942370ef6ecc4587234bf055ca72b28fc9c78d101d3c0ad979|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:2ce046e8a875ed80593c5661203db89bb3524455479a48f0df5c5adcfdd1af87|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:e89899d36c1d5d95ea55b0eefb95b3da569feed05e74ae3c384a85f5f2d61671|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:a9a02095b7bceeda0da33efffa533e6b1c8eb676157165515ce8476a9349f9eb|MVU_Schema_Runtime.js:9f3547e9c9650476725a540941bfa11b75cb23722f7a843bd707bd72fd3caacb|MVU_Competition_Runtime.js:05e0687c9c59fd58ae2be28a44634c27c005562d1da99c69983710962b26c318|MVU_Runtime_View.js:53deaf6574dc702f81a6ea7b2db5ea5cc0a193efe43743a5005c84c22c9a1516 */
 ;
 /* source: LWCS_TT_AutoUpdate_Debug.js */
 (function installLwcsTtAutoUpdateDebug() {
@@ -2603,7 +2603,7 @@
     const 显式名称 = String(显式货币 || '').trim();
     if (显式名称) {
       const 显式结果 = 解析货币(时代, 显式名称);
-      if (显式结果.status === 'resolved' || 显式结果.reason === 'identity-item-excluded') return 显式结果;
+      return 显式结果;
     }
     const 文本 = String(上下文 || '');
     let 货币 = 时代结果.definition.默认法币;
@@ -2617,6 +2617,17 @@
       else if (/天龙/.test(文本)) 货币 = '天龙晶币';
       else if (/龙马/.test(文本)) 货币 = '龙马币';
     }
+    return 解析货币(时代, 货币);
+  }
+
+  function 解析法定货币(时代, 上下文 = '') {
+    const 时代结果 = 解析时代(时代);
+    if (时代结果.status !== 'resolved') return 时代结果;
+    const 文本 = String(上下文 || '');
+    let 货币 = 时代结果.definition.默认法币;
+    if (时代 === 'current' && /星罗大陆|星罗帝国|星罗城/.test(文本)) 货币 = '星罗币';
+    else if (时代 === 'zjdl' && /天龙星|天龙族/.test(文本)) 货币 = '天龙晶币';
+    else if (时代 === 'zjdl' && /龙马星系|龙马联邦/.test(文本)) 货币 = '龙马币';
     return 解析货币(时代, 货币);
   }
 
@@ -2688,6 +2699,7 @@
     crossEraMappings: 跨时代映射,
     resolveCurrency: 查询货币,
     resolveTradeCurrency: 解析交易货币,
+    resolveFiatCurrency: 解析法定货币,
     isDirectlySpendable: 可直接消费,
     getCurrencyKind: 获取货币种类,
     listCurrencies: 列出货币,
@@ -4713,6 +4725,15 @@ function 创建空装备属性加成_V1(包含等效等级 = false) {
   return 加成;
 }
 
+function 计算百分比装备属性加成_V1(属性基线 = {}, 比例 = 0, 包含等效等级 = false) {
+  const 安全比例 = Math.max(0, Number(比例 || 0));
+  const 加成 = 创建空装备属性加成_V1(包含等效等级);
+  ['魂力上限', '精神力上限', '力量', '防御', '敏捷', '体力上限'].forEach(字段 => {
+    加成[字段] = Math.floor(Math.max(0, Number(属性基线?.[字段] || 0)) * 安全比例);
+  });
+  return 加成;
+}
+
 function 读取装备品质档位_V1(品质 = 0) {
   const 数值 = Number(品质 || 0);
   if (数值 < 1.0) return 0;
@@ -4724,6 +4745,9 @@ function 读取装备品质档位_V1(品质 = 0) {
 
 function 计算斗铠属性加成_V1(斗铠 = {}) {
   if (!(Number(斗铠?.等级 || 0) > 0)) {
+    return { 属性加成: 创建空装备属性加成_V1(true), 已排异: false };
+  }
+  if (Number(斗铠?.等级 || 0) >= 5) {
     return { 属性加成: 创建空装备属性加成_V1(true), 已排异: false };
   }
 
@@ -4788,13 +4812,17 @@ function 计算当前装备生效属性加成_V1(角色或装备 = {}) {
     });
   };
   if (装备?.斗铠?.装备状态 === '已装备') {
-    追加加成(计算斗铠属性加成_V1(装备.斗铠).属性加成);
+    追加加成(Number(装备.斗铠.等级 || 0) >= 5
+      ? 装备.斗铠._属性加成
+      : 计算斗铠属性加成_V1(装备.斗铠).属性加成);
   }
   if (装备?.防具?.装备状态 === '已装备') {
     追加加成(计算装备属性加成_V1(装备.防具, 角色或装备));
   }
   if (装备?.机甲?.装备状态 === '已装备') {
-    追加加成(计算机甲属性加成_V1(装备.机甲));
+    追加加成(['神级', '超神级'].includes(String(装备.机甲.等级 || ''))
+      ? 装备.机甲._属性加成
+      : 计算机甲属性加成_V1(装备.机甲));
   }
   return 总加成;
 }
@@ -6544,6 +6572,140 @@ function getBaseStats(lv) {
 globalThis.__LWCS_GET_BASE_STATS__ = getBaseStats;
 try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_GET_BASE_STATS__ = getBaseStats; } catch (错误) {}
 try { if (globalThis.top && globalThis.top !== globalThis) globalThis.top.__LWCS_GET_BASE_STATS__ = getBaseStats; } catch (错误) {}
+
+function 读取旅行能力_V1(角色 = {}) {
+  const 装备 = 角色?.装备 && typeof 角色.装备 === 'object' && !Array.isArray(角色.装备) ? 角色.装备 : {};
+  const 斗铠 = 装备.斗铠 && typeof 装备.斗铠 === 'object' && !Array.isArray(装备.斗铠) ? 装备.斗铠 : {};
+  const 机甲 = 装备.机甲 && typeof 装备.机甲 === 'object' && !Array.isArray(装备.机甲) ? 装备.机甲 : {};
+  const 斗铠部件 = Object.values(斗铠.部件 && typeof 斗铠.部件 === 'object' ? 斗铠.部件 : {});
+  const 斗铠完整 = 斗铠部件.length >= 10 && 斗铠部件.every(部件 => 部件 && !/未打造|重创|损毁|报废|不可用|故障/.test(String(部件.状态 || '')));
+  const 机甲等级 = String(机甲.等级 || '无');
+  const 机甲可用 = 机甲等级 !== '无'
+    && 机甲.装备状态 === '已装备'
+    && !/重创|损毁|报废|不可用|故障/.test(String(机甲.状态 || ''));
+  const 魂导器装配 = 装备.魂导器?.装配 && typeof 装备.魂导器.装配 === 'object' && !Array.isArray(装备.魂导器.装配)
+    ? 装备.魂导器.装配
+    : {};
+  const 飞行魂导器 = Object.values(魂导器装配).reduce((当前, 物品) => {
+    if (!物品 || typeof 物品 !== 'object' || Array.isArray(物品)) return 当前;
+    const 等级 = Math.max(0, Math.min(12, Math.floor(Number(物品.魂导等级 || 0))));
+    const 名称 = String(物品.名称 || 物品.name || '').trim();
+    const 分类 = String(物品.物品分类 || 物品.分类 || 物品.类型 || '').trim();
+    const 技能名 = 物品.装备技能 && typeof 物品.装备技能 === 'object' && !Array.isArray(物品.装备技能)
+      ? Object.keys(物品.装备技能).join(' ')
+      : '';
+    const 状态 = String(物品.装备状态 || 物品.状态 || '已装配');
+    if (等级 < 3 || 等级 > 9 || 等级 <= 当前.等级) return 当前;
+    if (!/飞行魂导器|飞翼魂导器|魂导飞行器|飞行翼|光翼/.test(`${名称} ${分类} ${技能名}`)) return 当前;
+    if (/损毁|报废|不可用|故障|未装配/.test(状态)) return 当前;
+    return { 等级, 名称: 名称 || `${等级}级飞行魂导器` };
+  }, { 等级: 0, 名称: '' });
+  return {
+    等级: Math.max(0, Math.floor(Number(角色?.属性?.等级 || 0))),
+    敏捷: Math.max(0, Number(角色?.属性?.敏捷 || 0)),
+    魂力: Math.max(0, Number(角色?.属性?.魂力 || 0)),
+    体力: Math.max(0, Number(角色?.属性?.体力 || 0)),
+    有斗铠: Number(斗铠.等级 || 0) > 0 && 斗铠.装备状态 === '已装备' && String(斗铠.名称 || '无') !== '无' && 斗铠完整,
+    斗铠等级: Math.max(0, Math.floor(Number(斗铠.等级 || 0))),
+    有机甲: 机甲可用,
+    机甲等级,
+    有神级机甲: 机甲可用 && ['神级', '超神级'].includes(机甲等级),
+    飞行魂导器等级: 飞行魂导器.等级,
+    飞行魂导器名称: 飞行魂导器.名称,
+  };
+}
+
+const 飞行魂导器每tick消耗锚点_V1 = Object.freeze({ 3: 4500, 5: 2500, 7: 90000 / 7, 9: 1800 });
+
+function 读取飞行魂导器每tick消耗_V1(等级 = 0) {
+  const 安全等级 = Math.max(3, Math.min(9, Math.floor(Number(等级 || 0))));
+  if (飞行魂导器每tick消耗锚点_V1[安全等级]) return 飞行魂导器每tick消耗锚点_V1[安全等级];
+  const 左等级 = 安全等级 < 5 ? 3 : 安全等级 < 7 ? 5 : 7;
+  const 右等级 = 左等级 + 2;
+  return Math.sqrt(飞行魂导器每tick消耗锚点_V1[左等级] * 飞行魂导器每tick消耗锚点_V1[右等级]);
+}
+
+function 计算旅行参数_V1(输入 = {}) {
+  const 方法 = String(输入.method || '').trim();
+  const 可计算方法 = new Set(['肉身飞行', '飞行魂导器', '斗铠飞行', '机甲飞行']);
+  if (!可计算方法.has(方法)) return { recognized: false, ok: false, reason: 'travel_method_unrecognized' };
+  const 能力 = 读取旅行能力_V1(输入.character || {});
+  const 距离 = Math.max(0, Number(输入.distance || 0));
+  const 距离缩放 = Math.max(0.003, Math.min(100, Number(输入.distanceScale || 1) || 1));
+  const 缩放距离 = 距离 * 距离缩放;
+  const 地图ID = String(输入.mapId || '').trim();
+  const 时代ID = String(输入.eraId || '').trim();
+  const 星际地图 = 地图ID === 'map_zjdl_stellar';
+  let 系数 = 0;
+  let 魂力 = 0;
+  let 体力 = 0;
+  let 说明 = '';
+  if (方法 === '肉身飞行') {
+    if (能力.等级 < 70) return { recognized: true, ok: false, reason: '肉身飞行至少需要70级魂力修为', capability: 能力 };
+    系数 = 0.034 / Math.sqrt(Math.max(0.01, 能力.敏捷 / 3500));
+    魂力 = Math.floor(缩放距离 * 20);
+    体力 = Math.max(1, Math.floor(缩放距离 * 5));
+    说明 = '肉身飞行';
+  } else if (方法 === '飞行魂导器') {
+    const 魂导等级 = 能力.飞行魂导器等级;
+    if (能力.等级 < 30) return { recognized: true, ok: false, reason: '飞行魂导器至少需要30级魂力修为', capability: 能力 };
+    if (魂导等级 < 3 || 魂导等级 > 9) return { recognized: true, ok: false, reason: '需装配3至9级可用飞行魂导器', capability: 能力 };
+    const 标准敏捷 = Math.max(1, Number(getBaseStats(魂导等级 * 10)?.agi || 1));
+    const 敏捷修正 = Math.max(0.5, Math.min(1.5, 1 + 0.25 * (Math.sqrt(Math.max(0, 能力.敏捷) / 标准敏捷) - 1)));
+    const 基础速度比 = 0.5 + (魂导等级 - 3) * 0.25;
+    const 超阶数 = Math.max(0, 魂导等级 - Math.floor(能力.等级 / 10));
+    const 有效速度比 = Math.max(0.05, 基础速度比 * 敏捷修正 * Math.pow(0.75, 超阶数));
+    系数 = 0.034 / 有效速度比;
+    const 临时tick = Math.max(1, Math.floor(缩放距离 * 系数));
+    魂力 = Math.max(1, Math.round(临时tick * 读取飞行魂导器每tick消耗_V1(魂导等级) * Math.pow(2, 超阶数)));
+    const 标准名称 = `${魂导等级}级飞行魂导器`;
+    说明 = 能力.飞行魂导器名称 && 能力.飞行魂导器名称 !== 标准名称 ? `${标准名称}·${能力.飞行魂导器名称}` : 标准名称;
+  } else if (方法 === '斗铠飞行') {
+    if (!能力.有斗铠) return { recognized: true, ok: false, reason: '需穿戴完整且可用的斗铠', capability: 能力 };
+    系数 = 0.03;
+    魂力 = Math.floor(缩放距离 * 12);
+    体力 = Math.max(1, Math.floor(缩放距离 * 2));
+    说明 = '斗铠飞行';
+  } else {
+    if (!能力.有机甲) return { recognized: true, ok: false, reason: '需实际装备可用机甲', capability: 能力 };
+    if (星际地图) {
+      if (时代ID !== 'zjdl') return { recognized: true, ok: false, reason: '神级机甲星际移动仅在斗罗四时代可用', capability: 能力 };
+      if (!能力.有神级机甲) return { recognized: true, ok: false, reason: '星际移动需实际装备神级或超神级机甲', capability: 能力 };
+      const 相邻星球 = 距离 <= 1200;
+      系数 = 能力.机甲等级 === '超神级'
+        ? (相邻星球 ? 0.0777778 : 0.2333333)
+        : (相邻星球 ? 0.1166667 : 0.35);
+      const 临时tick = Math.max(1, Math.floor(缩放距离 * 系数));
+      魂力 = 临时tick * (能力.机甲等级 === '超神级' ? 50000 : 100000);
+      说明 = `${能力.机甲等级}机甲星际移动`;
+    } else {
+      系数 = 0.034;
+      魂力 = Math.floor(缩放距离 * 10);
+      体力 = Math.max(1, Math.floor(缩放距离));
+      说明 = '机甲飞行';
+    }
+  }
+  const ticks = Math.max(1, Math.floor(缩放距离 * 系数));
+  return {
+    recognized: true,
+    ok: true,
+    method: 方法,
+    ticks,
+    coefficient: 系数,
+    costs: { sp: 魂力, vit: 体力 },
+    note: 说明,
+    capability: 能力,
+  };
+}
+
+const 旅行能力运行时_V1 = Object.freeze({
+  version: '1.0.0',
+  读取旅行能力: 读取旅行能力_V1,
+  计算旅行参数: 计算旅行参数_V1,
+});
+globalThis.__LWCS_TRAVEL_CAPABILITY_RUNTIME_V1__ = 旅行能力运行时_V1;
+try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_TRAVEL_CAPABILITY_RUNTIME_V1__ = 旅行能力运行时_V1; } catch (错误) {}
+try { if (globalThis.top && globalThis.top !== globalThis) globalThis.top.__LWCS_TRAVEL_CAPABILITY_RUNTIME_V1__ = 旅行能力运行时_V1; } catch (错误) {}
 
 function hashBattleSeedValue(seedText = '') {
   const text = String(seedText || '');
@@ -28959,6 +29121,15 @@ function 读取时代运行时集成_V1() {
   ) || null;
 }
 
+function 读取Schema时代货币注册表_V1() {
+  const 候选列表 = [globalThis];
+  try { if (globalThis.parent && globalThis.parent !== globalThis) 候选列表.push(globalThis.parent); } catch (错误) {}
+  try { if (globalThis.top && globalThis.top !== globalThis && !候选列表.includes(globalThis.top)) 候选列表.push(globalThis.top); } catch (错误) {}
+  return 候选列表.map(候选 => 候选?.__LWCS_ERA_CURRENCY_REGISTRY_V1__).find(接口 =>
+    接口 && typeof 接口.resolveFiatCurrency === 'function'
+  ) || null;
+}
+
 function 读取Schema活动数据根_V1() {
   const 活动根 = globalThis.__LWCS_SCHEMA_ACTIVE_DATA_ROOT_V1__;
   if (活动根 && typeof 活动根 === 'object') return 活动根;
@@ -29603,7 +29774,7 @@ function 规范化物品定义_V1(物品名 = '', 定义 = {}, 分类 = '') {
   const 输出 = {
     品质: 规范化物品经济品质_V1(来源.品质 || '普通', 物品名, 物品分类),
     描述: String(来源.描述 || `关于【${物品名}】的记录暂未展开。`).trim(),
-    默认货币: String(来源.默认货币 || 来源.货币 || '联邦币').trim() || '联邦币',
+    默认货币: String(来源.默认货币 || 来源.货币 || '').trim(),
   };
   const 基础价格 = 读取显式物品基础价格_V1(来源);
   if (基础价格 !== undefined) 输出.基础价格 = 基础价格;
@@ -29969,18 +30140,18 @@ function 注册角色应用物品定义_V1(data = {}) {
   const 构建注册定义 = (物品名 = '', 分类 = '', 定义 = {}) => {
     const 来源 = cloneJsonValue(定义, {});
     if (分类 === '机甲机体') {
-      const 等级 = String(来源.等级 || 物品名.match(/(黄级|紫级|黑级|红级|规格外机甲)/)?.[1] || '黄级').trim();
-      const 价格 = { 黄级: 6000000, 紫级: 80000000, 黑级: 1000000000, 红级: 8000000000, 规格外机甲: 8000000000 }[等级] || 6000000;
+      const 等级 = String(来源.等级 || 物品名.match(/(黄级|紫级|黑级|红级|神级|超神级|规格外机甲)/)?.[1] || '黄级').trim();
+      const 价格 = { 黄级: 6000000, 紫级: 80000000, 黑级: 1000000000, 红级: 8000000000, 神级: 8000000000, 超神级: 8000000000, 规格外机甲: 8000000000 }[等级] || 6000000;
       return {
         分类,
-        品质: 等级 === '红级' || 等级 === '规格外机甲' ? '神器' : 等级 === '黑级' ? '传说' : 等级 === '紫级' ? '史诗' : '稀有',
-        描述: `${等级}机甲机体的标准定义，应用侧仅保存名称与状态。`,
+        品质: ['红级', '神级', '超神级', '规格外机甲'].includes(等级) ? '神器' : 等级 === '黑级' ? '传说' : 等级 === '紫级' ? '史诗' : '稀有',
+        描述: `${等级}机甲机体的标准定义，应用侧保留名称、状态与温养运行字段。`,
         基础价格: 价格,
         默认货币: '联邦币',
         等级,
         型号: String(来源.型号 || '均衡').trim() || '均衡',
         装备槽位: '机甲',
-        基础耐久: 等级 === '红级' || 等级 === '规格外机甲' ? 200000 : 等级 === '黑级' ? 80000 : 等级 === '紫级' ? 30000 : 10000,
+        基础耐久: ['红级', '神级', '超神级', '规格外机甲'].includes(等级) ? 200000 : 等级 === '黑级' ? 80000 : 等级 === '紫级' ? 30000 : 10000,
       };
     }
     if (分类 === '斗铠部件') {
@@ -30038,7 +30209,7 @@ function 压缩角色应用物品引用_V1(data = {}) {
     if (char.装备 && typeof char.装备 === 'object' && !Array.isArray(char.装备)) {
       char.装备.武器 = 压缩应用物品记录_V1(char.装备.武器, { 状态字段: ['耐久', '剩余使用次数', '绑定者', '有效期至tick'] });
       char.装备.防具 = 压缩应用物品记录_V1(char.装备.防具, { 状态字段: ['装备状态', '耐久', '绑定者', '有效期至tick'] });
-      char.装备.机甲 = 压缩应用物品记录_V1(char.装备.机甲, { 状态字段: ['状态', '装备状态', '品质系数', '耐久', '绑定者', '有效期至tick'] });
+      char.装备.机甲 = 压缩应用物品记录_V1(char.装备.机甲, { 状态字段: ['等级', '型号', '状态', '装备状态', '品质系数', '耐久', '绑定者', '有效期至tick', '_属性加成', '_温养进度tick'] });
       Object.entries(char.装备.斗铠?.部件 || {}).forEach(([部件名, 部件]) => {
         char.装备.斗铠.部件[部件名] = 压缩应用物品记录_V1(部件, { 状态字段: ['状态', '品质系数', '耐久', '绑定者'] });
       });
@@ -30333,6 +30504,28 @@ var BaseProductPool = {
     描述: '七级密封奶瓶，储存稳定魂力的密封魂导补给瓶，使用后恢复固定魂力11000。',
     基础使用次数: 1,
     使用效果: [{ 原型: '资源变化', 目标: '自身', 资源: '魂力', 数值: '+11000' }],
+  },
+};
+
+var EraBaseProductPools = {
+  dldl: {
+    行军干粮: { 价格: 2, 货币: '银魂币', 分类: '一次性道具', 描述: '便于携带的干粮，可补充少量体力。', 使用效果: [{ 原型: '资源变化', 目标: '自身', 资源: '体力', 数值: '+10%' }] },
+    普通伤药: { 价格: 5, 货币: '银魂币', 分类: '丹药', 描述: '用于处理普通外伤的常备药。', 使用效果: [{ 原型: '资源变化', 目标: '自身', 资源: '体力', 数值: '+15%' }] },
+    基础解毒散: { 价格: 1, 货币: '金魂币', 分类: '丹药', 描述: '可应对常见的轻微毒素。', 使用效果: [{ 原型: '状态移除', 目标: '自身', 状态: '普通中毒', 数量: 1 }] },
+    野外帐篷: { 价格: 3, 货币: '金魂币', 分类: '剧情杂物', 描述: '适合魂师在野外扎营使用的普通帐篷。' },
+  },
+  jueshitangmen: {
+    压缩干粮: { 价格: 3, 货币: '银魂币', 分类: '一次性道具', 描述: '魂导工业生产的便携口粮，可补充少量体力。', 使用效果: [{ 原型: '资源变化', 目标: '自身', 资源: '体力', 数值: '+10%' }] },
+    初级治疗药剂: { 价格: 1, 货币: '金魂币', 分类: '丹药', 描述: '用于处理普通伤势的初级药剂。', 使用效果: [{ 原型: '资源变化', 目标: '自身', 资源: '体力', 数值: '+15%' }] },
+    初级魂力恢复药剂: { 价格: 2, 货币: '金魂币', 分类: '丹药', 描述: '恢复少量魂力的初级药剂。', 使用效果: [{ 原型: '资源变化', 目标: '自身', 资源: '魂力', 数值: '+15%' }] },
+    一级魂导蓄能电池: { 价格: 5, 货币: '金魂币', 分类: '功能道具', 描述: '为低级魂导器补充能源的标准蓄能部件。' },
+  },
+  current: BaseProductPool,
+  zjdl: {
+    星际压缩口粮: { 价格: 80, 货币: '联邦币', 分类: '一次性道具', 描述: '适用于长途飞行与星际航行的标准口粮。', 使用效果: [{ 原型: '资源变化', 目标: '自身', 资源: '体力', 数值: '+10%' }] },
+    急救凝胶: { 价格: 800, 货币: '联邦币', 分类: '丹药', 描述: '便携式外伤急救凝胶，可快速稳定普通伤势。', 使用效果: [{ 原型: '资源变化', 目标: '自身', 资源: '体力', 数值: '+15%' }] },
+    便携魂力电池: { 价格: 1500, 货币: '联邦币', 分类: '功能道具', 描述: '为个人魂导设备提供应急能源的便携电池。' },
+    标准宇航补给包: { 价格: 3000, 货币: '联邦币', 分类: '剧情杂物', 描述: '包含维生、应急照明与短时通讯用品的宇航补给包。' },
   },
 };
 
@@ -30636,7 +30829,7 @@ function 规范化商品模板为物品定义_V1(商品名 = '', 商品模板 = 
     分类,
     品质: String(模板.品质 || 模板.品阶 || '普通').trim() || '普通',
     描述: String(模板.描述 || `可交易物品【${商品名}】。`).trim(),
-    默认货币: String(模板.默认货币 || 模板.货币 || '联邦币').trim() || '联邦币',
+    默认货币: String(模板.默认货币 || 模板.货币 || '').trim(),
   };
   const 基础价格 = 读取显式物品基础价格_V1(模板);
   if (基础价格 !== undefined) 定义.基础价格 = 基础价格;
@@ -30925,8 +31118,12 @@ function 查找商店商品模板定义_V1(数据根 = {}, 物品名 = '') {
     const 模板 = 商品模板表 && typeof 商品模板表 === 'object' && !Array.isArray(商品模板表) ? 商品模板表[名称] : null;
     return 模板 && typeof 模板 === 'object' && !Array.isArray(模板) ? 模板 : null;
   };
-  const 直接模板 = 查表(BaseProductPool) || 查表(TangmenShopProducts) || 查表(ShrekAcademyShopProducts);
+  const 时代 = 读取当前静态资源时代_V1(数据根, 数据根?.world?.时间?.tick);
+  const 直接模板 = 查表(EraBaseProductPools[时代]);
   if (直接模板) return { 物品名: 名称, 定义: 规范化商品模板为物品定义_V1(名称, 直接模板), 分类: 要求物品定义分类_V1(名称, 直接模板) };
+  if (时代 !== 'current') return null;
+  const 当前时代组织模板 = 查表(TangmenShopProducts) || 查表(ShrekAcademyShopProducts);
+  if (当前时代组织模板) return { 物品名: 名称, 定义: 规范化商品模板为物品定义_V1(名称, 当前时代组织模板), 分类: 要求物品定义分类_V1(名称, 当前时代组织模板) };
   for (const 商品模板表 of Object.values(AssociationShopProducts || {})) {
     const 模板 = 查表(商品模板表);
     if (模板) return { 物品名: 名称, 定义: 规范化商品模板为物品定义_V1(名称, 模板), 分类: 要求物品定义分类_V1(名称, 模板) };
@@ -32612,6 +32809,10 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
 
     const formatTickToCalendar = tickValue => formatTickToCalendarDateLocal(tickValue);
     const BASE_DAILY_LIVING_COST_ACU = 300;
+    const 读取时代日消费档位表_ACU = 时代 =>
+      时代 === 'dldl' || 时代 === 'jueshitangmen'
+        ? Object.freeze([1, 3, 10, 30])
+        : Object.freeze([BASE_DAILY_LIVING_COST_ACU, BASE_DAILY_LIVING_COST_ACU * 10, BASE_DAILY_LIVING_COST_ACU * 100, BASE_DAILY_LIVING_COST_ACU * 1000]);
     const MONTH_TICK_SPAN_ACU = 30 * 144;
     const MONTHLY_STIPEND_TICK_OFFSET_ACU = 54; // 每月1号 09:00
 
@@ -32739,7 +32940,6 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       return vitRatio < 0.45 || menRatio < 0.45 || (vitRatio < 0.6 && menRatio < 0.6);
     };
 
-    const 城市消费倍率表_ACU = Object.freeze([1, 10, 100, 1000]);
     const 城市修炼加成表_ACU = Object.freeze([0, 0.05, 0.1, 0.2]);
     const 城市档位名称表_ACU = Object.freeze(['聚落', '城镇', '城市', '主城']);
 
@@ -32800,7 +33000,10 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
         .map(项 => String(项 || '').trim())
         .filter(Boolean)
         .join(' ');
-      return /星罗大陆|斗灵大陆/.test(文本) ? '星罗币' : '联邦币';
+      const 时代 = 读取当前静态资源时代_V1(data, currentTick);
+      const 结果 = 读取Schema时代货币注册表_V1()?.resolveFiatCurrency(时代, 文本);
+      if (结果?.status !== 'resolved') throw new Error(`无法解析${时代 || '未知时代'}的法定货币`);
+      return 结果.currency;
     };
 
     const 发放魂师津贴_ACU = () => {
@@ -32809,7 +33012,8 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
         if (!isSoulMasterStipendEligible_ACU(c)) return;
         if (!c.财富 || typeof c.财富 !== 'object' || Array.isArray(c.财富)) c.财富 = {};
         const stipendDays = getSoulMasterStipendDaysByLevel_ACU(c.属性?.等级 || 0);
-        const stipendAmount = stipendDays * BASE_DAILY_LIVING_COST_ACU;
+        const 时代 = 读取当前静态资源时代_V1(data, currentTick);
+        const stipendAmount = stipendDays * 读取时代日消费档位表_ACU(时代)[0];
         if (!(stipendAmount > 0)) return;
         const 货币字段 = 判定角色所在地货币_ACU(c);
         c.财富[货币字段] = Math.max(0, Number(c.财富[货币字段] || 0)) + stipendAmount;
@@ -32996,12 +33200,11 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       };
     };
 
-    const 计算可负担消费档位_ACU = (存款, 基础日消费, 目标档位索引) => {
+    const 计算可负担消费档位_ACU = (存款, 日消费档位表, 目标档位索引) => {
       const 安全存款 = Math.max(0, Number(存款 || 0));
-      const 安全基础日消费 = Math.max(0, Number(基础日消费 || 0));
       const 安全目标档位 = Math.max(0, Math.min(3, Math.floor(Number(目标档位索引 || 0))));
       for (let 档位索引 = 安全目标档位; 档位索引 >= 0; 档位索引 -= 1) {
-        const 周消费 = 安全基础日消费 * Number(城市消费倍率表_ACU[档位索引] || 1) * 7;
+        const 周消费 = Math.max(0, Number(日消费档位表?.[档位索引] || 0)) * 7;
         if (安全存款 >= 周消费) return 档位索引;
       }
       return 0;
@@ -34802,14 +35005,15 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
               } else {
                 const 消费货币字段 = 判定角色所在地货币_ACU(c);
                 const 当前存款 = Math.max(0, Number(c.财富?.[消费货币字段] || 0));
-                const 基础日消费 = BASE_DAILY_LIVING_COST_ACU;
-                const 可负担档位索引 = 计算可负担消费档位_ACU(当前存款, 基础日消费, 城市档位索引);
-                const 消费倍率 = Number(城市消费倍率表_ACU[可负担档位索引] || 1);
-                const 实际消费 = Math.max(0, Math.floor(基础日消费 * daysPassed * 消费倍率));
+                const 时代 = 读取当前静态资源时代_V1(data, currentTick);
+                const 日消费档位表 = 读取时代日消费档位表_ACU(时代);
+                const 可负担档位索引 = 计算可负担消费档位_ACU(当前存款, 日消费档位表, 城市档位索引);
+                const 每日消费 = Math.max(0, Number(日消费档位表[可负担档位索引] || 0));
+                const 实际消费 = Math.max(0, Math.floor(daysPassed * 每日消费));
                 const 实际可扣 = 当前存款 >= 实际消费;
                 if (可负担档位索引 < 城市档位索引) {
                   appendSystemReasonText(
-                    `[城市消费降档] ${charName} 所在地区档位由${城市档位名称表_ACU[城市档位索引]}(${城市消费倍率表_ACU[城市档位索引]}x)自动降为${城市档位名称表_ACU[可负担档位索引]}(${消费倍率}x)。`,
+                    `[城市消费降档] ${charName} 所在地区档位由${城市档位名称表_ACU[城市档位索引]}(${日消费档位表[城市档位索引]}${消费货币字段}/日)自动降为${城市档位名称表_ACU[可负担档位索引]}(${每日消费}${消费货币字段}/日)。`,
                   );
                 }
                 if (实际可扣) {
@@ -35277,15 +35481,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
     const 市场耗散基础触发率 = 0.22;
     const 商店刷新基准tick = Math.max(0, Math.floor(Number(currentTick || 0)));
     const 当前资源时代 = 读取当前静态资源时代_V1(data, currentTick);
-    const 星际资源模式 = 当前资源时代 === 'zjdl';
-    if (星际资源模式) {
-      Object.values(data.world.地点 || {}).forEach(cityData => {
-        if (cityData && typeof cityData === 'object' && !Array.isArray(cityData)
-          && cityData.商店 && typeof cityData.商店 === 'object' && !Array.isArray(cityData.商店)) {
-          delete cityData.商店.城市杂货店;
-        }
-      });
-    }
+    const 时代基础商品池 = EraBaseProductPools[当前资源时代] || {};
     const 归一商店记录 = 商店数据 => {
       if (!商店数据 || typeof 商店数据 !== 'object' || Array.isArray(商店数据)) return { 库存: {}, _下次刷新tick: 0 };
       if (!商店数据.库存 || typeof 商店数据.库存 !== 'object' || Array.isArray(商店数据.库存)) 商店数据.库存 = {};
@@ -35305,7 +35501,6 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
     };
 
     _(data.world.地点).forEach((cityData, cityName) => {
-      if (星际资源模式) return;
       const 地点类型 = String(cityData?.类型 || '').trim();
       const 已声明商店 = !!cityData && typeof cityData === 'object' && !Array.isArray(cityData)
         && Object.prototype.hasOwnProperty.call(cityData, '商店');
@@ -35328,7 +35523,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
         if (economy === '繁荣') stockMultiplier = 1.5;
         else if (economy === '萧条') stockMultiplier = 0.5;
 
-        _(BaseProductPool).forEach((item, itemName) => {
+        _(时代基础商品池).forEach((item, itemName) => {
           newInventory[itemName] = 写入物品定义并生成库存状态_V1(data, itemName, item, Math.floor((Math.random() * 10 + 5) * stockMultiplier));
         });
         groceryStore.库存 = newInventory;
@@ -35336,7 +35531,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       }
     });
 
-    _(FactionDistribution).forEach((dist, factionName) => {
+    if (当前资源时代 === 'current') _(FactionDistribution).forEach((dist, factionName) => {
       const branchCities = Array.isArray(dist?.branches) ? dist.branches : [];
       const storeCityNames = factionName === '传灵塔'
         ? Array.from(new Set([String(dist?.hq || '').trim(), ...branchCities].filter(Boolean)))
@@ -35477,7 +35672,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
     });
     });
 
-    刷新世界拍卖供给_V1(data, currentTick, REFRESH_INTERVAL);
+    if (当前资源时代 === 'current') 刷新世界拍卖供给_V1(data, currentTick, REFRESH_INTERVAL);
 
     const 计算商品库存耗散量 = 当前库存 => {
       const 安全库存 = Math.max(0, Math.floor(Number(当前库存 || 0)));
@@ -36451,16 +36646,31 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
 }
 
 // 从 MVU.js 字段级 schema transform 机械拆分。
+function 规范化系统装备属性缓存_V1(原始缓存 = {}, 包含等效等级 = false) {
+    const 缓存 = 创建空装备属性加成_V1(包含等效等级);
+    ['魂力上限', '精神力上限', '力量', '防御', '敏捷', '体力上限'].forEach(字段 => {
+      缓存[字段] = Math.max(0, Math.floor(Number(原始缓存?.[字段] || 0)));
+    });
+    return 缓存;
+}
+
 function 规范化装备Schema_V1(装备) {
+    装备._温养目标 = ['斗铠', '机甲'].includes(String(装备._温养目标 || '').trim()) ? String(装备._温养目标).trim() : '无';
+    装备.斗铠._温养进度tick = Math.max(0, Math.floor(Number(装备.斗铠._温养进度tick || 0)));
+    装备.机甲._温养进度tick = Math.max(0, Math.floor(Number(装备.机甲._温养进度tick || 0)));
     const 斗铠计算 = 计算斗铠属性加成_V1(装备.斗铠);
-    装备.斗铠._属性加成 = 斗铠计算.属性加成;
-    装备.斗铠._已排异 = 斗铠计算.已排异;
+    装备.斗铠._属性加成 = Number(装备.斗铠.等级 || 0) >= 5
+      ? 规范化系统装备属性缓存_V1(装备.斗铠._属性加成, true)
+      : 斗铠计算.属性加成;
+    装备.斗铠._已排异 = Number(装备.斗铠.等级 || 0) >= 5 ? false : 斗铠计算.已排异;
 
     if (装备.机甲.等级 !== '无' && 装备.机甲.状态 !== '重创') {
       if (!装备.机甲.名称 || 装备.机甲.名称 === '无') 装备.机甲.名称 = `${装备.机甲.等级}机甲`;
       if (!['近战', '远程', '均衡', '重装', '高速', '支援'].includes(String(装备.机甲.型号 || '').trim())) 装备.机甲.型号 = '均衡';
     }
-    装备.机甲._属性加成 = 计算机甲属性加成_V1(装备.机甲);
+    装备.机甲._属性加成 = ['神级', '超神级'].includes(String(装备.机甲.等级 || ''))
+      ? 规范化系统装备属性缓存_V1(装备.机甲._属性加成)
+      : 计算机甲属性加成_V1(装备.机甲);
 
     const 当前魂导装配 = 装备.魂导器?.装配 && typeof 装备.魂导器.装配 === 'object' && !Array.isArray(装备.魂导器.装配) ? 装备.魂导器.装配 : {};
     装备.魂导器 = { 装配: {} };
@@ -36473,6 +36683,128 @@ function 规范化装备Schema_V1(装备) {
 
     return 装备;
 
+}
+
+const 装备温养阶段表_V1 = Object.freeze({
+  斗铠: Object.freeze({
+    4: Object.freeze({ 当前等级: 4, 目标等级: 5, 最低角色等级: 101, 所需tick: 525600 }),
+    5: Object.freeze({ 当前等级: 5, 目标等级: 6, 最低角色等级: 111, 所需tick: 5256000 }),
+  }),
+  机甲: Object.freeze({
+    红级: Object.freeze({ 当前等级: '红级', 目标等级: '神级', 最低角色等级: 101, 所需tick: 525600 }),
+    神级: Object.freeze({ 当前等级: '神级', 目标等级: '超神级', 最低角色等级: 111, 所需tick: 5256000 }),
+  }),
+});
+
+function 读取装备温养阶段_V1(角色 = {}, 目标 = '') {
+  if (目标 === '斗铠') return 装备温养阶段表_V1.斗铠[Math.floor(Number(角色?.装备?.斗铠?.等级 || 0))] || null;
+  if (目标 === '机甲') return 装备温养阶段表_V1.机甲[String(角色?.装备?.机甲?.等级 || '无')] || null;
+  return null;
+}
+
+function 判断斗铠可温养_V1(斗铠 = {}) {
+  if (!斗铠 || typeof 斗铠 !== 'object' || Array.isArray(斗铠)) return false;
+  if (!(Number(斗铠.等级 || 0) >= 4) || String(斗铠.名称 || '无') === '无') return false;
+  const 部件 = Object.values(斗铠.部件 && typeof 斗铠.部件 === 'object' ? 斗铠.部件 : {});
+  return 部件.length >= 10 && 部件.every(项目 => 项目 && !['未打造', '重创', '损毁', '报废', '不可用', '故障'].includes(String(项目.状态 || '')));
+}
+
+function 判断机甲可温养_V1(机甲 = {}) {
+  if (!机甲 || typeof 机甲 !== 'object' || Array.isArray(机甲)) return false;
+  return ['红级', '神级'].includes(String(机甲.等级 || '无'))
+    && String(机甲.名称 || '无') !== '无'
+    && !/重创|损毁|报废|不可用|故障/.test(String(机甲.状态 || ''));
+}
+
+function 读取装备温养投影_V1(角色 = {}, 数据根 = {}) {
+  const 装备 = 角色?.装备 && typeof 角色.装备 === 'object' && !Array.isArray(角色.装备) ? 角色.装备 : {};
+  const 目标 = ['斗铠', '机甲'].includes(String(装备._温养目标 || '').trim()) ? String(装备._温养目标).trim() : '无';
+  const 阶段 = 读取装备温养阶段_V1(角色, 目标);
+  const 当前tick = Math.max(0, Number(数据根?.world?.时间?.tick || 0));
+  const 当前时代 = 读取当前静态资源时代_V1(数据根, 当前tick);
+  const 进度字段值 = 目标 === '斗铠' ? 装备?.斗铠?._温养进度tick : 目标 === '机甲' ? 装备?.机甲?._温养进度tick : 0;
+  const 当前进度 = Math.max(0, Math.floor(Number(进度字段值 || 0)));
+  const 角色等级 = Math.max(0, Math.floor(Number(角色?.属性?.等级 || 0)));
+  let 暂停原因 = '';
+  if (目标 === '无') 暂停原因 = '尚未选择温养目标';
+  else if (!阶段) 暂停原因 = 目标 === '斗铠' ? '当前斗铠没有可继续温养的阶段' : '当前机甲没有可继续温养的阶段';
+  else if (当前时代 !== 'zjdl') 暂停原因 = '仅在斗罗四时代推进温养';
+  else if (角色等级 < 阶段.最低角色等级) 暂停原因 = `角色需达到${阶段.最低角色等级}级`;
+  else if (目标 === '斗铠' && !判断斗铠可温养_V1(装备.斗铠)) 暂停原因 = '斗铠必须完整且可用';
+  else if (目标 === '机甲' && !判断机甲可温养_V1(装备.机甲)) 暂停原因 = '机甲必须完好可用';
+  const 所需tick = Math.max(0, Number(阶段?.所需tick || 0));
+  const 剩余tick = Math.max(0, 所需tick - 当前进度);
+  return {
+    目标,
+    active: 目标 !== '无',
+    canStart: !!阶段 && !暂停原因,
+    canProgress: !!阶段 && !暂停原因,
+    pauseReason: 暂停原因,
+    stageLabel: 阶段 ? `${阶段.当前等级}→${阶段.目标等级}` : '无可用阶段',
+    currentGrade: 阶段?.当前等级 ?? null,
+    targetGrade: 阶段?.目标等级 ?? null,
+    requiredLevel: 阶段?.最低角色等级 ?? 0,
+    progress: 当前进度,
+    required: 所需tick,
+    remaining: 剩余tick,
+    remainingNaturalTicks: 剩余tick > 0 ? Math.ceil(剩余tick / 100) : 0,
+    remainingActionTicks: 剩余tick,
+    percent: 所需tick > 0 ? Math.min(100, 当前进度 / 所需tick * 100) : 0,
+  };
+}
+
+function 转义JSONPointer片段_V1(文本 = '') {
+  return String(文本).replace(/~/g, '~0').replace(/\//g, '~1');
+}
+
+function 结算装备温养时间_V1(数据根 = {}, 起始tick = 0, 结束tick = null, 角色动作模式表 = {}) {
+  const 结果 = { patchOps: [], changedPaths: [], completions: [] };
+  if (!数据根 || typeof 数据根 !== 'object' || Array.isArray(数据根)) return 结果;
+  const 旧tick = Math.max(0, Number(起始tick || 0));
+  const 新tick = Math.max(0, Number(结束tick ?? 数据根?.world?.时间?.tick ?? 0));
+  if (!(新tick > 旧tick)) return 结果;
+  const 集成 = 读取时代运行时集成_V1();
+  const 斗四起始tick = Math.max(0, Number(集成?.directZJDLTick));
+  if (!Number.isFinite(斗四起始tick)) return 结果;
+  const 有效起点 = Math.max(旧tick, 斗四起始tick);
+  const 有效增量 = Math.max(0, 新tick - 有效起点);
+  if (!(有效增量 > 0)) return 结果;
+  const 动作角色集合 = new Set(Object.keys(角色动作模式表 && typeof 角色动作模式表 === 'object' ? 角色动作模式表 : {}).map(名称 => String(名称 || '').trim()).filter(Boolean));
+  const 角色表 = 数据根.char && typeof 数据根.char === 'object' && !Array.isArray(数据根.char) ? 数据根.char : {};
+  Object.entries(角色表).forEach(([角色名, 角色]) => {
+    if (!角色 || typeof 角色 !== 'object' || Array.isArray(角色)) return;
+    const 投影 = 读取装备温养投影_V1(角色, 数据根);
+    if (!投影.active || !投影.canProgress) return;
+    const 倍率 = 动作角色集合.has(String(角色名).trim()) ? 1 : 100;
+    const 新进度 = Math.min(投影.required, Math.floor(投影.progress + 有效增量 * 倍率));
+    if (新进度 === 投影.progress) return;
+    const 进度路径 = ['char', 角色名, '装备', 投影.目标, '_温养进度tick'];
+    结果.changedPaths.push(进度路径);
+    if (新进度 < 投影.required) {
+      角色.装备[投影.目标]._温养进度tick = 新进度;
+      结果.patchOps.push({ op: 'replace', path: `/${进度路径.map(转义JSONPointer片段_V1).join('/')}`, value: 新进度 });
+      return;
+    }
+    const 等级路径 = ['char', 角色名, '装备', 投影.目标, '等级'];
+    const 目标路径 = ['char', 角色名, '装备', '_温养目标'];
+    角色.装备[投影.目标].等级 = 投影.targetGrade;
+    角色.装备[投影.目标]._温养进度tick = 0;
+    角色.装备._温养目标 = '无';
+    结果.changedPaths.push(等级路径, 目标路径);
+    结果.patchOps.push(
+      { op: 'replace', path: `/${等级路径.map(转义JSONPointer片段_V1).join('/')}`, value: 投影.targetGrade },
+      { op: 'replace', path: `/${进度路径.map(转义JSONPointer片段_V1).join('/')}`, value: 0 },
+      { op: 'replace', path: `/${目标路径.map(转义JSONPointer片段_V1).join('/')}`, value: '无' },
+    );
+    const 完成文本 = `[装备温养完成] ${角色名}的${投影.目标}由${投影.currentGrade}提升为${投影.targetGrade}。`;
+    追加系统播报文本(数据根, 完成文本);
+    结果.completions.push({ 角色名, 目标: 投影.目标, from: 投影.currentGrade, to: 投影.targetGrade, text: 完成文本 });
+  });
+  if (结果.completions.length) {
+    结果.changedPaths.push(['sys', '系统播报']);
+    结果.patchOps.push({ op: 'replace', path: '/sys/系统播报', value: String(数据根?.sys?.系统播报 || '') });
+  }
+  return 结果;
 }
 
 function 规范化技能结构Schema_V1(skill) {
@@ -36960,45 +37292,37 @@ function 规范化角色Schema_V1(char) {
     if (char._initial_state_override) {
       _.merge(char, char._initial_state_override);
       delete char._initial_state_override;
+    }
 
-      if (char.装备.斗铠.装备状态 === '已装备') {
-        let armorLv = char.装备.斗铠.等级;
-        const reqLv = [0, 50, 70, 80, 90][armorLv] || 0;
-
-        if (char.属性.等级 < reqLv) {
-          char.装备.斗铠.装备状态 = '未装备';
-          if (!char.属性.状态效果['装备反噬'])
-            char.属性.状态效果['装备反噬'] = { 类型: 'debuff', 层数: 1, 描述: '强行穿戴高阶斗铠失败，气血震荡' };
-        } else if (
-          char.装备.机甲.等级 !== '无' &&
-          char.装备.机甲.等级 !== '红级' &&
-          char.装备.机甲.状态 !== '重创' &&
-          char.装备.机甲.装备状态 === '已装备'
-        ) {
-          char.装备.斗铠.装备状态 = '未装备';
-        }
-      }
-
-      if (char.装备.机甲.装备状态 === '已装备') {
-        let mechReqLv = { 黄级: 40, 紫级: 50, 黑级: 60, 红级: 80 }[char.装备.机甲.等级] || 0;
-        if (char.属性.等级 < mechReqLv) {
-          char.装备.机甲.装备状态 = '未装备';
-          if (!char.属性.状态效果['机甲反噬'])
-            char.属性.状态效果['机甲反噬'] = {
-              类型: 'debuff',
-              层数: 1,
-              描述: '精神力与魂力不足以驾驭高阶机甲，遭到反噬',
-            };
-        }
-      }
-
-      const reqLv = [0, 50, 70, 80, 90][Number(char?.装备?.斗铠?.等级 || 0)] || 0;
-      if (char.属性.等级 < reqLv) {
+    if (!char.属性.状态效果 || typeof char.属性.状态效果 !== 'object' || Array.isArray(char.属性.状态效果)) char.属性.状态效果 = {};
+    if (char.装备.斗铠.装备状态 === '已装备') {
+      const 斗铠需求等级 = [0, 50, 70, 80, 90, 101, 111][Number(char.装备.斗铠.等级 || 0)] || 0;
+      if (char.属性.等级 < 斗铠需求等级) {
         char.装备.斗铠.装备状态 = '未装备';
-        if (!char.属性.状态效果['装备反噬'])
+        if (!char.属性.状态效果['装备反噬']) {
           char.属性.状态效果['装备反噬'] = { 类型: 'debuff', 层数: 1, 描述: '强行穿戴高阶斗铠失败，气血震荡' };
-      } else if (char.装备.机甲.等级 !== '无' && char.装备.机甲.等级 !== '红级' && char.装备.机甲.状态 !== '重创') {
+        }
+      } else if (
+        char.装备.机甲.等级 !== '无' &&
+        !['红级', '神级', '超神级'].includes(char.装备.机甲.等级) &&
+        char.装备.机甲.状态 !== '重创' &&
+        char.装备.机甲.装备状态 === '已装备'
+      ) {
         char.装备.斗铠.装备状态 = '未装备';
+      }
+    }
+
+    if (char.装备.机甲.装备状态 === '已装备') {
+      const 机甲需求等级 = { 黄级: 40, 紫级: 50, 黑级: 60, 红级: 80, 神级: 101, 超神级: 111 }[char.装备.机甲.等级] || 0;
+      if (char.属性.等级 < 机甲需求等级) {
+        char.装备.机甲.装备状态 = '未装备';
+        if (!char.属性.状态效果['机甲反噬']) {
+          char.属性.状态效果['机甲反噬'] = {
+            类型: 'debuff',
+            层数: 1,
+            描述: '精神力与魂力不足以驾驭高阶机甲，遭到反噬',
+          };
+        }
       }
     }
 
@@ -37065,6 +37389,12 @@ function 规范化角色Schema_V1(char) {
     const 双生武魂魂力系数 = getDualSpiritSoulPowerCoeff(char);
     const 自然魂力上限 = Math.floor(自然魂力基准 * 双生武魂魂力系数);
     const 既有魂力上限 = Math.max(0, Math.floor(Number(char.属性?.魂力上限 || 0)));
+    const 既有装备魂力上限加成 = Math.max(0, Math.floor(
+      Number(计算装备属性加成_V1(char.装备.武器, char).魂力上限 || 0)
+      + Number(char.装备.防具?.装备状态 === '已装备' ? 计算装备属性加成_V1(char.装备.防具, char).魂力上限 || 0 : 0)
+      + Number(char.装备.斗铠?.装备状态 === '已装备' ? char.装备.斗铠?._属性加成?.魂力上限 || 0 : 0)
+      + Number(char.装备.机甲?.装备状态 === '已装备' ? char.装备.机甲?._属性加成?.魂力上限 || 0 : 0)
+    ));
     let final_str = Math.floor(base.str * typeMult.str * hiddenVar) + char.属性.训练加成.力量;
     let final_def = Math.floor(base.def * typeMult.def * hiddenVar) + char.属性.训练加成.防御;
     let final_agi = Math.floor(base.agi * typeMult.agi * hiddenVar) + char.属性.训练加成.敏捷;
@@ -37145,6 +37475,7 @@ function 规范化角色Schema_V1(char) {
       (!!机甲装备状态文本 && 机甲装备状态文本 !== '未装备');
 
     if (isBeast) {
+      char.装备._温养目标 = '无';
       char.装备.斗铠.等级 = 0;
       char.装备.斗铠.名称 = '无';
       char.装备.斗铠.领域 = '无';
@@ -37153,6 +37484,7 @@ function 规范化角色Schema_V1(char) {
       char.装备.斗铠.部件 = {};
       char.装备.斗铠._属性加成 = { 等效等级: 0, 魂力上限: 0, 精神力上限: 0, 力量: 0, 防御: 0, 敏捷: 0, 体力上限: 0 };
       char.装备.斗铠._已排异 = false;
+      char.装备.斗铠._温养进度tick = 0;
       char.装备.机甲.等级 = '无';
       char.装备.机甲.名称 = '无';
       char.装备.机甲.型号 = '无';
@@ -37162,6 +37494,7 @@ function 规范化角色Schema_V1(char) {
       char.装备.机甲.武装 = '无';
       char.装备.机甲.品质系数 = 1.0;
       char.装备.机甲._属性加成 = { 魂力上限: 0, 精神力上限: 0, 力量: 0, 防御: 0, 敏捷: 0, 体力上限: 0 };
+      char.装备.机甲._温养进度tick = 0;
       char.魂骨 = {};
       补齐角色魂骨槽位_V1(char);
     }
@@ -37488,8 +37821,8 @@ function 规范化角色Schema_V1(char) {
     char.装备.斗铠._已排异 = 斗铠计算.已排异;
     char.装备.机甲._属性加成 = 计算机甲属性加成_V1(char.装备.机甲);
 
-    const armorBonus = char.装备.斗铠?.装备状态 === '已装备' ? char.装备.斗铠?._属性加成 || {} : {};
-    const mechBonus = char.装备.机甲?.装备状态 === '已装备' ? char.装备.机甲?._属性加成 || {} : {};
+    let armorBonus = char.装备.斗铠?.装备状态 === '已装备' ? char.装备.斗铠?._属性加成 || {} : {};
+    let mechBonus = char.装备.机甲?.装备状态 === '已装备' ? char.装备.机甲?._属性加成 || {} : {};
     let boneBonus = { str: 0, def: 0, agi: 0, vit_max: 0, men_max: 0, sp_max: 0 };
     const externalBoneBase = {
       str: final_str,
@@ -37597,7 +37930,7 @@ function 规范化角色Schema_V1(char) {
       externalBoneBonus.sp_max +
       getPersistentSoulPowerBonusFromPermanentRecords(char) +
       训练魂力上限加成;
-    const 修为魂力基底 = Math.max(自然魂力上限, 既有魂力上限 - 永久魂力来源加成);
+    const 修为魂力基底 = Math.max(自然魂力上限, 既有魂力上限 - 永久魂力来源加成 - 既有装备魂力上限加成);
     final_sp_max = Math.max(1, Math.floor(修为魂力基底 + 永久魂力来源加成));
 
     const 深渊帝君侧重点 = 读取深渊帝君百级侧重点_V1(char, normalizedCharName || 角色路径名);
@@ -37607,6 +37940,26 @@ function 规范化角色Schema_V1(char) {
       if (深渊帝君侧重点.魂力上限) final_sp_max = Math.max(final_sp_max, 百级基准.sp_max);
       if (深渊帝君侧重点.体力上限) final_vit_max = Math.max(final_vit_max, 百级基准.vit_max);
     }
+
+    const 装备百分比属性基线 = {
+      魂力上限: final_sp_max,
+      精神力上限: final_men_max,
+      力量: final_str,
+      防御: final_def,
+      敏捷: final_agi,
+      体力上限: final_vit_max,
+    };
+    const 斗铠等级 = Math.floor(Number(char.装备.斗铠?.等级 || 0));
+    if (斗铠等级 >= 5) {
+      char.装备.斗铠._属性加成 = 计算百分比装备属性加成_V1(装备百分比属性基线, 斗铠等级 >= 6 ? 0.25 : 0.15, true);
+      char.装备.斗铠._已排异 = false;
+    }
+    const 机甲等级 = String(char.装备.机甲?.等级 || '无');
+    if (['神级', '超神级'].includes(机甲等级)) {
+      char.装备.机甲._属性加成 = 计算百分比装备属性加成_V1(装备百分比属性基线, 机甲等级 === '超神级' ? 0.15 : 0.10);
+    }
+    armorBonus = char.装备.斗铠?.装备状态 === '已装备' ? char.装备.斗铠?._属性加成 || {} : {};
+    mechBonus = char.装备.机甲?.装备状态 === '已装备' ? char.装备.机甲?._属性加成 || {} : {};
 
     const wpnBonus = 计算装备属性加成_V1(char.装备.武器, {
       属性: {
@@ -37650,7 +38003,9 @@ function 规范化角色Schema_V1(char) {
     char.属性.精神力上限 = Math.floor(
       final_men_max + (wpnBonus.精神力上限 || 0) + (防具加成.精神力上限 || 0) + (armorBonus.精神力上限 || 0) + (mechBonus.精神力上限 || 0),
     );
-    char.属性.魂力上限 = Math.floor(final_sp_max);
+    char.属性.魂力上限 = Math.floor(
+      final_sp_max + (wpnBonus.魂力上限 || 0) + (防具加成.魂力上限 || 0) + (armorBonus.魂力上限 || 0) + (mechBonus.魂力上限 || 0),
+    );
     normalizeStatHpFields(char.属性);
     if (本轮初始化魂师面板) {
       char.属性.魂力 = char.属性.魂力上限;
@@ -37868,6 +38223,8 @@ globalThis.__LWCS_MVU_SCHEMA_RUNTIME__ = {
     : {}),
   补结算归档角色时间流逝: 补结算归档角色时间流逝_V1,
   按动作模式结算变量根时间流逝: 按动作模式结算变量根时间流逝_V1,
+  读取装备温养投影: 读取装备温养投影_V1,
+  结算装备温养时间: 结算装备温养时间_V1,
   收集内置角色成长技能模板触发: 收集内置角色成长技能模板触发_V1,
   应用内置角色成长技能模板记录: 应用内置角色成长技能模板记录_V1,
   计算装备属性加成: 计算装备属性加成_V1,
@@ -37886,6 +38243,8 @@ try {
         : {}),
       补结算归档角色时间流逝: 补结算归档角色时间流逝_V1,
       按动作模式结算变量根时间流逝: 按动作模式结算变量根时间流逝_V1,
+      读取装备温养投影: 读取装备温养投影_V1,
+      结算装备温养时间: 结算装备温养时间_V1,
       收集内置角色成长技能模板触发: 收集内置角色成长技能模板触发_V1,
       应用内置角色成长技能模板记录: 应用内置角色成长技能模板记录_V1,
       计算装备属性加成: 计算装备属性加成_V1,
@@ -37906,6 +38265,8 @@ try {
         : {}),
       补结算归档角色时间流逝: 补结算归档角色时间流逝_V1,
       按动作模式结算变量根时间流逝: 按动作模式结算变量根时间流逝_V1,
+      读取装备温养投影: 读取装备温养投影_V1,
+      结算装备温养时间: 结算装备温养时间_V1,
       收集内置角色成长技能模板触发: 收集内置角色成长技能模板触发_V1,
       应用内置角色成长技能模板记录: 应用内置角色成长技能模板记录_V1,
       计算装备属性加成: 计算装备属性加成_V1,
@@ -38627,6 +38988,30 @@ function 读取视图时代运行时集成_V1() {
   return 候选列表.map(候选 => 候选?.__LWCS_ERA_RUNTIME_INTEGRATION_V1__).find(接口 =>
     接口 && typeof 接口.getEraContext === 'function' && typeof 接口.getStaticSource === 'function'
   ) || null;
+}
+
+function 读取视图时代货币注册表_V1() {
+  const 候选列表 = [globalThis];
+  try { if (globalThis.parent && globalThis.parent !== globalThis) 候选列表.push(globalThis.parent); } catch (错误) {}
+  try { if (globalThis.top && globalThis.top !== globalThis && !候选列表.includes(globalThis.top)) 候选列表.push(globalThis.top); } catch (错误) {}
+  return 候选列表.map(候选 => 候选?.__LWCS_ERA_CURRENCY_REGISTRY_V1__).find(接口 =>
+    接口 && typeof 接口.listCurrencies === 'function'
+  ) || null;
+}
+
+function 读取视图时代货币名称_V1(数据根 = null, 当前tick = null) {
+  const 根 = 数据根 && typeof 数据根 === 'object' ? 数据根 : 读取视图活动数据根_V1();
+  const tick = Number(当前tick ?? 根?.world?.时间?.tick);
+  const 集成 = 读取视图时代运行时集成_V1();
+  const 注册表 = 读取视图时代货币注册表_V1();
+  if (!集成 || !注册表 || !Number.isFinite(tick) || tick < 0) return [];
+  try {
+    const 时代 = 集成.getEraContext(tick, { dataRoot: 根 }).resourceEra;
+    const 结果 = 注册表.listCurrencies(时代);
+    return 结果.status === 'resolved' ? 结果.currencies.map(货币 => String(货币?.名称 || '').trim()).filter(Boolean) : [];
+  } catch (错误) {
+    return [];
+  }
 }
 
 function 读取视图活动数据根_V1() {
@@ -44672,19 +45057,6 @@ function 构建MVU剩余资源摘要_V1(角色 = {}) {
   ].filter(Boolean).join('｜');
 }
 
-function 构建MVU剧情提示财富_V1(角色 = {}) {
-  const 财富 = 角色?.财富 && typeof 角色.财富 === 'object' ? 角色.财富 : {};
-  const 势力表 = 角色?.社交?.势力 && typeof 角色.社交.势力 === 'object' ? 角色.社交.势力 : {};
-  const 所属势力文本 = Object.keys(势力表).join(' ');
-  const 片段列表 = [];
-  追加MVU剧情提示片段_V1(片段列表, '联邦币', 财富.联邦币, { 允许零: true });
-  追加MVU剧情提示片段_V1(片段列表, '星罗币', 财富.星罗币, { 允许零: true });
-  if (所属势力文本.includes('唐门')) 追加MVU剧情提示片段_V1(片段列表, '唐门积分', 财富.唐门积分, { 允许零: true });
-  if (所属势力文本.includes('史莱克')) 追加MVU剧情提示片段_V1(片段列表, '学院积分', 财富.学院积分, { 允许零: true });
-  追加MVU剧情提示片段_V1(片段列表, '战功', 财富.战功);
-  return 片段列表.join('；');
-}
-
 function 构建MVU剧情提示身份关系_V1(角色 = {}, 角色名 = '', 角色名列表 = []) {
   const 社交 = 角色?.社交 && typeof 角色.社交 === 'object' ? 角色.社交 : {};
   const 片段列表 = [];
@@ -45876,9 +46248,10 @@ function 构建MVU角色卡物品定义摘要_V1(物品名 = '', 物品定义源
   };
 }
 
-function 构建MVU角色卡表格数据_V1(角色表 = {}, 当前tick = null, 物品定义源 = {}) {
+function 构建MVU角色卡表格数据_V1(角色表 = {}, 当前tick = null, 物品定义源 = {}, 数据根 = null) {
   const 覆盖器 = 创建MVU角色卡覆盖记录器_V1();
   const 覆盖统计 = { 有效字段数: 0, 排除字段数: 0, 扩展字段数: 0, 遗漏字段数: 0 };
+  const 当前时代货币 = new Set(读取视图时代货币名称_V1(数据根, 当前tick));
   const 表 = {
     基础: [],
     现场: [],
@@ -46022,7 +46395,9 @@ function 构建MVU角色卡表格数据_V1(角色表 = {}, 当前tick = null, �
       if (已占用物品名.has(String(名称 || '').trim())) return;
       添加MVU角色卡表格行_V1(表.背包, { 角色: 角色名, 物品: 名称, 数量: 内容?.数量, 批次: 清理MVU角色卡持有状态详情_V1(内容?.批次) }, 覆盖器, []);
     });
-    Object.entries(构建MVU正文财富摘要_V1(角色)).forEach(([名称, 内容]) => 添加MVU角色卡表格行_V1(表.财富, { 角色: 角色名, 项目: 名称, 数量: 内容 }, 覆盖器, []));
+    Object.entries(构建MVU正文财富摘要_V1(角色))
+      .filter(([名称]) => 当前时代货币.has(名称))
+      .forEach(([名称, 内容]) => 添加MVU角色卡表格行_V1(表.财富, { 角色: 角色名, 项目: 名称, 数量: 内容 }, 覆盖器, []));
     ['装备', '魂骨', '背包', '财富'].forEach(字段 => 覆盖器.markSubtree(字段));
     Object.entries(角色?.我的任务 || {}).forEach(([任务, 内容]) => 添加MVU角色卡表格行_V1(表.任务, { 角色: 角色名, 任务, 任务线: 内容?.任务线, 状态: 内容?.状态, 进度: 内容?.当前进度, 描述: 内容?.描述, 截止tick: 内容?.截止tick, 奖励币: 内容?.奖励币, 奖励声望: 内容?.奖励声望 }, 覆盖器, []));
     (Array.isArray(角色?.已掌握情报) ? 角色.已掌握情报 : []).forEach((内容, 索引) => 添加MVU角色卡表格行_V1(表.情报, { 角色: 角色名, 条目: `情报${索引 + 1}`, 内容 }, 覆盖器, []));
@@ -46070,8 +46445,8 @@ function 构建MVU角色卡表格数据_V1(角色表 = {}, 当前tick = null, �
   return { 表, 覆盖率: 覆盖统计 };
 }
 
-function 构建MVU角色卡表格文本_V1(角色表 = {}, 当前tick = null, 物品定义源 = {}) {
-  const { 表 } = 构建MVU角色卡表格数据_V1(角色表, 当前tick, 物品定义源);
+function 构建MVU角色卡表格文本_V1(角色表 = {}, 当前tick = null, 物品定义源 = {}, 数据根 = null) {
+  const { 表 } = 构建MVU角色卡表格数据_V1(角色表, 当前tick, 物品定义源, 数据根);
   return [
     渲染MVU角色卡表格_V1('角色基础表', ['角色', '性别', '年龄', '生日', '等级', '精神境界', '魂核', '主身份', '家世', '外貌', '穿搭', '性格', '名望', '邪魂师'], 表.基础),
     渲染MVU角色卡表格_V1('角色状态表', ['角色', '当前地点', '生死', '死亡类型', '伤势', '剩余资源'], 表.现场),
@@ -46100,16 +46475,16 @@ function 构建MVU角色卡表格文本_V1(角色表 = {}, 当前tick = null, �
 function 生成MVU角色卡覆盖率检查_V1(数据输入 = null, userInput = '', plotText = '') {
   const 正文视图 = 生成MVU正文视图_V1(数据输入, userInput, plotText);
   const 当前tick = 正文视图?.world?.时间?.tick ?? null;
-  const { 表, 覆盖率 } = 构建MVU角色卡表格数据_V1(正文视图?.char || {}, 当前tick);
+  const { 表, 覆盖率 } = 构建MVU角色卡表格数据_V1(正文视图?.char || {}, 当前tick, {}, 正文视图);
   return {
     ...覆盖率,
     表行数: Object.fromEntries(Object.entries(表).map(([表名, 行列表]) => [表名, Array.isArray(行列表) ? 行列表.length : 0])),
   };
 }
 
-function 构建MVU正文角色卡_V1(角色名 = '', 角色 = {}, 正文角色表 = {}, 当前tick = null) {
+function 构建MVU正文角色卡_V1(角色名 = '', 角色 = {}, 正文角色表 = {}, 当前tick = null, 数据根 = null) {
   const 角色键 = String(角色名 || '').trim();
-  return 角色键 ? 构建MVU角色卡表格文本_V1({ [角色键]: 角色 }, 当前tick) : '无';
+  return 角色键 ? 构建MVU角色卡表格文本_V1({ [角色键]: 角色 }, 当前tick, {}, 数据根) : '无';
 }
 
 function 生成MVU玩家角色表_V1(数据输入 = null) {
@@ -46120,7 +46495,7 @@ function 生成MVU玩家角色表_V1(数据输入 = null) {
   const 玩家名 = 配置玩家名 && 角色表[配置玩家名] ? 配置玩家名 : 标记玩家名;
   const 玩家 = 数据根?.char?.[玩家名];
   if (!玩家名 || !玩家 || typeof 玩家 !== 'object') return '无';
-  return 构建MVU正文角色卡_V1(玩家名, 玩家, 数据根.char || {}, 数据根?.world?.时间?.tick ?? null);
+  return 构建MVU正文角色卡_V1(玩家名, 玩家, 数据根.char || {}, 数据根?.world?.时间?.tick ?? null, 数据根);
 }
 
 function 构建MVU正文角色卡主体行列表_V1(角色名 = '', 角色 = {}, 正文角色表 = {}, 当前tick = null) {
@@ -46151,7 +46526,7 @@ function 生成MVU正文提示文本_V1(数据输入 = null, userInput = '', plo
     : 生成MVU正文视图_V1(数据输入, userInput, plotText);
   const 当前tick = 正文视图.world?.时间?.tick ?? null;
   const 数据根 = 读取运行时Mvu数据根_V1(数据输入) || 数据输入 || {};
-  const 角色卡文本 = 构建MVU角色卡表格文本_V1(正文视图.char || {}, 当前tick, 数据根?.物品 || {});
+  const 角色卡文本 = 构建MVU角色卡表格文本_V1(正文视图.char || {}, 当前tick, 数据根?.物品 || {}, 数据根);
   return [
     '【角色卡】',
     角色卡文本,
@@ -46988,77 +47363,6 @@ function refreshFlatLocationsFromTree(node, name) {
       refreshFlatLocationsFromTree(node.子节点[childName], childName);
     }
   }
-}
-
-function calculateTravelResourceCost(method, distance, char = {}) {
-  const 属性 = char.属性 || {};
-  const 财富 = char.财富 || {};
-  const 装备 = char.装备 || {};
-  const lv = Number(属性.等级 || 0);
-  const hasDoukai = Number(装备?.斗铠?.等级 || 0) > 0 && String(装备?.斗铠?.装备状态 || '未装备') === '已装备';
-  const hasMecha =
-    String(装备?.机甲?.等级 || '无') !== '无' && String(装备?.机甲?.装备状态 || '未装备') === '已装备';
-
-  let fedCoin = 0;
-  let sp = 0;
-  let vit = 0;
-  let canAfford = true;
-  let reason = '';
-  let note = '';
-
-  if (method === '步行') {
-    vit = Math.max(1, Math.floor(distance * 4));
-  } else if (method === '校园短驳车') {
-    fedCoin = Math.max(1, Math.floor(distance * 2));
-    note = '校内通勤';
-  } else if (['魂导列车', '魂导汽车', '远洋巨轮'].includes(method)) {
-    fedCoin = Math.floor(distance * 10);
-  } else if (method === '飞行(机甲/斗铠)') {
-    if (hasDoukai) {
-      sp = Math.floor(distance * 12);
-      vit = Math.max(1, Math.floor(distance * 2));
-      note = '斗铠飞行';
-    } else if (hasMecha) {
-      sp = Math.floor(distance * 10);
-      vit = Math.max(1, Math.floor(distance));
-      fedCoin = Math.max(1, Math.floor(distance * 3));
-      note = '机甲飞行';
-    } else if (lv >= 70) {
-      sp = Math.floor(distance * 20);
-      vit = Math.max(1, Math.floor(distance * 5));
-      note = '肉身飞行';
-    } else {
-      canAfford = false;
-      reason = '需70级以上或装备机甲/斗铠';
-    }
-  } else if (method === '空间传送(极限斗罗)') {
-    if (lv >= 98) {
-      note = '极限传送';
-    } else {
-      canAfford = false;
-      reason = '需极限斗罗或特殊权限';
-    }
-  } else if (method === '空间传送(神级)') {
-    note = '神级传送';
-  }
-
-  const curCoin = Number(财富.联邦币 || 0);
-  const curSp = Number(属性.魂力 || 0);
-  const curVit = Number(属性.体力 || 0);
-  if (canAfford && fedCoin > curCoin) {
-    canAfford = false;
-    reason = '联邦币不足';
-  }
-  if (canAfford && sp > curSp) {
-    canAfford = false;
-    reason = '魂力不足';
-  }
-  if (canAfford && vit > curVit) {
-    canAfford = false;
-    reason = '体力不足';
-  }
-
-  return { fedCoin, sp, vit, canAfford, reason, note };
 }
 
 function findMapNodeEntry(targetName, sd) {

@@ -6011,11 +6011,16 @@
   const BASE_SECTION_HASH = '64783fa923cc70215dadaba0bb75390200c3297e82a68ef6d0a25d9b12a4fcb2';
   const REACTION_HEAD_HASH = 'b08565ade014bed633f5917aaa3891ba2730a18f8c9885c1c9c983db5c8f4a62';
   const BASE_WEIGHT_POLICY = Object.freeze({
-    id: 'CREATION_LOCAL_OPPORTUNITY_VALUE_V2',
+    id: 'CAUSAL_PROGRESS_BASE_WEIGHT_V3',
     reactionCounter: 1,
-    active: Object.freeze({ creationCandidate: 0, nonDamageSkill: 0.4, otherwise: 1 }),
+    active: Object.freeze({
+      creationCandidate: 0,
+      nonDamageSkill: 0.4,
+      noCausalProgress: 0,
+      otherwise: 1,
+    }),
   });
-  const BASE_WEIGHT_POLICY_HASH = 'bcf3a050fc33c12b8336d41d5e21bbcb613eb6c72507bdad69b1decf411d1be8';
+  const BASE_WEIGHT_POLICY_HASH = 'd26e55be24f9e72ec5d9c3e264c4d3d9b7efc20076b1999541ef625b6043d00f';
   const PURE_DAMAGE_DOMINANCE_POLICY = Object.freeze({
     id: 'ACTIVE_PURE_DAMAGE_PARETO_V1',
     actionRole: 'ACTIVE',
@@ -6653,11 +6658,21 @@
     return { noGreater: true, strict };
   }
 
-  function activeBaseWeight(candidate, frozenCandidates, actionRole) {
+  function activeBaseWeight(candidate, frozenCandidates, actionRole, cells) {
     if (['REACTION', 'COUNTER'].includes(actionRole)) return BASE_WEIGHT_POLICY.reactionCounter;
+    const actionKind = String(candidate?.declaration?.actionKind || '').trim().toUpperCase();
+    if (
+      actionKind === 'RELEASE_SKILL' &&
+      !candidateHasImmediateDamage(candidate) &&
+      !CAUSAL_CODES.some(code =>
+        Number(ACTIVE_CAUSAL_LINEAR.coefficients[code] || 0) > 0 &&
+        cells?.[code]?.status === 'KNOWN' &&
+        Number(cells[code].value) > 1e-9
+      )
+    ) return BASE_WEIGHT_POLICY.active.noCausalProgress;
     if (frozenCandidates.some(entry => entry?.creation)) {
       if (candidate?.creation) return BASE_WEIGHT_POLICY.active.creationCandidate;
-      return String(candidate?.declaration?.actionKind || '').trim().toUpperCase() === 'RELEASE_SKILL' &&
+      return actionKind === 'RELEASE_SKILL' &&
         !candidateHasImmediateDamage(candidate)
         ? BASE_WEIGHT_POLICY.active.nonDamageSkill
         : BASE_WEIGHT_POLICY.active.otherwise;
@@ -6721,7 +6736,12 @@
       }
       const exclusion = readExclusion(doc);
       const hardExcluded = exclusion.hard;
-      const baseWeight = activeBaseWeight(candidateById.get(candidateId), frozenCandidates, actionRole);
+      const baseWeight = activeBaseWeight(
+        candidateById.get(candidateId),
+        frozenCandidates,
+        actionRole,
+        cells,
+      );
       work.exclusionRows = (work.exclusionRows || 0) + 2;
       let reasonCode = null;
       if (hardExcluded) {

@@ -7180,6 +7180,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           let evidence;
           overlay.changeUnit(unitId(target), unit => {
             const existing = findStateEntry(unit, scaledEffect);
+            const previousDuration = existing
+              ? Math.max(0, Number(existing[1]?.duration ?? existing[1]?.持续回合 ?? 0))
+              : 0;
+            const requestedDuration = Math.max(1, Number(scaledEffect?.持续回合 || 1));
             const marginal = addState(unit, scaledEffect, context.effectInstanceId);
             evidence = existing
               ? {
@@ -7194,6 +7198,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                     projectedEffect: cloneValue(effect),
                     marginal,
                     refreshed: marginal,
+                    previousDuration,
+                    durationGain: marginal
+                      ? Math.max(0, requestedDuration - previousDuration)
+                      : 0,
                     changes: [],
                   }),
                 }

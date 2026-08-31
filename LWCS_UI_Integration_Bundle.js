@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:c18fb17328115c1b145b297336c9e4854a2bedac5bba449cdface0d0f7128389 */
+/* sources-sha256: LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:93a519a09b572e4d8b715b0ea004307d59ad932905f01996f71b61c0efe4256e */
 ;
 /* source: LWCS_Database_Adapter.js */
 (() => {
@@ -4897,7 +4897,7 @@
       品质: 规范化物品经济品质_桥接(来源.品质 || 来源.品阶 || '普通', 物品名, 物品分类),
       描述: toText(来源.描述, `关于【${物品名}】的记录暂未展开。`),
       基础价格: Math.max(1, Math.floor(toNumber(来源.基础价格, 1))),
-      默认货币: toText(来源.默认货币, '联邦币'),
+      默认货币: toText(来源.默认货币, ''),
     };
     if (物品分类 === '魂灵') {
       const 魂灵品质 = normalizeSoulSpiritQuality(来源.魂灵品质 || '');
@@ -5101,13 +5101,9 @@
 
   const 物品品质选项_桥接 = 物品经济品质列表_桥接;
   const 魂灵品质选项_桥接 = Object.freeze(['F', 'D', 'C', 'B', 'A', 'S', 'S+']);
-  const 物品货币选项_桥接 = Object.freeze((() => {
-    const registry = 读取当前时代钱包配置_桥接().registry;
-    return [...new Set((registry?.eraOrder || []).flatMap(时代 => {
-      const result = registry.listCurrencies(时代);
-      return result.status === 'resolved' ? result.currencies.map(货币 => 货币.名称) : [];
-    }))];
-  })());
+  function 读取物品货币选项_桥接(数据根 = {}) {
+    return 读取当前时代钱包配置_桥接(数据根).currencies.map(货币 => 货币.key);
+  }
   const 物品装备槽位选项_桥接 = Object.freeze(['无', '头部', '躯干', '左臂', '右臂', '左腿', '右腿', '武器', '防具', '饰品']);
   const 装备加成属性选项_桥接 = Object.freeze(['魂力上限', '精神力上限', '力量', '防御', '敏捷', '体力上限']);
   const 装备加成方向选项_桥接 = Object.freeze([...装备加成属性选项_桥接, '全属性']);
@@ -5344,7 +5340,8 @@
     const canUse = !!选项参数.canUse;
     const canEquip = !!选项参数.canEquip;
     const charKey = toText(选项参数.charKey, '').trim();
-    const 默认时代货币 = 读取当前时代钱包配置_桥接(选项参数.rootData || {}).currencies[0]?.key || '联邦币';
+    const 时代货币选项 = 读取物品货币选项_桥接(选项参数.rootData || {});
+    const 默认时代货币 = 时代货币选项[0] || '';
     const 阶位字段 = 是锻造 ? 构建物品定义字段('阶位', '阶位', toNumber(定义.阶位, 0), 'number') : '';
     const 魂导等级字段 = 是魂灵 ? '' : 构建物品定义字段('魂导等级', '魂导等级', 读取魂导等级_桥接(定义), 'number');
     const 基础模块 = `<div class="item-definition-form-grid">
@@ -5354,7 +5351,7 @@
       ${魂导等级字段}
       ${构建物品定义字段('品质', '品质/稀有度', 规范化物品经济品质_桥接(定义.品质, 物品名, 物品分类), 'select', 物品品质选项_桥接)}
       ${构建物品定义字段('基础价格', '基础价格', toNumber(定义.基础价格, 0), 'number')}
-      ${构建物品定义字段('默认货币', '货币类型', toText(定义.默认货币, 默认时代货币), 'select', 物品货币选项_桥接)}
+      ${构建物品定义字段('默认货币', '货币类型', toText(定义.默认货币, 默认时代货币), 'select', 时代货币选项)}
       ${构建物品定义字段('描述', '描述', toText(定义.描述, ''), 'textarea')}
     </div>`;
     const 魂灵模块 = `<div class="item-definition-form-grid">
@@ -5629,7 +5626,7 @@
             ...((合并物品.物品分类 || 分类) !== '魂灵' && 读取魂导等级_桥接(合并物品) > 0 ? [['魂导等级', 读取魂导等级_桥接(合并物品)]] : []),
             ...(分类 === '锻造金属' ? [['阶位', 合并物品.阶位 || 0]] : []),
             ['基础价格', 合并物品.基础价格 || 0],
-            ['货币', 合并物品.默认货币 || '联邦币'],
+            ['货币', 合并物品.默认货币 || 读取当前时代钱包配置_桥接(选项参数.rootData || {}).currencies[0]?.key || '未解析'],
           ], { 品质档案 })}
         </section>
         <section class="mvu-inventory-inspector-section">
@@ -5805,7 +5802,8 @@
     if (!新名) throw new Error('物品名称不能为空。');
     const 旧命中 = 查找物品定义_桥接(数据根, 旧名 || 新名);
     const 旧定义 = cloneJsonValue(旧命中?.定义 || {}, {});
-    const 默认时代货币 = 读取当前时代钱包配置_桥接(数据根).currencies[0]?.key || '联邦币';
+    const 时代货币选项 = 读取物品货币选项_桥接(数据根);
+    const 默认时代货币 = 时代货币选项[0] || '';
     const 分类 = 规范化物品定义分类_桥接(
       读取物品定义输入值(表单节点, '物品分类', 旧命中?.分类 || 读取物品定义显式分类_桥接(旧定义, '剧情杂物')),
       '剧情杂物',
@@ -5820,6 +5818,7 @@
       基础价格: Math.max(1, Math.floor(toNumber(读取物品定义输入值(表单节点, '基础价格', 旧定义.基础价格), 1))),
       默认货币: 读取物品定义输入值(表单节点, '默认货币', toText(旧定义.默认货币, 默认时代货币)) || 默认时代货币,
     };
+    if (!时代货币选项.includes(定义.默认货币)) throw new Error(`货币【${定义.默认货币 || '空'}】不属于当前时代。`);
     if (分类 === '魂灵') {
       const 魂灵品质 = normalizeSoulSpiritQuality(读取物品定义输入值(表单节点, '魂灵品质', toText(旧定义.魂灵品质, '')));
       const 表象名称 = 读取物品定义输入值(表单节点, '表象名称', toText(旧定义.表象名称, '')).trim();
@@ -9137,6 +9136,15 @@
       .find(接口 => 接口 && typeof 接口.getEraContext === 'function') || null;
   }
 
+  function 读取旅行能力运行时_桥接() {
+    const 候选窗口 = [globalThis];
+    try { if (globalThis.window && globalThis.window !== globalThis) 候选窗口.push(globalThis.window); } catch (错误) {}
+    try { if (globalThis.parent && globalThis.parent !== globalThis) 候选窗口.push(globalThis.parent); } catch (错误) {}
+    try { if (globalThis.top && globalThis.top !== globalThis) 候选窗口.push(globalThis.top); } catch (错误) {}
+    return 候选窗口.map(候选 => 候选 && 候选.__LWCS_TRAVEL_CAPABILITY_RUNTIME_V1__)
+      .find(接口 => 接口 && typeof 接口.读取旅行能力 === 'function' && typeof 接口.计算旅行参数 === 'function') || null;
+  }
+
   function 读取当前时代钱包配置_桥接(数据根 = {}) {
     const 候选窗口 = [globalThis];
     try { if (globalThis.window && globalThis.window !== globalThis) 候选窗口.push(globalThis.window); } catch (错误) {}
@@ -9176,6 +9184,14 @@
         }))
       : [];
     return { status, eraId, registry, currencies, context, diagnostic, resourceStatus: listed?.status || 'unavailable' };
+  }
+
+  function 读取当前时代法定货币_桥接(数据根 = {}, 上下文 = '') {
+    const 钱包 = 读取当前时代钱包配置_桥接(数据根);
+    if (钱包.status !== 'resolved' || typeof 钱包.registry?.resolveFiatCurrency !== 'function') {
+      return { status: 'unresolved', eraId: 钱包.eraId, currency: '', reason: 钱包.status };
+    }
+    return 钱包.registry.resolveFiatCurrency(钱包.eraId, 上下文);
   }
 
   function 是时代资源未就绪状态_桥接(status = '') {
@@ -11697,13 +11713,16 @@
       const 奖励倍率 = Math.max(0, toNumber(奖励加成?.倍率, 1));
       const 奖励币 = Math.max(0, Math.floor(toNumber(当前任务['奖励币'], 0) * 奖励倍率));
       const 奖励声望 = Math.max(0, Math.floor(toNumber(当前任务['奖励声望'], 0) * 奖励倍率));
+      const 货币结果 = 读取当前时代法定货币_桥接(变量根, toText(读取值(['char', 角色键, '状态', '位置'], ''), ''));
+      if (货币结果.status !== 'resolved') throw new Error('任务奖励货币未就绪');
+      const 奖励货币 = 货币结果.currency;
       deepSetMutable(变量根, [...任务路径, '状态'], '已完成');
       deepSetMutable(变量根, [...任务路径, '当前进度'], 100);
       deepSetMutable(变量根, [...任务路径, '最后更新时间tick'], 当前tick);
       deepSetMutable(
         变量根,
-        ['char', 角色键, '财富', '联邦币'],
-        Math.max(0, toNumber(读取值(['char', 角色键, '财富', '联邦币'], 0), 0)) + 奖励币,
+        ['char', 角色键, '财富', 奖励货币],
+        Math.max(0, toNumber(读取值(['char', 角色键, '财富', 奖励货币], 0), 0)) + 奖励币,
       );
       deepSetMutable(
         变量根,
@@ -14108,6 +14127,7 @@
       写后记录: cloneJsonValue(写后记录, []),
       写后MVU数据: cloneJsonValue(记录.写后MVU数据 || {}, {}),
       patchOps: cloneJsonValue(Array.isArray(记录.patchOps) ? 记录.patchOps : [], []),
+      角色动作模式表: cloneJsonValue(记录.角色动作模式表 && typeof 记录.角色动作模式表 === 'object' ? 记录.角色动作模式表 : {}, {}),
       状态: 'waiting_user_message',
       createdAt: Date.now(),
       正在处理: false,
@@ -14208,6 +14228,26 @@
     };
   }
 
+  function 读取装备温养动作模式表_桥接(记录 = null, options = {}) {
+    return {
+      ...(记录?.角色动作模式表 && typeof 记录.角色动作模式表 === 'object' ? 记录.角色动作模式表 : {}),
+      ...(当前剧情模块路由事务上下文?.角色动作模式表 && typeof 当前剧情模块路由事务上下文.角色动作模式表 === 'object' ? 当前剧情模块路由事务上下文.角色动作模式表 : {}),
+      ...(options?.角色动作模式表 && typeof options.角色动作模式表 === 'object' ? options.角色动作模式表 : {}),
+    };
+  }
+
+  function 应用装备温养时间结算_桥接(数据根 = {}, 旧tick = 0, 新tick = 0, 角色动作模式表 = {}) {
+    const 接口 = 读取MVUSchema运行时接口_桥接();
+    if (!接口 || typeof 接口.结算装备温养时间 !== 'function') {
+      return { patchOps: [], changedPaths: [], completions: [] };
+    }
+    return 接口.结算装备温养时间(数据根, 旧tick, 新tick, 角色动作模式表) || {
+      patchOps: [],
+      changedPaths: [],
+      completions: [],
+    };
+  }
+
   async function 暂存任务时间推进_桥接(时间推进上下文 = {}, options = {}) {
     const 增量tick = Number(时间推进上下文?.tick增量);
     const 外部旧tick = Number(时间推进上下文?.旧tick);
@@ -14277,10 +14317,12 @@
       结算根.world.时间.tick = 新tick;
       结算根.world.时间._calendar = formatTickToCalendarDateText(新tick);
       if (时代提示.text) deepSetMutable(结算根, ['sys', '系统播报'], 时代提示.patchOps[0].value);
+      const 角色动作模式表 = 读取装备温养动作模式表_桥接(已有事务, options);
+      const 温养结算 = 应用装备温养时间结算_桥接(结算根, 实际旧tick, 新tick, 角色动作模式表);
       已有事务.settledStatData = 结算根;
       已有事务.settledPaths = Array.from(
         new Map(
-          [...已有事务.settledPaths, ['world', '时间', 'tick'], ['world', '时间', '_calendar'], ...(时代提示.text ? [['sys', '系统播报']] : [])]
+          [...已有事务.settledPaths, ['world', '时间', 'tick'], ['world', '时间', '_calendar'], ...(时代提示.text ? [['sys', '系统播报']] : []), ...温养结算.changedPaths]
             .map(normalizeEditorPath)
             .filter(path => path.length)
             .map(path => [JSON.stringify(path), path]),
@@ -14294,9 +14336,11 @@
       写后根.world.时间.tick = 新tick;
       写后根.world.时间._calendar = formatTickToCalendarDateText(新tick);
       if (时代提示.text) deepSetMutable(写后根, ['sys', '系统播报'], 时代提示.patchOps[0].value);
+      应用装备温养时间结算_桥接(写后根, 实际旧tick, 新tick, 角色动作模式表);
       已有事务.写后MVU数据 = 写后MVU数据;
       已有事务.写后记录 = 构建路径回滚记录自路径列表_桥接(结算根, 已有事务.settledPaths);
-      已有事务.patchOps = [...已有事务.patchOps, ...时间补丁, ...时代提示.patchOps];
+      已有事务.patchOps = [...已有事务.patchOps, ...时间补丁, ...时代提示.patchOps, ...温养结算.patchOps];
+      已有事务.角色动作模式表 = 角色动作模式表;
       已有事务.任务时间推进tick = 新tick;
       已有事务.状态 = 'waiting_user_message';
       if (!已有事务.记录键) return { ok: false, reason: 'time_advance_transaction_missing_key' };
@@ -14312,6 +14356,8 @@
     结算根.world.时间.tick = 新tick;
     结算根.world.时间._calendar = formatTickToCalendarDateText(新tick);
     if (时代提示.text) deepSetMutable(结算根, ['sys', '系统播报'], 时代提示.patchOps[0].value);
+    const 角色动作模式表 = 读取装备温养动作模式表_桥接(null, options);
+    const 温养结算 = 应用装备温养时间结算_桥接(结算根, 实际旧tick, 新tick, 角色动作模式表);
     const 写后MVU数据 = cloneJsonValue(基底MVU数据, {});
     const 写后根 = resolveRootData(写后MVU数据);
     if (!写后根) return { ok: false, reason: 'time_advance_staging_root_missing' };
@@ -14320,7 +14366,8 @@
     写后根.world.时间.tick = 新tick;
     写后根.world.时间._calendar = formatTickToCalendarDateText(新tick);
     if (时代提示.text) deepSetMutable(写后根, ['sys', '系统播报'], 时代提示.patchOps[0].value);
-    const 时间路径 = [['world', '时间', 'tick'], ['world', '时间', '_calendar'], ...(时代提示.text ? [['sys', '系统播报']] : [])];
+    应用装备温养时间结算_桥接(写后根, 实际旧tick, 新tick, 角色动作模式表);
+    const 时间路径 = [['world', '时间', 'tick'], ['world', '时间', '_calendar'], ...(时代提示.text ? [['sys', '系统播报']] : []), ...温养结算.changedPaths];
     const 记录键 = 登记剧情模块预结算事务_桥接({
       requestKind: 'time_advance',
       旧AI消息编号: 旧AI元信息.消息编号,
@@ -14333,7 +14380,8 @@
       baseStatData: 基底根,
       settledStatData: 结算根,
       settledPaths: 时间路径,
-      patchOps: [...时间补丁, ...时代提示.patchOps],
+      patchOps: [...时间补丁, ...时代提示.patchOps, ...温养结算.patchOps],
+      角色动作模式表,
       用户输入文本: toText(options.userInput || options.用户输入文本, ''),
       用户输入签名: toText(options.userInputSignature || options.用户输入签名, '') || 构建剧情模块用户输入签名(options.userInput || options.用户输入文本),
       路由块哈希: toText(options.routeHash || options.路由块哈希, ''),
@@ -14360,6 +14408,12 @@
     if (!差异路径.length) return '';
     const 回滚记录 = 构建路径回滚记录自路径列表_桥接(beforeStatData, 差异路径);
     const 写后记录 = 构建路径回滚记录自路径列表_桥接(afterStatData, 差异路径);
+    const 已有记录 = 查找剧情模块预结算记录_桥接(options);
+    const 角色动作模式表 = {
+      ...(已有记录?.角色动作模式表 && typeof 已有记录.角色动作模式表 === 'object' ? 已有记录.角色动作模式表 : {}),
+      ...(当前剧情模块路由事务上下文?.角色动作模式表 && typeof 当前剧情模块路由事务上下文.角色动作模式表 === 'object' ? 当前剧情模块路由事务上下文.角色动作模式表 : {}),
+      ...(options?.角色动作模式表 && typeof options.角色动作模式表 === 'object' ? options.角色动作模式表 : {}),
+    };
     return 登记剧情模块预结算事务_桥接({
       requestKind: 'story_generation_guard',
       旧AI消息编号: 旧AI元信息.消息编号,
@@ -14373,6 +14427,7 @@
       settledStatData: afterStatData,
       settledPaths: 差异路径,
       patchOps: options.__模块预结算patchOps,
+      角色动作模式表,
       用户输入文本: toText(options.userInput || options.用户输入文本, ''),
       用户输入签名: toText(options.userInputSignature || options.用户输入签名, '') || 构建剧情模块用户输入签名(options.userInput || options.用户输入文本),
       路由块哈希: toText(options.routeHash || options.路由块哈希, ''),
@@ -34985,7 +35040,13 @@
       if (状态) return 状态;
       return 读取槽位文本(槽) ? '在线' : '空载';
     };
-    const 装备槽列表 = [装备.武器, 装备.防具, 装备.斗铠, 装备.机甲, 装备.魂导器];
+    const 钱包 = 读取当前时代钱包配置_桥接(snapshot?.rootData || {});
+    const 允许装备槽 = new Set(钱包.eraId === 'dldl'
+      ? ['武器', '防具', '斗铠']
+      : 钱包.eraId === 'jueshitangmen'
+        ? ['武器', '防具', '斗铠', '魂导器']
+        : ['武器', '防具', '斗铠', '机甲', '魂导器']);
+    const 装备槽列表 = Array.from(允许装备槽, 槽名 => 装备[槽名]);
     const 已装备数 = 装备槽列表.filter(槽 => {
       if (!槽 || typeof 槽 !== 'object') return false;
       const 名称 = 读取槽位文本(槽);
@@ -34993,9 +35054,11 @@
       return !!名称 && !/^(无|未装备|空)$/.test(名称) && 状态 !== '未装备';
     }).length;
     const 装备摘要 = 已装备数 || 魂骨数 ? `${已装备数}/${装备槽列表.length} 在线` : '未装配';
-    const 联邦币 = toNumber(财富.联邦币, 0);
+    const 法币 = 读取当前时代法定货币_桥接(snapshot?.rootData || {}, deepGet(snapshot, 'activeChar.状态.位置', ''));
+    const 资金货币 = 法币.status === 'resolved' ? 法币.currency : '';
+    const 资金数 = toNumber(财富[资金货币], 0);
     const 仓库摘要 = `${formatNumber(物资数)} 件`;
-    const 资金摘要 = 联邦币 > 0 ? `联邦 ${格式化属性短数字(联邦币)}` : '资金 0';
+    const 资金摘要 = 资金数 > 0 ? `${资金货币} ${格式化属性短数字(资金数)}` : `${资金货币 || '资金'} 0`;
     const 装备格 = [
       { 标识: '武', 标签: '武器', 数据: 装备.武器, 摘要: 读取槽位文本(装备.武器) || '空槽', 预览: '武装详情：主武器' },
       { 标识: '防', 标签: '防具', 数据: 装备.防具, 摘要: 读取槽位文本(装备.防具) || '空槽', 预览: '武装详情：防具' },
@@ -35009,7 +35072,7 @@
       { 标识: '机', 标签: '机甲', 数据: 装备.机甲, 摘要: 读取槽位文本(装备.机甲) || '空槽', 预览: '武装详情：机甲' },
       { 标识: '导', 标签: '魂导器', 数据: 装备.魂导器, 摘要: 读取槽位文本(装备.魂导器) || '空槽', 预览: '武装详情：魂导器' },
       { 标识: '骨', 标签: '魂骨', 数据: null, 摘要: 魂骨数 ? `${formatNumber(魂骨数)} 件` : '空槽', 强制在线: 魂骨数 > 0 },
-    ];
+    ].filter(格 => 格.标签 === '魂骨' || 允许装备槽.has(格.标签));
     return `
         <div class="mvu-archive-panel-head">
           <span>装备与仓储</span>
@@ -41571,6 +41634,41 @@
         percentAsLevel: weaponTypeText === '神器' || weaponTypeText === '超神器',
       });
       const 防具加成条目 = buildStatsBonusItems(防具属性加成);
+      const 装备温养运行时 = 读取MVUSchema运行时接口_桥接();
+      const 当前温养目标 = toText(deepGet(snapshot, 'activeChar.装备._温养目标', '无'), '无');
+      const 读取目标温养投影 = 目标 => {
+        if (!装备温养运行时 || typeof 装备温养运行时.读取装备温养投影 !== 'function') return null;
+        const 投影角色 = cloneJsonValue(snapshot.activeChar || {}, {});
+        if (!投影角色.装备 || typeof 投影角色.装备 !== 'object') 投影角色.装备 = {};
+        投影角色.装备._温养目标 = 目标;
+        return 装备温养运行时.读取装备温养投影(投影角色, snapshot.rootData || {});
+      };
+      const 温养控制HTML = ['斗铠', '机甲'].map(目标 => {
+        const 投影 = 读取目标温养投影(目标);
+        const 已开启 = 当前温养目标 === 目标;
+        const 不可开启 = !已开启 && (!投影 || !投影.canStart);
+        const 进度 = 投影 ? Math.max(0, Number(投影.progress || 0)) : 0;
+        const 所需 = 投影 ? Math.max(0, Number(投影.required || 0)) : 0;
+        const 状态文本 = 已开启
+          ? (投影?.canProgress ? '后台温养中' : `已暂停：${投影?.pauseReason || '条件不足'}`)
+          : (投影?.canStart ? '可开启' : `不可开启：${投影?.pauseReason || '运行时未就绪'}`);
+        const 剩余文本 = 投影?.remainingNaturalTicks > 0
+          ? `空闲自然温养约 ${formatNumber(投影.remainingNaturalTicks)} tick；行动期间按实际时间累计`
+          : '当前阶段无需继续累计';
+        return `
+          <div class="mvu-armory-resonance-panel${已开启 ? ' is-live' : ' is-empty'}">
+            <div class="mvu-armory-resonance-head">
+              <b>${htmlEscape(目标)}温养 · ${htmlEscape(投影?.stageLabel || '无可用阶段')}</b>
+              <button type="button" class="relation-action-btn" data-equipment-nurture-target="${escapeHtmlAttr(目标)}"${不可开启 || !isPlayerControlled ? ' disabled' : ''}>${已开启 ? '停止温养' : `开启${htmlEscape(目标)}温养`}</button>
+            </div>
+            <div class="mvu-armory-resonance-grid">
+              <span class="${已开启 ? 'is-live' : 'is-zero'}"><b>状态</b><em>${htmlEscape(状态文本)}</em></span>
+              <span class="${进度 > 0 ? 'is-live' : 'is-zero'}"><b>进度</b><em>${htmlEscape(`${formatNumber(进度)} / ${formatNumber(所需)} tick`)}</em></span>
+              <span class="${投影?.percent > 0 ? 'is-live' : 'is-zero'}"><b>完成度</b><em>${htmlEscape(`${Number(投影?.percent || 0).toFixed(2)}%`)}</em></span>
+              <span class="is-zero"><b>预计</b><em>${htmlEscape(剩余文本)}</em></span>
+            </div>
+          </div>`;
+      }).join('');
       const 斗铠性别文本 = toText(deepGet(snapshot, 'activeChar.属性.性别', ''), '');
       const 斗铠槽位坐标表 = {
         头盔: { x: 50, y: 12 },
@@ -42523,6 +42621,7 @@
                   <div class="mvu-armory-equipment-flow">
                     <div class="mvu-armory-gear-grid">${武装槽位HTML}</div>
                     ${共鸣汇总HTML}
+                    ${温养控制HTML}
                   </div>
                 </div>
                 <div class="archive-card full mvu-armory-card mvu-armory-card--bones${有魂骨装载 ? '' : ' is-empty'}">
@@ -44332,8 +44431,10 @@
         { 标记: 'T', 标签: '升灵台门票', 数值: String(升灵台门票数) },
         { 标记: 'A', 标签: '累计猎杀年限', 数值: formatNumber(snapshot.forestKilledAge || 0) },
         { 标记: 'B', 标签: '图鉴条目', 数值: String((snapshot.bestiaryEntries || []).length || 0) },
-        { 标记: 'W', 标签: '当前战功', 数值: formatNumber(deepGet(snapshot, 'activeChar.财富.战功', 0)) },
       ];
+      const 试炼钱包 = 读取当前时代钱包配置_桥接(snapshot.rootData || {});
+      if (试炼钱包.eraId === 'current') 试炼统计列表.push({ 标记: 'W', 标签: '当前战功', 数值: formatNumber(deepGet(snapshot, 'activeChar.财富.战功', 0)) });
+      if (试炼钱包.eraId === 'zjdl') 试炼统计列表.push({ 标记: 'D', 标签: '斗天者积分', 数值: formatNumber(deepGet(snapshot, 'activeChar.财富.斗天者积分', 0)) });
       const 门票列表Html = 试炼门票列表.length
         ? `<div class="trial-ticket-list">${试炼门票列表
             .map(([物品名, 物品]) => {
@@ -44521,6 +44622,8 @@
         `;
       const questProgress = item => Math.max(0, Math.min(100, toNumber(item && item['当前进度'], 0)));
       const 当前任务tick = Math.max(0, Math.floor(toNumber(deepGet(snapshot, 'rootData.world.时间.tick', 0), 0)));
+      const 任务法币 = 读取当前时代法定货币_桥接(snapshot?.rootData || {}, deepGet(snapshot, 'activeChar.状态.位置', ''));
+      const 任务奖励货币 = 任务法币.status === 'resolved' ? 任务法币.currency : '货币';
       const 格式化任务日期时间 = tickValue => {
         const tick = Math.max(0, Math.floor(toNumber(tickValue, 0)));
         if (!tick) return '未记录';
@@ -44620,7 +44723,7 @@
         const 契约 = 读取任务契约(item);
         const 预计违约扣款 = 读取任务预计违约扣款(item);
         const 报酬行 = [
-          `<span><em>联邦币</em><b>+${htmlEscape(formatNumber(契约.奖励币))}</b></span>`,
+          `<span><em>${htmlEscape(任务奖励货币)}</em><b>+${htmlEscape(formatNumber(契约.奖励币))}</b></span>`,
           `<span><em>声望</em><b>+${htmlEscape(formatNumber(契约.奖励声望))}</b></span>`,
         ].join('');
         const 风险侧栏 =
@@ -46411,7 +46514,13 @@
     );
   }
 
-  function getDonateRewardLabel(targetFaction) {
+  function getDonateRewardLabel(targetFaction, snapshot = {}) {
+    const 钱包 = 读取当前时代钱包配置_桥接(snapshot.rootData || {});
+    if (钱包.eraId === 'dldl' || 钱包.eraId === 'jueshitangmen') {
+      const 法币 = 读取当前时代法定货币_桥接(snapshot.rootData || {}, deepGet(snapshot, 'activeChar.状态.位置', ''));
+      return 法币.status === 'resolved' ? 法币.currency : '';
+    }
+    if (钱包.eraId === 'zjdl') return /斗天|军/.test(targetFaction) ? '斗天者积分' : '黄级徽章';
     if (targetFaction === '史莱克学院') return '学院积分';
     if (targetFaction === '战神殿' || targetFaction === '血神军团') return '战功';
     return '唐门积分';
@@ -46447,7 +46556,8 @@
     const talentMultiplier = getDonateTalentMultiplier(talentTier);
     const totalValue = basePrice * quantity;
     const pointsEarned = Math.floor((totalValue / 1000) * talentMultiplier);
-    const rewardLabel = getDonateRewardLabel(targetFaction);
+    const rewardLabel = getDonateRewardLabel(targetFaction, snapshot);
+    if (!rewardLabel) return null;
     const systemPrompt = `以下内容属于前端代发的阵营捐赠安排，请直接承接剧情与后续处理，不要输出 JSON 块或变量维护指令。
 
 [捐献摘要]
@@ -46500,6 +46610,9 @@
     const 委托状态 = toText(委托原始 && 委托原始['状态'], '待接取');
     const 任务状态 = toText(任务原始 && 任务原始['状态'], '进行中');
     const 当前tick = Math.max(0, Math.floor(toNumber(deepGet(快照, 'rootData.world.时间.tick', 0), 0)));
+    const 任务法币 = 读取当前时代法定货币_桥接(快照.rootData || {}, 当前地点);
+    if (任务法币.status !== 'resolved') return null;
+    const 奖励货币 = 任务法币.currency;
     const 角色路径 = escapeJsonPointerValue(角色键);
     const 任务路径 = `/char/${角色路径}/我的任务/${escapeJsonPointerValue(任务名)}`;
     const 委托路径 = `/world/委托板/${escapeJsonPointerValue(任务名)}`;
@@ -46618,9 +46731,9 @@
       if (!任务原始 || typeof 任务原始 !== 'object' || Array.isArray(任务原始) || 终止状态.includes(任务状态)) return null;
       const 交付需求 = 读取交付需求(任务原始, 委托原始);
       const 截止tick = Math.max(读取截止tick(任务原始), 读取截止tick(委托原始));
-      let 联邦币 = toNumber(deepGet(当前角色, '财富.联邦币', 0), 0);
+      let 货币余额 = toNumber(当前角色?.财富?.[奖励货币], 0);
       let 声望 = Math.max(0, toNumber(deepGet(当前角色, '社交.声望', 0), 0));
-      const 原联邦币 = 联邦币;
+      const 原货币余额 = 货币余额;
       const 原声望 = 声望;
       let 任务条目 = 构建任务条目(任务原始, { 最后更新时间tick: 当前tick });
       let 委托条目 = 委托原始 ? 构建委托条目(委托原始, { 承接者: 角色键 }) : null;
@@ -46629,21 +46742,21 @@
         if (截止tick > 0 && 当前tick > 截止tick) {
           const 候选 = 收集交付候选列表_桥接(快照, 角色键, 交付需求)[0] || null;
           const 违约扣款 = Math.max(0, Math.floor(估算交付需求总价_桥接(快照, 交付需求, 候选) * 0.3));
-          联邦币 -= 违约扣款;
+          货币余额 -= 违约扣款;
           任务条目 = 构建任务条目(任务原始, { 状态: '已失败', 最后更新时间tick: 当前tick });
           if (委托条目) 委托条目 = 构建委托条目(委托原始, { 状态: '已失败', 承接者: 角色键 });
-          播报文本 = `[任务失败] ${角色名} 的委托【${任务名}】超时。扣除 ${违约扣款} 联邦币。`;
+          播报文本 = `[任务失败] ${角色名} 的委托【${任务名}】超时。扣除 ${违约扣款} ${奖励货币}。`;
         } else {
           const 交付扣减 = 构建交付需求扣减补丁_桥接(快照, 角色键, 交付需求);
           if (交付扣减.ok) {
             const 实得奖励币 = Math.max(0, Math.floor(toNumber(任务条目['奖励币'], 0)));
             const 实得奖励声望 = Math.max(0, Math.floor(toNumber(任务条目['奖励声望'], 0)));
-            联邦币 += 实得奖励币;
+            货币余额 += 实得奖励币;
             声望 += 实得奖励声望;
             补丁列表.push(...交付扣减.patchOps);
             任务条目 = 构建任务条目(任务原始, { 状态: '已完成', 当前进度: 100, 最后更新时间tick: 当前tick });
             if (委托条目) 委托条目 = 构建委托条目(委托原始, { 状态: '已完成', 承接者: 角色键 });
-            播报文本 = `[任务完成] ${角色名} 提交了【${任务名}】。交付：${交付扣减.消耗文本 || 格式化交付需求文本_桥接(交付需求)}。获得奖励：${实得奖励币} 联邦币, ${实得奖励声望} 声望！`;
+            播报文本 = `[任务完成] ${角色名} 提交了【${任务名}】。交付：${交付扣减.消耗文本 || 格式化交付需求文本_桥接(交付需求)}。获得奖励：${实得奖励币} ${奖励货币}, ${实得奖励声望} 声望！`;
           } else {
             任务条目 = 构建任务条目(任务原始, { 状态: '进行中', 最后更新时间tick: 当前tick });
             if (委托条目) 委托条目 = 构建委托条目(委托原始, { 状态: '进行中', 承接者: 角色键 });
@@ -46657,11 +46770,11 @@
       } else if (任务条目['状态'] === '可提交' || toNumber(任务条目['当前进度'], 0) >= 100) {
         const 实得奖励币 = Math.max(0, Math.floor(toNumber(任务条目['奖励币'], 0)));
         const 实得奖励声望 = Math.max(0, Math.floor(toNumber(任务条目['奖励声望'], 0)));
-        联邦币 += 实得奖励币;
+        货币余额 += 实得奖励币;
         声望 += 实得奖励声望;
         任务条目 = 构建任务条目(任务原始, { 状态: '已完成', 当前进度: 100, 最后更新时间tick: 当前tick });
         if (委托条目) 委托条目 = 构建委托条目(委托原始, { 状态: '已完成', 承接者: 角色键 });
-        播报文本 = `[任务完成] ${角色名} 提交了【${任务名}】！获得奖励：${实得奖励币} 联邦币, ${实得奖励声望} 声望！`;
+        播报文本 = `[任务完成] ${角色名} 提交了【${任务名}】！获得奖励：${实得奖励币} ${奖励货币}, ${实得奖励声望} 声望！`;
       } else {
         任务条目 = 构建任务条目(任务原始, { 状态: '进行中', 最后更新时间tick: 当前tick });
         if (委托条目) 委托条目 = 构建委托条目(委托原始, { 状态: '进行中', 承接者: 角色键 });
@@ -46669,7 +46782,7 @@
       }
 
       补丁列表.push({ op: 'replace', path: 任务路径, value: 任务条目 });
-      if (联邦币 !== 原联邦币) 补丁列表.push({ op: 'replace', path: `/char/${角色路径}/财富/联邦币`, value: 联邦币 });
+      if (货币余额 !== 原货币余额) 补丁列表.push({ op: 'replace', path: `/char/${角色路径}/财富/${escapeJsonPointerValue(奖励货币)}`, value: 货币余额 });
       if (声望 !== 原声望) 补丁列表.push({ op: 'replace', path: `/char/${角色路径}/社交/声望`, value: 声望 });
       if (委托条目) 补丁列表.push({ op: 'replace', path: 委托路径, value: 委托条目 });
       玩家输入 = `我想提交当前任务【${任务名}】。`;
@@ -50905,10 +51018,11 @@ ${播报文本}
   function 格式化模块路由资源消耗(cost = {}) {
     if (!cost || typeof cost !== 'object') return '';
     const parts = [];
-    const fedCoin = toNumber(cost.fedCoin, 0);
+    const currency = toText(cost.currency, '').trim();
+    const coin = toNumber(cost.coin, 0);
     const sp = toNumber(cost.sp, 0);
     const vit = toNumber(cost.vit, 0);
-    if (fedCoin > 0) parts.push(`联邦币${formatNumber(fedCoin)}`);
+    if (coin > 0 && currency) parts.push(`${currency}${formatNumber(coin)}`);
     if (sp > 0) parts.push(`魂力${formatNumber(sp)}`);
     if (vit > 0) parts.push(`体力${formatNumber(vit)}`);
     return parts.join('、');
@@ -51350,16 +51464,50 @@ ${播报文本}
     const 财富 = 角色数据.财富 || {};
     const tick = Math.max(0.1, toNumber(request.耗时tick, 1));
     const 方式 = toText(request.移动方式, '步行');
-    let 联邦币 = 0;
+    const 钱包 = 读取当前时代钱包配置_桥接(snapshot?.rootData || {});
+    const 飞行能力 = 读取旅行飞行能力_桥接(角色数据);
+    const 合法方式 = {
+      dldl: ['步行', '马车', '远洋海船', '斗铠飞行', '飞行魂导器', '肉身飞行', '空间传送(极限斗罗)'],
+      jueshitangmen: ['步行', '魂导蒸汽车', '魂导列车', '远洋巨轮', '斗铠飞行', '飞行魂导器', '肉身飞行', '空间传送(极限斗罗)'],
+      current: ['步行', '校园短驳车', '魂导汽车', '魂导列车', '远洋巨轮', '斗铠飞行', '飞行魂导器', '机甲飞行', '肉身飞行', '空间传送(极限斗罗)'],
+      zjdl: ['步行', '校园短驳车', '飞机', '宇宙飞船', '宇宙飞船跃迁', '斗铠飞行', '飞行魂导器', '机甲飞行', '肉身飞行'],
+    }[钱包.eraId] || [];
+    if (!合法方式.includes(方式)) return { ok: false, reason: `${钱包.eraId || '未知时代'}不可使用交通方式：${方式}` };
+    const 地点上下文 = [角色数据?.状态?.位置, request.目标地点, request.归属父节点].map(值 => toText(值, '')).filter(Boolean).join(' ');
+    const 法币 = 读取当前时代法定货币_桥接(snapshot?.rootData || {}, 地点上下文);
+    let 货币数 = 0;
     let 魂力 = 0;
     let 体力 = 0;
     if (/步行|跑|徒步/.test(方式)) {
       体力 = Math.max(1, Math.round(tick * 3));
     } else if (/短驳|校车|公交/.test(方式)) {
-      联邦币 = Math.max(1, Math.round(tick * 2));
-    } else if (/魂导汽车|魂导车|列车|巨轮|船|车/.test(方式)) {
-      联邦币 = Math.max(1, Math.round(tick * 10));
-    } else if (/飞行|斗铠|机甲|肉身/.test(方式)) {
+      货币数 = Math.max(1, Math.round(tick * 2));
+    } else if (方式 === '马车') {
+      货币数 = Math.max(1, Math.ceil(tick / 12));
+    } else if (方式 === '魂导蒸汽车') {
+      货币数 = Math.max(1, Math.ceil(tick / 6));
+    } else if (/魂导汽车|魂导列车|远洋巨轮|远洋海船/.test(方式)) {
+      货币数 = 钱包.eraId === 'jueshitangmen'
+        ? Math.max(1, Math.ceil(tick / 3))
+        : Math.max(1, Math.round(tick * 10));
+    } else if (/飞机/.test(方式)) {
+      货币数 = Math.max(1, Math.round(tick * 15));
+    } else if (/宇宙飞船/.test(方式)) {
+      货币数 = Math.max(1, Math.round(tick * (方式.includes('跃迁') ? 40 : 20)));
+    } else if (方式 === '飞行魂导器') {
+      if (飞行能力.等级 < 30) return { ok: false, reason: '飞行魂导器至少需要30级魂力修为' };
+      if (飞行能力.飞行魂导器等级 <= 0) return { ok: false, reason: '需装配可用的飞行魂导器' };
+      魂力 = Math.max(1, Math.ceil(tick * Math.max(3, 13 - 飞行能力.飞行魂导器等级)));
+    } else if (方式 === '斗铠飞行') {
+      if (!飞行能力.有斗铠) return { ok: false, reason: '需拥有可用斗铠' };
+      魂力 = Math.max(1, Math.round(tick * 8));
+      体力 = Math.max(1, Math.round(tick * 2));
+    } else if (方式 === '机甲飞行') {
+      if (!飞行能力.有机甲) return { ok: false, reason: '需拥有可用机甲' };
+      魂力 = Math.max(1, Math.round(tick * 8));
+      体力 = Math.max(1, Math.round(tick * 2));
+    } else if (方式 === '肉身飞行') {
+      if (飞行能力.等级 < 70) return { ok: false, reason: '肉身飞行至少需要70级魂力修为' };
       魂力 = Math.max(1, Math.round(tick * 8));
       体力 = Math.max(1, Math.round(tick * 2));
     } else if (/传送|空间/.test(方式)) {
@@ -51367,21 +51515,35 @@ ${播报文本}
     } else {
       体力 = Math.max(1, Math.round(tick * 2));
     }
-    const 当前联邦币 = toNumber(财富.联邦币, 0);
+    if (货币数 > 0 && 法币.status !== 'resolved') return { ok: false, reason: '当前时代货币未就绪' };
+    const 货币 = 法币.status === 'resolved' ? 法币.currency : '';
+    const 当前货币 = toNumber(财富[货币], 0);
     const 当前魂力 = toNumber(属性.魂力, 0);
     const 当前体力 = toNumber(属性.体力, 0);
-    if (联邦币 > 当前联邦币) return { ok: false, reason: '联邦币不足', 联邦币, 魂力, 体力 };
-    if (魂力 > 当前魂力) return { ok: false, reason: '魂力不足', 联邦币, 魂力, 体力 };
-    if (体力 > 当前体力) return { ok: false, reason: '体力不足', 联邦币, 魂力, 体力 };
+    if (货币数 > 当前货币) return { ok: false, reason: `${货币}不足`, 货币, 货币数, 魂力, 体力 };
+    if (魂力 > 当前魂力) return { ok: false, reason: '魂力不足', 货币, 货币数, 魂力, 体力 };
+    if (体力 > 当前体力) return { ok: false, reason: '体力不足', 货币, 货币数, 魂力, 体力 };
     return {
       ok: true,
-      联邦币,
+      货币,
+      货币数,
       魂力,
       体力,
       消耗文本:
-        [联邦币 > 0 ? `${联邦币}联邦币` : '', 魂力 > 0 ? `${魂力}魂力` : '', 体力 > 0 ? `${体力}体力` : '']
+        [货币数 > 0 ? `${货币数}${货币}` : '', 魂力 > 0 ? `${魂力}魂力` : '', 体力 > 0 ? `${体力}体力` : '']
           .filter(Boolean)
           .join(' / ') || '无额外消耗',
+    };
+  }
+
+  function 读取旅行飞行能力_桥接(角色数据 = {}) {
+    return 读取旅行能力运行时_桥接()?.读取旅行能力(角色数据) || {
+      等级: 0,
+      有斗铠: false,
+      有机甲: false,
+      有神级机甲: false,
+      飞行魂导器等级: 0,
+      飞行魂导器名称: '',
     };
   }
 
@@ -51405,22 +51567,113 @@ ${播报文本}
       ? Math.max(1, Math.min(1.5, toNumber(travel?.体力倍率, 1)))
       : 1;
     const baseTicks = Math.max(0, toNumber(source.est_ticks, toNumber(request.耗时tick, 0)));
-    const estTicks = autonomous
+    let estTicks = autonomous
       ? Math.max(baseTicks > 0 ? 0.1 : 0, Math.round(baseTicks * timeMultiplier * 10) / 10)
       : baseTicks;
-    const costs = source.costs && typeof source.costs === 'object' && !Array.isArray(source.costs)
+    let costs = source.costs && typeof source.costs === 'object' && !Array.isArray(source.costs)
       ? { ...source.costs }
       : null;
+    const 飞行能力 = 读取旅行飞行能力_桥接(request.charData || {});
+    const 旅行运行时 = 读取旅行能力运行时_桥接();
+    const 精确字段 = ['start_x', 'start_y', 'target_x', 'target_y', 'distance'].map(字段 => toNumber(source[字段], NaN));
+    const 有精确地图上下文 = toText(source.map_id, '').trim() && 精确字段.every(Number.isFinite);
+    let 运行时已接管 = false;
+    if (有精确地图上下文 && 旅行运行时) {
+      const [startX, startY, targetX, targetY, suppliedDistance] = 精确字段;
+      let 地图快照 = null;
+      for (const host of [globalThis, globalThis.window, globalThis.parent, globalThis.top]) {
+        try {
+          if (host?.__sheepMapSnapshot) { 地图快照 = host.__sheepMapSnapshot; break; }
+        } catch (_) {}
+      }
+      const mapId = toText(source.map_id, '').trim();
+      const 当前X = toNumber(request?.charData?.状态?.横坐标, NaN);
+      const 当前Y = toNumber(request?.charData?.状态?.纵坐标, NaN);
+      const 起点已变化 = Number.isFinite(当前X) && Number.isFinite(当前Y) && 当前X >= 0 && 当前Y >= 0
+        && (Math.abs(当前X - startX) > 1 || Math.abs(当前Y - startY) > 1);
+      if (地图快照?.currentMapId && toText(地图快照.currentMapId, '') !== mapId) {
+        costs = { currency: '', coin: 0, sp: 0, vit: 0, canAfford: false, reason: '地图已切换，请重新规划路线' };
+        运行时已接管 = true;
+      } else if (起点已变化) {
+        costs = { currency: '', coin: 0, sp: 0, vit: 0, canAfford: false, reason: '角色位置已变化，请重新规划路线' };
+        运行时已接管 = true;
+      } else {
+        const bounds = 地图快照?.bounds && typeof 地图快照.bounds === 'object' ? 地图快照.bounds : null;
+        const width = Math.max(1, toNumber(bounds?.width, 1));
+        const height = Math.max(1, toNumber(bounds?.height, width));
+        const actualDistance = Math.hypot(targetX - startX, (targetY - startY) * width / height);
+        const tolerance = Math.max(1, actualDistance * 0.01);
+        if (Math.abs(actualDistance - suppliedDistance) > tolerance) {
+          costs = { currency: '', coin: 0, sp: 0, vit: 0, canAfford: false, reason: '路线距离校验失败，请重新规划路线' };
+          运行时已接管 = true;
+        } else {
+          const 钱包 = 读取当前时代钱包配置_桥接(request?.rootData || request?.snapshot?.rootData || {});
+          const runtimeResult = 旅行运行时.计算旅行参数({
+            method,
+            distance: actualDistance,
+            distanceScale: Math.max(0.003, Math.min(100, toNumber(source.distance_scale, 1))),
+            mapId,
+            eraId: 钱包.eraId,
+            character: request.charData || {},
+          });
+          if (runtimeResult?.recognized) {
+            运行时已接管 = true;
+            if (!runtimeResult.ok) {
+              costs = { currency: '', coin: 0, sp: 0, vit: 0, canAfford: false, reason: runtimeResult.reason || '当前旅行方式不可用' };
+            } else {
+              estTicks = runtimeResult.ticks;
+              costs = {
+                currency: '',
+                coin: 0,
+                sp: Math.max(0, Math.floor(toNumber(runtimeResult.costs?.sp, 0))),
+                vit: Math.max(0, Math.floor(toNumber(runtimeResult.costs?.vit, 0))),
+                canAfford: true,
+                note: toText(runtimeResult.note, method),
+              };
+            }
+          }
+        }
+      }
+    }
+    if (!有精确地图上下文 && method === '机甲飞行' && toText(source.map_id, '') === 'map_zjdl_stellar') {
+      costs = { currency: '', coin: 0, sp: 0, vit: 0, canAfford: false, reason: '星际机甲移动缺少精确路线，请重新规划' };
+      运行时已接管 = true;
+    }
+    const 飞行阻碍 = 运行时已接管 ? '' : method === '斗铠飞行' && !飞行能力.有斗铠
+      ? '需拥有可用斗铠'
+      : method === '机甲飞行' && !飞行能力.有机甲
+        ? '需拥有可用机甲'
+        : method === '肉身飞行' && 飞行能力.等级 < 70
+          ? '肉身飞行至少需要70级魂力修为'
+          : method === '飞行魂导器' && 飞行能力.等级 < 30
+            ? '飞行魂导器至少需要30级魂力修为'
+            : method === '飞行魂导器' && 飞行能力.飞行魂导器等级 <= 0
+              ? '需装配可用的飞行魂导器'
+              : '';
+    if (!运行时已接管 && (飞行阻碍 || method === '飞行魂导器')) {
+      costs ||= { currency: '', coin: 0, sp: 0, vit: 0 };
+      if (飞行阻碍) {
+        costs.canAfford = false;
+        costs.reason = 飞行阻碍;
+      } else {
+        costs.sp = Math.max(1, Math.ceil(estTicks * Math.max(3, 13 - 飞行能力.飞行魂导器等级)));
+        costs.note = `${飞行能力.飞行魂导器等级}级飞行魂导器${飞行能力.飞行魂导器名称 ? `·${飞行能力.飞行魂导器名称}` : ''}`;
+      }
+    }
     if (costs) {
       if (autonomous && vitMultiplier > 1 && toNumber(costs.vit, 0) > 0) {
         costs.vit = Math.max(1, Math.ceil(toNumber(costs.vit, 0) * vitMultiplier));
       }
       const charData = request.charData || {};
-      const wealth = toNumber(charData?.财富?.联邦币, 0);
+      const currency = toText(costs.currency, '').trim();
+      const coin = toNumber(costs.coin, 0);
+      const wealth = toNumber(charData?.财富?.[currency], 0);
       const soulPower = toNumber(charData?.属性?.魂力, 0);
       const vitality = toNumber(charData?.属性?.体力, 0);
-      const insufficient = toNumber(costs.fedCoin, 0) > wealth
-        ? '联邦币不足'
+      const insufficient = coin > 0 && !currency
+        ? '当前时代货币未就绪'
+        : coin > wealth
+          ? `${currency}不足`
         : toNumber(costs.sp, 0) > soulPower
           ? '魂力不足'
           : toNumber(costs.vit, 0) > vitality ? '体力不足' : '';
@@ -51431,7 +51684,7 @@ ${播报文本}
         costs.canAfford = true;
       }
       costs.text = [
-        toNumber(costs.fedCoin, 0) > 0 ? `${toNumber(costs.fedCoin, 0)}联邦币` : '',
+        coin > 0 ? `${coin}${currency}` : '',
         toNumber(costs.sp, 0) > 0 ? `${toNumber(costs.sp, 0)}魂力` : '',
         toNumber(costs.vit, 0) > 0 ? `${toNumber(costs.vit, 0)}体力` : '',
       ].filter(Boolean).join(' / ') || '无额外消耗';
@@ -51501,7 +51754,8 @@ ${播报文本}
       est_ticks: request.耗时tick,
       est_duration: 格式化tick时长文本_桥接(request.耗时tick),
       costs: {
-        fedCoin: 基础消耗.联邦币,
+        currency: 基础消耗.货币,
+        coin: 基础消耗.货币数,
         sp: 基础消耗.魂力,
         vit: 基础消耗.体力,
         canAfford: true,
@@ -51542,11 +51796,11 @@ ${播报文本}
       },
     ];
     const 消耗 = 最终移动请求.costs;
-    if (消耗.fedCoin > 0)
+    if (消耗.coin > 0)
       patchOps.push({
         op: 'replace',
-        path: `/char/${activePath}/财富/联邦币`,
-        value: Math.max(0, toNumber(deepGet(request.charData, '财富.联邦币', 0), 0) - 消耗.fedCoin),
+        path: `/char/${activePath}/财富/${escapeJsonPointerValue(消耗.currency)}`,
+        value: Math.max(0, toNumber(request.charData?.财富?.[消耗.currency], 0) - 消耗.coin),
       });
     if (消耗.sp > 0)
       patchOps.push({
@@ -51594,7 +51848,8 @@ ${播报文本}
       target_x: Number.isFinite(目标坐标.x) ? 目标坐标.x : 当前坐标.x,
       target_y: Number.isFinite(目标坐标.y) ? 目标坐标.y : 当前坐标.y,
       costs: {
-        fedCoin: 基础消耗 ? 基础消耗.联邦币 : 0,
+        currency: 基础消耗 ? 基础消耗.货币 : '',
+        coin: 基础消耗 ? 基础消耗.货币数 : 0,
         sp: 基础消耗 ? 基础消耗.魂力 : 0,
         vit: 基础消耗 ? 基础消耗.体力 : 0,
         canAfford: true,
@@ -51625,11 +51880,11 @@ ${播报文本}
       },
     ];
     const costs = mapRequest.costs && typeof mapRequest.costs === 'object' ? mapRequest.costs : {};
-    if (toNumber(costs.fedCoin, 0) > 0)
+    if (toNumber(costs.coin, 0) > 0)
       patchOps.push({
         op: 'replace',
-        path: `/char/${activePath}/财富/联邦币`,
-        value: Math.max(0, toNumber(deepGet(request.charData, '财富.联邦币', 0), 0) - toNumber(costs.fedCoin, 0)),
+        path: `/char/${activePath}/财富/${escapeJsonPointerValue(costs.currency)}`,
+        value: Math.max(0, toNumber(request.charData?.财富?.[costs.currency], 0) - toNumber(costs.coin, 0)),
       });
     if (toNumber(costs.sp, 0) > 0)
       patchOps.push({
@@ -51656,6 +51911,7 @@ ${播报文本}
     const mapRequest = 应用旅行环境修正_桥接({
       ...原始地图请求,
       charData: 角色.char,
+      rootData: snapshot?.rootData || {},
     }, 原始地图请求);
     if (mapRequest.costs && mapRequest.costs.canAfford === false) {
       return { ok: false, reason: toText(mapRequest.costs.reason, '资源不足，无法前往该节点。'), patchOps: [] };
@@ -51684,11 +51940,11 @@ ${播报文本}
       },
     ];
     const costs = mapRequest.costs && typeof mapRequest.costs === 'object' ? mapRequest.costs : {};
-    if (toNumber(costs.fedCoin, 0) > 0)
+    if (toNumber(costs.coin, 0) > 0)
       patchOps.push({
         op: 'replace',
-        path: `/char/${activePath}/财富/联邦币`,
-        value: Math.max(0, toNumber(deepGet(角色.char, '财富.联邦币', 0), 0) - toNumber(costs.fedCoin, 0)),
+        path: `/char/${activePath}/财富/${escapeJsonPointerValue(costs.currency)}`,
+        value: Math.max(0, toNumber(角色.char?.财富?.[costs.currency], 0) - toNumber(costs.coin, 0)),
       });
     if (toNumber(costs.sp, 0) > 0)
       patchOps.push({
@@ -52277,6 +52533,7 @@ ${播报文本}
     for (const item of 队列) {
       const result = await routeModuleIntentPayload(item, options);
       结果列表.push(result);
+      登记模块结果动作角色_桥接(result, options);
       const 失败 = !result?.handled || result.dispatchMode === 'failed_summary' || /状态：执行失败/.test(toText(result.runtimeEvent, ''));
       if (失败) break;
       if (!(result?.dryRun === true || result?.dispatchMode === 'settled_summary')) break;
@@ -52672,6 +52929,50 @@ ${播报文本}
     return 执行副职业工坊打开路由(snapshot, request);
   }
 
+  function 登记模块结果动作角色_桥接(路由结果 = {}, options = {}) {
+    const 动作模式表 = {};
+    const snapshot = liveSnapshot || lastRenderableSnapshot;
+    const 登记角色 = (候选, 模式) => {
+      const 原名 = toText(候选?.key || 候选?.charKey || 候选?.name || 候选?.名称 || 候选?.角色 || 候选, '').trim();
+      if (!原名) return;
+      const 规范名 = resolveSnapshotCharKey(snapshot, 原名) || 原名;
+      if (snapshot?.rootData?.char?.[规范名]) 动作模式表[规范名] = 模式;
+    };
+    const 登记请求 = (请求 = {}, 模式 = '') => {
+      if (!请求 || typeof 请求 !== 'object' || Array.isArray(请求)) return;
+      登记角色(请求.charKey || 请求.角色名 || 请求.角色, 模式);
+      (Array.isArray(请求.角色列表) ? 请求.角色列表 : []).forEach(角色 => 登记角色(角色, 模式));
+      const 参战者 = 请求.参战者 && typeof 请求.参战者 === 'object' && !Array.isArray(请求.参战者) ? 请求.参战者 : {};
+      Object.values(参战者).forEach(队伍 => (Array.isArray(队伍) ? 队伍 : []).forEach(角色 => 登记角色(角色, 模式)));
+    };
+    const 遍历结果 = 结果 => {
+      if (!结果 || typeof 结果 !== 'object' || Array.isArray(结果)) return;
+      if (结果.kind === 'module_queue') {
+        (Array.isArray(结果.results) ? 结果.results : []).forEach(遍历结果);
+        return;
+      }
+      const 模式 = toText(结果.kind, '').trim();
+      const 成功 = 结果.handled === true
+        && 结果.dispatchMode !== 'failed_summary'
+        && !/状态：执行失败/.test(toText(结果.runtimeEvent, ''));
+      if (!成功 || !模式 || ['未命中', 'time_advance'].includes(模式)) return;
+      const 登记前数量 = Object.keys(动作模式表).length;
+      登记请求(结果.request, 模式);
+      if (Object.keys(动作模式表).length === 登记前数量) 登记角色(snapshot?.activeName, 模式);
+    };
+    遍历结果(路由结果);
+    if (!Object.keys(动作模式表).length) return 动作模式表;
+    if (当前剧情模块路由事务上下文) {
+      当前剧情模块路由事务上下文.角色动作模式表 = {
+        ...(当前剧情模块路由事务上下文.角色动作模式表 || {}),
+        ...动作模式表,
+      };
+    }
+    const 记录 = 查找剧情模块预结算记录_桥接(options);
+    if (记录) 记录.角色动作模式表 = { ...(记录.角色动作模式表 || {}), ...动作模式表 };
+    return 动作模式表;
+  }
+
   function installDirectModuleIntentGuard() {
     window.__LWCS_APPLY_BATTLE_ADJUDICATION__ = async (textOrPayload, options = {}) => {
       const 上一上下文 = 当前剧情模块路由事务上下文;
@@ -52701,10 +53002,15 @@ ${播报文本}
         当前剧情模块路由事务上下文 = {
           ...(options && typeof options === 'object' ? options : {}),
           source: 'story_generation_guard',
+          角色动作模式表: {
+            ...(options?.角色动作模式表 && typeof options.角色动作模式表 === 'object' ? options.角色动作模式表 : {}),
+          },
         };
       }
       try {
-        return await routeModuleIntentPayload(input, options);
+        const 结果 = await routeModuleIntentPayload(input, options);
+        登记模块结果动作角色_桥接(结果, options);
+        return 结果;
       } finally {
         当前剧情模块路由事务上下文 = 上一上下文;
       }
@@ -54622,6 +54928,48 @@ ${播报文本}
         return;
       }
     }
+    const 装备温养按钮 = eventTarget ? eventTarget.closest('[data-equipment-nurture-target]') : null;
+    if (装备温养按钮 && detailSurfaceHost.contains(装备温养按钮)) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!isSnapshotPlayerControlled(liveSnapshot)) {
+        showUiToast('旁观视角不可操作。', 'error');
+        return;
+      }
+      const 目标 = toText(装备温养按钮.getAttribute('data-equipment-nurture-target'), '').trim();
+      const 当前快照 = liveSnapshot || lastRenderableSnapshot || {};
+      const 角色键 = resolveSnapshotCharKey(当前快照, toText(当前快照.activeName, '')) || toText(当前快照.activeName, '');
+      const 运行时 = 读取MVUSchema运行时接口_桥接();
+      if (!角色键 || !['斗铠', '机甲'].includes(目标) || typeof 运行时?.读取装备温养投影 !== 'function') {
+        showUiToast('装备温养运行时未就绪。', 'error');
+        return;
+      }
+      try {
+        let 新目标 = '无';
+        await mutateStatDataByEditor(statData => {
+          const 角色 = deepGet(statData, ['char', 角色键], null);
+          if (!角色 || typeof 角色 !== 'object') throw new Error('当前角色不存在。');
+          if (!角色.装备 || typeof 角色.装备 !== 'object') throw new Error('当前角色没有装备数据。');
+          新目标 = toText(角色.装备._温养目标, '无') === 目标 ? '无' : 目标;
+          if (新目标 !== '无') {
+            const 投影角色 = cloneJsonValue(角色, {});
+            投影角色.装备._温养目标 = 新目标;
+            const 投影 = 运行时.读取装备温养投影(投影角色, statData);
+            if (!投影?.canStart) throw new Error(投影?.pauseReason || '当前条件不足，无法开启温养。');
+          }
+          角色.装备._温养目标 = 新目标;
+          const 原播报 = toText(deepGet(statData, ['sys', '系统播报'], ''), '').trim();
+          const 播报 = 新目标 === '无' ? `[装备温养] ${角色键}已停止装备温养。` : `[装备温养] ${角色键}开始温养${新目标}。`;
+          deepSetMutable(statData, ['sys', '系统播报'], !原播报 || 原播报 === '初始化' ? 播报 : `${原播报} ${播报}`);
+        }, { force: true });
+        showUiToast(新目标 === '无' ? '已停止装备温养。' : `已开始温养${新目标}。`);
+        await refreshLiveSnapshot({ force: true });
+        rerenderDetailSurface('武装工坊详细页', options);
+      } catch (error) {
+        showUiToast(error && error.message ? error.message : '装备温养设置失败。', 'error');
+      }
+      return;
+    }
     const actionBtn = eventTarget ? eventTarget.closest('.armory-action-btn') : null;
     if (actionBtn && detailSurfaceHost.contains(actionBtn)) {
       event.preventDefault();
@@ -55302,6 +55650,9 @@ ${播报文本}
             当前快照.currentLoc || '当前位置',
           );
           const 当前tick = Math.max(0, Math.floor(toNumber(deepGet(当前快照, 'rootData.world.时间.tick', 0), 0)));
+          const 委托法币 = 读取当前时代法定货币_桥接(当前快照.rootData || {}, currentLoc);
+          if (委托法币.status !== 'resolved') throw new Error('当前时代委托货币未就绪。');
+          const 委托奖励货币 = 委托法币.currency;
           const 委托数据 = {
             标题: boardName,
             状态: '待接取',
@@ -55342,7 +55693,7 @@ ${播报文本}
 难度：${boardDifficulty}
 资源级别：${boardResource}
 截止：${委托截止文本}
-奖励：${boardRewardCoin} 联邦币 / ${boardRewardRep} 声望
+奖励：${boardRewardCoin} ${委托奖励货币} / ${boardRewardRep} 声望
 
 委托已经写入委托板。正文需要自然反馈发布结果、周围反应与后续可接取空间，不要重复输出这批变量更新。`,
             { requestKind: '委托发布', patchOps: 委托补丁 },
@@ -58804,15 +59155,21 @@ ${播报文本}
       return result;
     },
 
-    构建造物背包值(技能 = {}, 效果 = {}, 当前tick = 0, 持有者名 = '') {
+    构建造物背包值(技能 = {}, 效果 = {}, 当前tick = 0, 持有者名 = '', 数据根 = {}) {
       const 物品名 = toText(技能?.魂技名 || 技能?.name, '临时造物');
       const 相对有效期tick = Math.max(0, toNumber(效果?.有效期tick, 0));
+      const 钱包 = 读取当前时代钱包配置_桥接(数据根);
+      const 显式货币 = toText(效果?.默认货币, '');
+      const 货币结果 = 显式货币
+        ? 钱包.registry?.resolveCurrency(钱包.eraId, 显式货币)
+        : 读取当前时代法定货币_桥接(数据根, deepGet(数据根, ['char', 持有者名, '状态', '位置'], ''));
+      if (货币结果?.status !== 'resolved') throw new Error(`造物【${物品名}】缺少当前时代可用货币`);
       const 物品定义 = {
         分类: '魂技造物',
         品质: toText(效果?.品质, '普通'),
         描述: toText(效果?.描述 || 技能?.效果描述, '使用后触发对应魂技效果'),
         基础价格: Math.max(1, Math.floor(toNumber(效果?.基础价格, 1))),
-        默认货币: toText(效果?.默认货币, '联邦币'),
+        默认货币: 货币结果.currency || 货币结果.definition?.名称,
         使用效果: cloneJsonValue(Array.isArray(效果?.使用效果) ? 效果.使用效果 : [], []),
       };
       const 使用副作用列表 = cloneJsonValue(Array.isArray(效果?.副作用列表) ? 效果.副作用列表 : [], []);
@@ -58997,6 +59354,7 @@ ${播报文本}
                 输出效果,
                 当前tick,
                 charKey,
+                statData,
               );
               const 已有物品定义 = 查找物品定义_桥接(statData, 物品名);
               const 下一物品定义 = {

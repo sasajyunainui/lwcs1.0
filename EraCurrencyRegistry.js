@@ -164,7 +164,7 @@
     const 显式名称 = String(显式货币 || '').trim();
     if (显式名称) {
       const 显式结果 = 解析货币(时代, 显式名称);
-      if (显式结果.status === 'resolved' || 显式结果.reason === 'identity-item-excluded') return 显式结果;
+      return 显式结果;
     }
     const 文本 = String(上下文 || '');
     let 货币 = 时代结果.definition.默认法币;
@@ -178,6 +178,17 @@
       else if (/天龙/.test(文本)) 货币 = '天龙晶币';
       else if (/龙马/.test(文本)) 货币 = '龙马币';
     }
+    return 解析货币(时代, 货币);
+  }
+
+  function 解析法定货币(时代, 上下文 = '') {
+    const 时代结果 = 解析时代(时代);
+    if (时代结果.status !== 'resolved') return 时代结果;
+    const 文本 = String(上下文 || '');
+    let 货币 = 时代结果.definition.默认法币;
+    if (时代 === 'current' && /星罗大陆|星罗帝国|星罗城/.test(文本)) 货币 = '星罗币';
+    else if (时代 === 'zjdl' && /天龙星|天龙族/.test(文本)) 货币 = '天龙晶币';
+    else if (时代 === 'zjdl' && /龙马星系|龙马联邦/.test(文本)) 货币 = '龙马币';
     return 解析货币(时代, 货币);
   }
 
@@ -249,6 +260,7 @@
     crossEraMappings: 跨时代映射,
     resolveCurrency: 查询货币,
     resolveTradeCurrency: 解析交易货币,
+    resolveFiatCurrency: 解析法定货币,
     isDirectlySpendable: 可直接消费,
     getCurrencyKind: 获取货币种类,
     listCurrencies: 列出货币,

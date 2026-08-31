@@ -99,6 +99,7 @@ const ClothingSchema = z
   });
 const EquipmentSchema = z
   .object({
+    _温养目标: z.enum(['无', '斗铠', '机甲']).prefault('无'),
     武器: z
       .object({
         名称: z.string().prefault('无'),
@@ -173,6 +174,7 @@ const EquipmentSchema = z
           })
           .prefault({}),
         _已排异: z.boolean().prefault(false),
+        _温养进度tick: z.coerce.number().prefault(0),
       })
       .prefault({}),
     机甲: z
@@ -195,6 +197,7 @@ const EquipmentSchema = z
             体力上限: z.coerce.number().prefault(0),
           })
           .prefault({}),
+        _温养进度tick: z.coerce.number().prefault(0),
       })
       .prefault({}),
     魂导器: z
