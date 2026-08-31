@@ -2812,7 +2812,9 @@
 // 结算倍率; SETTLEMENT_RATIO_ADJUST entryId/operation/结算倍率; FOLLOW_UP entryId/grantType/
 // ownerId/followUpKey/triggerKey/payloadDirectFacts with maxActions >=1 only for 主动触发; SUMMON_WINDOW entryId/
 // grantType/召唤单位类型/召唤物名称/行动模式/durationTurns); private aliases key/字段/方式
-// are rejected; every entry requires entryId and counts into OUTSIDE_BATCH1_ROW_COUNT.
+// are rejected; every entry requires entryId. OUTSIDE_BATCH1_ROW_COUNT is now
+// limited to unresolved rows/windows: a supported SUMMON_WINDOW is already owned
+// by the summon feature/causal chain and therefore is not counted a second time.
 // Revision 4 (batch-2 rev4): six raw feature codes pinned at fixed catalog positions 23-28
 // (STATE_DELTA_PERCENT/SETTLEMENT_MODIFIER_PERCENT/SUMMON_COUNT/SUMMON_STRENGTH/
 // SUMMON_DURATION/RESOURCE_DELTA_PERCENT);
@@ -2824,15 +2826,16 @@
 // PENDING_DIRECTION_PROJECTION upstream in the adapter and never reach the compiler);
 // SUMMON_WINDOW rows route
 // summon.count/summon.strength/summon.duration (wrong unit => UNKNOWN with row fact id),
-// summon.inheritRatio maps to no feature code and only counts OUTSIDE_BATCH1_ROW_COUNT;
+// summon.inheritRatio maps to no immediate feature code and is delegated to the
+// realized summon action-potential chain instead of being counted as OUTSIDE;
 // the summon family block (all three codes) is emitted per activating sourceEffectId
 // (routed row or projectionFamilies 召唤生成 entry); mechanicMetadataEntries (closed entries
 // array, one per effect instance) / projectionFamilies root inputs are closed audit/
 // routing-only bridges (per-prototype key subsets per PDA rev5Spec, values never enter
 // features, prototype names never weighted => PROTOTYPE_NAME_WEIGHTING_REJECTED);
 // SUMMON_WINDOW scheduledFacts entries carry grantType/召唤单位类型/召唤物名称/行动模式/
-// durationTurns and count into OUTSIDE with entryId in sourceEventIds; scheduled windows
-// never become KNOWN SUMMON_DURATION; formal caps (256 features / 128 rows / 64 modifier
+// durationTurns; scheduled windows never become KNOWN SUMMON_DURATION and do not
+// duplicate the summon family as OUTSIDE; formal caps (256 features / 128 rows / 64 modifier
 // entries / 200000 work units) throw CAP_EXCEEDED as whole-compile rejections. Revision 2
 // semantics stay (identity/sides/cost/
 // hitCheckApplicability/STATE_PRESENCE {0,1}/29 raw features base, no normalization
@@ -2843,7 +2846,7 @@
 
   var MOUNT_NAME = '__LWCS_BEHAVIOR_IMMEDIATE_FEATURE__';
   var ROLE = 'R9_CANDIDATE_UNREGISTERED';
-  var REVISION = 17;
+  var REVISION = 19;
   var REGISTRY_ID = 'RC6-M2-BEHAVIOR-IMMEDIATE-FEATURE-V1-2026-08-14';
   var SCHEMA_VERSION = 'BehaviorImmediateFeatureV1';
   var F0 = 14;
@@ -3015,8 +3018,8 @@
   ];
   var REACTION_RESPONSE_KINDS = ['PASS_OPPORTUNITY', 'DEFEND', 'EVADE'];
   var SNAPSHOT_KEYS = ['units', 'sides', 'actorStatus'];
-  var UNIT_FIELDS = ['hp', 'hp_max', 'sp', 'sp_max', 'men', 'men_max', 'vit', 'vit_max', 'def', 'agi', 'shield', '状态效果', '蓄力技能'];
-  var NUMERIC_UNIT_FIELDS = ['hp', 'hp_max', 'sp', 'sp_max', 'men', 'men_max', 'vit', 'vit_max', 'def', 'agi', 'shield'];
+  var UNIT_FIELDS = ['hp', 'hp_max', 'sp', 'sp_max', 'men', 'men_max', 'vit', 'vit_max', 'str', 'def', 'agi', 'shield', 'observed_response_capacity', '状态效果', '蓄力技能'];
+  var NUMERIC_UNIT_FIELDS = ['hp', 'hp_max', 'sp', 'sp_max', 'men', 'men_max', 'vit', 'vit_max', 'str', 'def', 'agi', 'shield', 'observed_response_capacity'];
   // R4b2 delivery identity: HP_DELTA atomic rows carry effectInstanceId/targetId
   // (transcribed by the bridge from preview contribution identity) plus the
   // decision-visible damageBasis.basisView attestation inside evidence.
@@ -3822,6 +3825,12 @@
           out.push(kKnown('STATE_DURATION', 'TURNS', dur));
         }
       }
+    } else if (factType === 'RESOURCE_TRANSFER') {
+      // Resource transfer is a two-sided transaction. The immediate scalar row
+      // cannot preserve donor/recipient direction, while the formal causal layer
+      // consumes Preview's realized RESOURCE_OPTION_CHANGED pair. An empty
+      // projection here means delegated-without-duplication, not unsupported.
+      return [];
     } else if (factType === 'SUMMON_WINDOW') {
       if (key === 'summon.count') {
         if (unit === 'COUNT') out.push(kKnown('SUMMON_COUNT', 'COUNT', amount));
@@ -3892,15 +3901,25 @@
           if (!summonByEffect[row.sourceEffectId]) summonByEffect[row.sourceEffectId] = {};
           summonByEffect[row.sourceEffectId][key] = { unit: row.unit, amount: amount, factId: rowFactId };
           summonActivated[row.sourceEffectId] = true;
+        } else if (key === 'summon.inheritRatio') {
+          // Inheritance is realized in the summoned unit's actual action
+          // potential. Counting it as OUTSIDE would penalize the same summon a
+          // second time merely because this scalar catalog has no inheritance
+          // axis.
+          continue;
         } else {
-          // summon.inheritRatio and unknown summon keys map to no feature code
+          // Truly unknown summon keys remain outside the supported feature set.
           outside += 1;
           outsideFactIds.push(rowFactId);
         }
         continue;
       }
       var projs = projectRow(factType, key, row.unit, amount, dur);
-      if (projs === null || projs.length === 0) { outside += 1; outsideFactIds.push(rowFactId); continue; }
+      if (projs === null) { outside += 1; outsideFactIds.push(rowFactId); continue; }
+      // [] is an explicit downstream-delegation marker. It must not be merged
+      // with null (unrecognized/unowned), otherwise supported causal facts such
+      // as RESOURCE_TRANSFER receive a systematic complexity penalty.
+      if (projs.length === 0) continue;
       for (var p = 0; p < projs.length; p += 1) {
         var pr = projs[p];
         recs.push(rec(pr.featureCode, pr.unitFamily, pr.status, pr.reasonCode, pr.value, [rowFactId], [], 1, row.sourceEffectId, key));
@@ -4244,11 +4263,22 @@
     return null;
   }
 
-  function scheduledEntryIds(input) {
+  function unresolvedScheduledEntryIds(input) {
     var sched = input.scheduledFacts;
     var out = [];
     if (!Array.isArray(sched)) return out;
-    for (var i = 0; i < sched.length; i += 1) out.push(sched[i].entryId);
+    for (var i = 0; i < sched.length; i += 1) {
+      // A valid summon window is already represented by the summon-family rows
+      // and by the causal summon action-potential projection. A valid duration
+      // adjustment is likewise owned by the preview's STATE_CHANGED plus
+      // SCHEDULED_HP_DELTA projection. Keep both event ids out of the legacy
+      // OUTSIDE feature instead of penalizing an already-projected mechanic a
+      // second time; other scheduled mechanics remain unresolved until they
+      // gain an explicit formal owner.
+      if (sched[i].grantType === 'SUMMON_WINDOW') continue;
+      if (sched[i].operation === 'WINDOW_ADJUST') continue;
+      out.push(sched[i].entryId);
+    }
     return out;
   }
 
@@ -4292,7 +4322,7 @@
     );
   }
 
-  function candidateFeatures(input, outsideCount, outsideFactIds) {
+  function candidateFeatures(input, outsideCount, outsideFactIds, outsideScheduledIds) {
     var out = [];
     out.push(known('RELATION_TARGET_COUNT', 'COUNT', input.candidate.targetSet.length));
     out.push(targetSideRec(input));
@@ -4308,7 +4338,7 @@
     out.push(excl ? knownStr('HARD_EXCLUSION_REASON', 'ENUM', excl) : na('HARD_EXCLUSION_REASON', 'ENUM', 'NOT_EXCLUDED'));
     out.push(unk('SETTLEMENT_DAMAGE', 'ABS', 'FINAL_SETTLEMENT_UNKNOWN'));
     out.push(unk('ROLL_REALIZATION', 'BOOL', 'FUTURE_REALIZATION_UNKNOWN'));
-    out.push(rec('OUTSIDE_BATCH1_ROW_COUNT', 'COUNT', 'KNOWN', 'OK', outsideCount, outsideFactIds || [], scheduledEntryIds(input), 0, '', ''));
+    out.push(rec('OUTSIDE_BATCH1_ROW_COUNT', 'COUNT', 'KNOWN', 'OK', outsideCount, outsideFactIds || [], outsideScheduledIds || [], 0, '', ''));
     out.push.apply(out, reactionMechanicsRows(input));
     out.push(reactionCounterWindowRow(input));
     for (var j = 0; j < out.length; j += 1) {
@@ -4462,7 +4492,13 @@
     var work = F0 + (Array.isArray(input.directFacts) ? input.directFacts.length : 0) + modCount + schedCount + atomicCount;
     if (work > CAPS.MAX_WORK_UNITS_PER_CALL) throw rejection('CAP_EXCEEDED', { work: work });
     var rowsOut = computeRows(input);
-    var candRecs = candidateFeatures(input, rowsOut.outsideCount + schedCount, rowsOut.outsideFactIds);
+    var outsideScheduledIds = unresolvedScheduledEntryIds(input);
+    var candRecs = candidateFeatures(
+      input,
+      rowsOut.outsideCount + outsideScheduledIds.length,
+      rowsOut.outsideFactIds,
+      outsideScheduledIds
+    );
     var doc = assemble(input.candidate.candidateId, candRecs.concat(chargeTargetRows(input)).concat(rowsOut.recs));
     var frozen = freezeDeep(doc);
     if (m) {
@@ -4562,12 +4598,12 @@
         resourceInsufficientDerivation: 'RESOURCE_INSUFFICIENT derives from the same actor-only affordability check, last in precedence (after legalityFlags/legalityModifiers, actorStatus, TARGET_EMPTY): KNOWN min ratio < 1 (strict cost > available) => RESOURCE_INSUFFICIENT; equality and affordable => not excluded; no publicCost, missing actor/axis or UNKNOWN => no exclusion, never guessed; other hard-exclusion codes keep first-code precedence',
         targetSide: 'sides-map equality only (SELF by id equality, ALLY by side equality, ENEMY otherwise, MIXED on distinct classes, SIDE_UNOBSERVED when any declared target side missing, NO_TARGET_AXIS on empty axis); no prefix guessing/default ALLY/neutral folding',
         successProbability: 'R4b2 damage-delivery hit axis: only outcomeKind HP_DELTA rows with evidence.damageBasis.basisView DECISION_VISIBLE, nonempty effectInstanceId/targetId and finite hitProbability are deliveries; dedupe by (effectInstanceId,targetId), same identity differing probability => UNKNOWN(CONFLICTING_DELIVERIES); per-target mean over independent deliveries then mean over hit-axis targets (targets without delivery are NO_HIT_AXIS and excluded from the denominator); no damage delivery at all => NOT_APPLICABLE(NO_HIT_AXIS); deliveryStatus MISSING/NON_FINITE or missing identity/basis => UNKNOWN fail-closed; empty targetSet keeps existing missing semantics; no FIRST/JOINT/MIN/MAX/applicationProbability/Runtime roll; actionKind never special-cased',
-        outsideRowCounting: 'rows outside the batch-1 families plus every scheduledFacts entry count into OUTSIDE_BATCH1_ROW_COUNT; scheduled entryIds recorded in sourceEventIds; nothing silently dropped',
+        outsideRowCounting: 'only unrecognized/unowned direct rows and unresolved scheduledFacts count into OUTSIDE_BATCH1_ROW_COUNT; RESOURCE_TRANSFER is delegated to the realized two-sided causal resource chain; SUMMON_WINDOW and summon.inheritRatio are delegated to summon-family plus causal action-potential ownership; WINDOW_ADJUST is delegated to preview STATE_CHANGED/SCHEDULED_HP_DELTA ownership; unresolved direct fact ids use sourceFactIds and unresolved scheduled entryIds use sourceEventIds',
         statePresence: 'STATE_DELTA non-attribute/judgment key: unit=BOOL => KNOWN 1 (amount>0) or 0 (amount<=0); unit=COUNT => UNKNOWN(STATE_FORM_UNMAPPED), never coerced to BOOL; other units => UNIT_FAMILY_MISMATCH; BOOL KNOWN domain strictly {0,1}',
         batch2StateDeltaPercent: 'STATE_DELTA state.primary/state.secondary PERCENT => STATE_DELTA_PERCENT (signed declared magnitude, never multiplied by duration); other PERCENT keys => UNKNOWN(MISSING_SOURCE_FACT); other units/keys keep revision-2 STATE_PRESENCE/UNIT_FAMILY_MISMATCH rules',
         resourceDeltaPercent: 'RESOURCE_OPTION_CHANGED key=resource name unit=PERCENT => RESOURCE_DELTA_PERCENT (raw signed percent, never multiplied by duration); ABS rows keep RESOURCE_DELTA; unsigned percent rows stay PENDING_DIRECTION_PROJECTION upstream and never reach the compiler',
         batch2Settlement: 'STATE_DELTA settlement.primary PERCENT => SETTLEMENT_MODIFIER_PERCENT only (no STATE_DURATION, no HP/RESOURCE double rows from the same effect); SETTLEMENT_DAMAGE stays ALWAYS_UNKNOWN',
-        batch2Summon: 'SUMMON_WINDOW rows route summon.count/strength/duration (wrong unit => UNKNOWN(MISSING_SOURCE_FACT) with row fact id); summon.inheritRatio and unknown summon keys map to no feature code and count OUTSIDE_BATCH1_ROW_COUNT with row fact ids; the summon family block (all three codes) is emitted once per activating sourceEffectId (routed row or projectionFamilies 召唤生成); scheduled SUMMON_WINDOW entries never become KNOWN SUMMON_DURATION',
+        batch2Summon: 'SUMMON_WINDOW rows route summon.count/strength/duration (wrong unit => UNKNOWN(MISSING_SOURCE_FACT) with row fact id); summon.inheritRatio is delegated to the realized summon action-potential chain, while unknown summon keys still count OUTSIDE_BATCH1_ROW_COUNT; the summon family block (all three codes) is emitted once per activating sourceEffectId (routed row or projectionFamilies 召唤生成); scheduled SUMMON_WINDOW entries never become KNOWN SUMMON_DURATION and do not duplicate the family as OUTSIDE',
         auditBridges: 'mechanicMetadataEntries (closed per-effect array with per-prototype key subsets per PDA rev5Spec) / projectionFamilies root inputs are the only admitted bridge (bridgeV1); strictly validated closed shapes; values never enter feature values; prototype names are routing/audit identity only (PROTOTYPE_NAME_WEIGHTING_REJECTED)',
         formalCaps: 'MAX_FEATURES_PER_CANDIDATE=256, MAX_FACT_ROWS_PER_CANDIDATE=128, MAX_MODIFIER_ENTRIES_PER_CANDIDATE=64, MAX_WORK_UNITS_PER_CALL=200000; any breach throws CAP_EXCEEDED as a whole-compile rejection, never candidate pruning, never wall clock'
       }
@@ -5969,23 +6005,32 @@
   const MODEL_HASH = '6ca55cf48790533db04272c146c98ba21c91b746c59e7053cf5a8d943976d145';
   const WEIGHTS_HASH = '190c00a8f137b0cbf2d186f685718df1786d9be17324a4083f43927a858f5e7d';
   const FEATURE_SCHEMA_HASH = '1ae9cd7d4d2353efd76df73576d6a235bcefb72fe9ee26d40b626f1afc52a76f';
-  const DBP_REVISION = 16;
+  const DBP_REVISION = 18;
   const DBP_CONTRACT_HASH = '69f353556b6bc555db1f67e8d0549a68bed5de18f112ff89496912559c784de8';
   const BIF_CONTRACT_HASH = '8dc4ff92e2ac2d81bee176e8839b23c8ab34ceec951b2ab91ebe80c12ec02a76';
   const BASE_SECTION_HASH = '64783fa923cc70215dadaba0bb75390200c3297e82a68ef6d0a25d9b12a4fcb2';
   const REACTION_HEAD_HASH = 'b08565ade014bed633f5917aaa3891ba2730a18f8c9885c1c9c983db5c8f4a62';
   const BASE_WEIGHT_POLICY = Object.freeze({
-    id: 'CANDIDATE_SET_OPPORTUNITY_VALUE_V1',
+    id: 'CREATION_LOCAL_OPPORTUNITY_VALUE_V2',
     reactionCounter: 1,
-    active: Object.freeze({ hasCreation: 0, hasNonDamageSkill: 0.4, otherwise: 1 }),
+    active: Object.freeze({ creationCandidate: 0, nonDamageSkill: 0.4, otherwise: 1 }),
   });
-  const BASE_WEIGHT_POLICY_HASH = 'e6c8d3a7a576deafbc2de81880f51038fa9e27efb80b47968c0950b31b0552d0';
-  const MODEL_COMPOSITE_HASH = '183b4e0b60d1269d4e3e4d92b0a0f443b9a690a6a60ca3c43418045cb34ea785';
+  const BASE_WEIGHT_POLICY_HASH = 'bcf3a050fc33c12b8336d41d5e21bbcb613eb6c72507bdad69b1decf411d1be8';
+  const PURE_DAMAGE_DOMINANCE_POLICY = Object.freeze({
+    id: 'ACTIVE_PURE_DAMAGE_PARETO_V1',
+    actionRole: 'ACTIVE',
+    targetComparison: 'EXACT_TARGET_SET',
+    benefit: 'OPPONENT_RESPONSE_PRESSURE',
+    costComparison: 'PER_RESOURCE_NO_GREATER_SAME_UNIT',
+  });
+  const PURE_DAMAGE_DOMINANCE_POLICY_HASH = 'f168750b8747402ff8657583ab65b1d42539b25eb4d129dbb4988a15646f310d';
+  const MODEL_COMPOSITE_HASH = '6f17b052583747aedf910ae13d8f8e74566d8b00653384f0e1356a1e02b4425d';
   const REACTION_ALGORITHM_HASH = '5ddd1dff3f07d3aa7c1b48f627cd5a3c64de9025941fab25923b52851b8a1852';
   const DAMAGE_POWER_TRANSFORM = 'DAMAGE_POWER_EFFECTIVE_V1';
   const DAMAGE_POWER_TRANSFORM_HASH = '5562d24109a11e67b447817aa73d1e60748bcec6611fa0b4132caceecba6a3aa';
   const OP_DAMAGE_POWER = 'NEUMAIER\u005fSUM';
   const OP_DAMAGE_SEGMENTS = 'INTEGER\u005fSUM';
+  const OP_RESOURCE_DELTA = 'SAME\u005fRESOURCE\u005fSUM';
 
   // 35-code catalog: 31 scoreable + 2 exclusion-only + 2 catalog-only.
   const SCOREABLE_CODES = Object.freeze([
@@ -6064,6 +6109,7 @@
     STATE_DELTA_PERCENT: 'SUM',
     SETTLEMENT_MODIFIER_PERCENT: 'SUM',
     RESOURCE_DELTA_PERCENT: 'MAX',
+    RESOURCE_DELTA: OP_RESOURCE_DELTA,
     DAMAGE_POWER: OP_DAMAGE_POWER,
     DAMAGE_SEGMENTS: OP_DAMAGE_SEGMENTS,
     DAMAGE_TYPE: 'MAX',
@@ -6071,8 +6117,8 @@
 
   // Multi-row closure inventory (AGGREGATION_CLOSURE_V2): the 31 scoreable
   // codes are partitioned into contract-adjudicated multi-row codes with a
-  // frozen operator (multiRowCodes, 8), fail-closed multi-row-capable codes
-  // (7), and single-row codes (16).
+  // frozen operator (multiRowCodes, 9), fail-closed multi-row-capable codes
+  // (6), and single-row codes (16).
   // (singleRowCodes, 16: candidate-scope BIF codes + five relational codes +
   // ATTRIBUTE_DELTA, which is collapsed inside BIF). Codes outside
   // multiRowCodes keep the fatal as a source-drift safety net.
@@ -6081,11 +6127,11 @@
     multiRowCodes: Object.freeze([
       'JUDGMENT_DELTA', 'STATE_DURATION', 'STATE_DELTA_PERCENT',
       'SETTLEMENT_MODIFIER_PERCENT', 'RESOURCE_DELTA_PERCENT',
-      'DAMAGE_POWER', 'DAMAGE_SEGMENTS', 'DAMAGE_TYPE',
+      'RESOURCE_DELTA', 'DAMAGE_POWER', 'DAMAGE_SEGMENTS', 'DAMAGE_TYPE',
     ]),
     failClosedMultiRowCodes: Object.freeze([
       'DAMAGE_PENETRATION',
-      'RESOURCE_DELTA', 'SHIELD_DELTA', 'STATE_PRESENCE', 'SUMMON_COUNT',
+      'SHIELD_DELTA', 'STATE_PRESENCE', 'SUMMON_COUNT',
       'SUMMON_STRENGTH', 'SUMMON_DURATION',
     ]),
     singleRowCodes: Object.freeze([
@@ -6140,12 +6186,15 @@
     missingMask: Object.freeze(['HARD_EXCLUSION', 'HARD_EXCLUSION_REASON']),
   });
 
+  // JUDGMENT_DELTA remains in the audit inventory, but its legacy scalar head
+  // cannot distinguish a friendly bonus from a hostile penalty. Realized
+  // judgment value is owned by the target-aware causal option features below.
   const LINEAR = Object.freeze({
     intercept: 0,
     coefficients: Object.freeze({
       ATTRIBUTE_DELTA: 0, COST_AFFORDABILITY: 0, DAMAGE_PENETRATION: 0.27101009737338333,
       DAMAGE_POWER: 0.9005159950810252, DAMAGE_SEGMENTS: -0.10897479287395434, DAMAGE_TYPE: 0,
-      JUDGMENT_DELTA: -0.1589984264724439, OUTSIDE_BATCH1_ROW_COUNT: -1.1292992745534087,
+      JUDGMENT_DELTA: 0, OUTSIDE_BATCH1_ROW_COUNT: -1.1292992745534087,
       OVERKILL_AVAILABILITY: 0, PUBLIC_HP_RATIO: -0.19953006499152975,
       PUBLIC_RECIPIENT_NEED_MATCH: 0.45252268447270233, PUBLIC_RESOURCE_RATIO: -1.2035997079030496,
       RELATION_TARGET_COUNT: 0.799682677937762, RELATION_TARGET_SIDE: 0,
@@ -6265,7 +6314,9 @@
   function canonicalHash(value) { return sha256Utf8(canonicalJson(value)); }
   function compareUtf16(a, b) { return String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0; }
 
-  const DAMAGE_AGGREGATION_CODES = new Set(['DAMAGE_POWER', 'DAMAGE_SEGMENTS', 'DAMAGE_TYPE']);
+  const PROVENANCE_AGGREGATION_CODES = new Set([
+    'DAMAGE_POWER', 'DAMAGE_SEGMENTS', 'DAMAGE_TYPE', 'RESOURCE_DELTA',
+  ]);
   function aggregationRowsOf(rows, code) {
     const seen = new Set();
     const prepared = rows.map((row, index) => {
@@ -6283,7 +6334,7 @@
       const value = Object.is(row.value, -0) ? 0 : row.value;
       if (code === 'DAMAGE_SEGMENTS' && !Number.isSafeInteger(value)) fail('AGGREGATION_INVALID_SEGMENT_DOMAIN', code + ':' + value);
       if (code === 'DAMAGE_TYPE' && value !== 0 && value !== 1) fail('AGGREGATION_INVALID_TYPE_DOMAIN', code + ':' + value);
-      return { sourceEffectId, value };
+      return { sourceEffectId, key, value };
     });
     prepared.sort((left, right) => compareUtf16(left.sourceEffectId, right.sourceEffectId));
     return prepared;
@@ -6326,7 +6377,7 @@
         if (!allSame) fail('ENUM_VALUE_MIXED_WITHIN_CANDIDATE_NO_FIRST', code + ':' + knownRows.map(r => r.value).join(','));
         return { status: 'KNOWN', value: String(knownRows[0].value), reasonCode: 'OK', rowCount: knownRows.length, kind: 'ENUM' };
       }
-      const aggregationRows = DAMAGE_AGGREGATION_CODES.has(code) ? aggregationRowsOf(knownRows, code) : null;
+      const aggregationRows = PROVENANCE_AGGREGATION_CODES.has(code) ? aggregationRowsOf(knownRows, code) : null;
       const numeric = aggregationRows
         ? aggregationRows.map(row => code === 'DAMAGE_POWER' ? effectiveDamagePower(row.value) : row.value)
         : knownRows.map(r => Number(r.value)).filter(Number.isFinite);
@@ -6339,6 +6390,20 @@
         if (!op) fail('AGGREGATION_MISSING_IN_CONTRACT', code + ':rows=' + knownRows.length);
         if (op === 'MAX') value = Math.max(...numeric);
         else if (op === 'SUM') value = numeric.reduce((sum, v) => sum + v, 0);
+        else if (op === OP_RESOURCE_DELTA) {
+          const resourceKeys = new Set(aggregationRows.map(row => row.key));
+          if (resourceKeys.size !== 1) {
+            // Absolute soul-power, mental-power, stamina and HP values are not
+            // commensurate. Preserve the candidate and provenance, but mask this
+            // legacy scalar cell; the keyed causal resource chain owns the real
+            // option/runway value instead of inventing a cross-resource sum.
+            return {
+              status: 'UNKNOWN', value: null, reasonCode: 'MULTI_RESOURCE_VECTOR_REQUIRED',
+              rowCount: knownRows.length, kind: 'NONE',
+            };
+          }
+          value = neumaierSum(numeric);
+        }
         else if (op === OP_DAMAGE_POWER) value = neumaierSum(numeric);
         else if (op === OP_DAMAGE_SEGMENTS) {
           value = numeric.reduce((sum, v) => {
@@ -6520,13 +6585,87 @@
     return effects.some(effect => String(effect?.原型 || '').trim() === '伤害结算');
   }
 
-  function activeBaseWeight(frozenCandidates, actionRole) {
+  function candidateIsPureImmediateDamage(candidate) {
+    const actionKind = String(candidate?.declaration?.actionKind || '').trim().toUpperCase();
+    if (actionKind === 'BASIC_ATTACK') return true;
+    if (actionKind !== 'RELEASE_SKILL') return false;
+    const skill = candidate?.declaration?.skill || candidate?.skill || {};
+    const effects = Array.isArray(skill?._效果数组)
+      ? skill._效果数组
+      : Array.isArray(skill?.效果数组) ? skill.效果数组 : [];
+    return effects.length > 0 && effects.every(effect =>
+      String(effect?.原型 || '').trim() === '伤害结算'
+    );
+  }
+
+  function targetSetKey(candidate) {
+    const targetIds = Array.isArray(candidate?.declaration?.targetIds)
+      ? candidate.declaration.targetIds.map(String).sort(compareUtf16)
+      : [];
+    return JSON.stringify(targetIds);
+  }
+
+  function comparableCost(value) {
+    if (value === undefined || value === null || value === '') return { kind: 'ZERO', value: 0 };
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return { kind: value > 0 ? 'ABS' : 'ZERO', value: Math.max(0, value) };
+    }
+    const text = String(value).trim();
+    const percentage = /^([+-]?(?:\d+(?:\.\d+)?|\.\d+))%$/.exec(text);
+    if (percentage) {
+      const amount = Math.max(0, Number(percentage[1]));
+      return { kind: amount > 0 ? 'PERCENT' : 'ZERO', value: amount };
+    }
+    const amount = Number(text);
+    return Number.isFinite(amount)
+      ? { kind: amount > 0 ? 'ABS' : 'ZERO', value: Math.max(0, amount) }
+      : { kind: 'INCOMPARABLE', value: Infinity };
+  }
+
+  function costVectorRelation(leftCandidate, rightCandidate) {
+    const left = leftCandidate?.declaration?.resourceCosts || leftCandidate?.costs || {};
+    const right = rightCandidate?.declaration?.resourceCosts || rightCandidate?.costs || {};
+    const resources = new Set([...Object.keys(left), ...Object.keys(right)]);
+    let strict = false;
+    for (const resource of resources) {
+      const leftCost = comparableCost(left[resource]);
+      const rightCost = comparableCost(right[resource]);
+      if (leftCost.kind === 'INCOMPARABLE' || rightCost.kind === 'INCOMPARABLE') {
+        return { noGreater: false, strict: false };
+      }
+      if (
+        leftCost.kind !== 'ZERO' &&
+        rightCost.kind !== 'ZERO' &&
+        leftCost.kind !== rightCost.kind
+      ) return { noGreater: false, strict: false };
+      if (leftCost.kind !== 'ZERO' && rightCost.kind === 'ZERO') {
+        return { noGreater: false, strict: false };
+      }
+      if (leftCost.kind === 'ZERO' && rightCost.kind !== 'ZERO') {
+        strict = true;
+        continue;
+      }
+      if (leftCost.value > rightCost.value + 1e-9) {
+        return { noGreater: false, strict: false };
+      }
+      if (leftCost.value < rightCost.value - 1e-9) strict = true;
+    }
+    return { noGreater: true, strict };
+  }
+
+  function activeBaseWeight(candidate, frozenCandidates, actionRole) {
     if (['REACTION', 'COUNTER'].includes(actionRole)) return BASE_WEIGHT_POLICY.reactionCounter;
-    if (frozenCandidates.some(candidate => candidate?.creation)) return BASE_WEIGHT_POLICY.active.hasCreation;
+    if (frozenCandidates.some(entry => entry?.creation)) {
+      if (candidate?.creation) return BASE_WEIGHT_POLICY.active.creationCandidate;
+      return String(candidate?.declaration?.actionKind || '').trim().toUpperCase() === 'RELEASE_SKILL' &&
+        !candidateHasImmediateDamage(candidate)
+        ? BASE_WEIGHT_POLICY.active.nonDamageSkill
+        : BASE_WEIGHT_POLICY.active.otherwise;
+    }
     return frozenCandidates.some(candidate =>
       String(candidate?.declaration?.actionKind || '').trim().toUpperCase() === 'RELEASE_SKILL' &&
       !candidateHasImmediateDamage(candidate),
-    ) ? BASE_WEIGHT_POLICY.active.hasNonDamageSkill : BASE_WEIGHT_POLICY.active.otherwise;
+    ) ? BASE_WEIGHT_POLICY.active.nonDamageSkill : BASE_WEIGHT_POLICY.active.otherwise;
   }
 
   // Exclusion-surface reader (closed 10-code set). HARD_EXCLUSION is a BOOL
@@ -6561,9 +6700,12 @@
     }
     if (!Array.isArray(featureInputs)) fail('FEATURE_INPUTS_SHAPE', 'featureInputs must be an array');
     const documents = featureInputs;
-    const baseWeight = activeBaseWeight(frozenCandidates, actionRole);
     work.documentBuilds = 0;
     const docByCandidate = new Map(documents.map(doc => [String(doc && doc.candidateId || '').trim(), doc]));
+    const candidateById = new Map(frozenCandidates.map(candidate => [
+      String(candidate?.candidateId || '').trim(),
+      candidate,
+    ]));
     if (docByCandidate.size !== candidateIds.length || candidateIds.some(id => !docByCandidate.has(id))) {
       fail('CANDIDATE_SET_CONSERVATION', 'featureInputs must cover frozenCandidates exactly, no re-enumeration');
     }
@@ -6579,6 +6721,7 @@
       }
       const exclusion = readExclusion(doc);
       const hardExcluded = exclusion.hard;
+      const baseWeight = activeBaseWeight(candidateById.get(candidateId), frozenCandidates, actionRole);
       work.exclusionRows = (work.exclusionRows || 0) + 2;
       let reasonCode = null;
       if (hardExcluded) {
@@ -6605,13 +6748,59 @@
     }
     const eligible = rows.filter(row => row.eligible);
     if (!eligible.length) fail('NO_ELIGIBLE_CANDIDATES');
-    const ranked = eligible.slice().sort((a, b) => {
+    const dominanceAudit = [];
+    if (actionRole === 'ACTIVE') {
+      for (const row of eligible) {
+        const candidate = candidateById.get(row.candidateId);
+        const pressure = row.cells.OPPONENT_RESPONSE_PRESSURE;
+        if (
+          !candidateIsPureImmediateDamage(candidate) ||
+          pressure?.status !== 'KNOWN' ||
+          !Number.isFinite(Number(pressure.value))
+        ) continue;
+        const candidateTargetKey = targetSetKey(candidate);
+        const dominator = eligible.find(other => {
+          if (other === row) return false;
+          const otherCandidate = candidateById.get(other.candidateId);
+          const otherPressure = other.cells.OPPONENT_RESPONSE_PRESSURE;
+          if (
+            !candidateIsPureImmediateDamage(otherCandidate) ||
+            targetSetKey(otherCandidate) !== candidateTargetKey ||
+            otherPressure?.status !== 'KNOWN' ||
+            !Number.isFinite(Number(otherPressure.value)) ||
+            Number(otherPressure.value) < Number(pressure.value) - 1e-9
+          ) return false;
+          const costRelation = costVectorRelation(otherCandidate, candidate);
+          return costRelation.noGreater && (
+            Number(otherPressure.value) > Number(pressure.value) + 1e-9 ||
+            costRelation.strict
+          );
+        });
+        if (!dominator) continue;
+        row.contextuallyDominated = true;
+        row.dominatedBy = dominator.candidateId;
+        dominanceAudit.push({
+          candidateId: row.candidateId,
+          dominatedBy: dominator.candidateId,
+          disposition: 'PARETO_DOMINATED_PURE_DAMAGE',
+          source: 'REALIZED_RESPONSE_PRESSURE_AND_RESOURCE_COST',
+        });
+      }
+    }
+    const selectable = eligible.filter(row => row.contextuallyDominated !== true);
+    if (!selectable.length) fail('NO_SELECTABLE_CANDIDATES');
+    const compareRanked = (a, b) => {
       work.sortComparisons += 1;
       return a.score !== b.score ? b.score - a.score : compareUtf16(a.candidateId, b.candidateId);
-    });
-    const selected = ranked[0];
+    };
+    const rankedSelectable = selectable.slice().sort(compareRanked);
+    const ranked = [
+      ...rankedSelectable,
+      ...eligible.filter(row => row.contextuallyDominated === true).sort(compareRanked),
+    ];
+    const selected = rankedSelectable[0];
     const selectedDeclaration = (frozenCandidates.find(c => c.candidateId === selected.candidateId) || {}).declaration || null;
-    const alternative = selectAlternative(ranked, selected, frozenCandidates);
+    const alternative = selectAlternative(rankedSelectable, selected, frozenCandidates);
     const rankedSummary = ranked.map(row => ({
       candidateId: row.candidateId,
       score: row.score,
@@ -6620,6 +6809,8 @@
       baseScore: row.baseScore,
       extensionScore: row.extensionScore,
       causalScore: row.causalScore,
+      contextuallyDominated: row.contextuallyDominated === true,
+      dominatedBy: String(row.dominatedBy || ''),
       tieGroup: ranked.filter(other => other.score === row.score).map(other => other.candidateId).sort(compareUtf16),
     }));
     const scoreContributions = {};
@@ -6632,11 +6823,11 @@
             : REACTION_CODES.indexOf(code) >= 0
               ? reactionContributionOf(row.cells, code)
               : contributionOf(row.cells, code);
-        if (CAUSAL_CODES.indexOf(code) < 0 && REACTION_CODES.indexOf(code) < 0 && baseWeight !== 1) {
+        if (CAUSAL_CODES.indexOf(code) < 0 && REACTION_CODES.indexOf(code) < 0 && row.baseWeight !== 1) {
           factor = {
             ...factor,
-            coefficient: factor.coefficient * baseWeight,
-            contribution: factor.contribution * baseWeight,
+            coefficient: factor.coefficient * row.baseWeight,
+            contribution: factor.contribution * row.baseWeight,
           };
         }
         factors.push(factor);
@@ -6649,6 +6840,8 @@
         baseScore: row.baseScore,
         extensionScore: row.extensionScore,
         causalScore: row.causalScore,
+        contextuallyDominated: row.contextuallyDominated === true,
+        dominatedBy: String(row.dominatedBy || ''),
         causalHead: ['REACTION', 'COUNTER'].includes(actionRole) ? 'REACTION_COUNTER' : 'ACTIVE_ASSIST',
         factors,
       };
@@ -6670,8 +6863,11 @@
       ranked: rankedSummary,
       rankedCandidateIds: ranked.map(row => row.candidateId),
       hardExclusionAudit,
+      dominanceAudit,
       hardExcludedCount: hardExclusionAudit.length,
+      dominatedCount: dominanceAudit.length,
       eligibleCount: eligible.length,
+      selectableCount: selectable.length,
       candidateCount: rows.length,
       scoreContributions,
       alternative,
@@ -6741,6 +6937,7 @@
     reactionHeadHash: REACTION_HEAD_HASH,
     modelCompositeHash: MODEL_COMPOSITE_HASH,
     baseWeightPolicyHash: BASE_WEIGHT_POLICY_HASH,
+    pureDamageDominancePolicyHash: PURE_DAMAGE_DOMINANCE_POLICY_HASH,
     damagePowerTransformHash: DAMAGE_POWER_TRANSFORM_HASH,
     intercept: LINEAR.intercept,
     effectiveDamagePower,
@@ -6751,6 +6948,7 @@
       reactionCodes: REACTION_CODES.slice(),
       causalCodes: CAUSAL_CODES.slice(),
       baseWeightPolicy: BASE_WEIGHT_POLICY,
+      pureDamageDominancePolicy: PURE_DAMAGE_DOMINANCE_POLICY,
       relationalCodes: RELATIONAL_CODES.slice(),
       exclusionOnly: EXCLUSION_ONLY.slice(),
       catalogOnly: CATALOG_ONLY.slice(),

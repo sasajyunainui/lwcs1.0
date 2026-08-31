@@ -332,7 +332,21 @@
         const afterHp = previewRuntime.readHp(unit);
         const hpDelta = afterHp - beforeHp;
         const blocked = /无视异常|持续状态移除/.test(log);
-        writeLedgerEvent(combatData, {
+        const stateName = String(effect?.副作用状态 || sideEffectStatusMap[effect?.副作用类型] || effect?.副作用类型 || '反噬').trim();
+        const inheritedApplicationId = String(
+          condition?.__状态来源窗口?.[0] || condition?.__状态来源键 || '',
+        ).trim();
+        const inheritedSource = inheritedApplicationId
+          ? findStateSource(combatData, { applicationId: inheritedApplicationId })
+          : null;
+        const sourceActionId = String(
+          eventContext?.sourceActionId || eventContext?.actionId ||
+          condition?.sourceActionId || inheritedSource?.sourceActionId || '',
+        ).trim();
+        const sourceEffectId = String(
+          eventContext?.sourceEffectId || condition?.sourceEffectId || inheritedSource?.sourceEffectId || '',
+        ).trim();
+        const fact = writeLedgerEvent(combatData, {
           eventKind: hpDelta ? 'resource_change' : 'state_apply',
           round: Number(combatData?.回合 || 0),
           actorId: String(eventContext?.actorId || previewRuntime.unitId(unit)).trim(),
@@ -344,7 +358,8 @@
           actorControl: String(eventContext?.actorControl || 'SYSTEM').trim(),
           actionRole: String(eventContext?.actionRole || 'STATE_TICK').trim(),
           actionId: String(eventContext?.actionId || '').trim(),
-          sourceActionId: String(eventContext?.sourceActionId || eventContext?.actionId || '').trim(),
+          sourceActionId,
+          sourceEffectId,
           parentNodeId: String(eventContext?.parentNodeId || '').trim(),
           sourceNodeId: String(eventContext?.sourceNodeId || '').trim(),
           result: blocked ? 'blocked' : 'triggered',
@@ -358,11 +373,15 @@
             source: 'structured_runtime',
             sideEffectType: effect.副作用类型,
             timing,
+            stateName,
             duration: Number(effect.持续回合 || 0),
             log,
             ...(hpDelta ? { resource: '生命', resourceKey: 'hp', before: beforeHp, after: afterHp, delta: hpDelta, amount: Math.abs(hpDelta) } : {}),
           },
         });
+        if (fact && !hpDelta && !blocked) {
+          bindStateSourceProvenance(combatData, unit, stateName, nextRuntimeId('state-src'), fact, 'SIDE_EFFECT_APPLIED');
+        }
         return log;
       })
       .filter(Boolean);
@@ -1019,7 +1038,7 @@
         const maximum = persistentResourceMax(unit, key);
         const amount = Math.min(persistentResourceValue(unit, key), persistentResourceAmount(effect?.数值, maximum));
         if (!(amount > 0)) return;
-        if (mode === '共享') {
+        if (mode === '共享' || mode === '转移') {
           if (!caster || caster === unit) return;
           const casterCurrent = persistentResourceValue(caster, key);
           const paid = Math.min(casterCurrent, amount);
@@ -1027,7 +1046,7 @@
           const gain = Math.max(1, Math.floor(paid * conversion));
           writeCombatResource(caster, key, casterCurrent - paid);
           writeCombatResource(unit, key, Math.min(maximum, persistentResourceValue(unit, key) + gain));
-          logs.push(`自身共享${paid}点${persistentResourceLabel(key)}给${label}`);
+          logs.push(`自身${mode === '共享' ? '共享' : '转移'}${paid}点${persistentResourceLabel(key)}给${label}`);
           return;
         }
         if (findResourceSuppression(unit, persistentResourceLabel(key))) return;
@@ -2158,11 +2177,11 @@
     const decisionActor = listCombatUnits(combatData).find(unit =>
       previewRuntime.unitId(unit) === String(actorId || '').trim()
     );
-    const decisionSide = decisionActor ? inferUnitSide(combatData, previewRuntime.unitName(decisionActor)) : '';
+    const decisionSide = decisionActor ? inferUnitSide(combatData, decisionActor) : '';
     const hostileEntries = listPrimaryCombatUnits(combatData)
-      .filter(unit => inferUnitSide(combatData, previewRuntime.unitName(unit)) !== decisionSide);
+      .filter(unit => inferUnitSide(combatData, unit) !== decisionSide);
     const alliedTargets = listPrimaryCombatUnits(combatData)
-      .filter(unit => inferUnitSide(combatData, previewRuntime.unitName(unit)) === decisionSide)
+      .filter(unit => inferUnitSide(combatData, unit) === decisionSide)
       .filter(unit => previewRuntime.isBattleCapable(unit));
     hostileEntries.forEach(source => {
       const charge = source?.蓄力技能;
@@ -3473,6 +3492,7 @@
     };
     if (!entry.stateName || !entry.targetName) return '';
     [['sourceActionId', payload.sourceActionId], ['sourceEventId', payload.sourceEventId],
+      ['sourceEffectId', payload.sourceEffectId],
       ['sourceFactId', payload.sourceFactId], ['sourceNodeId', payload.sourceNodeId],
       ['provenanceClass', payload.provenanceClass]].forEach(([key, value]) => {
       const normalized = String(value || '').trim();
@@ -3511,6 +3531,7 @@
         sourceActionName: String(event?.actionName || '').trim(),
         sourceActionId,
         sourceEventId,
+        sourceEffectId: String(event?.sourceEffectId || event?.meta?.sourceEffectId || '').trim(),
         sourceActionType: String(event?.actionType || '').trim(),
         sourceRound: Number(event?.round || combatData?.回合 || 0),
         sourceNodeId: String(event?.sourceNodeId || '').trim(),
@@ -3521,6 +3542,9 @@
     if (!source) return null;
     source.sourceActionId = sourceActionId;
     source.sourceEventId = sourceEventId;
+    source.sourceEffectId = String(
+      event?.sourceEffectId || event?.meta?.sourceEffectId || source?.sourceEffectId || '',
+    ).trim();
     source.provenanceClass = provenanceClass;
     const state = target?.状态效果?.[stateName];
     const sourceWindow = Array.isArray(state?.__状态来源窗口)
@@ -3533,6 +3557,7 @@
       delete state.sourceFactId;
       state.sourceActionId = String(activeSource?.sourceActionId || sourceActionId).trim();
       state.sourceEventId = String(activeSource?.sourceEventId || sourceEventId).trim();
+      state.sourceEffectId = String(activeSource?.sourceEffectId || source?.sourceEffectId || '').trim();
       Object.defineProperties(state, {
         __状态来源键: { configurable: true, enumerable: false, writable: true, value: activeApplicationId },
         __状态来源窗口: { configurable: true, enumerable: false, writable: true, value: sourceWindow },
@@ -3540,7 +3565,14 @@
     }
     event.applicationId = mappingId;
     event.sourceEventId = sourceEventId;
-    event.meta = { ...(event.meta || {}), applicationId: mappingId, sourceActionId, sourceEventId, provenanceClass };
+    event.meta = {
+      ...(event.meta || {}),
+      applicationId: mappingId,
+      sourceActionId,
+      sourceEventId,
+      sourceEffectId: source.sourceEffectId,
+      provenanceClass,
+    };
     if (state && event.meta.after) event.meta.after = cloneValue(state);
     return source;
   }
@@ -3638,9 +3670,16 @@
     const meta = event?.meta && typeof event.meta === 'object' ? event.meta : {};
     const actorName = String(event?.actorName || '').trim();
     const targetName = String(event?.targetName || '').trim();
+    const actorIdentity = String(event?.actorId || meta.actorId || actorName).trim();
+    const targetIdentity = String(
+      event?.targetId ||
+      (Array.isArray(event?.targetIds) ? event.targetIds[0] : '') ||
+      meta.targetId ||
+      targetName,
+    ).trim();
     const targetScope = String(event?.targetScope || meta.targetScope || '').trim();
     const actorSide = normalizeBattleSide(event?.actorSide || event?.side || meta.actorSide || meta.side || '')
-      || inferUnitSide(combatData, actorName);
+      || inferUnitSide(combatData, actorIdentity);
     const targetPoolSide = String(event?.targetPoolSide || meta.targetPoolSide || '').trim();
     const relativeTargetSide = actorSide && /^(hostile|enemy|敌对|敌方)$/i.test(targetPoolSide)
       ? actorSide === 'player' ? 'enemy' : 'player'
@@ -3648,7 +3687,7 @@
         ? actorSide
         : '';
     const targetSide = normalizeBattleSide(event?.targetSide || meta.targetSide || '')
-      || inferUnitSide(combatData, targetName)
+      || inferUnitSide(combatData, targetIdentity)
       || relativeTargetSide
       || (['ally_group', 'self'].includes(targetScope) ? actorSide : '')
       || (['enemy_group', 'area'].includes(targetScope) && actorSide ? actorSide === 'player' ? 'enemy' : 'player' : '')
@@ -4934,6 +4973,16 @@
     const actionName = normalizeActionDisplayName(payload.actionName || '');
     const sourceActionName = normalizeActionDisplayName(payload.sourceActionName || '');
     const sourceRound = Number(payload.sourceRound || round || 0);
+    const explicitActionId = String(payload.actionId || '').trim();
+    const matchedActionById = explicitActionId
+      ? [...ledger].reverse().find(event =>
+          String(event?.actionId || '').trim() === explicitActionId &&
+          ['action_start', 'counter'].includes(String(event?.eventKind || '').trim())
+        ) || null
+      : null;
+    const matchedIdentityAction = matchedActionById && (
+      !actorName || isSameLedgerName(matchedActionById?.actorName || '', actorName)
+    ) ? matchedActionById : null;
     const matchedAction = payload.allowImplicitActionSource === false || eventKind === 'action_start' || eventKind === 'counter' || !actionName
       ? null
       : findRecentLedgerAction(ledger, { round, actorName, actionName });
@@ -5042,6 +5091,7 @@
     const explicitActorSide = normalizeBattleSide(payload.actorSide || eventMeta.actorSide || '');
     const explicitTargetSide = normalizeBattleSide(payload.targetSide || eventMeta.targetSide || '');
     const matchedActorSide = normalizeBattleSide(
+      matchedIdentityAction?.actorSide ||
       matchedAction?.actorSide ||
       matchedCounterStart?.actorSide ||
       (!['counter', 'counter_window'].includes(eventKind) ? matchedSourceAction?.actorSide : '') ||
@@ -5049,8 +5099,19 @@
     );
     const matchedTargetSide = [matchedAction, matchedCounterStart, matchedSourceAction]
       .find(action => action && targetName && isSameLedgerName(action?.targetName || '', targetName))?.targetSide || '';
+    const summonActorId = ['defend', 'dodge', 'pass'].includes(eventKind) && actionRole === 'REACTION'
+      ? String(eventMeta.summonKey || '').trim()
+      : '';
+    const actorUnit = listCombatUnits(rootData).find(unit => isUnitIdentityMatch(
+      unit,
+      payload.actorId || summonActorId || matchedIdentityAction?.actorId || actorName,
+    ));
+    const actorId = String(
+      payload.actorId || summonActorId || matchedIdentityAction?.actorId || previewRuntime.unitId(actorUnit) || actorName,
+    ).trim();
     const eventSides = inferEventSides(rootData, {
       ...payload,
+      actorId,
       actorName,
       actorSide: explicitActorSide || matchedActorSide,
       targetName,
@@ -5060,8 +5121,6 @@
     });
     const factType = inferFactType(eventKind, { ...payload, meta: eventMeta });
     const effectPrototype = inferEffectPrototype(eventKind, { ...payload, meta: eventMeta });
-    const actorUnit = listCombatUnits(rootData).find(unit => isUnitIdentityMatch(unit, payload.actorId || actorName));
-    const actorId = String(payload.actorId || previewRuntime.unitId(actorUnit) || actorName).trim();
     const event = {
       eventId: String(payload.eventId || nextRuntimeId('battle-ledger')).trim(),
       sequence: ledgerSequence,
@@ -5848,7 +5907,7 @@
           __宿主: host,
           __来源状态: state,
           来源状态键: stateKey,
-          阵营: inferUnitSide(combatData, previewRuntime.unitName(host)) === 'enemy' ? '敌方' : '玩家',
+          阵营: inferUnitSide(combatData, host) === 'enemy' ? '敌方' : '玩家',
           生成回合: Math.max(0, Number(mirror?.生成回合 || combatData?.回合 || 0)),
           精神负载: Math.max(0, Number(mirror?.精神负载 || 0)),
           已消散: false,
@@ -6712,10 +6771,10 @@
 
   function sustainTargetIds(combatData = {}, actor = {}, effect = {}) {
     const targetKind = String(effect?.目标 || '').trim();
-    const actorSide = inferUnitSide(combatData, previewRuntime.unitName(actor));
+    const actorSide = inferUnitSide(combatData, actor);
     const entries = listCombatUnits(combatData).filter(unit => structuredActorPhysicallyAlive(unit));
-    const friendly = entries.filter(unit => inferUnitSide(combatData, previewRuntime.unitName(unit)) === actorSide);
-    const hostile = entries.filter(unit => inferUnitSide(combatData, previewRuntime.unitName(unit)) !== actorSide);
+    const friendly = entries.filter(unit => inferUnitSide(combatData, unit) === actorSide);
+    const hostile = entries.filter(unit => inferUnitSide(combatData, unit) !== actorSide);
     if (/自身/.test(targetKind)) return [previewRuntime.unitId(actor)];
     if (/融合伙伴/.test(targetKind)) {
       const refs = [
@@ -8369,7 +8428,10 @@
       actionFingerprint: `runtime:${String(actionEvent?.actionId || '').trim()}:effect:${effectIndex}`,
       paymentMode: 'FORMAL',
       horizon: 'SHALLOW',
-      previewBudget: { maxNodes: 12 },
+      // Primary settlement also resolves same-action cooperative summon attacks;
+      // use the preview module's bounded full-action budget instead of the old
+      // twelve-node cap that rejects valid generated 3v3 effect graphs.
+      previewBudget: { maxNodes: 64 },
       forcedApplicationProbabilityByEffect: Object.fromEntries(
         outcomeSamples.map(sample => [
           [
@@ -8663,6 +8725,9 @@
     const mode = String(effect?.行动模式 || '协同攻击').trim() || '协同攻击';
     const summonType = String(effect?.召唤单位类型 || effect?.召唤类型 || '魂兽').trim() || '魂兽';
     const inheritRatio = Math.max(0.05, Math.min(2, Number(effect?.继承属性比例 || effect?.强度 || effect?.召唤强度 || 0.35) || 0.35));
+    const summonLevel = Math.max(1, Number(
+      actor?.level ?? actor?.等级 ?? actor?.修为等级 ?? actor?.属性?.等级 ?? actor?.final?.level ?? 1,
+    ) || 1);
     const table = ensureStructuredSummonTable(combatData);
     const facts = [];
     const summons = [];
@@ -8726,8 +8791,9 @@
       const summon = {
         id: key, name: displayName, 名称: displayName, 召唤键: key, 预演召唤键: previewSummonKey,
         类型: summonType, 召唤单位类型: summonType, 单位性质: '召唤物', 行动模式: mode,
+        level: summonLevel, 等级: summonLevel,
         宿主名: previewRuntime.unitName(actor), __宿主: actor, __来源状态: sourceState, 来源状态键: stateKey,
-        阵营: inferUnitSide(combatData, previewRuntime.unitName(actor)) === 'enemy' ? '敌方' : '玩家',
+        阵营: inferUnitSide(combatData, actor) === 'enemy' ? '敌方' : '玩家',
         生成回合: Number(combatData?.回合 || 0), 精神负载: Math.max(0, Number(effect?.精神负载 || 0)), 已消散: false,
         hp: hpMax, hp_max: hpMax, HP: hpMax, HP上限: hpMax,
         vit: staminaMax, vit_max: staminaMax, sta: staminaMax, sta_max: staminaMax, 体力: staminaMax, 体力上限: staminaMax,
@@ -9644,10 +9710,11 @@
       const sampledTarget = listCombatUnits(combatData).find(unit =>
         previewRuntime.unitId(unit) === String(targetId || '').trim()
       );
+      const resistanceMultiplier = typeof previewRuntime.stateApplicationProbabilityMultiplier === 'function'
+        ? previewRuntime.stateApplicationProbabilityMultiplier(sampledTarget || {}, effect)
+        : 1;
       const probability = Math.max(0, Math.min(1,
-        baseProbability * (typeof previewRuntime.stateApplicationProbabilityMultiplier === 'function'
-          ? previewRuntime.stateApplicationProbabilityMultiplier(sampledTarget || {}, effect)
-          : 1),
+        baseProbability * resistanceMultiplier,
       ));
       if (!outcomeSamples.has(groupKey)) {
         const roll =
@@ -9664,6 +9731,8 @@
           groupKey,
           effectInstanceId,
           targetId: String(targetId || '').trim(),
+          baseProbability,
+          resistanceMultiplier,
           probability,
           roll,
           outcomeId: succeeded ? 'SUCCESS' : 'FAILURE',
@@ -10813,6 +10882,13 @@
           ? cloneValue(target.状态效果[stateName])
           : null;
         if (!previewRuntime.isAlive(target) && previewRuntime.unitId(target) !== previewRuntime.unitId(actor)) {
+          const baseProbability = previewRuntime.normalizeEffectProbability(
+            effect?.成功率 ?? effect?.触发概率,
+            1,
+          );
+          const resistanceMultiplier = typeof previewRuntime.stateApplicationProbabilityMultiplier === 'function'
+            ? previewRuntime.stateApplicationProbabilityMultiplier(target, effect)
+            : 1;
           facts.push(writeLedgerEvent(combatData, {
             eventKind: 'state_apply', round: Number(combatData?.回合 || 0), actorName: previewRuntime.unitName(actor), targetName: previewRuntime.unitName(target),
             actionName, actionType: actionKind, actorControl, actionRole, actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
@@ -10828,6 +10904,11 @@
               successRate: 0,
               roll: null,
               reason: 'TARGET_INCAPACITATED',
+              resolutionReason: 'CONDITION_NOT_MET',
+              baseProbability,
+              resistanceMultiplier,
+              finalProbability: Math.max(0, Math.min(1, baseProbability * resistanceMultiplier)),
+              probabilityPassed: false,
               before: stateBefore,
               after: stateBefore,
               operation: 'STATE_APPLY',
@@ -10843,7 +10924,7 @@
         if (!target.状态效果 || typeof target.状态效果 !== 'object') target.状态效果 = {};
         const duration = Math.max(1, Number(effect?.持续回合 || 1));
         const state = {
-          类型: String(effect?.类型 || '').trim() || (inferUnitSide(combatData, previewRuntime.unitName(target)) === inferUnitSide(combatData, previewRuntime.unitName(actor)) ? 'buff' : 'debuff'),
+          类型: String(effect?.类型 || '').trim() || (inferUnitSide(combatData, target) === inferUnitSide(combatData, actor) ? 'buff' : 'debuff'),
           状态: stateName, 状态名称: stateName, 层数: 1, duration,
           原型: prototype,
           判定: String(effect?.判定 || '').trim(),
@@ -10953,6 +11034,15 @@
         const stateAfter = result === 'applied'
           ? cloneValue(target?.状态效果?.[stateName] || null)
           : cloneValue(stateBefore);
+        const stateResolutionReason = result === 'applied'
+          ? stateReplaced ? 'REPLACED' : 'APPLIED'
+          : result === 'immune'
+            ? 'IMMUNE'
+            : result === 'resisted'
+              ? 'PROBABILITY_REJECTED'
+              : result === 'invalid'
+                ? 'INVALID_STATE'
+                : 'NO_EFFECT';
         const stateFact = writeLedgerEvent(combatData, {
           eventKind: stateEventKind, round: Number(combatData?.回合 || 0), actorName: previewRuntime.unitName(actor), targetName: previewRuntime.unitName(target),
           actionName, actionType: actionKind, actorControl, actionRole, actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
@@ -10976,6 +11066,11 @@
             duration,
             successRate: successProbability,
             roll,
+            resolutionReason: stateResolutionReason,
+            baseProbability: stateSample.baseProbability,
+            resistanceMultiplier: stateSample.resistanceMultiplier,
+            finalProbability: stateSample.probability,
+            probabilityPassed: stateSample.succeeded,
             applicationId: result === 'applied' ? applicationId : '',
             groupKey: stateSample.groupKey,
             outcomeId: stateSample.outcomeId,
@@ -10989,9 +11084,7 @@
         });
         if (stateFact && result === 'applied') bindStateSourceProvenance(combatData, target, stateName, applicationId, stateFact);
         facts.push(stateFact);
-        const abnormalResistanceMultiplier = typeof previewRuntime.stateApplicationProbabilityMultiplier === 'function'
-          ? previewRuntime.stateApplicationProbabilityMultiplier(target, effect)
-          : 1;
+        const abnormalResistanceMultiplier = stateSample.resistanceMultiplier;
         if (
           stateFact &&
           result === 'applied' &&
@@ -11291,6 +11384,10 @@
           sourceNodeId: actionEvent.chainNodeId || '',
         };
         sideEffects.forEach((sideEffect, sideEffectIndex) => {
+          const sideEffectContext = {
+            ...eventContext,
+            sourceEffectId: `${actionEvent.actionId}:side-effect:${sideEffectIndex}`,
+          };
           const targetMode = String(sideEffect.生效对象 || '技能释放者').trim();
           const targets = [...new Map((targetMode === '技能释放者'
             ? [actor]
@@ -11307,7 +11404,7 @@
               timing,
               previewRuntime.unitName(actor),
               combatData,
-              eventContext,
+              sideEffectContext,
             ));
             return;
           }
@@ -11492,6 +11589,7 @@
         });
       }
       const source = findStateSource(combatData, { applicationId: activeSourceId });
+      const consumedApplicationId = String(activeSourceId || source?.applicationId || '').trim();
       const nextDuration = Math.max(0, previousDuration - 1);
       state.duration = nextDuration;
       if (Array.isArray(state.__状态来源窗口)) {
@@ -11504,9 +11602,8 @@
       const sourceActionId = String(activeSource?.sourceActionId || source?.sourceActionId || '').trim();
       const sourceEventId = String(activeSource?.sourceEventId || source?.sourceEventId || '').trim();
       const provenanceClass = String(activeSource?.provenanceClass || source?.provenanceClass || '').trim();
-      const ledgerApplicationId = expired
-        ? ''
-        : String(activeSourceId || activeSource?.applicationId || source?.applicationId || '').trim();
+      const ledgerApplicationId = consumedApplicationId ||
+        String(activeSourceId || activeSource?.applicationId || source?.applicationId || '').trim();
       writeLedgerEvent(combatData, {
         eventKind: expired ? 'state_expire' : 'state_replace',
         round: Number(combatData?.回合 || 0),
@@ -11717,12 +11814,21 @@
     const actionKind = String(declaration?.actionKind || '').trim();
     const actorName = previewRuntime.unitName(reactor);
     const sourceName = previewRuntime.unitName(sourceActor);
+    const summonGuardHostId = String(input?.summonGuardHostId || '').trim();
+    const summonGuardHostName = String(input?.summonGuardHostName || '').trim();
+    const summonKey = String(input?.summonKey || '').trim();
     const reactionMeta = {
       source: 'structured_runtime',
       decisionCandidateId: String(input?.decisionCandidateId || '').trim(),
       declaredTargetIds: Array.isArray(declaration?.targetIds)
         ? declaration.targetIds.map(value => String(value || '').trim()).filter(Boolean)
         : [],
+      ...(summonGuardHostId && summonGuardHostName && summonKey ? {
+        summonGuardHostId,
+        summonGuardHostName,
+        summonKey,
+        summonMode: '护卫',
+      } : {}),
     };
     const common = {
       round: Number(combatData?.回合 || 0),
@@ -12077,6 +12183,9 @@
 
   function buildAnalyticsLedgerEvent(event = {}) {
     const meta = event?.meta || {};
+    const evidence = meta?.evidence && typeof meta.evidence === 'object' && !Array.isArray(meta.evidence)
+      ? meta.evidence
+      : {};
     const formulaTrace = meta?.formulaTrace || {};
     return {
       eventId: String(event?.eventId || '').trim(),
@@ -12139,9 +12248,34 @@
         grantId: String(meta?.grantId || '').trim(),
         resource: String(meta?.resource || '').trim(),
         resourceKey: String(meta?.resourceKey || '').trim(),
+        stateName: String(meta?.stateName || meta?.stateKey || '').trim(),
+        sourceEventId: String(meta?.sourceEventId || event?.sourceEventId || '').trim(),
+        provenanceClass: String(meta?.provenanceClass || '').trim(),
+        controlApplicationId: String(meta?.controlApplicationId || '').trim(),
+        controlSourceActionId: String(meta?.controlSourceActionId || '').trim(),
+        controlSourceEventId: String(meta?.controlSourceEventId || '').trim(),
+        controlSourceEffectId: String(meta?.controlSourceEffectId || '').trim(),
+        transferMode: String(meta?.transferMode || evidence?.mode || '').trim(),
+        transferRole: String(meta?.transferRole || evidence?.transferRole || '').trim(),
+        transferSourceId: String(meta?.transferSourceId || evidence?.transferSourceId || '').trim(),
+        transferReceiverId: String(meta?.transferReceiverId || evidence?.transferReceiverId || '').trim(),
+        transferGroupKey: String(meta?.transferGroupKey || evidence?.transferGroupKey || '').trim(),
+        conversionRatio: meta?.conversionRatio == null && evidence?.conversionRatio == null
+          ? null
+          : Number(meta?.conversionRatio ?? evidence?.conversionRatio),
+        sourcePaid: Number(meta?.sourcePaid ?? evidence?.sourcePaid ?? 0),
+        convertedAmount: Number(meta?.convertedAmount ?? evidence?.convertedAmount ?? 0),
+        receiverGain: Number(meta?.receiverGain ?? evidence?.receiverGain ?? 0),
+        overflowLoss: Number(meta?.overflowLoss ?? evidence?.overflowLoss ?? 0),
+        poolTotalBefore: meta?.poolTotalBefore == null && evidence?.poolTotalBefore == null
+          ? null
+          : Number(meta?.poolTotalBefore ?? evidence?.poolTotalBefore),
+        poolTotalAfter: meta?.poolTotalAfter == null && evidence?.poolTotalAfter == null
+          ? null
+          : Number(meta?.poolTotalAfter ?? evidence?.poolTotalAfter),
         delta: Number(meta?.delta || 0),
         amount: Number(meta?.amount || 0),
-        requestedAmount: Number(meta?.requestedAmount || 0),
+        requestedAmount: Number(meta?.requestedAmount ?? evidence?.requestedAmount ?? 0),
         requestedDelta: Number(meta?.requestedDelta || 0),
         before: Number(meta?.before || 0),
         after: Number(meta?.after || 0),
@@ -12152,6 +12286,17 @@
           : Number(meta.hitProbability),
         probability: meta?.probability == null ? null : Number(meta.probability),
         roll: meta?.roll == null ? null : Number(meta.roll),
+        resolutionReason: String(meta?.resolutionReason || meta?.reason || '').trim(),
+        baseProbability: meta?.baseProbability == null ? null : Number(meta.baseProbability),
+        resistanceMultiplier: meta?.resistanceMultiplier == null
+          ? null
+          : Number(meta.resistanceMultiplier),
+        finalProbability: meta?.finalProbability == null ? null : Number(meta.finalProbability),
+        probabilityPassed: meta?.probabilityPassed === true
+          ? true
+          : meta?.probabilityPassed === false
+            ? false
+            : null,
         rawDamage: Number(meta?.rawDamage || 0),
         rawDamageTotal: Number(meta?.rawDamageTotal || 0),
         incomingDamage: Number(meta?.incomingDamage || 0),
@@ -12875,7 +13020,7 @@
           const hostileTarget = event => {
             const target = targetFor(event);
             const targetSide = target
-              ? inferUnitSide(combatData, previewRuntime.unitName(target))
+              ? inferUnitSide(combatData, target)
               : String(event?.targetSide || '').trim();
             return target && targetSide && targetSide !== sourceSide
               ? target
@@ -12949,7 +13094,7 @@
           if (!reactor || !incomingSource || !declaration || !reaction) return;
           const sourceActorId = previewRuntime.unitId(reactor);
           const incomingSourceActorId = previewRuntime.unitId(incomingSource);
-          const sourceSide = inferUnitSide(combatData, previewRuntime.unitName(reactor));
+          const sourceSide = inferUnitSide(combatData, reactor);
           const actionEvent = reaction?.event || {};
           const actionKind = String(declaration?.actionKind || reaction?.actionKind || '').trim().toUpperCase();
           const actionName = normalizeActionDisplayName(
@@ -12977,7 +13122,7 @@
             sourceSide,
           );
           listPrimaryCombatUnits(combatData).forEach(observer => {
-            const observerSide = inferUnitSide(combatData, previewRuntime.unitName(observer));
+            const observerSide = inferUnitSide(combatData, observer);
             if (!observerSide || observerSide === sourceSide) return;
             const observerId = previewRuntime.unitId(observer);
             const previous = beliefByActor.get(observerId) || initialBeliefFor(observerId);
@@ -13121,7 +13266,7 @@
           const sourceActor = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, actionEvent.actorName));
           if (!sourceActor) return;
           const sourceActorId = previewRuntime.unitId(sourceActor);
-          const sourceSide = inferUnitSide(combatData, previewRuntime.unitName(sourceActor));
+          const sourceSide = inferUnitSide(combatData, sourceActor);
           const settledActionName = normalizeActionDisplayName(actionEvent.actionName || actionEvent.actionType || '行动');
           if (settledActionRole === 'ASSIST' && !decisionResult?.selected?.predictedOutcomeEvidence) {
             const host = sourceActor?.__宿主 && previewRuntime.isBattleCapable(sourceActor.__宿主)
@@ -13209,7 +13354,7 @@
               isUnitIdentityMatch(unit, event?.targetId || event?.targetName)
             );
             if (!target) return sum;
-            const targetSide = inferUnitSide(combatData, previewRuntime.unitName(target));
+            const targetSide = inferUnitSide(combatData, target);
             const hostileTarget = !!targetSide && targetSide !== sourceSide;
             if (eventKind === 'hit_result' && hostileTarget) {
               const appliedDamage = Math.max(0, Number(event?.appliedDamage || meta?.appliedDamage || 0));
@@ -13257,7 +13402,7 @@
               isUnitIdentityMatch(unit, event?.targetId || event?.targetName)
             );
             if (!target) return sum;
-            const targetSide = inferUnitSide(combatData, previewRuntime.unitName(target));
+            const targetSide = inferUnitSide(combatData, target);
             if (!targetSide || targetSide === sourceSide) return sum;
             const appliedDamage = Math.max(0, Number(event?.appliedDamage || meta?.appliedDamage || 0));
             return sum + 100 * appliedDamage / Math.max(1, previewRuntime.readHpMax(target));
@@ -13358,7 +13503,7 @@
             const predicted = predictedDamageByTarget.get(key);
             if (!predicted || !(predicted.predictedValuePercent > 0) || actual.hitObserved !== true) return;
             listPrimaryCombatUnits(combatData).forEach(observer => {
-              const observerSide = inferUnitSide(combatData, previewRuntime.unitName(observer));
+              const observerSide = inferUnitSide(combatData, observer);
               if (!observerSide || observerSide !== sourceSide) return;
               const observerId = previewRuntime.unitId(observer);
               const previous = beliefByActor.get(observerId) || initialBeliefFor(observerId);
@@ -13390,7 +13535,7 @@
             });
           });
           listPrimaryCombatUnits(combatData).forEach(observer => {
-            const observerSide = inferUnitSide(combatData, previewRuntime.unitName(observer));
+            const observerSide = inferUnitSide(combatData, observer);
             if (!observerSide || observerSide === sourceSide) return;
             const observerId = previewRuntime.unitId(observer);
             const previous = beliefByActor.get(observerId) || initialBeliefFor(observerId);
@@ -13434,7 +13579,7 @@
           let behaviorLayerSemanticHashes = {};
           let evaluationSessionObservation = {};
           const actorId = previewRuntime.unitId(actor);
-          const actorSide = inferUnitSide(combatData, previewRuntime.unitName(actor));
+          const actorSide = inferUnitSide(combatData, actor);
           const pendingNaturalUnits = [...listPrimaryCombatUnits(combatData), ...listSummonCombatUnits(combatData)]
             .filter(unit => {
               const opportunity = unit?.__battleRuntime?.naturalOpportunity;
@@ -13444,14 +13589,14 @@
             });
           const pendingNaturalActorIds = [...new Set(pendingNaturalUnits.map(previewRuntime.unitId).filter(Boolean))];
           const pendingHostileActorIds = [...new Set(pendingNaturalUnits
-            .filter(unit => inferUnitSide(combatData, previewRuntime.unitName(unit)) !== actorSide)
+            .filter(unit => inferUnitSide(combatData, unit) !== actorSide)
             .map(previewRuntime.unitId)
             .filter(Boolean))];
           const futureHostileResponseAllowed = roundOffset < roundLimit || queue.hasPending(pendingNode => {
             if (String(pendingNode?.nodeKind || 'ACTIVE').trim() !== 'ACTIVE') return false;
             const pendingActor = pendingNode?.actorEntry?.char;
             if (!pendingActor || !structuredActorCanAct(pendingActor, pendingNode.actionRole)) return false;
-            const pendingSide = inferUnitSide(combatData, previewRuntime.unitName(pendingActor));
+            const pendingSide = inferUnitSide(combatData, pendingActor);
             return !!pendingSide && pendingSide !== actorSide;
           });
           const queuedOpportunitySequence = Math.max(0, Number(node?.opportunitySequence || 0));
@@ -13971,14 +14116,11 @@
           candidates.forEach(summon => {
             const runtime = ensureSummonWindowRuntime(summon);
             if (!runtime || Math.max(0, Number(runtime.remainingWindows || 0)) <= 0) return;
-            const summonSide = inferUnitSide(
-              combatData,
-              previewRuntime.unitName(summon),
-            ) || node?.actorEntry?.side;
+            const summonSide = inferUnitSide(combatData, summon) || node?.actorEntry?.side;
             const validTargetIds = listPrimaryCombatUnits(combatData)
               .filter(unit =>
                 previewRuntime.isBattleCapable(unit) &&
-                inferUnitSide(combatData, previewRuntime.unitName(unit)) !== summonSide
+                inferUnitSide(combatData, unit) !== summonSide
               )
               .map(previewRuntime.unitId)
               .filter(Boolean);
@@ -14086,7 +14228,7 @@
             node.actorEntry = {
               ...(node.actorEntry || {}),
               char: formalActor,
-              side: inferUnitSide(combatData, previewRuntime.unitName(formalActor)) || node?.actorEntry?.side,
+              side: inferUnitSide(combatData, formalActor) || node?.actorEntry?.side,
             };
             queue.recordTrace('ACTOR_CANONICALIZED', node, {
               actorId,
@@ -14136,9 +14278,9 @@
           }
           if (!actor || !actorPresentInBattle || !structuredActorCanAct(actor, node.actionRole)) {
             const actorName = previewRuntime.unitName(actor) || '未知单位';
+            const controlSource = structuredControlSource(combatData, actor, node.actionRole);
             if (node.nodeKind === 'ACTIVE' && actor?.蓄力技能) {
               const interruptedCharge = actor.蓄力技能;
-              const controlSource = structuredControlSource(combatData, actor, node.actionRole);
               actor.蓄力技能 = null;
               writeLedgerEvent(combatData, {
                 eventKind: 'charge_interrupt', round: Number(combatData.回合 || 0), actorName, targetName: actorName,
@@ -14200,6 +14342,8 @@
               opportunityId: String(node.opportunityId || node.grantId || '').trim(),
               opportunitySequence: Math.max(0, Number(node.opportunitySequence || 0)),
               grantId: String(node.grantId || '').trim(),
+              applicationId: String(controlSource?.applicationId || '').trim(),
+              sourceEffectId: String(controlSource?.sourceEffectId || '').trim(),
               result: 'cancelled', resultState: 'FAILURE',
               ruleCode: node.nodeKind === 'REACTION' ? 'REACTION_ACTOR_UNAVAILABLE' : node.nodeKind === 'CONTINUATION' ? 'CONTINUATION_ACTOR_UNAVAILABLE' : 'NATURAL_ACTION_OPPORTUNITY_CANCELLED',
               meta: {
@@ -14209,6 +14353,10 @@
                 reasonCode: controlledStateName ? 'CONTROLLED_BEFORE_OPPORTUNITY' : (incapacityReason || 'UNAVAILABLE'),
                 reasonText: incapacityReasonText,
                 stateName: controlledStateName,
+                controlApplicationId: String(controlSource?.applicationId || '').trim(),
+                controlSourceActionId: String(controlSource?.sourceActionId || '').trim(),
+                controlSourceEventId: String(controlSource?.sourceEventId || '').trim(),
+                controlSourceEffectId: String(controlSource?.sourceEffectId || '').trim(),
               },
             });
             if (controlledStateName) {
@@ -14233,6 +14381,8 @@
                 continue;
               }
               const actorId = previewRuntime.unitId(actor);
+              const reactionTargetId = String(node?.state?.targetId || actorId).trim();
+              const summonGuard = node?.state?.summonGuard === true && !!actor?.召唤键;
               const sourceActorId = previewRuntime.unitId(sourceActor);
               const preparedDefense = actor?.__battleRuntime?.activeDefenseStance || null;
               const sourceActionEvent = shared?.actionContext?.actionEvent;
@@ -14259,7 +14409,7 @@
                 sourceFactIds: sourceFactIds.slice(),
                 sourceEventIds: sourceEventIds.slice(),
               };
-              const decisionResult = preparedDefense ? null : decideForNode(actor, node, {
+              const decisionResult = preparedDefense || summonGuard ? null : decideForNode(actor, node, {
                 role: 'REACTION',
                 imminentThreat: true,
                 sourceActorId,
@@ -14283,7 +14433,9 @@
               }
               const reactionDeclaration = preparedDefense
                 ? { actorId, actionKind: preparedDefense.actionKind, targetIds: [actorId] }
-                : cloneValue(decisionResult.selected.declaration);
+                : summonGuard
+                  ? { actorId, actionKind: 'DEFEND', targetIds: [actorId] }
+                  : cloneValue(decisionResult.selected.declaration);
               const reactionSettlementStartedAt = collectPerformanceBreakdown
                 ? performanceNow()
                 : 0;
@@ -14297,6 +14449,9 @@
                 opportunitySequence: node.opportunitySequence,
                 grantId: node.grantId,
                 preparedDefense,
+                summonGuardHostId: summonGuard ? reactionTargetId : '',
+                summonGuardHostName: summonGuard ? previewRuntime.unitName(actor?.__宿主) : '',
+                summonKey: summonGuard ? String(actor?.召唤键 || '').trim() : '',
                 decisionCandidateId: String(decisionResult?.selected?.candidateId || '').trim(),
               });
               addPerformanceTime(
@@ -14330,14 +14485,18 @@
                 declaration: reactionDeclaration,
                 reaction,
               });
-              shared.reactionByTarget[actorId] = reaction;
-              enqueueSummonAssists({
-                facts: reaction?.facts || [],
-                node,
-                sourceActionId: reaction?.event?.actionId || shared.actionContext.actionEvent.actionId,
-                host: actor,
-                decisionResult,
-              });
+              shared.reactionByTarget[reactionTargetId] = reaction;
+              if (summonGuard) {
+                consumeSummonWindow(combatData, actor, '护卫反应窗口耗尽', node.grantId);
+              } else {
+                enqueueSummonAssists({
+                  facts: reaction?.facts || [],
+                  node,
+                  sourceActionId: reaction?.event?.actionId || shared.actionContext.actionEvent.actionId,
+                  host: actor,
+                  decisionResult,
+                });
+              }
               queue.recordTrace('EXECUTED', node, {
                 actionId: shared.actionContext.actionEvent.actionId,
                 reactionEventId: String(reaction?.event?.eventId || '').trim(),
@@ -14475,7 +14634,7 @@
                   actorId: previewRuntime.unitId(actor),
                   actorName: previewRuntime.unitName(actor),
                   targetName: counterTargetName,
-                  actorSide: inferUnitSide(combatData, previewRuntime.unitName(actor)),
+                  actorSide: inferUnitSide(combatData, actor),
                   targetSide: String(
                     node?.state?.sourceActorSide ||
                     inferUnitSide(combatData, counterTargetName),
@@ -14536,7 +14695,7 @@
                 });
                 if (!counterWindow?.opened) return;
                 queue.enqueue({
-                  actorEntry: { char: reactor, side: inferUnitSide(combatData, previewRuntime.unitName(reactor)) },
+                  actorEntry: { char: reactor, side: inferUnitSide(combatData, reactor) },
                   actorControl: 'AI',
                   actorTurnSequence: node.actorTurnSequence,
                   parentActionSequence: node.parentActionSequence || node.actionSequence,
@@ -14551,7 +14710,7 @@
                   state: {
                     sourceActorId: previewRuntime.unitId(actor),
                     sourceActorName: previewRuntime.unitName(actor),
-                    sourceActorSide: inferUnitSide(combatData, previewRuntime.unitName(actor)),
+                    sourceActorSide: inferUnitSide(combatData, actor),
                     parentActionEvent: settlement.actionEvent,
                     reactionEvent: reaction?.event || null,
                     counterWindowEvent: counterWindow.event,
@@ -14605,10 +14764,13 @@
                   eventKind: 'charge_progress', round: Number(combatData.回合 || 0), actorName: previewRuntime.unitName(actor),
                   targetName: String(storedCharge?.targetName || storedCharge?.target_name || storedCharge?.targetIds?.[0] || '').trim(),
                   targetIds: Array.isArray(storedCharge?.targetIds) ? storedCharge.targetIds : [],
-                   actionName: normalizeActionDisplayName(storedCharge?.skill?.name || storedCharge?.skill?.魂技名 || storedCharge?.actionName || '蓄力行动'),
-                   actionType: 'charge_progress', actorControl: node.actorControl, actionRole: node.actionRole,
-                   sourceActionId: String(storedCharge?.sourceActionId || '').trim(),
-                   opportunityId: node.opportunityId,
+                 actionName: normalizeActionDisplayName(storedCharge?.skill?.name || storedCharge?.skill?.魂技名 || storedCharge?.actionName || '蓄力行动'),
+                 actionType: 'charge_progress', actorControl: node.actorControl, actionRole: node.actionRole,
+                 actionId: String(storedCharge?.sourceActionId || '').trim(),
+                 sourceActionId: String(storedCharge?.sourceActionId || '').trim(),
+                 parentNodeId: String(storedCharge?.sourceNodeId || '').trim(),
+                 sourceNodeId: String(storedCharge?.sourceNodeId || '').trim(),
+                 opportunityId: node.opportunityId,
                    opportunitySequence: node.opportunitySequence,
                    grantId: node.grantId,
                    result: 'charging', resultState: 'PENDING', ruleCode: 'CHARGE_PROGRESS',
@@ -14656,7 +14818,7 @@
               playerLockedActionConsumed = true;
               node.actorControl = 'PLAYER_LOCKED';
             } else if (node.actionRole === 'ASSIST' && actor.召唤键) {
-              const actorSide = inferUnitSide(combatData, previewRuntime.unitName(actor));
+              const actorSide = inferUnitSide(combatData, actor);
               const host = listPrimaryCombatUnits(combatData).find(unit =>
                 isUnitIdentityMatch(unit, node?.state?.hostActorId || actor?.__宿主)
               ) || actor?.__宿主;
@@ -14698,7 +14860,7 @@
               );
               const hostileTargets = listPrimaryCombatUnits(combatData).filter(unit =>
                 previewRuntime.isBattleCapable(unit) &&
-                inferUnitSide(combatData, previewRuntime.unitName(unit)) !== actorSide &&
+                inferUnitSide(combatData, unit) !== actorSide &&
                 (
                   !grantedTargetIds.size ||
                   grantedTargetIds.has(previewRuntime.unitId(unit))
@@ -14811,7 +14973,7 @@
                   actorId: previewRuntime.unitId(actor),
                   actorName: previewRuntime.unitName(actor),
                   targetName: sourceActorName,
-                  actorSide: inferUnitSide(combatData, previewRuntime.unitName(actor)),
+                  actorSide: inferUnitSide(combatData, actor),
                   targetSide: sourceActorSide,
                   targetIds: [sourceActorId].filter(Boolean),
                   // The decline is the authoritative action name used by the
@@ -14913,6 +15075,7 @@
             const castTime = Math.max(0, Number(declaration?.skill?.前摇 ?? declaration?.skill?.cast_time ?? 0));
             if (!storedCharge && node.nodeKind === 'ACTIVE' && castTime > naturalActionBudget) {
               const actionName = normalizeActionDisplayName(declaration?.skill?.name || declaration?.skill?.魂技名 || declaration?.actionKind || '蓄力行动');
+              const chargeActionId = nextRuntimeId('battle-action');
               const remainingOpportunityCount = Math.ceil(
                 (castTime - naturalActionBudget) / Math.max(1, naturalActionBudget),
               );
@@ -14920,6 +15083,8 @@
                 eventKind: 'charge_start', round: Number(combatData.回合 || 0), actorName: previewRuntime.unitName(actor),
                 targetName: String(declaration?.targetIds?.[0] || '').trim(), targetIds: declaration?.targetIds || [],
                 actionName, actionType: 'charge_start', actorControl: node.actorControl, actionRole: node.actionRole,
+                actionId: chargeActionId,
+                chainNodeId: chargeActionId,
                 result: 'charging', resultState: 'PENDING', ruleCode: 'CHARGE_STARTED',
                  opportunityId: node.opportunityId,
                  opportunitySequence: node.opportunitySequence,
@@ -14959,6 +15124,7 @@
                 targetIds: cloneValue(declaration.targetIds || []),
                 actionName,
                 sourceActionId: chargeStart.actionId || chargeStart.eventId || '',
+                sourceNodeId: chargeStart.chainNodeId || '',
               };
               queue.recordTrace('EXECUTED', node, {
                 actionId: chargeStart.actionId,
@@ -14976,14 +15142,14 @@
               declaration,
               actionRole: node.actionRole,
               actorControl: node.actorControl,
-              sourceActionId: String(parentActionEvent?.actionId || node.sourceActionId || '').trim(),
+              sourceActionId: String(storedCharge?.sourceActionId || parentActionEvent?.actionId || node.sourceActionId || '').trim(),
               opportunityId: node.opportunityId,
               opportunitySequence: node.opportunitySequence,
               grantId: node.grantId,
               decisionCandidateId: String(decisionResult?.selected?.candidateId || '').trim(),
-              parentNodeId: String(node?.state?.counterWindowEvent?.chainNodeId || node?.state?.reactionEvent?.chainNodeId || parentActionEvent?.chainNodeId || '').trim(),
+              parentNodeId: String(storedCharge?.sourceNodeId || node?.state?.counterWindowEvent?.chainNodeId || node?.state?.reactionEvent?.chainNodeId || parentActionEvent?.chainNodeId || '').trim(),
               reactionNodeId: String(node?.state?.reactionEvent?.chainNodeId || '').trim(),
-              chainType: node.nodeKind === 'CONTINUATION' ? 'FOLLOW_UP' : '',
+              chainType: storedCharge ? 'CHARGE_RELEASE' : node.nodeKind === 'CONTINUATION' ? 'FOLLOW_UP' : '',
             });
             if (
               naturalOpportunity &&
@@ -14999,8 +15165,20 @@
             const hostileTargets = node.nodeKind === 'COUNTER' || structuredDamageEffects(resolvedDeclaration).length === 0
               ? []
               : resolveStructuredTargets(combatData, actor, resolvedDeclaration, structuredDamageEffects(resolvedDeclaration)[0])
-                  .filter(target => inferUnitSide(combatData, previewRuntime.unitName(target)) !== inferUnitSide(combatData, previewRuntime.unitName(actor)));
+                  .filter(target => inferUnitSide(combatData, target) !== inferUnitSide(combatData, actor));
             hostileTargets.forEach(target => {
+              const guardSummon = listSummonCombatUnits(combatData)
+                .filter(unit =>
+                  String(unit?.行动模式 || '').trim() === '护卫' &&
+                  previewRuntime.isBattleCapable(unit) &&
+                  isUnitIdentityMatch(unit?.__宿主, target) &&
+                  Math.max(0, Number(ensureSummonWindowRuntime(unit)?.remainingWindows || 0)) > 0
+                )
+                .sort((left, right) =>
+                  Number(right?.def || right?.final?.def || 0) - Number(left?.def || left?.final?.def || 0) ||
+                  String(previewRuntime.unitId(left) || '').localeCompare(String(previewRuntime.unitId(right) || ''))
+                )[0] || null;
+              const reactor = guardSummon || target;
               const reactionOpportunity = consumeStructuredReactionOpportunity(
                 combatData,
                 target,
@@ -15034,7 +15212,7 @@
                 return;
               }
               queue.enqueue({
-                actorEntry: { char: target, side: inferUnitSide(combatData, previewRuntime.unitName(target)) },
+                actorEntry: { char: reactor, side: inferUnitSide(combatData, reactor) },
                 actorControl: 'AI',
                 actorTurnSequence: node.actorTurnSequence,
                 parentActionSequence: node.actionSequence,
@@ -15047,7 +15225,7 @@
                 sourceActorId: previewRuntime.unitId(actor),
                 grantType: 'DEFEND_WINDOW',
                 validTargetIds: [previewRuntime.unitId(actor)].filter(Boolean),
-                state: { shared, targetId: previewRuntime.unitId(target) },
+                state: { shared, targetId: previewRuntime.unitId(target), summonGuard: !!guardSummon },
               });
             });
             queue.enqueue({
@@ -15064,7 +15242,33 @@
             });
             queue.recordTrace('EXECUTED', node, { actionId: actionContext.actionEvent.actionId, result: 'declared' });
           } catch (error) {
-            queue.fail('STRUCTURED_SHADOW_NODE_FAILED', node, { message: String(error?.message || error) });
+            const actorName = previewRuntime.unitName(node?.actorEntry?.char);
+            const actorId = previewRuntime.unitId(node?.actorEntry?.char);
+            const nodeKind = String(node?.nodeKind || '').trim();
+            const actionRole = String(node?.actionRole || '').trim();
+            const grantType = String(node?.grantType || '').trim();
+            const sourceActionId = String(node?.sourceActionId || '').trim();
+            const validTargetIds = Array.isArray(node?.validTargetIds)
+              ? node.validTargetIds.map(value => String(value || '').trim()).filter(Boolean)
+              : [];
+            queue.fail('STRUCTURED_SHADOW_NODE_FAILED', node, {
+              message: [
+                String(error?.message || error),
+                `node=${nodeKind || 'UNKNOWN'}`,
+                `role=${actionRole || 'UNKNOWN'}`,
+                `actor=${actorId || actorName || 'UNKNOWN'}`,
+                `grant=${grantType || 'UNKNOWN'}`,
+                `source=${sourceActionId || 'NONE'}`,
+                `targets=${validTargetIds.join(',') || 'UNRESTRICTED'}`,
+              ].join('|'),
+              actorId,
+              actorName,
+              nodeKind,
+              actionRole,
+              grantType,
+              sourceActionId,
+              validTargetIds,
+            });
           }
           terminal = evaluateBattleTerminal({ combatData, currentRound: combatData.回合, rounds: roundOffset, roundCompleted: false }, {});
           if (terminal?.terminal === true) {
@@ -17786,28 +17990,37 @@
       });
     });
     eventLedger.filter(event => String(event?.eventKind || '').trim() === 'summon_end' && String(event?.ruleCode || event?.reasonCode || '').trim() === 'SUMMON_WINDOW_EXHAUSTED').forEach(endEvent => {
+      const summonKey = String(endEvent?.actorId || endEvent?.meta?.summonKey || '').trim();
       const summonName = String(endEvent?.actorName || endEvent?.meta?.summonName || '').trim();
       const endRound = Number(endEvent?.round || 0);
       const createEvent = [...eventLedger].reverse().find(event =>
         String(event?.eventKind || '').trim() === 'summon_create' &&
-        String(event?.meta?.summonName || '').trim() === summonName &&
+        (
+          (!!summonKey && [event?.targetId, event?.meta?.summonKey].some(value => String(value || '').trim() === summonKey)) ||
+          String(event?.meta?.summonName || '').trim() === summonName
+        ) &&
         Number(event?.round || 0) <= endRound
       );
       const createRound = Number(createEvent?.round || 0);
       const actionEvent = eventLedger.find(event => {
-        if (String(event?.actorName || event?.meta?.summonName || '').trim() !== summonName) return false;
+        const sameSummon =
+          (!!summonKey && [event?.actorId, event?.targetId, event?.meta?.summonKey].some(value => String(value || '').trim() === summonKey)) ||
+          String(event?.actorName || event?.meta?.summonName || '').trim() === summonName;
+        if (!sameSummon) return false;
         const round = Number(event?.round || 0);
         if (round < createRound || round > endRound) return false;
         const kind = String(event?.eventKind || '').trim();
         const actionType = String(event?.actionType || '').trim();
+        const role = String(event?.actionRole || '').trim();
         return (kind === 'action_start' && (
           /summon_assist|召唤自主行动/.test(actionType) ||
-          String(event?.actionRole || '').trim() === 'ASSIST'
+          role === 'ASSIST'
         )) ||
           kind === 'summon_guard' ||
+          (role === 'REACTION' && ['defend', 'dodge', 'counter'].includes(kind)) ||
           (kind === 'failed_action' && /summon/.test(actionType));
       });
-      if (!actionEvent) pushFatal('SUMMON_WINDOW_MISSING', { summonName, createEventId: createEvent?.eventId || '', endEventId: endEvent?.eventId || '' });
+      if (!actionEvent) pushFatal('SUMMON_WINDOW_MISSING', { summonName, summonKey, createEventId: createEvent?.eventId || '', endEventId: endEvent?.eventId || '' });
     });
 
     const terminalByActionTarget = new Map();
@@ -17970,13 +18183,42 @@
       }
       if (['dodge', 'defend', 'pass'].includes(kind) && role === 'REACTION') {
         const sourceActorName = String(sourceAction?.actorName || '').trim();
+        const summonGuardHostId = String(event?.meta?.summonGuardHostId || '').trim();
+        const summonGuardHostName = String(event?.meta?.summonGuardHostName || '').trim();
+        const summonKey = String(event?.meta?.summonKey || '').trim();
+        const summonCreate = summonKey && summonGuardHostId && summonGuardHostName
+          ? [...eventLedger].reverse().find(candidate =>
+              String(candidate?.eventKind || '').trim() === 'summon_create' &&
+              Number(candidate?.sequence || 0) < Number(event?.sequence || 0) &&
+              String(candidate?.meta?.summonMode || candidate?.summonMode || '').trim() === '护卫' &&
+              [candidate?.targetId, candidate?.meta?.summonKey].some(value => String(value || '').trim() === summonKey) &&
+              [candidate?.actorId, candidate?.actorName].some(value =>
+                isSameReportName(value || '', summonGuardHostId) ||
+                isSameReportName(value || '', summonGuardHostName) ||
+                isSameReportName(combatUnitNameById.get(String(value || '').trim()) || '', summonGuardHostName)
+              )
+            )
+          : null;
+        const summonEndedBeforeReaction = summonCreate && eventLedger.some(candidate =>
+          String(candidate?.eventKind || '').trim() === 'summon_end' &&
+          Number(candidate?.sequence || 0) > Number(summonCreate?.sequence || 0) &&
+          Number(candidate?.sequence || 0) < Number(event?.sequence || 0) &&
+          [candidate?.actorId, candidate?.meta?.summonKey].some(value => String(value || '').trim() === summonKey)
+        );
+        const validSummonGuard = !!(
+          summonCreate &&
+          !summonEndedBeforeReaction &&
+          String(event?.actorId || '').trim() === summonKey &&
+          sourceTargetsActor(sourceAction, summonGuardHostId) &&
+          sourceTargetsActor(sourceAction, summonGuardHostName)
+        );
         if (
           !sourceAction ||
           !actorName ||
           !sourceActorName ||
           isSameReportName(actorName, sourceActorName) ||
           !isSameReportName(targetName, sourceActorName) ||
-          !sourceTargetsActor(sourceAction, actorName)
+          (!sourceTargetsActor(sourceAction, actorName) && !validSummonGuard)
         ) {
           pushFatal('REACTION_SELF_SOURCE_INVALID', {
             eventId: event?.eventId || '',

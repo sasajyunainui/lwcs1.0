@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:c18fb17328115c1b145b297336c9e4854a2bedac5bba449cdface0d0f7128389|TradeUI_Module.js:f2d0e8764b24903b5fdfe6437d2f7261c046ebb2e53c40e5c7035f1d7d890727|ProfessionUI_Module.js:934f90718222a9fa5a838464c955726f1424cc7724bcfdf61c400acacc847aa3|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:b6a0ac9c0336ba8ff632dc6edce17fc79b55bf16c2dc8cf569f3b90690cf29d6|BehaviorDecisionPipeline_Module.js:e1848b77dd7fe6aae4fd0bafed0b7c380f152fe833722c780749dcddb3adb96d|BattleDecision_Module.js:dd1f40ea92312459f72e8dc72ac6d6a1ac08ae4e94911884911a28c76c26edd9|BattleRuntime_Module.js:3e51ba3df494a4c60d55beb2cd1751d433cd4ff6d7c8f41fbc916b4ebe99595c|BattleReport_Module.js:74efa89b67afbb0ac331a0b2c607d5a5a0cf421db2ccd4dcc7cc68fd8bdef024|BattleUI_Module.js:dd1bf21504c52a4a82ae0f9cc7f27bda78f3ae6293503f9df1a351981add5aa5|Database_Module.js:acce78b45d5a6c41197af59d313c3491743ab1421667a47b128504bc1016df8d */
+/* sources-sha256: LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:c18fb17328115c1b145b297336c9e4854a2bedac5bba449cdface0d0f7128389|TradeUI_Module.js:f2d0e8764b24903b5fdfe6437d2f7261c046ebb2e53c40e5c7035f1d7d890727|ProfessionUI_Module.js:934f90718222a9fa5a838464c955726f1424cc7724bcfdf61c400acacc847aa3|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:0a05a0b73c738880331b37bc9e9012b3a45e2b8bbb51140c102261e4c5e13fed|BehaviorDecisionPipeline_Module.js:5d46e97aef657ef6fe3f6066a2f684a859ef04fe49be1fa07a6ac348a6eceb60|BattleDecision_Module.js:8c90a02e389a4d9ab9a3225490a37e747c794db92c99d22c4fdbd490ed917005|BattleRuntime_Module.js:83feb3421b06f1532b10613a268558c85b5674f9dee8938986ad526bbd21d3ae|BattleReport_Module.js:74efa89b67afbb0ac331a0b2c607d5a5a0cf421db2ccd4dcc7cc68fd8bdef024|BattleUI_Module.js:dd1bf21504c52a4a82ae0f9cc7f27bda78f3ae6293503f9df1a351981add5aa5|Database_Module.js:acce78b45d5a6c41197af59d313c3491743ab1421667a47b128504bc1016df8d */
 ;
 /* source: LWCS_TT_AutoUpdate_Debug.js */
 (function installLwcsTtAutoUpdateDebug() {
@@ -65751,7 +65751,11 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
   }
 
   const VERSION = '7.3-R6.3-preview-2';
-  const MAX_PREVIEW_NODES = 12;
+  // A preview includes the declared skill plus any cooperative summon attacks
+  // that settle in the same action. Twelve nodes is smaller than a valid
+  // generated 3v3 action once several summons are active, so keep the safety
+  // guard while allowing the complete bounded effect graph to resolve.
+  const MAX_PREVIEW_NODES = 64;
   const MAX_RECURSION_DEPTH = 4;
   const effectHashCache = new WeakMap();
   const effectArrayHashCache = new WeakMap();
@@ -70340,10 +70344,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   }
 
   function effectTargetsAllies(effect = {}) {
+    const prototype = String(effect?.原型 || '').trim();
+    if (prototype === '资源转移') {
+      const mode = String(effect?.资源转移方式 || '').trim();
+      if (mode === '吞噬') return false;
+      if (['共享', '均分', '转移'].includes(mode)) return true;
+    }
     const targetText = String(effect?.目标 || '').trim();
     if (/自身|友方|己方/.test(targetText)) return true;
     if (/敌方|对方/.test(targetText)) return false;
-    const prototype = String(effect?.原型 || '').trim();
     if (prototype === '伤害结算' || prototype === '机制抹消') return false;
     if (prototype === '召唤生成' || prototype === '机制授予' || prototype === '规则防御') return true;
     if (prototype === '护盾变化') {
@@ -70351,7 +70360,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         parseSignedValue(effect?.数值, 1) >= 0;
     }
     if (prototype === '资源变化') return parseSignedValue(effect?.数值, 1) >= 0;
-    if (['属性修正', '判定修正', '结算修正', '时窗修正'].includes(prototype)) {
+    if (prototype === '判定修正' || prototype === '结算修正') {
+      const helpers = root.__LWCS_SKILL_COST_HELPERS_V1__;
+      const semanticJudge = prototype === '判定修正'
+        ? helpers?.判定修正是否增益语义_V1
+        : helpers?.结算修正是否增益语义_V1;
+      if (typeof semanticJudge !== 'function') {
+        throw new Error('battle_preview_skill_semantic_helpers_missing');
+      }
+      return semanticJudge(effect);
+    }
+    if (['属性修正', '时窗修正'].includes(prototype)) {
       return parseSignedValue(effect?.数值 ?? effect?.副数值, 1) >= 0;
     }
     if (prototype === '状态移除') return /负面|减益|控制|异常/.test(String(effect?.状态 || effect?.状态名称 || ''));
@@ -70389,6 +70408,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     );
     const actorSide = actorProfile?.side || sideOf(worldSnapshot, actor);
     const targetText = String(effect?.目标 || declaration?.targetKind || '').trim();
+    const effectPrototype = String(effect?.原型 || '').trim();
+    const excludesActorEndpoint = effectPrototype === '资源转移';
     const declaredIds = Array.isArray(declaration?.targetIds) ? declaration.targetIds.map(String) : [];
     const groupTarget = /友方.*群体|己方.*群体|全场|群体/.test(targetText);
     const targetIsEligible = (target, respectStealth = true) => {
@@ -70420,7 +70441,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         : [];
       return declaredSummons.length ? declaredSummons : eligibleSummons;
     }
-    if (/自身/.test(targetText)) return [actor];
+    if (/自身/.test(targetText)) return excludesActorEndpoint ? [] : [actor];
     if (/融合伙伴/.test(targetText)) {
       const participantRefs = [
         ...(Array.isArray(declaration?.fusionParticipantIds) ? declaration.fusionParticipantIds : []),
@@ -70450,7 +70471,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     if (/友方.*群体|己方.*群体|全场|群体/.test(targetText)) {
       const friendly = all.filter(entry =>
-        entry.side === actorSide && targetIsEligible(entry.unit, false)
+        entry.side === actorSide && targetIsEligible(entry.unit, false) &&
+        (!excludesActorEndpoint || unitId(entry.unit) !== unitId(actor))
       ).map(entry => entry.unit);
       const hostile = all.filter(entry =>
         entry.side !== actorSide && isBattleCapable(entry.unit)
@@ -70460,16 +70482,43 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       return effectTargetsAllies(effect) ? friendly : hostile;
     }
     if (declaredIds.length) {
-      return declaredIds
+      const declaredTargets = declaredIds
         .map(id =>
           projectionContext?.unitById?.get(id) ||
           findUnit(worldSnapshot, id)
         )
         .filter(target => target && targetIsEligible(target));
+      const explicitFriendly = /友方|己方/.test(targetText);
+      const explicitHostile = /敌方|对方/.test(targetText);
+      const targetsAllies = effectTargetsAllies(effect);
+      const requiresFriendly = explicitFriendly || (!explicitHostile && targetsAllies);
+      const requiresHostile = explicitHostile || (!explicitFriendly && !targetsAllies);
+      const sideMatched = declaredTargets.filter(target => {
+        if (excludesActorEndpoint && unitId(target) === unitId(actor)) return false;
+        const targetSide = mechanicalProjectionProfile(
+          projectionContext,
+          target,
+        )?.side || sideOf(worldSnapshot, target);
+        if (requiresFriendly) return targetSide === actorSide;
+        if (requiresHostile) return targetSide !== actorSide;
+        return true;
+      });
+      // A declaration may carry the whole hostile/friendly group because a
+      // sibling effect is group-scoped.  A non-group effect still has exactly
+      // one primary target: the first compatible id in declaration order.
+      // Returning the whole declaration here made every "single + group"
+      // skill silently promote its single-target effects to group effects.
+      if (sideMatched.length) return sideMatched.slice(0, 1);
     }
-    const friendly = all.filter(entry => entry.side === actorSide && targetIsEligible(entry.unit)).map(entry => entry.unit);
+    const friendly = all.filter(entry =>
+      entry.side === actorSide && targetIsEligible(entry.unit) &&
+      (!excludesActorEndpoint || unitId(entry.unit) !== unitId(actor))
+    ).map(entry => entry.unit);
     const hostile = all.filter(entry => entry.side !== actorSide && isBattleCapable(entry.unit)).map(entry => entry.unit);
-    if (/友方|己方/.test(targetText)) return friendly.slice(0, 1);
+    if (/友方|己方/.test(targetText) ||
+      (!/敌方|对方/.test(targetText) && effectTargetsAllies(effect))) {
+      return friendly.slice(0, 1);
+    }
     return hostile.slice(0, 1);
   }
 
@@ -70628,6 +70677,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     if (/持续恢复|再生|愈合|生命恢复/.test(state)) {
       combatEffect.hot_heal_ratio = Math.max(Number(combatEffect.hot_heal_ratio || 0), magnitude);
+    }
+    if (/禁疗/.test(state)) {
+      combatEffect.heal_reduction = Math.max(Number(combatEffect.heal_reduction || 0), magnitude);
     }
     if (/异常抗性/.test(state) || effect?.异常抗性 !== undefined) {
       combatEffect.abnormal_resistance = Math.max(
@@ -71279,16 +71331,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (Math.max(0, Number(state?.duration ?? state?.持续回合 ?? 1)) <= 0) return multiplier;
       const settlement = String(state?.结算 || '').trim();
       const effects = state?.战斗效果 || {};
+      const receivedHealingMultiplier = Math.max(
+        0,
+        1 - clamp(Number(effects.heal_reduction || 0), 0, 1),
+      );
       if (settlement === '治疗') {
-        return multiplier * Math.max(0, Number(effects.final_heal_mult ?? 1));
+        return multiplier * receivedHealingMultiplier * Math.max(0, Number(effects.final_heal_mult ?? 1));
       }
       if (['资源恢复', '恢复资源', '资源回复'].includes(settlement)) {
         const limited = Array.isArray(effects.final_heal_limited) ? effects.final_heal_limited : [];
-        return multiplier * limited
+        return multiplier * receivedHealingMultiplier * limited
           .filter(entry => !entry?.资源 || String(entry.资源).trim() === String(resource || '').trim())
           .reduce((value, entry) => value * Math.max(0, 1 + Number(entry?.数值 || 0)), 1);
       }
-      return multiplier;
+      return multiplier * receivedHealingMultiplier;
     }, 1);
   }
 
@@ -71315,6 +71371,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       unit.状态效果[key] = {
         ...existing,
         duration: Math.max(existingDuration, requestedDuration),
+        来源角色: String(effect?.来源角色 || existing?.来源角色 || '').trim(),
         数值: effect?.数值 ?? existing?.数值,
         强度: effect?.强度 ?? existing?.强度,
         ...(effect?.对应等级 !== undefined ? { 对应等级: Number(effect.对应等级) } : {}),
@@ -71335,6 +71392,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       状态名称: stateName,
       类型: effect?.类型 || '',
       原型: String(effect?.原型 || '').trim(),
+      来源角色: String(effect?.来源角色 || '').trim(),
       判定: String(effect?.判定 || '').trim(),
       结算: String(effect?.结算 || '').trim(),
       限定元素: cloneValue(effect?.限定元素 ?? ''),
@@ -71619,10 +71677,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return totalHealing - totalDamage;
   }
 
+  function statePolarity(state = {}) {
+    const type = String(state?.类型 || state?.正负面 || state?.性质 || '').trim().toLowerCase();
+    if (type === 'debuff' || /负|减益|异常|控制/.test(type) || state?.debuff === true) return -1;
+    if (type === 'buff' || /正|增益|强化/.test(type) || state?.buff === true) return 1;
+    const name = stateName(state);
+    if (/中毒|流血|灼烧|眩晕|沉默|禁疗|迟缓|致盲|混乱|嘲讽|精神紊乱|标记|束缚|禁锢|缴械|虚弱/.test(name)) return -1;
+    if (/护盾|恢复|治疗|增幅|强化|免疫|无视异常|霸体|加速|隐匿|隐身/.test(name)) return 1;
+    return 0;
+  }
+
   function isNegativeState(state = {}) {
-    const type = String(state?.类型 || state?.正负面 || state?.性质 || '').trim();
-    if (/负|减益|异常|控制/.test(type) || state?.debuff === true) return true;
-    return /中毒|流血|灼烧|眩晕|沉默|禁疗|迟缓|致盲|混乱|嘲讽|精神紊乱/.test(stateName(state));
+    return statePolarity(state) < 0;
   }
 
   function replaceStates(unit, entries) {
@@ -71633,8 +71699,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const wanted = String(selector || '任意状态').trim();
     return stateEntries(unit).filter(([, state]) => {
       if (!wanted || wanted === '任意状态') return true;
-      if (wanted === '任意负面') return isNegativeState(state);
-      if (wanted === '任意增益') return !isNegativeState(state);
+      if (wanted === '任意负面') return statePolarity(state) < 0;
+      if (wanted === '任意增益') return statePolarity(state) > 0;
       return stateName(state) === wanted;
     });
   }
@@ -71977,6 +72043,24 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         },
       });
     });
+  }
+
+  function primaryResolutionProbabilityFromOutcomes(entries = [], targetId = '', prototype = '') {
+    const outcomeKinds = prototype === '资源变化'
+      ? new Set(['HP_DELTA', 'RESOURCE_OPTION_CHANGED'])
+      : prototype === '护盾变化'
+        ? new Set(['SHIELD_DELTA'])
+        : null;
+    if (!outcomeKinds) return null;
+    return entries.reduce((maximum, entry) => {
+      if (
+        String(entry?.targetId || '').trim() !== String(targetId || '').trim() ||
+        !outcomeKinds.has(String(entry?.outcomeKind || '').trim())
+      ) return maximum;
+      const realizedDelta = Number(entry?.evidence?.realizedDelta ?? entry?.evidence?.delta ?? 0);
+      if (!(Math.abs(realizedDelta) > 1e-9)) return maximum;
+      return Math.max(maximum, clamp(Number(entry?.evidence?.applicationProbability ?? 1), 0, 1));
+    }, 0);
   }
 
   function requiredOutcomeProfile(context = {}, targetId = '') {
@@ -72565,99 +72649,159 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         return;
       }
       if (prototype === '资源转移') {
-        const amountTarget = targets[0];
-        if (!amountTarget) return;
-        const currentTarget = overlay.readUnit(unitId(amountTarget));
         const resource = String(effect?.资源 || '魂力').trim();
-        const probabilityProfile = effectProbabilityProfile(
-          context,
-          unitId(amountTarget),
-        );
-        const applicationProbability =
-          probabilityProfile.applicationProbability;
-        const realizedAmount = Math.abs(
-          parseSignedValue(effect?.数值, readResourceMax(currentTarget, resource))
-        );
-        const actorCurrent = readResource(actor, resource);
-        const targetCurrent = readResource(currentTarget, resource);
         const mode = String(effect?.资源转移方式 || '转移').trim();
-        let realizedActorNext = actorCurrent;
-        let realizedTargetNext = targetCurrent;
-        if (mode === '吞噬') {
-          const moved = Math.min(
-            realizedAmount,
-            targetCurrent,
-            readResourceMax(actor, resource) - actorCurrent,
-          );
-          realizedActorNext += moved;
-          realizedTargetNext -= moved;
-        } else if (mode === '共享' || mode === '均分') {
-          const shared = (actorCurrent + targetCurrent) / 2;
-          realizedActorNext = clamp(
-            shared,
+        const conversionRatio = clamp(Number(effect?.转化比例 ?? 1) || 1, 0, 2);
+        const actorId = unitId(actor);
+        const addOutcome = ({
+          target, targetIndex, role, before, next, realizedDelta,
+          probabilityProfile, transferSourceId = '', transferReceiverId = '',
+          transferGroupKey = '',
+          requestedAmount = 0, sourcePaid = 0, convertedAmount = 0,
+          receiverGain = 0, overflowLoss = 0, poolTotalBefore = null,
+          poolTotalAfter = null,
+        }) => {
+          const targetId = unitId(target);
+          const probabilityGroupKey = [
+            context.rootActionId,
+            context.effectInstanceId,
+            context.windowId,
+            targetId,
+          ].join('|');
+          ledger.addOutcome({
+            ...context,
+            targetId,
+            effectInstanceId: `${context.effectInstanceId}:${targetIndex}:${role}`,
+            outcomeKind: 'RESOURCE_OPTION_CHANGED',
+            threatValue: 0,
+            evidence: {
+              resource,
+              mode,
+              transferRole: role,
+              transferSourceId,
+              transferReceiverId,
+              transferGroupKey,
+              requestedAmount,
+              sourcePaid,
+              conversionRatio: mode === '均分' ? null : conversionRatio,
+              convertedAmount,
+              receiverGain,
+              overflowLoss,
+              ...(poolTotalBefore === null ? {} : { poolTotalBefore }),
+              ...(poolTotalAfter === null ? {} : { poolTotalAfter }),
+              before,
+              after: next,
+              delta: next - before,
+              realizedDelta,
+              applicationProbability: probabilityProfile.applicationProbability,
+              ownApplicationProbability: probabilityProfile.ownApplicationProbability,
+              ...outcomeDependencyEvidence(context, targetId),
+              probabilityGroupKey,
+              distributionGroupKey: String(
+                context?.outcomeAssignmentKeyByTarget?.get?.(targetId) ||
+                probabilityGroupKey
+              ).trim(),
+            },
+          });
+        };
+        if (mode === '均分') {
+          const participants = [...new Map([actor, ...targets]
+            .map(target => [unitId(target), overlay.readUnit(unitId(target))])
+            .filter(([id, target]) => id && target)).values()];
+          if (participants.length < 2) return;
+          const strength = clamp(
+            Math.abs(parseSignedValue(effect?.数值 ?? '100%', 1)) || 1,
             0,
-            readResourceMax(actor, resource),
+            1,
           );
-          realizedTargetNext = clamp(
-            shared,
+          const poolTotalBefore = participants.reduce(
+            (sum, target) => sum + readResource(target, resource),
             0,
-            readResourceMax(currentTarget, resource),
           );
-        } else {
-          const moved = Math.min(
-            realizedAmount,
-            actorCurrent,
-            readResourceMax(currentTarget, resource) - targetCurrent,
-          );
-          realizedActorNext -= moved;
-          realizedTargetNext += moved;
+          const average = poolTotalBefore / participants.length;
+          const settlements = participants.map((target, targetIndex) => {
+            const before = readResource(target, resource);
+            const realizedNext = clamp(
+              before + (average - before) * strength,
+              0,
+              readResourceMax(target, resource),
+            );
+            const probabilityProfile = effectProbabilityProfile(context, unitId(target));
+            const realizedDelta = realizedNext - before;
+            const next = before + realizedDelta * probabilityProfile.applicationProbability;
+            return { target, targetIndex, before, next, realizedDelta, probabilityProfile };
+          });
+          const poolTotalAfter = settlements.reduce((sum, row) => sum + row.next, 0);
+          settlements.forEach(row => {
+            overlay.changeUnit(unitId(row.target), unit => setResourceValue(unit, resource, row.next));
+            addOutcome({
+              ...row,
+              role: 'POOL_MEMBER',
+              transferGroupKey: `${context.effectInstanceId}:POOL`,
+              poolTotalBefore,
+              poolTotalAfter,
+              overflowLoss: Math.max(0, poolTotalBefore - poolTotalAfter),
+            });
+          });
+          return;
         }
-        const actorRealizedDelta = realizedActorNext - actorCurrent;
-        const targetRealizedDelta = realizedTargetNext - targetCurrent;
-        const actorNext = actorCurrent +
-          actorRealizedDelta * applicationProbability;
-        const targetNext = targetCurrent +
-          targetRealizedDelta * applicationProbability;
-        overlay.changeUnit(unitId(actor), unit => setResourceValue(unit, resource, actorNext));
-        overlay.changeUnit(unitId(currentTarget), unit => setResourceValue(unit, resource, targetNext));
-        [actor, currentTarget].forEach((unit, index) => ledger.addOutcome({
-          ...context,
-          targetId: unitId(unit),
-          effectInstanceId: `${context.effectInstanceId}:${index}`,
-          outcomeKind: 'RESOURCE_OPTION_CHANGED',
-          threatValue: 0,
-          evidence: {
-            resource,
-            mode,
-            delta: index === 0 ? actorNext - actorCurrent : targetNext - targetCurrent,
-            realizedDelta:
-              index === 0 ? actorRealizedDelta : targetRealizedDelta,
-            applicationProbability,
-            ownApplicationProbability:
-              probabilityProfile.ownApplicationProbability,
-            ...outcomeDependencyEvidence(
-              context,
-              unitId(amountTarget),
-            ),
-            probabilityGroupKey: [
-              context.rootActionId,
-              context.effectInstanceId,
-              context.windowId,
-              unitId(amountTarget),
-            ].join('|'),
-            distributionGroupKey: String(
-              context?.outcomeAssignmentKeyByTarget?.get?.(
-                unitId(amountTarget)
-              ) ||
-              [
-                context.rootActionId,
-                context.effectInstanceId,
-                context.windowId,
-                unitId(amountTarget),
-              ].join('|')
-            ).trim(),
-          },
-        }));
+        targets.forEach((amountTarget, targetIndex) => {
+          const targetId = unitId(amountTarget);
+          if (!targetId || targetId === actorId) return;
+          const currentActor = overlay.readUnit(actorId);
+          const currentTarget = overlay.readUnit(targetId);
+          if (!currentActor || !currentTarget) return;
+          const probabilityProfile = effectProbabilityProfile(context, targetId);
+          const applicationProbability = probabilityProfile.applicationProbability;
+          const requestedAmount = Math.abs(parseSignedValue(
+            effect?.数值,
+            readResourceMax(currentTarget, resource),
+          ));
+          const source = mode === '吞噬' ? currentTarget : currentActor;
+          const receiver = mode === '吞噬' ? currentActor : currentTarget;
+          const sourceBefore = readResource(source, resource);
+          const receiverBefore = readResource(receiver, resource);
+          const sourcePaid = Math.min(requestedAmount, sourceBefore);
+          const convertedAmount = sourcePaid * conversionRatio;
+          const receiverGain = Math.min(
+            convertedAmount,
+            Math.max(0, readResourceMax(receiver, resource) - receiverBefore),
+          );
+          const sourceRealizedDelta = -sourcePaid;
+          const receiverRealizedDelta = receiverGain;
+          const sourceNext = sourceBefore + sourceRealizedDelta * applicationProbability;
+          const receiverNext = receiverBefore + receiverRealizedDelta * applicationProbability;
+          overlay.changeUnit(unitId(source), unit => setResourceValue(unit, resource, sourceNext));
+          overlay.changeUnit(unitId(receiver), unit => setResourceValue(unit, resource, receiverNext));
+          const common = {
+            targetIndex,
+            probabilityProfile,
+            transferSourceId: unitId(source),
+            transferReceiverId: unitId(receiver),
+            transferGroupKey: `${context.effectInstanceId}:${targetIndex}`,
+            requestedAmount,
+            sourcePaid,
+            convertedAmount,
+            receiverGain,
+            overflowLoss: Math.max(0, convertedAmount - receiverGain),
+          };
+          addOutcome({
+            ...common,
+            target: source,
+            role: 'SOURCE',
+            before: sourceBefore,
+            next: sourceNext,
+            realizedDelta: sourceRealizedDelta,
+          });
+          addOutcome({
+            ...common,
+            target: receiver,
+            role: 'RECEIVER',
+            before: receiverBefore,
+            next: receiverNext,
+            realizedDelta: receiverRealizedDelta,
+          });
+        });
         return;
       }
       if (prototype === '护盾变化') {
@@ -72786,6 +72930,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                   }),
                 }
               : {
+                  ...buildEffectEvidence(
+                    scaledEffect,
+                    prototype,
+                    deriveStateCombatEffect(scaledEffect),
+                  ),
                   ...applyStatModifier(unit, scaledEffect),
                   applicationProbability,
                   ownApplicationProbability:
@@ -73008,6 +73157,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           overlay.changeUnit(unitId(target), unit => {
             marginal = addState(unit, {
               ...effect,
+              来源角色: unitName(context?.actor || {}),
               __previewApplicationProbability: effectiveApplicationProbability,
             }, context.effectInstanceId);
           });
@@ -73581,6 +73731,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const inheritRatio = clamp(Number(
           effect?.继承属性比例 || effect?.强度 || effect?.召唤强度 || 0.35,
         ), 0.05, 2);
+        const summonLevel = Math.max(1, Number(
+          actor?.level ?? actor?.等级 ?? actor?.修为等级 ?? actor?.属性?.等级 ?? actor?.final?.level ?? 1,
+        ) || 1);
         const actorSide = sideOf(context.worldSnapshot, actor);
         const summonIds = [];
         const summonProbabilityProfile = effectProbabilityProfile(
@@ -73623,6 +73776,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             类型: summonType,
             召唤单位类型: summonType,
             单位性质: '召唤物',
+            level: summonLevel,
+            等级: summonLevel,
             行动模式: actionMode,
             宿主名: unitName(actor),
             阵营: /enemy|敌方|对方/i.test(actorSide) ? '敌方' : '玩家',
@@ -75402,6 +75557,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         context.applicationProbabilityByTarget =
           ownApplicationProbabilityByTarget;
       }
+      const effectOutcomeStart = ledger.entries.length;
       applyEffect(effect, targets, overlay, ledger, context, 0);
       targets.forEach(target => changedUnitIds.add(unitId(target)));
       if (effectIndex !== 0) return;
@@ -75522,11 +75678,22 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             ]),
           );
         } else {
-          primarySuccessProbability.set(targetId, 1);
+          const realizedProbability = primaryResolutionProbabilityFromOutcomes(
+            ledger.entries.slice(effectOutcomeStart),
+            targetId,
+            prototype,
+          );
+          const primaryProbability = realizedProbability === null ? 1 : realizedProbability;
+          primarySuccessProbability.set(targetId, primaryProbability);
           primaryOutcomeDistributionByTarget.set(
             targetId,
             Object.freeze([
-              Object.freeze({ outcome: 'HIT', probability: 1 }),
+              ...(primaryProbability > 1e-12
+                ? [Object.freeze({ outcome: 'HIT', probability: primaryProbability })]
+                : []),
+              ...(primaryProbability < 1 - 1e-12
+                ? [Object.freeze({ outcome: 'MISS', probability: 1 - primaryProbability })]
+                : []),
             ]),
           );
         }
@@ -75654,7 +75821,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (String(effect?.原型 || '').trim() === '资源变化' && /生命|HP/i.test(String(effect?.资源 || ''))) {
         const base = readHpMax(target || actor);
         const missing = base - readHp(target || actor);
-        return sum + Math.min(missing, Math.max(0, parseSignedValue(effect?.数值, base))) / base * 100;
+        const recoverable = declaration?.capacityMode === true
+          ? Math.min(base, missing + Math.max(0, Number(declaration?.healingOpportunityCap || 0)))
+          : missing;
+        const healing = Math.max(0, parseSignedValue(effect?.数值, base)) *
+          healingMultiplierForUnit(target || actor, '生命');
+        return sum + Math.min(recoverable, healing) / base * 100;
       }
       if (String(effect?.原型 || '').trim() === '护盾变化') {
         const base = readHpMax(target || actor);
@@ -75882,6 +76054,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           name: String(existing.name || productId).trim() || productId,
           名称: String(existing.名称 || productId).trim() || productId,
           物品名: String(existing.物品名 || productId).trim() || productId,
+          制作者ID: actorId,
           类型: String(existing.类型 || effect?.物品类型 || '物品').trim() || '物品',
           数量: Math.max(0, Number(existing.数量 || 0)) + quantity,
           有效期tick: Math.max(Number(existing.有效期tick || 0), Math.max(0, Number(effect?.有效期tick || 0))),
@@ -76850,6 +77023,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         context.applicationProbabilityByTarget =
           ownApplicationProbabilityByTarget;
       }
+      const effectOutcomeStart = ledger.entries.length;
       applyEffect(effect, targets, overlay, ledger, context, 0);
       if (String(effect?.原型 || '').trim() === '炸环') {
         actionDamageMultiplier *= Math.max(0, Number(effect?.强化倍率 || 1));
@@ -76954,9 +77128,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 : []),
             ]));
           } else {
-            primarySuccessProbability.set(targetId, 1);
+            const realizedProbability = primaryResolutionProbabilityFromOutcomes(
+              ledger.entries.slice(effectOutcomeStart),
+              targetId,
+              prototype,
+            );
+            const primaryProbability = realizedProbability === null ? 1 : realizedProbability;
+            primarySuccessProbability.set(targetId, primaryProbability);
             primaryOutcomeDistributionByTarget.set(targetId, Object.freeze([
-              Object.freeze({ outcome: 'HIT', probability: 1 }),
+              ...(primaryProbability > 1e-12
+                ? [Object.freeze({ outcome: 'HIT', probability: primaryProbability })]
+                : []),
+              ...(primaryProbability < 1 - 1e-12
+                ? [Object.freeze({ outcome: 'MISS', probability: 1 - primaryProbability })]
+                : []),
             ]));
           }
         });
@@ -77230,6 +77415,50 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         ].sort()),
       }));
     };
+    const resolveApplicationGroup = ({
+      source = {},
+      effectInstanceId,
+      probability,
+      fallbackKey,
+      successAssignments,
+      failureAssignments,
+    }) => {
+      if (!(probability > 1e-12 && probability < 1 - 1e-12)) {
+        return { groupKey: '', successValue: '' };
+      }
+      const explicitKeys = [
+        source?.distributionGroupKey,
+        source?.probabilityGroupKey,
+      ].map(value => String(value || '').trim()).filter(Boolean);
+      const existingKey = explicitKeys.find(key => outcomeGroups.has(key));
+      if (existingKey) {
+        const existing = outcomeGroups.get(existingKey);
+        const successValue = (existing?.outcomes || []).map(outcome => String(
+          outcome?.assignments?.[existingKey] || outcome?.outcomeId || '',
+        ).trim().toUpperCase()).find(value => ['HIT', 'SUCCESS'].includes(value));
+        if (!successValue) {
+          throw new Error(`BATTLE_OUTCOME_GROUP_SUCCESS_MISSING:${existingKey}`);
+        }
+        attachEffectToGroup(existingKey, effectInstanceId);
+        return { groupKey: existingKey, successValue };
+      }
+      return {
+        groupKey: registerGroup({
+          groupKey: explicitKeys[0] || fallbackKey,
+          effectInstanceIds: [effectInstanceId],
+          probability,
+          probabilitySources: [{
+            sourceType: 'EFFECT_APPLICATION',
+            baseProbability: probability,
+            finalProbability: probability,
+            dependencyKeys: [],
+          }],
+          successAssignments,
+          failureAssignments,
+        }),
+        successValue: 'SUCCESS',
+      };
+    };
     const registerEvent = ({
       eventId,
       effectInstanceId = '',
@@ -77413,31 +77642,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         1,
       );
       const assignmentKey = `${effectInstanceId}|${targetId}`;
-      const groupKey =
-        ownApplicationProbability > 1e-12 &&
-        ownApplicationProbability < 1 - 1e-12
-          ? registerGroup({
-              groupKey:
-                evidence?.distributionGroupKey ||
-                evidence?.probabilityGroupKey ||
-                `${rootActionId}|${effectInstanceId}|${targetId}|state`,
-              effectInstanceIds: [effectInstanceId],
-              probability: ownApplicationProbability,
-              probabilitySources: [{
-                sourceType: 'EFFECT_APPLICATION',
-                baseProbability: ownApplicationProbability,
-                finalProbability: ownApplicationProbability,
-                dependencyKeys: [],
-              }],
-              successAssignments: { [assignmentKey]: 'HIT' },
-              failureAssignments: { [assignmentKey]: 'RESISTED' },
-            })
-          : '';
+      const applicationGroup = resolveApplicationGroup({
+        source: evidence,
+        effectInstanceId,
+        probability: ownApplicationProbability,
+        fallbackKey: `${rootActionId}|${effectInstanceId}|${targetId}|state`,
+        successAssignments: { [assignmentKey]: 'HIT' },
+        failureAssignments: { [assignmentKey]: 'RESISTED' },
+      });
+      const groupKey = applicationGroup.groupKey;
       const applicationConditions = {
         ...(requiredOutcomeKey
           ? { [requiredOutcomeKey]: requiredOutcomeValue }
           : {}),
-        ...(groupKey ? { [groupKey]: 'SUCCESS' } : {}),
+        ...(groupKey ? { [groupKey]: applicationGroup.successValue } : {}),
       };
       attachEffectToGroup(requiredOutcomeKey, effectInstanceId);
       if (groupKey) {
@@ -77530,35 +77748,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         0,
         1,
       );
-      const groupKey =
-        ownApplicationProbability > 1e-12 &&
-        ownApplicationProbability < 1 - 1e-12
-          ? registerGroup({
-              groupKey:
-                evidence?.probabilityGroupKey ||
-                evidence?.distributionGroupKey ||
-                `${rootActionId}|${effectInstanceId}|${targetId}|shield`,
-              effectInstanceIds: [effectInstanceId],
-              probability: ownApplicationProbability,
-              probabilitySources: [{
-                sourceType: 'EFFECT_APPLICATION',
-                baseProbability: ownApplicationProbability,
-                finalProbability: ownApplicationProbability,
-                dependencyKeys: [],
-              }],
-              successAssignments: {
-                [`${effectInstanceId}|${targetId}`]: 'HIT',
-              },
-              failureAssignments: {
-                [`${effectInstanceId}|${targetId}`]: 'MISS',
-              },
-            })
-          : '';
+      const applicationGroup = resolveApplicationGroup({
+        source: evidence,
+        effectInstanceId,
+        probability: ownApplicationProbability,
+        fallbackKey: `${rootActionId}|${effectInstanceId}|${targetId}|shield`,
+        successAssignments: { [`${effectInstanceId}|${targetId}`]: 'HIT' },
+        failureAssignments: { [`${effectInstanceId}|${targetId}`]: 'MISS' },
+      });
+      const groupKey = applicationGroup.groupKey;
       const applicationConditions = {
         ...(requiredOutcomeKey
           ? { [requiredOutcomeKey]: requiredOutcomeValue }
           : {}),
-        ...(groupKey ? { [groupKey]: 'SUCCESS' } : {}),
+        ...(groupKey ? { [groupKey]: applicationGroup.successValue } : {}),
       };
       attachEffectToGroup(requiredOutcomeKey, effectInstanceId);
       registerEvent({
@@ -77624,36 +77827,21 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (!Number.isFinite(realizedDelta) || Math.abs(realizedDelta) <= 1e-12) {
         return;
       }
-      const groupKey =
-        ownApplicationProbability > 1e-12 &&
-        ownApplicationProbability < 1 - 1e-12
-          ? registerGroup({
-              groupKey:
-                evidence?.probabilityGroupKey ||
-                evidence?.distributionGroupKey ||
-                `${rootActionId}|${effectInstanceId}|${targetId}|resource`,
-              effectInstanceIds: [effectInstanceId],
-              probability: ownApplicationProbability,
-              probabilitySources: [{
-                sourceType: 'EFFECT_APPLICATION',
-                baseProbability: ownApplicationProbability,
-                finalProbability: ownApplicationProbability,
-                dependencyKeys: [],
-              }],
-              successAssignments: {
-                [`${effectInstanceId}|${targetId}`]: 'HIT',
-              },
-              failureAssignments: {
-                [`${effectInstanceId}|${targetId}`]: 'MISS',
-              },
-            })
-          : '';
+      const applicationGroup = resolveApplicationGroup({
+        source: evidence,
+        effectInstanceId,
+        probability: ownApplicationProbability,
+        fallbackKey: `${rootActionId}|${effectInstanceId}|${targetId}|resource`,
+        successAssignments: { [`${effectInstanceId}|${targetId}`]: 'HIT' },
+        failureAssignments: { [`${effectInstanceId}|${targetId}`]: 'MISS' },
+      });
+      const groupKey = applicationGroup.groupKey;
       if (applicationProbability <= 1e-12) return;
       const applicationConditions = {
         ...(requiredOutcomeKey
           ? { [requiredOutcomeKey]: requiredOutcomeValue }
           : {}),
-        ...(groupKey ? { [groupKey]: 'SUCCESS' } : {}),
+        ...(groupKey ? { [groupKey]: applicationGroup.successValue } : {}),
       };
       attachEffectToGroup(requiredOutcomeKey, effectInstanceId);
       registerEvent({
@@ -77750,40 +77938,30 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         0,
         1,
       );
-      const groupKey =
-        ownApplicationProbability > 1e-12 &&
-        ownApplicationProbability < 1 - 1e-12
-          ? registerGroup({
-              groupKey:
-                scheduled?.probabilityGroupKey ||
-                `${rootActionId}|${effectInstanceId}|summon`,
-              effectInstanceIds: [effectInstanceId],
-              probability: ownApplicationProbability,
-              probabilitySources: [{
-                sourceType: 'EFFECT_APPLICATION',
-                baseProbability: ownApplicationProbability,
-                finalProbability: ownApplicationProbability,
-                dependencyKeys: [],
-              }],
-              successAssignments: Object.fromEntries(
-                (scheduled?.summonDefinitions || []).map(summon => [
-                  `${effectInstanceId}|${unitId(summon)}`,
-                  'HIT',
-                ]),
-              ),
-              failureAssignments: Object.fromEntries(
-                (scheduled?.summonDefinitions || []).map(summon => [
-                  `${effectInstanceId}|${unitId(summon)}`,
-                  'MISS',
-                ]),
-              ),
-            })
-          : '';
+      const applicationGroup = resolveApplicationGroup({
+        source: scheduled,
+        effectInstanceId,
+        probability: ownApplicationProbability,
+        fallbackKey: `${rootActionId}|${effectInstanceId}|summon`,
+        successAssignments: Object.fromEntries(
+          (scheduled?.summonDefinitions || []).map(summon => [
+            `${effectInstanceId}|${unitId(summon)}`,
+            'HIT',
+          ]),
+        ),
+        failureAssignments: Object.fromEntries(
+          (scheduled?.summonDefinitions || []).map(summon => [
+            `${effectInstanceId}|${unitId(summon)}`,
+            'MISS',
+          ]),
+        ),
+      });
+      const groupKey = applicationGroup.groupKey;
       const applicationConditions = {
         ...(requiredOutcomeKey
           ? { [requiredOutcomeKey]: requiredOutcomeValue }
           : {}),
-        ...(groupKey ? { [groupKey]: 'SUCCESS' } : {}),
+        ...(groupKey ? { [groupKey]: applicationGroup.successValue } : {}),
       };
       attachEffectToGroup(requiredOutcomeKey, effectInstanceId);
       (scheduled?.summonDefinitions || []).forEach((summon, summonIndex) => {
@@ -77931,6 +78109,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             unit,
             {
               ...cloneValue(payload.effect),
+              来源角色: unitName(
+                overlay.readUnit(String(event?.sourceActorId || '').trim()) || {},
+              ) || String(payload.effect?.来源角色 || '').trim(),
               __previewApplicationProbability: 1,
             },
             String(event?.effectInstanceId || event?.eventId || '').trim(),
@@ -79119,6 +79300,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     readHpMax,
     readShield,
     calculateShieldGain,
+    absorbPreviewShield,
     readResource,
     readResourceMax,
     skillCostResourceKey,
@@ -82030,7 +82212,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
 // 结算倍率; SETTLEMENT_RATIO_ADJUST entryId/operation/结算倍率; FOLLOW_UP entryId/grantType/
 // ownerId/followUpKey/triggerKey/payloadDirectFacts with maxActions >=1 only for 主动触发; SUMMON_WINDOW entryId/
 // grantType/召唤单位类型/召唤物名称/行动模式/durationTurns); private aliases key/字段/方式
-// are rejected; every entry requires entryId and counts into OUTSIDE_BATCH1_ROW_COUNT.
+// are rejected; every entry requires entryId. OUTSIDE_BATCH1_ROW_COUNT is now
+// limited to unresolved rows/windows: a supported SUMMON_WINDOW is already owned
+// by the summon feature/causal chain and therefore is not counted a second time.
 // Revision 4 (batch-2 rev4): six raw feature codes pinned at fixed catalog positions 23-28
 // (STATE_DELTA_PERCENT/SETTLEMENT_MODIFIER_PERCENT/SUMMON_COUNT/SUMMON_STRENGTH/
 // SUMMON_DURATION/RESOURCE_DELTA_PERCENT);
@@ -82042,15 +82226,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
 // PENDING_DIRECTION_PROJECTION upstream in the adapter and never reach the compiler);
 // SUMMON_WINDOW rows route
 // summon.count/summon.strength/summon.duration (wrong unit => UNKNOWN with row fact id),
-// summon.inheritRatio maps to no feature code and only counts OUTSIDE_BATCH1_ROW_COUNT;
+// summon.inheritRatio maps to no immediate feature code and is delegated to the
+// realized summon action-potential chain instead of being counted as OUTSIDE;
 // the summon family block (all three codes) is emitted per activating sourceEffectId
 // (routed row or projectionFamilies 召唤生成 entry); mechanicMetadataEntries (closed entries
 // array, one per effect instance) / projectionFamilies root inputs are closed audit/
 // routing-only bridges (per-prototype key subsets per PDA rev5Spec, values never enter
 // features, prototype names never weighted => PROTOTYPE_NAME_WEIGHTING_REJECTED);
 // SUMMON_WINDOW scheduledFacts entries carry grantType/召唤单位类型/召唤物名称/行动模式/
-// durationTurns and count into OUTSIDE with entryId in sourceEventIds; scheduled windows
-// never become KNOWN SUMMON_DURATION; formal caps (256 features / 128 rows / 64 modifier
+// durationTurns; scheduled windows never become KNOWN SUMMON_DURATION and do not
+// duplicate the summon family as OUTSIDE; formal caps (256 features / 128 rows / 64 modifier
 // entries / 200000 work units) throw CAP_EXCEEDED as whole-compile rejections. Revision 2
 // semantics stay (identity/sides/cost/
 // hitCheckApplicability/STATE_PRESENCE {0,1}/29 raw features base, no normalization
@@ -82061,7 +82246,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
 
   var MOUNT_NAME = '__LWCS_BEHAVIOR_IMMEDIATE_FEATURE__';
   var ROLE = 'R9_CANDIDATE_UNREGISTERED';
-  var REVISION = 17;
+  var REVISION = 19;
   var REGISTRY_ID = 'RC6-M2-BEHAVIOR-IMMEDIATE-FEATURE-V1-2026-08-14';
   var SCHEMA_VERSION = 'BehaviorImmediateFeatureV1';
   var F0 = 14;
@@ -82233,8 +82418,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   ];
   var REACTION_RESPONSE_KINDS = ['PASS_OPPORTUNITY', 'DEFEND', 'EVADE'];
   var SNAPSHOT_KEYS = ['units', 'sides', 'actorStatus'];
-  var UNIT_FIELDS = ['hp', 'hp_max', 'sp', 'sp_max', 'men', 'men_max', 'vit', 'vit_max', 'def', 'agi', 'shield', '状态效果', '蓄力技能'];
-  var NUMERIC_UNIT_FIELDS = ['hp', 'hp_max', 'sp', 'sp_max', 'men', 'men_max', 'vit', 'vit_max', 'def', 'agi', 'shield'];
+  var UNIT_FIELDS = ['hp', 'hp_max', 'sp', 'sp_max', 'men', 'men_max', 'vit', 'vit_max', 'str', 'def', 'agi', 'shield', 'observed_response_capacity', '状态效果', '蓄力技能'];
+  var NUMERIC_UNIT_FIELDS = ['hp', 'hp_max', 'sp', 'sp_max', 'men', 'men_max', 'vit', 'vit_max', 'str', 'def', 'agi', 'shield', 'observed_response_capacity'];
   // R4b2 delivery identity: HP_DELTA atomic rows carry effectInstanceId/targetId
   // (transcribed by the bridge from preview contribution identity) plus the
   // decision-visible damageBasis.basisView attestation inside evidence.
@@ -83040,6 +83225,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           out.push(kKnown('STATE_DURATION', 'TURNS', dur));
         }
       }
+    } else if (factType === 'RESOURCE_TRANSFER') {
+      // Resource transfer is a two-sided transaction. The immediate scalar row
+      // cannot preserve donor/recipient direction, while the formal causal layer
+      // consumes Preview's realized RESOURCE_OPTION_CHANGED pair. An empty
+      // projection here means delegated-without-duplication, not unsupported.
+      return [];
     } else if (factType === 'SUMMON_WINDOW') {
       if (key === 'summon.count') {
         if (unit === 'COUNT') out.push(kKnown('SUMMON_COUNT', 'COUNT', amount));
@@ -83110,15 +83301,25 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           if (!summonByEffect[row.sourceEffectId]) summonByEffect[row.sourceEffectId] = {};
           summonByEffect[row.sourceEffectId][key] = { unit: row.unit, amount: amount, factId: rowFactId };
           summonActivated[row.sourceEffectId] = true;
+        } else if (key === 'summon.inheritRatio') {
+          // Inheritance is realized in the summoned unit's actual action
+          // potential. Counting it as OUTSIDE would penalize the same summon a
+          // second time merely because this scalar catalog has no inheritance
+          // axis.
+          continue;
         } else {
-          // summon.inheritRatio and unknown summon keys map to no feature code
+          // Truly unknown summon keys remain outside the supported feature set.
           outside += 1;
           outsideFactIds.push(rowFactId);
         }
         continue;
       }
       var projs = projectRow(factType, key, row.unit, amount, dur);
-      if (projs === null || projs.length === 0) { outside += 1; outsideFactIds.push(rowFactId); continue; }
+      if (projs === null) { outside += 1; outsideFactIds.push(rowFactId); continue; }
+      // [] is an explicit downstream-delegation marker. It must not be merged
+      // with null (unrecognized/unowned), otherwise supported causal facts such
+      // as RESOURCE_TRANSFER receive a systematic complexity penalty.
+      if (projs.length === 0) continue;
       for (var p = 0; p < projs.length; p += 1) {
         var pr = projs[p];
         recs.push(rec(pr.featureCode, pr.unitFamily, pr.status, pr.reasonCode, pr.value, [rowFactId], [], 1, row.sourceEffectId, key));
@@ -83462,11 +83663,22 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return null;
   }
 
-  function scheduledEntryIds(input) {
+  function unresolvedScheduledEntryIds(input) {
     var sched = input.scheduledFacts;
     var out = [];
     if (!Array.isArray(sched)) return out;
-    for (var i = 0; i < sched.length; i += 1) out.push(sched[i].entryId);
+    for (var i = 0; i < sched.length; i += 1) {
+      // A valid summon window is already represented by the summon-family rows
+      // and by the causal summon action-potential projection. A valid duration
+      // adjustment is likewise owned by the preview's STATE_CHANGED plus
+      // SCHEDULED_HP_DELTA projection. Keep both event ids out of the legacy
+      // OUTSIDE feature instead of penalizing an already-projected mechanic a
+      // second time; other scheduled mechanics remain unresolved until they
+      // gain an explicit formal owner.
+      if (sched[i].grantType === 'SUMMON_WINDOW') continue;
+      if (sched[i].operation === 'WINDOW_ADJUST') continue;
+      out.push(sched[i].entryId);
+    }
     return out;
   }
 
@@ -83510,7 +83722,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     );
   }
 
-  function candidateFeatures(input, outsideCount, outsideFactIds) {
+  function candidateFeatures(input, outsideCount, outsideFactIds, outsideScheduledIds) {
     var out = [];
     out.push(known('RELATION_TARGET_COUNT', 'COUNT', input.candidate.targetSet.length));
     out.push(targetSideRec(input));
@@ -83526,7 +83738,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     out.push(excl ? knownStr('HARD_EXCLUSION_REASON', 'ENUM', excl) : na('HARD_EXCLUSION_REASON', 'ENUM', 'NOT_EXCLUDED'));
     out.push(unk('SETTLEMENT_DAMAGE', 'ABS', 'FINAL_SETTLEMENT_UNKNOWN'));
     out.push(unk('ROLL_REALIZATION', 'BOOL', 'FUTURE_REALIZATION_UNKNOWN'));
-    out.push(rec('OUTSIDE_BATCH1_ROW_COUNT', 'COUNT', 'KNOWN', 'OK', outsideCount, outsideFactIds || [], scheduledEntryIds(input), 0, '', ''));
+    out.push(rec('OUTSIDE_BATCH1_ROW_COUNT', 'COUNT', 'KNOWN', 'OK', outsideCount, outsideFactIds || [], outsideScheduledIds || [], 0, '', ''));
     out.push.apply(out, reactionMechanicsRows(input));
     out.push(reactionCounterWindowRow(input));
     for (var j = 0; j < out.length; j += 1) {
@@ -83680,7 +83892,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     var work = F0 + (Array.isArray(input.directFacts) ? input.directFacts.length : 0) + modCount + schedCount + atomicCount;
     if (work > CAPS.MAX_WORK_UNITS_PER_CALL) throw rejection('CAP_EXCEEDED', { work: work });
     var rowsOut = computeRows(input);
-    var candRecs = candidateFeatures(input, rowsOut.outsideCount + schedCount, rowsOut.outsideFactIds);
+    var outsideScheduledIds = unresolvedScheduledEntryIds(input);
+    var candRecs = candidateFeatures(
+      input,
+      rowsOut.outsideCount + outsideScheduledIds.length,
+      rowsOut.outsideFactIds,
+      outsideScheduledIds
+    );
     var doc = assemble(input.candidate.candidateId, candRecs.concat(chargeTargetRows(input)).concat(rowsOut.recs));
     var frozen = freezeDeep(doc);
     if (m) {
@@ -83780,12 +83998,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         resourceInsufficientDerivation: 'RESOURCE_INSUFFICIENT derives from the same actor-only affordability check, last in precedence (after legalityFlags/legalityModifiers, actorStatus, TARGET_EMPTY): KNOWN min ratio < 1 (strict cost > available) => RESOURCE_INSUFFICIENT; equality and affordable => not excluded; no publicCost, missing actor/axis or UNKNOWN => no exclusion, never guessed; other hard-exclusion codes keep first-code precedence',
         targetSide: 'sides-map equality only (SELF by id equality, ALLY by side equality, ENEMY otherwise, MIXED on distinct classes, SIDE_UNOBSERVED when any declared target side missing, NO_TARGET_AXIS on empty axis); no prefix guessing/default ALLY/neutral folding',
         successProbability: 'R4b2 damage-delivery hit axis: only outcomeKind HP_DELTA rows with evidence.damageBasis.basisView DECISION_VISIBLE, nonempty effectInstanceId/targetId and finite hitProbability are deliveries; dedupe by (effectInstanceId,targetId), same identity differing probability => UNKNOWN(CONFLICTING_DELIVERIES); per-target mean over independent deliveries then mean over hit-axis targets (targets without delivery are NO_HIT_AXIS and excluded from the denominator); no damage delivery at all => NOT_APPLICABLE(NO_HIT_AXIS); deliveryStatus MISSING/NON_FINITE or missing identity/basis => UNKNOWN fail-closed; empty targetSet keeps existing missing semantics; no FIRST/JOINT/MIN/MAX/applicationProbability/Runtime roll; actionKind never special-cased',
-        outsideRowCounting: 'rows outside the batch-1 families plus every scheduledFacts entry count into OUTSIDE_BATCH1_ROW_COUNT; scheduled entryIds recorded in sourceEventIds; nothing silently dropped',
+        outsideRowCounting: 'only unrecognized/unowned direct rows and unresolved scheduledFacts count into OUTSIDE_BATCH1_ROW_COUNT; RESOURCE_TRANSFER is delegated to the realized two-sided causal resource chain; SUMMON_WINDOW and summon.inheritRatio are delegated to summon-family plus causal action-potential ownership; WINDOW_ADJUST is delegated to preview STATE_CHANGED/SCHEDULED_HP_DELTA ownership; unresolved direct fact ids use sourceFactIds and unresolved scheduled entryIds use sourceEventIds',
         statePresence: 'STATE_DELTA non-attribute/judgment key: unit=BOOL => KNOWN 1 (amount>0) or 0 (amount<=0); unit=COUNT => UNKNOWN(STATE_FORM_UNMAPPED), never coerced to BOOL; other units => UNIT_FAMILY_MISMATCH; BOOL KNOWN domain strictly {0,1}',
         batch2StateDeltaPercent: 'STATE_DELTA state.primary/state.secondary PERCENT => STATE_DELTA_PERCENT (signed declared magnitude, never multiplied by duration); other PERCENT keys => UNKNOWN(MISSING_SOURCE_FACT); other units/keys keep revision-2 STATE_PRESENCE/UNIT_FAMILY_MISMATCH rules',
         resourceDeltaPercent: 'RESOURCE_OPTION_CHANGED key=resource name unit=PERCENT => RESOURCE_DELTA_PERCENT (raw signed percent, never multiplied by duration); ABS rows keep RESOURCE_DELTA; unsigned percent rows stay PENDING_DIRECTION_PROJECTION upstream and never reach the compiler',
         batch2Settlement: 'STATE_DELTA settlement.primary PERCENT => SETTLEMENT_MODIFIER_PERCENT only (no STATE_DURATION, no HP/RESOURCE double rows from the same effect); SETTLEMENT_DAMAGE stays ALWAYS_UNKNOWN',
-        batch2Summon: 'SUMMON_WINDOW rows route summon.count/strength/duration (wrong unit => UNKNOWN(MISSING_SOURCE_FACT) with row fact id); summon.inheritRatio and unknown summon keys map to no feature code and count OUTSIDE_BATCH1_ROW_COUNT with row fact ids; the summon family block (all three codes) is emitted once per activating sourceEffectId (routed row or projectionFamilies 召唤生成); scheduled SUMMON_WINDOW entries never become KNOWN SUMMON_DURATION',
+        batch2Summon: 'SUMMON_WINDOW rows route summon.count/strength/duration (wrong unit => UNKNOWN(MISSING_SOURCE_FACT) with row fact id); summon.inheritRatio is delegated to the realized summon action-potential chain, while unknown summon keys still count OUTSIDE_BATCH1_ROW_COUNT; the summon family block (all three codes) is emitted once per activating sourceEffectId (routed row or projectionFamilies 召唤生成); scheduled SUMMON_WINDOW entries never become KNOWN SUMMON_DURATION and do not duplicate the family as OUTSIDE',
         auditBridges: 'mechanicMetadataEntries (closed per-effect array with per-prototype key subsets per PDA rev5Spec) / projectionFamilies root inputs are the only admitted bridge (bridgeV1); strictly validated closed shapes; values never enter feature values; prototype names are routing/audit identity only (PROTOTYPE_NAME_WEIGHTING_REJECTED)',
         formalCaps: 'MAX_FEATURES_PER_CANDIDATE=256, MAX_FACT_ROWS_PER_CANDIDATE=128, MAX_MODIFIER_ENTRIES_PER_CANDIDATE=64, MAX_WORK_UNITS_PER_CALL=200000; any breach throws CAP_EXCEEDED as a whole-compile rejection, never candidate pruning, never wall clock'
       }
@@ -85187,23 +85405,32 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   const MODEL_HASH = '6ca55cf48790533db04272c146c98ba21c91b746c59e7053cf5a8d943976d145';
   const WEIGHTS_HASH = '190c00a8f137b0cbf2d186f685718df1786d9be17324a4083f43927a858f5e7d';
   const FEATURE_SCHEMA_HASH = '1ae9cd7d4d2353efd76df73576d6a235bcefb72fe9ee26d40b626f1afc52a76f';
-  const DBP_REVISION = 16;
+  const DBP_REVISION = 18;
   const DBP_CONTRACT_HASH = '69f353556b6bc555db1f67e8d0549a68bed5de18f112ff89496912559c784de8';
   const BIF_CONTRACT_HASH = '8dc4ff92e2ac2d81bee176e8839b23c8ab34ceec951b2ab91ebe80c12ec02a76';
   const BASE_SECTION_HASH = '64783fa923cc70215dadaba0bb75390200c3297e82a68ef6d0a25d9b12a4fcb2';
   const REACTION_HEAD_HASH = 'b08565ade014bed633f5917aaa3891ba2730a18f8c9885c1c9c983db5c8f4a62';
   const BASE_WEIGHT_POLICY = Object.freeze({
-    id: 'CANDIDATE_SET_OPPORTUNITY_VALUE_V1',
+    id: 'CREATION_LOCAL_OPPORTUNITY_VALUE_V2',
     reactionCounter: 1,
-    active: Object.freeze({ hasCreation: 0, hasNonDamageSkill: 0.4, otherwise: 1 }),
+    active: Object.freeze({ creationCandidate: 0, nonDamageSkill: 0.4, otherwise: 1 }),
   });
-  const BASE_WEIGHT_POLICY_HASH = 'e6c8d3a7a576deafbc2de81880f51038fa9e27efb80b47968c0950b31b0552d0';
-  const MODEL_COMPOSITE_HASH = '183b4e0b60d1269d4e3e4d92b0a0f443b9a690a6a60ca3c43418045cb34ea785';
+  const BASE_WEIGHT_POLICY_HASH = 'bcf3a050fc33c12b8336d41d5e21bbcb613eb6c72507bdad69b1decf411d1be8';
+  const PURE_DAMAGE_DOMINANCE_POLICY = Object.freeze({
+    id: 'ACTIVE_PURE_DAMAGE_PARETO_V1',
+    actionRole: 'ACTIVE',
+    targetComparison: 'EXACT_TARGET_SET',
+    benefit: 'OPPONENT_RESPONSE_PRESSURE',
+    costComparison: 'PER_RESOURCE_NO_GREATER_SAME_UNIT',
+  });
+  const PURE_DAMAGE_DOMINANCE_POLICY_HASH = 'f168750b8747402ff8657583ab65b1d42539b25eb4d129dbb4988a15646f310d';
+  const MODEL_COMPOSITE_HASH = '6f17b052583747aedf910ae13d8f8e74566d8b00653384f0e1356a1e02b4425d';
   const REACTION_ALGORITHM_HASH = '5ddd1dff3f07d3aa7c1b48f627cd5a3c64de9025941fab25923b52851b8a1852';
   const DAMAGE_POWER_TRANSFORM = 'DAMAGE_POWER_EFFECTIVE_V1';
   const DAMAGE_POWER_TRANSFORM_HASH = '5562d24109a11e67b447817aa73d1e60748bcec6611fa0b4132caceecba6a3aa';
   const OP_DAMAGE_POWER = 'NEUMAIER\u005fSUM';
   const OP_DAMAGE_SEGMENTS = 'INTEGER\u005fSUM';
+  const OP_RESOURCE_DELTA = 'SAME\u005fRESOURCE\u005fSUM';
 
   // 35-code catalog: 31 scoreable + 2 exclusion-only + 2 catalog-only.
   const SCOREABLE_CODES = Object.freeze([
@@ -85282,6 +85509,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     STATE_DELTA_PERCENT: 'SUM',
     SETTLEMENT_MODIFIER_PERCENT: 'SUM',
     RESOURCE_DELTA_PERCENT: 'MAX',
+    RESOURCE_DELTA: OP_RESOURCE_DELTA,
     DAMAGE_POWER: OP_DAMAGE_POWER,
     DAMAGE_SEGMENTS: OP_DAMAGE_SEGMENTS,
     DAMAGE_TYPE: 'MAX',
@@ -85289,8 +85517,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
 
   // Multi-row closure inventory (AGGREGATION_CLOSURE_V2): the 31 scoreable
   // codes are partitioned into contract-adjudicated multi-row codes with a
-  // frozen operator (multiRowCodes, 8), fail-closed multi-row-capable codes
-  // (7), and single-row codes (16).
+  // frozen operator (multiRowCodes, 9), fail-closed multi-row-capable codes
+  // (6), and single-row codes (16).
   // (singleRowCodes, 16: candidate-scope BIF codes + five relational codes +
   // ATTRIBUTE_DELTA, which is collapsed inside BIF). Codes outside
   // multiRowCodes keep the fatal as a source-drift safety net.
@@ -85299,11 +85527,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     multiRowCodes: Object.freeze([
       'JUDGMENT_DELTA', 'STATE_DURATION', 'STATE_DELTA_PERCENT',
       'SETTLEMENT_MODIFIER_PERCENT', 'RESOURCE_DELTA_PERCENT',
-      'DAMAGE_POWER', 'DAMAGE_SEGMENTS', 'DAMAGE_TYPE',
+      'RESOURCE_DELTA', 'DAMAGE_POWER', 'DAMAGE_SEGMENTS', 'DAMAGE_TYPE',
     ]),
     failClosedMultiRowCodes: Object.freeze([
       'DAMAGE_PENETRATION',
-      'RESOURCE_DELTA', 'SHIELD_DELTA', 'STATE_PRESENCE', 'SUMMON_COUNT',
+      'SHIELD_DELTA', 'STATE_PRESENCE', 'SUMMON_COUNT',
       'SUMMON_STRENGTH', 'SUMMON_DURATION',
     ]),
     singleRowCodes: Object.freeze([
@@ -85358,12 +85586,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     missingMask: Object.freeze(['HARD_EXCLUSION', 'HARD_EXCLUSION_REASON']),
   });
 
+  // JUDGMENT_DELTA remains in the audit inventory, but its legacy scalar head
+  // cannot distinguish a friendly bonus from a hostile penalty. Realized
+  // judgment value is owned by the target-aware causal option features below.
   const LINEAR = Object.freeze({
     intercept: 0,
     coefficients: Object.freeze({
       ATTRIBUTE_DELTA: 0, COST_AFFORDABILITY: 0, DAMAGE_PENETRATION: 0.27101009737338333,
       DAMAGE_POWER: 0.9005159950810252, DAMAGE_SEGMENTS: -0.10897479287395434, DAMAGE_TYPE: 0,
-      JUDGMENT_DELTA: -0.1589984264724439, OUTSIDE_BATCH1_ROW_COUNT: -1.1292992745534087,
+      JUDGMENT_DELTA: 0, OUTSIDE_BATCH1_ROW_COUNT: -1.1292992745534087,
       OVERKILL_AVAILABILITY: 0, PUBLIC_HP_RATIO: -0.19953006499152975,
       PUBLIC_RECIPIENT_NEED_MATCH: 0.45252268447270233, PUBLIC_RESOURCE_RATIO: -1.2035997079030496,
       RELATION_TARGET_COUNT: 0.799682677937762, RELATION_TARGET_SIDE: 0,
@@ -85483,7 +85714,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   function canonicalHash(value) { return sha256Utf8(canonicalJson(value)); }
   function compareUtf16(a, b) { return String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0; }
 
-  const DAMAGE_AGGREGATION_CODES = new Set(['DAMAGE_POWER', 'DAMAGE_SEGMENTS', 'DAMAGE_TYPE']);
+  const PROVENANCE_AGGREGATION_CODES = new Set([
+    'DAMAGE_POWER', 'DAMAGE_SEGMENTS', 'DAMAGE_TYPE', 'RESOURCE_DELTA',
+  ]);
   function aggregationRowsOf(rows, code) {
     const seen = new Set();
     const prepared = rows.map((row, index) => {
@@ -85501,7 +85734,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const value = Object.is(row.value, -0) ? 0 : row.value;
       if (code === 'DAMAGE_SEGMENTS' && !Number.isSafeInteger(value)) fail('AGGREGATION_INVALID_SEGMENT_DOMAIN', code + ':' + value);
       if (code === 'DAMAGE_TYPE' && value !== 0 && value !== 1) fail('AGGREGATION_INVALID_TYPE_DOMAIN', code + ':' + value);
-      return { sourceEffectId, value };
+      return { sourceEffectId, key, value };
     });
     prepared.sort((left, right) => compareUtf16(left.sourceEffectId, right.sourceEffectId));
     return prepared;
@@ -85544,7 +85777,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (!allSame) fail('ENUM_VALUE_MIXED_WITHIN_CANDIDATE_NO_FIRST', code + ':' + knownRows.map(r => r.value).join(','));
         return { status: 'KNOWN', value: String(knownRows[0].value), reasonCode: 'OK', rowCount: knownRows.length, kind: 'ENUM' };
       }
-      const aggregationRows = DAMAGE_AGGREGATION_CODES.has(code) ? aggregationRowsOf(knownRows, code) : null;
+      const aggregationRows = PROVENANCE_AGGREGATION_CODES.has(code) ? aggregationRowsOf(knownRows, code) : null;
       const numeric = aggregationRows
         ? aggregationRows.map(row => code === 'DAMAGE_POWER' ? effectiveDamagePower(row.value) : row.value)
         : knownRows.map(r => Number(r.value)).filter(Number.isFinite);
@@ -85557,6 +85790,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (!op) fail('AGGREGATION_MISSING_IN_CONTRACT', code + ':rows=' + knownRows.length);
         if (op === 'MAX') value = Math.max(...numeric);
         else if (op === 'SUM') value = numeric.reduce((sum, v) => sum + v, 0);
+        else if (op === OP_RESOURCE_DELTA) {
+          const resourceKeys = new Set(aggregationRows.map(row => row.key));
+          if (resourceKeys.size !== 1) {
+            // Absolute soul-power, mental-power, stamina and HP values are not
+            // commensurate. Preserve the candidate and provenance, but mask this
+            // legacy scalar cell; the keyed causal resource chain owns the real
+            // option/runway value instead of inventing a cross-resource sum.
+            return {
+              status: 'UNKNOWN', value: null, reasonCode: 'MULTI_RESOURCE_VECTOR_REQUIRED',
+              rowCount: knownRows.length, kind: 'NONE',
+            };
+          }
+          value = neumaierSum(numeric);
+        }
         else if (op === OP_DAMAGE_POWER) value = neumaierSum(numeric);
         else if (op === OP_DAMAGE_SEGMENTS) {
           value = numeric.reduce((sum, v) => {
@@ -85738,13 +85985,87 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return effects.some(effect => String(effect?.原型 || '').trim() === '伤害结算');
   }
 
-  function activeBaseWeight(frozenCandidates, actionRole) {
+  function candidateIsPureImmediateDamage(candidate) {
+    const actionKind = String(candidate?.declaration?.actionKind || '').trim().toUpperCase();
+    if (actionKind === 'BASIC_ATTACK') return true;
+    if (actionKind !== 'RELEASE_SKILL') return false;
+    const skill = candidate?.declaration?.skill || candidate?.skill || {};
+    const effects = Array.isArray(skill?._效果数组)
+      ? skill._效果数组
+      : Array.isArray(skill?.效果数组) ? skill.效果数组 : [];
+    return effects.length > 0 && effects.every(effect =>
+      String(effect?.原型 || '').trim() === '伤害结算'
+    );
+  }
+
+  function targetSetKey(candidate) {
+    const targetIds = Array.isArray(candidate?.declaration?.targetIds)
+      ? candidate.declaration.targetIds.map(String).sort(compareUtf16)
+      : [];
+    return JSON.stringify(targetIds);
+  }
+
+  function comparableCost(value) {
+    if (value === undefined || value === null || value === '') return { kind: 'ZERO', value: 0 };
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return { kind: value > 0 ? 'ABS' : 'ZERO', value: Math.max(0, value) };
+    }
+    const text = String(value).trim();
+    const percentage = /^([+-]?(?:\d+(?:\.\d+)?|\.\d+))%$/.exec(text);
+    if (percentage) {
+      const amount = Math.max(0, Number(percentage[1]));
+      return { kind: amount > 0 ? 'PERCENT' : 'ZERO', value: amount };
+    }
+    const amount = Number(text);
+    return Number.isFinite(amount)
+      ? { kind: amount > 0 ? 'ABS' : 'ZERO', value: Math.max(0, amount) }
+      : { kind: 'INCOMPARABLE', value: Infinity };
+  }
+
+  function costVectorRelation(leftCandidate, rightCandidate) {
+    const left = leftCandidate?.declaration?.resourceCosts || leftCandidate?.costs || {};
+    const right = rightCandidate?.declaration?.resourceCosts || rightCandidate?.costs || {};
+    const resources = new Set([...Object.keys(left), ...Object.keys(right)]);
+    let strict = false;
+    for (const resource of resources) {
+      const leftCost = comparableCost(left[resource]);
+      const rightCost = comparableCost(right[resource]);
+      if (leftCost.kind === 'INCOMPARABLE' || rightCost.kind === 'INCOMPARABLE') {
+        return { noGreater: false, strict: false };
+      }
+      if (
+        leftCost.kind !== 'ZERO' &&
+        rightCost.kind !== 'ZERO' &&
+        leftCost.kind !== rightCost.kind
+      ) return { noGreater: false, strict: false };
+      if (leftCost.kind !== 'ZERO' && rightCost.kind === 'ZERO') {
+        return { noGreater: false, strict: false };
+      }
+      if (leftCost.kind === 'ZERO' && rightCost.kind !== 'ZERO') {
+        strict = true;
+        continue;
+      }
+      if (leftCost.value > rightCost.value + 1e-9) {
+        return { noGreater: false, strict: false };
+      }
+      if (leftCost.value < rightCost.value - 1e-9) strict = true;
+    }
+    return { noGreater: true, strict };
+  }
+
+  function activeBaseWeight(candidate, frozenCandidates, actionRole) {
     if (['REACTION', 'COUNTER'].includes(actionRole)) return BASE_WEIGHT_POLICY.reactionCounter;
-    if (frozenCandidates.some(candidate => candidate?.creation)) return BASE_WEIGHT_POLICY.active.hasCreation;
+    if (frozenCandidates.some(entry => entry?.creation)) {
+      if (candidate?.creation) return BASE_WEIGHT_POLICY.active.creationCandidate;
+      return String(candidate?.declaration?.actionKind || '').trim().toUpperCase() === 'RELEASE_SKILL' &&
+        !candidateHasImmediateDamage(candidate)
+        ? BASE_WEIGHT_POLICY.active.nonDamageSkill
+        : BASE_WEIGHT_POLICY.active.otherwise;
+    }
     return frozenCandidates.some(candidate =>
       String(candidate?.declaration?.actionKind || '').trim().toUpperCase() === 'RELEASE_SKILL' &&
       !candidateHasImmediateDamage(candidate),
-    ) ? BASE_WEIGHT_POLICY.active.hasNonDamageSkill : BASE_WEIGHT_POLICY.active.otherwise;
+    ) ? BASE_WEIGHT_POLICY.active.nonDamageSkill : BASE_WEIGHT_POLICY.active.otherwise;
   }
 
   // Exclusion-surface reader (closed 10-code set). HARD_EXCLUSION is a BOOL
@@ -85779,9 +86100,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     if (!Array.isArray(featureInputs)) fail('FEATURE_INPUTS_SHAPE', 'featureInputs must be an array');
     const documents = featureInputs;
-    const baseWeight = activeBaseWeight(frozenCandidates, actionRole);
     work.documentBuilds = 0;
     const docByCandidate = new Map(documents.map(doc => [String(doc && doc.candidateId || '').trim(), doc]));
+    const candidateById = new Map(frozenCandidates.map(candidate => [
+      String(candidate?.candidateId || '').trim(),
+      candidate,
+    ]));
     if (docByCandidate.size !== candidateIds.length || candidateIds.some(id => !docByCandidate.has(id))) {
       fail('CANDIDATE_SET_CONSERVATION', 'featureInputs must cover frozenCandidates exactly, no re-enumeration');
     }
@@ -85797,6 +86121,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       }
       const exclusion = readExclusion(doc);
       const hardExcluded = exclusion.hard;
+      const baseWeight = activeBaseWeight(candidateById.get(candidateId), frozenCandidates, actionRole);
       work.exclusionRows = (work.exclusionRows || 0) + 2;
       let reasonCode = null;
       if (hardExcluded) {
@@ -85823,13 +86148,59 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     const eligible = rows.filter(row => row.eligible);
     if (!eligible.length) fail('NO_ELIGIBLE_CANDIDATES');
-    const ranked = eligible.slice().sort((a, b) => {
+    const dominanceAudit = [];
+    if (actionRole === 'ACTIVE') {
+      for (const row of eligible) {
+        const candidate = candidateById.get(row.candidateId);
+        const pressure = row.cells.OPPONENT_RESPONSE_PRESSURE;
+        if (
+          !candidateIsPureImmediateDamage(candidate) ||
+          pressure?.status !== 'KNOWN' ||
+          !Number.isFinite(Number(pressure.value))
+        ) continue;
+        const candidateTargetKey = targetSetKey(candidate);
+        const dominator = eligible.find(other => {
+          if (other === row) return false;
+          const otherCandidate = candidateById.get(other.candidateId);
+          const otherPressure = other.cells.OPPONENT_RESPONSE_PRESSURE;
+          if (
+            !candidateIsPureImmediateDamage(otherCandidate) ||
+            targetSetKey(otherCandidate) !== candidateTargetKey ||
+            otherPressure?.status !== 'KNOWN' ||
+            !Number.isFinite(Number(otherPressure.value)) ||
+            Number(otherPressure.value) < Number(pressure.value) - 1e-9
+          ) return false;
+          const costRelation = costVectorRelation(otherCandidate, candidate);
+          return costRelation.noGreater && (
+            Number(otherPressure.value) > Number(pressure.value) + 1e-9 ||
+            costRelation.strict
+          );
+        });
+        if (!dominator) continue;
+        row.contextuallyDominated = true;
+        row.dominatedBy = dominator.candidateId;
+        dominanceAudit.push({
+          candidateId: row.candidateId,
+          dominatedBy: dominator.candidateId,
+          disposition: 'PARETO_DOMINATED_PURE_DAMAGE',
+          source: 'REALIZED_RESPONSE_PRESSURE_AND_RESOURCE_COST',
+        });
+      }
+    }
+    const selectable = eligible.filter(row => row.contextuallyDominated !== true);
+    if (!selectable.length) fail('NO_SELECTABLE_CANDIDATES');
+    const compareRanked = (a, b) => {
       work.sortComparisons += 1;
       return a.score !== b.score ? b.score - a.score : compareUtf16(a.candidateId, b.candidateId);
-    });
-    const selected = ranked[0];
+    };
+    const rankedSelectable = selectable.slice().sort(compareRanked);
+    const ranked = [
+      ...rankedSelectable,
+      ...eligible.filter(row => row.contextuallyDominated === true).sort(compareRanked),
+    ];
+    const selected = rankedSelectable[0];
     const selectedDeclaration = (frozenCandidates.find(c => c.candidateId === selected.candidateId) || {}).declaration || null;
-    const alternative = selectAlternative(ranked, selected, frozenCandidates);
+    const alternative = selectAlternative(rankedSelectable, selected, frozenCandidates);
     const rankedSummary = ranked.map(row => ({
       candidateId: row.candidateId,
       score: row.score,
@@ -85838,6 +86209,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       baseScore: row.baseScore,
       extensionScore: row.extensionScore,
       causalScore: row.causalScore,
+      contextuallyDominated: row.contextuallyDominated === true,
+      dominatedBy: String(row.dominatedBy || ''),
       tieGroup: ranked.filter(other => other.score === row.score).map(other => other.candidateId).sort(compareUtf16),
     }));
     const scoreContributions = {};
@@ -85850,11 +86223,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             : REACTION_CODES.indexOf(code) >= 0
               ? reactionContributionOf(row.cells, code)
               : contributionOf(row.cells, code);
-        if (CAUSAL_CODES.indexOf(code) < 0 && REACTION_CODES.indexOf(code) < 0 && baseWeight !== 1) {
+        if (CAUSAL_CODES.indexOf(code) < 0 && REACTION_CODES.indexOf(code) < 0 && row.baseWeight !== 1) {
           factor = {
             ...factor,
-            coefficient: factor.coefficient * baseWeight,
-            contribution: factor.contribution * baseWeight,
+            coefficient: factor.coefficient * row.baseWeight,
+            contribution: factor.contribution * row.baseWeight,
           };
         }
         factors.push(factor);
@@ -85867,6 +86240,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         baseScore: row.baseScore,
         extensionScore: row.extensionScore,
         causalScore: row.causalScore,
+        contextuallyDominated: row.contextuallyDominated === true,
+        dominatedBy: String(row.dominatedBy || ''),
         causalHead: ['REACTION', 'COUNTER'].includes(actionRole) ? 'REACTION_COUNTER' : 'ACTIVE_ASSIST',
         factors,
       };
@@ -85888,8 +86263,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ranked: rankedSummary,
       rankedCandidateIds: ranked.map(row => row.candidateId),
       hardExclusionAudit,
+      dominanceAudit,
       hardExcludedCount: hardExclusionAudit.length,
+      dominatedCount: dominanceAudit.length,
       eligibleCount: eligible.length,
+      selectableCount: selectable.length,
       candidateCount: rows.length,
       scoreContributions,
       alternative,
@@ -85959,6 +86337,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     reactionHeadHash: REACTION_HEAD_HASH,
     modelCompositeHash: MODEL_COMPOSITE_HASH,
     baseWeightPolicyHash: BASE_WEIGHT_POLICY_HASH,
+    pureDamageDominancePolicyHash: PURE_DAMAGE_DOMINANCE_POLICY_HASH,
     damagePowerTransformHash: DAMAGE_POWER_TRANSFORM_HASH,
     intercept: LINEAR.intercept,
     effectiveDamagePower,
@@ -85969,6 +86348,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       reactionCodes: REACTION_CODES.slice(),
       causalCodes: CAUSAL_CODES.slice(),
       baseWeightPolicy: BASE_WEIGHT_POLICY,
+      pureDamageDominancePolicy: PURE_DAMAGE_DOMINANCE_POLICY,
       relationalCodes: RELATIONAL_CODES.slice(),
       exclusionOnly: EXCLUSION_ONLY.slice(),
       catalogOnly: CATALOG_ONLY.slice(),
@@ -87441,6 +87821,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   const MAX_R8_TERMINAL_IDENTITY_OBSERVATIONS = 16384;
   const MAX_R8_TERMINAL_DISTRIBUTION_CACHE_ENTRIES = 64;
   const MAX_R8_TERMINAL_ATTRIBUTION_CACHE_ENTRIES = 64;
+  const DECISION_PREVIEW_NODE_LIMIT = 64;
   const compareUtf16 = (left, right) => {
     const leftValue = String(left || '');
     const rightValue = String(right || '');
@@ -89174,6 +89555,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         状态效果: states,
         技能列表: [],
       };
+      const observedResponses = (Array.isArray(beliefUnit?.knownResponses)
+        ? beliefUnit.knownResponses
+        : []).filter(response => {
+        const actionKind = String(response?.declaration?.actionKind || '').trim().toUpperCase();
+        if (hasStateFlag(projected, 'silence') && actionKind === 'RELEASE_SKILL') return false;
+        if (hasStateFlag(projected, 'disarm') && actionKind === 'BASIC_ATTACK') return false;
+        return true;
+      });
+      projected.observed_response_capacity = hasActionCancellation(projected)
+        ? 0
+        : perceivedEnemyBaseValue({ ...beliefUnit, knownResponses: observedResponses }, sourceActor);
       if (publicUnitRole === 'SUMMON') projected.单位性质 = '召唤物';
       projected.属性 = {
         等级: perceivedLevel,
@@ -90370,6 +90762,19 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         'resourceLock',
         'lockedResource',
         'lockedRatio',
+        'transferMode',
+        'transferRole',
+        'transferSourceId',
+        'transferReceiverId',
+        'transferGroupKey',
+        'conversionRatio',
+        'requestedAmount',
+        'sourcePaid',
+        'convertedAmount',
+        'receiverGain',
+        'overflowLoss',
+        'poolTotalBefore',
+        'poolTotalAfter',
         'productId',
         'quantity',
         'useEffectCount',
@@ -90519,10 +90924,27 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return result;
   }
 
-  function deferredBattlePrototype(skill = {}) {
+  const battlePrototypeStatusCache = new Map();
+  function battlePrototypeStatus(prototype = '') {
+    const name = String(prototype || '').trim();
+    if (!name) return '';
+    if (battlePrototypeStatusCache.has(name)) return battlePrototypeStatusCache.get(name);
+    const status = String(
+      root.__LWCS_BEHAVIOR_DECISION_PIPELINE__
+        ?.prototypeAdapter
+        ?.registry?.()
+        ?.statusByPrototype?.[name] || '',
+    ).trim();
+    battlePrototypeStatusCache.set(name, status);
+    return status;
+  }
+
+  function nonExecutableBattlePrototype(skill = {}) {
     return preview.collectEffects(skill)
       .map(effect => String(effect?.原型 || '').trim())
-      .find(prototype => prototype === '复制执行' || prototype === '时光回溯') || '';
+      .find(prototype => ['DEFERRED_EXPLICIT', 'OUT_OF_BATTLE_SCOPE'].includes(
+        battlePrototypeStatus(prototype),
+      )) || '';
   }
 
   const baseActionRelevantSkillCache = new WeakMap();
@@ -90888,7 +91310,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       item?.来源,
     ].map(value => String(value || '').trim()).filter(Boolean));
     for (const skill of collectSkills(actor)) {
-      if (deferredBattlePrototype(skill)) continue;
+      if (nonExecutableBattlePrototype(skill)) continue;
       const creation = creationProfile(skill, actor, worldSnapshot);
       if (!creation?.productId || !creation.useEffects?.length) continue;
       const skillIds = [
@@ -91157,7 +91579,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             unit,
             applyEquipmentPassivesToSkill(unit, sourceSkill),
           ).skill;
-      if (deferredBattlePrototype(skill)) return null;
+      if (nonExecutableBattlePrototype(skill)) return null;
       return Object.freeze({
         sourceSkill,
         index,
@@ -91385,6 +91807,43 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return markCapacityDeltaSnapshot(restored, targetSnapshot, [actorId]);
   }
 
+  function snapshotWithUnitShieldsFrom(targetSnapshot = {}, sourceSnapshot = {}, unitIds = []) {
+    const wantedIds = new Set((Array.isArray(unitIds) ? unitIds : [unitIds])
+      .map(value => String(value || '').trim())
+      .filter(Boolean));
+    if (!wantedIds.size) return targetSnapshot;
+    const restored = mapWorldUnits(targetSnapshot, unit => {
+      const unitId = preview.unitId(unit);
+      if (!wantedIds.has(unitId)) return unit;
+      const sourceUnit = findUnitInWorld(sourceSnapshot, unitId);
+      if (!sourceUnit) return unit;
+      const targetStates = cloneValue(unit?.状态效果 || {});
+      const sourceStates = cloneValue(sourceUnit?.状态效果 || {});
+      Object.entries(targetStates).forEach(([key, state]) => {
+        if (!(Number(state?.shield_value || 0) > 0)) return;
+        if (Number(sourceStates?.[key]?.shield_value || 0) > 0) {
+          targetStates[key] = sourceStates[key];
+        } else {
+          delete targetStates[key];
+        }
+      });
+      Object.entries(sourceStates).forEach(([key, state]) => {
+        if (Number(state?.shield_value || 0) > 0 && !targetStates[key]) {
+          targetStates[key] = state;
+        }
+      });
+      const next = { ...unit, 状态效果: targetStates };
+      const sourceDirectShield = Math.max(0, Number(
+        sourceUnit?.shield ?? sourceUnit?.护盾 ?? sourceUnit?.护盾值 ?? 0,
+      ));
+      if ('shield' in unit || 'shield' in sourceUnit) next.shield = sourceDirectShield;
+      if ('护盾' in unit || '护盾' in sourceUnit) next.护盾 = sourceDirectShield;
+      if ('护盾值' in unit || '护盾值' in sourceUnit) next.护盾值 = sourceDirectShield;
+      return next;
+    });
+    return markCapacityDeltaSnapshot(restored, targetSnapshot, [...wantedIds]);
+  }
+
   function r8ResourceNeutralProjectedWorld(
     baselineWorld = {},
     projectedWorld = {},
@@ -91482,7 +91941,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const 增益语义 = 读取技能增益语义助手();
     const effects = Array.isArray(skill?._效果数组) ? skill._效果数组 : [];
     const targets = effects.map(effect => String(effect?.目标 || '').trim()).filter(Boolean);
-    if (!targets.length || targets.every(target => target === '自身')) {
+    const externalResourceTransfer = nestedSkillEffects(skill).some(effect =>
+      String(effect?.原型 || '').trim() === '资源转移' &&
+      String(effect?.目标 || '').trim() !== '自身'
+    );
+    if ((!targets.length && !externalResourceTransfer) || (targets.length && targets.every(target => target === '自身'))) {
       targetProfileCache.set(skill, 'SELF');
       return 'SELF';
     }
@@ -91492,6 +91955,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (prototype === '伤害结算' || prototype === '资源锁定' || prototype === '机制抹消') return true;
       if (prototype === '护盾变化') return String(effect?.护盾模式 || '').trim() !== '正向护盾';
       if (prototype === '资源变化') return Number.parseFloat(String(effect?.数值 || '0')) < 0;
+      if (prototype === '资源转移') return String(effect?.资源转移方式 || '').trim() === '吞噬';
       if (prototype === '结算修正') return !增益语义.结算修正是否增益语义_V1(effect);
       if (prototype === '判定修正') return !增益语义.判定修正是否增益语义_V1(effect);
       if (prototype === '状态施加') return !preview.effectTargetsAllies(effect);
@@ -91504,6 +91968,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (['状态移除', '规则防御', '机制授予'].includes(prototype)) return true;
       if (/友方|己方|队友|自身/.test(target)) return true;
       if (prototype === '资源变化') return Number.parseFloat(String(effect?.数值 || '0')) > 0 && !hostile;
+      if (prototype === '资源转移') {
+        return ['共享', '均分', '转移'].includes(String(effect?.资源转移方式 || '').trim()) && !hostile;
+      }
       if (prototype === '护盾变化') return String(effect?.护盾模式 || '').trim() === '正向护盾' && !hostile;
       if (prototype === '结算修正') return 增益语义.结算修正是否增益语义_V1(effect) && !hostile;
       if (prototype === '判定修正') return 增益语义.判定修正是否增益语义_V1(effect) && !hostile;
@@ -91540,6 +92007,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       });
     }
     return effects;
+  }
+
+  function requiresExternalResourceTransferTarget(skill = {}) {
+    return nestedSkillEffects(skill).some(effect =>
+      String(effect?.原型 || '').trim() === '资源转移' &&
+      String(effect?.目标 || '').trim() !== '自身'
+    );
   }
 
   function isImmediateReactionSkill(skill = {}, immediateBudget = 0) {
@@ -91712,6 +92186,46 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return targets.map(unit => [preview.unitId(unit)]);
   }
 
+  function expandMixedScopePrimaryTargetSets(
+    skill = {},
+    profile = '',
+    targetSets = [],
+    worldSnapshot = {},
+    actor = {},
+  ) {
+    if (!['FRIENDLY_GROUP', 'HOSTILE_GROUP'].includes(profile)) return targetSets;
+    const groupTargetsAllies = profile === 'FRIENDLY_GROUP';
+    const singleTargetDirections = nestedSkillEffects(skill).flatMap(effect => {
+      const target = String(effect?.目标 || '').trim();
+      if (!target || /自身|融合伙伴|全场|群体/.test(target)) return [];
+      return [preview.effectTargetsAllies(effect)];
+    });
+    const hasSameSideSingle = singleTargetDirections.includes(groupTargetsAllies);
+    const hasOppositeSideSingle = singleTargetDirections.includes(!groupTargetsAllies);
+    if (!hasSameSideSingle && !hasOppositeSideSingle) return targetSets;
+    const actorSide = sideOf(worldSnapshot, actor);
+    const oppositePrimaryIds = hasOppositeSideSingle
+      ? (groupTargetsAllies ? aliveEntries(worldSnapshot) : livingEntries(worldSnapshot))
+          .filter(entry => groupTargetsAllies
+            ? entry.side !== actorSide
+            : entry.side === actorSide)
+          .map(entry => preview.unitId(entry.unit))
+      : [];
+    return targetSets.flatMap(targetSet => {
+      if (!Array.isArray(targetSet)) return [];
+      const sameSideVariants = hasSameSideSingle && targetSet.length > 1
+        ? targetSet.map((primaryTargetId, primaryIndex) => [
+            primaryTargetId,
+            ...targetSet.filter((_, index) => index !== primaryIndex),
+          ])
+        : [targetSet];
+      if (!oppositePrimaryIds.length) return sameSideVariants;
+      return sameSideVariants.flatMap(groupVariant =>
+        oppositePrimaryIds.map(primaryTargetId => [primaryTargetId, ...groupVariant])
+      );
+    });
+  }
+
   function defensiveDeclaration(actorId, actionKind) {
     return { actionId: `${actorId}:${actionKind}`, actorId, actionKind, targetIds: [actorId] };
   }
@@ -91774,7 +92288,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         /^SKILL_EFFECTS_/.test(rejectionCode) ? 'INVENTORY' :
         /^(?:COST_|RESOURCE_UNAFFORDABLE)/.test(rejectionCode) ? 'AFFORDABILITY' :
         /(?:TARGET|TAUNT)/.test(rejectionCode) ? 'TARGET' :
-        /^DEFER_MECHANICS_PROJECTION/.test(rejectionCode) ? 'PROJECTION' :
+        /^(?:DEFER_MECHANICS_PROJECTION|FORMAL_LIBRARY_OUT_OF_BATTLE_SCOPE)/.test(rejectionCode) ? 'PROJECTION' :
         /^(?:RULE_|CAST_|FUSION_|COUNTER_|REACTION_|RING_)/.test(rejectionCode) ? 'TRIGGER' :
         'LEGALITY';
       rejectionCollector({
@@ -91823,15 +92337,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         throw error;
       }
       const publicStates = {};
-      aliveEntries(worldSnapshot).forEach(entry => {
-        if (entry.side === sideOf(worldSnapshot, actor)) return;
-        const unitId = preview.unitId(entry.unit);
-        const hasTaunt = stateEntries(entry.unit).some(state => {
-          const name = String(state?.状态 || state?.状态名称 || '').trim();
-          return (name === '嘲讽' || name === 'taunt') &&
-            state?.隐藏 !== true && state?.hidden !== true;
-        });
-        if (hasTaunt) publicStates[unitId] = { 嘲讽: true };
+      visibleTauntSources(worldSnapshot, actor).forEach(entry => {
+        publicStates[entry.sourceId] = { 嘲讽: true };
       });
       const legality = pda.computeLegalityContext({ publicStates });
       return {
@@ -92023,14 +92530,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         });
         return;
       }
-      const deferredPrototype = deferredBattlePrototype(skill);
+      const deferredPrototype = nonExecutableBattlePrototype(skill);
       if (deferredPrototype) {
+        const rejectionPrefix = battlePrototypeStatus(deferredPrototype) === 'OUT_OF_BATTLE_SCOPE'
+          ? 'FORMAL_LIBRARY_OUT_OF_BATTLE_SCOPE'
+          : 'DEFER_MECHANICS_PROJECTION';
         recordRejected({
           actionKind: 'RELEASE_SKILL',
           sourceActionId: `${actorId}:skill:${sourceSkillId}`,
           targetIds: [],
           paymentMode: '',
-          rejectionCode: `DEFER_MECHANICS_PROJECTION:${deferredPrototype}`,
+          rejectionCode: `${rejectionPrefix}:${deferredPrototype}`,
           skillId: sourceSkillId,
           skillName: sourceSkillName,
         });
@@ -92153,7 +92663,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const declarationCosts = costs;
       const creation = creationProfile(counterSkill, actor, worldSnapshot);
       const reactionSourceId = String(input.actionOpportunity?.sourceActorId || '').trim();
-      const legalTargetSets = enumerateTargetSets(worldSnapshot, actor, profile, input.beliefState);
+      const requiresExternalTransferTarget = requiresExternalResourceTransferTarget(counterSkill);
+      const legalTargetSets = enumerateTargetSets(worldSnapshot, actor, profile, input.beliefState)
+        .filter(targetSet =>
+          !requiresExternalTransferTarget ||
+          targetSet.some(targetId => String(targetId) !== actorId)
+        );
       const legalForcedTargetSet = legalTargetSets.find(targetSet =>
         targetSet.length === forcedTargetIds.length &&
         targetSet.every(targetId => forcedTargetIds.includes(targetId))
@@ -92168,6 +92683,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               targetSet.every(targetId => opportunityValidTargetIds.has(targetId))
             )
           : legalTargetSets;
+      if (!legalForcedTargetSet) {
+        targetSets = expandMixedScopePrimaryTargetSets(
+          counterSkill,
+          profile,
+          targetSets,
+          worldSnapshot,
+          actor,
+        );
+      }
       let targetRejectionRecorded = false;
       if (tauntActive && profile === 'HOSTILE_SINGLE' && !forcedSkill && !reactionOnly && !counterOnly && !assistOnly) {
         if (singleTaunterId && taunterAlive) {
@@ -92313,19 +92837,26 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         name: itemName,
         __物品名: String(item?.__物品名 || itemName).trim(),
         承载方式: String(item?.承载方式 || '物品使用').trim() || '物品使用',
-        _效果数组: usableEffects.map(effect => String(effect?.目标 || '').trim() === '自身'
-          ? { ...effect, 目标: '单体' }
-          : effect),
+        _效果数组: usableEffects,
       };
       const renewableCreation = replacementCreationProfile(item, actor, worldSnapshot, entry.id);
       const futureMaximumValue = renewableCreation
         ? 0
         : irreversibleAssetFutureMaximum(usableItem, actor, worldSnapshot);
       const itemProfile = targetProfile(usableItem);
-      const itemLegalTargetSets = enumerateTargetSets(worldSnapshot, actor, itemProfile, input.beliefState);
-      const itemTargetSets = tauntActive && itemProfile === 'HOSTILE_SINGLE'
+      const itemRequiresExternalTransferTarget = requiresExternalResourceTransferTarget(usableItem);
+      const itemLegalTargetSets = enumerateTargetSets(worldSnapshot, actor, itemProfile, input.beliefState)
+        .filter(targetSet =>
+          !itemRequiresExternalTransferTarget ||
+          targetSet.some(targetId => String(targetId) !== actorId)
+        );
+      const itemTargetSets = expandMixedScopePrimaryTargetSets(
+        usableItem,
+        itemProfile,
+        tauntActive && itemProfile === 'HOSTILE_SINGLE'
         ? (singleTaunterId && taunterAlive ? [[singleTaunterId]] : [])
-        : itemLegalTargetSets;
+        : itemLegalTargetSets,
+      );
       if (tauntActive && itemProfile === 'HOSTILE_SINGLE' && !(singleTaunterId && taunterAlive)) {
         itemLegalTargetSets.forEach(targetSet => {
           recordRejected({
@@ -92396,6 +92927,39 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       : states && typeof states === 'object' ? Object.values(states).filter(Boolean) : []);
     stateEntriesCache.set(unit, result);
     return result;
+  }
+
+  function visibleTauntSources(worldSnapshot = {}, actor = {}) {
+    const actorSide = sideOf(worldSnapshot, actor);
+    const hostileEntries = aliveEntries(worldSnapshot)
+      .filter(entry => entry.side !== actorSide);
+    const bySourceId = new Map();
+    stateEntries(actor).forEach(state => {
+      const name = String(state?.状态 || state?.状态名称 || '').trim().toLowerCase();
+      if (
+        (name !== '嘲讽' && name !== 'taunt') ||
+        state?.隐藏 === true ||
+        state?.hidden === true
+      ) return;
+      const sourceIdentity = String(state?.来源角色 || '').trim();
+      const sourceEntry = hostileEntries.find(entry =>
+        preview.unitId(entry.unit) === sourceIdentity ||
+        preview.unitName(entry.unit) === sourceIdentity
+      );
+      if (!sourceEntry) return;
+      const sourceId = preview.unitId(sourceEntry.unit);
+      const applicationProbability = clamp(Number(state?.__previewApplicationProbability ?? 1), 0, 1);
+      const existing = bySourceId.get(sourceId);
+      if (!existing || applicationProbability > existing.applicationProbability) {
+        bySourceId.set(sourceId, Object.freeze({
+          sourceId,
+          source: sourceEntry.unit,
+          state,
+          applicationProbability,
+        }));
+      }
+    });
+    return Object.freeze([...bySourceId.values()]);
   }
 
   function hasStateFlag(unit = {}, flag = '') {
@@ -92952,9 +93516,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       valuesByOpportunity = new Map();
       targetCache.set(target, valuesByOpportunity);
     }
-    const opportunityKey = options?.futureNaturalOpportunity === true
-      ? 'FUTURE_NATURAL'
-      : 'CURRENT';
+    const opportunityKey = [
+      options?.futureNaturalOpportunity === true ? 'FUTURE_NATURAL' : 'CURRENT',
+      options?.singleTargetOnly === true ? 'SINGLE_TARGET' : 'ALL_TARGETS',
+    ].join('|');
     if (valuesByOpportunity.has(opportunityKey)) {
       return valuesByOpportunity.get(opportunityKey);
     }
@@ -92974,11 +93539,35 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       .forEach(({ skill }) => {
         const profile = targetProfile(skill);
         if (!profile.startsWith('HOSTILE') && profile !== 'ANY_SINGLE') return;
+        if (options?.singleTargetOnly === true && !['HOSTILE_SINGLE', 'ANY_SINGLE'].includes(profile)) return;
         best = Math.max(best, cachedBaseActionValue(unit, target, 'RELEASE_SKILL', skill));
       });
     const result = Math.max(0, best);
     valuesByOpportunity.set(opportunityKey, result);
     return result;
+  }
+
+  function bestHostileGroupActionValue(worldSnapshot, unit) {
+    if (!preview.isAlive(unit) || hasActionCancellation(unit) || hasStateFlag(unit, 'silence')) return 0;
+    const targets = aliveEntries(worldSnapshot)
+      .filter(entry => entry.side !== sideOf(worldSnapshot, unit))
+      .map(entry => entry.unit);
+    if (!targets.length) return 0;
+    return affordablePreparedSkills(unit)
+      .filter(({ skill, startupCosts }) =>
+        targetProfile(skill) === 'HOSTILE_GROUP' &&
+        skillHasBaseActionValue(skill) &&
+        preview.resolveFusionAction(worldSnapshot, unit, skill, {
+          resourceCosts: startupCosts,
+          requirePendingOpportunity: false,
+        }).valid
+      )
+      .reduce((best, { skill }) => Math.max(
+        best,
+        targets.reduce((sum, target) =>
+          sum + cachedBaseActionValue(unit, target, 'RELEASE_SKILL', skill)
+        , 0),
+      ), 0);
   }
 
   function perceivedEnemyBaseValue(beliefUnit = {}, target = null) {
@@ -93160,10 +93749,34 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     );
   }
 
-  function availableShieldAbsorptionCap(worldSnapshot = {}, target = {}, perspectiveSide = '', beliefState = {}) {
+  function shieldCoverageWindows(skill = {}) {
+    return preview.collectEffects(skill).reduce((windows, effect) => {
+      const prototype = String(effect?.原型 || '').trim();
+      const shieldEffect = prototype === '护盾变化' || (
+        prototype === '状态施加' && /护盾|屏障|结界/.test(String(effect?.状态 || '').trim())
+      );
+      if (!shieldEffect) return windows;
+      const declared = Number(effect?.持续回合);
+      // Direct shield layers have no round-end expiry in the runtime, even when
+      // generation prose carries a duration. State-based shields still expire.
+      const duration = prototype === '护盾变化'
+        ? 3
+        : Number.isFinite(declared) && declared > 0 ? declared : 1;
+      return Math.max(windows, Math.max(1, Math.min(3, duration)));
+    }, 1);
+  }
+
+  function availableShieldAbsorptionCap(
+    worldSnapshot = {},
+    target = {},
+    perspectiveSide = '',
+    beliefState = {},
+    coverageWindows = 1,
+  ) {
     return Math.max(
       0,
-      expectedIncomingShieldDamage(worldSnapshot, target, perspectiveSide, beliefState) -
+      expectedIncomingShieldDamage(worldSnapshot, target, perspectiveSide, beliefState) *
+        Math.max(1, Math.min(3, Number(coverageWindows || 1))) -
       effectiveShieldValue(target),
     );
   }
@@ -93262,6 +93875,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 actionKind,
                 skill,
                 shieldAbsorptionCap,
+                healingOpportunityCap: shieldAbsorptionCap,
               });
         const realizationFactor = targetRealizationFactor(beliefState, unit, targetId, damageEffects);
         realizationFactorByTarget[targetId] = realizationFactor;
@@ -93512,6 +94126,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         actionKind: action.actionKind,
         skill: action.skill,
         shieldAbsorptionCap: Math.max(0, Number(action?.shieldAbsorptionCapByTarget?.[targetId] || 0)),
+        healingOpportunityCap: Math.max(0, Number(action?.shieldAbsorptionCapByTarget?.[targetId] || 0)),
       })) * Math.max(0, Number(action?.realizationFactorByTarget?.[targetId] ?? 1));
       return potential * targetAvailability;
     });
@@ -93569,6 +94184,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         name: String(existing.name || creation.productId).trim() || creation.productId,
         名称: String(existing.名称 || creation.productId).trim() || creation.productId,
         物品名: String(existing.物品名 || creation.productId).trim() || creation.productId,
+        制作者ID: String(actorId || '').trim(),
         数量: Math.max(0, Number(existing.数量 || 0)) + quantity,
         使用效果: cloneValue(creation.useEffects),
       };
@@ -94145,10 +94761,38 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const baseUnit = findUnitInWorld(valueContext.worldSnapshot, id);
         if (!baseUnit || baseUnit === unit) return false;
         return preview.stableHash([
+          preview.readHp(unit),
+          preview.readHpMax(unit),
+          preview.readShield(unit),
+          preview.readResource(unit, '魂力'),
+          preview.readResourceMax(unit, '魂力'),
+          preview.readResource(unit, '精神力'),
+          preview.readResourceMax(unit, '精神力'),
+          preview.readResource(unit, '体力'),
+          preview.readResourceMax(unit, '体力'),
           Number(unit?.str), Number(unit?.def), Number(unit?.agi), Number(unit?.men),
+          preview.readCombatStat(unit, 'str'),
+          preview.readCombatStat(unit, 'def'),
+          preview.readCombatStat(unit, 'agi'),
+          preview.readCombatStat(unit, 'men'),
+          preview.staminaScaleForUnit(unit),
           unit?.状态效果 || {},
         ]) !== preview.stableHash([
+          preview.readHp(baseUnit),
+          preview.readHpMax(baseUnit),
+          preview.readShield(baseUnit),
+          preview.readResource(baseUnit, '魂力'),
+          preview.readResourceMax(baseUnit, '魂力'),
+          preview.readResource(baseUnit, '精神力'),
+          preview.readResourceMax(baseUnit, '精神力'),
+          preview.readResource(baseUnit, '体力'),
+          preview.readResourceMax(baseUnit, '体力'),
           Number(baseUnit?.str), Number(baseUnit?.def), Number(baseUnit?.agi), Number(baseUnit?.men),
+          preview.readCombatStat(baseUnit, 'str'),
+          preview.readCombatStat(baseUnit, 'def'),
+          preview.readCombatStat(baseUnit, 'agi'),
+          preview.readCombatStat(baseUnit, 'men'),
+          preview.staminaScaleForUnit(baseUnit),
           baseUnit?.状态效果 || {},
         ]);
       };
@@ -94292,6 +94936,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const buildFullProfile = () => {
       decisionMetrics.teamCapacityFullBuilds += 1;
       decisionMetrics.teamCapacityUnitsRecomputed += allSideEntries.length;
+      const mechanicsChangedIds = new Set(entries
+        .filter(entry => mechanicsChanged(entry.unit))
+        .map(entry => preview.unitId(entry.unit)));
       const survivalInputsById = Object.fromEntries(entries.map(entry => [
         preview.unitId(entry.unit),
         survivalProbabilityFor(entry.unit),
@@ -94310,6 +94957,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         unitCapacities: Object.freeze(unitCapacities),
         targetAvailabilityById: Object.freeze(targetAvailabilityById),
         survivalInputsById: Object.freeze(survivalInputsById),
+        mechanicsChangedIds: Object.freeze([...mechanicsChangedIds]),
         resourceThreatProfile,
       });
     };
@@ -94346,9 +94994,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           current: findUnitInWorld(worldSnapshot, id),
           parent: findUnitInWorld(parentSnapshot, id),
         })).filter(entry => entry.current && entry.parent);
-        const mechanicsChangedIds = new Set(changedUnits
-          .filter(entry => mechanicsChanged(entry.current))
-          .map(entry => entry.id));
+        const mechanicsChangedIds = new Set(parentProfile.mechanicsChangedIds || []);
+        changedUnits.forEach(entry => {
+          if (mechanicsChanged(entry.current)) mechanicsChangedIds.add(entry.id);
+          else mechanicsChangedIds.delete(entry.id);
+        });
         const opposingQualityChanged = changedUnits.some(entry =>
           sideOf(worldSnapshot, entry.current) !== side &&
           Math.abs(actionQualityMultiplier(entry.current) - actionQualityMultiplier(entry.parent)) > 1e-9
@@ -94403,6 +95053,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           unitCapacities: Object.freeze(unitCapacities),
           targetAvailabilityById: Object.freeze(targetAvailabilityById),
           survivalInputsById: Object.freeze(survivalInputsById),
+          mechanicsChangedIds: Object.freeze([...mechanicsChangedIds]),
           resourceThreatProfile,
         });
         byKey.set(cacheKey, result);
@@ -94423,6 +95074,55 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       nextValueContext,
       options,
     ).total;
+  }
+
+  function tauntTargetingUtilityNext(worldSnapshot = {}, perspectiveSide = '') {
+    const rows = [];
+    const utility = aliveEntries(worldSnapshot).reduce((total, entry) => {
+      const sources = visibleTauntSources(worldSnapshot, entry.unit);
+      if (sources.length !== 1) return total;
+      const [{ sourceId, source, state, applicationProbability }] = sources;
+      const sourceSide = sideOf(worldSnapshot, source);
+      if (!sourceSide || sourceSide === entry.side) return total;
+      const legalTargets = aliveEntries(worldSnapshot)
+        .filter(targetEntry => targetEntry.side !== entry.side)
+        .map(targetEntry => targetEntry.unit);
+      if (legalTargets.length < 2 || !legalTargets.some(target => preview.unitId(target) === sourceId)) return total;
+      const actionMultiplier = actionQualityMultiplier(entry.unit);
+      const groupFloor = bestHostileGroupActionValue(worldSnapshot, entry.unit) * actionMultiplier;
+      const singleTargetValues = legalTargets.map(target => ({
+        targetId: preview.unitId(target),
+        value: bestBaseActionValueAgainst(worldSnapshot, entry.unit, target, {
+          futureNaturalOpportunity: true,
+          singleTargetOnly: true,
+        }) * actionMultiplier,
+      }));
+      const unrestrictedValue = Math.max(groupFloor, ...singleTargetValues.map(target => target.value));
+      const forcedValue = Math.max(
+        groupFloor,
+        Number(singleTargetValues.find(target => target.targetId === sourceId)?.value || 0),
+      );
+      const duration = Math.max(1, Number(state?.duration ?? state?.持续回合 ?? state?.剩余回合 ?? 1));
+      const opportunityWeight = duration > 1 ? 1.5 : 1;
+      const redirectValue = Math.max(0, unrestrictedValue - forcedValue) *
+        applicationProbability * opportunityWeight;
+      rows.push(Object.freeze({
+        affectedActorId: preview.unitId(entry.unit),
+        sourceId,
+        sourceSide,
+        applicationProbability,
+        duration,
+        groupFloor,
+        unrestrictedValue,
+        forcedValue,
+        redirectValue,
+        singleTargetValues: Object.freeze(singleTargetValues.map(target => Object.freeze({ ...target }))),
+      }));
+      if (perspectiveSide === sourceSide) return total + redirectValue;
+      if (perspectiveSide === entry.side) return total - redirectValue;
+      return total;
+    }, 0);
+    return Object.freeze({ utility, rows: Object.freeze(rows) });
   }
 
   function stateUtilityNext(worldSnapshot, actorSide, beliefState = {}, nextValueContext = null, options = {}) {
@@ -94459,11 +95159,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const own = teamCapacityNext(worldSnapshot, actorSide, actorSide, beliefState, valueContext, capacityOptions);
     const enemy = sides.filter(side => side !== actorSide).reduce((sum, side) =>
       sum + teamCapacityNext(worldSnapshot, side, actorSide, beliefState, valueContext, capacityOptions), 0);
+    const tauntTargeting = tauntTargetingUtilityNext(worldSnapshot, actorSide);
     const result = Object.freeze({
       own,
       enemy,
       total: own + enemy,
-      utility: own - enemy,
+      utility: own - enemy + tauntTargeting.utility,
+      tauntTargetingUtility: tauntTargeting.utility,
+      tauntTargetingAudit: tauntTargeting.rows,
       nonDuplicatedGoalProgress: 0,
       resourceThreatProfile,
     });
@@ -95805,6 +96508,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       });
     }
     const explicitStateName = String(effect?.状态 || effect?.状态名称 || '').trim();
+    const modifierElement = (Array.isArray(effect?.限定元素)
+      ? effect.限定元素
+      : [effect?.限定元素]
+    ).map(value => String(value || '').trim()).filter(Boolean).join('、');
+    const modifierElementSuffix = modifierElement ? `(${modifierElement})` : '';
     const stateName = explicitStateName ||
       (prototype === '属性修正'
         ? `${(Array.isArray(effect?.属性) ? effect.属性 : [effect?.属性])
@@ -95812,8 +96520,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             .filter(Boolean)
             .join('、') || '属性'}修正`
         : prototype === '判定修正'
-          ? `${String(effect?.判定 || '判定').trim() || '判定'}判定修正`
-          : String(effect?.判定 || prototype).trim());
+          ? `${String(effect?.判定 || '判定').trim() || '判定'}${modifierElementSuffix}判定修正`
+          : prototype === '结算修正'
+            ? `${String(effect?.结算 || '结算').trim() || '结算'}${modifierElementSuffix}结算修正`
+            : String(effect?.判定 || prototype).trim());
     const duration = Math.max(1, Number(effect?.持续回合 || 1));
     const combatEffect = preview.deriveStateCombatEffect(effect);
     const horizon = battleHorizonProfile(input, worldSnapshot);
@@ -95830,7 +96540,26 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const normalizedTargetIds = [...new Set(
       (targetIds || []).map(value => String(value || '').trim()).filter(Boolean),
     )];
-    const reasons = [];
+    const actorId = String(input?.actorId || '').trim();
+    const attributes = prototype === '属性修正'
+      ? [...new Set((Array.isArray(effect?.属性) ? effect.属性 : [effect?.属性])
+          .map(value => String(value || '').trim())
+          .filter(Boolean))]
+      : [];
+    const reasonsByTarget = new Map(normalizedTargetIds.map(targetId => [targetId, []]));
+    const attributeReasonsByTarget = new Map(normalizedTargetIds.map(targetId => [
+      targetId,
+      new Map(attributes.map(attribute => [attribute, []])),
+    ]));
+    const addTargetReason = (targetId, reason) => {
+      const reasons = reasonsByTarget.get(targetId);
+      if (reasons && !reasons.includes(reason)) reasons.push(reason);
+    };
+    const addAttributeReason = (targetId, attribute, reason) => {
+      const reasons = attributeReasonsByTarget.get(targetId)?.get(attribute);
+      if (reasons && !reasons.includes(reason)) reasons.push(reason);
+      addTargetReason(targetId, reason);
+    };
     const hasDotTick =
       Math.max(0, Number(combatEffect?.dot_damage || 0)) > 0 ||
       Math.max(0, Number(combatEffect?.dot_damage_ratio || 0)) > 0;
@@ -95845,7 +96574,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ...(Array.isArray(effect?.属性) ? effect.属性 : [effect?.属性]),
     ].map(value => String(value || '').trim()).filter(Boolean).join(' ');
     const targetActionQuality =
-      prototype === '属性修正' ||
+      prototype !== '属性修正' && (
       prototype === '位移执行' ||
       /命中|反应|前摇|施法|行动|速度|敏捷|力量|攻击|伤害|威力/.test(semanticText) ||
       Number(combatEffect?.hit_bonus || 0) !== 0 ||
@@ -95854,8 +96583,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       Number(combatEffect?.reaction_penalty || 0) !== 0 ||
       Number(combatEffect?.cast_speed_bonus || 0) !== 0 ||
       Number(combatEffect?.cast_speed_penalty || 0) !== 0 ||
-      Number(combatEffect?.windup_ratio || 1) !== 1;
+      Number(combatEffect?.windup_ratio || 1) !== 1
+      );
     const opposingActionQuality =
+      prototype !== '属性修正' && (
       /闪避|反应|防御|抗性|韧性|格挡|承伤|受到伤害|伤害分摊|减伤|护卫|隐匿|无敌|霸体/.test(semanticText) ||
       Number(combatEffect?.dodge_bonus || 0) !== 0 ||
       Number(combatEffect?.dodge_penalty || 0) !== 0 ||
@@ -95865,36 +96596,77 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       Number(combatEffect?.received_damage_mult || 1) !== 1 ||
       Number(combatEffect?.block_count || 0) > 0 ||
       combatEffect?.invincible === true ||
-      combatEffect?.super_armor === true;
-    const hasTargetCurrentRoundAction = targetActionQuality && normalizedTargetIds.some(targetId =>
-      pendingNaturalActorIds.has(targetId),
-    );
-    const hasOpposingCurrentRoundInteraction = opposingActionQuality && normalizedTargetIds.some(targetId => {
-      const target = findUnitInWorld(worldSnapshot, targetId);
-      const targetSide = target ? sideOf(worldSnapshot, target) : '';
-      return targetSide && pendingNaturalUnits.some(consumer =>
-        sideOf(worldSnapshot, consumer) !== targetSide,
+      combatEffect?.super_armor === true
       );
-    });
-    if (hasTargetCurrentRoundAction && hasQualityEffect) reasons.push('TARGET_CURRENT_ROUND_ACTION');
-    if (hasOpposingCurrentRoundInteraction && hasQualityEffect) reasons.push('OPPOSING_CURRENT_ROUND_INTERACTION');
+    if (attributes.length) {
+      normalizedTargetIds.forEach(targetId => {
+        const target = findUnitInWorld(worldSnapshot, targetId);
+        const targetSide = target ? sideOf(worldSnapshot, target) : '';
+        attributes.forEach(attribute => {
+          const affectsOwnAction = /力量|攻击|伤害|威力|敏捷|速度|反应|魂力上限|精神力上限|体力上限/.test(attribute);
+          const affectsIncomingInteraction = /防御|抗性|韧性|格挡|承伤|敏捷|速度|反应/.test(attribute);
+          if (
+            affectsOwnAction &&
+            targetId !== actorId &&
+            pendingNaturalActorIds.has(targetId)
+          ) {
+            addAttributeReason(targetId, attribute, 'TARGET_CURRENT_ROUND_ACTION');
+          }
+          if (
+            affectsIncomingInteraction &&
+            targetSide &&
+            pendingNaturalUnits.some(consumer => sideOf(worldSnapshot, consumer) !== targetSide)
+          ) {
+            addAttributeReason(targetId, attribute, 'OPPOSING_CURRENT_ROUND_INTERACTION');
+          }
+        });
+      });
+    }
+    if (targetActionQuality && hasQualityEffect) {
+      normalizedTargetIds.forEach(targetId => {
+        if (pendingNaturalActorIds.has(targetId)) addTargetReason(targetId, 'TARGET_CURRENT_ROUND_ACTION');
+      });
+    }
+    if (opposingActionQuality && hasQualityEffect) {
+      normalizedTargetIds.forEach(targetId => {
+        const target = findUnitInWorld(worldSnapshot, targetId);
+        const targetSide = target ? sideOf(worldSnapshot, target) : '';
+        if (targetSide && pendingNaturalUnits.some(consumer => sideOf(worldSnapshot, consumer) !== targetSide)) {
+          addTargetReason(targetId, 'OPPOSING_CURRENT_ROUND_INTERACTION');
+        }
+      });
+    }
     const hasControlEffect = combatEffect?.skip_turn === true ||
       combatEffect?.cannot_act === true ||
       combatEffect?.silence === true ||
       combatEffect?.disarm === true;
-    if (
-      hasControlEffect &&
-      input?.actionOpportunity?.futureHostileResponseAllowed !== false &&
-      normalizedTargetIds.some(targetId => {
+    if (hasControlEffect && input?.actionOpportunity?.futureHostileResponseAllowed !== false) {
+      normalizedTargetIds.forEach(targetId => {
         const target = findUnitInWorld(worldSnapshot, targetId);
-        return target && sideOf(worldSnapshot, target) !== actorSide && preview.isBattleCapable(target);
-      })
-    ) reasons.push('CONTROL_RESPONSE_WINDOW');
-    if (hasDotTick) reasons.push('SAME_ROUND_TICK');
-    const protectsFriendlyTarget = normalizedTargetIds.some(targetId => {
-      const target = findUnitInWorld(worldSnapshot, targetId);
-      return target && sideOf(worldSnapshot, target) === actorSide;
-    }) && pendingHostileActorIds.size > 0 && (
+        if (target && sideOf(worldSnapshot, target) !== actorSide && preview.isBattleCapable(target)) {
+          addTargetReason(targetId, 'CONTROL_RESPONSE_WINDOW');
+        }
+      });
+    }
+    const isTauntState = prototype === '状态施加' && /^(?:嘲讽|taunt)$/i.test(stateName);
+    if (isTauntState) {
+      const futureTauntWindow = duration > 1 && horizon.remainingRounds > 0;
+      normalizedTargetIds.forEach(targetId => {
+        const target = findUnitInWorld(worldSnapshot, targetId);
+        if (
+          target &&
+          sideOf(worldSnapshot, target) !== actorSide &&
+          preview.isBattleCapable(target) &&
+          (
+            pendingNaturalActorIds.has(targetId) ||
+            pendingHostileActorIds.has(targetId) ||
+            futureTauntWindow
+          )
+        ) addTargetReason(targetId, 'TAUNT_FORCED_TARGET_WINDOW');
+      });
+    }
+    if (hasDotTick) normalizedTargetIds.forEach(targetId => addTargetReason(targetId, 'SAME_ROUND_TICK'));
+    const protectsFriendlyTarget = pendingHostileActorIds.size > 0 && (
       combatEffect?.invincible === true ||
       combatEffect?.super_armor === true ||
       Number(combatEffect?.dodge_bonus || 0) > 0 ||
@@ -95904,19 +96676,53 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         `${String(effect?.判定 || '').trim()} ${String(effect?.结算 || '').trim()} ${stateName}`,
       )
     );
-    if (protectsFriendlyTarget) reasons.push('CURRENT_ROUND_RESPONSE');
+    if (protectsFriendlyTarget) {
+      normalizedTargetIds.forEach(targetId => {
+        const target = findUnitInWorld(worldSnapshot, targetId);
+        if (target && sideOf(worldSnapshot, target) === actorSide) {
+          addTargetReason(targetId, 'CURRENT_ROUND_RESPONSE');
+        }
+      });
+    }
     const futureRoundAvailable = duration > 1 && horizon.remainingRounds > 0;
     const futureTargetIds = normalizedTargetIds.filter(targetId => {
       const target = findUnitInWorld(worldSnapshot, targetId);
       return target && preview.isBattleCapable(target) && futureRoundAvailable;
     });
-    if (futureTargetIds.length && hasQualityEffect) reasons.push('FUTURE_NATURAL_OPPORTUNITY');
+    if (hasQualityEffect) {
+      futureTargetIds.forEach(targetId => {
+        if (attributes.length) {
+          attributes.forEach(attribute => addAttributeReason(targetId, attribute, 'FUTURE_NATURAL_OPPORTUNITY'));
+        } else {
+          addTargetReason(targetId, 'FUTURE_NATURAL_OPPORTUNITY');
+        }
+      });
+    }
+    const realizableTargetIds = normalizedTargetIds.filter(targetId => reasonsByTarget.get(targetId)?.length);
+    const unrealizableTargetIds = normalizedTargetIds.filter(targetId => !reasonsByTarget.get(targetId)?.length);
+    const reasons = [...new Set([...reasonsByTarget.values()].flat())];
     return Object.freeze({
       prototype,
       stateName,
       attribute: Array.isArray(effect?.属性)
         ? effect.属性.map(value => String(value || '').trim()).filter(Boolean).join('、')
         : String(effect?.属性 || '').trim(),
+      realizableAttributesByTarget: Object.freeze(Object.fromEntries(
+        [...attributeReasonsByTarget].map(([targetId, reasonsByAttribute]) => [
+          targetId,
+          Object.freeze([...reasonsByAttribute]
+            .filter(([, attributeReasons]) => attributeReasons.length > 0)
+            .map(([attribute]) => attribute)),
+        ]),
+      )),
+      unrealizableAttributesByTarget: Object.freeze(Object.fromEntries(
+        [...attributeReasonsByTarget].map(([targetId, reasonsByAttribute]) => [
+          targetId,
+          Object.freeze([...reasonsByAttribute]
+            .filter(([, attributeReasons]) => attributeReasons.length === 0)
+            .map(([attribute]) => attribute)),
+        ]),
+      )),
       check: String(effect?.判定 || '').trim(),
       settlement: String(effect?.结算 || '').trim(),
       duration,
@@ -95924,8 +96730,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         ? Math.min(duration, horizon.remainingRounds + 1)
         : duration,
       targetIds: Object.freeze(normalizedTargetIds),
+      realizableTargetIds: Object.freeze(realizableTargetIds),
+      unrealizableTargetIds: Object.freeze(unrealizableTargetIds),
+      targetReasons: Object.freeze(Object.fromEntries(
+        [...reasonsByTarget].map(([targetId, targetReasons]) => [targetId, Object.freeze(targetReasons)]),
+      )),
       reasons: Object.freeze([...new Set(reasons)]),
-      realizable: reasons.length > 0,
+      realizable: realizableTargetIds.length > 0,
       temporal: true,
     });
   }
@@ -95944,22 +96755,43 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return true;
   }
 
-  function temporalAuditForCandidate(candidateEffects = [], targetIds = [], input = {}, worldSnapshot = {}, actorSide = '', contributions = []) {
+  function temporalAuditForCandidate(candidateEffects = [], targetIds = [], input = {}, worldSnapshot = {}, actorSide = '', contributions = [], declaration = null) {
+    const actor = declaration ? findUnitInWorld(worldSnapshot, input?.actorId) : null;
     const profiles = candidateEffects
-      .map(effect => temporalEffectWindowProfile(effect, targetIds, input, worldSnapshot, actorSide))
+      .map(effect => {
+        const resolvedTargetIds = actor
+          ? preview.resolveTargets(worldSnapshot, actor, declaration, effect).map(preview.unitId)
+          : targetIds;
+        return temporalEffectWindowProfile(effect, resolvedTargetIds, input, worldSnapshot, actorSide);
+      })
       .filter(profile => profile.temporal);
-    const invalidProfiles = profiles.filter(profile => !profile.realizable);
-    const invalidContributions = contributions.filter(entry =>
-      invalidProfiles.some(profile => temporalProfileMatchesContribution(profile, entry)),
+    const invalidProfiles = profiles.filter(profile =>
+      profile.unrealizableTargetIds.length > 0 ||
+      Object.values(profile.unrealizableAttributesByTarget || {}).some(attributes => attributes.length > 0)
     );
-    const validProfiles = profiles.filter(profile => profile.realizable);
+    const validProfiles = profiles.filter(profile => profile.realizableTargetIds.length > 0);
+    const invalidContributions = contributions.filter(entry => {
+      const targetId = String(entry?.targetId || '').trim();
+      const matchingProfiles = profiles.filter(profile => temporalProfileMatchesContribution(profile, entry));
+      return matchingProfiles.some(profile => profile.unrealizableTargetIds.includes(targetId)) &&
+        !matchingProfiles.some(profile => profile.realizableTargetIds.includes(targetId));
+    });
+    const attributeCleanupContributions = contributions.filter(entry => {
+      const targetId = String(entry?.targetId || '').trim();
+      return profiles.some(profile =>
+        profile.prototype === '属性修正' &&
+        temporalProfileMatchesContribution(profile, entry) &&
+        (profile.unrealizableAttributesByTarget?.[targetId] || []).length > 0
+      );
+    });
     return Object.freeze({
       profiles: Object.freeze(profiles),
       invalidProfiles: Object.freeze(invalidProfiles),
       validProfiles: Object.freeze(validProfiles),
       invalidContributions: Object.freeze(invalidContributions),
+      attributeCleanupContributions: Object.freeze(attributeCleanupContributions),
       invalidContributionSet: new Set(invalidContributions),
-      invalidTargetIds: new Set(invalidProfiles.flatMap(profile => profile.targetIds)),
+      invalidTargetIds: new Set(invalidProfiles.flatMap(profile => profile.unrealizableTargetIds)),
     });
   }
 
@@ -96015,7 +96847,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (!invalidProfiles.length) return snapshot;
     const validProfilesByTarget = new Map();
     (temporalAudit?.validProfiles || []).forEach(profile => {
-      profile.targetIds.forEach(targetId => {
+      profile.realizableTargetIds.forEach(targetId => {
         const list = validProfilesByTarget.get(targetId) || [];
         list.push(profile);
         validProfilesByTarget.set(targetId, list);
@@ -96024,9 +96856,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const invalidEntries = Array.isArray(temporalAudit?.invalidContributions)
       ? temporalAudit.invalidContributions
       : [];
+    const attributeCleanupEntries = Array.isArray(temporalAudit?.attributeCleanupContributions)
+      ? temporalAudit.attributeCleanupContributions
+      : [];
     return mapWorldUnits(snapshot, (unit, side) => {
       const targetId = preview.unitId(unit);
-      const targetProfiles = invalidProfiles.filter(profile => profile.targetIds.includes(targetId));
+      const targetProfiles = invalidProfiles.filter(profile =>
+        profile.unrealizableTargetIds.includes(targetId) ||
+        (profile.unrealizableAttributesByTarget?.[targetId] || []).length > 0
+      );
       if (!targetProfiles.length) return unit;
       const baselineUnit = findUnitInWorld(baselineSnapshot, targetId);
       const nextUnit = cloneValue(unit);
@@ -96034,13 +96872,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const validNames = new Set(validForTarget.map(profile => profile.stateName).filter(Boolean));
       targetProfiles.forEach(profile => {
         if (profile.prototype === '属性修正') {
-          invalidEntries
+          const unrealizableAttributes = new Set(
+            profile.unrealizableAttributesByTarget?.[targetId] || [],
+          );
+          [...invalidEntries, ...attributeCleanupEntries]
             .filter(entry => temporalProfileMatchesContribution(profile, entry) && entry.targetId === targetId)
             .flatMap(entry => Array.isArray(entry?.evidence?.changes) ? entry.evidence.changes : [entry?.evidence])
             .forEach(change => {
               const attribute = String(change?.attribute || profile.attribute || '').trim();
               const delta = Number(change?.delta || 0);
-              if (!attribute || !Number.isFinite(delta)) return;
+              if (
+                !attribute ||
+                !Number.isFinite(delta) ||
+                (unrealizableAttributes.size > 0 && !unrealizableAttributes.has(attribute))
+              ) return;
               const current = readAttributeValue(nextUnit, attribute);
               writeAttributeValue(nextUnit, attribute, current - delta);
             });
@@ -96480,7 +97325,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         },
         battleIntent: input?.battleIntent,
         horizon: 'SHALLOW',
-        previewBudget: { maxNodes: 12 },
+        previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
       });
       const afterSnapshot = attachDecisionRuntimeState(result.afterSnapshot, worldSnapshot);
       const hasStructuralChange =
@@ -96606,7 +97451,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               actionFingerprint: `reaction:${candidate.candidateId}:${targetId}:${response.responseId}`,
               battleIntent: input?.battleIntent,
               horizon: 'SHALLOW',
-              previewBudget: { maxNodes: 12 },
+              previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
             });
             planWorld = reactionPreview.afterSnapshot;
           }
@@ -96841,7 +97686,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     const valueContext = projectionContext?.valueContext ||
       buildNextValueContext(futureWorld, actorSide, beliefState);
-    const before = projectionContext?.before ||
+    let before = projectionContext?.before ||
       stateUtilityNext(futureWorld, actorSide, beliefState, valueContext);
     const futureInput = projectionContext?.futureInput || {
       ...input,
@@ -96868,9 +97713,30 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       totalExpectedThreat: 0,
       totalWorstTailThreat: 0,
     };
-    // A renewable item has no irreversible asset cost, but using it still consumes
-    // the current stock. The next opportunity may recreate another one; it must
-    // not receive both the use effect and the pre-use inventory capacity.
+    // A renewable item has no irreversible asset cost. Compare its use against
+    // the same state with one stock already consumed, otherwise the item's own
+    // option value is recursively charged as the cost of ever using it.
+    const renewableItemUse = actionKind === 'USE_ITEM' &&
+      Number(candidate?.declaration?.irreversibleAsset?.cost || 0) <= 0;
+    if (renewableItemUse) {
+      const asset = candidate.declaration.irreversibleAsset;
+      const consumedBaseline = markCapacityDeltaSnapshot(
+        snapshotWithInventoryQuantity(
+          futureWorld,
+          preview.unitId(actor),
+          String(asset?.assetId || '').trim(),
+          Math.max(0, Number(asset?.quantityBefore || 0) - 1),
+        ),
+        futureWorld,
+        [preview.unitId(actor)],
+      );
+      before = stateUtilityNext(
+        consumedBaseline,
+        actorSide,
+        beliefState,
+        valueContext,
+      );
+    }
     const settledSnapshot = result?.afterSnapshot || futureWorld;
     const afterSnapshot = immediateRisk.totalExpectedThreat > 0
       ? snapshotAfterResponseThreat(settledSnapshot, preview.unitId(actor), immediateRisk.totalExpectedThreat)
@@ -96885,8 +97751,42 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const irreversibleCost = (result?.contributions || [])
       .filter(entry => entry?.outcomeKind === 'IRREVERSIBLE_ASSET_LOST')
       .reduce((sum, entry) => sum + Math.max(0, Number(entry?.threatValue || entry?.evidence?.cost || 0)), 0);
+    const stateUtilityGain = 100 * (after.utility - before.utility) / Math.max(1, before.total);
+    const directPotential = (candidate?.declaration?.targetIds || []).reduce((sum, targetId) => {
+      const target = findUnitInWorld(futureWorld, targetId);
+      if (!target) return sum;
+      return sum + preview.calculateDirectPotential(actor, target, {
+        ...candidate.declaration,
+        shieldAbsorptionCap: availableShieldAbsorptionCap(
+          futureWorld,
+          target,
+          actorSide,
+          beliefState,
+          shieldCoverageWindows(candidate?.declaration?.skill || {}),
+        ),
+      });
+    }, 0);
+    const friendlyHpOrShieldRealized = (result?.contributions || []).some(entry => {
+      if (!['HP_DELTA', 'SHIELD_DELTA'].includes(String(entry?.outcomeKind || '').trim())) return false;
+      if (!(contributionExpectedDelta(entry) > 0.0001)) return false;
+      const target = findUnitInWorld(futureWorld, entry?.targetId);
+      return target && sideOf(futureWorld, target) === actorSide;
+    });
+    const optionSubstitution = renewableItemUse && friendlyHpOrShieldRealized
+      ? 100 * Math.min(
+          Math.max(0, directPotential),
+          Math.max(0, Number(before.own || 0) - Number(after.own || 0)),
+        ) / Math.max(1, before.total)
+      : 0;
+    const representedDirectPotential = Math.max(
+      0,
+      stateUtilityGain + optionSubstitution + terminalDelta + progressDelta,
+    );
+    const directPotentialResidual = Math.max(0, directPotential - representedDirectPotential);
     const utility = clamp(
-      100 * (after.utility - before.utility) / Math.max(1, before.total) +
+      stateUtilityGain +
+        optionSubstitution +
+        directPotentialResidual +
         terminalDelta +
         progressDelta -
         irreversibleCost,
@@ -96898,6 +97798,37 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       actionKind,
       utility,
       worstTailCapacityLoss: Math.max(0, Number(immediateRisk.totalWorstTailThreat || 0)),
+      projectionAudit: Object.freeze({
+        renewableItemUse,
+        targetIds: Object.freeze([...(candidate?.declaration?.targetIds || [])]),
+        beforeUtility: Number(before.utility || 0),
+        afterUtility: Number(after.utility || 0),
+        beforeTotal: Number(before.total || 0),
+        stateUtilityGain,
+        directPotential,
+        optionSubstitution,
+        directPotentialResidual,
+        terminalDelta,
+        progressDelta,
+        irreversibleCost,
+        actorBefore: Object.freeze({
+          resource: preview.readResource(actor, '魂力'),
+          shield: preview.readShield(actor),
+        }),
+        actorAfter: Object.freeze((() => {
+          const projectedActor = findUnitInWorld(afterSnapshot, preview.unitId(actor)) || actor;
+          return {
+            resource: preview.readResource(projectedActor, '魂力'),
+            shield: preview.readShield(projectedActor),
+          };
+        })()),
+        outcomes: Object.freeze((result?.contributions || []).map(entry => Object.freeze({
+          outcomeKind: String(entry?.outcomeKind || '').trim(),
+          targetId: String(entry?.targetId || '').trim(),
+          delta: Number(entry?.evidence?.delta ?? entry?.expectedDelta ?? 0),
+          threatValue: Number(entry?.threatValue || 0),
+        }))),
+      }),
       hasMeaningfulEffect: !!result && meaningfulPreviewEffect(
         result,
         preview.collectEffects(candidate.skill || candidate.declaration?.skill || {})
@@ -97210,6 +98141,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         itemCandidateId: String(itemScore?.candidateId || '').trim(),
         itemUtility: Number(itemScore?.utility || 0),
         expectedItemUtility: Number(itemScore?.utility || 0) * delivery.deliveryProbability,
+        incrementalItemUtility: 0,
+        incrementalExpectedItemUtility: 0,
+        itemProjectionAudit: itemScore?.projectionAudit || null,
         bestAlternativeUtility: 0,
         dominatedBy: '',
         ...delivery,
@@ -97251,6 +98185,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       .sort((left, right) => right.utility - left.utility)[0] ||
       null;
     const realizable = itemScoreIsUseful && !dominator;
+    const incrementalItemUtility = Math.max(
+      0,
+      Number(itemScore?.utility || 0) - Number(bestAlternative?.utility || 0),
+    );
     const audit = Object.freeze({
       realizable,
       reason: realizable
@@ -97262,6 +98200,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       itemCandidateId: String(itemScore?.candidateId || '').trim(),
       itemUtility: Number(itemScore?.utility || 0),
       expectedItemUtility: Number(itemScore?.utility || 0) * delivery.deliveryProbability,
+      incrementalItemUtility,
+      incrementalExpectedItemUtility: incrementalItemUtility * delivery.deliveryProbability,
+      itemProjectionAudit: itemScore?.projectionAudit || null,
       bestAlternativeUtility: Number(bestAlternative?.utility || 0),
       dominatedBy: String(dominator?.candidateId || '').trim(),
       ...delivery,
@@ -97430,7 +98371,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         );
     const hasExplicitCounterPlan = collectSkills(actor).some(skill => {
       const settledSkill = preview.applySkillSettlementModifiers(actor, applyEquipmentPassivesToSkill(actor, skill)).skill;
-      return !deferredBattlePrototype(settledSkill) && isExplicitCounterSkill(settledSkill, 40);
+      return !nonExecutableBattlePrototype(settledSkill) && isExplicitCounterSkill(settledSkill, 40);
     });
     const activeNaturalOpportunity =
       String(input?.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase() === 'ACTIVE' &&
@@ -97505,6 +98446,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         decisionWorld,
         actorSide,
         candidateContributions,
+        candidate?.declaration,
       );
       const temporalValueContributions = candidateContributions.filter(entry =>
         !temporalAudit.invalidContributionSet.has(entry),
@@ -97544,7 +98486,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       let candidateSnapshot = immediateCounterRisk.totalExpectedThreat > 0
         ? snapshotAfterResponseThreat(afterSnapshot, preview.unitId(actor), immediateCounterRisk.totalExpectedThreat)
         : afterSnapshot;
-      if (creationUseAudit && !creationUseAudit.realizable) {
+      if (creationUseAudit) {
+        // The produced stock is valued by creationFutureUseAudit after delivery,
+        // use-opportunity competition and the best next-action alternative are
+        // resolved. Leaving the same stock in stateUtilityNext would count its
+        // full option capacity a second time and bypass those gates.
         candidateSnapshot = snapshotWithInventoryQuantity(
           candidateSnapshot,
           String(
@@ -97811,6 +98757,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           capacityOptions = {},
         }) => {
           const incomingThreat = prevented ? 0 : Math.max(0, Number(rawThreat || 0));
+          const hpDamagePercent = snapshot => {
+            const beforeTarget = findUnitInWorld(baseSnapshot, responseTargetId);
+            const afterTarget = findUnitInWorld(snapshot, responseTargetId);
+            if (!beforeTarget || !afterTarget) return 0;
+            return 100 * Math.max(
+              0,
+              preview.readHp(beforeTarget) - preview.readHp(afterTarget),
+            ) / Math.max(1, preview.readHpMax(beforeTarget));
+          };
           const dodgeProbability = defenseKind === 'EVADE' && sourceBefore && !prevented
             ? preview.calculateDodgeProbability(responseTargetBefore, sourceBefore, prepared)
             : 0;
@@ -97861,6 +98816,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               catastrophicRisk:
                 (1 - dodgeProbability) * catastrophicResponseRisk(responseTargetBefore, incomingThreat, 1),
               avoidanceProbability: dodgeProbability,
+              expectedHpDamagePercent: (1 - dodgeProbability) * hpDamagePercent(hitSnapshot),
             };
           }
           const threat = incomingThreat * clamp(Number(defenseMultiplier || 0), 0, 1);
@@ -97901,6 +98857,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             ),
             catastrophicRisk: catastrophicResponseRisk(responseTargetBefore, incomingThreat, defenseMultiplier),
             avoidanceProbability: 0,
+            expectedHpDamagePercent: hpDamagePercent(responseSnapshot),
           };
         };
         const candidateOutcome = evaluateResponseOutcome({
@@ -97963,6 +98920,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           catastrophicRisk: totals.catastrophicRisk + probability * candidateOutcome.catastrophicRisk,
           catastrophicRiskReduction: totals.catastrophicRiskReduction +
             probability * Math.max(0, baselineOutcome.catastrophicRisk - candidateOutcome.catastrophicRisk),
+          avoidedHostileHpDamage: totals.avoidedHostileHpDamage +
+            probability * Math.max(
+              0,
+              Number(baselineOutcome.expectedHpDamagePercent || 0) -
+                Number(candidateOutcome.expectedHpDamagePercent || 0),
+            ),
           candidatePreparedConsumed:
             totals.candidatePreparedConsumed === true || candidateStanceAvailable,
           baselinePreparedConsumed:
@@ -97981,6 +98944,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               sourceAfterExists: !!sourceAfter,
               sourceAfterBattleCapable: !!sourceAfter && preview.isBattleCapable(sourceAfter),
               sourceAfterActionCancelled: !!sourceAfter && hasActionCancellation(sourceAfter),
+              candidateExpectedHpDamagePercent: Number(candidateOutcome.expectedHpDamagePercent || 0),
+              baselineExpectedHpDamagePercent: Number(baselineOutcome.expectedHpDamagePercent || 0),
             },
           ],
         };
@@ -97997,6 +98962,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         ),
         catastrophicRisk: 0,
         catastrophicRiskReduction: 0,
+        avoidedHostileHpDamage: 0,
         candidatePreparedConsumed: false,
         baselinePreparedConsumed: false,
         preparedDefenseConsumedCount: 0,
@@ -98292,13 +99258,49 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         .filter(entry => entry?.outcomeKind === 'IRREVERSIBLE_ASSET_LOST')
         .reduce((sum, entry) => sum + Math.max(0, Number(entry?.threatValue || entry?.evidence?.cost || 0)), 0);
       const creationFutureGain = creationUseAudit?.realizable === true
-        ? Math.max(0, Number(creationUseAudit.expectedItemUtility || 0)) * 0.65
+        ? Math.max(0, Number(creationUseAudit.incrementalExpectedItemUtility || 0)) * 0.65
         : 0;
+      const friendlyShieldTargetIds = [...new Set(valueContributions.flatMap(entry => {
+        if (String(entry?.outcomeKind || '').trim().toUpperCase() !== 'SHIELD_DELTA') return [];
+        if (!(contributionExpectedDelta(entry) > 0.0001)) return [];
+        const target = findUnitInWorld(decisionWorld, entry?.targetId);
+        return target && sideOf(decisionWorld, target) === actorSide
+          ? [preview.unitId(target)]
+          : [];
+      }))];
+      const shieldRemovedCapacity = friendlyShieldTargetIds.length
+        ? stateUtilityNext(
+            snapshotWithUnitShieldsFrom(candidateSnapshot, noOpSnapshot, friendlyShieldTargetIds),
+            actorSide,
+            beliefState,
+            valueContext,
+            controlCapacityOptions,
+          )
+        : after;
+      const shieldOptionSubstitution = friendlyShieldTargetIds.length
+        ? 100 * Math.max(
+            0,
+            Number(shieldRemovedCapacity.own || 0) - Number(after.own || 0),
+          ) / Math.max(1, before.total)
+        : 0;
+      const representedResponsePrevention = 100 * Math.max(
+        0,
+        (
+          Number(responseComparison.candidateUtility || 0) - Number(after.utility || 0)
+        ) - (
+          Number(responseComparison.noOpUtility || 0) - Number(noOp.utility || 0)
+        ),
+      ) / Math.max(1, before.total);
+      const hostileDamagePreventionResidual = Math.max(
+        0,
+        Number(responseComparison.avoidedHostileHpDamage || 0) - representedResponsePrevention,
+      );
       const expectedStateGain = 100 *
         (responseComparison.candidateUtility - responseComparison.noOpUtility) /
         Math.max(1, before.total) +
         summonWindowValue +
-        creationFutureGain;
+        creationFutureGain +
+        shieldOptionSubstitution;
       const planningEvidence = buildCandidatePlanningEvidence({
         candidate,
         result: candidatePreview,
@@ -98309,13 +99311,25 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         consumer: 'BattleDecision.scoreCandidatesNext',
       });
       const planningReleaseWeight = Number(planningEvidence.releaseWeight);
+      const expectedHostileDamageProgress = valueContributions.reduce((sum, entry) => {
+        const outcomeKind = String(entry?.outcomeKind || '').trim().toUpperCase();
+        if (!['HP_DELTA', 'SHIELD_DELTA'].includes(outcomeKind)) return sum;
+        const target = findUnitInWorld(decisionWorld, entry?.targetId);
+        if (!target || sideOf(decisionWorld, target) === actorSide) return sum;
+        if (!(contributionExpectedDelta(entry) < -0.0001)) return sum;
+        return sum + Math.max(0, Number(entry?.threatValue || 0));
+      }, 0);
+      const representedHostileCapacityGain = 100 * Math.max(
+        0,
+        Number(noOp.enemy || 0) - Number(after.enemy || 0),
+      ) / Math.max(1, before.total);
       const distributedImmediateTargetCount = new Set(
         candidateTargetIds.map(value => String(value || '').trim()).filter(Boolean),
       ).size;
       const preservesDistributedImmediateDamage =
         distributedImmediateTargetCount > 1 &&
         isMechanicalDamageOnlySkill(candidate?.skill || candidate?.declaration?.skill || null);
-      const realizedImmediatePotential = preservesDistributedImmediateDamage
+      const distributedImmediatePotential = preservesDistributedImmediateDamage
         ? Math.min(
             atomicActionPotential,
             Math.max(
@@ -98326,12 +99340,31 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             ),
           )
         : 0;
-      const immediateActionResidual = Math.max(
+      // HP/护盾贡献已经过命中、施加、闪避、防御和目标容量封顶，属于
+      // 本次预览的正式期望结算；再按动作潜力截断会重复压低已实现伤害。
+      const realizedHostileDamageProgress = expectedHostileDamageProgress;
+      const realizedImmediatePotential = Math.max(
+        distributedImmediatePotential,
+        realizedHostileDamageProgress,
+      );
+      const terminalOrObjectiveProgress =
+        Math.max(0, Number(responseComparison.terminalUtility || 0)) +
+        Math.max(0, Number(responseComparison.objectiveProgress || 0));
+      const immediateHostileDamageResidual = Math.max(
         0,
-        realizedImmediatePotential -
+        realizedHostileDamageProgress -
+          representedHostileCapacityGain -
+          terminalOrObjectiveProgress,
+      );
+      const distributedImmediateResidual = Math.max(
+        0,
+        distributedImmediatePotential -
           Math.max(0, expectedStateGain) -
-          Math.max(0, Number(responseComparison.terminalUtility || 0)) -
-          Math.max(0, Number(responseComparison.objectiveProgress || 0)),
+          terminalOrObjectiveProgress,
+      );
+      const immediateActionResidual = Math.max(
+        immediateHostileDamageResidual,
+        distributedImmediateResidual,
       );
       const repeatedInformationMarginal = priorAction ? informationValue : 0;
       const repeatedActionDelta = priorAction && (
@@ -98436,6 +99469,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const unclampedObjectiveUtility =
         expectedStateGain +
         immediateActionResidual +
+        hostileDamagePreventionResidual +
         responseComparison.terminalUtility +
         responseComparison.objectiveProgress +
         informationValue -
@@ -98683,6 +99717,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           expectedStateGain,
           realizedImmediatePotential,
           immediateActionResidual,
+          expectedHostileDamageProgress,
+          representedHostileCapacityGain,
+          immediateHostileDamageResidual,
+          shieldOptionSubstitution,
+          avoidedHostileHpDamage: responseComparison.avoidedHostileHpDamage,
+          representedResponsePrevention,
+          hostileDamagePreventionResidual,
           planningBenefit: planningEvidence.benefit,
           planningRisk: planningEvidence.risk,
           planningReleaseWeight: planningEvidence.releaseWeight,
@@ -98775,6 +99816,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           atomicActionPotential,
           realizedImmediatePotential,
           immediateActionResidual,
+          expectedHostileDamageProgress,
+          representedHostileCapacityGain,
+          immediateHostileDamageResidual,
+          shieldOptionSubstitution,
+          avoidedHostileHpDamage: responseComparison.avoidedHostileHpDamage,
+          representedResponsePrevention,
+          hostileDamagePreventionResidual,
           objectiveProgressAudit,
           responseBranchCount: sharedResponseBranches.length,
           survivalLowerBound: responseComparison.survivalLowerBound,
@@ -99253,7 +100301,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         declaration: entry.declaration,
         actionFingerprint: `realizable:${entry.candidateId}`,
         horizon: 'SHALLOW',
-        previewBudget: { maxNodes: 12 },
+        previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
       });
       const after = stateUtility(result.afterSnapshot, actorSide, beliefState);
       const gain = 100 * (after.utility - before.utility) / Math.max(1, before.total);
@@ -100167,8 +101215,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const nextParticipants = Object.fromEntries(Object.entries(participants).map(([side, value]) => {
       const update = unit => {
         if (preview.unitId(unit) !== targetId) return unit;
-        const next = { ...unit, 属性: unit?.属性 && typeof unit.属性 === 'object' ? { ...unit.属性 } : unit?.属性, 状态: unit?.状态 && typeof unit.状态 === 'object' ? { ...unit.状态 } : unit?.状态 };
-        const hp = Math.max(0, preview.readHp(unit) - preview.readHpMax(unit) * clamp(rawThreat, 0, 100) / 100);
+        const next = {
+          ...unit,
+          属性: unit?.属性 && typeof unit.属性 === 'object' ? { ...unit.属性 } : unit?.属性,
+          状态: unit?.状态 && typeof unit.状态 === 'object' ? { ...unit.状态 } : unit?.状态,
+          状态效果: cloneValue(unit?.状态效果 || {}),
+        };
+        const incomingDamage = preview.readHpMax(unit) * clamp(rawThreat, 0, 100) / 100;
+        const shieldAbsorb = preview.absorbPreviewShield(next, incomingDamage);
+        const hp = Math.max(0, preview.readHp(unit) - Math.max(0, incomingDamage - shieldAbsorb));
         next.hp = hp;
         next.HP = hp;
         if (next.属性 && typeof next.属性 === 'object') next.属性.HP = hp;
@@ -100263,7 +101318,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         unit,
         applyEquipmentPassivesToSkill(unit, sourceSkill),
       ).skill;
-      if (deferredBattlePrototype(skill)) return best;
+      if (nonExecutableBattlePrototype(skill)) return best;
       if (!costAffordable(unit, skill) || Math.max(0, Number(skill?.前摇 ?? skill?.cast_time ?? 0)) > 40) return best;
       const profile = targetProfile(skill);
       if (!['HOSTILE_SINGLE', 'HOSTILE_GROUP', 'ANY_SINGLE'].includes(profile)) return best;
@@ -100653,7 +101708,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           candidate,
         }),
         horizon: 'SHALLOW',
-        previewBudget: { maxNodes: 12 },
+        previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
       });
     }
     const candidateEffects = preview.collectEffects(candidate.skill || candidate.declaration?.skill || {});
@@ -100749,7 +101804,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           actionFingerprint: `${candidate.candidateId}:future-use:${targetId}`,
           battleIntent: context.battleIntent,
           horizon: 'SHALLOW',
-          previewBudget: { maxNodes: 12 },
+          previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
         });
         const futureUtility = stateUtility(futureUse.afterSnapshot, actorSide, context.beliefState);
         return Math.max(bestGain, 100 * (futureUtility.utility - paidUtility.utility) / Math.max(1, before.total));
@@ -101469,6 +102524,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       normalizedUtility: Number(candidate?.normalizedUtility || 0),
       vector: Object.freeze({ ...(candidate?.vector || {}) }),
       rejectionCode: String(candidate?.rejectionCode || '').trim(),
+      dominatedBy: String(candidate?.dominatedBy || '').trim(),
       classification: String(candidate?.classification || 'VIABLE').trim() || 'VIABLE',
       alternativeGap: Number(candidate?.alternativeGap || 0),
       counterDeclineFallback: candidate?.counterDeclineFallback === true,
@@ -101815,6 +102871,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           noResponseProbability: 1,
         }),
         rejectionCode: candidate.rejectionCode || '',
+        dominatedBy: String(candidate.dominatedBy || '').trim(),
         classification: candidate.classification || 'VIABLE',
         alternativeGap: Number(candidate.alternativeGap || 0),
         counterDeclineFallback: candidate.counterDeclineFallback === true,
@@ -105965,7 +107022,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             dependencyView,
           }),
           horizon: 'SHALLOW',
-          previewBudget: { maxNodes: 12 },
+          previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
           collectProbabilityBranches: true,
           paymentMode: candidate?.resourcePotentialOnly === true
             ? 'EXTERNAL_TIMELINE'
@@ -106393,7 +107450,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           candidate,
         }),
         horizon: 'SHALLOW',
-        previewBudget: { maxNodes: 12 },
+        previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
         collectProbabilityBranches: true,
         battleIntent: input.battleIntent,
       });
@@ -106996,7 +108053,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         },
         actionFingerprint: `scheduled-materialize:${event?.effectInstanceId || index}`,
         horizon: 'SHALLOW',
-        previewBudget: { maxNodes: 12 },
+        previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
         battleIntent: input?.battleIntent,
       }).afterSnapshot;
     }, projectedWorld);
@@ -112478,7 +113535,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               candidate,
             }),
             horizon: 'SHALLOW',
-            previewBudget: { maxNodes: 12 },
+            previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
             collectProbabilityBranches: true,
             battleIntent: input.battleIntent,
           });
@@ -117640,7 +118697,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           damageMultiplierByTarget: { [actorId]: multiplier },
           evadeProbabilityByTarget: { [actorId]: evadeProbability },
           horizon: 'SHALLOW',
-          previewBudget: { maxNodes: 12 },
+          previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
           collectProbabilityBranches: true,
           battleIntent: request?.battleIntent,
         });
@@ -117865,7 +118922,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           candidate: counterCandidate,
         }),
         horizon: 'SHALLOW',
-        previewBudget: { maxNodes: 12 },
+        previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
         collectProbabilityBranches: true,
         battleIntent: request?.battleIntent,
       });
@@ -117927,7 +118984,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           [actorId]: preview.calculateDefenseDamageMultiplier(actor, sourceActor, false),
         },
         horizon: 'SHALLOW',
-        previewBudget: { maxNodes: 12 },
+        previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
         battleIntent: request?.battleIntent,
       });
       const damageContributions = (incomingPreview?.contributions || []).filter(entry =>
@@ -118940,7 +119997,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       declaration,
       actionFingerprint: `response:${branch?.projectionId || sourceActorId}:pre-action`,
       horizon: 'SHALLOW',
-      previewBudget: { maxNodes: 12 },
+      previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
       collectProbabilityBranches: true,
       battleIntent: request?.battleIntent,
     });
@@ -118977,7 +120034,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         candidate,
       }),
       horizon: 'SHALLOW',
-      previewBudget: { maxNodes: 12 },
+      previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
       collectProbabilityBranches: true,
       battleIntent: request?.battleIntent,
     });
@@ -119597,7 +120654,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           actionFingerprint:
             `response:${branch?.projectionId || sourceActorId}`,
           horizon: 'SHALLOW',
-          previewBudget: { maxNodes: 12 },
+          previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
           collectProbabilityBranches: true,
           battleIntent: request?.battleIntent,
         });
@@ -120407,7 +121464,32 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
     tracePrepareStage(`after-enumerate:${candidates.length}`);
     finishPrepareStage('candidateEnumerationMs');
-    if (!candidates.length) throw new Error('battle_decision_candidate_pool_empty');
+    if (!candidates.length) {
+      const validTargetSides = Object.fromEntries(
+        (Array.isArray(actionOpportunity?.validTargetIds) ? actionOpportunity.validTargetIds : [])
+          .map(value => String(value || '').trim())
+          .filter(Boolean)
+          .map(targetId => {
+            const target = findUnitInWorld(visibleWorld, targetId);
+            return [targetId, target ? sideOf(visibleWorld, target) : 'MISSING'];
+          }),
+      );
+      const rejectionSummary = rejectedCandidates.slice(0, 12).map(entry => ({
+        actionKind: String(entry?.actionKind || '').trim(),
+        rejectionCode: String(entry?.rejectionCode || '').trim(),
+        skillId: String(entry?.skillId || '').trim(),
+      }));
+      throw new Error(
+        `battle_decision_candidate_pool_empty:${JSON.stringify({
+          actorId,
+          actorSide,
+          actorCamp: String(visibleActor?.阵营 || '').trim(),
+          role: String(actionOpportunity?.role || '').trim(),
+          validTargetSides,
+          rejectionSummary,
+        })}`,
+      );
+    }
     const candidateIds = new Set();
     const candidateFingerprintMap = {};
     const frozenCandidates = candidates.map(candidate => {
@@ -122105,7 +123187,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           Array.isArray(declaration?.fusionParticipantIds) &&
           declaration.fusionParticipantIds.length > 1,
         horizon: 'SHALLOW',
-        previewBudget: { maxNodes: 12 },
+        previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
         beliefSnapshot: beliefState,
         battleIntent,
         actionOpportunity,
@@ -141071,7 +142153,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       units[id] = {
         hp: Number(unit.hp), hp_max: Number(unit.hp_max), sp: Number(unit.sp), sp_max: Number(unit.sp_max),
         men: Number(unit.men), men_max: Number(unit.men_max), vit: Number(unit.vit), vit_max: Number(unit.vit_max),
-        def: Number(unit.def), agi: Number(unit.agi), shield: Number(unit.shield || 0),
+        str: Number(unit.str), def: Number(unit.def), agi: Number(unit.agi), shield: Number(unit.shield || 0),
+        observed_response_capacity: Number(unit.observed_response_capacity || 0),
         ['状态效果']: cloneValue(unit['状态效果'] || {}),
       };
       // M3 R4b5 charge-only transport: carry the decision-visible 蓄力技能 fact
@@ -141236,7 +142319,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         }
         if (/力量|攻击|伤害|威力/.test(attribute)) return sum + ratio;
         if (/敏捷|速度|反应/.test(attribute)) return sum + ratio * 0.35;
-        if (/防御|抗性|韧性|减伤/.test(attribute)) return sum + ratio * 0.35;
+        if (/防御|抗性|韧性|减伤/.test(attribute)) {
+          const defenseValue = ratio * 0.35;
+          const expectedThreatRatio = Number(context?.expectedIncomingThreatRatio);
+          return sum + (Number.isFinite(expectedThreatRatio)
+            ? Math.min(defenseValue, Math.max(0, expectedThreatRatio) * duration)
+            : defenseValue);
+        }
         return sum + ratio * 0.5;
       }, 0));
     }
@@ -141296,7 +142385,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       return Math.min(0.65, stateValue * duration);
     }
     if (prototype === '规则防御') {
-      if (String(effect?.规则 || '').trim() === '免死') {
+      const rule = String(effect?.规则 || '').trim();
+      if (rule === '免死') {
         const effectiveCapacity = (
           preview.readHp(target) + preview.readShield(target)
         ) / Math.max(1, preview.readHpMax(target)) * 100;
@@ -141310,7 +142400,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           1,
         );
       }
-      return 0.5;
+      if (rule === '免伤') {
+        const expectedThreatRatio = Number(context?.expectedIncomingThreatRatio);
+        return Number.isFinite(expectedThreatRatio)
+          ? clamp(Math.max(0, expectedThreatRatio), 0, 1)
+          : 0;
+      }
+      return 0;
     }
     if (prototype === '伤害结算' || prototype === '机制抹消' || prototype === '资源锁定') return 0;
     return Math.min(0.1, r9v2LinearSkillValue({ _效果数组: [effect] }) / 4);
@@ -141345,12 +142441,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         return /命中|暴击|先攻|反应|施法/.test(String(effect?.判定 || '').trim());
       }
       if (prototype === '结算修正') {
-        return !/反伤|承伤|受伤|减伤|治疗|恢复|护盾/.test(String(effect?.结算 || '').trim());
+        const settlement = String(effect?.结算 || '').trim();
+        if (/伤害.*转.*(?:治疗|恢复)/.test(settlement)) return true;
+        return !/反伤|承伤|受伤|减伤|治疗|恢复|护盾/.test(settlement);
       }
+      if (prototype === '召唤生成') return true;
       if (prototype !== '机制授予') return false;
       return (Array.isArray(effect?.授予效果) ? effect.授予效果 : []).some(granted => {
         const grantedPrototype = String(granted?.原型 || '').trim();
-        return ['属性修正', '判定修正', '结算修正'].includes(grantedPrototype);
+        return ['属性修正', '判定修正', '结算修正', '召唤生成'].includes(grantedPrototype);
       });
     });
     if (!actionShapingEffects.length) return null;
@@ -141378,7 +142477,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       },
       paymentMode: 'FORMAL',
       horizon: 'SHALLOW',
-      previewBudget: { maxNodes: 64 },
+      previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
     });
     const afterRecipient = findUnitInWorld(result?.afterSnapshot, recipientId);
     if (!afterRecipient) return null;
@@ -141395,10 +142494,38 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       hostileSide,
       actionCapacityCache,
     );
-    const followupWindows = r9v2LinearFollowupWindows(actionShapingEffects, request, projectedWorld);
+    // The item-use declaration consumes the recipient's current active window.
+    // A one-round action buff therefore expires before it can shape a later
+    // action; longer buffs have one fewer realizable follow-up window than their
+    // raw duration advertises.
+    const followupWindows = Math.max(
+      0,
+      r9v2LinearFollowupWindows(actionShapingEffects, request, projectedWorld) - 1,
+    );
+    const summonWindowGain = (result?.contributions || [])
+      .filter(entry => String(entry?.outcomeKind || '').trim() === 'SUMMON_WINDOW')
+      .reduce((sum, entry) => {
+        if (!(Number(entry?.evidence?.remainingWindows || 0) > 0)) return sum;
+        const probability = clamp(Number(
+          entry?.applicationProbability ?? entry?.evidence?.applicationProbability ?? 1,
+        ), 0, 1);
+        return sum + Math.max(0, Number(entry?.evidence?.actionPotential || 0)) / 100 * probability;
+      }, 0);
+    const displacedCapacity = Math.max(0, beforeCapacity);
+    const capacityScale = Math.max(1, beforeCapacity, afterCapacity);
+    const netActionShapingGain = Math.max(
+      0,
+      Math.max(0, afterCapacity - beforeCapacity) * followupWindows - displacedCapacity,
+    ) / capacityScale;
+    const netSummonWindowGain = Math.max(
+      0,
+      summonWindowGain - displacedCapacity,
+    ) / capacityScale;
     return clamp(
-      Math.max(0, afterCapacity - beforeCapacity) /
-        Math.max(1, beforeCapacity, afterCapacity) * followupWindows,
+      Math.max(
+        netActionShapingGain,
+        netSummonWindowGain,
+      ),
       0,
       1,
     );
@@ -141489,17 +142616,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       selfUse,
       threatProjection,
     );
-    const realizedSelfActionUtility = selfUse
-      ? r9v2LinearCreatedSelfActionFit({
-          request,
-          candidate,
-          worldSnapshot,
-          recipient,
-          projectedRecipient,
-          hostileSide,
-          actionCapacityCache,
-        })
-      : null;
+    const realizedSelfActionUtility = r9v2LinearCreatedSelfActionFit({
+      request,
+      candidate,
+      worldSnapshot,
+      recipient,
+      projectedRecipient,
+      hostileSide,
+      actionCapacityCache,
+    });
     const itemUtility = realizedSelfActionUtility === null
       ? genericItemUtility
       : Math.min(genericItemUtility, realizedSelfActionUtility);
@@ -141517,12 +142642,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // buffs are options on paper, but do not beat the consumer's best affordable
     // action in the same window. Keep the old 0.1 floor for units whose current
     // action catalog has almost no measurable value.
-    const opportunityCost = Math.max(0.1, displacedActiveUtility);
-    const netItemUtility = clamp(
-      (itemUtility - opportunityCost) / Math.max(0.05, 1 - opportunityCost),
-      0,
-      1,
-    );
+    const opportunityCost = realizedSelfActionUtility === null
+      ? Math.max(0.1, displacedActiveUtility)
+      : 0;
+    const netItemUtility = realizedSelfActionUtility === null
+      ? clamp(
+          (itemUtility - opportunityCost) / Math.max(0.05, 1 - opportunityCost),
+          0,
+          1,
+        )
+      : itemUtility;
     if (netItemUtility <= 0) return null;
     const survivalProbability = boundedDeliverySurvivalProbability(
       threatProjection.deliveryBranches,
@@ -141538,10 +142667,19 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const deliveryProbability = survivalProbability * actionAvailability;
     if (deliveryProbability <= 0.0001) return null;
     decisionMetrics.creationFutureTargetBranchesRealized += 1;
-    const mechanicalGain = netItemUtility * deliveryProbability * 0.8;
+    const mechanicalGain = netItemUtility * deliveryProbability;
+    const existingActionCount =
+      (hasStateFlag(projectedRecipient, 'disarm') ? 0 : 1) +
+      (hasStateFlag(projectedRecipient, 'silence')
+        ? 0
+        : affordablePreparedSkills(projectedRecipient).length);
     return Object.freeze({
       mechanicalGain: clamp(mechanicalGain, 0, 1),
-      optionGain: clamp(mechanicalGain, 0, 1),
+      optionGain: clamp(
+        mechanicalGain / Math.max(1, existingActionCount + 1),
+        0,
+        1,
+      ),
       itemUtility,
       alternativeUtility: opportunityCost,
       deliveryProbability,
@@ -141768,13 +142906,6 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       .map(entry => entry.unit);
   }
 
-  function r9v2LinearSideStateValue(worldSnapshot = {}, side = '', sideUnitsByWorld = null) {
-    const units = r9v2LinearSideUnits(worldSnapshot, side, sideUnitsByWorld);
-    if (!units.length) return 0;
-    return units.reduce((sum, unit) => sum +
-      preview.readHp(unit) / Math.max(1, preview.readHpMax(unit)), 0) / units.length;
-  }
-
   function r9v2LinearMechanicalCoverage(worldSnapshot = {}, actorId = '', hostileSide = '', sideUnitsByWorld = null) {
     const actor = findUnitInWorld(worldSnapshot, actorId);
     if (!actor) return 0;
@@ -141787,7 +142918,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         decisionMetrics.r9v2MechanicalCoverageRowsCacheHits += 1;
         rows = r9v2MechanicalCoverageRowsCache.get(skill);
       } else {
-        rows = deferredBattlePrototype(skill)
+        rows = nonExecutableBattlePrototype(skill)
           ? []
           : (Array.isArray(skill?._效果数组) ? skill._效果数组 : [])
             .filter(effect => effect && typeof effect === 'object')
@@ -142283,6 +143414,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const actorAfter = findUnitInWorld(after, actorId) || actorBefore;
     const declaration = candidate.declaration || {};
     const effects = Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组 : [];
+    const setupAction = effects.some(effect => {
+      const prototype = String(effect?.原型 || '').trim();
+      return ['资源变化', '属性修正', '判定修正', '结算修正', '召唤生成', '机制授予'].includes(prototype) &&
+        !effects.some(row => String(row?.原型 || '').trim() === '伤害结算');
+    });
     const followupWindows = r9v2LinearFollowupWindows(effects, request, before);
     const role = String(request?.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase();
     const actionGrantedForActor = Array.isArray(result?.contributions) && result.contributions.some(entry =>
@@ -142295,6 +143431,29 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         followupWindows + (actionGrantedForActor ? 1 : 0),
       ),
     );
+    const summonActionPoolGain = clamp(
+      (Array.isArray(result?.contributions) ? result.contributions : [])
+        .filter(entry => String(entry?.outcomeKind || '').trim() === 'SUMMON_WINDOW')
+        .reduce((sum, entry, index) => {
+          const evidence = entry?.evidence || {};
+          const actionPotential = Number(evidence?.actionPotential);
+          if (!Number.isFinite(actionPotential)) {
+            throw new Error(
+              `R9V2_LINEAR_SUMMON_POTENTIAL_NON_FINITE:${candidate.candidateId}:${index}`,
+            );
+          }
+          const windows = Math.max(
+            1,
+            Number(evidence?.duration || 0),
+            Number(evidence?.remainingWindows || 0) +
+              (evidence?.immediateWindowConsumed === true ? 1 : 0),
+          );
+          return sum + Math.max(0, actionPotential) * windows *
+            r9v2ContributionProbability(entry) / 100;
+        }, 0),
+      0,
+      1,
+    );
     const needsPool = !candidate?.creation || ['REACTION', 'COUNTER'].includes(role);
     let beforePool;
     let afterPool;
@@ -142306,9 +143465,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     markCausalStage('setupAndPoolMs');
     let creationSelfPoolGain = 0;
+    const directPoolValueGain = candidate?.creation
+      ? 0
+      : Math.max(0, afterPool.value - beforePool.value);
     const directSelfPoolGain = candidate?.creation
       ? 0
-      : (afterPool.value - beforePool.value) / poolScale;
+      : setupAction && !actionGrantedForActor
+        ? Math.max(
+            0,
+            directPoolValueGain * actorFollowupWindows - beforePool.value,
+          ) / poolScale
+        : directPoolValueGain / poolScale;
     let beforeMechanical = 0;
     let afterMechanical = 0;
     let mechanicalScale = 1;
@@ -142333,12 +143500,24 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         actionCapacityCache,
         true,
       );
+      const followupCapacityGain = (prior, next) => {
+        const positiveGain = Math.max(0, next - prior);
+        if (!setupAction) {
+          return positiveGain / Math.max(1, prior, next) * actorFollowupWindows;
+        }
+        // A pure setup occupies the current active opportunity. Its future
+        // uplift is useful only after the realizable windows repay the best
+        // action that was skipped; an explicit extra action removes that cost.
+        const displacedCapacity = actionGrantedForActor ? 0 : prior;
+        return Math.max(
+          0,
+          positiveGain * actorFollowupWindows - displacedCapacity,
+        ) / Math.max(1, prior, next);
+      };
       selfCapacityGain = Math.max(
-        Math.max(0, afterSelfCapacity - beforeSelfCapacity) /
-          Math.max(1, beforeSelfCapacity, afterSelfCapacity),
-        Math.max(0, afterHostileCapacity - beforeHostileCapacity) /
-          Math.max(1, beforeHostileCapacity, afterHostileCapacity),
-      ) * actorFollowupWindows;
+        followupCapacityGain(beforeSelfCapacity, afterSelfCapacity),
+        followupCapacityGain(beforeHostileCapacity, afterHostileCapacity),
+      );
     }
     markCausalStage('selfFollowupMs');
     const beforeAllies = memoBefore('side:allies', () =>
@@ -142434,7 +143613,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     markCausalStage('creationProjectionMs');
     allyOptionGain = clamp(
-      (allyOptionGain + creationAllyOptionGain) / Math.max(1, beforeAllies.length),
+      allyOptionGain / Math.max(1, beforeAllies.length) + creationAllyOptionGain,
       0,
       1,
     );
@@ -142515,15 +143694,6 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       preview.evaluateBattleObjectivesCompact(before, objectives));
     const afterObjective = preview.evaluateBattleObjectivesCompact(after, objectives);
     const terminalProgress = r9v2LinearTerminalValue(afterObjective, actorSide) - r9v2LinearTerminalValue(beforeObjective, actorSide);
-    const stateProgress = (
-      r9v2LinearSideStateValue(after, actorSide, sideUnitsByWorld) - memoBefore('side:actor-state', () => r9v2LinearSideStateValue(before, actorSide, sideUnitsByWorld)) -
-      r9v2LinearSideStateValue(after, hostileSide, sideUnitsByWorld) + memoBefore('side:hostile-state', () => r9v2LinearSideStateValue(before, hostileSide, sideUnitsByWorld))
-    ) / 2;
-    const setupAction = effects.some(effect => {
-      const prototype = String(effect?.原型 || '').trim();
-      return ['资源变化', '属性修正', '判定修正', '结算修正', '召唤生成', '机制授予'].includes(prototype) &&
-        !effects.some(row => String(row?.原型 || '').trim() === '伤害结算');
-    });
     const castTime = Math.max(0, Number(declaration?.skill?.前摇 ?? declaration?.skill?.cast_time ?? 0));
     const naturalBudget = Math.max(1, Number(request?.actionOpportunity?.naturalActionBudget || 40));
     let enemyThreat = 0;
@@ -142535,10 +143705,67 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     const targetIds = Array.isArray(declaration.targetIds) ? declaration.targetIds : [];
     const hostileTargets = targetIds.map(id => findUnitInWorld(before, id)).filter(unit => unit && sideOf(before, unit) === hostileSide);
-    const lowestHostileRatio = memoBefore('side:lowest-hostile-ratio', () => Math.min(1,
-      ...enemiesBefore.map(unit => preview.readHp(unit) / Math.max(1, preview.readHpMax(unit)))));
-    const focusGain = hostileTargets.some(unit =>
-      preview.readHp(unit) / Math.max(1, preview.readHpMax(unit)) <= lowestHostileRatio + 1e-9) ? hostilePressure : 0;
+    let focusGain = 0;
+    if (hostileTargets.length === 1 && enemiesBefore.length > 1) {
+      const responseCapacityByEnemy = new Map(enemiesBefore.map(unit => [
+        preview.unitId(unit),
+        Math.max(
+          0,
+          Number(unit?.observed_response_capacity || 0),
+          r9v2LinearBestActionCapacity(
+            before,
+            unit,
+            actorSide,
+            actionCapacityCache,
+          ),
+        ),
+      ]));
+      const maximumResponseCapacity = Math.max(
+        0,
+        ...responseCapacityByEnemy.values(),
+      );
+      const responseWeight = unit => maximumResponseCapacity > 1e-9
+        ? clamp(
+            Number(responseCapacityByEnemy.get(preview.unitId(unit)) || 0) /
+              maximumResponseCapacity,
+            0,
+            1,
+          )
+        : 1;
+      const focusProgress = (unit, lossRatio) => {
+        const maximum = Math.max(1, preview.readHpMax(unit));
+        const beforeRatio = (preview.readHp(unit) + preview.readShield(unit)) / maximum;
+        const expectedLossRatio = Math.max(0, lossRatio) * r9v2LinearResponseRetention(
+          request,
+          unit,
+          actorBefore || {},
+        );
+        const curveBefore = (1 - clamp(beforeRatio, 0, 1)) ** 2;
+        const curveAfter = (1 - clamp(beforeRatio - expectedLossRatio, 0, 1)) ** 2;
+        const concentrationProgress = Math.max(0, curveAfter - curveBefore);
+        // Preserve half of the actual concentration/finishing progress even
+        // when the target has little observed response capacity. The other
+        // half breaks equal-HP ties with evidence-backed future threat; it
+        // never turns threat into a class/name ownership bonus.
+        return concentrationProgress * (1 + responseWeight(unit)) / 2;
+      };
+      const focused = hostileTargets[0];
+      const focusedAfter = findUnitInWorld(after, preview.unitId(focused));
+      const focusedMaximum = Math.max(1, preview.readHpMax(focused));
+      const focusedRawLoss = Math.max(
+        0,
+        preview.readHp(focused) + preview.readShield(focused) -
+          (focusedAfter ? preview.readHp(focusedAfter) + preview.readShield(focusedAfter) : 0),
+      ) / focusedMaximum;
+      const focusedProgress = focusProgress(focused, focusedRawLoss);
+      const bestAlternativeProgress = Math.max(0, ...enemiesBefore
+        .filter(unit => preview.unitId(unit) !== preview.unitId(focused))
+        .map(unit => focusProgress(unit, focusedRawLoss)));
+      focusGain = Math.min(
+        hostilePressure,
+        Math.max(0, focusedProgress - bestAlternativeProgress) / enemiesBefore.length,
+      );
+    }
     markCausalStage('enemyAndObjectiveMs');
     const friendlyThreat = unit => memoBefore(`unit:${preview.unitId(unit)}:incoming-threat`, () =>
       enemiesBefore.reduce((sum, enemy) =>
@@ -142604,7 +143831,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       }
     }
     let redundant = 0;
-    let supportiveCount = 0;
+    let redundancyEffectCount = 0;
     effects.forEach((effect, effectIndex) => {
       const prototype = String(effect?.原型 || '').trim();
       const signedValue = Number.parseFloat(String(effect?.数值 || '0'));
@@ -142613,43 +143840,45 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         (prototype === '资源变化' && signedValue > 0) ||
         (prototype === '护盾变化' && String(effect?.护盾模式 || '').trim() === '正向护盾') ||
         (prototype === '属性修正' && signedValue > 0);
-      if (!friendly || !['资源变化', '护盾变化', '属性修正', '判定修正', '结算修正', '状态施加', '状态移除'].includes(prototype)) return;
-      supportiveCount += 1;
+      if (!['资源变化', '护盾变化', '属性修正', '判定修正', '结算修正', '状态施加', '状态移除'].includes(prototype)) return;
+      redundancyEffectCount += 1;
       const recipients = targetIds.map(id => findUnitInWorld(before, id)).filter(Boolean);
       const relevant = recipients.length ? recipients : [actorBefore].filter(Boolean);
-      const realizedProtection = relevant.reduce((sum, unit) => {
-        const next = findUnitInWorld(after, preview.unitId(unit)) || unit;
-        const hpMax = Math.max(1, preview.readHpMax(unit));
-        const hpGain = Math.max(0, preview.readHp(next) - preview.readHp(unit)) / hpMax;
-        const shieldGain = Math.max(0, preview.readShield(next) - preview.readShield(unit)) / hpMax;
-        const protectionWindows = Math.max(1, Math.min(3, Number(effect?.持续回合 || 1)));
-        const usableShield = role === 'ACTIVE'
-          ? Math.min(shieldGain, friendlyThreat(unit) * protectionWindows)
-          : shieldGain;
-        const preservedActionProbability = role === 'ACTIVE'
-          ? Math.max(
-              0,
-              memoBefore(`unit:${preview.unitId(unit)}:routine-incapacity`, () =>
-                r9v2LinearRoutineIncapacityRisk(
-                  before,
-                  enemiesBefore,
-                  unit,
-                  hostileSide,
-                  recentAttackLedgerIndex,
-                )) -
-                r9v2LinearRoutineIncapacityRisk(
-                  after,
-                  [...enemiesAfter.values()],
-                  next,
-                  hostileSide,
-                  recentAttackLedgerIndex,
-                ),
-            )
-          : 0;
-        return sum + (hpGain + usableShield + preservedActionProbability) *
-          Number(exposureByUnit().get(preview.unitId(unit)) || 0);
-      }, 0) / Math.max(1, relevant.length);
-      protectionGain = Math.max(protectionGain, realizedProtection);
+      if (friendly) {
+        const realizedProtection = relevant.reduce((sum, unit) => {
+          const next = findUnitInWorld(after, preview.unitId(unit)) || unit;
+          const hpMax = Math.max(1, preview.readHpMax(unit));
+          const hpGain = Math.max(0, preview.readHp(next) - preview.readHp(unit)) / hpMax;
+          const shieldGain = Math.max(0, preview.readShield(next) - preview.readShield(unit)) / hpMax;
+          const protectionWindows = Math.max(1, Math.min(3, Number(effect?.持续回合 || 1)));
+          const usableShield = role === 'ACTIVE'
+            ? Math.min(shieldGain, friendlyThreat(unit) * protectionWindows)
+            : shieldGain;
+          const preservedActionProbability = role === 'ACTIVE'
+            ? Math.max(
+                0,
+                memoBefore(`unit:${preview.unitId(unit)}:routine-incapacity`, () =>
+                  r9v2LinearRoutineIncapacityRisk(
+                    before,
+                    enemiesBefore,
+                    unit,
+                    hostileSide,
+                    recentAttackLedgerIndex,
+                  )) -
+                  r9v2LinearRoutineIncapacityRisk(
+                    after,
+                    [...enemiesAfter.values()],
+                    next,
+                    hostileSide,
+                    recentAttackLedgerIndex,
+                  ),
+              )
+            : 0;
+          return sum + (hpGain + usableShield + preservedActionProbability) *
+            Number(exposureByUnit().get(preview.unitId(unit)) || 0);
+        }, 0) / Math.max(1, relevant.length);
+        protectionGain = Math.max(protectionGain, realizedProtection);
+      }
       const rootActionId = r9v2LinearCanonicalActionId(candidate);
       const effectInstanceId = r9v2LinearCanonicalEffectId(
         effect,
@@ -142667,7 +143896,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         redundant += marginalRows.filter(entry =>
           entry.evidence.marginal === false
         ).length / marginalRows.length;
-      } else if (prototype === '资源变化' && relevant.every(unit => {
+      } else if (friendly && prototype === '资源变化' && relevant.every(unit => {
         const resource = String(effect?.资源 || '').trim();
         return preview.readResource(unit, resource) / Math.max(1, preview.readResourceMax(unit, resource)) >= 0.95;
       })) redundant += 1;
@@ -142853,7 +144082,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         actorAfter || {},
         resourceSequenceCapacityCache,
       );
-      resourceRunwayGain = -Math.max(
+      const sequenceLoss = Math.max(
         0,
         Number(beforeSequenceCapacity.sequence || 0) -
           Number(afterSequenceCapacity.sequence || 0),
@@ -142862,6 +144091,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         Number(beforeSequenceCapacity.sequence || 0),
         Number(afterSequenceCapacity.sequence || 0),
       );
+      const hostileCapacityBefore = enemiesBefore.reduce((sum, unit) =>
+        sum + preview.readHp(unit) + preview.readShield(unit), 0);
+      const hostileCapacityAfter = [...enemiesAfter.values()].reduce((sum, unit) =>
+        sum + preview.readHp(unit) + preview.readShield(unit), 0);
+      const continuationDemand = hostileCapacityBefore > 0
+        ? clamp(hostileCapacityAfter / hostileCapacityBefore, 0, 1)
+        : 0;
+      resourceRunwayGain = -sequenceLoss * continuationDemand;
     } else if (directResourceRunwayGain > 0) {
       if (candidate?.creation) {
         resourceRunwayGain = 0;
@@ -142898,8 +144135,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     markCausalStage('resourceRunwayMs');
     const values = {
-      OBJECTIVE_PROGRESS: clamp(terminalProgress || stateProgress, -1, 1),
-      SELF_FOLLOWUP_POOL_GAIN: clamp(directSelfPoolGain + creationSelfPoolGain, -1, 1),
+      OBJECTIVE_PROGRESS: clamp(terminalProgress, -1, 1),
+      SELF_FOLLOWUP_POOL_GAIN: clamp(
+        directSelfPoolGain + creationSelfPoolGain + summonActionPoolGain,
+        -1,
+        1,
+      ),
       SELF_FOLLOWUP_MECHANICAL_GAIN: clamp(Math.max(
         directMechanicalGain,
         selfCapacityGain,
@@ -142916,7 +144157,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ALLY_RESOURCE_RUNWAY_GAIN: allyResourceRunwayGain,
       FOCUS_TARGET_MARGINAL_GAIN: clamp(focusGain, 0, 1),
       PROTECTION_MARGINAL_GAIN: clamp(protectionGain, 0, 1),
-      TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL: supportiveCount ? clamp(redundant / supportiveCount, 0, 1) : 0,
+      TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL: redundancyEffectCount
+        ? clamp(redundant / redundancyEffectCount, 0, 1)
+        : 0,
     };
     const eventIds = [...new Set((result.contributions || []).map(entry => String(entry?.eventId || '')).filter(Boolean))];
     markCausalStage('finalizeMs');
@@ -143084,10 +144327,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       damageMultiplier = responseKind === 'PASS_OPPORTUNITY'
         ? 1
         : responseKind === 'DEFEND'
-          ? preview.calculateDefenseDamageMultiplier(target, source, true)
+          ? preview.calculateDefenseDamageMultiplier(target, source, false)
           : 1;
       dodgeProbability = responseKind === 'EVADE'
-        ? preview.calculateDodgeProbability(target, source, true)
+        ? preview.calculateDodgeProbability(target, source, false)
         : 0;
       if (Number.isFinite(damageMultiplier) && damageMultiplier >= 0 && damageMultiplier <= 1 &&
         Number.isFinite(dodgeProbability) && dodgeProbability >= 0 && dodgeProbability <= 1) {
@@ -143107,6 +144350,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       sourceActionId,
       sourceActorId,
       targetId: request.actorId,
+      // Bridge attestation that this carrier is frozen, not a pre-existing combat stance.
       prepared: true,
       visibleWorldRevision: revision,
       requestHash: request.requestHash,
@@ -143623,8 +144867,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const hasIllegalSameSideTarget =
         ['HOSTILE_SINGLE', 'HOSTILE_GROUP'].includes(legalityTargetProfile) &&
         candidateTargetIds.some(targetId => publicSnapshot.sides[String(targetId)] === actorSide);
-      const pdaProjections = [];
-      const sourceProjections = {};
+      const rawPdaProjections = [];
+      const rawSourceProjections = {};
       for (let index = 0; index < effects.length; index += 1) {
         const sourceEffectId = r9v2LinearCanonicalEffectId(effects[index], bridgeIdPrefix, index);
         const context = {
@@ -143634,7 +144878,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           candidateTargetIds,
         };
         const directProjection = pda.project(effects[index], context);
-        pdaProjections.push({ sourceEffectId, projection: directProjection });
+        rawPdaProjections.push({
+          effect: effects[index],
+          sourceEffectId,
+          projection: directProjection,
+        });
         // FeatureSource.scanCandidate unpacks carrier rows into its own
         // effect ids; precompute the exact same admit/project results here so
         // the source never re-runs previewAction or PDA projection.
@@ -143648,7 +144896,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             sourceEffectId: seid,
             candidateTargetIds,
           };
-          sourceProjections[seid] = {
+          rawSourceProjections[seid] = {
+            effect: rows[unpackIndex],
+            actualize: unpacked === null,
             admitted: pda.admit(rows[unpackIndex], innerContext),
             projection: unpacked === null
               ? directProjection
@@ -143692,12 +144942,73 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           previewResult?.changedUnitIds || [],
         );
       }
+      const temporalAudit = temporalAuditForCandidate(
+        preview.collectEffects(declaration?.skill || {}),
+        candidateTargetIds,
+        request,
+        request.visibleWorld,
+        actorSide,
+        previewResult?.contributions || [],
+        declaration,
+      );
+      const scoringAfterSnapshot = removeUnrealizableTemporalEffects(
+        previewResult?.afterSnapshot || request.visibleWorld,
+        request.visibleWorld,
+        temporalAudit,
+      );
+      const scoringContributions = (previewResult?.contributions || []).filter(entry =>
+        !temporalAudit.invalidContributionSet.has(entry)
+      );
+      const scoringPreviewResult = scoringAfterSnapshot === previewResult?.afterSnapshot &&
+        scoringContributions.length === (previewResult?.contributions || []).length
+        ? previewResult
+        : Object.freeze({
+            ...previewResult,
+            afterSnapshot: scoringAfterSnapshot,
+            contributions: Object.freeze(scoringContributions),
+          });
+      if (scoringPreviewResult?.afterSnapshot) {
+        markCapacityDeltaSnapshot(
+          scoringPreviewResult.afterSnapshot,
+          request.visibleWorld,
+          scoringPreviewResult?.changedUnitIds || [],
+        );
+      }
+      const pdaProjections = rawPdaProjections.map(item => ({
+        sourceEffectId: item.sourceEffectId,
+        projection: r9v2LinearActualizedProjection({
+          ...item,
+          request,
+          declaration,
+          previewResult,
+          actorSide,
+        }),
+      }));
+      const sourceProjections = Object.fromEntries(
+        Object.entries(rawSourceProjections).map(([sourceEffectId, item]) => [
+          sourceEffectId,
+          {
+            admitted: item.admitted,
+            projection: item.actualize
+              ? r9v2LinearActualizedProjection({
+                  ...item,
+                  sourceEffectId,
+                  request,
+                  declaration,
+                  previewResult,
+                  actorSide,
+                  sourceMode: true,
+                })
+              : item.projection,
+          },
+        ]),
+      );
       addFeatureBuildTime('previewActionMs', candidatePreviewStartedAt);
       previewCalls += 1;
       const bridgeInputStartedAt = collectPerformanceBreakdown
         ? featureClockNow()
         : 0;
-      previewResultsById[candidate.candidateId] = previewResult;
+      previewResultsById[candidate.candidateId] = scoringPreviewResult;
       pdaProjectionsById[candidate.candidateId] = sourceProjections;
       const creationProfile = r9v2LinearCreationProfile(candidate);
       const actionOpportunityCarrier = r9v2LinearReactionCarrier(request, candidate, declaration);
@@ -143710,7 +145021,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           targetSet: candidateTargetIds,
         },
         visibleWorld: publicSnapshot,
-        contributions: previewResult && previewResult.contributions || [],
+        contributions: scoringPreviewResult && scoringPreviewResult.contributions || [],
         pdaProjections,
         declaration: {
           actionId: bridgeIdPrefix,
@@ -143857,6 +145168,83 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return buildOnlineLinearFeatureInputs(request, {
       includeCandidateImpactEnvelope: true,
     }).candidateImpactEnvelope;
+  }
+
+  function r9v2LinearActualizedProjection({
+    effect,
+    projection,
+    sourceEffectId,
+    request,
+    declaration,
+    previewResult,
+    actorSide,
+    sourceMode = false,
+  }) {
+    if (!projection || typeof projection !== 'object') return projection;
+    const actor = findUnitInWorld(request.visibleWorld, request.actorId);
+    if (!actor) return projection;
+    const resolvedTargetIds = preview.resolveTargets(
+      request.visibleWorld,
+      actor,
+      declaration,
+      effect,
+    ).map(preview.unitId);
+    const temporalProfile = temporalEffectWindowProfile(
+      effect,
+      resolvedTargetIds,
+      request,
+      request.visibleWorld,
+      actorSide,
+    );
+    const contributions = (previewResult?.contributions || []).filter(entry =>
+      String(entry?.effectInstanceId || '').trim() === String(sourceEffectId || '').trim() &&
+      String(entry?.windowId || '').trim() !== 'ACTION_COST'
+    );
+    const directFacts = (projection.directFacts || []).flatMap(fact => {
+      let targetIds = resolvedTargetIds.length
+        ? resolvedTargetIds
+        : Array.isArray(fact?.targetIds) ? fact.targetIds : [];
+      if (fact?.factType === 'RESOURCE_OPTION_CHANGED') {
+        const factResource = resourceKeyFor(fact?.key || '');
+        const realized = contributions.filter(entry =>
+          entry?.outcomeKind === 'RESOURCE_OPTION_CHANGED' &&
+          resourceKeyFor(entry?.evidence?.resourceKey || entry?.evidence?.resource || '') === factResource
+        ).map(entry => {
+          const delta = Number(entry?.expectedDelta ?? entry?.evidence?.delta);
+          if (!Number.isFinite(delta)) return null;
+          if (fact.unit === 'ABS') return delta;
+          const target = findUnitInWorld(request.visibleWorld, entry?.targetId);
+          const maximum = target
+            ? preview.readResourceMax(target, entry?.evidence?.resource || fact?.key)
+            : 0;
+          return maximum > 0 ? delta / maximum * 100 : 0;
+        }).filter(Number.isFinite);
+        return [{
+          ...fact,
+          targetIds,
+          amount: realized.length
+            ? realized.reduce((sum, value) => sum + value, 0) / realized.length
+            : 0,
+        }];
+      }
+      if (fact?.factType !== 'STATE_DELTA' || !temporalProfile.temporal) {
+        return [{ ...fact, targetIds }];
+      }
+      if (temporalProfile.prototype === '属性修正') {
+        targetIds = temporalProfile.realizableTargetIds.filter(targetId =>
+          (temporalProfile.realizableAttributesByTarget?.[targetId] || []).includes(String(fact?.key || '').trim())
+        );
+      } else {
+        targetIds = temporalProfile.realizableTargetIds.slice();
+      }
+      if (targetIds.length) return [{ ...fact, targetIds }];
+      if (sourceMode) return [];
+      return [{ ...fact, amount: 0, durationTurns: 0 }];
+    });
+    return {
+      ...projection,
+      directFacts,
+    };
   }
 
   function r9v2LinearUniqueSorted(values) {
@@ -144029,6 +145417,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         selectionMode: lockedChoice && candidateId === selectedId
           ? 'PLAYER_LOCKED'
           : 'R9V2_LINEAR_DIRECT',
+        contextuallyDominated: ranked[index]?.contextuallyDominated === true,
+        dominatedBy: String(ranked[index]?.dominatedBy || '').trim(),
         tieGroup: Array.isArray(ranked[index]?.tieGroup)
           ? [...ranked[index].tieGroup]
           : [candidateId],
@@ -144067,6 +145457,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
     const hardExclusionAudit = Array.isArray(result?.hardExclusionAudit)
       ? result.hardExclusionAudit.map(entry => Object.freeze({ ...entry }))
+      : [];
+    const dominanceAudit = Array.isArray(result?.dominanceAudit)
+      ? result.dominanceAudit.map(entry => Object.freeze({ ...entry }))
       : [];
     const reasonFactors = result?.scoreContributions?.[selectedId]?.factors || [];
     const alternatives = lockedChoice
@@ -144135,7 +145528,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       opportunitySequence: Math.max(0, Number(request?.actionOpportunity?.sequence || 0)),
       candidateCount: request.frozenCandidates.length,
       eligibleCount: Math.max(0, Number(result?.eligibleCount || 0)),
+      selectableCount: Math.max(0, Number(result?.selectableCount || 0)),
       hardExcludedCount: Math.max(0, Number(result?.hardExcludedCount || 0)),
+      dominatedCount: Math.max(0, Number(result?.dominatedCount || 0)),
       frozenCandidateIds: request.frozenCandidates.map(candidate => candidate.candidateId),
       preEnumerationRejections: Object.freeze(
         (Array.isArray(request?.rejectedCandidates) ? request.rejectedCandidates : [])
@@ -144143,6 +145538,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ),
       hardExcludedCandidateIds: hardExclusionAudit.map(entry => entry.candidateId),
       hardExclusionAudit,
+      dominanceAudit,
       candidateAudit,
       scoreAudit: candidateAudit.slice(0, 3),
       selected: selectedRecord,
@@ -144798,7 +146194,21 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const afterHp = previewRuntime.readHp(unit);
         const hpDelta = afterHp - beforeHp;
         const blocked = /无视异常|持续状态移除/.test(log);
-        writeLedgerEvent(combatData, {
+        const stateName = String(effect?.副作用状态 || sideEffectStatusMap[effect?.副作用类型] || effect?.副作用类型 || '反噬').trim();
+        const inheritedApplicationId = String(
+          condition?.__状态来源窗口?.[0] || condition?.__状态来源键 || '',
+        ).trim();
+        const inheritedSource = inheritedApplicationId
+          ? findStateSource(combatData, { applicationId: inheritedApplicationId })
+          : null;
+        const sourceActionId = String(
+          eventContext?.sourceActionId || eventContext?.actionId ||
+          condition?.sourceActionId || inheritedSource?.sourceActionId || '',
+        ).trim();
+        const sourceEffectId = String(
+          eventContext?.sourceEffectId || condition?.sourceEffectId || inheritedSource?.sourceEffectId || '',
+        ).trim();
+        const fact = writeLedgerEvent(combatData, {
           eventKind: hpDelta ? 'resource_change' : 'state_apply',
           round: Number(combatData?.回合 || 0),
           actorId: String(eventContext?.actorId || previewRuntime.unitId(unit)).trim(),
@@ -144810,7 +146220,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           actorControl: String(eventContext?.actorControl || 'SYSTEM').trim(),
           actionRole: String(eventContext?.actionRole || 'STATE_TICK').trim(),
           actionId: String(eventContext?.actionId || '').trim(),
-          sourceActionId: String(eventContext?.sourceActionId || eventContext?.actionId || '').trim(),
+          sourceActionId,
+          sourceEffectId,
           parentNodeId: String(eventContext?.parentNodeId || '').trim(),
           sourceNodeId: String(eventContext?.sourceNodeId || '').trim(),
           result: blocked ? 'blocked' : 'triggered',
@@ -144824,11 +146235,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             source: 'structured_runtime',
             sideEffectType: effect.副作用类型,
             timing,
+            stateName,
             duration: Number(effect.持续回合 || 0),
             log,
             ...(hpDelta ? { resource: '生命', resourceKey: 'hp', before: beforeHp, after: afterHp, delta: hpDelta, amount: Math.abs(hpDelta) } : {}),
           },
         });
+        if (fact && !hpDelta && !blocked) {
+          bindStateSourceProvenance(combatData, unit, stateName, nextRuntimeId('state-src'), fact, 'SIDE_EFFECT_APPLIED');
+        }
         return log;
       })
       .filter(Boolean);
@@ -145485,7 +146900,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const maximum = persistentResourceMax(unit, key);
         const amount = Math.min(persistentResourceValue(unit, key), persistentResourceAmount(effect?.数值, maximum));
         if (!(amount > 0)) return;
-        if (mode === '共享') {
+        if (mode === '共享' || mode === '转移') {
           if (!caster || caster === unit) return;
           const casterCurrent = persistentResourceValue(caster, key);
           const paid = Math.min(casterCurrent, amount);
@@ -145493,7 +146908,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           const gain = Math.max(1, Math.floor(paid * conversion));
           writeCombatResource(caster, key, casterCurrent - paid);
           writeCombatResource(unit, key, Math.min(maximum, persistentResourceValue(unit, key) + gain));
-          logs.push(`自身共享${paid}点${persistentResourceLabel(key)}给${label}`);
+          logs.push(`自身${mode === '共享' ? '共享' : '转移'}${paid}点${persistentResourceLabel(key)}给${label}`);
           return;
         }
         if (findResourceSuppression(unit, persistentResourceLabel(key))) return;
@@ -146624,11 +148039,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const decisionActor = listCombatUnits(combatData).find(unit =>
       previewRuntime.unitId(unit) === String(actorId || '').trim()
     );
-    const decisionSide = decisionActor ? inferUnitSide(combatData, previewRuntime.unitName(decisionActor)) : '';
+    const decisionSide = decisionActor ? inferUnitSide(combatData, decisionActor) : '';
     const hostileEntries = listPrimaryCombatUnits(combatData)
-      .filter(unit => inferUnitSide(combatData, previewRuntime.unitName(unit)) !== decisionSide);
+      .filter(unit => inferUnitSide(combatData, unit) !== decisionSide);
     const alliedTargets = listPrimaryCombatUnits(combatData)
-      .filter(unit => inferUnitSide(combatData, previewRuntime.unitName(unit)) === decisionSide)
+      .filter(unit => inferUnitSide(combatData, unit) === decisionSide)
       .filter(unit => previewRuntime.isBattleCapable(unit));
     hostileEntries.forEach(source => {
       const charge = source?.蓄力技能;
@@ -147939,6 +149354,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     };
     if (!entry.stateName || !entry.targetName) return '';
     [['sourceActionId', payload.sourceActionId], ['sourceEventId', payload.sourceEventId],
+      ['sourceEffectId', payload.sourceEffectId],
       ['sourceFactId', payload.sourceFactId], ['sourceNodeId', payload.sourceNodeId],
       ['provenanceClass', payload.provenanceClass]].forEach(([key, value]) => {
       const normalized = String(value || '').trim();
@@ -147977,6 +149393,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         sourceActionName: String(event?.actionName || '').trim(),
         sourceActionId,
         sourceEventId,
+        sourceEffectId: String(event?.sourceEffectId || event?.meta?.sourceEffectId || '').trim(),
         sourceActionType: String(event?.actionType || '').trim(),
         sourceRound: Number(event?.round || combatData?.回合 || 0),
         sourceNodeId: String(event?.sourceNodeId || '').trim(),
@@ -147987,6 +149404,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (!source) return null;
     source.sourceActionId = sourceActionId;
     source.sourceEventId = sourceEventId;
+    source.sourceEffectId = String(
+      event?.sourceEffectId || event?.meta?.sourceEffectId || source?.sourceEffectId || '',
+    ).trim();
     source.provenanceClass = provenanceClass;
     const state = target?.状态效果?.[stateName];
     const sourceWindow = Array.isArray(state?.__状态来源窗口)
@@ -147999,6 +149419,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       delete state.sourceFactId;
       state.sourceActionId = String(activeSource?.sourceActionId || sourceActionId).trim();
       state.sourceEventId = String(activeSource?.sourceEventId || sourceEventId).trim();
+      state.sourceEffectId = String(activeSource?.sourceEffectId || source?.sourceEffectId || '').trim();
       Object.defineProperties(state, {
         __状态来源键: { configurable: true, enumerable: false, writable: true, value: activeApplicationId },
         __状态来源窗口: { configurable: true, enumerable: false, writable: true, value: sourceWindow },
@@ -148006,7 +149427,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     event.applicationId = mappingId;
     event.sourceEventId = sourceEventId;
-    event.meta = { ...(event.meta || {}), applicationId: mappingId, sourceActionId, sourceEventId, provenanceClass };
+    event.meta = {
+      ...(event.meta || {}),
+      applicationId: mappingId,
+      sourceActionId,
+      sourceEventId,
+      sourceEffectId: source.sourceEffectId,
+      provenanceClass,
+    };
     if (state && event.meta.after) event.meta.after = cloneValue(state);
     return source;
   }
@@ -148104,9 +149532,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const meta = event?.meta && typeof event.meta === 'object' ? event.meta : {};
     const actorName = String(event?.actorName || '').trim();
     const targetName = String(event?.targetName || '').trim();
+    const actorIdentity = String(event?.actorId || meta.actorId || actorName).trim();
+    const targetIdentity = String(
+      event?.targetId ||
+      (Array.isArray(event?.targetIds) ? event.targetIds[0] : '') ||
+      meta.targetId ||
+      targetName,
+    ).trim();
     const targetScope = String(event?.targetScope || meta.targetScope || '').trim();
     const actorSide = normalizeBattleSide(event?.actorSide || event?.side || meta.actorSide || meta.side || '')
-      || inferUnitSide(combatData, actorName);
+      || inferUnitSide(combatData, actorIdentity);
     const targetPoolSide = String(event?.targetPoolSide || meta.targetPoolSide || '').trim();
     const relativeTargetSide = actorSide && /^(hostile|enemy|敌对|敌方)$/i.test(targetPoolSide)
       ? actorSide === 'player' ? 'enemy' : 'player'
@@ -148114,7 +149549,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         ? actorSide
         : '';
     const targetSide = normalizeBattleSide(event?.targetSide || meta.targetSide || '')
-      || inferUnitSide(combatData, targetName)
+      || inferUnitSide(combatData, targetIdentity)
       || relativeTargetSide
       || (['ally_group', 'self'].includes(targetScope) ? actorSide : '')
       || (['enemy_group', 'area'].includes(targetScope) && actorSide ? actorSide === 'player' ? 'enemy' : 'player' : '')
@@ -149400,6 +150835,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const actionName = normalizeActionDisplayName(payload.actionName || '');
     const sourceActionName = normalizeActionDisplayName(payload.sourceActionName || '');
     const sourceRound = Number(payload.sourceRound || round || 0);
+    const explicitActionId = String(payload.actionId || '').trim();
+    const matchedActionById = explicitActionId
+      ? [...ledger].reverse().find(event =>
+          String(event?.actionId || '').trim() === explicitActionId &&
+          ['action_start', 'counter'].includes(String(event?.eventKind || '').trim())
+        ) || null
+      : null;
+    const matchedIdentityAction = matchedActionById && (
+      !actorName || isSameLedgerName(matchedActionById?.actorName || '', actorName)
+    ) ? matchedActionById : null;
     const matchedAction = payload.allowImplicitActionSource === false || eventKind === 'action_start' || eventKind === 'counter' || !actionName
       ? null
       : findRecentLedgerAction(ledger, { round, actorName, actionName });
@@ -149508,6 +150953,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const explicitActorSide = normalizeBattleSide(payload.actorSide || eventMeta.actorSide || '');
     const explicitTargetSide = normalizeBattleSide(payload.targetSide || eventMeta.targetSide || '');
     const matchedActorSide = normalizeBattleSide(
+      matchedIdentityAction?.actorSide ||
       matchedAction?.actorSide ||
       matchedCounterStart?.actorSide ||
       (!['counter', 'counter_window'].includes(eventKind) ? matchedSourceAction?.actorSide : '') ||
@@ -149515,8 +150961,19 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     );
     const matchedTargetSide = [matchedAction, matchedCounterStart, matchedSourceAction]
       .find(action => action && targetName && isSameLedgerName(action?.targetName || '', targetName))?.targetSide || '';
+    const summonActorId = ['defend', 'dodge', 'pass'].includes(eventKind) && actionRole === 'REACTION'
+      ? String(eventMeta.summonKey || '').trim()
+      : '';
+    const actorUnit = listCombatUnits(rootData).find(unit => isUnitIdentityMatch(
+      unit,
+      payload.actorId || summonActorId || matchedIdentityAction?.actorId || actorName,
+    ));
+    const actorId = String(
+      payload.actorId || summonActorId || matchedIdentityAction?.actorId || previewRuntime.unitId(actorUnit) || actorName,
+    ).trim();
     const eventSides = inferEventSides(rootData, {
       ...payload,
+      actorId,
       actorName,
       actorSide: explicitActorSide || matchedActorSide,
       targetName,
@@ -149526,8 +150983,6 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
     const factType = inferFactType(eventKind, { ...payload, meta: eventMeta });
     const effectPrototype = inferEffectPrototype(eventKind, { ...payload, meta: eventMeta });
-    const actorUnit = listCombatUnits(rootData).find(unit => isUnitIdentityMatch(unit, payload.actorId || actorName));
-    const actorId = String(payload.actorId || previewRuntime.unitId(actorUnit) || actorName).trim();
     const event = {
       eventId: String(payload.eventId || nextRuntimeId('battle-ledger')).trim(),
       sequence: ledgerSequence,
@@ -150314,7 +151769,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           __宿主: host,
           __来源状态: state,
           来源状态键: stateKey,
-          阵营: inferUnitSide(combatData, previewRuntime.unitName(host)) === 'enemy' ? '敌方' : '玩家',
+          阵营: inferUnitSide(combatData, host) === 'enemy' ? '敌方' : '玩家',
           生成回合: Math.max(0, Number(mirror?.生成回合 || combatData?.回合 || 0)),
           精神负载: Math.max(0, Number(mirror?.精神负载 || 0)),
           已消散: false,
@@ -151178,10 +152633,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
 
   function sustainTargetIds(combatData = {}, actor = {}, effect = {}) {
     const targetKind = String(effect?.目标 || '').trim();
-    const actorSide = inferUnitSide(combatData, previewRuntime.unitName(actor));
+    const actorSide = inferUnitSide(combatData, actor);
     const entries = listCombatUnits(combatData).filter(unit => structuredActorPhysicallyAlive(unit));
-    const friendly = entries.filter(unit => inferUnitSide(combatData, previewRuntime.unitName(unit)) === actorSide);
-    const hostile = entries.filter(unit => inferUnitSide(combatData, previewRuntime.unitName(unit)) !== actorSide);
+    const friendly = entries.filter(unit => inferUnitSide(combatData, unit) === actorSide);
+    const hostile = entries.filter(unit => inferUnitSide(combatData, unit) !== actorSide);
     if (/自身/.test(targetKind)) return [previewRuntime.unitId(actor)];
     if (/融合伙伴/.test(targetKind)) {
       const refs = [
@@ -152835,7 +154290,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       actionFingerprint: `runtime:${String(actionEvent?.actionId || '').trim()}:effect:${effectIndex}`,
       paymentMode: 'FORMAL',
       horizon: 'SHALLOW',
-      previewBudget: { maxNodes: 12 },
+      // Primary settlement also resolves same-action cooperative summon attacks;
+      // use the preview module's bounded full-action budget instead of the old
+      // twelve-node cap that rejects valid generated 3v3 effect graphs.
+      previewBudget: { maxNodes: 64 },
       forcedApplicationProbabilityByEffect: Object.fromEntries(
         outcomeSamples.map(sample => [
           [
@@ -153129,6 +154587,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const mode = String(effect?.行动模式 || '协同攻击').trim() || '协同攻击';
     const summonType = String(effect?.召唤单位类型 || effect?.召唤类型 || '魂兽').trim() || '魂兽';
     const inheritRatio = Math.max(0.05, Math.min(2, Number(effect?.继承属性比例 || effect?.强度 || effect?.召唤强度 || 0.35) || 0.35));
+    const summonLevel = Math.max(1, Number(
+      actor?.level ?? actor?.等级 ?? actor?.修为等级 ?? actor?.属性?.等级 ?? actor?.final?.level ?? 1,
+    ) || 1);
     const table = ensureStructuredSummonTable(combatData);
     const facts = [];
     const summons = [];
@@ -153192,8 +154653,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const summon = {
         id: key, name: displayName, 名称: displayName, 召唤键: key, 预演召唤键: previewSummonKey,
         类型: summonType, 召唤单位类型: summonType, 单位性质: '召唤物', 行动模式: mode,
+        level: summonLevel, 等级: summonLevel,
         宿主名: previewRuntime.unitName(actor), __宿主: actor, __来源状态: sourceState, 来源状态键: stateKey,
-        阵营: inferUnitSide(combatData, previewRuntime.unitName(actor)) === 'enemy' ? '敌方' : '玩家',
+        阵营: inferUnitSide(combatData, actor) === 'enemy' ? '敌方' : '玩家',
         生成回合: Number(combatData?.回合 || 0), 精神负载: Math.max(0, Number(effect?.精神负载 || 0)), 已消散: false,
         hp: hpMax, hp_max: hpMax, HP: hpMax, HP上限: hpMax,
         vit: staminaMax, vit_max: staminaMax, sta: staminaMax, sta_max: staminaMax, 体力: staminaMax, 体力上限: staminaMax,
@@ -154110,10 +155572,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const sampledTarget = listCombatUnits(combatData).find(unit =>
         previewRuntime.unitId(unit) === String(targetId || '').trim()
       );
+      const resistanceMultiplier = typeof previewRuntime.stateApplicationProbabilityMultiplier === 'function'
+        ? previewRuntime.stateApplicationProbabilityMultiplier(sampledTarget || {}, effect)
+        : 1;
       const probability = Math.max(0, Math.min(1,
-        baseProbability * (typeof previewRuntime.stateApplicationProbabilityMultiplier === 'function'
-          ? previewRuntime.stateApplicationProbabilityMultiplier(sampledTarget || {}, effect)
-          : 1),
+        baseProbability * resistanceMultiplier,
       ));
       if (!outcomeSamples.has(groupKey)) {
         const roll =
@@ -154130,6 +155593,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           groupKey,
           effectInstanceId,
           targetId: String(targetId || '').trim(),
+          baseProbability,
+          resistanceMultiplier,
           probability,
           roll,
           outcomeId: succeeded ? 'SUCCESS' : 'FAILURE',
@@ -155279,6 +156744,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           ? cloneValue(target.状态效果[stateName])
           : null;
         if (!previewRuntime.isAlive(target) && previewRuntime.unitId(target) !== previewRuntime.unitId(actor)) {
+          const baseProbability = previewRuntime.normalizeEffectProbability(
+            effect?.成功率 ?? effect?.触发概率,
+            1,
+          );
+          const resistanceMultiplier = typeof previewRuntime.stateApplicationProbabilityMultiplier === 'function'
+            ? previewRuntime.stateApplicationProbabilityMultiplier(target, effect)
+            : 1;
           facts.push(writeLedgerEvent(combatData, {
             eventKind: 'state_apply', round: Number(combatData?.回合 || 0), actorName: previewRuntime.unitName(actor), targetName: previewRuntime.unitName(target),
             actionName, actionType: actionKind, actorControl, actionRole, actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
@@ -155294,6 +156766,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               successRate: 0,
               roll: null,
               reason: 'TARGET_INCAPACITATED',
+              resolutionReason: 'CONDITION_NOT_MET',
+              baseProbability,
+              resistanceMultiplier,
+              finalProbability: Math.max(0, Math.min(1, baseProbability * resistanceMultiplier)),
+              probabilityPassed: false,
               before: stateBefore,
               after: stateBefore,
               operation: 'STATE_APPLY',
@@ -155309,7 +156786,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (!target.状态效果 || typeof target.状态效果 !== 'object') target.状态效果 = {};
         const duration = Math.max(1, Number(effect?.持续回合 || 1));
         const state = {
-          类型: String(effect?.类型 || '').trim() || (inferUnitSide(combatData, previewRuntime.unitName(target)) === inferUnitSide(combatData, previewRuntime.unitName(actor)) ? 'buff' : 'debuff'),
+          类型: String(effect?.类型 || '').trim() || (inferUnitSide(combatData, target) === inferUnitSide(combatData, actor) ? 'buff' : 'debuff'),
           状态: stateName, 状态名称: stateName, 层数: 1, duration,
           原型: prototype,
           判定: String(effect?.判定 || '').trim(),
@@ -155419,6 +156896,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const stateAfter = result === 'applied'
           ? cloneValue(target?.状态效果?.[stateName] || null)
           : cloneValue(stateBefore);
+        const stateResolutionReason = result === 'applied'
+          ? stateReplaced ? 'REPLACED' : 'APPLIED'
+          : result === 'immune'
+            ? 'IMMUNE'
+            : result === 'resisted'
+              ? 'PROBABILITY_REJECTED'
+              : result === 'invalid'
+                ? 'INVALID_STATE'
+                : 'NO_EFFECT';
         const stateFact = writeLedgerEvent(combatData, {
           eventKind: stateEventKind, round: Number(combatData?.回合 || 0), actorName: previewRuntime.unitName(actor), targetName: previewRuntime.unitName(target),
           actionName, actionType: actionKind, actorControl, actionRole, actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
@@ -155442,6 +156928,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             duration,
             successRate: successProbability,
             roll,
+            resolutionReason: stateResolutionReason,
+            baseProbability: stateSample.baseProbability,
+            resistanceMultiplier: stateSample.resistanceMultiplier,
+            finalProbability: stateSample.probability,
+            probabilityPassed: stateSample.succeeded,
             applicationId: result === 'applied' ? applicationId : '',
             groupKey: stateSample.groupKey,
             outcomeId: stateSample.outcomeId,
@@ -155455,9 +156946,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         });
         if (stateFact && result === 'applied') bindStateSourceProvenance(combatData, target, stateName, applicationId, stateFact);
         facts.push(stateFact);
-        const abnormalResistanceMultiplier = typeof previewRuntime.stateApplicationProbabilityMultiplier === 'function'
-          ? previewRuntime.stateApplicationProbabilityMultiplier(target, effect)
-          : 1;
+        const abnormalResistanceMultiplier = stateSample.resistanceMultiplier;
         if (
           stateFact &&
           result === 'applied' &&
@@ -155757,6 +157246,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           sourceNodeId: actionEvent.chainNodeId || '',
         };
         sideEffects.forEach((sideEffect, sideEffectIndex) => {
+          const sideEffectContext = {
+            ...eventContext,
+            sourceEffectId: `${actionEvent.actionId}:side-effect:${sideEffectIndex}`,
+          };
           const targetMode = String(sideEffect.生效对象 || '技能释放者').trim();
           const targets = [...new Map((targetMode === '技能释放者'
             ? [actor]
@@ -155773,7 +157266,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               timing,
               previewRuntime.unitName(actor),
               combatData,
-              eventContext,
+              sideEffectContext,
             ));
             return;
           }
@@ -155958,6 +157451,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         });
       }
       const source = findStateSource(combatData, { applicationId: activeSourceId });
+      const consumedApplicationId = String(activeSourceId || source?.applicationId || '').trim();
       const nextDuration = Math.max(0, previousDuration - 1);
       state.duration = nextDuration;
       if (Array.isArray(state.__状态来源窗口)) {
@@ -155970,9 +157464,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const sourceActionId = String(activeSource?.sourceActionId || source?.sourceActionId || '').trim();
       const sourceEventId = String(activeSource?.sourceEventId || source?.sourceEventId || '').trim();
       const provenanceClass = String(activeSource?.provenanceClass || source?.provenanceClass || '').trim();
-      const ledgerApplicationId = expired
-        ? ''
-        : String(activeSourceId || activeSource?.applicationId || source?.applicationId || '').trim();
+      const ledgerApplicationId = consumedApplicationId ||
+        String(activeSourceId || activeSource?.applicationId || source?.applicationId || '').trim();
       writeLedgerEvent(combatData, {
         eventKind: expired ? 'state_expire' : 'state_replace',
         round: Number(combatData?.回合 || 0),
@@ -156183,12 +157676,21 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const actionKind = String(declaration?.actionKind || '').trim();
     const actorName = previewRuntime.unitName(reactor);
     const sourceName = previewRuntime.unitName(sourceActor);
+    const summonGuardHostId = String(input?.summonGuardHostId || '').trim();
+    const summonGuardHostName = String(input?.summonGuardHostName || '').trim();
+    const summonKey = String(input?.summonKey || '').trim();
     const reactionMeta = {
       source: 'structured_runtime',
       decisionCandidateId: String(input?.decisionCandidateId || '').trim(),
       declaredTargetIds: Array.isArray(declaration?.targetIds)
         ? declaration.targetIds.map(value => String(value || '').trim()).filter(Boolean)
         : [],
+      ...(summonGuardHostId && summonGuardHostName && summonKey ? {
+        summonGuardHostId,
+        summonGuardHostName,
+        summonKey,
+        summonMode: '护卫',
+      } : {}),
     };
     const common = {
       round: Number(combatData?.回合 || 0),
@@ -156543,6 +158045,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
 
   function buildAnalyticsLedgerEvent(event = {}) {
     const meta = event?.meta || {};
+    const evidence = meta?.evidence && typeof meta.evidence === 'object' && !Array.isArray(meta.evidence)
+      ? meta.evidence
+      : {};
     const formulaTrace = meta?.formulaTrace || {};
     return {
       eventId: String(event?.eventId || '').trim(),
@@ -156605,9 +158110,34 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         grantId: String(meta?.grantId || '').trim(),
         resource: String(meta?.resource || '').trim(),
         resourceKey: String(meta?.resourceKey || '').trim(),
+        stateName: String(meta?.stateName || meta?.stateKey || '').trim(),
+        sourceEventId: String(meta?.sourceEventId || event?.sourceEventId || '').trim(),
+        provenanceClass: String(meta?.provenanceClass || '').trim(),
+        controlApplicationId: String(meta?.controlApplicationId || '').trim(),
+        controlSourceActionId: String(meta?.controlSourceActionId || '').trim(),
+        controlSourceEventId: String(meta?.controlSourceEventId || '').trim(),
+        controlSourceEffectId: String(meta?.controlSourceEffectId || '').trim(),
+        transferMode: String(meta?.transferMode || evidence?.mode || '').trim(),
+        transferRole: String(meta?.transferRole || evidence?.transferRole || '').trim(),
+        transferSourceId: String(meta?.transferSourceId || evidence?.transferSourceId || '').trim(),
+        transferReceiverId: String(meta?.transferReceiverId || evidence?.transferReceiverId || '').trim(),
+        transferGroupKey: String(meta?.transferGroupKey || evidence?.transferGroupKey || '').trim(),
+        conversionRatio: meta?.conversionRatio == null && evidence?.conversionRatio == null
+          ? null
+          : Number(meta?.conversionRatio ?? evidence?.conversionRatio),
+        sourcePaid: Number(meta?.sourcePaid ?? evidence?.sourcePaid ?? 0),
+        convertedAmount: Number(meta?.convertedAmount ?? evidence?.convertedAmount ?? 0),
+        receiverGain: Number(meta?.receiverGain ?? evidence?.receiverGain ?? 0),
+        overflowLoss: Number(meta?.overflowLoss ?? evidence?.overflowLoss ?? 0),
+        poolTotalBefore: meta?.poolTotalBefore == null && evidence?.poolTotalBefore == null
+          ? null
+          : Number(meta?.poolTotalBefore ?? evidence?.poolTotalBefore),
+        poolTotalAfter: meta?.poolTotalAfter == null && evidence?.poolTotalAfter == null
+          ? null
+          : Number(meta?.poolTotalAfter ?? evidence?.poolTotalAfter),
         delta: Number(meta?.delta || 0),
         amount: Number(meta?.amount || 0),
-        requestedAmount: Number(meta?.requestedAmount || 0),
+        requestedAmount: Number(meta?.requestedAmount ?? evidence?.requestedAmount ?? 0),
         requestedDelta: Number(meta?.requestedDelta || 0),
         before: Number(meta?.before || 0),
         after: Number(meta?.after || 0),
@@ -156618,6 +158148,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           : Number(meta.hitProbability),
         probability: meta?.probability == null ? null : Number(meta.probability),
         roll: meta?.roll == null ? null : Number(meta.roll),
+        resolutionReason: String(meta?.resolutionReason || meta?.reason || '').trim(),
+        baseProbability: meta?.baseProbability == null ? null : Number(meta.baseProbability),
+        resistanceMultiplier: meta?.resistanceMultiplier == null
+          ? null
+          : Number(meta.resistanceMultiplier),
+        finalProbability: meta?.finalProbability == null ? null : Number(meta.finalProbability),
+        probabilityPassed: meta?.probabilityPassed === true
+          ? true
+          : meta?.probabilityPassed === false
+            ? false
+            : null,
         rawDamage: Number(meta?.rawDamage || 0),
         rawDamageTotal: Number(meta?.rawDamageTotal || 0),
         incomingDamage: Number(meta?.incomingDamage || 0),
@@ -157341,7 +158882,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           const hostileTarget = event => {
             const target = targetFor(event);
             const targetSide = target
-              ? inferUnitSide(combatData, previewRuntime.unitName(target))
+              ? inferUnitSide(combatData, target)
               : String(event?.targetSide || '').trim();
             return target && targetSide && targetSide !== sourceSide
               ? target
@@ -157415,7 +158956,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           if (!reactor || !incomingSource || !declaration || !reaction) return;
           const sourceActorId = previewRuntime.unitId(reactor);
           const incomingSourceActorId = previewRuntime.unitId(incomingSource);
-          const sourceSide = inferUnitSide(combatData, previewRuntime.unitName(reactor));
+          const sourceSide = inferUnitSide(combatData, reactor);
           const actionEvent = reaction?.event || {};
           const actionKind = String(declaration?.actionKind || reaction?.actionKind || '').trim().toUpperCase();
           const actionName = normalizeActionDisplayName(
@@ -157443,7 +158984,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             sourceSide,
           );
           listPrimaryCombatUnits(combatData).forEach(observer => {
-            const observerSide = inferUnitSide(combatData, previewRuntime.unitName(observer));
+            const observerSide = inferUnitSide(combatData, observer);
             if (!observerSide || observerSide === sourceSide) return;
             const observerId = previewRuntime.unitId(observer);
             const previous = beliefByActor.get(observerId) || initialBeliefFor(observerId);
@@ -157587,7 +159128,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           const sourceActor = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, actionEvent.actorName));
           if (!sourceActor) return;
           const sourceActorId = previewRuntime.unitId(sourceActor);
-          const sourceSide = inferUnitSide(combatData, previewRuntime.unitName(sourceActor));
+          const sourceSide = inferUnitSide(combatData, sourceActor);
           const settledActionName = normalizeActionDisplayName(actionEvent.actionName || actionEvent.actionType || '行动');
           if (settledActionRole === 'ASSIST' && !decisionResult?.selected?.predictedOutcomeEvidence) {
             const host = sourceActor?.__宿主 && previewRuntime.isBattleCapable(sourceActor.__宿主)
@@ -157675,7 +159216,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               isUnitIdentityMatch(unit, event?.targetId || event?.targetName)
             );
             if (!target) return sum;
-            const targetSide = inferUnitSide(combatData, previewRuntime.unitName(target));
+            const targetSide = inferUnitSide(combatData, target);
             const hostileTarget = !!targetSide && targetSide !== sourceSide;
             if (eventKind === 'hit_result' && hostileTarget) {
               const appliedDamage = Math.max(0, Number(event?.appliedDamage || meta?.appliedDamage || 0));
@@ -157723,7 +159264,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               isUnitIdentityMatch(unit, event?.targetId || event?.targetName)
             );
             if (!target) return sum;
-            const targetSide = inferUnitSide(combatData, previewRuntime.unitName(target));
+            const targetSide = inferUnitSide(combatData, target);
             if (!targetSide || targetSide === sourceSide) return sum;
             const appliedDamage = Math.max(0, Number(event?.appliedDamage || meta?.appliedDamage || 0));
             return sum + 100 * appliedDamage / Math.max(1, previewRuntime.readHpMax(target));
@@ -157824,7 +159365,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             const predicted = predictedDamageByTarget.get(key);
             if (!predicted || !(predicted.predictedValuePercent > 0) || actual.hitObserved !== true) return;
             listPrimaryCombatUnits(combatData).forEach(observer => {
-              const observerSide = inferUnitSide(combatData, previewRuntime.unitName(observer));
+              const observerSide = inferUnitSide(combatData, observer);
               if (!observerSide || observerSide !== sourceSide) return;
               const observerId = previewRuntime.unitId(observer);
               const previous = beliefByActor.get(observerId) || initialBeliefFor(observerId);
@@ -157856,7 +159397,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             });
           });
           listPrimaryCombatUnits(combatData).forEach(observer => {
-            const observerSide = inferUnitSide(combatData, previewRuntime.unitName(observer));
+            const observerSide = inferUnitSide(combatData, observer);
             if (!observerSide || observerSide === sourceSide) return;
             const observerId = previewRuntime.unitId(observer);
             const previous = beliefByActor.get(observerId) || initialBeliefFor(observerId);
@@ -157900,7 +159441,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           let behaviorLayerSemanticHashes = {};
           let evaluationSessionObservation = {};
           const actorId = previewRuntime.unitId(actor);
-          const actorSide = inferUnitSide(combatData, previewRuntime.unitName(actor));
+          const actorSide = inferUnitSide(combatData, actor);
           const pendingNaturalUnits = [...listPrimaryCombatUnits(combatData), ...listSummonCombatUnits(combatData)]
             .filter(unit => {
               const opportunity = unit?.__battleRuntime?.naturalOpportunity;
@@ -157910,14 +159451,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             });
           const pendingNaturalActorIds = [...new Set(pendingNaturalUnits.map(previewRuntime.unitId).filter(Boolean))];
           const pendingHostileActorIds = [...new Set(pendingNaturalUnits
-            .filter(unit => inferUnitSide(combatData, previewRuntime.unitName(unit)) !== actorSide)
+            .filter(unit => inferUnitSide(combatData, unit) !== actorSide)
             .map(previewRuntime.unitId)
             .filter(Boolean))];
           const futureHostileResponseAllowed = roundOffset < roundLimit || queue.hasPending(pendingNode => {
             if (String(pendingNode?.nodeKind || 'ACTIVE').trim() !== 'ACTIVE') return false;
             const pendingActor = pendingNode?.actorEntry?.char;
             if (!pendingActor || !structuredActorCanAct(pendingActor, pendingNode.actionRole)) return false;
-            const pendingSide = inferUnitSide(combatData, previewRuntime.unitName(pendingActor));
+            const pendingSide = inferUnitSide(combatData, pendingActor);
             return !!pendingSide && pendingSide !== actorSide;
           });
           const queuedOpportunitySequence = Math.max(0, Number(node?.opportunitySequence || 0));
@@ -158437,14 +159978,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           candidates.forEach(summon => {
             const runtime = ensureSummonWindowRuntime(summon);
             if (!runtime || Math.max(0, Number(runtime.remainingWindows || 0)) <= 0) return;
-            const summonSide = inferUnitSide(
-              combatData,
-              previewRuntime.unitName(summon),
-            ) || node?.actorEntry?.side;
+            const summonSide = inferUnitSide(combatData, summon) || node?.actorEntry?.side;
             const validTargetIds = listPrimaryCombatUnits(combatData)
               .filter(unit =>
                 previewRuntime.isBattleCapable(unit) &&
-                inferUnitSide(combatData, previewRuntime.unitName(unit)) !== summonSide
+                inferUnitSide(combatData, unit) !== summonSide
               )
               .map(previewRuntime.unitId)
               .filter(Boolean);
@@ -158552,7 +160090,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             node.actorEntry = {
               ...(node.actorEntry || {}),
               char: formalActor,
-              side: inferUnitSide(combatData, previewRuntime.unitName(formalActor)) || node?.actorEntry?.side,
+              side: inferUnitSide(combatData, formalActor) || node?.actorEntry?.side,
             };
             queue.recordTrace('ACTOR_CANONICALIZED', node, {
               actorId,
@@ -158602,9 +160140,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           }
           if (!actor || !actorPresentInBattle || !structuredActorCanAct(actor, node.actionRole)) {
             const actorName = previewRuntime.unitName(actor) || '未知单位';
+            const controlSource = structuredControlSource(combatData, actor, node.actionRole);
             if (node.nodeKind === 'ACTIVE' && actor?.蓄力技能) {
               const interruptedCharge = actor.蓄力技能;
-              const controlSource = structuredControlSource(combatData, actor, node.actionRole);
               actor.蓄力技能 = null;
               writeLedgerEvent(combatData, {
                 eventKind: 'charge_interrupt', round: Number(combatData.回合 || 0), actorName, targetName: actorName,
@@ -158666,6 +160204,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               opportunityId: String(node.opportunityId || node.grantId || '').trim(),
               opportunitySequence: Math.max(0, Number(node.opportunitySequence || 0)),
               grantId: String(node.grantId || '').trim(),
+              applicationId: String(controlSource?.applicationId || '').trim(),
+              sourceEffectId: String(controlSource?.sourceEffectId || '').trim(),
               result: 'cancelled', resultState: 'FAILURE',
               ruleCode: node.nodeKind === 'REACTION' ? 'REACTION_ACTOR_UNAVAILABLE' : node.nodeKind === 'CONTINUATION' ? 'CONTINUATION_ACTOR_UNAVAILABLE' : 'NATURAL_ACTION_OPPORTUNITY_CANCELLED',
               meta: {
@@ -158675,6 +160215,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 reasonCode: controlledStateName ? 'CONTROLLED_BEFORE_OPPORTUNITY' : (incapacityReason || 'UNAVAILABLE'),
                 reasonText: incapacityReasonText,
                 stateName: controlledStateName,
+                controlApplicationId: String(controlSource?.applicationId || '').trim(),
+                controlSourceActionId: String(controlSource?.sourceActionId || '').trim(),
+                controlSourceEventId: String(controlSource?.sourceEventId || '').trim(),
+                controlSourceEffectId: String(controlSource?.sourceEffectId || '').trim(),
               },
             });
             if (controlledStateName) {
@@ -158699,6 +160243,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 continue;
               }
               const actorId = previewRuntime.unitId(actor);
+              const reactionTargetId = String(node?.state?.targetId || actorId).trim();
+              const summonGuard = node?.state?.summonGuard === true && !!actor?.召唤键;
               const sourceActorId = previewRuntime.unitId(sourceActor);
               const preparedDefense = actor?.__battleRuntime?.activeDefenseStance || null;
               const sourceActionEvent = shared?.actionContext?.actionEvent;
@@ -158725,7 +160271,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 sourceFactIds: sourceFactIds.slice(),
                 sourceEventIds: sourceEventIds.slice(),
               };
-              const decisionResult = preparedDefense ? null : decideForNode(actor, node, {
+              const decisionResult = preparedDefense || summonGuard ? null : decideForNode(actor, node, {
                 role: 'REACTION',
                 imminentThreat: true,
                 sourceActorId,
@@ -158749,7 +160295,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               }
               const reactionDeclaration = preparedDefense
                 ? { actorId, actionKind: preparedDefense.actionKind, targetIds: [actorId] }
-                : cloneValue(decisionResult.selected.declaration);
+                : summonGuard
+                  ? { actorId, actionKind: 'DEFEND', targetIds: [actorId] }
+                  : cloneValue(decisionResult.selected.declaration);
               const reactionSettlementStartedAt = collectPerformanceBreakdown
                 ? performanceNow()
                 : 0;
@@ -158763,6 +160311,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 opportunitySequence: node.opportunitySequence,
                 grantId: node.grantId,
                 preparedDefense,
+                summonGuardHostId: summonGuard ? reactionTargetId : '',
+                summonGuardHostName: summonGuard ? previewRuntime.unitName(actor?.__宿主) : '',
+                summonKey: summonGuard ? String(actor?.召唤键 || '').trim() : '',
                 decisionCandidateId: String(decisionResult?.selected?.candidateId || '').trim(),
               });
               addPerformanceTime(
@@ -158796,14 +160347,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 declaration: reactionDeclaration,
                 reaction,
               });
-              shared.reactionByTarget[actorId] = reaction;
-              enqueueSummonAssists({
-                facts: reaction?.facts || [],
-                node,
-                sourceActionId: reaction?.event?.actionId || shared.actionContext.actionEvent.actionId,
-                host: actor,
-                decisionResult,
-              });
+              shared.reactionByTarget[reactionTargetId] = reaction;
+              if (summonGuard) {
+                consumeSummonWindow(combatData, actor, '护卫反应窗口耗尽', node.grantId);
+              } else {
+                enqueueSummonAssists({
+                  facts: reaction?.facts || [],
+                  node,
+                  sourceActionId: reaction?.event?.actionId || shared.actionContext.actionEvent.actionId,
+                  host: actor,
+                  decisionResult,
+                });
+              }
               queue.recordTrace('EXECUTED', node, {
                 actionId: shared.actionContext.actionEvent.actionId,
                 reactionEventId: String(reaction?.event?.eventId || '').trim(),
@@ -158941,7 +160496,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                   actorId: previewRuntime.unitId(actor),
                   actorName: previewRuntime.unitName(actor),
                   targetName: counterTargetName,
-                  actorSide: inferUnitSide(combatData, previewRuntime.unitName(actor)),
+                  actorSide: inferUnitSide(combatData, actor),
                   targetSide: String(
                     node?.state?.sourceActorSide ||
                     inferUnitSide(combatData, counterTargetName),
@@ -159002,7 +160557,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 });
                 if (!counterWindow?.opened) return;
                 queue.enqueue({
-                  actorEntry: { char: reactor, side: inferUnitSide(combatData, previewRuntime.unitName(reactor)) },
+                  actorEntry: { char: reactor, side: inferUnitSide(combatData, reactor) },
                   actorControl: 'AI',
                   actorTurnSequence: node.actorTurnSequence,
                   parentActionSequence: node.parentActionSequence || node.actionSequence,
@@ -159017,7 +160572,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                   state: {
                     sourceActorId: previewRuntime.unitId(actor),
                     sourceActorName: previewRuntime.unitName(actor),
-                    sourceActorSide: inferUnitSide(combatData, previewRuntime.unitName(actor)),
+                    sourceActorSide: inferUnitSide(combatData, actor),
                     parentActionEvent: settlement.actionEvent,
                     reactionEvent: reaction?.event || null,
                     counterWindowEvent: counterWindow.event,
@@ -159071,10 +160626,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                   eventKind: 'charge_progress', round: Number(combatData.回合 || 0), actorName: previewRuntime.unitName(actor),
                   targetName: String(storedCharge?.targetName || storedCharge?.target_name || storedCharge?.targetIds?.[0] || '').trim(),
                   targetIds: Array.isArray(storedCharge?.targetIds) ? storedCharge.targetIds : [],
-                   actionName: normalizeActionDisplayName(storedCharge?.skill?.name || storedCharge?.skill?.魂技名 || storedCharge?.actionName || '蓄力行动'),
-                   actionType: 'charge_progress', actorControl: node.actorControl, actionRole: node.actionRole,
-                   sourceActionId: String(storedCharge?.sourceActionId || '').trim(),
-                   opportunityId: node.opportunityId,
+                 actionName: normalizeActionDisplayName(storedCharge?.skill?.name || storedCharge?.skill?.魂技名 || storedCharge?.actionName || '蓄力行动'),
+                 actionType: 'charge_progress', actorControl: node.actorControl, actionRole: node.actionRole,
+                 actionId: String(storedCharge?.sourceActionId || '').trim(),
+                 sourceActionId: String(storedCharge?.sourceActionId || '').trim(),
+                 parentNodeId: String(storedCharge?.sourceNodeId || '').trim(),
+                 sourceNodeId: String(storedCharge?.sourceNodeId || '').trim(),
+                 opportunityId: node.opportunityId,
                    opportunitySequence: node.opportunitySequence,
                    grantId: node.grantId,
                    result: 'charging', resultState: 'PENDING', ruleCode: 'CHARGE_PROGRESS',
@@ -159122,7 +160680,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               playerLockedActionConsumed = true;
               node.actorControl = 'PLAYER_LOCKED';
             } else if (node.actionRole === 'ASSIST' && actor.召唤键) {
-              const actorSide = inferUnitSide(combatData, previewRuntime.unitName(actor));
+              const actorSide = inferUnitSide(combatData, actor);
               const host = listPrimaryCombatUnits(combatData).find(unit =>
                 isUnitIdentityMatch(unit, node?.state?.hostActorId || actor?.__宿主)
               ) || actor?.__宿主;
@@ -159164,7 +160722,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               );
               const hostileTargets = listPrimaryCombatUnits(combatData).filter(unit =>
                 previewRuntime.isBattleCapable(unit) &&
-                inferUnitSide(combatData, previewRuntime.unitName(unit)) !== actorSide &&
+                inferUnitSide(combatData, unit) !== actorSide &&
                 (
                   !grantedTargetIds.size ||
                   grantedTargetIds.has(previewRuntime.unitId(unit))
@@ -159277,7 +160835,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                   actorId: previewRuntime.unitId(actor),
                   actorName: previewRuntime.unitName(actor),
                   targetName: sourceActorName,
-                  actorSide: inferUnitSide(combatData, previewRuntime.unitName(actor)),
+                  actorSide: inferUnitSide(combatData, actor),
                   targetSide: sourceActorSide,
                   targetIds: [sourceActorId].filter(Boolean),
                   // The decline is the authoritative action name used by the
@@ -159379,6 +160937,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             const castTime = Math.max(0, Number(declaration?.skill?.前摇 ?? declaration?.skill?.cast_time ?? 0));
             if (!storedCharge && node.nodeKind === 'ACTIVE' && castTime > naturalActionBudget) {
               const actionName = normalizeActionDisplayName(declaration?.skill?.name || declaration?.skill?.魂技名 || declaration?.actionKind || '蓄力行动');
+              const chargeActionId = nextRuntimeId('battle-action');
               const remainingOpportunityCount = Math.ceil(
                 (castTime - naturalActionBudget) / Math.max(1, naturalActionBudget),
               );
@@ -159386,6 +160945,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 eventKind: 'charge_start', round: Number(combatData.回合 || 0), actorName: previewRuntime.unitName(actor),
                 targetName: String(declaration?.targetIds?.[0] || '').trim(), targetIds: declaration?.targetIds || [],
                 actionName, actionType: 'charge_start', actorControl: node.actorControl, actionRole: node.actionRole,
+                actionId: chargeActionId,
+                chainNodeId: chargeActionId,
                 result: 'charging', resultState: 'PENDING', ruleCode: 'CHARGE_STARTED',
                  opportunityId: node.opportunityId,
                  opportunitySequence: node.opportunitySequence,
@@ -159425,6 +160986,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 targetIds: cloneValue(declaration.targetIds || []),
                 actionName,
                 sourceActionId: chargeStart.actionId || chargeStart.eventId || '',
+                sourceNodeId: chargeStart.chainNodeId || '',
               };
               queue.recordTrace('EXECUTED', node, {
                 actionId: chargeStart.actionId,
@@ -159442,14 +161004,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               declaration,
               actionRole: node.actionRole,
               actorControl: node.actorControl,
-              sourceActionId: String(parentActionEvent?.actionId || node.sourceActionId || '').trim(),
+              sourceActionId: String(storedCharge?.sourceActionId || parentActionEvent?.actionId || node.sourceActionId || '').trim(),
               opportunityId: node.opportunityId,
               opportunitySequence: node.opportunitySequence,
               grantId: node.grantId,
               decisionCandidateId: String(decisionResult?.selected?.candidateId || '').trim(),
-              parentNodeId: String(node?.state?.counterWindowEvent?.chainNodeId || node?.state?.reactionEvent?.chainNodeId || parentActionEvent?.chainNodeId || '').trim(),
+              parentNodeId: String(storedCharge?.sourceNodeId || node?.state?.counterWindowEvent?.chainNodeId || node?.state?.reactionEvent?.chainNodeId || parentActionEvent?.chainNodeId || '').trim(),
               reactionNodeId: String(node?.state?.reactionEvent?.chainNodeId || '').trim(),
-              chainType: node.nodeKind === 'CONTINUATION' ? 'FOLLOW_UP' : '',
+              chainType: storedCharge ? 'CHARGE_RELEASE' : node.nodeKind === 'CONTINUATION' ? 'FOLLOW_UP' : '',
             });
             if (
               naturalOpportunity &&
@@ -159465,8 +161027,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             const hostileTargets = node.nodeKind === 'COUNTER' || structuredDamageEffects(resolvedDeclaration).length === 0
               ? []
               : resolveStructuredTargets(combatData, actor, resolvedDeclaration, structuredDamageEffects(resolvedDeclaration)[0])
-                  .filter(target => inferUnitSide(combatData, previewRuntime.unitName(target)) !== inferUnitSide(combatData, previewRuntime.unitName(actor)));
+                  .filter(target => inferUnitSide(combatData, target) !== inferUnitSide(combatData, actor));
             hostileTargets.forEach(target => {
+              const guardSummon = listSummonCombatUnits(combatData)
+                .filter(unit =>
+                  String(unit?.行动模式 || '').trim() === '护卫' &&
+                  previewRuntime.isBattleCapable(unit) &&
+                  isUnitIdentityMatch(unit?.__宿主, target) &&
+                  Math.max(0, Number(ensureSummonWindowRuntime(unit)?.remainingWindows || 0)) > 0
+                )
+                .sort((left, right) =>
+                  Number(right?.def || right?.final?.def || 0) - Number(left?.def || left?.final?.def || 0) ||
+                  String(previewRuntime.unitId(left) || '').localeCompare(String(previewRuntime.unitId(right) || ''))
+                )[0] || null;
+              const reactor = guardSummon || target;
               const reactionOpportunity = consumeStructuredReactionOpportunity(
                 combatData,
                 target,
@@ -159500,7 +161074,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 return;
               }
               queue.enqueue({
-                actorEntry: { char: target, side: inferUnitSide(combatData, previewRuntime.unitName(target)) },
+                actorEntry: { char: reactor, side: inferUnitSide(combatData, reactor) },
                 actorControl: 'AI',
                 actorTurnSequence: node.actorTurnSequence,
                 parentActionSequence: node.actionSequence,
@@ -159513,7 +161087,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 sourceActorId: previewRuntime.unitId(actor),
                 grantType: 'DEFEND_WINDOW',
                 validTargetIds: [previewRuntime.unitId(actor)].filter(Boolean),
-                state: { shared, targetId: previewRuntime.unitId(target) },
+                state: { shared, targetId: previewRuntime.unitId(target), summonGuard: !!guardSummon },
               });
             });
             queue.enqueue({
@@ -159530,7 +161104,33 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             });
             queue.recordTrace('EXECUTED', node, { actionId: actionContext.actionEvent.actionId, result: 'declared' });
           } catch (error) {
-            queue.fail('STRUCTURED_SHADOW_NODE_FAILED', node, { message: String(error?.message || error) });
+            const actorName = previewRuntime.unitName(node?.actorEntry?.char);
+            const actorId = previewRuntime.unitId(node?.actorEntry?.char);
+            const nodeKind = String(node?.nodeKind || '').trim();
+            const actionRole = String(node?.actionRole || '').trim();
+            const grantType = String(node?.grantType || '').trim();
+            const sourceActionId = String(node?.sourceActionId || '').trim();
+            const validTargetIds = Array.isArray(node?.validTargetIds)
+              ? node.validTargetIds.map(value => String(value || '').trim()).filter(Boolean)
+              : [];
+            queue.fail('STRUCTURED_SHADOW_NODE_FAILED', node, {
+              message: [
+                String(error?.message || error),
+                `node=${nodeKind || 'UNKNOWN'}`,
+                `role=${actionRole || 'UNKNOWN'}`,
+                `actor=${actorId || actorName || 'UNKNOWN'}`,
+                `grant=${grantType || 'UNKNOWN'}`,
+                `source=${sourceActionId || 'NONE'}`,
+                `targets=${validTargetIds.join(',') || 'UNRESTRICTED'}`,
+              ].join('|'),
+              actorId,
+              actorName,
+              nodeKind,
+              actionRole,
+              grantType,
+              sourceActionId,
+              validTargetIds,
+            });
           }
           terminal = evaluateBattleTerminal({ combatData, currentRound: combatData.回合, rounds: roundOffset, roundCompleted: false }, {});
           if (terminal?.terminal === true) {
@@ -162252,28 +163852,37 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       });
     });
     eventLedger.filter(event => String(event?.eventKind || '').trim() === 'summon_end' && String(event?.ruleCode || event?.reasonCode || '').trim() === 'SUMMON_WINDOW_EXHAUSTED').forEach(endEvent => {
+      const summonKey = String(endEvent?.actorId || endEvent?.meta?.summonKey || '').trim();
       const summonName = String(endEvent?.actorName || endEvent?.meta?.summonName || '').trim();
       const endRound = Number(endEvent?.round || 0);
       const createEvent = [...eventLedger].reverse().find(event =>
         String(event?.eventKind || '').trim() === 'summon_create' &&
-        String(event?.meta?.summonName || '').trim() === summonName &&
+        (
+          (!!summonKey && [event?.targetId, event?.meta?.summonKey].some(value => String(value || '').trim() === summonKey)) ||
+          String(event?.meta?.summonName || '').trim() === summonName
+        ) &&
         Number(event?.round || 0) <= endRound
       );
       const createRound = Number(createEvent?.round || 0);
       const actionEvent = eventLedger.find(event => {
-        if (String(event?.actorName || event?.meta?.summonName || '').trim() !== summonName) return false;
+        const sameSummon =
+          (!!summonKey && [event?.actorId, event?.targetId, event?.meta?.summonKey].some(value => String(value || '').trim() === summonKey)) ||
+          String(event?.actorName || event?.meta?.summonName || '').trim() === summonName;
+        if (!sameSummon) return false;
         const round = Number(event?.round || 0);
         if (round < createRound || round > endRound) return false;
         const kind = String(event?.eventKind || '').trim();
         const actionType = String(event?.actionType || '').trim();
+        const role = String(event?.actionRole || '').trim();
         return (kind === 'action_start' && (
           /summon_assist|召唤自主行动/.test(actionType) ||
-          String(event?.actionRole || '').trim() === 'ASSIST'
+          role === 'ASSIST'
         )) ||
           kind === 'summon_guard' ||
+          (role === 'REACTION' && ['defend', 'dodge', 'counter'].includes(kind)) ||
           (kind === 'failed_action' && /summon/.test(actionType));
       });
-      if (!actionEvent) pushFatal('SUMMON_WINDOW_MISSING', { summonName, createEventId: createEvent?.eventId || '', endEventId: endEvent?.eventId || '' });
+      if (!actionEvent) pushFatal('SUMMON_WINDOW_MISSING', { summonName, summonKey, createEventId: createEvent?.eventId || '', endEventId: endEvent?.eventId || '' });
     });
 
     const terminalByActionTarget = new Map();
@@ -162436,13 +164045,42 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       }
       if (['dodge', 'defend', 'pass'].includes(kind) && role === 'REACTION') {
         const sourceActorName = String(sourceAction?.actorName || '').trim();
+        const summonGuardHostId = String(event?.meta?.summonGuardHostId || '').trim();
+        const summonGuardHostName = String(event?.meta?.summonGuardHostName || '').trim();
+        const summonKey = String(event?.meta?.summonKey || '').trim();
+        const summonCreate = summonKey && summonGuardHostId && summonGuardHostName
+          ? [...eventLedger].reverse().find(candidate =>
+              String(candidate?.eventKind || '').trim() === 'summon_create' &&
+              Number(candidate?.sequence || 0) < Number(event?.sequence || 0) &&
+              String(candidate?.meta?.summonMode || candidate?.summonMode || '').trim() === '护卫' &&
+              [candidate?.targetId, candidate?.meta?.summonKey].some(value => String(value || '').trim() === summonKey) &&
+              [candidate?.actorId, candidate?.actorName].some(value =>
+                isSameReportName(value || '', summonGuardHostId) ||
+                isSameReportName(value || '', summonGuardHostName) ||
+                isSameReportName(combatUnitNameById.get(String(value || '').trim()) || '', summonGuardHostName)
+              )
+            )
+          : null;
+        const summonEndedBeforeReaction = summonCreate && eventLedger.some(candidate =>
+          String(candidate?.eventKind || '').trim() === 'summon_end' &&
+          Number(candidate?.sequence || 0) > Number(summonCreate?.sequence || 0) &&
+          Number(candidate?.sequence || 0) < Number(event?.sequence || 0) &&
+          [candidate?.actorId, candidate?.meta?.summonKey].some(value => String(value || '').trim() === summonKey)
+        );
+        const validSummonGuard = !!(
+          summonCreate &&
+          !summonEndedBeforeReaction &&
+          String(event?.actorId || '').trim() === summonKey &&
+          sourceTargetsActor(sourceAction, summonGuardHostId) &&
+          sourceTargetsActor(sourceAction, summonGuardHostName)
+        );
         if (
           !sourceAction ||
           !actorName ||
           !sourceActorName ||
           isSameReportName(actorName, sourceActorName) ||
           !isSameReportName(targetName, sourceActorName) ||
-          !sourceTargetsActor(sourceAction, actorName)
+          (!sourceTargetsActor(sourceAction, actorName) && !validSummonGuard)
         ) {
           pushFatal('REACTION_SELF_SOURCE_INVALID', {
             eventId: event?.eventId || '',

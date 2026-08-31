@@ -17,6 +17,7 @@
   const MAX_R8_TERMINAL_IDENTITY_OBSERVATIONS = 16384;
   const MAX_R8_TERMINAL_DISTRIBUTION_CACHE_ENTRIES = 64;
   const MAX_R8_TERMINAL_ATTRIBUTION_CACHE_ENTRIES = 64;
+  const DECISION_PREVIEW_NODE_LIMIT = 64;
   const compareUtf16 = (left, right) => {
     const leftValue = String(left || '');
     const rightValue = String(right || '');
@@ -1750,6 +1751,17 @@
         状态效果: states,
         技能列表: [],
       };
+      const observedResponses = (Array.isArray(beliefUnit?.knownResponses)
+        ? beliefUnit.knownResponses
+        : []).filter(response => {
+        const actionKind = String(response?.declaration?.actionKind || '').trim().toUpperCase();
+        if (hasStateFlag(projected, 'silence') && actionKind === 'RELEASE_SKILL') return false;
+        if (hasStateFlag(projected, 'disarm') && actionKind === 'BASIC_ATTACK') return false;
+        return true;
+      });
+      projected.observed_response_capacity = hasActionCancellation(projected)
+        ? 0
+        : perceivedEnemyBaseValue({ ...beliefUnit, knownResponses: observedResponses }, sourceActor);
       if (publicUnitRole === 'SUMMON') projected.单位性质 = '召唤物';
       projected.属性 = {
         等级: perceivedLevel,
@@ -2946,6 +2958,19 @@
         'resourceLock',
         'lockedResource',
         'lockedRatio',
+        'transferMode',
+        'transferRole',
+        'transferSourceId',
+        'transferReceiverId',
+        'transferGroupKey',
+        'conversionRatio',
+        'requestedAmount',
+        'sourcePaid',
+        'convertedAmount',
+        'receiverGain',
+        'overflowLoss',
+        'poolTotalBefore',
+        'poolTotalAfter',
         'productId',
         'quantity',
         'useEffectCount',
@@ -3095,10 +3120,27 @@
     return result;
   }
 
-  function deferredBattlePrototype(skill = {}) {
+  const battlePrototypeStatusCache = new Map();
+  function battlePrototypeStatus(prototype = '') {
+    const name = String(prototype || '').trim();
+    if (!name) return '';
+    if (battlePrototypeStatusCache.has(name)) return battlePrototypeStatusCache.get(name);
+    const status = String(
+      root.__LWCS_BEHAVIOR_DECISION_PIPELINE__
+        ?.prototypeAdapter
+        ?.registry?.()
+        ?.statusByPrototype?.[name] || '',
+    ).trim();
+    battlePrototypeStatusCache.set(name, status);
+    return status;
+  }
+
+  function nonExecutableBattlePrototype(skill = {}) {
     return preview.collectEffects(skill)
       .map(effect => String(effect?.原型 || '').trim())
-      .find(prototype => prototype === '复制执行' || prototype === '时光回溯') || '';
+      .find(prototype => ['DEFERRED_EXPLICIT', 'OUT_OF_BATTLE_SCOPE'].includes(
+        battlePrototypeStatus(prototype),
+      )) || '';
   }
 
   const baseActionRelevantSkillCache = new WeakMap();
@@ -3464,7 +3506,7 @@
       item?.来源,
     ].map(value => String(value || '').trim()).filter(Boolean));
     for (const skill of collectSkills(actor)) {
-      if (deferredBattlePrototype(skill)) continue;
+      if (nonExecutableBattlePrototype(skill)) continue;
       const creation = creationProfile(skill, actor, worldSnapshot);
       if (!creation?.productId || !creation.useEffects?.length) continue;
       const skillIds = [
@@ -3733,7 +3775,7 @@
             unit,
             applyEquipmentPassivesToSkill(unit, sourceSkill),
           ).skill;
-      if (deferredBattlePrototype(skill)) return null;
+      if (nonExecutableBattlePrototype(skill)) return null;
       return Object.freeze({
         sourceSkill,
         index,
@@ -3961,6 +4003,43 @@
     return markCapacityDeltaSnapshot(restored, targetSnapshot, [actorId]);
   }
 
+  function snapshotWithUnitShieldsFrom(targetSnapshot = {}, sourceSnapshot = {}, unitIds = []) {
+    const wantedIds = new Set((Array.isArray(unitIds) ? unitIds : [unitIds])
+      .map(value => String(value || '').trim())
+      .filter(Boolean));
+    if (!wantedIds.size) return targetSnapshot;
+    const restored = mapWorldUnits(targetSnapshot, unit => {
+      const unitId = preview.unitId(unit);
+      if (!wantedIds.has(unitId)) return unit;
+      const sourceUnit = findUnitInWorld(sourceSnapshot, unitId);
+      if (!sourceUnit) return unit;
+      const targetStates = cloneValue(unit?.状态效果 || {});
+      const sourceStates = cloneValue(sourceUnit?.状态效果 || {});
+      Object.entries(targetStates).forEach(([key, state]) => {
+        if (!(Number(state?.shield_value || 0) > 0)) return;
+        if (Number(sourceStates?.[key]?.shield_value || 0) > 0) {
+          targetStates[key] = sourceStates[key];
+        } else {
+          delete targetStates[key];
+        }
+      });
+      Object.entries(sourceStates).forEach(([key, state]) => {
+        if (Number(state?.shield_value || 0) > 0 && !targetStates[key]) {
+          targetStates[key] = state;
+        }
+      });
+      const next = { ...unit, 状态效果: targetStates };
+      const sourceDirectShield = Math.max(0, Number(
+        sourceUnit?.shield ?? sourceUnit?.护盾 ?? sourceUnit?.护盾值 ?? 0,
+      ));
+      if ('shield' in unit || 'shield' in sourceUnit) next.shield = sourceDirectShield;
+      if ('护盾' in unit || '护盾' in sourceUnit) next.护盾 = sourceDirectShield;
+      if ('护盾值' in unit || '护盾值' in sourceUnit) next.护盾值 = sourceDirectShield;
+      return next;
+    });
+    return markCapacityDeltaSnapshot(restored, targetSnapshot, [...wantedIds]);
+  }
+
   function r8ResourceNeutralProjectedWorld(
     baselineWorld = {},
     projectedWorld = {},
@@ -4058,7 +4137,11 @@
     const 增益语义 = 读取技能增益语义助手();
     const effects = Array.isArray(skill?._效果数组) ? skill._效果数组 : [];
     const targets = effects.map(effect => String(effect?.目标 || '').trim()).filter(Boolean);
-    if (!targets.length || targets.every(target => target === '自身')) {
+    const externalResourceTransfer = nestedSkillEffects(skill).some(effect =>
+      String(effect?.原型 || '').trim() === '资源转移' &&
+      String(effect?.目标 || '').trim() !== '自身'
+    );
+    if ((!targets.length && !externalResourceTransfer) || (targets.length && targets.every(target => target === '自身'))) {
       targetProfileCache.set(skill, 'SELF');
       return 'SELF';
     }
@@ -4068,6 +4151,7 @@
       if (prototype === '伤害结算' || prototype === '资源锁定' || prototype === '机制抹消') return true;
       if (prototype === '护盾变化') return String(effect?.护盾模式 || '').trim() !== '正向护盾';
       if (prototype === '资源变化') return Number.parseFloat(String(effect?.数值 || '0')) < 0;
+      if (prototype === '资源转移') return String(effect?.资源转移方式 || '').trim() === '吞噬';
       if (prototype === '结算修正') return !增益语义.结算修正是否增益语义_V1(effect);
       if (prototype === '判定修正') return !增益语义.判定修正是否增益语义_V1(effect);
       if (prototype === '状态施加') return !preview.effectTargetsAllies(effect);
@@ -4080,6 +4164,9 @@
       if (['状态移除', '规则防御', '机制授予'].includes(prototype)) return true;
       if (/友方|己方|队友|自身/.test(target)) return true;
       if (prototype === '资源变化') return Number.parseFloat(String(effect?.数值 || '0')) > 0 && !hostile;
+      if (prototype === '资源转移') {
+        return ['共享', '均分', '转移'].includes(String(effect?.资源转移方式 || '').trim()) && !hostile;
+      }
       if (prototype === '护盾变化') return String(effect?.护盾模式 || '').trim() === '正向护盾' && !hostile;
       if (prototype === '结算修正') return 增益语义.结算修正是否增益语义_V1(effect) && !hostile;
       if (prototype === '判定修正') return 增益语义.判定修正是否增益语义_V1(effect) && !hostile;
@@ -4116,6 +4203,13 @@
       });
     }
     return effects;
+  }
+
+  function requiresExternalResourceTransferTarget(skill = {}) {
+    return nestedSkillEffects(skill).some(effect =>
+      String(effect?.原型 || '').trim() === '资源转移' &&
+      String(effect?.目标 || '').trim() !== '自身'
+    );
   }
 
   function isImmediateReactionSkill(skill = {}, immediateBudget = 0) {
@@ -4288,6 +4382,46 @@
     return targets.map(unit => [preview.unitId(unit)]);
   }
 
+  function expandMixedScopePrimaryTargetSets(
+    skill = {},
+    profile = '',
+    targetSets = [],
+    worldSnapshot = {},
+    actor = {},
+  ) {
+    if (!['FRIENDLY_GROUP', 'HOSTILE_GROUP'].includes(profile)) return targetSets;
+    const groupTargetsAllies = profile === 'FRIENDLY_GROUP';
+    const singleTargetDirections = nestedSkillEffects(skill).flatMap(effect => {
+      const target = String(effect?.目标 || '').trim();
+      if (!target || /自身|融合伙伴|全场|群体/.test(target)) return [];
+      return [preview.effectTargetsAllies(effect)];
+    });
+    const hasSameSideSingle = singleTargetDirections.includes(groupTargetsAllies);
+    const hasOppositeSideSingle = singleTargetDirections.includes(!groupTargetsAllies);
+    if (!hasSameSideSingle && !hasOppositeSideSingle) return targetSets;
+    const actorSide = sideOf(worldSnapshot, actor);
+    const oppositePrimaryIds = hasOppositeSideSingle
+      ? (groupTargetsAllies ? aliveEntries(worldSnapshot) : livingEntries(worldSnapshot))
+          .filter(entry => groupTargetsAllies
+            ? entry.side !== actorSide
+            : entry.side === actorSide)
+          .map(entry => preview.unitId(entry.unit))
+      : [];
+    return targetSets.flatMap(targetSet => {
+      if (!Array.isArray(targetSet)) return [];
+      const sameSideVariants = hasSameSideSingle && targetSet.length > 1
+        ? targetSet.map((primaryTargetId, primaryIndex) => [
+            primaryTargetId,
+            ...targetSet.filter((_, index) => index !== primaryIndex),
+          ])
+        : [targetSet];
+      if (!oppositePrimaryIds.length) return sameSideVariants;
+      return sameSideVariants.flatMap(groupVariant =>
+        oppositePrimaryIds.map(primaryTargetId => [primaryTargetId, ...groupVariant])
+      );
+    });
+  }
+
   function defensiveDeclaration(actorId, actionKind) {
     return { actionId: `${actorId}:${actionKind}`, actorId, actionKind, targetIds: [actorId] };
   }
@@ -4350,7 +4484,7 @@
         /^SKILL_EFFECTS_/.test(rejectionCode) ? 'INVENTORY' :
         /^(?:COST_|RESOURCE_UNAFFORDABLE)/.test(rejectionCode) ? 'AFFORDABILITY' :
         /(?:TARGET|TAUNT)/.test(rejectionCode) ? 'TARGET' :
-        /^DEFER_MECHANICS_PROJECTION/.test(rejectionCode) ? 'PROJECTION' :
+        /^(?:DEFER_MECHANICS_PROJECTION|FORMAL_LIBRARY_OUT_OF_BATTLE_SCOPE)/.test(rejectionCode) ? 'PROJECTION' :
         /^(?:RULE_|CAST_|FUSION_|COUNTER_|REACTION_|RING_)/.test(rejectionCode) ? 'TRIGGER' :
         'LEGALITY';
       rejectionCollector({
@@ -4399,15 +4533,8 @@
         throw error;
       }
       const publicStates = {};
-      aliveEntries(worldSnapshot).forEach(entry => {
-        if (entry.side === sideOf(worldSnapshot, actor)) return;
-        const unitId = preview.unitId(entry.unit);
-        const hasTaunt = stateEntries(entry.unit).some(state => {
-          const name = String(state?.状态 || state?.状态名称 || '').trim();
-          return (name === '嘲讽' || name === 'taunt') &&
-            state?.隐藏 !== true && state?.hidden !== true;
-        });
-        if (hasTaunt) publicStates[unitId] = { 嘲讽: true };
+      visibleTauntSources(worldSnapshot, actor).forEach(entry => {
+        publicStates[entry.sourceId] = { 嘲讽: true };
       });
       const legality = pda.computeLegalityContext({ publicStates });
       return {
@@ -4599,14 +4726,17 @@
         });
         return;
       }
-      const deferredPrototype = deferredBattlePrototype(skill);
+      const deferredPrototype = nonExecutableBattlePrototype(skill);
       if (deferredPrototype) {
+        const rejectionPrefix = battlePrototypeStatus(deferredPrototype) === 'OUT_OF_BATTLE_SCOPE'
+          ? 'FORMAL_LIBRARY_OUT_OF_BATTLE_SCOPE'
+          : 'DEFER_MECHANICS_PROJECTION';
         recordRejected({
           actionKind: 'RELEASE_SKILL',
           sourceActionId: `${actorId}:skill:${sourceSkillId}`,
           targetIds: [],
           paymentMode: '',
-          rejectionCode: `DEFER_MECHANICS_PROJECTION:${deferredPrototype}`,
+          rejectionCode: `${rejectionPrefix}:${deferredPrototype}`,
           skillId: sourceSkillId,
           skillName: sourceSkillName,
         });
@@ -4729,7 +4859,12 @@
       const declarationCosts = costs;
       const creation = creationProfile(counterSkill, actor, worldSnapshot);
       const reactionSourceId = String(input.actionOpportunity?.sourceActorId || '').trim();
-      const legalTargetSets = enumerateTargetSets(worldSnapshot, actor, profile, input.beliefState);
+      const requiresExternalTransferTarget = requiresExternalResourceTransferTarget(counterSkill);
+      const legalTargetSets = enumerateTargetSets(worldSnapshot, actor, profile, input.beliefState)
+        .filter(targetSet =>
+          !requiresExternalTransferTarget ||
+          targetSet.some(targetId => String(targetId) !== actorId)
+        );
       const legalForcedTargetSet = legalTargetSets.find(targetSet =>
         targetSet.length === forcedTargetIds.length &&
         targetSet.every(targetId => forcedTargetIds.includes(targetId))
@@ -4744,6 +4879,15 @@
               targetSet.every(targetId => opportunityValidTargetIds.has(targetId))
             )
           : legalTargetSets;
+      if (!legalForcedTargetSet) {
+        targetSets = expandMixedScopePrimaryTargetSets(
+          counterSkill,
+          profile,
+          targetSets,
+          worldSnapshot,
+          actor,
+        );
+      }
       let targetRejectionRecorded = false;
       if (tauntActive && profile === 'HOSTILE_SINGLE' && !forcedSkill && !reactionOnly && !counterOnly && !assistOnly) {
         if (singleTaunterId && taunterAlive) {
@@ -4889,19 +5033,26 @@
         name: itemName,
         __物品名: String(item?.__物品名 || itemName).trim(),
         承载方式: String(item?.承载方式 || '物品使用').trim() || '物品使用',
-        _效果数组: usableEffects.map(effect => String(effect?.目标 || '').trim() === '自身'
-          ? { ...effect, 目标: '单体' }
-          : effect),
+        _效果数组: usableEffects,
       };
       const renewableCreation = replacementCreationProfile(item, actor, worldSnapshot, entry.id);
       const futureMaximumValue = renewableCreation
         ? 0
         : irreversibleAssetFutureMaximum(usableItem, actor, worldSnapshot);
       const itemProfile = targetProfile(usableItem);
-      const itemLegalTargetSets = enumerateTargetSets(worldSnapshot, actor, itemProfile, input.beliefState);
-      const itemTargetSets = tauntActive && itemProfile === 'HOSTILE_SINGLE'
+      const itemRequiresExternalTransferTarget = requiresExternalResourceTransferTarget(usableItem);
+      const itemLegalTargetSets = enumerateTargetSets(worldSnapshot, actor, itemProfile, input.beliefState)
+        .filter(targetSet =>
+          !itemRequiresExternalTransferTarget ||
+          targetSet.some(targetId => String(targetId) !== actorId)
+        );
+      const itemTargetSets = expandMixedScopePrimaryTargetSets(
+        usableItem,
+        itemProfile,
+        tauntActive && itemProfile === 'HOSTILE_SINGLE'
         ? (singleTaunterId && taunterAlive ? [[singleTaunterId]] : [])
-        : itemLegalTargetSets;
+        : itemLegalTargetSets,
+      );
       if (tauntActive && itemProfile === 'HOSTILE_SINGLE' && !(singleTaunterId && taunterAlive)) {
         itemLegalTargetSets.forEach(targetSet => {
           recordRejected({
@@ -4972,6 +5123,39 @@
       : states && typeof states === 'object' ? Object.values(states).filter(Boolean) : []);
     stateEntriesCache.set(unit, result);
     return result;
+  }
+
+  function visibleTauntSources(worldSnapshot = {}, actor = {}) {
+    const actorSide = sideOf(worldSnapshot, actor);
+    const hostileEntries = aliveEntries(worldSnapshot)
+      .filter(entry => entry.side !== actorSide);
+    const bySourceId = new Map();
+    stateEntries(actor).forEach(state => {
+      const name = String(state?.状态 || state?.状态名称 || '').trim().toLowerCase();
+      if (
+        (name !== '嘲讽' && name !== 'taunt') ||
+        state?.隐藏 === true ||
+        state?.hidden === true
+      ) return;
+      const sourceIdentity = String(state?.来源角色 || '').trim();
+      const sourceEntry = hostileEntries.find(entry =>
+        preview.unitId(entry.unit) === sourceIdentity ||
+        preview.unitName(entry.unit) === sourceIdentity
+      );
+      if (!sourceEntry) return;
+      const sourceId = preview.unitId(sourceEntry.unit);
+      const applicationProbability = clamp(Number(state?.__previewApplicationProbability ?? 1), 0, 1);
+      const existing = bySourceId.get(sourceId);
+      if (!existing || applicationProbability > existing.applicationProbability) {
+        bySourceId.set(sourceId, Object.freeze({
+          sourceId,
+          source: sourceEntry.unit,
+          state,
+          applicationProbability,
+        }));
+      }
+    });
+    return Object.freeze([...bySourceId.values()]);
   }
 
   function hasStateFlag(unit = {}, flag = '') {
@@ -5528,9 +5712,10 @@
       valuesByOpportunity = new Map();
       targetCache.set(target, valuesByOpportunity);
     }
-    const opportunityKey = options?.futureNaturalOpportunity === true
-      ? 'FUTURE_NATURAL'
-      : 'CURRENT';
+    const opportunityKey = [
+      options?.futureNaturalOpportunity === true ? 'FUTURE_NATURAL' : 'CURRENT',
+      options?.singleTargetOnly === true ? 'SINGLE_TARGET' : 'ALL_TARGETS',
+    ].join('|');
     if (valuesByOpportunity.has(opportunityKey)) {
       return valuesByOpportunity.get(opportunityKey);
     }
@@ -5550,11 +5735,35 @@
       .forEach(({ skill }) => {
         const profile = targetProfile(skill);
         if (!profile.startsWith('HOSTILE') && profile !== 'ANY_SINGLE') return;
+        if (options?.singleTargetOnly === true && !['HOSTILE_SINGLE', 'ANY_SINGLE'].includes(profile)) return;
         best = Math.max(best, cachedBaseActionValue(unit, target, 'RELEASE_SKILL', skill));
       });
     const result = Math.max(0, best);
     valuesByOpportunity.set(opportunityKey, result);
     return result;
+  }
+
+  function bestHostileGroupActionValue(worldSnapshot, unit) {
+    if (!preview.isAlive(unit) || hasActionCancellation(unit) || hasStateFlag(unit, 'silence')) return 0;
+    const targets = aliveEntries(worldSnapshot)
+      .filter(entry => entry.side !== sideOf(worldSnapshot, unit))
+      .map(entry => entry.unit);
+    if (!targets.length) return 0;
+    return affordablePreparedSkills(unit)
+      .filter(({ skill, startupCosts }) =>
+        targetProfile(skill) === 'HOSTILE_GROUP' &&
+        skillHasBaseActionValue(skill) &&
+        preview.resolveFusionAction(worldSnapshot, unit, skill, {
+          resourceCosts: startupCosts,
+          requirePendingOpportunity: false,
+        }).valid
+      )
+      .reduce((best, { skill }) => Math.max(
+        best,
+        targets.reduce((sum, target) =>
+          sum + cachedBaseActionValue(unit, target, 'RELEASE_SKILL', skill)
+        , 0),
+      ), 0);
   }
 
   function perceivedEnemyBaseValue(beliefUnit = {}, target = null) {
@@ -5736,10 +5945,34 @@
     );
   }
 
-  function availableShieldAbsorptionCap(worldSnapshot = {}, target = {}, perspectiveSide = '', beliefState = {}) {
+  function shieldCoverageWindows(skill = {}) {
+    return preview.collectEffects(skill).reduce((windows, effect) => {
+      const prototype = String(effect?.原型 || '').trim();
+      const shieldEffect = prototype === '护盾变化' || (
+        prototype === '状态施加' && /护盾|屏障|结界/.test(String(effect?.状态 || '').trim())
+      );
+      if (!shieldEffect) return windows;
+      const declared = Number(effect?.持续回合);
+      // Direct shield layers have no round-end expiry in the runtime, even when
+      // generation prose carries a duration. State-based shields still expire.
+      const duration = prototype === '护盾变化'
+        ? 3
+        : Number.isFinite(declared) && declared > 0 ? declared : 1;
+      return Math.max(windows, Math.max(1, Math.min(3, duration)));
+    }, 1);
+  }
+
+  function availableShieldAbsorptionCap(
+    worldSnapshot = {},
+    target = {},
+    perspectiveSide = '',
+    beliefState = {},
+    coverageWindows = 1,
+  ) {
     return Math.max(
       0,
-      expectedIncomingShieldDamage(worldSnapshot, target, perspectiveSide, beliefState) -
+      expectedIncomingShieldDamage(worldSnapshot, target, perspectiveSide, beliefState) *
+        Math.max(1, Math.min(3, Number(coverageWindows || 1))) -
       effectiveShieldValue(target),
     );
   }
@@ -5838,6 +6071,7 @@
                 actionKind,
                 skill,
                 shieldAbsorptionCap,
+                healingOpportunityCap: shieldAbsorptionCap,
               });
         const realizationFactor = targetRealizationFactor(beliefState, unit, targetId, damageEffects);
         realizationFactorByTarget[targetId] = realizationFactor;
@@ -6088,6 +6322,7 @@
         actionKind: action.actionKind,
         skill: action.skill,
         shieldAbsorptionCap: Math.max(0, Number(action?.shieldAbsorptionCapByTarget?.[targetId] || 0)),
+        healingOpportunityCap: Math.max(0, Number(action?.shieldAbsorptionCapByTarget?.[targetId] || 0)),
       })) * Math.max(0, Number(action?.realizationFactorByTarget?.[targetId] ?? 1));
       return potential * targetAvailability;
     });
@@ -6145,6 +6380,7 @@
         name: String(existing.name || creation.productId).trim() || creation.productId,
         名称: String(existing.名称 || creation.productId).trim() || creation.productId,
         物品名: String(existing.物品名 || creation.productId).trim() || creation.productId,
+        制作者ID: String(actorId || '').trim(),
         数量: Math.max(0, Number(existing.数量 || 0)) + quantity,
         使用效果: cloneValue(creation.useEffects),
       };
@@ -6721,10 +6957,38 @@
         const baseUnit = findUnitInWorld(valueContext.worldSnapshot, id);
         if (!baseUnit || baseUnit === unit) return false;
         return preview.stableHash([
+          preview.readHp(unit),
+          preview.readHpMax(unit),
+          preview.readShield(unit),
+          preview.readResource(unit, '魂力'),
+          preview.readResourceMax(unit, '魂力'),
+          preview.readResource(unit, '精神力'),
+          preview.readResourceMax(unit, '精神力'),
+          preview.readResource(unit, '体力'),
+          preview.readResourceMax(unit, '体力'),
           Number(unit?.str), Number(unit?.def), Number(unit?.agi), Number(unit?.men),
+          preview.readCombatStat(unit, 'str'),
+          preview.readCombatStat(unit, 'def'),
+          preview.readCombatStat(unit, 'agi'),
+          preview.readCombatStat(unit, 'men'),
+          preview.staminaScaleForUnit(unit),
           unit?.状态效果 || {},
         ]) !== preview.stableHash([
+          preview.readHp(baseUnit),
+          preview.readHpMax(baseUnit),
+          preview.readShield(baseUnit),
+          preview.readResource(baseUnit, '魂力'),
+          preview.readResourceMax(baseUnit, '魂力'),
+          preview.readResource(baseUnit, '精神力'),
+          preview.readResourceMax(baseUnit, '精神力'),
+          preview.readResource(baseUnit, '体力'),
+          preview.readResourceMax(baseUnit, '体力'),
           Number(baseUnit?.str), Number(baseUnit?.def), Number(baseUnit?.agi), Number(baseUnit?.men),
+          preview.readCombatStat(baseUnit, 'str'),
+          preview.readCombatStat(baseUnit, 'def'),
+          preview.readCombatStat(baseUnit, 'agi'),
+          preview.readCombatStat(baseUnit, 'men'),
+          preview.staminaScaleForUnit(baseUnit),
           baseUnit?.状态效果 || {},
         ]);
       };
@@ -6868,6 +7132,9 @@
     const buildFullProfile = () => {
       decisionMetrics.teamCapacityFullBuilds += 1;
       decisionMetrics.teamCapacityUnitsRecomputed += allSideEntries.length;
+      const mechanicsChangedIds = new Set(entries
+        .filter(entry => mechanicsChanged(entry.unit))
+        .map(entry => preview.unitId(entry.unit)));
       const survivalInputsById = Object.fromEntries(entries.map(entry => [
         preview.unitId(entry.unit),
         survivalProbabilityFor(entry.unit),
@@ -6886,6 +7153,7 @@
         unitCapacities: Object.freeze(unitCapacities),
         targetAvailabilityById: Object.freeze(targetAvailabilityById),
         survivalInputsById: Object.freeze(survivalInputsById),
+        mechanicsChangedIds: Object.freeze([...mechanicsChangedIds]),
         resourceThreatProfile,
       });
     };
@@ -6922,9 +7190,11 @@
           current: findUnitInWorld(worldSnapshot, id),
           parent: findUnitInWorld(parentSnapshot, id),
         })).filter(entry => entry.current && entry.parent);
-        const mechanicsChangedIds = new Set(changedUnits
-          .filter(entry => mechanicsChanged(entry.current))
-          .map(entry => entry.id));
+        const mechanicsChangedIds = new Set(parentProfile.mechanicsChangedIds || []);
+        changedUnits.forEach(entry => {
+          if (mechanicsChanged(entry.current)) mechanicsChangedIds.add(entry.id);
+          else mechanicsChangedIds.delete(entry.id);
+        });
         const opposingQualityChanged = changedUnits.some(entry =>
           sideOf(worldSnapshot, entry.current) !== side &&
           Math.abs(actionQualityMultiplier(entry.current) - actionQualityMultiplier(entry.parent)) > 1e-9
@@ -6979,6 +7249,7 @@
           unitCapacities: Object.freeze(unitCapacities),
           targetAvailabilityById: Object.freeze(targetAvailabilityById),
           survivalInputsById: Object.freeze(survivalInputsById),
+          mechanicsChangedIds: Object.freeze([...mechanicsChangedIds]),
           resourceThreatProfile,
         });
         byKey.set(cacheKey, result);
@@ -6999,6 +7270,55 @@
       nextValueContext,
       options,
     ).total;
+  }
+
+  function tauntTargetingUtilityNext(worldSnapshot = {}, perspectiveSide = '') {
+    const rows = [];
+    const utility = aliveEntries(worldSnapshot).reduce((total, entry) => {
+      const sources = visibleTauntSources(worldSnapshot, entry.unit);
+      if (sources.length !== 1) return total;
+      const [{ sourceId, source, state, applicationProbability }] = sources;
+      const sourceSide = sideOf(worldSnapshot, source);
+      if (!sourceSide || sourceSide === entry.side) return total;
+      const legalTargets = aliveEntries(worldSnapshot)
+        .filter(targetEntry => targetEntry.side !== entry.side)
+        .map(targetEntry => targetEntry.unit);
+      if (legalTargets.length < 2 || !legalTargets.some(target => preview.unitId(target) === sourceId)) return total;
+      const actionMultiplier = actionQualityMultiplier(entry.unit);
+      const groupFloor = bestHostileGroupActionValue(worldSnapshot, entry.unit) * actionMultiplier;
+      const singleTargetValues = legalTargets.map(target => ({
+        targetId: preview.unitId(target),
+        value: bestBaseActionValueAgainst(worldSnapshot, entry.unit, target, {
+          futureNaturalOpportunity: true,
+          singleTargetOnly: true,
+        }) * actionMultiplier,
+      }));
+      const unrestrictedValue = Math.max(groupFloor, ...singleTargetValues.map(target => target.value));
+      const forcedValue = Math.max(
+        groupFloor,
+        Number(singleTargetValues.find(target => target.targetId === sourceId)?.value || 0),
+      );
+      const duration = Math.max(1, Number(state?.duration ?? state?.持续回合 ?? state?.剩余回合 ?? 1));
+      const opportunityWeight = duration > 1 ? 1.5 : 1;
+      const redirectValue = Math.max(0, unrestrictedValue - forcedValue) *
+        applicationProbability * opportunityWeight;
+      rows.push(Object.freeze({
+        affectedActorId: preview.unitId(entry.unit),
+        sourceId,
+        sourceSide,
+        applicationProbability,
+        duration,
+        groupFloor,
+        unrestrictedValue,
+        forcedValue,
+        redirectValue,
+        singleTargetValues: Object.freeze(singleTargetValues.map(target => Object.freeze({ ...target }))),
+      }));
+      if (perspectiveSide === sourceSide) return total + redirectValue;
+      if (perspectiveSide === entry.side) return total - redirectValue;
+      return total;
+    }, 0);
+    return Object.freeze({ utility, rows: Object.freeze(rows) });
   }
 
   function stateUtilityNext(worldSnapshot, actorSide, beliefState = {}, nextValueContext = null, options = {}) {
@@ -7035,11 +7355,14 @@
     const own = teamCapacityNext(worldSnapshot, actorSide, actorSide, beliefState, valueContext, capacityOptions);
     const enemy = sides.filter(side => side !== actorSide).reduce((sum, side) =>
       sum + teamCapacityNext(worldSnapshot, side, actorSide, beliefState, valueContext, capacityOptions), 0);
+    const tauntTargeting = tauntTargetingUtilityNext(worldSnapshot, actorSide);
     const result = Object.freeze({
       own,
       enemy,
       total: own + enemy,
-      utility: own - enemy,
+      utility: own - enemy + tauntTargeting.utility,
+      tauntTargetingUtility: tauntTargeting.utility,
+      tauntTargetingAudit: tauntTargeting.rows,
       nonDuplicatedGoalProgress: 0,
       resourceThreatProfile,
     });
@@ -8381,6 +8704,11 @@
       });
     }
     const explicitStateName = String(effect?.状态 || effect?.状态名称 || '').trim();
+    const modifierElement = (Array.isArray(effect?.限定元素)
+      ? effect.限定元素
+      : [effect?.限定元素]
+    ).map(value => String(value || '').trim()).filter(Boolean).join('、');
+    const modifierElementSuffix = modifierElement ? `(${modifierElement})` : '';
     const stateName = explicitStateName ||
       (prototype === '属性修正'
         ? `${(Array.isArray(effect?.属性) ? effect.属性 : [effect?.属性])
@@ -8388,8 +8716,10 @@
             .filter(Boolean)
             .join('、') || '属性'}修正`
         : prototype === '判定修正'
-          ? `${String(effect?.判定 || '判定').trim() || '判定'}判定修正`
-          : String(effect?.判定 || prototype).trim());
+          ? `${String(effect?.判定 || '判定').trim() || '判定'}${modifierElementSuffix}判定修正`
+          : prototype === '结算修正'
+            ? `${String(effect?.结算 || '结算').trim() || '结算'}${modifierElementSuffix}结算修正`
+            : String(effect?.判定 || prototype).trim());
     const duration = Math.max(1, Number(effect?.持续回合 || 1));
     const combatEffect = preview.deriveStateCombatEffect(effect);
     const horizon = battleHorizonProfile(input, worldSnapshot);
@@ -8406,7 +8736,26 @@
     const normalizedTargetIds = [...new Set(
       (targetIds || []).map(value => String(value || '').trim()).filter(Boolean),
     )];
-    const reasons = [];
+    const actorId = String(input?.actorId || '').trim();
+    const attributes = prototype === '属性修正'
+      ? [...new Set((Array.isArray(effect?.属性) ? effect.属性 : [effect?.属性])
+          .map(value => String(value || '').trim())
+          .filter(Boolean))]
+      : [];
+    const reasonsByTarget = new Map(normalizedTargetIds.map(targetId => [targetId, []]));
+    const attributeReasonsByTarget = new Map(normalizedTargetIds.map(targetId => [
+      targetId,
+      new Map(attributes.map(attribute => [attribute, []])),
+    ]));
+    const addTargetReason = (targetId, reason) => {
+      const reasons = reasonsByTarget.get(targetId);
+      if (reasons && !reasons.includes(reason)) reasons.push(reason);
+    };
+    const addAttributeReason = (targetId, attribute, reason) => {
+      const reasons = attributeReasonsByTarget.get(targetId)?.get(attribute);
+      if (reasons && !reasons.includes(reason)) reasons.push(reason);
+      addTargetReason(targetId, reason);
+    };
     const hasDotTick =
       Math.max(0, Number(combatEffect?.dot_damage || 0)) > 0 ||
       Math.max(0, Number(combatEffect?.dot_damage_ratio || 0)) > 0;
@@ -8421,7 +8770,7 @@
       ...(Array.isArray(effect?.属性) ? effect.属性 : [effect?.属性]),
     ].map(value => String(value || '').trim()).filter(Boolean).join(' ');
     const targetActionQuality =
-      prototype === '属性修正' ||
+      prototype !== '属性修正' && (
       prototype === '位移执行' ||
       /命中|反应|前摇|施法|行动|速度|敏捷|力量|攻击|伤害|威力/.test(semanticText) ||
       Number(combatEffect?.hit_bonus || 0) !== 0 ||
@@ -8430,8 +8779,10 @@
       Number(combatEffect?.reaction_penalty || 0) !== 0 ||
       Number(combatEffect?.cast_speed_bonus || 0) !== 0 ||
       Number(combatEffect?.cast_speed_penalty || 0) !== 0 ||
-      Number(combatEffect?.windup_ratio || 1) !== 1;
+      Number(combatEffect?.windup_ratio || 1) !== 1
+      );
     const opposingActionQuality =
+      prototype !== '属性修正' && (
       /闪避|反应|防御|抗性|韧性|格挡|承伤|受到伤害|伤害分摊|减伤|护卫|隐匿|无敌|霸体/.test(semanticText) ||
       Number(combatEffect?.dodge_bonus || 0) !== 0 ||
       Number(combatEffect?.dodge_penalty || 0) !== 0 ||
@@ -8441,36 +8792,77 @@
       Number(combatEffect?.received_damage_mult || 1) !== 1 ||
       Number(combatEffect?.block_count || 0) > 0 ||
       combatEffect?.invincible === true ||
-      combatEffect?.super_armor === true;
-    const hasTargetCurrentRoundAction = targetActionQuality && normalizedTargetIds.some(targetId =>
-      pendingNaturalActorIds.has(targetId),
-    );
-    const hasOpposingCurrentRoundInteraction = opposingActionQuality && normalizedTargetIds.some(targetId => {
-      const target = findUnitInWorld(worldSnapshot, targetId);
-      const targetSide = target ? sideOf(worldSnapshot, target) : '';
-      return targetSide && pendingNaturalUnits.some(consumer =>
-        sideOf(worldSnapshot, consumer) !== targetSide,
+      combatEffect?.super_armor === true
       );
-    });
-    if (hasTargetCurrentRoundAction && hasQualityEffect) reasons.push('TARGET_CURRENT_ROUND_ACTION');
-    if (hasOpposingCurrentRoundInteraction && hasQualityEffect) reasons.push('OPPOSING_CURRENT_ROUND_INTERACTION');
+    if (attributes.length) {
+      normalizedTargetIds.forEach(targetId => {
+        const target = findUnitInWorld(worldSnapshot, targetId);
+        const targetSide = target ? sideOf(worldSnapshot, target) : '';
+        attributes.forEach(attribute => {
+          const affectsOwnAction = /力量|攻击|伤害|威力|敏捷|速度|反应|魂力上限|精神力上限|体力上限/.test(attribute);
+          const affectsIncomingInteraction = /防御|抗性|韧性|格挡|承伤|敏捷|速度|反应/.test(attribute);
+          if (
+            affectsOwnAction &&
+            targetId !== actorId &&
+            pendingNaturalActorIds.has(targetId)
+          ) {
+            addAttributeReason(targetId, attribute, 'TARGET_CURRENT_ROUND_ACTION');
+          }
+          if (
+            affectsIncomingInteraction &&
+            targetSide &&
+            pendingNaturalUnits.some(consumer => sideOf(worldSnapshot, consumer) !== targetSide)
+          ) {
+            addAttributeReason(targetId, attribute, 'OPPOSING_CURRENT_ROUND_INTERACTION');
+          }
+        });
+      });
+    }
+    if (targetActionQuality && hasQualityEffect) {
+      normalizedTargetIds.forEach(targetId => {
+        if (pendingNaturalActorIds.has(targetId)) addTargetReason(targetId, 'TARGET_CURRENT_ROUND_ACTION');
+      });
+    }
+    if (opposingActionQuality && hasQualityEffect) {
+      normalizedTargetIds.forEach(targetId => {
+        const target = findUnitInWorld(worldSnapshot, targetId);
+        const targetSide = target ? sideOf(worldSnapshot, target) : '';
+        if (targetSide && pendingNaturalUnits.some(consumer => sideOf(worldSnapshot, consumer) !== targetSide)) {
+          addTargetReason(targetId, 'OPPOSING_CURRENT_ROUND_INTERACTION');
+        }
+      });
+    }
     const hasControlEffect = combatEffect?.skip_turn === true ||
       combatEffect?.cannot_act === true ||
       combatEffect?.silence === true ||
       combatEffect?.disarm === true;
-    if (
-      hasControlEffect &&
-      input?.actionOpportunity?.futureHostileResponseAllowed !== false &&
-      normalizedTargetIds.some(targetId => {
+    if (hasControlEffect && input?.actionOpportunity?.futureHostileResponseAllowed !== false) {
+      normalizedTargetIds.forEach(targetId => {
         const target = findUnitInWorld(worldSnapshot, targetId);
-        return target && sideOf(worldSnapshot, target) !== actorSide && preview.isBattleCapable(target);
-      })
-    ) reasons.push('CONTROL_RESPONSE_WINDOW');
-    if (hasDotTick) reasons.push('SAME_ROUND_TICK');
-    const protectsFriendlyTarget = normalizedTargetIds.some(targetId => {
-      const target = findUnitInWorld(worldSnapshot, targetId);
-      return target && sideOf(worldSnapshot, target) === actorSide;
-    }) && pendingHostileActorIds.size > 0 && (
+        if (target && sideOf(worldSnapshot, target) !== actorSide && preview.isBattleCapable(target)) {
+          addTargetReason(targetId, 'CONTROL_RESPONSE_WINDOW');
+        }
+      });
+    }
+    const isTauntState = prototype === '状态施加' && /^(?:嘲讽|taunt)$/i.test(stateName);
+    if (isTauntState) {
+      const futureTauntWindow = duration > 1 && horizon.remainingRounds > 0;
+      normalizedTargetIds.forEach(targetId => {
+        const target = findUnitInWorld(worldSnapshot, targetId);
+        if (
+          target &&
+          sideOf(worldSnapshot, target) !== actorSide &&
+          preview.isBattleCapable(target) &&
+          (
+            pendingNaturalActorIds.has(targetId) ||
+            pendingHostileActorIds.has(targetId) ||
+            futureTauntWindow
+          )
+        ) addTargetReason(targetId, 'TAUNT_FORCED_TARGET_WINDOW');
+      });
+    }
+    if (hasDotTick) normalizedTargetIds.forEach(targetId => addTargetReason(targetId, 'SAME_ROUND_TICK'));
+    const protectsFriendlyTarget = pendingHostileActorIds.size > 0 && (
       combatEffect?.invincible === true ||
       combatEffect?.super_armor === true ||
       Number(combatEffect?.dodge_bonus || 0) > 0 ||
@@ -8480,19 +8872,53 @@
         `${String(effect?.判定 || '').trim()} ${String(effect?.结算 || '').trim()} ${stateName}`,
       )
     );
-    if (protectsFriendlyTarget) reasons.push('CURRENT_ROUND_RESPONSE');
+    if (protectsFriendlyTarget) {
+      normalizedTargetIds.forEach(targetId => {
+        const target = findUnitInWorld(worldSnapshot, targetId);
+        if (target && sideOf(worldSnapshot, target) === actorSide) {
+          addTargetReason(targetId, 'CURRENT_ROUND_RESPONSE');
+        }
+      });
+    }
     const futureRoundAvailable = duration > 1 && horizon.remainingRounds > 0;
     const futureTargetIds = normalizedTargetIds.filter(targetId => {
       const target = findUnitInWorld(worldSnapshot, targetId);
       return target && preview.isBattleCapable(target) && futureRoundAvailable;
     });
-    if (futureTargetIds.length && hasQualityEffect) reasons.push('FUTURE_NATURAL_OPPORTUNITY');
+    if (hasQualityEffect) {
+      futureTargetIds.forEach(targetId => {
+        if (attributes.length) {
+          attributes.forEach(attribute => addAttributeReason(targetId, attribute, 'FUTURE_NATURAL_OPPORTUNITY'));
+        } else {
+          addTargetReason(targetId, 'FUTURE_NATURAL_OPPORTUNITY');
+        }
+      });
+    }
+    const realizableTargetIds = normalizedTargetIds.filter(targetId => reasonsByTarget.get(targetId)?.length);
+    const unrealizableTargetIds = normalizedTargetIds.filter(targetId => !reasonsByTarget.get(targetId)?.length);
+    const reasons = [...new Set([...reasonsByTarget.values()].flat())];
     return Object.freeze({
       prototype,
       stateName,
       attribute: Array.isArray(effect?.属性)
         ? effect.属性.map(value => String(value || '').trim()).filter(Boolean).join('、')
         : String(effect?.属性 || '').trim(),
+      realizableAttributesByTarget: Object.freeze(Object.fromEntries(
+        [...attributeReasonsByTarget].map(([targetId, reasonsByAttribute]) => [
+          targetId,
+          Object.freeze([...reasonsByAttribute]
+            .filter(([, attributeReasons]) => attributeReasons.length > 0)
+            .map(([attribute]) => attribute)),
+        ]),
+      )),
+      unrealizableAttributesByTarget: Object.freeze(Object.fromEntries(
+        [...attributeReasonsByTarget].map(([targetId, reasonsByAttribute]) => [
+          targetId,
+          Object.freeze([...reasonsByAttribute]
+            .filter(([, attributeReasons]) => attributeReasons.length === 0)
+            .map(([attribute]) => attribute)),
+        ]),
+      )),
       check: String(effect?.判定 || '').trim(),
       settlement: String(effect?.结算 || '').trim(),
       duration,
@@ -8500,8 +8926,13 @@
         ? Math.min(duration, horizon.remainingRounds + 1)
         : duration,
       targetIds: Object.freeze(normalizedTargetIds),
+      realizableTargetIds: Object.freeze(realizableTargetIds),
+      unrealizableTargetIds: Object.freeze(unrealizableTargetIds),
+      targetReasons: Object.freeze(Object.fromEntries(
+        [...reasonsByTarget].map(([targetId, targetReasons]) => [targetId, Object.freeze(targetReasons)]),
+      )),
       reasons: Object.freeze([...new Set(reasons)]),
-      realizable: reasons.length > 0,
+      realizable: realizableTargetIds.length > 0,
       temporal: true,
     });
   }
@@ -8520,22 +8951,43 @@
     return true;
   }
 
-  function temporalAuditForCandidate(candidateEffects = [], targetIds = [], input = {}, worldSnapshot = {}, actorSide = '', contributions = []) {
+  function temporalAuditForCandidate(candidateEffects = [], targetIds = [], input = {}, worldSnapshot = {}, actorSide = '', contributions = [], declaration = null) {
+    const actor = declaration ? findUnitInWorld(worldSnapshot, input?.actorId) : null;
     const profiles = candidateEffects
-      .map(effect => temporalEffectWindowProfile(effect, targetIds, input, worldSnapshot, actorSide))
+      .map(effect => {
+        const resolvedTargetIds = actor
+          ? preview.resolveTargets(worldSnapshot, actor, declaration, effect).map(preview.unitId)
+          : targetIds;
+        return temporalEffectWindowProfile(effect, resolvedTargetIds, input, worldSnapshot, actorSide);
+      })
       .filter(profile => profile.temporal);
-    const invalidProfiles = profiles.filter(profile => !profile.realizable);
-    const invalidContributions = contributions.filter(entry =>
-      invalidProfiles.some(profile => temporalProfileMatchesContribution(profile, entry)),
+    const invalidProfiles = profiles.filter(profile =>
+      profile.unrealizableTargetIds.length > 0 ||
+      Object.values(profile.unrealizableAttributesByTarget || {}).some(attributes => attributes.length > 0)
     );
-    const validProfiles = profiles.filter(profile => profile.realizable);
+    const validProfiles = profiles.filter(profile => profile.realizableTargetIds.length > 0);
+    const invalidContributions = contributions.filter(entry => {
+      const targetId = String(entry?.targetId || '').trim();
+      const matchingProfiles = profiles.filter(profile => temporalProfileMatchesContribution(profile, entry));
+      return matchingProfiles.some(profile => profile.unrealizableTargetIds.includes(targetId)) &&
+        !matchingProfiles.some(profile => profile.realizableTargetIds.includes(targetId));
+    });
+    const attributeCleanupContributions = contributions.filter(entry => {
+      const targetId = String(entry?.targetId || '').trim();
+      return profiles.some(profile =>
+        profile.prototype === '属性修正' &&
+        temporalProfileMatchesContribution(profile, entry) &&
+        (profile.unrealizableAttributesByTarget?.[targetId] || []).length > 0
+      );
+    });
     return Object.freeze({
       profiles: Object.freeze(profiles),
       invalidProfiles: Object.freeze(invalidProfiles),
       validProfiles: Object.freeze(validProfiles),
       invalidContributions: Object.freeze(invalidContributions),
+      attributeCleanupContributions: Object.freeze(attributeCleanupContributions),
       invalidContributionSet: new Set(invalidContributions),
-      invalidTargetIds: new Set(invalidProfiles.flatMap(profile => profile.targetIds)),
+      invalidTargetIds: new Set(invalidProfiles.flatMap(profile => profile.unrealizableTargetIds)),
     });
   }
 
@@ -8591,7 +9043,7 @@
     if (!invalidProfiles.length) return snapshot;
     const validProfilesByTarget = new Map();
     (temporalAudit?.validProfiles || []).forEach(profile => {
-      profile.targetIds.forEach(targetId => {
+      profile.realizableTargetIds.forEach(targetId => {
         const list = validProfilesByTarget.get(targetId) || [];
         list.push(profile);
         validProfilesByTarget.set(targetId, list);
@@ -8600,9 +9052,15 @@
     const invalidEntries = Array.isArray(temporalAudit?.invalidContributions)
       ? temporalAudit.invalidContributions
       : [];
+    const attributeCleanupEntries = Array.isArray(temporalAudit?.attributeCleanupContributions)
+      ? temporalAudit.attributeCleanupContributions
+      : [];
     return mapWorldUnits(snapshot, (unit, side) => {
       const targetId = preview.unitId(unit);
-      const targetProfiles = invalidProfiles.filter(profile => profile.targetIds.includes(targetId));
+      const targetProfiles = invalidProfiles.filter(profile =>
+        profile.unrealizableTargetIds.includes(targetId) ||
+        (profile.unrealizableAttributesByTarget?.[targetId] || []).length > 0
+      );
       if (!targetProfiles.length) return unit;
       const baselineUnit = findUnitInWorld(baselineSnapshot, targetId);
       const nextUnit = cloneValue(unit);
@@ -8610,13 +9068,20 @@
       const validNames = new Set(validForTarget.map(profile => profile.stateName).filter(Boolean));
       targetProfiles.forEach(profile => {
         if (profile.prototype === '属性修正') {
-          invalidEntries
+          const unrealizableAttributes = new Set(
+            profile.unrealizableAttributesByTarget?.[targetId] || [],
+          );
+          [...invalidEntries, ...attributeCleanupEntries]
             .filter(entry => temporalProfileMatchesContribution(profile, entry) && entry.targetId === targetId)
             .flatMap(entry => Array.isArray(entry?.evidence?.changes) ? entry.evidence.changes : [entry?.evidence])
             .forEach(change => {
               const attribute = String(change?.attribute || profile.attribute || '').trim();
               const delta = Number(change?.delta || 0);
-              if (!attribute || !Number.isFinite(delta)) return;
+              if (
+                !attribute ||
+                !Number.isFinite(delta) ||
+                (unrealizableAttributes.size > 0 && !unrealizableAttributes.has(attribute))
+              ) return;
               const current = readAttributeValue(nextUnit, attribute);
               writeAttributeValue(nextUnit, attribute, current - delta);
             });
@@ -9056,7 +9521,7 @@
         },
         battleIntent: input?.battleIntent,
         horizon: 'SHALLOW',
-        previewBudget: { maxNodes: 12 },
+        previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
       });
       const afterSnapshot = attachDecisionRuntimeState(result.afterSnapshot, worldSnapshot);
       const hasStructuralChange =
@@ -9182,7 +9647,7 @@
               actionFingerprint: `reaction:${candidate.candidateId}:${targetId}:${response.responseId}`,
               battleIntent: input?.battleIntent,
               horizon: 'SHALLOW',
-              previewBudget: { maxNodes: 12 },
+              previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
             });
             planWorld = reactionPreview.afterSnapshot;
           }
@@ -9417,7 +9882,7 @@
     }
     const valueContext = projectionContext?.valueContext ||
       buildNextValueContext(futureWorld, actorSide, beliefState);
-    const before = projectionContext?.before ||
+    let before = projectionContext?.before ||
       stateUtilityNext(futureWorld, actorSide, beliefState, valueContext);
     const futureInput = projectionContext?.futureInput || {
       ...input,
@@ -9444,9 +9909,30 @@
       totalExpectedThreat: 0,
       totalWorstTailThreat: 0,
     };
-    // A renewable item has no irreversible asset cost, but using it still consumes
-    // the current stock. The next opportunity may recreate another one; it must
-    // not receive both the use effect and the pre-use inventory capacity.
+    // A renewable item has no irreversible asset cost. Compare its use against
+    // the same state with one stock already consumed, otherwise the item's own
+    // option value is recursively charged as the cost of ever using it.
+    const renewableItemUse = actionKind === 'USE_ITEM' &&
+      Number(candidate?.declaration?.irreversibleAsset?.cost || 0) <= 0;
+    if (renewableItemUse) {
+      const asset = candidate.declaration.irreversibleAsset;
+      const consumedBaseline = markCapacityDeltaSnapshot(
+        snapshotWithInventoryQuantity(
+          futureWorld,
+          preview.unitId(actor),
+          String(asset?.assetId || '').trim(),
+          Math.max(0, Number(asset?.quantityBefore || 0) - 1),
+        ),
+        futureWorld,
+        [preview.unitId(actor)],
+      );
+      before = stateUtilityNext(
+        consumedBaseline,
+        actorSide,
+        beliefState,
+        valueContext,
+      );
+    }
     const settledSnapshot = result?.afterSnapshot || futureWorld;
     const afterSnapshot = immediateRisk.totalExpectedThreat > 0
       ? snapshotAfterResponseThreat(settledSnapshot, preview.unitId(actor), immediateRisk.totalExpectedThreat)
@@ -9461,8 +9947,42 @@
     const irreversibleCost = (result?.contributions || [])
       .filter(entry => entry?.outcomeKind === 'IRREVERSIBLE_ASSET_LOST')
       .reduce((sum, entry) => sum + Math.max(0, Number(entry?.threatValue || entry?.evidence?.cost || 0)), 0);
+    const stateUtilityGain = 100 * (after.utility - before.utility) / Math.max(1, before.total);
+    const directPotential = (candidate?.declaration?.targetIds || []).reduce((sum, targetId) => {
+      const target = findUnitInWorld(futureWorld, targetId);
+      if (!target) return sum;
+      return sum + preview.calculateDirectPotential(actor, target, {
+        ...candidate.declaration,
+        shieldAbsorptionCap: availableShieldAbsorptionCap(
+          futureWorld,
+          target,
+          actorSide,
+          beliefState,
+          shieldCoverageWindows(candidate?.declaration?.skill || {}),
+        ),
+      });
+    }, 0);
+    const friendlyHpOrShieldRealized = (result?.contributions || []).some(entry => {
+      if (!['HP_DELTA', 'SHIELD_DELTA'].includes(String(entry?.outcomeKind || '').trim())) return false;
+      if (!(contributionExpectedDelta(entry) > 0.0001)) return false;
+      const target = findUnitInWorld(futureWorld, entry?.targetId);
+      return target && sideOf(futureWorld, target) === actorSide;
+    });
+    const optionSubstitution = renewableItemUse && friendlyHpOrShieldRealized
+      ? 100 * Math.min(
+          Math.max(0, directPotential),
+          Math.max(0, Number(before.own || 0) - Number(after.own || 0)),
+        ) / Math.max(1, before.total)
+      : 0;
+    const representedDirectPotential = Math.max(
+      0,
+      stateUtilityGain + optionSubstitution + terminalDelta + progressDelta,
+    );
+    const directPotentialResidual = Math.max(0, directPotential - representedDirectPotential);
     const utility = clamp(
-      100 * (after.utility - before.utility) / Math.max(1, before.total) +
+      stateUtilityGain +
+        optionSubstitution +
+        directPotentialResidual +
         terminalDelta +
         progressDelta -
         irreversibleCost,
@@ -9474,6 +9994,37 @@
       actionKind,
       utility,
       worstTailCapacityLoss: Math.max(0, Number(immediateRisk.totalWorstTailThreat || 0)),
+      projectionAudit: Object.freeze({
+        renewableItemUse,
+        targetIds: Object.freeze([...(candidate?.declaration?.targetIds || [])]),
+        beforeUtility: Number(before.utility || 0),
+        afterUtility: Number(after.utility || 0),
+        beforeTotal: Number(before.total || 0),
+        stateUtilityGain,
+        directPotential,
+        optionSubstitution,
+        directPotentialResidual,
+        terminalDelta,
+        progressDelta,
+        irreversibleCost,
+        actorBefore: Object.freeze({
+          resource: preview.readResource(actor, '魂力'),
+          shield: preview.readShield(actor),
+        }),
+        actorAfter: Object.freeze((() => {
+          const projectedActor = findUnitInWorld(afterSnapshot, preview.unitId(actor)) || actor;
+          return {
+            resource: preview.readResource(projectedActor, '魂力'),
+            shield: preview.readShield(projectedActor),
+          };
+        })()),
+        outcomes: Object.freeze((result?.contributions || []).map(entry => Object.freeze({
+          outcomeKind: String(entry?.outcomeKind || '').trim(),
+          targetId: String(entry?.targetId || '').trim(),
+          delta: Number(entry?.evidence?.delta ?? entry?.expectedDelta ?? 0),
+          threatValue: Number(entry?.threatValue || 0),
+        }))),
+      }),
       hasMeaningfulEffect: !!result && meaningfulPreviewEffect(
         result,
         preview.collectEffects(candidate.skill || candidate.declaration?.skill || {})
@@ -9786,6 +10337,9 @@
         itemCandidateId: String(itemScore?.candidateId || '').trim(),
         itemUtility: Number(itemScore?.utility || 0),
         expectedItemUtility: Number(itemScore?.utility || 0) * delivery.deliveryProbability,
+        incrementalItemUtility: 0,
+        incrementalExpectedItemUtility: 0,
+        itemProjectionAudit: itemScore?.projectionAudit || null,
         bestAlternativeUtility: 0,
         dominatedBy: '',
         ...delivery,
@@ -9827,6 +10381,10 @@
       .sort((left, right) => right.utility - left.utility)[0] ||
       null;
     const realizable = itemScoreIsUseful && !dominator;
+    const incrementalItemUtility = Math.max(
+      0,
+      Number(itemScore?.utility || 0) - Number(bestAlternative?.utility || 0),
+    );
     const audit = Object.freeze({
       realizable,
       reason: realizable
@@ -9838,6 +10396,9 @@
       itemCandidateId: String(itemScore?.candidateId || '').trim(),
       itemUtility: Number(itemScore?.utility || 0),
       expectedItemUtility: Number(itemScore?.utility || 0) * delivery.deliveryProbability,
+      incrementalItemUtility,
+      incrementalExpectedItemUtility: incrementalItemUtility * delivery.deliveryProbability,
+      itemProjectionAudit: itemScore?.projectionAudit || null,
       bestAlternativeUtility: Number(bestAlternative?.utility || 0),
       dominatedBy: String(dominator?.candidateId || '').trim(),
       ...delivery,
@@ -10006,7 +10567,7 @@
         );
     const hasExplicitCounterPlan = collectSkills(actor).some(skill => {
       const settledSkill = preview.applySkillSettlementModifiers(actor, applyEquipmentPassivesToSkill(actor, skill)).skill;
-      return !deferredBattlePrototype(settledSkill) && isExplicitCounterSkill(settledSkill, 40);
+      return !nonExecutableBattlePrototype(settledSkill) && isExplicitCounterSkill(settledSkill, 40);
     });
     const activeNaturalOpportunity =
       String(input?.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase() === 'ACTIVE' &&
@@ -10081,6 +10642,7 @@
         decisionWorld,
         actorSide,
         candidateContributions,
+        candidate?.declaration,
       );
       const temporalValueContributions = candidateContributions.filter(entry =>
         !temporalAudit.invalidContributionSet.has(entry),
@@ -10120,7 +10682,11 @@
       let candidateSnapshot = immediateCounterRisk.totalExpectedThreat > 0
         ? snapshotAfterResponseThreat(afterSnapshot, preview.unitId(actor), immediateCounterRisk.totalExpectedThreat)
         : afterSnapshot;
-      if (creationUseAudit && !creationUseAudit.realizable) {
+      if (creationUseAudit) {
+        // The produced stock is valued by creationFutureUseAudit after delivery,
+        // use-opportunity competition and the best next-action alternative are
+        // resolved. Leaving the same stock in stateUtilityNext would count its
+        // full option capacity a second time and bypass those gates.
         candidateSnapshot = snapshotWithInventoryQuantity(
           candidateSnapshot,
           String(
@@ -10387,6 +10953,15 @@
           capacityOptions = {},
         }) => {
           const incomingThreat = prevented ? 0 : Math.max(0, Number(rawThreat || 0));
+          const hpDamagePercent = snapshot => {
+            const beforeTarget = findUnitInWorld(baseSnapshot, responseTargetId);
+            const afterTarget = findUnitInWorld(snapshot, responseTargetId);
+            if (!beforeTarget || !afterTarget) return 0;
+            return 100 * Math.max(
+              0,
+              preview.readHp(beforeTarget) - preview.readHp(afterTarget),
+            ) / Math.max(1, preview.readHpMax(beforeTarget));
+          };
           const dodgeProbability = defenseKind === 'EVADE' && sourceBefore && !prevented
             ? preview.calculateDodgeProbability(responseTargetBefore, sourceBefore, prepared)
             : 0;
@@ -10437,6 +11012,7 @@
               catastrophicRisk:
                 (1 - dodgeProbability) * catastrophicResponseRisk(responseTargetBefore, incomingThreat, 1),
               avoidanceProbability: dodgeProbability,
+              expectedHpDamagePercent: (1 - dodgeProbability) * hpDamagePercent(hitSnapshot),
             };
           }
           const threat = incomingThreat * clamp(Number(defenseMultiplier || 0), 0, 1);
@@ -10477,6 +11053,7 @@
             ),
             catastrophicRisk: catastrophicResponseRisk(responseTargetBefore, incomingThreat, defenseMultiplier),
             avoidanceProbability: 0,
+            expectedHpDamagePercent: hpDamagePercent(responseSnapshot),
           };
         };
         const candidateOutcome = evaluateResponseOutcome({
@@ -10539,6 +11116,12 @@
           catastrophicRisk: totals.catastrophicRisk + probability * candidateOutcome.catastrophicRisk,
           catastrophicRiskReduction: totals.catastrophicRiskReduction +
             probability * Math.max(0, baselineOutcome.catastrophicRisk - candidateOutcome.catastrophicRisk),
+          avoidedHostileHpDamage: totals.avoidedHostileHpDamage +
+            probability * Math.max(
+              0,
+              Number(baselineOutcome.expectedHpDamagePercent || 0) -
+                Number(candidateOutcome.expectedHpDamagePercent || 0),
+            ),
           candidatePreparedConsumed:
             totals.candidatePreparedConsumed === true || candidateStanceAvailable,
           baselinePreparedConsumed:
@@ -10557,6 +11140,8 @@
               sourceAfterExists: !!sourceAfter,
               sourceAfterBattleCapable: !!sourceAfter && preview.isBattleCapable(sourceAfter),
               sourceAfterActionCancelled: !!sourceAfter && hasActionCancellation(sourceAfter),
+              candidateExpectedHpDamagePercent: Number(candidateOutcome.expectedHpDamagePercent || 0),
+              baselineExpectedHpDamagePercent: Number(baselineOutcome.expectedHpDamagePercent || 0),
             },
           ],
         };
@@ -10573,6 +11158,7 @@
         ),
         catastrophicRisk: 0,
         catastrophicRiskReduction: 0,
+        avoidedHostileHpDamage: 0,
         candidatePreparedConsumed: false,
         baselinePreparedConsumed: false,
         preparedDefenseConsumedCount: 0,
@@ -10868,13 +11454,49 @@
         .filter(entry => entry?.outcomeKind === 'IRREVERSIBLE_ASSET_LOST')
         .reduce((sum, entry) => sum + Math.max(0, Number(entry?.threatValue || entry?.evidence?.cost || 0)), 0);
       const creationFutureGain = creationUseAudit?.realizable === true
-        ? Math.max(0, Number(creationUseAudit.expectedItemUtility || 0)) * 0.65
+        ? Math.max(0, Number(creationUseAudit.incrementalExpectedItemUtility || 0)) * 0.65
         : 0;
+      const friendlyShieldTargetIds = [...new Set(valueContributions.flatMap(entry => {
+        if (String(entry?.outcomeKind || '').trim().toUpperCase() !== 'SHIELD_DELTA') return [];
+        if (!(contributionExpectedDelta(entry) > 0.0001)) return [];
+        const target = findUnitInWorld(decisionWorld, entry?.targetId);
+        return target && sideOf(decisionWorld, target) === actorSide
+          ? [preview.unitId(target)]
+          : [];
+      }))];
+      const shieldRemovedCapacity = friendlyShieldTargetIds.length
+        ? stateUtilityNext(
+            snapshotWithUnitShieldsFrom(candidateSnapshot, noOpSnapshot, friendlyShieldTargetIds),
+            actorSide,
+            beliefState,
+            valueContext,
+            controlCapacityOptions,
+          )
+        : after;
+      const shieldOptionSubstitution = friendlyShieldTargetIds.length
+        ? 100 * Math.max(
+            0,
+            Number(shieldRemovedCapacity.own || 0) - Number(after.own || 0),
+          ) / Math.max(1, before.total)
+        : 0;
+      const representedResponsePrevention = 100 * Math.max(
+        0,
+        (
+          Number(responseComparison.candidateUtility || 0) - Number(after.utility || 0)
+        ) - (
+          Number(responseComparison.noOpUtility || 0) - Number(noOp.utility || 0)
+        ),
+      ) / Math.max(1, before.total);
+      const hostileDamagePreventionResidual = Math.max(
+        0,
+        Number(responseComparison.avoidedHostileHpDamage || 0) - representedResponsePrevention,
+      );
       const expectedStateGain = 100 *
         (responseComparison.candidateUtility - responseComparison.noOpUtility) /
         Math.max(1, before.total) +
         summonWindowValue +
-        creationFutureGain;
+        creationFutureGain +
+        shieldOptionSubstitution;
       const planningEvidence = buildCandidatePlanningEvidence({
         candidate,
         result: candidatePreview,
@@ -10885,13 +11507,25 @@
         consumer: 'BattleDecision.scoreCandidatesNext',
       });
       const planningReleaseWeight = Number(planningEvidence.releaseWeight);
+      const expectedHostileDamageProgress = valueContributions.reduce((sum, entry) => {
+        const outcomeKind = String(entry?.outcomeKind || '').trim().toUpperCase();
+        if (!['HP_DELTA', 'SHIELD_DELTA'].includes(outcomeKind)) return sum;
+        const target = findUnitInWorld(decisionWorld, entry?.targetId);
+        if (!target || sideOf(decisionWorld, target) === actorSide) return sum;
+        if (!(contributionExpectedDelta(entry) < -0.0001)) return sum;
+        return sum + Math.max(0, Number(entry?.threatValue || 0));
+      }, 0);
+      const representedHostileCapacityGain = 100 * Math.max(
+        0,
+        Number(noOp.enemy || 0) - Number(after.enemy || 0),
+      ) / Math.max(1, before.total);
       const distributedImmediateTargetCount = new Set(
         candidateTargetIds.map(value => String(value || '').trim()).filter(Boolean),
       ).size;
       const preservesDistributedImmediateDamage =
         distributedImmediateTargetCount > 1 &&
         isMechanicalDamageOnlySkill(candidate?.skill || candidate?.declaration?.skill || null);
-      const realizedImmediatePotential = preservesDistributedImmediateDamage
+      const distributedImmediatePotential = preservesDistributedImmediateDamage
         ? Math.min(
             atomicActionPotential,
             Math.max(
@@ -10902,12 +11536,31 @@
             ),
           )
         : 0;
-      const immediateActionResidual = Math.max(
+      // HP/护盾贡献已经过命中、施加、闪避、防御和目标容量封顶，属于
+      // 本次预览的正式期望结算；再按动作潜力截断会重复压低已实现伤害。
+      const realizedHostileDamageProgress = expectedHostileDamageProgress;
+      const realizedImmediatePotential = Math.max(
+        distributedImmediatePotential,
+        realizedHostileDamageProgress,
+      );
+      const terminalOrObjectiveProgress =
+        Math.max(0, Number(responseComparison.terminalUtility || 0)) +
+        Math.max(0, Number(responseComparison.objectiveProgress || 0));
+      const immediateHostileDamageResidual = Math.max(
         0,
-        realizedImmediatePotential -
+        realizedHostileDamageProgress -
+          representedHostileCapacityGain -
+          terminalOrObjectiveProgress,
+      );
+      const distributedImmediateResidual = Math.max(
+        0,
+        distributedImmediatePotential -
           Math.max(0, expectedStateGain) -
-          Math.max(0, Number(responseComparison.terminalUtility || 0)) -
-          Math.max(0, Number(responseComparison.objectiveProgress || 0)),
+          terminalOrObjectiveProgress,
+      );
+      const immediateActionResidual = Math.max(
+        immediateHostileDamageResidual,
+        distributedImmediateResidual,
       );
       const repeatedInformationMarginal = priorAction ? informationValue : 0;
       const repeatedActionDelta = priorAction && (
@@ -11012,6 +11665,7 @@
       const unclampedObjectiveUtility =
         expectedStateGain +
         immediateActionResidual +
+        hostileDamagePreventionResidual +
         responseComparison.terminalUtility +
         responseComparison.objectiveProgress +
         informationValue -
@@ -11259,6 +11913,13 @@
           expectedStateGain,
           realizedImmediatePotential,
           immediateActionResidual,
+          expectedHostileDamageProgress,
+          representedHostileCapacityGain,
+          immediateHostileDamageResidual,
+          shieldOptionSubstitution,
+          avoidedHostileHpDamage: responseComparison.avoidedHostileHpDamage,
+          representedResponsePrevention,
+          hostileDamagePreventionResidual,
           planningBenefit: planningEvidence.benefit,
           planningRisk: planningEvidence.risk,
           planningReleaseWeight: planningEvidence.releaseWeight,
@@ -11351,6 +12012,13 @@
           atomicActionPotential,
           realizedImmediatePotential,
           immediateActionResidual,
+          expectedHostileDamageProgress,
+          representedHostileCapacityGain,
+          immediateHostileDamageResidual,
+          shieldOptionSubstitution,
+          avoidedHostileHpDamage: responseComparison.avoidedHostileHpDamage,
+          representedResponsePrevention,
+          hostileDamagePreventionResidual,
           objectiveProgressAudit,
           responseBranchCount: sharedResponseBranches.length,
           survivalLowerBound: responseComparison.survivalLowerBound,
@@ -11829,7 +12497,7 @@
         declaration: entry.declaration,
         actionFingerprint: `realizable:${entry.candidateId}`,
         horizon: 'SHALLOW',
-        previewBudget: { maxNodes: 12 },
+        previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
       });
       const after = stateUtility(result.afterSnapshot, actorSide, beliefState);
       const gain = 100 * (after.utility - before.utility) / Math.max(1, before.total);
@@ -12743,8 +13411,15 @@
     const nextParticipants = Object.fromEntries(Object.entries(participants).map(([side, value]) => {
       const update = unit => {
         if (preview.unitId(unit) !== targetId) return unit;
-        const next = { ...unit, 属性: unit?.属性 && typeof unit.属性 === 'object' ? { ...unit.属性 } : unit?.属性, 状态: unit?.状态 && typeof unit.状态 === 'object' ? { ...unit.状态 } : unit?.状态 };
-        const hp = Math.max(0, preview.readHp(unit) - preview.readHpMax(unit) * clamp(rawThreat, 0, 100) / 100);
+        const next = {
+          ...unit,
+          属性: unit?.属性 && typeof unit.属性 === 'object' ? { ...unit.属性 } : unit?.属性,
+          状态: unit?.状态 && typeof unit.状态 === 'object' ? { ...unit.状态 } : unit?.状态,
+          状态效果: cloneValue(unit?.状态效果 || {}),
+        };
+        const incomingDamage = preview.readHpMax(unit) * clamp(rawThreat, 0, 100) / 100;
+        const shieldAbsorb = preview.absorbPreviewShield(next, incomingDamage);
+        const hp = Math.max(0, preview.readHp(unit) - Math.max(0, incomingDamage - shieldAbsorb));
         next.hp = hp;
         next.HP = hp;
         if (next.属性 && typeof next.属性 === 'object') next.属性.HP = hp;
@@ -12839,7 +13514,7 @@
         unit,
         applyEquipmentPassivesToSkill(unit, sourceSkill),
       ).skill;
-      if (deferredBattlePrototype(skill)) return best;
+      if (nonExecutableBattlePrototype(skill)) return best;
       if (!costAffordable(unit, skill) || Math.max(0, Number(skill?.前摇 ?? skill?.cast_time ?? 0)) > 40) return best;
       const profile = targetProfile(skill);
       if (!['HOSTILE_SINGLE', 'HOSTILE_GROUP', 'ANY_SINGLE'].includes(profile)) return best;
@@ -13229,7 +13904,7 @@
           candidate,
         }),
         horizon: 'SHALLOW',
-        previewBudget: { maxNodes: 12 },
+        previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
       });
     }
     const candidateEffects = preview.collectEffects(candidate.skill || candidate.declaration?.skill || {});
@@ -13325,7 +14000,7 @@
           actionFingerprint: `${candidate.candidateId}:future-use:${targetId}`,
           battleIntent: context.battleIntent,
           horizon: 'SHALLOW',
-          previewBudget: { maxNodes: 12 },
+          previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
         });
         const futureUtility = stateUtility(futureUse.afterSnapshot, actorSide, context.beliefState);
         return Math.max(bestGain, 100 * (futureUtility.utility - paidUtility.utility) / Math.max(1, before.total));
@@ -14045,6 +14720,7 @@
       normalizedUtility: Number(candidate?.normalizedUtility || 0),
       vector: Object.freeze({ ...(candidate?.vector || {}) }),
       rejectionCode: String(candidate?.rejectionCode || '').trim(),
+      dominatedBy: String(candidate?.dominatedBy || '').trim(),
       classification: String(candidate?.classification || 'VIABLE').trim() || 'VIABLE',
       alternativeGap: Number(candidate?.alternativeGap || 0),
       counterDeclineFallback: candidate?.counterDeclineFallback === true,
@@ -14391,6 +15067,7 @@
           noResponseProbability: 1,
         }),
         rejectionCode: candidate.rejectionCode || '',
+        dominatedBy: String(candidate.dominatedBy || '').trim(),
         classification: candidate.classification || 'VIABLE',
         alternativeGap: Number(candidate.alternativeGap || 0),
         counterDeclineFallback: candidate.counterDeclineFallback === true,
@@ -18541,7 +19218,7 @@
             dependencyView,
           }),
           horizon: 'SHALLOW',
-          previewBudget: { maxNodes: 12 },
+          previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
           collectProbabilityBranches: true,
           paymentMode: candidate?.resourcePotentialOnly === true
             ? 'EXTERNAL_TIMELINE'
@@ -18969,7 +19646,7 @@
           candidate,
         }),
         horizon: 'SHALLOW',
-        previewBudget: { maxNodes: 12 },
+        previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
         collectProbabilityBranches: true,
         battleIntent: input.battleIntent,
       });
@@ -19572,7 +20249,7 @@
         },
         actionFingerprint: `scheduled-materialize:${event?.effectInstanceId || index}`,
         horizon: 'SHALLOW',
-        previewBudget: { maxNodes: 12 },
+        previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
         battleIntent: input?.battleIntent,
       }).afterSnapshot;
     }, projectedWorld);
@@ -25054,7 +25731,7 @@
               candidate,
             }),
             horizon: 'SHALLOW',
-            previewBudget: { maxNodes: 12 },
+            previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
             collectProbabilityBranches: true,
             battleIntent: input.battleIntent,
           });
@@ -30216,7 +30893,7 @@
           damageMultiplierByTarget: { [actorId]: multiplier },
           evadeProbabilityByTarget: { [actorId]: evadeProbability },
           horizon: 'SHALLOW',
-          previewBudget: { maxNodes: 12 },
+          previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
           collectProbabilityBranches: true,
           battleIntent: request?.battleIntent,
         });
@@ -30441,7 +31118,7 @@
           candidate: counterCandidate,
         }),
         horizon: 'SHALLOW',
-        previewBudget: { maxNodes: 12 },
+        previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
         collectProbabilityBranches: true,
         battleIntent: request?.battleIntent,
       });
@@ -30503,7 +31180,7 @@
           [actorId]: preview.calculateDefenseDamageMultiplier(actor, sourceActor, false),
         },
         horizon: 'SHALLOW',
-        previewBudget: { maxNodes: 12 },
+        previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
         battleIntent: request?.battleIntent,
       });
       const damageContributions = (incomingPreview?.contributions || []).filter(entry =>
@@ -31516,7 +32193,7 @@
       declaration,
       actionFingerprint: `response:${branch?.projectionId || sourceActorId}:pre-action`,
       horizon: 'SHALLOW',
-      previewBudget: { maxNodes: 12 },
+      previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
       collectProbabilityBranches: true,
       battleIntent: request?.battleIntent,
     });
@@ -31553,7 +32230,7 @@
         candidate,
       }),
       horizon: 'SHALLOW',
-      previewBudget: { maxNodes: 12 },
+      previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
       collectProbabilityBranches: true,
       battleIntent: request?.battleIntent,
     });
@@ -32173,7 +32850,7 @@
           actionFingerprint:
             `response:${branch?.projectionId || sourceActorId}`,
           horizon: 'SHALLOW',
-          previewBudget: { maxNodes: 12 },
+          previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
           collectProbabilityBranches: true,
           battleIntent: request?.battleIntent,
         });
@@ -32983,7 +33660,32 @@
     });
     tracePrepareStage(`after-enumerate:${candidates.length}`);
     finishPrepareStage('candidateEnumerationMs');
-    if (!candidates.length) throw new Error('battle_decision_candidate_pool_empty');
+    if (!candidates.length) {
+      const validTargetSides = Object.fromEntries(
+        (Array.isArray(actionOpportunity?.validTargetIds) ? actionOpportunity.validTargetIds : [])
+          .map(value => String(value || '').trim())
+          .filter(Boolean)
+          .map(targetId => {
+            const target = findUnitInWorld(visibleWorld, targetId);
+            return [targetId, target ? sideOf(visibleWorld, target) : 'MISSING'];
+          }),
+      );
+      const rejectionSummary = rejectedCandidates.slice(0, 12).map(entry => ({
+        actionKind: String(entry?.actionKind || '').trim(),
+        rejectionCode: String(entry?.rejectionCode || '').trim(),
+        skillId: String(entry?.skillId || '').trim(),
+      }));
+      throw new Error(
+        `battle_decision_candidate_pool_empty:${JSON.stringify({
+          actorId,
+          actorSide,
+          actorCamp: String(visibleActor?.阵营 || '').trim(),
+          role: String(actionOpportunity?.role || '').trim(),
+          validTargetSides,
+          rejectionSummary,
+        })}`,
+      );
+    }
     const candidateIds = new Set();
     const candidateFingerprintMap = {};
     const frozenCandidates = candidates.map(candidate => {
@@ -34681,7 +35383,7 @@
           Array.isArray(declaration?.fusionParticipantIds) &&
           declaration.fusionParticipantIds.length > 1,
         horizon: 'SHALLOW',
-        previewBudget: { maxNodes: 12 },
+        previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
         beliefSnapshot: beliefState,
         battleIntent,
         actionOpportunity,
@@ -53647,7 +54349,8 @@
       units[id] = {
         hp: Number(unit.hp), hp_max: Number(unit.hp_max), sp: Number(unit.sp), sp_max: Number(unit.sp_max),
         men: Number(unit.men), men_max: Number(unit.men_max), vit: Number(unit.vit), vit_max: Number(unit.vit_max),
-        def: Number(unit.def), agi: Number(unit.agi), shield: Number(unit.shield || 0),
+        str: Number(unit.str), def: Number(unit.def), agi: Number(unit.agi), shield: Number(unit.shield || 0),
+        observed_response_capacity: Number(unit.observed_response_capacity || 0),
         ['状态效果']: cloneValue(unit['状态效果'] || {}),
       };
       // M3 R4b5 charge-only transport: carry the decision-visible 蓄力技能 fact
@@ -53812,7 +54515,13 @@
         }
         if (/力量|攻击|伤害|威力/.test(attribute)) return sum + ratio;
         if (/敏捷|速度|反应/.test(attribute)) return sum + ratio * 0.35;
-        if (/防御|抗性|韧性|减伤/.test(attribute)) return sum + ratio * 0.35;
+        if (/防御|抗性|韧性|减伤/.test(attribute)) {
+          const defenseValue = ratio * 0.35;
+          const expectedThreatRatio = Number(context?.expectedIncomingThreatRatio);
+          return sum + (Number.isFinite(expectedThreatRatio)
+            ? Math.min(defenseValue, Math.max(0, expectedThreatRatio) * duration)
+            : defenseValue);
+        }
         return sum + ratio * 0.5;
       }, 0));
     }
@@ -53872,7 +54581,8 @@
       return Math.min(0.65, stateValue * duration);
     }
     if (prototype === '规则防御') {
-      if (String(effect?.规则 || '').trim() === '免死') {
+      const rule = String(effect?.规则 || '').trim();
+      if (rule === '免死') {
         const effectiveCapacity = (
           preview.readHp(target) + preview.readShield(target)
         ) / Math.max(1, preview.readHpMax(target)) * 100;
@@ -53886,7 +54596,13 @@
           1,
         );
       }
-      return 0.5;
+      if (rule === '免伤') {
+        const expectedThreatRatio = Number(context?.expectedIncomingThreatRatio);
+        return Number.isFinite(expectedThreatRatio)
+          ? clamp(Math.max(0, expectedThreatRatio), 0, 1)
+          : 0;
+      }
+      return 0;
     }
     if (prototype === '伤害结算' || prototype === '机制抹消' || prototype === '资源锁定') return 0;
     return Math.min(0.1, r9v2LinearSkillValue({ _效果数组: [effect] }) / 4);
@@ -53921,12 +54637,15 @@
         return /命中|暴击|先攻|反应|施法/.test(String(effect?.判定 || '').trim());
       }
       if (prototype === '结算修正') {
-        return !/反伤|承伤|受伤|减伤|治疗|恢复|护盾/.test(String(effect?.结算 || '').trim());
+        const settlement = String(effect?.结算 || '').trim();
+        if (/伤害.*转.*(?:治疗|恢复)/.test(settlement)) return true;
+        return !/反伤|承伤|受伤|减伤|治疗|恢复|护盾/.test(settlement);
       }
+      if (prototype === '召唤生成') return true;
       if (prototype !== '机制授予') return false;
       return (Array.isArray(effect?.授予效果) ? effect.授予效果 : []).some(granted => {
         const grantedPrototype = String(granted?.原型 || '').trim();
-        return ['属性修正', '判定修正', '结算修正'].includes(grantedPrototype);
+        return ['属性修正', '判定修正', '结算修正', '召唤生成'].includes(grantedPrototype);
       });
     });
     if (!actionShapingEffects.length) return null;
@@ -53954,7 +54673,7 @@
       },
       paymentMode: 'FORMAL',
       horizon: 'SHALLOW',
-      previewBudget: { maxNodes: 64 },
+      previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
     });
     const afterRecipient = findUnitInWorld(result?.afterSnapshot, recipientId);
     if (!afterRecipient) return null;
@@ -53971,10 +54690,38 @@
       hostileSide,
       actionCapacityCache,
     );
-    const followupWindows = r9v2LinearFollowupWindows(actionShapingEffects, request, projectedWorld);
+    // The item-use declaration consumes the recipient's current active window.
+    // A one-round action buff therefore expires before it can shape a later
+    // action; longer buffs have one fewer realizable follow-up window than their
+    // raw duration advertises.
+    const followupWindows = Math.max(
+      0,
+      r9v2LinearFollowupWindows(actionShapingEffects, request, projectedWorld) - 1,
+    );
+    const summonWindowGain = (result?.contributions || [])
+      .filter(entry => String(entry?.outcomeKind || '').trim() === 'SUMMON_WINDOW')
+      .reduce((sum, entry) => {
+        if (!(Number(entry?.evidence?.remainingWindows || 0) > 0)) return sum;
+        const probability = clamp(Number(
+          entry?.applicationProbability ?? entry?.evidence?.applicationProbability ?? 1,
+        ), 0, 1);
+        return sum + Math.max(0, Number(entry?.evidence?.actionPotential || 0)) / 100 * probability;
+      }, 0);
+    const displacedCapacity = Math.max(0, beforeCapacity);
+    const capacityScale = Math.max(1, beforeCapacity, afterCapacity);
+    const netActionShapingGain = Math.max(
+      0,
+      Math.max(0, afterCapacity - beforeCapacity) * followupWindows - displacedCapacity,
+    ) / capacityScale;
+    const netSummonWindowGain = Math.max(
+      0,
+      summonWindowGain - displacedCapacity,
+    ) / capacityScale;
     return clamp(
-      Math.max(0, afterCapacity - beforeCapacity) /
-        Math.max(1, beforeCapacity, afterCapacity) * followupWindows,
+      Math.max(
+        netActionShapingGain,
+        netSummonWindowGain,
+      ),
       0,
       1,
     );
@@ -54065,17 +54812,15 @@
       selfUse,
       threatProjection,
     );
-    const realizedSelfActionUtility = selfUse
-      ? r9v2LinearCreatedSelfActionFit({
-          request,
-          candidate,
-          worldSnapshot,
-          recipient,
-          projectedRecipient,
-          hostileSide,
-          actionCapacityCache,
-        })
-      : null;
+    const realizedSelfActionUtility = r9v2LinearCreatedSelfActionFit({
+      request,
+      candidate,
+      worldSnapshot,
+      recipient,
+      projectedRecipient,
+      hostileSide,
+      actionCapacityCache,
+    });
     const itemUtility = realizedSelfActionUtility === null
       ? genericItemUtility
       : Math.min(genericItemUtility, realizedSelfActionUtility);
@@ -54093,12 +54838,16 @@
     // buffs are options on paper, but do not beat the consumer's best affordable
     // action in the same window. Keep the old 0.1 floor for units whose current
     // action catalog has almost no measurable value.
-    const opportunityCost = Math.max(0.1, displacedActiveUtility);
-    const netItemUtility = clamp(
-      (itemUtility - opportunityCost) / Math.max(0.05, 1 - opportunityCost),
-      0,
-      1,
-    );
+    const opportunityCost = realizedSelfActionUtility === null
+      ? Math.max(0.1, displacedActiveUtility)
+      : 0;
+    const netItemUtility = realizedSelfActionUtility === null
+      ? clamp(
+          (itemUtility - opportunityCost) / Math.max(0.05, 1 - opportunityCost),
+          0,
+          1,
+        )
+      : itemUtility;
     if (netItemUtility <= 0) return null;
     const survivalProbability = boundedDeliverySurvivalProbability(
       threatProjection.deliveryBranches,
@@ -54114,10 +54863,19 @@
     const deliveryProbability = survivalProbability * actionAvailability;
     if (deliveryProbability <= 0.0001) return null;
     decisionMetrics.creationFutureTargetBranchesRealized += 1;
-    const mechanicalGain = netItemUtility * deliveryProbability * 0.8;
+    const mechanicalGain = netItemUtility * deliveryProbability;
+    const existingActionCount =
+      (hasStateFlag(projectedRecipient, 'disarm') ? 0 : 1) +
+      (hasStateFlag(projectedRecipient, 'silence')
+        ? 0
+        : affordablePreparedSkills(projectedRecipient).length);
     return Object.freeze({
       mechanicalGain: clamp(mechanicalGain, 0, 1),
-      optionGain: clamp(mechanicalGain, 0, 1),
+      optionGain: clamp(
+        mechanicalGain / Math.max(1, existingActionCount + 1),
+        0,
+        1,
+      ),
       itemUtility,
       alternativeUtility: opportunityCost,
       deliveryProbability,
@@ -54344,13 +55102,6 @@
       .map(entry => entry.unit);
   }
 
-  function r9v2LinearSideStateValue(worldSnapshot = {}, side = '', sideUnitsByWorld = null) {
-    const units = r9v2LinearSideUnits(worldSnapshot, side, sideUnitsByWorld);
-    if (!units.length) return 0;
-    return units.reduce((sum, unit) => sum +
-      preview.readHp(unit) / Math.max(1, preview.readHpMax(unit)), 0) / units.length;
-  }
-
   function r9v2LinearMechanicalCoverage(worldSnapshot = {}, actorId = '', hostileSide = '', sideUnitsByWorld = null) {
     const actor = findUnitInWorld(worldSnapshot, actorId);
     if (!actor) return 0;
@@ -54363,7 +55114,7 @@
         decisionMetrics.r9v2MechanicalCoverageRowsCacheHits += 1;
         rows = r9v2MechanicalCoverageRowsCache.get(skill);
       } else {
-        rows = deferredBattlePrototype(skill)
+        rows = nonExecutableBattlePrototype(skill)
           ? []
           : (Array.isArray(skill?._效果数组) ? skill._效果数组 : [])
             .filter(effect => effect && typeof effect === 'object')
@@ -54859,6 +55610,11 @@
     const actorAfter = findUnitInWorld(after, actorId) || actorBefore;
     const declaration = candidate.declaration || {};
     const effects = Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组 : [];
+    const setupAction = effects.some(effect => {
+      const prototype = String(effect?.原型 || '').trim();
+      return ['资源变化', '属性修正', '判定修正', '结算修正', '召唤生成', '机制授予'].includes(prototype) &&
+        !effects.some(row => String(row?.原型 || '').trim() === '伤害结算');
+    });
     const followupWindows = r9v2LinearFollowupWindows(effects, request, before);
     const role = String(request?.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase();
     const actionGrantedForActor = Array.isArray(result?.contributions) && result.contributions.some(entry =>
@@ -54871,6 +55627,29 @@
         followupWindows + (actionGrantedForActor ? 1 : 0),
       ),
     );
+    const summonActionPoolGain = clamp(
+      (Array.isArray(result?.contributions) ? result.contributions : [])
+        .filter(entry => String(entry?.outcomeKind || '').trim() === 'SUMMON_WINDOW')
+        .reduce((sum, entry, index) => {
+          const evidence = entry?.evidence || {};
+          const actionPotential = Number(evidence?.actionPotential);
+          if (!Number.isFinite(actionPotential)) {
+            throw new Error(
+              `R9V2_LINEAR_SUMMON_POTENTIAL_NON_FINITE:${candidate.candidateId}:${index}`,
+            );
+          }
+          const windows = Math.max(
+            1,
+            Number(evidence?.duration || 0),
+            Number(evidence?.remainingWindows || 0) +
+              (evidence?.immediateWindowConsumed === true ? 1 : 0),
+          );
+          return sum + Math.max(0, actionPotential) * windows *
+            r9v2ContributionProbability(entry) / 100;
+        }, 0),
+      0,
+      1,
+    );
     const needsPool = !candidate?.creation || ['REACTION', 'COUNTER'].includes(role);
     let beforePool;
     let afterPool;
@@ -54882,9 +55661,17 @@
     }
     markCausalStage('setupAndPoolMs');
     let creationSelfPoolGain = 0;
+    const directPoolValueGain = candidate?.creation
+      ? 0
+      : Math.max(0, afterPool.value - beforePool.value);
     const directSelfPoolGain = candidate?.creation
       ? 0
-      : (afterPool.value - beforePool.value) / poolScale;
+      : setupAction && !actionGrantedForActor
+        ? Math.max(
+            0,
+            directPoolValueGain * actorFollowupWindows - beforePool.value,
+          ) / poolScale
+        : directPoolValueGain / poolScale;
     let beforeMechanical = 0;
     let afterMechanical = 0;
     let mechanicalScale = 1;
@@ -54909,12 +55696,24 @@
         actionCapacityCache,
         true,
       );
+      const followupCapacityGain = (prior, next) => {
+        const positiveGain = Math.max(0, next - prior);
+        if (!setupAction) {
+          return positiveGain / Math.max(1, prior, next) * actorFollowupWindows;
+        }
+        // A pure setup occupies the current active opportunity. Its future
+        // uplift is useful only after the realizable windows repay the best
+        // action that was skipped; an explicit extra action removes that cost.
+        const displacedCapacity = actionGrantedForActor ? 0 : prior;
+        return Math.max(
+          0,
+          positiveGain * actorFollowupWindows - displacedCapacity,
+        ) / Math.max(1, prior, next);
+      };
       selfCapacityGain = Math.max(
-        Math.max(0, afterSelfCapacity - beforeSelfCapacity) /
-          Math.max(1, beforeSelfCapacity, afterSelfCapacity),
-        Math.max(0, afterHostileCapacity - beforeHostileCapacity) /
-          Math.max(1, beforeHostileCapacity, afterHostileCapacity),
-      ) * actorFollowupWindows;
+        followupCapacityGain(beforeSelfCapacity, afterSelfCapacity),
+        followupCapacityGain(beforeHostileCapacity, afterHostileCapacity),
+      );
     }
     markCausalStage('selfFollowupMs');
     const beforeAllies = memoBefore('side:allies', () =>
@@ -55010,7 +55809,7 @@
     }
     markCausalStage('creationProjectionMs');
     allyOptionGain = clamp(
-      (allyOptionGain + creationAllyOptionGain) / Math.max(1, beforeAllies.length),
+      allyOptionGain / Math.max(1, beforeAllies.length) + creationAllyOptionGain,
       0,
       1,
     );
@@ -55091,15 +55890,6 @@
       preview.evaluateBattleObjectivesCompact(before, objectives));
     const afterObjective = preview.evaluateBattleObjectivesCompact(after, objectives);
     const terminalProgress = r9v2LinearTerminalValue(afterObjective, actorSide) - r9v2LinearTerminalValue(beforeObjective, actorSide);
-    const stateProgress = (
-      r9v2LinearSideStateValue(after, actorSide, sideUnitsByWorld) - memoBefore('side:actor-state', () => r9v2LinearSideStateValue(before, actorSide, sideUnitsByWorld)) -
-      r9v2LinearSideStateValue(after, hostileSide, sideUnitsByWorld) + memoBefore('side:hostile-state', () => r9v2LinearSideStateValue(before, hostileSide, sideUnitsByWorld))
-    ) / 2;
-    const setupAction = effects.some(effect => {
-      const prototype = String(effect?.原型 || '').trim();
-      return ['资源变化', '属性修正', '判定修正', '结算修正', '召唤生成', '机制授予'].includes(prototype) &&
-        !effects.some(row => String(row?.原型 || '').trim() === '伤害结算');
-    });
     const castTime = Math.max(0, Number(declaration?.skill?.前摇 ?? declaration?.skill?.cast_time ?? 0));
     const naturalBudget = Math.max(1, Number(request?.actionOpportunity?.naturalActionBudget || 40));
     let enemyThreat = 0;
@@ -55111,10 +55901,67 @@
     }
     const targetIds = Array.isArray(declaration.targetIds) ? declaration.targetIds : [];
     const hostileTargets = targetIds.map(id => findUnitInWorld(before, id)).filter(unit => unit && sideOf(before, unit) === hostileSide);
-    const lowestHostileRatio = memoBefore('side:lowest-hostile-ratio', () => Math.min(1,
-      ...enemiesBefore.map(unit => preview.readHp(unit) / Math.max(1, preview.readHpMax(unit)))));
-    const focusGain = hostileTargets.some(unit =>
-      preview.readHp(unit) / Math.max(1, preview.readHpMax(unit)) <= lowestHostileRatio + 1e-9) ? hostilePressure : 0;
+    let focusGain = 0;
+    if (hostileTargets.length === 1 && enemiesBefore.length > 1) {
+      const responseCapacityByEnemy = new Map(enemiesBefore.map(unit => [
+        preview.unitId(unit),
+        Math.max(
+          0,
+          Number(unit?.observed_response_capacity || 0),
+          r9v2LinearBestActionCapacity(
+            before,
+            unit,
+            actorSide,
+            actionCapacityCache,
+          ),
+        ),
+      ]));
+      const maximumResponseCapacity = Math.max(
+        0,
+        ...responseCapacityByEnemy.values(),
+      );
+      const responseWeight = unit => maximumResponseCapacity > 1e-9
+        ? clamp(
+            Number(responseCapacityByEnemy.get(preview.unitId(unit)) || 0) /
+              maximumResponseCapacity,
+            0,
+            1,
+          )
+        : 1;
+      const focusProgress = (unit, lossRatio) => {
+        const maximum = Math.max(1, preview.readHpMax(unit));
+        const beforeRatio = (preview.readHp(unit) + preview.readShield(unit)) / maximum;
+        const expectedLossRatio = Math.max(0, lossRatio) * r9v2LinearResponseRetention(
+          request,
+          unit,
+          actorBefore || {},
+        );
+        const curveBefore = (1 - clamp(beforeRatio, 0, 1)) ** 2;
+        const curveAfter = (1 - clamp(beforeRatio - expectedLossRatio, 0, 1)) ** 2;
+        const concentrationProgress = Math.max(0, curveAfter - curveBefore);
+        // Preserve half of the actual concentration/finishing progress even
+        // when the target has little observed response capacity. The other
+        // half breaks equal-HP ties with evidence-backed future threat; it
+        // never turns threat into a class/name ownership bonus.
+        return concentrationProgress * (1 + responseWeight(unit)) / 2;
+      };
+      const focused = hostileTargets[0];
+      const focusedAfter = findUnitInWorld(after, preview.unitId(focused));
+      const focusedMaximum = Math.max(1, preview.readHpMax(focused));
+      const focusedRawLoss = Math.max(
+        0,
+        preview.readHp(focused) + preview.readShield(focused) -
+          (focusedAfter ? preview.readHp(focusedAfter) + preview.readShield(focusedAfter) : 0),
+      ) / focusedMaximum;
+      const focusedProgress = focusProgress(focused, focusedRawLoss);
+      const bestAlternativeProgress = Math.max(0, ...enemiesBefore
+        .filter(unit => preview.unitId(unit) !== preview.unitId(focused))
+        .map(unit => focusProgress(unit, focusedRawLoss)));
+      focusGain = Math.min(
+        hostilePressure,
+        Math.max(0, focusedProgress - bestAlternativeProgress) / enemiesBefore.length,
+      );
+    }
     markCausalStage('enemyAndObjectiveMs');
     const friendlyThreat = unit => memoBefore(`unit:${preview.unitId(unit)}:incoming-threat`, () =>
       enemiesBefore.reduce((sum, enemy) =>
@@ -55180,7 +56027,7 @@
       }
     }
     let redundant = 0;
-    let supportiveCount = 0;
+    let redundancyEffectCount = 0;
     effects.forEach((effect, effectIndex) => {
       const prototype = String(effect?.原型 || '').trim();
       const signedValue = Number.parseFloat(String(effect?.数值 || '0'));
@@ -55189,43 +56036,45 @@
         (prototype === '资源变化' && signedValue > 0) ||
         (prototype === '护盾变化' && String(effect?.护盾模式 || '').trim() === '正向护盾') ||
         (prototype === '属性修正' && signedValue > 0);
-      if (!friendly || !['资源变化', '护盾变化', '属性修正', '判定修正', '结算修正', '状态施加', '状态移除'].includes(prototype)) return;
-      supportiveCount += 1;
+      if (!['资源变化', '护盾变化', '属性修正', '判定修正', '结算修正', '状态施加', '状态移除'].includes(prototype)) return;
+      redundancyEffectCount += 1;
       const recipients = targetIds.map(id => findUnitInWorld(before, id)).filter(Boolean);
       const relevant = recipients.length ? recipients : [actorBefore].filter(Boolean);
-      const realizedProtection = relevant.reduce((sum, unit) => {
-        const next = findUnitInWorld(after, preview.unitId(unit)) || unit;
-        const hpMax = Math.max(1, preview.readHpMax(unit));
-        const hpGain = Math.max(0, preview.readHp(next) - preview.readHp(unit)) / hpMax;
-        const shieldGain = Math.max(0, preview.readShield(next) - preview.readShield(unit)) / hpMax;
-        const protectionWindows = Math.max(1, Math.min(3, Number(effect?.持续回合 || 1)));
-        const usableShield = role === 'ACTIVE'
-          ? Math.min(shieldGain, friendlyThreat(unit) * protectionWindows)
-          : shieldGain;
-        const preservedActionProbability = role === 'ACTIVE'
-          ? Math.max(
-              0,
-              memoBefore(`unit:${preview.unitId(unit)}:routine-incapacity`, () =>
-                r9v2LinearRoutineIncapacityRisk(
-                  before,
-                  enemiesBefore,
-                  unit,
-                  hostileSide,
-                  recentAttackLedgerIndex,
-                )) -
-                r9v2LinearRoutineIncapacityRisk(
-                  after,
-                  [...enemiesAfter.values()],
-                  next,
-                  hostileSide,
-                  recentAttackLedgerIndex,
-                ),
-            )
-          : 0;
-        return sum + (hpGain + usableShield + preservedActionProbability) *
-          Number(exposureByUnit().get(preview.unitId(unit)) || 0);
-      }, 0) / Math.max(1, relevant.length);
-      protectionGain = Math.max(protectionGain, realizedProtection);
+      if (friendly) {
+        const realizedProtection = relevant.reduce((sum, unit) => {
+          const next = findUnitInWorld(after, preview.unitId(unit)) || unit;
+          const hpMax = Math.max(1, preview.readHpMax(unit));
+          const hpGain = Math.max(0, preview.readHp(next) - preview.readHp(unit)) / hpMax;
+          const shieldGain = Math.max(0, preview.readShield(next) - preview.readShield(unit)) / hpMax;
+          const protectionWindows = Math.max(1, Math.min(3, Number(effect?.持续回合 || 1)));
+          const usableShield = role === 'ACTIVE'
+            ? Math.min(shieldGain, friendlyThreat(unit) * protectionWindows)
+            : shieldGain;
+          const preservedActionProbability = role === 'ACTIVE'
+            ? Math.max(
+                0,
+                memoBefore(`unit:${preview.unitId(unit)}:routine-incapacity`, () =>
+                  r9v2LinearRoutineIncapacityRisk(
+                    before,
+                    enemiesBefore,
+                    unit,
+                    hostileSide,
+                    recentAttackLedgerIndex,
+                  )) -
+                  r9v2LinearRoutineIncapacityRisk(
+                    after,
+                    [...enemiesAfter.values()],
+                    next,
+                    hostileSide,
+                    recentAttackLedgerIndex,
+                  ),
+              )
+            : 0;
+          return sum + (hpGain + usableShield + preservedActionProbability) *
+            Number(exposureByUnit().get(preview.unitId(unit)) || 0);
+        }, 0) / Math.max(1, relevant.length);
+        protectionGain = Math.max(protectionGain, realizedProtection);
+      }
       const rootActionId = r9v2LinearCanonicalActionId(candidate);
       const effectInstanceId = r9v2LinearCanonicalEffectId(
         effect,
@@ -55243,7 +56092,7 @@
         redundant += marginalRows.filter(entry =>
           entry.evidence.marginal === false
         ).length / marginalRows.length;
-      } else if (prototype === '资源变化' && relevant.every(unit => {
+      } else if (friendly && prototype === '资源变化' && relevant.every(unit => {
         const resource = String(effect?.资源 || '').trim();
         return preview.readResource(unit, resource) / Math.max(1, preview.readResourceMax(unit, resource)) >= 0.95;
       })) redundant += 1;
@@ -55429,7 +56278,7 @@
         actorAfter || {},
         resourceSequenceCapacityCache,
       );
-      resourceRunwayGain = -Math.max(
+      const sequenceLoss = Math.max(
         0,
         Number(beforeSequenceCapacity.sequence || 0) -
           Number(afterSequenceCapacity.sequence || 0),
@@ -55438,6 +56287,14 @@
         Number(beforeSequenceCapacity.sequence || 0),
         Number(afterSequenceCapacity.sequence || 0),
       );
+      const hostileCapacityBefore = enemiesBefore.reduce((sum, unit) =>
+        sum + preview.readHp(unit) + preview.readShield(unit), 0);
+      const hostileCapacityAfter = [...enemiesAfter.values()].reduce((sum, unit) =>
+        sum + preview.readHp(unit) + preview.readShield(unit), 0);
+      const continuationDemand = hostileCapacityBefore > 0
+        ? clamp(hostileCapacityAfter / hostileCapacityBefore, 0, 1)
+        : 0;
+      resourceRunwayGain = -sequenceLoss * continuationDemand;
     } else if (directResourceRunwayGain > 0) {
       if (candidate?.creation) {
         resourceRunwayGain = 0;
@@ -55474,8 +56331,12 @@
     }
     markCausalStage('resourceRunwayMs');
     const values = {
-      OBJECTIVE_PROGRESS: clamp(terminalProgress || stateProgress, -1, 1),
-      SELF_FOLLOWUP_POOL_GAIN: clamp(directSelfPoolGain + creationSelfPoolGain, -1, 1),
+      OBJECTIVE_PROGRESS: clamp(terminalProgress, -1, 1),
+      SELF_FOLLOWUP_POOL_GAIN: clamp(
+        directSelfPoolGain + creationSelfPoolGain + summonActionPoolGain,
+        -1,
+        1,
+      ),
       SELF_FOLLOWUP_MECHANICAL_GAIN: clamp(Math.max(
         directMechanicalGain,
         selfCapacityGain,
@@ -55492,7 +56353,9 @@
       ALLY_RESOURCE_RUNWAY_GAIN: allyResourceRunwayGain,
       FOCUS_TARGET_MARGINAL_GAIN: clamp(focusGain, 0, 1),
       PROTECTION_MARGINAL_GAIN: clamp(protectionGain, 0, 1),
-      TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL: supportiveCount ? clamp(redundant / supportiveCount, 0, 1) : 0,
+      TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL: redundancyEffectCount
+        ? clamp(redundant / redundancyEffectCount, 0, 1)
+        : 0,
     };
     const eventIds = [...new Set((result.contributions || []).map(entry => String(entry?.eventId || '')).filter(Boolean))];
     markCausalStage('finalizeMs');
@@ -55660,10 +56523,10 @@
       damageMultiplier = responseKind === 'PASS_OPPORTUNITY'
         ? 1
         : responseKind === 'DEFEND'
-          ? preview.calculateDefenseDamageMultiplier(target, source, true)
+          ? preview.calculateDefenseDamageMultiplier(target, source, false)
           : 1;
       dodgeProbability = responseKind === 'EVADE'
-        ? preview.calculateDodgeProbability(target, source, true)
+        ? preview.calculateDodgeProbability(target, source, false)
         : 0;
       if (Number.isFinite(damageMultiplier) && damageMultiplier >= 0 && damageMultiplier <= 1 &&
         Number.isFinite(dodgeProbability) && dodgeProbability >= 0 && dodgeProbability <= 1) {
@@ -55683,6 +56546,7 @@
       sourceActionId,
       sourceActorId,
       targetId: request.actorId,
+      // Bridge attestation that this carrier is frozen, not a pre-existing combat stance.
       prepared: true,
       visibleWorldRevision: revision,
       requestHash: request.requestHash,
@@ -56199,8 +57063,8 @@
       const hasIllegalSameSideTarget =
         ['HOSTILE_SINGLE', 'HOSTILE_GROUP'].includes(legalityTargetProfile) &&
         candidateTargetIds.some(targetId => publicSnapshot.sides[String(targetId)] === actorSide);
-      const pdaProjections = [];
-      const sourceProjections = {};
+      const rawPdaProjections = [];
+      const rawSourceProjections = {};
       for (let index = 0; index < effects.length; index += 1) {
         const sourceEffectId = r9v2LinearCanonicalEffectId(effects[index], bridgeIdPrefix, index);
         const context = {
@@ -56210,7 +57074,11 @@
           candidateTargetIds,
         };
         const directProjection = pda.project(effects[index], context);
-        pdaProjections.push({ sourceEffectId, projection: directProjection });
+        rawPdaProjections.push({
+          effect: effects[index],
+          sourceEffectId,
+          projection: directProjection,
+        });
         // FeatureSource.scanCandidate unpacks carrier rows into its own
         // effect ids; precompute the exact same admit/project results here so
         // the source never re-runs previewAction or PDA projection.
@@ -56224,7 +57092,9 @@
             sourceEffectId: seid,
             candidateTargetIds,
           };
-          sourceProjections[seid] = {
+          rawSourceProjections[seid] = {
+            effect: rows[unpackIndex],
+            actualize: unpacked === null,
             admitted: pda.admit(rows[unpackIndex], innerContext),
             projection: unpacked === null
               ? directProjection
@@ -56268,12 +57138,73 @@
           previewResult?.changedUnitIds || [],
         );
       }
+      const temporalAudit = temporalAuditForCandidate(
+        preview.collectEffects(declaration?.skill || {}),
+        candidateTargetIds,
+        request,
+        request.visibleWorld,
+        actorSide,
+        previewResult?.contributions || [],
+        declaration,
+      );
+      const scoringAfterSnapshot = removeUnrealizableTemporalEffects(
+        previewResult?.afterSnapshot || request.visibleWorld,
+        request.visibleWorld,
+        temporalAudit,
+      );
+      const scoringContributions = (previewResult?.contributions || []).filter(entry =>
+        !temporalAudit.invalidContributionSet.has(entry)
+      );
+      const scoringPreviewResult = scoringAfterSnapshot === previewResult?.afterSnapshot &&
+        scoringContributions.length === (previewResult?.contributions || []).length
+        ? previewResult
+        : Object.freeze({
+            ...previewResult,
+            afterSnapshot: scoringAfterSnapshot,
+            contributions: Object.freeze(scoringContributions),
+          });
+      if (scoringPreviewResult?.afterSnapshot) {
+        markCapacityDeltaSnapshot(
+          scoringPreviewResult.afterSnapshot,
+          request.visibleWorld,
+          scoringPreviewResult?.changedUnitIds || [],
+        );
+      }
+      const pdaProjections = rawPdaProjections.map(item => ({
+        sourceEffectId: item.sourceEffectId,
+        projection: r9v2LinearActualizedProjection({
+          ...item,
+          request,
+          declaration,
+          previewResult,
+          actorSide,
+        }),
+      }));
+      const sourceProjections = Object.fromEntries(
+        Object.entries(rawSourceProjections).map(([sourceEffectId, item]) => [
+          sourceEffectId,
+          {
+            admitted: item.admitted,
+            projection: item.actualize
+              ? r9v2LinearActualizedProjection({
+                  ...item,
+                  sourceEffectId,
+                  request,
+                  declaration,
+                  previewResult,
+                  actorSide,
+                  sourceMode: true,
+                })
+              : item.projection,
+          },
+        ]),
+      );
       addFeatureBuildTime('previewActionMs', candidatePreviewStartedAt);
       previewCalls += 1;
       const bridgeInputStartedAt = collectPerformanceBreakdown
         ? featureClockNow()
         : 0;
-      previewResultsById[candidate.candidateId] = previewResult;
+      previewResultsById[candidate.candidateId] = scoringPreviewResult;
       pdaProjectionsById[candidate.candidateId] = sourceProjections;
       const creationProfile = r9v2LinearCreationProfile(candidate);
       const actionOpportunityCarrier = r9v2LinearReactionCarrier(request, candidate, declaration);
@@ -56286,7 +57217,7 @@
           targetSet: candidateTargetIds,
         },
         visibleWorld: publicSnapshot,
-        contributions: previewResult && previewResult.contributions || [],
+        contributions: scoringPreviewResult && scoringPreviewResult.contributions || [],
         pdaProjections,
         declaration: {
           actionId: bridgeIdPrefix,
@@ -56433,6 +57364,83 @@
     return buildOnlineLinearFeatureInputs(request, {
       includeCandidateImpactEnvelope: true,
     }).candidateImpactEnvelope;
+  }
+
+  function r9v2LinearActualizedProjection({
+    effect,
+    projection,
+    sourceEffectId,
+    request,
+    declaration,
+    previewResult,
+    actorSide,
+    sourceMode = false,
+  }) {
+    if (!projection || typeof projection !== 'object') return projection;
+    const actor = findUnitInWorld(request.visibleWorld, request.actorId);
+    if (!actor) return projection;
+    const resolvedTargetIds = preview.resolveTargets(
+      request.visibleWorld,
+      actor,
+      declaration,
+      effect,
+    ).map(preview.unitId);
+    const temporalProfile = temporalEffectWindowProfile(
+      effect,
+      resolvedTargetIds,
+      request,
+      request.visibleWorld,
+      actorSide,
+    );
+    const contributions = (previewResult?.contributions || []).filter(entry =>
+      String(entry?.effectInstanceId || '').trim() === String(sourceEffectId || '').trim() &&
+      String(entry?.windowId || '').trim() !== 'ACTION_COST'
+    );
+    const directFacts = (projection.directFacts || []).flatMap(fact => {
+      let targetIds = resolvedTargetIds.length
+        ? resolvedTargetIds
+        : Array.isArray(fact?.targetIds) ? fact.targetIds : [];
+      if (fact?.factType === 'RESOURCE_OPTION_CHANGED') {
+        const factResource = resourceKeyFor(fact?.key || '');
+        const realized = contributions.filter(entry =>
+          entry?.outcomeKind === 'RESOURCE_OPTION_CHANGED' &&
+          resourceKeyFor(entry?.evidence?.resourceKey || entry?.evidence?.resource || '') === factResource
+        ).map(entry => {
+          const delta = Number(entry?.expectedDelta ?? entry?.evidence?.delta);
+          if (!Number.isFinite(delta)) return null;
+          if (fact.unit === 'ABS') return delta;
+          const target = findUnitInWorld(request.visibleWorld, entry?.targetId);
+          const maximum = target
+            ? preview.readResourceMax(target, entry?.evidence?.resource || fact?.key)
+            : 0;
+          return maximum > 0 ? delta / maximum * 100 : 0;
+        }).filter(Number.isFinite);
+        return [{
+          ...fact,
+          targetIds,
+          amount: realized.length
+            ? realized.reduce((sum, value) => sum + value, 0) / realized.length
+            : 0,
+        }];
+      }
+      if (fact?.factType !== 'STATE_DELTA' || !temporalProfile.temporal) {
+        return [{ ...fact, targetIds }];
+      }
+      if (temporalProfile.prototype === '属性修正') {
+        targetIds = temporalProfile.realizableTargetIds.filter(targetId =>
+          (temporalProfile.realizableAttributesByTarget?.[targetId] || []).includes(String(fact?.key || '').trim())
+        );
+      } else {
+        targetIds = temporalProfile.realizableTargetIds.slice();
+      }
+      if (targetIds.length) return [{ ...fact, targetIds }];
+      if (sourceMode) return [];
+      return [{ ...fact, amount: 0, durationTurns: 0 }];
+    });
+    return {
+      ...projection,
+      directFacts,
+    };
   }
 
   function r9v2LinearUniqueSorted(values) {
@@ -56605,6 +57613,8 @@
         selectionMode: lockedChoice && candidateId === selectedId
           ? 'PLAYER_LOCKED'
           : 'R9V2_LINEAR_DIRECT',
+        contextuallyDominated: ranked[index]?.contextuallyDominated === true,
+        dominatedBy: String(ranked[index]?.dominatedBy || '').trim(),
         tieGroup: Array.isArray(ranked[index]?.tieGroup)
           ? [...ranked[index].tieGroup]
           : [candidateId],
@@ -56643,6 +57653,9 @@
     });
     const hardExclusionAudit = Array.isArray(result?.hardExclusionAudit)
       ? result.hardExclusionAudit.map(entry => Object.freeze({ ...entry }))
+      : [];
+    const dominanceAudit = Array.isArray(result?.dominanceAudit)
+      ? result.dominanceAudit.map(entry => Object.freeze({ ...entry }))
       : [];
     const reasonFactors = result?.scoreContributions?.[selectedId]?.factors || [];
     const alternatives = lockedChoice
@@ -56711,7 +57724,9 @@
       opportunitySequence: Math.max(0, Number(request?.actionOpportunity?.sequence || 0)),
       candidateCount: request.frozenCandidates.length,
       eligibleCount: Math.max(0, Number(result?.eligibleCount || 0)),
+      selectableCount: Math.max(0, Number(result?.selectableCount || 0)),
       hardExcludedCount: Math.max(0, Number(result?.hardExcludedCount || 0)),
+      dominatedCount: Math.max(0, Number(result?.dominatedCount || 0)),
       frozenCandidateIds: request.frozenCandidates.map(candidate => candidate.candidateId),
       preEnumerationRejections: Object.freeze(
         (Array.isArray(request?.rejectedCandidates) ? request.rejectedCandidates : [])
@@ -56719,6 +57734,7 @@
       ),
       hardExcludedCandidateIds: hardExclusionAudit.map(entry => entry.candidateId),
       hardExclusionAudit,
+      dominanceAudit,
       candidateAudit,
       scoreAudit: candidateAudit.slice(0, 3),
       selected: selectedRecord,
