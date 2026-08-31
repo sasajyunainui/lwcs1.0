@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Persistence_Adapter.js:97e3e76a83ed40b81753f27a8c3628ec9e71b22210f49c2cbd7be2e3ef674fd1|LWCS_MVU_Persistence_Provider.js:0f239b782cb62adf8da9b9d35c43f8febb99732f3a4264ab429186121082c782|MVU_Engine_Runtime.js:68d64f28ec6f25a25bab937048cfc845c9513cf77162622265f68d43340090df */
+/* sources-sha256: LWCS_Persistence_Adapter.js:7436c12abd132a0730c8426fbadfac51bd0f7fce0166278dd7ed9dcbfa5f500b|LWCS_MVU_Persistence_Provider.js:0f239b782cb62adf8da9b9d35c43f8febb99732f3a4264ab429186121082c782|MVU_Engine_Runtime.js:68d64f28ec6f25a25bab937048cfc845c9513cf77162622265f68d43340090df */
 ;
 /* source: LWCS_Persistence_Adapter.js */
 (function (root) {
@@ -586,6 +586,7 @@
         capabilities,
       };
       const confirmedKeys = new Set();
+      const indexedNamespaces = new Set();
       const confirmedKey = (namespace, key) => `${namespace}\u0000${key}`;
 
       async function run(kind, action) {
@@ -602,6 +603,20 @@
         assertRequest(request);
         return run('read', async check => {
           const key = confirmedKey(request.namespace, request.key);
+          if (backend === 'tt-store' && !confirmedKeys.has(key)) {
+            if (!indexedNamespaces.has(request.namespace)) {
+              const keys = await backendApi.listKeys({ namespace: request.namespace, stableChatId: session.stableChatId });
+              check();
+              if (!Array.isArray(keys)) return failureMeta(session, 'uncertain', 'READBACK_MISMATCH');
+              keys.forEach(found => confirmedKeys.add(confirmedKey(request.namespace, found)));
+              indexedNamespaces.add(request.namespace);
+            }
+            if (!confirmedKeys.has(key)) {
+              return request.verify === undefined
+                ? resultMeta(session, 'committed', { verified: true, value: undefined })
+                : failureMeta(session, 'not_committed', 'NOT_FOUND');
+            }
+          }
           const value = await backendApi.getJson({ namespace: request.namespace, key: request.key, stableChatId: session.stableChatId });
           check();
           if (value === undefined) {
@@ -678,6 +693,7 @@
           check();
           if (!Array.isArray(keys)) return failureMeta(session, 'uncertain', 'READBACK_MISMATCH');
           keys.forEach(key => confirmedKeys.add(confirmedKey(normalized.namespace, key)));
+          if (backend === 'tt-store') indexedNamespaces.add(normalized.namespace);
           if (keys.length > 0) pinBackend(session);
           return resultMeta(session, 'committed', { verified: true, keys: keys.slice() });
         });

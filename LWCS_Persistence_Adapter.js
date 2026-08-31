@@ -581,6 +581,7 @@
         capabilities,
       };
       const confirmedKeys = new Set();
+      const indexedNamespaces = new Set();
       const confirmedKey = (namespace, key) => `${namespace}\u0000${key}`;
 
       async function run(kind, action) {
@@ -597,6 +598,20 @@
         assertRequest(request);
         return run('read', async check => {
           const key = confirmedKey(request.namespace, request.key);
+          if (backend === 'tt-store' && !confirmedKeys.has(key)) {
+            if (!indexedNamespaces.has(request.namespace)) {
+              const keys = await backendApi.listKeys({ namespace: request.namespace, stableChatId: session.stableChatId });
+              check();
+              if (!Array.isArray(keys)) return failureMeta(session, 'uncertain', 'READBACK_MISMATCH');
+              keys.forEach(found => confirmedKeys.add(confirmedKey(request.namespace, found)));
+              indexedNamespaces.add(request.namespace);
+            }
+            if (!confirmedKeys.has(key)) {
+              return request.verify === undefined
+                ? resultMeta(session, 'committed', { verified: true, value: undefined })
+                : failureMeta(session, 'not_committed', 'NOT_FOUND');
+            }
+          }
           const value = await backendApi.getJson({ namespace: request.namespace, key: request.key, stableChatId: session.stableChatId });
           check();
           if (value === undefined) {
@@ -673,6 +688,7 @@
           check();
           if (!Array.isArray(keys)) return failureMeta(session, 'uncertain', 'READBACK_MISMATCH');
           keys.forEach(key => confirmedKeys.add(confirmedKey(normalized.namespace, key)));
+          if (backend === 'tt-store') indexedNamespaces.add(normalized.namespace);
           if (keys.length > 0) pinBackend(session);
           return resultMeta(session, 'committed', { verified: true, keys: keys.slice() });
         });
