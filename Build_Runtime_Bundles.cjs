@@ -33,6 +33,7 @@ const 打包定义 = Object.freeze({
     'timeline.js',
   ],
   'LWCS_UI_Integration_Bundle.js': [
+    'LWCS_TT_AutoUpdate_Debug.js',
     'LWCS_Database_Adapter.js',
     'mvu_logic_bridge.js',
   ],

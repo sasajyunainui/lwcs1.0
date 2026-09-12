@@ -36718,7 +36718,6 @@ $CONTENT
                             }
                             : undefined;
                         const checkpointInitialData = JSON.parse(JSON.stringify(deferredCheckpointData));
-                        const checkpointAfterData = JSON.parse(JSON.stringify(deferredCheckpointData));
                         const checkpointCommit = await runTableUpdateCommit_ACU({
                             source: 'group_fill',
                             reason: 'manual_refill_progress_checkpoint',
@@ -36735,13 +36734,13 @@ $CONTENT
                             trackingSheetKeys: checkpointSheetKeys,
                             trackAsUpdate: true,
                             eventTransaction,
-                        }, () => ({
+                        }, ({ workingData }) => ({
                             success: true,
                             value: { modifiedKeys: checkpointSheetKeys },
-                            tableData: checkpointAfterData,
+                            tableData: workingData,
                             persist: {
                                 targetMessageIndex: checkpointTargetIndex,
-                                targetSheetKeys: getSortedSheetKeys_ACU(checkpointAfterData),
+                                targetSheetKeys: getSortedSheetKeys_ACU(workingData),
                                 updateGroupKeys: checkpointSheetKeys,
                                 trackingSheetKeys: checkpointSheetKeys,
                                 trackAsUpdate: true,

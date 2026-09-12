@@ -4723,6 +4723,41 @@
     }
   }
 
+  async function 确保交互模块已加载(moduleName, mountName) {
+    if (typeof window[mountName] === 'function') return true;
+    const chatId = getCurrentUiRequestChatId();
+    try {
+      const result = await window.__LWCS_确保模块已加载__?.(moduleName, { 来源: 'interaction', 允许失败降级: false, 抛错: true });
+      return chatId === getCurrentUiRequestChatId() && result?.ok === true && typeof window[mountName] === 'function';
+    } catch (error) {
+      console.warn(`[LWCS] ${moduleName}按需加载失败`, error);
+      return false;
+    }
+  }
+
+  function 挂载按需交互模块(moduleName, mountName, container, snapshot, mount) {
+    if (typeof window[mountName] === 'function') return mount(snapshot);
+    let disposed = false;
+    let component = null;
+    let latestSnapshot = snapshot;
+    const chatId = getCurrentUiRequestChatId();
+    const stillCurrent = () => !disposed && container.isConnected && chatId === getCurrentUiRequestChatId();
+    container.textContent = '正在加载…';
+    void 确保交互模块已加载(moduleName, mountName).then(ready => {
+      if (!stillCurrent()) return;
+      if (!ready) { container.textContent = '模块加载失败，请重新打开重试。'; return; }
+      container.textContent = '';
+      component = mount(latestSnapshot);
+    }).catch(error => {
+      if (stillCurrent()) container.textContent = '模块加载失败，请重新打开重试。';
+      console.warn(`[LWCS] ${moduleName}挂载失败`, error);
+    });
+    return {
+      updateData(next) { latestSnapshot = next; component?.updateData?.(next); },
+      destroy() { disposed = true; component?.destroy?.(); component = null; latestSnapshot = null; },
+    };
+  }
+
   function cloneJsonValue(value, fallback = {}) {
     try {
       return structuredClone(value);
@@ -17929,7 +17964,7 @@
       ? SHARED_SKILL_MECHANISM_REGISTRY.机制抹消支持原型.filter(原型 => SKILL_DESIGNER_PROTOTYPE_REGISTRY?.[原型])
       : 技能设计台机制抹消支持原型默认选项.filter(原型 => SKILL_DESIGNER_PROTOTYPE_REGISTRY?.[原型]),
   );
-  const 技能设计台机制授予触发条件选项 = Object.freeze(['主动触发', '随下次行动触发']);
+  const 技能设计台机制授予触发条件选项 = Object.freeze(['主动触发', '随下次行动触发', '下次魂技成功释放']);
   const 技能设计台召唤行动模式选项 = Object.freeze(['自主行动', '护卫', '协同攻击']);
   const SKILL_DESIGNER_PARAM_INTERRUPT_WINDOW_OPTIONS = Object.freeze(['前摇', '吟唱中', '引导中']);
   const SKILL_DESIGNER_PARAM_COUNTER_RULE_OPTIONS = Object.freeze(['受击后', '免伤后', '受控后']);
@@ -20553,17 +20588,18 @@
       字段['触发条件'] = 读取技能设计台机制授予触发条件选项(授予目标).includes(触发条件) ? 触发条件 : '主动触发';
       if (字段['触发条件'] === '随下次行动触发') {
         delete 字段['可用次数'];
-        delete 字段['持续回合'];
       } else {
         字段['可用次数'] = Math.max(
           1,
           parseSkillDesignerIntegerInputValue(字段['可用次数'] ?? value['可用次数'] ?? value.useCount, 1, 1),
         );
+      }
+      if (字段['触发条件'] === '主动触发' || normalizeSkillUiText(value['持续回合'] ?? value.duration, '')) {
         字段['持续回合'] = Math.max(
           1,
           parseSkillDesignerIntegerInputValue(字段['持续回合'] ?? value['持续回合'] ?? value.duration, 1, 1),
         );
-      }
+      } else delete 字段['持续回合'];
     }
     if (原型 === '机制抹消') {
       字段['抹消对象'] = 规范化技能设计台机制抹消对象(字段['抹消对象']);
@@ -21179,8 +21215,14 @@
         throw new Error(`技能执行结构错误:${path}[${index}]机制授予触发条件无效`);
       if (原型 === '机制授予' && normalizeSkillUiText(effect['触发条件'], '主动触发') === '随下次行动触发' && !机制授予目标允许下次行动触发(effect['目标']))
         throw new Error(`技能执行结构错误:${path}[${index}]非自身机制授予不允许随下次行动触发`);
-      if (原型 === '机制授予' && normalizeSkillUiText(effect['触发条件'], '主动触发') === '随下次行动触发' && (effect['可用次数'] !== undefined || effect['持续回合'] !== undefined))
-        throw new Error(`技能执行结构错误:${path}[${index}]随下次行动触发不支持可用次数或持续回合`);
+      if (原型 === '机制授予' && normalizeSkillUiText(effect['触发条件'], '主动触发') === '随下次行动触发' && effect['可用次数'] !== undefined)
+        throw new Error(`技能执行结构错误:${path}[${index}]随下次行动触发固定使用一次，不支持可用次数`);
+      if (原型 === '机制授予' && effect['触发条件'] === '下次魂技成功释放' && !机制授予目标允许下次行动触发(effect['目标']))
+        throw new Error(`技能执行结构错误:${path}[${index}]非自身机制授予不允许在下次魂技成功释放时触发`);
+      if (原型 === '机制授予' && effect['触发条件'] === '下次魂技成功释放' && !(Number.isInteger(Number(effect['可用次数'])) && Number(effect['可用次数']) > 0))
+        throw new Error(`技能执行结构错误:${path}[${index}]下次魂技成功释放机制授予必须有正整数可用次数`);
+      if (原型 === '机制授予' && effect['持续回合'] !== undefined && !(Number.isInteger(Number(effect['持续回合'])) && Number(effect['持续回合']) > 0))
+        throw new Error(`技能执行结构错误:${path}[${index}]机制授予持续回合必须为正整数`);
       if (原型 === '机制授予' && normalizeSkillUiText(effect['触发条件'], '主动触发') === '主动触发' && !(toNumber(effect['可用次数'], 0) > 0 && toNumber(effect['持续回合'], 0) > 0))
         throw new Error(`技能执行结构错误:${path}[${index}]主动触发机制授予缺少可用次数或持续回合`);
       if (
@@ -25203,7 +25245,7 @@
         return [
           createSkillDesignerSelectParam('grantTrigger', '触发条件', 技能设计台机制授予触发条件选项),
           createSkillDesignerNumberParam('useCount', '可用次数', '1', '1'),
-          createSkillDesignerNumberParam('duration', '持续回合', '1', '1'),
+          createSkillDesignerNumberParam('duration', '持续回合', '1', '1', '待机触发可留空表示无回合期限；填写后逾期失效。主动触发默认1回合。'),
         ];
       case '穿透':
         return [
@@ -25355,7 +25397,6 @@
         nextEntry['grantTrigger'] = 读取技能设计台机制授予触发条件选项(授予目标).includes(触发条件) ? 触发条件 : '主动触发';
         if (nextEntry['grantTrigger'] === '随下次行动触发') {
           delete nextEntry['useCount'];
-          delete nextEntry['duration'];
         }
       }
       if (safeEntries(nextEntry).length) normalized[label] = nextEntry;
@@ -25377,7 +25418,7 @@
                 const 触发条件 = 读取技能设计台机制授予触发条件选项(授予目标).includes(normalizeSkillUiText(paramState['grantTrigger'], '主动触发'))
                   ? normalizeSkillUiText(paramState['grantTrigger'], '主动触发')
                   : '主动触发';
-                if (def.key === 'useCount' || def.key === 'duration') return 触发条件 === '主动触发';
+                if (def.key === 'useCount') return 触发条件 !== '随下次行动触发';
                 return true;
               })
             : label === '复制'
@@ -25447,7 +25488,7 @@
                   const 触发条件 = 读取技能设计台机制授予触发条件选项(授予目标).includes(normalizeSkillUiText(paramState['grantTrigger'], '主动触发'))
                     ? normalizeSkillUiText(paramState['grantTrigger'], '主动触发')
                     : '主动触发';
-                  if (def.key === 'useCount' || def.key === 'duration') return 触发条件 === '主动触发';
+                  if (def.key === 'useCount') return 触发条件 !== '随下次行动触发';
                   return true;
                 })
             : defs;
@@ -25646,7 +25687,7 @@
         valueOf('调整方式') === '压缩'
       );
     }
-    if (prototype === '机制授予' && ['可用次数', '持续回合'].includes(key)) {
+    if (prototype === '机制授予' && key === '可用次数') {
       return !机制授予目标允许下次行动触发(target) || valueOf('触发条件') !== '随下次行动触发';
     }
     return true;
@@ -26055,7 +26096,7 @@
       },
       机制授予: {
         授予效果: '被授予后实际可触发的效果列表；不能再嵌套授予机制。',
-        触发条件: '主动触发会进入技能池；随下次行动触发为一次性行动前附加。',
+        触发条件: '主动触发进入技能池；下次行动触发一次；魂技成功释放触发每次扣一次，未命中不代表释放失败。待机期限可留空。',
         可用次数: '主动触发时授予壳还能使用几次。',
         持续回合: '主动触发时必须在几回合内使用。',
       },
@@ -26418,11 +26459,12 @@
       next['触发条件'] = 读取技能设计台机制授予触发条件选项(next['目标']).includes(触发条件) ? 触发条件 : '主动触发';
       if (next['触发条件'] === '随下次行动触发') {
         delete next['可用次数'];
-        delete next['持续回合'];
       } else {
         next['可用次数'] = Math.max(1, parseSkillDesignerIntegerInputValue(next['可用次数'], 1, 1));
-        next['持续回合'] = Math.max(1, parseSkillDesignerIntegerInputValue(next['持续回合'], 1, 1));
       }
+      if (next['触发条件'] === '主动触发' || normalizeSkillUiText(effect['持续回合'], '')) {
+        next['持续回合'] = Math.max(1, parseSkillDesignerIntegerInputValue(next['持续回合'], 1, 1));
+      } else delete next['持续回合'];
     }
     if (prototype === '资源变化' && next['持续回合'] !== undefined) {
       const 持续回合 = Math.max(0, Math.min(10, parseSkillDesignerIntegerInputValue(next['持续回合'], 0, 0)));
@@ -27561,8 +27603,10 @@
           .slice(0, 3)
           .join('；') || '后续效果';
         const 触发条件 = 简写(effect['触发条件'], '主动触发');
-        if (触发条件 === '随下次行动触发') return `下次行动时触发：${授予文本}${条件文本(effect)}`;
+        const 待机期限 = effect['持续回合'] !== undefined ? `待机期限${简写(effect['持续回合'])}回合，逾期失效` : '无回合期限';
+        if (触发条件 === '随下次行动触发') return `下次行动时触发一次：${授予文本}；${待机期限}${条件文本(effect)}`;
         const 次数 = 简写(effect['可用次数']) || '1';
+        if (触发条件 === '下次魂技成功释放') return `魂技成功释放时附带：${授予文本}；每次消耗一次，共${次数}次，${待机期限}${条件文本(effect)}`;
         const 回合 = 简写(effect['持续回合']) || '1';
         return `主动触发${次数}次，${回合}回合内：${授予文本}${条件文本(effect)}`;
       }
@@ -29475,8 +29519,10 @@
             影响方向: '效果强度',
           }],
         };
-        if (主授予效果.触发条件 === '主动触发') {
+        if (主授予效果.触发条件 !== '随下次行动触发') {
           主授予效果.可用次数 = parseSkillDesignerIntegerInputValue(params['useCount'], 1, 1);
+        }
+        if (主授予效果.触发条件 === '主动触发' || normalizeSkillUiText(params['duration'], '')) {
           主授予效果.持续回合 = parseSkillDesignerIntegerInputValue(params['duration'], 1, 1);
         }
         return [
@@ -30185,8 +30231,10 @@
             影响方向: '效果强度',
           }],
         };
-        if (副授予效果.触发条件 === '主动触发') {
+        if (副授予效果.触发条件 !== '随下次行动触发') {
           副授予效果.可用次数 = parseSkillDesignerIntegerInputValue(params['useCount'], 1, 1);
+        }
+        if (副授予效果.触发条件 === '主动触发' || normalizeSkillUiText(params['duration'], '')) {
           副授予效果.持续回合 = parseSkillDesignerIntegerInputValue(params['duration'], 1, 1);
         }
         effects.push(
@@ -40308,7 +40356,7 @@
           }
           const 挂载点 = 容器.querySelector('#professionWorkshopMount');
           if (!挂载点) return null;
-          const 挂载副职业工坊 = () =>
+          const 挂载副职业工坊 = snapshot =>
             window.mountProfessionUI(挂载点, snapshot, {
               dispatchContext: mapDispatchContext,
               onAction: 操作数据 => {
@@ -40318,11 +40366,7 @@
                 });
               },
             });
-          if (typeof window.mountProfessionUI === 'function') {
-            return 挂载副职业工坊();
-          }
-          挂载点.innerHTML = '<div class="dossier-empty-note">工坊模块暂不可用</div>';
-          return null;
+          return 挂载按需交互模块('副职业模块', 'mountProfessionUI', 挂载点, snapshot, 挂载副职业工坊);
         },
       };
     }
@@ -43114,7 +43158,7 @@
               '<div class="archive-card full"><div class="archive-card-head"><div class="archive-card-title">旁观视角</div></div><div class="intel-layout"><div class="intel-card"><b>店铺概览</b><span>交易不可用</span></div></div></div>';
             return null;
           }
-          const 挂载交易面板 = () =>
+          const 挂载交易面板 = snapshot =>
             window.mountTradeUI(container, snapshot, {
               actionType: tradeLaunchOptions.actionType,
               initialTab: tradeLaunchOptions.initialTab,
@@ -43136,12 +43180,7 @@
                 });
               },
             });
-          if (typeof window.mountTradeUI === 'function') {
-            return 挂载交易面板();
-          }
-          container.innerHTML =
-            '<div class="archive-card full"><div class="archive-card-head"><div class="archive-card-title">交易模块</div></div><div class="dossier-empty-note">交易模块暂不可用</div></div>';
-          return null;
+          return 挂载按需交互模块('交易模块', 'mountTradeUI', container, snapshot, 挂载交易面板);
         },
       };
     }
@@ -43153,7 +43192,7 @@
         body: '',
         onMount: container => {
           const 是赛事 = previewKey === '赛事';
-          const 挂载独立模块 = () =>
+          const 挂载独立模块 = snapshot =>
             (是赛事 ? window.mountCompetitionUI : window.mountPrivilegeUI)?.(container, snapshot, {
               onStartMatch: ({ 赛事ID, 项目, 对局ID, 结果 }) => {
                 if (!是赛事) return;
@@ -43171,9 +43210,7 @@
               },
             });
           const 挂载函数名 = 是赛事 ? 'mountCompetitionUI' : 'mountPrivilegeUI';
-          if (typeof window[挂载函数名] === 'function') return 挂载独立模块();
-          container.innerHTML = `<div class="cp-empty">${previewKey}模块暂不可用。</div>`;
-          return null;
+          return 挂载按需交互模块('赛事权限模块', 挂载函数名, container, snapshot, 挂载独立模块);
         },
       };
     }
@@ -44420,6 +44457,7 @@
     return true;
   };
   window.__MVU_OPEN_BATTLE_UI__ = async () => {
+    if (!await 确保交互模块已加载('战斗模块', 'mountBattleUI')) return false;
     if (typeof window.mountBattleUI !== 'function') {
       showUiToast('战斗模块未就绪，暂时无法开启战斗终端。', 'error', 4200);
       return false;
@@ -46079,6 +46117,7 @@ ${播报文本}
   }
 
   async function 确保自动战斗运行器(snapshot, combatData) {
+    if (!await 确保交互模块已加载('战斗模块', 'mountBattleUI')) return { ok: false, reason: 'battle_mount_unavailable' };
     if (typeof window.mountBattleUI !== 'function') return { ok: false, reason: 'battle_mount_unavailable' };
     if (!自动战斗运行宿主 || !自动战斗运行宿主.isConnected) {
       自动战斗运行宿主 = document.createElement('div');
@@ -46155,6 +46194,7 @@ ${播报文本}
   }
 
   async function 挂载临时召唤夹具战斗UI() {
+    if (!await 确保交互模块已加载('战斗模块', 'mountBattleUI')) return null;
     if (typeof window.mountBattleUI !== 'function') {
       throw new Error('战斗模块未就绪');
     }
@@ -47939,6 +47979,7 @@ ${播报文本}
       const mountToken = ++battleInlineMountToken;
       pendingBattleInlineMount = openBattleInlineSurface()
         .then(async host => {
+          if (!await 确保交互模块已加载('战斗模块', 'mountBattleUI')) return;
           if (mountToken !== battleInlineMountToken) return;
           const latestSnapshot = liveSnapshot || lastRenderableSnapshot || snapshot;
           const latestCombatData = normalizeCombatForBattleUI(latestSnapshot);
@@ -48054,6 +48095,7 @@ ${播报文本}
   }
 
   async function openMapBattleModule(snapshot, dispatchDetail, options = {}) {
+    if (!await 确保交互模块已加载('战斗模块', 'mountBattleUI')) return { ok: false, reason: '战斗模块加载失败。' };
     const contextResult = 读取世界动作上下文_桥接(snapshot, dispatchDetail || {}, 'battle');
     if (!contextResult.ok) {
       return {
@@ -48419,6 +48461,7 @@ ${播报文本}
         reason: 'FREE_NARRATIVE',
       };
     }
+    if (!await 确保交互模块已加载('战斗模块', 'mountBattleUI')) throw new Error('BATTLE_MODULE_LOAD_FAILED');
     const shouldCommit = options.dryRun !== true && options.commit !== false;
     if (shouldCommit && 正式战斗事务执行中) throw new Error('BATTLE_TRANSACTION_IN_FLIGHT');
     if (shouldCommit) 正式战斗事务执行中 = true;
@@ -48508,6 +48551,7 @@ ${播报文本}
   }
 
   async function 自动执行战斗模块路由(snapshot, request = {}) {
+    if (!await 确保交互模块已加载('战斗模块', 'mountBattleUI')) return { ok: false, reason: '战斗模块加载失败。' };
     let 开启结果 = null;
     let 当前快照 = snapshot;
     let 战斗已接管 = deepGet(当前快照, 'rootData.world.战斗.进行中', false) === true;
@@ -49168,6 +49212,7 @@ ${播报文本}
   }
 
   async function buildInlineTradeAction(snapshot, tradeRequest) {
+    if (!await 确保交互模块已加载('交易模块', 'mountTradeUI')) return { ok: false, reason: 'trade_ui_unavailable' };
     if (typeof window.mountTradeUI !== 'function') {
       return { ok: false, reason: 'trade_ui_unavailable' };
     }
@@ -56913,17 +56958,16 @@ ${播报文本}
         const 触发条件候选 = ['主动触发', '随下次行动触发', '下次魂技成功释放'];
         record.触发条件 = 触发条件候选.includes(toText(value.触发条件, '')) ? toText(value.触发条件, '') : '主动触发';
         record.授予触发条件 = record.触发条件;
-        if (record.触发条件 === '下次魂技成功释放') {
+        if (record.触发条件 !== '主动触发' && value.持续回合 === undefined) {
           delete record.duration;
           delete record.持续回合;
           delete record.持续tick;
           delete record.结束tick;
-          record.可用次数 = Math.max(1, toNumber(value.可用次数, 1));
         } else {
-          record.duration = record.触发条件 === '随下次行动触发' ? 1 : Math.max(1, toNumber(value.持续回合, toNumber(value.持续, record.持续回合 || 1)));
+          record.duration = Math.max(1, toNumber(value.持续回合, 1));
           delete record.持续回合;
-          record.可用次数 = record.触发条件 === '随下次行动触发' ? 1 : Math.max(1, toNumber(value.可用次数, 1));
         }
+        record.可用次数 = record.触发条件 === '随下次行动触发' ? 1 : Math.max(1, toNumber(value.可用次数, 1));
         record.授予效果 = cloneJsonValue(Array.isArray(value.授予效果) ? value.授予效果 : [], []);
         record.战斗效果 = {
           ...(record.战斗效果 || {}),
@@ -57133,7 +57177,7 @@ ${播报文本}
           授予效果: cloneJsonValue(Array.isArray(effect['授予效果']) ? effect['授予效果'] : [], []),
         };
         if (触发条件 !== '随下次行动触发') value.可用次数 = Math.max(1, toNumber(effect['可用次数'], 1));
-        if (触发条件 === '主动触发') value.持续回合 = Math.max(1, toNumber(effect['持续回合'], 1));
+        if (触发条件 === '主动触发' || effect['持续回合'] !== undefined) value.持续回合 = Math.max(1, toNumber(effect['持续回合'], 1));
         return {
           target: '自身',
           type: 'mechanism_grant',

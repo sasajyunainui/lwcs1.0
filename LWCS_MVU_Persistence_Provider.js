@@ -78,11 +78,18 @@
     return JSON.parse(JSON.stringify(value));
   }
 
+  const phaseMeasureCounts = new Map();
+
   function phaseTime(name, start) {
     const timeline = root.performance;
     const end = typeof timeline?.now === 'function' ? timeline.now() : null;
     if (name && Number.isFinite(start) && Number.isFinite(end) && typeof timeline.measure === 'function') {
-      try { timeline.measure(name, { start, end }); } catch (_) {}
+      try {
+        const count = phaseMeasureCounts.get(name) || 0;
+        if (count >= 128) timeline.clearMeasures(name);
+        timeline.measure(name, { start, end });
+        phaseMeasureCounts.set(name, count >= 128 ? 1 : count + 1);
+      } catch (_) {}
     }
     return end;
   }

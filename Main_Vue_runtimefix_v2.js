@@ -387,9 +387,10 @@ function createUnifiedAnchorManager(options = {}) {
     return node.matches(selector) || !!node.querySelector(selector);
   }
 
-  function recordsContainSelector(records, selector) {
+  function recordsContainSelector(records, selector, ignoredSubtree = null) {
     for (const record of records) {
       if (record.type !== 'childList') continue;
+      if (ignoredSubtree && (record.target === ignoredSubtree || ignoredSubtree.contains(record.target))) continue;
       for (const node of record.addedNodes) {
         if (nodeContainsSelector(node, selector)) return true;
       }
@@ -501,7 +502,7 @@ function createUnifiedAnchorManager(options = {}) {
 
     if (bodyObserver) bodyObserver.disconnect();
     bodyObserver = new MutationObserver(records => {
-      if (!recordsContainSelector(records, anchorSelector)) return;
+      if (!recordsContainSelector(records, anchorSelector, observedChat)) return;
       if (recordsContainSelector(records, '#chat')) refreshChatObserver();
       scheduleRelocate();
     });

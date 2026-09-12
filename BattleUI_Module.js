@@ -3445,20 +3445,19 @@ class BattleUIComponent {
           if (!report || typeof report !== 'object') return '';
           const renderUnits = (label, units = []) => `<section class="battle-final-summary-side"><h4>${htmlEscapeText(label)}</h4>${(Array.isArray(units) ? units : []).length
             ? units.map(unit => {
-                const formatSummaryNumber = (value, minimum = 0) => {
-                  const numeric = Number(value);
-                  return 格式化ReportDto数字值(
-                    Number.isFinite(numeric) ? Math.max(minimum, numeric) : minimum,
-                  );
-                };
-                const states = (Array.isArray(unit?.states) ? unit.states : []).map(state => `${state?.name || '状态'}(${Math.max(0, Number(state?.duration || 0))})`).filter(Boolean);
+                const formatSummaryNumber = value => typeof value === 'number' && Number.isFinite(value) ? 格式化ReportDto数字值(value) : '未记录';
+                const states = (Array.isArray(unit?.states) ? unit.states : []).map(state => {
+                  const name = typeof state === 'string' ? state : String(state?.name || '').trim();
+                  return name && typeof state?.duration === 'number' && Number.isFinite(state.duration)
+                    ? `${name}（剩余${Math.max(0, state.duration)}回合）` : name;
+                }).filter(Boolean);
                 const resources = unit?.resources || {};
                 const resourceText = String(unit?.resourceVisibility || 'PUBLIC').toUpperCase() === 'HIDDEN'
                   ? '<span>资源未公开</span>'
-                  : `<span>魂力 ${formatSummaryNumber(unit?.sp ?? resources.soul ?? 0)}/${formatSummaryNumber(unit?.spMax ?? resources.soulMax ?? 1, 1)}</span><span>体力 ${formatSummaryNumber(unit?.vit ?? resources.stamina ?? 0)}/${formatSummaryNumber(unit?.vitMax ?? resources.staminaMax ?? 1, 1)}</span><span>精神力 ${formatSummaryNumber(unit?.men ?? resources.spirit ?? 0)}/${formatSummaryNumber(unit?.menMax ?? resources.spiritMax ?? 1, 1)}</span>`;
-                return `<div class="battle-final-summary-unit"><b>${htmlEscapeText(unit?.name || '单位')}</b><span>HP ${formatSummaryNumber(unit?.hp || 0)}/${formatSummaryNumber(unit?.hpMax || 1, 1)}</span>${resourceText}${states.length ? `<em>${htmlEscapeText(states.join('、'))}</em>` : ''}</div>`;
+                  : `<span>魂力 ${formatSummaryNumber(unit?.sp ?? resources.soul)}/${formatSummaryNumber(unit?.spMax ?? resources.soulMax)}</span><span>体力 ${formatSummaryNumber(unit?.vit ?? resources.stamina)}/${formatSummaryNumber(unit?.vitMax ?? resources.staminaMax)}</span><span>精神力 ${formatSummaryNumber(unit?.men ?? resources.spirit)}/${formatSummaryNumber(unit?.menMax ?? resources.spiritMax)}</span>`;
+                return `<div class="battle-final-summary-unit"><b>${htmlEscapeText(unit?.name || '单位')}</b><span>生命 ${formatSummaryNumber(unit?.hp)}/${formatSummaryNumber(unit?.hpMax)}</span>${resourceText}${states.length ? `<em>${htmlEscapeText(states.join('、'))}</em>` : ''}</div>`;
               }).join('')
-            : '<p class="battle-final-summary-empty">无可行动单位</p>'}</section>`;
+            : '<p class="battle-final-summary-empty">无单位记录</p>'}</section>`;
           const renderList = (title, items = []) => `<section class="battle-final-summary-list"><h4>${htmlEscapeText(title)}</h4>${(Array.isArray(items) ? items : []).length
             ? `<ul>${items.map(item => `<li>${htmlEscapeText(item)}</li>`).join('')}</ul>`
             : '<p>暂无</p>'}</section>`;
@@ -3508,13 +3507,13 @@ class BattleUIComponent {
 
         function 格式化ReportDto操作数(operands = []) {
           return (Array.isArray(operands) ? operands : [])
-            .filter(operand => Number.isFinite(Number(operand?.value)))
+            .filter(operand => typeof operand?.value === 'number' && Number.isFinite(operand.value))
             .map(operand => `${String(operand?.name || '数值').trim()} ${格式化ReportDto数字值(operand.value, operand?.unit || '')}`)
             .join('；');
         }
 
         function 渲染ReportDto数字(token = {}) {
-          if (!Number.isFinite(Number(token?.value))) return '';
+          if (typeof token?.value !== 'number' || !Number.isFinite(token.value)) return '';
           const operands = 格式化ReportDto操作数(token?.operands);
           const attrs = [
             'data-report-number-source="true"',
@@ -3836,22 +3835,9 @@ class BattleUIComponent {
           }).join('')}</div>`;
         }
 
-        function 渲染ReportDto决策视图(explanations = [], narrativeChain = []) {
+        function 渲染ReportDto决策视图(explanations = []) {
           const rows = Array.isArray(explanations) ? explanations : [];
           if (!rows.length) return '<div class="battle-preview-empty">暂无决策解释</div>';
-          const contexts = (Array.isArray(narrativeChain) ? narrativeChain : []).flatMap(node => {
-            const decisions = Array.isArray(node?.decisions) && node.decisions.length
-              ? node.decisions
-              : node?.decision
-                ? [{ actorName: node?.actorName, isPrimary: true }]
-                : [];
-            return decisions.map(decision => ({ node, decision }));
-          });
-          const contextAligned = contexts.length === rows.length && rows.every((row, index) =>
-            String(contexts[index]?.decision?.actorName || contexts[index]?.node?.actorName || '').trim() ===
-            String(row?.actorName || '').trim()
-          );
-          const indexedRows = rows.map((row, index) => ({ row, node: contextAligned ? contexts[index]?.node || null : null }));
           const rounds = [...new Set(rows.map(row => Math.max(0, Number(row?.round || 0))).filter(Boolean))]
             .sort((left, right) => left - right);
           const actors = [...new Set(rows.map(row => String(row?.actorName || '').trim()).filter(Boolean))]
@@ -3867,7 +3853,7 @@ class BattleUIComponent {
             window.BattleUI.state.activeBattleDecisionRound = activeRound;
             window.BattleUI.state.activeBattleDecisionActor = activeActor;
           }
-          const visibleRows = indexedRows.filter(({ row }) =>
+          const visibleRows = rows.filter(row =>
             (!activeRound || Number(row?.round || 0) === activeRound) &&
             (!activeActor || String(row?.actorName || '').trim() === activeActor)
           );
@@ -3890,7 +3876,7 @@ class BattleUIComponent {
           if (!visibleRows.length) {
             return `${filters}<div class="battle-preview-empty">当前筛选下没有判定记录，请调整回合或行动者。</div>`;
           }
-          return `${filters}<div class="battle-report-decision-explanations">${visibleRows.map(({ row, node }) => {
+          return `${filters}<div class="battle-report-decision-explanations">${visibleRows.map(row => {
             const selected = row?.selected || {};
             const alternatives = Array.isArray(row?.alternatives) ? row.alternatives : [];
             const actualTokens = Array.isArray(row?.actual?.numericTokens) ? row.actual.numericTokens : [];
@@ -3930,9 +3916,18 @@ class BattleUIComponent {
             const choiceReasonHTML = (displayedMainReason || supportingReasons.length)
               ? `<section class="battle-report-decision-reason"><h4>为什么这样选</h4>${displayedMainReason ? `<p>${htmlEscapeText(displayedMainReason)}</p>` : ''}${supportingReasons.length ? `<ul>${supportingReasons.map(reason => `<li>${htmlEscapeText(reason)}</li>`).join('')}</ul>` : ''}</section>`
               : '';
+            const narrowing = Array.isArray(row?.visibleContext?.narrowing) ? row.visibleContext.narrowing : [];
+            const qualificationHTML = narrowing.length ? `<details class="battle-report-decision-steps"><summary>资格筛选过程（${narrowing.length}步）</summary><ol>${narrowing.map(step => {
+              const before = typeof step?.before === 'number' && Number.isInteger(step.before) && step.before >= 0 ? step.before : null;
+              const after = typeof step?.after === 'number' && Number.isInteger(step.after) && step.after >= 0 ? step.after : null;
+              const reasons = (Array.isArray(step?.droppedReasons) ? step.droppedReasons : []).map(reason =>
+                `${String(reason?.reason || '未记录排除原因')}（${typeof reason?.count === 'number' && Number.isInteger(reason.count) && reason.count >= 0 ? reason.count : '数量未知'}项）`);
+              return `<li><b>${htmlEscapeText(step?.stage || '未命名筛选阶段')}</b>：${before === 0 ? `得到${after ?? '数量未知'}项` : `${before ?? '数量未知'} → ${after ?? '数量未知'}项`}${reasons.length ? `<p>${htmlEscapeText(reasons.join('；'))}</p>` : ''}</li>`;
+            }).join('')}</ol></details>` : '<p class="battle-preview-empty">未公开本次资格筛选明细；不代表没有其他可用动作。</p>';
             return `
               <article class="battle-report-decision-explanation">
                 <header><span>第${Math.max(0, Number(row?.round || 0))}回合 · ${htmlEscapeText(row?.actorName || '行动者')}</span><b>${htmlEscapeText(selected?.name || '未记录动作')}</b></header>
+                ${qualificationHTML}
                 <section class="battle-report-decision-context"><h4>当时局面</h4><div class="battle-report-decision-numbers">
                   ${situationTokens.length ? situationTokens.map(渲染ReportDto数字).join(' ') : '<span class="battle-preview-empty">当时没有更多可公开的局面数字</span>'}
                 </div></section>
@@ -3944,7 +3939,7 @@ class BattleUIComponent {
                   ${forecastTokens.length ? forecastTokens.map(渲染ReportDto数字).join(' ') : '<span class="battle-preview-empty">暂无可公开的预测数字</span>'}
                 </div></section>
                 <section class="battle-report-decision-result"><h4>实际结算</h4>
-                  ${actualHeadline ? `<p>${htmlEscapeText(actualHeadline)}</p>` : `<p class="battle-preview-empty">${contextAligned ? '本次判定没有额外结算文本' : '判定记录与因果链顺序不一致，无法自动绑定局面上下文'}</p>`}
+                  ${actualHeadline ? `<p>${htmlEscapeText(actualHeadline)}</p>` : '<p class="battle-preview-empty">未记录本次结算说明</p>'}
                   <div class="battle-report-decision-numbers">${resultTokens.length ? resultTokens.map(渲染ReportDto数字).join(' ') : '<span class="battle-preview-empty">暂无数值事实</span>'}</div>
                   ${settlementDetails.length ? `<details class="battle-report-decision-steps"><summary>查看完整结算过程（${settlementTexts.length}步）</summary><ol>${settlementDetails.map(text => `<li>${htmlEscapeText(text)}</li>`).join('')}</ol></details>` : ''}
                 </section>
@@ -3962,7 +3957,7 @@ class BattleUIComponent {
             return 渲染ReportDto回合视图(reportDto?.roundOverview);
           }
           if (activeView === 'decision') {
-            return 渲染ReportDto决策视图(reportDto?.decisionExplanations, reportDto?.narrativeChain);
+            return 渲染ReportDto决策视图(reportDto?.decisionExplanations);
           }
           const chain = Array.isArray(reportDto?.narrativeChain) ? reportDto.narrativeChain : [];
           if (!chain.length) return '<div class="battle-preview-empty">暂无战报</div>';

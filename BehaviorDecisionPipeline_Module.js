@@ -289,7 +289,7 @@
   ];
   var RULE_REWRITE_OPTIONS = ['缴械', '死亡转存活'];
   var RULE_DEFENSE_OPTIONS = ['免伤', '免死'];
-  var TRIGGER_OPTIONS = ['主动触发', '随下次行动触发'];
+  var TRIGGER_OPTIONS = ['主动触发', '随下次行动触发', '下次魂技成功释放'];
   var STATE_TRIGGER_OPTIONS = ['立即触发', '延迟触发', '遥控触发'];
   var SETTLEMENT_OPTIONS = [
     '造成伤害', '受到伤害', '治疗', '消耗', '前摇', '反伤', '伤害转移', '伤害吸收',
@@ -710,7 +710,9 @@
     if (proto === '机制授予') {
       var trigger = String(effect['触发条件'] || '').trim();
       if (TRIGGER_OPTIONS.indexOf(trigger) < 0) return { reason: 'INVALID_OPTION_VALUE' };
-      if (trigger === '主动触发' && !hasOwn(effect, '可用次数')) return { reason: 'MISSING_REQUIRED_FIELD' };
+      if (trigger !== '随下次行动触发' && !hasOwn(effect, '可用次数')) return { reason: 'MISSING_REQUIRED_FIELD' };
+      if (hasOwn(effect, '可用次数') && Number(effect['可用次数']) < 1) return { reason: 'INVALID_OPTION_VALUE' };
+      if (hasOwn(effect, '持续回合') && Number(effect['持续回合']) < 1) return { reason: 'INVALID_OPTION_VALUE' };
       if (trigger === '随下次行动触发' && hasOwn(effect, '可用次数')) return { reason: 'INVALID_OPTION_VALUE' };
       for (var gi = 0; gi < effect['授予效果'].length; gi += 1) {
         var inner = effect['授予效果'][gi];
@@ -920,7 +922,8 @@
         followUpKey: effect['跟进行动键'],
         payloadDirectFacts: payload
       };
-      if (trigger === '主动触发') follow.maxActions = Number(effect['可用次数']);
+      if (trigger !== '随下次行动触发') follow.maxActions = Number(effect['可用次数']);
+      if (hasOwn(effect, '持续回合')) follow.durationTurns = Number(effect['持续回合']);
       out.scheduledFacts = [follow];
     } else if (proto === '决策干扰') {
       oppMods.interferenceRates = [{ 干扰: String(effect['干扰']).trim(), 数值: String(effect['数值']) }];
@@ -2810,7 +2813,7 @@
 // Revision 4 final (cases 62): scheduledFacts closed four-shape per PDA rev5 schema
 // (WINDOW_ADJUST entryId/operation/调整字段/调整方式 + optional 调整回合/调整tick/调整次数/
 // 结算倍率; SETTLEMENT_RATIO_ADJUST entryId/operation/结算倍率; FOLLOW_UP entryId/grantType/
-// ownerId/followUpKey/triggerKey/payloadDirectFacts with maxActions >=1 only for 主动触发; SUMMON_WINDOW entryId/
+// ownerId/followUpKey/triggerKey/payloadDirectFacts; counted grants carry maxActions, optional durationTurns is a deadline; SUMMON_WINDOW entryId/
 // grantType/召唤单位类型/召唤物名称/行动模式/durationTurns); private aliases key/字段/方式
 // are rejected; every entry requires entryId. OUTSIDE_BATCH1_ROW_COUNT is now
 // limited to unresolved rows/windows: a supported SUMMON_WINDOW is already owned
@@ -3031,10 +3034,10 @@
   var SCHED_SHAPES = {
     WINDOW_ADJUST: ['entryId', 'operation', '调整字段', '调整方式', '调整回合', '调整tick', '调整次数', '结算倍率'],
     SETTLEMENT_RATIO_ADJUST: ['entryId', 'operation', '结算倍率'],
-    FOLLOW_UP: ['entryId', 'grantType', 'ownerId', 'followUpKey', 'triggerKey', 'maxActions', 'payloadDirectFacts'],
+    FOLLOW_UP: ['entryId', 'grantType', 'ownerId', 'followUpKey', 'triggerKey', 'maxActions', 'durationTurns', 'payloadDirectFacts'],
     SUMMON_WINDOW: ['entryId', 'grantType', '召唤单位类型', '召唤物名称', '行动模式', 'durationTurns']
   };
-  var TRIGGER_ENUM = ['主动触发', '随下次行动触发'];
+  var TRIGGER_ENUM = ['主动触发', '随下次行动触发', '下次魂技成功释放'];
   var COST_KEYS = ['resource', 'amount'];
   var DECL_KEYS = ['revealStrength', 'declaredOverkill'];
   var FORBIDDEN_FACT_KEYS = ['source', 'fact'];
@@ -3520,9 +3523,12 @@
           if (typeof e.maxActions !== 'number') throw rejection('INVALID_OPTION_VALUE', { field: 'scheduledFacts[].maxActions', value: String(e.maxActions) });
           var ma = toFiniteNumber(e.maxActions, 'scheduledFacts[].maxActions');
           if (ma < 1 || Math.floor(ma) !== ma) throw rejection('INVALID_OPTION_VALUE', { field: 'scheduledFacts[].maxActions', value: ma });
-          if (e.triggerKey !== '主动触发') throw rejection('INVALID_OPTION_VALUE', { field: 'scheduledFacts[].maxActions', triggerKey: String(e.triggerKey) });
-        } else if (e.triggerKey === '主动触发') {
+          if (e.triggerKey === '随下次行动触发') throw rejection('INVALID_OPTION_VALUE', { field: 'scheduledFacts[].maxActions', triggerKey: String(e.triggerKey) });
+        } else if (e.triggerKey !== '随下次行动触发') {
           throw rejection('MISSING_SOURCE_REFERENCE', { field: 'scheduledFacts[].maxActions' });
+        }
+        if (e.durationTurns !== undefined && (!Number.isInteger(e.durationTurns) || e.durationTurns < 1)) {
+          throw rejection('INVALID_OPTION_VALUE', { field: 'scheduledFacts[].durationTurns' });
         }
       } else if (shape === 'SUMMON_WINDOW') {
         if (typeof e['召唤单位类型'] !== 'string' || e['召唤单位类型'].length === 0) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'scheduledFacts[].召唤单位类型' });
@@ -3825,11 +3831,11 @@
           out.push(kKnown('STATE_DURATION', 'TURNS', dur));
         }
       }
-    } else if (factType === 'RESOURCE_TRANSFER') {
-      // Resource transfer is a two-sided transaction. The immediate scalar row
-      // cannot preserve donor/recipient direction, while the formal causal layer
-      // consumes Preview's realized RESOURCE_OPTION_CHANGED pair. An empty
-      // projection here means delegated-without-duplication, not unsupported.
+    } else if (['RESOURCE_TRANSFER', 'RULE_DEFENSE_COUNTER', 'POSITION_DELTA'].includes(factType)) {
+      // These mechanics are owned by the target-aware causal layer: resource
+      // transfer needs both transaction endpoints, while rule defense and
+      // position need the projected recipient and threat context. An empty
+      // projection means delegated-without-duplication, not unsupported.
       return [];
     } else if (factType === 'SUMMON_WINDOW') {
       if (key === 'summon.count') {
@@ -4631,7 +4637,7 @@
         legalityFlags: { required: false, shape: 'string[] every member in hardExclusionCodes' },
         legalityModifiers: { required: false, shape: 'judgmentRates/taunt/tauntRemoved/stateMigration/stateSwap/mechanismRemoval metadata; hardExclusions/legalityFlags code arrays restricted to hardExclusionCodes', closed: true },
         opportunityModifiers: { required: false, shape: 'resourceLocks/opportunityConstraints/interferenceRates/dependencyTokens metadata', closed: true },
-        scheduledFacts: { required: false, shape: 'closed four-shape: WINDOW_ADJUST {entryId/operation/调整字段/调整方式 + optional 调整回合/调整tick/调整次数/结算倍率}, SETTLEMENT_RATIO_ADJUST {entryId/operation/结算倍率}, FOLLOW_UP {entryId/grantType/ownerId/followUpKey/triggerKey/payloadDirectFacts, maxActions integer >=1 and required only for 主动触发}, SUMMON_WINDOW {entryId/grantType/召唤单位类型/召唤物名称/行动模式/durationTurns}; entryId/ownerId/followUpKey required; all IDs validateIdString; private aliases key/字段/方式 rejected', closed: true },
+        scheduledFacts: { required: false, shape: 'closed four-shape: WINDOW_ADJUST {entryId/operation/调整字段/调整方式 + optional 调整回合/调整tick/调整次数/结算倍率}, SETTLEMENT_RATIO_ADJUST {entryId/operation/结算倍率}, FOLLOW_UP {entryId/grantType/ownerId/followUpKey/triggerKey/payloadDirectFacts, maxActions integer >=1 required for 主动触发 or 下次魂技成功释放, optional positive integer durationTurns is the deadline}, SUMMON_WINDOW {entryId/grantType/召唤单位类型/召唤物名称/行动模式/durationTurns}; entryId/ownerId/followUpKey required; all IDs validateIdString; private aliases key/字段/方式 rejected', closed: true },
         mechanicMetadataEntries: { required: false, shape: 'closed entries array, one entry per effect instance: {sourceEffectId (required id) + prototype-allowed Chinese keys} per PDA rev5Spec perPrototypeSubsets (生效方式/结算标签/抗性类型/驱动属性/影响方向/对应等级/触发方式/触发限制/结算/限定元素/吸收资源/吸收来源); audit-only, values never enter features', closed: true },
         projectionFamilies: { required: false, shape: '[{ sourceEffectId: id string, prototype: closed registry prototype enum }] unique; audit-only routing identity, never weighted', closed: true },
         prototypeRegistry: { required: false, shape: '{ registryId: string prefix RC6-M2-PROTOTYPE-DIRECT-ADAPTER, prototypeNames: unique canonical-sorted nonempty strings, prototypeRegistryHash: 8-hex fnv1a32 of canonical names JSON, sourceContractHash: 64-hex equal to governed adapterContract pin } read-only PDA registry attestation carrier; required whenever projectionFamilies present; values never enter features', closed: true },
@@ -4715,6 +4721,8 @@
     };
   });
   var mechanicalFingerprintCache = new WeakMap();
+  var mechanicalFingerprintContentCache = new Map();
+  var MAX_MECHANICAL_FINGERPRINT_CONTENT_ENTRIES = 4096;
 
   function isObject(value) { return value !== null && typeof value === 'object' && !Array.isArray(value); }
   function isPlainObject(value) {
@@ -4813,9 +4821,18 @@
         actionKind: 'RELEASE_SKILL', resourceCosts: normalized.values,
         prototypeKinds: prototypeKinds, targetModes: targetModes, carrierMode: carrier,
       };
-      var hash = '';
-      try { hash = previewApi.stableHash(payload); } catch (error) { hash = ''; }
-      result = validId(hash) ? 'public-action:' + hash : '';
+      var payloadKey = JSON.stringify(payload);
+      if (mechanicalFingerprintContentCache.has(payloadKey)) {
+        result = mechanicalFingerprintContentCache.get(payloadKey);
+      } else {
+        var hash = '';
+        try { hash = previewApi.stableHash(payload); } catch (error) { hash = ''; }
+        result = validId(hash) ? 'public-action:' + hash : '';
+        mechanicalFingerprintContentCache.set(payloadKey, result);
+        while (mechanicalFingerprintContentCache.size > MAX_MECHANICAL_FINGERPRINT_CONTENT_ENTRIES) {
+          mechanicalFingerprintContentCache.delete(mechanicalFingerprintContentCache.keys().next().value);
+        }
+      }
     }
     if (cacheable) {
       if (!cachedByCosts) {
@@ -6191,9 +6208,10 @@
     missingMask: Object.freeze(['HARD_EXCLUSION', 'HARD_EXCLUSION_REASON']),
   });
 
-  // JUDGMENT_DELTA remains in the audit inventory, but its legacy scalar head
-  // cannot distinguish a friendly bonus from a hostile penalty. Realized
-  // judgment value is owned by the target-aware causal option features below.
+  // JUDGMENT_DELTA and SETTLEMENT_MODIFIER_PERCENT remain in the audit
+  // inventory, but their legacy scalar heads cannot distinguish semantic type
+  // and recipient side. Realized value is owned by the target-aware causal
+  // option features below.
   const LINEAR = Object.freeze({
     intercept: 0,
     coefficients: Object.freeze({
@@ -6205,7 +6223,7 @@
       RELATION_TARGET_COUNT: 0.799682677937762, RELATION_TARGET_SIDE: 0,
       RESOURCE_CONSUMER_FIT: 0, RESOURCE_DEFICIT_COVERAGE: 0, RESOURCE_DELTA: 0,
       RESOURCE_DELTA_PERCENT: -0.3984230873845778, REVEAL_STRENGTH: 0,
-      SETTLEMENT_MODIFIER_PERCENT: -0.029061184033559898, SHIELD_DELTA: 0,
+      SETTLEMENT_MODIFIER_PERCENT: 0, SHIELD_DELTA: 0,
       STATE_DELTA_PERCENT: 0.18441615865944933, STATE_DURATION: 0.0019588051160184944,
       STATE_PRESENCE: 0, SUCCESS_PROBABILITY: 0.8567163732632611, SUMMON_COUNT: 0,
       SUMMON_DURATION: 0, SUMMON_STRENGTH: 0, TEAM_EFFECT_MARGINAL_GAIN: 0,
@@ -6265,7 +6283,11 @@
       OBJECTIVE_PROGRESS: 0,
       SELF_FOLLOWUP_POOL_GAIN: 0.25,
       SELF_FOLLOWUP_MECHANICAL_GAIN: 0.25,
-      RESOURCE_RUNWAY_GAIN: 0,
+      // Spending resources in an immediate response can remove the actor's
+      // remaining skill routes just as an active action can. The causal
+      // feature already measures that loss; ignoring it made costly counters
+      // compare as if their future skill pool were free.
+      RESOURCE_RUNWAY_GAIN: 14.848683457044219,
       ENEMY_RESPONSE_OPTION_DENIAL: 0.25,
       OPPONENT_RESPONSE_PRESSURE: 0,
       REACTION_FOLLOWUP_GAIN: 72,

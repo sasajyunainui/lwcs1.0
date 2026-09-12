@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Persistence_Adapter.js:7436c12abd132a0730c8426fbadfac51bd0f7fce0166278dd7ed9dcbfa5f500b|LWCS_MVU_Persistence_Provider.js:0f239b782cb62adf8da9b9d35c43f8febb99732f3a4264ab429186121082c782|MVU_Engine_Runtime.js:68d64f28ec6f25a25bab937048cfc845c9513cf77162622265f68d43340090df */
+/* sources-sha256: LWCS_Persistence_Adapter.js:7436c12abd132a0730c8426fbadfac51bd0f7fce0166278dd7ed9dcbfa5f500b|LWCS_MVU_Persistence_Provider.js:2e300d0011b1160a0b65fe9fdd2afc1b976a174b1c04498df6c8115ac3c349b5|MVU_Engine_Runtime.js:68d64f28ec6f25a25bab937048cfc845c9513cf77162622265f68d43340090df */
 ;
 /* source: LWCS_Persistence_Adapter.js */
 (function (root) {
@@ -838,11 +838,18 @@
     return JSON.parse(JSON.stringify(value));
   }
 
+  const phaseMeasureCounts = new Map();
+
   function phaseTime(name, start) {
     const timeline = root.performance;
     const end = typeof timeline?.now === 'function' ? timeline.now() : null;
     if (name && Number.isFinite(start) && Number.isFinite(end) && typeof timeline.measure === 'function') {
-      try { timeline.measure(name, { start, end }); } catch (_) {}
+      try {
+        const count = phaseMeasureCounts.get(name) || 0;
+        if (count >= 128) timeline.clearMeasures(name);
+        timeline.measure(name, { start, end });
+        phaseMeasureCounts.set(name, count >= 128 ? 1 : count + 1);
+      } catch (_) {}
     }
     return end;
   }

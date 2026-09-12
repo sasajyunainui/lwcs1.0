@@ -3122,7 +3122,8 @@ function normalizeSkillSideEffectEntry(value = {}) {
   const 生效对象 = SKILL_SIDE_EFFECT_TARGET_OPTIONS_V1.includes(rawTarget) ? rawTarget : '技能释放者';
   const 类型配置 = SKILL_SIDE_EFFECT_TYPE_META_V1[副作用类型] || {};
   const rawDuration = Number(value.持续回合 ?? 类型配置.持续回合 ?? 0);
-  const 持续回合 = Number.isFinite(rawDuration) ? Math.max(0, Math.round(rawDuration)) : 0;
+  // 非致死副作用在正式战斗中至少保留一个结算窗口；预算和生成输出必须使用同一期限。
+  const 持续回合 = Number.isFinite(rawDuration) ? Math.max(1, Math.round(rawDuration)) : Math.max(1, Number(类型配置.持续回合 || 1));
   const rawChance = Number(value.触发概率 ?? 1);
   const 触发概率 = Number.isFinite(rawChance) ? Math.max(0, Math.min(1, Number(rawChance.toFixed(4)))) : 1;
   const normalized = {
@@ -4320,7 +4321,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     designerMainHint: '特殊规则类',
     designerSubHint: '机制授予',
     designerSecondaryHint: '机制授予',
-    设计台参数定义: [select('grantTrigger', '触发条件', 'MECHANISM_GRANT_TRIGGER'), num('useCount', '可用次数', '1', '1'), num('duration', '持续回合', '1', '1')],
+    设计台参数定义: [select('grantTrigger', '触发条件', 'MECHANISM_GRANT_TRIGGER'), num('useCount', '可用次数', '1', '1'), num('duration', '持续回合', '1', '1', { hint: '待机触发可留空表示无回合期限；填写后逾期失效。主动触发默认1回合。' })],
   });
   register('等级提升', {
     说明: '战斗外主动将目标提升至当前合法等级序列的下一等级，并受等级上限与冷却约束。',
@@ -4991,7 +4992,7 @@ var SKILL_PROTOTYPE_DEFINITION_LIST_V1 = Object.freeze([
   ['战斗外复活', '战斗外', '可赋予', ['数值', '死亡时限tick', '复活代价类型', '复活代价对象', '复活代价值', '复活代价时限tick', '复活后状态', '复活后状态时限tick'], ['数值', '死亡时限tick', '复活代价类型', '复活代价对象', '复活后状态'], '战斗外复活意外死亡目标并写回复活代价'],
   ['等级提升', '战斗外', '可赋予', ['提升方式', '等级上限', '冷却年数'], ['提升方式', '等级上限', '冷却年数'], '将目标提升至下一合法等级，并受等级上限约束；成功后进入指定年数冷却', 'formal-non-battle'],
   ['群体撤离', '战斗外', '上下文', ['目的地', '基础成功率', '每增加一人成功率倍率', '结算方式', '失败仍消耗资源', '消耗道具', '对应等级', '消耗'], ['目的地', '基础成功率', '每增加一人成功率倍率', '结算方式', '失败仍消耗资源', '消耗道具', '对应等级', '消耗'], '按人数计算一次群体撤离成功率，成功全员同成败；失败仍消耗资源且道具本身不消耗', 'formal-non-battle'],
-  ['召唤生成', '战斗结算', '召唤物', ['召唤单位类型', '召唤物名称', '数量', '行动模式', '继承属性比例', '强度', '持续回合', '承伤规则', '触发限制'], ['召唤单位类型', '召唤物名称', '数量'], '生成战斗召唤单位并折算为短期战斗收益'],
+  ['召唤生成', '战斗结算', '召唤物', ['召唤单位类型', '召唤物名称', '数量', '行动模式', '继承属性比例', '强度', '持续回合', '承伤规则', '触发限制'], ['召唤单位类型', '召唤物名称', '数量', '持续回合'], '生成战斗召唤单位并折算为短期战斗收益'],
 ]);
 
 // ============ 阶段 2 v3：COST 真值表常量（魂技 COST 全链路收口） ============
@@ -5493,6 +5494,8 @@ if (typeof globalThis !== 'undefined') {
     // 食物造物直接食用口径：结算/判定修正的增益方向语义，供 BattleDecision 目标侧写共用同一口径
     结算修正是否增益语义_V1,
     判定修正是否增益语义_V1,
+    读取状态施加分类_V1,
+    状态施加是否负面语义_V1,
     食物造物效果可直接食用_V1,
   });
   globalThis.__LWCS_ITEM_PASSIVE_CONSUMER_V1__ = Object.freeze({
@@ -10053,7 +10056,7 @@ function 构建机制编译输入覆盖列表_V1(机制名 = '', 原型列表 = 
     const 原型 = String(原型条目?.原型 || '').trim();
     const 字段 = { ...cloneJsonValue(原型条目), 目标: 原型条目?.目标 || 目标 };
     if (副机制) 字段.生效方式 = '独立生效';
-    if (['状态施加', '判定修正', '结算修正', '属性修正', '决策干扰', '资源变化', '资源转移', '资源锁定', '规则改写', '机制抹消', '时窗修正'].includes(原型)) 字段.持续回合 ??= 持续回合;
+    if (['状态施加', '判定修正', '结算修正', '属性修正', '决策干扰', '资源变化', '资源转移', '资源锁定', '规则改写', '机制抹消', '时窗修正', '召唤生成'].includes(原型)) 字段.持续回合 ??= 持续回合;
     if (原型 === '伤害结算') {
       字段.威力倍率 ??= Math.max(1, Math.round(Number(伤害意图.威力倍率 || 获取魂技位伤害倍率_V1(上下文?.魂环位 || 1) * 100)));
       const 继承伤害类型 = String(伤害意图.伤害类型 || '').trim();
@@ -10140,7 +10143,7 @@ function 构建机制编译输入覆盖列表_V1(机制名 = '', 原型列表 = 
         字段.吸收来源 = String(字段.吸收来源 || 结算参数.吸收来源 || 效果意图.吸收来源 || '造成伤害').trim() || '造成伤害';
         字段.吸收资源 = String(字段.吸收资源 || 结算参数.吸收资源 || 效果意图.吸收资源 || '生命').trim() || '生命';
       }
-      if (结算 === '持续伤害引爆') 字段.条件分支 ??= 构建缺少状态禁用条件分支_V1('持续创伤');
+      if (结算 === '持续伤害引爆') 字段.条件分支 ??= 构建缺少状态禁用条件分支_V1('任意持续伤害');
       if (机制 === '斩杀补伤') {
         字段.结算 = '受到伤害';
         const 斩杀倍率 = Math.abs(Number(结算参数.伤害倍率系数) - 1) > 0.0001 ? 结算参数.伤害倍率系数 : 1.15;
@@ -10210,9 +10213,9 @@ function 构建机制编译输入覆盖列表_V1(机制名 = '', 原型列表 = 
       字段.调整字段 ??= '持续回合';
       字段.调整方式 ??= /压缩/.test(机制) ? '压缩' : '延长';
       字段.调整回合 ??= 1;
+      字段.条件分支 ??= 构建缺少状态禁用条件分支_V1('任意持续伤害');
       if (字段.调整方式 === '压缩') {
         字段.结算倍率 ??= '+100%';
-        字段.条件分支 ??= 构建缺少状态禁用条件分支_V1('持续创伤');
       }
     } else if (原型 === '时光回溯') {
       字段.目标 = ['单体', '群体', '全场'].includes(规划目标) ? 规划目标 : '单体';
@@ -10498,7 +10501,7 @@ function 补足机制模板原型数值_V1(原型 = '', 字段 = {}, source = {}
     return;
   }
   if (原型 === '结算修正' && String(字段.结算 || source.结算 || '').trim() === '持续伤害引爆' && 字段.条件分支 === undefined) {
-    字段.条件分支 = 构建缺少状态禁用条件分支_V1(String(source.状态 || '持续创伤').trim() || '持续创伤');
+    字段.条件分支 = 构建缺少状态禁用条件分支_V1(String(source.状态 || '任意持续伤害').trim() || '任意持续伤害');
   }
   if (原型 === '时窗修正' && 字段.调整字段 === undefined) 字段.调整字段 = '持续回合';
   if (原型 === '判定修正' && 字段.持续回合 !== undefined) 字段.持续回合 = Math.max(1, Math.min(10, Math.round(Number(字段.持续回合 || 1))));
@@ -10558,7 +10561,7 @@ function 补足机制模板原型数值_V1(原型 = '', 字段 = {}, source = {}
           字段.吸收来源 = String(source.吸收来源 || source.absorbSource || '造成伤害').trim() || '造成伤害';
           字段.吸收资源 = String(source.吸收资源 || source.resourceType || '生命').trim() || '生命';
         }
-        if (结算 === '持续伤害引爆' && 字段.条件分支 === undefined) 字段.条件分支 = 构建缺少状态禁用条件分支_V1(String(source.状态 || '持续创伤').trim() || '持续创伤');
+        if (结算 === '持续伤害引爆' && 字段.条件分支 === undefined) 字段.条件分支 = 构建缺少状态禁用条件分支_V1(String(source.状态 || '任意持续伤害').trim() || '任意持续伤害');
         return;
       }
   } else if (原型 === '时窗修正') {
@@ -10812,6 +10815,7 @@ function 收口技能效果影响方向_V1(原型 = '', 字段 = {}) {
 }
 
 var 持续伤害状态集合_V1 = new Set(状态施加状态分类矩阵_V1.持续伤害类);
+var 持续伤害前置状态集合_V1 = new Set([...持续伤害状态集合_V1, '任意持续伤害']);
 var 机制授予禁止授予原型集合_V1 = new Set(['伤害结算', '机制授予', '修炼增益']);
 var 机制授予允许授予原型集合_V1 = new Set(
   Object.keys(SKILL_PROTOTYPE_REGISTRY_V1 || {}).filter(原型 => !机制授予禁止授予原型集合_V1.has(String(原型 || '').trim())),
@@ -10849,7 +10853,7 @@ function 读取技能组合器DOT前置状态列表_V1(effect = {}) {
     (Array.isArray(分支?.条件) ? 分支.条件 : []).forEach(条件 => {
       if (String(条件?.类型 || '').trim() !== '状态存在') return;
       const 状态 = String(条件?.状态 || 条件?.值 || '').trim();
-      if (状态 && 持续伤害状态集合_V1.has(状态)) 状态列表.push(状态);
+      if (状态 && 持续伤害前置状态集合_V1.has(状态)) 状态列表.push(状态);
     });
   });
   return 状态列表;
@@ -11160,7 +11164,7 @@ function 清理执行效果原型语义_V1(原型 = '', 字段 = {}, 上下文 =
         delete 字段.限定元素;
       }
     }
-    if (字段.结算 === '持续伤害引爆' && 字段.条件分支 === undefined) 字段.条件分支 = 构建缺少状态禁用条件分支_V1('持续创伤');
+    if (字段.结算 === '持续伤害引爆' && 字段.条件分支 === undefined) 字段.条件分支 = 构建缺少状态禁用条件分支_V1('任意持续伤害');
     if (字段.结算 === '技能效果' && 字段.条件分支 === undefined && 字段.限定元素 === undefined) {
       字段.条件分支 = [{ 条件: [{ 类型: '当前行动', 对象: '自身', 比较: '!=', 值: '常规攻击' }], 处理: '生效' }];
     }
@@ -11195,6 +11199,7 @@ function 清理执行效果原型语义_V1(原型 = '', 字段 = {}, 上下文 =
     字段.召唤单位类型 = String(字段.召唤单位类型 || '魂兽').trim() || '魂兽';
     if (!SKILL_PROTOTYPE_FIELD_OPTIONS_V1.召唤单位类型.includes(字段.召唤单位类型)) 字段.召唤单位类型 = '魂兽';
     字段.目标 = '自身';
+    字段.持续回合 = Math.max(1, Math.min(10, Math.round(Number(字段.持续回合 || 1))));
     字段.数量 = Math.max(1, Math.round(Number(字段.数量 || 1)));
     const 默认行动模式 = ['魂师', '魂兽', '本命召唤兽', '深渊生物'].includes(字段.召唤单位类型) ? '自主行动' : '协同攻击';
     if (!SKILL_PROTOTYPE_FIELD_OPTIONS_V1.行动模式.includes(String(字段.行动模式 || '').trim())) 字段.行动模式 = 默认行动模式;
@@ -11469,17 +11474,19 @@ function 收口原型效果条目_V1(value = {}, fallbackTargetKind = '单体', 
   if (原型 === '资源锁定') 原型字段.数值 = 规范化资源锁定比例_V1(原型字段.数值, 0.5);
   if (原型 === '机制授予') {
     const 触发条件 = String(原型字段.触发条件 || value.触发条件 || '主动触发').trim();
-    const 是下一魂技成功触发 = 触发条件 === '下次魂技成功释放';
     原型字段.触发条件 = 机制授予目标允许下次行动触发_V1(目标) && ['主动触发', '随下次行动触发', '下次魂技成功释放'].includes(触发条件) ? 触发条件 : '主动触发';
     if (原型字段.触发条件 === '随下次行动触发') {
       delete 原型字段.可用次数;
-      delete 原型字段.持续回合;
-    } else if (是下一魂技成功触发) {
+    } else if (原型字段.触发条件 === '下次魂技成功释放') {
       原型字段.可用次数 = Math.max(1, Math.round(Number(原型字段.可用次数 || value.可用次数 || value.useCount || 1)));
-      delete 原型字段.持续回合;
     } else {
       原型字段.可用次数 = Math.max(1, Math.round(Number(原型字段.可用次数 || value.可用次数 || value.useCount || 1)));
       原型字段.持续回合 = Math.max(1, Math.round(Number(原型字段.持续回合 || value.持续回合 || value.duration || 1)));
+    }
+    if (原型字段.触发条件 !== '主动触发') {
+      const 待机期限 = 原型字段.持续回合 ?? value.持续回合 ?? value.duration;
+      if (待机期限 === undefined || 待机期限 === null || 待机期限 === '') delete 原型字段.持续回合;
+      else 原型字段.持续回合 = Number(待机期限);
     }
   }
   if (原型 === '机制抹消') {
@@ -12117,16 +12124,19 @@ function 断言技能执行效果原型契约_V1(effectArray = [], path = '_效�
     const 触发条件 = String(effect.触发条件 || '主动触发').trim();
     if (!['主动触发', '随下次行动触发', '下次魂技成功释放'].includes(触发条件)) throw new Error(`技能执行结构错误:${path}[${index}]机制授予触发条件无效`);
     if (触发条件 === '随下次行动触发' && !机制授予目标允许下次行动触发_V1(effect.目标)) throw new Error(`技能执行结构错误:${path}[${index}]非自身机制授予不允许随下次行动触发`);
-    if (触发条件 === '随下次行动触发' && (effect.可用次数 !== undefined || effect.持续回合 !== undefined)) throw new Error(`技能执行结构错误:${path}[${index}]随下次行动触发不支持可用次数或持续回合`);
+    if (触发条件 === '随下次行动触发' && effect.可用次数 !== undefined) throw new Error(`技能执行结构错误:${path}[${index}]随下次行动触发固定使用一次，不支持可用次数`);
     if (触发条件 === '下次魂技成功释放' && !机制授予目标允许下次行动触发_V1(effect.目标)) throw new Error(`技能执行结构错误:${path}[${index}]非自身机制授予不允许在下次魂技成功释放时触发`);
-    if (触发条件 === '下次魂技成功释放' && (!(Number.isInteger(Number(effect.可用次数)) && Number(effect.可用次数) > 0) || effect.持续回合 !== undefined)) throw new Error(`技能执行结构错误:${path}[${index}]下次魂技成功释放机制授予必须有正整数可用次数且不设置回合期限`);
+    if (触发条件 === '下次魂技成功释放' && !(Number.isInteger(Number(effect.可用次数)) && Number(effect.可用次数) > 0)) throw new Error(`技能执行结构错误:${path}[${index}]下次魂技成功释放机制授予必须有正整数可用次数`);
+    if (effect.持续回合 !== undefined && !(Number.isInteger(Number(effect.持续回合)) && Number(effect.持续回合) > 0)) throw new Error(`技能执行结构错误:${path}[${index}]机制授予持续回合必须为正整数`);
     if (触发条件 === '主动触发' && !(Number(effect.可用次数 || 0) > 0 && Number(effect.持续回合 || 0) > 0)) throw new Error(`技能执行结构错误:${path}[${index}]主动触发机制授予缺少可用次数或持续回合`);
     if ((Array.isArray(effect.授予效果) ? effect.授予效果 : []).some(item => String(item?.原型 || '').trim() === '机制授予')) throw new Error(`技能执行结构错误:${path}[${index}]机制授予不能嵌套机制授予`);
     if ((Array.isArray(effect.授予效果) ? effect.授予效果 : []).some(item => !机制授予允许授予原型集合_V1.has(String(item?.原型 || '').trim()))) throw new Error(`技能执行结构错误:${path}[${index}]机制授予授予效果原型无效`);
   }
     if (原型 === '召唤生成') {
       const 单位类型 = String(effect.召唤单位类型 || '').trim();
+      const 持续回合 = Number(effect.持续回合);
       if (String(effect.目标 || '').trim() !== '自身') throw new Error(`技能执行结构错误:${path}[${index}]召唤生成只能挂载自身`);
+      if (!Number.isInteger(持续回合) || 持续回合 < 1 || 持续回合 > 10) throw new Error(`技能执行结构错误:${path}[${index}]召唤生成持续回合必须为1到10的整数`);
       if (!SKILL_PROTOTYPE_FIELD_OPTIONS_V1.召唤单位类型.includes(单位类型)) throw new Error(`技能执行结构错误:${path}[${index}]召唤单位类型无效`);
       if (!SKILL_PROTOTYPE_FIELD_OPTIONS_V1.行动模式.includes(String(effect.行动模式 || '').trim())) throw new Error(`技能执行结构错误:${path}[${index}]召唤行动模式无效`);
       if (单位类型 === '分身' && !召唤生成使用继承属性比例_V1(effect)) throw new Error(`技能执行结构错误:${path}[${index}]分身必须携带继承属性比例`);
@@ -12264,6 +12274,53 @@ function 限制技能自身资源恢复不覆盖消耗_V1(技能 = {}, 上下文
   const 消耗表 = 读取技能同资源消耗绝对值表_V1(技能?.消耗 || '无', 上下文);
   if (!Object.values(消耗表).some(值 => Number.isFinite(值) && 值 > 0)) return;
   const 自身目标 = new Set(['自身', '使用者', '施术者', '制作者']);
+  const 纯自身恢复候选 = [];
+  let 非纯自身恢复效果数 = 0;
+  遍历直接结算预算效果_V1(
+    Array.isArray(技能?._效果数组) ? 技能._效果数组 : [],
+    效果 => {
+      const 原型 = String(效果?.原型 || '').trim();
+      if (!原型) return;
+      const 资源 = String(效果?.资源 || '').trim();
+      const 原始数值 = 规范化执行效果数值_V1(效果.数值, 效果.动作 || '');
+      const 当前值 = parseSkillSignedChangeNumber(原始数值);
+      if (
+        原型 === '资源变化'
+        && 自身目标.has(String(效果?.目标 || '').trim())
+        && Number.isFinite(当前值)
+        && 当前值 > 0
+      ) {
+        纯自身恢复候选.push({ 效果, 资源, 原始数值, 当前值 });
+        return;
+      }
+      非纯自身恢复效果数 += 1;
+    },
+  );
+  const 允许纯恢复经济校准 = String(技能?.承载方式 || '').trim() !== '造物承载'
+    && !(Array.isArray(技能?.副作用列表) && 技能.副作用列表.length)
+    && 纯自身恢复候选.length === 1
+    && 非纯自身恢复效果数 === 0;
+  if (允许纯恢复经济校准) {
+    const [{ 效果, 资源, 原始数值, 当前值 }] = 纯自身恢复候选;
+    if (Object.prototype.hasOwnProperty.call(消耗表, 资源)) {
+      const 是百分比 = /%$/.test(String(原始数值 || '').trim());
+      const 资源上限 = 读取直接结算预算资源上限_V1(资源, 上下文);
+      const 恢复绝对值 = 是百分比 ? 当前值 * Math.max(1, 资源上限) : 当前值;
+      const 同资源消耗上限 = Math.max(1, Math.floor(恢复绝对值 * 0.95));
+      const 当前同资源消耗 = Number(消耗表[资源] || 0);
+      const 原始消耗 = 技能?.消耗?.[资源];
+      const 可修改同资源启动消耗 = 技能?.消耗
+        && typeof 技能.消耗 === 'object'
+        && !Array.isArray(技能.消耗)
+        && 原始消耗 !== undefined
+        && Number.isFinite(Number(原始消耗))
+        && !/%/.test(String(原始消耗));
+      if (可修改同资源启动消耗) {
+        if (当前同资源消耗 > 同资源消耗上限) 技能.消耗[资源] = 同资源消耗上限;
+        return;
+      }
+    }
+  }
   const 限制效果 = 效果 => {
     if (!效果 || typeof 效果 !== 'object' || Array.isArray(效果)) return;
     const 原型 = String(效果.原型 || '').trim();
@@ -14092,18 +14149,25 @@ function 读取技能分阶段副作用列表_V1(skill = {}) {
     路径: `副作用列表[${序号}]`,
     来源: '施展副作用',
   }));
-  if (String(skill?.承载方式 || '').trim() === '造物承载' || 是造物承载效果数组_V1(skill?._效果数组)) {
-    (Array.isArray(skill?._效果数组) ? skill._效果数组 : []).forEach((效果, 效果序号) => {
-      normalizeSkillSideEffectList(效果?.副作用列表 || []).forEach((条目, 副作用序号) => {
-        结果.push({
-          条目,
-          路径: `_效果数组[${效果序号}].副作用列表[${副作用序号}]`,
-          来源: '使用副作用',
-        });
+  const 是造物 = String(skill?.承载方式 || '').trim() === '造物承载' || 是造物承载效果数组_V1(skill?._效果数组);
+  (Array.isArray(skill?._效果数组) ? skill._效果数组 : []).forEach((效果, 效果序号) => {
+    if (!是造物 && !String(效果?.原型 || '').trim()) return;
+    normalizeSkillSideEffectList(效果?.副作用列表 || []).forEach((条目, 副作用序号) => {
+      结果.push({
+        条目,
+        路径: `_效果数组[${效果序号}].副作用列表[${副作用序号}]`,
+        来源: 是造物 ? '使用副作用' : '施展副作用',
       });
     });
-  }
-  return 结果;
+  });
+  if (是造物) return 结果;
+  const 已计入 = new Set();
+  return 结果.filter(项 => {
+    const 身份 = JSON.stringify(项.条目);
+    if (已计入.has(身份)) return false;
+    已计入.add(身份);
+    return true;
+  });
 }
 
 // 评估副作用预算档：只从正式副作用列表反推，不落盘手填档位。
@@ -15650,10 +15714,10 @@ function 读取生成补强数字字段上限_V1(效果 = {}, 字段名 = '') {
   const 原型 = String(效果?.原型 || '').trim();
   if (字段名 === '持续回合') {
     if (['资源变化', '资源转移', '护盾变化', '属性修正', '判定修正', '结算修正', '状态施加', '状态移除', '规则防御', '状态转移', '状态交换', '资源锁定', '规则改写', '机制抹消', '位移执行', '决策干扰', '召唤生成'].includes(原型)) return 10;
-    if (原型 === '机制授予' && String(效果?.触发条件 || '').trim() === '主动触发') return 10;
+    if (原型 === '机制授予' && 效果.持续回合 !== undefined) return 10;
     return 0;
   }
-  if (字段名 === '可用次数') return 原型 === '机制授予' && String(效果?.触发条件 || '').trim() === '主动触发' ? 5 : 0;
+  if (字段名 === '可用次数') return 原型 === '机制授予' && ['主动触发', '下次魂技成功释放'].includes(String(效果?.触发条件 || '').trim()) ? 5 : 0;
   if (字段名 === '次数') return 原型 === '规则防御' ? 5 : 0;
   if (字段名 === '攻击段数') return 原型 === '伤害结算' ? 5 : 0;
   if (字段名 === '数量') {
@@ -18279,8 +18343,9 @@ function 转译机制授予描述_V1(效果 = {}, 选项 = {}) {
     maxDepth: Math.max(1, Number(选项.maxDepth || 5)),
     预算: 选项.预算,
   }) || '后续效果';
-  if (触发条件 === '随下次行动触发') return `下次行动时附带：${授予效果文本}`;
-  if (触发条件 === '下次魂技成功释放') return `下一次魂技成功释放时附带：${授予效果文本}；成功后消费${formatSkillNumber(效果?.可用次数 || 1)}次，无回合期限`;
+  const 待机期限文本 = 效果?.持续回合 !== undefined ? `待机期限${formatSkillNumber(效果.持续回合)}回合，逾期失效` : '无回合期限';
+  if (触发条件 === '随下次行动触发') return `下次行动时附带：${授予效果文本}；仅触发一次，${待机期限文本}`;
+  if (触发条件 === '下次魂技成功释放') return `魂技成功释放时附带：${授予效果文本}；每次触发消耗一次，共可触发${formatSkillNumber(效果?.可用次数 || 1)}次，${待机期限文本}`;
   const 回合 = Math.max(1, Number(效果?.持续回合 || 1));
   const 次数 = Math.max(1, Number(效果?.可用次数 || 1));
   return `使用/食用者可在${formatSkillNumber(回合)}回合内获得一个新技能，仅限使用${formatSkillNumber(次数)}次；技能效果为：${授予效果文本}；`;
@@ -18923,8 +18988,9 @@ function buildSingleSkillEffectSummary(effect) {
         .slice(0, 3)
         .join('；') || '后续效果';
       const 触发条件 = String(effect?.触发条件 || '主动触发').trim();
-      if (触发条件 === '随下次行动触发') return '下次行动时附带：' + 授予文本;
-      if (触发条件 === '下次魂技成功释放') return '下一次魂技成功释放时附带：' + 授予文本 + '；成功后消费' + formatSkillNumber(effect?.可用次数 || 1) + '次，无回合期限';
+      const 待机期限文本 = effect?.持续回合 !== undefined ? `待机期限${formatSkillNumber(effect.持续回合)}回合，逾期失效` : '无回合期限';
+      if (触发条件 === '随下次行动触发') return '下次行动时附带：' + 授予文本 + '；仅触发一次，' + 待机期限文本;
+      if (触发条件 === '下次魂技成功释放') return '魂技成功释放时附带：' + 授予文本 + '；每次触发消耗一次，共可触发' + formatSkillNumber(effect?.可用次数 || 1) + '次，' + 待机期限文本;
       return '可在' + formatSkillNumber(effect?.持续回合 || 1) + '回合内主动触发' + formatSkillNumber(effect?.可用次数 || 1) + '次：' + 授予文本;
     }
     case '复制执行': {
@@ -20307,11 +20373,17 @@ function 获取武魂真身增幅机制候选_V1(type = '强攻系', grade = 'B'
   if (['控制系', '精神系', '元素系'].includes(系别)) 候选.push('掌控提升');
   if (系别 === '防御系') 候选 = ['护卫', '承伤修正', '护盾', '免伤', '伤害分摊', '消耗分摊', ...候选];
   if (系别 === '治疗系') 候选 = ['护卫', '持续恢复', '净化/解控', '护盾', '魂力恢复', '精神恢复', ...候选];
-  if (['辅助系', '食物系'].includes(系别)) 候选 = [...武魂真身自身辅助增幅机制_V1];
+  if (['辅助系', '食物系'].includes(系别)) 候选 = [...武魂真身自身辅助增幅机制_V1, ...候选];
   if (系别 === '食物系') 候选 = ['护卫', '持续恢复', '净化/解控', '护盾', ...候选];
-  if (系别 === '召唤系') 候选 = ['技能效果增幅'];
-  const 真身预算 = 计算武魂真身预算基准_V1(context?.角色 || context?.施术者 || {}, context?.ringIndex || 7, context);
-  const 真身低COST线 = 读取预算评估最低有效COST_V1({ 运转基准: Number(真身预算?.特殊运转基准 || 0) }, context);
+  if (系别 === '召唤系') 候选 = ['技能效果增幅', ...候选];
+  const 释放形态 = context?.释放形态 || (系别 === '食物系' ? '造物承载' : '直接生效');
+  const 真身预算 = 评估技能预算_V1({
+    魂技名: '武魂真身',
+    消耗: 构建武魂真身消耗文本_V1(系别, grade, context?.ringIndex || 7, 释放形态, context?.食物工具分支 === true),
+    前摇: 20,
+    _效果数组: [],
+  }, { ...context, forceTrueBody: true, 魂环位: 7, ringIndex: 7 });
+  const 真身低COST线 = 真身预算.最低有效COST;
   return 规范化机制枚举数组_V1(候选).filter(机制 => {
     if (排除原型.has(String(机制 || '').trim())) return false;
     if (!机制是合法生成主机制_V1(机制, { ...context, type: 系别, 系别, grade, gradeOverride: grade })) return false;
@@ -20332,7 +20404,8 @@ function 获取武魂真身增幅机制候选_V1(type = '强攻系', grade = 'B'
       gradeOverride: grade,
       ringIndex: context?.ringIndex || 7,
       魂环位: context?.ringIndex || 7,
-      释放形态: 系别 === '食物系' ? '造物承载' : '直接生效',
+      释放形态,
+      预算评估摘要: { 运转基准: 真身预算.运转基准, 预算门禁: 真身预算.实际门禁, 低COST线: 真身低COST线 },
       目标: '自身',
     };
     const 范围 = 估算自动生成机制预算范围_V1(机制, 真身预算上下文);
@@ -20341,7 +20414,10 @@ function 获取武魂真身增幅机制候选_V1(type = '强攻系', grade = 'B'
     if (范围?.可用 !== true) return false;
     if (!Number.isFinite(最低COST)) return false;
     if (门禁 > 0 && 最低COST > 门禁 + 技能预算COST容差_V1) return false;
-    if (最低COST < 真身低COST线 - 技能预算COST容差_V1) return false;
+    const 最高COST = Math.max(最低COST, Number(范围?.补强可达COST ?? 范围?.最高常规COST ?? 最低COST));
+    // 常规档案上限不是补强器的硬上限；可缩放真身由最终预算收敛及断言验收。
+    const 可数值补强 = 范围.可调整 && (范围.主调字段 || []).includes('数值');
+    if (!可数值补强 && 最高COST < 真身低COST线 - 技能预算COST容差_V1) return false;
     return true;
   });
 }
@@ -20387,10 +20463,6 @@ function 构建武魂真身消耗文本_V1(type = '强攻系', grade = 'B', ring
   const 释放消耗 = 构建比例消耗(Math.max(6, Math.round(品质基准 * 释放倍率 * 工具倍率)));
   const 维持消耗 = 构建比例消耗(Math.max(2, Math.round(品质基准 * 维持倍率 * 工具倍率)));
   return `${释放消耗} 维持:${维持消耗}`;
-}
-
-function 放大武魂真身效果倍率_V1(effect = {}, grade = 'B', 工具分支 = false) {
-  return effect;
 }
 
 function 强制武魂真身效果作用自身_V1(效果数组 = []) {
@@ -20579,8 +20651,14 @@ function buildSeventhRingTrueBodySkill(
   const grade = normalizeSkillTableGrade(gradeInfo.grade);
   const quality = gradeInfo.quality;
   const 系别 = String(type || '强攻系').trim() || '强攻系';
+  const 食物工具分支 = 系别 === '食物系' && Math.random() >= 0.5;
+  const 食物分支 = 系别 === '食物系' && !食物工具分支;
+  const 释放形态 = 食物分支 ? '造物承载' : '直接生效';
   const 真身上下文 = {
     ...(options || {}),
+    talentTier,
+    释放形态,
+    食物工具分支,
     age: ringAge,
     ringAge,
     ringIndex,
@@ -20606,16 +20684,11 @@ function buildSeventhRingTrueBodySkill(
   const 候选 = 获取武魂真身增幅机制候选_V1(系别, grade, 真身上下文)
     .map(机制 => String(机制 || '').trim())
     .filter(机制 => 机制 && !['无', '无效', '未设置'].includes(机制) && 真身机制可用(机制));
-  const 兜底机制 = ['技能效果增幅', '威力增幅', '单属性增益', '掌控提升', '速度提升', '护盾', '承伤修正']
-    .find(真身机制可用) || 候选.find(真身机制可用) || '';
   const 默认机制 = 候选.includes('技能效果增幅')
     ? '技能效果增幅'
-    : 候选[0] || 兜底机制;
-  const 食物工具分支 = 系别 === '食物系' && Math.random() >= 0.5;
-  const 食物分支 = 系别 === '食物系' && !食物工具分支;
+    : 候选[0];
   if (!默认机制) throw new Error(`技能生成错误:${系别}武魂真身缺少合法增幅机制`);
   const 机制 = 食物工具分支 ? 默认机制 : pickRandom(候选) || 默认机制;
-  const 释放形态 = 食物分支 ? '造物承载' : '直接生效';
   const 加成属性候选 = rollAttributeDirectionByType(系别, 机制, 50, 真身上下文);
   const skill = 生成武魂真身基础技能_V1({
     ...真身上下文,
@@ -20636,7 +20709,6 @@ function buildSeventhRingTrueBodySkill(
   skill.画面描述 = AI_TODO_SKILL_VISUAL;
   skill.效果描述 = AI_TODO_SKILL_EFFECT;
   const 效果数组 = clonePackedSkillEffects(skill._效果数组 || []);
-  效果数组.forEach(effect => 放大武魂真身效果倍率_V1(effect, grade, 食物工具分支));
   skill.消耗 = 构建武魂真身消耗文本_V1(系别, grade, ringIndex, 释放形态, 食物工具分支);
   skill.前摇 = 20;
   if (食物分支) {
@@ -20945,7 +21017,7 @@ function autoGenerateSkill(
       技能: { _效果数组: 效果列表 },
     });
   };
-  const requireTargetDotState = (effect, 状态 = '持续创伤') => appendPackedEffectConditionBranches(effect, 构建缺少状态禁用条件分支_V1(状态));
+  const requireTargetDotState = (effect, 状态 = '任意持续伤害') => appendPackedEffectConditionBranches(effect, 构建缺少状态禁用条件分支_V1(状态));
   const requireTargetShield = effect => appendPackedEffectConditionBranches(effect, 构建缺少护盾禁用条件分支_V1());
   const 效果编译开始毫秒 = 读取性能计时毫秒_V1();
   const 共享主机制原型列表 = 编译共享机制效果(archetype);
@@ -23849,9 +23921,7 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
         副机制: [...(生成结果?.生成蓝图?.副机制 || [])],
         正式效果数: getMeaningfulSkillEffects(最终正式技能?._效果数组 || []).length,
       });
-      if (!是武魂真身候选) {
-        收敛技能到预算区间_V1(最终正式技能, { ...候选预算上下文, 候选序号, 机制标签: 候选机制标签 }, 候选预算档案);
-      }
+      收敛技能到预算区间_V1(最终正式技能, { ...候选预算上下文, 候选序号, 机制标签: 候选机制标签 }, 候选预算档案);
       const 副作用前评估 = 评估技能预算_V1(最终正式技能, 候选预算上下文);
       const 自动副作用数 = 尝试生成阶段固有副作用_V1(最终正式技能, {
         ...(候选预算上下文 || {}),
@@ -23871,9 +23941,7 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
           passiveMode: context?.passiveMode === true,
         });
         const 副作用写入后再收敛前评估 = 评估技能预算_V1(最终正式技能, 候选预算上下文);
-        if (!是武魂真身候选) {
-          收敛技能到预算区间_V1(最终正式技能, { ...候选预算上下文, 候选序号, 机制标签: 候选机制标签 }, 候选预算档案);
-        }
+        收敛技能到预算区间_V1(最终正式技能, { ...候选预算上下文, 候选序号, 机制标签: 候选机制标签 }, 候选预算档案);
         const 最终收敛后评估 = 评估技能预算_V1(最终正式技能, 候选预算上下文);
         副作用COST收口证据 = {
           副作用前实际COST: Number(副作用前评估?.实际COST || 0),
@@ -23907,13 +23975,11 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
         });
       }
       当前候选保留技能 = 最终正式技能;
-      if (!是武魂真身候选) {
-        断言并同步自动生成最终预算_V1(最终正式技能, {
-          ...候选预算上下文,
-          仅断言预算: true,
-        }, 候选机制标签);
-        断言直接结算收益预算_V1(最终正式技能, '生成技能', context || {});
-      }
+      断言并同步自动生成最终预算_V1(最终正式技能, {
+        ...候选预算上下文,
+        仅断言预算: true,
+      }, 候选机制标签);
+      断言直接结算收益预算_V1(最终正式技能, '生成技能', context || {});
       临时技能 = 最终正式技能;
       接受候选序号 = 候选序号;
       记录技能生成事件_V1(context, {

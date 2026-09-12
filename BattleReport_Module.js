@@ -752,6 +752,32 @@
     );
   }
 
+  function stateApplicationText(event, label) {
+    const meta = event?.meta || {};
+    const type = text(meta.after?.类型 || meta.stateType || event?.stateType || meta.evidence?.stateType).toLowerCase();
+    return type === 'buff' ? `获得【${label}】` : type === 'debuff' ? `陷入【${label}】` : `进入【${label}】状态`;
+  }
+
+  function grantUseText(event, receiver, label) {
+    const before = event.meta?.beforeUses, after = event.meta?.afterUses;
+    const remaining = Number.isSafeInteger(after) && after >= 0 && !(Number.isSafeInteger(before) && before < after) ? after : null;
+    const consumed = Number.isSafeInteger(before) && remaining !== null && before > remaining ? before - remaining : null;
+    return `${receiver}的【${label}】${consumed === null ? '已消费' : `本次消耗${consumed}次`}` +
+      (remaining === null ? '，剩余次数未记录' : remaining === 0 ? '，次数已用尽' : `，剩余${remaining}次`);
+  }
+
+  function deathSaveText(event) {
+    if (event?.ruleCode !== 'RULE_DEATH_SAVE_CONSUMED') return '';
+    const remaining = event.meta?.deathSaveRemainingCount;
+    return `消耗1次免死${event.meta?.after === 1 ? '，保留1点生命' : ''}${typeof remaining === 'number' && Number.isFinite(remaining) && remaining >= 0 ? `，剩余${remaining}次` : ''}`;
+  }
+
+  function grantExpiryText(event, receiver, label) {
+    const remaining = event.meta?.remaining;
+    return `${receiver}的【${label}】已到期` +
+      (Number.isSafeInteger(remaining) && remaining > 0 ? `，未使用的${remaining}次机会失效` : '');
+  }
+
   function percentText(value) {
     const numeric = Number(value);
     if (!Number.isFinite(numeric)) return '';
@@ -915,7 +941,7 @@
     if (combatEffect?.cannot_react === true) combatParts.push('无法进行即时反应');
     if (combatEffect?.silence === true) combatParts.push('无法释放受限技能');
     if (combatEffect?.disarm === true) combatParts.push('无法进行武器攻击');
-    if (combatEffect?.blind === true) combatParts.push('命中判断受致盲影响');
+    if (combatEffect?.blind === true) combatParts.push('进入致盲状态');
     if (combatParts.length) return `使${safeTarget}${combatParts.join('，')}${durationText}`;
 
     const settlement = playerSafeText(detail?.settlement, directory);
@@ -1053,18 +1079,18 @@
       ? `${actor}放弃对${target || '来源攻击者'}的反击`
       : `${actor}以【${action}】反击${target || '来源攻击者'}`;
     if (kind === 'hit_result') {
+      if (event?.ruleCode === 'RULE_DEFENSE_BLOCK_CONSUMED') return `${target || '目标'}的免伤效果挡下${actor}的【${action}】，消耗1次免伤，本段未扣减生命`;
+      const deathSave = deathSaveText(event);
       if (damage > 0) {
-        /* "造成N点伤害"没说 N 是最终扣血还是原始伤害。运行时会经
-           防御倍率 → 护盾吸收 → 非致命钳制 三级折减，折减量必须一并交代，
-           否则 AI 无法判断这一击到底打得重不重。 */
-        const rawDamage = number(meta?.rawDamage, NaN);
+        const defenseMultiplier = typeof meta?.defenseMultiplier === 'number' ? meta.defenseMultiplier : NaN;
         const shieldAbsorb = number(meta?.shieldAbsorb, 0);
         const reductions = [];
-        if (Number.isFinite(rawDamage) && rawDamage > damage + shieldAbsorb + 0.5) {
-          reductions.push(`原始伤害${Math.round(rawDamage)}点经防御与减伤后落到${damage}点`);
+        if (Number.isFinite(defenseMultiplier) && defenseMultiplier >= 0 && defenseMultiplier < 1) {
+          reductions.push(`经防御修正按${Math.round(defenseMultiplier * 1000) / 10}%结算`);
         }
         if (shieldAbsorb > 0) reductions.push(`护盾另吸收${Math.round(shieldAbsorb)}点`);
-        if (meta?.intentLethalPrevented === true) reductions.push('因非致命意图未击杀目标');
+        if (meta?.intentLethalPrevented === true) reductions.push('非致命限制保留了目标生命');
+        if (deathSave) reductions.push(deathSave);
         return `${actor}以【${action}】命中${target || '目标'}，实际扣减${damage}点生命`
           + (reductions.length ? `（${reductions.join('；')}）` : '');
       }
@@ -1079,9 +1105,12 @@
           ? `${actor}的【${action}】被${target || '目标'}闪开`
           : `${actor}的【${action}】未能命中${target || '目标'}`;
       }
+      if (deathSave) return `${actor}的【${action}】命中${target || '目标'}，${target || '目标'}${deathSave}`;
       if (number(meta?.shieldAbsorb, 0) > 0) {
+        if (meta?.intentLethalPrevented === true) return `${actor}的【${action}】命中${target || '目标'}，护盾吸收${Math.round(number(meta.shieldAbsorb, 0))}点，非致命限制阻止继续扣血`;
         return `${actor}的【${action}】命中${target || '目标'}，伤害被护盾完全吸收${Math.round(number(meta.shieldAbsorb, 0))}点`;
       }
+      if (meta?.intentLethalPrevented === true) return `${actor}的【${action}】命中${target || '目标'}，非致命限制阻止继续扣血`;
       return `${actor}的【${action}】命中${target || '目标'}，但未造成有效伤害`;
     }
     if (kind === 'state_tick') {
@@ -1112,20 +1141,23 @@
         ? `${target || actor}的护盾吸收${amount}点伤害，剩余${remaining}点`
         : `${target || actor}的护盾吸收${amount}点伤害后破裂`;
     }
+    if (event?.ruleCode === 'MECHANISM_GRANT_USE_CONSUMED') {
+      return grantUseText(event, target || actor, playerSafeText(meta?.before?.来源技能 || namedState || '授予效果', directory));
+    }
+    if (event?.ruleCode === 'MECHANISM_GRANT_EXPIRED') {
+      return grantExpiryText(event, target || actor, action || namedState || '授予效果');
+    }
     if (kind === 'state_apply' || kind === 'state_replace') {
       const outcome = resultLabel(event);
       const receiver = target || actor;
-      /* "获得【失去战斗力】"是自相矛盾的措辞。状态有正负之分，
-         对己方增益用"获得"，对敌方减益用"陷入"，都由施加方与承受方是否同阵营决定。 */
-      const sameSide = text(event?.actorSide) && text(event?.actorSide) === text(event?.targetSide);
-      const verb = receiver === actor || sameSide ? '获得' : '陷入';
+      const application = stateApplicationText(event, namedState || '状态');
       if (['失败', '被抵抗', '免疫', '已阻断'].includes(outcome)) {
-        return `${actor}试图用【${action}】让${receiver}${verb}【${namedState || '状态'}】，但${outcome}`;
+        return `${actor}试图用【${action}】让${receiver}${application}，但${outcome}`;
       }
       if (kind === 'state_replace') {
         return `${actor}通过【${action}】更新${receiver}的【${namedState || '状态'}】${duration > 0 ? `，持续${duration}回合` : ''}`;
       }
-      return `${actor}用【${action}】让${receiver}${verb}【${namedState || '状态'}】${duration > 0 ? `，持续${duration}回合` : ''}`;
+      return `${actor}用【${action}】让${receiver}${application}${duration > 0 ? `，持续${duration}回合` : ''}`;
     }
     if (kind === 'state_remove') return `${target || actor}移除【${namedState || action}】`;
     if (kind === 'state_expire') return `${target || actor}的【${namedState || action}】到期`;
@@ -1175,6 +1207,10 @@
       if (text(event?.ruleCode || meta?.reasonCode) === 'FUSION_PARTICIPATION_CONSUMED') {
         const fusionActionName = playerSafeText(meta?.fusionActionName || action || '融合技', directory);
         return `${actor}参与【${fusionActionName}】完成融合，本轮自然行动机会随之消耗`;
+      }
+      if (text(event?.ruleCode || meta?.reasonCode) === 'COUNTER_ACTION_CONSUMED_NATURAL_OPPORTUNITY') {
+        const counterActionName = playerSafeText(meta?.counterActionName || action || '反击', directory);
+        return `${actor}已将本轮出手机会提前用于【${counterActionName}】反击`;
       }
       if (text(event?.actionType) === 'opportunity_cancelled' && text(meta?.reasonText)) {
         return `${actor}因${playerSafeText(meta.reasonText, directory)}失去本次行动机会`;
@@ -1497,7 +1533,7 @@
         const kind = text(evidence?.outcomeKind).toUpperCase();
         const targetId = text(evidence?.targetId);
         if (!kind || !targetId) return;
-        const delta = Number(evidence?.expectedDelta);
+        const delta = typeof evidence?.expectedDelta === 'number' ? evidence.expectedDelta : NaN;
         push({
           kind,
           source: 'PREDICTED_OUTCOME',
@@ -1510,9 +1546,12 @@
             duration: Number.isFinite(Number(evidence?.evidence?.duration))
               ? Number(evidence.evidence.duration)
               : null,
-            hitProbability: Number.isFinite(Number(evidence?.hitProbability))
-              ? Number(evidence.hitProbability)
+            hitProbability: typeof evidence?.hitProbability === 'number' && Number.isFinite(evidence.hitProbability) && evidence.hitProbability >= 0 && evidence.hitProbability <= 1
+              ? evidence.hitProbability
               : null,
+            basisView: text(evidence?.basisView || evidence?.evidence?.damageBasis?.basisView),
+            remainingHp: typeof evidence?.evidence?.current === 'number' && Number.isFinite(evidence.evidence.current)
+              ? evidence.evidence.current : null,
           },
         });
       });
@@ -1578,8 +1617,9 @@
    */
   const magnitudeTolerance = 0.25;
 
-  function compareMagnitude(predicted = 0, actual = {}, context = {}) {
-    const expectedValue = Math.abs(Number(predicted) || 0);
+  function compareMagnitude(predicted = null, actual = {}, context = {}) {
+    if (typeof predicted !== 'number' || !Number.isFinite(predicted)) return null;
+    const expectedValue = Math.abs(predicted);
     const appliedValue = Math.abs(Number(actual?.appliedDamage) || 0);
     if (expectedValue <= 0 && appliedValue <= 0) return null;
     const denominator = Math.max(expectedValue, appliedValue, 1);
@@ -1592,34 +1632,32 @@
     /* 预演自洽性：伤害预测不可能超过目标当时的剩余生命，超过说明预演侧的生命裁剪没有生效。
        这条检查不依赖运行时结果，是对预演单独成立的硬约束——即使运行时数值恰好吻合，
        预测值本身越界也必须报出来。 */
-    const remainingHp = Number(context?.targetRemainingHp);
-    const exceedsTargetHp = Number.isFinite(remainingHp) &&
-      remainingHp >= 0 &&
-      expectedValue > remainingHp + 1e-9;
+    const remainingHp = typeof context?.targetRemainingHp === 'number' && Number.isFinite(context.targetRemainingHp) ? context.targetRemainingHp : null;
+    const predictionRemainingHp = typeof context?.predictionRemainingHp === 'number' && Number.isFinite(context.predictionRemainingHp) ? context.predictionRemainingHp : null;
+    const exceedsTargetHp = predictionRemainingHp !== null && predictionRemainingHp >= 0 && expectedValue > predictionRemainingHp + 1e-9;
+    const comparable = context?.basisView === 'RUNTIME_ACTUAL' && context?.hitProbability === 1 && context?.effectIdentityMatched === true;
 
-    /* 预演与运行时的未折减伤害是否同一个模型。两者都是"未经防御/护盾/钳制处理"的量，
-       量级差超过一个数量级，说明两套伤害公式已经分叉，钳制类成因解释不了这种差距。 */
+    /* 当前证据只有期望扣血，没有同阶段原始伤害预测，不能据其比值判断原始公式分叉。 */
     const rawValue = Math.abs(Number(actual?.rawDamage) || 0);
-    const rawModelDiverged = expectedValue > 0 && rawValue > 0 &&
-      (rawValue / expectedValue > 10 || expectedValue / rawValue > 10);
 
     return {
       predicted: Number(expectedValue.toFixed(2)),
       applied: Number(appliedValue.toFixed(2)),
       raw: Number(rawValue.toFixed(2)),
       incoming: Number((Number(actual?.incomingDamage) || 0).toFixed(2)),
-      targetRemainingHp: Number.isFinite(remainingHp) ? remainingHp : null,
+      targetRemainingHp: remainingHp,
+      predictionRemainingHp,
+      comparisonBasis: comparable ? 'MATCHED_DETERMINISTIC_SETTLEMENT' : 'EXPECTATION_VS_SINGLE_OBSERVATION',
+      comparable,
       deviation: Number(deviation.toFixed(4)),
       aligned: deviation <= magnitudeTolerance,
       /* 有成因的差异仍然算偏差，但可解释；无成因的偏差才是预演与运行时分叉的强信号。 */
       explanations,
       exceedsTargetHp,
-      rawModelDiverged,
-      /* 只要预测越界或未折减模型分叉，无论运行时侧有没有钳制成因，都算未解释——
-         钳制能解释"实际为什么变小"，解释不了"预测值本身从哪来"。 */
+      rawModelDiverged: null,
+      /* 同预测视图越界仍报错；认知期望与单次实测的偏差只作观测，不当作确定性公式错误。 */
       unexplained: exceedsTargetHp ||
-        rawModelDiverged ||
-        (deviation > magnitudeTolerance && explanations.length === 0),
+        (comparable && deviation > magnitudeTolerance && explanations.length === 0),
     };
   }
 
@@ -1781,8 +1819,12 @@
           landed.map(event => event.eventId),
           actual,
           searched,
-          compareMagnitude(Math.abs(Number(expected?.delta || 0)), actual, {
+          compareMagnitude(expected?.delta, actual, {
             targetRemainingHp: context?.remainingHpOf ? context.remainingHpOf(targetId) : null,
+            predictionRemainingHp: expected.remainingHp,
+            basisView: expected.basisView,
+            hitProbability: expected.hitProbability,
+            effectIdentityMatched: landed.every(event => matchesEffectInstance(event, effectInstanceId)),
           }),
         );
       }
@@ -2130,6 +2172,8 @@
       magnitudeUnexplained: rows.filter(row => row?.magnitude?.unexplained === true).length,
       predictionExceedsTargetHp: rows.filter(row => row?.magnitude?.exceedsTargetHp === true).length,
       rawDamageModelDiverged: rows.filter(row => row?.magnitude?.rawModelDiverged === true).length,
+      rawDamageModelMeasured: rows.filter(row => typeof row?.magnitude?.rawModelDiverged === 'boolean').length,
+      expectationObservationComparisons: rows.filter(row => row?.magnitude?.comparisonBasis === 'EXPECTATION_VS_SINGLE_OBSERVATION').length,
     };
   }
 
@@ -3333,25 +3377,29 @@
         : `${actor}还来得及做出反应`;
     }
     if (kind === 'hit_result') {
+      if (rawEvent?.ruleCode === 'RULE_DEFENSE_BLOCK_CONSUMED') return `${target}的免伤效果挡住了${actor}这一击，消耗1次免伤，没有扣血`;
+      const deathSave = deathSaveText(rawEvent);
       const applied = number(rawEvent?.appliedDamage ?? meta?.appliedDamage, 0);
       if (applied > 0) {
-        const raw = number(meta?.rawDamage, NaN);
+        const defenseMultiplier = typeof meta?.defenseMultiplier === 'number' ? meta.defenseMultiplier : NaN;
         const absorbed = number(meta?.shieldAbsorb, 0);
         const 备注 = [];
-        /* 只在折减确实发生、且幅度值得一提时才说，避免每一击都拖一句解释。 */
-        if (Number.isFinite(raw) && raw > applied + absorbed + 0.5) {
-          备注.push(`对方的防御卸掉了不少力道`);
+        if (Number.isFinite(defenseMultiplier) && defenseMultiplier >= 0 && defenseMultiplier < 1) {
+          备注.push('防护效果降低了这一击的威力');
         }
         if (absorbed > 0) 备注.push(`护盾替他挡下${Math.round(absorbed)}点`);
-        if (meta?.intentLethalPrevented === true) 备注.push('手下留情没有取其性命');
+        if (meta?.intentLethalPrevented === true) 备注.push('非致命限制保留了目标生命');
+        if (deathSave) 备注.push(deathSave);
         return `${actor}打中${target}，扣掉${applied}点生命`
           + (备注.length ? `（${备注.join('，')}）` : '');
       }
       if (/miss/i.test(text(rawEvent?.result))) {
-        return text(meta?.primaryOutcome) === 'dodged'
+        return text(rawEvent?.primaryOutcome || meta?.primaryOutcome) === 'dodged'
           ? `${target}闪开了${actor}的攻击`
           : `${actor}没有打中${target}`;
       }
+      if (deathSave) return `${actor}打中了${target}，${target}${deathSave}`;
+      if (meta?.intentLethalPrevented === true) return `${actor}打中了${target}，${number(meta?.shieldAbsorb, 0) > 0 ? `护盾挡下${Math.round(number(meta.shieldAbsorb, 0))}点，` : ''}非致命限制阻止继续扣血`;
       if (absorbedShieldOnly(meta)) return `${actor}打中了${target}，但被护盾全部挡下`;
       return `${actor}打中了${target}，却没造成实质伤害`;
     }
@@ -3402,21 +3450,24 @@
         : `${actor}朝${target}使出【${action}】`;
     }
 
+    if (rawEvent?.ruleCode === 'MECHANISM_GRANT_USE_CONSUMED') {
+      return grantUseText(rawEvent, target || actor, playerSafeText(meta?.before?.来源技能 || playerStateDescription(rawEvent, new Map()) || '授予效果', new Map()));
+    }
+    if (rawEvent?.ruleCode === 'MECHANISM_GRANT_EXPIRED') {
+      return grantExpiryText(rawEvent, target || actor, action || '授予效果');
+    }
     if (kind === 'state_apply' || kind === 'state_replace') {
       const outcome = resultLabel(rawEvent);
       const receiver = target || actor;
       const state = playerStateDescription(rawEvent, new Map()) || '某种状态';
       const dur = number(rawEvent?.duration ?? meta?.duration, 0);
       if (['失败', '被抵抗', '免疫', '已阻断'].includes(outcome)) {
-        return `${receiver}扛住了【${state}】，没有中招`;
+        return `【${state}】未在${receiver}身上生效（${outcome}）`;
       }
       if (kind === 'state_replace') {
         return `${receiver}的【${state}】被更新${dur > 0 ? `，可持续${dur}回合` : ''}`;
       }
-      const sameSide = text(rawEvent?.actorSide) && text(rawEvent?.actorSide) === text(rawEvent?.targetSide);
-      return receiver === actor || sameSide
-        ? `${receiver}进入【${state}】状态${dur > 0 ? `，可持续${dur}回合` : ''}`
-        : `${receiver}被打成【${state}】状态${dur > 0 ? `，要持续${dur}回合` : ''}`;
+      return `${receiver}${stateApplicationText(rawEvent, state)}${dur > 0 ? `，持续${dur}回合` : ''}`;
     }
     if (kind === 'ring_burst') return `${actor}发动炸环`;
     if (kind === 'schedule_descriptor') return `${actor}留下了后续生效的效果`;
@@ -4708,6 +4759,18 @@
     非支配筛选: '保留有真实取舍的方案',
     选择: '最终选择',
   });
+  function publicDecisionStage(stage = {}, visibilityMode = 'PLAYER') {
+    const label = text(stage?.stage);
+    return {
+      stage: visibilityMode === 'DEVELOPER' ? label : playerDecisionStageLabels[label] || (/[\u3400-\u9fff]/.test(label) ? label : '未收录判定阶段'),
+      before: typeof stage?.before === 'number' && Number.isInteger(stage.before) && stage.before >= 0 ? stage.before : null,
+      after: typeof stage?.after === 'number' && Number.isInteger(stage.after) && stage.after >= 0 ? stage.after : null,
+      droppedReasons: (Array.isArray(stage?.droppedReasons) ? stage.droppedReasons : []).map(reason => ({
+        reason: text(reason?.reason || reason?.reasonPlayerText || reason?.reasonText),
+        count: typeof reason?.count === 'number' && Number.isInteger(reason.count) && reason.count >= 0 ? reason.count : null,
+      })).filter(reason => reason.reason),
+    };
+  }
   const publicGeneralActionKinds = new Set([
     'BASIC_ATTACK',
     'DEFEND',
@@ -5081,17 +5144,7 @@
       })),
       narrowing: actorSide === 'enemy'
         ? []
-        : (Array.isArray(trace?.narrowing) ? trace.narrowing : []).map(stage => ({
-        stage: playerDecisionStageLabels[text(stage?.stage)] || text(stage?.stage),
-        before: Math.max(0, number(stage?.before, 0)),
-        after: Math.max(0, number(stage?.after, 0)),
-        droppedReasons: (Array.isArray(stage?.droppedReasons) ? stage.droppedReasons : [])
-          .map(reason => ({
-            reason: text(reason?.reasonPlayerText || reason?.reasonText),
-            count: Math.max(0, number(reason?.count, 0)),
-          }))
-          .filter(reason => reason.reason),
-          })),
+        : (Array.isArray(trace?.narrowing) ? trace.narrowing : []).map(stage => publicDecisionStage(stage)),
     };
   }
 
@@ -5313,19 +5366,7 @@
         );
         const publicNarrowing = (Array.isArray(trace?.narrowing) ? trace.narrowing : [])
           .filter(() => !hideEnemyPrivateCandidates)
-          .map(stage => ({
-            stage: visibilityMode === 'DEVELOPER'
-              ? text(stage?.stage)
-              : playerDecisionStageLabels[text(stage?.stage)] || text(stage?.stage),
-            before: Math.max(0, number(stage?.before, 0)),
-            after: Math.max(0, number(stage?.after, 0)),
-            droppedReasons: (Array.isArray(stage?.droppedReasons) ? stage.droppedReasons : [])
-              .map(reason => ({
-                reason: text(reason?.reasonPlayerText || reason?.reasonText),
-                count: Math.max(0, number(reason?.count, 0)),
-              }))
-              .filter(reason => reason.reason),
-          }));
+          .map(stage => publicDecisionStage(stage, visibilityMode));
         const baseExplanation = {
           schemaVersion: 'DecisionTimeExplanationV1',
           explanationId,
@@ -5500,6 +5541,7 @@
     }
     const explanationId = text(base?.explanationId);
     const numbers = (Array.isArray(report?.predictedNumbers) ? report.predictedNumbers : [])
+      .filter(token => typeof token?.value === 'number' && Number.isFinite(token.value))
       .slice(0, 12)
       .map((token, index) => {
         const unit = text(token?.unit);
@@ -5530,17 +5572,7 @@
     const narrowing = (Array.isArray(report?.narrowing) && report.narrowing.length
       ? report.narrowing
       : base?.visibleContext?.narrowing || [])
-      .map(stage => ({
-        stage: text(stage?.stage),
-        before: Math.max(0, number(stage?.before, 0)),
-        after: Math.max(0, number(stage?.after, 0)),
-        droppedReasons: (Array.isArray(stage?.droppedReasons) ? stage.droppedReasons : [])
-          .map(reason => ({
-            reason: text(reason?.reasonPlayerText || reason?.reasonText || reason?.reason),
-            count: Math.max(0, number(reason?.count, 0)),
-          }))
-          .filter(reason => reason.reason),
-      }));
+      .map(stage => publicDecisionStage(stage, visibilityMode));
     const mappedSelectionReason = text(report?.selectionReason);
     const weakMappedSelectionReason = /(?:综合现有公开信息，这一手更合适|相比另一手，当前公开比较更支持这一手|两者相比，这一步的整体取舍更占优|这一手在当前公开比较中更占优)[。！]?$/.test(
       mappedSelectionReason,
@@ -5595,7 +5627,7 @@
     return {
       displayName: text(token?.displayName || token?.label),
       label: text(token?.label || token?.displayName),
-      value: number(token?.value, 0),
+      value: typeof token?.value === 'number' && Number.isFinite(token.value) ? token.value : null,
       unit: text(token?.unit),
       sourceName: text(token?.sourceName || '战斗事实'),
       sourceType: text(token?.sourceType || 'SETTLEMENT'),
@@ -5603,7 +5635,7 @@
       sourceEventId: publicFactReference(token?.sourceEventId, '事件'),
       sourceFactId: publicFactReference(token?.sourceFactId, '事实'),
       operands: (Array.isArray(token?.operands) ? token.operands : [])
-        .filter(operand => Number.isFinite(Number(operand?.value)))
+        .filter(operand => typeof operand?.value === 'number' && Number.isFinite(operand.value))
         .map(operand => ({
           name: text(operand?.name || '来源事实记录值'),
           value: number(operand?.value, 0),
@@ -5624,17 +5656,7 @@
         status: text(candidate?.status),
         reason: text(candidate?.reason || candidate?.reasonPlayerText || candidate?.reasonText),
       })),
-      narrowing: (Array.isArray(trace?.narrowing) ? trace.narrowing : []).map(stage => ({
-        stage: text(stage?.stage),
-        before: Math.max(0, number(stage?.before, 0)),
-        after: Math.max(0, number(stage?.after, 0)),
-        droppedReasons: (Array.isArray(stage?.droppedReasons) ? stage.droppedReasons : [])
-          .map(reason => ({
-            reason: text(reason?.reason || reason?.reasonPlayerText || reason?.reasonText),
-            count: Math.max(0, number(reason?.count, 0)),
-          }))
-          .filter(reason => reason.reason),
-      })),
+      narrowing: (Array.isArray(trace?.narrowing) ? trace.narrowing : []).map(stage => publicDecisionStage(stage)),
     };
   }
 
@@ -6173,7 +6195,7 @@
       factsById.set(factId, fact);
       (Array.isArray(fact?.numericTokens) ? fact.numericTokens : []).forEach((token, tokenIndex) => {
         if (
-          !Number.isFinite(Number(token?.value)) ||
+          typeof token?.value !== 'number' || !Number.isFinite(token.value) ||
           text(token?.sourceEventId) !== factId ||
           text(token?.sourceFactId) !== factId
         ) {
@@ -6314,7 +6336,7 @@
         const explanationId = text(explanation?.explanationId);
         const operands = Array.isArray(token?.operands) ? token.operands : [];
         if (
-          !Number.isFinite(Number(token?.value)) ||
+          typeof token?.value !== 'number' || !Number.isFinite(token.value) ||
           text(token?.sourceType) !== 'DECISION_TIME_PUBLIC_PROJECTION' ||
           !['ADD', 'SUBTRACT'].includes(text(token?.operation)) ||
           text(token?.sourceEventId) !== explanationId ||

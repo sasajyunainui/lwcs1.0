@@ -6615,17 +6615,33 @@ function 生成场景候选角色资料_V1(数据输入 = null, userInput = '', 
     .map(条目 => 条目.角色名);
   const 展开角色名 = 排序角色名.slice(0, 展开上限);
   const 超出角色名 = 排序角色名.slice(展开上限);
-  const 草稿数据根 = cloneJsonValue(原数据根, {});
+  const 草稿数据根 = 展开角色名.length ? {
+    ...cloneJsonValue({ ...原数据根, char: undefined }, {}),
+    char: Object.fromEntries([...new Set([...展开角色名, 原数据根.sys?.玩家名, '古月', '娜儿', '古月娜'])]
+      .filter(角色名 => 原数据根.char?.[角色名])
+      .map(角色名 => [角色名, cloneJsonValue(原数据根.char[角色名], {})])),
+  } : 原数据根;
   if (展开角色名.length) {
-    const 结果 = 应用内置角色实例化_V1(草稿数据根, {
-      用户输入: 展开角色名.join('、'),
-      命中角色: 展开角色名,
-      使用统一命中: true,
-    });
-    if (Array.isArray(结果?.changedNames) && 结果.changedNames.length > 0 && globalThis.__LWCS_MVU_SCHEMA__?.parse) {
-      try {
-        Object.assign(草稿数据根, globalThis.__LWCS_MVU_SCHEMA__.parse(草稿数据根));
-      } catch (错误) {}
+    const 原活动根 = globalThis.__LWCS_SCHEMA_ACTIVE_DATA_ROOT_V1__;
+    const 原抑制播报 = globalThis.__LWCS_SUPPRESS_SCHEMA_BROADCAST__;
+    try {
+      globalThis.__LWCS_SCHEMA_ACTIVE_DATA_ROOT_V1__ = 草稿数据根;
+      globalThis.__LWCS_SUPPRESS_SCHEMA_BROADCAST__ = true;
+      const 结果 = 应用内置角色实例化_V1(草稿数据根, {
+        用户输入: 展开角色名.join('、'),
+        命中角色: 展开角色名,
+        使用统一命中: true,
+      });
+      if (Array.isArray(结果?.changedNames) && 结果.changedNames.length > 0) {
+        try {
+          Object.assign(草稿数据根, globalThis.__LWCS_MVU_SCHEMA__.parse(草稿数据根));
+        } catch (错误) {}
+      }
+    } finally {
+      if (原活动根 === undefined) delete globalThis.__LWCS_SCHEMA_ACTIVE_DATA_ROOT_V1__;
+      else globalThis.__LWCS_SCHEMA_ACTIVE_DATA_ROOT_V1__ = 原活动根;
+      if (原抑制播报 === undefined) delete globalThis.__LWCS_SUPPRESS_SCHEMA_BROADCAST__;
+      else globalThis.__LWCS_SUPPRESS_SCHEMA_BROADCAST__ = 原抑制播报;
     }
   }
   const 行列表 = 展开角色名

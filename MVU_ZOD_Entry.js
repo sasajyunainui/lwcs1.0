@@ -12,13 +12,14 @@ const MVU_CRITICAL_PREFETCH_FILES_V1 = Object.freeze([
   'MVU_Hooks.js',
 ]);
 const MVU_UI_PREFETCH_FILES_V1 = Object.freeze([
-  'LWCS_UI_Runtime_Bundle.js',
+  'LWCS_UI_Integration_Bundle.js',
+  'Database_Module.js',
   'LWCS_UI_Styles_Bundle.js',
   'Main_Vue_runtimefix_v2.js',
   'sheep_map_restore.js',
 ]);
 const MVU_ENGINE_UPSTREAM_COMMIT_V1 = '0a730cd4a9b99689d1135a49b542c780b977c24c';
-const MVU_ENGINE_BUNDLE_SHA256_V1 = '4f95d98526a720967fe4d66ce65c9e29c05b529e10581fe3763e0eca0f04e558';
+const MVU_ENGINE_BUNDLE_SHA256_V1 = 'ba33961b9894872611e21229d4ce430e2c7c54e249156d33a4113b60cfd78a8b';
 const MVU追踪模块顺序_V1 = Object.freeze([
   'MVU_ZOD_Entry.js',
   MVU_ENGINE_BUNDLE_FILE_V1,

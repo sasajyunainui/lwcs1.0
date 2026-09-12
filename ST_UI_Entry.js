@@ -153,26 +153,17 @@
     JSONPatch规范化接口: { 类型: 'wait-global', 全局键: '__LWCS_NORMALIZE_JSON_PATCH_OPS__', 值类型: 'function', 关键: true, 分组: 'core' },
     JSONPatch文本预处理接口: { 类型: 'wait-global', 全局键: '__LWCS_PREPROCESS_JSON_PATCH_TEXT__', 值类型: 'function', 关键: true, 分组: 'core' },
     UI运行时: {
-      类型: 'inline-js',
-      地址: 资源基础地址 + 'LWCS_UI_Runtime_Bundle.js' + 资源版本后缀,
+      类型: 'bundle-member',
+      依赖: ['UI集成运行时', '数据库模块'],
       关键: true,
       分组: 'core',
       已就绪: () => !!读取共享值('__LWCS_DATABASE_ADAPTER__')
         && typeof 读取共享值('__MVU_ROUTE_MODULE_INTENT__') === 'function'
-        && typeof 读取共享值('mountTradeUI') === 'function'
-        && typeof 读取共享值('mountProfessionUI') === 'function'
-        && typeof 读取共享值('mountCompetitionUI') === 'function'
-        && !!读取共享值('__LWCS_BATTLE_PREVIEW__')
-        && !!读取共享值('__LWCS_BEHAVIOR_DECISION_PIPELINE__')
-        && !!读取共享值('__LWCS_BATTLE_DECISION__')
-        && !!读取共享值('__LWCS_BATTLE_RUNTIME__')
-        && !!读取共享值('__LWCS_BATTLE_REPORT__')
-        && typeof 读取共享值('mountBattleUI') === 'function'
         && !!读取共享值('AutoCardUpdaterAPI'),
     },
     UI集成运行时: {
-      类型: 'bundle-member',
-      依赖: ['UI运行时'],
+      类型: 'inline-js',
+      地址: 资源基础地址 + 'LWCS_UI_Integration_Bundle.js' + 资源版本后缀,
       关键: true,
       分组: 'core',
       已就绪: () => !!读取共享值('__LWCS_DATABASE_ADAPTER__') && typeof 读取共享值('__MVU_ROUTE_MODULE_INTENT__') === 'function',
@@ -235,10 +226,11 @@
       已就绪: () => 读取共享值('__sheepMapRestoreLoaded') === true,
     },
     游戏功能运行时: {
-      类型: 'bundle-member',
-      依赖: ['UI运行时'],
-      关键: true,
-      分组: 'core',
+      类型: 'inline-js',
+      地址: 资源基础地址 + 'LWCS_UI_Gameplay_Bundle.js' + 资源版本后缀,
+      依赖: ['UI集成运行时'],
+      关键: false,
+      分组: 'on-demand',
       已就绪: () => typeof 读取共享值('mountTradeUI') === 'function'
         && typeof 读取共享值('mountProfessionUI') === 'function'
         && typeof 读取共享值('mountCompetitionUI') === 'function'
@@ -259,8 +251,9 @@
     战斗战报运行时: { 类型: 'bundle-member', 依赖: ['游戏功能运行时'], 关键: true, 分组: 'core' },
     战斗模块: { 类型: 'bundle-member', 依赖: ['游戏功能运行时'], 关键: true, 分组: 'core' },
     数据库模块: {
-      类型: 'bundle-member',
-      依赖: ['UI运行时'],
+      类型: 'inline-js',
+      地址: 资源基础地址 + 'Database_Module.js' + 资源版本后缀,
+      依赖: ['UI集成运行时'],
       关键: true,
       分组: 'core',
       已就绪: () => !!读取共享值('AutoCardUpdaterAPI'),
@@ -290,7 +283,7 @@
     ...(是TT宿主 ? [] : ['冷归档存储']),
   ]);
   const 核心模块顺序 = Object.freeze([...核心前置模块顺序, ...冷归档前置模块顺序, 'UI运行时', '地图模块', '数据库模块']);
-  const 正常启动追踪模块顺序 = Object.freeze([...核心模块顺序]);
+  const 正常启动追踪模块顺序 = Object.freeze([...核心模块顺序, 'UI集成运行时']);
 
   const 加载阶段 = {
     待启动: '待启动',
@@ -588,6 +581,8 @@
         刷新加载追踪面板();
       }
       const 代码文本 = await 读取文本资源(地址, 'JS load failed');
+      await 睡眠(0);
+      if (!入口实例仍活动()) throw new Error('UI入口已失效，取消脚本执行');
       if (状态) {
         状态.阶段 = '执行中';
         刷新加载追踪面板();
@@ -785,18 +780,26 @@
     const 允许失败降级 = 选项.允许失败降级 !== false;
     const 最大等待毫秒 = Math.max(1, Number(选项.最大等待毫秒 || 模块等待上限毫秒));
     const 加载承诺 = 尝试加载模块(模块名, 来源, 允许失败降级);
-    const 超时结果 = new Promise(resolve => setTimeout(() => {
-      const 错误 = new Error(`${模块名}加载等待超过${最大等待毫秒}ms`);
-      const 状态 = 模块状态表[模块名];
-      if (状态 && 状态.状态 === 'loading') {
-        状态.状态 = 模块注册表[模块名]?.关键 ? 'failed' : 'degraded';
-        状态.阶段 = '超时';
-        状态.错误 = 错误.message;
-        刷新加载追踪面板();
-      }
-      resolve({ ok: false, 模块名, reason: 'timeout', error: 错误 });
-    }, 最大等待毫秒));
-    const 结果 = await Promise.race([加载承诺, 超时结果]);
+    let 超时计时器;
+    const 超时结果 = new Promise(resolve => {
+      超时计时器 = setTimeout(() => {
+        const 错误 = new Error(`${模块名}加载等待超过${最大等待毫秒}ms`);
+        const 状态 = 模块状态表[模块名];
+        if (状态 && 状态.状态 === 'loading') {
+          状态.状态 = 模块注册表[模块名]?.关键 ? 'failed' : 'degraded';
+          状态.阶段 = '超时';
+          状态.错误 = 错误.message;
+          刷新加载追踪面板();
+        }
+        resolve({ ok: false, 模块名, reason: 'timeout', error: 错误 });
+      }, 最大等待毫秒);
+    });
+    let 结果;
+    try {
+      结果 = await Promise.race([加载承诺, 超时结果]);
+    } finally {
+      clearTimeout(超时计时器);
+    }
     if (!结果.ok && 选项 && 选项.抛错) {
       throw 结果.error || new Error(结果.reason || `${模块名}_load_failed`);
     }
@@ -1394,7 +1397,9 @@
     本次引导承诺 = (async () => {
       try {
         记录阶段(加载阶段.节点就绪);
-        void 读取文本资源(模块注册表.UI运行时.地址, 'UI runtime preload failed').catch(() => {});
+        for (const 模块名 of ['UI集成运行时', '数据库模块']) {
+          void 读取文本资源(模块注册表[模块名].地址, 'UI runtime preload failed').catch(() => {});
+        }
         await waitForMountsReady(10000);
         ensureGetAllVariablesShim();
 
