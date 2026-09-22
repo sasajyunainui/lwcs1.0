@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:5c002c6cb7f54f8c12892014a1eaefe779f33d118b19b735955e45da6409c4f8 */
+/* sources-sha256: LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:c11be47efa4b5641bd7b35bc230c4356cfcbadbd5d6d0bcb71717d803556a632 */
 ;
 /* source: LWCS_TT_AutoUpdate_Debug.js */
 (function installLwcsTtAutoUpdateDebug() {
@@ -1908,10 +1908,9 @@
   }
 
   function makeRadarSvg(labels, values, realValues = null, accent = 'cyan') {
-    const size = 220;
     const cx = 110;
     const cy = 110;
-    const radius = 70;
+    const radius = 64;
     const levels = 4;
     const angleStep = (Math.PI * 2) / labels.length;
 
@@ -1929,7 +1928,7 @@
       const pts = labels
         .map((_, idx) => {
           const p = point(idx, ratio);
-          return `${p.x},${p.y}`;
+          return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
         })
         .join(' ');
       grids += `<polygon class="radar-grid-line" points="${pts}"></polygon>`;
@@ -1938,24 +1937,23 @@
     const axes = labels
       .map((_, idx) => {
         const p = point(idx, 1);
-        return `<line class="radar-axis-line" x1="${cx}" y1="${cy}" x2="${p.x}" y2="${p.y}"></line>`;
+        return `<line class="radar-axis-line" x1="${cx}" y1="${cy}" x2="${p.x.toFixed(1)}" y2="${p.y.toFixed(1)}"></line>`;
       })
       .join('');
 
-    const shapePoints = values
-      .map((value, idx) => {
-        const p = point(idx, Math.max(0.08, Math.min(1, value / 100)));
-        return `${p.x},${p.y}`;
-      })
-      .join(' ');
+    const dataPoints = values.map((value, idx) => point(idx, Math.max(0.08, Math.min(1, value / 100))));
+    const shapePoints = dataPoints.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+    const pointsMarkup = dataPoints
+      .map(p => `<circle class="radar-data-point" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="2.5"></circle>`)
+      .join('');
 
     const labelTexts = labels
       .map((label, idx) => {
-        const p = point(idx, 1.22);
+        const p = point(idx, 1.28);
         let anchor = 'middle';
-        if (p.x < cx - 10) anchor = 'end';
-        else if (p.x > cx + 10) anchor = 'start';
-        return `<text x="${p.x}" y="${p.y}" text-anchor="${anchor}" dominant-baseline="middle" class="radar-label">${label}</text>`;
+        if (p.x < cx - 12) anchor = 'end';
+        else if (p.x > cx + 12) anchor = 'start';
+        return `<text x="${p.x.toFixed(1)}" y="${p.y.toFixed(1)}" text-anchor="${anchor}" dominant-baseline="central" class="radar-label">${label}</text>`;
       })
       .join('');
 
@@ -1973,10 +1971,11 @@
     return `
         <div class="radar-shell">
           <div class="radar-visual">
-            <svg class="radar-svg" viewBox="0 0 ${size} ${size}">
+            <svg class="radar-svg" viewBox="-22 -14 264 248">
               ${grids}
               ${axes}
               <polygon class="radar-data-shape ${accent === 'gold' ? 'gold' : ''}" points="${shapePoints}"></polygon>
+              ${pointsMarkup}
               ${labelTexts}
             </svg>
           </div>
@@ -3417,7 +3416,7 @@
     const mount = document.getElementById('mvu-unified-mount');
     const page = mount ? mount.querySelector('.mvu-unified-page.active') : null;
     const slot = page
-      ? page.querySelector('[data-unified-card][data-unified-surface="panel"], [data-mvu-map-stage="panel"]')
+      ? page.querySelector('[data-status-cabin], [data-unified-card][data-unified-surface="panel"], [data-mvu-map-stage="panel"]')
       : null;
     if (!mount?.isConnected || !page?.isConnected || !slot?.isConnected) return null;
     return { mount, page, slot };
@@ -12907,6 +12906,38 @@
   }
 
   function buildInlineEnumSelectEditor(target, rect, rawValue, meta = {}, state) {
+    if (target.closest('.dc-profile-host')) {
+      const group = document.createElement('div');
+      group.className = 'mvu-inline-editor-shell dc-profile-choice-editor';
+      group.setAttribute('role', 'group');
+      group.setAttribute('aria-label', '选择' + String(state.path?.at(-1) || '内容'));
+      let value = toText(rawValue, '').trim();
+      const options = normalizeInlineEditorOptions(meta);
+      const values = meta.允许空值 === true ? ['', ...options] : options;
+      values.forEach(option => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = option || toText(meta.空值标签, '--');
+        button.setAttribute('aria-pressed', String(value === option));
+        button.addEventListener('click', event => {
+          event.stopPropagation();
+          value = option;
+          commitInlineEditState(state);
+        });
+        group.appendChild(button);
+      });
+      group.addEventListener('keydown', event => {
+        if (event.key !== 'Escape') return;
+        event.preventDefault(); event.stopPropagation();
+        restoreInlineEditState(state); state.displayEl.focus({ preventScroll: true }); flushPendingLiveRefresh();
+      });
+      group.addEventListener('focusout', event => {
+        if (event.relatedTarget && group.contains(event.relatedTarget)) return;
+        commitInlineEditState(state);
+      });
+      state.readValue = () => value;
+      return { root: group, inputEl: group, focusEl: group.querySelector('[aria-pressed="true"]') || group.firstElementChild };
+    }
     const select = document.createElement('select');
     select.className = 'mvu-inline-editor-input';
     select.style.width = `${Math.max(120, Math.ceil(rect.width) + 24)}px`;
@@ -13689,19 +13720,28 @@
     const 跳过动作锁 = meta && (meta.skipActionLock === true || meta.noActionLock === true);
     const 动作锁键 = 跳过动作锁 ? '' : 构建异步动作锁键(requestKind, userText, meta);
     if (!userText) {
-      showUiToast('请求内容为空，无法提交。', 'error', 4200);
+      if (!meta.silent) showUiToast('请求内容为空，无法提交。', 'error', 4200);
       return { ok: false, requestKind, reason: 'empty_input' };
     }
     if (!helper || typeof helper.generate !== 'function' || typeof helper.createChatMessages !== 'function' || typeof helper.setChatMessages !== 'function') {
-      showUiToast('酒馆助手续写接口未就绪，当前无法提交请求。', 'error', 4200);
+      if (!meta.silent) showUiToast('酒馆助手续写接口未就绪，当前无法提交请求。', 'error', 4200);
       return { ok: false, requestKind, reason: 'helper_unavailable' };
     }
     if (动作锁键 && !尝试占用异步动作锁(动作锁键)) {
-      showUiToast('同一操作仍在执行，请稍候再试。', 'info', 2400);
+      if (!meta.silent) showUiToast('同一操作仍在执行，请稍候再试。', 'info', 2400);
       return { ok: false, requestKind, reason: 'request_locked' };
     }
     let 请求 = null;
+    let settlementCommitted = false;
+    const assertContext = meta.contextKey ? (root) => {
+      if (readStatusRoutineState().contextKey !== meta.contextKey) throw new Error('角色或聊天已改变，行动已停止。');
+      if (root && meta.expectedRoot) {
+        const currentRoot = buildEffectiveSd(归一化变量根_桥接(cloneJsonValue(root, {}))).rootData;
+        if (JSON.stringify(currentRoot) !== JSON.stringify(meta.expectedRoot)) throw new Error('状态已改变，请重新查看预计结果。');
+      }
+    } : null;
     try {
+      assertContext?.();
       let rollbackBase = null;
       let writeAfter = [];
       let 预写待确认键 = '';
@@ -13711,6 +13751,7 @@
           meta && (meta.settlementKind === 'routine' || meta.结算类型 === 'routine' || requestKind.startsWith('map_action_'))
             ? { force: true, 记录本轮模块结算路径: true, 结算类型: 'routine' }
             : { force: true };
+        if (assertContext) Object.assign(预结算写入选项, { assertContext, onCommitted: () => { settlementCommitted = true; } });
         const 交易请求 = requestKind === 'trade_shop_buy' || requestKind === 'trade_auction';
         const privilegeID = toText(meta?.privilegeID, '').trim();
         const privilegeCost = Math.max(0, Math.floor(toNumber(meta?.privilegeCost, 0)));
@@ -13728,6 +13769,8 @@
               }
             : 预结算写入选项,
         );
+        if (!assertContext) settlementCommitted = true;
+        assertContext?.();
         if (rollbackBase) {
           const 写后包 = 读取消息变量写回当前底稿_桥接({ type: 'message', message_id: rollbackBase.目标消息元信息.消息编号 });
           const 写后根 = resolveRootData(写后包);
@@ -13744,6 +13787,7 @@
         }
         await refreshLiveSnapshot({ force: true });
       }
+      assertContext?.();
       const requestId = buildUiContinuationRequestId(requestKind);
       请求 = {
         requestId,
@@ -13764,20 +13808,27 @@
       if (!请求.chatId) throw new Error('ui_continuation_chat_unavailable');
       uiContinuationRequests.set(请求.requestId, 请求);
       await helper.createChatMessages([{ role: 'user', message: userText, extra: { __lwcs_ui_continuation: 构建UI续写元数据_桥接(请求, 'pending') } }], { refresh: 'affected' });
+      assertContext?.();
       const 用户楼层 = 读取请求级UI续写元数据_桥接(请求.requestId);
       if (!用户楼层 || !Number.isInteger(用户楼层.消息编号)) throw new Error('ui_continuation_user_message_missing');
       请求.userMessageId = 用户楼层.消息编号;
       await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'pending'));
-      return await 执行UI续写生成_桥接(helper, 请求);
+      assertContext?.();
+      const result = await 执行UI续写生成_桥接(helper, 请求);
+      return { ...result, settlementCommitted, requestId: 请求.requestId, userMessageId: 请求.userMessageId };
     } catch (error) {
       if (请求?.预写待确认键) 前端模块预写待确认表.delete(请求.预写待确认键);
-      if (请求?.userMessageId) {
+      if (Number.isInteger(请求?.userMessageId) && 请求.chatId === getCurrentUiRequestChatId()) {
         const failure = error && error.message ? error.message : 'ui_continuation_failed';
-        await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'failed', { lastError: failure }));
+        try {
+          await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'failed', { lastError: failure }));
+        } catch (metadataError) {
+          console.warn('[DragonUI] UI continuation failure metadata could not be saved', metadataError);
+        }
       }
       console.error('[DragonUI] UI continuation dispatch failed', error);
-      showUiToast(error && error.message ? error.message : '请求提交失败。', 'error', 4200);
-      return { ok: false, requestKind, reason: 'dispatch_failed', error };
+      if (!meta.silent) showUiToast(error && error.message ? error.message : '请求提交失败。', 'error', 4200);
+      return { ok: false, requestKind, reason: 'dispatch_failed', error, message: error?.message || '行动未提交。', settlementCommitted, requestId: 请求?.requestId, userMessageId: 请求?.userMessageId };
     } finally {
       if (动作锁键) 释放异步动作锁(动作锁键);
     }
@@ -13805,7 +13856,7 @@
     };
   }
 
-  async function 重试UI续写请求_桥接(messageIdOrRequestId) {
+  async function 重试UI续写请求_桥接(messageIdOrRequestId, options = {}) {
     const helper = window.TavernHelper && typeof window.TavernHelper === 'object' ? window.TavernHelper : null;
     const 目标编号 = Number(messageIdOrRequestId);
     const 用户楼层 = Number.isInteger(目标编号)
@@ -13813,7 +13864,7 @@
       : 读取请求级UI续写元数据_桥接(toText(messageIdOrRequestId, ''));
     const 元数据 = 用户楼层 ? 读取UI续写元数据_桥接(用户楼层.消息) : null;
     if (!helper || !用户楼层?.消息?.is_user || !元数据) return { ok: false, reason: 'ui_continuation_not_found' };
-    if (!['failed', 'regenerate_failed'].includes(toText(元数据.state, ''))) return { ok: false, reason: 'ui_continuation_not_retryable' };
+    if (!['failed', 'regenerate_failed'].includes(toText(元数据.state, '')) && !(options.allowPending === true && 元数据.state === 'pending' && uiContinuationRequests.has(元数据.requestId))) return { ok: false, reason: 'ui_continuation_not_retryable' };
     const 请求 = 从UI续写元数据恢复请求_桥接(
       元数据,
       用户楼层.消息编号,
@@ -13831,7 +13882,7 @@
     } catch (error) {
       const failure = error && error.message ? error.message : 'ui_continuation_retry_failed';
       await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 请求.assistantMessageId ? 'regenerate_failed' : 'failed', { lastError: failure }));
-      showUiToast(`续写重试失败：${failure}`, 'error', 4200);
+      if (!options.silent) showUiToast(`续写重试失败：${failure}`, 'error', 4200);
       return { ok: false, reason: 'ui_continuation_retry_failed', error };
     } finally {
       释放异步动作锁(动作锁键);
@@ -13940,6 +13991,7 @@
     'state',
   ]);
   const MVU_RECENT_MESSAGE_SCAN_DEPTH = 24;
+  let guardedMvuWritePending = false;
   const mvuEditorStore = {
     statData: null,
     messageId: 'latest',
@@ -16043,8 +16095,10 @@
 
   async function mutateStatDataByEditor(mutator, options = {}) {
     if (typeof mutator !== 'function') throw new Error('变量更新器必须是函数。');
+    if (guardedMvuWritePending) throw new Error('当前行动或伤势记录仍在保存，请稍后重试。');
     const 写入选项 = 合并剧情模块预结算写入选项(options);
     const 需要登记剧情事务 = 是剧情模块预结算写入(写入选项);
+    if (typeof 写入选项.assertContext === 'function' && 需要登记剧情事务) throw new Error('当前剧情仍在结算，请稍后再办理。');
     if (需要登记剧情事务) {
       const 已有记录 = 查找剧情模块预结算记录_桥接(写入选项);
       let 基准MVU数据 = null;
@@ -16077,6 +16131,33 @@
       writeMvuEditorStoreSnapshot(nextMvuData.stat_data, { messageId: 基准消息编号 });
       登记剧情模块预结算事务自写入_桥接(写入选项, 写前变量数据, nextMvuData.stat_data, nextMvuData);
       return nextMvuData;
+    }
+    if (typeof 写入选项.assertContext === 'function') {
+      写入选项.assertContext();
+      if (mvuEditorStore.dirty || mvuEditorStore.flushing) throw new Error('另一个变量修改仍在保存，请稍后重试。');
+      guardedMvuWritePending = true;
+      try {
+        const { host, mvuData, messageId } = await readLatestMvuDataByEditor();
+        写入选项.assertContext(mvuData.stat_data);
+        const nextStatData = cloneJsonValue(mvuData.stat_data, {});
+        const 权限运行时 = 读取赛事权限运行时_桥接();
+        if (权限运行时?.整理特殊权限) 权限运行时.整理特殊权限(nextStatData);
+        await Promise.resolve(mutator(nextStatData));
+        写入选项.assertContext();
+        if (mvuEditorStore.dirty || mvuEditorStore.flushing) throw new Error('另一个变量修改仍在保存，请稍后重试。');
+        const latest = await readLatestMvuDataByEditor();
+        写入选项.assertContext();
+        if (latest.messageId !== messageId || JSON.stringify(latest.mvuData.stat_data) !== JSON.stringify(mvuData.stat_data)) throw new Error('状态已改变，本次修改未保存。请重新查看。');
+        const nextMvuData = cloneJsonValue(mvuData, {});
+        nextMvuData.stat_data = 归一化变量根_桥接(buildSafeStatDataForEditorWrite(nextStatData, mvuData.stat_data));
+        写入选项.assertContext();
+        await Promise.resolve(host.replaceMvuData(nextMvuData, { type: 'message', message_id: messageId }));
+        写入选项.onCommitted?.();
+        写入选项.assertContext();
+        if (!mvuEditorStore.dirty && !mvuEditorStore.flushing) writeMvuEditorStoreSnapshot(nextMvuData.stat_data, { messageId });
+        if (写入选项.refresh !== false) await refreshLiveSnapshot();
+        return nextMvuData;
+      } finally { guardedMvuWritePending = false; }
     }
     await ensureMvuEditorStoreReady({ force: !!写入选项.force });
     const nextStatData = cloneJsonValue(mvuEditorStore.statData, {});
@@ -16269,7 +16350,7 @@
   }
 
   async function commitInlineEditState(state) {
-    if (!state || state.committing) return;
+    if (!state || state.committing || state !== activeInlineEditState) return;
     state.committing = true;
     bumpInlineEditSession(1200);
     let nextValue;
@@ -16412,6 +16493,12 @@
       focusTarget = input;
     }
 
+    if (target.closest('.dc-profile-host')) {
+      editorRoot.style.width = '100%';
+      editorRoot.style.minWidth = '0';
+      editorRoot.style.maxWidth = '100%';
+      if (focusTarget) focusTarget.style.minHeight = '44px';
+    }
     target.replaceWith(editorRoot);
     if (focusTarget && typeof focusTarget.focus === 'function') focusTarget.focus();
     if (focusTarget && typeof focusTarget.select === 'function') focusTarget.select();
@@ -32594,7 +32681,8 @@
       `--ring-index:${位置 + 1}`,
       `--ring-total:${数量}`,
     ].join(';');
-    return `<div class="mvu-soul-ring-slot ${颜色令牌}" tabindex="0" data-ring-index="${位置 + 1}" style="${样式}">${渲染魂环SVG(颜色令牌, 是否虹彩)}${buildRingHoverMarkup(安全魂环)}</div>`;
+    const 悬浮内容 = 选项.启用扫描锚点 ? '' : buildRingHoverMarkup(安全魂环);
+    return `<div class="mvu-soul-ring-slot ${颜色令牌}" tabindex="0" aria-label="${escapeHtmlAttr(toText(安全魂环.title, `第${位置 + 1}魂环`))}" data-ring-index="${位置 + 1}" style="${样式}">${渲染魂环SVG(颜色令牌, 是否虹彩)}${悬浮内容}</div>`;
   }
 
   function 构建魂环扫描锚点(魂环, 序号, 总数, 选项 = {}) {
@@ -34961,6 +35049,7 @@
 
   function syncPrivateArchiveLongPressTargets(snapshot) {
     const enabled = canOpenPrivateArchive(snapshot);
+    getLiveUiElements('#mvu-unified-mount .mvu-unified-frame').forEach(node => { node.dataset.cabinPrivateAllowed = String(enabled); });
     getLiveUiElements('.char-name').forEach(node => {
       setPrivateArchiveLongPressTarget(node, enabled);
     });
@@ -34968,6 +35057,775 @@
       setPrivateArchiveLongPressTarget(node, enabled);
     });
   }
+
+  function integrateCabinChrome(frame) {
+    const left = frame.querySelector('.dc-left');
+    const center = frame.querySelector('.dc-center');
+    const context = frame.querySelector('.dc-context');
+    const environment = document.createElement('div');
+    environment.className = 'dc-environment';
+    environment.append(context.querySelector('.dc-location'), context.querySelector('.dc-time'));
+    center.appendChild(environment);
+    left.prepend(context);
+    const pages = frame.querySelector('.dc-pages');
+    if (pages) left.querySelector('.dc-scroll').prepend(pages);
+    const characterList = left.querySelector('.dc-character-list');
+    if (characterList) left.querySelector('.dc-scroll').prepend(characterList);
+  }
+
+  function normalizeCabinContent(frame) {
+    const structures = '.archive-modal-grid, .dossier-shell, .archive-card, .dossier-card, .archive-card-head, .archive-card-title, .dossier-columns, .dossier-row-grid, .mvu-cabin-library, .mvu-cabin-native-directory, .mvu-spirit-archive-shell, .mvu-spirit-terminal-grid, .mvu-spirit-terminal-head, .mvu-spirit-terminal-title, .mvu-spirit-terminal-tags, .soul-terminal-head, .soul-terminal-title, .soul-ring-terminal-row, .mvu-armory-detail-grid, .mvu-armory-main-grid, .mvu-armory-data-grid, .mvu-armory-card, .mvu-archive-spirit-stage, .mvu-archive-spirit-stage-node, .mvu-archive-spirit-card, .mvu-archive-spirit-name, .mvu-unified-card, .mvu-inventory-workbench, .mvu-inventory-inspector-scroll, .mvu-quest-tab-row, .mvu-quest-tab, .mvu-quest-workbench, .mvu-quest-pane, .mvu-quest-summary-bar, .mvu-quest-summary-stats, .map-layout, .map-hero-card, .map-canvas, .map-action-control-row, .map-action-detail-row';
+    frame.querySelectorAll('.dc-native-content').forEach(content => {
+      content.querySelectorAll(structures + ', .dossier-section, .dossier-section-title, .dossier-row, .dossier-list, .dossier-list-row, .dossier-field-label, .dossier-field-value, .dossier-form-grid, .dossier-form-row, .social-archive-note, .relation-topology-panel, .relation-topology-viewport, .soul-ring-terminal-body, .soul-ring-terminal-title, .soul-ring-terminal-meta, .mvu-inventory-registry-scroll, .mvu-inventory-inspector, .bestiary-archive-layout, .bestiary-overview-metrics, .bestiary-overview-metrics em, .location-intel-shell, .mvu-armory-bone-topology, .mvu-armory-bone-topology > [aria-hidden], .mvu-armory-bone-node, .mvu-armory-bone-label, .mvu-armory-bone-label i, .mvu-armory-bone-copy').forEach(node => { node.dataset.cabinFlow = ''; });
+      content.querySelectorAll('.map-stage-head').forEach(node => { node.dataset.cabinFlow = ''; });
+      const taskCard = content.querySelector('.terminal-quest-grid')?.closest('.mvu-cabin-card');
+      if (taskCard?.parentElement === content && content.firstElementChild !== taskCard) content.prepend(taskCard);
+      const roleList = content.querySelector('.role-switch-grid');
+      if (roleList) {
+        const listCard = roleList.closest('.archive-card');
+        const summaryCard = content.querySelector('.archive-tile-grid')?.closest('.archive-card');
+        if (listCard && summaryCard && listCard.parentElement === summaryCard.parentElement) summaryCard.dataset.cabinDirectorySummary = '';
+      }
+      const pageTitle = frame.querySelector('.dc-center h1')?.textContent.trim();
+      content.querySelectorAll('.archive-card-head').forEach(heading => {
+        const title = heading.querySelector('.archive-card-title');
+        if (title?.textContent.trim() !== pageTitle) return;
+        title.dataset.cabinDuplicateHeading = '';
+        const remaining = Array.from(heading.children).some(node => node !== title && node.textContent.trim());
+        if (!remaining) heading.dataset.cabinDuplicateHeading = '';
+      });
+    });
+  }
+
+  function mountFixedCabinGeometry(host) {
+    let disposed = false;
+    let lastWidth = -1;
+    let pendingWidth = 0;
+    let resizeFrame = 0;
+    function resize(width) {
+      if (!width || width === lastWidth) return;
+      lastWidth = width;
+      const mobile = width < 720;
+      host.classList.toggle('dc-mobile', mobile);
+      host.classList.toggle('dc-compact', !mobile && width < 1100);
+      host.style.setProperty('--dc-scale', String(width / 1672));
+      host.style.setProperty('--dc-stage-height', mobile ? 'auto' : 'var(--dc-frame-height, 620px)');
+
+    }
+    const observer = new ResizeObserver(entries => {
+      const width = entries[0].contentRect.width;
+      if (disposed || !width) return;
+      pendingWidth = width;
+      if (width === lastWidth) {
+        if (resizeFrame) cancelAnimationFrame(resizeFrame);
+        resizeFrame = 0;
+        return;
+      }
+      if (resizeFrame) return;
+      resizeFrame = requestAnimationFrame(() => {
+        resizeFrame = 0;
+        if (!disposed) resize(pendingWidth);
+      });
+    });
+    observer.observe(host);
+    resize(host.clientWidth || host.closest('#mvu-unified-mount')?.clientWidth || 0);
+
+    return () => {
+      disposed = true;
+      if (resizeFrame) cancelAnimationFrame(resizeFrame);
+      observer.disconnect();
+    };
+  }
+
+  function createStatusCabin(host, api) {
+    const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+    const number = value => Number.isFinite(Number(value)) ? Number(value).toLocaleString('zh-CN', { maximumFractionDigits: 4 }) : '—';
+    const clamp = value => Math.max(0, Math.min(100, Number(value) || 0));
+    const actions = [['rest', '休整', '静息调养'], ['sleep', '睡眠', '安眠休养'], ['meditate', '冥想', '凝神修行'], ['train', '训练', '锤炼身心']];
+    const actionSymbols = {
+      rest: '<path d="M5 19h22M8 14c3-5 13-5 16 0M11 7c0-2 2-2 2-4M18 7c0-2 2-2 2-4M8 24h16"/>',
+      sleep: '<path d="M22 5a11 11 0 1 0 5 17A10 10 0 0 1 22 5Z"/><path d="m9 4 1 2 2 1-2 1-1 2-1-2-2-1 2-1Z"/>',
+      meditate: '<path d="M16 4c-7 7-7 13 0 19 7-6 7-12 0-19ZM16 23C7 23 3 17 3 11c8 0 13 6 13 12Zm0 0c9 0 13-6 13-12-8 0-13 6-13 12ZM8 27h16"/>',
+      train: '<path d="m7 25 15-18 5-3-2 6L10 28M13 18l6 5M5 25l5 4M5 29l3-3"/>',
+    };
+    const resourceSymbols = {
+      HP: '<path d="M16 27 5 16C-2 6 9 0 16 9 23 0 34 6 27 16Z"/><path d="M6 16h6l3-6 3 12 3-6h5"/>',
+      体力: '<path d="M4 11v10m4-14v18m16-18v18m4-14v10M8 16h16"/>',
+      魂力: '<path d="M17 2c2 8-6 10-4 16 3-1 4-4 5-7 8 7 10 17-2 19C1 28 2 14 9 10c-1 5 1 6 2 7C8 10 15 6 17 2Z"/>',
+      精神力: '<path d="M15 6c-6-5-10 0-9 5-6 3-4 10 0 11-1 7 6 10 9 5Zm2 0c6-5 10 0 9 5 6 3 4 10 0 11 1 7-6 10-9 5ZM7 12l4 3-3 4m17-7-4 3 3 4M11 24l4-3m6 3-4-3"/>',
+    };
+    const resourceIcon = key => '<svg viewBox="0 0 32 32" aria-hidden="true">' + (resourceSymbols[key] || '') + '</svg>';
+    const emblem = (key, className = '') => `<svg class="dc-emblem ${className}" viewBox="0 0 32 32" aria-hidden="true">${actionSymbols[key] || actionSymbols.meditate}</svg>`;
+    const domains = [['page-archive', '角色'], ['page-ability', '能力'], ['page-supplies', '物资'], ['page-map', '探索'], ['page-world', '世界'], ['page-terminal', '事务']];
+    const projects = ['力量', '防御', '敏捷', '体魄', '精神'];
+    const states = api.sessionStates || new Map();
+    const signatures = new Map();
+    const query = selector => host.querySelector(selector);
+    let model = null;
+    let state = null;
+    let sequence = 0;
+    let timer = 0;
+    let disposed = false;
+    let activePreview = null;
+    const blankState = () => ({ action: '', drafts: Object.fromEntries(actions.map(([key]) => [key, { duration: '60', trainingProject: '力量' }])), injuries: new Set(), growthOpen: false, portraitOpen: false, portraitScroll: 0, editor: null, feedback: '', receiptId: '', busy: false, editing: false, scroll: [0, 0, 0] });
+    const text = (selector, value) => { const node = query(selector); const next = String(value ?? ''); if (node && node.textContent !== next) node.textContent = next; };
+    const markup = (selector, value) => { const node = query(selector); if (node && signatures.get(selector) !== value) { node.innerHTML = value; signatures.set(selector, value); } };
+    const button = (label, action, value = '') => `<button type="button" data-dc-${action}="${escape(value)}">${escape(label)}</button>`;
+    const initialWidth = host.clientWidth || host.closest('#mvu-unified-mount')?.clientWidth || 0;
+    host.classList.add('dc-host');
+    host.classList.toggle('dc-mobile', initialWidth < 720);
+    host.innerHTML = `
+      <header class="dc-context"><div><span class="dc-context-sigil"><span aria-hidden="true">◈</span><button type="button" class="dc-avatar-button" data-dc-portrait aria-label="查看当前角色立绘" aria-expanded="false" hidden><img class="dc-avatar" alt=""></button></span><button type="button" data-dc-characters aria-expanded="false" class="dc-character-name"></button><span class="dc-rank"></span></div><p class="dc-location"></p><p class="dc-time"></p></header>
+      <div class="dc-viewport"><div class="dc-stage">
+        <div class="dc-chassis" aria-hidden="true"></div>
+        <nav class="dc-domains" aria-label="领域">${domains.map(([id, label]) => `<button type="button" data-dc-domain="${id}"${id === 'page-archive' ? ' aria-current="page"' : ''}>${label}</button>`).join('')}</nav>
+        <section class="dc-left dc-plane dc-character-collapsed" aria-label="人物与属性"><div class="dc-screen-head"><div><span class="dc-eyebrow">本源 · 命纹</span><h2>人物根基</h2></div><span class="dc-head-ornament" aria-hidden="true">◇</span><button type="button" class="dc-character-toggle" data-dc-character-toggle aria-expanded="false">展开</button></div><div class="dc-scroll"><div class="dc-character-list" hidden></div><div class="dc-identity"></div><button type="button" class="dc-portrait-open" data-dc-portrait aria-expanded="false" hidden>查看立绘</button><div class="dc-radar"></div><div class="dc-ledger-title">身份与羁绊</div><div class="dc-social"></div><details class="dc-themes"><summary>界面配色</summary><div></div></details></div></section>
+        <section class="dc-center dc-plane" aria-label="状态总览"><div class="dc-screen-head"><div><span class="dc-eyebrow">双龙魂导 · 内观</span><h1>此刻状态</h1></div><span class="dc-condition"></span></div><div class="dc-scroll dc-main-scroll">
+          <div class="dc-preview-strip" hidden><span class="dc-action-emblem" aria-hidden="true"></span><div><strong class="dc-selected-action"></strong><span class="dc-preview-duration"></span><p class="dc-preview-caption" aria-live="polite"></p></div><button type="button" class="dc-clear-preview" data-dc-clear-preview>收起预览</button></div>
+          <div class="dc-status-streams">
+            <div class="dc-resources dc-body-resources" role="group" aria-label="身体状态"></div>
+            <div class="dc-resources dc-cultivation-resources" role="group" aria-label="修行状态"></div>
+            <section class="dc-gains-section" hidden><div class="dc-ledger-title">属性变化 <span>当前 → 预计</span></div><div class="dc-training-gains"></div></section>
+            <div class="dc-growth"></div>
+            <section class="dc-wounds"><div class="dc-section-heading"><h2>伤势记录</h2><span class="dc-injury-count"></span><button type="button" data-dc-add-injury>＋ 新增</button></div><div class="dc-injuries"></div><div class="dc-injury-editor" hidden></div></section>
+          </div>
+        </div><section class="dc-portrait-panel" aria-label="角色立绘" hidden>
+          <div class="dc-portrait-toolbar"><p class="dc-portrait-name"></p><button type="button" data-dc-close-portrait>返回状态</button></div>
+          <div class="dc-portrait-stage"><img class="dc-standing" alt="" decoding="async"><div class="dc-portrait-message" role="status"><p></p><button type="button" data-dc-retry-portrait hidden>重新加载</button></div></div>
+          <p class="dc-portrait-caption"></p>
+        </section></section>
+        <section class="dc-right dc-plane" aria-label="日常行动"><div class="dc-screen-head"><div><span class="dc-eyebrow">起居 · 修行</span><h2>日常行动</h2></div><span class="dc-head-ornament" aria-hidden="true">◇</span></div><div class="dc-scroll"><div class="dc-step-heading"><span>一</span><h3>选择行动</h3></div><div class="dc-action-grid" role="group" aria-label="选择行动">${actions.map(([key, label, sub]) => `<button type="button" data-dc-action="${key}" aria-pressed="false">${emblem(key)}<strong>${label}</strong><small>${sub}</small></button>`).join('')}</div><p class="dc-action-intro"></p><div class="dc-action-form" hidden><div class="dc-step-heading"><span>二</span><h3 class="dc-form-title">时长安排</h3></div><fieldset class="dc-projects" hidden><legend>训练侧重</legend>${projects.map(project => button(project, 'project', project)).join('')}</fieldset><label class="dc-duration-label">持续时间<span class="dc-duration-row"><input data-dc-duration type="number" min="10" max="1440" step="10" inputmode="numeric" aria-describedby="dc-duration-error"><span>分钟</span></span></label><input class="dc-duration-range" data-dc-duration-range type="range" min="10" max="1440" step="10" aria-label="持续时间，分钟"><div class="dc-presets" role="group" aria-label="常用时长">${[30, 60, 120].map(minutes => button(minutes < 60 ? '半小时' : `${minutes / 60}小时`, 'duration-preset', minutes)).join('')}</div><p id="dc-duration-error" class="dc-validation" aria-live="polite"></p></div></div><div class="dc-action-footer" hidden><div class="dc-action-review"><div class="dc-step-heading"><span>三</span><h3>核对变化</h3></div><p class="dc-review-label"></p><p class="dc-action-outcome"></p><div class="dc-mobile-preview"></div></div><button type="button" class="dc-execute" data-dc-execute disabled>开始行动</button><p class="dc-action-feedback" role="status"></p></div></section>
+      </div></div><nav class="dc-pages" aria-label="角色页面"></nav>`;
+
+    const characterRecord = document.createElement('details');
+    characterRecord.className = 'dc-character-record';
+    characterRecord.innerHTML = '<summary>人物根基与属性</summary><div class="dc-character-record-body"></div>';
+    const recordBody = characterRecord.querySelector('div');
+    ['.dc-identity', '.dc-portrait-open', '.dc-radar', '.dc-ledger-title', '.dc-social'].forEach(selector => recordBody.appendChild(query('.dc-left ' + selector)));
+    query('.dc-main-scroll').appendChild(characterRecord);
+    query('.dc-left .dc-screen-head').remove();
+    integrateCabinChrome(host);
+
+    let portraits = [];
+    let portrait = null;
+    const portraitController = new AbortController();
+    const portraitBase = host.ownerDocument.documentElement.dataset.lwcsCharacterAssets;
+    const portraitPanel = query('.dc-portrait-panel');
+    const standing = query('.dc-standing');
+    const avatar = query('.dc-avatar');
+    let portraitOrigin = null;
+    avatar.addEventListener('error', () => { avatar.hidden = true; query('.dc-context-sigil > span').hidden = false; query('.dc-avatar-button').hidden = true; });
+    standing.addEventListener('load', () => { if (!disposed) query('.dc-portrait-message').hidden = true; });
+    standing.addEventListener('error', () => {
+      if (disposed || !standing.hasAttribute('src')) return;
+      standing.hidden = true;
+      query('.dc-portrait-message').hidden = false;
+      text('.dc-portrait-message p', '立绘暂时无法加载。');
+      query('[data-dc-retry-portrait]').hidden = false;
+    });
+    function loadStanding() {
+      if (!portrait) return;
+      const src = new URL(portrait.standing, portraitBase).href;
+      if (standing.getAttribute('src') === src) return;
+      standing.hidden = false;
+      standing.alt = model.name + '全身立绘';
+      query('.dc-portrait-message').hidden = false;
+      text('.dc-portrait-message p', '正在展开立绘…');
+      query('[data-dc-retry-portrait]').hidden = true;
+      standing.src = src;
+    }
+    function renderPortraitPanel() {
+      const open = !!(state.portraitOpen && portrait);
+      portraitPanel.hidden = !open;
+      query('.dc-main-scroll').hidden = open;
+      text('.dc-center h1', open ? '人物立绘' : '此刻状态');
+      host.querySelectorAll('[data-dc-portrait]').forEach(node => node.setAttribute('aria-expanded', String(open)));
+      if (open) {
+        text('.dc-portrait-name', model.name);
+        text('.dc-portrait-caption', [model.rank, model.identity].filter(Boolean).join(' · '));
+        loadStanding();
+      }
+    }
+    function setPortraitOpen(open, origin) {
+      if (open && !portrait) return;
+      if (state.portraitOpen === open) return;
+      if (open) {
+        state.portraitScroll = query('.dc-main-scroll').scrollTop;
+        portraitOrigin = origin;
+      }
+      state.portraitOpen = open;
+      renderPortraitPanel();
+      if (open) {
+        query('[data-dc-close-portrait]').focus({ preventScroll: true });
+
+      } else {
+        query('.dc-main-scroll').scrollTop = state.portraitScroll;
+        if (origin) portraitOrigin?.focus({ preventScroll: true });
+      }
+    }
+    function renderPortrait() {
+      const names = [model.charKey, model.name].filter(Boolean);
+      const matches = portraits.filter(item => names.some(name => item.id === name || item.name === name || item.aliases?.includes(name)));
+      const next = matches.length === 1 ? matches[0] : matches.find(item => model.book && item.book === model.book) || null;
+      if (next !== portrait) {
+        portrait = next;
+        standing.removeAttribute('src');
+        avatar.hidden = !portrait;
+        query('.dc-context-sigil > span').hidden = !!portrait;
+        host.querySelectorAll('[data-dc-portrait]').forEach(node => { node.hidden = !portrait; });
+        if (portrait) avatar.src = new URL(portrait.avatar, portraitBase).href;
+        else { avatar.removeAttribute('src'); state.portraitOpen = false; }
+      }
+      renderPortraitPanel();
+    }
+    if (portraitBase) {
+      const portraitTimeout = setTimeout(() => portraitController.abort(), 6500);
+      fetch(new URL('manifest.json', portraitBase), { signal: portraitController.signal }).then(response => response.ok ? response.json() : null).then(manifest => {
+        if (disposed || manifest?.version !== 1 || !Array.isArray(manifest.characters)) return;
+        const safeImage = value => typeof value === 'string' && /^[^/\\:?#%]+\.(?:png|webp)$/i.test(value) && !value.includes('..');
+        portraits = manifest.characters.filter(item => item && typeof item.name === 'string' && safeImage(item.avatar) && safeImage(item.standing) && (!item.aliases || Array.isArray(item.aliases)));
+        if (model) renderPortrait();
+      }).catch(() => {}).finally(() => clearTimeout(portraitTimeout));
+    }
+
+    const retryButton = document.createElement('button');
+    retryButton.type = 'button'; retryButton.dataset.dcRetryNarration = ''; retryButton.className = 'dc-retry'; retryButton.textContent = '重试叙事'; retryButton.hidden = true;
+    query('.dc-action-feedback').after(retryButton);
+
+    const disposeGeometry = mountFixedCabinGeometry(host);
+
+    function renderRadar(attributes) {
+      const radius = 63;
+      const center = [120, 101];
+      const points = factor => attributes.map((attribute, index) => { const angle = -Math.PI / 2 + index * Math.PI * 2 / attributes.length; const ratio = typeof factor === 'function' ? factor(attribute) : factor; return `${center[0] + Math.cos(angle) * radius * ratio},${center[1] + Math.sin(angle) * radius * ratio}`; }).join(' ');
+      const max = Math.max(10, ...attributes.map(item => Number(item.value) || 0));
+      return `<div class="dc-radar-dial"><svg viewBox="0 0 240 202" role="img" aria-label="${escape(attributes.map(item => `${item.label} ${number(item.value)}`).join('，'))}"><circle class="dc-radar-orbit" cx="120" cy="101" r="78"/><circle class="dc-radar-orbit" cx="120" cy="101" r="73"/>${[.33, .66, 1].map(scale => `<polygon class="dc-radar-grid" points="${points(scale)}"/>`).join('')}<polygon class="dc-radar-value" points="${points(item => Math.max(.08, Number(item.value) / max))}"/>${attributes.map((item, index) => { const angle = -Math.PI / 2 + index * Math.PI * 2 / attributes.length; const x = center[0] + Math.cos(angle) * 92; const y = center[1] + Math.sin(angle) * 87; return `<text x="${x}" y="${y}" text-anchor="middle">${escape(item.label)}</text>`; }).join('')}</svg></div><dl class="dc-attribute-ledger">${attributes.map(item => `<div><dt>${escape(item.label)}</dt><dd>${escape(number(item.value))}</dd></div>`).join('')}</dl>`;
+    }
+
+    function renderModel() {
+      renderPortrait();
+      text('.dc-character-name', model.name);
+      text('.dc-rank', model.rank);
+      text('.dc-location', model.location);
+      text('.dc-time', model.time);
+      text('.dc-condition', model.condition);
+      markup('.dc-identity', `<span class="dc-identity-seal" aria-hidden="true">籍</span><div><p class="dc-demographics">${escape(model.demographics)}</p><button type="button" class="dc-identity-name" data-dc-page="identity">${escape(model.identity)}</button></div>`);
+      markup('.dc-radar', renderRadar(model.attributes));
+      markup('.dc-social', model.social.filter(item => item.label !== '身份').map(item => `<button type="button" data-dc-page="${escape(item.page)}"><span>${escape(item.label)}</span><strong>${escape(item.value)}</strong></button>`).join(''));
+      markup('.dc-character-list', model.characters.map(item => `<button type="button" data-dc-character="${escape(item.key)}" aria-pressed="${item.key === model.charKey}">${escape(item.name)}</button>`).join(''));
+      markup('.dc-themes > div', (model.themes || []).map(item => `<button type="button" data-dc-theme="${escape(item.value)}" aria-pressed="${item.active}">${escape(item.label)}</button>`).join(''));
+      query('.dc-themes').hidden = !model.themes?.length;
+      markup('.dc-pages', model.pages.map(item => `<button type="button" data-dc-page="${escape(item.id)}"${item.id === 'status' ? ' aria-current="page"' : ''}>${escape(item.title)}</button>`).join(''));
+      const shape = model.resources.map(item => item.key).join('|');
+      if (signatures.get('resource-shape') !== shape) {
+        for (const [selector, keys] of [['.dc-cultivation-resources', ['魂力', '精神力']], ['.dc-body-resources', ['HP', '体力']]]) {
+          query(selector).innerHTML = keys.map(key => model.resources.find(item => item.key === key)).filter(Boolean).map(item => `<div class="dc-resource" data-dc-resource="${escape(item.key)}" style="--dc-tone:${escape(item.color)}"><span class="dc-resource-icon">${resourceIcon(item.key)}</span><div class="dc-resource-label"><h3>${escape(item.label)}</h3><span class="dc-resource-delta"></span></div><div class="dc-resource-number"><strong></strong><span class="dc-resource-cap"></span></div><div class="dc-resource-track" aria-hidden="true"><i></i><b></b></div><p class="dc-resource-after"></p></div>`).join('');
+        }
+        signatures.set('resource-shape', shape);
+      }
+      model.resources.forEach(item => {
+        const node = Array.from(host.querySelectorAll('[data-dc-resource]')).find(node => node.dataset.dcResource === item.key);
+        node.querySelector('.dc-resource-number strong').textContent = number(item.current);
+        node.querySelector('.dc-resource-cap').textContent = `/ ${number(item.max)}`;
+        node.querySelector('.dc-resource-track i').style.width = `${clamp(item.current / Math.max(1, item.max) * 100)}%`;
+      });
+      const growth = model.growth;
+      const growthHtml = `<details class="dc-growth-record"${state.growthOpen ? ' open' : ''}><summary><span class="dc-growth-heading"><span>境界积累</span><strong>${escape(growth.label)}</strong></span><span class="dc-growth-track"><i style="width:${clamp(growth.percent)}%"></i></span><span class="dc-growth-scale"><span>${escape(growth.startLabel)}</span><b>${escape(growth.valueLabel)}</b><span>${escape(growth.endLabel)}</span></span><span class="dc-growth-note">${escape(growth.note)}</span></summary><div class="dc-growth-factors">${growth.factors.map(item => `<div><span>${escape(item.label)}</span><strong>${escape(item.value)}</strong></div>`).join('')}${button('完整成长记录', 'page', 'growth')}</div></details>`;
+      markup('.dc-growth', growthHtml);
+      text('.dc-injury-count', model.injuries.length ? `${model.injuries.length} 处记录` : '暂无伤势');
+      const injuryHtml = model.injuries.length ? model.injuries.map(item => `<details class="dc-injury" data-degree="${escape(item.degree)}" data-dc-injury="${escape(item.name)}"${state.injuries.has(item.name) ? ' open' : ''}><summary><span>${escape(item.name)}</span><b>${escape(({ 轻: '轻伤', 中: '中度伤势', 重: '重伤' })[item.degree] || item.degree)}</b></summary><div><p>${escape(item.description || '尚无详细记录。')}</p>${model.canEdit ? `<div class="dc-injury-actions">${button('编辑', 'edit-injury', item.name)}${button('删除', 'delete-injury', item.name)}</div>` : ''}</div></details>`).join('') : '<p class="dc-empty">没有受伤部位记录</p>';
+      markup('.dc-injuries', injuryHtml);
+      query('[data-dc-add-injury]').hidden = !model.canEdit;
+      host.querySelectorAll('[data-dc-action]').forEach(node => { node.disabled = !model.canAct || state.busy; });
+      text('.dc-action-intro', model.canAct ? '选定行动后，在此调整时长并核对变化。' : model.actionReason);
+    }
+
+    function renderForm() {
+      const draft = state.drafts[state.action];
+      host.classList.toggle('dc-action-selected', !!draft);
+      host.dataset.dcAction = draft ? state.action : '';
+      query('.dc-preview-strip').hidden = !draft;
+      query('.dc-clear-preview').hidden = !draft || state.busy;
+      text('.dc-selected-action', draft ? actions.find(([key]) => key === state.action)[1] : '');
+      query('.dc-action-emblem').innerHTML = draft ? emblem(state.action) : '';
+      text('.dc-form-title', draft ? (state.action === 'train' ? '训练侧重' : '时长安排') : '');
+      query('.dc-action-form').hidden = !draft || !model.canAct;
+      query('.dc-action-footer').hidden = !draft || !model.canAct;
+      host.querySelectorAll('[data-dc-action]').forEach(node => { node.setAttribute('aria-pressed', String(node.dataset.dcAction === state.action)); node.disabled = state.busy || !model.canAct; });
+      if (draft) {
+        query('[data-dc-duration]').value = draft.duration;
+        query('[data-dc-duration-range]').value = String(Number(draft.duration) || 10);
+        query('[data-dc-duration-range]').setAttribute('aria-valuetext', `${query('[data-dc-duration-range]').value} 分钟`);
+        host.querySelectorAll('[data-dc-duration-preset]').forEach(node => node.setAttribute('aria-pressed', String(node.dataset.dcDurationPreset === draft.duration)));
+        query('.dc-projects').hidden = state.action !== 'train';
+        host.querySelectorAll('[data-dc-project]').forEach(node => node.setAttribute('aria-pressed', String(node.dataset.dcProject === draft.trainingProject)));
+        text('[data-dc-execute]', state.busy ? '正在办理…' : `开始${actions.find(([key]) => key === state.action)[1]}`);
+        host.querySelectorAll('.dc-action-form input, .dc-action-form button').forEach(node => { node.disabled = state.busy; });
+        query('[data-dc-execute]').disabled = state.busy || !!state.receiptId || !activePreview?.allowed;
+      }
+      text('.dc-action-feedback', state.feedback);
+      retryButton.hidden = !state.receiptId; retryButton.disabled = state.busy;
+      host.setAttribute('aria-busy', String(state.busy));
+    }
+
+    function renderPreview(preview, message = '') {
+      activePreview = preview;
+      host.classList.toggle('dc-preview-ready', !!preview?.allowed);
+      host.classList.toggle('dc-preview-blocked', !!preview && !preview.allowed);
+      model.resources.forEach(item => {
+        const node = Array.from(host.querySelectorAll('[data-dc-resource]')).find(node => node.dataset.dcResource === item.key);
+        const change = preview?.changes?.find(change => change.key === item.key);
+        const delta = change ? change.after - change.before : 0;
+        node.classList.toggle('dc-resource-changed', !!delta);
+        node.dataset.dcDirection = delta > 0 ? 'gain' : delta < 0 ? 'cost' : '';
+        node.querySelector('.dc-resource-delta').textContent = delta ? `${delta > 0 ? '+' : ''}${number(delta)}` : '';
+        node.querySelector('.dc-resource-after').textContent = change && delta ? `预计 ${number(change.after)}` : '';
+        const ghost = node.querySelector('.dc-resource-track b');
+        const start = change ? Math.min(change.before, change.after) / Math.max(item.max, 1) * 100 : 0;
+        ghost.style.left = `${clamp(start)}%`;
+        ghost.style.width = `${clamp(Math.abs(delta) / Math.max(item.max, 1) * 100)}%`;
+      });
+      const changes = preview?.changes || [];
+      const gains = changes.filter(item => !model.resources.some(resource => resource.key === item.key));
+      const gainHtml = gains.map(item => `<div><span>${escape(item.label)}</span><strong>${escape(number(item.before))}<i> → </i>${escape(number(item.after))}</strong></div>`).join('');
+      markup('.dc-training-gains', gainHtml);
+      query('.dc-gains-section').hidden = !gainHtml;
+      query('.dc-training-gains').hidden = !gainHtml;
+      markup('.dc-mobile-preview', preview ? `${changes.length ? changes.map(item => `<p><span>${escape(item.label)}</span><strong>${escape(number(item.before))} → ${escape(number(item.after))}</strong></p>`).join('') : '<p>本次资源与属性没有数值变化。</p>'}` : '');
+      const draft = state.drafts[state.action];
+      text('.dc-preview-caption', message || (preview ? preview.allowed ? changes.length ? '预计变化 · 尚未执行' : '本次无数值变化' : preview.reason : ''));
+      const resourceChanges = changes.filter(item => model.resources.some(resource => resource.key === item.key));
+      const outcome = !preview ? message : !preview.allowed ? preview.reason : resourceChanges.length ? resourceChanges.map(item => `${item.label} ${item.after > item.before ? '+' : ''}${number(item.after - item.before)}`).join(' · ') : gains.length ? '预计属性有所变化' : '本次无数值变化';
+      text('.dc-action-outcome', outcome);
+      text('.dc-preview-duration', draft ? `${draft.duration} 分钟` : '');
+      text('.dc-review-label', preview?.allowed ? '可执行 · 核对后开始' : preview ? '当前不可执行' : '等待预计结果');
+      text('.dc-validation', preview && !preview.allowed ? preview.reason : message);
+      query('[data-dc-execute]').disabled = state.busy || !!state.receiptId || !model.canAct || !preview?.allowed;
+    }
+
+    function requestPreview() {
+      clearTimeout(timer); timer = 0;
+      const request = ++sequence;
+      if (api.isVisible && !api.isVisible()) return;
+      const draft = state.drafts[state.action];
+      if (!draft || !model.canAct || state.busy) { renderPreview(null); return; }
+      const minutes = Number(draft.duration);
+      if (!draft.duration.trim() || !Number.isInteger(minutes) || minutes < 10 || minutes > 1440 || minutes % 10) { renderPreview(null, '请输入 10～1440 分钟，按 10 分钟递增。'); return; }
+      renderPreview(null, '正在估算…');
+      const options = { contextKey: model.contextKey, revision: model.revision, action: state.action, durationMinutes: minutes, trainingProject: draft.trainingProject };
+      timer = setTimeout(async () => {
+        try {
+          const result = await api.previewRoutineAction(options);
+          if (disposed || request !== sequence || options.contextKey !== model.contextKey) return;
+          renderPreview(result);
+        } catch (error) {
+          if (!disposed && request === sequence) renderPreview(null, error.message || '暂时无法估算，请稍后重试。');
+        }
+      }, 250);
+    }
+
+    function renderEditor() {
+      const editor = state.editor;
+      const box = query('.dc-injury-editor');
+      box.hidden = !editor;
+      if (!editor) { box.replaceChildren(); return; }
+      if (editor.deleting) {
+        box.innerHTML = `<p>删除“${escape(editor.originalName)}”的伤势记录？</p><div>${button('确认删除', 'confirm-delete')}${button('取消', 'cancel-injury')}</div><p class="dc-editor-error" role="status"></p>`;
+        return;
+      }
+      box.innerHTML = `<h3>${editor.originalName ? '编辑伤势' : '新增伤势'}</h3><label>受伤部位<input data-dc-injury-field="name" value="${escape(editor.name)}" maxlength="80"></label><fieldset><legend>程度</legend>${['轻', '中', '重'].map(value => `<label class="dc-radio"><input type="radio" name="dc-severity" data-dc-injury-field="degree" value="${value}"${editor.degree === value ? ' checked' : ''}>${value}</label>`).join('')}</fieldset><label>详细记录<textarea data-dc-injury-field="description" rows="4">${escape(editor.description)}</textarea></label><div class="dc-editor-buttons">${button('保存记录', 'save-injury')}${button('取消', 'cancel-injury')}</div><p class="dc-editor-error" role="status"></p>`;
+    }
+
+    async function commitInjury(remove) {
+      if (!state.editor || state.editing) return;
+      const savedState = state;
+      const context = model.contextKey;
+      const editor = { ...state.editor };
+      if (!remove && !editor.name.trim()) { text('.dc-editor-error', '请输入受伤部位。'); return; }
+      savedState.editing = true;
+      query('.dc-injury-editor').querySelectorAll('button').forEach(node => { node.disabled = true; });
+      try {
+        await api.saveInjury({ ...editor, name: editor.name.trim(), remove, contextKey: context });
+        savedState.editor = null;
+        if (!disposed && model.contextKey === context) { renderEditor(); await api.refresh(); }
+      } catch (error) {
+        if (!disposed && model.contextKey === context) text('.dc-editor-error', error.message || '保存失败，记录尚未更改。');
+      } finally {
+        savedState.editing = false;
+        if (!disposed && model.contextKey === context) query('.dc-injury-editor').querySelectorAll('button').forEach(node => { node.disabled = false; });
+      }
+    }
+
+    async function click(event) {
+      const target = event.target.closest('button');
+      if (!target || !host.contains(target) || target.disabled) return;
+      if (!Object.keys(target.dataset).some(key => key.startsWith('dc'))) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const data = target.dataset;
+      if ('dcCharacterToggle' in data) { const collapsed = query('.dc-left').classList.toggle('dc-character-collapsed'); target.setAttribute('aria-expanded', String(!collapsed)); target.textContent = collapsed ? '展开' : '收起'; return; }
+      if ('dcPortrait' in data && portrait) { setPortraitOpen(!state.portraitOpen, target); return; }
+      if ('dcClosePortrait' in data) { setPortraitOpen(false, target); return; }
+      if ('dcRetryPortrait' in data) { standing.removeAttribute('src'); loadStanding(); return; }
+      if ('dcDomain' in data) { ++sequence; clearTimeout(timer); timer = 0; api.navigateDomain(data.dcDomain); return; }
+      if ('dcPage' in data) { ++sequence; clearTimeout(timer); timer = 0; api.navigatePage(data.dcPage); return; }
+      if ('dcCharacters' in data) { const list = query('.dc-character-list'); list.hidden = !list.hidden; target.setAttribute('aria-expanded', String(!list.hidden)); if (!list.hidden) { query('.dc-left').classList.remove('dc-character-collapsed'); query('[data-dc-character-toggle]')?.setAttribute('aria-expanded', 'true'); text('[data-dc-character-toggle]', '收起'); list.querySelector('button')?.focus({ preventScroll: true }); query('.dc-left > .dc-scroll').scrollTop = 0; } return; }
+      if ('dcCharacter' in data) { api.selectCharacter(data.dcCharacter); query('.dc-character-list').hidden = true; query('[data-dc-characters]').setAttribute('aria-expanded', 'false'); return; }
+      if ('dcTheme' in data) { api.setTheme(data.dcTheme); return; }
+      if ('dcClearPreview' in data) { state.action = ''; ++sequence; clearTimeout(timer); timer = 0; activePreview = null; renderForm(); renderPreview(null); return; }
+      if ('dcAction' in data) { setPortraitOpen(false); state.action = data.dcAction; if (!state.receiptId) state.feedback = ''; activePreview = null; renderForm(); requestPreview(); return; }
+      if ('dcProject' in data) { setPortraitOpen(false); state.drafts[state.action].trainingProject = data.dcProject; renderForm(); requestPreview(); return; }
+      if ('dcDurationPreset' in data) { setPortraitOpen(false); state.drafts[state.action].duration = data.dcDurationPreset; renderForm(); requestPreview(); return; }
+      if ('dcAddInjury' in data || 'dcEditInjury' in data || 'dcDeleteInjury' in data) {
+        const item = model.injuries.find(item => item.name === (data.dcEditInjury || data.dcDeleteInjury));
+        state.editor = { originalName: item?.name || '', name: item?.name || '', degree: item?.degree || '轻', description: item?.description || '', original: item ? { ...item } : null, deleting: 'dcDeleteInjury' in data };
+        renderEditor(); const scroll = query('.dc-main-scroll'); const editor = query('.dc-injury-editor'); scroll.scrollTop += editor.getBoundingClientRect().top - scroll.getBoundingClientRect().top; return;
+      }
+      if ('dcCancelInjury' in data) { state.editor = null; renderEditor(); return; }
+      if ('dcSaveInjury' in data || 'dcConfirmDelete' in data) { await commitInjury('dcConfirmDelete' in data); return; }
+      if ('dcRetryNarration' in data && state.receiptId && !state.busy) {
+        const retryState = state; const context = model.contextKey; retryState.busy = true; renderForm();
+        try { const result = await api.retryNarration(context, retryState.receiptId); retryState.feedback = result.message; if (result.ok) retryState.receiptId = ''; }
+        catch (error) { retryState.feedback = error.message || '叙事重试失败，已结算结果保持不变。'; }
+        finally { retryState.busy = false; if (!disposed && context === model.contextKey) { renderForm(); requestPreview(); } }
+        return;
+      }
+      if ('dcExecute' in data && activePreview?.allowed && !state.busy && !state.receiptId) {
+        setPortraitOpen(false);
+        const executionState = state;
+        const context = model.contextKey;
+        const options = { contextKey: context, revision: activePreview.revision, action: state.action, durationMinutes: Number(state.drafts[state.action].duration), trainingProject: state.drafts[state.action].trainingProject };
+        executionState.busy = true; executionState.feedback = '正在办理…'; renderForm();
+        try {
+          const result = await api.executeRoutineAction(options);
+          executionState.feedback = result.message || (result.ok ? '行动已完成。' : '行动未完成。');
+          executionState.receiptId = result.receiptId || '';
+        } catch (error) { executionState.feedback = error.message || '行动未完成，请稍后重试。'; }
+        finally {
+          executionState.busy = false;
+          if (!disposed && context === model.contextKey) { try { await api.refresh(); } catch (_) {} renderForm(); requestPreview(); }
+        }
+      }
+    }
+
+    function input(event) {
+      if (!state) return;
+      if (event.target.matches('[data-dc-duration], [data-dc-duration-range]') && state.action) {
+        setPortraitOpen(false);
+        const value = event.target.value;
+        state.drafts[state.action].duration = value;
+        query('[data-dc-duration]').value = value;
+        query('[data-dc-duration-range]').value = String(Number(value) || 10);
+        query('[data-dc-duration-range]').setAttribute('aria-valuetext', query('[data-dc-duration-range]').value + ' 分钟');
+        host.querySelectorAll('[data-dc-duration-preset]').forEach(node => node.setAttribute('aria-pressed', String(node.dataset.dcDurationPreset === value)));
+        if (!state.receiptId) { state.feedback = ''; text('.dc-action-feedback', ''); }
+        requestPreview();
+      }
+      if (event.target.matches('[data-dc-injury-field]') && state.editor) state.editor[event.target.dataset.dcInjuryField] = event.target.value;
+    }
+    function toggle(event) {
+      if (!state) return;
+      if (event.target.matches('.dc-injury')) { const key = event.target.dataset.dcInjury; if (event.target.open) state.injuries.add(key); else state.injuries.delete(key); }
+      if (event.target.matches('.dc-growth-record')) state.growthOpen = event.target.open;
+    }
+    host.addEventListener('click', click);
+    host.addEventListener('input', input);
+    host.addEventListener('toggle', toggle, true);
+    return {
+      resume() { if (!disposed && model && state?.action && !activePreview && !timer) requestPreview(); },
+      update(nextModel) {
+        if (disposed) return;
+        const changedContext = nextModel.contextKey !== model?.contextKey;
+        const changedRevision = nextModel.revision !== model?.revision;
+        if (changedContext && state) state.scroll = Array.from(host.querySelectorAll('.dc-plane > .dc-scroll')).map(node => node.scrollTop);
+        model = nextModel;
+        if (changedContext) {
+          ++sequence; clearTimeout(timer); activePreview = null; signatures.clear(); portraitOrigin = null;
+          if (!states.has(model.contextKey)) states.set(model.contextKey, blankState());
+          state = states.get(model.contextKey);
+          if (!api.sessionStates && states.size > 8) states.delete(states.keys().next().value);
+        }
+        renderModel();
+        if (changedContext) { renderForm(); renderEditor(); query('.dc-character-list').hidden = true; host.querySelectorAll('.dc-plane > .dc-scroll').forEach((node, index) => { node.scrollTop = state.scroll[index] || 0; }); }
+        if (changedContext || changedRevision) requestPreview();
+        else renderPreview(activePreview);
+      },
+      destroy() {
+        if (disposed) return;
+        if (state) state.scroll = Array.from(host.querySelectorAll('.dc-plane > .dc-scroll')).map(node => node.scrollTop);
+        disposed = true; ++sequence; clearTimeout(timer); disposeGeometry(); portraitController.abort();
+        host.removeEventListener('click', click); host.removeEventListener('input', input); host.removeEventListener('toggle', toggle, true);
+        if (!api.sessionStates) states.clear();
+        signatures.clear(); host.replaceChildren();
+      }
+    };
+  }
+
+
+  function createRoutineActionBridge(ports) {
+    const previews = new Map();
+    const executing = new Set();
+    const pendingNarrations = new Map();
+    let cacheContext = '';
+    let receiptSequence = 0;
+    const labels = { rest: '休整', sleep: '睡眠', meditate: '冥想', train: '训练' };
+    const modes = { rest: '睡眠', sleep: '睡眠', meditate: '冥想' };
+    const projects = ['力量', '防御', '敏捷', '体魄', '精神'];
+    function prepare(options = {}) {
+      const current = ports.read();
+      const fail = reason => ({ allowed: false, reason, contextKey: current.contextKey, revision: current.revision, changes: [] });
+      if (!current.root || !current.character || !current.chatId) return { error: fail('尚未读取到当前角色与聊天。') };
+      if (!current.playerControlled) return { error: fail('正在查看他人，仅能阅读其状态。') };
+      if (options.contextKey !== undefined && options.contextKey !== current.contextKey) return { error: fail('角色或聊天已改变，请重新查看预计结果。') };
+      if (options.revision !== undefined && options.revision !== current.revision) return { error: fail('当前状态已改变，请重新查看预计结果。') };
+      const action = String(options.action || '');
+      const durationMinutes = Number(options.durationMinutes);
+      const trainingProject = String(options.trainingProject || '力量');
+      if (!Object.hasOwn(labels, action)) return { error: fail('请选择可用的日常行动。') };
+      if (!Number.isInteger(durationMinutes) || durationMinutes < 10 || durationMinutes > 1440 || durationMinutes % 10) return { error: fail('请输入 10～1440 分钟，按 10 分钟递增。') };
+      if (action === 'train' && !projects.includes(trainingProject)) return { error: fail('请选择可用的训练侧重。') };
+      const actionMode = action === 'train' ? (trainingProject === '精神' ? '精神训练' : '肉体训练') : modes[action];
+      const context = ports.worldContext(current, actionMode, durationMinutes / 10);
+      if (!context.ok) return { error: fail(context.reason || '当前地点暂时无法进行此项行动。') };
+      const attributes = current.character.属性 || {};
+      const conditions = [];
+      if (actionMode === '肉体训练') {
+        const required = Math.max(1, Number(attributes.体力上限) || 1) * .3;
+        const enough = Number(attributes.体力) >= required;
+        conditions.push({ label: '体力', current: Number(attributes.体力) || 0, required, met: enough });
+        if (!enough) return { error: { ...fail('体力不足以完成一轮训练，请先休整。'), conditions } };
+      }
+      if (actionMode === '精神训练') {
+        const required = Math.max(1, Number(attributes.精神力上限) || 1) * .1;
+        const enough = Number(attributes.精神力) > required;
+        conditions.push({ label: '精神', current: Number(attributes.精神力) || 0, required, met: enough });
+        if (!enough) return { error: { ...fail('精神不足以完成一轮训练，请先调息。'), conditions } };
+      }
+      const key = `${current.contextKey}|${current.revision}`;
+      if (key !== cacheContext) { previews.clear(); cacheContext = key; }
+      return { current, action, durationMinutes, trainingProject, actionMode, conditions, key: `${action}|${durationMinutes}|${action === 'train' ? trainingProject : ''}` };
+    }
+    function calculate(prepared) {
+      const { current, action, durationMinutes, actionMode, conditions } = prepared;
+      const startTick = Number(current.root.world?.时间?.tick) || 0;
+      const settledRoot = ports.settle(current.root, current.charKey, startTick, startTick + durationMinutes / 10, actionMode);
+      const after = settledRoot?.char?.[current.charKey];
+      if (!after) throw new Error('本次行动没有返回角色结果。');
+      const beforeValues = ports.projectAttributes(current.character);
+      const afterValues = ports.projectAttributes(after);
+      const changes = beforeValues.flatMap(before => {
+        const next = afterValues.find(item => item.key === before.key);
+        return next && Math.abs(next.value - before.value) > 1e-9 ? [{ key: before.key, label: before.label, before: before.value, after: next.value }] : [];
+      });
+      const preview = { allowed: true, reason: '', contextKey: current.contextKey, revision: current.revision, changes, conditions, summary: `${labels[action]} ${durationMinutes} 分钟${changes.length ? '后的预计变化' : '，当前资源与属性没有数值变化'}` };
+      return { preview, settledRoot };
+    }
+    function previewRoutineAction(options = {}) {
+      const prepared = prepare(options);
+      if (prepared.error) return prepared.error;
+      if (previews.has(prepared.key)) return structuredClone(previews.get(prepared.key));
+      const result = calculate(prepared).preview;
+      previews.set(prepared.key, result);
+      if (previews.size > 4) previews.delete(previews.keys().next().value);
+      return structuredClone(result);
+    }
+    async function executeRoutineAction(options = {}) {
+      const initial = ports.read();
+      const contextKey = initial.contextKey;
+      if (options.contextKey !== undefined && options.contextKey !== contextKey) return { ok: false, settled: false, message: '角色或聊天已改变，请重新查看预计结果。' };
+      if (executing.has(contextKey)) return { ok: false, settled: false, message: '同一行动仍在办理，请稍候。' };
+      const pending = pendingNarrations.get(contextKey);
+      if (pending) return { ok: false, settled: true, receiptId: pending.id, message: '上一项行动已结算，叙事尚未完成。请重试叙事。' };
+      executing.add(contextKey);
+      try {
+        await ports.refresh();
+        const prepared = prepare({ ...options, contextKey });
+        if (prepared.error) return { ok: false, settled: false, message: prepared.error.reason, preview: prepared.error };
+        const { preview, settledRoot } = calculate(prepared);
+        const { current, durationMinutes, action, trainingProject } = prepared;
+        const actionLabel = action === 'train' ? `${trainingProject}训练` : labels[action];
+        const systemText = `${String(settledRoot.sys?.系统播报 || '').replace(/^初始化$/, '')} ${current.charKey} 在【${current.location}】进行${actionLabel}，耗时 ${durationMinutes} 分钟。`.trim();
+        const patchOps = ports.buildPatches(current.charKey, settledRoot, systemText);
+        const playerInput = `我在【${current.location}】进行 ${durationMinutes} 分钟${actionLabel}。`;
+        const resultSummary = preview.changes.map(item => `${item.label} ${item.before} → ${item.after}`).join('；') || '当前数值无变化';
+        const systemPrompt = `[日常行动]\n角色：${current.charKey}\n地点：${current.location}\n动作：${actionLabel}\n耗时：${durationMinutes} 分钟\n已结算结果：${resultSummary}\n本次行动已经由前端按正式规则结算，收益已写回，行动耗时仅用于本轮时间裁定。请承接行动过程、收获及后续剧情，不重复结算收益，不输出 JSON、变量维护指令或系统术语。`;
+        const result = await ports.dispatch(playerInput, systemPrompt, { requestKind: `map_action_${action === 'train' ? (trainingProject === '精神' ? 'train_mind' : 'train_body') : action}`, patchOps, settlementKind: 'routine', silent: true, contextKey, expectedRoot: current.root });
+        previews.clear();
+        if (result?.ok && result.settlementCommitted === true) return { ...result, settled: true, message: `${actionLabel}已完成。` };
+        if (result?.settlementCommitted) {
+          const receipt = { id: `routine-${++receiptSequence}`, contextKey, chatId: current.chatId, charKey: current.charKey, playerInput, systemPrompt, requestId: result.requestId || '', userMessageId: result.userMessageId, requestKind: `map_action_${action}`, createdAt: Date.now() };
+          pendingNarrations.set(contextKey, receipt);
+          if (pendingNarrations.size > 8) pendingNarrations.delete(pendingNarrations.keys().next().value);
+          return { ok: false, settled: true, receiptId: receipt.id, message: `${actionLabel}已结算，叙事未完成。重试叙事不会再次结算行动收益。` };
+        }
+        return { ok: false, settled: false, message: result?.message || '行动未提交，尚未完成结算。请稍后重试。' };
+      } finally { executing.delete(contextKey); }
+    }
+    async function retryNarration(contextKey, receiptId) {
+      const receipt = pendingNarrations.get(contextKey);
+      const current = ports.read();
+      if (!receipt || receipt.id !== receiptId || contextKey !== current.contextKey || receipt.chatId !== current.chatId) return { ok: false, message: '该行动的上下文已改变，请在原聊天中重试续写。' };
+      if (executing.has(contextKey)) return { ok: false, settled: true, receiptId, message: '叙事仍在办理，请稍候。' };
+      executing.add(contextKey);
+      try {
+        const result = Number.isInteger(receipt.userMessageId)
+          ? await ports.retry(receipt.requestId || receipt.userMessageId)
+          : await ports.dispatch(receipt.playerInput, receipt.systemPrompt, { requestKind: receipt.requestKind, patchOps: [], silent: true, contextKey });
+        if (result?.ok) { pendingNarrations.delete(contextKey); return { ok: true, settled: true, message: '叙事已补全，本次没有重复结算。' }; }
+        if (Number.isInteger(result?.userMessageId)) { receipt.userMessageId = result.userMessageId; receipt.requestId = result.requestId || ''; }
+        return { ok: false, settled: true, receiptId, message: '叙事尚未完成，已结算的结果保持不变。' };
+      } finally { executing.delete(contextKey); }
+    }
+    return { previewRoutineAction, executeRoutineAction, retryNarration };
+  }
+
+
+  let statusCabinInstance = null;
+  let statusCabinHost = null;
+  let statusCabinSnapshot = null;
+  let statusRevisionRoot = null;
+  let statusRevisionText = '';
+  let statusRevision = 0;
+
+  function readStatusRoutineState(snapshot = liveSnapshot) {
+    const root = snapshot?.rootData || null;
+    if (root && root !== statusRevisionRoot) {
+      const serialized = JSON.stringify(root);
+      if (serialized !== statusRevisionText) { statusRevision += 1; statusRevisionText = serialized; }
+      statusRevisionRoot = root;
+    }
+    const chatId = getCurrentUiRequestChatId();
+    const charKey = toText(snapshot?.activeName, '');
+    return { root, character: root?.char?.[charKey] || null, charKey, chatId, contextKey: JSON.stringify([chatId, charKey]), revision: statusRevision, location: toText(root?.char?.[charKey]?.状态?.位置, ''), playerControlled: !!snapshot && isSnapshotPlayerControlled(snapshot), snapshot };
+  }
+
+  const statusRoutineActions = createRoutineActionBridge({
+    read: () => readStatusRoutineState(),
+    refresh: () => refreshLiveSnapshot({ force: true }),
+    worldContext(current, mode, ticks) {
+      const result = 读取世界动作上下文_桥接(current.snapshot, { 角色: current.charKey, 地点: current.location, 动作: mode, 耗时tick: ticks }, 'routine');
+      return { ok: result.ok, reason: result.ok ? '' : /world_context/.test(result.reason || '') ? '当前地点的行动条件尚未就绪，请稍后再试。' : result.reason };
+    },
+    settle(root, charKey, start, end, mode) {
+      const runtime = 读取日常结算接口();
+      if (!runtime) throw new Error('修行结算尚未就绪，请稍后再试。');
+      return runtime(root, charKey, start, end, mode);
+    },
+    projectAttributes(character) {
+      const stat = character?.属性 || {};
+      const hp = getDisplayHpPair(stat);
+      return [
+        { key: 'HP', label: '生命', value: hp.hp }, { key: 'HP上限', label: '生命上限', value: hp.hpMax },
+        ...[['魂力', '魂力'], ['魂力上限', '魂力上限'], ['体力', '体力'], ['体力上限', '体力上限'], ['精神力', '精神'], ['精神力上限', '精神上限'], ['力量', '力量'], ['防御', '防御'], ['敏捷', '敏捷']].map(([key, label]) => ({ key, label, value: toNumber(stat[key], 0) })),
+        ...['力量', '防御', '敏捷', '体力上限', '精神力上限'].map(key => ({ key: `训练加成.${key}`, label: `${key.replace('精神力', '精神')}训练加成`, value: toNumber(stat.训练加成?.[key], 0) })),
+        { key: '魂核.数量', label: '魂核数量', value: toNumber(character.魂核?.核心?.数量, 0) },
+        { key: '魂核.进度', label: '魂核进度', value: toNumber(character.魂核?.核心?.进度, 0) },
+      ];
+    },
+    buildPatches: (charKey, settledRoot, systemText) => 构建日常动作字段级写回补丁(charKey, settledRoot, { systemText }),
+    dispatch: (input, prompt, meta) => dispatchUiAiRequest(input, prompt, meta),
+    retry: requestId => 重试UI续写请求_桥接(requestId, { silent: true, allowPending: true }),
+  });
+  window.__sheepMapBridge = Object.assign(window.__sheepMapBridge || {}, {
+    previewRoutineAction: statusRoutineActions.previewRoutineAction,
+    executeRoutineAction: statusRoutineActions.executeRoutineAction,
+  });
+
+  function buildStatusCabinView(snapshot) {
+    const current = readStatusRoutineState(snapshot);
+    const character = current.character || {};
+    const stat = character.属性 || {};
+    const hp = getDisplayHpPair(stat);
+    const growth = getNextLevelSoulRequirementWithCap(stat, character, toNumber(current.root?.world?.时间?.tick, 0));
+    const cap = Math.max(0, toNumber(stat.魂力上限, 0));
+    const start = Math.max(0, toNumber(growth.currentLevelSoulRequirement, cap));
+    const end = Math.max(start, toNumber(growth.nextLevelSoulRequirement, cap + toNumber(growth.needed, 0)));
+    const progress = Math.max(0, Math.min(end - start, cap - start));
+    const growthLabel = growth.isMax ? '已抵达上限' : growth.blocked ? growth.blockedBy === 'ring' ? '魂环限制' : growth.blockedBy === 'core' ? '魂核限制' : '修为上限' : growth.needed > 0 ? `还需 ${格式化属性完整数字(growth.needed)}` : `可至 ${growth.nextLevel} 级`;
+    const permissionRuntime = 读取赛事权限运行时_桥接();
+    const permissions = permissionRuntime?.列出持有人权限 ? permissionRuntime.列出持有人权限(current.root, current.charKey).length : 0;
+    const relation = snapshot.topRelation;
+    const identity = toText(character.社交?.主身份, '身份未记录');
+    const themeNames = [['经典状态栏', '经典'], ['炫世唐门', '唐门'], ['金龙王', '金龙'], ['银龙王', '银龙'], ['幻海蝶舞', '幻海']];
+    const theme = document.body?.dataset.mvuHoloTheme || '经典状态栏';
+    const pages = (window.__LWCS_CABIN_PAGES__ || []).filter(page => page.tab === 'page-archive' && (page.id !== 'private' || canOpenPrivateArchive(snapshot)));
+    return {
+      contextKey: current.contextKey, revision: current.revision, charKey: current.charKey, name: current.charKey || '当前角色',
+      rank: [formatCultivationLevelBadge(stat.等级, '0'), 读取显示精神境界(stat)].filter(Boolean).join(' · '),
+      demographics: [toText(stat.性别, '性别未记录'), `${格式化属性完整数字(stat.年龄)} 岁`, toText(stat.生日, '生日未记录')].join(' · '),
+      identity, location: current.location || '所在地未记录', time: toText(current.root?.world?.时间?._calendar || current.root?.world?.时间?.calendar, '时间未同步'), condition: getDisplayWoundLabel(stat) === '无' ? '气息平稳' : getDisplayWoundLabel(stat),
+      canAct: !!current.chatId && current.playerControlled, canEdit: !!current.chatId && !!current.character,
+      actionReason: current.playerControlled ? '尚未读取到当前聊天。' : '正在查看他人，仅能阅读其状态。',
+      characters: safeEntries(current.root?.char).map(([key]) => ({ key, name: key })),
+      themes: themeNames.map(([value, label]) => ({ value, label, active: value === theme })), pages,
+      attributes: [['力量', stat.力量], ['敏捷', stat.敏捷], ['精神', stat.精神力], ['体质', stat.体力上限 || stat.HP上限], ['防御', stat.防御]].map(([label, value]) => ({ label, value: Math.max(0, toNumber(value, 0)) })),
+      social: [{ label: '身份', value: identity, page: 'identity' }, { label: '权限', value: `${permissions} 项`, page: 'privileges' }, { label: '关系', value: `${snapshot.relations?.length || 0} 人`, page: 'relations' }, { label: '羁绊', value: relation ? `${relation[0]} · ${toText(relation[1]?.关系, '陌生')}` : '尚无记录', page: 'relations' }, { label: '好感', value: relation ? 格式化属性完整数字(relation[1]?.好感度) : '尚无记录', page: 'relations' }],
+      resources: [{ key: 'HP', label: '生命', current: hp.hp, max: hp.hpMax, color: '#dda599' }, ...[['魂力', '魂力上限', '魂力', '#93c9d8'], ['体力', '体力上限', '体力', '#aebb86'], ['精神力', '精神力上限', '精神', '#b3afd6']].map(([key, maxKey, label, color]) => ({ key, label, current: Math.max(0, toNumber(stat[key], stat[maxKey] || 0)), max: Math.max(0, toNumber(stat[maxKey], 0)), color }))],
+      growth: { label: growthLabel, percent: growth.isMax || growth.blocked ? 100 : ratioPercent(progress, end - start), startLabel: `${格式化属性完整数字(stat.等级)} 级 · ${格式化属性完整数字(start)}`, valueLabel: 格式化属性完整数字(cap), endLabel: growth.isMax ? '修为上限' : `${growth.nextLevel} 级 · ${格式化属性完整数字(end)}`, note: growth.blocked ? growthLabel : `本段积累 ${格式化属性完整数字(progress)} / ${格式化属性完整数字(end - start)}`, factors: [{ label: '天赋', value: toText(stat.天赋梯队, '未记录') }, { label: '底子波动', value: 格式化属性完整数字(stat.底子波动) }, { label: '魂核', value: `${格式化属性完整数字(character.魂核?.核心?.数量 ?? 0)} 枚` }, { label: '成长门槛', value: growth.blocked ? growthLabel : growth.isMax ? '已抵达上限' : '当前可继续积累' }, { label: '所修功法', value: safeEntries(character.功法).map(([name, art]) => `${name}${art?.lv ? ` · ${art.lv} 层` : ''}`).join('、') || '尚未修习' }] },
+      injuries: safeEntries(character.状态?.受伤部位).map(([name, value]) => ({ name, degree: normalizeInjurySeverity(value?.程度), description: toText(value?.描述, '') })),
+    };
+  }
+
+  async function saveStatusInjury(editor) {
+    const current = readStatusRoutineState();
+    if (!current.chatId || !current.character || editor.contextKey !== current.contextKey) throw new Error('角色或聊天已改变，请重新打开记录。');
+    const originalName = toText(editor.originalName, '');
+    const name = toText(editor.name, '').trim();
+    if (!editor.remove && !name) throw new Error('请输入受伤部位。');
+    let committed = false;
+    try {
+      await mutateStatDataByEditor(root => {
+        if (getCurrentUiRequestChatId() !== current.chatId || readStatusRoutineState().contextKey !== current.contextKey) throw new Error('角色或聊天已改变，记录未保存。');
+        const character = root.char?.[current.charKey];
+        if (!character) throw new Error('当前角色已不存在。');
+        if (!character.状态) character.状态 = {};
+        if (!character.状态.受伤部位) character.状态.受伤部位 = {};
+        const records = character.状态.受伤部位;
+        const old = originalName && Object.hasOwn(records, originalName) ? records[originalName] : null;
+        if (originalName && !old) throw new Error('这条记录已被删除，草稿仍保留。');
+        if (old && editor.original && (normalizeInjurySeverity(old.程度) !== editor.original.degree || toText(old.描述, '') !== editor.original.description)) throw new Error('这条记录已被其他操作更改，请取消编辑后重新读取。');
+        if (editor.remove) { delete records[originalName]; return; }
+        if (name !== originalName && Object.hasOwn(records, name)) throw new Error('同名受伤部位已存在。');
+        const next = { ...(old || {}), 程度: normalizeInjurySeverity(editor.degree), 描述: toText(editor.description, '') };
+        if (originalName && originalName !== name) delete records[originalName];
+        Object.defineProperty(records, name, { value: next, writable: true, configurable: true, enumerable: true });
+      }, { force: true, onCommitted: () => { committed = true; }, assertContext: () => { if (readStatusRoutineState().contextKey !== current.contextKey) throw new Error('角色或聊天已改变，记录未保存。'); } });
+    } catch (error) { if (!committed) throw error; }
+  }
+
+  function disposeStatusCabin() {
+    statusCabinInstance?.destroy(); statusCabinInstance = null; statusCabinHost = null; statusCabinSnapshot = null;
+  }
+  window.addEventListener('mvu-status-cabin-dispose', disposeStatusCabin);
+
+  function syncStatusCabin(snapshot) {
+    const host = document.querySelector('[data-status-cabin]');
+    if (!host || !snapshot?.activeChar) { if (statusCabinHost && !statusCabinHost.isConnected) disposeStatusCabin(); return; }
+    if (statusCabinHost !== host) {
+      disposeStatusCabin(); statusCabinHost = host;
+      statusCabinInstance = createStatusCabin(host, {
+        isVisible: () => !!host.closest('.is-status-cabin'),
+      previewRoutineAction: statusRoutineActions.previewRoutineAction,
+        executeRoutineAction: statusRoutineActions.executeRoutineAction,
+        retryNarration: statusRoutineActions.retryNarration,
+        saveInjury: saveStatusInjury,
+        refresh: () => refreshLiveSnapshot({ force: true }),
+        selectCharacter: key => applyActiveCharacterSelection(key),
+        navigateDomain: id => window.__MVU_SET_UNIFIED_TAB__?.(id),
+        navigatePage(id) {
+          if (id === 'status') return;
+          const page = window.__LWCS_CABIN_PAGES__?.find(page => page.id === id && page.tab === 'page-archive');
+          if (!page || (id === 'private' && !canOpenPrivateArchive(liveSnapshot))) return;
+          window.__MVU_OPEN_UNIFIED_PREVIEW__?.(page.preview, { replace: true, cabinPageId: page.id, focusSelector: page.focus });
+        },
+        setTheme(value) { window.__MVU_SET_CABIN_THEME__?.(value); statusCabinSnapshot = null; syncStatusCabin(liveSnapshot); },
+      });
+    }
+    if (statusCabinSnapshot === snapshot) { statusCabinInstance.resume(); return; }
+    statusCabinSnapshot = snapshot;
+    statusCabinInstance.update(buildStatusCabinView(snapshot));
+  }
+
 
   function buildArchiveCoreCard(snapshot) {
     const stat = deepGet(snapshot, 'activeChar.属性', {});
@@ -35012,7 +35870,7 @@
         <div class="mvu-archive-skyband${允许私密长按 ? ' nsfw-trigger-title' : ''}"${允许私密长按 ? ` data-longpress="${PRIVATE_ARCHIVE_PREVIEW_KEY}" data-longpress-delay="600"` : ''}>
           <div class="mvu-archive-identity-grid">
             <strong>${htmlEscape(shortenText(名称, 16))}</strong>
-            <span>${身份字段.map(文本 => `<em>${htmlEscape(文本)}</em>`).join('')}</span>
+            <span class="mvu-identity-chips">${身份字段.map(文本 => `<em class="mvu-identity-chip">${htmlEscape(文本)}</em>`).join('')}</span>
           </div>
         </div>
       `;
@@ -35025,10 +35883,10 @@
     const 比例 = ratioPercent(当前, 上限);
     const 危急 = 上限 > 0 && 比例 <= 20;
     return `
-        <div class="mvu-archive-led mvu-archive-led--${escapeHtmlAttr(色调)}${危急 ? ' is-critical' : ''}" style="--value:${比例}%">
-          <label>${htmlEscape(标签)}<span>${htmlEscape(`${格式化属性短数字(当前)} / ${格式化属性短数字(上限)}`)}</span></label>
+        <button type="button" class="mvu-archive-led mvu-archive-led--${escapeHtmlAttr(色调)}${危急 ? ' is-critical' : ''}" data-cabin-status="${escapeHtmlAttr(色调)}" style="--value:${比例}%">
+          <label><span>${htmlEscape(标签)}</span><span class="mvu-led-val"><b class="mvu-led-cur">${htmlEscape(格式化属性短数字(当前))}</b><i class="mvu-led-slash"> / </i><span class="mvu-led-max">${htmlEscape(格式化属性短数字(上限))}</span></span></label>
           <div class="mvu-archive-led-track"><i></i></div>
-        </div>
+        </button>
       `;
   }
 
@@ -35466,29 +36324,17 @@
   }
 
   function 构建档案武魂中轴舞台(snapshot) {
-    const 主轨 = snapshot && snapshot.primarySpirit ? snapshot.primarySpirit : null;
-    const 第二轨 = snapshot && snapshot.secondaryTrack ? snapshot.secondaryTrack : null;
-    const 主预览 = 主轨 ? toText(主轨.preview, '第1武魂详细页') : '';
-    const 副预览 = 第二轨 ? toText(第二轨.preview, '血脉封印详细页') : '武魂融合技详细页';
-    if (!第二轨) {
-      return `
-        <div class="mvu-archive-spirit-stage mvu-archive-spirit-stage--single">
-          <section class="mvu-archive-spirit-stage-node mvu-archive-spirit-stage-node--primary${主预览 ? ' clickable' : ''}"${主预览 ? ` data-preview="${escapeHtmlAttr(主预览)}" data-detail-mode="embed"` : ''}>
-            ${buildUnifiedSpiritCard(主轨, { primary: true, 启用扫描锚点: true })}
-          </section>
-        </div>
-      `;
-    }
-    return `
-        <div class="mvu-archive-spirit-stage">
-          <section class="mvu-archive-spirit-stage-node mvu-archive-spirit-stage-node--primary${主预览 ? ' clickable' : ''}"${主预览 ? ` data-preview="${escapeHtmlAttr(主预览)}" data-detail-mode="embed"` : ''}>
-            ${buildUnifiedSpiritCard(主轨, { primary: true, 启用扫描锚点: true })}
-          </section>
-          <section class="mvu-archive-spirit-stage-node mvu-archive-spirit-stage-node--secondary clickable" data-preview="${escapeHtmlAttr(副预览)}" data-detail-mode="embed">
-            ${构建统一副轨摘要卡(snapshot, { 启用扫描锚点: true })}
-          </section>
-        </div>
-      `;
+    const entries = [snapshot?.primarySpirit, snapshot?.secondaryTrack].filter(Boolean);
+    if (!entries.length) return '<p class="dc-content-empty">尚未记录武魂。</p>';
+    return '<div class="dc-spirit-directory">' + entries.map((entry, index) => {
+      const name = entry.spiritName || entry.name || '未命名武魂';
+      const rings = (Array.isArray(entry.魂环) ? entry.魂环 : []).filter(ring => ring && !ring.empty);
+      const preview = entry.preview || (index ? '第2武魂详细页' : '第1武魂详细页');
+      return '<section class="dc-spirit-entry"><div class="dc-spirit-title"><h2>' + htmlEscape(name) + '</h2><span>' + htmlEscape(entry.spiritType || (entry.kind === 'bloodline' ? '血脉' : '武魂')) + '</span></div>'
+        + '<p>' + htmlEscape(entry.spiritDesc || entry.desc || '暂无描述') + '</p>'
+        + '<div class="dc-ring-summary">' + (rings.length ? rings.map((ring, i) => '<span class="' + escapeHtmlAttr(映射魂环颜色令牌(ring, 'ring-white')) + '">' + htmlEscape(toText(ring.title, '第' + (i + 1) + '魂环')) + '</span>').join('') : '<span>暂无魂环</span>') + '</div>'
+        + '<button type="button" class="clickable dc-spirit-open" data-preview="' + escapeHtmlAttr(preview) + '" data-detail-mode="embed">查看' + htmlEscape(name) + ' <span aria-hidden="true">›</span></button></section>';
+    }).join('') + '</div>';
   }
 
   function normalizeUnifiedSurfaceKey(surface) {
@@ -37634,10 +38480,536 @@
     安排档案魂环锚点同步();
   }
 
+  const workspaceCabins = new Map();
+  let workspaceDetailCabin = null;
+
+  function mountWorkspaceCabin(container, snapshot, { tab, title, pageId = '', preview = '', centerNodes = [], rightNodes = [] }) {
+    const domains = [['page-archive', '角色'], ['page-ability', '能力'], ['page-supplies', '物资'], ['page-map', '探索'], ['page-world', '世界'], ['page-terminal', '事务']];
+    const pages = (window.__LWCS_CABIN_PAGES__ || []).filter(page => page.tab === tab && (page.id !== 'private' || canOpenPrivateArchive(snapshot)));
+    const frame = document.createElement('div');
+    frame.className = 'dc-host dc-workspace-host';
+    const pageMarkup = pages.map(page => `<button type="button" data-dc-workspace-page="${escapeHtmlAttr(page.id)}"${(pageId ? page.id === pageId : preview ? page.preview === preview : !page.preview) ? ' aria-current="page"' : ''}>${htmlEscape(page.title)}</button>`).join('');
+    frame.innerHTML = `<header class="dc-context"><div><span class="dc-context-sigil" aria-hidden="true">◇</span><button type="button" class="dc-character-name clickable" data-preview="角色切换器" data-detail-mode="embed"></button><span class="dc-rank"></span></div><p class="dc-location"></p><p class="dc-time"></p></header>
+      <div class="dc-viewport"><div class="dc-stage"><div class="dc-chassis" aria-hidden="true"></div>
+        <nav class="dc-domains" aria-label="领域">${domains.map(([id, label]) => `<button type="button" data-dc-workspace-domain="${id}"${id === tab ? ' aria-current="page"' : ''}>${label}</button>`).join('')}</nav>
+        <section class="dc-left dc-plane" aria-label="页面目录"><div class="dc-screen-head"><div><span class="dc-eyebrow">魂导 · 终端</span><h2>${htmlEscape(domains.find(([id]) => id === tab)?.[1] || '档案')}</h2></div></div><div class="dc-scroll"><nav class="dc-workspace-pages" aria-label="当前领域页面">${pageMarkup}</nav><details class="dc-workspace-themes"><summary>显示主题</summary><div>${['经典状态栏','炫世唐门','金龙王','银龙王','幻海蝶舞'].map(theme => `<button type="button" data-dc-workspace-theme="${theme}">${theme}</button>`).join('')}</div></details></div></section>
+        <section class="dc-center dc-plane" aria-label="${escapeHtmlAttr(title)}"><div class="dc-screen-head"><div><span class="dc-eyebrow">档案 · 阅览</span><h1>${htmlEscape(title)}</h1></div>${preview ? '<button type="button" class="dc-workspace-back" data-dc-workspace-back>返回</button>' : ''}</div><div class="dc-scroll dc-workspace-main"><div class="dc-native-content"></div></div></section>
+        <section class="dc-right dc-plane" aria-label="${rightNodes.length ? '相关信息与操作' : '当前角色'}"><div class="dc-screen-head"><div><span class="dc-eyebrow">${rightNodes.length ? '关联 · 操作' : '状态 · 随行'}</span><h2>${rightNodes.length ? '相关信息' : '当前角色'}</h2></div></div><div class="dc-scroll"><div class="dc-native-content"></div></div></section>
+      </div></div>`;
+    const center = frame.querySelector('.dc-center .dc-native-content');
+    const right = frame.querySelector('.dc-right .dc-native-content');
+    centerNodes.forEach(node => center.appendChild(node));
+    rightNodes.forEach(node => center.appendChild(node));
+    frame.querySelector('.dc-left .dc-screen-head').remove();
+    frame.querySelector('.dc-right h2').textContent = '随行状态';
+    frame.querySelector('.dc-right .dc-eyebrow').textContent = '生命 · 修为';
+    integrateCabinChrome(frame);
+    container.appendChild(frame);
+    const titleActions = preview ? container.closest('.mvu-cabin')?.querySelector('[data-detail-title-actions]') : null;
+    const titleActionsParent = titleActions?.parentElement;
+    if (titleActions) frame.querySelector('.dc-center .dc-screen-head').appendChild(titleActions);
+    const disposeGeometry = mountFixedCabinGeometry(frame);
+    const click = event => {
+      const target = event.target.closest('[data-dc-workspace-domain], [data-dc-workspace-page], [data-dc-workspace-back], [data-dc-workspace-theme]');
+      if (!target || !frame.contains(target)) return;
+      event.preventDefault(); event.stopPropagation();
+      if (target.hasAttribute('data-dc-workspace-back')) { window.__MVU_CLOSE_UNIFIED_PREVIEW__?.(); return; }
+      if (target.dataset.dcWorkspaceDomain) { window.__MVU_SET_UNIFIED_TAB__?.(target.dataset.dcWorkspaceDomain); return; }
+      if (target.dataset.dcWorkspaceTheme) { window.__MVU_SET_CABIN_THEME__?.(target.dataset.dcWorkspaceTheme); return; }
+      const page = pages.find(item => item.id === target.dataset.dcWorkspacePage);
+      if (!page) return;
+      if (!page.preview) { window.__MVU_SET_UNIFIED_TAB__?.(page.tab); return; }
+      window.__MVU_OPEN_UNIFIED_PREVIEW__?.(page.preview, { replace: true, cabinPageId: page.id, focusSelector: page.focus });
+    };
+    frame.addEventListener('click', click);
+    function update(next) {
+      const stat = next.activeChar?.属性 || {};
+      frame.querySelector('.dc-character-name').textContent = next.activeName || '当前角色';
+      frame.querySelector('.dc-rank').textContent = String(stat.等级 ?? '—') + ' 级 · ' + 读取显示精神境界(stat);
+      frame.querySelector('.dc-location').textContent = toText(next.currentLoc, '所在地未记录');
+      frame.querySelector('.dc-time').textContent = getSnapshotWorldTimeText(next);
+      normalizeCabinContent(frame);
+      {
+        const hp = getDisplayHpPair(stat);
+        right.innerHTML = `<dl class="dc-workspace-vitals">${[['生命', hp.hp, hp.hpMax], ['魂力', stat.魂力, stat.魂力上限], ['体力', stat.体力, stat.体力上限], ['精神力', stat.精神力, stat.精神力上限]].map(([label, value, cap]) => `<div><dt>${label}</dt><dd>${htmlEscape(formatNumber(value))}<small> / ${htmlEscape(formatNumber(cap))}</small></dd></div>`).join('')}</dl>${getDisplayWoundLabel(stat) && getDisplayWoundLabel(stat) !== '无' ? `<p class="dc-workspace-condition">${htmlEscape(getDisplayWoundLabel(stat))}</p>` : ''}<button type="button" data-dc-workspace-domain="page-archive">查看状态</button>`;
+      }
+    }
+    update(snapshot);
+    if (tab === 'page-map' && !preview) {
+      requestAnimationFrame(() => {
+        if (frame.isConnected && frame.clientWidth) window.__sheepMapBridge?.focusCurrentLocation?.({ exitPreview: false });
+      });
+    }
+    const activePage = frame.querySelector('.dc-workspace-pages [aria-current="page"]');
+    if (activePage) {
+      const nav = activePage.parentElement;
+      if (frame.classList.contains('dc-mobile')) {
+        nav.scrollLeft = Math.max(0, activePage.offsetLeft - nav.offsetLeft - (nav.clientWidth - activePage.offsetWidth) / 2);
+      } else {
+        const scroll = frame.querySelector('.dc-left .dc-scroll');
+        const bounds = scroll.getBoundingClientRect();
+        const item = activePage.getBoundingClientRect();
+        const scale = bounds.height / scroll.clientHeight;
+        if (scale > 0 && item.bottom > bounds.bottom) scroll.scrollTop += (item.bottom - bounds.bottom + 12) / scale;
+      }
+    }
+    const contentObserver = new MutationObserver(() => normalizeCabinContent(frame));
+    contentObserver.observe(center, { childList: true, subtree: true });
+    return { frame, update, destroy() { contentObserver.disconnect(); disposeGeometry(); frame.removeEventListener('click', click); if (titleActionsParent?.isConnected) titleActionsParent.appendChild(titleActions); } };
+  }
+
+  function syncWorkspaceCabins(snapshot) {
+    workspaceCabins.forEach((instance, page) => { if (!page.isConnected) { instance.destroy(); workspaceCabins.delete(page); } });
+    if (workspaceDetailCabin && snapshot?.activeChar) workspaceDetailCabin.update(snapshot);
+    const page = document.querySelector('#mvu-unified-mount .mvu-cabin-overview.active:not(.mvu-cabin-overview--role)');
+    if (!page || !snapshot?.activeChar) return;
+    let instance = workspaceCabins.get(page);
+    if (!instance) {
+      const rear = page.querySelector('.mvu-cabin-screen--rear');
+      const front = page.querySelector('.mvu-cabin-screen--front');
+      if (!rear || !front) return;
+      const titles = { 'page-ability': '武魂', 'page-supplies': '随身物资', 'page-map': '行旅探索', 'page-world': '世界与势力', 'page-terminal': '事务总览' };
+      instance = mountWorkspaceCabin(page, snapshot, { tab: page.dataset.target, title: titles[page.dataset.target] || '总览', centerNodes: Array.from(rear.children), rightNodes: Array.from(front.children) });
+      rear.remove(); front.remove();
+      workspaceCabins.set(page, instance);
+    } else instance.update(snapshot);
+  }
+
+  function disposeWorkspaceCabins() {
+    workspaceCabins.forEach(instance => instance.destroy()); workspaceCabins.clear();
+    workspaceDetailCabin?.destroy(); workspaceDetailCabin = null;
+  }
+  window.addEventListener('mvu-status-cabin-dispose', disposeWorkspaceCabins);
+
+
+  function mountDossierCabin(host, snapshot) {
+    const slab = host.querySelector('.mvu-holo-slab-root');
+    const original = slab?.querySelector('.dossier-shell--life');
+    const selectors = ['.dossier-card--life-core', '.dossier-card--life-profile', '.dossier-card--life-record'];
+    const cards = selectors.map(selector => original?.querySelector(selector));
+    if (!original || cards.some(card => !card) || original.children.length !== cards.length) return null;
+    const stat = snapshot.activeChar?.属性 || {};
+    const name = toText(snapshot.activeName, '当前角色');
+    const domains = [['page-archive', '角色'], ['page-ability', '能力'], ['page-supplies', '物资'], ['page-map', '探索'], ['page-world', '世界'], ['page-terminal', '事务']];
+    const pages = (window.__LWCS_CABIN_PAGES__ || []).filter(page => page.tab === 'page-archive' && (page.id !== 'private' || canOpenPrivateArchive(snapshot)));
+    const frame = document.createElement('div');
+    frame.className = 'dc-host dc-profile-host';
+    frame.innerHTML = `<header class="dc-context"><div><span class="dc-context-sigil" aria-hidden="true">籍</span><strong class="dc-profile-character">${htmlEscape(name)}</strong><span class="dc-rank">${htmlEscape(String(stat.等级 ?? '—') + ' 级 · ' + 读取显示精神境界(stat))}</span></div><p class="dc-location">${htmlEscape(toText(snapshot.currentLoc, '所在地未记录'))}</p><p class="dc-time">${htmlEscape(getSnapshotWorldTimeText(snapshot))}</p></header>
+      <div class="dc-viewport"><div class="dc-stage"><div class="dc-chassis" aria-hidden="true"></div>
+        <nav class="dc-domains" aria-label="领域">${domains.map(([id, label]) => `<button type="button" data-dc-profile-domain="${id}"${id === 'page-archive' ? ' aria-current="page"' : ''}>${label}</button>`).join('')}</nav>
+        <section class="dc-left dc-plane" aria-label="修为与状态"><div class="dc-screen-head"><div><span class="dc-eyebrow">根基 · 修为</span><h2>修为与状态</h2></div></div><div class="dc-scroll"></div></section>
+        <section class="dc-center dc-plane" aria-label="完整档案"><div class="dc-screen-head"><div><span class="dc-eyebrow">人物 · 生平</span><h1>完整档案</h1></div><button type="button" class="dc-profile-return" data-dc-profile-page="status">返回状态</button></div><div class="dc-scroll"></div></section>
+        <section class="dc-right dc-plane" aria-label="能力与成长记录"><div class="dc-screen-head"><div><span class="dc-eyebrow">传承 · 积累</span><h2>能力与成长</h2></div></div><div class="dc-scroll"></div></section>
+      </div></div><nav class="dc-pages" aria-label="角色页面">${pages.map(page => `<button type="button" data-dc-profile-page="${escapeHtmlAttr(page.id)}"${page.id === 'profile' ? ' aria-current="page"' : ''}>${htmlEscape(page.title)}</button>`).join('')}</nav>`;
+    cards.forEach((card, index) => {
+      card.dataset.cabinFlow = '';
+      card.querySelectorAll('[class]').forEach(node => {
+        Array.from(node.classList).forEach(token => {
+          if (token.startsWith('dossier-')) node.classList.replace(token, 'dc-profile-' + token.slice('dossier-'.length));
+          else if (token === 'archive-card-head' || token === 'archive-card-title' || token === 'archive-card-head--profile') node.classList.replace(token, token.replace('archive-card-', 'dc-profile-'));
+          else if (token === 'battle-radar-wrap') node.classList.replace(token, 'dc-profile-radar');
+        });
+      });
+      frame.querySelector('.dc-center .dc-scroll').appendChild(card);
+    });
+    frame.querySelectorAll('.injury-create-row').forEach(row => {
+      row.classList.remove('request-console-row');
+      row.classList.replace('injury-create-row', 'dc-profile-injury-create-row');
+      row.querySelectorAll('[data-injury-input]').forEach(input => input.setAttribute('aria-label', ({ name: '受伤部位', degree: '伤势程度', desc: '伤势描述' })[input.dataset.injuryInput] || '伤势记录'));
+    });
+    frame.querySelectorAll('select[data-injury-input="degree"]').forEach(select => {
+      const nativeControl = document.createElement('span');
+      nativeControl.className = 'dc-profile-native-control';
+      select.before(nativeControl);
+      nativeControl.appendChild(select);
+      const choices = document.createElement('div');
+      choices.className = 'dc-profile-injury-degrees';
+      choices.setAttribute('role', 'group');
+      choices.setAttribute('aria-label', '伤势程度');
+      Array.from(select.options).forEach(option => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.dataset.dcProfileDegree = option.value;
+        button.textContent = option.textContent + '伤';
+        button.setAttribute('aria-pressed', String(select.value === option.value));
+        choices.appendChild(button);
+      });
+      nativeControl.after(choices);
+    });
+    const profileScroll = frame.querySelector('.dc-center .dc-scroll');
+    profileScroll.prepend(cards[1]);
+    frame.querySelector('.dc-left .dc-screen-head').remove();
+    frame.querySelector('.dc-right h2').textContent = '档案分区';
+    frame.querySelector('.dc-right .dc-eyebrow').textContent = '人物 · 目录';
+    frame.querySelector('.dc-right .dc-scroll').innerHTML = '<nav class="dc-profile-sections" aria-label="档案分区"><button type="button" data-dc-profile-section="1">人物资料</button><button type="button" data-dc-profile-section="0">修为状态</button><button type="button" data-dc-profile-section="2">能力成长</button></nav>';
+    integrateCabinChrome(frame);
+    slab.dataset.cabinLayout = 'fixed-profile';
+    slab.replaceChildren(frame);
+    const disposeGeometry = mountFixedCabinGeometry(frame);
+    const click = event => {
+      const target = event.target.closest('[data-dc-profile-page], [data-dc-profile-domain], [data-dc-profile-degree], [data-dc-profile-section]');
+      if (!target || !frame.contains(target)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (target.hasAttribute('data-dc-profile-section')) {
+        const card = cards[Number(target.dataset.dcProfileSection)];
+        const firstSection = card?.querySelector('.dc-profile-section');
+        if (firstSection) profileScroll.scrollTop += firstSection.getBoundingClientRect().top - profileScroll.getBoundingClientRect().top;
+        return;
+      }
+      if (target.dataset.dcProfileDegree) {
+        const row = target.closest('[data-injury-panel="create"]');
+        row.querySelector('select[data-injury-input="degree"]').value = target.dataset.dcProfileDegree;
+        row.querySelectorAll('[data-dc-profile-degree]').forEach(button => button.setAttribute('aria-pressed', String(button === target)));
+        return;
+      }
+      if (target.dataset.dcProfileDomain) {
+        window.__MVU_SET_UNIFIED_TAB__?.(target.dataset.dcProfileDomain);
+        return;
+      }
+      const id = target.dataset.dcProfilePage;
+      if (id === 'profile') return;
+      if (id === 'status') { window.__MVU_SET_UNIFIED_TAB__?.('page-archive'); return; }
+      const page = pages.find(item => item.id === id);
+      if (page?.preview) window.__MVU_OPEN_UNIFIED_PREVIEW__?.(page.preview, { replace: true, cabinPageId: page.id, focusSelector: page.focus });
+    };
+    frame.addEventListener('click', click);
+    return { frame, destroy() { disposeGeometry(); frame.removeEventListener('click', click); } };
+  }
+
+
+  let profileCabinInstance = null;
+  let 座舱详情观察器 = null;
+  let 座舱布局帧 = 0;
+  const 座舱阅读位置 = new Map();
+
+  function 构建座舱概览前屏(snapshot, 类型) {
+    const 角色 = snapshot.activeChar || {};
+    const 属性 = 角色.属性 || {};
+    const 入口 = (标题, 预览) => `<button type="button" class="mvu-cabin-command clickable" data-preview="${escapeHtmlAttr(预览)}" data-detail-mode="embed">${htmlEscape(标题)}<span aria-hidden="true">›</span></button>`;
+    if (类型 === 'ability') {
+      const 武魂 = [snapshot.primarySpirit, snapshot.secondaryTrack].filter(Boolean);
+      return `<div class="mvu-cabin-console-heading"><strong>能力档案</strong><span>${htmlEscape(snapshot.activeName || '')}</span></div>
+        <div class="mvu-cabin-console-facts">${武魂.map(条目 => `<div><b>${htmlEscape(条目.name || 条目.spiritName || '血脉')}</b><span>${htmlEscape(条目.desc || 条目.spiritDesc || '')}</span></div>`).join('')}</div>
+        <div class="mvu-cabin-command-row">${武魂.map(条目 => 入口(条目.badge || 条目.spiritName || '血脉详情', 条目.preview)).join('')}${入口('技能典籍', '技能典籍')}${入口('融合技', '武魂融合技详细页')}${入口('待处理能力', '待处理能力')}</div>`;
+    }
+    if (类型 === 'supplies') {
+      const 钱包 = 读取当前时代钱包配置_桥接(snapshot.rootData || {}).currencies;
+      return `<div class="mvu-cabin-console-heading"><strong>随身物资</strong><span>${htmlEscape(snapshot.activeName || '')}</span></div>
+        ${makeWalletStrip(钱包.map(货币 => ({ ...货币, value: formatNumber(deepGet(角色, ['财富', 货币.key], 0)) })))}
+        <div class="mvu-cabin-console-facts"><div><b>背包</b><span>${(snapshot.inventoryEntries || []).length} 类物品</span></div><div><b>装备与魂骨</b><span>查看部件、装载与附带能力</span></div></div>
+        <div class="mvu-cabin-command-row">${入口('打开背包', '储物仓库详细页')}${入口('装备与魂骨', '武装工坊详细页')}${入口('交易', '交易网络')}</div>`;
+    }
+    const 焦点 = toText(modalFocusState['座舱::状态焦点'], 'growth');
+    const 血量 = getDisplayHpPair(属性);
+    const 资源 = {
+      hp: ['生命', 血量.hp, 血量.hpMax],
+      soul: ['魂力', 属性.魂力, 属性.魂力上限],
+      stamina: ['体力', 属性.体力, 属性.体力上限],
+      mind: ['精神', 属性.精神力, 属性.精神力上限],
+    }[焦点];
+    const 当前伤势 = getDisplayWoundLabel(属性);
+    const 进度 = getNextLevelSoulRequirementWithCap(属性, 角色, toNumber(deepGet(snapshot, 'rootData.world.时间.tick', 0), 0));
+    return `<div class="mvu-cabin-console-heading"><strong>${htmlEscape(资源 ? `${资源[0]}状态` : '当前状态与成长')}</strong><span>${htmlEscape(snapshot.activeName || '')}</span></div>
+      <div class="mvu-cabin-console-facts">
+        ${资源 ? `<div><b>${htmlEscape(资源[0])}</b><span>${htmlEscape(formatNumber(资源[1]))} / ${htmlEscape(formatNumber(资源[2]))}</span></div>` : `<div><b>等级</b><span>${formatCultivationLevelBadge(属性.等级, '0')}</span></div>`}
+        <div><b>伤势</b><span>${htmlEscape(当前伤势)}</span></div>
+        <div><b>所在地点</b><span>${htmlEscape(snapshot.currentLoc || '未知')}</span></div>
+      </div>${构建档案魂力经验条(属性, 进度)}
+      <div class="mvu-cabin-command-row">${入口('完整状态', '生命图谱详细页')}${入口('日常行动', '全息星图主画布')}${入口('当前任务', '任务界面')}${入口('查看物品', '储物仓库详细页')}</div>`;
+  }
+
+  function 读取座舱技能目录(snapshot) {
+    const 列表 = [];
+    const 去重 = new Set();
+    const 加入 = (技能, 来源) => {
+      if (!技能 || 技能.name === '魂技未显现') return;
+      const 键 = 技能.preview || JSON.stringify(技能.path || []) + '::' + 来源 + '::' + 技能.name;
+      if (去重.has(键)) return;
+      去重.add(键);
+      列表.push({ ...技能, 来源, key: 键, id: String(列表.length) });
+    };
+    [snapshot.primarySpirit, snapshot.secondaryTrack].filter(Boolean).forEach(武魂 => {
+      const 魂环列表 = [...(武魂.souls || []).flatMap(魂灵 => 魂灵.魂环 || []), ...(武魂.independentRings || []), ...(武魂.魂环 || [])];
+      魂环列表.forEach(魂环 => (魂环.skills || []).forEach(技能 => 加入(技能, `${武魂.spiritName || 武魂.name} · ${魂环.title || ''}`)));
+    });
+    (snapshot.extraSkills || []).forEach(条目 => {
+      const 元信息 = parseSkillDesignerPreviewKey(条目.preview);
+      if (元信息 && 元信息.path && 元信息.path.length) {
+        const 路径 = 元信息.path;
+        const 源技能 = deepGet(snapshot.rootData, 路径, {});
+        buildSkillList({ [路径[路径.length - 1]]: 源技能 }, { basePath: 路径.slice(0, -1), category: 条目.category, scope: 元信息.scope, 渲染快照: snapshot, 空表不造占位: true })
+          .forEach(技能 => 加入(技能, 条目.category));
+      } else {
+        加入({ ...条目, effectDesc: 条目.desc, status: 条目.level }, 条目.category);
+      }
+    });
+    safeEntries(deepGet(snapshot, 'activeChar.魂骨', {})).forEach(([槽位, 魂骨]) => {
+      if (!魂骨 || typeof 魂骨 !== 'object') return;
+      const 名称 = toText(魂骨.name || 魂骨.名称 || 魂骨.表象名称, 槽位);
+      const 定义 = 查找物品定义_桥接(snapshot.rootData || {}, 名称)?.定义 || {};
+      const 合并魂骨 = { ...定义, ...魂骨 };
+      buildSkillList(合并魂骨.附带技能 || 合并魂骨.装备技能 || {}, { category: '魂骨技能', scope: '魂骨技能', 渲染快照: snapshot, 空表不造占位: true })
+        .forEach(技能 => 加入({ ...技能, preview: '', sourcePreview: '武装工坊详细页' }, '魂骨 · ' + 槽位));
+    });
+    return 列表;
+  }
+
+  function 构建座舱专页(预览键, snapshot) {
+    const 入口 = (标题, 目标) => `<button type="button" class="mvu-cabin-command clickable" data-preview="${escapeHtmlAttr(目标)}">${htmlEscape(标题)}<span aria-hidden="true">›</span></button>`;
+    if (预览键 === '编年史档案') {
+      return { title: '编年与见闻', body: `<div class="mvu-cabin-native-directory"><section class="archive-card">${构建世界编年史卡(snapshot)}</section><section class="archive-card"><div class="archive-card-title">安排与见闻</div><div class="mvu-cabin-command-row">${入口('近期安排', '近期安排')}${入口('近期见闻', '近期见闻')}${入口('完整记录', '情报库详细页')}</div></section></div>` };
+    }
+    if (预览键 === '技能典籍' || 预览键 === '技能设计目录') {
+      const 技能列表 = 读取座舱技能目录(snapshot);
+      const 当前项 = 技能列表.find(技能 => 技能.key === modalFocusState['座舱::技能']) || 技能列表[0];
+      const 角色键 = resolveSnapshotCharKey(snapshot, snapshot.activeName) || snapshot.activeName;
+      const 新技能入口 = 角色键 ? buildSkillDesignerPreviewKey({ path: ['char', 角色键, '自创魂技', `自创魂技_${Date.now().toString(36)}`], label: '新建自创魂技', category: '自创魂技', scope: '自创魂技' }) : '';
+      return {
+        title: 预览键 === '技能设计目录' ? '技能设计' : '技能典籍',
+        body: `<div class="mvu-cabin-library">
+          <section class="mvu-cabin-library-directory"><div class="mvu-cabin-section-heading"><strong>技能目录</strong><span>${技能列表.length} 项</span></div>
+            <label class="mvu-cabin-search"><span>检索</span><input type="search" data-cabin-skill-search placeholder="名称或来源" aria-label="检索技能名称或来源"></label>
+            <div class="mvu-cabin-skill-list">${技能列表.map(技能 => `<button type="button" class="mvu-cabin-skill-option${技能 === 当前项 ? ' is-selected' : ''}" data-cabin-skill="${技能.id}" data-cabin-search-text="${escapeHtmlAttr(`${技能.name} ${技能.来源}`)}"><b>${htmlEscape(技能.name)}</b><span>${htmlEscape(技能.来源)}</span><small>${htmlEscape(技能.type || 技能.category || 技能.status || '')}</small></button>`).join('') || '<p class="dossier-empty-note">当前没有已记录技能。</p>'}</div>
+          </section>
+          <section class="mvu-cabin-library-detail" aria-live="polite">${当前项 ? `<div class="mvu-cabin-section-heading"><strong>${htmlEscape(当前项.name)}</strong><span>${htmlEscape(当前项.来源)}</span></div>${构建技能悬浮详情内容({ ...当前项, preview: '' }, { 显示标题: false })}<div class="mvu-cabin-command-row">${当前项.preview ? 入口('查看与设计', 当前项.preview) : 入口('查看来源档案', 当前项.sourcePreview || '生命图谱详细页')}</div>` : '<div class="dossier-empty-note">从来源档案查看能力，或开始设计新技能。</div>'}
+            <div class="mvu-cabin-command-row">${新技能入口 ? 入口('新建自创魂技', 新技能入口) : ''}${入口('武魂融合技', '武魂融合技详细页')}</div>
+          </section>
+        </div>`,
+        onMount: host => {
+          const 搜索 = host.querySelector('[data-cabin-skill-search]');
+          const 输入处理 = () => {
+            const 词 = String(搜索.value || '').trim().toLocaleLowerCase();
+            host.querySelectorAll('[data-cabin-search-text]').forEach(节点 => { 节点.hidden = !节点.dataset.cabinSearchText.toLocaleLowerCase().includes(词); });
+            modalFocusState['座舱::技能搜索'] = 搜索.value;
+          };
+          if (搜索) { 搜索.value = toText(modalFocusState['座舱::技能搜索'], ''); 搜索.addEventListener('input', 输入处理); 输入处理(); }
+          const 选择处理 = event => {
+            const 按钮 = event.target.closest('[data-cabin-skill]');
+            if (!按钮 || !host.contains(按钮)) return;
+            const 目标 = 技能列表[Number(按钮.dataset.cabinSkill)];
+            if (!目标) return;
+            modalFocusState['座舱::技能'] = 目标.key;
+            const 详情 = host.querySelector('.mvu-cabin-library-detail');
+            详情.innerHTML = `<div class="mvu-cabin-section-heading"><strong>${htmlEscape(目标.name)}</strong><span>${htmlEscape(目标.来源)}</span></div>${构建技能悬浮详情内容({ ...目标, preview: '' }, { 显示标题: false })}<div class="mvu-cabin-command-row">${目标.preview ? 入口('查看与设计', 目标.preview) : 入口('查看来源档案', 目标.sourcePreview || '生命图谱详细页')}${新技能入口 ? 入口('新建自创魂技', 新技能入口) : ''}${入口('武魂融合技', '武魂融合技详细页')}</div>`;
+            host.querySelectorAll('[data-cabin-skill]').forEach(节点 => 节点.classList.toggle('is-selected', 节点 === 按钮));
+          };
+          host.addEventListener('click', 选择处理);
+          return { destroy() { 搜索?.removeEventListener('input', 输入处理); host.removeEventListener('click', 选择处理); } };
+        },
+      };
+    }
+    if (预览键 === '待处理能力') {
+      const 魂环 = buildPendingSoulRingState(snapshot);
+      const 技能 = buildSkillDesignConfirmState(snapshot);
+      return { title: '待处理能力', body: `<div class="mvu-cabin-native-directory"><section class="archive-card"><div class="archive-card-title">${htmlEscape(snapshot.activeName || '当前角色')} · 待处理</div>${魂环 ? `<p>有待生成魂环，候选魂灵与环位沿原流程确认。</p>${入口('处理魂环与魂灵', PENDING_SOUL_RING_PREVIEW_KEY)}` : '<p>没有待生成魂环。</p>'}${技能 ? `<p>有技能设计等待确认。</p>${入口('确认技能设计', PENDING_SKILL_DESIGN_PREVIEW_KEY)}` : '<p>没有待确认的技能设计。</p>'}</section><section class="archive-card"><div class="archive-card-title">能力来源</div>${入口('第一武魂', '第1武魂详细页')}${snapshot.secondaryTrack ? 入口(snapshot.secondaryTrack.badge || '第二轨道', snapshot.secondaryTrack.preview) : ''}${入口('技能典籍', '技能典籍')}</section></div>` };
+    }
+    if (预览键 === '战斗复入') {
+      const 活跃 = isCombatActiveForBattleInline(snapshot);
+      const 摘要 = getBattleInlineSummary(snapshot);
+      return { title: '战斗复入', body: `<div class="mvu-cabin-native-directory"><section class="archive-card"><div class="archive-card-title">${活跃 ? '当前战斗' : '暂无进行中的战斗'}</div>${活跃 ? `<p>${htmlEscape(摘要.meta)}</p><p>${htmlEscape(摘要.roundText)}</p>` : '<p>已有战斗发生后，可从这里返回。</p>'}</section><section class="archive-card"><div class="archive-card-title">战斗与记录</div>${活跃 ? '<button type="button" class="mvu-cabin-command" data-cabin-battle-return>返回当前战斗<span aria-hidden="true">›</span></button>' : ''}${入口('交战记录', '情报库详细页')}</section></div>`, onMount: host => {
+        const 按钮 = host.querySelector('[data-cabin-battle-return]');
+        const 返回战斗 = () => openBattleInlineFromReturnEntry();
+        按钮?.addEventListener('click', 返回战斗);
+        return { destroy() { 按钮?.removeEventListener('click', 返回战斗); } };
+      } };
+    }
+    if (预览键 === '显示与维护') {
+      return { title: '显示与维护', body: `<div class="mvu-cabin-native-directory"><section class="archive-card"><div class="archive-card-title">显示主题</div><div class="mvu-cabin-command-row">${['经典状态栏', '炫世唐门', '金龙王', '银龙王', '幻海蝶舞'].map(主题 => `<button type="button" class="mvu-cabin-command" data-cabin-theme="${主题}">${主题}</button>`).join('')}</div></section><section class="archive-card"><div class="archive-card-title">档案与维护</div><div class="mvu-cabin-command-row">${入口('角色目录', '角色切换器')}${入口('冷归档', 冷归档预览键_桥接)}<button type="button" class="mvu-cabin-command" data-ai-maintenance-toggle>AI维护</button></div><div data-ai-maintenance-home-api>${构建AI维护API选择器()}</div><p>字段编辑仍在对应资料页操作。</p></section></div>`, onMount: host => {
+        const 设置主题 = event => {
+          const 按钮 = event.target.closest('[data-cabin-theme]');
+          if (按钮 && host.contains(按钮) && typeof window.__MVU_SET_CABIN_THEME__ === 'function') window.__MVU_SET_CABIN_THEME__(按钮.dataset.cabinTheme);
+        };
+        host.addEventListener('click', 设置主题);
+        return { destroy() { host.removeEventListener('click', 设置主题); } };
+      } };
+    }
+    return null;
+  }
+
+  // 只给原节点标记布局职责；不克隆、不移除业务节点，原 onMount / 委托边界不变。
+  function 排布座舱详情(host) {
+    const slab = host && host.querySelector('.mvu-holo-slab-root');
+    if (!slab || !slab.childElementCount || slab.dataset.cabinLayout === 'fixed-profile') return;
+    const 原焦点 = host.contains(document.activeElement) ? document.activeElement : null;
+    const 配置表 = [
+      ['.skill-designer-layout', ['.skill-designer-summary-card'], ['.skill-designer-form'], []],
+      ['.mvu-cabin-library', ['.mvu-cabin-library-directory'], ['.mvu-cabin-library-detail'], []],
+      ['.dossier-shell--life', ['.dossier-card--life-core', '.dossier-card--life-profile'], ['.dossier-card--life-record'], []],
+      ['.dossier-shell--social', ['.social-archive-profile'], ['.social-archive-data'], []],
+      ['.dossier-shell--relation', ['.relation-network-zone'], ['.relation-dossier-zone'], []],
+      ['.mvu-intel-terminal', ['.mvu-intel-terminal-tracks'], ['.mvu-intel-draft-console'], ['.mvu-intel-terminal-stats']],
+      ['.mvu-inventory-workbench', ['.mvu-inventory-registry'], ['.mvu-inventory-definition-console'], ['.vault-wallet-card']],
+      ['.mvu-armory-detail-grid', ['.mvu-armory-card--equipment'], ['.mvu-armory-card--bones'], []],
+      ['.mvu-spirit-archive-shell', ['.spirit-flow-card'], ['.spirit-terminal-card'], []],
+      ['.location-detail-grid', ['.location-card--intel', '.location-card--people'], ['.location-card--facilities'], []],
+      ['.mvu-quest-overview-grid', ['.mvu-quest-list-card'], ['.mvu-quest-detail-card'], ['.mvu-quest-summary-bar']],
+      ['.bestiary-research-shell', ['.bestiary-species-directory'], ['.bestiary-detail-console'], ['.bestiary-research-overview']],
+      ['.map-layout', ['.map-canvas', '.mvu-holo-map-side-stack'], ['.map-command-card'], ['.map-stage-head', '.map-status-strip']],
+      ['.trade-module-scope', ['.tab-content.active .trade-cabin-controls'], ['.tab-content.active .trade-cabin-detail'], ['.wealth-display', '.trade-tabs']],
+      ['.prof-module-scope', ['.prof-workshop-left'], ['.prof-workshop-right'], ['.top-status', '.tabs']],
+      ['.competition-privilege-scope--competition', ['.cp-event-list', '.cp-page-body', '.cp-archive-zone'], ['.cp-command-console'], []],
+      ['.battle-shell', ['.battle-hud-layer'], ['.battle-dashboard-layer'], ['.battle-control-bar']],
+    ];
+    const 配置 = 配置表.find(([入口]) => slab.querySelector(入口));
+    const 标记 = new Map();
+    const 添加 = (选择器, 平面) => 选择器.forEach(selector => slab.querySelectorAll(selector).forEach(node => {
+      if (!Array.from(标记.keys()).some(parent => parent.contains(node))) 标记.set(node, 平面);
+    }));
+    if (配置) { 添加(配置[1], 'rear'); 添加(配置[2], 'front'); 添加(配置[3], 'context'); }
+    if (!标记.size) {
+      const 根 = slab.firstElementChild;
+      const 候选 = 根 && /archive-modal-grid|dossier-shell|mvu-cabin-native-directory/.test(根.className)
+        ? Array.from(根.children).filter(node => node.tagName !== 'STYLE' && !node.matches('.mvu-cabin-reading-console, .mvu-cabin-rear-tabs'))
+        : Array.from(slab.children).filter(node => node.tagName !== 'STYLE' && !node.matches('.mvu-cabin-reading-console, .mvu-cabin-rear-tabs'));
+      if (候选.length > 1 && 候选.length <= 5) {
+        候选.forEach((node, index) => 标记.set(node, index === 候选.length - 1 ? 'front' : 'rear'));
+      } else if (候选.length === 1 && !标记.size) {
+        标记.set(候选[0], 'rear');
+      }
+    }
+    slab.querySelectorAll('[data-cabin-flow], [data-cabin-plane]').forEach(node => {
+      node.removeAttribute('data-cabin-flow');
+      node.removeAttribute('data-cabin-plane');
+      node.style.removeProperty('--cabin-column');
+    });
+    const 已有辅助 = slab.querySelector('.mvu-cabin-reading-console');
+    if (已有辅助 && Array.from(标记.values()).includes('front') && !标记.has(已有辅助)) 已有辅助.remove();
+    if (!Array.from(标记.values()).includes('front')) {
+      let 辅助 = slab.querySelector('.mvu-cabin-reading-console');
+      if (!辅助) {
+        辅助 = document.createElement('section');
+        辅助.className = 'mvu-cabin-reading-console';
+        辅助.innerHTML = 构建座舱概览前屏(liveSnapshot || lastRenderableSnapshot || {}, 'role');
+        slab.appendChild(辅助);
+      }
+      标记.set(辅助, 'front');
+    }
+    const 焦点选择器 = host.dataset.cabinFocus || '';
+    const 焦点节点 = 焦点选择器 ? slab.querySelector(焦点选择器) : null;
+    const 焦点平面 = 焦点节点 && Array.from(标记.keys()).find(node => node === 焦点节点 || node.contains(焦点节点));
+    if (焦点平面 && ['rear', 'context'].includes(标记.get(焦点平面)) && !焦点平面.matches('.spirit-flow-card, .map-canvas, .mvu-holo-map-side-stack')) {
+      标记.forEach((plane, node) => { if (plane === 'front') 标记.set(node, 'rear'); });
+      标记.set(焦点平面, 'front');
+    }
+    const 遍历 = node => {
+      if (!(node instanceof Element) || node.tagName === 'STYLE' || node.tagName === 'SCRIPT') return;
+      if (标记.has(node)) return;
+      if (node.matches('.battle-record-terminal, .battle-smart-alert-layer, .battle-skill-tooltip-floating, [hidden]')) return;
+      if (Array.from(标记.keys()).some(child => node.contains(child))) {
+        node.setAttribute('data-cabin-flow', '');
+        Array.from(node.children).forEach(遍历);
+      } else {
+        标记.set(node, node.matches('.battle-smart-alert-layer, .mvu-armory-bone-drawer, [hidden], .trade-module-scope .tab-content:not(.active)') ? 'overlay' : 'context');
+      }
+    };
+    Array.from(slab.children).forEach(遍历);
+    const 后屏 = Array.from(标记).filter(([, plane]) => plane === 'rear');
+    const 前屏 = Array.from(标记).filter(([, plane]) => plane === 'front');
+    let 分区导航 = slab.querySelector('.mvu-cabin-rear-tabs');
+    if (后屏.length > 1) {
+      const 已选 = Math.min(Math.max(0, Number(host.dataset.cabinRearIndex) || 0), 后屏.length - 1);
+      if (!分区导航) {
+        分区导航 = document.createElement('nav');
+        分区导航.className = 'mvu-cabin-rear-tabs';
+        分区导航.setAttribute('aria-label', '后屏资料分区');
+        分区导航.addEventListener('click', event => {
+          const 按钮 = event.target.closest('[data-cabin-rear-index]');
+          if (!按钮) return;
+          host.dataset.cabinRearIndex = 按钮.dataset.cabinRearIndex;
+          排布座舱详情(host);
+        });
+        slab.appendChild(分区导航);
+      }
+      const 导航内容 = 后屏.map(([node], index) => {
+        node.dataset.cabinRearActive = String(index === 已选);
+        const 标题 = node.matches('.map-canvas') ? '行旅地图' : node.matches('.mvu-holo-map-side-stack') ? '地点信息'
+          : toText(node.querySelector('.archive-card-title, .dossier-card-title, .mvu-cabin-section-heading, h2, h3')?.textContent, '资料 ' + (index + 1)).trim();
+        return '<button type="button" data-cabin-rear-index="' + index + '" aria-pressed="' + (index === 已选) + '">' + htmlEscape(标题) + '</button>';
+      }).join('');
+      if (分区导航.innerHTML !== 导航内容) 分区导航.innerHTML = 导航内容;
+      标记.set(分区导航, 'context');
+    } else if (分区导航) {
+      标记.delete(分区导航);
+      分区导航.remove();
+    }
+    const 头部 = Array.from(标记).filter(([, plane]) => plane === 'context');
+    slab.dataset.cabinLayout = 'split';
+    slab.dataset.cabinRearCount = String(后屏.length);
+    slab.dataset.cabinFrontCount = String(前屏.length);
+    标记.forEach((plane, node) => {
+      node.dataset.cabinPlane = plane;
+      const 组 = plane === 'rear' ? 后屏 : plane === 'front' ? 前屏 : 头部;
+      const i = 组.findIndex(([item]) => item === node);
+      const 起点 = plane === 'front' ? 2 : 1;
+      const 宽度 = plane === 'front' ? 10 : 12;
+      node.style.setProperty('--cabin-column', `${起点 + Math.floor(i * 宽度 / Math.max(1, 组.length))} / ${起点 + Math.floor((i + 1) * 宽度 / Math.max(1, 组.length))}`);
+      if (配置?.[0] === '.map-layout' && plane === 'rear') node.style.setProperty('--cabin-column', node.matches('.map-canvas') ? '1 / 10' : '10 / 13');
+    });
+    slab.querySelectorAll('.spirit-flow-card').forEach(node => node.setAttribute('data-cabin-section', 'spirits'));
+    if (原焦点 && document.activeElement !== 原焦点 && 原焦点.isConnected) 原焦点.focus({ preventScroll: true });
+  }
+
+  function 绑定座舱详情布局(host, options = {}) {
+    if (profileCabinInstance && !host.contains(profileCabinInstance.frame)) { profileCabinInstance.destroy(); profileCabinInstance = null; }
+    if (workspaceDetailCabin && !host.contains(workspaceDetailCabin.frame)) { workspaceDetailCabin.destroy(); workspaceDetailCabin = null; }
+    if (座舱详情观察器) 座舱详情观察器.disconnect();
+    if (座舱布局帧) window.cancelAnimationFrame(座舱布局帧);
+    座舱布局帧 = 0;
+    if (Object.prototype.hasOwnProperty.call(options, 'focusSelector')) host.dataset.cabinFocus = options.focusSelector || '';
+    const profileMode = host.dataset.cabinFocus === '.dossier-card--life-profile' && host.dataset.holoPreview === '生命图谱详细页';
+    if (profileMode && !profileCabinInstance) profileCabinInstance = mountDossierCabin(host, liveSnapshot || lastRenderableSnapshot || {});
+    if (!profileCabinInstance && !workspaceDetailCabin) {
+      const slab = host.querySelector('.mvu-holo-slab-root');
+      const shell = host.closest('.mvu-cabin');
+      if (slab?.childElementCount && shell) {
+        const page = (window.__LWCS_CABIN_PAGES__ || []).find(item => item.id === shell.dataset.cabinPage);
+        slab.querySelectorAll('.spirit-flow-card').forEach(node => { node.dataset.cabinSection = 'spirits'; });
+        slab.dataset.cabinLayout = 'fixed-workspace';
+        workspaceDetailCabin = mountWorkspaceCabin(slab, liveSnapshot || lastRenderableSnapshot || {}, { tab: shell.dataset.unifiedTab, title: page?.title || toText(shell.querySelector('.mvu-unified-detail-title')?.textContent, '详情'), pageId: page?.id || '', preview: host.dataset.holoPreview || '', centerNodes: Array.from(slab.children) });
+      }
+    }
+    host.dataset.cabinCharacter = liveSnapshot?.activeName || '';
+    const 位置 = 座舱阅读位置.get(`${host.dataset.cabinCharacter}::${host.dataset.holoPreview || ''}::${host.dataset.cabinFocus || ''}`);
+    if (位置) host.querySelectorAll(profileCabinInstance || workspaceDetailCabin ? '.dc-host .dc-scroll' : '[data-cabin-plane]').forEach((node, index) => { node.scrollTop = 位置[index] || 0; });
+    else if (workspaceDetailCabin && host.dataset.cabinFocus) {
+      const main = workspaceDetailCabin.frame.querySelector('.dc-workspace-main');
+      const focus = main.querySelector(host.dataset.cabinFocus);
+      if (focus && main.clientHeight) {
+        const rect = main.getBoundingClientRect();
+        const scale = rect.height / main.clientHeight;
+        if (scale > 0) main.scrollTop += (focus.getBoundingClientRect().top - rect.top) / scale;
+      }
+    }
+    if (profileCabinInstance || workspaceDetailCabin) window.dispatchEvent(new CustomEvent('mvu-cabin-content-ready'));
+    座舱详情观察器 = new MutationObserver(records => {
+      if (!records.some(record => record.type === 'childList')) return;
+      const frame = profileCabinInstance?.frame || workspaceDetailCabin?.frame;
+      if (frame && host.contains(frame)) return;
+      if (座舱布局帧) return;
+      座舱布局帧 = window.requestAnimationFrame(() => { 座舱布局帧 = 0; if (host.isConnected) 绑定座舱详情布局(host); });
+    });
+    座舱详情观察器.observe(host, { childList: true, subtree: true });
+  }
+
+  function 保存座舱阅读位置(host) {
+    if (!host) return;
+    座舱阅读位置.set(`${host.dataset.cabinCharacter || ''}::${host.dataset.holoPreview || ''}::${host.dataset.cabinFocus || ''}`, Array.from(host.querySelectorAll(profileCabinInstance || workspaceDetailCabin ? '.dc-host .dc-scroll' : '[data-cabin-plane]')).map(node => node.scrollTop));
+    if (profileCabinInstance) { profileCabinInstance.destroy(); profileCabinInstance = null; }
+    if (workspaceDetailCabin) { workspaceDetailCabin.destroy(); workspaceDetailCabin = null; }
+    if (座舱阅读位置.size > 80) 座舱阅读位置.delete(座舱阅读位置.keys().next().value);
+    if (座舱详情观察器) { 座舱详情观察器.disconnect(); 座舱详情观察器 = null; }
+    if (座舱布局帧) { window.cancelAnimationFrame(座舱布局帧); 座舱布局帧 = 0; }
+  }
+
+
   function renderUnifiedCardsBySurface(snapshot, sectionSignatures, previousSectionSignatures, surface) {
     const normalizedSurface = normalizeUnifiedSurfaceKey(surface) || 'panel';
 
     if (sectionSignatures.archive !== previousSectionSignatures.archive) {
+      ['role', 'ability', 'supplies'].forEach(类型 => {
+        setUnifiedCardMarkup(`cabin-${类型}-focus`, 构建座舱概览前屏(snapshot, 类型), { surface: normalizedSurface });
+      });
       setUnifiedCardMarkup('archive-core', buildArchiveCoreCard(snapshot), {
         preview: '生命图谱详细页',
         surface: normalizedSurface,
@@ -38305,6 +39677,10 @@
     );
     canvases.forEach(canvas => {
       if (!(canvas instanceof HTMLElement)) return;
+      if (canvas.hasAttribute('data-cabin-plane') || canvas.closest('.dc-native-content')) {
+        ['height', 'width', 'min-height', 'max-height', 'aspect-ratio', 'flex-basis'].forEach(属性 => canvas.style.removeProperty(属性));
+        return;
+      }
       const isDetail = !!canvas.closest('.mvu-holo-detail-stage');
       const 是概览星图 = !isDetail && !!canvas.closest('.mvu-unified-map-stage');
       if (是概览星图) {
@@ -38363,6 +39739,7 @@
   }
 
   function renderLiveCards(snapshot, precomputedSectionSignatures = null, options = {}) {
+    syncStatusCabin(snapshot);
     const dashboardNodes = getCurrentDashboardRenderNodes();
     if (!dashboardNodes || !snapshot) {
       syncDashboardRenderMarker(null);
@@ -38375,7 +39752,9 @@
     const renderPreviousSignatures = { ...sectionSignatures };
     renderPreviousSignatures[visibleSection] =
       options.forceSection === true ? '' : previousSectionSignatures[visibleSection];
+    if (visibleSection === 'world') renderPreviousSignatures.org = options.forceSection === true ? '' : previousSectionSignatures.org;
     renderUnifiedCards(snapshot, sectionSignatures, renderPreviousSignatures);
+    syncWorkspaceCabins(snapshot);
 
     if (
       visibleSection === 'map' &&
@@ -38394,6 +39773,7 @@
     lastDashboardSectionRenderSignatures = {
       ...previousSectionSignatures,
       [visibleSection]: sectionSignatures[visibleSection],
+      ...(visibleSection === 'world' ? { org: sectionSignatures.org } : {}),
     };
     return true;
   }
@@ -38403,6 +39783,8 @@
     if (previewKey === 冷归档预览键_桥接) return 构建冷归档面板_桥接(liveSnapshot || lastRenderableSnapshot || {});
     if (!liveSnapshot) return null;
     const snapshot = liveSnapshot;
+    const 座舱专页 = 构建座舱专页(previewKey, snapshot);
+    if (座舱专页) return 座舱专页;
     if (慢刷新骨架已启用 && 慢刷新骨架预览键集合.has(previewKey)) {
       const 骨架视图 = buildArchiveSkeletonModal(previewKey);
       if (骨架视图) {
@@ -46012,7 +47394,9 @@
   }
 
   const pageMetaMap = {
-    'page-archive': { title: '档案 / 个人主控', subtitle: '详细档案、武魂轨道、社会摘要与储物入口', tag: '档案核心' },
+    'page-ability': { title: '能力', subtitle: '武魂、血脉与技能', tag: '能力' },
+    'page-supplies': { title: '物资', subtitle: '背包、装备与交易', tag: '物资' },
+    'page-archive': { title: '角色', subtitle: '详细档案、武魂轨道、社会摘要与储物入口', tag: '档案核心' },
     'page-map': { title: '星图 / 节点导航', subtitle: '当前位置、下钻路径、本地设施与动态地点', tag: '星图导航' },
     'page-world': { title: '世界 / 时空中枢', subtitle: '时间轴、偏差与拍卖警报的汇总面板', tag: '世界中枢' },
     'page-org': { title: '势力 / 矩阵沙盘', subtitle: '阵营归属、大陆格局与据点网络的视觉化入口', tag: '势力矩阵' },
@@ -47863,10 +49247,10 @@ ${播报文本}
     const 入口HTML = 构建战斗复入入口HTML(snapshot);
     const 入口类名 = 'mvu-battle-return-entry';
     const 档案侧栏 = document.querySelector(
-      '#mvu-unified-mount .mvu-unified-dashboard--archive > [data-unified-card="archive-side"]',
+      '#mvu-unified-mount [data-unified-card="cabin-role-focus"]',
     );
     const 终端主面板 = document.querySelector(
-      '#mvu-unified-mount .mvu-unified-dashboard--terminal > [data-dashboard-panel="terminal-main"]',
+      '#mvu-unified-mount [data-unified-card="terminal-hero"]',
     );
     ensureBattleReturnEntry(档案侧栏, `${入口类名} mvu-battle-return-entry--archive`, 入口HTML);
     ensureBattleReturnEntry(终端主面板, `${入口类名} mvu-battle-return-entry--terminal`, 入口HTML);
@@ -54147,6 +55531,7 @@ ${播报文本}
   function clearUnifiedInlinePreview() {
     统一详情渲染序号 += 1;
     const host = getUnifiedInlineHost();
+    保存座舱阅读位置(host);
     const effectivePreviewKey = getEffectiveUnifiedPreviewKey();
     if (
       effectivePreviewKey === BATTLE_INLINE_PREVIEW_KEY &&
@@ -54172,6 +55557,7 @@ ${播报文本}
     if (!host) return;
     host.innerHTML = '';
     delete host.dataset.holoPreview;
+    delete host.dataset.cabinFocus;
   }
 
   function wrapUnifiedInlineBody(html = '', options = {}) {
@@ -54291,9 +55677,27 @@ ${播报文本}
     同步AI维护标题入口(目标键);
     if (typeof 挂载回调 === 'function') {
       性能探针?.标记('onMount开始');
-      activeSubUI = 挂载回调(宿主节点);
+      const 独立模块挂载点 = ['交易网络', '交易模块弹窗', '赛事', '特殊权限'].includes(目标键)
+        ? 读取统一详情内容槽(宿主节点, 目标键) || 宿主节点
+        : 宿主节点;
+      try {
+        activeSubUI = 挂载回调(独立模块挂载点);
+      } catch (error) {
+        console.error('[LWCS] 页面模块加载失败：' + 目标键, error);
+        const content = 读取统一详情内容槽(宿主节点, 目标键) || 宿主节点;
+        const notice = document.createElement('section');
+        notice.className = 'dc-module-error';
+        notice.setAttribute('role', 'status');
+        const heading = document.createElement('h2');
+        heading.textContent = 目标键 + '暂时无法打开';
+        const reason = document.createElement('p');
+        reason.textContent = String(error?.message || '页面内容加载失败。').slice(0, 240);
+        notice.append(heading, reason);
+        content.replaceChildren(notice);
+      }
       性能探针?.标记('onMount完成');
     }
+    绑定座舱详情布局(宿主节点);
     scheduleUnifiedMapCanvasClamp(宿主节点);
     if (目标键 === '储物仓库详细页') {
       同步仓库页动效(宿主节点, liveSnapshot || lastRenderableSnapshot || {}, modalFocusState['储物仓库详细页::物品定义']);
@@ -54475,6 +55879,8 @@ ${播报文本}
 
     const shouldResetScroll =
       lastRenderedUnifiedPreviewKey !== targetKey || toText(host.dataset.holoPreview, '') !== targetKey;
+    保存座舱阅读位置(host);
+    if (shouldResetScroll || Object.prototype.hasOwnProperty.call(options, 'focusSelector')) host.dataset.cabinFocus = options.focusSelector || '';
     currentUnifiedPreviewKey = targetKey;
     lastRenderedUnifiedPreviewKey = targetKey;
     host.dataset.holoPreview = targetKey;
@@ -54507,6 +55913,7 @@ ${播报文本}
       总探针?.标记('即时template解析完成');
       slab.replaceChildren(...Array.from(详情模板.content.childNodes));
       总探针?.标记('即时内容写入完成');
+      绑定座舱详情布局(host);
       if (shouldResetScroll) host.scrollTop = 0;
       syncUnifiedTitleLongPress(targetKey);
       同步AI维护标题入口(targetKey);
@@ -54893,7 +56300,15 @@ ${播报文本}
         }
         return;
       }
-      const 终端标签按钮 = eventTarget ? eventTarget.closest('[data-terminal-tab]') : null;
+      const 状态按钮 = eventTarget?.closest('[data-cabin-status]');
+    if (状态按钮 && document.getElementById('mvu-unified-mount')?.contains(状态按钮)) {
+      event.preventDefault();
+      event.stopPropagation();
+      modalFocusState['座舱::状态焦点'] = 状态按钮.dataset.cabinStatus;
+      setUnifiedCardMarkup('cabin-role-focus', 构建座舱概览前屏(liveSnapshot || lastRenderableSnapshot || {}, 'role'), { surface: 'panel' });
+      return;
+    }
+    const 终端标签按钮 = eventTarget ? eventTarget.closest('[data-terminal-tab]') : null;
       if (终端标签按钮 && mountEl.contains(终端标签按钮)) {
         event.preventDefault();
         event.stopPropagation();

@@ -116,6 +116,11 @@
     return [资源基础地址, ...候选列表.map(清理地址)].filter((地址, 序号, 列表) => 地址 && 列表.indexOf(地址) === 序号);
   })();
   const 资源版本后缀 = '';
+  for (const 文档 of new Set([document, 宿主窗口.document])) {
+    for (const [变量, 文件] of [['--dc-desktop-art', 'twin-dragon-desktop.webp'], ['--dc-mobile-art', 'twin-dragon-mobile.webp']]) {
+      文档.documentElement.style.setProperty(变量, 'url(' + JSON.stringify(资源基础地址 + 'assets/status-cabin/' + 文件 + 资源版本后缀) + ')');
+    }
+  }
   const Vue远程地址 = 'https://unpkg.com/vue@3.5.13/dist/vue.global.prod.js';
   const 资源请求超时毫秒 = 6500;
   const 远程脚本超时毫秒 = 8000;
@@ -1135,7 +1140,7 @@
       if (
         真实卡片已就绪
         && unifiedMount?.dataset?.mvuContentReady === '1'
-        && unifiedMount.querySelector('.mvu-unified-page.active [data-unified-card]:not(:empty)')
+        && unifiedMount.querySelector('.mvu-unified-page.active [data-status-cabin]:not(:empty), .mvu-unified-page.active [data-unified-card]:not(:empty)')
       ) {
         return true;
       }
