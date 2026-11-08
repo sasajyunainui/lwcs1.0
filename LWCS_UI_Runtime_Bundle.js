@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:0f069c40932c449e11a384911a2d0b182c3bd6574f6fc4411e8411188a17b7f4|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:cc42c46c4ef317a0c40709d2b3c23bdda67e233fffbf1976891c8984ac0b7fbc|cockpit/pages-role.js:11e3f30178d7d4a98dc38b4e9d88f194ed71089f0993e6f4ed65b77eeb78f213|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:d35728afb9ae39fa0c94f77b83df40149167487d7a8ec69072c495acecaf8e19|cockpit/pages-ability.js:5da4da4cf9dee034e8246e693a2d73aa7e472dc6487cecaa453bb25b576ceefc|cockpit/pages-supplies.js:bfda775de1b4e3d3c2f253a11ae1d7b3f263ddc35d68df165df82e7a4c6ad43f|cockpit/pages-map.js:f5b96e3ff3473f44b0df11259c791d84ae81b423911485d4721cf0a00cf105bf|cockpit/pages-world.js:ca5dc37c07a41d3603ee2c089f84171de2b47453d125868dc3dc361fa9449723|cockpit/pages-terminal.js:4d51455d552329d8cada13b0f1d4336d30962e5d7dae64ae93d9a8bc0a9395a6|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:289fe455da8dfe0c8f42e39afaaa254d1c724b00f602e5094ca7626b17151097|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:0f069c40932c449e11a384911a2d0b182c3bd6574f6fc4411e8411188a17b7f4|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:a73016f163dcd2a0139d7780be8207fd2468568efd099c1245286f699fb919f8|cockpit/pages-role.js:a95b4b06280a1e23e58c9062ec648c0e8b6622a0994db5d8121102a1344fbda6|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:10c44a13d6e04c2f27129d1f92d4b0ec5dd55092c45a1394f2b7819d873d3b0f|cockpit/pages-ability.js:73edb53ba86389028800dc6af46a434d8bf80be363167c76e26b665ad737ced7|cockpit/pages-supplies.js:8e64e24ba4d704035ef0cfee05b472a383de5ae01d5d7312aeca94aa9fe649f3|cockpit/pages-map.js:f5b96e3ff3473f44b0df11259c791d84ae81b423911485d4721cf0a00cf105bf|cockpit/pages-world.js:8487e0a1bc390c8e1a1d5898ea84013ec3498a1f03800dc14103a1dcc7a7b69a|cockpit/pages-terminal.js:4d51455d552329d8cada13b0f1d4336d30962e5d7dae64ae93d9a8bc0a9395a6|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:289fe455da8dfe0c8f42e39afaaa254d1c724b00f602e5094ca7626b17151097|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -74545,11 +74545,19 @@ ${播报文本}
   // ---------- 内联编辑（与原项目 makeInlineEditableValue / beginInlineEdit 同一语义）----------
   // 常驻：点击可编辑值即原地编辑；kind = string | number | enum | text（多行）。path 是存档根下的键路径数组。
   // 原型写回内存存档后重绘；移植时换成 replaceStatDataByEditor → 整根 MVU schema 校验 → replaceMvuData。
-  const ed = (text, path, o = {}) => `<span class="ie" tabindex="0" role="button" data-ie-path="${esc(JSON.stringify(path))}" data-ie-kind="${o.kind || 'string'}" data-ie-meta="${esc(JSON.stringify({ min: o.min, max: o.max, integer: o.integer, options: o.options, suffix: o.suffix }))}" data-ie-raw="${esc(String(o.raw ?? text ?? ''))}" title="点击编辑">${o.html ?? esc(String(text ?? ''))}</span>`;
+  const ed = (text, path, o = {}) => `<span class="ie" tabindex="0" role="button" data-ie-path="${esc(JSON.stringify(path))}" data-ie-kind="${o.kind || 'string'}" data-ie-meta="${esc(JSON.stringify({ min: o.min, max: o.max, integer: o.integer, options: o.options, suffix: o.suffix, renameKey: o.renameKey }))}" data-ie-raw="${esc(String(o.raw ?? text ?? ''))}" title="点击编辑">${o.html ?? esc(String(text ?? ''))}</span>`;
+  // 列表检索（原项目角色目录 / 技能检索 / 图鉴检索）：输入框按同一面板里列表行的文字筛选，不重绘、不丢焦点；
+  // 关键词存在 ui.qs，面板重绘后重新套用
+  const search = (key, ph) => `<label class="q-search"><i class="fa-solid fa-magnifying-glass"></i><input type="search" data-qs="${esc(key)}" value="${esc(state.ui.qs?.[key] || '')}" placeholder="${esc(ph)}" aria-label="${esc(ph)}" autocomplete="off"></label>`;
+  const filterRows = inp => {
+    const q = inp.value.trim().toLowerCase(), pad = inp.closest('.pad') || inp.parentElement;
+    $$('.list .row, .roster .rc', pad).forEach(r => { r.hidden = !!q && !r.textContent.toLowerCase().includes(q); });
+  };
+  document.addEventListener('input', e => { const t = e.target.closest?.('[data-qs]'); if (!t) return; (state.ui.qs ||= {})[t.dataset.qs] = t.value; filterRows(t); });
   const ctx = () => {
     if (!S.char[state.view]) state.view = S.sys.玩家名;
     const ch = S.char[state.view] || {};
-    return { rt, library, S, name: state.view, ch, st: ch.属性 || {}, isPlayer: state.view === S.sys.玩家名, player: S.sys.玩家名, souls: souls(ch), tickDate, rankTitle, yearTier, ringStage, ringMedal, ringColorClass, bar, count, sock, head, empty, kv, val, hint: hintMark, pick, esc, fmt, num, entries, blank, avatarSrc, standingSrc, miniAva, state, ed, P: (...p) => ['char', state.view, ...p] };
+    return { rt, library, S, name: state.view, ch, st: ch.属性 || {}, isPlayer: state.view === S.sys.玩家名, player: S.sys.玩家名, souls: souls(ch), tickDate, rankTitle, yearTier, ringStage, ringMedal, ringColorClass, bar, count, sock, head, empty, kv, val, hint: hintMark, pick, esc, fmt, num, entries, blank, avatarSrc, standingSrc, miniAva, state, ed, search, P: (...p) => ['char', state.view, ...p] };
   };
 
   // 写回：ops = [{ path, value }] 或 [{ path, del: true }]，path 是存档根下的键路径。
@@ -74681,6 +74689,7 @@ ${播报文本}
   const isMobile = () => mobileNow;
 
   const charge = (root, quiet = false) => {
+    $$('[data-qs]', root).forEach(i => { if (i.value) filterRows(i); });
     if (quiet) {
       $$('.bar i[data-w]', root).forEach(i => { i.style.width = i.dataset.w + '%'; });
       $$('.dial .arc[data-off]', root).forEach(a => { a.style.strokeDashoffset = a.dataset.off; });
@@ -75052,6 +75061,16 @@ ${播报文本}
     const r = parseEdit(cur.kind, cur.meta, cur.input.value);
     const host = cur.box || cur.wrap;
     if (r.err) { let tip = host.querySelector('.ie-err'); if (!tip) { tip = document.createElement('small'); tip.className = 'ie-err'; host.append(tip); } tip.textContent = r.err; cur.input.focus(); return; }
+    // 改键名（如伤势部位）：path 指向条目本身，值是新键名——写到同级新键并删掉旧键，同名已存在则不改
+    if (cur.meta.renameKey) {
+      const name = String(r.value).trim(), parent = cur.path.slice(0, -1), old = cur.path.at(-1);
+      if (name && name !== old && getAt([...parent, name]) !== undefined) { let tip = host.querySelector('.ie-err'); if (!tip) { tip = document.createElement('small'); tip.className = 'ie-err'; host.append(tip); } tip.textContent = '已有同名条目'; cur.input.focus(); return; }
+      editing = null; cur.box?.remove();
+      if (!name || name === old) { cur.wrap.replaceWith(cur.el); flushPending(); return; }
+      cur.el.textContent = name; cur.wrap.replaceWith(cur.el);
+      write([{ path: [...parent, name], value: getAt(cur.path) }, { path: cur.path, del: true }]).then(() => { flushPending(); if (cur.inFloat) reproject(); });
+      return;
+    }
     editing = null; cur.box?.remove();
     if (r.value === getAt(cur.path)) { cur.wrap.replaceWith(cur.el); flushPending(); return; }
     // 先在界面上落下新值（原值处显示），写回完成后由桥接回灌刷新
@@ -75449,7 +75468,7 @@ ${播报文本}
         <section class="soul-deck" aria-label="武魂与魂环">${c.souls.map((s, i) => soulCard(c, s, i)).join('')}${bloodCard(c)}</section>
         ${wounds.length
           ? `<div class="sec wound-sec"><div class="strip" style="color:#a3301f;background:linear-gradient(90deg,rgba(230,60,40,.16),transparent 70%);box-shadow:inset 2px 0 0 #d6452a"><i class="fa-solid fa-kit-medical"></i><span>伤势 ${wounds.length} 处</span><button class="key-s" type="button" style="margin-left:auto" data-wound-add><i class="fa-solid fa-plus"></i> 记录</button></div>
-             <div class="list">${wounds.map(([part, w]) => `<div class="row" style="cursor:default"><span class="chip">${c.ed(w.程度 || '轻', c.P('状态', '受伤部位', part, '程度'), { kind: 'enum', options: ['轻', '中', '重'] })}</span><div><strong>${c.esc(part)}</strong><small>${c.ed(w.描述 || '未描述', c.P('状态', '受伤部位', part, '描述'), { raw: w.描述 || '' })}</small></div><button class="key-s danger" type="button" data-del-path="${c.esc(JSON.stringify(c.P('状态', '受伤部位', part)))}"><i class="fa-solid fa-trash"></i></button></div>`).join('')}</div>${woundForm}</div>`
+             <div class="list">${wounds.map(([part, w]) => `<div class="row" style="cursor:default"><span class="chip">${c.ed(w.程度 || '轻', c.P('状态', '受伤部位', part, '程度'), { kind: 'enum', options: ['轻', '中', '重'] })}</span><div><strong>${c.ed(part, c.P('状态', '受伤部位', part), { renameKey: true })}</strong><small>${c.ed(w.描述 || '未描述', c.P('状态', '受伤部位', part, '描述'), { raw: w.描述 || '' })}</small></div><button class="key-s danger" type="button" data-del-path="${c.esc(JSON.stringify(c.P('状态', '受伤部位', part)))}"><i class="fa-solid fa-trash"></i></button></div>`).join('')}</div>${woundForm}</div>`
           : `<div class="strip wound-sec"><i class="fa-solid fa-shield-heart"></i><span>身体无伤 · 气息平稳</span><button class="key-s" type="button" style="margin-left:auto" data-wound-add><i class="fa-solid fa-plus"></i> 记录伤势</button></div>${woundForm}`}
       </div>`,
       left: `<div class="pad">
@@ -75722,6 +75741,7 @@ ${播报文本}
         <div class="list">${DIR_TABS.map(k => `<button class="row${k === tab ? ' on' : ''}" type="button" data-set="dtab2=${k}" aria-current="${k === tab}">${c.sock({ 全部: 'users', 同地: 'location-dot', 已结识: 'handshake-simple', 其他地点: 'map' }[k], k === tab ? 'gd' : '')}<div><strong>${k}</strong></div><span class="end">${pool[k].length}</span></button>`).join('')}</div>
       </div>`,
       core: `<div class="pad">
+        ${c.search('roster', '名字 / 身份 / 地点')}
         ${groups.filter(g => g[2].length).map(([h, en, arr]) => `<section class="sec"><h3>${c.esc(h)}${en ? `<span class="en">${en}</span>` : ''}</h3><div class="roster">${arr.map(card).join('')}</div></section>`).join('') || c.empty('users', `没有「${tab}」的角色`)}
       </div>`,
       right: `<div class="pad">${charDetail(c, sel)}</div>`,
@@ -77430,7 +77450,7 @@ ${播报文本}
       </div>`,
       mount: face => mount(face, c, cur, S, deps),
       // 左翼：选技能 → 和标准对手比（对抗试算）；右翼：预算 → 最终摘要 → 保存
-      left: `<div class="pad">${c.head('book', '技能', 'Skills')}<div class="list dz2-skills">${all.map(s => `<button class="row${s === cur ? ' on' : ''}" type="button" data-set="skill=${esc(s.key)}" aria-current="${s === cur}">${s.ring ? c.ringMedal(s.ring, String(s.ring.slot).replace(/\D/g, ''), true) : c.sock(GROUP_ICON[s.group] || 'pen-ruler')}<div><strong>${esc(s.魂技名)}</strong><small>${s.isNew ? '未保存' : s.ring ? esc(s.from || '') : esc(s.group)}</small></div><span></span></button>`).join('')}</div>${newBtns()}<div class="groove"></div><div class="dz2-readout">${readout(c, ss, deps)}</div></div>`,
+      left: `<div class="pad">${c.head('book', '技能', 'Skills')}${c.search('dz2', '技能名或来源')}<div class="list dz2-skills">${all.map(s => `<button class="row${s === cur ? ' on' : ''}" type="button" data-set="skill=${esc(s.key)}" aria-current="${s === cur}">${s.ring ? c.ringMedal(s.ring, String(s.ring.slot).replace(/\D/g, ''), true) : c.sock(GROUP_ICON[s.group] || 'pen-ruler')}<div><strong>${esc(s.魂技名)}</strong><small>${s.isNew ? '未保存' : s.ring ? esc(s.from || '') : esc(s.group)}</small></div><span></span></button>`).join('')}</div>${newBtns()}<div class="groove"></div><div class="dz2-readout">${readout(c, ss, deps)}</div></div>`,
       railL: `<div class="rail">${c.sock('pen-ruler', 'gd')}<b>${all.length}</b><small>可设计技能</small></div>`,
       right: `<div class="pad">${c.head('scale-balanced', '预算核算', 'Budget', 'gd')}<div class="dz-preview">${pendHere ? budget(c, ss, cur, deps).replace(/(<button class="cta" type="button" data-dz2-save[^>]*)>([\s\S]*?)保存设计/, '$1 data-hint="保存后把这次设计交给叙事结算">$2保存并提交剧情') : budget(c, ss, cur, deps)}</div>${ui.dzSaved === cur.key ? '<div class="okline dz2-saved"><i class="fa-solid fa-floppy-disk"></i>已写入存档</div>' : ''}${cur.isNew ? '<button class="key-s danger dz2-discard" type="button" data-dz2-discard><i class="fa-solid fa-trash"></i> 放弃新建</button>' : S.init && skillJson(ss) !== S.init ? '<button class="key-s danger dz2-discard" type="button" data-dz2-reload data-hint="放弃这次未保存的改动，按存档重新载入"><i class="fa-solid fa-rotate-left"></i> 重新读取</button>' : ''}</div>`,
     };
@@ -77794,6 +77814,7 @@ ${播报文本}
     return {
       tag: 'CORE · CODEX',
       left: `<div class="pad">${c.head('book', '典籍', 'Codex', 'gd')}
+        ${c.search('codex', '技能名或来源')}
         <div class="pick-row">${c.pick('skg', grp, [{ value: '全部', label: `全部 · ${all.length}` }, ...have.map(g => ({ value: g, label: `${g} · ${all.filter(s => s.group === g).length}` }))])}</div>
         ${shown.length ? `<div class="list q-list">${shown.map(s => `<button class="row${s === sel ? ' on' : ''}" type="button" data-set="sksel=${c.esc(s.key)}" aria-current="${s === sel}">${s.ring ? c.ringMedal(s.ring, s.ring.slot.replace(/\D/g, ''), true) : c.sock(s.group === '装备技能' ? 'shield-halved' : s.group === '魂骨附带' ? 'bone' : 'book')}<div><strong>${c.esc(s.魂技名)}</strong><small>${c.esc(s.from)}</small></div><span></span></button>`).join('')}</div>` : c.empty('book', '还没有任何技能', '附环、装备或自创后会出现在这里')}
       </div>`,
@@ -78227,7 +78248,7 @@ ${播报文本}
     return {
       tag: 'CORE · INVENTORY', wide: items.length ? '' : 'l', railL: `<div class="rail">${c.sock('box-open')}<b>0</b><small>背包</small></div>`,
       left: `<div class="pad">${c.head('box-open', '背包', 'Inventory', 'gd', '<button class="key-s mini" type="button" data-idf-open="" data-hint="新建一件物品并登记到物品库"><i class="fa-solid fa-plus"></i> 新建</button>')}
-        <div class="pick-row">${c.pick('cat', cat, PACK_CATS.map(k => ({ value: k, label: `${k} · ${k === '全部' ? items.length : items.filter(([n]) => kindOf(n) === k).length}` })))}</div>
+        ${c.search('pack', '物品名')}<div class="pick-row">${c.pick('cat', cat, PACK_CATS.map(k => ({ value: k, label: `${k} · ${k === '全部' ? items.length : items.filter(([n]) => kindOf(n) === k).length}` })))}</div>
         ${shown.length ? `<div class="list q-list">${shown.map(([n, it]) => `<button class="row${sel && n === sel[0] ? ' on' : ''}" type="button" data-set="itemsel=${c.esc(n)}">${c.sock('cube')}<div><strong>${c.esc(n)}</strong><small>${c.esc(kindOf(n))}${it.批次?.[0]?.品质 ? ` · ${c.esc(it.批次[0].品质)}` : ''}</small></div><span class="end">×${c.fmt(it.数量)}</span></button>`).join('')}</div>` : c.empty('box-open', items.length ? `没有「${cat}」类物品` : '背包是空的', items.length ? '' : '获得的物品会出现在这里')}
       </div>`,
       core: c.state.ui.idf ? idfEditor(c) : sel ? itemCore(c, sel[0]) : `<div class="pad sparse">${c.empty('box-open', '背包是空的')}<div class="act-row" style="justify-content:center"><button class="key-s" type="button" data-go="page-terminal/trade"><i class="fa-solid fa-store"></i> 去交易</button><button class="key-s" type="button" data-idf-open=""><i class="fa-solid fa-plus"></i> 新建物品</button></div></div>`,
@@ -78807,22 +78828,26 @@ ${播报文本}
     const f = list.find(x => x.name === c.state.ui.fsel) || list[0], st = f?.战力统计 || {}, me = f && mineMap[f.name];
     const desc = f ? String(f.描述 || '').replace(/[#*]/g, '').split('\n').map(s => s.trim()).filter(Boolean).join(' ') : '';
     const rel = f ? Object.entries(f.关系 || {}) : [], editable = f && c.S.org?.[f.name];
+    // 存档里的势力（org）可改，同原项目势力档案：状态、上级、影响力、规模、战力统计、对外关系；内置资料只读
+    const fe = (text, tail, o = {}) => editable ? c.ed(text, ['org', f.name, ...tail], o) : c.esc(text);
+    const fn = (shown, tail, raw) => editable ? c.ed(shown, ['org', f.name, ...tail], { kind: 'number', integer: true, min: 0, raw: c.num(raw) }) : shown;
     return {
       tag: 'CORE · FACTIONS',
       left: `<div class="pad">${c.head('chess-rook', '势力', 'Factions', 'gd')}
-        <div class="pick-row">${c.pick('ftype', ftype, ['全部', ...types].map(t => ({ value: t, label: `${t} · ${t === '全部' ? all.length : all.filter(x => (x.类型 || '其他') === t).length}` })))}</div>
+        ${c.search('faction', '势力名')}<div class="pick-row">${c.pick('ftype', ftype, ['全部', ...types].map(t => ({ value: t, label: `${t} · ${t === '全部' ? all.length : all.filter(x => (x.类型 || '其他') === t).length}` })))}</div>
         <div class="list q-list">${list.map(x => `<button class="row${x === f ? ' on' : ''}" type="button" data-set="fsel=${c.esc(x.name)}" aria-current="${x === f}"><span class="chip${mineMap[x.name] ? ' gold' : ''}">${mineMap[x.name] ? '所属' : c.esc(x.状态 || x.类型 || '—')}</span><div><strong>${c.esc(x.name)}</strong><small>${c.esc(x.类型 || '')}</small></div><span class="end">${wan(c, x.影响力)}</span></button>`).join('')}</div>
       </div>`,
       core: f ? `<div class="pad">
-        <div class="q-title">${c.sock('chess-rook', 'gd')}<span class="chip">${c.esc(f.类型 || '势力')}</span><h2>${c.esc(f.name)}</h2><span class="q-state">${c.esc(f.状态 || '—')}</span></div>
-        ${f.上级势力 && f.上级势力 !== '无' ? `<div class="q-from">上级 ${c.esc(f.上级势力)}</div>` : ''}
-        <div class="tiles four">${tile(c, 'crown', wan(c, f.影响力), '影响力')}${tile(c, 'users', wan(c, f.规模), '规模')}${tile(c, 'bolt', c.fmt(st.极限斗罗 || 0), '极限斗罗')}${tile(c, 'star', c.fmt(st.超级斗罗 || 0), '超级斗罗')}</div>
+        <div class="q-title">${c.sock('chess-rook', 'gd')}<span class="chip">${c.esc(f.类型 || '势力')}</span><h2>${c.esc(f.name)}</h2><span class="q-state">${fe(f.状态 || '—', ['状态'], { raw: f.状态 || '' })}</span></div>
+        ${editable || (f.上级势力 && f.上级势力 !== '无') ? `<div class="q-from">上级 ${fe(f.上级势力 && f.上级势力 !== '无' ? f.上级势力 : '无', ['上级势力'], { raw: f.上级势力 || '' })}</div>` : ''}
+        <div class="tiles four">${tile(c, 'crown', fn(wan(c, f.影响力), ['影响力'], f.影响力), '影响力')}${tile(c, 'users', fn(wan(c, f.规模), ['规模'], f.规模), '规模')}${tile(c, 'bolt', fn(c.fmt(st.极限斗罗 || 0), ['战力统计', '极限斗罗'], st.极限斗罗), '极限斗罗')}${tile(c, 'star', fn(c.fmt(st.超级斗罗 || 0), ['战力统计', '超级斗罗'], st.超级斗罗), '超级斗罗')}</div>
+        ${editable ? `<div class="chips-row"><span class="lbl">封号斗罗</span><span class="chip s">${fn(c.fmt(st.封号斗罗 || 0), ['战力统计', '封号斗罗'], st.封号斗罗)}</span></div>` : ''}
         ${!c.blank(f.现状描述) ? `<section class="sec"><h3>现状<span class="en">Now</span></h3><p class="prose">${c.esc(f.现状描述)}</p></section>` : ''}
         <section class="sec"><h3>简介<span class="en">Profile</span></h3><p class="prose">${c.esc(desc || '没有收录简介')}</p></section>
       </div>` : `<div class="pad sparse">${c.empty('chess-rook', '没有势力资料')}</div>`,
       right: `<div class="pad">${c.head('handshake', '关系', 'Relations')}
         ${me ? `<div class="relic-card">${c.sock('id-badge', 'gd')}<div><strong>${c.esc(me.身份 || '成员')}</strong><small>权限级 ${c.fmt(me.权限级 || 0)}</small></div><span class="q-state">所属</span></div>` : ''}
-        ${rel.length ? `<div class="list q-list${me ? ' natural' : ''}">${rel.map(([k, v]) => `<div class="row" style="cursor:default"><span class="chip">${c.esc(typeof v === 'object' ? v.态度 || v.关系 || '—' : v)}</span><div><strong>${c.esc(k)}</strong>${editable ? '' : '<small>内置资料</small>'}</div><span></span></div>`).join('')}</div>` : c.empty('handshake', '没有记录对外态度')}
+        ${rel.length ? `<div class="list q-list${me ? ' natural' : ''}">${rel.map(([k, v]) => `<div class="row" style="cursor:default"><span class="chip">${typeof v === 'object' ? fe(v.态度 || v.关系 || '—', ['关系', k, v.态度 !== undefined || v.关系 === undefined ? '态度' : '关系'], { raw: v.态度 ?? v.关系 ?? '' }) : fe(v, ['关系', k], { raw: v })}</span><div><strong>${c.esc(k)}</strong>${editable ? '' : '<small>内置资料</small>'}</div><span></span></div>`).join('')}</div>` : c.empty('handshake', '没有记录对外态度')}
         ${me ? donate(c, f.name) : ''}
       </div>`,
     };
@@ -78901,6 +78926,7 @@ ${播报文本}
     return {
       tag: 'CORE · BESTIARY', wide: list.length ? '' : 'l', railL: `<div class="rail">${c.sock('dragon')}<b>0</b><small>图鉴</small></div>`,
       left: `<div class="pad">${c.head('dragon', '图鉴', 'Bestiary', 'gd')}
+        ${c.search('beast', '编号 / 名称')}
         ${list.length ? `<div class="list q-list">${list.map(([k, x]) => `<button class="row${k === key ? ' on' : ''}" type="button" data-set="bsel=${c.esc(k)}"><span class="chip">${c.esc(x.年限档 || '—')}</span><div><strong>${c.esc(x.名称 || k)}</strong><small>对标 ${c.fmt(x.对标等级)} 级</small></div><span></span></button>`).join('')}</div>` : c.empty('dragon', '还没有收录魂兽', '遭遇或击败魂兽后会自动收录')}
       </div>`,
       core: b ? `<div class="pad">
