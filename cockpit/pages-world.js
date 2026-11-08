@@ -23,8 +23,9 @@
       .map(([n, e]) => ({ t: c.num(e.触发tick), icon: 'scroll', kind: '世界事件', title: e.事件 || n, sub: `${e.地点 || ''} · ${e.状态 || ''}`, ref: { e } }))
       .sort((a, b) => b.t - a.t);
   };
-  const days = (c, t) => {
+  const days = (c, t, pend = false) => {
     if (!(t > 0)) return '时间未定';
+    if (pend && t < c.num(c.S.world.时间.tick)) return '已到时间';
     const d = (t - c.num(c.S.world.时间.tick)) / 144, a = Math.abs(d), unit = d < 0 ? '前' : '后';
     return a < 1 ? `${Math.max(1, Math.round(a * 24))} 小时${unit}` : `${Math.round(a)} 天${unit}`;
   };
@@ -57,7 +58,7 @@
         ${lots.length ? `<section class="sec"><h3>拍卖行<span class="en">${c.esc(w.拍卖?.地点 || '')} · ${lots.length} 件</span></h3><div class="list two">${lots.map(([n, a]) => `<button class="row" type="button" data-go="page-terminal/trade" data-go-set="venue=auction;good=${c.esc(n)};tqty=1">${c.sock('gavel')}<div><strong>${c.esc(n)}</strong><small>${c.esc([a.品级, a.分类].filter(Boolean).join(' · '))}</small></div><span class="end">${wan(c, a.价格)}</span></button>`).join('')}</div></section>` : ''}
       </div>`,
       right: `<div class="pad">${c.head('calendar-day', '近期安排', 'Upcoming')}
-        ${soon.length ? `<div class="list q-list">${soon.map(x => `<button class="row" type="button" data-go="page-world/chronicle" data-go-set="csel=${c.esc(x.kind + ':' + x.title)}">${c.sock(x.icon)}<div><strong>${c.esc(x.title)}</strong><small>${c.esc([x.kind, x.sub].filter(Boolean).join(' · '))}</small></div><span class="end">${days(c, x.t)}</span></button>`).join('')}</div>` : c.empty('calendar-day', '近期没有安排')}
+        ${soon.length ? `<div class="list q-list">${soon.map(x => `<button class="row" type="button" data-go="page-world/chronicle" data-go-set="csel=${c.esc(x.kind + ':' + x.title)}">${c.sock(x.icon)}<div><strong>${c.esc(x.title)}</strong><small>${c.esc([x.kind, x.sub].filter(Boolean).join(' · '))}</small></div><span class="end">${days(c, x.t, x.pend)}</span></button>`).join('')}</div>` : c.empty('calendar-day', '近期没有安排')}
       </div>`,
     };
   };
@@ -83,11 +84,11 @@
       left: `<div class="pad">${c.head('timeline', mode === 'past' ? '已发生' : '未来节点', 'Timeline', 'gd')}
         <div class="pick-row">${c.pick('cmode', mode, [{ value: 'future', label: `未来节点 · ${upcoming(c).length}` }, { value: 'past', label: `已发生 · ${past(c).length}` }])}</div>
         ${all.length ? `<div class="pick-row">${c.pick('ctab', tab, ['全部', ...kinds].map(k => ({ value: k, label: `${k} · ${k === '全部' ? all.length : all.filter(x => x.kind === k).length}` })))}</div>
-        <div class="list q-list timeline-list">${list.map(x => `<button class="row${x === sel ? ' on' : ''}" type="button" data-set="csel=${c.esc(key(x))}" aria-current="${x === sel}">${c.sock(x.icon)}<div><strong>${c.esc(x.title)}</strong><small>${x.t > 0 ? c.esc(c.tickDate(x.t).replace(/^斗罗历\d+年/, '')) : ''}</small></div><span class="end">${days(c, x.t)}</span></button>`).join('')}</div>` : c.empty('timeline', mode === 'past' ? '还没有已发生的世界事件' : '还没有记录未来事件')}
+        <div class="list q-list timeline-list">${list.map(x => `<button class="row${x === sel ? ' on' : ''}" type="button" data-set="csel=${c.esc(key(x))}" aria-current="${x === sel}">${c.sock(x.icon)}<div><strong>${c.esc(x.title)}</strong><small>${x.t > 0 ? c.esc(c.tickDate(x.t).replace(/^斗罗历\d+年/, '')) : ''}</small></div><span class="end">${days(c, x.t, x.pend)}</span></button>`).join('')}</div>` : c.empty('timeline', mode === 'past' ? '还没有已发生的世界事件' : '还没有记录未来事件')}
       </div>`,
       core: sel ? `<div class="pad">
         <div class="q-title">${c.sock(sel.icon, 'gd')}<span class="chip">${sel.kind}</span><h2>${c.esc(sel.title)}</h2></div>
-        <div class="q-meters"><div class="q-meter"><div class="q-mh"><small>距今</small><b>${days(c, sel.t)}</b><em>${sel.t > 0 ? c.esc(c.tickDate(sel.t)) : ''}</em></div>${sel.t >= now ? c.bar('vp', Math.max(0, 1440 - (sel.t - now)), 1440) : ''}</div></div>
+        <div class="q-meters"><div class="q-meter"><div class="q-mh"><small>距今</small><b>${days(c, sel.t, sel.pend)}</b><em>${sel.t > 0 ? c.esc(c.tickDate(sel.t)) : ''}</em></div>${sel.t >= now ? c.bar('vp', Math.max(0, 1440 - (sel.t - now)), 1440) : ''}</div></div>
         ${nodeDetail(c, sel)}
         ${go ? `<button class="key-s" type="button" style="align-self:flex-start" data-go="${go[0]}" data-go-set="${c.esc([go[1], sel.ref?.id && sel.kind === '委托截止' ? `qsel=${sel.ref.id}` : '', sel.ref?.id && sel.kind === '任务截止' ? `qsel=${sel.ref.id}` : ''].filter(Boolean).join(';'))}"><i class="fa-solid fa-arrow-right"></i> 前往处理</button>` : ''}
       </div>` : `<div class="pad sparse">${c.empty('timeline', mode === 'past' ? '还没有已发生的世界事件' : '还没有记录未来事件')}</div>`,
