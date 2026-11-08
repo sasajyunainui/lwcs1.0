@@ -46183,8 +46183,8 @@
       }
       if (!结果守卫通过()) return null;
       syncPrivateArchiveLongPressTargets(liveSnapshot);
-      // 座舱不依赖旧仪表盘节点：每轮刷新都把最新根数据交给座舱
-      if (同步座舱(liveSnapshot)) 已写回真实卡片 = true;
+      // 座舱不依赖旧仪表盘节点：每轮刷新都把最新根数据交给座舱（本轮已走 renderLiveCards 的话那里已同步过，不再重复）
+      if (!需要渲染仪表盘 && 同步座舱(liveSnapshot)) 已写回真实卡片 = true;
       if (!结果守卫通过()) return null;
       maybeAutoOpenPendingSoulRingPreview(liveSnapshot, options);
 

@@ -187,9 +187,9 @@
       const root0 = ADP?.getRoot?.(); if (root0) S = root0;
       if (!S || !host) return false;
       // 先挂进宿主再初始化：窄屏判断、画布尺寸、滑块位置都要读真实宽度
-      if (!mounted) { state.view = ADP?.activeName?.() || S.sys?.玩家名 || ''; buildDom(); host.appendChild(ROOT); init(); mounted = true; loadPortraits(); api.start(); }
-      else if (ROOT.parentElement !== host) host.appendChild(ROOT);
-      api.relayout?.();
+      // 重排只在首次挂载与换宿主时做；同宿主的数据刷新不重排（读宽度会强制布局），宽度变化由座舱的 ResizeObserver 处理
+      if (!mounted) { state.view = ADP?.activeName?.() || S.sys?.玩家名 || ''; buildDom(); host.appendChild(ROOT); init(); mounted = true; loadPortraits(); api.start(); api.relayout?.(); }
+      else if (ROOT.parentElement !== host) { host.appendChild(ROOT); api.relayout?.(); }
       return true;
     },
     unmount() { if (ROOT.parentElement) ROOT.remove(); },
@@ -242,7 +242,15 @@
   let mobileNow = $('.cockpit').clientWidth <= 700;
   const syncMobile = () => { mobileNow = $('.cockpit').clientWidth <= 700; };
   addEventListener('resize', syncMobile);
-  new ResizeObserver(syncMobile).observe($('.cockpit'));
+  // 座舱宽度变化（窗口之外还有酒馆侧栏开合、聊天栏宽度设置）：下一帧整体重排一次；只看宽度，内容撑高不触发
+  let lastWidth = -1, relayoutQueued = false;
+  new ResizeObserver(entries => {
+    syncMobile();
+    const w = Math.round(entries[0]?.contentRect?.width || 0);
+    if (w === lastWidth || relayoutQueued) return;
+    lastWidth = w; relayoutQueued = true;
+    requestAnimationFrame(() => { relayoutQueued = false; api.relayout?.(); });
+  }).observe($('.cockpit'));
   const isMobile = () => mobileNow;
 
   const charge = (root, quiet = false) => {
@@ -355,9 +363,11 @@
     const { d, v } = currentView();
     $('#ck-coreTag').textContent = v.tag || d.tag || 'CORE';
     // 两翼宽度在切换瞬间一次到位：原先列宽过渡 0.7s，每帧整个座舱重排重绘（世界页两翼都收窄，最卡）
-    const fromA = { l: angle('l'), r: angle('r') };
+    // 翼板角度只给领域 / 子页切换的动画用；数据刷新不读（读 CSS 自定义属性会强制整页样式重算，酒馆页面很重）
+    const animated = how.kind === 'domain' || how.kind === 'page';
+    const fromA = animated ? { l: angle('l'), r: angle('r') } : null;
     applyWide(v); setFaceLabels(v);
-    const toA = { l: angle('l'), r: angle('r') };
+    const toA = animated ? { l: angle('l'), r: angle('r') } : null;
     if (how.kind === 'domain') {
       mount(v, put(host.c, v.core, { out: `translateX(${-how.dir * 9}%)`, in: `translateX(${how.dir * 9}%)` }));
       swing('l', wingHtml(v, 'l'), how.first ? 'none' : 'fold', fromA.l, toA.l);

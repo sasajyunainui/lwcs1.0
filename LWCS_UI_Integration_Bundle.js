@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:9b5911aa2387d893e28cb7953e95fd843ee60de1a144cb18875ff5a1b5acd0a2|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:d478878f8e0b11ed08043486a389e8a75da162123ee79d7ef882a92976d2a476|cockpit/pages-role.js:908d0a9a9e323fcc62e4abb109ea7203b82ec6fd107ec5a8a7c0c36cb436d9a2|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:94cbf9ca01a696d2305db0bdfecb124b932b80d922c6b4bbaea917e530047f71|cockpit/pages-ability.js:f49d2d49b995ba07f84ff57e3dfe3fca1457b61d53541e0c2cb229ce63b3b5f8|cockpit/pages-supplies.js:6bb2f0535c71419f26784a612c3d84fa59722a816128d909b2b2db7f74961eb5|cockpit/pages-map.js:bb5b1f07a1035a0294cdb32fbc61c97c36a49946297500421647eee91fe093da|cockpit/pages-world.js:53d47819477ad0b7398941a27519ecbf1e668b1462a013f0601efb57f91507d5|cockpit/pages-terminal.js:4839b10b0361497898b513d151fff284614a4bb763f17662ea6857e4428cce41 */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:2ac986b5bd7dce12da9d32a7e996deaab52357bcddb30f8efed5f78798187d17|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:e9bc16689997bbf849693f257c91ba257a2839b110635ab8c179e175552f95e3|cockpit/pages-role.js:908d0a9a9e323fcc62e4abb109ea7203b82ec6fd107ec5a8a7c0c36cb436d9a2|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:94cbf9ca01a696d2305db0bdfecb124b932b80d922c6b4bbaea917e530047f71|cockpit/pages-ability.js:f49d2d49b995ba07f84ff57e3dfe3fca1457b61d53541e0c2cb229ce63b3b5f8|cockpit/pages-supplies.js:6bb2f0535c71419f26784a612c3d84fa59722a816128d909b2b2db7f74961eb5|cockpit/pages-map.js:bb5b1f07a1035a0294cdb32fbc61c97c36a49946297500421647eee91fe093da|cockpit/pages-world.js:53d47819477ad0b7398941a27519ecbf1e668b1462a013f0601efb57f91507d5|cockpit/pages-terminal.js:4839b10b0361497898b513d151fff284614a4bb763f17662ea6857e4428cce41 */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -47797,8 +47797,8 @@
       }
       if (!结果守卫通过()) return null;
       syncPrivateArchiveLongPressTargets(liveSnapshot);
-      // 座舱不依赖旧仪表盘节点：每轮刷新都把最新根数据交给座舱
-      if (同步座舱(liveSnapshot)) 已写回真实卡片 = true;
+      // 座舱不依赖旧仪表盘节点：每轮刷新都把最新根数据交给座舱（本轮已走 renderLiveCards 的话那里已同步过，不再重复）
+      if (!需要渲染仪表盘 && 同步座舱(liveSnapshot)) 已写回真实卡片 = true;
       if (!结果守卫通过()) return null;
       maybeAutoOpenPendingSoulRingPreview(liveSnapshot, options);
 
@@ -74069,9 +74069,9 @@ ${播报文本}
       const root0 = ADP?.getRoot?.(); if (root0) S = root0;
       if (!S || !host) return false;
       // 先挂进宿主再初始化：窄屏判断、画布尺寸、滑块位置都要读真实宽度
-      if (!mounted) { state.view = ADP?.activeName?.() || S.sys?.玩家名 || ''; buildDom(); host.appendChild(ROOT); init(); mounted = true; loadPortraits(); api.start(); }
-      else if (ROOT.parentElement !== host) host.appendChild(ROOT);
-      api.relayout?.();
+      // 重排只在首次挂载与换宿主时做；同宿主的数据刷新不重排（读宽度会强制布局），宽度变化由座舱的 ResizeObserver 处理
+      if (!mounted) { state.view = ADP?.activeName?.() || S.sys?.玩家名 || ''; buildDom(); host.appendChild(ROOT); init(); mounted = true; loadPortraits(); api.start(); api.relayout?.(); }
+      else if (ROOT.parentElement !== host) { host.appendChild(ROOT); api.relayout?.(); }
       return true;
     },
     unmount() { if (ROOT.parentElement) ROOT.remove(); },
@@ -74124,7 +74124,15 @@ ${播报文本}
   let mobileNow = $('.cockpit').clientWidth <= 700;
   const syncMobile = () => { mobileNow = $('.cockpit').clientWidth <= 700; };
   addEventListener('resize', syncMobile);
-  new ResizeObserver(syncMobile).observe($('.cockpit'));
+  // 座舱宽度变化（窗口之外还有酒馆侧栏开合、聊天栏宽度设置）：下一帧整体重排一次；只看宽度，内容撑高不触发
+  let lastWidth = -1, relayoutQueued = false;
+  new ResizeObserver(entries => {
+    syncMobile();
+    const w = Math.round(entries[0]?.contentRect?.width || 0);
+    if (w === lastWidth || relayoutQueued) return;
+    lastWidth = w; relayoutQueued = true;
+    requestAnimationFrame(() => { relayoutQueued = false; api.relayout?.(); });
+  }).observe($('.cockpit'));
   const isMobile = () => mobileNow;
 
   const charge = (root, quiet = false) => {
@@ -74237,9 +74245,11 @@ ${播报文本}
     const { d, v } = currentView();
     $('#ck-coreTag').textContent = v.tag || d.tag || 'CORE';
     // 两翼宽度在切换瞬间一次到位：原先列宽过渡 0.7s，每帧整个座舱重排重绘（世界页两翼都收窄，最卡）
-    const fromA = { l: angle('l'), r: angle('r') };
+    // 翼板角度只给领域 / 子页切换的动画用；数据刷新不读（读 CSS 自定义属性会强制整页样式重算，酒馆页面很重）
+    const animated = how.kind === 'domain' || how.kind === 'page';
+    const fromA = animated ? { l: angle('l'), r: angle('r') } : null;
     applyWide(v); setFaceLabels(v);
-    const toA = { l: angle('l'), r: angle('r') };
+    const toA = animated ? { l: angle('l'), r: angle('r') } : null;
     if (how.kind === 'domain') {
       mount(v, put(host.c, v.core, { out: `translateX(${-how.dir * 9}%)`, in: `translateX(${how.dir * 9}%)` }));
       swing('l', wingHtml(v, 'l'), how.first ? 'none' : 'fold', fromA.l, toA.l);
