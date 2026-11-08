@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:6b481875f040450063d17bf37035620b49d268944fac46263b4e04b542d536fc|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:35fb9696d1b8eb596cc2e306ac2c2b4b6cfe8cb578c57102ba75ef7b0b17afaa|cockpit/pages-role.js:41a8f24233bd638ee9e52dd8c611997aecedb9a6807f1bff1f97d955b87d3a3c|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:d35728afb9ae39fa0c94f77b83df40149167487d7a8ec69072c495acecaf8e19|cockpit/pages-ability.js:15966e44f0f94866dcc59113c0ff577fc2cdca45196f3c16daf91f3eb59084a6|cockpit/pages-supplies.js:bfda775de1b4e3d3c2f253a11ae1d7b3f263ddc35d68df165df82e7a4c6ad43f|cockpit/pages-map.js:161545076c81469f294f8462bb581ca2c990cd078f5075b2c88cc030d526bbd4|cockpit/pages-world.js:ca5dc37c07a41d3603ee2c089f84171de2b47453d125868dc3dc361fa9449723|cockpit/pages-terminal.js:4d51455d552329d8cada13b0f1d4336d30962e5d7dae64ae93d9a8bc0a9395a6|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:289fe455da8dfe0c8f42e39afaaa254d1c724b00f602e5094ca7626b17151097|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:6b481875f040450063d17bf37035620b49d268944fac46263b4e04b542d536fc|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:ac85d30edb6ece33524f90a1d2ac7c9bfb845c497dc9b13be0564fbcb8d0db03|cockpit/pages-role.js:e90660ff7b8dbc3d792374bbb647f7f4b4841df658805de32f0bc042e54965ab|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:d35728afb9ae39fa0c94f77b83df40149167487d7a8ec69072c495acecaf8e19|cockpit/pages-ability.js:5da4da4cf9dee034e8246e693a2d73aa7e472dc6487cecaa453bb25b576ceefc|cockpit/pages-supplies.js:bfda775de1b4e3d3c2f253a11ae1d7b3f263ddc35d68df165df82e7a4c6ad43f|cockpit/pages-map.js:161545076c81469f294f8462bb581ca2c990cd078f5075b2c88cc030d526bbd4|cockpit/pages-world.js:ca5dc37c07a41d3603ee2c089f84171de2b47453d125868dc3dc361fa9449723|cockpit/pages-terminal.js:4d51455d552329d8cada13b0f1d4336d30962e5d7dae64ae93d9a8bc0a9395a6|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:289fe455da8dfe0c8f42e39afaaa254d1c724b00f602e5094ca7626b17151097|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -74649,6 +74649,7 @@ ${播报文本}
     <div class="readout">
         <span class="door" data-go="page-map/place" role="link" tabindex="0" title="查看当地"><i class="fa-solid fa-location-dot"></i> <span id="ck-rLoc"></span></span>
         <span class="num"><i class="fa-regular fa-clock"></i> <span id="ck-rTime"></span></span>
+        <span class="pends" id="ck-rPend" aria-label="待处理"></span>
         <span class="res" id="ck-rRes" aria-label="随行资源"></span>
         <div class="tick" aria-label="系统播报"><span><b>播报</b><span id="ck-rTick"></span></span></div>
     </div>
@@ -75176,6 +75177,7 @@ ${播报文本}
 
   // ---------- 事件委托 ----------
   track.addEventListener('click', e => { const t = e.target.closest('.tab'); if (t) switchDomain(t.dataset.tab); });
+  $('.cockpit').addEventListener('click', e => { const r = e.target.closest('[data-route]'); if (r) C.route({ to: r.dataset.route }); });
   $('#ck-keys').addEventListener('click', e => { const k = e.target.closest('.key'); if (k) switchPage(k.dataset.page); });
   $('.cockpit').addEventListener('click', e => {
     if (e.target.closest('.ie-edit')) return;
@@ -75323,6 +75325,9 @@ ${播报文本}
     $('#ck-rLoc').textContent = String(me.状态?.位置 || '').replace(/^斗罗大陆-/, '').replace(/-/g, ' · ');
     $('#ck-rTime').textContent = S.world.时间._calendar || tickDate(S.world.时间.tick);
     $('#ck-rTick').textContent = S.sys.系统播报 || '暂无播报'; $('.readout .tick').title = S.sys.系统播报 || '';
+    // 待处理（原项目「待处理能力」）：待生成的魂环、待确认的新技能，点了直接去处理
+    const pend = ADP?.pending?.() || {}, ring = pend.soulRing, sd = pend.skillDesign;
+    $('#ck-rPend').innerHTML = [ring ? `<button class="pend" type="button" data-route="ringPick" title="${esc([ring.charName, ring.spiritName, `第 ${ring.ringIndex} 魂环`].filter(Boolean).join(' · '))}"><i class="fa-solid fa-circle-plus"></i>待生成魂环</button>` : '', sd ? `<button class="pend" type="button" data-route="skillConfirm" title="${esc([sd.charName, sd.skillName].filter(Boolean).join(' · '))}"><i class="fa-solid fa-wand-sparkles"></i>新技能待确认</button>` : ''].join('');
     const m = [['hp', st.HP, st.HP上限], ['sp', st.魂力, st.魂力上限], ['vp', st.体力, st.体力上限], ['mp', st.精神力, st.精神力上限]];
     $('#ck-rRes').innerHTML = m.map(([c, a, b]) => `<span class="mini ${c}" title="${a} / ${b}"><i style="width:${b > 0 ? Math.min(100, a / b * 100) : 0}%"></i></span>`).join('');
   };
@@ -75427,7 +75432,7 @@ ${播报文本}
         <div class="id-row">${avatarBlock(c)}
           <div class="who">
             <div class="name-line"><h1 class="name"${(pk => pk ? ` data-longpress="${c.esc(pk)}" data-longpress-delay="600"` : '')(window.COCKPIT.privateArchiveKey?.())}>${c.esc(c.name)}</h1>${genderMark(st.性别) || c.num(st.年龄) ? `<span class="gender ${st.性别 === '女' ? 'f' : st.性别 === '男' ? 'm' : ''}" title="${c.esc(st.性别 || '')} · ${c.num(st.年龄)} 岁">${genderMark(st.性别)}<b>${c.ed(c.num(st.年龄) || '?', c.P('属性', '年龄'), { kind: 'number', integer: true, min: 0, raw: c.num(st.年龄) })}</b><small>岁</small></span>` : ''}</div>
-            <div class="title-line">${c.esc(c.rankTitle(st.等级))} · ${c.ed(st.精神境界 || '灵元境', c.P('属性', '精神境界'), { kind: 'enum', options: ['灵元境', '灵通境', '灵海境', '灵渊境', '灵域境', '神元境'] })}</div>
+            <div class="title-line">Lv.${c.ed(c.num(st.等级), c.P('属性', '等级'), { kind: 'number', integer: true, min: 0, raw: c.num(st.等级) })} ${c.esc(c.rankTitle(st.等级))} · ${c.ed(st.精神境界 || '灵元境', c.P('属性', '精神境界'), { kind: 'enum', options: ['灵元境', '灵通境', '灵海境', '灵渊境', '灵域境', '神元境'] })}</div>
             <div class="plaques">${!c.blank(c.ch.社交?.主身份) ? `<span class="plq">${c.ed(c.ch.社交.主身份, c.P('社交', '主身份'))}</span>` : ''}${st.邪魂师 ? '<span class="plq" style="--pc:#ff4d6a">邪魂师</span>' : ''}</div>
           </div>
         </div>
@@ -75502,7 +75507,7 @@ ${播报文本}
               ${(a.特殊特征 || []).map(t => `<span class="plq gold">${c.esc(t)}</span>`).join('')}
             </div>
             ${heightRuler(c, a.身高, c.P('外貌', '身高'))}
-            ${wear.length ? `<section class="sec"><h3>穿搭<span class="en">Outfit</span></h3><div class="wear">${wear.map(([ic, l, v]) => `<div class="wear-row">${c.sock(ic)}<small>${l}</small><b>${c.ed(v, c.P('穿搭', l))}</b></div>`).join('')}</div></section>` : ''}
+            ${wear.length ? `<section class="sec"><h3>穿搭<span class="en">Outfit</span></h3><div class="wear">${wear.map(([ic, l, v]) => `<div class="wear-row">${c.sock(ic)}<small>${l}</small><b>${c.ed(v, c.P('穿搭', l))}</b></div>`).join('')}</div><p class="prose">${c.ed(c.blank(w.描述) ? '未记录整体描述' : w.描述, c.P('穿搭', '描述'), { kind: 'text', raw: c.blank(w.描述) ? '' : w.描述 })}</p></section>` : ''}
           </div>
           <div class="dossier-col">
             <section class="sec"><h3>长相<span class="en">Looks</span></h3><p class="narr">${c.ed(c.blank(a.长相描述) ? '未记录' : a.长相描述, c.P('外貌', '长相描述'), { kind: 'text', raw: c.blank(a.长相描述) ? '' : a.长相描述 })}</p></section>
@@ -77610,6 +77615,15 @@ ${播报文本}
   const itemDef = (c, name) => { if (name) for (const [k, g] of c.entries(c.S.物品)) if (g && typeof g === 'object' && g[name] && typeof g[name] === 'object') return [k, g[name]]; return ['', null]; };
   const SOURCE_GROUPS = ['魂环魂技', '独立魂环魂技', '自创魂技', '武魂融合技', '魂骨附带', '装备技能', '血脉散技', '血脉特性', '血脉魂环', '功法', '复制效果'];
   const BLOOD_CHIP = { 血脉散技: '主动', 血脉特性: '被动', 血脉魂环: '环技' };
+  // 武魂属性体系与可调用元素的选项（同原项目 SPIRIT_ATTRIBUTE_SYSTEM_OPTIONS / SPIRIT_ATTRIBUTE_TOKEN_OPTIONS / WUXING_ATTRIBUTE_TOKEN_OPTIONS）
+  const SOUL_SYSTEMS = ['无', '元素', '五行'];
+  const ELEMENTS = ['金', '木', '水', '火', '土', '风', '雷', '冰', '光', '暗', '精神', '空间', '时间', '创造', '毁灭'];
+  const WUXING = ['金', '木', '水', '火', '土'];
+  document.addEventListener('click', e => {
+    const t = e.target.closest('[data-callable]'); if (!t) return;
+    const { path, x, on } = JSON.parse(t.dataset.callable), next = on.includes(x) ? on.filter(v => v !== x) : [...on, x];
+    window.COCKPIT.write([{ path, value: next.length ? next : ['无'] }]);
+  });
   // 结构化效果：读 _效果数组，把「原型 / 目标 / 数值 / 持续 / 条件分支」变成图标行，原文折叠
   const FX = {
     资源变化: e => ({ icon: String(e.资源 || '').includes('魂力') ? 'fire-flame-curved' : 'heart-pulse', title: `${String(e.数值).startsWith('-') ? '削减' : '恢复'}${e.资源 || '资源'}` }),
@@ -77740,7 +77754,6 @@ ${播报文本}
     const pool = c.num(c.st.魂力);
     const pendRing = c.ch.状态?.待选魂环 && typeof c.ch.状态.待选魂环 === 'object' ? c.ch.状态.待选魂环 : null;
     const bl = c.ch.血脉之力 || {}, blOn = !c.blank(bl.血脉);
-    const tags = [soul.系别, !c.blank(soul.属性体系) ? '属性 · ' + soul.属性体系 : '', ((soul.可调用元素 || []).filter(x => x && x !== '无').join('、')) ? '可调用 · ' + soul.可调用元素.filter(x => x && x !== '无').join('、') : ''].filter(Boolean);
     const skills = [...soul.spirits.flatMap(p => p.rings.map(r => ({ p, r, sk: r.skills[0] }))), ...(soul.direct || []).map(r => ({ p: null, r, sk: r.skills[0] }))].filter(x => x.sk);
     const skKey = ({ p, r, sk }) => c.esc(p ? `${soul.slot}/${p.slot}/${r.slot}/${sk.slot}` : `${soul.slot}/${r.slot}/${sk.slot}`);
     return {
@@ -77748,12 +77761,13 @@ ${播报文本}
       left: `<div class="pad">${c.head('fire', '武魂', 'Martial Souls', 'gd')}
         <div class="list">${c.souls.map((s, i) => `<button class="row${i === idx ? ' on' : ''}" type="button" data-set="soul=${i}" aria-current="${i === idx}">${c.sock('fire', i === idx ? 'gd' : '')}<div><strong>${c.esc(s.表象名称)}</strong><small>${c.esc([s.slot, s.系别, `${s.rings.length} 环`].filter(Boolean).join(' · '))}</small></div><span></span></button>`).join('')}</div>
         <section class="sec grow"><h3>魂技<span class="en">${skills.length}</span>${c.hint('悬停查看魂技卡，点击钉住；完整档案与编辑在「典籍」。')}</h3>
-        ${skills.length ? `<div class="list q-list">${skills.map(x => `<button class="row" type="button" data-inspect="sk:${skKey(x)}">${c.ringMedal(x.r, x.r.slot.replace(/\D/g, ''))}<div><strong>${c.esc(x.sk.魂技名)}</strong><small>${c.yearTier(x.r.年限)} · ${costText(c, x.sk.消耗)} · 前摇 ${c.fmt(x.sk.前摇 || 0)}</small></div><i class="fa-solid fa-chevron-right"></i></button>`).join('')}</div>` : '<span class="lbl">尚未附环</span>'}</section>
+        ${skills.length ? `<div class="list q-list">${skills.map(x => `<button class="row" type="button" data-inspect="sk:${skKey(x)}">${c.ringMedal(x.r, x.r.slot.replace(/\D/g, ''), true)}<div><strong>${c.esc(x.sk.魂技名)}</strong><small>${c.yearTier(x.r.年限)} · ${costText(c, x.sk.消耗)} · 前摇 ${c.fmt(x.sk.前摇 || 0)}</small></div><i class="fa-solid fa-chevron-right"></i></button>`).join('')}</div>` : '<span class="lbl">尚未附环</span>'}</section>
       </div>`,
       core: `<div class="pad detail martial-core">
-        <div class="q-title">${c.sock('fire', 'gd')}<span class="chip">${c.esc(soul.slot)}</span><h2>${c.esc(soul.表象名称)}</h2></div>
+        <div class="q-title">${c.sock('fire', 'gd')}<span class="chip">${c.esc(soul.slot)}</span><h2>${c.ed(soul.表象名称, [...c.P(soul.slot), '表象名称'])}</h2></div>
         ${pendRing ? `<div class="banner"><i class="fa-solid fa-circle-plus"></i><div><strong>有一枚待生成的魂环</strong><small>${c.esc(pending ? [pending.spiritName, `第 ${pending.ringIndex} 魂环`, `候选 ${pending.candidates.length} 只`, pending.status !== '待选择' ? pending.status : ''].filter(Boolean).join(' · ') : Object.entries(pendRing).slice(0, 3).map(([k, v]) => `${k} ${typeof v === 'object' ? '' : v}`).join(' · '))}</small></div>${pending ? '<button class="key-s" type="button" data-set="ringPick=1">选择魂灵生成</button>' : ''}<button class="key-s" type="button" data-confirm="暂缓生成这枚魂环" data-act='{"name":"ring","op":"defer"}'>暂不生成</button></div>` : ''}
-        ${tags.length ? `<div class="plaques">${tags.map((t, i) => `<span class="plq${i ? ' steel' : ''}">${c.esc(t)}</span>`).join('')}</div>` : ''}
+        <div class="plaques"><span class="plq">${c.ed(c.blank(soul.系别) ? '未定系别' : soul.系别, [...c.P(soul.slot), '系别'], { raw: c.blank(soul.系别) ? '' : soul.系别 })}</span><span class="plq steel">属性 · ${c.ed(soul.属性体系 || '无', [...c.P(soul.slot), '属性体系'], { kind: 'enum', options: SOUL_SYSTEMS })}</span></div>
+        ${soul.属性体系 && soul.属性体系 !== '无' ? (on => `<div class="chips-row callable"><span class="lbl">可调用${c.hint('点选这个武魂能调用的元素。')}</span>${(soul.属性体系 === '五行' ? WUXING : ELEMENTS).map(x => `<button class="key-s mini${on.includes(x) ? ' on' : ''}" type="button" aria-pressed="${on.includes(x)}" data-callable="${c.esc(JSON.stringify({ path: [...c.P(soul.slot), '可调用元素'], x, on }))}">${c.esc(x)}</button>`).join('')}</div>`)((soul.可调用元素 || []).filter(x => x && x !== '无')) : ''}
         <p class="narr">${c.ed(c.blank(soul.描述) ? '未记录' : soul.描述, [...c.P(soul.slot), '描述'], { kind: 'text', raw: c.blank(soul.描述) ? '' : soul.描述 })}</p>
         ${soul.rings.length ? `<div class="soul-card" data-scan data-float="r"><div class="soul-stage">${c.ringStage(soul.rings, r => { const p = soul.spirits.find(x => x.rings.includes(r)), sk = r.skills[0]; return sk && (p || r.independent) ? `data-inspect="sk:${skKey({ p, r, sk })}"` : ''; })}</div></div>`
           : `<div class="soul-card"><div class="soul-stage"><div class="soul-empty"><i></i><span>尚未附环</span></div></div><small class="lbl">下一魂环于 ${Math.floor(c.num(c.st.等级) / 10 + 1) * 10} 级开放</small></div>`}
@@ -77763,7 +77777,7 @@ ${播报文本}
         ${c.head('fire-flame-curved', '施放次数', 'Casts', 'sp')}
         <div class="need"><span>当前魂力</span><b>${c.fmt(pool)} / ${c.fmt(c.st.魂力上限)}</b></div>
         ${skills.length ? `<div class="casts">${skills.map(x => { const cost = typeof x.sk.消耗 === 'object' ? c.num(x.sk.消耗?.魂力) : 0; return `<button class="cast" type="button" data-inspect="sk:${skKey(x)}"><div><strong>${c.esc(x.sk.魂技名)}</strong><small>${cost ? `每次 ${c.fmt(cost)} 魂力` : '无魂力消耗'}</small></div><b>×${cost ? Math.floor(pool / cost) : '∞'}</b></button>`; }).join('')}</div>` : '<span class="lbl">尚无可施放的魂技</span>'}
-        ${blOn ? `<div class="groove"></div>${c.head('droplet', bl.血脉, 'Bloodline', 'hp')}${c.kv([['解封层数', c.fmt(bl.解封层数 || 0)], ['气血魂核', c.esc(bl.核心 || '未凝聚')], ['生命之火', bl.生命之火 ? '已点燃' : '未点燃']])}${allSkills(c).filter(s => BLOOD_CHIP[s.group]).map(s => `<button class="row" type="button" data-inspect="sk:${c.esc(s.key)}"><span class="chip s">${BLOOD_CHIP[s.group]}</span><div><strong>${c.esc(s.魂技名)}</strong></div><i class="fa-solid fa-chevron-right"></i></button>`).join('')}` : ''}
+        ${blOn ? `<div class="groove"></div>${c.head('droplet', bl.血脉, 'Bloodline', 'hp')}${c.kv([['血脉', c.ed(bl.血脉, c.P('血脉之力', '血脉'))], ['解封层数', c.ed(c.fmt(bl.解封层数 || 0), c.P('血脉之力', '解封层数'), { kind: 'number', integer: true, min: 0, raw: c.num(bl.解封层数) })], ['气血魂核', c.ed(bl.核心 || '未凝聚', c.P('血脉之力', '核心'), { raw: bl.核心 || '' })], ['生命之火', bl.生命之火 ? '已点燃' : '未点燃']])}${allSkills(c).filter(s => BLOOD_CHIP[s.group]).map(s => `<button class="row" type="button" data-inspect="sk:${c.esc(s.key)}"><span class="chip s">${BLOOD_CHIP[s.group]}</span><div><strong>${c.esc(s.魂技名)}</strong></div><i class="fa-solid fa-chevron-right"></i></button>`).join('')}` : ''}
       </div>`,
     };
   };
@@ -77778,7 +77792,7 @@ ${播报文本}
       tag: 'CORE · CODEX',
       left: `<div class="pad">${c.head('book', '典籍', 'Codex', 'gd')}
         <div class="pick-row">${c.pick('skg', grp, [{ value: '全部', label: `全部 · ${all.length}` }, ...have.map(g => ({ value: g, label: `${g} · ${all.filter(s => s.group === g).length}` }))])}</div>
-        ${shown.length ? `<div class="list q-list">${shown.map(s => `<button class="row${s === sel ? ' on' : ''}" type="button" data-set="sksel=${c.esc(s.key)}" aria-current="${s === sel}">${s.ring ? c.ringMedal(s.ring, s.ring.slot.replace(/\D/g, '')) : c.sock(s.group === '装备技能' ? 'shield-halved' : s.group === '魂骨附带' ? 'bone' : 'book')}<div><strong>${c.esc(s.魂技名)}</strong><small>${c.esc(s.from)}</small></div><span></span></button>`).join('')}</div>` : c.empty('book', '还没有任何技能', '附环、装备或自创后会出现在这里')}
+        ${shown.length ? `<div class="list q-list">${shown.map(s => `<button class="row${s === sel ? ' on' : ''}" type="button" data-set="sksel=${c.esc(s.key)}" aria-current="${s === sel}">${s.ring ? c.ringMedal(s.ring, s.ring.slot.replace(/\D/g, ''), true) : c.sock(s.group === '装备技能' ? 'shield-halved' : s.group === '魂骨附带' ? 'bone' : 'book')}<div><strong>${c.esc(s.魂技名)}</strong><small>${c.esc(s.from)}</small></div><span></span></button>`).join('')}</div>` : c.empty('book', '还没有任何技能', '附环、装备或自创后会出现在这里')}
       </div>`,
       core: sel ? `<div class="pad detail">${skillDetail(c, sel, false, true)}</div>` : `<div class="pad sparse">${c.empty('book', '还没有任何技能')}</div>`,
       right: `<div class="pad">
