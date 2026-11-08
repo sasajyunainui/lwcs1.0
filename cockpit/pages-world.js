@@ -135,7 +135,7 @@
         <section class="sec"><h3>简介<span class="en">Profile</span></h3><p class="prose">${c.esc(desc || '没有收录简介')}</p></section>
       </div>` : `<div class="pad sparse">${c.empty('chess-rook', '没有势力资料')}</div>`,
       right: `<div class="pad">${c.head('handshake', '关系', 'Relations')}
-        ${me ? `<div class="spirit-card">${c.sock('id-badge', 'gd')}<div><strong>${c.esc(me.身份 || '成员')}</strong><small>权限级 ${c.fmt(me.权限级 || 0)}</small></div><span class="q-state">所属</span></div>` : ''}
+        ${me ? `<div class="relic-card">${c.sock('id-badge', 'gd')}<div><strong>${c.esc(me.身份 || '成员')}</strong><small>权限级 ${c.fmt(me.权限级 || 0)}</small></div><span class="q-state">所属</span></div>` : ''}
         ${rel.length ? `<div class="list q-list">${rel.map(([k, v]) => `<div class="row" style="cursor:default"><span class="chip">${c.esc(typeof v === 'object' ? v.态度 || v.关系 || '—' : v)}</span><div><strong>${c.esc(k)}</strong>${editable ? '' : '<small>内置资料</small>'}</div><span></span></div>`).join('')}</div>` : c.empty('handshake', '没有记录对外态度')}
         ${me ? donate(c, f.name) : ''}
       </div>`,
