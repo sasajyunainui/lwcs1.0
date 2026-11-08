@@ -87,6 +87,32 @@
     };
   };
 
+  // 捐献（原项目「我的阵营」）：只对已加入的势力；物品从背包选，估值与结算货币由桥接按原算法给出，提交后交给叙事受理
+  const donate = (c, fac) => {
+    const ui = c.state.ui, bag = c.entries(c.ch.背包).filter(([, v]) => v && typeof v === 'object');
+    if (!bag.length) return `<div class="groove"></div>${c.head('hand-holding-heart', '捐献', 'Donate')}<span class="lbl">背包里没有可捐献的物品</span>`;
+    const item = bag.some(([n]) => n === ui.donItem) ? ui.donItem : bag[0][0], qty = Math.max(1, Math.floor(Number(ui.donQty) || 1));
+    const p = c.preview('donate', { faction: fac, item, qty }) || {};
+    return `<div class="groove"></div>${c.head('hand-holding-heart', '捐献', 'Donate')}
+      <div class="dz2-grid"><div class="dzf wide"><span class="dzf-l">物品</span>${c.pick('donItem', item, bag.map(([n]) => n))}</div>
+      <div class="dzf"><span class="dzf-l">数量</span><input type="number" min="1" step="1" data-don-qty value="${qty}" aria-label="捐献数量"></div>
+      <div class="dzf"><span class="dzf-l">持有</span><b>${c.fmt(p.owned ?? 0)}</b></div></div>
+      ${p.ok ? c.kv([['预计获得', `${c.fmt(p.points)} ${c.esc(p.label)}`]]) : ''}
+      <button class="cta" type="button" data-don-submit="${c.esc(fac)}"><i class="fa-solid fa-hand-holding-heart"></i>提交捐献</button>`;
+  };
+  document.addEventListener('input', e => { const t = e.target.closest?.('[data-don-qty]'); if (t) window.COCKPIT.ctx().state.ui.donQty = Math.max(1, Math.floor(Number(t.value) || 1)); });
+  document.addEventListener('change', e => { if (e.target.closest?.('[data-don-qty]')) window.COCKPIT.refreshSoon(); });
+  document.addEventListener('click', e => {
+    const t = e.target.closest('[data-don-submit]'); if (!t) return;
+    const C = window.COCKPIT, ui = C.ctx().state.ui, fac = t.dataset.donSubmit, bag = Object.keys(C.ctx().ch?.背包 || {});
+    const item = bag.includes(ui.donItem) ? ui.donItem : bag[0], qty = Math.max(1, Math.floor(Number(ui.donQty) || 1));
+    const p = C.preview('donate', { faction: fac, item, qty }) || {};
+    delete t.dataset.blocked;
+    if (!p.ok) { t.dataset.blocked = p.reason || '现在不能捐献'; delete t.dataset.act; return; }
+    t.dataset.confirm = `向${fac}捐献「${item}」×${qty}，预计获得 ${p.points} ${p.label}`;
+    t.dataset.act = JSON.stringify({ name: 'donate', faction: fac, item, qty });
+  }, true);
+
   // 势力：左翼 = 势力列表（类型筛选，我所属的置顶），主屏 = 选中势力的档案，右翼 = 对外态度与我在其中的身份
   const factionView = c => {
     const all = factions(c), mineMap = c.ch.社交?.势力 || {}, types = [...new Set(all.map(f => f.类型 || '其他'))];
@@ -111,6 +137,7 @@
       right: `<div class="pad">${c.head('handshake', '关系', 'Relations')}
         ${me ? `<div class="spirit-card">${c.sock('id-badge', 'gd')}<div><strong>${c.esc(me.身份 || '成员')}</strong><small>权限级 ${c.fmt(me.权限级 || 0)}</small></div><span class="q-state">所属</span></div>` : ''}
         ${rel.length ? `<div class="list q-list">${rel.map(([k, v]) => `<div class="row" style="cursor:default"><span class="chip">${c.esc(typeof v === 'object' ? v.态度 || v.关系 || '—' : v)}</span><div><strong>${c.esc(k)}</strong>${editable ? '' : '<small>内置资料</small>'}</div><span></span></div>`).join('')}</div>` : c.empty('handshake', '没有记录对外态度')}
+        ${me ? donate(c, f.name) : ''}
       </div>`,
     };
   };

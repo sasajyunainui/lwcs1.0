@@ -38,7 +38,7 @@
       const sk = on.flatMap(s => gearSkills(c, g.装配[s]).map(([n, x]) => ({ key: `装备/魂导器/装配/${s}/${n}`, n, s: x, from: s })));
       return `<div class="pad detail">
         <div class="q-title">${c.sock('microchip', 'gd')}<span class="chip">魂导器</span><h2>魂导器装配</h2><span class="q-state">${on.length} / ${all.length}</span></div>
-        <section class="sec"><h3>装配位<span class="en">Mounts</span></h3><div class="part-grid">${all.map(s => { const x = g.装配?.[s]; return `<div class="pt${filled(x?.名称) ? ' on' : ''}"><b>${s}</b><span>${filled(x?.名称) ? c.ed(x.名称, [...gp, '装配', s, '名称']) : '空'}</span></div>`; }).join('')}</div></section>
+        <section class="sec"><h3>装配位<span class="en">Mounts</span></h3><div class="part-grid">${all.map(s => { const x = g.装配?.[s]; return `<div class="pt${filled(x?.名称) ? ' on' : ''}"><b>${s}</b><span>${filled(x?.名称) ? c.ed(x.名称, [...gp, '装配', s, '名称']) : '空'}</span>${filled(x?.名称) ? `<button class="pt-x" type="button" aria-label="卸下" data-hint="卸下放回背包" data-confirm="${c.esc(`卸下${s}的「${x.名称}」，放回背包`)}" data-act="${c.esc(JSON.stringify({ name: 'item', op: 'unequip', slot: '魂导器', mount: s, item: x.名称 }))}"><i class="fa-solid fa-arrow-down"></i></button>` : ''}</div>`; }).join('')}</div></section>
         <section class="sec"><h3>装备技能<span class="en">${sk.length}</span></h3>${skillRows(c, sk, '已装配的魂导器没有附带技能')}</section>
       </div>`;
     }
@@ -140,12 +140,25 @@
       <div class="act-row">${o.equipable ? `<button class="key-s" type="button" data-confirm="装备 ${c.esc(name)}" ${act({ op: 'equip' })}><i class="fa-solid fa-shield-halved"></i> 装备</button>` : ''}${o.total > 1 ? `<button class="key-s danger" type="button" data-confirm="丢弃 1 件 ${c.esc(name)}" ${act({ op: 'discard', mode: 'one' })}><i class="fa-solid fa-minus"></i> 丢弃 1 件</button>` : ''}<button class="key-s danger" type="button" data-confirm="${o.total > 1 ? `全部丢弃 ${c.esc(name)}（${o.total} 件）` : `丢弃 ${c.esc(name)}`}" ${act({ op: 'discard', mode: 'all' })}><i class="fa-solid fa-trash"></i> ${o.total > 1 ? '全部丢弃' : '丢弃'}</button></div></div>`;
   };
 
+  const nurture = (c, eq) => {
+    const info = c.preview('nurture') || {}, cur = info.current || '无';
+    const cards = ['斗铠', '机甲'].filter(k => filled(eq[k]?.名称) || filled(eq[k]?.型号)).map(k => {
+      const p = info[k] || {}, on = cur === k, why = p.pauseReason || '';
+      const sub = p.stageLabel && p.stageLabel !== '无可用阶段' ? `${p.stageLabel} 级` : '没有可温养的阶段';
+      const btn = on
+        ? `<button class="key-s" type="button" data-confirm="停止温养${k}" data-act="${c.esc(JSON.stringify({ name: 'nurture', target: k }))}"><i class="fa-solid fa-pause"></i> 停止</button>`
+        : p.canStart ? `<button class="key-s" type="button" data-confirm="开始温养${k}${cur !== '无' ? `（${cur}的温养会停下）` : ''}" data-act="${c.esc(JSON.stringify({ name: 'nurture', target: k }))}"><i class="fa-solid fa-fire"></i> 温养</button>`
+        : `<span class="cta-wrap" data-hint="${c.esc(why || '当前条件不足')}"><button class="key-s" type="button" disabled><i class="fa-solid fa-fire"></i> 温养</button></span>`;
+      return `<div class="q-meter"><div class="q-mh"><small>${k}${on ? ' · 温养中' : ''}</small><b>${p.required ? `${Math.floor(p.percent || 0)}%` : '—'}</b><em>${c.esc(on && why ? '暂停：' + why : sub)}</em></div>${p.required ? c.bar('vp', p.progress, p.required) : ''}<div class="act-row">${btn}</div></div>`;
+    });
+    return cards.length ? cards.join('') : '<span class="lbl">没有可温养的斗铠或机甲</span>';
+  };
+
   // 三页同一结构：左翼选（挂点 / 魂骨位 / 物品），主屏是选中项的完整档案与编辑，右翼是汇总与操作
   const EQ_KEYS = [...SLOTS.map(([k, ic, l, n, s]) => ({ k, ic, l, n, s })), { k: '魂导器', ic: 'microchip', l: '魂导器', n: () => '', s: () => '' }];
   const equipment = c => {
     const eq = c.ch.装备 || {}, bonus = sumBonus(c, eq), gear = eq.魂导器?.装配 || {};
     const mounted = c.entries(gear).filter(([, g]) => filled(g?.名称));
-    const warm = eq._温养目标 && eq._温养目标 !== '无' ? eq._温养目标 : '';
     const nameOf = x => x.k === '魂导器' ? (mounted.length ? `已装配 ${mounted.length} / 10` : '') : x.n(eq[x.k] || {});
     const sel = EQ_KEYS.find(x => x.k === c.state.ui.eqsel) || EQ_KEYS.find(x => filled(nameOf(x))) || EQ_KEYS[0], selName = nameOf(sel);
     return {
@@ -156,7 +169,7 @@
       core: filled(selName) ? eqCore(c, sel.k) : `<div class="pad sparse">${c.empty(sel.ic, `${sel.l}挂点空着`, '在背包里选中装备后可以挂载到这里')}<button class="key-s" type="button" data-go="page-supplies/pack" style="align-self:center"><i class="fa-solid fa-box-open"></i> 去背包</button></div>`,
       right: `<div class="pad">${c.head('bolt', '武装共鸣', 'Resonance')}
         ${Object.values(bonus).some(v => v) ? `<div class="tiles">${Object.entries(bonus).filter(([, v]) => v).map(([k, v]) => `<div class="tile">${c.sock('arrow-trend-up')}<b class="plus">+${c.fmt(v)}</b><small>${k}</small></div>`).join('')}</div>` : c.empty('bolt', '暂无武装加成')}
-        <section class="sec"><h3>温养<span class="en">Nurture</span>${c.hint('斗铠 / 机甲的温养进度由运行时投影。')}</h3>${warm ? `<div class="relic-card">${c.sock('temperature-half', 'gd')}<div><strong>${c.esc(warm)}</strong><small>温养中</small></div></div>` : '<span class="lbl">没有温养目标</span>'}${eq.斗铠?._已排异 ? '<span class="plq" style="--pc:#ff4d6a">斗铠已排异</span>' : ''}</section>
+        <section class="sec"><h3>温养<span class="en">Nurture</span>${c.hint('斗铠 / 机甲同一时间只能温养一件；仅斗罗四时代推进，行动中按动作时间计，平时按自然时间加速推进。')}</h3>${nurture(c, eq)}${eq.斗铠?._已排异 ? '<span class="plq" style="--pc:#ff4d6a">斗铠已排异</span>' : ''}</section>
         <div class="groove"></div>${c.head('hand-pointer', '操作', 'Actions')}
         <div class="act-row"><button class="key-s" type="button" data-go="page-supplies/pack"><i class="fa-solid fa-box-open"></i> 从背包换装</button>${sel.k !== '魂导器' && filled(selName) ? `<button class="key-s danger" type="button" data-confirm="${c.esc(`卸下${sel.l}「${selName}」，放回背包`)}" data-act="${c.esc(JSON.stringify({ name: 'item', op: 'unequip', slot: sel.k, item: selName }))}"><i class="fa-solid fa-arrow-down"></i> 卸下</button>` : ''}${sel.k !== '魂导器' && gearSkills(c, eq[sel.k]).length ? '<button class="key-s" type="button" data-go="page-ability/codex"><i class="fa-solid fa-book"></i> 技能图鉴</button>' : ''}</div>
       </div>`,

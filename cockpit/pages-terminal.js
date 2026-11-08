@@ -52,7 +52,7 @@
     };
   };
   document.addEventListener('input', e => { const t = e.target.closest?.('[data-qf]'); if (t) (window.COCKPIT.ctx().state.ui.qf ||= {})[t.dataset.qf] = t.type === 'number' ? Math.max(0, Math.floor(Number(t.value) || 0)) : t.value; });
-  document.addEventListener('change', e => { if (e.target.closest?.('[data-qf]')) window.COCKPIT.refresh(); });
+  document.addEventListener('change', e => { if (e.target.closest?.('[data-qf]')) window.COCKPIT.refreshSoon(); });
   document.addEventListener('picker:change', e => { if (!String(e.detail.path).startsWith('qf:')) return; (window.COCKPIT.ctx().state.ui.qf ||= {})[e.detail.path.slice(3)] = e.detail.value; window.COCKPIT.refresh(); });
   // 提交：捕获阶段把表单写进动作；缺必填项时直接给原因
   document.addEventListener('click', e => {
@@ -115,6 +115,16 @@
   ];
   const TOWER_TOP = 108, TEAM = { size: 7, age: 30, gap: 3 };
   const ticketsOf = (c, re) => Object.entries(c.ch.背包 || {}).filter(([n]) => re.test(n)).reduce((s, [, it]) => s + (c.num(it?.数量) || 1), 0);
+  // 升灵台：有门票才出现；不在传灵塔入口时给出原因（同原项目入场校验），多种门票时先选用哪张
+  const ascend = c => {
+    const p = c.preview('ascension') || {}, list = Array.isArray(p.tickets) ? p.tickets : [];
+    if (!list.length) return '';
+    const ticket = list.includes(c.state.ui.ascTicket) ? c.state.ui.ascTicket : list[0];
+    const btn = p.here
+      ? `<button class="key-s" type="button" data-confirm="${c.esc(`进入升灵台（消耗 ${ticket}）`)}" data-act="${c.esc(JSON.stringify({ name: 'ascension', ticket }))}"><i class="fa-solid fa-place-of-worship"></i> 进入升灵台</button>`
+      : `<span class="cta-wrap" data-hint="升灵台只能从传灵塔入口进入"><button class="key-s" type="button" disabled><i class="fa-solid fa-place-of-worship"></i> 进入升灵台</button></span>`;
+    return `<div class="groove"></div>${list.length > 1 ? `<div class="pick-row">${c.pick('ascTicket', ticket, list)}</div>` : ''}<div class="act-row">${btn}</div>`;
+  };
   const trial = c => {
     const tower = c.ch.魂灵塔记录 || {}, top = c.num(tower.最高层), next = Math.min(TOWER_TOP, top + 1), half = tower.当前五折魂灵 || {};
     const here = TOWER.find(z => next >= z.from && next <= z.to) || TOWER[0], zone = TOWER.find(z => z.key === c.state.ui.tzone) || here;
@@ -148,6 +158,7 @@
         ${half.名称 && !half.已使用 ? '<button class="key-s" type="button" data-go="page-terminal/trade"><i class="fa-solid fa-store"></i> 去特许兑换</button>' : ''}
         ${tickets ? `<button class="cta" type="button" data-trial-action="climb" data-floor="${next}" data-ticket="${c.esc(ticketKey)}"><i class="fa-solid fa-dungeon"></i>冲塔 · 第 ${next} 层</button>`
           : `<button class="cta" type="button" data-go="page-terminal/trade"><i class="fa-solid fa-ticket"></i>购买门票</button>`}
+        ${ascend(c)}
       </div>`,
     };
   };

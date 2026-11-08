@@ -120,6 +120,9 @@
   // 选择控件：带逐项说明的下拉（原生 select 无法给选项配悬停说明）。options 为字符串或 { value, label, hint, group }；
   // 选中后在控件上派发 picker:change（detail: { path, value }）。悬停控件本身显示当前选项的说明
   const optOf = o => o && typeof o === 'object' ? { value: String(o.value ?? o.label ?? ''), label: String(o.label ?? o.value ?? ''), hint: o.hint || '', group: o.group || '' } : { value: String(o ?? ''), label: String(o ?? ''), hint: '', group: '' };
+  let pointerHeld = false;
+  document.addEventListener('pointerdown', () => { pointerHeld = true; }, true);
+  document.addEventListener('pointerup', () => { pointerHeld = false; }, true);
   const pick = (path, value, options = [], o = {}) => {
     const opts = options.map(optOf), v = String(value ?? ''), cur = opts.find(x => x.value === v);
     return `<span class="picker${o.cls ? ' ' + o.cls : ''}" data-picker="${esc(path)}" data-picker-opts="${esc(JSON.stringify(opts))}" data-picker-value="${esc(v)}"><button type="button" class="picker-btn" aria-haspopup="listbox" aria-expanded="false"${o.disabled ? ' disabled' : ''}${cur?.hint ? ` data-hint="${esc(cur.hint)}"` : ''}><span>${esc(cur ? cur.label : (v || o.placeholder || '请选择'))}</span><i class="fa-solid fa-chevron-down"></i></button></span>`;
@@ -187,6 +190,8 @@
     battleActive: () => !!ADP?.battleActive?.(),
     get mounted() { return mounted; },
     refresh() { api.refresh?.(); },
+    // 输入框失焦后的重绘：按键还没松开时等这次点击结束再重绘，免得按钮被换掉、点击落空
+    refreshSoon() { if (!pointerHeld) return api.refresh?.(); document.addEventListener('click', () => setTimeout(() => api.refresh?.()), { once: true, capture: true }); },
     go(id, page) { api.switchDomain?.(id, page); },
     page(key) { api.switchPage?.(key); },
     inspect(kind, id) { api.openInspector?.(kind, id); },

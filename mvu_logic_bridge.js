@@ -10979,6 +10979,37 @@
     );
   }
 
+  // 斗铠 / 机甲温养开关：同一时间只温养一件；再点当前目标即停止；开启前按运行时投影校验条件
+  async function 切换装备温养_桥接(目标 = '') {
+    const 当前快照 = liveSnapshot || lastRenderableSnapshot || {};
+    const 角色键 = resolveSnapshotCharKey(当前快照, toText(当前快照.activeName, '')) || toText(当前快照.activeName, '');
+    const 运行时 = 读取MVUSchema运行时接口_桥接();
+    if (!角色键 || !['斗铠', '机甲'].includes(目标) || typeof 运行时?.读取装备温养投影 !== 'function') return { ok: false, message: '装备温养运行时未就绪。' };
+    try {
+      let 新目标 = '无';
+      await mutateStatDataByEditor(statData => {
+        const 角色 = deepGet(statData, ['char', 角色键], null);
+        if (!角色 || typeof 角色 !== 'object') throw new Error('当前角色不存在。');
+        if (!角色.装备 || typeof 角色.装备 !== 'object') throw new Error('当前角色没有装备数据。');
+        新目标 = toText(角色.装备._温养目标, '无') === 目标 ? '无' : 目标;
+        if (新目标 !== '无') {
+          const 投影角色 = cloneJsonValue(角色, {});
+          投影角色.装备._温养目标 = 新目标;
+          const 投影 = 运行时.读取装备温养投影(投影角色, statData);
+          if (!投影?.canStart) throw new Error(投影?.pauseReason || '当前条件不足，无法开启温养。');
+        }
+        角色.装备._温养目标 = 新目标;
+        const 原播报 = toText(deepGet(statData, ['sys', '系统播报'], ''), '').trim();
+        const 播报 = 新目标 === '无' ? `[装备温养] ${角色键}已停止装备温养。` : `[装备温养] ${角色键}开始温养${新目标}。`;
+        deepSetMutable(statData, ['sys', '系统播报'], !原播报 || 原播报 === '初始化' ? 播报 : `${原播报} ${播报}`);
+      }, { force: true });
+      await refreshLiveSnapshot({ force: true });
+      return { ok: true, message: 新目标 === '无' ? '已停止装备温养。' : `已开始温养${新目标}。` };
+    } catch (error) {
+      return { ok: false, message: error && error.message ? error.message : '装备温养设置失败。' };
+    }
+  }
+
   async function 执行赛事权限管理动作_V2_桥接(动作 = '', 载荷 = {}) {
     const 运行时 = 读取赛事权限运行时_桥接();
     if (!运行时) throw new Error('赛事权限运行时未加载');
@@ -38502,7 +38533,7 @@
     第1武魂详细页: ['page-ability', 'martial', { soul: '0', ringPick: '' }], 第2武魂详细页: ['page-ability', 'martial', { soul: '1', ringPick: '' }], 血脉封印详细页: ['page-ability', 'martial'],
     技能典籍: ['page-ability', 'codex'], 武魂融合技详细页: ['page-ability', 'codex'],
     储物仓库详细页: ['page-supplies', 'pack'], '武装详情：主武器': ['page-supplies', 'equip', { eqsel: '武器' }], '武装详情：防具': ['page-supplies', 'equip', { eqsel: '防具' }],
-    '武装详情：斗铠': ['page-supplies', 'equip', { eqsel: '斗铠' }], '武装详情：机甲': ['page-supplies', 'equip', { eqsel: '机甲' }], '武装详情：魂导器': ['page-supplies', 'equip', { eqsel: '魂导器' }],
+    '武装详情：斗铠': ['page-supplies', 'equip', { eqsel: '斗铠' }], '武装详情：机甲': ['page-supplies', 'equip', { eqsel: '机甲' }], '武装详情：魂导器': ['page-supplies', 'equip', { eqsel: '魂导器' }], 武装工坊详细页: ['page-supplies', 'equip'],
     任务界面: ['page-terminal', 'quests'], 试炼与情报: ['page-terminal', 'trial'], 情报库详细页: ['page-terminal', 'intel'],
     当前节点详情: ['page-map', 'place'],
     人物关系详细页: ['page-archive', 'relations'], 社会档案详细页: ['page-archive', 'identity'], 生命图谱详细页: ['page-archive', 'growth'],
@@ -38610,6 +38641,36 @@
         let 可装备 = false;
         try { 可装备 = !!(管理器 && typeof 管理器.parseEquipSlot === 'function' && 管理器.parseEquipSlot(物品, 数据)); } catch (错误) { 可装备 = false; }
         return { usable: !!判断物品可直接使用_桥接(物品, 数据), equipable: 可装备 };
+      }
+      // 升灵台：门票与入口校验同原项目「进入升灵台」（只能从传灵塔入口进入）
+      if (名称 === 'ascension') {
+        const 位置 = toText(deepGet(liveSnapshot, 'activeChar.状态.位置', liveSnapshot?.currentLoc), '');
+        return { tickets: listAscensionTicketNames(liveSnapshot), here: !!位置 && isTransmissionTowerEntryLocation(位置) };
+      }
+      if (名称 === 'nurture') {
+        const 运行时 = 读取MVUSchema运行时接口_桥接(), 根 = deepGet(liveSnapshot, 'rootData', {}) || {}, 角色 = deepGet(liveSnapshot, 'activeChar', null);
+        if (!角色 || typeof 运行时?.读取装备温养投影 !== 'function') return null;
+        const 当前 = toText(deepGet(角色, '装备._温养目标', '无'), '无'), 结果 = { current: ['斗铠', '机甲'].includes(当前) ? 当前 : '无' };
+        ['斗铠', '机甲'].forEach(目标 => {
+          const 投影角色 = cloneJsonValue(角色, {});
+          if (!投影角色.装备 || typeof 投影角色.装备 !== 'object') return;
+          投影角色.装备._温养目标 = 目标;
+          结果[目标] = 运行时.读取装备温养投影(投影角色, 根);
+        });
+        return 结果;
+      }
+      // 捐献：只能捐给已加入的势力；估值与原项目「我的阵营」捐献同一算法（只回传结果，不回传天赋档位）
+      if (名称 === 'donate') {
+        const 势力 = toText(参数.faction, ''), 物品 = toText(参数.item, ''), 数量 = Math.max(1, Math.floor(toNumber(参数.qty, 1)));
+        const 已加入 = (liveSnapshot?.势力 || []).map(([名]) => toText(名, '').trim()).includes(势力);
+        if (!已加入) return { ok: false, reason: '只能向已加入的势力捐献' };
+        const 奖励 = getDonateRewardLabel(势力, liveSnapshot || {});
+        if (!奖励) return { ok: false, reason: '当前地点无法确定结算货币' };
+        if (!物品) return { ok: false, reason: '先选择要捐献的物品', label: 奖励 };
+        const 持有 = 读取背包总数量_桥接(deepGet(liveSnapshot, ['activeChar', '背包', 物品], {}));
+        if (持有 < 数量) return { ok: false, reason: `背包里只有 ${持有} 件`, label: 奖励, owned: 持有 };
+        const 系数 = getDonateTalentMultiplier(读取属性天赋梯队(deepGet(liveSnapshot, 'activeChar.属性', {}))), 单价 = getDonateBasePrice(物品);
+        return { ok: true, label: 奖励, owned: 持有, unit: 单价, points: Math.floor((单价 * 数量 / 1000) * 系数) };
       }
       if (名称 === 'skill') return 座舱技能场外施展状态(参数.path);
       if (名称 === 'trade') return 座舱交易预演(参数);
@@ -38970,6 +39031,11 @@
               ? Object.values(deepGet(装备, '魂导器.装配', {}) || {}).map(位 => toText(位 && 位.名称, '')).find(名 => 名 === 物品) || ''
               : toText(deepGet(装备, [toText(参数.slot, ''), '名称'], ''), '');
             if (!物品 || 物品 === '无' || 槽内名 !== 物品) return { ok: false, message: `${toText(参数.slot, '该槽位')}里没有「${物品 || '物品'}」。` };
+            const 装配位 = toText(参数.mount, '');
+            if (参数.slot === '魂导器' && 装配位) {
+              if (toText(deepGet(装备, ['魂导器', '装配', 装配位, '名称'], ''), '') !== 物品) return { ok: false, message: `${装配位}里没有「${物品}」。` };
+              return 座舱截取提示(() => 管理器.performUnequip(角色, 'soul_tool', 装配位));
+            }
             return 座舱截取提示(() => 管理器.performUnequip(角色, 座舱卸装类型[参数.slot] || toText(参数.slot, ''), 物品));
           }
           if (参数.op === 'discard') return 座舱截取提示(() => 管理器.performDiscard(角色, 物品, 参数.mode === 'all' ? 'all' : 'one'));
@@ -38997,6 +39063,15 @@
         case 'questCreate': {
           const 表单 = 参数.form && typeof 参数.form === 'object' ? 参数.form : {};
           return 参数.kind === 'board' ? await 座舱发布委托(快照, 表单) : await 座舱新增个人任务(快照, 表单);
+        }
+        case 'nurture': {
+          if (!isSnapshotPlayerControlled(liveSnapshot)) return { ok: false, message: '旁观视角不可操作。' };
+          return await 切换装备温养_桥接(toText(参数.target, ''));
+        }
+        case 'donate': {
+          const 请求 = buildDonateDispatchRequest(liveSnapshot, { targetFaction: toText(参数.faction, ''), itemName: toText(参数.item, ''), quantity: toNumber(参数.qty, 1) });
+          if (!请求) return { ok: false, message: '请确认捐献物品、目标势力与数量，并确保背包库存充足。' };
+          return 座舱请求结果(await dispatchUiAiRequest(请求.playerInput, 请求.systemPrompt, { requestKind: 请求.requestKind }));
         }
         case 'competition': {
           const 动作 = toText(参数.action, ''), 载荷 = 参数.payload && typeof 参数.payload === 'object' ? 参数.payload : {};
@@ -56071,37 +56146,9 @@ ${播报文本}
         return;
       }
       const 目标 = toText(装备温养按钮.getAttribute('data-equipment-nurture-target'), '').trim();
-      const 当前快照 = liveSnapshot || lastRenderableSnapshot || {};
-      const 角色键 = resolveSnapshotCharKey(当前快照, toText(当前快照.activeName, '')) || toText(当前快照.activeName, '');
-      const 运行时 = 读取MVUSchema运行时接口_桥接();
-      if (!角色键 || !['斗铠', '机甲'].includes(目标) || typeof 运行时?.读取装备温养投影 !== 'function') {
-        showUiToast('装备温养运行时未就绪。', 'error');
-        return;
-      }
-      try {
-        let 新目标 = '无';
-        await mutateStatDataByEditor(statData => {
-          const 角色 = deepGet(statData, ['char', 角色键], null);
-          if (!角色 || typeof 角色 !== 'object') throw new Error('当前角色不存在。');
-          if (!角色.装备 || typeof 角色.装备 !== 'object') throw new Error('当前角色没有装备数据。');
-          新目标 = toText(角色.装备._温养目标, '无') === 目标 ? '无' : 目标;
-          if (新目标 !== '无') {
-            const 投影角色 = cloneJsonValue(角色, {});
-            投影角色.装备._温养目标 = 新目标;
-            const 投影 = 运行时.读取装备温养投影(投影角色, statData);
-            if (!投影?.canStart) throw new Error(投影?.pauseReason || '当前条件不足，无法开启温养。');
-          }
-          角色.装备._温养目标 = 新目标;
-          const 原播报 = toText(deepGet(statData, ['sys', '系统播报'], ''), '').trim();
-          const 播报 = 新目标 === '无' ? `[装备温养] ${角色键}已停止装备温养。` : `[装备温养] ${角色键}开始温养${新目标}。`;
-          deepSetMutable(statData, ['sys', '系统播报'], !原播报 || 原播报 === '初始化' ? 播报 : `${原播报} ${播报}`);
-        }, { force: true });
-        showUiToast(新目标 === '无' ? '已停止装备温养。' : `已开始温养${新目标}。`);
-        await refreshLiveSnapshot({ force: true });
-        rerenderDetailSurface('武装工坊详细页', options);
-      } catch (error) {
-        showUiToast(error && error.message ? error.message : '装备温养设置失败。', 'error');
-      }
+      const 结果 = await 切换装备温养_桥接(目标);
+      showUiToast(结果.message, 结果.ok ? undefined : 'error');
+      if (结果.ok) rerenderDetailSurface('武装工坊详细页', options);
       return;
     }
     const actionBtn = eventTarget ? eventTarget.closest('.armory-action-btn') : null;
