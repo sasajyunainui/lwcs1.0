@@ -59,7 +59,7 @@
   .readout .res,.readout .tick{display:none}
   .readout .tick-ico{display:inline-block;cursor:help}
   /* 两翼近端会向前、向外凸出：上下各留余量，不压指挥栏、不被座舱底边裁 */
-  .screens{order:4;flex:1 0 calc(100% - 28px);max-width:calc(100% - 28px);margin:26px 14px 22px;--lw:27%;--rw:27%}
+  .screens{order:4;flex:1 0 calc(100% - 28px);max-width:calc(100% - 28px);margin:26px 14px 22px;--lw:22%;--rw:22%}
   .wing.l{--la:22deg}.wing.r{--ra:22deg}
 }
 /* 座舱够宽时播报回到栏里滚动显示 */
