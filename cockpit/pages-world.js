@@ -92,7 +92,7 @@
     const ui = c.state.ui, bag = c.entries(c.ch.背包).filter(([, v]) => v && typeof v === 'object');
     if (!bag.length) return `<div class="groove"></div>${c.head('hand-holding-heart', '捐献', 'Donate')}<span class="lbl">背包里没有可捐献的物品</span>`;
     const item = bag.some(([n]) => n === ui.donItem) ? ui.donItem : bag[0][0], qty = Math.max(1, Math.floor(Number(ui.donQty) || 1));
-    const p = c.preview('donate', { faction: fac, item, qty }) || {};
+    const p = window.COCKPIT.preview('donate', { faction: fac, item, qty }) || {};
     return `<div class="groove"></div>${c.head('hand-holding-heart', '捐献', 'Donate')}
       <div class="dz2-grid"><div class="dzf wide"><span class="dzf-l">物品</span>${c.pick('donItem', item, bag.map(([n]) => n))}</div>
       <div class="dzf"><span class="dzf-l">数量</span><input type="number" min="1" step="1" data-don-qty value="${qty}" aria-label="捐献数量"></div>

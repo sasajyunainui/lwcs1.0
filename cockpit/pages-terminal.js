@@ -117,7 +117,7 @@
   const ticketsOf = (c, re) => Object.entries(c.ch.背包 || {}).filter(([n]) => re.test(n)).reduce((s, [, it]) => s + (c.num(it?.数量) || 1), 0);
   // 升灵台：有门票才出现；不在传灵塔入口时给出原因（同原项目入场校验），多种门票时先选用哪张
   const ascend = c => {
-    const p = c.preview('ascension') || {}, list = Array.isArray(p.tickets) ? p.tickets : [];
+    const p = window.COCKPIT.preview('ascension') || {}, list = Array.isArray(p.tickets) ? p.tickets : [];
     if (!list.length) return '';
     const ticket = list.includes(c.state.ui.ascTicket) ? c.state.ui.ascTicket : list[0];
     const btn = p.here

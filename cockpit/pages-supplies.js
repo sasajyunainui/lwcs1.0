@@ -141,7 +141,7 @@
   };
 
   const nurture = (c, eq) => {
-    const info = c.preview('nurture') || {}, cur = info.current || '无';
+    const info = window.COCKPIT.preview('nurture') || {}, cur = info.current || '无';
     const cards = ['斗铠', '机甲'].filter(k => filled(eq[k]?.名称) || filled(eq[k]?.型号)).map(k => {
       const p = info[k] || {}, on = cur === k, why = p.pauseReason || '';
       const sub = p.stageLabel && p.stageLabel !== '无可用阶段' ? `${p.stageLabel} 级` : '没有可温养的阶段';
