@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:f4b0faa375ddfbb9a783365feb5d2b4abeff24a810e322e279f94bc201877510|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:35fb9696d1b8eb596cc2e306ac2c2b4b6cfe8cb578c57102ba75ef7b0b17afaa|cockpit/pages-role.js:41a8f24233bd638ee9e52dd8c611997aecedb9a6807f1bff1f97d955b87d3a3c|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:d35728afb9ae39fa0c94f77b83df40149167487d7a8ec69072c495acecaf8e19|cockpit/pages-ability.js:15966e44f0f94866dcc59113c0ff577fc2cdca45196f3c16daf91f3eb59084a6|cockpit/pages-supplies.js:864e808de54942f49cc7ce569b926e847b9b3fc35d07c15b6139e7c79be8de18|cockpit/pages-map.js:bb5b1f07a1035a0294cdb32fbc61c97c36a49946297500421647eee91fe093da|cockpit/pages-world.js:ca5dc37c07a41d3603ee2c089f84171de2b47453d125868dc3dc361fa9449723|cockpit/pages-terminal.js:4d51455d552329d8cada13b0f1d4336d30962e5d7dae64ae93d9a8bc0a9395a6|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:289fe455da8dfe0c8f42e39afaaa254d1c724b00f602e5094ca7626b17151097|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:8b22f1c786dd05969bc9e9ca7b8bb41e3eb5373da6c74e0910ba613fdef3c374|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:35fb9696d1b8eb596cc2e306ac2c2b4b6cfe8cb578c57102ba75ef7b0b17afaa|cockpit/pages-role.js:41a8f24233bd638ee9e52dd8c611997aecedb9a6807f1bff1f97d955b87d3a3c|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:d35728afb9ae39fa0c94f77b83df40149167487d7a8ec69072c495acecaf8e19|cockpit/pages-ability.js:15966e44f0f94866dcc59113c0ff577fc2cdca45196f3c16daf91f3eb59084a6|cockpit/pages-supplies.js:864e808de54942f49cc7ce569b926e847b9b3fc35d07c15b6139e7c79be8de18|cockpit/pages-map.js:161545076c81469f294f8462bb581ca2c990cd078f5075b2c88cc030d526bbd4|cockpit/pages-world.js:ca5dc37c07a41d3603ee2c089f84171de2b47453d125868dc3dc361fa9449723|cockpit/pages-terminal.js:4d51455d552329d8cada13b0f1d4336d30962e5d7dae64ae93d9a8bc0a9395a6|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:289fe455da8dfe0c8f42e39afaaa254d1c724b00f602e5094ca7626b17151097|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -40261,6 +40261,7 @@
         const 位置 = toText(deepGet(liveSnapshot, 'activeChar.状态.位置', liveSnapshot?.currentLoc), '');
         return { tickets: listAscensionTicketNames(liveSnapshot), here: !!位置 && isTransmissionTowerEntryLocation(位置) };
       }
+      if (名称 === 'mapTemplates') return window.__sheepMapBridge?.maintTemplates?.() || [];
       if (名称 === 'nurture') {
         const 运行时 = 读取MVUSchema运行时接口_桥接(), 根 = deepGet(liveSnapshot, 'rootData', {}) || {}, 角色 = deepGet(liveSnapshot, 'activeChar', null);
         if (!角色 || typeof 运行时?.读取装备温养投影 !== 'function') return null;
@@ -40308,6 +40309,12 @@
   async function 座舱规划移动(参数 = {}) {
     const 地图 = await 座舱同步星图();
     if (!地图) return { ok: false, reason: '地图模块未就绪' };
+    // 坐标目的地（总图上点选的空白处）：同原项目自由坐标移动
+    if (参数.point && typeof 参数.point === 'object') {
+      if (typeof 地图.describeTravelToPoint !== 'function') return { ok: false, reason: '地图模块不支持按坐标出行' };
+      const 坐标规划 = 地图.describeTravelToPoint(参数.point, { method: toText(参数.method, ''), listMethods: true });
+      return { ...坐标规划, mode: 'point', target: toText(坐标规划 && 坐标规划.nodeName, '坐标点') };
+    }
     const 路径 = (Array.isArray(参数.path) && 参数.path.length ? 参数.path : [参数.node]).map(值 => toText(值, '')).filter(Boolean);
     const 目标 = 路径[路径.length - 1] || toText(参数.node, '');
     if (!目标) return { ok: false, reason: '缺少目的地' };
@@ -40597,6 +40604,11 @@
         case 'travel': {
           const 规划 = await 座舱规划移动(参数);
           if (!规划.ok || 规划.alreadyThere || 规划.canAfford === false) return { ok: false, message: 规划.alreadyThere ? '已经在这里了' : toText(规划.reason, '现在去不了') };
+          if (规划.mode === 'point') {
+            const 结果 = await window.__sheepMapBridge.travelToPoint(参数.point, { method: toText(规划.method, '') });
+            if (结果 && 结果.ok === false) return { ok: false, message: toText(结果.reason, '移动未结算') };
+            return { ok: true, message: `已出发前往${规划.target}` };
+          }
           if (规划.mode === 'local') {
             const 请求 = 解析移动模块意图请求(快照, { 目标地点: 规划.target, 归属父节点: (参数.path || []).slice(-2, -1)[0] || '', 移动方式: '步行' });
             const 结果 = await 执行移动模块意图路由(快照, 请求);
@@ -40625,11 +40637,13 @@
         }
         case 'npc': {
           const 对象 = toText(参数.npc, ''), 动作 = toText(参数.op, '');
-          if (!对象 || !['talk', 'intel', 'brief', 'battle', 'trade', 'commission'].includes(动作)) return { ok: false, message: '互动参数不完整。' };
+          // 不指定对象的对话 / 请教 / 汇报：同原项目「在场人员」群体互动（叙事自行决定由谁回应）
+          const 群体 = !对象 && ['talk', 'intel', 'brief'].includes(动作);
+          if ((!对象 && !群体) || !['talk', 'intel', 'brief', 'battle', 'trade', 'commission'].includes(动作)) return { ok: false, message: '互动参数不完整。' };
           const 当前位置 = toText(deepGet(快照, 'activeChar.状态.位置', 快照.currentLoc), 快照.currentLoc);
           window.dispatchEvent(new CustomEvent('map-action-dispatch', { detail: {
             action: 动作 === 'commission' ? 'craft' : 动作, target: 当前位置, currentLoc: 当前位置, services: [],
-            npcTarget: 对象, npcTargets: [对象], executorType: 动作 === 'commission' ? 'private' : undefined, source: 'cockpit_place',
+            npcTarget: 对象, npcTargets: 群体 ? [] : [对象], executorType: 动作 === 'commission' ? 'private' : undefined, source: 'cockpit_place',
           } }));
           return { ok: true, message: { talk: '已发起对话', intel: '已发起请教', brief: '已发起汇报' }[动作] || '' };
         }
@@ -40677,6 +40691,16 @@
         case 'questCreate': {
           const 表单 = 参数.form && typeof 参数.form === 'object' ? 参数.form : {};
           return 参数.kind === 'board' ? await 座舱发布委托(快照, 表单) : await 座舱新增个人任务(快照, 表单);
+        }
+        // 地图维护（新增 / 删除动态地点、破坏 / 修复地点）：羊图按原规则生成补丁，这里写回
+        case 'mapMaint': {
+          const 地图 = await 座舱同步星图();
+          if (!地图 || typeof 地图.maintain !== 'function') return { ok: false, message: '地图模块未就绪' };
+          const 维护 = await 地图.maintain(toText(参数.op, ''), 参数);
+          if (!维护 || !维护.ok || !Array.isArray(维护.patchOps)) return { ok: false, message: toText(维护 && 维护.reason, '维护未完成') };
+          await applyJsonPatchOpsByEditor(维护.patchOps, { force: true });
+          await refreshLiveSnapshot({ force: true });
+          return { ok: true, message: toText(维护.message, '地图维护已写入') };
         }
         case 'nurture': {
           if (!isSnapshotPlayerControlled(liveSnapshot)) return { ok: false, message: '旁观视角不可操作。' };
@@ -78004,7 +78028,10 @@ ${播报文本}
     return { node, chain, city: chain[0] };
   };
   const locals = c => Object.entries(c.S.char).filter(([n, x]) => n !== c.name && x.状态?.位置 === c.ch.状态?.位置);
-  const statusText = s => ({ intact: '完好', damaged: '受损', destroyed: '已毁' }[s] || s || '未知');
+  const statusText = s => ({ intact: '完好', damaged: '受损', destroyed: '已毁', ruins: '废墟' }[s] || s || '未知');
+  // 坐标目的地：dest 写成「@x,y」（总图坐标）
+  const ptOf = dest => { const m = /^@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)$/.exec(String(dest || '')); return m ? { x: Number(m[1]), y: Number(m[2]) } : null; };
+  const RUINED = /^(ruins|destroyed|damaged|废弃|损毁|破坏|遗址)$/i;
   // ---------- 全息沙盘 ----------
   // 底图（子图为全息底板）铺在倾斜平面里；地标不进 3D：平面里只放 0 尺寸锚点，地标画在平面外的 2D 层，
   // 每次平移 / 缩放后按锚点的屏幕位置摆放——大小、文字不随缩放与透视变形，地名牌立在光柱顶上。
@@ -78022,6 +78049,7 @@ ${播报文本}
     for (const r of under(rows, [], 1)) if (Number.isFinite(r.n.x) && Number.isFinite(r.n.y)) out[r.path[0]] = { name: r.path[0], ...r.n, rules: r.rules, kids: [] };
     for (const r of under(rows, [], 2)) if (out[r.path[0]]) out[r.path[0]].kids.push(r.path[1]);
     for (const [n, v] of Object.entries(c.S.world.地点 || {})) if (Number.isFinite(v.x)) out[n] = { ...(out[n] || {}), name: n, ...v, kids: [...new Set([...(out[n]?.kids || []), ...Object.keys(v.子节点 || {})])], rules: out[n]?.rules };
+    for (const [n, v] of Object.entries(c.S.world.动态地点 || {})) if (v && !out[n] && Number.isFinite(v.x) && Number.isFinite(v.y) && (!v.归属父节点 || v.归属父节点 === '斗罗大陆')) out[n] = { name: n, ...v, dyn: true, kids: [] };
     return Object.values(out);
   };
   // 某一层（trail = 从总图往下的地点名）上可画的地点：内置地点库 + 存档地点树；能否继续下钻看库里 / 存档里有没有更深一层
@@ -78046,10 +78074,11 @@ ${播报文本}
     const near = new Set(nodes.filter(n => n !== f).sort((p, q) => d(p) - d(q)).slice(0, sub ? 12 : 8).map(n => n.name));
     const rank = n => n === f ? 0 : near.has(n.name) ? 1 : !sub && kindOf(n.类型)[2] === '地域' ? 3 : 2;
     const key = n => [...trail, n.name].join('/');
+    const pt = !sub && ptOf(c.state.ui.dest), pin = pt ? { x: pt.x, y: pt.y } : null;
     const holo = sub ? `<div class="holo-base" style="background-image:${[...nodes.map(n => `radial-gradient(circle at ${pct(n.x, MAP.w)}% ${pct(n.y, MAP.h)}%,${rgba(kindOf(n.类型)[1], .3)} 0,transparent 8%)`), 'radial-gradient(ellipse at 50% 50%,rgba(70,150,255,.22),transparent 68%)'].join(',')}"><b>${c.esc(trail.at(-1))}</b></div>` : '';
     return `<div class="table${sub ? ' sub' : ''}" data-table data-no-tilt data-trail="${c.esc(trail.join('/'))}">
-      <div class="plane">${sub ? holo : `<img src="${MAP.src}" alt="斗罗大陆总图" draggable="false">`}<div class="grid"></div>${nodes.map(n => `<i class="anc" style="left:${pct(n.x, MAP.w)}%;top:${pct(n.y, MAP.h)}%"></i>`).join('')}</div>
-      <div class="marks">${nodes.map(n => { const r = rank(n), color = r === 0 ? '#ffd36b' : kindOf(n.类型)[1]; return `<button class="mk r${r}${r === 0 ? ' here' : ''}" type="button" style="--pc:${color};--bh:${BEAM[r]}px" data-rank="${r}" data-inspect="node:${c.esc(key(n))}" data-hover-delay="320"${n.enterable ? ` data-map-enter="${c.esc(key(n))}"` : ''} aria-label="${c.esc(n.name)}"><i class="mk-lead"></i><i class="mk-beam"></i><i class="mk-base"></i><span class="mk-tag">${c.esc(n.name)}${n.enterable ? '<i class="fa-solid fa-layer-group"></i>' : ''}</span></button>`; }).join('')}</div>
+      <div class="plane">${sub ? holo : `<img src="${MAP.src}" alt="斗罗大陆总图" draggable="false">`}<div class="grid"></div>${nodes.map(n => `<i class="anc" style="left:${pct(n.x, MAP.w)}%;top:${pct(n.y, MAP.h)}%"></i>`).join('')}${pin ? `<i class="anc" style="left:${pct(pin.x, MAP.w)}%;top:${pct(pin.y, MAP.h)}%"></i>` : ''}<i class="anc cn" style="left:0;top:0"></i><i class="anc cn" style="left:100%;top:0"></i><i class="anc cn" style="left:100%;top:100%"></i><i class="anc cn" style="left:0;top:100%"></i></div>
+      <div class="marks">${nodes.map(n => { const r = rank(n), color = r === 0 ? '#ffd36b' : kindOf(n.类型)[1]; return `<button class="mk r${r}${r === 0 ? ' here' : ''}" type="button" style="--pc:${color};--bh:${BEAM[r]}px" data-rank="${r}" data-inspect="node:${c.esc(key(n))}" data-hover-delay="320"${n.enterable ? ` data-map-enter="${c.esc(key(n))}"` : ''} aria-label="${c.esc(n.name)}"><i class="mk-lead"></i><i class="mk-beam"></i><i class="mk-base"></i><span class="mk-tag">${c.esc(n.name)}${n.enterable ? '<i class="fa-solid fa-layer-group"></i>' : ''}</span></button>`; }).join('')}${pin ? `<button class="mk r0 fpin" type="button" style="--pc:#ff7ab6;--bh:${BEAM[0]}px" data-rank="0" data-set="dest=" aria-label="清除坐标目的地" data-hint="坐标目的地 · 点一下清除"><i class="mk-lead"></i><i class="mk-beam"></i><i class="mk-base"></i><span class="mk-tag"><i class="fa-solid fa-location-crosshairs"></i> ${Math.round(pin.x)}, ${Math.round(pin.y)}</span></button>` : ''}</div>
       ${sub ? `<div class="table-crumb"><button class="key-s" type="button" data-map-up aria-label="返回上级"><i class="fa-solid fa-chevron-left"></i></button><span>${['斗罗大陆', ...trail].map((t, i) => i === trail.length ? `<b aria-current="location">${c.esc(t)}</b>` : `<button type="button" data-map-to="${c.esc(trail.slice(0, i).join('/'))}">${c.esc(t)}</button>`).join('<i class="fa-solid fa-angle-right"></i>')}</span>${onPath ? '' : `<span class="chip s" data-hint="${c.esc(`这里只能查看；要在「${trail[0]}」里行动，先前往那里。`)}">远端预览</span>`}</div>` : ''}
       <div class="table-ui"><button class="key-s" type="button" data-zoom="1.25" aria-label="放大">＋</button><button class="key-s" type="button" data-zoom="0.8" aria-label="缩小">－</button><button class="key-s" type="button" data-zoom="home" aria-label="${f ? '回到当前位置' : '回到中心'}"><i class="fa-solid fa-crosshairs"></i></button></div>
       <div class="table-legend">${KINDS.map(([, col, l]) => `<span><i style="--pc:${col}"></i>${l}</span>`).join('')}<span><i style="--pc:#ffd36b"></i>当前位置</span><span><b class="fa-solid fa-layer-group"></b>可进入子图</span></div>
@@ -78058,7 +78087,7 @@ ${播报文本}
   // 交互：拖动平移（开始拖动才捕获指针，单击仍是点地标）· 滚轮 / 双指以指针处为中心缩放 · 按钮缩放与回中走短补间
   const mountTable = face => {
     const table = face.querySelector('[data-table]'); if (!table) return;
-    const plane = table.querySelector('.plane'), ancs = [...plane.querySelectorAll('.anc')], marks = [...table.querySelectorAll('.mk')];
+    const plane = table.querySelector('.plane'), ancs = [...plane.querySelectorAll('.anc:not(.cn)')], marks = [...table.querySelectorAll('.mk')], corners = [...plane.querySelectorAll('.anc.cn')];
     const COS = Math.cos(50 * Math.PI / 180), Z = [.7, 5], st = { z: 1.6, tx: 0, ty: 0 };
     let raf = 0;
     const clampZ = z => Math.max(Z[0], Math.min(Z[1], z));
@@ -78161,12 +78190,30 @@ ${播报文本}
     const end = e => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = null; if (!ptrs.size) { drag = null; table.classList.remove('grabbing'); } };
     table.addEventListener('pointerup', end); table.addEventListener('pointercancel', end);
     table.addEventListener('click', e => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true);
+    table.addEventListener('click', e => {
+      if (table.classList.contains('sub') || corners.length !== 4 || e.target.closest('.mk,.table-ui,.table-crumb,.table-legend')) return;
+      const uv = screenToPlane(corners.map(a => { const r = a.getBoundingClientRect(); return [r.left, r.top]; }), e.clientX, e.clientY);
+      if (!uv || uv[0] < 0 || uv[0] > 1 || uv[1] < 0 || uv[1] > 1) return;
+      const c = window.COCKPIT.ctx(); c.state.ui.dest = `@${Math.round(uv[0] * MAP.w)},${Math.round(uv[1] * MAP.h)}`;
+      if (c.state.inspect) window.COCKPIT.closeInspector();
+      window.COCKPIT.refresh();
+    });
     table.addEventListener('wheel', e => { e.preventDefault(); const [cx, cy] = centerOff(e.clientX, e.clientY); zoomAt(st.z * Math.exp(-e.deltaY * .0016), cx, cy); }, { passive: false });
     table.querySelector('.table-ui').addEventListener('click', e => {
       const b = e.target.closest('[data-zoom]'); if (!b) return; e.stopPropagation();
       if (b.dataset.zoom === 'home') return tween(homeState().s);
       const nz = clampZ(st.z * Number(b.dataset.zoom)); tween({ z: nz, tx: st.tx, ty: st.ty }, 200);
     });
+  };
+  // 单位正方形 → 屏幕四边形的透视映射（Heckbert），再求逆把屏幕点映回平面 [0,1]² 坐标；四角顺序：左上、右上、右下、左下
+  const screenToPlane = ([[x0, y0], [x1, y1], [x2, y2], [x3, y3]], X, Y) => {
+    const dx1 = x1 - x2, dx2 = x3 - x2, dx3 = x0 - x1 + x2 - x3, dy1 = y1 - y2, dy2 = y3 - y2, dy3 = y0 - y1 + y2 - y3, den = dx1 * dy2 - dx2 * dy1;
+    const g = den ? (dx3 * dy2 - dx2 * dy3) / den : 0, h = den ? (dx1 * dy3 - dx3 * dy1) / den : 0;
+    const a = x1 - x0 + g * x1, b = x3 - x0 + h * x3, cc = x0, d = y1 - y0 + g * y1, ee = y3 - y0 + h * y3, ff = y0;
+    // 逆矩阵（伴随矩阵 / 行列式），齐次坐标除回
+    const A = ee - ff * h, B = cc * h - b, C = b * ff - cc * ee, D = ff * g - d, E = a - cc * g, F = cc * d - a * ff, G = d * h - ee * g, H = b * g - a * h, I = a * ee - b * d;
+    const w = G * X + H * Y + I; if (!w) return null;
+    return [(A * X + B * Y + C) / w, (D * X + E * Y + F) / w];
   };
   // 子图导航：双击可下钻的地标 / 浮窗「进入子图」进入；路径条返回任一级。只是查看，不改变当前位置
   const setTrail = trail => { const c = window.COCKPIT.ctx(); c.state.ui.mapTrail = trail; if (c.state.inspect) window.COCKPIT.closeInspector(); window.COCKPIT.refresh(); };
@@ -78193,7 +78240,8 @@ ${播报文本}
       ${funcs.length ? `<div style="display:flex;gap:.3em;flex-wrap:wrap">${funcs.map(x => `<span class="chip s">${c.esc(x)}</span>`).join('')}</div>` : ''}
       ${n.kids.length ? `<section class="sec"><h3>下辖地点 · ${n.kids.length}</h3><div style="display:flex;gap:.3em;flex-wrap:wrap">${n.kids.slice(0, 14).map(k => `<span class="chip s">${c.esc(k)}</span>`).join('')}${n.kids.length > 14 ? `<span class="chip s">+${n.kids.length - 14}</span>` : ''}</div></section>` : ''}
       ${n.enterable ? `<button class="key-s" type="button" data-map-enter-btn="${c.esc(path.join('/'))}" style="align-self:flex-start"><i class="fa-solid fa-layer-group"></i> 进入子图</button>` : ''}
-      ${act}`;
+      ${act}
+      ${maintRow(c, name, n.状态, !!n.dyn || !!c.S.world.动态地点?.[name])}`;
   };
 
   const place = c => {
@@ -78214,6 +78262,7 @@ ${播报文本}
       left: `<div class="pad">
         ${c.head('users', '在场人物', 'Locals', 'gd')}
         ${loc.length ? `<div class="list">${loc.map(([n, x]) => { const r = rel[n], aff = c.num(r?.好感度); return `<button class="row" type="button" data-inspect="npc:${c.esc(n)}">${c.miniAva(n)}<div><strong>${c.esc(n)}</strong><small>Lv.${c.esc(x.属性?.等级)} · ${c.esc(x.社交?.主身份 || '')}</small></div>${r ? `<span class="rc-tag ${aff >= 0 ? 'warm' : 'cold'}">${aff >= 0 ? '+' : ''}${c.fmt(aff)}</span>` : '<span class="rc-tag dim">未结识</span>'}</button>`; }).join('')}</div>` : '<span class="lbl">这里没有其他人。</span>'}
+        <div class="act-row">${[['comments', '交谈', 'talk', '与在场人员交谈'], ['circle-question', '请教', 'intel', '向在场人员请教情报'], ['clipboard-list', '汇报', 'brief', '向在场人员汇报情况']].map(([ic, l, op, cf]) => `<button class="key-s" type="button" data-hint="不指定对象，由在场的人回应" data-confirm="${cf}" data-act="${c.esc(JSON.stringify({ name: 'npc', op, npc: '' }))}"><i class="fa-solid fa-${ic}"></i> ${l}</button>`).join('')}</div>
         ${dyn.length ? `<div class="groove"></div>${c.head('location-crosshairs', '动态地点', 'Dynamic')}<div class="list">${dyn.map(([n, d]) => `<button class="row" type="button" data-inspect="dyn:${c.esc(n)}"><span class="sock" style="--s:1.8em"><i class="fa-solid fa-location-crosshairs"></i></span><div><strong>${c.esc(n)}</strong><small>${c.esc(d.归属父节点 || '未归属')} · ${c.esc(d.势力 || '未知')}</small></div><i class="fa-solid fa-chevron-right"></i></button>`).join('')}</div>` : ''}
       </div>`,
       right: `<div class="pad">
@@ -78236,7 +78285,8 @@ ${播报文本}
     return `<div class="insp-head">${c.sock('location-crosshairs', 'gd')}<div><strong style="font-size:1.1em">${c.esc(name)}</strong><br><small class="lbl">动态地点 · ${c.esc(statusText(d.状态))}</small></div><button class="x" type="button" data-close-inspector aria-label="关闭">×</button></div>
       ${c.kv([['归属', s('归属父节点')], ['类型', s('类型')], ['势力', s('势力', '未知')]])}
       <section class="sec"><h3>描述</h3><p class="prose">${t('描述', '未记录描述')}</p></section>
-      <section class="sec"><h3>现状</h3><p class="prose">${t('现状描述', '暂无变化')}</p></section>`;
+      <section class="sec"><h3>现状</h3><p class="prose">${t('现状描述', '暂无变化')}</p></section>
+      ${maintRow(c, name, d.状态, true)}`;
   };
   const npcInspect = (c, kind, name) => {
     const x = c.S.char[name]; if (!x) return '';
@@ -78265,7 +78315,7 @@ ${播报文本}
     if (ui.travelPlan?.key === key) return ui.travelPlan;
     if (ui.travelPlanPending !== key) {
       ui.travelPlanPending = key;
-      window.COCKPIT.previewAsync('travel', { node: dest, path: destPath(c, dest) }).then(data => {
+      window.COCKPIT.previewAsync('travel', ptOf(dest) ? { point: ptOf(dest) } : { node: dest, path: destPath(c, dest) }).then(data => {
         if (ui.travelPlanPending !== key) return;
         ui.travelPlan = { key, data };
         ui.travelPlanPending = null;
@@ -78277,7 +78327,7 @@ ${播报文本}
   const routeBox = (c, dest) => {
     const plan = planOf(c, dest), p = plan?.data, ui = c.state.ui;
     const lockBtn = why => `<span class="cta-wrap" data-hint="${c.esc(why)}"><button class="cta" type="button" disabled><i class="fa-solid fa-person-walking-arrow-right"></i>出发</button></span>`;
-    if (!plan) return `<div class="warn" style="color:var(--ink2);background:rgba(47,124,246,.1);box-shadow:inset 2px 0 0 var(--blue)"><i class="fa-solid fa-route"></i><span>正在规划前往「${c.esc(dest)}」的路线</span></div>${lockBtn('路线规划中')}`;
+    if (!plan) return `<div class="warn" style="color:var(--ink2);background:rgba(47,124,246,.1);box-shadow:inset 2px 0 0 var(--blue)"><i class="fa-solid fa-route"></i><span>正在规划前往「${c.esc(ptOf(dest) ? '坐标点' : dest)}」的路线</span></div>${lockBtn('路线规划中')}`;
     // 原型页没有运行时：只给出发确认
     if (!p) return `<button class="cta" type="button" data-confirm="${c.esc(`前往「${dest}」`)}"><i class="fa-solid fa-person-walking-arrow-right"></i>出发</button>`;
     if (p.alreadyThere) return lockBtn('已经在这里了');
@@ -78285,15 +78335,50 @@ ${播报文本}
     const methods = Array.isArray(p.methods) && p.methods.length ? p.methods : [{ method: p.method, duration: p.duration, costText: p.costText, canAfford: p.canAfford !== false, reason: p.reason }];
     // 默认方式：运行时默认方式负担得起就用它，否则用第一个负担得起的
     const pick = (ui.travelMethodFor === dest && methods.find(m => m.method === ui.travelMethod)) || (p.canAfford !== false && methods.find(m => m.method === p.method)) || methods.find(m => m.canAfford) || methods[0];
-    const target = p.mode === 'via' ? p.via : dest;
-    const lead = p.mode === 'via' ? `「${c.esc(dest)}」在「${c.esc(p.via)}」城内，先前往${c.esc(p.via)}${c.hint('抵达后再在城内选择这个地点。')}` : p.mode === 'local' ? `城内前往「${c.esc(dest)}」` : `前往「${c.esc(dest)}」`;
+    const target = p.mode === 'via' ? p.via : p.mode === 'point' ? (p.target || '坐标点') : dest;
+    const lead = p.mode === 'point' ? `前往坐标点「${c.esc(target)}」` : p.mode === 'via' ? `「${c.esc(dest)}」在「${c.esc(p.via)}」城内，先前往${c.esc(p.via)}${c.hint('抵达后再在城内选择这个地点。')}` : p.mode === 'local' ? `城内前往「${c.esc(dest)}」` : `前往「${c.esc(dest)}」`;
     const sel = methods.length > 1
       ? `<span class="lbl">移动方式${c.hint('只列出这段路能用的方式；用不了的注明原因。')}</span><div class="pick-row">${c.pick('travelMethod', pick.method, methods.map(m => ({ value: m.method, label: m.canAfford ? `${m.method} · ${m.duration || ''}` : `${m.method}（${m.reason || '不可用'}）`, hint: m.canAfford ? `消耗 ${m.costText || '无'}` : m.reason })))}</div>`
       : '';
     const info = c.kv([['方式', c.esc(pick.method || '步行')], ['耗时', c.esc(pick.duration || '—')], ['消耗', c.esc(pick.costText || '无消耗')]]);
     const btn = pick.canAfford === false ? lockBtn(pick.reason || '现在去不了')
-      : `<button class="cta" type="button" data-confirm="${c.esc(`前往「${target}」：${[pick.method, pick.duration && `约 ${pick.duration}`, pick.costText && `消耗 ${pick.costText}`].filter(Boolean).join('，')}`)}" data-act="${c.esc(JSON.stringify({ name: 'travel', node: dest, path: destPath(c, dest), method: p.mode === 'local' ? '' : pick.method }))}"><i class="fa-solid fa-person-walking-arrow-right"></i>${p.mode === 'via' ? `前往${c.esc(p.via)}` : '出发'}</button>`;
+      : `<button class="cta" type="button" data-confirm="${c.esc(`前往「${target}」：${[pick.method, pick.duration && `约 ${pick.duration}`, pick.costText && `消耗 ${pick.costText}`].filter(Boolean).join('，')}`)}" data-act="${c.esc(JSON.stringify(ptOf(dest) ? { name: 'travel', point: ptOf(dest), method: pick.method } : { name: 'travel', node: dest, path: destPath(c, dest), method: p.mode === 'local' ? '' : pick.method }))}"><i class="fa-solid fa-person-walking-arrow-right"></i>${p.mode === 'via' ? `前往${c.esc(p.via)}` : '出发'}</button>`;
     return `<div class="warn" style="color:var(--ink2);background:rgba(47,124,246,.1);box-shadow:inset 2px 0 0 var(--blue)"><i class="fa-solid fa-route"></i><span>${lead}</span></div>${sel}${info}${btn}`;
+  };
+  // 在坐标处新增地点（原项目地图维护「新增地点」）：类型同原项目模板；普通地点 / 城市可附带商店、工坊
+  const addHere = (c, pt) => {
+    const ui = c.state.ui, f = ui.mm = ui.mm || {}, tpls = window.COCKPIT.preview('mapTemplates') || [];
+    if (!tpls.length) return '';
+    const tpl = tpls.some(t => t.key === f.模板键) ? f.模板键 : tpls[0].key, extra = tpl === 'place' || tpl === 'city';
+    const tog = (k, l) => `<button class="key-s${f[k] ? ' on' : ''}" type="button" aria-pressed="${!!f[k]}" data-mm-tog="${k}">${l}</button>`;
+    return `<div class="groove"></div>${c.head('map-pin', '在此新增地点', 'Add')}
+      <div class="dz2-grid"><div class="dzf wide"><span class="dzf-l">名称</span><input type="text" data-mm="地点名" value="${c.esc(f.地点名 || '')}" placeholder="临时地点" aria-label="地点名"></div>
+      <div class="dzf wide"><span class="dzf-l">类型</span>${c.pick('mm:模板键', tpl, tpls.map(t => ({ value: t.key, label: t.label })))}</div>
+      ${extra ? `<div class="dzf wide"><span class="dzf-l">附带</span><div class="act-row">${tog('启用商店', '商店')}${tog('启用工坊', '工坊')}</div></div>` : ''}
+      <label class="dzf wide"><span class="dzf-l">描述</span><textarea data-mm="描述" rows="2" aria-label="描述">${c.esc(f.描述 || '')}</textarea></label></div>
+      <button class="key-s" type="button" data-mm-submit><i class="fa-solid fa-plus"></i> 新增地点</button>`;
+  };
+  document.addEventListener('input', e => { const t = e.target.closest?.('[data-mm]'); if (t) (window.COCKPIT.ctx().state.ui.mm ||= {})[t.dataset.mm] = t.value; });
+  document.addEventListener('picker:change', e => { if (e.detail.path !== 'mm:模板键') return; (window.COCKPIT.ctx().state.ui.mm ||= {}).模板键 = e.detail.value; window.COCKPIT.refresh(); });
+  document.addEventListener('click', e => {
+    const t = e.target.closest('[data-mm-tog]'); if (!t) return;
+    const f = (window.COCKPIT.ctx().state.ui.mm ||= {}); f[t.dataset.mmTog] = !f[t.dataset.mmTog]; window.COCKPIT.refresh();
+  });
+  document.addEventListener('click', e => {
+    const t = e.target.closest('[data-mm-submit]'); if (!t) return;
+    const ui = window.COCKPIT.ctx().state.ui, f = ui.mm || {}, pt = ptOf(ui.dest), tpls = window.COCKPIT.preview('mapTemplates') || [];
+    const tpl = tpls.find(x => x.key === f.模板键) || tpls[0], name = String(f.地点名 || '').trim(), extra = tpl && (tpl.key === 'place' || tpl.key === 'city');
+    delete t.dataset.blocked;
+    if (!pt || !tpl) { t.dataset.blocked = '先在总图上点选位置'; delete t.dataset.act; return; }
+    if (!name) { t.dataset.blocked = '先填写地点名'; delete t.dataset.act; return; }
+    t.dataset.confirm = `在坐标 ${pt.x}, ${pt.y} 新增${tpl.label}「${name}」`;
+    t.dataset.act = JSON.stringify({ name: 'mapMaint', op: 'add', x: pt.x, y: pt.y, 地点名: name, 模板键: tpl.key, 启用商店: !!(extra && f.启用商店), 启用工坊: !!(extra && f.启用工坊), 描述: String(f.描述 || '').trim() });
+  }, true);
+  // 地点维护键（原项目地图维护）：受损的给修复，完好的给破坏；动态地点可删除（有人停留时由运行时拒绝）
+  const maintRow = (c, name, state, dyn) => {
+    const act = (op, label, icon, confirm, danger) => `<button class="key-s${danger ? ' danger' : ''}" type="button" data-confirm="${c.esc(confirm)}" data-act="${c.esc(JSON.stringify({ name: 'mapMaint', op, 焦点名: name, 描述: '' }))}"><i class="fa-solid fa-${icon}"></i> ${label}</button>`;
+    const ruined = RUINED.test(String(state || ''));
+    return `<div class="act-row">${ruined ? act('repair', '修复', 'trowel-bricks', `修复「${name}」，恢复节点动作`) : act('damage', '破坏', 'house-crack', `破坏「${name}」，节点动作暂停`, true)}${dyn ? act('delete', '删除', 'trash', `删除动态地点「${name}」`, true) : ''}</div>`;
   };
   const travel = c => {
     const { city } = nodeOf(c);
@@ -78308,10 +78393,11 @@ ${播报文本}
       railL: `<div class="rail">${c.sock('location-dot')}<small>${c.esc(here || '')}</small></div>`,
       right: `<div class="pad">
         ${c.head('flag-checkered', '目的地', 'Destination')}
+        ${ptOf(dest) ? `<div class="relic-card">${c.sock('location-crosshairs', 'gd')}<div><strong>${ptOf(dest).x}, ${ptOf(dest).y}</strong><small>坐标目的地</small></div><button class="key-s" type="button" data-set="dest=" aria-label="清除坐标目的地"><i class="fa-solid fa-xmark"></i></button></div>${routeBox(c, dest)}${addHere(c, ptOf(dest))}<div class="groove"></div>` : ''}
         ${kids.length ? `<span class="lbl">${c.esc(city[0])} 城内</span><div class="list">${kids.map(k => `<button class="row ${k.name === dest ? 'on' : ''}" type="button" data-set="dest=${c.esc(k.name)}" ${k.name === here ? 'disabled' : ''}><span class="chip s">${c.esc(k.类型 || '')}</span><div><strong>${c.esc(k.name)}</strong>${k.name === here ? '<small>当前位置</small>' : ''}</div><span></span></button>`).join('')}</div>` : ''}
         <span class="lbl">邻近城市</span>
         <div class="list">${near.map(({ n, d }) => `<button class="row ${n.name === dest ? 'on' : ''}" type="button" data-set="dest=${c.esc(n.name)}"><span class="chip s">${c.esc(kindOf(n.类型)[2])}</span><div><strong>${c.esc(n.name)}</strong><small>图上距离 ${Math.round(d)}</small></div><span></span></button>`).join('')}</div>
-        ${dest ? routeBox(c, dest) : `<span class="lbl">未选择目的地${c.hint('选择一个目的地查看移动预演。')}</span><span class="cta-wrap" data-hint="先在星图或上面的列表里选一个目的地"><button class="cta" type="button" disabled><i class="fa-solid fa-person-walking-arrow-right"></i>出发</button></span>`}
+        ${ptOf(dest) ? '' : dest ? routeBox(c, dest) : `<span class="lbl">未选择目的地${c.hint('选择一个目的地查看移动预演。')}</span><span class="cta-wrap" data-hint="先在星图或上面的列表里选一个目的地"><button class="cta" type="button" disabled><i class="fa-solid fa-person-walking-arrow-right"></i>出发</button></span>`}
       </div>`,
     };
   };
