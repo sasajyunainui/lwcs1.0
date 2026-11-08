@@ -314,6 +314,21 @@
     : q.类型 === '物品选择' ? `从 ${c.esc(q.来源)} 选 ${c.fmt(q.数量)} 件${q.品质 ? ' · ' + c.esc(q.品质) : ''}${q.分类 ? ' · ' + c.esc(q.分类) : ''}`
     : q.类型 === '奖励加成' ? `${c.esc(q.来源)} 奖励 ×${c.num(q.倍率)}` : '';
   const quotaPips = (c, u) => !u ? '<span class="chip-s">不限次数</span>' : `<span class="pips" title="剩余 ${u.剩余} / ${u.上限}">${Array.from({ length: Math.min(12, c.num(u.上限)) }, (_, i) => `<i class="${i < c.num(u.剩余) ? 'on' : ''}"></i>`).join('')}${c.num(u.上限) > 12 ? `<b>${u.剩余}/${u.上限}</b>` : ''}</span>`;
+  // 特殊权限操作（原项目赛事权限运行时）：物品选择权限从候选里领取一件；任何权限可撤销
+  const privActs = (c, id, p) => {
+    if (!c.isPlayer || !c.rt('__LWCS_ERA_RUNTIME_INTEGRATION_V1__')) return '';
+    const q = p.权限 || {}, act = (action, payload, confirm, cls = 'key-s') => `<button class="${cls}" type="button" data-confirm="${c.esc(confirm)}" data-act="${c.esc(JSON.stringify({ name: 'competition', action, payload }))}">`;
+    let claim = '';
+    if (q.类型 === '物品选择') {
+      const cands = (c.rt('__LWCS_COMPETITION_PRIVILEGE_RUNTIME__')?.生成物品选择候选?.(c.S, p) || []).slice(0, 100), ui = c.state.ui, pick = (ui.privPick || {})[id] || cands[0]?.物品名 || '';
+      claim = cands.length ? `<div class="groove"></div><span class="lbl">领取物品</span><div class="pick-row">${c.pick('privPick:' + id, pick, cands.map(x => ({ value: x.物品名, label: x.物品名 })))}</div>${act('领取物品选择', { 权限ID: id, 物品: pick }, `用「${p.名称}」领取「${pick}」×${c.fmt(q.数量 || 1)}`, 'cta')}<i class="fa-solid fa-gift"></i>领取</button>` : '<span class="lbl">当前没有可选的物品</span>';
+    }
+    return claim + `<div class="act-row">${act('撤销权限', { 权限ID: id }, `撤销「${p.名称}」，撤销后不能恢复`, 'key-s danger')}<i class="fa-solid fa-ban"></i> 撤销权限</button></div>`;
+  };
+  document.addEventListener('picker:change', e => {
+    if (!String(e.detail.path).startsWith('privPick:')) return;
+    const ui = window.COCKPIT.ctx().state.ui; (ui.privPick = ui.privPick || {})[e.detail.path.slice(9)] = e.detail.value; window.COCKPIT.refresh();
+  });
   const privInspect = (c, kind, id) => {
     const p = c.S.world.特殊权限?.[id]; if (!p) return '';
     const q = p.权限 || {}, u = p.使用配额, [ic, tint] = PRIV_KIND[q.类型] || ['key', ''];
@@ -321,7 +336,8 @@
     return `<div class="insp-head">${c.sock(ic, tint)}<div><strong style="font-size:1.1em">${c.esc(p.名称)}</strong><br><small>${c.esc(q.类型)} · ${privScope(c, q)}</small></div><button class="x" type="button" data-close-inspector aria-label="关闭">×</button></div>
       <div class="groove"></div>
       ${c.kv(scope)}
-      ${c.kv([['配额', u ? `剩余 ${u.剩余} / ${u.上限}${u.重置周期 ? ` · 每${c.esc(u.重置周期)}重置` : ''}` : '不限次数'], u?.下次重置tick ? ['下次重置', c.tickDate(u.下次重置tick)] : null, ['到期', p.到期tick ? c.tickDate(p.到期tick) : '长期有效']].filter(Boolean))}`;
+      ${c.kv([['配额', u ? `剩余 ${u.剩余} / ${u.上限}${u.重置周期 ? ` · 每${c.esc(u.重置周期)}重置` : ''}` : '不限次数'], u?.下次重置tick ? ['下次重置', c.tickDate(u.下次重置tick)] : null, ['到期', p.到期tick ? c.tickDate(p.到期tick) : '长期有效']].filter(Boolean))}
+      ${privActs(c, id, p)}`;
   };
 
   // 角色目录：左翼 = 范围筛选（全部 / 同地 / 已结识 / 其他地点），主屏 = 选角式竖牌（点选），右翼 = 选中角色的名片与切换查看。

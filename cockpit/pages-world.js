@@ -116,23 +116,61 @@
   };
 
   // 赛事：左翼 = 赛事列表，主屏 = 选中赛事（日程、项目、参赛规模），右翼 = 我的参赛
+  // 赛事（数据与校验在原项目赛事运行时，操作走 __LWCS_COMPETITION_PRIVILEGE_ACTION__）：左翼 = 未结束的赛事 + 归档；
+  // 主屏 = 项目切换与总览（赛程 / 循环分组积分）、参赛者、规则；右翼 = 我的参赛与当前阶段能做的操作（报名、启动、推进场外赛）
+  const GPAGES = ['总览', '参赛者', '规则'];
+  const inEntry = (c, p) => Object.values(p?.参赛者 || {}).some(r => r?.名称 === c.player || (r?.成员 || []).includes(c.player));
   const games = c => {
-    const list = Object.entries(c.S.world.赛事 || {}), [id, g] = list.find(([k]) => k === c.state.ui.gsel) || list[0] || [];
-    const mine = list.filter(([, x]) => Object.values(x.项目 || {}).some(p => p?.参赛者?.[c.name]));
-    const items = g ? Object.entries(g.项目 || {}).filter(([, p]) => p) : [];
+    const ui = c.state.ui, all = Object.entries(c.S.world.赛事 || {}), list = all.filter(([, x]) => x?.状态 !== '已完成'), done = all.filter(([, x]) => x?.状态 === '已完成');
+    const [id, g] = list.find(([k]) => k === ui.gsel) || list[0] || [];
+    const projs = g ? Object.keys(g.项目 || {}) : [], proj = projs.includes(ui.gproj) ? ui.gproj : projs[0] || '个人赛', p = g?.项目?.[proj], prog = g?._进度?.[proj];
+    const page = GPAGES.includes(ui.gpage) ? ui.gpage : '总览', rt = c.rt('__LWCS_COMPETITION_PRIVILEGE_RUNTIME__');
+    if (ui.garch === undefined && c.rt('__LWCS_ERA_RUNTIME_INTEGRATION_V1__')) { ui.garch = null; window.COCKPIT.previewAsync('competitionArchive').then(a => { ui.garch = Array.isArray(a) ? a : []; window.COCKPIT.refresh(); }); }
+    const mine = list.filter(([, x]) => Object.values(x.项目 || {}).some(q => inEntry(c, q)));
+    const act = (action, payload, confirm) => `${confirm ? `data-confirm="${c.esc(confirm)}" ` : ''}data-act="${c.esc(JSON.stringify({ name: 'competition', action, payload }))}"`;
+    const nameOf = pid => prog?.实体?.[pid]?.名称 || p?.参赛者?.[pid]?.名称 || '待定';
+    const overview = () => {
+      if (!prog) return '<div class="void"><strong>项目尚未启动</strong></div>';
+      const groups = (p?.流程 === '循环' || p?.流程 === '循环后淘汰') ? Object.entries(rt?.生成循环积分表?.(g, proj) || {}) : [];
+      const groupHtml = groups.length ? `<section class="sec"><h3>循环分组<span class="en">${groups.length} 组</span></h3>${groups.slice(0, 4).map(([gn, rows]) => `<div class="cost-table" role="table"><div class="ct-row ct-head" role="row"><span>${c.esc(gn)} 组</span><span>赛</span><span>胜</span><span>负</span><span>积分</span></div>${rows.map(r => `<div class="ct-row" role="row"><span>${c.esc(nameOf(r.参赛者ID))}</span><span>${c.fmt(r.场次 ?? r.赛 ?? 0)}</span><span>${c.fmt(r.胜 ?? 0)}</span><span>${c.fmt(r.负 ?? 0)}</span><span>${c.fmt(r.积分 ?? 0)}</span></div>`).join('')}</div>`).join('')}</section>` : '';
+      const matches = Object.entries(prog.对局 || {}).slice(0, 80);
+      return groupHtml + `<section class="sec"><h3>赛程<span class="en">${matches.length}</span></h3><div class="list">${matches.map(([mid, m]) => { const sides = (m.参赛者 || []).map(nameOf), me = (m.参赛者 || []).some(pid => (prog.实体?.[pid]?.成员 || []).includes(c.player) || prog.实体?.[pid]?.名称 === c.player), win = m.赛果?.结果;
+        return `<div class="row${me ? ' on' : ''}"><span class="chip s">${m.分组 ? c.esc(m.分组) + ' · ' : ''}第 ${c.fmt(m.轮次)} 轮</span><div><strong>${sides.map((n, i) => `<span class="${win && m.参赛者[i] === win ? 'winner' : ''}">${c.esc(n)}</span>`).join(' <small>VS</small> ')}</strong><small>${m.赛果 ? `胜者 ${c.esc(nameOf(win))}` : '待赛'}</small></div>${me && !m.赛果 ? `<button class="key-s" type="button" ${act('准备玩家对局', { 赛事ID: id, 项目: proj, 对局ID: mid }, `进入「${g.名称 || id}」${proj}第 ${m.轮次} 轮：${sides.join(' 对 ')}`)}><i class="fa-solid fa-flag-checkered"></i> 进入比赛</button>` : '<span></span>'}</div>`; }).join('') || '<span class="lbl">还没有排出对局</span>'}</div></section>`;
+    };
+    const entrants = () => {
+      const rows = Object.entries(p?.参赛者 || {});
+      return `<div class="tiles">${tile(c, 'users', c.fmt(p?.参赛总数 || 0), '参赛总数')}${tile(c, 'user-check', rows.length, '已登记')}${tile(c, 'robot', c.fmt(prog?.模拟数量 ?? Math.max(0, c.num(p?.参赛总数) - rows.length)), '模拟池')}</div>
+        <div class="list">${rows.slice(0, 100).map(([, r]) => `<div class="row${(r.成员 || []).includes(c.player) || r.名称 === c.player ? ' on' : ''}">${c.sock(proj === '团体赛' ? 'people-group' : 'user')}<div><strong>${c.esc(r.名称)}</strong><small>${c.esc((r.成员 || []).join('、'))}</small></div><span class="chip s">${c.esc(r.状态 || '已登记')}</span></div>`).join('') || '<span class="lbl">还没有人报名</span>'}</div>`;
+    };
+    const rules = () => { const l = p?.参赛限制 || {}; return `<div class="chips-row">${[`流程 ${p?.流程 || '未设置'}`, `参赛总数 ${c.fmt(p?.参赛总数 || 0)}`, l.队伍人数上限 ? `队伍最多 ${l.队伍人数上限} 人` : '', l.年龄上限 !== undefined ? `年龄不超过 ${l.年龄上限} 岁` : '', l.等级上限 !== undefined ? `等级不超过 ${l.等级上限} 级` : '', (l.允许身份 || []).length ? `身份 ${l.允许身份.join('、')}` : '', (l.必需装备 || []).length ? `必需装备 ${l.必需装备.join('、')}` : '', (l.禁止装备 || []).length ? `禁止装备 ${l.禁止装备.join('、')}` : ''].filter(Boolean).map(t => `<span class="chip s">${c.esc(t)}</span>`).join('')}</div>`; };
+    // 报名表：名称 + 成员（默认自己；团体赛可多选）
+    const members = String(ui.gmem || c.player).split('|').filter(Boolean), regName = ui.gname ?? (proj === '团体赛' ? '' : c.player);
+    const cands = [c.player, ...Object.keys(c.S.char || {}).filter(n => n !== c.player)];
+    const regForm = g?.状态 === '筹备' && p ? `<div class="groove"></div><span class="lbl">${c.esc(proj)}报名${c.hint('报名资格（年龄、等级、身份、装备、队伍人数）由赛事规则校验，不合格会给出原因')}</span>
+        <div class="dzf"><span class="dzf-l">${proj === '团体赛' ? '队伍名' : '选手名'}</span><input type="text" data-gname value="${c.esc(regName)}" aria-label="${proj === '团体赛' ? '队伍名' : '选手名'}"></div>
+        <div class="dzf"><span class="dzf-l">成员</span><div class="dz-chips">${(proj === '团体赛' ? cands : [c.player]).map(n => `<button type="button" class="dz-chip${members.includes(n) ? ' on' : ''}" data-gmem="${c.esc(n)}" aria-pressed="${members.includes(n)}">${c.esc(n)}</button>`).join('')}</div></div>
+        <button class="cta" type="button" data-game-join="${c.esc(id)}" data-proj="${c.esc(proj)}"><i class="fa-solid fa-signature"></i>报名参赛</button>` : '';
+    const stage = !g ? '' : g.状态 === '筹备' ? `<button class="key-s" type="button" ${act('启动赛事', { 赛事ID: id }, `启动「${g.名称 || id}」：截止报名并排出赛程`)}><i class="fa-solid fa-play"></i> 启动赛事</button>`
+      : g.状态 === '进行中' ? `<button class="key-s" type="button" ${act('模拟场外比赛', { 赛事ID: id }, `推进「${g.名称 || id}」与你无关的场外对局`)}><i class="fa-solid fa-forward"></i> 推进场外赛</button>` : '';
+    const arch = [...done.map(([k, x]) => ({ id: k, name: x.名称 || k, note: '归档待重试', action: '归档重试', label: '重试' })), ...(ui.garch || []).map(x => ({ id: x.赛事ID, name: x.名称, note: x.项目摘要 || `${x.参赛数量 || 0} 个参赛单位`, action: '恢复归档', label: '恢复' }))];
     return {
-      tag: 'CORE · TOURNAMENT', wide: list.length ? '' : 'both', railR: `<div class="rail">${c.sock('user-check')}<b>0</b><small>我的参赛</small></div>`, railL: `<div class="rail">${c.sock('trophy')}<b>0</b><small>赛事</small></div>`,
+      tag: 'CORE · TOURNAMENT', wide: list.length || arch.length ? '' : 'both',
+      railR: `<div class="rail">${c.sock('user-check')}<b>${mine.length}</b><small>我的参赛</small></div>`, railL: `<div class="rail">${c.sock('trophy')}<b>${list.length}</b><small>赛事</small></div>`,
       left: `<div class="pad">${c.head('trophy', '赛事', 'Tournament', 'gd')}
-        ${list.length ? `<div class="list q-list">${list.map(([k, x]) => `<button class="row${k === id ? ' on' : ''}" type="button" data-set="gsel=${c.esc(k)}"><span class="chip">${c.esc(x.状态 || '筹备')}</span><div><strong>${c.esc(x.名称 || k)}</strong><small>${c.esc(c.tickDate(x.日程?.开始tick || 0))}</small></div><span></span></button>`).join('')}</div>` : c.empty('trophy', '暂无赛事')}
+        ${list.length ? `<div class="list q-list">${list.map(([k, x]) => `<button class="row${k === id ? ' on' : ''}" type="button" data-set="gsel=${c.esc(k)}"><span class="chip">${c.esc(x.状态 || '筹备')}</span><div><strong>${c.esc(x.名称 || k)}</strong><small>${c.esc(c.tickDate(x.日程?.开始tick || 0))}</small></div><span></span></button>`).join('')}</div>` : c.empty('trophy', '暂无赛事', '赛事由剧情发起；筹备期可以报名参赛')}
+        ${arch.length ? `<section class="sec"><h3>归档<span class="en">Archive</span></h3><div class="list">${arch.map(x => `<div class="row">${c.sock('box-archive')}<div><strong>${c.esc(x.name)}</strong><small>${c.esc(x.note)}</small></div><button class="key-s" type="button" ${act(x.action, { 赛事ID: x.id }, `${x.label}「${x.name}」`)}>${x.label}</button></div>`).join('')}</div></section>` : ''}
       </div>`,
       core: g ? `<div class="pad">
         <div class="q-title">${c.sock('trophy', 'gd')}<span class="chip">${c.esc(g.状态 || '筹备')}</span><h2>${c.esc(g.名称 || id)}</h2></div>
         <div class="q-meters"><div class="q-meter"><div class="q-mh"><small>日程</small><b>${c.esc(c.tickDate(g.日程?.开始tick || 0))}</b><em>至 ${c.esc(c.tickDate(g.日程?.结束tick || 0))}</em></div></div></div>
-        <section class="sec"><h3>项目<span class="en">Events</span></h3><div class="tiles">${items.map(([k, p]) => tile(c, k === '团体赛' ? 'people-group' : 'user', `${Object.keys(p.参赛者 || {}).length} / ${c.fmt(p.参赛总数)}`, `${k} · 参赛`)).join('') || '<span class="lbl">尚未设项目</span>'}</div></section>
+        ${projs.length > 1 ? `<div class="seg">${projs.map(k => `<button class="key-s${k === proj ? ' on' : ''}" type="button" data-set="gproj=${c.esc(k)}">${c.esc(k)}</button>`).join('')}</div>` : ''}
+        <div class="seg">${GPAGES.map(k => `<button class="key-s${k === page ? ' on' : ''}" type="button" data-set="gpage=${k}">${k}</button>`).join('')}</div>
+        ${page === '参赛者' ? entrants() : page === '规则' ? rules() : overview()}
       </div>` : `<div class="pad sparse">${c.empty('trophy', '暂无赛事', '赛事由剧情发起；筹备期可以报名参赛')}</div>`,
       right: `<div class="pad">${c.head('user-check', '我的参赛', 'Entry')}
         <div class="tiles">${tile(c, 'user-check', mine.length, '已报名')}${tile(c, 'trophy', list.filter(([, x]) => x.状态 === '进行中').length, '进行中')}</div>
-        ${g && g.状态 === '筹备' ? `<button class="cta" type="button" data-game-join="${c.esc(id)}"><i class="fa-solid fa-signature"></i>报名参赛</button>` : ''}
+        ${g && p && inEntry(c, p) ? `<div class="okline"><i class="fa-solid fa-circle-check"></i>已报名${c.esc(proj)}</div>` : regForm}
+        ${stage ? `<div class="act-row">${stage}</div>` : ''}
       </div>`,
     };
   };
@@ -172,9 +210,16 @@
   });
 
   document.addEventListener('click', e => {
+    const m = e.target.closest('[data-gmem]');
+    if (m) { const ui = window.COCKPIT.ctx().state.ui, c = window.COCKPIT.ctx(), set = new Set(String(ui.gmem || c.player).split('|').filter(Boolean)); set.has(m.dataset.gmem) ? set.delete(m.dataset.gmem) : set.add(m.dataset.gmem); ui.gmem = [...set].join('|'); return window.COCKPIT.refresh(); }
     const t = e.target.closest('[data-game-join]'); if (!t) return;
-    t.dataset.confirm = `报名参加「${t.dataset.gameJoin}」`;
+    const c = window.COCKPIT.ctx(), ui = c.state.ui, name = String(c.ui?.gname ?? ui.gname ?? '').trim() || (t.dataset.proj === '团体赛' ? '' : c.player), mem = String(ui.gmem || c.player).split('|').filter(Boolean);
+    if (!name) { t.dataset.blocked = '先填写队伍名'; delete t.dataset.act; return; }
+    delete t.dataset.blocked;
+    t.dataset.confirm = `报名「${t.dataset.proj}」：${name}${mem.length ? `（${mem.join('、')}）` : ''}`;
+    t.dataset.act = JSON.stringify({ name: 'competition', action: '报名', payload: { 赛事ID: t.dataset.gameJoin, 项目: t.dataset.proj, 名称: name, 成员: mem, 持有人: c.player } });
   }, true);
+  document.addEventListener('change', e => { const t = e.target.closest?.('[data-gname]'); if (t) window.COCKPIT.ctx().state.ui.gname = t.value; });
 
   window.COCKPIT.register('page-world', {
     label: '世界', icon: 'globe', tag: 'CORE · WORLD',

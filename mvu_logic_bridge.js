@@ -10964,6 +10964,21 @@
     if (window.parent && window.parent !== window) window.parent.__LWCS_SETTLE_COMPETITION_MATCH__ = 结算赛事战斗_桥接;
   } catch (错误) {}
 
+  // 「进入比赛」登记成功后的对局叙事请求（旧赛事面板与座舱共用）
+  function 发起赛事对局请求_桥接(snapshot, { 赛事ID, 项目, 对局ID, 结果 } = {}) {
+    const 赛事 = deepGet(snapshot, ['rootData', 'world', '赛事', 赛事ID], {});
+    const 进度 = deepGet(赛事, ['_进度', 项目], {});
+    const 对局 = deepGet(进度, ['对局', 对局ID], {});
+    const 双方 = Array.isArray(结果?.双方) && 结果.双方.length
+      ? 结果.双方.map(参赛者 => toText(参赛者?.名称, '待实体化参赛者'))
+      : (对局.参赛者 || []).map(参赛者ID => toText(进度?.实体?.[参赛者ID]?.名称, '待实体化参赛者'));
+    return dispatchUiAiRequest(
+      `我要参加【${toText(赛事.名称, '赛事')}】的比赛，对阵${双方.join('与')}。`,
+      `以下内容属于前端已登记的赛事对局请求。赛事ID：${赛事ID}；项目：${项目}；对局ID：${对局ID}；双方：${双方.join(' / ')}。请自然描写入场并沿用现有战斗系统建立战斗；赛事上下文与结算ID已经由脚本写入，不要重复创建或修改。`,
+      { requestKind: 'competition_match' },
+    );
+  }
+
   async function 执行赛事权限管理动作_V2_桥接(动作 = '', 载荷 = {}) {
     const 运行时 = 读取赛事权限运行时_桥接();
     if (!运行时) throw new Error('赛事权限运行时未加载');
@@ -38645,6 +38660,7 @@
   async function 座舱动作预演异步(名称, 参数 = {}) {
     try {
       if (名称 === 'travel') return await 座舱规划移动(参数);
+      if (名称 === 'competitionArchive') { try { return await window.__LWCS_LIST_ARCHIVED_COMPETITIONS__?.() || []; } catch (错误) { return []; } }
       if (名称 === 'privateTrade') {
         if (参数.op === 'open') return await 座舱交易打开(参数);
         if (参数.op === 'set') return 座舱交易设置(参数.changes || {});
@@ -38927,6 +38943,15 @@
           // 生成后原流程会打开「技能设计确认」，由座舱接管跳到设计台
           if (参数.op === 'generate') { await handlePendingSoulRingGenerate(快照, toText(参数.candidate, '')); return { ok: true, message: '已生成魂环' }; }
           return { ok: false, message: '未知的魂环操作' };
+        }
+        case 'competition': {
+          const 动作 = toText(参数.action, ''), 载荷 = 参数.payload && typeof 参数.payload === 'object' ? 参数.payload : {};
+          if (动作 === '归档重试') { await window.__LWCS_ARCHIVE_COMPLETED_COMPETITION__?.(toText(载荷.赛事ID, '')); return { ok: true, message: '已重试归档' }; }
+          if (动作 === '恢复归档') { const 恢复 = await window.__LWCS_RESTORE_ARCHIVED_COMPETITION__?.(toText(载荷.赛事ID, '')); return { ok: !(恢复 && 恢复.ok === false), message: toText(恢复 && (恢复.message || 恢复.reason), '已恢复') }; }
+          const 结果 = await 执行赛事权限管理动作_V2_桥接(动作, 载荷);
+          if (!结果 || 结果.ok === false) return { ok: false, message: toText(结果 && (结果.reason || 结果.message), '操作未完成') };
+          if (动作 === '准备玩家对局') { await refreshLiveSnapshot({ force: true }); return 座舱请求结果(await 发起赛事对局请求_桥接(liveSnapshot, { ...载荷, 结果 }), '已进入比赛'); }
+          return { ok: true, message: { 报名: '已报名', 启动赛事: '赛事已启动', 模拟场外比赛: '场外赛已推进', 领取物品选择: '已领取', 撤销权限: '已撤销' }[动作] || '已完成' };
         }
         case 'skillConfirm': {
           if (参数.op === 'continue') { 继续现有技能获得流程(); return { ok: true, message: '已保留原技能' }; }
@@ -45305,19 +45330,9 @@
           const 是赛事 = previewKey === '赛事';
           const 挂载独立模块 = snapshot =>
             (是赛事 ? window.mountCompetitionUI : window.mountPrivilegeUI)?.(container, snapshot, {
-              onStartMatch: ({ 赛事ID, 项目, 对局ID, 结果 }) => {
+              onStartMatch: 载荷 => {
                 if (!是赛事) return;
-                const 赛事 = deepGet(snapshot, ['rootData', 'world', '赛事', 赛事ID], {});
-                const 进度 = deepGet(赛事, ['_进度', 项目], {});
-                const 对局 = deepGet(进度, ['对局', 对局ID], {});
-                const 双方 = Array.isArray(结果?.双方) && 结果.双方.length
-                  ? 结果.双方.map(参赛者 => toText(参赛者?.名称, '待实体化参赛者'))
-                  : (对局.参赛者 || []).map(参赛者ID => toText(进度?.实体?.[参赛者ID]?.名称, '待实体化参赛者'));
-                dispatchUiAiRequest(
-                  `我要参加【${toText(赛事.名称, '赛事')}】的比赛，对阵${双方.join('与')}。`,
-                  `以下内容属于前端已登记的赛事对局请求。赛事ID：${赛事ID}；项目：${项目}；对局ID：${对局ID}；双方：${双方.join(' / ')}。请自然描写入场并沿用现有战斗系统建立战斗；赛事上下文与结算ID已经由脚本写入，不要重复创建或修改。`,
-                  { requestKind: 'competition_match' },
-                );
+                发起赛事对局请求_桥接(snapshot, 载荷);
               },
             });
           const 挂载函数名 = 是赛事 ? 'mountCompetitionUI' : 'mountPrivilegeUI';
