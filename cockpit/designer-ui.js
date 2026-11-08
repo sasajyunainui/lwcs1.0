@@ -208,7 +208,9 @@
     const m = M().meta, parts = cur.key.split('/'), rest = parts.slice(1).join('/'), tail = parts.slice(2).join('/');
     switch (cur.group) {
       case '魂环魂技': return m.ring(c.name, parts[0], parts[1], parts[2], parts[3], cur.魂技名);
+      case '独立魂环魂技': return m.independentRing(c.name, parts[0], parts[1], parts[2], cur.魂技名);
       case '自创魂技': return m.custom(c.name, rest, cur.魂技名);
+      case '功法': return m.art(c.name, rest);
       case '武魂融合技': return m.fusion(c.name, rest, cur.魂技名);
       case '血脉散技': return m.blood(c.name, rest, cur.魂技名);
       case '血脉特性': return m.bloodPassive(c.name, rest, cur.魂技名);
@@ -220,6 +222,8 @@
   };
   const samePath = (a, b) => Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((x, i) => String(x) === String(b[i]));
   const sKey = (c, cur) => `${c.name}\u0001${cur.key}`;
+  // 会话打开时的技能快照：用来判断有没有改动（有改动才给「重新读取」）
+  const skillJson = ss => { try { return JSON.stringify(ss.toSkill()); } catch (e) { return ''; } };
   const sessionOf = (c, cur) => {
     const ui = c.state.ui, k = sKey(c, cur); ui.dz2 = ui.dz2 || {};
     if (!ui.dz2[k]) {
@@ -227,12 +231,13 @@
       // 魂骨实例上没有、取自物品定义的技能：会话仍挂在佩戴者路径上（预算按佩戴者算），技能显式传入，保存时改写到定义路径
       const writePath = cur.srcPath && !samePath(cur.srcPath, meta.path) ? cur.srcPath : null;
       ui.dz2[k] = { ss: M().session(writePath ? cur.src : null, meta, c.S), meta, writePath, entryKey: cur.key, isNew: !!cur.isNew };
+      ui.dz2[k].init = skillJson(ui.dz2[k].ss);
     }
     return ui.dz2[k];
   };
-  const DESIGNABLE = ['魂环魂技', '自创魂技', '武魂融合技', '血脉散技', '血脉特性', '血脉魂环', '魂骨附带', '装备技能'];
+  const DESIGNABLE = ['魂环魂技', '独立魂环魂技', '自创魂技', '武魂融合技', '血脉散技', '血脉特性', '血脉魂环', '魂骨附带', '装备技能', '功法'];
   // 列表图标：魂环技能用魂环章，其余按来源
-  const GROUP_ICON = { 自创魂技: 'pen-nib', 武魂融合技: 'link', 血脉散技: 'droplet', 血脉特性: 'droplet', 血脉魂环: 'droplet', 魂骨附带: 'bone', 装备技能: 'hammer' };
+  const GROUP_ICON = { 功法: 'scroll', 自创魂技: 'pen-nib', 武魂融合技: 'link', 血脉散技: 'droplet', 血脉特性: 'droplet', 血脉魂环: 'droplet', 魂骨附带: 'bone', 装备技能: 'hammer' };
   const designable = s => DESIGNABLE.includes(s.group);
   // 新建：同原版「新建自创魂技 / 新建武魂融合技」入口——在新路径上打开空白设计台，保存后才写进存档
   const NEW_KIND = { 自创魂技: { prefix: '自创', label: '新建自创魂技' }, 武魂融合技: { prefix: '融合', label: '新建武魂融合技' } };
@@ -303,7 +308,7 @@
       // 左翼：选技能 → 和标准对手比（对抗试算）；右翼：预算 → 最终摘要 → 保存
       left: `<div class="pad">${c.head('book', '技能', 'Skills')}<div class="list dz2-skills">${all.map(s => `<button class="row${s === cur ? ' on' : ''}" type="button" data-set="skill=${esc(s.key)}" aria-current="${s === cur}">${s.ring ? c.ringMedal(s.ring, String(s.ring.slot).replace(/\D/g, ''), true) : c.sock(GROUP_ICON[s.group] || 'pen-ruler')}<div><strong>${esc(s.魂技名)}</strong><small>${s.isNew ? '未保存' : s.ring ? esc(s.from || '') : esc(s.group)}</small></div><span></span></button>`).join('')}</div>${newBtns()}<div class="groove"></div><div class="dz2-readout">${readout(c, ss, deps)}</div></div>`,
       railL: `<div class="rail">${c.sock('pen-ruler', 'gd')}<b>${all.length}</b><small>可设计技能</small></div>`,
-      right: `<div class="pad">${c.head('scale-balanced', '预算核算', 'Budget', 'gd')}<div class="dz-preview">${pendHere ? budget(c, ss, cur, deps).replace(/(<button class="cta" type="button" data-dz2-save[^>]*)>([\s\S]*?)保存设计/, '$1 data-hint="保存后把这次设计交给叙事结算">$2保存并提交剧情') : budget(c, ss, cur, deps)}</div>${ui.dzSaved === cur.key ? '<div class="okline dz2-saved"><i class="fa-solid fa-floppy-disk"></i>已写入存档</div>' : ''}${cur.isNew ? '<button class="key-s danger dz2-discard" type="button" data-dz2-discard><i class="fa-solid fa-trash"></i> 放弃新建</button>' : ''}</div>`,
+      right: `<div class="pad">${c.head('scale-balanced', '预算核算', 'Budget', 'gd')}<div class="dz-preview">${pendHere ? budget(c, ss, cur, deps).replace(/(<button class="cta" type="button" data-dz2-save[^>]*)>([\s\S]*?)保存设计/, '$1 data-hint="保存后把这次设计交给叙事结算">$2保存并提交剧情') : budget(c, ss, cur, deps)}</div>${ui.dzSaved === cur.key ? '<div class="okline dz2-saved"><i class="fa-solid fa-floppy-disk"></i>已写入存档</div>' : ''}${cur.isNew ? '<button class="key-s danger dz2-discard" type="button" data-dz2-discard><i class="fa-solid fa-trash"></i> 放弃新建</button>' : S.init && skillJson(ss) !== S.init ? '<button class="key-s danger dz2-discard" type="button" data-dz2-reload data-hint="放弃这次未保存的改动，按存档重新载入"><i class="fa-solid fa-rotate-left"></i> 重新读取</button>' : ''}</div>`,
     };
   };
 
@@ -424,6 +429,13 @@
     const b = e.target.closest('[data-dz2-discard]'); if (!b || armFirst(b)) return;
     const c = window.COCKPIT.ctx?.(), S = c?.state.ui.dz2?.[document.querySelector('[data-dz2-key]')?.dataset.dz2Key]; if (!S?.isNew) return;
     dropNew(c, S.entryKey); Object.assign(c.state.ui, { skill: '', dzErr: '' });
+    window.COCKPIT.refresh();
+  });
+
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-dz2-reload]'); if (!b || armFirst(b)) return;
+    const c = window.COCKPIT.ctx?.(), key = document.querySelector('[data-dz2-key]')?.dataset.dz2Key; if (!c?.state.ui.dz2?.[key]) return;
+    delete c.state.ui.dz2[key]; Object.assign(c.state.ui, { dzErr: '', dzSaved: '' });
     window.COCKPIT.refresh();
   });
 

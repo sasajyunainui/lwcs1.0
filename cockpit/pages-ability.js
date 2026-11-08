@@ -12,6 +12,7 @@
   const allSkills = c => {
     const out = [];
     for (const s of c.souls) for (const sp of s.spirits) for (const r of sp.rings) for (const sk of r.skills) out.push({ key: `${s.slot}/${sp.slot}/${r.slot}/${sk.slot}`, group: '魂环魂技', from: `${s.表象名称} · ${r.slot}`, ring: r, ...sk });
+    for (const s of c.souls) for (const r of s.direct || []) for (const sk of r.skills) out.push({ key: `${s.slot}/${r.slot}/${sk.slot}`, group: '独立魂环魂技', from: `${s.表象名称} · 独立${r.slot}`, ring: r, ...sk });
     for (const [n, sk] of c.entries(c.ch.自创魂技)) out.push({ key: `自创/${n}`, group: '自创魂技', from: '自创', ...sk, 魂技名: sk.魂技名 || n });
     // 魂骨：同原版「合并魂骨 = { ...物品定义, ...实例 }」取附带技能；表来自物品定义时记下 srcPath，设计台保存写回定义
     for (const [slot, b] of c.entries(c.ch.魂骨)) {
@@ -36,12 +37,14 @@
     for (const [rs, ring] of c.entries(bl).filter(([k, v]) => /^第\d+气血魂环$/.test(k) && v && typeof v === 'object').sort((a, b) => parseInt(a[0].slice(1), 10) - parseInt(b[0].slice(1), 10)))
       for (const [n, sk] of c.entries(ring).filter(([k, v]) => /^第\d+血脉魂技(?:_2)?$/.test(k) && v && typeof v === 'object')) out.push({ key: `血脉环/${rs}/${n}`, group: '血脉魂环', from: `${blName} · ${rs}`, ring: { ...ring, slot: rs }, ...sk, 魂技名: sk.魂技名 || n });
     for (const [src, cp] of c.entries(c.ch.复制效果)) for (const [n, it] of c.entries(cp?.技能列表)) out.push({ key: `复制/${src}/${n}`, group: '复制效果', from: `复制自 ${src}${cp.到期tick ? ' · 至 ' + c.tickDate(cp.到期tick) : ''}${it.剩余次数 !== undefined ? ` · 剩 ${it.剩余次数} 次` : ''}`, ...(it.技能数据 || {}), 魂技名: it.技能数据?.魂技名 || n });
+    // 功法：同原项目功法设计台（scope art，保存时写回境界 / 等级）；不是可场外施放的技能
+    for (const [n, a] of c.entries(c.ch.功法)) if (a && typeof a === 'object') out.push({ key: `功法/${n}`, group: '功法', from: [a.境界, a.lv ? `${a.lv} 级` : ''].filter(Boolean).join(' · ') || '功法', ...a, 魂技名: a.魂技名 || n });
     // 融合技：技能本体在「技能数据」里，记录层只有模式 / 搭档 / 来源武魂
     for (const [n, f] of c.entries(c.ch.武魂融合技)) out.push({ key: `融合/${n}`, group: '武魂融合技', from: `${f.融合模式 === 'self' ? '自体' : '搭档'} · ${f.融合对象 || ''}`, ...(f.技能数据 || {}), 魂技名: f.技能数据?.魂技名 || f.名称 || n });
     return out;
   };
   const itemDef = (c, name) => { if (name) for (const [k, g] of c.entries(c.S.物品)) if (g && typeof g === 'object' && g[name] && typeof g[name] === 'object') return [k, g[name]]; return ['', null]; };
-  const SOURCE_GROUPS = ['魂环魂技', '自创魂技', '武魂融合技', '魂骨附带', '装备技能', '血脉散技', '血脉特性', '血脉魂环', '复制效果'];
+  const SOURCE_GROUPS = ['魂环魂技', '独立魂环魂技', '自创魂技', '武魂融合技', '魂骨附带', '装备技能', '血脉散技', '血脉特性', '血脉魂环', '功法', '复制效果'];
   const BLOOD_CHIP = { 血脉散技: '主动', 血脉特性: '被动', 血脉魂环: '环技' };
   // 结构化效果：读 _效果数组，把「原型 / 目标 / 数值 / 持续 / 条件分支」变成图标行，原文折叠
   const FX = {
@@ -73,9 +76,9 @@
     return `<div class="insp-head">${sk.ring ? c.ringMedal(sk.ring, String(sk.ring.slot || '').replace(/\D/g, '')) : c.sock('book', 'gd')}<div><strong style="font-size:1.15em">${c.esc(sk.魂技名)}</strong><br><small>${c.esc(sk.group)} · ${c.esc(sk.from)}</small></div>${page ? '' : '<button class="x" type="button" data-close-inspector aria-label="关闭">×</button>'}</div>
       <div style="display:flex;gap:.35em;flex-wrap:wrap">${sk.ring ? `<span class="chip">${c.yearTier(sk.ring.年限)} · ${c.fmt(sk.ring.年限)} 年</span>` : ''}${!c.blank(sk.承载方式) ? `<span class="chip s">${c.esc(sk.承载方式)}</span>` : ''}${sk.触发方式 ? `<span class="chip s">触发：${c.esc(sk.触发方式)}</span>` : ''}${(sk.附带属性 || []).map(a => `<span class="chip s">${c.esc(a)}</span>`).join('')}</div>
       ${pkgs.length ? `<section class="sec"><h3>效果</h3>${pkgs.map(p => `${(p.使用效果 || []).map(e => fxRow(c, e) + (e.条件分支 || []).map(b => branchRow(c, b)).join('')).join('')}${p.有效期tick || p.数量 ? `<small style="padding-left:.2em">产出 ${c.fmt(p.数量 || 1)} 份${p.有效期tick ? ` · 有效期 ${Math.floor(p.有效期tick / 6)} 小时` : ''}</small>` : ''}`).join('')}</section>` : ''}
-      ${sk.ring && sk.group === '魂环魂技' ? (rp => { const rows = [['palette', '颜色', c.ed(sk.ring.颜色 || '无', [...rp, '颜色'], { kind: 'enum', options: ['白', '黄', '紫', '黑', '红', '金', '无'] })], ['hourglass-half', '年限', c.ed(c.fmt(sk.ring.年限), [...rp, '年限'], { kind: 'number', integer: true, min: 0, raw: c.num(sk.ring.年限) })], ['map-pin', '来源', c.ed(c.blank(sk.ring.来源) ? '未记录' : sk.ring.来源, [...rp, '来源'], { raw: c.blank(sk.ring.来源) ? '' : sk.ring.来源 })]];
+      ${sk.ring && (sk.group === '魂环魂技' || sk.group === '独立魂环魂技') ? (rp => { const rows = [['palette', '颜色', c.ed(sk.ring.颜色 || '无', [...rp, '颜色'], { kind: 'enum', options: ['白', '黄', '紫', '黑', '红', '金', '无'] })], ['hourglass-half', '年限', c.ed(c.fmt(sk.ring.年限), [...rp, '年限'], { kind: 'number', integer: true, min: 0, raw: c.num(sk.ring.年限) })], ['map-pin', '来源', c.ed(c.blank(sk.ring.来源) ? '未记录' : sk.ring.来源, [...rp, '来源'], { raw: c.blank(sk.ring.来源) ? '' : sk.ring.来源 })]];
         // 典籍主屏用数据块；浮窗里仍是紧凑的键值行
-        return `<section class="sec"><h3>魂环</h3>${page ? `<div class="tiles three">${rows.map(([i, l, v]) => `<div class="tile">${c.sock(i)}<b>${v}</b><small>${l}</small></div>`).join('')}</div>` : c.kv(rows.map(([, l, v]) => [l, v]))}</section>`; })(c.P(...sk.key.split('/').slice(0, 3))) : ''}
+        return `<section class="sec"><h3>魂环</h3>${page ? `<div class="tiles three">${rows.map(([i, l, v]) => `<div class="tile">${c.sock(i)}<b>${v}</b><small>${l}</small></div>`).join('')}</div>` : c.kv(rows.map(([, l, v]) => [l, v]))}</section>`; })(c.P(...sk.key.split('/').slice(0, sk.group === '独立魂环魂技' ? 2 : 3))) : ''}
       <section class="sec"><h3>代价</h3>
         <div style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:.4em .9em;align-items:center">
           ${sp ? `<span class="sock sp" style="--s:2em"><i class="fa-solid fa-fire-flame-curved"></i></span><div><strong class="num" style="font-size:1.25em">魂力 ${c.fmt(sp)}</strong> <small>当前可连续施放 ${casts} 次</small><div class="pips" style="margin-top:.3em">${Array.from({ length: Math.min(12, Math.max(casts, 1)) }, (_, i) => `<i class="${i < casts ? 'on' : 'off'}"></i>`).join('')}</div></div>` : `<span class="sock" style="--s:2em"><i class="fa-solid fa-feather"></i></span><strong>${costText(c, sk.消耗)}</strong>`}
@@ -93,7 +96,7 @@
   const skillPath = (c, sk) => {
     const k = String(sk.key || '').split('/'), P = (...p) => ['char', c.name, ...p];
     switch (sk.group) {
-      case '魂环魂技': return P(...k);
+      case '魂环魂技': case '独立魂环魂技': return P(...k);
       case '自创魂技': return P('自创魂技', k.slice(1).join('/'));
       case '魂骨附带': case '装备技能': return sk.srcPath?.[0] === 'char' ? sk.srcPath : null;
       case '血脉散技': return P('血脉之力', '技能', k.slice(1).join('/'));
@@ -174,8 +177,8 @@
     const pendRing = c.ch.状态?.待选魂环 && typeof c.ch.状态.待选魂环 === 'object' ? c.ch.状态.待选魂环 : null;
     const bl = c.ch.血脉之力 || {}, blOn = !c.blank(bl.血脉);
     const tags = [soul.系别, !c.blank(soul.属性体系) ? '属性 · ' + soul.属性体系 : '', ((soul.可调用元素 || []).filter(x => x && x !== '无').join('、')) ? '可调用 · ' + soul.可调用元素.filter(x => x && x !== '无').join('、') : ''].filter(Boolean);
-    const skills = soul.spirits.flatMap(p => p.rings.map(r => ({ p, r, sk: r.skills[0] }))).filter(x => x.sk);
-    const skKey = ({ p, r, sk }) => c.esc(`${soul.slot}/${p.slot}/${r.slot}/${sk.slot}`);
+    const skills = [...soul.spirits.flatMap(p => p.rings.map(r => ({ p, r, sk: r.skills[0] }))), ...(soul.direct || []).map(r => ({ p: null, r, sk: r.skills[0] }))].filter(x => x.sk);
+    const skKey = ({ p, r, sk }) => c.esc(p ? `${soul.slot}/${p.slot}/${r.slot}/${sk.slot}` : `${soul.slot}/${r.slot}/${sk.slot}`);
     return {
       tag: 'CORE · MARTIAL SOUL',
       left: `<div class="pad">${c.head('fire', '武魂', 'Martial Souls', 'gd')}
@@ -188,7 +191,7 @@
         ${pendRing ? `<div class="banner"><i class="fa-solid fa-circle-plus"></i><div><strong>有一枚待生成的魂环</strong><small>${c.esc(pending ? [pending.spiritName, `第 ${pending.ringIndex} 魂环`, `候选 ${pending.candidates.length} 只`, pending.status !== '待选择' ? pending.status : ''].filter(Boolean).join(' · ') : Object.entries(pendRing).slice(0, 3).map(([k, v]) => `${k} ${typeof v === 'object' ? '' : v}`).join(' · '))}</small></div>${pending ? '<button class="key-s" type="button" data-set="ringPick=1">选择魂灵生成</button>' : ''}<button class="key-s" type="button" data-confirm="暂缓生成这枚魂环" data-act='{"name":"ring","op":"defer"}'>暂不生成</button></div>` : ''}
         ${tags.length ? `<div class="plaques">${tags.map((t, i) => `<span class="plq${i ? ' steel' : ''}">${c.esc(t)}</span>`).join('')}</div>` : ''}
         <p class="narr">${c.ed(c.blank(soul.描述) ? '未记录' : soul.描述, [...c.P(soul.slot), '描述'], { kind: 'text', raw: c.blank(soul.描述) ? '' : soul.描述 })}</p>
-        ${soul.rings.length ? `<div class="soul-card" data-scan data-float="r"><div class="soul-stage">${c.ringStage(soul.rings, r => { const p = soul.spirits.find(x => x.rings.includes(r)), sk = r.skills[0]; return p && sk ? `data-inspect="sk:${c.esc(`${soul.slot}/${p.slot}/${r.slot}/${sk.slot}`)}"` : ''; })}</div></div>`
+        ${soul.rings.length ? `<div class="soul-card" data-scan data-float="r"><div class="soul-stage">${c.ringStage(soul.rings, r => { const p = soul.spirits.find(x => x.rings.includes(r)), sk = r.skills[0]; return sk && (p || r.independent) ? `data-inspect="sk:${skKey({ p, r, sk })}"` : ''; })}</div></div>`
           : `<div class="soul-card"><div class="soul-stage"><div class="soul-empty"><i></i><span>尚未附环</span></div></div><small class="lbl">下一魂环于 ${Math.floor(c.num(c.st.等级) / 10 + 1) * 10} 级开放</small></div>`}
         <div class="spirit-grid">${soul.spirits.map(p => `<div class="spirit-link" data-inspect="spirit:${c.esc(`${soul.slot}/${p.slot}`)}" tabindex="0">${spiritCard(c, p)}<i class="fa-solid fa-circle-info"></i></div>`).join('')}</div>
       </div>`,

@@ -65,7 +65,11 @@
         slot: rk, ...ring, skills: entries(ring).filter(([, x]) => x && typeof x === 'object' && x.魂技名).map(([kk, sk2]) => ({ slot: kk, ...sk2 })),
       })),
     }));
-    return { slot, ...v, spirits, rings: spirits.flatMap(sp => sp.rings) };
+    // 独立魂环：直接挂在武魂下的「第N魂环」（同原项目 取武魂直接魂环条目），排在魂灵魂环之后
+    const direct = entries(v).filter(([k, x]) => /^第\d+魂环$/.test(k) && x && typeof x === 'object').map(([rk, ring]) => ({
+      slot: rk, independent: true, ...ring, skills: entries(ring).filter(([, x]) => x && typeof x === 'object' && x.魂技名).map(([kk, sk2]) => ({ slot: kk, ...sk2 })),
+    }));
+    return { slot, ...v, spirits, direct, rings: [...spirits.flatMap(sp => sp.rings), ...direct] };
   });
   // 运行时全局：lwcs 里 MVU 运行时（技能 / 结构 / 商品池 / 修炼公式等）跑在酒馆助手的脚本 iframe 里，只有部分 __LWCS_* 对象共享到主页面。
   // 先找本窗口与顶层窗口，再找各 iframe（记住找到的窗口）；原型页这些都在本窗口

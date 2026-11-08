@@ -43,7 +43,7 @@
   // 下方椭圆台座 + 银色铭牌。不用方框卡片。data-float 让魂技卡出现在外侧：左台往左、右台往右，不遮挡魂环塔。
   const soulPlate = (label, name, sub, go = '') => `<div class="soul-plate${go ? ' door' : ''}" ${go}><small>${label}</small><strong>${name}</strong>${sub ? `<div class="sp-sub">${sub}</div>` : ''}</div>`;
   const soulCard = (c, s, i) => {
-    const keyOf = r => { const sk = r.skills[0], sp = s.spirits.find(x => x.rings.includes(r)); return sk && sp ? `${s.slot}/${sp.slot}/${r.slot}/${sk.slot}` : ''; };
+    const keyOf = r => { const sk = r.skills[0], sp = s.spirits.find(x => x.rings.includes(r)); return !sk ? '' : sp ? `${s.slot}/${sp.slot}/${r.slot}/${sk.slot}` : r.independent ? `${s.slot}/${r.slot}/${sk.slot}` : ''; };
     const sub = `${!c.blank(s.系别) ? `<span class="sys">${c.esc(s.系别)}</span>` : ''}${s.rings.length ? `<em>${s.rings.length} 环</em>` : ringHint(c, s).includes('nx ok') ? '' : '<em>未附环</em>'}${ringHint(c, s)}`;
     return `<div class="soul-card" data-scan data-float="${i % 2 ? 'r' : 'l'}">
       <div class="soul-stage">${s.rings.length ? c.ringStage(s.rings, r => { const key = keyOf(r); return key ? `data-inspect="sk:${c.esc(key)}"` : ''; }) : '<div class="soul-empty"><i></i><span>尚未附环</span></div>'}</div>
