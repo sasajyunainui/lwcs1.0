@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:e89899d36c1d5d95ea55b0eefb95b3da569feed05e74ae3c384a85f5f2d61671|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:95ac2d8cadbbd1f4c77e5547bdc059049ad71bb078f9cdfb9440dae99ba344a1|MVU_Schema_Runtime.js:a173fbef52748f995d607be544151366fdbbde1cb9b23ef8dbea7bb3244b3152|MVU_Competition_Runtime.js:05e0687c9c59fd58ae2be28a44634c27c005562d1da99c69983710962b26c318|MVU_Runtime_View.js:f1cdb932eb407effb83cc5252749b7c093882c1328ce746565cdb1ec607791da */
+/* sources-sha256: LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:e89899d36c1d5d95ea55b0eefb95b3da569feed05e74ae3c384a85f5f2d61671|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:a047634ae51ef5efaba0b6213f994e9f9d263cab2d4022d831c95907c3ec2dca|MVU_Schema_Runtime.js:a173fbef52748f995d607be544151366fdbbde1cb9b23ef8dbea7bb3244b3152|MVU_Competition_Runtime.js:05e0687c9c59fd58ae2be28a44634c27c005562d1da99c69983710962b26c318|MVU_Runtime_View.js:f1cdb932eb407effb83cc5252749b7c093882c1328ce746565cdb1ec607791da */
 ;
 /* source: LWCS_TT_AutoUpdate_Debug.js */
 (function installLwcsTtAutoUpdateDebug() {
@@ -9655,7 +9655,8 @@ function 获取单位COST_V1(原型, 选项字段, 选项值) {
 
 
 // Shared by the real carrier settlement and its candidate budget bounds.
-var 技能造物双行动抵扣率_V1 = 0.50;
+// 造物承载不再抵扣（2026-11-08 定）：能提前制造保存是它的优势，战斗中现做现用慢是对应的劣势，两者自行抵消，不进 COST。
+var 技能造物双行动抵扣率_V1 = 0;
 var 技能负向护盾百分比上限_V1 = 100;
 var 技能位移收益强度百分比上限_V1 = 45;
 
@@ -12001,14 +12002,15 @@ function 估算机制组合预算区间_V1(机制名 = '', context = {}) {
   const 壳COST = 需要食物造物授予壳 || 需要运行授予壳 ? Number(SKILL_UNIT_COST_TABLE_V1.机制授予 || 25) : 0;
   const 壳最高COST = 壳COST > 0 && 原型列表.some(条目 => 条目?.原型 === '位移执行')
     ? 壳COST * 读取技能效果持续系数_V1({ 原型: '机制授予', 持续回合: 10 }) : 壳COST;
-  const 使用效果COST系数 = String(context?.释放形态 || '').trim() === '造物承载' ? 1 - 技能造物双行动抵扣率_V1 : 1;
+  const 是造物承载 = String(context?.释放形态 || '').trim() === '造物承载';
+  const 使用效果COST系数 = 是造物承载 ? 1 - 技能造物双行动抵扣率_V1 : 1;
   let 可达COST档位 = null;
   if (Array.isArray(使用档案.可达效果档位) && 使用档案.可达效果档位.length) {
     const 预算效果 = [cloneJsonValue(使用档案.可达效果档位[0], {})];
-    if (使用效果COST系数 === 1) wrapGrantableRuntimeEffectsForSupport(预算效果, context?.系别 || context?.type);
+    if (!是造物承载) wrapGrantableRuntimeEffectsForSupport(预算效果, context?.系别 || context?.type);
     const 期限预算 = 枚举生成硬控期限预算_V1({
       承载方式: context?.释放形态 || '直接生效',
-      _效果数组: 使用效果COST系数 === 1 ? 预算效果 : [{ 数量: 1, 有效期tick: 240, 使用效果: 预算效果 }],
+      _效果数组: 是造物承载 ? [{ 数量: 1, 有效期tick: 240, 使用效果: 预算效果 }] : 预算效果,
     }, context);
     可达COST档位 = 期限预算?.COST档位 || null;
   }
@@ -19784,8 +19786,8 @@ function 计算技能效果累计COST_V1(技能 = {}, 上下文 = {}) {
     String(技能?.承载方式 || '').trim() === '造物承载' ||
     是造物承载效果数组_V1(技能?._效果数组)
   );
-  // 造物先制造、后消费，固定占用两次主动行动。使用效果按 50% 双行动限制
-  // 折算到 COST，生成收敛据此提高原始效果；制造即时效果、数量和有效期不获免费补偿。
+  // 造物先制造、后消费。原先按「占两次主动行动」把使用效果按 50% 折算进 COST；现抵扣率为 0（见 技能造物双行动抵扣率_V1），
+  // 造物与直接生效同价，制造即时效果、数量和有效期同样不获免费补偿。
   const 造物双行动抵扣率 = 是造物双行动 ? 技能造物双行动抵扣率_V1 : 0;
   const 限制抵扣上限 = Math.max(读取技能限制抵扣上限_V1(技能), 造物双行动抵扣率);
   const 技能限制抵扣率 = Array.isArray(技能)
@@ -19828,7 +19830,8 @@ function 计算技能效果累计COST_V1(技能 = {}, 上下文 = {}) {
     const 原始COST = Number(单项.COST || 0);
     const 限制信息 = 读取效果限制抵扣信息_V1(效果, 继承抵扣率, {
       限制抵扣上限,
-      继承限制来源: 是造物双行动 ? '造物双行动' : '技能限制',
+      // 抵扣率为 0 时造物继承到的只可能是技能自身的触发限制
+      继承限制来源: 造物双行动抵扣率 > 0 ? '造物双行动' : '技能限制',
     });
     const 抵扣率 = 限制信息.抵扣率;
     const 限制抵扣 = Number(Math.min(原始COST * 0.8, 原始COST * 抵扣率).toFixed(2));

@@ -222,7 +222,7 @@
     const H = window.__LWCS_SKILL_COST_HELPERS_V1__; if (!H) return { err: 'COST 引擎未加载' };
     try { const r = H.评估技能预算_V1(sk, dzCtx(c, ring)); let block = ''; try { H.断言技能预算_V1(sk, dzCtx(c, ring)); } catch (e) { block = String(e.message || e).replace(/^技能生成错误[:：]?/, ''); } return { r, block }; } catch (e) { return { err: String(e.message || e) }; }
   };
-  // 造物双行动：rule-overrides.js 已把这项抵扣归零，剩下挂在这个来源上的只可能是技能级触发限制
+  // 造物双行动抵扣已归零（引擎 技能造物双行动抵扣率_V1 = 0），旧数据里挂在这个来源上的只可能是技能级触发限制
   const LIMIT_SRC = { 造物双行动: '技能触发限制', 技能限制: '技能触发限制', 触发限制: '效果触发限制', 次数限制: '效果次数限制' };
   const limitWhy = r => {
     const m = new Map();

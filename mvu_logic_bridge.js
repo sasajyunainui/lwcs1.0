@@ -27732,7 +27732,8 @@
                   const readCondition = key => {
                     const input = Array.from(
                       conditionRow.querySelectorAll(`[data-skill-designer-condition-field="${key}"]`),
-                    ).find(node => !node.disabled);
+                    // 保存时 setBusy 会禁用全部可禁用控件，只跳过有意禁用的隐藏输入，否则保存会丢掉全部条件分支
+                    ).find(node => !node.disabled || node.hasAttribute('data-skill-designer-disableable'));
                     return input ? 读取技能设计台原型字段输入值(input.value) : '';
                   };
                   const 类型 = normalizeSkillUiText(readCondition('类型'), '');
@@ -30717,22 +30718,7 @@
     记录原始副作用违规(formState && formState['副作用列表'], '副作用列表');
     记录原始副作用违规(formState && formState['使用副作用列表'], '使用副作用列表');
     if (原始副作用违规列表.length) throw new Error(`副作用结构错误：${Array.from(new Set(原始副作用违规列表)).join('、')}`);
-    const 原始范围 = normalizeSkillUiText(previewMeta && previewMeta.scope, '');
-    if (原始范围 !== 'art') {
-      const 原始战斗外原型 = [];
-      const 战斗外原型集合 = new Set(['修炼增益', '战斗外复活']);
-      const 扫描原始战斗外原型 = effect => {
-        if (!effect || typeof effect !== 'object' || Array.isArray(effect)) return;
-        const 原型 = normalizeSkillUiText(effect['原型'], '');
-        if (战斗外原型集合.has(原型)) 原始战斗外原型.push(原型);
-        技能设计台嵌套效果数组字段表.forEach(key => {
-          (Array.isArray(effect[key]) ? effect[key] : []).forEach(扫描原始战斗外原型);
-        });
-      };
-      (Array.isArray(formState && formState.prototypeEffects) ? formState.prototypeEffects : []).forEach(扫描原始战斗外原型);
-      if (原始战斗外原型.length)
-        throw new Error(`战斗外原型不可保存为主动战斗技能：${Array.from(new Set(原始战斗外原型)).join('、')}`);
-    }
+    // 修炼增益 / 战斗外复活等战斗外原型：任何来源都能保存（2026-11-08 定；原先只有功法能存）
     const normalized = buildSkillDesignerFormStateFromDraft(formState, previewMeta);
     const normalizedFusionFields =
       previewMeta && previewMeta.scope === '武魂融合技' ? assertSkillDesignerFusionState(normalized) : null;
@@ -30788,22 +30774,6 @@
     if (副作用列表.length) safeSkill['副作用列表'] = 副作用列表;
     else delete safeSkill['副作用列表'];
     void designSummary;
-    const 当前范围 = normalizeSkillUiText(previewMeta && previewMeta.scope, '');
-    if (当前范围 !== 'art') {
-      const 战斗外主动原型 = [];
-      const 战斗外原型集合 = new Set(['修炼增益', '战斗外复活']);
-      const 记录战斗外主动原型 = effect => {
-        if (!effect || typeof effect !== 'object' || Array.isArray(effect)) return;
-        const 原型 = normalizeSkillUiText(effect['原型'], '');
-        if (战斗外原型集合.has(原型)) 战斗外主动原型.push(原型);
-        技能设计台嵌套效果数组字段表.forEach(key => {
-          (Array.isArray(effect[key]) ? effect[key] : []).forEach(记录战斗外主动原型);
-        });
-      };
-      (Array.isArray(normalized.prototypeEffects) ? normalized.prototypeEffects : []).forEach(记录战斗外主动原型);
-      if (战斗外主动原型.length)
-        throw new Error(`战斗外原型不可保存为主动战斗技能：${Array.from(new Set(战斗外主动原型)).join('、')}`);
-    }
     let runtimeEffects = buildSkillDesignerRuntimeEffects(normalized, skillSource, previewMeta);
     runtimeEffects = 套用技能设计台被动触发(
       normalizeSkillDesignerPassiveEffects(runtimeEffects, normalized, previewMeta),

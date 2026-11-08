@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:08f554a4bcb327eca0ad105855a08ea582ac85f9f0a964e3cde4299971570f7e|cockpit/designer-model.js:f72143352b4ac9a1109222cfdbbd833038fae2f80ab74c0c292817c18a65d05b|cockpit/cockpit.js:d478878f8e0b11ed08043486a389e8a75da162123ee79d7ef882a92976d2a476|cockpit/pages-role.js:908d0a9a9e323fcc62e4abb109ea7203b82ec6fd107ec5a8a7c0c36cb436d9a2|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:94cbf9ca01a696d2305db0bdfecb124b932b80d922c6b4bbaea917e530047f71|cockpit/pages-ability.js:88f27fb5a50d280fad29a1c840c61f2c5114d5855acddc5fa7d67e0028396707|cockpit/pages-supplies.js:6bb2f0535c71419f26784a612c3d84fa59722a816128d909b2b2db7f74961eb5|cockpit/pages-map.js:bb5b1f07a1035a0294cdb32fbc61c97c36a49946297500421647eee91fe093da|cockpit/pages-world.js:53d47819477ad0b7398941a27519ecbf1e668b1462a013f0601efb57f91507d5|cockpit/pages-terminal.js:4839b10b0361497898b513d151fff284614a4bb763f17662ea6857e4428cce41 */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:9b5911aa2387d893e28cb7953e95fd843ee60de1a144cb18875ff5a1b5acd0a2|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:d478878f8e0b11ed08043486a389e8a75da162123ee79d7ef882a92976d2a476|cockpit/pages-role.js:908d0a9a9e323fcc62e4abb109ea7203b82ec6fd107ec5a8a7c0c36cb436d9a2|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:94cbf9ca01a696d2305db0bdfecb124b932b80d922c6b4bbaea917e530047f71|cockpit/pages-ability.js:f49d2d49b995ba07f84ff57e3dfe3fca1457b61d53541e0c2cb229ce63b3b5f8|cockpit/pages-supplies.js:6bb2f0535c71419f26784a612c3d84fa59722a816128d909b2b2db7f74961eb5|cockpit/pages-map.js:bb5b1f07a1035a0294cdb32fbc61c97c36a49946297500421647eee91fe093da|cockpit/pages-world.js:53d47819477ad0b7398941a27519ecbf1e668b1462a013f0601efb57f91507d5|cockpit/pages-terminal.js:4839b10b0361497898b513d151fff284614a4bb763f17662ea6857e4428cce41 */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -29346,7 +29346,8 @@
                   const readCondition = key => {
                     const input = Array.from(
                       conditionRow.querySelectorAll(`[data-skill-designer-condition-field="${key}"]`),
-                    ).find(node => !node.disabled);
+                    // 保存时 setBusy 会禁用全部可禁用控件，只跳过有意禁用的隐藏输入，否则保存会丢掉全部条件分支
+                    ).find(node => !node.disabled || node.hasAttribute('data-skill-designer-disableable'));
                     return input ? 读取技能设计台原型字段输入值(input.value) : '';
                   };
                   const 类型 = normalizeSkillUiText(readCondition('类型'), '');
@@ -32331,22 +32332,7 @@
     记录原始副作用违规(formState && formState['副作用列表'], '副作用列表');
     记录原始副作用违规(formState && formState['使用副作用列表'], '使用副作用列表');
     if (原始副作用违规列表.length) throw new Error(`副作用结构错误：${Array.from(new Set(原始副作用违规列表)).join('、')}`);
-    const 原始范围 = normalizeSkillUiText(previewMeta && previewMeta.scope, '');
-    if (原始范围 !== 'art') {
-      const 原始战斗外原型 = [];
-      const 战斗外原型集合 = new Set(['修炼增益', '战斗外复活']);
-      const 扫描原始战斗外原型 = effect => {
-        if (!effect || typeof effect !== 'object' || Array.isArray(effect)) return;
-        const 原型 = normalizeSkillUiText(effect['原型'], '');
-        if (战斗外原型集合.has(原型)) 原始战斗外原型.push(原型);
-        技能设计台嵌套效果数组字段表.forEach(key => {
-          (Array.isArray(effect[key]) ? effect[key] : []).forEach(扫描原始战斗外原型);
-        });
-      };
-      (Array.isArray(formState && formState.prototypeEffects) ? formState.prototypeEffects : []).forEach(扫描原始战斗外原型);
-      if (原始战斗外原型.length)
-        throw new Error(`战斗外原型不可保存为主动战斗技能：${Array.from(new Set(原始战斗外原型)).join('、')}`);
-    }
+    // 修炼增益 / 战斗外复活等战斗外原型：任何来源都能保存（2026-11-08 定；原先只有功法能存）
     const normalized = buildSkillDesignerFormStateFromDraft(formState, previewMeta);
     const normalizedFusionFields =
       previewMeta && previewMeta.scope === '武魂融合技' ? assertSkillDesignerFusionState(normalized) : null;
@@ -32402,22 +32388,6 @@
     if (副作用列表.length) safeSkill['副作用列表'] = 副作用列表;
     else delete safeSkill['副作用列表'];
     void designSummary;
-    const 当前范围 = normalizeSkillUiText(previewMeta && previewMeta.scope, '');
-    if (当前范围 !== 'art') {
-      const 战斗外主动原型 = [];
-      const 战斗外原型集合 = new Set(['修炼增益', '战斗外复活']);
-      const 记录战斗外主动原型 = effect => {
-        if (!effect || typeof effect !== 'object' || Array.isArray(effect)) return;
-        const 原型 = normalizeSkillUiText(effect['原型'], '');
-        if (战斗外原型集合.has(原型)) 战斗外主动原型.push(原型);
-        技能设计台嵌套效果数组字段表.forEach(key => {
-          (Array.isArray(effect[key]) ? effect[key] : []).forEach(记录战斗外主动原型);
-        });
-      };
-      (Array.isArray(normalized.prototypeEffects) ? normalized.prototypeEffects : []).forEach(记录战斗外主动原型);
-      if (战斗外主动原型.length)
-        throw new Error(`战斗外原型不可保存为主动战斗技能：${Array.from(new Set(战斗外主动原型)).join('、')}`);
-    }
     let runtimeEffects = buildSkillDesignerRuntimeEffects(normalized, skillSource, previewMeta);
     runtimeEffects = 套用技能设计台被动触发(
       normalizeSkillDesignerPassiveEffects(runtimeEffects, normalized, previewMeta),
@@ -62044,7 +62014,7 @@ ${播报文本}
  *   一、原版代码：由 build_model.js 依赖闭包从 bridge 逐字抽取（每段标注 B:行号），勿手改；
  *   二、预览页局部量切片：技能设计台分支内的模板上下文（标题提示表、融合选项等），逐字切片；
  *   三、移植层：把原版「渲染 HTML → 挂载同步 → DOM 回读」改写为纯数据，并对外暴露 window.LWCS_DESIGNER_MODEL。
- * 生成时间：2026-11-08T02:02:29.328Z；抽取 465 段顶层声明。
+ * 生成时间：2026-11-08T06:40:42.069Z；抽取 465 段顶层声明。
  *
  * 用法（M = window.LWCS_DESIGNER_MODEL，root 缺省用 setRoot() 的值，再缺省 window.LWCS_SAVE）：
  *   const meta = M.meta.ring('唐凌雪','第1武魂','第1魂灵','第2魂环','第2魂技', 魂技名);   // 也有 fusion / art / custom / independentRing
@@ -62053,9 +62023,8 @@ ${播报文本}
  *   s.act({ type:'effectField', path:[0], key:'数值', value:'-20%' })   // 动作见 act 说明；返回会话本身
  *   s.save() → { ok, skill, updates, messages }   s.toSkill() / s.tempSkill() / s.summary() / s.validate()
  *   无状态版：fromSkill / open / toSkill / save / tempSkill / summary / validate / act / view / schema.fields(effect, ctx)
- * 注意：原版保存时先 setBusy 禁用全部控件，条件读取跳过 disabled 输入 → 保存结果不含条件分支；
- *       本模型默认复刻（与原版一致），传 { keepConditionBranches: true } 可保留分支。
- * 规则开关：M.rules.战斗外原型可保存 = true → 任何来源都能保存修炼增益 / 战斗外复活（原版只有功法能存）；默认 false 与原版一致。
+ * 规则（与桥接现行代码一致）：任何来源都能保存修炼增益 / 战斗外复活；保存时忙碌态禁用的控件照常回读，条件分支不丢。
+ * 规则开关：M.rules.物品被动保持承载方式（默认开）→ 物品技能（装备 / 魂骨附带）的「被动」开关 ⇔ 承载方式「被动」。
  */
 (function () {
   if (typeof globalThis === 'undefined' || !globalThis.__LWCS_SKILL_MECHANISM_REGISTRY__) {
@@ -71070,7 +71039,7 @@ ${播报文本}
       })
       .join('');
   }
-  // —— B:27799-27936
+  // —— B:27800-27937
   function 构建技能设计台原型摘要(draft = {}) {
     const 简写 = (value, fallback = '') => normalizeSkillUiText(格式化技能设计台原型字段值(value), fallback);
     const 目标文本 = effect => {
@@ -71209,7 +71178,7 @@ ${播报文本}
       .filter(Boolean)
       .join('；');
   }
-  // —— B:27938-27962
+  // —— B:27939-27963
   function readSkillDesignerMechanicParamState(mountEl, draft = {}) {
     const nextMap = {};
     collectSkillDesignerMechanicLabels(draft).forEach(label => {
@@ -71235,7 +71204,7 @@ ${播报文本}
     });
     return nextMap;
   }
-  // —— B:27964-28123
+  // —— B:27965-28124
   function buildSkillDesignerFormStateFromDraft(draft = {}, previewMeta = {}) {
     const baseDraft = draft && typeof draft === 'object' ? draft : {};
     const 显式被动值 = normalizeSkillUiText(baseDraft.启用被动, '');
@@ -71396,12 +71365,12 @@ ${播报文本}
       mechanicParams: normalizeSkillDesignerMechanicParamMap(baseDraft.mechanicParams, coreState),
     };
   }
-  // —— B:28336-28339
+  // —— B:28337-28340
   const SKILL_DESIGNER_RUNTIME_CAST_TIME_BY_DELIVERY = Object.freeze({
     直接生效: 10,
     造物承载: 20,
   });
-  // —— B:28341-28364
+  // —— B:28342-28365
   function buildSkillDesignerRuntimeObject(source = {}) {
     const result = {};
     safeEntries(source && typeof source === 'object' ? source : {}).forEach(([key, value]) => {
@@ -71426,7 +71395,7 @@ ${播报文本}
     delete result['机制'];
     return result;
   }
-  // —— B:28366-28373
+  // —— B:28367-28374
   function parseSkillDesignerNumericInputValue(value, fallback = 0, digits = 4) {
     const rawText = toText(value, '').trim();
     if (!rawText) return Number(Number(fallback || 0).toFixed(digits));
@@ -71435,13 +71404,13 @@ ${播报文本}
     if (!Number.isFinite(parsed)) return Number(Number(fallback || 0).toFixed(digits));
     return Number(parsed.toFixed(digits));
   }
-  // —— B:28375-28379
+  // —— B:28376-28380
   function parseSkillDesignerIntegerInputValue(value, fallback = 0, minimum = 0) {
     const parsed = Math.round(parseSkillDesignerNumericInputValue(value, fallback, 0));
     if (!Number.isFinite(parsed)) return Math.max(minimum, Math.round(Number(fallback || 0)));
     return Math.max(minimum, parsed);
   }
-  // —— B:28381-28388
+  // —— B:28382-28389
   function parseSkillDesignerPercentRatio(value, fallback = 0) {
     const rawText = toText(value, '').trim();
     if (!rawText) return Number(Number(fallback || 0).toFixed(4));
@@ -71450,31 +71419,31 @@ ${播报文本}
     if (/%/.test(rawText) || parsed > 1) return Number((parsed / 100).toFixed(4));
     return Number(parsed.toFixed(4));
   }
-  // —— B:28404-28408
+  // —— B:28405-28409
   function 规范化技能设计台伤害威力倍率(value, fallback = 100) {
     const parsed = Number(value);
     if (!Number.isFinite(parsed) || parsed <= 0) return Math.max(1, Number(fallback || 100));
     return Math.max(1, Math.round(parsed));
   }
-  // —— B:28433-28435
+  // —— B:28434-28436
   function normalizeSkillDesignerTargetForRuntime(target = '') {
     return normalizeSkillDesignerEffectTargetValue(target, '单体');
   }
-  // —— B:28441-28446
+  // —— B:28442-28447
   function isSkillDesignerGrantableMechanism(label = '') {
     const normalizedLabel = normalizeSkillUiText(label, '');
     return Array.isArray(SKILL_DESIGNER_TARGET_SEMANTICS.可赋予)
       ? SKILL_DESIGNER_TARGET_SEMANTICS.可赋予.includes(normalizedLabel)
       : false;
   }
-  // —— B:28455-28460
+  // —— B:28456-28461
   function getSkillDesignerMechanismRegistryMeta(label = '') {
     const normalizedLabel = normalizeSkillUiText(label, '');
     if (!normalizedLabel) return null;
     const meta = SKILL_DESIGNER_MECHANISM_META[normalizedLabel];
     return meta && typeof meta === 'object' ? meta : null;
   }
-  // —— B:28483-28510
+  // —— B:28484-28511
   function resolveSkillDesignerMechanismParamDefsFromRegistry(label = '') {
     const meta = getSkillDesignerMechanismRegistryMeta(label);
     const schema = Array.isArray(meta && meta.设计台参数定义) ? meta.设计台参数定义 : [];
@@ -71503,21 +71472,21 @@ ${播报文本}
       })
       .filter(Boolean);
   }
-  // —— B:28529-28534
+  // —— B:28530-28535
   function resolveSkillDesignerGrantableMechanismTargetForRuntime(target = '', mechanismLabel = '') {
     const normalizedTarget = normalizeSkillDesignerTargetForRuntime(target);
     if (mechanismLabel && !isSkillDesignerGrantableMechanism(mechanismLabel)) return normalizedTarget || '自身';
     if (normalizeSkillUiText(mechanismLabel, '') === '能力共享' && normalizedTarget === '自身') return '群体';
     return normalizedTarget || '自身';
   }
-  // —— B:28574-28579
+  // —— B:28575-28580
   function getSkillDesignerEffectivePrimaryLabel(draft = {}) {
     const primarySub = normalizeSkillUiText(draft && draft.primarySub, '');
     if (primarySub) return primarySub;
     const primaryMain = normalizeSkillUiText(draft && draft.primaryMain, '');
     return primaryMain;
   }
-  // —— B:30619-30639
+  // —— B:30620-30640
   function normalizeSkillDesignerPassiveEffects(effectArray = [], draft = {}, previewMeta = {}) {
     const isPassive =
       /被动/.test(normalizeSkillUiText(draft && draft.type, '')) ||
@@ -71539,7 +71508,7 @@ ${播报文本}
       return cloned;
     });
   }
-  // —— B:30641-30653
+  // —— B:30642-30654
   function 套用技能设计台被动触发(effectArray = [], draft = {}) {
     if (!技能设计台启用被动({}, draft)) return Array.isArray(effectArray) ? effectArray : [];
     return (Array.isArray(effectArray) ? effectArray : []).map(effect => {
@@ -71553,7 +71522,7 @@ ${播报文本}
       return cloned;
     });
   }
-  // —— B:30655-30696
+  // —— B:30656-30697
   function buildSkillDesignerConstructEffect(draft = {}, runtimeEffects = []) {
     const 造物默认驱动属性 =
       cloneJsonValue(Array.isArray(runtimeEffects) ? runtimeEffects : []).find(effect =>
@@ -71596,7 +71565,7 @@ ${播报文本}
     if (durationTick > 0) result['有效期tick'] = durationTick;
     return result;
   }
-  // —— B:30698-30706
+  // —— B:30699-30707
   function buildSkillDesignerRuntimeEffects(draft = {}, skillSource = {}, previewMeta = {}) {
     const prototypeEffects = 筛选技能设计台显式原型效果列表(
       draft && draft.prototypeEffects,
@@ -71606,7 +71575,7 @@ ${播报文本}
     void previewMeta;
     return 规范化技能设计台运行效果生效方式(prototypeEffects);
   }
-  // —— B:30708-30839
+  // —— B:30709-30809
   function buildSkillDesignerUpdatedSkill(skillSource = {}, formState = {}, previewMeta = {}, 根数据 = {}) {
     const safeSkill = {};
     const 原始副作用违规列表 = [];
@@ -71619,22 +71588,7 @@ ${播报文本}
     记录原始副作用违规(formState && formState['副作用列表'], '副作用列表');
     记录原始副作用违规(formState && formState['使用副作用列表'], '使用副作用列表');
     if (原始副作用违规列表.length) throw new Error(`副作用结构错误：${Array.from(new Set(原始副作用违规列表)).join('、')}`);
-    const 原始范围 = normalizeSkillUiText(previewMeta && previewMeta.scope, '');
-    if (原始范围 !== 'art' && !设计台规则.战斗外原型可保存) {
-      const 原始战斗外原型 = [];
-      const 战斗外原型集合 = new Set(['修炼增益', '战斗外复活']);
-      const 扫描原始战斗外原型 = effect => {
-        if (!effect || typeof effect !== 'object' || Array.isArray(effect)) return;
-        const 原型 = normalizeSkillUiText(effect['原型'], '');
-        if (战斗外原型集合.has(原型)) 原始战斗外原型.push(原型);
-        技能设计台嵌套效果数组字段表.forEach(key => {
-          (Array.isArray(effect[key]) ? effect[key] : []).forEach(扫描原始战斗外原型);
-        });
-      };
-      (Array.isArray(formState && formState.prototypeEffects) ? formState.prototypeEffects : []).forEach(扫描原始战斗外原型);
-      if (原始战斗外原型.length)
-        throw new Error(`战斗外原型不可保存为主动战斗技能：${Array.from(new Set(原始战斗外原型)).join('、')}`);
-    }
+    // 修炼增益 / 战斗外复活等战斗外原型：任何来源都能保存（2026-11-08 定；原先只有功法能存）
     const normalized = buildSkillDesignerFormStateFromDraft(formState, previewMeta);
     const normalizedFusionFields =
       previewMeta && previewMeta.scope === '武魂融合技' ? assertSkillDesignerFusionState(normalized) : null;
@@ -71690,22 +71644,6 @@ ${播报文本}
     if (副作用列表.length) safeSkill['副作用列表'] = 副作用列表;
     else delete safeSkill['副作用列表'];
     void designSummary;
-    const 当前范围 = normalizeSkillUiText(previewMeta && previewMeta.scope, '');
-    if (当前范围 !== 'art' && !设计台规则.战斗外原型可保存) {
-      const 战斗外主动原型 = [];
-      const 战斗外原型集合 = new Set(['修炼增益', '战斗外复活']);
-      const 记录战斗外主动原型 = effect => {
-        if (!effect || typeof effect !== 'object' || Array.isArray(effect)) return;
-        const 原型 = normalizeSkillUiText(effect['原型'], '');
-        if (战斗外原型集合.has(原型)) 战斗外主动原型.push(原型);
-        技能设计台嵌套效果数组字段表.forEach(key => {
-          (Array.isArray(effect[key]) ? effect[key] : []).forEach(记录战斗外主动原型);
-        });
-      };
-      (Array.isArray(normalized.prototypeEffects) ? normalized.prototypeEffects : []).forEach(记录战斗外主动原型);
-      if (战斗外主动原型.length)
-        throw new Error(`战斗外原型不可保存为主动战斗技能：${Array.from(new Set(战斗外主动原型)).join('、')}`);
-    }
     let runtimeEffects = buildSkillDesignerRuntimeEffects(normalized, skillSource, previewMeta);
     runtimeEffects = 套用技能设计台被动触发(
       normalizeSkillDesignerPassiveEffects(runtimeEffects, normalized, previewMeta),
@@ -71739,7 +71677,7 @@ ${播报文本}
     }
     return safeSkill;
   }
-  // —— B:30841-30925
+  // —— B:30811-30895
   function buildSkillDesignerWriteUpdates(previewMeta = {}, nextSkill = {}, rootData = {}) {
     const path = Array.isArray(previewMeta && previewMeta.path) ? previewMeta.path : [];
     if (!path.length) return [];
@@ -71826,7 +71764,7 @@ ${播报文本}
     return updates;
   }
 
-  // ════════════════ 二、预览页局部量（B:38640-38678，逐字切片） ════════════════
+  // ════════════════ 二、预览页局部量（B:38898-38936，逐字切片） ════════════════
   function 设计台模板上下文(snapshot, previewMeta, designerDraft) {
       const recommendedAttrs = new Set(
         normalizeSkillDesignerArray(SKILL_DESIGNER_ATTRIBUTE_HINTS_BY_TYPE[designerDraft.type] || []),
@@ -72608,16 +72546,16 @@ ${播报文本}
     const 首块 = 遍历缩放块([行]).next().value;
     if (首块) 同步缩放块(首块.block, 首块.row);
   }
-  // 原版 handleSubmit 先 setBusy(true) 把所有 [data-skill-designer-disableable] 控件设为 disabled 再回读表单；
-  // readCondition 只取未 disabled 的输入，于是保存时条件的「类型/比较/值/状态」都读不到 → 条件分支在保存中被整体丢弃。
-  // 保存链默认复刻该行为（忙碌态），可用 { keepConditionBranches: true } 关闭。
+  // 原版 handleSubmit 先 setBusy(true) 把所有 [data-skill-designer-disableable] 控件设为 disabled 再回读表单。
+  // 桥接 readCondition 已修（2026-11-08）：忙碌态禁用的可禁用控件照常读取，只跳过有意禁用的隐藏输入 → 保存不再丢条件分支。
+  // 保存链仍按忙碌态回读（与原版流程一致），{ keepConditionBranches } 保留为兼容参数，两者结果相同。
   let 设计台回读忙碌态 = false;
-  // 有意偏离原版的规则开关（build_model.js 的「偏离」表织入原版代码）；默认 false = 与原版一致
-  const 设计台规则 = { 战斗外原型可保存: false, 物品被动保持承载方式: false };
+  // 物品被动保持承载方式：旧设计台没有物品技能入口，这条只在数据层实现（见 api2.js 物品被动承载），默认开
+  const 设计台规则 = { 物品被动保持承载方式: true };
   function 条件读值(条件, 字段名) {
-    // ≙ readCondition：同名字段中第一个未 disabled 的输入（DOM 顺序：类型、对象、隐藏比较、比较下拉、值、状态）
-    const 可禁用 = 设计台回读忙碌态 ? [条件.类型, 条件.比较, 条件.值 && 条件.值.control, 条件.状态] : [];
-    const 候选 = [条件.类型, 条件.对象, 条件.比较隐藏, 条件.比较, 条件.值 && 条件.值.control, 条件.状态].filter(c => c && !可禁用.includes(c));
+    // ≙ readCondition：同名字段中第一个未有意禁用的输入（DOM 顺序：类型、对象、隐藏比较、比较下拉、值、状态）；
+    // 忙碌态（设计台回读忙碌态）只禁用可禁用控件，桥接修复后照常读取，所以这里不再按忙碌态排除
+    const 候选 = [条件.类型, 条件.对象, 条件.比较隐藏, 条件.比较, 条件.值 && 条件.值.control, 条件.状态].filter(Boolean);
     const 命中 = 候选.find(c => c.key === 字段名 && !c.disabled);
     return 命中 ? 读取技能设计台原型字段输入值(命中.value) : '';
   }
@@ -73765,7 +73703,7 @@ ${播报文本}
 
   const 公共接口 = {
     version: 1,
-    /** 有意偏离原版的规则开关（可改）：{ 战斗外原型可保存, 物品被动保持承载方式 } */
+    /** 规则开关（可改）：{ 物品被动保持承载方式 }（默认开） */
     rules: 设计台规则,
     /** 设置默认根数据（不传 root 的调用都用它；缺省回退 window.LWCS_SAVE） */
     setRoot(root) { 设计台根数据 = root && typeof root === 'object' ? root : null; },
@@ -77245,7 +77183,7 @@ ${播报文本}
     const H = window.__LWCS_SKILL_COST_HELPERS_V1__; if (!H) return { err: 'COST 引擎未加载' };
     try { const r = H.评估技能预算_V1(sk, dzCtx(c, ring)); let block = ''; try { H.断言技能预算_V1(sk, dzCtx(c, ring)); } catch (e) { block = String(e.message || e).replace(/^技能生成错误[:：]?/, ''); } return { r, block }; } catch (e) { return { err: String(e.message || e) }; }
   };
-  // 造物双行动：rule-overrides.js 已把这项抵扣归零，剩下挂在这个来源上的只可能是技能级触发限制
+  // 造物双行动抵扣已归零（引擎 技能造物双行动抵扣率_V1 = 0），旧数据里挂在这个来源上的只可能是技能级触发限制
   const LIMIT_SRC = { 造物双行动: '技能触发限制', 技能限制: '技能触发限制', 触发限制: '效果触发限制', 次数限制: '效果次数限制' };
   const limitWhy = r => {
     const m = new Map();
