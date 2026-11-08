@@ -20,17 +20,17 @@
   .wing .dz2-skills .row strong,.wing .dz2-skills .row small{white-space:normal;text-overflow:clip;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
 }
 @container cockpit (min-width:701px) and (max-width:999px){.home-top .title-line{white-space:normal;text-wrap:balance}}
-/* 宽屏侧轨（座舱宽 ≥1000px）：聊天流里高度金贵、宽度富余——领域标签与页面按键从上下两条横栏改为左右两条竖轨，
-   读数条压成屏幕下方一行；两翼收窄、斜角加大、透视拉近，侧轨也斜一点，整体形成包围 */
-@container (min-width:1000px){.cockpit{perspective:1100px;perspective-origin:50% 45%}}
-@container cockpit (min-width:1000px){
+/* 桌面侧轨（座舱宽 ≥760px）：聊天流里高度金贵——领域标签与页面按键从上下两条横栏改为左右两条竖轨，
+   读数条压成中屏下方一条细线；两翼斜角加大、透视拉近，侧轨也斜一点，整体形成包围 */
+@container (min-width:760px){.cockpit{perspective:1000px;perspective-origin:50% 45%}}
+@container cockpit (min-width:760px){
   .stage{--rail:clamp(52px,4.8cqw,62px);display:grid;grid-template-columns:var(--rail) minmax(0,1fr) var(--rail);grid-template-rows:auto auto;column-gap:clamp(4px,.6cqw,10px);align-items:stretch;padding-top:4px}
   .arc{grid-column:1;grid-row:1;width:auto;margin:0;transform-origin:100% 50%;transform:rotateY(28deg)}
   .deck{grid-column:3;grid-row:1;width:auto;margin:0;transform-origin:0 50%;transform:rotateY(-28deg);filter:drop-shadow(0 10px 14px rgba(0,0,0,.45))}
-  /* 两翼不窄于 240px（窄于此翼内属性行、页签、技能名会被挤裁），宽度紧张时先让中屏 */
-  .screens{grid-column:2;grid-row:1;margin:0;--lw:max(23%,240px);--rw:max(23%,240px)}
+  /* 两翼宽 ≥240px 时翼内属性行、页签、技能名不挤；座舱窄时下限随宽度收到约 26%，给中屏留够宽度 */
+  .screens{grid-column:2;grid-row:1;margin:0;--lw:max(23%,min(240px,26cqw));--rw:max(23%,min(240px,26cqw))}
   .wing.l{--la:32deg}.wing.r{--ra:32deg}
-  .readout{grid-column:1/-1;grid-row:2;width:auto;margin:8px 0 0}
+  .readout{grid-column:2;grid-row:2;width:auto;margin:4px 0 0;padding:.28em .9em;gap:1em;font-size:.84em}
   .arc .bz,.arc .b2,.arc .b3,.deck .bz,.deck .b2,.deck .b3{height:100%}
   .arc .bz,.arc .b2,.arc .b3{clip-path:polygon(0 0,100% 22px,100% calc(100% - 22px),0 100%)!important}
   .deck .bz,.deck .b2,.deck .b3{clip-path:polygon(0 22px,100% 0,100% 100%,0 calc(100% - 22px))!important}
