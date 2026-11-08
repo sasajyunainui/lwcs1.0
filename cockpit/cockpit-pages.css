@@ -566,3 +566,12 @@ div.rail-item{cursor:default}
 /* 工坊：目标物输入与「自动命名」同一行；材料不可选时变灰 */
 .ws-target{display:flex;gap:.4em;align-items:stretch}.ws-target input{flex:1}
 .ws-form .dz-chip:disabled{opacity:.45;cursor:not-allowed}
+/* 物品定义编辑器：行（选择器 + 输入 + 删除）、效果卡、标题旁的「新建」 */
+.h>.key-s.mini{margin-left:auto;align-self:center}
+.idf-row{display:flex;gap:.4em;align-items:center;min-width:0}
+.idf-row>.picker,.idf-row>input{flex:1 1 0;min-width:0}
+.idf-row>input{font:inherit;font-size:.9em;font-weight:700;color:var(--ink);padding:.45em .6em;border:0;background:#fff;box-shadow:inset 0 0 0 1px #c3cdda}
+.idf-row>input:focus{outline:none;box-shadow:inset 0 0 0 1.5px var(--blue),0 0 0 3px rgba(47,124,246,.18)}
+.idf-card{display:flex;flex-direction:column;gap:.35em;padding:.5em .55em;background:rgba(47,124,246,.06);box-shadow:inset 2px 0 0 rgba(79,155,255,.5)}
+.idf-dirs{flex-wrap:wrap}
+.idf .sec>.lbl{margin-top:.35em}

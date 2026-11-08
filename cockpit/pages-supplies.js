@@ -154,6 +154,106 @@
     return cards.length ? cards.join('') : '<span class="lbl">没有可温养的斗铠或机甲</span>';
   };
 
+  // ---------- 物品定义编辑器 ----------
+  // 草稿在 ui.idf（桥接 itemDefDraft 给出，字段与原项目「物品模板」编辑器一致）；保存时整份交给桥接按原规则规范化写回
+  const C_ = () => window.COCKPIT;
+  const idfOpen = name => {
+    const C = C_(), ui = C.ctx().state.ui, d = C.preview('itemDefDraft', { item: name || '' });
+    if (!d) return;
+    if (!d.旧名 && name) d.字段.名称 = name;
+    Object.assign(ui, { idf: d, idfOpts: C.preview('itemDefOptions') || {}, idfQty: d.旧名 ? 0 : 1, idfErr: '', idfMsg: '' });
+    C.refresh();
+  };
+  const scalarRows = (c, obj, attr, i) => Object.entries(obj || {}).filter(([k, v]) => k !== '原型' && (v === null || typeof v !== 'object'))
+    .map(([k, v]) => `<div class="dzf"><span class="dzf-l">${c.esc(k)}</span><input type="text" ${attr}="${i}:${c.esc(k)}" value="${c.esc(v ?? '')}" aria-label="${c.esc(k)}"></div>`).join('');
+  const keptRows = (c, obj) => Object.entries(obj || {}).filter(([k, v]) => v && typeof v === 'object').map(([k, v]) => `<span class="chip s" data-hint="结构字段原样保留">${c.esc(k)}${Array.isArray(v) ? ` ×${v.length}` : ''}</span>`).join('');
+  const idfEditor = c => {
+    const ui = c.state.ui, d = ui.idf, F = d.字段, o = ui.idfOpts || {}, sh = C_().preview('itemDefShape', { draft: d }) || {};
+    const inp = (k, label, type = 'text') => `<div class="dzf"><span class="dzf-l">${label}</span><input type="${type}" data-idf="${k}" value="${c.esc(F[k] ?? '')}" aria-label="${label}"></div>`;
+    const area = (k, label, hint = '') => `<label class="dzf wide"><span class="dzf-l">${label}${hint ? c.hint(hint) : ''}</span><textarea data-idf="${k}" rows="3" aria-label="${label}">${c.esc(F[k] || '')}</textarea></label>`;
+    const sel = (k, label, opts) => `<div class="dzf"><span class="dzf-l">${label}</span>${c.pick('idf:' + k, String(F[k] ?? ''), [...new Set([...(opts || []), String(F[k] ?? '')].filter(x => x !== ''))])}</div>`;
+    const add = (key, label) => `<button class="key-s mini" type="button" data-idf-add="${key}"><i class="fa-solid fa-plus"></i> ${label}</button>`;
+    const del = (key, i) => `<button class="key-s mini danger" type="button" data-idf-del="${key}:${i}" aria-label="删除"><i class="fa-solid fa-xmark"></i></button>`;
+    const sec = (title, en, inner) => `<section class="sec"><h3>${title}<span class="en">${en}</span></h3>${inner}</section>`;
+    const base = [inp('名称', '名称'), sel('物品分类', '分类', o.分类), sel('品质', '品质', o.品质), inp('基础价格', '基础价格', 'number'), sel('默认货币', '货币', o.货币), sh.是锻造 ? inp('阶位', '阶位', 'number') : '', sh.是魂灵 ? '' : inp('魂导等级', '魂导等级', 'number'), area('描述', '描述')].join('');
+    const soul = sh.是魂灵 ? sec('魂灵', 'Spirit', `<div class="dz2-grid">${[sel('魂灵品质', '魂灵品质', o.魂灵品质), inp('表象名称', '表象名称'), inp('标准物种', '标准物种'), inp('年限', '年限', 'number')].join('')}</div>`) : '';
+    const gear = sh.是装备 || sh.是魂导器 || sh.是魂骨;
+    const kv = (d.属性加成 || []).map(([k, v], i) => `<div class="idf-row">${c.pick('idfkv:' + i, k || '', [...new Set([...(o.属性 || []), k].filter(Boolean))])}<input type="number" data-idf-kv="${i}" value="${c.esc(v ?? '')}" aria-label="加成值">${del('属性加成', i)}</div>`).join('');
+    const dirs = (o.方向 || []).map(x => `<button class="key-s mini${(d.加成方向 || []).includes(x) ? ' on' : ''}" type="button" aria-pressed="${(d.加成方向 || []).includes(x)}" data-idf-dir="${c.esc(x)}">${c.esc(x)}</button>`).join('');
+    const skills = (d.技能 || []).map((k, i) => `<div class="idf-row"><input type="text" data-idf-sk="${i}" value="${c.esc(k.魂技名 || '')}" placeholder="技能名" aria-label="技能名">${k.新 ? '<span class="chip s" data-hint="保存后以占位技能写入，再到设计台细化">新</span>' : ''}${del('技能', i)}</div>`).join('');
+    const gearSec = gear ? sec('装备', 'Gear', `<div class="dz2-grid">${sh.是装备 || sh.是魂导器 ? [sel('装备槽位', '装备槽位', o.槽位), inp('基础耐久', '基础耐久', 'number')].join('') : ''}</div>
+        ${sh.是常规装备 ? `<span class="lbl">加成方向</span><div class="act-row idf-dirs">${dirs}</div>` : ''}
+        ${sh.是装备 || sh.是魂导器 ? `<span class="lbl">属性加成</span>${kv}${add('属性加成', '加成')}` : ''}
+        <span class="lbl">${sh.是魂骨 ? '附带魂技' : '附加被动 / 技能'}${c.hint('只改名称或增删；技能内容到设计台「装备技能 / 魂骨附带」里编辑。')}</span>${skills}${add('技能', '技能')}`) : '';
+    const fx = (d.使用效果 || []).map((e, i) => `<div class="idf-card"><div class="idf-row">${c.pick('idffx:' + i, e.原型 || '', [...new Set([...(o.原型 || []), e.原型].filter(Boolean))])}${del('使用效果', i)}</div><div class="dz2-grid">${scalarRows(c, e, 'data-idf-fx', i)}</div>${keptRows(c, e)}</div>`).join('');
+    const side = (d.副作用列表 || []).map((e, i) => `<div class="idf-card"><div class="idf-row"><b>副作用 ${i + 1}</b>${del('副作用列表', i)}</div><div class="dz2-grid">${scalarRows(c, e, 'data-idf-se', i)}</div>${keptRows(c, e)}</div>`).join('');
+    const use = sh.是消耗 ? sec('使用', 'Use', `<span class="lbl">使用效果${c.hint('换原型会换成该原型的默认参数。')}</span>${fx}${add('使用效果', '效果')}<span class="lbl">副作用</span>${side}${add('副作用列表', '副作用')}`) : '';
+    const plan = sh.是设计图纸 ? sec('图纸', 'Blueprint', `<div class="dz2-grid">${inp('图纸目标', '图纸目标')}${area('材料', '材料', '可写文本，或 JSON（如 {"精金": 2}）')}</div>`) : '';
+    const book = sh.是修炼秘籍 ? sec('秘籍', 'Manual', `<div class="dz2-grid">${area('获取条件', '获取条件')}${area('研读条件', '研读条件')}${area('解锁内容', '解锁内容', 'JSON 数组，如 [{"内容类型":"功法","内容名称":"玄天功"}]')}</div>`) : '';
+    return `<div class="pad detail idf">
+      <div class="q-title">${c.sock(d.旧名 ? 'pen-to-square' : 'plus', 'gd')}<span class="chip">${c.esc(sh.分类 || F.物品分类 || '')}</span><h2>${c.esc(d.旧名 ? d.旧名 : '新建物品')}</h2></div>
+      ${ui.idfErr ? `<div class="warn"><i class="fa-solid fa-triangle-exclamation"></i><span>${c.esc(ui.idfErr)}</span></div>` : ''}
+      ${sec('基础', 'Basics', `<div class="dz2-grid">${base}</div>`)}${soul}${gearSec}${use}${plan}${book}
+    </div>`;
+  };
+  const idfSide = c => {
+    const ui = c.state.ui, d = ui.idf, rename = d.旧名 && String(d.字段.名称 || '').trim() && String(d.字段.名称).trim() !== d.旧名;
+    return `<div class="pad">${c.head('pen-to-square', d.旧名 ? '编辑定义' : '登记物品', 'Definition', 'gd')}
+      <span class="lbl">${d.旧名 ? '改动影响所有同名物品' : '登记到物品库'}${c.hint(d.旧名 ? '定义是物品库里的模板；改名会一并迁移背包与装备里的同名引用。' : '数量填 0 只登记定义，不放进背包。')}</span>
+      ${rename ? `<div class="warn" style="color:var(--ink2)"><i class="fa-solid fa-i-cursor"></i><span>将改名为「${c.esc(String(d.字段.名称).trim())}」</span></div>` : ''}
+      ${d.旧名 ? '' : `<div class="dzf"><span class="dzf-l">放进背包</span><input type="number" min="0" step="1" data-idf-qty value="${c.esc(ui.idfQty ?? 1)}" aria-label="数量"></div>`}
+      <button class="cta" type="button" data-idf-save><i class="fa-solid fa-floppy-disk"></i>${d.旧名 ? '保存定义' : '登记物品'}</button>
+      <div class="act-row"><button class="key-s" type="button" data-idf-cancel><i class="fa-solid fa-xmark"></i> 取消</button></div></div>`;
+  };
+  document.addEventListener('input', e => {
+    const t = e.target.closest?.('[data-idf],[data-idf-kv],[data-idf-sk],[data-idf-fx],[data-idf-se],[data-idf-qty]'); if (!t) return;
+    const ui = C_().ctx().state.ui, d = ui.idf; if (!d) return;
+    if (t.dataset.idf) d.字段[t.dataset.idf] = t.value;
+    else if (t.dataset.idfKv !== undefined) d.属性加成[+t.dataset.idfKv][1] = t.value;
+    else if (t.dataset.idfSk !== undefined) d.技能[+t.dataset.idfSk].魂技名 = t.value;
+    else if (t.dataset.idfFx) { const [i, k] = t.dataset.idfFx.split(/:(.*)/); d.使用效果[+i][k] = t.value; }
+    else if (t.dataset.idfSe) { const [i, k] = t.dataset.idfSe.split(/:(.*)/); d.副作用列表[+i][k] = t.value; }
+    else if (t.dataset.idfQty !== undefined) ui.idfQty = Math.max(0, Math.floor(Number(t.value) || 0));
+  });
+  // 名称改了要在右翼提示改名：失焦后重绘（等点击结束）
+  document.addEventListener('change', e => { if (e.target.closest?.('[data-idf="名称"]')) C_().refreshSoon(); });
+  document.addEventListener('picker:change', e => {
+    const p = String(e.detail.path), ui = C_().ctx().state.ui, d = ui.idf; if (!d) return;
+    if (p.startsWith('idf:')) d.字段[p.slice(4)] = e.detail.value;
+    else if (p.startsWith('idfkv:')) d.属性加成[+p.slice(6)][0] = e.detail.value;
+    else if (p.startsWith('idffx:')) { const i = +p.slice(6), old = d.使用效果[i] || {}; d.使用效果[i] = C_().preview('itemEffectDefault', { proto: e.detail.value, target: old.目标 || '自身' }) || { ...old, 原型: e.detail.value }; }
+    else return;
+    C_().refresh();
+  });
+  document.addEventListener('click', e => {
+    const t = e.target.closest('[data-idf-open],[data-idf-add],[data-idf-del],[data-idf-dir],[data-idf-cancel],[data-idf-save]'); if (!t) return;
+    const C = C_(), ui = C.ctx().state.ui, d = ui.idf;
+    if (t.dataset.idfOpen !== undefined) return idfOpen(t.dataset.idfOpen);
+    if (t.dataset.idfCancel !== undefined) { ui.idf = null; ui.idfErr = ''; return C.refresh(); }
+    if (!d) return;
+    if (t.dataset.idfAdd) {
+      const k = t.dataset.idfAdd;
+      if (k === '属性加成') d.属性加成.push(['', 0]);
+      else if (k === '技能') d.技能.push({ 键: '', 魂技名: '', 新: true });
+      else if (k === '使用效果') d.使用效果.push(C.preview('itemEffectDefault', { proto: '资源变化', target: '自身' }) || { 原型: '资源变化' });
+      else if (k === '副作用列表') d.副作用列表.push(C.preview('itemSideDefault') || {});
+      return C.refresh();
+    }
+    if (t.dataset.idfDel) { const [k, i] = t.dataset.idfDel.split(':'); d[k].splice(+i, 1); return C.refresh(); }
+    if (t.dataset.idfDir) { const x = t.dataset.idfDir, a = d.加成方向; a.includes(x) ? a.splice(a.indexOf(x), 1) : a.push(x); return C.refresh(); }
+    if (t.dataset.idfSave !== undefined) {
+      if (t.disabled) return; t.disabled = true;
+      // 新增的技能行：键取技能名
+      d.技能.forEach(k => { if (k.新) k.键 = String(k.魂技名 || '').trim(); });
+      Promise.resolve(C.act('itemDef', { draft: d, qty: d.旧名 ? 0 : ui.idfQty })).then(r => {
+        t.disabled = false;
+        if (r?.ok) Object.assign(ui, { idf: null, idfErr: '', idfMsg: r.message || '', itemsel: r.name || ui.itemsel });
+        else ui.idfErr = r?.message || '保存失败';
+        C.refresh();
+      });
+    }
+  });
+
   // 三页同一结构：左翼选（挂点 / 魂骨位 / 物品），主屏是选中项的完整档案与编辑，右翼是汇总与操作
   const EQ_KEYS = [...SLOTS.map(([k, ic, l, n, s]) => ({ k, ic, l, n, s })), { k: '魂导器', ic: 'microchip', l: '魂导器', n: () => '', s: () => '' }];
   const equipment = c => {
@@ -210,12 +310,12 @@
     const sel = shown.find(([n]) => n === c.state.ui.itemsel) || shown[0], wealth = c.ch.财富 || {};
     return {
       tag: 'CORE · INVENTORY', wide: items.length ? '' : 'l', railL: `<div class="rail">${c.sock('box-open')}<b>0</b><small>背包</small></div>`,
-      left: `<div class="pad">${c.head('box-open', '背包', 'Inventory', 'gd')}
+      left: `<div class="pad">${c.head('box-open', '背包', 'Inventory', 'gd', '<button class="key-s mini" type="button" data-idf-open="" data-hint="新建一件物品并登记到物品库"><i class="fa-solid fa-plus"></i> 新建</button>')}
         <div class="pick-row">${c.pick('cat', cat, PACK_CATS.map(k => ({ value: k, label: `${k} · ${k === '全部' ? items.length : items.filter(([n]) => kindOf(n) === k).length}` })))}</div>
         ${shown.length ? `<div class="list q-list">${shown.map(([n, it]) => `<button class="row${sel && n === sel[0] ? ' on' : ''}" type="button" data-set="itemsel=${c.esc(n)}">${c.sock('cube')}<div><strong>${c.esc(n)}</strong><small>${c.esc(kindOf(n))}${it.批次?.[0]?.品质 ? ` · ${c.esc(it.批次[0].品质)}` : ''}</small></div><span class="end">×${c.fmt(it.数量)}</span></button>`).join('')}</div>` : c.empty('box-open', items.length ? `没有「${cat}」类物品` : '背包是空的', items.length ? '' : '获得的物品会出现在这里')}
       </div>`,
-      core: sel ? itemCore(c, sel[0]) : `<div class="pad sparse">${c.empty('box-open', '背包是空的')}<button class="key-s" type="button" data-go="page-terminal/trade" style="align-self:center"><i class="fa-solid fa-store"></i> 去交易</button></div>`,
-      right: `<div class="pad">${sel ? `${c.head('hand-pointer', '操作', 'Actions')}${itemActs(c, sel[0])}<div class="groove"></div>` : ''}
+      core: c.state.ui.idf ? idfEditor(c) : sel ? itemCore(c, sel[0]) : `<div class="pad sparse">${c.empty('box-open', '背包是空的')}<button class="key-s" type="button" data-go="page-terminal/trade" style="align-self:center"><i class="fa-solid fa-store"></i> 去交易</button></div>`,
+      right: c.state.ui.idf ? idfSide(c) : `<div class="pad">${c.state.ui.idfMsg ? `<div class="okline"><i class="fa-solid fa-circle-check"></i>${c.esc(c.state.ui.idfMsg)}</div>` : ''}${sel ? `${c.head('hand-pointer', '操作', 'Actions')}${itemActs(c, sel[0])}<div class="act-row"><button class="key-s" type="button" data-idf-open="${c.esc(sel[0])}"><i class="fa-solid fa-pen-to-square"></i> ${(c.S.物品 && Object.values(c.S.物品).some(g => g && typeof g === 'object' && g[sel[0]])) ? '编辑定义' : '登记到物品库'}</button></div><div class="groove"></div>` : ''}
         ${c.head('coins', '钱包', 'Wallet', 'gd')}
         <div class="tiles wallet">${ERA_COINS.map(([k, l]) => `<div class="tile">${c.sock('coins', k === '联邦币' ? 'gd' : '')}<b>${c.ed(c.fmt(wealth[k] || 0), c.P('财富', k), { kind: 'number', integer: true, min: 0, raw: c.num(wealth[k]) })}</b><small>${l}</small></div>`).join('')}</div>
         <button class="key-s" type="button" data-go="page-terminal/trade" style="align-self:flex-start"><i class="fa-solid fa-scale-balanced"></i> 去交易</button>
