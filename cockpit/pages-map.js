@@ -376,7 +376,7 @@
       railL: `<div class="rail">${c.sock('location-dot')}<small>${c.esc(here || '')}</small></div>`,
       right: `<div class="pad">
         ${c.head('flag-checkered', '目的地', 'Destination')}
-        ${ptOf(dest) ? `<div class="relic-card">${c.sock('location-crosshairs', 'gd')}<div><strong>坐标 ${ptOf(dest).x}, ${ptOf(dest).y}</strong><small>总图上点选的位置</small></div><button class="key-s" type="button" data-set="dest=" aria-label="清除坐标目的地"><i class="fa-solid fa-xmark"></i></button></div>${routeBox(c, dest)}${addHere(c, ptOf(dest))}<div class="groove"></div>` : ''}
+        ${ptOf(dest) ? `<div class="relic-card">${c.sock('location-crosshairs', 'gd')}<div><strong>${ptOf(dest).x}, ${ptOf(dest).y}</strong><small>坐标目的地</small></div><button class="key-s" type="button" data-set="dest=" aria-label="清除坐标目的地"><i class="fa-solid fa-xmark"></i></button></div>${routeBox(c, dest)}${addHere(c, ptOf(dest))}<div class="groove"></div>` : ''}
         ${kids.length ? `<span class="lbl">${c.esc(city[0])} 城内</span><div class="list">${kids.map(k => `<button class="row ${k.name === dest ? 'on' : ''}" type="button" data-set="dest=${c.esc(k.name)}" ${k.name === here ? 'disabled' : ''}><span class="chip s">${c.esc(k.类型 || '')}</span><div><strong>${c.esc(k.name)}</strong>${k.name === here ? '<small>当前位置</small>' : ''}</div><span></span></button>`).join('')}</div>` : ''}
         <span class="lbl">邻近城市</span>
         <div class="list">${near.map(({ n, d }) => `<button class="row ${n.name === dest ? 'on' : ''}" type="button" data-set="dest=${c.esc(n.name)}"><span class="chip s">${c.esc(kindOf(n.类型)[2])}</span><div><strong>${c.esc(n.name)}</strong><small>图上距离 ${Math.round(d)}</small></div><span></span></button>`).join('')}</div>
