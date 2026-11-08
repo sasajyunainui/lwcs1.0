@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:97b19934e9c5a2130d92d85dd5bf110b761033335e5ee1382e3cf007fd20f7eb|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:cfe825cf17a8e8e3872e2fb388b8e848532380662015663c872555c569764fe3|cockpit/pages-role.js:33ab3ecd890c56a621fe7d270f60de1beda45af71a3bc7954d66d69f6767e3c7|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:afe7c39c6437be94149d9d9d4809c3e198b189241a8997297cba7329a9f619ba|cockpit/pages-ability.js:c692feb0aaebd6f28360829098826f576cd660710001d30dd9bc5341dac9aa72|cockpit/pages-supplies.js:864e808de54942f49cc7ce569b926e847b9b3fc35d07c15b6139e7c79be8de18|cockpit/pages-map.js:bb5b1f07a1035a0294cdb32fbc61c97c36a49946297500421647eee91fe093da|cockpit/pages-world.js:1199e83af473a290145fc96aaf5c71f20990a9d3915ae8a1c2aad72a17760688|cockpit/pages-terminal.js:4d51455d552329d8cada13b0f1d4336d30962e5d7dae64ae93d9a8bc0a9395a6|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:289fe455da8dfe0c8f42e39afaaa254d1c724b00f602e5094ca7626b17151097|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:f4b0faa375ddfbb9a783365feb5d2b4abeff24a810e322e279f94bc201877510|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:cfe825cf17a8e8e3872e2fb388b8e848532380662015663c872555c569764fe3|cockpit/pages-role.js:33ab3ecd890c56a621fe7d270f60de1beda45af71a3bc7954d66d69f6767e3c7|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:afe7c39c6437be94149d9d9d4809c3e198b189241a8997297cba7329a9f619ba|cockpit/pages-ability.js:c692feb0aaebd6f28360829098826f576cd660710001d30dd9bc5341dac9aa72|cockpit/pages-supplies.js:864e808de54942f49cc7ce569b926e847b9b3fc35d07c15b6139e7c79be8de18|cockpit/pages-map.js:bb5b1f07a1035a0294cdb32fbc61c97c36a49946297500421647eee91fe093da|cockpit/pages-world.js:ca5dc37c07a41d3603ee2c089f84171de2b47453d125868dc3dc361fa9449723|cockpit/pages-terminal.js:4d51455d552329d8cada13b0f1d4336d30962e5d7dae64ae93d9a8bc0a9395a6|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:289fe455da8dfe0c8f42e39afaaa254d1c724b00f602e5094ca7626b17151097|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -40152,7 +40152,7 @@
     当前节点详情: ['page-map', 'place'],
     人物关系详细页: ['page-archive', 'relations'], 社会档案详细页: ['page-archive', 'identity'], 生命图谱详细页: ['page-archive', 'growth'],
     所属势力详细页: ['page-archive', 'identity'], 我的阵营详情: ['page-archive', 'identity'], 角色切换器: ['page-archive', 'directory'],
-    赛事: ['page-world', 'games'], 怪物图鉴: ['page-world', 'bestiary'], 近期见闻: ['page-world', 'chronicle'], 近期安排: ['page-world', 'chronicle'],
+    赛事: ['page-world', 'games'], 怪物图鉴: ['page-world', 'bestiary'], 近期见闻: ['page-world', 'chronicle', { cmode: 'past', csel: '' }], 近期安排: ['page-world', 'chronicle', { cmode: '', csel: '' }],
   });
   // 座舱挂着时，原项目「打开某个详情面」改为在座舱里跳转；让位白名单里的仍由原面板显示（移植完成后逐个移出）。
   // 返回 true 表示已由座舱接手，调用方不再打开旧面板
@@ -78323,17 +78323,28 @@ ${播报文本}
   };
   const deviationTier = v => v >= 80 ? '崩坏' : v >= 50 ? '剧变' : v >= 20 ? '偏移' : '平稳';
   const cityOf = c => { const p = String(c.ch.状态?.位置 || '').split('-').filter(x => x && x !== '斗罗大陆'); return [p[0], c.S.world.地点?.[p[0]] || {}]; };
+  const DONE = /done|handled|完成|已处理/;
   const upcoming = c => {
     const w = c.S.world, now = c.num(w.时间.tick), out = [];
-    for (const [n, e] of Object.entries(w.时间线 || {})) out.push({ t: c.num(e.触发tick), icon: 'scroll', kind: '世界事件', title: e.事件 || n, sub: `${e.地点 || ''} · ${e.状态 || ''}`, ref: { e } });
+    for (const [n, e] of Object.entries(w.时间线 || {})) if (e && typeof e === 'object' && !DONE.test(String(e.状态 || ''))) out.push({ t: c.num(e.触发tick), pend: true, icon: 'scroll', kind: '世界事件', title: e.事件 || n, sub: `${e.地点 || ''} · ${e.状态 || ''}`, ref: { e } });
     if (w.拍卖?.下次刷新tick) out.push({ t: c.num(w.拍卖.下次刷新tick), icon: 'gavel', kind: '拍卖', title: '拍卖会换季', sub: `${w.拍卖.地点} · 本期 ${Object.keys(w.拍卖.拍品 || {}).length} 件拍品`, ref: { lots: Object.entries(w.拍卖.拍品 || {}) } });
     for (const [n, q] of Object.entries(w.委托板 || {})) if (q.截止tick) out.push({ t: c.num(q.截止tick), icon: 'file-signature', kind: '委托截止', title: q.标题 || n, sub: `${q.难度} · ${q.发布者}`, ref: { id: n, q } });
     for (const [n, q] of Object.entries(c.ch.我的任务 || {})) if (q.截止tick) out.push({ t: c.num(q.截止tick), icon: 'flag', kind: '任务截止', title: n, sub: q.任务线, ref: { id: n, q } });
     const [cn, city] = cityOf(c); const shops = Object.entries(city.商店 || {}).filter(([, s]) => c.num(s._下次刷新tick)), restock = shops.map(([, s]) => c.num(s._下次刷新tick));
     if (restock.length) out.push({ t: Math.min(...restock), icon: 'store', kind: '商店补货', title: '各商店补货', sub: `${cn} · ${restock.length} 家`, ref: { shops } });
-    return out.filter(x => x.t >= now).sort((a, b) => a.t - b.t);
+    return out.filter(x => x.pend || x.t >= now).sort((a, b) => (a.t > 0 ? a.t : Infinity) - (b.t > 0 ? b.t : Infinity));
   };
-  const days = (c, t) => { const d = (t - c.num(c.S.world.时间.tick)) / 144; return d < 1 ? `${Math.max(1, Math.round(d * 24))} 小时后` : `${Math.round(d)} 天后`; };
+  const past = c => {
+    return Object.entries(c.S.world.时间线 || {}).filter(([, e]) => e && typeof e === 'object' && DONE.test(String(e.状态 || '')))
+      .map(([n, e]) => ({ t: c.num(e.触发tick), icon: 'scroll', kind: '世界事件', title: e.事件 || n, sub: `${e.地点 || ''} · ${e.状态 || ''}`, ref: { e } }))
+      .sort((a, b) => b.t - a.t);
+  };
+  const days = (c, t, pend = false) => {
+    if (!(t > 0)) return '时间未定';
+    if (pend && t < c.num(c.S.world.时间.tick)) return '已到时间';
+    const d = (t - c.num(c.S.world.时间.tick)) / 144, a = Math.abs(d), unit = d < 0 ? '前' : '后';
+    return a < 1 ? `${Math.max(1, Math.round(a * 24))} 小时${unit}` : `${Math.round(a)} 天${unit}`;
+  };
 
   // 大数按「万 / 亿」缩写（四列图块放不下 1,000,000）
   const wan = (c, n) => { n = c.num(n); return n >= 1e8 ? `${Number((n / 1e8).toFixed(2))}亿` : n >= 1e4 ? `${Number((n / 1e4).toFixed(n % 1e4 ? 1 : 0))}万` : c.fmt(n); };
@@ -78363,7 +78374,7 @@ ${播报文本}
         ${lots.length ? `<section class="sec"><h3>拍卖行<span class="en">${c.esc(w.拍卖?.地点 || '')} · ${lots.length} 件</span></h3><div class="list two">${lots.map(([n, a]) => `<button class="row" type="button" data-go="page-terminal/trade" data-go-set="venue=auction;good=${c.esc(n)};tqty=1">${c.sock('gavel')}<div><strong>${c.esc(n)}</strong><small>${c.esc([a.品级, a.分类].filter(Boolean).join(' · '))}</small></div><span class="end">${wan(c, a.价格)}</span></button>`).join('')}</div></section>` : ''}
       </div>`,
       right: `<div class="pad">${c.head('calendar-day', '近期安排', 'Upcoming')}
-        ${soon.length ? `<div class="list q-list">${soon.map(x => `<button class="row" type="button" data-go="page-world/chronicle" data-go-set="csel=${c.esc(x.kind + ':' + x.title)}">${c.sock(x.icon)}<div><strong>${c.esc(x.title)}</strong><small>${c.esc([x.kind, x.sub].filter(Boolean).join(' · '))}</small></div><span class="end">${days(c, x.t)}</span></button>`).join('')}</div>` : c.empty('calendar-day', '近期没有安排')}
+        ${soon.length ? `<div class="list q-list">${soon.map(x => `<button class="row" type="button" data-go="page-world/chronicle" data-go-set="csel=${c.esc(x.kind + ':' + x.title)}">${c.sock(x.icon)}<div><strong>${c.esc(x.title)}</strong><small>${c.esc([x.kind, x.sub].filter(Boolean).join(' · '))}</small></div><span class="end">${days(c, x.t, x.pend)}</span></button>`).join('')}</div>` : c.empty('calendar-day', '近期没有安排')}
       </div>`,
     };
   };
@@ -78376,29 +78387,30 @@ ${播报文本}
     if (x.kind === '任务截止' && q) return `<section class="sec"><h3>任务<span class="en">Quest</span></h3><p class="prose">${c.esc(q.描述 || q.目标 || '—')}</p></section><div class="tiles">${tile(c, 'flag', c.esc(q.任务线 || '支线'), '任务线')}${tile(c, 'circle-half-stroke', c.esc(q.状态 || '进行中'), '状态')}</div>`;
     if (r.lots) return `<section class="sec"><h3>本期拍品<span class="en">${r.lots.length} 件</span></h3><div class="list two">${r.lots.map(([n, a]) => `<button class="row" type="button" data-go="page-terminal/trade" data-go-set="venue=auction;good=${c.esc(n)};tqty=1">${c.sock('gavel')}<div><strong>${c.esc(n)}</strong><small>${c.esc([a.品级, a.分类].filter(Boolean).join(' · '))}</small></div><span class="end">${wan(c, a.价格)}</span></button>`).join('')}</div></section>`;
     if (r.shops) return `<section class="sec"><h3>各店补货<span class="en">${r.shops.length} 家</span></h3><div class="list two">${r.shops.sort((a, b) => c.num(a[1]._下次刷新tick) - c.num(b[1]._下次刷新tick)).map(([n, sh]) => `<button class="row" type="button" data-go="page-terminal/trade" data-go-set="venue=shop:${c.esc(n)};good=;tqty=1">${c.sock('store')}<div><strong>${c.esc(n)}</strong><small>${Object.keys(sh.库存 || {}).length} 种商品</small></div><span class="end">${days(c, c.num(sh._下次刷新tick))}</span></button>`).join('')}</div></section>`;
-    if (r.e) return `<div class="tiles">${tile(c, 'location-dot', c.esc(r.e.地点 || '—'), '地点')}${tile(c, 'circle-half-stroke', c.esc(r.e.状态 || '—'), '状态')}</div>${r.e.描述 ? `<section class="sec"><h3>事件<span class="en">Event</span></h3><p class="prose">${c.esc(r.e.描述)}</p></section>` : ''}`;
+    if (r.e) { const res = r.e.结果 || r.e.影响, next = r.e.下一步 || r.e.后续 || r.e.线索, sec = (t, en, v) => v ? `<section class="sec"><h3>${t}<span class="en">${en}</span></h3><p class="prose">${c.esc(v)}</p></section>` : ''; return `<div class="tiles">${tile(c, 'location-dot', c.esc(r.e.地点 || '—'), '地点')}${tile(c, 'circle-half-stroke', c.esc(r.e.状态 || '—'), '状态')}</div>${sec('事件', 'Event', r.e.描述)}${sec('结果', 'Outcome', res)}${sec('后续', 'Next', next)}`; }
     return `<section class="sec"><h3>详情<span class="en">Detail</span></h3><p class="prose">${c.esc(x.sub || '—')}</p></section>`;
   };
   const KIND_GO = { 委托截止: ['page-terminal/quests', 'qtab=委托板'], 任务截止: ['page-terminal/quests', ''], 拍卖: ['page-terminal/trade', 'venue=auction'], 商店补货: ['page-terminal/trade', ''] };
   const chronicle = c => {
-    const all = upcoming(c), kinds = [...new Set(all.map(x => x.kind))], now = c.num(c.S.world.时间.tick);
+    const mode = c.state.ui.cmode === 'past' ? 'past' : 'future', all = mode === 'past' ? past(c) : upcoming(c), kinds = [...new Set(all.map(x => x.kind))], now = c.num(c.S.world.时间.tick);
     const tab = kinds.includes(c.state.ui.ctab) ? c.state.ui.ctab : '全部', list = tab === '全部' ? all : all.filter(x => x.kind === tab);
     const key = x => x.kind + ':' + x.title, sel = list.find(x => key(x) === c.state.ui.csel) || list[0], go = sel && KIND_GO[sel.kind];
     return {
       tag: 'CORE · CHRONICLE',
-      left: `<div class="pad">${c.head('timeline', '未来节点', 'Timeline', 'gd')}
+      left: `<div class="pad">${c.head('timeline', mode === 'past' ? '已发生' : '未来节点', 'Timeline', 'gd')}
+        <div class="pick-row">${c.pick('cmode', mode, [{ value: 'future', label: `未来节点 · ${upcoming(c).length}` }, { value: 'past', label: `已发生 · ${past(c).length}` }])}</div>
         ${all.length ? `<div class="pick-row">${c.pick('ctab', tab, ['全部', ...kinds].map(k => ({ value: k, label: `${k} · ${k === '全部' ? all.length : all.filter(x => x.kind === k).length}` })))}</div>
-        <div class="list q-list timeline-list">${list.map(x => `<button class="row${x === sel ? ' on' : ''}" type="button" data-set="csel=${c.esc(key(x))}" aria-current="${x === sel}">${c.sock(x.icon)}<div><strong>${c.esc(x.title)}</strong><small>${c.esc(c.tickDate(x.t).replace(/^斗罗历\d+年/, ''))}</small></div><span class="end">${days(c, x.t)}</span></button>`).join('')}</div>` : c.empty('timeline', '还没有记录未来事件')}
+        <div class="list q-list timeline-list">${list.map(x => `<button class="row${x === sel ? ' on' : ''}" type="button" data-set="csel=${c.esc(key(x))}" aria-current="${x === sel}">${c.sock(x.icon)}<div><strong>${c.esc(x.title)}</strong><small>${x.t > 0 ? c.esc(c.tickDate(x.t).replace(/^斗罗历\d+年/, '')) : ''}</small></div><span class="end">${days(c, x.t, x.pend)}</span></button>`).join('')}</div>` : c.empty('timeline', mode === 'past' ? '还没有已发生的世界事件' : '还没有记录未来事件')}
       </div>`,
       core: sel ? `<div class="pad">
         <div class="q-title">${c.sock(sel.icon, 'gd')}<span class="chip">${sel.kind}</span><h2>${c.esc(sel.title)}</h2></div>
-        <div class="q-meters"><div class="q-meter"><div class="q-mh"><small>距今</small><b>${days(c, sel.t)}</b><em>${c.esc(c.tickDate(sel.t))}</em></div>${c.bar('vp', Math.max(0, 1440 - (sel.t - now)), 1440)}</div></div>
+        <div class="q-meters"><div class="q-meter"><div class="q-mh"><small>距今</small><b>${days(c, sel.t, sel.pend)}</b><em>${sel.t > 0 ? c.esc(c.tickDate(sel.t)) : ''}</em></div>${sel.t >= now ? c.bar('vp', Math.max(0, 1440 - (sel.t - now)), 1440) : ''}</div></div>
         ${nodeDetail(c, sel)}
         ${go ? `<button class="key-s" type="button" style="align-self:flex-start" data-go="${go[0]}" data-go-set="${c.esc([go[1], sel.ref?.id && sel.kind === '委托截止' ? `qsel=${sel.ref.id}` : '', sel.ref?.id && sel.kind === '任务截止' ? `qsel=${sel.ref.id}` : ''].filter(Boolean).join(';'))}"><i class="fa-solid fa-arrow-right"></i> 前往处理</button>` : ''}
-      </div>` : `<div class="pad sparse">${c.empty('timeline', '还没有记录未来事件')}</div>`,
+      </div>` : `<div class="pad sparse">${c.empty('timeline', mode === 'past' ? '还没有已发生的世界事件' : '还没有记录未来事件')}</div>`,
       right: `<div class="pad">${c.head('hourglass-half', '今日', 'Today')}
-        <div class="chronos small"><span class="lv">${c.esc((c.S.world.时间._calendar || '').replace(/ .*/, ''))}</span><span class="num">${c.esc((c.S.world.时间._calendar || '').split(' ')[1] || '')}</span></div>
-        <div class="tiles">${tile(c, 'book-open', Object.keys(c.S.world.时间线 || {}).length, '世界事件')}${tile(c, 'hourglass-half', all.length, '未来节点')}${kinds.map(k => tile(c, all.find(x => x.kind === k).icon, all.filter(x => x.kind === k).length, k)).join('')}</div>
+        <div class="chronos small"><span class="lv">${c.esc((c.S.world.时间._calendar || '').replace(/ .*/, '')).replace(/^(斗罗历|斗灵历)/, '<i>$1</i>')}</span><span class="num">${c.esc((c.S.world.时间._calendar || '').split(' ')[1] || '')}</span></div>
+        <div class="tiles">${tile(c, 'book-open', Object.keys(c.S.world.时间线 || {}).length, '时间线条目')}${tile(c, 'hourglass-half', all.length, mode === 'past' ? '已发生' : '未来节点')}${kinds.map(k => tile(c, all.find(x => x.kind === k).icon, all.filter(x => x.kind === k).length, k)).join('')}</div>
       </div>`,
     };
   };
