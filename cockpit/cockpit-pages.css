@@ -554,3 +554,6 @@ div.rail-item{cursor:default}
 .pad .confirm-strip.fail>i{color:#e0503a}
 .pad .confirm-strip.busy{color:var(--ink2)}
 .train-pick[hidden]{display:none}
+/* 工坊：目标物输入与「自动命名」同一行；材料不可选时变灰 */
+.ws-target{display:flex;gap:.4em;align-items:stretch}.ws-target input{flex:1}
+.ws-form .dz-chip:disabled{opacity:.45;cursor:not-allowed}

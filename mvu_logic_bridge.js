@@ -38481,7 +38481,7 @@
   // 座舱挂在 #mvu-unified-mount 里、盖住旧壳层（旧壳层隐藏但保留占位，挂载点尺寸不变）。
   // 旧壳层只在下列原详情面打开时让出画面（战斗终端、魂环待选确认、私密档案），关闭后回到座舱；
   // 其他旧详情面（旧座舱各页都是详情面，刷新后会恢复上次打开的那页）在座舱接管时清掉。
-  const 座舱让位详情键 = new Set([BATTLE_INLINE_PREVIEW_KEY, '私密档案详细页', '副职业工坊', '交易网络']);
+  const 座舱让位详情键 = new Set([BATTLE_INLINE_PREVIEW_KEY, '私密档案详细页', '交易网络']);
   // 原项目各处流程（回到某页、模块意图路由等）打开的旧详情面 → 座舱里对应的页面
   const 座舱旧详情页映射 = Object.freeze({
     第1武魂详细页: ['page-ability', 'martial', { soul: '0', ringPick: '' }], 第2武魂详细页: ['page-ability', 'martial', { soul: '1', ringPick: '' }], 血脉封印详细页: ['page-ability', 'martial'],
@@ -38503,6 +38503,8 @@
     if (!键 || 座舱让位详情键.has(键)) return false;
     if (键 === PENDING_SOUL_RING_PREVIEW_KEY) return 座舱.route({ to: 'ringPick' });
     if (键 === PENDING_SKILL_DESIGN_PREVIEW_KEY) return 座舱.route({ to: 'skillConfirm' });
+    // 工坊：沿用发起流程准备好的委托上下文（mapDispatchContext：执行者、NPC、预填工序）
+    if (键 === '副职业工坊') { 座舱工坊.待用上下文 = mapDispatchContext ? cloneJsonValue(mapDispatchContext, {}) : null; return 座舱.route({ to: 'workshop' }); }
     if (isSkillDesignerPreviewKey(键)) {
       const 元数据 = parseSkillDesignerPreviewKey(键);
       return Array.isArray(元数据 && 元数据.path) && 元数据.path.length ? 座舱.route({ to: 'designer', path: 元数据.path }) : false;
@@ -38638,6 +38640,12 @@
   async function 座舱动作预演异步(名称, 参数 = {}) {
     try {
       if (名称 === 'travel') return await 座舱规划移动(参数);
+      if (名称 === 'workshop') {
+        if (参数.op === 'open') return await 座舱工坊打开(参数);
+        if (参数.op === 'set') return 座舱工坊设置(参数.changes || {});
+        if (参数.op === 'sync') { if (座舱工坊.实例 && typeof 座舱工坊.实例.updateData === 'function') 座舱工坊.实例.updateData(liveSnapshot); return 座舱工坊状态(); }
+        return 座舱工坊状态();
+      }
     } catch (错误) {
       return { ok: false, reason: 错误 && 错误.message ? 错误.message : String(错误) };
     }
@@ -38654,6 +38662,85 @@
     }
     const 错误 = 记录.find(项 => /error|warn/i.test(项.类型));
     return 错误 ? { ok: false, message: 错误.文本 || '操作失败' } : { ok: true, message: (记录[记录.length - 1] || {}).文本 || '' };
+  }
+  // ---------- 座舱工坊：原项目工坊模块常驻隐藏容器 ----------
+  const 座舱工坊 = { 容器: null, 实例: null, 键: '', 待提交: null, 失败: null, 待用上下文: null };
+  const 座舱工坊预览字段 = Object.freeze({ 'prev-job': '副职业', 'prev-executor': '执行者', 'prev-rate': '成功率', 'prev-fee': '委托费', 'prev-costs': '消耗', 'prev-res': '当前资源', 'prev-exp': '经验', 'prev-fusion': '融合', 'prev-maxfusion': '融合上限', 'prev-maxq': '品质上限', 'prev-loop': '连续', 'prev-note': '说明' });
+  function 座舱工坊状态() {
+    const 容器 = 座舱工坊.容器, 实例 = 座舱工坊.实例;
+    if (!容器 || !实例) return null;
+    const 取 = 选择器 => 容器.querySelector(选择器), 文 = 选择器 => toText(取(选择器) && 取(选择器).innerText, '').replace(/\s+/g, ' ').trim();
+    const 阶位 = 取('#prof-tier'), 提交 = 取('#prof-submit');
+    return {
+      key: 座舱工坊.键, mode: toText(实例.activeMode, ''),
+      modes: Array.from(容器.querySelectorAll('.tab-btn')).map(按钮 => ({ mode: 按钮.dataset.mode, label: 按钮.innerText.trim() })),
+      title: 文('#prof-ui-title'), subtitle: 文('#prof-ui-subtitle'),
+      tierLabel: 文('#tier-label'), tier: 阶位 ? 阶位.value : '', tierDisabled: !!(阶位 && 阶位.disabled),
+      tiers: 阶位 ? Array.from(阶位.options).map(项 => ({ value: 项.value, label: 项.textContent.trim(), disabled: 项.disabled })) : [],
+      qtyLabel: 文('#qty-label'), qty: toNumber(取('#prof-cost') && 取('#prof-cost').value, 1), qtyDisabled: !!(取('#prof-cost') && 取('#prof-cost').disabled), qtyHint: 文('#qty-hint'),
+      loop: toText(取('#prof-loop-enabled') && 取('#prof-loop-enabled').value, '0') === '1', days: toNumber(取('#prof-loop-days') && 取('#prof-loop-days').value, 1),
+      targetLabel: 文('#target-label'), target: toText(取('#prof-target') && 取('#prof-target').value, ''), targetHint: 文('#target-hint'),
+      materialsLabel: 文('#materials-label'), materialsHint: 文('#materials-hint'),
+      materials: Array.from(容器.querySelectorAll('.material-cb')).map(框 => ({ value: 框.value, checked: 框.checked, disabled: 框.disabled, label: toText(框.closest('label') && 框.closest('label').innerText, 框.value).replace(/\s+/g, ' ').trim() })),
+      preview: Object.entries(座舱工坊预览字段).map(([编号, 名称]) => [名称, 文('#' + 编号)]).filter(([, 值]) => 值 && 值 !== '-'),
+      warning: 文('#prof-action-warning'), submitLabel: 文('#prof-submit') || '开工', submitDisabled: !!(提交 && 提交.disabled),
+    };
+  }
+  async function 座舱工坊打开(参数 = {}) {
+    if (!await 确保交互模块已加载('副职业模块', 'mountProfessionUI') || typeof window.mountProfessionUI !== 'function') return { ok: false, reason: '工坊模块未就绪' };
+    const 快照 = liveSnapshot;
+    if (!快照 || !快照.rootData) return { ok: false, reason: '状态未就绪' };
+    let 上下文 = null;
+    if (参数.useFlow && 座舱工坊.待用上下文) { 上下文 = 座舱工坊.待用上下文; 座舱工坊.待用上下文 = null; }
+    else {
+      const 执行者 = toText(参数.executor, 'self'), 请求 = { 模式: toText(参数.mode, 'forge'), 副职业: toText(参数.job, ''), 执行者类型: 执行者 === 'npc' ? 'private' : 执行者, 对象: 执行者 === 'npc' ? toText(参数.npc, '') : '', 状态: 'pending', 自动执行: false };
+      上下文 = buildCraftDispatchFromRequest(快照, 请求);
+      上下文.executorType = 请求.执行者类型; 上下文.npcTarget = 请求.对象; 上下文.npcTargets = 请求.对象 ? [请求.对象] : [];
+      上下文.professionRequest = 请求;
+    }
+    if (!座舱工坊.容器) {
+      座舱工坊.容器 = document.createElement('div');
+      座舱工坊.容器.className = 'lwcs-ck-workshop-engine';
+      座舱工坊.容器.style.cssText = 'position:fixed;left:-10000px;top:0;width:960px;height:720px;overflow:hidden;opacity:0;pointer-events:none';
+      座舱工坊.容器.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(座舱工坊.容器);
+    }
+    座舱工坊.容器.innerHTML = '';
+    座舱工坊.实例 = window.mountProfessionUI(座舱工坊.容器, 快照, {
+      dispatchContext: 上下文,
+      onAction: 数据 => { 座舱工坊.待提交 = 数据; },
+      内联动作失败: 详情 => { 座舱工坊.失败 = 详情; },
+    });
+    座舱工坊.键 = JSON.stringify([toText(快照.activeName, ''), 上下文.executorType || 'self', 上下文.npcTarget || '', toText(参数.mode, '')]);
+    座舱工坊.上下文 = 上下文;
+    return 座舱工坊状态();
+  }
+  function 座舱工坊设置(改动 = {}) {
+    const 容器 = 座舱工坊.容器, 实例 = 座舱工坊.实例;
+    if (!容器 || !实例) return null;
+    const 触发 = (元素, 事件) => 元素.dispatchEvent(new Event(事件, { bubbles: true }));
+    if (改动.mode && 改动.mode !== 实例.activeMode) { const 按钮 = 容器.querySelector(`.tab-btn[data-mode="${改动.mode}"]`); if (按钮) 按钮.click(); }
+    const 设值 = (选择器, 值) => { const 元素 = 容器.querySelector(选择器); if (!元素 || 值 === undefined || 值 === null) return; 元素.value = String(值); 触发(元素, 'input'); 触发(元素, 'change'); };
+    // 顺序：材料与阶位改动会触发模块自动命名，目标物最后写，免得玩家填的名字被覆盖
+    if (Array.isArray(改动.materials)) {
+      const 选中 = new Set(改动.materials.map(String));
+      容器.querySelectorAll('.material-cb').forEach(框 => { const 要 = 选中.has(框.value); if (框.checked !== 要 && !框.disabled) { 框.checked = 要; 触发(框, 'change'); } });
+    }
+    设值('#prof-tier', 改动.tier); 设值('#prof-cost', 改动.qty); 设值('#prof-loop-enabled', 改动.loop === undefined ? undefined : (改动.loop ? '1' : '0')); 设值('#prof-loop-days', 改动.days); 设值('#prof-target', 改动.target);
+    if (改动.autoName && typeof 实例.autoGenerateTargetName === 'function') 实例.autoGenerateTargetName();
+    if (typeof 实例.updatePreview === 'function') 实例.updatePreview();
+    return 座舱工坊状态();
+  }
+  async function 座舱工坊开工() {
+    const 实例 = 座舱工坊.实例;
+    if (!实例) return { ok: false, message: '工坊未打开' };
+    座舱工坊.待提交 = null; 座舱工坊.失败 = null;
+    const 截获 = await 座舱截取提示(() => 实例.executeProfessionAction());
+    if (座舱工坊.失败) return { ok: false, message: toText(座舱工坊.失败.原因, '工坊校验未通过') };
+    const 数据 = 座舱工坊.待提交;
+    if (!数据) return { ok: false, message: 截获.ok ? '工坊没有提交动作' : 截获.message };
+    座舱工坊.待提交 = null;
+    return 座舱请求结果(await dispatchUiAiRequest(数据.playerInput, 数据.systemPrompt, { requestKind: 数据.requestKind, patchOps: 数据.patchOps }));
   }
   async function 座舱执行动作(名称, 参数 = {}) {
     const 快照 = liveSnapshot;
@@ -38753,6 +38840,7 @@
           return 座舱截取提示(() => 状态.kind === 'construct' ? 管理器.performConstructSkillUse(参数.path) : 管理器.performDailyWritebackSkillUse(参数.path));
         }
         case 'workshop': {
+          if (参数.op === 'start') return await 座舱工坊开工();
           const 结果 = 执行副职业工坊打开路由(快照, { 模式: toText(参数.mode, 'forge'), 副职业: toText(参数.job, '') });
           const 失败 = !结果 || 结果.ok === false || 结果.dispatchMode === 'failed_summary';
           return { ok: !失败, message: 失败 ? toText(结果 && 结果.reason, '工坊打开失败') : '' };
