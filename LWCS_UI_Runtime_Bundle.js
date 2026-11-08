@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:6adec7eded766d771be5d8d9ee8dd2c50fbcecbe67fd1630d980da657aa7213c|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:82087e23069651be9e5a59b28c3d98a487f8a4457ef5c4bb7501beb56c39b7f5|cockpit/pages-role.js:908d0a9a9e323fcc62e4abb109ea7203b82ec6fd107ec5a8a7c0c36cb436d9a2|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:afe7c39c6437be94149d9d9d4809c3e198b189241a8997297cba7329a9f619ba|cockpit/pages-ability.js:c692feb0aaebd6f28360829098826f576cd660710001d30dd9bc5341dac9aa72|cockpit/pages-supplies.js:6bb2f0535c71419f26784a612c3d84fa59722a816128d909b2b2db7f74961eb5|cockpit/pages-map.js:bb5b1f07a1035a0294cdb32fbc61c97c36a49946297500421647eee91fe093da|cockpit/pages-world.js:53d47819477ad0b7398941a27519ecbf1e668b1462a013f0601efb57f91507d5|cockpit/pages-terminal.js:4839b10b0361497898b513d151fff284614a4bb763f17662ea6857e4428cce41|TradeUI_Module.js:a65d0303636eba331b968eeb6ef06c2692a05f19d16febdc05b996388bcc0e46|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:94a2dc5a1319221fc8724a467883523cc78ca44633088263bb0c6e6b9c7e66c4|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:57e97dea0d0c3395d51dbd583808edd6fc30cf7dce4b9159a9aaa56d44dd3196|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:d0b6ca9317cb01d2581c4b9bad6a09cb33fe50d4e1f221a613fa68f5a8dd95ea|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:11c2e606ec4f4b36549265f1007ec05219fea517712a7a21683bdbb672a7eb1b|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:c49202260ed6b2f1a1edfd1c025893a3b966dda0c69d0519284f7480f6ffa790|cockpit/pages-role.js:a0fa73086bf227c7b6e658a5d0097aeb4a2731610dd9e0e01ac98fc4341a242c|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:afe7c39c6437be94149d9d9d4809c3e198b189241a8997297cba7329a9f619ba|cockpit/pages-ability.js:c692feb0aaebd6f28360829098826f576cd660710001d30dd9bc5341dac9aa72|cockpit/pages-supplies.js:2c20652e62132ecf1fcdc8da32cf339e5128de56f21d9337bfafc199d63611f7|cockpit/pages-map.js:bb5b1f07a1035a0294cdb32fbc61c97c36a49946297500421647eee91fe093da|cockpit/pages-world.js:53d47819477ad0b7398941a27519ecbf1e668b1462a013f0601efb57f91507d5|cockpit/pages-terminal.js:ce98d34a8b48010be2a7112bd2ae798bafa820e71afff27f75673291a96b7ee3|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:651d2e019ec4a8e952a92a1191ffe0c2e4c45a9eb825ec0142c55510e6303ad1|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:d14299cca7805597e6d16410009ec565c0ddba58634e514469791d589ef54ad7|BattleRuntime_Module.js:1df6110241a2db8144c5449eda6eb3fddbbea3d6b279a85cf14c52e518baa367|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:d0b6ca9317cb01d2581c4b9bad6a09cb33fe50d4e1f221a613fa68f5a8dd95ea|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -36026,7 +36026,9 @@
         return { ok: false, settled: true, receiptId, message: '叙事尚未完成，已结算的结果保持不变。' };
       } finally { executing.delete(contextKey); }
     }
-    return { previewRoutineAction, executeRoutineAction, retryNarration };
+    // 待重试的叙事回执（座舱据此把「开始行动」换成「重试叙事」）
+    const pendingNarration = contextKey => { const r = pendingNarrations.get(contextKey); return r ? { receiptId: r.id, playerInput: r.playerInput } : null; };
+    return { previewRoutineAction, executeRoutineAction, retryNarration, pendingNarration };
   }
 
 
@@ -40096,13 +40098,13 @@
   const 座舱让位详情键 = new Set([BATTLE_INLINE_PREVIEW_KEY, '私密档案详细页', '副职业工坊', '交易网络']);
   // 原项目各处流程（回到某页、模块意图路由等）打开的旧详情面 → 座舱里对应的页面
   const 座舱旧详情页映射 = Object.freeze({
-    第1武魂详细页: ['page-ability', 'martial'], 第2武魂详细页: ['page-ability', 'martial'], 血脉封印详细页: ['page-ability', 'martial'],
+    第1武魂详细页: ['page-ability', 'martial', { soul: '0', ringPick: '' }], 第2武魂详细页: ['page-ability', 'martial', { soul: '1', ringPick: '' }], 血脉封印详细页: ['page-ability', 'martial'],
     技能典籍: ['page-ability', 'codex'], 武魂融合技详细页: ['page-ability', 'codex'],
-    储物仓库详细页: ['page-supplies', 'pack'], '武装详情：主武器': ['page-supplies', 'equip'], '武装详情：防具': ['page-supplies', 'equip'],
-    '武装详情：斗铠': ['page-supplies', 'equip'], '武装详情：机甲': ['page-supplies', 'equip'], '武装详情：魂导器': ['page-supplies', 'equip'],
+    储物仓库详细页: ['page-supplies', 'pack'], '武装详情：主武器': ['page-supplies', 'equip', { eqsel: '武器' }], '武装详情：防具': ['page-supplies', 'equip', { eqsel: '防具' }],
+    '武装详情：斗铠': ['page-supplies', 'equip', { eqsel: '斗铠' }], '武装详情：机甲': ['page-supplies', 'equip', { eqsel: '机甲' }], '武装详情：魂导器': ['page-supplies', 'equip', { eqsel: '魂导器' }],
     任务界面: ['page-terminal', 'quests'], 试炼与情报: ['page-terminal', 'trial'], 情报库详细页: ['page-terminal', 'intel'],
     当前节点详情: ['page-map', 'place'],
-    人物关系详细页: ['page-archive', 'relations'], 社会档案详细页: ['page-archive', 'profile'], 生命图谱详细页: ['page-archive', 'growth'],
+    人物关系详细页: ['page-archive', 'relations'], 社会档案详细页: ['page-archive', 'identity'], 生命图谱详细页: ['page-archive', 'growth'],
     所属势力详细页: ['page-archive', 'identity'], 我的阵营详情: ['page-archive', 'identity'], 角色切换器: ['page-archive', 'directory'],
     赛事: ['page-world', 'games'], 怪物图鉴: ['page-world', 'bestiary'], 近期见闻: ['page-world', 'chronicle'], 近期安排: ['page-world', 'chronicle'],
   });
@@ -40120,7 +40122,7 @@
       return Array.isArray(元数据 && 元数据.path) && 元数据.path.length ? 座舱.route({ to: 'designer', path: 元数据.path }) : false;
     }
     const 页 = 座舱旧详情页映射[键];
-    return 页 ? 座舱.route({ to: 'page', domain: 页[0], page: 页[1] }) : false;
+    return 页 ? 座舱.route({ to: 'page', domain: 页[0], page: 页[1], ui: 页[2] }) : false;
   }
   // 座舱读取的待处理事项：待选魂环（当前角色）与待确认的技能设计（突破生环、角色库成长技能、剧情自行设计、传授）
   function 座舱待处理() {
@@ -40190,6 +40192,17 @@
   function 座舱动作预演(名称, 参数 = {}) {
     try {
       if (名称 === 'routine') return statusRoutineActions.previewRoutineAction(座舱日常动作参数(参数));
+      if (名称 === 'routineNarration') return statusRoutineActions.pendingNarration(readStatusRoutineState().contextKey);
+      // 背包物品能否直接使用 / 装备：与原项目背包按钮同一判定（解锁类秘籍可用、魂骨与魂导器可装备）
+      if (名称 === 'itemCaps') {
+        const 物品 = toText(参数.item, ''), 背包状态 = deepGet(liveSnapshot, ['activeChar', '背包', 物品], null);
+        if (!物品 || !背包状态 || typeof 背包状态 !== 'object') return null;
+        const 数据 = 合并物品定义与状态_桥接(deepGet(liveSnapshot, 'rootData', {}), 物品, 背包状态);
+        const 管理器 = window.EquipmentManager;
+        let 可装备 = false;
+        try { 可装备 = !!(管理器 && typeof 管理器.parseEquipSlot === 'function' && 管理器.parseEquipSlot(物品, 数据)); } catch (错误) { 可装备 = false; }
+        return { usable: !!判断物品可直接使用_桥接(物品, 数据), equipable: 可装备 };
+      }
       if (名称 === 'skill') return 座舱技能场外施展状态(参数.path);
       if (名称 === 'trade') return 座舱交易预演(参数);
       if (名称 === 'workshop') {
@@ -40283,6 +40296,10 @@
           }));
         }
         case 'routine': {
+          if (参数.op === 'retry') {
+            const 重试 = await statusRoutineActions.retryNarration(readStatusRoutineState().contextKey, toText(参数.receiptId, ''));
+            return { ok: !!(重试 && 重试.ok), message: toText(重试 && 重试.message, '重试失败') };
+          }
           const 结果 = await statusRoutineActions.executeRoutineAction(座舱日常动作参数(参数));
           return { ok: !!(结果 && 结果.ok), message: toText(结果 && 结果.message, 结果 && 结果.ok ? '已结算' : '行动失败') };
         }
@@ -52849,6 +52866,7 @@ ${播报文本}
           prefillItem: launchOptions.prefillItem,
           prefillQty: launchOptions.prefillQty,
           prefillPrice: launchOptions.prefillPrice,
+          prefillBatch: tradeRequest && tradeRequest.批次索引,
           autoExecute: true,
           onTradeAction: 完成,
           内联动作失败: 失败,
@@ -74130,7 +74148,8 @@ ${播报文本}
     // 返回 true 表示座舱已接手（桥接据此不再打开旧面板）
     route(spec = {}) {
       if (!mounted) return false;
-      if (spec.to === 'page') { if (!domains[spec.domain]) return false; api.switchDomain?.(spec.domain, spec.page); return true; }
+      // ui：跳过去时顺带选中的条目（如第二武魂、某个武装挂点）
+      if (spec.to === 'page') { if (!domains[spec.domain]) return false; if (spec.ui && typeof spec.ui === 'object') Object.assign(state.ui, spec.ui); api.switchDomain?.(spec.domain, spec.page); return true; }
       const fn = routes[spec.to]; if (typeof fn !== 'function') return false;
       try { return fn(spec) !== false; } catch (err) { console.error('[座舱] 跳转失败', err); return false; }
     },
@@ -74774,7 +74793,7 @@ ${播报文本}
     }
     if (t.dataset.dur) {
       const box = t.closest('[data-dur-box]'), out = box.querySelector('output');
-      const m = Math.max(10, Math.min(720, num(out.dataset.min) + num(t.dataset.dur)));
+      const m = Math.max(10, Math.min(1440, num(out.dataset.min) + num(t.dataset.dur)));
       out.dataset.min = m; out.textContent = `${m} 分钟`;
       const end = box.querySelector('[data-dur-end]'); if (end && C.endAt) end.textContent = C.endAt(ctx(), m);
       return;
@@ -75003,7 +75022,8 @@ ${播报文本}
           <div class="dur"><button type="button" data-dur="-10" aria-label="减少十分钟">−</button><output data-min="60">60 分钟</output><button type="button" data-dur="10" aria-label="增加十分钟">＋</button></div>
           <div class="plan-end"><i class="fa-regular fa-clock"></i><span>结束于</span><b data-dur-end>${endAt(c, 60)}</b></div>
         </div>
-        ${placeKnown(c) || c.rt('__LWCS_ERA_RUNTIME_INTEGRATION_V1__') ? `<button class="cta" type="button" data-routine data-hint="按所选行动与时长预演体力、魂力等变化后结算"><i class="fa-solid fa-play"></i>开始行动</button>`
+        ${(nar => nar ? `<div class="warn"><i class="fa-solid fa-triangle-exclamation"></i><span>上一项行动已结算，叙事未完成</span></div><button class="cta" type="button" data-hint="只补写叙事，不会再次结算行动收益" data-act="${c.esc(JSON.stringify({ name: 'routine', op: 'retry', receiptId: nar.receiptId }))}"><i class="fa-solid fa-rotate-right"></i>重试叙事</button>` : '')(c.isPlayer ? window.COCKPIT.preview('routineNarration') : null)}
+        ${c.isPlayer && window.COCKPIT.preview('routineNarration') ? '' : placeKnown(c) || c.rt('__LWCS_ERA_RUNTIME_INTEGRATION_V1__') ? `<button class="cta" type="button" data-routine data-hint="按所选行动与时长预演体力、魂力等变化后结算"><i class="fa-solid fa-play"></i>开始行动</button>`
           : `<div class="warn"><i class="fa-solid fa-triangle-exclamation"></i><span>当前位置「${c.esc(where(c))}」未能识别，暂时无法预演行动效果。</span></div>
         <button class="cta" type="button" disabled><i class="fa-solid fa-lock"></i>暂不可行动</button>`}
       </div>`,
@@ -77505,7 +77525,9 @@ ${播报文本}
     const [cat, def] = defOf(c, name), batches = it.批次 || [];
     const total = batches.length ? batches.reduce((s, b) => s + c.num(b.数量), 0) : c.num(it.数量);
     const isEq = def && (EQ_KINDS.has(cat) || def.装备槽位 !== undefined);
-    return { it, cat, def, batches, total, isEq, usable: USABLE.has(cat), equipable: isEq && def.装备槽位 !== '无' };
+    // lwcs：按原项目背包按钮同一判定；原型页没有运行时，按分类近似
+    const caps = window.COCKPIT.preview('itemCaps', { item: name });
+    return { it, cat, def, batches, total, isEq, usable: caps ? caps.usable : USABLE.has(cat), equipable: caps ? caps.equipable : isEq && def.装备槽位 !== '无' };
   };
   const itemCore = (c, name) => {
     const o = itemOf(c, name); if (!o) return '';
@@ -78443,8 +78465,12 @@ ${播报文本}
     ]],
   ];
   try { const m = JSON.parse(localStorage.getItem('lwcs-cockpit-settings') || '{}').motion; if (m) document.querySelector('.cockpit').dataset.motion = m; } catch (e) {}
+  // 战斗代理模式存在原项目（BattleUIBridge，存储键 lwcs_battle_submit_mode），座舱只做中文显示映射
+  const BATTLE_MODE = { 自动: 'auto', 手动: 'manual', 自由: 'free_narrative' };
+  const battleBridge = () => window.COCKPIT.rt('BattleUIBridge');
   const settings = c => {
     const v = readSet();
+    { const m = battleBridge()?.getBattleSubmitMode?.(); const zh = Object.keys(BATTLE_MODE).find(k => BATTLE_MODE[k] === m); if (zh) v.battle = zh; }
     // 设置项做成整块面板（2×2 铺满）：头部是分组 + 名称，下面是一排游戏化选项键（同首页日常行动键）
     const tile = (g, [k, l, d, , def]) => `<section class="set-tile"><header>${c.sock(SET_ICON[k], 'gd')}<div><small>${g}</small><strong>${l}${c.hint(d)}</strong></div></header>
       <div class="opts set-opts" data-setting-group="${k}" style="--n:${SET_OPTS[k].length}">${SET_OPTS[k].map(([o, ic, h]) => `<button class="opt ${(v[k] || def) === o ? 'on' : ''}" type="button" data-setting="${k}=${o}" aria-pressed="${(v[k] || def) === o}"${h ? ` data-hint="${h}"` : ''}><i class="fa-solid fa-${ic}"></i>${o}</button>`).join('')}</div></section>`;
@@ -78465,6 +78491,7 @@ ${播报文本}
     try { localStorage.setItem(SET_KEY, JSON.stringify(v)); } catch (err) {}
     b.closest('[data-setting-group]')?.querySelectorAll('[data-setting]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); });
     if (k === 'motion') document.querySelector('.cockpit').dataset.motion = val;
+    if (k === 'battle') battleBridge()?.setBattleSubmitMode?.(BATTLE_MODE[val]);
   });
 
   // 行动按钮：捕获阶段写好确认文案与动作规格（data-act），确认后由座舱交给原项目执行——
@@ -79067,7 +79094,7 @@ class TradeUIComponent {
     if (prefillItem) {
       if (initialTab === 'tab-private' && this.$('#priv-item')) this.$('#priv-item').value = prefillItem;
       if (initialTab === 'tab-shop') this.setSelectIfExists('#shop-item-sel', prefillItem);
-      if (initialTab === 'tab-sell') this.setSelectIfExists('#sell-item-sel', prefillItem);
+      if (initialTab === 'tab-sell') this.预填出售物品(prefillItem, this.options.prefillBatch);
       if (initialTab === 'tab-auction') this.setSelectIfExists('#auc-item-sel', prefillItem);
     } else if (initialTab === 'tab-private' && this.isBlackMarketPrivateTrade() && this.$('#priv-item')) {
       const storeName = this.getPrivateMarketStoreName(this.$('#priv-npc')?.value || '');
@@ -79281,6 +79308,21 @@ class TradeUIComponent {
 
   编码出售引用(物品名 = '', 批次索引 = -1) {
     return JSON.stringify({ 物品名: String(物品名 || '').trim(), 批次索引: Number(批次索引) });
+  }
+
+  // 出售预填：下拉值是 编码出售引用 生成的引用，外部（座舱、模块意图）只给物品名（可带批次索引）。
+  // 按名称与批次找对应项；找不到就清空选择（按钮随之禁用并回报原因），不能让自动执行卖掉下拉第一项
+  预填出售物品(物品 = '', 批次索引 = undefined) {
+    const 下拉 = this.$('#sell-item-sel');
+    if (!下拉) return;
+    const 选项 = Array.from(下拉.options || []);
+    if (选项.some(项 => 项.value === 物品)) { 下拉.value = 物品; this.updateSellPreview(); return; }
+    const 名称 = String(物品 || '').trim(), 指定批次 = Number.isFinite(Number(批次索引)) && 批次索引 !== '' && 批次索引 !== null ? Math.floor(Number(批次索引)) : null;
+    const 匹配 = 选项.map(项 => ({ 项, 引用: this.解码出售引用(项.value) })).filter(x => x.引用.物品名 === 名称);
+    const 命中 = 指定批次 !== null ? 匹配.find(x => x.引用.批次索引 === 指定批次) : (匹配.find(x => x.引用.批次索引 === -1) || 匹配[0]);
+    if (命中) 下拉.value = 命中.项.value;
+    else { 下拉.selectedIndex = -1; 下拉.value = ''; }
+    this.updateSellPreview();
   }
 
   解码出售引用(引用 = '') {
@@ -93919,6 +93961,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
   }
 
+  // R01: a skill's state that is still active on the target cannot be applied again (no refresh, no extra charges).
+  // R02: different skills of the same kind stack — up to 3 from other casters, without limit from the target itself.
+  // A state remembers which caster's skill applied it as 来源技能键 = "<actorId>|<skill name>".
+  function stateSourceKey(context = {}) {
+    const actorId = unitId(context?.actor || {});
+    const skill = context?.declaration?.skill || {};
+    const skillName = String(skill?.魂技名 || skill?.技能名 || skill?.name || '').trim();
+    return actorId && skillName ? `${actorId}|${skillName}` : '';
+  }
+
   function rulePrototypeState(effect = {}, prototype = '', context = {}) {
     const duration = Math.max(1, Number(effect?.持续回合 || 1));
     const rule = String(effect?.规则 || effect?.防御对象 || '').trim();
@@ -93947,6 +93999,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       duration,
       来源原型摘要: prototype,
       来源动作ID: String(context?.rootActionId || '').trim(),
+      ...(stateSourceKey(context) ? { 来源技能键: stateSourceKey(context) } : {}),
       规则: rule,
       防御对象: String(effect?.防御对象 || '').trim(),
       战斗效果: combatEffect,
@@ -93969,9 +94022,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       return stateName(state);
     }
     const [stateKey, existing] = existingEntry;
+    const sourceKey = String(state.来源技能键 || '').trim();
+    const sources = Array.isArray(existing.来源技能键列表) ? existing.来源技能键列表 : existing.来源技能键 ? [existing.来源技能键] : [];
+    if (sourceKey && sources.includes(sourceKey)) return '';
+    const foreign = sourceKey && sourceKey.split('|')[0] !== unitId(unit);
+    if (foreign && sources.filter(key => key.split('|')[0] !== unitId(unit)).length >= 3) return '';
     const previousEffects = existing.战斗效果 || {}, nextEffects = state.战斗效果 || {};
     unit.状态效果[stateKey] = {
       ...existing, ...state,
+      来源技能键列表: [...sources, sourceKey].filter(Boolean),
       duration: Math.max(Number(existing.duration ?? existing.持续回合 ?? 0), Number(state.duration ?? state.持续回合 ?? 1)),
       战斗效果: {
         ...previousEffects, ...nextEffects,
@@ -94100,7 +94159,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const foreignStateId = existing?.[1]?.状态ID || `外来辅助:${JSON.stringify([source.skillId, axis])}`;
       const axisSource = { ...source, foreignStateId }, axisEffect = { ...effect, 属性: attribute };
       const skills = new Set(candidates.map(([, state]) => state.sourceSkillId));
-      if (!existing && !skills.has(source.skillId) && skills.size >= 2) { blockedAttributes.push(attribute); continue; }
+      if (existing) { blockedAttributes.push(attribute); continue; }
+      if (!skills.has(source.skillId) && skills.size >= 3) { blockedAttributes.push(attribute); continue; }
       const oldDuration = Math.max(0, Number(existing?.[1]?.duration ?? existing?.[1]?.持续回合 ?? 0));
       const applied = addState(unit, axisEffect, source.effectId, null, '', axisSource);
       if (!applied) continue;
@@ -96282,6 +96342,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               evidence = { ...buildEffectEvidence(scaledEffect, prototype, deriveStateCombatEffect(scaledEffect)), ...foreign,
                 applicationProbability, ownApplicationProbability: probabilityProfile.ownApplicationProbability,
                 ...outcomeDependencyEvidence(context, unitId(target)), projectedEffect: cloneValue(effect) };
+              return;
+            }
+            if (scaledEffect.原型 === '属性修正' && attributeSource.skillId && unitId(unit) === attributeSource.actorId &&
+              stateEntries(unit).some(([, state]) => state.原型 === '属性修正' && state.sourceActorId === attributeSource.actorId &&
+                state.sourceSkillId === attributeSource.skillId && Number(state.duration ?? state.持续回合 ?? 0) > 0)) {
+              evidence = { ...buildEffectEvidence(scaledEffect, prototype, deriveStateCombatEffect(scaledEffect)), reason: 'SAME_SKILL_ACTIVE', marginal: false, changes: [],
+                applicationProbability, ownApplicationProbability: probabilityProfile.ownApplicationProbability, ...outcomeDependencyEvidence(context, unitId(target)), projectedEffect: cloneValue(effect) };
               return;
             }
             const existing = findStateEntry(unit, scaledEffect, attributeSource);
@@ -120352,9 +120419,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       typeof actor.__battleRuntime.naturalOpportunity === 'object'
       ? actor.__battleRuntime.naturalOpportunity
       : null;
-    const counterNaturalOpportunityAvailable = counterOnly &&
-      Number(counterNaturalOpportunity?.round || 0) === Number(worldSnapshot?.回合 || 0) &&
-      String(counterNaturalOpportunity?.status || '').trim() === 'PENDING';
+    // R15: a round is one cavalry pass — striking back after a defence or an evasion is part of the engagement and
+    // does not spend the counter-attacker's own action of the round, so a counter never needs (or consumes) it.
+    const counterNaturalOpportunityAvailable = counterOnly;
+    void counterNaturalOpportunity;
     const opportunityValidTargetIds = new Set(
       (Array.isArray(input.actionOpportunity?.validTargetIds)
         ? input.actionOpportunity.validTargetIds
@@ -120484,7 +120552,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           actionKind: 'BASIC_ATTACK',
           targetIds: [targetId],
           skill: basicAttackSkill(actor),
-          ...(counterOnly ? { counterConsumesNaturalOpportunity: true } : {}),
+          ...(counterOnly ? { counterConsumesNaturalOpportunity: false } : {}),
         },
       };
     });
@@ -120700,7 +120768,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const creation = creationProfile(counterSkill, actor, worldSnapshot, null, {
         ...input,
         actorId,
-        declaration: { counterConsumesNaturalOpportunity: immediateOffensiveCounterEligible },
+        declaration: { counterConsumesNaturalOpportunity: false },
       });
       if (creation && input.excludeCreationCandidates === true) return;
       // The product's future use is not a second immediate target of a pure
@@ -120810,7 +120878,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           skill: counterSkill,
           resourceCosts: declarationCosts,
           ...(counterOnly ? {
-            counterConsumesNaturalOpportunity: immediateOffensiveCounterEligible,
+            counterConsumesNaturalOpportunity: false,
           } : {}),
         };
         if (creation) declaration.creationRecipientId = creationRecipientId;
@@ -183108,6 +183176,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (!existing || typeof existing !== 'object') {
       return { applied: true, mergeKind: 'NEW', oldDuration: 0, newDuration: Math.max(0, Number(next?.duration ?? next?.持续回合 ?? 0)), state: next };
     }
+    // R01: the same caster's same skill, still active on the target, cannot be applied again.
+    const sameSource = (left, right) => String(left || '').trim() && String(left || '').trim() === String(right || '').trim();
+    if (sameSource(existing?.来源技能, next?.来源技能) && sameSource(existing?.来源角色, next?.来源角色)) {
+      const oldDuration = Math.max(0, Number(existing?.duration ?? existing?.持续回合 ?? 0));
+      return { applied: false, mergeKind: 'SAME_SKILL_ACTIVE', oldDuration, newDuration: oldDuration, state: existing };
+    }
     const rule = String(effect?.覆盖规则 || '').trim();
     const refreshAllowed = !/(?:不可|禁止|不允许|无法|不再)\s*刷新|不刷新|维持原(?:持续|时长)/.test(rule);
     const stackingAllowed = !/(?:不可|禁止|不允许|无法)\s*(?:叠加|累加)|(?:叠加|累加)\s*(?:不可|禁止)/.test(rule) && /叠加|累加|层数/.test(rule);
@@ -194762,6 +194836,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           对应等级: effect?.对应等级 !== undefined ? Number(effect.对应等级) : undefined,
           触发消耗: cloneValue(effect?.触发消耗),
           __本回合新附加: true,
+          来源技能: actionName, 来源角色: previewRuntime.unitName(actor),
           描述: `由[${actionName}]附加`, 战斗效果: { ...createEmptyCombatEffectMap(), ...previewRuntime.deriveStateCombatEffect(effect) },
           面板修改比例: { ...(effect?.面板修改比例 || {}) }, 面板固定修正: { ...(effect?.面板固定修正 || {}) },
         };
@@ -195804,20 +195879,32 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     };
   }
 
+  // R15: a round is one cavalry pass. A successful defence or evasion always lets the defender strike back, and a
+  // counter can itself be defended or evaded and answered, so the engagement flows until someone fails to answer,
+  // declines, or lacks the stamina for the strike. ENGAGEMENT_CHAIN_LIMIT only guards against a runaway loop.
+  // COUNTER_WINDOW_MODE 'PROBABILITY' restores the old contest roll if the always-open chain proves too slow.
+  const COUNTER_WINDOW_MODE = 'ALWAYS';
+  const ENGAGEMENT_CHAIN_LIMIT = 8;
+
   function openStructuredCounterWindow(input = {}) {
     const { combatData, reactor, sourceActor, parentActionEvent, reaction, settlementFacts } = input;
+    const engagementDepth = Math.max(0, Number(input?.engagementDepth || 0));
     if (!combatData || !reactor || !sourceActor || !parentActionEvent?.actionId || !reaction?.opensCounterCheck) return null;
     if (!structuredActorCanAct(reactor, 'COUNTER') || !structuredActorPhysicallyAlive(sourceActor)) return null;
     const receivedDamage = (Array.isArray(settlementFacts) ? settlementFacts : []).reduce((sum, event) => {
       if (event?.eventKind !== 'hit_result' || !isUnitIdentityMatch(reactor, event?.targetName || event?.targetId || '')) return sum;
       return sum + Math.max(0, Number(event?.appliedDamage || event?.meta?.appliedDamage || 0));
     }, 0);
-    if (reaction.actionKind === 'DEFEND' && !(receivedDamage > 0)) return null;
     const baseProbability = reaction.evaded === true ? 0.45 : 0.24;
     const contest = structuredReactionContest(reactor, sourceActor);
-    const probability = Math.max(0.08, Math.min(0.72, baseProbability + (contest.probability - 0.25) * 0.5));
+    const contestProbability = Math.max(0.08, Math.min(0.72, baseProbability + (contest.probability - 0.25) * 0.5));
+    const strikeStamina = previewRuntime.actionStaminaCost(reactor, 'ATTACK', sourceActor);
+    const staminaExhausted = persistentResourceValue(reactor, 'vit') + 1e-9 < strikeStamina;
+    const chainLimited = engagementDepth >= ENGAGEMENT_CHAIN_LIMIT;
+    const probability = COUNTER_WINDOW_MODE === 'PROBABILITY' ? contestProbability : 1;
     const roll = Math.random();
-    const opened = probabilitySucceeds(probability, roll);
+    const opened = !staminaExhausted && !chainLimited && probabilitySucceeds(probability, roll);
+    const closedReason = staminaExhausted ? 'COUNTER_WINDOW_STAMINA_EXHAUSTED' : chainLimited ? 'ENGAGEMENT_CHAIN_LIMIT' : 'COUNTER_WINDOW_MISSED';
     const counterGrantProfile = reaction?.counterGrantProfile?.granted === true
       ? cloneValue(reaction.counterGrantProfile)
       : null;
@@ -195845,6 +195932,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         probability,
         roll,
         receivedDamage,
+        engagementDepth,
+        ...(opened ? {} : { closedReason }),
+        counterWindowMode: COUNTER_WINDOW_MODE,
+        contestProbability,
+        strikeStamina,
         reactionPressure: contest.reactionPressure,
         attackPressure: contest.attackPressure,
         reactionShare: contest.share,
@@ -198961,6 +199053,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                   parentActionEvent: settlement.actionEvent,
                   reaction,
                   settlementFacts: settlement.facts,
+                  engagementDepth: Number(node?.state?.engagementDepth || 0),
                 });
                 if (!counterWindow?.opened) return;
                 queue.enqueue({
@@ -198985,6 +199078,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                     reactionEvent: reaction?.event || null,
                     counterWindowEvent: counterWindow.event,
                     counterGrantProfile: counterWindow.counterGrantProfile,
+                    engagementDepth: Number(node?.state?.engagementDepth || 0) + 1,
                   },
                 });
               });
@@ -199504,7 +199598,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             registerPredictedEvidence(actionContext.actionEvent, decisionResult);
             const resolvedDeclaration = actionContext.declaration;
             const shared = { declaration: resolvedDeclaration, actionContext, reactionByTarget: {}, decisionResult };
-            const hostileTargets = node.nodeKind === 'COUNTER' || structuredDamageEffects(resolvedDeclaration).length === 0
+            const hostileTargets = (node.nodeKind === 'COUNTER' && Number(node?.state?.engagementDepth || 0) >= ENGAGEMENT_CHAIN_LIMIT) ||
+              structuredDamageEffects(resolvedDeclaration).length === 0
               ? []
               : resolveStructuredTargets(combatData, actor, resolvedDeclaration, structuredDamageEffects(resolvedDeclaration)[0])
                   .filter(target => inferUnitSide(combatData, target) !== inferUnitSide(combatData, actor));
@@ -199580,7 +199675,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               nodeKind: 'PRIMARY_SETTLEMENT',
               actionRole: node.actionRole,
               sourceActionId: actionContext.actionEvent.actionId,
-              state: { shared, continuationDepth: Number(node?.state?.continuationDepth || 0),
+              state: { shared, continuationDepth: Number(node?.state?.continuationDepth || 0), engagementDepth: Number(node?.state?.engagementDepth || 0),
                 ...(actor.召唤键 && String(actor.行动模式 || '').trim() === '自主行动' &&
                   (node.nodeKind === 'ACTIVE' || declaration.counterConsumesNaturalOpportunity === true)
                   ? { autonomousNaturalWindow: true } : {}) },

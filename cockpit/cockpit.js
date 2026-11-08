@@ -178,7 +178,8 @@
     // 返回 true 表示座舱已接手（桥接据此不再打开旧面板）
     route(spec = {}) {
       if (!mounted) return false;
-      if (spec.to === 'page') { if (!domains[spec.domain]) return false; api.switchDomain?.(spec.domain, spec.page); return true; }
+      // ui：跳过去时顺带选中的条目（如第二武魂、某个武装挂点）
+      if (spec.to === 'page') { if (!domains[spec.domain]) return false; if (spec.ui && typeof spec.ui === 'object') Object.assign(state.ui, spec.ui); api.switchDomain?.(spec.domain, spec.page); return true; }
       const fn = routes[spec.to]; if (typeof fn !== 'function') return false;
       try { return fn(spec) !== false; } catch (err) { console.error('[座舱] 跳转失败', err); return false; }
     },
@@ -822,7 +823,7 @@
     }
     if (t.dataset.dur) {
       const box = t.closest('[data-dur-box]'), out = box.querySelector('output');
-      const m = Math.max(10, Math.min(720, num(out.dataset.min) + num(t.dataset.dur)));
+      const m = Math.max(10, Math.min(1440, num(out.dataset.min) + num(t.dataset.dur)));
       out.dataset.min = m; out.textContent = `${m} 分钟`;
       const end = box.querySelector('[data-dur-end]'); if (end && C.endAt) end.textContent = C.endAt(ctx(), m);
       return;

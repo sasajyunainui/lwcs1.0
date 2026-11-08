@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: TradeUI_Module.js:a65d0303636eba331b968eeb6ef06c2692a05f19d16febdc05b996388bcc0e46|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:289fe455da8dfe0c8f42e39afaaa254d1c724b00f602e5094ca7626b17151097 */
+/* sources-sha256: TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:651d2e019ec4a8e952a92a1191ffe0c2e4c45a9eb825ec0142c55510e6303ad1|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:d14299cca7805597e6d16410009ec565c0ddba58634e514469791d589ef54ad7|BattleRuntime_Module.js:1df6110241a2db8144c5449eda6eb3fddbbea3d6b279a85cf14c52e518baa367|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:d0b6ca9317cb01d2581c4b9bad6a09cb33fe50d4e1f221a613fa68f5a8dd95ea */
 ;
 /* source: TradeUI_Module.js */
 /* TradeUI_Module.js - 交易网络组件 (JS 模块版) */
@@ -568,7 +568,7 @@ class TradeUIComponent {
     if (prefillItem) {
       if (initialTab === 'tab-private' && this.$('#priv-item')) this.$('#priv-item').value = prefillItem;
       if (initialTab === 'tab-shop') this.setSelectIfExists('#shop-item-sel', prefillItem);
-      if (initialTab === 'tab-sell') this.setSelectIfExists('#sell-item-sel', prefillItem);
+      if (initialTab === 'tab-sell') this.预填出售物品(prefillItem, this.options.prefillBatch);
       if (initialTab === 'tab-auction') this.setSelectIfExists('#auc-item-sel', prefillItem);
     } else if (initialTab === 'tab-private' && this.isBlackMarketPrivateTrade() && this.$('#priv-item')) {
       const storeName = this.getPrivateMarketStoreName(this.$('#priv-npc')?.value || '');
@@ -782,6 +782,21 @@ class TradeUIComponent {
 
   编码出售引用(物品名 = '', 批次索引 = -1) {
     return JSON.stringify({ 物品名: String(物品名 || '').trim(), 批次索引: Number(批次索引) });
+  }
+
+  // 出售预填：下拉值是 编码出售引用 生成的引用，外部（座舱、模块意图）只给物品名（可带批次索引）。
+  // 按名称与批次找对应项；找不到就清空选择（按钮随之禁用并回报原因），不能让自动执行卖掉下拉第一项
+  预填出售物品(物品 = '', 批次索引 = undefined) {
+    const 下拉 = this.$('#sell-item-sel');
+    if (!下拉) return;
+    const 选项 = Array.from(下拉.options || []);
+    if (选项.some(项 => 项.value === 物品)) { 下拉.value = 物品; this.updateSellPreview(); return; }
+    const 名称 = String(物品 || '').trim(), 指定批次 = Number.isFinite(Number(批次索引)) && 批次索引 !== '' && 批次索引 !== null ? Math.floor(Number(批次索引)) : null;
+    const 匹配 = 选项.map(项 => ({ 项, 引用: this.解码出售引用(项.value) })).filter(x => x.引用.物品名 === 名称);
+    const 命中 = 指定批次 !== null ? 匹配.find(x => x.引用.批次索引 === 指定批次) : (匹配.find(x => x.引用.批次索引 === -1) || 匹配[0]);
+    if (命中) 下拉.value = 命中.项.value;
+    else { 下拉.selectedIndex = -1; 下拉.value = ''; }
+    this.updateSellPreview();
   }
 
   解码出售引用(引用 = '') {
@@ -6310,6 +6325,8 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
   const MAX_PREVIEW_NODES = 64;
   // Joint outcome graphs up to this static size are always enumerated in full.
   const OPERATION_GRAPH_SMALL_JOINT_LIMIT = 512;
+  // R08: a battle runs at most 40 rounds; the same limit is the default when a caller names none.
+  const BATTLE_ROUND_LIMIT = 40;
   const MAX_RECURSION_DEPTH = 4;
   const effectHashCache = new WeakMap();
   const effectArrayHashCache = new WeakMap();
@@ -7765,6 +7782,59 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     return 0.5 + ratio * (5 / 3);
   }
 
+  // R07 / R17: every action costs stamina — a share of the actor's stamina maximum, scaled by the strength ratio
+  // against the opponent with no bounds on the ratio:
+  //   attack  2.5% × target defence ÷ own strength;  defend 1.5% × attacker strength ÷ own defence;
+  //   evade   2.0% × attacker agility ÷ own agility.
+  // A skill or item costs what the basic action of its nature costs (damage → attack, evasion/displacement → evade,
+  // protection → defend, anything else 1.5% at ratio 1). The ratio uses battle-start panel stats when the runtime
+  // recorded them (__battleRuntime.panelStats), so in-battle buffs and stamina decay do not change the price.
+  const ACTION_STAMINA_RATES = Object.freeze({ ATTACK: 0.025, DEFEND: 0.015, EVADE: 0.02, OTHER: 0.015 });
+
+  function battlePanelStat(unit = {}, key = '') {
+    const recorded = Number(unit?.__battleRuntime?.panelStats?.[key]);
+    return Number.isFinite(recorded) && recorded > 0 ? recorded : Math.max(1, readCombatStat(unit, key));
+  }
+
+  function actionStaminaNature(declaration = {}) {
+    const kind = String(declaration?.actionKind || '').trim().toUpperCase();
+    if (kind === 'BASIC_ATTACK') return 'ATTACK';
+    if (kind === 'EVADE') return 'EVADE';
+    if (kind === 'DEFEND' || kind === 'GUARD') return 'DEFEND';
+    if (kind !== 'RELEASE_SKILL' && kind !== 'USE_ITEM') return '';
+    const effects = Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组 : [];
+    const prototypes = new Set(effects.map(effect => String(effect?.原型 || '').trim()));
+    if (prototypes.has('伤害结算')) return 'ATTACK';
+    if (prototypes.has('位移执行') || effects.some(effect => effect?.原型 === '判定修正' && /闪避/.test(String(effect?.判定 || '')))) return 'EVADE';
+    if (['护盾变化', '规则防御'].some(prototype => prototypes.has(prototype)) ||
+      effects.some(effect => (effect?.原型 === '结算修正' && /受到伤害|伤害分摊|伤害转移|伤害吸收/.test(String(effect?.结算 || ''))) ||
+        (effect?.原型 === '状态施加' && String(effect?.状态 || '').trim() === '护卫'))) return 'DEFEND';
+    return 'OTHER';
+  }
+
+  function actionStaminaCost(actor = {}, nature = '', opponent = null) {
+    const rate = ACTION_STAMINA_RATES[nature];
+    if (!rate) return 0;
+    const maximum = readResourceMax(actor, '体力');
+    if (!(maximum > 0)) return 0;
+    const ratioKey = { ATTACK: ['def', 'str'], DEFEND: ['str', 'def'], EVADE: ['agi', 'agi'] }[nature];
+    const ratio = opponent && ratioKey ? battlePanelStat(opponent, ratioKey[0]) / battlePanelStat(actor, ratioKey[1]) : 1;
+    return Math.max(0, maximum * rate * ratio);
+  }
+
+  // The stamina a formal action would pay in preview (same price as the runtime's payActionStamina), with the first
+  // enemy target as the opponent; null when the action costs none.
+  function projectedActionStamina(worldSnapshot = {}, actor = {}, declaration = {}, readUnit = id => findUnit(worldSnapshot, id)) {
+    const nature = actionStaminaNature(declaration);
+    if (!nature) return null;
+    const actorSide = sideOf(worldSnapshot, actor);
+    const opponent = (Array.isArray(declaration?.targetIds) ? declaration.targetIds : [])
+      .map(id => readUnit(String(id || '').trim()))
+      .find(unit => unit && sideOf(worldSnapshot, unit) && sideOf(worldSnapshot, unit) !== actorSide) || null;
+    const amount = actionStaminaCost(actor, nature, opponent);
+    return amount > 0 ? { nature, amount } : null;
+  }
+
   function refreshStaminaAdjustedFinal(unit = {}) {
     if (!unit || typeof unit !== 'object') return unit;
     const finalStats = unit.final && typeof unit.final === 'object' ? unit.final : null;
@@ -8722,7 +8792,7 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
       version: 1,
       explicit,
       startRound: Math.max(0, Math.floor(Number(source.startRound ?? source.起始回合 ?? currentRound))),
-      maxRounds: Math.max(1, Math.min(20, Math.floor(Number(source.maxRounds ?? source.回合上限 ?? 20) || 20))),
+      maxRounds: Math.max(1, Math.min(BATTLE_ROUND_LIMIT, Math.floor(Number(source.maxRounds ?? source.回合上限 ?? BATTLE_ROUND_LIMIT) || BATTLE_ROUND_LIMIT))),
       resolutionPriority: /^(DRAW_ON_CONFLICT|平局)$/i.test(String(source.resolutionPriority || source.冲突处理 || 'DEFEAT_FIRST').trim()) ? 'DRAW_ON_CONFLICT' : 'DEFEAT_FIRST',
       victory,
       defeat,
@@ -13368,12 +13438,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     if (prototype === '状态移除') return /负面|减益|控制|异常/.test(String(effect?.状态 || effect?.状态名称 || ''));
     if (prototype === '状态施加') {
-      const type = String(effect?.类型 || '').trim().toLowerCase();
-      if (type === 'buff') return true;
-      if (type === 'debuff') return false;
-      const state = String(effect?.状态 || effect?.状态名称 || '').trim();
-      if (/迟缓|僵直|眩晕|昏迷|中毒|灼烧|虚弱|禁锢|束缚|沉默|缴械|致盲|标记|减速|索敌干扰|禁疗|治疗反转/.test(state)) return false;
-      if (/护盾|恢复|治疗|增幅|强化|免疫|无视异常|霸体|加速/.test(state)) return true;
+      // The side follows the one polarity table (statePolarity → the skill library's 状态施加分类); a value's sign
+      // is a magnitude, not a direction, so it only decides states that table does not know.
+      const polarity = statePolarity(effect);
+      if (polarity !== 0) return polarity > 0;
       const combatEffect = deriveStateCombatEffect(effect);
       if (combatEffect.skip_turn === true || combatEffect.cannot_act === true ||
         Number(combatEffect.dodge_penalty || 0) > 0 || Number(combatEffect.reaction_penalty || 0) > 0 ||
@@ -15013,7 +15081,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const name = stateName(state);
     const semantics = root.__LWCS_SKILL_COST_HELPERS_V1__;
     if (semantics.读取状态施加分类_V1(name)) return semantics.状态施加是否负面语义_V1(name) ? -1 : 1;
-    if (/中毒|流血|灼烧|冻伤|暗冰侵蚀|眩晕|麻痹|僵直|定身|冻结|星光停滞|沉默|封技|禁疗|迟缓|减速|致盲|混乱|嘲讽|精神紊乱|标记|束缚|禁锢|缴械|虚弱/.test(name)) return -1;
+    if (/中毒|流血|灼烧|冻伤|暗冰侵蚀|眩晕|昏迷|麻痹|僵直|定身|冻结|星光停滞|沉默|封技|禁疗|治疗反转|迟缓|减速|致盲|混乱|嘲讽|精神紊乱|标记|束缚|禁锢|缴械|虚弱|索敌干扰/.test(name)) return -1;
     if (/护盾|恢复|治疗|增幅|强化|免疫|无视异常|霸体|加速|隐匿|隐身/.test(name)) return 1;
     return 0;
   }
@@ -15367,6 +15435,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
   }
 
+  // R01: a skill's state that is still active on the target cannot be applied again (no refresh, no extra charges).
+  // R02: different skills of the same kind stack — up to 3 from other casters, without limit from the target itself.
+  // A state remembers which caster's skill applied it as 来源技能键 = "<actorId>|<skill name>".
+  function stateSourceKey(context = {}) {
+    const actorId = unitId(context?.actor || {});
+    const skill = context?.declaration?.skill || {};
+    const skillName = String(skill?.魂技名 || skill?.技能名 || skill?.name || '').trim();
+    return actorId && skillName ? `${actorId}|${skillName}` : '';
+  }
+
   function rulePrototypeState(effect = {}, prototype = '', context = {}) {
     const duration = Math.max(1, Number(effect?.持续回合 || 1));
     const rule = String(effect?.规则 || effect?.防御对象 || '').trim();
@@ -15395,6 +15473,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       duration,
       来源原型摘要: prototype,
       来源动作ID: String(context?.rootActionId || '').trim(),
+      ...(stateSourceKey(context) ? { 来源技能键: stateSourceKey(context) } : {}),
       规则: rule,
       防御对象: String(effect?.防御对象 || '').trim(),
       战斗效果: combatEffect,
@@ -15417,9 +15496,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       return stateName(state);
     }
     const [stateKey, existing] = existingEntry;
+    const sourceKey = String(state.来源技能键 || '').trim();
+    const sources = Array.isArray(existing.来源技能键列表) ? existing.来源技能键列表 : existing.来源技能键 ? [existing.来源技能键] : [];
+    if (sourceKey && sources.includes(sourceKey)) return '';
+    const foreign = sourceKey && sourceKey.split('|')[0] !== unitId(unit);
+    if (foreign && sources.filter(key => key.split('|')[0] !== unitId(unit)).length >= 3) return '';
     const previousEffects = existing.战斗效果 || {}, nextEffects = state.战斗效果 || {};
     unit.状态效果[stateKey] = {
       ...existing, ...state,
+      来源技能键列表: [...sources, sourceKey].filter(Boolean),
       duration: Math.max(Number(existing.duration ?? existing.持续回合 ?? 0), Number(state.duration ?? state.持续回合 ?? 1)),
       战斗效果: {
         ...previousEffects, ...nextEffects,
@@ -15548,7 +15633,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const foreignStateId = existing?.[1]?.状态ID || `外来辅助:${JSON.stringify([source.skillId, axis])}`;
       const axisSource = { ...source, foreignStateId }, axisEffect = { ...effect, 属性: attribute };
       const skills = new Set(candidates.map(([, state]) => state.sourceSkillId));
-      if (!existing && !skills.has(source.skillId) && skills.size >= 2) { blockedAttributes.push(attribute); continue; }
+      if (existing) { blockedAttributes.push(attribute); continue; }
+      if (!skills.has(source.skillId) && skills.size >= 3) { blockedAttributes.push(attribute); continue; }
       const oldDuration = Math.max(0, Number(existing?.[1]?.duration ?? existing?.[1]?.持续回合 ?? 0));
       const applied = addState(unit, axisEffect, source.effectId, null, '', axisSource);
       if (!applied) continue;
@@ -17732,6 +17818,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 ...outcomeDependencyEvidence(context, unitId(target)), projectedEffect: cloneValue(effect) };
               return;
             }
+            if (scaledEffect.原型 === '属性修正' && attributeSource.skillId && unitId(unit) === attributeSource.actorId &&
+              stateEntries(unit).some(([, state]) => state.原型 === '属性修正' && state.sourceActorId === attributeSource.actorId &&
+                state.sourceSkillId === attributeSource.skillId && Number(state.duration ?? state.持续回合 ?? 0) > 0)) {
+              evidence = { ...buildEffectEvidence(scaledEffect, prototype, deriveStateCombatEffect(scaledEffect)), reason: 'SAME_SKILL_ACTIVE', marginal: false, changes: [],
+                applicationProbability, ownApplicationProbability: probabilityProfile.ownApplicationProbability, ...outcomeDependencyEvidence(context, unitId(target)), projectedEffect: cloneValue(effect) };
+              return;
+            }
             const existing = findStateEntry(unit, scaledEffect, attributeSource);
             const previousDuration = existing
               ? Math.max(0, Number(existing[1]?.duration ?? existing[1]?.持续回合 ?? 0))
@@ -19727,6 +19820,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           evidence: Object.freeze({ resource, before, next, delta: next - before }),
         });
       });
+      const stamina = projectedActionStamina(worldSnapshot, actor, basis.declaration);
+      if (stamina) {
+        const before = readProjectedResource(actor, '体力');
+        const next = roundNumber(clamp(before - stamina.amount, 0, readResourceMax(actor, '体力')));
+        if (next < before) {
+          writeProjectedResource(actor, '体力', next);
+          changedUnitIds.add(unitId(actor));
+          addContribution(`${rootActionId}:stamina`, { targetId: unitId(actor), outcomeKind: 'RESOURCE_OPTION_CHANGED', windowId: 'ACTION_COST', expectedDelta: next - before,
+            evidence: Object.freeze({ resource: '体力', before, next, delta: next - before, source: 'ACTION_STAMINA', staminaNature: stamina.nature }) });
+        }
+      }
     }
     if (basis.actionKind === 'WITHDRAW') {
       const contest = buildWithdrawalContest(worldSnapshot, actor);
@@ -20440,6 +20544,19 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           evidence: { resource, before, next, delta: next - before, payerIndex, fusionKey: basis.declaration?.fusionKey || '' },
         });
       });
+      const staminaPayer = overlay.readUnit(actorId) || projectionContext?.unitById?.get(actorId) || findUnit(worldSnapshot, actorId);
+      const stamina = staminaPayer ? projectedActionStamina(worldSnapshot, staminaPayer, basis.declaration, id => overlay.readUnit(id) || findUnit(worldSnapshot, id)) : null;
+      if (stamina) {
+        const before = readResource(staminaPayer, '体力');
+        const next = roundNumber(clamp(before - stamina.amount, 0, readResourceMax(staminaPayer, '体力')));
+        if (next < before) {
+          overlay.setResource(actorId, '体力', next);
+          changedUnitIds.add(actorId);
+          ledger.addOutcome({ rootActionId, sourceActionId: rootActionId, actor: staminaPayer, declaration: basis.declaration, effectInstanceId: `${rootActionId}:stamina`,
+            targetId: actorId, outcomeKind: 'RESOURCE_OPTION_CHANGED', windowId: 'ACTION_COST', threatValue: 0,
+            evidence: { resource: '体力', before, next, delta: next - before, source: 'ACTION_STAMINA', staminaNature: stamina.nature } });
+        }
+      }
     }
     const primarySuccessProbability = new Map();
     const primaryOutcomeKeyByTarget = new Map();
@@ -21603,6 +21720,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             break;
           }
           availableResources.set(resource, before - Number(payment.payments[0]?.amount || 0));
+        }
+        const stamina = projectedActionStamina(branchWorld, branchActor, basis.declaration, id => branchContext.unitById?.get(id) || findUnit(branchWorld, id));
+        if (stamina && !resourceInvalid) {
+          const before = availableResources.has('体力') ? availableResources.get('体力') : readResource(branchActor, '体力');
+          availableResources.set('体力', Math.max(0, before - stamina.amount));
         }
       }
       if (resourceInvalid) {
@@ -27154,6 +27276,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     formatSkillCostPhase,
     formatSkillCostStages,
     staminaScaleForUnit,
+    battlePanelStat,
+    actionStaminaNature,
+    actionStaminaCost,
     refreshStaminaAdjustedFinal,
     readCombatStat,
     readCombatStatBreakdown,
@@ -27203,6 +27328,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     compileMechanicalBasis,
     compileMechanicalProjectionContext,
     recursionDepthLimit: MAX_RECURSION_DEPTH,
+    battleRoundLimit: BATTLE_ROUND_LIMIT,
     deriveMechanicalProjectionContext,
     mechanicalProjectionProfile,
     evaluateMechanicalBasis,
@@ -41767,9 +41893,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       typeof actor.__battleRuntime.naturalOpportunity === 'object'
       ? actor.__battleRuntime.naturalOpportunity
       : null;
-    const counterNaturalOpportunityAvailable = counterOnly &&
-      Number(counterNaturalOpportunity?.round || 0) === Number(worldSnapshot?.回合 || 0) &&
-      String(counterNaturalOpportunity?.status || '').trim() === 'PENDING';
+    // R15: a round is one cavalry pass — striking back after a defence or an evasion is part of the engagement and
+    // does not spend the counter-attacker's own action of the round, so a counter never needs (or consumes) it.
+    const counterNaturalOpportunityAvailable = counterOnly;
+    void counterNaturalOpportunity;
     const opportunityValidTargetIds = new Set(
       (Array.isArray(input.actionOpportunity?.validTargetIds)
         ? input.actionOpportunity.validTargetIds
@@ -41899,7 +42026,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           actionKind: 'BASIC_ATTACK',
           targetIds: [targetId],
           skill: basicAttackSkill(actor),
-          ...(counterOnly ? { counterConsumesNaturalOpportunity: true } : {}),
+          ...(counterOnly ? { counterConsumesNaturalOpportunity: false } : {}),
         },
       };
     });
@@ -42115,7 +42242,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const creation = creationProfile(counterSkill, actor, worldSnapshot, null, {
         ...input,
         actorId,
-        declaration: { counterConsumesNaturalOpportunity: immediateOffensiveCounterEligible },
+        declaration: { counterConsumesNaturalOpportunity: false },
       });
       if (creation && input.excludeCreationCandidates === true) return;
       // The product's future use is not a second immediate target of a pure
@@ -42225,7 +42352,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           skill: counterSkill,
           resourceCosts: declarationCosts,
           ...(counterOnly ? {
-            counterConsumesNaturalOpportunity: immediateOffensiveCounterEligible,
+            counterConsumesNaturalOpportunity: false,
           } : {}),
         };
         if (creation) declaration.creationRecipientId = creationRecipientId;
@@ -104523,6 +104650,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (!existing || typeof existing !== 'object') {
       return { applied: true, mergeKind: 'NEW', oldDuration: 0, newDuration: Math.max(0, Number(next?.duration ?? next?.持续回合 ?? 0)), state: next };
     }
+    // R01: the same caster's same skill, still active on the target, cannot be applied again.
+    const sameSource = (left, right) => String(left || '').trim() && String(left || '').trim() === String(right || '').trim();
+    if (sameSource(existing?.来源技能, next?.来源技能) && sameSource(existing?.来源角色, next?.来源角色)) {
+      const oldDuration = Math.max(0, Number(existing?.duration ?? existing?.持续回合 ?? 0));
+      return { applied: false, mergeKind: 'SAME_SKILL_ACTIVE', oldDuration, newDuration: oldDuration, state: existing };
+    }
     const rule = String(effect?.覆盖规则 || '').trim();
     const refreshAllowed = !/(?:不可|禁止|不允许|无法|不再)\s*刷新|不刷新|维持原(?:持续|时长)/.test(rule);
     const stackingAllowed = !/(?:不可|禁止|不允许|无法)\s*(?:叠加|累加)|(?:叠加|累加)\s*(?:不可|禁止)/.test(rule) && /叠加|累加|层数/.test(rule);
@@ -107043,6 +107176,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       unit.__battleRuntime = unit.__battleRuntime && typeof unit.__battleRuntime === 'object'
         ? unit.__battleRuntime
         : {};
+      // Panel stats at the first round set the stamina price ratio for the whole battle (R07).
+      if (!unit.__battleRuntime.panelStats) unit.__battleRuntime.panelStats = Object.freeze({
+        str: previewRuntime.readCombatStat(unit, 'str'), def: previewRuntime.readCombatStat(unit, 'def'), agi: previewRuntime.readCombatStat(unit, 'agi'),
+      });
       unit.__battleRuntime.naturalOpportunity = {
         round: Number(round || 0),
         opportunityId: `natural:${Number(round || 0)}:${entry?.side || ''}:${previewRuntime.unitName(unit) || 'unit'}:${index + 1}`,
@@ -112084,6 +112221,39 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }));
   }
 
+  // R07 / R17: the stamina an action costs (previewRuntime.actionStaminaCost), drained to 0 at most — running out of
+  // stamina weakens the unit through staminaScaleForUnit but never forbids an action. Written as a PAY resource fact plus
+  // an action_cost event with source ACTION_STAMINA, so the ledger and analytics see it like any other cost.
+  function payActionStamina({ combatData, actor, nature, opponent = null, action, actionEvent, actionRole, actorControl = 'AI' }) {
+    const requested = previewRuntime.actionStaminaCost(actor, nature, opponent);
+    if (!(requested > 0)) return [];
+    const before = persistentResourceValue(actor, 'vit');
+    const after = writeCombatResource(actor, 'vit', before - requested);
+    const applied = Math.max(0, before - after);
+    if (!(applied > 0)) return [];
+    return [
+      writeStructuredResourceFact(combatData, actor, actor, action, actionEvent, 'vit', -applied, actionRole, 'PAY',
+        { before, after, meta: { requestedAmount: requested, source: 'ACTION_STAMINA', staminaNature: nature } }),
+      writeLedgerEvent(combatData, {
+        eventKind: 'action_cost',
+        round: Number(combatData?.回合 || 0),
+        actorName: previewRuntime.unitName(actor),
+        targetName: previewRuntime.unitName(actor),
+        actionName: action?.actionName || '',
+        actionType: action?.actionKind || '',
+        actorControl,
+        actionRole,
+        actionId: actionEvent?.actionId || '',
+        sourceActionId: actionEvent?.actionId || '',
+        parentNodeId: actionEvent?.chainNodeId || '',
+        result: 'paid',
+        resultState: 'SUCCESS',
+        primaryOutcome: 'resource_cost',
+        meta: { source: 'ACTION_STAMINA', resourceKey: 'vit', resource: '体力', amount: applied, requestedAmount: requested, staminaNature: nature, auditOnly: true },
+      }),
+    ].filter(Boolean);
+  }
+
   function writeStructuredResourceFact(
     combatData = {},
     actor = {},
@@ -114305,6 +114475,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         }));
         if (!label) void label;
     });
+    if (actionRole !== 'STATE_TICK') {
+      const staminaNature = previewRuntime.actionStaminaNature({ ...declaration, actionKind });
+      const opponent = (Array.isArray(declaration?.targetIds) ? declaration.targetIds : [])
+        .map(targetId => listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, targetId)))
+        .find(unit => unit && inferUnitSide(combatData, unit) && inferUnitSide(combatData, unit) !== inferUnitSide(combatData, actor)) || null;
+      if (staminaNature) facts.push(...payActionStamina({ combatData, actor, nature: staminaNature, opponent, action, actionEvent, actionRole, actorControl }));
+    }
     const pendingActionGrantedEffects = actionRole === 'STATE_TICK' || declaration?.__includeGrantedEffects === false
       ? []
       : previewRuntime.pendingGrantedEffects(actor, actionKind);
@@ -116133,6 +116310,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           对应等级: effect?.对应等级 !== undefined ? Number(effect.对应等级) : undefined,
           触发消耗: cloneValue(effect?.触发消耗),
           __本回合新附加: true,
+          来源技能: actionName, 来源角色: previewRuntime.unitName(actor),
           描述: `由[${actionName}]附加`, 战斗效果: { ...createEmptyCombatEffectMap(), ...previewRuntime.deriveStateCombatEffect(effect) },
           面板修改比例: { ...(effect?.面板修改比例 || {}) }, 面板固定修正: { ...(effect?.面板固定修正 || {}) },
         };
@@ -117116,6 +117294,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           preparedDefenseConsumed: !!preparedDefense,
         },
       });
+      // A prepared stance was paid for when it was taken; a reaction pays for itself (R07).
+      if (!preparedDefense) payActionStamina({ combatData, actor: reactor, nature: 'EVADE', opponent: sourceActor, action: { actionName: '闪避', actionKind }, actionEvent: event, actionRole: 'REACTION' });
       return {
         actionKind,
         event,
@@ -117136,6 +117316,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         ruleCode: 'REACTION_SUCCEEDED',
         meta: { ...reactionMeta, damageMultiplier, preparedDefenseConsumed: !!preparedDefense },
       });
+      if (!preparedDefense) payActionStamina({ combatData, actor: reactor, nature: 'DEFEND', opponent: sourceActor, action: { actionName: actionKind === 'GUARD' ? '护卫' : '防御', actionKind }, actionEvent: event, actionRole: 'REACTION' });
       return {
         actionKind,
         event,
@@ -117172,20 +117353,32 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     };
   }
 
+  // R15: a round is one cavalry pass. A successful defence or evasion always lets the defender strike back, and a
+  // counter can itself be defended or evaded and answered, so the engagement flows until someone fails to answer,
+  // declines, or lacks the stamina for the strike. ENGAGEMENT_CHAIN_LIMIT only guards against a runaway loop.
+  // COUNTER_WINDOW_MODE 'PROBABILITY' restores the old contest roll if the always-open chain proves too slow.
+  const COUNTER_WINDOW_MODE = 'ALWAYS';
+  const ENGAGEMENT_CHAIN_LIMIT = 8;
+
   function openStructuredCounterWindow(input = {}) {
     const { combatData, reactor, sourceActor, parentActionEvent, reaction, settlementFacts } = input;
+    const engagementDepth = Math.max(0, Number(input?.engagementDepth || 0));
     if (!combatData || !reactor || !sourceActor || !parentActionEvent?.actionId || !reaction?.opensCounterCheck) return null;
     if (!structuredActorCanAct(reactor, 'COUNTER') || !structuredActorPhysicallyAlive(sourceActor)) return null;
     const receivedDamage = (Array.isArray(settlementFacts) ? settlementFacts : []).reduce((sum, event) => {
       if (event?.eventKind !== 'hit_result' || !isUnitIdentityMatch(reactor, event?.targetName || event?.targetId || '')) return sum;
       return sum + Math.max(0, Number(event?.appliedDamage || event?.meta?.appliedDamage || 0));
     }, 0);
-    if (reaction.actionKind === 'DEFEND' && !(receivedDamage > 0)) return null;
     const baseProbability = reaction.evaded === true ? 0.45 : 0.24;
     const contest = structuredReactionContest(reactor, sourceActor);
-    const probability = Math.max(0.08, Math.min(0.72, baseProbability + (contest.probability - 0.25) * 0.5));
+    const contestProbability = Math.max(0.08, Math.min(0.72, baseProbability + (contest.probability - 0.25) * 0.5));
+    const strikeStamina = previewRuntime.actionStaminaCost(reactor, 'ATTACK', sourceActor);
+    const staminaExhausted = persistentResourceValue(reactor, 'vit') + 1e-9 < strikeStamina;
+    const chainLimited = engagementDepth >= ENGAGEMENT_CHAIN_LIMIT;
+    const probability = COUNTER_WINDOW_MODE === 'PROBABILITY' ? contestProbability : 1;
     const roll = Math.random();
-    const opened = probabilitySucceeds(probability, roll);
+    const opened = !staminaExhausted && !chainLimited && probabilitySucceeds(probability, roll);
+    const closedReason = staminaExhausted ? 'COUNTER_WINDOW_STAMINA_EXHAUSTED' : chainLimited ? 'ENGAGEMENT_CHAIN_LIMIT' : 'COUNTER_WINDOW_MISSED';
     const counterGrantProfile = reaction?.counterGrantProfile?.granted === true
       ? cloneValue(reaction.counterGrantProfile)
       : null;
@@ -117213,6 +117406,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         probability,
         roll,
         receivedDamage,
+        engagementDepth,
+        ...(opened ? {} : { closedReason }),
+        counterWindowMode: COUNTER_WINDOW_MODE,
+        contestProbability,
+        strikeStamina,
         reactionPressure: contest.reactionPressure,
         attackPressure: contest.attackPressure,
         reactionShare: contest.share,
@@ -118050,7 +118248,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     rehydrateStateSourceMemory(source, combatData);
     const caseId = String(input?.caseId || 'structured-shadow').trim() || 'structured-shadow';
     const seed = Math.max(1, Math.floor(Number(input?.seed || 1)));
-    const roundLimit = Math.max(1, Math.min(20, Math.floor(Number(input?.rounds || input?.settings?.maxRounds || 1))));
+    const roundLimit = Math.max(1, Math.min(previewRuntime.battleRoundLimit, Math.floor(Number(input?.rounds || input?.settings?.maxRounds || 1))));
     const analyticsCompactEvidence = input?.settings?.analyticsCompactEvidence === true;
     performanceTrace('battle-start', {
       caseId: String(input?.caseId || '').trim(),
@@ -120329,6 +120527,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                   parentActionEvent: settlement.actionEvent,
                   reaction,
                   settlementFacts: settlement.facts,
+                  engagementDepth: Number(node?.state?.engagementDepth || 0),
                 });
                 if (!counterWindow?.opened) return;
                 queue.enqueue({
@@ -120353,6 +120552,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                     reactionEvent: reaction?.event || null,
                     counterWindowEvent: counterWindow.event,
                     counterGrantProfile: counterWindow.counterGrantProfile,
+                    engagementDepth: Number(node?.state?.engagementDepth || 0) + 1,
                   },
                 });
               });
@@ -120872,7 +121072,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             registerPredictedEvidence(actionContext.actionEvent, decisionResult);
             const resolvedDeclaration = actionContext.declaration;
             const shared = { declaration: resolvedDeclaration, actionContext, reactionByTarget: {}, decisionResult };
-            const hostileTargets = node.nodeKind === 'COUNTER' || structuredDamageEffects(resolvedDeclaration).length === 0
+            const hostileTargets = (node.nodeKind === 'COUNTER' && Number(node?.state?.engagementDepth || 0) >= ENGAGEMENT_CHAIN_LIMIT) ||
+              structuredDamageEffects(resolvedDeclaration).length === 0
               ? []
               : resolveStructuredTargets(combatData, actor, resolvedDeclaration, structuredDamageEffects(resolvedDeclaration)[0])
                   .filter(target => inferUnitSide(combatData, target) !== inferUnitSide(combatData, actor));
@@ -120948,7 +121149,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               nodeKind: 'PRIMARY_SETTLEMENT',
               actionRole: node.actionRole,
               sourceActionId: actionContext.actionEvent.actionId,
-              state: { shared, continuationDepth: Number(node?.state?.continuationDepth || 0),
+              state: { shared, continuationDepth: Number(node?.state?.continuationDepth || 0), engagementDepth: Number(node?.state?.engagementDepth || 0),
                 ...(actor.召唤键 && String(actor.行动模式 || '').trim() === '自主行动' &&
                   (node.nodeKind === 'ACTIVE' || declaration.counterConsumesNaturalOpportunity === true)
                   ? { autonomousNaturalWindow: true } : {}) },
@@ -125576,7 +125777,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       combatData,
       caseId: String(source.caseId || 'r9v2-formal').trim(),
       seed: Math.max(1, Math.floor(Number(source.seed || 1))),
-      rounds: Math.max(1, Math.min(20, Math.floor(Number(source.rounds || 1)))),
+      rounds: Math.max(1, Math.min(previewRuntime.battleRoundLimit, Math.floor(Number(source.rounds || 1)))),
       mode: String(source.mode || 'single_round').trim() || 'single_round',
       settings: {
         ...(source.settings || {}),
@@ -125686,7 +125887,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
     const mode = source.mode === 'multi_round' ? 'multi_round' : 'single_round';
     const rounds = mode === 'multi_round'
-      ? Math.max(1, Math.min(20, Math.floor(Number(source.rounds || source.settings?.maxRounds || 20))))
+      ? Math.max(1, Math.min(previewRuntime.battleRoundLimit, Math.floor(Number(source.rounds || source.settings?.maxRounds || previewRuntime.battleRoundLimit))))
       : 1;
     const result = runStructuredBattle({
       ...source,
@@ -135405,7 +135606,7 @@ class BattleUIComponent {
         if (!sourceCombatData || typeof sourceCombatData !== 'object') throw new Error('battle_combat_data_missing');
         const battleMode = options.mode === 'multi_round' ? 'multi_round' : 'single_round';
         const maxRounds = battleMode === 'multi_round'
-          ? Math.max(1, Math.min(20, Math.floor(Number(options.autoContinueConfig?.maxRounds || sourceCombatData?.胜负条件?.maxRounds || 20))))
+          ? Math.max(1, Math.min(BATTLE_PREVIEW.battleRoundLimit, Math.floor(Number(options.autoContinueConfig?.maxRounds || sourceCombatData?.胜负条件?.maxRounds || BATTLE_PREVIEW.battleRoundLimit))))
           : 1;
         const executeTransaction = root.BattleUIBridge?.executeBattleTransaction;
         if (typeof executeTransaction !== 'function') throw new Error('battle_transaction_unavailable');

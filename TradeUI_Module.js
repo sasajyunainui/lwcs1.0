@@ -563,7 +563,7 @@ class TradeUIComponent {
     if (prefillItem) {
       if (initialTab === 'tab-private' && this.$('#priv-item')) this.$('#priv-item').value = prefillItem;
       if (initialTab === 'tab-shop') this.setSelectIfExists('#shop-item-sel', prefillItem);
-      if (initialTab === 'tab-sell') this.setSelectIfExists('#sell-item-sel', prefillItem);
+      if (initialTab === 'tab-sell') this.预填出售物品(prefillItem, this.options.prefillBatch);
       if (initialTab === 'tab-auction') this.setSelectIfExists('#auc-item-sel', prefillItem);
     } else if (initialTab === 'tab-private' && this.isBlackMarketPrivateTrade() && this.$('#priv-item')) {
       const storeName = this.getPrivateMarketStoreName(this.$('#priv-npc')?.value || '');
@@ -777,6 +777,21 @@ class TradeUIComponent {
 
   编码出售引用(物品名 = '', 批次索引 = -1) {
     return JSON.stringify({ 物品名: String(物品名 || '').trim(), 批次索引: Number(批次索引) });
+  }
+
+  // 出售预填：下拉值是 编码出售引用 生成的引用，外部（座舱、模块意图）只给物品名（可带批次索引）。
+  // 按名称与批次找对应项；找不到就清空选择（按钮随之禁用并回报原因），不能让自动执行卖掉下拉第一项
+  预填出售物品(物品 = '', 批次索引 = undefined) {
+    const 下拉 = this.$('#sell-item-sel');
+    if (!下拉) return;
+    const 选项 = Array.from(下拉.options || []);
+    if (选项.some(项 => 项.value === 物品)) { 下拉.value = 物品; this.updateSellPreview(); return; }
+    const 名称 = String(物品 || '').trim(), 指定批次 = Number.isFinite(Number(批次索引)) && 批次索引 !== '' && 批次索引 !== null ? Math.floor(Number(批次索引)) : null;
+    const 匹配 = 选项.map(项 => ({ 项, 引用: this.解码出售引用(项.value) })).filter(x => x.引用.物品名 === 名称);
+    const 命中 = 指定批次 !== null ? 匹配.find(x => x.引用.批次索引 === 指定批次) : (匹配.find(x => x.引用.批次索引 === -1) || 匹配[0]);
+    if (命中) 下拉.value = 命中.项.value;
+    else { 下拉.selectedIndex = -1; 下拉.value = ''; }
+    this.updateSellPreview();
   }
 
   解码出售引用(引用 = '') {

@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:6adec7eded766d771be5d8d9ee8dd2c50fbcecbe67fd1630d980da657aa7213c|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:82087e23069651be9e5a59b28c3d98a487f8a4457ef5c4bb7501beb56c39b7f5|cockpit/pages-role.js:908d0a9a9e323fcc62e4abb109ea7203b82ec6fd107ec5a8a7c0c36cb436d9a2|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:afe7c39c6437be94149d9d9d4809c3e198b189241a8997297cba7329a9f619ba|cockpit/pages-ability.js:c692feb0aaebd6f28360829098826f576cd660710001d30dd9bc5341dac9aa72|cockpit/pages-supplies.js:6bb2f0535c71419f26784a612c3d84fa59722a816128d909b2b2db7f74961eb5|cockpit/pages-map.js:bb5b1f07a1035a0294cdb32fbc61c97c36a49946297500421647eee91fe093da|cockpit/pages-world.js:53d47819477ad0b7398941a27519ecbf1e668b1462a013f0601efb57f91507d5|cockpit/pages-terminal.js:4839b10b0361497898b513d151fff284614a4bb763f17662ea6857e4428cce41 */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:11c2e606ec4f4b36549265f1007ec05219fea517712a7a21683bdbb672a7eb1b|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:c49202260ed6b2f1a1edfd1c025893a3b966dda0c69d0519284f7480f6ffa790|cockpit/pages-role.js:a0fa73086bf227c7b6e658a5d0097aeb4a2731610dd9e0e01ac98fc4341a242c|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:afe7c39c6437be94149d9d9d4809c3e198b189241a8997297cba7329a9f619ba|cockpit/pages-ability.js:c692feb0aaebd6f28360829098826f576cd660710001d30dd9bc5341dac9aa72|cockpit/pages-supplies.js:2c20652e62132ecf1fcdc8da32cf339e5128de56f21d9337bfafc199d63611f7|cockpit/pages-map.js:bb5b1f07a1035a0294cdb32fbc61c97c36a49946297500421647eee91fe093da|cockpit/pages-world.js:53d47819477ad0b7398941a27519ecbf1e668b1462a013f0601efb57f91507d5|cockpit/pages-terminal.js:ce98d34a8b48010be2a7112bd2ae798bafa820e71afff27f75673291a96b7ee3 */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -36026,7 +36026,9 @@
         return { ok: false, settled: true, receiptId, message: '叙事尚未完成，已结算的结果保持不变。' };
       } finally { executing.delete(contextKey); }
     }
-    return { previewRoutineAction, executeRoutineAction, retryNarration };
+    // 待重试的叙事回执（座舱据此把「开始行动」换成「重试叙事」）
+    const pendingNarration = contextKey => { const r = pendingNarrations.get(contextKey); return r ? { receiptId: r.id, playerInput: r.playerInput } : null; };
+    return { previewRoutineAction, executeRoutineAction, retryNarration, pendingNarration };
   }
 
 
@@ -40096,13 +40098,13 @@
   const 座舱让位详情键 = new Set([BATTLE_INLINE_PREVIEW_KEY, '私密档案详细页', '副职业工坊', '交易网络']);
   // 原项目各处流程（回到某页、模块意图路由等）打开的旧详情面 → 座舱里对应的页面
   const 座舱旧详情页映射 = Object.freeze({
-    第1武魂详细页: ['page-ability', 'martial'], 第2武魂详细页: ['page-ability', 'martial'], 血脉封印详细页: ['page-ability', 'martial'],
+    第1武魂详细页: ['page-ability', 'martial', { soul: '0', ringPick: '' }], 第2武魂详细页: ['page-ability', 'martial', { soul: '1', ringPick: '' }], 血脉封印详细页: ['page-ability', 'martial'],
     技能典籍: ['page-ability', 'codex'], 武魂融合技详细页: ['page-ability', 'codex'],
-    储物仓库详细页: ['page-supplies', 'pack'], '武装详情：主武器': ['page-supplies', 'equip'], '武装详情：防具': ['page-supplies', 'equip'],
-    '武装详情：斗铠': ['page-supplies', 'equip'], '武装详情：机甲': ['page-supplies', 'equip'], '武装详情：魂导器': ['page-supplies', 'equip'],
+    储物仓库详细页: ['page-supplies', 'pack'], '武装详情：主武器': ['page-supplies', 'equip', { eqsel: '武器' }], '武装详情：防具': ['page-supplies', 'equip', { eqsel: '防具' }],
+    '武装详情：斗铠': ['page-supplies', 'equip', { eqsel: '斗铠' }], '武装详情：机甲': ['page-supplies', 'equip', { eqsel: '机甲' }], '武装详情：魂导器': ['page-supplies', 'equip', { eqsel: '魂导器' }],
     任务界面: ['page-terminal', 'quests'], 试炼与情报: ['page-terminal', 'trial'], 情报库详细页: ['page-terminal', 'intel'],
     当前节点详情: ['page-map', 'place'],
-    人物关系详细页: ['page-archive', 'relations'], 社会档案详细页: ['page-archive', 'profile'], 生命图谱详细页: ['page-archive', 'growth'],
+    人物关系详细页: ['page-archive', 'relations'], 社会档案详细页: ['page-archive', 'identity'], 生命图谱详细页: ['page-archive', 'growth'],
     所属势力详细页: ['page-archive', 'identity'], 我的阵营详情: ['page-archive', 'identity'], 角色切换器: ['page-archive', 'directory'],
     赛事: ['page-world', 'games'], 怪物图鉴: ['page-world', 'bestiary'], 近期见闻: ['page-world', 'chronicle'], 近期安排: ['page-world', 'chronicle'],
   });
@@ -40120,7 +40122,7 @@
       return Array.isArray(元数据 && 元数据.path) && 元数据.path.length ? 座舱.route({ to: 'designer', path: 元数据.path }) : false;
     }
     const 页 = 座舱旧详情页映射[键];
-    return 页 ? 座舱.route({ to: 'page', domain: 页[0], page: 页[1] }) : false;
+    return 页 ? 座舱.route({ to: 'page', domain: 页[0], page: 页[1], ui: 页[2] }) : false;
   }
   // 座舱读取的待处理事项：待选魂环（当前角色）与待确认的技能设计（突破生环、角色库成长技能、剧情自行设计、传授）
   function 座舱待处理() {
@@ -40190,6 +40192,17 @@
   function 座舱动作预演(名称, 参数 = {}) {
     try {
       if (名称 === 'routine') return statusRoutineActions.previewRoutineAction(座舱日常动作参数(参数));
+      if (名称 === 'routineNarration') return statusRoutineActions.pendingNarration(readStatusRoutineState().contextKey);
+      // 背包物品能否直接使用 / 装备：与原项目背包按钮同一判定（解锁类秘籍可用、魂骨与魂导器可装备）
+      if (名称 === 'itemCaps') {
+        const 物品 = toText(参数.item, ''), 背包状态 = deepGet(liveSnapshot, ['activeChar', '背包', 物品], null);
+        if (!物品 || !背包状态 || typeof 背包状态 !== 'object') return null;
+        const 数据 = 合并物品定义与状态_桥接(deepGet(liveSnapshot, 'rootData', {}), 物品, 背包状态);
+        const 管理器 = window.EquipmentManager;
+        let 可装备 = false;
+        try { 可装备 = !!(管理器 && typeof 管理器.parseEquipSlot === 'function' && 管理器.parseEquipSlot(物品, 数据)); } catch (错误) { 可装备 = false; }
+        return { usable: !!判断物品可直接使用_桥接(物品, 数据), equipable: 可装备 };
+      }
       if (名称 === 'skill') return 座舱技能场外施展状态(参数.path);
       if (名称 === 'trade') return 座舱交易预演(参数);
       if (名称 === 'workshop') {
@@ -40283,6 +40296,10 @@
           }));
         }
         case 'routine': {
+          if (参数.op === 'retry') {
+            const 重试 = await statusRoutineActions.retryNarration(readStatusRoutineState().contextKey, toText(参数.receiptId, ''));
+            return { ok: !!(重试 && 重试.ok), message: toText(重试 && 重试.message, '重试失败') };
+          }
           const 结果 = await statusRoutineActions.executeRoutineAction(座舱日常动作参数(参数));
           return { ok: !!(结果 && 结果.ok), message: toText(结果 && 结果.message, 结果 && 结果.ok ? '已结算' : '行动失败') };
         }
@@ -52849,6 +52866,7 @@ ${播报文本}
           prefillItem: launchOptions.prefillItem,
           prefillQty: launchOptions.prefillQty,
           prefillPrice: launchOptions.prefillPrice,
+          prefillBatch: tradeRequest && tradeRequest.批次索引,
           autoExecute: true,
           onTradeAction: 完成,
           内联动作失败: 失败,
@@ -74130,7 +74148,8 @@ ${播报文本}
     // 返回 true 表示座舱已接手（桥接据此不再打开旧面板）
     route(spec = {}) {
       if (!mounted) return false;
-      if (spec.to === 'page') { if (!domains[spec.domain]) return false; api.switchDomain?.(spec.domain, spec.page); return true; }
+      // ui：跳过去时顺带选中的条目（如第二武魂、某个武装挂点）
+      if (spec.to === 'page') { if (!domains[spec.domain]) return false; if (spec.ui && typeof spec.ui === 'object') Object.assign(state.ui, spec.ui); api.switchDomain?.(spec.domain, spec.page); return true; }
       const fn = routes[spec.to]; if (typeof fn !== 'function') return false;
       try { return fn(spec) !== false; } catch (err) { console.error('[座舱] 跳转失败', err); return false; }
     },
@@ -74774,7 +74793,7 @@ ${播报文本}
     }
     if (t.dataset.dur) {
       const box = t.closest('[data-dur-box]'), out = box.querySelector('output');
-      const m = Math.max(10, Math.min(720, num(out.dataset.min) + num(t.dataset.dur)));
+      const m = Math.max(10, Math.min(1440, num(out.dataset.min) + num(t.dataset.dur)));
       out.dataset.min = m; out.textContent = `${m} 分钟`;
       const end = box.querySelector('[data-dur-end]'); if (end && C.endAt) end.textContent = C.endAt(ctx(), m);
       return;
@@ -75003,7 +75022,8 @@ ${播报文本}
           <div class="dur"><button type="button" data-dur="-10" aria-label="减少十分钟">−</button><output data-min="60">60 分钟</output><button type="button" data-dur="10" aria-label="增加十分钟">＋</button></div>
           <div class="plan-end"><i class="fa-regular fa-clock"></i><span>结束于</span><b data-dur-end>${endAt(c, 60)}</b></div>
         </div>
-        ${placeKnown(c) || c.rt('__LWCS_ERA_RUNTIME_INTEGRATION_V1__') ? `<button class="cta" type="button" data-routine data-hint="按所选行动与时长预演体力、魂力等变化后结算"><i class="fa-solid fa-play"></i>开始行动</button>`
+        ${(nar => nar ? `<div class="warn"><i class="fa-solid fa-triangle-exclamation"></i><span>上一项行动已结算，叙事未完成</span></div><button class="cta" type="button" data-hint="只补写叙事，不会再次结算行动收益" data-act="${c.esc(JSON.stringify({ name: 'routine', op: 'retry', receiptId: nar.receiptId }))}"><i class="fa-solid fa-rotate-right"></i>重试叙事</button>` : '')(c.isPlayer ? window.COCKPIT.preview('routineNarration') : null)}
+        ${c.isPlayer && window.COCKPIT.preview('routineNarration') ? '' : placeKnown(c) || c.rt('__LWCS_ERA_RUNTIME_INTEGRATION_V1__') ? `<button class="cta" type="button" data-routine data-hint="按所选行动与时长预演体力、魂力等变化后结算"><i class="fa-solid fa-play"></i>开始行动</button>`
           : `<div class="warn"><i class="fa-solid fa-triangle-exclamation"></i><span>当前位置「${c.esc(where(c))}」未能识别，暂时无法预演行动效果。</span></div>
         <button class="cta" type="button" disabled><i class="fa-solid fa-lock"></i>暂不可行动</button>`}
       </div>`,
@@ -77505,7 +77525,9 @@ ${播报文本}
     const [cat, def] = defOf(c, name), batches = it.批次 || [];
     const total = batches.length ? batches.reduce((s, b) => s + c.num(b.数量), 0) : c.num(it.数量);
     const isEq = def && (EQ_KINDS.has(cat) || def.装备槽位 !== undefined);
-    return { it, cat, def, batches, total, isEq, usable: USABLE.has(cat), equipable: isEq && def.装备槽位 !== '无' };
+    // lwcs：按原项目背包按钮同一判定；原型页没有运行时，按分类近似
+    const caps = window.COCKPIT.preview('itemCaps', { item: name });
+    return { it, cat, def, batches, total, isEq, usable: caps ? caps.usable : USABLE.has(cat), equipable: caps ? caps.equipable : isEq && def.装备槽位 !== '无' };
   };
   const itemCore = (c, name) => {
     const o = itemOf(c, name); if (!o) return '';
@@ -78443,8 +78465,12 @@ ${播报文本}
     ]],
   ];
   try { const m = JSON.parse(localStorage.getItem('lwcs-cockpit-settings') || '{}').motion; if (m) document.querySelector('.cockpit').dataset.motion = m; } catch (e) {}
+  // 战斗代理模式存在原项目（BattleUIBridge，存储键 lwcs_battle_submit_mode），座舱只做中文显示映射
+  const BATTLE_MODE = { 自动: 'auto', 手动: 'manual', 自由: 'free_narrative' };
+  const battleBridge = () => window.COCKPIT.rt('BattleUIBridge');
   const settings = c => {
     const v = readSet();
+    { const m = battleBridge()?.getBattleSubmitMode?.(); const zh = Object.keys(BATTLE_MODE).find(k => BATTLE_MODE[k] === m); if (zh) v.battle = zh; }
     // 设置项做成整块面板（2×2 铺满）：头部是分组 + 名称，下面是一排游戏化选项键（同首页日常行动键）
     const tile = (g, [k, l, d, , def]) => `<section class="set-tile"><header>${c.sock(SET_ICON[k], 'gd')}<div><small>${g}</small><strong>${l}${c.hint(d)}</strong></div></header>
       <div class="opts set-opts" data-setting-group="${k}" style="--n:${SET_OPTS[k].length}">${SET_OPTS[k].map(([o, ic, h]) => `<button class="opt ${(v[k] || def) === o ? 'on' : ''}" type="button" data-setting="${k}=${o}" aria-pressed="${(v[k] || def) === o}"${h ? ` data-hint="${h}"` : ''}><i class="fa-solid fa-${ic}"></i>${o}</button>`).join('')}</div></section>`;
@@ -78465,6 +78491,7 @@ ${播报文本}
     try { localStorage.setItem(SET_KEY, JSON.stringify(v)); } catch (err) {}
     b.closest('[data-setting-group]')?.querySelectorAll('[data-setting]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); });
     if (k === 'motion') document.querySelector('.cockpit').dataset.motion = val;
+    if (k === 'battle') battleBridge()?.setBattleSubmitMode?.(BATTLE_MODE[val]);
   });
 
   // 行动按钮：捕获阶段写好确认文案与动作规格（data-act），确认后由座舱交给原项目执行——

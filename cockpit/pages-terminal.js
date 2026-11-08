@@ -273,8 +273,12 @@
     ]],
   ];
   try { const m = JSON.parse(localStorage.getItem('lwcs-cockpit-settings') || '{}').motion; if (m) document.querySelector('.cockpit').dataset.motion = m; } catch (e) {}
+  // 战斗代理模式存在原项目（BattleUIBridge，存储键 lwcs_battle_submit_mode），座舱只做中文显示映射
+  const BATTLE_MODE = { 自动: 'auto', 手动: 'manual', 自由: 'free_narrative' };
+  const battleBridge = () => window.COCKPIT.rt('BattleUIBridge');
   const settings = c => {
     const v = readSet();
+    { const m = battleBridge()?.getBattleSubmitMode?.(); const zh = Object.keys(BATTLE_MODE).find(k => BATTLE_MODE[k] === m); if (zh) v.battle = zh; }
     // 设置项做成整块面板（2×2 铺满）：头部是分组 + 名称，下面是一排游戏化选项键（同首页日常行动键）
     const tile = (g, [k, l, d, , def]) => `<section class="set-tile"><header>${c.sock(SET_ICON[k], 'gd')}<div><small>${g}</small><strong>${l}${c.hint(d)}</strong></div></header>
       <div class="opts set-opts" data-setting-group="${k}" style="--n:${SET_OPTS[k].length}">${SET_OPTS[k].map(([o, ic, h]) => `<button class="opt ${(v[k] || def) === o ? 'on' : ''}" type="button" data-setting="${k}=${o}" aria-pressed="${(v[k] || def) === o}"${h ? ` data-hint="${h}"` : ''}><i class="fa-solid fa-${ic}"></i>${o}</button>`).join('')}</div></section>`;
@@ -295,6 +299,7 @@
     try { localStorage.setItem(SET_KEY, JSON.stringify(v)); } catch (err) {}
     b.closest('[data-setting-group]')?.querySelectorAll('[data-setting]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); });
     if (k === 'motion') document.querySelector('.cockpit').dataset.motion = val;
+    if (k === 'battle') battleBridge()?.setBattleSubmitMode?.(BATTLE_MODE[val]);
   });
 
   // 行动按钮：捕获阶段写好确认文案与动作规格（data-act），确认后由座舱交给原项目执行——

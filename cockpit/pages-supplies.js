@@ -99,7 +99,9 @@
     const [cat, def] = defOf(c, name), batches = it.批次 || [];
     const total = batches.length ? batches.reduce((s, b) => s + c.num(b.数量), 0) : c.num(it.数量);
     const isEq = def && (EQ_KINDS.has(cat) || def.装备槽位 !== undefined);
-    return { it, cat, def, batches, total, isEq, usable: USABLE.has(cat), equipable: isEq && def.装备槽位 !== '无' };
+    // lwcs：按原项目背包按钮同一判定；原型页没有运行时，按分类近似
+    const caps = window.COCKPIT.preview('itemCaps', { item: name });
+    return { it, cat, def, batches, total, isEq, usable: caps ? caps.usable : USABLE.has(cat), equipable: caps ? caps.equipable : isEq && def.装备槽位 !== '无' };
   };
   const itemCore = (c, name) => {
     const o = itemOf(c, name); if (!o) return '';

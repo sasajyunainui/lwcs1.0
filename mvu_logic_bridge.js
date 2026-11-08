@@ -34412,7 +34412,9 @@
         return { ok: false, settled: true, receiptId, message: '叙事尚未完成，已结算的结果保持不变。' };
       } finally { executing.delete(contextKey); }
     }
-    return { previewRoutineAction, executeRoutineAction, retryNarration };
+    // 待重试的叙事回执（座舱据此把「开始行动」换成「重试叙事」）
+    const pendingNarration = contextKey => { const r = pendingNarrations.get(contextKey); return r ? { receiptId: r.id, playerInput: r.playerInput } : null; };
+    return { previewRoutineAction, executeRoutineAction, retryNarration, pendingNarration };
   }
 
 
@@ -38482,13 +38484,13 @@
   const 座舱让位详情键 = new Set([BATTLE_INLINE_PREVIEW_KEY, '私密档案详细页', '副职业工坊', '交易网络']);
   // 原项目各处流程（回到某页、模块意图路由等）打开的旧详情面 → 座舱里对应的页面
   const 座舱旧详情页映射 = Object.freeze({
-    第1武魂详细页: ['page-ability', 'martial'], 第2武魂详细页: ['page-ability', 'martial'], 血脉封印详细页: ['page-ability', 'martial'],
+    第1武魂详细页: ['page-ability', 'martial', { soul: '0', ringPick: '' }], 第2武魂详细页: ['page-ability', 'martial', { soul: '1', ringPick: '' }], 血脉封印详细页: ['page-ability', 'martial'],
     技能典籍: ['page-ability', 'codex'], 武魂融合技详细页: ['page-ability', 'codex'],
-    储物仓库详细页: ['page-supplies', 'pack'], '武装详情：主武器': ['page-supplies', 'equip'], '武装详情：防具': ['page-supplies', 'equip'],
-    '武装详情：斗铠': ['page-supplies', 'equip'], '武装详情：机甲': ['page-supplies', 'equip'], '武装详情：魂导器': ['page-supplies', 'equip'],
+    储物仓库详细页: ['page-supplies', 'pack'], '武装详情：主武器': ['page-supplies', 'equip', { eqsel: '武器' }], '武装详情：防具': ['page-supplies', 'equip', { eqsel: '防具' }],
+    '武装详情：斗铠': ['page-supplies', 'equip', { eqsel: '斗铠' }], '武装详情：机甲': ['page-supplies', 'equip', { eqsel: '机甲' }], '武装详情：魂导器': ['page-supplies', 'equip', { eqsel: '魂导器' }],
     任务界面: ['page-terminal', 'quests'], 试炼与情报: ['page-terminal', 'trial'], 情报库详细页: ['page-terminal', 'intel'],
     当前节点详情: ['page-map', 'place'],
-    人物关系详细页: ['page-archive', 'relations'], 社会档案详细页: ['page-archive', 'profile'], 生命图谱详细页: ['page-archive', 'growth'],
+    人物关系详细页: ['page-archive', 'relations'], 社会档案详细页: ['page-archive', 'identity'], 生命图谱详细页: ['page-archive', 'growth'],
     所属势力详细页: ['page-archive', 'identity'], 我的阵营详情: ['page-archive', 'identity'], 角色切换器: ['page-archive', 'directory'],
     赛事: ['page-world', 'games'], 怪物图鉴: ['page-world', 'bestiary'], 近期见闻: ['page-world', 'chronicle'], 近期安排: ['page-world', 'chronicle'],
   });
@@ -38506,7 +38508,7 @@
       return Array.isArray(元数据 && 元数据.path) && 元数据.path.length ? 座舱.route({ to: 'designer', path: 元数据.path }) : false;
     }
     const 页 = 座舱旧详情页映射[键];
-    return 页 ? 座舱.route({ to: 'page', domain: 页[0], page: 页[1] }) : false;
+    return 页 ? 座舱.route({ to: 'page', domain: 页[0], page: 页[1], ui: 页[2] }) : false;
   }
   // 座舱读取的待处理事项：待选魂环（当前角色）与待确认的技能设计（突破生环、角色库成长技能、剧情自行设计、传授）
   function 座舱待处理() {
@@ -38576,6 +38578,17 @@
   function 座舱动作预演(名称, 参数 = {}) {
     try {
       if (名称 === 'routine') return statusRoutineActions.previewRoutineAction(座舱日常动作参数(参数));
+      if (名称 === 'routineNarration') return statusRoutineActions.pendingNarration(readStatusRoutineState().contextKey);
+      // 背包物品能否直接使用 / 装备：与原项目背包按钮同一判定（解锁类秘籍可用、魂骨与魂导器可装备）
+      if (名称 === 'itemCaps') {
+        const 物品 = toText(参数.item, ''), 背包状态 = deepGet(liveSnapshot, ['activeChar', '背包', 物品], null);
+        if (!物品 || !背包状态 || typeof 背包状态 !== 'object') return null;
+        const 数据 = 合并物品定义与状态_桥接(deepGet(liveSnapshot, 'rootData', {}), 物品, 背包状态);
+        const 管理器 = window.EquipmentManager;
+        let 可装备 = false;
+        try { 可装备 = !!(管理器 && typeof 管理器.parseEquipSlot === 'function' && 管理器.parseEquipSlot(物品, 数据)); } catch (错误) { 可装备 = false; }
+        return { usable: !!判断物品可直接使用_桥接(物品, 数据), equipable: 可装备 };
+      }
       if (名称 === 'skill') return 座舱技能场外施展状态(参数.path);
       if (名称 === 'trade') return 座舱交易预演(参数);
       if (名称 === 'workshop') {
@@ -38669,6 +38682,10 @@
           }));
         }
         case 'routine': {
+          if (参数.op === 'retry') {
+            const 重试 = await statusRoutineActions.retryNarration(readStatusRoutineState().contextKey, toText(参数.receiptId, ''));
+            return { ok: !!(重试 && 重试.ok), message: toText(重试 && 重试.message, '重试失败') };
+          }
           const 结果 = await statusRoutineActions.executeRoutineAction(座舱日常动作参数(参数));
           return { ok: !!(结果 && 结果.ok), message: toText(结果 && 结果.message, 结果 && 结果.ok ? '已结算' : '行动失败') };
         }
@@ -51235,6 +51252,7 @@ ${播报文本}
           prefillItem: launchOptions.prefillItem,
           prefillQty: launchOptions.prefillQty,
           prefillPrice: launchOptions.prefillPrice,
+          prefillBatch: tradeRequest && tradeRequest.批次索引,
           autoExecute: true,
           onTradeAction: 完成,
           内联动作失败: 失败,

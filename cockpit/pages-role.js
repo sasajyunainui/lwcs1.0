@@ -117,7 +117,8 @@
           <div class="dur"><button type="button" data-dur="-10" aria-label="减少十分钟">−</button><output data-min="60">60 分钟</output><button type="button" data-dur="10" aria-label="增加十分钟">＋</button></div>
           <div class="plan-end"><i class="fa-regular fa-clock"></i><span>结束于</span><b data-dur-end>${endAt(c, 60)}</b></div>
         </div>
-        ${placeKnown(c) || c.rt('__LWCS_ERA_RUNTIME_INTEGRATION_V1__') ? `<button class="cta" type="button" data-routine data-hint="按所选行动与时长预演体力、魂力等变化后结算"><i class="fa-solid fa-play"></i>开始行动</button>`
+        ${(nar => nar ? `<div class="warn"><i class="fa-solid fa-triangle-exclamation"></i><span>上一项行动已结算，叙事未完成</span></div><button class="cta" type="button" data-hint="只补写叙事，不会再次结算行动收益" data-act="${c.esc(JSON.stringify({ name: 'routine', op: 'retry', receiptId: nar.receiptId }))}"><i class="fa-solid fa-rotate-right"></i>重试叙事</button>` : '')(c.isPlayer ? window.COCKPIT.preview('routineNarration') : null)}
+        ${c.isPlayer && window.COCKPIT.preview('routineNarration') ? '' : placeKnown(c) || c.rt('__LWCS_ERA_RUNTIME_INTEGRATION_V1__') ? `<button class="cta" type="button" data-routine data-hint="按所选行动与时长预演体力、魂力等变化后结算"><i class="fa-solid fa-play"></i>开始行动</button>`
           : `<div class="warn"><i class="fa-solid fa-triangle-exclamation"></i><span>当前位置「${c.esc(where(c))}」未能识别，暂时无法预演行动效果。</span></div>
         <button class="cta" type="button" disabled><i class="fa-solid fa-lock"></i>暂不可行动</button>`}
       </div>`,
