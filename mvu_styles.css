@@ -212,6 +212,61 @@
   --grad-top: linear-gradient(90deg, transparent, var(--mvu-color-accent-strong, #67f7ef) 18%, #eaffff 50%, #8fe9ff 82%, transparent);
   --shadow-cyan: 0 4px 15px rgba(77, 240, 255, 0.15);
 }
+:where(
+  #mvu-unified-mount,
+  #page-map,
+  #detailModal,
+  #mvu-toast-container,
+  .mvu-toast-container,
+  .inventory-hover-panel,
+  .mvu-hover-card-floating--portal,
+  .mvu-cultivation-target-mask,
+  .battle-record-terminal--portal,
+  [data-lwcs-summon-fixture-host],
+  #mvu-battle-headless-host,
+  .mvu-inline-module-capture
+),:where(
+  #mvu-unified-mount,
+  #page-map,
+  #detailModal,
+  #mvu-toast-container,
+  .mvu-toast-container,
+  .inventory-hover-panel,
+  .mvu-hover-card-floating--portal,
+  .mvu-cultivation-target-mask,
+  .battle-record-terminal--portal,
+  [data-lwcs-summon-fixture-host],
+  #mvu-battle-headless-host,
+  .mvu-inline-module-capture
+) *,:where(
+  #mvu-unified-mount,
+  #page-map,
+  #detailModal,
+  #mvu-toast-container,
+  .mvu-toast-container,
+  .inventory-hover-panel,
+  .mvu-hover-card-floating--portal,
+  .mvu-cultivation-target-mask,
+  .battle-record-terminal--portal,
+  [data-lwcs-summon-fixture-host],
+  #mvu-battle-headless-host,
+  .mvu-inline-module-capture
+) *::before,:where(
+  #mvu-unified-mount,
+  #page-map,
+  #detailModal,
+  #mvu-toast-container,
+  .mvu-toast-container,
+  .inventory-hover-panel,
+  .mvu-hover-card-floating--portal,
+  .mvu-cultivation-target-mask,
+  .battle-record-terminal--portal,
+  [data-lwcs-summon-fixture-host],
+  #mvu-battle-headless-host,
+  .mvu-inline-module-capture
+) *::after{
+  box-sizing: border-box;
+}
 .shell{
   width: 636px;
   height: 462px;
@@ -6015,6 +6070,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-archi
   min-width: 0 !important;
   align-items: stretch !important;
 }
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host :where(.bestiary-species-directory, .bestiary-detail-console):not([data-cabin-plane]):not([data-cabin-flow]),#detailModal.mvu-modal-display-unified :where(.bestiary-species-directory, .bestiary-detail-console):not([data-cabin-plane]):not([data-cabin-flow]),#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root :where(.bestiary-species-directory, .bestiary-detail-console):not([data-cabin-plane]):not([data-cabin-flow]){
+  display: grid !important;
+  grid-template-rows: auto auto minmax(0, 1fr) !important;
+  gap: 10px !important;
+  min-width: 0 !important;
+  min-height: 360px !important;
+  padding: 10px !important;
+}
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .bestiary-detail-console:not([data-cabin-plane]):not([data-cabin-flow]),#detailModal.mvu-modal-display-unified .bestiary-detail-console:not([data-cabin-plane]):not([data-cabin-flow]),#detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .bestiary-detail-console:not([data-cabin-plane]):not([data-cabin-flow]){
   grid-template-rows: auto minmax(0, 1fr) !important;
 }
@@ -8029,6 +8092,28 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-title{
   letter-spacing: 2px;
   font-family: "Microsoft YaHei UI", sans-serif;
 }
+body.mvu-layout-holo #mvu-unified-mount
+  :where(
+    .mvu-unified-character-switch .char-name,
+    .mvu-unified-detail-title,
+    .mvu-archive-identity-grid em,
+    .mvu-archive-social-stack em,
+    .mvu-archive-armory-strip em,
+    .mvu-archive-intel-stack em,
+    .mvu-archive-panel-head span,
+    .mvu-archive-panel-head b,
+    .mvu-archive-led label span,
+    .mvu-archive-radar-core b,
+    .mvu-archive-spirit-name b,
+    .mvu-archive-social-window-head b,
+    .mvu-archive-terminal-log span,
+    .mvu-holo-card-title,
+    .mvu-holo-map-card-title,
+    .mvu-holo-metric b,
+    .mvu-holo-row b
+  ){
+  mix-blend-mode: normal;
+}
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-page-stack{
   position: absolute;
   inset: 0;
@@ -8267,7 +8352,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-holo-slab-
 }
 /* 双龙共享外壳：状态、领域总览和详情沿用同一组固定屏面。 */
 body.mvu-layout-holo #mvu-unified-mount .mvu-cabin:is(.is-status-cabin,.is-profile-cabin,.is-workspace-cabin){ display:block; height:var(--dc-frame-height,auto); min-height:0; max-height:none; padding:0; border:0; border-radius:0; overflow:hidden; background:var(--dc-desktop-art) center calc(-20px * var(--dc-shell-scale,1)) / 100% auto no-repeat #08121e; box-shadow:none; backdrop-filter:none; animation:none; }
-body.mvu-layout-holo #mvu-unified-mount :is(.is-status-cabin,.is-profile-cabin,.is-workspace-cabin)::before,body.mvu-layout-holo #mvu-unified-mount :is(.is-status-cabin,.is-profile-cabin,.is-workspace-cabin)::after{ display:none; }
+body.mvu-layout-holo #mvu-unified-mount :is(.is-status-cabin,.is-profile-cabin,.is-workspace-cabin)::before,body.mvu-layout-holo #mvu-unified-mount :is(.is-status-cabin,.is-profile-cabin,.is-workspace-cabin)::after,body.mvu-layout-holo #mvu-unified-mount :is(.is-status-cabin,.is-profile-cabin,.is-workspace-cabin) > :is(.mvu-cabin-structure,.mvu-unified-toolbar,.mvu-cabin-page-nav,.mvu-cabin-domain-nav){ display:none; }
 body.mvu-layout-holo #mvu-unified-mount .is-status-cabin .mvu-unified-stage-switch,body.mvu-layout-holo #mvu-unified-mount .is-status-cabin .mvu-unified-page-stack{ position:relative; display:block; height:auto; min-height:0; padding:0; overflow:visible; transform:none; transition:none; contain:none; background:none; animation:none; }
 body.mvu-layout-holo #mvu-unified-mount .is-status-cabin .mvu-unified-detail-page{ display:none; }
 body.mvu-layout-holo #mvu-unified-mount :is(.is-profile-cabin,.is-workspace-cabin.is-detail) .mvu-unified-page-stack{ display:none; }
@@ -8355,6 +8440,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-cabin:has(.dc-host.dc-mobile){overf
 .dc-mobile h1{font-size:24px}
 .dc-mobile h2{font-size:21px}
 .dc-mobile .dc-scroll{overflow:visible;padding:0;overscroll-behavior:auto}
+.dc-mobile :is(.dc-section-heading button,.dc-injury-actions button,.dc-editor-buttons button,.dc-themes button,.dc-character-list button,.dc-growth-factors button,.dc-clear-preview){min-height:44px;font-size:15px}
 .dc-mobile .dc-pages{display:flex;gap:6px;overflow-x:auto;padding:0 0 8px;scrollbar-width:thin}
 .dc-mobile .dc-pages button{flex:0 0 auto;min-height:44px;white-space:nowrap;font-size:15px}
 .dc-profile-host{--mvu-font-xs:17px;--mvu-font-sm:17px;--mvu-font-base:17px}
@@ -8440,6 +8526,7 @@ body.mvu-layout-holo #mvu-unified-mount .dc-native-content [data-cabin-flow]{pos
 body.mvu-layout-holo #mvu-unified-mount .dc-native-content :is(.mvu-cabin-card,.archive-card,.dossier-card,.mvu-armory-card,.mvu-unified-card){margin:0;padding:0 0 12px;border:0;border-bottom:1px solid var(--dc-line);border-radius:0;background:none;box-shadow:none}
 body.mvu-layout-holo #mvu-unified-mount .dc-native-content [data-cabin-flow]::before,body.mvu-layout-holo #mvu-unified-mount .dc-native-content [data-cabin-flow]::after{display:none}
 body.mvu-layout-holo #mvu-unified-mount .dc-native-content :is(.mvu-cabin-console-heading,.archive-card-head){display:flex;flex-wrap:wrap;gap:5px 12px;align-items:baseline;margin:0 0 8px;padding:0 0 6px}
+body.mvu-layout-holo #mvu-unified-mount .dc-native-content :is(.archive-card-title,.dossier-card-title){font-size:18px;font-weight:500;line-height:1.5;color:var(--dc-gold)}
 body.mvu-layout-holo #mvu-unified-mount .dc-native-content .mvu-cabin-console-facts{display:grid;gap:8px}
 body.mvu-layout-holo #mvu-unified-mount .dc-native-content .mvu-cabin-console-facts>div{display:grid;gap:8px;grid-template-columns: minmax(88px,.32fr) minmax(0,1fr);align-items: start}
 body.mvu-layout-holo #mvu-unified-mount .dc-native-content .mvu-cabin-command-row{display:flex;flex-wrap:wrap;gap:8px}
@@ -8683,6 +8770,54 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-holo-detai
   height: 100%;
   min-height: 0;
   align-content: stretch;
+}
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host
+  :where(
+    .dossier-list-row,
+    .timeline-card,
+    .mvu-armory-gear-slot,
+    .mvu-intel-terminal-record,
+    .mvu-quest-card,
+    .bestiary-species-slot,
+    .inventory-cell,
+    .mvu-inventory-param-row,
+    .social-identity-item,
+    .org-member-id-card,
+    .injury-entry
+  ):not([data-cabin-plane]):not([data-cabin-flow]){
+  content-visibility: auto;
+  contain-intrinsic-size: 96px;
+}
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host
+  :where(
+    .archive-card,
+    .dossier-card,
+    .mvu-armory-card,
+    .mvu-detail-card,
+    .mvu-holo-row,
+    .dossier-row,
+    .mvu-detail-progress,
+    .bestiary-detail-line,
+    .mvu-quest-card
+):not([data-cabin-plane]):not([data-cabin-flow]){
+  animation: mvu-holo-slot-slide-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(0.32s + var(--mvu-holo-stagger-delay, 0s));
+}
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host
+  :where(.archive-card, .dossier-card, .mvu-armory-card, .mvu-detail-card, .mvu-holo-row, .dossier-row, .mvu-detail-progress, .bestiary-detail-line, .mvu-quest-card):nth-child(2){
+  --mvu-holo-stagger-delay: 0.05s;
+}
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host
+  :where(.archive-card, .dossier-card, .mvu-armory-card, .mvu-detail-card, .mvu-holo-row, .dossier-row, .mvu-detail-progress, .bestiary-detail-line, .mvu-quest-card):nth-child(3){
+  --mvu-holo-stagger-delay: 0.1s;
+}
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host
+  :where(.archive-card, .dossier-card, .mvu-armory-card, .mvu-detail-card, .mvu-holo-row, .dossier-row, .mvu-detail-progress, .bestiary-detail-line, .mvu-quest-card):nth-child(4){
+  --mvu-holo-stagger-delay: 0.15s;
+}
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host
+  :where(.archive-card, .dossier-card, .mvu-armory-card, .mvu-detail-card, .mvu-holo-row, .dossier-row, .mvu-detail-progress, .bestiary-detail-line, .mvu-quest-card):nth-child(n + 5){
+  --mvu-holo-stagger-delay: 0.2s;
 }
 #detailModal .mvu-holo-slab-root{
   position: relative;
@@ -8945,7 +9080,16 @@ body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount .mvu-unified-stage-swit
     background-position: 100% 55%;
   }
 }
-
+@keyframes mvu-holo-slot-slide-in{
+  from {
+    opacity: 0;
+    transform: translateY(10px) translateZ(0);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) translateZ(0);
+  }
+}
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage{
   padding: 0;
   overflow: hidden;
@@ -9672,6 +9816,13 @@ body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount .mvu-archive-spirit-nam
     0 0 8px rgba(255, 177, 44, 0.58),
     0 0 16px rgba(255, 69, 0, 0.36),
     0 0 32px rgba(139, 0, 0, 0.22);
+}
+body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount
+  :where(.archive-card-title, .mvu-unified-card h3, .mvu-archive-social-window-head span, .mvu-dashboard-panel-section h3, .mvu-holo-card-title){
+  color: color-mix(in srgb, var(--文字主色) 78%, var(--主题高光));
+  text-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.92),
+    0 0 8px rgba(255, 51, 0, 0.24);
 }
 body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount .mvu-archive-led.is-critical label span,body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount .mvu-archive-led.is-critical .mvu-archive-led-track i{
   animation: 金龙危险警报 1s steps(2, end) infinite var(--mvu-holo-loop-play-state, running);
@@ -10580,6 +10731,43 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-map-focus-meta-item em{
 body.mvu-layout-holo #mvu-unified-mount .soul-ring-terminal-row .mvu-soul-ring-showcase--micro{
   --ring-stage-width: 54px;
   --ring-stage-height: 48px;
+}
+body[data-mvu-holo-theme='炫世唐门'] #mvu-unified-mount
+  :where(.mvu-archive-led-track, .line, .archive-core-tile i, .dossier-meter-track, .mvu-detail-progress-track, .mvu-quest-mini-progress, .mvu-quest-detail-progress-track, .bestiary-progress-track):not([data-cabin-plane]):not([data-cabin-flow]){
+  border-radius: 0;
+}
+body[data-mvu-holo-theme='炫世唐门'] #mvu-unified-mount
+  :where(.mvu-archive-led-track i, .line .fill, .archive-core-tile i span, .dossier-meter-fill, .mvu-detail-progress-fill, .mvu-quest-mini-progress > span, .mvu-quest-detail-progress-fill, .bestiary-progress-fill):not([data-cabin-plane]):not([data-cabin-flow]){
+  border-radius: 0;
+  animation: 唐门资源闪烁 0.9s steps(2, end) infinite var(--mvu-holo-loop-play-state, running);
+}
+body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount
+  :where(.mvu-archive-led-track, .line, .archive-core-tile i, .dossier-meter-track, .mvu-detail-progress-track, .mvu-quest-mini-progress, .mvu-quest-detail-progress-track, .bestiary-progress-track):not([data-cabin-plane]):not([data-cabin-flow]){
+  border-radius: 0;
+  clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+}
+body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount
+  :where(.mvu-archive-led-track i, .line .fill, .archive-core-tile i span, .dossier-meter-fill, .mvu-detail-progress-fill, .mvu-quest-mini-progress > span, .mvu-quest-detail-progress-fill, .bestiary-progress-fill):not([data-cabin-plane]):not([data-cabin-flow]){
+  border-radius: 0;
+  background-size: auto;
+  animation: none;
+}
+body[data-mvu-holo-theme='银龙王'] #mvu-unified-mount
+  :where(.mvu-archive-led-track, .line, .archive-core-tile i, .dossier-meter-track, .mvu-detail-progress-track, .mvu-quest-mini-progress, .mvu-quest-detail-progress-track, .bestiary-progress-track):not([data-cabin-plane]):not([data-cabin-flow]),body[data-mvu-holo-theme='幻海蝶舞'] #mvu-unified-mount
+  :where(.mvu-archive-led-track, .line, .archive-core-tile i, .dossier-meter-track, .mvu-detail-progress-track, .mvu-quest-mini-progress, .mvu-quest-detail-progress-track, .bestiary-progress-track):not([data-cabin-plane]):not([data-cabin-flow]){
+  border-radius: 999px;
+}
+body[data-mvu-holo-theme='银龙王'] #mvu-unified-mount
+  :where(.mvu-archive-led-track i, .line .fill, .archive-core-tile i span, .dossier-meter-fill, .mvu-detail-progress-fill, .mvu-quest-mini-progress > span, .mvu-quest-detail-progress-fill, .bestiary-progress-fill):not([data-cabin-plane]):not([data-cabin-flow]),body[data-mvu-holo-theme='幻海蝶舞'] #mvu-unified-mount
+  :where(.mvu-archive-led-track i, .line .fill, .archive-core-tile i span, .dossier-meter-fill, .mvu-detail-progress-fill, .mvu-quest-mini-progress > span, .mvu-quest-detail-progress-fill, .bestiary-progress-fill):not([data-cabin-plane]):not([data-cabin-flow]){
+  border-radius: 999px;
+  animation: none;
+}
+body[data-mvu-holo-theme='幻海蝶舞'] #mvu-unified-mount
+  :where(.mvu-archive-led-track i, .line .fill, .archive-core-tile i span, .dossier-meter-fill, .mvu-detail-progress-fill, .mvu-quest-mini-progress > span, .mvu-quest-detail-progress-fill, .bestiary-progress-fill):not([data-cabin-plane]):not([data-cabin-flow]){
+  background-size: 200% 100%;
+  animation: 幻海液流 3s linear infinite var(--mvu-holo-loop-play-state, running);
+  will-change: background-position;
 }
 @keyframes 唐门资源闪烁{
   0%,
