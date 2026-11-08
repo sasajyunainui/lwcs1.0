@@ -269,6 +269,14 @@
     if (e.detail.path === 'wsTier') return wsSet({ tier: e.detail.value });
     if (e.detail.path === 'wsExec') { const c = window.COCKPIT.ctx(); Object.assign(c.state.ui, { wsExec: e.detail.value, wsFor: '' }); window.COCKPIT.refresh(); }
   });
+  // 原项目流程打开交易网络（NPC「交易」、模块意图）：预选私下交易对象 / 黑市店 / 商店与物品
+  window.COCKPIT.addRoute?.('trade', spec => {
+    const c = window.COCKPIT.ctx();
+    const venue = spec.black && spec.store ? 'black:' + spec.store : spec.npc ? 'npc:' + spec.npc : spec.store ? 'shop:' + spec.store : '';
+    Object.assign(c.state.ui, { venue, good: spec.item || '', tqty: 1 });
+    window.COCKPIT.go('page-terminal', 'trade');
+    return true;
+  });
   // 原项目流程（NPC 委托、任务、模块意图）打开工坊：沿用那次的委托上下文
   window.COCKPIT.addRoute?.('workshop', () => { const c = window.COCKPIT.ctx(); Object.assign(c.state.ui, { wsExec: 'flow', wsFlow: '1', wsFor: '' }); window.COCKPIT.go('page-terminal', 'workshop'); return true; });
 

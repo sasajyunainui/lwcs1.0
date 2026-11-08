@@ -38481,7 +38481,7 @@
   // 座舱挂在 #mvu-unified-mount 里、盖住旧壳层（旧壳层隐藏但保留占位，挂载点尺寸不变）。
   // 旧壳层只在下列原详情面打开时让出画面（战斗终端、魂环待选确认、私密档案），关闭后回到座舱；
   // 其他旧详情面（旧座舱各页都是详情面，刷新后会恢复上次打开的那页）在座舱接管时清掉。
-  const 座舱让位详情键 = new Set([BATTLE_INLINE_PREVIEW_KEY, '私密档案详细页', '交易网络']);
+  const 座舱让位详情键 = new Set([BATTLE_INLINE_PREVIEW_KEY, '私密档案详细页']);
   // 原项目各处流程（回到某页、模块意图路由等）打开的旧详情面 → 座舱里对应的页面
   const 座舱旧详情页映射 = Object.freeze({
     第1武魂详细页: ['page-ability', 'martial', { soul: '0', ringPick: '' }], 第2武魂详细页: ['page-ability', 'martial', { soul: '1', ringPick: '' }], 血脉封印详细页: ['page-ability', 'martial'],
@@ -38503,6 +38503,11 @@
     if (!键 || 座舱让位详情键.has(键)) return false;
     if (键 === PENDING_SOUL_RING_PREVIEW_KEY) return 座舱.route({ to: 'ringPick' });
     if (键 === PENDING_SKILL_DESIGN_PREVIEW_KEY) return 座舱.route({ to: 'skillConfirm' });
+    // 交易网络（NPC「交易」、模块意图预填）：跳到座舱交易页，按委托上下文预选私下交易对象或黑市店
+    if (键 === '交易网络' || 键 === '交易模块弹窗') {
+      const 上下文 = mapDispatchContext || {}, 服务 = normalizeMapDispatchServices(上下文), 黑市 = 服务.includes('black_market') || /black[_-]?market|黑市/i.test(toText(上下文.action, ''));
+      return 座舱.route({ to: 'trade', npc: toText(上下文.npcTarget, ''), store: toText(上下文.preferredStore || 上下文.storeName, ''), black: 黑市, item: toText(上下文.tradeRequest && 上下文.tradeRequest.物品, '') });
+    }
     // 工坊：沿用发起流程准备好的委托上下文（mapDispatchContext：执行者、NPC、预填工序）
     if (键 === '副职业工坊') { 座舱工坊.待用上下文 = mapDispatchContext ? cloneJsonValue(mapDispatchContext, {}) : null; return 座舱.route({ to: 'workshop' }); }
     if (isSkillDesignerPreviewKey(键)) {
