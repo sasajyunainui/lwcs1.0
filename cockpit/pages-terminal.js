@@ -80,7 +80,7 @@
   const trial = c => {
     const tower = c.ch.魂灵塔记录 || {}, top = c.num(tower.最高层), next = Math.min(TOWER_TOP, top + 1), half = tower.当前五折魂灵 || {};
     const here = TOWER.find(z => next >= z.from && next <= z.to) || TOWER[0], zone = TOWER.find(z => z.key === c.state.ui.tzone) || here;
-    const tickets = ticketsOf(c, /魂灵塔门票/), hallTickets = ticketsOf(c, /升灵台门票/);
+    const tickets = ticketsOf(c, /魂灵塔门票/), hallTickets = ticketsOf(c, /升灵台门票/), ticketKey = Object.keys(c.ch.背包 || {}).find(n => /魂灵塔门票/.test(n)) || '';
     const cleared = z => Math.max(0, Math.min(z.to, top) - z.from + 1), span = z => z.to - z.from + 1;
     return {
       tag: 'CORE · TRIAL',
@@ -108,7 +108,7 @@
         <section class="sec"><h3>组队规则${c.hint(`队伍至多 ${TEAM.size} 人；成员须在 ${TEAM.age} 岁以下，年龄差不超过 ${TEAM.gap} 岁；队友须是已建档角色。`)}</h3>
           <div class="chips-row"><span class="chip s">≤ ${TEAM.size} 人</span><span class="chip s">≤ ${TEAM.age} 岁</span><span class="chip s">年龄差 ≤ ${TEAM.gap}</span></div></section>
         ${half.名称 && !half.已使用 ? '<button class="key-s" type="button" data-go="page-terminal/trade"><i class="fa-solid fa-store"></i> 去特许兑换</button>' : ''}
-        ${tickets ? `<button class="cta" type="button" data-trial-action="climb" data-floor="${next}"><i class="fa-solid fa-dungeon"></i>冲塔 · 第 ${next} 层</button>`
+        ${tickets ? `<button class="cta" type="button" data-trial-action="climb" data-floor="${next}" data-ticket="${c.esc(ticketKey)}"><i class="fa-solid fa-dungeon"></i>冲塔 · 第 ${next} 层</button>`
           : `<button class="cta" type="button" data-go="page-terminal/trade"><i class="fa-solid fa-ticket"></i>购买门票</button>`}
       </div>`,
     };
@@ -147,7 +147,7 @@
       </div>`,
       right: `<div class="pad">${c.head('bolt', '开工', 'Start')}
         <div class="tiles">${res.map(([k, v]) => `<div class="tile">${c.sock({ 体力: 'person-running', 魂力: 'fire', 精神力: 'brain' }[k])}<b>${c.fmt(v)}</b><small>${k}</small></div>`).join('')}</div>
-        ${(btn => job ? btn : `<span class="cta-wrap" data-hint="还没有学会${w.job}">${btn}</span>`)(`<button class="cta" type="button" data-work="${w.key}"${job ? '' : ' disabled'}><i class="fa-solid fa-${w.icon}"></i>${w.act}</button>`)}
+        ${(why => (btn => why ? `<span class="cta-wrap" data-hint="${c.esc(why)}">${btn}</span>` : btn)(`<button class="cta" type="button" data-work="${w.key}" data-job="${w.job}"${why ? ' disabled' : ''}><i class="fa-solid fa-${w.icon}"></i>${w.act}</button>`))(!job ? `还没有学会${w.job}` : (g => g && g.ok === false ? g.reason : '')(window.COCKPIT.preview('workshop', { mode: w.key, job: w.job })))}
       </div>`,
     };
   };
@@ -207,9 +207,12 @@
       { id: 'sell', name: '出售', icon: 'hand-holding-dollar', sell: true, goods: Object.entries(c.ch.背包 || {}).map(([g, r]) => ({ id: g, name: g, stock: c.num(r?.数量) || (r?.批次 || []).reduce((s, b) => s + c.num(b.数量), 0) || 1 })) }];
     const v = venues.find(x => x.id === ui.venue) || venues[0], goods = v?.goods || [], g = goods.find(x => x.id === ui.good) || goods[0];
     const [cat, def] = g ? itemDefOf(c, g.name) : ['', null], unit = g ? Math.round(g.price ?? c.num(def?.基础价格) * (g.rate ?? 1)) : 0, cur = def?.默认货币 || '联邦币';
-    const qty = Math.max(1, Math.min(c.num(g?.stock) || 99, c.num(ui.tqty) || 1)), total = unit * qty, have = c.num(coins[cur]);
+    const isBid = v?.id === 'auction', minBid = Math.ceil(unit * 1.05), [bidFor, bidAmt] = String(ui.tbid || '').split('|'), bid = isBid ? Math.max(minBid, bidFor === g?.id ? c.num(bidAmt) : 0) : 0, bidStep = Math.max(1, Math.ceil(unit * .05));
+    const qty = isBid ? 1 : Math.max(1, Math.min(c.num(g?.stock) || 99, c.num(ui.tqty) || 1)), total = isBid ? bid : unit * qty, have = c.num(coins[cur]);
     const myFac = g?.req?.势力 ? c.ch.社交?.势力?.[g.req.势力] : null;
-    const block = !g || v.sell ? '' : have < total ? `${cur}不足` : g.rep && c.num(c.ch.社交?.声望) < g.rep ? `声望不足：需要 ${c.fmt(g.rep)}`
+    // 世界规则门槛（原项目交易模块同一判定）：在不在有商业 / 拍卖设施的地点、营业与否
+    const gate = g ? window.COCKPIT.preview('trade', { 动作: v.sell ? '出售' : isBid ? '竞拍' : '购买', 目标: v.id.startsWith('shop:') ? v.id.slice(5) : '' }) : null;
+    const block = !g ? '' : gate && gate.ok === false ? gate.reason : v.sell ? '' : have < total ? `${cur}不足` : g.rep && c.num(c.ch.社交?.声望) < g.rep ? `声望不足：需要 ${c.fmt(g.rep)}`
       : g.req?.势力 && (!myFac || ((g.req.阶级 || []).length && !g.req.阶级.includes(myFac.身份))) ? `需要${g.req.势力}${(g.req.阶级 || []).length ? g.req.阶级.join('、') : '成员'}身份` : '';
     return {
       tag: 'CORE · MARKET',
@@ -235,10 +238,11 @@
       right: `<div class="pad">${c.head('receipt', '结算', 'Checkout')}
         <div class="tiles wallet">${(window.COCKPIT.eraCoins || [['联邦币', '联邦币']]).map(([k, l]) => `<div class="tile${k === cur ? '' : ' dim'}">${c.sock('coins', k === cur ? 'gd' : '')}<b>${c.fmt(coins[k] || 0)}</b><small>${l}</small></div>`).join('')}</div>
         ${g ? `<div class="checkout">
-          <div class="co-row"><span>数量</span><span class="dz-num co-qty"><button type="button" class="dz-step" data-set="tqty=${Math.max(1, qty - 1)}" aria-label="减少"><i class="fa-solid fa-minus"></i></button><b>${qty}</b><button type="button" class="dz-step" data-set="tqty=${qty + 1}" aria-label="增加"><i class="fa-solid fa-plus"></i></button></span></div>
+          ${isBid ? `<div class="co-row"><span>出价${c.hint('必须高于当前价；每步加减当前价的 5%。')}</span><span class="dz-num co-qty"><button type="button" class="dz-step" data-set="tbid=${c.esc(g.id)}|${Math.max(minBid, bid - bidStep)}" aria-label="降低出价"><i class="fa-solid fa-minus"></i></button><b>${c.fmt(bid)}</b><button type="button" class="dz-step" data-set="tbid=${c.esc(g.id)}|${bid + bidStep}" aria-label="提高出价"><i class="fa-solid fa-plus"></i></button></span></div>`
+            : `<div class="co-row"><span>数量</span><span class="dz-num co-qty"><button type="button" class="dz-step" data-set="tqty=${Math.max(1, qty - 1)}" aria-label="减少"><i class="fa-solid fa-minus"></i></button><b>${qty}</b><button type="button" class="dz-step" data-set="tqty=${qty + 1}" aria-label="增加"><i class="fa-solid fa-plus"></i></button></span></div>`}
           <div class="co-row total"><span>${v.sell ? '参考收入' : '合计'}</span><b class="${!v.sell && have < total ? 'warn-t' : ''}">${c.fmt(total)} ${cur}</b></div>
         </div>
-        ${v.sell ? `<button class="cta" type="button" data-sell="${c.esc(g.name)}"><i class="fa-solid fa-hand-holding-dollar"></i>出售</button>` : (btn => block ? `<span class="cta-wrap" data-hint="${c.esc(block)}">${btn}</span>` : btn)(`<button class="cta" type="button" data-buy="${c.esc(g.name)}"${block ? ' disabled' : ''}><i class="fa-solid fa-cart-shopping"></i>${v.id === 'auction' ? '出价竞拍' : '确认购买'}</button>`)}` : ''}
+        ${v.sell ? (btn => block ? `<span class="cta-wrap" data-hint="${c.esc(block)}">${btn}</span>` : btn)(`<button class="cta" type="button" data-sell="${c.esc(g.name)}" data-qty="${qty}"${block ? ' disabled' : ''}><i class="fa-solid fa-hand-holding-dollar"></i>出售</button>`) : (btn => block ? `<span class="cta-wrap" data-hint="${c.esc(block)}">${btn}</span>` : btn)(`<button class="cta" type="button" data-buy="${c.esc(g.name)}" data-store="${c.esc(v.id.startsWith('shop:') ? v.id.slice(5) : '')}" data-qty="${qty}" data-price="${isBid ? bid : unit}"${isBid ? ' data-auction="1"' : ''}${block ? ' disabled' : ''}><i class="fa-solid fa-cart-shopping"></i>${v.id === 'auction' ? '出价竞拍' : '确认购买'}</button>`)}` : ''}
       </div>`,
     };
   };
@@ -293,17 +297,24 @@
     if (k === 'motion') document.querySelector('.cockpit').dataset.motion = val;
   });
 
-  // 行动按钮（接取 / 推进 / 提交 / 放弃、冲塔、开工、购买 / 出售）：原型里统一走原地确认条，写明将要做什么；
-  // 原 data-* 保留，移植时接原项目对应请求（任务走 buildQuestDispatchRequest，其余走各模块）
+  // 行动按钮：捕获阶段写好确认文案与动作规格（data-act），确认后由座舱交给原项目执行——
+  // 任务走 buildQuestDispatchRequest + 叙事请求；冲塔走试炼入场（map-action-dispatch）；买卖 / 竞拍走交易模块的校验与结算；
+  // 工坊不确认，直接打开原项目工坊（选目标 / 材料 / 天数在那里完成）
   const QUEST_VERB = { accept: '接取委托', progress: '推进任务', submit: '提交任务', abandon: '放弃任务' };
   document.addEventListener('click', e => {
     const t = e.target.closest('[data-quest-action],[data-trial-action],[data-work],[data-buy],[data-sell]'); if (!t || t.disabled) return;
-    const box = t.closest('.pad'), qty = box?.querySelector('.co-qty b')?.textContent || '1', total = box?.querySelector('.co-row.total b')?.textContent || '';
-    t.dataset.confirm = t.dataset.questAction ? `${QUEST_VERB[t.dataset.questAction] || '处理任务'}「${t.dataset.questTarget || ''}」`
-      : t.dataset.trialAction ? `挑战魂灵塔第 ${t.dataset.floor} 层`
-      : t.dataset.work ? `${t.textContent.trim()}，开工后选择目标、材料与天数`
-      : t.dataset.buy ? `购买 ${t.dataset.buy} ×${qty}，共 ${total}`
-      : `出售 ${t.dataset.sell} ×${qty}，参考收入 ${total}`;
+    if (t.dataset.work) { delete t.dataset.confirm; t.dataset.act = JSON.stringify({ name: 'workshop', mode: t.dataset.work, job: t.dataset.job || '' }); return; }
+    const total = t.closest('.pad')?.querySelector('.co-row.total b')?.textContent || '', qty = Number(t.dataset.qty) || 1;
+    const spec = t.dataset.questAction ? { name: 'quest', kind: t.dataset.questAction, quest: t.dataset.questTarget || '' }
+      : t.dataset.trialAction ? { name: 'tower', floor: Number(t.dataset.floor) || 1, ticket: t.dataset.ticket || '' }
+      : t.dataset.buy ? { name: 'trade', 动作: t.dataset.auction ? '竞拍' : '购买', 目标: t.dataset.store || '', 物品: t.dataset.buy, 数量: qty, 价格: Number(t.dataset.price) || 0 }
+      : { name: 'trade', 动作: '出售', 物品: t.dataset.sell, 数量: qty };
+    t.dataset.act = JSON.stringify(spec);
+    t.dataset.confirm = spec.name === 'quest' ? `${QUEST_VERB[spec.kind] || '处理任务'}「${spec.quest}」`
+      : spec.name === 'tower' ? `挑战魂灵塔第 ${spec.floor} 层（消耗 ${spec.ticket || '门票'}）`
+      : spec.动作 === '竞拍' ? `出价 ${total} 竞拍 ${spec.物品}`
+      : spec.动作 === '购买' ? `购买 ${spec.物品} ×${qty}，共 ${total}`
+      : `出售 ${spec.物品} ×${qty}，参考收入 ${total}`;
   }, true);
 
   window.COCKPIT.register('page-terminal', {

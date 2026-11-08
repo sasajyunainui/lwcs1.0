@@ -7429,7 +7429,8 @@
 
   async function commitMapTravel(options = {}) {
     const request = hasPendingTravelRequestForTarget() ? mapState.pendingTravelRequest : queueMapTravelRequest();
-    if (!request) return;
+    if (!request) return { ok: false, reason: '当前无法生成移动请求。' };
+    let 已结算 = false;
     if (request.target_loc !== '无' && 判断地图节点为精确当前位置(request.target_loc)) {
       mapState.pendingTravelRequest = null;
       mapState.待移动后动作 = null;
@@ -7438,7 +7439,7 @@
       mapState.infoPanelMode = 'selection';
       mapState.lastTravelNote = `已位于 ${request.target_loc}`;
       syncInteractiveMapUI({ center: false, updateInfo: true });
-      return;
+      return { ok: true, alreadyThere: true };
     }
     const isFreeTravel = request.target_loc === '无';
     const resolvedNamedCoord = !isFreeTravel ? getMapNodeCoord(request.target_loc) : null;
@@ -7474,7 +7475,7 @@
       mapState.pendingTravelRequest = null;
       mapState.待移动后动作 = null;
       syncInteractiveMapUI({ center: false });
-      return;
+      return { ok: false, reason: toText(request.costs.reason, '资源不足') };
     }
 
     const travelWorldContext = resolveMapWorldActionContext(
@@ -7490,7 +7491,7 @@
       mapState.待移动后动作 = null;
       syncInteractiveMapUI({ center: false, updateInfo: true });
       if (window.MVU_Toast && typeof window.MVU_Toast.show === 'function') window.MVU_Toast.show(travelWorldState.reason, 'warning');
-      return;
+      return { ok: false, reason: travelWorldState.reason };
     }
 
     const targetTerrainInfo = resolveTerrainInfoByCoord(targetCoord, mapState.currentMapId);
@@ -7547,8 +7548,9 @@
         if (!settleResult || settleResult.ok === false) {
           mapState.lastTravelNote = `[地图移动失败] ${toText(settleResult && settleResult.reason, '移动结算失败')}`;
           syncInteractiveMapUI({ center: false, updateInfo: true });
-          return;
+          return { ok: false, reason: toText(settleResult && settleResult.reason, '移动结算失败') };
         }
+        已结算 = true;
         同步地图结算补丁到本地快照(settleResult.patchOps);
         const followUpAction = toText(options && options.followUpAction, '');
         const 自动执行后续动作 = !!(followUpAction && options && options.自动执行后续动作 === true);
@@ -7568,7 +7570,7 @@
               syncInteractiveMapUI({ center: false, updateInfo: true });
             }, 0);
           }
-          return;
+          return { ok: true, settled: true };
         }
         const followUpLabel = followUpAction ? getNodeInteractionLabel(followUpAction) : '';
         const followUpLine = followUpLabel
@@ -7582,12 +7584,13 @@
         console.error('Settle map travel failed:', e);
         mapState.lastTravelNote = `[地图移动失败] ${e && e.message ? e.message : '移动结算失败'}`;
         syncInteractiveMapUI({ center: false, updateInfo: true });
-        return;
+        return { ok: false, reason: e && e.message ? e.message : '移动结算失败' };
       }
     }
     mapState.pendingTravelRequest = null;
     mapState.待移动后动作 = null;
     syncInteractiveMapUI({ center: true });
+    return 已结算 ? { ok: true, settled: true } : { ok: false, reason: '移动结算未执行。' };
   }
 
   function triggerPreviewNodeInteraction(item, explicitAction = '') {
@@ -7879,10 +7882,33 @@ ${logMsg}
     }
   }
 
-  function describeTravelToNode(nodeName) {
+  // 外部面板（座舱）按节点逐个列出可选移动方式及各自耗时与消耗；顺序沿用地图的方式优先级
+  function 列出节点可选移动方式(distance) {
+    const snapshot = mapState.snapshot || buildFallbackSnapshot();
+    const 原方式 = mapState.travelMethodOverride;
+    const 已列 = new Set();
+    try {
+      return getAvailableTravelMethods(distance, mapState.currentMapId, snapshot).map(method => {
+        mapState.travelMethodOverride = method;
+        const p = getMapTravelPreview();
+        if (!p || 已列.has(p.method)) return null;
+        已列.add(p.method);
+        return { method: p.method, duration: p.duration, costText: deepGet(p, 'costs.text', '无消耗'), canAfford: deepGet(p, 'costs.canAfford', true) !== false, reason: toText(deepGet(p, 'costs.reason', ''), '') };
+      }).filter(Boolean);
+    } finally {
+      mapState.travelMethodOverride = 原方式;
+    }
+  }
+
+  function describeTravelToNode(nodeName, options = {}) {
     return withSelectedNodeSnapshot(nodeName, targetItem => {
       if (判断地图节点为精确当前位置(targetItem.name)) {
         return { ok: true, alreadyThere: true, nodeName: targetItem.name, reason: `已在【${targetItem.name}】。` };
+      }
+      const 指定方式 = toText(options && options.method, '');
+      if (指定方式) {
+        mapState.travelMethodOverride = 指定方式;
+        mapState.pendingTravelRequest = null;
       }
       const preview = getMapTravelPreview();
       const request = preview ? buildMapTravelRequest() : null;
@@ -7900,6 +7926,7 @@ ${logMsg}
         canAfford: deepGet(request, 'costs.canAfford', true) !== false,
         reason: toText(deepGet(request, 'costs.reason', ''), ''),
         request: cloneJsonValue(request),
+        ...(options && options.listMethods ? { methods: 列出节点可选移动方式(preview.distance) } : {}),
       };
     }) || { ok: false, reason: '地图节点未匹配到当前可选项。', reasonCode: 'map_node_unresolved' };
   }
@@ -7921,6 +7948,11 @@ ${logMsg}
     mapState.selectedNode = targetName;
     mapState.selectedFreePoint = null;
     mapState.infoPanelMode = 'selection';
+    const 指定方式 = toText(options && options.method, '');
+    if (指定方式) {
+      mapState.travelMethodOverride = 指定方式;
+      mapState.pendingTravelRequest = null;
+    }
     const preview = getMapTravelPreview();
     if (!preview) return { ok: false, reason: `当前无法规划前往【${targetName}】的移动。` };
     if (!hasPendingTravelRequestForTarget()) {
@@ -7936,8 +7968,9 @@ ${logMsg}
       syncInteractiveMapUI({ center: false, updateInfo: true });
       return { ok: false, reason: request.costs.reason || '资源不足，无法前往该节点。', request };
     }
-    await commitMapTravel();
-    return { ok: true, committed: true, request };
+    const 结算 = await commitMapTravel();
+    if (结算 && 结算.ok === false) return { ...结算, request };
+    return { ok: true, committed: true, ...(结算 || {}), request };
   }
 
   function 执行预览入口移动() {

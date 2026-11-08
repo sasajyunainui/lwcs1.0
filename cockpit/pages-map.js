@@ -16,7 +16,8 @@
   // 底图（子图为全息底板）铺在倾斜平面里；地标不进 3D：平面里只放 0 尺寸锚点，地标画在平面外的 2D 层，
   // 每次平移 / 缩放后按锚点的屏幕位置摆放——大小、文字不随缩放与透视变形，地名牌立在光柱顶上。
   // 子图同原版「进入子图」：坐标契约是「x/y 为直接父节点子图的局部坐标」（与总图同一坐标系尺寸），不改变当前位置
-  const KINDS = [[/学院|学校/, '#b28bff', '学院'], [/宗|总部|据点|分部|组织|军/, '#ff9a62', '势力据点'], [/森林|山|海|岛|湖|原|谷|渊|位面/, '#5ee0ae', '地域'], [/城|都|镇|村/, '#6fb4ff', '城市']];
+  // 城市先判：「沿海城市」「海外首都」「军事城市」这类类型名里带海 / 军字，仍是城市
+  const KINDS = [[/城|都|镇|村/, '#6fb4ff', '城市'], [/学院|学校/, '#b28bff', '学院'], [/宗|总部|据点|分部|组织|军/, '#ff9a62', '势力据点'], [/森林|山|海|岛|湖|原|谷|渊|位面/, '#5ee0ae', '地域']];
   const kindOf = t => KINDS.find(([re]) => re.test(String(t || ''))) || [null, '#cfd8e6', '其他'];
   const pct = (v, total) => (v / total * 100).toFixed(2);
   const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
@@ -247,13 +248,60 @@
   const npcInspect = (c, kind, name) => {
     const x = c.S.char[name]; if (!x) return '';
     const r = c.ch.社交?.关系?.[name];
-    const acts = [['comments', '对话'], ['circle-question', '请教'], ['hand-fist', '切磋'], ['scale-balanced', '交易'], ['file-signature', '委托'], ['eye', '情报']];
+    // 与原项目星图人物交互同一组动作；对话 / 请教 / 汇报 / 切磋 会推进剧情或开战斗，先确认；交易 / 委托只是打开面板
+    const acts = [['comments', '对话', 'talk', `与${name}对话`], ['circle-question', '请教', 'intel', `向${name}请教`], ['clipboard-list', '汇报', 'brief', `向${name}汇报情况`], ['hand-fist', '切磋', 'battle', `与${name}切磋，打开战斗终端`], ['scale-balanced', '交易', 'trade', ''], ['file-signature', '委托', 'commission', '']];
     return `<div class="insp-head">${c.miniAva(name)}<div><strong style="font-size:1.1em">${c.esc(name)}</strong><br><small class="lbl">Lv.${c.esc(x.属性?.等级)} · ${c.esc(x.第1武魂?.表象名称 || '')}</small></div><button class="x" type="button" data-close-inspector aria-label="关闭">×</button></div>
       ${c.kv([['身份', c.esc(x.社交?.主身份 || '')], ['关系', r ? `${c.esc(r.关系)} · 好感 ${c.fmt(r.好感度)}` : '<span class="dim">尚未结识</span>']])}
-      <div class="opts">${acts.map(([ic, l]) => `<button class="opt" type="button" style="min-height:52px"><i class="fa-solid fa-${ic}"></i>${l}</button>`).join('')}</div>
+      <div class="opts">${acts.map(([ic, l, op, confirm]) => `<button class="opt" type="button" style="min-height:52px"${confirm ? ` data-confirm="${c.esc(confirm)}"` : ''} data-act="${c.esc(JSON.stringify({ name: 'npc', op, npc: name }))}"><i class="fa-solid fa-${ic}"></i>${l}</button>`).join('')}</div>
       <button class="key-s" type="button" data-view-char="${c.esc(name)}" style="align-self:flex-start"><i class="fa-solid fa-id-card"></i> 查看档案</button>`;
   };
 
+  // 目的地在地点树里的路径：总图地点就是自己；所在城市里的地点从城市往下找（库 + 存档）
+  const destPath = (c, dest) => {
+    const city = herePath(c)[0];
+    if (worldNodes(c).some(n => n.name === dest)) return [dest];
+    const row = libRows().find(r => r.path[0] === city && r.path.at(-1) === dest);
+    if (row) return row.path;
+    const walk = (pool, trail) => { for (const [k, v] of Object.entries(pool || {})) { const p = [...trail, k]; if (k === dest) return p; const r = walk(v?.子节点, p); if (r) return r; } return null; };
+    return (city && walk(c.S.world.地点?.[city]?.子节点, [city])) || [dest];
+  };
+  // 移动预演：选定目的地后向运行时取一次（耗时、各移动方式的消耗、能否成行），位置 / 时间 / 资源变了再重取
+  const planKey = (c, dest) => JSON.stringify([c.name, dest, c.ch.状态?.位置, c.S.world?.时间?.tick, c.ch.属性?.魂力, c.ch.属性?.体力]);
+  const planOf = (c, dest) => {
+    const ui = c.state.ui, key = planKey(c, dest);
+    if (ui.travelPlan?.key === key) return ui.travelPlan;
+    if (ui.travelPlanPending !== key) {
+      ui.travelPlanPending = key;
+      window.COCKPIT.previewAsync('travel', { node: dest, path: destPath(c, dest) }).then(data => {
+        if (ui.travelPlanPending !== key) return;
+        ui.travelPlan = { key, data };
+        ui.travelPlanPending = null;
+        window.COCKPIT.refresh();
+      });
+    }
+    return null;
+  };
+  const routeBox = (c, dest) => {
+    const plan = planOf(c, dest), p = plan?.data, ui = c.state.ui;
+    const lockBtn = why => `<span class="cta-wrap" data-hint="${c.esc(why)}"><button class="cta" type="button" disabled><i class="fa-solid fa-person-walking-arrow-right"></i>出发</button></span>`;
+    if (!plan) return `<div class="warn" style="color:var(--ink2);background:rgba(47,124,246,.1);box-shadow:inset 2px 0 0 var(--blue)"><i class="fa-solid fa-route"></i><span>正在规划前往「${c.esc(dest)}」的路线</span></div>${lockBtn('路线规划中')}`;
+    // 原型页没有运行时：只给出发确认
+    if (!p) return `<button class="cta" type="button" data-confirm="${c.esc(`前往「${dest}」`)}"><i class="fa-solid fa-person-walking-arrow-right"></i>出发</button>`;
+    if (p.alreadyThere) return lockBtn('已经在这里了');
+    if (!p.ok) return `<div class="warn"><i class="fa-solid fa-triangle-exclamation"></i><span>${c.esc(p.reason || '现在去不了')}</span></div>${lockBtn(p.reason || '现在去不了')}`;
+    const methods = Array.isArray(p.methods) && p.methods.length ? p.methods : [{ method: p.method, duration: p.duration, costText: p.costText, canAfford: p.canAfford !== false, reason: p.reason }];
+    // 默认方式：运行时默认方式负担得起就用它，否则用第一个负担得起的
+    const pick = (ui.travelMethodFor === dest && methods.find(m => m.method === ui.travelMethod)) || (p.canAfford !== false && methods.find(m => m.method === p.method)) || methods.find(m => m.canAfford) || methods[0];
+    const target = p.mode === 'via' ? p.via : dest;
+    const lead = p.mode === 'via' ? `「${c.esc(dest)}」在「${c.esc(p.via)}」城内，先前往${c.esc(p.via)}${c.hint('抵达后再在城内选择这个地点。')}` : p.mode === 'local' ? `城内前往「${c.esc(dest)}」` : `前往「${c.esc(dest)}」`;
+    const sel = methods.length > 1
+      ? `<span class="lbl">移动方式${c.hint('只列出这段路能用的方式；用不了的注明原因。')}</span><div class="pick-row">${c.pick('travelMethod', pick.method, methods.map(m => ({ value: m.method, label: m.canAfford ? `${m.method} · ${m.duration || ''}` : `${m.method}（${m.reason || '不可用'}）`, hint: m.canAfford ? `消耗 ${m.costText || '无'}` : m.reason })))}</div>`
+      : '';
+    const info = c.kv([['方式', c.esc(pick.method || '步行')], ['耗时', c.esc(pick.duration || '—')], ['消耗', c.esc(pick.costText || '无消耗')]]);
+    const btn = pick.canAfford === false ? lockBtn(pick.reason || '现在去不了')
+      : `<button class="cta" type="button" data-confirm="${c.esc(`前往「${target}」：${[pick.method, pick.duration && `约 ${pick.duration}`, pick.costText && `消耗 ${pick.costText}`].filter(Boolean).join('，')}`)}" data-act="${c.esc(JSON.stringify({ name: 'travel', node: dest, path: destPath(c, dest), method: p.mode === 'local' ? '' : pick.method }))}"><i class="fa-solid fa-person-walking-arrow-right"></i>${p.mode === 'via' ? `前往${c.esc(p.via)}` : '出发'}</button>`;
+    return `<div class="warn" style="color:var(--ink2);background:rgba(47,124,246,.1);box-shadow:inset 2px 0 0 var(--blue)"><i class="fa-solid fa-route"></i><span>${lead}</span></div>${sel}${info}${btn}`;
+  };
   const travel = c => {
     const { city } = nodeOf(c);
     const here = pathOf(c).slice(-1)[0], dest = c.state.ui.dest || '';
@@ -270,12 +318,16 @@
         ${kids.length ? `<span class="lbl">${c.esc(city[0])} 城内</span><div class="list">${kids.map(k => `<button class="row ${k.name === dest ? 'on' : ''}" type="button" data-set="dest=${c.esc(k.name)}" ${k.name === here ? 'disabled' : ''}><span class="chip s">${c.esc(k.类型 || '')}</span><div><strong>${c.esc(k.name)}</strong>${k.name === here ? '<small>当前位置</small>' : ''}</div><span></span></button>`).join('')}</div>` : ''}
         <span class="lbl">邻近城市</span>
         <div class="list">${near.map(({ n, d }) => `<button class="row ${n.name === dest ? 'on' : ''}" type="button" data-set="dest=${c.esc(n.name)}"><span class="chip s">${c.esc(kindOf(n.类型)[2])}</span><div><strong>${c.esc(n.name)}</strong><small>图上距离 ${Math.round(d)}</small></div><span></span></button>`).join('')}</div>
-        ${dest ? `<div class="warn" style="color:var(--ink2);background:rgba(47,124,246,.1);box-shadow:inset 2px 0 0 var(--blue)"><i class="fa-solid fa-route"></i><span>前往「${c.esc(dest)}」${c.hint('耗时与魂力、体力、财富消耗由运行时预演。')}</span></div>` : `<span class="lbl">未选择目的地${c.hint('选择一个目的地查看移动预演。')}</span>`}
-        ${dest ? `<button class="cta" type="button" data-confirm="${c.esc(`前往「${dest}」，路程耗时与消耗由运行时预演`)}"><i class="fa-solid fa-person-walking-arrow-right"></i>出发</button>`
-          : `<span class="cta-wrap" data-hint="先在星图或上面的列表里选一个目的地"><button class="cta" type="button" disabled><i class="fa-solid fa-person-walking-arrow-right"></i>出发</button></span>`}
+        ${dest ? routeBox(c, dest) : `<span class="lbl">未选择目的地${c.hint('选择一个目的地查看移动预演。')}</span><span class="cta-wrap" data-hint="先在星图或上面的列表里选一个目的地"><button class="cta" type="button" disabled><i class="fa-solid fa-person-walking-arrow-right"></i>出发</button></span>`}
       </div>`,
     };
   };
+
+  document.addEventListener('picker:change', e => {
+    if (e.detail.path !== 'travelMethod') return;
+    const ui = window.COCKPIT.ctx().state.ui; ui.travelMethodFor = ui.dest; ui.travelMethod = e.detail.value;
+    window.COCKPIT.refresh();
+  });
 
   window.COCKPIT.register('page-map', {
     label: '探索', icon: 'compass', tag: 'CORE · STAR MAP',

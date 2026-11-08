@@ -1464,14 +1464,17 @@
     const state = isPlainRecord(character?.状态) ? character.状态 : {};
     const effects = isPlainRecord(character?.属性?.状态效果) ? character.属性.状态效果 : {};
     const tokens = [];
-    const collect = table => Object.entries(table).forEach(([key, value]) => {
-      tokens.push(key);
+    // 状态表的结构字段（schema 默认就有）只看值、不看键名：「死亡tick / 死亡类型」的键名会误中下面的「死亡」，
+    // 让所有角色都被判成「当前状态无法行动」
+    const 结构字段 = new Set(['位置', '横坐标', '纵坐标', '存活', '死亡tick', '死亡类型', '受伤部位', '吸收灵物年限']);
+    const collect = (table, skipKeys = null) => Object.entries(table).forEach(([key, value]) => {
+      if (!skipKeys || !skipKeys.has(key)) tokens.push(key);
       if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') tokens.push(String(value));
       else if (isPlainRecord(value)) ['状态', '名称', '描述', '类型'].forEach(field => {
         if (value[field] !== undefined) tokens.push(String(value[field]));
       });
     });
-    collect(state);
+    collect(state, 结构字段);
     Object.entries(effects).forEach(([key, value]) => {
       const endTick = Number(value?.结束tick);
       if (Number.isFinite(endTick) && endTick > 0 && currentTick !== null && currentTick >= endTick) return;

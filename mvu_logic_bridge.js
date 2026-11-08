@@ -38509,7 +38509,247 @@
   // 座舱挂在 #mvu-unified-mount 里、盖住旧壳层（旧壳层隐藏但保留占位，挂载点尺寸不变）。
   // 旧壳层只在下列原详情面打开时让出画面（战斗终端、魂环待选确认、私密档案），关闭后回到座舱；
   // 其他旧详情面（旧座舱各页都是详情面，刷新后会恢复上次打开的那页）在座舱接管时清掉。
-  const 座舱让位详情键 = new Set([BATTLE_INLINE_PREVIEW_KEY, PENDING_SOUL_RING_PREVIEW_KEY, '私密档案详细页']);
+  const 座舱让位详情键 = new Set([BATTLE_INLINE_PREVIEW_KEY, PENDING_SOUL_RING_PREVIEW_KEY, '私密档案详细页', '副职业工坊', '交易网络']);
+  // —— 座舱动作：全部调原项目现有的执行函数（与旧界面点击时调用的同一套），结果交回座舱显示 ——
+  const 座舱日常动作键 = Object.freeze({ 休整: 'rest', 睡眠: 'sleep', 冥想: 'meditate', 训练: 'train' });
+  const 座舱卸装类型 = Object.freeze({ 武器: 'wpn', 防具: 'def', 斗铠: 'armor', 机甲: 'mech', 魂导器: 'soul_tool' });
+  const 座舱请求结果 = (结果, 成功文本 = '已提交，等待叙事结算') => ({
+    ok: !!(结果 && 结果.ok),
+    message: 结果 && 结果.ok ? 成功文本 : toText(结果 && (结果.message || 结果.reason), '提交失败'),
+  });
+  function 座舱日常动作参数(参数 = {}) {
+    const 状态 = readStatusRoutineState(liveSnapshot);
+    return {
+      contextKey: 状态.contextKey,
+      revision: 状态.revision,
+      action: 座舱日常动作键[参数.action] || toText(参数.action, 'rest'),
+      durationMinutes: Math.max(10, Math.min(1440, Math.round(toNumber(参数.minutes, 60) / 10) * 10)),
+      trainingProject: toText(参数.project, '力量'),
+    };
+  }
+  // 技能能否在场外施展：造物类走「日常施展」，含可写回效果的走「使用」；冷却中给出剩余时间（与旧界面技能卡同一判定）
+  function 座舱技能场外施展状态(技能路径 = []) {
+    const 路径 = Array.isArray(技能路径) ? 技能路径 : [];
+    if (路径[0] !== 'char' || 路径.length < 3) return { kind: '', reason: '这个技能不在角色身上，不能场外施展' };
+    const 技能 = deepGet(liveSnapshot, ['rootData', ...路径], null);
+    if (!技能 || typeof 技能 !== 'object') return { kind: '', reason: '未找到技能' };
+    const 当前tick = toNumber(deepGet(liveSnapshot, 'rootData.world.时间.tick', 0), 0);
+    const 冷却 = 读取场外魂技冷却状态(技能, 当前tick);
+    const kind = extractConstructCreateEffects(技能['_效果数组']).length ? 'construct' : skillHasDailyMvuWritebackEffect(技能) ? 'daily' : '';
+    return { kind, cooling: !!冷却.冷却中, reason: kind ? (冷却.冷却中 ? toText(冷却.冷却文本, '冷却中') : '') : '这个技能只能在战斗中施展' };
+  }
+  // 交易能否进行：与交易模块 getWorldActionState(market) 同一判定（设施有无与可用、商店是否在当前地点）
+  function 座舱交易预演(参数 = {}) {
+    const 动作 = toText(参数.动作, '购买');
+    const 类型 = /竞拍|拍卖/.test(动作) ? 'trade_auction' : /出售|卖出/.test(动作) ? 'trade_sell' : 'trade_buy';
+    const 结果 = 读取世界动作上下文_桥接(liveSnapshot, {}, 类型);
+    if (!结果.ok) return { ok: false, reason: toText(结果.reason, '当前无法交易') };
+    const 功能 = 类型 === 'trade_auction' ? '拍卖' : '商业', 上下文 = 结果.context || {};
+    const 设施 = 上下文.facilities && 上下文.facilities[功能];
+    if (!设施 || typeof 设施 !== 'object') return { ok: false, reason: `当前地点缺少${功能}设施。` };
+    if (设施.可用 !== true) return { ok: false, reason: toText(设施.原因, `当前${功能}设施不可用。`) };
+    const 商店 = toText(参数.目标, '');
+    if (类型 === 'trade_buy' && 商店 && Array.isArray(上下文.market && 上下文.market.商店) && !上下文.market.商店.includes(商店)) {
+      return { ok: false, reason: `当前地点没有商店【${商店}】。` };
+    }
+    return { ok: true, reason: '' };
+  }
+  function 座舱动作预演(名称, 参数 = {}) {
+    try {
+      if (名称 === 'routine') return statusRoutineActions.previewRoutineAction(座舱日常动作参数(参数));
+      if (名称 === 'skill') return 座舱技能场外施展状态(参数.path);
+      if (名称 === 'trade') return 座舱交易预演(参数);
+      if (名称 === 'workshop') {
+        const 结果 = 读取世界动作上下文_桥接(liveSnapshot, { 模式: toText(参数.mode, ''), 副职业: toText(参数.job, '') }, 'profession');
+        return { ok: 结果.ok, reason: 结果.ok ? '' : toText(结果.reason, '当前无法开工') };
+      }
+    } catch (错误) {
+      return { ok: false, allowed: false, reason: 错误 && 错误.message ? 错误.message : String(错误) };
+    }
+    return null;
+  }
+  // 星图节点表只在旧星图可见时刷新；座舱接管界面后，预演 / 出发前强制同步一次
+  async function 座舱同步星图() {
+    if (typeof window.__sheepMapRefreshLive === 'function') await window.__sheepMapRefreshLive(true, undefined, true);
+    const 地图 = window.__sheepMapBridge;
+    return 地图 && typeof 地图.describeTravelToNode === 'function' && typeof 地图.travelToNode === 'function' ? 地图 : null;
+  }
+  // 目的地解析：星图能定位就按星图移动（可选方式）；城内子地点先找星图上能定位的上级——
+  // 人已在那个上级里就是城内移动（走原项目移动意图结算），否则先前往上级
+  async function 座舱规划移动(参数 = {}) {
+    const 地图 = await 座舱同步星图();
+    if (!地图) return { ok: false, reason: '地图模块未就绪' };
+    const 路径 = (Array.isArray(参数.path) && 参数.path.length ? 参数.path : [参数.node]).map(值 => toText(值, '')).filter(Boolean);
+    const 目标 = 路径[路径.length - 1] || toText(参数.node, '');
+    if (!目标) return { ok: false, reason: '缺少目的地' };
+    const 选项 = { method: toText(参数.method, ''), listMethods: true };
+    const 直达 = 地图.describeTravelToNode(目标, 选项);
+    if (直达 && 直达.reasonCode !== 'map_node_unresolved') return { ...直达, mode: 'map', target: 目标, mapNode: 目标 };
+    const 当前段 = normalizeLocForMatch(读取快照当前位置(liveSnapshot)).segments;
+    for (let i = 路径.length - 2; i >= 0; i--) {
+      const 上级 = 路径[i];
+      if (当前段.includes(上级)) {
+        const 请求 = 解析移动模块意图请求(liveSnapshot, { 目标地点: 目标, 归属父节点: 路径[路径.length - 2], 移动方式: '步行' });
+        const 预演 = await 执行移动模块意图路由(liveSnapshot, 请求, { dryRun: true });
+        if (预演 && 预演.alreadyThere) return { ok: true, alreadyThere: true, mode: 'local', target: 目标 };
+        if (!预演 || !预演.dryRun) return { ok: false, mode: 'local', target: 目标, reason: toText(预演 && 预演.reason, '现在去不了') };
+        return {
+          ok: true, mode: 'local', target: 目标, via: 上级, method: '步行', duration: toText(预演.durationText, ''),
+          costText: toText(预演.cost && 预演.cost.text, ''), canAfford: true,
+        };
+      }
+      const 上级预演 = 地图.describeTravelToNode(上级, 选项);
+      if (上级预演 && 上级预演.reasonCode !== 'map_node_unresolved') return { ...上级预演, mode: 'via', target: 目标, via: 上级, mapNode: 上级 };
+    }
+    return { ...(直达 || {}), ok: false, target: 目标, reason: '星图上定位不到这个地点' };
+  }
+  async function 座舱动作预演异步(名称, 参数 = {}) {
+    try {
+      if (名称 === 'travel') return await 座舱规划移动(参数);
+    } catch (错误) {
+      return { ok: false, reason: 错误 && 错误.message ? 错误.message : String(错误) };
+    }
+    return 座舱动作预演(名称, 参数);
+  }
+  // 原项目物品 / 技能执行器（EquipmentManager）成败只靠 toast 提示、不返回值：执行期间截下提示转交座舱显示，避免两处各报一次
+  async function 座舱截取提示(执行) {
+    const 提示 = window.MVU_Toast, 原方法 = 提示 && 提示.show, 记录 = [];
+    if (提示 && typeof 原方法 === 'function') 提示.show = (文本, 类型 = 'info') => { 记录.push({ 文本: toText(文本, ''), 类型: toText(类型, 'info') }); };
+    try {
+      await 执行();
+    } finally {
+      if (提示 && typeof 原方法 === 'function') 提示.show = 原方法;
+    }
+    const 错误 = 记录.find(项 => /error|warn/i.test(项.类型));
+    return 错误 ? { ok: false, message: 错误.文本 || '操作失败' } : { ok: true, message: (记录[记录.length - 1] || {}).文本 || '' };
+  }
+  async function 座舱执行动作(名称, 参数 = {}) {
+    const 快照 = liveSnapshot;
+    if (!快照 || !快照.rootData) return { ok: false, message: '状态未就绪' };
+    if (!isSnapshotPlayerControlled(快照)) return { ok: false, message: '旁观视角不可操作。' };
+    try {
+      switch (名称) {
+        case 'quest': {
+          const 数据 = buildQuestDispatchRequest(快照, toText(参数.kind, ''), { questName: toText(参数.quest, ''), progressAdd: 1, requiredCount: 1 });
+          if (!数据) return { ok: false, message: '任务操作参数不完整。' };
+          // dryRun：只构建请求不派发（验收用）
+          if (参数.dryRun) return { ok: true, message: 数据.requestKind, request: { requestKind: 数据.requestKind, patchOps: 数据.patchOps } };
+          if (数据.openProfession && 数据.professionRequest) { 执行副职业工坊打开路由(快照, 数据.professionRequest); return { ok: true, message: '已打开工坊' }; }
+          return 座舱请求结果(await dispatchUiAiRequest(数据.playerInput, 数据.systemPrompt, { requestKind: 数据.requestKind, patchOps: 数据.patchOps }));
+        }
+        case 'trade': {
+          const 捕获 = await buildInlineTradeAction(快照, {
+            动作: toText(参数.动作, '购买'), 目标: toText(参数.目标, ''), 物品: toText(参数.物品, ''),
+            数量: Math.max(1, toNumber(参数.数量, 1)), 价格: Math.max(0, toNumber(参数.价格, 0)), 自动执行: true,
+          });
+          if (!捕获.ok) return { ok: false, message: toText(捕获.reason, '交易未通过校验') };
+          const 动作 = 捕获.inlineAction;
+          if (参数.dryRun) return { ok: true, message: 动作.requestKind, request: { requestKind: 动作.requestKind, 交易参数: 动作.交易参数, patchOps: 动作.patchOps } };
+          return 座舱请求结果(await dispatchUiAiRequest(动作.playerInput, 动作.systemPrompt, {
+            requestKind: 动作.requestKind, patchOps: 动作.patchOps, privilegeID: 动作.privilegeID, privilegeCost: 动作.privilegeCost, 交易参数: 动作.交易参数,
+          }));
+        }
+        case 'routine': {
+          const 结果 = await statusRoutineActions.executeRoutineAction(座舱日常动作参数(参数));
+          return { ok: !!(结果 && 结果.ok), message: toText(结果 && 结果.message, 结果 && 结果.ok ? '已结算' : '行动失败') };
+        }
+        case 'travel': {
+          const 规划 = await 座舱规划移动(参数);
+          if (!规划.ok || 规划.alreadyThere || 规划.canAfford === false) return { ok: false, message: 规划.alreadyThere ? '已经在这里了' : toText(规划.reason, '现在去不了') };
+          if (规划.mode === 'local') {
+            const 请求 = 解析移动模块意图请求(快照, { 目标地点: 规划.target, 归属父节点: (参数.path || []).slice(-2, -1)[0] || '', 移动方式: '步行' });
+            const 结果 = await 执行移动模块意图路由(快照, 请求);
+            if (!结果 || 结果.reason) return { ok: false, message: toText(结果 && 结果.reason, '移动未结算') };
+            // 与星图移动一致：位置与消耗已由前端结算，正文只写路途与到达
+            const 耗时 = toText(结果.durationText, '');
+            Promise.resolve(dispatchUiAiRequest(
+              `[启程前往] 步行前往【${规划.target}】${耗时 ? `，预计耗时${耗时}` : ''}`,
+              `[前端仲裁器说明]\n以下内容为系统后台已完成位置、坐标与资源消耗结算的仲裁结果；移动耗时仅作为本轮时间裁定的输入，世界时间由剧情推进任务统一结算。\n请仅将以下仲裁结论转写成自然剧情，描写路途见闻、到达环境与角色反应即可。不要输出 UpdateVariable，不要再次改写位置、坐标或资源消耗。\n\n[系统仲裁] 城内移动已由前端结算位置与资源结果。玩家步行${耗时 ? `，经过 ${耗时} 的路程` : ''}，现已抵达新地点：【${规划.target}】。`,
+              { requestKind: 'map_travel_settled' },
+            )).catch(() => {});
+            return { ok: true, message: `已抵达${规划.target}` };
+          }
+          const 结果 = await window.__sheepMapBridge.travelToNode(规划.mapNode, { method: toText(规划.method, '') });
+          if (结果 && 结果.ok === false) return { ok: false, message: toText(结果.reason, '移动未结算') };
+          return { ok: true, message: 规划.mode === 'via' ? `已出发前往${规划.via}` : `已出发前往${规划.target}` };
+        }
+        case 'tower':
+        case 'ascension': {
+          const 当前位置 = toText(deepGet(快照, 'activeChar.状态.位置', 快照.currentLoc), 快照.currentLoc);
+          window.dispatchEvent(new CustomEvent('map-action-dispatch', { detail: {
+            action: 名称, ticketName: toText(参数.ticket, ''), floor: Math.max(1, toNumber(参数.floor, getDefaultSoulTowerChallengeFloor(快照))),
+            currentLoc: 当前位置, target: 当前位置, services: [], source: 'trial_console',
+          } }));
+          return { ok: true, message: '已发起，入场结算见正文' };
+        }
+        case 'npc': {
+          const 对象 = toText(参数.npc, ''), 动作 = toText(参数.op, '');
+          if (!对象 || !['talk', 'intel', 'brief', 'battle', 'trade', 'commission'].includes(动作)) return { ok: false, message: '互动参数不完整。' };
+          const 当前位置 = toText(deepGet(快照, 'activeChar.状态.位置', 快照.currentLoc), 快照.currentLoc);
+          window.dispatchEvent(new CustomEvent('map-action-dispatch', { detail: {
+            action: 动作 === 'commission' ? 'craft' : 动作, target: 当前位置, currentLoc: 当前位置, services: [],
+            npcTarget: 对象, npcTargets: [对象], executorType: 动作 === 'commission' ? 'private' : undefined, source: 'cockpit_place',
+          } }));
+          return { ok: true, message: { talk: '已发起对话', intel: '已发起请教', brief: '已发起汇报' }[动作] || '' };
+        }
+        case 'item': {
+          const 管理器 = window.EquipmentManager, 角色 = toText(快照.activeName, ''), 物品 = toText(参数.item, '');
+          if (!管理器) return { ok: false, message: '物品执行器未就绪' };
+          if (参数.op === 'use') return 座舱截取提示(() => 管理器.performUse(角色, 物品));
+          if (参数.op === 'equip') return 座舱截取提示(() => 管理器.performEquip(角色, 物品));
+          if (参数.op === 'unequip') {
+            // 卸下前核对：槽位里确实是这件（魂导器按装配位名称查）
+            const 装备 = deepGet(快照, 'activeChar.装备', {}) || {};
+            const 槽内名 = 参数.slot === '魂导器'
+              ? Object.values(deepGet(装备, '魂导器.装配', {}) || {}).map(位 => toText(位 && 位.名称, '')).find(名 => 名 === 物品) || ''
+              : toText(deepGet(装备, [toText(参数.slot, ''), '名称'], ''), '');
+            if (!物品 || 物品 === '无' || 槽内名 !== 物品) return { ok: false, message: `${toText(参数.slot, '该槽位')}里没有「${物品 || '物品'}」。` };
+            return 座舱截取提示(() => 管理器.performUnequip(角色, 座舱卸装类型[参数.slot] || toText(参数.slot, ''), 物品));
+          }
+          if (参数.op === 'discard') return 座舱截取提示(() => 管理器.performDiscard(角色, 物品, 参数.mode === 'all' ? 'all' : 'one'));
+          return { ok: false, message: '未知的物品操作' };
+        }
+        case 'skill': {
+          const 状态 = 座舱技能场外施展状态(参数.path);
+          if (!状态.kind || 状态.cooling) return { ok: false, message: 状态.reason };
+          const 管理器 = window.EquipmentManager;
+          if (!管理器) return { ok: false, message: '技能执行器未就绪' };
+          return 座舱截取提示(() => 状态.kind === 'construct' ? 管理器.performConstructSkillUse(参数.path) : 管理器.performDailyWritebackSkillUse(参数.path));
+        }
+        case 'workshop': {
+          const 结果 = 执行副职业工坊打开路由(快照, { 模式: toText(参数.mode, 'forge'), 副职业: toText(参数.job, '') });
+          const 失败 = !结果 || 结果.ok === false || 结果.dispatchMode === 'failed_summary';
+          return { ok: !失败, message: 失败 ? toText(结果 && 结果.reason, '工坊打开失败') : '' };
+        }
+        case 'ring': {
+          if (参数.op === 'defer') { await handlePendingSoulRingDefer(快照); return { ok: true, message: '已暂缓' }; }
+          renderUnifiedInlinePreview(PENDING_SOUL_RING_PREVIEW_KEY);
+          return { ok: true, message: '' };
+        }
+        case 'deleteChar': {
+          const 角色键 = resolveSnapshotCharKey(快照, toText(参数.char, '')), 角色数据 = deepGet(快照, ['rootData', 'char', 角色键], null);
+          if (!角色键 || !角色数据 || typeof 角色数据 !== 'object') return { ok: false, message: '角色不存在。' };
+          if (!判断角色允许删除(角色键, 角色数据, 快照)) return { ok: false, message: '该角色不可删除。' };
+          const 显示名 = toText(角色数据.name || deepGet(角色数据, 'base.name', ''), 角色键);
+          await mutateStatDataByEditor(statData => {
+            if (!deepGet(statData, ['char', 角色键], null)) throw new Error('角色不存在。');
+            清理被删角色引用(statData, 角色键, 显示名);
+            delete statData.char[角色键];
+            deepSetMutable(statData, ['sys', '系统播报'], `[角色管理] 已删除角色【${显示名}】。`);
+          });
+          return { ok: true, message: '已删除角色' };
+        }
+        case 'battle': {
+          if (typeof window.__MVU_OPEN_BATTLE_UI__ === 'function') window.__MVU_OPEN_BATTLE_UI__();
+          return { ok: true, message: '' };
+        }
+        default:
+          return { ok: false, message: `未知的动作：${名称}` };
+      }
+    } catch (错误) {
+      return { ok: false, message: 错误 && 错误.message ? 错误.message : String(错误) };
+    }
+  }
   const 座舱适配器 = {
     getRoot: () => deepGet(liveSnapshot, 'rootData', null),
     activeName: () => toText(deepGet(liveSnapshot, 'activeName', ''), ''),
@@ -38524,6 +38764,14 @@
       });
     }),
     toast: (文本, 类型 = 'info') => showUiToast(文本, 类型, 3600),
+    preview: (名称, 参数) => 座舱动作预演(名称, 参数),
+    previewAsync: (名称, 参数) => 座舱动作预演异步(名称, 参数),
+    act: (名称, 参数) => 座舱执行动作(名称, 参数),
+    // 私密档案入口规则不变：只借用已有内容挂长按（见 canOpenPrivateArchive 注释）
+    privateArchiveAllowed: () => canOpenPrivateArchive(liveSnapshot),
+    privateArchiveKey: '私密档案详细页',
+    // 战斗进行中但终端被收起时，座舱给出返回入口
+    battleActive: () => !!deepGet(liveSnapshot, 'rootData.world.战斗.进行中', false),
   };
   function 同步座舱可见性(详情键 = getEffectiveUnifiedPreviewKey()) {
     const 挂载点 = document.getElementById('mvu-unified-mount');
@@ -52547,7 +52795,8 @@ ${播报文本}
     return { ok: true, settled: true, ...补丁结果, worldContextProjection: 读取世界动作投影_桥接(contextResult.context) };
   }
 
-  async function 执行移动模块意图路由(snapshot, request = {}) {
+  // options.dryRun：只构建补丁与消耗、不写回（座舱出发前预演用）
+  async function 执行移动模块意图路由(snapshot, request = {}, options = {}) {
     if (!request || request.invalid)
       return 构建模块路由失败结果('travel', request, request?.reason || 'travel_request_invalid');
     const contextResult = 读取世界动作上下文_桥接(snapshot, request, 'travel');
@@ -52604,6 +52853,16 @@ ${播报文本}
         return 构建模块路由失败结果('travel', request, 准入扣除.reason || '准入凭证不足', { result });
       }
       补丁结果.patchOps = [...准入扣除.patchOps, ...补丁结果.patchOps];
+      if (options && options.dryRun) {
+        return 构建模块路由成功结果('travel', request, {
+          dryRun: true,
+          patchOps: 补丁结果.patchOps,
+          finalLocName: 补丁结果.finalLocName,
+          cost: 补丁结果.cost || 补丁结果.mapRequest?.costs,
+          durationText: 补丁结果.mapRequest?.est_duration,
+          moveKind: 补丁结果.moveKind,
+        });
+      }
       try {
         await applyJsonPatchOpsByEditor(补丁结果.patchOps, { force: true });
         登记本轮移动结算路径(补丁结果.patchOps.map(patch => decodeJsonPointerPath(patch.path)).filter(path => path.length));
@@ -52639,6 +52898,15 @@ ${播报文本}
       return 构建模块路由失败结果('travel', request, 准入扣除.reason || '准入凭证不足');
     }
     补丁结果.patchOps = [...准入扣除.patchOps, ...补丁结果.patchOps];
+    if (options && options.dryRun) {
+      return 构建模块路由成功结果('travel', request, {
+        dryRun: true,
+        patchOps: 补丁结果.patchOps,
+        finalLocName: 补丁结果.finalLocName,
+        cost: 补丁结果.cost,
+        durationText: 格式化tick时长文本_桥接(request.耗时tick),
+      });
+    }
     try {
       await applyJsonPatchOpsByEditor(补丁结果.patchOps, { force: true });
       登记本轮移动结算路径(补丁结果.patchOps.map(patch => decodeJsonPointerPath(patch.path)).filter(path => path.length));
@@ -58033,7 +58301,8 @@ ${播报文本}
         if (targetType === 'mech') {
           const mech = 装备数据.机甲 || {};
           const mechName = toText(mech.名称 || mech['名称'] || mech.型号, '');
-          if (!mechName) throw new Error('当前没有已装载的机甲。');
+          // 空槽的占位名「无」不是装备
+          if (!mechName || mechName === '无') throw new Error('当前没有已装载的机甲。');
           this.queueInventoryAdd(patches, charPath, inventoryBuffer, mechName, mech);
           patches.push({ op: 'replace', path: `${charPath}/装备/机甲`, value: {} });
           await this.submitPatch(patches, `已卸下机甲 ${mechName}`);
@@ -58043,7 +58312,7 @@ ${播报文本}
         if (targetType === 'wpn') {
           const weapon = 装备数据.武器 || {};
           const weaponName = toText(weapon.名称 || weapon['名称'], '');
-          if (!weaponName) throw new Error('当前没有已装备的主武器。');
+          if (!weaponName || weaponName === '无') throw new Error('当前没有已装备的主武器。');
           this.queueInventoryAdd(patches, charPath, inventoryBuffer, weaponName, weapon);
           patches.push({ op: 'replace', path: `${charPath}/装备/武器`, value: {} });
           await this.submitPatch(patches, `已卸下主武器 ${weaponName}`);
@@ -58053,7 +58322,7 @@ ${播报文本}
         if (targetType === 'def') {
           const 防具 = 装备数据.防具 || {};
           const 防具名 = toText(防具.名称 || 防具['名称'], '');
-          if (!防具名) throw new Error('当前没有已装备的防具。');
+          if (!防具名 || 防具名 === '无') throw new Error('当前没有已装备的防具。');
           this.queueInventoryAdd(patches, charPath, inventoryBuffer, 防具名, 防具);
           patches.push({ op: 'replace', path: `${charPath}/装备/防具`, value: {} });
           await this.submitPatch(patches, `已卸下防具 ${防具名}`);

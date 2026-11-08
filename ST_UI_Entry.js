@@ -1148,7 +1148,8 @@
       if (
         真实卡片已就绪
         && unifiedMount?.dataset?.mvuContentReady === '1'
-        && unifiedMount.querySelector('.mvu-unified-page.active [data-status-cabin]:not(:empty), .mvu-unified-page.active [data-unified-card]:not(:empty)')
+        // 球体座舱接管状态栏后旧卡片不再渲染，座舱外壳挂上即为首屏可交互
+        && unifiedMount.querySelector('.mvu-unified-page.active [data-status-cabin]:not(:empty), .mvu-unified-page.active [data-unified-card]:not(:empty), .lwcs-ck-root > .cockpit')
       ) {
         return true;
       }

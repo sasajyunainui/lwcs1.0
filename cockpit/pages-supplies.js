@@ -133,8 +133,9 @@
   };
   const itemActs = (c, name) => {
     const o = itemOf(c, name); if (!o) return '';
-    return `<div class="acts">${o.usable ? `<button class="cta" type="button" data-confirm="使用 ${c.esc(name)} ×1，效果由叙事结算"><i class="fa-solid fa-hand-sparkles"></i>使用</button>` : ''}
-      <div class="act-row">${o.equipable ? `<button class="key-s" type="button" data-confirm="装备 ${c.esc(name)}"><i class="fa-solid fa-shield-halved"></i> 装备</button>` : ''}${o.total > 1 ? `<button class="key-s danger" type="button" data-drop-one="${c.esc(name)}"><i class="fa-solid fa-minus"></i> 丢弃 1 件</button>` : ''}<button class="key-s danger" type="button" data-del-path="${c.esc(JSON.stringify(c.P('背包', name)))}"><i class="fa-solid fa-trash"></i> ${o.total > 1 ? '全部丢弃' : '丢弃'}</button></div></div>`;
+    const act = x => `data-act="${c.esc(JSON.stringify({ name: 'item', item: name, ...x }))}"`;
+    return `<div class="acts">${o.usable ? `<button class="cta" type="button" data-confirm="使用 ${c.esc(name)} ×1" ${act({ op: 'use' })}><i class="fa-solid fa-hand-sparkles"></i>使用</button>` : ''}
+      <div class="act-row">${o.equipable ? `<button class="key-s" type="button" data-confirm="装备 ${c.esc(name)}" ${act({ op: 'equip' })}><i class="fa-solid fa-shield-halved"></i> 装备</button>` : ''}${o.total > 1 ? `<button class="key-s danger" type="button" data-confirm="丢弃 1 件 ${c.esc(name)}" ${act({ op: 'discard', mode: 'one' })}><i class="fa-solid fa-minus"></i> 丢弃 1 件</button>` : ''}<button class="key-s danger" type="button" data-confirm="${o.total > 1 ? `全部丢弃 ${c.esc(name)}（${o.total} 件）` : `丢弃 ${c.esc(name)}`}" ${act({ op: 'discard', mode: 'all' })}><i class="fa-solid fa-trash"></i> ${o.total > 1 ? '全部丢弃' : '丢弃'}</button></div></div>`;
   };
 
   // 三页同一结构：左翼选（挂点 / 魂骨位 / 物品），主屏是选中项的完整档案与编辑，右翼是汇总与操作
@@ -155,7 +156,7 @@
         ${Object.values(bonus).some(v => v) ? `<div class="tiles">${Object.entries(bonus).filter(([, v]) => v).map(([k, v]) => `<div class="tile">${c.sock('arrow-trend-up')}<b class="plus">+${c.fmt(v)}</b><small>${k}</small></div>`).join('')}</div>` : c.empty('bolt', '暂无武装加成')}
         <section class="sec"><h3>温养<span class="en">Nurture</span>${c.hint('斗铠 / 机甲的温养进度由运行时投影。')}</h3>${warm ? `<div class="relic-card">${c.sock('temperature-half', 'gd')}<div><strong>${c.esc(warm)}</strong><small>温养中</small></div></div>` : '<span class="lbl">没有温养目标</span>'}${eq.斗铠?._已排异 ? '<span class="plq" style="--pc:#ff4d6a">斗铠已排异</span>' : ''}</section>
         <div class="groove"></div>${c.head('hand-pointer', '操作', 'Actions')}
-        <div class="act-row"><button class="key-s" type="button" data-go="page-supplies/pack"><i class="fa-solid fa-box-open"></i> 从背包换装</button>${sel.k !== '魂导器' && gearSkills(c, eq[sel.k]).length ? '<button class="key-s" type="button" data-go="page-ability/codex"><i class="fa-solid fa-book"></i> 技能图鉴</button>' : ''}</div>
+        <div class="act-row"><button class="key-s" type="button" data-go="page-supplies/pack"><i class="fa-solid fa-box-open"></i> 从背包换装</button>${sel.k !== '魂导器' && filled(selName) ? `<button class="key-s danger" type="button" data-confirm="${c.esc(`卸下${sel.l}「${selName}」，放回背包`)}" data-act="${c.esc(JSON.stringify({ name: 'item', op: 'unequip', slot: sel.k, item: selName }))}"><i class="fa-solid fa-arrow-down"></i> 卸下</button>` : ''}${sel.k !== '魂导器' && gearSkills(c, eq[sel.k]).length ? '<button class="key-s" type="button" data-go="page-ability/codex"><i class="fa-solid fa-book"></i> 技能图鉴</button>' : ''}</div>
       </div>`,
     };
   };
@@ -213,19 +214,6 @@
     const c = window.COCKPIT.ctx?.(), it = c && p.slice(0, i + 2).reduce((o, k) => o?.[k], c.S); if (!it) return;
     const idx = Number(p[i + 3]), sum = (it.批次 || []).reduce((s, b, j) => s + c.num(j === idx ? e.detail.value : b.数量), 0);
     e.detail.extra.push({ path: [...p.slice(0, i + 2), '数量'], value: sum });
-  });
-  document.addEventListener('click', e => {
-    const t = e.target.closest('[data-drop-one]'); if (!t) return;
-    if (!t.classList.contains('armed')) {
-      t.classList.add('armed'); t.dataset.label = t.innerHTML; t.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> 再点一次丢弃 1 件';
-      clearTimeout(t._disarm); t._disarm = setTimeout(() => { t.classList.remove('armed'); t.innerHTML = t.dataset.label; }, 3000); return;
-    }
-    const c = window.COCKPIT.ctx?.(), name = t.dataset.dropOne, it = c?.ch.背包?.[name]; if (!it) return;
-    const next = JSON.parse(JSON.stringify(it)), bs = Array.isArray(next.批次) ? next.批次 : [];
-    if (bs.length) { const last = bs[bs.length - 1]; last.数量 = c.num(last.数量) - 1; if (last.数量 <= 0) bs.pop(); next.数量 = bs.reduce((s, b) => s + c.num(b.数量), 0); }
-    else next.数量 = c.num(next.数量) - 1;
-    if (next.数量 <= 0) window.COCKPIT.closeInspector();
-    window.COCKPIT.write([next.数量 > 0 ? { path: c.P('背包', name), value: next } : { path: c.P('背包', name), del: true }]);
   });
 
   window.COCKPIT.register('page-supplies', {

@@ -547,3 +547,10 @@ button.tile:hover{background:rgba(255,255,255,.85)}
 /* 4 侧轨里只做计数的项不是按钮；主屏标题过长时折行，不吞字 */
 div.rail-item{cursor:default}
 .q-title h2{white-space:normal;text-overflow:clip;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-height:1.25}
+/* 动作结果条：执行中 / 失败（成功沿用 .done）；失败与不能执行带「知道了」 */
+.confirm-strip.busy{grid-template-columns:auto minmax(0,1fr)}
+.confirm-strip.fail{grid-template-columns:auto minmax(0,1fr) auto;color:#ffb3a8;box-shadow:inset 2px 0 0 #e0503a}
+.pad .confirm-strip.fail{color:#a3301f;background:rgba(224,80,58,.1)}
+.pad .confirm-strip.fail>i{color:#e0503a}
+.pad .confirm-strip.busy{color:var(--ink2)}
+.train-pick[hidden]{display:none}

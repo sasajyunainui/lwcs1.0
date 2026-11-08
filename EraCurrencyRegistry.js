@@ -278,4 +278,11 @@
       writable: false,
     });
   }
+  // 本运行时在酒馆助手的脚本 iframe 里加载，而桥接、交易 / 工坊 / 地图模块与座舱都跑在主页面，只在 globalThis / parent / top 上找注册表；
+  // 不发布到父窗口与顶层窗口时主页面解析不到法定货币，任务奖励、交易校验都会失败。iframe 重载时用新实例覆盖（可写、可重配）
+  [globalThis.parent, globalThis.top].forEach(目标 => {
+    try {
+      if (目标 && 目标 !== globalThis) Object.defineProperty(目标, 全局名称, { value: 注册表, configurable: true, enumerable: false, writable: true });
+    } catch (错误) {}
+  });
 })();

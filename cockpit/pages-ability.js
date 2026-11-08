@@ -89,8 +89,32 @@
       ${page ? '' : `<div style="display:flex;gap:.4em">${castBtn(c, sk, ' style="flex:1;font-size:.95em;margin:0"')}${sk.group === '复制效果' ? '' : `<button class="key-s" type="button" data-go="page-ability/design" data-go-set="skill=${c.esc(sk.key)};dtab=basic"><i class="fa-solid fa-pen-ruler"></i> 设计</button>`}</div>`}`;
   };
   // 日常施展：被动 / 血脉特性是常驻效果，不给施放；魂力不够时锁定并在悬停说明；可施放的走原地确认条（结算由叙事 / 运行时）
+  // 技能在存档里的路径（原项目场外施展执行器按路径定位技能）；来自物品定义的装备 / 魂骨技能没有角色路径，不能场外施展
+  const skillPath = (c, sk) => {
+    const k = String(sk.key || '').split('/'), P = (...p) => ['char', c.name, ...p];
+    switch (sk.group) {
+      case '魂环魂技': return P(...k);
+      case '自创魂技': return P('自创魂技', k.slice(1).join('/'));
+      case '魂骨附带': case '装备技能': return sk.srcPath?.[0] === 'char' ? sk.srcPath : null;
+      case '血脉散技': return P('血脉之力', '技能', k.slice(1).join('/'));
+      case '血脉魂环': return P('血脉之力', k[1], k.slice(2).join('/'));
+      case '复制效果': return P('复制效果', k[1], '技能列表', k.slice(2).join('/'));
+      case '武魂融合技': return P('武魂融合技', k.slice(1).join('/'), '技能数据');
+      default: return null;
+    }
+  };
   const castBtn = (c, sk, extra = '') => {
     if (sk.承载方式 === '被动' || sk.group === '血脉特性') return `<button class="cta" type="button" disabled${extra}><i class="fa-solid fa-infinity"></i>被动生效</button>`;
+    const lock = (label, why, icon = 'hand-sparkles') => `<span class="cta-wrap" data-hint="${c.esc(why)}"><button class="cta" type="button" disabled${extra}><i class="fa-solid fa-${icon}"></i>${label}</button></span>`;
+    const path = skillPath(c, sk), st = path ? window.COCKPIT.preview('skill', { path }) : null;
+    // lwcs：与原项目技能卡同一判定
+    if (st) {
+      if (!st.kind) return lock('战斗中施展', st.reason || '这个技能只能在战斗中施展', 'khanda');
+      const label = st.kind === 'construct' ? '日常施展' : '使用';
+      if (st.cooling) return lock('冷却中', st.reason, 'hourglass-half');
+      return `<button class="cta" type="button"${extra} data-confirm="${c.esc(`${label}「${sk.魂技名}」`)}" data-act="${c.esc(JSON.stringify({ name: 'skill', path }))}"><i class="fa-solid fa-hand-sparkles"></i>${label}</button>`;
+    }
+    if (window.COCKPIT.rt('__LWCS_ERA_RUNTIME_INTEGRATION_V1__') && !path) return lock('日常施展', '这个技能来自物品定义，装备后在角色身上施展');
     const sp = typeof sk.消耗 === 'object' ? c.num(sk.消耗?.魂力) : 0, short = sp > 0 && c.num(c.st.魂力) < sp;
     const btn = `<button class="cta" type="button"${extra}${short ? ' disabled' : ` data-confirm="${c.esc(`日常施展「${sk.魂技名}」${sp ? `，消耗魂力 ${c.fmt(sp)}` : ''}`)}"`}><i class="fa-solid fa-hand-sparkles"></i>日常施展</button>`;
     return short ? `<span class="cta-wrap" data-hint="魂力不足：需要 ${c.fmt(sp)}">${btn}</span>` : btn;
@@ -129,7 +153,7 @@
       </div>`,
       core: `<div class="pad detail martial-core">
         <div class="q-title">${c.sock('fire', 'gd')}<span class="chip">${c.esc(soul.slot)}</span><h2>${c.esc(soul.表象名称)}</h2></div>
-        ${pendRing ? `<div class="banner"><i class="fa-solid fa-circle-plus"></i><div><strong>有一枚待生成的魂环</strong><small>${c.esc(Object.entries(pendRing).slice(0, 3).map(([k, v]) => `${k} ${typeof v === 'object' ? '' : v}`).join(' · '))}</small></div><button class="key-s" type="button">使用该魂灵生成</button><button class="key-s" type="button">暂不生成</button></div>` : ''}
+        ${pendRing ? `<div class="banner"><i class="fa-solid fa-circle-plus"></i><div><strong>有一枚待生成的魂环</strong><small>${c.esc(Object.entries(pendRing).slice(0, 3).map(([k, v]) => `${k} ${typeof v === 'object' ? '' : v}`).join(' · '))}</small></div><button class="key-s" type="button" data-act='{"name":"ring","op":"open"}'>选择魂灵生成</button><button class="key-s" type="button" data-confirm="暂缓生成这枚魂环" data-act='{"name":"ring","op":"defer"}'>暂不生成</button></div>` : ''}
         ${tags.length ? `<div class="plaques">${tags.map((t, i) => `<span class="plq${i ? ' steel' : ''}">${c.esc(t)}</span>`).join('')}</div>` : ''}
         <p class="narr">${c.ed(c.blank(soul.描述) ? '未记录' : soul.描述, [...c.P(soul.slot), '描述'], { kind: 'text', raw: c.blank(soul.描述) ? '' : soul.描述 })}</p>
         ${soul.rings.length ? `<div class="soul-card" data-scan data-float="r"><div class="soul-stage">${c.ringStage(soul.rings, r => { const p = soul.spirits.find(x => x.rings.includes(r)), sk = r.skills[0]; return p && sk ? `data-inspect="sk:${c.esc(`${soul.slot}/${p.slot}/${r.slot}/${sk.slot}`)}"` : ''; })}</div></div>`

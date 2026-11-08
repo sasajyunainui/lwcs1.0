@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:1693d0fd1a25ac8aa9f13723c70ba96d6a862f0c5f265627e5688ff7181a00ff|cockpit/designer-model.js:f72143352b4ac9a1109222cfdbbd833038fae2f80ab74c0c292817c18a65d05b|cockpit/cockpit.js:72977a77b3a365ff8b6f2243b0218f762bb291a357ecc3e8c9677a323a566071|cockpit/pages-role.js:a20323dbb9d7d2456750d02fea4d1223fdcae401a24a1c36d2478f4d7cb83945|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:94cbf9ca01a696d2305db0bdfecb124b932b80d922c6b4bbaea917e530047f71|cockpit/pages-ability.js:e7f6047996d3bca805236ce54db94427b087c35f26eb825076471954f21ec20d|cockpit/pages-supplies.js:d56e9a1ff9158eeafa3887e4e991fd89b0f5f9254f734ee85e143f7b92bbe454|cockpit/pages-map.js:93e2f3862e7ea2ee92f823096caf4db9d0b8bb3460f52f8ada1c07e196b12262|cockpit/pages-world.js:53d47819477ad0b7398941a27519ecbf1e668b1462a013f0601efb57f91507d5|cockpit/pages-terminal.js:440f029b4c9d7b14ab2c764c7f002cfc698b47e6d3fb9ff5d2eb021833a50d6f */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:08f554a4bcb327eca0ad105855a08ea582ac85f9f0a964e3cde4299971570f7e|cockpit/designer-model.js:f72143352b4ac9a1109222cfdbbd833038fae2f80ab74c0c292817c18a65d05b|cockpit/cockpit.js:d478878f8e0b11ed08043486a389e8a75da162123ee79d7ef882a92976d2a476|cockpit/pages-role.js:908d0a9a9e323fcc62e4abb109ea7203b82ec6fd107ec5a8a7c0c36cb436d9a2|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:94cbf9ca01a696d2305db0bdfecb124b932b80d922c6b4bbaea917e530047f71|cockpit/pages-ability.js:88f27fb5a50d280fad29a1c840c61f2c5114d5855acddc5fa7d67e0028396707|cockpit/pages-supplies.js:6bb2f0535c71419f26784a612c3d84fa59722a816128d909b2b2db7f74961eb5|cockpit/pages-map.js:bb5b1f07a1035a0294cdb32fbc61c97c36a49946297500421647eee91fe093da|cockpit/pages-world.js:53d47819477ad0b7398941a27519ecbf1e668b1462a013f0601efb57f91507d5|cockpit/pages-terminal.js:4839b10b0361497898b513d151fff284614a4bb763f17662ea6857e4428cce41 */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -40123,7 +40123,247 @@
   // 座舱挂在 #mvu-unified-mount 里、盖住旧壳层（旧壳层隐藏但保留占位，挂载点尺寸不变）。
   // 旧壳层只在下列原详情面打开时让出画面（战斗终端、魂环待选确认、私密档案），关闭后回到座舱；
   // 其他旧详情面（旧座舱各页都是详情面，刷新后会恢复上次打开的那页）在座舱接管时清掉。
-  const 座舱让位详情键 = new Set([BATTLE_INLINE_PREVIEW_KEY, PENDING_SOUL_RING_PREVIEW_KEY, '私密档案详细页']);
+  const 座舱让位详情键 = new Set([BATTLE_INLINE_PREVIEW_KEY, PENDING_SOUL_RING_PREVIEW_KEY, '私密档案详细页', '副职业工坊', '交易网络']);
+  // —— 座舱动作：全部调原项目现有的执行函数（与旧界面点击时调用的同一套），结果交回座舱显示 ——
+  const 座舱日常动作键 = Object.freeze({ 休整: 'rest', 睡眠: 'sleep', 冥想: 'meditate', 训练: 'train' });
+  const 座舱卸装类型 = Object.freeze({ 武器: 'wpn', 防具: 'def', 斗铠: 'armor', 机甲: 'mech', 魂导器: 'soul_tool' });
+  const 座舱请求结果 = (结果, 成功文本 = '已提交，等待叙事结算') => ({
+    ok: !!(结果 && 结果.ok),
+    message: 结果 && 结果.ok ? 成功文本 : toText(结果 && (结果.message || 结果.reason), '提交失败'),
+  });
+  function 座舱日常动作参数(参数 = {}) {
+    const 状态 = readStatusRoutineState(liveSnapshot);
+    return {
+      contextKey: 状态.contextKey,
+      revision: 状态.revision,
+      action: 座舱日常动作键[参数.action] || toText(参数.action, 'rest'),
+      durationMinutes: Math.max(10, Math.min(1440, Math.round(toNumber(参数.minutes, 60) / 10) * 10)),
+      trainingProject: toText(参数.project, '力量'),
+    };
+  }
+  // 技能能否在场外施展：造物类走「日常施展」，含可写回效果的走「使用」；冷却中给出剩余时间（与旧界面技能卡同一判定）
+  function 座舱技能场外施展状态(技能路径 = []) {
+    const 路径 = Array.isArray(技能路径) ? 技能路径 : [];
+    if (路径[0] !== 'char' || 路径.length < 3) return { kind: '', reason: '这个技能不在角色身上，不能场外施展' };
+    const 技能 = deepGet(liveSnapshot, ['rootData', ...路径], null);
+    if (!技能 || typeof 技能 !== 'object') return { kind: '', reason: '未找到技能' };
+    const 当前tick = toNumber(deepGet(liveSnapshot, 'rootData.world.时间.tick', 0), 0);
+    const 冷却 = 读取场外魂技冷却状态(技能, 当前tick);
+    const kind = extractConstructCreateEffects(技能['_效果数组']).length ? 'construct' : skillHasDailyMvuWritebackEffect(技能) ? 'daily' : '';
+    return { kind, cooling: !!冷却.冷却中, reason: kind ? (冷却.冷却中 ? toText(冷却.冷却文本, '冷却中') : '') : '这个技能只能在战斗中施展' };
+  }
+  // 交易能否进行：与交易模块 getWorldActionState(market) 同一判定（设施有无与可用、商店是否在当前地点）
+  function 座舱交易预演(参数 = {}) {
+    const 动作 = toText(参数.动作, '购买');
+    const 类型 = /竞拍|拍卖/.test(动作) ? 'trade_auction' : /出售|卖出/.test(动作) ? 'trade_sell' : 'trade_buy';
+    const 结果 = 读取世界动作上下文_桥接(liveSnapshot, {}, 类型);
+    if (!结果.ok) return { ok: false, reason: toText(结果.reason, '当前无法交易') };
+    const 功能 = 类型 === 'trade_auction' ? '拍卖' : '商业', 上下文 = 结果.context || {};
+    const 设施 = 上下文.facilities && 上下文.facilities[功能];
+    if (!设施 || typeof 设施 !== 'object') return { ok: false, reason: `当前地点缺少${功能}设施。` };
+    if (设施.可用 !== true) return { ok: false, reason: toText(设施.原因, `当前${功能}设施不可用。`) };
+    const 商店 = toText(参数.目标, '');
+    if (类型 === 'trade_buy' && 商店 && Array.isArray(上下文.market && 上下文.market.商店) && !上下文.market.商店.includes(商店)) {
+      return { ok: false, reason: `当前地点没有商店【${商店}】。` };
+    }
+    return { ok: true, reason: '' };
+  }
+  function 座舱动作预演(名称, 参数 = {}) {
+    try {
+      if (名称 === 'routine') return statusRoutineActions.previewRoutineAction(座舱日常动作参数(参数));
+      if (名称 === 'skill') return 座舱技能场外施展状态(参数.path);
+      if (名称 === 'trade') return 座舱交易预演(参数);
+      if (名称 === 'workshop') {
+        const 结果 = 读取世界动作上下文_桥接(liveSnapshot, { 模式: toText(参数.mode, ''), 副职业: toText(参数.job, '') }, 'profession');
+        return { ok: 结果.ok, reason: 结果.ok ? '' : toText(结果.reason, '当前无法开工') };
+      }
+    } catch (错误) {
+      return { ok: false, allowed: false, reason: 错误 && 错误.message ? 错误.message : String(错误) };
+    }
+    return null;
+  }
+  // 星图节点表只在旧星图可见时刷新；座舱接管界面后，预演 / 出发前强制同步一次
+  async function 座舱同步星图() {
+    if (typeof window.__sheepMapRefreshLive === 'function') await window.__sheepMapRefreshLive(true, undefined, true);
+    const 地图 = window.__sheepMapBridge;
+    return 地图 && typeof 地图.describeTravelToNode === 'function' && typeof 地图.travelToNode === 'function' ? 地图 : null;
+  }
+  // 目的地解析：星图能定位就按星图移动（可选方式）；城内子地点先找星图上能定位的上级——
+  // 人已在那个上级里就是城内移动（走原项目移动意图结算），否则先前往上级
+  async function 座舱规划移动(参数 = {}) {
+    const 地图 = await 座舱同步星图();
+    if (!地图) return { ok: false, reason: '地图模块未就绪' };
+    const 路径 = (Array.isArray(参数.path) && 参数.path.length ? 参数.path : [参数.node]).map(值 => toText(值, '')).filter(Boolean);
+    const 目标 = 路径[路径.length - 1] || toText(参数.node, '');
+    if (!目标) return { ok: false, reason: '缺少目的地' };
+    const 选项 = { method: toText(参数.method, ''), listMethods: true };
+    const 直达 = 地图.describeTravelToNode(目标, 选项);
+    if (直达 && 直达.reasonCode !== 'map_node_unresolved') return { ...直达, mode: 'map', target: 目标, mapNode: 目标 };
+    const 当前段 = normalizeLocForMatch(读取快照当前位置(liveSnapshot)).segments;
+    for (let i = 路径.length - 2; i >= 0; i--) {
+      const 上级 = 路径[i];
+      if (当前段.includes(上级)) {
+        const 请求 = 解析移动模块意图请求(liveSnapshot, { 目标地点: 目标, 归属父节点: 路径[路径.length - 2], 移动方式: '步行' });
+        const 预演 = await 执行移动模块意图路由(liveSnapshot, 请求, { dryRun: true });
+        if (预演 && 预演.alreadyThere) return { ok: true, alreadyThere: true, mode: 'local', target: 目标 };
+        if (!预演 || !预演.dryRun) return { ok: false, mode: 'local', target: 目标, reason: toText(预演 && 预演.reason, '现在去不了') };
+        return {
+          ok: true, mode: 'local', target: 目标, via: 上级, method: '步行', duration: toText(预演.durationText, ''),
+          costText: toText(预演.cost && 预演.cost.text, ''), canAfford: true,
+        };
+      }
+      const 上级预演 = 地图.describeTravelToNode(上级, 选项);
+      if (上级预演 && 上级预演.reasonCode !== 'map_node_unresolved') return { ...上级预演, mode: 'via', target: 目标, via: 上级, mapNode: 上级 };
+    }
+    return { ...(直达 || {}), ok: false, target: 目标, reason: '星图上定位不到这个地点' };
+  }
+  async function 座舱动作预演异步(名称, 参数 = {}) {
+    try {
+      if (名称 === 'travel') return await 座舱规划移动(参数);
+    } catch (错误) {
+      return { ok: false, reason: 错误 && 错误.message ? 错误.message : String(错误) };
+    }
+    return 座舱动作预演(名称, 参数);
+  }
+  // 原项目物品 / 技能执行器（EquipmentManager）成败只靠 toast 提示、不返回值：执行期间截下提示转交座舱显示，避免两处各报一次
+  async function 座舱截取提示(执行) {
+    const 提示 = window.MVU_Toast, 原方法 = 提示 && 提示.show, 记录 = [];
+    if (提示 && typeof 原方法 === 'function') 提示.show = (文本, 类型 = 'info') => { 记录.push({ 文本: toText(文本, ''), 类型: toText(类型, 'info') }); };
+    try {
+      await 执行();
+    } finally {
+      if (提示 && typeof 原方法 === 'function') 提示.show = 原方法;
+    }
+    const 错误 = 记录.find(项 => /error|warn/i.test(项.类型));
+    return 错误 ? { ok: false, message: 错误.文本 || '操作失败' } : { ok: true, message: (记录[记录.length - 1] || {}).文本 || '' };
+  }
+  async function 座舱执行动作(名称, 参数 = {}) {
+    const 快照 = liveSnapshot;
+    if (!快照 || !快照.rootData) return { ok: false, message: '状态未就绪' };
+    if (!isSnapshotPlayerControlled(快照)) return { ok: false, message: '旁观视角不可操作。' };
+    try {
+      switch (名称) {
+        case 'quest': {
+          const 数据 = buildQuestDispatchRequest(快照, toText(参数.kind, ''), { questName: toText(参数.quest, ''), progressAdd: 1, requiredCount: 1 });
+          if (!数据) return { ok: false, message: '任务操作参数不完整。' };
+          // dryRun：只构建请求不派发（验收用）
+          if (参数.dryRun) return { ok: true, message: 数据.requestKind, request: { requestKind: 数据.requestKind, patchOps: 数据.patchOps } };
+          if (数据.openProfession && 数据.professionRequest) { 执行副职业工坊打开路由(快照, 数据.professionRequest); return { ok: true, message: '已打开工坊' }; }
+          return 座舱请求结果(await dispatchUiAiRequest(数据.playerInput, 数据.systemPrompt, { requestKind: 数据.requestKind, patchOps: 数据.patchOps }));
+        }
+        case 'trade': {
+          const 捕获 = await buildInlineTradeAction(快照, {
+            动作: toText(参数.动作, '购买'), 目标: toText(参数.目标, ''), 物品: toText(参数.物品, ''),
+            数量: Math.max(1, toNumber(参数.数量, 1)), 价格: Math.max(0, toNumber(参数.价格, 0)), 自动执行: true,
+          });
+          if (!捕获.ok) return { ok: false, message: toText(捕获.reason, '交易未通过校验') };
+          const 动作 = 捕获.inlineAction;
+          if (参数.dryRun) return { ok: true, message: 动作.requestKind, request: { requestKind: 动作.requestKind, 交易参数: 动作.交易参数, patchOps: 动作.patchOps } };
+          return 座舱请求结果(await dispatchUiAiRequest(动作.playerInput, 动作.systemPrompt, {
+            requestKind: 动作.requestKind, patchOps: 动作.patchOps, privilegeID: 动作.privilegeID, privilegeCost: 动作.privilegeCost, 交易参数: 动作.交易参数,
+          }));
+        }
+        case 'routine': {
+          const 结果 = await statusRoutineActions.executeRoutineAction(座舱日常动作参数(参数));
+          return { ok: !!(结果 && 结果.ok), message: toText(结果 && 结果.message, 结果 && 结果.ok ? '已结算' : '行动失败') };
+        }
+        case 'travel': {
+          const 规划 = await 座舱规划移动(参数);
+          if (!规划.ok || 规划.alreadyThere || 规划.canAfford === false) return { ok: false, message: 规划.alreadyThere ? '已经在这里了' : toText(规划.reason, '现在去不了') };
+          if (规划.mode === 'local') {
+            const 请求 = 解析移动模块意图请求(快照, { 目标地点: 规划.target, 归属父节点: (参数.path || []).slice(-2, -1)[0] || '', 移动方式: '步行' });
+            const 结果 = await 执行移动模块意图路由(快照, 请求);
+            if (!结果 || 结果.reason) return { ok: false, message: toText(结果 && 结果.reason, '移动未结算') };
+            // 与星图移动一致：位置与消耗已由前端结算，正文只写路途与到达
+            const 耗时 = toText(结果.durationText, '');
+            Promise.resolve(dispatchUiAiRequest(
+              `[启程前往] 步行前往【${规划.target}】${耗时 ? `，预计耗时${耗时}` : ''}`,
+              `[前端仲裁器说明]\n以下内容为系统后台已完成位置、坐标与资源消耗结算的仲裁结果；移动耗时仅作为本轮时间裁定的输入，世界时间由剧情推进任务统一结算。\n请仅将以下仲裁结论转写成自然剧情，描写路途见闻、到达环境与角色反应即可。不要输出 UpdateVariable，不要再次改写位置、坐标或资源消耗。\n\n[系统仲裁] 城内移动已由前端结算位置与资源结果。玩家步行${耗时 ? `，经过 ${耗时} 的路程` : ''}，现已抵达新地点：【${规划.target}】。`,
+              { requestKind: 'map_travel_settled' },
+            )).catch(() => {});
+            return { ok: true, message: `已抵达${规划.target}` };
+          }
+          const 结果 = await window.__sheepMapBridge.travelToNode(规划.mapNode, { method: toText(规划.method, '') });
+          if (结果 && 结果.ok === false) return { ok: false, message: toText(结果.reason, '移动未结算') };
+          return { ok: true, message: 规划.mode === 'via' ? `已出发前往${规划.via}` : `已出发前往${规划.target}` };
+        }
+        case 'tower':
+        case 'ascension': {
+          const 当前位置 = toText(deepGet(快照, 'activeChar.状态.位置', 快照.currentLoc), 快照.currentLoc);
+          window.dispatchEvent(new CustomEvent('map-action-dispatch', { detail: {
+            action: 名称, ticketName: toText(参数.ticket, ''), floor: Math.max(1, toNumber(参数.floor, getDefaultSoulTowerChallengeFloor(快照))),
+            currentLoc: 当前位置, target: 当前位置, services: [], source: 'trial_console',
+          } }));
+          return { ok: true, message: '已发起，入场结算见正文' };
+        }
+        case 'npc': {
+          const 对象 = toText(参数.npc, ''), 动作 = toText(参数.op, '');
+          if (!对象 || !['talk', 'intel', 'brief', 'battle', 'trade', 'commission'].includes(动作)) return { ok: false, message: '互动参数不完整。' };
+          const 当前位置 = toText(deepGet(快照, 'activeChar.状态.位置', 快照.currentLoc), 快照.currentLoc);
+          window.dispatchEvent(new CustomEvent('map-action-dispatch', { detail: {
+            action: 动作 === 'commission' ? 'craft' : 动作, target: 当前位置, currentLoc: 当前位置, services: [],
+            npcTarget: 对象, npcTargets: [对象], executorType: 动作 === 'commission' ? 'private' : undefined, source: 'cockpit_place',
+          } }));
+          return { ok: true, message: { talk: '已发起对话', intel: '已发起请教', brief: '已发起汇报' }[动作] || '' };
+        }
+        case 'item': {
+          const 管理器 = window.EquipmentManager, 角色 = toText(快照.activeName, ''), 物品 = toText(参数.item, '');
+          if (!管理器) return { ok: false, message: '物品执行器未就绪' };
+          if (参数.op === 'use') return 座舱截取提示(() => 管理器.performUse(角色, 物品));
+          if (参数.op === 'equip') return 座舱截取提示(() => 管理器.performEquip(角色, 物品));
+          if (参数.op === 'unequip') {
+            // 卸下前核对：槽位里确实是这件（魂导器按装配位名称查）
+            const 装备 = deepGet(快照, 'activeChar.装备', {}) || {};
+            const 槽内名 = 参数.slot === '魂导器'
+              ? Object.values(deepGet(装备, '魂导器.装配', {}) || {}).map(位 => toText(位 && 位.名称, '')).find(名 => 名 === 物品) || ''
+              : toText(deepGet(装备, [toText(参数.slot, ''), '名称'], ''), '');
+            if (!物品 || 物品 === '无' || 槽内名 !== 物品) return { ok: false, message: `${toText(参数.slot, '该槽位')}里没有「${物品 || '物品'}」。` };
+            return 座舱截取提示(() => 管理器.performUnequip(角色, 座舱卸装类型[参数.slot] || toText(参数.slot, ''), 物品));
+          }
+          if (参数.op === 'discard') return 座舱截取提示(() => 管理器.performDiscard(角色, 物品, 参数.mode === 'all' ? 'all' : 'one'));
+          return { ok: false, message: '未知的物品操作' };
+        }
+        case 'skill': {
+          const 状态 = 座舱技能场外施展状态(参数.path);
+          if (!状态.kind || 状态.cooling) return { ok: false, message: 状态.reason };
+          const 管理器 = window.EquipmentManager;
+          if (!管理器) return { ok: false, message: '技能执行器未就绪' };
+          return 座舱截取提示(() => 状态.kind === 'construct' ? 管理器.performConstructSkillUse(参数.path) : 管理器.performDailyWritebackSkillUse(参数.path));
+        }
+        case 'workshop': {
+          const 结果 = 执行副职业工坊打开路由(快照, { 模式: toText(参数.mode, 'forge'), 副职业: toText(参数.job, '') });
+          const 失败 = !结果 || 结果.ok === false || 结果.dispatchMode === 'failed_summary';
+          return { ok: !失败, message: 失败 ? toText(结果 && 结果.reason, '工坊打开失败') : '' };
+        }
+        case 'ring': {
+          if (参数.op === 'defer') { await handlePendingSoulRingDefer(快照); return { ok: true, message: '已暂缓' }; }
+          renderUnifiedInlinePreview(PENDING_SOUL_RING_PREVIEW_KEY);
+          return { ok: true, message: '' };
+        }
+        case 'deleteChar': {
+          const 角色键 = resolveSnapshotCharKey(快照, toText(参数.char, '')), 角色数据 = deepGet(快照, ['rootData', 'char', 角色键], null);
+          if (!角色键 || !角色数据 || typeof 角色数据 !== 'object') return { ok: false, message: '角色不存在。' };
+          if (!判断角色允许删除(角色键, 角色数据, 快照)) return { ok: false, message: '该角色不可删除。' };
+          const 显示名 = toText(角色数据.name || deepGet(角色数据, 'base.name', ''), 角色键);
+          await mutateStatDataByEditor(statData => {
+            if (!deepGet(statData, ['char', 角色键], null)) throw new Error('角色不存在。');
+            清理被删角色引用(statData, 角色键, 显示名);
+            delete statData.char[角色键];
+            deepSetMutable(statData, ['sys', '系统播报'], `[角色管理] 已删除角色【${显示名}】。`);
+          });
+          return { ok: true, message: '已删除角色' };
+        }
+        case 'battle': {
+          if (typeof window.__MVU_OPEN_BATTLE_UI__ === 'function') window.__MVU_OPEN_BATTLE_UI__();
+          return { ok: true, message: '' };
+        }
+        default:
+          return { ok: false, message: `未知的动作：${名称}` };
+      }
+    } catch (错误) {
+      return { ok: false, message: 错误 && 错误.message ? 错误.message : String(错误) };
+    }
+  }
   const 座舱适配器 = {
     getRoot: () => deepGet(liveSnapshot, 'rootData', null),
     activeName: () => toText(deepGet(liveSnapshot, 'activeName', ''), ''),
@@ -40138,6 +40378,14 @@
       });
     }),
     toast: (文本, 类型 = 'info') => showUiToast(文本, 类型, 3600),
+    preview: (名称, 参数) => 座舱动作预演(名称, 参数),
+    previewAsync: (名称, 参数) => 座舱动作预演异步(名称, 参数),
+    act: (名称, 参数) => 座舱执行动作(名称, 参数),
+    // 私密档案入口规则不变：只借用已有内容挂长按（见 canOpenPrivateArchive 注释）
+    privateArchiveAllowed: () => canOpenPrivateArchive(liveSnapshot),
+    privateArchiveKey: '私密档案详细页',
+    // 战斗进行中但终端被收起时，座舱给出返回入口
+    battleActive: () => !!deepGet(liveSnapshot, 'rootData.world.战斗.进行中', false),
   };
   function 同步座舱可见性(详情键 = getEffectiveUnifiedPreviewKey()) {
     const 挂载点 = document.getElementById('mvu-unified-mount');
@@ -54161,7 +54409,8 @@ ${播报文本}
     return { ok: true, settled: true, ...补丁结果, worldContextProjection: 读取世界动作投影_桥接(contextResult.context) };
   }
 
-  async function 执行移动模块意图路由(snapshot, request = {}) {
+  // options.dryRun：只构建补丁与消耗、不写回（座舱出发前预演用）
+  async function 执行移动模块意图路由(snapshot, request = {}, options = {}) {
     if (!request || request.invalid)
       return 构建模块路由失败结果('travel', request, request?.reason || 'travel_request_invalid');
     const contextResult = 读取世界动作上下文_桥接(snapshot, request, 'travel');
@@ -54218,6 +54467,16 @@ ${播报文本}
         return 构建模块路由失败结果('travel', request, 准入扣除.reason || '准入凭证不足', { result });
       }
       补丁结果.patchOps = [...准入扣除.patchOps, ...补丁结果.patchOps];
+      if (options && options.dryRun) {
+        return 构建模块路由成功结果('travel', request, {
+          dryRun: true,
+          patchOps: 补丁结果.patchOps,
+          finalLocName: 补丁结果.finalLocName,
+          cost: 补丁结果.cost || 补丁结果.mapRequest?.costs,
+          durationText: 补丁结果.mapRequest?.est_duration,
+          moveKind: 补丁结果.moveKind,
+        });
+      }
       try {
         await applyJsonPatchOpsByEditor(补丁结果.patchOps, { force: true });
         登记本轮移动结算路径(补丁结果.patchOps.map(patch => decodeJsonPointerPath(patch.path)).filter(path => path.length));
@@ -54253,6 +54512,15 @@ ${播报文本}
       return 构建模块路由失败结果('travel', request, 准入扣除.reason || '准入凭证不足');
     }
     补丁结果.patchOps = [...准入扣除.patchOps, ...补丁结果.patchOps];
+    if (options && options.dryRun) {
+      return 构建模块路由成功结果('travel', request, {
+        dryRun: true,
+        patchOps: 补丁结果.patchOps,
+        finalLocName: 补丁结果.finalLocName,
+        cost: 补丁结果.cost,
+        durationText: 格式化tick时长文本_桥接(request.耗时tick),
+      });
+    }
     try {
       await applyJsonPatchOpsByEditor(补丁结果.patchOps, { force: true });
       登记本轮移动结算路径(补丁结果.patchOps.map(patch => decodeJsonPointerPath(patch.path)).filter(path => path.length));
@@ -59647,7 +59915,8 @@ ${播报文本}
         if (targetType === 'mech') {
           const mech = 装备数据.机甲 || {};
           const mechName = toText(mech.名称 || mech['名称'] || mech.型号, '');
-          if (!mechName) throw new Error('当前没有已装载的机甲。');
+          // 空槽的占位名「无」不是装备
+          if (!mechName || mechName === '无') throw new Error('当前没有已装载的机甲。');
           this.queueInventoryAdd(patches, charPath, inventoryBuffer, mechName, mech);
           patches.push({ op: 'replace', path: `${charPath}/装备/机甲`, value: {} });
           await this.submitPatch(patches, `已卸下机甲 ${mechName}`);
@@ -59657,7 +59926,7 @@ ${播报文本}
         if (targetType === 'wpn') {
           const weapon = 装备数据.武器 || {};
           const weaponName = toText(weapon.名称 || weapon['名称'], '');
-          if (!weaponName) throw new Error('当前没有已装备的主武器。');
+          if (!weaponName || weaponName === '无') throw new Error('当前没有已装备的主武器。');
           this.queueInventoryAdd(patches, charPath, inventoryBuffer, weaponName, weapon);
           patches.push({ op: 'replace', path: `${charPath}/装备/武器`, value: {} });
           await this.submitPatch(patches, `已卸下主武器 ${weaponName}`);
@@ -59667,7 +59936,7 @@ ${播报文本}
         if (targetType === 'def') {
           const 防具 = 装备数据.防具 || {};
           const 防具名 = toText(防具.名称 || 防具['名称'], '');
-          if (!防具名) throw new Error('当前没有已装备的防具。');
+          if (!防具名 || 防具名 === '无') throw new Error('当前没有已装备的防具。');
           this.queueInventoryAdd(patches, charPath, inventoryBuffer, 防具名, 防具);
           patches.push({ op: 'replace', path: `${charPath}/装备/防具`, value: {} });
           await this.submitPatch(patches, `已卸下防具 ${防具名}`);
@@ -73839,6 +74108,13 @@ ${播报文本}
     write,
     rt,
     library,
+    // 动作：lwcs 交给桥接调原项目执行函数，返回 { ok, message }；原型页没有运行时
+    act: async (name, payload = {}) => { if (!ADP?.act) return { ok: true, message: '原型页：未连接运行时' }; try { return await ADP.act(name, payload) || { ok: true, message: '' }; } catch (err) { return { ok: false, message: err?.message || String(err) }; } },
+    preview: (name, payload = {}) => { try { return ADP?.preview?.(name, payload) ?? null; } catch (err) { return { ok: false, allowed: false, reason: err?.message || String(err) }; } },
+    // 需要先同步运行时状态的预演（如移动要先刷新星图节点表）；没有异步实现时退回同步预演
+    previewAsync: async (name, payload = {}) => { try { return (await (ADP?.previewAsync ? ADP.previewAsync(name, payload) : ADP?.preview?.(name, payload))) ?? null; } catch (err) { return { ok: false, allowed: false, reason: err?.message || String(err) }; } },
+    privateArchiveKey: () => (ADP?.privateArchiveAllowed?.() ? ADP.privateArchiveKey : ''),
+    battleActive: () => !!ADP?.battleActive?.(),
     get mounted() { return mounted; },
     refresh() { api.refresh?.(); },
     go(id, page) { api.switchDomain?.(id, page); },
@@ -74372,6 +74648,24 @@ ${播报文本}
   addEventListener('scroll', e => { if (pickOpen && !pickOpen.list.contains(e.target)) closePick(); }, true);
   addEventListener('resize', () => closePick());
 
+  // 确认条 / 结果条：插在触发按钮旁（翼底主按钮插在上方，免得落到面板外被裁掉）
+  const stripAt = (t, html, cls = '') => {
+    const inPad = t.parentElement.matches('.pad'), host = inPad ? t : t.parentElement;
+    (inPad ? t.parentElement : host.parentElement).querySelector('.confirm-strip')?.remove();
+    host.insertAdjacentHTML(inPad ? 'beforebegin' : 'afterend', `<div class="confirm-strip ${cls}">${html}</div>`);
+    return inPad ? host.previousElementSibling : host.nextElementSibling;
+  };
+  // 执行动作：确认条里显示执行中 → 结果（成功文本 / 失败原因）；没有确认条的直接执行，失败时在按钮旁给原因
+  const runAct = async (spec, strip, from) => {
+    if (strip) { strip.className = 'confirm-strip busy'; strip.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>执行中…</span>'; }
+    if (from) from.disabled = true;
+    const r = await C.act(spec.name, spec);
+    if (from) from.disabled = false;
+    const ok = !!r?.ok, msg = r?.message || (ok ? '' : '执行失败');
+    if (strip?.isConnected) { if (!msg && ok) strip.remove(); else { strip.className = `confirm-strip ${ok ? 'done' : 'fail'}`; strip.innerHTML = `<i class="fa-solid fa-${ok ? 'circle-check' : 'triangle-exclamation'}"></i><span>${esc(msg)}</span>${ok ? '' : '<button class="key-s" type="button" data-confirm-no>知道了</button>'}`; } }
+    else if (!ok && from?.isConnected) stripAt(from, `<i class="fa-solid fa-triangle-exclamation"></i><span>${esc(msg)}</span><button class="key-s" type="button" data-confirm-no>知道了</button>`, 'fail');
+    return r;
+  };
   // 编辑浮窗里的字段后：用新数据重绘浮窗内容，保持钉住与锚点
   function reproject() {
     if (!state.inspect || !floatOpen()) return;
@@ -74394,18 +74688,28 @@ ${播报文本}
       const el = (state.inspect && scanHost.querySelector('[data-inspect].on')) || nearestRing(scanHost, e.clientX, e.clientY);
       if (el) { const [kind, ...rest] = el.dataset.inspect.split(':'); return openInspector(kind, rest.join(':'), el); }
     }
-    const t = e.target.closest('[data-confirm],[data-confirm-go],[data-confirm-no],[data-del-path],[data-inspect],[data-go],[data-view-char],[data-close-inspector],[data-pick],[data-set],[data-clamp],[data-dur]');
+    const t = e.target.closest('[data-confirm],[data-confirm-go],[data-confirm-no],[data-del-path],[data-inspect],[data-go],[data-view-char],[data-close-inspector],[data-pick],[data-set],[data-clamp],[data-dur],[data-act]');
     if (!t) return;
     // 改变状态的操作先确认：展开「将要…」条，写明要做什么，再点「确认」才执行
     if (t.dataset.confirmNo !== undefined) { t.closest('.confirm-strip')?.remove(); return; }
-    if (t.dataset.confirmGo !== undefined) { const strip = t.closest('.confirm-strip'); strip.innerHTML = '<i class="fa-solid fa-circle-check"></i><span>已提交，等待叙事结算</span>'; strip.classList.add('done'); return; }
+    if (t.dataset.confirmGo !== undefined) {
+      const strip = t.closest('.confirm-strip'), spec = strip._act;
+      if (!spec) { strip.innerHTML = `<i class="fa-solid fa-circle-info"></i><span>${ADP ? '这个操作暂未接通' : '已提交，等待叙事结算'}</span>`; strip.classList.add('done'); return; }
+      runAct(spec, strip); return;
+    }
+    // 不能执行：直接给出原因，不出确认
+    if (t.dataset.blocked) { stripAt(t, `<i class="fa-solid fa-ban"></i><span>${esc(t.dataset.blocked)}</span><button class="key-s" type="button" data-confirm-no>知道了</button>`, 'fail'); return; }
     if (t.dataset.confirm) {
       // 按钮直接放在面板里（翼底主按钮）时确认条插在按钮上方，否则插在按钮所在行后面——不能落到面板外被裁掉
       const inPad = t.parentElement.matches('.pad'), host = inPad ? t : t.parentElement;
       (inPad ? t.parentElement : host.parentElement).querySelector('.confirm-strip')?.remove();
       host.insertAdjacentHTML(inPad ? 'beforebegin' : 'afterend', `<div class="confirm-strip"><i class="fa-solid fa-circle-question"></i><span>将要：${esc(t.dataset.confirm)}</span><button class="key-s" type="button" data-confirm-go>确认</button><button class="key-s" type="button" data-confirm-no>取消</button></div>`);
+      const strip = inPad ? host.previousElementSibling : host.nextElementSibling;
+      if (strip && t.dataset.act) { try { strip._act = JSON.parse(t.dataset.act); } catch (err) {} }
       return;
     }
+    // 不需要确认的动作（打开原项目工坊、魂环待选、返回战斗）直接执行
+    if (t.dataset.act) { let spec = null; try { spec = JSON.parse(t.dataset.act); } catch (err) {} if (spec) runAct(spec, null, t); return; }
     // 危险操作原地二次确认：第一次点亮为「再点一次确认删除」，3 秒内再点才执行
     if (t.dataset.delPath) {
       if (!t.classList.contains('armed')) {
@@ -74616,11 +74920,11 @@ ${播报文本}
     const fact = (icon, label, value, dim, title = '') => `<div class="fact ${dim ? 'dim' : ''}" ${title ? `title="${c.esc(title)}"` : ''}><i class="fa-solid fa-${icon}"></i><span>${label}</span><b>${c.esc(value)}</b></div>`;
     return {
       tag: 'CORE · STATUS',
-      core: `<div class="pad home-core">
+      core: `<div class="pad home-core">${window.COCKPIT.battleActive?.() ? `<div class="banner battle-back"><i class="fa-solid fa-khanda"></i><div><strong>战斗进行中</strong></div><button class="key-s" type="button" data-act='{"name":"battle"}'>返回战斗</button></div>` : ''}
         <div class="home-top">
         <div class="id-row">${avatarBlock(c)}
           <div class="who">
-            <div class="name-line"><h1 class="name">${c.esc(c.name)}</h1>${genderMark(st.性别) || c.num(st.年龄) ? `<span class="gender ${st.性别 === '女' ? 'f' : st.性别 === '男' ? 'm' : ''}" title="${c.esc(st.性别 || '')} · ${c.num(st.年龄)} 岁">${genderMark(st.性别)}<b>${c.ed(c.num(st.年龄) || '?', c.P('属性', '年龄'), { kind: 'number', integer: true, min: 0, raw: c.num(st.年龄) })}</b><small>岁</small></span>` : ''}</div>
+            <div class="name-line"><h1 class="name"${(pk => pk ? ` data-longpress="${c.esc(pk)}" data-longpress-delay="600"` : '')(window.COCKPIT.privateArchiveKey?.())}>${c.esc(c.name)}</h1>${genderMark(st.性别) || c.num(st.年龄) ? `<span class="gender ${st.性别 === '女' ? 'f' : st.性别 === '男' ? 'm' : ''}" title="${c.esc(st.性别 || '')} · ${c.num(st.年龄)} 岁">${genderMark(st.性别)}<b>${c.ed(c.num(st.年龄) || '?', c.P('属性', '年龄'), { kind: 'number', integer: true, min: 0, raw: c.num(st.年龄) })}</b><small>岁</small></span>` : ''}</div>
             <div class="title-line">${c.esc(c.rankTitle(st.等级))} · ${c.ed(st.精神境界 || '灵元境', c.P('属性', '精神境界'), { kind: 'enum', options: ['灵元境', '灵通境', '灵海境', '灵渊境', '灵域境', '神元境'] })}</div>
             <div class="plaques">${!c.blank(c.ch.社交?.主身份) ? `<span class="plq">${c.ed(c.ch.社交.主身份, c.P('社交', '主身份'))}</span>` : ''}${st.邪魂师 ? '<span class="plq" style="--pc:#ff4d6a">邪魂师</span>' : ''}</div>
           </div>
@@ -74653,11 +74957,12 @@ ${播报文本}
         <div class="opts" data-pick-group>
           ${[['mug-hot', '休整', '静息调养'], ['bed', '睡眠', '安眠休养'], ['person-praying', '冥想', '凝神修行'], ['dumbbell', '训练', '锤炼身心']].map(([ic, t, s], i) => `<button class="opt ${i === 0 ? 'on' : ''}" type="button" data-pick aria-pressed="${i === 0}"><i class="fa-solid fa-${ic}"></i>${t}<small>${s}</small></button>`).join('')}
         </div>
+        <div class="train-pick chips-row" data-pick-group hidden>${['力量', '防御', '敏捷', '体魄', '精神'].map((p, i) => `<button class="key-s${i ? '' : ' on'}" type="button" data-pick data-project="${p}" aria-pressed="${!i}">${p}</button>`).join('')}</div>
         <div class="plan" data-dur-box>
           <div class="dur"><button type="button" data-dur="-10" aria-label="减少十分钟">−</button><output data-min="60">60 分钟</output><button type="button" data-dur="10" aria-label="增加十分钟">＋</button></div>
           <div class="plan-end"><i class="fa-regular fa-clock"></i><span>结束于</span><b data-dur-end>${endAt(c, 60)}</b></div>
         </div>
-        ${placeKnown(c) ? `<button class="cta" type="button" data-routine data-hint="按所选行动与时长预演体力、魂力等变化后结算"><i class="fa-solid fa-play"></i>开始行动</button>`
+        ${placeKnown(c) || c.rt('__LWCS_ERA_RUNTIME_INTEGRATION_V1__') ? `<button class="cta" type="button" data-routine data-hint="按所选行动与时长预演体力、魂力等变化后结算"><i class="fa-solid fa-play"></i>开始行动</button>`
           : `<div class="warn"><i class="fa-solid fa-triangle-exclamation"></i><span>当前位置「${c.esc(where(c))}」未能识别，暂时无法预演行动效果。</span></div>
         <button class="cta" type="button" disabled><i class="fa-solid fa-lock"></i>暂不可行动</button>`}
       </div>`,
@@ -74907,7 +75212,7 @@ ${播报文本}
         <div class="tile">${c.sock('location-dot')}<b>${c.esc(String(x.状态?.位置 || '未知').replace(/^斗罗大陆-/, '').replace(/-/g, ' · '))}</b><small>所在</small></div>
       </div>
       <div class="acts"><button class="cta" type="button" data-view-char="${c.esc(name)}"${name === c.name ? ' disabled' : ''}><i class="fa-solid fa-eye"></i>${name === c.name ? '正在查看' : '切换查看'}</button>
-      ${name !== c.player && name !== c.name ? `<button class="key-s danger" type="button" data-del-path="${c.esc(JSON.stringify(['char', name]))}"><i class="fa-solid fa-trash"></i> 删除角色</button>` : ''}</div>`;
+      ${name !== c.player && name !== c.name ? `<button class="key-s danger" type="button" data-confirm="${c.esc(`删除角色「${name}」，并清理其他角色关系表里对它的引用`)}" data-act="${c.esc(JSON.stringify({ name: 'deleteChar', char: name }))}"><i class="fa-solid fa-trash"></i> 删除角色</button>` : ''}</div>`;
   };
 
   document.addEventListener('click', e => {
@@ -74930,12 +75235,19 @@ ${播报文本}
     }
   });
 
-  // 日常行动：点下时把所选行动与时长写进原地确认条（真实预演与结算移植时接原项目）
+  // 日常行动：点下时先调原项目预演（克隆结算 + 差异），能行动就把变化写进确认条，确认后由原项目执行；不能行动直接给原因
   document.addEventListener('click', e => {
+    const opt = e.target.closest('.opts .opt'); if (opt) { const pick = opt.closest('.pad')?.querySelector('.train-pick'); if (pick) pick.hidden = !/训练/.test(opt.textContent); }
     const t = e.target.closest('[data-routine]'); if (!t) return;
-    const box = t.closest('.pad'), opt = box?.querySelector('.opt.on')?.childNodes[1]?.textContent?.trim() || '休整';
-    const min = Number(box?.querySelector('[data-dur-box] output')?.dataset.min) || 60;
-    t.dataset.confirm = `${opt} ${min} 分钟，结束于 ${window.COCKPIT.endAt(window.COCKPIT.ctx(), min)}`;
+    const box = t.closest('.pad'), action = box?.querySelector('.opt.on')?.childNodes[1]?.textContent?.trim() || '休整';
+    const minutes = Number(box?.querySelector('[data-dur-box] output')?.dataset.min) || 60, project = box?.querySelector('.train-pick [data-pick].on')?.dataset.project || '力量';
+    const label = `${action}${action === '训练' ? '·' + project : ''} ${minutes} 分钟，结束于 ${window.COCKPIT.endAt(window.COCKPIT.ctx(), minutes)}`;
+    delete t.dataset.blocked;
+    const p = window.COCKPIT.preview('routine', { action, minutes, project });
+    if (p && p.allowed === false) { t.dataset.blocked = p.reason || '当前不能进行这项行动'; delete t.dataset.confirm; delete t.dataset.act; return; }
+    const changes = (p?.changes || []).map(x => `${x.label} ${x.before} → ${x.after}`).join('，');
+    t.dataset.confirm = changes ? `${label}；${changes}` : label;
+    t.dataset.act = JSON.stringify({ name: 'routine', action, minutes, project });
   }, true);
 
   window.COCKPIT.register('page-archive', {
@@ -76800,8 +77112,32 @@ ${播报文本}
       ${page ? '' : `<div style="display:flex;gap:.4em">${castBtn(c, sk, ' style="flex:1;font-size:.95em;margin:0"')}${sk.group === '复制效果' ? '' : `<button class="key-s" type="button" data-go="page-ability/design" data-go-set="skill=${c.esc(sk.key)};dtab=basic"><i class="fa-solid fa-pen-ruler"></i> 设计</button>`}</div>`}`;
   };
   // 日常施展：被动 / 血脉特性是常驻效果，不给施放；魂力不够时锁定并在悬停说明；可施放的走原地确认条（结算由叙事 / 运行时）
+  // 技能在存档里的路径（原项目场外施展执行器按路径定位技能）；来自物品定义的装备 / 魂骨技能没有角色路径，不能场外施展
+  const skillPath = (c, sk) => {
+    const k = String(sk.key || '').split('/'), P = (...p) => ['char', c.name, ...p];
+    switch (sk.group) {
+      case '魂环魂技': return P(...k);
+      case '自创魂技': return P('自创魂技', k.slice(1).join('/'));
+      case '魂骨附带': case '装备技能': return sk.srcPath?.[0] === 'char' ? sk.srcPath : null;
+      case '血脉散技': return P('血脉之力', '技能', k.slice(1).join('/'));
+      case '血脉魂环': return P('血脉之力', k[1], k.slice(2).join('/'));
+      case '复制效果': return P('复制效果', k[1], '技能列表', k.slice(2).join('/'));
+      case '武魂融合技': return P('武魂融合技', k.slice(1).join('/'), '技能数据');
+      default: return null;
+    }
+  };
   const castBtn = (c, sk, extra = '') => {
     if (sk.承载方式 === '被动' || sk.group === '血脉特性') return `<button class="cta" type="button" disabled${extra}><i class="fa-solid fa-infinity"></i>被动生效</button>`;
+    const lock = (label, why, icon = 'hand-sparkles') => `<span class="cta-wrap" data-hint="${c.esc(why)}"><button class="cta" type="button" disabled${extra}><i class="fa-solid fa-${icon}"></i>${label}</button></span>`;
+    const path = skillPath(c, sk), st = path ? window.COCKPIT.preview('skill', { path }) : null;
+    // lwcs：与原项目技能卡同一判定
+    if (st) {
+      if (!st.kind) return lock('战斗中施展', st.reason || '这个技能只能在战斗中施展', 'khanda');
+      const label = st.kind === 'construct' ? '日常施展' : '使用';
+      if (st.cooling) return lock('冷却中', st.reason, 'hourglass-half');
+      return `<button class="cta" type="button"${extra} data-confirm="${c.esc(`${label}「${sk.魂技名}」`)}" data-act="${c.esc(JSON.stringify({ name: 'skill', path }))}"><i class="fa-solid fa-hand-sparkles"></i>${label}</button>`;
+    }
+    if (window.COCKPIT.rt('__LWCS_ERA_RUNTIME_INTEGRATION_V1__') && !path) return lock('日常施展', '这个技能来自物品定义，装备后在角色身上施展');
     const sp = typeof sk.消耗 === 'object' ? c.num(sk.消耗?.魂力) : 0, short = sp > 0 && c.num(c.st.魂力) < sp;
     const btn = `<button class="cta" type="button"${extra}${short ? ' disabled' : ` data-confirm="${c.esc(`日常施展「${sk.魂技名}」${sp ? `，消耗魂力 ${c.fmt(sp)}` : ''}`)}"`}><i class="fa-solid fa-hand-sparkles"></i>日常施展</button>`;
     return short ? `<span class="cta-wrap" data-hint="魂力不足：需要 ${c.fmt(sp)}">${btn}</span>` : btn;
@@ -76840,7 +77176,7 @@ ${播报文本}
       </div>`,
       core: `<div class="pad detail martial-core">
         <div class="q-title">${c.sock('fire', 'gd')}<span class="chip">${c.esc(soul.slot)}</span><h2>${c.esc(soul.表象名称)}</h2></div>
-        ${pendRing ? `<div class="banner"><i class="fa-solid fa-circle-plus"></i><div><strong>有一枚待生成的魂环</strong><small>${c.esc(Object.entries(pendRing).slice(0, 3).map(([k, v]) => `${k} ${typeof v === 'object' ? '' : v}`).join(' · '))}</small></div><button class="key-s" type="button">使用该魂灵生成</button><button class="key-s" type="button">暂不生成</button></div>` : ''}
+        ${pendRing ? `<div class="banner"><i class="fa-solid fa-circle-plus"></i><div><strong>有一枚待生成的魂环</strong><small>${c.esc(Object.entries(pendRing).slice(0, 3).map(([k, v]) => `${k} ${typeof v === 'object' ? '' : v}`).join(' · '))}</small></div><button class="key-s" type="button" data-act='{"name":"ring","op":"open"}'>选择魂灵生成</button><button class="key-s" type="button" data-confirm="暂缓生成这枚魂环" data-act='{"name":"ring","op":"defer"}'>暂不生成</button></div>` : ''}
         ${tags.length ? `<div class="plaques">${tags.map((t, i) => `<span class="plq${i ? ' steel' : ''}">${c.esc(t)}</span>`).join('')}</div>` : ''}
         <p class="narr">${c.ed(c.blank(soul.描述) ? '未记录' : soul.描述, [...c.P(soul.slot), '描述'], { kind: 'text', raw: c.blank(soul.描述) ? '' : soul.描述 })}</p>
         ${soul.rings.length ? `<div class="soul-card" data-scan data-float="r"><div class="soul-stage">${c.ringStage(soul.rings, r => { const p = soul.spirits.find(x => x.rings.includes(r)), sk = r.skills[0]; return p && sk ? `data-inspect="sk:${c.esc(`${soul.slot}/${p.slot}/${r.slot}/${sk.slot}`)}"` : ''; })}</div></div>`
@@ -77097,8 +77433,9 @@ ${播报文本}
   };
   const itemActs = (c, name) => {
     const o = itemOf(c, name); if (!o) return '';
-    return `<div class="acts">${o.usable ? `<button class="cta" type="button" data-confirm="使用 ${c.esc(name)} ×1，效果由叙事结算"><i class="fa-solid fa-hand-sparkles"></i>使用</button>` : ''}
-      <div class="act-row">${o.equipable ? `<button class="key-s" type="button" data-confirm="装备 ${c.esc(name)}"><i class="fa-solid fa-shield-halved"></i> 装备</button>` : ''}${o.total > 1 ? `<button class="key-s danger" type="button" data-drop-one="${c.esc(name)}"><i class="fa-solid fa-minus"></i> 丢弃 1 件</button>` : ''}<button class="key-s danger" type="button" data-del-path="${c.esc(JSON.stringify(c.P('背包', name)))}"><i class="fa-solid fa-trash"></i> ${o.total > 1 ? '全部丢弃' : '丢弃'}</button></div></div>`;
+    const act = x => `data-act="${c.esc(JSON.stringify({ name: 'item', item: name, ...x }))}"`;
+    return `<div class="acts">${o.usable ? `<button class="cta" type="button" data-confirm="使用 ${c.esc(name)} ×1" ${act({ op: 'use' })}><i class="fa-solid fa-hand-sparkles"></i>使用</button>` : ''}
+      <div class="act-row">${o.equipable ? `<button class="key-s" type="button" data-confirm="装备 ${c.esc(name)}" ${act({ op: 'equip' })}><i class="fa-solid fa-shield-halved"></i> 装备</button>` : ''}${o.total > 1 ? `<button class="key-s danger" type="button" data-confirm="丢弃 1 件 ${c.esc(name)}" ${act({ op: 'discard', mode: 'one' })}><i class="fa-solid fa-minus"></i> 丢弃 1 件</button>` : ''}<button class="key-s danger" type="button" data-confirm="${o.total > 1 ? `全部丢弃 ${c.esc(name)}（${o.total} 件）` : `丢弃 ${c.esc(name)}`}" ${act({ op: 'discard', mode: 'all' })}><i class="fa-solid fa-trash"></i> ${o.total > 1 ? '全部丢弃' : '丢弃'}</button></div></div>`;
   };
 
   // 三页同一结构：左翼选（挂点 / 魂骨位 / 物品），主屏是选中项的完整档案与编辑，右翼是汇总与操作
@@ -77119,7 +77456,7 @@ ${播报文本}
         ${Object.values(bonus).some(v => v) ? `<div class="tiles">${Object.entries(bonus).filter(([, v]) => v).map(([k, v]) => `<div class="tile">${c.sock('arrow-trend-up')}<b class="plus">+${c.fmt(v)}</b><small>${k}</small></div>`).join('')}</div>` : c.empty('bolt', '暂无武装加成')}
         <section class="sec"><h3>温养<span class="en">Nurture</span>${c.hint('斗铠 / 机甲的温养进度由运行时投影。')}</h3>${warm ? `<div class="relic-card">${c.sock('temperature-half', 'gd')}<div><strong>${c.esc(warm)}</strong><small>温养中</small></div></div>` : '<span class="lbl">没有温养目标</span>'}${eq.斗铠?._已排异 ? '<span class="plq" style="--pc:#ff4d6a">斗铠已排异</span>' : ''}</section>
         <div class="groove"></div>${c.head('hand-pointer', '操作', 'Actions')}
-        <div class="act-row"><button class="key-s" type="button" data-go="page-supplies/pack"><i class="fa-solid fa-box-open"></i> 从背包换装</button>${sel.k !== '魂导器' && gearSkills(c, eq[sel.k]).length ? '<button class="key-s" type="button" data-go="page-ability/codex"><i class="fa-solid fa-book"></i> 技能图鉴</button>' : ''}</div>
+        <div class="act-row"><button class="key-s" type="button" data-go="page-supplies/pack"><i class="fa-solid fa-box-open"></i> 从背包换装</button>${sel.k !== '魂导器' && filled(selName) ? `<button class="key-s danger" type="button" data-confirm="${c.esc(`卸下${sel.l}「${selName}」，放回背包`)}" data-act="${c.esc(JSON.stringify({ name: 'item', op: 'unequip', slot: sel.k, item: selName }))}"><i class="fa-solid fa-arrow-down"></i> 卸下</button>` : ''}${sel.k !== '魂导器' && gearSkills(c, eq[sel.k]).length ? '<button class="key-s" type="button" data-go="page-ability/codex"><i class="fa-solid fa-book"></i> 技能图鉴</button>' : ''}</div>
       </div>`,
     };
   };
@@ -77178,19 +77515,6 @@ ${播报文本}
     const idx = Number(p[i + 3]), sum = (it.批次 || []).reduce((s, b, j) => s + c.num(j === idx ? e.detail.value : b.数量), 0);
     e.detail.extra.push({ path: [...p.slice(0, i + 2), '数量'], value: sum });
   });
-  document.addEventListener('click', e => {
-    const t = e.target.closest('[data-drop-one]'); if (!t) return;
-    if (!t.classList.contains('armed')) {
-      t.classList.add('armed'); t.dataset.label = t.innerHTML; t.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> 再点一次丢弃 1 件';
-      clearTimeout(t._disarm); t._disarm = setTimeout(() => { t.classList.remove('armed'); t.innerHTML = t.dataset.label; }, 3000); return;
-    }
-    const c = window.COCKPIT.ctx?.(), name = t.dataset.dropOne, it = c?.ch.背包?.[name]; if (!it) return;
-    const next = JSON.parse(JSON.stringify(it)), bs = Array.isArray(next.批次) ? next.批次 : [];
-    if (bs.length) { const last = bs[bs.length - 1]; last.数量 = c.num(last.数量) - 1; if (last.数量 <= 0) bs.pop(); next.数量 = bs.reduce((s, b) => s + c.num(b.数量), 0); }
-    else next.数量 = c.num(next.数量) - 1;
-    if (next.数量 <= 0) window.COCKPIT.closeInspector();
-    window.COCKPIT.write([next.数量 > 0 ? { path: c.P('背包', name), value: next } : { path: c.P('背包', name), del: true }]);
-  });
 
   window.COCKPIT.register('page-supplies', {
     label: '物资', icon: 'cube', tag: 'CORE · ARMORY',
@@ -77222,7 +77546,8 @@ ${播报文本}
   // 底图（子图为全息底板）铺在倾斜平面里；地标不进 3D：平面里只放 0 尺寸锚点，地标画在平面外的 2D 层，
   // 每次平移 / 缩放后按锚点的屏幕位置摆放——大小、文字不随缩放与透视变形，地名牌立在光柱顶上。
   // 子图同原版「进入子图」：坐标契约是「x/y 为直接父节点子图的局部坐标」（与总图同一坐标系尺寸），不改变当前位置
-  const KINDS = [[/学院|学校/, '#b28bff', '学院'], [/宗|总部|据点|分部|组织|军/, '#ff9a62', '势力据点'], [/森林|山|海|岛|湖|原|谷|渊|位面/, '#5ee0ae', '地域'], [/城|都|镇|村/, '#6fb4ff', '城市']];
+  // 城市先判：「沿海城市」「海外首都」「军事城市」这类类型名里带海 / 军字，仍是城市
+  const KINDS = [[/城|都|镇|村/, '#6fb4ff', '城市'], [/学院|学校/, '#b28bff', '学院'], [/宗|总部|据点|分部|组织|军/, '#ff9a62', '势力据点'], [/森林|山|海|岛|湖|原|谷|渊|位面/, '#5ee0ae', '地域']];
   const kindOf = t => KINDS.find(([re]) => re.test(String(t || ''))) || [null, '#cfd8e6', '其他'];
   const pct = (v, total) => (v / total * 100).toFixed(2);
   const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
@@ -77453,13 +77778,60 @@ ${播报文本}
   const npcInspect = (c, kind, name) => {
     const x = c.S.char[name]; if (!x) return '';
     const r = c.ch.社交?.关系?.[name];
-    const acts = [['comments', '对话'], ['circle-question', '请教'], ['hand-fist', '切磋'], ['scale-balanced', '交易'], ['file-signature', '委托'], ['eye', '情报']];
+    // 与原项目星图人物交互同一组动作；对话 / 请教 / 汇报 / 切磋 会推进剧情或开战斗，先确认；交易 / 委托只是打开面板
+    const acts = [['comments', '对话', 'talk', `与${name}对话`], ['circle-question', '请教', 'intel', `向${name}请教`], ['clipboard-list', '汇报', 'brief', `向${name}汇报情况`], ['hand-fist', '切磋', 'battle', `与${name}切磋，打开战斗终端`], ['scale-balanced', '交易', 'trade', ''], ['file-signature', '委托', 'commission', '']];
     return `<div class="insp-head">${c.miniAva(name)}<div><strong style="font-size:1.1em">${c.esc(name)}</strong><br><small class="lbl">Lv.${c.esc(x.属性?.等级)} · ${c.esc(x.第1武魂?.表象名称 || '')}</small></div><button class="x" type="button" data-close-inspector aria-label="关闭">×</button></div>
       ${c.kv([['身份', c.esc(x.社交?.主身份 || '')], ['关系', r ? `${c.esc(r.关系)} · 好感 ${c.fmt(r.好感度)}` : '<span class="dim">尚未结识</span>']])}
-      <div class="opts">${acts.map(([ic, l]) => `<button class="opt" type="button" style="min-height:52px"><i class="fa-solid fa-${ic}"></i>${l}</button>`).join('')}</div>
+      <div class="opts">${acts.map(([ic, l, op, confirm]) => `<button class="opt" type="button" style="min-height:52px"${confirm ? ` data-confirm="${c.esc(confirm)}"` : ''} data-act="${c.esc(JSON.stringify({ name: 'npc', op, npc: name }))}"><i class="fa-solid fa-${ic}"></i>${l}</button>`).join('')}</div>
       <button class="key-s" type="button" data-view-char="${c.esc(name)}" style="align-self:flex-start"><i class="fa-solid fa-id-card"></i> 查看档案</button>`;
   };
 
+  // 目的地在地点树里的路径：总图地点就是自己；所在城市里的地点从城市往下找（库 + 存档）
+  const destPath = (c, dest) => {
+    const city = herePath(c)[0];
+    if (worldNodes(c).some(n => n.name === dest)) return [dest];
+    const row = libRows().find(r => r.path[0] === city && r.path.at(-1) === dest);
+    if (row) return row.path;
+    const walk = (pool, trail) => { for (const [k, v] of Object.entries(pool || {})) { const p = [...trail, k]; if (k === dest) return p; const r = walk(v?.子节点, p); if (r) return r; } return null; };
+    return (city && walk(c.S.world.地点?.[city]?.子节点, [city])) || [dest];
+  };
+  // 移动预演：选定目的地后向运行时取一次（耗时、各移动方式的消耗、能否成行），位置 / 时间 / 资源变了再重取
+  const planKey = (c, dest) => JSON.stringify([c.name, dest, c.ch.状态?.位置, c.S.world?.时间?.tick, c.ch.属性?.魂力, c.ch.属性?.体力]);
+  const planOf = (c, dest) => {
+    const ui = c.state.ui, key = planKey(c, dest);
+    if (ui.travelPlan?.key === key) return ui.travelPlan;
+    if (ui.travelPlanPending !== key) {
+      ui.travelPlanPending = key;
+      window.COCKPIT.previewAsync('travel', { node: dest, path: destPath(c, dest) }).then(data => {
+        if (ui.travelPlanPending !== key) return;
+        ui.travelPlan = { key, data };
+        ui.travelPlanPending = null;
+        window.COCKPIT.refresh();
+      });
+    }
+    return null;
+  };
+  const routeBox = (c, dest) => {
+    const plan = planOf(c, dest), p = plan?.data, ui = c.state.ui;
+    const lockBtn = why => `<span class="cta-wrap" data-hint="${c.esc(why)}"><button class="cta" type="button" disabled><i class="fa-solid fa-person-walking-arrow-right"></i>出发</button></span>`;
+    if (!plan) return `<div class="warn" style="color:var(--ink2);background:rgba(47,124,246,.1);box-shadow:inset 2px 0 0 var(--blue)"><i class="fa-solid fa-route"></i><span>正在规划前往「${c.esc(dest)}」的路线</span></div>${lockBtn('路线规划中')}`;
+    // 原型页没有运行时：只给出发确认
+    if (!p) return `<button class="cta" type="button" data-confirm="${c.esc(`前往「${dest}」`)}"><i class="fa-solid fa-person-walking-arrow-right"></i>出发</button>`;
+    if (p.alreadyThere) return lockBtn('已经在这里了');
+    if (!p.ok) return `<div class="warn"><i class="fa-solid fa-triangle-exclamation"></i><span>${c.esc(p.reason || '现在去不了')}</span></div>${lockBtn(p.reason || '现在去不了')}`;
+    const methods = Array.isArray(p.methods) && p.methods.length ? p.methods : [{ method: p.method, duration: p.duration, costText: p.costText, canAfford: p.canAfford !== false, reason: p.reason }];
+    // 默认方式：运行时默认方式负担得起就用它，否则用第一个负担得起的
+    const pick = (ui.travelMethodFor === dest && methods.find(m => m.method === ui.travelMethod)) || (p.canAfford !== false && methods.find(m => m.method === p.method)) || methods.find(m => m.canAfford) || methods[0];
+    const target = p.mode === 'via' ? p.via : dest;
+    const lead = p.mode === 'via' ? `「${c.esc(dest)}」在「${c.esc(p.via)}」城内，先前往${c.esc(p.via)}${c.hint('抵达后再在城内选择这个地点。')}` : p.mode === 'local' ? `城内前往「${c.esc(dest)}」` : `前往「${c.esc(dest)}」`;
+    const sel = methods.length > 1
+      ? `<span class="lbl">移动方式${c.hint('只列出这段路能用的方式；用不了的注明原因。')}</span><div class="pick-row">${c.pick('travelMethod', pick.method, methods.map(m => ({ value: m.method, label: m.canAfford ? `${m.method} · ${m.duration || ''}` : `${m.method}（${m.reason || '不可用'}）`, hint: m.canAfford ? `消耗 ${m.costText || '无'}` : m.reason })))}</div>`
+      : '';
+    const info = c.kv([['方式', c.esc(pick.method || '步行')], ['耗时', c.esc(pick.duration || '—')], ['消耗', c.esc(pick.costText || '无消耗')]]);
+    const btn = pick.canAfford === false ? lockBtn(pick.reason || '现在去不了')
+      : `<button class="cta" type="button" data-confirm="${c.esc(`前往「${target}」：${[pick.method, pick.duration && `约 ${pick.duration}`, pick.costText && `消耗 ${pick.costText}`].filter(Boolean).join('，')}`)}" data-act="${c.esc(JSON.stringify({ name: 'travel', node: dest, path: destPath(c, dest), method: p.mode === 'local' ? '' : pick.method }))}"><i class="fa-solid fa-person-walking-arrow-right"></i>${p.mode === 'via' ? `前往${c.esc(p.via)}` : '出发'}</button>`;
+    return `<div class="warn" style="color:var(--ink2);background:rgba(47,124,246,.1);box-shadow:inset 2px 0 0 var(--blue)"><i class="fa-solid fa-route"></i><span>${lead}</span></div>${sel}${info}${btn}`;
+  };
   const travel = c => {
     const { city } = nodeOf(c);
     const here = pathOf(c).slice(-1)[0], dest = c.state.ui.dest || '';
@@ -77476,12 +77848,16 @@ ${播报文本}
         ${kids.length ? `<span class="lbl">${c.esc(city[0])} 城内</span><div class="list">${kids.map(k => `<button class="row ${k.name === dest ? 'on' : ''}" type="button" data-set="dest=${c.esc(k.name)}" ${k.name === here ? 'disabled' : ''}><span class="chip s">${c.esc(k.类型 || '')}</span><div><strong>${c.esc(k.name)}</strong>${k.name === here ? '<small>当前位置</small>' : ''}</div><span></span></button>`).join('')}</div>` : ''}
         <span class="lbl">邻近城市</span>
         <div class="list">${near.map(({ n, d }) => `<button class="row ${n.name === dest ? 'on' : ''}" type="button" data-set="dest=${c.esc(n.name)}"><span class="chip s">${c.esc(kindOf(n.类型)[2])}</span><div><strong>${c.esc(n.name)}</strong><small>图上距离 ${Math.round(d)}</small></div><span></span></button>`).join('')}</div>
-        ${dest ? `<div class="warn" style="color:var(--ink2);background:rgba(47,124,246,.1);box-shadow:inset 2px 0 0 var(--blue)"><i class="fa-solid fa-route"></i><span>前往「${c.esc(dest)}」${c.hint('耗时与魂力、体力、财富消耗由运行时预演。')}</span></div>` : `<span class="lbl">未选择目的地${c.hint('选择一个目的地查看移动预演。')}</span>`}
-        ${dest ? `<button class="cta" type="button" data-confirm="${c.esc(`前往「${dest}」，路程耗时与消耗由运行时预演`)}"><i class="fa-solid fa-person-walking-arrow-right"></i>出发</button>`
-          : `<span class="cta-wrap" data-hint="先在星图或上面的列表里选一个目的地"><button class="cta" type="button" disabled><i class="fa-solid fa-person-walking-arrow-right"></i>出发</button></span>`}
+        ${dest ? routeBox(c, dest) : `<span class="lbl">未选择目的地${c.hint('选择一个目的地查看移动预演。')}</span><span class="cta-wrap" data-hint="先在星图或上面的列表里选一个目的地"><button class="cta" type="button" disabled><i class="fa-solid fa-person-walking-arrow-right"></i>出发</button></span>`}
       </div>`,
     };
   };
+
+  document.addEventListener('picker:change', e => {
+    if (e.detail.path !== 'travelMethod') return;
+    const ui = window.COCKPIT.ctx().state.ui; ui.travelMethodFor = ui.dest; ui.travelMethod = e.detail.value;
+    window.COCKPIT.refresh();
+  });
 
   window.COCKPIT.register('page-map', {
     label: '探索', icon: 'compass', tag: 'CORE · STAR MAP',
@@ -77768,7 +78144,7 @@ ${播报文本}
   const trial = c => {
     const tower = c.ch.魂灵塔记录 || {}, top = c.num(tower.最高层), next = Math.min(TOWER_TOP, top + 1), half = tower.当前五折魂灵 || {};
     const here = TOWER.find(z => next >= z.from && next <= z.to) || TOWER[0], zone = TOWER.find(z => z.key === c.state.ui.tzone) || here;
-    const tickets = ticketsOf(c, /魂灵塔门票/), hallTickets = ticketsOf(c, /升灵台门票/);
+    const tickets = ticketsOf(c, /魂灵塔门票/), hallTickets = ticketsOf(c, /升灵台门票/), ticketKey = Object.keys(c.ch.背包 || {}).find(n => /魂灵塔门票/.test(n)) || '';
     const cleared = z => Math.max(0, Math.min(z.to, top) - z.from + 1), span = z => z.to - z.from + 1;
     return {
       tag: 'CORE · TRIAL',
@@ -77796,7 +78172,7 @@ ${播报文本}
         <section class="sec"><h3>组队规则${c.hint(`队伍至多 ${TEAM.size} 人；成员须在 ${TEAM.age} 岁以下，年龄差不超过 ${TEAM.gap} 岁；队友须是已建档角色。`)}</h3>
           <div class="chips-row"><span class="chip s">≤ ${TEAM.size} 人</span><span class="chip s">≤ ${TEAM.age} 岁</span><span class="chip s">年龄差 ≤ ${TEAM.gap}</span></div></section>
         ${half.名称 && !half.已使用 ? '<button class="key-s" type="button" data-go="page-terminal/trade"><i class="fa-solid fa-store"></i> 去特许兑换</button>' : ''}
-        ${tickets ? `<button class="cta" type="button" data-trial-action="climb" data-floor="${next}"><i class="fa-solid fa-dungeon"></i>冲塔 · 第 ${next} 层</button>`
+        ${tickets ? `<button class="cta" type="button" data-trial-action="climb" data-floor="${next}" data-ticket="${c.esc(ticketKey)}"><i class="fa-solid fa-dungeon"></i>冲塔 · 第 ${next} 层</button>`
           : `<button class="cta" type="button" data-go="page-terminal/trade"><i class="fa-solid fa-ticket"></i>购买门票</button>`}
       </div>`,
     };
@@ -77835,7 +78211,7 @@ ${播报文本}
       </div>`,
       right: `<div class="pad">${c.head('bolt', '开工', 'Start')}
         <div class="tiles">${res.map(([k, v]) => `<div class="tile">${c.sock({ 体力: 'person-running', 魂力: 'fire', 精神力: 'brain' }[k])}<b>${c.fmt(v)}</b><small>${k}</small></div>`).join('')}</div>
-        ${(btn => job ? btn : `<span class="cta-wrap" data-hint="还没有学会${w.job}">${btn}</span>`)(`<button class="cta" type="button" data-work="${w.key}"${job ? '' : ' disabled'}><i class="fa-solid fa-${w.icon}"></i>${w.act}</button>`)}
+        ${(why => (btn => why ? `<span class="cta-wrap" data-hint="${c.esc(why)}">${btn}</span>` : btn)(`<button class="cta" type="button" data-work="${w.key}" data-job="${w.job}"${why ? ' disabled' : ''}><i class="fa-solid fa-${w.icon}"></i>${w.act}</button>`))(!job ? `还没有学会${w.job}` : (g => g && g.ok === false ? g.reason : '')(window.COCKPIT.preview('workshop', { mode: w.key, job: w.job })))}
       </div>`,
     };
   };
@@ -77895,9 +78271,12 @@ ${播报文本}
       { id: 'sell', name: '出售', icon: 'hand-holding-dollar', sell: true, goods: Object.entries(c.ch.背包 || {}).map(([g, r]) => ({ id: g, name: g, stock: c.num(r?.数量) || (r?.批次 || []).reduce((s, b) => s + c.num(b.数量), 0) || 1 })) }];
     const v = venues.find(x => x.id === ui.venue) || venues[0], goods = v?.goods || [], g = goods.find(x => x.id === ui.good) || goods[0];
     const [cat, def] = g ? itemDefOf(c, g.name) : ['', null], unit = g ? Math.round(g.price ?? c.num(def?.基础价格) * (g.rate ?? 1)) : 0, cur = def?.默认货币 || '联邦币';
-    const qty = Math.max(1, Math.min(c.num(g?.stock) || 99, c.num(ui.tqty) || 1)), total = unit * qty, have = c.num(coins[cur]);
+    const isBid = v?.id === 'auction', minBid = Math.ceil(unit * 1.05), [bidFor, bidAmt] = String(ui.tbid || '').split('|'), bid = isBid ? Math.max(minBid, bidFor === g?.id ? c.num(bidAmt) : 0) : 0, bidStep = Math.max(1, Math.ceil(unit * .05));
+    const qty = isBid ? 1 : Math.max(1, Math.min(c.num(g?.stock) || 99, c.num(ui.tqty) || 1)), total = isBid ? bid : unit * qty, have = c.num(coins[cur]);
     const myFac = g?.req?.势力 ? c.ch.社交?.势力?.[g.req.势力] : null;
-    const block = !g || v.sell ? '' : have < total ? `${cur}不足` : g.rep && c.num(c.ch.社交?.声望) < g.rep ? `声望不足：需要 ${c.fmt(g.rep)}`
+    // 世界规则门槛（原项目交易模块同一判定）：在不在有商业 / 拍卖设施的地点、营业与否
+    const gate = g ? window.COCKPIT.preview('trade', { 动作: v.sell ? '出售' : isBid ? '竞拍' : '购买', 目标: v.id.startsWith('shop:') ? v.id.slice(5) : '' }) : null;
+    const block = !g ? '' : gate && gate.ok === false ? gate.reason : v.sell ? '' : have < total ? `${cur}不足` : g.rep && c.num(c.ch.社交?.声望) < g.rep ? `声望不足：需要 ${c.fmt(g.rep)}`
       : g.req?.势力 && (!myFac || ((g.req.阶级 || []).length && !g.req.阶级.includes(myFac.身份))) ? `需要${g.req.势力}${(g.req.阶级 || []).length ? g.req.阶级.join('、') : '成员'}身份` : '';
     return {
       tag: 'CORE · MARKET',
@@ -77923,10 +78302,11 @@ ${播报文本}
       right: `<div class="pad">${c.head('receipt', '结算', 'Checkout')}
         <div class="tiles wallet">${(window.COCKPIT.eraCoins || [['联邦币', '联邦币']]).map(([k, l]) => `<div class="tile${k === cur ? '' : ' dim'}">${c.sock('coins', k === cur ? 'gd' : '')}<b>${c.fmt(coins[k] || 0)}</b><small>${l}</small></div>`).join('')}</div>
         ${g ? `<div class="checkout">
-          <div class="co-row"><span>数量</span><span class="dz-num co-qty"><button type="button" class="dz-step" data-set="tqty=${Math.max(1, qty - 1)}" aria-label="减少"><i class="fa-solid fa-minus"></i></button><b>${qty}</b><button type="button" class="dz-step" data-set="tqty=${qty + 1}" aria-label="增加"><i class="fa-solid fa-plus"></i></button></span></div>
+          ${isBid ? `<div class="co-row"><span>出价${c.hint('必须高于当前价；每步加减当前价的 5%。')}</span><span class="dz-num co-qty"><button type="button" class="dz-step" data-set="tbid=${c.esc(g.id)}|${Math.max(minBid, bid - bidStep)}" aria-label="降低出价"><i class="fa-solid fa-minus"></i></button><b>${c.fmt(bid)}</b><button type="button" class="dz-step" data-set="tbid=${c.esc(g.id)}|${bid + bidStep}" aria-label="提高出价"><i class="fa-solid fa-plus"></i></button></span></div>`
+            : `<div class="co-row"><span>数量</span><span class="dz-num co-qty"><button type="button" class="dz-step" data-set="tqty=${Math.max(1, qty - 1)}" aria-label="减少"><i class="fa-solid fa-minus"></i></button><b>${qty}</b><button type="button" class="dz-step" data-set="tqty=${qty + 1}" aria-label="增加"><i class="fa-solid fa-plus"></i></button></span></div>`}
           <div class="co-row total"><span>${v.sell ? '参考收入' : '合计'}</span><b class="${!v.sell && have < total ? 'warn-t' : ''}">${c.fmt(total)} ${cur}</b></div>
         </div>
-        ${v.sell ? `<button class="cta" type="button" data-sell="${c.esc(g.name)}"><i class="fa-solid fa-hand-holding-dollar"></i>出售</button>` : (btn => block ? `<span class="cta-wrap" data-hint="${c.esc(block)}">${btn}</span>` : btn)(`<button class="cta" type="button" data-buy="${c.esc(g.name)}"${block ? ' disabled' : ''}><i class="fa-solid fa-cart-shopping"></i>${v.id === 'auction' ? '出价竞拍' : '确认购买'}</button>`)}` : ''}
+        ${v.sell ? (btn => block ? `<span class="cta-wrap" data-hint="${c.esc(block)}">${btn}</span>` : btn)(`<button class="cta" type="button" data-sell="${c.esc(g.name)}" data-qty="${qty}"${block ? ' disabled' : ''}><i class="fa-solid fa-hand-holding-dollar"></i>出售</button>`) : (btn => block ? `<span class="cta-wrap" data-hint="${c.esc(block)}">${btn}</span>` : btn)(`<button class="cta" type="button" data-buy="${c.esc(g.name)}" data-store="${c.esc(v.id.startsWith('shop:') ? v.id.slice(5) : '')}" data-qty="${qty}" data-price="${isBid ? bid : unit}"${isBid ? ' data-auction="1"' : ''}${block ? ' disabled' : ''}><i class="fa-solid fa-cart-shopping"></i>${v.id === 'auction' ? '出价竞拍' : '确认购买'}</button>`)}` : ''}
       </div>`,
     };
   };
@@ -77981,17 +78361,24 @@ ${播报文本}
     if (k === 'motion') document.querySelector('.cockpit').dataset.motion = val;
   });
 
-  // 行动按钮（接取 / 推进 / 提交 / 放弃、冲塔、开工、购买 / 出售）：原型里统一走原地确认条，写明将要做什么；
-  // 原 data-* 保留，移植时接原项目对应请求（任务走 buildQuestDispatchRequest，其余走各模块）
+  // 行动按钮：捕获阶段写好确认文案与动作规格（data-act），确认后由座舱交给原项目执行——
+  // 任务走 buildQuestDispatchRequest + 叙事请求；冲塔走试炼入场（map-action-dispatch）；买卖 / 竞拍走交易模块的校验与结算；
+  // 工坊不确认，直接打开原项目工坊（选目标 / 材料 / 天数在那里完成）
   const QUEST_VERB = { accept: '接取委托', progress: '推进任务', submit: '提交任务', abandon: '放弃任务' };
   document.addEventListener('click', e => {
     const t = e.target.closest('[data-quest-action],[data-trial-action],[data-work],[data-buy],[data-sell]'); if (!t || t.disabled) return;
-    const box = t.closest('.pad'), qty = box?.querySelector('.co-qty b')?.textContent || '1', total = box?.querySelector('.co-row.total b')?.textContent || '';
-    t.dataset.confirm = t.dataset.questAction ? `${QUEST_VERB[t.dataset.questAction] || '处理任务'}「${t.dataset.questTarget || ''}」`
-      : t.dataset.trialAction ? `挑战魂灵塔第 ${t.dataset.floor} 层`
-      : t.dataset.work ? `${t.textContent.trim()}，开工后选择目标、材料与天数`
-      : t.dataset.buy ? `购买 ${t.dataset.buy} ×${qty}，共 ${total}`
-      : `出售 ${t.dataset.sell} ×${qty}，参考收入 ${total}`;
+    if (t.dataset.work) { delete t.dataset.confirm; t.dataset.act = JSON.stringify({ name: 'workshop', mode: t.dataset.work, job: t.dataset.job || '' }); return; }
+    const total = t.closest('.pad')?.querySelector('.co-row.total b')?.textContent || '', qty = Number(t.dataset.qty) || 1;
+    const spec = t.dataset.questAction ? { name: 'quest', kind: t.dataset.questAction, quest: t.dataset.questTarget || '' }
+      : t.dataset.trialAction ? { name: 'tower', floor: Number(t.dataset.floor) || 1, ticket: t.dataset.ticket || '' }
+      : t.dataset.buy ? { name: 'trade', 动作: t.dataset.auction ? '竞拍' : '购买', 目标: t.dataset.store || '', 物品: t.dataset.buy, 数量: qty, 价格: Number(t.dataset.price) || 0 }
+      : { name: 'trade', 动作: '出售', 物品: t.dataset.sell, 数量: qty };
+    t.dataset.act = JSON.stringify(spec);
+    t.dataset.confirm = spec.name === 'quest' ? `${QUEST_VERB[spec.kind] || '处理任务'}「${spec.quest}」`
+      : spec.name === 'tower' ? `挑战魂灵塔第 ${spec.floor} 层（消耗 ${spec.ticket || '门票'}）`
+      : spec.动作 === '竞拍' ? `出价 ${total} 竞拍 ${spec.物品}`
+      : spec.动作 === '购买' ? `购买 ${spec.物品} ×${qty}，共 ${total}`
+      : `出售 ${spec.物品} ×${qty}，参考收入 ${total}`;
   }, true);
 
   window.COCKPIT.register('page-terminal', {

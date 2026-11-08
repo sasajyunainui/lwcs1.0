@@ -164,6 +164,13 @@
     write,
     rt,
     library,
+    // 动作：lwcs 交给桥接调原项目执行函数，返回 { ok, message }；原型页没有运行时
+    act: async (name, payload = {}) => { if (!ADP?.act) return { ok: true, message: '原型页：未连接运行时' }; try { return await ADP.act(name, payload) || { ok: true, message: '' }; } catch (err) { return { ok: false, message: err?.message || String(err) }; } },
+    preview: (name, payload = {}) => { try { return ADP?.preview?.(name, payload) ?? null; } catch (err) { return { ok: false, allowed: false, reason: err?.message || String(err) }; } },
+    // 需要先同步运行时状态的预演（如移动要先刷新星图节点表）；没有异步实现时退回同步预演
+    previewAsync: async (name, payload = {}) => { try { return (await (ADP?.previewAsync ? ADP.previewAsync(name, payload) : ADP?.preview?.(name, payload))) ?? null; } catch (err) { return { ok: false, allowed: false, reason: err?.message || String(err) }; } },
+    privateArchiveKey: () => (ADP?.privateArchiveAllowed?.() ? ADP.privateArchiveKey : ''),
+    battleActive: () => !!ADP?.battleActive?.(),
     get mounted() { return mounted; },
     refresh() { api.refresh?.(); },
     go(id, page) { api.switchDomain?.(id, page); },
@@ -697,6 +704,24 @@
   addEventListener('scroll', e => { if (pickOpen && !pickOpen.list.contains(e.target)) closePick(); }, true);
   addEventListener('resize', () => closePick());
 
+  // 确认条 / 结果条：插在触发按钮旁（翼底主按钮插在上方，免得落到面板外被裁掉）
+  const stripAt = (t, html, cls = '') => {
+    const inPad = t.parentElement.matches('.pad'), host = inPad ? t : t.parentElement;
+    (inPad ? t.parentElement : host.parentElement).querySelector('.confirm-strip')?.remove();
+    host.insertAdjacentHTML(inPad ? 'beforebegin' : 'afterend', `<div class="confirm-strip ${cls}">${html}</div>`);
+    return inPad ? host.previousElementSibling : host.nextElementSibling;
+  };
+  // 执行动作：确认条里显示执行中 → 结果（成功文本 / 失败原因）；没有确认条的直接执行，失败时在按钮旁给原因
+  const runAct = async (spec, strip, from) => {
+    if (strip) { strip.className = 'confirm-strip busy'; strip.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>执行中…</span>'; }
+    if (from) from.disabled = true;
+    const r = await C.act(spec.name, spec);
+    if (from) from.disabled = false;
+    const ok = !!r?.ok, msg = r?.message || (ok ? '' : '执行失败');
+    if (strip?.isConnected) { if (!msg && ok) strip.remove(); else { strip.className = `confirm-strip ${ok ? 'done' : 'fail'}`; strip.innerHTML = `<i class="fa-solid fa-${ok ? 'circle-check' : 'triangle-exclamation'}"></i><span>${esc(msg)}</span>${ok ? '' : '<button class="key-s" type="button" data-confirm-no>知道了</button>'}`; } }
+    else if (!ok && from?.isConnected) stripAt(from, `<i class="fa-solid fa-triangle-exclamation"></i><span>${esc(msg)}</span><button class="key-s" type="button" data-confirm-no>知道了</button>`, 'fail');
+    return r;
+  };
   // 编辑浮窗里的字段后：用新数据重绘浮窗内容，保持钉住与锚点
   function reproject() {
     if (!state.inspect || !floatOpen()) return;
@@ -719,18 +744,28 @@
       const el = (state.inspect && scanHost.querySelector('[data-inspect].on')) || nearestRing(scanHost, e.clientX, e.clientY);
       if (el) { const [kind, ...rest] = el.dataset.inspect.split(':'); return openInspector(kind, rest.join(':'), el); }
     }
-    const t = e.target.closest('[data-confirm],[data-confirm-go],[data-confirm-no],[data-del-path],[data-inspect],[data-go],[data-view-char],[data-close-inspector],[data-pick],[data-set],[data-clamp],[data-dur]');
+    const t = e.target.closest('[data-confirm],[data-confirm-go],[data-confirm-no],[data-del-path],[data-inspect],[data-go],[data-view-char],[data-close-inspector],[data-pick],[data-set],[data-clamp],[data-dur],[data-act]');
     if (!t) return;
     // 改变状态的操作先确认：展开「将要…」条，写明要做什么，再点「确认」才执行
     if (t.dataset.confirmNo !== undefined) { t.closest('.confirm-strip')?.remove(); return; }
-    if (t.dataset.confirmGo !== undefined) { const strip = t.closest('.confirm-strip'); strip.innerHTML = '<i class="fa-solid fa-circle-check"></i><span>已提交，等待叙事结算</span>'; strip.classList.add('done'); return; }
+    if (t.dataset.confirmGo !== undefined) {
+      const strip = t.closest('.confirm-strip'), spec = strip._act;
+      if (!spec) { strip.innerHTML = `<i class="fa-solid fa-circle-info"></i><span>${ADP ? '这个操作暂未接通' : '已提交，等待叙事结算'}</span>`; strip.classList.add('done'); return; }
+      runAct(spec, strip); return;
+    }
+    // 不能执行：直接给出原因，不出确认
+    if (t.dataset.blocked) { stripAt(t, `<i class="fa-solid fa-ban"></i><span>${esc(t.dataset.blocked)}</span><button class="key-s" type="button" data-confirm-no>知道了</button>`, 'fail'); return; }
     if (t.dataset.confirm) {
       // 按钮直接放在面板里（翼底主按钮）时确认条插在按钮上方，否则插在按钮所在行后面——不能落到面板外被裁掉
       const inPad = t.parentElement.matches('.pad'), host = inPad ? t : t.parentElement;
       (inPad ? t.parentElement : host.parentElement).querySelector('.confirm-strip')?.remove();
       host.insertAdjacentHTML(inPad ? 'beforebegin' : 'afterend', `<div class="confirm-strip"><i class="fa-solid fa-circle-question"></i><span>将要：${esc(t.dataset.confirm)}</span><button class="key-s" type="button" data-confirm-go>确认</button><button class="key-s" type="button" data-confirm-no>取消</button></div>`);
+      const strip = inPad ? host.previousElementSibling : host.nextElementSibling;
+      if (strip && t.dataset.act) { try { strip._act = JSON.parse(t.dataset.act); } catch (err) {} }
       return;
     }
+    // 不需要确认的动作（打开原项目工坊、魂环待选、返回战斗）直接执行
+    if (t.dataset.act) { let spec = null; try { spec = JSON.parse(t.dataset.act); } catch (err) {} if (spec) runAct(spec, null, t); return; }
     // 危险操作原地二次确认：第一次点亮为「再点一次确认删除」，3 秒内再点才执行
     if (t.dataset.delPath) {
       if (!t.classList.contains('armed')) {

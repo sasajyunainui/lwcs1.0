@@ -594,8 +594,20 @@ class TradeUIComponent {
     }
   }
 
+  // 交易按钮的可用状态连同不可用原因一起记下（原因供无头自动执行回报，界面不变）
+  设置交易按钮(btn, 原因 = '') {
+    if (!btn) return;
+    btn.disabled = !!原因;
+    btn.dataset.blockReason = 原因 || '';
+  }
+
   runInitialAutoExecute() {
     const activeTab = this.container.querySelector('.trade-tab.active')?.dataset.target || 'tab-shop';
+    const 按钮 = this.$({ 'tab-shop': '#btn-buy', 'tab-sell': '#btn-sell', 'tab-private': '#btn-private', 'tab-auction': '#btn-auc' }[activeTab] || '#btn-buy');
+    if (按钮?.disabled && typeof this.options.内联动作失败 === 'function') {
+      this.options.内联动作失败({ 原因: 按钮.dataset.blockReason || '当前无法交易' });
+      return;
+    }
     if (activeTab === 'tab-shop' && !this.$('#btn-buy')?.disabled) this.executeShopBuy();
     else if (activeTab === 'tab-sell' && !this.$('#btn-sell')?.disabled) this.executeSell();
     else if (activeTab === 'tab-private' && !this.$('#btn-private')?.disabled) this.executePrivateTrade();
@@ -1375,7 +1387,8 @@ class TradeUIComponent {
     const worldLocations = this.worldData?.地点 || {};
     const raw = String(location || '').trim();
     const normalized = this.normalizeLocForMatch(raw);
-    const candidates = [raw, normalized.raw].filter(Boolean);
+    // 身处城内地点（如「东海城-东海学院」）时归到所在城市，与桥接快照的当前地点一致
+    const candidates = [raw, normalized.raw, normalized.segments[0]].filter(Boolean);
     for (const key of candidates) {
       if (worldLocations[key]) return { key, data: worldLocations[key] };
     }
@@ -1844,7 +1857,7 @@ class TradeUIComponent {
       this.$('#shop-total').textContent = '-';
       this.$('#shop-fame').textContent = '-';
       this.$('#shop-stock').textContent = '-';
-      btn.disabled = true;
+      this.设置交易按钮(btn, !storeName ? '当前区域没有可交易的商店' : '该商店没有这件商品');
       this.updateTradeMetaPanel('shop', null);
       return;
     }
@@ -1896,23 +1909,26 @@ class TradeUIComponent {
       this.$('#shop-price').textContent = '-';
       this.$('#shop-total').textContent = '无法交易';
       this.$('#shop-total').className = 'val-warn';
-      btn.disabled = true;
+      this.设置交易按钮(btn, '该物品禁售');
       return;
     }
 
     if (!商店营业中) {
-      btn.disabled = true;
+      this.设置交易按钮(btn, worldActionState.reason || this.getShopOpenStateText(worldContext, storeName) || '商店当前不营业');
       return;
     }
 
     if (!this.isCurrencySpendable(currency)) {
       totalEl.className = "val-warn";
       totalEl.textContent = this.getCurrencyBlockedMessage(currency);
-      btn.disabled = true;
+      this.设置交易按钮(btn, this.getCurrencyBlockedMessage(currency));
       return;
     }
 
-    btn.disabled = (!worldActionState.ok || userCoin < total || userFame < Number(item.需求声望 || 0) || Number(item.库存 || 0) < qty);
+    this.设置交易按钮(btn, !worldActionState.ok ? (worldActionState.reason || '当前无法交易')
+      : userCoin < total ? `${this.getCurrencyLabel(currency)}不足（需 ${total.toLocaleString()}）`
+        : userFame < Number(item.需求声望 || 0) ? `声望不足（需 ${Number(item.需求声望 || 0)}）`
+          : Number(item.库存 || 0) < qty ? '库存不足' : '');
   }
 
   executeShopBuy() {
@@ -2058,7 +2074,7 @@ class TradeUIComponent {
       this.$('#sell-market').textContent = '-';
       this.$('#sell-price').textContent = '-';
       this.$('#sell-total').textContent = '-';
-      btn.disabled = true;
+      this.设置交易按钮(btn, '背包里没有可出售的这件物品');
       this.updateTradeMetaPanel('sell', null);
       return;
     }
@@ -2082,13 +2098,13 @@ class TradeUIComponent {
       this.$('#sell-market').textContent = worldActionState.ok ? '-' : worldActionState.reason;
       this.$('#sell-price').textContent = '-';
       this.$('#sell-total').textContent = "无法交易";
-      btn.disabled = true;
+      this.设置交易按钮(btn, !worldActionState.ok ? (worldActionState.reason || '当前无法交易') : !this.isCurrencySpendable(currency) ? this.getCurrencyBlockedMessage(currency) : '该物品禁售');
     } else {
       this.$('#sell-base-price').textContent = `${baseSellPrice.toLocaleString()} ${this.getCurrencyLabel(currency)}`;
       this.$('#sell-market').textContent = this.getMarketAdjustmentText('sell', { context: worldContext });
       this.$('#sell-price').textContent = `${sellPrice.toLocaleString()} ${this.getCurrencyLabel(currency)}`;
       this.$('#sell-total').textContent = `${total.toLocaleString()} ${this.getCurrencyLabel(currency)}`;
-      btn.disabled = 出售项.可用数量 < qty;
+      this.设置交易按钮(btn, 出售项.可用数量 < qty ? '持有数量不足' : '');
     }
   }
 
@@ -2147,13 +2163,13 @@ class TradeUIComponent {
     const previewItem = action === '私下买入' ? ctx.npcItem : ctx.playerItem;
     this.updateTradeMetaPanel('priv', previewItem ? this.resolveTradeItemInfo(itemName, previewItem, { source: action === '私下买入' ? ctx.counterparty : this.activeName }) : null);
 
-    btn.disabled = false;
+    this.设置交易按钮(btn, '');
     attEl.className = "";
 
     if (ctx.error) {
       attEl.textContent = ctx.error;
       attEl.className = "val-warn";
-      btn.disabled = true;
+      this.设置交易按钮(btn, ctx.error);
       return;
     }
 
@@ -2261,14 +2277,14 @@ class TradeUIComponent {
     if (!this.当前地点可参与本期拍卖()) {
       this.$('#auc-current-price').textContent = '-';
       this.$('#auc-desc').textContent = '-';
-      btn.disabled = true;
+      this.设置交易按钮(btn, '当前地点不能参与本期拍卖');
       return;
     }
 
     if (!itemName || !this.currentAuction.拍品?.[itemName]) {
       this.$('#auc-current-price').textContent = '-';
       this.$('#auc-desc').textContent = '-';
-      btn.disabled = true;
+      this.设置交易按钮(btn, '本期没有这件拍品');
       return;
     }
 
@@ -2279,7 +2295,7 @@ class TradeUIComponent {
     if (currentPrice <= 0) {
       this.$('#auc-current-price').textContent = '未知/禁售';
       this.$('#auc-desc').textContent = `[${itemDefinition.品质 || item.品级 || '普通'}] ${itemDefinition.描述 || item.背景 || item.描述 || '暂无说明'}`;
-      btn.disabled = true;
+      this.设置交易按钮(btn, '这件拍品无法竞拍');
       return;
     }
     this.$('#auc-current-price').textContent = `${currentPrice.toLocaleString()} ${this.getCurrencyLabel(currency)}`;
@@ -2287,10 +2303,10 @@ class TradeUIComponent {
 
     const userCoin = this.charData?.财富?.[currency] || 0;
     if (!this.isCurrencySpendable(currency)) {
-      btn.disabled = true;
+      this.设置交易按钮(btn, this.getCurrencyBlockedMessage(currency));
       return;
     }
-    btn.disabled = (bid <= currentPrice || userCoin < bid);
+    this.设置交易按钮(btn, bid <= currentPrice ? `出价需高于当前价 ${currentPrice.toLocaleString()}` : userCoin < bid ? `${this.getCurrencyLabel(currency)}不足` : '');
   }
 
   executeAuction() {

@@ -75,11 +75,11 @@
     const fact = (icon, label, value, dim, title = '') => `<div class="fact ${dim ? 'dim' : ''}" ${title ? `title="${c.esc(title)}"` : ''}><i class="fa-solid fa-${icon}"></i><span>${label}</span><b>${c.esc(value)}</b></div>`;
     return {
       tag: 'CORE · STATUS',
-      core: `<div class="pad home-core">
+      core: `<div class="pad home-core">${window.COCKPIT.battleActive?.() ? `<div class="banner battle-back"><i class="fa-solid fa-khanda"></i><div><strong>战斗进行中</strong></div><button class="key-s" type="button" data-act='{"name":"battle"}'>返回战斗</button></div>` : ''}
         <div class="home-top">
         <div class="id-row">${avatarBlock(c)}
           <div class="who">
-            <div class="name-line"><h1 class="name">${c.esc(c.name)}</h1>${genderMark(st.性别) || c.num(st.年龄) ? `<span class="gender ${st.性别 === '女' ? 'f' : st.性别 === '男' ? 'm' : ''}" title="${c.esc(st.性别 || '')} · ${c.num(st.年龄)} 岁">${genderMark(st.性别)}<b>${c.ed(c.num(st.年龄) || '?', c.P('属性', '年龄'), { kind: 'number', integer: true, min: 0, raw: c.num(st.年龄) })}</b><small>岁</small></span>` : ''}</div>
+            <div class="name-line"><h1 class="name"${(pk => pk ? ` data-longpress="${c.esc(pk)}" data-longpress-delay="600"` : '')(window.COCKPIT.privateArchiveKey?.())}>${c.esc(c.name)}</h1>${genderMark(st.性别) || c.num(st.年龄) ? `<span class="gender ${st.性别 === '女' ? 'f' : st.性别 === '男' ? 'm' : ''}" title="${c.esc(st.性别 || '')} · ${c.num(st.年龄)} 岁">${genderMark(st.性别)}<b>${c.ed(c.num(st.年龄) || '?', c.P('属性', '年龄'), { kind: 'number', integer: true, min: 0, raw: c.num(st.年龄) })}</b><small>岁</small></span>` : ''}</div>
             <div class="title-line">${c.esc(c.rankTitle(st.等级))} · ${c.ed(st.精神境界 || '灵元境', c.P('属性', '精神境界'), { kind: 'enum', options: ['灵元境', '灵通境', '灵海境', '灵渊境', '灵域境', '神元境'] })}</div>
             <div class="plaques">${!c.blank(c.ch.社交?.主身份) ? `<span class="plq">${c.ed(c.ch.社交.主身份, c.P('社交', '主身份'))}</span>` : ''}${st.邪魂师 ? '<span class="plq" style="--pc:#ff4d6a">邪魂师</span>' : ''}</div>
           </div>
@@ -112,11 +112,12 @@
         <div class="opts" data-pick-group>
           ${[['mug-hot', '休整', '静息调养'], ['bed', '睡眠', '安眠休养'], ['person-praying', '冥想', '凝神修行'], ['dumbbell', '训练', '锤炼身心']].map(([ic, t, s], i) => `<button class="opt ${i === 0 ? 'on' : ''}" type="button" data-pick aria-pressed="${i === 0}"><i class="fa-solid fa-${ic}"></i>${t}<small>${s}</small></button>`).join('')}
         </div>
+        <div class="train-pick chips-row" data-pick-group hidden>${['力量', '防御', '敏捷', '体魄', '精神'].map((p, i) => `<button class="key-s${i ? '' : ' on'}" type="button" data-pick data-project="${p}" aria-pressed="${!i}">${p}</button>`).join('')}</div>
         <div class="plan" data-dur-box>
           <div class="dur"><button type="button" data-dur="-10" aria-label="减少十分钟">−</button><output data-min="60">60 分钟</output><button type="button" data-dur="10" aria-label="增加十分钟">＋</button></div>
           <div class="plan-end"><i class="fa-regular fa-clock"></i><span>结束于</span><b data-dur-end>${endAt(c, 60)}</b></div>
         </div>
-        ${placeKnown(c) ? `<button class="cta" type="button" data-routine data-hint="按所选行动与时长预演体力、魂力等变化后结算"><i class="fa-solid fa-play"></i>开始行动</button>`
+        ${placeKnown(c) || c.rt('__LWCS_ERA_RUNTIME_INTEGRATION_V1__') ? `<button class="cta" type="button" data-routine data-hint="按所选行动与时长预演体力、魂力等变化后结算"><i class="fa-solid fa-play"></i>开始行动</button>`
           : `<div class="warn"><i class="fa-solid fa-triangle-exclamation"></i><span>当前位置「${c.esc(where(c))}」未能识别，暂时无法预演行动效果。</span></div>
         <button class="cta" type="button" disabled><i class="fa-solid fa-lock"></i>暂不可行动</button>`}
       </div>`,
@@ -366,7 +367,7 @@
         <div class="tile">${c.sock('location-dot')}<b>${c.esc(String(x.状态?.位置 || '未知').replace(/^斗罗大陆-/, '').replace(/-/g, ' · '))}</b><small>所在</small></div>
       </div>
       <div class="acts"><button class="cta" type="button" data-view-char="${c.esc(name)}"${name === c.name ? ' disabled' : ''}><i class="fa-solid fa-eye"></i>${name === c.name ? '正在查看' : '切换查看'}</button>
-      ${name !== c.player && name !== c.name ? `<button class="key-s danger" type="button" data-del-path="${c.esc(JSON.stringify(['char', name]))}"><i class="fa-solid fa-trash"></i> 删除角色</button>` : ''}</div>`;
+      ${name !== c.player && name !== c.name ? `<button class="key-s danger" type="button" data-confirm="${c.esc(`删除角色「${name}」，并清理其他角色关系表里对它的引用`)}" data-act="${c.esc(JSON.stringify({ name: 'deleteChar', char: name }))}"><i class="fa-solid fa-trash"></i> 删除角色</button>` : ''}</div>`;
   };
 
   document.addEventListener('click', e => {
@@ -389,12 +390,19 @@
     }
   });
 
-  // 日常行动：点下时把所选行动与时长写进原地确认条（真实预演与结算移植时接原项目）
+  // 日常行动：点下时先调原项目预演（克隆结算 + 差异），能行动就把变化写进确认条，确认后由原项目执行；不能行动直接给原因
   document.addEventListener('click', e => {
+    const opt = e.target.closest('.opts .opt'); if (opt) { const pick = opt.closest('.pad')?.querySelector('.train-pick'); if (pick) pick.hidden = !/训练/.test(opt.textContent); }
     const t = e.target.closest('[data-routine]'); if (!t) return;
-    const box = t.closest('.pad'), opt = box?.querySelector('.opt.on')?.childNodes[1]?.textContent?.trim() || '休整';
-    const min = Number(box?.querySelector('[data-dur-box] output')?.dataset.min) || 60;
-    t.dataset.confirm = `${opt} ${min} 分钟，结束于 ${window.COCKPIT.endAt(window.COCKPIT.ctx(), min)}`;
+    const box = t.closest('.pad'), action = box?.querySelector('.opt.on')?.childNodes[1]?.textContent?.trim() || '休整';
+    const minutes = Number(box?.querySelector('[data-dur-box] output')?.dataset.min) || 60, project = box?.querySelector('.train-pick [data-pick].on')?.dataset.project || '力量';
+    const label = `${action}${action === '训练' ? '·' + project : ''} ${minutes} 分钟，结束于 ${window.COCKPIT.endAt(window.COCKPIT.ctx(), minutes)}`;
+    delete t.dataset.blocked;
+    const p = window.COCKPIT.preview('routine', { action, minutes, project });
+    if (p && p.allowed === false) { t.dataset.blocked = p.reason || '当前不能进行这项行动'; delete t.dataset.confirm; delete t.dataset.act; return; }
+    const changes = (p?.changes || []).map(x => `${x.label} ${x.before} → ${x.after}`).join('，');
+    t.dataset.confirm = changes ? `${label}；${changes}` : label;
+    t.dataset.act = JSON.stringify({ name: 'routine', action, minutes, project });
   }, true);
 
   window.COCKPIT.register('page-archive', {
