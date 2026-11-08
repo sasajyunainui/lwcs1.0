@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:1d7e8339ac54cfad80fc3a9bcb0d07aa75cb1a638e3b891bfed344e3768f8c1b|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:14da65b51faac6fd6b1f52c6441c6e394227cf7ac8a2bd5df17ba53610aa073a|cockpit/pages-role.js:33ab3ecd890c56a621fe7d270f60de1beda45af71a3bc7954d66d69f6767e3c7|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:afe7c39c6437be94149d9d9d4809c3e198b189241a8997297cba7329a9f619ba|cockpit/pages-ability.js:c692feb0aaebd6f28360829098826f576cd660710001d30dd9bc5341dac9aa72|cockpit/pages-supplies.js:2c20652e62132ecf1fcdc8da32cf339e5128de56f21d9337bfafc199d63611f7|cockpit/pages-map.js:bb5b1f07a1035a0294cdb32fbc61c97c36a49946297500421647eee91fe093da|cockpit/pages-world.js:ebec9f364905915128ea23a7fd07e9d58f9b5156004fec0bb3d43eaaa155b45a|cockpit/pages-terminal.js:4e60e255e0d58d9d73601f695cc66b6ac5cab6ab3f5119ce9ae88e39d2e2b69d|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:289fe455da8dfe0c8f42e39afaaa254d1c724b00f602e5094ca7626b17151097|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:97b19934e9c5a2130d92d85dd5bf110b761033335e5ee1382e3cf007fd20f7eb|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:cfe825cf17a8e8e3872e2fb388b8e848532380662015663c872555c569764fe3|cockpit/pages-role.js:33ab3ecd890c56a621fe7d270f60de1beda45af71a3bc7954d66d69f6767e3c7|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:afe7c39c6437be94149d9d9d4809c3e198b189241a8997297cba7329a9f619ba|cockpit/pages-ability.js:c692feb0aaebd6f28360829098826f576cd660710001d30dd9bc5341dac9aa72|cockpit/pages-supplies.js:864e808de54942f49cc7ce569b926e847b9b3fc35d07c15b6139e7c79be8de18|cockpit/pages-map.js:bb5b1f07a1035a0294cdb32fbc61c97c36a49946297500421647eee91fe093da|cockpit/pages-world.js:1199e83af473a290145fc96aaf5c71f20990a9d3915ae8a1c2aad72a17760688|cockpit/pages-terminal.js:4d51455d552329d8cada13b0f1d4336d30962e5d7dae64ae93d9a8bc0a9395a6|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:289fe455da8dfe0c8f42e39afaaa254d1c724b00f602e5094ca7626b17151097|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -12591,6 +12591,37 @@
       `以下内容属于前端已登记的赛事对局请求。赛事ID：${赛事ID}；项目：${项目}；对局ID：${对局ID}；双方：${双方.join(' / ')}。请自然描写入场并沿用现有战斗系统建立战斗；赛事上下文与结算ID已经由脚本写入，不要重复创建或修改。`,
       { requestKind: 'competition_match' },
     );
+  }
+
+  // 斗铠 / 机甲温养开关：同一时间只温养一件；再点当前目标即停止；开启前按运行时投影校验条件
+  async function 切换装备温养_桥接(目标 = '') {
+    const 当前快照 = liveSnapshot || lastRenderableSnapshot || {};
+    const 角色键 = resolveSnapshotCharKey(当前快照, toText(当前快照.activeName, '')) || toText(当前快照.activeName, '');
+    const 运行时 = 读取MVUSchema运行时接口_桥接();
+    if (!角色键 || !['斗铠', '机甲'].includes(目标) || typeof 运行时?.读取装备温养投影 !== 'function') return { ok: false, message: '装备温养运行时未就绪。' };
+    try {
+      let 新目标 = '无';
+      await mutateStatDataByEditor(statData => {
+        const 角色 = deepGet(statData, ['char', 角色键], null);
+        if (!角色 || typeof 角色 !== 'object') throw new Error('当前角色不存在。');
+        if (!角色.装备 || typeof 角色.装备 !== 'object') throw new Error('当前角色没有装备数据。');
+        新目标 = toText(角色.装备._温养目标, '无') === 目标 ? '无' : 目标;
+        if (新目标 !== '无') {
+          const 投影角色 = cloneJsonValue(角色, {});
+          投影角色.装备._温养目标 = 新目标;
+          const 投影 = 运行时.读取装备温养投影(投影角色, statData);
+          if (!投影?.canStart) throw new Error(投影?.pauseReason || '当前条件不足，无法开启温养。');
+        }
+        角色.装备._温养目标 = 新目标;
+        const 原播报 = toText(deepGet(statData, ['sys', '系统播报'], ''), '').trim();
+        const 播报 = 新目标 === '无' ? `[装备温养] ${角色键}已停止装备温养。` : `[装备温养] ${角色键}开始温养${新目标}。`;
+        deepSetMutable(statData, ['sys', '系统播报'], !原播报 || 原播报 === '初始化' ? 播报 : `${原播报} ${播报}`);
+      }, { force: true });
+      await refreshLiveSnapshot({ force: true });
+      return { ok: true, message: 新目标 === '无' ? '已停止装备温养。' : `已开始温养${新目标}。` };
+    } catch (error) {
+      return { ok: false, message: error && error.message ? error.message : '装备温养设置失败。' };
+    }
   }
 
   async function 执行赛事权限管理动作_V2_桥接(动作 = '', 载荷 = {}) {
@@ -40116,7 +40147,7 @@
     第1武魂详细页: ['page-ability', 'martial', { soul: '0', ringPick: '' }], 第2武魂详细页: ['page-ability', 'martial', { soul: '1', ringPick: '' }], 血脉封印详细页: ['page-ability', 'martial'],
     技能典籍: ['page-ability', 'codex'], 武魂融合技详细页: ['page-ability', 'codex'],
     储物仓库详细页: ['page-supplies', 'pack'], '武装详情：主武器': ['page-supplies', 'equip', { eqsel: '武器' }], '武装详情：防具': ['page-supplies', 'equip', { eqsel: '防具' }],
-    '武装详情：斗铠': ['page-supplies', 'equip', { eqsel: '斗铠' }], '武装详情：机甲': ['page-supplies', 'equip', { eqsel: '机甲' }], '武装详情：魂导器': ['page-supplies', 'equip', { eqsel: '魂导器' }],
+    '武装详情：斗铠': ['page-supplies', 'equip', { eqsel: '斗铠' }], '武装详情：机甲': ['page-supplies', 'equip', { eqsel: '机甲' }], '武装详情：魂导器': ['page-supplies', 'equip', { eqsel: '魂导器' }], 武装工坊详细页: ['page-supplies', 'equip'],
     任务界面: ['page-terminal', 'quests'], 试炼与情报: ['page-terminal', 'trial'], 情报库详细页: ['page-terminal', 'intel'],
     当前节点详情: ['page-map', 'place'],
     人物关系详细页: ['page-archive', 'relations'], 社会档案详细页: ['page-archive', 'identity'], 生命图谱详细页: ['page-archive', 'growth'],
@@ -40224,6 +40255,36 @@
         let 可装备 = false;
         try { 可装备 = !!(管理器 && typeof 管理器.parseEquipSlot === 'function' && 管理器.parseEquipSlot(物品, 数据)); } catch (错误) { 可装备 = false; }
         return { usable: !!判断物品可直接使用_桥接(物品, 数据), equipable: 可装备 };
+      }
+      // 升灵台：门票与入口校验同原项目「进入升灵台」（只能从传灵塔入口进入）
+      if (名称 === 'ascension') {
+        const 位置 = toText(deepGet(liveSnapshot, 'activeChar.状态.位置', liveSnapshot?.currentLoc), '');
+        return { tickets: listAscensionTicketNames(liveSnapshot), here: !!位置 && isTransmissionTowerEntryLocation(位置) };
+      }
+      if (名称 === 'nurture') {
+        const 运行时 = 读取MVUSchema运行时接口_桥接(), 根 = deepGet(liveSnapshot, 'rootData', {}) || {}, 角色 = deepGet(liveSnapshot, 'activeChar', null);
+        if (!角色 || typeof 运行时?.读取装备温养投影 !== 'function') return null;
+        const 当前 = toText(deepGet(角色, '装备._温养目标', '无'), '无'), 结果 = { current: ['斗铠', '机甲'].includes(当前) ? 当前 : '无' };
+        ['斗铠', '机甲'].forEach(目标 => {
+          const 投影角色 = cloneJsonValue(角色, {});
+          if (!投影角色.装备 || typeof 投影角色.装备 !== 'object') return;
+          投影角色.装备._温养目标 = 目标;
+          结果[目标] = 运行时.读取装备温养投影(投影角色, 根);
+        });
+        return 结果;
+      }
+      // 捐献：只能捐给已加入的势力；估值与原项目「我的阵营」捐献同一算法（只回传结果，不回传天赋档位）
+      if (名称 === 'donate') {
+        const 势力 = toText(参数.faction, ''), 物品 = toText(参数.item, ''), 数量 = Math.max(1, Math.floor(toNumber(参数.qty, 1)));
+        const 已加入 = (liveSnapshot?.势力 || []).map(([名]) => toText(名, '').trim()).includes(势力);
+        if (!已加入) return { ok: false, reason: '只能向已加入的势力捐献' };
+        const 奖励 = getDonateRewardLabel(势力, liveSnapshot || {});
+        if (!奖励) return { ok: false, reason: '当前地点无法确定结算货币' };
+        if (!物品) return { ok: false, reason: '先选择要捐献的物品', label: 奖励 };
+        const 持有 = 读取背包总数量_桥接(deepGet(liveSnapshot, ['activeChar', '背包', 物品], {}));
+        if (持有 < 数量) return { ok: false, reason: `背包里只有 ${持有} 件`, label: 奖励, owned: 持有 };
+        const 系数 = getDonateTalentMultiplier(读取属性天赋梯队(deepGet(liveSnapshot, 'activeChar.属性', {}))), 单价 = getDonateBasePrice(物品);
+        return { ok: true, label: 奖励, owned: 持有, unit: 单价, points: Math.floor((单价 * 数量 / 1000) * 系数) };
       }
       if (名称 === 'skill') return 座舱技能场外施展状态(参数.path);
       if (名称 === 'trade') return 座舱交易预演(参数);
@@ -40584,6 +40645,11 @@
               ? Object.values(deepGet(装备, '魂导器.装配', {}) || {}).map(位 => toText(位 && 位.名称, '')).find(名 => 名 === 物品) || ''
               : toText(deepGet(装备, [toText(参数.slot, ''), '名称'], ''), '');
             if (!物品 || 物品 === '无' || 槽内名 !== 物品) return { ok: false, message: `${toText(参数.slot, '该槽位')}里没有「${物品 || '物品'}」。` };
+            const 装配位 = toText(参数.mount, '');
+            if (参数.slot === '魂导器' && 装配位) {
+              if (toText(deepGet(装备, ['魂导器', '装配', 装配位, '名称'], ''), '') !== 物品) return { ok: false, message: `${装配位}里没有「${物品}」。` };
+              return 座舱截取提示(() => 管理器.performUnequip(角色, 'soul_tool', 装配位));
+            }
             return 座舱截取提示(() => 管理器.performUnequip(角色, 座舱卸装类型[参数.slot] || toText(参数.slot, ''), 物品));
           }
           if (参数.op === 'discard') return 座舱截取提示(() => 管理器.performDiscard(角色, 物品, 参数.mode === 'all' ? 'all' : 'one'));
@@ -40611,6 +40677,15 @@
         case 'questCreate': {
           const 表单 = 参数.form && typeof 参数.form === 'object' ? 参数.form : {};
           return 参数.kind === 'board' ? await 座舱发布委托(快照, 表单) : await 座舱新增个人任务(快照, 表单);
+        }
+        case 'nurture': {
+          if (!isSnapshotPlayerControlled(liveSnapshot)) return { ok: false, message: '旁观视角不可操作。' };
+          return await 切换装备温养_桥接(toText(参数.target, ''));
+        }
+        case 'donate': {
+          const 请求 = buildDonateDispatchRequest(liveSnapshot, { targetFaction: toText(参数.faction, ''), itemName: toText(参数.item, ''), quantity: toNumber(参数.qty, 1) });
+          if (!请求) return { ok: false, message: '请确认捐献物品、目标势力与数量，并确保背包库存充足。' };
+          return 座舱请求结果(await dispatchUiAiRequest(请求.playerInput, 请求.systemPrompt, { requestKind: 请求.requestKind }));
         }
         case 'competition': {
           const 动作 = toText(参数.action, ''), 载荷 = 参数.payload && typeof 参数.payload === 'object' ? 参数.payload : {};
@@ -57685,37 +57760,9 @@ ${播报文本}
         return;
       }
       const 目标 = toText(装备温养按钮.getAttribute('data-equipment-nurture-target'), '').trim();
-      const 当前快照 = liveSnapshot || lastRenderableSnapshot || {};
-      const 角色键 = resolveSnapshotCharKey(当前快照, toText(当前快照.activeName, '')) || toText(当前快照.activeName, '');
-      const 运行时 = 读取MVUSchema运行时接口_桥接();
-      if (!角色键 || !['斗铠', '机甲'].includes(目标) || typeof 运行时?.读取装备温养投影 !== 'function') {
-        showUiToast('装备温养运行时未就绪。', 'error');
-        return;
-      }
-      try {
-        let 新目标 = '无';
-        await mutateStatDataByEditor(statData => {
-          const 角色 = deepGet(statData, ['char', 角色键], null);
-          if (!角色 || typeof 角色 !== 'object') throw new Error('当前角色不存在。');
-          if (!角色.装备 || typeof 角色.装备 !== 'object') throw new Error('当前角色没有装备数据。');
-          新目标 = toText(角色.装备._温养目标, '无') === 目标 ? '无' : 目标;
-          if (新目标 !== '无') {
-            const 投影角色 = cloneJsonValue(角色, {});
-            投影角色.装备._温养目标 = 新目标;
-            const 投影 = 运行时.读取装备温养投影(投影角色, statData);
-            if (!投影?.canStart) throw new Error(投影?.pauseReason || '当前条件不足，无法开启温养。');
-          }
-          角色.装备._温养目标 = 新目标;
-          const 原播报 = toText(deepGet(statData, ['sys', '系统播报'], ''), '').trim();
-          const 播报 = 新目标 === '无' ? `[装备温养] ${角色键}已停止装备温养。` : `[装备温养] ${角色键}开始温养${新目标}。`;
-          deepSetMutable(statData, ['sys', '系统播报'], !原播报 || 原播报 === '初始化' ? 播报 : `${原播报} ${播报}`);
-        }, { force: true });
-        showUiToast(新目标 === '无' ? '已停止装备温养。' : `已开始温养${新目标}。`);
-        await refreshLiveSnapshot({ force: true });
-        rerenderDetailSurface('武装工坊详细页', options);
-      } catch (error) {
-        showUiToast(error && error.message ? error.message : '装备温养设置失败。', 'error');
-      }
+      const 结果 = await 切换装备温养_桥接(目标);
+      showUiToast(结果.message, 结果.ok ? undefined : 'error');
+      if (结果.ok) rerenderDetailSurface('武装工坊详细页', options);
       return;
     }
     const actionBtn = eventTarget ? eventTarget.closest('.armory-action-btn') : null;
@@ -74324,6 +74371,9 @@ ${播报文本}
   // 选择控件：带逐项说明的下拉（原生 select 无法给选项配悬停说明）。options 为字符串或 { value, label, hint, group }；
   // 选中后在控件上派发 picker:change（detail: { path, value }）。悬停控件本身显示当前选项的说明
   const optOf = o => o && typeof o === 'object' ? { value: String(o.value ?? o.label ?? ''), label: String(o.label ?? o.value ?? ''), hint: o.hint || '', group: o.group || '' } : { value: String(o ?? ''), label: String(o ?? ''), hint: '', group: '' };
+  let pointerHeld = false;
+  document.addEventListener('pointerdown', () => { pointerHeld = true; }, true);
+  document.addEventListener('pointerup', () => { pointerHeld = false; }, true);
   const pick = (path, value, options = [], o = {}) => {
     const opts = options.map(optOf), v = String(value ?? ''), cur = opts.find(x => x.value === v);
     return `<span class="picker${o.cls ? ' ' + o.cls : ''}" data-picker="${esc(path)}" data-picker-opts="${esc(JSON.stringify(opts))}" data-picker-value="${esc(v)}"><button type="button" class="picker-btn" aria-haspopup="listbox" aria-expanded="false"${o.disabled ? ' disabled' : ''}${cur?.hint ? ` data-hint="${esc(cur.hint)}"` : ''}><span>${esc(cur ? cur.label : (v || o.placeholder || '请选择'))}</span><i class="fa-solid fa-chevron-down"></i></button></span>`;
@@ -74391,6 +74441,8 @@ ${播报文本}
     battleActive: () => !!ADP?.battleActive?.(),
     get mounted() { return mounted; },
     refresh() { api.refresh?.(); },
+    // 输入框失焦后的重绘：按键还没松开时等这次点击结束再重绘，免得按钮被换掉、点击落空
+    refreshSoon() { if (!pointerHeld) return api.refresh?.(); document.addEventListener('click', () => setTimeout(() => api.refresh?.()), { once: true, capture: true }); },
     go(id, page) { api.switchDomain?.(id, page); },
     page(key) { api.switchPage?.(key); },
     inspect(kind, id) { api.openInspector?.(kind, id); },
@@ -77715,7 +77767,7 @@ ${播报文本}
       const sk = on.flatMap(s => gearSkills(c, g.装配[s]).map(([n, x]) => ({ key: `装备/魂导器/装配/${s}/${n}`, n, s: x, from: s })));
       return `<div class="pad detail">
         <div class="q-title">${c.sock('microchip', 'gd')}<span class="chip">魂导器</span><h2>魂导器装配</h2><span class="q-state">${on.length} / ${all.length}</span></div>
-        <section class="sec"><h3>装配位<span class="en">Mounts</span></h3><div class="part-grid">${all.map(s => { const x = g.装配?.[s]; return `<div class="pt${filled(x?.名称) ? ' on' : ''}"><b>${s}</b><span>${filled(x?.名称) ? c.ed(x.名称, [...gp, '装配', s, '名称']) : '空'}</span></div>`; }).join('')}</div></section>
+        <section class="sec"><h3>装配位<span class="en">Mounts</span></h3><div class="part-grid">${all.map(s => { const x = g.装配?.[s]; return `<div class="pt${filled(x?.名称) ? ' on' : ''}"><b>${s}</b><span>${filled(x?.名称) ? c.ed(x.名称, [...gp, '装配', s, '名称']) : '空'}</span>${filled(x?.名称) ? `<button class="pt-x" type="button" aria-label="卸下" data-hint="卸下放回背包" data-confirm="${c.esc(`卸下${s}的「${x.名称}」，放回背包`)}" data-act="${c.esc(JSON.stringify({ name: 'item', op: 'unequip', slot: '魂导器', mount: s, item: x.名称 }))}"><i class="fa-solid fa-arrow-down"></i></button>` : ''}</div>`; }).join('')}</div></section>
         <section class="sec"><h3>装备技能<span class="en">${sk.length}</span></h3>${skillRows(c, sk, '已装配的魂导器没有附带技能')}</section>
       </div>`;
     }
@@ -77817,12 +77869,25 @@ ${播报文本}
       <div class="act-row">${o.equipable ? `<button class="key-s" type="button" data-confirm="装备 ${c.esc(name)}" ${act({ op: 'equip' })}><i class="fa-solid fa-shield-halved"></i> 装备</button>` : ''}${o.total > 1 ? `<button class="key-s danger" type="button" data-confirm="丢弃 1 件 ${c.esc(name)}" ${act({ op: 'discard', mode: 'one' })}><i class="fa-solid fa-minus"></i> 丢弃 1 件</button>` : ''}<button class="key-s danger" type="button" data-confirm="${o.total > 1 ? `全部丢弃 ${c.esc(name)}（${o.total} 件）` : `丢弃 ${c.esc(name)}`}" ${act({ op: 'discard', mode: 'all' })}><i class="fa-solid fa-trash"></i> ${o.total > 1 ? '全部丢弃' : '丢弃'}</button></div></div>`;
   };
 
+  const nurture = (c, eq) => {
+    const info = window.COCKPIT.preview('nurture') || {}, cur = info.current || '无';
+    const cards = ['斗铠', '机甲'].filter(k => filled(eq[k]?.名称) || filled(eq[k]?.型号)).map(k => {
+      const p = info[k] || {}, on = cur === k, why = p.pauseReason || '';
+      const sub = p.stageLabel && p.stageLabel !== '无可用阶段' ? `${p.stageLabel} 级` : '没有可温养的阶段';
+      const btn = on
+        ? `<button class="key-s" type="button" data-confirm="停止温养${k}" data-act="${c.esc(JSON.stringify({ name: 'nurture', target: k }))}"><i class="fa-solid fa-pause"></i> 停止</button>`
+        : p.canStart ? `<button class="key-s" type="button" data-confirm="开始温养${k}${cur !== '无' ? `（${cur}的温养会停下）` : ''}" data-act="${c.esc(JSON.stringify({ name: 'nurture', target: k }))}"><i class="fa-solid fa-fire"></i> 温养</button>`
+        : `<span class="cta-wrap" data-hint="${c.esc(why || '当前条件不足')}"><button class="key-s" type="button" disabled><i class="fa-solid fa-fire"></i> 温养</button></span>`;
+      return `<div class="q-meter"><div class="q-mh"><small>${k}${on ? ' · 温养中' : ''}</small><b>${p.required ? `${Math.floor(p.percent || 0)}%` : '—'}</b><em>${c.esc(on && why ? '暂停：' + why : sub)}</em></div>${p.required ? c.bar('vp', p.progress, p.required) : ''}<div class="act-row">${btn}</div></div>`;
+    });
+    return cards.length ? cards.join('') : '<span class="lbl">没有可温养的斗铠或机甲</span>';
+  };
+
   // 三页同一结构：左翼选（挂点 / 魂骨位 / 物品），主屏是选中项的完整档案与编辑，右翼是汇总与操作
   const EQ_KEYS = [...SLOTS.map(([k, ic, l, n, s]) => ({ k, ic, l, n, s })), { k: '魂导器', ic: 'microchip', l: '魂导器', n: () => '', s: () => '' }];
   const equipment = c => {
     const eq = c.ch.装备 || {}, bonus = sumBonus(c, eq), gear = eq.魂导器?.装配 || {};
     const mounted = c.entries(gear).filter(([, g]) => filled(g?.名称));
-    const warm = eq._温养目标 && eq._温养目标 !== '无' ? eq._温养目标 : '';
     const nameOf = x => x.k === '魂导器' ? (mounted.length ? `已装配 ${mounted.length} / 10` : '') : x.n(eq[x.k] || {});
     const sel = EQ_KEYS.find(x => x.k === c.state.ui.eqsel) || EQ_KEYS.find(x => filled(nameOf(x))) || EQ_KEYS[0], selName = nameOf(sel);
     return {
@@ -77833,7 +77898,7 @@ ${播报文本}
       core: filled(selName) ? eqCore(c, sel.k) : `<div class="pad sparse">${c.empty(sel.ic, `${sel.l}挂点空着`, '在背包里选中装备后可以挂载到这里')}<button class="key-s" type="button" data-go="page-supplies/pack" style="align-self:center"><i class="fa-solid fa-box-open"></i> 去背包</button></div>`,
       right: `<div class="pad">${c.head('bolt', '武装共鸣', 'Resonance')}
         ${Object.values(bonus).some(v => v) ? `<div class="tiles">${Object.entries(bonus).filter(([, v]) => v).map(([k, v]) => `<div class="tile">${c.sock('arrow-trend-up')}<b class="plus">+${c.fmt(v)}</b><small>${k}</small></div>`).join('')}</div>` : c.empty('bolt', '暂无武装加成')}
-        <section class="sec"><h3>温养<span class="en">Nurture</span>${c.hint('斗铠 / 机甲的温养进度由运行时投影。')}</h3>${warm ? `<div class="relic-card">${c.sock('temperature-half', 'gd')}<div><strong>${c.esc(warm)}</strong><small>温养中</small></div></div>` : '<span class="lbl">没有温养目标</span>'}${eq.斗铠?._已排异 ? '<span class="plq" style="--pc:#ff4d6a">斗铠已排异</span>' : ''}</section>
+        <section class="sec"><h3>温养<span class="en">Nurture</span>${c.hint('斗铠 / 机甲同一时间只能温养一件；仅斗罗四时代推进，行动中按动作时间计，平时按自然时间加速推进。')}</h3>${nurture(c, eq)}${eq.斗铠?._已排异 ? '<span class="plq" style="--pc:#ff4d6a">斗铠已排异</span>' : ''}</section>
         <div class="groove"></div>${c.head('hand-pointer', '操作', 'Actions')}
         <div class="act-row"><button class="key-s" type="button" data-go="page-supplies/pack"><i class="fa-solid fa-box-open"></i> 从背包换装</button>${sel.k !== '魂导器' && filled(selName) ? `<button class="key-s danger" type="button" data-confirm="${c.esc(`卸下${sel.l}「${selName}」，放回背包`)}" data-act="${c.esc(JSON.stringify({ name: 'item', op: 'unequip', slot: sel.k, item: selName }))}"><i class="fa-solid fa-arrow-down"></i> 卸下</button>` : ''}${sel.k !== '魂导器' && gearSkills(c, eq[sel.k]).length ? '<button class="key-s" type="button" data-go="page-ability/codex"><i class="fa-solid fa-book"></i> 技能图鉴</button>' : ''}</div>
       </div>`,
@@ -78338,6 +78403,32 @@ ${播报文本}
     };
   };
 
+  // 捐献（原项目「我的阵营」）：只对已加入的势力；物品从背包选，估值与结算货币由桥接按原算法给出，提交后交给叙事受理
+  const donate = (c, fac) => {
+    const ui = c.state.ui, bag = c.entries(c.ch.背包).filter(([, v]) => v && typeof v === 'object');
+    if (!bag.length) return `<div class="groove"></div>${c.head('hand-holding-heart', '捐献', 'Donate')}<span class="lbl">背包里没有可捐献的物品</span>`;
+    const item = bag.some(([n]) => n === ui.donItem) ? ui.donItem : bag[0][0], qty = Math.max(1, Math.floor(Number(ui.donQty) || 1));
+    const p = window.COCKPIT.preview('donate', { faction: fac, item, qty }) || {};
+    return `<div class="groove"></div>${c.head('hand-holding-heart', '捐献', 'Donate')}
+      <div class="dz2-grid"><div class="dzf wide"><span class="dzf-l">物品</span>${c.pick('donItem', item, bag.map(([n]) => n))}</div>
+      <div class="dzf"><span class="dzf-l">数量</span><input type="number" min="1" step="1" data-don-qty value="${qty}" aria-label="捐献数量"></div>
+      <div class="dzf"><span class="dzf-l">持有</span><b>${c.fmt(p.owned ?? 0)}</b></div></div>
+      ${p.ok ? c.kv([['预计获得', `${c.fmt(p.points)} ${c.esc(p.label)}`]]) : ''}
+      <button class="cta" type="button" data-don-submit="${c.esc(fac)}"><i class="fa-solid fa-hand-holding-heart"></i>提交捐献</button>`;
+  };
+  document.addEventListener('input', e => { const t = e.target.closest?.('[data-don-qty]'); if (t) window.COCKPIT.ctx().state.ui.donQty = Math.max(1, Math.floor(Number(t.value) || 1)); });
+  document.addEventListener('change', e => { if (e.target.closest?.('[data-don-qty]')) window.COCKPIT.refreshSoon(); });
+  document.addEventListener('click', e => {
+    const t = e.target.closest('[data-don-submit]'); if (!t) return;
+    const C = window.COCKPIT, ui = C.ctx().state.ui, fac = t.dataset.donSubmit, bag = Object.keys(C.ctx().ch?.背包 || {});
+    const item = bag.includes(ui.donItem) ? ui.donItem : bag[0], qty = Math.max(1, Math.floor(Number(ui.donQty) || 1));
+    const p = C.preview('donate', { faction: fac, item, qty }) || {};
+    delete t.dataset.blocked;
+    if (!p.ok) { t.dataset.blocked = p.reason || '现在不能捐献'; delete t.dataset.act; return; }
+    t.dataset.confirm = `向${fac}捐献「${item}」×${qty}，预计获得 ${p.points} ${p.label}`;
+    t.dataset.act = JSON.stringify({ name: 'donate', faction: fac, item, qty });
+  }, true);
+
   // 势力：左翼 = 势力列表（类型筛选，我所属的置顶），主屏 = 选中势力的档案，右翼 = 对外态度与我在其中的身份
   const factionView = c => {
     const all = factions(c), mineMap = c.ch.社交?.势力 || {}, types = [...new Set(all.map(f => f.类型 || '其他'))];
@@ -78360,8 +78451,9 @@ ${播报文本}
         <section class="sec"><h3>简介<span class="en">Profile</span></h3><p class="prose">${c.esc(desc || '没有收录简介')}</p></section>
       </div>` : `<div class="pad sparse">${c.empty('chess-rook', '没有势力资料')}</div>`,
       right: `<div class="pad">${c.head('handshake', '关系', 'Relations')}
-        ${me ? `<div class="spirit-card">${c.sock('id-badge', 'gd')}<div><strong>${c.esc(me.身份 || '成员')}</strong><small>权限级 ${c.fmt(me.权限级 || 0)}</small></div><span class="q-state">所属</span></div>` : ''}
-        ${rel.length ? `<div class="list q-list">${rel.map(([k, v]) => `<div class="row" style="cursor:default"><span class="chip">${c.esc(typeof v === 'object' ? v.态度 || v.关系 || '—' : v)}</span><div><strong>${c.esc(k)}</strong>${editable ? '' : '<small>内置资料</small>'}</div><span></span></div>`).join('')}</div>` : c.empty('handshake', '没有记录对外态度')}
+        ${me ? `<div class="relic-card">${c.sock('id-badge', 'gd')}<div><strong>${c.esc(me.身份 || '成员')}</strong><small>权限级 ${c.fmt(me.权限级 || 0)}</small></div><span class="q-state">所属</span></div>` : ''}
+        ${rel.length ? `<div class="list q-list${me ? ' natural' : ''}">${rel.map(([k, v]) => `<div class="row" style="cursor:default"><span class="chip">${c.esc(typeof v === 'object' ? v.态度 || v.关系 || '—' : v)}</span><div><strong>${c.esc(k)}</strong>${editable ? '' : '<small>内置资料</small>'}</div><span></span></div>`).join('')}</div>` : c.empty('handshake', '没有记录对外态度')}
+        ${me ? donate(c, f.name) : ''}
       </div>`,
     };
   };
@@ -78540,7 +78632,7 @@ ${播报文本}
     };
   };
   document.addEventListener('input', e => { const t = e.target.closest?.('[data-qf]'); if (t) (window.COCKPIT.ctx().state.ui.qf ||= {})[t.dataset.qf] = t.type === 'number' ? Math.max(0, Math.floor(Number(t.value) || 0)) : t.value; });
-  document.addEventListener('change', e => { if (e.target.closest?.('[data-qf]')) window.COCKPIT.refresh(); });
+  document.addEventListener('change', e => { if (e.target.closest?.('[data-qf]')) window.COCKPIT.refreshSoon(); });
   document.addEventListener('picker:change', e => { if (!String(e.detail.path).startsWith('qf:')) return; (window.COCKPIT.ctx().state.ui.qf ||= {})[e.detail.path.slice(3)] = e.detail.value; window.COCKPIT.refresh(); });
   // 提交：捕获阶段把表单写进动作；缺必填项时直接给原因
   document.addEventListener('click', e => {
@@ -78603,6 +78695,16 @@ ${播报文本}
   ];
   const TOWER_TOP = 108, TEAM = { size: 7, age: 30, gap: 3 };
   const ticketsOf = (c, re) => Object.entries(c.ch.背包 || {}).filter(([n]) => re.test(n)).reduce((s, [, it]) => s + (c.num(it?.数量) || 1), 0);
+  // 升灵台：有门票才出现；不在传灵塔入口时给出原因（同原项目入场校验），多种门票时先选用哪张
+  const ascend = c => {
+    const p = window.COCKPIT.preview('ascension') || {}, list = Array.isArray(p.tickets) ? p.tickets : [];
+    if (!list.length) return '';
+    const ticket = list.includes(c.state.ui.ascTicket) ? c.state.ui.ascTicket : list[0];
+    const btn = p.here
+      ? `<button class="key-s" type="button" data-confirm="${c.esc(`进入升灵台（消耗 ${ticket}）`)}" data-act="${c.esc(JSON.stringify({ name: 'ascension', ticket }))}"><i class="fa-solid fa-place-of-worship"></i> 进入升灵台</button>`
+      : `<span class="cta-wrap" data-hint="升灵台只能从传灵塔入口进入"><button class="key-s" type="button" disabled><i class="fa-solid fa-place-of-worship"></i> 进入升灵台</button></span>`;
+    return `<section class="sec"><h3>升灵台<span class="en">Ascension</span></h3>${list.length > 1 ? `<div class="pick-row">${c.pick('ascTicket', ticket, list)}</div>` : ''}<div class="act-row">${btn}</div></section>`;
+  };
   const trial = c => {
     const tower = c.ch.魂灵塔记录 || {}, top = c.num(tower.最高层), next = Math.min(TOWER_TOP, top + 1), half = tower.当前五折魂灵 || {};
     const here = TOWER.find(z => next >= z.from && next <= z.to) || TOWER[0], zone = TOWER.find(z => z.key === c.state.ui.tzone) || here;
@@ -78634,6 +78736,7 @@ ${播报文本}
         <section class="sec"><h3>组队规则${c.hint(`队伍至多 ${TEAM.size} 人；成员须在 ${TEAM.age} 岁以下，年龄差不超过 ${TEAM.gap} 岁；队友须是已建档角色。`)}</h3>
           <div class="chips-row"><span class="chip s">≤ ${TEAM.size} 人</span><span class="chip s">≤ ${TEAM.age} 岁</span><span class="chip s">年龄差 ≤ ${TEAM.gap}</span></div></section>
         ${half.名称 && !half.已使用 ? '<button class="key-s" type="button" data-go="page-terminal/trade"><i class="fa-solid fa-store"></i> 去特许兑换</button>' : ''}
+        ${ascend(c)}
         ${tickets ? `<button class="cta" type="button" data-trial-action="climb" data-floor="${next}" data-ticket="${c.esc(ticketKey)}"><i class="fa-solid fa-dungeon"></i>冲塔 · 第 ${next} 层</button>`
           : `<button class="cta" type="button" data-go="page-terminal/trade"><i class="fa-solid fa-ticket"></i>购买门票</button>`}
       </div>`,
