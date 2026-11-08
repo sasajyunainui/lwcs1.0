@@ -38538,7 +38538,7 @@
     当前节点详情: ['page-map', 'place'],
     人物关系详细页: ['page-archive', 'relations'], 社会档案详细页: ['page-archive', 'identity'], 生命图谱详细页: ['page-archive', 'growth'],
     所属势力详细页: ['page-archive', 'identity'], 我的阵营详情: ['page-archive', 'identity'], 角色切换器: ['page-archive', 'directory'],
-    赛事: ['page-world', 'games'], 怪物图鉴: ['page-world', 'bestiary'], 近期见闻: ['page-world', 'chronicle'], 近期安排: ['page-world', 'chronicle'],
+    赛事: ['page-world', 'games'], 怪物图鉴: ['page-world', 'bestiary'], 近期见闻: ['page-world', 'chronicle', { cmode: 'past', csel: '' }], 近期安排: ['page-world', 'chronicle', { cmode: '', csel: '' }],
   });
   // 座舱挂着时，原项目「打开某个详情面」改为在座舱里跳转；让位白名单里的仍由原面板显示（移植完成后逐个移出）。
   // 返回 true 表示已由座舱接手，调用方不再打开旧面板
