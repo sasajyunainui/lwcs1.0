@@ -19,7 +19,14 @@
   .wing .q-tabs .key-s i{display:none}
   .wing .dz2-skills .row strong,.wing .dz2-skills .row small{white-space:normal;text-overflow:clip;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
 }
-@container cockpit (min-width:701px) and (max-width:999px){.home-top .title-line{white-space:normal;text-wrap:balance}}
+/* 侧轨占掉两侧宽度后中屏偏窄：身份行一律允许两行均分 */
+@container cockpit (min-width:701px){.home-top .title-line{white-space:normal;text-wrap:balance}}
+/* 座舱较窄（侧轨 + 两翼下限收窄时）：标题英文副标题全隐藏，属性训练增量可折两行，任务页签收窄内边距 */
+@container cockpit (min-width:701px) and (max-width:879px){
+  .h .en{display:none}
+  .wing .attr em{white-space:normal;text-align:right;line-height:1.1}
+  .wing .q-tabs .key-s{padding-left:.45em;padding-right:.45em}
+}
 /* 桌面侧轨（座舱宽 ≥760px）：聊天流里高度金贵——领域标签与页面按键从上下两条横栏改为左右两条竖轨，
    读数条压成中屏下方一条细线；两翼斜角加大、透视拉近，侧轨也斜一点，整体形成包围 */
 @container (min-width:760px){.cockpit{perspective:1000px;perspective-origin:50% 45%}}
