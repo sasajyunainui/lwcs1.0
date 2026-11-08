@@ -20,7 +20,7 @@
   .wing .dz2-skills .row strong,.wing .dz2-skills .row small{white-space:normal;text-overflow:clip;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
 }
 /* 桌面中屏身份行窄时两行均分 */
-@container cockpit (min-width:701px){.home-top .title-line{white-space:normal;text-wrap:balance}}
+@container cockpit (min-width:701px){.home-top .title-line{white-space:normal;text-wrap:balance}.home-top .title-line .nw{white-space:nowrap}}
 /* 座舱较窄：标题英文副标题全隐藏，属性训练增量可折两行，任务页签去内边距、字号收小 */
 @container cockpit (min-width:701px) and (max-width:879px){
   .h .en{display:none}
@@ -57,7 +57,7 @@
   .readout .res,.readout .tick{display:none}
   .readout .tick-ico{display:inline-block;cursor:help}
   /* 两翼近端会向前、向外凸出：上下各留余量，不压指挥栏、不被座舱底边裁 */
-  .screens{order:4;flex:1 0 100%;margin:26px 0 22px;--lw:27%;--rw:27%}
+  .screens{order:4;flex:1 0 100%;margin:26px 10px 22px;--lw:27%;--rw:27%}
   .wing.l{--la:22deg}.wing.r{--ra:22deg}
 }
 /* 座舱够宽时播报回到栏里滚动显示 */
