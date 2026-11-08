@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:6b481875f040450063d17bf37035620b49d268944fac46263b4e04b542d536fc|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:ac85d30edb6ece33524f90a1d2ac7c9bfb845c497dc9b13be0564fbcb8d0db03|cockpit/pages-role.js:e90660ff7b8dbc3d792374bbb647f7f4b4841df658805de32f0bc042e54965ab|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:d35728afb9ae39fa0c94f77b83df40149167487d7a8ec69072c495acecaf8e19|cockpit/pages-ability.js:5da4da4cf9dee034e8246e693a2d73aa7e472dc6487cecaa453bb25b576ceefc|cockpit/pages-supplies.js:bfda775de1b4e3d3c2f253a11ae1d7b3f263ddc35d68df165df82e7a4c6ad43f|cockpit/pages-map.js:161545076c81469f294f8462bb581ca2c990cd078f5075b2c88cc030d526bbd4|cockpit/pages-world.js:ca5dc37c07a41d3603ee2c089f84171de2b47453d125868dc3dc361fa9449723|cockpit/pages-terminal.js:4d51455d552329d8cada13b0f1d4336d30962e5d7dae64ae93d9a8bc0a9395a6|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:289fe455da8dfe0c8f42e39afaaa254d1c724b00f602e5094ca7626b17151097|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:6b481875f040450063d17bf37035620b49d268944fac46263b4e04b542d536fc|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:cc42c46c4ef317a0c40709d2b3c23bdda67e233fffbf1976891c8984ac0b7fbc|cockpit/pages-role.js:11e3f30178d7d4a98dc38b4e9d88f194ed71089f0993e6f4ed65b77eeb78f213|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:d35728afb9ae39fa0c94f77b83df40149167487d7a8ec69072c495acecaf8e19|cockpit/pages-ability.js:5da4da4cf9dee034e8246e693a2d73aa7e472dc6487cecaa453bb25b576ceefc|cockpit/pages-supplies.js:bfda775de1b4e3d3c2f253a11ae1d7b3f263ddc35d68df165df82e7a4c6ad43f|cockpit/pages-map.js:161545076c81469f294f8462bb581ca2c990cd078f5075b2c88cc030d526bbd4|cockpit/pages-world.js:ca5dc37c07a41d3603ee2c089f84171de2b47453d125868dc3dc361fa9449723|cockpit/pages-terminal.js:4d51455d552329d8cada13b0f1d4336d30962e5d7dae64ae93d9a8bc0a9395a6|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:289fe455da8dfe0c8f42e39afaaa254d1c724b00f602e5094ca7626b17151097|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -74652,6 +74652,7 @@ ${播报文本}
         <span class="pends" id="ck-rPend" aria-label="待处理"></span>
         <span class="res" id="ck-rRes" aria-label="随行资源"></span>
         <div class="tick" aria-label="系统播报"><span><b>播报</b><span id="ck-rTick"></span></span></div>
+        <i class="fa-solid fa-bullhorn tick-ico" tabindex="0" role="button" aria-label="系统播报" data-hint=""></i>
     </div>
   </div>
 </section>`;
@@ -74736,7 +74737,7 @@ ${播报文本}
     if (from !== to) put(host[side], html, null);
     else setTimeout(() => put(host[side], html, null), dur * (mode === 'fold' ? .42 : .45));
   };
-  const keysFor = d => d.keys.map(k => `<button class="key" type="button" data-page="${k.id}"><i class="fa-solid fa-${k.icon}"></i>${esc(k.label)}</button>`).join('');
+  const keysFor = d => d.keys.map(k => `<button class="key" type="button" data-page="${k.id}" aria-label="${esc(k.label)}"><i class="fa-solid fa-${k.icon}"></i><span class="lb">${esc(k.label)}</span></button>`).join('');
   const markKeys = () => $$('#ck-keys .key').forEach(k => { const on = k.dataset.page === state.page[state.domain]; k.classList.toggle('on', on); on ? k.setAttribute('aria-current', 'page') : k.removeAttribute('aria-current'); });
   const swapKeys = (d, first) => {
     const keys = $('#ck-keys');
@@ -75323,8 +75324,10 @@ ${播报文本}
   const syncReadout = () => {
     const me = S.char?.[S.sys?.玩家名] || {}, st = me.属性 || {};
     $('#ck-rLoc').textContent = String(me.状态?.位置 || '').replace(/^斗罗大陆-/, '').replace(/-/g, ' · ');
-    $('#ck-rTime').textContent = S.world.时间._calendar || tickDate(S.world.时间.tick);
-    $('#ck-rTick').textContent = S.sys.系统播报 || '暂无播报'; $('.readout .tick').title = S.sys.系统播报 || '';
+    // 时间：指挥栏里只放月日与时刻，完整历法放悬停
+    const cal = S.world.时间._calendar || tickDate(S.world.时间.tick);
+    $('#ck-rTime').textContent = String(cal).replace(/^(斗罗历|斗灵历)?\d+年/, ''); $('#ck-rTime').parentElement.title = cal;
+    $('#ck-rTick').textContent = S.sys.系统播报 || '暂无播报'; $('.readout .tick').title = S.sys.系统播报 || ''; $('.readout .tick-ico').dataset.hint = S.sys.系统播报 || '暂无播报';
     // 待处理（原项目「待处理能力」）：待生成的魂环、待确认的新技能，点了直接去处理
     const pend = ADP?.pending?.() || {}, ring = pend.soulRing, sd = pend.skillDesign;
     $('#ck-rPend').innerHTML = [ring ? `<button class="pend" type="button" data-route="ringPick" title="${esc([ring.charName, ring.spiritName, `第 ${ring.ringIndex} 魂环`].filter(Boolean).join(' · '))}"><i class="fa-solid fa-circle-plus"></i>待生成魂环</button>` : '', sd ? `<button class="pend" type="button" data-route="skillConfirm" title="${esc([sd.charName, sd.skillName].filter(Boolean).join(' · '))}"><i class="fa-solid fa-wand-sparkles"></i>新技能待确认</button>` : ''].join('');
@@ -75333,7 +75336,7 @@ ${播报文本}
   };
 
   const start = () => {
-    track.insertAdjacentHTML('beforeend', order.filter(id => domains[id]).map(id => `<button class="tab" type="button" data-tab="${id}"><i class="fa-solid fa-${domains[id].icon}"></i>${esc(domains[id].label)}</button>`).join(''));
+    track.insertAdjacentHTML('beforeend', order.filter(id => domains[id]).map(id => `<button class="tab" type="button" data-tab="${id}" aria-label="${esc(domains[id].label)}" data-hint="${esc(domains[id].label)}"><i class="fa-solid fa-${domains[id].icon}"></i><span class="lb">${esc(domains[id].label)}</span></button>`).join(''));
     syncReadout();
     slider.style.transition = 'none';
     switchDomain(order[0], null, true);
@@ -75432,7 +75435,7 @@ ${播报文本}
         <div class="id-row">${avatarBlock(c)}
           <div class="who">
             <div class="name-line"><h1 class="name"${(pk => pk ? ` data-longpress="${c.esc(pk)}" data-longpress-delay="600"` : '')(window.COCKPIT.privateArchiveKey?.())}>${c.esc(c.name)}</h1>${genderMark(st.性别) || c.num(st.年龄) ? `<span class="gender ${st.性别 === '女' ? 'f' : st.性别 === '男' ? 'm' : ''}" title="${c.esc(st.性别 || '')} · ${c.num(st.年龄)} 岁">${genderMark(st.性别)}<b>${c.ed(c.num(st.年龄) || '?', c.P('属性', '年龄'), { kind: 'number', integer: true, min: 0, raw: c.num(st.年龄) })}</b><small>岁</small></span>` : ''}</div>
-            <div class="title-line">Lv.${c.ed(c.num(st.等级), c.P('属性', '等级'), { kind: 'number', integer: true, min: 0, raw: c.num(st.等级) })} ${c.esc(c.rankTitle(st.等级))} · ${c.ed(st.精神境界 || '灵元境', c.P('属性', '精神境界'), { kind: 'enum', options: ['灵元境', '灵通境', '灵海境', '灵渊境', '灵域境', '神元境'] })}</div>
+            <div class="title-line"><span class="nw">Lv.${c.ed(c.num(st.等级), c.P('属性', '等级'), { kind: 'number', integer: true, min: 0, raw: c.num(st.等级) })} ${c.esc(c.rankTitle(st.等级))}</span> · <span class="nw">${c.ed(st.精神境界 || '灵元境', c.P('属性', '精神境界'), { kind: 'enum', options: ['灵元境', '灵通境', '灵海境', '灵渊境', '灵域境', '神元境'] })}</span></div>
             <div class="plaques">${!c.blank(c.ch.社交?.主身份) ? `<span class="plq">${c.ed(c.ch.社交.主身份, c.P('社交', '主身份'))}</span>` : ''}${st.邪魂师 ? '<span class="plq" style="--pc:#ff4d6a">邪魂师</span>' : ''}</div>
           </div>
         </div>
