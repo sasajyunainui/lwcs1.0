@@ -9,7 +9,7 @@
 .motes{display:none}
 /* 宽屏：台面不再往后推（原型为给斜翼留透视余量整体缩到约 93%，实测斜翼外沿是向内收的，不会出界）；
    窄屏三面轮播自己有纵深，保持原样 */
-@container cockpit (min-width:701px){.stage{--stage-z:0px}.screens{margin:14px 0 18px}}
+@container cockpit (min-width:701px){.stage{--stage-z:0px}}
 /* 桌面布局里两翼都偏窄（27%）：英文副标题不显示（截成半截不好看），属性行名称列按内容宽、间距收紧，
    任务页签只留文字与数量，设计台技能来源允许两行；中屏身份行窄时两行均分 */
 @container cockpit (min-width:701px){
@@ -34,30 +34,31 @@
 .readout .tick-ico{display:none}
 /* 桌面指挥栏（座舱宽 ≥701px）：聊天流里高度金贵——领域标签、页面按键、地址时间并成三屏上方一条 40px 的指挥栏，
    不再有上方梯形标签台、下方按键台与底部读数条；三屏吃满整宽，两翼斜角加大、透视拉近，形成包围 */
-@container (min-width:701px){.cockpit{perspective:900px;perspective-origin:50% 58%}}
+@container (min-width:701px){.cockpit{perspective:1300px;perspective-origin:50% 55%}}
 @container cockpit (min-width:701px){
   .stage{display:flex;flex-direction:row;flex-wrap:wrap;align-items:stretch;padding-top:2px}
-  .arc,.deck,.readout{transform:none;filter:none;margin:0;width:auto;height:40px;box-sizing:border-box}
+  .arc,.deck,.readout{transform:none;filter:none;margin:0;width:auto;height:44px;box-sizing:border-box}
   .arc .bz,.arc .b2,.arc .b3,.deck .bz,.deck .b2,.deck .b3{clip-path:none!important;background:none;padding:0!important;height:100%}
   /* 领域：只亮当前领域的文字，其余只留图标（悬停显示名称） */
   .arc{order:1;flex:none}
   .track{height:100%;box-sizing:border-box;padding:3px 14px 3px 3px;gap:2px;clip-path:polygon(0 0,100% 0,calc(100% - 12px) 100%,0 100%)}
-  .tab{padding:0 .75em;font-size:.86em;gap:.4em}
+  .tab{padding:0 .85em;font-size:.95em;gap:.4em}
   .tab:not(.on) .lb{display:none}
   .slider{top:3px;bottom:3px;height:auto}
   /* 页面按键：横排小键，图标与文字并列，贴着领域栏 */
   .deck{order:2;flex:1 1 0;min-width:0;margin-left:-12px}
   .keybed{height:100%;margin:0;padding:0 8px 0 18px;overflow:hidden;display:flex;align-items:center;background:linear-gradient(180deg,#eef2f6,#c9d2de);box-shadow:inset 0 1px 0 #fff,inset 0 -2px 0 rgba(60,78,108,.25);clip-path:polygon(12px 0,100% 0,calc(100% - 12px) 100%,0 100%)}
   .keys{flex-wrap:nowrap;justify-content:flex-start;gap:3px;min-width:0}
-  .key{flex-direction:row;gap:.35em;min-width:0;padding:.38em .62em;font-size:.8em;white-space:nowrap}
+  .key{flex-direction:row;gap:.35em;min-width:0;padding:.42em .7em;font-size:.88em;white-space:nowrap}
   .key::before{display:none}
   /* 地址与时间收在栏尾；播报宽时滚动，窄时收成喇叭（悬停看全文） */
-  .readout{order:3;flex:none;margin-left:-12px;padding:0 .9em 0 1.4em;gap:.8em;font-size:.8em;clip-path:polygon(12px 0,100% 0,100% 100%,0 100%)}
+  .readout{order:3;flex:none;margin-left:-12px;padding:0 .9em 0 1.4em;gap:.8em;font-size:.88em;clip-path:polygon(12px 0,100% 0,100% 100%,0 100%)}
   .readout .door{max-width:13em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .readout .res,.readout .tick{display:none}
   .readout .tick-ico{display:inline-block;cursor:help}
-  .screens{order:4;flex:1 0 100%;margin:12px 0 4px;--lw:27%;--rw:27%}
-  .wing.l{--la:30deg}.wing.r{--ra:30deg}
+  /* 两翼近端会向前、向外凸出：上下各留余量，不压指挥栏、不被座舱底边裁 */
+  .screens{order:4;flex:1 0 100%;margin:26px 0 22px;--lw:27%;--rw:27%}
+  .wing.l{--la:22deg}.wing.r{--ra:22deg}
 }
 /* 座舱够宽时播报回到栏里滚动显示 */
 @container cockpit (min-width:1150px){
