@@ -281,7 +281,7 @@
   const tpLoad = (c, v) => {
     const ui = c.state.ui, want = tpWant(c, v);
     if (ui.tpPending || ui.tpFor === want || !c.rt('__LWCS_ERA_RUNTIME_INTEGRATION_V1__')) return;
-    tpCall(c, { op: 'open', mode: v?.kind === 'black' ? 'black' : 'npc', npc: v?.npc || '', store: v?.store || '' }, st => { ui.tpFor = want; ui.tpReq = ''; ui.tps = st && st.key ? st : null; ui.tpErr = st?.reason || ''; });
+    tpCall(c, { op: 'open', mode: v?.kind === 'black' ? 'black' : 'npc', npc: v?.npc || '', store: v?.store || '' }, st => { ui.tpFor = want; ui.tpReq = ''; ui.tps = st && st.key ? st : null; ui.tpErr = st && !st.key ? st.reason || '交易模块未就绪' : ''; });
   };
   const tradePrivate = (c, v, venues) => {
     const ui = c.state.ui, act = ui.tpAct === '私下卖出' ? '私下卖出' : '私下买入', city = c.S.world.地点?.[String(c.ch.状态?.位置 || '').split('-').filter(x => x && x !== '斗罗大陆')[0]] || {};
@@ -324,7 +324,8 @@
   const trade = c => {
     const ui = c.state.ui, p = String(c.ch.状态?.位置 || '').split('-').filter(x => x && x !== '斗罗大陆');
     const city = c.S.world.地点?.[p[0]] || {}, shops = Object.entries(city.商店 || {}), auction = c.S.world.拍卖 || {}, coins = c.ch.财富 || {};
-    tpLoad(c, null);
+    // 商店列表（含特许兑换）取自任一已挂的交易会话；同一地点只在还没有会话时挂一次基础会话（私下场所有自己的会话，别来回重挂）
+    if (!/^(npc|black):/.test(String(ui.venue || '')) && (!ui.tps || JSON.parse(ui.tpFor || '[]')[1] !== c.ch.状态?.位置)) tpLoad(c, null);
     // 本城商店 + 交易模块额外加入的商店（魂灵塔特许兑换）；黑市店单列；在场人物可私下交易
     const extra = Object.entries(ui.tps?.storeGoods || {}).filter(([n]) => !(city.商店 || {})[n]).map(([n, goods]) => [n, { 库存: goods }]);
     const locals = Object.entries(c.S.char || {}).filter(([n, x]) => n !== c.name && x?.状态?.位置 && x.状态.位置 === c.ch.状态?.位置).map(([n]) => n);
