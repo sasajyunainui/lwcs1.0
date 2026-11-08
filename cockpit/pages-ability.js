@@ -192,7 +192,7 @@
       left: `<div class="pad">${c.head('fire', '武魂', 'Martial Souls', 'gd')}
         <div class="list">${c.souls.map((s, i) => `<button class="row${i === idx ? ' on' : ''}" type="button" data-set="soul=${i}" aria-current="${i === idx}">${c.sock('fire', i === idx ? 'gd' : '')}<div><strong>${c.esc(s.表象名称)}</strong><small>${c.esc([s.slot, s.系别, `${s.rings.length} 环`].filter(Boolean).join(' · '))}</small></div><span></span></button>`).join('')}</div>
         <section class="sec grow"><h3>魂技<span class="en">${skills.length}</span>${c.hint('悬停查看魂技卡，点击钉住；完整档案与编辑在「典籍」。')}</h3>
-        ${skills.length ? `<div class="list q-list">${skills.map(x => `<button class="row" type="button" data-inspect="sk:${skKey(x)}">${c.ringMedal(x.r, x.r.slot.replace(/\D/g, ''))}<div><strong>${c.esc(x.sk.魂技名)}</strong><small>${c.yearTier(x.r.年限)} · ${costText(c, x.sk.消耗)} · 前摇 ${c.fmt(x.sk.前摇 || 0)}</small></div><i class="fa-solid fa-chevron-right"></i></button>`).join('')}</div>` : '<span class="lbl">尚未附环</span>'}</section>
+        ${skills.length ? `<div class="list q-list">${skills.map(x => `<button class="row" type="button" data-inspect="sk:${skKey(x)}">${c.ringMedal(x.r, x.r.slot.replace(/\D/g, ''), true)}<div><strong>${c.esc(x.sk.魂技名)}</strong><small>${c.yearTier(x.r.年限)} · ${costText(c, x.sk.消耗)} · 前摇 ${c.fmt(x.sk.前摇 || 0)}</small></div><i class="fa-solid fa-chevron-right"></i></button>`).join('')}</div>` : '<span class="lbl">尚未附环</span>'}</section>
       </div>`,
       core: `<div class="pad detail martial-core">
         <div class="q-title">${c.sock('fire', 'gd')}<span class="chip">${c.esc(soul.slot)}</span><h2>${c.ed(soul.表象名称, [...c.P(soul.slot), '表象名称'])}</h2></div>
@@ -223,7 +223,7 @@
       tag: 'CORE · CODEX',
       left: `<div class="pad">${c.head('book', '典籍', 'Codex', 'gd')}
         <div class="pick-row">${c.pick('skg', grp, [{ value: '全部', label: `全部 · ${all.length}` }, ...have.map(g => ({ value: g, label: `${g} · ${all.filter(s => s.group === g).length}` }))])}</div>
-        ${shown.length ? `<div class="list q-list">${shown.map(s => `<button class="row${s === sel ? ' on' : ''}" type="button" data-set="sksel=${c.esc(s.key)}" aria-current="${s === sel}">${s.ring ? c.ringMedal(s.ring, s.ring.slot.replace(/\D/g, '')) : c.sock(s.group === '装备技能' ? 'shield-halved' : s.group === '魂骨附带' ? 'bone' : 'book')}<div><strong>${c.esc(s.魂技名)}</strong><small>${c.esc(s.from)}</small></div><span></span></button>`).join('')}</div>` : c.empty('book', '还没有任何技能', '附环、装备或自创后会出现在这里')}
+        ${shown.length ? `<div class="list q-list">${shown.map(s => `<button class="row${s === sel ? ' on' : ''}" type="button" data-set="sksel=${c.esc(s.key)}" aria-current="${s === sel}">${s.ring ? c.ringMedal(s.ring, s.ring.slot.replace(/\D/g, ''), true) : c.sock(s.group === '装备技能' ? 'shield-halved' : s.group === '魂骨附带' ? 'bone' : 'book')}<div><strong>${c.esc(s.魂技名)}</strong><small>${c.esc(s.from)}</small></div><span></span></button>`).join('')}</div>` : c.empty('book', '还没有任何技能', '附环、装备或自创后会出现在这里')}
       </div>`,
       core: sel ? `<div class="pad detail">${skillDetail(c, sel, false, true)}</div>` : `<div class="pad sparse">${c.empty('book', '还没有任何技能')}</div>`,
       right: `<div class="pad">
