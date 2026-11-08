@@ -80,7 +80,7 @@
         <div class="id-row">${avatarBlock(c)}
           <div class="who">
             <div class="name-line"><h1 class="name"${(pk => pk ? ` data-longpress="${c.esc(pk)}" data-longpress-delay="600"` : '')(window.COCKPIT.privateArchiveKey?.())}>${c.esc(c.name)}</h1>${genderMark(st.性别) || c.num(st.年龄) ? `<span class="gender ${st.性别 === '女' ? 'f' : st.性别 === '男' ? 'm' : ''}" title="${c.esc(st.性别 || '')} · ${c.num(st.年龄)} 岁">${genderMark(st.性别)}<b>${c.ed(c.num(st.年龄) || '?', c.P('属性', '年龄'), { kind: 'number', integer: true, min: 0, raw: c.num(st.年龄) })}</b><small>岁</small></span>` : ''}</div>
-            <div class="title-line">${c.esc(c.rankTitle(st.等级))} · ${c.ed(st.精神境界 || '灵元境', c.P('属性', '精神境界'), { kind: 'enum', options: ['灵元境', '灵通境', '灵海境', '灵渊境', '灵域境', '神元境'] })}</div>
+            <div class="title-line">Lv.${c.ed(c.num(st.等级), c.P('属性', '等级'), { kind: 'number', integer: true, min: 0, raw: c.num(st.等级) })} ${c.esc(c.rankTitle(st.等级))} · ${c.ed(st.精神境界 || '灵元境', c.P('属性', '精神境界'), { kind: 'enum', options: ['灵元境', '灵通境', '灵海境', '灵渊境', '灵域境', '神元境'] })}</div>
             <div class="plaques">${!c.blank(c.ch.社交?.主身份) ? `<span class="plq">${c.ed(c.ch.社交.主身份, c.P('社交', '主身份'))}</span>` : ''}${st.邪魂师 ? '<span class="plq" style="--pc:#ff4d6a">邪魂师</span>' : ''}</div>
           </div>
         </div>
@@ -155,7 +155,7 @@
               ${(a.特殊特征 || []).map(t => `<span class="plq gold">${c.esc(t)}</span>`).join('')}
             </div>
             ${heightRuler(c, a.身高, c.P('外貌', '身高'))}
-            ${wear.length ? `<section class="sec"><h3>穿搭<span class="en">Outfit</span></h3><div class="wear">${wear.map(([ic, l, v]) => `<div class="wear-row">${c.sock(ic)}<small>${l}</small><b>${c.ed(v, c.P('穿搭', l))}</b></div>`).join('')}</div></section>` : ''}
+            ${wear.length ? `<section class="sec"><h3>穿搭<span class="en">Outfit</span></h3><div class="wear">${wear.map(([ic, l, v]) => `<div class="wear-row">${c.sock(ic)}<small>${l}</small><b>${c.ed(v, c.P('穿搭', l))}</b></div>`).join('')}</div><p class="prose">${c.ed(c.blank(w.描述) ? '未记录整体描述' : w.描述, c.P('穿搭', '描述'), { kind: 'text', raw: c.blank(w.描述) ? '' : w.描述 })}</p></section>` : ''}
           </div>
           <div class="dossier-col">
             <section class="sec"><h3>长相<span class="en">Looks</span></h3><p class="narr">${c.ed(c.blank(a.长相描述) ? '未记录' : a.长相描述, c.P('外貌', '长相描述'), { kind: 'text', raw: c.blank(a.长相描述) ? '' : a.长相描述 })}</p></section>

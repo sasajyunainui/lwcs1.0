@@ -46,6 +46,15 @@
   const itemDef = (c, name) => { if (name) for (const [k, g] of c.entries(c.S.物品)) if (g && typeof g === 'object' && g[name] && typeof g[name] === 'object') return [k, g[name]]; return ['', null]; };
   const SOURCE_GROUPS = ['魂环魂技', '独立魂环魂技', '自创魂技', '武魂融合技', '魂骨附带', '装备技能', '血脉散技', '血脉特性', '血脉魂环', '功法', '复制效果'];
   const BLOOD_CHIP = { 血脉散技: '主动', 血脉特性: '被动', 血脉魂环: '环技' };
+  // 武魂属性体系与可调用元素的选项（同原项目 SPIRIT_ATTRIBUTE_SYSTEM_OPTIONS / SPIRIT_ATTRIBUTE_TOKEN_OPTIONS / WUXING_ATTRIBUTE_TOKEN_OPTIONS）
+  const SOUL_SYSTEMS = ['无', '元素', '五行'];
+  const ELEMENTS = ['金', '木', '水', '火', '土', '风', '雷', '冰', '光', '暗', '精神', '空间', '时间', '创造', '毁灭'];
+  const WUXING = ['金', '木', '水', '火', '土'];
+  document.addEventListener('click', e => {
+    const t = e.target.closest('[data-callable]'); if (!t) return;
+    const { path, x, on } = JSON.parse(t.dataset.callable), next = on.includes(x) ? on.filter(v => v !== x) : [...on, x];
+    window.COCKPIT.write([{ path, value: next.length ? next : ['无'] }]);
+  });
   // 结构化效果：读 _效果数组，把「原型 / 目标 / 数值 / 持续 / 条件分支」变成图标行，原文折叠
   const FX = {
     资源变化: e => ({ icon: String(e.资源 || '').includes('魂力') ? 'fire-flame-curved' : 'heart-pulse', title: `${String(e.数值).startsWith('-') ? '削减' : '恢复'}${e.资源 || '资源'}` }),
@@ -176,7 +185,6 @@
     const pool = c.num(c.st.魂力);
     const pendRing = c.ch.状态?.待选魂环 && typeof c.ch.状态.待选魂环 === 'object' ? c.ch.状态.待选魂环 : null;
     const bl = c.ch.血脉之力 || {}, blOn = !c.blank(bl.血脉);
-    const tags = [soul.系别, !c.blank(soul.属性体系) ? '属性 · ' + soul.属性体系 : '', ((soul.可调用元素 || []).filter(x => x && x !== '无').join('、')) ? '可调用 · ' + soul.可调用元素.filter(x => x && x !== '无').join('、') : ''].filter(Boolean);
     const skills = [...soul.spirits.flatMap(p => p.rings.map(r => ({ p, r, sk: r.skills[0] }))), ...(soul.direct || []).map(r => ({ p: null, r, sk: r.skills[0] }))].filter(x => x.sk);
     const skKey = ({ p, r, sk }) => c.esc(p ? `${soul.slot}/${p.slot}/${r.slot}/${sk.slot}` : `${soul.slot}/${r.slot}/${sk.slot}`);
     return {
@@ -187,9 +195,10 @@
         ${skills.length ? `<div class="list q-list">${skills.map(x => `<button class="row" type="button" data-inspect="sk:${skKey(x)}">${c.ringMedal(x.r, x.r.slot.replace(/\D/g, ''))}<div><strong>${c.esc(x.sk.魂技名)}</strong><small>${c.yearTier(x.r.年限)} · ${costText(c, x.sk.消耗)} · 前摇 ${c.fmt(x.sk.前摇 || 0)}</small></div><i class="fa-solid fa-chevron-right"></i></button>`).join('')}</div>` : '<span class="lbl">尚未附环</span>'}</section>
       </div>`,
       core: `<div class="pad detail martial-core">
-        <div class="q-title">${c.sock('fire', 'gd')}<span class="chip">${c.esc(soul.slot)}</span><h2>${c.esc(soul.表象名称)}</h2></div>
+        <div class="q-title">${c.sock('fire', 'gd')}<span class="chip">${c.esc(soul.slot)}</span><h2>${c.ed(soul.表象名称, [...c.P(soul.slot), '表象名称'])}</h2></div>
         ${pendRing ? `<div class="banner"><i class="fa-solid fa-circle-plus"></i><div><strong>有一枚待生成的魂环</strong><small>${c.esc(pending ? [pending.spiritName, `第 ${pending.ringIndex} 魂环`, `候选 ${pending.candidates.length} 只`, pending.status !== '待选择' ? pending.status : ''].filter(Boolean).join(' · ') : Object.entries(pendRing).slice(0, 3).map(([k, v]) => `${k} ${typeof v === 'object' ? '' : v}`).join(' · '))}</small></div>${pending ? '<button class="key-s" type="button" data-set="ringPick=1">选择魂灵生成</button>' : ''}<button class="key-s" type="button" data-confirm="暂缓生成这枚魂环" data-act='{"name":"ring","op":"defer"}'>暂不生成</button></div>` : ''}
-        ${tags.length ? `<div class="plaques">${tags.map((t, i) => `<span class="plq${i ? ' steel' : ''}">${c.esc(t)}</span>`).join('')}</div>` : ''}
+        <div class="plaques"><span class="plq">${c.ed(c.blank(soul.系别) ? '未定系别' : soul.系别, [...c.P(soul.slot), '系别'], { raw: c.blank(soul.系别) ? '' : soul.系别 })}</span><span class="plq steel">属性 · ${c.ed(soul.属性体系 || '无', [...c.P(soul.slot), '属性体系'], { kind: 'enum', options: SOUL_SYSTEMS })}</span></div>
+        ${soul.属性体系 && soul.属性体系 !== '无' ? (on => `<div class="chips-row callable"><span class="lbl">可调用${c.hint('点选这个武魂能调用的元素。')}</span>${(soul.属性体系 === '五行' ? WUXING : ELEMENTS).map(x => `<button class="key-s mini${on.includes(x) ? ' on' : ''}" type="button" aria-pressed="${on.includes(x)}" data-callable="${c.esc(JSON.stringify({ path: [...c.P(soul.slot), '可调用元素'], x, on }))}">${c.esc(x)}</button>`).join('')}</div>`)((soul.可调用元素 || []).filter(x => x && x !== '无')) : ''}
         <p class="narr">${c.ed(c.blank(soul.描述) ? '未记录' : soul.描述, [...c.P(soul.slot), '描述'], { kind: 'text', raw: c.blank(soul.描述) ? '' : soul.描述 })}</p>
         ${soul.rings.length ? `<div class="soul-card" data-scan data-float="r"><div class="soul-stage">${c.ringStage(soul.rings, r => { const p = soul.spirits.find(x => x.rings.includes(r)), sk = r.skills[0]; return sk && (p || r.independent) ? `data-inspect="sk:${skKey({ p, r, sk })}"` : ''; })}</div></div>`
           : `<div class="soul-card"><div class="soul-stage"><div class="soul-empty"><i></i><span>尚未附环</span></div></div><small class="lbl">下一魂环于 ${Math.floor(c.num(c.st.等级) / 10 + 1) * 10} 级开放</small></div>`}
@@ -199,7 +208,7 @@
         ${c.head('fire-flame-curved', '施放次数', 'Casts', 'sp')}
         <div class="need"><span>当前魂力</span><b>${c.fmt(pool)} / ${c.fmt(c.st.魂力上限)}</b></div>
         ${skills.length ? `<div class="casts">${skills.map(x => { const cost = typeof x.sk.消耗 === 'object' ? c.num(x.sk.消耗?.魂力) : 0; return `<button class="cast" type="button" data-inspect="sk:${skKey(x)}"><div><strong>${c.esc(x.sk.魂技名)}</strong><small>${cost ? `每次 ${c.fmt(cost)} 魂力` : '无魂力消耗'}</small></div><b>×${cost ? Math.floor(pool / cost) : '∞'}</b></button>`; }).join('')}</div>` : '<span class="lbl">尚无可施放的魂技</span>'}
-        ${blOn ? `<div class="groove"></div>${c.head('droplet', bl.血脉, 'Bloodline', 'hp')}${c.kv([['解封层数', c.fmt(bl.解封层数 || 0)], ['气血魂核', c.esc(bl.核心 || '未凝聚')], ['生命之火', bl.生命之火 ? '已点燃' : '未点燃']])}${allSkills(c).filter(s => BLOOD_CHIP[s.group]).map(s => `<button class="row" type="button" data-inspect="sk:${c.esc(s.key)}"><span class="chip s">${BLOOD_CHIP[s.group]}</span><div><strong>${c.esc(s.魂技名)}</strong></div><i class="fa-solid fa-chevron-right"></i></button>`).join('')}` : ''}
+        ${blOn ? `<div class="groove"></div>${c.head('droplet', bl.血脉, 'Bloodline', 'hp')}${c.kv([['血脉', c.ed(bl.血脉, c.P('血脉之力', '血脉'))], ['解封层数', c.ed(c.fmt(bl.解封层数 || 0), c.P('血脉之力', '解封层数'), { kind: 'number', integer: true, min: 0, raw: c.num(bl.解封层数) })], ['气血魂核', c.ed(bl.核心 || '未凝聚', c.P('血脉之力', '核心'), { raw: bl.核心 || '' })], ['生命之火', bl.生命之火 ? '已点燃' : '未点燃']])}${allSkills(c).filter(s => BLOOD_CHIP[s.group]).map(s => `<button class="row" type="button" data-inspect="sk:${c.esc(s.key)}"><span class="chip s">${BLOOD_CHIP[s.group]}</span><div><strong>${c.esc(s.魂技名)}</strong></div><i class="fa-solid fa-chevron-right"></i></button>`).join('')}` : ''}
       </div>`,
     };
   };

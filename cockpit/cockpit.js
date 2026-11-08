@@ -247,6 +247,7 @@
     <div class="readout">
         <span class="door" data-go="page-map/place" role="link" tabindex="0" title="查看当地"><i class="fa-solid fa-location-dot"></i> <span id="ck-rLoc"></span></span>
         <span class="num"><i class="fa-regular fa-clock"></i> <span id="ck-rTime"></span></span>
+        <span class="pends" id="ck-rPend" aria-label="待处理"></span>
         <span class="res" id="ck-rRes" aria-label="随行资源"></span>
         <div class="tick" aria-label="系统播报"><span><b>播报</b><span id="ck-rTick"></span></span></div>
     </div>
@@ -774,6 +775,7 @@
 
   // ---------- 事件委托 ----------
   track.addEventListener('click', e => { const t = e.target.closest('.tab'); if (t) switchDomain(t.dataset.tab); });
+  $('.cockpit').addEventListener('click', e => { const r = e.target.closest('[data-route]'); if (r) C.route({ to: r.dataset.route }); });
   $('#ck-keys').addEventListener('click', e => { const k = e.target.closest('.key'); if (k) switchPage(k.dataset.page); });
   $('.cockpit').addEventListener('click', e => {
     if (e.target.closest('.ie-edit')) return;
@@ -921,6 +923,9 @@
     $('#ck-rLoc').textContent = String(me.状态?.位置 || '').replace(/^斗罗大陆-/, '').replace(/-/g, ' · ');
     $('#ck-rTime').textContent = S.world.时间._calendar || tickDate(S.world.时间.tick);
     $('#ck-rTick').textContent = S.sys.系统播报 || '暂无播报'; $('.readout .tick').title = S.sys.系统播报 || '';
+    // 待处理（原项目「待处理能力」）：待生成的魂环、待确认的新技能，点了直接去处理
+    const pend = ADP?.pending?.() || {}, ring = pend.soulRing, sd = pend.skillDesign;
+    $('#ck-rPend').innerHTML = [ring ? `<button class="pend" type="button" data-route="ringPick" title="${esc([ring.charName, ring.spiritName, `第 ${ring.ringIndex} 魂环`].filter(Boolean).join(' · '))}"><i class="fa-solid fa-circle-plus"></i>待生成魂环</button>` : '', sd ? `<button class="pend" type="button" data-route="skillConfirm" title="${esc([sd.charName, sd.skillName].filter(Boolean).join(' · '))}"><i class="fa-solid fa-wand-sparkles"></i>新技能待确认</button>` : ''].join('');
     const m = [['hp', st.HP, st.HP上限], ['sp', st.魂力, st.魂力上限], ['vp', st.体力, st.体力上限], ['mp', st.精神力, st.精神力上限]];
     $('#ck-rRes').innerHTML = m.map(([c, a, b]) => `<span class="mini ${c}" title="${a} / ${b}"><i style="width:${b > 0 ? Math.min(100, a / b * 100) : 0}%"></i></span>`).join('');
   };

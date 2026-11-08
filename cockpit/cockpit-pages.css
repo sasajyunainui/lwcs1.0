@@ -576,3 +576,5 @@ div.rail-item{cursor:default}
 .idf-dirs{flex-wrap:wrap}
 .idf .sec>.lbl{margin-top:.35em}
 .idf-dirs .key-s.on,.dzf .act-row .key-s.on{background:linear-gradient(180deg,#5aa5ff,#1a5ad6);color:#fff;box-shadow:0 2px 0 #0d3384}
+.callable{align-items:center;flex-wrap:wrap;gap:.3em}
+.callable .key-s.on{background:linear-gradient(180deg,#5aa5ff,#1a5ad6);color:#fff;box-shadow:0 2px 0 #0d3384}
