@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:234ba4e34b92d03067ec48af910df0644ca21257f1158c5fc901c5a8a838b0a9|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:14da65b51faac6fd6b1f52c6441c6e394227cf7ac8a2bd5df17ba53610aa073a|cockpit/pages-role.js:a0fa73086bf227c7b6e658a5d0097aeb4a2731610dd9e0e01ac98fc4341a242c|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:afe7c39c6437be94149d9d9d4809c3e198b189241a8997297cba7329a9f619ba|cockpit/pages-ability.js:c692feb0aaebd6f28360829098826f576cd660710001d30dd9bc5341dac9aa72|cockpit/pages-supplies.js:2c20652e62132ecf1fcdc8da32cf339e5128de56f21d9337bfafc199d63611f7|cockpit/pages-map.js:bb5b1f07a1035a0294cdb32fbc61c97c36a49946297500421647eee91fe093da|cockpit/pages-world.js:53d47819477ad0b7398941a27519ecbf1e668b1462a013f0601efb57f91507d5|cockpit/pages-terminal.js:d009f25364208fcd87d85700255131b2e8947569284394a7996ef0584171e9e3 */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:5c506ad7d9ed42dd10d1c44a69c5a8006c4d7c1c68a5e39919e3332b5105f80b|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:14da65b51faac6fd6b1f52c6441c6e394227cf7ac8a2bd5df17ba53610aa073a|cockpit/pages-role.js:33ab3ecd890c56a621fe7d270f60de1beda45af71a3bc7954d66d69f6767e3c7|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:afe7c39c6437be94149d9d9d4809c3e198b189241a8997297cba7329a9f619ba|cockpit/pages-ability.js:c692feb0aaebd6f28360829098826f576cd660710001d30dd9bc5341dac9aa72|cockpit/pages-supplies.js:2c20652e62132ecf1fcdc8da32cf339e5128de56f21d9337bfafc199d63611f7|cockpit/pages-map.js:bb5b1f07a1035a0294cdb32fbc61c97c36a49946297500421647eee91fe093da|cockpit/pages-world.js:ebec9f364905915128ea23a7fd07e9d58f9b5156004fec0bb3d43eaaa155b45a|cockpit/pages-terminal.js:d009f25364208fcd87d85700255131b2e8947569284394a7996ef0584171e9e3 */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -12577,6 +12577,21 @@
   try {
     if (window.parent && window.parent !== window) window.parent.__LWCS_SETTLE_COMPETITION_MATCH__ = 结算赛事战斗_桥接;
   } catch (错误) {}
+
+  // 「进入比赛」登记成功后的对局叙事请求（旧赛事面板与座舱共用）
+  function 发起赛事对局请求_桥接(snapshot, { 赛事ID, 项目, 对局ID, 结果 } = {}) {
+    const 赛事 = deepGet(snapshot, ['rootData', 'world', '赛事', 赛事ID], {});
+    const 进度 = deepGet(赛事, ['_进度', 项目], {});
+    const 对局 = deepGet(进度, ['对局', 对局ID], {});
+    const 双方 = Array.isArray(结果?.双方) && 结果.双方.length
+      ? 结果.双方.map(参赛者 => toText(参赛者?.名称, '待实体化参赛者'))
+      : (对局.参赛者 || []).map(参赛者ID => toText(进度?.实体?.[参赛者ID]?.名称, '待实体化参赛者'));
+    return dispatchUiAiRequest(
+      `我要参加【${toText(赛事.名称, '赛事')}】的比赛，对阵${双方.join('与')}。`,
+      `以下内容属于前端已登记的赛事对局请求。赛事ID：${赛事ID}；项目：${项目}；对局ID：${对局ID}；双方：${双方.join(' / ')}。请自然描写入场并沿用现有战斗系统建立战斗；赛事上下文与结算ID已经由脚本写入，不要重复创建或修改。`,
+      { requestKind: 'competition_match' },
+    );
+  }
 
   async function 执行赛事权限管理动作_V2_桥接(动作 = '', 载荷 = {}) {
     const 运行时 = 读取赛事权限运行时_桥接();
@@ -40259,6 +40274,7 @@
   async function 座舱动作预演异步(名称, 参数 = {}) {
     try {
       if (名称 === 'travel') return await 座舱规划移动(参数);
+      if (名称 === 'competitionArchive') { try { return await window.__LWCS_LIST_ARCHIVED_COMPETITIONS__?.() || []; } catch (错误) { return []; } }
       if (名称 === 'privateTrade') {
         if (参数.op === 'open') return await 座舱交易打开(参数);
         if (参数.op === 'set') return 座舱交易设置(参数.changes || {});
@@ -40541,6 +40557,15 @@
           // 生成后原流程会打开「技能设计确认」，由座舱接管跳到设计台
           if (参数.op === 'generate') { await handlePendingSoulRingGenerate(快照, toText(参数.candidate, '')); return { ok: true, message: '已生成魂环' }; }
           return { ok: false, message: '未知的魂环操作' };
+        }
+        case 'competition': {
+          const 动作 = toText(参数.action, ''), 载荷 = 参数.payload && typeof 参数.payload === 'object' ? 参数.payload : {};
+          if (动作 === '归档重试') { await window.__LWCS_ARCHIVE_COMPLETED_COMPETITION__?.(toText(载荷.赛事ID, '')); return { ok: true, message: '已重试归档' }; }
+          if (动作 === '恢复归档') { const 恢复 = await window.__LWCS_RESTORE_ARCHIVED_COMPETITION__?.(toText(载荷.赛事ID, '')); return { ok: !(恢复 && 恢复.ok === false), message: toText(恢复 && (恢复.message || 恢复.reason), '已恢复') }; }
+          const 结果 = await 执行赛事权限管理动作_V2_桥接(动作, 载荷);
+          if (!结果 || 结果.ok === false) return { ok: false, message: toText(结果 && (结果.reason || 结果.message), '操作未完成') };
+          if (动作 === '准备玩家对局') { await refreshLiveSnapshot({ force: true }); return 座舱请求结果(await 发起赛事对局请求_桥接(liveSnapshot, { ...载荷, 结果 }), '已进入比赛'); }
+          return { ok: true, message: { 报名: '已报名', 启动赛事: '赛事已启动', 模拟场外比赛: '场外赛已推进', 领取物品选择: '已领取', 撤销权限: '已撤销' }[动作] || '已完成' };
         }
         case 'skillConfirm': {
           if (参数.op === 'continue') { 继续现有技能获得流程(); return { ok: true, message: '已保留原技能' }; }
@@ -46919,19 +46944,9 @@
           const 是赛事 = previewKey === '赛事';
           const 挂载独立模块 = snapshot =>
             (是赛事 ? window.mountCompetitionUI : window.mountPrivilegeUI)?.(container, snapshot, {
-              onStartMatch: ({ 赛事ID, 项目, 对局ID, 结果 }) => {
+              onStartMatch: 载荷 => {
                 if (!是赛事) return;
-                const 赛事 = deepGet(snapshot, ['rootData', 'world', '赛事', 赛事ID], {});
-                const 进度 = deepGet(赛事, ['_进度', 项目], {});
-                const 对局 = deepGet(进度, ['对局', 对局ID], {});
-                const 双方 = Array.isArray(结果?.双方) && 结果.双方.length
-                  ? 结果.双方.map(参赛者 => toText(参赛者?.名称, '待实体化参赛者'))
-                  : (对局.参赛者 || []).map(参赛者ID => toText(进度?.实体?.[参赛者ID]?.名称, '待实体化参赛者'));
-                dispatchUiAiRequest(
-                  `我要参加【${toText(赛事.名称, '赛事')}】的比赛，对阵${双方.join('与')}。`,
-                  `以下内容属于前端已登记的赛事对局请求。赛事ID：${赛事ID}；项目：${项目}；对局ID：${对局ID}；双方：${双方.join(' / ')}。请自然描写入场并沿用现有战斗系统建立战斗；赛事上下文与结算ID已经由脚本写入，不要重复创建或修改。`,
-                  { requestKind: 'competition_match' },
-                );
+                发起赛事对局请求_桥接(snapshot, 载荷);
               },
             });
           const 挂载函数名 = 是赛事 ? 'mountCompetitionUI' : 'mountPrivilegeUI';
@@ -75385,6 +75400,21 @@ ${播报文本}
     : q.类型 === '物品选择' ? `从 ${c.esc(q.来源)} 选 ${c.fmt(q.数量)} 件${q.品质 ? ' · ' + c.esc(q.品质) : ''}${q.分类 ? ' · ' + c.esc(q.分类) : ''}`
     : q.类型 === '奖励加成' ? `${c.esc(q.来源)} 奖励 ×${c.num(q.倍率)}` : '';
   const quotaPips = (c, u) => !u ? '<span class="chip-s">不限次数</span>' : `<span class="pips" title="剩余 ${u.剩余} / ${u.上限}">${Array.from({ length: Math.min(12, c.num(u.上限)) }, (_, i) => `<i class="${i < c.num(u.剩余) ? 'on' : ''}"></i>`).join('')}${c.num(u.上限) > 12 ? `<b>${u.剩余}/${u.上限}</b>` : ''}</span>`;
+  // 特殊权限操作（原项目赛事权限运行时）：物品选择权限从候选里领取一件；任何权限可撤销
+  const privActs = (c, id, p) => {
+    if (!c.isPlayer || !c.rt('__LWCS_ERA_RUNTIME_INTEGRATION_V1__')) return '';
+    const q = p.权限 || {}, act = (action, payload, confirm, cls = 'key-s') => `<button class="${cls}" type="button" data-confirm="${c.esc(confirm)}" data-act="${c.esc(JSON.stringify({ name: 'competition', action, payload }))}">`;
+    let claim = '';
+    if (q.类型 === '物品选择') {
+      const cands = (c.rt('__LWCS_COMPETITION_PRIVILEGE_RUNTIME__')?.生成物品选择候选?.(c.S, p) || []).slice(0, 100), ui = c.state.ui, pick = (ui.privPick || {})[id] || cands[0]?.物品名 || '';
+      claim = cands.length ? `<div class="groove"></div><span class="lbl">领取物品</span><div class="pick-row">${c.pick('privPick:' + id, pick, cands.map(x => ({ value: x.物品名, label: x.物品名 })))}</div>${act('领取物品选择', { 权限ID: id, 物品: pick }, `用「${p.名称}」领取「${pick}」×${c.fmt(q.数量 || 1)}`, 'cta')}<i class="fa-solid fa-gift"></i>领取</button>` : '<span class="lbl">当前没有可选的物品</span>';
+    }
+    return claim + `<div class="act-row">${act('撤销权限', { 权限ID: id }, `撤销「${p.名称}」，撤销后不能恢复`, 'key-s danger')}<i class="fa-solid fa-ban"></i> 撤销权限</button></div>`;
+  };
+  document.addEventListener('picker:change', e => {
+    if (!String(e.detail.path).startsWith('privPick:')) return;
+    const ui = window.COCKPIT.ctx().state.ui; (ui.privPick = ui.privPick || {})[e.detail.path.slice(9)] = e.detail.value; window.COCKPIT.refresh();
+  });
   const privInspect = (c, kind, id) => {
     const p = c.S.world.特殊权限?.[id]; if (!p) return '';
     const q = p.权限 || {}, u = p.使用配额, [ic, tint] = PRIV_KIND[q.类型] || ['key', ''];
@@ -75392,7 +75422,8 @@ ${播报文本}
     return `<div class="insp-head">${c.sock(ic, tint)}<div><strong style="font-size:1.1em">${c.esc(p.名称)}</strong><br><small>${c.esc(q.类型)} · ${privScope(c, q)}</small></div><button class="x" type="button" data-close-inspector aria-label="关闭">×</button></div>
       <div class="groove"></div>
       ${c.kv(scope)}
-      ${c.kv([['配额', u ? `剩余 ${u.剩余} / ${u.上限}${u.重置周期 ? ` · 每${c.esc(u.重置周期)}重置` : ''}` : '不限次数'], u?.下次重置tick ? ['下次重置', c.tickDate(u.下次重置tick)] : null, ['到期', p.到期tick ? c.tickDate(p.到期tick) : '长期有效']].filter(Boolean))}`;
+      ${c.kv([['配额', u ? `剩余 ${u.剩余} / ${u.上限}${u.重置周期 ? ` · 每${c.esc(u.重置周期)}重置` : ''}` : '不限次数'], u?.下次重置tick ? ['下次重置', c.tickDate(u.下次重置tick)] : null, ['到期', p.到期tick ? c.tickDate(p.到期tick) : '长期有效']].filter(Boolean))}
+      ${privActs(c, id, p)}`;
   };
 
   // 角色目录：左翼 = 范围筛选（全部 / 同地 / 已结识 / 其他地点），主屏 = 选角式竖牌（点选），右翼 = 选中角色的名片与切换查看。
@@ -78282,23 +78313,61 @@ ${播报文本}
   };
 
   // 赛事：左翼 = 赛事列表，主屏 = 选中赛事（日程、项目、参赛规模），右翼 = 我的参赛
+  // 赛事（数据与校验在原项目赛事运行时，操作走 __LWCS_COMPETITION_PRIVILEGE_ACTION__）：左翼 = 未结束的赛事 + 归档；
+  // 主屏 = 项目切换与总览（赛程 / 循环分组积分）、参赛者、规则；右翼 = 我的参赛与当前阶段能做的操作（报名、启动、推进场外赛）
+  const GPAGES = ['总览', '参赛者', '规则'];
+  const inEntry = (c, p) => Object.values(p?.参赛者 || {}).some(r => r?.名称 === c.player || (r?.成员 || []).includes(c.player));
   const games = c => {
-    const list = Object.entries(c.S.world.赛事 || {}), [id, g] = list.find(([k]) => k === c.state.ui.gsel) || list[0] || [];
-    const mine = list.filter(([, x]) => Object.values(x.项目 || {}).some(p => p?.参赛者?.[c.name]));
-    const items = g ? Object.entries(g.项目 || {}).filter(([, p]) => p) : [];
+    const ui = c.state.ui, all = Object.entries(c.S.world.赛事 || {}), list = all.filter(([, x]) => x?.状态 !== '已完成'), done = all.filter(([, x]) => x?.状态 === '已完成');
+    const [id, g] = list.find(([k]) => k === ui.gsel) || list[0] || [];
+    const projs = g ? Object.keys(g.项目 || {}) : [], proj = projs.includes(ui.gproj) ? ui.gproj : projs[0] || '个人赛', p = g?.项目?.[proj], prog = g?._进度?.[proj];
+    const page = GPAGES.includes(ui.gpage) ? ui.gpage : '总览', rt = c.rt('__LWCS_COMPETITION_PRIVILEGE_RUNTIME__');
+    if (ui.garch === undefined && c.rt('__LWCS_ERA_RUNTIME_INTEGRATION_V1__')) { ui.garch = null; window.COCKPIT.previewAsync('competitionArchive').then(a => { ui.garch = Array.isArray(a) ? a : []; window.COCKPIT.refresh(); }); }
+    const mine = list.filter(([, x]) => Object.values(x.项目 || {}).some(q => inEntry(c, q)));
+    const act = (action, payload, confirm) => `${confirm ? `data-confirm="${c.esc(confirm)}" ` : ''}data-act="${c.esc(JSON.stringify({ name: 'competition', action, payload }))}"`;
+    const nameOf = pid => prog?.实体?.[pid]?.名称 || p?.参赛者?.[pid]?.名称 || '待定';
+    const overview = () => {
+      if (!prog) return '<div class="void"><strong>项目尚未启动</strong></div>';
+      const groups = (p?.流程 === '循环' || p?.流程 === '循环后淘汰') ? Object.entries(rt?.生成循环积分表?.(g, proj) || {}) : [];
+      const groupHtml = groups.length ? `<section class="sec"><h3>循环分组<span class="en">${groups.length} 组</span></h3>${groups.slice(0, 4).map(([gn, rows]) => `<div class="cost-table" role="table"><div class="ct-row ct-head" role="row"><span>${c.esc(gn)} 组</span><span>赛</span><span>胜</span><span>负</span><span>积分</span></div>${rows.map(r => `<div class="ct-row" role="row"><span>${c.esc(nameOf(r.参赛者ID))}</span><span>${c.fmt(r.场次 ?? r.赛 ?? 0)}</span><span>${c.fmt(r.胜 ?? 0)}</span><span>${c.fmt(r.负 ?? 0)}</span><span>${c.fmt(r.积分 ?? 0)}</span></div>`).join('')}</div>`).join('')}</section>` : '';
+      const matches = Object.entries(prog.对局 || {}).slice(0, 80);
+      return groupHtml + `<section class="sec"><h3>赛程<span class="en">${matches.length}</span></h3><div class="list">${matches.map(([mid, m]) => { const sides = (m.参赛者 || []).map(nameOf), me = (m.参赛者 || []).some(pid => (prog.实体?.[pid]?.成员 || []).includes(c.player) || prog.实体?.[pid]?.名称 === c.player), win = m.赛果?.结果;
+        return `<div class="row${me ? ' on' : ''}"><span class="chip s">${m.分组 ? c.esc(m.分组) + ' · ' : ''}第 ${c.fmt(m.轮次)} 轮</span><div><strong>${sides.map((n, i) => `<span class="${win && m.参赛者[i] === win ? 'winner' : ''}">${c.esc(n)}</span>`).join(' <small>VS</small> ')}</strong><small>${m.赛果 ? `胜者 ${c.esc(nameOf(win))}` : '待赛'}</small></div>${me && !m.赛果 ? `<button class="key-s" type="button" ${act('准备玩家对局', { 赛事ID: id, 项目: proj, 对局ID: mid }, `进入「${g.名称 || id}」${proj}第 ${m.轮次} 轮：${sides.join(' 对 ')}`)}><i class="fa-solid fa-flag-checkered"></i> 进入比赛</button>` : '<span></span>'}</div>`; }).join('') || '<span class="lbl">还没有排出对局</span>'}</div></section>`;
+    };
+    const entrants = () => {
+      const rows = Object.entries(p?.参赛者 || {});
+      return `<div class="tiles">${tile(c, 'users', c.fmt(p?.参赛总数 || 0), '参赛总数')}${tile(c, 'user-check', rows.length, '已登记')}${tile(c, 'robot', c.fmt(prog?.模拟数量 ?? Math.max(0, c.num(p?.参赛总数) - rows.length)), '模拟池')}</div>
+        <div class="list">${rows.slice(0, 100).map(([, r]) => `<div class="row${(r.成员 || []).includes(c.player) || r.名称 === c.player ? ' on' : ''}">${c.sock(proj === '团体赛' ? 'people-group' : 'user')}<div><strong>${c.esc(r.名称)}</strong><small>${c.esc((r.成员 || []).join('、'))}</small></div><span class="chip s">${c.esc(r.状态 || '已登记')}</span></div>`).join('') || '<span class="lbl">还没有人报名</span>'}</div>`;
+    };
+    const rules = () => { const l = p?.参赛限制 || {}; return `<div class="chips-row">${[`流程 ${p?.流程 || '未设置'}`, `参赛总数 ${c.fmt(p?.参赛总数 || 0)}`, l.队伍人数上限 ? `队伍最多 ${l.队伍人数上限} 人` : '', l.年龄上限 !== undefined ? `年龄不超过 ${l.年龄上限} 岁` : '', l.等级上限 !== undefined ? `等级不超过 ${l.等级上限} 级` : '', (l.允许身份 || []).length ? `身份 ${l.允许身份.join('、')}` : '', (l.必需装备 || []).length ? `必需装备 ${l.必需装备.join('、')}` : '', (l.禁止装备 || []).length ? `禁止装备 ${l.禁止装备.join('、')}` : ''].filter(Boolean).map(t => `<span class="chip s">${c.esc(t)}</span>`).join('')}</div>`; };
+    // 报名表：名称 + 成员（默认自己；团体赛可多选）
+    const members = String(ui.gmem || c.player).split('|').filter(Boolean), regName = ui.gname ?? (proj === '团体赛' ? '' : c.player);
+    const cands = [c.player, ...Object.keys(c.S.char || {}).filter(n => n !== c.player)];
+    const regForm = g?.状态 === '筹备' && p ? `<div class="groove"></div><span class="lbl">${c.esc(proj)}报名${c.hint('报名资格（年龄、等级、身份、装备、队伍人数）由赛事规则校验，不合格会给出原因')}</span>
+        <div class="dzf"><span class="dzf-l">${proj === '团体赛' ? '队伍名' : '选手名'}</span><input type="text" data-gname value="${c.esc(regName)}" aria-label="${proj === '团体赛' ? '队伍名' : '选手名'}"></div>
+        <div class="dzf"><span class="dzf-l">成员</span><div class="dz-chips">${(proj === '团体赛' ? cands : [c.player]).map(n => `<button type="button" class="dz-chip${members.includes(n) ? ' on' : ''}" data-gmem="${c.esc(n)}" aria-pressed="${members.includes(n)}">${c.esc(n)}</button>`).join('')}</div></div>
+        <button class="cta" type="button" data-game-join="${c.esc(id)}" data-proj="${c.esc(proj)}"><i class="fa-solid fa-signature"></i>报名参赛</button>` : '';
+    const stage = !g ? '' : g.状态 === '筹备' ? `<button class="key-s" type="button" ${act('启动赛事', { 赛事ID: id }, `启动「${g.名称 || id}」：截止报名并排出赛程`)}><i class="fa-solid fa-play"></i> 启动赛事</button>`
+      : g.状态 === '进行中' ? `<button class="key-s" type="button" ${act('模拟场外比赛', { 赛事ID: id }, `推进「${g.名称 || id}」与你无关的场外对局`)}><i class="fa-solid fa-forward"></i> 推进场外赛</button>` : '';
+    const arch = [...done.map(([k, x]) => ({ id: k, name: x.名称 || k, note: '归档待重试', action: '归档重试', label: '重试' })), ...(ui.garch || []).map(x => ({ id: x.赛事ID, name: x.名称, note: x.项目摘要 || `${x.参赛数量 || 0} 个参赛单位`, action: '恢复归档', label: '恢复' }))];
     return {
-      tag: 'CORE · TOURNAMENT', wide: list.length ? '' : 'both', railR: `<div class="rail">${c.sock('user-check')}<b>0</b><small>我的参赛</small></div>`, railL: `<div class="rail">${c.sock('trophy')}<b>0</b><small>赛事</small></div>`,
+      tag: 'CORE · TOURNAMENT', wide: list.length || arch.length ? '' : 'both',
+      railR: `<div class="rail">${c.sock('user-check')}<b>${mine.length}</b><small>我的参赛</small></div>`, railL: `<div class="rail">${c.sock('trophy')}<b>${list.length}</b><small>赛事</small></div>`,
       left: `<div class="pad">${c.head('trophy', '赛事', 'Tournament', 'gd')}
-        ${list.length ? `<div class="list q-list">${list.map(([k, x]) => `<button class="row${k === id ? ' on' : ''}" type="button" data-set="gsel=${c.esc(k)}"><span class="chip">${c.esc(x.状态 || '筹备')}</span><div><strong>${c.esc(x.名称 || k)}</strong><small>${c.esc(c.tickDate(x.日程?.开始tick || 0))}</small></div><span></span></button>`).join('')}</div>` : c.empty('trophy', '暂无赛事')}
+        ${list.length ? `<div class="list q-list">${list.map(([k, x]) => `<button class="row${k === id ? ' on' : ''}" type="button" data-set="gsel=${c.esc(k)}"><span class="chip">${c.esc(x.状态 || '筹备')}</span><div><strong>${c.esc(x.名称 || k)}</strong><small>${c.esc(c.tickDate(x.日程?.开始tick || 0))}</small></div><span></span></button>`).join('')}</div>` : c.empty('trophy', '暂无赛事', '赛事由剧情发起；筹备期可以报名参赛')}
+        ${arch.length ? `<section class="sec"><h3>归档<span class="en">Archive</span></h3><div class="list">${arch.map(x => `<div class="row">${c.sock('box-archive')}<div><strong>${c.esc(x.name)}</strong><small>${c.esc(x.note)}</small></div><button class="key-s" type="button" ${act(x.action, { 赛事ID: x.id }, `${x.label}「${x.name}」`)}>${x.label}</button></div>`).join('')}</div></section>` : ''}
       </div>`,
       core: g ? `<div class="pad">
         <div class="q-title">${c.sock('trophy', 'gd')}<span class="chip">${c.esc(g.状态 || '筹备')}</span><h2>${c.esc(g.名称 || id)}</h2></div>
         <div class="q-meters"><div class="q-meter"><div class="q-mh"><small>日程</small><b>${c.esc(c.tickDate(g.日程?.开始tick || 0))}</b><em>至 ${c.esc(c.tickDate(g.日程?.结束tick || 0))}</em></div></div></div>
-        <section class="sec"><h3>项目<span class="en">Events</span></h3><div class="tiles">${items.map(([k, p]) => tile(c, k === '团体赛' ? 'people-group' : 'user', `${Object.keys(p.参赛者 || {}).length} / ${c.fmt(p.参赛总数)}`, `${k} · 参赛`)).join('') || '<span class="lbl">尚未设项目</span>'}</div></section>
+        ${projs.length > 1 ? `<div class="seg">${projs.map(k => `<button class="key-s${k === proj ? ' on' : ''}" type="button" data-set="gproj=${c.esc(k)}">${c.esc(k)}</button>`).join('')}</div>` : ''}
+        <div class="seg">${GPAGES.map(k => `<button class="key-s${k === page ? ' on' : ''}" type="button" data-set="gpage=${k}">${k}</button>`).join('')}</div>
+        ${page === '参赛者' ? entrants() : page === '规则' ? rules() : overview()}
       </div>` : `<div class="pad sparse">${c.empty('trophy', '暂无赛事', '赛事由剧情发起；筹备期可以报名参赛')}</div>`,
       right: `<div class="pad">${c.head('user-check', '我的参赛', 'Entry')}
         <div class="tiles">${tile(c, 'user-check', mine.length, '已报名')}${tile(c, 'trophy', list.filter(([, x]) => x.状态 === '进行中').length, '进行中')}</div>
-        ${g && g.状态 === '筹备' ? `<button class="cta" type="button" data-game-join="${c.esc(id)}"><i class="fa-solid fa-signature"></i>报名参赛</button>` : ''}
+        ${g && p && inEntry(c, p) ? `<div class="okline"><i class="fa-solid fa-circle-check"></i>已报名${c.esc(proj)}</div>` : regForm}
+        ${stage ? `<div class="act-row">${stage}</div>` : ''}
       </div>`,
     };
   };
@@ -78338,9 +78407,16 @@ ${播报文本}
   });
 
   document.addEventListener('click', e => {
+    const m = e.target.closest('[data-gmem]');
+    if (m) { const ui = window.COCKPIT.ctx().state.ui, c = window.COCKPIT.ctx(), set = new Set(String(ui.gmem || c.player).split('|').filter(Boolean)); set.has(m.dataset.gmem) ? set.delete(m.dataset.gmem) : set.add(m.dataset.gmem); ui.gmem = [...set].join('|'); return window.COCKPIT.refresh(); }
     const t = e.target.closest('[data-game-join]'); if (!t) return;
-    t.dataset.confirm = `报名参加「${t.dataset.gameJoin}」`;
+    const c = window.COCKPIT.ctx(), ui = c.state.ui, name = String(c.ui?.gname ?? ui.gname ?? '').trim() || (t.dataset.proj === '团体赛' ? '' : c.player), mem = String(ui.gmem || c.player).split('|').filter(Boolean);
+    if (!name) { t.dataset.blocked = '先填写队伍名'; delete t.dataset.act; return; }
+    delete t.dataset.blocked;
+    t.dataset.confirm = `报名「${t.dataset.proj}」：${name}${mem.length ? `（${mem.join('、')}）` : ''}`;
+    t.dataset.act = JSON.stringify({ name: 'competition', action: '报名', payload: { 赛事ID: t.dataset.gameJoin, 项目: t.dataset.proj, 名称: name, 成员: mem, 持有人: c.player } });
   }, true);
+  document.addEventListener('change', e => { const t = e.target.closest?.('[data-gname]'); if (t) window.COCKPIT.ctx().state.ui.gname = t.value; });
 
   window.COCKPIT.register('page-world', {
     label: '世界', icon: 'globe', tag: 'CORE · WORLD',
