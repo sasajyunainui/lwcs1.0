@@ -232,13 +232,13 @@
     <nav class="dots" aria-label="切换屏面"><button type="button" data-face="-1">根基</button><button type="button" data-face="0" class="on">主屏</button><button type="button" data-face="1">操作</button></nav>
     <div class="deck"><div class="bz"><div class="b2"><div class="b3">
       <div class="keybed"><nav class="keys" id="ck-keys" aria-label="领域页面"></nav></div>
-      <div class="readout">
+    </div></div></div></div>
+    <div class="readout">
         <span class="door" data-go="page-map/place" role="link" tabindex="0" title="查看当地"><i class="fa-solid fa-location-dot"></i> <span id="ck-rLoc"></span></span>
         <span class="num"><i class="fa-regular fa-clock"></i> <span id="ck-rTime"></span></span>
         <span class="res" id="ck-rRes" aria-label="随行资源"></span>
         <div class="tick" aria-label="系统播报"><span><b>播报</b><span id="ck-rTick"></span></span></div>
-      </div>
-    </div></div></div></div>
+    </div>
   </div>
 </section>`;
     OVERLAY = document.createElement('div'); OVERLAY.className = 'lwcs-ck lwcs-ck-overlay'; document.body.append(OVERLAY);
@@ -327,15 +327,21 @@
   const swapKeys = (d, first) => {
     const keys = $('#ck-keys');
     const set = () => { keys.innerHTML = keysFor(d); markKeys(); };
+    const away = getComputedStyle(keys).flexDirection === 'column' ? 'translateX(120%)' : 'translateY(120%)';
     if (reduce) { set(); return; }
-    if (first) { set(); keys.animate([{ transform: 'translateY(120%)' }, { transform: 'none' }], { duration: 600, delay: 250, easing: 'cubic-bezier(.2,.9,.3,1.2)', fill: 'backwards' }); return; }
+    if (first) { set(); keys.animate([{ transform: away }, { transform: 'none' }], { duration: 600, delay: 250, easing: 'cubic-bezier(.2,.9,.3,1.2)', fill: 'backwards' }); return; }
     // 换键只执行一次：动画结束或超时兜底（窗口在后台时动画不推进，onfinish 不触发）
     let done = false;
-    const swap = () => { if (done) return; done = true; set(); keys.animate([{ transform: 'translateY(120%)' }, { transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2,.9,.3,1.25)' }); };
-    keys.animate([{ transform: 'none' }, { transform: 'translateY(120%)' }], { duration: 240, easing: 'ease-in' }).onfinish = swap;
+    const swap = () => { if (done) return; done = true; set(); keys.animate([{ transform: away }, { transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2,.9,.3,1.25)' }); };
+    keys.animate([{ transform: 'none' }, { transform: away }], { duration: 240, easing: 'ease-in' }).onfinish = swap;
     setTimeout(swap, 320);
   };
-  const moveSlider = tab => { if (tab) { slider.style.left = tab.offsetLeft + 'px'; slider.style.width = tab.offsetWidth + 'px'; } };
+  // 领域标签竖排（宽屏侧轨）时滑块按纵向定位，横排时按横向；另一方向交回样式表
+  const moveSlider = tab => {
+    if (!tab) return;
+    const column = getComputedStyle(track).flexDirection === 'column';
+    Object.assign(slider.style, column ? { left: '', width: '', top: tab.offsetTop + 'px', height: tab.offsetHeight + 'px' } : { top: '', height: '', left: tab.offsetLeft + 'px', width: tab.offsetWidth + 'px' });
+  };
 
   const currentView = () => {
     const d = domains[state.domain], key = state.page[state.domain] || d.keys[0].id;
@@ -852,10 +858,13 @@
   // ---------- 惯性视差 ----------
   const cockpit = $('.cockpit'), stage = $('.stage'), arc = $('.arc'), deck = $('.deck');
   let tx = 0, ty = 0, cx = 0, cy = 0, raf = 0;
+  // 台面后推深度由样式表决定（原型页 -120px，嵌入宽屏 0）；重排时读一次，动画帧里不读样式
+  let stageZ = '-120px';
+  const readStageZ = () => { stageZ = getComputedStyle(stage).getPropertyValue('--stage-z').trim() || '0px'; };
   const loop = () => {
     cx += (tx - cx) * .07; cy += (ty - cy) * .07;
     if (!isMobile()) {
-      stage.style.transform = `translateZ(-120px) rotateX(${(-cy * 2.6).toFixed(3)}deg) rotateY(${(cx * 3.6).toFixed(3)}deg)`;
+      stage.style.transform = `translateZ(${stageZ}) rotateX(${(-cy * 2.6).toFixed(3)}deg) rotateY(${(cx * 3.6).toFixed(3)}deg)`;
       arc.style.translate = `${(-cx * 10).toFixed(2)}px ${(-cy * 4).toFixed(2)}px`;
       deck.style.translate = `${(cx * 8).toFixed(2)}px ${(cy * 3).toFixed(2)}px`;
     }
@@ -916,7 +925,7 @@
     if (!reduce && motesOn()) requestAnimationFrame(draw);
   };
   // 宿主尺寸变化（挂到新宿主、聊天栏宽度变化）后重排
-  const relayout = () => { syncMobile(); moveSlider($('.tab.on', track)); size(); if (state.domain) { applyWide(currentView().v); fitCarousel(); } };
+  const relayout = () => { syncMobile(); readStageZ(); moveSlider($('.tab.on', track)); size(); if (state.domain) { applyWide(currentView().v); fitCarousel(); } };
   api = { refresh: () => { if (!state.domain) return; if (editing) { api.pending = true; return; } renderPage({ kind: 'refresh' }); }, switchDomain, switchPage, openInspector, closeInspector, reproject, syncReadout, start, relayout, isEditing: () => !!editing, pending: false };
   }
 })();

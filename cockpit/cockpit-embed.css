@@ -9,7 +9,40 @@
 .motes{display:none}
 /* 宽屏：台面不再往后推（原型为给斜翼留透视余量整体缩到约 93%，实测斜翼外沿是向内收的，不会出界）；
    窄屏三面轮播自己有纵深，保持原样 */
-@container cockpit (min-width:701px){.stage{transform:none}.screens{margin:14px 0 18px}}
+@container cockpit (min-width:701px){.stage{--stage-z:0px}.screens{margin:14px 0 18px}}
+/* 桌面布局里两翼都偏窄（上下布局 27%、侧轨 ≥240px）：英文副标题不显示（截成半截不好看），属性行名称列按内容宽、间距收紧，
+   任务页签只留文字与数量，设计台技能来源允许两行；中屏身份行窄时两行均分 */
+@container cockpit (min-width:701px){
+  .wing .h .en{display:none}
+  .wing .attrs.compact .attr{grid-template-columns:auto auto auto minmax(0,1fr);gap:.45em;padding:.4em .5em}
+  .wing .attr em{font-size:.72em}
+  .wing .q-tabs .key-s i{display:none}
+  .wing .dz2-skills .row strong,.wing .dz2-skills .row small{white-space:normal;text-overflow:clip;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+}
+@container cockpit (min-width:701px) and (max-width:999px){.home-top .title-line{white-space:normal;text-wrap:balance}}
+/* 宽屏侧轨（座舱宽 ≥1000px）：聊天流里高度金贵、宽度富余——领域标签与页面按键从上下两条横栏改为左右两条竖轨，
+   读数条压成屏幕下方一行；两翼收窄、斜角加大、透视拉近，侧轨也斜一点，整体形成包围 */
+@container (min-width:1000px){.cockpit{perspective:1100px;perspective-origin:50% 45%}}
+@container cockpit (min-width:1000px){
+  .stage{--rail:clamp(52px,4.8cqw,62px);display:grid;grid-template-columns:var(--rail) minmax(0,1fr) var(--rail);grid-template-rows:auto auto;column-gap:clamp(4px,.6cqw,10px);align-items:stretch;padding-top:4px}
+  .arc{grid-column:1;grid-row:1;width:auto;margin:0;transform-origin:100% 50%;transform:rotateY(28deg)}
+  .deck{grid-column:3;grid-row:1;width:auto;margin:0;transform-origin:0 50%;transform:rotateY(-28deg);filter:drop-shadow(0 10px 14px rgba(0,0,0,.45))}
+  /* 两翼不窄于 240px（窄于此翼内属性行、页签、技能名会被挤裁），宽度紧张时先让中屏 */
+  .screens{grid-column:2;grid-row:1;margin:0;--lw:max(23%,240px);--rw:max(23%,240px)}
+  .wing.l{--la:32deg}.wing.r{--ra:32deg}
+  .readout{grid-column:1/-1;grid-row:2;width:auto;margin:8px 0 0}
+  .arc .bz,.arc .b2,.arc .b3,.deck .bz,.deck .b2,.deck .b3{height:100%}
+  .arc .bz,.arc .b2,.arc .b3{clip-path:polygon(0 0,100% 22px,100% calc(100% - 22px),0 100%)!important}
+  .deck .bz,.deck .b2,.deck .b3{clip-path:polygon(0 22px,100% 0,100% 100%,0 calc(100% - 22px))!important}
+  .arc .bz>.b2>.b3,.deck .bz>.b2>.b3{padding:26px 6px}
+  .track{flex-direction:column;justify-content:center;height:100%;gap:4px;clip-path:none}
+  .tab{flex-direction:column;gap:.3em;padding:.75em .1em;font-size:.8em}
+  .tab i{font-size:1.25em}
+  .slider{bottom:auto;left:4px;right:4px;width:auto;clip-path:polygon(0 0,100% 6px,100% calc(100% - 6px),0 100%)}
+  .keybed{height:100%;overflow:visible;padding:0;margin:0;display:flex;align-items:center}
+  .keys{flex-direction:column;justify-content:center;gap:.5em;width:100%}
+  .key{min-width:0;width:100%;font-size:.8em;padding:.5em .1em .45em}
+}
 .lwcs-ck-overlay{position:static;font-size:14px}
 /* 酒馆全局对 button / input / h2 等的主题样式不能渗进座舱：控件统一回到座舱自己的基线 */
 button,input,select,textarea{font:inherit;color:inherit;margin:0}

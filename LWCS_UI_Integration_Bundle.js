@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:6adec7eded766d771be5d8d9ee8dd2c50fbcecbe67fd1630d980da657aa7213c|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:bba06d71af4b3f2a4d93e0e2906e482b3600aa1d6fe78c645f8c8582d17c7a63|cockpit/pages-role.js:908d0a9a9e323fcc62e4abb109ea7203b82ec6fd107ec5a8a7c0c36cb436d9a2|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:afe7c39c6437be94149d9d9d4809c3e198b189241a8997297cba7329a9f619ba|cockpit/pages-ability.js:c692feb0aaebd6f28360829098826f576cd660710001d30dd9bc5341dac9aa72|cockpit/pages-supplies.js:6bb2f0535c71419f26784a612c3d84fa59722a816128d909b2b2db7f74961eb5|cockpit/pages-map.js:bb5b1f07a1035a0294cdb32fbc61c97c36a49946297500421647eee91fe093da|cockpit/pages-world.js:53d47819477ad0b7398941a27519ecbf1e668b1462a013f0601efb57f91507d5|cockpit/pages-terminal.js:4839b10b0361497898b513d151fff284614a4bb763f17662ea6857e4428cce41 */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:6adec7eded766d771be5d8d9ee8dd2c50fbcecbe67fd1630d980da657aa7213c|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:82087e23069651be9e5a59b28c3d98a487f8a4457ef5c4bb7501beb56c39b7f5|cockpit/pages-role.js:908d0a9a9e323fcc62e4abb109ea7203b82ec6fd107ec5a8a7c0c36cb436d9a2|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:afe7c39c6437be94149d9d9d4809c3e198b189241a8997297cba7329a9f619ba|cockpit/pages-ability.js:c692feb0aaebd6f28360829098826f576cd660710001d30dd9bc5341dac9aa72|cockpit/pages-supplies.js:6bb2f0535c71419f26784a612c3d84fa59722a816128d909b2b2db7f74961eb5|cockpit/pages-map.js:bb5b1f07a1035a0294cdb32fbc61c97c36a49946297500421647eee91fe093da|cockpit/pages-world.js:53d47819477ad0b7398941a27519ecbf1e668b1462a013f0601efb57f91507d5|cockpit/pages-terminal.js:4839b10b0361497898b513d151fff284614a4bb763f17662ea6857e4428cce41 */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -74184,13 +74184,13 @@ ${播报文本}
     <nav class="dots" aria-label="切换屏面"><button type="button" data-face="-1">根基</button><button type="button" data-face="0" class="on">主屏</button><button type="button" data-face="1">操作</button></nav>
     <div class="deck"><div class="bz"><div class="b2"><div class="b3">
       <div class="keybed"><nav class="keys" id="ck-keys" aria-label="领域页面"></nav></div>
-      <div class="readout">
+    </div></div></div></div>
+    <div class="readout">
         <span class="door" data-go="page-map/place" role="link" tabindex="0" title="查看当地"><i class="fa-solid fa-location-dot"></i> <span id="ck-rLoc"></span></span>
         <span class="num"><i class="fa-regular fa-clock"></i> <span id="ck-rTime"></span></span>
         <span class="res" id="ck-rRes" aria-label="随行资源"></span>
         <div class="tick" aria-label="系统播报"><span><b>播报</b><span id="ck-rTick"></span></span></div>
-      </div>
-    </div></div></div></div>
+    </div>
   </div>
 </section>`;
     OVERLAY = document.createElement('div'); OVERLAY.className = 'lwcs-ck lwcs-ck-overlay'; document.body.append(OVERLAY);
@@ -74279,15 +74279,21 @@ ${播报文本}
   const swapKeys = (d, first) => {
     const keys = $('#ck-keys');
     const set = () => { keys.innerHTML = keysFor(d); markKeys(); };
+    const away = getComputedStyle(keys).flexDirection === 'column' ? 'translateX(120%)' : 'translateY(120%)';
     if (reduce) { set(); return; }
-    if (first) { set(); keys.animate([{ transform: 'translateY(120%)' }, { transform: 'none' }], { duration: 600, delay: 250, easing: 'cubic-bezier(.2,.9,.3,1.2)', fill: 'backwards' }); return; }
+    if (first) { set(); keys.animate([{ transform: away }, { transform: 'none' }], { duration: 600, delay: 250, easing: 'cubic-bezier(.2,.9,.3,1.2)', fill: 'backwards' }); return; }
     // 换键只执行一次：动画结束或超时兜底（窗口在后台时动画不推进，onfinish 不触发）
     let done = false;
-    const swap = () => { if (done) return; done = true; set(); keys.animate([{ transform: 'translateY(120%)' }, { transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2,.9,.3,1.25)' }); };
-    keys.animate([{ transform: 'none' }, { transform: 'translateY(120%)' }], { duration: 240, easing: 'ease-in' }).onfinish = swap;
+    const swap = () => { if (done) return; done = true; set(); keys.animate([{ transform: away }, { transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2,.9,.3,1.25)' }); };
+    keys.animate([{ transform: 'none' }, { transform: away }], { duration: 240, easing: 'ease-in' }).onfinish = swap;
     setTimeout(swap, 320);
   };
-  const moveSlider = tab => { if (tab) { slider.style.left = tab.offsetLeft + 'px'; slider.style.width = tab.offsetWidth + 'px'; } };
+  // 领域标签竖排（宽屏侧轨）时滑块按纵向定位，横排时按横向；另一方向交回样式表
+  const moveSlider = tab => {
+    if (!tab) return;
+    const column = getComputedStyle(track).flexDirection === 'column';
+    Object.assign(slider.style, column ? { left: '', width: '', top: tab.offsetTop + 'px', height: tab.offsetHeight + 'px' } : { top: '', height: '', left: tab.offsetLeft + 'px', width: tab.offsetWidth + 'px' });
+  };
 
   const currentView = () => {
     const d = domains[state.domain], key = state.page[state.domain] || d.keys[0].id;
@@ -74804,10 +74810,13 @@ ${播报文本}
   // ---------- 惯性视差 ----------
   const cockpit = $('.cockpit'), stage = $('.stage'), arc = $('.arc'), deck = $('.deck');
   let tx = 0, ty = 0, cx = 0, cy = 0, raf = 0;
+  // 台面后推深度由样式表决定（原型页 -120px，嵌入宽屏 0）；重排时读一次，动画帧里不读样式
+  let stageZ = '-120px';
+  const readStageZ = () => { stageZ = getComputedStyle(stage).getPropertyValue('--stage-z').trim() || '0px'; };
   const loop = () => {
     cx += (tx - cx) * .07; cy += (ty - cy) * .07;
     if (!isMobile()) {
-      stage.style.transform = `translateZ(-120px) rotateX(${(-cy * 2.6).toFixed(3)}deg) rotateY(${(cx * 3.6).toFixed(3)}deg)`;
+      stage.style.transform = `translateZ(${stageZ}) rotateX(${(-cy * 2.6).toFixed(3)}deg) rotateY(${(cx * 3.6).toFixed(3)}deg)`;
       arc.style.translate = `${(-cx * 10).toFixed(2)}px ${(-cy * 4).toFixed(2)}px`;
       deck.style.translate = `${(cx * 8).toFixed(2)}px ${(cy * 3).toFixed(2)}px`;
     }
@@ -74868,7 +74877,7 @@ ${播报文本}
     if (!reduce && motesOn()) requestAnimationFrame(draw);
   };
   // 宿主尺寸变化（挂到新宿主、聊天栏宽度变化）后重排
-  const relayout = () => { syncMobile(); moveSlider($('.tab.on', track)); size(); if (state.domain) { applyWide(currentView().v); fitCarousel(); } };
+  const relayout = () => { syncMobile(); readStageZ(); moveSlider($('.tab.on', track)); size(); if (state.domain) { applyWide(currentView().v); fitCarousel(); } };
   api = { refresh: () => { if (!state.domain) return; if (editing) { api.pending = true; return; } renderPage({ kind: 'refresh' }); }, switchDomain, switchPage, openInspector, closeInspector, reproject, syncReadout, start, relayout, isEditing: () => !!editing, pending: false };
   }
 })();

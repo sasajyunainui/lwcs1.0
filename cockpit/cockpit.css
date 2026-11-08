@@ -13,7 +13,7 @@ body{margin:0;padding:28px 16px;min-height:100vh;background:#12151b;font-family:
 .cockpit{container-type:inline-size;position:relative;overflow:clip;width:min(100%,1080px);margin:0 auto;padding:10px 0 34px;perspective:1500px;perspective-origin:50% 40%;font-size:clamp(12.5px,1.42cqw,15.5px);
   background:radial-gradient(42% 40% at 50% 44%,rgba(64,128,230,.30),transparent 70%),radial-gradient(70% 30% at 50% 100%,rgba(90,150,255,.16),transparent 70%)}
 .motes{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-.stage{position:relative;transform-style:preserve-3d;transform:translateZ(-120px)}
+.stage{--stage-z:-120px;position:relative;transform-style:preserve-3d;transform:translateZ(var(--stage-z))}
 
 /* ============ 金属材质 ============ */
 /* 面板投影：原先是整块面板上的 drop-shadow 滤镜——面板内容一变（切换扫描、流光）整块都要重算滤镜，切换时掉帧。
@@ -84,6 +84,8 @@ body{margin:0;padding:28px 16px;min-height:100vh;background:#12151b;font-family:
 .pad{position:relative;z-index:1;padding:1.5em 1.3em 1.2em;display:flex;flex-direction:column;gap:.95em;height:100%}
 .h{margin:0;display:flex;align-items:center;gap:.6em;font-size:1.16em;font-weight:900;letter-spacing:.08em}
 .h .en{margin-left:.2em}
+/* 窄翼里标题不折行：英文副标题先收缩、省略 */
+.h{white-space:nowrap}.h .en{min-width:0;flex-shrink:10;overflow:hidden;text-overflow:ellipsis}
 .groove{height:2px;flex:none;background:linear-gradient(180deg,rgba(30,48,80,.28) 0 1px,rgba(255,255,255,.9) 1px 2px)}
 .lbl{color:var(--ink3);font-weight:700}
 
@@ -230,7 +232,7 @@ body{margin:0;padding:28px 16px;min-height:100vh;background:#12151b;font-family:
 .key.on{color:#fff;background:linear-gradient(180deg,#5aa5ff,#1a5ad6 60%,#1446b0);box-shadow:0 4px 0 #0d3384,0 0 16px var(--glow)}
 .key.on i{color:#fff}.key.on::before{background:#bfffea;box-shadow:0 0 6px #6fffcf}
 .key.lock{color:var(--ink3)}
-.readout{display:flex;align-items:center;gap:1.2em;margin-top:.85em;padding:.5em 1em;color:#cfe0f7;background:linear-gradient(180deg,#0f1828,#1b2539);box-shadow:inset 0 0 0 1px #3a4b66,inset 0 0 16px rgba(70,140,255,.3);font-weight:800;font-size:.9em}
+.readout{position:relative;z-index:3;width:84%;display:flex;align-items:center;gap:1.2em;margin:.4em auto 0;padding:.5em 1em;color:#cfe0f7;background:linear-gradient(180deg,#0f1828,#1b2539);box-shadow:inset 0 0 0 1px #3a4b66,inset 0 0 16px rgba(70,140,255,.3);font-weight:800;font-size:.9em}
 .readout i{color:#6fb4ff}
 .readout .tick{flex:1;overflow:hidden;white-space:nowrap;mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
 .readout .tick span{display:inline-block;padding-left:100%;animation:tick 26s linear infinite}
@@ -288,7 +290,7 @@ body{margin:0;padding:28px 16px;min-height:100vh;background:#12151b;font-family:
   .rings .mvu-soul-ring-showcase{--ring-stage-width:8em;--ring-stage-height:7em;width:8em}
   .meters{grid-template-columns:1fr}
   .deck{width:100%;transform:none;margin-top:8px}.keybed{overflow-x:auto;scrollbar-width:none}.keys{justify-content:flex-start}
-  .readout{flex-wrap:wrap;gap:.5em 1em}
+  .readout{width:100%;flex-wrap:wrap;gap:.5em 1em}
   .dots{display:flex;justify-content:center;gap:.5em;margin:.6em 0 0}
   .dots button{appearance:none;border:0;font:inherit;font-size:.8em;font-weight:800;color:#9db0cf;background:none;cursor:pointer;padding:.35em .6em;min-height:32px}
   .dots button.on{color:#fff;box-shadow:inset 0 -2px 0 #5aa5ff}
