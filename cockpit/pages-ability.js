@@ -135,7 +135,39 @@
 
   // 武魂：左翼 = 武魂列表与魂技列表（悬停出魂技卡，点击钉住），主屏 = 选中武魂档案（投影台魂环塔为主体，魂灵档案在下），
   // 右翼 = 按当前魂力的施放次数与血脉
+  // 魂环待选：左翼候选魂灵 → 主屏所选魂灵（年限、品质、契合度、魂环余量、本次魂环颜色）→ 右翼汇总与生成 / 暂缓
+  const ringPick = (c, p) => {
+    const ui = c.state.ui, list = p.candidates || [], cur = list.find(x => x.soulName === ui.ringCand) || list[0];
+    const ringOf = x => ({ 年限: x.ageValue });
+    const go = cur ? `<button class="cta" type="button" data-confirm="${c.esc(`用「${cur.displayName}」生成第 ${p.ringIndex} 魂环`)}" data-act="${c.esc(JSON.stringify({ name: 'ring', op: 'generate', candidate: cur.soulName }))}"><i class="fa-solid fa-circle-plus"></i>生成魂环</button>`
+      : `<span class="cta-wrap" data-hint="当前没有可选魂灵，请先通过剧情补足候选魂灵"><button class="cta" type="button" disabled><i class="fa-solid fa-circle-plus"></i>生成魂环</button></span>`;
+    return {
+      tag: 'CORE · SOUL RING',
+      left: `<div class="pad">${c.head('ghost', '候选魂灵', 'Candidates', 'gd')}
+        ${list.length ? `<div class="list">${list.map(x => `<button class="row${x === cur ? ' on' : ''}" type="button" data-set="ringCand=${c.esc(x.soulName)}" aria-current="${x === cur}">${c.ringMedal(ringOf(x), '')}<div><strong>${c.esc(x.displayName)}</strong><small>${c.esc([x.ageText, x.quality, `契合 ${x.compValue}%`].join(' · '))}</small></div><span></span></button>`).join('')}</div>` : c.empty('ghost', '没有候选魂灵', '请先通过剧情补足候选魂灵')}
+      </div>`,
+      core: cur ? `<div class="pad detail">
+        <div class="q-title">${c.sock('circle-plus', 'gd')}<span class="chip">第 ${p.ringIndex} 魂环</span><h2>${c.esc(cur.displayName)}</h2><span class="q-state">${c.esc(cur.state)}</span></div>
+        <div class="soul-card"><div class="soul-stage">${c.ringStage([{ 年限: cur.ageValue, slot: `第${p.ringIndex}魂环`, skills: [] }], () => '')}</div><small class="lbl">本次魂环 · ${c.esc(cur.nextRingColorLabel)}</small></div>
+        <div class="tiles">
+          <div class="tile">${c.sock('hourglass-half', 'gd')}<b>${c.esc(cur.ageText)}</b><small>年限</small></div>
+          <div class="tile">${c.sock('gem')}<b>${c.esc(cur.quality)}</b><small>品质</small></div>
+          <div class="tile">${c.sock('link')}<b>${c.fmt(cur.compValue)}%</b><small>契合度</small></div>
+          <div class="tile">${c.sock('circle-notch')}<b>${c.fmt(cur.ringCount)} / ${c.fmt(cur.ringCapacity)}</b><small>魂灵已附魂环 / 上限</small></div>
+          <div class="tile">${c.sock('layer-group')}<b>${c.fmt(cur.remainingAfterGenerate)}</b><small>生成后剩余环位</small></div>
+        </div>
+        <section class="sec"><h3>魂灵描述<span class="en">Spirit</span></h3><p class="prose">${c.esc(cur.description)}</p></section>
+      </div>` : `<div class="pad sparse">${c.empty('ghost', '没有候选魂灵', '请先通过剧情补足候选魂灵')}</div>`,
+      right: `<div class="pad">${c.head('circle-plus', '魂环生成', 'Soul Ring', 'gd')}
+        ${c.kv([['角色', c.esc(p.charName)], ['武魂', c.esc(p.spiritName)], ['魂环位', `第 ${p.ringIndex} 魂环`], ['状态', c.esc(p.status)]])}
+        ${go}
+        <div class="act-row"><button class="key-s" type="button" data-confirm="暂缓生成这枚魂环" data-act='{"name":"ring","op":"defer"}'><i class="fa-solid fa-pause"></i> 暂缓</button><button class="key-s" type="button" data-set="ringPick="><i class="fa-solid fa-chevron-left"></i> 返回武魂</button></div>
+      </div>`,
+    };
+  };
   const martial = c => {
+    const pending = window.COCKPIT.pending?.()?.soulRing;
+    if (c.state.ui.ringPick && pending) return ringPick(c, pending);
     const { soul, idx } = pickSoul(c);
     if (!soul) return { tag: 'CORE · MARTIAL SOUL', wide: 'both', core: `<div class="pad sparse">${c.empty('fire', '尚未记录武魂')}</div>`, railL: '', railR: '' };
     const pool = c.num(c.st.魂力);
@@ -153,7 +185,7 @@
       </div>`,
       core: `<div class="pad detail martial-core">
         <div class="q-title">${c.sock('fire', 'gd')}<span class="chip">${c.esc(soul.slot)}</span><h2>${c.esc(soul.表象名称)}</h2></div>
-        ${pendRing ? `<div class="banner"><i class="fa-solid fa-circle-plus"></i><div><strong>有一枚待生成的魂环</strong><small>${c.esc(Object.entries(pendRing).slice(0, 3).map(([k, v]) => `${k} ${typeof v === 'object' ? '' : v}`).join(' · '))}</small></div><button class="key-s" type="button" data-act='{"name":"ring","op":"open"}'>选择魂灵生成</button><button class="key-s" type="button" data-confirm="暂缓生成这枚魂环" data-act='{"name":"ring","op":"defer"}'>暂不生成</button></div>` : ''}
+        ${pendRing ? `<div class="banner"><i class="fa-solid fa-circle-plus"></i><div><strong>有一枚待生成的魂环</strong><small>${c.esc(pending ? [pending.spiritName, `第 ${pending.ringIndex} 魂环`, `候选 ${pending.candidates.length} 只`, pending.status !== '待选择' ? pending.status : ''].filter(Boolean).join(' · ') : Object.entries(pendRing).slice(0, 3).map(([k, v]) => `${k} ${typeof v === 'object' ? '' : v}`).join(' · '))}</small></div>${pending ? '<button class="key-s" type="button" data-set="ringPick=1">选择魂灵生成</button>' : ''}<button class="key-s" type="button" data-confirm="暂缓生成这枚魂环" data-act='{"name":"ring","op":"defer"}'>暂不生成</button></div>` : ''}
         ${tags.length ? `<div class="plaques">${tags.map((t, i) => `<span class="plq${i ? ' steel' : ''}">${c.esc(t)}</span>`).join('')}</div>` : ''}
         <p class="narr">${c.ed(c.blank(soul.描述) ? '未记录' : soul.描述, [...c.P(soul.slot), '描述'], { kind: 'text', raw: c.blank(soul.描述) ? '' : soul.描述 })}</p>
         ${soul.rings.length ? `<div class="soul-card" data-scan data-float="r"><div class="soul-stage">${c.ringStage(soul.rings, r => { const p = soul.spirits.find(x => x.rings.includes(r)), sk = r.skills[0]; return p && sk ? `data-inspect="sk:${c.esc(`${soul.slot}/${p.slot}/${r.slot}/${sk.slot}`)}"` : ''; })}</div></div>`
@@ -263,6 +295,29 @@
       <p class="narr">${c.ed(c.blank(sp.描述) ? '未记录' : sp.描述, [...pp, '描述'], { kind: 'text', raw: c.blank(sp.描述) ? '' : sp.描述 })}</p>
       ${spiritCard(c, sp, true).replace(/<p class="narr">[\s\S]*?<\/p>/, '')}`;
   };
+  // 原项目流程打开「魂环生成确认 / 技能设计确认 / 技能设计台」时由桥接转到这里
+  {
+    const C = window.COCKPIT;
+    const viewChar = name => { if (name && C.ctx().name !== name && C.ctx().S.char?.[name]) C.view(name); };
+    const openDesigner = (p, extra = {}) => {
+      if (Array.isArray(p) && p[0] === 'char') viewChar(p[1]);
+      const c = C.ctx(), key = Array.isArray(p) ? window.LWCS_DESIGNER_UI?.keyOfPath?.(c, { allSkills }, p) : '';
+      Object.assign(c.state.ui, { dtab: 'basic', dzErr: '', ...(key ? { skill: key } : {}), ...extra });
+      C.go('page-ability', 'design');
+      return true;
+    };
+    C.addRoute?.('ringPick', () => {
+      const p = C.pending()?.soulRing; if (!p) return false;
+      viewChar(p.charName);
+      const c = C.ctx(), i = c.souls.findIndex(s => s.slot === p.spiritSlot);
+      Object.assign(c.state.ui, { ringPick: '1', soul: String(i >= 0 ? i : 0), ringCand: '' });
+      C.go('page-ability', 'martial');
+      return true;
+    });
+    C.addRoute?.('designer', spec => openDesigner(spec.path));
+    C.addRoute?.('skillConfirm', () => { const d = C.pending()?.skillDesign; if (!d) return false; viewChar(d.charName); return openDesigner(d.path); });
+  }
+
   window.COCKPIT.register('page-ability', {
     label: '能力', icon: 'wand-sparkles', tag: 'CORE · MARTIAL SOUL',
     keys: [

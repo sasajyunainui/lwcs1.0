@@ -38479,7 +38479,56 @@
   // 座舱挂在 #mvu-unified-mount 里、盖住旧壳层（旧壳层隐藏但保留占位，挂载点尺寸不变）。
   // 旧壳层只在下列原详情面打开时让出画面（战斗终端、魂环待选确认、私密档案），关闭后回到座舱；
   // 其他旧详情面（旧座舱各页都是详情面，刷新后会恢复上次打开的那页）在座舱接管时清掉。
-  const 座舱让位详情键 = new Set([BATTLE_INLINE_PREVIEW_KEY, PENDING_SOUL_RING_PREVIEW_KEY, '私密档案详细页', '副职业工坊', '交易网络']);
+  const 座舱让位详情键 = new Set([BATTLE_INLINE_PREVIEW_KEY, '私密档案详细页', '副职业工坊', '交易网络']);
+  // 原项目各处流程（回到某页、模块意图路由等）打开的旧详情面 → 座舱里对应的页面
+  const 座舱旧详情页映射 = Object.freeze({
+    第1武魂详细页: ['page-ability', 'martial'], 第2武魂详细页: ['page-ability', 'martial'], 血脉封印详细页: ['page-ability', 'martial'],
+    技能典籍: ['page-ability', 'codex'], 武魂融合技详细页: ['page-ability', 'codex'],
+    储物仓库详细页: ['page-supplies', 'pack'], '武装详情：主武器': ['page-supplies', 'equip'], '武装详情：防具': ['page-supplies', 'equip'],
+    '武装详情：斗铠': ['page-supplies', 'equip'], '武装详情：机甲': ['page-supplies', 'equip'], '武装详情：魂导器': ['page-supplies', 'equip'],
+    任务界面: ['page-terminal', 'quests'], 试炼与情报: ['page-terminal', 'trial'], 情报库详细页: ['page-terminal', 'intel'],
+    当前节点详情: ['page-map', 'place'],
+    人物关系详细页: ['page-archive', 'relations'], 社会档案详细页: ['page-archive', 'profile'], 生命图谱详细页: ['page-archive', 'growth'],
+    所属势力详细页: ['page-archive', 'identity'], 我的阵营详情: ['page-archive', 'identity'], 角色切换器: ['page-archive', 'directory'],
+    赛事: ['page-world', 'games'], 怪物图鉴: ['page-world', 'bestiary'], 近期见闻: ['page-world', 'chronicle'], 近期安排: ['page-world', 'chronicle'],
+  });
+  // 座舱挂着时，原项目「打开某个详情面」改为在座舱里跳转；让位白名单里的仍由原面板显示（移植完成后逐个移出）。
+  // 返回 true 表示已由座舱接手，调用方不再打开旧面板
+  function 座舱接管详情(详情键) {
+    const 座舱 = window.COCKPIT;
+    if (!座舱 || !座舱.mounted || typeof 座舱.route !== 'function') return false;
+    const 键 = 归一化详情预览键(详情键);
+    if (!键 || 座舱让位详情键.has(键)) return false;
+    if (键 === PENDING_SOUL_RING_PREVIEW_KEY) return 座舱.route({ to: 'ringPick' });
+    if (键 === PENDING_SKILL_DESIGN_PREVIEW_KEY) return 座舱.route({ to: 'skillConfirm' });
+    if (isSkillDesignerPreviewKey(键)) {
+      const 元数据 = parseSkillDesignerPreviewKey(键);
+      return Array.isArray(元数据 && 元数据.path) && 元数据.path.length ? 座舱.route({ to: 'designer', path: 元数据.path }) : false;
+    }
+    const 页 = 座舱旧详情页映射[键];
+    return 页 ? 座舱.route({ to: 'page', domain: 页[0], page: 页[1] }) : false;
+  }
+  // 座舱读取的待处理事项：待选魂环（当前角色）与待确认的技能设计（突破生环、角色库成长技能、剧情自行设计、传授）
+  function 座舱待处理() {
+    const 魂环 = buildPendingSoulRingState(liveSnapshot);
+    const 设计 = buildSkillDesignConfirmState(liveSnapshot);
+    return {
+      soulRing: 魂环 ? {
+        charName: 魂环.charName, spiritSlot: 魂环.spiritSlot, spiritName: 魂环.spiritName, ringIndex: 魂环.ringIndex,
+        status: 魂环.status, source: 魂环.source,
+        candidates: 魂环.candidates.map(项 => ({
+          soulName: 项.soulName, displayName: 项.displayName, ageValue: 项.ageValue, ageText: 项.ageText, quality: 项.quality,
+          state: 项.state, compValue: 项.compValue, description: 项.description, ringCount: 项.ringCount,
+          ringCapacity: 项.ringCapacity, remainingAfterGenerate: 项.remainingAfterGenerate, nextRingColorLabel: 项.nextRingColorLabel,
+        })),
+      } : null,
+      skillDesign: 设计 ? {
+        growth: !!设计.growthRecord, charName: toText(设计.charName, ''), sourceLabel: toText(设计.sourceLabel, ''),
+        skillName: toText(设计.skillName, ''), path: 设计.previewMeta && Array.isArray(设计.previewMeta.path) ? 设计.previewMeta.path.slice() : null,
+        submitAfterSave: 设计.submitAfterSave !== false,
+      } : null,
+    };
+  }
   // —— 座舱动作：全部调原项目现有的执行函数（与旧界面点击时调用的同一套），结果交回座舱显示 ——
   const 座舱日常动作键 = Object.freeze({ 休整: 'rest', 睡眠: 'sleep', 冥想: 'meditate', 训练: 'train' });
   const 座舱卸装类型 = Object.freeze({ 武器: 'wpn', 防具: 'def', 斗铠: 'armor', 机甲: 'mech', 魂导器: 'soul_tool' });
@@ -38693,8 +38742,25 @@
         }
         case 'ring': {
           if (参数.op === 'defer') { await handlePendingSoulRingDefer(快照); return { ok: true, message: '已暂缓' }; }
-          renderUnifiedInlinePreview(PENDING_SOUL_RING_PREVIEW_KEY);
-          return { ok: true, message: '' };
+          // 生成后原流程会打开「技能设计确认」，由座舱接管跳到设计台
+          if (参数.op === 'generate') { await handlePendingSoulRingGenerate(快照, toText(参数.candidate, '')); return { ok: true, message: '已生成魂环' }; }
+          return { ok: false, message: '未知的魂环操作' };
+        }
+        case 'skillConfirm': {
+          if (参数.op === 'continue') { 继续现有技能获得流程(); return { ok: true, message: '已保留原技能' }; }
+          if (参数.op === 'design') { 打开待处理技能设计台(快照); return { ok: true, message: '' }; }
+          return { ok: false, message: '未知的确认操作' };
+        }
+        case 'skillDesignSaved': {
+          // 与旧设计台保存后一致：待确认的就是这条技能且要求提交时，把设计交给叙事结算
+          await refreshLiveSnapshot({ force: true });
+          const 状态 = buildSkillDesignConfirmState(liveSnapshot);
+          const 路径 = Array.isArray(参数.path) ? 参数.path.map(片段 => String(片段)) : [];
+          const 目标路径 = 状态 && 状态.previewMeta && Array.isArray(状态.previewMeta.path) ? 状态.previewMeta.path.map(片段 => String(片段)) : [];
+          if (!状态 || 状态.growthRecord || 状态.submitAfterSave === false || JSON.stringify(目标路径) !== JSON.stringify(路径)) return { ok: true, message: '' };
+          const 请求 = buildSkillDesignPromptText(状态.previewMeta, deepGet(liveSnapshot, ['rootData', ...路径], {}) || {}, { charName: 状态.charName, sourceLabel: 状态.sourceLabel });
+          待处理技能设计确认 = null;
+          return 座舱请求结果(await dispatchUiAiRequest(请求.playerInput, 请求.systemPrompt, { requestKind: 'skill_design_story', skipActionLock: true }), '已提交剧情');
         }
         case 'deleteChar': {
           const 角色键 = resolveSnapshotCharKey(快照, toText(参数.char, '')), 角色数据 = deepGet(快照, ['rootData', 'char', 角色键], null);
@@ -38740,6 +38806,8 @@
     // 私密档案入口规则不变：只借用已有内容挂长按（见 canOpenPrivateArchive 注释）
     privateArchiveAllowed: () => canOpenPrivateArchive(liveSnapshot),
     privateArchiveKey: '私密档案详细页',
+    // 待选魂环、待确认技能设计（座舱据此显示横幅与确认面）
+    pending: () => 座舱待处理(),
     // 战斗进行中但终端被收起时，座舱给出返回入口
     battleActive: () => !!deepGet(liveSnapshot, 'rootData.world.战斗.进行中', false),
   };
@@ -54423,6 +54491,7 @@ ${播报文本}
   }
 
   function openModal(previewKey, options = {}) {
+    if (座舱接管详情(previewKey)) return;
     if (shouldBlockInlineEditRerender(options)) {
       pendingLiveRefresh = true;
       return;
@@ -54979,6 +55048,7 @@ ${播报文本}
   }
 
   function renderUnifiedInlinePreview(previewKey, options = {}) {
+    if (座舱接管详情(previewKey)) return true;
     const 总探针 = 创建详情性能探针(previewKey, 'renderUnifiedInlinePreview');
     总探针?.标记('入口');
     const host = getUnifiedInlineHost(options);

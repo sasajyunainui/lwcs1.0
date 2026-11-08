@@ -129,6 +129,8 @@
   // ---------- 注册表与状态 ----------
   const order = ['page-archive', 'page-ability', 'page-supplies', 'page-map', 'page-world', 'page-terminal'];
   const domains = {};
+  // 跳转处理器：原项目流程要打开旧详情面时，桥接改为 COCKPIT.route({ to, … })，由页面登记的处理器接手
+  const routes = {};
   const state = { domain: null, page: {}, inspect: null, view: S?.sys?.玩家名 || '', face: 0, ui: {} };
   // ---------- 内联编辑（与原项目 makeInlineEditableValue / beginInlineEdit 同一语义）----------
   // 常驻：点击可编辑值即原地编辑；kind = string | number | enum | text（多行）。path 是存档根下的键路径数组。
@@ -170,6 +172,16 @@
     // 需要先同步运行时状态的预演（如移动要先刷新星图节点表）；没有异步实现时退回同步预演
     previewAsync: async (name, payload = {}) => { try { return (await (ADP?.previewAsync ? ADP.previewAsync(name, payload) : ADP?.preview?.(name, payload))) ?? null; } catch (err) { return { ok: false, allowed: false, reason: err?.message || String(err) }; } },
     privateArchiveKey: () => (ADP?.privateArchiveAllowed?.() ? ADP.privateArchiveKey : ''),
+    // 待处理事项（待选魂环、待确认技能设计）；原型页没有运行时，返回 null
+    pending: () => { try { return ADP?.pending?.() || null; } catch (err) { return null; } },
+    addRoute(name, fn) { routes[name] = fn; },
+    // 返回 true 表示座舱已接手（桥接据此不再打开旧面板）
+    route(spec = {}) {
+      if (!mounted) return false;
+      if (spec.to === 'page') { if (!domains[spec.domain]) return false; api.switchDomain?.(spec.domain, spec.page); return true; }
+      const fn = routes[spec.to]; if (typeof fn !== 'function') return false;
+      try { return fn(spec) !== false; } catch (err) { console.error('[座舱] 跳转失败', err); return false; }
+    },
     battleActive: () => !!ADP?.battleActive?.(),
     get mounted() { return mounted; },
     refresh() { api.refresh?.(); },

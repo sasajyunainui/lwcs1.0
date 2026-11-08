@@ -284,11 +284,17 @@
     try { v = ss.view(); } catch (e) { console.error(e); return null; }
     if (ui.dzRowFor !== cur.key) { ui.dzRow = 0; ui.dzRowFor = cur.key; }
     const secs = v.sections.filter(s => tabDef[2].includes(s.tab));
+    const pend = window.COCKPIT.pending?.()?.skillDesign, pendHere = !!(pend && !pend.growth && samePath(pend.path, S.meta.path));
+    const pendBar = !pend ? '' : `<div class="banner"><i class="fa-solid fa-wand-sparkles"></i><div><strong>新技能待确认：${esc(pend.skillName || '新技能')}</strong><small>${esc([pend.charName, pend.sourceLabel].filter(Boolean).join(' · '))}</small></div>${
+      pend.growth ? `<button class="key-s" type="button" data-act='{"name":"skillConfirm","op":"design"}'>自行设计</button>`
+        : pendHere ? '' : `<button class="key-s" type="button" data-act="${esc(JSON.stringify({ name: 'skillConfirm', op: 'design' }))}">前往设计</button>`
+    }<button class="key-s" type="button" data-confirm="保留原技能，不再调整" data-act='{"name":"skillConfirm","op":"continue"}'>保留原技能</button></div>`;
     const body = secs.map(s => sectionHtml(c, v, s, ui)).join('') || '<span class="lbl">本页没有可设置的项目</span>';
     return {
       tag: 'CORE · DESIGNER',
       core: `<div class="pad" data-dz2-key="${esc(sKey(c, cur))}">
         ${c.head('pen-ruler', v.draft?.name || cur.魂技名 || '技能设计台', 'Designer', 'gd', `<span class="legend">${esc(v.typeDisplay || '')} · ${esc(cur.group)}</span>`)}
+        ${pendBar}
         <div class="seg" role="tablist">${TABS.map(([k, l]) => `<button class="key-s ${k === tab ? 'on' : ''}" type="button" role="tab" aria-selected="${k === tab}" data-set="dtab=${k}">${l}</button>`).join('')}</div>
         <div class="dz-body"><div class="dz2${tab === 'show' ? ' fill' : ''}">${body}</div></div>
         ${ui.dzErr ? `<div class="warn"><i class="fa-solid fa-triangle-exclamation"></i><span>${esc(ui.dzErr)}</span></div>` : ''}
@@ -297,7 +303,7 @@
       // 左翼：选技能 → 和标准对手比（对抗试算）；右翼：预算 → 最终摘要 → 保存
       left: `<div class="pad">${c.head('book', '技能', 'Skills')}<div class="list dz2-skills">${all.map(s => `<button class="row${s === cur ? ' on' : ''}" type="button" data-set="skill=${esc(s.key)}" aria-current="${s === cur}">${s.ring ? c.ringMedal(s.ring, String(s.ring.slot).replace(/\D/g, ''), true) : c.sock(GROUP_ICON[s.group] || 'pen-ruler')}<div><strong>${esc(s.魂技名)}</strong><small>${s.isNew ? '未保存' : s.ring ? esc(s.from || '') : esc(s.group)}</small></div><span></span></button>`).join('')}</div>${newBtns()}<div class="groove"></div><div class="dz2-readout">${readout(c, ss, deps)}</div></div>`,
       railL: `<div class="rail">${c.sock('pen-ruler', 'gd')}<b>${all.length}</b><small>可设计技能</small></div>`,
-      right: `<div class="pad">${c.head('scale-balanced', '预算核算', 'Budget', 'gd')}<div class="dz-preview">${budget(c, ss, cur, deps)}</div>${ui.dzSaved === cur.key ? '<div class="okline dz2-saved"><i class="fa-solid fa-floppy-disk"></i>已写入存档</div>' : ''}${cur.isNew ? '<button class="key-s danger dz2-discard" type="button" data-dz2-discard><i class="fa-solid fa-trash"></i> 放弃新建</button>' : ''}</div>`,
+      right: `<div class="pad">${c.head('scale-balanced', '预算核算', 'Budget', 'gd')}<div class="dz-preview">${pendHere ? budget(c, ss, cur, deps).replace(/(<button class="cta" type="button" data-dz2-save[^>]*)>([\s\S]*?)保存设计/, '$1 data-hint="保存后把这次设计交给叙事结算">$2保存并提交剧情') : budget(c, ss, cur, deps)}</div>${ui.dzSaved === cur.key ? '<div class="okline dz2-saved"><i class="fa-solid fa-floppy-disk"></i>已写入存档</div>' : ''}${cur.isNew ? '<button class="key-s danger dz2-discard" type="button" data-dz2-discard><i class="fa-solid fa-trash"></i> 放弃新建</button>' : ''}</div>`,
     };
   };
 
@@ -402,7 +408,9 @@
     const ops = (r.updates || []).map(u => ({ path: (S.writePath && samePath(u.path, S.meta.path) ? S.writePath : u.path).slice(), value: u.value }));
     if (S.isNew) dropNew(c, S.entryKey);
     delete c.state.ui.dz2[key]; c.state.ui.dzErr = ''; c.state.ui.dzSaved = S.entryKey;
-    window.COCKPIT.write(ops);
+    // 待确认的就是这条技能：写回后按原流程把设计交给叙事结算
+    const pend = window.COCKPIT.pending?.()?.skillDesign, submit = !!(pend && !pend.growth && pend.submitAfterSave && samePath(pend.path, S.meta.path));
+    Promise.resolve(window.COCKPIT.write(ops)).then(ok => { if (ok && submit) window.COCKPIT.act('skillDesignSaved', { path: S.meta.path }); });
   });
   // 新建：捕获阶段先建好条目、选中它；按钮带 data-go（典籍页入口）时再由座舱完成跳转，否则原地刷新
   document.addEventListener('click', e => {
@@ -419,5 +427,7 @@
     window.COCKPIT.refresh();
   });
 
-  window.LWCS_DESIGNER_UI = { design };
+  // 按存档路径找设计台条目（桥接把「打开某技能的设计台」转来时用）
+  const keyOfPath = (c, deps, p) => { const hit = deps.allSkills(c).filter(designable).find(s => samePath(metaOf(c, s)?.path, p)); return hit ? hit.key : ''; };
+  window.LWCS_DESIGNER_UI = { design, keyOfPath };
 })();

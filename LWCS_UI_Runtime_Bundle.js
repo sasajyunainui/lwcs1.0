@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:2ac986b5bd7dce12da9d32a7e996deaab52357bcddb30f8efed5f78798187d17|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:780db7a0c6e1d65203951662dcaccb42756756d967724d9d73fdedd12239f7a2|cockpit/pages-role.js:908d0a9a9e323fcc62e4abb109ea7203b82ec6fd107ec5a8a7c0c36cb436d9a2|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:94cbf9ca01a696d2305db0bdfecb124b932b80d922c6b4bbaea917e530047f71|cockpit/pages-ability.js:f49d2d49b995ba07f84ff57e3dfe3fca1457b61d53541e0c2cb229ce63b3b5f8|cockpit/pages-supplies.js:6bb2f0535c71419f26784a612c3d84fa59722a816128d909b2b2db7f74961eb5|cockpit/pages-map.js:bb5b1f07a1035a0294cdb32fbc61c97c36a49946297500421647eee91fe093da|cockpit/pages-world.js:53d47819477ad0b7398941a27519ecbf1e668b1462a013f0601efb57f91507d5|cockpit/pages-terminal.js:4839b10b0361497898b513d151fff284614a4bb763f17662ea6857e4428cce41|TradeUI_Module.js:a65d0303636eba331b968eeb6ef06c2692a05f19d16febdc05b996388bcc0e46|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:289fe455da8dfe0c8f42e39afaaa254d1c724b00f602e5094ca7626b17151097|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:6adec7eded766d771be5d8d9ee8dd2c50fbcecbe67fd1630d980da657aa7213c|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:bba06d71af4b3f2a4d93e0e2906e482b3600aa1d6fe78c645f8c8582d17c7a63|cockpit/pages-role.js:908d0a9a9e323fcc62e4abb109ea7203b82ec6fd107ec5a8a7c0c36cb436d9a2|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:afe7c39c6437be94149d9d9d4809c3e198b189241a8997297cba7329a9f619ba|cockpit/pages-ability.js:c692feb0aaebd6f28360829098826f576cd660710001d30dd9bc5341dac9aa72|cockpit/pages-supplies.js:6bb2f0535c71419f26784a612c3d84fa59722a816128d909b2b2db7f74961eb5|cockpit/pages-map.js:bb5b1f07a1035a0294cdb32fbc61c97c36a49946297500421647eee91fe093da|cockpit/pages-world.js:53d47819477ad0b7398941a27519ecbf1e668b1462a013f0601efb57f91507d5|cockpit/pages-terminal.js:4839b10b0361497898b513d151fff284614a4bb763f17662ea6857e4428cce41|TradeUI_Module.js:a65d0303636eba331b968eeb6ef06c2692a05f19d16febdc05b996388bcc0e46|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:289fe455da8dfe0c8f42e39afaaa254d1c724b00f602e5094ca7626b17151097|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -40093,7 +40093,56 @@
   // 座舱挂在 #mvu-unified-mount 里、盖住旧壳层（旧壳层隐藏但保留占位，挂载点尺寸不变）。
   // 旧壳层只在下列原详情面打开时让出画面（战斗终端、魂环待选确认、私密档案），关闭后回到座舱；
   // 其他旧详情面（旧座舱各页都是详情面，刷新后会恢复上次打开的那页）在座舱接管时清掉。
-  const 座舱让位详情键 = new Set([BATTLE_INLINE_PREVIEW_KEY, PENDING_SOUL_RING_PREVIEW_KEY, '私密档案详细页', '副职业工坊', '交易网络']);
+  const 座舱让位详情键 = new Set([BATTLE_INLINE_PREVIEW_KEY, '私密档案详细页', '副职业工坊', '交易网络']);
+  // 原项目各处流程（回到某页、模块意图路由等）打开的旧详情面 → 座舱里对应的页面
+  const 座舱旧详情页映射 = Object.freeze({
+    第1武魂详细页: ['page-ability', 'martial'], 第2武魂详细页: ['page-ability', 'martial'], 血脉封印详细页: ['page-ability', 'martial'],
+    技能典籍: ['page-ability', 'codex'], 武魂融合技详细页: ['page-ability', 'codex'],
+    储物仓库详细页: ['page-supplies', 'pack'], '武装详情：主武器': ['page-supplies', 'equip'], '武装详情：防具': ['page-supplies', 'equip'],
+    '武装详情：斗铠': ['page-supplies', 'equip'], '武装详情：机甲': ['page-supplies', 'equip'], '武装详情：魂导器': ['page-supplies', 'equip'],
+    任务界面: ['page-terminal', 'quests'], 试炼与情报: ['page-terminal', 'trial'], 情报库详细页: ['page-terminal', 'intel'],
+    当前节点详情: ['page-map', 'place'],
+    人物关系详细页: ['page-archive', 'relations'], 社会档案详细页: ['page-archive', 'profile'], 生命图谱详细页: ['page-archive', 'growth'],
+    所属势力详细页: ['page-archive', 'identity'], 我的阵营详情: ['page-archive', 'identity'], 角色切换器: ['page-archive', 'directory'],
+    赛事: ['page-world', 'games'], 怪物图鉴: ['page-world', 'bestiary'], 近期见闻: ['page-world', 'chronicle'], 近期安排: ['page-world', 'chronicle'],
+  });
+  // 座舱挂着时，原项目「打开某个详情面」改为在座舱里跳转；让位白名单里的仍由原面板显示（移植完成后逐个移出）。
+  // 返回 true 表示已由座舱接手，调用方不再打开旧面板
+  function 座舱接管详情(详情键) {
+    const 座舱 = window.COCKPIT;
+    if (!座舱 || !座舱.mounted || typeof 座舱.route !== 'function') return false;
+    const 键 = 归一化详情预览键(详情键);
+    if (!键 || 座舱让位详情键.has(键)) return false;
+    if (键 === PENDING_SOUL_RING_PREVIEW_KEY) return 座舱.route({ to: 'ringPick' });
+    if (键 === PENDING_SKILL_DESIGN_PREVIEW_KEY) return 座舱.route({ to: 'skillConfirm' });
+    if (isSkillDesignerPreviewKey(键)) {
+      const 元数据 = parseSkillDesignerPreviewKey(键);
+      return Array.isArray(元数据 && 元数据.path) && 元数据.path.length ? 座舱.route({ to: 'designer', path: 元数据.path }) : false;
+    }
+    const 页 = 座舱旧详情页映射[键];
+    return 页 ? 座舱.route({ to: 'page', domain: 页[0], page: 页[1] }) : false;
+  }
+  // 座舱读取的待处理事项：待选魂环（当前角色）与待确认的技能设计（突破生环、角色库成长技能、剧情自行设计、传授）
+  function 座舱待处理() {
+    const 魂环 = buildPendingSoulRingState(liveSnapshot);
+    const 设计 = buildSkillDesignConfirmState(liveSnapshot);
+    return {
+      soulRing: 魂环 ? {
+        charName: 魂环.charName, spiritSlot: 魂环.spiritSlot, spiritName: 魂环.spiritName, ringIndex: 魂环.ringIndex,
+        status: 魂环.status, source: 魂环.source,
+        candidates: 魂环.candidates.map(项 => ({
+          soulName: 项.soulName, displayName: 项.displayName, ageValue: 项.ageValue, ageText: 项.ageText, quality: 项.quality,
+          state: 项.state, compValue: 项.compValue, description: 项.description, ringCount: 项.ringCount,
+          ringCapacity: 项.ringCapacity, remainingAfterGenerate: 项.remainingAfterGenerate, nextRingColorLabel: 项.nextRingColorLabel,
+        })),
+      } : null,
+      skillDesign: 设计 ? {
+        growth: !!设计.growthRecord, charName: toText(设计.charName, ''), sourceLabel: toText(设计.sourceLabel, ''),
+        skillName: toText(设计.skillName, ''), path: 设计.previewMeta && Array.isArray(设计.previewMeta.path) ? 设计.previewMeta.path.slice() : null,
+        submitAfterSave: 设计.submitAfterSave !== false,
+      } : null,
+    };
+  }
   // —— 座舱动作：全部调原项目现有的执行函数（与旧界面点击时调用的同一套），结果交回座舱显示 ——
   const 座舱日常动作键 = Object.freeze({ 休整: 'rest', 睡眠: 'sleep', 冥想: 'meditate', 训练: 'train' });
   const 座舱卸装类型 = Object.freeze({ 武器: 'wpn', 防具: 'def', 斗铠: 'armor', 机甲: 'mech', 魂导器: 'soul_tool' });
@@ -40307,8 +40356,25 @@
         }
         case 'ring': {
           if (参数.op === 'defer') { await handlePendingSoulRingDefer(快照); return { ok: true, message: '已暂缓' }; }
-          renderUnifiedInlinePreview(PENDING_SOUL_RING_PREVIEW_KEY);
-          return { ok: true, message: '' };
+          // 生成后原流程会打开「技能设计确认」，由座舱接管跳到设计台
+          if (参数.op === 'generate') { await handlePendingSoulRingGenerate(快照, toText(参数.candidate, '')); return { ok: true, message: '已生成魂环' }; }
+          return { ok: false, message: '未知的魂环操作' };
+        }
+        case 'skillConfirm': {
+          if (参数.op === 'continue') { 继续现有技能获得流程(); return { ok: true, message: '已保留原技能' }; }
+          if (参数.op === 'design') { 打开待处理技能设计台(快照); return { ok: true, message: '' }; }
+          return { ok: false, message: '未知的确认操作' };
+        }
+        case 'skillDesignSaved': {
+          // 与旧设计台保存后一致：待确认的就是这条技能且要求提交时，把设计交给叙事结算
+          await refreshLiveSnapshot({ force: true });
+          const 状态 = buildSkillDesignConfirmState(liveSnapshot);
+          const 路径 = Array.isArray(参数.path) ? 参数.path.map(片段 => String(片段)) : [];
+          const 目标路径 = 状态 && 状态.previewMeta && Array.isArray(状态.previewMeta.path) ? 状态.previewMeta.path.map(片段 => String(片段)) : [];
+          if (!状态 || 状态.growthRecord || 状态.submitAfterSave === false || JSON.stringify(目标路径) !== JSON.stringify(路径)) return { ok: true, message: '' };
+          const 请求 = buildSkillDesignPromptText(状态.previewMeta, deepGet(liveSnapshot, ['rootData', ...路径], {}) || {}, { charName: 状态.charName, sourceLabel: 状态.sourceLabel });
+          待处理技能设计确认 = null;
+          return 座舱请求结果(await dispatchUiAiRequest(请求.playerInput, 请求.systemPrompt, { requestKind: 'skill_design_story', skipActionLock: true }), '已提交剧情');
         }
         case 'deleteChar': {
           const 角色键 = resolveSnapshotCharKey(快照, toText(参数.char, '')), 角色数据 = deepGet(快照, ['rootData', 'char', 角色键], null);
@@ -40354,6 +40420,8 @@
     // 私密档案入口规则不变：只借用已有内容挂长按（见 canOpenPrivateArchive 注释）
     privateArchiveAllowed: () => canOpenPrivateArchive(liveSnapshot),
     privateArchiveKey: '私密档案详细页',
+    // 待选魂环、待确认技能设计（座舱据此显示横幅与确认面）
+    pending: () => 座舱待处理(),
     // 战斗进行中但终端被收起时，座舱给出返回入口
     battleActive: () => !!deepGet(liveSnapshot, 'rootData.world.战斗.进行中', false),
   };
@@ -56037,6 +56105,7 @@ ${播报文本}
   }
 
   function openModal(previewKey, options = {}) {
+    if (座舱接管详情(previewKey)) return;
     if (shouldBlockInlineEditRerender(options)) {
       pendingLiveRefresh = true;
       return;
@@ -56593,6 +56662,7 @@ ${播报文本}
   }
 
   function renderUnifiedInlinePreview(previewKey, options = {}) {
+    if (座舱接管详情(previewKey)) return true;
     const 总探针 = 创建详情性能探针(previewKey, 'renderUnifiedInlinePreview');
     总探针?.标记('入口');
     const host = getUnifiedInlineHost(options);
@@ -74011,6 +74081,8 @@ ${播报文本}
   // ---------- 注册表与状态 ----------
   const order = ['page-archive', 'page-ability', 'page-supplies', 'page-map', 'page-world', 'page-terminal'];
   const domains = {};
+  // 跳转处理器：原项目流程要打开旧详情面时，桥接改为 COCKPIT.route({ to, … })，由页面登记的处理器接手
+  const routes = {};
   const state = { domain: null, page: {}, inspect: null, view: S?.sys?.玩家名 || '', face: 0, ui: {} };
   // ---------- 内联编辑（与原项目 makeInlineEditableValue / beginInlineEdit 同一语义）----------
   // 常驻：点击可编辑值即原地编辑；kind = string | number | enum | text（多行）。path 是存档根下的键路径数组。
@@ -74052,6 +74124,16 @@ ${播报文本}
     // 需要先同步运行时状态的预演（如移动要先刷新星图节点表）；没有异步实现时退回同步预演
     previewAsync: async (name, payload = {}) => { try { return (await (ADP?.previewAsync ? ADP.previewAsync(name, payload) : ADP?.preview?.(name, payload))) ?? null; } catch (err) { return { ok: false, allowed: false, reason: err?.message || String(err) }; } },
     privateArchiveKey: () => (ADP?.privateArchiveAllowed?.() ? ADP.privateArchiveKey : ''),
+    // 待处理事项（待选魂环、待确认技能设计）；原型页没有运行时，返回 null
+    pending: () => { try { return ADP?.pending?.() || null; } catch (err) { return null; } },
+    addRoute(name, fn) { routes[name] = fn; },
+    // 返回 true 表示座舱已接手（桥接据此不再打开旧面板）
+    route(spec = {}) {
+      if (!mounted) return false;
+      if (spec.to === 'page') { if (!domains[spec.domain]) return false; api.switchDomain?.(spec.domain, spec.page); return true; }
+      const fn = routes[spec.to]; if (typeof fn !== 'function') return false;
+      try { return fn(spec) !== false; } catch (err) { console.error('[座舱] 跳转失败', err); return false; }
+    },
     battleActive: () => !!ADP?.battleActive?.(),
     get mounted() { return mounted; },
     refresh() { api.refresh?.(); },
@@ -76831,11 +76913,17 @@ ${播报文本}
     try { v = ss.view(); } catch (e) { console.error(e); return null; }
     if (ui.dzRowFor !== cur.key) { ui.dzRow = 0; ui.dzRowFor = cur.key; }
     const secs = v.sections.filter(s => tabDef[2].includes(s.tab));
+    const pend = window.COCKPIT.pending?.()?.skillDesign, pendHere = !!(pend && !pend.growth && samePath(pend.path, S.meta.path));
+    const pendBar = !pend ? '' : `<div class="banner"><i class="fa-solid fa-wand-sparkles"></i><div><strong>新技能待确认：${esc(pend.skillName || '新技能')}</strong><small>${esc([pend.charName, pend.sourceLabel].filter(Boolean).join(' · '))}</small></div>${
+      pend.growth ? `<button class="key-s" type="button" data-act='{"name":"skillConfirm","op":"design"}'>自行设计</button>`
+        : pendHere ? '' : `<button class="key-s" type="button" data-act="${esc(JSON.stringify({ name: 'skillConfirm', op: 'design' }))}">前往设计</button>`
+    }<button class="key-s" type="button" data-confirm="保留原技能，不再调整" data-act='{"name":"skillConfirm","op":"continue"}'>保留原技能</button></div>`;
     const body = secs.map(s => sectionHtml(c, v, s, ui)).join('') || '<span class="lbl">本页没有可设置的项目</span>';
     return {
       tag: 'CORE · DESIGNER',
       core: `<div class="pad" data-dz2-key="${esc(sKey(c, cur))}">
         ${c.head('pen-ruler', v.draft?.name || cur.魂技名 || '技能设计台', 'Designer', 'gd', `<span class="legend">${esc(v.typeDisplay || '')} · ${esc(cur.group)}</span>`)}
+        ${pendBar}
         <div class="seg" role="tablist">${TABS.map(([k, l]) => `<button class="key-s ${k === tab ? 'on' : ''}" type="button" role="tab" aria-selected="${k === tab}" data-set="dtab=${k}">${l}</button>`).join('')}</div>
         <div class="dz-body"><div class="dz2${tab === 'show' ? ' fill' : ''}">${body}</div></div>
         ${ui.dzErr ? `<div class="warn"><i class="fa-solid fa-triangle-exclamation"></i><span>${esc(ui.dzErr)}</span></div>` : ''}
@@ -76844,7 +76932,7 @@ ${播报文本}
       // 左翼：选技能 → 和标准对手比（对抗试算）；右翼：预算 → 最终摘要 → 保存
       left: `<div class="pad">${c.head('book', '技能', 'Skills')}<div class="list dz2-skills">${all.map(s => `<button class="row${s === cur ? ' on' : ''}" type="button" data-set="skill=${esc(s.key)}" aria-current="${s === cur}">${s.ring ? c.ringMedal(s.ring, String(s.ring.slot).replace(/\D/g, ''), true) : c.sock(GROUP_ICON[s.group] || 'pen-ruler')}<div><strong>${esc(s.魂技名)}</strong><small>${s.isNew ? '未保存' : s.ring ? esc(s.from || '') : esc(s.group)}</small></div><span></span></button>`).join('')}</div>${newBtns()}<div class="groove"></div><div class="dz2-readout">${readout(c, ss, deps)}</div></div>`,
       railL: `<div class="rail">${c.sock('pen-ruler', 'gd')}<b>${all.length}</b><small>可设计技能</small></div>`,
-      right: `<div class="pad">${c.head('scale-balanced', '预算核算', 'Budget', 'gd')}<div class="dz-preview">${budget(c, ss, cur, deps)}</div>${ui.dzSaved === cur.key ? '<div class="okline dz2-saved"><i class="fa-solid fa-floppy-disk"></i>已写入存档</div>' : ''}${cur.isNew ? '<button class="key-s danger dz2-discard" type="button" data-dz2-discard><i class="fa-solid fa-trash"></i> 放弃新建</button>' : ''}</div>`,
+      right: `<div class="pad">${c.head('scale-balanced', '预算核算', 'Budget', 'gd')}<div class="dz-preview">${pendHere ? budget(c, ss, cur, deps).replace(/(<button class="cta" type="button" data-dz2-save[^>]*)>([\s\S]*?)保存设计/, '$1 data-hint="保存后把这次设计交给叙事结算">$2保存并提交剧情') : budget(c, ss, cur, deps)}</div>${ui.dzSaved === cur.key ? '<div class="okline dz2-saved"><i class="fa-solid fa-floppy-disk"></i>已写入存档</div>' : ''}${cur.isNew ? '<button class="key-s danger dz2-discard" type="button" data-dz2-discard><i class="fa-solid fa-trash"></i> 放弃新建</button>' : ''}</div>`,
     };
   };
 
@@ -76949,7 +77037,9 @@ ${播报文本}
     const ops = (r.updates || []).map(u => ({ path: (S.writePath && samePath(u.path, S.meta.path) ? S.writePath : u.path).slice(), value: u.value }));
     if (S.isNew) dropNew(c, S.entryKey);
     delete c.state.ui.dz2[key]; c.state.ui.dzErr = ''; c.state.ui.dzSaved = S.entryKey;
-    window.COCKPIT.write(ops);
+    // 待确认的就是这条技能：写回后按原流程把设计交给叙事结算
+    const pend = window.COCKPIT.pending?.()?.skillDesign, submit = !!(pend && !pend.growth && pend.submitAfterSave && samePath(pend.path, S.meta.path));
+    Promise.resolve(window.COCKPIT.write(ops)).then(ok => { if (ok && submit) window.COCKPIT.act('skillDesignSaved', { path: S.meta.path }); });
   });
   // 新建：捕获阶段先建好条目、选中它；按钮带 data-go（典籍页入口）时再由座舱完成跳转，否则原地刷新
   document.addEventListener('click', e => {
@@ -76966,7 +77056,9 @@ ${播报文本}
     window.COCKPIT.refresh();
   });
 
-  window.LWCS_DESIGNER_UI = { design };
+  // 按存档路径找设计台条目（桥接把「打开某技能的设计台」转来时用）
+  const keyOfPath = (c, deps, p) => { const hit = deps.allSkills(c).filter(designable).find(s => samePath(metaOf(c, s)?.path, p)); return hit ? hit.key : ''; };
+  window.LWCS_DESIGNER_UI = { design, keyOfPath };
 })();
 
 ;
@@ -77108,7 +77200,39 @@ ${播报文本}
 
   // 武魂：左翼 = 武魂列表与魂技列表（悬停出魂技卡，点击钉住），主屏 = 选中武魂档案（投影台魂环塔为主体，魂灵档案在下），
   // 右翼 = 按当前魂力的施放次数与血脉
+  // 魂环待选：左翼候选魂灵 → 主屏所选魂灵（年限、品质、契合度、魂环余量、本次魂环颜色）→ 右翼汇总与生成 / 暂缓
+  const ringPick = (c, p) => {
+    const ui = c.state.ui, list = p.candidates || [], cur = list.find(x => x.soulName === ui.ringCand) || list[0];
+    const ringOf = x => ({ 年限: x.ageValue });
+    const go = cur ? `<button class="cta" type="button" data-confirm="${c.esc(`用「${cur.displayName}」生成第 ${p.ringIndex} 魂环`)}" data-act="${c.esc(JSON.stringify({ name: 'ring', op: 'generate', candidate: cur.soulName }))}"><i class="fa-solid fa-circle-plus"></i>生成魂环</button>`
+      : `<span class="cta-wrap" data-hint="当前没有可选魂灵，请先通过剧情补足候选魂灵"><button class="cta" type="button" disabled><i class="fa-solid fa-circle-plus"></i>生成魂环</button></span>`;
+    return {
+      tag: 'CORE · SOUL RING',
+      left: `<div class="pad">${c.head('ghost', '候选魂灵', 'Candidates', 'gd')}
+        ${list.length ? `<div class="list">${list.map(x => `<button class="row${x === cur ? ' on' : ''}" type="button" data-set="ringCand=${c.esc(x.soulName)}" aria-current="${x === cur}">${c.ringMedal(ringOf(x), '')}<div><strong>${c.esc(x.displayName)}</strong><small>${c.esc([x.ageText, x.quality, `契合 ${x.compValue}%`].join(' · '))}</small></div><span></span></button>`).join('')}</div>` : c.empty('ghost', '没有候选魂灵', '请先通过剧情补足候选魂灵')}
+      </div>`,
+      core: cur ? `<div class="pad detail">
+        <div class="q-title">${c.sock('circle-plus', 'gd')}<span class="chip">第 ${p.ringIndex} 魂环</span><h2>${c.esc(cur.displayName)}</h2><span class="q-state">${c.esc(cur.state)}</span></div>
+        <div class="soul-card"><div class="soul-stage">${c.ringStage([{ 年限: cur.ageValue, slot: `第${p.ringIndex}魂环`, skills: [] }], () => '')}</div><small class="lbl">本次魂环 · ${c.esc(cur.nextRingColorLabel)}</small></div>
+        <div class="tiles">
+          <div class="tile">${c.sock('hourglass-half', 'gd')}<b>${c.esc(cur.ageText)}</b><small>年限</small></div>
+          <div class="tile">${c.sock('gem')}<b>${c.esc(cur.quality)}</b><small>品质</small></div>
+          <div class="tile">${c.sock('link')}<b>${c.fmt(cur.compValue)}%</b><small>契合度</small></div>
+          <div class="tile">${c.sock('circle-notch')}<b>${c.fmt(cur.ringCount)} / ${c.fmt(cur.ringCapacity)}</b><small>魂灵已附魂环 / 上限</small></div>
+          <div class="tile">${c.sock('layer-group')}<b>${c.fmt(cur.remainingAfterGenerate)}</b><small>生成后剩余环位</small></div>
+        </div>
+        <section class="sec"><h3>魂灵描述<span class="en">Spirit</span></h3><p class="prose">${c.esc(cur.description)}</p></section>
+      </div>` : `<div class="pad sparse">${c.empty('ghost', '没有候选魂灵', '请先通过剧情补足候选魂灵')}</div>`,
+      right: `<div class="pad">${c.head('circle-plus', '魂环生成', 'Soul Ring', 'gd')}
+        ${c.kv([['角色', c.esc(p.charName)], ['武魂', c.esc(p.spiritName)], ['魂环位', `第 ${p.ringIndex} 魂环`], ['状态', c.esc(p.status)]])}
+        ${go}
+        <div class="act-row"><button class="key-s" type="button" data-confirm="暂缓生成这枚魂环" data-act='{"name":"ring","op":"defer"}'><i class="fa-solid fa-pause"></i> 暂缓</button><button class="key-s" type="button" data-set="ringPick="><i class="fa-solid fa-chevron-left"></i> 返回武魂</button></div>
+      </div>`,
+    };
+  };
   const martial = c => {
+    const pending = window.COCKPIT.pending?.()?.soulRing;
+    if (c.state.ui.ringPick && pending) return ringPick(c, pending);
     const { soul, idx } = pickSoul(c);
     if (!soul) return { tag: 'CORE · MARTIAL SOUL', wide: 'both', core: `<div class="pad sparse">${c.empty('fire', '尚未记录武魂')}</div>`, railL: '', railR: '' };
     const pool = c.num(c.st.魂力);
@@ -77126,7 +77250,7 @@ ${播报文本}
       </div>`,
       core: `<div class="pad detail martial-core">
         <div class="q-title">${c.sock('fire', 'gd')}<span class="chip">${c.esc(soul.slot)}</span><h2>${c.esc(soul.表象名称)}</h2></div>
-        ${pendRing ? `<div class="banner"><i class="fa-solid fa-circle-plus"></i><div><strong>有一枚待生成的魂环</strong><small>${c.esc(Object.entries(pendRing).slice(0, 3).map(([k, v]) => `${k} ${typeof v === 'object' ? '' : v}`).join(' · '))}</small></div><button class="key-s" type="button" data-act='{"name":"ring","op":"open"}'>选择魂灵生成</button><button class="key-s" type="button" data-confirm="暂缓生成这枚魂环" data-act='{"name":"ring","op":"defer"}'>暂不生成</button></div>` : ''}
+        ${pendRing ? `<div class="banner"><i class="fa-solid fa-circle-plus"></i><div><strong>有一枚待生成的魂环</strong><small>${c.esc(pending ? [pending.spiritName, `第 ${pending.ringIndex} 魂环`, `候选 ${pending.candidates.length} 只`, pending.status !== '待选择' ? pending.status : ''].filter(Boolean).join(' · ') : Object.entries(pendRing).slice(0, 3).map(([k, v]) => `${k} ${typeof v === 'object' ? '' : v}`).join(' · '))}</small></div>${pending ? '<button class="key-s" type="button" data-set="ringPick=1">选择魂灵生成</button>' : ''}<button class="key-s" type="button" data-confirm="暂缓生成这枚魂环" data-act='{"name":"ring","op":"defer"}'>暂不生成</button></div>` : ''}
         ${tags.length ? `<div class="plaques">${tags.map((t, i) => `<span class="plq${i ? ' steel' : ''}">${c.esc(t)}</span>`).join('')}</div>` : ''}
         <p class="narr">${c.ed(c.blank(soul.描述) ? '未记录' : soul.描述, [...c.P(soul.slot), '描述'], { kind: 'text', raw: c.blank(soul.描述) ? '' : soul.描述 })}</p>
         ${soul.rings.length ? `<div class="soul-card" data-scan data-float="r"><div class="soul-stage">${c.ringStage(soul.rings, r => { const p = soul.spirits.find(x => x.rings.includes(r)), sk = r.skills[0]; return p && sk ? `data-inspect="sk:${c.esc(`${soul.slot}/${p.slot}/${r.slot}/${sk.slot}`)}"` : ''; })}</div></div>`
@@ -77236,6 +77360,29 @@ ${播报文本}
       <p class="narr">${c.ed(c.blank(sp.描述) ? '未记录' : sp.描述, [...pp, '描述'], { kind: 'text', raw: c.blank(sp.描述) ? '' : sp.描述 })}</p>
       ${spiritCard(c, sp, true).replace(/<p class="narr">[\s\S]*?<\/p>/, '')}`;
   };
+  // 原项目流程打开「魂环生成确认 / 技能设计确认 / 技能设计台」时由桥接转到这里
+  {
+    const C = window.COCKPIT;
+    const viewChar = name => { if (name && C.ctx().name !== name && C.ctx().S.char?.[name]) C.view(name); };
+    const openDesigner = (p, extra = {}) => {
+      if (Array.isArray(p) && p[0] === 'char') viewChar(p[1]);
+      const c = C.ctx(), key = Array.isArray(p) ? window.LWCS_DESIGNER_UI?.keyOfPath?.(c, { allSkills }, p) : '';
+      Object.assign(c.state.ui, { dtab: 'basic', dzErr: '', ...(key ? { skill: key } : {}), ...extra });
+      C.go('page-ability', 'design');
+      return true;
+    };
+    C.addRoute?.('ringPick', () => {
+      const p = C.pending()?.soulRing; if (!p) return false;
+      viewChar(p.charName);
+      const c = C.ctx(), i = c.souls.findIndex(s => s.slot === p.spiritSlot);
+      Object.assign(c.state.ui, { ringPick: '1', soul: String(i >= 0 ? i : 0), ringCand: '' });
+      C.go('page-ability', 'martial');
+      return true;
+    });
+    C.addRoute?.('designer', spec => openDesigner(spec.path));
+    C.addRoute?.('skillConfirm', () => { const d = C.pending()?.skillDesign; if (!d) return false; viewChar(d.charName); return openDesigner(d.path); });
+  }
+
   window.COCKPIT.register('page-ability', {
     label: '能力', icon: 'wand-sparkles', tag: 'CORE · MARTIAL SOUL',
     keys: [
