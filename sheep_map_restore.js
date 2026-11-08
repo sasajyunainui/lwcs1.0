@@ -3233,60 +3233,60 @@
     });
   }
 
-  async function 执行地图维护操作(操作 = '') {
+  async function 执行地图维护操作(操作 = '', 预设 = null) {
     const 当前操作 = toText(操作, '');
-    const 焦点项 = 获取地图维护焦点项();
-    const 焦点名 = toText(焦点项 && 焦点项.name, mapState.selectedFreePoint ? '' : (mapState.selectedNode || mapState.currentNode || ''));
+    const 焦点项 = 预设 ? null : 获取地图维护焦点项();
+    const 焦点名 = 预设 && 当前操作 !== 'add' ? toText(预设.焦点名, '') : toText(焦点项 && 焦点项.name, mapState.selectedFreePoint ? '' : (mapState.selectedNode || mapState.currentNode || ''));
+    // 座舱调用（有预设）：结果返回给调用方；地图自己的按钮：沿用提示与派发
+    const 提示 = (文本, 级别 = 'warning') => {
+      if (预设) return { ok: false, reason: 文本 };
+      if (window.MVU_Toast && typeof window.MVU_Toast.show === 'function') window.MVU_Toast.show(文本, 级别);
+      return { ok: false, reason: 文本 };
+    };
+    const 提交 = (patchOps, 文本) => {
+      if (预设) return { ok: true, patchOps, message: 文本 };
+      派发地图维护补丁(patchOps, 文本);
+      return { ok: true };
+    };
     if (当前操作 === 'add') {
-      const 输入 = await 打开地图维护弹窗('add', { 焦点名 });
-      if (!输入.ok) return;
+      const 输入 = 预设 || await 打开地图维护弹窗('add', { 焦点名 });
+      if (!输入.ok) return { ok: false };
       const 地点名 = toText(输入.地点名, '').trim();
-      if (!地点名) return;
+      if (!地点名) return 提示('先填写地点名。');
+      if (预设 && (deepGet(mapState.baseSnapshot || mapState.snapshot, ['rootData', 'world', '动态地点', 地点名], null) || getItemByName(地点名))) return 提示(`已经有叫【${地点名}】的地点。`);
       if (判断地图维护城市类型(输入.模板键)) {
         const 新城市 = 构建地图维护城市数据({ ...输入, 地点名 });
         const patchOps = [
           { op: 'add', path: 构建地图维护指针路径(['world', '地点', 地点名]), value: 新城市 },
           { op: 'add', path: '/sys/系统播报', value: `[地图维护] 已新增城市【${地点名}】。` }
         ];
-        派发地图维护补丁(patchOps, `已新增城市：${地点名}`);
-        return;
+        return 提交(patchOps, `已新增城市：${地点名}`);
       }
       const 新地点 = 构建地图维护地点数据({ ...输入, 地点名 });
       const patchOps = [
         { op: 'add', path: 构建地图维护指针路径(['world', '动态地点', 地点名]), value: 新地点 },
         { op: 'add', path: '/sys/系统播报', value: `[地图维护] 已新增动态地点【${地点名}】。` }
       ];
-      派发地图维护补丁(patchOps, `已新增动态地点：${地点名}`);
-      return;
+      return 提交(patchOps, `已新增动态地点：${地点名}`);
     }
-    if (!焦点名) {
-      if (window.MVU_Toast && typeof window.MVU_Toast.show === 'function') window.MVU_Toast.show('请选择地点。', 'warning');
-      return;
-    }
+    if (!焦点名) return 提示('请选择地点。');
     if (当前操作 === 'delete') {
       const 动态地点 = deepGet(mapState.baseSnapshot || mapState.snapshot, ['rootData', 'world', '动态地点', 焦点名], null);
-      if (!动态地点) {
-        if (window.MVU_Toast && typeof window.MVU_Toast.show === 'function') window.MVU_Toast.show('只能删除动态地点。', 'warning');
-        return;
-      }
+      if (!动态地点) return 提示('只能删除动态地点。');
       const 占用角色 = 读取动态地点占用角色列表(焦点名);
-      if (占用角色.length) {
-        if (window.MVU_Toast && typeof window.MVU_Toast.show === 'function') window.MVU_Toast.show(`仍有角色停留：${占用角色.slice(0, 3).join('、')}`, 'warning');
-        return;
-      }
-      if (!window.confirm(`删除动态地点【${焦点名}】？`)) return;
+      if (占用角色.length) return 提示(`仍有角色停留：${占用角色.slice(0, 3).join('、')}`);
+      if (!预设 && !window.confirm(`删除动态地点【${焦点名}】？`)) return { ok: false };
       const patchOps = [
         { op: 'remove', path: 构建地图维护指针路径(['world', '动态地点', 焦点名]) },
         { op: 'add', path: '/sys/系统播报', value: `[地图维护] 已删除动态地点【${焦点名}】。` }
       ];
-      派发地图维护补丁(patchOps, `已删除动态地点：${焦点名}`);
-      return;
+      return 提交(patchOps, `已删除动态地点：${焦点名}`);
     }
-    const 输入 = await 打开地图维护弹窗(当前操作, { 焦点名 });
-    if (!输入.ok) return;
+    const 输入 = 预设 || await 打开地图维护弹窗(当前操作, { 焦点名 });
+    if (!输入.ok) return { ok: false };
     const 动态地点 = deepGet(mapState.baseSnapshot || mapState.snapshot, ['rootData', 'world', '动态地点', 焦点名], null);
     const 状态值 = 当前操作 === 'damage' ? 'ruins' : 当前操作 === 'repair' ? 'intact' : '';
-    if (!状态值) return;
+    if (!状态值) return 提示('未知的维护操作。');
     const 描述值 = toText(输入.描述, '').trim();
     const 状态路径 = 动态地点
       ? 构建地图维护指针路径(['world', '动态地点', 焦点名, '状态'])
@@ -3294,7 +3294,7 @@
           const 命中 = 获取地点节点及父级(焦点名, mapState.baseSnapshot || mapState.snapshot);
           return 命中 && Array.isArray(命中.指针路径) ? 构建地图维护指针路径([...命中.指针路径, '状态']) : '';
         })();
-    if (!状态路径) return;
+    if (!状态路径) return 提示(`地点树里找不到【${焦点名}】。`);
     const 基础路径 = 状态路径.replace(/\/状态$/, '');
     const 当前地点节点 = 动态地点 || 获取地点节点及父级(焦点名, mapState.baseSnapshot || mapState.snapshot)?.节点 || {};
     const 原现状描述 = toText(当前地点节点.现状描述, '').trim();
@@ -3304,7 +3304,7 @@
       { op: 'add', path: `${基础路径}/现状描述`, value: 维护描述 },
       { op: 'add', path: '/sys/系统播报', value: `[地图维护] 【${焦点名}】已${当前操作 === 'damage' ? '破坏，节点动作暂停' : '修复，节点动作恢复'}。` }
     ];
-    派发地图维护补丁(patchOps, `${焦点名} 已${当前操作 === 'damage' ? '破坏' : '修复'}`);
+    return 提交(patchOps, `${焦点名} 已${当前操作 === 'damage' ? '破坏' : '修复'}`);
   }
 
   function 规范商店匹配文本(文本 = '') {
@@ -7973,6 +7973,99 @@ ${logMsg}
     return { ok: true, committed: true, ...(结算 || {}), request };
   }
 
+  // 座舱：按坐标规划 / 出发。坐标是总图坐标系，地图不在总图层（如在子图预览里）时不规划
+  function 读取座舱坐标(坐标 = null) {
+    const x = toNumber(坐标 && 坐标.x, NaN), y = toNumber(坐标 && 坐标.y, NaN);
+    return Number.isFinite(x) && Number.isFinite(y) ? { x: roundCoord(x), y: roundCoord(y) } : null;
+  }
+  function 座舱坐标层原因() {
+    if (hasActivePreview()) return '地图正在预览子图，回到总图后再按坐标出行。';
+    if (!isMainMapId(mapState.currentMapId)) return '只能在总图上按坐标出行。';
+    return '';
+  }
+  function describeTravelToPoint(坐标 = null, options = {}) {
+    const 点 = 读取座舱坐标(坐标);
+    if (!点) return { ok: false, reason: '坐标无效。' };
+    const 层原因 = 座舱坐标层原因();
+    if (层原因) return { ok: false, reason: 层原因 };
+    const previous = {
+      selectedNode: mapState.selectedNode,
+      selectedFreePoint: mapState.selectedFreePoint ? { ...mapState.selectedFreePoint } : null,
+      infoPanelMode: mapState.infoPanelMode,
+      travelMethodOverride: mapState.travelMethodOverride,
+      pendingTravelRequest: mapState.pendingTravelRequest ? cloneJsonValue(mapState.pendingTravelRequest) : null,
+    };
+    try {
+      mapState.selectedFreePoint = 点;
+      mapState.infoPanelMode = 'selection';
+      const 指定方式 = toText(options && options.method, '');
+      if (指定方式) { mapState.travelMethodOverride = 指定方式; mapState.pendingTravelRequest = null; }
+      const preview = getMapTravelPreview();
+      const request = preview ? buildMapTravelRequest() : null;
+      if (!preview || !request) return { ok: false, reason: '当前无法规划前往这个坐标的移动。' };
+      return {
+        ok: true,
+        nodeName: 构建自由坐标地点名(点, mapState.layer),
+        method: request.method,
+        duration: request.est_duration,
+        coordText: request.coord_text,
+        routePlan: toText(request.route_plan, ''),
+        costText: deepGet(request, 'costs.text', '无消耗'),
+        canAfford: deepGet(request, 'costs.canAfford', true) !== false,
+        reason: toText(deepGet(request, 'costs.reason', ''), ''),
+        request: cloneJsonValue(request),
+        ...(options && options.listMethods ? { methods: 列出节点可选移动方式(preview.distance) } : {}),
+      };
+    } finally {
+      mapState.selectedNode = previous.selectedNode;
+      mapState.selectedFreePoint = previous.selectedFreePoint;
+      mapState.infoPanelMode = previous.infoPanelMode;
+      mapState.travelMethodOverride = previous.travelMethodOverride;
+      mapState.pendingTravelRequest = previous.pendingTravelRequest;
+    }
+  }
+  async function travelToPoint(坐标 = null, options = {}) {
+    const 点 = 读取座舱坐标(坐标);
+    if (!点) return { ok: false, reason: '坐标无效。' };
+    const 层原因 = 座舱坐标层原因();
+    if (层原因) return { ok: false, reason: 层原因 };
+    mapState.selectedFreePoint = 点;
+    mapState.infoPanelMode = 'selection';
+    mapState.待移动后动作 = null;
+    const 指定方式 = toText(options && options.method, '');
+    if (指定方式) { mapState.travelMethodOverride = 指定方式; mapState.pendingTravelRequest = null; }
+    const preview = getMapTravelPreview();
+    if (!preview) return { ok: false, reason: '当前无法规划前往这个坐标的移动。' };
+    if (!hasPendingTravelRequestForTarget()) queueMapTravelRequest();
+    const request = mapState.pendingTravelRequest ? cloneJsonValue(mapState.pendingTravelRequest) : buildMapTravelRequest();
+    if (!request) return { ok: false, reason: '当前无法生成移动请求。' };
+    if (request.costs && request.costs.canAfford === false) return { ok: false, reason: request.costs.reason || '资源不足，无法前往。', request };
+    const 结算 = await commitMapTravel();
+    if (结算 && 结算.ok === false) return { ...结算, request };
+    return { ok: true, committed: true, ...(结算 || {}), request };
+  }
+
+  // 座舱地图维护：参数直接给（不弹窗），新增按给定坐标，其余按地点名；返回补丁由座舱写回
+  async function 座舱地图维护(操作 = '', 参数 = {}) {
+    const 旧 = { selectedFreePoint: mapState.selectedFreePoint, selectedNode: mapState.selectedNode };
+    try {
+      if (操作 === 'add') {
+        const 点 = 读取座舱坐标(参数);
+        if (!点) return { ok: false, reason: '先在总图上点选位置。' };
+        const 层原因 = 座舱坐标层原因();
+        if (层原因) return { ok: false, reason: 层原因.replace('按坐标出行', '新增地点') };
+        mapState.selectedFreePoint = 点;
+      } else {
+        mapState.selectedFreePoint = null;
+        mapState.selectedNode = toText(参数.焦点名, '');
+      }
+      return await 执行地图维护操作(操作, { ok: true, ...参数 });
+    } finally {
+      mapState.selectedFreePoint = 旧.selectedFreePoint;
+      mapState.selectedNode = 旧.selectedNode;
+    }
+  }
+
   function 执行预览入口移动() {
     const 预览路径列表 = Array.isArray(mapState.previewTrail) ? mapState.previewTrail.map(item => toText(item, '')).filter(Boolean) : [];
     const 入口候选列表 = [
@@ -9695,6 +9788,10 @@ ${logMsg}
         buildUnifiedNodePanels: 构建星图外壳节点面板,
         describeTravelToNode,
         travelToNode,
+        describeTravelToPoint,
+        travelToPoint,
+        maintain: 座舱地图维护,
+        maintTemplates: () => Object.entries(地图维护地点模板).map(([key, 模板]) => ({ key, label: 模板.标签 })),
         deriveDynamicLocationCoord: 推导动态地点坐标,
         focusCurrentLocation
       };

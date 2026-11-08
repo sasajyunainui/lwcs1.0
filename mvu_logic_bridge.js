@@ -38647,6 +38647,7 @@
         const 位置 = toText(deepGet(liveSnapshot, 'activeChar.状态.位置', liveSnapshot?.currentLoc), '');
         return { tickets: listAscensionTicketNames(liveSnapshot), here: !!位置 && isTransmissionTowerEntryLocation(位置) };
       }
+      if (名称 === 'mapTemplates') return window.__sheepMapBridge?.maintTemplates?.() || [];
       if (名称 === 'nurture') {
         const 运行时 = 读取MVUSchema运行时接口_桥接(), 根 = deepGet(liveSnapshot, 'rootData', {}) || {}, 角色 = deepGet(liveSnapshot, 'activeChar', null);
         if (!角色 || typeof 运行时?.读取装备温养投影 !== 'function') return null;
@@ -38694,6 +38695,12 @@
   async function 座舱规划移动(参数 = {}) {
     const 地图 = await 座舱同步星图();
     if (!地图) return { ok: false, reason: '地图模块未就绪' };
+    // 坐标目的地（总图上点选的空白处）：同原项目自由坐标移动
+    if (参数.point && typeof 参数.point === 'object') {
+      if (typeof 地图.describeTravelToPoint !== 'function') return { ok: false, reason: '地图模块不支持按坐标出行' };
+      const 坐标规划 = 地图.describeTravelToPoint(参数.point, { method: toText(参数.method, ''), listMethods: true });
+      return { ...坐标规划, mode: 'point', target: toText(坐标规划 && 坐标规划.nodeName, '坐标点') };
+    }
     const 路径 = (Array.isArray(参数.path) && 参数.path.length ? 参数.path : [参数.node]).map(值 => toText(值, '')).filter(Boolean);
     const 目标 = 路径[路径.length - 1] || toText(参数.node, '');
     if (!目标) return { ok: false, reason: '缺少目的地' };
@@ -38983,6 +38990,11 @@
         case 'travel': {
           const 规划 = await 座舱规划移动(参数);
           if (!规划.ok || 规划.alreadyThere || 规划.canAfford === false) return { ok: false, message: 规划.alreadyThere ? '已经在这里了' : toText(规划.reason, '现在去不了') };
+          if (规划.mode === 'point') {
+            const 结果 = await window.__sheepMapBridge.travelToPoint(参数.point, { method: toText(规划.method, '') });
+            if (结果 && 结果.ok === false) return { ok: false, message: toText(结果.reason, '移动未结算') };
+            return { ok: true, message: `已出发前往${规划.target}` };
+          }
           if (规划.mode === 'local') {
             const 请求 = 解析移动模块意图请求(快照, { 目标地点: 规划.target, 归属父节点: (参数.path || []).slice(-2, -1)[0] || '', 移动方式: '步行' });
             const 结果 = await 执行移动模块意图路由(快照, 请求);
@@ -39011,11 +39023,13 @@
         }
         case 'npc': {
           const 对象 = toText(参数.npc, ''), 动作 = toText(参数.op, '');
-          if (!对象 || !['talk', 'intel', 'brief', 'battle', 'trade', 'commission'].includes(动作)) return { ok: false, message: '互动参数不完整。' };
+          // 不指定对象的对话 / 请教 / 汇报：同原项目「在场人员」群体互动（叙事自行决定由谁回应）
+          const 群体 = !对象 && ['talk', 'intel', 'brief'].includes(动作);
+          if ((!对象 && !群体) || !['talk', 'intel', 'brief', 'battle', 'trade', 'commission'].includes(动作)) return { ok: false, message: '互动参数不完整。' };
           const 当前位置 = toText(deepGet(快照, 'activeChar.状态.位置', 快照.currentLoc), 快照.currentLoc);
           window.dispatchEvent(new CustomEvent('map-action-dispatch', { detail: {
             action: 动作 === 'commission' ? 'craft' : 动作, target: 当前位置, currentLoc: 当前位置, services: [],
-            npcTarget: 对象, npcTargets: [对象], executorType: 动作 === 'commission' ? 'private' : undefined, source: 'cockpit_place',
+            npcTarget: 对象, npcTargets: 群体 ? [] : [对象], executorType: 动作 === 'commission' ? 'private' : undefined, source: 'cockpit_place',
           } }));
           return { ok: true, message: { talk: '已发起对话', intel: '已发起请教', brief: '已发起汇报' }[动作] || '' };
         }
@@ -39063,6 +39077,16 @@
         case 'questCreate': {
           const 表单 = 参数.form && typeof 参数.form === 'object' ? 参数.form : {};
           return 参数.kind === 'board' ? await 座舱发布委托(快照, 表单) : await 座舱新增个人任务(快照, 表单);
+        }
+        // 地图维护（新增 / 删除动态地点、破坏 / 修复地点）：羊图按原规则生成补丁，这里写回
+        case 'mapMaint': {
+          const 地图 = await 座舱同步星图();
+          if (!地图 || typeof 地图.maintain !== 'function') return { ok: false, message: '地图模块未就绪' };
+          const 维护 = await 地图.maintain(toText(参数.op, ''), 参数);
+          if (!维护 || !维护.ok || !Array.isArray(维护.patchOps)) return { ok: false, message: toText(维护 && 维护.reason, '维护未完成') };
+          await applyJsonPatchOpsByEditor(维护.patchOps, { force: true });
+          await refreshLiveSnapshot({ force: true });
+          return { ok: true, message: toText(维护.message, '地图维护已写入') };
         }
         case 'nurture': {
           if (!isSnapshotPlayerControlled(liveSnapshot)) return { ok: false, message: '旁观视角不可操作。' };
