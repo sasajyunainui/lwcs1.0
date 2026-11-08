@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:5c506ad7d9ed42dd10d1c44a69c5a8006c4d7c1c68a5e39919e3332b5105f80b|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:14da65b51faac6fd6b1f52c6441c6e394227cf7ac8a2bd5df17ba53610aa073a|cockpit/pages-role.js:33ab3ecd890c56a621fe7d270f60de1beda45af71a3bc7954d66d69f6767e3c7|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:afe7c39c6437be94149d9d9d4809c3e198b189241a8997297cba7329a9f619ba|cockpit/pages-ability.js:c692feb0aaebd6f28360829098826f576cd660710001d30dd9bc5341dac9aa72|cockpit/pages-supplies.js:2c20652e62132ecf1fcdc8da32cf339e5128de56f21d9337bfafc199d63611f7|cockpit/pages-map.js:bb5b1f07a1035a0294cdb32fbc61c97c36a49946297500421647eee91fe093da|cockpit/pages-world.js:ebec9f364905915128ea23a7fd07e9d58f9b5156004fec0bb3d43eaaa155b45a|cockpit/pages-terminal.js:d009f25364208fcd87d85700255131b2e8947569284394a7996ef0584171e9e3 */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:1d7e8339ac54cfad80fc3a9bcb0d07aa75cb1a638e3b891bfed344e3768f8c1b|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:14da65b51faac6fd6b1f52c6441c6e394227cf7ac8a2bd5df17ba53610aa073a|cockpit/pages-role.js:33ab3ecd890c56a621fe7d270f60de1beda45af71a3bc7954d66d69f6767e3c7|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:afe7c39c6437be94149d9d9d4809c3e198b189241a8997297cba7329a9f619ba|cockpit/pages-ability.js:c692feb0aaebd6f28360829098826f576cd660710001d30dd9bc5341dac9aa72|cockpit/pages-supplies.js:2c20652e62132ecf1fcdc8da32cf339e5128de56f21d9337bfafc199d63611f7|cockpit/pages-map.js:bb5b1f07a1035a0294cdb32fbc61c97c36a49946297500421647eee91fe093da|cockpit/pages-world.js:ebec9f364905915128ea23a7fd07e9d58f9b5156004fec0bb3d43eaaa155b45a|cockpit/pages-terminal.js:4e60e255e0d58d9d73601f695cc66b6ac5cab6ab3f5119ce9ae88e39d2e2b69d */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -40448,6 +40448,56 @@
       requestKind: 动作.requestKind, patchOps: 动作.patchOps, privilegeID: 动作.privilegeID, privilegeCost: 动作.privilegeCost, 交易参数: 动作.交易参数,
     }));
   }
+  // ---------- 新建个人任务 / 发布委托（与原项目「任务界面」同一写回与叙事） ----------
+  async function 座舱新增个人任务(快照, 表单 = {}) {
+    const 角色键 = resolveSnapshotCharKey(快照, toText(快照.activeName, '')) || toText(快照.activeName, '');
+    const 任务名 = toText(表单.名称, '').trim(), 描述 = toText(表单.描述, '').trim();
+    const 任务线 = toText(表单.任务线, '') === '主线' ? '主线' : '支线';
+    const 状态 = ['进行中', '可提交', '已完成', '已放弃', '失败'].includes(toText(表单.状态, '')) ? toText(表单.状态, '') : '进行中';
+    const 时限天数 = Math.max(0, Math.floor(toNumber(表单.时限天数, 0))), 奖励币 = Math.max(0, Math.floor(toNumber(表单.奖励币, 0))), 奖励声望 = Math.max(0, Math.floor(toNumber(表单.奖励声望, 0)));
+    if (!角色键) return { ok: false, message: '缺少角色信息。' };
+    if (!任务名) return { ok: false, message: '请输入任务名。' };
+    if (!描述) return { ok: false, message: '请填写任务目标。' };
+    await mutateStatDataByEditor(statData => {
+      const 路径 = ['char', 角色键, '我的任务'];
+      let 任务表 = deepGet(statData, 路径, null);
+      if (!任务表 || typeof 任务表 !== 'object' || Array.isArray(任务表)) { deepSetMutable(statData, 路径, {}); 任务表 = deepGet(statData, 路径, null); }
+      if (任务表[任务名] !== undefined) throw new Error('同名任务已存在。');
+      const 当前tick = Math.max(0, Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0)));
+      const 任务 = { 任务线, 状态, 当前进度: 0, 奖励币, 奖励声望, 描述, 最后更新时间tick: 当前tick };
+      if (时限天数 > 0) 任务.截止tick = 当前tick + 时限天数 * 144;
+      任务表[任务名] = 任务;
+    });
+    return { ok: true, message: '已新增任务' };
+  }
+  async function 座舱发布委托(快照, 表单 = {}) {
+    const 委托名 = toText(表单.名称, '').trim(), 发布者 = toText(表单.发布者, '').trim() || '系统', 描述 = toText(表单.描述, '').trim();
+    const 面向 = toText(表单.面向, '') === '指定对象' ? '指定对象' : '公开', 指定对象 = 面向 === '指定对象' ? toText(表单.指定对象, '').trim() || '无' : '无';
+    const 难度 = ['低', '中', '高', '极高'].includes(toText(表单.难度, '')) ? toText(表单.难度, '') : '中';
+    const 资源级别 = ['无', '低', '中', '高', '稀有'].includes(toText(表单.资源级别, '')) ? toText(表单.资源级别, '') : '无';
+    const 时限天数 = Math.max(0, Math.floor(toNumber(表单.时限天数, 0))), 奖励币 = Math.max(0, Math.floor(toNumber(表单.奖励币, 0))), 奖励声望 = Math.max(0, Math.floor(toNumber(表单.奖励声望, 0)));
+    if (!委托名) return { ok: false, message: '请输入委托名。' };
+    if (!描述) return { ok: false, message: '请填写委托目标。' };
+    const 委托板 = deepGet(快照, 'rootData.world.委托板', {});
+    if (委托板 && typeof 委托板 === 'object' && !Array.isArray(委托板) && 委托板[委托名] !== undefined) return { ok: false, message: '同名委托已存在。' };
+    const 角色名 = toText(快照.activeName, '当前角色'), 当前位置 = toText(deepGet(快照, 'activeChar.状态.位置', 快照.currentLoc), 快照.currentLoc || '当前位置');
+    const 当前tick = Math.max(0, Math.floor(toNumber(deepGet(快照, 'rootData.world.时间.tick', 0), 0)));
+    const 法币 = 读取当前时代法定货币_桥接(快照.rootData || {}, 当前位置);
+    if (法币.status !== 'resolved') return { ok: false, message: '当前时代委托货币未就绪。' };
+    const 委托 = { 标题: 委托名, 状态: '待接取', 发布者, 面向, 指定对象, 承接者: '无', 难度, 资源级别, 奖励币, 奖励声望, 框架描述: 描述, 描述, 生成tick: 当前tick };
+    if (时限天数 > 0) 委托.截止tick = 当前tick + 时限天数 * 144;
+    // 原项目任务界面的同名格式化函数是渲染函数里的局部量（发布处理里引用它会报错），这里直接按同样规则格式化
+    const 截止文本 = 委托.截止tick > 0 ? formatTickToCalendarDateText(委托.截止tick).replace(/^斗罗历/, '') : '不限';
+    const 补丁 = [
+      { op: 'replace', path: `/world/委托板/${escapeJsonPointerValue(委托名)}`, value: 委托 },
+      { op: 'replace', path: '/sys/系统播报', value: `[委托发布] ${角色名} 在【${当前位置}】发布委托【${委托名}】。` },
+    ];
+    return 座舱请求结果(await dispatchUiAiRequest(
+      `我想在【${当前位置}】发布委托【${委托名}】。`,
+      `以下内容属于前端已经完成的委托发布登记，不要在正文直接复述“JSONPatch / 系统分析 / 仲裁日志”等术语。\n\n[委托发布]\n发布者：${发布者}\n委托名：${委托名}\n目标：${描述}\n难度：${难度}\n资源级别：${资源级别}\n截止：${截止文本}\n奖励：${奖励币} ${法币.currency} / ${奖励声望} 声望\n\n委托已经写入委托板。正文需要自然反馈发布结果、周围反应与后续可接取空间，不要重复输出这批变量更新。`,
+      { requestKind: '委托发布', patchOps: 补丁 },
+    ), '委托已发布');
+  }
   async function 座舱执行动作(名称, 参数 = {}) {
     const 快照 = liveSnapshot;
     if (!快照 || !快照.rootData) return { ok: false, message: '状态未就绪' };
@@ -40557,6 +40607,10 @@
           // 生成后原流程会打开「技能设计确认」，由座舱接管跳到设计台
           if (参数.op === 'generate') { await handlePendingSoulRingGenerate(快照, toText(参数.candidate, '')); return { ok: true, message: '已生成魂环' }; }
           return { ok: false, message: '未知的魂环操作' };
+        }
+        case 'questCreate': {
+          const 表单 = 参数.form && typeof 参数.form === 'object' ? 参数.form : {};
+          return 参数.kind === 'board' ? await 座舱发布委托(快照, 表单) : await 座舱新增个人任务(快照, 表单);
         }
         case 'competition': {
           const 动作 = toText(参数.action, ''), 载荷 = 参数.payload && typeof 参数.payload === 'object' ? 参数.payload : {};
@@ -78452,16 +78506,54 @@ ${播报文本}
       tag: 'CORE · QUESTS',
       left: `<div class="pad">${c.head('list-check', '任务', 'Quest Log', 'gd')}
         <div class="seg q-tabs" role="tablist">${Object.entries(lines).map(([k, l]) => `<button class="key-s${k === tab ? ' on' : ''}" type="button" role="tab" aria-selected="${k === tab}" data-set="qtab=${k}"><i class="fa-solid fa-${QUEST_ICON[k]}"></i> ${k}<b>${l.length}</b></button>`).join('')}</div>
+        ${c.isPlayer ? `<button class="key-s${ui.qnew ? ' on' : ''}" type="button" data-set="qnew=${isBoard ? 'board' : 'record'}"><i class="fa-solid fa-plus"></i> ${isBoard ? '发布委托' : `新建${tab}任务`}</button>` : ''}
         ${list.length ? `<div class="list q-list">${list.map(rowOf).join('')}</div>` : c.empty(QUEST_ICON[tab], isBoard ? '委托板是空的' : `没有${tab}任务`)}
       </div>`,
-      core: sel ? questBrief(c, tab, selId, sel, now) : `<div class="pad sparse">${c.empty('clipboard-list', isBoard ? '委托板是空的' : `没有${tab}任务`)}${!isBoard && board.length ? `<button class="key-s" type="button" data-set="qtab=委托板" style="align-self:center"><i class="fa-solid fa-file-signature"></i> 看委托板 · ${board.length}</button>` : ''}</div>`,
+      ...(ui.qnew ? questNew(c, ui.qnew === 'board' ? 'board' : 'record', tab) : {}),
+      core: ui.qnew ? questNew(c, ui.qnew === 'board' ? 'board' : 'record', tab).core : sel ? questBrief(c, tab, selId, sel, now) : `<div class="pad sparse">${c.empty('clipboard-list', isBoard ? '委托板是空的' : `没有${tab}任务`)}${!isBoard && board.length ? `<button class="key-s" type="button" data-set="qtab=委托板" style="align-self:center"><i class="fa-solid fa-file-signature"></i> 看委托板 · ${board.length}</button>` : ''}</div>`,
       // 右翼：上方是总览数字，操作键沉到底部（主按钮 .cta 自带 margin-top:auto）
-      right: `<div class="pad">${c.head('bolt', '行动', 'Actions')}
+      right: ui.qnew ? questNew(c, ui.qnew === 'board' ? 'board' : 'record', tab).right : `<div class="pad">${c.head('bolt', '行动', 'Actions')}
         <div class="tiles"><div class="tile">${c.sock('list-check')}<b>${active}</b><small>进行中</small></div><div class="tile">${c.sock('file-signature')}<b>${open}</b><small>待接取委托</small></div></div>
         ${sel ? questActions(c, isBoard, selId, sel) : c.empty('bolt', '暂无可执行的操作')}
       </div>`,
     };
   };
+  // 新建个人任务 / 发布委托：字段与选项同原项目「任务界面」；表单值存在界面状态 qf 里，提交时由桥接按原逻辑写回
+  const QF_OPTS = { 任务线: ['主线', '支线'], 状态: ['进行中', '可提交', '已完成', '已放弃', '失败'], 面向: ['公开', '指定对象'], 难度: ['低', '中', '高', '极高'], 资源级别: ['无', '低', '中', '高', '稀有'] };
+  const questNew = (c, kind, tab) => {
+    const ui = c.state.ui, f = ui.qf = ui.qf || {}, board = kind === 'board';
+    if (f._kind !== kind) Object.assign(f, { _kind: kind, 名称: '', 描述: '', 任务线: tab === '主线' ? '主线' : '支线', 状态: '进行中', 发布者: '传灵塔', 面向: '公开', 指定对象: '', 难度: '中', 资源级别: '无', 时限天数: 0, 奖励币: 0, 奖励声望: 0 });
+    const text = (k, label, ph = '') => `<div class="dzf"><span class="dzf-l">${label}</span><input type="text" data-qf="${k}" value="${c.esc(f[k] || '')}" placeholder="${c.esc(ph)}" aria-label="${label}"></div>`;
+    const num = (k, label, hint = '') => `<div class="dzf"><span class="dzf-l">${label}${hint ? c.hint(hint) : ''}</span><input type="number" min="0" step="1" data-qf="${k}" value="${c.esc(f[k] ?? 0)}" aria-label="${label}"></div>`;
+    const sel = (k, label, opts) => `<div class="dzf"><span class="dzf-l">${label}</span>${c.pick('qf:' + k, f[k], opts)}</div>`;
+    const chars = Object.keys(c.S.char || {}).filter(n => n !== c.player);
+    const fields = board
+      ? [text('名称', '委托名', '护送样本'), text('发布者', '发布者'), sel('面向', '面向', QF_OPTS.面向), f.面向 === '指定对象' ? sel('指定对象', '指定对象', chars) : '', sel('难度', '难度', QF_OPTS.难度), sel('资源级别', '资源级别', QF_OPTS.资源级别)]
+      : [text('名称', '任务名'), sel('任务线', '任务线', QF_OPTS.任务线), sel('状态', '状态', QF_OPTS.状态)];
+    fields.push(num('时限天数', '时限（天）', '0 表示不限时'), num('奖励币', '奖励货币'), num('奖励声望', '奖励声望'));
+    return {
+      core: `<div class="pad"><div class="q-title">${c.sock(board ? 'file-signature' : 'plus', 'gd')}<span class="chip">${board ? '委托板' : c.esc(f.任务线)}</span><h2>${board ? '发布委托' : '新建任务'}</h2></div>
+        <div class="dz2-grid">${fields.join('')}<label class="dzf wide"><span class="dzf-l">${board ? '委托目标' : '任务目标'}</span><textarea data-qf="描述" rows="4" aria-label="目标">${c.esc(f.描述 || '')}</textarea></label></div></div>`,
+      right: `<div class="pad">${c.head(board ? 'file-signature' : 'plus', board ? '发布' : '新建', 'Create')}${c.kv([[board ? '委托名' : '任务名', c.esc(f.名称 || '—')], ['时限', f.时限天数 > 0 ? `${c.fmt(f.时限天数)} 天` : '不限'], ['奖励', `${c.fmt(f.奖励币 || 0)} · 声望 ${c.fmt(f.奖励声望 || 0)}`]])}
+        <button class="cta" type="button" data-qf-submit="${kind}"><i class="fa-solid fa-${board ? 'bullhorn' : 'check'}"></i>${board ? '发布委托' : '新建任务'}</button>
+        <div class="act-row"><button class="key-s" type="button" data-set="qnew="><i class="fa-solid fa-xmark"></i> 取消</button></div></div>`,
+    };
+  };
+  document.addEventListener('input', e => { const t = e.target.closest?.('[data-qf]'); if (t) (window.COCKPIT.ctx().state.ui.qf ||= {})[t.dataset.qf] = t.type === 'number' ? Math.max(0, Math.floor(Number(t.value) || 0)) : t.value; });
+  document.addEventListener('change', e => { if (e.target.closest?.('[data-qf]')) window.COCKPIT.refresh(); });
+  document.addEventListener('picker:change', e => { if (!String(e.detail.path).startsWith('qf:')) return; (window.COCKPIT.ctx().state.ui.qf ||= {})[e.detail.path.slice(3)] = e.detail.value; window.COCKPIT.refresh(); });
+  // 提交：捕获阶段把表单写进动作；缺必填项时直接给原因
+  document.addEventListener('click', e => {
+    const t = e.target.closest('[data-qf-submit]'); if (!t) return;
+    const f = window.COCKPIT.ctx().state.ui.qf || {}, board = t.dataset.qfSubmit === 'board';
+    delete t.dataset.blocked;
+    const miss = !String(f.名称 || '').trim() ? (board ? '先填写委托名' : '先填写任务名') : !String(f.描述 || '').trim() ? (board ? '先填写委托目标' : '先填写任务目标') : '';
+    if (miss) { t.dataset.blocked = miss; delete t.dataset.act; return; }
+    const form = Object.fromEntries(Object.entries(f).filter(([k]) => !k.startsWith('_')));
+    t.dataset.confirm = board ? `发布委托「${f.名称}」（${f.难度} · ${f.面向 === '指定对象' ? '指定 ' + (f.指定对象 || '未选') : '公开'}）` : `新建${f.任务线}任务「${f.名称}」`;
+    t.dataset.act = JSON.stringify({ name: 'questCreate', kind: board ? 'board' : 'record', form });
+  }, true);
+
   // 简报：委托未接取时只给公开的框架描述（完整描述接取后公开，同原版）
   const questBrief = (c, tab, id, q, now) => {
     const isBoard = tab === '委托板', qp = isBoard ? ['world', '委托板', id] : c.P('我的任务', id);
