@@ -575,3 +575,4 @@ div.rail-item{cursor:default}
 .idf-card{display:flex;flex-direction:column;gap:.35em;padding:.5em .55em;background:rgba(47,124,246,.06);box-shadow:inset 2px 0 0 rgba(79,155,255,.5)}
 .idf-dirs{flex-wrap:wrap}
 .idf .sec>.lbl{margin-top:.35em}
+.idf-dirs .key-s.on,.dzf .act-row .key-s.on{background:linear-gradient(180deg,#5aa5ff,#1a5ad6);color:#fff;box-shadow:0 2px 0 #0d3384}
