@@ -19389,8 +19389,6 @@ body.mvu-layout-holo #mvu-unified-mount .is-cabin-front-expanded .mvu-cabin-over
 
 body.mvu-layout-holo #mvu-unified-mount .is-cabin-front-expanded [data-cabin-layout='split'] { grid-template-rows: minmax(0, auto) minmax(0, .65fr) minmax(0, 2fr); }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-cabin:not([data-cabin-private-allowed='true']) [data-cabin-private] { display: none; }
-
 body.mvu-layout-holo #mvu-unified-mount .mvu-cabin-page-nav {
   grid-row: 2;
   display: flex;
@@ -33013,3 +33011,10 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .combatant-card.
     animation: none;
   }
 }
+
+/* ===== 球体座舱（替换旧仪表盘）：座舱接管挂载点时旧壳层不渲染（display:none），挂载点高度随座舱自身；
+   旧壳层只在战斗终端 / 魂环待选 / 私密档案等原详情面打开时让出画面（桥接切换 .lwcs-ck-active） ===== */
+#mvu-unified-mount > .lwcs-ck-root { position: relative; pointer-events: auto; }
+#mvu-unified-mount.lwcs-ck-active > .mvu-unified-layout-host { display: none !important; }
+#mvu-unified-mount:not(.lwcs-ck-active) > .lwcs-ck-root { display: none; }
+.lwcs-ck-overlay { pointer-events: auto; }

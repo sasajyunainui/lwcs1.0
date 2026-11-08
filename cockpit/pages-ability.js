@@ -1,0 +1,250 @@
+/* 能力领域：武魂 · 魂环 · 魂灵 · 血脉 · 典籍 · 融合 · 设计 · 待处理 */
+(() => {
+  const pickSoul = c => {
+    const i = Math.max(0, Math.min(c.souls.length - 1, Number(c.state.ui.soul || 0)));
+    return { soul: c.souls[i], idx: i };
+  };
+  const costText = (c, cost) => {
+    if (cost === undefined || cost === null || cost === '' || cost === '无') return '无消耗';
+    if (typeof cost === 'object') return c.entries(cost).map(([k, v]) => `${c.esc(k)} ${c.fmt(v)}`).join(' · ');
+    return c.esc(cost);
+  };
+  const allSkills = c => {
+    const out = [];
+    for (const s of c.souls) for (const sp of s.spirits) for (const r of sp.rings) for (const sk of r.skills) out.push({ key: `${s.slot}/${sp.slot}/${r.slot}/${sk.slot}`, group: '魂环魂技', from: `${s.表象名称} · ${r.slot}`, ring: r, ...sk });
+    for (const [n, sk] of c.entries(c.ch.自创魂技)) out.push({ key: `自创/${n}`, group: '自创魂技', from: '自创', ...sk, 魂技名: sk.魂技名 || n });
+    // 魂骨：同原版「合并魂骨 = { ...物品定义, ...实例 }」取附带技能；表来自物品定义时记下 srcPath，设计台保存写回定义
+    for (const [slot, b] of c.entries(c.ch.魂骨)) {
+      if (!b || typeof b !== 'object') continue;
+      const name = b.name || b.名称 || b.表象名称 || '', [cat, def] = itemDef(c, name), merged = { ...(def || {}), ...b };
+      const field = merged.附带技能 ? '附带技能' : '装备技能', fromDef = !b[field] && def?.[field];
+      for (const [n, sk] of c.entries(merged[field])) if (sk && typeof sk === 'object') out.push({ key: `魂骨/${slot}/${n}`, group: '魂骨附带', from: name ? `${slot} · ${name}` : slot, src: sk, srcPath: fromDef ? ['物品', cat, name, field, n] : ['char', c.name, '魂骨', slot, field, n], ...sk, 魂技名: sk.魂技名 || n });
+    }
+    // 装备：武器 / 防具 / 斗铠 / 机甲 + 魂导器各装配位。同原版收集口径「实例上的装备技能 || 物品定义里的」；
+    // 武器防具实例只存名称，技能在物品定义里（保存写回定义）；魂导器装配时把技能复制到了实例上（写回实例）
+    const gear = [...c.entries(c.ch.装备).filter(([k]) => k !== '魂导器').map(([k, v]) => [[k], v]), ...c.entries(c.ch.装备?.魂导器?.装配).map(([k, v]) => [['魂导器', '装配', k], v])];
+    for (const [slot, g] of gear) {
+      if (!g || typeof g !== 'object') continue;
+      const name = String(g.名称 || g.name || '').trim(), [cat, def] = itemDef(c, name), own = c.entries(g.装备技能).length > 0;
+      const field = own || def?.装备技能 ? '装备技能' : '附带技能', table = own ? g.装备技能 : def?.[field];
+      for (const [n, sk] of c.entries(table)) if (sk && typeof sk === 'object') out.push({ key: `装备/${slot.join('/')}/${n}`, group: '装备技能', slotPath: slot, skKey: n, from: `${slot[slot.length - 1]} · ${name || '未命名'}`, src: sk, srcPath: own ? ['char', c.name, '装备', ...slot, '装备技能', n] : ['物品', cat, name, field, n], ...sk, 魂技名: sk.魂技名 || n });
+    }
+    // 血脉：散技 / 特性 / 气血魂环魂技三处（同原版 buildBloodlineConfig）
+    const bl = c.ch.血脉之力 || {}, blName = c.blank(bl.血脉) ? '血脉' : bl.血脉;
+    for (const [n, sk] of c.entries(bl.技能)) out.push({ key: `血脉/${n}`, group: '血脉散技', from: blName, ...sk, 魂技名: sk.魂技名 || n });
+    for (const [n, sk] of c.entries(bl.被动)) out.push({ key: `血脉特性/${n}`, group: '血脉特性', from: blName, ...sk, 魂技名: sk.魂技名 || n });
+    for (const [rs, ring] of c.entries(bl).filter(([k, v]) => /^第\d+气血魂环$/.test(k) && v && typeof v === 'object').sort((a, b) => parseInt(a[0].slice(1), 10) - parseInt(b[0].slice(1), 10)))
+      for (const [n, sk] of c.entries(ring).filter(([k, v]) => /^第\d+血脉魂技(?:_2)?$/.test(k) && v && typeof v === 'object')) out.push({ key: `血脉环/${rs}/${n}`, group: '血脉魂环', from: `${blName} · ${rs}`, ring: { ...ring, slot: rs }, ...sk, 魂技名: sk.魂技名 || n });
+    for (const [src, cp] of c.entries(c.ch.复制效果)) for (const [n, it] of c.entries(cp?.技能列表)) out.push({ key: `复制/${src}/${n}`, group: '复制效果', from: `复制自 ${src}${cp.到期tick ? ' · 至 ' + c.tickDate(cp.到期tick) : ''}${it.剩余次数 !== undefined ? ` · 剩 ${it.剩余次数} 次` : ''}`, ...(it.技能数据 || {}), 魂技名: it.技能数据?.魂技名 || n });
+    // 融合技：技能本体在「技能数据」里，记录层只有模式 / 搭档 / 来源武魂
+    for (const [n, f] of c.entries(c.ch.武魂融合技)) out.push({ key: `融合/${n}`, group: '武魂融合技', from: `${f.融合模式 === 'self' ? '自体' : '搭档'} · ${f.融合对象 || ''}`, ...(f.技能数据 || {}), 魂技名: f.技能数据?.魂技名 || f.名称 || n });
+    return out;
+  };
+  const itemDef = (c, name) => { if (name) for (const [k, g] of c.entries(c.S.物品)) if (g && typeof g === 'object' && g[name] && typeof g[name] === 'object') return [k, g[name]]; return ['', null]; };
+  const SOURCE_GROUPS = ['魂环魂技', '自创魂技', '武魂融合技', '魂骨附带', '装备技能', '血脉散技', '血脉特性', '血脉魂环', '复制效果'];
+  const BLOOD_CHIP = { 血脉散技: '主动', 血脉特性: '被动', 血脉魂环: '环技' };
+  // 结构化效果：读 _效果数组，把「原型 / 目标 / 数值 / 持续 / 条件分支」变成图标行，原文折叠
+  const FX = {
+    资源变化: e => ({ icon: String(e.资源 || '').includes('魂力') ? 'fire-flame-curved' : 'heart-pulse', title: `${String(e.数值).startsWith('-') ? '削减' : '恢复'}${e.资源 || '资源'}` }),
+    结算修正: e => ({ icon: 'shield-halved', title: `${e.结算 || '结算'}修正` }),
+    属性变化: e => ({ icon: 'arrow-trend-up', title: `${e.属性 || '属性'}变化` }),
+  };
+  const fxOf = e => (FX[e.原型] || (() => ({ icon: 'bolt', title: e.原型 || '效果' })))(e);
+  const fxRow = (c, e) => {
+    const down = String(e.数值 || '').trim().startsWith('-'), f = fxOf(e);
+    const meta = [e.目标, e.持续回合 ? `持续 ${c.fmt(e.持续回合)} 回合` : '', e.生效方式].filter(Boolean).map(c.esc).join(' · ');
+    return `<div class="fx"><span class="ic ${down ? 'down' : ''}"><i class="fa-solid fa-${f.icon}"></i></span><strong>${c.esc(f.title)}</strong><span class="v ${down ? 'down' : ''}">${c.esc(e.数值 || '')}</span><small>${meta}</small></div>`;
+  };
+  const branchRow = (c, b) => {
+    const cond = (b.条件 || []).map(x => `${x.类型 === '使用者' ? '食用者' : c.esc(x.类型)}是${c.esc(x.值)}`).join('且');
+    const alt = (b.替换效果 || []).map(e => `${c.esc(fxOf(e).title)} ${c.esc(e.数值)}`).join('、');
+    return `<div class="fx-branch"><i class="fa-solid fa-code-branch"></i><span>若${cond}：${b.处理 === '替换效果' ? '改为' : c.esc(b.处理)} ${alt}</span></div>`;
+  };
+  // compact：悬停预览只给「效果 + 代价」，点击钉住后才展开产物、画面、原文与操作
+  const skillDetail = (c, sk, compact = false, page = false) => {
+    const cond = sk.使用条件 || {}, lim = sk.触发限制, mast = sk.技能掌控度;
+    // _效果数组 两种形态：造物承载是「包」列表（数量 / 有效期 / 使用效果），其余承载直接是效果列表——后者包成一个包
+    const list = Array.isArray(sk._效果数组) ? sk._效果数组.filter(Boolean) : [], pkgs = list.some(p => Array.isArray(p.使用效果)) ? list : list.length ? [{ 使用效果: list }] : [];
+    const sp = typeof sk.消耗 === 'object' ? c.num(sk.消耗?.魂力) : 0, pool = c.num(c.st.魂力), casts = sp ? Math.floor(pool / sp) : 0;
+    if (compact) return `<div class="insp-head">${sk.ring ? c.ringMedal(sk.ring, String(sk.ring.slot || '').replace(/\D/g, '')) : c.sock('book', 'gd')}<div><strong style="font-size:1.1em">${c.esc(sk.魂技名)}</strong><br><small>${sk.ring ? `${c.esc(sk.ring.slot)} · ${c.yearTier(sk.ring.年限)} · ${c.fmt(sk.ring.年限)} 年` : c.esc(sk.group)}${!c.blank(sk.承载方式) ? ' · ' + c.esc(sk.承载方式) : ''}</small></div></div>
+      ${pkgs.flatMap(p => (p.使用效果 || []).map(e => fxRow(c, e) + (e.条件分支 || []).map(b => branchRow(c, b)).join(''))).join('')}
+      <div class="peek-cost"><span><i class="fa-solid fa-fire-flame-curved"></i> ${sp ? `魂力 ${c.fmt(sp)} · 可放 ${casts} 次` : costText(c, sk.消耗)}</span><span><i class="fa-solid fa-hourglass-half"></i> 前摇 ${c.fmt(sk.前摇 || 0)}</span></div>
+      <small class="peek-hint">点击钉住，查看产物、画面与施展</small>`;
+    return `<div class="insp-head">${sk.ring ? c.ringMedal(sk.ring, String(sk.ring.slot || '').replace(/\D/g, '')) : c.sock('book', 'gd')}<div><strong style="font-size:1.15em">${c.esc(sk.魂技名)}</strong><br><small>${c.esc(sk.group)} · ${c.esc(sk.from)}</small></div>${page ? '' : '<button class="x" type="button" data-close-inspector aria-label="关闭">×</button>'}</div>
+      <div style="display:flex;gap:.35em;flex-wrap:wrap">${sk.ring ? `<span class="chip">${c.yearTier(sk.ring.年限)} · ${c.fmt(sk.ring.年限)} 年</span>` : ''}${!c.blank(sk.承载方式) ? `<span class="chip s">${c.esc(sk.承载方式)}</span>` : ''}${sk.触发方式 ? `<span class="chip s">触发：${c.esc(sk.触发方式)}</span>` : ''}${(sk.附带属性 || []).map(a => `<span class="chip s">${c.esc(a)}</span>`).join('')}</div>
+      ${pkgs.length ? `<section class="sec"><h3>效果</h3>${pkgs.map(p => `${(p.使用效果 || []).map(e => fxRow(c, e) + (e.条件分支 || []).map(b => branchRow(c, b)).join('')).join('')}${p.有效期tick || p.数量 ? `<small style="padding-left:.2em">产出 ${c.fmt(p.数量 || 1)} 份${p.有效期tick ? ` · 有效期 ${Math.floor(p.有效期tick / 6)} 小时` : ''}</small>` : ''}`).join('')}</section>` : ''}
+      ${sk.ring && sk.group === '魂环魂技' ? (rp => { const rows = [['palette', '颜色', c.ed(sk.ring.颜色 || '无', [...rp, '颜色'], { kind: 'enum', options: ['白', '黄', '紫', '黑', '红', '金', '无'] })], ['hourglass-half', '年限', c.ed(c.fmt(sk.ring.年限), [...rp, '年限'], { kind: 'number', integer: true, min: 0, raw: c.num(sk.ring.年限) })], ['map-pin', '来源', c.ed(c.blank(sk.ring.来源) ? '未记录' : sk.ring.来源, [...rp, '来源'], { raw: c.blank(sk.ring.来源) ? '' : sk.ring.来源 })]];
+        // 典籍主屏用数据块；浮窗里仍是紧凑的键值行
+        return `<section class="sec"><h3>魂环</h3>${page ? `<div class="tiles three">${rows.map(([i, l, v]) => `<div class="tile">${c.sock(i)}<b>${v}</b><small>${l}</small></div>`).join('')}</div>` : c.kv(rows.map(([, l, v]) => [l, v]))}</section>`; })(c.P(...sk.key.split('/').slice(0, 3))) : ''}
+      <section class="sec"><h3>代价</h3>
+        <div style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:.4em .9em;align-items:center">
+          ${sp ? `<span class="sock sp" style="--s:2em"><i class="fa-solid fa-fire-flame-curved"></i></span><div><strong class="num" style="font-size:1.25em">魂力 ${c.fmt(sp)}</strong> <small>当前可连续施放 ${casts} 次</small><div class="pips" style="margin-top:.3em">${Array.from({ length: Math.min(12, Math.max(casts, 1)) }, (_, i) => `<i class="${i < casts ? 'on' : 'off'}"></i>`).join('')}</div></div>` : `<span class="sock" style="--s:2em"><i class="fa-solid fa-feather"></i></span><strong>${costText(c, sk.消耗)}</strong>`}
+          <span class="sock" style="--s:2em"><i class="fa-solid fa-hourglass-half"></i></span><div><strong>前摇 ${c.fmt(sk.前摇 || 0)}</strong>${sk.场外冷却至tick ? ` <small>· 冷却至 ${c.tickDate(sk.场外冷却至tick)}</small>` : ''}</div>
+        </div>
+        ${c.kv([(cond.最低等级 || cond.最低魂力 || cond.最低精神力) ? ['条件', [cond.最低等级 ? `≥${cond.最低等级} 级` : '', cond.最低魂力 ? `魂力 ≥${c.fmt(cond.最低魂力)}` : '', cond.最低精神力 ? `精神 ≥${c.fmt(cond.最低精神力)}` : ''].filter(Boolean).join(' · ')] : null, lim ? ['限制', `${c.esc(lim.周期)} ${c.fmt(lim.次数)} 次`] : null, mast ? ['掌控度', `${c.fmt(mast.中心等级)} → ${c.fmt(mast.圆满等级)} 级圆满`] : null, sk.限定来源 ? ['限定来源', c.esc(sk.限定来源)] : null])}
+      </section>
+      ${!c.blank(sk.产物描述) ? `<section class="sec"><h3>产物</h3><div style="display:flex;gap:.7em;align-items:flex-start"><span class="sock gd" style="--s:2.2em;flex:none"><i class="fa-solid fa-cube"></i></span><p class="quote" style="flex:1">${c.esc(sk.产物描述)}</p></div></section>` : ''}
+      ${!c.blank(sk.画面描述) ? `<section class="sec"><h3>画面</h3><p class="quote">${c.esc(sk.画面描述)}</p></section>` : ''}
+      ${!c.blank(sk.效果描述) ? `<details class="fold"><summary>效果原文</summary><p class="quote" style="margin-top:.5em">${c.esc(sk.效果描述)}</p></details>` : ''}
+      ${page ? '' : `<div style="display:flex;gap:.4em">${castBtn(c, sk, ' style="flex:1;font-size:.95em;margin:0"')}${sk.group === '复制效果' ? '' : `<button class="key-s" type="button" data-go="page-ability/design" data-go-set="skill=${c.esc(sk.key)};dtab=basic"><i class="fa-solid fa-pen-ruler"></i> 设计</button>`}</div>`}`;
+  };
+  // 日常施展：被动 / 血脉特性是常驻效果，不给施放；魂力不够时锁定并在悬停说明；可施放的走原地确认条（结算由叙事 / 运行时）
+  const castBtn = (c, sk, extra = '') => {
+    if (sk.承载方式 === '被动' || sk.group === '血脉特性') return `<button class="cta" type="button" disabled${extra}><i class="fa-solid fa-infinity"></i>被动生效</button>`;
+    const sp = typeof sk.消耗 === 'object' ? c.num(sk.消耗?.魂力) : 0, short = sp > 0 && c.num(c.st.魂力) < sp;
+    const btn = `<button class="cta" type="button"${extra}${short ? ' disabled' : ` data-confirm="${c.esc(`日常施展「${sk.魂技名}」${sp ? `，消耗魂力 ${c.fmt(sp)}` : ''}`)}"`}><i class="fa-solid fa-hand-sparkles"></i>日常施展</button>`;
+    return short ? `<span class="cta-wrap" data-hint="魂力不足：需要 ${c.fmt(sp)}">${btn}</span>` : btn;
+  };
+  const skillInspect = (c, kind, key, mode) => { const sk = allSkills(c).find(x => x.key === key); return sk ? skillDetail(c, sk, mode === 'hover') : ''; };
+  window.COCKPIT.skillCard = (c, key, mode) => skillInspect(c, 'sk', key, mode);
+  // 魂灵卡：标题行（名称 · 年限）+ 品质 / 契合 / 状态 / 对标芯片 + 描述；full 时附六项属性条（按对标面板自身最大值归一）
+  const spiritCard = (c, sp, full = false) => {
+    const p = sp.战力面板, stats = p ? [['str', '力量'], ['def', '防御'], ['agi', '敏捷'], ['vit_max', '体魄'], ['men_max', '精神'], ['sp_max', '魂力']].map(([k, l]) => [l, c.num(p[k])]) : [];
+    const peak = Math.max(1, ...stats.map(x => x[1]));
+    return `<div class="spirit-card">
+      <div class="sc-head">${c.sock('paw', 'gd')}<div><strong>${c.esc(sp.表象名称)}</strong><small>${c.esc(sp.slot || '')}</small></div><b class="num">${c.fmt(sp.年限)}<small>年</small></b></div>
+      <div class="sc-chips"><span class="chip-s">品质 ${c.esc(sp.品质)}</span><span class="chip-s">契合 ${c.fmt(sp.契合度)}%</span><span class="chip-s">${c.esc(sp.状态)}</span>${p ? `<span class="chip-s">对标 ${c.fmt(p.对标等级)} 级</span>` : ''}</div>
+      ${full && !c.blank(sp.描述) ? `<p class="narr">${c.esc(sp.描述)}</p>` : ''}
+      ${full && stats.length ? `<div class="sc-stats">${stats.map(([l, v]) => `<div><span>${l}</span><i><b style="width:${(v / peak * 100).toFixed(1)}%"></b></i><em>${c.fmt(v)}</em></div>`).join('')}</div>` : ''}
+    </div>`;
+  };
+
+  // 武魂：左翼 = 武魂列表与魂技列表（悬停出魂技卡，点击钉住），主屏 = 选中武魂档案（投影台魂环塔为主体，魂灵档案在下），
+  // 右翼 = 按当前魂力的施放次数与血脉
+  const martial = c => {
+    const { soul, idx } = pickSoul(c);
+    if (!soul) return { tag: 'CORE · MARTIAL SOUL', wide: 'both', core: `<div class="pad sparse">${c.empty('fire', '尚未记录武魂')}</div>`, railL: '', railR: '' };
+    const pool = c.num(c.st.魂力);
+    const pendRing = c.ch.状态?.待选魂环 && typeof c.ch.状态.待选魂环 === 'object' ? c.ch.状态.待选魂环 : null;
+    const bl = c.ch.血脉之力 || {}, blOn = !c.blank(bl.血脉);
+    const tags = [soul.系别, !c.blank(soul.属性体系) ? '属性 · ' + soul.属性体系 : '', ((soul.可调用元素 || []).filter(x => x && x !== '无').join('、')) ? '可调用 · ' + soul.可调用元素.filter(x => x && x !== '无').join('、') : ''].filter(Boolean);
+    const skills = soul.spirits.flatMap(p => p.rings.map(r => ({ p, r, sk: r.skills[0] }))).filter(x => x.sk);
+    const skKey = ({ p, r, sk }) => c.esc(`${soul.slot}/${p.slot}/${r.slot}/${sk.slot}`);
+    return {
+      tag: 'CORE · MARTIAL SOUL',
+      left: `<div class="pad">${c.head('fire', '武魂', 'Martial Souls', 'gd')}
+        <div class="list">${c.souls.map((s, i) => `<button class="row${i === idx ? ' on' : ''}" type="button" data-set="soul=${i}" aria-current="${i === idx}">${c.sock('fire', i === idx ? 'gd' : '')}<div><strong>${c.esc(s.表象名称)}</strong><small>${c.esc([s.slot, s.系别, `${s.rings.length} 环`].filter(Boolean).join(' · '))}</small></div><span></span></button>`).join('')}</div>
+        <section class="sec grow"><h3>魂技<span class="en">${skills.length}</span>${c.hint('悬停查看魂技卡，点击钉住；完整档案与编辑在「典籍」。')}</h3>
+        ${skills.length ? `<div class="list q-list">${skills.map(x => `<button class="row" type="button" data-inspect="sk:${skKey(x)}">${c.ringMedal(x.r, x.r.slot.replace(/\D/g, ''))}<div><strong>${c.esc(x.sk.魂技名)}</strong><small>${c.yearTier(x.r.年限)} · ${costText(c, x.sk.消耗)} · 前摇 ${c.fmt(x.sk.前摇 || 0)}</small></div><i class="fa-solid fa-chevron-right"></i></button>`).join('')}</div>` : '<span class="lbl">尚未附环</span>'}</section>
+      </div>`,
+      core: `<div class="pad detail martial-core">
+        <div class="q-title">${c.sock('fire', 'gd')}<span class="chip">${c.esc(soul.slot)}</span><h2>${c.esc(soul.表象名称)}</h2></div>
+        ${pendRing ? `<div class="banner"><i class="fa-solid fa-circle-plus"></i><div><strong>有一枚待生成的魂环</strong><small>${c.esc(Object.entries(pendRing).slice(0, 3).map(([k, v]) => `${k} ${typeof v === 'object' ? '' : v}`).join(' · '))}</small></div><button class="key-s" type="button">使用该魂灵生成</button><button class="key-s" type="button">暂不生成</button></div>` : ''}
+        ${tags.length ? `<div class="plaques">${tags.map((t, i) => `<span class="plq${i ? ' steel' : ''}">${c.esc(t)}</span>`).join('')}</div>` : ''}
+        <p class="narr">${c.ed(c.blank(soul.描述) ? '未记录' : soul.描述, [...c.P(soul.slot), '描述'], { kind: 'text', raw: c.blank(soul.描述) ? '' : soul.描述 })}</p>
+        ${soul.rings.length ? `<div class="soul-card" data-scan data-float="r"><div class="soul-stage">${c.ringStage(soul.rings, r => { const p = soul.spirits.find(x => x.rings.includes(r)), sk = r.skills[0]; return p && sk ? `data-inspect="sk:${c.esc(`${soul.slot}/${p.slot}/${r.slot}/${sk.slot}`)}"` : ''; })}</div></div>`
+          : `<div class="soul-card"><div class="soul-stage"><div class="soul-empty"><i></i><span>尚未附环</span></div></div><small class="lbl">下一魂环于 ${Math.floor(c.num(c.st.等级) / 10 + 1) * 10} 级开放</small></div>`}
+        <div class="spirit-grid">${soul.spirits.map(p => `<div class="spirit-link" data-inspect="spirit:${c.esc(`${soul.slot}/${p.slot}`)}" tabindex="0">${spiritCard(c, p)}<i class="fa-solid fa-circle-info"></i></div>`).join('')}</div>
+      </div>`,
+      right: `<div class="pad">
+        ${c.head('fire-flame-curved', '施放次数', 'Casts', 'sp')}
+        <div class="need"><span>当前魂力</span><b>${c.fmt(pool)} / ${c.fmt(c.st.魂力上限)}</b></div>
+        ${skills.length ? `<div class="casts">${skills.map(x => { const cost = typeof x.sk.消耗 === 'object' ? c.num(x.sk.消耗?.魂力) : 0; return `<button class="cast" type="button" data-inspect="sk:${skKey(x)}"><div><strong>${c.esc(x.sk.魂技名)}</strong><small>${cost ? `每次 ${c.fmt(cost)} 魂力` : '无魂力消耗'}</small></div><b>×${cost ? Math.floor(pool / cost) : '∞'}</b></button>`; }).join('')}</div>` : '<span class="lbl">尚无可施放的魂技</span>'}
+        ${blOn ? `<div class="groove"></div>${c.head('droplet', bl.血脉, 'Bloodline', 'hp')}${c.kv([['解封层数', c.fmt(bl.解封层数 || 0)], ['气血魂核', c.esc(bl.核心 || '未凝聚')], ['生命之火', bl.生命之火 ? '已点燃' : '未点燃']])}${allSkills(c).filter(s => BLOOD_CHIP[s.group]).map(s => `<button class="row" type="button" data-inspect="sk:${c.esc(s.key)}"><span class="chip s">${BLOOD_CHIP[s.group]}</span><div><strong>${c.esc(s.魂技名)}</strong></div><i class="fa-solid fa-chevron-right"></i></button>`).join('')}` : ''}
+      </div>`,
+    };
+  };
+
+  // 典籍：左翼 = 来源筛选 + 技能列表，主屏 = 选中技能完整档案（效果 / 魂环 / 代价 / 产物 / 画面 / 原文），右翼 = 施展 / 设计与新建
+  const codex = c => {
+    const all = allSkills(c), have = SOURCE_GROUPS.filter(g => all.some(s => s.group === g));
+    const grp = c.state.ui.skg && (c.state.ui.skg === '全部' || have.includes(c.state.ui.skg)) ? c.state.ui.skg : '全部';
+    const shown = grp === '全部' ? all : all.filter(s => s.group === grp), sel = shown.find(s => s.key === c.state.ui.sksel) || shown[0];
+    const src = !sel ? null : sel.group === '魂骨附带' ? ['page-supplies/bones', `bonesel=${sel.key.split('/')[1]}`, '魂骨'] : sel.group === '装备技能' ? ['page-supplies/equip', `eqsel=${sel.slotPath?.[0] || ''}`, '装备'] : sel.ring || BLOOD_CHIP[sel.group] ? ['page-ability/martial', '', '武魂'] : null;
+    return {
+      tag: 'CORE · CODEX',
+      left: `<div class="pad">${c.head('book', '典籍', 'Codex', 'gd')}
+        <div class="pick-row">${c.pick('skg', grp, [{ value: '全部', label: `全部 · ${all.length}` }, ...have.map(g => ({ value: g, label: `${g} · ${all.filter(s => s.group === g).length}` }))])}</div>
+        ${shown.length ? `<div class="list q-list">${shown.map(s => `<button class="row${s === sel ? ' on' : ''}" type="button" data-set="sksel=${c.esc(s.key)}" aria-current="${s === sel}">${s.ring ? c.ringMedal(s.ring, s.ring.slot.replace(/\D/g, '')) : c.sock(s.group === '装备技能' ? 'shield-halved' : s.group === '魂骨附带' ? 'bone' : 'book')}<div><strong>${c.esc(s.魂技名)}</strong><small>${c.esc(s.from)}</small></div><span></span></button>`).join('')}</div>` : c.empty('book', '还没有任何技能', '附环、装备或自创后会出现在这里')}
+      </div>`,
+      core: sel ? `<div class="pad detail">${skillDetail(c, sel, false, true)}</div>` : `<div class="pad sparse">${c.empty('book', '还没有任何技能')}</div>`,
+      right: `<div class="pad">
+        ${sel ? `${c.head('hand-sparkles', '施展', 'Cast')}
+        <div class="acts">${castBtn(c, sel)}
+        ${sel.group === '复制效果' ? '' : `<button class="key-s" type="button" data-go="page-ability/design" data-go-set="skill=${c.esc(sel.key)};dtab=basic"><i class="fa-solid fa-pen-ruler"></i> 在设计台编辑</button>`}
+        ${src ? `<button class="key-s" type="button" data-go="${src[0]}"${src[1] ? ` data-go-set="${c.esc(src[1])}"` : ''}><i class="fa-solid fa-location-arrow"></i> 查看来源 · ${src[2]}</button>` : ''}</div>
+        <div class="groove"></div>` : ''}
+        ${c.head('plus', '新建', 'Create')}
+        <div class="acts"><button class="key-s" type="button" data-go="page-ability/design" data-go-set="dtab=basic" data-dz2-new="自创魂技"><i class="fa-solid fa-plus"></i> 新建自创魂技</button><button class="key-s" type="button" data-go="page-ability/design" data-go-set="dtab=basic" data-dz2-new="武魂融合技"><i class="fa-solid fa-link"></i> 新建武魂融合技</button></div>
+      </div>`,
+    };
+  };
+  document.addEventListener('picker:change', e => { if (e.detail.path !== 'skg') return; const c = window.COCKPIT.ctx(); Object.assign(c.state.ui, { skg: e.detail.value, sksel: '' }); window.COCKPIT.refresh(); });
+
+
+  // 技能设计台的预算仪表与对抗试算（界面与表单在 designer-ui.js）：预算直接调用原项目 COST 引擎
+  // （MVU_Skill_Runtime.js 的 __LWCS_SKILL_COST_HELPERS_V1__.评估技能预算_V1 / 断言技能预算_V1）。
+  // 对抗试算：designer-sim.js（移植自原项目技能设计台试算）加载后才显示
+  // 结论行沿用原项目文案（当前 Lv.x ⇒ 可重创 / 可承受 Lv.y）；下面补一行与同级标准强攻系的对位数字，原项目只在内部计算、不显示
+  const dzSim = (c, draft) => {
+    const SIM = window.LWCS_DESIGNER_SIM; if (!SIM) return '';
+    let r; try { r = SIM.simulate(draft, c.ch, { name: c.name }); } catch (e) { r = { error: e.message, rows: [], warnings: [] }; }
+    const notes = '';
+    const head = `<h3>对抗试算<span class="en">${r.kind ? `${esc0(r.kind)} · 对同级标准强攻系` : 'Trial'}</span>${c.hint((r.warnings || []).join('\n'))}</h3>`;
+    if (r.error) return `<section class="sec dz-simbox">${head}<div class="warn"><i class="fa-solid fa-triangle-exclamation"></i><span>试算失败：${esc0(r.error)}</span></div>${notes}</section>`;
+    // 不试算的技能：标题行挂一枚「不适用」，原因放悬停
+    if (r.hidden) return `<section class="sec dz-simbox na"><h3>对抗试算<span class="chip s" data-hint="${esc0(`${r.skillType || '这类'}技能不做对抗试算：只有伤害、防御与炸环类效果会和标准对手比较。`)}">不适用</span></h3></section>`;
+    const rows = r.rows.map(x => {
+      const d = x.data || {}, gap = Number.isFinite(d.maxLevel) && Number.isFinite(d.level) && !/\+$/.test(x.value) ? d.maxLevel - d.level : null;
+      return `<div class="sim-row${x.muted ? ' muted' : ''}${gap == null ? '' : gap >= 0 ? ' up' : ' down'}"><small>${esc0(x.label)}</small><i class="fa-solid fa-angles-right"></i><b>${esc0(x.value)}</b>${gap == null ? '' : `<em>${gap >= 0 ? `越 ${gap}` : `低 ${-gap}`} 级</em>`}</div>`;
+    }).join('');
+    const dm = r.damage, df = r.defense;
+    const vs = dm?.vsDefender ? `<div class="sim-vs"><span>每段 <b>${c.fmt(Math.round(dm.perHit))}</b> × ${dm.hits} 段 = <b>${c.fmt(Math.round(dm.total))}</b></span><span>占对手生命 <b>${Math.round(dm.vsDefender.ratio * 100)}%</b>${dm.vsDefender.重创 ? ' · 重创' : ''}</span></div>`
+      : df?.vsAttacker ? `<div class="sim-vs"><span>对手一击 <b>${c.fmt(Math.round(df.vsAttacker.rawDamage))}</b> → 实受 <b>${c.fmt(Math.round(df.vsAttacker.incoming))}</b></span><span>自身生命 <b>${c.fmt(df.vsAttacker.hp)}</b>${df.reduction ? ` · 减伤 ${Math.round(df.reduction * 1000) / 10}%` : ''}${df.shield ? ` · 护盾 ${c.fmt(df.shield)}` : ''}${df.blockCount ? ` · 格挡 ${df.blockCount} 次` : ''}${df.deathSave ? ' · 免死' : ''}</span></div>` : '';
+    return `<section class="sec dz-simbox">${head}<div class="sim-body"><div class="sim-rows">${rows}</div>${vs}</div>${notes}</section>`;
+  };
+  const dzCtx = (c, ring) => ({ 魂环位: ring ? Math.max(1, parseInt(String(ring.slot).replace(/\D/g, ''), 10) || 1) : 1, 角色: c.ch });
+  const dzEval = (c, sk, ring) => {
+    const H = window.__LWCS_SKILL_COST_HELPERS_V1__; if (!H) return { err: 'COST 引擎未加载' };
+    try { const r = H.评估技能预算_V1(sk, dzCtx(c, ring)); let block = ''; try { H.断言技能预算_V1(sk, dzCtx(c, ring)); } catch (e) { block = String(e.message || e).replace(/^技能生成错误[:：]?/, ''); } return { r, block }; } catch (e) { return { err: String(e.message || e) }; }
+  };
+  // 造物双行动：rule-overrides.js 已把这项抵扣归零，剩下挂在这个来源上的只可能是技能级触发限制
+  const LIMIT_SRC = { 造物双行动: '技能触发限制', 技能限制: '技能触发限制', 触发限制: '效果触发限制', 次数限制: '效果次数限制' };
+  const limitWhy = r => {
+    const m = new Map();
+    for (const x of r.限制明细 || []) { const k = x.限制来源 || '限制'; const o = m.get(k) || { rate: 0 }; o.rate = Math.max(o.rate, Number(x.限制抵扣率) || 0); m.set(k, o); }
+    return [...m].map(([k, o]) => `${LIMIT_SRC[k] || (/^限定/.test(k) ? `${k}：只对特定对象生效` : k)}，按 ${Math.round(o.rate * 100)}% 抵扣`);
+  };
+  const energyText = (c, e) => { e = Number(e) || 0; return e > 0 && e < 0.1 ? String(Number(e.toPrecision(2))) : c.fmt(e); };
+  const dzPreview = (c, sk, ring) => dzGauge(c, dzEval(c, sk, ring));
+  // 只负责画：r = 评估技能预算_V1 的结果，block = 保存被拦截的原因（设计台 v2 传入与保存断言同源的结果）
+  const dzGauge = (c, { r, block, err }) => {
+    if (err) return `<div class="warn"><i class="fa-solid fa-triangle-exclamation"></i><span>${c.esc(err)}</span></div>`;
+    const cap = Math.max(r.位级硬上限 || 1, r.实际COST, r.允许上限), pc = v => `${Math.max(0, Math.min(100, v / cap * 100)).toFixed(1)}%`;
+    const util = r.允许上限 ? r.实际COST / r.允许上限 * 100 : 0;
+    return `<div class="budget">
+        <div class="bg-bar"><i class="cur ${r.是否超预算 ? 'over' : block ? 'low' : ''}" style="width:${pc(r.实际COST)}"></i><b class="mk min" style="left:${pc(r.最低有效COST)}" title="最低有效 ${r.最低有效COST}"></b><b class="mk cap" style="left:${pc(r.允许上限)}" title="允许上限 ${r.允许上限}"></b></div>
+        <div class="bg-legend"><span><i class="cur"></i>实际 ${c.fmt(r.实际COST)}</span><span data-hint="实际 COST 低于最低有效值超过 1 点时不能保存（引擎容差 1 点）。"><i class="min"></i>最低 ${c.fmt(r.最低有效COST)}</span><span><i class="cap"></i>上限 ${c.fmt(r.允许上限)}</span></div>
+        <div class="bg-util"><b>${util.toFixed(0)}%</b><small>预算利用率</small></div>
+      </div>
+      ${c.kv([['效果 COST', c.fmt(r.效果原始COST)], ['限制抵扣', r.限制COST ? `−${c.fmt(r.限制COST)}${c.hint(limitWhy(r).join('；'))}` : '<span class="none">无</span>'], ['副作用', r.副作用原始COST ? `−${c.fmt(r.副作用COST)}${r.副作用原始COST !== r.副作用COST ? c.hint(`原始 ${c.fmt(r.副作用原始COST)}，按规则折算`) : ''}` : '<span class="none">无</span>'], ['实际 COST', `<b>${c.fmt(r.实际COST)}</b>`], ['运转基准', `${c.fmt(r.运转基准)} × 代价能量 ${energyText(c, r.代价能量)}`], ['硬上限', Number(r.位级硬上限) > 0 ? c.fmt(r.位级硬上限) : '<span class="none">无</span>']])}
+      ${block || r.是否超预算 ? `<div class="warn"><i class="fa-solid fa-ban"></i><span>无法保存：${c.esc(block || `超出 ${c.fmt(r.超出COST)}`)}</span></div>` : '<div class="okline"><i class="fa-solid fa-circle-check"></i>预算合规，可以保存</div>'}
+      <button class="cta" type="button" data-dz-save ${block || r.是否超预算 ? 'disabled' : ''}><i class="fa-solid fa-floppy-disk"></i>保存设计</button>`;
+  };
+  const esc0 = v => String(v ?? '').replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
+  // 设计台：designer-ui.js（界面）+ designer-model.js（原项目数据层）；数据层未加载时只给空状态
+  const design = c => (window.LWCS_DESIGNER_UI && window.LWCS_DESIGNER_UI.design(c, { allSkills, dzPreview, dzGauge, dzSim }))
+    || { tag: 'CORE · DESIGNER', wide: 'both', core: `<div class="pad sparse">${c.empty('pen-ruler', '设计台未就绪', '需要先加载 MVU_Skill_Runtime.js 与 designer-model.js')}</div>`, railL: '', railR: '' };
+
+  // 待处理：两翼折叠；有待生成魂环时给出入口，否则空状态居中
+
+  // 魂灵悬停档案：spirit:<武魂槽>/<魂灵槽>
+  const abilityInspect = (c, kind, id, mode) => {
+    if (kind !== 'spirit') return skillInspect(c, kind, id, mode);
+    const [ss, ps] = id.split('/'), soul = c.souls.find(s => s.slot === ss), sp = soul?.spirits.find(p => p.slot === ps);
+    if (!sp) return '';
+    const pp = c.P(ss, ps);
+    return `<div class="insp-head">${c.sock('paw', 'gd')}<div><strong style="font-size:1.1em">${c.ed(sp.表象名称, [...pp, '表象名称'])}</strong><br><small>${c.esc(soul.表象名称)} · ${c.esc(ps)} · 附 ${sp.rings.length} 环</small></div></div>
+      ${c.kv([['品质', c.ed(sp.品质 || 'F', [...pp, '品质'], { kind: 'enum', options: ['F', 'D', 'C', 'B', 'A', 'S', 'S+'] })], ['状态', c.ed(sp.状态 || '沉睡', [...pp, '状态'])], ['年限', c.ed(c.fmt(sp.年限), [...pp, '年限'], { kind: 'number', integer: true, min: 0, raw: c.num(sp.年限) })], ['契合度', `${c.ed(c.fmt(sp.契合度), [...pp, '契合度'], { kind: 'number', integer: true, min: 0, max: 100, raw: c.num(sp.契合度) })}%`]])}
+      <p class="narr">${c.ed(c.blank(sp.描述) ? '未记录' : sp.描述, [...pp, '描述'], { kind: 'text', raw: c.blank(sp.描述) ? '' : sp.描述 })}</p>
+      ${spiritCard(c, sp, true).replace(/<p class="narr">[\s\S]*?<\/p>/, '')}`;
+  };
+  window.COCKPIT.register('page-ability', {
+    label: '能力', icon: 'wand-sparkles', tag: 'CORE · MARTIAL SOUL',
+    keys: [
+      { id: 'martial', icon: 'fire', label: '武魂', view: martial, inspect: abilityInspect },
+      { id: 'codex', icon: 'book', label: '典籍', view: codex, inspect: skillInspect },
+      { id: 'design', icon: 'pen-ruler', label: '设计', view: design },
+    ],
+  });
+})();

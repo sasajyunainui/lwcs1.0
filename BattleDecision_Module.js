@@ -4,6 +4,7 @@
   'use strict';
 
   const root = typeof globalThis !== 'undefined' ? globalThis : window;
+  const { Number, String, Object, Array, Math, JSON, Map, Set, WeakMap, WeakSet } = root;
   const preview = root.__LWCS_BATTLE_PREVIEW__;
   if (!preview || typeof preview.previewAction !== 'function') throw new Error('battle_decision_preview_runtime_missing');
   if (preview.version !== '7.3-R6.3-preview-2') throw new Error(`battle_decision_preview_version_mismatch:${preview.version || 'missing'}`);
@@ -11,6 +12,8 @@
   const VERSION = '7.3-R6.3-decision-2';
   const R8_REQUEST_SCHEMA = '8.3-decision-request-1';
   const R8_RESULT_SCHEMA = '8.3-decision-result-1';
+  const INITIALIZATION_REQUEST_SCHEMA = 'initialization-decision-request-1';
+  const INITIALIZATION_RESULT_SCHEMA = 'initialization-decision-result-1';
   const MAX_SEQUENCE_PROFILE_CATALOGS = 2048;
   const MAX_SEQUENCE_PROFILES_PER_CATALOG = 256;
   const MAX_R8_TERMINAL_CANONICAL_ROUTE_KEYS = 8192;
@@ -32,6 +35,7 @@
   const declarationFingerprintCache = new WeakMap();
   const preparedDecisionRequests = new WeakMap();
   const preparedLinearSourceMaps = new WeakMap();
+  let providerFeaturePreparationDepth = 0;
   const preparedRouteAnalyses = new WeakMap();
   const preparedR9v2Slices = new WeakMap();
   const preparedRequestPerformance = new WeakMap();
@@ -47,7 +51,11 @@
   const r9v2ProjectedUnitHints = new WeakMap();
   let baseActionValueCache = new WeakMap();
   let mechanicalBaseActionValueCache = new WeakMap();
+  let mechanicalBaseActionValueSemanticCache = new Map();
+  let linearBestActionCapacitySemanticCache = new Map();
   let mechanicalDamageOnlySkillCache = new WeakMap();
+  let settledActionCapacitySkillCache = new WeakMap();
+  let conditionalActionCapacityCache = new WeakMap();
   let r9v2MechanicalCoverageRowsCache = new WeakMap();
   let basicAttackSkillCache = new WeakMap();
   let unitSkillCache = new WeakMap();
@@ -116,15 +124,48 @@
   let sequenceCatalogMetaCache = new WeakMap();
   let sequenceCatalogFingerprintCache = new WeakMap();
   const resourceThreatProfileKeyCache = new WeakMap();
+  // Experimental search bounds (off unless the host sets __LWCS_SEARCH_BOUNDS__).
+  // Absent bounds keep every exact projection unchanged.
+  const searchBounds = (() => {
+    const raw = root.__LWCS_SEARCH_BOUNDS__;
+    if (!raw || typeof raw !== 'object') return null;
+    const bound = key => Number.isSafeInteger(raw[key]) && raw[key] >= 0 ? raw[key] : null;
+    const bounds = { creationPlanWindows: bound('creationPlanWindows'), creationPlanNodeBudget: bound('creationPlanNodeBudget'),
+      reserveUses: bound('reserveUses'), riskWaves: bound('riskWaves'),
+      coarseCapacityCache: raw.coarseCapacityCache === true ? true : null,
+      protectionMemo: raw.protectionMemo === true ? true : null,
+      riskUndated: raw.riskUndated === true ? true : null,
+      conditionalBranches: Number.isSafeInteger(raw.conditionalBranches) && raw.conditionalBranches >= 1 ? raw.conditionalBranches : null };
+    return Object.values(bounds).some(value => value !== null) ? Object.freeze(bounds) : null;
+  })();
+  const searchBudget = { creationPlanNodes: 0, capacityByCoarseKey: new Map(), shortCircuit: false };
+  // While a surrogate owns a decision's projection-heavy codes, the projections
+  // feeding only those codes return neutral results instead of running.
+  const R9V2_NEUTRAL_SEQUENCE_CAPACITY = Object.freeze({ sequence: 0, reserve: 0, finitePaidCapacity: null,
+    reserveRoutes: Object.freeze([]), options: Object.freeze([]) });
+  // Approximate per-decision key for a unit's best action capacity: its own and
+  // its hostile targets' HP, shield, resources, states and charge only.
+  function coarseCapacitySignature(unit = {}) {
+    return [preview.unitId(unit), preview.readHp(unit), preview.readShield(unit), preview.isBattleCapable(unit),
+      ['魂力', '精神力', '体力'].map(resource => preview.readResource(unit, resource)),
+      Object.entries(unit.状态效果 || {}).map(([key, state]) => [key, state?.duration, state?.shield_value]),
+      unit.蓄力技能 ? skillId(unit.蓄力技能.skill || unit.蓄力技能) : ''];
+  }
   const decisionMetrics = {
     baseActionValueCacheHits: 0,
+    stateSummaryPairBuilds: 0,
+    stateSummaryPairHits: 0,
     baseActionValueCacheMisses: 0,
     mechanicalBaseActionValueCacheHits: 0,
     mechanicalBaseActionValueCacheBuilds: 0,
+    mechanicalBaseActionValueSemanticHits: 0,
+    cooperativeBasicAssistFastPathHits: 0,
+    r9v2BestActionCapacitySemanticHits: 0,
     basicAttackSkillCacheHits: 0,
     basicAttackSkillBuilds: 0,
     affordablePreparedSkillStateCacheHits: 0,
     affordablePreparedSkillStateCacheBuilds: 0,
+    affordablePreparedSkillMembershipCacheHits: 0,
     r9v2SkillPoolPreparedArrayCacheHits: 0,
     r9v2SkillPoolPreparedArrayCacheBuilds: 0,
     equipmentPassiveEffectFingerprintCacheHits: 0,
@@ -133,6 +174,44 @@
     stateUtilityNextCacheHits: 0,
     creationFutureTargetBranchesEvaluated: 0,
     creationFutureTargetBranchesRealized: 0,
+    creationFutureUseStatesEvaluated: 0,
+    creationFutureUseStatesReused: 0,
+    creationFutureClockBranchesEvaluated: 0,
+    r9v2RoundPassiveBranchesEvaluated: 0,
+    creationDeliveryStatesMerged: 0,
+    creationFiniteActionEnumerationsEvaluated: 0,
+    creationFiniteActionEnumerationsReused: 0,
+    creationFiniteActionPreviewsEvaluated: 0,
+    creationFiniteActionPreviewsReused: 0,
+    creationShieldProtectionCalls: 0,
+    creationShieldProtectionStatesEvaluated: 0,
+    creationShieldProtectionMaxStates: 0,
+    ordinaryShieldPressureWindowsBuilt: 0,
+    ordinaryShieldReachabilityProfiles: 0,
+    ordinaryShieldReachabilityStates: 0,
+    ordinaryShieldReachabilityMaxStates: 0,
+    ordinaryShieldSafeBounds: 0,
+    ordinaryMitigationPressureCalls: 0,
+    ordinaryMitigationPressureStates: 0,
+    ordinaryMitigationPressureMaxStates: 0,
+    ordinaryMitigationSafeBounds: 0,
+    ordinaryMovementPressureCalls: 0,
+    ordinaryMovementPressureStates: 0,
+    ordinaryMovementPressureMaxStates: 0,
+    ruleDefensePressureCalls: 0,
+    datedRoutineRiskCalls: 0,
+    datedRoutineRiskStatesEvaluated: 0,
+    datedRoutineRiskMaxStates: 0,
+    datedRoutineRiskBoundariesAdvanced: 0,
+    ruleDefensePressureStatesEvaluated: 0,
+    ruleDefensePressureMaxStates: 0,
+    creationResourceReferenceChecks: 0,
+    creationResourceReferenceHits: 0,
+    creationResourceReferenceWorldMismatches: 0,
+    creationResourceReferenceReceiptMismatches: 0,
+    creationFiniteEquivalentDamageBranchGroups: 0,
+    creationFiniteEquivalentDamageAssignmentsSkipped: 0,
+    creationFiniteEquivalentDamageSyntheticResults: 0,
     nextValueContextBuilds: 0,
     worldRevisionCacheHits: 0,
     worldRevisionAssignments: 0,
@@ -222,7 +301,12 @@
     r9v2ResourceSequenceCapacityCalls: 0,
     r9v2ResourceSequenceCapacityCacheHits: 0,
     r9v2ResourceSequenceCapacityBuilds: 0,
+    r9v2ResourceNaturalClockBranchesEvaluated: 0,
+    r9v2DeferredRootClockBranchesEvaluated: 0,
     r9v2ResourceSequenceActionRows: 0,
+    r9v2ResourceSequenceReserveStateBuilds: 0,
+    r9v2ResourceSequenceReserveCacheHits: 0,
+    r9v2ResourceSequenceReserveBranchEvaluations: 0,
     r9v2ResourceSequenceSecondStepEvaluations: 0,
     r9v2ResourceSequenceFastSecondSteps: 0,
     r9v2ResourceSequenceFastCandidateChecks: 0,
@@ -253,6 +337,8 @@
     r9v2IncomingProjectionWorldBuilds: 0,
     r9v2IncomingMarginalGraphs: 0,
     r9v2IncomingFullGraphs: 0,
+    r9v2IncomingBudgetFallbacks: 0,
+    r9v2PreviewBudgetExclusions: 0,
     r9v2IncomingDirectOutcomes: 0,
     r9v2ZeroCausalFastPathHits: 0,
     r9v2ExistingStateRiskTrials: 0,
@@ -340,7 +426,11 @@
     r8PreActionResponseWorldCache = new WeakMap();
     r8CandidateOpportunityCancellationCache = new WeakMap();
     mechanicalBaseActionValueCache = new WeakMap();
+    mechanicalBaseActionValueSemanticCache = new Map();
+    linearBestActionCapacitySemanticCache = new Map();
     mechanicalDamageOnlySkillCache = new WeakMap();
+    settledActionCapacitySkillCache = new WeakMap();
+    conditionalActionCapacityCache = new WeakMap();
   }
 
   function numericMetricDelta(before = {}, after = {}) {
@@ -1486,8 +1576,51 @@
   }
 
   function cloneValue(value) {
-    if (typeof root.structuredClone === 'function') return root.structuredClone(value);
-    return JSON.parse(JSON.stringify(value));
+    const copy = typeof root.structuredClone === 'function' ? root.structuredClone(value) : JSON.parse(JSON.stringify(value));
+    return preview.inheritProjectedResourceSupports(preview.inheritProjectedStateSourceWindows(copy, value), value);
+  }
+
+  // True iff JSON.stringify(left) === JSON.stringify(right) for unmutated data.
+  // Shared references short-circuit and the walk stops at the first difference;
+  // anything JSON treats specially compares its serialized text instead.
+  function sameJsonText(left, right) {
+    if (typeof left === 'bigint' || typeof right === 'bigint') return JSON.stringify(left) === JSON.stringify(right);
+    if (left === right) return true;
+    if (typeof left === 'string' && typeof right === 'string') return false;
+    const leftObject = typeof left === 'object' && left !== null, rightObject = typeof right === 'object' && right !== null;
+    if (!leftObject || !rightObject) {
+      if (leftObject || rightObject) return JSON.stringify(left) === JSON.stringify(right);
+      if (typeof left === 'number' && typeof right === 'number') return left === right || !Number.isFinite(left) && !Number.isFinite(right);
+      return JSON.stringify(left) === JSON.stringify(right);
+    }
+    const plain = value => {
+      const proto = Object.getPrototypeOf(value);
+      return (proto === null || Object.getPrototypeOf(proto) === null || Array.isArray(value)) && typeof value.toJSON !== 'function';
+    };
+    if (Array.isArray(left) !== Array.isArray(right) || !plain(left) || !plain(right)) return JSON.stringify(left) === JSON.stringify(right);
+    const omitted = value => value === undefined || typeof value === 'function' || typeof value === 'symbol';
+    // A child with toJSON or a non-plain prototype decides its own omission.
+    const special = value => typeof value === 'object' && value !== null && !plain(value);
+    if (Array.isArray(left)) {
+      if (left.length !== right.length) return false;
+      if (left.some(special) || right.some(special)) return JSON.stringify(left) === JSON.stringify(right);
+      for (let index = 0; index < left.length; index++) {
+        const a = left[index], b = right[index];
+        if (!sameJsonText(omitted(a) ? null : a, omitted(b) ? null : b)) return false;
+      }
+      return true;
+    }
+    const leftAll = Object.entries(left), rightAll = Object.entries(right);
+    if (leftAll.some(([, value]) => special(value)) || rightAll.some(([, value]) => special(value))) {
+      return JSON.stringify(left) === JSON.stringify(right);
+    }
+    const leftEntries = leftAll.filter(([, value]) => !omitted(value));
+    const rightEntries = rightAll.filter(([, value]) => !omitted(value));
+    if (leftEntries.length !== rightEntries.length) return false;
+    for (let index = 0; index < leftEntries.length; index++) {
+      if (leftEntries[index][0] !== rightEntries[index][0] || !sameJsonText(leftEntries[index][1], rightEntries[index][1])) return false;
+    }
+    return true;
   }
 
   function deepFreeze(value, seen = new WeakSet()) {
@@ -1700,13 +1833,13 @@
     ]);
   }
 
-  function buildDecisionWorld(worldSnapshot = {}, actorId = '', beliefState = {}) {
+  function buildDecisionWorldOutcomes(worldSnapshot = {}, actorId = '', beliefState = {}, alreadyPublic = false) {
     const sourceActor = findUnitInWorld(worldSnapshot, actorId);
     if (!sourceActor) throw new Error('battle_decision_projection_actor_missing');
     const actorSide = sideOf(worldSnapshot, sourceActor);
     const projectUnit = (sourceUnit, publicSide = '') => {
-      if (sideOf(worldSnapshot, sourceUnit) === actorSide) {
-        return cloneValue(sourceUnit);
+      if (alreadyPublic === true || sideOf(worldSnapshot, sourceUnit) === actorSide) {
+        return preview.inheritProjectedStateSourceWindows(cloneValue(sourceUnit), sourceUnit, worldSnapshot);
       }
       const id = preview.unitId(sourceUnit);
       const beliefUnit = beliefState?.units?.[id] || {};
@@ -1792,11 +1925,18 @@
         : perceivedEnemyBaseValue({ ...beliefUnit, knownResponses: observedResponses }, sourceActor);
       if (publicUnitRole === 'SUMMON') {
         projected.单位性质 = '召唤物';
+        projected.行动模式 = String(sourceUnit?.行动模式 || '').trim();
         projected.剩余窗口 = Math.max(0, Number(
-          sourceUnit?.__battleRuntime?.summonWindow?.remainingWindows ?? sourceUnit?.剩余窗口 ?? 0,
+          sourceUnit?.召唤窗口运行态?.remainingWindows ?? sourceUnit?.__battleRuntime?.summonWindow?.remainingWindows ?? sourceUnit?.剩余窗口 ?? 0,
         ));
         projected.宿主名 = String(sourceUnit?.宿主名 || '').trim();
         projected.宿主ID = String(sourceUnit?.宿主ID || '').trim();
+        const window = sourceUnit?.召唤窗口运行态 || sourceUnit?.__battleRuntime?.summonWindow;
+        if (window) projected.__battleRuntime = { summonWindow: {
+          windowId: window.windowId, remainingWindows: projected.剩余窗口,
+          consumedActionGrantIds: [...(window.consumedActionGrantIds || [])],
+          consumedWindowGrantIds: [...(window.consumedWindowGrantIds || [])],
+        } };
       }
       projected.属性 = {
         等级: perceivedLevel,
@@ -1813,7 +1953,18 @@
         防御: projected.def,
         敏捷: projected.agi,
       };
-      if (sourceUnit?.蓄力技能) projected.蓄力技能 = cloneValue(sourceUnit.蓄力技能);
+      if (sourceUnit?.蓄力技能) {
+        projected.蓄力技能 = cloneValue(sourceUnit.蓄力技能);
+        const natural = sourceUnit.__battleRuntime?.naturalOpportunity;
+        if (natural && typeof natural === 'object' && !Array.isArray(natural)) {
+          // A public committed cast also has a public natural-turn schedule.
+          // Preserve only that schedule, not the opponent's private runtime.
+          projected.__battleRuntime = { ...projected.__battleRuntime, naturalOpportunity: {
+            round: natural.round, status: natural.status,
+            ...(Object.hasOwn(natural, 'sequence') ? { sequence: natural.sequence } : {}),
+          } };
+        }
+      }
       return projected;
     };
     const participants = worldSnapshot?.参战者 || {};
@@ -1846,31 +1997,45 @@
         value: Object.fromEntries(Object.entries(summons).map(([key, unit]) => [key, projectUnit(unit, r9v2PublicSideOf(unit))])),
       });
     }
-    const passiveProjection = typeof preview.materializePassiveEffects === 'function'
+    const passiveProjection = alreadyPublic !== true && typeof preview.materializePassiveEffects === 'function'
       ? preview.materializePassiveEffects(decisionWorld, {
+          ...r9v2LinearPassiveProjectionOptions(null, { preparedDecisionWorld: true }),
           phase: 'ALL',
           currentRound: Number(worldSnapshot?.回合 || 0),
-          rootActionId: `decision-passives:${preview.unitId(sourceActor)}:${Number(worldSnapshot?.回合 || 0)}`,
+          phaseRuntimeState: preview.readPassivePhaseRuntimeState(worldSnapshot),
+          beliefState,
         })
       : null;
-    if (passiveProjection?.afterSnapshot) {
-      decisionWorld = passiveProjection.afterSnapshot;
+    const finishProjection = projection => {
+      const world = projection?.afterSnapshot || decisionWorld;
       if (Array.isArray(worldSnapshot?.__battleEventLedger)) {
-        Object.defineProperty(decisionWorld, '__battleEventLedger', {
+        Object.defineProperty(world, '__battleEventLedger', {
           configurable: true,
           enumerable: false,
           writable: false,
           value: [...worldSnapshot.__battleEventLedger],
         });
       }
-      Object.defineProperty(decisionWorld, '__passiveConsumerEvidence', {
+      if (projection) Object.defineProperty(world, '__passiveConsumerEvidence', {
         configurable: true,
         enumerable: false,
         writable: false,
-        value: Object.freeze([...(passiveProjection.applications || [])]),
+        value: Object.freeze([...(projection.applications || [])]),
       });
-    }
-    return decisionWorld;
+      return world;
+    };
+    if (passiveProjection?.outcomeBranches) return passiveProjection.outcomeBranches.map(branch => ({
+      probability: branch.probability, world: finishProjection(branch.result), initialization: branch.result,
+    }));
+    return [{ probability: 1, world: finishProjection(passiveProjection), initialization: passiveProjection }];
+  }
+
+  function buildDecisionWorld(worldSnapshot = {}, actorId = '', beliefState = {}, alreadyPublic = false) {
+    const outcomes = buildDecisionWorldOutcomes(worldSnapshot, actorId, beliefState, alreadyPublic);
+    if (outcomes.length !== 1) throw Object.assign(new Error('DECISION_INITIALIZATION_BRANCHES_REQUIRED'), {
+      code: 'DECISION_INITIALIZATION_BRANCHES_REQUIRED',
+    });
+    return outcomes[0].world;
   }
 
   function mapWorldUnits(worldSnapshot = {}, mapper = unit => unit) {
@@ -2858,12 +3023,8 @@
           // B1-P0：与预演 overlay 实际生成的 id（preview-summon:${actionId}:${effectInstanceId}:${n}）
           // 完全同形——原先多插一段 actorId 使审计 id 永不等于 overlay id（四空间之 D）。
           // actionId 本就以 actor 段开头，去掉冗余段即对齐。
-          return Array.from({ length: count }, (_, index) => [
-            'preview-summon',
-            actionId,
-            effectInstanceId,
-            index + 1,
-          ].join(':'));
+          return Array.from({ length: count }, (_, index) =>
+            `preview-summon:${preview.previewSummonInstanceId(actionId, effectInstanceId, index + 1)}`);
         });
       const includeCreatedSummons =
         createdSummonIds.length > 0 &&
@@ -2897,9 +3058,612 @@
     return `RELEASE_SKILL:${name || 'UNKNOWN'}`;
   }
 
-  function predictedOutcomeEvidence(result = null, visibleWorldSnapshot = null) {
+  function resourceLawSourceEffectId(raw, actionId, ending = '') {
+    if (!raw.startsWith(actionId + ':') || !raw.endsWith(ending)) return null;
+    let suffix = raw.slice(actionId.length, ending ? -ending.length : undefined);
+    if (suffix.includes(':conditional:')) {
+      if (!/^:effect:(?:0|[1-9]\d*)(?::conditional:(?:append|replace):(?:0|[1-9]\d*):(?:0|[1-9]\d*))*$/.test(suffix) ||
+        !suffix.split(':').filter(part => /^\d+$/.test(part)).every(part => Number.isSafeInteger(Number(part)))) return null;
+      suffix = suffix.replaceAll(':conditional:', ':');
+    }
+    return actionId + suffix + ending;
+  }
+
+  function resourceLawPeriodicDescriptors(periodic, result, startRound) {
+    const descriptors = [];
+    for (const [entry, row] of periodic) {
+      const raw = String(entry.effectInstanceId || ''), ending = ':scheduled-dot';
+      const sourceEffectId = resourceLawSourceEffectId(raw, result.actionId, ending), state = findUnitInWorld(result.afterSnapshot, row.targetId)?.状态效果?.[row.stateKey];
+      if (!sourceEffectId) return null;
+      if (!state || state.sourceActionId && state.sourceActionId !== result.actionId ||
+        state.sourceEffectId && ![raw.slice(0, -ending.length), sourceEffectId.slice(0, -ending.length)].includes(state.sourceEffectId)) return null;
+      const nominalExpectedDelta = entry.expectedDelta ?? entry.evidence.delta, nominalTickDeltas = [...entry.evidence.tickDeltas];
+      if (!Number.isFinite(nominalExpectedDelta) || Math.abs(nominalTickDeltas.reduce((sum, delta) => sum + delta, 0) - nominalExpectedDelta) > 1e-8) return null;
+      descriptors.push({ sourceEffectId, targetId: row.targetId, state: entry.evidence.state, startRound,
+        throughRound: startRound + nominalTickDeltas.length - 1, nominalExpectedDelta, nominalTickDeltas });
+    }
+    return descriptors;
+  }
+
+  function resourceLawMaintenanceClass(leaf, context) {
+    const {costs,keys,start,through,windows,units,periodic}=context, actor=findUnitInWorld(leaf.afterSnapshot,leaf.actorId), resources=Object.keys(costs);
+    if(!actor||periodic.size||!resources.length||!Number.isSafeInteger(windows)||windows<1||windows>DECISION_PREVIEW_NODE_LIMIT||actor.__禁用本回合自然恢复!==undefined||
+      leaf.contributions.some(row=>Number(row.evidence?.deferredStartRoundOffset)>0)||resources.some(resource=>!['魂力','精神力','体力'].includes(resource)||!Number.isSafeInteger(costs[resource])||costs[resource]<=0)||
+      [actor.战斗效果,actor.属性?.战斗效果,actor.final?.战斗效果].some(effects=>effects&&(['resource_tick_resource'].some(key=>!!effects[key])||
+        ['resource_tick_amount','resource_tick_ratio','sp_gain_ratio','men_gain_ratio','vit_gain_ratio','hot_heal_ratio','dot_damage','dot_damage_ratio'].some(key=>Number(effects[key]||0)!==0)))||
+      preview.staminaScaleForUnit(actor)!==1||units.some(({unit})=>preview.collectPassiveSkills(unit).length||Object.keys(unit.持续效果||{}).length||
+        Object.entries(unit.状态效果||{}).some(([key,state])=>preview.unitId(unit)!==leaf.actorId||!keys.includes(key)||state?.原型!=='属性修正'||
+          Object.keys(state.战斗效果||{}).length||Object.keys(state.计算层效果||{}).length||state.持续原型效果||state.资源锁定规则||state.__状态来源窗口||state.副作用列表?.length||
+          [...Object.keys(state.面板修改比例||{}),...Object.keys(state.面板固定修正||{})].some(field=>!['str','def','agi'].includes(field)))))return null;
+    if(preview.projectedResourceWorldState(leaf.afterSnapshot).some(([identity])=>!resources.some(resource=>identity===`${leaf.actorId}\u0000${resource}`)))return null;
+    const bounds={},recovery=new Map(root.__LWCS_BATTLE_RUNTIME__.naturalRecoveryAtRoundEndProfile(actor).map(row=>[row.label,row.recovery]));
+    for(const resource of resources){const distribution=preview.projectedResourceDistribution(actor,resource),support=distribution?.support;
+      const lower=support?.minimum??preview.readResource(actor,resource),upper=support?.maximum??lower;
+      if(!Number.isSafeInteger(lower)||!Number.isSafeInteger(upper)||support?.settlementMap||!Number.isSafeInteger(preview.readResourceMax(actor,resource)))return null;
+      bounds[resource]=[lower,upper];if(!Number.isSafeInteger(recovery.get(resource)??0)||(recovery.get(resource)??0)<0)return null;}
+    const payable=index=>{const balances=Object.fromEntries(resources.map(resource=>[resource,bounds[resource][index]]));let paid=0;
+      for(;paid<windows;paid++){if(resources.some(resource=>balances[resource]<costs[resource]))break;
+        for(const resource of resources)balances[resource]=Math.min(preview.readResourceMax(actor,resource),balances[resource]-costs[resource]+(recovery.get(resource)??0));}return paid;};
+    const minimum=payable(0),maximum=payable(1);
+    if(minimum!==maximum)return null;
+    // Fatigue may change combat panels, but not these fixed fees or base
+    // resource capacities. Never reuse a VIT path that can exhaust or fail.
+    if(Object.hasOwn(costs,'体力')&&(minimum!==windows||bounds.体力[0]-windows*costs.体力<=0))return null;
+    // Only fixed integer wallets vary here. Source carriers, timing,
+    // panels, maxima, other holders and every other world fact remain exact.
+    const snapshot=cloneValue(leaf.afterSnapshot),holder=findUnitInWorld(snapshot,leaf.actorId);
+    for(const resource of resources)for(const record of [holder,holder.属性,holder.final])if(record)for(const field of resource==='魂力'?['sp','魂力']:resource==='精神力'?['men','精神力']:['vit','sta','体力'])if(Object.hasOwn(record,field))record[field]=0;
+    for(const events of [leaf.afterSnapshot.__battlePreviewScheduledEvents,leaf.scheduledEvents])if(events!==undefined&&(!Array.isArray(events)||events.some(event=>event.type!=='RESOURCE_CLASS'||event.targetId!==leaf.actorId||!resources.includes(event.resource)||!event.effectInstanceId?.startsWith(leaf.actionId+':'))))return null;
+    if(snapshot.__battlePreviewScheduledEvents){
+      // These coordinate checks were already committed to the root wallet;
+      // the passive clock consumes live states, not past graph replay facts.
+      delete snapshot.__battlePreviewScheduledEvents;}
+    return {key:JSON.stringify([snapshot,leaf.contributions.filter(row=>row.outcomeKind!=='RESOURCE_OPTION_CHANGED'),costs,keys,start,through,minimum]),paidWindows:minimum};
+  }
+
+  function resourceLawSustainForecasts(result, world, declaration, periodic = new Map(), conditioned = false) {
+    const nominal = result.sustainCostForecast, stop = {}, completed = [], resources = new Map(), jointCompleted = [];
+    const applications = resourceLawPeriodicDescriptors(periodic, result, nominal[0].startRound);
+    if (!applications) return { reason: 'JOINT_PERIODIC_SOURCE_UNVERIFIED' };
+    let workUnits = 0, failure = 'UNRESOLVED_RESOURCE_LAW', resourcesVerified = true, jointVerified = true, multipleCoordinates = false, coordinateProofsVerified = true;
+    const coordinateTrials = new Map(), maintenanceClasses = new Map();
+    const chargeWork = units => { workUnits += units; if (workUnits > DECISION_PREVIEW_NODE_LIMIT) {
+      failure = 'PASSIVE_RESOURCE_LAW_BUDGET'; throw stop;
+    } };
+    try {
+      const readLeaf = (leaf, rootProbability) => {
+        chargeWork(Math.max(1, Number(leaf.nodeCount || 0)));
+        const context = knownPassiveOutcomeForecasts(leaf, world, declaration, true).resourceLawContext;
+        if (!context || JSON.stringify(leaf.sustainCostForecast) !== JSON.stringify(nominal)) {
+          failure = 'RESOURCE_LAW_BRANCH_CONTEXT_UNVERIFIED'; throw stop;
+        }
+        const { costs, keys, start, through, windows, units, periodic: leafPeriodic, horizon, stateTargets } = context;
+        if (JSON.stringify(resourceLawPeriodicDescriptors(leafPeriodic, leaf, start)) !== JSON.stringify(applications)) {
+          failure = 'RESOURCE_LAW_PERIODIC_CONTEXT_UNVERIFIED'; throw stop;
+        }
+        const seenResources = new Set();
+        for (const entry of resourcesVerified ? leaf.contributions : []) {
+          if (entry.outcomeKind !== 'RESOURCE_OPTION_CHANGED' || !entry.evidence?.resourceChange || entry.rootCauseId !== result.actionId || entry.sourceActionId !== result.actionId ||
+            entry.targetId !== result.actorId || entry.evidence.sideEffectIndex !== undefined || Number(entry.evidence.deferredStartRoundOffset) > 0) continue;
+          const evidence = entry.evidence, raw = String(entry.effectInstanceId || ''), sourceEffectId = resourceLawSourceEffectId(raw, result.actionId);
+          const range = preview.parseSignedRange(evidence.resourceChange.value);
+          const windowId = `round:${start}${sourceEffectId?.slice(result.actionId.length)}`, rawWindow = `round:${start}${raw.slice(result.actionId.length)}`;
+          const parent = raw.slice(result.actionId.length).match(/^:effect:(\d+)/);
+          if (!sourceEffectId || !parent || ![rawWindow, windowId, `round:${start}:effect:${parent[1]}`].includes(entry.windowId) ||
+            !['魂力', '精神力', '体力'].includes(evidence.resource) || evidence.applicationProbability !== 1 ||
+            ![evidence.current, evidence.next, evidence.delta].every(value => typeof value === 'number' && Number.isFinite(value)) ||
+            Math.abs(evidence.next - evidence.current - evidence.delta) > 1e-8 || range && range.lower < 0 && range.upper > 0) {
+            // Gain/loss receipts cannot represent a mixed-sign marginal. This
+            // optional annotation must not narrow the valid passive fee law.
+            resourcesVerified = false; resources.clear(); break;
+          }
+          const key = JSON.stringify([sourceEffectId, entry.targetId, evidence.resource, windowId]);
+          if (seenResources.has(key)) { resourcesVerified = false; resources.clear(); break; }
+          seenResources.add(key);
+          const row = resources.get(key) || { entry, sourceEffectId, windowId, expectedDelta: 0, applicationProbability: 0 };
+          row.expectedDelta += rootProbability * evidence.delta; row.applicationProbability += rootProbability;
+          resources.set(key, row);
+        }
+        const periodicRows = [...leafPeriodic.values()], periodicIndex = new Map(periodicRows.map((row, index) => [JSON.stringify([row.targetId, row.stateKey]), index]));
+        const rootActor = findUnitInWorld(leaf.afterSnapshot, result.actorId), initialActor = findUnitInWorld(world, result.actorId);
+        const rootBalances = Object.fromEntries(['魂力', '精神力', '体力'].map(resource => [resource, {
+          initialBalance: preview.readResource(initialActor, resource), balance: preview.readResource(rootActor, resource),
+          support: preview.projectedResourceDistribution(rootActor, resource)?.support || null,
+        }]));
+        const variableResources = Object.entries(rootBalances).filter(([, row]) => row.support && row.support.maximum > row.support.minimum);
+        const proof=preview.projectedResourceCoordinateProof(leaf);
+        const factorized=proof?.version===1&&proof.scope==='CANONICAL_RESOURCE_COORDINATE_TRAVERSAL'&&proof.sourceActionId===result.actionId&&proof.actorId===result.actorId&&
+          variableResources.every(([resource])=>proof.trials.some(row=>row.resource===resource&&row.targetId===result.actorId))&&
+          variableResources.every(([resource,row])=>resource!=='体力'||row.support.minimum/Math.max(1,preview.readResourceMax(rootActor,resource))>=.5);
+        if (!factorized) coordinateProofsVerified=false;
+        else for(const trial of proof.trials){const sourceEffectId=resourceLawSourceEffectId(trial.effectInstanceId,result.actionId);
+          if(!sourceEffectId){coordinateProofsVerified=false;break;}const row={sourceEffectId,targetId:trial.targetId,resource:trial.resource};coordinateTrials.set(JSON.stringify(row),row);}
+        if(variableResources.length>1){multipleCoordinates=true;if(!factorized)jointVerified=false;}
+        // Each canonical root leaf is conditioned on coordinate-local classes.
+        // Keep separate original CDF intervals: later cross-resource payment
+        // choices select rectangles, not a product of unconditional marginals.
+        if (preview.projectedResourceWorldState(world).length ||
+          Object.values(rootBalances).some(row => !Number.isFinite(row.initialBalance) || !Number.isFinite(row.balance))) jointVerified = false;
+        const variableResource = new Set(variableResources.map(([resource])=>resource));
+        const maintenanceClass=factorized?resourceLawMaintenanceClass(leaf,context):null, retained=maintenanceClass&&maintenanceClasses.get(maintenanceClass.key);
+        let observed = null, observedTicks = null, rootQuantile = null;
+        const project = retained?null:r9v2JointFlowProjector(world, result.actorId, { costs, stateKeys: keys, sourceId: result.actionId,
+          ...(stateTargets ? { stateTargets, actionName: declaration.skill?.name || declaration.skill?.魂技名 || '' } : {}),
+          observeResourcePartition: partition => {
+            if (!jointVerified) return;
+            if (partition.targetId !== result.actorId || !variableResource.has(partition.resource) ||
+              ![partition.lower, partition.upper].every(Number.isFinite) || partition.lower < 0 || partition.upper > 1 || partition.upper <= partition.lower) {
+              jointVerified = false; return;
+            }
+            const [lower, upper] = rootQuantile[partition.resource], width = upper - lower;
+            rootQuantile[partition.resource] = [lower + width * partition.lower, lower + width * partition.upper];
+          },
+          observePeriodicHp: (targetId, stateKey, delta) => {
+            const index = periodicIndex.get(JSON.stringify([targetId, stateKey]));
+            if (index === undefined) return;
+            if (!Number.isFinite(delta)) { failure = 'INVALID_PROJECTED_PERIODIC_DELTA'; throw stop; }
+            observedTicks[index] += delta;
+          },
+          currentOpportunityPending: false, observeSustainPayment: payment => {
+            if (!payment.valid) { failure = 'INVALID_PROJECTED_PAYMENT'; throw stop; }
+            if (payment.ok) for (const row of payment.payments) {
+              if (!Object.hasOwn(observed, row.resource) || !Number.isSafeInteger(row.amount) || row.amount < 0) {
+                failure = 'INVALID_PROJECTED_PAYMENT'; throw stop;
+              }
+              observed[row.resource] += row.amount;
+            }
+          } });
+        let paths = [{ probability: rootProbability, frame: null, payments: [], sourceClosedAtRound: null, rootQuantile: Object.fromEntries(Object.keys(rootBalances).map(resource=>[resource,[0,1]])),
+          periodic: periodicRows.map(() => ({ ticks: [], stateClosedAtRound: null })) }];
+        if(retained){chargeWork(1);paths[0]={...paths[0],payments:retained.payments,sourceClosedAtRound:retained.sourceClosedAtRound};}
+        for (let offset = 1; !retained && offset <= horizon; offset++) {
+          paths = paths.flatMap(path => {
+            if (path.sourceClosedAtRound !== null && path.periodic.every((row, index) => row.stateClosedAtRound !== null || offset > periodicRows[index].ticks.length)) return [path];
+            return project.outcomes(leaf.afterSnapshot, offset, leaf.contributions, path.frame, advance => {
+              // A split attempt can emit earlier payments before requesting a
+              // later condition. Only the completed attempt owns this buffer.
+              chargeWork(units.length);
+              observed = Object.fromEntries(Object.keys(costs).map(resource => [resource, 0]));
+              observedTicks = periodicRows.map(() => 0);
+              rootQuantile = Object.fromEntries(Object.entries(path.rootQuantile).map(([resource,range])=>[resource,[...range]]));
+              const frame = advance(), payments = { ...observed }, ticks = [...observedTicks];
+              if (Object.values(payments).some(value => !Number.isSafeInteger(value))) { failure = 'COST_OVERFLOW'; throw stop; }
+              if (stateTargets && offset > windows && Object.values(payments).some(value => value > 0)) { failure = 'TARGET_LIFESPAN_EXCEEDS_BOUND'; throw stop; }
+              const closed = stateTargets ? stateTargets.every(ref => !findUnitInWorld(frame, ref.targetId)?.状态效果?.[ref.key])
+                : keys.every(key => !findUnitInWorld(frame, result.actorId)?.状态效果?.[key]);
+              return { world: frame, payments, ticks, rootQuantile,
+                stateClosures: periodicRows.map(row => !findUnitInWorld(frame, row.targetId)?.状态效果?.[row.stateKey]),
+                sourceClosedAtRound: closed && offset <= windows ? start + offset - 1 : null };
+            }).map(next => ({ probability: path.probability * next.probability, frame: next.world,
+              payments: [...path.payments, next.payments], sourceClosedAtRound: path.sourceClosedAtRound ?? next.sourceClosedAtRound, rootQuantile: next.rootQuantile,
+              periodic: path.periodic.map((row, index) => ({ ticks: offset <= periodicRows[index].ticks.length ? [...row.ticks, next.ticks[index]] : row.ticks,
+                stateClosedAtRound: row.stateClosedAtRound ?? (next.stateClosures[index] && offset <= periodicRows[index].ticks.length ? start + offset - 1 : null) })) }));
+          });
+        }
+        if (stateTargets && paths.some(path => stateTargets.some(ref => findUnitInWorld(path.frame, ref.targetId)?.状态效果?.[ref.key]))) {
+          failure = 'TARGET_LIFESPAN_UNVERIFIED'; throw stop;
+        }
+        if(maintenanceClass&&!retained&&paths.length===1&&paths[0].probability===rootProbability&&
+          paths[0].sourceClosedAtRound===start+Math.min(maintenanceClass.paidWindows,windows-1)&&Object.keys(costs).every(resource=>
+            Array.from({length:windows},(_,index)=>(paths[0].payments[index]?.[resource]??0)===(index<maintenanceClass.paidWindows?costs[resource]:0)).every(Boolean))) {
+          // Reuse an actually completed canonical projection, not a separately
+          // invented fee/closure algorithm. One lookup still consumes work.
+          maintenanceClasses.set(maintenanceClass.key,{payments:paths[0].payments.map(row=>({...row})),sourceClosedAtRound:paths[0].sourceClosedAtRound});
+        }
+        for (const path of paths) {
+          const schedules = Object.fromEntries(Object.keys(costs).map(resource => {
+            const segments = [];
+            for (let index = 0; index < windows; index++) {
+              const amount = path.payments[index]?.[resource] ?? 0, previous = segments.at(-1), round = start + index;
+              if (previous?.amount === amount) previous.throughRound = round;
+              else segments.push({ startRound: round, throughRound: round, amount });
+            }
+            return [resource, segments];
+          }));
+          const outcome = { probability: path.probability, costSchedules: schedules,
+            projectedWindows: path.sourceClosedAtRound === null ? windows : path.sourceClosedAtRound - start + 1,
+            ...(applications.length ? { periodic: path.periodic.map((row, index) => ({
+              tickDeltas: Array.from({ length: periodicRows[index].ticks.length }, (_, tick) => row.ticks[tick] ?? 0),
+              projectedWindows: row.stateClosedAtRound === null ? periodicRows[index].ticks.length : row.stateClosedAtRound - start + 1,
+              ...(row.stateClosedAtRound === null ? {} : { stateClosedAtRound: row.stateClosedAtRound }),
+            })) } : {}),
+            ...(path.sourceClosedAtRound === null ? {} : { sourceClosedAtRound: path.sourceClosedAtRound }) };
+          completed.push(outcome);
+          if (jointVerified) {
+            const balances = {};
+            for (const [resource, row] of Object.entries(rootBalances)) {
+              const slice = row.support ? preview.sliceRoundedResourceQuantiles(row.support, ...path.rootQuantile[resource]) : null;
+              if (row.support && !slice) { jointVerified = false; break; }
+              balances[resource] = { initialBalance: row.initialBalance, balance: slice?.balance ?? row.balance, support: slice?.support || null };
+            }
+            if (jointVerified) jointCompleted.push({ outcome, balances });
+          }
+        }
+        return 1;
+      };
+      const mass = conditioned ? readLeaf(result, 1) : preview.visitProjectedUpkeepOutcomes(result, world, declaration, readLeaf,
+        r9v2LinearPassiveProjectionOptions({}, { resourcePaymentThresholds: () => [], captureResourceCoordinateProof: true }));
+      if (mass === null) return { reason: failure };
+      if (!Number.isFinite(mass) || Math.abs(mass - 1) > 1e-9 ||
+        Math.abs(completed.reduce((sum, row) => sum + row.probability, 0) - 1) > 1e-9) return { reason: 'RESOURCE_LAW_MASS_UNVERIFIED' };
+    } catch (error) {
+      if (error === stop) return { reason: failure };
+      if (/BUDGET|STATE_LIMIT/.test(String(error?.message))) return { reason: 'PASSIVE_RESOURCE_LAW_BUDGET' };
+      throw error;
+    }
+    const merged = new Map();
+    for (const { probability, ...shape } of completed) {
+      const identity = JSON.stringify(shape), previous = merged.get(identity);
+      if (previous) previous.probability += probability;
+      else merged.set(identity, { probability, ...shape });
+    }
+    const freeze = value => { if (value && typeof value === 'object') { Object.values(value).forEach(freeze); Object.freeze(value); } return value; };
+    const first = nominal[0], costs = preview.readSkillCostStages(declaration.skill, { ...declaration, costActor: findUnitInWorld(world, result.actorId) }).维持;
+    const outcomes = [...merged.values()];
+    const jointOutcomes = new Map();
+    if (jointVerified) for (const { outcome: { probability, ...shape }, balances } of jointCompleted) {
+      const passiveOutcomeIndex = outcomes.findIndex(({ probability: _probability, ...row }) => JSON.stringify(row) === JSON.stringify(shape));
+      if (passiveOutcomeIndex < 0) { jointVerified = false; break; }
+      const row = { passiveOutcomeIndex, balances }, identity = JSON.stringify(row), previous = jointOutcomes.get(identity);
+      if (previous) previous.probability += probability; else jointOutcomes.set(identity, { probability, ...row });
+    }
+    const declarationJointProjection = jointVerified && (!multipleCoordinates||coordinateProofsVerified) && Math.abs(jointCompleted.reduce((sum, row) => sum + row.outcome.probability, 0) - 1) <= 1e-9 ? freeze({
+      version: multipleCoordinates?2:1, scope: 'DECLARATION_PASSIVE_RESOURCE_JOINT', status: 'COMPLETE', sourceActionId: result.actionId, actorId: result.actorId,
+      startRound: first.startRound, assumption: 'NO_FUTURE_ACTIONS_OR_ENVIRONMENT_ADAPTER', coordinateScope: multipleCoordinates?'CONDITIONED_CANONICAL_RESOURCE_PRODUCT':'SINGLE_UNRESOLVED_MONOTONE_RESOURCE',
+      ...(multipleCoordinates?{coordinateTrials:[...coordinateTrials.values()].sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b)))}:{}),
+      outcomes: [...jointOutcomes.values()],
+    }) : null;
+    const projection = freeze({ version: applications.length ? 2 : 1, status: 'COMPLETE', assumption: 'NO_FUTURE_ACTIONS_OR_ENVIRONMENT_ADAPTER',
+      declaredCosts: { ...costs }, nominalExpectedCosts: Object.fromEntries(nominal.map(value => [value.resource, value.expectedCost])),
+      horizonWindows: first.throughRound - first.startRound + 1, workUnits, workLimit: DECISION_PREVIEW_NODE_LIMIT, outcomes,
+      ...(applications.length ? { periodicApplications: applications } : {}) });
+    const projectedPeriodic = new Map([...periodic.keys()].map((entry, index) => [entry, freeze({
+      sourceEffectId: applications[index].sourceEffectId,
+      ticks: applications[index].nominalTickDeltas.map((_, tick) => outcomes.reduce((sum, outcome) => sum + outcome.probability * outcome.periodic[index].tickDeltas[tick], 0)),
+      resourceLawProjection: projection, resourceLawApplicationIndex: index,
+    })]));
+    const resourceForecasts = [...resources.values()];
+    const verifiedResources = resourcesVerified && resourceForecasts.every(row => Number.isFinite(row.expectedDelta) &&
+      Number.isFinite(row.applicationProbability) && row.applicationProbability > 0 && row.applicationProbability <= 1 + 1e-9);
+    return { periodic: projectedPeriodic, resources: verifiedResources ? resourceForecasts : [], sustain: nominal.map(row => {
+      const expectedCost = outcomes.reduce((sum, outcome) => sum + outcome.probability * outcome.costSchedules[row.resource]
+        .reduce((total, segment) => total + segment.amount * (segment.throughRound - segment.startRound + 1), 0), 0);
+      const { costSchedule: _schedule, passiveProjection: _passive, ...rest } = row;
+      return freeze({ ...rest, modelScope: 'KNOWN_PASSIVE_RESOURCE_LAW', expectedCost, costPerWindow: null,
+        resourceLawProjection: projection, ...(declarationJointProjection ? { declarationJointProjection } : {}) });
+    }) };
+  }
+
+  function conditionalSustainForecasts(result, world, declaration) {
+    if (!world || !declaration || declaration.actorId !== result.actorId || declaration.actionKind !== 'RELEASE_SKILL' ||
+      declaration.actionId && declaration.actionId !== result.actionId || declaration.fusionParticipantIds?.length ||
+      declaration.skill?.副作用列表?.length || result.snapshotMode === 'JOINT_OUTCOMES') return null;
+    const checking = new Set(), pure = effect => {
+      if (!effect || checking.has(effect) || effect.生效方式 !== '独立生效' || effect.副作用列表?.length ||
+        effect.延迟回合 || effect.触发方式 === '延迟触发') return false;
+      const axes = Array.isArray(effect.属性) ? effect.属性 : [effect.属性], fuels = Array.isArray(effect.资源) ? effect.资源 : [effect.资源];
+      if (!(effect.原型 === '属性修正' && ['自身', '单体', '群体', '全场'].includes(effect.目标) &&
+        axes.length && axes.every(axis => ['力量', '防御', '敏捷', 'str', 'def', 'agi'].includes(axis)) ||
+        effect.原型 === '资源变化' && effect.目标 === '自身' && !effect.持续回合 && fuels.length &&
+        fuels.every(fuel => ['魂力', '精神力', '体力'].includes(fuel)))) return false;
+      checking.add(effect);
+      const valid = (effect.条件分支 || []).every(branch => ['生效', '禁用', '追加效果', '替换效果'].includes(branch.处理) &&
+        ['追加效果', '替换效果'].every(key => branch[key] == null || Array.isArray(branch[key]) && branch[key].every(pure)) &&
+        (!['追加效果', '替换效果'].includes(branch.处理) || branch[branch.处理]?.length));
+      checking.delete(effect); return valid;
+    };
+    if (!declaration.skill?._效果数组?.length || !declaration.skill._效果数组.every(pure)) return null;
+    const start = world.回合, order = root.__LWCS_BATTLE_RUNTIME__.listCombatUnits(world).map(preview.unitId);
+    const costs = preview.readSkillCostStages(declaration.skill, { ...declaration, costActor: findUnitInWorld(world, result.actorId) }).维持;
+    const resources = Object.keys(costs), nominal = Object.fromEntries(resources.map(resource => [resource, 0]));
+    if (!Number.isSafeInteger(start) || start < 1 || !resources.length || resources.some(resource => !['魂力', '精神力', '体力'].includes(resource))) return null;
+    const stop = {}, paths = [], scopes = new Map(), jointPaths = [], coordinateTrials = new Map();
+    let workUnits = 0, through = start, jointVerified = !preview.projectedResourceWorldState(world).length, multipleCoordinates = false;
+    const charge = amount => { workUnits += amount; if (workUnits > DECISION_PREVIEW_NODE_LIMIT) throw stop; };
+    const identity = scope => JSON.stringify([scope.targetId, scope.state, scope.sourceEffectId]);
+    const recordRootJoint = (leaf, path) => {
+      if (!jointVerified) return;
+      const before = findUnitInWorld(world, result.actorId), after = findUnitInWorld(leaf.afterSnapshot, result.actorId);
+      const balances = Object.fromEntries(['魂力', '精神力', '体力'].map(resource => [resource, {
+        initialBalance: preview.readResource(before, resource), balance: preview.readResource(after, resource),
+        support: preview.projectedResourceDistribution(after, resource)?.support || null,
+      }]));
+      const variable = Object.entries(balances).filter(([, row]) => row.support && row.support.maximum > row.support.minimum);
+      if (Object.values(balances).some(row => !Number.isFinite(row.initialBalance) || !Number.isFinite(row.balance))) { jointVerified = false; return; }
+      if (variable.length > 1) {
+        const proof = preview.projectedResourceCoordinateProof(leaf);
+        if (proof?.version !== 1 || proof.scope !== 'CANONICAL_RESOURCE_COORDINATE_TRAVERSAL' || proof.sourceActionId !== result.actionId ||
+          proof.actorId !== result.actorId || variable.some(([resource]) => !proof.trials.some(row => row.resource === resource && row.targetId === result.actorId))) {
+          jointVerified = false; return;
+        }
+        multipleCoordinates = true;
+        for (const trial of proof.trials) {
+          const sourceEffectId = resourceLawSourceEffectId(trial.effectInstanceId, result.actionId);
+          if (!sourceEffectId) { jointVerified = false; return; }
+          const row = { sourceEffectId, targetId: trial.targetId, resource: trial.resource }; coordinateTrials.set(JSON.stringify(row), row);
+        }
+      }
+      jointPaths.push({ path, probability: path.probability, balances });
+    };
+    try {
+      const mass = preview.visitProjectedUpkeepOutcomes(result, world, declaration, (leaf, probability) => {
+        charge(Math.max(1, Number(leaf.nodeCount || 0)));
+        const owners = preview.projectedSustainStateOwners(leaf, world);
+        if (!owners.length) {
+          // This is an exactly settled root leaf with no new source carriers,
+          // not a missing forecast or a failed future payment observation.
+          const path = { probability, stateScopes: [], through: start - 1, projectedWindows: 0, sourceClosedAtRound: start - 1,
+            costSchedules: Object.fromEntries(resources.map(resource => [resource, []])) };
+          paths.push(path); recordRootJoint(leaf, path);
+          return 1;
+        }
+        const projected = knownPassiveOutcomeForecasts(leaf, world, declaration, false, true).sustain;
+        if (projected.length !== resources.length || projected.some(row => !resources.includes(row.resource) ||
+          !['KNOWN_PASSIVE_SELF_STATES', 'KNOWN_PASSIVE_TARGET_STATES', 'KNOWN_PASSIVE_RESOURCE_LAW'].includes(row.modelScope) ||
+          row.startRound !== start || row.throughRound !== projected[0].throughRound)) throw stop;
+        const branchScopes = owners.map(({ targetId, state, duration, sourceEffectId, predictable }) => {
+          if (!predictable || !order.includes(targetId)) throw stop;
+          const scope = { targetId, state, duration, sourceEffectId }, key = identity(scope), prior = scopes.get(key);
+          scopes.set(key, prior && prior.duration > duration ? prior : scope); return scope;
+        });
+        const end = projected[0].throughRound; through = Math.max(through, end);
+        for (const row of leaf.sustainCostForecast) {
+          if (!Number.isSafeInteger(row.expectedCost)) throw stop;
+          nominal[row.resource] = Math.max(nominal[row.resource], row.expectedCost);
+        }
+        const law = projected[0].resourceLawProjection;
+        if (law) {
+          if (law.version !== 1 || projected.some(row => row.resourceLawProjection !== law)) throw stop;
+          charge(law.workUnits);
+          const joint = projected[0].declarationJointProjection;
+          if (!joint) jointVerified = false;
+          else if (joint.version === 2) {
+            multipleCoordinates = true;
+            for (const row of joint.coordinateTrials) coordinateTrials.set(JSON.stringify(row), row);
+          }
+          for (let index = 0; index < law.outcomes.length; index++) {
+            const outcome = law.outcomes[index], path = { ...outcome, probability: probability * outcome.probability, stateScopes: branchScopes, through: end };
+            paths.push(path);
+            if (jointVerified) for (const row of joint.outcomes.filter(row => row.passiveOutcomeIndex === index))
+              jointPaths.push({ path, probability: probability * row.probability, balances: row.balances });
+          }
+        } else {
+          const clock = projected[0].passiveProjection;
+          if (clock?.status !== 'COMPLETE' || projected.some(row => row.passiveProjection?.status !== 'COMPLETE')) throw stop;
+          charge(order.length * (end - start + 2));
+          const path = { probability, stateScopes: branchScopes, through: end, projectedWindows: clock.projectedWindows,
+            ...(Object.hasOwn(clock, 'sourceClosedAtRound') ? { sourceClosedAtRound: clock.sourceClosedAtRound } : {}),
+            costSchedules: Object.fromEntries(projected.map(row => [row.resource, row.costSchedule || [{ startRound: start, throughRound: end, amount: row.costPerWindow }]])) };
+          paths.push(path); recordRootJoint(leaf, path);
+        }
+        return 1;
+      }, r9v2LinearPassiveProjectionOptions({}, { resourcePaymentThresholds: () => [], captureResourceCoordinateProof: true }));
+      if (!Number.isFinite(mass) || Math.abs(mass - 1) > 1e-9 || Math.abs(paths.reduce((sum, path) => sum + path.probability, 0) - 1) > 1e-9) return null;
+    } catch (error) {
+      if (error === stop || /BUDGET|STATE_LIMIT/.test(String(error?.message))) return null;
+      throw error;
+    }
+    const merged = new Map(), shapeKeys = new Map();
+    for (const input of paths) {
+      const { through: end, costSchedules, ...path } = input;
+      if (end < through && path.stateScopes.length && !Object.hasOwn(path, 'sourceClosedAtRound')) return null;
+      const schedules = Object.fromEntries(resources.map(resource => {
+        const segments = costSchedules[resource].map(row => ({ ...row }));
+        if (end < through) {
+          const last = segments.at(-1);
+          if (last?.amount === 0) last.throughRound = through;
+          else segments.push({ startRound: Math.max(start, end + 1), throughRound: through, amount: 0 });
+        }
+        return [resource, segments];
+      }));
+      const { probability, ...shape } = { ...path, costSchedules: schedules }, key = JSON.stringify(shape), prior = merged.get(key);
+      shapeKeys.set(input, key);
+      if (prior) prior.probability += probability; else merged.set(key, { probability, ...shape });
+    }
+    const freeze = value => { if (value && typeof value === 'object') { Object.values(value).forEach(freeze); Object.freeze(value); } return value; };
+    const law = freeze({ version: 3, status: 'COMPLETE', assumption: 'NO_FUTURE_ACTIONS_OR_ENVIRONMENT_ADAPTER', declaredCosts: { ...costs },
+      nominalExpectedCosts: nominal, horizonWindows: through - start + 1, workUnits, workLimit: DECISION_PREVIEW_NODE_LIMIT, outcomes: [...merged.values()] });
+    const jointOutcomes = new Map(), outcomeIndices = new Map([...merged.keys()].map((key, index) => [key, index]));
+    if (jointVerified) for (const { path, probability, balances } of jointPaths) {
+      const passiveOutcomeIndex = outcomeIndices.get(shapeKeys.get(path));
+      if (passiveOutcomeIndex === undefined) { jointVerified = false; break; }
+      const row = { passiveOutcomeIndex, balances }, key = JSON.stringify(row), prior = jointOutcomes.get(key);
+      if (prior) prior.probability += probability; else jointOutcomes.set(key, { probability, ...row });
+    }
+    const declarationJointProjection = jointVerified && Math.abs(jointPaths.reduce((sum, row) => sum + row.probability, 0) - 1) <= 1e-9 ? freeze({
+      version: multipleCoordinates ? 2 : 1, scope: 'DECLARATION_PASSIVE_RESOURCE_JOINT', status: 'COMPLETE', sourceActionId: result.actionId, actorId: result.actorId,
+      startRound: start, assumption: 'NO_FUTURE_ACTIONS_OR_ENVIRONMENT_ADAPTER',
+      coordinateScope: multipleCoordinates ? 'CONDITIONED_CANONICAL_RESOURCE_PRODUCT' : 'SINGLE_UNRESOLVED_MONOTONE_RESOURCE',
+      ...(multipleCoordinates ? { coordinateTrials: [...coordinateTrials.values()].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))) } : {}),
+      outcomes: [...jointOutcomes.values()],
+    }) : null;
+    return { periodic: new Map(), sustain: resources.map(resource => freeze({ resource, startRound: start, throughRound: through,
+      modelScope: 'KNOWN_PASSIVE_RESOURCE_LAW', costPerWindow: null, settlementOrder: [...order], stateScopes: [...scopes.values()],
+      expectedCost: law.outcomes.reduce((sum, path) => sum + path.probability * path.costSchedules[resource].reduce((total, row) => total + row.amount * (row.throughRound - row.startRound + 1), 0), 0),
+      resourceLawProjection: law, ...(declarationJointProjection ? { declarationJointProjection } : {}) })) };
+  }
+
+  function knownPassiveOutcomeForecasts(result, world, declaration, resourceLawContext = false, conditioned = false) {
+    const nominal = result.sustainCostForecast || [];
+    const fallback = { sustain: nominal, periodic: new Map() };
+    if (!declaration || !world ||
+      !nominal.length && !result.contributions.some(entry => entry.outcomeKind === 'SCHEDULED_HP_DELTA') ||
+      nominal.some(row => !['ISOLATED_NEW_SELF_STATES', 'ISOLATED_NEW_TARGET_STATES'].includes(row.modelScope)))
+      return !resourceLawContext && !conditioned && nominal.length ? conditionalSustainForecasts(result, world, declaration) || fallback : fallback;
+    const unknown = reason => ({ sustain: nominal.map(row => ({ ...row, passiveProjection: Object.freeze({ version: 1, status: 'UNMODELED', reason }) })), periodic: new Map() });
+    if (declaration.actorId !== result.actorId || declaration.actionKind !== 'RELEASE_SKILL' ||
+      declaration.actionId && declaration.actionId !== result.actionId || result.snapshotMode === 'JOINT_OUTCOMES') return unknown('SOURCE_CONTEXT_UNVERIFIED');
+    if (!result.afterSnapshot) return fallback;
+    const units = preview.listUnits(result.afterSnapshot);
+    const states = units.flatMap(({ unit }) => Object.values(unit.状态效果 || {}));
+    const effects = declaration.skill?._效果数组;
+    // Own fee/windup, immediate fuel and known resource locks use the same
+    // canonical passive payment clock, not a policy with future actions.
+    if (!Array.isArray(effects) || !effects.length || declaration.skill?.副作用列表?.length || effects.some(effect =>
+      !(['属性修正', '状态施加'].includes(effect.原型) || effect.原型 === '结算修正' && effect.目标 === '自身' && ['消耗', '前摇'].includes(effect.结算) ||
+        effect.目标 === '自身' && effect.生效方式 === '独立生效' &&
+        (Array.isArray(effect.资源) ? effect.资源 : [effect.资源]).length > 0 &&
+        (Array.isArray(effect.资源) ? effect.资源 : [effect.资源]).every(resource => ['魂力', '精神力', '体力'].includes(resource)) &&
+        (effect.原型 === '资源变化' || effect.原型 === '资源锁定' && ['资源池锁定', '回复锁定', '转化锁定'].includes(effect.锁定类型) &&
+          /%$/.test(String(effect.数值)) && Number.parseFloat(effect.数值) > 0 && Number.parseFloat(effect.数值) <= 100)) ||
+      effect.副作用列表?.length ||
+      !Number.isFinite(Number(String(effect.数值).replace(/%$/, ''))) && !(effect.原型 === '资源变化' && preview.parseSignedRange(effect.数值)) ||
+      Number(effect.成功率 ?? effect.触发概率 ?? 1) !== 1)) return unknown('UNRESOLVED_SOURCE_EFFECT');
+    if (states.some(state => state?.延迟效果 || state?.召唤物 || state?.副作用列表?.length || state?.原型 === '资源变化' ||
+      Array.isArray(state?.__状态来源窗口) && new Set(state.__状态来源窗口).size > 1 && !preview.projectedStateSourceWindowSupported(state) ||
+      state?.资源锁定规则 != null && (!Array.isArray(state.资源锁定规则) || state.资源锁定规则.some(rule =>
+        !Array.isArray(rule?.资源) || !rule.资源.length || rule.资源.some(resource => !['魂力', '精神力', '体力'].includes(resource)) ||
+        !['资源池锁定', '回复锁定', '转化锁定'].includes(rule.锁定类型) || typeof rule.比例 !== 'number' ||
+        !Number.isFinite(rule.比例) || rule.比例 < 0 || rule.比例 > 1)) ||
+      state?.战斗效果?.revive_count ||
+      state?.战斗效果?.resource_tick_resource && !['魂力', '精神力', '体力'].includes(String(state.战斗效果.resource_tick_resource).trim()) ||
+      ['resource_tick_ratio', 'resource_tick_amount', 'vit_gain_ratio', 'sp_gain_ratio', 'men_gain_ratio'].some(key =>
+        state?.战斗效果?.[key] !== undefined && !Number.isFinite(Number(state.战斗效果[key]))) ||
+      [state?.dot_damage, state?.dot_damage_ratio, state?.计算层效果?.dot_damage_ratio,
+        ...['dot_damage', 'dot_damage_ratio', 'hot_heal_ratio', 'heal_inversion_ratio'].map(key => state?.战斗效果?.[key])]
+        .some(value => value !== undefined && !Number.isFinite(Number(value))) ||
+      root.__LWCS_BATTLE_RUNTIME__.structuredControlConsumesActiveOpportunity(state) ||
+      Number(state?.__previewApplicationProbability ?? 1) !== 1 ||
+      state?.持续原型效果 && (!['状态移除', '状态转移', '状态交换'].includes(state.持续原型效果.原型) ||
+        Number(state.持续原型效果.成功率 ?? state.持续原型效果.触发概率 ?? 1) !== 1)) ||
+      units.some(({ unit }) => preview.isSummonUnit(unit) || Object.values(unit.持续效果 || {}).some(effect => effect &&
+        (effect.维持释放效果列表?.length || !['condition', 'domain', 'life_fire', 'c2_food_maintain'].includes(effect.effect_type)))) ||
+      result.afterSnapshot.__规则改写运行态?.length) return unknown('UNRESOLVED_PASSIVE_STATE');
+    const resourceLaw = !conditioned && (effects.some(effect => effect.原型 === '资源变化' && preview.parseSignedRange(effect.数值)) ||
+      result.contributions.some(entry => entry.outcomeKind === 'RESOURCE_OPTION_CHANGED' &&
+        (entry.evidence?.rangeTransition || entry.evidence?.resourceStrengthOutcomes?.some(row => row.roundedResourceSupport || row.probability > 0 && row.probability < 1)))) ||
+      preview.projectedResourceWorldState(result.afterSnapshot).some(([, row]) => !row.support || row.support.settlementMap ||
+        row.support.segments.length !== 1 || row.support.segments[0].minimum !== row.support.segments[0].maximum);
+    const actor = findUnitInWorld(world, result.actorId), afterActor = findUnitInWorld(result.afterSnapshot, result.actorId);
+    const scopes = nominal.length ? nominal[0].stateScopes : [];
+    const targeted = nominal.some(row => row.modelScope === 'ISOLATED_NEW_TARGET_STATES');
+    const stateTargets = targeted ? preview.projectedSustainStateOwners(result, world).map(({ targetId, key }) => ({ targetId, key })) : null;
+    if (targeted && states.some(state => state?.持续原型效果)) return unknown('TARGET_STATE_MOVEMENT_UNVERIFIED');
+    if (!actor || !afterActor || !Array.isArray(scopes)) return unknown('SOURCE_CONTEXT_UNVERIFIED');
+    if (nominal.length && effects.some(effect => effect.原型 === '状态施加' && Object.entries(actor.状态效果 || {}).some(([key, state]) =>
+      String(state?.状态 || state?.状态名称 || key) === String(effect.状态 || '') && afterActor.状态效果?.[key] &&
+      afterActor.状态效果[key].sourceActionId !== result.actionId && !preview.projectedStateSourceWindowSupported(afterActor.状态效果[key])))) return unknown('REUSED_CARRIER_SLOT');
+    const names = new Set(scopes.filter(scope => !targeted || scope.targetId === result.actorId).map(scope => scope.state));
+    // A no-upkeep skill owns periodic applications, not pending fee carriers.
+    const keys = nominal.length ? preview.projectedSustainStateKeys(actor, afterActor, result.actionId) : [];
+    if (Object.entries(actor?.状态效果 || {}).some(([key, state]) => names.has(String(state?.状态 || state?.状态名称 || key)) &&
+      (!keys.includes(key) || afterActor.状态效果[key]?.sourceActionId !== result.actionId || afterActor.状态效果[key]?.__本回合新附加 !== true))) return unknown('REUSED_CARRIER_SLOT');
+    const costs = preview.readSkillCostStages(declaration.skill, { ...declaration, costActor: actor }).维持;
+    if (nominal.length && !keys.length && !stateTargets?.length || Object.keys(costs).length !== nominal.length || nominal.some(row => !Object.hasOwn(costs, row.resource))) return unknown('COST_CONTEXT_UNVERIFIED');
+    const start = nominal.length ? nominal[0].startRound : world.回合, through = nominal.length ? nominal[0].throughRound : start - 1;
+    const windows = nominal.length ? through - start + 1 : 0;
+    if (!Number.isSafeInteger(start) || start < 1 || nominal.some(row => row.startRound !== start || row.throughRound !== through) ||
+      !Number.isSafeInteger(windows) || nominal.length && windows < 1) return unknown('HORIZON_UNVERIFIED');
+    const periodic = new Map(), byState = new Map();
+    for (const entry of result.contributions) {
+      const evidence = entry.evidence || {}, count = evidence.tickCount;
+      if (entry.outcomeKind !== 'SCHEDULED_HP_DELTA' || entry.rootCauseId !== result.actionId || entry.sourceActionId !== result.actionId ||
+        evidence.periodicScope !== 'ISOLATED_STATE_MERGE' || evidence.mergeKind !== 'NEW' || evidence.applicationProbability !== 1 ||
+        evidence.sideEffectIndex !== undefined || Number(evidence.deferredStartRoundOffset) > 0 ||
+        !Number.isSafeInteger(count) || count < 1 || !Number.isSafeInteger(start + count - 1) ||
+        !Array.isArray(evidence.tickDeltas) || evidence.tickDeltas.length !== count || evidence.tickDeltas.some(value => !Number.isFinite(value))) continue;
+      const effectId = String(entry.effectInstanceId || '').replace(/:scheduled-dot$/, '');
+      const holder = findUnitInWorld(result.afterSnapshot, entry.targetId);
+      const candidates = Object.entries(holder?.状态效果 || {}).filter(([key, state]) =>
+        key === `preview:${effectId}:${evidence.state}` && (state.状态名称 || state.状态) === evidence.state);
+      if (!effectId.startsWith(result.actionId + ':') || candidates.length !== 1) continue;
+      const stateKey = candidates[0][0], identity = JSON.stringify([entry.targetId, stateKey]);
+      if (byState.has(identity)) return unknown('AMBIGUOUS_PERIODIC_SOURCE');
+      const row = { targetId: entry.targetId, stateKey, ticks: Array(count).fill(0), stateClosedAtRound: null };
+      periodic.set(entry, row); byState.set(identity, row);
+    }
+    if (!nominal.length && !periodic.size) return fallback;
+    // Movement/cleanse paths keep their existing cost model. A relocated HP
+    // application needs its own recipient-source contract before claiming a
+    // complete coupled tick forecast; never infer ownership from a state name.
+    if (periodic.size && states.some(state => state?.持续原型效果)) return unknown('UNRESOLVED_PERIODIC_FLOW');
+    const horizon = Math.max(windows + Number(targeted), ...[...periodic.values()].map(row => row.ticks.length));
+    if (resourceLawContext) return { resourceLawContext: { costs, keys, start, through, windows, units, periodic, horizon,
+      ...(targeted ? { stateTargets } : {}) } };
+    if (resourceLaw) {
+      if (!nominal.length) return unknown('UNRESOLVED_JOINT_PERIODIC_LAW');
+      const projected = resourceLawSustainForecasts(result, world, declaration, periodic, conditioned);
+      return projected.sustain ? projected : !conditioned && projected.reason === 'RESOURCE_LAW_BRANCH_CONTEXT_UNVERIFIED'
+        ? conditionalSustainForecasts(result, world, declaration) || unknown(projected.reason) : unknown(projected.reason);
+    }
+    const amounts = new Map(nominal.map(row => [row.resource, 0])), schedules = new Map(nominal.map(row => [row.resource, []]));
+    let valid = true, projectedWindows = 0, sourceClosedAtRound = null;
+    const project = r9v2JointFlowProjector(world, result.actorId, { costs, stateKeys: keys, sourceId: result.actionId,
+      ...(targeted ? { stateTargets, actionName: declaration.skill?.name || declaration.skill?.魂技名 || '' } : {}),
+      currentOpportunityPending: false, observePeriodicHp: (targetId, stateKey, delta) => {
+        const row = byState.get(JSON.stringify([targetId, stateKey]));
+        if (!row || projectedWindows >= row.ticks.length) return;
+        if (!Number.isFinite(delta)) valid = false;
+        else row.ticks[projectedWindows] += delta;
+      }, observeSustainPayment: payment => {
+        if (!payment.valid) { valid = false; return; }
+        if (payment.ok) for (const row of payment.payments) {
+          if (!amounts.has(row.resource) || !Number.isSafeInteger(row.amount) || row.amount < 0) valid = false;
+          else amounts.set(row.resource, amounts.get(row.resource) + row.amount);
+        }
+      } });
+    const append = (resource, round, end, amount) => {
+      const segments = schedules.get(resource), previous = segments.at(-1);
+      if (previous?.amount === amount) previous.throughRound = end;
+      else segments.push({ startRound: round, throughRound: end, amount });
+    };
+    let previous = null;
+    for (let offset = 1; offset <= horizon; offset++) {
+      // This is an evidence-work budget, not a shortened numeric forecast.
+      // Incomplete conditional projections retain only the original nominal
+      // model, explicitly marked UNMODELED; no partial cost is published.
+      if ((projectedWindows + 1) * units.length > DECISION_PREVIEW_NODE_LIMIT) return unknown('PASSIVE_PROJECTION_BUDGET');
+      for (const resource of amounts.keys()) amounts.set(resource, 0);
+      previous = project(result.afterSnapshot, null, offset, null, result.contributions, null, previous);
+      projectedWindows++;
+      if (!valid) return unknown('INVALID_PROJECTED_PAYMENT');
+      if (targeted && offset > windows && [...amounts.values()].some(amount => amount > 0)) return unknown('TARGET_LIFESPAN_EXCEEDS_BOUND');
+      const round = start + offset - 1;
+      if (offset <= windows) for (const [resource, amount] of amounts) append(resource, round, round, amount);
+      for (const row of periodic.values()) if (row.stateClosedAtRound === null && offset <= row.ticks.length &&
+        !findUnitInWorld(previous, row.targetId)?.状态效果?.[row.stateKey]) row.stateClosedAtRound = round;
+      const sourceClosed = targeted ? stateTargets.every(ref => !findUnitInWorld(previous, ref.targetId)?.状态效果?.[ref.key])
+        : keys.every(key => !findUnitInWorld(previous, result.actorId)?.状态效果?.[key]);
+      if (sourceClosed && sourceClosedAtRound === null && offset <= windows) sourceClosedAtRound = round;
+      if (sourceClosed && [...periodic.values()].every(row => row.stateClosedAtRound !== null || offset >= row.ticks.length)) {
+        if (round < through) for (const resource of amounts.keys()) append(resource, round + 1, through, 0);
+        break;
+      }
+    }
+    if (targeted && stateTargets.some(ref => findUnitInWorld(previous, ref.targetId)?.状态效果?.[ref.key])) return unknown('TARGET_LIFESPAN_UNVERIFIED');
+    const sustain = nominal.map(row => {
+      const segments = schedules.get(row.resource), expectedCost = segments.reduce((sum, segment) => sum + segment.amount * (segment.throughRound - segment.startRound + 1), 0);
+      if (!Number.isSafeInteger(expectedCost)) return { ...row, passiveProjection: Object.freeze({ version: 1, status: 'UNMODELED', reason: 'COST_OVERFLOW' }) };
+      const { costSchedule: _nominalSchedule, ...rest } = row;
+      return Object.freeze({ ...rest, modelScope: targeted ? 'KNOWN_PASSIVE_TARGET_STATES' : 'KNOWN_PASSIVE_SELF_STATES', expectedCost,
+        costPerWindow: segments.length === 1 ? segments[0].amount : null,
+        ...(segments.length > 1 ? { costSchedule: Object.freeze(segments.map(Object.freeze)) } : {}),
+        passiveProjection: Object.freeze({ version: 1, status: 'COMPLETE', assumption: 'NO_FUTURE_ACTIONS_OR_ENVIRONMENT_ADAPTER',
+          declaredCosts: Object.freeze({ ...costs }), nominalExpectedCost: row.expectedCost,
+          projectedWindows: sourceClosedAtRound === null ? Math.min(projectedWindows, windows) : sourceClosedAtRound - start + 1, horizonWindows: windows,
+          ...(sourceClosedAtRound === null ? {} : { sourceClosedAtRound }) }),
+      });
+    });
+    for (const [entry, row] of periodic) periodic.set(entry, Object.freeze({ ticks: Object.freeze(row.ticks),
+      passiveProjection: Object.freeze({ version: 1, status: 'COMPLETE', assumption: 'NO_FUTURE_ACTIONS_OR_ENVIRONMENT_ADAPTER',
+        nominalExpectedDelta: entry.expectedDelta ?? entry.evidence.delta, nominalTickDeltas: Object.freeze([...entry.evidence.tickDeltas]),
+        projectedWindows: Math.min(projectedWindows, row.ticks.length), horizonWindows: row.ticks.length,
+        ...(row.stateClosedAtRound === null ? {} : { stateClosedAtRound: row.stateClosedAtRound }) }) }));
+    return { sustain, periodic };
+  }
+
+  function predictedOutcomeEvidence(result = null, visibleWorldSnapshot = null, options = {}) {
     if (!result || !Array.isArray(result?.contributions)) return Object.freeze([]);
     const remainingHpByTarget = new Map();
+    const ownsStartupCost = entry => entry?.outcomeKind === 'RESOURCE_OPTION_CHANGED' && entry.windowId === 'ACTION_COST' &&
+      result.actionId && entry.rootCauseId === result.actionId && entry.sourceActionId === result.actionId &&
+      typeof entry.effectInstanceId === 'string' && entry.effectInstanceId.startsWith(result.actionId + ':cost:') &&
+      entry.evidence?.sideEffectIndex === undefined && !(Number(entry.evidence?.deferredStartRoundOffset) > 0);
+    const startupCounts = new Map();
+    for (const entry of result.contributions) if (ownsStartupCost(entry)) {
+      const key = JSON.stringify([entry.targetId, entry.evidence?.resource]);
+      startupCounts.set(key, (startupCounts.get(key) || 0) + 1);
+    }
     const visibleTargetFor = targetId => {
       if (!visibleWorldSnapshot || typeof visibleWorldSnapshot !== 'object') return null;
       return findUnitInWorld(visibleWorldSnapshot, targetId);
@@ -2909,12 +3673,136 @@
       'SUMMON_WINDOW', 'BELIEF_CHANGED', 'NEXT_ACTION_QUALITY_CHANGED', 'RULE_CHANGED',
       'IRREVERSIBLE_ASSET_LOST',
     ]);
-    return Object.freeze(result.contributions.flatMap(entry => {
+    const passive = knownPassiveOutcomeForecasts(result, visibleWorldSnapshot, options.declaration);
+    const contributions = passive.resources?.length ? [...result.contributions] : result.contributions;
+    for (const row of passive.resources || []) {
+      const matches = contributions.flatMap((entry, index) => entry.outcomeKind === 'RESOURCE_OPTION_CHANGED' && entry.rootCauseId === result.actionId &&
+        entry.sourceActionId === result.actionId && entry.targetId === row.entry.targetId && entry.evidence?.resource === row.entry.evidence.resource &&
+        resourceLawSourceEffectId(String(entry.effectInstanceId || ''), result.actionId) === row.sourceEffectId ? [index] : []);
+      if (matches.length > 1) continue;
+      const previous = matches.length ? contributions[matches[0]] : null;
+      if (previous && previous.effectInstanceId === row.sourceEffectId && previous.windowId === row.windowId &&
+        Math.abs(Number(previous.evidence?.delta) - row.expectedDelta) < 1e-10 &&
+        Math.abs(Number(previous.evidence?.applicationProbability) - row.applicationProbability) < 1e-10) continue;
+      const { current: _current, next: _next, ...evidence } = row.entry.evidence;
+      const entry = { ...row.entry, effectInstanceId: row.sourceEffectId, windowId: row.windowId, expectedDelta: row.expectedDelta,
+        evidence: { ...evidence, delta: row.expectedDelta, applicationProbability: row.applicationProbability,
+          modelApplied: true, modelReason: 'ROOT_DECLARATION_RESOURCE_EXPECTATION' } };
+      if (previous) contributions[matches[0]] = entry; else contributions.push(entry);
+    }
+    const sustainForecasts = passive.sustain.map(forecast => ({
+      outcomeKind: 'SCHEDULED_RESOURCE_COST', targetId: String(result.actorId || ''),
+      windowId: 'ROUND_END_SUSTAIN', predictionActorId: String(result.actorId || ''),
+      predictionSourceActionId: String(result.actionId || ''),
+      predictionWindow: ['ISOLATED_NEW_SELF_STATES', 'KNOWN_PASSIVE_SELF_STATES', 'ISOLATED_NEW_TARGET_STATES', 'KNOWN_PASSIVE_TARGET_STATES', 'KNOWN_PASSIVE_RESOURCE_LAW'].includes(forecast.modelScope) ? 'SUSTAIN_COST_HORIZON' : 'UNMODELED_SUSTAIN',
+      ...(['ISOLATED_NEW_SELF_STATES', 'KNOWN_PASSIVE_SELF_STATES', 'ISOLATED_NEW_TARGET_STATES', 'KNOWN_PASSIVE_TARGET_STATES', 'KNOWN_PASSIVE_RESOURCE_LAW'].includes(forecast.modelScope) ? {
+        predictionStartRound: forecast.startRound, predictionThroughRound: forecast.throughRound,
+        expectedDelta: forecast.expectedCost,
+      } : {}),
+      evidence: Object.freeze({ resource: forecast.resource, costPerWindow: forecast.costPerWindow,
+        ...(Object.hasOwn(forecast, 'costSchedule') ? { costSchedule: forecast.costSchedule } : {}),
+        ...(forecast.passiveProjection ? { passiveProjection: forecast.passiveProjection } : {}),
+        ...(forecast.resourceLawProjection ? { resourceLawProjection: forecast.resourceLawProjection } : {}),
+        ...(forecast.declarationJointProjection ? { declarationJointProjection: forecast.declarationJointProjection } : {}),
+        ...(forecast.settlementOrder ? { settlementOrder: forecast.settlementOrder } : {}),
+        modelScope: forecast.modelScope, stateScopes: forecast.stateScopes }),
+      executionRole: 'PRIMARY',
+    }));
+    return Object.freeze([...contributions.flatMap(entry => {
       const outcomeKind = String(entry?.outcomeKind || '').trim().toUpperCase();
       const targetId = String(entry?.targetId || '').trim();
       const windowId = String(entry?.windowId || '').trim();
       const evidence = entry?.evidence && typeof entry.evidence === 'object' ? entry.evidence : {};
+      if (outcomeKind === 'STATE_SCHEDULED' && evidence.prototype === '状态施加' &&
+          Object.values(evidence.stateEntries || {}).some(state => state?.延迟效果 === true)) {
+        const start = observedFiniteNumber(visibleWorldSnapshot?.回合), delay = observedFiniteNumber(evidence.delay);
+        const scheduled = observedFiniteNumber(evidence.scheduledRound), stateName = String(evidence.state || '').trim();
+        const sourceActionId = String(entry.sourceActionId || '').trim(), effectId = String(entry.effectInstanceId || '').trim();
+        const independent = options.explicitIndependentSource === true && String(entry.rootCauseId || '').startsWith('passive-consumer:');
+        if (!targetId || !stateName || !sourceActionId || !effectId || evidence.marginal === false ||
+            !(independent || sourceActionId === String(result.actionId || '') && entry.rootCauseId === result.actionId) ||
+            !Number.isSafeInteger(start) || start < 1 || !Number.isSafeInteger(delay) || delay < 1 ||
+            !Number.isSafeInteger(scheduled) || scheduled !== start + delay) return [];
+        const common = { targetId, windowId, sourceEffectId: effectId, predictionSourceActionId: sourceActionId,
+          predictionActorId: String(entry.actorId || result.actorId || ''), executionRole: 'PRIMARY',
+          hitProbability: clamp(Number(evidence.applicationProbability ?? 1), 0, 1) };
+        const timing = { prototype: '状态施加', registrationRound: start, delay, scheduledRound: scheduled,
+          ...(independent && evidence.passiveConsumerEvidence !== undefined ? { passiveConsumerEvidence: evidence.passiveConsumerEvidence } : {}) };
+        // Registration is a current carrier fact. The original state is a
+        // separate future claim, due at the end of the preceding natural round.
+        const registration = { ...common, outcomeKind: 'STATE_SCHEDULED', predictionWindow: 'DECLARATION_EXECUTION',
+          predictionStartRound: start, predictionThroughRound: start,
+          evidence: Object.freeze({ ...timing, stateName: '延迟登记', deferredStateName: stateName, duration: delay }) };
+        const survives = result.snapshotMode !== 'JOINT_OUTCOMES' && result.afterSnapshot &&
+          Object.values(findUnitInWorld(result.afterSnapshot, targetId)?.状态效果 || {}).some(state =>
+            state?.延迟效果 === true && state.sourceActionId === sourceActionId && state.sourceEffectId === effectId);
+        if (!survives) return [registration];
+        return [registration,
+        { ...common, outcomeKind: 'STATE_CHANGED', predictionWindow: 'DELAYED_STATE_LANDING',
+          predictionStartRound: scheduled - 1, predictionThroughRound: scheduled - 1,
+          evidence: Object.freeze({ ...timing, stateName, duration: Number(evidence.duration || 1) }) }];
+      }
+      if (outcomeKind === 'SCHEDULED_HP_DELTA') {
+        // Keep future periodic HP separate from the current declaration balance.
+        // Refresh/stack deltas are counterfactual increments, not gross tick receipts.
+        const tickDeltas = Array.isArray(evidence.tickDeltas)
+          ? evidence.tickDeltas.map(observedFiniteNumber) : null;
+        const probability = observedFiniteNumber(evidence.applicationProbability);
+        const startRound = observedFiniteNumber(visibleWorldSnapshot?.回合);
+        const tickCount = observedFiniteNumber(evidence.tickCount);
+        const ownsWindow = result.actionId && String(entry.rootCauseId || '') === String(result.actionId) &&
+          String(entry.sourceActionId || '') === String(result.actionId) &&
+          !(Number(evidence.deferredStartRoundOffset) > 0) && evidence.sideEffectIndex === undefined &&
+          !/:summon-assist(?::|$)/i.test(String(entry.effectInstanceId || ''));
+        const bounded = ownsWindow && evidence.periodicScope === 'ISOLATED_STATE_MERGE' &&
+          Number.isSafeInteger(startRound) && startRound > 0 &&
+          Number.isSafeInteger(tickCount) && tickCount > 0 &&
+          tickDeltas?.length === tickCount && tickDeltas.every(value => value !== null) &&
+          probability !== null && probability >= 0 && probability <= 1 &&
+          Number.isSafeInteger(startRound + tickCount - 1);
+        const coupled = bounded ? passive.periodic.get(entry) : null;
+        return [{
+          outcomeKind, targetId, windowId,
+          expectedDelta: coupled ? coupled.ticks.reduce((sum, delta) => sum + delta, 0) : observedFiniteNumber(entry.expectedDelta ?? evidence.delta),
+          sourceEffectId: coupled?.sourceEffectId || String(entry.effectInstanceId || '').trim(),
+          ...(options.explicitIndependentSource === true && String(entry.rootCauseId || '').startsWith('passive-consumer:')
+            ? { predictionSourceActionId: String(entry.sourceActionId || entry.rootCauseId), predictionActorId: String(entry.actorId || '') } : {}),
+          ...(bounded ? {
+            predictionWindow: 'STATE_TICK_HORIZON',
+            predictionActorId: String(result.actorId || ''),
+            predictionSourceActionId: String(result.actionId),
+            predictionStartRound: startRound,
+            predictionThroughRound: startRound + tickCount - 1,
+          } : {}),
+          evidence: Object.freeze({
+            state: String(evidence.state || '').trim(),
+            periodicScope: coupled?.resourceLawProjection ? 'KNOWN_PASSIVE_RESOURCE_LAW_TICKS' : coupled ? 'KNOWN_PASSIVE_STATE_TICKS' : String(evidence.periodicScope || '').trim(),
+            mergeKind: String(evidence.mergeKind || '').trim(),
+            expectedTickDeltas: coupled ? coupled.ticks : bounded ? Object.freeze(tickDeltas.map(value => value * probability)) : null,
+            ...(coupled?.passiveProjection ? { passiveProjection: coupled.passiveProjection } : {}),
+            ...(coupled?.resourceLawProjection ? { resourceLawProjection: coupled.resourceLawProjection, resourceLawApplicationIndex: coupled.resourceLawApplicationIndex } : {}),
+            ...(options.explicitIndependentSource === true && evidence.passiveConsumerEvidence !== undefined ? { passiveConsumerEvidence: evidence.passiveConsumerEvidence } : {}),
+          }),
+          executionRole: /:summon-assist(?::|$)/i.test(String(entry.effectInstanceId || '')) ? 'ASSIST' : 'PRIMARY',
+        }];
+      }
       let expectedDelta = Number.NaN;
+      let startupCost = null;
+      if (ownsStartupCost(entry)) {
+        const { resource, before, next, delta } = evidence, payer = visibleTargetFor(targetId);
+        const support = payer ? preview.projectedResourceDistribution(payer, resource)?.support : null;
+        if (payer && ['魂力', '精神力', '体力'].includes(resource) &&
+          [before, next, delta].every(value => typeof value === 'number' && Number.isFinite(value)) && before >= 0 && next >= 0 && delta <= 0 &&
+          Math.abs(next - before - delta) <= 1e-8 &&
+          (entry.expectedDelta === undefined || entry.expectedDelta === null || typeof entry.expectedDelta === 'number' && Math.abs(entry.expectedDelta - delta) <= 1e-8) &&
+          startupCounts.get(JSON.stringify([entry.targetId, resource])) === 1 &&
+          (!support || !support.settlementMap && support.segments.length === 1 && support.segments[0].minimum === support.segments[0].maximum)) {
+          startupCost = { outcomeKind, targetId, windowId, expectedDelta: delta, sourceEffectId: '',
+            predictionWindow: 'DECLARATION_EXECUTION', predictionActorId: String(result.actorId || ''), predictionSourceActionId: String(result.actionId),
+            evidence: Object.freeze({ version: 1, paymentScope: 'ACTION_PAYER_RESOURCE', operation: 'PAY', resource, before, next, delta,
+              previewCostEffectId: entry.effectInstanceId }), executionRole: 'PRIMARY' };
+        }
+      }
       let targetUnresolvedCapped = false;
       const hpCost = outcomeKind === 'RESOURCE_OPTION_CHANGED' && windowId === 'ACTION_COST' && /^(生命|HP)$/i.test(String(evidence.resource || '').trim());
       const visibleTarget = outcomeKind === 'HP_DELTA' || hpCost ? visibleTargetFor(targetId) : null;
@@ -2947,7 +3835,7 @@
           }
           targetUnresolvedCapped = true;
         }
-        if (hpCost) return [];
+        if (hpCost) return startupCost ? [startupCost] : [];
       } else if (outcomeKind === 'SHIELD_DELTA') {
         const canonicalDelta = observedFiniteNumber(entry?.expectedDelta);
         const delta = observedFiniteNumber(evidence?.delta);
@@ -2961,11 +3849,22 @@
             ? next - current
             : Number.NaN;
       }
+      if (startupCost) return [startupCost];
+      const immediateSideEffectHp = outcomeKind === 'HP_DELTA' && evidence.lethalSettlement === true &&
+        Number.isSafeInteger(evidence.sideEffectIndex) && evidence.sideEffectIndex >= 0 &&
+        result.actionId && entry.rootCauseId === result.actionId && entry.sourceActionId === result.actionId &&
+        entry.effectInstanceId === `${result.actionId}:side-effect:${evidence.sideEffectIndex}` &&
+        !(Number(evidence.deferredStartRoundOffset) > 0) && Number.isFinite(expectedDelta) &&
+        ['realizedDelta','sacrificeLoss','reviveHealing','applicationProbability'].every(key => typeof evidence[key] === 'number' && Number.isFinite(evidence[key])) &&
+        evidence.sacrificeLoss >= 0 && evidence.reviveHealing >= 0 && typeof evidence.reviveTriggered === 'boolean' &&
+        evidence.applicationProbability >= 0 && evidence.applicationProbability <= 1;
       const numericOutcome = Number.isFinite(expectedDelta) && Math.abs(expectedDelta) > 0.0001;
       const structuralOutcome = structuralOutcomeKinds.has(outcomeKind) &&
         (outcomeKind !== 'RESOURCE_OPTION_CHANGED' || windowId !== 'ACTION_COST') &&
         (evidence?.marginal !== false || ['ACTION_CANCELLED', 'ACTION_GRANTED', 'SUMMON_WINDOW'].includes(outcomeKind));
-      if (!targetId || (!numericOutcome && !structuralOutcome)) return [];
+      const knownZeroNumericOutcome = options.includeZeroNumericOutcomes === true && Number.isFinite(expectedDelta) &&
+        ['HP_DELTA', 'SHIELD_DELTA'].includes(outcomeKind);
+      if (!targetId || (!numericOutcome && !structuralOutcome && !knownZeroNumericOutcome && !immediateSideEffectHp)) return [];
       const publicEvidence = {};
       [
         'state',
@@ -3023,6 +3922,7 @@
         'fullHitIncoming',
         'fullHitShieldAbsorb',
         'perSegmentDamage',
+        'passiveConsumerEvidence',
       ].forEach(key => {
         if (evidence[key] !== undefined && evidence[key] !== null) publicEvidence[key] = evidence[key];
       });
@@ -3065,10 +3965,15 @@
         if (expectedDelta > 0) publicEvidence.delta = expectedDelta;
       }
       if (targetUnresolvedCapped) publicEvidence.targetUnresolved = true;
+      if (immediateSideEffectHp) publicEvidence.sideEffectHp = Object.freeze({ version: 1, scope: 'SIDE_EFFECT_IMMEDIATE_HP',
+        expectedDelta, applicationProbability: evidence.applicationProbability, realizedDelta: evidence.realizedDelta,
+        sacrificeLoss: evidence.sacrificeLoss, reviveHealing: evidence.reviveHealing, reviveTriggered: evidence.reviveTriggered === true });
       return [{
         outcomeKind,
         targetId,
         windowId,
+        ...(immediateSideEffectHp ? { predictionWindow: 'SIDE_EFFECT_DECLARATION', predictionActorId: String(result.actorId || ''),
+          predictionSourceActionId: String(result.actionId) } : {}),
         ...(result.actionId && String(entry.rootCauseId || '') === String(result.actionId) &&
           String(entry.sourceActionId || '') === String(result.actionId) &&
           !(Number(evidence.deferredStartRoundOffset) > 0) && evidence.sideEffectIndex === undefined &&
@@ -3095,12 +4000,82 @@
             }
           : {}),
         sourceEffectId: String(entry?.effectInstanceId || '').trim(),
+        ...(options.explicitIndependentSource === true && String(entry.rootCauseId || '').startsWith('passive-consumer:')
+          ? { predictionSourceActionId: String(entry.sourceActionId || entry.rootCauseId), predictionActorId: String(entry.actorId || '') } : {}),
         evidence: Object.freeze(publicEvidence),
         executionRole: /:summon-assist(?::|$)/i.test(String(entry?.effectInstanceId || '').trim())
           ? 'ASSIST'
           : 'PRIMARY',
       }];
-    }));
+    }), ...sustainForecasts]);
+  }
+
+  // Integrate real public receipts, not worlds or physical damage bases. Only
+  // additive prediction quantities and probabilities are averaged. Conditional
+  // metadata (especially a raw per-segment amount used by calibration) survives
+  // only when every occurrence agrees; a missing physical event has zero delta.
+  function r9v2LinearPredictionAccumulator(visibleWorldSnapshot) {
+    const rows = new Map();
+    let mass = 0;
+    const topNumeric = new Set(['expectedDelta', 'expectedValuePercent', 'hitProbability']);
+    const evidenceNumeric = new Set(['delta', 'expectedDamage', 'sourcePaid', 'convertedAmount', 'receiverGain', 'overflowLoss']);
+    const common = (value, numericFields, excludedKey) => new Map(Object.entries(value).filter(([key]) => !numericFields.has(key) && key !== excludedKey));
+    const retainCommon = (values, next) => {
+      for (const [key, value] of values) if (!Object.hasOwn(next, key) || !Object.is(value, next[key]) &&
+          !(value && next[key] && typeof value === 'object' && typeof next[key] === 'object' && preview.stableHash(value) === preview.stableHash(next[key]))) values.delete(key);
+    };
+    const addNumbers = (bucket, row, probability, fields, prefix) => {
+      for (const key of fields) if (Object.hasOwn(row, key)) {
+        const identity = prefix + key;
+        let stat = bucket.numbers.get(identity);
+        if (!stat) { stat = { sum: 0, mass: 0, values: new Set(), invalid: false }; bucket.numbers.set(identity, stat); }
+        if (typeof row[key] !== 'number' || !Number.isFinite(row[key])) { stat.invalid = true; continue; }
+        stat.sum += probability * row[key]; stat.mass += probability; stat.values.add(row[key]);
+      }
+    };
+    return {
+      add(result, probability) {
+        if (!(probability > 0) || !Number.isFinite(probability)) throw new Error('R9V2_LINEAR_PREDICTION_PROBABILITY_INVALID');
+        const seen = new Set();
+        for (const row of predictedOutcomeEvidence(result, visibleWorldSnapshot, { includeZeroNumericOutcomes: true, explicitIndependentSource: true })) {
+          const evidence = row.evidence || {};
+          const key = JSON.stringify([row.outcomeKind, row.targetId, row.windowId, row.sourceEffectId, row.predictionSourceActionId || result.actionId,
+            row.executionRole, evidence.resource, evidence.transferRole, evidence.stateName || evidence.state, evidence.attribute, evidence.productId,
+            row.predictionWindow, row.predictionStartRound, row.predictionThroughRound]);
+          if (seen.has(key)) throw new Error('R9V2_LINEAR_PREDICTION_DUPLICATE_RECEIPT'); seen.add(key);
+          let bucket = rows.get(key);
+          if (!bucket) { bucket = { top: common(row, topNumeric, 'evidence'), evidence: common(evidence, evidenceNumeric, 'expectedTickDeltas'), numbers: new Map(), ticks: null }; rows.set(key, bucket); }
+          else { retainCommon(bucket.top, row); retainCommon(bucket.evidence, evidence); }
+          addNumbers(bucket, row, probability, topNumeric, 'top:'); addNumbers(bucket, evidence, probability, evidenceNumeric, 'evidence:');
+          if (Array.isArray(evidence.expectedTickDeltas)) {
+            if (!bucket.ticks) bucket.ticks = { values: new Array(evidence.expectedTickDeltas.length).fill(0), valid: true };
+            if (evidence.expectedTickDeltas.length !== bucket.ticks.values.length || !evidence.expectedTickDeltas.every(Number.isFinite)) bucket.ticks.valid = false;
+            else evidence.expectedTickDeltas.forEach((value, index) => { bucket.ticks.values[index] += probability * value; });
+          }
+        }
+        mass += probability;
+      },
+      finish() {
+        if (Math.abs(mass - 1) > 1e-9) throw new Error('R9V2_LINEAR_PREDICTION_MASS_NOT_CLOSED');
+        return Object.freeze([...rows.values()].map(bucket => {
+          const row = Object.fromEntries(bucket.top), evidence = Object.fromEntries(bucket.evidence);
+          delete row.evidence;
+          for (const key of topNumeric) delete row[key];
+          for (const key of evidenceNumeric) delete evidence[key];
+          for (const [identity, stat] of bucket.numbers) {
+            if (stat.invalid) continue;
+            const value = stat.values.size === 1 && Math.abs(stat.mass - mass) <= 1e-9 ? stat.values.values().next().value : stat.sum;
+            if (!Number.isFinite(value)) throw new Error('R9V2_LINEAR_PREDICTION_VALUE_INVALID');
+            const [scope, key] = identity.split(':'); (scope === 'top' ? row : evidence)[key] = value;
+          }
+          if (bucket.ticks) {
+            delete evidence.expectedTickDeltas;
+            if (bucket.ticks.valid) evidence.expectedTickDeltas = Object.freeze(bucket.ticks.values);
+          }
+          return Object.freeze({ ...row, evidence: Object.freeze(evidence) });
+        }));
+      },
+    };
   }
 
   function isPassiveSkill(skill = {}) {
@@ -3332,7 +4307,14 @@
     return strictDamageOnly;
   }
 
-  function cachedBaseActionValue(actor, target, actionKind, skill = null, projectionContext = null) {
+  function isSimpleBasicDamageActor(unit = {}) {
+    if (!unit || unit.蓄力技能 || collectSkills(unit).length > 0) return false;
+    const effects = basicAttackSkill(unit)?._效果数组;
+    return Array.isArray(effects) && effects.length === 1 && effects[0]?.原型 === '伤害结算' &&
+      !(Array.isArray(effects[0]?.条件分支) && effects[0].条件分支.length > 0);
+  }
+
+  function cachedBaseActionValue(actor, target, actionKind, skill = null, projectionContext = null, worldSnapshot = {}) {
     let targetCache = baseActionValueCache.get(actor);
     if (!targetCache) {
       targetCache = new WeakMap();
@@ -3344,20 +4326,30 @@
       targetCache.set(target, actionCache);
     }
     const isBasicAttack = actionKind === 'BASIC_ATTACK';
-    const key = isBasicAttack ? 'BASIC_ATTACK' : (skill || actionKind);
+    const effectiveSkill = isBasicAttack ? basicAttackSkill(actor) : skill;
+    let key = isBasicAttack ? 'BASIC_ATTACK' : (skill || actionKind);
+    if ((effectiveSkill?._效果数组 || []).some(effect => effect?.条件分支?.length > 0)) {
+      let valuesByWorld = actionCache.get(key);
+      if (!valuesByWorld) {
+        valuesByWorld = new WeakMap();
+        actionCache.set(key, valuesByWorld);
+      }
+      actionCache = valuesByWorld;
+      key = worldSnapshot;
+    }
     if (actionCache.has(key)) {
       decisionMetrics.baseActionValueCacheHits += 1;
       return actionCache.get(key);
     }
     decisionMetrics.baseActionValueCacheMisses += 1;
-    const effectiveSkill = isBasicAttack ? basicAttackSkill(actor) : skill;
     let mechanicalActionCache = null;
     let mechanicalActionKey = null;
+    let semanticMechanicalCache = null;
+    let semanticMechanicalKey = '';
     if (
       projectionContext &&
       isMechanicalDamageOnlySkill(effectiveSkill) &&
-      typeof preview.mechanicalProjectionProfile === 'function' &&
-      typeof preview.effectArrayHash === 'function'
+      typeof preview.mechanicalProjectionProfile === 'function'
     ) {
       try {
         const actorProfile = preview.mechanicalProjectionProfile(projectionContext, actor);
@@ -3366,13 +4358,28 @@
           actorProfile && typeof actorProfile === 'object' && !Array.isArray(actorProfile) &&
           targetProfile && typeof targetProfile === 'object' && !Array.isArray(targetProfile)
         ) {
-          mechanicalActionKey = actionKind === 'RELEASE_SKILL' &&
-            effectiveSkill && typeof effectiveSkill === 'object'
-            ? effectiveSkill
-            : JSON.stringify([
-              actionKind,
-              preview.effectArrayHash(effectiveSkill._效果数组),
-            ]);
+          // calculateBaseActionValue uses its fixed basicAttackEffect for this
+          // action kind. Hashing a per-unit skill clone adds no dependency.
+          mechanicalActionKey = isBasicAttack ? 'BASIC_ATTACK' : effectiveSkill;
+          if (isBasicAttack && isSimpleBasicDamageActor(actor)) {
+            try {
+              semanticMechanicalKey = JSON.stringify([
+                { ...actorProfile, id: '' }, targetProfile, mechanicalActionKey,
+                preview.effectArrayHash?.(effectiveSkill?._效果数组) || '', actor.状态效果 || {},
+                hasActionCancellation(actor), hasStateFlag(actor, 'disarm'), hasStateFlag(actor, 'silence'),
+              ]);
+              semanticMechanicalCache = mechanicalBaseActionValueSemanticCache;
+              if (semanticMechanicalCache.has(semanticMechanicalKey)) {
+                const value = semanticMechanicalCache.get(semanticMechanicalKey);
+                actionCache.set(key, value);
+                decisionMetrics.mechanicalBaseActionValueSemanticHits += 1;
+                return value;
+              }
+            } catch {
+              semanticMechanicalCache = null;
+              semanticMechanicalKey = '';
+            }
+          }
           let targetProfiles = mechanicalBaseActionValueCache.get(actorProfile);
           if (!targetProfiles) {
             targetProfiles = new WeakMap();
@@ -3400,11 +4407,18 @@
       skill: effectiveSkill,
       capacityMode: true,
       projectionContext,
+      worldSnapshot,
     });
     actionCache.set(key, value);
     if (mechanicalActionCache && mechanicalActionKey !== null) {
       mechanicalActionCache.set(mechanicalActionKey, value);
       decisionMetrics.mechanicalBaseActionValueCacheBuilds += 1;
+    }
+    if (semanticMechanicalCache && semanticMechanicalKey) {
+      if (!semanticMechanicalCache.has(semanticMechanicalKey) && semanticMechanicalCache.size >= 512) {
+        semanticMechanicalCache.delete(semanticMechanicalCache.keys().next().value);
+      }
+      semanticMechanicalCache.set(semanticMechanicalKey, value);
     }
     return value;
   }
@@ -3422,7 +4436,8 @@
         const id = String(value?.id || value?.物品ID || value?.名称 || value?.name || key).trim();
         if (id && !seen.has(id)) {
           seen.add(id);
-          output.push({ id, item: value, quantity: Math.max(0, Number(value?.数量 ?? value?.quantity ?? 0)) });
+          const quantity = preview.inventoryItemQuantity(value);
+          output.push({ id, item: value, quantity: Number.isFinite(quantity) && quantity >= 1 ? quantity : 0 });
         }
         return;
       }
@@ -3430,7 +4445,8 @@
         const id = String(value?.id || value?.物品ID || value?.名称 || value?.name || key).trim();
         if (id && !seen.has(id)) {
           seen.add(id);
-          output.push({ id, item: value, quantity: Math.max(0, Number(value?.数量 ?? value?.quantity ?? 1)) });
+          const quantity = preview.inventoryItemQuantity(value, 1);
+          output.push({ id, item: value, quantity: Number.isFinite(quantity) && quantity >= 1 ? quantity : 0 });
         }
         return;
       }
@@ -3493,18 +4509,50 @@
     return effects.length ? effects : Array.isArray(item?._效果数组) ? item._效果数组 : [];
   }
 
-  function creationProfile(skill = {}, actor = {}, worldSnapshot = {}) {
+  function creationProfile(skill = {}, actor = {}, worldSnapshot = {}, carrier = null, opportunityContext = null) {
     const product = skill?.生成物 || skill?.产物 || skill?.制作产物 || (String(skill?.承载方式 || '').trim() === '造物承载'
       ? skillName(skill)
       : null);
     if (!product) return null;
-    const productIdentity = preview.creationProductIdentity(skill, preview.unitId(actor));
+    if (!carrier) {
+      const grouped = new Map();
+      for (const effect of Array.isArray(skill?._效果数组) ? skill._效果数组 : []) {
+        if (String(effect?.原型 || '').trim() || !Array.isArray(effect?.使用效果) || !effect.使用效果.length) continue;
+        const id = preview.creationProductIdentity(skill, preview.unitId(actor), '', effect).id;
+        const quantity = Math.max(1, Math.floor(Number(effect.数量 || 1)) || 1);
+        const prior = grouped.get(id);
+        if (prior) prior.数量 += quantity;
+        else grouped.set(id, { ...effect, 数量: quantity });
+      }
+      if (grouped.size > 1) {
+        const products = [...grouped.values()].map(effect => creationProfile(skill, actor, worldSnapshot, effect, opportunityContext));
+        return {
+          products,
+          creatorId: preview.unitId(actor),
+          consumerIds: [...new Set(products.flatMap(entry => entry.consumerIds))],
+          productionWindow: products[0].productionWindow,
+          useful: products.some(entry => entry.useful),
+        };
+      }
+      carrier = grouped.values().next().value || null;
+    }
+    const productIdentity = preview.creationProductIdentity(skill, preview.unitId(actor), '', carrier);
     const productId = productIdentity.id;
     const actorSide = sideOf(worldSnapshot, actor);
+    const inferredProductionWindow = Math.max(1, Math.ceil(Math.max(0, Number(skill?.前摇 || 0)) / 40));
+    const releasingCharge = opportunityContext?.actionOpportunity?.forcedChargeRelease === true;
+    const held = opportunityContext?.actionOpportunity?.forcedSkill &&
+      skillId(opportunityContext.actionOpportunity.forcedSkill) === skillId(skill) ? actor?.蓄力技能 : null;
+    const remainingCast = held && skillId(held.skill || held) === skillId(skill)
+      ? Math.max(0, Number(held.cast_time ?? held.remainingCastTime ?? held.skill?.前摇 ?? 0)) : null;
+    const productionWindow = releasingCharge
+      ? 1 : remainingCast !== null
+        ? Math.max(1, Math.ceil(remainingCast / battleHorizonProfile(opportunityContext || {}, worldSnapshot).naturalActionBudget))
+        : Math.max(1, Number(skill?.生产窗口 ?? skill?.生效回合 ?? inferredProductionWindow));
     const primaryLiving = ['team_player', 'team_enemy'].flatMap(side => {
       const value = worldSnapshot?.参战者?.[side];
       return (Array.isArray(value) ? value : value && typeof value === 'object' ? Object.values(value) : [])
-        .filter(unit => unit && preview.isBattleCapable(unit))
+        .filter(unit => unit && (releasingCharge ? preview.isPhysicallyAlive(unit) : preview.isBattleCapable(unit)))
         .map(unit => ({ unit, side }));
     });
     const stock = primaryLiving
@@ -3512,88 +4560,26 @@
       .flatMap(entry => collectInventory(entry.unit))
       .filter(entry => entry.id === productId)
       .reduce((sum, entry) => sum + entry.quantity, 0);
-    const useEffects = (Array.isArray(skill?._效果数组) ? skill._效果数组 : []).flatMap(effect =>
-      Array.isArray(effect?.使用效果) ? effect.使用效果 : [],
-    );
-    const sideEffects = (Array.isArray(skill?._效果数组) ? skill._效果数组 : []).flatMap(effect =>
-      !String(effect?.原型 || '').trim() && Array.isArray(effect?.使用效果) && Array.isArray(effect?.副作用列表)
-        ? effect.副作用列表
-        : [],
-    );
-    const quantity = Math.max(
-      1,
-      (Array.isArray(skill?._效果数组) ? skill._效果数组 : [])
-        .filter(effect =>
-          !String(effect?.原型 || '').trim() &&
-          Array.isArray(effect?.使用效果) &&
-          effect.使用效果.length
-        )
-        .reduce(
-          (sum, effect) =>
-            sum + Math.max(1, Number(effect?.数量 || 1)),
-          0,
-        ),
-    );
-    const productProfile = targetProfile({ _效果数组: useEffects });
-    const hasHostileUse = primaryLiving.some(entry => entry.side !== actorSide) &&
-      ['HOSTILE_SINGLE', 'HOSTILE_GROUP', 'ANY_SINGLE'].includes(productProfile);
-    const hasUsefulEffect = unit => useEffects.some(effect => {
-      const prototype = String(effect?.原型 || '').trim();
-      if (!preview.effectConditionEnabled(effect, worldSnapshot, unit, unit)) return false;
-      if (prototype === '资源变化') {
-        if (!(Number.parseFloat(String(effect?.数值 || '0')) > 0)) return false;
-        const resource = String(effect?.资源 || '').trim();
-        if (/魂力/.test(resource)) return preview.readResource(unit, '魂力') < preview.readResourceMax(unit, '魂力');
-        if (/精神/.test(resource)) return preview.readResource(unit, '精神力') < preview.readResourceMax(unit, '精神力');
-        if (/体力/.test(resource)) return preview.readResource(unit, '体力') < preview.readResourceMax(unit, '体力');
-        return preview.readHp(unit) < preview.readHpMax(unit);
-      }
-      if (prototype === '状态移除') {
-        return Object.keys(unit?.状态效果 || {}).length > 0 || Object.keys(unit?.持续效果 || {}).length > 0;
-      }
-      if (['属性修正', '判定修正', '结算修正', '护盾变化'].includes(prototype)) {
-        return Number.parseFloat(String(effect?.数值 ?? effect?.护盾值 ?? effect?.护盾比例 ?? '0')) > 0;
-      }
-      return ['状态施加', '规则防御', '机制授予', '行动机会', '召唤生成'].includes(prototype);
-    });
-    const consumers = primaryLiving.filter(entry =>
-      entry.side === actorSide && (
-        hasHostileUse ||
-        hasUsefulEffect(entry.unit) ||
-        (!useEffects.length && preview.readHp(entry.unit) < preview.readHpMax(entry.unit))
-      ),
-    );
-    const selectedConsumers = new Map();
-    const actorEntry = consumers.find(entry => preview.unitId(entry.unit) === preview.unitId(actor));
-    if (actorEntry) selectedConsumers.set(preview.unitId(actorEntry.unit), actorEntry);
-    const allies = consumers.filter(entry => preview.unitId(entry.unit) !== preview.unitId(actor));
-    useEffects.forEach(effect => {
-      const prototype = String(effect?.原型 || '').trim();
-      const attribute = String(effect?.属性 || '').trim();
-      const resource = String(effect?.资源 || '').trim();
-      const score = unit => {
-        if (prototype === '资源变化') {
-          if (/魂力/.test(resource)) return 1 - preview.readResource(unit, '魂力') / Math.max(1, preview.readResourceMax(unit, '魂力'));
-          if (/精神/.test(resource)) return 1 - preview.readResource(unit, '精神力') / Math.max(1, preview.readResourceMax(unit, '精神力'));
-          if (/体力/.test(resource)) return 1 - preview.readResource(unit, '体力') / Math.max(1, preview.readResourceMax(unit, '体力'));
-          return 1 - preview.readHp(unit) / Math.max(1, preview.readHpMax(unit));
-        }
-        if (prototype === '规则防御' || prototype === '护盾变化' || /防御/.test(attribute)) {
-          return 1 - preview.readHp(unit) / Math.max(1, preview.readHpMax(unit));
-        }
-        if (/力量/.test(attribute)) return Math.max(0, Number(unit?.str ?? unit?.力量 ?? unit?.属性?.力量 ?? 0));
-        if (/敏捷/.test(attribute)) return Math.max(0, Number(unit?.agi ?? unit?.敏捷 ?? unit?.属性?.敏捷 ?? 0));
-        return Math.max(
-          0,
-          Number(unit?.str ?? unit?.力量 ?? unit?.属性?.力量 ?? 0),
-          Number(unit?.agi ?? unit?.敏捷 ?? unit?.属性?.敏捷 ?? 0),
-        );
-      };
-      const bestAlly = allies.slice().sort((left, right) =>
-        score(right.unit) - score(left.unit) || preview.unitId(left.unit).localeCompare(preview.unitId(right.unit), 'en')
-      )[0];
-      if (bestAlly) selectedConsumers.set(preview.unitId(bestAlly.unit), bestAlly);
-    });
+    const useEffects = Array.isArray(carrier?.使用效果) ? carrier.使用效果 : [];
+    const sideEffects = carrier?.副作用列表 || [];
+    const quantity = Math.max(1, Number(carrier?.数量 || 1));
+    const creationRequest = opportunityContext && typeof opportunityContext === 'object'
+      ? { ...opportunityContext, actorId: preview.unitId(actor) }
+      : null;
+    const horizon = battleHorizonProfile(creationRequest || {}, worldSnapshot);
+    const consumed = creationRequest
+      ? consumedNaturalActors(creationRequest, creationRequest.declaration || {}, preview.unitId(actor))
+      : new Set();
+    // Eligibility is structural and window-based. Current conditions, resource
+    // deficits, and existing stock are valued later against reached worlds.
+    // A ready cast already owns its carrier. A spent use opportunity reduces
+    // future value; it cannot cancel an otherwise legal committed delivery.
+    const consumers = primaryLiving.filter(entry => entry.side === actorSide &&
+      (releasingCharge || availableNaturalOpportunityCount(worldSnapshot, entry.unit, {
+        currentOpportunityConsumedFor: consumed,
+        horizon,
+      }) - productionWindow + 1 > 0));
+    const selectedConsumers = new Map(consumers.map(entry => [preview.unitId(entry.unit), entry]));
     const consumerIds = [...selectedConsumers.keys()];
     const stockByConsumer = Object.fromEntries(consumerIds.map(consumerId => {
       const unit = selectedConsumers.get(consumerId)?.unit;
@@ -3605,20 +4591,20 @@
       ).reduce((sum, entry) => sum + entry.quantity, 0);
       return [consumerId, count];
     }));
-    const inferredProductionWindow = Math.max(1, Math.ceil(Math.max(0, Number(skill?.前摇 || 0)) / 40));
-    const productionWindow = Math.max(1, Number(skill?.生产窗口 ?? skill?.生效回合 ?? inferredProductionWindow));
     return {
       productId,
       productName: productIdentity.name,
       creatorId: preview.unitId(actor),
       quantity,
+      ...(carrier?.物品类型 ? { itemType: String(carrier.物品类型) } : {}),
+      ...(Number(carrier?.有效期tick) > 0 ? { expiryTick: Number(carrier.有效期tick) } : {}),
       stock,
       useEffects,
       sideEffects,
       consumerIds,
       stockByConsumer,
       productionWindow,
-      useful: !!productId && stock <= 0 && consumerIds.length > 0 && productionWindow <= Math.max(1, Number(worldSnapshot?.剩余回合 || 20)),
+      useful: !!productId && useEffects.length > 0 && consumerIds.length > 0,
     };
   }
 
@@ -3643,8 +4629,9 @@
     for (const skill of collectSkills(actor)) {
       if (nonExecutableBattlePrototype(skill)) continue;
       const creation = creationProfile(skill, actor, worldSnapshot);
-      if (!creation?.productId || !creation.useEffects?.length) continue;
-      if (creation.productId === itemId) return creation;
+      const replacement = (creation?.products || [creation]).find(product =>
+        product?.productId === itemId && product.useEffects?.length);
+      if (replacement) return replacement;
     }
     return null;
   }
@@ -3765,6 +4752,7 @@
       : null;
     return {
       ...actionContext,
+      costActor: unit,
       技能类型: actionContext?.技能类型 ?? skill?.技能类型,
       技能分类: actionContext?.技能分类 ?? skill?.技能分类,
       承载方式: actionContext?.承载方式 ?? skill?.承载方式,
@@ -3868,8 +4856,10 @@
       state?.数值 ?? null,
       state?.战斗效果?.skill_effect_mult ?? null,
       state?.战斗效果?.cost_ratio ?? null,
+      state?.战斗效果?.cost_delta ?? null,
       state?.战斗效果?.cost_delta_ratio ?? null,
       state?.战斗效果?.windup_ratio ?? null,
+      state?.战斗效果?.windup_delta ?? null,
     ]));
     activeSettlementModifierSignatureCache.set(unit, signature);
     return signature;
@@ -3879,6 +4869,10 @@
     const cached = preparedSkillProfileCache.get(unit);
     if (cached) return cached;
     const origin = preview.overlayOriginUnit(unit);
+    const skills = collectSkills(unit), originSkills = origin ? collectSkills(origin) : skills;
+    const sameSkillPool = skills === originSkills || skills.length === originSkills.length &&
+      (!skills.length || skills.every((skill, index) => skill === originSkills[index]) ||
+        preview.stableHash(skills) === preview.stableHash(originSkills));
     const unitHasSettlementModifier = hasActiveSettlementModifier(unit);
     const originHasSettlementModifier = origin ? hasActiveSettlementModifier(origin) : false;
     const activeGrantSignature = target => preview.stableHash(stateEntries(target).filter(state =>
@@ -3894,7 +4888,7 @@
     const unitActiveGrantSignature = activeGrantSignature(unit);
     const originActiveGrantSignature = origin ? activeGrantSignature(origin) : unitActiveGrantSignature;
     if (
-      origin &&
+      origin && sameSkillPool &&
       unitActiveGrantSignature === originActiveGrantSignature &&
       ((!unitHasSettlementModifier && !originHasSettlementModifier) ||
         (unitHasSettlementModifier && originHasSettlementModifier &&
@@ -3910,7 +4904,7 @@
     }
     const equipmentEffects = equipmentPassivePreviewEffects(unit);
     const hasSettlementModifiers = unitHasSettlementModifier;
-    const profiles = Object.freeze(collectSkills(unit).map((sourceSkill, index) => {
+    const profiles = Object.freeze(skills.map((sourceSkill, index) => {
       const hasEquipmentRequirement = sourceSkill?.装备要求 !== undefined ||
         (sourceSkill?._效果数组 || []).some(effect => effect?.装备要求 !== undefined);
       const skill = !equipmentEffects.length && !hasSettlementModifiers && !hasEquipmentRequirement
@@ -3943,11 +4937,12 @@
       preview.readResource(unit, resource),
       preview.readResourceMax(unit, resource),
     ]));
-    let preparedByResourceState = affordablePreparedSkillStateCache.get(currentProfiles);
-    if (!preparedByResourceState) {
-      preparedByResourceState = new Map();
-      affordablePreparedSkillStateCache.set(currentProfiles, preparedByResourceState);
+    let shared = affordablePreparedSkillStateCache.get(currentProfiles);
+    if (!shared) {
+      shared = { byResource: new Map(), byMembership: new Map() };
+      affordablePreparedSkillStateCache.set(currentProfiles, shared);
     }
+    const preparedByResourceState = shared.byResource;
     if (preparedByResourceState.has(resourceStateKey)) {
       const prepared = preparedByResourceState.get(resourceStateKey);
       affordablePreparedSkillCache.set(unit, prepared);
@@ -3970,17 +4965,25 @@
         return prepared;
       }
     }
-    const prepared = Object.freeze(currentProfiles.map(({ sourceSkill, skill, costStages, fusionMetadata }) => {
-      if (costStages.非法项?.length) return null;
-      return normalizedCostsAffordable(unit, costStages.启动)
-        ? Object.freeze({
-            sourceSkill,
-            skill,
-            startupCosts: costStages.启动,
-            fusionMetadata,
-          })
-        : null;
-    }).filter(Boolean));
+    const selected = [];
+    let membershipKey = '';
+    currentProfiles.forEach(profile => {
+      const eligible = !profile.costStages.非法项?.length && normalizedCostsAffordable(unit, profile.costStages.启动);
+      membershipKey += eligible ? '1' : '0';
+      if (eligible) selected.push(profile);
+    });
+    let prepared = shared.byMembership.get(membershipKey);
+    if (prepared) {
+      decisionMetrics.affordablePreparedSkillMembershipCacheHits += 1;
+    } else {
+      prepared = Object.freeze(selected.map(({ sourceSkill, skill, costStages, fusionMetadata }) => Object.freeze({
+        sourceSkill,
+        skill,
+        startupCosts: costStages.启动,
+        fusionMetadata,
+      })));
+      shared.byMembership.set(membershipKey, prepared);
+    }
     preparedByResourceState.set(resourceStateKey, prepared);
     decisionMetrics.affordablePreparedSkillStateCacheBuilds += 1;
     affordablePreparedSkillCache.set(unit, prepared);
@@ -3989,15 +4992,8 @@
 
   function normalizedCostsAffordable(unit = {}, costs = {}) {
     return !Object.entries(costs || {}).some(([resource, rawCost]) => {
-      const text = String(rawCost ?? '').trim();
-      const numeric = Number(text.replace(/%$/, ''));
-      if (!preview.skillCostResourceKey(resource) || !Number.isFinite(numeric) || numeric < 0) {
-        return true;
-      }
-      const amount = text.endsWith('%')
-        ? preview.readResourceMax(unit, resource) * numeric / 100
-        : numeric;
-      return preview.readResource(unit, resource) + 1e-9 < amount;
+      const amount = preview.resolveSkillResourceCost(unit, resource, rawCost);
+      return !Number.isFinite(amount) || preview.readResource(unit, resource) + 1e-9 < amount;
     });
   }
 
@@ -4005,15 +5001,12 @@
     const vector = { sp: 0, men: 0, vit: 0, valid: true };
     Object.entries(costs || {}).forEach(([resource, rawCost]) => {
       const key = preview.skillCostResourceKey(resource);
-      const text = String(rawCost ?? '').trim();
-      const numeric = Number(text.replace(/%$/, ''));
-      if (!key || !Number.isFinite(numeric) || numeric < 0) {
+      const amount = preview.resolveSkillResourceCost(unit, resource, rawCost);
+      if (!key || !Number.isFinite(amount)) {
         vector.valid = false;
         return;
       }
-      vector[key] += text.endsWith('%')
-        ? preview.readResourceMax(unit, resource) * numeric / 100
-        : numeric;
+      vector[key] += amount;
     });
     return Object.freeze(vector);
   }
@@ -4055,38 +5048,10 @@
   function snapshotAfterResourceCosts(worldSnapshot = {}, actorId = '', costs = {}) {
     return mapWorldUnits(worldSnapshot, unit => {
       if (preview.unitId(unit) !== actorId) return unit;
-      return unitAfterResourceCosts(unit, costs);
+      return preview.unitAfterResourceCosts(unit, costs);
     });
   }
 
-  function unitAfterResourceCosts(unit = {}, costs = {}) {
-    const actor = {
-      ...unit,
-      属性: unit?.属性 && typeof unit.属性 === 'object' ? { ...unit.属性 } : unit?.属性,
-      final: unit?.final && typeof unit.final === 'object' ? { ...unit.final } : unit?.final,
-    };
-    preview.inheritOverlayOrigin?.(actor, unit);
-    const normalized = preview.normalizeSkillCostMap(costs || {});
-    if (normalized.非法项.length) return actor;
-    const payment = preview.assessResourcePayment([actor], normalized.values);
-    if (!payment.valid) return actor;
-    payment.payments.forEach(row => {
-      const remaining = Math.max(0, row.before - row.amount);
-      if (row.key === 'men') {
-        actor.men = remaining;
-        if (actor.属性 && typeof actor.属性 === 'object') actor.属性.精神力 = remaining;
-      } else if (row.key === 'vit') {
-        actor.vit = remaining;
-        actor.sta = remaining;
-        if (actor.属性 && typeof actor.属性 === 'object') actor.属性.体力 = remaining;
-        preview.refreshStaminaAdjustedFinal(actor);
-      } else if (row.key === 'sp') {
-        actor.sp = remaining;
-        if (actor.属性 && typeof actor.属性 === 'object') actor.属性.魂力 = remaining;
-      }
-    });
-    return actor;
-  }
 
   function r8IsNonHealthResourceEffect(effect = {}) {
     if (
@@ -4253,7 +5218,7 @@
     });
   }
 
-  function unitAfterInventoryConsumption(unit = {}, inventoryId = '') {
+  function unitAfterInventoryConsumption(unit = {}, inventoryId = '', worldSnapshot = {}) {
     if (!inventoryId) return unit;
     const next = {
       ...unit,
@@ -4264,33 +5229,37 @@
     };
     const entry = collectInventory(next).find(item => item.id === inventoryId && item.quantity > 0);
     if (!entry) return next;
-    const remaining = entry.quantity - 1;
-    if (entry.item.数量 !== undefined || entry.item.quantity === undefined) entry.item.数量 = remaining;
-    if (entry.item.quantity !== undefined) entry.item.quantity = remaining;
+    if (!preview.inventoryItemAvailable(entry.item, worldSnapshot, next)) return next;
+    preview.settleInventoryItemUse(entry.item, worldSnapshot, next);
     return next;
   }
 
-  function unitAfterCreation(unit = {}, creation = null) {
-    if (!creation?.productId || !Array.isArray(creation?.useEffects) || !creation.useEffects.length) return unit;
-    const productName = String(creation.productName || creation.productId);
+  function unitAfterCreation(unit = {}, creation = null, currentTick = 0) {
+    const products = (creation?.products || [creation]).filter(product =>
+      product?.productId && Array.isArray(product.useEffects) && product.useEffects.length);
+    if (!products.length) return unit;
     const next = {
       ...unit,
       背包: unit?.背包 && typeof unit.背包 === 'object' ? cloneValue(unit.背包) : {},
     };
-    const existing = next.背包[creation.productId] && typeof next.背包[creation.productId] === 'object'
-      ? next.背包[creation.productId]
-      : {};
-    next.背包[creation.productId] = {
-      ...existing,
-      id: String(existing.id || creation.productId).trim() || creation.productId,
-      name: String(existing.name || productName).trim() || productName,
-      名称: String(existing.名称 || productName).trim() || productName,
-      物品名: String(existing.物品名 || productName).trim() || productName,
-      制作者ID: String(creation.creatorId || '').trim(),
-      数量: Math.max(0, Number(existing.数量 || 0)) + 1,
-      使用效果: cloneValue(creation.useEffects),
-      副作用列表: cloneValue(creation.sideEffects || []),
-    };
+    for (const product of products) {
+      const productName = String(product.productName || product.productId);
+      const existing = next.背包[product.productId] && typeof next.背包[product.productId] === 'object'
+        ? next.背包[product.productId] : {};
+      next.背包[product.productId] = {
+        ...existing,
+        id: String(existing.id || product.productId).trim() || product.productId,
+        name: String(existing.name || productName).trim() || productName,
+        名称: String(existing.名称 || productName).trim() || productName,
+        物品名: String(existing.物品名 || productName).trim() || productName,
+        制作者ID: String(product.creatorId || creation.creatorId || '').trim(),
+        ...preview.creationInventoryStock(existing, product.quantity, product.expiryTick, currentTick),
+        ...(product.itemType ? { 类型: product.itemType } : {}),
+        ...(product.expiryTick ? { 有效期tick: Math.max(Number(existing.有效期tick || 0), product.expiryTick) } : {}),
+        使用效果: cloneValue(product.useEffects),
+        副作用列表: cloneValue(product.sideEffects || []),
+      };
+    }
     return next;
   }
 
@@ -4338,11 +5307,17 @@
       return 'SELF';
     }
     const targetableEffects = effects.filter(effect => String(effect?.目标 || '').trim() !== '自身');
+    if (targetableEffects.length && targetableEffects.every(effect => String(effect?.目标 || '').trim() === '召唤物')) {
+      // Summon ownership is declared by target scope, not inferred from whether
+      // the payload happens to heal, damage, or move its recipient.
+      targetProfileCache.set(skill, 'FRIENDLY_SINGLE');
+      return 'FRIENDLY_SINGLE';
+    }
     const hostile = targetableEffects.some(effect => {
       const prototype = String(effect?.原型 || '').trim();
       if (prototype === '伤害结算' || prototype === '资源锁定' || prototype === '机制抹消') return true;
       if (prototype === '护盾变化') return String(effect?.护盾模式 || '').trim() !== '正向护盾';
-      if (prototype === '资源变化') return Number.parseFloat(String(effect?.数值 || '0')) < 0;
+      if (prototype === '资源变化') return !preview.effectTargetsAllies(effect);
       if (prototype === '资源转移') return String(effect?.资源转移方式 || '').trim() === '吞噬';
       if (prototype === '结算修正') return !增益语义.结算修正是否增益语义_V1(effect);
       if (prototype === '判定修正') return !增益语义.判定修正是否增益语义_V1(effect);
@@ -4357,7 +5332,7 @@
       if (prototype === '状态移除') return preview.effectTargetsAllies(effect) && !hostile;
       if (['规则防御', '机制授予'].includes(prototype)) return true;
       if (/友方|己方|队友|自身/.test(target)) return true;
-      if (prototype === '资源变化') return Number.parseFloat(String(effect?.数值 || '0')) > 0 && !hostile;
+      if (prototype === '资源变化') return preview.effectTargetsAllies(effect) && !hostile;
       if (prototype === '资源转移') {
         return ['共享', '均分', '转移'].includes(String(effect?.资源转移方式 || '').trim()) && !hostile;
       }
@@ -4417,7 +5392,11 @@
   }
 
   function requiresExternalResourceTransferTarget(skill = {}) {
-    return nestedSkillEffects(skill).some(effect =>
+    const effects = nestedSkillEffects(skill);
+    // A transfer-only action needs another endpoint. An independent payload
+    // (including a conditional original/replacement) may still act on self;
+    // reject neither it nor an item solely because a nested transfer exists.
+    return effects.every(effect => String(effect?.原型 || '').trim() === '资源转移') && effects.some(effect =>
       String(effect?.原型 || '').trim() === '资源转移' &&
       String(effect?.目标 || '').trim() !== '自身'
     );
@@ -4548,7 +5527,7 @@
       worldEntries(worldSnapshot).forEach(entry => {
         const idKey = preview.unitId(entry.unit);
         const nameKey = preview.unitName(entry.unit);
-        if (idKey && !lookup.has(idKey)) lookup.set(idKey, entry.unit);
+        if (idKey) lookup.set(idKey, entry.unit);
         if (nameKey && !lookup.has(nameKey)) lookup.set(nameKey, entry.unit);
       });
       worldUnitLookupCache.set(worldSnapshot, lookup);
@@ -4624,9 +5603,13 @@
 
   function enumerateTargetSets(worldSnapshot, actor, profile, beliefState = {}, skill = {}) {
     const actorSide = sideOf(worldSnapshot, actor);
-    const entries = profile === 'FRIENDLY_SINGLE' || profile === 'FRIENDLY_GROUP'
+    const targetableEffects = (Array.isArray(skill?._效果数组) ? skill._效果数组 : [])
+      .filter(effect => String(effect?.目标 || '').trim() !== '自身');
+    const summonOnly = targetableEffects.length > 0 && targetableEffects.every(effect => String(effect?.目标 || '').trim() === '召唤物');
+    const available = profile === 'FRIENDLY_SINGLE' || profile === 'FRIENDLY_GROUP'
       ? friendlyTargetEntries(worldSnapshot, skill)
       : aliveEntries(worldSnapshot);
+    const entries = summonOnly ? available.filter(entry => preview.isSummonUnit(entry.unit)) : available;
     const friendly = entries.filter(entry => entry.side === actorSide).map(entry => entry.unit);
     const hostile = entries.filter(entry => entry.side !== actorSide).map(entry => entry.unit);
     if (profile === 'SELF') return [[preview.unitId(actor)]];
@@ -4747,9 +5730,13 @@
   }
 
   function actionCompletesWithinBattleHorizon(skill = {}, input = {}, worldSnapshot = {}) {
-    const castTime = Math.max(0, Number(skill?.前摇 ?? skill?.cast_time ?? 0));
+    const actor = input.actionOpportunity?.role === 'ASSIST' ? findUnitInWorld(worldSnapshot, input.actorId) : null;
+    const assist = !!actor?.召唤键;
+    const castTime = Math.max(0, Number(assist && actor.蓄力技能 ? actor.蓄力技能.cast_time : skill?.前摇 ?? skill?.cast_time ?? 0));
     if (!(castTime > 0)) return true;
-    return castTime <= battleHorizonProfile(input, worldSnapshot).remainingNaturalActionBudget;
+    const horizon = battleHorizonProfile(input, worldSnapshot);
+    return castTime <= (assist ? 40 * Math.min(horizon.remainingRounds + 1,
+      Math.max(0, Number(actor.剩余窗口 ?? actor.__battleRuntime?.summonWindow?.remainingWindows ?? 0))) : horizon.remainingNaturalActionBudget);
   }
 
   function enumerateCandidates(input = {}) {
@@ -4853,6 +5840,10 @@
     const forcedTargetIds = Array.isArray(input.actionOpportunity?.forcedTargetIds)
       ? input.actionOpportunity.forcedTargetIds.map(value => String(value || '').trim()).filter(Boolean)
       : [];
+    const forcedCreationRecipientId = forcedSkill && (
+      input.actionOpportunity?.forcedChargeRelease === true ||
+      Object.prototype.hasOwnProperty.call(input.actionOpportunity || {}, 'forcedCreationRecipientId')
+    ) ? String(input.actionOpportunity?.forcedCreationRecipientId || '').trim() : null;
     const lockedDeclaration = input?.playerLockedDeclaration || null;
     if (tauntActive && lockedDeclaration && !forcedSkill && !reactionOnly && !counterOnly && !assistOnly) {
       const lockedActionKind = String(lockedDeclaration.actionKind || '').trim();
@@ -4901,7 +5892,8 @@
       ? mechanismGrantCounterSkill(grantedCounterProfile, input.actionOpportunity?.sourceActionId)
       : null;
     const basicAttackAllowed = !hasStateFlag(actor, 'disarm');
-    const skillReleaseAllowed = !hasStateFlag(actor, 'silence');
+    const summonSkillDisabled = preview.isSummonSkillDisabled(actor);
+    const skillReleaseAllowed = !hasStateFlag(actor, 'silence') && !summonSkillDisabled;
     const hostile = aliveEntries(worldSnapshot).filter(entry => entry.side !== sideOf(worldSnapshot, actor)).map(entry => entry.unit);
     const counterSourceId = String(input.actionOpportunity?.sourceActorId || '').trim();
     const directHostile = counterOnly && counterSourceId
@@ -5002,16 +5994,16 @@
       : grantedCounterSkill
         ? [...collectSkills(actor), grantedCounterSkill]
         : collectSkills(actor);
-    if (!forcedSkill && !skillReleaseAllowed) {
+    if (summonSkillDisabled || (!forcedSkill || assistOnly) && !skillReleaseAllowed) {
       sourceSkills.forEach((sourceSkill, index) => recordRejected({
         actionKind: 'RELEASE_SKILL',
         sourceActionId: `${actorId}:skill:${skillId(sourceSkill, index)}`,
-        rejectionCode: 'RULE_SILENCED',
+        rejectionCode: summonSkillDisabled ? 'RULE_SUMMON_SKILL_DISABLED' : 'RULE_SILENCED',
         skillId: skillId(sourceSkill, index),
         skillName: skillName(sourceSkill, index),
       }));
     }
-    (skillReleaseAllowed || forcedSkill ? sourceSkills : []).forEach((sourceSkill, index) => {
+    (!summonSkillDisabled && (skillReleaseAllowed || forcedSkill && !assistOnly) ? sourceSkills : []).forEach((sourceSkill, index) => {
       const sourceSkillId = skillId(sourceSkill, index);
       const sourceSkillName = skillName(sourceSkill, index);
       const skill = preview.applySkillSettlementModifiers(
@@ -5056,7 +6048,7 @@
       }
       const isPlayerLockedSkill = playerLockedSkillId &&
         skillId(sourceSkill, index) === playerLockedSkillId;
-      const immediateReactionEligible = (reactionOnly || input.actionOpportunity?.enforceImmediateBudget === true) &&
+      const immediateReactionEligible = reactionOnly &&
         isImmediateReactionSkill(skill, immediateBudget);
       const explicitCounterEligible = counterOnly && isExplicitCounterSkill(skill, immediateBudget);
       const immediateOffensiveCounterShape = counterOnly &&
@@ -5075,10 +6067,13 @@
         });
         return;
       }
-      if (!forcedSkill && !counterOnly && input.actionOpportunity?.enforceImmediateBudget === true && !immediateReactionEligible) {
+      if (!forcedSkill && !counterOnly && input.actionOpportunity?.enforceImmediateBudget === true &&
+        (reactionOnly ? !immediateReactionEligible :
+          !(Math.max(0, Number(skill?.前摇 ?? skill?.cast_time ?? 0)) <= immediateBudget))) {
         recordRejected({
           actionKind: 'RELEASE_SKILL', sourceActionId: `${actorId}:skill:${sourceSkillId}`,
-          rejectionCode: 'REACTION_BUDGET_EXCEEDED', skillId: sourceSkillId, skillName: sourceSkillName,
+          rejectionCode: reactionOnly ? 'REACTION_BUDGET_EXCEEDED' : 'CAST_EXCEEDS_IMMEDIATE_BUDGET',
+          skillId: sourceSkillId, skillName: sourceSkillName,
         });
         return;
       }
@@ -5117,9 +6112,9 @@
         return;
       }
       if (
-        !forcedSkill &&
+        (!forcedSkill || assistOnly) &&
         !isPlayerLockedSkill &&
-        !immediateReactionEligible &&
+        (!immediateReactionEligible || assistOnly) &&
         !actionCompletesWithinBattleHorizon(skill, input, worldSnapshot)
       ) {
         recordRejected({
@@ -5174,7 +6169,15 @@
         ? { ...skill, 前摇: 0, cast_time: 0 }
         : skill;
       const declarationCosts = costs;
-      const creation = creationProfile(counterSkill, actor, worldSnapshot);
+      const creation = creationProfile(counterSkill, actor, worldSnapshot, null, {
+        ...input,
+        actorId,
+        declaration: { counterConsumesNaturalOpportunity: immediateOffensiveCounterEligible },
+      });
+      if (creation && input.excludeCreationCandidates === true) return;
+      // The product's future use is not a second immediate target of a pure
+      // manufacture. Only real top-level effects expand this action's scopes.
+      const expandsImmediateScopes = !creation || (counterSkill._效果数组 || []).some(effect => String(effect?.原型 || '').trim());
       const reactionSourceId = String(input.actionOpportunity?.sourceActorId || '').trim();
       const requiresExternalTransferTarget = requiresExternalResourceTransferTarget(counterSkill);
       const legalTargetSets = enumerateTargetSets(
@@ -5188,12 +6191,19 @@
           !requiresExternalTransferTarget ||
           targetSet.some(targetId => String(targetId) !== actorId)
         );
-      const legalForcedTargetSet = legalTargetSets.find(targetSet =>
+      const legalCommittedTargetSets = forcedSkill && forcedTargetIds.length && expandsImmediateScopes
+        ? expandMixedScopePrimaryTargetSets(counterSkill, profile, legalTargetSets, worldSnapshot, actor)
+        : legalTargetSets;
+      const legalForcedTargetSet = legalCommittedTargetSets.find(targetSet =>
         targetSet.length === forcedTargetIds.length &&
         targetSet.every(targetId => forcedTargetIds.includes(targetId))
       );
       let targetSets = legalForcedTargetSet
-        ? [legalForcedTargetSet]
+        // Membership proves legality; the committed order owns each single
+        // primary. Rebuilding it from native group order would retarget a cast.
+        ? [forcedSkill ? [...forcedTargetIds] : legalForcedTargetSet]
+        : forcedSkill && forcedTargetIds.length
+        ? []
         : (reactionOnly || counterOnly) && reactionSourceId && ['HOSTILE_SINGLE', 'ANY_SINGLE'].includes(profile)
         ? [[reactionSourceId]]
         : assistOnly && opportunityValidTargetIds.size
@@ -5223,7 +6233,7 @@
           targetSets = [];
         }
       }
-      if (!legalForcedTargetSet) {
+      if (!legalForcedTargetSet && expandsImmediateScopes) {
         targetSets = expandMixedScopePrimaryTargetSets(
           counterSkill,
           profile,
@@ -5249,16 +6259,19 @@
           rejectionCode: 'RING_OPTION_UNAVAILABLE', skillId: sourceSkillId, skillName: sourceSkillName,
         });
       }
-      const creationRecipientIds = creation
-        ? creation.consumerIds.length
-          ? creation.consumerIds
-          : [actorId]
-        : [''];
       targetSets.forEach((targetIds, targetIndex) => {
         ringOptions.forEach(ringOption => {
+        // Each plan consumes one recipe next; its manufacture still delivers
+        // the complete bundle. Do not flatten separate items into one use.
+        (creation?.products || [creation]).forEach(product => {
+        const creationRecipientIds = product
+          ? forcedCreationRecipientId !== null
+            ? product.consumerIds.filter(id => id === forcedCreationRecipientId)
+            : product.consumerIds.length ? product.consumerIds : [actorId]
+          : [''];
         creationRecipientIds.forEach(creationRecipientId => {
         const recipientSuffix = creation
-          ? `:recipient:${creationRecipientId}`
+          ? `:recipient:${creationRecipientId}${creation.products ? `:product:${product.productId}` : ''}`
           : '';
         const id = `${actorId}:${forcedSkill ? 'forced-skill' : 'skill'}:${sourceSkillId}:${targetIndex}${recipientSuffix}${ringOption ? `:ring:${ringOption.ringId}` : ''}`;
         const declaration = {
@@ -5299,9 +6312,10 @@
           resourcePotentialOnly:
             !affordable ||
             (fusion.required && strictFusion?.valid !== true),
-          creation: creation
-            ? { ...creation, recipientId: creationRecipientId }
+          creation: product
+            ? { ...product, recipientId: creationRecipientId, ...(creation.products ? { products: creation.products } : {}) }
             : null,
+        });
         });
         });
         });
@@ -5349,10 +6363,12 @@
         });
         return;
       }
-      const usableEffects = Array.isArray(item?._效果数组) && item._效果数组.length
+      let usableEffects = Array.isArray(item?._效果数组) && item._效果数组.length
         ? item._效果数组
         : Array.isArray(item?.使用效果) ? item.使用效果 : [];
-      if (!usableEffects.length) return;
+      if (!usableEffects.length || !preview.inventoryItemAvailable(item, worldSnapshot, actor)) return;
+      usableEffects = preview.inventoryUseEffects(actor, { actionKind: 'USE_ITEM', skill: item,
+        irreversibleAsset: { assetId: entry.id } }, worldSnapshot, usableEffects);
       const itemName = String(item?.name || item?.名称 || item?.物品名 || entry.id).trim() || entry.id;
       const usableItem = {
         ...item,
@@ -5741,7 +6757,7 @@
           return {
             costs,
             affordable: !(
-              creation?.productId && inventoryIds.has(creation.productId)
+              creation && (creation.products || [creation]).every(product => inventoryIds.has(product.productId))
             ) && resourceCostsAffordable(target, costs),
           };
         }).filter(Boolean);
@@ -5749,7 +6765,7 @@
           const resourceName = resourceLabelForKey(resourceKey);
           const costedActions = resourceActions.filter(action => {
             const cost = action?.costs?.[resourceKey] ?? action?.costs?.[resourceName];
-            return Number.parseFloat(String(cost ?? 0)) > 0;
+            return preview.resolveSkillResourceCost(target, resourceName, cost ?? 0) > 0;
           });
           if (!costedActions.length) return;
           const affordableActions = costedActions.filter(action => action.affordable);
@@ -5838,7 +6854,7 @@
         const label = resourceLabelForKey(profile.resourceKey);
         if (label) costs[label] = Number(profile.nextLoss || 0);
       });
-      return Object.keys(costs).length ? unitAfterResourceCosts(unit, costs) : unit;
+      return Object.keys(costs).length ? preview.unitAfterResourceCosts(unit, costs) : unit;
     });
   }
 
@@ -6006,10 +7022,15 @@
   function bestBaseActionValue(worldSnapshot, unit, options = {}) {
     if (!preview.isAlive(unit) || (!options.ignoreActionCancellation && hasActionCancellation(unit))) return 0;
     const cacheKey = options.ignoreActionCancellation ? 'ignoreCancellation' : 'normal';
-    let cachedByOption = bestActionCache.get(unit);
+    let valuesByUnit = bestActionCache.get(worldSnapshot);
+    if (!valuesByUnit) {
+      valuesByUnit = new WeakMap();
+      bestActionCache.set(worldSnapshot, valuesByUnit);
+    }
+    let cachedByOption = valuesByUnit.get(unit);
     if (!cachedByOption) {
       cachedByOption = new Map();
-      bestActionCache.set(unit, cachedByOption);
+      valuesByUnit.set(unit, cachedByOption);
     }
     if (cachedByOption.has(cacheKey)) return cachedByOption.get(cacheKey);
     const side = sideOf(worldSnapshot, unit);
@@ -6018,7 +7039,7 @@
       cachedByOption.set(cacheKey, 100);
       return 100;
     }
-    let best = hasStateFlag(unit, 'disarm') ? 0 : Math.max(...enemies.map(target => cachedBaseActionValue(unit, target, 'BASIC_ATTACK')), 0);
+    let best = hasStateFlag(unit, 'disarm') ? 0 : Math.max(...enemies.map(target => cachedBaseActionValue(unit, target, 'BASIC_ATTACK', null, null, worldSnapshot)), 0);
     const allies = aliveEntries(worldSnapshot).filter(entry => entry.side === side).map(entry => entry.unit);
     if (hasStateFlag(unit, 'silence')) {
       cachedByOption.set(cacheKey, best);
@@ -6029,7 +7050,7 @@
       .forEach(({ skill }) => {
         const profile = targetProfile(skill);
         const targets = profile === 'SELF' ? [unit] : profile.startsWith('FRIENDLY') ? allies : profile === 'ANY_SINGLE' ? [...allies, ...enemies] : enemies;
-        const values = targets.map(target => cachedBaseActionValue(unit, target, 'RELEASE_SKILL', skill));
+        const values = targets.map(target => cachedBaseActionValue(unit, target, 'RELEASE_SKILL', skill, null, worldSnapshot));
         const actionValue = profile.endsWith('GROUP') ? values.reduce((sum, value) => sum + value, 0) : Math.max(0, ...values);
         best = Math.max(best, actionValue);
       });
@@ -6039,10 +7060,15 @@
 
   function bestBaseActionValueAgainst(worldSnapshot, unit, target, options = {}) {
     if (!preview.isAlive(unit) || !preview.isAlive(target) || hasActionCancellation(unit)) return 0;
-    let targetCache = bestAgainstCache.get(unit);
+    let valuesByUnit = bestAgainstCache.get(worldSnapshot);
+    if (!valuesByUnit) {
+      valuesByUnit = new WeakMap();
+      bestAgainstCache.set(worldSnapshot, valuesByUnit);
+    }
+    let targetCache = valuesByUnit.get(unit);
     if (!targetCache) {
       targetCache = new WeakMap();
-      bestAgainstCache.set(unit, targetCache);
+      valuesByUnit.set(unit, targetCache);
     }
     let valuesByOpportunity = targetCache.get(target);
     if (!valuesByOpportunity) {
@@ -6058,7 +7084,7 @@
     }
     let best = hasStateFlag(unit, 'disarm')
       ? 0
-      : cachedBaseActionValue(unit, target, 'BASIC_ATTACK');
+      : cachedBaseActionValue(unit, target, 'BASIC_ATTACK', null, null, worldSnapshot);
     if (hasStateFlag(unit, 'silence')) return Math.max(0, best);
     affordablePreparedSkills(unit)
       .filter(({ skill, startupCosts }) =>
@@ -6073,7 +7099,7 @@
         const profile = targetProfile(skill);
         if (!profile.startsWith('HOSTILE') && profile !== 'ANY_SINGLE') return;
         if (options?.singleTargetOnly === true && !['HOSTILE_SINGLE', 'ANY_SINGLE'].includes(profile)) return;
-        best = Math.max(best, cachedBaseActionValue(unit, target, 'RELEASE_SKILL', skill));
+        best = Math.max(best, cachedBaseActionValue(unit, target, 'RELEASE_SKILL', skill, null, worldSnapshot));
       });
     const result = Math.max(0, best);
     valuesByOpportunity.set(opportunityKey, result);
@@ -6098,7 +7124,7 @@
       .reduce((best, { skill }) => Math.max(
         best,
         targets.reduce((sum, target) =>
-          sum + cachedBaseActionValue(unit, target, 'RELEASE_SKILL', skill)
+          sum + cachedBaseActionValue(unit, target, 'RELEASE_SKILL', skill, null, worldSnapshot)
         , 0),
       ), 0);
   }
@@ -6456,7 +7482,7 @@
         costRatio: 0,
       }));
     }
-    if (!hasStateFlag(unit, 'silence')) {
+    if (!hasStateFlag(unit, 'silence') && !preview.isSummonSkillDisabled(unit)) {
       preparedSkillProfiles(unit).forEach(({ sourceSkill, index, skill, costStages }) => {
         if (costStages.非法项.length) return;
         const costs = costStages.启动;
@@ -6474,45 +7500,47 @@
             : profile === 'ANY_SINGLE'
               ? [...allies, ...enemies]
               : enemies;
-        if (targets.length) {
+        if (targets.length) for (const product of creation?.products || [creation]) {
           actions.push(targetAction({
-            actionKey: `${unitId}:skill:${skillId(sourceSkill, index)}`,
+            actionKey: `${unitId}:skill:${skillId(sourceSkill, index)}${creation?.products ? `:product:${product.productId}` : ''}`,
             actionKind: 'RELEASE_SKILL',
             skill,
             targets,
             targetMode: profile === 'SELF' ? 'SELF' : profile.endsWith('GROUP') ? 'GROUP' : 'SINGLE',
             costs,
             costRatio: normalizedCost(unit, costs),
-            creation,
+            creation: product && creation.products ? { ...product, products: creation.products } : product,
             fusionRequired: fusion.required,
             fusionParticipantIds: fusion.participantIds || [],
           }));
         }
-        const productSkill = creationProductSkill(creation);
-        if (!productSkill) return;
-        const productProfile = targetProfile(productSkill);
-        const livingAllies = livingEntries(worldSnapshot)
-          .filter(entry => entry.side === unitSide)
-          .map(entry => entry.unit);
-        const productTargets = productProfile === 'SELF'
-          ? [unit]
-          : productProfile.startsWith('FRIENDLY')
-            ? livingAllies
-            : productProfile === 'ANY_SINGLE'
-              ? [...allies, ...enemies]
-              : enemies;
-        if (productTargets.length) {
-          actions.push(targetAction({
-            actionKey: `${unitId}:created-item:${creation.productId}`,
-            actionKind: 'USE_ITEM',
-            skill: productSkill,
-            targets: productTargets,
-            targetMode: productProfile === 'SELF' ? 'SELF' : productProfile.endsWith('GROUP') ? 'GROUP' : 'SINGLE',
-            costs: {},
-            costRatio: 0,
-            inventoryId: creation.productId,
-            requiresInventoryId: creation.productId,
-          }));
+        for (const product of creation?.products || [creation]) {
+          const productSkill = creationProductSkill(product);
+          if (!productSkill) continue;
+          const productProfile = targetProfile(productSkill);
+          const livingAllies = livingEntries(worldSnapshot)
+            .filter(entry => entry.side === unitSide)
+            .map(entry => entry.unit);
+          const productTargets = productProfile === 'SELF'
+            ? [unit]
+            : productProfile.startsWith('FRIENDLY')
+              ? livingAllies
+              : productProfile === 'ANY_SINGLE'
+                ? [...allies, ...enemies]
+                : enemies;
+          if (productTargets.length) {
+            actions.push(targetAction({
+              actionKey: `${unitId}:created-item:${product.productId}`,
+              actionKind: 'USE_ITEM',
+              skill: productSkill,
+              targets: productTargets,
+              targetMode: productProfile === 'SELF' ? 'SELF' : productProfile.endsWith('GROUP') ? 'GROUP' : 'SINGLE',
+              costs: {},
+              costRatio: 0,
+              inventoryId: product.productId,
+              requiresInventoryId: product.productId,
+            }));
+          }
         }
       });
     }
@@ -6578,7 +7606,7 @@
       )
     ) return false;
     if (action.requiresInventoryId && !collectInventory(unit).some(entry =>
-      entry.id === action.requiresInventoryId && entry.quantity > 0
+      entry.id === action.requiresInventoryId && entry.quantity > 0 && preview.inventoryItemAvailable(entry.item, worldSnapshot, unit)
     )) return false;
     const targetIds = action.targetPoolIds || action.targetIds || [];
     if (!targetIds.length) return true;
@@ -6689,40 +7717,34 @@
       const entry = collectInventory(next).find(item => item.id === inventoryId);
       if (!entry) return next;
       const restoredQuantity = Math.max(0, Number(quantity || 0));
-      if (entry.item.数量 !== undefined || entry.item.quantity === undefined) entry.item.数量 = restoredQuantity;
-      if (entry.item.quantity !== undefined) entry.item.quantity = restoredQuantity;
+      let restoredOrdinary = restoredQuantity;
+      if (Array.isArray(entry.item.批次)) {
+        let retainedQuantity = 0;
+        entry.item.批次 = entry.item.批次.flatMap(batch => {
+          const kept = Math.min(Number(batch?.数量 ?? batch?.quantity ?? 0), Math.max(0, restoredQuantity - retainedQuantity));
+          if (!(kept > 0)) return [];
+          retainedQuantity += kept;
+          const retained = { ...batch };
+          if (retained.数量 !== undefined || retained.quantity === undefined) retained.数量 = kept;
+          if (retained.quantity !== undefined) retained.quantity = kept;
+          return [retained];
+        });
+        if (!entry.item.批次.length) delete entry.item.批次;
+        restoredOrdinary = Math.max(0, restoredQuantity - retainedQuantity);
+      }
+      if (entry.item.数量 !== undefined || entry.item.quantity === undefined) entry.item.数量 = restoredOrdinary;
+      if (entry.item.quantity !== undefined) entry.item.quantity = restoredOrdinary;
       return next;
     });
   }
 
   function snapshotAfterCreation(worldSnapshot = {}, actorId = '', creation = null) {
-    if (!creation?.productId || !Array.isArray(creation?.useEffects) || !creation.useEffects.length) return worldSnapshot;
-    const productName = String(creation.productName || creation.productId);
-    const recipientId = String(
-      creation?.recipientId || actorId,
-    ).trim();
-    const quantity = Math.max(1, Number(creation?.quantity || 1));
+    if (!creation) return worldSnapshot;
+    const recipientId = String(creation.recipientId || actorId).trim();
     return mapWorldUnits(worldSnapshot, unit => {
       if (preview.unitId(unit) !== recipientId) return unit;
-      const next = {
-        ...unit,
-        背包: unit?.背包 && typeof unit.背包 === 'object' ? cloneValue(unit.背包) : {},
-      };
-      preview.inheritOverlayOrigin?.(next, unit);
-      const existing = next.背包[creation.productId] && typeof next.背包[creation.productId] === 'object'
-        ? next.背包[creation.productId]
-        : {};
-      next.背包[creation.productId] = {
-        ...existing,
-        id: String(existing.id || creation.productId).trim() || creation.productId,
-        name: String(existing.name || productName).trim() || productName,
-        名称: String(existing.名称 || productName).trim() || productName,
-        物品名: String(existing.物品名 || productName).trim() || productName,
-        制作者ID: String(creation.creatorId || actorId || '').trim(),
-        数量: Math.max(0, Number(existing.数量 || 0)) + quantity,
-        使用效果: cloneValue(creation.useEffects),
-        副作用列表: cloneValue(creation.sideEffects || []),
-      };
+      const next = unitAfterCreation(unit, { ...creation, creatorId: creation.creatorId || actorId }, worldSnapshot.当前世界tick ?? worldSnapshot.当前tick ?? 0);
+      if (next !== unit) preview.inheritOverlayOrigin?.(next, unit);
       return next;
     });
   }
@@ -6743,12 +7765,40 @@
     }, 1);
   }
 
+  function r9v2LinearBoundDeclaredFusion(world, actor, declaration, role) {
+    if (!actor || !preview.isBattleCapable(actor) || hasActionCancellation(actor) ||
+        declaration.actionKind !== 'RELEASE_SKILL' || declaration.actorId !== preview.unitId(actor) ||
+        !['ACTIVE', 'CONTINUATION'].includes(role)) return null;
+    const held = role === 'ACTIVE' ? actor.蓄力技能 : null;
+    if (held && (skillId(held.skill || held) !== skillId(declaration.skill || {}) ||
+        String(held.creationRecipientId || '') !== String(declaration.creationRecipientId || '') ||
+        !Array.isArray(held.targetIds) || !Array.isArray(declaration.targetIds) ||
+        held.targetIds.length !== declaration.targetIds.length || !held.targetIds.every((id, index) => id === declaration.targetIds[index]))) return null;
+    const fusion = preview.resolveFusionAction(world, actor, declaration.skill, { resourceCosts: declaration.resourceCosts });
+    if (!fusion.required || !fusion.valid || declaration.fusionKey !== fusion.fusionKey || declaration.fusionUsageMode !== fusion.usageMode ||
+        !Array.isArray(declaration.fusionParticipantIds) || !Array.isArray(declaration.fusionPartnerIds) ||
+        declaration.fusionParticipantIds.length !== fusion.participantIds.length ||
+        !declaration.fusionParticipantIds.every((id, index) => id === fusion.participantIds[index]) ||
+        declaration.fusionPartnerIds.length !== fusion.partnerIds.length ||
+        !declaration.fusionPartnerIds.every((id, index) => id === fusion.partnerIds[index])) return null;
+    return fusion;
+  }
+
   function consumedNaturalActors(input = {}, declaration = {}, actorId = input.actorId) {
     const role = String(input.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase();
-    return new Set(role === 'ACTIVE' || declaration.counterConsumesNaturalOpportunity === true ? [actorId] : []);
+    const consumed = new Set(role === 'ACTIVE' || declaration.counterConsumesNaturalOpportunity === true ? [actorId] : []);
+    if (declaration.fusionPartnerIds?.length && ['ACTIVE', 'CONTINUATION'].includes(role)) {
+      const world = input.visibleWorld || input.worldSnapshot, actor = findUnitInWorld(world, actorId);
+      const fusion = r9v2LinearBoundDeclaredFusion(world, actor, declaration, role);
+      if (fusion && (role === 'CONTINUATION' || ['ACTION', 'READY'].includes(r9v2LinearNaturalChargeFrame(world, actor,
+        battleHorizonProfile(input, world).naturalActionBudget, declaration).phase))) fusion.partnerIds.forEach(id => consumed.add(id));
+    }
+    return consumed;
   }
 
   function availableNaturalOpportunityCount(worldSnapshot = {}, unit = {}, options = {}) {
+    const summon = preview.isSummonUnit(unit);
+    if (summon && (String(unit.行动模式 || '').trim() !== '自主行动' || unit.已消散 === true)) return 0;
     const objectives = preview.normalizeBattleObjectives(worldSnapshot?.胜负条件 || {}, worldSnapshot);
     const currentRound = Math.max(0, Number(options.horizon?.currentRound ?? worldSnapshot?.回合 ?? 0));
     const finalRound = Math.min(Number(objectives.startRound || 0) + Number(objectives.maxRounds || 0),
@@ -6765,7 +7815,16 @@
       !consumed.has(preview.unitId(unit))
       ? 1
       : 0;
-    return currentPending + futureRounds;
+    const available = currentPending + futureRounds;
+    if (!summon) return available;
+    const remaining = Number(unit.召唤窗口运行态?.remainingWindows ??
+      unit.__battleRuntime?.summonWindow?.remainingWindows ?? unit.剩余窗口 ?? unit.__来源状态?.duration ?? 0);
+    if (!Number.isFinite(remaining) || remaining <= 0) return 0;
+    // The proposed active/counter action spends a lifetime window too. An
+    // already-consumed snapshot has paid it and must not be debited again.
+    const spendsCurrentWindow = Number(naturalOpportunity?.round) === currentRound &&
+      naturalOpportunity?.status === 'PENDING' && consumed.has(preview.unitId(unit));
+    return Math.min(available, Math.max(0, Math.ceil(remaining) - Number(spendsCurrentWindow)));
   }
 
   function capacityUnitSignature(unit = {}, mode = 'sequence') {
@@ -6798,6 +7857,7 @@
       cancellationProbabilityAtOpportunity(unit, 1),
       cancellationProbabilityAtOpportunity(unit, 2),
       hasStateFlag(unit, 'silence'),
+      preview.isSummonSkillDisabled(unit),
       hasStateFlag(unit, 'disarm'),
       recoveryLockRatio(unit, '魂力'),
       recoveryLockRatio(unit, '精神力'),
@@ -6930,7 +7990,9 @@
         preview.readCombatStat(unit, 'agi'),
         preview.readCombatStat(unit, 'men'),
         collectInventory(unit)
-          .map(entry => [String(entry.id || ''), Math.max(0, Number(entry.quantity || 0))])
+          .map(entry => [String(entry.id || ''), Math.max(0, Number(entry.quantity || 0)), preview.itemConsumesOnUse(entry.item),
+            entry.item?.基础使用次数, entry.item?.使用次数恢复周期,
+            ...(Array.isArray(entry.item?.批次) ? [entry.item.批次] : [])])
           .sort((left, right) => left[0].localeCompare(right[0])),
       );
     }
@@ -6981,6 +8043,7 @@
     const parts = [
       sequenceOwnerSignature(unit, catalogMeta),
     ];
+    if (catalogMeta.inventorySensitive) parts.push(Number(worldSnapshot.当前世界tick ?? worldSnapshot.当前tick ?? 0));
     parts.push(ownerOverride && ownerOverride !== unit ? capacityUnitSignature(ownerOverride, 'target') : '');
     catalogMeta.targetIds.forEach(targetId => {
       const target = findUnitInWorld(worldSnapshot, targetId);
@@ -7075,10 +8138,10 @@
       return empty;
     }
     const routeCandidates = legalFirst.map(first => {
-      let secondUnit = unitAfterResourceCosts(unit, first.costs || {});
+      let secondUnit = preview.unitAfterResourceCosts(unit, first.costs || {});
       secondUnit = first.creation?.productId
-        ? unitAfterCreation(secondUnit, first.creation)
-        : unitAfterInventoryConsumption(secondUnit, first.inventoryId || '');
+        ? unitAfterCreation(secondUnit, first.creation, worldSnapshot.当前世界tick ?? worldSnapshot.当前tick ?? 0)
+        : unitAfterInventoryConsumption(secondUnit, first.inventoryId || '', worldSnapshot);
       secondUnit = unitAfterDeterministicRecovery(secondUnit);
       const recovered = replaceWorldUnit(worldSnapshot, preview.unitId(unit), secondUnit);
       let second = null;
@@ -8628,7 +9691,7 @@
     });
   }
 
-  function riskCompensationAudit(candidate = {}) {
+  function riskCompensationAudit(candidate = {}, actor = {}) {
     const vector = candidate?.vector || {};
     const terminalEvidence = candidate?.terminalEvidence || {};
     const crisis = candidate?.crisisResponseAudit || {};
@@ -8648,10 +9711,12 @@
       });
     }
     const paidResources = Object.entries(costs)
-      .filter(([, value]) => Number.parseFloat(String(value ?? 0)) > 0)
+      .filter(([resource, value]) => value && typeof value === 'object'
+        ? preview.resolveSkillResourceCost(actor, resource, value) > 0
+        : Number.parseFloat(String(value ?? 0)) > 0)
       .map(([resource, value]) => ({
         resource: String(resource || '').trim(),
-        value: String(value ?? '').trim(),
+        value: value && typeof value === 'object' ? JSON.stringify(value) : String(value ?? '').trim(),
       }))
       .filter(entry => entry.resource);
     if (paidResources.length > 0) {
@@ -9129,6 +10194,8 @@
       'heal_bonus',
       'heal_reduction',
       'cost_delta_ratio',
+      'cost_delta',
+      'windup_delta',
       'counter_attack_ratio',
       'lock_level',
       'locked_ratio',
@@ -9466,6 +10533,9 @@
     );
     const validProfiles = profiles.filter(profile => profile.realizableTargetIds.length > 0);
     const invalidContributions = contributions.filter(entry => {
+      // A real delayed registration exists now even if the future state has no
+      // usable combat window; it must survive in the returned physical graph.
+      if (entry.outcomeKind === 'STATE_SCHEDULED' && Object.values(entry.evidence?.stateEntries || {}).some(state => state.延迟效果 === true)) return false;
       const targetId = String(entry?.targetId || '').trim();
       const matchingProfiles = profiles.filter(profile => temporalProfileMatchesContribution(profile, entry));
       return matchingProfiles.some(profile => profile.unrealizableTargetIds.includes(targetId)) &&
@@ -9998,7 +11068,7 @@
       damageMultiplierByTarget = {},
       evadeProbabilityByTarget = {},
     ) => {
-      const result = preview.previewAction({
+      const result = preview.projectConditionedAction({
         worldSnapshot,
         worldRevision: `next:${worldRevisionFor(worldSnapshot)}`,
         beliefSnapshot: beliefState,
@@ -10160,7 +11230,7 @@
           if (actionKind === 'RELEASE_SKILL') {
             const reactionActor = findUnitInWorld(planWorld, targetId);
             if (!reactionActor || !declaration.skill || !costAffordable(reactionActor, declaration.skill)) return;
-            reactionPreview = preview.previewAction({
+            reactionPreview = preview.projectConditionedAction({
               worldSnapshot: planWorld,
               worldRevision: `reaction:${worldRevisionFor(planWorld)}`,
               beliefSnapshot: beliefState,
@@ -10440,12 +11510,8 @@
     if (renewableItemUse) {
       const asset = candidate.declaration.irreversibleAsset;
       const consumedBaseline = markCapacityDeltaSnapshot(
-        snapshotWithInventoryQuantity(
-          futureWorld,
-          preview.unitId(actor),
-          String(asset?.assetId || '').trim(),
-          Math.max(0, Number(asset?.quantityBefore || 0) - 1),
-        ),
+        mapWorldUnits(futureWorld, unit => preview.unitId(unit) === preview.unitId(actor)
+          ? unitAfterInventoryConsumption(unit, String(asset?.assetId || '').trim(), futureWorld) : unit),
         futureWorld,
         [preview.unitId(actor)],
       );
@@ -12157,12 +13223,8 @@
       const consumedNoOpCapacity = renewableItemAsset
         ? stateUtilityNext(
             markCapacityDeltaSnapshot(
-              snapshotWithInventoryQuantity(
-                noOpSnapshot,
-                preview.unitId(actor),
-                String(renewableItemAsset?.assetId || '').trim(),
-                Math.max(0, Number(renewableItemAsset?.quantityBefore || 0) - 1),
-              ),
+              mapWorldUnits(noOpSnapshot, unit => preview.unitId(unit) === preview.unitId(actor)
+                ? unitAfterInventoryConsumption(unit, String(renewableItemAsset?.assetId || '').trim(), noOpSnapshot) : unit),
               noOpSnapshot,
               [preview.unitId(actor)],
             ),
@@ -12644,6 +13706,7 @@
             ? { ...candidatePreview, contributions: valueContributions }
             : candidatePreview,
           visibleWorldSnapshot,
+          { declaration: candidate.declaration },
         ),
         utilityBefore: before.utility,
         utilityAfter: after.utility,
@@ -13129,7 +14192,7 @@
     });
     return finalCandidates.map(candidate => {
       const alternativeAudit = crisisAlternativeAudit(candidate, finalCandidates);
-      const riskAudit = riskCompensationAudit(candidate);
+      const riskAudit = riskCompensationAudit(candidate, actor);
       const rejectionCode =
         !candidate.rejectionCode &&
         alternativeAudit.status === 'UNJUSTIFIED'
@@ -13154,6 +14217,8 @@
     baseActionValueCache = new WeakMap();
     mechanicalBaseActionValueCache = new WeakMap();
     mechanicalDamageOnlySkillCache = new WeakMap();
+    settledActionCapacitySkillCache = new WeakMap();
+    conditionalActionCapacityCache = new WeakMap();
     r9v2MechanicalCoverageRowsCache = new WeakMap();
     basicAttackSkillCache = new WeakMap();
     unitSkillCache = new WeakMap();
@@ -13263,7 +14328,7 @@
       const effects = entry?.declaration?.skill?._效果数组;
       return Array.isArray(effects) && effects.length > 0 && effects.every(effect => String(effect?.原型 || '').trim());
     }).reduce((best, entry) => {
-      const result = preview.previewAction({
+      const result = preview.projectConditionedAction({
         worldSnapshot,
         worldRevision: `${revision}:realizable:${actorId}`,
         beliefSnapshot: beliefState,
@@ -14681,7 +15746,7 @@
     const before = context.beforeUtility;
     let result;
     if (!candidate.creation && ['RELEASE_SKILL', 'BASIC_ATTACK', 'USE_ITEM', 'EQUIP'].includes(candidate.declaration.actionKind)) {
-      result = preview.previewAction({
+      result = preview.projectConditionedAction({
         worldSnapshot: context.worldSnapshot,
         worldRevision: context.worldRevision,
         beliefSnapshot: context.beliefState,
@@ -14782,7 +15847,7 @@
         .map(value => String(value || '').trim())
         .filter(Boolean);
       const futureUseGain = futureUseConsumerIds.reduce((bestGain, targetId) => {
-        const futureUse = preview.previewAction({
+        const futureUse = preview.projectConditionedAction({
           worldSnapshot: futureUseWorld,
           worldRevision: `${context.worldRevision}:paid:${candidate.candidateId}`,
           beliefSnapshot: context.beliefState,
@@ -15050,6 +16115,7 @@
       predictedOutcomeEvidence: predictedOutcomeEvidence(
         result,
         context?.visibleWorldSnapshot,
+        { declaration: candidate.declaration },
       ),
       utilityBefore: before.utility,
       utilityAfter: after.utility,
@@ -19997,7 +21063,7 @@
           dependencyView.readRule(ruleKey)
         );
         const previewWorld = worldSnapshot;
-        const previewResult = preview.previewAction({
+        const previewResult = preview.projectConditionedAction({
           worldSnapshot: previewWorld,
           worldRevision: evaluationContext.visibleWorldRevision,
           beliefSnapshot: input.beliefState,
@@ -20051,7 +21117,7 @@
               candidate.declarationFingerprint,
             ].join('|');
             actorPredictedOutcomeEvidence[candidate.candidateId] =
-              predictedOutcomeEvidence(previewResult, worldSnapshot);
+              predictedOutcomeEvidence(previewResult, worldSnapshot, { declaration: candidate.declaration });
           }
         }
         projectedWorldsByUnit[currentUnitId][candidate.candidateId] =
@@ -20102,7 +21168,7 @@
             currentUnitId !== actorId ||
             !currentActorCandidateIds.has(candidateId) ||
             preview.stableHash(
-              predictedOutcomeEvidence(previewResult, worldSnapshot),
+              predictedOutcomeEvidence(previewResult, worldSnapshot, { declaration: candidate.declaration }),
             ) === preview.stableHash(
               sessionMechanicalOracle.predictedOutcomeEvidence || [],
             );
@@ -20429,7 +21495,7 @@
         metrics.informationEnvelopePreviewCalls =
           Number(metrics.informationEnvelopePreviewCalls || 0) + 1;
       }
-      const previewResult = preview.previewAction({
+      const previewResult = preview.projectConditionedAction({
         worldSnapshot,
         worldRevision: input.evaluationContext?.visibleWorldRevision,
         beliefSnapshot: beliefState,
@@ -21035,7 +22101,7 @@
       if (!target || !preview.isBattleCapable(target)) return world;
       const sourceActor = findUnitInWorld(world, event?.actorId) || target;
       const effect = { ...cloneValue(event.effect), 延迟回合: 0 };
-      return preview.previewAction({
+      return preview.projectConditionedAction({
         worldSnapshot: world,
         actorId: preview.unitId(sourceActor),
         declaration: {
@@ -21551,6 +22617,8 @@
       'heal_bonus',
       'heal_reduction',
       'cost_delta_ratio',
+      'cost_delta',
+      'windup_delta',
       'skip_turn',
       'cannot_act',
       'cannot_react',
@@ -22677,7 +23745,6 @@
               mergeKey: 'FULL',
               assignmentKeys: behaviorAssignmentKeys,
             },
-            maxActiveStates: 64,
           });
         } catch (error) {
           if (
@@ -26515,7 +27582,7 @@
             metrics.mechanicalEvidenceCacheMisses =
               Number(metrics.mechanicalEvidenceCacheMisses || 0) + 1;
           }
-          previewResult = preview.previewAction({
+          previewResult = preview.projectConditionedAction({
             worldSnapshot: scheduledWorld,
             worldRevision: scheduledWorldRevision,
             beliefSnapshot: input.beliefState,
@@ -31688,7 +32755,7 @@
           resourceCosts: {},
           __includeGrantedEffects: false,
         };
-        const result = preview.previewAction({
+        const result = preview.projectConditionedAction({
           worldSnapshot,
           worldRevision: `${request?.evaluationContext?.visibleWorldRevision || 'visible'}:${event.eventId}:${suffix}`,
           actorId: declaration.actorId,
@@ -31899,7 +32966,7 @@
       actionOpportunity: counterOpportunity,
     }).filter(counterCandidate => counterCandidate?.counterDeclineFallback !== true);
     const counterRoutes = counterCandidates.map(counterCandidate => {
-      const counterPreview = preview.previewAction({
+      const counterPreview = preview.projectConditionedAction({
         worldSnapshot: projectedWorld,
         worldRevision: [
           request?.evaluationContext?.visibleWorldRevision || 'visible',
@@ -31987,7 +33054,7 @@
         resourceCosts: {},
         __includeGrantedEffects: false,
       };
-      const incomingPreview = preview.previewAction({
+      const incomingPreview = preview.projectConditionedAction({
         worldSnapshot: projectedWorld,
         worldRevision: [
           request?.evaluationContext?.visibleWorldRevision || 'visible',
@@ -33004,7 +34071,7 @@
     if (!sourceActorId || !source || !declaration || !preview.isBattleCapable(source)) {
       return null;
     }
-    const responsePreview = preview.previewAction({
+    const responsePreview = preview.projectConditionedAction({
       worldSnapshot: request.visibleWorld,
       worldRevision: [
         request?.evaluationContext?.visibleWorldRevision || 'visible',
@@ -33028,7 +34095,7 @@
       sourceActorId,
       String(branch?.responseId || '').trim(),
     );
-    const candidatePreview = preview.previewAction({
+    const candidatePreview = preview.projectConditionedAction({
       worldSnapshot: responseWorld,
       worldRevision: [
         request?.evaluationContext?.visibleWorldRevision || 'visible',
@@ -33661,7 +34728,7 @@
             ongoingProbability: catastrophic ? 0 : 1,
           });
         }
-        const responsePreview = preview.previewAction({
+        const responsePreview = preview.projectConditionedAction({
           worldSnapshot,
           worldRevision: [
             request?.evaluationContext?.visibleWorldRevision || 'visible',
@@ -34337,6 +35404,44 @@
     });
   }
 
+  function initializationScheduleInput(input, initialization = null) {
+    for (const events of [input.scheduledEvents, input.runtimeSnapshot?.scheduledEvents]) {
+      if (events !== undefined && !Array.isArray(events)) throw new TypeError('battle_decision_scheduled_events_invalid');
+    }
+    if (!initialization?.scheduledEvents?.length) return input;
+    const scheduledEvents = [...(input.runtimeSnapshot?.scheduledEvents || input.scheduledEvents || []), ...initialization.scheduledEvents];
+    const scheduleHash = preview.stableHash(scheduledEvents);
+    return { ...input, scheduledEvents, runtimeSnapshot: { ...(input.runtimeSnapshot || {}), scheduledEvents,
+      scheduledEventsHash: scheduleHash, scheduleRevision: `schedule:${scheduleHash}` } };
+  }
+
+  function prepareInitializationDecisionRequest(input, outcomes, beliefState) {
+    input = initializationScheduleInput(input);
+    const branches = outcomes.map(outcome => {
+      const actor = findUnitInWorld(outcome.world, input.actorId);
+      const reasonCode = !actor ? 'ACTOR_MISSING' : !preview.isAlive(actor) ? 'ACTOR_INCAPACITATED'
+        : hasActionCancellation(actor) ? 'ACTION_CANCELLED_BY_STATE' : '';
+      const lostOpportunity = reasonCode ? Object.freeze({ reasonCode,
+        actionRole: String(input.actionOpportunity?.role || 'ACTIVE'),
+        opportunityId: String(input.actionOpportunity?.opportunityId || ''),
+      }) : null;
+      const request = lostOpportunity ? null : prepareDecisionRequest({ ...initializationScheduleInput(input, outcome.initialization),
+        worldSnapshot: outcome.world, __preparedDecisionWorld: true, beliefState,
+        worldRevision: `initialization:${preview.stableHash(outcome.world)}`,
+        // Hypothetical observations must not mutate a real session or borrow
+        // another branch's computation cache, resource supply or frozen pool.
+        session: null, previousComputationCache: null,
+      });
+      return { probability: outcome.probability, initialization: outcome.initialization, request, lostOpportunity };
+    });
+    const request = deepFreeze({ schemaVersion: INITIALIZATION_REQUEST_SCHEMA,
+      actorId: String(input.actorId), outcomeBranches: branches,
+      requestHash: `initialization-request:${preview.stableHash(branches)}`,
+    });
+    preparedDecisionRequests.set(request, request.requestHash);
+    return request;
+  }
+
   function prepareDecisionRequest(input = {}) {
     const prepareClockNow = () =>
       typeof globalThis?.performance?.now === 'function'
@@ -34356,7 +35461,7 @@
       );
       prepareStageStartedAt = now;
     };
-    resetDecisionCaches();
+    if (!providerFeaturePreparationDepth) resetDecisionCaches();
     const sessionState = input?.session
       ? evaluationSessionState(input.session)
       : null;
@@ -34401,7 +35506,15 @@
     tracePrepareStage('actor-found');
     const beliefState = buildInitialBelief(worldSnapshot, actorId, input?.beliefState || {});
     tracePrepareStage('belief-built');
-    const visibleWorld = buildDecisionWorld(worldSnapshot, actorId, beliefState);
+    // Successors of an already-public forecast inherit that world's estimates.
+    // Re-projecting would treat an estimated level as a new observed level.
+    // Their lifecycle phases were already projected; preserve the settled world
+    // without materializing startup again. Future clocks dispatch their own phases.
+    if (input.__preparedDecisionWorld === true && !input.beliefState?.units) throw new Error('DECISION_PREPARED_WORLD_BELIEF_MISSING');
+    const worldOutcomes = buildDecisionWorldOutcomes(worldSnapshot, actorId, beliefState, input.__preparedDecisionWorld === true);
+    if (worldOutcomes.length > 1) return prepareInitializationDecisionRequest({ ...input, actorId }, worldOutcomes, beliefState);
+    input = initializationScheduleInput(input, worldOutcomes[0].initialization);
+    const visibleWorld = worldOutcomes[0].world;
     Object.values(visibleWorld?.参战者 || {}).forEach(value => {
       const units = Array.isArray(value)
         ? value
@@ -34437,14 +35550,6 @@
           }
         });
       });
-    });
-    [
-      input?.runtimeSnapshot?.scheduledEvents,
-      input?.scheduledEvents,
-    ].forEach(value => {
-      if (value !== undefined && !Array.isArray(value)) {
-        throw new TypeError('battle_decision_scheduled_events_invalid');
-      }
     });
     tracePrepareStage('visible-world-built');
     const visibleActor = findUnitInWorld(visibleWorld, actorId);
@@ -34498,7 +35603,7 @@
         rejectionCode: String(entry?.rejectionCode || '').trim(),
         skillId: String(entry?.skillId || '').trim(),
       }));
-      throw new Error(
+      throw Object.assign(new Error(
         `battle_decision_candidate_pool_empty:${JSON.stringify({
           actorId,
           actorSide,
@@ -34507,11 +35612,13 @@
           validTargetSides,
           rejectionSummary,
         })}`,
-      );
+      ), { code: 'BATTLE_DECISION_CANDIDATE_POOL_EMPTY', actorId,
+        actionRole: String(actionOpportunity?.role || '').trim(), rejectedCandidates: rejectionSummary });
     }
     const candidateIds = new Set();
     const candidateFingerprintMap = {};
     const frozenSkillBySource = new WeakMap();
+    const freezeSeen = new WeakSet();
     const frozenCandidates = candidates.map(candidate => {
       const candidateId = String(candidate?.candidateId || '').trim();
       if (!candidateId || candidateIds.has(candidateId)) {
@@ -34532,7 +35639,7 @@
         candidateClone = cloneValue(candidateWithoutSkill);
         let frozenSkill = frozenSkillBySource.get(sourceSkill);
         if (!frozenSkill) {
-          frozenSkill = deepFreeze(cloneValue(sourceSkill));
+          frozenSkill = deepFreeze(cloneValue(sourceSkill), freezeSeen);
           frozenSkillBySource.set(sourceSkill, frozenSkill);
         } else {
           decisionMetrics.frozenCandidateSkillIdentityReuses += 1;
@@ -34542,7 +35649,7 @@
       } else {
         candidateClone = cloneValue(candidate);
       }
-      const declaration = deepFreeze(candidateClone?.declaration || {});
+      const declaration = deepFreeze(candidateClone?.declaration || {}, freezeSeen);
       const fingerprint = declarationFingerprint(declaration);
       candidateFingerprintMap[candidateId] = fingerprint;
       return {
@@ -35081,8 +36188,12 @@
           ]),
         );
     finishPrepareStage('requestAssemblyMs');
+    // The prepared slice is recorded only as a revision in the request hash.
+    // A role whose causal rows come from the surrogate does not need it built.
+    const surrogateOwnsRole = root.__LWCS_CAUSAL_SURROGATE__?.skipControlSlice === true &&
+      ['ACTIVE', 'ASSIST'].includes(String(actionOpportunity?.role || 'ACTIVE').trim().toUpperCase());
     const preparedR9v2Slice =
-      candidatesOnly &&
+      candidatesOnly && !surrogateOwnsRole &&
       ['r9v2-shadow', 'r9v2'].includes(
         String(input?.providerId || '').trim(),
       )
@@ -35139,11 +36250,10 @@
     // 使嵌套世界 mutation 无法改变后续 feature 结果。
     let frozenRequest;
     if (lightPrepare) {
-      const freezeSeen = new WeakSet();
       for (const key of Object.keys(request)) deepFreeze(request[key], freezeSeen);
       frozenRequest = Object.freeze(request);
     } else {
-      frozenRequest = deepFreeze(request);
+      frozenRequest = deepFreeze(request, freezeSeen);
     }
     const routeFactOwnershipIndex = r8BuildRouteFactOwnershipIndex(
       routeAnalysis.fullRoutesByUnit || {},
@@ -35230,6 +36340,97 @@
       }));
     }
     return frozenRequest;
+  }
+
+  function projectCooperativeSummonDeclaration(input = {}) {
+    const parent = input.actionOpportunity || {};
+    const charge = findUnitInWorld(input.worldSnapshot, input.actorId)?.蓄力技能;
+    const actorId = String(input.actorId || '').trim();
+    const worldSnapshot = input.worldSnapshot || {};
+    const actor = actorId ? findUnitInWorld(worldSnapshot, actorId) : null;
+    const allowedTargetIds = new Set((Array.isArray(input.validTargetIds) ? input.validTargetIds : [])
+      .map(value => String(value || '').trim()).filter(Boolean));
+    const actorSide = actor ? sideOf(worldSnapshot, actor) : '';
+    const assistTargets = allowedTargetIds.size && actorSide
+      ? aliveEntries(worldSnapshot).filter(entry => entry.side !== actorSide &&
+          allowedTargetIds.has(preview.unitId(entry.unit)))
+      : [];
+    const hasUnforcedObservationChoice = input.beliefState?.observationGranted === true &&
+      Number(input.beliefState?.confidence || 0) < 1;
+    if (
+      input.__preparedDecisionWorld === true &&
+      actor &&
+      preview.isBattleCapable(actor) &&
+      !hasActionCancellation(actor) &&
+      !hasStateFlag(actor, 'disarm') &&
+      !hasStateFlag(actor, 'silence') &&
+      !charge &&
+      isSimpleBasicDamageActor(actor) &&
+      assistTargets.length === 1 &&
+      !hasUnforcedObservationChoice &&
+      !withdrawalAllowed(worldSnapshot, actor, input.battleIntent)
+    ) {
+      const targetId = preview.unitId(assistTargets[0].unit);
+      decisionMetrics.cooperativeBasicAssistFastPathHits += 1;
+      return {
+        actionId: `${actorId}:basic:${targetId}`,
+        actorId,
+        actionKind: 'BASIC_ATTACK',
+        targetIds: [targetId],
+        skill: basicAttackSkill(actor),
+      };
+    }
+    const assistOpportunity = {
+      role: 'ASSIST',
+      projectionPurpose: 'COOPERATIVE_FORECAST',
+      opportunityId: input.grantId,
+      grantId: input.grantId,
+      sequence: Math.max(0, Number(parent.sequence || 0)) + 1,
+      validTargetIds: input.validTargetIds,
+      preferredTargetIds: input.preferredTargetIds,
+      ...(charge ? { forcedSkill: charge.skill, forcedTargetIds: charge.targetIds || [],
+        forcedCreationRecipientId: charge.creationRecipientId || '',
+        forcedChargeRelease: Number(charge.cast_time ?? charge.remainingCastTime ?? charge.skill?.前摇 ?? 0) <= 40 } : {}),
+      ...(parent.battleHorizon ? { battleHorizon: parent.battleHorizon } : {}),
+      naturalActionBudget: 40,
+      ...(parent.pendingNaturalActorIds ? { pendingNaturalActorIds: parent.pendingNaturalActorIds } : {}),
+      ...(parent.pendingHostileActorIds ? { pendingHostileActorIds: parent.pendingHostileActorIds } : {}),
+      ...(parent.futureHostileResponseAllowed !== undefined ? { futureHostileResponseAllowed: parent.futureHostileResponseAllowed } : {}),
+    };
+    if (charge && input.__preparedDecisionWorld === true) {
+      if (!input.beliefState?.units) throw new Error('DECISION_PREPARED_WORLD_BELIEF_MISSING');
+      const forced = enumerateCandidates({ worldSnapshot, actorId, actionOpportunity: assistOpportunity,
+        battleIntent: input.battleIntent, beliefState: buildInitialBelief(worldSnapshot, actorId, input.beliefState) });
+      if (!forced.length) return null;
+      if (forced.length === 1 && forced[0].declaration.actionKind === 'RELEASE_SKILL') return forced[0].declaration;
+    }
+    let request;
+    try {
+      request = prepareDecisionRequest({
+        worldSnapshot,
+        actorId,
+        battleIntent: input.battleIntent,
+        __preparedDecisionWorld: input.__preparedDecisionWorld === true,
+        beliefState: input.beliefState,
+        providerId: 'r9v2',
+        analysisDepth: 'CANDIDATES_ONLY',
+        seed: input.actionId,
+        actionOpportunity: assistOpportunity,
+      });
+    } catch (error) {
+      if (error?.code === 'BATTLE_DECISION_CANDIDATE_POOL_EMPTY' && error.actorId === input.actorId && error.actionRole === 'ASSIST') return null;
+      throw error;
+    }
+    // Legality and the complete target/skill set have already been prepared.
+    // ASSIST has no discretionary PASS. One BASIC, or the sole legal release
+    // of an already forced charge, has no target/skill choice left to score.
+    // Keep full policy selection for every genuinely competing candidate pool.
+    if (request.frozenCandidates.length === 1 &&
+        (request.frozenCandidates[0].declaration.actionKind === 'BASIC_ATTACK' ||
+          charge && request.frozenCandidates[0].declaration.actionKind === 'RELEASE_SKILL')) {
+      return request.frozenCandidates[0].declaration;
+    }
+    return runProvider({ providerId: 'r9v2', request }).selectedDeclaration;
   }
 
   function isPreparedDecisionRequest(request) {
@@ -35559,19 +36760,6 @@
     );
   }
 
-  function r9v2ContributionProbability(contribution = {}) {
-    const evidence = contribution?.evidence || {};
-    const candidates = [
-      evidence.applicationProbability,
-      evidence.ownApplicationProbability,
-      evidence.probability,
-      contribution?.probability,
-    ];
-    const value = candidates.find(candidate =>
-      observedFiniteNumber(candidate) !== null
-    );
-    return clamp(Number(value ?? 1), 0, 1);
-  }
 
   function r9v2NormalizeSummonDefinitions(values = []) {
     const byId = new Map();
@@ -35781,7 +36969,7 @@
         : Number.isFinite(Number(evidence?.delta))
           ? Number(evidence.delta)
           : 0,
-      probability: r9v2ContributionProbability(contribution),
+      probability: preview.contributionProbability(contribution),
       probabilityGroupKey: String(
         evidence?.probabilityGroupKey ||
         evidence?.distributionGroupKey ||
@@ -36173,6 +37361,8 @@
       productName: String(creation.productName || creation.productId).trim(),
       creatorId: String(creation.creatorId || declaration.actorId || candidate.actorId || '').trim(),
       quantity: Math.max(1, Number(creation.quantity || 1)),
+      ...(creation.itemType ? { itemType: creation.itemType } : {}),
+      ...(creation.expiryTick ? { expiryTick: creation.expiryTick } : {}),
       recipientId: String(
         creation?.recipientId ||
         declaration?.creationRecipientId ||
@@ -36191,6 +37381,8 @@
         cloneValue(creation.useEffects),
       ),
       sideEffects: Object.freeze(cloneValue(creation.sideEffects || [])),
+      ...(creation.products ? { products: Object.freeze(creation.products.map(product =>
+        r9v2CreationCarrierMetadata({ creation: { ...product, recipientId: creation.recipientId } }, declaration))) } : {}),
     });
   }
 
@@ -36215,7 +37407,7 @@
       String(candidate?.declarationFingerprint || '').trim() ||
       declarationFingerprint(declaration);
     try {
-      const previewResult = preview.previewAction({
+      const previewResult = preview.projectConditionedAction({
         worldSnapshot,
         actorId,
         declaration,
@@ -43731,7 +44923,7 @@
         0,
         Math.floor(Number(evidence?.remainingWindows || 0)),
       );
-      const applicationProbability = r9v2ContributionProbability(
+      const applicationProbability = preview.contributionProbability(
         contribution,
       );
       const definition = summonDefinitionsById.get(summonId) || null;
@@ -51860,7 +53052,7 @@
       handledContributionIndexes.add(index);
       const targetId = String(contribution?.targetId || '').trim();
       if (!targetId || duplicateCancellationTargets.has(targetId)) return;
-      const probability = r9v2ContributionProbability(contribution);
+      const probability = preview.contributionProbability(contribution);
       const rawDuration = Number(contribution?.evidence?.duration ?? 1);
       if (!Number.isFinite(rawDuration)) {
         throw new Error(
@@ -51995,7 +53187,7 @@
       const bestAfter = bestAfterRoute.valueHEPP;
       resourceOverridesByUnit.set(targetId, nextOverrides);
       const targetSide = sideOf(request.visibleWorld, target);
-      const probability = r9v2ContributionProbability(contribution);
+      const probability = preview.contributionProbability(contribution);
       const value = r9v2TargetFinite(
         (targetSide === request.actorSide ? 1 : -1) *
           (bestAfter - bestBefore) * probability,
@@ -53231,7 +54423,7 @@
       const side = String(
         summon?.side || summon?.阵营 || '',
       ).trim() || request.actorSide;
-      const applicationProbability = r9v2ContributionProbability(
+      const applicationProbability = preview.contributionProbability(
         contribution,
       );
       const value = r9v2TargetFinite(
@@ -54876,6 +56068,18 @@
     }
     const mechanicalProjectionContext =
       preview.compileMechanicalProjectionContext(worldSnapshot);
+    const observerSessionState = sessionState || r9v2EphemeralState();
+    if (!sessionState) {
+      const context = evaluationContext || {};
+      observerSessionState.revisionState = {
+        visibleWorldRevision: String(context.visibleWorldRevision || '').trim(),
+        beliefRevision: String(context.beliefRevision || '').trim(),
+        opportunityRevision: String(context.opportunitySemanticRevision || context.opportunityRevision || '').trim(),
+        resourceTimelineRevision: String(context.resourceTimelineRevision || '').trim(),
+        scheduleRevision: String(context.scheduleSemanticRevision || context.scheduleRevision || '').trim(),
+        objectiveHash: String(context.objectiveHash || '').trim(),
+      };
+    }
     const targetPoolOpportunity = targetKernel
       ? r9v2FutureOpportunityContext(actionOpportunity)
       : actionOpportunity;
@@ -54885,7 +56089,7 @@
       // them here made every runtime transition allocate a new pool before
       // r9v2ChangedScope could apply its FactDelta.
       ? r9v2ObserverPoolContextKey({
-          state: sessionState,
+          state: observerSessionState,
           observerActorId: '',
           observerSide: actorSide,
           worldSnapshot,
@@ -54898,7 +56102,7 @@
         })
       : '';
     const poolInput = {
-      sessionState,
+      sessionState: observerSessionState,
       worldSnapshot,
       observerActorId: actorId,
       observerSide: actorSide,
@@ -55334,11 +56538,12 @@
     return '';
   }
 
-  function r9v2LinearPublicCost(declaration) {
+  function r9v2LinearPublicCost(declaration, actor) {
     const result = [];
     for (const [resource, amount] of Object.entries((declaration && declaration.resourceCosts) || {})) {
-      if (['魂力', '精神力', '体力', '生命'].indexOf(resource) >= 0 && Number.isFinite(Number(amount))) {
-        result.push({ resource, amount: Number(amount) });
+      const value = amount && typeof amount === 'object' ? preview.resolveSkillResourceCost(actor, resource, amount) : Number(amount);
+      if (['魂力', '精神力', '体力', '生命'].indexOf(resource) >= 0 && Number.isFinite(value)) {
+        result.push({ resource, amount: value });
       }
     }
     return result;
@@ -55588,36 +56793,179 @@
     );
   }
 
-  function r9v2LinearExpectedCreatedPreview(input, readValue) {
-    const stack = [{ probability: 1, choices: new Map() }];
-    let expected = 0;
-    while (stack.length) {
-      const path = stack.pop(), choices = new Map(path.choices), discovered = [];
-      const choose = (kind, effectInstanceId, targetId, outcomes) => {
-        if (outcomes.length === 1) return 0;
-        const key = JSON.stringify([kind, effectInstanceId, targetId]);
-        if (choices.has(key)) return choices.get(key);
-        choices.set(key, 0); discovered.push({ key, outcomes }); return 0;
-      };
-      const branchResult = preview.previewAction({ ...input, cacheResult: false,
-        applicationProbabilityResolver: args => {
-          const probability = input.applicationProbabilityResolver?.(args) ?? args.baseApplicationProbability;
-          return probability <= 1e-12 || probability >= 1 - 1e-12 ? probability :
-            choose('application', args.effectInstanceId, args.targetId, [{ probability: 1 - probability }, { probability }]);
-        },
-        damageOutcomeResolver: args => input.damageOutcomeResolver?.(args) ?? choose('damage', args.effectInstanceId, args.targetId, args.outcomes),
-      });
-      let probability = path.probability;
-      const prefix = new Map(path.choices);
-      for (const row of discovered) {
-        row.outcomes.forEach((outcome, index) => {
-          if (index && outcome.probability > 0) stack.push({ probability: probability * outcome.probability, choices: new Map([...prefix, [row.key, index]]) });
-        });
-        prefix.set(row.key, 0); probability *= row.outcomes[0].probability;
-      }
-      expected += probability * readValue(branchResult);
+  function r9v2LinearCreatedPreviewCanGroupCooperativeDamage(input = {}) {
+    const declaration = input?.declaration || {};
+    const actionKind = String(declaration.actionKind || '').trim().toUpperCase();
+    const effects = Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组 : [];
+    const simpleCooperativeGenerator = effect => effect?.原型 === '召唤生成' &&
+      String(effect?.行动模式 || '').trim() === '协同攻击' &&
+      !(Array.isArray(effect?.技能列表) && effect.技能列表.length > 0);
+    const rootIsSafe = ['PASS_OPPORTUNITY', 'DEFEND', 'EVADE'].includes(actionKind) ||
+      actionKind === 'USE_ITEM' && effects.length > 0 && effects.every(simpleCooperativeGenerator) &&
+        !(declaration.skill?.副作用列表 || []).length;
+    if (!rootIsSafe) return false;
+    const simpleBasicAttacker = unit => {
+      if (!unit || unit.蓄力技能 || collectSkills(unit).length > 0) return false;
+      const attackEffects = basicAttackSkill(unit)?._效果数组;
+      return Array.isArray(attackEffects) && attackEffects.length === 1 &&
+        attackEffects[0]?.原型 === '伤害结算' &&
+        !(Array.isArray(attackEffects[0]?.条件分支) && attackEffects[0].条件分支.length > 0);
+    };
+    const existing = preview.listUnits(input.worldSnapshot || {}).map(row => row.unit).filter(unit =>
+      preview.isSummonUnit(unit) && String(unit?.行动模式 || '').trim() === '协同攻击' &&
+      Number(unit?.剩余窗口 ?? unit?.__battleRuntime?.summonWindow?.remainingWindows ?? 0) > 0 &&
+      preview.isBattleCapable(unit));
+    const created = actionKind === 'USE_ITEM' && effects.some(simpleCooperativeGenerator) &&
+      effects.some(effect => Number(effect?.数量 || 1) > 0);
+    return (existing.length > 0 || created) && existing.every(simpleBasicAttacker);
+  }
+
+  function r9v2LinearCreatedCooperativeDamageSynthesizer(branchResult, rows = []) {
+    if (!branchResult?.afterSnapshot || !Array.isArray(rows) || rows.length < 2 || rows.length > 8) return null;
+    const targetId = String(rows[0]?.targetId || '').trim();
+    const target = findUnitInWorld(branchResult.afterSnapshot, targetId);
+    if (!target || !preview.isBattleCapable(target) || preview.readShield(target) > 0 ||
+        Object.keys(target.状态效果 || {}).length > 0 || target.蓄力技能 || collectSkills(target).length > 0) return null;
+    const hpMax = Math.max(1, preview.readHpMax(target));
+    const initialHp = preview.readHp(target);
+    if (!(initialHp > 0)) return null;
+    const contributionByEffect = new Map();
+    for (const row of rows) {
+      const contributionRows = (branchResult.contributions || []).filter(entry =>
+        entry.outcomeKind === 'HP_DELTA' && entry.targetId === targetId && entry.effectInstanceId === row.effectInstanceId);
+      if (contributionRows.length !== 1) return null;
+      const contribution = contributionRows[0];
+      const maximumDamage = Math.max(0, ...row.outcomes.map(outcome => Number(outcome?.hpDamage)));
+      if (!Number.isFinite(maximumDamage) || maximumDamage / hpMax >= 0.5 - 1e-9) return null;
+      const mass = row.outcomes.reduce((sum, outcome) => sum + Number(outcome?.probability || 0), 0);
+      if (Math.abs(mass - 1) > 1e-9 || row.outcomes.some(outcome => {
+        const incoming = Number(outcome?.incoming), damage = Number(outcome?.hpDamage);
+        const shield = Number(outcome?.shieldAbsorb || 0), delta = Number(outcome?.delta);
+        return !Number.isFinite(incoming) || !Number.isFinite(damage) || !Number.isFinite(delta) ||
+          incoming !== damage || shield !== 0 || Math.abs(delta + damage) > 1e-9 ||
+          String(outcome?.actionState || '').trim() ||
+          ['reviveHealing', 'reflection', 'deathSaveConsumed', 'ruleBlockConsumed', 'revival',
+            'hpDamageLimit', 'priorResourceAssignments'].some(key => outcome?.[key] !== undefined &&
+              outcome[key] !== null && outcome[key] !== false && outcome[key] !== 0);
+      })) return null;
+      contributionByEffect.set(row.effectInstanceId, contribution);
     }
-    return expected;
+    const maximumCumulativeDamage = rows.reduce((sum, row) => sum + Math.max(0,
+      ...row.outcomes.map(outcome => Number(outcome?.hpDamage))), 0);
+    if (!(initialHp - maximumCumulativeDamage > 0)) return null;
+    return selected => {
+      let currentHp = initialHp;
+      const replacements = new Map();
+      for (const row of rows) {
+        const outcomeIndex = selected.get(row.key);
+        const outcome = Number.isInteger(outcomeIndex) ? row.outcomes[outcomeIndex] : null;
+        if (!outcome) return null;
+        const damage = Number(outcome.hpDamage), nextHp = currentHp - damage;
+        if (!(nextHp > 0) || preview.shouldTriggerTraumaUnconscious(damage, nextHp, hpMax)) return null;
+        const evidence = Object.freeze({
+          ...contributionByEffect.get(row.effectInstanceId).evidence,
+          incomingDamage: Number(outcome.incoming),
+          shieldAbsorb: 0,
+          expectedDamage: damage,
+          outcomeDistribution: Object.freeze([Object.freeze({ ...outcome, probability: 1 })]),
+          delta: Number(outcome.delta),
+          current: currentHp,
+          next: nextHp,
+        });
+        replacements.set(row.effectInstanceId, Object.freeze({
+          ...contributionByEffect.get(row.effectInstanceId),
+          expectedDelta: Number(outcome.delta),
+          threatValue: damage / hpMax * 100,
+          evidence,
+        }));
+        currentHp = nextHp;
+      }
+      const nextTarget = cloneValue(target);
+      preview.setResourceValue(nextTarget, '生命', currentHp);
+      const afterSnapshot = replaceWorldUnit(branchResult.afterSnapshot, targetId, nextTarget);
+      const contributions = (branchResult.contributions || []).map(entry => replacements.get(entry.effectInstanceId) || entry);
+      const changedUnitIds = [...new Set([...(branchResult.changedUnitIds || []), targetId])];
+      return Object.freeze({ ...branchResult, afterSnapshot, contributions: Object.freeze(contributions),
+        changedUnitIds: Object.freeze(changedUnitIds) });
+    };
+  }
+
+  function r9v2LinearCreatedResourcePaymentThresholds(unit, resource, includeSkills = true, excludedSkillId = '') {
+    const stages = includeSkills ? preparedSkillProfiles(unit)
+      .filter(profile => !excludedSkillId || skillId(profile.skill) !== excludedSkillId).map(profile => profile.costStages) : [];
+    const stored = unit.蓄力技能?.skill || unit.蓄力技能;
+    if (Array.isArray(stored?._效果数组)) stages.push(parseSkillCostStages(stored, skillCostParserContext(unit, stored)));
+    return [...new Set(stages.flatMap(stage => {
+      if (stage.非法项?.length || !Object.hasOwn(stage.启动 || {}, resource)) return [];
+      const amount = preview.resolveSkillResourceCost(unit, resource, stage.启动[resource]);
+      return Number.isFinite(amount) && amount > 0 ? [amount] : [];
+    }))].sort((a, b) => a - b);
+  }
+
+  function r9v2LinearCreatedResourcePaymentWorlds(world, actorId, includeSkills = true, excludedSkillId = '') {
+    let branches = [{ world, probability: 1 }];
+    for (const resource of ['生命', '体力', '魂力', '精神力']) {
+      branches = branches.flatMap(branch => {
+        const unit = findUnitInWorld(branch.world, actorId), distribution = preview.projectedResourceDistribution(unit, resource);
+        if (!distribution?.support) return [branch];
+        const thresholds = [...r9v2LinearCreatedResourcePaymentThresholds(unit, resource, includeSkills, excludedSkillId), ...(['生命', '体力'].includes(resource) ? [1] : [])];
+        const outcomes = preview.partitionResourceRangeOutcomes([{ outcomeId: 'BALANCE', probability: 1,
+          balance: distribution.balance, roundedResourceSupport: distribution.support }], thresholds);
+        if (outcomes.length === 1) return [branch];
+        return outcomes.map(outcome => {
+          const overlay = new preview.PreviewOverlay(branch.world, `resource-payment:${actorId}:${resource}:${outcome.outcomeId}`);
+          overlay.changeUnit(actorId, target => {
+            preview.setResourceValue(target, resource, outcome.balance, true);
+            preview.rememberProjectedResourceSupport(target, resource, outcome.roundedResourceSupport);
+          });
+          return { world: overlay.snapshot(), probability: branch.probability * outcome.probability };
+        });
+      });
+      if (branches.length > 4096) throw new Error('BATTLE_PREVIEW_PROBABILITY_BRANCH_BUDGET_EXCEEDED:resource-payment');
+    }
+    return branches;
+  }
+
+
+
+
+
+
+
+  function r9v2LinearPassiveProjectionOptions(request, options = {}) {
+    return { resourcePaymentThresholds: r9v2LinearCreatedResourcePaymentThresholds,
+      staminaCostResolver: r9v2ResourceCostAmounts,
+      normalizeActionFrame: r9v2LinearNormalizeActionFrame,
+      interruptCharges: r9v2LinearInterruptKnownCharges,
+      preparedDecisionWorld: isPreparedDecisionRequest(request),
+      metrics: decisionMetrics,
+      canGroupCooperativeDamage: r9v2LinearCreatedPreviewCanGroupCooperativeDamage,
+      cooperativeDamageSynthesizer: r9v2LinearCreatedCooperativeDamageSynthesizer,
+      ...options };
+  }
+
+  function r9v2LinearDeferredOutcomeIds(result, deferredEffectIds) {
+    if (!deferredEffectIds.size) return deferredEffectIds;
+    let futureIds = deferredEffectIds;
+    for (const entry of result.contributions || []) {
+      const boundRiskId = entry.evidence?.persistentRiskBinding?.risk?.sourceEffectId;
+      if (boundRiskId && deferredEffectIds.has(entry.effectInstanceId) && !futureIds.has(boundRiskId)) {
+        // Untimed carriers have a binding receipt but no scheduled receipt
+        // under this logical id. Its trial still belongs to the real ending.
+        if (futureIds === deferredEffectIds) futureIds = new Set(deferredEffectIds);
+        futureIds.add(boundRiskId);
+      }
+      if (entry.outcomeKind !== 'STATE_SCHEDULED' || !deferredEffectIds.has(entry.effectInstanceId) ||
+          !Object.values(entry.evidence?.stateEntries || {}).some(state => state?.延迟效果 === true)) continue;
+      // The neutral carrier's application trial is registration now, not payload landing later.
+      if (futureIds === deferredEffectIds) futureIds = new Set(deferredEffectIds);
+      futureIds.delete(entry.effectInstanceId);
+    }
+    return futureIds;
+  }
+
+  function r9v2LinearExpectedCreatedPreview(input, readValue, deferredEffectIds = null, options = {}) {
+    return preview.visitActionOutcomes(input, readValue, deferredEffectIds, r9v2LinearPassiveProjectionOptions(input, options));
   }
 
   function r9v2LinearCreatedActionFit({
@@ -55629,15 +56977,16 @@
     selfUse,
     hostileSide,
     actionCapacityCache,
+    remainingWindows = null,
   }) {
     const resolvedEffects = r9v2LinearCreatedUseEffects(candidate.creation.useEffects, selfUse);
     const actionShapingEffects = r9v2LinearCreatedActionShapingEffects(resolvedEffects);
     const recipientId = preview.unitId(recipient);
-    const remainingAfterUse = Math.max(0, availableNaturalOpportunityCount(worldSnapshot, recipient, {
+    const remainingAfterUse = remainingWindows ?? Math.max(0, availableNaturalOpportunityCount(worldSnapshot, recipient, {
       currentOpportunityConsumedFor: consumedNaturalActors(request, candidate.declaration),
       horizon: battleHorizonProfile(request, worldSnapshot),
     }) - Math.max(1, Math.floor(Number(candidate.creation.productionWindow || 1))));
-    const inventoryRecipient = unitAfterCreation(projectedRecipient, candidate.creation);
+    const inventoryRecipient = unitAfterCreation(projectedRecipient, candidate.creation, worldSnapshot.当前世界tick ?? worldSnapshot.当前tick ?? 0);
     const projectedWorld = mapWorldUnits(worldSnapshot, unit =>
       preview.unitId(unit) === recipientId ? inventoryRecipient : unit);
     const productSkill = {
@@ -55655,13 +57004,13 @@
     const useRisks = preview.normalizeSideEffectList(candidate.creation.sideEffects || []);
     const hasUseRisk = useRisks.some(effect => Number(effect.触发概率) > 0);
     if (['HOSTILE_SINGLE', 'HOSTILE_GROUP', 'ANY_SINGLE'].includes(productProfile)) {
-      const targetSets = enumerateTargetSets(
+      const targetSets = expandMixedScopePrimaryTargetSets(productSkill, productProfile, enumerateTargetSets(
         projectedWorld,
         inventoryRecipient,
         productProfile,
         request?.beliefState || {},
         productSkill,
-      );
+      ), projectedWorld, inventoryRecipient);
       if (!targetSets.length) return null;
       const actorSide = sideOf(projectedWorld, inventoryRecipient);
       const beforeCapacity = r9v2LinearBestActionCapacity(
@@ -55680,6 +57029,7 @@
         const useInput = {
           worldSnapshot: projectedWorld,
           worldRevision: actionId,
+          cacheResult: remainingWindows === null,
           actorId: recipientId,
           declaration: {
             actionId,
@@ -55690,63 +57040,61 @@
           },
           paymentMode: 'FORMAL',
           horizon: 'SHALLOW',
+          beliefState: request.beliefState || {}, battleIntent: request.battleIntent,
+          actionOpportunity: request.actionOpportunity,
+          __preparedDecisionWorld: isPreparedDecisionRequest(request),
           previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
         };
-        const result = preview.previewAction(hasUseRisk ? { ...useInput, cacheResult: false, projectionPurpose: 'RISK_NEUTRAL_COUNTERFACTUAL',
+        const neutralInput = hasUseRisk ? { ...useInput, cacheResult: false, projectionPurpose: 'RISK_NEUTRAL_COUNTERFACTUAL',
           applicationProbabilityResolver: ({ effectInstanceId, baseApplicationProbability }) =>
-            effectInstanceId.startsWith(`${actionId}:side-effect:`) ? 0 : baseApplicationProbability } : useInput);
-        markCapacityDeltaSnapshot(result.afterSnapshot, projectedWorld, result?.changedUnitIds || targetIds);
-        const afterRecipient = findUnitInWorld(result.afterSnapshot, recipientId);
-        if (!afterRecipient) return 0;
-        const afterCapacity = r9v2LinearBestActionCapacity(
-          result.afterSnapshot,
-          afterRecipient,
-          hostileSide,
-          actionCapacityCache,
-        );
-        const targetDenial = targetIds.reduce((sum, targetId) => {
-          const beforeTarget = findUnitInWorld(projectedWorld, targetId);
-          const afterTarget = findUnitInWorld(result.afterSnapshot, targetId);
-          if (!beforeTarget || !afterTarget) return sum;
-          return sum + Math.max(
-            0,
-            r9v2LinearBestActionCapacity(
-              projectedWorld,
-              beforeTarget,
-              actorSide,
-              actionCapacityCache,
-            ) - r9v2LinearBestActionCapacity(
-              result.afterSnapshot,
-              afterTarget,
-              actorSide,
-              actionCapacityCache,
-            ),
+            effectInstanceId.startsWith(`${actionId}:side-effect:`) ? 0 : baseApplicationProbability } : useInput;
+        const gross = r9v2LinearExpectedCreatedPreview(neutralInput, result => {
+          markCapacityDeltaSnapshot(result.afterSnapshot, projectedWorld, result?.changedUnitIds || targetIds);
+          const afterRecipient = findUnitInWorld(result.afterSnapshot, recipientId);
+          if (!afterRecipient) return 0;
+          const afterCapacity = r9v2LinearBestActionCapacity(
+            result.afterSnapshot,
+            afterRecipient,
+            hostileSide,
+            actionCapacityCache,
           );
-        }, 0);
-        const immediatePotential = targetIds.reduce((sum, targetId) => {
-          const target = findUnitInWorld(projectedWorld, targetId);
-          return target
-            ? sum + Math.max(0, preview.calculateDirectPotential(inventoryRecipient, target, {
-                actionKind: 'USE_ITEM',
-                skill: productSkill,
-              }))
-            : sum;
-        }, 0);
-        const scale = Math.max(
-          1,
-          beforeCapacity,
-          afterCapacity,
-          immediatePotential,
-          targetDenial,
-        );
-        const riskCost = hasUseRisk ? r9v2LinearCreatedPassiveRiskCost(request, candidate, worldSnapshot, projectedRecipient, hostileSide, actionCapacityCache,
-          { result: preview.previewAction(useInput), baseWorld: projectedWorld, inventoryRecipient, input: useInput }) : 0;
-        return Math.max(0, clamp(Math.max(
-          0,
-          immediatePotential +
-            (Math.max(0, afterCapacity - beforeCapacity) + targetDenial) * followupWindows -
+          const targetDenial = (result.changedUnitIds || targetIds).reduce((sum, targetId) => {
+            const beforeTarget = findUnitInWorld(projectedWorld, targetId);
+            const afterTarget = findUnitInWorld(result.afterSnapshot, targetId);
+            if (!beforeTarget || !afterTarget || sideOf(projectedWorld, beforeTarget) !== hostileSide) return sum;
+            return sum + Math.max(
+              0,
+              r9v2LinearBestActionCapacity(
+                projectedWorld,
+                beforeTarget,
+                actorSide,
+                actionCapacityCache,
+              ) - r9v2LinearBestActionCapacity(
+                result.afterSnapshot,
+                afterTarget,
+                actorSide,
+                actionCapacityCache,
+              ),
+            );
+          }, 0);
+          const immediatePotential = r9v2LinearSettledDirectCapacity(projectedWorld, inventoryRecipient, result);
+          const scale = Math.max(
+            1,
             beforeCapacity,
-        ) / scale, 0, 1) - riskCost);
+            afterCapacity,
+            immediatePotential,
+            targetDenial,
+          );
+          // Select the item before uncertain application/damage outcomes: keep
+          // each branch's signed net receipt through expectation, then floor at
+          // zero once the shared trial distribution has been averaged.
+          return (immediatePotential +
+            (Math.max(0, afterCapacity - beforeCapacity) + targetDenial) * followupWindows -
+            beforeCapacity) / scale;
+        });
+        const riskCost = hasUseRisk ? r9v2LinearCreatedPassiveRiskCost(request, candidate, worldSnapshot, projectedRecipient, hostileSide, actionCapacityCache,
+          { result: preview.projectConditionedAction(useInput), baseWorld: projectedWorld, inventoryRecipient, input: useInput }, false, remainingAfterUse) : 0;
+        return Math.max(0, gross - riskCost);
       })), 0, 1);
     }
     if (!actionShapingEffects.length) return null;
@@ -55754,6 +57102,8 @@
     const useInput = {
       worldSnapshot: projectedWorld,
       worldRevision: actionId,
+      // Delivery outcomes share an action id, but not a post-use world.
+      cacheResult: remainingWindows === null,
       actorId: recipientId,
       declaration: {
         actionId,
@@ -55764,12 +57114,15 @@
       },
       paymentMode: 'FORMAL',
       horizon: 'SHALLOW',
+      beliefState: request.beliefState || {}, battleIntent: request.battleIntent,
+      actionOpportunity: request.actionOpportunity,
+      __preparedDecisionWorld: isPreparedDecisionRequest(request),
       previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT },
     };
     const neutralInput = hasUseRisk ? { ...useInput, cacheResult: false, projectionPurpose: 'RISK_NEUTRAL_COUNTERFACTUAL',
       applicationProbabilityResolver: ({ effectInstanceId, baseApplicationProbability }) =>
         effectInstanceId.startsWith(`${actionId}:side-effect:`) ? 0 : baseApplicationProbability } : useInput;
-    const result = preview.previewAction(neutralInput);
+    const result = preview.projectConditionedAction(neutralInput);
     const beforeCapacity = r9v2LinearBestActionCapacity(
       projectedWorld,
       inventoryRecipient,
@@ -55825,58 +57178,139 @@
           netGrantedSkillGain,
         ), 0, 1);
     };
-    const probabilistic = result.contributions.some(entry => {
-      const probability = r9v2ContributionProbability(entry);
-      return probability > 1e-12 && probability < 1 - 1e-12 || entry.evidence?.outcomeDistribution?.some(outcome => outcome.probability > 1e-12 && outcome.probability < 1 - 1e-12);
-    });
+    const probabilistic = preview.hasUnresolvedActionOutcomes(result);
     const gross = probabilistic ? r9v2LinearExpectedCreatedPreview(neutralInput, grossValue) : grossValue(result);
     // Consumer-only loss cannot rescue an item with no realizable gross gain.
     if (!(gross > 0) && !useRisks.some(effect => Number(effect.触发概率) > 0 && effect.生效对象 !== '技能释放者')) return 0;
     const riskCost = hasUseRisk ? r9v2LinearCreatedPassiveRiskCost(request, candidate, worldSnapshot, projectedRecipient, hostileSide, actionCapacityCache,
-      { result: preview.previewAction(useInput), baseWorld: projectedWorld, inventoryRecipient, input: useInput }) : 0;
+      { result: preview.projectConditionedAction(useInput), baseWorld: projectedWorld, inventoryRecipient, input: useInput }, false, remainingAfterUse) : 0;
     return clamp(gross - riskCost, 0, 1);
   }
 
-  function r9v2LinearCreatedUsePreview(request, candidate, world, recipient, probabilityResolvers = {}) {
+  function r9v2LinearCreatedUsePreview(request, candidate, world, recipient, probabilityResolvers = {}, targetIds = null, materializeCreation = true) {
     const recipientId = preview.unitId(recipient);
-    const inventoryRecipient = unitAfterCreation(recipient, candidate.creation);
-    const baseWorld = mapWorldUnits(world, unit => preview.unitId(unit) === recipientId ? inventoryRecipient : unit);
-    const actionId = `${candidate.candidateId}:generic-risk-use`;
+    const inventoryRecipient = materializeCreation ? unitAfterCreation(recipient, candidate.creation, world.当前世界tick ?? world.当前tick ?? 0) : recipient;
+    const baseWorld = materializeCreation ? mapWorldUnits(world, unit => preview.unitId(unit) === recipientId ? inventoryRecipient : unit) : world;
+    const actionId = `${candidate.candidateId}:generic-risk-use${targetIds ? `:${preview.stableHash(targetIds)}` : ''}`;
     const input = { worldSnapshot: baseWorld, worldRevision: actionId, actorId: recipientId,
-      declaration: { actionId, actorId: recipientId, actionKind: 'USE_ITEM', targetIds: [recipientId], skill: {
+      declaration: { actionId, actorId: recipientId, actionKind: 'USE_ITEM', targetIds: targetIds || [recipientId], skill: {
         id: candidate.creation.productId, name: candidate.creation.productName || candidate.creation.productId,
         魂技名: candidate.creation.productName || candidate.creation.productId, 承载方式: '物品使用',
         制作者ID: candidate.creation.creatorId || request.actorId,
         _效果数组: r9v2LinearCreatedUseEffects(candidate.creation.useEffects, recipientId === request.actorId),
         副作用列表: candidate.creation.sideEffects,
-      } }, paymentMode: 'FORMAL', horizon: 'SHALLOW', previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT }, ...probabilityResolvers };
-    return { result: preview.previewAction(input), baseWorld, inventoryRecipient, input };
+      } }, paymentMode: 'FORMAL', horizon: 'SHALLOW', beliefState: request.beliefState || {},
+      battleIntent: request.battleIntent, actionOpportunity: request.actionOpportunity,
+      __preparedDecisionWorld: isPreparedDecisionRequest(request),
+      previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT }, ...probabilityResolvers };
+    return { result: preview.projectConditionedAction(input), baseWorld, inventoryRecipient, input };
   }
 
-  function r9v2LinearCreatedPassiveRiskCost(request, candidate, world, recipient, hostileSide, actionCapacityCache, usePreview = null, conditioned = false) {
+  function r9v2LinearCreatedPendingNaturalIds(request, candidate, world, recipientId) {
+    const rootWorld = request.visibleWorld || request.worldSnapshot || world, round = Number(world.回合 || 0);
+    const sameRootRound = round === Number(rootWorld.回合 || 0);
+    const pending = r9v2LinearCurrentNaturalIds(sameRootRound ? request : {}, world, false);
+    if (sameRootRound) {
+      consumedNaturalActors(request, candidate.declaration || {}).forEach(id => pending.delete(id));
+      for (const id of pending) {
+        const prior = findUnitInWorld(rootWorld, id)?.__battleRuntime?.naturalOpportunity;
+        const current = findUnitInWorld(world, id)?.__battleRuntime?.naturalOpportunity;
+        // A replayed public release has spent this very natural slot. The
+        // earlier root's pending list cannot resurrect it; unchanged/private
+        // records are not a substitute for the declared public schedule.
+        if (prior?.status === 'PENDING' && ['CONSUMED', 'CONSUMED_BY_FUSION'].includes(current?.status) &&
+            Number(prior.round) === round && Number(current.round) === round &&
+            String(prior.opportunityId || '') === String(current.opportunityId || '')) pending.delete(id);
+      }
+    }
+    pending.delete(recipientId);
+    return pending;
+  }
+
+  function r9v2LinearCreatedCapacityFrames(baseWorld, recipientId, pending, horizon, actionCapacityCache, continuedSustains) {
+    const useRound = Number(baseWorld.回合 || 0), framesByInitial = new WeakMap();
+    const baseline = mapWorldUnits(baseWorld, unit => preview.inheritOverlayOrigin({ ...unit,
+      __battleRuntime: { ...unit.__battleRuntime, naturalOpportunity: {
+        ...unit.__battleRuntime?.naturalOpportunity, round: useRound,
+        status: pending.has(preview.unitId(unit)) ? 'PENDING' : 'CONSUMED',
+      } },
+    }, unit));
+    const clock = r9v2LinearNaturalCapacityClock(horizon, recipientId);
+    return (initial, contributions, offset, id, pressureSide) => {
+      let byContributions = framesByInitial.get(initial);
+      if (!byContributions) framesByInitial.set(initial, byContributions = new WeakMap());
+      let frames = byContributions.get(contributions);
+      if (!frames) byContributions.set(contributions, frames = [[{ world: initial, pending: contributions, probability: 1 }]]);
+      // Preserve each counterfactual's existing future laws. Their signed
+      // expectations share a calendar, not an extra independent risk draw.
+      while (frames.length <= offset) {
+        const step = frames.length;
+        frames.push(frames.at(-1).flatMap(branch => {
+          const settled = clock.settleBoundary(branch.world, step === 1 ? baseline : branch.world,
+            branch.pending, recipientId, step > 1, continuedSustains);
+          return settled.branches.map(row => ({ world: row.world, pending: row.pending || settled.remaining,
+            probability: branch.probability * row.probability }));
+        }));
+      }
+      return frames[offset].reduce((sum, branch) => sum + branch.probability *
+        r9v2LinearBestActionCapacity(branch.world, findUnitInWorld(branch.world, id), pressureSide, actionCapacityCache,
+          false, { ...horizon, currentRound: Number(branch.world.回合 || 0) }), 0);
+    };
+  }
+
+  function r9v2LinearCreatedPassiveRiskCost(request, candidate, world, recipient, hostileSide, actionCapacityCache, usePreview = null, conditioned = false, remainingWindows = null, component = 'total') {
     const recipientId = preview.unitId(recipient);
-    const availableWindows = Math.max(0, availableNaturalOpportunityCount(world, recipient, {
+    const availableWindows = remainingWindows ?? Math.max(0, availableNaturalOpportunityCount(world, recipient, {
       currentOpportunityConsumedFor: consumedNaturalActors(request, candidate.declaration), horizon: battleHorizonProfile(request, world),
     }) - Math.max(1, Math.floor(Number(candidate.creation.productionWindow || 1))));
     const windows = Math.min(3, availableWindows);
-    const prepared = usePreview || r9v2LinearCreatedUsePreview(request, candidate, world, recipient);
+    const prepared = usePreview || r9v2LinearCreatedUsePreview(request, candidate, world, recipient,
+      remainingWindows === null ? {} : { cacheResult: false });
     const { result, baseWorld, inventoryRecipient } = prepared;
     const riskEntries = (result.contributions || []).filter(entry => {
       const state = entry.evidence?.stateEntry;
       if (entry.evidence?.stateEndRisk || !String(entry.effectInstanceId || '').includes(':side-effect:')) return false;
       if (entry.evidence?.lethalSettlement) return true;
-      return windows > 0 && (state || entry.evidence?.persistentRiskBinding);
+      return (windows > 0 || component === 'finite') && (state || entry.evidence?.persistentRiskBinding);
     });
     if (!riskEntries.length) return 0;
     if (!conditioned && riskEntries.some(entry => Number(entry.evidence?.deferredStartRoundOffset || 0) > 0 || entry.evidence?.persistentRiskBinding) &&
       result.contributions.some(entry => {
-        const probability = r9v2ContributionProbability(entry);
+        const probability = preview.contributionProbability(entry);
         const boundProbability = Number(entry.evidence?.persistentRiskBinding?.risk?.触发概率);
         return probability > 1e-12 && probability < 1 - 1e-12 || boundProbability > 1e-12 && boundProbability < 1 - 1e-12 ||
           (entry.evidence?.outcomeDistribution || []).some(outcome => outcome.probability > 1e-12 && outcome.probability < 1 - 1e-12);
       })) {
       return r9v2LinearExpectedCreatedPreview(prepared.input, branchResult =>
-        r9v2LinearCreatedPassiveRiskCost(request, candidate, world, recipient, hostileSide, actionCapacityCache, { ...prepared, result: branchResult }, true));
+        r9v2LinearCreatedPassiveRiskCost(request, candidate, world, recipient, hostileSide, actionCapacityCache, { ...prepared, result: branchResult }, true, remainingWindows, component));
+    }
+    // A conditioned item receipt fixes registration now, not a trial owned by
+    // a future boundary. Refine only that future risk, keeping the realized
+    // mother/healing/damage branch intact; binding and schedule share one draw.
+    const pendingTrial = riskEntries.find(entry => {
+      if (!(Number(entry.evidence?.deferredStartRoundOffset) > 0 || entry.evidence?.persistentRiskBinding)) return false;
+      const probability = Number(entry.evidence.persistentRiskBinding?.risk?.触发概率 ?? entry.evidence.applicationProbability);
+      return probability > 1e-12 && probability < 1 - 1e-12;
+    });
+    if (pendingTrial) {
+      const riskId = pendingTrial.evidence.persistentRiskBinding?.risk?.sourceEffectId || pendingTrial.effectInstanceId;
+      const probability = Number(pendingTrial.evidence.persistentRiskBinding?.risk?.触发概率 ?? pendingTrial.evidence.applicationProbability);
+      const readBranch = selected => {
+        const contributions = result.contributions.map(entry => {
+          const binding = entry.evidence?.persistentRiskBinding;
+          if (entry.targetId !== pendingTrial.targetId || (binding?.risk?.sourceEffectId || entry.effectInstanceId) !== riskId) return entry;
+          return { ...entry, evidence: { ...entry.evidence,
+            ...(binding ? { persistentRiskBinding: { ...binding, risk: { ...binding.risk, 触发概率: selected } } }
+              : { applicationProbability: selected, stateEntry: { ...entry.evidence.stateEntry, __previewApplicationProbability: selected } }),
+          } };
+        });
+        const branchResult = { ...result, contributions };
+        branchResult.operationGraph = preview.buildActionOperationGraph({ previewResult: branchResult, worldSnapshot: baseWorld,
+          damageOutcomeEntries: contributions.filter(entry => entry.outcomeKind === 'HP_DELTA' && Number.isFinite(entry.evidence?.rawDamage) && entry.evidence.outcomeDistribution?.length) });
+        return r9v2LinearCreatedPassiveRiskCost(request, candidate, world, recipient, hostileSide, actionCapacityCache,
+          { ...prepared, result: branchResult }, true, remainingWindows, component);
+      };
+      return (1 - probability) * readBranch(0) + probability * readBranch(1);
     }
     const riskIds = new Set(riskEntries.map(entry => entry.evidence?.persistentRiskBinding?.risk?.sourceEffectId || entry.effectInstanceId));
     const riskEventIds = new Set(result.contributions.filter(entry => riskIds.has(entry.effectInstanceId) ||
@@ -55913,10 +57347,34 @@
       result.contributions.some(entry => entry.evidence?.stateTransfer);
     const riskRecipients = movingRisk ? preview.listUnits(baseWorld).map(({ unit }) => preview.unitId(unit))
       : [...new Set(riskEntries.map(entry => entry.targetId))];
+    const useRound = Number(baseWorld.回合 || 0);
+    const reservePending = hasLethal || component === 'finite'
+      ? r9v2LinearCreatedPendingNaturalIds(request, candidate, baseWorld, recipientId) : new Set();
     const projectPassiveWorld = movingRisk || flowPrototypes.has('资源转移') ||
       result.contributions.some(entry => entry.evidence?.persistentTransfer || entry.evidence?.persistentStateOperation)
       ? r9v2JointFlowProjector(baseWorld, recipientId, { costs: {}, stateKeys: [], currentOpportunityPending: false })
       : r9v2LinearPassiveCapacityWorld;
+    const capacityWindows = component === 'finite' ? Math.max(0, Math.min(windows,
+      battleHorizonProfile({ ...request, actionOpportunity: prepared.input?.actionOpportunity || request.actionOpportunity }, baseWorld).finalRound - useRound)) : 0;
+    const finiteCapacity = component === 'finite' ? r9v2LinearCreatedCapacityFrames(baseWorld, recipientId, reservePending,
+      battleHorizonProfile({ ...request, actionOpportunity: prepared.input?.actionOpportunity || request.actionOpportunity }, baseWorld), actionCapacityCache,
+      prepared.capacitySustains || request.evaluationContext?.continuedSustains) : null;
+    const inheritedCapacityContributions = prepared.inheritedCapacityContributions || [];
+    const neutralCapacityContributions = inheritedCapacityContributions.length
+      ? [...inheritedCapacityContributions, ...neutralContributions] : neutralContributions;
+    const actualCapacityContributions = inheritedCapacityContributions.length
+      ? [...inheritedCapacityContributions, ...result.contributions] : result.contributions;
+    const reserveProjector = hasLethal ? r9v2JointFlowProjector(baseWorld, recipientId, {
+      costs: {}, stateKeys: [], currentOpportunityPending: false, pendingNaturalActorIds: [...reservePending],
+    }) : null;
+    // Remaining own followups do not erase this round's still-pending hostile
+    // turn. Price at most three actual calendar windows, including that tail,
+    // and never move a final-round use into an invented future round.
+    const reserveWindows = hasLethal ? Math.max(0, Math.min(3, availableWindows + 1,
+      battleHorizonProfile({ ...request, actionOpportunity: prepared.input?.actionOpportunity || request.actionOpportunity }, baseWorld).finalRound - useRound + 1)) : 0;
+    const deferredLethal = riskEntries.some(entry => entry.evidence.lethalSettlement && Number(entry.evidence.deferredStartRoundOffset) > 0 &&
+      Number(entry.evidence.applicationProbability) > 0 || entry.evidence.persistentRiskBinding?.risk?.副作用类型 === '致死献祭' &&
+      Number(entry.evidence.persistentRiskBinding.risk.触发概率) > 0);
     return actual.finalStates.reduce((expectedLoss, branch) => {
       const neutralWorld = neutralByAssignment.get(assignmentKey(branch));
       if (!neutralWorld) throw new Error('R9V2_CREATION_RISK_MAIN_BRANCH_MISSING');
@@ -55929,14 +57387,20 @@
         const baselineRecipient = id === recipientId ? inventoryRecipient : findUnitInWorld(baseWorld, id);
         const immediateLoss = hasLethal ? Math.max(0, preview.readHp(neutralRecipient) - preview.readHp(actualRecipient)) / Math.max(1, preview.readHpMax(neutralRecipient)) * 2 : 0;
         let lostCapacity = 0, reserveLoss = 0;
-        for (const offset of offsets) {
-          const priorWorld = projectPassiveWorld(neutralWorld, neutralRecipient, offset, baselineRecipient, neutralContributions, { costs: {}, stateKeys: [] });
-          const nextWorld = projectPassiveWorld(branch.world, actualRecipient, offset, baselineRecipient, result.contributions, { costs: {}, stateKeys: [] });
-          if (hasLethal) {
-            const sources = r9v2LinearSideUnits(nextWorld, pressureSide);
-            if (sources.length) reserveLoss = Math.max(reserveLoss, r9v2LinearRevivalReserveLoss(priorWorld, nextWorld, id,
-              Array.from({ length: Math.min(3, availableWindows - offset + 1) }, () => sources)));
+        // The item holder already spent this opportunity on the use. Its new
+        // control must survive until the next real active slot; other actors
+        // still follow their own pending current opportunity.
+        const capacityProfile = { costs: {}, stateKeys: [], ...(id === recipientId ? { currentOpportunityPending: false } : {}) };
+        const capacityOffsets = component === 'finite' ? id === recipientId ? []
+          : [...(reservePending.has(id) ? [0] : []), ...Array.from({ length: capacityWindows }, (_, index) => index + 1)] : offsets;
+        for (const offset of capacityOffsets) {
+          if (component === 'finite') {
+            lostCapacity += finiteCapacity(neutralWorld, neutralCapacityContributions, offset, id, pressureSide) -
+              finiteCapacity(branch.world, actualCapacityContributions, offset, id, pressureSide);
+            continue;
           }
+          const priorWorld = projectPassiveWorld(neutralWorld, neutralRecipient, offset, baselineRecipient, neutralContributions, capacityProfile);
+          const nextWorld = projectPassiveWorld(branch.world, actualRecipient, offset, baselineRecipient, result.contributions, capacityProfile);
           let windowLoss = 0;
           for (const hostileOnly of [false, true]) windowLoss = Math.max(windowLoss,
             r9v2LinearBestActionCapacity(priorWorld, findUnitInWorld(priorWorld, id), pressureSide, actionCapacityCache, hostileOnly) -
@@ -55944,10 +57408,1769 @@
               ? r9v2LinearBestActionCapacity(nextWorld, findUnitInWorld(nextWorld, id), pressureSide, actionCapacityCache, hostileOnly) : 0));
           lostCapacity += windowLoss;
         }
-        branchCost += direction * (immediateLoss + lostCapacity / 100 + reserveLoss);
+        if (component === 'finite' && id !== recipientId && prepared.followupCapacityTargetIds?.includes(id)) {
+          // Remove the dated risk credit already normalized in the receipt
+          // before charging the original signed risk units exactly once.
+          lostCapacity -= lostCapacity / prepared.followupCapacityDenominator;
+        }
+        if (deferredLethal && reserveWindows && preview.isBattleCapable(actualRecipient)) {
+          // Start before the trigger: incoming actions may already have spent
+          // the old life. Both profiles keep their own damaged prefix. At each
+          // boundary the retained profile restores only reserves lost to this
+          // risk, at the actual post-boundary HP/shield, never a dead holder.
+          const sourceWaves = Array.from({ length: reserveWindows }, (_, offset) => {
+            const frame = reserveProjector(branch.world, null, offset, null, result.contributions);
+            const sources = r9v2LinearSideUnits(frame, pressureSide);
+            return offset ? sources : sources.filter(source => reservePending.has(preview.unitId(source)));
+          });
+          const pressureOptions = (riskWorld, retain) => {
+            const profile = { costs: {}, stateKeys: [], currentOpportunityPending: false, pendingNaturalActorIds: [...reservePending] };
+            const project = r9v2JointFlowProjector(baseWorld, recipientId, profile);
+            const neutralProject = retain ? r9v2JointFlowProjector(baseWorld, recipientId, profile) : null;
+            return { sourceWaves, returnCurve: true, sourceEligibility: source => !hasActionCancellation(source), pressureObservationWorld: () => riskWorld,
+              advanceWorld: (previous, offset) => {
+                const next = { ...project(riskWorld, null, offset, null, result.contributions, null, previous), 回合: useRound + offset };
+                if (!retain) return next;
+                const withoutBoundRisk = mapWorldUnits(previous, unit => {
+                  if (!Object.values(unit.状态效果 || {}).some(state => state.副作用列表?.some(risk => riskIds.has(risk.sourceEffectId)))) return unit;
+                  return preview.inheritOverlayOrigin({ ...unit, 状态效果: Object.fromEntries(Object.entries(unit.状态效果).map(([key, state]) =>
+                    [key, state.副作用列表 ? { ...state, 副作用列表: state.副作用列表.filter(risk => !riskIds.has(risk.sourceEffectId)) } : state])) }, unit);
+                });
+                const prior = neutralProject(riskWorld, null, offset, null, neutralContributions, null, withoutBoundRisk);
+                const restored = r9v2LinearRevivalReserveCounterfactual(findUnitInWorld(prior, id), findUnitInWorld(next, id));
+                return restored ? replaceWorldUnit(next, id, restored) : next;
+              }, advanceWorldOutcomes: (previous, offset) => {
+                if (!retain) return project.outcomes(riskWorld, offset, result.contributions, previous)
+                  .map(row => ({ probability: row.probability, world: { ...row.world, 回合: useRound + offset } }));
+                const withoutBoundRisk = mapWorldUnits(previous, unit => {
+                  if (!Object.values(unit.状态效果 || {}).some(state => state.副作用列表?.some(risk => riskIds.has(risk.sourceEffectId)))) return unit;
+                  return preview.inheritOverlayOrigin({ ...unit, 状态效果: Object.fromEntries(Object.entries(unit.状态效果).map(([key, state]) =>
+                    [key, state.副作用列表 ? { ...state, 副作用列表: state.副作用列表.filter(risk => !riskIds.has(risk.sourceEffectId)) } : state])) }, unit);
+                });
+                return project.pairedOutcomes(riskWorld, riskWorld, offset, neutralContributions, result.contributions,
+                  { priorFrame: withoutBoundRisk, nextFrame: previous }).map(row => {
+                    const next = { ...row.nextWorld, 回合: useRound + offset };
+                    const restored = r9v2LinearRevivalReserveCounterfactual(findUnitInWorld(row.priorWorld, id), findUnitInWorld(next, id));
+                    return { probability: row.probability, world: restored ? replaceWorldUnit(next, id, restored) : next };
+                  });
+              } };
+          };
+          const restored = r9v2LinearRevivalReserveCounterfactual(neutralRecipient, actualRecipient);
+          const counterWorld = restored ? replaceWorldUnit(branch.world, id, restored) : branch.world;
+          const actualRisk = r9v2LinearRoutineIncapacityRisk(branch.world, sourceWaves[0], actualRecipient, pressureSide, null,
+            pressureOptions(branch.world, false));
+          const retainedRisk = r9v2LinearRoutineIncapacityRisk(counterWorld, sourceWaves[0], restored || actualRecipient, pressureSide, null,
+            pressureOptions(counterWorld, true));
+          reserveLoss = Math.max(0, ...actualRisk.map((risk, index) => risk - retainedRisk[index]));
+        } else if (hasLethal) for (let offset = 0; offset < reserveWindows; offset++) {
+          const round = useRound + offset;
+          const priorWorld = { ...reserveProjector(neutralWorld, null, offset, null, neutralContributions), 回合: round };
+          const nextWorld = { ...reserveProjector(branch.world, null, offset, null, result.contributions), 回合: round };
+          const sources = r9v2LinearSideUnits(nextWorld, pressureSide);
+          const sourceWaves = Array.from({ length: reserveWindows - offset }, (_, window) => offset || window ? sources
+            : sources.filter(source => reservePending.has(preview.unitId(source))));
+          const reserveDelta = r9v2LinearRevivalReserveLoss(priorWorld, nextWorld, id, sourceWaves, null, riskWorld => {
+            const project = r9v2JointFlowProjector(offset ? riskWorld : baseWorld, recipientId, {
+              costs: {}, stateKeys: [], currentOpportunityPending: offset > 0,
+              pendingNaturalActorIds: offset ? preview.listUnits(riskWorld).map(({ unit }) => preview.unitId(unit)) : [...reservePending],
+            }, offset);
+            return { sourceEligibility: source => !hasActionCancellation(source), pressureObservationWorld: () => riskWorld,
+              advanceWorld: (previous, window) => ({ ...project(riskWorld, null, window, null,
+                offset ? [] : result.contributions, null, previous), 回合: round + window }),
+              advanceWorldOutcomes: (previous, window) => project.outcomes(riskWorld, window, offset ? [] : result.contributions, previous)
+                .map(row => ({ probability: row.probability, world: { ...row.world, 回合: round + window } })),
+            };
+          });
+          reserveLoss = Math.max(reserveLoss, reserveDelta);
+        }
+        const attributedLoss = component === 'finite' ? reserveLoss + lostCapacity / 100
+          : component === 'reserve' ? reserveLoss
+          : component === 'continuation' ? lostCapacity / 100 + reserveLoss
+            : immediateLoss + lostCapacity / 100 + reserveLoss;
+        branchCost += direction * attributedLoss;
       }
       return expectedLoss + branch.probability * branchCost;
     }, 0);
+  }
+
+  function r9v2LinearPassiveCalendarIsClosed(unit) {
+    return preview.collectPassiveSkills(unit).every(({ skill }) =>
+      !root.__LWCS_BATTLE_RUNTIME__.readStructuredContinuationGrant({ actionKind: 'RELEASE_SKILL', skill }) &&
+      preview.collectEffects(skill).every(effect => {
+        const profile = preview.passiveTriggerProfile(skill, effect);
+        return profile.supported && ['战斗开始', '回合开始', '受击前', '受击后', '命中后', '濒死时', '被控制时'].includes(profile.triggerPhase) &&
+          !['召唤生成', '时光回溯'].includes(effect.原型);
+      }));
+  }
+
+  function r9v2LinearRoundPassiveFrames(delivery, request) {
+    return r9v2LinearPassivePhaseFrames(delivery, request, '回合开始');
+  }
+
+  function r9v2LinearPassivePhaseFrames(delivery, request, phase, options = {}) {
+    return preview.passivePhaseFrames(delivery, request, phase, r9v2LinearPassiveProjectionOptions(request, options));
+  }
+
+  function r9v2LinearNaturalCapacityClock(horizon, recipientId, clockBranchMetric = 'creationFutureClockBranchesEvaluated', passiveRequest = null) {
+    const atWindow = (world, round) => {
+      const nextRound = round > Number(world.回合 || 0);
+      return mapWorldUnits({ ...world, 回合: round }, previous => {
+        const ownsNatural = !preview.isSummonUnit(previous) || String(previous.行动模式 || '').trim() === '自主行动';
+        if (!ownsNatural || !nextRound && preview.unitId(previous) !== recipientId) return previous;
+        const next = { ...previous, __battleRuntime: { ...previous.__battleRuntime,
+          naturalOpportunity: { ...(!nextRound ? previous.__battleRuntime?.naturalOpportunity : {}), round, status: 'PENDING' } } };
+        preview.inheritOverlayOrigin(next, previous);
+        return next;
+      });
+    };
+    const settleBoundary = (world, prior, pending, sourceActorId, currentOpportunityPending, continuedSustains = null) => {
+      // Known casts may already have spent this round's natural turn. A
+      // subsequently applied control cannot consume that past opportunity.
+      const spent = new Set(preview.listUnits(world).filter(({ unit }) => {
+        const natural = unit.__battleRuntime?.naturalOpportunity;
+        const previous = findUnitInWorld(prior, preview.unitId(unit))?.__battleRuntime?.naturalOpportunity;
+        return natural?.status === 'CONSUMED' && previous?.status === 'PENDING' &&
+          Number(natural.round) === Number(previous.round);
+      }).map(({ unit }) => preview.unitId(unit)));
+      const controlPrior = spent.size ? mapWorldUnits(prior, previous => {
+        if (!spent.has(preview.unitId(previous))) return previous;
+        const next = { ...previous, __battleRuntime: { ...previous.__battleRuntime,
+          naturalOpportunity: { ...previous.__battleRuntime.naturalOpportunity, status: 'CONSUMED' } } };
+        preview.inheritOverlayOrigin(next, previous);
+        return next;
+      }) : prior;
+      const project = r9v2JointFlowProjector(controlPrior, sourceActorId, { costs: {}, stateKeys: [], currentOpportunityPending },
+        Math.max(0, Number(world.回合 || 0) - horizon.currentRound));
+      const bound = new Set(pending.filter(entry => entry.evidence?.persistentRiskBinding).map(entry =>
+        `${entry.targetId}\u0000${entry.evidence.persistentRiskBinding.risk.sourceEffectId}`));
+      const remaining = pending.filter(entry => entry.outcomeKind === 'STATE_SCHEDULED' &&
+        !bound.has(`${entry.targetId}\u0000${entry.effectInstanceId}`) && Number(entry.evidence?.deferredStartRoundOffset) > 1)
+        .map(entry => ({ ...entry, evidence: { ...entry.evidence, deferredStartRoundOffset: entry.evidence.deferredStartRoundOffset - 1 } }));
+      const stack = [{ probability: 1, choices: [] }];
+      const branches = [];
+      while (stack.length) {
+        const path = stack.pop(), discovered = []; let trial = 0;
+        const chooseRisk = probability => {
+          const index = trial++;
+          if (index < path.choices.length) return path.choices[index];
+          discovered.push(probability); return 0;
+        };
+        // A scheduled trial is still unknown to every earlier decision. Resolve
+        // only the entries reached at this boundary, alongside live state risks.
+        const reached = pending.map(entry => {
+          const probability = Number(entry.evidence?.applicationProbability ?? 1);
+          if (entry.outcomeKind !== 'STATE_SCHEDULED' || Number(entry.evidence?.deferredStartRoundOffset) !== 1 ||
+            bound.has(`${entry.targetId}\u0000${entry.effectInstanceId}`) || probability <= 1e-12 || probability >= 1 - 1e-12) return entry;
+          const selected = chooseRisk(probability);
+          return { ...entry, evidence: { ...entry.evidence, applicationProbability: selected,
+            stateEntry: { ...entry.evidence.stateEntry, __previewApplicationProbability: selected } } };
+        });
+        decisionMetrics[clockBranchMetric] += 1;
+        const next = project(world, null, 1, null, reached, null, null, continuedSustains, chooseRisk);
+        let probability = path.probability; const prefix = path.choices.slice();
+        for (const chance of discovered) {
+          stack.push({ probability: probability * chance, choices: [...prefix, 1] });
+          prefix.push(0); probability *= 1 - chance;
+        }
+        if (probability > 0) branches.push({ probability, world: atWindow(next, Number(world.回合 || 0) + 1) });
+      }
+      return { branches: passiveRequest ? branches.flatMap(branch => r9v2LinearRoundPassiveFrames({ ...branch, pending: remaining }, passiveRequest)) : branches, remaining };
+    };
+    return { atWindow, settleBoundary };
+  }
+
+  function r9v2LinearChargeReplayIsClosed(unit) {
+    const charge = unit?.蓄力技能, source = charge?.skill || charge;
+    return !!charge && Array.isArray(source?._效果数组) &&
+      Number.isFinite(Number(charge.cast_time ?? charge.remainingCastTime ?? source.前摇 ?? 0)) &&
+      !preview.fusionSkillMetadata(unit, source) &&
+      !root.__LWCS_BATTLE_RUNTIME__.readStructuredContinuationGrant({ actionKind: 'RELEASE_SKILL', skill: source }) &&
+      !preview.collectEffects(source).some(effect => effect.原型 === '召唤生成');
+  }
+
+  function r9v2LinearActionSustainProfile(prior, world, action, result) {
+    if (action?.actionKind !== 'RELEASE_SKILL') return { costs: {}, stateKeys: [] };
+    const costs = preview.readSkillCostStages(action.skill, { ...action, costActor: findUnitInWorld(prior, action.actorId) }).维持;
+    if (!Object.keys(costs || {}).length) return { costs: {}, stateKeys: [] };
+    const id = action.actorId, previous = findUnitInWorld(prior, id), next = findUnitInWorld(world, id);
+    const sourceId = String(result?.actionId || action.actionId || '').trim();
+    const stateKeys = preview.projectedSustainStateKeys(previous, next, sourceId);
+    const owners = result ? preview.projectedSustainStateOwners({ ...result, actorId: id, afterSnapshot: world }, prior) : [];
+    return { costs, stateKeys, ...(sourceId ? { sourceId } : {}),
+      ...(owners.some(owner => owner.targetId !== id) ? {
+        stateTargets: owners.map(({ targetId, key }) => ({ targetId, key })),
+        actionName: action.skill?.name || action.skill?.魂技名 || '',
+      } : {}) };
+  }
+
+  function r9v2LinearActionSustains(sustains, prior, world, action, result) {
+    const profile = r9v2LinearActionSustainProfile(prior, world, action, result);
+    if (!profile.stateKeys.length && !profile.stateTargets?.length) return sustains;
+    const id = action.actorId;
+    return { ...sustains, [id]: [...(sustains?.[id] || []), profile] };
+  }
+
+  function r9v2LinearInterruptKnownCharges(world, result, deferredIds) {
+    const interrupted = new Set();
+    for (const entry of result.contributions || []) {
+      if (!deferredIds.has(entry.effectInstanceId) && entry.evidence?.marginal !== false &&
+          preview.contributionProbability(entry) > 1e-12 &&
+          ['ACTION_CANCELLED', 'STATE_CHANGED', 'NEXT_ACTION_QUALITY_CHANGED'].includes(entry.outcomeKind) &&
+          root.__LWCS_BATTLE_RUNTIME__.structuredControlConsumesActiveOpportunity({
+            状态: entry.evidence?.state, 战斗效果: entry.evidence?.combatEffect,
+          })) interrupted.add(entry.targetId);
+    }
+    if (interrupted.size) {
+      const overlay = new preview.PreviewOverlay(world, `created-charge-interruptions:${result.actionId || ''}`);
+      let changed = false;
+      for (const targetId of interrupted) {
+        if (!findUnitInWorld(world, targetId)?.蓄力技能) continue;
+        overlay.changeUnit(targetId, next => { next.蓄力技能 = null; });
+        changed = true;
+      }
+      if (changed) world = overlay.snapshot();
+    }
+    return { world, interrupted };
+  }
+
+  function r9v2LinearKnownNaturalSchedule(request, candidate, horizon, recipientId, dropInterruptedRoot = false) {
+    const interruptKnownCharges = r9v2LinearInterruptKnownCharges;
+    const resumeKnownCharge = (delivery, actorId, manufacturePending = true) => {
+      const unit = findUnitInWorld(delivery.world, actorId);
+      if (!unit || !preview.isBattleCapable(unit) || !unit.蓄力技能) return [delivery];
+      const payments = r9v2LinearCreatedResourcePaymentWorlds(delivery.world, actorId,
+        sideOf(delivery.world, unit) === sideOf(delivery.world, findUnitInWorld(delivery.world, request.actorId)));
+      if (payments.length > 1) return payments.flatMap(branch => resumeKnownCharge({ ...delivery,
+        world: branch.world, probability: delivery.probability * branch.probability }, actorId, manufacturePending));
+      for (const [stateKey, state] of Object.entries(unit.状态效果 || {})) {
+        const chance = clamp(Number(state.__previewApplicationProbability ?? 1), 0, 1);
+        if (!root.__LWCS_BATTLE_RUNTIME__.structuredControlConsumesActiveOpportunity(state) ||
+            chance <= 1e-12 || chance >= 1 - 1e-12) continue;
+        return [true, false].flatMap(present => {
+          const overlay = new preview.PreviewOverlay(delivery.world, `waiting-charge-control:${actorId}:${stateKey}`);
+          overlay.changeUnit(actorId, next => {
+            if (present) next.状态效果[stateKey] = { ...state, __previewApplicationProbability: 1 };
+            else delete next.状态效果[stateKey];
+          });
+          return resumeKnownCharge({ ...delivery, probability: delivery.probability * (present ? chance : 1 - chance),
+            world: overlay.snapshot() }, actorId, manufacturePending);
+        });
+      }
+      const charge = unit.蓄力技能, naturalBudget = horizon.naturalActionBudget;
+      const finishWindow = (world, cancelled = false) => {
+        const current = findUnitInWorld(world, actorId);
+        let finished = current && preview.isSummonUnit(current)
+          ? r9v2LinearSummonWindowWorld(world, current, Number(world.回合 || horizon.currentRound), true) : world;
+        // Cancelled control budgets are consumed by the shared boundary.
+        // Progress, release and failed original targets have already spent
+        // their turn; controls arriving later must wait for the next one.
+        if (!cancelled && findUnitInWorld(finished, actorId)?.__battleRuntime?.naturalOpportunity?.status === 'PENDING') {
+          const overlay = new preview.PreviewOverlay(finished, `waiting-charge-spent:${actorId}:${world.回合}`);
+          overlay.changeUnit(actorId, next => {
+            next.__battleRuntime.naturalOpportunity = { ...next.__battleRuntime.naturalOpportunity, status: 'CONSUMED' };
+          });
+          finished = overlay.snapshot();
+        }
+        return finished;
+      };
+      const remaining = Math.max(0, Number(charge.cast_time ?? charge.remainingCastTime ?? charge.skill?.前摇 ?? 0));
+      // An opaque hostile cast is a visible threat, not proof of an invalid
+      // private skill. Keep its ready threat until its public payload can be
+      // replayed; never fill the missing payload from hidden inventories.
+      if (remaining <= naturalBudget && sideOf(delivery.world, unit) !== sideOf(delivery.world, findUnitInWorld(delivery.world, request.actorId)) &&
+          !Array.isArray((charge.skill || charge)._效果数组)) return [{ ...delivery, world: finishWindow(delivery.world) }];
+      const overlay = new preview.PreviewOverlay(delivery.world, `waiting-charge-progress:${actorId}:${delivery.world.回合}`);
+      overlay.changeUnit(actorId, next => {
+        next.蓄力技能 = hasActionCancellation(unit) || remaining <= naturalBudget
+          ? null : { ...charge, cast_time: remaining - naturalBudget };
+      });
+      const progressedWorld = overlay.snapshot();
+      if (hasActionCancellation(unit) || remaining > naturalBudget) return [{ ...delivery,
+        world: finishWindow(progressedWorld, hasActionCancellation(unit)) }];
+      const opportunity = { role: 'ACTIVE', naturalActionBudget: naturalBudget, forcedSkill: charge.skill || charge,
+        forcedTargetIds: charge.targetIds || [], pendingNaturalActorIds: [actorId], pendingHostileActorIds: [],
+        forcedCreationRecipientId: charge.creationRecipientId || '', forcedChargeRelease: true,
+        battleHorizon: { ...horizon, currentRound: Number(delivery.world.回合 || horizon.currentRound) } };
+      // Only this already-started skill is eligible. Do not choose a new
+      // ordinary action, inventory use or hidden skill to fill the waiting time.
+      const actions = enumerateCandidates({ ...request, actorId, worldSnapshot: delivery.world, actionOpportunity: opportunity,
+        playerLockedDeclaration: null, includeUnaffordableRoutes: false }).filter(action =>
+          action.declaration?.actionKind === 'RELEASE_SKILL' && action.resourcePotentialOnly !== true);
+      if (!actions.length) return [{ ...delivery, world: finishWindow(progressedWorld) }];
+      const declaration = { ...actions[0].declaration,
+        actionId: `${candidate.candidateId}:waiting-charge:${actorId}:${delivery.world.回合}` };
+      const input = { worldSnapshot: progressedWorld, actorId, declaration, actionOpportunity: opportunity,
+        worldRevision: declaration.actionId, paymentMode: 'FORMAL', horizon: 'SHALLOW', cacheResult: false,
+        beliefState: request.beliefState || {}, battleIntent: request.battleIntent,
+        buildOperationGraph: false, __preparedDecisionWorld: isPreparedDecisionRequest(request),
+        previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT } };
+      const prepared = preview.projectConditionedAction(input), pending = delivery.pending || [];
+      const deferredIds = new Set((prepared.contributions || []).filter(entry => entry.outcomeKind === 'STATE_SCHEDULED' ||
+        entry.evidence?.persistentRiskBinding).map(entry => entry.effectInstanceId));
+      const deferredOutcomeIds = r9v2LinearDeferredOutcomeIds(prepared, deferredIds);
+      const branches = [], retain = (result, probability) => {
+        // Applying a control interrupts every still-committed cast at that
+        // effect, even if a later sibling removes it from the final snapshot.
+        // These are realized branches; scheduled trials have not happened yet.
+        const { world: interruptedWorld, interrupted } = interruptKnownCharges(result.afterSnapshot, result, deferredIds);
+        if (manufacturePending && dropInterruptedRoot && interrupted.has(request.actorId)) return 0;
+        const world = r9v2LinearNormalizeActionFrame(progressedWorld,
+          interruptedWorld === result.afterSnapshot ? result : { ...result, afterSnapshot: interruptedWorld });
+        if (probability > 0) branches.push({ ...delivery, probability: delivery.probability * probability,
+          world: finishWindow(world),
+          pending: [...pending, ...(result.contributions || [])],
+          sustains: r9v2LinearActionSustains(delivery.sustains, progressedWorld, world, declaration, result) });
+        return 0;
+      };
+      const probabilistic = preview.hasUnresolvedActionOutcomes(prepared, deferredOutcomeIds);
+      if (probabilistic) r9v2LinearExpectedCreatedPreview(input, retain, deferredOutcomeIds, { allowEquivalentCooperativeDamage: true });
+      else retain(prepared, 1);
+      return branches;
+    };
+    const scheduleKnownNatural = (delivery, beforeRecipient) => {
+      const world = delivery.world, holder = findUnitInWorld(world, recipientId);
+      if (!holder) return [delivery];
+      const round = Number(world.回合 || horizon.currentRound);
+      const compareOrder = (left, right) => {
+        const a = Number(left.__battleRuntime?.naturalOpportunity?.sequence), b = Number(right.__battleRuntime?.naturalOpportunity?.sequence);
+        return Number.isFinite(a) && Number.isFinite(b) ? a - b : preview.compareNaturalActionOrder(left, right);
+      };
+      const natural = preview.listUnits(world).map(entry => entry.unit).filter(unit => {
+        const opportunity = unit.__battleRuntime?.naturalOpportunity;
+        return unit.蓄力技能 && preview.unitId(unit) !== request.actorId && preview.unitId(unit) !== recipientId &&
+          (!preview.isSummonUnit(unit) || String(unit.行动模式 || '').trim() === '自主行动') &&
+          opportunity?.status === 'PENDING' && Number(opportunity.round) === round &&
+          (!beforeRecipient || compareOrder(unit, holder) < 0);
+      }).sort(compareOrder);
+      let active = [delivery];
+      for (const unit of natural) {
+        active = active.flatMap(branch => resumeKnownCharge(branch, preview.unitId(unit), false));
+        if (active.length > 4096) throw new Error('BATTLE_PREVIEW_PROBABILITY_BRANCH_BUDGET_EXCEEDED:known-natural');
+      }
+      return active;
+    };
+    return { interruptKnownCharges, resumeKnownCharge, scheduleKnownNatural };
+  }
+
+
+  function r9v2LinearCreatedConsumptionClock(request, candidate, worldSnapshot, recipient, actionCapacityCache = null, reachedPending = []) {
+    const recipientId = preview.unitId(recipient);
+    const productionWindow = Math.max(1, Math.floor(Number(candidate.creation.productionWindow || 1)));
+    const horizon = battleHorizonProfile(request, worldSnapshot);
+    const consumedActors = consumedNaturalActors(request, candidate.declaration);
+    const role = String(request.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase();
+    const declaredFusion = candidate.declaration?.fusionPartnerIds?.length
+      ? r9v2LinearBoundDeclaredFusion(worldSnapshot, findUnitInWorld(worldSnapshot, request.actorId), candidate.declaration, role) : null;
+    const fusion = productionWindow === 1 && declaredFusion &&
+      declaredFusion.partnerIds.every(id => consumedActors.has(id)) ? declaredFusion : null;
+    const maker = findUnitInWorld(worldSnapshot, request.actorId), held = maker?.蓄力技能;
+    const releaseTiming = productionWindow === 1 && role === 'ACTIVE' && held &&
+      skillId(held.skill || held) === skillId(candidate.declaration?.skill || {})
+        ? r9v2LinearNaturalChargeFrame(worldSnapshot, maker, horizon.naturalActionBudget, candidate.declaration) : null;
+    let releaseWorld = releaseTiming?.phase === 'READY' ? releaseTiming.world : worldSnapshot;
+    if (releaseTiming?.phase === 'READY') {
+      const source = findUnitInWorld(releaseWorld, request.actorId), opportunity = source.__battleRuntime?.naturalOpportunity;
+      const next = { ...source, __battleRuntime: { ...source.__battleRuntime,
+        naturalOpportunity: { ...opportunity, round: horizon.currentRound, status: 'CONSUMED', consumedByActionId: String(candidate.declaration.actionId || '').trim() } } };
+      preview.inheritOverlayOrigin(next, source);
+      releaseWorld = replaceWorldUnit(releaseWorld, request.actorId, next);
+    }
+    const settleReleasedRoot = productionWindow === 1 && (
+      (candidate.declaration?.skill?._效果数组 || []).some(effect => String(effect?.原型 || '').trim()) ||
+      preview.normalizeSideEffectList(candidate.declaration?.skill?.副作用列表 || []).length > 0);
+    const sharedClockCache = actionCapacityCache && (actionCapacityCache.creationConsumptionClocks ||= new WeakMap());
+    const projectedResources = preview.projectedResourceWorldState(worldSnapshot);
+    const clockKey = preview.stableHash([
+      'R9V2_CREATED_DELIVERY_CLOCK_39',
+      recipientId,
+      productionWindow,
+      candidate.costs || candidate.declaration?.resourceCosts || {},
+      request.actorId || '',
+      request.actionOpportunity || {},
+      candidate.declaration?.counterConsumesNaturalOpportunity === true,
+      horizon.currentRound,
+      horizon.finalRound,
+      horizon.remainingRounds,
+      ...(declaredFusion ? [declaredFusion.fusionKey, declaredFusion.participantIds, candidate.declaration.resourceCosts,
+        candidate.declaration.actionId || '', [...consumedActors].sort()] : []),
+      ...(productionWindow > 1 ? [candidate.declaration, candidate.creation] : []),
+      ...(settleReleasedRoot ? [candidate.declaration] : []),
+      ...(reachedPending.length ? [reachedPending] : []),
+      ...(projectedResources.length ? [projectedResources] : []),
+      ...(Object.keys(request.evaluationContext?.continuedSustains || {}).length ? [request.evaluationContext.continuedSustains] : []),
+    ]);
+    const clockCacheForWorld = sharedClockCache?.get(worldSnapshot);
+    const cachedClock = clockCacheForWorld?.get(clockKey);
+    if (cachedClock) return cachedClock;
+    const deferred = productionWindow > 1 && isNaturalSkillReleasePending({
+      ...request, visibleWorld: worldSnapshot, worldSnapshot,
+    }, candidate) ? r9v2LinearDeferredRootFrames({ ...request, visibleWorld: worldSnapshot, worldSnapshot }, candidate, true) : null;
+    if (deferred) {
+      // A release branch owns its reached world, recipe and consumption clock.
+      // Different available windows cannot be merged into an earlier free use.
+      const deliveryClocks = deferred.filter(frame => frame.released).flatMap(frame => {
+        const unit = findUnitInWorld(frame.request.visibleWorld, recipientId);
+        if (!unit || frame.candidate.creation?.recipientId !== recipientId) return [];
+        const releasedClock = r9v2LinearCreatedConsumptionClock(frame.request, frame.candidate, frame.request.visibleWorld, unit, actionCapacityCache, frame.pending);
+        const hostileOpen = request.actionOpportunity?.futureHostileResponseAllowed !== false ||
+          (request.actionOpportunity?.pendingHostileActorIds || []).length > 0;
+        // This physical baseline is conditional on unmodelled hostile actions.
+        // Retain the original bounded threat estimate, its full waiting span,
+        // and pre-release capacity: a root heal cannot protect an earlier wait.
+        // Public casts already owned by the natural schedule are not billed twice.
+        const clock = hostileOpen ? { ...releasedClock,
+          deliveryRisk: { productionWindow, capacity:
+            (preview.readHp(unit) + preview.readShield(unit)) / Math.max(1, preview.readHpMax(unit)) * 100 },
+          unsettledThreats: (branches, world) => releasedClock.unsettledThreats(branches, world, worldSnapshot),
+        } : releasedClock;
+        return [{ probability: frame.probability, request: frame.request, candidate: frame.candidate,
+          world: frame.request.visibleWorld, recipient: unit, clock }];
+      });
+      const clock = { productionWindow, horizon, deliveryClocks,
+        opportunities: productionWindow - 1 + Math.max(0, ...deliveryClocks.map(frame => frame.clock.opportunities)),
+        windows: Math.max(0, ...deliveryClocks.map(frame => frame.clock.windows)),
+        firstRound: deliveryClocks.length ? Math.min(...deliveryClocks.map(frame => frame.clock.firstRound)) : horizon.currentRound + productionWindow,
+        deliveries: deliveryClocks.flatMap(frame => frame.clock.deliveries.map(delivery => ({
+          ...delivery, probability: frame.probability * delivery.probability,
+        }))),
+      };
+      if (sharedClockCache) {
+        const bucket = clockCacheForWorld || new Map(); bucket.set(clockKey, clock);
+        if (!clockCacheForWorld) sharedClockCache.set(worldSnapshot, bucket);
+      }
+      return clock;
+    }
+    const opportunities = availableNaturalOpportunityCount(worldSnapshot, recipient, {
+      currentOpportunityConsumedFor: consumedActors, horizon,
+    });
+    const windows = Math.min(3, Math.max(0, opportunities - productionWindow + 1));
+    const settleFusionIdentity = (world, pay) => mapWorldUnits(world, unit => {
+      const id = preview.unitId(unit);
+      if (!fusion.participantIds.includes(id)) return unit;
+      const next = pay ? preview.unitAfterResourceCosts(unit, candidate.declaration.resourceCosts || {}) : { ...unit };
+      const partner = fusion.partnerIds.includes(id), opportunity = unit.__battleRuntime?.naturalOpportunity;
+      next.__battleRuntime = { ...unit.__battleRuntime,
+        fusionUsageKeys: [...new Set([...(Array.isArray(unit.__battleRuntime?.fusionUsageKeys)
+          ? unit.__battleRuntime.fusionUsageKeys : []), fusion.fusionKey].filter(Boolean))],
+        ...(partner || role === 'ACTIVE' && opportunity ? { naturalOpportunity: {
+          ...opportunity, status: partner ? 'CONSUMED_BY_FUSION' : 'CONSUMED',
+          consumedByActionId: String(candidate.declaration.actionId || '').trim(),
+          ...(partner ? { fusionKey: fusion.fusionKey } : {}),
+        } } : {}),
+      };
+      // The released caster charge is finished, while a partner's separate
+      // charge survives the fusion-spent turn and resumes next round.
+      if (!partner && role === 'ACTIVE' && unit.蓄力技能) next.蓄力技能 = null;
+      return next;
+    });
+    const paidWorld = settleReleasedRoot ? null : fusion ? settleFusionIdentity(releaseWorld, true)
+      : snapshotAfterResourceCosts(releaseWorld, request.actorId, candidate.costs || candidate.declaration?.resourceCosts || {});
+    const firstRound = horizon.currentRound + productionWindow - Number(
+      recipient.__battleRuntime?.naturalOpportunity?.status === 'PENDING' &&
+      Number(recipient.__battleRuntime.naturalOpportunity.round) === horizon.currentRound &&
+      !consumedActors.has(recipientId));
+    const { atWindow, settleBoundary } = r9v2LinearNaturalCapacityClock(horizon, recipientId, 'creationFutureClockBranchesEvaluated', request);
+    const { interruptKnownCharges, resumeKnownCharge, scheduleKnownNatural } =
+      r9v2LinearKnownNaturalSchedule(request, candidate, horizon, recipientId, productionWindow > 1);
+    const continueManufacture = delivery => {
+      if (productionWindow === 1) return [delivery];
+      const maker = findUnitInWorld(delivery.world, request.actorId);
+      if (!maker || !preview.isBattleCapable(maker) || hasActionCancellation(maker)) return [];
+      // Formal control interrupts the committed cast immediately, not just
+      // when its next natural turn arrives. A later cleanse or expiry cannot
+      // resurrect this manufacture. Retain only the control's absence branch.
+      for (const [stateKey, state] of Object.entries(maker.状态效果 || {})) {
+        const chance = clamp(Number(state.__previewApplicationProbability ?? 1), 0, 1);
+        if (!root.__LWCS_BATTLE_RUNTIME__.structuredControlConsumesActiveOpportunity(state) || chance <= 1e-12) continue;
+        if (chance >= 1 - 1e-12) return [];
+        const overlay = new preview.PreviewOverlay(delivery.world, `waiting-manufacture-control:${request.actorId}:${stateKey}`);
+        overlay.changeUnit(request.actorId, next => { delete next.状态效果[stateKey]; });
+        return continueManufacture({ ...delivery, probability: delivery.probability * (1 - chance), world: overlay.snapshot() });
+      }
+      return [delivery];
+    };
+    // Reach the first consumption window through actual known natural casts
+    // and the shared passive clock. Same-round consumers cross no boundary.
+    // Merge equal delivery worlds after each boundary, before choosing a use.
+    let deliveries = [{ probability: 1, world: paidWorld, ...(reachedPending.length ? { pending: reachedPending } : {}),
+      sustains: request.evaluationContext?.continuedSustains || {} }];
+    if (settleReleasedRoot) {
+      const input = { worldSnapshot: releaseWorld, actorId: request.actorId, declaration: candidate.declaration,
+        actionOpportunity: request.actionOpportunity, paymentMode: 'FORMAL', horizon: 'SHALLOW', cacheResult: false,
+        beliefState: request.beliefState || {}, battleIntent: request.battleIntent,
+        buildOperationGraph: false, captureDependencies: false, __preparedDecisionWorld: isPreparedDecisionRequest(request),
+        previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT } };
+      const result = preview.projectConditionedAction(input);
+      const deferredIds = new Set((result.contributions || []).filter(entry => entry.outcomeKind === 'STATE_SCHEDULED' ||
+        entry.evidence?.persistentRiskBinding).map(entry => entry.effectInstanceId));
+      const deferredOutcomeIds = r9v2LinearDeferredOutcomeIds(result, deferredIds);
+      deliveries = [];
+      const retain = (projection, probability) => {
+        if (!(probability > 0)) return 0;
+        let world = r9v2LinearNormalizeActionFrame(releaseWorld, { ...projection,
+          afterSnapshot: interruptKnownCharges(projection.afterSnapshot, projection, deferredIds).world });
+        if (fusion) world = settleFusionIdentity(world, false);
+        // Both stock counterfactuals share the real paid root effects. Remove
+        // only this new production; their existing inventory remains identical,
+        // and the finite planner adds the candidate batch exactly once later.
+        const overlay = new preview.PreviewOverlay(world, `created-root-stock-baseline:${candidate.candidateId}`);
+        overlay.changeUnit(recipientId, next => {
+          next.背包 = { ...next.背包 };
+          for (const product of candidate.creation.products || [candidate.creation]) {
+            if (Object.hasOwn(recipient.背包 || {}, product.productId)) next.背包[product.productId] = cloneValue(recipient.背包[product.productId]);
+            else delete next.背包[product.productId];
+          }
+        });
+        world = overlay.snapshot();
+        deliveries.push({ probability, world, pending: [...reachedPending, ...(projection.contributions || [])],
+          sustains: r9v2LinearActionSustains(request.evaluationContext?.continuedSustains || {}, releaseWorld, world,
+            candidate.declaration, projection) });
+        return 0;
+      };
+      if (preview.hasUnresolvedActionOutcomes(result, deferredOutcomeIds))
+        r9v2LinearExpectedCreatedPreview(input, retain, deferredOutcomeIds);
+      else retain(result, 1);
+    }
+    for (let round = horizon.currentRound; round < firstRound && deliveries.length; round++) {
+      const merged = new Map();
+      for (const delivery of deliveries) {
+        const holder = findUnitInWorld(delivery.world, recipientId);
+        if (!holder || !preview.isBattleCapable(holder)) continue;
+        const consumed = round === horizon.currentRound ? consumedActors : new Set();
+        const natural = preview.listUnits(delivery.world).map(entry => entry.unit).filter(unit => {
+          const opportunity = unit.__battleRuntime?.naturalOpportunity;
+          return preview.unitId(unit) !== request.actorId && !consumed.has(preview.unitId(unit)) &&
+            (!preview.isSummonUnit(unit) || String(unit.行动模式 || '').trim() === '自主行动') &&
+            opportunity?.status === 'PENDING' && Number(opportunity.round) === round;
+        }).sort((left, right) => {
+          const a = Number(left.__battleRuntime?.naturalOpportunity?.sequence), b = Number(right.__battleRuntime?.naturalOpportunity?.sequence);
+          return Number.isFinite(a) && Number.isFinite(b) ? a - b : preview.compareNaturalActionOrder(left, right);
+        });
+        let active = continueManufacture(delivery);
+        for (const unit of natural) active = active.flatMap(branch =>
+          resumeKnownCharge(branch, preview.unitId(unit)).flatMap(continueManufacture));
+        for (const current of active) {
+          const source = findUnitInWorld(current.world, request.actorId), pending = source?.__battleRuntime?.naturalOpportunity;
+          if (!source || productionWindow > 1 && !preview.isBattleCapable(source)) continue;
+          const currentOpportunityPending = pending?.status === 'PENDING' && Number(pending.round) === round &&
+            (round > horizon.currentRound || !consumed.has(request.actorId));
+          const settled = settleBoundary(current.world, delivery.world, current.pending || [], request.actorId, currentOpportunityPending, current.sustains);
+          for (const branch of settled.branches.flatMap(branch => continueManufacture({
+            ...branch, sustains: current.sustains, probability: current.probability * branch.probability,
+          }))) {
+            const pending = branch.pending || settled.remaining;
+            const key = JSON.stringify([branch.world, pending, branch.sustains]), probability = branch.probability;
+            const previous = merged.get(key);
+            if (previous) { previous.probability += probability; decisionMetrics.creationDeliveryStatesMerged += 1; }
+            else merged.set(key, { probability, world: branch.world, pending, sustains: branch.sustains });
+          }
+        }
+      }
+      deliveries = [...merged.values()];
+    }
+    if (windows > 0) deliveries = deliveries.flatMap(delivery => {
+      const world = atWindow(delivery.world, firstRound), holder = findUnitInWorld(world, recipientId);
+      if (!holder || !preview.isBattleCapable(holder)) return [];
+      // Manufacture is complete; earlier public natural casts still precede
+      // the recipient's first use, but cannot retroactively revoke its stock.
+      return scheduleKnownNatural({ ...delivery, world }, true)
+        .filter(branch => preview.isBattleCapable(findUnitInWorld(branch.world, recipientId)));
+    });
+    // Explicit natural casts are now owned by the real schedule, including
+    // casts not yet ready. Do not bill that same event early as an estimate.
+    // Opaque payloads, ordinary threats and distinct assist clocks remain.
+    const unsettledThreats = (branches, world, threatSourceWorld = worldSnapshot) => branches.filter(branch =>
+      !String(branch.responseId || '').startsWith('VISIBLE_CHARGE:') ||
+      !Array.isArray((findUnitInWorld(threatSourceWorld, branch.sourceActorId)?.蓄力技能?.skill ||
+        findUnitInWorld(threatSourceWorld, branch.sourceActorId)?.蓄力技能)?._效果数组) ||
+      preview.isSummonUnit(findUnitInWorld(threatSourceWorld, branch.sourceActorId)) &&
+        String(findUnitInWorld(threatSourceWorld, branch.sourceActorId)?.行动模式 || '').trim() !== '自主行动' &&
+        !!findUnitInWorld(world, branch.sourceActorId)?.蓄力技能);
+    const clock = { productionWindow, horizon, opportunities, windows, firstRound, atWindow, settleBoundary,
+      deliveries, unsettledThreats, scheduleKnownNatural, interruptKnownCharges };
+    if (sharedClockCache) {
+      const bucket = clockCacheForWorld || new Map();
+      bucket.set(clockKey, clock);
+      if (!clockCacheForWorld) sharedClockCache.set(worldSnapshot, bucket);
+    }
+    return clock;
+  }
+
+  function r9v2LinearCreatedResourceBatch(request, candidate, worldSnapshot, recipient, hostileSide, actionCapacityCache, threatProjection, deliveryClock = null) {
+    const recipientId = preview.unitId(recipient), actorSide = sideOf(worldSnapshot, recipient);
+    const clock = deliveryClock || r9v2LinearCreatedConsumptionClock(request, candidate, worldSnapshot, recipient, actionCapacityCache);
+    if (clock.deliveryClocks) return clock.deliveryClocks.reduce((expected, frame) => {
+      const result = r9v2LinearCreatedResourceBatch(frame.request, frame.candidate, frame.world, frame.recipient,
+        hostileSide, actionCapacityCache, threatProjection, frame.clock);
+      for (const field of Object.keys(expected)) expected[field] += frame.probability * result[field];
+      return expected;
+    }, { value: 0, itemUtility: 0, alternativeUtility: 0, preDeliveryRiskValue: 0, deliveryProbability: 0 });
+    const products = (candidate.creation.products || [candidate.creation]).filter(product => {
+      const effects = r9v2LinearCreatedUseEffects(product.useEffects, recipientId === request.actorId);
+      return effects.length > 0 && effects.every(effect => ['资源变化', '资源转移'].includes(String(effect?.原型 || '').trim()));
+    });
+    const { productionWindow, opportunities, windows, firstRound, atWindow, settleBoundary,
+      deliveries, unsettledThreats, scheduleKnownNatural, interruptKnownCharges } = clock;
+    const cache = new Map();
+    const resourceValue = (world, result) => {
+      const graph = result.operationGraph;
+      const resourceGraph = { ...graph, graphHash: `${graph.graphHash}:main-resources`,
+        deterministicEvents: graph.deterministicEvents.filter(event => !event.effectInstanceId.includes(':side-effect:')),
+        conditionalEvents: graph.conditionalEvents.filter(event => !event.effectInstanceId.includes(':side-effect:')) };
+      const recipients = preview.listUnits(world);
+      return preview.evaluateOperationGraph({ graph: resourceGraph, baseWorld: world }).finalStates.reduce((sum, branch) => {
+        const gain = recipients.reduce((total, { unit, side }) => {
+          const next = findUnitInWorld(branch.world, preview.unitId(unit));
+          if (!next) return total;
+          return total + (side === actorSide ? 1 : -1) * ['生命', '魂力', '精神力', '体力'].reduce((value, resource) => value +
+            (preview.readResource(next, resource) - preview.readResource(unit, resource)) / Math.max(1, preview.readResourceMax(unit, resource)) * 2, 0);
+        }, 0);
+        return sum + branch.probability * clamp(gain, -1, 1);
+      }, 0);
+    };
+    const advance = (world, prior, pending, index, firstId, consumed = false, sustains = {}) => {
+      if (index >= windows || !preview.isBattleCapable(findUnitInWorld(world, recipientId))) return 0;
+      if (!collectInventory(findUnitInWorld(world, recipientId)).some(entry => entry.quantity > 0 &&
+        products.some(product => product.productId === entry.id))) return 0;
+      const continued = scheduleKnownNatural({ world, pending, sustains, probability: 1 }, false).flatMap(current => {
+        const settled = settleBoundary(current.world, prior, current.pending || [], recipientId, !consumed, current.sustains);
+        return settled.branches.flatMap(branch => scheduleKnownNatural({ ...branch, pending: branch.pending || settled.remaining, sustains: current.sustains,
+          probability: current.probability * branch.probability }, true));
+      });
+      return continued.reduce((expected, branch) => {
+        const nextUnit = findUnitInWorld(branch.world, recipientId);
+        const survival = boundedDeliverySurvivalProbability(unsettledThreats(threatProjection.postUseBranches, branch.world), 1,
+          (preview.readHp(nextUnit) + preview.readShield(nextUnit)) / Math.max(1, preview.readHpMax(nextUnit)) * 100);
+        return expected + branch.probability * survival * plan(branch.world, branch.pending, index, firstId, branch.sustains).value;
+      }, 0);
+    };
+    const plan = (world, pending, index, firstId = '', sustains = {}) => {
+      if (index >= windows) return { value: 0, itemUtility: 0, alternativeUtility: 0 };
+      const unit = findUnitInWorld(world, recipientId);
+      if (!unit || !preview.isBattleCapable(unit)) return { value: 0, itemUtility: 0, alternativeUtility: 0 };
+      const payments = r9v2LinearCreatedResourcePaymentWorlds(world, recipientId);
+      if (payments.length > 1) return payments.reduce((sum, branch) => {
+        const result = plan(branch.world, pending, index, firstId, sustains);
+        for (const field of ['value', 'itemUtility', 'alternativeUtility']) sum[field] += branch.probability * result[field];
+        return sum;
+      }, { value: 0, itemUtility: 0, alternativeUtility: 0 });
+      const resources = preview.projectedResourceWorldState(world);
+      const key = JSON.stringify([world, pending, index, firstId, ...(resources.length ? [resources] : []), ...(Object.keys(sustains).length ? [sustains] : [])]);
+      if (cache.has(key)) { decisionMetrics.creationFutureUseStatesReused += 1; return cache.get(key); }
+      decisionMetrics.creationFutureUseStatesEvaluated += 1;
+      for (const [stateKey, state] of Object.entries(unit.状态效果 || {})) {
+        const probability = clamp(Number(state.__previewApplicationProbability ?? 1), 0, 1);
+        if (!root.__LWCS_BATTLE_RUNTIME__.structuredControlConsumesActiveOpportunity(state) || probability <= 1e-12 || probability >= 1 - 1e-12) continue;
+        const branch = present => {
+            const next = { ...unit, 状态效果: { ...unit.状态效果 } };
+          if (present) next.状态效果[stateKey] = { ...state, __previewApplicationProbability: 1 };
+          else delete next.状态效果[stateKey];
+          preview.inheritOverlayOrigin(next, unit);
+          return plan(replaceWorldUnit(world, recipientId, next), pending, index, firstId, sustains);
+        };
+        const yes = branch(true), no = branch(false), combined = Object.fromEntries(['value', 'itemUtility', 'alternativeUtility']
+          .map(field => [field, probability * yes[field] + (1 - probability) * no[field]]));
+        cache.set(key, combined); return combined;
+      }
+      const cancelled = hasActionCancellation(unit);
+      // This is a finite consumption prefix, not a free sequence of unrelated
+      // actions. A legal alternative ends the prefix; a cancelled window only
+      // spends its actual opportunity and may leave stock for the next one.
+      let best = { value: cancelled ? advance(world, world, pending, index + 1, firstId, false, sustains) : 0, itemUtility: 0, alternativeUtility: 0 };
+      if (!cancelled) {
+        const opportunityCost = Math.max(.1, clamp(r9v2LinearBestActionCapacity(world, unit, hostileSide, actionCapacityCache) / 100, 0, .95));
+        for (const product of products) {
+          if (firstId && product.productId !== firstId) continue;
+          const stock = collectInventory(unit).find(entry => entry.id === product.productId && entry.quantity > 0);
+          if (!stock || !preview.inventoryItemAvailable(stock.item, world, unit)) continue;
+          const useCandidate = { ...candidate, candidateId: `${candidate.candidateId}:window:${index}:${product.productId}`,
+            creation: { ...product, recipientId, useEffects: stock.item.使用效果 || stock.item._效果数组 || product.useEffects,
+              sideEffects: stock.item.副作用列表 || product.sideEffects, creatorId: stock.item.制作者ID || product.creatorId || request.actorId } };
+          const skill = { _效果数组: r9v2LinearCreatedUseEffects(useCandidate.creation.useEffects, recipientId === request.actorId) };
+          const profile = targetProfile(skill);
+          const targetSets = expandMixedScopePrimaryTargetSets(skill, profile,
+            enumerateTargetSets(world, unit, profile, request.beliefState || {}, skill), world, unit);
+          for (const targetIds of targetSets) {
+            const prepared = r9v2LinearCreatedUsePreview(request, useCandidate, world, unit, { cacheResult: false }, profile === 'SELF' ? null : targetIds, false);
+            const itemUtility = resourceValue(world, prepared.result);
+            const riskCost = useCandidate.creation.sideEffects?.length ? r9v2LinearCreatedPassiveRiskCost(request, useCandidate,
+              world, unit, hostileSide, actionCapacityCache, prepared, false, Math.max(0, opportunities - productionWindow - index)) : 0;
+            const continueUse = result => advance(interruptKnownCharges(result.afterSnapshot, result, deferredIds).world,
+              world, [...pending, ...(result.contributions || [])], index + 1, '', true, sustains);
+            const deferredIds = new Set(prepared.result.contributions.filter(entry =>
+              entry.outcomeKind === 'STATE_SCHEDULED' || entry.evidence?.persistentRiskBinding).map(entry => entry.effectInstanceId));
+            const deferredOutcomeIds = r9v2LinearDeferredOutcomeIds(prepared.result, deferredIds);
+            const probabilistic = preview.hasUnresolvedActionOutcomes(prepared.result, deferredOutcomeIds);
+            const future = index + 1 >= windows ? 0 : probabilistic
+              ? r9v2LinearExpectedCreatedPreview(prepared.input, continueUse, deferredOutcomeIds) : continueUse(prepared.result);
+            const value = (itemUtility - opportunityCost - riskCost) / Math.max(.05, 1 - opportunityCost) + future;
+            if (value > best.value) best = { value, itemUtility, alternativeUtility: opportunityCost };
+          }
+        }
+      }
+      cache.set(key, best); return best;
+    };
+    // The counterfactual shares paid costs, elapsed clocks and finite windows;
+    // only the added inventory differs, so old stock is not credited again.
+    return deliveries.reduce((expected, delivery) => {
+      const world = atWindow(delivery.world, firstRound);
+      const nextRecipient = findUnitInWorld(world, recipientId);
+      if (!nextRecipient || !preview.isBattleCapable(nextRecipient)) return expected;
+      const survival = boundedDeliverySurvivalProbability(unsettledThreats(threatProjection.deliveryBranches, world), clock.deliveryRisk?.productionWindow ?? productionWindow,
+        Math.min(clock.deliveryRisk?.capacity ?? Infinity,
+          (preview.readHp(nextRecipient) + preview.readShield(nextRecipient)) / Math.max(1, preview.readHpMax(nextRecipient)) * 100));
+      const without = plan(world, delivery.pending || [], 0, '', delivery.sustains);
+      const withBatch = plan(snapshotAfterCreation(world, request.actorId, candidate.creation), delivery.pending || [], 0, candidate.creation.productId, delivery.sustains);
+      for (const field of ['itemUtility', 'alternativeUtility']) expected[field] += delivery.probability * survival * withBatch[field];
+      expected.value += delivery.probability * survival * (withBatch.value - without.value);
+      expected.preDeliveryRiskValue += delivery.probability * (withBatch.value - without.value);
+      expected.deliveryProbability += delivery.probability * survival;
+      return expected;
+    }, { value: 0, itemUtility: 0, alternativeUtility: 0, preDeliveryRiskValue: 0, deliveryProbability: 0 });
+  }
+
+  function r9v2LinearCreatedReceiptOpportunity(receipt, explicitAlternative) {
+    const rawReceipt = Number.isFinite(Number(receipt)) ? Number(receipt) : 0;
+    const comparedAlternative = Math.max(0, Number.isFinite(Number(explicitAlternative)) ? Number(explicitAlternative) : 0);
+    const totalFloor = Math.max(0.1, comparedAlternative);
+    const supplementalFloor = Math.max(0, totalFloor - comparedAlternative);
+    const normalizationDenominator = Math.max(0.05, 1 - totalFloor);
+    // The counterfactual plan compares this use against the explicit action
+    // once more. Restore that already-measured amount after normalization so
+    // the minimum opportunity floor is charged only for its uncovered portion.
+    return Object.freeze({
+      supplementalFloor,
+      normalizationDenominator,
+      value: (rawReceipt - totalFloor) / normalizationDenominator + comparedAlternative,
+    });
+  }
+
+  function r9v2LinearNaturalChargeFrame(world, unit, naturalBudget, declaration = null, sourceActionId = '') {
+    const charge = unit.蓄力技能 && typeof unit.蓄力技能 === 'object' ? unit.蓄力技能 : null;
+    const remaining = charge ? Math.max(0, Number(charge.cast_time ?? charge.remainingCastTime ?? charge.skill?.前摇 ?? 0)) : 0;
+    const castTime = Math.max(0, Number(declaration?.skill?.前摇 ?? declaration?.skill?.cast_time ?? 0));
+    const phase = charge ? hasActionCancellation(unit) ? 'CANCEL' : remaining > naturalBudget ? 'PROGRESS' : 'READY'
+      : declaration?.actionKind === 'RELEASE_SKILL' && castTime > naturalBudget ? 'START' : 'ACTION';
+    if (phase === 'ACTION') return { phase, world, charge };
+    const nextCharge = phase === 'PROGRESS' ? { ...charge, cast_time: remaining - naturalBudget }
+      : phase === 'START' ? { skill: cloneValue(declaration.skill), cast_time: castTime - naturalBudget,
+          targetIds: [...(declaration.targetIds || [])],
+          ...(declaration.creationRecipientId ? { creationRecipientId: declaration.creationRecipientId } : {}),
+          sourceActionId: String(sourceActionId || declaration.actionId || '').trim() } : null;
+    const next = { ...unit, 蓄力技能: nextCharge };
+    preview.inheritOverlayOrigin(next, unit);
+    return { phase, world: replaceWorldUnit(world, preview.unitId(unit), next), charge };
+  }
+
+  function isNaturalSkillReleasePending(request, candidate) {
+    const world = request.visibleWorld || request.worldSnapshot, declaration = candidate?.declaration || {};
+    const actor = findUnitInWorld(world, request.actorId), held = actor?.蓄力技能;
+    if (!actor || declaration.actorId !== request.actorId || String(request.actionOpportunity?.role || 'ACTIVE').toUpperCase() !== 'ACTIVE' ||
+        declaration.actionKind !== 'RELEASE_SKILL') return false;
+    if (held && (skillId(held.skill || held) !== skillId(declaration.skill || {}) ||
+        !Array.isArray(held.targetIds) || !Array.isArray(declaration.targetIds) ||
+        held.targetIds.length !== declaration.targetIds.length || !held.targetIds.every((id, index) => id === declaration.targetIds[index]))) return false;
+    const creationRecipientId = String(declaration.creationRecipientId || '').trim();
+    if (candidate.creation && (!creationRecipientId || String(candidate.creation.recipientId || '').trim() !== creationRecipientId ||
+        held && String(held.creationRecipientId || '').trim() !== creationRecipientId)) return false;
+    const budget = battleHorizonProfile(request, world).naturalActionBudget;
+    if (!['START', 'PROGRESS'].includes(r9v2LinearNaturalChargeFrame(world, actor, budget, declaration).phase)) return false;
+    if (declaration.fusionParticipantIds !== undefined || declaration.fusionPartnerIds !== undefined ||
+        declaration.fusionKey !== undefined || declaration.fusionUsageMode !== undefined) {
+      if (!r9v2LinearBoundDeclaredFusion(world, actor, declaration, 'ACTIVE')) return false;
+    }
+    return true;
+  }
+
+  function r9v2LinearDeferredRootFrames(request, candidate, retainHostileEstimates = false) {
+    const before = request.visibleWorld || request.worldSnapshot, declaration = candidate.declaration || {};
+    const opportunity = request.actionOpportunity || {}, actor = findUnitInWorld(before, request.actorId);
+    const charge = actor?.蓄力技能, source = charge?.skill || declaration.skill;
+    const budget = Math.max(1, Number(opportunity.battleHorizon?.naturalActionBudget ?? opportunity.naturalActionBudget ?? 40));
+    const remaining = Math.max(0, Number(charge?.cast_time ?? charge?.remainingCastTime ?? source?.前摇 ?? source?.cast_time ?? 0));
+    if (declaration.actionKind !== 'RELEASE_SKILL' || candidate.creation &&
+        !isNaturalSkillReleasePending(request, candidate) || !Number.isFinite(budget) ||
+        !Number.isFinite(remaining) || remaining <= budget ||
+        !actor || !preview.isBattleCapable(actor) || hasActionCancellation(actor) ||
+        String(opportunity.role || 'ACTIVE').toUpperCase() !== 'ACTIVE' || !Array.isArray(source?._效果数组) ||
+        (!(retainHostileEstimates && candidate.creation) &&
+          (opportunity.futureHostileResponseAllowed !== false || (opportunity.pendingHostileActorIds || []).length)) ||
+        root.__LWCS_BATTLE_RUNTIME__.readStructuredContinuationGrant(declaration) ||
+        preview.collectEffects(source).some(effect => effect.原型 === '召唤生成') ||
+        worldEntries(before).some(({ unit }) => preview.isSummonUnit(unit) || !r9v2LinearPassiveCalendarIsClosed(unit) ||
+          unit.蓄力技能 && preview.unitId(unit) !== request.actorId && !r9v2LinearChargeReplayIsClosed(unit))) return null;
+    if ((preview.fusionSkillMetadata(actor, source) || declaration.fusionParticipantIds !== undefined ||
+        declaration.fusionPartnerIds !== undefined || declaration.fusionKey !== undefined || declaration.fusionUsageMode !== undefined) &&
+        !r9v2LinearBoundDeclaredFusion(before, actor, declaration, 'ACTIVE')) return null;
+    if (charge && (skillId(source) !== skillId(declaration.skill || {}) || !Array.isArray(charge.targetIds) ||
+        charge.targetIds.length !== declaration.targetIds?.length || !charge.targetIds.every((id, index) => id === declaration.targetIds[index]))) return null;
+    const horizon = battleHorizonProfile(request, before);
+    if (!Number.isSafeInteger(horizon.finalRound) || horizon.finalRound < horizon.currentRound ||
+        r9v2LinearResourceWindowCount(request, actor, horizon.finalRound - horizon.currentRound) !== horizon.finalRound - horizon.currentRound) return null;
+    const boundary = r9v2LinearNaturalCapacityClock(horizon, request.actorId, 'r9v2DeferredRootClockBranchesEvaluated', request);
+    const knownOthers = worldEntries(before).some(({ unit }) => unit.蓄力技能 && preview.unitId(unit) !== request.actorId)
+      ? r9v2LinearKnownNaturalSchedule(request, candidate, horizon, request.actorId) : null;
+    const prepareFusionOrder = branch => {
+      if (!declaration.fusionPartnerIds?.length) return [branch];
+      for (const { unit } of preview.listUnits(branch.world)) for (const [key, state] of Object.entries(unit.状态效果 || {})) {
+        const effects = state.战斗效果 || state.计算层效果 || {}, chance = clamp(Number(state.__previewApplicationProbability ?? 1), 0, 1);
+        const affectsOrder = Number(effects.cast_speed_bonus || 0) || Number(effects.cast_speed_penalty || 0) ||
+          Number(state.面板修改比例?.agi ?? 1) !== 1 || Number(state.面板固定修正?.agi || 0) ||
+          state.属性快照?.agi !== undefined || state.属性快照?.敏捷 !== undefined;
+        if (!affectsOrder || chance >= 1 - 1e-12) continue;
+        const applicationId = String(state.__状态来源窗口?.[0] || state.__状态来源键 || '').trim();
+        const results = [false, true].flatMap(present => {
+          const probability = branch.probability * (present ? chance : 1 - chance);
+          if (!(probability > 0)) return [];
+          const overlay = new preview.PreviewOverlay(branch.world, `fusion-order:${preview.unitId(unit)}:${key}:${present}`);
+          for (const { unit: holder } of preview.listUnits(branch.world)) for (const [stateKey, condition] of Object.entries(holder.状态效果 || {})) {
+            if (applicationId ? String(condition.__状态来源窗口?.[0] || condition.__状态来源键 || '').trim() !== applicationId
+              : preview.unitId(holder) !== preview.unitId(unit) || stateKey !== key) continue;
+            if (Math.abs(clamp(Number(condition.__previewApplicationProbability ?? 1), 0, 1) - chance) > 1e-12)
+              throw new Error('R9V2_NATURAL_ORDER_APPLICATION_CONFLICT');
+            overlay.changeUnit(preview.unitId(holder), next => {
+              if (present) next.状态效果[stateKey] = { ...condition, __previewApplicationProbability: 1 };
+              else delete next.状态效果[stateKey];
+              next.final = root.__LWCS_BATTLE_RUNTIME__.buildCombatFinalStats(next, Number(branch.world.当前世界tick || 0));
+            });
+          }
+          return prepareFusionOrder({ ...branch, probability, world: overlay.snapshot() });
+        });
+        if (results.length > 4096) throw new Error('R9V2_DEFERRED_ROOT_STATE_LIMIT');
+        return results;
+      }
+      // The Native queue is frozen before earlier actions can change speed.
+      // Stable ties follow its actual participant order, not sorted identifiers.
+      const queue = root.__LWCS_BATTLE_RUNTIME__.buildActionQueue(branch.world).map(entry => preview.unitId(entry.char));
+      const actorIndex = queue.indexOf(request.actorId), sequence = new Map(queue.map((id, index) => [id, index + 1]));
+      const pastPartners = new Set((actorIndex < 0 ? [] : queue.slice(0, actorIndex)).filter(id => declaration.fusionPartnerIds.includes(id)));
+      const world = mapWorldUnits(branch.world, unit => {
+        const id = preview.unitId(unit), natural = unit.__battleRuntime?.naturalOpportunity;
+        if (!sequence.has(id) || !natural || Number(natural.round) !== Number(branch.world.回合)) return unit;
+        const next = { ...unit, __battleRuntime: { ...unit.__battleRuntime,
+          naturalOpportunity: { ...natural, sequence: sequence.get(id) } } };
+        preview.inheritOverlayOrigin(next, unit); return next;
+      });
+      return [{ ...branch, world, pastPartners }];
+    };
+    const spent = world => {
+      const unit = findUnitInWorld(world, request.actorId), next = { ...unit, __battleRuntime: { ...unit.__battleRuntime,
+        naturalOpportunity: { ...unit.__battleRuntime?.naturalOpportunity, status: 'CONSUMED' } } };
+      preview.inheritOverlayOrigin(next, unit); return replaceWorldUnit(world, request.actorId, next);
+    };
+    const start = r9v2LinearNaturalChargeFrame(before, actor, budget, declaration, r9v2LinearCanonicalActionId(candidate));
+    let active = [{ probability: 1, prior: before, world: spent(start.world), pending: [],
+      sustains: request.evaluationContext?.continuedSustains || {} }];
+    const frames = [];
+    while (active.length) {
+      const next = [];
+      for (const entry of active) {
+        if (Number(entry.world.回合) >= horizon.finalRound) { frames.push({ probability: entry.probability, released: false }); continue; }
+        const continued = knownOthers ? knownOthers.scheduleKnownNatural(entry, false) : [entry];
+        for (const reached of continued) {
+          const ended = boundary.settleBoundary(reached.world, entry.prior, reached.pending || [], request.actorId, false, reached.sustains);
+          const ordered = ended.branches.flatMap(branch => prepareFusionOrder({ ...branch,
+            pending: branch.pending || ended.remaining, sustains: reached.sustains, probability: reached.probability * branch.probability }));
+          const branches = knownOthers ? ordered.flatMap(branch => knownOthers.scheduleKnownNatural(branch, true)) : ordered;
+          for (const branch of branches) {
+            let world = branch.world;
+            const unit = findUnitInWorld(world, request.actorId), current = unit?.蓄力技能;
+            // The forecast advances physical state, not observed history. Keep
+            // only the original read-only past ledger; do not invent future PAYs.
+            if (Array.isArray(before.__battleEventLedger)) Object.defineProperty(world, '__battleEventLedger', {
+              configurable: true, enumerable: false, value: Object.freeze([...before.__battleEventLedger]) });
+            const probability = branch.probability;
+            if (!unit || !preview.isBattleCapable(unit) || !current || hasActionCancellation(unit)) {
+              frames.push({ probability, released: false }); continue;
+            }
+            const timing = r9v2LinearNaturalChargeFrame(world, unit, budget);
+            if (timing.phase === 'PROGRESS') { next.push({ probability, prior: world, world: spent(timing.world), pending: branch.pending, sustains: branch.sustains }); continue; }
+            if (branch.pastPartners?.size) world = mapWorldUnits(world, holder => {
+              const natural = holder.__battleRuntime?.naturalOpportunity;
+              if (!branch.pastPartners.has(preview.unitId(holder)) || natural?.status !== 'PENDING') return holder;
+              // Only the elapsed budget is known. Do not invent an ordinary
+              // attack, control outcome, source event or observed payment.
+              const next = { ...holder, __battleRuntime: { ...holder.__battleRuntime,
+                naturalOpportunity: { ...natural, status: 'CONSUMED', consumedByActionId: '' } } };
+              preview.inheritOverlayOrigin(next, holder); return next;
+            });
+            const round = Number(world.回合), opportunityId = `${opportunity.opportunityId || candidate.candidateId}:release:${round}`;
+            const actionOpportunity = { ...opportunity, role: 'ACTIVE', round, opportunityId,
+              forcedSkill: current.skill || current, forcedTargetIds: current.targetIds || [], forcedChargeRelease: true,
+              forcedCreationRecipientId: current.creationRecipientId || '', pendingNaturalActorIds: [request.actorId],
+              pendingHostileActorIds: retainHostileEstimates ? [...(opportunity.pendingHostileActorIds || [])] : [],
+              battleHorizon: { ...horizon, currentRound: round } };
+            const future = { ...request, worldSnapshot: world, visibleWorld: world, actionOpportunity,
+              evaluationContext: { ...request.evaluationContext,
+                ...(Object.keys(branch.sustains || {}).length ? { continuedSustains: branch.sustains } : {}),
+                opportunitySnapshot: r8OpportunityList(request).map(record => String(record.ownerId || '').trim() === request.actorId
+                  ? { ...record, status: 'CONSUMED' } : knownOthers && record.grantType === 'NATURAL_ACTION' && record.role === 'ACTIVE' && record.opportunityId &&
+                    record.opportunityId === findUnitInWorld(before, record.ownerId)?.__battleRuntime?.naturalOpportunity?.opportunityId
+                      ? { ...record, status: 'EXPIRED' } : record),
+                scheduledEvents: (request.evaluationContext?.scheduledEvents || []).filter(record =>
+                  String(record.ownerId || record.targetId || '').trim() !== request.actorId || Number(record.round ?? record.scheduledRound) > round) } };
+            const forced = enumerateCandidates({ ...future, includeUnaffordableRoutes: false, playerLockedDeclaration: null })
+              .find(row => row.declaration?.actionKind === 'RELEASE_SKILL' && row.resourcePotentialOnly !== true);
+            if (!forced) { frames.push({ probability, released: false }); continue; }
+            frames.push({ probability, released: true, request: future, pending: branch.pending, candidate: { ...candidate, costs: forced.costs,
+              ...(candidate.creation ? { creation: forced.creation } : {}), declaration: { ...forced.declaration,
+              actionId: r9v2LinearCanonicalActionId(candidate) }, declarationFingerprint: null },
+              clearedWorld: world === branch.world ? timing.world : replaceWorldUnit(world, request.actorId, findUnitInWorld(timing.world, request.actorId)) });
+          }
+        }
+      }
+      if (next.length + frames.length > 4096) throw new Error('R9V2_DEFERRED_ROOT_STATE_LIMIT');
+      active = next;
+    }
+    return frames;
+  }
+
+  function r9v2LinearShieldThreatPackets(branch, world, target) {
+    const threat = Math.max(0, Number(branch?.threat || 0), Number(branch?.rawThreat || 0));
+    const source = findUnitInWorld(world, String(branch?.sourceActorId || '').trim()) || {};
+    const action = branch?.incomingAction;
+    if (!action) return [{ threat, effect: {}, source }];
+    const skill = action.skill || action.raw_skill || action;
+    const effects = Array.isArray(skill._效果数组) && skill._效果数组.length ? preview.collectEffects(skill)
+      : [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击' }];
+    const targetCount = Math.max(1, Number(action.targetCount ?? action.declaration?.targetIds?.length ?? action.targetIds?.length ?? 1));
+    const packets = effects.filter(effect => effect.原型 === '伤害结算' && String(effect.目标 || '') !== '自身').map(effect => ({
+      effect, source, threat: preview.calculateBaseDamage(effect, source, target, null, {
+        targetCount, resourceDriveEnabled: Array.isArray(skill._效果数组) && skill._效果数组.length > 0,
+      }) * preview.estimateHitProbability(source, target, effect) / Math.max(1, preview.readHpMax(target)) * 100,
+    }));
+    const damageThreat = packets.reduce((sum, packet) => sum + packet.threat, 0);
+    const scale = damageThreat > 0 ? Math.min(1, threat / damageThreat) : 0;
+    // Public damage packets keep their own level and physical order. Do not
+    // turn a known control-only threat into shield-absorbable HP damage, or
+    // inflate the original conditional threat envelope while resolving gates.
+    return packets.flatMap(packet => {
+      const segments = Math.max(1, Math.floor(Number(packet.effect.攻击段数 ?? packet.effect.段数 ?? 1)) || 1);
+      return Array.from({ length: segments }, () => ({ ...packet, threat: packet.threat * scale / segments }));
+    });
+  }
+
+  function r9v2LinearExpectedShieldAbsorption(unit, baselineUnit, windows, events, maximumHp, initialEvents = events, eventsAtWindow = null) {
+    decisionMetrics.creationShieldProtectionCalls += 1;
+    const pools = Object.entries(unit.状态效果 || {}).filter(([, state]) => Number(state?.shield_value) > 0)
+      .map(([key, state]) => ({ key, state, capacity: Number(state.shield_value) / maximumHp * 100,
+        fresh: state.__本回合新附加 === true || key.startsWith('preview:') && !Object.hasOwn(baselineUnit.状态效果 || {}, key) }));
+    const statePoolCount = pools.length;
+    const scalar = Math.max(0, Number(unit.shield ?? unit.护盾 ?? unit.护盾值 ?? 0)) / maximumHp * 100;
+    if (scalar > 0) pools.push({ key: '', state: null, capacity: scalar, fresh: false });
+    if (!pools.length || !(windows > 0)) return 0;
+    const bucketCount = 512;
+    const remaining = (pool, consumed) => consumed === bucketCount ? 0 : pool.capacity - consumed * pool.capacity / bucketCount;
+    const eventProbabilities = list => list.map(event => {
+      const mass = event.outcomes.reduce((sum, branch) => sum + branch.probability, 0), scale = mass > 1 ? 1 / mass : 1;
+      return [{ probability: Math.max(0, 1 - mass), threat: 0 },
+        ...event.outcomes.map(branch => ({ probability: branch.probability * scale, threat: branch.threat, packets: branch.packets }))]
+        .filter(branch => branch.probability > 0);
+    });
+    const probabilities = eventProbabilities(events);
+    const initialProbabilities = initialEvents === events ? probabilities : eventProbabilities(initialEvents);
+    let states = new Map([['INITIAL', { consumed: pools.map(() => 0), probability: 1 }]]), absorbed = 0;
+    const add = (map, consumed, probability) => {
+      if (!(probability > 0)) return;
+      const key = consumed.join(','), previous = map.get(key);
+      if (previous) previous.probability += probability;
+      else map.set(key, { consumed, probability });
+      decisionMetrics.creationShieldProtectionMaxStates = Math.max(decisionMetrics.creationShieldProtectionMaxStates, map.size);
+    };
+    for (let window = 0; window < windows; window++) {
+      // Reachability belongs to the existing passive clock. Expired unused
+      // shields disappear from the state, but are never counted as absorption.
+      const live = pools.slice(0, statePoolCount).map((pool, index) => ({ pool, index }))
+        .filter(({ pool }) => window === 0 || !r9v2LinearPassiveStateExpires(pool.key, pool.state, window, baselineUnit, true, null, true, 0, true));
+      const liveIndices = new Set(live.map(({ index }) => index)), reached = new Map();
+      for (const state of states.values()) {
+        const consumed = state.consumed.map((value, index) => index < statePoolCount && !liveIndices.has(index) ? bucketCount : value);
+        add(reached, consumed, state.probability);
+      }
+      states = reached;
+      const duration = pool => typeof pool.state.duration === 'number'
+        ? Math.max(0, pool.state.duration - Math.max(0, window - Number(pool.fresh)))
+        : Math.max(0, Number(pool.state.持续回合 || 0));
+      live.sort((a, b) => duration(a.pool) - duration(b.pool) || (a.pool.key < b.pool.key ? -1 : a.pool.key > b.pool.key ? 1 : 0));
+      if ([...states.values()].every(state => state.consumed.every(value => value === bucketCount))) break;
+      for (const outcomes of eventsAtWindow ? eventProbabilities(eventsAtWindow(window)) : window === 0 ? initialProbabilities : probabilities) {
+        const next = new Map();
+        for (const state of states.values()) {
+          decisionMetrics.creationShieldProtectionStatesEvaluated += 1;
+          for (const outcome of outcomes) {
+            const probability = state.probability * outcome.probability;
+            let value = 0, consumed = state.consumed;
+            for (const packet of outcome.packets || [{ threat: outcome.threat, effect: {}, source: {} }]) {
+              let threat = packet.threat;
+              const active = live.filter(({ pool, index }) => consumed[index] < bucketCount &&
+                root.__LWCS_BATTLE_RUNTIME__.shieldGateAllowsIncoming(pool.state, packet.effect, packet.source));
+              // Native falls back only when this particular incoming segment
+              // has no eligible positive state pool, never midway through it.
+              if (!active.length && pools.length > statePoolCount && consumed[statePoolCount] < bucketCount)
+                active.push({ pool: pools[statePoolCount], index: statePoolCount });
+              if (!(threat > 0) || !active.length) continue;
+              if (consumed === state.consumed) consumed = [...consumed];
+              for (const { pool, index } of active) {
+                if (!(threat > 0)) break;
+                const available = remaining(pool, consumed[index]), take = Math.min(available, threat);
+                const used = consumed[index] * pool.capacity / bucketCount + take;
+                const bucket = used >= pool.capacity ? bucketCount : Math.max(consumed[index], Math.floor(used / (pool.capacity / bucketCount)));
+                value += available - remaining(pool, bucket);
+                consumed[index] = bucket; threat -= take;
+              }
+            }
+            absorbed += probability * value;
+            add(next, consumed, probability);
+          }
+        }
+        states = next;
+      }
+    }
+    return absorbed;
+  }
+
+  function r9v2LinearCurrentNaturalIds(request, world, assumeUnknownPending = true) {
+    const declared = request.actionOpportunity?.pendingNaturalActorIds;
+    if (Array.isArray(declared)) return new Set(declared);
+    const snapshot = request.evaluationContext?.opportunitySnapshot ?? request.runtimeSnapshot?.opportunitySnapshot ?? request.opportunitySnapshot;
+    const records = Array.isArray(snapshot) ? snapshot : Array.isArray(snapshot?.opportunities) ? snapshot.opportunities : null;
+    if (records) return new Set(records.filter(record => record?.role === 'ACTIVE' && record.grantType === 'NATURAL_ACTION' &&
+      record.status === 'PENDING').map(record => String(record.ownerId || '').trim()).filter(Boolean));
+    // Only already-visible schedules are read. A private opponent runtime is
+    // not a fallback for missing public facts; no schedule retains the original
+    // ordinary-pressure estimate, while an actual record owns its round/status.
+    return new Set(preview.listUnits(world).filter(({ unit }) => {
+      const natural = unit.__battleRuntime?.naturalOpportunity;
+      return !natural ? assumeUnknownPending : natural.status === 'PENDING' && Number(natural.round) === Number(world.回合 || 0);
+    }).map(({ unit }) => preview.unitId(unit)));
+  }
+
+  function r9v2LinearOrdinaryShieldProtection(request, world, unit, next, sources, sourceSide, recentAttackLedgerIndex, options = {}) {
+    if (searchBudget.shortCircuit) return 0;
+    if (!(preview.readShield(unit) > 0 || preview.readShield(next) > 0)) return 0;
+    const maximumHp = Math.max(1, preview.readHpMax(unit));
+    const basic = { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 };
+    const pressureWorld = options.worldSnapshot || world;
+    const pressureTarget = (options.worldSnapshot && findUnitInWorld(pressureWorld, preview.unitId(next))) || next;
+    const pressureOptions = options.pressureOptionsForWorld?.(pressureWorld) || {};
+    const advanceWorld = pressureOptions.advanceWorld;
+    const frames = [pressureWorld], eventWaves = [];
+    const eventsForWindow = window => {
+      if (eventWaves[window]) return eventWaves[window];
+      if (advanceWorld) while (frames.length <= window) frames.push(advanceWorld(frames.at(-1), frames.length));
+      const frame = frames[window] || pressureWorld;
+      const target = advanceWorld ? findUnitInWorld(frame, preview.unitId(next)) || pressureTarget : pressureTarget;
+      decisionMetrics.ordinaryShieldPressureWindowsBuilt += 1;
+      return eventWaves[window] = sources.map(source => options.worldSnapshot || advanceWorld
+        ? findUnitInWorld(frame, preview.unitId(source)) : source)
+        .filter(source => source && preview.isBattleCapable(source) && !hasActionCancellation(source))
+        .sort(preview.compareNaturalActionOrder).map(source => {
+          let damage = preview.calculateBaseDamage(basic, source, target, null, { resourceDriveEnabled: false });
+          let probability = preview.estimateHitProbability(source, target, basic) *
+            r9v2LinearRecentAttackPropensity(pressureOptions.pressureObservationWorld?.(window) || frame, source, sourceSide, recentAttackLedgerIndex);
+          const defense = preview.calculateDefenseDamageMultiplier(target, source, false);
+          const dodge = preview.calculateDodgeProbability(target, source, false);
+          // Preserve the ordinary threat model's response choice and occurrence
+          // probability, but a dodge is not fractional damage on every shield hit.
+          if (1 - dodge < defense) probability *= 1 - dodge;
+          else damage *= defense;
+          return { key: preview.unitId(source), outcomes: [{ probability: clamp(probability, 0, 1),
+            threat: 0, packets: [{ threat: Math.max(0, Math.round(damage)) / maximumHp * 100, effect: basic, source }] }] };
+        });
+    };
+    const events = eventsForWindow(0);
+    const pending = r9v2LinearCurrentNaturalIds(request, world);
+    const initialEvents = events.filter(event => pending.has(event.key));
+    const windows = Math.min(3, battleHorizonProfile(request, world).remainingRounds + 1);
+    // The numeric pressure clock is shared by the two reserve counterfactuals.
+    // It supplies packets only: each absorption branch keeps its own existing
+    // consumed-pool vector, gate, order and expiry rather than refilling pools
+    // from an undamaged passive frame at the next numeric boundary.
+    const eventsAtWindow = advanceWorld ? window => window === 0 ? initialEvents : eventsForWindow(window) : null;
+    const waves = Array.from({ length: windows }, (_, index) => index === 0 ? initialEvents : eventsForWindow(advanceWorld ? index : 0));
+    const worstIncoming = waves.flatMap(wave => wave.flatMap(event => event.outcomes.map(outcome =>
+      (outcome.packets || []).reduce((sum, packet) => sum + packet.threat * maximumHp / 100, 0))));
+    const minimumHp = preview.readHp(pressureTarget) - worstIncoming.reduce((sum, damage) => sum + damage, 0);
+    const complex = preview.ruleBlockCount(pressureTarget) > 0 || preview.deathSaveCount(pressureTarget) > 0 || preview.hasDamageRevival(pressureTarget, true) ||
+      preview.listUnits(pressureWorld).some(({ unit: holder }) => Object.keys(holder.持续效果 || {}).length || Object.values(holder.状态效果 || {}).some(state =>
+        state.延迟效果 || state.持续原型效果 || state.原型 === '资源变化' || state.副作用列表?.length ||
+        state.dot_damage || state.dot_damage_ratio || state.计算层效果?.dot_damage_ratio || state.hot_heal_ratio || state.resource_tick_resource ||
+        ['dot_damage', 'dot_damage_ratio', 'hot_heal_ratio', 'resource_tick_resource', 'vit_gain_ratio', 'sp_gain_ratio', 'men_gain_ratio']
+          .some(field => state.战斗效果?.[field])));
+    if (!complex && preview.isBattleCapable(pressureTarget) && minimumHp > preview.calculateNonlethalHpFloor(pressureWorld, pressureTarget) &&
+      !worstIncoming.some(damage => preview.shouldTriggerTraumaUnconscious(damage, minimumHp, preview.readHpMax(pressureTarget)))) {
+      decisionMetrics.ordinaryShieldSafeBounds += 1;
+    } else {
+      // The vector-only fast path cannot keep spending a dead holder's pool.
+      // Reuse the existing real HP/rule/revival settlement when incapacity is
+      // reachable or a passive boundary makes the simple HP bound uncertain.
+      const targetId = preview.unitId(next), actualWorld = options.worldSnapshot || replaceWorldUnit(world, targetId, next);
+      const counter = cloneValue(next);
+      for (const [key, state] of Object.entries(counter.状态效果 || {})) if (Number(state.shield_value) > 0) delete counter.状态效果[key];
+      for (const [key, state] of Object.entries(unit.状态效果 || {})) if (Number(state.shield_value) > 0) counter.状态效果[key] = cloneValue(state);
+      const scalar = Math.max(0, Number(unit.shield ?? unit.护盾 ?? unit.护盾值 ?? 0));
+      counter.shield = scalar; counter.护盾 = scalar;
+      if (Object.hasOwn(counter, '护盾值')) counter.护盾值 = scalar;
+      const counterWorld = replaceWorldUnit(actualWorld, targetId, counter);
+      const absorption = (frame, target) => {
+        if (!(preview.readShield(target) > 0)) return 0;
+        const pools = Object.entries(target.状态效果 || {}).filter(([, state]) => Number(state.shield_value) > 0)
+          .map(([key, state]) => ({ key, capacity: Number(state.shield_value) / maximumHp * 100 }));
+        const direct = Math.max(0, Number(target.shield ?? target.护盾 ?? target.护盾值 ?? 0));
+        if (direct > 0) pools.push({ key: '', capacity: direct / maximumHp * 100 });
+        const quantizeShield = (prior, after) => pools.reduce((total, { key, capacity }) => {
+          const read = holder => key ? Number(holder.状态效果?.[key]?.shield_value || 0) : Number(holder.shield ?? holder.护盾 ?? holder.护盾值 ?? 0);
+          const before = read(prior) / maximumHp * 100, current = read(after) / maximumHp * 100;
+          if (!(current < before)) return total;
+          const width = capacity / 512;
+          const used = current <= 0 ? before : Math.floor((before - current) / width) * width;
+          const remaining = Math.max(0, before - used) * maximumHp / 100;
+          if (key && prior.状态效果?.[key] && remaining > 0) (after.状态效果 ||= {})[key] = { ...cloneValue(prior.状态效果[key]), shield_value: remaining };
+          else if (!key) { after.shield = remaining; after.护盾 = remaining; if (Object.hasOwn(after, '护盾值')) after.护盾值 = remaining; }
+          return total + Math.max(0, before - remaining / maximumHp * 100) * maximumHp / 100;
+        }, 0);
+        const forced = options.pressureOptionsForWorld?.(frame, true);
+        const project = forced?.advanceWorld ? null : r9v2JointFlowProjector(world, request.actorId,
+          { costs: {}, stateKeys: [], currentOpportunityPending: false, pendingNaturalActorIds: [...pending] });
+        const clock = forced?.advanceWorld ? forced : { advanceWorld: (previous, offset) => ({
+          ...project(frame, null, offset, null, [], null, previous), 回合: Number(frame.回合 || 0) + offset,
+        }), advanceWorldOutcomes: (previous, offset) => project.outcomes(frame, offset, [], previous).map(row => ({
+          probability: row.probability, world: { ...row.world, 回合: Number(frame.回合 || 0) + offset },
+        })) };
+        const sourceWaves = waves.map(wave => wave.map(event => findUnitInWorld(frame, event.key)).filter(Boolean));
+        return r9v2LinearRoutineIncapacityRisk(frame, sourceWaves[0], target, sourceSide, recentAttackLedgerIndex,
+          { ...clock, sourceWaves, returnProfile: true, routineResponse: true, quantizeShield,
+            sourceEligibility: source => !hasActionCancellation(source),
+            pressureObservationWorld: index => clock.pressureObservationWorld?.(index) || frames[advanceWorld ? index : 0] || pressureWorld,
+          }).shieldAbsorption * preview.readHpMax(target) / maximumHp;
+      };
+      return absorption(actualWorld, next) - absorption(counterWorld, counter);
+    }
+    // Compare the actual whole reserve on both sides: its gate, first-round
+    // allowance and old-pool expiry belong to the Native carrier, not the
+    // authored parent effect. Elapsed current slots still advance that clock.
+    return (r9v2LinearExpectedShieldAbsorption(next, unit, windows, events, maximumHp, initialEvents, eventsAtWindow) -
+      r9v2LinearExpectedShieldAbsorption(unit, unit, windows, events, maximumHp, initialEvents, eventsAtWindow)) / 100;
+  }
+
+  function r9v2LinearCreatedFiniteBatch(request, candidate, worldSnapshot, recipient, hostileSide, actionCapacityCache, threatProjection, clock) {
+    if (clock.deliveryClocks) {
+      const expected = { value: 0, itemUtility: 0, alternativeUtility: 0, deliveryProbability: 0,
+        resourceRemovalCompanionsInert: clock.deliveryClocks.length > 0, resourceReferenceDomainCompatible: clock.deliveryClocks.length > 0,
+        finiteHostileActionAlternative: 0 };
+      for (const frame of clock.deliveryClocks) {
+        const result = r9v2LinearCreatedFiniteBatch(frame.request, frame.candidate, frame.world, frame.recipient,
+          hostileSide, actionCapacityCache, threatProjection, frame.clock);
+        for (const field of ['value','itemUtility','alternativeUtility','deliveryProbability']) expected[field] += frame.probability * result[field];
+        expected.resourceRemovalCompanionsInert &&= result.resourceRemovalCompanionsInert === true;
+        expected.resourceReferenceDomainCompatible &&= result.resourceReferenceDomainCompatible === true;
+        expected.finiteHostileActionAlternative = Math.max(expected.finiteHostileActionAlternative, Number(result.finiteHostileActionAlternative || 0));
+      }
+      return expected;
+    }
+    const recipientId = preview.unitId(recipient), actorSide = sideOf(worldSnapshot, recipient);
+    const products = (candidate.creation.products || [candidate.creation]).filter(product =>
+      product?.productId && Array.isArray(product.useEffects) && product.useEffects.length);
+    const hasOnlyResourceRemovalCompanions = products.length > 0 && products.every(product => {
+      const effects = r9v2LinearCreatedUseEffects(product.useEffects, recipientId === request.actorId);
+      const resourceEffects = effects.filter(effect => ['资源变化', '资源转移'].includes(String(effect?.原型 || '').trim()));
+      const companionEffects = effects.filter(effect => !['资源变化', '资源转移'].includes(String(effect?.原型 || '').trim()));
+      return resourceEffects.length > 0 && companionEffects.length > 0 &&
+        companionEffects.every(effect => String(effect?.原型 || '').trim() === '状态移除') &&
+        targetProfile({ _效果数组: effects }) === 'SELF';
+    });
+    let resourceRemovalCompanionsRemainInert = hasOnlyResourceRemovalCompanions;
+    let resourceRemovalCompanionUseContexts = 0;
+    let finiteHostileActionAlternative = 0;
+    const productIds = new Set(products.map(product => String(product.productId)));
+    const totalWindows = Math.max(0, clock.opportunities - clock.productionWindow + 1);
+    const tailWindows = Math.min(3, Math.max(0, totalWindows - clock.windows));
+    const exactPlannedWindows = Math.min(totalWindows, clock.windows + tailWindows);
+    const plannedWindows = searchBounds?.creationPlanWindows != null
+      ? Math.min(exactPlannedWindows, searchBounds.creationPlanWindows) : exactPlannedWindows;
+    const prefixWindows = Math.min(clock.windows, plannedWindows);
+    let resourceReferenceDomainCompatible = true;
+    const cache = new Map();
+    const sharedMemo = actionCapacityCache
+      ? (actionCapacityCache.creationFiniteMemo ||= {
+          plansByState: new Map(),
+          actionsByContext: new Map(),
+          previewsByContext: new Map(),
+        })
+      : { plansByState: new Map(), actionsByContext: new Map(), previewsByContext: new Map() };
+    const planEvidenceStack = [];
+    const mergePlanEvidence = (target, source) => {
+      if (source?.resourceReferenceDomainCompatible === false) target.resourceReferenceDomainCompatible = false;
+      target.resourceRemovalCompanionUseContexts += Math.max(0, Number(source?.resourceRemovalCompanionUseContexts || 0));
+      if (source?.resourceRemovalCompanionsRemainInert === false) target.resourceRemovalCompanionsRemainInert = false;
+      target.finiteHostileActionAlternative = Math.max(target.finiteHostileActionAlternative,
+        Math.max(0, Number(source?.finiteHostileActionAlternative || 0)));
+    };
+    const publishPlanEvidence = evidence => {
+      if (evidence?.resourceReferenceDomainCompatible === false) resourceReferenceDomainCompatible = false;
+      resourceRemovalCompanionUseContexts += Math.max(0, Number(evidence?.resourceRemovalCompanionUseContexts || 0));
+      if (evidence?.resourceRemovalCompanionsRemainInert === false) resourceRemovalCompanionsRemainInert = false;
+      finiteHostileActionAlternative = Math.max(finiteHostileActionAlternative,
+        Math.max(0, Number(evidence?.finiteHostileActionAlternative || 0)));
+      for (const frame of planEvidenceStack) mergePlanEvidence(frame, evidence);
+    };
+    const unpackPlanMemo = entry => {
+      if (entry?.semanticVersion === 'R9V2_CREATED_FINITE_PLAN_35') {
+        publishPlanEvidence(entry.evidence);
+        return entry.value;
+      }
+      return entry;
+    };
+    const rememberFiniteValue = (memo, key, value) => {
+      if (!memo) return;
+      if (!memo.has(key) && memo.size >= 512) memo.delete(memo.keys().next().value);
+      memo.set(key, value);
+    };
+    const worldJson = world => JSON.stringify(world);
+    const productProfileKey = JSON.stringify(products.map(product => ({
+      productId: product.productId,
+      quantity: product.quantity,
+      productionWindow: product.productionWindow,
+      useEffects: product.useEffects,
+      sideEffects: product.sideEffects,
+      creatorId: product.creatorId,
+      itemType: product.itemType,
+      expiryTick: product.expiryTick,
+    })));
+    const planningContextKey = JSON.stringify([
+      recipientId, actorSide, hostileSide, totalWindows, plannedWindows, prefixWindows,
+      clock.productionWindow, clock.opportunities, clock.horizon, clock.firstRound,
+      candidate.declaration?.counterConsumesNaturalOpportunity === true,
+      request.actorId, request.actionOpportunity || {}, request.battleIntent || {}, request.beliefState || {},
+      threatProjection,
+    ]);
+    const makeStockState = (world, includeCreatedStock) => {
+      const unit = findUnitInWorld(world, recipientId);
+      const old = {}, interchangeable = {};
+      for (const product of products) {
+        const entries = collectInventory(unit).filter(entry => entry.id === product.productId && entry.quantity > 0);
+        const expectedIdentity = preview.stableHash({
+          creatorId: String(product.creatorId || candidate.creation.creatorId || request.actorId || ''),
+          useEffects: product.useEffects || [],
+          sideEffects: product.sideEffects || [],
+          itemType: product.itemType || '物品',
+          expiryTick: Math.max(0, Number(product.expiryTick || 0)),
+        });
+        const compatibleEntries = entries.filter(entry => preview.stableHash({
+          creatorId: String(entry.item?.制作者ID || entry.item?.creatorId || ''),
+          useEffects: entry.item?.使用效果 || entry.item?._效果数组 || [],
+          sideEffects: entry.item?.副作用列表 || [],
+          itemType: entry.item?.类型 || '物品',
+          expiryTick: Math.max(0, Number(entry.item?.有效期tick || 0)),
+        }) === expectedIdentity);
+        // Recipe identity controls interchangeability, not whether actual old
+        // inventory can be used in the no-manufacture counterfactual. Formal
+        // enumeration and preview still read that world's current item recipe.
+        old[product.productId] = Math.max(0, entries.reduce((sum, entry) => sum + Number(entry.quantity || 0), 0));
+        interchangeable[product.productId] = entries.length === compatibleEntries.length;
+      }
+      const added = Object.fromEntries(products.map(product => [product.productId,
+        includeCreatedStock ? Math.max(1, Number(product.quantity || 1)) : 0]));
+      return { old, added, interchangeable, laterOld: {} };
+    };
+    const stockKey = stock => JSON.stringify(stock);
+    const consumeStock = (stock, productId, tailOnly = false) => {
+      const next = { old: { ...stock.old }, added: { ...stock.added }, interchangeable: { ...stock.interchangeable },
+        laterOld: { ...stock.laterOld } };
+      if (tailOnly) {
+        if (next.old[productId] > 0) next.old[productId] -= 1;
+        else if (next.laterOld[productId] > 0) next.laterOld[productId] -= 1;
+        else return null;
+        return next;
+      }
+      if (next.interchangeable[productId] === true && next.added[productId] > 0) next.added[productId] -= 1;
+      else if (next.old[productId] > 0) next.old[productId] -= 1;
+      else if (next.added[productId] > 0) next.added[productId] -= 1;
+      else if (next.laterOld[productId] > 0) next.laterOld[productId] -= 1;
+      else return null;
+      return next;
+    };
+    const passiveReceiptValue = (before, after) => preview.listUnits(before).reduce((sum, { unit, side }) => {
+      const next = findUnitInWorld(after, preview.unitId(unit));
+      if (!next) return sum;
+      const sign = side === actorSide ? 1 : -1;
+      return sum + sign * ['生命', '魂力', '精神力', '体力'].reduce((value, resource) => {
+        const beforeValue = resource === '生命' ? preview.readHp(unit) : preview.readResource(unit, resource);
+        const afterValue = resource === '生命' ? preview.readHp(next) : preview.readResource(next, resource);
+        const maximum = resource === '生命' ? preview.readHpMax(unit) : preview.readResourceMax(unit, resource);
+        return value + (afterValue - beforeValue) / Math.max(1, maximum) * 2;
+      }, 0);
+    }, 0);
+    const receiptValue = (world, action, result, index, actionRequest, pending, sustains) => {
+      const hasStructuralChange = Object.keys(result?.changedRules || {}).length > 0 ||
+        (result?.scheduledEvents || []).some(event =>
+          ['SUMMON_CREATE', 'summon_create'].includes(String(event?.type || event?.eventKind || '').trim())
+        );
+      if (!hasStructuralChange && result?.afterSnapshot) {
+        markCapacityDeltaSnapshot(result.afterSnapshot, world, result?.changedUnitIds || []);
+      }
+      let resources = 0;
+      for (const entry of result.contributions || []) {
+        if (entry.sourceActionId && entry.sourceActionId !== result.actionId) continue;
+        const resource = entry.outcomeKind === 'RESOURCE_OPTION_CHANGED'
+          ? String(entry.evidence?.resource || '').trim()
+          : entry.outcomeKind === 'HP_DELTA' && entry.evidence?.resourceChange ? '生命' : '';
+        if (!resource) continue;
+        const delta = Number(entry.expectedDelta ?? entry.evidence?.delta);
+        const target = findUnitInWorld(result.afterSnapshot, entry.targetId) || findUnitInWorld(world, entry.targetId);
+        if (!target || !Number.isFinite(delta)) continue;
+        const maximum = resource === '生命' ? preview.readHpMax(target) : preview.readResourceMax(target, resource);
+        resources += (sideOf(world, target) === actorSide ? 1 : -1) * delta / Math.max(1, maximum) * 2;
+      }
+      const direct = r9v2LinearSettledDirectCapacity(world, recipient, result, false, {
+        excludeResourceChanges: true,
+        excludePositiveShieldPoolIncreases: true,
+        shieldProtectionTargetId: recipientId,
+        includeLethalSettlement: true,
+      });
+      const shieldEntries = (result.contributions || []).filter(entry => entry.actorId === recipientId &&
+        entry.sourceActionId === result.actionId && entry.outcomeKind === 'SHIELD_DELTA' &&
+        Number(entry.evidence?.absorbedDamage || 0) <= 0 && (Math.abs(Number(entry.expectedDelta ?? entry.evidence?.delta ?? 0)) > 0 ||
+          Math.abs(Number(entry.evidence?.realizedDelta || 0)) > 0));
+      const shieldTargets = new Set(shieldEntries.map(entry => String(entry.targetId || '')).filter(Boolean));
+      const shieldReceipt = [...shieldTargets].reduce((sum, targetId) => {
+        if (targetId !== recipientId) return sum;
+        const before = findUnitInWorld(world, targetId), after = findUnitInWorld(result.afterSnapshot, targetId);
+        if (!before || !after) return sum;
+        const reachableThreatWindows = Math.max(0, totalWindows - index);
+        if (reachableThreatWindows <= 0) return sum;
+        const maximumHp = Math.max(1, preview.readHpMax(before));
+        const beforePool = Math.max(0, preview.readShield(before)) / maximumHp * 100;
+        const afterPool = Math.max(0, preview.readShield(after)) / maximumHp * 100;
+        if (!(afterPool > 0 || beforePool > 0)) return sum;
+        const sourceBranches = (threatProjection.postUseBranches || []).map(branch => ({
+          sourceActorId: String(branch?.sourceActorId || '').trim(),
+          targetId: String(branch?.targetId || '').trim(),
+          probability: clamp(Number(branch?.probability || 0), 0, 1),
+          threat: Math.max(0, Number(branch?.threat || 0), Number(branch?.rawThreat || 0)),
+          packets: r9v2LinearShieldThreatPackets(branch, world, before),
+        })).filter(branch => branch.probability > 0 && (!branch.targetId || branch.targetId === targetId));
+        if (!sourceBranches.length) return sum;
+        const eventBySource = new Map();
+        const events = [];
+        sourceBranches.forEach((branch, branchIndex) => {
+          if (!branch.sourceActorId) {
+            events.push({ key: `unattributed:${branchIndex}`, outcomes: [branch] });
+            return;
+          }
+          let event = eventBySource.get(branch.sourceActorId);
+          if (!event) {
+            event = { key: branch.sourceActorId, outcomes: [] };
+            eventBySource.set(branch.sourceActorId, event);
+            events.push(event);
+          }
+          event.outcomes.push(branch);
+        });
+        const incrementalProtection = r9v2LinearExpectedShieldAbsorption(after, before, reachableThreatWindows, events, maximumHp) -
+          r9v2LinearExpectedShieldAbsorption(before, before, reachableThreatWindows, events, maximumHp);
+        return sum + (sideOf(world, before) === actorSide ? 1 : -1) * incrementalProtection / 50;
+      }, 0);
+      let followupCapacityDelta = 0;
+      const remainingWindows = Math.max(0, totalWindows - index - 1);
+      const horizon = battleHorizonProfile(actionRequest, world), useRound = Number(world.回合 || 0);
+      const followupWindows = Math.max(0, Math.min(3, remainingWindows, horizon.finalRound - useRound));
+      const outsidePending = r9v2LinearCreatedPendingNaturalIds(request, candidate, world, recipientId);
+      const capacitySustains = r9v2LinearActionSustains(sustains, world, result.afterSnapshot, action.declaration, result);
+      let capacityFrames = null;
+      const continuedContributions = [...pending, ...(result.contributions || [])];
+      const changedTargets = new Set((result.contributions || []).map(entry => String(entry.targetId || '')).filter(Boolean));
+      const summonTargets = new Set((result.contributions || []).filter(entry => entry.outcomeKind === 'SUMMON_WINDOW')
+        .map(entry => String(entry.targetId || '')).filter(Boolean));
+      const followupCapacityTargetIds = [];
+      for (const targetId of changedTargets) {
+        // The finite planner follows this recipient's formal actions window by
+        // window, so charging its own post-action capacity delta here would
+        // value grants and self-state changes twice. Other recipients' future
+        // actions are outside this one-actor plan and still need the measured
+        // before/after capacity delta.
+        if (targetId === recipientId || summonTargets.has(targetId)) continue;
+        const beforeTarget = findUnitInWorld(world, targetId), afterTarget = findUnitInWorld(result.afterSnapshot, targetId);
+        if (!beforeTarget || !afterTarget) continue;
+        followupCapacityTargetIds.push(targetId);
+        const targetSide = sideOf(world, beforeTarget);
+        const oppositionSide = targetSide === actorSide ? hostileSide : actorSide;
+        const offsets = [...(outsidePending.has(targetId) ? [0] : []),
+          ...Array.from({ length: followupWindows }, (_, offset) => offset + 1)];
+        if (!offsets.length) continue;
+        capacityFrames ||= r9v2LinearCreatedCapacityFrames(world, recipientId, outsidePending, horizon, actionCapacityCache, capacitySustains);
+        for (const offset of offsets) {
+          const beforeCapacity = capacityFrames(world, pending, offset, targetId, oppositionSide);
+          const afterCapacity = capacityFrames(result.afterSnapshot, continuedContributions, offset, targetId, oppositionSide);
+          followupCapacityDelta += (targetSide === actorSide ? 1 : -1) * (afterCapacity - beforeCapacity);
+        }
+      }
+      const summonValue = (result.contributions || []).filter(entry => entry.outcomeKind === 'SUMMON_WINDOW')
+        .reduce((sum, entry) => {
+          const available = Math.min(remainingWindows, Math.max(0, Number(entry.evidence?.remainingWindows || 0)));
+          // actionPotential shares the 0–100 capacity scale used by direct
+          // capacity receipts below; normalize only once at directScale.
+          return sum + Math.max(0, Number(entry.evidence?.actionPotential || 0)) * available *
+            preview.contributionProbability(entry);
+        }, 0);
+      const capacityImpact = direct + followupCapacityDelta + summonValue;
+      const directScale = 100;
+      // Resource deltas use signed Δ/max in the approved resource units;
+      // direct-capacity receipts retain their established 0–100 scale. Dividing
+      // by a world-specific best action made the same receipt change value when
+      // an unrelated product routed an otherwise identical batch through this path.
+      return { value: resources + shieldReceipt + capacityImpact / directScale,
+        followupCapacityTargetIds, capacitySustains };
+    };
+    const postUseSurvival = world => {
+      const unit = findUnitInWorld(world, recipientId);
+      if (!unit || !preview.isBattleCapable(unit)) return 0;
+      return boundedDeliverySurvivalProbability(clock.unsettledThreats(threatProjection.postUseBranches, world), 1,
+        (preview.readHp(unit) + preview.readShield(unit)) / Math.max(1, preview.readHpMax(unit)) * 100);
+    };
+    const advance = (before, after, pending, index, firstId, stock, opportunityConsumed, sustains = {}) => {
+      if (index + 1 >= plannedWindows) return 0;
+      if (searchBounds?.creationPlanNodeBudget != null &&
+        ++searchBudget.creationPlanNodes > searchBounds.creationPlanNodeBudget) return 0;
+      const continued = clock.scheduleKnownNatural({ world: after, pending, sustains, probability: 1 }, false).flatMap(current => {
+        const settled = clock.settleBoundary(current.world, before, current.pending || [], recipientId, opportunityConsumed, current.sustains);
+        return settled.branches.flatMap(branch => clock.scheduleKnownNatural({ ...branch, pending: branch.pending || settled.remaining, sustains: current.sustains,
+          probability: current.probability * branch.probability }, true));
+      });
+      return continued.reduce((sum, branch) => {
+        let nextStock = stock;
+        for (const productId of productIds) {
+          const quantity = frame => collectInventory(findUnitInWorld(frame, recipientId)).filter(entry => entry.id === productId)
+            .reduce((total, entry) => total + Number(entry.quantity || 0), 0);
+          const added = quantity(branch.world) - quantity(after);
+          if (added > 0) {
+            if (nextStock === stock) nextStock = { ...stock, laterOld: { ...stock.laterOld } };
+            nextStock.laterOld[productId] = Number(nextStock.laterOld[productId] || 0) + added;
+            publishPlanEvidence({ resourceReferenceDomainCompatible: false });
+          }
+        }
+        const survival = postUseSurvival(branch.world);
+        return sum + branch.probability * (passiveReceiptValue(after, branch.world) + survival *
+          plan(branch.world, branch.pending, index + 1, firstId, nextStock, branch.sustains));
+      }, 0);
+    };
+    const plan = (world, pending, index, firstId = '', stock, sustains = {}) => {
+      const unit = findUnitInWorld(world, recipientId);
+      if (index >= plannedWindows) return 0;
+      if (!unit || !preview.isBattleCapable(unit)) return 0;
+      const payments = r9v2LinearCreatedResourcePaymentWorlds(world, recipientId);
+      if (payments.length > 1) return payments.reduce((sum, branch) =>
+        sum + branch.probability * plan(branch.world, pending, index, firstId, stock, sustains), 0);
+      const resources = preview.projectedResourceWorldState(world);
+      const worldSnapshotKey = worldJson(world);
+      const noCreatedStock = Object.values(stock.old).every(value => !(Number(value) > 0)) &&
+        Object.values(stock.added).every(value => !(Number(value) > 0)) &&
+        Object.values(stock.laterOld).every(value => !(Number(value) > 0));
+      const stockKeyValue = noCreatedStock ? 'NO_CREATED_STOCK' : stockKey(stock);
+      const stateKey = JSON.stringify([
+        'R9V2_CREATED_FINITE_PLAN_35',
+        worldSnapshotKey,
+        planningContextKey,
+        noCreatedStock ? 'PRODUCT_INDEPENDENT_BASELINE' : productProfileKey,
+        index, firstId, stockKeyValue, pending, ...(Object.keys(sustains).length ? [sustains] : []),
+        ...(resources.length ? [resources] : []),
+      ]);
+      const key = stateKey;
+      if (cache.has(key)) {
+        decisionMetrics.creationFutureUseStatesReused += 1;
+        return unpackPlanMemo(cache.get(key));
+      }
+      const sharedPlanCache = sharedMemo?.plansByState;
+      if (sharedPlanCache?.has(stateKey)) {
+        decisionMetrics.creationFutureUseStatesReused += 1;
+        const entry = sharedPlanCache.get(stateKey);
+        cache.set(key, entry);
+        return unpackPlanMemo(entry);
+      }
+      decisionMetrics.creationFutureUseStatesEvaluated += 1;
+      const evidence = { resourceRemovalCompanionUseContexts: 0,
+        resourceRemovalCompanionsRemainInert: true, finiteHostileActionAlternative: 0,
+        resourceReferenceDomainCompatible: true };
+      planEvidenceStack.push(evidence);
+      const finishPlan = value => {
+        planEvidenceStack.pop();
+        const entry = Object.freeze({ semanticVersion: 'R9V2_CREATED_FINITE_PLAN_35', value,
+          evidence: Object.freeze({ ...evidence }) });
+        cache.set(key, entry);
+        rememberFiniteValue(sharedPlanCache, stateKey, entry);
+        return value;
+      };
+      for (const [stateKey, state] of Object.entries(unit.状态效果 || {})) {
+        const probability = clamp(Number(state.__previewApplicationProbability ?? 1), 0, 1);
+        if (!root.__LWCS_BATTLE_RUNTIME__.structuredControlConsumesActiveOpportunity(state) ||
+            probability <= 1e-12 || probability >= 1 - 1e-12) continue;
+        const branch = present => {
+          const next = { ...unit, 状态效果: { ...unit.状态效果 } };
+          if (present) next.状态效果[stateKey] = { ...state, __previewApplicationProbability: 1 };
+          else delete next.状态效果[stateKey];
+          preview.inheritOverlayOrigin(next, unit);
+          return plan(replaceWorldUnit(world, recipientId, next), pending, index, firstId, stock, sustains);
+        };
+        const value = probability * branch(true) + (1 - probability) * branch(false);
+        return finishPlan(value);
+      }
+      const charge = unit.蓄力技能 && typeof unit.蓄力技能 === 'object' ? unit.蓄力技能 : null;
+      const naturalBudget = Math.max(1, Number(clock.horizon.naturalActionBudget || 40));
+      const timing = charge ? r9v2LinearNaturalChargeFrame(world, unit, naturalBudget) : null;
+      const clearedChargeWorld = timing?.world || world;
+      if (charge) publishPlanEvidence({ resourceReferenceDomainCompatible: false });
+      if (hasActionCancellation(unit)) {
+        return finishPlan(advance(world, clearedChargeWorld, pending, index, firstId, stock, true, sustains));
+      }
+      if (timing?.phase === 'PROGRESS') {
+        return finishPlan(advance(world, timing.world, pending,
+          index, firstId, stock, false, sustains));
+      }
+      // A ready stored charge cannot choose to wait or consume another item in
+      // this window. Invalid original targets/payment still spend the window.
+      const waitValue = charge ? 0 : advance(world, world, pending, index, firstId, stock, true, sustains);
+      let best = charge ? -Infinity : waitValue;
+      const opportunity = {
+        ...request.actionOpportunity,
+        role: 'ACTIVE',
+        sequence: Math.max(0, Number(request.actionOpportunity?.sequence || 0)) + index + 1,
+        pendingNaturalActorIds: [recipientId],
+        pendingHostileActorIds: [],
+        sourceActorId: '',
+        sourceActionId: '',
+        incomingAction: null,
+        forcedSkill: charge ? charge.skill || charge : null,
+        forcedTargetIds: charge?.targetIds || [],
+        forcedCreationRecipientId: charge?.creationRecipientId || '',
+        forcedChargeRelease: !!charge,
+        validTargetIds: [],
+        imminentThreat: false,
+        counterWindow: false,
+        counterActionAvailable: false,
+        interceptThreat: false,
+        battleHorizon: { ...clock.horizon, currentRound: Math.max(0, Number(world.回合 || clock.horizon.currentRound)) },
+      };
+      const actionContextKey = JSON.stringify([
+        worldSnapshotKey, recipientId, opportunity, request.beliefState || {}, request.battleIntent || {},
+        request.includeUnaffordableRoutes === true,
+        'R9V2_CREATED_FINITE_ACTIONS_1',
+      ]);
+      const sharedActions = sharedMemo?.actionsByContext;
+      let actions = sharedActions?.get(actionContextKey);
+      if (actions) decisionMetrics.creationFiniteActionEnumerationsReused += 1;
+      else {
+        actions = enumerateCandidates({ ...request, worldSnapshot: world, actorId: recipientId,
+          actionOpportunity: opportunity, playerLockedDeclaration: null, includeUnaffordableRoutes: false,
+          excludeCreationCandidates: !charge }).filter(action => action?.declaration && action.resourcePotentialOnly !== true);
+        rememberFiniteValue(sharedActions, actionContextKey, actions);
+        decisionMetrics.creationFiniteActionEnumerationsEvaluated += 1;
+      }
+      const actionRows = actions.map(action => {
+        const actionKind = String(action.declaration.actionKind || '').trim();
+        const itemId = actionKind === 'USE_ITEM'
+          ? String(action.declaration.skill?.id || action.item?.id || '').trim() : '';
+        const isCreatedProduct = !!itemId && productIds.has(itemId);
+        const isBatchUse = isCreatedProduct && index < prefixWindows;
+        // Provenance stock follows the formal consumption rule, not the number of uses.
+        const consumesCreatedStock = isCreatedProduct && preview.itemConsumesOnUse(action.declaration.skill);
+        if (isBatchUse && firstId && itemId !== firstId) return null;
+        if (isCreatedProduct && index < prefixWindows &&
+          !(Number(stock.old[itemId] || 0) + Number(stock.added[itemId] || 0) + Number(stock.laterOld[itemId] || 0) > 0)) return null;
+        if (isCreatedProduct && index >= prefixWindows &&
+          !(Number(stock.old[itemId] || 0) > 0 || Number(stock.laterOld[itemId] || 0) > 0 ||
+            !consumesCreatedStock && Number(stock.added[itemId] || 0) > 0)) return null;
+        return { action, actionKind, itemId, isCreatedProduct, isBatchUse, consumesCreatedStock };
+      }).filter(Boolean);
+      const evaluateAction = (row, explicitAlternative = 0) => {
+        const { action, actionKind, itemId, isCreatedProduct, isBatchUse, consumesCreatedStock } = row;
+        const castTime = Math.max(0, Number(action.declaration.skill?.前摇 ?? action.declaration.skill?.cast_time ?? 0));
+        if (!charge && actionKind === 'RELEASE_SKILL' && castTime > naturalBudget) {
+          publishPlanEvidence({ resourceReferenceDomainCompatible: false });
+          const started = r9v2LinearNaturalChargeFrame(world, unit, naturalBudget, action.declaration,
+            `${action.candidateId}:finite-charge:${index}`);
+          return advance(world, started.world, pending, index, firstId, stock, false, sustains);
+        }
+        const isTailUse = isCreatedProduct && index >= prefixWindows;
+        const nextStock = consumesCreatedStock ? consumeStock(stock, itemId, isTailUse) : stock;
+        if (!nextStock) return -Infinity;
+        const actionProduct = isCreatedProduct ? products.find(product => product.productId === itemId) : null;
+        const actionItem = actionProduct ? findUnitInWorld(world, recipientId)?.背包?.[itemId] : null;
+        const needsRiskOperationGraph = !!actionProduct &&
+          ((actionItem?.副作用列表 || actionProduct.sideEffects || []).length > 0);
+        const currentWorldKey = worldSnapshotKey;
+        const actionId = `${action.candidateId}:finite:${index}:${preview.stableHash([currentWorldKey, action.declaration.targetIds || []])}`;
+        const declaration = { ...action.declaration, actionId };
+        const actionInput = { worldSnapshot: clearedChargeWorld, worldRevision: actionId, actorId: recipientId, declaration,
+          paymentMode: 'FORMAL', horizon: 'SHALLOW', cacheResult: false, beliefState: request.beliefState || {},
+          battleIntent: request.battleIntent, actionOpportunity: opportunity,
+          // The finite planner consumes the formal state/contribution receipt,
+          // not a second operation-graph interpretation. Keep the graph only
+          // when a created item's passive-risk counterfactual needs it.
+          buildOperationGraph: needsRiskOperationGraph,
+          __preparedDecisionWorld: isPreparedDecisionRequest(request),
+          previewBudget: { maxNodes: DECISION_PREVIEW_NODE_LIMIT } };
+        const previewContextKey = JSON.stringify([
+          currentWorldKey, actionId, declaration, opportunity, request.beliefState || {},
+          request.battleIntent || {}, DECISION_PREVIEW_NODE_LIMIT,
+          ...(resources.length ? [resources] : []),
+          'R9V2_CREATED_FINITE_PREVIEW_2',
+        ]);
+        const sharedPreviews = sharedMemo?.previewsByContext;
+        let prepared = sharedPreviews?.get(previewContextKey);
+        if (prepared) decisionMetrics.creationFiniteActionPreviewsReused += 1;
+        else {
+          prepared = preview.projectConditionedAction(actionInput);
+          rememberFiniteValue(sharedPreviews, previewContextKey, prepared);
+          decisionMetrics.creationFiniteActionPreviewsEvaluated += 1;
+        }
+        const deferredIds = new Set((prepared.contributions || []).filter(entry =>
+          entry.outcomeKind === 'STATE_SCHEDULED' || entry.evidence?.persistentRiskBinding).map(entry => entry.effectInstanceId));
+        const deferredOutcomeIds = r9v2LinearDeferredOutcomeIds(prepared, deferredIds);
+        const probabilistic = preview.hasUnresolvedActionOutcomes(prepared, deferredOutcomeIds);
+        const continueAction = result => {
+          const interrupted = clock.interruptKnownCharges(result.afterSnapshot, result, deferredIds);
+          if (interrupted.world !== result.afterSnapshot) result = { ...result, afterSnapshot: interrupted.world };
+          if (isCreatedProduct && (result.contributions || []).some(entry =>
+            entry.evidence?.persistentTransfer || entry.evidence?.transferRole && Number(entry.expectedDelta || 0) !== 0)) {
+            // Additive resource receipts cannot represent a redistribution's
+            // downstream payment/other-recipient capacity or persistent flow.
+            publishPlanEvidence({ resourceReferenceDomainCompatible: false });
+          }
+          const receipt = receiptValue(world, action, result, index,
+            { ...request, actionOpportunity: opportunity }, pending, sustains);
+          const product = isCreatedProduct ? products.find(entry => entry.productId === itemId) : null;
+          const useCandidate = product ? { ...candidate, creation: {
+            ...product,
+            recipientId,
+            useEffects: findUnitInWorld(world, recipientId)?.背包?.[itemId]?.使用效果 || product.useEffects,
+            sideEffects: findUnitInWorld(world, recipientId)?.背包?.[itemId]?.副作用列表 || product.sideEffects,
+          } } : null;
+          const remainingRiskWindows = Math.max(0, plannedWindows - index - 1);
+          const hasImmediateLethalRisk = useCandidate?.creation.sideEffects?.some(effect =>
+            String(effect?.副作用类型 || '').trim() === '致死献祭');
+          const normalizedReceipt = isBatchUse ? r9v2LinearCreatedReceiptOpportunity(receipt.value, explicitAlternative) : null;
+          const riskCost = useCandidate?.creation.sideEffects?.length
+            ? r9v2LinearCreatedPassiveRiskCost(request, useCandidate, world, unit, hostileSide, actionCapacityCache,
+              { result, baseWorld: world, inventoryRecipient: unit, input: actionInput,
+                followupCapacityTargetIds: receipt.followupCapacityTargetIds, inheritedCapacityContributions: pending,
+                capacitySustains: receipt.capacitySustains,
+                followupCapacityDenominator: normalizedReceipt?.normalizationDenominator || 1 }, true,
+              hasImmediateLethalRisk ? Math.max(1, remainingRiskWindows) : remainingRiskWindows, 'finite')
+            : 0;
+          const nextFirstId = isBatchUse && itemId === firstId ? '' : firstId;
+          let continuedStock = nextStock;
+          if (charge && action.creation) for (const productId of productIds) {
+            const beforeQuantity = collectInventory(unit).find(entry => entry.id === productId)?.quantity || 0;
+            const afterQuantity = collectInventory(findUnitInWorld(result.afterSnapshot, recipientId))
+              .find(entry => entry.id === productId)?.quantity || 0;
+            if (afterQuantity > beforeQuantity) {
+              if (continuedStock === nextStock) continuedStock = { ...nextStock, laterOld: { ...nextStock.laterOld } };
+              continuedStock.laterOld[productId] = Number(continuedStock.laterOld[productId] || 0) + afterQuantity - beforeQuantity;
+              publishPlanEvidence({ resourceReferenceDomainCompatible: false });
+            }
+          }
+          const netReceipt = normalizedReceipt ? normalizedReceipt.value : receipt.value;
+          return netReceipt - riskCost + advance(world, result.afterSnapshot,
+            [...pending, ...(result.contributions || [])], index, nextFirstId, continuedStock, false,
+            r9v2LinearActionSustains(sustains, clearedChargeWorld, result.afterSnapshot, declaration, result));
+        };
+        if (resourceRemovalCompanionsRemainInert && isCreatedProduct) {
+          const sourceEffects = actionItem?.使用效果 || actionItem?._效果数组 || actionProduct?.useEffects || [];
+          const effects = r9v2LinearCreatedUseEffects(sourceEffects, recipientId === request.actorId);
+          const resourceEffects = effects.filter(effect => ['资源变化', '资源转移'].includes(String(effect?.原型 || '').trim()));
+          const companionEffects = effects.filter(effect => !['资源变化', '资源转移'].includes(String(effect?.原型 || '').trim()));
+          const expectedEffects = r9v2LinearCreatedUseEffects(actionProduct?.useEffects || [], recipientId === request.actorId);
+          const invalidReference = !actionProduct || companionEffects.length === 0 ||
+              companionEffects.some(effect => String(effect?.原型 || '').trim() !== '状态移除') ||
+              resourceEffects.length === 0 || JSON.stringify(effects) !== JSON.stringify(expectedEffects);
+          if (invalidReference) {
+            publishPlanEvidence({ resourceRemovalCompanionUseContexts: 0,
+              resourceRemovalCompanionsRemainInert: false, finiteHostileActionAlternative: 0 });
+          } else {
+            const useRequest = { ...request, actionOpportunity: opportunity };
+            const useCandidate = { ...candidate, creation: { ...actionProduct, recipientId,
+              useEffects: sourceEffects, sideEffects: actionItem?.副作用列表 || actionProduct.sideEffects } };
+            const resourceOnlyCandidate = { ...useCandidate, creation: { ...useCandidate.creation,
+              useEffects: resourceEffects } };
+            const targets = action.declaration.targetIds || [recipientId];
+            const fullUse = r9v2LinearCreatedUsePreview(useRequest, useCandidate, world, unit,
+              { cacheResult: false }, targets, false);
+            const resourceOnlyUse = r9v2LinearCreatedUsePreview(useRequest, resourceOnlyCandidate, world, unit,
+              { cacheResult: false }, targets, false);
+            resourceRemovalCompanionUseContexts += 1;
+            decisionMetrics.creationResourceReferenceChecks += 1;
+            const sameWorld = JSON.stringify(fullUse.result.afterSnapshot) === JSON.stringify(resourceOnlyUse.result.afterSnapshot);
+            const meaningfulContributions = result => (result.contributions || []).filter(entry => {
+              const removal = entry?.evidence?.stateRemoval;
+              return !(entry.outcomeKind === 'STATE_CHANGED' && removal &&
+                Array.isArray(entry.evidence?.removedKeys) && !entry.evidence.removedKeys.length);
+            });
+            const sameReceipt = JSON.stringify(meaningfulContributions(fullUse.result)) ===
+              JSON.stringify(meaningfulContributions(resourceOnlyUse.result));
+            if (!sameWorld) decisionMetrics.creationResourceReferenceWorldMismatches += 1;
+            if (!sameReceipt) decisionMetrics.creationResourceReferenceReceiptMismatches += 1;
+            publishPlanEvidence({ resourceRemovalCompanionUseContexts: 1,
+              resourceRemovalCompanionsRemainInert: sameWorld && sameReceipt,
+              finiteHostileActionAlternative: 0 });
+          }
+        }
+        return probabilistic
+          ? r9v2LinearExpectedCreatedPreview(actionInput, continueAction, deferredOutcomeIds,
+            { allowEquivalentCooperativeDamage: true })
+          : continueAction(prepared);
+      };
+      if (charge && !actionRows.length) return finishPlan(advance(world, clearedChargeWorld, pending,
+        index, firstId, stock, false, sustains));
+      const ordinaryActions = actionRows.filter(row => !row.isBatchUse);
+      let explicitAlternative = 0;
+      for (const row of ordinaryActions) {
+        const actionValue = evaluateAction(row, 0);
+        explicitAlternative = Math.max(explicitAlternative, actionValue - waitValue, 0);
+        const targetsHostile = (row.action?.declaration?.targetIds || []).some(targetId => {
+          const target = findUnitInWorld(world, targetId);
+          return target && sideOf(world, target) !== actorSide;
+        });
+        if (!charge && targetsHostile && actionValue > waitValue) {
+          const alternative = actionValue - waitValue;
+          publishPlanEvidence({ resourceRemovalCompanionUseContexts: 0,
+            resourceRemovalCompanionsRemainInert: true, finiteHostileActionAlternative: alternative });
+        }
+        best = Math.max(best, actionValue);
+      }
+      for (const row of actionRows.filter(value => value.isBatchUse)) {
+        const actionValue = evaluateAction(row, explicitAlternative);
+        if (actionValue > best) best = actionValue;
+      }
+      return finishPlan(best);
+    };
+    if (!clock.windows || !clock.deliveries.length) return { value: 0, itemUtility: 0, alternativeUtility: 0,
+      deliveryProbability: 0, resourceRemovalCompanionsInert: false, resourceReferenceDomainCompatible: false };
+    const result = clock.deliveries.reduce((expected, delivery) => {
+      const world = clock.atWindow(delivery.world, clock.firstRound);
+      const nextRecipient = findUnitInWorld(world, recipientId);
+      if (!nextRecipient || !preview.isBattleCapable(nextRecipient)) return expected;
+      const survival = boundedDeliverySurvivalProbability(clock.unsettledThreats(threatProjection.deliveryBranches, world), clock.deliveryRisk?.productionWindow ?? clock.productionWindow,
+        Math.min(clock.deliveryRisk?.capacity ?? Infinity,
+          (preview.readHp(nextRecipient) + preview.readShield(nextRecipient)) / Math.max(1, preview.readHpMax(nextRecipient)) * 100));
+      const withoutStock = makeStockState(world, false);
+      const hasCompatibleOldStock = Object.values(withoutStock.old).some(value => Number(value) > 0);
+      const inventoryIdentityMatches = Object.values(withoutStock.interchangeable).every(value => value === true);
+      if (!inventoryIdentityMatches || (tailWindows > 0 && hasCompatibleOldStock)) {
+        resourceReferenceDomainCompatible = false;
+      }
+      const without = plan(world, delivery.pending || [], 0, '', withoutStock, delivery.sustains);
+      const withBatch = plan(snapshotAfterCreation(world, request.actorId, candidate.creation), delivery.pending || [], 0,
+        candidate.creation.productId, makeStockState(world, true), delivery.sustains);
+      expected.value += delivery.probability * survival * (withBatch - without);
+      expected.itemUtility += delivery.probability * survival * withBatch;
+      expected.alternativeUtility += delivery.probability * survival * without;
+      expected.deliveryProbability += delivery.probability * survival;
+      return expected;
+    }, { value: 0, itemUtility: 0, alternativeUtility: 0, deliveryProbability: 0 });
+    result.resourceRemovalCompanionsInert = resourceRemovalCompanionsRemainInert && resourceRemovalCompanionUseContexts > 0;
+    result.finiteHostileActionAlternative = finiteHostileActionAlternative;
+    result.resourceReferenceDomainCompatible = resourceReferenceDomainCompatible;
+    if (result.resourceRemovalCompanionsInert) decisionMetrics.creationResourceReferenceHits += 1;
+    return result;
   }
 
   function r9v2LinearCreationFutureProjection({
@@ -55956,15 +59179,14 @@
     actionCapacityCache = null,
     threatCache = null,
   }) {
+    if (searchBudget.shortCircuit) return null;
     if (candidate?.creation?.useful !== true || !Array.isArray(candidate.creation.useEffects) || !candidate.creation.useEffects.length) {
       return null;
     }
     const recipientId = String(
       candidate.creation.recipientId || candidate.declaration?.creationRecipientId || request.actorId,
     ).trim();
-    const existingOptions = Math.max(0, Number(candidate.creation.stockByConsumer?.[recipientId] || 0));
     decisionMetrics.creationFutureTargetBranchesEvaluated += 1;
-    if (existingOptions > 0) return null;
     const worldSnapshot = request.visibleWorld || {};
     const actorId = String(request.actorId || '').trim();
     const actor = findUnitInWorld(worldSnapshot, actorId);
@@ -55978,7 +59200,7 @@
       horizon: battleHorizonProfile(request, worldSnapshot),
     }) < productionWindow) return null;
     const projectedRecipient = recipientId === actorId
-      ? unitAfterResourceCosts(
+      ? preview.unitAfterResourceCosts(
           recipient,
           candidate.costs || candidate.declaration?.resourceCosts || {},
         )
@@ -56031,114 +59253,218 @@
       });
       threatCache?.set(recipientId, threatProjection);
     }
-    const selfUse = recipientId === actorId;
-    let genericItemUtility = r9v2LinearCreatedOptionValue(
-      candidate.creation.useEffects,
-      projectedRecipient,
-      selfUse,
-      threatProjection,
-    );
-    const realizedActionUtility = r9v2LinearCreatedActionFit({
-      request,
-      candidate,
-      worldSnapshot,
-      recipient,
-      projectedRecipient,
-      selfUse,
-      hostileSide,
-      actionCapacityCache,
+    const batchProducts = candidate.creation.products || [candidate.creation];
+    const resourceOnlyBatch = batchProducts.every(product => {
+      const effects = r9v2LinearCreatedUseEffects(product.useEffects || [], recipientId === actorId);
+      return effects.length > 0 && effects.every(effect => ['资源变化', '资源转移'].includes(String(effect?.原型 || '').trim())) &&
+        !['HOSTILE_SINGLE', 'HOSTILE_GROUP', 'ANY_SINGLE'].includes(targetProfile({ _效果数组: effects }));
     });
-    const resolvedUseProfile = targetProfile({
-      _效果数组: r9v2LinearCreatedUseEffects(candidate.creation.useEffects, selfUse),
+    const hasResourceRedistribution = batchProducts.some(product => {
+      const effects = [...r9v2LinearCreatedUseEffects(product.useEffects || [], recipientId === actorId)], seen = new Set();
+      for (const effect of effects) {
+        if (!effect || seen.has(effect)) continue;
+        seen.add(effect);
+        if (String(effect.原型 || '').trim() === '资源转移') return true;
+        for (const branch of Array.isArray(effect.条件分支) ? effect.条件分支 : []) {
+          effects.push(...(Array.isArray(branch.替换效果) ? branch.替换效果 : []),
+            ...(Array.isArray(branch.追加效果) ? branch.追加效果 : []));
+        }
+      }
+      return false;
     });
-    let usePreview = null;
-    if (realizedActionUtility === null && r9v2LinearCreatedUseEffects(candidate.creation.useEffects, selfUse)
-      .every(effect => ['资源变化', '资源转移'].includes(String(effect?.原型 || '').trim()))) {
-      usePreview = r9v2LinearCreatedUsePreview(request, candidate, worldSnapshot, projectedRecipient);
-      const { result, baseWorld, inventoryRecipient } = usePreview, graph = result.operationGraph;
-      const resourceGraph = { ...graph, graphHash: `${graph.graphHash}:main-resources`,
-        deterministicEvents: graph.deterministicEvents.filter(event => !event.effectInstanceId.includes(':side-effect:')),
-        conditionalEvents: graph.conditionalEvents.filter(event => !event.effectInstanceId.includes(':side-effect:')),
-      };
-      genericItemUtility = preview.evaluateOperationGraph({ graph: resourceGraph, baseWorld }).finalStates.reduce((sum, branch) => {
-        const afterRecipient = findUnitInWorld(branch.world, recipientId);
-        const gain = ['生命', '魂力', '精神力', '体力'].reduce((total, resource) => total +
-          (preview.readResource(afterRecipient, resource) - preview.readResource(inventoryRecipient, resource)) /
-          Math.max(1, preview.readResourceMax(inventoryRecipient, resource)) * 2, 0);
-        return sum + branch.probability * clamp(gain, 0, 1);
-      }, 0);
-    }
-    const itemUtility = realizedActionUtility === null
-      ? genericItemUtility
-      : ['HOSTILE_SINGLE', 'HOSTILE_GROUP', 'ANY_SINGLE'].includes(resolvedUseProfile)
-        ? realizedActionUtility
-        : Math.min(genericItemUtility, realizedActionUtility);
-    const displacedActiveUtility = clamp(
-      r9v2LinearBestActionCapacity(
-        worldSnapshot,
-        projectedRecipient,
+    // Preserve the established pure-resource recurrence even when the actor
+    // has an ordinary action. Routing that same resource receipt through the
+    // generic planner changes its scale; mixed recipes are still evaluated by
+    // the finite planner, which must keep inert companion effects neutral.
+    // Known charging or a multi-window action needs the finite natural clock;
+    // the resource prefix cannot settle that displaced action instantaneously.
+    const naturalBudget = battleHorizonProfile(request, worldSnapshot).naturalActionBudget;
+    const hasTimedNaturalAction = !!recipient.蓄力技能 || preparedSkillProfiles(recipient).some(({ skill }) =>
+      Math.max(0, Number(skill?.前摇 ?? skill?.cast_time ?? 0)) > naturalBudget);
+    // A later committed manufacture belongs to both worlds, including an
+    // initially empty baseline. Its stock ordering and tail need the full plan.
+    const hasKnownLaterStock = worldEntries(worldSnapshot).some(({ unit }) => {
+      const charge = unit.蓄力技能, source = charge?.skill || charge;
+      if (!charge || preview.unitId(unit) === actorId || preview.unitId(unit) === recipientId ||
+          sideOf(worldSnapshot, unit) !== actorSide || String(charge.creationRecipientId || '').trim() !== recipientId) return false;
+      const effects = [...(Array.isArray(source?._效果数组) ? source._效果数组 : [])];
+      for (const effect of effects) {
+        for (const branch of Array.isArray(effect?.条件分支) ? effect.条件分支 : []) {
+          effects.push(...(Array.isArray(branch?.替换效果) ? branch.替换效果 : []),
+            ...(Array.isArray(branch?.追加效果) ? branch.追加效果 : []));
+        }
+        if (!String(effect?.原型 || '').trim() && Array.isArray(effect?.使用效果) && effect.使用效果.length &&
+            batchProducts.some(product => product.productId === preview.creationProductIdentity(source, preview.unitId(unit), '', effect).id)) return true;
+      }
+      return false;
+    });
+    const resourceReferenceEligible = resourceOnlyBatch && !hasTimedNaturalAction && !hasKnownLaterStock;
+    // A conserved pool/transfer can have zero net resource receipt and still
+    // enable a later legal payment. Use the existing with/without-stock plan,
+    // not a new bonus or a change to the additive recovery reference scale.
+    const useResourceFastPath = resourceReferenceEligible && !hasResourceRedistribution;
+    const projectUse = (useWorld, useRecipient, useRequest = request, remainingWindows = null, useCandidate = candidate) => {
+      const selfUse = recipientId === actorId;
+      const useResourceReference = useResourceFastPath || useCandidate !== candidate;
+      let genericItemUtility = r9v2LinearCreatedOptionValue(
+        useCandidate.creation.useEffects,
+        useRecipient,
+        selfUse,
+        threatProjection,
+      );
+      const realizedActionUtility = r9v2LinearCreatedActionFit({
+        request: useRequest,
+        candidate: useCandidate,
+        worldSnapshot: useWorld,
+        recipient: useRecipient,
+        projectedRecipient: useRecipient,
+        selfUse,
         hostileSide,
         actionCapacityCache,
-      ) / 100,
-      0,
-      0.95,
-    );
-    // Consuming the product occupies a later active opportunity. Tiny one-turn
-    // buffs are options on paper, but do not beat the consumer's best affordable
-    // action in the same window. Keep the old 0.1 floor for units whose current
-    // action catalog has almost no measurable value.
-    const opportunityCost = realizedActionUtility === null
-      ? Math.max(0.1, displacedActiveUtility)
-      : 0;
-    let netItemUtility = realizedActionUtility === null
-      ? clamp(
-          (itemUtility - opportunityCost) / Math.max(0.05, 1 - opportunityCost),
-          0,
-          1,
-        )
-      : itemUtility;
-    if (netItemUtility <= 0) return null;
-    if (realizedActionUtility === null && candidate.creation.sideEffects?.length) {
-      const riskCost = r9v2LinearCreatedPassiveRiskCost(request, candidate, worldSnapshot, projectedRecipient, hostileSide, actionCapacityCache, usePreview);
-      netItemUtility = Math.max(0, netItemUtility - riskCost / Math.max(0.05, 1 - opportunityCost));
+        remainingWindows,
+      });
+      const resolvedUseProfile = targetProfile({
+        _效果数组: r9v2LinearCreatedUseEffects(useCandidate.creation.useEffects, selfUse),
+      });
+      const displacedActiveUtility = clamp(
+        r9v2LinearBestActionCapacity(
+          useWorld,
+          useRecipient,
+          hostileSide,
+          actionCapacityCache,
+        ) / 100,
+        0,
+        0.95,
+      );
+      // Consuming the product occupies a later active opportunity. Tiny one-turn
+      // buffs are options on paper, but do not beat the consumer's best affordable
+      // action in the same window. Keep the old 0.1 floor for units whose current
+      // action catalog has almost no measurable value.
+      let opportunityCost = realizedActionUtility === null
+        ? Math.max(0.1, displacedActiveUtility)
+        : 0;
+      let resourcePlan = null;
+      if (useResourceReference) {
+        resourcePlan = r9v2LinearCreatedResourceBatch(request, useCandidate, worldSnapshot, recipient, hostileSide, actionCapacityCache, threatProjection);
+        genericItemUtility = resourcePlan.itemUtility;
+        opportunityCost = resourcePlan.alternativeUtility;
+      }
+      const itemUtility = realizedActionUtility === null
+        ? genericItemUtility
+        : ['HOSTILE_SINGLE', 'HOSTILE_GROUP', 'ANY_SINGLE'].includes(resolvedUseProfile)
+          ? realizedActionUtility
+          : Math.min(genericItemUtility, realizedActionUtility);
+      // Keep the established resource cap before unresolved delivery risk.
+      // The weighted receipt still uses each branch's actual live capacity.
+      let netItemUtility = resourcePlan
+        ? clamp(resourcePlan.value / Math.max(1, resourcePlan.preDeliveryRiskValue), 0, 1)
+        : realizedActionUtility === null
+        ? clamp(
+            (itemUtility - opportunityCost) / Math.max(0.05, 1 - opportunityCost),
+            0,
+            1,
+          )
+        : itemUtility;
       if (netItemUtility <= 0) return null;
-    }
-    const survivalProbability = boundedDeliverySurvivalProbability(
-      threatProjection.deliveryBranches,
-      productionWindow,
-      (preview.readHp(projectedRecipient) + preview.readShield(projectedRecipient)) /
-        Math.max(1, preview.readHpMax(projectedRecipient)) * 100,
-    );
-    const actionAvailability = clamp(
-      1 - cancellationProbabilityAtOpportunity(projectedRecipient, productionWindow),
-      0,
-      1,
-    );
-    const deliveryProbability = survivalProbability * actionAvailability;
-    if (deliveryProbability <= 0.0001) return null;
-    decisionMetrics.creationFutureTargetBranchesRealized += 1;
-    const mechanicalGain = netItemUtility * deliveryProbability;
-    const existingActionCount =
-      (hasStateFlag(projectedRecipient, 'disarm') ? 0 : 1) +
-      (hasStateFlag(projectedRecipient, 'silence')
-        ? 0
-        : affordablePreparedSkills(projectedRecipient).length);
-    return Object.freeze({
-      mechanicalGain: clamp(mechanicalGain, 0, 1),
-      optionGain: clamp(
-        mechanicalGain / Math.max(1, existingActionCount + 1),
+      if (!resourcePlan && realizedActionUtility === null && useCandidate.creation.sideEffects?.length) {
+        const riskCost = r9v2LinearCreatedPassiveRiskCost(useRequest, useCandidate, useWorld, useRecipient, hostileSide, actionCapacityCache, null, false, remainingWindows);
+        netItemUtility = Math.max(0, netItemUtility - riskCost / Math.max(0.05, 1 - opportunityCost));
+        if (netItemUtility <= 0) return null;
+      }
+      // Resource recurrence already weights both counterfactuals in each
+      // realized delivery world. Do not replay its settled public threat or
+      // multiply the same survival/interruption mass a second time here.
+      const survivalProbability = resourcePlan ? 1 : boundedDeliverySurvivalProbability(
+        threatProjection.deliveryBranches,
+        productionWindow,
+        (preview.readHp(projectedRecipient) + preview.readShield(projectedRecipient)) /
+          Math.max(1, preview.readHpMax(projectedRecipient)) * 100,
+      );
+      const actionAvailability = resourcePlan ? 1 : clamp(
+        1 - cancellationProbabilityAtOpportunity(useRecipient, remainingWindows === null ? productionWindow : 1),
         0,
         1,
-      ),
-      itemUtility,
-      alternativeUtility: opportunityCost,
-      deliveryProbability,
+      );
+      const deliveryProbability = resourcePlan ? resourcePlan.deliveryProbability : survivalProbability * actionAvailability;
+      if (deliveryProbability <= 0.0001) return null;
+      decisionMetrics.creationFutureTargetBranchesRealized += 1;
+      const mechanicalGain = netItemUtility * (resourcePlan ? 1 : deliveryProbability);
+      const existingActionCount =
+        (hasStateFlag(useRecipient, 'disarm') ? 0 : 1) +
+        (hasStateFlag(useRecipient, 'silence')
+          ? 0
+          : affordablePreparedSkills(useRecipient).length);
+      return Object.freeze({
+        mechanicalGain: clamp(mechanicalGain, 0, 1),
+        optionGain: clamp(
+          mechanicalGain / Math.max(1, existingActionCount + 1),
+          0,
+          1,
+        ),
+        itemUtility,
+        alternativeUtility: opportunityCost,
+        deliveryProbability,
+      });
+    };
+    const hasExistingBatchStock = batchProducts.some(product => {
+      const item = findUnitInWorld(worldSnapshot, recipientId)?.背包?.[product.productId];
+      return preview.inventoryItemQuantity(item) > 0;
+    });
+    if (useResourceFastPath && !hasExistingBatchStock) return projectUse(worldSnapshot, projectedRecipient);
+    const clock = r9v2LinearCreatedConsumptionClock(request, candidate, worldSnapshot, recipient, actionCapacityCache);
+    const totalWindows = Math.max(0, clock.opportunities - clock.productionWindow + 1);
+    const hasExtendedTail = totalWindows > clock.windows;
+    if (useResourceFastPath && !(hasExistingBatchStock && hasExtendedTail)) {
+      return projectUse(worldSnapshot, projectedRecipient);
+    }
+    const finitePlan = r9v2LinearCreatedFiniteBatch(request, candidate, worldSnapshot, recipient,
+      hostileSide, actionCapacityCache, threatProjection, clock);
+    if (hasResourceRedistribution && resourceReferenceEligible && finitePlan.resourceReferenceDomainCompatible) {
+      // No reachable use actually redistributed resources or installed a flow.
+      // A dormant conditional declaration must not alter the old receipt scale.
+      return projectUse(worldSnapshot, projectedRecipient, request, null, { ...candidate });
+    }
+    if (finitePlan.resourceRemovalCompanionsInert && finitePlan.finiteHostileActionAlternative > 1e-12 &&
+        finitePlan.resourceReferenceDomainCompatible) {
+      const resourceProducts = batchProducts.map(product => {
+        const effects = r9v2LinearCreatedUseEffects(product.useEffects || [], recipientId === actorId);
+        return { ...product, useEffects: effects.filter(effect => ['资源变化', '资源转移'].includes(String(effect?.原型 || '').trim())) };
+      });
+      const resourceCandidate = { ...candidate, creation: { ...candidate.creation,
+        useEffects: r9v2LinearCreatedUseEffects(candidate.creation.useEffects || [], recipientId === actorId)
+          .filter(effect => ['资源变化', '资源转移'].includes(String(effect?.原型 || '').trim())),
+        ...(Array.isArray(candidate.creation.products) ? { products: resourceProducts } : {}),
+      } };
+      // The finite planner compared every reachable use outcome with the
+      // resource-only receipt. Reuse that plan only when the reference can
+      // represent the same compatible old stock and consumption windows;
+      // old stock in an extended tail stays in the finite recurrence so its
+      // tail-only eligibility cannot be replaced by the prefix reference.
+      return projectUse(worldSnapshot, projectedRecipient, request, null, resourceCandidate);
+    }
+    const mechanicalGain = clamp(finitePlan.value, 0, 1);
+    if (!(mechanicalGain > 0)) return Object.freeze({ mechanicalGain: 0, optionGain: 0,
+      itemUtility: finitePlan.itemUtility, alternativeUtility: finitePlan.alternativeUtility,
+      deliveryProbability: finitePlan.deliveryProbability });
+    const existingActionCount =
+      (hasStateFlag(projectedRecipient, 'disarm') ? 0 : 1) +
+      (hasStateFlag(projectedRecipient, 'silence') ? 0 : affordablePreparedSkills(projectedRecipient).length);
+    decisionMetrics.creationFutureTargetBranchesRealized += 1;
+    return Object.freeze({
+      mechanicalGain,
+      optionGain: clamp(mechanicalGain / Math.max(1, existingActionCount + 1), 0, 1),
+      itemUtility: finitePlan.itemUtility,
+      alternativeUtility: finitePlan.alternativeUtility,
+      deliveryProbability: finitePlan.deliveryProbability,
     });
   }
 
   function r9v2LinearSkillPool(unit = {}, affordableArrayCache = null) {
     const prepared = affordablePreparedSkills(unit);
-    const cached = affordableArrayCache?.get(prepared);
+    // Temporary granted options are priced against the recipient (e.g. missing
+    // HP), not just skill membership. The caller already caches each unit.
+    const staticPool = !prepared.some(({ skill }) => skill?.__mechanismGrantTemporarySkill === true);
+    const cached = staticPool ? affordableArrayCache?.get(prepared) : null;
     if (cached) {
       decisionMetrics.r9v2SkillPoolPreparedArrayCacheHits += 1;
       return cached;
@@ -56156,7 +59482,7 @@
       value: rows.reduce((sum, row) => sum + row.value, 0),
       rows,
     };
-    affordableArrayCache?.set(prepared, pool);
+    if (staticPool) affordableArrayCache?.set(prepared, pool);
     decisionMetrics.r9v2SkillPoolPreparedArrayCacheBuilds += 1;
     return pool;
   }
@@ -56290,11 +59616,11 @@
   }
 
   function r9v2LinearPaymentCapacityProjection(unit = {}, costs = {}) {
-    const paidUnit = unitAfterResourceCosts(unit, costs);
+    const paidUnit = preview.unitAfterResourceCosts(unit, costs);
     const normalized = preview.normalizeSkillCostMap(costs || {});
     const stable = !normalized.非法项.length &&
       Object.entries(normalized.values || {}).every(([resource, amount]) =>
-        !(Number(amount || 0) > 0) || ['sp', 'men', 'vit'].includes(preview.skillCostResourceKey(resource))) &&
+        !(preview.resolveSkillResourceCost(unit, resource, amount) > 0) || ['sp', 'men', 'vit'].includes(preview.skillCostResourceKey(resource))) &&
       preview.isBattleCapable(paidUnit) === preview.isBattleCapable(unit) &&
       ['str', 'def', 'agi', 'men'].every(stat =>
         preview.readCombatStat(paidUnit, stat) === preview.readCombatStat(unit, stat)) &&
@@ -56303,7 +59629,529 @@
     return { paidUnit, stable };
   }
 
-  function r9v2LinearResourceCapacityRecord(unit = {}, actions = [], sequence = 0) {
+  // Serialization only chooses a bucket. Compare every own data property
+  // before reuse, including undefined/non-finite values JSON cannot retain.
+  function r9v2SameProjectionFrame(left, right) {
+    if (Object.is(left, right)) return true;
+    if (!left || !right || typeof left !== 'object' || typeof right !== 'object' ||
+      Object.getPrototypeOf(left) !== Object.getPrototypeOf(right) || 'toJSON' in left || 'toJSON' in right ||
+      !['[object Object]', '[object Array]'].includes(Object.prototype.toString.call(left))) return false;
+    const keys = Reflect.ownKeys(left), other = Reflect.ownKeys(right);
+    return keys.length === other.length && keys.every((key, index) => {
+      if (key !== other[index]) return false;
+      const a = Object.getOwnPropertyDescriptor(left, key), b = Object.getOwnPropertyDescriptor(right, key);
+      return Object.hasOwn(a, 'value') && Object.hasOwn(b, 'value') && a.enumerable === b.enumerable &&
+        a.configurable === b.configurable && a.writable === b.writable && r9v2SameProjectionFrame(a.value, b.value);
+    });
+  }
+
+  function r9v2PurePanelSustainState(state, validatedWindows = false) {
+    return state?.原型 === '属性修正' && !Object.keys(state.战斗效果 || {}).length && !Object.keys(state.计算层效果 || {}).length &&
+      !state.持续原型效果 && !state.资源锁定规则 && (!state.__状态来源窗口 || validatedWindows === true && preview.projectedStateSourceWindowSupported(state)) &&
+      !state.延迟效果 && !state.副作用列表?.length && !state.授予效果?.length && !state.结算效果?.length &&
+      [...Object.keys(state.面板修改比例 || {}), ...Object.keys(state.面板固定修正 || {})].every(key => ['str', 'def', 'agi'].includes(key));
+  }
+
+  function r9v2LinearRepeatedResourceReserve(worldSnapshot, unit, action, uses, decisionRequest, naturalClock = null, delivery = null, cache = new Map(), readImmediate = null) {
+    if (searchBounds?.reserveUses != null) uses = Math.min(uses, searchBounds.reserveUses);
+    const actorId = preview.unitId(unit), sourceSkillId = skillId(action.skill);
+    const empty = Object.freeze({ value: 0, reserveValue: 0, tailUses: 0, productiveUses: 0 });
+    // This channel repeats only this one action; it does not choose a funded
+    // follow-up. In a quiet world, fuel/cost/windup and numeric panel effects
+    // cannot produce its HP/shield receipt. Keep the real mixed-action solver.
+    const receiptEffects = !readImmediate && !(action.potential > 0) ? preview.collectEffects(action.skill || {}) : [];
+    const checking = new Set();
+    const receiptFreeEffect = effect => {
+      if (!effect || checking.has(effect) || effect.生效方式 !== '独立生效' ||
+          effect.副作用列表?.length || effect.延迟回合 || effect.触发方式 === '延迟触发') return false;
+      const attributes = Array.isArray(effect.属性) ? effect.属性 : [effect.属性];
+      const own = effect.目标 === '自身';
+      const pure = own && (effect.原型 === '结算修正' && ['消耗', '前摇', '蓄力'].includes(effect.结算) ||
+        effect.原型 === '资源变化' && !effect.持续回合 &&
+          (Array.isArray(effect.资源) ? effect.资源 : [effect.资源]).every(resource => ['魂力', '精神力', '体力'].includes(resource))) ||
+        effect.原型 === '属性修正' && ['自身', '单体', '群体', '全场'].includes(effect.目标) &&
+          attributes.length > 0 && attributes.every(attribute => ['力量', '防御', '敏捷', 'str', 'def', 'agi'].includes(attribute));
+      if (!pure) return false;
+      checking.add(effect);
+      const valid = (effect.条件分支 || []).every(branch => ['生效', '禁用', '追加效果', '替换效果'].includes(branch.处理) &&
+        ['追加效果', '替换效果'].every(key => branch[key] == null || Array.isArray(branch[key]) && branch[key].every(receiptFreeEffect)) &&
+        (!['追加效果', '替换效果'].includes(branch.处理) || Array.isArray(branch[branch.处理]) && branch[branch.处理].length > 0));
+      checking.delete(effect); return valid;
+    };
+    const pureSustains = Object.entries(delivery?.sustains || {}).every(([id, rows]) => id === actorId && Array.isArray(rows) && rows.every(row => {
+      const normalized = preview.normalizeSkillCostMap(row.costs || {});
+      return !normalized.非法项.length && Object.keys(normalized.values).every(resource => ['魂力', '精神力', '体力'].includes(resource)) &&
+        Array.isArray(row.stateKeys) && row.stateKeys.length > 0 && row.stateKeys.every(key => r9v2PurePanelSustainState(unit.状态效果?.[key]));
+    }));
+    const receiptFree = receiptEffects.length > 0 && !action.fusionRequired &&
+      !action.skill?.__mechanismGrantTemporarySkill && !action.skill?.副作用列表?.length &&
+      receiptEffects.every(receiptFreeEffect);
+    // This proves only a repeated action's terminal receipt is identically
+    // zero, with or without a dated clock. Foreign numeric panels cannot turn
+    // this same fuel/panel-only action into HP/shield settlement. Keep their
+    // actual admission and future ally value in the separate action consumers;
+    // do not enumerate a 12-cast chance/target tree just to add exact zeros.
+    const quiet = receiptFree && pureSustains &&
+      !(delivery?.pending || []).some(entry => entry.outcomeKind === 'STATE_SCHEDULED' || entry.evidence?.persistentRiskBinding ||
+        entry.evidence?.persistentTransfer || entry.evidence?.persistentStateOperation) &&
+      !(decisionRequest?.evaluationContext?.scheduledEvents || []).some(event => event.eventType !== 'FUTURE_NATURAL_ACTION') &&
+      worldEntries(worldSnapshot).every(({ unit: holder }) => !preview.isSummonUnit(holder) && !holder.蓄力技能 &&
+        !preview.collectPassiveSkills(holder).length && !equipmentPassivePreviewEffects(holder).length && !Object.keys(holder.持续效果 || {}).length &&
+        !Object.values(holder.状态效果 || {}).some(state => state?.副作用列表?.length || state?.延迟效果 || state?.持续原型效果 ||
+          state?.授予效果?.length || Number(state?.战斗效果?.revive_count || 0) > 0 || Number(state?.战斗效果?.dot_damage || 0) > 0 ||
+          Number(state?.战斗效果?.hot_heal_ratio || 0) > 0 || /生命|HP/i.test(String(state?.战斗效果?.resource_tick_resource || ''))));
+    const environment = quiet ? preview.assessWorldAction({ worldSnapshot, actor: unit,
+      declaration: { actorId, actionKind: 'RELEASE_SKILL', skill: action.skill } }) : null;
+    if (environment && !environment.blocked && !environment.hazards?.length && !Object.keys(environment.modifiers || {}).length) return empty;
+    const revisions = { projectionObjectRevisions: new WeakMap() };
+    const poolEnvironment = !readImmediate && !naturalClock && skillActionCapacitySettlementProfile(action.skill)?.independentPositivePools &&
+      !action.fusionRequired && !preview.pendingGrantedEffects(unit, 'RELEASE_SKILL').length &&
+      !equipmentPassivePreviewEffects(unit).length
+      ? preview.assessWorldAction({ worldSnapshot, actor: unit,
+          declaration: { actorId, actionKind: 'RELEASE_SKILL', skill: action.skill } }) : null;
+    const poolOnly = poolEnvironment && !poolEnvironment.blocked && !poolEnvironment.hazards?.length;
+    const simpleShield = skillActionCapacitySettlementProfile(action.skill)?.simpleShield;
+    const finalPaidUnit = poolOnly && simpleShield && action.potential > 0 && action.capacityCosts?.valid === true
+      ? preview.unitAfterResourceCosts(unit, Object.fromEntries([['sp', '魂力'], ['men', '精神力'], ['vit', '体力']]
+          .map(([resource, name]) => [name, Number(action.capacityCosts[resource] || 0) * uses]))) : null;
+    if (finalPaidUnit && preview.isBattleCapable(finalPaidUnit) &&
+        preview.readHpMax(finalPaidUnit) === preview.readHpMax(unit) &&
+        preview.readResourceMax(finalPaidUnit, '魂力') === preview.readResourceMax(unit, '魂力')) {
+      const profile = targetProfile(action.skill), targetSets = enumerateTargetSets(worldSnapshot, unit, profile,
+        decisionRequest?.beliefState || {}, action.skill);
+      // The shared shield kernel is monotone in existing shield. Equal first
+      // and last marginal gains prove every intervening cast has that gain.
+      const stable = targetSets.length > 0 && targetSets.every(targetIds =>
+        preview.resolveTargets(worldSnapshot, unit, { actorId, actionKind: 'RELEASE_SKILL', skill: action.skill, targetIds }, simpleShield)
+          .every(target => {
+            const gain = preview.calculateShieldGain(target, Number(simpleShield.数值));
+            return gain === preview.calculateShieldGain({ hp_max: preview.readHpMax(target),
+              sp_max: preview.readResourceMax(target, '魂力'), shield: preview.readShield(target) + gain * (uses - 1) }, Number(simpleShield.数值));
+          }));
+      if (stable) return { tailUses: uses - 1,
+        reserveValue: action.potential * .85 * (1 - .85 ** (uses - 1)) / (1 - .85) };
+    }
+    const initialStateKeys = new Map(worldEntries(worldSnapshot).map(({ unit: current }) =>
+      [preview.unitId(current), new Set(Reflect.ownKeys(current.状态效果 || {}))]));
+    const frameInput = frame => !poolOnly ? frame : worldEntries(frame).map(({ side, unit: current }) => {
+      const descriptor = Object.getOwnPropertyDescriptor(current, '状态效果');
+      if (!descriptor || !Object.hasOwn(descriptor, 'value') ||
+          !Number.isSafeInteger(preview.readShield(current))) return [side, current, 0];
+      const states = descriptor.value || {}, stateDescriptors = Object.getOwnPropertyDescriptors(states);
+      let addedShield = 0;
+      for (const [key, state] of Object.entries(states)) {
+        if (initialStateKeys.get(preview.unitId(current))?.has(key) ||
+            !key.startsWith('preview:' + action.actionKey + ':reserve:') ||
+            !(Number(state?.shield_value) > 0) || !Number.isSafeInteger(Number(state.shield_value)) ||
+            !Number.isSafeInteger(addedShield + Number(state.shield_value)) || Reflect.ownKeys(state?.战斗效果 || {}).length ||
+            Reflect.ownKeys(state).some(field => !['类型', '状态', '状态名称', 'duration', '数值', 'shield_value', '战斗效果'].includes(field))) continue;
+        addedShield += Number(state.shield_value);
+        delete stateDescriptors[key];
+      }
+      const descriptors = Object.getOwnPropertyDescriptors(current);
+      descriptors.状态效果 = { ...descriptor, value: Object.create(Object.getPrototypeOf(states), stateDescriptors) };
+      return [side, Object.create(Object.getPrototypeOf(current), descriptors), addedShield];
+    });
+    const solve = (frame, remaining, pending = [], sustains = {}) => {
+      if (!(remaining > 0)) return empty;
+      const input = frameInput(frame);
+      const resourceState = naturalClock ? preview.projectedResourceWorldState(frame) : null;
+      let key;
+      try { key = JSON.stringify([remaining, input, ...(naturalClock ? [resourceState, pending, sustains] : [])]); }
+      catch { return evaluate(frame, remaining, pending, sustains); }
+      const bucket = cache.get(key), cached = bucket?.find(row =>
+        r9v2SameProjectionFrame(row.input, input) && (!naturalClock ||
+          r9v2SameProjectionFrame(row.resourceState, resourceState) && r9v2SameProjectionFrame(row.pending, pending) &&
+          r9v2SameProjectionFrame(row.sustains, sustains)));
+      if (cached) {
+        decisionMetrics.r9v2ResourceSequenceReserveCacheHits += 1;
+        return cached.value;
+      }
+      const value = evaluate(frame, remaining, pending, sustains);
+      if (bucket) bucket.push({ input, resourceState, pending, sustains, value });
+      else cache.set(key, [{ input, resourceState, pending, sustains, value }]);
+      return value;
+    };
+    const evaluate = (frame, remaining, pending, sustains) => {
+      decisionMetrics.r9v2ResourceSequenceReserveStateBuilds += 1;
+      const current = findUnitInWorld(frame, actorId), side = current && sideOf(frame, current);
+      if (!side || !preview.isBattleCapable(current) || !aliveEntries(frame).some(entry => entry.side !== side)) return empty;
+      const continueAfter = (declaration = null, projection = null) => {
+        if (!naturalClock) return projection ? solve(projection.afterSnapshot, remaining - 1) : empty;
+        if (remaining <= 1) return empty;
+        return naturalClock.advance({ world: frame, pending, sustains }, declaration, projection).reduce((sum, branch) => {
+          const next = solve(branch.world, remaining - 1, branch.pending, branch.sustains);
+          for (const key of ['value', 'reserveValue', 'tailUses', 'productiveUses']) sum[key] += branch.probability * next[key];
+          return sum;
+        }, { value: 0, reserveValue: 0, tailUses: 0, productiveUses: 0 });
+      };
+      const charge = naturalClock && current.蓄力技能;
+      const chargedSkill = charge && (charge.skill || charge);
+      const prepared = chargedSkill ? { skill: chargedSkill,
+        startupCosts: parseSkillCostStages(chargedSkill, skillCostParserContext(current, chargedSkill)).启动, fusionMetadata: null }
+        : affordablePreparedSkills(current).find(row => skillId(row.sourceSkill) === sourceSkillId);
+      if (!prepared || hasActionCancellation(current) || !charge && hasStateFlag(current, 'silence')) {
+        const cleared = charge ? r9v2LinearNaturalChargeFrame(frame, current, naturalClock.naturalBudget).world : null;
+        const next = continueAfter(null, cleared ? { afterSnapshot: cleared, contributions: [] } : null);
+        return { value: .85 * next.value, reserveValue: .85 * next.value,
+          tailUses: next.productiveUses, productiveUses: next.productiveUses };
+      }
+      const { skill, startupCosts, fusionMetadata } = prepared;
+      const fusion = fusionMetadata ? preview.resolveFusionAction(frame, current, skill, {
+        resourceCosts: startupCosts, requirePendingOpportunity: true,
+      }) : null;
+      if (fusion && !fusion.valid) return empty;
+      const profile = targetProfile(skill), targetSets = charge ? [charge.targetIds || []] : expandMixedScopePrimaryTargetSets(skill, profile,
+        enumerateTargetSets(frame, current, profile, decisionRequest?.beliefState || {}, skill), frame, current);
+      const worldRevision = r9v2ProjectionObjectRevision(revisions, frame);
+      let best = empty;
+      for (const targetIds of targetSets) {
+        const declaration = { actorId, actionId: action.actionKey + ':reserve:' + (uses - remaining),
+          actionKind: 'RELEASE_SKILL', skill, targetIds, resourceCosts: startupCosts,
+          ...(fusion?.required ? { fusionKey: fusion.fusionKey, fusionParticipantIds: [...fusion.participantIds],
+            fusionPartnerIds: [...fusion.partnerIds], fusionUsageMode: fusion.usageMode } : {}) };
+        let reserveValue = 0, tailUses = 0, productiveUses = 0;
+        const value = (naturalClock ? naturalClock.expected : r9v2LinearExpectedCreatedPreview)({
+          worldSnapshot: frame, actorId, worldRevision, snapshotRevision: worldRevision,
+          actionFingerprint: r9v2ProjectionObjectRevision(revisions, declaration),
+          __preparedDecisionWorld: decisionRequest !== null,
+          beliefState: decisionRequest?.beliefState, battleIntent: decisionRequest?.battleIntent,
+          actionOpportunity: { role: current.行动模式 === '协同攻击' ? 'ASSIST' : 'ACTIVE' },
+          declaration, buildOperationGraph: false, captureDependencies: false,
+        }, (projection, probability) => {
+          if (!(probability > 0)) return 0;
+          decisionMetrics.r9v2ResourceSequenceReserveBranchEvaluations += 1;
+          const immediate = readImmediate ? readImmediate(frame, current, projection) : r9v2LinearSettledDirectCapacity(frame, current, projection);
+          const next = continueAfter(declaration, projection);
+          reserveValue += probability * .85 * next.value;
+          tailUses += probability * next.productiveUses;
+          productiveUses += probability * (Number(immediate > 1e-9) + next.productiveUses);
+          return immediate + .85 * next.value;
+        });
+        if (value > best.value) best = { value, reserveValue, tailUses, productiveUses };
+      }
+      return best;
+    };
+    return solve(worldSnapshot, uses, delivery?.pending, delivery?.sustains);
+  }
+
+  function r9v2LinearResourceWindowCount(request, unit, naturalWindows) {
+    if (!Number.isFinite(naturalWindows)) return Infinity;
+    const unitId = preview.unitId(unit);
+    const horizon = battleHorizonProfile(request, request.visibleWorld);
+    const natural = unit?.__battleRuntime?.naturalOpportunity;
+    const currentId = String(request.actionOpportunity?.opportunityId || '').trim();
+    for (const record of r8OpportunityList(request)) {
+      if (String(record?.ownerId || '').trim() !== unitId ||
+          ['CONSUMED', 'EXPIRED', 'LOST', 'FATAL'].includes(String(record?.status || '').trim().toUpperCase()) ||
+          String(record?.opportunityId || '').trim() === currentId) continue;
+      // The runtime snapshot repeats the unit's current natural window.
+      // Its available/consumed state is already represented by naturalWindows.
+      if (record.grantType === 'NATURAL_ACTION' && record.role === 'ACTIVE' &&
+          ['PENDING', 'EXECUTING'].includes(record.status) &&
+          String(record.opportunityId || '').trim() &&
+          record.opportunityId === natural?.opportunityId &&
+          Number(natural.round) === horizon.currentRound) continue;
+      return Infinity;
+    }
+    for (const record of request.evaluationContext?.scheduledEvents || []) {
+      if (String(record?.ownerId || record?.targetId || '').trim() !== unitId) continue;
+      const round = Number(record.round ?? record.scheduledRound);
+      // The dated natural schedule describes the same horizon, not extra
+      // turns. Descriptors beyond the cutoff cannot extend that horizon.
+      if (record.eventType === 'FUTURE_NATURAL_ACTION' && record.expectedGrantType === 'NATURAL_ACTION' &&
+          Number.isSafeInteger(round) && round > horizon.currentRound) continue;
+      return Infinity;
+    }
+    return naturalWindows;
+  }
+
+  function r9v2LinearResourceNaturalClock(request, candidate, before, unit, windowCount, result = null, actionCapacityCache = null, retainCurrentOpportunity = false, excludedSkillId = '') {
+    const opportunity = request.actionOpportunity || {}, declaration = candidate.declaration || {};
+    const after = result?.afterSnapshot || before, horizon = battleHorizonProfile(request, before);
+    const actorId = preview.unitId(unit), consumed = consumedNaturalActors(request, declaration);
+    // A no-root counterfactual still owns its original natural turn. Actual
+    // settled roots never use this option, nor may it invent another actor's slot.
+    if (retainCurrentOpportunity && !result && actorId === request.actorId) consumed.delete(actorId);
+    const rootActor = findUnitInWorld(before, request.actorId), rootCharge = rootActor?.蓄力技能;
+    const readyRootRelease = !!rootCharge && Array.isArray((rootCharge.skill || rootCharge)._效果数组) &&
+      preview.isBattleCapable(rootActor) && !hasActionCancellation(rootActor) && !candidate.creation &&
+      String(opportunity.role || 'ACTIVE').toUpperCase() === 'ACTIVE' && opportunity.forcedChargeRelease === true &&
+      declaration.actionKind === 'RELEASE_SKILL' &&
+      Math.max(0, Number(rootCharge.cast_time ?? rootCharge.remainingCastTime ?? rootCharge.skill?.前摇 ?? 0)) <= horizon.naturalActionBudget &&
+      skillId(declaration.skill || {}) === skillId(rootCharge.skill || rootCharge) &&
+      Array.isArray(rootCharge.targetIds) && Array.isArray(declaration.targetIds) &&
+      rootCharge.targetIds.length === declaration.targetIds.length &&
+      rootCharge.targetIds.every((id, index) => id === declaration.targetIds[index]);
+    if (!Number.isFinite(windowCount) || !['ACTIVE', 'COUNTER'].includes(String(opportunity.role || 'ACTIVE').toUpperCase()) ||
+        opportunity.futureHostileResponseAllowed !== false || (opportunity.pendingHostileActorIds || []).length ||
+        (result?.contributions || []).some(entry => entry.outcomeKind === 'ACTION_GRANTED') ||
+        declaration.fusionParticipantIds?.length ||
+        !readyRootRelease && Number(declaration.skill?.前摇 ?? declaration.skill?.cast_time ?? 0) > horizon.naturalActionBudget ||
+        availableNaturalOpportunityCount(before, unit, { currentOpportunityConsumedFor: consumed, horizon }) !== windowCount ||
+        r9v2LinearResourceWindowCount(request, unit, windowCount) !== windowCount ||
+        // Only the exact root cast already releasing now has finished its
+        // timer. Pending casts and main/assist clocks need their own schedule.
+        [before, after].some(world => worldEntries(world).some(({ unit: holder }) =>
+          preview.isSummonUnit(holder) || holder.蓄力技能 &&
+            !(readyRootRelease && preview.unitId(holder) === request.actorId) &&
+            (preview.unitId(holder) === request.actorId || preview.unitId(holder) === actorId || !r9v2LinearChargeReplayIsClosed(holder)) ||
+            !r9v2LinearPassiveCalendarIsClosed(holder))) ||
+        [unit, findUnitInWorld(after, actorId) || unit].some(holder => preparedSkillProfiles(holder).some(row =>
+          row.fusionMetadata ||
+          root.__LWCS_BATTLE_RUNTIME__.readStructuredContinuationGrant({ actionKind: 'RELEASE_SKILL', skill: row.skill }) ||
+          preview.collectEffects(row.skill).some(effect => effect.原型 === '召唤生成')))) return null;
+    const inspectedTiming = new WeakSet();
+    const changesWindup = effect => {
+      if (!effect || typeof effect !== 'object' || inspectedTiming.has(effect)) return false;
+      inspectedTiming.add(effect);
+      return effect.原型 === '结算修正' && ['前摇', '蓄力'].includes(effect.结算) ||
+        (effect.条件分支 || []).some(branch => [...(branch.追加效果 || []), ...(branch.替换效果 || [])].some(changesWindup));
+    };
+    const timedNaturalActions = [unit, findUnitInWorld(after, actorId) || unit].some(holder =>
+      preparedSkillProfiles(holder).some(row => Number(row.skill.前摇 ?? row.skill.cast_time ?? 0) > horizon.naturalActionBudget ||
+        preview.collectEffects(row.skill).some(changesWindup)));
+    const current = unit.__battleRuntime?.naturalOpportunity;
+    const firstRound = horizon.currentRound + Number(!(current?.status === 'PENDING' &&
+      Number(current.round) === horizon.currentRound && !consumed.has(actorId)));
+    // Before-action deliveries depend on the proven schedule, not the chosen
+    // declaration's identity. Intern only within the exact request/world/unit;
+    // settled roots keep their own pending events, sustains and resource law.
+    const sharedClocks = actionCapacityCache ? (actionCapacityCache.resourceNaturalClocks ||= new WeakMap()) : null;
+    let clocksByUnit = sharedClocks?.get(before), clocksByRequest = clocksByUnit?.get(unit), clocks = clocksByRequest?.get(request);
+    const clockKey = sharedClocks ? JSON.stringify(['R9V2_RESOURCE_NATURAL_CLOCK_8', windowCount, firstRound, horizon, [...consumed].sort(compareUtf16), excludedSkillId]) : null;
+    const cached = !result && clocks?.get(clockKey);
+    if (cached) return cached;
+    const boundary = r9v2LinearNaturalCapacityClock(horizon, actorId, 'r9v2ResourceNaturalClockBranchesEvaluated', request);
+    const knownOthers = [before, after].some(world => worldEntries(world).some(({ unit: holder }) =>
+      holder.蓄力技能 && preview.unitId(holder) !== request.actorId && preview.unitId(holder) !== actorId))
+        ? r9v2LinearKnownNaturalSchedule(request, candidate, horizon, actorId) : null;
+    const atOpportunity = (branches, pending, sustains) => branches.flatMap(branch =>
+      r9v2LinearCreatedResourcePaymentWorlds(branch.world, actorId,
+        sideOf(before, unit) === sideOf(before, findUnitInWorld(before, request.actorId)), excludedSkillId).map(payment => ({
+          probability: branch.probability * payment.probability, world: payment.world, pending: branch.pending || pending, sustains,
+        })));
+    const advance = (delivery, action = null, projection = null) => {
+      const prior = delivery.world;
+      let world = projection ? r9v2LinearNormalizeActionFrame(prior, projection) : prior;
+      const pending = [...delivery.pending, ...(projection?.contributions || [])];
+      const sustains = r9v2LinearActionSustains(delivery.sustains, prior, world, action, projection);
+      const natural = findUnitInWorld(world, actorId)?.__battleRuntime?.naturalOpportunity;
+      const currentPending = natural?.status === 'PENDING' && Number(natural.round) === Number(world.回合 || 0);
+      // Successful declarations have spent this turn. A blocked/skipped turn
+      // stays pending so the shared control-budget kernel owns its consumption.
+      if (action && currentPending) {
+        const overlay = new preview.PreviewOverlay(world, `normal-resource-spent:${actorId}:${world.回合}`);
+        overlay.changeUnit(actorId, next => {
+          next.__battleRuntime.naturalOpportunity = { ...next.__battleRuntime.naturalOpportunity, status: 'CONSUMED' };
+        });
+        world = overlay.snapshot();
+      }
+      if (knownOthers) return knownOthers.scheduleKnownNatural({ world, pending, sustains, probability: 1 }, false).flatMap(reached => {
+        const settled = boundary.settleBoundary(reached.world, prior, reached.pending || [], actorId, !action && currentPending, reached.sustains);
+        return settled.branches.flatMap(branch =>
+          knownOthers.scheduleKnownNatural({ ...branch, pending: branch.pending || settled.remaining, sustains: reached.sustains, probability: reached.probability * branch.probability }, true)
+            .flatMap(current => atOpportunity([{ world: current.world, probability: current.probability }], current.pending, current.sustains)));
+      });
+      const settled = boundary.settleBoundary(world, prior, pending, actorId, !action && currentPending, sustains);
+      return atOpportunity(settled.branches, settled.remaining, sustains);
+    };
+    const deliveries = world => {
+      world = result ? r9v2LinearNormalizeActionFrame(before, { ...result, afterSnapshot: world }) : world;
+      if (readyRootRelease) {
+        const holder = findUnitInWorld(world, request.actorId);
+        if (holder?.蓄力技能) {
+          const completed = { ...holder, 蓄力技能: null };
+          preview.inheritOverlayOrigin(completed, holder);
+          world = replaceWorldUnit(world, request.actorId, completed);
+        }
+      }
+      const overlay = new preview.PreviewOverlay(world, `normal-resource-root-spent:${firstRound}`);
+      let changed = false;
+      for (const id of consumed) {
+        const natural = findUnitInWorld(world, id)?.__battleRuntime?.naturalOpportunity;
+        if (natural?.status !== 'PENDING' || Number(natural.round) !== horizon.currentRound) continue;
+        overlay.changeUnit(id, next => {
+          next.__battleRuntime.naturalOpportunity = { ...next.__battleRuntime.naturalOpportunity, status: 'CONSUMED' };
+        });
+        changed = true;
+      }
+      if (changed) world = overlay.snapshot();
+      const pending = result?.contributions || [];
+      const inheritedSustains = request.evaluationContext?.continuedSustains || {};
+      const sustains = result ? r9v2LinearActionSustains(inheritedSustains, before, world, declaration, result) : inheritedSustains;
+      if (firstRound === horizon.currentRound) return knownOthers
+        ? knownOthers.scheduleKnownNatural({ world, pending, sustains, probability: 1 }, true)
+            .flatMap(current => atOpportunity([{ probability: current.probability, world: current.world }], current.pending, current.sustains))
+        : atOpportunity([{ probability: 1, world }], pending, sustains);
+      const source = findUnitInWorld(world, request.actorId)?.__battleRuntime?.naturalOpportunity;
+      if (knownOthers) return knownOthers.scheduleKnownNatural({ world, pending, sustains, probability: 1 }, false).flatMap(reached => {
+        const settled = boundary.settleBoundary(reached.world, before, reached.pending || [], request.actorId,
+          source?.status === 'PENDING' && Number(source.round) === horizon.currentRound, reached.sustains);
+        return settled.branches.flatMap(branch => knownOthers.scheduleKnownNatural({ ...branch, pending: branch.pending || settled.remaining, sustains: reached.sustains,
+          probability: reached.probability * branch.probability }, true)
+            .flatMap(current => atOpportunity([{ world: current.world, probability: current.probability }], current.pending, current.sustains)));
+      });
+      const settled = boundary.settleBoundary(world, before, pending, request.actorId,
+        source?.status === 'PENDING' && Number(source.round) === horizon.currentRound, sustains);
+      return atOpportunity(settled.branches, settled.remaining, sustains);
+    };
+    const expected = (input, readValue) => {
+      const current = findUnitInWorld(input.worldSnapshot, input.actorId);
+      const windup = Math.max(0, Number(input.declaration?.skill?.前摇 ?? input.declaration?.skill?.cast_time ?? 0));
+      if (current && (current.蓄力技能 || windup > horizon.naturalActionBudget)) {
+        const timing = r9v2LinearNaturalChargeFrame(input.worldSnapshot, current, horizon.naturalActionBudget, input.declaration);
+        const remainingBudget = Math.max(0, firstRound + windowCount - Number(input.worldSnapshot.回合)) * horizon.naturalActionBudget;
+        if (timing.phase !== 'READY' || hasStateFlag(current, 'silence')) {
+          const world = timing.phase === 'START' && windup > remainingBudget ? input.worldSnapshot : timing.world;
+          return readValue({ afterSnapshot: world, actionId: input.declaration.actionId, contributions: [] }, 1, false);
+        }
+        const actionOpportunity = { role: 'ACTIVE', forcedSkill: timing.charge.skill || timing.charge,
+          forcedTargetIds: timing.charge.targetIds || [], forcedCreationRecipientId: timing.charge.creationRecipientId || '',
+          forcedChargeRelease: true, pendingNaturalActorIds: [input.actorId], pendingHostileActorIds: [],
+          battleHorizon: { ...horizon, currentRound: Number(input.worldSnapshot.回合) } };
+        const forced = enumerateCandidates({ ...request, worldSnapshot: input.worldSnapshot, actorId: input.actorId,
+          actionOpportunity, playerLockedDeclaration: null, includeUnaffordableRoutes: false }).find(action =>
+            action.declaration?.actionKind === 'RELEASE_SKILL' && action.resourcePotentialOnly !== true);
+        if (!forced) return readValue({ afterSnapshot: timing.world, actionId: input.declaration.actionId, contributions: [] }, 1, false);
+        const actualDeclaration = { ...forced.declaration, actionId: input.declaration.actionId };
+        input = { ...input, worldSnapshot: timing.world, actionOpportunity, declaration: actualDeclaration,
+          worldRevision: String(input.worldRevision || '') + ':charge-release',
+          snapshotRevision: String(input.snapshotRevision || '') + ':charge-release', actionFingerprint: preview.stableHash(actualDeclaration) };
+      }
+      const prepared = preview.projectConditionedAction(input);
+      const deferredIds = new Set((prepared.contributions || []).filter(entry =>
+        entry.outcomeKind === 'STATE_SCHEDULED' || entry.evidence?.persistentRiskBinding).map(entry => entry.effectInstanceId));
+      const deferredOutcomeIds = r9v2LinearDeferredOutcomeIds(prepared, deferredIds);
+      return preview.hasUnresolvedActionOutcomes(prepared, deferredOutcomeIds)
+        ? r9v2LinearExpectedCreatedPreview(input, readValue, deferredOutcomeIds, { beforePassiveFrameEqual: r9v2SameProjectionFrame }) : readValue(prepared, 1);
+    };
+    if (sharedClocks) {
+      if (!clocksByUnit) sharedClocks.set(before, clocksByUnit = new WeakMap());
+      if (!clocksByRequest) clocksByUnit.set(unit, clocksByRequest = new WeakMap());
+      if (!clocks) clocksByRequest.set(request, clocks = new Map());
+    }
+    // Only the same request/world/unit and closed calendar share reserve solves.
+    // Settled-root deliveries themselves remain distinct and are never interned.
+    const reserveKey = sharedClocks && !knownOthers ? 'reserve:' + clockKey + ':' + Number(timedNaturalActions) : '';
+    let reserveCaches = reserveKey ? clocks.get(reserveKey) : null;
+    if (!reserveCaches) {
+      reserveCaches = new Map();
+      if (reserveKey) clocks.set(reserveKey, reserveCaches);
+    }
+    const clock = Object.freeze({ windows: windowCount, firstRound, lastRound: firstRound + windowCount - 1, timedNaturalActions,
+      naturalBudget: horizon.naturalActionBudget, resourcePaymentExcludedSkillId: excludedSkillId, deliveries, advance, expected, reserveCaches });
+    if (sharedClocks && !result) clocks.set(clockKey, clock);
+    return clock;
+  }
+
+  function r9v2LinearNaturalResourceSequenceCapacity(worldSnapshot, actorId, hostileSide, windowCount, decisionRequest, naturalClock, actionCapacityCache) {
+    if (searchBudget.shortCircuit) return R9V2_NEUTRAL_SEQUENCE_CAPACITY;
+    const revisions = { projectionObjectRevisions: new WeakMap() }, routes = new Map(), options = new Map(), reserveCaches = naturalClock.reserveCaches;
+    let sequence = 0, reserve = 0, finitePaidCapacity = 0, finitePaidCapacityValid = true;
+    for (const delivery of windowCount > 0 ? naturalClock.deliveries(worldSnapshot) : []) {
+      const world = delivery.world, unit = findUnitInWorld(world, actorId);
+      const rawActions = windowCount > 0 && unit && preview.isBattleCapable(unit)
+        ? r9v2LinearActionCapacityRows(world, unit, hostileSide, actionCapacityCache) : [];
+      const actions = naturalClock.timedNaturalActions ? rawActions.filter(action =>
+          Math.max(0, Number(action.skill?.前摇 ?? action.skill?.cast_time ?? 0)) <=
+            Math.max(0, naturalClock.lastRound - Number(world.回合) + 1) * naturalClock.naturalBudget)
+        .map(action => Number(action.skill?.前摇 ?? action.skill?.cast_time ?? 0) > naturalClock.naturalBudget
+          ? { ...action, potential: 0 } : action) : rawActions;
+      decisionMetrics.r9v2ResourceSequenceActionRows += actions.length;
+      const secondCapacity = (action = null, projection = null) => windowCount <= 1 ? 0 :
+        naturalClock.advance(delivery, action, projection).reduce((sum, branch) => {
+          const current = findUnitInWorld(branch.world, actorId);
+          if (!current || !preview.isBattleCapable(current)) return sum;
+          if (!naturalClock.timedNaturalActions) return sum + branch.probability *
+            r9v2LinearBestActionCapacity(branch.world, current, hostileSide, actionCapacityCache);
+          if (current.蓄力技能) {
+            const source = current.蓄力技能.skill || current.蓄力技能;
+            const declaration = { actorId, actionId: `${actorId}:natural-charge-second:${branch.world.回合}`,
+              actionKind: 'RELEASE_SKILL', skill: source, targetIds: current.蓄力技能.targetIds || [] };
+            const value = naturalClock.expected({ worldSnapshot: branch.world, actorId, declaration,
+              __preparedDecisionWorld: decisionRequest !== null, beliefState: decisionRequest?.beliefState,
+              battleIntent: decisionRequest?.battleIntent, buildOperationGraph: false, captureDependencies: false }, result =>
+                r9v2LinearSettledDirectCapacity(branch.world, current, result));
+            return sum + branch.probability * value;
+          }
+          const immediate = r9v2LinearActionCapacityRows(branch.world, current, hostileSide, actionCapacityCache)
+            .reduce((best, option) => Number(option.skill?.前摇 ?? option.skill?.cast_time ?? 0) > naturalClock.naturalBudget
+              ? best : Math.max(best, option.potential || 0), 0);
+          return sum + branch.probability * immediate;
+        }, 0);
+      // Waiting for the next proven natural turn is a real option, not an
+      // invented same-round cast when the current balance cannot pay anything.
+      let best = .5 * secondCapacity();
+      const conditional = preparedSkillProfiles(unit || {}).some(row => skillActionCapacitySettlementProfile(row.skill)?.conditional);
+      const context = r9v2LinearCapacityProjectionContext(world, actionCapacityCache);
+      const worldRevision = r9v2ProjectionObjectRevision(revisions, world);
+      for (const first of actions) {
+        const settlement = skillActionCapacitySettlementProfile(first.skill), settled = conditional || settlement?.recipientPools || first.fusionRequired;
+        const profile = first.skill ? targetProfile(first.skill) : 'HOSTILE_SINGLE';
+        const actionKind = first.skill ? 'RELEASE_SKILL' : 'BASIC_ATTACK';
+        const targetSets = expandMixedScopePrimaryTargetSets(first.skill || {}, profile,
+          enumerateTargetSets(world, unit, profile, decisionRequest?.beliefState || {}, first.skill || {}), world, unit);
+        for (const targetIds of targetSets) {
+          const potentials = settled ? [] : targetIds.map(id => cachedBaseActionValue(unit, findUnitInWorld(world, id), actionKind, first.skill, context, world));
+          const potential = profile.endsWith('GROUP') ? potentials.reduce((sum, value) => sum + value, 0) : Math.max(0, ...potentials);
+          const declaration = { actorId, actionId: `${first.actionKey}:natural-sequence:${world.回合}`,
+            actionKind, skill: first.skill, targetIds, resourceCosts: first.costs };
+          const value = naturalClock.expected({ worldSnapshot: world, actorId, worldRevision, snapshotRevision: worldRevision,
+            actionFingerprint: r9v2ProjectionObjectRevision(revisions, declaration),
+            __preparedDecisionWorld: decisionRequest !== null, beliefState: decisionRequest?.beliefState,
+            battleIntent: decisionRequest?.battleIntent, actionOpportunity: { role: 'ACTIVE' }, declaration,
+            buildOperationGraph: false, captureDependencies: false }, (result, _probability, executed = true) => {
+            decisionMetrics.r9v2ResourceSequenceSecondStepEvaluations += 1;
+            return (executed ? settled ? r9v2LinearSettledDirectCapacity(world, unit, result) : potential : 0) + .5 * secondCapacity(declaration, result);
+          });
+          best = Math.max(best, value);
+        }
+      }
+      const reserveActions = actions.slice(), availableKeys = new Set(actions.map(action => action.actionKey));
+      // The first dated window may be blocked or unpaid. Keep its zero
+      // receipt, then let the same real skill wait for a later payable turn.
+      // These reserve-only routes must not become current affordable options.
+      for (const { sourceSkill, skill, costStages } of preparedSkillProfiles(unit || {})) {
+        const actionKey = `${actorId}:skill:${skillId(sourceSkill)}`;
+        if (availableKeys.has(actionKey) || costStages.非法项?.length) continue;
+        const capacityCosts = r9v2LinearCapacityCostVector(unit, costStages.启动);
+        if (!capacityCosts.valid || !['sp', 'men', 'vit'].some(resource => capacityCosts[resource] > 0)) continue;
+        const profile = targetProfile(skill);
+        reserveActions.push({ actionKey, mechanicKey: `${profile}|${[...new Set(preview.collectEffects(skill)
+          .map(effect => String(effect?.原型 || '').trim()).filter(Boolean))].sort(compareUtf16).join('+')}`,
+          skill, costs: costStages.启动, capacityCosts, potential: 0, fusionRequired: false });
+      }
+      const capacity = r9v2LinearResourceCapacityRecord(unit, reserveActions, best, windowCount, (action, uses) =>
+        {
+          // Equivalent clock contexts reuse the existing exact reserve-frame memo.
+          // The solver still compares world/resources/pending/sustains and descriptors.
+          const key = JSON.stringify([action.actionKey, skillId(action.skill), uses]);
+          let cache = reserveCaches.get(key);
+          if (!cache) reserveCaches.set(key, cache = new Map());
+          return r9v2LinearRepeatedResourceReserve(world, unit, action, uses, decisionRequest, naturalClock, delivery, cache);
+        }, true);
+      sequence += delivery.probability * capacity.sequence;
+      reserve += delivery.probability * capacity.reserve;
+      if (Number.isFinite(capacity.finitePaidCapacity)) finitePaidCapacity += delivery.probability * capacity.finitePaidCapacity;
+      else finitePaidCapacityValid = false;
+      for (const route of capacity.reserveRoutes) {
+        const total = routes.get(route.actionKey) || { ...route, potential: 0, tailUses: 0, reserveValue: 0, finitePaidValue: 0 };
+        for (const key of ['potential', 'tailUses', 'reserveValue']) total[key] += delivery.probability * route[key];
+        total.finitePaidValue = Number.isFinite(total.finitePaidValue) && Number.isFinite(route.finitePaidValue)
+          ? total.finitePaidValue + delivery.probability * route.finitePaidValue : null;
+        routes.set(route.actionKey, total);
+      }
+      for (const action of actions) {
+        const total = options.get(action.actionKey) || { actionKey: action.actionKey, mechanicKey: action.mechanicKey, potential: 0 };
+        total.potential += delivery.probability * action.potential; options.set(action.actionKey, total);
+      }
+    }
+    return Object.freeze({ sequence, reserve, finitePaidCapacity: finitePaidCapacityValid ? finitePaidCapacity : null, reserveRoutes: Object.freeze([...routes.values()].map(Object.freeze)),
+      options: Object.freeze([...options.values()].map(Object.freeze)) });
+  }
+
+  function r9v2LinearResourceCapacityRecord(unit = {}, actions = [], sequence = 0, actionWindowCount = Infinity, readReserve = null, naturalWindows = false) {
     const resources = r9v2LinearCapacityResources(unit);
     const reserveRoutes = actions.map(action => {
       if (!action.skill) return null;
@@ -56322,12 +60170,16 @@
         .map(resource => ({ resource, amount: Math.max(0, Number(action.capacityCosts?.[resource] || 0)) }))
         .filter(({ amount }) => amount > 0);
       if (!positiveCosts.length) return null;
-      const uses = Math.min(12, ...positiveCosts.map(({ resource, amount }) =>
-        Math.floor((resources[resource] + 1e-9) / amount)));
-      const tailUses = Math.max(0, uses - 1);
+      const uses = Math.min(12, actionWindowCount, ...(naturalWindows ? [] : positiveCosts.map(({ resource, amount }) =>
+        Math.floor((resources[resource] + 1e-9) / amount))));
+      const realized = uses > 1 ? readReserve?.(action, uses) : null;
+      const tailUses = realized?.tailUses ?? Math.max(0, uses - 1);
       const discount = 0.85;
-      const reserveValue = Number(action.potential || 0) * discount *
+      const reserveValue = realized?.reserveValue ?? Number(action.potential || 0) * discount *
         (1 - discount ** tailUses) / (1 - discount);
+      const finitePaidValue = !naturalWindows || uses <= 1 ? 0
+        : realized && Object.hasOwn(realized, 'value') ? Number.isFinite(realized.value) ? Math.max(0, realized.value) : null
+        : realized && Number.isFinite(action.potential) && Number.isFinite(reserveValue) ? Math.max(0, action.potential + reserveValue) : null;
       return Object.freeze({
         actionKey: String(action.actionKey || '').trim(),
         mechanicKey: String(action.mechanicKey || '').trim(),
@@ -56335,12 +60187,15 @@
         uses,
         tailUses,
         reserveValue,
+        ...(naturalWindows ? { finitePaidValue } : {}),
       });
     }).filter(Boolean);
     const reserve = reserveRoutes.reduce((best, route) => Math.max(best, route.reserveValue), 0);
     return Object.freeze({
       sequence,
       reserve,
+      ...(naturalWindows ? { finitePaidCapacity: reserveRoutes.every(route => Number.isFinite(route.finitePaidValue))
+        ? Math.max(0, sequence, ...reserveRoutes.map(route => route.finitePaidValue)) : null } : {}),
       reserveRoutes: Object.freeze(reserveRoutes),
       options: Object.freeze(actions.map(action => Object.freeze({
         actionKey: String(action.actionKey || '').trim(),
@@ -56356,37 +60211,69 @@
     hostileSide = '',
     actionCapacityCache = null,
     resourceSequenceCapacityCache = null,
+    decisionRequest = null,
+    actionWindowCount = Infinity,
+    naturalClock = null,
   ) {
+    if (searchBudget.shortCircuit) return R9V2_NEUTRAL_SEQUENCE_CAPACITY;
+    const windowCount = Number.isFinite(actionWindowCount) ? Math.max(0, Math.floor(actionWindowCount)) : Infinity;
+    if (naturalClock && naturalClock.windows !== windowCount) throw new Error('R9V2_RESOURCE_NATURAL_CLOCK_WINDOW_MISMATCH');
+    const cacheKey = naturalClock || windowCount;
     decisionMetrics.r9v2ResourceSequenceCapacityCalls += 1;
-    if (resourceSequenceCapacityCache?.has(unit)) {
+    let capacitiesByUnit = resourceSequenceCapacityCache?.get(worldSnapshot);
+    let capacitiesByWindow = capacitiesByUnit?.get(unit);
+    if (capacitiesByWindow?.has(cacheKey)) {
       decisionMetrics.r9v2ResourceSequenceCapacityCacheHits += 1;
-      return resourceSequenceCapacityCache.get(unit);
+      return capacitiesByWindow.get(cacheKey);
     }
     decisionMetrics.r9v2ResourceSequenceCapacityBuilds += 1;
     const startedAt = typeof globalThis?.performance?.now === 'function'
       ? globalThis.performance.now()
       : Date.now();
-    const actions = r9v2LinearActionCapacityRows(
+    const actions = !naturalClock && windowCount > 0 ? r9v2LinearActionCapacityRows(
       worldSnapshot,
       unit,
       hostileSide,
       actionCapacityCache,
-    );
+    ) : [];
     decisionMetrics.r9v2ResourceSequenceActionRows += actions.length;
-    decisionMetrics.r9v2ResourceSequenceSecondStepEvaluations += actions.length;
+    const skills = !naturalClock && windowCount > 1 ? preparedSkillProfiles(unit).map(row => row.skill) : [];
+    const hasConditionalActions = skills.some(skill => skillActionCapacitySettlementProfile(skill)?.conditional);
+    const poolSkills = skills.filter(skill => skillActionCapacitySettlementProfile(skill)?.recipientPools);
     const allActionPotentialsStable = actions.every(action =>
       action.currentResourceStable === true && action.fusionRequired !== true);
     const secondActions = allActionPotentialsStable
       ? actions.slice().sort((left, right) => Number(right.potential || 0) - Number(left.potential || 0))
       : actions;
     const resources = r9v2LinearCapacityResources(unit);
-    const sequence = actions.reduce((best, first) => {
-      const stablePayment = r9v2LinearCapacityPaymentStable(
-        unit,
-        resources,
-        first.capacityCosts || {},
-      );
-      let secondValue;
+    let revisions, worldRevision;
+    const simpleShieldPool = poolSkills.length > 0 &&
+      poolSkills.every(skill => skillActionCapacitySettlementProfile(skill)?.simpleShield) &&
+      !skills.some(skill => skill._效果数组?.some(effect => effect.条件分支?.length)) &&
+      !preview.pendingGrantedEffects(unit, 'BASIC_ATTACK').length &&
+      !preview.pendingGrantedEffects(unit, 'RELEASE_SKILL').length &&
+      !equipmentPassivePreviewEffects(unit).length &&
+      !worldEntries(worldSnapshot).some(({ unit: target }) => Object.values(target.状态效果 || {}).some(state =>
+        state.结算 === '技能效果' || state.战斗效果?.skill_effect_mult !== undefined ||
+        state.授予效果?.length || state.结算效果?.length));
+    const poolEnvironment = simpleShieldPool ? preview.assessWorldAction({ worldSnapshot, actor: unit,
+      declaration: { actorId: preview.unitId(unit), actionKind: 'RELEASE_SKILL' } }) : null;
+    const allied = simpleShieldPool ? worldEntries(worldSnapshot)
+      .filter(entry => entry.side === sideOf(worldSnapshot, unit)).map(entry => entry.unit) : [];
+    const shieldPoolCeiling = simpleShieldPool && !poolEnvironment.blocked && !poolEnvironment.hazards?.length
+      ? Math.max(0, ...poolSkills.map(skill => {
+          const effect = skillActionCapacitySettlementProfile(skill).simpleShield;
+          const targets = effect.目标 === '自身' ? [unit] : allied;
+          const values = targets.map(target => Math.abs(preview.parseSignedValue(effect.数值,
+            preview.readHpMax(target))) / preview.readHpMax(target) * 100);
+          return effect.目标 === '群体' ? values.reduce((sum, value) => sum + value, 0) : Math.max(0, ...values);
+        }))
+      : Infinity;
+    const poolCeilingAfter = first => !first.skill ||
+      skillActionCapacitySettlementProfile(first.skill)?.shieldCeilingStable ? shieldPoolCeiling : Infinity;
+    const paidSecond = (first, excludePools = false) => {
+      decisionMetrics.r9v2ResourceSequenceSecondStepEvaluations += 1;
+      const stablePayment = r9v2LinearCapacityPaymentStable(unit, resources, first.capacityCosts || {});
       if (stablePayment && allActionPotentialsStable) {
         decisionMetrics.r9v2ResourceSequenceFastSecondSteps += 1;
         const paidResources = {
@@ -56394,43 +60281,102 @@
           men: Math.max(0, resources.men - Number(first.capacityCosts?.men || 0)),
           vit: Math.max(0, resources.vit - Number(first.capacityCosts?.vit || 0)),
         };
-        secondValue = 0;
-        for (let index = 0; index < secondActions.length; index += 1) {
-          const second = secondActions[index];
+        for (const second of secondActions) {
+          if (excludePools && skillActionCapacitySettlementProfile(second.skill)?.recipientPools) continue;
           decisionMetrics.r9v2ResourceSequenceFastCandidateChecks += 1;
           const costs = second.capacityCosts || {};
-          if (
-            costs.valid === true &&
-            paidResources.sp + 1e-9 >= (costs.sp || 0) &&
-            paidResources.men + 1e-9 >= (costs.men || 0) &&
-            paidResources.vit + 1e-9 >= (costs.vit || 0)
-          ) {
-            secondValue = Math.max(secondValue, second.potential || 0);
-            break;
+          if (costs.valid === true && paidResources.sp + 1e-9 >= (costs.sp || 0) &&
+              paidResources.men + 1e-9 >= (costs.men || 0) && paidResources.vit + 1e-9 >= (costs.vit || 0)) {
+            return Math.max(0, second.potential || 0);
           }
         }
-      } else {
-        decisionMetrics.r9v2ResourceSequenceFallbackSecondSteps += 1;
-        if (!stablePayment) decisionMetrics.r9v2ResourceSequenceFallbackUnstablePayment += 1;
-        if (actions.some(action => action.currentResourceStable !== true)) {
-          decisionMetrics.r9v2ResourceSequenceFallbackResourceCondition += 1;
-        }
-        if (actions.some(action => action.fusionRequired === true)) {
-          decisionMetrics.r9v2ResourceSequenceFallbackFusion += 1;
-        }
-        const paidUnit = r9v2LinearPaymentCapacityProjection(unit, first.costs || {}).paidUnit;
-        const paidWorld = replaceWorldUnit(worldSnapshot, preview.unitId(unit), paidUnit);
-        secondValue = r9v2LinearBestActionCapacity(
-          paidWorld,
-          paidUnit,
-          hostileSide,
-          actionCapacityCache,
-        );
+        return 0;
       }
-      return Math.max(best, Number(first.potential || 0) + 0.5 * secondValue);
+      decisionMetrics.r9v2ResourceSequenceFallbackSecondSteps += 1;
+      if (!stablePayment) decisionMetrics.r9v2ResourceSequenceFallbackUnstablePayment += 1;
+      if (actions.some(action => action.currentResourceStable !== true)) decisionMetrics.r9v2ResourceSequenceFallbackResourceCondition += 1;
+      if (actions.some(action => action.fusionRequired === true)) decisionMetrics.r9v2ResourceSequenceFallbackFusion += 1;
+      const paidUnit = r9v2LinearPaymentCapacityProjection(unit, first.costs || {}).paidUnit;
+      const paidWorld = replaceWorldUnit(worldSnapshot, preview.unitId(unit), paidUnit);
+      if (!excludePools) return r9v2LinearBestActionCapacity(paidWorld, paidUnit, hostileSide, actionCapacityCache);
+      return r9v2LinearActionCapacityRows(paidWorld, paidUnit, hostileSide, actionCapacityCache)
+        .reduce((best, action) => skillActionCapacitySettlementProfile(action.skill)?.recipientPools
+          ? best : Math.max(best, action.potential || 0), 0);
+    };
+    const sequence = windowCount <= 1
+      ? actions.reduce((best, action) => Math.max(best, Number(action.potential || 0)), 0)
+      : actions.reduce((best, first) => {
+      const consumedGrantKey = first.skill?.__mechanismGrantTemporarySkill === true
+        ? String(first.skill.__mechanismGrantStateKey || '').trim() : '';
+      const settlement = skillActionCapacitySettlementProfile(first.skill);
+      const hasSettledActions = hasConditionalActions || settlement?.recipientPools || first.fusionRequired;
+      const resourceSettlement = settlement?.resourceTransition === true;
+      const poolContinuation = !hasSettledActions && !resourceSettlement && !consumedGrantKey && poolSkills.length > 0;
+      if (!hasSettledActions && !resourceSettlement && !consumedGrantKey && !poolContinuation) {
+        return Math.max(best, Number(first.potential || 0) + .5 * paidSecond(first));
+      }
+      // Adding a pool option cannot change unrelated first actions from the
+      // established payment-capacity model into a different tactical search.
+      // Only its new pool continuation reads that first action's full state.
+      const legacySecond = poolContinuation ? paidSecond(first, true) : null;
+      if (poolContinuation && poolCeilingAfter(first) <= legacySecond) {
+        return Math.max(best, Number(first.potential || 0) + .5 * legacySecond);
+      }
+      if (!hasConditionalActions && settlement?.simpleShield && Number.isFinite(shieldPoolCeiling) &&
+          allActionPotentialsStable && Number(first.potential || 0) + .5 * paidSecond(first) <= best) {
+        // A plain positive shield only fills these shield pools. It cannot
+        // improve another direct option beyond the paid-world upper bound.
+        return best;
+      }
+      decisionMetrics.r9v2ResourceSequenceFallbackSecondSteps += 1;
+      if (!revisions) {
+        revisions = { projectionObjectRevisions: new WeakMap() };
+        worldRevision = r9v2ProjectionObjectRevision(revisions, worldSnapshot);
+      }
+      const actorId = preview.unitId(unit), profile = first.skill ? targetProfile(first.skill) : 'HOSTILE_SINGLE';
+      const actionKind = first.skill ? 'RELEASE_SKILL' : 'BASIC_ATTACK';
+      const projectionContext = r9v2LinearCapacityProjectionContext(worldSnapshot, actionCapacityCache);
+      const fusion = first.fusionRequired ? preview.resolveFusionAction(worldSnapshot, unit, first.skill, {
+        resourceCosts: first.costs, requirePendingOpportunity: true,
+      }) : null;
+      const targetSets = expandMixedScopePrimaryTargetSets(first.skill || {}, profile,
+        enumerateTargetSets(worldSnapshot, unit, profile, decisionRequest?.beliefState || {}, first.skill || {}), worldSnapshot, unit);
+      return targetSets.reduce((targetBest, targetIds) => {
+        const potentials = hasSettledActions ? [] : targetIds.map(id =>
+          cachedBaseActionValue(unit, findUnitInWorld(worldSnapshot, id), actionKind, first.skill, projectionContext, worldSnapshot));
+        const potential = profile.endsWith('GROUP') ? potentials.reduce((sum, value) => sum + value, 0) : Math.max(0, ...potentials);
+        const declaration = { actorId, actionKind, skill: first.skill, targetIds, resourceCosts: first.costs,
+          ...(fusion?.required ? { fusionKey: fusion.fusionKey, fusionParticipantIds: [...fusion.participantIds],
+            fusionPartnerIds: [...fusion.partnerIds], fusionUsageMode: fusion.usageMode } : {}) };
+        const continuation = r9v2LinearExpectedCreatedPreview({
+          worldSnapshot, actorId, worldRevision, snapshotRevision: worldRevision,
+          actionFingerprint: r9v2ProjectionObjectRevision(revisions, declaration),
+          __preparedDecisionWorld: decisionRequest !== null,
+          beliefState: decisionRequest?.beliefState, battleIntent: decisionRequest?.battleIntent,
+          actionOpportunity: { role: unit.行动模式 === '协同攻击' ? 'ASSIST' : 'ACTIVE' },
+          declaration, buildOperationGraph: false, captureDependencies: false,
+        }, result => {
+          decisionMetrics.r9v2ResourceSequenceSecondStepEvaluations += 1;
+          const projectedUnit = findUnitInWorld(result.afterSnapshot, actorId);
+          const second = poolContinuation
+            ? Math.max(legacySecond, r9v2LinearBestRecipientPoolCapacity(result.afterSnapshot, projectedUnit, hostileSide, actionCapacityCache))
+            : r9v2LinearBestActionCapacity(result.afterSnapshot, projectedUnit, hostileSide, actionCapacityCache);
+          return hasSettledActions ? r9v2LinearSettledDirectCapacity(worldSnapshot, unit, result) + .5 * second : second;
+        });
+        return Math.max(targetBest, hasSettledActions ? continuation : potential + .5 * continuation);
+      }, poolContinuation ? Math.max(best, Number(first.potential || 0) + .5 * legacySecond) : best);
     }, 0);
-    const capacity = r9v2LinearResourceCapacityRecord(unit, actions, sequence);
-    resourceSequenceCapacityCache?.set(unit, capacity);
+    const hasConsumableGrants = preview.pendingGrantedEffects(unit, 'RELEASE_SKILL').length > 0;
+    const capacity = naturalClock ? r9v2LinearNaturalResourceSequenceCapacity(worldSnapshot, preview.unitId(unit), hostileSide,
+      windowCount, decisionRequest, naturalClock, actionCapacityCache) : r9v2LinearResourceCapacityRecord(unit, actions, sequence, windowCount, (action, uses) =>
+      skillActionCapacitySettlementProfile(action.skill)?.needed || skillActionCapacitySettlementProfile(action.skill)?.resourceTransition ||
+        hasConsumableGrants || action.fusionRequired
+        ? r9v2LinearRepeatedResourceReserve(worldSnapshot, unit, action, uses, decisionRequest) : null);
+    if (resourceSequenceCapacityCache) {
+      if (!capacitiesByUnit) resourceSequenceCapacityCache.set(worldSnapshot, capacitiesByUnit = new WeakMap());
+      if (!capacitiesByWindow) capacitiesByUnit.set(unit, capacitiesByWindow = new Map());
+      capacitiesByWindow.set(cacheKey, capacity);
+    }
     const elapsedMs = (typeof globalThis?.performance?.now === 'function'
       ? globalThis.performance.now()
       : Date.now()) - startedAt;
@@ -56533,6 +60479,200 @@
     return projectionContext;
   }
 
+  function r9v2LinearSettledDirectCapacity(worldSnapshot, actor, projection, hostileOnly = false, options = {}) {
+    const actorId = preview.unitId(actor), actorSide = sideOf(worldSnapshot, actor);
+    const shieldPoolDeltas = options?.excludePositiveShieldPoolIncreases === true ? new Map() : null;
+    const direct = (projection.contributions || []).reduce((sum, entry) => {
+      if (entry.actorId !== actorId || entry.sourceActionId !== projection.actionId) return sum;
+      const damage = entry.outcomeKind === 'HP_DELTA' && entry.evidence?.damageBasis ||
+        entry.outcomeKind === 'SHIELD_DELTA' && Number(entry.evidence?.absorbedDamage) > 0 ||
+        options?.includeLethalSettlement === true && entry.outcomeKind === 'HP_DELTA' && entry.evidence?.lethalSettlement === true;
+      const hpResource = entry.outcomeKind === 'HP_DELTA' && entry.evidence?.resourceChange;
+      if (hpResource && options?.excludeResourceChanges === true) return sum;
+      const shield = entry.outcomeKind === 'SHIELD_DELTA' && (entry.evidence?.shieldSettlement ||
+        entry.evidence?.stolenFrom || entry.evidence?.prototype === '状态施加' && /护盾|屏障|结界/.test(String(entry.evidence?.state || '')));
+      if (!damage && !hpResource && !shield) return sum;
+      // This recipient's shield change is valued once by the paired temporal
+      // protection model; an extra quantity debit would charge the same loss twice.
+      if (shield && !damage && entry.targetId === options?.shieldProtectionTargetId) return sum;
+      const target = findUnitInWorld(projection.afterSnapshot, entry.targetId) || findUnitInWorld(worldSnapshot, entry.targetId);
+      if (!target) return sum;
+      const friendly = (sideOf(projection.afterSnapshot, target) || sideOf(worldSnapshot, target)) === actorSide;
+      if (hostileOnly && friendly) return sum;
+      if (shieldPoolDeltas && shield && !damage) {
+        // Finite protection prices the realized remaining gain separately.
+        // Only a net pool loss is an asset cost; consuming a pool created by
+        // this same root is not losing pre-existing shields. Damage absorption
+        // remains in the damage receipt, outside this per-target cancellation.
+        const delta = Number(entry.expectedDelta ?? entry.evidence?.delta ?? 0);
+        if (Number.isFinite(delta)) shieldPoolDeltas.set(entry.targetId, Number(shieldPoolDeltas.get(entry.targetId) || 0) + delta);
+        return sum;
+      }
+      // Resource receipts already carry the signed, capped, probability-weighted
+      // HP change: enemy loss is useful; friendly loss is a cost, not healing.
+      const lethalHpLoss = entry.evidence?.lethalSettlement === true
+        ? Math.max(0, -Number(entry.expectedDelta ?? entry.evidence?.delta ?? 0)) /
+          Math.max(1, preview.readHpMax(target)) * 200
+        : null;
+      const value = lethalHpLoss !== null
+        ? lethalHpLoss
+        : damage ? Math.max(0, Number(entry.threatValue || 0)) : Number(entry.threatValue || 0);
+      return sum + (damage ? friendly ? -1 : 1 : friendly ? 1 : -1) * value;
+    }, 0);
+    let poolLoss = 0;
+    for (const [targetId, delta] of shieldPoolDeltas || []) {
+      if (!(delta < 0)) continue;
+      const target = findUnitInWorld(projection.afterSnapshot, targetId) || findUnitInWorld(worldSnapshot, targetId);
+      const friendly = (sideOf(projection.afterSnapshot, target) || sideOf(worldSnapshot, target)) === actorSide;
+      poolLoss += (friendly ? 1 : -1) * delta / Math.max(1, preview.readHpMax(target)) * 100;
+    }
+    return direct + poolLoss;
+  }
+
+  function skillActionCapacitySettlementProfile(skill) {
+    if (!skill || typeof skill !== 'object') return null;
+    if (settledActionCapacitySkillCache.has(skill)) return settledActionCapacitySkillCache.get(skill);
+    const effects = Array.isArray(skill._效果数组) ? skill._效果数组 : [];
+    // A fuel receipt with no terminal value can still unlock a paid action; a
+    // debit can exhaust it. Sequences must settle these before continuation;
+    // their single-action terminal value remains in its established channel.
+    const resourceTransition = effects.some(effect => ['资源变化', '资源转移'].includes(effect?.原型));
+    let conditional = false, recipientPools = false;
+    effects.forEach((effect, index) => {
+      const pool = effect?.原型 === '护盾变化' ||
+        effect?.原型 === '资源变化' && /生命|HP/i.test(String(effect.资源 || '')) ||
+        effect?.原型 === '状态施加' && /护盾|屏障|结界/.test(String(effect.状态 || ''));
+      recipientPools ||= pool;
+      conditional ||= (Array.isArray(effect?.条件分支) ? effect.条件分支 : []).some(branch =>
+        ['替换效果', '追加效果'].includes(String(branch?.处理 || '').trim())) ||
+        index > 0 && effect?.生效方式 === '跟随主原型' && (pool || effect.原型 === '伤害结算');
+    });
+    const effect = effects.length === 1 ? effects[0] : null;
+    const simpleShield = effect?.原型 === '护盾变化' && effect.护盾模式 === '正向护盾' &&
+      effect.生效方式 === '独立生效' && ['自身', '单体', '群体'].includes(effect.目标) &&
+      (typeof effect.数值 === 'number' || typeof effect.数值 === 'string' && effect.数值.trim() !== '') &&
+      Number(effect.数值) >= 0 && Number.isFinite(Number(effect.数值)) &&
+      Object.keys(effect).every(key => ['原型', '护盾模式', '生效方式', '目标', '数值', '持续回合'].includes(key)) &&
+      !skill.__mechanismGrantTemporarySkill && !skill.副作用列表?.length &&
+      !/食物属性|香肠/.test([...(Array.isArray(skill.附带属性) ? skill.附带属性 : []),
+        skill.效果描述, skill.画面描述].map(value => String(value || '')).join('|'));
+    const shieldCeilingStable = !skill.副作用列表?.length && effects.every(effect =>
+      !effect.条件分支?.length &&
+      ['伤害结算', '资源变化', '资源转移', '护盾变化', '属性修正', '结算修正', '判定修正',
+        '状态施加', '状态移除', '状态转移', '状态交换', '规则防御', '位移执行', '资源锁定', '机制抹消'].includes(effect.原型) &&
+      !(effect.原型 === '属性修正' && /生命|HP|体力|全属性|全部属性/i.test(String(effect.属性 || ''))) &&
+      !(effect.原型 === '结算修正' && effect.结算 === '技能效果') &&
+      !(effect.原型 === '状态施加' && preview.deriveStateCombatEffect(effect).skill_effect_mult !== undefined));
+    const independentPositivePools = effects.length > 0 && !skill.__mechanismGrantTemporarySkill &&
+      !skill.副作用列表?.length && !skill.附带属性?.length &&
+      !/食物属性|香肠/.test(String(skill.效果描述 || '') + String(skill.画面描述 || '')) &&
+      effects.every(row => row.生效方式 === '独立生效' && ['自身', '单体', '群体'].includes(row.目标) &&
+        Number(row.数值) > 0 && Number.isFinite(Number(row.数值)) &&
+        (row.原型 === '资源变化' && /^(?:生命|生命值|生命力|HP)$/i.test(String(row.资源)) ||
+          row.原型 === '护盾变化' && row.护盾模式 === '正向护盾' ||
+          row.原型 === '状态施加' && /护盾|屏障|结界/.test(String(row.状态))) &&
+        Object.keys(row).every(key => ['原型', '资源', '护盾模式', '状态', '生效方式', '目标', '数值', '持续回合', '触发概率'].includes(key)));
+    const profile = { shieldCeilingStable, needed: conditional || recipientPools, conditional, recipientPools, resourceTransition,
+      independentPositivePools, simpleShield: simpleShield ? effect : null };
+    settledActionCapacitySkillCache.set(skill, profile);
+    return profile;
+  }
+
+  function r9v2LinearBestRecipientPoolCapacity(worldSnapshot, unit, hostileSide, decisionCache) {
+    const unitSide = sideOf(worldSnapshot, unit);
+    const hostileTargets = r9v2LinearSideUnits(worldSnapshot, hostileSide, decisionCache?.sideUnitsByWorld);
+    if (!unitSide || !preview.isBattleCapable(unit) || hasActionCancellation(unit) ||
+        hasStateFlag(unit, 'silence') || !hostileTargets.length) return 0;
+    const alliedTargets = r9v2LinearSideUnits(worldSnapshot, unitSide, decisionCache?.sideUnitsByWorld);
+    const projectionContext = r9v2LinearCapacityProjectionContext(worldSnapshot, decisionCache);
+    return affordablePreparedSkills(unit).reduce((best, { skill, startupCosts, fusionMetadata }) => {
+      if (!skillActionCapacitySettlementProfile(skill)?.recipientPools) return best;
+      if (fusionMetadata && !preview.resolveFusionAction(worldSnapshot, unit, skill, {
+        resourceCosts: startupCosts, requirePendingOpportunity: true,
+      }).valid) return best;
+      return Math.max(best, r9v2LinearSkillActionCapacity(unit, skill, targetProfile(skill),
+        hostileTargets, alliedTargets, false, projectionContext, worldSnapshot));
+    }, 0);
+  }
+
+  function r9v2LinearConditionalActionCapacity(worldSnapshot, unit, skill, profile, hostileOnly, bestSoFar = 0) {
+    let byUnit = conditionalActionCapacityCache.get(worldSnapshot);
+    if (!byUnit) conditionalActionCapacityCache.set(worldSnapshot, byUnit = new WeakMap());
+    let bySkill = byUnit.get(unit);
+    if (!bySkill) byUnit.set(unit, bySkill = new WeakMap());
+    const key = hostileOnly ? 'hostile' : 'overall', cached = bySkill.get(skill);
+    if (cached && Object.hasOwn(cached, key)) return cached[key];
+    const actorId = preview.unitId(unit);
+    const simpleShield = skillActionCapacitySettlementProfile(skill)?.simpleShield;
+    const environment = simpleShield && !preview.pendingGrantedEffects(unit, 'RELEASE_SKILL').length
+      ? preview.assessWorldAction({ worldSnapshot, actor: unit,
+          declaration: { actorId, actionKind: 'RELEASE_SKILL', skill } }) : null;
+    const scalarShield = environment && !environment.blocked && !environment.hazards?.length;
+    if (scalarShield) {
+      bySkill.set(skill, { hostile: 0 });
+      if (hostileOnly) return 0;
+      if (bestSoFar > 0) {
+        const unitSide = sideOf(worldSnapshot, unit);
+        const targets = simpleShield.目标 === '自身' ? [unit] : preview.listUnits(worldSnapshot)
+          .filter(entry => entry.side === unitSide && preview.isPhysicallyAlive(entry.unit))
+          .map(entry => entry.unit);
+        const requested = Math.max(0, Math.floor(Number(simpleShield.数值)));
+        const bounds = targets.map(target => requested / preview.readHpMax(target) * 100);
+        const upperBound = simpleShield.目标 === '群体'
+          ? bounds.reduce((sum, value) => sum + value, 0) : Math.max(0, ...bounds);
+        // The formal soft cap can only reduce this independent positive gain.
+        // A maximum-only caller does not need the exact dominated value; leave
+        // overall uncached so a later action-row consumer still settles it.
+        if (upperBound <= bestSoFar) return upperBound;
+      }
+    }
+    const beliefState = scalarShield ? {} : buildInitialBelief(worldSnapshot, actorId);
+    const targetSets = expandMixedScopePrimaryTargetSets(skill, profile,
+      enumerateTargetSets(worldSnapshot, unit, profile, beliefState, skill), worldSnapshot, unit);
+    const capacities = { overall: 0, hostile: 0 };
+    if (scalarShield) {
+      // This single independent gain shares the formal kernel's rounded soft
+      // cap. Target resolution and suppression still use their actual contracts.
+      if (!preview.actorSuppressesEffect(unit, simpleShield)) {
+        for (const targetIds of targetSets) {
+          const declaration = { actorId, actionKind: 'RELEASE_SKILL', skill, targetIds };
+          const value = preview.resolveTargets(worldSnapshot, unit, declaration, simpleShield)
+            .reduce((sum, target) => sum + cachedBaseActionValue(unit, target,
+              'RELEASE_SKILL', skill, null, worldSnapshot), 0);
+          capacities.overall = Math.max(capacities.overall, value);
+        }
+      }
+      bySkill.set(skill, capacities);
+      return capacities[key];
+    }
+    const revisions = { projectionObjectRevisions: new WeakMap() };
+    const worldRevision = r9v2ProjectionObjectRevision(revisions, worldSnapshot);
+    const fusion = preview.fusionSkillMetadata(unit, skill) ? preview.resolveFusionAction(worldSnapshot, unit, skill, {
+      resourceCosts: parseSkillCosts(skill, skillCostParserContext(unit, skill)), requirePendingOpportunity: true,
+    }) : null;
+    if (fusion && !fusion.valid) { bySkill.set(skill, capacities); return capacities[key]; }
+    for (const targetIds of targetSets) {
+      const declaration = { actorId, actionKind: 'RELEASE_SKILL', skill, targetIds,
+        ...(fusion?.required ? { fusionKey: fusion.fusionKey, fusionParticipantIds: [...fusion.participantIds],
+          fusionPartnerIds: [...fusion.partnerIds], fusionUsageMode: fusion.usageMode } : {}) };
+      let hostile = 0;
+      const overall = r9v2LinearExpectedCreatedPreview({ worldSnapshot, actorId, declaration,
+        worldRevision, snapshotRevision: worldRevision,
+        actionFingerprint: r9v2ProjectionObjectRevision(revisions, declaration),
+        __preparedDecisionWorld: true, beliefState, buildOperationGraph: false, captureDependencies: false,
+      }, (projection, probability) => {
+        hostile += probability * r9v2LinearSettledDirectCapacity(worldSnapshot, unit, projection, true);
+        return r9v2LinearSettledDirectCapacity(worldSnapshot, unit, projection);
+      });
+      // Each objective may prefer a different target set; share settlement,
+      // not the target choice or the signed value of friendly receipts.
+      capacities.overall = Math.max(capacities.overall, overall);
+      capacities.hostile = Math.max(capacities.hostile, hostile);
+    }
+    bySkill.set(skill, capacities);
+    return capacities[key];
+  }
+
   function r9v2LinearSkillActionCapacity(
     unit = {},
     skill = {},
@@ -56541,25 +60681,37 @@
     alliedTargets = [],
     hostileOnly = false,
     projectionContext = null,
+    worldSnapshot = {},
+    bestSoFar = 0,
   ) {
+    if (skillActionCapacitySettlementProfile(skill)?.needed) {
+      return r9v2LinearConditionalActionCapacity(worldSnapshot, unit, skill, profile, hostileOnly, bestSoFar);
+    }
     if (!skillHasBaseActionValue(skill)) return 0;
-    const targets = profile === 'SELF'
-      ? hostileOnly ? [] : [unit]
-      : profile === 'ANY_SINGLE'
-        ? hostileOnly ? hostileTargets : [...alliedTargets, ...hostileTargets]
-        : profile.startsWith('FRIENDLY_')
-          ? hostileOnly ? [] : alliedTargets
-          : hostileTargets;
-    const values = targets.map(target => cachedBaseActionValue(
-      unit,
-      target,
-      'RELEASE_SKILL',
-      skill,
-      projectionContext,
-    ));
-    return profile.endsWith('GROUP')
-      ? values.reduce((sum, targetValue) => sum + targetValue, 0)
-      : Math.max(...values, 0);
+    if (profile === 'SELF') return hostileOnly ? 0 : Math.max(
+      cachedBaseActionValue(unit, unit, 'RELEASE_SKILL', skill, projectionContext, worldSnapshot), 0,
+    );
+    if (hostileOnly && profile.startsWith('FRIENDLY_')) return 0;
+    const group = profile.endsWith('GROUP');
+    const includeAllies = profile === 'ANY_SINGLE' && !hostileOnly;
+    const targets = includeAllies || profile.startsWith('FRIENDLY_') ? alliedTargets : hostileTargets;
+    const firstLength = targets.length;
+    const totalLength = firstLength + (includeAllies ? hostileTargets.length : 0);
+    let capacity = 0;
+    for (let index = 0; index < totalLength; index += 1) {
+      const list = index < firstLength ? targets : hostileTargets;
+      const position = index < firstLength ? index : index - firstLength;
+      // map/reduce skipped group holes, while spreading a single-target map
+      // supplied undefined to Math.max. ANY_SINGLE's spread visits its holes.
+      if (!includeAllies && !(position in list)) {
+        if (!group) capacity = NaN;
+        continue;
+      }
+      const target = list[position];
+      const value = cachedBaseActionValue(unit, target, 'RELEASE_SKILL', skill, projectionContext, worldSnapshot);
+      capacity = group ? capacity + value : Math.max(capacity, value);
+    }
+    return capacity;
   }
 
   function r9v2LinearActionCapacityRows(
@@ -56611,6 +60763,7 @@
               'BASIC_ATTACK',
               null,
               projectionContext,
+              worldSnapshot,
             )),
             0,
           ),
@@ -56621,7 +60774,7 @@
           currentResourceStable: true,
         });
       }
-      if (!hasStateFlag(unit, 'silence')) {
+      if (!hasStateFlag(unit, 'silence') && !preview.isSummonSkillDisabled(unit)) {
         affordablePreparedSkills(unit).forEach(({ sourceSkill, skill, startupCosts, fusionMetadata }) => {
           const fusion = fusionMetadata
             ? preview.resolveFusionAction(worldSnapshot, unit, skill, {
@@ -56640,6 +60793,7 @@
             alliedTargets,
             hostileOnly,
             projectionContext,
+            worldSnapshot,
           );
           const mechanicKey = `${profile}|${[...new Set(preview.collectEffects(skill)
             .map(effect => String(effect?.原型 || '').trim())
@@ -56663,14 +60817,267 @@
     return result;
   }
 
+  function r9v2LinearSummonActionCapacity(worldSnapshot, summon, request, remainingWindows, readOption = null) {
+    const actorId = preview.unitId(summon), mode = String(summon.行动模式 || '').trim();
+    if (!(remainingWindows > 0) || !['自主行动', '协同攻击'].includes(mode) || !preview.isBattleCapable(summon)) return 0;
+    const currentRound = Number(worldSnapshot.回合 || 0);
+    const finalRound = currentRound + Math.max(0, remainingWindows - 1);
+    const charge = summon.蓄力技能;
+    if (charge && Number(charge.cast_time || 0) > 40 * remainingWindows) return 0;
+    const actionOpportunity = {
+      role: mode === '协同攻击' ? 'ASSIST' : 'ACTIVE',
+      naturalActionBudget: 40,
+      battleHorizon: { currentRound, finalRound, naturalActionBudget: 40 },
+      ...(mode === '协同攻击' ? { validTargetIds: primaryCombatantEntries(worldSnapshot)
+        .filter(row => row.side !== sideOf(worldSnapshot, summon)).map(row => preview.unitId(row.unit)) } : {}),
+      ...(charge ? { forcedSkill: { ...charge.skill, 前摇: charge.cast_time, cast_time: charge.cast_time },
+        forcedTargetIds: charge.targetIds || [], forcedCreationRecipientId: charge.creationRecipientId || '',
+        forcedChargeRelease: Number(charge.cast_time ?? charge.remainingCastTime ?? charge.skill?.前摇 ?? 0) <= 40 } : {}),
+    };
+    // This is the available direct-action capacity, not a second decision
+    // policy. Use the formal legality gate, including temporary grants,
+    // affordability, silence/disarm, taunt and the remaining cast horizon.
+    const candidates = enumerateCandidates({ worldSnapshot, actorId, actionOpportunity,
+      battleIntent: request.battleIntent, beliefState: buildInitialBelief(worldSnapshot, actorId, request.beliefState) });
+    const projectionRevisions = !readOption ? { projectionObjectRevisions: new WeakMap() } : null;
+    return candidates.reduce((best, { declaration }) => {
+      const effects = declaration.actionKind === 'RELEASE_SKILL' ? declaration.skill._效果数组 : [];
+      const hasSettledPotential = declaration.actionKind === 'BASIC_ATTACK' || effects.some(effect =>
+        effect.原型 === '伤害结算' || effect.原型 === '资源变化' && /生命|HP/i.test(String(effect.资源 || '')) ||
+        effect.原型 === '护盾变化' || effect.原型 === '状态施加' && /护盾|屏障|结界/.test(String(effect.状态 || '')) ||
+        effect.条件分支?.length > 0);
+      // All direct effects use one conditioned recipient state, including
+      // damage rounding, hit/follow outcomes, shield absorption and HP caps.
+      // Absorbed damage and HP damage are disjoint receipts of the same hit.
+      const readSettledPotential = projection => hasSettledPotential
+        ? r9v2LinearSettledDirectCapacity(worldSnapshot, summon, projection) : 0;
+      if (readOption) return Math.max(best, readOption({ declaration, actionOpportunity,
+        readSettledPotential, hasSettledPotential }));
+      if (!hasSettledPotential) return best;
+      const worldRevision = r9v2ProjectionObjectRevision(projectionRevisions, worldSnapshot);
+      return Math.max(best, r9v2LinearExpectedCreatedPreview({ worldSnapshot, actorId, declaration,
+        worldRevision, snapshotRevision: worldRevision,
+        actionFingerprint: r9v2ProjectionObjectRevision(projectionRevisions, declaration),
+        actionRole: actionOpportunity.role, actionOpportunity, __preparedDecisionWorld: true,
+        beliefState: request.beliefState, battleIntent: request.battleIntent,
+        buildOperationGraph: false, captureDependencies: false,
+      }, readSettledPotential));
+    }, 0);
+  }
+
+  function r9v2LinearNormalizeActionFrame(prior, projection) {
+    let world = projection.afterSnapshot;
+    // A preview keeps zero-probability creation evidence for its operation
+    // graph. That symbolic unit is not an actual successor in an exact replay.
+    const absentSummons = (projection.contributions || []).filter(entry => entry.outcomeKind === 'SUMMON_WINDOW' &&
+      preview.contributionProbability(entry) <= 1e-12 && !findUnitInWorld(prior, entry.targetId));
+    if (absentSummons.length) {
+      const absentIds = new Set(absentSummons.map(entry => entry.targetId));
+      world = attachDecisionRuntimeState({ ...world, 召唤单位表: Object.fromEntries(
+        Object.entries(world.召唤单位表 || {}).filter(([, unit]) => !absentIds.has(preview.unitId(unit))),
+      ) }, world);
+    }
+    const definitions = new Map((projection.summonDefinitions || []).map(unit => [preview.unitId(unit), unit]));
+    for (const { unit } of preview.listUnits(world)) {
+      const id = preview.unitId(unit), baseline = findUnitInWorld(prior, id) || definitions.get(id) || unit;
+      world = r9v2LinearPassiveCapacityWorld(world, unit, 0, baseline, projection.contributions || []);
+      const current = findUnitInWorld(world, id);
+      const fresh = Object.keys(current.状态效果 || {}).filter(key => !Object.hasOwn(baseline.状态效果 || {}, key));
+      if (!fresh.length) continue;
+      const next = { ...current, 状态效果: { ...current.状态效果 } };
+      for (const key of fresh) if (next.状态效果[key].延迟效果 !== true) next.状态效果[key] = { ...next.状态效果[key], __本回合新附加: true };
+      preview.inheritOverlayOrigin(next, current);
+      world = replaceWorldUnit(world, id, next);
+    }
+    return world;
+  }
+
+  function r9v2LinearSummonFollowupCapacity(request, candidate, result, currentOpportunityPending) {
+    const before = request.visibleWorld, actorId = request.actorId;
+    const horizon = Math.max(0, Math.min(3, battleHorizonProfile(request, before).remainingRounds));
+    const rootEntries = (result.contributions || []).filter(entry => entry.outcomeKind === 'SUMMON_WINDOW');
+    rootEntries.forEach((entry, index) => {
+      if (!Number.isFinite(Number(entry.evidence?.actionPotential))) throw new Error(
+        'R9V2_LINEAR_SUMMON_POTENTIAL_NON_FINITE:' + candidate.candidateId + ':' + index);
+    });
+    if (!horizon || !rootEntries.some(entry => ['自主行动', '协同攻击'].includes(entry.evidence?.actionMode) &&
+      Number(entry.evidence?.remainingWindows) > 0 && preview.contributionProbability(entry) > 0)) return 0;
+    const rootSustainProfile = r9v2LinearActionSustainProfile(before, result.afterSnapshot, candidate.declaration, result);
+    const project = r9v2JointFlowProjector(before, actorId, { ...rootSustainProfile, currentOpportunityPending }, 0,
+      request.evaluationContext?.continuedSustains);
+    const addSummons = (records, projection, offset, sourceActorId) => {
+      const next = records.slice();
+      for (const entry of projection.contributions || []) {
+        if (entry.outcomeKind !== 'SUMMON_WINDOW') continue;
+        const evidence = entry.evidence || {};
+        if (!Number.isFinite(Number(evidence.actionPotential))) throw new Error(
+          'R9V2_LINEAR_SUMMON_POTENTIAL_NON_FINITE:' + candidate.candidateId + ':' + entry.targetId);
+        if (!['自主行动', '协同攻击'].includes(evidence.actionMode) || !(evidence.remainingWindows > 0) ||
+          !(preview.contributionProbability(entry) > 0) || next.some(row => row.id === entry.targetId)) continue;
+        const unit = findUnitInWorld(projection.afterSnapshot, entry.targetId);
+        const hostId = String(unit?.宿主ID || sourceActorId);
+        if (evidence.actionMode === '协同攻击' && preview.isSummonUnit(findUnitInWorld(projection.afterSnapshot, hostId) || {})) continue;
+        next.push({ id: entry.targetId, hostId, mode: evidence.actionMode,
+          remaining: Math.min(horizon - offset, Number(evidence.remainingWindows)), firstOffset: offset + 1 });
+      }
+      return next;
+    };
+    const continuationCache = new Map();
+    const projectionRevisions = { projectionObjectRevisions: new WeakMap() };
+    const initial = r9v2LinearNormalizeActionFrame(before, result);
+    const records = addSummons([], result, 0, actorId);
+    const continueRound = (offset, previous, roster, contributions, sustains, riskTrial = null) => {
+      if (offset > horizon || !roster.some(row => row.remaining > 0)) return 0;
+      // Condition only risks reached during this round's settlement; future
+      // choices must not know a later untriggered outcome in advance.
+      if (!riskTrial) {
+        const stack = [{ probability: 1, choices: [] }];
+        let expected = 0;
+        while (stack.length) {
+          const path = stack.pop(), discovered = [];
+          let trial = 0;
+          const value = continueRound(offset, previous, roster, contributions, sustains, probability => {
+            const index = trial++;
+            if (index < path.choices.length) return path.choices[index];
+            discovered.push(probability);
+            return 0;
+          });
+          let probability = path.probability;
+          const prefix = path.choices.slice();
+          for (const chance of discovered) {
+            stack.push({ probability: probability * chance, choices: [...prefix, 1] });
+            prefix.push(0); probability *= 1 - chance;
+          }
+          expected += probability * value;
+        }
+        return expected;
+      }
+      let world = project(initial, null, offset, null, contributions, null, previous, sustains, riskTrial);
+      world = { ...world, 回合: Number(before.回合 || 0) + offset };
+      // The formal round start refreshes support after the prior round's ticks,
+      // not after each sibling action. Never retain a newborn's stale skill gate.
+      world = r9v2LinearSummonSupportWorld(world);
+      roster = roster.map(row => row.remaining > 0 && !findUnitInWorld(world, row.id) ? { ...row, remaining: 0 } : row);
+      const roundOrder = roster.filter(row => row.remaining > 0 && row.firstOffset <= offset)
+        .slice().sort((left, right) => preview.compareNaturalActionOrder(
+          findUnitInWorld(world, left.mode === '协同攻击' ? left.hostId : left.id) || {},
+          findUnitInWorld(world, right.mode === '协同攻击' ? right.hostId : right.id) || {}));
+      for (const row of roundOrder) {
+        const unit = findUnitInWorld(world, row.id);
+        if (unit && row.mode === '自主行动') world = replaceWorldUnit(world, row.id, { ...unit,
+          __battleRuntime: { ...unit.__battleRuntime, naturalOpportunity: { round: world.回合, status: 'PENDING' } } });
+      }
+      const act = (...args) => {
+        const inputs = [offset, ...args];
+        let key;
+        try { key = JSON.stringify(inputs); } catch { return uncachedAct(...args); }
+        const bucket = continuationCache.get(key);
+        const cached = bucket?.find(entry => r9v2SameProjectionFrame(entry.inputs, inputs));
+        if (cached) return cached.value;
+        const value = uncachedAct(...args);
+        if (bucket) bucket.push({ inputs, value });
+        else continuationCache.set(key, [{ inputs, value }]);
+        return value;
+      };
+      const uncachedAct = (index, frame, liveRoster, pending, liveSustains) => {
+        if (index >= roundOrder.length) return continueRound(offset + 1, frame, liveRoster, pending, liveSustains);
+        const record = liveRoster.find(row => row.id === roundOrder[index].id);
+        const summon = findUnitInWorld(frame, record.id), host = findUnitInWorld(frame, record.hostId);
+        if (!summon || !host || !preview.isBattleCapable(summon) || !preview.isBattleCapable(host)) {
+          const removed = liveRoster.map(row => row.id === record.id ? { ...row, remaining: 0 } : row);
+          const lost = summon ? replaceWorldUnit(frame, record.id, { ...summon, 已消散: true, 剩余窗口: 0 }) : frame;
+          return act(index + 1, lost, removed, pending, liveSustains);
+        }
+        if (!primaryCombatantEntries(frame).some(row => row.side !== request.actorSide)) return 0;
+        // Resolve a latent control once in the shared world, so siblings and
+        // later windows retain the same presence/absence rather than rerolling.
+        for (const unit of record.mode === '协同攻击' ? [host, summon] : [summon]) {
+          for (const [key, state] of Object.entries(unit.状态效果 || {})) {
+            const blocks = root.__LWCS_BATTLE_RUNTIME__.structuredControlConsumesActiveOpportunity(state) ||
+              record.mode === '协同攻击' && unit === summon &&
+              (state.cannot_react === true || (state.战斗效果?.cannot_react ?? state.计算层效果?.cannot_react) === true);
+            const probability = clamp(Number(state.__previewApplicationProbability ?? 1), 0, 1);
+            if (!blocks || probability <= 1e-12 || probability >= 1 - 1e-12) continue;
+            const branch = present => {
+              const next = { ...unit, 状态效果: { ...unit.状态效果 } };
+              if (present) next.状态效果[key] = { ...state, __previewApplicationProbability: 1 };
+              else delete next.状态效果[key];
+              return act(index, replaceWorldUnit(frame, preview.unitId(unit), next), liveRoster, pending, liveSustains);
+            };
+            return probability * branch(true) + (1 - probability) * branch(false);
+          }
+        }
+        const spendWindow = (nextFrame, acted, charge = undefined) => {
+          const current = findUnitInWorld(nextFrame, record.id);
+          if (!current) return nextFrame;
+          const remaining = record.remaining - 1;
+          const overlay = new preview.PreviewOverlay(nextFrame, 'future-summon-window');
+          if (remaining <= 0) return replaceWorldUnit(nextFrame, record.id, { ...current, 已消散: true, 剩余窗口: 0 });
+          overlay.changeUnit(record.id, unit => {
+            unit.剩余窗口 = remaining;
+            unit.__battleRuntime = { ...unit.__battleRuntime,
+              summonWindow: { ...unit.__battleRuntime?.summonWindow, remainingWindows: remaining },
+              ...(record.mode === '自主行动' && acted ? { naturalOpportunity: { round: frame.回合, status: 'CONSUMED' } } : {}) };
+            if (charge) unit.蓄力技能 = charge;
+            else delete unit.蓄力技能;
+          });
+          return overlay.snapshot();
+        };
+        const spentRoster = liveRoster.map(row => row.id === record.id ? { ...row, remaining: row.remaining - 1 } : row);
+        const cancelled = hasActionCancellation(summon) || record.mode === '协同攻击' && (
+          hasActionCancellation(host) || Object.values(summon.状态效果 || {}).some(state =>
+            state.cannot_react === true || (state.战斗效果?.cannot_react ?? state.计算层效果?.cannot_react) === true));
+        if (cancelled) return act(index + 1, spendWindow(frame, false), spentRoster, pending, liveSustains);
+        let evaluated = false;
+        const capacity = r9v2LinearSummonActionCapacity(frame, summon, request, Math.min(record.remaining, horizon - offset + 1),
+          ({ declaration, actionOpportunity, readSettledPotential, hasSettledPotential }) => {
+            evaluated = true;
+            const castTime = Math.max(0, Number(summon.蓄力技能?.cast_time ?? declaration.skill?.前摇 ?? declaration.skill?.cast_time ?? 0));
+            if (castTime > 40) return act(index + 1, spendWindow(frame, true, {
+              skill: cloneValue(summon.蓄力技能?.skill || declaration.skill), cast_time: castTime - 40,
+              targetIds: cloneValue(declaration.targetIds || []),
+            }), spentRoster, pending, liveSustains);
+            const finalWindow = offset === horizon && index === roundOrder.length - 1;
+            if (finalWindow && !hasSettledPotential) return 0;
+            const futureDeclaration = { ...declaration, actionId: declaration.actionId + ':future:' + offset };
+            const worldRevision = r9v2ProjectionObjectRevision(projectionRevisions, frame);
+            return r9v2LinearExpectedCreatedPreview({ worldSnapshot: frame, actorId: record.id,
+              worldRevision, snapshotRevision: worldRevision,
+              actionFingerprint: r9v2ProjectionObjectRevision(projectionRevisions, futureDeclaration),
+              declaration: futureDeclaration,
+              actionRole: actionOpportunity.role, actionOpportunity, __preparedDecisionWorld: true,
+              beliefState: request.beliefState, battleIntent: request.battleIntent,
+              buildOperationGraph: false, captureDependencies: false,
+            }, projection => {
+              const settled = readSettledPotential(projection);
+              if (finalWindow) return settled;
+              const nextFrame = r9v2LinearNormalizeActionFrame(frame, projection);
+              const nextRoster = addSummons(spentRoster, projection, offset, record.id);
+              const added = (projection.contributions || []).filter(entry => entry.outcomeKind === 'STATE_SCHEDULED' ||
+                entry.evidence?.persistentRiskBinding).map(entry => ({ ...entry, evidence: { ...entry.evidence,
+                  ...(entry.evidence?.deferredStartRoundOffset > 0
+                    ? { deferredStartRoundOffset: entry.evidence.deferredStartRoundOffset + offset } : {}) } }));
+              const nextSustains = r9v2LinearActionSustains(liveSustains, frame, nextFrame, declaration, projection);
+              return settled + act(index + 1, spendWindow(nextFrame, true), nextRoster, [...pending, ...added], nextSustains);
+            });
+          });
+        return evaluated ? capacity : act(index + 1, spendWindow(frame, false), spentRoster, pending, liveSustains);
+      };
+      return act(0, world, roster, contributions, sustains);
+    };
+    return clamp(continueRound(1, null, records, result.contributions || [], request.evaluationContext?.continuedSustains || {}) / 100, 0, 1);
+  }
+
   function r9v2LinearBestActionCapacity(
     worldSnapshot = {},
     unit = {},
     hostileSide = '',
     decisionCache = null,
     hostileOnly = false,
+    naturalHorizon = null,
   ) {
     decisionMetrics.r9v2BestActionCapacityCalls += 1;
+    if (searchBudget.shortCircuit) return 0;
     const valuesByWorld = decisionCache?.valuesByWorld;
     let unitValues = valuesByWorld?.get(worldSnapshot);
     if (!unitValues && valuesByWorld) {
@@ -56682,10 +61089,74 @@
       valuesByHostileSide = new Map();
       unitValues.set(unit, valuesByHostileSide);
     }
-    const capacityKey = `${hostileSide}|${hostileOnly ? 'HOSTILE' : 'ANY'}`;
+    const horizonKey = naturalHorizon ? `|${JSON.stringify(naturalHorizon)}` : '';
+    const capacityKey = `${hostileSide}|${hostileOnly ? 'HOSTILE' : 'ANY'}${horizonKey}`;
     if (valuesByHostileSide?.has(capacityKey)) {
       decisionMetrics.r9v2BestActionCapacityCacheHits += 1;
       return valuesByHostileSide.get(capacityKey);
+    }
+    const sideUnitsByWorld = decisionCache?.sideUnitsByWorld;
+    const unitSide = sideOf(worldSnapshot, unit);
+    const hostileTargets = r9v2LinearSideUnits(worldSnapshot, hostileSide, sideUnitsByWorld);
+    const coarseKey = searchBounds?.coarseCapacityCache ? JSON.stringify([capacityKey, unitSide,
+      coarseCapacitySignature(unit), hostileTargets.map(coarseCapacitySignature)]) : null;
+    if (coarseKey && searchBudget.capacityByCoarseKey.has(coarseKey)) {
+      const value = searchBudget.capacityByCoarseKey.get(coarseKey);
+      valuesByHostileSide?.set(capacityKey, value);
+      return value;
+    }
+    const completesWithinHorizon = skill => {
+      if (!naturalHorizon || !skill) return true;
+      const charge = unit?.蓄力技能;
+      const timedSkill = charge && skillId(charge.skill || charge) === skillId(skill)
+        ? { ...skill, 前摇: Math.max(0, Number(charge.cast_time ?? charge.remainingCastTime ?? skill.前摇 ?? skill.cast_time ?? 0)) }
+        : skill;
+      return actionCompletesWithinBattleHorizon(timedSkill, {
+        actorId: preview.unitId(unit), actionOpportunity: { role: 'ACTIVE', battleHorizon: naturalHorizon },
+      }, worldSnapshot);
+    };
+    let semanticCapacityKey = '';
+    if (
+      unitSide &&
+      preview.isBattleCapable(unit) &&
+      !hasActionCancellation(unit) &&
+      !hasStateFlag(unit, 'disarm') &&
+      !hasStateFlag(unit, 'silence') &&
+      hostileTargets.length &&
+      isSimpleBasicDamageActor(unit) &&
+      typeof preview.mechanicalProjectionProfile === 'function'
+    ) {
+      try {
+        const projectionContext = r9v2LinearCapacityProjectionContext(worldSnapshot, decisionCache);
+        const actorProfile = preview.mechanicalProjectionProfile(projectionContext, unit);
+        const targetProfiles = hostileTargets.map(target => ({
+          profile: preview.mechanicalProjectionProfile(projectionContext, target),
+          states: target.状态效果 || {},
+          actionFlags: [hasActionCancellation(target), hasStateFlag(target, 'disarm'), hasStateFlag(target, 'silence')],
+        }));
+        if (actorProfile && typeof actorProfile === 'object' && !Array.isArray(actorProfile) &&
+          targetProfiles.every(row => row.profile && typeof row.profile === 'object' && !Array.isArray(row.profile))) {
+          const normalizedTargets = targetProfiles.map(row => JSON.stringify(row))
+            .sort(compareUtf16);
+          semanticCapacityKey = JSON.stringify([
+            { ...actorProfile, id: '' },
+            unit.状态效果 || {},
+            [hasActionCancellation(unit), hasStateFlag(unit, 'disarm'), hasStateFlag(unit, 'silence')],
+            hostileSide,
+            hostileOnly,
+            preview.effectArrayHash?.(basicAttackSkill(unit)?._效果数组) || '',
+            normalizedTargets,
+          ]);
+          if (linearBestActionCapacitySemanticCache.has(semanticCapacityKey)) {
+            const value = linearBestActionCapacitySemanticCache.get(semanticCapacityKey);
+            valuesByHostileSide?.set(capacityKey, value);
+            decisionMetrics.r9v2BestActionCapacitySemanticHits += 1;
+            return value;
+          }
+        }
+      } catch {
+        semanticCapacityKey = '';
+      }
     }
     decisionMetrics.r9v2BestActionCapacityBuilds += 1;
     const rowsByContext = decisionCache?.rowsByWorld?.get(worldSnapshot)?.get(unit);
@@ -56693,11 +61164,11 @@
     const cachedRows = rowsByContext?.get(rowsKey);
     let result;
     if (cachedRows) {
-      result = cachedRows.reduce((best, action) => Math.max(best, Number(action.potential || 0)), 0);
+      result = cachedRows.reduce((best, action) => completesWithinHorizon(action.skill)
+        ? Math.max(best, Number(action.potential || 0)) : best, 0);
     } else {
-      const sideUnitsByWorld = decisionCache?.sideUnitsByWorld;
-      const hostileTargets = r9v2LinearSideUnits(worldSnapshot, hostileSide, sideUnitsByWorld);
-      const unitSide = sideOf(worldSnapshot, unit);
+      const captureHostileCapacity = !hostileOnly && Boolean(valuesByHostileSide);
+      let hostileCapacity = 0;
       const alliedTargets = unitSide ? r9v2LinearSideUnits(worldSnapshot, unitSide, sideUnitsByWorld) : [];
       result = 0;
       if (
@@ -56715,12 +61186,15 @@
               'BASIC_ATTACK',
               null,
               projectionContext,
+              worldSnapshot,
             )),
             0,
           );
+          hostileCapacity = result;
         }
-        if (!hasStateFlag(unit, 'silence')) {
+        if (!hasStateFlag(unit, 'silence') && !preview.isSummonSkillDisabled(unit)) {
           affordablePreparedSkills(unit).forEach(({ skill, startupCosts, fusionMetadata }) => {
+            if (!completesWithinHorizon(skill)) return;
             const fusion = fusionMetadata
               ? preview.resolveFusionAction(worldSnapshot, unit, skill, {
                   resourceCosts: startupCosts,
@@ -56728,23 +61202,43 @@
                 })
               : null;
             if (fusion && !fusion.valid) return;
-            result = Math.max(
+            const profile = targetProfile(skill);
+            const capacity = r9v2LinearSkillActionCapacity(
+              unit,
+              skill,
+              profile,
+              hostileTargets,
+              alliedTargets,
+              hostileOnly,
+              projectionContext,
+              worldSnapshot,
               result,
-              r9v2LinearSkillActionCapacity(
-                unit,
-                skill,
-                targetProfile(skill),
-                hostileTargets,
-                alliedTargets,
-                hostileOnly,
-                projectionContext,
-              ),
             );
+            result = Math.max(result, capacity);
+            if (captureHostileCapacity) {
+              const conditional = skillActionCapacitySettlementProfile(skill)?.needed;
+              if (conditional || profile !== 'SELF' && !profile.startsWith('FRIENDLY_')) {
+                hostileCapacity = Math.max(hostileCapacity, conditional || profile === 'ANY_SINGLE'
+                  ? r9v2LinearSkillActionCapacity(unit, skill, profile, hostileTargets, alliedTargets, true, projectionContext, worldSnapshot)
+                  : capacity);
+              }
+            }
           });
         }
       }
+      // Overall and hostile capacities share eligibility and hostile action
+      // values. Keep the friendly part out of the latter without walking the
+      // same skill pool again when that projection is requested next.
+      if (captureHostileCapacity) valuesByHostileSide.set(`${hostileSide}|HOSTILE${horizonKey}`, hostileCapacity);
     }
     valuesByHostileSide?.set(capacityKey, result);
+    if (coarseKey) searchBudget.capacityByCoarseKey.set(coarseKey, result);
+    if (semanticCapacityKey) {
+      if (linearBestActionCapacitySemanticCache.size >= 512) {
+        linearBestActionCapacitySemanticCache.delete(linearBestActionCapacitySemanticCache.keys().next().value);
+      }
+      linearBestActionCapacitySemanticCache.set(semanticCapacityKey, result);
+    }
     return result;
   }
 
@@ -56753,7 +61247,7 @@
     const visit = effect => {
       if (!effect || typeof effect !== 'object' || Array.isArray(effect)) return;
       const prototype = String(effect?.原型 || '').trim();
-      if (['属性修正', '判定修正', '结算修正', '状态施加', '机制授予'].includes(prototype)) {
+      if (['属性修正', '判定修正', '结算修正', '状态施加', '护盾变化', '机制授予'].includes(prototype)) {
         duration = Math.max(duration, Math.max(1, Number(effect?.持续回合 || 1)));
       }
       if (prototype === '机制授予') {
@@ -56768,23 +61262,25 @@
     if (!state?.副作用列表?.length) return null;
     const effects = state.__r9v2RoundRiskOutcomes
       ? state.副作用列表.map((effect, index) => ({ ...effect,
-          触发概率: state.__r9v2RoundRiskOutcomes[index]?.[roundOffset + riskOffsetBase] ?? effect.触发概率 }))
+          触发概率: state.__r9v2RoundRiskOutcomes[index]?.[roundOffset + riskOffsetBase] ??
+            state.__r9v2RoundRiskOutcomes[index]?.unresolvedProbability ?? effect.触发概率 }))
       : state.副作用列表;
-    return root.__LWCS_BATTLE_RUNTIME__.normalizeSideEffectList(compiledRiskIds
-      ? effects.filter(effect => !compiledRiskIds.has(effect.sourceEffectId)) : effects).filter(effect =>
+    return (compiledRiskIds ? effects.filter(effect => !compiledRiskIds.has(effect.sourceEffectId)) : effects)
+      .flatMap(source => root.__LWCS_BATTLE_RUNTIME__.normalizeSideEffectList([source]).map(effect =>
+        source.sourceEffectId ? { ...effect, sourceEffectId: source.sourceEffectId } : effect)).filter(effect =>
       Number(effect.触发概率) > 0 &&
       (effect.触发时机 !== '效果结束后' || ended || (typeof state.duration === 'number' && Number.isFinite(state.duration))) &&
       (!String(effect.关联状态 || '').trim() || String(effect.关联状态).trim() === key));
   }
 
-  function r9v2LinearPassiveStateExpires(key, state, roundOffset, baselineActor, resourceTicksSettled = false, compiledRiskIds = null, jointFlowStep = false, riskOffsetBase = 0) {
+  function r9v2LinearPassiveStateExpires(key, state, roundOffset, baselineActor, resourceTicksSettled = false, compiledRiskIds = null, jointFlowStep = false, riskOffsetBase = 0, conditionalRisks = false) {
     // This is a passive capacity projection, not a round-end settlement:
     // never silently execute/drop a tick, delayed trigger, summon or control budget.
     const combat = state?.战斗效果 || {};
     const risks = r9v2ExistingStateRisks(key, state, roundOffset, compiledRiskIds, riskOffsetBase);
     if (state?.召唤物 || state?.延迟效果 || (state?.持续原型效果 &&
       (!resourceTicksSettled || (state.持续原型效果.原型 !== '状态移除' && !(jointFlowStep && ['资源转移', '状态转移', '状态交换'].includes(state.持续原型效果.原型))))) ||
-      (risks?.length && (!resourceTicksSettled || risks.some(effect => Number(effect.触发概率) !== 1 ||
+      (risks?.length && (!resourceTicksSettled || risks.some(effect => (!conditionalRisks && Number(effect.触发概率) !== 1) ||
         !['回合结束时','效果结束后'].includes(effect.触发时机)))) || (!resourceTicksSettled && state?.shield_value) ||
       (!resourceTicksSettled && (state?.dot_damage || state?.dot_damage_ratio || state?.计算层效果?.dot_damage_ratio ||
         combat.dot_damage || combat.dot_damage_ratio || combat.hot_heal_ratio ||
@@ -56793,9 +61289,8 @@
         !Object.keys(state?.面板修改比例 || {}).length && !Object.keys(state?.面板固定修正 || {}).length) ||
       root.__LWCS_BATTLE_RUNTIME__.structuredControlConsumesActiveOpportunity(state) ||
       typeof state?.duration !== 'number') return false;
-    const newThisRound = state.__本回合新附加 === true ||
-      (key.startsWith('preview:') && !Object.hasOwn(baselineActor?.状态效果 || {}, key));
-    return state.duration + Number(newThisRound) <= roundOffset;
+    const lifetime = preview.projectedStateRoundEndLifetime(key, state, baselineActor);
+    return lifetime !== null && lifetime <= roundOffset;
   }
 
   function r9v2LinearRiskDuration(entry) {
@@ -56804,66 +61299,240 @@
       ? 3 : Number(entry.evidence?.stateEntry?.duration || 0);
   }
 
-  function r9v2JointFlowProjector(baselineWorld, sourceActorId, sourceSustainProfile = null, riskOffsetBase = 0) {
-    const cache = new WeakMap(), emptyContributions = [];
+  function r9v2LinearSummonSupportWorld(world, expiredIds = null) {
+    const byHost = new Map();
+    for (const { unit } of preview.listUnits(world)) {
+      if (!preview.isSummonUnit(unit) || unit.已消散 === true) continue;
+      const hostId = String(unit.宿主ID || preview.unitId(unit.__宿主 || {})).trim();
+      if (!hostId || !findUnitInWorld(world, hostId)) continue;
+      const summons = byHost.get(hostId);
+      if (summons) summons.push(unit);
+      else byHost.set(hostId, [unit]);
+    }
+    for (const [hostId, summons] of byHost) {
+      const host = findUnitInWorld(world, hostId);
+      const { maintainRatio, compression, compressedFinals } = root.__LWCS_BATTLE_RUNTIME__.buildSummonMentalLoadProfile(host,
+        expiredIds ? summons.filter(unit => !expiredIds.has(preview.unitId(unit))) : summons);
+      let owner = null;
+      for (const summon of summons) {
+        const id = preview.unitId(summon);
+        const removed = expiredIds?.has(id) || !preview.isBattleCapable(host) || maintainRatio <= 0 || summon.类型 === '深渊生物' && maintainRatio < 0.25;
+        const next = { ...summon, __精神维持率: maintainRatio,
+          ...(compression < 1 && compressedFinals.has(id) ? { final: compressedFinals.get(id), __精神压缩: compression } : {}),
+          ...(removed ? { 已消散: true, 剩余窗口: 0,
+            __battleRuntime: { ...summon.__battleRuntime, summonWindow: { ...summon.__battleRuntime?.summonWindow, remainingWindows: 0 } } }
+            : { __禁用召唤技能: maintainRatio < 0.25 }) };
+        if (compression === 1) delete next.__精神压缩;
+        world = replaceWorldUnit(world, id, next);
+        if (!removed) continue;
+        owner ||= cloneValue(host);
+        for (const [key, condition] of Object.entries(owner.状态效果 || {})) if (condition?.召唤物?.召唤键 === id) delete owner.状态效果[key];
+      }
+      if (owner) world = replaceWorldUnit(world, hostId, owner);
+    }
+    return world;
+  }
+
+  function r9v2HasFractionalStateRisks(world) {
+    const fractional = risks => Array.isArray(risks) && risks.some(risk => Number(risk?.触发概率 ?? 1) > 0 && Number(risk?.触发概率 ?? 1) < 1);
+    return preview.listUnits(world).some(({ unit }) => Object.values(unit.状态效果 || {}).some(state =>
+      fractional(state?.副作用列表) || state?.延迟效果 === true && Array.isArray(state.结算效果) && state.结算效果.some(effect => fractional(effect?.副作用列表))));
+  }
+
+  function r9v2JointFlowProjector(baselineWorld, sourceActorId, sourceSustainProfile = null, riskOffsetBase = 0, inheritedSustains = null) {
+    const cache = new WeakMap(), emptyContributions = [], emptySustains = {};
+    const pendingNaturalActorIds = Array.isArray(sourceSustainProfile?.pendingNaturalActorIds) ? new Set(sourceSustainProfile.pendingNaturalActorIds) : null;
     const baselineUnits = new Map(preview.listUnits(baselineWorld).map(({ unit }) => [preview.unitId(unit), unit]));
-    return (world, _actor, roundOffset, _baselineActor, contributions = []) => {
+    const materializeTargets = (frame, payerId, profile) => {
+      if (!profile?.stateTargets?.length || !profile.sourceId) return;
+      const payer = findUnitInWorld(frame, payerId), owners = [];
+      if (!payer) return;
+      for (const ref of profile.stateTargets) {
+        const unit = findUnitInWorld(frame, ref.targetId), state = unit?.状态效果?.[ref.key];
+        if (!state || state.sourceActionId && state.sourceActionId !== profile.sourceId && state.sustainSourceActionId !== profile.sourceId) continue;
+        // Only the private future frame receives Native-like fee ownership.
+        // A moved carrier keeps its later attribution action and old payer.
+        if (!state.sourceActionId) state.sourceActionId = profile.sourceId;
+        const identity = state.状态ID || ref.key;
+        if (Object.values(payer.持续效果 || {}).some(effect => effect.related_condition === identity && effect.sourceActionId === profile.sourceId)) continue;
+        owners.push({ unit, key: ref.key, state });
+      }
+      if (owners.length) root.__LWCS_BATTLE_RUNTIME__.bindSustainStateCarriers(frame, payer, owners,
+        profile.sourceId, profile.actionName || '', profile.costs);
+    };
+    const materializeContinued = (frame, sustains) => {
+      for (const [id, profiles] of Object.entries(sustains || {})) for (const profile of profiles) materializeTargets(frame, id, profile);
+    };
+    const initializeFrame = (world, contributions, continuedSustains) => {
+      let initial = cloneValue(world);
+      const ids = preview.listUnits(initial).map(({ unit }) => {
+        preview.inheritOverlayOrigin(unit, findUnitInWorld(world, preview.unitId(unit)));
+        return preview.unitId(unit);
+      });
+      for (const id of ids) {
+        const current = findUnitInWorld(initial, id), baseline = baselineUnits.get(id) || current;
+        initial = r9v2LinearPassiveCapacityWorld(initial, current, 0, baseline, contributions);
+        const normalized = findUnitInWorld(initial, id);
+        for (const [key, condition] of Object.entries(normalized.状态效果 || {})) {
+          // A newborn has no pre-action state baseline. Its projected states
+          // were added in the creation round, just like a new state on a host.
+          if (condition.延迟效果 !== true && key.startsWith('preview:') && (!baselineUnits.has(id) || !Object.hasOwn(baseline.状态效果 || {}, key))) {
+            condition.__本回合新附加 = true;
+          }
+        }
+      }
+      if (world !== baselineWorld) materializeTargets(initial, sourceActorId, sourceSustainProfile);
+      materializeContinued(initial, continuedSustains);
+      return initial;
+    };
+    const project = (world, _actor, roundOffset, _baselineActor, contributions = [], _sustainProfile = null, previousFrame = null, continuedSustains = inheritedSustains, riskResolver = null) => {
       if (!(roundOffset > 0)) return world;
       let byContributions = cache.get(world);
       if (!byContributions) cache.set(world, byContributions = new WeakMap());
       const contributionKey = contributions.length ? contributions : emptyContributions;
-      let state = byContributions.get(contributionKey);
+      let bySustains = byContributions.get(contributionKey);
+      if (!bySustains) byContributions.set(contributionKey, bySustains = new WeakMap());
+      const sustainKey = continuedSustains || emptySustains;
+      let state = bySustains.get(sustainKey);
       if (!state) {
-        let initial = cloneValue(world);
-        const ids = preview.listUnits(initial).map(({ unit }) => preview.unitId(unit));
-        for (const id of ids) {
-          const current = findUnitInWorld(initial, id), baseline = baselineUnits.get(id) || current;
-          initial = r9v2LinearPassiveCapacityWorld(initial, current, 0, baseline, contributions);
-          const normalized = findUnitInWorld(initial, id);
-          for (const [key, condition] of Object.entries(normalized.状态效果 || {})) {
-            if (key.startsWith('preview:') && !Object.hasOwn(baseline.状态效果 || {}, key)) condition.__本回合新附加 = true;
-          }
-        }
+        const initial = initializeFrame(world, contributions, continuedSustains);
         // Bound risks already travel inside the live state. Its actual holder
         // and ending event own settlement, not the original expiry estimate.
         const boundRisks = new Set(contributions.filter(entry => entry.evidence?.persistentRiskBinding).map(entry =>
           `${entry.targetId}\u0000${entry.evidence.persistentRiskBinding.risk.sourceEffectId}`));
         const scheduled = contributions.filter(entry => entry.outcomeKind === 'STATE_SCHEDULED' &&
+          !Object.values(entry.evidence?.stateEntries || {}).some(state => state?.延迟效果 === true) &&
           !boundRisks.has(`${entry.targetId}\u0000${entry.effectInstanceId}`));
-        state = { frames: [initial], ids, scheduled };
-        byContributions.set(contributionKey, state);
+        state = { frames: [initial], scheduled };
+        bySustains.set(sustainKey, state);
       }
-      while (state.frames.length <= roundOffset) {
-        const step = state.frames.length;
-        const previous = state.frames[step - 1];
+      if (!riskResolver && !previousFrame && state.frames.length > roundOffset) return state.frames[roundOffset];
+      const advanceFrame = (previous, step) => {
         let next = cloneValue(previous);
+        for (const { unit } of preview.listUnits(next)) preview.inheritOverlayOrigin(unit, findUnitInWorld(previous, preview.unitId(unit)));
+        // A later ally/summon/cooperation action may add a maintained target
+        // after frame zero. Bind that real branch before the next unit clock.
+        materializeContinued(next, continuedSustains);
         next.回合 = Number(world.回合 || 0) + step - 1;
         const stepContributions = state.scheduled.flatMap(entry => {
           const offset = Number(entry.evidence?.deferredStartRoundOffset || 0) - step + 1;
           return offset > 0 ? [{ ...entry, evidence: { ...entry.evidence, deferredStartRoundOffset: offset } }] : [];
         });
-        for (const id of state.ids) {
+        // A continued action branch can add or remove entities after the first
+        // frame. Only the current registry owns the holders settled this round.
+        for (const { unit: holder } of preview.listUnits(next)) {
+          const id = preview.unitId(holder);
           const unit = findUnitInWorld(next, id);
           if (!unit || preview.readHp(unit) <= 0) continue;
           const initialUnit = baselineUnits.get(id) || unit;
-          const pending = step > 1 || (id === sourceActorId && sourceSustainProfile?.currentOpportunityPending !== undefined
-            ? sourceSustainProfile.currentOpportunityPending
-            : initialUnit.__battleRuntime?.naturalOpportunity?.status === 'PENDING' &&
-              Number(initialUnit.__battleRuntime.naturalOpportunity.round) === Number(baselineWorld.回合 || 0));
+          const natural = unit.__battleRuntime?.naturalOpportunity;
+          const ownsNatural = !preview.isSummonUnit(unit) || String(unit.行动模式 || '').trim() === '自主行动';
+          const pending = ownsNatural && (step > 1
+            ? Number(natural?.round) === next.回合 ? natural.status === 'PENDING'
+              : !preview.isSummonUnit(unit) || Number(unit.生成回合 || 0) < next.回合
+            : id === sourceActorId && sourceSustainProfile?.currentOpportunityPending !== undefined
+              ? sourceSustainProfile.currentOpportunityPending
+              : pendingNaturalActorIds ? pendingNaturalActorIds.has(id)
+              : initialUnit.__battleRuntime?.naturalOpportunity?.status === 'PENDING' &&
+                Number(initialUnit.__battleRuntime.naturalOpportunity.round) === Number(baselineWorld.回合 || 0));
           const profile = world !== baselineWorld && id === sourceActorId && sourceSustainProfile
-            ? { ...sourceSustainProfile, currentOpportunityPending: pending }
+            ? { ...sourceSustainProfile, ...(sourceSustainProfile.stateTargets?.length ? { stateKeys: [], materializedTargetSustains: true } : {}), currentOpportunityPending: pending }
             : { costs: {}, stateKeys: [], currentOpportunityPending: pending };
-          next = r9v2LinearPassiveCapacityWorld(next, unit, 1, unit, stepContributions, profile, true, riskOffsetBase + step - 1);
+          const observedProfile = sourceSustainProfile?.observePeriodicHp ? { ...profile, observePeriodicHp: sourceSustainProfile.observePeriodicHp } : profile;
+          const continuationProfile = continuedSustains?.[id]?.length ? { ...observedProfile,
+            additionalSustains: continuedSustains[id].map(profile => profile.stateTargets?.length
+              ? { ...profile, stateKeys: [], materializedTargetSustains: true } : profile) } : observedProfile;
+          next = r9v2LinearPassiveCapacityWorld(next, unit, 1, unit, stepContributions, continuationProfile, true, riskOffsetBase + step - 1, riskResolver);
           const advanced = findUnitInWorld(next, id);
           Object.values(advanced.状态效果 || {}).forEach(condition => { delete condition.__本回合新附加; });
         }
-        state.frames.push(next);
+        return markCapacityDeltaSnapshot(next, previous, preview.listUnits(next).map(({ unit }) => preview.unitId(unit)));
+      };
+      // Incoming damage branches advance from their own remaining resources;
+      // do not replace them with the undamaged cached passive frame.
+      // Conditional replays share only the unchanged initial frame, never a
+      // previously resolved risk outcome from the scalar frame cache.
+      if (riskResolver) {
+        let next = previousFrame ? (roundOffset === 1 ? initializeFrame(previousFrame, contributions, continuedSustains) : previousFrame) : state.frames[0];
+        for (let step = previousFrame ? roundOffset : 1; step <= roundOffset; step++) next = advanceFrame(next, step);
+        return next;
+      }
+      if (previousFrame) return advanceFrame(roundOffset === 1 ? initializeFrame(previousFrame, contributions, continuedSustains) : previousFrame, roundOffset);
+      while (state.frames.length <= roundOffset) {
+        state.frames.push(advanceFrame(state.frames.at(-1), state.frames.length));
       }
       return state.frames[roundOffset];
     };
+    const pairedCache = new WeakMap(), riskWorlds = new WeakMap(), splitToken = {};
+    const hasRiskLaw = world => {
+      if (!riskWorlds.has(world)) riskWorlds.set(world, r9v2HasFractionalStateRisks(world));
+      return riskWorlds.get(world);
+    };
+    const enumerate = evaluate => {
+      const pending = [{ probability: 1, ranges: new Map() }], outcomes = [];
+      while (pending.length) {
+        const path = pending.pop();
+        const resolver = () => {
+          const occurrences = new Map();
+          return (probability, identity) => {
+            if (!(probability > 0)) return 0;
+            if (!(probability < 1)) return 1;
+            if (!identity) throw new Error('R9V2_FUTURE_TRIAL_ID_MISSING');
+            const base = JSON.stringify(identity), count = occurrences.get(base) || 0;
+            occurrences.set(base, count + 1);
+            const key = `${base}:${count}`, [low, high] = path.ranges.get(key) || [0, 1];
+            if (probability <= low) return 0;
+            if (probability >= high) return 1;
+            throw { splitToken, key, probability, low, high };
+          };
+        };
+        try {
+          // Only reached physical boundaries request a draw. Each comparison
+          // reuses the same latent uniform for the same existing source trial;
+          // differing probabilities refine that uniform, not independent dice.
+          outcomes.push(Object.freeze({ probability: path.probability, ...evaluate(resolver) }));
+        } catch (split) {
+          if (split?.splitToken !== splitToken) throw split;
+          for (const [low, high] of [[split.low, split.probability], [split.probability, split.high]]) {
+            const ranges = new Map(path.ranges);ranges.set(split.key, [low, high]);
+            pending.push({ probability: path.probability * (high - low) / (split.high - split.low), ranges });
+          }
+          if (pending.length + outcomes.length > 4096) throw new Error('R9V2_FUTURE_RISK_STATE_LIMIT');
+        }
+      }
+      return Object.freeze(outcomes);
+    };
+    project.pairedOutcomes = (priorWorld, nextWorld, offset, priorContributions = [], nextContributions = [], { priorFrame = null, nextFrame = null } = {}) => {
+      if (!(offset > 0)) return [{ probability: 1, priorWorld: priorFrame || priorWorld, nextWorld: nextFrame || nextWorld }];
+      if (!hasRiskLaw(priorFrame || priorWorld) && !hasRiskLaw(nextFrame || nextWorld)) return [{ probability: 1,
+        priorWorld: project(priorWorld, null, offset, null, priorContributions, null, priorFrame),
+        nextWorld: project(nextWorld, null, offset, null, nextContributions, null, nextFrame) }];
+      const priorKey = priorContributions.length ? priorContributions : emptyContributions;
+      const nextKey = nextContributions.length ? nextContributions : emptyContributions;
+      let entries = pairedCache.get(nextWorld);
+      if (!entries) pairedCache.set(nextWorld, entries = []);
+      const cached = entries.find(row => row.priorWorld === priorWorld && row.offset === offset && row.priorKey === priorKey && row.nextKey === nextKey && row.priorFrame === priorFrame && row.nextFrame === nextFrame);
+      if (cached) return cached.outcomes;
+      const frames = enumerate(resolve => ({
+        priorWorld: project(priorWorld, null, offset, null, priorKey, null, priorFrame, inheritedSustains, resolve()),
+        nextWorld: project(nextWorld, null, offset, null, nextKey, null, nextFrame, inheritedSustains, resolve()),
+      }));
+      entries.push({ priorWorld, offset, priorKey, nextKey, priorFrame, nextFrame, outcomes: frames });
+      return frames;
+    };
+    project.outcomes = (world, offset, contributions = [], previousFrame = null, capture = null) => {
+      if (!(offset > 0)) return [{ probability: 1, world: previousFrame || world }];
+      if (!capture && !hasRiskLaw(previousFrame || world)) return [{ probability: 1,
+        world: project(world, null, offset, null, contributions, null, previousFrame) }];
+      return enumerate(resolve => {
+        const advance = () => project(world, null, offset, null, contributions, null, previousFrame, inheritedSustains, resolve());
+        return capture ? capture(advance) : { world: advance() };
+      });
+    };
+    return project;
   }
 
-  function r9v2LinearPassiveCapacityWorld(world, actor, roundOffset, baselineActor, contributions = [], sustainProfile = null, jointFlowStep = false, riskOffsetBase = 0) {
+  function r9v2LinearPassiveCapacityWorld(world, actor, roundOffset, baselineActor, contributions = [], sustainProfile = null, jointFlowStep = false, riskOffsetBase = 0, riskResolver = null) {
     const deferredLethal = [], attributeEntries = [];
     let compiledRiskIds = null;
     let endedRiskIds = null;
@@ -56876,38 +61545,35 @@
       if (riskId) (compiledRiskIds ||= new Set()).add(riskId);
     }
     if (attributeEntries.length) {
-      const nextActor = { ...actor, 属性: actor.属性 ? { ...actor.属性 } : actor.属性, 状态效果: { ...actor.状态效果 } };
-      const aliases = { 力量: 'str', 防御: 'def', 敏捷: 'agi', 魂力上限: 'sp_max', 精神力上限: 'men_max', 体力上限: 'vit_max', 生命上限: 'vit_max' };
-      for (const entry of attributeEntries) {
-        const stateKey = Object.keys(nextActor.状态效果).find(key => key.startsWith(`preview:${entry.effectInstanceId}:`) &&
-          !Object.hasOwn(baselineActor?.状态效果 || {}, key));
-        const effect = entry.evidence.projectedEffect;
-        if (!stateKey || !effect) continue;
-        const state = { ...nextActor.状态效果[stateKey], 面板修改比例: {}, 面板固定修正: {}, __本回合新附加: true };
-        const raw = String(effect.数值 ?? '').trim(), numeric = Number(raw.replace('%', ''));
-        if (!Number.isFinite(numeric)) continue;
-        for (const attribute of (Array.isArray(effect.属性) ? effect.属性 : [effect.属性])) {
-          const key = aliases[attribute] || attribute;
-          if (Object.hasOwn(baselineActor || {}, key)) nextActor[key] = baselineActor[key];
-          else delete nextActor[key];
-          if (nextActor.属性 && baselineActor?.属性) nextActor.属性[attribute] = baselineActor.属性[attribute];
-          if (/%$/.test(raw)) state.面板修改比例[key] = 1 + numeric / 100;
-          else state.面板固定修正[key] = numeric;
-        }
-        nextActor.状态效果[stateKey] = state;
-      }
-      nextActor.final = { ...actor.final, ...preview.buildNumericCombatStats(nextActor, Number(world.当前世界tick || world.当前tick || 0)) };
-      const side = sideOf(world, actor);
-      world = { ...world, 参战者: { ...world.参战者, [side]: world.参战者[side].map(unit => unit === actor ? nextActor : unit) } };
+      const nextActor = preview.normalizeProjectedAttributeUnit(actor, baselineActor, attributeEntries,
+        Number(world.当前世界tick ?? world.当前tick ?? 0));
+      world = replaceWorldUnit(world, preview.unitId(actor), nextActor);
       actor = nextActor;
     }
     if (!actor || roundOffset <= 0) return world;
     const sustainProfiles = Object.entries(actor.持续效果 || {}).flatMap(([key, effect]) => {
       if (!['condition', 'domain', 'life_fire', 'c2_food_maintain'].includes(effect?.effect_type) || effect.维持释放效果列表?.length) return [];
       return [{ stateKeys: effect.related_condition ? [effect.related_condition] : [], sustainKey: key, sourceEffect: effect,
-        sourceId: effect.sourceActionId || effect.来源技能 || effect.技能快照?.name || effect.技能快照?.魂技名 || effect.name || key }];
+        sourceId: String(effect.sourceActionId || effect.来源技能 || effect.技能快照?.name || effect.技能快照?.魂技名 || effect.name || key).trim(),
+        ...(sustainProfile?.materializedTargetSustains && sustainProfile.sourceId === effect.sourceActionId
+          ? { observeSustainPayment: sustainProfile.observeSustainPayment } : {}) }];
     });
-    if (sustainProfile) sustainProfiles.push(sustainProfile);
+    if (sustainProfile) for (const profile of [...(sustainProfile.additionalSustains || []), sustainProfile]) {
+      if (profile.sourceEffect || !profile.stateKeys.length) { sustainProfiles.push(profile); continue; }
+      // Existing carriers retain Native insertion slots, even when replaced.
+      // New keys append in declaration order, one condition at a time.
+      // One failed member may lower a percentage cost enough for the next to
+      // survive. Successful members still share exactly one source payment.
+      const sourceId = profile.sourceId || `pending:${JSON.stringify(profile.stateKeys)}`;
+      for (const key of profile.stateKeys) {
+        const replacement = { ...profile, sourceId, stateKeys: [key] };
+        const slot = sustainProfiles.findIndex(previous => previous.stateKeys.includes(key));
+        const owner = actor.状态效果?.[key]?.sourceActionId || (slot >= 0 ? sustainProfiles[slot].sourceId : '');
+        if (slot >= 0 && profile.sourceId && owner && owner !== profile.sourceId) continue;
+        if (slot < 0) sustainProfiles.push(replacement);
+        else sustainProfiles[slot] = replacement;
+      }
+    }
     const deferred = contributions.filter(entry => entry.targetId === preview.unitId(actor) && entry.outcomeKind === 'STATE_SCHEDULED' &&
       entry.evidence?.lethalSettlement !== true &&
       Number(entry.evidence?.stateEntry?.duration || 0) > 0 &&
@@ -56918,15 +61584,68 @@
           (right.evidence.deferredControlStateKey ? 0 : right.evidence.deferredTiming === '回合结束时' ? 1 : 2) ||
         Number(left.evidence.sideEffectIndex || 0) - Number(right.evidence.sideEffectIndex || 0));
     if (sustainProfiles.length || deferred.length || deferredLethal.length ||
-      Object.values(actor.状态效果 || {}).some(state => state?.持续原型效果?.原型 === '状态移除' || state?.原型 === '资源变化' || state?.副作用列表?.length)) {
+      Object.values(actor.状态效果 || {}).some(state => state?.延迟效果 === true || state?.持续原型效果?.原型 === '状态移除' || state?.原型 === '资源变化' || state?.副作用列表?.length)) {
       const nextActor = cloneValue(actor);
+      preview.inheritOverlayOrigin(nextActor, actor);
+      const conditionProjectedResource = (distribution, threshold, resource, source, roundOffset) => {
+        if (!riskResolver || !distribution?.support) return distribution;
+        const outcomes = preview.partitionResourceRangeOutcomes([{ outcomeId: 'BALANCE', probability: 1,
+          balance: distribution.balance, roundedResourceSupport: distribution.support }], [threshold]);
+        if (outcomes.length < 2) return distribution;
+        const selected = riskResolver(outcomes[1].probability, { kind: 'RESOURCE_CONDITION', targetId: preview.unitId(nextActor),
+          resource, source, threshold, round: Number(world.回合 || 0) + roundOffset - 1 });
+        const next = outcomes[selected];
+        sustainProfile?.observeResourcePartition?.({ targetId: preview.unitId(nextActor), resource,
+          lower: selected ? outcomes[0].probability : 0, upper: selected ? 1 : outcomes[0].probability });
+        return { balance: next.balance, support: next.roundedResourceSupport };
+      };
+      const settleProjectedResource = ({ resource, maximum, requestedDelta, sourceKey, roundOffset }) => {
+        const current = preview.projectedResourceDistribution(nextActor, resource);
+        if (!current?.support) return null;
+        let next = preview.shiftRoundedResourceSegments(current.support, requestedDelta, maximum);
+        if (!next) return null;
+        // The formal helper checks suppression once before committing. Do not
+        // resolve a physical branch or consume a one-shot block during planning.
+        return () => {
+          if (['生命', '体力'].includes(resource)) next = conditionProjectedResource(next, 1, resource, sourceKey, roundOffset);
+          if (resource === '体力' && next.support && riskResolver) {
+            const outcomes = preview.partitionStaminaResourceOutcomes([{ outcomeId: 'BALANCE', probability: 1,
+              balance: next.balance, roundedResourceSupport: next.support }], nextActor);
+            // Conditional selections exhaust this ONE existing balance law;
+            // they are not extra independent state-risk trials or Native draws.
+            let remaining = 1, selected = outcomes.at(-1), lower = 0;
+            for (const outcome of outcomes.slice(0, -1)) {
+              if (riskResolver(outcome.probability / remaining, { kind: 'STAMINA_RANGE', targetId: preview.unitId(nextActor),
+                source: sourceKey, outcomeId: outcome.outcomeId, round: Number(world.回合 || 0) + roundOffset - 1 }) === 1) { selected = outcome; break; }
+              remaining -= outcome.probability;
+            }
+            lower = outcomes.slice(0, outcomes.indexOf(selected)).reduce((sum, outcome) => sum + outcome.probability, 0);
+            if (outcomes.length > 1) sustainProfile?.observeResourcePartition?.({ targetId: preview.unitId(nextActor), resource,
+              lower, upper: lower + selected.probability });
+            next = { balance: selected.balance, support: selected.roundedResourceSupport };
+          }
+          // A provisional mean at zero would clear C2 before the surviving
+          // branch can be chosen. Commit only its actual conditioned balance.
+          preview.setResourceValue(nextActor, resource, next.balance, true);
+          preview.rememberProjectedResourceSupport(nextActor, resource, next.support);
+        };
+      };
       const jointInitialStateKeys = jointFlowStep ? new Set(Object.keys(nextActor.状态效果 || {})) : null;
       let jointLateTransferKeys;
+      let settledStaminaFlowPanelIdentity = null;
+      const panelStateIdentity = () => preview.stableHash(Object.entries(nextActor.状态效果 || {}).flatMap(([key, state]) =>
+        ['面板修改比例', '面板固定修正', '属性快照'].some(field => Object.keys(state?.[field] || {}).length)
+          ? [[key, state.面板修改比例, state.面板固定修正, state.属性快照]] : []));
       const currentOpportunityPending = sustainProfile?.currentOpportunityPending ??
         (baselineActor?.__battleRuntime?.naturalOpportunity?.status === 'PENDING' &&
           Number(baselineActor.__battleRuntime.naturalOpportunity.round) === Number(world.回合 || 0));
       let controlStartedStates = null;
       const applyExistingRisk = (effect, key, offset) => {
+        const { 触发概率: riskProbability, ...riskShape } = effect;
+        if (Number(riskProbability) < 1 && (!riskResolver || riskResolver(Number(riskProbability), {
+          kind: 'STATE_RISK', targetId: preview.unitId(nextActor), source: effect.sourceEffectId || `${key}:${preview.stableHash(riskShape)}`,
+          timing: effect.触发时机, ...(effect.触发时机 === '回合结束时' ? { round: Number(world.回合 || 0) + offset - 1 } : {}),
+        }) !== 1)) return;
         if (effect.副作用类型 === '致死献祭') {
           preview.settlePreviewLethalSideEffect(nextActor);
           return;
@@ -56952,9 +61671,44 @@
           (endedRiskIds ||= new Set()).add(risk.sourceEffectId);
         }
         for (const effect of r9v2ExistingStateRisks(key, state, offset, null, riskOffsetBase, true) || []) {
-          if (effect.触发时机 === '效果结束后' && Number(effect.触发概率) === 1) applyExistingRisk(effect, key, offset);
+          if (effect.触发时机 === '效果结束后' && (riskResolver || Number(effect.触发概率) === 1)) applyExistingRisk(effect, key, offset);
         }
       };
+      const supportsDelayedState = state => state?.延迟效果 === true && Array.isArray(state.结算效果) &&
+        state.结算效果.every(effect => ['伤害结算','资源变化','护盾变化','属性修正','状态施加'].includes(effect?.原型));
+      const settleDelayedState = (key, state, offset, roundEnd = false) => state.结算效果.forEach(effect => {
+        const affectedKey = effect.原型 === '属性修正' ? `延迟属性:${effect.属性}`
+          : effect.原型 === '状态施加' ? String(effect.状态 || '').trim()
+            : effect.原型 === '护盾变化' ? '延迟护盾' : '';
+        const previous = nextActor.状态效果[affectedKey];
+        const duration = previous?.duration, fresh = previous?.__本回合新附加, shield = previous?.shield_value;
+        const ordinary = previous && typeof duration === 'number' &&
+          !root.__LWCS_BATTLE_RUNTIME__.structuredControlConsumesActiveOpportunity(previous);
+        const elapsed = offset - Number(!roundEnd);
+        if (ordinary) {
+          previous.duration = Math.max(0, duration + Number(fresh === true) - elapsed);
+          previous.__本回合新附加 = fresh === true && offset === 1 && !roundEnd;
+        }
+        const relativeDuration = previous?.duration, relativeFresh = previous?.__本回合新附加;
+        let endedState;
+        root.__LWCS_BATTLE_RUNTIME__.settleDelayedEffect(nextActor, effect, '', null, { stateName: key, condition: state,
+          onStateEnd: (endedKey, ended) => { endedState = [endedKey, ended]; } });
+        const applied = nextActor.状态效果[affectedKey];
+        if (!applied) return;
+        if (applied === previous && applied.duration === relativeDuration &&
+          applied.__本回合新附加 === relativeFresh && applied.shield_value === shield) {
+          if (ordinary) applied.duration = duration;
+          if (fresh === undefined) delete applied.__本回合新附加;
+          else applied.__本回合新附加 = fresh;
+          return;
+        }
+        if (typeof applied.duration === 'number' && !root.__LWCS_BATTLE_RUNTIME__.structuredControlConsumesActiveOpportunity(applied)) {
+          applied.duration += elapsed + Number(applied.__本回合新附加 === true);
+        }
+        if (applied.__本回合新附加 === true) (controlStartedStates ||= new Set()).add(affectedKey);
+        delete applied.__本回合新附加;
+        if (endedState) applyEndedStateRisks(endedState[0], endedState[1], offset);
+      });
       const applyDeferredStates = (offset, roundEnd) => {
         for (const entry of scheduledRisks) {
           if (endedRiskIds?.has(entry.effectInstanceId)) continue;
@@ -56968,7 +61722,7 @@
           // Ordinary states use expiry offsets; controls retain active-opportunity budgets.
           if (!root.__LWCS_BATTLE_RUNTIME__.structuredControlConsumesActiveOpportunity(state)) state.duration = Number(state.duration) + offset;
           delete state.__本回合新附加;
-          preview.replaceProjectedSideEffectState(nextActor, state.状态 || state.状态名称, state, Number(world.当前世界tick || world.当前tick || 0),
+          preview.replaceProjectedSideEffectState(nextActor, state.状态 || state.状态名称, state, Number(world.当前世界tick ?? world.当前tick ?? 0),
             (key, previous) => applyEndedStateRisks(key, previous, offset));
           if (roundEnd === 'CONTROL_END') (controlStartedStates ||= new Set()).add(state.状态 || state.状态名称);
         }
@@ -56981,47 +61735,14 @@
           let endedRisks;
           for (const [key, state] of Object.entries(nextActor.状态效果 || {})) {
             if (nextActor.状态效果[key] !== state || !root.__LWCS_BATTLE_RUNTIME__.structuredControlConsumesActiveOpportunity(state) ||
-              state.持续原型效果 || (state.延迟效果 && (!Array.isArray(state.结算效果) ||
-                state.结算效果.some(effect => !['伤害结算','资源变化','护盾变化','属性修正','状态施加'].includes(effect?.原型)))) || state.召唤物 ||
+              state.持续原型效果 || (state.延迟效果 && !supportsDelayedState(state)) || state.召唤物 ||
               !Number.isFinite(Number(state.duration)) || Number(state.duration) <= 0) continue;
             const risks = r9v2ExistingStateRisks(key, state, offset, compiledRiskIds, riskOffsetBase);
-            if (risks?.some(effect => (effect.触发时机 === '效果结束后' && Number(effect.触发概率) !== 1) ||
-              !['回合结束时','效果结束后'].includes(effect.触发时机)) ||
-              (risks?.length && nextActor.召唤键)) continue;
+            if (risks?.some(effect => (effect.触发时机 === '效果结束后' && !riskResolver && Number(effect.触发概率) !== 1) ||
+              !['回合结束时','效果结束后'].includes(effect.触发时机))) continue;
             state.duration = Math.max(0, Number(state.duration) - 1);
             if (state.duration > 0) continue;
-            if (state.延迟效果 === true) state.结算效果.forEach(effect => {
-              const affectedKey = effect.原型 === '属性修正' ? `延迟属性:${effect.属性}`
-                : effect.原型 === '状态施加' ? String(effect.状态 || '').trim()
-                  : effect.原型 === '护盾变化' ? '延迟护盾' : '';
-              const previous = nextActor.状态效果[affectedKey];
-              const duration = previous?.duration, fresh = previous?.__本回合新附加, shield = previous?.shield_value;
-              const ordinary = previous && typeof duration === 'number' &&
-                !root.__LWCS_BATTLE_RUNTIME__.structuredControlConsumesActiveOpportunity(previous);
-              if (ordinary) {
-                previous.duration = Math.max(0, duration + Number(fresh === true) - offset + 1);
-                previous.__本回合新附加 = fresh === true && offset === 1;
-              }
-              const relativeDuration = previous?.duration, relativeFresh = previous?.__本回合新附加;
-              let endedState;
-              root.__LWCS_BATTLE_RUNTIME__.settleDelayedEffect(nextActor, effect, '', null, { stateName: key, condition: state,
-                onStateEnd: (endedKey, ended) => { endedState = [endedKey, ended]; } });
-              const applied = nextActor.状态效果[affectedKey];
-              if (!applied) return;
-              if (applied === previous && applied.duration === relativeDuration &&
-                applied.__本回合新附加 === relativeFresh && applied.shield_value === shield) {
-                if (ordinary) applied.duration = duration;
-                if (fresh === undefined) delete applied.__本回合新附加;
-                else applied.__本回合新附加 = fresh;
-                return;
-              }
-              if (typeof applied.duration === 'number' && !root.__LWCS_BATTLE_RUNTIME__.structuredControlConsumesActiveOpportunity(applied)) {
-                applied.duration += offset - 1 + Number(applied.__本回合新附加 === true);
-              }
-              if (applied.__本回合新附加 === true) (controlStartedStates ||= new Set()).add(affectedKey);
-              delete applied.__本回合新附加;
-              if (endedState) applyEndedStateRisks(endedState[0], endedState[1], offset);
-            });
+            if (state.延迟效果 === true) settleDelayedState(key, state, offset);
             if (nextActor.状态效果[key] === state) delete nextActor.状态效果[key];
             Object.entries(nextActor.持续效果 || {}).forEach(([sustainKey, effect]) => {
               if (effect?.related_condition === key) delete nextActor.持续效果[sustainKey];
@@ -57037,7 +61758,7 @@
         for (const profile of sustainProfiles) {
           if (profile.sourceEffect) {
             if (!nextActor.持续效果?.[profile.sustainKey]) continue;
-            if (!root.__LWCS_BATTLE_RUNTIME__.isSustainEffectActive(nextActor, profile.sourceEffect)) {
+            if (!root.__LWCS_BATTLE_RUNTIME__.isSustainEffectActive(nextActor, profile.sourceEffect, replaceWorldUnit(world, preview.unitId(nextActor), nextActor))) {
               delete nextActor.持续效果[profile.sustainKey];
               root.__LWCS_BATTLE_RUNTIME__.refreshSustainRuntimeLoad(nextActor);
               continue;
@@ -57045,19 +61766,60 @@
           }
           const activeKeys = profile.stateKeys.filter(key => {
             const state = nextActor.状态效果?.[key];
-            return state && Number(state.duration || 0) + Number(state.__本回合新附加 === true || !Object.hasOwn(baselineActor?.状态效果 || {}, key)) >= offset;
+            return state && (profile.sourceEffect || !state.sourceActionId || !profile.sourceId || state.sourceActionId === profile.sourceId) &&
+              Number(state.duration || 0) + Number(state.__本回合新附加 === true || !Object.hasOwn(baselineActor?.状态效果 || {}, key)) >= offset;
           });
-          if ((profile.sourceEffect || activeKeys.length) && !(profile.sourceId && charged.has(profile.sourceId))) {
+          if (profile.sourceEffect || activeKeys.length) {
             const parsed = profile.sourceEffect ? root.__LWCS_BATTLE_RUNTIME__.readSustainCosts(nextActor,
               profile.sourceEffect.维持消耗 ?? profile.sourceEffect.sustain_cost ?? '无', profile.sourceEffect) : null;
-            const payment = parsed?.invalid ? { ok: false } : preview.assessResourcePayment([nextActor],
-              parsed ? Object.fromEntries(parsed.costs.map(row => [row.resource, row.amount])) : profile.costs, { 阶段: '维持' });
+            let costs = parsed ? Object.fromEntries(parsed.costs.map(row => [row.resource, row.amount])) : profile.costs;
+            let payment = parsed?.invalid ? { ok: false } : preview.assessResourcePayment([nextActor], costs, { 阶段: '维持' });
+            if (!parsed && payment.valid && payment.payments.some(row => row.amount !== Math.floor(row.amount))) {
+              // Pending new-state profiles already carry validated cost forms,
+              // but Native maintenance floors their resolved amounts as well.
+              costs = Object.fromEntries(payment.payments.map(row => [row.resource, Math.floor(row.amount)]));
+              payment = preview.assessResourcePayment([nextActor], costs, { 阶段: '维持' });
+            }
+            // Native cost validation precedes source deduplication. A second
+            // valid member shares payment; an invalid member must still break.
+            if (payment.valid && profile.sourceId && charged.has(profile.sourceId)) continue;
+            if (payment.valid && riskResolver) {
+              let conditioned = false;
+              for (const row of payment.payments) {
+                const current = preview.projectedResourceDistribution(nextActor, row.resource);
+                const next = row.amount > 0 ? conditionProjectedResource(current, row.amount, row.resource, profile.sourceId || profile.stateKeys?.join('|'), offset) : current;
+                if (next !== current) {
+                  preview.setResourceValue(nextActor, row.resource, next.balance, true);
+                  preview.rememberProjectedResourceSupport(nextActor, row.resource, next.support);
+                  conditioned = true;
+                }
+                if (preview.readResource(nextActor, row.resource) + 1e-9 < row.amount) break;
+              }
+              if (conditioned) payment = preview.assessResourcePayment([nextActor], costs, { 阶段: '维持' });
+            }
+            if (typeof profile.observeSustainPayment === 'function') profile.observeSustainPayment(payment);
             if (!payment.ok) {
-              if (profile.sourceEffect) root.__LWCS_BATTLE_RUNTIME__.breakSustainEffect(nextActor, profile.sustainKey, profile.sourceEffect);
+              if (profile.sourceEffect) {
+                const related = root.__LWCS_BATTLE_RUNTIME__.sustainConditionEntries(nextActor, profile.sourceEffect,
+                  replaceWorldUnit(world, preview.unitId(nextActor), nextActor));
+                for (const holderId of new Set(related.map(entry => preview.unitId(entry.unit)).filter(id => id !== preview.unitId(nextActor)))) {
+                  const holder = preview.findUnit(world, holderId), copy = cloneValue(holder);
+                  preview.inheritOverlayOrigin(copy, holder);
+                  world = replaceWorldUnit(world, holderId, copy);
+                }
+                root.__LWCS_BATTLE_RUNTIME__.breakSustainEffect(nextActor, profile.sustainKey, profile.sourceEffect, null,
+                  replaceWorldUnit(world, preview.unitId(nextActor), nextActor));
+              }
               else activeKeys.forEach(key => { delete nextActor.状态效果[key]; });
             }
             else {
-              payment.payments.forEach(row => preview.setResourceValue(nextActor, row.resource, row.after));
+              payment.payments.forEach(row => {
+                if (!(row.amount > 0)) return;
+                const transition = settleProjectedResource({ resource: row.resource,
+                  maximum: preview.readResourceMax(nextActor, row.resource), requestedDelta: -row.amount });
+                if (transition) transition();
+                else preview.setResourceValue(nextActor, row.resource, row.after);
+              });
               if (profile.sourceId) charged.add(profile.sourceId);
             }
           }
@@ -57068,17 +61830,22 @@
           const combat = state.战斗效果 || {};
           if (state.dot_damage || state.dot_damage_ratio || state.计算层效果?.dot_damage_ratio ||
             combat.dot_damage || combat.dot_damage_ratio || combat.hot_heal_ratio) {
-            const tick = root.__LWCS_BATTLE_RUNTIME__.settlePeriodicHpValues(nextActor, state, state.状态名称 || state.状态 || key);
+            const hpBefore = sustainProfile?.observePeriodicHp ? preview.readHp(nextActor) : null;
+            const tick = root.__LWCS_BATTLE_RUNTIME__.settlePeriodicHpValues(nextActor, state, state.状态名称 || state.状态 || key, null,
+              args => settleProjectedResource({ ...args, sourceKey: state.sourceEffectId || key, roundOffset: offset }));
+            if (hpBefore !== null) sustainProfile.observePeriodicHp(preview.unitId(nextActor), key, preview.readHp(nextActor) - hpBefore);
             if (tick.stopCondition) {
               if (typeof state.duration === 'number') state.duration += 1;
               continue;
             }
           }
-          root.__LWCS_BATTLE_RUNTIME__.settlePeriodicResourceValues(nextActor, combat);
-          if (state.原型 === '资源变化') root.__LWCS_BATTLE_RUNTIME__.settleExplicitResourceValues(nextActor, state);
+          root.__LWCS_BATTLE_RUNTIME__.settlePeriodicResourceValues(nextActor, combat, null,
+            args => settleProjectedResource({ ...args, sourceKey: state.sourceEffectId || key, roundOffset: offset }));
+          if (state.原型 === '资源变化') root.__LWCS_BATTLE_RUNTIME__.settleExplicitResourceValues(nextActor, state, null,
+            args => settleProjectedResource({ ...args, sourceKey: state.sourceEffectId || key, roundOffset: offset }));
           if (preview.readHp(nextActor) <= 0) root.__LWCS_BATTLE_RUNTIME__.triggerRevive(nextActor, '');
           const risks = r9v2ExistingStateRisks(key, state, offset, compiledRiskIds, riskOffsetBase);
-          if (!nextActor.召唤键 && risks?.length && risks.every(effect => Number(effect.触发概率) === 1 &&
+          if (risks?.length && risks.every(effect => (riskResolver || Number(effect.触发概率) === 1) &&
             ['回合结束时','效果结束后'].includes(effect.触发时机))) {
             for (const effect of risks) if (effect.触发时机 === '回合结束时') applyExistingRisk(effect, key, offset);
           }
@@ -57088,23 +61855,80 @@
             });
           }
           if (jointFlowStep && ['资源转移', '状态转移', '状态交换'].includes(state.持续原型效果?.原型)) {
-            const side = sideOf(world, actor);
-            const flowWorld = { ...world, 参战者: { ...world.参战者, [side]: world.参战者[side].map(unit => unit === actor ? nextActor : unit) } };
-            root.__LWCS_BATTLE_RUNTIME__.settlePersistentPrototype(nextActor, key, state, '', flowWorld, { recordEvidence: false });
+            const flowWorld = replaceWorldUnit(world, preview.unitId(actor), nextActor);
+            root.__LWCS_BATTLE_RUNTIME__.settlePersistentPrototype(nextActor, key, state, '', flowWorld, { recordEvidence: false,
+              resourceInputResolver: riskResolver ? ({ units, resource, poolStrength }) => {
+                // Native owns eligibility, one-shot suppression and write order.
+                // Resolve the existing input law only after those gates; this is
+                // not a new flow application or strength trial.
+                if (poolStrength === 0 && preview.resourcePoolIsIntegerIdentity(units, resource, poolStrength,
+                  unit => preview.projectedResourceDistribution(unit, resource)?.support)) return false;
+                for (const unit of units) {
+                  const distribution = preview.projectedResourceDistribution(unit, resource);
+                  if (!distribution?.support) continue;
+                  const outcomes = preview.physicalResourceInputOutcomes(unit, resource, distribution.support);
+                  let remaining = 1, selected = outcomes.at(-1);
+                  for (const outcome of outcomes.slice(0, -1)) {
+                    if (riskResolver(outcome.probability / remaining, { kind: 'FLOW_RESOURCE_INPUT', targetId: preview.unitId(unit), ownerId: preview.unitId(nextActor),
+                      source: state.sourceEffectId || key, resource, outcomeId: outcome.outcomeId, round: Number(world.回合 || 0) + offset - 1 }) === 1) { selected = outcome; break; }
+                    remaining -= outcome.probability;
+                  }
+                  preview.setResourceValue(unit, resource, selected.balance, true);
+                }
+              } : undefined,
+              poolStrengthResolver: riskResolver ? ({ units, resource, condition, installedStrength }) => {
+                const support = preview.projectedPoolStrengthSupport(condition);
+                if (!support) return installedStrength;
+                const outcomes = preview.resourcePoolStrengthOutcomes(units, resource, support);
+                let remaining = 1, selected = outcomes.at(-1);
+                for (const outcome of outcomes.slice(0, -1)) {
+                  if (riskResolver(outcome.probability / remaining, { kind: 'FLOW_POOL_STRENGTH', targetId: preview.unitId(nextActor),
+                    source: state.sourceEffectId || key, resource, outcomeId: outcome.outcomeId, round: Number(world.回合 || 0) + offset - 1 }) === 1) { selected = outcome; break; }
+                  remaining -= outcome.probability;
+                }
+                // This is a refinement of the installed draw, not a new tick
+                // strength. The next resource/tick keeps this conditional law.
+                condition.持续原型效果 = { ...condition.持续原型效果, 数值: `${selected.strength * 100}%` };
+                preview.rememberProjectedPoolStrengthSupport(condition, selected.strengthSupport);
+                return selected.strength;
+              } : undefined,
+            });
+            if (riskResolver && state.持续原型效果.原型 === '资源转移' && /体力|vit|sta/i.test(String(state.持续原型效果.资源))) {
+              settledStaminaFlowPanelIdentity = panelStateIdentity();
+            }
             if (state.持续原型效果.原型 !== '资源转移') for (const addedKey of Object.keys(nextActor.状态效果 || {})) {
               if (!jointInitialStateKeys.has(addedKey)) (jointLateTransferKeys ||= new Set()).add(addedKey);
             }
+          }
+          const current = nextActor.状态效果[key];
+          if (current && typeof current.duration === 'number' && preview.projectedStateSourceRecord(current, current.__状态来源窗口?.[0]) &&
+              !root.__LWCS_BATTLE_RUNTIME__.structuredControlConsumesActiveOpportunity(current)) {
+            root.__LWCS_BATTLE_RUNTIME__.advanceStateSourceWindow(current, {}, id => preview.projectedStateSourceRecord(current, id));
           }
         }
         applyDeferredStates(offset, true);
         let expiredSustain = false;
         let endedOrdinaryRisks;
+        // Timed carriers expire at the round boundary, not at an active
+        // opportunity. Settle them before ordinary expiries, as Native does.
+        for (const [key, state] of Object.entries(nextActor.状态效果 || {})) {
+          if (!supportsDelayedState(state) || root.__LWCS_BATTLE_RUNTIME__.structuredControlConsumesActiveOpportunity(state) ||
+            typeof state.duration !== 'number' || state.duration + Number(state.__本回合新附加 === true) > offset) continue;
+          settleDelayedState(key, state, offset, true);
+          if (nextActor.状态效果[key] === state) delete nextActor.状态效果[key];
+          Object.entries(nextActor.持续效果 || {}).forEach(([sustainKey, effect]) => {
+            if (effect?.related_condition !== key) return;
+            delete nextActor.持续效果[sustainKey];
+            expiredSustain = true;
+          });
+          applyEndedStateRisks(key, state, offset);
+        }
         Object.entries(nextActor.状态效果 || {}).forEach(([key, state]) => {
           if (jointLateTransferKeys?.has(key)) return;
-          if (!r9v2LinearPassiveStateExpires(key, state, offset, baselineActor, true, compiledRiskIds, jointFlowStep, riskOffsetBase)) return;
+          if (!r9v2LinearPassiveStateExpires(key, state, offset, baselineActor, true, compiledRiskIds, jointFlowStep, riskOffsetBase, !!riskResolver)) return;
           delete nextActor.状态效果[key];
           const risks = r9v2ExistingStateRisks(key, state, offset, compiledRiskIds, riskOffsetBase);
-          if (!nextActor.召唤键 && risks?.length) (endedOrdinaryRisks ||= []).push({key, risks});
+          if (risks?.length) (endedOrdinaryRisks ||= []).push({key, risks});
           Object.entries(nextActor.持续效果 || {}).forEach(([sustainKey, effect]) => {
             if (effect?.related_condition !== key) return;
             delete nextActor.持续效果[sustainKey];
@@ -57116,20 +61940,43 @@
           for (const effect of risks) if (effect.触发时机 === '效果结束后') applyExistingRisk(effect, key, offset);
         }
         applyDeferredStates(offset, false);
+        const projectedRecovery = new Map(['魂力', '精神力'].flatMap(resource => {
+          const distribution = preview.projectedResourceDistribution(nextActor, resource);
+          if (!distribution?.support) return [];
+          if (distribution.balance !== preview.readResource(nextActor, resource)) {
+            preview.setResourceValue(nextActor, resource, distribution.balance);
+            preview.rememberProjectedResourceSupport(nextActor, resource, distribution.support);
+          }
+          return [[resource, distribution]];
+        }));
+        const recoveryProfile = projectedRecovery.size ? root.__LWCS_BATTLE_RUNTIME__.naturalRecoveryAtRoundEndProfile(nextActor) : [];
         root.__LWCS_BATTLE_RUNTIME__.settleNaturalRecoveryAtRoundEnd(nextActor, '', {}, false);
+        for (const row of recoveryProfile) if (projectedRecovery.has(row.label)) {
+          preview.shiftProjectedResourceValue(nextActor, row.label, row.recovery, false, projectedRecovery.get(row.label));
+        }
         if (preview.readHp(nextActor) <= 0) break;
       }
       if (jointFlowStep) for (const [key, state] of Object.entries(nextActor.状态效果 || {})) {
         if (jointLateTransferKeys?.has(key)) continue;
-        if (!r9v2LinearPassiveStateExpires(key, state, Infinity, baselineActor, true, compiledRiskIds, true, riskOffsetBase)) continue;
+        const timedCarrier = supportsDelayedState(state) && typeof state.duration === 'number' &&
+          !root.__LWCS_BATTLE_RUNTIME__.structuredControlConsumesActiveOpportunity(state);
+        if (!timedCarrier && !r9v2LinearPassiveStateExpires(key, state, Infinity, baselineActor, true, compiledRiskIds, true, riskOffsetBase, !!riskResolver)) continue;
         // One coupled step stores remaining windows, whereas the local evaluator
         // above uses expiry offsets relative to its input world.
         state.duration = Math.max(0, state.duration - 1 + Number(state.__本回合新附加 === true));
         delete state.__本回合新附加;
       }
-      nextActor.final = { ...nextActor.final, ...preview.buildNumericCombatStats(nextActor, Number(world.当前世界tick || world.当前tick || 0)) };
-      const side = sideOf(world, actor);
-      world = { ...world, 参战者: { ...world.参战者, [side]: world.参战者[side].map(unit => unit === actor ? nextActor : unit) } };
+      const finalStats = preview.buildNumericCombatStats(nextActor, Number(world.当前世界tick ?? world.当前tick ?? 0));
+      if (settledStaminaFlowPanelIdentity !== null && settledStaminaFlowPanelIdentity === panelStateIdentity()) {
+        // A Native flow already wrote fatigue through the actual rounded panel
+        // history. Recomputing base * scale would discard that physical history.
+        for (const key of ['str', 'def', 'agi', 'sp_max', 'vit_max', 'men_max', '__体力衰减系数']) {
+          if (Object.hasOwn(nextActor.final || {}, key)) finalStats[key] = nextActor.final[key];
+          else delete finalStats[key];
+        }
+      }
+      nextActor.final = { ...nextActor.final, ...finalStats };
+      world = replaceWorldUnit(world, preview.unitId(actor), nextActor);
       actor = nextActor;
     }
     const expired = jointFlowStep ? [] : Object.entries(actor.状态效果 || {}).filter(([key, state]) =>
@@ -57154,13 +62001,12 @@
       const state = cloneValue(entry.evidence.stateEntry);
       state.duration = remaining;
       delete state.__本回合新附加;
-      preview.replaceProjectedSideEffectState(nextActor, name, state, Number(world.当前世界tick || world.当前tick || 0));
+      preview.replaceProjectedSideEffectState(nextActor, name, state, Number(world.当前世界tick ?? world.当前tick ?? 0));
     });
     if (removedPanelState) {
-      nextActor.final = { ...actor.final, ...preview.buildNumericCombatStats(nextActor, Number(world.当前世界tick || world.当前tick || 0)) };
+      nextActor.final = { ...actor.final, ...preview.buildNumericCombatStats(nextActor, Number(world.当前世界tick ?? world.当前tick ?? 0)) };
     }
-    const side = sideOf(world, actor);
-    return { ...world, 参战者: { ...world.参战者, [side]: world.参战者[side].map(unit => unit === actor ? nextActor : unit) } };
+    return replaceWorldUnit(world, preview.unitId(actor), nextActor);
   }
 
   function r9v2LinearFollowupWindows(effects = [], request = {}, worldSnapshot = {}) {
@@ -57322,6 +62168,527 @@
     );
   }
 
+  function r9v2LinearSummonWindowWorld(world, summon, round, consume = false, interrupt = false) {
+    const window = summon.召唤窗口运行态 || summon.__battleRuntime?.summonWindow;
+    if (!window || !Number.isFinite(Number(window.remainingWindows))) return world;
+    const reserved = new Set(window.consumedActionGrantIds || []), spent = new Set(window.consumedWindowGrantIds || []);
+    const cooperative = summon.行动模式 === '协同攻击';
+    const grantId = `${window.windowId}:${round}:${cooperative ? 'assist' : 'autonomous'}-window`;
+    const debit = consume && !spent.has(grantId);
+    if (cooperative) reserved.add(grantId);
+    if (debit) spent.add(grantId);
+    const remaining = Math.max(0, Number(window.remainingWindows) - Number(debit));
+    const overlay = new preview.PreviewOverlay(world, `guard-cooperative-clock:${preview.unitId(summon)}:${round}`);
+    overlay.changeUnit(preview.unitId(summon), next => {
+      next.剩余窗口 = remaining;
+      next.__battleRuntime = { ...next.__battleRuntime, summonWindow: { ...window, remainingWindows: remaining,
+        consumedActionGrantIds: [...reserved], consumedWindowGrantIds: [...spent] },
+        ...(!cooperative && consume ? { naturalOpportunity: { ...next.__battleRuntime?.naturalOpportunity, round, status: 'CONSUMED' } } : {}) };
+      if (interrupt || remaining <= 0) next.蓄力技能 = null;
+      if (remaining <= 0) next.已消散 = true;
+    });
+    world = overlay.snapshot();
+    const ownerId = String(summon.宿主ID || preview.unitId(summon.__宿主 || {})).trim();
+    const owner = findUnitInWorld(world, ownerId);
+    if (remaining <= 0 && owner) {
+      const nextOwner = cloneValue(owner);
+      for (const [key, condition] of Object.entries(nextOwner.状态效果 || {})) if (condition?.召唤物?.召唤键 === preview.unitId(summon)) delete nextOwner.状态效果[key];
+      world = replaceWorldUnit(world, ownerId, nextOwner);
+    }
+    return world;
+  }
+
+  function r9v2LinearGuardWindowPressure({ world, hostId, newGuardIds, includeNewGuards, advanceWorld, advanceWorldOutcomes = null, horizon, pending, exposure, recentAttackLedgerIndex, battleIntent, beliefState, returnProfile = false }) {
+    const host = findUnitInWorld(world, hostId);
+    if (!host || !preview.isBattleCapable(host)) return returnProfile ? { pressure: 0, incapacityCurve: [] } : 0;
+    const hostileSide = sideOf(world, host) === 'team_player' ? 'team_enemy' : 'team_player';
+    const hostileLastOffsets = new Map(r9v2LinearSideUnits(world, hostileSide).filter(preview.isSummonUnit).map(unit => {
+      const remaining = Number(unit.召唤窗口运行态?.remainingWindows ?? unit.__battleRuntime?.summonWindow?.remainingWindows ?? unit.剩余窗口 ?? 0);
+      const currentPending = pending ? pending.has(preview.unitId(unit)) : unit.__battleRuntime?.naturalOpportunity?.status === 'PENDING' &&
+        Number(unit.__battleRuntime.naturalOpportunity.round) === Number(world.回合 || 0);
+      // Canceled natural turns also spend a formal autonomous lifetime window;
+      // a nonpending current turn has already paid, or has not yet been granted.
+      const born = Number(unit.生成回合 || 0), round = Number(world.回合 || 0);
+      const spendsCurrent = String(unit.行动模式 || '') === '护卫' ? !(round > 0 && born > 0 && round <= born) : currentPending;
+      return [preview.unitId(unit), Number.isFinite(remaining) && remaining > 0 ? Math.ceil(remaining) - Number(spendsCurrent) : -1];
+    }));
+    const mirrorIds = new Set(Object.values(host.状态效果 || {}).map(state => String(state?.召唤物?.召唤键 || '')).filter(Boolean));
+    const guards = worldEntries(world).map(entry => entry.unit).filter(unit => preview.isSummonUnit(unit) &&
+      String(unit.行动模式 || '').trim() === '护卫' && (newGuardIds.has(preview.unitId(unit)) || mirrorIds.has(preview.unitId(unit)) ||
+        String(unit.宿主ID || '') === hostId || preview.unitId(unit.__宿主 || {}) === hostId));
+    const guardIds = guards.map(preview.unitId);
+    const born = guards.map(unit => newGuardIds.has(preview.unitId(unit)) ? Number(world.回合 || 0) : Number(unit.生成回合 || 0));
+    let states = [{ remaining: guards.map(unit => Math.max(0, Number(unit.召唤窗口运行态?.remainingWindows ?? unit.剩余窗口 ?? unit.__battleRuntime?.summonWindow?.remainingWindows ?? 0))), world, probability: 1, usedObserved: new Set() }];
+    const worldKeys = new WeakMap(), hostKeys = new WeakMap(), worldContexts = new WeakMap(), contextIds = new Map();
+    const emptyHost = {};
+    const worldContextId = current => {
+      let id = worldContexts.get(current);
+      if (id !== undefined) return id;
+      // Erase only the owned host slots that replaceWorldUnit updates. Every
+      // other unit, historical reference and world field remains in the exact
+      // key; no hash collision or reduced set of state fields can merge paths.
+      const remainder = replaceWorldUnit(current, hostId, emptyHost);
+      const key = JSON.stringify([remainder, preview.projectedResourceWorldState(remainder)]);
+      id = contextIds.get(key);
+      if (id === undefined) { id = contextIds.size; contextIds.set(key, id); }
+      worldContexts.set(current, id);
+      return id;
+    };
+    const unavailable = unit => 1 - stateEntries(unit).reduce((available, state) => {
+      const blocked = root.__LWCS_BATTLE_RUNTIME__.structuredControlConsumesActiveOpportunity(state) || state.cannot_react === true ||
+        (state.战斗效果?.cannot_react ?? state.计算层效果?.cannot_react) === true;
+      return available * (blocked ? 1 - clamp(Number(state.__previewApplicationProbability ?? 1), 0, 1) : 1);
+    }, 1);
+    const basic = { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 };
+    const observedKey = actor => JSON.stringify([preview.unitId(actor), actor.行动模式 === '协同攻击' ? 'ASSIST' : 'ACTIVE']);
+    const publicRecords = actor => {
+      const actorId = preview.unitId(actor), assist = actor.行动模式 === '协同攻击';
+      const records = beliefState?.publicResponses?.[actorId] ?? beliefState?.units?.[actorId]?.knownResponses;
+      return Array.isArray(records) ? records.filter(response =>
+        (assist ? responseHasRole(response, 'ASSIST') : responseHasRole(response, 'ACTIVE') || responseHasRole(response, 'NATURAL_ACTION')) &&
+        (!Object.hasOwn(response.declaration || {}, 'actorId') || String(response.declaration.actorId).trim() === actorId)) : [];
+    };
+    const publicActor = (actor, skills = []) => {
+      const descriptors = Object.getOwnPropertyDescriptors(actor);
+      for (const [key, descriptor] of Object.entries(descriptors)) if (key === '技能列表' ||
+          /^(?:第\d+)?武魂|血脉之力|魂骨|装备|自创魂技|技能/.test(key) &&
+          (descriptor.get || descriptor.value && typeof descriptor.value === 'object')) delete descriptors[key];
+      // Keep primitive legality flags and native clocks. Inspect descriptors
+      // so an unobserved skill inventory getter is never evaluated.
+      const visible = Object.defineProperties({}, descriptors);
+      Object.defineProperty(visible, '技能列表', { value: skills, enumerable: true, configurable: true, writable: true });
+      return visible;
+    };
+    const publicAlternatives = (frame, actor, usedObserved) => {
+      const fallback = [{ probability: 1, declaration: null }];
+      if (actor.蓄力技能 || usedObserved.has(observedKey(actor))) return fallback;
+      const actorId = preview.unitId(actor), assist = actor.行动模式 === '协同攻击';
+      const legal = [];
+      for (const response of publicRecords(actor)) {
+        const observed = projectPublicResponseDeclaration(response.declaration);
+        if (observed?.actionKind !== 'RELEASE_SKILL' || !Array.isArray(observed.skill?._效果数组)) continue;
+        // This is conditional mechanics, not evidence of payment. Enumerate
+        // only the public skill in a throwaway actor; never read its inventory.
+        const visible = publicActor(actor, [observed.skill]);
+        const qualification = replaceWorldUnit(frame, actorId, visible);
+        const actionOpportunity = { role: assist ? 'ASSIST' : 'ACTIVE', naturalActionBudget: 40,
+          ...(assist ? { validTargetIds: primaryCombatantEntries(frame).filter(row => row.side !== hostileSide).map(row => preview.unitId(row.unit)) } : {}) };
+        const candidates = enumerateCandidates({ worldSnapshot: qualification, actorId, actionOpportunity,
+          battleIntent, beliefState: buildInitialBelief(qualification, actorId) })
+          .filter(row => row.declaration.actionKind === 'RELEASE_SKILL' && skillId(row.declaration.skill) === skillId(observed.skill));
+        const candidate = candidates.find(row => row.declaration.targetIds.includes(hostId)) || candidates[0];
+        if (!candidate) continue;
+        const declaration = projectPublicResponseDeclaration(candidate.declaration);
+        // Explicitly suppress cost derivation in the mechanical preview. The
+        // sanitized declaration never goes to a real executor or belief state.
+        const count = Number(response.observations);
+        legal.push({ declaration: { ...declaration, resourceCosts: {} }, probability: Number.isFinite(count) && count > 0 ? count : 1 });
+      }
+      if (!legal.length) return fallback;
+      const known = 1 - unknownResponseMass(beliefState?.confidence), total = legal.reduce((sum, row) => sum + row.probability, 0);
+      return [...(known < 1 ? [{ probability: 1 - known, declaration: null }] : []),
+        ...legal.map(row => ({ ...row, probability: known * row.probability / total }))];
+    };
+    const ownsResponse = (frame, actor, declaration) => {
+      // Match the formal queue: only the first direct damage effect grants a
+      // hostile reaction, resolved by the same target function as Runtime.
+      const effect = declaration.actionKind === 'BASIC_ATTACK' ? basic :
+        declaration.skill?._效果数组?.find(effect => String(effect?.原型 || '').trim() === '伤害结算');
+      return !!effect && preview.resolveTargets(frame, actor, declaration, effect).some(unit => preview.unitId(unit) === hostId);
+    };
+    const responseOutcomes = (frame, target, attacker, remaining) => {
+      const order = guardIds.map((id, index) => ({ unit: findUnitInWorld(frame, id), index }))
+        .filter(row => row.unit && preview.isBattleCapable(row.unit))
+        .sort((left, right) => Number(right.unit.def || right.unit.final?.def || 0) - Number(left.unit.def || left.unit.final?.def || 0) ||
+          guardIds[left.index].localeCompare(guardIds[right.index]));
+      const guard = order.find(row => remaining[row.index] > 0 && (includeNewGuards || !newGuardIds.has(guardIds[row.index])));
+      if (!guard) {
+        const canceled = unavailable(target);
+        const defense = preview.calculateDefenseDamageMultiplier(target, attacker, false), dodge = preview.calculateDodgeProbability(target, attacker, false);
+        return [{ remaining, probability: canceled, multiplier: 1, evade: 0 },
+          { remaining, probability: 1 - canceled, multiplier: 1 - dodge < defense ? 1 : defense, evade: 1 - dodge < defense ? dodge : 0 }]
+          .filter(row => row.probability > 0);
+      }
+      // Formal selection chooses the strongest living guard. Cancellation
+      // gives no fallback and does not spend a window; a successful reaction
+      // spends once, before (and independently of) the later attack hit roll.
+      const canceled = unavailable(guard.unit), consumed = remaining.slice(); consumed[guard.index]--;
+      return [{ remaining, probability: canceled, multiplier: 1, evade: 0 },
+        { remaining: consumed, probability: 1 - canceled, multiplier: preview.calculateDefenseDamageMultiplier(guard.unit, attacker, false), evade: 0 }]
+        .filter(row => row.probability > 0);
+    };
+    const projectionRevisions = { projectionObjectRevisions: new WeakMap() };
+    let pressure = 0, usedWaves = 0;
+    const incapacityCurve = [];
+    for (let offset = 0; offset <= Math.min(3, horizon.remainingRounds) && usedWaves < 3; offset++) {
+      if (offset > 0) states = states.flatMap(state => {
+        const expiredIds = new Set([...hostileLastOffsets].filter(([id, last]) => offset > last &&
+          ['自主行动', '护卫'].includes(String(findUnitInWorld(state.world, id)?.行动模式 || ''))).map(([id]) => id));
+        // Passive flow settles the previous round. The following action wave
+        // owns this round, including preview's formal cooperative grant IDs.
+        const outcomes = advanceWorldOutcomes ? advanceWorldOutcomes(state.world, offset) : [{ probability: 1, world: advanceWorld(state.world, offset) }];
+        return outcomes.map(row => {
+          const next = r9v2LinearSummonSupportWorld({ ...row.world, 回合: Number(world.回合 || 0) + offset }, expiredIds);
+          return { ...state, world: next, probability: state.probability * row.probability, usedObserved: new Set(state.usedObserved),
+            remaining: state.remaining.map((value, index) => findUnitInWorld(next, guardIds[index]) ? value : 0) };
+        });
+      });
+      const sourceOrders = new Map();
+      const round = Number(world.回合 || 0) + offset;
+      const cooperativeClock = unit => unit.召唤窗口运行态 || unit.__battleRuntime?.summonWindow;
+      const currentGrant = unit => `${cooperativeClock(unit)?.windowId}:${round}:assist-window`;
+      const unspentAssist = unit => [...(cooperativeClock(unit)?.consumedActionGrantIds || [])].includes(currentGrant(unit)) &&
+        ![...(cooperativeClock(unit)?.consumedWindowGrantIds || [])].includes(currentGrant(unit));
+      const knownChargeOpportunity = actor => {
+        const assist = actor.行动模式 === '协同攻击';
+        return { role: assist ? 'ASSIST' : 'ACTIVE', naturalActionBudget: 40,
+          battleHorizon: { currentRound: round, finalRound: Number(world.回合 || 0) + horizon.remainingRounds },
+          ...(assist ? { validTargetIds: primaryCombatantEntries(world).filter(row => row.side !== hostileSide).map(row => preview.unitId(row.unit)) } : {}),
+          forcedSkill: actor.蓄力技能.skill, forcedTargetIds: actor.蓄力技能.targetIds || [],
+          forcedCreationRecipientId: actor.蓄力技能.creationRecipientId || '',
+          forcedChargeRelease: Number(actor.蓄力技能.cast_time ?? actor.蓄力技能.skill?.前摇 ?? 0) <= 40 };
+      };
+      const knownRelease = (frame, actor, actionOpportunity = knownChargeOpportunity(actor)) => enumerateCandidates({
+        worldSnapshot: frame, actorId: preview.unitId(actor), actionOpportunity,
+        battleIntent, beliefState: buildInitialBelief(frame, preview.unitId(actor)),
+      }).find(row => row.declaration.actionKind === 'RELEASE_SKILL')?.declaration;
+      // A latent control is a presence in this branch world, not a new roll
+      // at every charging window. Siblings and the eventual release share it.
+      const unresolved = states.toReversed(); states = [];
+      while (unresolved.length) {
+        const state = unresolved.pop();
+        let latent;
+        const responseUnits = [hostId, ...guardIds].map(id => findUnitInWorld(state.world, id)).filter(Boolean);
+        const controlUnits = new Map([...r9v2LinearSideUnits(state.world, hostileSide), ...responseUnits]
+          .map(unit => [preview.unitId(unit), unit]));
+        for (const unit of controlUnits.values()) {
+          for (const [key, condition] of Object.entries(unit.状态效果 || {})) {
+            const blocks = root.__LWCS_BATTLE_RUNTIME__.structuredControlConsumesActiveOpportunity(condition) ||
+              (unit.行动模式 === '协同攻击' || responseUnits.includes(unit)) && (condition.cannot_react === true ||
+                (condition.战斗效果?.cannot_react ?? condition.计算层效果?.cannot_react) === true);
+            const probability = clamp(Number(condition.__previewApplicationProbability ?? 1), 0, 1);
+            const publicQualification = sideOf(state.world, unit) === hostileSide && !unit.蓄力技能 &&
+              (hasStateFlag({ 状态效果: { [key]: condition } }, 'disarm') ||
+                hasStateFlag({ 状态效果: { [key]: condition } }, 'silence') &&
+                  !state.usedObserved.has(observedKey(unit)) && publicRecords(unit).length > 0);
+            if (blocks && probability > 1e-12 && probability < 1 - 1e-12 || publicQualification && probability < 1) {
+              latent = { unit, key, condition, probability }; break;
+            }
+          }
+          if (latent) break;
+        }
+        if (!latent) { states.push(state); continue; }
+        for (const present of [false, true]) {
+          const next = { ...latent.unit, 状态效果: { ...latent.unit.状态效果 } };
+          if (present) next.状态效果[latent.key] = { ...latent.condition, __previewApplicationProbability: 1 };
+          else delete next.状态效果[latent.key];
+          unresolved.push({ ...state, world: replaceWorldUnit(state.world, preview.unitId(next), next),
+            probability: state.probability * (present ? latent.probability : 1 - latent.probability) });
+        }
+      }
+      for (const state of states) {
+        state.hostAvailability = new Map();
+        const sideUnits = r9v2LinearSideUnits(state.world, hostileSide);
+        const assists = sideUnits.filter(unit => preview.isSummonUnit(unit) && unit.行动模式 === '协同攻击' &&
+          Number(cooperativeClock(unit)?.remainingWindows) > 0);
+        const natural = sideUnits.filter(source => preview.isBattleCapable(source) && (!hasActionCancellation(source) || source.蓄力技能) &&
+          (!hasStateFlag(source, 'disarm') || source.蓄力技能 || publicAlternatives(state.world, source, state.usedObserved).some(row => row.declaration)) &&
+          (!preview.isSummonUnit(source) || String(source.行动模式 || '') === '自主行动' && offset <= hostileLastOffsets.get(preview.unitId(source))) &&
+          (offset > 0 || (pending ? pending.has(preview.unitId(source)) : source.__battleRuntime?.naturalOpportunity?.status === 'PENDING' &&
+            Number(source.__battleRuntime.naturalOpportunity.round) === Number(world.回合 || 0)))).sort(preview.compareNaturalActionOrder);
+        const sources = [...assists.filter(unspentAssist), ...natural.flatMap(source => [source,
+          ...(!preview.isSummonUnit(source) && (!source.蓄力技能 || Number(source.蓄力技能.cast_time ?? source.蓄力技能.skill?.前摇 ?? 0) <= 40) ? assists.filter(unit =>
+            String(unit.宿主ID || preview.unitId(unit.__宿主 || {})).trim() === preview.unitId(source) &&
+            ![...(cooperativeClock(unit)?.consumedActionGrantIds || [])].includes(currentGrant(unit))) : [])])];
+        const key = JSON.stringify(sources.map(preview.unitId)), group = sourceOrders.get(key);
+        if (group) group.states.push(state);
+        else sourceOrders.set(key, { sources, states: [state] });
+      }
+      if ([...sourceOrders.values()].some(group => group.sources.length)) usedWaves++;
+      const waveStates = [];
+      for (const group of sourceOrders.values()) {
+        let pathStates = group.states;
+        for (const source of group.sources) {
+          const next = new Map();
+          let currentAvailability, currentObserved;
+          const retain = (remaining, nextWorld, probability, usedObserved = currentObserved) => {
+            if (!(probability > 0)) return;
+            let worldKey = worldKeys.get(nextWorld);
+            if (!worldKey) {
+              const target = findUnitInWorld(nextWorld, hostId);
+              let hostKey = target ? hostKeys.get(target) : 'null';
+              if (hostKey === undefined) {
+                hostKey = JSON.stringify([target, preview.projectedResourceWorldState(nextWorld).filter(([key]) => key.startsWith(`${hostId}\u0000`))]);
+                hostKeys.set(target, hostKey);
+              }
+              worldKey = `${worldContextId(nextWorld)}:${hostKey}`;
+              worldKeys.set(nextWorld, worldKey);
+            }
+            const key = `${remaining.join(',')}|${worldKey}|${JSON.stringify([...(currentAvailability || [])])}|${JSON.stringify([...usedObserved].sort())}`;
+            const current = next.get(key);
+            if (current) current.probability += probability;
+            else next.set(key, { remaining, world: nextWorld, probability, hostAvailability: currentAvailability, usedObserved });
+          };
+          const actionStates = [];
+          const choices = pathStates.flatMap(state => {
+            const actor = findUnitInWorld(state.world, preview.unitId(source));
+            if (!actor || actor.行动模式 === '协同攻击' && !unspentAssist(actor)) return [state];
+            return publicAlternatives(state.world, actor, state.usedObserved).map(row => ({ ...state,
+              probability: state.probability * row.probability, publicDeclaration: row.declaration }));
+          });
+          for (const state of choices) {
+            const parent = findUnitInWorld(state.world, preview.unitId(source));
+            const queuedOwner = parent?.行动模式 === '协同攻击' && unspentAssist(parent)
+              ? findUnitInWorld(state.world, String(parent.宿主ID || preview.unitId(parent.__宿主 || {})).trim()) : null;
+            const children = parent && !preview.isSummonUnit(parent) && preview.isBattleCapable(parent) &&
+              (state.publicDeclaration ? Number(state.publicDeclaration.skill?.前摇 ?? state.publicDeclaration.skill?.cast_time ?? 0) <= 40 :
+                parent.蓄力技能 ? Number(parent.蓄力技能.cast_time ?? parent.蓄力技能.skill?.前摇 ?? 0) <= 40 && knownRelease(state.world, parent) :
+                  !hasStateFlag(parent, 'disarm'))
+              ? r9v2LinearSideUnits(state.world, hostileSide).filter(unit => preview.isSummonUnit(unit) && unit.行动模式 === '协同攻击' &&
+                String(unit.宿主ID || preview.unitId(unit.__宿主 || {})).trim() === preview.unitId(parent) &&
+                Number(cooperativeClock(unit)?.remainingWindows) > 0 &&
+                ![...(cooperativeClock(unit)?.consumedActionGrantIds || [])].includes(currentGrant(unit))) : [];
+            if (!children.length && !queuedOwner) { actionStates.push(state); continue; }
+            const ownerId = preview.unitId(queuedOwner || parent);
+            const available = state.hostAvailability.has(ownerId) ? Number(state.hostAvailability.get(ownerId)) :
+              1 - actionCancellationProbability(queuedOwner || parent);
+            for (const acts of [false, true]) {
+              const probability = state.probability * (acts ? available : 1 - available);
+              if (!(probability > 0)) continue;
+              let branchWorld = state.world;
+              // A ready known primary delegates the complete formal assist
+              // queue to its preview, including old units before new births.
+              // Ordinary modeled attacks still own the separate source slots.
+              if (!acts || !parent?.蓄力技能 && !state.publicDeclaration) for (const child of children) branchWorld = r9v2LinearSummonWindowWorld(branchWorld,
+                findUnitInWorld(branchWorld, preview.unitId(child)), round, !acts, !acts);
+              actionStates.push({ ...state, world: branchWorld, probability,
+                hostAvailability: new Map([...state.hostAvailability, [ownerId, acts]]) });
+            }
+          }
+          for (const state of actionStates) {
+            currentAvailability = state.hostAvailability;
+            currentObserved = state.usedObserved;
+            const target = findUnitInWorld(state.world, hostId), attacker = findUnitInWorld(state.world, preview.unitId(source));
+            const assist = attacker && preview.isSummonUnit(attacker) && attacker.行动模式 === '协同攻击';
+            const ownerId = assist ? String(attacker.宿主ID || preview.unitId(attacker.__宿主 || {})).trim() : '';
+            const owner = assist ? findUnitInWorld(state.world, ownerId) : null;
+            if (assist && !unspentAssist(attacker)) {
+              retain(state.remaining, state.world, state.probability); continue;
+            }
+            const finishChargeWindow = (frame, interrupt) => {
+              const current = findUnitInWorld(frame, preview.unitId(attacker));
+              if (!current) return frame;
+              if (preview.isSummonUnit(current)) return r9v2LinearSummonWindowWorld(frame, current, round, true, interrupt);
+              return interrupt ? replaceWorldUnit(frame, preview.unitId(current), { ...current, 蓄力技能: null }) : frame;
+            };
+            if (!target || !preview.isBattleCapable(target) || !attacker || !preview.isBattleCapable(attacker) || hasActionCancellation(attacker) ||
+              !attacker.蓄力技能 && !state.publicDeclaration && hasStateFlag(attacker, 'disarm') ||
+              currentAvailability?.get(preview.unitId(attacker)) === false || assist && (!unspentAssist(attacker) || unavailable(attacker) >= 1 ||
+                preview.isSummonUnit(target) || !owner || !preview.isBattleCapable(owner) || hasActionCancellation(owner) || currentAvailability?.get(ownerId) === false)) {
+              const nextWorld = assist && unspentAssist(attacker) || attacker?.蓄力技能
+                ? finishChargeWindow(state.world, true) : state.world;
+              retain(state.remaining, nextWorld, state.probability); continue;
+            }
+            const charge = attacker.蓄力技能;
+            let knownDeclaration = state.publicDeclaration || null, actionOpportunity = null;
+            if (knownDeclaration) {
+              currentObserved = new Set([...currentObserved, observedKey(attacker)]);
+              actionOpportunity = { role: assist ? 'ASSIST' : 'ACTIVE', naturalActionBudget: 40 };
+              const windup = Number(knownDeclaration.skill?.前摇 ?? knownDeclaration.skill?.cast_time ?? 0);
+              if (windup > 40) {
+                const nextWorld = replaceWorldUnit(state.world, preview.unitId(attacker), { ...attacker,
+                  蓄力技能: { skill: knownDeclaration.skill, targetIds: knownDeclaration.targetIds, cast_time: windup - 40,
+                    ...(knownDeclaration.creationRecipientId ? { creationRecipientId: knownDeclaration.creationRecipientId } : {}) } });
+                retain(state.remaining, preview.isSummonUnit(attacker) ? finishChargeWindow(nextWorld, false) : nextWorld, state.probability);
+                continue;
+              }
+            }
+            if (charge) {
+              actionOpportunity = knownChargeOpportunity(attacker);
+              if (assist) actionOpportunity.validTargetIds = primaryCombatantEntries(state.world)
+                .filter(row => row.side !== hostileSide).map(row => preview.unitId(row.unit));
+              const cancel = () => retain(state.remaining, finishChargeWindow(state.world, true), state.probability);
+              // ACTIVE resumes an already started cast. Its formal gate does
+              // not reject it by the original skill windup or ASSIST lifetime.
+              if (assist && !actionCompletesWithinBattleHorizon(charge.skill, { actorId: preview.unitId(attacker), actionOpportunity }, state.world)) {
+                cancel(); continue;
+              }
+              if (Number(charge.cast_time ?? charge.skill?.前摇 ?? 0) > 40) {
+                const overlay = new preview.PreviewOverlay(state.world, 'guard-cooperative-charge-progress');
+                overlay.changeUnit(preview.unitId(attacker), next => {
+                  next.蓄力技能 = { ...charge, cast_time: Number(charge.cast_time ?? charge.skill?.前摇) - 40 };
+                });
+                const nextWorld = overlay.snapshot();
+                retain(state.remaining, !assist && preview.isSummonUnit(attacker) ? finishChargeWindow(nextWorld, false) : nextWorld,
+                  state.probability); continue;
+              }
+              knownDeclaration = knownRelease(state.world, attacker, actionOpportunity);
+              if (!knownDeclaration) { cancel(); continue; }
+              if (currentObserved.has(observedKey(attacker))) knownDeclaration = {
+                ...projectPublicResponseDeclaration(knownDeclaration), resourceCosts: {},
+              };
+            }
+            // A recorded charge already owns its target and opportunity. The
+            // generic routine propensity must not leave an unexecuted copy of
+            // that same ready charge available for another release next round.
+            const targetProbability = charge && knownDeclaration ? 1 : clamp(exposure * r9v2LinearRecentAttackPropensity(state.world, attacker, hostileSide, recentAttackLedgerIndex) *
+              (currentAvailability?.get(preview.unitId(attacker)) === true ? 1 : 1 - actionCancellationProbability(attacker)) *
+              (assist && currentAvailability?.get(ownerId) !== true ? 1 - actionCancellationProbability(owner) : 1), 0, 1);
+            retain(state.remaining, state.world, state.probability * (1 - targetProbability));
+            if (!(targetProbability > 0)) continue;
+            const raw = preview.calculateBaseDamage(basic, attacker, target, null, { resourceDriveEnabled: false });
+            const hitProbability = preview.estimateHitProbability(attacker, target, basic);
+            const hpFloor = preview.calculateNonlethalHpFloor(state.world, target, battleIntent);
+            const settle = (remaining, probability, multiplier, evade = 0) => {
+              if (!(probability > 0)) return;
+              if (knownDeclaration) {
+                const worldRevision = r9v2ProjectionObjectRevision(projectionRevisions, state.world);
+                r9v2LinearExpectedCreatedPreview({ worldSnapshot: state.world, actorId: preview.unitId(attacker),
+                  worldRevision, snapshotRevision: worldRevision,
+                  actionFingerprint: r9v2ProjectionObjectRevision(projectionRevisions, knownDeclaration),
+                  declaration: knownDeclaration, actionRole: actionOpportunity.role, actionOpportunity, __preparedDecisionWorld: true, battleIntent,
+                  damageMultiplierByTarget: { [hostId]: multiplier }, evadeProbabilityByTarget: { [hostId]: evade },
+                  buildOperationGraph: false, captureDependencies: false,
+                  beliefState: buildInitialBelief(state.world, preview.unitId(attacker)),
+                }, (projection, branchProbability, cooperativeRemaining, cooperativeObserved) => {
+                  const consumed = (projection.contributions || []).filter(entry => entry.targetId === hostId).reduce((sum, entry) => sum +
+                    (entry.outcomeKind === 'HP_DELTA' && entry.evidence?.damageBasis ? Number(entry.evidence.expectedDamage || 0) :
+                      entry.outcomeKind === 'SHIELD_DELTA' ? Number(entry.evidence?.absorbedDamage || 0) : 0), 0);
+                  const mass = probability * branchProbability;
+                  pressure += mass * consumed / Math.max(1, preview.readHpMax(target));
+                  let nextWorld = r9v2LinearNormalizeActionFrame(state.world, projection);
+                  const released = findUnitInWorld(nextWorld, preview.unitId(attacker));
+                  if (released) nextWorld = replaceWorldUnit(nextWorld, preview.unitId(attacker), { ...released, 蓄力技能: null });
+                  if (!assist && preview.isSummonUnit(attacker)) nextWorld = finishChargeWindow(nextWorld, false);
+                  retain(cooperativeRemaining || remaining, nextWorld, mass, cooperativeObserved || currentObserved);
+                  return 0;
+                }, null, { cooperativeResponseFactory: choose => {
+                  // Every replay owns its own reaction clock. Nested creation
+                  // and damage alternatives must not share a mutable counter.
+                  const responseState = { remaining: remaining.slice(), usedObserved: new Set(currentObserved) };
+                  responseState.select = selection => {
+                    const { worldSnapshot, actorId, actionId } = selection;
+                    const actor = findUnitInWorld(worldSnapshot, actorId);
+                    if (!actor) return undefined;
+                    const alternatives = publicAlternatives(worldSnapshot, actor, responseState.usedObserved);
+                    const selected = alternatives[choose('observed-response', actionId, actorId, alternatives)].declaration;
+                    if (!selected) {
+                      if (!beliefState) return undefined;
+                      const qualification = replaceWorldUnit(worldSnapshot, actorId, publicActor(actor));
+                      return projectCooperativeSummonDeclaration({ ...selection, worldSnapshot: qualification,
+                        beliefState: buildInitialBelief(qualification, actorId, selection.beliefState) });
+                    }
+                    responseState.usedObserved.add(observedKey(actor));
+                    return selected;
+                  };
+                  responseState.resolve = ({ worldSnapshot, actorId, actionId, declaration }) => {
+                    const recipient = findUnitInWorld(worldSnapshot, hostId), source = findUnitInWorld(worldSnapshot, actorId);
+                    if (!recipient || !source || !ownsResponse(worldSnapshot, source, declaration)) return {};
+                    const outcomes = responseOutcomes(worldSnapshot, recipient, source, responseState.remaining);
+                    const chosen = outcomes[choose('cooperative-response', actionId, hostId, outcomes)];
+                    responseState.remaining = chosen.remaining;
+                    return { damageMultiplierByTarget: { [hostId]: chosen.multiplier },
+                      evadeProbabilityByTarget: { [hostId]: chosen.evade } };
+                  };
+                  return responseState;
+                } });
+                return;
+              }
+              const current = cloneValue(target); delete current.__本阶段已触发复活;
+              // The kernel consumes suppression/charges only after a landed
+              // hit. Count raw inventory here: the public count helpers also
+              // consume one-shot suppression and must not run before the trial.
+              const defenseStates = Object.values(current.状态效果 || {});
+              const outcomes = preview.expectedSegmentedDamageOutcome({ segments: 1,
+                perSegmentDamage: preview.calculateSettledSegmentDamage(raw, 1, multiplier),
+                hitProbability: clamp(hitProbability * (1 - evade), 0, 1),
+                hpDamageLimit: Math.max(0, preview.readHp(current) - hpFloor), ...preview.incomingShieldProfile(current, basic, attacker),
+                deathSaveCount: defenseStates.reduce((sum, condition) => sum + Math.max(0, Number(condition.战斗效果?.death_save_count || 0)), 0),
+                ruleBlockCount: defenseStates.reduce((sum, condition) => sum +
+                  (String(condition.规则 || condition.防御对象 || '').trim() === '免伤' ? Math.max(0, Number(condition.战斗效果?.block_count || 0)) : 0), 0),
+                reviveTarget: current, captureTargetState: true,
+              }).outcomeDistribution;
+              for (const outcome of outcomes) {
+                const unit = cloneValue(outcome.targetState);
+                preview.absorbPreviewShield(unit, outcome.shieldAbsorb, basic, attacker);
+                if (outcome.revival) preview.applyDamageRevivalOutcomes(unit, [{ probability: 1, revival: outcome.revival }]);
+                if (!outcome.revival && preview.shouldTriggerTraumaUnconscious(outcome.hpDamage, preview.readHp(unit), preview.readHpMax(unit))) unit.__战斗失能原因 = 'UNCONSCIOUS';
+                if (hpFloor > 0 && hpFloor <= 1 && outcome.hpDamage > 0 && preview.readHp(unit) <= hpFloor) unit.__战斗失能原因 = 'INCAPACITATED';
+                const mass = probability * outcome.probability;
+                // Pressure burns real HP/shield reserve, including HP restored
+                // by a spent revival. It cannot repeatedly charge overkill.
+                pressure += mass * (outcome.hpDamage + outcome.shieldAbsorb) / Math.max(1, preview.readHpMax(target));
+                const nextWorld = replaceWorldUnit(state.world, hostId, unit);
+                worldContexts.set(nextWorld, worldContextId(state.world));
+                retain(remaining, nextWorld, mass);
+              }
+            };
+            const hitMass = state.probability * targetProbability;
+            if (knownDeclaration && !ownsResponse(state.world, attacker, knownDeclaration)) {
+              settle(state.remaining, hitMass, 1); continue;
+            }
+            for (const response of responseOutcomes(state.world, target, attacker, state.remaining)) {
+              settle(response.remaining, hitMass * response.probability, response.multiplier, response.evade);
+            }
+          }
+          pathStates = [...next.values()];
+        }
+        waveStates.push(...pathStates);
+      }
+      states = waveStates;
+      // A finite guard opportunity is spent by each completed reaction and,
+      // after its creation round, once again by the formal round-end expiry.
+      for (const state of states) {
+        state.remaining = state.remaining.map((value, index) => {
+          const guard = findUnitInWorld(state.world, guardIds[index]);
+          if (!guard || !preview.isBattleCapable(guard)) return 0;
+          return round > 0 && born[index] > 0 && round <= born[index] ? value : Math.max(0, value - 1);
+        });
+        for (let index = 0; index < guardIds.length; index++) {
+          const guard = findUnitInWorld(state.world, guardIds[index]);
+          if (!guard || Number(guard.剩余窗口) === state.remaining[index]) continue;
+          state.world = replaceWorldUnit(state.world, guardIds[index], { ...guard, 剩余窗口: state.remaining[index], 已消散: state.remaining[index] <= 0,
+            __battleRuntime: { ...guard.__battleRuntime, summonWindow: { ...guard.__battleRuntime?.summonWindow, remainingWindows: state.remaining[index] } } });
+          if (state.remaining[index] <= 0) {
+            const owner = cloneValue(findUnitInWorld(state.world, hostId));
+            for (const [key, condition] of Object.entries(owner.状态效果 || {})) if (condition?.召唤物?.召唤键 === guardIds[index]) delete owner.状态效果[key];
+            state.world = replaceWorldUnit(state.world, hostId, owner);
+          }
+        }
+        for (const summon of r9v2LinearSideUnits(state.world, hostileSide)) {
+          if (!preview.isSummonUnit(summon) || String(summon.行动模式 || '').trim() !== '协同攻击' || summon.已消散 === true) continue;
+          const window = summon.召唤窗口运行态 || summon.__battleRuntime?.summonWindow;
+          if (!window || !Number.isFinite(Number(window.remainingWindows))) continue;
+          const ownerId = String(summon.宿主ID || preview.unitId(summon.__宿主 || {})).trim();
+          const owner = findUnitInWorld(state.world, ownerId);
+          const ownerNatural = owner && (!preview.isSummonUnit(owner) || String(owner.行动模式 || '').trim() === '自主行动' &&
+            offset <= hostileLastOffsets.get(ownerId));
+          const ownerPending = ownerNatural && (offset > 0 || (pending ? pending.has(ownerId) :
+            owner.__battleRuntime?.naturalOpportunity?.status === 'PENDING' && Number(owner.__battleRuntime.naturalOpportunity.round) === round));
+          const reserved = new Set(window.consumedActionGrantIds || []), spent = new Set(window.consumedWindowGrantIds || []);
+          const grantId = `${window.windowId}:${round}:assist-window`;
+          const cancelled = ownerPending && hasActionCancellation(owner);
+          // A known queued ASSIST will finish (or cancel) this wave. Host
+          // cancellation reserves and spends its own active-round grant. Do
+          // not invent grants for an otherwise unobserved host action.
+          const consume = !spent.has(grantId) && (reserved.has(grantId) || cancelled);
+          if (!consume && !summon.召唤窗口运行态) continue;
+          if (consume) state.world = r9v2LinearSummonWindowWorld(state.world, summon, round, true, cancelled);
+          else {
+            const overlay = new preview.PreviewOverlay(state.world, `guard-cooperative-native:${preview.unitId(summon)}:${round}`);
+            overlay.changeUnit(preview.unitId(summon), () => {});
+            state.world = overlay.snapshot();
+          }
+        }
+      }
+      if (returnProfile) incapacityCurve.push(states.reduce((sum, state) => {
+        const target = findUnitInWorld(state.world, hostId);
+        return sum + (!target || !preview.isBattleCapable(target) ? state.probability : 0);
+      }, 0));
+    }
+    return returnProfile ? { pressure, incapacityCurve } : pressure;
+  }
+
   function r9v2LinearRoutineIncapacityRisk(
     worldSnapshot = {},
     sources = [],
@@ -57330,16 +62697,33 @@
     recentAttackLedgerIndex = null,
     options = {},
   ) {
-    const waves = Array.isArray(options.sourceWaves) ? options.sourceWaves.slice(0, 3) : [sources];
+    if (searchBudget.shortCircuit) {
+      const waveCount = Array.isArray(options.sourceWaves) ? Math.max(1, Math.min(3, options.sourceWaves.length)) : 1;
+      return options.returnProfile ? { pressure: 0, incapacityCurve: Array(waveCount).fill(0), ...(options.quantizeShield ? { shieldAbsorption: 0 } : {}) }
+        : options.returnCurve ? Array(waveCount).fill(0) : 0;
+    }
+    // Experimental: settle the same per-hit kernel against a held world instead
+    // of advancing passive frames between waves.
+    if (searchBounds?.riskUndated && (options.advanceWorld || options.advanceWorldOutcomes)) {
+      options = { ...options, advanceWorld: undefined, advanceWorldOutcomes: undefined, pressureObservationWorld: undefined };
+    }
+    const waveLimit = searchBounds?.riskWaves != null ? Math.max(1, Math.min(3, searchBounds.riskWaves)) : 3;
+    const waves = Array.isArray(options.sourceWaves) ? options.sourceWaves.slice(0, waveLimit) : [sources];
     const remainingCapacity = preview.readHp(target) + preview.readShield(target);
-    if (!(remainingCapacity > 0)) return options.returnCurve ? waves.map(() => 1) : 1;
+    if (options.returnProfile && !options.quantizeShield && !options.mitigationProfile && !options.movementProfile) decisionMetrics.ruleDefensePressureCalls += 1;
+    if (options.mitigationProfile) decisionMetrics.ordinaryMitigationPressureCalls += 1;
+    if (options.movementProfile) decisionMetrics.ordinaryMovementPressureCalls += 1;
+    if (options.quantizeShield) decisionMetrics.ordinaryShieldReachabilityProfiles += 1;
+    if (options.advanceWorld) decisionMetrics.datedRoutineRiskCalls += 1;
+    if (!(remainingCapacity > 0)) return options.returnProfile ? { pressure: 0, incapacityCurve: waves.map(() => 1), ...(options.quantizeShield ? { shieldAbsorption: 0 } : {}) }
+      : options.returnCurve ? waves.map(() => 1) : 1;
     const basicEffect = { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 };
     const targetHpMax = Math.max(1, preview.readHpMax(target));
-    const attackWaves = waves.map(wave => wave.flatMap(source => {
-      if (!preview.isBattleCapable(source)) return [];
+    const compileAttack = (source, target, world = worldSnapshot, observationWorld = world) => {
+      if (!preview.isBattleCapable(source) || options.sourceEligibility?.(source) === false) return [];
       if (options?.useBestActionValue === true) {
         const threat = bestBaseActionValueAgainst(
-          worldSnapshot,
+          world,
           source,
           target,
           { futureNaturalOpportunity: true },
@@ -57349,81 +62733,171 @@
               probability: options?.certainActionOpportunity === true
                 ? 1
                 : r9v2LinearRecentAttackPropensity(
-                    worldSnapshot,
+                    observationWorld,
                     source,
                     sourceSide,
                     recentAttackLedgerIndex,
                   ),
               threat,
+              source,
             }]
           : [];
       }
-      const damage = preview.calculateBaseDamage(basicEffect, source, target, null, {
+      let damage = preview.calculateBaseDamage(basicEffect, source, target, null, {
         resourceDriveEnabled: false,
       });
-      const attackProbability = preview.estimateHitProbability(source, target, basicEffect) *
+      let attackProbability = preview.estimateHitProbability(source, target, basicEffect) *
         (options?.certainActionOpportunity === true
           ? 1
-          : r9v2LinearRecentAttackPropensity(worldSnapshot, source, sourceSide, recentAttackLedgerIndex));
+          : r9v2LinearRecentAttackPropensity(observationWorld, source, sourceSide, recentAttackLedgerIndex));
+      if (options.routineResponse === true) {
+        const defense = preview.calculateDefenseDamageMultiplier(target, source, false);
+        const dodge = preview.calculateDodgeProbability(target, source, false);
+        // Use the same ordinary response as expected routine pressure, but
+        // keep a dodge as a probability, not fractional damage on every hit.
+        if (1 - dodge < defense) attackProbability *= 1 - dodge;
+        else damage *= defense;
+      }
       return [{
         probability: clamp(attackProbability, 0, 1),
         threat: Math.max(0, damage / targetHpMax * 100),
+        source,
       }];
-    }));
+    };
+    const attackWaves = waves.map(wave => wave.flatMap(source => compileAttack(source, target)));
     const branches = attackWaves.flat();
-    if (options.returnCurve || preview.ruleBlockCount(target) > 0 || preview.deathSaveCount(target) > 0 || preview.hasDamageRevival(target, true)) {
+    const requiresPoolSettlement = Object.entries(target.状态效果 || {}).some(([key, state]) => Number(state?.shield_value) > 0 &&
+      (Number(state.对应等级 ?? state.equivalentLevel) > 0 && branches.some(attack => attack.probability > 0 &&
+        !root.__LWCS_BATTLE_RUNTIME__.shieldGateAllowsIncoming(state, basicEffect, attack.source)) || waves.length > 1 &&
+        r9v2LinearPassiveStateExpires(key, state, waves.length - 1, target, true, null, true, 0, true)));
+    if (options.advanceWorld || options.returnProfile || options.returnCurve || requiresPoolSettlement || preview.ruleBlockCount(target) > 0 || preview.deathSaveCount(target) > 0 || preview.hasDamageRevival(target, true)) {
       const hpFloor = preview.calculateNonlethalHpFloor(worldSnapshot, target);
       const worstIncoming = branches.reduce((sum, attack) => sum + Math.max(0, Math.round(attack.threat * targetHpMax / 100)), 0);
       const minimumHp = Math.max(hpFloor, preview.readHp(target) - Math.max(0, worstIncoming - preview.readShield(target)));
-      if (worstIncoming < remainingCapacity - hpFloor - 1e-9 && !branches.some(attack =>
+      if (!options.advanceWorld && !options.returnProfile && !requiresPoolSettlement && worstIncoming < remainingCapacity - hpFloor - 1e-9 && !branches.some(attack =>
         preview.shouldTriggerTraumaUnconscious(Math.round(attack.threat * targetHpMax / 100), minimumHp, targetHpMax))) return options.returnCurve ? waves.map(() => 0) : 0;
       // Keep the existing public routine-pressure model, but settle finite
       // protective resources across its ordered incoming actions rather than
       // treating each hit as if it had the original charge and HP budget.
-      let states = [{ probability: 1, unit: cloneValue(target) }];
+      let states = [{ probability: 1, unit: cloneValue(target), world: worldSnapshot }];
       const riskCurve = [];
+      let pressure = 0;
+      let shieldAbsorption = 0;
       for (let waveIndex = 0; waveIndex < attackWaves.length; waveIndex++) {
-      if (waveIndex > 0) for (const branch of states) for (const state of Object.values(branch.unit.状态效果 || {})) {
+      if (waveIndex > 0 && options.advanceWorld && options.advanceWorldOutcomes) {
+        states = states.flatMap(branch => {
+          const outcomes = options.advanceWorldOutcomes(branch.world, waveIndex);
+          decisionMetrics.datedRoutineRiskBoundariesAdvanced += 1;
+          return outcomes.map(row => ({ probability: branch.probability * row.probability, world: row.world,
+            unit: findUnitInWorld(row.world, preview.unitId(target)) || branch.unit }));
+        });
+      } else if (waveIndex > 0 && options.advanceWorld) for (const branch of states) {
+        // Dated consumers advance each already-damaged world, not the
+        // undamaged passive cache. The default remains fixed-pressure stress.
+        branch.world = options.advanceWorld(branch.world, waveIndex);
+        decisionMetrics.datedRoutineRiskBoundariesAdvanced += 1;
+        branch.unit = findUnitInWorld(branch.world, preview.unitId(target)) || branch.unit;
+      }
+      if (waveIndex > 0 && !options.advanceWorld) for (const branch of states) for (const [key, state] of Object.entries(branch.unit.状态效果 || {})) {
+        if (Number(state.shield_value) > 0 && r9v2LinearPassiveStateExpires(key, state, waveIndex, target, true, null, true, 0, true))
+          state.shield_value = 0;
         if (typeof state.duration !== 'number' || state.duration + Number(state.__本回合新附加 === true) > waveIndex) continue;
         // This is a fixed-pressure reserve stress calculation: only the
         // defensive resource windows change; other conditions are held fixed.
         for (const key of ['revive_count', 'death_save_count', 'block_count']) if (state.战斗效果?.[key] !== undefined) state.战斗效果[key] = 0;
       }
-      for (const attack of attackWaves[waveIndex]) {
+      const groups = new Map(options.advanceWorld ? [] : [['', { sources: attackWaves[waveIndex], states }]]);
+      if (options.advanceWorld) for (const branch of states) {
+        const sources = waves[waveIndex].map(source => findUnitInWorld(branch.world, preview.unitId(source)))
+          .filter(Boolean).sort(preview.compareNaturalActionOrder);
+        const key = JSON.stringify(sources.map(preview.unitId));
+        if (!groups.has(key)) groups.set(key, { sources, states: [] });
+        groups.get(key).states.push(branch);
+      }
+      const waveStates = [];
+      for (const group of groups.values()) {
+      let pathStates = group.states;
+      for (const source of group.sources) {
         const merged = new Map();
-        const retain = (unit, probability) => {
+        // Dated worlds still merge only on equal full-world JSON. Equal worlds
+        // imply an equal target JSON, so bucket by it first: distinct outcomes
+        // skip serializing every other unit, and ties compare JSON text lazily.
+        // Retained worlds are never mutated afterwards (later frames clone).
+        const datedBuckets = options.advanceWorld ? new Map() : null;
+        const retain = (unit, probability, world) => {
+          if (datedBuckets) {
+            const resources = preview.projectedResourceWorldState(world);
+            const bucketKey = JSON.stringify([findUnitInWorld(world, preview.unitId(target)) ?? null, resources]);
+            const bucket = datedBuckets.get(bucketKey);
+            const match = bucket?.find(row => sameJsonText([row.entry.world, row.resources], [world, resources]));
+            if (match) match.entry.probability += probability;
+            else {
+              const entry = { probability, unit, world };
+              merged.set(entry, entry);
+              if (bucket) bucket.push({ entry, resources });
+              else datedBuckets.set(bucketKey, [{ entry, resources }]);
+            }
+          } else {
           const key = JSON.stringify([preview.readHp(unit), preview.readShield(unit), preview.isBattleCapable(unit),
-            Object.entries(unit.状态效果 || {}).map(([key, state]) => [key, state.战斗效果?.block_count, state.战斗效果?.death_save_count, state.战斗效果?.revive_count]),
+            unit.shield ?? unit.护盾 ?? unit.护盾值 ?? 0,
+            Object.entries(unit.状态效果 || {}).map(([key, state]) => [key, state.shield_value, state.duration, state.__本回合新附加,
+              state.对应等级 ?? state.equivalentLevel, state.战斗效果?.block_count, state.战斗效果?.death_save_count, state.战斗效果?.revive_count]),
             unit.__技能限制运行态 || {}, Object.keys(unit.持续效果 || {}), unit.__本阶段已触发复活 === true]);
           if (merged.has(key)) merged.get(key).probability += probability;
-          else merged.set(key, { probability, unit });
+          else merged.set(key, { probability, unit, world });
+          }
+          if (options.returnProfile && !options.quantizeShield && !options.mitigationProfile && !options.movementProfile) decisionMetrics.ruleDefensePressureMaxStates = Math.max(decisionMetrics.ruleDefensePressureMaxStates, merged.size);
+          if (options.mitigationProfile) decisionMetrics.ordinaryMitigationPressureMaxStates = Math.max(decisionMetrics.ordinaryMitigationPressureMaxStates, merged.size);
+          if (options.movementProfile) decisionMetrics.ordinaryMovementPressureMaxStates = Math.max(decisionMetrics.ordinaryMovementPressureMaxStates, merged.size);
+          if (options.quantizeShield) decisionMetrics.ordinaryShieldReachabilityMaxStates = Math.max(decisionMetrics.ordinaryShieldReachabilityMaxStates, merged.size);
+          if (options.advanceWorld) decisionMetrics.datedRoutineRiskMaxStates = Math.max(decisionMetrics.datedRoutineRiskMaxStates, merged.size);
         };
-        for (const branch of states) {
-          if (!preview.isBattleCapable(branch.unit)) { retain(branch.unit, branch.probability); continue; }
+        for (const branch of pathStates) {
+          if (options.returnProfile && !options.quantizeShield && !options.mitigationProfile && !options.movementProfile) decisionMetrics.ruleDefensePressureStatesEvaluated += 1;
+          if (options.mitigationProfile) decisionMetrics.ordinaryMitigationPressureStates += 1;
+          if (options.movementProfile) decisionMetrics.ordinaryMovementPressureStates += 1;
+          if (options.quantizeShield) decisionMetrics.ordinaryShieldReachabilityStates += 1;
+          if (options.advanceWorld) decisionMetrics.datedRoutineRiskStatesEvaluated += 1;
+          if (!preview.isBattleCapable(branch.unit)) { retain(branch.unit, branch.probability, branch.world); continue; }
+          const attacker = options.advanceWorld ? findUnitInWorld(branch.world, preview.unitId(source)) : null;
+          const attack = options.advanceWorld ? attacker && compileAttack(attacker, branch.unit, branch.world,
+            options.pressureObservationWorld?.(waveIndex) || branch.world)[0] : source;
+          if (!attack) { retain(branch.unit, branch.probability, branch.world); continue; }
           const current = cloneValue(branch.unit); delete current.__本阶段已触发复活;
+          const damageFloor = options.advanceWorld ? preview.calculateNonlethalHpFloor(branch.world, current) : hpFloor;
+          const currentHpMax = options.advanceWorld ? Math.max(1, preview.readHpMax(current)) : targetHpMax;
           const outcome = preview.expectedSegmentedDamageOutcome({ segments: 1,
             perSegmentDamage: Math.max(0, Math.round(attack.threat * targetHpMax / 100)), hitProbability: attack.probability,
-            hpDamageLimit: Math.max(0, preview.readHp(current) - hpFloor), shieldBefore: preview.readShield(current),
-            deathSaveCount: hpFloor > 0 ? 0 : preview.deathSaveCount(current), ruleBlockCount: preview.ruleBlockCount(current),
-            reviveTarget: hpFloor > 0 ? null : current,
+            hpDamageLimit: Math.max(0, preview.readHp(current) - damageFloor), ...preview.incomingShieldProfile(current, basicEffect, attack.source),
+            deathSaveCount: damageFloor > 0 ? 0 : preview.deathSaveCount(current), ruleBlockCount: preview.ruleBlockCount(current),
+            reviveTarget: damageFloor > 0 ? null : current,
           });
           for (const result of outcome.outcomeDistribution) {
+            if (options.returnProfile) pressure += branch.probability * result.probability * result.hpDamage / targetHpMax;
             const next = cloneValue(current), beforeHp = preview.readHp(current);
-            preview.absorbPreviewShield(next, result.shieldAbsorb);
+            preview.absorbPreviewShield(next, result.shieldAbsorb, basicEffect, attack.source);
+            if (options.quantizeShield) shieldAbsorption += branch.probability * result.probability * options.quantizeShield(current, next) / targetHpMax;
             if (result.deathSaveConsumed > 0) preview.consumeDeathSaveCharges(next, result.deathSaveConsumed);
             if (result.ruleBlockConsumed > 0) preview.consumeRuleBlockCharges(next, result.ruleBlockConsumed);
             if (result.revival) preview.applyDamageRevivalOutcomes(next, [{ probability: 1, revival: result.revival }]);
             preview.setResourceValue(next, '生命', beforeHp - result.hpDamage + Number(result.reviveHealing || 0));
-            if (!result.revival && preview.shouldTriggerTraumaUnconscious(result.hpDamage, preview.readHp(next), targetHpMax)) next.__战斗失能原因 = 'UNCONSCIOUS';
-            if (hpFloor > 0 && hpFloor <= 1 && result.hpDamage > 0 && preview.readHp(next) <= hpFloor) next.__战斗失能原因 = 'INCAPACITATED';
-            retain(next, branch.probability * result.probability);
+            if (!result.revival && preview.shouldTriggerTraumaUnconscious(result.hpDamage, preview.readHp(next), currentHpMax)) next.__战斗失能原因 = 'UNCONSCIOUS';
+            if (damageFloor > 0 && damageFloor <= 1 && result.hpDamage > 0 && preview.readHp(next) <= damageFloor) next.__战斗失能原因 = 'INCAPACITATED';
+            retain(next, branch.probability * result.probability, options.advanceWorld
+              ? replaceWorldUnit(branch.world, preview.unitId(target), next) : branch.world);
           }
         }
-        states = [...merged.values()];
+        pathStates = [...merged.values()];
       }
-      riskCurve.push(clamp(states.reduce((sum, branch) => sum + (preview.isBattleCapable(branch.unit) ? 0 : branch.probability), 0), 0, 1));
+      waveStates.push(...pathStates);
       }
-      return options.returnCurve ? riskCurve : Number(riskCurve.at(-1) || 0);
+      states = waveStates;
+      riskCurve.push(clamp(states.reduce((sum, branch) => sum + (preview.isBattleCapable(branch.unit) ||
+        options.excludeStaminaIncapacity === true && preview.readIncapacityReason(branch.unit) === 'STAMINA_EXHAUSTED'
+        ? 0 : branch.probability), 0), 0, 1));
+      }
+      return options.returnProfile ? { pressure, incapacityCurve: riskCurve, ...(options.quantizeShield ? { shieldAbsorption } : {}) }
+        : options.returnCurve ? riskCurve : Number(riskCurve.at(-1) || 0);
     }
     const survivalProbability = boundedDeliverySurvivalProbability(
       branches,
@@ -57431,6 +62905,59 @@
       remainingCapacity / targetHpMax * 100,
     );
     return clamp(1 - survivalProbability, 0, 1);
+  }
+
+  function r9v2LinearOrdinaryRuleProtection(request, world, unit, next, sources, sourceSide, recentAttackLedgerIndex, pressureOptionsForWorld, withShieldPortfolio = false) {
+    const reserves = target => Object.entries(target.状态效果 || {}).filter(([, state]) =>
+      (String(state?.规则 || state?.防御对象 || '').trim() === '免伤' && Number(state.战斗效果?.block_count) > 0) ||
+      Number(state?.战斗效果?.death_save_count) > 0);
+    const prior = reserves(unit), current = reserves(next);
+    if (!prior.length && !current.length || !preview.isBattleCapable(next)) return withShieldPortfolio ? null : 0;
+    const signature = entries => JSON.stringify(entries.map(([key, state]) => [key, state.战斗效果.block_count,
+      state.战斗效果.death_save_count, state.duration, state.__本回合新附加 === true]));
+    if (signature(prior) === signature(current)) return withShieldPortfolio ? null : 0;
+    // Hold post-action HP, shields, modifiers and suppression fixed. Only the
+    // actual finite rule reserves are restored together. Summing two isolated
+    // counterfactuals would misprice interacting block and death-save charges.
+    const counterfactual = cloneValue(next);
+    for (const [, state] of reserves(counterfactual)) {
+      if (String(state.规则 || state.防御对象 || '').trim() === '免伤') state.战斗效果.block_count = 0;
+      state.战斗效果.death_save_count = 0;
+    }
+    for (const [key, state] of prior) {
+      const existing = counterfactual.状态效果[key];
+      counterfactual.状态效果[key] = { ...(existing || { 状态: state.状态, 规则: state.规则 || state.防御对象 }),
+        duration: state.duration, __本回合新附加: state.__本回合新附加 === true,
+        战斗效果: { ...existing?.战斗效果, block_count: Number(state.战斗效果.block_count || 0),
+          death_save_count: Number(state.战斗效果.death_save_count || 0) } };
+    }
+    if (withShieldPortfolio) {
+      // Rule charges and shields can prevent the same HP loss. Restore them
+      // together, not as two separately payable post-world marginal gains.
+      // Only reserve fields return; removed modifiers, HP ticks and control
+      // are not borrowed from the old carrier into this counterfactual.
+      for (const state of Object.values(counterfactual.状态效果 || {})) if (Number(state.shield_value) > 0) state.shield_value = 0;
+      for (const [key, state] of Object.entries(unit.状态效果 || {})) if (Number(state.shield_value) > 0) {
+        const restored = counterfactual.状态效果[key] ||= { 状态: state.状态 };
+        for (const field of ['shield_value', 'duration', '__本回合新附加', '对应等级', 'equivalentLevel']) {
+          if (Object.hasOwn(state, field)) restored[field] = state[field]; else delete restored[field];
+        }
+      }
+      const scalar = Math.max(0, Number(unit.shield ?? unit.护盾 ?? unit.护盾值 ?? 0));
+      counterfactual.shield = scalar; counterfactual.护盾 = scalar;
+      if (Object.hasOwn(counterfactual, '护盾值')) counterfactual.护盾值 = scalar;
+    }
+    const pending = r9v2LinearCurrentNaturalIds(request, world);
+    const ordered = [...sources].sort(preview.compareNaturalActionOrder);
+    const sourceWaves = Array.from({ length: Math.min(3, battleHorizonProfile(request, world).remainingRounds + 1) }, (_, index) =>
+      index === 0 ? ordered.filter(source => pending.has(preview.unitId(source))) : ordered);
+    const options = { sourceWaves, returnProfile: true, routineResponse: true, sourceEligibility: source => !hasActionCancellation(source) };
+    const counterWorld = replaceWorldUnit(world, preview.unitId(next), counterfactual);
+    const previous = r9v2LinearRoutineIncapacityRisk(counterWorld, ordered, counterfactual, sourceSide, recentAttackLedgerIndex,
+      { ...options, ...pressureOptionsForWorld(counterWorld) });
+    const actual = r9v2LinearRoutineIncapacityRisk(world, ordered, next, sourceSide, recentAttackLedgerIndex,
+      { ...options, ...pressureOptionsForWorld(world) });
+    return withShieldPortfolio ? previous.pressure - actual.pressure : Math.max(0, previous.pressure - actual.pressure);
   }
 
   function boundedDeliverySurvivalProbability(branches = [], productionWindow = 1, capacity = 0) {
@@ -57493,19 +63020,18 @@
     return clamp((lowerBound + upperBound) / 2, 0, 1);
   }
 
-  function r9v2LinearRevivalReserveLoss(priorWorld, nextWorld, id, sourceWaves, recentAttackLedgerIndex = null) {
-    const prior = findUnitInWorld(priorWorld, id), next = findUnitInWorld(nextWorld, id);
-    if (!prior || !next || !preview.isBattleCapable(next) || !sourceWaves.length) return 0;
+  function r9v2LinearRevivalReserveCounterfactual(prior, next) {
+    if (!prior || !next || !preview.isBattleCapable(next)) return null;
     const priorReserve = Object.entries(prior.状态效果 || {}).filter(([, state]) => Number(state.战斗效果?.revive_count || 0) > 0);
     const priorPassive = preview.passiveRevivalBudget(prior), actualPassive = preview.passiveRevivalBudget(next);
     const passiveRestorable = priorPassive && actualPassive && ['每日', '每战'].includes(priorPassive.period) &&
       Number.isFinite(priorPassive.remainingCount) && priorPassive.remainingCount > actualPassive.remainingCount &&
       priorPassive.key === actualPassive.key && preview.stableHash(priorPassive.candidate) === preview.stableHash(actualPassive.candidate);
-    if (!priorReserve.length && !passiveRestorable) return 0;
+    if (!priorReserve.length && !passiveRestorable) return null;
     const profile = entries => entries.map(([key, state]) => [key, state.战斗效果.revive_count, state.战斗效果.revive_heal_ratio,
       state.duration, state.__本回合新附加 === true]);
     const actualReserve = Object.entries(next.状态效果 || {}).filter(([, state]) => Number(state.战斗效果?.revive_count || 0) > 0);
-    if (!passiveRestorable && JSON.stringify(profile(priorReserve)) === JSON.stringify(profile(actualReserve))) return 0;
+    if (!passiveRestorable && JSON.stringify(profile(priorReserve)) === JSON.stringify(profile(actualReserve))) return null;
     const counterfactual = cloneValue(next);
     if (passiveRestorable) {
       const limits = counterfactual.__技能限制运行态 ||= {};
@@ -57520,11 +63046,596 @@
         __本回合新附加: state.__本回合新附加 === true,
         战斗效果: { ...existing?.战斗效果, revive_count: state.战斗效果.revive_count, revive_heal_ratio: state.战斗效果.revive_heal_ratio } };
     }
+    return counterfactual;
+  }
+
+  function r9v2LinearRevivalReserveLoss(priorWorld, nextWorld, id, sourceWaves, recentAttackLedgerIndex = null, pressureOptionsForWorld = null) {
+    if (!sourceWaves.length) return 0;
+    const next = findUnitInWorld(nextWorld, id), counterfactual = r9v2LinearRevivalReserveCounterfactual(findUnitInWorld(priorWorld, id), next);
+    if (!counterfactual) return 0;
     const counterWorld = mapWorldUnits(nextWorld, unit => preview.unitId(unit) === id ? counterfactual : unit);
     const pressureSide = sideOf(nextWorld, next) === 'team_player' ? 'team_enemy' : 'team_player';
-    const actualRisk = r9v2LinearRoutineIncapacityRisk(nextWorld, sourceWaves[0], next, pressureSide, recentAttackLedgerIndex, { sourceWaves, returnCurve: true });
-    const retainedRisk = r9v2LinearRoutineIncapacityRisk(counterWorld, sourceWaves[0], counterfactual, pressureSide, recentAttackLedgerIndex, { sourceWaves, returnCurve: true });
-    return Math.max(0, ...actualRisk.map((risk, index) => risk - retainedRisk[index]));
+    const actualRisk = r9v2LinearRoutineIncapacityRisk(nextWorld, sourceWaves[0], next, pressureSide, recentAttackLedgerIndex,
+      { sourceWaves, returnCurve: true, ...pressureOptionsForWorld?.(nextWorld) });
+    const retainedRisk = r9v2LinearRoutineIncapacityRisk(counterWorld, sourceWaves[0], counterfactual, pressureSide, recentAttackLedgerIndex,
+      { sourceWaves, returnCurve: true, ...pressureOptionsForWorld?.(counterWorld) });
+    const loss = Math.max(0, ...actualRisk.map((risk, index) => risk - retainedRisk[index]));
+    return loss;
+  }
+
+  function r9v2LinearFiniteHostilePermutation(request, actorId, hostileSide, initialWorlds, actionCapacityCache = null) {
+    // Only a scalar value is shared under a receiver permutation. Physical
+    // worlds, target choices and every chance branch keep their real IDs.
+    // This closed family has no receiver-specific predicates or foreign turns.
+    const opportunity = request.actionOpportunity || {}, belief = request.beliefState || {};
+    if (opportunity.futureHostileResponseAllowed !== false || opportunity.pendingHostileActorIds?.length ||
+        belief.targetInterferencePossible || belief.confused || Number(belief.targetInterferenceRate || 0) !== 0 ||
+        ['mechanics', 'publicResponses', 'targetRealization'].some(key => Object.keys(belief[key] || {}).length) ||
+        request.evaluationContext?.scheduledEvents?.length || !initialWorlds?.length) return null;
+    const naturalBudget = battleHorizonProfile(request, request.visibleWorld || request.worldSnapshot).naturalActionBudget;
+    const checkedPrototypes = new WeakMap(), nativeText = value => typeof value === 'function' ? Function.prototype.toString.call(value) : value;
+    const plainPrototype = (proto, array) => {
+      if (proto === null) return !array;
+      const known = array ? Array.prototype : Object.prototype;
+      if (proto === known) return true;
+      if (checkedPrototypes.has(proto)) return checkedPrototypes.get(proto) === array;
+      const keys = Reflect.ownKeys(proto), expected = Reflect.ownKeys(known);
+      const valid = keys.length === expected.length && keys.every((key, index) => {
+        if (key !== expected[index]) return false;
+        const a = Object.getOwnPropertyDescriptor(proto, key), b = Object.getOwnPropertyDescriptor(known, key);
+        if (a.enumerable !== b.enumerable || a.configurable !== b.configurable || a.writable !== b.writable) return false;
+        if (!Object.hasOwn(b, 'value')) return nativeText(a.get) === nativeText(b.get) && nativeText(a.set) === nativeText(b.set);
+        if (!Object.hasOwn(a, 'value')) return false;
+        if (!b.value || typeof b.value !== 'object') return nativeText(a.value) === nativeText(b.value);
+        // Array @@unscopables is the only object-valued prototype property.
+        // Compare data descriptors without invoking a foreign tag/getter.
+        return a.value && Object.getPrototypeOf(a.value) === null && Reflect.ownKeys(a.value).length === Reflect.ownKeys(b.value).length &&
+          Reflect.ownKeys(b.value).every(field => {
+            const left = Object.getOwnPropertyDescriptor(a.value, field), right = Object.getOwnPropertyDescriptor(b.value, field);
+            return left && Object.hasOwn(left, 'value') && Object.is(left.value, right.value) && left.enumerable === right.enumerable &&
+              left.configurable === right.configurable && left.writable === right.writable;
+          });
+      }) && (array ? plainPrototype(Object.getPrototypeOf(proto), false) : Object.getPrototypeOf(proto) === null);
+      if (valid) checkedPrototypes.set(proto, array); return valid;
+    };
+    const immutableData = new WeakSet();
+    const safeData = (value, visiting = new Set()) => {
+      if (!value || typeof value !== 'object') return !['function', 'symbol', 'bigint'].includes(typeof value);
+      if (visiting.has(value) || 'toJSON' in value) return false;
+      if (!plainPrototype(Object.getPrototypeOf(value), Array.isArray(value))) return false;
+      visiting.add(value);
+      const valid = Reflect.ownKeys(value).every(key => {
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        return typeof key === 'string' && Object.hasOwn(descriptor, 'value') && safeData(descriptor.value, visiting);
+      });
+      if (valid && Object.isFrozen(value) && Reflect.ownKeys(value).every(key => {
+        const child = Object.getOwnPropertyDescriptor(value, key).value;
+        return !child || typeof child !== 'object' || immutableData.has(child);
+      })) immutableData.add(value);
+      visiting.delete(value); return valid;
+    };
+    const keysWithin = (value, allowed) => value == null || typeof value === 'object' && !Array.isArray(value) && Reflect.ownKeys(value).every(key => allowed.includes(key));
+    const empty = value => value == null || typeof value === 'object' && !Reflect.ownKeys(value).filter(key => key !== 'length').length;
+    const neutralCombat = effects => Object.entries(effects || {}).every(([key, value]) =>
+      value === false || value === 0 || value === '' || empty(value) || key === 'disarm' && value === true ||
+      ['cost_ratio', 'cost_delta', 'cost_delta_ratio', 'windup_ratio', 'windup_delta', 'cast_speed_bonus', 'cast_speed_penalty'].includes(key) && typeof value === 'number' && Number.isFinite(value) ||
+      ['final_damage_mult', 'received_damage_mult', 'final_heal_mult', 'shield_gain_mult', 'skill_effect_mult', 'cost_ratio', 'windup_ratio'].includes(key) && value === 1);
+    const ownCondition = condition => condition && keysWithin(condition, ['类型', '对象', '比较', '值']) && condition.对象 === '自身' &&
+      /^(?:魂力|精神力)(?:数值|比例)$|^等级$/.test(condition.类型) && ['>=', '<=', '>', '<', '==', '!='].includes(condition.比较) &&
+      /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)%?$/.test(String(condition.值 ?? ''));
+    const pureEffect = effect => {
+      if (!effect || effect.生效方式 !== '独立生效' || ![0, 1].includes(Number(effect.触发概率 ?? 1))) return false;
+      const controlKeys = ['条件分支', '触发概率'];
+      const branches = effect.条件分支 || [];
+      if (!Array.isArray(branches) || !branches.every(branch => branch && keysWithin(branch, ['条件', '处理', '追加效果', '替换效果']) &&
+          Array.isArray(branch.条件) && branch.条件.length && branch.条件.every(ownCondition) && ['生效', '禁用', '追加效果', '替换效果'].includes(branch.处理) &&
+          ['追加效果', '替换效果'].every(key => branch[key] == null || Array.isArray(branch[key]) && branch[key].every(pureEffect)))) return false;
+      if (effect.原型 === '伤害结算') return effect.目标 === '单体' &&
+        keysWithin(effect, ['原型', '目标', '伤害类型', '威力倍率', '攻击段数', '生效方式', ...controlKeys]);
+      if (effect.目标 !== '自身') return false;
+      // Deterministic VIT still owns its complete real wallet/panel/fatigue
+      // state in every key. An unresolved VIT strength law is not a physical
+      // fatigue state and must not enter this receiver-only equivalence.
+      if (effect.原型 === '资源变化') return keysWithin(effect, ['原型', '目标', '资源', '数值', '持续回合', '生效方式', ...controlKeys]) &&
+        (Array.isArray(effect.资源) ? effect.资源 : [effect.资源]).every(key => ['魂力', '精神力', '体力'].includes(key)) &&
+        (!(Array.isArray(effect.资源) ? effect.资源 : [effect.资源]).includes('体力') || !/[~～]/.test(String(effect.数值 ?? ''))) &&
+        /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)%?(?:\s*[~～]\s*[+-]?(?:\d+(?:\.\d*)?|\.\d+)%?)?$/.test(String(effect.数值 ?? ''));
+      if (effect.原型 === '结算修正') return ['消耗', '前摇'].includes(effect.结算) &&
+        keysWithin(effect, ['原型', '目标', '结算', '数值', '持续回合', '生效方式', ...controlKeys]) && /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)%?$/.test(String(effect.数值 ?? ''));
+      return effect.原型 === '属性修正' && keysWithin(effect, ['原型', '目标', '属性', '数值', '持续回合', '生效方式', ...controlKeys]) &&
+        (Array.isArray(effect.属性) ? effect.属性 : [effect.属性]).every(key => ['力量', '防御', '敏捷', 'str', 'def', 'agi'].includes(key)) &&
+        /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)%?$/.test(String(effect.数值 ?? ''));
+    };
+    const pureState = state => state && keysWithin(state, ['状态', '状态名称', '状态ID', 'sourceActorId', 'sourceSkillId', 'sustainSourceActionId', '类型', '原型', '来源角色', '判定', '结算', '限定元素',
+      'duration', '持续回合', '数值', '强度', '__previewApplicationProbability', '__本回合新附加', '战斗效果', '面板修改比例', '面板固定修正', 'shield_value', '资源锁定规则']) &&
+      ['状态ID', 'sourceActorId', 'sourceSkillId', 'sustainSourceActionId'].every(key => state[key] === undefined || typeof state[key] === 'string') &&
+      Number(state.__previewApplicationProbability ?? 1) === 1 && neutralCombat(state.战斗效果) &&
+      [...Object.keys(state.面板修改比例 || {}), ...Object.keys(state.面板固定修正 || {})].every(key => ['str', 'def', 'agi'].includes(key)) &&
+      Array.isArray(state.资源锁定规则 || []) && (state.资源锁定规则 || []).every(rule => rule && keysWithin(rule, ['资源', '锁定类型', '比例']) && rule.锁定类型 === '回复锁定' &&
+        (Array.isArray(rule.资源) ? rule.资源 : [rule.资源]).every(key => ['魂力', '精神力', '体力'].includes(key)));
+    const scalarKeys = ['level', '等级', 'hp', 'hp_max', 'sp', 'sp_max', 'vit', 'vit_max', 'sta', 'sta_max', 'men', 'men_max', 'str', 'def', 'agi', '__体力衰减系数'];
+    const naturalKeys = ['round', 'opportunityId', 'grantId', 'sequence', 'ownerId', 'role', 'sourceActorId', 'sourceActionId', 'grantType',
+      'validTargetIds', 'createdAtSequence', 'expiresAtSequence', 'status', 'consumedByActionId', 'fusionKey'];
+    const pureSkill = (unit, skill) => {
+      const cast = Number(skill.前摇 || 0);
+      if (unit.id !== actorId || !keysWithin(skill, ['id', '魂技名', '消耗', '前摇', '_效果数组', '画面描述', '效果描述', '承载方式',
+            '附带属性', '使用条件', '技能掌控度', '副作用列表', '装备要求', '限定来源', '场外冷却至tick']) ||
+          // The owner already bounds the entire programme to twelve natural
+          // windows. A held charge still fails pureUnit below: its bound target
+          // identities may never borrow receiver-permutation values.
+          !Number.isFinite(cast) || cast < 0 || cast > naturalBudget * 12 ||
+          skill.承载方式 && skill.承载方式 !== '直接生效' || !empty(skill.副作用列表) || !empty(skill.装备要求) || skill.限定来源 || Number(skill.场外冷却至tick || 0) > 0 ||
+          skill.附带属性 != null && (!Array.isArray(skill.附带属性) || !skill.附带属性.every(value => typeof value === 'string')) ||
+          /食物属性|香肠/.test([...(skill.附带属性 || []), skill.效果描述, skill.画面描述].join('|')) ||
+          !keysWithin(skill.使用条件, ['最低等级', '最低魂力', '最低精神力']) || !keysWithin(skill.技能掌控度, ['中心等级', '圆满等级']) ||
+          [skill.使用条件, skill.技能掌控度].some(value => Object.values(value || {}).some(number => typeof number !== 'number' || !Number.isFinite(number))) ||
+          !Array.isArray(skill._效果数组) || !skill._效果数组.length || !skill._效果数组.every(pureEffect)) return false;
+      const stages = parseSkillCostStages(skill, skillCostParserContext(unit, skill));
+      return !stages.非法项?.length && !Object.keys(stages.维持 || {}).length &&
+        Object.keys(stages.启动 || {}).every(key => ['魂力', '精神力', '体力'].includes(key));
+    };
+    // Formal combatants retain the character record (nested martial-soul
+    // skills and ordinary role state), not just the compact test-unit fields.
+    // Prove their actual executable catalogue/passives closed instead of
+    // deleting or ignoring those character fields in the permutation key.
+    const pureUnit = unit => !preview.isSummonUnit(unit) && !unit.蓄力技能 && !preview.collectPassiveSkills(unit).length &&
+      !equipmentPassivePreviewEffects(unit).length && ['背包', '库存', '物品', '战斗物品', '持续效果'].every(key => empty(unit[key])) &&
+      neutralCombat(unit.战斗效果) && neutralCombat(unit.计算层效果) &&
+      keysWithin(unit.final, [...scalarKeys, '战斗效果']) && neutralCombat(unit.final?.战斗效果) &&
+      (unit.final?.__体力衰减系数 === undefined || typeof unit.final.__体力衰减系数 === 'number' &&
+        Number.isFinite(unit.final.__体力衰减系数) && unit.final.__体力衰减系数 >= 0 && unit.final.__体力衰减系数 <= 1) &&
+      Object.values(unit.状态效果 || {}).every(pureState) &&
+      keysWithin(unit.__battleRuntime, ['__itemPassiveSignature', 'itemPassivePackage', 'itemPassiveTriggeredSkills', 'itemPassiveRoutes', 'naturalOpportunity']) &&
+      !unit.__battleRuntime?.itemPassivePackage?.有效 &&
+      ['itemPassiveTriggeredSkills', 'itemPassiveRoutes'].every(key => empty(unit.__battleRuntime?.[key])) &&
+      !preparedSkillProfiles(unit).some(profile => profile.fusionMetadata) && collectSkills(unit).every(skill => skill && pureSkill(unit, skill));
+    // Preserve descriptors and undefined values: JSON is only a sort/bucket,
+    // never an equivalence proof or a clone of a projected resource law.
+    const copy = (value, transform = null, targets = [], affected = new WeakMap()) => {
+      if (!value || typeof value !== 'object') return value;
+      const containsChange = object => {
+        if (!transform) return false;
+        if (targets.includes(object)) return true;
+        if (affected.has(object)) return affected.get(object);
+        const changes = Reflect.ownKeys(object).some(key => {
+          const child = Object.getOwnPropertyDescriptor(object, key).value;
+          return child && typeof child === 'object' && containsChange(child);
+        });
+        affected.set(object, changes); return changes;
+      };
+      // Only a recursively proven frozen subtree can be shared. In particular
+      // shallow freezes, mutable ledger prefixes and ancestors of a rewritten
+      // roster/identity still get a detached descriptor-preserving copy.
+      if (immutableData.has(value) && !containsChange(value)) return value;
+      const next = Array.isArray(value) ? [] : Object.create(Object.getPrototypeOf(value));
+      if (Array.isArray(value)) Object.setPrototypeOf(next, Object.getPrototypeOf(value));
+      for (const key of Reflect.ownKeys(value)) {
+        const descriptor = Object.getOwnPropertyDescriptor(value, key), changed = transform?.(value, key, descriptor.value);
+        if (changed?.omit) continue;
+        Object.defineProperty(next, key, { ...descriptor, value: changed ? changed.value : copy(descriptor.value, transform, targets, affected) });
+      }
+      return next;
+    };
+    const normalize = input => {
+      if (!safeData(input)) return null;
+      const [, world, resourceState, pending, sustains] = input;
+      if (!world || !keysWithin(world, ['回合', '进行中', '战斗意图', '胜负条件', '参战者', '允许撤离', '__battleRuntime', '__battleEventLedger', '__battlePreviewScheduledEvents', '__decisionCapacityParent', '__decisionCapacityChangedUnitIds']) ||
+          !keysWithin(world.胜负条件, ['startRound', 'maxRounds', 'naturalActionBudget']) ||
+          !keysWithin(world.参战者, ['team_player', 'team_enemy']) || !Array.isArray(world.参战者?.[hostileSide]) ||
+          !Array.isArray(resourceState) || !resourceState.every(row => Array.isArray(row) && row.length === 2 &&
+            ['魂力', '精神力'].some(resource => row[0] === `${actorId}\u0000${resource}`)) ||
+          !empty(pending) || !empty(sustains)) return null;
+      const actualResources = preview.projectedResourceWorldState(world);
+      if (resourceState.length !== actualResources.length ||
+          resourceState.length && !r9v2SameProjectionFrame(resourceState, actualResources)) return null;
+      // RESOURCE_CLASS records describe an already materialized own wallet,
+      // not a future grant or delayed effect. Retain every record in the key;
+      // any actual scheduled programme still belongs to its original owner.
+      if (world.__battlePreviewScheduledEvents !== undefined && (!Array.isArray(world.__battlePreviewScheduledEvents) ||
+          !world.__battlePreviewScheduledEvents.every(event => event && event.type === 'RESOURCE_CLASS' && event.targetId === actorId &&
+            ['魂力', '精神力'].includes(event.resource) && typeof event.balance === 'number' && Number.isFinite(event.balance) &&
+            keysWithin(event, ['type', 'targetId', 'resource', 'balance', 'roundedResourceSupport', 'effectInstanceId', 'contributionPosition'])))) return null;
+      // A real Native world already owns its ledger. Keep the entire prefix,
+      // including non-enumerable population evidence, in the strict key.
+      // Never clear history or accept a non-ledger value to obtain reuse.
+      if (world.__battleEventLedger !== undefined && !Array.isArray(world.__battleEventLedger)) return null;
+      const parent = Object.getOwnPropertyDescriptor(world, '__decisionCapacityParent'), changed = Object.getOwnPropertyDescriptor(world, '__decisionCapacityChangedUnitIds');
+      // The full provider binds a non-enumerable capacity delta to this exact
+      // request frame. Keep both descriptors/values in the memo; do not strip
+      // them or accept an arbitrary caller's parent/changed-ID claim.
+      if ((parent || changed) && (!parent || !changed || parent.enumerable || changed.enumerable || parent.writable || changed.writable ||
+          parent.value !== request.visibleWorld || !Array.isArray(changed.value) || changed.value.some(id => id !== actorId))) return null;
+      const entries = worldEntries(world), peers = world.参战者[hostileSide];
+      if (peers.some(unit => !unit || typeof unit !== 'object')) return null;
+      const ids = peers.map(unit => unit.id);
+      if (ids.length < 2 || ids.some(id => typeof id !== 'string' || !id) || new Set(ids).size !== ids.length ||
+          !entries.some(({ unit, side }) => unit.id === actorId && side !== hostileSide) || !entries.every(({ unit }) => pureUnit(unit))) return null;
+      if (Reflect.ownKeys(peers).length !== peers.length + 1 || peers.some((_, index) => {
+        const descriptor = Object.getOwnPropertyDescriptor(peers, String(index)), first = Object.getOwnPropertyDescriptor(peers, '0');
+        return !descriptor || descriptor.enumerable !== first.enumerable || descriptor.configurable !== first.configurable || descriptor.writable !== first.writable;
+      })) return null;
+      const refersToPeer = value => typeof value === 'string' ? ids.some(id => value.includes(id)) :
+        !!value && typeof value === 'object' && Reflect.ownKeys(value).some(key =>
+          ids.some(id => key.includes(id)) || refersToPeer(Object.getOwnPropertyDescriptor(value, key).value));
+      // Native round/journal metadata is retained, too. Identity-indexed
+      // receiver fatigue, grants or timelines cannot borrow this permutation.
+      if (refersToPeer(world.__battleRuntime)) return null;
+      for (const { unit, side } of entries) {
+        if (side !== hostileSide) { if (refersToPeer(unit)) return null; continue; }
+        const natural = unit.__battleRuntime?.naturalOpportunity;
+        if (natural && (!keysWithin(natural, naturalKeys) || natural.sourceActorId || natural.sourceActionId || natural.consumedByActionId ||
+            natural.fusionKey || natural.validTargetIds?.length || natural.expiresAtSequence ||
+            natural.role && natural.role !== 'ACTIVE' || natural.grantType && natural.grantType !== 'NATURAL_ACTION')) return null;
+      }
+      const normalized = peers.map(unit => copy(unit, (object, key) => {
+        if (object === unit && ['id', 'name', '名称'].includes(key)) return { omit: true };
+        if (object === unit.__battleRuntime && key === 'naturalOpportunity') {
+          // No foreign action/charge/response is scheduled in this family;
+          // keep its round/status, not unused identity/queue labels.
+          return { value: copy(object[key], (_natural, field) => ['round', 'status'].includes(field) ? null : { omit: true }, [object[key]]) };
+        }
+        return null;
+      }, [unit, unit.__battleRuntime]));
+      if (normalized.some(refersToPeer)) return null;
+      normalized.sort((left, right) => compareUtf16(JSON.stringify(left), JSON.stringify(right)));
+      const roster = copy(peers, (object, key) => object === peers && /^\d+$/.test(key) ? { value: normalized[Number(key)] } : null, [peers]);
+      return copy(input, (object, key) => object === world.参战者 && key === hostileSide ? { value: roster } : null, [world.参战者]);
+    };
+    const hasTerminalDamage = effects => effects.some(effect => effect.原型 === '伤害结算' ||
+      (effect.条件分支 || []).some(branch => ['追加效果', '替换效果'].some(key => hasTerminalDamage(branch[key] || []))));
+    const hasStaminaProgramme = effects => effects.some(effect => effect.原型 === '资源变化' &&
+      (Array.isArray(effect.资源) ? effect.资源 : [effect.资源]).includes('体力') ||
+      (effect.条件分支 || []).some(branch => ['追加效果', '替换效果'].some(key => hasStaminaProgramme(branch[key] || []))));
+    normalize.terminal = input => {
+      if (input[0] !== 1) return null;
+      const normalized = normalize(input);
+      if (!normalized) return null;
+      const world = input[1], holder = findUnitInWorld(world, actorId);
+      if (!holder || holder.蓄力技能) return null;
+      const staminaProgramme = preparedSkillProfiles(holder).some(profile => Object.hasOwn(profile.costStages.启动 || {}, '体力') ||
+        hasStaminaProgramme(preview.collectEffects(profile.skill)));
+      for (const resource of ['魂力', '精神力']) {
+        const distribution = preview.projectedResourceDistribution(holder, resource);
+        if (distribution?.support && preview.partitionResourceRangeOutcomes([{ outcomeId: 'BALANCE', probability: 1,
+          balance: distribution.balance, roundedResourceSupport: distribution.support }],
+          r9v2LinearCreatedResourcePaymentThresholds(holder, resource)).length !== 1) return null;
+      }
+      const actions = r9v2LinearActionCapacityRows(world, holder, hostileSide, actionCapacityCache)
+        .filter(action => !action.skill || hasTerminalDamage(preview.collectEffects(action.skill)));
+      // In this closed family all other actions only change owned SP/MEN,
+      // panel or settlement carriers. No future slot means no terminal receipt.
+      if (!actions.length) return { zero: true };
+      if (![holder.sp_max, holder.men_max, holder.final?.men_max ?? holder.men_max].every(value => typeof value === 'number' && Number.isFinite(value) && value > 0) ||
+          actions.some(action => action.skill && (action.skill._效果数组?.length !== 1 ||
+            action.skill._效果数组[0].原型 !== '伤害结算' || action.skill._效果数组[0].条件分支?.length ||
+            Number(action.skill.前摇 || 0) > naturalBudget ||
+            Number(action.skill.使用条件?.最低魂力 || 0) !== 0 || Number(action.skill.使用条件?.最低精神力 || 0) !== 0))) return null;
+      if (staminaProgramme) {
+        if (preview.staminaScaleForUnit(holder) !== 1 || Number(holder.final?.__体力衰减系数 ?? 1) !== 1) return null;
+        for (const action of actions) {
+          const debit = action.capacityCosts?.vit;
+          if (typeof debit !== 'number' || !Number.isFinite(debit) || debit < 0) return null;
+          const paid = new preview.PreviewOverlay(world);
+          paid.changeUnit(actorId, unit => preview.setResourceValue(unit, '体力', preview.readResource(unit, '体力') - debit));
+          if (preview.staminaScaleForUnit(paid.readUnit(actorId)) !== 1 || Number(paid.readUnit(actorId).final?.__体力衰减系数 ?? 1) !== 1) return null;
+        }
+      }
+      const signature = actions.map(action => [action.actionKey, action.skill, action.costs]);
+      if (!safeData(signature)) return null;
+      const owner = findUnitInWorld(normalized[1], actorId), balances = [owner, owner.final, owner.属性].filter(value => value && typeof value === 'object');
+      // Only the scalar terminal value is reused. Actual payable declarations
+      // remain in the key; plain damage reads resource maxima, not the leftover
+      // SP/MEN wallet. VIT stays unless every actual payable final attack was
+      // also proved to remain on the full-panel fatigue plateau after payment.
+      // HP, every target, carrier, descriptor and ledger stay.
+      // A private SP/MEN law is irrelevant only after every current payment
+      // threshold is uniform over its entire support. Its full law stays in all
+      // nonterminal keys. Conditions, mixed damage programmes and held casts do
+      // not use this proof. Physical worlds/payments are never normalized.
+      const walletKeys = ['sp', 'men', '魂力', '精神力', ...(staminaProgramme ? ['vit', 'sta', '体力'] : [])];
+      const key = copy(normalized, (object, field) => object === normalized && field === '2' ? { value: [] } :
+        balances.includes(object) && walletKeys.includes(field) ? { value: 0 } : null, [normalized, ...balances]);
+      return { input: [staminaProgramme ? 'FINITE_TERMINAL_PAID_NO_FATIGUE_V1' : 'FINITE_TERMINAL_PAID_SP_MEN_V1', key, copy(signature)] };
+    };
+    return initialWorlds.every(world => normalize([0, world, preview.projectedResourceWorldState(world), [], {}])) ? normalize : null;
+  }
+
+  function r9v2LinearFiniteActionCapacityPair(request, actorId, hostileSide, actionCapacityCache, priorPlan, nextPlan, excludedSkillId = '', policy = null) {
+    const recast = policy?.allowFutureRecast === true, excludeCurrent = recast && policy.excludeOriginalCurrentSlot === true;
+    const currentRound = Number(request.visibleWorld?.回合);
+    if (recast && [priorPlan.clock, nextPlan.clock].some(clock => clock.resourcePaymentExcludedSkillId)) throw new Error('RECAST_CLOCK_EXCLUDES_ROOT');
+    const permutation = recast ? r9v2LinearFiniteHostilePermutation(request, actorId, hostileSide,
+      [...priorPlan.deliveries, ...nextPlan.deliveries].map(delivery => delivery.world), actionCapacityCache) : null;
+    const memoByClock = new WeakMap(), exhausted = {}, revisions = { projectionObjectRevisions: new WeakMap() };
+    // Root outcome branches may share the same already closed no-setup plan.
+    // Reuse only that complete scalar, under the exact request/clock/frame and
+    // private resource law. A failed pair never publishes a partial baseline.
+    const baselineCaches = actionCapacityCache ? (actionCapacityCache.finiteActionBaselines ||= new WeakMap()) : null;
+    const baselineInput = baselineCaches ? [actorId, hostileSide, excludedSkillId, recast, excludeCurrent, currentRound, priorPlan.windows, priorPlan.discountOffset || 0,
+      priorPlan.deliveries.map(delivery => [delivery.probability, delivery.world, preview.projectedResourceWorldState(delivery.world), delivery.pending, delivery.sustains])] : null;
+    let baselinesByClock = baselineCaches?.get(request), baselines = baselinesByClock?.get(priorPlan.clock);
+    const baseline = baselines?.find(row => r9v2SameProjectionFrame(row.input, baselineInput));
+    if (baseline) decisionMetrics.r9v2ResourceSequenceReserveCacheHits += 1;
+    let states = 0;
+    const solve = (delivery, remaining, clock) => {
+      const world = delivery.world, holder = findUnitInWorld(world, actorId);
+      if (!remaining || !holder || !preview.isBattleCapable(holder) ||
+          !aliveEntries(world).some(entry => entry.side !== sideOf(world, holder))) return 0;
+      let memo = memoByClock.get(clock);
+      if (!memo) memoByClock.set(clock, memo = new Map());
+      const rawInput = [remaining, world, preview.projectedResourceWorldState(world), delivery.pending, delivery.sustains];
+      const terminal = remaining === 1 ? permutation?.terminal(rawInput) : null;
+      if (terminal?.zero) return 0;
+      const input = terminal?.input || permutation?.(rawInput) || rawInput;
+      let key;
+      try { key = JSON.stringify(input); } catch { /* exact comparison is required before any reuse */ }
+      const bucket = key && memo.get(key), cached = bucket?.find(row => r9v2SameProjectionFrame(row.input, input));
+      if (cached) { decisionMetrics.r9v2ResourceSequenceReserveCacheHits += 1; return cached.value; }
+      if (++states > DECISION_PREVIEW_NODE_LIMIT) throw exhausted;
+      decisionMetrics.r9v2ResourceSequenceReserveStateBuilds += 1;
+      const follow = (declaration = null, projection = null) => remaining <= 1 ? 0 :
+        clock.advance(delivery, declaration, projection).reduce((sum, next) => sum + next.probability * solve(next, remaining - 1, clock), 0);
+      let value = .85 * follow();
+      const charge = holder.蓄力技能;
+      const actions = charge ? [{ actionKey: `${actorId}:charge`, skill: charge.skill || charge, costs: {} }]
+        : r9v2LinearActionCapacityRows(world, holder, hostileSide, actionCapacityCache);
+      const worldRevision = r9v2ProjectionObjectRevision(revisions, world);
+      for (const action of actions) {
+        if (excludedSkillId && skillId(action.skill || {}) === excludedSkillId &&
+            (!recast || excludeCurrent && clock === priorPlan.clock && Number(world.回合) === currentRound)) continue;
+        const profile = action.skill ? targetProfile(action.skill) : 'HOSTILE_SINGLE';
+        const targets = charge ? [charge.targetIds || []] : expandMixedScopePrimaryTargetSets(action.skill || {}, profile,
+          enumerateTargetSets(world, holder, profile, request.beliefState || {}, action.skill || {}), world, holder);
+        for (const targetIds of targets) {
+          const declaration = { actorId, actionId: `${action.actionKey}:grant-portfolio:${world.回合}`,
+            actionKind: action.skill ? 'RELEASE_SKILL' : 'BASIC_ATTACK', skill: action.skill, targetIds, resourceCosts: action.costs };
+          const expected = clock.expected({ worldSnapshot: world, actorId, worldRevision, snapshotRevision: worldRevision,
+            actionFingerprint: r9v2ProjectionObjectRevision(revisions, declaration), __preparedDecisionWorld: true,
+            beliefState: request.beliefState, battleIntent: request.battleIntent, actionOpportunity: { role: 'ACTIVE' },
+            declaration, buildOperationGraph: false, captureDependencies: false }, (projection, _probability, executed = true) => {
+            decisionMetrics.r9v2ResourceSequenceReserveBranchEvaluations += 1;
+            return (executed ? r9v2LinearSettledDirectCapacity(world, holder, projection) : 0) + .85 * follow(declaration, projection);
+          });
+          value = Math.max(value, expected);
+        }
+      }
+      if (key) {
+        if (bucket) bucket.push({ input, value });
+        else memo.set(key, [{ input, value }]);
+      }
+      return value;
+    };
+    try {
+      let before = baseline ? baseline.value : 0, after = 0;
+      for (let index = 0; index < Math.max(priorPlan.deliveries.length, nextPlan.deliveries.length); index++) {
+        for (const [plan, next] of [[nextPlan, true], [priorPlan, false]]) {
+          if (!next && baseline) continue;
+          const delivery = plan.deliveries[index];
+          if (!delivery) continue;
+          const value = delivery.probability * .85 ** Math.max(0, Number(plan.discountOffset || 0)) * solve(delivery, plan.windows, plan.clock);
+          if (next) after += value; else before += value;
+        }
+      }
+      if (baselineCaches && !baseline) {
+        if (!baselinesByClock) baselineCaches.set(request, baselinesByClock = new WeakMap());
+        if (!baselines) baselinesByClock.set(priorPlan.clock, baselines = []);
+        baselines.push({ input: baselineInput, value: before });
+      }
+      return { before, after, states };
+    } catch (error) {
+      if (error === exhausted) return null;
+      throw error;
+    }
+  }
+
+  function r9v2LinearGrantedHealCapacity(request, candidate, result, beforeUnit, nextUnit, hostileSide, windows, actionCapacityCache) {
+    const effects = candidate.declaration?.skill?._效果数组 || [];
+    if (candidate.creation || effects.length !== 1 || effects[0]?.原型 !== '机制授予' ||
+        effects[0].触发条件 !== '主动触发' || candidate.declaration?.skill?.副作用列表?.length ||
+        !Number.isSafeInteger(windows) || windows <= 0 || windows > 3 ||
+        windows * preview.listUnits(result.afterSnapshot).length > DECISION_PREVIEW_NODE_LIMIT) return null;
+    const priorIds = new Set(collectSkills(beforeUnit).map(skillId));
+    const granted = collectSkills(nextUnit).filter(skill => skill.__mechanismGrantTemporarySkill === true && !priorIds.has(skillId(skill)));
+    const priorProfiles = preparedSkillProfiles(beforeUnit);
+    if (granted.length !== 1 || priorProfiles.some(row => row.fusionMetadata || row.skill.副作用列表?.length ||
+        !row.skill._效果数组?.length || preview.collectEffects(row.skill).some(effect =>
+          !['伤害结算', '资源变化', '资源转移', '护盾变化'].includes(effect?.原型)))) return null;
+    const skill = granted[0], stateKey = String(skill.__mechanismGrantStateKey || '').trim();
+    const state = nextUnit.状态效果?.[stateKey];
+    // Fuel and panel grants have no terminal HP value of their own. Value the
+    // actual continuation after spending the grant's action, not pool membership.
+    const fuel = effect => effect?.原型 === '资源变化' && effect.目标 === '自身' &&
+      (Array.isArray(effect.资源) ? effect.资源 : [effect.资源]).length > 0 &&
+      (Array.isArray(effect.资源) ? effect.资源 : [effect.资源]).every(resource => ['魂力', '精神力'].includes(resource)) &&
+      /^\+?(?:\d+(?:\.\d*)?|\.\d+)%?$/.test(String(effect.数值 ?? '').trim()) && Number.parseFloat(effect.数值) > 0;
+    const hasFuel = skill._效果数组?.some(fuel);
+    const heal = effect => effect?.原型 === '资源变化' && /^(?:生命|生命值|生命力|HP)$/i.test(String(effect.资源 || '').trim()) &&
+      Number.parseFloat(String(effect.数值 || '')) > 0;
+    const conditionalHeal = effect => heal(effect) && effect.目标 === '自身' && !effect.持续回合 && !effect.延迟回合 &&
+      Number(effect.触发概率 ?? 1) === 1 && /^\+?(?:\d+(?:\.\d*)?|\.\d+)%?$/.test(String(effect.数值 ?? '').trim());
+    const panel = effect => effect?.原型 === '属性修正' && effect.目标 === '自身' &&
+      (Array.isArray(effect.属性) ? effect.属性 : [effect.属性]).length > 0 &&
+      (Array.isArray(effect.属性) ? effect.属性 : [effect.属性]).every(attribute => ['力量', '防御', '敏捷', 'str', 'def', 'agi'].includes(attribute)) &&
+      /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)%?$/.test(String(effect.数值 ?? '').trim()) &&
+      Number.isSafeInteger(effect.持续回合) && effect.持续回合 > 0 && !effect.延迟回合;
+    const hasPanel = skill._效果数组?.some(panel);
+    const settlement = effect => effect?.原型 === '结算修正' && effect.目标 === '自身' &&
+      ['消耗', '前摇'].includes(effect.结算) && /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)%?$/.test(String(effect.数值 ?? '').trim()) &&
+      Number.isSafeInteger(effect.持续回合) && effect.持续回合 > 0 && !effect.延迟回合;
+    const hasSettlement = skill._效果数组?.some(settlement);
+    // These predicates are evaluated again by the original Preview at each
+    // actual future declaration; today's wallet cannot stand in for a later
+    // paid slot. Validate every nested payload, including inactive clauses,
+    // before assigning the complete programme to this same calendar owner.
+    const ownCondition = condition => condition && Object.keys(condition).every(key => ['类型', '对象', '比较', '值'].includes(key)) &&
+      condition.对象 === '自身' && /^(?:生命|魂力|精神力)(?:数值|比例)$|^等级$/.test(condition.类型) &&
+      ['>=', '<=', '>', '<', '==', '!='].includes(condition.比较) && ['number', 'string'].includes(typeof condition.值) &&
+      /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)%?$/.test(String(condition.值)) && Number.isFinite(Number(String(condition.值).replace('%', '')));
+    const programs = new WeakMap();
+    const ownsProgram = (effect, nested = false) => {
+      if (!effect || typeof effect !== 'object' || nested && (effect.目标 !== '自身' || effect.延迟回合 || Number(effect.触发概率 ?? 1) !== 1)) return false;
+      if (programs.has(effect)) return programs.get(effect);
+      programs.set(effect, false); // Cyclic author programmes are not closed.
+      if (!(panel(effect) || settlement(effect) || (fuel(effect) || heal(effect)) && !effect.持续回合) ||
+          nested && heal(effect) && !conditionalHeal(effect) || effect.副作用列表?.length) return false;
+      const branches = effect.条件分支;
+      const owned = !branches?.length || (settlement(effect) || panel(effect) || fuel(effect) && !effect.延迟回合 || conditionalHeal(effect)) &&
+        Array.isArray(branches) && branches.every(branch => branch && Object.keys(branch).every(key => ['条件', '处理', '追加效果', '替换效果'].includes(key)) &&
+          ['生效', '禁用', '追加效果', '替换效果'].includes(branch.处理) && Array.isArray(branch.条件) && branch.条件.length > 0 && branch.条件.every(ownCondition) &&
+          ['追加效果', '替换效果'].every(key => branch[key] == null || Array.isArray(branch[key]) && branch[key].every(child => ownsProgram(child, true))));
+      programs.set(effect, owned); return owned;
+    };
+    if (!state || state.副作用列表?.length || Number(state.__previewApplicationProbability ?? 1) !== 1 ||
+        !skill._效果数组?.length || !skill._效果数组.every(effect => ownsProgram(effect))) return null;
+    const actorId = preview.unitId(nextUnit);
+    const withoutGrant = world => {
+      const holder = findUnitInWorld(world, actorId);
+      if (!holder?.状态效果?.[stateKey]) return world;
+      const stripped = { ...holder, 状态效果: { ...holder.状态效果 } };
+      delete stripped.状态效果[stateKey];
+      preview.inheritOverlayOrigin(stripped, holder);
+      return replaceWorldUnit(world, actorId, stripped);
+    };
+    const before = request.visibleWorld || request.worldSnapshot;
+    const baseline = new preview.PreviewOverlay(before).changeUnit(actorId, () => {});
+    baseline.状态效果 = { ...baseline.状态效果 };
+    const strippedWorld = withoutGrant(result.afterSnapshot), stripped = findUnitInWorld(strippedWorld, actorId);
+    // This route owns only the new grant, never an unrelated buff or resource gain.
+    if (!r9v2SameProjectionFrame(baseline, stripped)) return null;
+    const clock = r9v2LinearResourceNaturalClock(request, candidate, before, beforeUnit, windows, result, actionCapacityCache);
+    if (!clock) return null;
+    if (priorProfiles.length || hasFuel || hasPanel || hasSettlement || skill._效果数组.some(effect => effect.条件分支?.length)) {
+      const deliveries = clock.deliveries(result.afterSnapshot);
+      const pair = r9v2LinearFiniteActionCapacityPair(request, actorId, hostileSide, actionCapacityCache,
+        { clock, windows, deliveries: deliveries.map(delivery => ({ ...delivery, world: withoutGrant(delivery.world) })) },
+        { clock, windows, deliveries });
+      return pair === null ? null : Math.max(0, pair.after - pair.before);
+    }
+    const readImmediate = (world, holder, projection) => {
+      const alternativeWorld = withoutGrant(world), alternative = findUnitInWorld(alternativeWorld, actorId);
+      return r9v2LinearSettledDirectCapacity(world, holder, projection) -
+        r9v2LinearBestActionCapacity(alternativeWorld, alternative, hostileSide, actionCapacityCache);
+    };
+    return clock.deliveries(result.afterSnapshot).reduce((sum, delivery) => {
+      const holder = findUnitInWorld(delivery.world, actorId);
+      const active = holder && collectSkills(holder).find(row => row.__mechanismGrantStateKey === stateKey);
+      if (!active) return sum;
+      const action = { actionKey: `${actorId}:skill:${skillId(active)}`, skill: active, costs: {}, capacityCosts: { valid: true, sp: 0, men: 0, vit: 0 }, fusionRequired: false };
+      const capacity = r9v2LinearRepeatedResourceReserve(delivery.world, holder, action, windows, request, clock, delivery, new Map(), readImmediate);
+      return sum + delivery.probability * Math.max(0, capacity.value);
+    }, 0);
+  }
+
+  function r9v2LinearSettlementSetupCapacity(request, candidate, result, beforeUnit, nextUnit, hostileSide, actionCapacityCache) {
+    const declaration = candidate.declaration || {}, effects = preview.collectEffects(declaration.skill || {});
+    const actorId = preview.unitId(beforeUnit), rootSkillId = skillId(declaration.skill || {});
+    const settlement = effect => effect?.原型 === '结算修正' && ['消耗', '前摇', '蓄力'].includes(String(effect.结算 || '').trim());
+    const modifiesCost = effects.some(effect => settlement(effect) && effect.结算 === '消耗');
+    const hasSettlement = effects.some(settlement), panelOnly = !hasSettlement && effects.some(effect => effect?.原型 === '属性修正');
+    if (candidate.creation || !(hasSettlement || panelOnly) ||
+        !effects.some(effect => (settlement(effect) || panelOnly && effect?.原型 === '属性修正') &&
+          (effect.目标 === '自身' || declaration.targetIds?.includes(actorId)))) return null;
+    const before = request.visibleWorld, after = result.afterSnapshot || before, horizon = battleHorizonProfile(request, before);
+    const productiveTimedOption = (world, unit) => r9v2LinearActionCapacityRows(world, unit, hostileSide, actionCapacityCache).some(row =>
+      row.skill && skillId(row.skill) !== rootSkillId && row.potential > 1e-9 &&
+      Number(row.skill.前摇 ?? row.skill.cast_time ?? 0) > horizon.naturalActionBudget);
+    // Check the formal stages, not just today's affordable rows: recovery or
+    // a future payment can make an initially unavailable terminal option bind.
+    const paidOption = unit => preparedSkillProfiles(unit).some(row => skillId(row.skill) !== rootSkillId &&
+      skillHasBaseActionValue(row.skill) && !row.costStages.非法项?.length &&
+      (Object.keys(row.costStages.启动 || {}).length || Object.keys(row.costStages.维持 || {}).length));
+    // A plain own panel also displaces the original current action. Free
+    // attacks and a currently empty catalogue need the same dated comparison;
+    // they must not require a cost/windup modifier to enter this owner.
+    if (!panelOnly && !(modifiesCost && (paidOption(beforeUnit) || paidOption(nextUnit))) &&
+        !productiveTimedOption(before, beforeUnit) && !productiveTimedOption(after, nextUnit)) return null;
+    const audit = { scope: panelOnly ? 'OWN_PANEL_NATURAL_ACTION_CAPACITY_NET' : modifiesCost ? 'OWN_SETTLEMENT_NATURAL_ACTION_CAPACITY_NET' : 'OWN_WINDUP_NATURAL_ACTION_CAPACITY_NET', status: 'UNMODELED', reason: 'NATURAL_CLOCK_UNCLOSED',
+      fullNetUtilityVerified: false, capacityOwner: 'SELF_FOLLOWUP_MECHANICAL_GAIN' };
+    if (Object.values(nextUnit.状态效果 || {}).some(state => settlement(state) &&
+        Number(state.__previewApplicationProbability ?? 1) > 0 && Number(state.__previewApplicationProbability ?? 1) < 1)) {
+      return { ...audit, reason: 'ROOT_OUTCOME_UNCONDITIONED' };
+    }
+    // Own resource changes and locks belong to this same paid portfolio:
+    // actual recovery/expiry and debits change later eligibility, not a quota.
+    // Conditions use the realized root program, including its nested payloads.
+    // Direct resource duration alone does not register a periodic carrier.
+    // HP, foreign recipients and persistent flows still need joint ownership.
+    const ownResourceProgram = effect => effect?.目标 === '自身' &&
+      (Array.isArray(effect.资源) ? effect.资源 : [effect.资源]).length > 0 &&
+      (Array.isArray(effect.资源) ? effect.资源 : [effect.资源]).every(resource => ['魂力', '精神力', '体力'].includes(resource)) &&
+      !effect.延迟回合 && !effect.副作用列表?.length &&
+      effect.生效方式 === '独立生效' &&
+      (effect.原型 === '资源变化' && /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)%?(?:\s*[~～]\s*[+-]?\d+(?:\.\d+)?%?)?$/.test(String(effect.数值 ?? '').trim()) ||
+        effect.原型 === '资源锁定' && ['资源池锁定', '回复锁定', '转化锁定'].includes(effect.锁定类型) &&
+        /^\+?(?:\d+(?:\.\d*)?|\.\d+)%$/.test(String(effect.数值 ?? '').trim()) &&
+        Number.parseFloat(effect.数值) > 0 && Number.parseFloat(effect.数值) <= 100);
+    const ownPanelProgram = effect => effect?.原型 === '属性修正' && effect.目标 === '自身' && effect.生效方式 === '独立生效' &&
+      !effect.延迟回合 && effect.触发方式 !== '延迟触发' && !effect.副作用列表?.length &&
+      (Array.isArray(effect.属性) ? effect.属性 : [effect.属性]).length > 0 &&
+      (Array.isArray(effect.属性) ? effect.属性 : [effect.属性]).every(attribute => ['力量', '防御', '敏捷', 'str', 'def', 'agi'].includes(attribute)) &&
+      /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)%?$/.test(String(effect.数值 ?? '').trim());
+    const ownedPrograms = new WeakMap(); let mixedFuel = false, mixedPanel = false;
+    const ownsProgram = (effect, nested = false) => {
+      if (!effect || typeof effect !== 'object' || nested &&
+          (effect.目标 !== '自身' || effect.延迟回合 || effect.副作用列表?.length)) return false;
+      if (ownedPrograms.has(effect)) return ownedPrograms.get(effect);
+      ownedPrograms.set(effect, false); // A cyclic author program is not a closed payload.
+      const fuel = ownResourceProgram(effect), panel = ownPanelProgram(effect);
+      if (!settlement(effect) && !fuel && !panel) return false;
+      if (fuel) mixedFuel = true;
+      if (panel) mixedPanel = true;
+      const branches = effect.条件分支;
+      const owned = branches == null || Array.isArray(branches) && branches.every(branch => branch &&
+        ['生效', '禁用', '替换效果', '追加效果'].includes(branch.处理) &&
+        ['替换效果', '追加效果'].every(key => branch[key] == null || Array.isArray(branch[key]) &&
+          branch[key].every(child => ownsProgram(child, true))));
+      ownedPrograms.set(effect, owned); return owned;
+    };
+    if (!effects.every(effect => ownsProgram(effect)) ||
+        (mixedFuel || mixedPanel) && declaration.skill?.副作用列表?.length || beforeUnit.蓄力技能 || !rootSkillId) return { ...audit, reason: 'MIXED_OR_PENDING_ROOT' };
+    // A conditioned range has a real selected outcome, while its retained
+    // rounded support still drives later payment thresholds. The original
+    // unconditioned strength summary is not such a delivered resource law.
+    const resolvedFuelOutcomes = mixedFuel ? new Set((result.contributions || []).filter(entry =>
+      entry.outcomeKind === 'RESOURCE_OPTION_CHANGED' && entry.targetId === actorId && entry.sourceActionId === result.actionId &&
+      preview.contributionProbability(entry) === 1 && typeof entry.evidence?.rangeTransition?.forcedOutcomeId === 'string' &&
+      entry.evidence.rangeTransition.forcedOutcomeId).map(entry => entry.effectInstanceId)) : null;
+    // A delivered panel is part of this same dated paid portfolio, not a
+    // permanent free uplift. Its actual carrier/expiry remains in the clock;
+    // unresolved roots must first take the original conditioned outcome path.
+    if ((mixedFuel || mixedPanel) && preview.hasUnresolvedActionOutcomes(result, resolvedFuelOutcomes)) return { ...audit, reason: 'ROOT_OUTCOME_UNCONDITIONED' };
+    const beforeWindows = availableNaturalOpportunityCount(before, beforeUnit, { currentOpportunityConsumedFor: new Set(), horizon });
+    const afterWindows = availableNaturalOpportunityCount(before, beforeUnit, {
+      currentOpportunityConsumedFor: consumedNaturalActors(request, declaration), horizon });
+    if (![beforeWindows, afterWindows].every(value => Number.isSafeInteger(value) && value >= 0 && value <= 12) ||
+        Math.max(beforeWindows, afterWindows) * preview.listUnits(before).length > DECISION_PREVIEW_NODE_LIMIT) return { ...audit, reason: 'PROJECTION_WORK_BUDGET' };
+    // In the proven identity-free family, both worlds can choose this setup
+    // later. Only its originally displaced ACTIVE slot is unavailable in the
+    // baseline; a non-consuming counter must retain today's natural slot.
+    const recast = !!r9v2LinearFiniteHostilePermutation(request, actorId, hostileSide, [before, after]);
+    const excludedPayment = recast ? '' : rootSkillId;
+    const priorClock = r9v2LinearResourceNaturalClock(request, candidate, before, beforeUnit, beforeWindows, null, actionCapacityCache, true, excludedPayment);
+    const nextClock = r9v2LinearResourceNaturalClock(request, candidate, before, beforeUnit, afterWindows, result, actionCapacityCache, false, excludedPayment);
+    if (!priorClock || !nextClock) return audit;
+    const deliveries = (clock, world) => clock.deliveries(world).map(delivery => {
+      // Match the actual Preview write shape on every unit before memoizing.
+      // An untouched target otherwise lacks undefined inventory defaults that
+      // an equally unchanged, missed target acquired through PreviewOverlay.
+      // Retain strict descriptor/value comparison; do not erase real fields.
+      const overlay = new preview.PreviewOverlay(delivery.world);
+      for (const { unit } of preview.listUnits(delivery.world)) overlay.changeUnit(preview.unitId(unit), () => {});
+      return { ...delivery, world: overlay.snapshot() };
+    });
+    const pair = r9v2LinearFiniteActionCapacityPair(request, actorId, hostileSide, actionCapacityCache,
+      { clock: priorClock, windows: beforeWindows, deliveries: deliveries(priorClock, before), discountOffset: priorClock.firstRound - horizon.currentRound },
+      { clock: nextClock, windows: afterWindows, deliveries: deliveries(nextClock, after), discountOffset: nextClock.firstRound - horizon.currentRound }, rootSkillId,
+      recast ? { allowFutureRecast: true, excludeOriginalCurrentSlot: consumedNaturalActors(request, declaration).has(actorId) } : null);
+    if (!pair) return { ...audit, reason: 'EXACT_STATE_BUDGET' };
+    const scale = Math.max(1, pair.before, pair.after);
+    return { ...audit, status: 'COMPLETE', reason: 'PAIRED_DATED_ACTION_PORTFOLIOS', beforeWindows, afterWindows,
+      beforeValue: pair.before, afterValue: pair.after, displacedCapacity: 0, exactStates: pair.states,
+      netCapacity: (pair.after - pair.before) / scale, resourceCostOwner: 'SELF_FOLLOWUP_MECHANICAL_GAIN',
+      counterfactual: recast ? 'ORIGINAL_NATURAL_SLOTS_WITH_LATER_SETUP_RECASTS' : 'ORIGINAL_CURRENT_SLOT_WITHOUT_RECASTING_THIS_SETUP', discount: .85 };
   }
 
   function r9v2LinearCausalFeatureRows(
@@ -57534,7 +63645,37 @@
     decisionCache = new Map(),
     performanceBreakdown = null,
     conditioned = false,
+    settlementResult = result,
+    setupCastTime = null,
   ) {
+    if (!conditioned) {
+      const key = 'cache:deferred-root:' + candidate.candidateId;
+      let frames = decisionCache.get(key);
+      if (frames === undefined) {
+        frames = r9v2LinearDeferredRootFrames(request, candidate);
+        decisionCache.set(key, frames);
+      }
+      if (frames) {
+        const held = findUnitInWorld(request.visibleWorld || request.worldSnapshot, request.actorId)?.蓄力技能;
+        const remainingSetupTime = Math.max(0, Number(held?.cast_time ?? held?.remainingCastTime ??
+          held?.skill?.前摇 ?? candidate.declaration?.skill?.前摇 ?? candidate.declaration?.skill?.cast_time ?? 0));
+        const weighted = r9v2LinearZeroCausalFeatureRows.map(row => ({ ...row, value: 0, sourceEventIds: new Set() }));
+        for (const frame of frames) {
+          const projection = frame.released ? preview.projectConditionedAction({ worldSnapshot: frame.clearedWorld,
+            actorId: request.actorId, declaration: frame.candidate.declaration, actionOpportunity: frame.request.actionOpportunity,
+            __preparedDecisionWorld: true, beliefState: request.beliefState, battleIntent: request.battleIntent,
+            buildOperationGraph: false, captureDependencies: false, cacheResult: false }) : {
+              ...result, afterSnapshot: request.visibleWorld, contributions: [], changedUnitIds: [], changedRules: {}, scheduledEvents: [] };
+          const rows = r9v2LinearCausalFeatureRows(frame.released ? frame.request : request,
+            frame.released ? frame.candidate : candidate, projection, new Map(), performanceBreakdown, !frame.released, projection, remainingSetupTime);
+          rows.forEach((row, index) => {
+            weighted[index].value += frame.probability * row.value;
+            row.sourceEventIds.forEach(id => weighted[index].sourceEventIds.add(id));
+          });
+        }
+        return Object.freeze(weighted.map(row => Object.freeze({ ...row, sourceEventIds: Object.freeze([...row.sourceEventIds].sort()) })));
+      }
+    }
     const causalClockNow = () =>
       typeof globalThis?.performance?.now === 'function'
         ? globalThis.performance.now()
@@ -57551,6 +63692,14 @@
         Number(performanceBreakdown.fastPathMs || 0) + causalClockNow() - startedAt).toFixed(3));
       return r9v2LinearZeroCausalFeatureRows;
     }
+    const continuationGrant = request.actionOpportunity?.continuationDepth > 0
+      ? null : root.__LWCS_BATTLE_RUNTIME__.readStructuredContinuationGrant(candidate.declaration);
+    const triggerContributions = continuationGrant && (continuationGrant.requiresHit || continuationGrant.requiresControl)
+      ? settlementResult.contributions || [] : result.contributions || [];
+    const rootReactionsAllowed = !conditioned && String(request.actionOpportunity?.role || candidate.declaration?.actionRole || '').toUpperCase() !== 'STATE_TICK';
+    const knownBeforeReaction = rootReactionsAllowed && preview.hasBeforeActionPassives(settlementResult);
+    const knownSpecialReaction = rootReactionsAllowed && preview.hasSpecialActionPassives(settlementResult);
+    const knownRootReaction = knownBeforeReaction || knownSpecialReaction || rootReactionsAllowed && preview.hasPostActionPassives(settlementResult);
     let existingRisks = null;
     let replacementTrialKey = '';
     if (!conditioned) {
@@ -57650,11 +63799,14 @@
         }
       }
     }
-    if (!conditioned && (existingRisks.length || (result.contributions || []).some(entry => {
-      const probability = r9v2ContributionProbability(entry);
+    if (!conditioned && (knownRootReaction || existingRisks.length || triggerContributions.some(entry => {
+      const probability = preview.contributionProbability(entry);
       const boundProbability = Number(entry.evidence?.persistentRiskBinding?.risk?.触发概率);
       return (probability > 1e-12 && probability < 1 - 1e-12) ||
         (boundProbability > 1e-12 && boundProbability < 1 - 1e-12) ||
+        !!entry.evidence?.rangeTransition || !!entry.evidence?.resourcePoolTransition?.strengthSupport ||
+        entry.evidence?.resourceStrengthOutcomes?.some(outcome =>
+          outcome.probability > 1e-12 && outcome.probability < 1 - 1e-12 || outcome.roundedResourceSupport) ||
         (entry.outcomeKind === 'HP_DELTA' && (entry.evidence?.outcomeDistribution || []).some(outcome =>
           Number(outcome.probability) > 1e-12 && Number(outcome.probability) < 1 - 1e-12));
     }))) {
@@ -57669,7 +63821,15 @@
       let branchCount = 0;
       let conditionalProjectionMs = 0;
       let conditionalNormalizationMs = 0;
+      // Experimental: evaluate the most probable physical paths first and
+      // stop after a fixed count, renormalizing by the evaluated mass.
+      const branchLimit = searchBounds?.conditionalBranches ?? null;
+      let evaluatedMass = 0;
       while (stack.length) {
+        if (branchLimit !== null) {
+          if (branchCount >= branchLimit) break;
+          stack.sort((left, right) => left.probability - right.probability);
+        }
         const path = stack.pop();
         const choices = new Map(path.choices);
         const discovered = [];
@@ -57677,12 +63837,14 @@
           if (outcomes.length === 1) return 0;
           const key = JSON.stringify([kind, effectInstanceId, targetId]);
           if (choices.has(key)) return choices.get(key);
-          const selected = 0;
+          const selected = branchLimit === null ? 0
+            : outcomes.reduce((best, outcome, index) => Number(outcome.probability) > Number(outcomes[best].probability) ? index : best, 0);
           choices.set(key, selected);
           discovered.push({ key, outcomes, selected });
           return selected;
         };
         branchCount += 1;
+        if (knownSpecialReaction && (branchCount > 4096 || stack.length > 4096)) throw new Error('R9V2_REACTIVE_OUTCOME_BRANCH_BUDGET_EXCEEDED');
         const projectionStartedAt = performanceBreakdown ? causalClockNow() : 0;
         let branchRequest = request;
         let branchCache = decisionCache;
@@ -57714,7 +63876,8 @@
               const state = unit.状态效果[risk.stateKey];
               if (risk.roundOffset) {
                 // Only conditioned forecast clones carry these per-window outcomes; never write them to MVU.
-                ((state.__r9v2RoundRiskOutcomes ||= {})[risk.riskIndex] ||= {})[risk.roundOffset] = selections[index];
+                const outcomes = ((state.__r9v2RoundRiskOutcomes ||= {})[risk.riskIndex] ||= { unresolvedProbability: risk.probability });
+                outcomes[risk.roundOffset] = selections[index];
                 state.副作用列表[risk.riskIndex].触发概率 = 0;
               } else state.副作用列表[risk.riskIndex].触发概率 = selections[index];
             });
@@ -57725,13 +63888,18 @@
           branchRequest = { ...request, visibleWorld: resolved.world };
           branchCache = resolved.cache;
         }
-        const branch = preview.previewAction({
+        const conditionalInput = {
           worldSnapshot: branchRequest.visibleWorld,
+          __preparedDecisionWorld: true,
+          beliefState: branchRequest.beliefState,
           actorId: request.actorId,
+          actionRole: request.actionOpportunity?.role || 'ACTIVE',
+          actionOpportunity: request.actionOpportunity,
           declaration: conditionalDeclaration,
           worldRevision: 'r9v2-linear:' + request.requestHash,
           snapshotRevision: 'conditional-causal:' + request.requestHash + ':' + conditionalActionId + ':' + branchCount,
           actionFingerprint: conditionalFingerprint,
+          battleIntent: request.battleIntent,
           buildOperationGraph: false, captureDependencies: false, cacheResult: false,
           applicationProbabilityResolver: ({ effectInstanceId, targetId, baseApplicationProbability }) => {
             if (baseApplicationProbability <= 1e-12 || baseApplicationProbability >= 1 - 1e-12) return baseApplicationProbability;
@@ -57740,7 +63908,25 @@
             ]);
           },
           damageOutcomeResolver: ({ effectInstanceId, targetId, outcomes }) => choose('damage', effectInstanceId, targetId, outcomes),
-        });
+          // Affordability and resource conditions are nonlinear: price the
+          // original joint resource classes, not an unaffordable mean balance.
+          resourceOutcomeResolver: args => choose(`resource:${args.kind}:${args.resource}:${args.windowId}`,
+            args.effectInstanceId, args.targetId, args.outcomes),
+          resourceOutcomeThresholdResolver: args => r9v2LinearCreatedResourcePaymentThresholds(args.unit, args.resource,
+            sideOf(branchRequest.visibleWorld, args.unit) === request.actorSide),
+          resourceConditionOutcomeResolver: args => choose(
+            `resource-condition:${args.resource}:${args.windowId}:${preview.stableHash(args.condition)}:${preview.stableHash(args.outcomes)}`,
+            args.effectInstanceId, args.subjectId, args.outcomes),
+          ...(knownBeforeReaction ? { damagePreludeResolver: args => {
+            const frames = preview.beforeDamagePassiveFrames(conditionalInput, args, r9v2LinearPassiveProjectionOptions(conditionalInput));
+            return frames ? frames[choose('damage-prelude', args.effectInstanceId, args.targetId, frames)] : null;
+          } } : {}),
+          ...(knownSpecialReaction ? { specialPassiveResolver: args => {
+            const frames = preview.specialPassiveBoundaryFrames(conditionalInput, args, r9v2LinearPassiveProjectionOptions(conditionalInput));
+            return frames ? frames[choose(`special-passive:${args.segment || 0}`, args.effectInstanceId, args.targetId || '', frames)] : null;
+          }, damageSegmentOutcomeResolver: args => choose(`damage-segment:${args.segment}`, args.effectInstanceId, args.targetId, args.outcomes) } : {}),
+        };
+        const branch = preview.projectConditionedAction(conditionalInput);
         if (performanceBreakdown) conditionalProjectionMs += causalClockNow() - projectionStartedAt;
         let probability = path.probability;
         const prefix = new Map(path.choices);
@@ -57751,21 +63937,30 @@
           prefix.set(row.key, row.selected);
           probability *= row.outcomes[row.selected].probability;
         }
+        evaluatedMass += probability;
         const declaration = candidate.declaration;
-        const normalizationStartedAt = performanceBreakdown ? causalClockNow() : 0;
-        const audit = temporalAuditForCandidate(preview.collectEffects(declaration?.skill || {}), declaration?.targetIds || [], branchRequest, branchRequest.visibleWorld, request.actorSide, branch.contributions || [], declaration);
-        const temporalSnapshot = removeUnrealizableTemporalEffects(branch.afterSnapshot, branchRequest.visibleWorld, audit);
-        const scoring = Object.freeze({
-          ...branch,
-          afterSnapshot: temporalSnapshot,
-          contributions: Object.freeze((branch.contributions || []).filter(entry => !audit.invalidContributionSet.has(entry))),
-        });
-        if (!Object.keys(branch.changedRules || {}).length && !(branch.scheduledEvents || []).some(event => ['SUMMON_CREATE', 'summon_create'].includes(String(event.type || event.eventKind || '')))) markCapacityDeltaSnapshot(temporalSnapshot, branchRequest.visibleWorld, branch.changedUnitIds || []);
-        if (performanceBreakdown) conditionalNormalizationMs += causalClockNow() - normalizationStartedAt;
-        const rows = r9v2LinearCausalFeatureRows(branchRequest, candidate, scoring, branchCache, performanceBreakdown, true);
-        if (!weighted) weighted = rows.map(row => ({ ...row, value: 0 }));
-        rows.forEach((row, index) => { weighted[index].value += probability * row.value; row.sourceEventIds.forEach(id => eventIds.add(id)); });
+        const reactionStartedAt = performanceBreakdown ? causalClockNow() : 0;
+        const reactions = knownRootReaction ? preview.postActionPassiveOutcomes(conditionalInput, branch, null,
+          r9v2LinearPassiveProjectionOptions(conditionalInput)) : [{ result: branch, probability: 1 }];
+        if (performanceBreakdown) conditionalProjectionMs += causalClockNow() - reactionStartedAt;
+        for (const reaction of reactions) {
+          const normalizationStartedAt = performanceBreakdown ? causalClockNow() : 0;
+          const realized = reaction.result;
+          const audit = temporalAuditForCandidate(preview.collectEffects(declaration?.skill || {}), declaration?.targetIds || [], branchRequest, branchRequest.visibleWorld, request.actorSide, realized.contributions || [], declaration);
+          const temporalSnapshot = removeUnrealizableTemporalEffects(realized.afterSnapshot, branchRequest.visibleWorld, audit);
+          const scoring = Object.freeze({
+            ...realized,
+            afterSnapshot: temporalSnapshot,
+            contributions: Object.freeze((realized.contributions || []).filter(entry => !audit.invalidContributionSet.has(entry))),
+          });
+          if (!Object.keys(realized.changedRules || {}).length && !(realized.scheduledEvents || []).some(event => ['SUMMON_CREATE', 'summon_create'].includes(String(event.type || event.eventKind || '')))) markCapacityDeltaSnapshot(temporalSnapshot, branchRequest.visibleWorld, realized.changedUnitIds || []);
+          if (performanceBreakdown) conditionalNormalizationMs += causalClockNow() - normalizationStartedAt;
+          const rows = r9v2LinearCausalFeatureRows(branchRequest, candidate, scoring, branchCache, performanceBreakdown, true, realized, setupCastTime);
+          if (!weighted) weighted = rows.map(row => ({ ...row, value: 0 }));
+          rows.forEach((row, index) => { weighted[index].value += probability * reaction.probability * row.value; row.sourceEventIds.forEach(id => eventIds.add(id)); });
+        }
       }
+      if (branchLimit !== null && stack.length && weighted && evaluatedMass > 0) weighted.forEach(row => { row.value /= evaluatedMass; });
       if (performanceBreakdown) {
         performanceBreakdown.conditionalProjectionMs = Number((Number(performanceBreakdown.conditionalProjectionMs || 0) + conditionalProjectionMs).toFixed(3));
         performanceBreakdown.conditionalNormalizationMs = Number((Number(performanceBreakdown.conditionalNormalizationMs || 0) + conditionalNormalizationMs).toFixed(3));
@@ -57845,34 +64040,45 @@
     const actorAfter = findUnitInWorld(after, actorId) || actorBefore;
     const declaration = candidate.declaration || {};
     const effects = Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组 : [];
+    const rootSustainProfile = r9v2LinearActionSustainProfile(before, after, declaration, result);
     const role = String(request?.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase();
     const setupAction = effects.some(effect => {
       const prototype = String(effect?.原型 || '').trim();
-      return ['资源变化', '属性修正', '判定修正', '结算修正', '召唤生成', '机制授予', '位移执行'].includes(prototype) &&
+      return ['资源变化', '资源转移', '属性修正', '判定修正', '结算修正', '召唤生成', '机制授予', '位移执行'].includes(prototype) &&
         !effects.some(row => String(row?.原型 || '').trim() === '伤害结算');
     });
     const hasJointFlows = memoBefore('world:has-persistent-state-flow', () => preview.listUnits(before).some(({ unit }) =>
-      Object.values(unit.状态效果 || {}).some(state => ['资源转移', '状态转移', '状态交换'].includes(state?.持续原型效果?.原型)))) ||
-      (result.contributions || []).some(entry => entry.evidence?.persistentTransfer || entry.evidence?.persistentStateOperation);
+      Object.values(unit.状态效果 || {}).some(state => state?.sustainSourceActionId || state?.延迟效果 === true || ['资源转移', '状态转移', '状态交换'].includes(state?.持续原型效果?.原型)))) ||
+      !!rootSustainProfile.stateTargets?.length ||
+      (result.contributions || []).some(entry => entry.evidence?.persistentTransfer || entry.evidence?.persistentStateOperation ||
+        Object.values(entry.evidence?.stateEntries || {}).some(state => state?.延迟效果 === true));
     const followupWindows = hasJointFlows ? 3 : r9v2LinearFollowupWindows(effects, request, before);
-    const consumesSetupOpportunity = setupAction && (role === 'ACTIVE' || declaration.counterConsumesNaturalOpportunity === true);
+    // A state-only or shield-only release also spends its current action.
+    // Its immediate benefit has a separate owner; a zero or suppressed future
+    // resource receipt cannot turn that known current opportunity into a gift.
+    const consumesSetupOpportunity = effects.length > 0 && !effects.some(effect => effect?.原型 === '伤害结算') &&
+      (role === 'ACTIVE' || declaration.counterConsumesNaturalOpportunity === true);
     const actionGrantedForActor = Array.isArray(result?.contributions) && result.contributions.some(entry =>
       entry?.outcomeKind === 'ACTION_GRANTED' &&
       String(entry?.targetId || '').trim() === String(actorId || '').trim());
     const naturalOpportunity = actorBefore?.__battleRuntime?.naturalOpportunity;
     const jointRootPending = role !== 'ACTIVE' && declaration.counterConsumesNaturalOpportunity !== true &&
       naturalOpportunity?.status === 'PENDING' && Number(naturalOpportunity.round) === Number(before.回合 || 0);
+    const inheritedSustains = request.evaluationContext?.continuedSustains || null;
     let projectPassiveWorld = r9v2LinearPassiveCapacityWorld;
-    if (hasJointFlows) {
-      const costs = declaration.actionKind === 'RELEASE_SKILL' ? preview.readSkillCostStages(declaration.skill, declaration).维持 : {};
-      const stateKeys = Object.keys(costs || {}).length ? Object.keys(actorAfter.状态效果 || {}).filter(key =>
-        key.startsWith('preview:') && !Object.hasOwn(actorBefore.状态效果 || {}, key)) : [];
-      projectPassiveWorld = r9v2JointFlowProjector(before, actorId, { costs, stateKeys, currentOpportunityPending: jointRootPending });
+    if (hasJointFlows || Object.keys(inheritedSustains || {}).length) {
+      projectPassiveWorld = r9v2JointFlowProjector(before, actorId, { ...rootSustainProfile, currentOpportunityPending: jointRootPending }, 0, inheritedSustains);
     }
-    const actorNaturalWindows = battleHorizonProfile(request, before).remainingRounds + Number(
-      role !== 'ACTIVE' && declaration.counterConsumesNaturalOpportunity !== true &&
-      Number(naturalOpportunity?.round) === Number(before?.回合 || 0) && naturalOpportunity?.status === 'PENDING',
-    );
+    const passiveWorldPairs = (unit, next, offset, profile = null) => {
+      if (projectPassiveWorld.pairedOutcomes) return projectPassiveWorld.pairedOutcomes(before, after, offset, [], result.contributions || []);
+      const priorWorld = memoBefore(`passive-before:${JSON.stringify([preview.unitId(unit), offset, true, profile?.currentOpportunityPending])}`, () =>
+        projectPassiveWorld(before, unit, offset, unit, [], { costs: {}, stateKeys: [], currentOpportunityPending: profile?.currentOpportunityPending }));
+      return [{ probability: 1, priorWorld, nextWorld: projectPassiveWorld(after, next, offset, unit, result.contributions, profile) }];
+    };
+    const actorNaturalWindows = availableNaturalOpportunityCount(before, actorBefore || {}, {
+      currentOpportunityConsumedFor: consumedNaturalActors(request, declaration, actorId),
+      horizon: battleHorizonProfile(request, before),
+    });
     const actorFollowupWindows = Math.max(
       0,
       Math.min(
@@ -57880,26 +64086,13 @@
         Math.min(followupWindows, actorNaturalWindows) + (actionGrantedForActor ? 1 : 0),
       ),
     );
-    const summonActionPoolGain = clamp(
-      (Array.isArray(result?.contributions) ? result.contributions : [])
-        .filter(entry => String(entry?.outcomeKind || '').trim() === 'SUMMON_WINDOW')
-        .reduce((sum, entry, index) => {
-          const evidence = entry?.evidence || {};
-          const actionPotential = Number(evidence?.actionPotential);
-          if (!Number.isFinite(actionPotential)) {
-            throw new Error(
-              `R9V2_LINEAR_SUMMON_POTENTIAL_NON_FINITE:${candidate.candidateId}:${index}`,
-            );
-          }
-          // 协同召唤的即时行动已经进入本次预览伤害与敌方压力；这里只
-          // 计入尚未兑现的后续窗口，避免把同一次召唤攻击算两遍。
-          const windows = Math.max(0, Number(evidence?.remainingWindows || 0));
-          return sum + Math.max(0, actionPotential) * windows *
-            r9v2ContributionProbability(entry) / 100;
-        }, 0),
-      0,
-      1,
-    );
+    const timedActionCapacity = setupAction && actorBefore && actorAfter
+      ? r9v2LinearSettlementSetupCapacity(request, candidate, result, actorBefore, actorAfter, hostileSide, actionCapacityCache) : null;
+    // A complete pair already owns the dated own-action portfolio and debit;
+    // avoid computing legacy estimates that would be discarded below. Keep
+    // every original fallback when either calendar or exact search is open.
+    const settlementCapacityComplete = timedActionCapacity?.status === 'COMPLETE';
+    const summonActionPoolGain = r9v2LinearSummonFollowupCapacity(request, candidate, result, jointRootPending);
     const reactiveRole = ['REACTION', 'COUNTER'].includes(role);
     const incomingSettlementPending = role === 'REACTION';
     let skillPoolCannotIncrease = false;
@@ -57946,7 +64139,7 @@
     let beforeMechanical = 0;
     let afterMechanical = 0;
     let mechanicalScale = 1;
-    if (candidate?.creation || actorFollowupWindows > 0) {
+    if (!candidate?.creation && actorFollowupWindows > 0 && !settlementCapacityComplete) {
       beforeMechanical = memoBefore('actor:mechanical-coverage', () =>
         r9v2LinearMechanicalCoverage(before, actorId, hostileSide, sideUnitsByWorld));
       afterMechanical = r9v2LinearMechanicalCoverage(after, actorId, hostileSide, sideUnitsByWorld);
@@ -57954,7 +64147,9 @@
     }
     let creationSelfMechanicalGain = 0;
     let selfCapacityGain = 0;
-    if (!candidate?.creation && actorFollowupWindows > 0) {
+    let periodicResourceCapacity;
+    let periodicResourceSequencePair;
+    if (!candidate?.creation && (actorFollowupWindows > 0 || consumesSetupOpportunity && !actionGrantedForActor) && !settlementCapacityComplete) {
       const beforeSelfCapacity = memoBefore('actor:best-capacity', () =>
         r9v2LinearBestActionCapacity(before, actorBefore || {}, hostileSide, actionCapacityCache));
       const afterSelfCapacity = r9v2LinearBestActionCapacity(after, actorAfter || {}, hostileSide, actionCapacityCache);
@@ -57968,19 +64163,13 @@
         true,
       );
       const followupCapacityGain = (prior, next) => {
-        if (next < prior) return (next - prior) / Math.max(1, prior, next) * actorFollowupWindows;
-        const positiveGain = Math.max(0, next - prior);
-        if (!consumesSetupOpportunity) {
-          return positiveGain / Math.max(1, prior, next) * actorFollowupWindows;
-        }
         // A pure setup occupies the current active opportunity. Its future
-        // uplift is useful only after the realizable windows repay the best
-        // action that was skipped; an explicit extra action removes that cost.
-        const displacedCapacity = actionGrantedForActor ? 0 : prior;
-        return Math.max(
-          0,
-          positiveGain * actorFollowupWindows - displacedCapacity,
-        ) / Math.max(1, prior, next);
+        // gains and losses must repay the skipped action in signed capacity;
+        // no future window does not make that known current debit disappear.
+        // A COMPLETE paired portfolio above already owns it; an explicit
+        // extra action or a non-consuming counter does not displace a slot.
+        const displacedCapacity = consumesSetupOpportunity && !actionGrantedForActor ? prior : 0;
+        return ((next - prior) * actorFollowupWindows - displacedCapacity) / Math.max(1, prior, next);
       };
       const overallCapacityGain = followupCapacityGain(beforeSelfCapacity, afterSelfCapacity);
       const hostileCapacityGain = followupCapacityGain(beforeHostileCapacity, afterHostileCapacity);
@@ -57989,14 +64178,10 @@
         ['STATE_CHANGED', 'STATE_SCHEDULED'].includes(entry.outcomeKind) && entry.targetId === actorId &&
         String(entry.effectInstanceId || '').includes(':side-effect:')
           ? Math.max(duration, r9v2LinearRiskDuration(entry) + Math.max(0, Number(entry.evidence?.deferredStartRoundOffset || 0) - 1)) : duration, 0);
-      const sustainCosts = declaration.actionKind === 'RELEASE_SKILL'
-        ? preview.readSkillCostStages(declaration.skill, declaration).维持 : null;
-      const sustainKeys = sustainCosts && Object.keys(sustainCosts).length
-        ? Object.keys(actorAfter.状态效果 || {}).filter(key => key.startsWith('preview:') && !Object.hasOwn(actorBefore.状态效果 || {}, key)) : [];
-      const sustainProfile = sustainKeys.length ? { costs: sustainCosts, stateKeys: sustainKeys } : null;
+      const sustainProfile = rootSustainProfile.stateKeys.length || rootSustainProfile.stateTargets?.length ? rootSustainProfile : null;
       const existingPassiveState = memoBefore('actor:has-passive-state-work', () => Object.values(actorBefore.状态效果 || {}).some(state =>
         state?.持续原型效果 || state?.副作用列表?.length));
-      if (hasJointFlows || existingPassiveState || riskLastOffset > 0 || sustainProfile || Object.values(actorBefore.持续效果 || {}).some(effect =>
+      if (hasJointFlows || existingPassiveState || riskLastOffset > 0 || sustainProfile || inheritedSustains?.[actorId]?.length || Object.values(actorBefore.持续效果 || {}).some(effect =>
         ['condition', 'domain', 'life_fire', 'c2_food_maintain'].includes(effect?.effect_type))) {
         const currentPending = role !== 'ACTIVE' && declaration.counterConsumesNaturalOpportunity !== true &&
           naturalOpportunity?.status === 'PENDING' && Number(naturalOpportunity.round) === Number(before.回合 || 0);
@@ -58015,29 +64200,73 @@
         let overallGain = 0, hostileGain = 0, overallLoss = 0, hostileLoss = 0;
         for (let index = 0; index < offsets.length; index++) {
           const offset = offsets[index];
-          const priorWorld = memoBefore(`${hasJointFlows ? `joint-passive-before:${Number(jointRootPending)}` : 'passive-before'}:${JSON.stringify([actorId, offset, true, currentPending])}`, () =>
-            projectPassiveWorld(before, actorBefore, offset, actorBefore, [], { costs: {}, stateKeys: [], currentOpportunityPending: currentPending }));
-          const nextWorld = projectPassiveWorld(after, actorAfter, offset, actorBefore, result.contributions,
-            { ...(sustainProfile || { costs: {}, stateKeys: [] }), currentOpportunityPending: currentPending });
-          const priorActor = findUnitInWorld(priorWorld, actorId), nextActor = findUnitInWorld(nextWorld, actorId);
-          for (const hostileOnly of [false, true]) {
-            const prior = r9v2LinearBestActionCapacity(priorWorld, priorActor, hostileSide, actionCapacityCache, hostileOnly);
-            const next = r9v2LinearBestActionCapacity(nextWorld, nextActor, hostileSide, actionCapacityCache, hostileOnly);
-            const gain = (next - prior) / Math.max(1, prior, next);
-            if (hostileOnly) {
-              hostileLoss += Math.min(0, gain);
-              if (index < actorFollowupWindows) hostileGain += Math.max(0, gain);
-            } else {
-              overallLoss += Math.min(0, gain);
-              if (index < actorFollowupWindows) overallGain += Math.max(0, gain);
+          for (const { probability, priorWorld, nextWorld } of passiveWorldPairs(actorBefore, actorAfter, offset,
+            { ...(sustainProfile || { costs: {}, stateKeys: [] }), currentOpportunityPending: currentPending })) {
+            const priorActor = findUnitInWorld(priorWorld, actorId), nextActor = findUnitInWorld(nextWorld, actorId);
+            for (const hostileOnly of [false, true]) {
+              const prior = r9v2LinearBestActionCapacity(priorWorld, priorActor, hostileSide, actionCapacityCache, hostileOnly);
+              const next = r9v2LinearBestActionCapacity(nextWorld, nextActor, hostileSide, actionCapacityCache, hostileOnly);
+              const gain = (next - prior) / Math.max(1, prior, next);
+              if (hostileOnly) {
+                hostileLoss += probability * Math.min(0, gain);
+                if (index < actorFollowupWindows) hostileGain += probability * Math.max(0, gain);
+              } else {
+                overallLoss += probability * Math.min(0, gain);
+                if (index < actorFollowupWindows) overallGain += probability * Math.max(0, gain);
+              }
             }
           }
         }
         if (consumesSetupOpportunity && !actionGrantedForActor) {
-          overallGain = Math.max(0, overallGain - beforeSelfCapacity / Math.max(1, beforeSelfCapacity, afterSelfCapacity));
-          hostileGain = Math.max(0, hostileGain - beforeHostileCapacity / Math.max(1, beforeHostileCapacity, afterHostileCapacity));
+          overallGain -= beforeSelfCapacity / Math.max(1, beforeSelfCapacity, afterSelfCapacity);
+          hostileGain -= beforeHostileCapacity / Math.max(1, beforeHostileCapacity, afterHostileCapacity);
         }
         selfCapacityGain = Math.max(overallGain, hostileGain) + Math.min(overallLoss, hostileLoss);
+      }
+      const sourcePeriodicResource = (result.contributions || []).some(entry => {
+        if (entry.outcomeKind !== 'STATE_CHANGED' || entry.targetId !== actorId || entry.rootCauseId !== result.actionId ||
+            entry.sourceActionId !== result.actionId || entry.evidence?.marginal === false || !(Number(entry.evidence?.applicationProbability ?? 1) > 0)) return false;
+        const combat = entry.evidence?.combatEffect || {};
+        return ['vit_gain_ratio', 'sp_gain_ratio', 'men_gain_ratio'].some(key => Number.isFinite(Number(combat[key])) && Number(combat[key]) !== 0) ||
+          ['魂力', '精神力', '体力'].includes(String(combat.resource_tick_resource || '').trim()) &&
+          ['resource_tick_ratio', 'resource_tick_amount'].some(key => Number.isFinite(Number(combat[key])) && Math.abs(Number(combat[key])) > 1e-12);
+      });
+      if (sourcePeriodicResource) {
+        // This is one signed future action-capacity channel, not a new
+        // resource price or a full net-utility model. Continue paid balances;
+        // independent best actions may otherwise spend one reserve twice.
+        periodicResourceCapacity = { scope: 'OWN_PERIODIC_RESOURCE_ACTION_CAPACITY_NET', status: 'UNMODELED',
+          reason: 'NATURAL_CLOCK_UNCLOSED', fullNetUtilityVerified: false, negativeUtilityIncluded: false, terminalReserveIncluded: false,
+          modelScope: 'EXISTING_EARLY_SEQUENCE_OR_FULL_REPEATED_PAID_ROUTE', aggregation: 'ONE_ENVELOPE_PER_WORLD_NOT_SUM' };
+        const windows = r9v2LinearResourceWindowCount(request, actorBefore, actorNaturalWindows);
+        if (Number.isSafeInteger(windows) && windows > 0 && windows <= 12 && windows * preview.listUnits(before).length <= DECISION_PREVIEW_NODE_LIMIT) {
+          const priorClock = r9v2LinearResourceNaturalClock(request, candidate, before, actorBefore, windows, null, actionCapacityCache);
+          const nextClock = r9v2LinearResourceNaturalClock(request, candidate, before, actorBefore, windows, result, actionCapacityCache);
+          if (priorClock && nextClock) {
+            const prior = r9v2LinearResourceSequenceCapacity(before, actorBefore, hostileSide, actionCapacityCache,
+              resourceSequenceCapacityCache, request, windows, priorClock);
+            const next = r9v2LinearResourceSequenceCapacity(after, actorAfter, hostileSide, actionCapacityCache,
+              resourceSequenceCapacityCache, request, windows, nextClock);
+            const displaced = (role === 'ACTIVE' || declaration.counterConsumesNaturalOpportunity === true) && !actionGrantedForActor ? beforeSelfCapacity : 0;
+            if ([prior.sequence, next.sequence, prior.reserve, next.reserve, prior.finitePaidCapacity, next.finitePaidCapacity, displaced].every(Number.isFinite)) {
+              // A full repeated route already contains its first paid action.
+              // Compare one capacity per world; do not charge lost early and
+              // late views, or credit gross gain and drain, independently.
+              const scale = Math.max(1, prior.finitePaidCapacity, next.finitePaidCapacity, displaced);
+              const net = next.finitePaidCapacity - prior.finitePaidCapacity - displaced;
+              const gain = Math.max(0, net) / scale;
+              const loss = Math.max(0, -net) / scale;
+              selfCapacityGain = gain - loss;
+              periodicResourceSequencePair = { before: prior, after: next };
+              periodicResourceCapacity = { ...periodicResourceCapacity, status: 'COMPLETE', reason: 'CONTINUOUS_PAID_ACTION_SEQUENCE',
+                windows, firstRound: nextClock.firstRound, lastRound: nextClock.lastRound, finitePaidTailIncluded: true,
+                beforeSequence: prior.sequence, afterSequence: next.sequence, beforePaidTail: prior.reserve, afterPaidTail: next.reserve,
+                beforeFinitePaidCapacity: prior.finitePaidCapacity, afterFinitePaidCapacity: next.finitePaidCapacity,
+                displacedCapacity: displaced, gain, loss, negativeUtilityIncluded: true, capacityOwner: 'SELF_FOLLOWUP_MECHANICAL_GAIN' };
+            } else periodicResourceCapacity.reason = 'NONFINITE_CAPACITY';
+          }
+        } else if (Number.isFinite(windows) && windows * preview.listUnits(before).length > DECISION_PREVIEW_NODE_LIMIT) periodicResourceCapacity.reason = 'PROJECTION_WORK_BUDGET';
+        else if (Number.isFinite(windows) && windows > 12) periodicResourceCapacity.reason = 'MODEL_WINDOW_LIMIT';
       }
     }
     markCausalStage('selfFollowupMs');
@@ -58045,9 +64274,67 @@
       r9v2LinearSideUnits(before, actorSide, sideUnitsByWorld).filter(unit => preview.unitId(unit) !== actorId));
     const enemiesBefore = memoBefore('side:enemies', () => r9v2LinearSideUnits(before, hostileSide, sideUnitsByWorld));
     const enemiesAfter = new Map(r9v2LinearSideUnits(after, hostileSide, sideUnitsByWorld).map(unit => [preview.unitId(unit), unit]));
+    // A closed natural horizon can still contain reactions, queued actions or
+    // a newly granted continuation. Missing queue evidence is not exhaustion.
+    const resourceResponsePending = incomingSettlementPending ||
+      request.actionOpportunity?.futureHostileResponseAllowed !== false ||
+      (request.actionOpportunity?.pendingHostileActorIds || []).length > 0 ||
+      (result.contributions || []).some(entry => entry.outcomeKind === 'ACTION_GRANTED') ||
+      memoBefore('world:queued-hostile-resource-window', () =>
+        enemiesBefore.some(unit => r8UnitHasFutureOpportunity(request, preview.unitId(unit))));
     let allyOptionGain = 0;
     let creationAllyOptionGain = 0;
     let allyResourceRunwayGain = 0;
+    const allyTemporalCapacity = [];
+    const fixedAllyCalendar = !!projectPassiveWorld.pairedOutcomes &&
+      !(request.evaluationContext?.scheduledEvents || []).some(event => event.eventType !== 'FUTURE_NATURAL_ACTION') &&
+      [before, after].every(world => {
+        if (world.__规则改写运行态?.length || preview.projectedResourceWorldState(world).some(([, row]) =>
+          !row.support || row.support.settlementMap || row.support.minimum !== row.support.maximum)) return false;
+        const entries = preview.listUnits(world), carriers = entries.flatMap(({ unit }) => Object.entries(unit.状态效果 || {}).map(([key, state]) => ({ key, state })));
+        return entries.every(({ unit }) => !preview.isSummonUnit(unit) && !unit.蓄力技能 && !preview.collectPassiveSkills(unit).length &&
+          !equipmentPassivePreviewEffects(unit).length && Object.values(unit.状态效果 || {}).every(state =>
+            r9v2PurePanelSustainState(state, true) && Number.isSafeInteger(state.duration) && state.duration > 0 && Number(state.__previewApplicationProbability ?? 1) === 1) &&
+          Object.values(unit.持续效果 || {}).every(effect => {
+            const costs = preview.normalizeSkillCostMap(effect.维持消耗 || {});
+            return effect.effect_type === 'condition' && !effect.维持释放效果列表?.length && !!effect.sourceActionId &&
+              !costs.非法项.length && Object.keys(costs.values).every(resource => ['魂力', '精神力', '体力'].includes(resource)) &&
+              carriers.some(({ key, state }) => (key === effect.related_condition || state.状态ID === effect.related_condition) &&
+                (state.sustainSourceActionId || state.sourceActionId) === effect.sourceActionId);
+          }));
+      });
+    const allyProjectionUnits = Math.max(preview.listUnits(before).length, preview.listUnits(after).length);
+    const allyConsumablePoolFor = (world, unit) => {
+      const pool = skillPoolFor(unit);
+      // Current HP alone cannot rule out healing after later incoming damage.
+      // Only close this option when the partner owns the last natural turn;
+      // longer sequences retain their existing future-capacity model.
+      if (battleHorizonProfile(request, before).remainingRounds > 0) return pool;
+      const unitId = preview.unitId(unit);
+      const pending = request.actionOpportunity?.pendingNaturalActorIds;
+      if (Array.isArray(pending) ? pending.some(id => id !== actorId && id !== unitId) :
+        preview.listUnits(world).some(({ unit: other }) => preview.unitId(other) !== actorId && preview.unitId(other) !== unitId &&
+          other.__battleRuntime?.naturalOpportunity?.status === 'PENDING' &&
+          Number(other.__battleRuntime.naturalOpportunity.round) === Number(before.回合 || 0))) return pool;
+      let rows = null, value = pool.value;
+      pool.rows.forEach((row, index) => {
+        const effects = row.skill._效果数组;
+        if (!effects.every(effect => effect?.原型 === '资源变化' && /^(?:生命|HP)$/i.test(String(effect.资源 || '').trim()) &&
+          Number.parseFloat(String(effect.数值 || '')) > 0 && !effect.持续回合 && !effect.条件分支?.length)) return;
+        // A newly affordable immediate heal is not a usable option when its
+        // actual recipients cannot recover any HP. Keep other mechanics and
+        // mixed/ongoing skills in their existing pool model.
+        const capacity = r9v2LinearSkillActionCapacity(unit, row.skill, targetProfile(row.skill),
+          r9v2LinearSideUnits(world, hostileSide, sideUnitsByWorld),
+          r9v2LinearSideUnits(world, actorSide, sideUnitsByWorld), false,
+          r9v2LinearCapacityProjectionContext(world, actionCapacityCache), world);
+        if (capacity > 0) return;
+        rows ||= pool.rows.slice();
+        rows[index] = { ...row, value: 0 };
+        value -= row.value;
+      });
+      return rows ? { ...pool, rows, value: Math.max(0, value) } : pool;
+    };
     if (!candidate?.creation) {
       const afterAllies = new Map(r9v2LinearSideUnits(after, actorSide, sideUnitsByWorld).map(unit => [preview.unitId(unit), unit]));
       const hostileRosterUnchanged = enemiesBefore.every(unit =>
@@ -58061,17 +64348,22 @@
         const unitId = preview.unitId(unit);
         const hasAllySustain = Object.values(unit.持续效果 || {}).some(effect =>
           ['condition', 'domain', 'life_fire', 'c2_food_maintain'].includes(effect?.effect_type) && !effect.维持释放效果列表?.length);
-        const hasAllyTemporalState = hasJointFlows || [unit, next].some(actor => Object.values(actor.状态效果 || {}).some(state =>
+        const hasAllyResourceLoss = allyUnitChanged && ['魂力', '精神力', '体力'].some(resource =>
+          preview.readResource(next, resource) < preview.readResource(unit, resource) - 1e-9);
+        const hasAllyTemporalState = hasJointFlows || hasAllyResourceLoss || [unit, next].some(actor => Object.values(actor.状态效果 || {}).some(state =>
           state?.副作用列表?.length || root.__LWCS_BATTLE_RUNTIME__.structuredControlConsumesActiveOpportunity(state)));
         let poolGain = 0;
         let grantedSkillValue = 0;
+        let hasNewGrantedSkill = false;
         if (allyUnitChanged) {
-          const priorPool = skillPoolFor(unit);
-          const nextPool = skillPoolFor(next);
+          const priorPool = allyConsumablePoolFor(before, unit);
+          const nextPool = allyConsumablePoolFor(after, next);
           const priorSkillIds = new Set(priorPool.rows.map(row => row.id));
-          grantedSkillValue = nextPool.rows.filter(row =>
+          const newGrants = nextPool.rows.filter(row =>
             row.skill?.__mechanismGrantTemporarySkill === true && !priorSkillIds.has(row.id)
-          ).reduce((sum, row) => sum + Math.max(0, Number(row.value || 0)), 0);
+          );
+          hasNewGrantedSkill = newGrants.length > 0;
+          grantedSkillValue = newGrants.reduce((sum, row) => sum + Math.max(0, Number(row.value || 0)), 0);
           poolGain = Math.max(
             0,
             nextPool.value - priorPool.value - grantedSkillValue,
@@ -58085,8 +64377,9 @@
         const relativeCapacityGain = Math.max(0, nextCapacity - priorCapacity) /
           Math.max(1, priorCapacity, nextCapacity);
         let capacityGain = 0;
-        if (relativeCapacityGain > 0 || grantedSkillValue > 0) {
-          const teamActionCapacity = memoBefore('side:best-action-capacity', () => Math.max(
+        let teamActionCapacity = 0;
+        if (relativeCapacityGain > 0 || hasNewGrantedSkill) {
+          teamActionCapacity = memoBefore('side:best-action-capacity', () => Math.max(
             ...r9v2LinearSideUnits(before, actorSide, sideUnitsByWorld).map(sideUnit =>
               r9v2LinearBestActionCapacity(before, sideUnit, hostileSide, actionCapacityCache)),
             1,
@@ -58099,16 +64392,27 @@
               clamp(priorCapacity / Math.max(teamActionCapacity, priorCapacity), 0, 1),
           );
         }
-        const allyWindows = hasJointFlows ? Math.min(3, availableNaturalOpportunityCount(before, unit, { horizon: battleHorizonProfile(request, before) })) : followupWindows;
-        allyOptionGain += Math.max(poolGain, capacityGain) * allyWindows;
+        // A useful option still needs an unspent current or in-horizon future
+        // opportunity after this settlement. Fusion may have spent the ally's
+        // pending turn; the effect duration alone cannot create another one.
+        const availableWindows = availableNaturalOpportunityCount(after, next, { horizon: battleHorizonProfile(request, before) });
+        const currentPending = next.__battleRuntime?.naturalOpportunity?.status === 'PENDING' &&
+          Number(next.__battleRuntime.naturalOpportunity.round) === Number(after.回合 || 0);
+        const firstOffset = Number(!currentPending);
+        const completeAllyCalendar = fixedAllyCalendar && Number.isSafeInteger(availableWindows) && availableWindows >= 0 &&
+          2 * allyProjectionUnits * (firstOffset + availableWindows) <= DECISION_PREVIEW_NODE_LIMIT;
+        const temporalWindows = completeAllyCalendar ? availableWindows : Math.min(3, availableWindows);
+        const allyWindows = completeAllyCalendar ? availableWindows : Math.min(hasJointFlows ? 3 : followupWindows, availableWindows);
+        // An indirect fuel grant can have zero single-action pool value while
+        // enabling a paid later action. Do not gate the dated pair on that proxy.
+        const finiteGrantedCapacity = hasNewGrantedSkill && teamActionCapacity > 0
+          ? r9v2LinearGrantedHealCapacity(request, candidate, result, unit, next, hostileSide, availableWindows, actionCapacityCache) : null;
+        allyOptionGain += finiteGrantedCapacity === null ? Math.max(poolGain, capacityGain) * allyWindows
+          : clamp(finiteGrantedCapacity / Math.max(1, teamActionCapacity), 0, 1);
         if (risks.length || hasAllySustain || hasAllyTemporalState) {
-          const currentPending = unit.__battleRuntime?.naturalOpportunity?.status === 'PENDING' &&
-            Number(unit.__battleRuntime.naturalOpportunity.round) === Number(before.回合 || 0);
-          const firstOffset = Number(!currentPending);
-          const availableWindows = availableNaturalOpportunityCount(before, unit, { horizon: battleHorizonProfile(request, before) });
           const lastOffset = firstOffset + availableWindows - 1;
           const offsets = new Set();
-          if (hasAllySustain || hasAllyTemporalState) for (let index = 0; index < Math.min(3, availableWindows); index++) offsets.add(firstOffset + index);
+          if (hasAllySustain || hasAllyTemporalState) for (let index = 0; index < temporalWindows; index++) offsets.add(firstOffset + index);
           risks.forEach(entry => {
             const start = Number(entry.evidence.deferredStartRoundOffset || 0);
             const end = start > 0 ? start + r9v2LinearRiskDuration(entry) - 1 : r9v2LinearRiskDuration(entry);
@@ -58116,70 +64420,89 @@
           });
           for (const offset of offsets) {
             const recoveryProfile = { costs: {}, stateKeys: [], currentOpportunityPending: currentPending };
-            const priorWorld = memoBefore(`${hasJointFlows ? `joint-passive-before:${Number(jointRootPending)}` : 'passive-before'}:${JSON.stringify([unitId, offset, true, currentPending])}`, () =>
-              projectPassiveWorld(before, unit, offset, unit, [], recoveryProfile));
-            const nextWorld = projectPassiveWorld(after, next, offset, unit, result.contributions, recoveryProfile);
-            const priorUnit = findUnitInWorld(priorWorld, unitId), nextUnit = findUnitInWorld(nextWorld, unitId);
-            const priorAvailability = hasAllyTemporalState ? 1 - actionCancellationProbability(priorUnit) : 1;
-            const nextAvailability = hasAllyTemporalState ? 1 - actionCancellationProbability(nextUnit) : 1;
-            let loss = 0, gain = 0;
-            for (const hostileOnly of [false, true]) {
-              const prior = priorAvailability * r9v2LinearBestActionCapacity(priorWorld, priorUnit, hostileSide, actionCapacityCache, hostileOnly);
-              const changed = nextAvailability * r9v2LinearBestActionCapacity(nextWorld, nextUnit, hostileSide, actionCapacityCache, hostileOnly);
-              loss = Math.min(loss, (changed - prior) / Math.max(1, prior, changed));
-              if ((hasAllySustain || hasAllyTemporalState) && changed > prior) {
-                const teamCapacity = memoBefore('side:best-action-capacity', () => Math.max(
-                  ...r9v2LinearSideUnits(before, actorSide, sideUnitsByWorld).map(sideUnit =>
-                    r9v2LinearBestActionCapacity(before, sideUnit, hostileSide, actionCapacityCache)), 1));
-                gain = Math.max(gain, (changed - prior) / Math.max(1, prior, changed) *
-                  clamp(changed / Math.max(teamCapacity, changed), 0, 1));
+            for (const { probability, priorWorld, nextWorld } of passiveWorldPairs(unit, next, offset, recoveryProfile)) {
+              const priorUnit = findUnitInWorld(priorWorld, unitId), nextUnit = findUnitInWorld(nextWorld, unitId);
+              const priorAvailability = hasAllyTemporalState ? 1 - actionCancellationProbability(priorUnit) : 1;
+              const nextAvailability = hasAllyTemporalState ? 1 - actionCancellationProbability(nextUnit) : 1;
+              let loss = 0, gain = 0;
+              for (const hostileOnly of [false, true]) {
+                const prior = priorAvailability * r9v2LinearBestActionCapacity(priorWorld, priorUnit, hostileSide, actionCapacityCache, hostileOnly);
+                const changed = nextAvailability * r9v2LinearBestActionCapacity(nextWorld, nextUnit, hostileSide, actionCapacityCache, hostileOnly);
+                loss = Math.min(loss, (changed - prior) / Math.max(1, prior, changed));
+                if ((hasAllySustain || hasAllyTemporalState) && changed > prior) {
+                  const teamCapacity = memoBefore('side:best-action-capacity', () => Math.max(
+                    ...r9v2LinearSideUnits(before, actorSide, sideUnitsByWorld).map(sideUnit =>
+                      r9v2LinearBestActionCapacity(before, sideUnit, hostileSide, actionCapacityCache)), 1));
+                  gain = Math.max(gain, (changed - prior) / Math.max(1, prior, changed) *
+                    clamp(changed / Math.max(teamCapacity, changed), 0, 1));
+                }
               }
+              allyOptionGain += probability * loss;
+              if (hasAllyTemporalState) {
+                const priorPool = allyConsumablePoolFor(priorWorld, priorUnit).value * priorAvailability;
+                const nextPool = allyConsumablePoolFor(nextWorld, nextUnit).value * nextAvailability;
+                const actualPoolGain = Math.max(0, nextPool - priorPool - grantedSkillValue) / Math.max(1, priorPool, nextPool);
+                allyOptionGain += probability * (Math.max(actualPoolGain, gain) -
+                  (offset - firstOffset < allyWindows ? Math.max(poolGain, capacityGain) : 0));
+              } else if (hasAllySustain) allyOptionGain += probability * Math.max(0, gain -
+                (offset - firstOffset < allyWindows ? Math.max(poolGain, capacityGain) : 0));
             }
-            allyOptionGain += loss;
-            if (hasAllyTemporalState) {
-              const priorPool = skillPoolFor(priorUnit).value * priorAvailability;
-              const nextPool = skillPoolFor(nextUnit).value * nextAvailability;
-              const actualPoolGain = Math.max(0, nextPool - priorPool - grantedSkillValue) / Math.max(1, priorPool, nextPool);
-              allyOptionGain += Math.max(actualPoolGain, gain) -
-                (offset - firstOffset < allyWindows ? Math.max(poolGain, capacityGain) : 0);
-            } else if (hasAllySustain) allyOptionGain += Math.max(0, gain -
-              (offset - firstOffset < allyWindows ? Math.max(poolGain, capacityGain) : 0));
           }
+          allyTemporalCapacity.push(Object.freeze({ unitId, status: completeAllyCalendar ? 'COMPLETE_PASSIVE_CALENDAR' : 'PREFIX_ONLY',
+            reason: completeAllyCalendar ? 'OK' : fixedAllyCalendar ? 'PROJECTION_WORK_BUDGET' : 'UNPROVED_PASSIVE_CALENDAR',
+            assumption: 'NO_FUTURE_ACTIONS_OR_ENVIRONMENT_ADAPTER', availableWindows, firstOffset,
+            evaluatedOffsets: Object.freeze([...offsets].sort((a, b) => a - b)),
+            projectionWorkBound: 2 * allyProjectionUnits * (firstOffset + availableWindows), workLimit: DECISION_PREVIEW_NODE_LIMIT,
+            fullNetUtilityVerified: false }));
         }
         if (allyUnitChanged) {
           const directResourceRunwayGain = r9v2LinearResourceRunwayGain(unit, next);
           if (directResourceRunwayGain > 0) {
             const positiveResourceDetails = r9v2LinearDominantPositiveResource(unit, next);
-            const beforeSequenceCapacity = r9v2LinearResourceSequenceCapacity(
-              before,
-              unit,
-              hostileSide,
-              actionCapacityCache,
-              resourceSequenceCapacityCache,
-            );
-            const afterSequenceCapacity = r9v2LinearResourceSequenceCapacity(
-              after,
-              next,
-              hostileSide,
-              actionCapacityCache,
-              resourceSequenceCapacityCache,
-            );
-            const directSequenceGain = Math.max(0, afterSequenceCapacity.sequence - beforeSequenceCapacity.sequence) /
-              Math.max(1, beforeSequenceCapacity.sequence, afterSequenceCapacity.sequence);
-            const reserveTailGain = Math.max(0, afterSequenceCapacity.reserve - beforeSequenceCapacity.reserve) /
-              Math.max(1, beforeSequenceCapacity.reserve, afterSequenceCapacity.reserve);
-            allyResourceRunwayGain += Math.max(
-              Math.max(
-                0,
-                directSequenceGain - Math.max(poolGain, capacityGain),
-              ),
-              reserveTailGain,
-            ) * r9v2LinearResourceSupplyCredit(
+            const supplyCredit = r9v2LinearResourceSupplyCredit(
               before,
               unitId,
               r9v2LinearResourceLedgerKey(positiveResourceDetails.positiveResource),
               resourceSupplyCreditCache,
             );
+            // No consumed supply means this factor is identically zero. Direct
+            // healing, pool and mechanical gains were accounted for above.
+            if (supplyCredit > 0 && (availableWindows > 0 || resourceResponsePending ||
+                r8UnitHasFutureOpportunity(request, unitId))) {
+              const resourceWindowCount = resourceResponsePending
+                ? Infinity : r9v2LinearResourceWindowCount(request, unit, availableWindows);
+              const beforeSequenceCapacity = r9v2LinearResourceSequenceCapacity(
+                before,
+                unit,
+                hostileSide,
+                actionCapacityCache,
+                resourceSequenceCapacityCache,
+                request,
+                resourceWindowCount,
+                r9v2LinearResourceNaturalClock(request, candidate, before, unit, resourceWindowCount, null, actionCapacityCache),
+              );
+              const afterSequenceCapacity = r9v2LinearResourceSequenceCapacity(
+                after,
+                next,
+                hostileSide,
+                actionCapacityCache,
+                resourceSequenceCapacityCache,
+                request,
+                resourceWindowCount,
+                r9v2LinearResourceNaturalClock(request, candidate, before, unit, resourceWindowCount, result, actionCapacityCache),
+              );
+              const directSequenceGain = Math.max(0, afterSequenceCapacity.sequence - beforeSequenceCapacity.sequence) /
+                Math.max(1, beforeSequenceCapacity.sequence, afterSequenceCapacity.sequence);
+              const reserveTailGain = Math.max(0, afterSequenceCapacity.reserve - beforeSequenceCapacity.reserve) /
+                Math.max(1, beforeSequenceCapacity.reserve, afterSequenceCapacity.reserve);
+              allyResourceRunwayGain += Math.max(
+                Math.max(
+                  0,
+                  directSequenceGain - Math.max(poolGain, capacityGain),
+                ),
+                reserveTailGain,
+              ) * supplyCredit;
+            }
           }
         }
       });
@@ -58194,7 +64517,7 @@
     if (creationProjection) {
       const recipientId = String(candidate.creation.recipientId || declaration.creationRecipientId || actorId).trim();
       if (recipientId === actorId) {
-        creationSelfPoolGain = creationProjection.optionGain;
+        creationSelfPoolGain = 0;
         creationSelfMechanicalGain = creationProjection.mechanicalGain;
       } else if (beforeAllies.some(unit => preview.unitId(unit) === recipientId)) {
         // The recipient already paid the displaced-action cost in its realized
@@ -58262,36 +64585,36 @@
           if (offset < firstOffset + availableWindows) offsets.add(offset);
         }
         for (const offset of offsets) {
-          const priorWorld = projectPassiveWorld(before, unit, offset, unit, []);
-          const nextWorld = projectPassiveWorld(after, next, offset, unit, result.contributions);
-          const prior = findUnitInWorld(priorWorld, unitId), changed = findUnitInWorld(nextWorld, unitId);
-          const priorAvailability = 1 - actionCancellationProbability(prior), nextAvailability = 1 - actionCancellationProbability(changed);
-          let suppression = 0, benefit = 0;
-          for (const hostileOnly of [false, true]) {
-            const priorValue = priorAvailability * r9v2LinearBestActionCapacity(priorWorld, prior, actorSide, actionCapacityCache, hostileOnly);
-            const nextValue = nextAvailability * r9v2LinearBestActionCapacity(nextWorld, changed, actorSide, actionCapacityCache, hostileOnly);
-            const delta = (priorValue - nextValue) / Math.max(1, priorValue, nextValue);
-            suppression = Math.max(suppression, delta); benefit = Math.min(benefit, delta);
+          for (const { probability, priorWorld, nextWorld } of passiveWorldPairs(unit, next, offset)) {
+            const prior = findUnitInWorld(priorWorld, unitId), changed = findUnitInWorld(nextWorld, unitId);
+            const priorAvailability = 1 - actionCancellationProbability(prior), nextAvailability = 1 - actionCancellationProbability(changed);
+            let suppression = 0, benefit = 0;
+            for (const hostileOnly of [false, true]) {
+              const priorValue = priorAvailability * r9v2LinearBestActionCapacity(priorWorld, prior, actorSide, actionCapacityCache, hostileOnly);
+              const nextValue = nextAvailability * r9v2LinearBestActionCapacity(nextWorld, changed, actorSide, actionCapacityCache, hostileOnly);
+              const delta = (priorValue - nextValue) / Math.max(1, priorValue, nextValue);
+              suppression = Math.max(suppression, delta); benefit = Math.min(benefit, delta);
+            }
+            const priorPool = skillPoolFor(prior).value * priorAvailability, nextPool = skillPoolFor(changed).value * nextAvailability;
+            const poolDelta = (priorPool - nextPool) / Math.max(1, priorPool, nextPool);
+            const controlDelta = r9v2LinearControlSuppression(changed) - r9v2LinearControlSuppression(prior);
+            suppression = Math.max(suppression, poolDelta, controlDelta); benefit = Math.min(benefit, poolDelta, controlDelta);
+            const priorOrder = preview.naturalActionOrderProfile(prior).effectiveAgility;
+            const nextOrder = preview.naturalActionOrderProfile(changed).effectiveAgility;
+            const orderDelta = (priorOrder - nextOrder) / Math.max(1e-9, priorOrder, nextOrder);
+            const priorActor = findUnitInWorld(priorWorld, actorId), nextActor = findUnitInWorld(nextWorld, actorId);
+            const dodgeDelta = (priorActor ? preview.calculateDodgeProbability(prior, priorActor, false) : 0) -
+              (nextActor ? preview.calculateDodgeProbability(changed, nextActor, false) : 0);
+            suppression = Math.max(suppression, orderDelta, dodgeDelta); benefit = Math.min(benefit, orderDelta, dodgeDelta);
+            const knownResponses = request?.beliefState?.units?.[unitId]?.knownResponses;
+            if (knownResponses?.length) {
+              suppression = Math.max(suppression, observedHostileUnitResourceDenial(prior, changed, knownResponses).ratioDenial);
+              benefit = Math.min(benefit, -observedHostileUnitResourceDenial(changed, prior, knownResponses).ratioDenial);
+            }
+            if (offset === firstOffset) suppression = Math.max(suppression,
+              Number(observedHostileMechanismDenialByUnit.get(unitId) || 0));
+            deferredEnemyDenial += probability * (suppression + benefit);
           }
-          const priorPool = skillPoolFor(prior).value * priorAvailability, nextPool = skillPoolFor(changed).value * nextAvailability;
-          const poolDelta = (priorPool - nextPool) / Math.max(1, priorPool, nextPool);
-          const controlDelta = r9v2LinearControlSuppression(changed) - r9v2LinearControlSuppression(prior);
-          suppression = Math.max(suppression, poolDelta, controlDelta); benefit = Math.min(benefit, poolDelta, controlDelta);
-          const priorOrder = preview.naturalActionOrderProfile(prior).effectiveAgility;
-          const nextOrder = preview.naturalActionOrderProfile(changed).effectiveAgility;
-          const orderDelta = (priorOrder - nextOrder) / Math.max(1e-9, priorOrder, nextOrder);
-          const priorActor = findUnitInWorld(priorWorld, actorId), nextActor = findUnitInWorld(nextWorld, actorId);
-          const dodgeDelta = (priorActor ? preview.calculateDodgeProbability(prior, priorActor, false) : 0) -
-            (nextActor ? preview.calculateDodgeProbability(changed, nextActor, false) : 0);
-          suppression = Math.max(suppression, orderDelta, dodgeDelta); benefit = Math.min(benefit, orderDelta, dodgeDelta);
-          const knownResponses = request?.beliefState?.units?.[unitId]?.knownResponses;
-          if (knownResponses?.length) {
-            suppression = Math.max(suppression, observedHostileUnitResourceDenial(prior, changed, knownResponses).ratioDenial);
-            benefit = Math.min(benefit, -observedHostileUnitResourceDenial(changed, prior, knownResponses).ratioDenial);
-          }
-          if (offset === firstOffset) suppression = Math.max(suppression,
-            Number(observedHostileMechanismDenialByUnit.get(unitId) || 0));
-          deferredEnemyDenial += suppression + benefit;
         }
         return;
       }
@@ -58335,11 +64658,12 @@
       } else {
         decisionMetrics.r9v2UnchangedEnemyStaticMetricBypasses += 1;
       }
+      // Remaining HP limits realized loss, not the incoming attack's capacity.
       const priorThreat = actorBefore
-        ? basicActionValue(unit, actorBefore) / 100
+        ? cachedBaseActionValue(unit, actorBefore, 'BASIC_ATTACK') / 100
         : 0;
       const nextThreat = next && actorAfter
-        ? basicActionValue(next, actorAfter) / 100
+        ? cachedBaseActionValue(next, actorAfter, 'BASIC_ATTACK') / 100
         : 0;
       let orderDenial = 0;
       if (enemyUnitChanged) {
@@ -58371,6 +64695,7 @@
           actorSide,
           actionCapacityCache,
           resourceSequenceCapacityCache,
+          request,
         );
         const afterResourceCapacity = r9v2LinearResourceSequenceCapacity(
           after,
@@ -58378,6 +64703,7 @@
           actorSide,
           actionCapacityCache,
           resourceSequenceCapacityCache,
+          request,
         );
         const sequenceDenial = Math.max(
           0,
@@ -58450,8 +64776,15 @@
       preview.evaluateBattleObjectivesCompact(before, objectives));
     const afterObjective = preview.evaluateBattleObjectivesCompact(after, objectives);
     const terminalProgress = r9v2LinearTerminalValue(afterObjective, actorSide) - r9v2LinearTerminalValue(beforeObjective, actorSide);
-    const castTime = Math.max(0, Number(declaration?.skill?.前摇 ?? declaration?.skill?.cast_time ?? 0));
-    const naturalBudget = Math.max(1, Number(request?.actionOpportunity?.naturalActionBudget || 40));
+    const heldSetup = actorBefore?.蓄力技能;
+    const readySetupTime = request.actionOpportunity?.forcedChargeRelease === true && role === 'ACTIVE' &&
+      heldSetup && skillId(heldSetup.skill || heldSetup) === skillId(declaration.skill || {}) &&
+      Array.isArray(heldSetup.targetIds) && Array.isArray(declaration.targetIds) &&
+      heldSetup.targetIds.length === declaration.targetIds.length &&
+      heldSetup.targetIds.every((id, index) => id === declaration.targetIds[index])
+        ? heldSetup.cast_time ?? heldSetup.remainingCastTime ?? heldSetup.skill?.前摇 : null;
+    const castTime = Math.max(0, Number(setupCastTime ?? readySetupTime ?? declaration?.skill?.前摇 ?? declaration?.skill?.cast_time ?? 0));
+    const naturalBudget = battleHorizonProfile(request, before).naturalActionBudget;
     let enemyThreat = 0;
     if (setupAction) {
       enemyThreat = memoBefore('side:enemy-threat', () => Math.max(0, ...enemiesBefore.map(enemy =>
@@ -58462,7 +64795,7 @@
     const targetIds = Array.isArray(declaration.targetIds) ? declaration.targetIds : [];
     const hostileTargets = targetIds.map(id => findUnitInWorld(before, id)).filter(unit => unit && sideOf(before, unit) === hostileSide);
     let focusGain = 0;
-    if (hostileTargets.length === 1 && enemiesBefore.length > 1) {
+    if (hostilePressure > 0 && hostileTargets.length === 1 && enemiesBefore.length > 1) {
       const responseCapacityByEnemy = new Map(enemiesBefore.map(unit => [
         preview.unitId(unit),
         Math.max(
@@ -58525,13 +64858,13 @@
     markCausalStage('enemyAndObjectiveMs');
     const friendlyThreat = unit => memoBefore(`unit:${preview.unitId(unit)}:incoming-threat`, () =>
       enemiesBefore.reduce((sum, enemy) =>
-        sum + r9v2LinearExpectedBasicDamageRatio(
+        sum + (hasActionCancellation(enemy) ? 0 : r9v2LinearExpectedBasicDamageRatio(
           before,
           enemy,
           unit,
           hostileSide,
           recentAttackLedgerIndex,
-        ), 0));
+        )), 0));
     const exposureByUnit = () => memoBefore('side:friendly-exposure', () => {
       decisionMetrics.r9v2ExposureProfileBuilds += 1;
       const units = r9v2LinearSideUnits(before, actorSide, sideUnitsByWorld);
@@ -58544,54 +64877,122 @@
       ]));
     });
     let protectionGain = 0;
-    if (candidate?.creation?.useful === true && Array.isArray(candidate.creation.useEffects)) {
-      const recipientId = String(candidate.creation.recipientId || declaration.creationRecipientId || actorId).trim();
-      const recipient = findUnitInWorld(before, recipientId);
-      const existingStock = Math.max(0, Number(candidate.creation.stockByConsumer?.[recipientId] || 0));
-      const recipientHpRatio = recipient
-        ? preview.readHp(recipient) / Math.max(1, preview.readHpMax(recipient))
-        : 1;
-      if (recipient && recipientId === actorId && recipientHpRatio < 0.7 && existingStock === 0) {
-        const hpMaximum = Math.max(1, preview.readHpMax(recipient));
-        const delayedProtection = r9v2LinearCreatedUseEffects(candidate.creation.useEffects, true).reduce((sum, effect) => {
-          const prototype = String(effect?.原型 || '').trim();
-          const resource = String(effect?.资源 || '').trim();
-          const valueText = String(effect?.数值 || '').trim();
-          const value = Number.parseFloat(valueText);
-          const protective = prototype === '护盾变化' && String(effect?.护盾模式 || '').trim() === '正向护盾' ||
-            prototype === '资源变化' && /^(?:生命|HP)$/i.test(resource);
-          if (!protective || !(value > 0)) return sum;
-          return sum + (valueText.includes('%') ? value / 100 : value / hpMaximum);
-        }, 0);
-        if (delayedProtection > 0) {
-          const incapacityBeforeUse = r9v2LinearRoutineIncapacityRisk(
-            before,
-            enemiesBefore,
-            recipient,
-            hostileSide,
-            recentAttackLedgerIndex,
-          );
-          // Creation and consumption occupy two active opportunities. Preserve
-          // two thirds of the eventual protection, then discount it again by
-          // the recipient's chance of being incapacitated before consumption.
-          const deliveryDiscount = (2 / 3) * (1 - incapacityBeforeUse);
-          const exposedProtection = Math.min(delayedProtection, friendlyThreat(recipient)) *
-            Number(exposureByUnit().get(recipientId) || 0);
-          const deferredProtection = exposedProtection * deliveryDiscount;
-          // A two-action shield/heal setup is worth the active turn only when
-          // its exposed value is material, or the consumer is already critical.
-          if (recipientHpRatio < 0.25 || deferredProtection >= 0.06) {
-            protectionGain = Math.max(protectionGain, deferredProtection);
-          }
-        }
-      }
+    let newGuardIds;
+    for (const entry of result.contributions || []) if (entry.outcomeKind === 'SUMMON_WINDOW' &&
+      entry.evidence?.actionMode === '护卫' && preview.contributionProbability(entry) > 0) (newGuardIds ||= new Set()).add(String(entry.targetId || ''));
+    if (newGuardIds?.size && actorBefore && actorAfter) {
+      const pending = r9v2LinearCurrentNaturalIds(request, before);
+      const projector = r9v2JointFlowProjector(before, actorId, { ...rootSustainProfile, currentOpportunityPending: jointRootPending,
+        pendingNaturalActorIds: [...pending] }, 0, inheritedSustains);
+      const horizon = battleHorizonProfile(request, before);
+      const exposure = Number(exposureByUnit().get(actorId) || 0);
+      // Remove only the newly supplied guard responses in the counterfactual.
+      // Both sides keep the same post-action HP, control and known death risk;
+      // a host's death must never look like successful damage prevention.
+      const pressure = includeNewGuards => r9v2LinearGuardWindowPressure({ world: after, hostId: actorId, newGuardIds, includeNewGuards,
+        advanceWorld: (previous, offset) => projector(after, null, offset, null, result.contributions || [], null, previous),
+        advanceWorldOutcomes: (previous, offset) => projector.outcomes(after, offset, result.contributions || [], previous),
+        horizon, pending, exposure, recentAttackLedgerIndex, battleIntent: request.battleIntent, beliefState: request.beliefState, returnProfile: true });
+      const unguarded = pressure(false), guarded = pressure(true);
+      // A saved host can live through later attacks and healing, so larger
+      // cumulative damage is not evidence that its guard prevented nothing.
+      // Reuse the existing protection model's preserved-incapacity probability
+      // alongside attrition, taking the strongest window rather than adding
+      // the same saved life again in every future round.
+      const survivalGain = Math.max(0, ...unguarded.incapacityCurve.map((risk, index) => risk - guarded.incapacityCurve[index]));
+      protectionGain = Math.max(0, unguarded.pressure - guarded.pressure) + survivalGain;
     }
     let redundant = 0;
     let redundancyEffectCount = 0;
-    effects.forEach((effect, effectIndex) => {
+    let movementProjector;
+    const shieldProtectionByUnit = new Map();
+    // One existing numeric clock serves saved lives, rule reserves and signed
+    // shield portfolios, including losses outside friendly protection effects.
+    const ordinaryProtectionClock = (unit, next) => {
+      const pending = r9v2LinearCurrentNaturalIds(request, before);
+      const windows = Math.min(3, battleHorizonProfile(request, before).remainingRounds + 1);
+      const waves = sources => {
+        const ordered = [...sources].sort(preview.compareNaturalActionOrder);
+        return Array.from({ length: windows }, (_, index) =>
+          index === 0 ? ordered.filter(source => pending.has(preview.unitId(source))) : ordered);
+      };
+      const dated = [unit, next, ...enemiesBefore, ...enemiesAfter.values()].some(holder =>
+        Object.entries(holder.状态效果 || {}).some(([key, state]) => typeof state.duration === 'number' &&
+          state.duration + Number(state.__本回合新附加 === true || key.startsWith('preview:') &&
+            !Object.hasOwn(findUnitInWorld(before, preview.unitId(holder))?.状态效果 || {}, key)) < windows &&
+          (Object.keys(state.面板修改比例 || {}).length || Object.keys(state.面板固定修正 || {}).length ||
+            Object.keys(state.战斗效果 || {}).some(field => !['block_count', 'death_save_count', 'revive_count'].includes(field)))));
+      // HP ticks matter even when their carrier outlives the three-window
+      // horizon. Advance each damaged branch through the existing clock;
+      // do not age an otherwise fixed pressure-observation law with it.
+      const periodicHp = windows > 1 && [unit, next, ...enemiesBefore, ...enemiesAfter.values()].some(holder =>
+        Object.values(holder.状态效果 || {}).some(state => state.dot_damage || state.dot_damage_ratio ||
+          state.计算层效果?.dot_damage_ratio || state.战斗效果?.dot_damage || state.战斗效果?.dot_damage_ratio || state.战斗效果?.hot_heal_ratio ||
+          state.原型 === '资源变化' && Number(state.持续回合 || state.duration || 0) > 0 &&
+            (Array.isArray(state.资源) ? state.资源 : [state.资源]).some(resource => String(resource || '').trim() === '生命')));
+      const sourceControl = [...enemiesBefore, ...enemiesAfter.values()].some(hasActionCancellation);
+      const datedOptions = (world, contributions = [], profile = null, force = false) => {
+        const sourceEligibility = source => !hasActionCancellation(source);
+        if (!dated && !periodicHp && !sourceControl && !force && !hasJointFlows) return { sourceEligibility };
+        const project = r9v2JointFlowProjector(before, actorId, { ...(profile ||
+          { costs: {}, stateKeys: [], currentOpportunityPending: false }), pendingNaturalActorIds: [...pending] }, 0, inheritedSustains);
+        return { sourceEligibility, ...(!dated ? { pressureObservationWorld: () => world } : {}), advanceWorld: (previous, offset) => ({
+          ...project(world, null, offset, null, contributions, null, previous), 回合: Number(world.回合 || 0) + offset,
+        }), advanceWorldOutcomes: (previous, offset) => project.outcomes(world, offset, contributions, previous).map(row => ({
+          probability: row.probability, world: { ...row.world, 回合: Number(world.回合 || 0) + offset },
+        })) };
+      };
+      return { waves, dated, periodicHp, sourceControl, datedOptions };
+    };
+    const survivalProtectionByUnit = new Map();
+    const survivalLossByUnit = new Map();
+    // Pure stamina availability remains owned by resource/action capacity.
+    const ordinarySurvival = (unit, next, clock = ordinaryProtectionClock(unit, next)) => {
+      const id = preview.unitId(unit);
+      if (survivalProtectionByUnit.has(id)) return;
+      const { waves, dated, periodicHp, sourceControl, datedOptions } = clock;
+      const priorCurve = memoBefore(`unit:${id}:routine-incapacity-curve:response:life:${dated ? 'dated' : periodicHp ? 'periodic-hp' : sourceControl ? 'source-control' : 'fixed'}`, () =>
+        r9v2LinearRoutineIncapacityRisk(before, enemiesBefore, unit, hostileSide, recentAttackLedgerIndex,
+          { sourceWaves: waves(enemiesBefore), returnCurve: true, routineResponse: true, excludeStaminaIncapacity: true, ...datedOptions(before) }));
+      const projectNextCurve = () => r9v2LinearRoutineIncapacityRisk(after, [...enemiesAfter.values()], next, hostileSide, recentAttackLedgerIndex,
+        { sourceWaves: waves([...enemiesAfter.values()]), returnCurve: true, routineResponse: true, excludeStaminaIncapacity: true,
+          ...datedOptions(after, result.contributions || [], { ...rootSustainProfile, currentOpportunityPending: false }) });
+      // Experimental: candidates that leave this unit and every hostile's
+      // threat-relevant state alike share one curve; hostile HP is ignored.
+      const nextCurve = searchBounds?.protectionMemo ? memoBefore(`approx:next-curve:${JSON.stringify([id, dated, periodicHp, sourceControl,
+        coarseCapacitySignature(next), [...enemiesAfter.values()].map(enemy => coarseCapacitySignature(enemy).filter((_, index) => index !== 1 && index !== 2)),
+        (result.contributions || []).filter(entry => !['HP_DELTA', 'SHIELD_DELTA'].includes(entry.outcomeKind))
+          .map(entry => [entry.outcomeKind, entry.targetId, entry.effectInstanceId ? String(entry.effectInstanceId).replace(/^.*?:effect:/, '') : ''])])}`,
+        projectNextCurve) : projectNextCurve();
+      // Both signs compare the whole action, including healing/refunds. A
+      // restored asset alone is not the action's net saved-life opportunity.
+      survivalProtectionByUnit.set(id, Math.max(0, ...priorCurve.map((risk, index) => risk - nextCurve[index])));
+      survivalLossByUnit.set(id, !afterObjective.terminal && preview.isBattleCapable(unit) && preview.isBattleCapable(next)
+        ? Math.max(0, ...priorCurve.map((risk, index) => nextCurve[index] - risk)) : 0);
+    };
+    const mitigationByUnit = new Map();
+    const ruleProtectionByUnit = new Map();
+    let mitigationProjector;
+    const movementRecipients = new Map(), movedRecipientIds = new Set();
+    const movementEffects = [], movementById = new Map();
+    if (role === 'ACTIVE') for (const entry of result.contributions || []) {
+      const effect = entry.evidence?.projectedEffect;
+      if (effect?.原型 !== '位移执行' || !entry.effectInstanceId || entry.evidence.marginal === false ||
+        Number(entry.evidence.applicationProbability ?? 1) <= 0) continue;
+      let actual = movementById.get(entry.effectInstanceId);
+      if (!actual) {
+        actual = effect; movementById.set(entry.effectInstanceId, actual);
+        movementEffects.push(actual); movementRecipients.set(actual, []);
+      }
+      const recipient = findUnitInWorld(before, entry.targetId);
+      if (!recipient || movementRecipients.get(actual).some(unit => preview.unitId(unit) === entry.targetId)) continue;
+      movementRecipients.get(actual).push(recipient);
+      if (sideOf(before, recipient) === actorSide) movedRecipientIds.add(preview.unitId(recipient));
+    }
+    [...effects, ...movementEffects].forEach((effect, effectIndex) => {
       const prototype = String(effect?.原型 || '').trim();
       const signedValue = Number.parseFloat(String(effect?.数值 || '0'));
-      const recipients = actorBefore
+      const recipients = prototype === '位移执行' ? movementRecipients.get(effect) || [] : actorBefore
         ? preview.resolveTargets(
             before,
             actorBefore,
@@ -58599,6 +65000,104 @@
             effect,
           ).filter(Boolean)
         : [];
+      if (prototype === '位移执行') {
+        if (role !== 'ACTIVE') return;
+        const friendlyRecipients = recipients.filter(unit => sideOf(before, unit) === actorSide);
+        if (!friendlyRecipients.length) return;
+        // Unlike generic pressure stress, movement's existing current-window
+        // fallback requires an evidenced slot when no public list is supplied.
+        const pending = r9v2LinearCurrentNaturalIds(request, before, false);
+        if (!movementProjector) {
+          movementProjector = r9v2JointFlowProjector(before, actorId, { ...rootSustainProfile, currentOpportunityPending: false,
+            pendingNaturalActorIds: [...pending] }, 0, inheritedSustains);
+        }
+        const lastOffset = Math.min(3, battleHorizonProfile(request, before).remainingRounds);
+        const movementProtection = friendlyRecipients.reduce((sum, recipient) => {
+          const id = preview.unitId(recipient);
+          const nextRecipient = findUnitInWorld(after, id) || recipient;
+          const hpGain = Math.max(0, preview.readHp(nextRecipient) - preview.readHp(recipient)) / Math.max(1, preview.readHpMax(recipient));
+          const offsets = [], frames = [[], []], sourceWaves = [[], []];
+          for (let offset = 0; offset <= lastOffset && offsets.length < 3; offset++) {
+            const priorWorld = movementProjector(before, null, offset, null);
+            const nextWorld = movementProjector(after, null, offset, null, result.contributions || []);
+            const prior = findUnitInWorld(priorWorld, id), next = findUnitInWorld(nextWorld, id);
+            if (!prior || !next || !preview.isBattleCapable(next)) continue;
+            const sources = r9v2LinearSideUnits(priorWorld, hostileSide).filter(enemy =>
+              !hasActionCancellation(enemy) && (offset > 0 || pending.has(preview.unitId(enemy))));
+            if (!sources.length) continue;
+            const nextSources = sources.map(enemy => findUnitInWorld(nextWorld, preview.unitId(enemy)))
+              .filter(enemy => enemy && preview.isBattleCapable(enemy) && !hasActionCancellation(enemy));
+            offsets.push(offset); frames[0].push(priorWorld); frames[1].push(nextWorld);
+            sourceWaves[0].push(sources); sourceWaves[1].push(nextSources);
+          }
+          if (!offsets.length) return sum + hpGain * Number(exposureByUnit().get(id) || 0);
+          const basic = { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 };
+          const pressures = [[], []];
+          const costs = declaration.actionKind === 'RELEASE_SKILL' ? preview.readSkillCostStages(declaration.skill, { ...declaration, costActor: actorBefore }).维持 : {};
+          const safe = !Object.keys(costs || {}).length && frames.every((windows, index) => {
+            const packets = [], targets = windows.map(frame => findUnitInWorld(frame, id));
+            for (let window = 0; window < windows.length; window++) {
+              const frame = windows[window], target = targets[window];
+              if (!target || !preview.isBattleCapable(target) || preview.readHpMax(target) !== preview.readHpMax(recipient) || preview.readShield(target) > 0 ||
+                preview.ruleBlockCount(target) > 0 || preview.deathSaveCount(target) > 0 || preview.hasDamageRevival(target, true) ||
+                preview.listUnits(frame).some(({ unit }) => Object.keys(unit.持续效果 || {}).length ||
+                  Object.values(unit.状态效果 || {}).some(state => state.延迟效果 || state.持续原型效果 || state.原型 === '资源变化' ||
+                    state.副作用列表?.length || state.dot_damage || state.dot_damage_ratio || state.计算层效果?.dot_damage_ratio ||
+                    ['dot_damage', 'dot_damage_ratio', 'hot_heal_ratio', 'resource_tick_resource', 'vit_gain_ratio', 'sp_gain_ratio', 'men_gain_ratio'].some(field => state.战斗效果?.[field])))) return false;
+              let pressure = 0;
+              for (const source of sourceWaves[index][window]) {
+                const defense = preview.calculateDefenseDamageMultiplier(target, source, false), dodge = preview.calculateDodgeProbability(target, source, false);
+                const damage = Math.max(0, Math.round(preview.calculateBaseDamage(basic, source, target, null, { resourceDriveEnabled: false }) *
+                  (1 - dodge < defense ? 1 : defense)));
+                packets.push(damage);
+                pressure += damage / Math.max(1, preview.readHpMax(recipient)) * preview.estimateHitProbability(source, target, basic) *
+                  (1 - dodge < defense ? 1 - dodge : 1) * r9v2LinearRecentAttackPropensity(frame, source, hostileSide, recentAttackLedgerIndex);
+              }
+              pressures[index].push(pressure);
+            }
+            const minimumHp = Math.min(...targets.map(preview.readHp)) - packets.reduce((total, damage) => total + damage, 0);
+            return targets.every(target => minimumHp > preview.calculateNonlethalHpFloor(windows[0], target) &&
+              !packets.some(damage => preview.shouldTriggerTraumaUnconscious(damage, minimumHp, preview.readHpMax(target))));
+          });
+          if (safe) {
+            // With no HP carrier/reserve and a proven nonlethal worst case,
+            // each window is independent. Subtract it before summing so later
+            // identical, expired windows cancel exactly, not as large totals.
+            const attrition = Math.max(0, pressures[0].reduce((gain, pressure, index) => gain + (pressure - pressures[1][index]), 0));
+            return sum + (hpGain + attrition) * Number(exposureByUnit().get(id) || 0);
+          }
+          // Keep movement's ordinary best-response law, but carry each real
+          // damaged holder through the full joint sequence. Empty boundaries
+          // still expire states/control budgets before the next live window.
+          const profiles = [before, after].map((world, index) => r9v2LinearRoutineIncapacityRisk(
+            frames[index][0], sourceWaves[index][0], findUnitInWorld(frames[index][0], id), hostileSide, recentAttackLedgerIndex,
+            { sourceWaves: sourceWaves[index], returnProfile: true, routineResponse: true, movementProfile: true,
+              sourceEligibility: source => !hasActionCancellation(source),
+              pressureObservationWorld: window => frames[index][window],
+              advanceWorld: (previous, window) => {
+                let next = previous;
+                for (let offset = offsets[window - 1] + 1; offset <= offsets[window]; offset++) next = {
+                  ...movementProjector(world, null, offset, null, index === 0 ? [] : result.contributions || [], null, next),
+                  回合: Number(world.回合 || 0) + offset,
+                };
+                return next;
+              },
+              advanceWorldOutcomes: (previous, window) => {
+                let branches = [{ probability: 1, world: previous }];
+                for (let offset = offsets[window - 1] + 1; offset <= offsets[window]; offset++) branches = branches.flatMap(branch =>
+                  movementProjector.outcomes(world, offset, index === 0 ? [] : result.contributions || [], branch.world).map(row => ({
+                    probability: branch.probability * row.probability, world: { ...row.world, 回合: Number(world.回合 || 0) + offset },
+                  })));
+                return branches;
+              },
+            }));
+          const attritionGain = Math.max(0, profiles[0].pressure - profiles[1].pressure);
+          const survivalGain = Math.max(0, ...profiles[0].incapacityCurve.map((risk, index) => risk - profiles[1].incapacityCurve[index]));
+          return sum + (hpGain + attritionGain + survivalGain) * Number(exposureByUnit().get(id) || 0);
+        }, 0) / friendlyRecipients.length;
+        protectionGain = Math.max(protectionGain, movementProtection);
+        return;
+      }
       const friendly = preview.effectTargetsAllies(effect) ||
         /自身|友方|己方/.test(String(effect?.目标 || '')) ||
         (prototype === '资源变化' && signedValue > 0) ||
@@ -58610,115 +65109,142 @@
         );
       if (!['资源变化', '护盾变化', '属性修正', '判定修正', '结算修正', '状态施加', '状态移除', '规则防御'].includes(prototype) &&
         !(prototype === '规则改写' && String(effect.规则 || '').trim() === '死亡转存活')) return;
-      redundancyEffectCount += 1;
+      const resourceDebit = friendly && prototype === '资源变化' && signedValue < 0;
+      if (!resourceDebit) redundancyEffectCount += 1;
       const relevant = recipients.length ? recipients : [actorBefore].filter(Boolean);
       if (friendly) {
         const realizedProtection = relevant.reduce((sum, unit) => {
+          // A moved recipient's whole post-world is already valued under
+          // movement's ordinary-response law. A conditional carrier must not
+          // reprice that same protection through the raw-hit life consumer.
+          if (movedRecipientIds.has(preview.unitId(unit))) return sum;
           const next = findUnitInWorld(after, preview.unitId(unit)) || unit;
           const hpMax = Math.max(1, preview.readHpMax(unit));
           const hpGain = Math.max(0, preview.readHp(next) - preview.readHp(unit)) / hpMax;
           const shieldGain = Math.max(0, preview.readShield(next) - preview.readShield(unit)) / hpMax;
-          const protectionWindows = Math.max(1, Math.min(3, Number(effect?.持续回合 || 1)));
-          const usableShield = role === 'ACTIVE'
-            ? Math.min(shieldGain, friendlyThreat(unit) * protectionWindows)
-            : shieldGain;
-          const mitigatedThreat = role === 'ACTIVE'
-            ? Math.max(
-                0,
-                friendlyThreat(unit) - [...enemiesAfter.values()].reduce(
-                  (sum, enemy) => sum + r9v2LinearExpectedBasicDamageRatio(
-                    after,
-                    enemy,
-                    next,
-                    hostileSide,
-                    recentAttackLedgerIndex,
-                  ),
-                  0,
-                ),
-              ) * protectionWindows
-            : 0;
-          const preservedActionProbability = role === 'ACTIVE'
-            ? Math.max(
-                0,
-                memoBefore(`unit:${preview.unitId(unit)}:routine-incapacity`, () =>
-                  r9v2LinearRoutineIncapacityRisk(
-                    before,
-                    enemiesBefore,
-                    unit,
-                    hostileSide,
-                    recentAttackLedgerIndex,
-                  )) -
-                  r9v2LinearRoutineIncapacityRisk(
-                    after,
-                    [...enemiesAfter.values()],
-                    next,
-                    hostileSide,
-                    recentAttackLedgerIndex,
-                  ),
-              )
-            : 0;
-          let ruleDefenseProtection = 0;
-          if (role === 'ACTIVE' && prototype === '规则防御') {
-            const rule = String(effect?.规则 || effect?.防御对象 || '').trim();
-            const pendingIds = Array.isArray(request?.actionOpportunity?.pendingNaturalActorIds)
-              ? new Set(request.actionOpportunity.pendingNaturalActorIds.map(value => String(value || '').trim()))
-              : null;
-            const currentSources = pendingIds
-              ? enemiesBefore.filter(enemy => pendingIds.has(preview.unitId(enemy)))
-              : enemiesBefore;
-            const futureWindows = Math.min(
-              Math.max(0, protectionWindows - 1),
-              Math.max(0, battleHorizonProfile(request, before).remainingRounds),
-            );
-            if (rule === '免伤') {
-              const blockCount = Math.max(1, Math.floor(Number(effect?.次数 || 1)) || 1);
-              const blockableThreats = [
-                ...currentSources.map(enemy => r9v2LinearExpectedBasicDamageRatio(
-                  before,
-                  enemy,
-                  unit,
-                  hostileSide,
-                  recentAttackLedgerIndex,
-                )),
-              ];
-              for (let window = 0; window < futureWindows; window += 1) {
-                enemiesBefore.forEach(enemy => blockableThreats.push(
-                  r9v2LinearExpectedBasicDamageRatio(
-                    before,
-                    enemy,
-                    unit,
-                    hostileSide,
-                    recentAttackLedgerIndex,
-                  ),
-                ));
+          if (role === 'ACTIVE' && !mitigationByUnit.has(preview.unitId(unit))) {
+            const nextThreat = [...enemiesAfter.values()].reduce((sum, enemy) => sum +
+              (hasActionCancellation(enemy) ? 0 : r9v2LinearExpectedBasicDamageRatio(after, enemy, next, hostileSide, recentAttackLedgerIndex)), 0);
+            let mitigation = 0;
+            // An unchanged current panel can still gain a later window by
+            // extending an existing modifier. Reuse the actual passive clock,
+            // not the unexecuted parent's duration or a repeated current panel.
+            if (friendlyThreat(unit) > nextThreat || preview.stableHash(unit.状态效果 || {}) !== preview.stableHash(next.状态效果 || {})) {
+              const pending = r9v2LinearCurrentNaturalIds(request, before);
+              const windows = Math.min(3, battleHorizonProfile(request, before).remainingRounds + 1);
+              if (!mitigationProjector) {
+                mitigationProjector = r9v2JointFlowProjector(before, actorId,
+                  { ...rootSustainProfile, currentOpportunityPending: false, pendingNaturalActorIds: [...pending] }, 0, inheritedSustains);
               }
-              ruleDefenseProtection = blockableThreats
-                .sort((left, right) => right - left)
-                .slice(0, blockCount)
-                .reduce((sum, value) => sum + Math.max(0, value), 0);
-            } else if (rule === '免死' && preview.calculateNonlethalHpFloor(before, unit, request?.battleIntent || {}) <= 0) {
-              const currentRisk = currentSources.length
-                ? r9v2LinearRoutineIncapacityRisk(
-                    before,
-                    currentSources,
-                    unit,
-                    hostileSide,
-                    recentAttackLedgerIndex,
-                  )
-                : 0;
-              const futureRisk = futureWindows > 0
-                ? r9v2LinearRoutineIncapacityRisk(
-                    before,
-                    enemiesBefore,
-                    unit,
-                    hostileSide,
-                    recentAttackLedgerIndex,
-                  )
-                : 0;
-              ruleDefenseProtection = 1 -
-                (1 - currentRisk) * ((1 - futureRisk) ** futureWindows);
+              const priorProjector = memoBefore('cache:ordinary-mitigation-projector', () => r9v2JointFlowProjector(before, actorId,
+                { costs: {}, stateKeys: [], currentOpportunityPending: false, pendingNaturalActorIds: [...pending] }, 0, inheritedSustains));
+              const pressureFrames = [[], []];
+              for (let offset = 0; offset < windows; offset++) {
+                const priorWorld = priorProjector(before, null, offset, null);
+                const nextWorld = mitigationProjector(after, null, offset, null, result.contributions || []);
+                pressureFrames[0].push(priorWorld); pressureFrames[1].push(nextWorld);
+                for (const pair of mitigationProjector.pairedOutcomes(before, after, offset, [], result.contributions || [])) {
+                  const prior = findUnitInWorld(pair.priorWorld, preview.unitId(unit)), current = findUnitInWorld(pair.nextWorld, preview.unitId(unit));
+                  if (!prior || !current || !preview.isBattleCapable(current)) continue;
+                  const threat = (world, target) => r9v2LinearSideUnits(world, hostileSide).reduce((sum, enemy) => sum +
+                    (!hasActionCancellation(enemy) && (offset > 0 || pending.has(preview.unitId(enemy)))
+                      ? r9v2LinearExpectedBasicDamageRatio(world, enemy, target, hostileSide, recentAttackLedgerIndex) : 0), 0);
+                  mitigation += pair.probability * Math.max(0, threat(pair.priorWorld, prior) - threat(pair.nextWorld, current));
+                }
+              }
+              if (mitigation > 0) {
+                const basic = { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 };
+                const costs = declaration.actionKind === 'RELEASE_SKILL' ? preview.readSkillCostStages(declaration.skill, { ...declaration, costActor: actorBefore }).维持 : {};
+                const safe = !(preview.readShield(unit) > 0 || preview.ruleBlockCount(unit) > 0 || preview.deathSaveCount(unit) > 0 || preview.hasDamageRevival(unit, true)) &&
+                  !Object.keys(costs || {}).length && pressureFrames.every(frames => {
+                    const packets = [], targets = frames.map(frame => findUnitInWorld(frame, preview.unitId(unit)));
+                    for (let offset = 0; offset < frames.length; offset++) {
+                      const frame = frames[offset], target = targets[offset];
+                      if (!target || !preview.isBattleCapable(target) || preview.listUnits(frame).some(({ unit: holder }) =>
+                        Object.keys(holder.持续效果 || {}).length || Object.values(holder.状态效果 || {}).some(state =>
+                          state.延迟效果 || state.持续原型效果 || state.原型 === '资源变化' || state.副作用列表?.length ||
+                          state.dot_damage || state.dot_damage_ratio || state.计算层效果?.dot_damage_ratio ||
+                          ['dot_damage', 'dot_damage_ratio', 'hot_heal_ratio', 'resource_tick_resource', 'vit_gain_ratio', 'sp_gain_ratio', 'men_gain_ratio'].some(field => state.战斗效果?.[field])))) return false;
+                      for (const enemy of r9v2LinearSideUnits(frame, hostileSide)) {
+                        if (hasActionCancellation(enemy) || offset === 0 && !pending.has(preview.unitId(enemy))) continue;
+                        const defense = preview.calculateDefenseDamageMultiplier(target, enemy, false), dodge = preview.calculateDodgeProbability(target, enemy, false);
+                        packets.push(Math.max(0, Math.round(preview.calculateBaseDamage(basic, enemy, target, null, { resourceDriveEnabled: false }) *
+                          (1 - dodge < defense ? 1 : defense))));
+                      }
+                    }
+                    const minimumHp = Math.min(preview.readHp(next), ...targets.map(preview.readHp)) - packets.reduce((sum, damage) => sum + damage, 0);
+                    return targets.every(target => minimumHp > preview.calculateNonlethalHpFloor(before, target) &&
+                      !packets.some(damage => preview.shouldTriggerTraumaUnconscious(damage, minimumHp, preview.readHpMax(target))));
+                  });
+                if (safe) decisionMetrics.ordinaryMitigationSafeBounds += 1;
+                else {
+                // Numeric protection cannot prevent HP loss after its holder
+                // is already incapable. Both numeric worlds keep post-action
+                // HP and the real old shield/rule reserves: new healing,
+                // shields and finite rules have their own protection credits.
+                const id = preview.unitId(unit), prior = cloneValue(unit), current = cloneValue(next);
+                preview.setResourceValue(prior, '生命', preview.readHp(next));
+                for (const [key, state] of Object.entries(current.状态效果 || {})) {
+                  if (Number(state.shield_value) > 0) state.shield_value = 0;
+                  for (const field of ['block_count', 'death_save_count', 'revive_count']) if (state.战斗效果?.[field] !== undefined) state.战斗效果[field] = 0;
+                }
+                for (const [key, state] of Object.entries(unit.状态效果 || {})) {
+                  if (!(Number(state.shield_value) > 0 || ['block_count', 'death_save_count', 'revive_count'].some(field => Number(state.战斗效果?.[field]) > 0))) continue;
+                  const restored = current.状态效果[key] ||= cloneValue(state);
+                  for (const field of ['shield_value', 'duration', '__本回合新附加', '对应等级', 'equivalentLevel']) {
+                    if (Object.hasOwn(state, field)) restored[field] = state[field]; else delete restored[field];
+                  }
+                  for (const field of ['block_count', 'death_save_count', 'revive_count']) {
+                    if (Object.hasOwn(state.战斗效果 || {}, field)) (restored.战斗效果 ||= {})[field] = state.战斗效果[field];
+                    else if (restored.战斗效果) delete restored.战斗效果[field];
+                  }
+                }
+                const scalar = Math.max(0, Number(unit.shield ?? unit.护盾 ?? unit.护盾值 ?? 0));
+                current.shield = scalar; current.护盾 = scalar;
+                if (Object.hasOwn(current, '护盾值')) current.护盾值 = scalar;
+                const pressure = [replaceWorldUnit(before, id, prior), replaceWorldUnit(after, id, current)].map((world, index) => {
+                  const sources = [...r9v2LinearSideUnits(world, hostileSide)].sort(preview.compareNaturalActionOrder);
+                  const sourceWaves = Array.from({ length: windows }, (_, offset) => offset === 0
+                    ? sources.filter(source => pending.has(preview.unitId(source))) : sources);
+                  const projector = index === 0 ? priorProjector : mitigationProjector;
+                  return r9v2LinearRoutineIncapacityRisk(world, sources, findUnitInWorld(world, id), hostileSide, recentAttackLedgerIndex,
+                    { sourceWaves, returnProfile: true, routineResponse: true, mitigationProfile: true,
+                      sourceEligibility: source => !hasActionCancellation(source),
+                      pressureObservationWorld: offset => pressureFrames[index][offset],
+                      advanceWorld: (previous, offset) => ({ ...projector(world, null, offset, null,
+                        index === 0 ? [] : result.contributions || [], null, previous), 回合: Number(world.回合 || 0) + offset }),
+                      advanceWorldOutcomes: (previous, offset) => projector.outcomes(world, offset,
+                        index === 0 ? [] : result.contributions || [], previous).map(row => ({ probability: row.probability,
+                        world: { ...row.world, 回合: Number(world.回合 || 0) + offset } })),
+                    }).pressure;
+                });
+                mitigation = Math.max(0, pressure[0] - pressure[1]);
+                }
+              }
             }
+            mitigationByUnit.set(preview.unitId(unit), mitigation);
           }
+          const mitigatedThreat = role === 'ACTIVE' ? mitigationByUnit.get(preview.unitId(unit)) : 0;
+          if (role === 'ACTIVE' && !survivalProtectionByUnit.has(preview.unitId(unit))) {
+            const clock = ordinaryProtectionClock(unit, next);
+            const { datedOptions } = clock;
+            ordinarySurvival(unit, next, clock);
+            const nextSources = [...enemiesAfter.values()];
+            // Both HP-loss counterfactuals share the saved-life consumer's
+            // actual numeric clock, but keep their own damaged resources and
+            // jointly restored old rule reserves. The original pre-action
+            // baseline owns freshness in both worlds, not either counterfactual.
+            ruleProtectionByUnit.set(preview.unitId(unit), r9v2LinearOrdinaryRuleProtection(
+              request, after, unit, next, nextSources, hostileSide, recentAttackLedgerIndex,
+              world => datedOptions(world, result.contributions || [], { ...rootSustainProfile, currentOpportunityPending: false }), true));
+            shieldProtectionByUnit.set(preview.unitId(unit), r9v2LinearOrdinaryShieldProtection(
+              request, before, unit, next, nextSources, hostileSide, recentAttackLedgerIndex, { worldSnapshot: after,
+                pressureOptionsForWorld: (world, force) => datedOptions(world, result.contributions || [], { ...rootSustainProfile, currentOpportunityPending: false }, force) }));
+          }
+          const rulePortfolio = ruleProtectionByUnit.get(preview.unitId(unit));
+          const usableShield = role === 'ACTIVE' ? (rulePortfolio === null ? Math.max(0, shieldProtectionByUnit.get(preview.unitId(unit))) : 0) : shieldGain;
+          const preservedActionProbability = role === 'ACTIVE' ? survivalProtectionByUnit.get(preview.unitId(unit)) : 0;
+          const ruleDefenseProtection = role === 'ACTIVE' ? Math.max(0, Number(rulePortfolio || 0)) : 0;
           return sum + (
             hpGain +
             usableShield +
@@ -58730,6 +65256,7 @@
         }, 0) / Math.max(1, relevant.length);
         protectionGain = Math.max(protectionGain, realizedProtection);
       }
+      if (resourceDebit) return;
       const rootActionId = r9v2LinearCanonicalActionId(candidate);
       const effectInstanceId = r9v2LinearCanonicalEffectId(
         effect,
@@ -58814,7 +65341,7 @@
       const cacheKey = JSON.stringify([sourceId, targetId, damageMultiplier, evadeProbability]);
       if (cachedWorld.has(cacheKey)) return cachedWorld.get(cacheKey);
       const actionId = `incoming-risk:${sourceId}:${targetId}`;
-      const projected = preview.previewAction({ worldSnapshot, worldRevision: cachedWorld.revision, snapshotRevision: cachedWorld.revision,
+      const projected = preview.projectConditionedAction({ worldSnapshot, worldRevision: cachedWorld.revision, snapshotRevision: cachedWorld.revision,
         actorId: sourceId, paymentMode: 'EXTERNAL_TIMELINE',
         declaration: { ...incoming, actorId: sourceId, actionId, actionKind, skill,
           targetIds: incomingTargetIds, resourceCosts: {}, __skipInventoryConsume: true, __includeGrantedEffects: false,
@@ -58860,7 +65387,38 @@
           deterministicEvents: graph.deterministicEvents.filter(affectsTarget), conditionalEvents: graph.conditionalEvents.filter(affectsTarget) };
         decisionMetrics.r9v2IncomingMarginalGraphs++;
       } else decisionMetrics.r9v2IncomingFullGraphs++;
-      const branches = preview.evaluateOperationGraph({ graph, baseWorld: worldSnapshot, maxActiveStates: 4096 });
+      let branches;
+      try {
+        branches = preview.evaluateOperationGraph({ graph, baseWorld: worldSnapshot, maxActiveStates: 4096 });
+      } catch (error) {
+        if (!String(error?.message || '').startsWith('BATTLE_PREVIEW_PROBABILITY_BRANCH_BUDGET_EXCEEDED')) throw error;
+        // Over budget: combine this recipient's direct damage distributions as
+        // independent draws. Couplings carried only by the full joint graph are
+        // dropped, which is still far better than failing the whole decision.
+        decisionMetrics.r9v2IncomingBudgetFallbacks++;
+        let joint = new Map([['0|0|0|0', { probability: 1, hpDamage: 0, shieldAbsorb: 0, reviveHealing: 0, disabled: false }]]);
+        for (const entry of directDamage) {
+          const next = new Map();
+          for (const state of joint.values()) for (const branch of entry.evidence.outcomeDistribution) {
+            const merged = { probability: state.probability * Number(branch.probability || 0),
+              hpDamage: state.hpDamage + Number(branch.hpDamage || 0), shieldAbsorb: state.shieldAbsorb + Number(branch.shieldAbsorb || 0),
+              reviveHealing: state.reviveHealing + Number(branch.reviveHealing || 0), disabled: state.disabled || Boolean(branch.actionState) };
+            const key = `${merged.hpDamage}|${merged.shieldAbsorb}|${merged.reviveHealing}|${merged.disabled ? 1 : 0}`;
+            const prior = next.get(key);
+            if (prior) prior.probability += merged.probability; else next.set(key, merged);
+          }
+          joint = next;
+        }
+        const outcome = [...joint.values()].reduce((sum, state) => {
+          const hp = Math.max(0, preview.readHp(target) - state.hpDamage + state.reviveHealing);
+          const shield = Math.max(0, preview.readShield(target) - state.shieldAbsorb);
+          sum.threat += state.probability * Math.max(0, capacity - hp - shield) / maximum;
+          if (!preview.isBattleCapable(target) || hp <= 0 || state.disabled) sum.incapacityProbability += state.probability;
+          return sum;
+        }, { threat: 0, incapacityProbability: 0 });
+        cachedWorld.set(cacheKey, outcome);
+        return outcome;
+      }
       const outcome = branches.finalStates.reduce((sum, branch) => {
         const next = findUnitInWorld(branch.world, targetId);
         sum.threat += branch.probability * Math.max(0, capacity - preview.readHp(next) - preview.readShield(next)) / maximum;
@@ -58968,23 +65526,43 @@
       actorBefore || {},
       actorAfter || {},
     );
-    let resourceRunwayGain = directResourceRunwayGain;
-    if (directResourceRunwayGain < 0) {
-      const beforeSequenceCapacity = r9v2LinearResourceSequenceCapacity(
+    const settlementActor = continuationGrant && (findUnitInWorld(settlementResult.afterSnapshot || after, actorId) || actorAfter);
+    const resourceWindowCount = resourceResponsePending
+      ? Infinity : r9v2LinearResourceWindowCount(request, actorBefore, actorNaturalWindows) + Number(!!continuationGrant &&
+        root.__LWCS_BATTLE_RUNTIME__.structuredContinuationEligible(continuationGrant, {
+          continuationDepth: request.actionOpportunity?.continuationDepth,
+          actorAlive: settlementActor?.状态?.存活 !== false && preview.readHp(settlementActor) > 0,
+          effectiveHit: (settlementResult.contributions || []).some(entry => !entry.evidence?.cooperativeProjectionId &&
+            entry.outcomeKind === 'HP_DELTA' && Number(entry.evidence?.expectedDamage || 0) > 0),
+          appliedStateNames: (settlementResult.contributions || []).flatMap(entry => entry.evidence?.cooperativeProjectionId
+            ? [] : entry.evidence?.appliedStateNames || []),
+        }));
+    const resourceRunwayHasContinuation = resourceWindowCount > 0;
+    let resourceRunwayGain = 0;
+    let resourceContinuationDemand = null;
+    const periodicCapacityComplete = periodicResourceCapacity?.status === 'COMPLETE' && periodicResourceCapacity.windows === resourceWindowCount;
+    if (!settlementCapacityComplete && resourceRunwayHasContinuation && (directResourceRunwayGain < 0 || periodicCapacityComplete && periodicResourceCapacity.loss > 0)) {
+      const beforeSequenceCapacity = periodicCapacityComplete ? periodicResourceSequencePair.before : r9v2LinearResourceSequenceCapacity(
         before,
         actorBefore || {},
         hostileSide,
         actionCapacityCache,
         resourceSequenceCapacityCache,
+        request,
+        resourceWindowCount,
+        r9v2LinearResourceNaturalClock(request, candidate, before, actorBefore || {}, resourceWindowCount, null, actionCapacityCache),
       );
-      const afterSequenceCapacity = r9v2LinearResourceSequenceCapacity(
+      const afterSequenceCapacity = periodicCapacityComplete ? periodicResourceSequencePair.after : r9v2LinearResourceSequenceCapacity(
         after,
         actorAfter || {},
         hostileSide,
         actionCapacityCache,
         resourceSequenceCapacityCache,
+        request,
+        resourceWindowCount,
+        r9v2LinearResourceNaturalClock(request, candidate, before, actorBefore || {}, resourceWindowCount, result, actionCapacityCache),
       );
-      const sequenceLoss = Math.max(
+      const sequenceLoss = periodicCapacityComplete ? periodicResourceCapacity.loss : Math.max(
         0,
         Number(beforeSequenceCapacity.sequence || 0) -
           Number(afterSequenceCapacity.sequence || 0),
@@ -59021,8 +65599,12 @@
       const continuationDemand = hostileCapacityBefore > 0
         ? clamp(hostileCapacityAfter / hostileCapacityBefore, 0, 1)
         : 0;
-      resourceRunwayGain = -Math.max(sequenceLoss, affordableOptionLoss) * continuationDemand;
-    } else if (directResourceRunwayGain > 0) {
+      resourceContinuationDemand = continuationDemand;
+      resourceRunwayGain = -(periodicCapacityComplete ? Math.max(0, affordableOptionLoss - sequenceLoss)
+        : Math.max(sequenceLoss, affordableOptionLoss)) * continuationDemand;
+      if (periodicCapacityComplete) periodicResourceCapacity = { ...periodicResourceCapacity, affordableOptionLoss,
+        residualOptionLoss: Math.max(0, affordableOptionLoss - sequenceLoss), optionLossOwner: 'RESOURCE_RUNWAY_GAIN' };
+    } else if (!settlementCapacityComplete && resourceRunwayHasContinuation && directResourceRunwayGain > 0) {
       if (candidate?.creation) {
         resourceRunwayGain = 0;
       } else {
@@ -59030,37 +65612,60 @@
           actorBefore || {},
           actorAfter || {},
         );
-        const beforeSequenceCapacity = r9v2LinearResourceSequenceCapacity(
-          before,
-          actorBefore || {},
-          hostileSide,
-          actionCapacityCache,
-          resourceSequenceCapacityCache,
-        );
-        const afterSequenceCapacity = r9v2LinearResourceSequenceCapacity(
-          after,
-          actorAfter || {},
-          hostileSide,
-          actionCapacityCache,
-          resourceSequenceCapacityCache,
-        );
-        const directSequenceGain = Math.max(0, afterSequenceCapacity.sequence - beforeSequenceCapacity.sequence) /
-          Math.max(1, beforeSequenceCapacity.sequence, afterSequenceCapacity.sequence);
-        const reserveTailGain = Math.max(0, afterSequenceCapacity.reserve - beforeSequenceCapacity.reserve) /
-          Math.max(1, beforeSequenceCapacity.reserve, afterSequenceCapacity.reserve);
-        resourceRunwayGain = Math.max(
-          Math.max(
-            0,
-            directSequenceGain - Math.max(0, directSelfPoolGain, selfCapacityGain),
-          ),
-          reserveTailGain,
-        ) * r9v2LinearResourceSupplyCredit(
+        const supplyCredit = r9v2LinearResourceSupplyCredit(
           before,
           actorId,
           r9v2LinearResourceLedgerKey(positiveResourceDetails.positiveResource),
           resourceSupplyCreditCache,
         );
+        resourceRunwayGain = 0;
+        if (supplyCredit > 0) {
+          const beforeSequenceCapacity = r9v2LinearResourceSequenceCapacity(
+            before,
+            actorBefore || {},
+            hostileSide,
+            actionCapacityCache,
+            resourceSequenceCapacityCache,
+            request,
+            resourceWindowCount,
+            r9v2LinearResourceNaturalClock(request, candidate, before, actorBefore || {}, resourceWindowCount, null, actionCapacityCache),
+          );
+          const afterSequenceCapacity = r9v2LinearResourceSequenceCapacity(
+            after,
+            actorAfter || {},
+            hostileSide,
+            actionCapacityCache,
+            resourceSequenceCapacityCache,
+            request,
+            resourceWindowCount,
+            r9v2LinearResourceNaturalClock(request, candidate, before, actorBefore || {}, resourceWindowCount, result, actionCapacityCache),
+          );
+          const directSequenceGain = Math.max(0, afterSequenceCapacity.sequence - beforeSequenceCapacity.sequence) /
+            Math.max(1, beforeSequenceCapacity.sequence, afterSequenceCapacity.sequence);
+          const reserveTailGain = Math.max(0, afterSequenceCapacity.reserve - beforeSequenceCapacity.reserve) /
+            Math.max(1, beforeSequenceCapacity.reserve, afterSequenceCapacity.reserve);
+          resourceRunwayGain = Math.max(
+            Math.max(
+              0,
+              directSequenceGain - Math.max(0, directSelfPoolGain, selfCapacityGain),
+            ),
+            reserveTailGain,
+          ) * supplyCredit;
+        }
       }
+    }
+    // One canonical capacity owner for both signs. Only uncovered option
+    // diversity remains in runway; no second cash/independent-window penalty.
+    if (periodicCapacityComplete) {
+      if (resourceContinuationDemand === null) {
+        const priorHostile = enemiesBefore.reduce((sum, unit) => sum + preview.readHp(unit) + preview.readShield(unit), 0);
+        const nextHostile = [...enemiesAfter.values()].reduce((sum, unit) => sum + preview.readHp(unit) + preview.readShield(unit), 0);
+        resourceContinuationDemand = priorHostile > 0 ? clamp(nextHostile / priorHostile, 0, 1) : 0;
+      }
+      selfCapacityGain = periodicResourceCapacity.gain - periodicResourceCapacity.loss * resourceContinuationDemand;
+      periodicResourceCapacity = { ...periodicResourceCapacity, continuationDemand: resourceContinuationDemand,
+        chargedLoss: periodicResourceCapacity.loss * resourceContinuationDemand };
+      resourceRunwayGain = Math.min(0, resourceRunwayGain);
     }
     markCausalStage('resourceRunwayMs');
     const reserveOwners = memoBefore('world:revival-reserve-owners', () => preview.listUnits(before).filter(({ unit }) => {
@@ -59069,31 +65674,45 @@
       return passive && ['每日', '每战'].includes(passive.period) && passive.remainingCount > 0 && Number.isFinite(passive.remainingCount);
     }).map(({ unit }) => preview.unitId(unit)));
     let selfRevivalReserveLoss = 0, allyRevivalReserveLoss = 0, enemyRevivalReserveLoss = 0;
+    const revivalLossByUnit = new Map();
     if (reserveOwners.length) {
-      const priorProjector = memoBefore(`cache:revival-reserve-projector:${Number(jointRootPending)}`, () =>
-        r9v2JointFlowProjector(before, actorId, { costs: {}, stateKeys: [], currentOpportunityPending: jointRootPending }));
-      const sustainCosts = declaration.actionKind === 'RELEASE_SKILL' ? preview.readSkillCostStages(declaration.skill, declaration).维持 : {};
-      const sustainKeys = Object.keys(sustainCosts || {}).length ? Object.keys(actorAfter.状态效果 || {}).filter(key =>
-        key.startsWith('preview:') && !Object.hasOwn(actorBefore.状态效果 || {}, key)) : [];
-      const nextProjector = r9v2JointFlowProjector(before, actorId, { costs: sustainCosts, stateKeys: sustainKeys, currentOpportunityPending: jointRootPending });
-      const losses = new Map(), maxOffset = Math.min(3, Math.max(0, battleHorizonProfile(request, before).remainingRounds));
       const consumed = consumedNaturalActors(request, declaration);
-      const pending = Array.isArray(request.actionOpportunity?.pendingNaturalActorIds) ? new Set(request.actionOpportunity.pendingNaturalActorIds) : null;
+      const pending = r9v2LinearCurrentNaturalIds(request, before, false);
+      consumed.forEach(id => pending.delete(id));
+      const priorProjector = memoBefore(`cache:revival-reserve-projector:${Number(jointRootPending)}`, () =>
+        r9v2JointFlowProjector(before, actorId, { costs: {}, stateKeys: [], currentOpportunityPending: jointRootPending,
+          pendingNaturalActorIds: [...pending] }, 0, inheritedSustains));
+      const nextProjector = r9v2JointFlowProjector(before, actorId, { ...rootSustainProfile, currentOpportunityPending: jointRootPending,
+        pendingNaturalActorIds: [...pending] }, 0, inheritedSustains);
+      const losses = revivalLossByUnit, maxOffset = Math.min(3, Math.max(0, battleHorizonProfile(request, before).remainingRounds));
       for (let offset = 0; offset <= maxOffset; offset++) {
-        const priorWorld = priorProjector(before, null, offset, null);
-        const nextWorld = nextProjector(after, null, offset, null, result.contributions || []);
+        const round = Number(before.回合 || 0) + offset;
+        const priorWorld = { ...priorProjector(before, null, offset, null), 回合: round };
+        const nextWorld = { ...nextProjector(after, null, offset, null, result.contributions || []), 回合: round };
         for (const id of reserveOwners) {
           const next = findUnitInWorld(nextWorld, id);
           if (!next || !preview.isBattleCapable(next)) continue;
           const unitSide = sideOf(nextWorld, next), pressureSide = unitSide === 'team_player' ? 'team_enemy' : 'team_player';
           const sources = r9v2LinearSideUnits(nextWorld, pressureSide);
           if (!sources.length) continue;
-          const firstSources = offset > 0 ? sources : sources.filter(source => !consumed.has(preview.unitId(source)) &&
-            (pending ? pending.has(preview.unitId(source)) : source.__battleRuntime?.naturalOpportunity?.status === 'PENDING' &&
-              Number(source.__battleRuntime.naturalOpportunity.round) === Number(before.回合 || 0)));
-          if (!firstSources.length) continue;
+          const firstSources = offset > 0 ? sources : sources.filter(source => pending.has(preview.unitId(source)));
           const sourceWaves = Array.from({ length: Math.min(3, maxOffset - offset + 1) }, (_, index) => index ? sources : firstSources);
-          const loss = r9v2LinearRevivalReserveLoss(priorWorld, nextWorld, id, sourceWaves, recentAttackLedgerIndex);
+          const loss = r9v2LinearRevivalReserveLoss(priorWorld, nextWorld, id, sourceWaves, recentAttackLedgerIndex, riskWorld => {
+            // Keep the post-action HP and all non-revival resources in both
+            // counterfactuals; advance each damaged branch with the same clock.
+            // A later starting frame has already spent its fresh allowance.
+            const project = r9v2JointFlowProjector(offset ? riskWorld : before, actorId, {
+              ...rootSustainProfile, currentOpportunityPending: offset > 0 || jointRootPending,
+              pendingNaturalActorIds: offset ? preview.listUnits(riskWorld).map(({ unit }) => preview.unitId(unit)) : [...pending],
+            }, offset, inheritedSustains);
+            return { ...(role === 'ACTIVE' ? { routineResponse: true } : {}),
+              sourceEligibility: source => !hasActionCancellation(source), pressureObservationWorld: () => riskWorld,
+              advanceWorld: (previous, window) => ({ ...project(riskWorld, null, window, null,
+                offset ? [] : result.contributions || [], null, previous), 回合: round + window }),
+              advanceWorldOutcomes: (previous, window) => project.outcomes(riskWorld, window, offset ? [] : result.contributions || [], previous)
+                .map(row => ({ probability: row.probability, world: { ...row.world, 回合: round + window } })),
+            };
+          });
           // A reserve is one portfolio of future options, not a new asset in
           // each overlapping window. Keep its best forfeited use, not the sum.
           losses.set(id, Math.max(Number(losses.get(id) || 0), loss));
@@ -59106,6 +65725,89 @@
       }
     }
     markCausalStage('revivalReserveMs');
+    // Mirror the existing realized-healing HP/max-HP unit for actual own-source
+    // friendly HP debits. Net each recipient's ordered physical receipts first;
+    // a refund or revival is not a second gross charge, nor an enemy benefit.
+    const immediateFriendlyHp = new Map(), immediateHpEvents = new Set();
+    for (const entry of result.contributions || []) {
+      if (entry.outcomeKind !== 'HP_DELTA' || entry.actorId !== actorId || entry.sourceActionId !== result.actionId ||
+          entry.rootCauseId !== result.actionId || entry.evidence?.cooperativeProjectionId ||
+          Number(entry.evidence?.deferredStartRoundOffset || 0) > 0) continue;
+      const target = findUnitInWorld(before, entry.targetId);
+      const delta = Number(entry.expectedDelta ?? entry.evidence?.delta);
+      if (!target || sideOf(before, target) !== actorSide || !Number.isFinite(delta)) continue;
+      if (entry.eventId && immediateHpEvents.has(entry.eventId)) continue;
+      if (entry.eventId) immediateHpEvents.add(entry.eventId);
+      immediateFriendlyHp.set(entry.targetId, (immediateFriendlyHp.get(entry.targetId) || 0) + delta);
+    }
+    const immediateFriendlyHpCost = [...immediateFriendlyHp].reduce((sum, [targetId, delta]) =>
+      sum + Math.max(0, -delta) / Math.max(1, preview.readHpMax(findUnitInWorld(before, targetId))), 0);
+    // A spent old finite defense is an asset debit, not a negative benefit to
+    // discard. A changed rule portfolio owns its shields jointly; unchanged
+    // rules retain the existing shield-only absorption and bucket model.
+    let friendlyFiniteDefenseCost = 0, friendlySurvivalCost = 0;
+    if (role === 'ACTIVE') {
+      const holders = new Set((result.contributions || []).filter(entry =>
+        ['SHIELD_DELTA', 'STATE_CHANGED', 'HP_DELTA'].includes(entry.outcomeKind) && entry.actorId === actorId &&
+        entry.sourceActionId === result.actionId && entry.rootCauseId === result.actionId &&
+        !entry.evidence?.cooperativeProjectionId && !(Number(entry.evidence?.deferredStartRoundOffset || 0) > 0)
+      ).map(entry => entry.targetId));
+      const portfolio = unit => [Number(unit.shield ?? unit.护盾 ?? unit.护盾值 ?? 0),
+        Object.entries(unit.状态效果 || {}).filter(([, state]) => Number(state.shield_value) > 0 ||
+          Number(state.战斗效果?.block_count) > 0 || Number(state.战斗效果?.death_save_count) > 0)];
+      for (const id of holders) {
+        const unit = findUnitInWorld(before, id), next = findUnitInWorld(after, id);
+        if (!unit || !next || sideOf(before, unit) !== actorSide || movedRecipientIds.has(id)) continue;
+        ordinarySurvival(unit, next);
+        const netSurvivalLoss = Number(survivalLossByUnit.get(id) || 0);
+        let ownedRevivalLoss = Number(revivalLossByUnit.get(id) || 0);
+        // The existing revival owner gets first claim on this probability.
+        // When both clocks cover the entire remaining horizon, an immediate
+        // spent reserve is capped by the action's net risk after compensation.
+        // Do not erase its existing fourth-window loss with a three-window cap.
+        if (!afterObjective.terminal && ownedRevivalLoss > netSurvivalLoss && battleHorizonProfile(request, before).remainingRounds < 3 &&
+            r9v2LinearRevivalReserveCounterfactual(unit, next)) {
+          const refund = ownedRevivalLoss - netSurvivalLoss;
+          if (id === actorId) selfRevivalReserveLoss -= refund;
+          else allyRevivalReserveLoss -= refund;
+          ownedRevivalLoss = netSurvivalLoss;
+        }
+        friendlySurvivalCost += Math.max(0, netSurvivalLoss - ownedRevivalLoss) * Number(exposureByUnit().get(id) || 0);
+        if (preview.stableHash(portfolio(unit)) === preview.stableHash(portfolio(next))) continue;
+        if (!ruleProtectionByUnit.has(id)) {
+          const { datedOptions } = ordinaryProtectionClock(unit, next);
+          ruleProtectionByUnit.set(id, r9v2LinearOrdinaryRuleProtection(request, after, unit, next,
+            [...enemiesAfter.values()], hostileSide, recentAttackLedgerIndex,
+            world => datedOptions(world, result.contributions || [], { ...rootSustainProfile, currentOpportunityPending: false }), true));
+        }
+        const rulePortfolio = ruleProtectionByUnit.get(id);
+        if (rulePortfolio !== null) {
+          friendlyFiniteDefenseCost += Math.max(0, -rulePortfolio) * Number(exposureByUnit().get(id) || 0);
+          continue;
+        }
+        if (!shieldProtectionByUnit.has(id)) {
+          const { datedOptions } = ordinaryProtectionClock(unit, next);
+          shieldProtectionByUnit.set(id, r9v2LinearOrdinaryShieldProtection(request, before, unit, next,
+            [...enemiesAfter.values()], hostileSide, recentAttackLedgerIndex, { worldSnapshot: after,
+              pressureOptionsForWorld: (world, force) => datedOptions(world, result.contributions || [],
+                { ...rootSustainProfile, currentOpportunityPending: false }, force) }));
+        }
+        friendlyFiniteDefenseCost += Math.max(0, -shieldProtectionByUnit.get(id)) * Number(exposureByUnit().get(id) || 0);
+      }
+    }
+    if (settlementCapacityComplete) {
+      selfCapacityGain = timedActionCapacity.netCapacity;
+      // One paired portfolio already pays every declared startup resource and
+      // owns the original current opportunity. Do not price that same debit a
+      // second time as an independent resource-runway penalty.
+      resourceRunwayGain = 0;
+    }
+    // Keep the existing reserve debit separately auditable before clipping the
+    // compound capacity value. A current action cost is not a second lost life.
+    const selfCapacityBeforeRevival = r9v2LinearTerminalValue(afterObjective, actorSide) > 0 &&
+      preview.isPhysicallyAlive(actorAfter || {}) ? 0 : Math.max(
+        0, directMechanicalGain, selfCapacityGain, creationSelfMechanicalGain,
+      ) + Math.min(0, directMechanicalGain, selfCapacityGain, creationSelfMechanicalGain);
     const values = {
       OBJECTIVE_PROGRESS: clamp(terminalProgress, -1, 1),
       SELF_FOLLOWUP_POOL_GAIN: clamp(
@@ -59113,12 +65815,11 @@
         -1,
         1,
       ),
-      SELF_FOLLOWUP_MECHANICAL_GAIN: clamp(Math.max(
-        0,
-        directMechanicalGain,
-        selfCapacityGain,
-        creationSelfMechanicalGain,
-      ) + Math.min(0, directMechanicalGain, selfCapacityGain, creationSelfMechanicalGain) - selfRevivalReserveLoss, -1, 1),
+      // A surviving winner no longer needs future action capacity. Do not
+      // charge the vanished hostile target catalogue as lost own mechanics.
+      // Defeat, draws and actual caster death retain their existing losses;
+      // realized reserve debits remain outside this future-capacity term.
+      SELF_FOLLOWUP_MECHANICAL_GAIN: clamp(selfCapacityBeforeRevival - selfRevivalReserveLoss, -1, 1),
       RESOURCE_RUNWAY_GAIN: clamp(resourceRunwayGain, -1, 1),
       ENEMY_RESPONSE_OPTION_DENIAL: clamp(enemyDenial + enemyRevivalReserveLoss / Math.max(1, enemiesBefore.length), -1, 1),
       OPPONENT_RESPONSE_PRESSURE: hostilePressure,
@@ -59134,7 +65835,7 @@
       ALLY_OPTION_GAIN: clamp(allyOptionGain - allyRevivalReserveLoss / Math.max(1, beforeAllies.length), -1, 1),
       ALLY_RESOURCE_RUNWAY_GAIN: allyResourceRunwayGain,
       FOCUS_TARGET_MARGINAL_GAIN: clamp(focusGain, 0, 1),
-      PROTECTION_MARGINAL_GAIN: clamp(protectionGain, 0, 1),
+      PROTECTION_MARGINAL_GAIN: clamp(protectionGain - immediateFriendlyHpCost - friendlyFiniteDefenseCost - friendlySurvivalCost, -1, 1),
       TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL: redundancyEffectCount
         ? clamp(redundant / redundancyEffectCount, 0, 1)
         : 0,
@@ -59149,6 +65850,12 @@
       unitFamily: 'RATIO',
       sourceFactIds: Object.freeze([]),
       sourceEventIds: Object.freeze(eventIds),
+      ...(code === 'SELF_FOLLOWUP_MECHANICAL_GAIN' && periodicResourceCapacity ? { periodicResourceCapacity: Object.freeze(periodicResourceCapacity) } : {}),
+      ...(code === 'SELF_FOLLOWUP_MECHANICAL_GAIN' && timedActionCapacity ? { timedActionCapacity: Object.freeze(timedActionCapacity) } : {}),
+      ...(code === 'SELF_FOLLOWUP_MECHANICAL_GAIN' ? { mechanicalCapacityBreakdown: Object.freeze({
+        beforeRevivalReserve: selfCapacityBeforeRevival, revivalReserveLoss: selfRevivalReserveLoss,
+      }) } : {}),
+      ...(code === 'ALLY_OPTION_GAIN' ? { allyTemporalCapacity: Object.freeze(allyTemporalCapacity) } : {}),
     })));
   }
 
@@ -59408,6 +66115,8 @@
     bifDocs,
     previewResultsById,
     sourceInput,
+    forecastCurrentFactsById,
+    forecastSourcesById,
   }) {
     const carrier = root.__LWCS_BEHAVIOR_DECISION_PIPELINE__?.candidateImpactEnvelope;
     if (!carrier || typeof carrier.build !== 'function') {
@@ -59426,16 +66135,18 @@
     const sourceClosureEvents = new Set(sourceEventIds);
     const beliefRevision = String(request?.evaluationContext?.beliefRevision || '').trim();
     if (!beliefRevision) throw new Error('CANDIDATE_IMPACT_BELIEF_REVISION_MISSING');
-    const publicConsumers = Array.isArray(sourceInput?.publicConsumers)
-      ? sourceInput.publicConsumers
-      : null;
     const validLocalRefs = (value, closure) => Array.isArray(value) &&
       value.length > 0 &&
       new Set(value).size === value.length &&
       value.every(item =>
         typeof item === 'string' && item.length > 0 && closure.has(item),
       );
-    const publicConsumerSourceClosed = sourceInput?.actionCatalogCompleteness === 'COMPLETE' &&
+    const defaultSourceInput = sourceInput;
+    const futureConsumerIdentitiesFor = (candidateId, sourceInput = defaultSourceInput) => {
+      const sourceClosureFacts = new Set(sourceInput?.sourceClosure?.factIds || []);
+      const sourceClosureEvents = new Set(sourceInput?.sourceClosure?.eventIds || []);
+      const publicConsumers = Array.isArray(sourceInput?.publicConsumers) ? sourceInput.publicConsumers : null;
+      const publicConsumerSourceClosed = sourceInput?.actionCatalogCompleteness === 'COMPLETE' &&
       publicConsumers !== null &&
       publicConsumers.every(consumer =>
         consumer && typeof consumer === 'object' && !Array.isArray(consumer) &&
@@ -59449,7 +66160,6 @@
         validLocalRefs(consumer.sourceEventIds, sourceClosureEvents),
       ) &&
       new Set(publicConsumers.map(consumer => consumer.consumerId)).size === publicConsumers.length;
-    const futureConsumerIdentitiesFor = candidateId => {
       const unknown = reason => ({
         status: 'UNKNOWN',
         identities: [],
@@ -59545,6 +66255,7 @@
       }
       return { status: 'KNOWN', identities, sourceFactIds, sourceEventIds };
     };
+    const frozenById = new Map(request.frozenCandidates.map(candidate => [candidate.candidateId, candidate]));
     const candidates = candidateIds.map(candidateId => {
       const candidateEntries = Array.isArray(sourceInput?.candidateEntriesById?.[candidateId])
         ? sourceInput.candidateEntriesById[candidateId]
@@ -59653,6 +66364,20 @@
           }
         }
       }
+      const sourceFrames = forecastSourcesById?.get(candidateId);
+      if (sourceFrames && capabilityStatus !== 'UNKNOWN') {
+        const entryIdentity = entry => JSON.stringify([entry.capabilityKind, entry.ownerId, entry.targetId,
+          entry.effectAxis, entry.effectKey, entry.timeBand, entry.durationBand, entry.resourceKey, entry.followUpKey]);
+        const identities = (candidateEntries || []).map(entryIdentity).sort(compareUtf16);
+        if (!sourceFrames.every(frame => {
+          const input = frame.sourceInput, axes = input.candidateCompletenessByAxis[candidateId];
+          const entries = input.candidateEntriesById[candidateId];
+          return axes?.TEAM_EFFECT === 'COMPLETE' && axes?.RESOURCE_SUPPLY === 'COMPLETE' && axes?.FOLLOW_UP === 'COMPLETE' &&
+            Array.isArray(entries) && JSON.stringify(entries.map(entryIdentity).sort(compareUtf16)) === JSON.stringify(identities);
+        })) {
+          capabilityStatus = 'UNKNOWN'; capabilityReason = 'CAPABILITY_AXIS_NOT_CLOSED'; capabilitySource = undefined;
+        }
+      }
       const contingencyCapabilities = {
         status: capabilityStatus,
         capabilityIds: capabilityStatus === 'KNOWN' ? capabilityIds : [],
@@ -59682,36 +66407,23 @@
           }
           return row;
         });
-      const previewFacts = (previewResultsById[candidateId]?.contributions || [])
+      const releasePending = isNaturalSkillReleasePending(request, frozenById.get(candidateId));
+      // The terminal prediction remains available to the future feature chain.
+      // A natural charge start/progress has no current payment or effect yet.
+      const previewFacts = forecastCurrentFactsById?.get(candidateId) || (releasePending ? [] : previewResultsById[candidateId]?.contributions || [])
         .filter(contribution =>
           !['SCHEDULED_STATE', 'FUTURE_OPTION'].includes(contribution?.component)
         )
-        .map(contribution => {
-          const outcomeKind = String(contribution?.outcomeKind || '').trim();
-          const unitFamily = r9v2ImpactUnitFamilyByOutcome[outcomeKind];
-          const targetUnitId = String(contribution?.targetId || '').trim();
-          const sourceFactId = String(contribution?.semanticKey || contribution?.eventId || '').trim();
-          const sourceEventId = String(contribution?.eventId || contribution?.semanticKey || '').trim();
-          if (!unitFamily || !targetUnitId || !sourceFactId || !sourceEventId) {
-            throw new Error('CANDIDATE_IMPACT_CURRENT_FACT_NOT_CLOSED:' + candidateId + ':' + outcomeKind);
-          }
-          const row = {
-            status: Number.isFinite(contribution.expectedDelta) ? 'KNOWN' : 'UNKNOWN',
-            targetUnitId,
-            sourceFactId,
-            sourceEventId,
-            causalOwner: ['ACTION_ECONOMY', 'RESOURCE_OPTION'].includes(contribution.component)
-              ? 'ACTION_POOL_DELTA'
-              : ['OBJECTIVE_TERMINAL', 'IRREVERSIBLE_COST', 'TAIL_RISK'].includes(contribution.component)
-                ? 'TERMINAL_DELTA'
-                : ['IMMEDIATE_STATE', 'STATE_DELTA', 'RULE_DELTA'].includes(contribution.component)
-                  ? 'STATE_DELTA'
-                  : 'NONE',
-            unitFamily,
-          };
-          if (row.status === 'KNOWN') row.value = contribution.expectedDelta;
-          return row;
-        });
+        .map(r9v2LinearCurrentFactDelta);
+      let futureConsumers = futureConsumerIdentitiesFor(candidateId);
+      if (sourceFrames) {
+        const consumers = sourceFrames.map(frame => futureConsumerIdentitiesFor(candidateId, frame.sourceInput));
+        const first = consumers[0];
+        if (consumers.every(row => row.status === first.status && row.reason === first.reason && JSON.stringify(row.identities) === JSON.stringify(first.identities))) {
+          futureConsumers = { ...first, sourceFactIds: r9v2LinearUniqueSorted(consumers.flatMap(row => row.sourceFactIds)),
+            sourceEventIds: r9v2LinearUniqueSorted(consumers.flatMap(row => row.sourceEventIds)) };
+        } else futureConsumers = { status: 'UNKNOWN', identities: [], sourceFactIds: [], sourceEventIds: [], reason: 'CONSUMER_IDENTITY_NOT_CLOSED' };
+      }
       return {
         candidateId,
         currentFactDeltas: [...reactionFacts, ...previewFacts],
@@ -59721,12 +66433,12 @@
           sourceFactIds: sourceFactIds.slice(),
           sourceEventIds: sourceEventIds.slice(),
         },
-        futureConsumerIdentities: futureConsumerIdentitiesFor(candidateId),
+        futureConsumerIdentities: futureConsumers,
         publicEvidence: {
           status: 'KNOWN',
           beliefRevision,
-          sourceFactIds: sourceFactIds.slice(),
-          sourceEventIds: sourceEventIds.slice(),
+          sourceFactIds: forecastCurrentFactsById?.has(candidateId) ? r9v2LinearUniqueSorted([...sourceFactIds, ...previewFacts.map(row => row.sourceFactId)]) : sourceFactIds.slice(),
+          sourceEventIds: forecastCurrentFactsById?.has(candidateId) ? r9v2LinearUniqueSorted([...sourceEventIds, ...previewFacts.map(row => row.sourceEventId)]) : sourceEventIds.slice(),
         },
         contingencyCapabilities,
         continuationSurrogate: {
@@ -59747,6 +66459,192 @@
         opportunityRevision: revisions.opportunityRevision,
       },
     });
+  }
+
+  // Simulation-free state summary from one side's perspective. Every value is a
+  // direct read of unit state (at most hostile x allied pairs); nothing here
+  // advances time, branches on chance or previews another action.
+  const R9V2_STATE_SUMMARY_BASIC_ATTACK = Object.freeze({ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 });
+  // Routine hit damage and chance are functions of the two snapshot units only;
+  // projections share untouched unit objects, so key by identity.
+  const stateSummaryPairCache = new WeakMap();
+  function r9v2StateSummaryPair(source, target) {
+    let byTarget = stateSummaryPairCache.get(source);
+    if (!byTarget) stateSummaryPairCache.set(source, byTarget = new WeakMap());
+    let pair = byTarget.get(target);
+    if (!pair) {
+      decisionMetrics.stateSummaryPairBuilds += 1;
+      pair = {
+        damage: preview.calculateBaseDamage(R9V2_STATE_SUMMARY_BASIC_ATTACK, source, target, null, { resourceDriveEnabled: false }),
+        hit: preview.estimateHitProbability(source, target, R9V2_STATE_SUMMARY_BASIC_ATTACK),
+      };
+      byTarget.set(target, pair);
+    } else decisionMetrics.stateSummaryPairHits += 1;
+    return pair;
+  }
+  function r9v2StateSummary(world, side, actorId) {
+    const allies = [], enemies = [];
+    for (const { unit } of worldEntries(world)) (sideOf(world, unit) === side ? allies : enemies).push(unit);
+    const capable = unit => preview.isBattleCapable(unit);
+    const effectiveHp = unit => capable(unit) ? (preview.readHp(unit) + preview.readShield(unit)) / Math.max(1, preview.readHpMax(unit)) : 0;
+    const pressure = (sources, targets) => {
+      const live = targets.filter(capable);
+      if (!live.length) return 0;
+      return sources.filter(source => capable(source) && !hasActionCancellation(source)).reduce((sum, source) => sum + Math.min(1, Math.max(...live.map(target =>
+        r9v2StateSummaryPair(source, target).damage / Math.max(1, preview.readHp(target) + preview.readShield(target))))), 0);
+    };
+    const stateValue = (units, sign) => units.filter(capable).reduce((sum, unit) => sum + Object.values(unit.状态效果 || {}).reduce((total, state) => {
+      const windows = Math.min(3, Math.max(1, Number(state?.duration) || 1));
+      const panel = Object.values(state?.面板修改比例 || {}).reduce((acc, value) => acc + (Number(value) || 0), 0);
+      const combat = state?.战斗效果 || {};
+      const periodic = Number(combat.hot_heal_ratio || 0) - Number(combat.dot_damage_ratio || state?.dot_damage_ratio || 0);
+      return total + sign * windows * (panel + periodic);
+    }, 0), 0);
+    const resourceRatio = unit => ['魂力', '精神力'].reduce((sum, resource) =>
+      sum + preview.readResource(unit, resource) / Math.max(1, preview.readResourceMax(unit, resource)), 0) / 2;
+    // Per-unit incapacity proxy: three windows of expected routine hits from
+    // every able hostile, shared across its live targets, over remaining HP.
+    // P(at least k hits) for a Poisson count with mean lambda.
+    const atLeast = (lambda, k) => {
+      if (k <= 0) return 1;
+      let term = Math.exp(-lambda), below = term;
+      for (let i = 1; i < k; i++) { term *= lambda / i; below += term; }
+      return Math.max(0, Math.min(1, 1 - below));
+    };
+    // Settlement-time combat effects carried by states (read, never applied).
+    const combatProduct = (unit, field) => Object.values(unit.状态效果 || {}).reduce((product, state) => {
+      const value = Number(state?.战斗效果?.[field]);
+      return Number.isFinite(value) && value >= 0 ? product * value : product;
+    }, 1);
+    const combatSum = (unit, field) => Object.values(unit.状态效果 || {}).reduce((sum, state) => sum + (Number(state?.战斗效果?.[field]) || 0), 0);
+    const receivedMultiplier = unit => combatProduct(unit, 'received_damage_mult');
+    const outgoingMultiplier = unit => combatProduct(unit, 'final_damage_mult') * (1 + combatSum(unit, 'damage_bonus'));
+    const guardCharges = unit => preview.ruleBlockCount(unit) + preview.deathSaveCount(unit) + Number(preview.hasDamageRevival(unit, true));
+    const risks = (targets, sources) => {
+      const live = targets.filter(capable), able = sources.filter(source => capable(source) && !hasActionCancellation(source));
+      return targets.map(target => {
+        if (!capable(target)) return 1;
+        let hits = 0, damage = 0;
+        for (const source of able) {
+          const pair = r9v2StateSummaryPair(source, target);
+          const hit = pair.hit / Math.max(1, live.length);
+          hits += hit;
+          damage += hit * outgoingMultiplier(source) * pair.damage;
+        }
+        damage *= receivedMultiplier(target);
+        if (!(hits > 0) || !(damage > 0)) return 0;
+        const needed = Math.ceil((preview.readHp(target) + preview.readShield(target)) / (damage / hits)) + guardCharges(target);
+        return atLeast(3 * hits, Math.min(needed, 60));
+      });
+    };
+    const allyRisks = risks(allies, enemies), enemyRisks = risks(enemies, allies);
+    const actor = allies.find(unit => preview.unitId(unit) === actorId);
+    const actorSkills = actor ? preparedSkillProfiles(actor).length : 0;
+    return {
+      allyGuardCharges: allies.filter(capable).reduce((sum, unit) => sum + guardCharges(unit), 0),
+      allyReceivedMultiplier: allies.filter(capable).reduce((sum, unit) => sum + receivedMultiplier(unit), 0) / Math.max(1, allies.filter(capable).length),
+      enemyOutgoingMultiplier: enemies.filter(capable).reduce((sum, unit) => sum + outgoingMultiplier(unit), 0) / Math.max(1, enemies.filter(capable).length),
+      allyRiskSum: allyRisks.reduce((sum, value) => sum + value, 0),
+      allyRiskMax: Math.max(0, ...allyRisks),
+      enemyRiskSum: enemyRisks.reduce((sum, value) => sum + value, 0),
+      enemyRiskMax: Math.max(0, ...enemyRisks),
+      allyEffectiveHp: allies.reduce((sum, unit) => sum + effectiveHp(unit), 0),
+      enemyEffectiveHp: enemies.reduce((sum, unit) => sum + effectiveHp(unit), 0),
+      allyMinEffectiveHp: Math.min(1, ...allies.filter(capable).map(effectiveHp)),
+      allyAlive: allies.filter(capable).length,
+      enemyAlive: enemies.filter(capable).length,
+      enemyPressure: pressure(enemies, allies),
+      allyPressure: pressure(allies, enemies),
+      enemyControlled: enemies.filter(unit => capable(unit) && hasActionCancellation(unit)).length,
+      allyStateValue: stateValue(allies, 1),
+      enemyStateValue: stateValue(enemies, -1),
+      allyResource: allies.filter(capable).reduce((sum, unit) => sum + resourceRatio(unit), 0),
+      enemyResource: enemies.filter(capable).reduce((sum, unit) => sum + resourceRatio(unit), 0),
+      allyItems: allies.reduce((sum, unit) => sum + collectInventory(unit).reduce((total, entry) => total + Number(entry.quantity || 0), 0), 0),
+      allySummons: allies.filter(unit => capable(unit) && preview.isSummonUnit(unit)).length,
+      enemySummons: enemies.filter(unit => capable(unit) && preview.isSummonUnit(unit)).length,
+      actorEffectiveHp: actor ? effectiveHp(actor) : 0,
+      actorResource: actor ? resourceRatio(actor) : 0,
+      actorAffordable: actor && actorSkills ? affordablePreparedSkills(actor).length / actorSkills : 0,
+    };
+  }
+
+  // Candidate state-delta features: the summary after the candidate's own
+  // immediate projection minus the summary before it, plus its action shape.
+  function r9v2StateDeltaFeatures(request, candidate, previewResult, beforeSummary) {
+    const side = request.actorSide, before = beforeSummary;
+    const after = r9v2StateSummary(previewResult?.afterSnapshot || request.visibleWorld, side, request.actorId);
+    const declaration = candidate?.declaration || {};
+    const actionKind = String(declaration.actionKind || '').trim().toUpperCase();
+    const effects = actionKind === 'RELEASE_SKILL' ? preview.collectEffects(declaration.skill || {}) : [];
+    const targetSides = (declaration.targetIds || []).map(id => findUnitInWorld(request.visibleWorld, id)).filter(Boolean)
+      .map(unit => sideOf(request.visibleWorld, unit));
+    const features = {};
+    for (const key of Object.keys(after)) features[`d_${key}`] = after[key] - before[key];
+    const objectives = request?.objectiveContract || request?.battleIntent?.objectives || request.visibleWorld?.胜负条件 || {};
+    // Kill chances straight from the projection's own damage distributions.
+    const deathChance = new Map();
+    for (const entry of previewResult?.contributions || []) {
+      const distribution = entry?.outcomeKind === 'HP_DELTA' ? entry.evidence?.outcomeDistribution : null;
+      const target = distribution?.length ? findUnitInWorld(request.visibleWorld, entry.targetId) : null;
+      if (!target || !preview.isBattleCapable(target)) continue;
+      const hp = preview.readHp(target), floor = preview.calculateNonlethalHpFloor(request.visibleWorld, target, request.battleIntent || {});
+      // HP may be fractional while a branch's damage is capped to whole points
+      // above the nonlethal floor; within one point of that floor is downed.
+      const downed = remaining => floor > 0 ? remaining < floor + 1 : remaining < 1;
+      const chance = distribution.reduce((sum, branch) => sum + (downed(hp - Number(branch.hpDamage || 0) + Number(branch.reviveHealing || 0)) ? Number(branch.probability || 0) : 0), 0);
+      deathChance.set(entry.targetId, 1 - (1 - (deathChance.get(entry.targetId) || 0)) * (1 - Math.min(1, chance)));
+    }
+    const liveEnemies = worldEntries(request.visibleWorld).map(({ unit }) => unit)
+      .filter(unit => sideOf(request.visibleWorld, unit) !== side && preview.isBattleCapable(unit));
+    const enemyKill = liveEnemies.reduce((sum, unit) => sum + (deathChance.get(preview.unitId(unit)) || 0), 0);
+    const allyKill = [...deathChance].reduce((sum, [id, chance]) => {
+      const unit = findUnitInWorld(request.visibleWorld, id);
+      return unit && sideOf(request.visibleWorld, unit) === side ? sum + chance : sum;
+    }, 0);
+    Object.assign(features, {
+      enemyKillChance: enemyKill,
+      allyKillChance: allyKill,
+      winChance: liveEnemies.length ? liveEnemies.reduce((product, unit) => product * (deathChance.get(preview.unitId(unit)) || 0), 1) : 0,
+      objectiveProgress: r9v2LinearTerminalValue(preview.evaluateBattleObjectivesCompact(previewResult?.afterSnapshot || request.visibleWorld, objectives), side) -
+        r9v2LinearTerminalValue(preview.evaluateBattleObjectivesCompact(request.visibleWorld, objectives), side),
+      before_allyRiskMax: before.allyRiskMax, before_allyRiskSum: before.allyRiskSum,
+      before_allyMinEffectiveHp: before.allyMinEffectiveHp, before_enemyPressure: before.enemyPressure,
+      before_actorResource: before.actorResource, before_enemyAlive: before.enemyAlive,
+      kind_basic: Number(actionKind === 'BASIC_ATTACK'), kind_skill: Number(actionKind === 'RELEASE_SKILL'),
+      kind_defend: Number(actionKind === 'DEFEND'), kind_evade: Number(actionKind === 'EVADE'),
+      kind_pass: Number(actionKind === 'PASS_OPPORTUNITY'), kind_item: Number(actionKind === 'USE_ITEM'),
+      creation: Number(!!candidate?.creation),
+      nonDamageSkill: Number(actionKind === 'RELEASE_SKILL' && !effects.some(effect => String(effect?.原型 || '').trim() === '伤害结算')),
+      targetsAlly: Number(targetSides.some(value => value === side)),
+      targetsEnemy: Number(targetSides.some(value => value && value !== side)),
+      startupCost: Object.values(declaration.resourceCosts || {}).reduce((sum, value) => sum + (Number(value) || 0), 0) /
+        Math.max(1, preview.readResourceMax(findUnitInWorld(request.visibleWorld, request.actorId) || {}, '魂力')),
+    });
+    return features;
+  }
+
+  // Causal rows from a fitted state-delta surrogate instead of the future
+  // projections. Objective progress is read exactly from the projection's own
+  // damage distributions; every other code is its fitted linear contribution.
+  const R9V2_SURROGATE_UNIT_RANGE_CODES = new Set(['OPPONENT_RESPONSE_PRESSURE', 'FOCUS_TARGET_MARGINAL_GAIN', 'TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL']);
+  function r9v2SurrogateCausalRows(model, features) {
+    const values = {};
+    for (const [code, component] of Object.entries(model.models || {})) {
+      const coefficient = Number(model.activeCoefficients?.[code] || 0);
+      if (!coefficient) continue;
+      let contribution = component.weights[0];
+      model.names.forEach((name, index) => {
+        contribution += component.weights[index + 1] * ((Number(features[name]) || 0) - component.mean[index]) / component.scale[index];
+      });
+      values[code] = contribution / coefficient;
+    }
+    values.OBJECTIVE_PROGRESS = Number(features.winChance) || 0;
+    return Object.freeze(r9v2LinearCausalCodes.map(code => Object.freeze({
+      featureCode: code, status: 'KNOWN', reasonCode: 'OK',
+      value: R9V2_SURROGATE_UNIT_RANGE_CODES.has(code) ? clamp(values[code], 0, 1) : clamp(values[code], -1, 1),
+      unitFamily: 'RATIO', sourceFactIds: Object.freeze([]), sourceEventIds: Object.freeze([]),
+    })));
   }
 
   function buildOnlineLinearFeatureInputs(request, options = {}) {
@@ -59796,8 +66694,14 @@
     }
     const bifDocs = {};
     const previewResultsById = {};
+    const settlementPreviewResultsById = {};
     const pdaProjectionsById = {};
     const bridgeInputs = [];
+    const rootReactionForecasts = new Map();
+    const forecastCurrentFactsById = new Map();
+    const forecastSourcesById = new Map();
+    const predictionEvidenceById = new Map();
+    const forecastPreviewResultsById = new Map();
     const causalDecisionCache = new Map();
     let previewCalls = 0;
     for (const candidate of request.frozenCandidates) {
@@ -59891,20 +66795,37 @@
       const candidatePreviewStartedAt = collectPerformanceBreakdown
         ? featureClockNow()
         : 0;
+      const previewInput = {
+        worldSnapshot: request.visibleWorld,
+        declaration: previewDeclaration,
+        __preparedDecisionWorld: true,
+        beliefState: request.beliefState,
+        actorId: request.actorId,
+        actionRole: request.actionOpportunity?.role || 'ACTIVE',
+        actionOpportunity: request.actionOpportunity,
+        basisView: 'DECISION_VISIBLE',
+        worldRevision,
+        actionFingerprint: previewDeclarationFingerprint,
+        battleIntent: request.battleIntent,
+        buildOperationGraph: false,
+        captureDependencies: false,
+      };
       let previewResult;
+      let previewBudgetExceeded = false;
       try {
-        previewResult = preview.previewAction({
-          worldSnapshot: request.visibleWorld,
-          declaration: previewDeclaration,
-          actorId: request.actorId,
-          basisView: 'DECISION_VISIBLE',
-          worldRevision,
-          actionFingerprint: previewDeclarationFingerprint,
-          buildOperationGraph: false,
-          captureDependencies: false,
-        });
+        previewResult = preview.projectConditionedAction(previewInput);
       } catch (error) {
-        throw new Error('R9V2_LINEAR_PREVIEW_FAILED:' + candidate.candidateId + ':' + String((error && error.message) || error));
+        const message = String((error && error.message) || error);
+        if (!message.startsWith('BATTLE_PREVIEW_PROBABILITY_BRANCH_BUDGET_EXCEEDED')) {
+          throw new Error('R9V2_LINEAR_PREVIEW_FAILED:' + candidate.candidateId + ':' + message);
+        }
+        // An over-budget preview hard-excludes this candidate (with an empty
+        // projection) instead of failing the whole decision.
+        previewBudgetExceeded = true;
+        decisionMetrics.r9v2PreviewBudgetExclusions++;
+        // The "nothing happened" world is a shallow copy so downstream capacity marking can extend it.
+        previewResult = Object.freeze({ contributions: Object.freeze([]), afterSnapshot: { ...request.visibleWorld },
+          changedUnitIds: Object.freeze([]), scheduledEvents: Object.freeze([]), changedRules: Object.freeze({}) });
       }
       const hasStructuralChange =
         Object.keys(previewResult?.changedRules || {}).length > 0 ||
@@ -59987,6 +66908,7 @@
         ? featureClockNow()
         : 0;
       previewResultsById[candidate.candidateId] = scoringPreviewResult;
+      settlementPreviewResultsById[candidate.candidateId] = previewResult;
       pdaProjectionsById[candidate.candidateId] = sourceProjections;
       const creationProfile = r9v2LinearCreationProfile(candidate);
       const actionOpportunityCarrier = r9v2LinearReactionCarrier(request, candidate, declaration);
@@ -60003,13 +66925,19 @@
         pdaProjections,
         declaration: {
           actionId: bridgeIdPrefix,
-          publicCost: r9v2LinearPublicCost(declaration),
+          publicCost: r9v2LinearPublicCost(declaration, findUnitInWorld(request.visibleWorld, request.actorId)),
         },
       };
       if (creationProfile !== undefined) bridgeInput.creationProfile = creationProfile;
       if (actionOpportunityCarrier !== undefined) bridgeInput.actionOpportunity = actionOpportunityCarrier;
       if (hasIllegalSameSideTarget) bridgeInput.legalityFlags = ['ILLEGAL_TARGET'];
+      if (previewBudgetExceeded) bridgeInput.legalityFlags = [...(bridgeInput.legalityFlags || []), 'PREVIEW_BUDGET_EXCEEDED'];
       bridgeInputs.push(bridgeInput);
+      if (!isNaturalSkillReleasePending(request, candidate) && previewInput.actionRole !== 'STATE_TICK' &&
+          (preview.hasBeforeActionPassives(previewResult) || preview.hasPostActionPassives(previewResult, null, true) ||
+            preview.hasSpecialActionPassives(previewResult))) {
+        rootReactionForecasts.set(candidate.candidateId, { input: previewInput, bridgeInput, rawPdaProjections, rawSourceProjections, declaration, candidateTargetIds });
+      }
       addFeatureBuildTime('bridgeInputMs', bridgeInputStartedAt);
     }
     const bridgeStartedAt = collectPerformanceBreakdown
@@ -60066,6 +66994,63 @@
         : 0;
       relationalDoc = relational.compileDecision(sourceInput);
       addFeatureBuildTime('relationalCompileMs', relationalCompileStartedAt);
+      const forecastStartedAt = collectPerformanceBreakdown ? featureClockNow() : 0;
+      const forecastRelations = new Map();
+      for (const [candidateId, forecast] of rootReactionForecasts) {
+        const sourceFrames = [];
+        const outcomeBranches = [];
+        const prediction = r9v2LinearPredictionAccumulator(request.visibleWorld);
+        const documents = r9v2LinearExpectedRootFeatureDocuments(forecast.input, (result, probability) => {
+          const audit = temporalAuditForCandidate(preview.collectEffects(forecast.declaration?.skill || {}), forecast.candidateTargetIds,
+            request, request.visibleWorld, actorSide, result.contributions || [], forecast.declaration);
+          const currentContributions = (result.contributions || []).filter(entry => !audit.invalidContributionSet.has(entry));
+          // Keep independent passive events in the physical footprint, not in
+          // the root Source/PDA. Every remaining root row retains its identity.
+          const contributions = currentContributions.filter(entry => !String(entry.rootCauseId || '').startsWith('passive-consumer:'));
+          if (contributions.some(entry => entry.sourceActionId !== forecast.bridgeInput.declaration.actionId)) {
+            throw new Error('SOURCE_PREVIEW_SOURCE_ACTION_MISMATCH:' + candidateId);
+          }
+          const branchPreview = Object.freeze({ ...result, contributions: Object.freeze(contributions),
+            afterSnapshot: removeUnrealizableTemporalEffects(result.afterSnapshot, request.visibleWorld, audit) });
+          const physicalPreview = Object.freeze({ ...branchPreview, contributions: Object.freeze(currentContributions) });
+          prediction.add(physicalPreview, probability);
+          outcomeBranches.push({ result: physicalPreview, probability });
+          const branchProjections = forecast.rawPdaProjections.map(item => ({ sourceEffectId: item.sourceEffectId,
+            projection: r9v2LinearActualizedProjection({ ...item, request, declaration: forecast.declaration, previewResult: result, actorSide }) }));
+          const branch = bridge.bridgeCandidates([{ ...forecast.bridgeInput, contributions, pdaProjections: branchProjections }]).perCandidate;
+          if (branch.length !== 1 || branch[0].candidateId !== candidateId || !branch[0].bifInput) throw new Error('R9V2_LINEAR_BRIDGE_CLOSURE:' + candidateId);
+          const immediate = bif.compileCandidate(branch[0].bifInput);
+          const originalPreview = previewResultsById[candidateId], originalProjections = pdaProjectionsById[candidateId];
+          try {
+            // These are the builder-owned maps already registered for THIS
+            // prepared request. Never forge or relax the Source identity gate.
+            previewResultsById[candidateId] = branchPreview;
+            pdaProjectionsById[candidateId] = Object.fromEntries(Object.entries(forecast.rawSourceProjections).map(([sourceEffectId, item]) => [sourceEffectId, {
+              admitted: item.admitted, projection: item.actualize ? r9v2LinearActualizedProjection({ ...item, sourceEffectId,
+                request, declaration: forecast.declaration, previewResult: result, actorSide, sourceMode: true }) : item.projection,
+            }]));
+            const branchSourceInput = source.compilePreparedRequest({ request, decisionApi: root.__LWCS_BATTLE_DECISION__,
+              previewApi: preview, pdaApi: pda, previewResultsById, pdaProjectionsById });
+            const branchRelationalDoc = relational.compileDecision(branchSourceInput);
+            const relation = branchRelationalDoc.perCandidate.find(row => row.candidateId === candidateId);
+            if (!relation || branchRelationalDoc.perCandidate.length !== candidateIds.length) throw new Error('R9V2_LINEAR_RELATIONAL_CLOSURE:' + candidateId);
+            if (options?.includeCandidateImpactEnvelope === true) sourceFrames.push({ probability, sourceInput: branchSourceInput });
+            return { immediate, relational: relation, currentContributions };
+          } finally {
+            previewResultsById[candidateId] = originalPreview;
+            pdaProjectionsById[candidateId] = originalProjections;
+          }
+        });
+        bifDocs[candidateId] = documents.immediate;
+        predictionEvidenceById.set(candidateId, prediction.finish());
+        forecastPreviewResultsById.set(candidateId, preview.combineActionOutcomeResults(outcomeBranches, forecast.input));
+        forecastRelations.set(candidateId, documents.relational);
+        forecastCurrentFactsById.set(candidateId, documents.currentFactDeltas);
+        if (sourceFrames.length) forecastSourcesById.set(candidateId, sourceFrames);
+      }
+      if (forecastRelations.size) relationalDoc = Object.freeze({ ...relationalDoc, perCandidate: Object.freeze(
+        relationalDoc.perCandidate.map(row => forecastRelations.get(row.candidateId) || row)) });
+      addFeatureBuildTime('rootReactionFeatureMs', forecastStartedAt);
     } catch (error) {
       throw new Error('R9V2_LINEAR_RELATIONAL_REJECT:' + String((error && error.message) || error));
     } finally {
@@ -60081,6 +67066,36 @@
     const causalFeatureStartedAt = collectPerformanceBreakdown
       ? featureClockNow()
       : 0;
+    const surrogate = root.__LWCS_CAUSAL_SURROGATE__;
+    const surrogateRole = String(request.actionOpportunity?.role || 'ACTIVE').toUpperCase();
+    const surrogateSide = !!surrogate && (!Array.isArray(surrogate.sides) || surrogate.sides.includes(request.actorSide));
+    const surrogateRoles = Array.isArray(surrogate?.roles) ? surrogate.roles : ['ACTIVE', 'ASSIST', 'REACTION', 'COUNTER'];
+    // ASSIST is scored with the active causal head, so it shares the active surrogate.
+    const useSurrogate = surrogateSide && ['ACTIVE', 'ASSIST'].includes(surrogateRole) && surrogateRoles.includes(surrogateRole);
+    // Responses keep their exact incoming-settlement value; only the codes fed
+    // by future projections are short-circuited and taken from the surrogate.
+    const useResponseSurrogate = surrogateSide && ['REACTION', 'COUNTER'].includes(surrogateRole) &&
+      surrogateRoles.includes(surrogateRole) && !!surrogate.reactionModels;
+    const surrogateBefore = useSurrogate || useResponseSurrogate ? r9v2StateSummary(request.visibleWorld, request.actorSide, request.actorId) : null;
+    const exactCausalRows = candidateId => r9v2LinearCausalFeatureRows(
+      request,
+      frozenById.get(candidateId),
+      previewResultsById[candidateId],
+      causalDecisionCache,
+      causalFeatureBreakdown,
+      false,
+      settlementPreviewResultsById[candidateId],
+    );
+    const responseSurrogateRows = candidateId => {
+      searchBudget.shortCircuit = true;
+      let rows;
+      try { rows = exactCausalRows(candidateId); } finally { searchBudget.shortCircuit = false; }
+      const predicted = r9v2SurrogateCausalRows({ names: surrogate.names, models: surrogate.reactionModels,
+        activeCoefficients: surrogate.reactionCoefficients },
+      r9v2StateDeltaFeatures(request, frozenById.get(candidateId), previewResultsById[candidateId], surrogateBefore));
+      return Object.freeze(rows.map((row, index) => Object.hasOwn(surrogate.reactionModels, row.featureCode)
+        ? Object.freeze({ ...row, value: predicted[index].value }) : row));
+    };
     const featureInputs = candidateIds.map(candidateId => ({
       candidateId,
       document: {
@@ -60088,17 +67103,26 @@
         relational: relationalByCandidate.get(candidateId),
         causal: {
           schemaVersion: 'BehaviorCausalFeatureV1',
-          features: r9v2LinearCausalFeatureRows(
-            request,
-            frozenById.get(candidateId),
-            previewResultsById[candidateId],
-            causalDecisionCache,
-            causalFeatureBreakdown,
-          ),
+          features: useSurrogate ? r9v2SurrogateCausalRows(surrogate,
+            r9v2StateDeltaFeatures(request, frozenById.get(candidateId), previewResultsById[candidateId], surrogateBefore))
+            : useResponseSurrogate ? responseSurrogateRows(candidateId) : exactCausalRows(candidateId),
         },
       },
     }));
     addFeatureBuildTime('causalFeatureMs', causalFeatureStartedAt);
+    // Offline training hook (absent in play): hand each candidate's state-delta
+    // features to the host so they can be paired with the provider's scores.
+    const featureCollector = root.__LWCS_FEATURE_COLLECTOR__;
+    if (typeof featureCollector === 'function') {
+      const beforeSummary = r9v2StateSummary(request.visibleWorld, request.actorSide, request.actorId);
+      featureCollector({ requestHash: request.requestHash, role: String(request.actionOpportunity?.role || 'ACTIVE').toUpperCase(),
+        ...(root.__LWCS_FEATURE_COLLECTOR_DEBUG__ ? { previews: Object.fromEntries(candidateIds.map(id => [id, (previewResultsById[id]?.contributions || [])
+          .map(entry => ({ outcomeKind: entry.outcomeKind, targetId: entry.targetId, expectedDelta: entry.expectedDelta,
+            targetHp: preview.readHp(findUnitInWorld(request.visibleWorld, entry.targetId) || {}),
+            distribution: (entry.evidence?.outcomeDistribution || []).map(branch => [branch.probability, branch.hpDamage, branch.reviveHealing]) }))])) } : {}),
+        candidates: candidateIds.map(candidateId => ({ candidateId,
+          features: r9v2StateDeltaFeatures(request, frozenById.get(candidateId), previewResultsById[candidateId], beforeSummary) })) });
+    }
     if (collectPerformanceBreakdown) {
       Object.entries(causalFeatureBreakdown).forEach(([stage, value]) => {
         featureBuildPerformance[`causalDetail.${stage}`] = value;
@@ -60121,7 +67145,9 @@
     return {
       featureInputs,
       previewCalls,
-      previewResultsById,
+      previewResultsById: Object.fromEntries(Object.entries(previewResultsById).map(([candidateId, result]) =>
+        [candidateId, forecastPreviewResultsById.get(candidateId) || result])),
+      ...(predictionEvidenceById.size ? { predictionEvidenceById } : {}),
       ...(collectPerformanceBreakdown
         ? {
             performanceBreakdown: Object.freeze({
@@ -60137,6 +67163,8 @@
               bifDocs,
               previewResultsById,
               sourceInput,
+              forecastCurrentFactsById,
+              forecastSourcesById,
             }),
           }
         : {}),
@@ -60147,6 +67175,102 @@
     return buildOnlineLinearFeatureInputs(request, {
       includeCandidateImpactEnvelope: true,
     }).candidateImpactEnvelope;
+  }
+
+  function r9v2LinearCurrentFactDelta(contribution) {
+    const unitFamily = r9v2ImpactUnitFamilyByOutcome[String(contribution?.outcomeKind || '').trim()];
+    const targetUnitId = String(contribution?.targetId || '').trim();
+    const sourceFactId = String(contribution?.semanticKey || contribution?.eventId || '').trim();
+    const sourceEventId = String(contribution?.eventId || contribution?.semanticKey || '').trim();
+    if (!unitFamily || !targetUnitId || !sourceFactId || !sourceEventId) throw new Error('CANDIDATE_IMPACT_CURRENT_FACT_NOT_CLOSED');
+    return {
+      status: Number.isFinite(contribution.expectedDelta) ? 'KNOWN' : 'UNKNOWN', targetUnitId, sourceFactId, sourceEventId,
+      causalOwner: ['ACTION_ECONOMY', 'RESOURCE_OPTION'].includes(contribution.component) ? 'ACTION_POOL_DELTA' :
+        ['OBJECTIVE_TERMINAL', 'IRREVERSIBLE_COST', 'TAIL_RISK'].includes(contribution.component) ? 'TERMINAL_DELTA' :
+          ['IMMEDIATE_STATE', 'STATE_DELTA', 'RULE_DELTA'].includes(contribution.component) ? 'STATE_DELTA' : 'NONE',
+      unitFamily, ...(Number.isFinite(contribution.expectedDelta) ? { value: contribution.expectedDelta } : {}),
+    };
+  }
+
+  // Compile first, then integrate the original joint law per typed feature
+  // identity. Never manufacture a mean world/basis, merge resource keys,
+  // average BOOL/ENUM/discrete eligibility, or turn missing/NA into known zero.
+  function r9v2LinearExpectedRootFeatureDocuments(input, compile) {
+    const registry = root.__LWCS_BEHAVIOR_DECISION_PIPELINE__.immediateFeature.registry();
+    const candidateCodes = new Set(registry.candidateFeatureCodes);
+    const documents = new Map(), currentFacts = new Map();
+    let mass = 0;
+    const accumulate = (buckets, key, row, probability) => {
+      let bucket = buckets.get(key);
+      if (!bucket) {
+        bucket = { row, mass: 0, sum: 0, values: new Set(), statuses: new Set(), reasons: new Set(), facts: new Set(), events: new Set(), operands: new Map() };
+        buckets.set(key, bucket);
+      }
+      const unit = row.unitFamily || row.unit;
+      if ((bucket.row.unitFamily || bucket.row.unit) !== unit || !['KNOWN', 'UNKNOWN', 'NOT_APPLICABLE'].includes(row.status)) throw new Error('R9V2_LINEAR_FORECAST_ROW_NOT_CLOSED');
+      bucket.mass += probability; bucket.statuses.add(row.status); bucket.reasons.add(row.reasonCode);
+      if (row.status === 'UNKNOWN') bucket.unknownReason = row.reasonCode;
+      if (row.status === 'KNOWN') {
+        if (typeof row.value !== 'string' && !Number.isFinite(row.value)) throw new Error('R9V2_LINEAR_FORECAST_VALUE_INVALID');
+        bucket.values.add(row.value);
+        if (typeof row.value === 'number') bucket.sum += probability * row.value;
+      }
+      (row.sourceFactIds || []).forEach(id => bucket.facts.add(id)); (row.sourceEventIds || []).forEach(id => bucket.events.add(id));
+      for (const operand of row.operands || []) accumulate(bucket.operands, JSON.stringify([operand.name, operand.unit]), { ...operand, status: 'KNOWN' }, probability);
+    };
+    const finish = (bucket, physical = false) => {
+      const { value: ignored, ...row } = bucket.row;
+      const unit = row.unitFamily || row.unit;
+      const missing = Math.abs(bucket.mass - mass) > 1e-9;
+      const unresolved = bucket.statuses.has('UNKNOWN') || bucket.statuses.size > 1 || (!physical && missing) ||
+        ((unit === 'BOOL' || typeof bucket.row.value === 'string' || row.featureCode === 'DAMAGE_SEGMENTS') && (missing || bucket.values.size > 1)) ||
+        (bucket.statuses.has('NOT_APPLICABLE') && bucket.reasons.size > 1);
+      const status = unresolved ? 'UNKNOWN' : bucket.row.status;
+      const numeric = bucket.values.size === 1 && !missing ? bucket.values.values().next().value : bucket.sum;
+      if (status === 'KNOWN' && typeof numeric !== 'string' && !Number.isFinite(numeric)) throw new Error('R9V2_LINEAR_FORECAST_VALUE_INVALID');
+      return Object.freeze({ ...row, status, ...(status === 'KNOWN' ? { value: numeric } : {}),
+        ...(unresolved && !physical ? { reasonCode: bucket.unknownReason || 'CONDITIONAL_PROBABILITY_UNRESOLVED' } : {}),
+        ...(physical ? {} : { sourceFactIds: Object.freeze([...bucket.facts].sort(compareUtf16)), sourceEventIds: Object.freeze([...bucket.events].sort(compareUtf16)) }),
+        ...(bucket.operands.size ? { operands: Object.freeze([...bucket.operands.values()].map(operand => {
+          const value = operand.values.size === 1 && !missing ? operand.values.values().next().value : operand.sum;
+          const { status: ignoredStatus, ...original } = operand.row;
+          return Object.freeze({ ...original, value, sourceFactIds: Object.freeze([...operand.facts].sort(compareUtf16)), sourceEventIds: Object.freeze([...operand.events].sort(compareUtf16)) });
+        })) } : {}),
+      });
+    };
+    r9v2LinearExpectedCreatedPreview(input, (result, probability) => {
+      const compiled = compile(result, probability);
+      for (const scope of ['immediate', 'relational']) {
+        const doc = compiled[scope]; if (!doc) continue;
+        if (!Array.isArray(doc.features)) throw new Error('R9V2_LINEAR_FORECAST_DOCUMENT_NOT_CLOSED');
+        let retained = documents.get(scope);
+        if (!retained) { retained = { template: doc, rows: new Map() }; documents.set(scope, retained); }
+        if (retained.template.candidateId !== doc.candidateId || retained.template.schemaVersion !== doc.schemaVersion) throw new Error('R9V2_LINEAR_FORECAST_DOCUMENT_IDENTITY');
+        const seen = new Set();
+        for (const row of doc.features) {
+          const key = JSON.stringify([row.featureCode, row.unitFamily || row.unit,
+            scope === 'relational' || candidateCodes.has(row.featureCode) ? [] : r9v2LinearUniqueSorted(row.sourceFactIds)]);
+          if (seen.has(key)) throw new Error('R9V2_LINEAR_FORECAST_DUPLICATE_FEATURE_ID'); seen.add(key);
+          accumulate(retained.rows, key, row, probability);
+        }
+      }
+      for (const contribution of compiled.currentContributions || result.contributions || []) {
+        if (['SCHEDULED_STATE', 'FUTURE_OPTION'].includes(contribution.component)) continue;
+        const row = r9v2LinearCurrentFactDelta(contribution);
+        const key = JSON.stringify([row.targetUnitId, row.sourceFactId, row.sourceEventId, row.causalOwner, row.unitFamily]);
+        // A non-occurring physical event has zero delta in that exact leaf;
+        // this is not the missing-feature/unknown-source default above.
+        accumulate(currentFacts, key, row, probability);
+      }
+      mass += probability; return 0;
+    });
+    if (!documents.size || Math.abs(mass - 1) > 1e-9) throw new Error('R9V2_LINEAR_FORECAST_MASS_NOT_CLOSED');
+    return Object.freeze({ ...Object.fromEntries([...documents].map(([scope, retained]) => {
+      const features = [...retained.rows.values()].map(row => finish(row));
+      if (scope === 'immediate' && features.length > registry.caps.MAX_FEATURES_PER_CANDIDATE) throw new Error('CAP_EXCEEDED:root-reaction-features');
+      return [scope, Object.freeze({ ...retained.template, features: Object.freeze(features),
+        ...(Object.hasOwn(retained.template, 'featureCount') ? { featureCount: features.length } : {}) })];
+    })), currentFactDeltas: Object.freeze([...currentFacts.values()].map(row => finish(row, true))) });
   }
 
   function r9v2LinearActualizedProjection({
@@ -60237,8 +67361,8 @@
   // Builds the formal DecisionContributionTraceV1 document from the SAME
   // featureInputs + provider result used for scoring: no re-preview, no
   // re-scoring, no hidden reads. Contribution conservation is exact because
-  // each row reuses the provider's aggregated raw value, mean, scale and
-  // coefficient; source refs are the union of the raw feature rows' refs.
+  // each candidate reuses its provider's raw value, actual normalized value
+  // and applied coefficient; source refs union the raw feature rows' refs.
   function r9v2LinearBuildDecomposition({ result, featureInputs, provider, selectedId, hardExclusionAudit }) {
     const trace = root.__LWCS_BEHAVIOR_DECISION_PIPELINE__?.contributionTrace;
     if (!trace || typeof trace.buildScoreDecomposition !== 'function') {
@@ -60323,6 +67447,7 @@
     })).filter(entry => entry.code.length > 0);
     const built = trace.buildScoreDecomposition({
       model,
+      providerScoresByCandidate: scoreContributions,
       selectedCandidateId: selectedId,
       alternativeCandidateId: alternativeId,
       featuresByCandidate,
@@ -60332,7 +67457,7 @@
     return built;
   }
 
-  function runR9v2LinearPreparedProvider(request = {}) {
+  function runR9v2LinearPreparedProvider(request = {}, featurePreparation) {
     const provider = root.__LWCS_BEHAVIOR_DECISION_PIPELINE__?.linearScoreProvider;
     if (!provider || typeof provider.selectPreparedRequest !== 'function') {
       throw new Error('R9V2_LINEAR_PROVIDER_NOT_MOUNTED');
@@ -60350,14 +67475,15 @@
         ? globalThis.performance.now()
         : Date.now();
     const providerStartedAt = collectPerformanceBreakdown
-      ? providerClockNow()
+      ? providerClockNow() - featurePreparation.elapsedMs
       : 0;
     const {
       featureInputs,
       previewCalls,
       previewResultsById,
+      predictionEvidenceById,
       performanceBreakdown: featureInputBreakdown,
-    } = buildOnlineLinearFeatureInputs(request);
+    } = featurePreparation.inputs;
     const featureInputsBuiltAt = collectPerformanceBreakdown
       ? providerClockNow()
       : 0;
@@ -60460,9 +67586,10 @@
         '',
       ).trim(),
       mechanicObservations: Object.freeze([...selectedMechanicObservations]),
-      predictedOutcomeEvidence: predictedOutcomeEvidence(
+      predictedOutcomeEvidence: predictionEvidenceById?.get(selectedId) || predictedOutcomeEvidence(
         previewResultsById?.[selectedId],
         request.visibleWorld,
+        { declaration: selectedDeclaration },
       ),
       selected: true,
     });
@@ -60605,10 +67732,9 @@
     if (input?.includeUnaffordableRoutes === true) {
       throw new Error('R9V2_LINEAR_UNAFFORDABLE_MODE_FORBIDDEN');
     }
-    return runR9v2LinearPreparedProvider(prepareDecisionRequest({
-      ...input,
-      analysisDepth: 'CANDIDATES_ONLY',
-    }));
+    return runProvider({ providerId: 'r9v2', request: prepareDecisionRequest({
+      ...input, analysisDepth: 'CANDIDATES_ONLY',
+    }) }).decisionAudit;
   }
 
   const formalProviderState = 'R9V2_LINEAR_READY';
@@ -60619,11 +67745,29 @@
   function runProvider(input = {}) {
     const providerId = String(input?.providerId || '').trim();
     const request = input?.request;
+    searchBudget.creationPlanNodes = 0;
+    if (searchBudget.capacityByCoarseKey.size) searchBudget.capacityByCoarseKey = new Map();
     if (formalProviderState === 'NO_FORMAL_PROVIDER') {
       throw new Error('NO_FORMAL_PROVIDER');
     }
     if (!Object.hasOwn(providerRegistry, providerId)) {
       throw new Error(`battle_decision_provider_unknown:${providerId || 'missing'}`);
+    }
+    if (request?.schemaVersion === INITIALIZATION_REQUEST_SCHEMA) {
+      if (!Object.isFrozen(request) || !request.requestHash || preparedDecisionRequests.get(request) !== request.requestHash)
+        throw new Error('PROVIDER_MUTATED_STATE:request_hash');
+      const outcomeBranches = Object.freeze(request.outcomeBranches.map(branch => Object.freeze({
+        probability: branch.probability, initialization: branch.initialization, lostOpportunity: branch.lostOpportunity,
+        result: branch.request ? runProvider({ providerId, request: branch.request }) : null,
+      })));
+      // Each observation precedes selection. Preserve the conditional policy;
+      // never invent one executable declaration by averaging branch scores.
+      const decisionAudit = Object.freeze({ schemaVersion: 'InitializationDecisionAuditV1', providerId,
+        selectionMode: 'INITIALIZATION_BRANCHES', selected: null, outcomeBranches,
+      });
+      return Object.freeze({ schemaVersion: INITIALIZATION_RESULT_SCHEMA, providerId, requestHash: request.requestHash,
+        selectedCandidateId: '', selectedDeclaration: null, decisionAudit,
+      });
     }
     if (!request || request.schemaVersion !== R8_REQUEST_SCHEMA) {
       throw new Error('DECISION_SCHEMA_MISMATCH:request');
@@ -60636,10 +67780,24 @@
     ) {
       throw new Error('PROVIDER_MUTATED_STATE:request_hash');
     }
+    // Build feature dependencies before scoring: a candidate can create an
+    // ASSIST skill/grant that did not exist in the request's initial world.
+    // Each successor owns a frozen pool; the parent's pool is never reopened.
+    // Pass the call-local result directly and include preparation in timing.
+    const now = () => typeof root.performance?.now === 'function' ? root.performance.now() : Date.now();
+    const startedAt = now();
+    let featureInputs;
+    providerFeaturePreparationDepth += 1;
+    try {
+      featureInputs = buildOnlineLinearFeatureInputs(request);
+    } finally {
+      providerFeaturePreparationDepth -= 1;
+    }
+    const featurePreparation = { inputs: featureInputs, elapsedMs: now() - startedAt };
     let decision;
     providerExecutionDepth += 1;
     try {
-      decision = providerRegistry[providerId](request);
+      decision = providerRegistry[providerId](request, featurePreparation);
     } finally {
       providerExecutionDepth -= 1;
     }
@@ -60732,6 +67890,8 @@
     formalProviderState,
     actionKinds,
     collectSkills,
+    projectCooperativeSummonDeclaration,
+    actionCompletesWithinBattleHorizon,
     collectPassiveSkills: unit => typeof preview.collectPassiveSkills === 'function' ? preview.collectPassiveSkills(unit) : Object.freeze([]),
     buildPassiveConsumerEvidence: (worldSnapshot, unit, options) =>
       typeof preview.buildPassiveConsumerEvidence === 'function'
@@ -60852,6 +68012,8 @@
     isPreparedDecisionRequest,
     isPreparedLinearSourceMaps,
     buildOnlineLinearFeatureInputs,
+    actualizeLinearProjection: r9v2LinearActualizedProjection,
+    isNaturalSkillReleasePending,
     buildPreparedCandidateImpactEnvelope,
     r9v2LinearPublicSnapshot,
     runR9v2LinearProviderForTest,

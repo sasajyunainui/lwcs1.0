@@ -117,6 +117,7 @@
   })();
   const 资源版本后缀 = '';
   for (const 文档 of new Set([document, 宿主窗口.document])) {
+    文档.documentElement.dataset.lwcsCharacterAssets = 资源基础地址 + 'assets/characters/';
     for (const [变量, 文件] of [['--dc-desktop-art', 'twin-dragon-desktop.webp'], ['--dc-mobile-art', 'twin-dragon-mobile.webp']]) {
       文档.documentElement.style.setProperty(变量, 'url(' + JSON.stringify(资源基础地址 + 'assets/status-cabin/' + 文件 + 资源版本后缀) + ')');
     }
@@ -171,7 +172,7 @@
       地址: 资源基础地址 + 'LWCS_UI_Integration_Bundle.js' + 资源版本后缀,
       关键: true,
       分组: 'core',
-      已就绪: () => !!读取共享值('__LWCS_DATABASE_ADAPTER__') && typeof 读取共享值('__MVU_ROUTE_MODULE_INTENT__') === 'function',
+      已就绪: () => !!读取共享值('__LWCS_MESSAGE_SEMANTICS_V1__') && !!读取共享值('__LWCS_HOST_COMPATIBILITY_V1__') && !!读取共享值('__LWCS_DATABASE_ADAPTER__') && typeof 读取共享值('__MVU_ROUTE_MODULE_INTENT__') === 'function',
     },
     逻辑桥接: { 类型: 'bundle-member', 依赖: ['UI运行时'], 关键: true, 分组: 'core' },
     数据库适配器: {
@@ -262,6 +263,13 @@
       关键: true,
       分组: 'core',
       已就绪: () => !!读取共享值('AutoCardUpdaterAPI'),
+    },
+    本地纪要检索: {
+      类型: 'inline-js',
+      地址: 资源基础地址 + 'LWCS_Local_Recall_Runtime.js' + 资源版本后缀,
+      关键: false,
+      分组: 'optional',
+      已就绪: () => !!读取共享值('__LWCS_LOCAL_RECALL_V1__'),
     }
   };
 

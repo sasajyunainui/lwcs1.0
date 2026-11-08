@@ -688,15 +688,30 @@
     if (Number.isFinite(probability) && probability >= 0 && probability <= 1) {
       push(eventNumberToken(event, '成功率', probability * 100, '%', 'PROBABILITY', 'SET', visibilityMode));
     }
-    const roll = number(event?.roll ?? meta?.roll ?? meta?.dodgeRoll, NaN);
+    const roll = number(event?.roll ?? meta?.roll ?? meta?.dodgeRoll ?? undefined, NaN);
     if (Number.isFinite(roll) && roll >= 0 && roll <= 1) {
       push(eventNumberToken(event, '随机值', roll * 100, '%', 'RANDOM', 'SET', visibilityMode));
     }
     const duration = number(event?.duration ?? meta?.duration, NaN);
-    if (Number.isFinite(duration) && duration > 0 && /state|summon|shield|effect/.test(kind)) {
+    const controlWindow = text(event?.actionType) === 'control_opportunity' ? runtime.describeControlWindowChange(event) : null;
+    const grantUse = event?.ruleCode === 'MECHANISM_GRANT_USE_CONSUMED' ? runtime.describeGrantedStateUse(event) : null;
+    const grantExpiry = event?.ruleCode === 'MECHANISM_GRANT_EXPIRED' ? runtime.describeGrantedStateExpiry(event) : null;
+    const movement = event?.ruleCode === 'PERSISTENT_STATE_TRANSFER' || meta.source === 'persistent_state_transfer'
+      ? runtime.describeStateMovement(event) : null;
+    if (movement) {
+      if (movement.count !== null) push(eventNumberToken(event, '实际转移状态数', movement.count, '个', 'STATE', 'SET', visibilityMode));
+    } else if (grantUse) {
+      if (grantUse.remaining !== null) push(eventNumberToken(event, '剩余授予次数', grantUse.remaining, '次', 'STATE', 'SET', visibilityMode));
+    } else if (grantExpiry) {
+      if (grantExpiry.remaining !== null) push(eventNumberToken(event, '到期失效次数', grantExpiry.remaining, '次', 'STATE', 'SET', visibilityMode));
+    } else if (controlWindow) {
+      if (controlWindow.remaining !== null) push(eventNumberToken(event, '剩余控制行动窗口', controlWindow.remaining, '个有效窗口', 'WINDOW', 'SET', visibilityMode));
+    } else if (Number.isFinite(duration) && duration > 0 && /state|summon|shield|effect/.test(kind) &&
+      !['state_remove', 'state_expire'].includes(kind) &&
+      (!['state_apply', 'state_replace'].includes(kind) || !rejectedStateApplication(event))) {
       push(eventNumberToken(event, '持续时间', duration, '回合', 'WINDOW', 'SET', visibilityMode));
     }
-    if (['state_apply', 'state_replace'].includes(kind)) {
+    if (['state_apply', 'state_replace'].includes(kind) && !rejectedStateApplication(event)) {
       const evidence = meta?.evidence && typeof meta.evidence === 'object' ? meta.evidence : {};
       const after = meta?.after && typeof meta.after === 'object' ? meta.after : {};
       const adjustment = text(evidence?.value || after?.数值);
@@ -758,24 +773,10 @@
     return type === 'buff' ? `获得【${label}】` : type === 'debuff' ? `陷入【${label}】` : `进入【${label}】状态`;
   }
 
-  function grantUseText(event, receiver, label) {
-    const before = event.meta?.beforeUses, after = event.meta?.afterUses;
-    const remaining = Number.isSafeInteger(after) && after >= 0 && !(Number.isSafeInteger(before) && before < after) ? after : null;
-    const consumed = Number.isSafeInteger(before) && remaining !== null && before > remaining ? before - remaining : null;
-    return `${receiver}的【${label}】${consumed === null ? '已消费' : `本次消耗${consumed}次`}` +
-      (remaining === null ? '，剩余次数未记录' : remaining === 0 ? '，次数已用尽' : `，剩余${remaining}次`);
-  }
-
   function deathSaveText(event) {
     if (event?.ruleCode !== 'RULE_DEATH_SAVE_CONSUMED') return '';
     const remaining = event.meta?.deathSaveRemainingCount;
     return `消耗1次免死${event.meta?.after === 1 ? '，保留1点生命' : ''}${typeof remaining === 'number' && Number.isFinite(remaining) && remaining >= 0 ? `，剩余${remaining}次` : ''}`;
-  }
-
-  function grantExpiryText(event, receiver, label) {
-    const remaining = event.meta?.remaining;
-    return `${receiver}的【${label}】已到期` +
-      (Number.isSafeInteger(remaining) && remaining > 0 ? `，未使用的${remaining}次机会失效` : '');
   }
 
   function percentText(value) {
@@ -804,6 +805,12 @@
       '位移执行': '位置调整',
     };
     return labels[raw] || raw;
+  }
+
+  function persistentRemovalStateNames(event = {}, directory = new Map()) {
+    if (text(event?.eventKind) !== 'state_remove' || text(event?.ruleCode) !== 'PERSISTENT_STATE_REMOVAL') return null;
+    const names = Array.isArray(event?.meta?.removedStateNames) ? event.meta.removedStateNames : [];
+    return unique(names.map(name => playerStateName(name, directory)).filter(Boolean));
   }
 
   function playerActionStateName(value = '', directory = new Map()) {
@@ -983,10 +990,142 @@
     return '';
   }
 
+  const sustainBreakReasonLabels = Object.freeze({
+    SUSTAIN_COST_INVALID: '维持消耗无效',
+    SUSTAIN_ENVIRONMENT_BLOCKED: '环境限制',
+    SUSTAIN_ENVIRONMENT_CONTEXT_UNAVAILABLE: '环境规则不可用',
+    SUSTAIN_RESOURCE_INSUFFICIENT: '资源不足',
+  });
+
+  function readSustainBreakReason(event = {}) {
+    if (
+      text(event?.eventKind) !== 'state_tick' ||
+      text(event?.actionType) !== 'sustain_break' ||
+      text(event?.resultState).toUpperCase() !== 'FAILURE'
+    ) return '';
+    const ruleCode = text(event?.ruleCode);
+    return Object.hasOwn(sustainBreakReasonLabels, ruleCode) ? sustainBreakReasonLabels[ruleCode] : '';
+  }
+
+  function isMissingSustainEffectDiagnostic(event = {}) {
+    return text(event?.eventKind) === 'state_tick' &&
+      text(event?.actionType).toUpperCase() === 'RELEASE_SKILL' &&
+      text(event?.ruleCode) === 'SUSTAIN_EFFECT_MISSING' &&
+      text(event?.result) === 'diagnostic' &&
+      text(event?.resultState).toUpperCase() === 'FAILURE';
+  }
+
+  function sustainBreakUnitStates(event = {}) {
+    const data = event.meta?.sustainStateTerminations;
+    if (!readSustainBreakReason(event) || event.meta?.sustainStateTerminationsInvalid === true ||
+        !data || data.version !== 1 || data.scope !== 'EXACT_DELETED_STATE_OWNERS' ||
+        data.payerId !== event.actorId || data.sustainSourceActionId !== event.sourceActionId ||
+        !Array.isArray(data.rows) || data.rowCount !== data.rows.length || !data.rows.length ||
+        !Array.from(data.rows).every(row => row && typeof row.targetId === 'string' && row.targetId && row.targetId === row.targetId.trim() &&
+          typeof row.stateKey === 'string' && row.stateKey && typeof row.stateName === 'string' && row.stateName) ||
+        !Array.isArray(data.unitStates) || !data.unitStates.length) return null;
+    const targets = new Set(data.rows.map(row => row.targetId)), seen = new Set();
+    if (!Array.from(data.unitStates).every(row => row && targets.has(row.targetId) && !seen.has(row.targetId) && seen.add(row.targetId) &&
+        Array.isArray(row.stateNames) && Array.from(row.stateNames).every(name => typeof name === 'string' && name && name === name.trim()) &&
+        new Set(row.stateNames).size === row.stateNames.length) || seen.size !== targets.size) return null;
+    return data.unitStates;
+  }
+
+  function summarizeSustainBreakEvent(event = {}, directory = new Map()) {
+    const reason = readSustainBreakReason(event);
+    if (!reason) return '';
+    const meta = event?.meta && typeof event.meta === 'object' ? event.meta : {};
+    const actor = publicEntityName(directory, event?.actorId || event?.actorName, event?.actorName);
+    const target = publicEntityName(directory, event?.targetId || event?.targetName, event?.targetName);
+    const stateName = playerSafeText(
+      meta?.stateName || event?.actionName || event?.finalActionName || '维持效果',
+      directory,
+    ) || '维持效果';
+    const unitStates = sustainBreakUnitStates(event);
+    if (unitStates) return `【${stateName}】维持中断（${reason}），${unitStates.map(row => publicEntityName(directory, row.targetId, row.targetId)).join('、')}的相关效果已解除`;
+    return `${target || actor || '目标'}的【${stateName}】维持中断（${reason}），效果已解除`;
+  }
+
+  function summarizeSideEffectEvent(event = {}, directory = new Map()) {
+    const kind = text(event?.eventKind);
+    const meta = event?.meta && typeof event.meta === 'object' ? event.meta : {};
+    const sideEffectType = playerSafeText(meta?.sideEffectType || '', directory);
+    if (
+      !['state_apply', 'state_replace', 'resource_change', 'effect_resolved'].includes(kind) ||
+      text(event?.effectPrototype) !== '副作用' || !sideEffectType
+    ) return '';
+    const receiver = publicEntityName(directory, event?.targetId || event?.targetName, event?.targetName)
+      || publicEntityName(directory, event?.actorId || event?.actorName, event?.actorName) || '目标';
+    const code = text(event?.ruleCode);
+    const outcome = code === 'SIDE_EFFECT_TRIGGERED' ? 'applied'
+      : code === 'SIDE_EFFECT_BLOCKED' ? 'blocked' : code === 'SIDE_EFFECT_NOT_TRIGGERED' ? 'failed' : '';
+    const passed = outcome === 'applied' || outcome === 'blocked';
+    const numeric = value => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
+    const probability = event?.probability, roll = event?.roll;
+    // 缺抽签参数不抹掉定性回执；矛盾回执则与离线统计一样保持未知，不能降为失败或退回普通状态/资源成功文案。
+    let unknown = !outcome || meta.sideEffectTrialNumericInvalid === true ||
+      typeof meta.probabilityPassed === 'boolean' && meta.probabilityPassed !== passed ||
+      [probability,roll,meta.probability,meta.roll].some(value => value != null && !numeric(value));
+    for (const [top, nested] of [[probability,meta.probability],[roll,meta.roll]]) {
+      if (nested != null && top !== nested) unknown = true;
+    }
+    const results = {applied:['TRIGGERED','APPLIED','SUCCESS'],blocked:['BLOCKED','IMMUNE','RESISTED'],failed:['FAILED','FAILURE','NOT_TRIGGERED']};
+    const states = {applied:['SUCCESS','APPLIED'],blocked:['NO_EFFECT','BLOCKED','IMMUNE','RESISTED'],failed:['NO_EFFECT','FAILURE','FAILED']};
+    const result = text(event?.result).toUpperCase(), state = text(event?.resultState).toUpperCase();
+    if (outcome && (result && !results[outcome].includes(result) || state && !states[outcome].includes(state))) unknown = true;
+    if (numeric(probability) && numeric(roll) && (probability >= 1 || probability > 0 && roll < probability) !== passed) unknown = true;
+    if (unknown) return `${receiver}的【${sideEffectType}】副作用结果记录不完整或矛盾，无法确认是否生效`;
+    if (
+      !['state_apply', 'resource_change'].includes(kind) ||
+      text(event?.ruleCode) !== 'SIDE_EFFECT_TRIGGERED' ||
+      text(event?.result) !== 'triggered' ||
+      text(event?.resultState).toUpperCase() !== 'SUCCESS'
+    ) return '';
+    const source = playerSafeText(event?.actionName || '', directory);
+    const sourceText = source ? `（来源【${source}】）` : '';
+    const prefix = `${receiver}触发【${sideEffectType}】副作用，`;
+    if (kind === 'resource_change') {
+      const delta = event?.delta ?? meta?.delta;
+      const rawResource = text(event?.resource || meta?.resource || meta?.resourceKey);
+      if (typeof delta !== 'number' || !Number.isFinite(delta) || delta === 0 || !rawResource) return '';
+      const resource = playerSafeText(resourceName(event), directory);
+      return `${prefix}${resource}${delta < 0 ? '减少' : '增加'}${Math.abs(delta)}点${sourceText}`;
+    }
+    const stateName = playerStateName(meta?.stateName || event?.stateName || '', directory);
+    if (!stateName) return '';
+    const duration = event?.duration ?? meta?.duration;
+    const durationText = typeof duration === 'number' && Number.isFinite(duration) && duration > 0
+      ? `，持续${duration}回合` : '';
+    return `${prefix}${stateApplicationText(event, stateName)}${durationText}${sourceText}`;
+  }
+
+  function reportActorTargetLabels(record = {}, actorName = '', targetName = '') {
+    const actor = String(actorName || '').trim();
+    const target = String(targetName || '').trim();
+    const original = { actor, target };
+    if (!['action_start', 'hit_result'].includes(String(record?.eventKind || '').trim()) ||
+        !actor || actor !== target) return original;
+    const actorId = String(record?.actorId || '').trim();
+    const targetIds = [...new Set([
+      record?.targetId,
+      ...(Array.isArray(record?.targetIds) ? record.targetIds : []),
+    ].map(value => String(value || '').trim()).filter(Boolean))];
+    const actorSide = String(record?.actorSide || '').trim();
+    const targetSide = String(record?.targetSide || '').trim();
+    if (!actorId || targetIds.length !== 1 || actorId === targetIds[0] ||
+        !['player', 'enemy'].includes(actorSide) ||
+        !['player', 'enemy'].includes(targetSide) || actorSide === targetSide) return original;
+    return {
+      actor: `${actor}（${actorSide === 'player' ? '我方' : '敌方'}）`,
+      target: `${target}（${targetSide === 'player' ? '我方' : '敌方'}）`,
+    };
+  }
+
   function summarizeEvent(event = {}, directory = new Map()) {
     const kind = text(event?.eventKind);
-    const actor = publicEntityName(directory, event?.actorId || event?.actorName, event?.actorName) || '系统';
-    const target = publicEntityName(directory, event?.targetId || event?.targetName, event?.targetName);
+    const rawActor = publicEntityName(directory, event?.actorId || event?.actorName, event?.actorName) || '系统';
+    const rawTarget = publicEntityName(directory, event?.targetId || event?.targetName, event?.targetName);
+    const { actor, target } = reportActorTargetLabels(event, rawActor, rawTarget);
     const targets = unique([
       ...(Array.isArray(event?.targetIds) ? event.targetIds : []),
       event?.targetId,
@@ -1002,6 +1141,16 @@
     const shield = number(meta?.amount ?? event?.amount, 0);
     const duration = number(event?.duration ?? meta?.duration, 0);
     const namedState = playerStateDescription(event, directory);
+    const sideEffectSummary = summarizeSideEffectEvent(event, directory);
+    if (sideEffectSummary) return sideEffectSummary;
+    const movement = event?.ruleCode === 'PERSISTENT_STATE_TRANSFER' || meta.source === 'persistent_state_transfer' ? runtime.describeStateMovement(event, {
+      entity: (id, fallback) => publicEntityName(directory, id, fallback), state: value => playerStateName(value, directory),
+    }) : null;
+    if (movement) return movement.summary;
+    if (text(event?.actionType) === 'control_opportunity') {
+      const controlWindow = runtime.describeControlWindowChange(event, target || actor, namedState);
+      if (controlWindow) return controlWindow.summary;
+    }
     if (kind === 'action_start' || kind === 'pass') {
       const actionType = text(event?.actionType).toUpperCase();
       const actionRole = text(event?.actionRole).toUpperCase();
@@ -1114,6 +1263,22 @@
       return `${actor}的【${action}】命中${target || '目标'}，但未造成有效伤害`;
     }
     if (kind === 'state_tick') {
+      if (isMissingSustainEffectDiagnostic(event)) {
+        const reason = playerSafeText(meta?.reason || meta?.resolutionReason || '', directory);
+        const summaryReason = reason.replace(/^技能声明维持消耗[，,]\s*但\s*/, '');
+        return `${actor}的【${action}】未登记维持费用${summaryReason ? `：${summaryReason}` : ''}`;
+      }
+      if (
+        text(event?.actionType).toUpperCase() === 'RELEASE_SKILL' &&
+        text(event?.ruleCode) === 'SUSTAIN_COST_ATTACHED' &&
+        text(event?.result) === 'attached' &&
+        text(event?.resultState).toUpperCase() === 'SUCCESS'
+      ) {
+        const { costDescription } = runtime.describeSustainCostAttachment(event);
+        return `${actor}的【${action}】已登记维持费用（${costDescription}），待回合末结算`;
+      }
+      const sustainBreakSummary = summarizeSustainBreakEvent(event, directory);
+      if (sustainBreakSummary) return sustainBreakSummary;
       if (isHealingStateTick(event)) {
         const recovery = Math.max(0, number(event?.delta ?? meta?.delta ?? meta?.amount, 0));
         return recovery > 0
@@ -1142,25 +1307,37 @@
         : `${target || actor}的护盾吸收${amount}点伤害后破裂`;
     }
     if (event?.ruleCode === 'MECHANISM_GRANT_USE_CONSUMED') {
-      return grantUseText(event, target || actor, playerSafeText(meta?.before?.来源技能 || namedState || '授予效果', directory));
+      return runtime.describeGrantedStateUse(event, target || actor, playerSafeText(meta?.before?.来源技能 || meta?.grantSourceActionName || namedState || '授予效果', directory)).summary;
     }
     if (event?.ruleCode === 'MECHANISM_GRANT_EXPIRED') {
-      return grantExpiryText(event, target || actor, action || namedState || '授予效果');
+      return runtime.describeGrantedStateExpiry(event, target || actor, action || namedState || '授予效果').summary;
     }
     if (kind === 'state_apply' || kind === 'state_replace') {
       const outcome = resultLabel(event);
       const receiver = target || actor;
       const application = stateApplicationText(event, namedState || '状态');
-      if (['失败', '被抵抗', '免疫', '已阻断'].includes(outcome)) {
+      if (rejectedStateApplication(event) && ['失败', '被抵抗', '免疫', '已阻断', '未产生效果'].includes(outcome)) {
         return `${actor}试图用【${action}】让${receiver}${application}，但${outcome}`;
+      }
+      if (rejectedStateApplication(event)) {
+        return `${receiver}的【${namedState || '状态'}】生效结果未记录，无法确认是否生效`;
       }
       if (kind === 'state_replace') {
         return `${actor}通过【${action}】更新${receiver}的【${namedState || '状态'}】${duration > 0 ? `，持续${duration}回合` : ''}`;
       }
       return `${actor}用【${action}】让${receiver}${application}${duration > 0 ? `，持续${duration}回合` : ''}`;
     }
-    if (kind === 'state_remove') return `${target || actor}移除【${namedState || action}】`;
-    if (kind === 'state_expire') return `${target || actor}的【${namedState || action}】到期`;
+    if (kind === 'state_remove') {
+      const removedNames = persistentRemovalStateNames(event, directory);
+      if (removedNames !== null) {
+        return removedNames.length
+          ? `${target || actor}移除${removedNames.map(name => `【${name}】`).join('、')}`
+          : `${target || actor}完成持续净化（被移除状态名称未记录）`;
+      }
+      return `${target || actor}移除【${namedState || action}】`;
+    }
+    if (kind === 'state_expire') return event.ruleCode === 'STATE_WINDOW_EXPIRED' && Object.hasOwn(meta, 'remainingStateNames')
+      ? runtime.describeObservedStateExpiry(event, target || actor, namedState || action).summary : `${target || actor}的【${namedState || action}】到期`;
     if (kind === 'charge_interrupt') return `${actor}的【${action}】被中止`;
     if (kind === 'summon_create') {
       const summonName = publicEntityName(directory, meta?.summonKey || event?.targetId, meta?.summonName || event?.targetName || '召唤物');
@@ -1264,6 +1441,9 @@
     );
     const actorName = publicEntityName(directory, rawActorId, event?.actorName);
     const targetName = publicEntityName(directory, event?.targetId || event?.targetName, event?.targetName);
+    const persistentRemovedNames = persistentRemovalStateNames(event, directory);
+    const movement = event?.ruleCode === 'PERSISTENT_STATE_TRANSFER' || event?.meta?.source === 'persistent_state_transfer'
+      ? runtime.describeStateMovement(event) : null;
     const fact = {
       factId: text(event?.eventId),
       round: Math.max(0, number(event?.round, 0)),
@@ -1284,7 +1464,8 @@
       actionName: playerSafeText(event?.actionName || event?.finalActionName, directory),
       resultState: resultLabel(event),
       resultCategory: structuredResultCategory(event),
-      stateName: playerStateName(stateName(event), directory),
+      stateName: movement ? unique(movement.moves.map(move => playerStateName(move.stateName, directory))).join('、')
+        : persistentRemovedNames === null ? playerStateName(stateName(event), directory) : persistentRemovedNames.join('、'),
       summary: summarizeEvent(event, directory),
       numericTokens: numericTokens(event, visibilityMode),
       castTimePoints: ['charge_start', 'charge_progress'].includes(text(event?.eventKind))
@@ -1509,12 +1690,20 @@
     return kinds.includes(text(event?.eventKind));
   }
 
-  /* 黄金锚点：effect_resolved 原样携带预演 contribution 的 effectInstanceId + windowId + outcomeKind，
-     与预测项可精确 1:1 join；其余事件类型退化为 targetId 匹配。 */
+  /* 已有明确效果身份时不能退化为同目标配对；包装事实可为其明确列出的子事实提供窗口。 */
   function matchesEffectInstance(event = {}, effectInstanceId = '') {
     const wanted = text(effectInstanceId);
     if (!wanted) return false;
-    return text(rawMeta(event).effectInstanceId) === wanted;
+    return text(rawMeta(event).effectInstanceId || event?.sourceEffectId) === wanted;
+  }
+
+  /* 只在同 ID 重复时比较载荷；排序对象键，不把缺值、非法数值或数组顺序抹成真零。 */
+  function reconciliationFactSignature(value) {
+    if (Array.isArray(value)) return `array:[${value.map(reconciliationFactSignature).join(',')}]`;
+    if (value && typeof value === 'object') return `object:{${Object.keys(value).sort()
+      .filter(key => value[key] !== undefined)
+      .map(key => `${JSON.stringify(key)}:${reconciliationFactSignature(value[key])}`).join(',')}}`;
+    return `${typeof value}:${typeof value === 'number' && !Number.isFinite(value) ? String(value) : JSON.stringify(value)}`;
   }
 
   function collectPredictedOutcomes(decision = {}) {
@@ -1524,6 +1713,7 @@
       if (!entry) return;
       predictions.push({
         ...entry,
+        sourceActionId: text(entry.sourceActionId || selected?.declaration?.actionId || decision?.executedActionId),
         predictionId: `prediction:${predictions.length + 1}:${entry.kind}`,
       });
     };
@@ -1540,6 +1730,17 @@
           targetId,
           effectInstanceId: text(evidence?.sourceEffectId),
           windowId: text(evidence?.windowId),
+          sourceActionId: text(evidence?.predictionSourceActionId),
+          predictionWindow: text(evidence?.predictionWindow),
+          predictionStartRound: evidence?.predictionStartRound,
+          predictionThroughRound: evidence?.predictionThroughRound,
+          ...(Object.hasOwn(evidence?.evidence || {}, 'passiveConsumerEvidence') ? {
+            passiveConsumerEvidence: cloneValue(evidence.evidence.passiveConsumerEvidence),
+            passiveResource: evidence.evidence.resource,
+            passiveActorId: evidence.predictionActorId,
+            passiveIdentityValid: ['predictionSourceActionId', 'predictionActorId', 'sourceEffectId', 'windowId'].every(key =>
+              typeof evidence[key] === 'string' && evidence[key].length > 0 && evidence[key] === evidence[key].trim()),
+          } : {}),
           expected: {
             delta: Number.isFinite(delta) ? delta : null,
             stateName: text(evidence?.evidence?.stateName || evidence?.evidence?.state),
@@ -1549,6 +1750,12 @@
             hitProbability: typeof evidence?.hitProbability === 'number' && Number.isFinite(evidence.hitProbability) && evidence.hitProbability >= 0 && evidence.hitProbability <= 1
               ? evidence.hitProbability
               : null,
+            ...(kind === 'STATE_SCHEDULED' || evidence?.predictionWindow === 'DELAYED_STATE_LANDING' ? {
+              registrationRound: evidence?.evidence?.registrationRound,
+              delay: evidence?.evidence?.delay,
+              scheduledRound: evidence?.evidence?.scheduledRound,
+              deferredStateName: evidence?.evidence?.deferredStateName,
+            } : {}),
             basisView: text(evidence?.basisView || evidence?.evidence?.damageBasis?.basisView),
             remainingHp: typeof evidence?.evidence?.current === 'number' && Number.isFinite(evidence.evidence.current)
               ? evidence.evidence.current : null,
@@ -1661,11 +1868,97 @@
     };
   }
 
+  // A passive owns a separate physical action. Bind its logical forecast to
+  // that action only through the real parent's unique execution and the exact
+  // application identity; names, effect ordinal alone and nearby events prove
+  // nothing. Keep repeated before-hit occurrences in separate parent slots.
+  function resolvePassivePrediction(prediction, context, declarationActionId, resolvedExecutionId) {
+    const expected = prediction.passiveConsumerEvidence;
+    const hash = root.__LWCS_BATTLE_PREVIEW__?.stableHash;
+    const object = value => value && typeof value === 'object' && !Array.isArray(value);
+    const ids = value => Array.isArray(value) && value.length > 0 && new Set(value).size === value.length && value.every(id => typeof id === 'string' && id.length > 0 && id === id.trim());
+    const eventPhases = ['受击前', '受击后', '濒死时', '被控制时', '命中后'];
+    const valid = body => {
+      const identity = body?.applicationIdentity;
+      if (!object(body) || !object(identity) || typeof hash !== 'function' ||
+          !['STAGE', 'STRUCTURED'].includes(body.settlementKind) || !Number.isSafeInteger(body.currentRound) || body.currentRound < 0 ||
+          !ids(body.targetIds) || !eventPhases.includes(body.triggerPhase)) return false;
+      for (const key of ['actorId', 'skillId', 'effectIndex', 'effectPrototype', 'applicationKey', 'triggerEventId'])
+        if (typeof body[key] !== 'string' || !body[key] || body[key] !== body[key].trim()) return false;
+      for (const key of ['triggerSourceEffectId', 'triggerTargetId']) if (typeof body[key] !== 'string' || body[key] !== body[key].trim()) return false;
+      if (['受击前', '濒死时', '被控制时'].includes(body.triggerPhase) && (!body.triggerSourceEffectId || !body.triggerTargetId)) return false;
+      if (Object.hasOwn(body, 'triggerSegment') && (!['濒死时', '被控制时'].includes(body.triggerPhase) ||
+          !Number.isSafeInteger(body.triggerSegment) || body.triggerSegment < 1)) return false;
+      const keys = ['unitId', 'skillId', 'effectId', 'effectIndex', 'effectHash', 'phase', 'cycle', 'round', 'triggerEventId'];
+      if (Object.keys(identity).length !== keys.length || keys.some(key => !Object.hasOwn(identity, key)) ||
+          keys.filter(key => key !== 'round').some(key => typeof identity[key] !== 'string' || identity[key] !== identity[key].trim()) ||
+          !identity.effectHash || !['', '每战', '每回合'].includes(identity.cycle) ||
+          identity.unitId !== body.actorId || identity.skillId !== body.skillId || identity.effectIndex !== body.effectIndex || identity.phase !== body.triggerPhase ||
+          identity.round !== (identity.cycle === '每回合' ? body.currentRound : 0) ||
+          identity.triggerEventId !== (identity.cycle === '' ? body.triggerEventId : '') || body.applicationKey !== 'passive:' + hash(identity)) return false;
+      return true;
+    };
+    if (!valid(expected) || prediction.passiveIdentityValid !== true || prediction.passiveActorId !== expected.actorId ||
+        context.executionIdentityConflict || !resolvedExecutionId || expected.triggerEventId !== declarationActionId ||
+        !expected.targetIds.includes(prediction.targetId)) return null;
+    const logicalSource = 'passive-consumer:' + expected.applicationKey + (expected.triggerPhase === '受击前'
+      ? ':before:' + expected.triggerSourceEffectId + ':' + expected.triggerTargetId
+      : ['濒死时', '被控制时'].includes(expected.triggerPhase)
+        ? ':special:' + expected.triggerSourceEffectId + ':' + expected.triggerTargetId + ':' + (expected.triggerSegment || 0) : '');
+    if (prediction.sourceActionId !== logicalSource || !prediction.effectInstanceId?.startsWith(logicalSource + ':')) return null;
+    const parent = context.ledgerEvents.find(event => rawEventKindIs(event, 'action_start') && event.actionId === resolvedExecutionId);
+    if (!parent || rawMeta(parent).passiveIdentityInvalid === true || parent.round !== expected.currentRound ||
+        parent.actorId !== context.passiveParentActorId || rawMeta(parent).decisionCandidateId !== context.passiveParentCandidateId) return null;
+    const identity = { ...expected.applicationIdentity, ...(expected.applicationIdentity.triggerEventId ? { triggerEventId: resolvedExecutionId } : {}) };
+    const actualExpected = { ...expected, applicationIdentity: identity, applicationKey: 'passive:' + hash(identity), triggerEventId: resolvedExecutionId,
+      triggerSourceEffectId: expected.triggerSourceEffectId.startsWith(declarationActionId + ':')
+        ? resolvedExecutionId + expected.triggerSourceEffectId.slice(declarationActionId.length) : expected.triggerSourceEffectId };
+    const bodyKeys = ['actorId', 'skillId', 'effectIndex', 'effectPrototype', 'triggerPhase', 'currentRound', 'applicationKey',
+      'applicationIdentity', 'triggerEventId', 'triggerSourceEffectId', 'triggerTargetId', 'triggerSegment', 'settlementKind', 'targetIds'];
+    const matchesBody = body => object(body) && bodyKeys.every(key => reconciliationFactSignature(body[key]) === reconciliationFactSignature(actualExpected[key]));
+    const matchesOccurrence = event => matchesBody(rawMeta(event).passiveConsumerEvidence);
+    const ownActionId = 'passive-consumer:' + actualExpected.applicationKey;
+    let ownEffectId = expected.settlementKind === 'STAGE' ? expected.effectIndex :
+      prediction.effectInstanceId?.startsWith(prediction.sourceActionId + ':')
+        ? ownActionId + prediction.effectInstanceId.slice(prediction.sourceActionId.length) : '';
+    let ownWindowId = prediction.windowId;
+    const suffix = prediction.effectInstanceId.slice(prediction.sourceActionId.length);
+    if (expected.settlementKind === 'STRUCTURED' && suffix.includes(':conditional:')) {
+      // Preview labels the conditional plan; Native's accepted child identity
+      // uses its original effect ordinal plus that same mode/branch/child tuple.
+      const child = suffix.match(/^:effect:0:conditional:(replace|append):(0|[1-9]\d*):(0|[1-9]\d*)$/);
+      if (!child || !Number.isSafeInteger(Number(child[2])) || !Number.isSafeInteger(Number(child[3])) ||
+          prediction.windowId !== `round:${expected.currentRound}:effect:0`) return null;
+      const effectIndex = `0:${child[1]}:${child[2]}:${child[3]}`;
+      ownEffectId = `${ownActionId}:effect:${effectIndex}`;
+      ownWindowId = `round:${expected.currentRound}:effect:${effectIndex}`;
+    }
+    if (!ownEffectId) return null;
+    const pool = context.passiveScopedEvents || [];
+    if ((context.scopedConflictingEvents || []).some(matchesOccurrence)) return null;
+    const occurrence = pool.filter(matchesOccurrence);
+    if (!occurrence.length || occurrence.some(event => !valid(rawMeta(event).passiveConsumerEvidence) || rawMeta(event).passiveIdentityInvalid === true ||
+        event.round !== expected.currentRound || event.actorId !== expected.actorId || event.actionRole !== 'STATE_TICK' ||
+        expected.settlementKind === 'STAGE' && (typeof event.duration !== 'number' || !Number.isFinite(event.duration) ||
+          typeof rawMeta(event).duration !== 'number' || event.duration !== rawMeta(event).duration) ||
+        ['actorId', 'actionId', 'sourceActionId', 'sourceEffectId'].some(key => event[key] !== undefined &&
+          (typeof event[key] !== 'string' || event[key] !== event[key].trim())) ||
+        (event.sourceActionId || event.actionId) !== ownActionId || event.actionId && event.actionId !== ownActionId ||
+        Object.hasOwn(rawMeta(event), 'windowId') && (typeof rawMeta(event).windowId !== 'string' || rawMeta(event).windowId !== rawMeta(event).windowId.trim()) ||
+        rawMeta(event).sourceActionId && rawMeta(event).sourceActionId !== ownActionId ||
+        rawMeta(event).effectInstanceId && event.sourceEffectId && rawMeta(event).effectInstanceId !== event.sourceEffectId)) return null;
+    const relevant = occurrence.filter(event => !prediction.passiveResource || rawMeta(event).resource === prediction.passiveResource);
+    if (!relevant.length) return null;
+    return { prediction: { ...prediction, sourceActionId: ownActionId, effectInstanceId: ownEffectId, windowId: ownWindowId }, events: relevant };
+  }
+
   function judgePrediction(prediction = {}, events = [], context = {}) {
     const kind = text(prediction?.kind).toUpperCase();
     const targetId = text(prediction?.targetId);
     const effectInstanceId = text(prediction?.effectInstanceId);
     const expected = prediction?.expected || {};
+    const sourceActionId = text(prediction?.sourceActionId);
+    const windowId = text(prediction?.windowId);
     const directory = context?.directory instanceof Map ? context.directory : new Map();
     const eventHitsTarget = event =>
       rawEventHitsTarget(event, targetId) ||
@@ -1676,28 +1969,40 @@
         targetId,
         targetId,
       );
-    const eventBelongsToAction = event => {
-      const actionIds = context?.actionIds instanceof Set ? context.actionIds : new Set();
-      if (!actionIds.size) return true;
-      return [event?.actionId, event?.sourceActionId].map(text).some(actionId => actionIds.has(actionId));
+    let conflictPool = context.scopedConflictingEvents || [];
+    let conflictMatches = event => matchesPredictionIdentity(event);
+    const verdict = (status, factIds = [], actual = null, searched = [], magnitude = null) => {
+      const conflicts = conflictPool.filter(event =>
+        rawEventKindIs(event, ...searched) && conflictMatches(event));
+      return {
+        status: conflicts.length ? 'UNCONFIRMED' : status,
+        factIds: unique((conflicts.length ? conflicts.map(event => event.eventId) : factIds).map(text).filter(Boolean)),
+        actual: conflicts.length ? null : actual,
+        searchedEventKinds: searched,
+        magnitude: conflicts.length ? null : magnitude,
+        ...(conflicts.length ? { matchDiagnostic: { likelyCause: 'CONFLICTING_EVENT_ID' } } : {}),
+      };
     };
-    const verdict = (status, factIds = [], actual = null, searched = [], magnitude = null) => ({
-      status,
-      factIds: unique(factIds.map(text).filter(Boolean)),
-      actual,
-      searchedEventKinds: searched,
-      magnitude,
-    });
-    const scoped = kinds => events.filter(event =>
-      rawEventKindIs(event, ...kinds) &&
-      (eventHitsTarget(event) || matchesEffectInstance(event, effectInstanceId))
-    );
-    const anchored = kinds => {
-      const byInstance = events.filter(event =>
-        rawEventKindIs(event, ...kinds) && matchesEffectInstance(event, effectInstanceId)
+    const matchesPredictionIdentity = event => {
+      if (!eventHitsTarget(event)) return false;
+      if (sourceActionId && text(event?.sourceActionId || event?.actionId) !== sourceActionId) return false;
+      const directInstanceId = text(rawMeta(event).effectInstanceId);
+      if (effectInstanceId && directInstanceId && directInstanceId !== effectInstanceId) return false;
+      const recordedWindow = text(rawMeta(event).windowId || event?.windowId);
+      if (windowId && recordedWindow && recordedWindow !== windowId) return false;
+      if ((!effectInstanceId || matchesEffectInstance(event, effectInstanceId)) && (!windowId || recordedWindow === windowId)) return true;
+      const wrappers = events.filter(parent =>
+        Array.isArray(rawMeta(parent).childEventIds) &&
+        rawMeta(parent).childEventIds.map(text).includes(text(event?.eventId)) &&
+        (!sourceActionId || text(parent?.sourceActionId || parent?.actionId) === sourceActionId) &&
+        (!effectInstanceId || matchesEffectInstance(parent, effectInstanceId))
       );
-      return byInstance.length ? byInstance : scoped(kinds);
+      if (effectInstanceId && !matchesEffectInstance(event, effectInstanceId) && !wrappers.length) return false;
+      if (windowId && !recordedWindow &&
+          (!wrappers.length || wrappers.some(parent => text(rawMeta(parent).windowId || parent?.windowId) !== windowId))) return false;
+      return true;
     };
+    const scoped = kinds => events.filter(event => rawEventKindIs(event, ...kinds) && matchesPredictionIdentity(event));
     const preempted = searched => {
       if (context?.preemptionEvent) {
         return verdict('PREEMPTED', [context.preemptionEvent.eventId], {
@@ -1713,7 +2018,7 @@
         rawEventKindIs(event, ...searched) && !eventHitsTarget(event)
       );
       const result = verdict('UNCONFIRMED', [], null, searched);
-      result.matchDiagnostic = {
+      result.matchDiagnostic ||= {
         searchedKindPresent: kindPresent,
         sameKindHitOtherTarget: kindPresentForOtherTarget,
         expectedTargetId: targetId,
@@ -1728,38 +2033,139 @@
       return result;
     };
 
+    if (kind === 'STATE_SCHEDULED' || kind === 'STATE_CHANGED' && prediction?.predictionWindow === 'DELAYED_STATE_LANDING') {
+      const landing = kind === 'STATE_CHANGED', searched = ['state_apply', 'state_replace', 'effect_resolved'];
+      const registrationRound = expected.registrationRound, delay = expected.delay, scheduledRound = expected.scheduledRound;
+      const dueRound = scheduledRound - 1;
+      const wantedState = landing ? text(expected.stateName) : text(expected.deferredStateName);
+      const unknown = reason => ({ ...verdict('UNCONFIRMED', [], null, searched),
+        matchDiagnostic: { likelyCause: reason } });
+      if (context.executionIdentityConflict || !sourceActionId || !effectInstanceId || !windowId || !wantedState ||
+          !Number.isSafeInteger(registrationRound) || registrationRound < 1 || !Number.isSafeInteger(delay) || delay < 1 ||
+          !Number.isSafeInteger(scheduledRound) || scheduledRound !== registrationRound + delay ||
+          prediction.predictionStartRound !== (landing ? dueRound : registrationRound) ||
+          prediction.predictionThroughRound !== prediction.predictionStartRound ||
+          prediction.predictionWindow !== (landing ? 'DELAYED_STATE_LANDING' : 'DECLARATION_EXECUTION')) return unknown('DELAYED_WINDOW_IDENTITY_MISSING');
+      const pool = landing ? context.ledgerEvents || events : events;
+      const matchesSource = event => typeof event.eventId === 'string' && !!event.eventId && eventHitsTarget(event) &&
+        text(event.sourceActionId || event.actionId) === sourceActionId && matchesEffectInstance(event, effectInstanceId) &&
+        ['eventId', 'targetId', 'sourceActionId', 'actionId', 'sourceEffectId'].every(key => event[key] === undefined ||
+          typeof event[key] === 'string' && event[key] === event[key].trim());
+      conflictPool = landing ? context.conflictingEvents || [] : context.scopedConflictingEvents || [];
+      conflictMatches = event => matchesSource(event) && (event.round === registrationRound || landing && event.round === dueRound);
+      const registrationPool = landing && Object.hasOwn(prediction, 'passiveConsumerEvidence') ? events : pool;
+      const registrations = registrationPool.filter(event => rawEventKindIs(event, 'state_apply', 'state_replace') && matchesSource(event) &&
+        event.round === registrationRound && rawMeta(event).source === 'structured_runtime' &&
+        rawMeta(event).stateName === '延迟登记' && rawMeta(event).deferredStateName === wantedState &&
+        rawMeta(event).scheduledRound === scheduledRound && rawMeta(event).duration === delay && event.duration === delay &&
+        Number.isSafeInteger(event.sequence) && event.sequence > 0 &&
+        text(rawMeta(event).windowId || event.windowId) === windowId);
+      if (registrations.length !== 1) return unknown('DELAYED_REGISTRATION_IDENTITY_MISSING');
+      const registration = registrations[0];
+      const registered = ['applied', 'replaced'].includes(registration.result);
+      const rejected = ['resisted', 'immune', 'evaded', 'no_effect'].includes(registration.result);
+      if (!registered && !rejected) return unknown('DELAYED_REGISTRATION_RESULT_UNVERIFIED');
+      if (!landing) return verdict(registered ? 'CONFIRMED' : 'MISSED', [registration.eventId], {
+        stateName: '延迟登记', deferredStateName: wantedState, duration: delay, scheduledRound,
+      }, searched);
+      if (rejected) return verdict('MISSED', [registration.eventId], { result: registration.result, stateName: wantedState }, searched);
+      const due = pool.filter(event => matchesSource(event) && event.round === dueRound &&
+        event.actionType === 'DELAYED_EFFECT' && event.actionRole === 'STATE_TICK' &&
+        rawMeta(event).source === 'delayed_effect_settlement' && rawMeta(event).registrationEventId === registration.eventId &&
+        Number.isSafeInteger(event.sequence) && Number.isSafeInteger(registration.sequence) && event.sequence > registration.sequence);
+      const applied = due.filter(event => rawEventKindIs(event, 'state_apply', 'state_replace') &&
+        rawMeta(event).stateName === wantedState && typeof event.duration === 'number' && Number.isFinite(event.duration) && event.duration > 0 &&
+        ['applied', 'replaced'].includes(event.result));
+      const noEffect = due.filter(event => rawEventKindIs(event, 'effect_resolved') && event.result === 'no_effect' &&
+        rawMeta(event).wrapperOnly === true && Array.isArray(rawMeta(event).childEventIds) && rawMeta(event).childEventIds.length === 0);
+      if (applied.length === 1 && !noEffect.length) return verdict('CONFIRMED', [applied[0].eventId], {
+        stateName: wantedState, duration: applied[0].duration,
+      }, searched);
+      if (!applied.length && noEffect.length === 1) return verdict('MISSED', [noEffect[0].eventId], {
+        stateName: wantedState, result: 'no_effect',
+      }, searched);
+      return unknown(applied.length || noEffect.length ? 'CONFLICTING_DELAYED_OUTCOMES' : 'DELAYED_LANDING_NOT_OBSERVED');
+    }
+
     if (kind === 'SCHEDULED_HP_DELTA') {
-      /* 持续伤害/治疗不走 hit_result——运行时在回合末以 state_tick 结算（DOT_TICK/HOT_TICK）。
-         而且 state_tick 的事实归属是 round:N 而非交锋，因此不在本次行动的事件集合里：
-         只看交锋作用域会永远匹配不上，把"作用域够不着"误报成"引擎没产生事实"。
-         这里改用回合级事件池，按目标匹配。 */
-      const searched = ['state_tick'];
+      /* 回合事实可在交锋外，但必须属于这项预测明确声明的来源和有限周期窗口。 */
+      const searched = ['state_tick', 'state_apply', 'state_replace'];
+      const startRound = prediction?.predictionStartRound;
+      const throughRound = prediction?.predictionThroughRound;
+      if (context?.executionIdentityConflict || prediction?.predictionWindow !== 'STATE_TICK_HORIZON' || !sourceActionId || !effectInstanceId ||
+          !Number.isSafeInteger(startRound) || startRound <= 0 || !Number.isSafeInteger(throughRound) || throughRound < startRound) {
+        const missing = verdict('UNCONFIRMED', [], null, searched);
+        missing.matchDiagnostic = { likelyCause: 'PERIODIC_WINDOW_IDENTITY_MISSING' };
+        return missing;
+      }
       const pool = Array.isArray(context?.ledgerEvents) && context.ledgerEvents.length
         ? context.ledgerEvents
         : Array.isArray(context?.deferredEvents) && context.deferredEvents.length
           ? context.deferredEvents
           : events;
+      const executionActionId = text(context?.executedActionId || sourceActionId);
+      const runtimeEffectId = effectInstanceId.startsWith(`${sourceActionId}:`) && effectInstanceId.endsWith(':scheduled-dot')
+        ? executionActionId + effectInstanceId.slice(sourceActionId.length, -':scheduled-dot'.length)
+        : effectInstanceId;
+      conflictPool = context.conflictingEvents || [];
+      conflictMatches = event => text(event?.sourceActionId || event?.actionId) === executionActionId &&
+        matchesEffectInstance(event, runtimeEffectId) &&
+        eventHitsTarget(event) &&
+        Number.isSafeInteger(event?.round) && event.round >= startRound && event.round <= throughRound;
       const ticks = pool.filter(event =>
-        rawEventKindIs(event, 'state_tick') && eventHitsTarget(event)
+        rawEventKindIs(event, 'state_tick') && eventHitsTarget(event) &&
+        text(event?.sourceActionId || event?.actionId) === executionActionId &&
+        matchesEffectInstance(event, runtimeEffectId) &&
+        Number.isSafeInteger(event?.round) && event.round >= startRound && event.round <= throughRound
       );
-      const healing = Number(expected?.healthDeltaPP) > 0;
+      const applications = pool.filter(event =>
+        rawEventKindIs(event, 'state_apply', 'state_replace') && conflictMatches(event) &&
+        ['applied', 'replaced'].includes(text(event?.result)));
+      const applicationIdsOf = event => unique([text(event?.applicationId), text(rawMeta(event).applicationId)].filter(Boolean));
+      const knownApplicationIds = unique(applications.flatMap(applicationIdsOf));
+      const invalidApplications = applications.filter(event => applicationIdsOf(event).length !== 1);
+      const invalidApplicationTicks = ticks.filter(event => {
+        const ids = applicationIdsOf(event);
+        return ids.length > 1 || applications.length && (ids.length !== 1 || ids[0] !== knownApplicationIds[0]);
+      });
+      if (knownApplicationIds.length > 1 || invalidApplications.length || invalidApplicationTicks.length) {
+        const unknown = verdict('UNCONFIRMED', [...invalidApplications, ...invalidApplicationTicks,
+          ...(knownApplicationIds.length > 1 ? applications : [])].map(event => event.eventId), null, searched);
+        unknown.matchDiagnostic ||= { likelyCause: 'PERIODIC_APPLICATION_UNVERIFIED' };
+        return unknown;
+      }
+      const healing = Number(expected?.delta) > 0 || Number(expected?.healthDeltaPP) > 0;
+      const invalidTicks = ticks.filter(event => {
+        const meta = rawMeta(event);
+        const amounts = [event?.appliedDamage, meta.appliedDamage, meta.damage, meta.delta].filter(value => value !== undefined);
+        return meta.deltaInvalid === true || !amounts.length || amounts.some(value =>
+          typeof value !== 'number' || !Number.isFinite(value));
+      });
+      if (invalidTicks.length) {
+        const unknown = verdict('UNCONFIRMED', invalidTicks.map(event => event.eventId), null, searched);
+        unknown.matchDiagnostic ||= { likelyCause: 'PERIODIC_AMOUNT_UNVERIFIED' };
+        return unknown;
+      }
       const landed = ticks.filter(event => {
         const tickDamage = number(event?.appliedDamage ?? rawMeta(event).appliedDamage ?? rawMeta(event).damage, 0);
         const tickDelta = number(rawMeta(event).delta, 0);
-        return healing ? tickDelta > 0 : tickDamage > 0 || tickDelta < 0;
+        const recordedZero = tickDamage === 0 && rawMeta(event).delta === 0;
+        return recordedZero || (healing ? tickDelta > 0 : tickDamage > 0 || tickDelta < 0);
       });
       if (landed.length) {
         return verdict('CONFIRMED', landed.map(event => event.eventId), {
           ticks: landed.length,
           appliedDamage: landed.reduce(
-            (sum, event) => sum + number(event?.appliedDamage ?? rawMeta(event).appliedDamage, 0), 0,
+            (sum, event) => sum + number(event?.appliedDamage ?? rawMeta(event).appliedDamage ??
+              rawMeta(event).damage ?? Math.max(0, -rawMeta(event).delta), 0), 0,
           ),
         }, searched);
       }
       const rejectedApplications = pool.filter(event =>
         rawEventKindIs(event, 'state_apply') &&
         eventHitsTarget(event) &&
-        (matchesEffectInstance(event, effectInstanceId) || eventBelongsToAction(event)) &&
+        matchesEffectInstance(event, runtimeEffectId) && text(event?.sourceActionId || event?.actionId) === executionActionId &&
+        Number.isSafeInteger(event?.round) && event.round >= startRound && event.round <= throughRound &&
         ['resisted', 'immune', 'evaded', 'no_effect'].includes(text(event?.result))
       );
       if (rejectedApplications.length) {
@@ -1769,16 +2175,15 @@
       }
       const terminalEvent = pool.find(event =>
         rawEventKindIs(event, 'battle_objective_resolved') &&
+        Number.isSafeInteger(event?.round) && event.round >= startRound && event.round <= throughRound &&
         number(event?.sequence, 0) >= number(context?.exchangeMaxSequence, 0)
       );
-      if (terminalEvent || number(context?.exchangeRound, 0) >= number(context?.lastLedgerRound, 0)) {
+      if (terminalEvent) {
         return verdict(
           'PREEMPTED',
-          terminalEvent ? [terminalEvent.eventId] : [],
+          [terminalEvent.eventId],
           {
-            reasonCode: terminalEvent
-              ? text(rawMeta(terminalEvent).reasonCode || terminalEvent?.ruleCode || rawMeta(terminalEvent).status)
-              : 'NO_FUTURE_TICK_WINDOW',
+            reasonCode: text(rawMeta(terminalEvent).reasonCode || terminalEvent?.ruleCode || rawMeta(terminalEvent).status),
           },
           searched,
         );
@@ -1800,7 +2205,7 @@
         }
         return preempted(searched);
       }
-      const hits = anchored(['hit_result']);
+      const hits = scoped(['hit_result']);
       /* 一次伤害效果按 segments 拆成多条 hit_result，必须聚合求和后再比，不能逐条比。 */
       const landed = hits.filter(event => Number(rawMeta(event).appliedDamage || 0) > 0);
       if (landed.length) {
@@ -1849,6 +2254,8 @@
         }
         return preempted(searched);
       }
+      conflictMatches = event => rawEventKindIs(event, 'hit_result')
+        ? eventHitsTarget(event) : matchesPredictionIdentity(event);
       const absorbed = events.filter(event =>
         rawEventKindIs(event, 'hit_result') &&
         eventHitsTarget(event) &&
@@ -1873,15 +2280,20 @@
       const realized = applies.filter(event =>
         ['applied', 'replaced', 'removed'].includes(text(event?.result))
       );
+      const rejected = applies.filter(event =>
+        ['resisted', 'immune', 'evaded', 'no_effect'].includes(text(event?.result))
+      );
+      if (realized.length && rejected.length) {
+        const conflict = verdict('UNCONFIRMED', [...realized, ...rejected].map(event => event.eventId), null, searched);
+        conflict.matchDiagnostic ||= { likelyCause: 'CONFLICTING_OUTCOME_FACTS' };
+        return conflict;
+      }
       if (realized.length) {
         return verdict('CONFIRMED', realized.map(event => event.eventId), {
           stateName: text(rawMeta(realized[0]).stateName),
           duration: Number(rawMeta(realized[0]).duration || 0),
         }, searched);
       }
-      const rejected = applies.filter(event =>
-        ['resisted', 'immune', 'evaded', 'no_effect'].includes(text(event?.result))
-      );
       if (rejected.length) {
         return verdict('MISSED', rejected.map(event => event.eventId), {
           result: text(rejected[0]?.result),
@@ -1893,6 +2305,8 @@
 
     if (kind === 'ACTION_CANCELLED') {
       const searched = ['charge_interrupt', 'blocked_action', 'lost_opportunity', 'state_apply'];
+      conflictMatches = event => eventHitsTarget(event) ||
+        sameEntityReference(directory, event?.actorId, event?.actorName, targetId, targetId);
       /* 取消的是"对方的下一个行动机会"，兑现事实可能落在本次行动之后，
          所以这里接受同一动作树内任何一条取消类事实。 */
       const cancels = events.filter(event =>
@@ -1946,7 +2360,7 @@
       const searched = ['resource_change'];
       /* action_cost 是 auditOnly 审计事件，真正扣减在同 actionId 的 resource_change(PAY)，
          这里必须排除它，否则资源变化被双计。 */
-      const changes = anchored(['resource_change'])
+      const changes = scoped(['resource_change'])
         .filter(event => rawMeta(event).auditOnly !== true);
       if (changes.length) {
         return verdict('CONFIRMED', changes.map(event => event.eventId), {
@@ -1981,6 +2395,7 @@
         }
       }
       const anchored = paymentActionIds.size > 0;
+      conflictPool = anchored ? context.conflictingEvents || [] : context.scopedConflictingEvents || [];
       const claimedPaymentEventIds =
         context?.claimedPaymentEventIds instanceof Set
           ? context.claimedPaymentEventIds
@@ -1989,6 +2404,7 @@
         rawEventKindIs(event, 'resource_change') &&
         text(event?.operation || rawMeta(event).operation).toUpperCase() === 'PAY' &&
         eventHitsTarget(event) &&
+        (!sourceActionId || text(event?.sourceActionId || event?.actionId) === sourceActionId) &&
         (!anchored ||
           [event?.actionId, event?.sourceActionId]
             .map(text)
@@ -2026,6 +2442,7 @@
 
     if (kind === 'TERMINAL') {
       const searched = ['battle_objective_resolved'];
+      conflictMatches = () => true;
       const resolved = events.filter(event => rawEventKindIs(event, 'battle_objective_resolved'));
       if (!resolved.length) return verdict('UNCONFIRMED', [], null, searched);
       const actualStatus = text(rawMeta(resolved[0]).status);
@@ -2038,6 +2455,8 @@
       /* 炸环、消耗品这类不可逆操作是最不该漏对账的——一旦预演说消耗了而实际没有
          （或反过来），玩家的资产账就对不上，且无法回滚。 */
       const searched = ['item_consume', 'ring_burst', 'create'];
+      conflictMatches = event => rawEventKindIs(event, 'item_consume', 'ring_burst') ||
+        matchesEffectInstance(event, effectInstanceId);
       const consumed = events.filter(event =>
         rawEventKindIs(event, 'item_consume') ||
         rawEventKindIs(event, 'ring_burst') ||
@@ -2056,7 +2475,7 @@
       /* 这两类的"收益"是内部估值不可验证，但"修正是否挂上"是可验证的物理事实。
          整条丢弃会连可验证的那一半也丢掉，所以只对施加事实做对账，不碰收益。 */
       const searched = ['state_apply', 'state_replace', 'state_remove', 'schedule_descriptor', 'snapshot_restore'];
-      const applied = anchored(['state_apply', 'state_replace', 'state_remove', 'schedule_descriptor', 'snapshot_restore'])
+      const applied = scoped(['state_apply', 'state_replace', 'state_remove', 'schedule_descriptor', 'snapshot_restore'])
         .filter(event => !['resisted', 'immune', 'evaded'].includes(text(event?.result)));
       if (applied.length) {
         return verdict('CONFIRMED', applied.map(event => event.eventId), {
@@ -2085,14 +2504,52 @@
     if (!predictions.length) return [];
     const directory = options?.directory instanceof Map ? options.directory : new Map();
     const remainingHpById = options?.remainingHpById instanceof Map ? options.remainingHpById : null;
-    const scopedEvents = Array.isArray(events) ? events.filter(Boolean) : [];
-    const ledgerEvents = Array.isArray(options?.ledgerEvents) ? options.ledgerEvents.filter(Boolean) : scopedEvents;
-    const actionIds = new Set(
-      scopedEvents
-        .flatMap(event => [event?.actionId, event?.sourceActionId])
-        .map(text)
-        .filter(Boolean),
-    );
+    const scopedInput = Array.isArray(events) ? events.filter(Boolean) : [];
+    const ledgerInput = Array.isArray(options?.ledgerEvents) ? options.ledgerEvents.filter(Boolean) : scopedInput;
+    const deferredInput = Array.isArray(options?.deferredEvents) ? options.deferredEvents.filter(Boolean) : [];
+    const factsById = new Map(), signatures = new Map(), conflictingIds = new Set();
+    const inputPools = ledgerInput === scopedInput ? [scopedInput, deferredInput] : [scopedInput, ledgerInput, deferredInput];
+    for (const pool of inputPools) for (const event of pool) {
+      const id = text(event?.eventId);
+      if (!id) continue;
+      if (!factsById.has(id)) { factsById.set(id, event); continue; }
+      const previous = factsById.get(id);
+      if (previous === event) continue;
+      if (!signatures.has(id)) signatures.set(id, reconciliationFactSignature(previous));
+      if (signatures.get(id) !== reconciliationFactSignature(event)) conflictingIds.add(id);
+    }
+    const deduplicate = pool => {
+      const seen = new Set();
+      return pool.filter(event => {
+        const id = text(event?.eventId);
+        if (!id) return true;
+        if (conflictingIds.has(id) || seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      });
+    };
+    const scopedEvents = deduplicate(scopedInput);
+    const ledgerEvents = ledgerInput === scopedInput ? scopedEvents : deduplicate(ledgerInput);
+    const conflictingEvents = conflictingIds.size ? [...new Set(inputPools.flat())]
+      .filter(event => conflictingIds.has(text(event?.eventId))) : [];
+    const scopedConflictIds = new Set(scopedInput.map(event => text(event?.eventId)).filter(id => conflictingIds.has(id)));
+    const candidateId = text(decision?.selected?.candidateId);
+    const actorId = text(decision?.actorId || decision?.selected?.declaration?.actorId);
+    const opportunityId = text(decision?.opportunityId || decision?.selected?.declaration?.opportunityId);
+    const matchedExecutionIds = new Set(ledgerEvents.filter(event =>
+      rawEventKindIs(event, 'action_start') && text(event?.eventId) &&
+      candidateId && actorId && text(event?.actorId) === actorId &&
+      text(rawMeta(event).decisionCandidateId) === candidateId &&
+      (!opportunityId || text(event?.opportunityId || rawMeta(event).opportunityId) === opportunityId)
+    ).map(event => text(event?.actionId)).filter(Boolean));
+    const declaredExecutionId = text(decision?.executedActionId);
+    const declarationActionId = text(decision?.selected?.declaration?.actionId);
+    const resolvedExecutionId = matchedExecutionIds.size === 1 ? [...matchedExecutionIds][0] : '';
+    const executionIdentityConflict = matchedExecutionIds.size > 1 || conflictingEvents.some(event =>
+      rawEventKindIs(event, 'action_start') && candidateId && actorId &&
+      text(event?.actorId) === actorId && text(rawMeta(event).decisionCandidateId) === candidateId &&
+      (!opportunityId || text(event?.opportunityId || rawMeta(event).opportunityId) === opportunityId)) ||
+      Boolean(declaredExecutionId && resolvedExecutionId && declaredExecutionId !== resolvedExecutionId);
     const paymentActionIdsByActor = new Map();
     for (const event of scopedEvents) {
       if (!rawEventKindIs(event, 'action_start')) continue;
@@ -2116,15 +2573,20 @@
       preemptionEvent: scopedEvents.find(event => rawEventKindIs(event, ...preemptionEventKinds)) || null,
       directory,
       ledgerEvents,
-      actionIds,
+      conflictingEvents,
+      scopedConflictingEvents: conflictingEvents.filter(event =>
+        scopedConflictIds.has(text(event?.eventId))),
+      passiveScopedEvents: scopedEvents,
+      passiveParentActorId: actorId,
+      passiveParentCandidateId: candidateId,
+      executedActionId: resolvedExecutionId || declaredExecutionId || declarationActionId,
+      executionIdentityConflict,
       paymentActionIdsByActor,
       claimedPaymentEventIds: new Set(),
-      exchangeRound: Math.max(0, number(options?.exchangeRound, 0)),
       exchangeMaxSequence: Math.max(0, ...scopedEvents.map(event => number(event?.sequence, 0))),
-      lastLedgerRound: Math.max(0, ...ledgerEvents.map(event => number(event?.round, 0))),
       /* 回合末结算的事实（持续伤害等）不属于任何交锋，必须单独供给，
          否则它们永远落在对账的作用域之外。 */
-      deferredEvents: Array.isArray(options?.deferredEvents) ? options.deferredEvents.filter(Boolean) : [],
+      deferredEvents: deduplicate(deferredInput),
       remainingHpOf: unitId => {
         if (!remainingHpById) return null;
         const found = remainingHpById.get(text(unitId));
@@ -2133,7 +2595,24 @@
     };
     return predictions
       .map(prediction => {
-        const judged = judgePrediction(prediction, scopedEvents, context);
+        let passive = null;
+        const independentPassive = Object.hasOwn(prediction, 'passiveConsumerEvidence') ||
+          prediction.sourceActionId?.startsWith('passive-consumer:') && prediction.sourceActionId !== declarationActionId;
+        if (independentPassive) {
+          passive = resolvePassivePrediction(prediction, context, declarationActionId, resolvedExecutionId);
+          if (passive) prediction = passive.prediction;
+        }
+        if (prediction.kind !== 'SCHEDULED_HP_DELTA' && !executionIdentityConflict &&
+            (resolvedExecutionId || declaredExecutionId) && declarationActionId && prediction.sourceActionId === declarationActionId) {
+          prediction = { ...prediction, sourceActionId: context.executedActionId,
+            effectInstanceId: prediction.effectInstanceId?.startsWith(`${declarationActionId}:`)
+              ? context.executedActionId + prediction.effectInstanceId.slice(declarationActionId.length)
+              : prediction.effectInstanceId };
+        }
+        const judged = independentPassive && !passive
+          ? { status: 'UNCONFIRMED', actual: null, factIds: [], searchedEventKinds: [],
+              matchDiagnostic: { likelyCause: 'PASSIVE_SOURCE_IDENTITY_UNVERIFIED' } }
+          : judgePrediction(prediction, passive?.events || scopedEvents, context);
         if (judged.status === 'UNVERIFIABLE') return null;
         return {
           predictionId: prediction.predictionId,
@@ -2450,7 +2929,13 @@
           goalProjection &&
           typeof goalProjection === 'object' &&
           Object.hasOwn(goalProjection, 'expectedCandidateUtility') &&
-          Object.hasOwn(goalProjection, 'expectedNoOpUtility'),
+          Object.hasOwn(goalProjection, 'expectedNoOpUtility') &&
+          [goalProjection.expectedCandidateUtility, goalProjection.expectedNoOpUtility]
+            .every(value =>
+              (typeof value === 'number' ||
+                (typeof value === 'string' && value.trim() !== '')) &&
+              Number.isFinite(Number(value)),
+            ),
         ),
       };
     });
@@ -2885,6 +3370,13 @@
           summaries.push(fact.summary);
           return;
         }
+        const labels = reportActorTargetLabels({
+          eventKind: fact.eventKind,
+          actorId: fact.actorId,
+          targetIds: fact.targetIds,
+          actorSide: fact.actorSide,
+          targetSide: fact.targetSide,
+        }, fact.actorName, fact.targetName);
         const totalDamage = grouped.reduce((sum, item) => {
           const token = item.numericTokens.find(entry => entry.label === '最终伤害');
           return sum + Math.max(0, number(token?.value, 0));
@@ -2896,15 +3388,21 @@
         }, {});
         const missed = Number(outcomeCounts.MISS || 0);
         const resisted = Number(outcomeCounts.RESISTED || 0);
+        const shielded = Number(outcomeCounts.SHIELD || 0);
         const landed = grouped.length - missed - resisted;
         if (totalDamage > 0) {
-          summaries.push(`${fact.actorName}以【${fact.actionName}】的${grouped.length}段攻势中${landed}段命中${fact.targetName}，共造成${totalDamage}点伤害${missed ? `，${missed}段落空` : ''}${resisted ? `，${resisted}段被抵抗` : ''}`);
+          summaries.push(`${labels.actor}以【${fact.actionName}】的${grouped.length}段攻势中${landed}段命中${labels.target}，共造成${totalDamage}点伤害${missed ? `，${missed}段落空` : ''}${resisted ? `，${resisted}段被抵抗` : ''}`);
         } else if (landed > 0) {
-          summaries.push(`${fact.actorName}以【${fact.actionName}】的${grouped.length}段攻势中${landed}段命中${fact.targetName}的护盾${missed ? `，${missed}段落空` : ''}${resisted ? `，${resisted}段被抵抗` : ''}`);
+          const outcomeText = shielded === landed
+            ? `${landed}段命中${labels.target}的护盾`
+            : shielded > 0
+              ? `${landed}段命中${labels.target}，其中${shielded}段有护盾吸收记录`
+              : `${landed}段命中${labels.target}`;
+          summaries.push(`${labels.actor}以【${fact.actionName}】的${grouped.length}段攻势中${outcomeText}${missed ? `，${missed}段落空` : ''}${resisted ? `，${resisted}段被抵抗` : ''}`);
         } else if (resisted > 0) {
-          summaries.push(`${fact.actorName}以【${fact.actionName}】的${grouped.length}段攻势中${resisted}段被${fact.targetName}抵抗${missed ? `，${missed}段落空` : ''}`);
+          summaries.push(`${labels.actor}以【${fact.actionName}】的${grouped.length}段攻势中${resisted}段被${labels.target}抵抗${missed ? `，${missed}段落空` : ''}`);
         } else {
-          summaries.push(`${fact.actorName}以【${fact.actionName}】攻击${fact.targetName}，${grouped.length}段攻势全部落空`);
+          summaries.push(`${labels.actor}以【${fact.actionName}】攻击${labels.target}，${grouped.length}段攻势全部落空`);
         }
         return;
       }
@@ -3356,9 +3854,16 @@
   function playerStepText(rawEvent = {}, fact = {}) {
     const kind = text(rawEvent?.eventKind);
     const meta = rawMeta(rawEvent);
-    const actor = text(fact?.actorName);
-    const target = text(fact?.targetName);
+    const rawActor = text(fact?.actorName);
+    const rawTarget = text(fact?.targetName);
+    const { actor, target } = reportActorTargetLabels(rawEvent, rawActor, rawTarget);
     const action = text(fact?.actionName);
+    const sideEffectSummary = summarizeSideEffectEvent(rawEvent);
+    if (sideEffectSummary) return text(fact?.summary) || sideEffectSummary;
+    if (text(rawEvent?.actionType) === 'control_opportunity') {
+      const controlWindow = runtime.describeControlWindowChange(rawEvent, target || actor, playerStateDescription(rawEvent, new Map()));
+      if (controlWindow) return controlWindow.summary;
+    }
 
     if (kind === 'defend' || kind === 'guard') {
       const multiplier = number(meta?.damageMultiplier, NaN);
@@ -3451,18 +3956,21 @@
     }
 
     if (rawEvent?.ruleCode === 'MECHANISM_GRANT_USE_CONSUMED') {
-      return grantUseText(rawEvent, target || actor, playerSafeText(meta?.before?.来源技能 || playerStateDescription(rawEvent, new Map()) || '授予效果', new Map()));
+      return runtime.describeGrantedStateUse(rawEvent, target || actor, playerSafeText(meta?.before?.来源技能 || meta?.grantSourceActionName || playerStateDescription(rawEvent, new Map()) || '授予效果', new Map())).summary;
     }
     if (rawEvent?.ruleCode === 'MECHANISM_GRANT_EXPIRED') {
-      return grantExpiryText(rawEvent, target || actor, action || '授予效果');
+      return runtime.describeGrantedStateExpiry(rawEvent, target || actor, action || '授予效果').summary;
     }
     if (kind === 'state_apply' || kind === 'state_replace') {
       const outcome = resultLabel(rawEvent);
       const receiver = target || actor;
       const state = playerStateDescription(rawEvent, new Map()) || '某种状态';
       const dur = number(rawEvent?.duration ?? meta?.duration, 0);
-      if (['失败', '被抵抗', '免疫', '已阻断'].includes(outcome)) {
+      if (['失败', '被抵抗', '免疫', '已阻断', '未产生效果'].includes(outcome)) {
         return `【${state}】未在${receiver}身上生效（${outcome}）`;
+      }
+      if (rejectedStateApplication(rawEvent)) {
+        return `${receiver}的【${state}】生效结果未记录，无法确认是否生效`;
       }
       if (kind === 'state_replace') {
         return `${receiver}的【${state}】被更新${dur > 0 ? `，可持续${dur}回合` : ''}`;
@@ -3743,6 +4251,7 @@
     SCHEDULED_HP_DELTA: { MISSED: '持续伤害未生效', PREEMPTED: '持续伤害未能挂上' },
     SHIELD_DELTA: { MISSED: '护盾未建立', PREEMPTED: '护盾未能建立' },
     STATE_CHANGED: { MISSED: '状态被抵抗，未生效', PREEMPTED: '状态未能施加' },
+    STATE_SCHEDULED: { MISSED: '延迟状态未能登记', PREEMPTED: '延迟状态未能登记' },
     ACTION_CANCELLED: { MISSED: '未能打断对方行动', PREEMPTED: '打断未能生效' },
     SUMMON_WINDOW: { MISSED: '召唤未成立', PREEMPTED: '召唤未能建立' },
     RESOURCE_OPTION_CHANGED: { MISSED: '资源变化未发生', PREEMPTED: '资源变化未发生' },
@@ -3754,7 +4263,8 @@
     const status = text(row?.status);
     if (status !== 'MISSED' && status !== 'PREEMPTED') return '';
     const template = aiReconciliationDenials[text(row?.kind)];
-    const base = text(template?.[status]);
+    const base = row.kind === 'STATE_CHANGED' && Number.isSafeInteger(row.expected?.registrationRound)
+      ? '延迟状态未形成新的施加或刷新' : text(template?.[status]);
     if (!base) return '';
     const stateName = text(row?.expected?.stateName);
     const target = text(row?.targetName);
@@ -4156,11 +4666,39 @@
     return states.get(publicId) || states.get(publicName) || null;
   }
 
+  function rejectedStateApplication(event = {}) {
+    const kind = text(event?.eventKind);
+    if (!['state_apply', 'state_replace'].includes(kind)) return false;
+    const outcome = text(event?.resultState || event?.result || event?.actionStatus).toUpperCase();
+    return outcome !== 'SUCCESS' && outcome !== 'APPLIED';
+  }
+
   function applyFactToRoundState(states = new Map(), fact = {}, rawEvent = {}, directory = new Map()) {
     const meta = rawEvent?.meta && typeof rawEvent.meta === 'object' ? rawEvent.meta : {};
+    const movement = rawEvent?.ruleCode === 'PERSISTENT_STATE_TRANSFER' || meta.source === 'persistent_state_transfer'
+      ? runtime.describeStateMovement(rawEvent) : null;
+    if (movement) {
+      if (movement.known && movement.count > 0) for (const observation of movement.units) {
+        const unit = findUnitState(states, directory, observation.unitId, observation.unitName);
+        if (unit) unit.states = unique(observation.stateNames.map(name => playerStateName(name, directory)).filter(Boolean));
+      }
+      return;
+    }
+    if (rawEvent?.ruleCode === 'MECHANISM_GRANT_EXPIRED' && !runtime.describeGrantedStateExpiry(rawEvent).known) return;
     const target = findUnitState(states, directory, rawEvent?.targetId, rawEvent?.targetName);
     const actor = findUnitState(states, directory, rawEvent?.actorId, rawEvent?.actorName);
     const kind = fact.eventKind;
+    const sustainUnits = sustainBreakUnitStates(rawEvent);
+    if (sustainUnits) for (const observation of sustainUnits) {
+      const holder = findUnitState(states, directory, observation.targetId);
+      if (holder) holder.states = unique(observation.stateNames.map(name => playerStateName(name, directory)).filter(Boolean));
+    }
+    if (rawEvent?.ruleCode === 'STATE_WINDOW_EXPIRED' && Object.hasOwn(meta, 'remainingStateNames')) {
+      const expiry = runtime.describeObservedStateExpiry(rawEvent);
+      if (target && expiry.remainingStateNames !== null) target.states = unique(expiry.remainingStateNames.map(name => playerStateName(name, directory)).filter(Boolean));
+      return;
+    }
+    const persistentRemovedNames = persistentRemovalStateNames(rawEvent, directory);
     const damage = number(rawEvent?.appliedDamage ?? meta?.appliedDamage ?? rawEvent?.damage ?? meta?.damage, 0);
     const stateTickDelta = number(rawEvent?.delta ?? meta?.delta, 0);
     if (target && kind === 'state_tick' && isHealingStateTick(rawEvent) && stateTickDelta > 0) {
@@ -4181,10 +4719,16 @@
       }
     }
     if (kind === 'shield_create' && target) target.shield += Math.max(0, number(meta?.amount ?? rawEvent?.amount, 0));
-    if (['state_apply', 'state_replace'].includes(kind) && target && fact.stateName) {
+    if (['state_apply', 'state_replace'].includes(kind) && !rejectedStateApplication(rawEvent) && target && fact.stateName) {
       target.states = unique([...target.states, fact.stateName]);
     }
-    if (['state_remove', 'state_expire'].includes(kind) && target && fact.stateName) {
+    if (target && readSustainBreakReason(rawEvent) && Array.isArray(meta.remainingStateNames)) {
+      target.states = unique(meta.remainingStateNames.map(name => playerStateName(name, directory)).filter(Boolean));
+    } else if (target && persistentRemovedNames !== null) {
+      if (Array.isArray(meta.remainingStateNames)) {
+        target.states = unique(meta.remainingStateNames.map(name => playerStateName(name, directory)).filter(Boolean));
+      }
+    } else if (['state_remove', 'state_expire'].includes(kind) && target && fact.stateName) {
       target.states = target.states.filter(name => name !== fact.stateName);
     }
   }
@@ -4339,6 +4883,10 @@
         .filter(fact => fact.eventKind === 'item_consume')
         .reduce((sum, fact) => sum + Math.max(1, number(rawEventsById.get(fact.factId)?.count, 1)), 0);
       const stateEvents = roundFacts.filter(fact => /state_/.test(fact.eventKind)).map(fact => fact.factId);
+      const stateChangeCount = stateEvents.filter(factId => {
+        const rawEvent = rawEventsById.get(factId);
+        return !rejectedStateApplication(rawEvent) && !isMissingSustainEffectDiagnostic(rawEvent);
+      }).length;
       const summonEvents = roundFacts.filter(fact => /summon_/.test(fact.eventKind)).map(fact => fact.factId);
       const attributeEvents = roundFacts.filter(fact =>
         fact.eventKind === 'effect_resolved' &&
@@ -4413,7 +4961,7 @@
           consumedItemCount ? `消耗${consumedItemCount}件物品` : '',
         ].filter(Boolean).join('，'));
       }
-      if (stateEvents.length) summaryParts.push(`发生${stateEvents.length}项状态变化`);
+      if (stateChangeCount) summaryParts.push(`发生${stateChangeCount}项状态变化`);
       if (summonEvents.length) summaryParts.push(`发生${summonEvents.length}项召唤变化`);
       if (attributeEvents.length) {
         summaryParts.push(unique(attributeEvents.map(fact => fact.summary)).join('；'));
@@ -4452,8 +5000,8 @@
               damageBySide.player > 0 ? `我方造成${damageBySide.player}点伤害` : '',
               damageBySide.enemy > 0 ? `敌方造成${damageBySide.enemy}点伤害` : '',
             ].filter(Boolean).join('，')
-          : stateEvents.length
-            ? `本回合发生${stateEvents.length}项状态变化`
+          : stateChangeCount
+            ? `本回合发生${stateChangeCount}项状态变化`
             : lostOpportunityCount
               ? `本回合有${lostOpportunityCount}次行动机会未能执行`
               : '本回合结算完成',
@@ -5316,8 +5864,8 @@
               ],
             )
           : hideEnemyPrivateCandidates
-            ? '从当前公开信息看，没有另一项可比较的行动。'
-            : '当时没有另一项可用行动可供比较。';
+            ? '公开记录未提供可比较的其他行动，无法确认当时是否还有可用替代方案。'
+            : '未记录可比较的其他行动，无法确认当时是否还有可用替代方案。';
         const alternativeSummary = [
           'PLAYER_LOCKED',
           'FORCED',

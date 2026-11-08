@@ -620,6 +620,54 @@ function 计算品质属性基础值_V1(品质 = '普通', 属性名 = '', 种�
   return Math.floor(Number(getBaseStats(随机等级)?.[属性键] || 0) * 0.3);
 }
 
+// Shared by daily use and battle use. This is the existing daily-use formula,
+// including its original salts; equipment uses a different salt convention.
+function 按品质结算道具使用效果列表_V1(效果列表 = [], 物品数据 = {}, 物品名 = '') {
+  const 文本 = (值, 兜底 = '') => 值 === undefined || 值 === null || 值 === '' || /待补全|待生成|未知|未详|不详/i.test(String(值).trim()) ? 兜底 : String(值);
+  const 分类 = 文本(物品数据?.物品分类 || 物品数据?.分类);
+  const 列表 = Array.isArray(效果列表) ? 效果列表 : [];
+  if (分类 === '魂技造物') return 克隆普通数据_V1(列表, []);
+  const 品质 = 规范化物品经济品质_V1(物品数据?.品质 || '普通', 物品名, 分类);
+  if (判断神器品质_V1(品质)) return 克隆普通数据_V1(列表, []);
+  const 品质系数 = Number(物品数据?.品质系数);
+  const 倍率 = !Number.isFinite(品质系数) || Math.abs(品质系数 - 1) < 0.0001
+    ? 1 : Math.max(0.8, Math.min(1.25, Number((1 + (品质系数 - 1) * 0.25).toFixed(4))));
+  const 属性键表 = { 体力: 'vit_max', 生命: 'vit_max', HP: 'vit_max', 魂力: 'sp_max', 精神力: 'men_max',
+    力量: 'str', 防御: 'def', 敏捷: 'agi', 体力上限: 'vit_max', 魂力上限: 'sp_max', 精神力上限: 'men_max', 速度: 'agi' };
+  const 灵物年限表 = { 普通: 100, 优秀: 500, 稀有: 1000, 史诗: 10000, 传说: 100000 };
+  const 修炼倍率表 = { 普通: 1.1, 优秀: 1.25, 稀有: 1.5, 史诗: 2, 传说: 3 };
+  const 计算数值 = (属性, 盐) => {
+    const 属性键 = 属性键表[文本(属性).trim()];
+    const 等级 = 属性键 ? 读取品质随机等级_V1(品质, `${物品名}|${分类}|${盐}`) : 0;
+    const 基础值 = 等级 > 0 ? Math.floor(Number(getBaseStats(等级)?.[属性键] || 0) * 0.3) : 0;
+    return Math.max(1, Math.floor(基础值 * 倍率));
+  };
+  const 处理效果 = (效果, 路径 = '') => {
+    if (!效果 || typeof 效果 !== 'object' || Array.isArray(效果)) return 效果;
+    const 输出 = 克隆普通数据_V1(效果, {});
+    const 原型 = 文本(输出.原型 || 输出.type).trim();
+    if (原型 === '耐久修复' || 输出.type === 'durability_repair') return 输出;
+    if (/^-/.test(文本(输出.数值 ?? 输出.value?.数值).trim())) return 输出;
+    const 属性 = 文本(输出.资源 || 输出.属性 || 输出.value?.属性, '魂力');
+    if (原型 === '资源变化') 输出.数值 = 计算数值(属性, `${路径}|资源变化|${属性}`);
+    else if (原型 === '属性修正') 输出.数值 = 计算数值(属性, `${路径}|属性修正|${属性}`);
+    else if (原型 === '护盾变化') 输出.数值 = 计算数值(属性 || '体力上限', `${路径}|护盾变化`);
+    else if (原型 === '灵物吸收') 输出.数值 = Math.max(1, Math.floor((灵物年限表[品质] || 100) * 倍率));
+    else if (原型 === '修炼增益') 输出.数值 = Number((Math.max(1, 修炼倍率表[品质] || 1.1) * 倍率).toFixed(2));
+    ['使用效果', '授予效果', '结算效果'].forEach(字段名 => {
+      if (Array.isArray(输出[字段名])) 输出[字段名] = 输出[字段名].map((子效果, 子索引) => 处理效果(子效果, `${路径}|${字段名}${子索引}`));
+    });
+    if (Array.isArray(输出.条件分支)) 输出.条件分支 = 输出.条件分支.map((分支, 分支索引) => {
+      const 下一分支 = 克隆普通数据_V1(分支, {});
+      if (Array.isArray(下一分支.替换效果)) 下一分支.替换效果 = 下一分支.替换效果.map((子效果, 子索引) => 处理效果(子效果, `${路径}|替换${分支索引}_${子索引}`));
+      if (Array.isArray(下一分支.追加效果)) 下一分支.追加效果 = 下一分支.追加效果.map((子效果, 子索引) => 处理效果(子效果, `${路径}|追加${分支索引}_${子索引}`));
+      return 下一分支;
+    });
+    return 输出;
+  };
+  return 列表.map((效果, 索引) => 处理效果(效果, `效果${索引}`));
+}
+
 function 展开装备加成方向_V1(方向列表 = []) {
   const 输出 = [];
   规范化装备加成方向_V1(方向列表).forEach(方向 => {
@@ -725,6 +773,9 @@ function 规范化物品定义_V1(物品名 = '', 定义 = {}, 分类 = '') {
     描述: String(来源.描述 || `关于【${物品名}】的记录暂未展开。`).trim(),
     默认货币: String(来源.默认货币 || 来源.货币 || '').trim(),
   };
+  if (物品分类 === '魂技造物' && String(来源.名称 || '').trim() && String(来源.名称).trim() !== 物品名) {
+    输出.名称 = String(来源.名称).trim();
+  }
   const 基础价格 = 读取显式物品基础价格_V1(来源);
   if (基础价格 !== undefined) 输出.基础价格 = 基础价格;
   if (物品分类 === '魂灵') {
@@ -4362,6 +4413,20 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
         const expiryTick = Number(item?.有效期至tick || 0);
         if (expiryTick > 0 && currentTick >= expiryTick) {
           delete charData.背包[itemName];
+          return;
+        }
+        if (Array.isArray(item?.批次)) {
+          const remaining = item.批次.filter(batch => {
+            const batchExpiryTick = Number(batch?.有效期至tick || 0);
+            return !(batchExpiryTick > 0 && currentTick >= batchExpiryTick);
+          });
+          if (remaining.length !== item.批次.length) {
+            if (remaining.length) item.批次 = remaining;
+            else {
+              delete item.批次;
+              if (!(Number(item.数量 || 0) > 0)) delete charData.背包[itemName];
+            }
+          }
         }
       });
     });
@@ -9177,6 +9242,7 @@ globalThis.__LWCS_MVU_SCHEMA_RUNTIME__ = {
   收集内置角色成长技能模板触发: 收集内置角色成长技能模板触发_V1,
   应用内置角色成长技能模板记录: 应用内置角色成长技能模板记录_V1,
   计算装备属性加成: 计算装备属性加成_V1,
+  按品质结算道具使用效果列表: 按品质结算道具使用效果列表_V1,
   应用永久属性提升: 应用永久属性提升_V1,
   读取内置势力库: 读取内置势力库_V1,
   读取内置地点库: 读取内置地点库_V1,
@@ -9197,6 +9263,7 @@ try {
       收集内置角色成长技能模板触发: 收集内置角色成长技能模板触发_V1,
       应用内置角色成长技能模板记录: 应用内置角色成长技能模板记录_V1,
       计算装备属性加成: 计算装备属性加成_V1,
+      按品质结算道具使用效果列表: 按品质结算道具使用效果列表_V1,
       应用永久属性提升: 应用永久属性提升_V1,
       读取内置势力库: 读取内置势力库_V1,
       读取内置地点库: 读取内置地点库_V1,
@@ -9219,6 +9286,7 @@ try {
       收集内置角色成长技能模板触发: 收集内置角色成长技能模板触发_V1,
       应用内置角色成长技能模板记录: 应用内置角色成长技能模板记录_V1,
       计算装备属性加成: 计算装备属性加成_V1,
+      按品质结算道具使用效果列表: 按品质结算道具使用效果列表_V1,
       应用永久属性提升: 应用永久属性提升_V1,
       读取内置势力库: 读取内置势力库_V1,
       读取内置地点库: 读取内置地点库_V1,

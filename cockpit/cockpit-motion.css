@@ -1,0 +1,100 @@
+/* ============ 交互动画（v7）：扫描显现 · 悬停抬起 · 选中能量轨；全部不做明暗闪烁 ============ */
+.face .reveal{clip-path:inset(0 100% 0 0);animation:wipe .52s cubic-bezier(.2,.8,.2,1) forwards;animation-delay:calc(var(--i, 0) * 45ms + 120ms);position:relative}
+/* 扫描线：铺满整块的透明层里移动背景位置（亮线 2px + 两侧光晕），不再动画 left——一次切换有二三十块同时扫，逐块重排很贵 */
+.face .reveal::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent,#bfe3ff,transparent) 0 0/2px 100% no-repeat,linear-gradient(90deg,transparent,rgba(95,176,255,.45),transparent) 0 0/14px 100% no-repeat;opacity:0;animation:scanline .52s cubic-bezier(.2,.8,.2,1) forwards;animation-delay:inherit;pointer-events:none}
+@keyframes wipe{to{clip-path:inset(0 0 0 0)}}
+@keyframes scanline{0%{background-position:0 0,0 0;opacity:1}90%{opacity:1}100%{background-position:100% 0,100% 0;opacity:0}}
+.row,.card,.dark,.fx,.tile{transition:transform .28s cubic-bezier(.2,.8,.2,1),box-shadow .28s,background .28s,filter .28s}
+.row:hover{transform:translateX(3px);box-shadow:inset 3px 0 0 rgba(47,124,246,.55),inset 0 0 0 1px rgba(47,124,246,.3)}
+.card:hover,.tile:hover{transform:translateY(-3px);filter:drop-shadow(0 6px 10px rgba(20,40,80,.25))}
+.row.on,.card.on{position:relative}
+.row.on::before,.card.on::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,transparent,#8fd0ff 30%,#2f7cf6 50%,#8fd0ff 70%,transparent);background-size:100% 220%;animation:rail 1.8s linear infinite;box-shadow:0 0 8px #4fa2ff}
+@keyframes rail{from{background-position:0 0}to{background-position:0 -220%}}
+.fcard .holo{clip-path:inset(0 0 100% 0);animation:cardWipe .34s .12s cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes cardWipe{to{clip-path:polygon(16px 0,100% 0,100% calc(100% - 16px),calc(100% - 16px) 100%,0 100%,0 16px)}}
+.fcard{max-height:min(82%,560px)}
+
+/* 图标块：短事实用「图标 + 大字 + 小注」而非键值对 */
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.45em}
+.tile{display:grid;grid-template-columns:auto minmax(0,1fr);gap:.1em .55em;align-items:center;padding:.5em .6em;background:rgba(255,255,255,.6);box-shadow:inset 0 0 0 1px rgba(30,48,80,.15);clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)}
+.tile .sock{grid-row:span 2;--s:2em}
+.tile b{font-weight:900;font-size:.92em;line-height:1.2;min-width:0;overflow-wrap:anywhere}
+.tile small{font-size:.74em;color:var(--ink3);font-weight:800}
+.tile.dim b{color:var(--ink3)}
+.tile.wide{grid-column:1/-1}
+.tile.big b{font-family:Bahnschrift,sans-serif;font-size:1.5em;transform:skewX(-8deg);display:inline-block}
+
+/* 环形刻度仪表（境界积累） */
+.dial{position:relative;width:min(100%,10.5em);aspect-ratio:1;margin:0 auto}
+.dial svg{width:100%;height:100%;overflow:visible}
+.dial .track{fill:none;stroke:#cfd8e3;stroke-width:9}
+.dial .ticks{fill:none;stroke:#8391a6;stroke-width:9;stroke-dasharray:1 7.5}
+.dial .arc{fill:none;stroke:url(#dialGrad);stroke-width:9;stroke-linecap:round;filter:drop-shadow(0 0 5px rgba(40,130,255,.7));transition:stroke-dashoffset 1.2s cubic-bezier(.2,.8,.2,1)}
+.dial .core{position:absolute;inset:22%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;border-radius:50%;background:radial-gradient(circle at 40% 30%,#ffffff,#dde6f1 70%);box-shadow:inset 0 0 0 1px rgba(30,48,80,.2),0 4px 10px rgba(20,40,80,.18)}
+.dial .core .lv{font-size:2.2em}
+.dial .core small{font-size:.72em;color:var(--ink3);font-weight:800}
+.dial .core b{font-size:.86em;color:var(--blue-d);font-weight:900}
+
+/* 六维雷达 */
+.radar{width:100%;max-width:26em;margin:0 auto;display:block;overflow:visible}
+.radar .web{fill:none;stroke:#c3cdda;stroke-width:1}
+.radar .axis{stroke:#c3cdda;stroke-width:1}
+.radar .base{fill:rgba(47,124,246,.2);stroke:#2f7cf6;stroke-width:2;filter:drop-shadow(0 0 6px rgba(47,124,246,.5))}
+.radar .gain{fill:rgba(18,164,106,.25);stroke:#12a46a;stroke-width:1.5;stroke-dasharray:4 3}
+.radar text{font-size:10px;font-weight:800;fill:#46557a}
+.radar .val{font-family:Bahnschrift,sans-serif;fill:#16223d;font-size:11px}
+.radar .shape{transform-origin:50% 50%;animation:grow .9s cubic-bezier(.2,.8,.2,1) both}
+@keyframes grow{from{transform:scale(0)}}
+
+/* 星座关系图 */
+.constellation{position:relative;flex:1;min-height:16em;overflow:hidden;clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px);background:radial-gradient(60% 60% at 50% 50%,rgba(80,150,255,.28),transparent 70%),linear-gradient(180deg,#0d1830,#16284a);box-shadow:inset 0 0 0 1px rgba(110,180,255,.4)}
+.constellation::before{content:"";position:absolute;inset:0;background-image:radial-gradient(1px 1px at 12% 18%,#fff8,transparent),radial-gradient(1px 1px at 72% 26%,#fff6,transparent),radial-gradient(1.5px 1.5px at 38% 78%,#fff7,transparent),radial-gradient(1px 1px at 86% 70%,#fff5,transparent),radial-gradient(1px 1px at 22% 58%,#fff6,transparent),radial-gradient(1px 1px at 58% 12%,#fff5,transparent);opacity:.8}
+.constellation svg{position:absolute;inset:0;width:100%;height:100%}
+.constellation .link{fill:none;stroke-width:1.6;stroke-dasharray:5 7;animation:linkflow 2.4s linear infinite;filter:drop-shadow(0 0 4px currentColor)}
+@keyframes linkflow{to{stroke-dashoffset:-24}}
+.star{position:absolute;translate:-50% -50%;appearance:none;border:0;background:none;padding:0;font:inherit;color:#e6f0ff;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:.25em;transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+.star:hover,.star.on{transform:scale(1.08)}
+.star .mini-ava{width:3.6em;height:3.6em;box-shadow:0 0 0 2px rgba(190,225,255,.9),0 0 14px rgba(90,170,255,.8)}
+.star.self .mini-ava{width:4.4em;height:4.4em;box-shadow:0 0 0 2px #ffd36b,0 0 18px rgba(255,200,90,.8)}
+.star b{font-size:.84em;padding:.05em .45em;background:rgba(9,18,38,.8);clip-path:polygon(4px 0,100% 0,calc(100% - 4px) 100%,0 100%)}
+.star small{font-weight:800;font-size:.76em}
+
+@media (prefers-reduced-motion:reduce){.face .reveal{clip-path:none!important}.fcard .holo{clip-path:polygon(16px 0,100% 0,100% calc(100% - 16px),calc(100% - 16px) 100%,0 100%,0 16px)!important}}
+
+/* 主屏内容在固定屏高里均匀铺开，避免中下部留白 */
+.pad.spread{justify-content:space-between}
+.pad.spread .stats{margin-top:0}
+
+/* 图块奇数个时最后一块占满一行 */
+.tiles>.tile:last-child:nth-child(odd){grid-column:1/-1}
+/* 成长页：雷达 + 六项数值行 */
+.attr-split{flex:1;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1.2em;align-items:center}
+.attrs{display:flex;flex-direction:column;gap:.55em}
+.attr{display:grid;grid-template-columns:auto 5.6em auto minmax(0,1fr);gap:.7em;align-items:center;padding:.6em .75em;background:rgba(255,255,255,.55);box-shadow:inset 0 0 0 1px rgba(30,48,80,.14);clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px)}
+.attr .sock{--s:1.8em}
+.attr span{font-weight:800;color:var(--ink2);font-size:.9em;white-space:nowrap}
+.attr b{font-family:Bahnschrift,sans-serif;font-weight:700;font-size:1.3em;transform:skewX(-8deg)}
+.attr em{font-style:normal;font-size:.78em;font-weight:800;color:#0e8e5a;text-align:right;white-space:nowrap}
+
+/* 数字横条：短统计并排，数字在上、标签在下 */
+.statline{display:grid;grid-template-columns:repeat(var(--n,4),minmax(0,1fr));background:linear-gradient(180deg,#1f2a42,#141c2f);clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);box-shadow:inset 0 1px 0 rgba(255,255,255,.14)}
+.statline div{display:flex;flex-direction:column;align-items:center;padding:.55em 0 .45em;color:#e6edf9}
+.statline div+div{box-shadow:-1px 0 0 rgba(140,180,240,.2)}
+.statline b{font-family:Bahnschrift,sans-serif;font-size:1.45em;line-height:1;transform:skewX(-8deg)}
+.statline small{font-size:.72em;font-weight:800;color:#9db0cf;margin-top:.2em}
+.statline.dim b{color:#6f82a3}
+
+.star.stranger{opacity:.72}
+.star.stranger .mini-ava{filter:grayscale(.85) brightness(.85);box-shadow:0 0 0 1px rgba(190,225,255,.5)}
+.star.stranger small{color:#8fa6c8}
+.link-tag{position:absolute;translate:-50% -50%;font-size:.74em;font-weight:800;color:#ffd9b8;padding:.1em .5em;background:rgba(9,18,38,.85);box-shadow:inset 0 0 0 1px rgba(255,178,122,.45);clip-path:polygon(5px 0,100% 0,calc(100% - 5px) 100%,0 100%);white-space:nowrap;pointer-events:none}
+
+/* 两翼里的空状态保持紧凑，不撑满屏面 */
+.wing .void{flex:0;padding:1em .6em}
+
+/* 两翼宽度只放得下一列图块 */
+.wing .tiles{grid-template-columns:1fr}
+/* 头像预览框 */
+.portrait-slot{align-self:center;width:min(78%,11em);aspect-ratio:1;display:grid;place-items:center;overflow:hidden;clip-path:polygon(28% 0,72% 0,100% 28%,100% 72%,72% 100%,28% 100%,0 72%,0 28%);background:radial-gradient(circle at 50% 120%,rgba(95,196,255,.55),transparent 60%),radial-gradient(circle at 40% 25%,#3d5f9e,#0f1a33 75%);box-shadow:0 0 0 3px #fff}
+.portrait-slot img{width:100%;height:100%;object-fit:cover}
+.portrait-slot .mono{font-size:3.4em;font-weight:900;font-family:"Noto Serif SC","Source Han Serif SC","SimSun",serif;background:linear-gradient(180deg,#ffffff,#9fd0ff);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 10px rgba(95,196,255,.7))}

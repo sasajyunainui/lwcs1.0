@@ -87,7 +87,8 @@ class BattleUIComponent {
       const node = component.recordPortalNode;
       if (!node?.isConnected || !component.container?.getBoundingClientRect) return;
       同步战斗记录终端主题(node);
-      const rect = component.container.getBoundingClientRect();
+      const 定位容器 = component.container.closest?.('[data-cabin-layout]') || component.container;
+      const rect = 定位容器.getBoundingClientRect();
       const viewportWidth = Math.max(Number(root.innerWidth) || 0, Number(globalDocument?.documentElement?.clientWidth) || 0);
       const viewportHeight = Math.max(Number(root.innerHeight) || 0, Number(globalDocument?.documentElement?.clientHeight) || 0);
       if (!rect.width || !rect.height || !viewportWidth || !viewportHeight) return;
@@ -2032,7 +2033,7 @@ class BattleUIComponent {
             if (!action) {
               const costs = declaration.resourceCosts && typeof declaration.resourceCosts === 'object' ? declaration.resourceCosts : {};
               const costText = actionKind === 'RELEASE_SKILL'
-                ? formatBattleUiSkillCost(skill, declaration)
+                ? formatBattleUiSkillCost(skill, { ...declaration, costActor: actor })
                 : actionKind === 'USE_ITEM'
                   ? '消耗 1'
                   : BATTLE_PREVIEW.formatSkillCostStages(
@@ -3688,13 +3689,12 @@ class BattleUIComponent {
                   + `<b>${htmlEscapeText(candidate?.name || '候选')}</b>${原因}${检查}</li>`;
               })
               .join('');
-            /* 首个阶段的 before 恒为 0（还没有候选），写成"0 → 10"玩家会问 0 是什么，
-               这一阶段直接陈述产出数量。 */
+            /* 仅已记录before为0时简写产出数量；缺测不能当作0 */
             const 收敛 = (Array.isArray(trace.narrowing) ? trace.narrowing : [])
               .map(step => {
-                const before = Math.max(0, Number(step?.before || 0));
-                const after = Math.max(0, Number(step?.after || 0));
-                const 变化 = before > 0 ? `${before} → ${after}` : `${after}`;
+                const before = typeof step?.before === 'number' && Number.isInteger(step.before) && step.before >= 0 ? step.before : null;
+                const after = typeof step?.after === 'number' && Number.isInteger(step.after) && step.after >= 0 ? step.after : null;
+                const 变化 = before === 0 ? `${after ?? '数量未知'}` : `${before ?? '数量未知'} → ${after ?? '数量未知'}`;
                 return `<li><span>${htmlEscapeText(step?.stage || '')}</span><b>${变化}</b></li>`;
               })
               .join('');

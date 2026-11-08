@@ -5,14 +5,14 @@
     "engineRuntime": "MVU_Engine_Runtime.js",
     "projectRuntimeBundle": "LWCS_MVU_Project_Runtime_Bundle.js",
     "sourcePatch": "MVU_Engine_Source.patch",
-    "bundleBytes": 1247646,
-    "bundleSha256": "ba33961b9894872611e21229d4ce430e2c7c54e249156d33a4113b60cfd78a8b",
-    "engineRuntimeBytes": 1172746,
-    "engineRuntimeSha256": "68d64f28ec6f25a25bab937048cfc845c9513cf77162622265f68d43340090df",
+    "bundleBytes": 1250613,
+    "bundleSha256": "fe7598b21c0cc8d42511f7ffedeb7478e2cc89cc64ce6d09612fba950d399e6d",
+    "engineRuntimeBytes": 1172920,
+    "engineRuntimeSha256": "ba09380c3b77e80d91d4b1db7425e2944ff085c0de6d605fbf88454f8dc60995",
     "projectRuntimeBundleBytes": 2532681,
     "projectRuntimeBundleSha256": "3e4cd47c52aa8fdce0f41bd308be9c5c5094d2ec720b6d051a3d97d8c81e8175",
-    "sourcePatchBytes": 76137,
-    "sourcePatchSha256": "9b71fbecac0433f8b2f22283def7748d8154ad3d066bf50d407d4ad9fc078813"
+    "sourcePatchBytes": 76475,
+    "sourcePatchSha256": "99d2108ec5a658c6bd6d2116ec38435adbc31d80ce2a55a323e4fd9c7d68b727"
   },
   "upstream": {
     "repository": "https://github.com/MagicalAstrogy/MagVarUpdate.git",
@@ -23,10 +23,11 @@
     "packageManager": "yarn@3.4.1",
     "applyPatch": "git apply --unidiff-zero --whitespace=error MVU_Engine_Source.patch",
     "install": "corepack yarn install --immutable",
-    "command": "powershell -NoProfile -Command \"$env:LWCS_MVU_BUILD_DATE='2026-08-29 00:00'; corepack yarn build\"",
-    "buildDate": "2026-08-29 00:00",
+    "command": "powershell -NoProfile -Command \"$env:LWCS_MVU_BUILD_DATE='2026-09-20 00:00'; corepack yarn build\"",
+    "buildDate": "2026-09-20 00:00",
     "output": "artifact/bundle.js -> MVU_Engine_Runtime.js; node Build_Runtime_Bundles.cjs MVU_Engine_Bundle.js -> MVU_Engine_Bundle.js",
     "environmentComposition": [
+      "LWCS_Message_Semantics.js",
       "LWCS_Persistence_Adapter.js",
       "LWCS_MVU_Persistence_Provider.js",
       "MVU_Engine_Runtime.js"
@@ -42,6 +43,7 @@
   },
   "runtimeContract": {
     "generationBoundary": "TauriTavern: tavern_events.MESSAGE_RECEIVED(message_id, type); other hosts: tavern_events.MESSAGE_RECEIVED",
+    "ttMessageEligibility": "canonical SillyTavern.chat[absolute_index]; __LWCS_MESSAGE_SEMANTICS_V1__.isNarrative before queue",
     "chatHooksReady": "__LWCS_MVU_CHAT_HOOKS_READY_V1__",
     "syncHotRead": "Mvu.getMvuData",
     "asyncRead": "Mvu.getMvuDataAsync",

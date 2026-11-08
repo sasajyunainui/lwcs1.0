@@ -1,6 +1,166 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:c11be47efa4b5641bd7b35bc230c4356cfcbadbd5d6d0bcb71717d803556a632 */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:1693d0fd1a25ac8aa9f13723c70ba96d6a862f0c5f265627e5688ff7181a00ff|cockpit/designer-model.js:f72143352b4ac9a1109222cfdbbd833038fae2f80ab74c0c292817c18a65d05b|cockpit/cockpit.js:72977a77b3a365ff8b6f2243b0218f762bb291a357ecc3e8c9677a323a566071|cockpit/pages-role.js:a20323dbb9d7d2456750d02fea4d1223fdcae401a24a1c36d2478f4d7cb83945|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:94cbf9ca01a696d2305db0bdfecb124b932b80d922c6b4bbaea917e530047f71|cockpit/pages-ability.js:e7f6047996d3bca805236ce54db94427b087c35f26eb825076471954f21ec20d|cockpit/pages-supplies.js:d56e9a1ff9158eeafa3887e4e991fd89b0f5f9254f734ee85e143f7b92bbe454|cockpit/pages-map.js:93e2f3862e7ea2ee92f823096caf4db9d0b8bb3460f52f8ada1c07e196b12262|cockpit/pages-world.js:53d47819477ad0b7398941a27519ecbf1e668b1462a013f0601efb57f91507d5|cockpit/pages-terminal.js:440f029b4c9d7b14ab2c764c7f002cfc698b47e6d3fb9ff5d2eb021833a50d6f */
+;
+/* source: LWCS_Message_Semantics.js */
+/* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
+(function (root) {
+  'use strict';
+
+  function roleOf(message) {
+    if (!message || typeof message !== 'object') return 'unknown';
+    if (typeof message.role === 'string' && message.role.trim()) return message.role.trim().toLowerCase();
+    if (message.is_user) return 'user';
+    if (message.is_system || message.extra?.type === 'narrator') return 'system';
+    return 'assistant';
+  }
+
+  function bodyOf(message) {
+    if (!message || typeof message !== 'object') return '';
+    // mes 是当前候选的内存正文；不以磁盘或冷槽位覆盖未保存编辑。
+    if (typeof message.mes === 'string') return message.mes;
+    if (typeof message.message === 'string') return message.message;
+    const swipe = message.swipes?.[message.swipe_id ?? 0];
+    return typeof swipe === 'string' ? swipe : '';
+  }
+
+  function isNarrative(message) {
+    return roleOf(message) === 'assistant' && bodyOf(message).trim().length > 0;
+  }
+
+  function isDialogue(message) {
+    return roleOf(message) === 'user' || isNarrative(message);
+  }
+
+  function narrativeIndices(chat) {
+    const indices = [];
+    if (Array.isArray(chat)) chat.forEach((message, index) => { if (isNarrative(message)) indices.push(index); });
+    return indices;
+  }
+
+  function legacyIndices(chat) {
+    const indices = [];
+    // 历史调度字段采用非玩家序号。此口径不能改成剧情序号。
+    if (Array.isArray(chat)) chat.forEach((message, index) => { if (message && !message.is_user) indices.push(index); });
+    return indices;
+  }
+
+  function countThrough(indices, absoluteIndex) {
+    let left = 0;
+    let right = indices.length;
+    while (left < right) {
+      const middle = (left + right) >>> 1;
+      if (indices[middle] <= absoluteIndex) left = middle + 1;
+      else right = middle;
+    }
+    return left;
+  }
+
+  function resolveScheduleFloor(legacyFloor, legacy, narrative) {
+    // 0 是现有“未更新”哨兵；非法或越界坐标不可悄悄重置。
+    if (!Number.isInteger(legacyFloor) || legacyFloor < 0 || legacyFloor > legacy.length) {
+      return { ok: false, reason: 'unresolved_legacy_schedule_floor', legacyFloor };
+    }
+    const absoluteIndex = legacyFloor === 0 ? -1 : legacy[legacyFloor - 1];
+    return { ok: true, legacyFloor, absoluteIndex, narrativeFloor: countThrough(narrative, absoluteIndex) };
+  }
+
+  const api = Object.freeze({ roleOf, bodyOf, isNarrative, isDialogue, narrativeIndices, legacyIndices, countThrough, resolveScheduleFloor });
+  root.__LWCS_MESSAGE_SEMANTICS_V1__ = api;
+})(globalThis);
+
+;
+/* source: LWCS_Host_Compatibility.js */
+(function (root) {
+  'use strict';
+  const KEY = '__LWCS_HOST_COMPATIBILITY_V1__';
+  if (root[KEY]) return;
+  // Main-window session memory only. Values never go to MVU/worldbooks/storage.
+  const sessionPanels = new Map();
+  function sessionMap(chatId, panel) {
+    const key = JSON.stringify([String(chatId || ''), String(panel || '')]);
+    if (!sessionPanels.has(key)) sessionPanels.set(key, new Map());
+    return sessionPanels.get(key);
+  }
+
+  // TT 2.3.0 maps endpoint-dialog cancellation to AbortError. Keep that
+  // structured identity (including a wrapped Rust Cancelled variant), not text.
+  function isCancellation(error) {
+    const seen = new Set();
+    for (let value = error; value && typeof value === 'object' && !seen.has(value); value = value.cause) {
+      seen.add(value);
+      if (value.name === 'AbortError' || value.code === 'ABORT_ERR'
+        || Object.prototype.hasOwnProperty.call(value, 'Cancelled')) return true;
+    }
+    return false;
+  }
+  function abortError(message = '操作已取消。', cause) {
+    const error = new Error(message, cause === undefined ? undefined : { cause });
+    error.name = 'AbortError';
+    return error;
+  }
+
+  function hasColdValue(value) {
+    if (Array.isArray(value)) {
+      for (let index = 0; index < value.length; index++) {
+        if (!Object.prototype.hasOwnProperty.call(value, index) || value[index] == null) return true;
+      }
+      return false;
+    }
+    return !!value && typeof value === 'object' && Object.values(value).some(item => item == null);
+  }
+  function canonicalOrHelperField(message, canonical, helperAlias) {
+    return message?.[canonical] !== undefined ? message[canonical] : message?.[helperAlias];
+  }
+  function hasColdVariableSlots(message) {
+    const variables = canonicalOrHelperField(message, 'variables', 'swipes_data');
+    return variables === null || hasColdValue(variables);
+  }
+  function hasColdSlots(message) {
+    return hasColdValue(message?.swipes)
+      || hasColdValue(canonicalOrHelperField(message, 'variables', 'swipes_data'))
+      || hasColdValue(canonicalOrHelperField(message, 'swipe_info', 'swipes_info'));
+  }
+  function hasHydratableCanonicalSlots(message) {
+    return hasColdValue(message?.swipes) || hasColdValue(message?.swipe_info);
+  }
+  let transportPromise;
+  const pending = new WeakMap();
+  async function ensureWarmSwipes(message, assertCurrent = () => {}) {
+    assertCurrent();
+    if (hasColdVariableSlots(message)) throw new Error('历史候选变量未加载且 TT hydration 不支持补齐变量槽，已停止写入。');
+    if (!hasColdSlots(message)) return message;
+    if (!hasHydratableCanonicalSlots(message)) {
+      throw new Error('历史候选冷槽仅存在于 Helper 别名中，不能交给 TT hydration，已停止写入。');
+    }
+    if (!root.__TAURITAVERN__ || !message?.tt_swipe_cold) {
+      throw new Error('历史候选未加载且宿主不提供冷候选来源，已停止写入。');
+    }
+    // This module is loaded in the main window by ST_UI_Entry, like the bridge.
+    // Only the documented transport fills null slots; never read/replace chat.
+    if (!transportPromise) {
+      transportPromise = import(new URL('/scripts/chat-payload-transport.js', root.location.href).href)
+        .catch(error => { transportPromise = null; throw error; });
+    }
+    let job = pending.get(message);
+    if (!job) {
+      job = (async () => {
+        const transport = await transportPromise;
+        assertCurrent();
+        if (typeof transport.hydrateMessageSwipes !== 'function') throw new Error('宿主缺少冷候选读取接口。');
+        await transport.hydrateMessageSwipes(message);
+      })();
+      pending.set(message, job);
+    }
+    try { await job; }
+    finally { if (pending.get(message) === job) pending.delete(message); }
+    assertCurrent();
+    if (hasColdSlots(message)) throw new Error('历史候选读取不完整，已停止写入。');
+    return message;
+  }
+  root[KEY] = Object.freeze({ isCancellation, abortError, hasColdSlots, hasColdVariableSlots, hasHydratableCanonicalSlots, ensureWarmSwipes, sessionMap });
+})(globalThis);
+
 ;
 /* source: LWCS_TT_AutoUpdate_Debug.js */
 (function installLwcsTtAutoUpdateDebug() {
@@ -1454,6 +1614,8 @@
 /* source: mvu_logic_bridge.js */
 (() => {
   const __mvuBridgeRoot = typeof globalThis !== 'undefined' ? globalThis : window;
+  const 消息语义_桥接 = __mvuBridgeRoot.__LWCS_MESSAGE_SEMANTICS_V1__;
+  if (!消息语义_桥接) throw new Error('LWCS 消息语义模块未加载，请更新 UI 集成包。');
   const 读取C2消费者规则_桥接 = () => {
     const roots = [__mvuBridgeRoot];
     try { if (window.parent && window.parent !== window) roots.push(window.parent); } catch (错误) {}
@@ -3353,7 +3515,6 @@
   let inlineEditSessionToken = 0;
   let inlineEditGuardUntil = 0;
   let pendingLiveRefresh = false;
-  let skillDesignerDraftStateByPreviewKey = Object.create(null);
   let lastHeaderRenderSignature = '';
   let lastDashboardRenderSignature = '';
   let lastDashboardSectionRenderSignatures = null;
@@ -3542,30 +3703,6 @@
     return toNumber(value, fallback);
   }
 
-  const 非神器品质等级段表_桥接 = Object.freeze({
-    普通: Object.freeze([1, 30]),
-    优秀: Object.freeze([31, 50]),
-    稀有: Object.freeze([51, 70]),
-    史诗: Object.freeze([71, 90]),
-    传说: Object.freeze([91, 99]),
-  });
-
-  const 品质道具灵物年限表_桥接 = Object.freeze({
-    普通: 100,
-    优秀: 500,
-    稀有: 1000,
-    史诗: 10000,
-    传说: 100000,
-  });
-
-  const 品质道具修炼倍率表_桥接 = Object.freeze({
-    普通: 1.1,
-    优秀: 1.25,
-    稀有: 1.5,
-    史诗: 2,
-    传说: 3,
-  });
-
   function 计算稳定哈希数值_桥接(文本 = '') {
     let 哈希 = 2166136261;
     String(文本 || '').split('').forEach(字符 => {
@@ -3577,44 +3714,6 @@
 
   function 读取稳定随机数_桥接(文本 = '') {
     return (计算稳定哈希数值_桥接(文本) % 10000) / 10000;
-  }
-
-  function 读取品质随机等级_桥接(品质 = '普通', 种子 = '') {
-    const 等级段 = 非神器品质等级段表_桥接[品质];
-    if (!等级段) return 0;
-    const [下限, 上限] = 等级段;
-    return 下限 + Math.floor(读取稳定随机数_桥接(`${品质}|${种子}`) * (上限 - 下限 + 1));
-  }
-
-  function 读取品质基础属性_桥接(品质 = '普通', 属性键 = 'sp_max', 种子 = '') {
-    const 基础属性函数 = 读取窗口函数('__LWCS_GET_BASE_STATS__');
-    const 等级 = 读取品质随机等级_桥接(品质, 种子);
-    if (typeof 基础属性函数 !== 'function' || !(等级 > 0)) return 0;
-    return Math.floor(toNumber(基础属性函数(等级)?.[属性键], 0) * 0.3);
-  }
-
-  function 读取品质使用效果属性键_桥接(属性 = '') {
-    const 文本 = toText(属性, '').trim();
-    const 映射 = {
-      体力: 'vit_max',
-      生命: 'vit_max',
-      HP: 'vit_max',
-      魂力: 'sp_max',
-      精神力: 'men_max',
-      力量: 'str',
-      防御: 'def',
-      敏捷: 'agi',
-      体力上限: 'vit_max',
-      魂力上限: 'sp_max',
-      精神力上限: 'men_max',
-      速度: 'agi',
-    };
-    return 映射[文本] || '';
-  }
-
-  function 读取品质道具绝对数值_桥接(品质 = '普通', 属性 = '魂力', 种子 = '') {
-    const 属性键 = 读取品质使用效果属性键_桥接(属性);
-    return 属性键 ? 读取品质基础属性_桥接(品质, 属性键, 种子) : 0;
   }
 
   const 常规魂骨槽位列表_桥接 = Object.freeze(['头部魂骨', '躯干魂骨', '右臂魂骨', '左臂魂骨', '右腿魂骨', '左腿魂骨']);
@@ -3980,20 +4079,20 @@
   function readCachedSkillDesignerDraft(previewKey = '') {
     const key = String(previewKey || '').trim();
     if (!key) return null;
-    const draft = skillDesignerDraftStateByPreviewKey[key];
+    const draft = __mvuBridgeRoot.__LWCS_HOST_COMPATIBILITY_V1__.sessionMap(getCurrentUiRequestChatId(), 'skill-designer').get(key);
     return draft && typeof draft === 'object' ? cloneJsonValue(draft) : null;
   }
 
   function writeCachedSkillDesignerDraft(previewKey = '', draft = {}) {
     const key = String(previewKey || '').trim();
     if (!key) return;
-    skillDesignerDraftStateByPreviewKey[key] = cloneJsonValue(draft && typeof draft === 'object' ? draft : {});
+    __mvuBridgeRoot.__LWCS_HOST_COMPATIBILITY_V1__.sessionMap(getCurrentUiRequestChatId(), 'skill-designer').set(key, cloneJsonValue(draft && typeof draft === 'object' ? draft : {}));
   }
 
   function clearCachedSkillDesignerDraft(previewKey = '') {
     const key = String(previewKey || '').trim();
     if (!key) return;
-    delete skillDesignerDraftStateByPreviewKey[key];
+    __mvuBridgeRoot.__LWCS_HOST_COMPATIBILITY_V1__.sessionMap(getCurrentUiRequestChatId(), 'skill-designer').delete(key);
   }
 
   function clearCachedSkillDesignerDrafts(previewKeys = []) {
@@ -5129,6 +5228,9 @@
       基础价格: Math.max(1, Math.floor(toNumber(来源.基础价格, 1))),
       默认货币: toText(来源.默认货币, ''),
     };
+    if (物品分类 === '魂技造物' && toText(来源.名称, '').trim() && toText(来源.名称, '').trim() !== 物品名) {
+      记录.名称 = toText(来源.名称, '').trim();
+    }
     if (物品分类 === '魂灵') {
       const 魂灵品质 = normalizeSoulSpiritQuality(来源.魂灵品质 || '');
       if (魂灵品质) 记录.魂灵品质 = 魂灵品质;
@@ -6949,7 +7051,7 @@
   function 读取当前最后AI正文_桥接() {
     const 聊天 = 读取当前聊天数组_桥接();
     const 消息 = 聊天.length ? 聊天[聊天.length - 1] : null;
-    if (!消息 || 消息.is_user) return '';
+    if (!消息语义_桥接.isNarrative(消息)) return '';
     return 读取聊天消息正文_桥接(消息);
   }
 
@@ -7033,7 +7135,7 @@
 
   function 向前查找用户消息索引_桥接(聊天 = [], 起始索引 = -1) {
     for (let 索引 = Math.min(Number(起始索引) || 0, 聊天.length - 1); 索引 >= 0; 索引 -= 1) {
-      if (聊天[索引] && 聊天[索引].is_user) return 索引;
+      if (消息语义_桥接.roleOf(聊天[索引]) === 'user') return 索引;
     }
     return -1;
   }
@@ -7041,8 +7143,8 @@
   function 向后查找角色消息索引_桥接(聊天 = [], 起始索引 = 0) {
     for (let 索引 = Math.max(0, Number(起始索引) || 0); 索引 < 聊天.length; 索引 += 1) {
       if (!聊天[索引]) continue;
-      if (聊天[索引].is_user) return -1;
-      return 索引;
+      if (消息语义_桥接.roleOf(聊天[索引]) === 'user') return -1;
+      if (消息语义_桥接.isNarrative(聊天[索引])) return 索引;
     }
     return -1;
   }
@@ -7056,10 +7158,10 @@
     let 角色索引 = -1;
     if (目标索引 >= 0) {
       const 目标消息 = 聊天[目标索引];
-      if (目标消息 && 目标消息.is_user) {
+      if (消息语义_桥接.roleOf(目标消息) === 'user') {
         用户索引 = 目标索引;
         角色索引 = 向后查找角色消息索引_桥接(聊天, 目标索引 + 1);
-      } else if (目标消息) {
+      } else if (消息语义_桥接.isNarrative(目标消息)) {
         角色索引 = 目标索引;
         用户索引 = 向前查找用户消息索引_桥接(聊天, 目标索引 - 1);
       }
@@ -7067,7 +7169,7 @@
     }
     if (角色索引 < 0) {
       for (let 索引 = 聊天.length - 1; 索引 >= 0; 索引 -= 1) {
-        if (聊天[索引] && !聊天[索引].is_user) {
+        if (消息语义_桥接.isNarrative(聊天[索引])) {
           角色索引 = 索引;
           break;
         }
@@ -7094,7 +7196,7 @@
     const 聊天 = 读取当前聊天数组_桥接();
     const 索引 = Math.floor(Number(消息索引));
     const 消息 = Number.isInteger(索引) && 索引 >= 0 && 索引 < 聊天.length ? 聊天[索引] : null;
-    if (!消息 || 消息.is_user) return null;
+    if (!消息语义_桥接.isNarrative(消息)) return null;
     return {
       chatKey: 取当前聊天归档标识_桥接(),
       消息索引: 索引,
@@ -13537,9 +13639,17 @@
     }
   }
 
+  function 解析UI续写消息编号_桥接(messageId) {
+    if (typeof messageId !== 'number' && typeof messageId !== 'string') return null;
+    const 候选编号 = typeof messageId === 'string' ? messageId.trim() : messageId;
+    if (候选编号 === '' || (typeof 候选编号 === 'string' && !/^\d+$/.test(候选编号))) return null;
+    const 安全消息编号 = Number(候选编号);
+    return Number.isSafeInteger(安全消息编号) && 安全消息编号 >= 0 ? 安全消息编号 : null;
+  }
+
   function 读取UI续写消息_桥接(messageId) {
-    const 安全消息编号 = Number(messageId);
-    if (!Number.isInteger(安全消息编号) || 安全消息编号 < 0) return null;
+    const 安全消息编号 = 解析UI续写消息编号_桥接(messageId);
+    if (安全消息编号 === null) return null;
     const 聊天 = 读取当前聊天数组_桥接();
     const 消息索引 = 聊天.findIndex((消息, 索引) => Number(读取聊天消息编号_桥接(消息, 索引)) === 安全消息编号);
     if (消息索引 < 0 || !聊天[消息索引]) return null;
@@ -13551,15 +13661,116 @@
     return 元数据 && typeof 元数据 === 'object' ? cloneJsonValue(元数据, null) : null;
   }
 
-  function 写入UI续写元数据_桥接(helper, messageId, 元数据) {
+  function 创建UI续写代已被替换错误_桥接(message = 'ui_continuation_user_message_changed') {
+    const error = new Error(message);
+    error.code = 'UI_CONTINUATION_GENERATION_SUPERSEDED';
+    return error;
+  }
+
+  function 断言UI续写源用户代仍有效_桥接(请求) {
+    if (!请求 || !Number.isInteger(请求.userMessageId)) throw 创建UI续写代已被替换错误_桥接();
+    const 用户楼层 = 读取UI续写消息_桥接(请求.userMessageId);
+    const 当前元数据 = 用户楼层 && 读取UI续写元数据_桥接(用户楼层.消息);
+    if (!用户楼层 || 用户楼层.消息编号 !== 请求.userMessageId
+      || 消息语义_桥接.roleOf(用户楼层.消息) !== 'user'
+      || 当前元数据?.requestId !== 请求.requestId
+      || 当前元数据?.generationId !== 请求.generationId) {
+      throw 创建UI续写代已被替换错误_桥接();
+    }
+    return 用户楼层;
+  }
+
+  function 写入UI续写元数据_桥接(helper, messageId, 元数据, 请求 = null) {
+    const chatId = getCurrentUiRequestChatId();
+    if (请求 && 请求.chatId !== chatId) return Promise.reject(new Error('ui_continuation_chat_changed'));
     const 楼层 = 读取UI续写消息_桥接(messageId);
     if (!楼层 || !helper || typeof helper.setChatMessages !== 'function') return Promise.resolve(false);
+    if (请求) {
+      const 当前元数据 = 读取UI续写元数据_桥接(楼层.消息);
+      const 是同一代 = 请求.userMessageId === 楼层.消息编号
+        && 消息语义_桥接.roleOf(楼层.消息) === 'user'
+        && 当前元数据?.requestId === 请求.requestId
+        && 当前元数据?.generationId === 请求.generationId;
+      const 可开始新一代 = 元数据?.state === 'pending'
+        && 请求.allowGenerationAdvance === true
+        && 请求.userMessageId === 楼层.消息编号
+        && 消息语义_桥接.roleOf(楼层.消息) === 'user'
+        && 当前元数据?.requestId === 请求.requestId
+        && 当前元数据?.generationId === 请求.previousGenerationId
+        && (
+          ['failed', 'regenerate_failed'].includes(当前元数据?.state)
+          || (请求.重生成目标 === true && 当前元数据?.state === 'completed')
+          || (请求.allowPendingGenerationReplacement === true && 当前元数据?.state === 'pending')
+        );
+      if (!是同一代 && !可开始新一代) throw 创建UI续写代已被替换错误_桥接();
+    }
+    const selectedSwipe = Number.isInteger(楼层.消息.swipe_id) ? 楼层.消息.swipe_id : 0;
+    const selectedInfo = Array.isArray(楼层.消息.swipe_info) ? 楼层.消息.swipe_info[selectedSwipe] : null;
     const extra = {
-      ...(楼层.消息.extra && typeof 楼层.消息.extra === 'object' ? 楼层.消息.extra : {}),
+      ...(selectedInfo && typeof selectedInfo === 'object' && !Array.isArray(selectedInfo) ? selectedInfo : {}),
+      ...(楼层.消息.extra && typeof 楼层.消息.extra === 'object' && !Array.isArray(楼层.消息.extra) ? 楼层.消息.extra : {}),
       __lwcs_ui_continuation: cloneJsonValue(元数据, {}),
     };
-    楼层.消息.extra = extra;
-    return helper.setChatMessages([{ message_id: 楼层.消息编号, extra }], { refresh: 'affected' }).then(() => true);
+    const message = 消息语义_桥接.bodyOf(楼层.消息);
+    let patch = { message_id: 楼层.消息编号, message, extra };
+    const 有多个候选槽 = value => Array.isArray(value)
+      ? value.length > 1
+      : !!value && typeof value === 'object' && Object.keys(value).some(key => /^[1-9]\d*$/.test(key));
+    const hasMultipleCandidates = [
+      楼层.消息.swipes,
+      读取UI续写候选字段_桥接(楼层.消息, 'variables', 'swipes_data'),
+      读取UI续写候选字段_桥接(楼层.消息, 'swipe_info', 'swipes_info'),
+    ].some(有多个候选槽);
+    if (hasMultipleCandidates) {
+      // Tavern Helper 4.10.0's ordinary `extra` branch can reinitialize the
+      // canonical swipe_info array. Use its full-swipe branch for existing
+      // multi-candidate messages so metadata on sibling candidates survives.
+      const candidates = 校验UI续写候选对齐_桥接(楼层.消息);
+      candidates.swipesInfo[candidates.swipeId] = extra;
+      patch = {
+        message_id: 楼层.消息编号,
+        swipe_id: candidates.swipeId,
+        swipes: candidates.swipes,
+        swipes_data: candidates.swipesData,
+        swipes_info: candidates.swipesInfo,
+      };
+    }
+    return Promise.resolve(helper.setChatMessages([patch], { refresh: 'affected' })).then(() => {
+      const currentChatId = getCurrentUiRequestChatId();
+      if (chatId !== currentChatId || (请求 && 请求.chatId !== currentChatId)) {
+        throw 创建UI续写写入状态未知错误_桥接('续写请求元数据', new Error('ui_continuation_chat_changed'), 'unknown', 请求);
+      }
+      if (请求) 断言UI续写源用户代仍有效_桥接(请求);
+      return true;
+    }).catch(error => {
+      if (error?.uiContinuationCommitStatus === 'unknown') throw error;
+      if (error?.code === 'UI_CONTINUATION_GENERATION_SUPERSEDED') throw error;
+      const currentChatId = getCurrentUiRequestChatId();
+      const current = chatId === currentChatId && (!请求 || 请求.chatId === currentChatId)
+        ? 读取UI续写消息_桥接(楼层.消息编号)
+        : null;
+      const observed = current && UI续写Canonical已匹配Patch_桥接(current.消息, patch);
+      throw 创建UI续写写入状态未知错误_桥接('续写请求元数据', error, observed ? 'applied_unconfirmed' : 'unknown', 请求);
+    });
+  }
+
+  function UI续写Canonical已匹配Patch_桥接(message, patch) {
+    const canonicalField = { message: 'mes', swipes_data: 'variables', swipes_info: 'swipe_info' };
+    const fieldsMatch = Object.entries(patch).filter(([key]) => key !== 'message_id').every(([key, value]) => {
+      const field = canonicalField[key] || key;
+      return JSON.stringify(message?.[field]) === JSON.stringify(value);
+    });
+    if (!fieldsMatch) return false;
+    if (Array.isArray(patch.swipes) && Number.isInteger(patch.swipe_id)) {
+      const selectedInfo = patch.swipes_info?.[patch.swipe_id];
+      return message?.mes === patch.swipes[patch.swipe_id]
+        && JSON.stringify(message?.extra) === JSON.stringify(selectedInfo);
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'extra')) {
+      const selectedSwipe = message?.swipe_id ?? 0;
+      if (JSON.stringify(message?.swipe_info?.[selectedSwipe]) !== JSON.stringify(patch.extra)) return false;
+    }
+    return true;
   }
 
   function 读取请求级UI续写元数据_桥接(requestId = '') {
@@ -13612,7 +13823,7 @@
 
   function 注册UI续写重Roll记录_桥接(请求, assistantMessageId) {
     const 基底 = 请求.rollbackBase;
-    if (!请求.patchOps.length || !基底?.目标消息元信息 || !assistantMessageId) return;
+    if (!请求.patchOps.length || !基底?.目标消息元信息 || !Number.isInteger(assistantMessageId)) return;
     if (请求.预写待确认键) 前端模块预写待确认表.delete(请求.预写待确认键);
     登记前端模块重Roll恢复记录({
       requestKind: 请求.requestKind,
@@ -13627,7 +13838,83 @@
     });
   }
 
+  function 校验UI续写写入目标_桥接(请求, 允许冷槽 = false) {
+    if (!请求.chatId || 请求.chatId !== getCurrentUiRequestChatId()) throw new Error('ui_continuation_chat_changed');
+    断言UI续写源用户代仍有效_桥接(请求);
+    if (!Number.isInteger(请求.assistantMessageId)) return null;
+    const 现有助手 = 读取UI续写消息_桥接(请求.assistantMessageId);
+    if (!现有助手 || !消息语义_桥接.isNarrative(现有助手.消息)) throw new Error('ui_continuation_regenerate_target_missing');
+    // 冷候选必须先由宿主补齐，不能把不完整的候选数组交给写入接口。
+    const hostCompatibility = __mvuBridgeRoot.__LWCS_HOST_COMPATIBILITY_V1__;
+    if (!允许冷槽 && (hostCompatibility.hasColdSlots(现有助手.消息) || hostCompatibility.hasColdVariableSlots(现有助手.消息))) {
+      throw new Error('目标楼层包含未加载的历史候选，请先在酒馆中加载候选后再重生成。');
+    }
+    if (!允许冷槽) 校验UI续写候选对齐_桥接(现有助手.消息);
+    return 现有助手;
+  }
+
+  function 创建UI续写写入状态未知错误_桥接(operation, cause, canonicalStatus = 'unknown', 请求 = null) {
+    const statusText = canonicalStatus === 'applied_unconfirmed'
+      ? '当前聊天已观察到 canonical patch，但刷新或持久化仍未确认'
+      : '无法确认 canonical patch 是否已应用';
+    const error = new Error(`${operation}写入结果未确认：${statusText}；没有执行回滚或自动重试付费生成。请先核对当前聊天。`, { cause });
+    error.code = 'UI_CONTINUATION_WRITE_UNCERTAIN';
+    error.uiContinuationCommitStatus = 'unknown';
+    error.uiContinuationCanonicalStatus = canonicalStatus;
+    if (请求 && typeof 请求 === 'object') {
+      请求.writeOutcome = { operation, commitStatus: 'unknown', canonicalStatus, updatedAt: Date.now() };
+    }
+    return error;
+  }
+
+  function 规范化UI续写滑动字段_桥接(value, count, field) {
+    if (value === undefined) return Array.from({ length: count }, () => ({}));
+    if (value === null) throw new Error(`UI 续写候选字段 ${field} 含未加载的变量槽，已停止写入。`);
+    if (Array.isArray(value)) {
+      if (value.length !== 0 && value.length !== count) throw new Error(`UI 续写候选字段 ${field} 与正文数组不对齐。`);
+      if (value.length === 0) return Array.from({ length: count }, () => ({}));
+      return Array.from({ length: count }, (_, index) => {
+        if (!Object.prototype.hasOwnProperty.call(value, index)) return {};
+        if (value[index] == null) throw new Error(`UI 续写候选字段 ${field} 含未加载的变量槽，已停止写入。`);
+        return value[index];
+      });
+    }
+    if (typeof value !== 'object') throw new Error(`UI 续写候选字段 ${field} 格式无效。`);
+    const result = Array.from({ length: count }, () => ({}));
+    for (const [key, entry] of Object.entries(value)) {
+      if (!/^(0|[1-9]\d*)$/.test(key) || Number(key) >= count) throw new Error(`UI 续写候选字段 ${field} 与正文数组不对齐。`);
+      if (entry == null) throw new Error(`UI 续写候选字段 ${field} 含未加载的变量槽，已停止写入。`);
+      result[Number(key)] = entry;
+    }
+    return result;
+  }
+
+  function 读取UI续写候选字段_桥接(message, canonical, helperAlias) {
+    return message?.[canonical] !== undefined ? message[canonical] : message?.[helperAlias];
+  }
+
+  function 校验UI续写候选对齐_桥接(message) {
+    const swipes = Array.isArray(message?.swipes) && message.swipes.length ? message.swipes.slice() : [消息语义_桥接.bodyOf(message)];
+    const count = swipes.length;
+    for (let index = 0; index < count; index += 1) {
+      if (!Object.prototype.hasOwnProperty.call(swipes, index) || swipes[index] == null) {
+        throw new Error('UI 续写正文候选含未加载的历史槽，已停止写入。');
+      }
+    }
+    const selectedSwipe = message?.swipe_id === undefined ? 0 : message.swipe_id;
+    if (!Number.isInteger(selectedSwipe) || selectedSwipe < 0 || selectedSwipe >= count) {
+      throw new Error('ui_continuation_regenerate_target_changed: UI 续写当前候选编号与正文数组不对齐。');
+    }
+    // Canonical `mes` is the live floor body; keep unsaved edits in the selected
+    // slot before a full-candidate patch can make the helper project that slot.
+    swipes[selectedSwipe] = 消息语义_桥接.bodyOf(message);
+    const swipesData = 规范化UI续写滑动字段_桥接(读取UI续写候选字段_桥接(message, 'variables', 'swipes_data'), count, 'variables');
+    const swipesInfo = 规范化UI续写滑动字段_桥接(读取UI续写候选字段_桥接(message, 'swipe_info', 'swipes_info'), count, 'swipe_info');
+    return { swipes, swipesData, swipesInfo, swipeId: selectedSwipe };
+  }
+
   async function 写入UI续写助手消息_桥接(helper, 请求, assistantText) {
+    const 现有助手 = 校验UI续写写入目标_桥接(请求);
     const assistantMeta = 构建UI续写元数据_桥接(请求, 'completed', {
       sourceUserMessageId: 请求.userMessageId,
       systemPrompt: undefined,
@@ -13635,53 +13922,84 @@
       rollbackBase: undefined,
       writeAfter: undefined,
     });
-    if (!请求.assistantMessageId) {
+    if (!现有助手) {
+      // Let already-queued chat-change work settle before the pinned Helper
+      // conversion microtasks reach chat.splice, then validate the source again.
+      await new Promise(resolve => setTimeout(resolve, 0));
+      校验UI续写写入目标_桥接(请求);
+      const sourceUserFloor = 读取UI续写消息_桥接(请求.userMessageId);
+      const sourceUserMeta = sourceUserFloor && 读取UI续写元数据_桥接(sourceUserFloor.消息);
+      if (!sourceUserFloor || 消息语义_桥接.roleOf(sourceUserFloor.消息) !== 'user'
+        || sourceUserMeta?.requestId !== 请求.requestId
+        || sourceUserMeta?.generationId !== 请求.generationId) {
+        throw 创建UI续写代已被替换错误_桥接();
+      }
       await helper.createChatMessages([{ role: 'assistant', message: assistantText, extra: { __lwcs_ui_continuation: assistantMeta } }], { refresh: 'affected' });
+      if (请求.chatId !== getCurrentUiRequestChatId()) {
+        throw 创建UI续写写入状态未知错误_桥接('续写助手楼', new Error('ui_continuation_chat_changed'), 'unknown', 请求);
+      }
       const 聊天 = 读取当前聊天数组_桥接();
       const 助手索引 = 聊天.findIndex((消息, 索引) => {
         const 元数据 = 读取UI续写元数据_桥接(消息);
-        return !消息?.is_user && 元数据?.requestId === 请求.requestId && 元数据?.generationId === 请求.generationId && Number(读取聊天消息编号_桥接(消息, 索引)) >= 请求.userMessageId;
+        return 消息语义_桥接.isNarrative(消息) && 元数据?.requestId === 请求.requestId && 元数据?.generationId === 请求.generationId && Number(读取聊天消息编号_桥接(消息, 索引)) >= 请求.userMessageId;
       });
       if (助手索引 < 0) throw new Error('ui_continuation_assistant_message_missing');
       请求.assistantMessageId = Number(读取聊天消息编号_桥接(聊天[助手索引], 助手索引));
       return 请求.assistantMessageId;
     }
-    const 现有助手 = 读取UI续写消息_桥接(请求.assistantMessageId);
-    if (!现有助手 || 现有助手.消息.is_user) throw new Error('ui_continuation_regenerate_target_missing');
-    const 当前swipes = Array.isArray(现有助手.消息.swipes) && 现有助手.消息.swipes.length
-      ? 现有助手.消息.swipes.slice()
-      : [toText(现有助手.消息.mes, '')];
-    const 当前swipesData = Array.isArray(现有助手.消息.swipes_data) ? 现有助手.消息.swipes_data.slice() : [];
-    while (当前swipesData.length < 当前swipes.length) 当前swipesData.push({});
-    当前swipes.push(assistantText);
-    当前swipesData.push({ extra: { __lwcs_ui_continuation: assistantMeta } });
+    const 候选状态 = 校验UI续写候选对齐_桥接(现有助手.消息);
+    候选状态.swipes.push(assistantText);
+    候选状态.swipesData.push({});
+    const 当前候选信息 = 候选状态.swipesInfo[候选状态.swipeId];
+    const 当前extra = 现有助手.消息.extra;
     const extra = {
-      ...(现有助手.消息.extra && typeof 现有助手.消息.extra === 'object' ? 现有助手.消息.extra : {}),
+      ...(当前候选信息 && typeof 当前候选信息 === 'object' && !Array.isArray(当前候选信息) ? 当前候选信息 : {}),
+      ...(当前extra && typeof 当前extra === 'object' && !Array.isArray(当前extra) ? 当前extra : {}),
       __lwcs_ui_continuation: assistantMeta,
     };
-    现有助手.消息.extra = extra;
-    await helper.setChatMessages([
-      {
-        message_id: 请求.assistantMessageId,
-        swipes: 当前swipes,
-        swipes_data: 当前swipesData,
-        swipe_id: 当前swipes.length - 1,
-        extra,
-      },
-    ], { refresh: 'affected' });
+    候选状态.swipesInfo.push(extra);
+    const patch = {
+      message_id: 请求.assistantMessageId,
+      swipes: 候选状态.swipes,
+      swipes_data: 候选状态.swipesData,
+      swipes_info: 候选状态.swipesInfo,
+      swipe_id: 候选状态.swipes.length - 1,
+    };
+    try {
+      await helper.setChatMessages([patch], { refresh: 'affected' });
+    } catch (error) {
+      const current = 请求.chatId === getCurrentUiRequestChatId() ? 读取UI续写消息_桥接(请求.assistantMessageId) : null;
+      const landed = current && UI续写Canonical已匹配Patch_桥接(current.消息, patch);
+      throw 创建UI续写写入状态未知错误_桥接('续写助手候选', error, landed ? 'applied_unconfirmed' : 'unknown', 请求);
+    }
+    if (请求.chatId !== getCurrentUiRequestChatId()) throw 创建UI续写写入状态未知错误_桥接('续写助手候选', new Error('ui_continuation_chat_changed'), 'unknown', 请求);
     return 请求.assistantMessageId;
   }
 
   async function 执行UI续写生成_桥接(helper, 请求) {
-    if (!helper || typeof helper.generate !== 'function' || typeof helper.createChatMessages !== 'function') {
+    if (!helper || typeof helper.generate !== 'function' || typeof helper.createChatMessages !== 'function' || typeof helper.setChatMessages !== 'function') {
       throw new Error('ui_continuation_helper_unavailable');
     }
-    if (!请求.chatId || 请求.chatId !== getCurrentUiRequestChatId()) throw new Error('ui_continuation_chat_changed');
+    const 生成目标 = 校验UI续写写入目标_桥接(请求, true);
+    const 目标正文 = 生成目标 ? 消息语义_桥接.bodyOf(生成目标.消息) : '';
+    const 目标滑动 = 生成目标?.消息.swipe_id;
+    if (生成目标) {
+      await __mvuBridgeRoot.__LWCS_HOST_COMPATIBILITY_V1__.ensureWarmSwipes(生成目标.消息, () => {
+        const 当前 = 校验UI续写写入目标_桥接(请求, true);
+        if (当前?.消息 !== 生成目标.消息 || 当前.消息.swipe_id !== 目标滑动 || 消息语义_桥接.bodyOf(当前.消息) !== 目标正文) {
+          throw new Error('ui_continuation_regenerate_target_changed');
+        }
+      });
+      const 已加载目标 = 校验UI续写写入目标_桥接(请求);
+      if (已加载目标?.消息 !== 生成目标.消息 || 已加载目标.消息.swipe_id !== 目标滑动 || 消息语义_桥接.bodyOf(已加载目标.消息) !== 目标正文) {
+        throw new Error('ui_continuation_regenerate_target_changed');
+      }
+    }
     发送UI续写监视桥接事件_桥接('request-monitor:ui-generation-started', {
       chatId: 请求.chatId,
       generationId: 请求.generationId,
     });
-    const 结果 = await helper.generate({
+    const 生成配置 = {
       generation_id: 请求.generationId,
       user_input: '',
       /* should_scan 必须为 false：注入内容里全是角色名、地名、技能名，
@@ -13689,15 +14007,31 @@
       injects: 请求.systemPrompt
         ? [{ role: 'system', content: 请求.systemPrompt, position: 'in_chat', depth: 0, should_scan: false }]
         : [],
-    });
+    };
+    const 召回上下文 = await window.AutoCardUpdaterAPI?.prepareUiContinuationGeneration?.(生成配置, 请求.playerInput || 请求.userText || 读取UI续写消息_桥接(请求.userMessageId)?.消息?.mes || '');
+    const 待生成目标 = 校验UI续写写入目标_桥接(请求);
+    if (待生成目标?.消息 !== 生成目标?.消息 || 待生成目标?.消息?.swipe_id !== 目标滑动 || 消息语义_桥接.bodyOf(待生成目标?.消息) !== 目标正文) {
+      召回上下文?.release();
+      throw new Error('ui_continuation_regenerate_target_changed');
+    }
+    let 结果;
+    try {
+      结果 = await helper.generate(召回上下文?.config || 生成配置);
+      召回上下文?.assertCurrent();
+    } finally { 召回上下文?.release(); }
     const 原始助手文本 = 读取UI生成返回文本_桥接(结果);
+    const 当前目标 = 校验UI续写写入目标_桥接(请求);
+    if (生成目标 && (当前目标?.消息 !== 生成目标.消息 || 当前目标.消息.swipe_id !== 目标滑动 || 消息语义_桥接.bodyOf(当前目标.消息) !== 目标正文)) {
+      throw new Error('ui_continuation_regenerate_target_changed');
+    }
     if (!原始助手文本) throw new Error('ui_continuation_empty_response');
     const 助手文本 = sanitizeUiContinuationVisibleText(原始助手文本);
     if (!助手文本) throw new Error('ui_continuation_empty_visible_response');
     const assistantMessageId = await 写入UI续写助手消息_桥接(helper, 请求, 助手文本);
     请求.assistantMessageId = assistantMessageId;
     await 应用复刻裁定结果(原始助手文本, 请求.requestKind);
-    await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'completed'));
+    const metadataSaved = await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'completed'), 请求);
+    if (!metadataSaved) throw 创建UI续写写入状态未知错误_桥接('续写请求元数据', new Error('ui_continuation_metadata_target_missing'), 'unknown', 请求);
     注册UI续写重Roll记录_桥接(请求, assistantMessageId);
     if (请求.重生成目标) await 处理前端模块重Roll恢复_桥接('ui_continuation_regenerate', [assistantMessageId]);
     发送UI续写监视桥接事件_桥接('request-monitor:generation-message-linked', {
@@ -13808,20 +14142,26 @@
       if (!请求.chatId) throw new Error('ui_continuation_chat_unavailable');
       uiContinuationRequests.set(请求.requestId, 请求);
       await helper.createChatMessages([{ role: 'user', message: userText, extra: { __lwcs_ui_continuation: 构建UI续写元数据_桥接(请求, 'pending') } }], { refresh: 'affected' });
+      if (请求.chatId !== getCurrentUiRequestChatId()) {
+        throw 创建UI续写写入状态未知错误_桥接('续写用户楼', new Error('ui_continuation_chat_changed'), 'unknown', 请求);
+      }
       assertContext?.();
       const 用户楼层 = 读取请求级UI续写元数据_桥接(请求.requestId);
       if (!用户楼层 || !Number.isInteger(用户楼层.消息编号)) throw new Error('ui_continuation_user_message_missing');
       请求.userMessageId = 用户楼层.消息编号;
-      await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'pending'));
+      const pendingSaved = await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'pending'), 请求);
+      if (!pendingSaved) throw new Error('ui_continuation_pending_metadata_missing');
       assertContext?.();
       const result = await 执行UI续写生成_桥接(helper, 请求);
       return { ...result, settlementCommitted, requestId: 请求.requestId, userMessageId: 请求.userMessageId };
     } catch (error) {
       if (请求?.预写待确认键) 前端模块预写待确认表.delete(请求.预写待确认键);
-      if (Number.isInteger(请求?.userMessageId) && 请求.chatId === getCurrentUiRequestChatId()) {
+      if (error?.uiContinuationCommitStatus !== 'unknown'
+        && error?.code !== 'UI_CONTINUATION_GENERATION_SUPERSEDED'
+        && Number.isInteger(请求?.userMessageId) && 请求.chatId === getCurrentUiRequestChatId()) {
         const failure = error && error.message ? error.message : 'ui_continuation_failed';
         try {
-          await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'failed', { lastError: failure }));
+          await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'failed', { lastError: failure }), 请求);
         } catch (metadataError) {
           console.warn('[DragonUI] UI continuation failure metadata could not be saved', metadataError);
         }
@@ -13834,12 +14174,15 @@
     }
   }
 
-  function 从UI续写元数据恢复请求_桥接(元数据, userMessageId, userText, assistantMessageId, 重生成目标 = false) {
+  function 从UI续写元数据恢复请求_桥接(元数据, userMessageId, userText, assistantMessageId, 重生成目标 = false, 允许覆盖待处理代 = false) {
     const requestKind = toText(元数据?.requestKind, 'ui_request') || 'ui_request';
     const requestId = toText(元数据?.requestId, '').trim() || buildUiContinuationRequestId(requestKind);
     return {
       requestId,
       generationId: `${buildUiContinuationRequestId(requestKind)}-generation`,
+      previousGenerationId: 元数据?.generationId,
+      allowGenerationAdvance: true,
+      allowPendingGenerationReplacement: 允许覆盖待处理代 === true,
       chatId: toText(元数据?.chatId, '').trim() || getCurrentUiRequestChatId(),
       requestKind,
       userText: toText(userText, '').trim(),
@@ -13849,7 +14192,7 @@
       writeAfter: Array.isArray(元数据?.writeAfter) ? cloneJsonValue(元数据.writeAfter, []) : [],
       预写待确认键: '',
       userMessageId,
-      assistantMessageId: assistantMessageId || undefined,
+      assistantMessageId: Number.isInteger(assistantMessageId) ? assistantMessageId : undefined,
       retryCount: Math.max(0, Number(元数据?.retryCount || 0)) + 1,
       createdAt: Date.now(),
       重生成目标,
@@ -13858,30 +14201,45 @@
 
   async function 重试UI续写请求_桥接(messageIdOrRequestId, options = {}) {
     const helper = window.TavernHelper && typeof window.TavernHelper === 'object' ? window.TavernHelper : null;
-    const 目标编号 = Number(messageIdOrRequestId);
-    const 用户楼层 = Number.isInteger(目标编号)
+    const 目标编号 = 解析UI续写消息编号_桥接(messageIdOrRequestId);
+    const 请求编号 = typeof messageIdOrRequestId === 'string' ? messageIdOrRequestId.trim() : '';
+    const 用户楼层 = 目标编号 !== null
       ? 读取UI续写消息_桥接(目标编号)
-      : 读取请求级UI续写元数据_桥接(toText(messageIdOrRequestId, ''));
+      : 请求编号 ? 读取请求级UI续写元数据_桥接(请求编号) : null;
     const 元数据 = 用户楼层 ? 读取UI续写元数据_桥接(用户楼层.消息) : null;
     if (!helper || !用户楼层?.消息?.is_user || !元数据) return { ok: false, reason: 'ui_continuation_not_found' };
     if (!['failed', 'regenerate_failed'].includes(toText(元数据.state, '')) && !(options.allowPending === true && 元数据.state === 'pending' && uiContinuationRequests.has(元数据.requestId))) return { ok: false, reason: 'ui_continuation_not_retryable' };
+    const assistantMessageId = 解析UI续写消息编号_桥接(元数据.assistantMessageId);
+    const 允许覆盖待处理代 = options.allowPending === true
+      && 元数据.state === 'pending'
+      && uiContinuationRequests.has(元数据.requestId);
     const 请求 = 从UI续写元数据恢复请求_桥接(
       元数据,
       用户楼层.消息编号,
       toText(用户楼层.消息.mes, ''),
-      Number(元数据.assistantMessageId),
-      Number.isInteger(Number(元数据.assistantMessageId)),
+      assistantMessageId,
+      assistantMessageId !== null,
+      允许覆盖待处理代,
     );
     if (!请求.userText || 请求.chatId !== getCurrentUiRequestChatId()) return { ok: false, reason: 'ui_continuation_retry_context_invalid' };
     const 动作锁键 = 构建异步动作锁键(请求.requestKind, 请求.userText, { lockKey: `retry:${请求.userMessageId}` });
     if (!尝试占用异步动作锁(动作锁键)) return { ok: false, reason: 'request_locked' };
     try {
       uiContinuationRequests.set(请求.requestId, 请求);
-      await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'pending'));
+      const pendingSaved = await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'pending'), 请求);
+      if (!pendingSaved) throw new Error('ui_continuation_pending_metadata_missing');
       return await 执行UI续写生成_桥接(helper, 请求);
     } catch (error) {
       const failure = error && error.message ? error.message : 'ui_continuation_retry_failed';
-      await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 请求.assistantMessageId ? 'regenerate_failed' : 'failed', { lastError: failure }));
+      if (error?.uiContinuationCommitStatus !== 'unknown'
+        && error?.code !== 'UI_CONTINUATION_GENERATION_SUPERSEDED'
+        && 请求.chatId === getCurrentUiRequestChatId()) {
+        try {
+          await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, Number.isInteger(请求.assistantMessageId) ? 'regenerate_failed' : 'failed', { lastError: failure }), 请求);
+        } catch (metadataError) {
+          console.warn('[DragonUI] UI continuation retry failure metadata could not be saved', metadataError);
+        }
+      }
       if (!options.silent) showUiToast(`续写重试失败：${failure}`, 'error', 4200);
       return { ok: false, reason: 'ui_continuation_retry_failed', error };
     } finally {
@@ -13893,9 +14251,18 @@
     const helper = window.TavernHelper && typeof window.TavernHelper === 'object' ? window.TavernHelper : null;
     const 助手楼层 = 读取UI续写消息_桥接(assistantMessageId);
     const 助手元数据 = 助手楼层 ? 读取UI续写元数据_桥接(助手楼层.消息) : null;
-    const 用户楼层 = 助手元数据 ? 读取UI续写消息_桥接(助手元数据.sourceUserMessageId || 助手元数据.userMessageId) : null;
+    const 用户楼层 = 助手元数据 ? 读取UI续写消息_桥接(助手元数据.sourceUserMessageId ?? 助手元数据.userMessageId) : null;
     const 用户元数据 = 用户楼层 ? 读取UI续写元数据_桥接(用户楼层.消息) : null;
     if (!helper || !助手楼层 || 助手楼层.消息.is_user || !用户楼层?.消息?.is_user || !用户元数据) return { handled: false };
+    const 来源用户楼编号 = 解析UI续写消息编号_桥接(助手元数据.sourceUserMessageId ?? 助手元数据.userMessageId);
+    const 当前助手楼编号 = 解析UI续写消息编号_桥接(用户元数据.assistantMessageId);
+    if (!['completed', 'failed', 'regenerate_failed'].includes(toText(用户元数据.state, ''))
+      || 助手元数据.requestId !== 用户元数据.requestId
+      || 来源用户楼编号 !== 用户楼层.消息编号
+      || 当前助手楼编号 !== 助手楼层.消息编号) {
+      showUiToast('该 UI 楼层已不属于当前续写请求，未执行重生成。', 'warning', 4200);
+      return { handled: true, ok: false, reason: 'ui_continuation_regenerate_context_invalid' };
+    }
     const 请求 = 从UI续写元数据恢复请求_桥接(
       用户元数据,
       用户楼层.消息编号,
@@ -13914,11 +14281,20 @@
     }
     try {
       uiContinuationRequests.set(请求.requestId, 请求);
-      await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'pending'));
+      const pendingSaved = await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'pending'), 请求);
+      if (!pendingSaved) throw new Error('ui_continuation_pending_metadata_missing');
       return { handled: true, ...(await 执行UI续写生成_桥接(helper, 请求)) };
     } catch (error) {
       const failure = error && error.message ? error.message : 'ui_continuation_regenerate_failed';
-      await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'regenerate_failed', { lastError: failure }));
+      if (error?.uiContinuationCommitStatus !== 'unknown'
+        && error?.code !== 'UI_CONTINUATION_GENERATION_SUPERSEDED'
+        && 请求.chatId === getCurrentUiRequestChatId()) {
+        try {
+          await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'regenerate_failed', { lastError: failure }), 请求);
+        } catch (metadataError) {
+          console.warn('[DragonUI] UI continuation regenerate failure metadata could not be saved', metadataError);
+        }
+      }
       showUiToast(`UI 楼层重生成失败：${failure}`, 'error', 4200);
       return { handled: true, ok: false, reason: 'ui_continuation_regenerate_failed', error };
     } finally {
@@ -13934,7 +14310,8 @@
       const 类型 = toText(参数[0], '').toLowerCase();
       if (类型 !== 'regenerate') return 原生生成.apply(this, 参数);
       const 聊天 = 读取当前聊天数组_桥接();
-      const 最后助手索引 = [...聊天].map((_, 索引) => 索引).reverse().find(索引 => 聊天[索引] && !聊天[索引].is_user);
+      const 最后助手索引 = 聊天.length - 1;
+      if (!消息语义_桥接.isNarrative(聊天[最后助手索引])) return 原生生成.apply(this, 参数);
       const 最后助手编号 = Number.isInteger(最后助手索引) ? Number(读取聊天消息编号_桥接(聊天[最后助手索引], 最后助手索引)) : NaN;
       if (!Number.isInteger(最后助手编号) || !读取UI续写元数据_桥接(聊天[最后助手索引])) return 原生生成.apply(this, 参数);
       const 结果 = await 重生成UI续写助手楼_桥接(最后助手编号);
@@ -15027,7 +15404,7 @@
   function 查找剧情模块正文楼结算记录_桥接(目标消息编号 = '') {
     const 聊天 = 读取当前聊天数组_桥接();
     const 目标索引 = 定位聊天消息索引_桥接(聊天, 目标消息编号);
-    if (目标索引 < 0 || !聊天[目标索引] || 聊天[目标索引].is_user) return null;
+    if (目标索引 < 0 || !消息语义_桥接.isNarrative(聊天[目标索引])) return null;
     return Array.from(剧情模块预结算事务表.values())
       .filter(记录 => 记录 && 记录.settledStatData && Array.isArray(记录.settledPaths))
       .filter(记录 => {
@@ -15151,11 +15528,10 @@
     if (!Number.isInteger(起点) || 起点 < 0) return null;
     const 聊天 = 读取当前聊天数组_桥接();
     const 后续 = 聊天.slice(起点 + 1);
-    const 用户相对索引 = 后续.findIndex(消息 => 消息 && 消息.is_user);
+    const 用户相对索引 = 后续.findIndex(消息 => 消息语义_桥接.roleOf(消息) === 'user');
     if (用户相对索引 < 0) return null;
-    const AI相对索引 = 后续.slice(用户相对索引 + 1).findIndex(消息 => 消息 && !消息.is_user);
-    if (AI相对索引 < 0) return null;
-    const 消息索引 = 起点 + 1 + 用户相对索引 + 1 + AI相对索引;
+    const 消息索引 = 向后查找角色消息索引_桥接(聊天, 起点 + 1 + 用户相对索引 + 1);
+    if (消息索引 < 0) return null;
     const 消息 = 聊天[消息索引];
     return {
       消息,
@@ -35011,12 +35387,16 @@
     return '当前无门票，仅常规狩猎';
   }
 
+  // 私密档案入口规则（设计约定）：
+  // - 只对「女性」且 属性.年龄 为有效数值、满 18 岁的角色开放；年龄缺失、为 0 或无法解析一律视为不满足，此时入口、路由与页面都不存在。
+  // - 不在任何导航中直接显示（座舱子页列表、操作台按键都不列出），也不为它单独设计控件；只借用已有内容（角色名、档案天幕、档案标题等）挂 data-longpress 长按触发。
+  // - 所有打开路径（长按、预览路由、详情页构建）都要经过本函数复核；新增入口时同样遵守。
   function canOpenPrivateArchive(snapshot) {
     const activeChar = getActiveSnapshotCharacter(snapshot);
     const genderText = toText(deepGet(activeChar, '属性.性别', ''), '');
     if (!isFemaleGenderText(genderText)) return false;
     const ageValue = getPrivateArchiveAgeValue(deepGet(activeChar, '属性.年龄', null));
-    return Number.isFinite(ageValue) && ageValue >= 6;
+    return Number.isFinite(ageValue) && ageValue >= 18;
   }
 
   function getActiveNsfwPath(snapshot) {
@@ -35748,7 +36128,7 @@
     const identity = toText(character.社交?.主身份, '身份未记录');
     const themeNames = [['经典状态栏', '经典'], ['炫世唐门', '唐门'], ['金龙王', '金龙'], ['银龙王', '银龙'], ['幻海蝶舞', '幻海']];
     const theme = document.body?.dataset.mvuHoloTheme || '经典状态栏';
-    const pages = (window.__LWCS_CABIN_PAGES__ || []).filter(page => page.tab === 'page-archive' && (page.id !== 'private' || canOpenPrivateArchive(snapshot)));
+    const pages = (window.__LWCS_CABIN_PAGES__ || []).filter(page => page.tab === 'page-archive' && page.id !== 'private');
     return {
       contextKey: current.contextKey, revision: current.revision, charKey: current.charKey, name: current.charKey || '当前角色',
       rank: [formatCultivationLevelBadge(stat.等级, '0'), 读取显示精神境界(stat)].filter(Boolean).join(' · '),
@@ -35804,6 +36184,7 @@
     if (statusCabinHost !== host) {
       disposeStatusCabin(); statusCabinHost = host;
       statusCabinInstance = createStatusCabin(host, {
+        sessionStates: __mvuBridgeRoot.__LWCS_HOST_COMPATIBILITY_V1__.sessionMap(getCurrentUiRequestChatId(), 'status-cabin'),
         isVisible: () => !!host.closest('.is-status-cabin'),
       previewRoutineAction: statusRoutineActions.previewRoutineAction,
         executeRoutineAction: statusRoutineActions.executeRoutineAction,
@@ -38485,7 +38866,7 @@
 
   function mountWorkspaceCabin(container, snapshot, { tab, title, pageId = '', preview = '', centerNodes = [], rightNodes = [] }) {
     const domains = [['page-archive', '角色'], ['page-ability', '能力'], ['page-supplies', '物资'], ['page-map', '探索'], ['page-world', '世界'], ['page-terminal', '事务']];
-    const pages = (window.__LWCS_CABIN_PAGES__ || []).filter(page => page.tab === tab && (page.id !== 'private' || canOpenPrivateArchive(snapshot)));
+    const pages = (window.__LWCS_CABIN_PAGES__ || []).filter(page => page.tab === tab && page.id !== 'private');
     const frame = document.createElement('div');
     frame.className = 'dc-host dc-workspace-host';
     const pageMarkup = pages.map(page => `<button type="button" data-dc-workspace-page="${escapeHtmlAttr(page.id)}"${(pageId ? page.id === pageId : preview ? page.preview === preview : !page.preview) ? ' aria-current="page"' : ''}>${htmlEscape(page.title)}</button>`).join('');
@@ -38591,7 +38972,7 @@
     const stat = snapshot.activeChar?.属性 || {};
     const name = toText(snapshot.activeName, '当前角色');
     const domains = [['page-archive', '角色'], ['page-ability', '能力'], ['page-supplies', '物资'], ['page-map', '探索'], ['page-world', '世界'], ['page-terminal', '事务']];
-    const pages = (window.__LWCS_CABIN_PAGES__ || []).filter(page => page.tab === 'page-archive' && (page.id !== 'private' || canOpenPrivateArchive(snapshot)));
+    const pages = (window.__LWCS_CABIN_PAGES__ || []).filter(page => page.tab === 'page-archive' && page.id !== 'private');
     const frame = document.createElement('div');
     frame.className = 'dc-host dc-profile-host';
     frame.innerHTML = `<header class="dc-context"><div><span class="dc-context-sigil" aria-hidden="true">籍</span><strong class="dc-profile-character">${htmlEscape(name)}</strong><span class="dc-rank">${htmlEscape(String(stat.等级 ?? '—') + ' 级 · ' + 读取显示精神境界(stat))}</span></div><p class="dc-location">${htmlEscape(toText(snapshot.currentLoc, '所在地未记录'))}</p><p class="dc-time">${htmlEscape(getSnapshotWorldTimeText(snapshot))}</p></header>
@@ -39738,7 +40119,47 @@
     return 'archive';
   }
 
+  // ===== 球体座舱（2026-11 起直接替换旧仪表盘，源码见 cockpit/） =====
+  // 座舱挂在 #mvu-unified-mount 里、盖住旧壳层（旧壳层隐藏但保留占位，挂载点尺寸不变）。
+  // 旧壳层只在下列原详情面打开时让出画面（战斗终端、魂环待选确认、私密档案），关闭后回到座舱；
+  // 其他旧详情面（旧座舱各页都是详情面，刷新后会恢复上次打开的那页）在座舱接管时清掉。
+  const 座舱让位详情键 = new Set([BATTLE_INLINE_PREVIEW_KEY, PENDING_SOUL_RING_PREVIEW_KEY, '私密档案详细页']);
+  const 座舱适配器 = {
+    getRoot: () => deepGet(liveSnapshot, 'rootData', null),
+    activeName: () => toText(deepGet(liveSnapshot, 'activeName', ''), ''),
+    // 座舱里切换查看角色时同步给桥接（战斗、私密档案长按等仍按桥接的当前角色判断）
+    setActive: 名称 => { if (名称 && toText(deepGet(liveSnapshot, 'activeName', ''), '') !== 名称) applyActiveCharacterSelection(名称); },
+    // 一次写回里同时处理设值与删除：整根经编辑器链路校验后落楼，桥接随后刷新并回灌座舱
+    write: ops => mutateStatDataByEditor(statData => {
+      (Array.isArray(ops) ? ops : []).forEach(op => {
+        if (!op || !Array.isArray(op.path) || !op.path.length) return;
+        if (op.del) deepDeleteMutable(statData, op.path);
+        else deepSetMutable(statData, op.path, op.value);
+      });
+    }),
+    toast: (文本, 类型 = 'info') => showUiToast(文本, 类型, 3600),
+  };
+  function 同步座舱可见性(详情键 = getEffectiveUnifiedPreviewKey()) {
+    const 挂载点 = document.getElementById('mvu-unified-mount');
+    if (!挂载点 || !window.COCKPIT?.mounted) return;
+    const 让位 = !!详情键 && 座舱让位详情键.has(详情键) && isUnifiedInlinePreviewActive();
+    挂载点.classList.toggle('lwcs-ck-active', !让位);
+  }
+  function 同步座舱(snapshot = liveSnapshot) {
+    const 座舱 = window.COCKPIT, 挂载点 = document.getElementById('mvu-unified-mount');
+    const 根数据 = deepGet(snapshot, 'rootData', null);
+    if (!座舱 || typeof 座舱.mount !== 'function' || !挂载点 || !根数据 || typeof 根数据 !== 'object' || !根数据.char) return false;
+    const 首次 = !座舱.mounted;
+    const 详情键 = getEffectiveUnifiedPreviewKey();
+    if (详情键 && !座舱让位详情键.has(详情键)) clearUnifiedInlinePreview();
+    座舱.setData(根数据);
+    座舱.mount(挂载点, 座舱适配器);
+    同步座舱可见性();
+    if (首次) 设置UI首屏内容状态(true);
+    return true;
+  }
   function renderLiveCards(snapshot, precomputedSectionSignatures = null, options = {}) {
+    if (同步座舱(snapshot)) return true;
     syncStatusCabin(snapshot);
     const dashboardNodes = getCurrentDashboardRenderNodes();
     if (!dashboardNodes || !snapshot) {
@@ -47158,6 +47579,8 @@
       }
       if (!结果守卫通过()) return null;
       syncPrivateArchiveLongPressTargets(liveSnapshot);
+      // 座舱不依赖旧仪表盘节点：每轮刷新都把最新根数据交给座舱
+      if (同步座舱(liveSnapshot)) 已写回真实卡片 = true;
       if (!结果守卫通过()) return null;
       maybeAutoOpenPendingSoulRingPreview(liveSnapshot, options);
 
@@ -49339,6 +49762,19 @@ ${播报文本}
         if (bone && typeof bone === 'object') participant.魂骨[boneSlot] = hydrateEquipmentItem(bone);
       });
     }
+    if (participant.背包 && typeof participant.背包 === 'object' && !Array.isArray(participant.背包)) {
+      Object.entries(participant.背包).forEach(([itemName, item]) => {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) return;
+        const definition = 查找物品定义_桥接(rootData, itemName);
+        if (!definition) return;
+        participant.背包[itemName] = {
+          ...cloneJsonValue(definition.定义, {}),
+          ...item,
+          ...(definition.定义.名称 ? { id: itemName } : {}),
+          物品分类: definition.分类,
+        };
+      });
+    }
     const stat = participant.属性 && typeof participant.属性 === 'object' ? participant.属性 : {};
     const status = participant.状态 && typeof participant.状态 === 'object' ? participant.状态 : {};
     participant.name = toText(participant.name || deepGet(participant, 'base.name', ''), charKey);
@@ -50759,6 +51195,15 @@ ${播报文本}
     const nextTeamEnemy = nextCombat.参战者.team_enemy;
     if (!nextTeamPlayer.length || !nextTeamEnemy.length) return null;
     if (!nextTeamPlayer.every(isExpandedBattleParticipant) || !nextTeamEnemy.every(isExpandedBattleParticipant)) return null;
+    const worldTick = deepGet(snapshot, 'rootData.world.时间.tick', undefined);
+    if (worldTick !== undefined) {
+      const currentTick = Number(worldTick);
+      if (!Number.isFinite(currentTick) || currentTick < 0) return null;
+      if (nextCombat.当前世界tick !== currentTick) {
+        nextCombat = nextCombat === combatData ? cloneJsonValue(combatData, {}) : nextCombat;
+        nextCombat.当前世界tick = currentTick;
+      }
+    }
     return nextCombat;
   }
 
@@ -51026,6 +51471,12 @@ ${播报文本}
     if (!runtime || typeof runtime.ensureCombatRuntime !== 'function') {
       throw new Error('battle_runtime_module_missing');
     }
+    const worldTick = deepGet(liveSnapshot || lastRenderableSnapshot || {}, 'rootData.world.时间.tick', undefined);
+    if (worldTick !== undefined) {
+      const currentTick = Number(worldTick);
+      if (!Number.isFinite(currentTick) || currentTick < 0) throw new Error('battle_world_tick_invalid');
+      combatData = { ...combatData, 当前世界tick: currentTick };
+    }
     const runtimeState = runtime.ensureCombatRuntime(combatData);
     const maxRounds = battleMode === 'multi_round'
       ? Math.max(1, Math.min(20, Math.floor(toNumber(options.rounds || combatData?.胜负条件?.maxRounds, 20))))
@@ -51197,7 +51648,7 @@ ${播报文本}
     });
   }
 
-  function 构建正式战斗写回补丁(finalSnapshot = {}) {
+  function 构建正式战斗写回补丁(finalSnapshot = {}, createdInventoryAssets = []) {
     if (!finalSnapshot || typeof finalSnapshot !== 'object' || Array.isArray(finalSnapshot)) {
       throw new Error('battle_commit_final_snapshot_invalid');
     }
@@ -51217,6 +51668,14 @@ ${播报文本}
       path: '/world/战斗',
       value: compactCombatData,
     }];
+    const createdByOwner = new Map();
+    (Array.isArray(createdInventoryAssets) ? createdInventoryAssets : []).forEach(({ ownerId, assetId }) => {
+      if (!ownerId || !assetId) return;
+      if (!createdByOwner.has(ownerId)) createdByOwner.set(ownerId, new Set());
+      createdByOwner.get(ownerId).add(assetId);
+    });
+    let itemDraft;
+    const addedDefinitions = new Set();
 
     [...participants.team_player, ...participants.team_enemy].forEach(participant => {
       if (!participant || typeof participant !== 'object') return;
@@ -51260,7 +51719,43 @@ ${播报文本}
           participant[key],
         );
       });
+      const ownerId = toText(participant.id || participant.角色ID || participant.uid || participantName, '').trim();
+      (createdByOwner.get(ownerId) || []).forEach(assetId => {
+        const item = participant.背包?.[assetId];
+        if (!item || 读取背包总数量_桥接(item) <= 0) return;
+        if (!Array.isArray(item.使用效果) || !item.使用效果.length) {
+          throw new Error(`battle_created_item_definition_missing:${assetId}`);
+        }
+        const definition = 构建物品定义记录_桥接(assetId, {
+          ...item,
+          名称: toText(item.name || item.名称 || item.物品名, assetId),
+        }, '魂技造物');
+        itemDraft ||= { 物品: cloneJsonValue(currentRoot.物品, {}) };
+        const existing = 查找物品定义_桥接(itemDraft, assetId);
+        if (existing) {
+          const previous = 构建物品定义记录_桥接(assetId, existing.定义, existing.分类);
+          const useSemantics = value => [value.使用效果 || [], value.副作用列表 || [], value.使用后消耗 !== false,
+            value.基础使用次数 || 0, value.使用次数恢复周期 || ''];
+          if (existing.分类 !== '魂技造物' ||
+            稳定序列化技能设计台效果(useSemantics(previous)) !== 稳定序列化技能设计台效果(useSemantics(definition))
+          ) throw new Error(`battle_created_item_definition_conflict:${assetId}`);
+          return;
+        }
+        写入分类物品定义_桥接(itemDraft, assetId, definition, '魂技造物');
+        addedDefinitions.add(assetId);
+      });
     });
+    if (addedDefinitions.size) {
+      if (!currentRoot.物品) {
+        追加战斗提交字段补丁(patchOps, currentRoot, ['物品'], itemDraft.物品);
+      } else if (!currentRoot.物品.魂技造物) {
+        追加战斗提交字段补丁(patchOps, currentRoot, ['物品', '魂技造物'], itemDraft.物品.魂技造物);
+      } else {
+        addedDefinitions.forEach(assetId => 追加战斗提交字段补丁(
+          patchOps, currentRoot, ['物品', '魂技造物', assetId], itemDraft.物品.魂技造物[assetId],
+        ));
+      }
+    }
     return patchOps;
   }
 
@@ -51270,7 +51765,7 @@ ${播报文本}
       throw new Error('battle_runtime_package_verifier_missing');
     }
     const verifiedPackage = runtime.verifySealedBattlePackage(sealedPackage);
-    const patchOps = 构建正式战斗写回补丁(verifiedPackage.finalSnapshot);
+    const patchOps = 构建正式战斗写回补丁(verifiedPackage.finalSnapshot, verifiedPackage.createdInventoryAssets);
     runtime.verifySealedBattlePackage(verifiedPackage);
     await applyBattlePatchOpsByEditor(patchOps, {
       force: true,
@@ -55554,10 +56049,11 @@ ${播报文本}
     lastRenderedUnifiedPreviewKey = '';
     syncUnifiedTitleLongPress('');
     同步AI维护标题入口('');
-    if (!host) return;
+    if (!host) { 同步座舱可见性(''); return; }
     host.innerHTML = '';
     delete host.dataset.holoPreview;
     delete host.dataset.cabinFocus;
+    同步座舱可见性('');
   }
 
   function wrapUnifiedInlineBody(html = '', options = {}) {
@@ -55884,6 +56380,7 @@ ${播报文本}
     currentUnifiedPreviewKey = targetKey;
     lastRenderedUnifiedPreviewKey = targetKey;
     host.dataset.holoPreview = targetKey;
+    同步座舱可见性(targetKey);
     bindUnifiedDetailDelegation(host);
 
     const 本次渲染序号 = ++统一详情渲染序号;
@@ -60658,90 +61155,27 @@ ${播报文本}
     },
 
     calculateDailySkillMasteryRate(skill = {}, charData = {}) {
-      const mastery =
-        skill && skill.技能掌控度 && typeof skill.技能掌控度 === 'object' && !Array.isArray(skill.技能掌控度)
-          ? skill.技能掌控度
-          : null;
-      if (!mastery) return 1;
-      const center = Number(mastery.中心等级);
-      const full = Number(mastery.圆满等级);
-      if (!Number.isFinite(center) || !Number.isFinite(full) || full <= center) return 1;
-      const level = Math.max(1, toNumber(charData.lv ?? charData.等级 ?? charData.属性?.等级, 1));
-      if (level >= full) return 1;
-      const standard = (full - center) / 1.8807936081512509;
-      const x = (level - center) / Math.max(0.0001, standard);
-      return Math.max(0, Math.min(1, Number((1 / (1 + Math.exp(-1.702 * x))).toFixed(4))));
-    },
-
-    scaleDailySkillMasteryValue(value, rate = 1) {
-      const text = toText(value, '');
-      if (/%$/.test(text)) {
-        const num = Number(text.replace('%', ''));
-        if (!Number.isFinite(num)) return value;
-        return `${num >= 0 ? '+' : ''}${Number((num * rate).toFixed(2))}%`;
-      }
-      const num = Number(value);
-      return Number.isFinite(num) ? Number((num * rate).toFixed(4)) : value;
-    },
-
-    读取背包批次使用效果倍率(物品数据 = {}) {
-      const 品质系数 = toNumber(物品数据?.品质系数, 1);
-      if (!Number.isFinite(品质系数) || Math.abs(品质系数 - 1) < 0.0001) return 1;
-      return Math.max(0.8, Math.min(1.25, Number((1 + (品质系数 - 1) * 0.25).toFixed(4))));
+      if (!skill?.技能掌控度 || typeof skill.技能掌控度 !== 'object' || Array.isArray(skill.技能掌控度)) return 1;
+      const rules = 读取C2消费者规则_桥接();
+      if (typeof rules?.计算技能掌控度完整度_V1 !== 'function') throw new Error('skill_mastery_runtime_missing');
+      return rules.计算技能掌控度完整度_V1(skill, charData);
     },
 
     按品质结算道具使用效果列表(效果列表 = [], 物品数据 = {}, 物品名 = '') {
       const 分类 = toText(物品数据?.物品分类 || 物品数据?.分类, '');
-      if (分类 === '魂技造物') return cloneJsonValue(Array.isArray(效果列表) ? 效果列表 : [], []);
       const 品质 = 规范化物品经济品质_桥接(物品数据?.品质 || '普通', 物品名, 分类);
-      if (判断神器品质_桥接(品质)) return cloneJsonValue(Array.isArray(效果列表) ? 效果列表 : [], []);
-      const 倍率 = this.读取背包批次使用效果倍率(物品数据);
-      const 计算数值 = (属性, 盐) => Math.max(1, Math.floor(读取品质道具绝对数值_桥接(品质, 属性, `${物品名}|${分类}|${盐}`) * 倍率));
-      const 处理效果 = (效果, 路径 = '') => {
-        if (!效果 || typeof 效果 !== 'object' || Array.isArray(效果)) return 效果;
-        const 输出 = cloneJsonValue(效果, {});
-        const 原型 = toText(输出.原型 || 输出.type, '').trim();
-        if (原型 === '耐久修复' || 输出.type === 'durability_repair') return 输出;
-        const 原始数值文本 = toText(输出.数值 ?? 输出.value?.数值, '').trim();
-        if (/^-/.test(原始数值文本)) return 输出;
-        const 属性 = toText(输出.资源 || 输出.属性 || 输出.value?.属性, '魂力');
-        if (原型 === '资源变化') 输出.数值 = 计算数值(属性, `${路径}|资源变化|${属性}`);
-        else if (原型 === '属性修正') 输出.数值 = 计算数值(属性, `${路径}|属性修正|${属性}`);
-        else if (原型 === '护盾变化') 输出.数值 = 计算数值(属性 || '体力上限', `${路径}|护盾变化`);
-        else if (原型 === '灵物吸收') 输出.数值 = Math.max(1, Math.floor(toNumber(品质道具灵物年限表_桥接[品质], 100) * 倍率));
-        else if (原型 === '修炼增益') 输出.数值 = Number((Math.max(1, toNumber(品质道具修炼倍率表_桥接[品质], 1.1)) * 倍率).toFixed(2));
-        ['使用效果', '授予效果', '结算效果'].forEach(字段名 => {
-          if (Array.isArray(输出[字段名])) 输出[字段名] = 输出[字段名].map((子效果, 子索引) => 处理效果(子效果, `${路径}|${字段名}${子索引}`));
-        });
-        if (Array.isArray(输出.条件分支)) {
-          输出.条件分支 = 输出.条件分支.map((分支, 分支索引) => {
-            const 下一分支 = cloneJsonValue(分支, {});
-            if (Array.isArray(下一分支.替换效果)) 下一分支.替换效果 = 下一分支.替换效果.map((子效果, 子索引) => 处理效果(子效果, `${路径}|替换${分支索引}_${子索引}`));
-            if (Array.isArray(下一分支.追加效果)) 下一分支.追加效果 = 下一分支.追加效果.map((子效果, 子索引) => 处理效果(子效果, `${路径}|追加${分支索引}_${子索引}`));
-            return 下一分支;
-          });
-        }
-        return 输出;
-      };
-      return (Array.isArray(效果列表) ? 效果列表 : []).map((效果, 索引) => 处理效果(效果, `效果${索引}`));
+      const 运行时接口 = 读取MVUSchema运行时接口_桥接();
+      if (typeof 运行时接口?.按品质结算道具使用效果列表 !== 'function') throw new Error('MVU Schema 道具品质结算接口未加载');
+      return 运行时接口.按品质结算道具使用效果列表(效果列表, { ...物品数据, 物品分类: 分类, 品质 }, 物品名);
     },
 
     applyDailySkillMastery(skill = {}, charData = {}) {
       const rate = this.calculateDailySkillMasteryRate(skill, charData);
       if (rate >= 0.9999) return skill;
+      const rules = 读取C2消费者规则_桥接();
+      if (typeof rules?.应用技能掌控度效果数组_V1 !== 'function') throw new Error('skill_mastery_runtime_missing');
       const nextSkill = cloneJsonValue(skill, {});
-      const scaleEffects = effects =>
-        (Array.isArray(effects) ? effects : []).forEach(effect => {
-          if (!effect || typeof effect !== 'object') return;
-          if (effect.数值 !== undefined) effect.数值 = this.scaleDailySkillMasteryValue(effect.数值, rate);
-          if (effect.威力倍率 !== undefined) effect.威力倍率 = this.scaleDailySkillMasteryValue(effect.威力倍率, rate);
-          ['使用效果', '授予效果'].forEach(key => scaleEffects(effect[key]));
-          (Array.isArray(effect.条件分支) ? effect.条件分支 : []).forEach(branch => {
-            scaleEffects(branch && branch.替换效果);
-            scaleEffects(branch && branch.追加效果);
-          });
-        });
-      scaleEffects(nextSkill._效果数组);
+      nextSkill._效果数组 = rules.应用技能掌控度效果数组_V1(nextSkill._效果数组, rate);
       return nextSkill;
     },
 
@@ -60898,7 +61332,7 @@ ${播报文本}
       });
       if (!批次) return { available: false, changed, reason: 'DAILY_USAGE_EXHAUSTED' };
       const 剩余次数 = 批次.剩余使用次数 === undefined ? 定义次数 : Math.max(0, Math.floor(toNumber(批次.剩余使用次数, 0)));
-      if (!提交) return { available: true, changed, remaining: 剩余次数 };
+      if (!提交) return { available: true, changed, remaining: 剩余次数, batch: 批次 };
       if (剩余次数 > 1) {
         批次.剩余使用次数 = 剩余次数 - 1;
         return { available: true, changed: true, remaining: 剩余次数 - 1 };
@@ -60929,16 +61363,19 @@ ${播报文本}
               : { consume: true };
             const 定义次数 = Math.max(0, Math.floor(toNumber(物品定义.基础使用次数, 0)));
             const 是可重复使用批次 = 消费规则.consume === false && 定义次数 > 0 && 物品定义.使用次数恢复周期 === '每日';
+            let 使用批次 = null;
             if (是可重复使用批次) {
               const 每日使用状态 = this.结算物品批次每日使用次数(inventory[itemName], 定义次数, 当前tick);
               if (!每日使用状态.available) throw new Error(`【${itemName}】今日使用次数已耗尽。`);
+              使用批次 = 每日使用状态.batch;
             }
-            const 物品数据 = 合并物品定义与状态_桥接(statData, itemName, inventory[itemName]);
+            const 物品数据 = 合并物品定义与状态_桥接(statData, itemName,
+              使用批次 ? { 数量: 0, 批次: [使用批次] } : inventory[itemName]);
             if (!this.isUsableInventoryItem(物品数据, itemName)) throw new Error('当前物品没有可执行的使用效果。');
             const 绑定者 = toText(物品数据.绑定者, '').trim();
             if (绑定者 && 绑定者 !== charKey) throw new Error(`【${itemName}】当前绑定者不是${charKey}。`);
             const 有效期至tick = Math.max(0, toNumber(物品数据.有效期至tick, 0));
-            if (有效期至tick > 0 && 当前tick > 有效期至tick) throw new Error(`【${itemName}】已经过期。`);
+            if (有效期至tick > 0 && 当前tick >= 有效期至tick) throw new Error(`【${itemName}】已经过期。`);
             if (读取背包总数量_桥接(inventory[itemName]) <= 0) throw new Error(`【${itemName}】剩余次数不足。`);
             actionLabel = '使用';
             if (!charData.属性 || typeof charData.属性 !== 'object') charData.属性 = {};
@@ -61323,6 +61760,16251 @@ ${播报文本}
 
   window.mvuSetMainTabExternal = setMainTab;
   window.mvuSetMainTab = setMainTab;
+})();
+
+;
+/* source: cockpit/designer-model.js */
+/*
+ * LWCS 技能设计台数据层（独立浏览器脚本）
+ * ------------------------------------------------------------------
+ * 用途：给新 UI 原型提供与原版 SillyTavern 技能设计台（lwcs/mvu_logic_bridge.js）一致的
+ *       「技能 → 表单 → 字段描述 → 保存技能 / 临时技能 / 摘要 / 校验」数据层，不含任何 DOM 渲染。
+ * 依赖：页面须先加载 MVU_Skill_Runtime.js（提供 __LWCS_SKILL_MECHANISM_REGISTRY__、
+ *       __LWCS_COMPILE_SKILL_STRUCTURE_TEXT__、__LWCS_SKILL_COST_HELPERS_V1__ 等）。
+ * 结构：
+ *   一、原版代码：由 build_model.js 依赖闭包从 bridge 逐字抽取（每段标注 B:行号），勿手改；
+ *   二、预览页局部量切片：技能设计台分支内的模板上下文（标题提示表、融合选项等），逐字切片；
+ *   三、移植层：把原版「渲染 HTML → 挂载同步 → DOM 回读」改写为纯数据，并对外暴露 window.LWCS_DESIGNER_MODEL。
+ * 生成时间：2026-11-08T02:02:29.328Z；抽取 465 段顶层声明。
+ *
+ * 用法（M = window.LWCS_DESIGNER_MODEL，root 缺省用 setRoot() 的值，再缺省 window.LWCS_SAVE）：
+ *   const meta = M.meta.ring('唐凌雪','第1武魂','第1魂灵','第2魂环','第2魂技', 魂技名);   // 也有 fusion / art / custom / independentRing
+ *   const s = M.session(null, meta, root);      // 推荐：有状态会话，保留虚拟 DOM，与原版设计台同生命周期
+ *   s.view()  → { sections[{id,title,tab,hint,visible,fields}], rows[{path,prototypeSelect,fields}], sideEffects, preview:{summary,…} }
+ *   s.act({ type:'effectField', path:[0], key:'数值', value:'-20%' })   // 动作见 act 说明；返回会话本身
+ *   s.save() → { ok, skill, updates, messages }   s.toSkill() / s.tempSkill() / s.summary() / s.validate()
+ *   无状态版：fromSkill / open / toSkill / save / tempSkill / summary / validate / act / view / schema.fields(effect, ctx)
+ * 注意：原版保存时先 setBusy 禁用全部控件，条件读取跳过 disabled 输入 → 保存结果不含条件分支；
+ *       本模型默认复刻（与原版一致），传 { keepConditionBranches: true } 可保留分支。
+ * 规则开关：M.rules.战斗外原型可保存 = true → 任何来源都能保存修炼增益 / 战斗外复活（原版只有功法能存）；默认 false 与原版一致。
+ */
+(function () {
+  if (typeof globalThis === 'undefined' || !globalThis.__LWCS_SKILL_MECHANISM_REGISTRY__) {
+    console.error('[LWCS_DESIGNER_MODEL] 未检测到 __LWCS_SKILL_MECHANISM_REGISTRY__：请先加载 MVU_Skill_Runtime.js 再加载本脚本。');
+  }
+  // ════════════════ 一、原版代码（逐字抽取） ════════════════
+  // —— B:2
+  const __mvuBridgeRoot = typeof globalThis !== 'undefined' ? globalThis : window;
+  // —— B:44-66
+  const 读取正式技能结构翻译器 = () => {
+    if (typeof __mvuBridgeRoot.__LWCS_COMPILE_SKILL_STRUCTURE_TEXT__ === 'function')
+      return __mvuBridgeRoot.__LWCS_COMPILE_SKILL_STRUCTURE_TEXT__;
+    try {
+      if (
+        window.parent &&
+        window.parent !== window &&
+        typeof window.parent.__LWCS_COMPILE_SKILL_STRUCTURE_TEXT__ === 'function'
+      ) {
+        return window.parent.__LWCS_COMPILE_SKILL_STRUCTURE_TEXT__;
+      }
+    } catch (错误) {}
+    try {
+      if (
+        window.top &&
+        window.top !== window &&
+        typeof window.top.__LWCS_COMPILE_SKILL_STRUCTURE_TEXT__ === 'function'
+      ) {
+        return window.top.__LWCS_COMPILE_SKILL_STRUCTURE_TEXT__;
+      }
+    } catch (错误) {}
+    return null;
+  };
+  // —— B:708-714
+  function escapeHtmlAttr(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+  // —— B:893-909
+  const SPIRIT_ATTRIBUTE_TOKEN_OPTIONS = Object.freeze([
+    '金',
+    '木',
+    '水',
+    '火',
+    '土',
+    '风',
+    '雷',
+    '冰',
+    '光',
+    '暗',
+    '精神',
+    '空间',
+    '时间',
+    '创造',
+    '毁灭',
+  ]);
+  // —— B:910
+  const WUXING_ATTRIBUTE_TOKEN_OPTIONS = Object.freeze(['金', '木', '水', '火', '土']);
+  // —— B:911
+  const ELEMENT_ATTRIBUTE_TOKEN_OPTIONS = Object.freeze(['水', '火', '风', '土', '光', '暗']);
+  // —— B:912
+  const SKILL_LIMITED_ELEMENT_OPTIONS = Object.freeze(['五行类', '元素类', ...SPIRIT_ATTRIBUTE_TOKEN_OPTIONS]);
+  // —— B:913-915
+  function 规范化技能元素列表_桥接(value = []) {
+    return Array.from(new Set(normalizeSkillDesignerArray(value).filter(token => SPIRIT_ATTRIBUTE_TOKEN_OPTIONS.includes(token))));
+  }
+  // —— B:1888
+  let liveSnapshot = null;
+  // —— B:1889
+  let lastRenderableSnapshot = null;
+  // —— B:2028-2035
+  function htmlEscape(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+  // —— B:2037-2040
+  function hasUiPlaceholderToken(value) {
+    const text = String(value === undefined || value === null ? '' : value).trim();
+    return !!text && /待补全|待生成|未知|未详|不详/i.test(text);
+  }
+  // —— B:2042-2046
+  function toText(value, fallback = '无') {
+    if (value === undefined || value === null || value === '') return fallback;
+    const text = String(value);
+    return hasUiPlaceholderToken(text) ? fallback : text;
+  }
+  // —— B:2067-2070
+  function toNumber(value, fallback = 0) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+  // —— B:2132-2148
+  function 获取载入器候选窗口() {
+    const 列表 = [window];
+    try {
+      if (window.parent && window.parent !== window) 列表.push(window.parent);
+    } catch (错误) {}
+    try {
+      if (window.top && window.top !== window && !列表.includes(window.top)) 列表.push(window.top);
+    } catch (错误) {}
+    for (const 当前窗口 of [...列表]) {
+      try {
+        Array.from(当前窗口.frames || []).forEach(子窗口 => {
+          if (子窗口 && !列表.includes(子窗口)) 列表.push(子窗口);
+        });
+      } catch (错误) {}
+    }
+    return 列表;
+  }
+  // —— B:2150-2156
+  function 读取窗口函数(键名) {
+    for (const 目标窗口 of 获取载入器候选窗口()) {
+      const 函数值 = 目标窗口 && typeof 目标窗口 === 'object' ? 目标窗口[键名] : null;
+      if (typeof 函数值 === 'function') return 函数值.bind(目标窗口);
+    }
+    return null;
+  }
+  // —— B:2192-2203
+  const 技能设计台分页定义 = Object.freeze([
+    { 名称: '基础', 标题集: ['基础框架载体', '实体凝结参数', '融合对象', '功法进度'] },
+    {
+      名称: '效果',
+      标题集: ['核心术式阵列', '使用效果阵列', '使用效果', '施展副作用', '使用副作用', '副作用'],
+      // 副作用分区标题是动态的（造物承载时叫「施展副作用」，否则叫「副作用」），
+      // 靠标记归页比匹配文字稳
+      标记集: ['[data-skill-designer-side-effect-title]', '[data-skill-designer-prototype-title]'],
+    },
+    { 名称: '消耗与成长', 标题集: ['运转能量配置', '技能掌控度'] },
+    { 名称: '属性与呈现', 标题集: ['元属性特征', '终端解析图谱'] },
+  ]);
+  // —— B:2526-2528
+  function formatNumber(value) {
+    return new Intl.NumberFormat('zh-CN').format(toNumber(value, 0));
+  }
+  // —— B:2902-2911
+  function deepGet(source, path, fallback) {
+    if (!source || !path) return fallback;
+    const keys = Array.isArray(path) ? path : String(path).split('.');
+    let current = source;
+    for (const key of keys) {
+      if (current == null || typeof current !== 'object' || !(key in current)) return fallback;
+      current = current[key];
+    }
+    return current === undefined ? fallback : current;
+  }
+  // —— B:2913-2915
+  function safeEntries(obj) {
+    return obj && typeof obj === 'object' ? Object.entries(obj) : [];
+  }
+  // —— B:2939-2942
+  function 读取槽位序号_桥接(槽位名 = '', 默认值 = 1) {
+    const 匹配 = String(槽位名 || '').match(/第(\d+)/);
+    return Math.max(1, Math.floor(Number(匹配 ? 匹配[1] : 默认值) || 默认值 || 1));
+  }
+  // —— B:2944-2946
+  function 是武魂槽位键_桥接(键 = '') {
+    return /^第\d+武魂$/.test(String(键 || '').trim());
+  }
+  // —— B:2948-2950
+  function 是魂灵槽位键_桥接(键 = '') {
+    return /^第\d+魂灵$/.test(String(键 || '').trim());
+  }
+  // —— B:2952-2954
+  function 是魂环槽位键_桥接(键 = '') {
+    return /^第\d+魂环$/.test(String(键 || '').trim());
+  }
+  // —— B:2956-2958
+  function 是魂技槽位键_桥接(键 = '') {
+    return /^第\d+魂技(?:_2)?$/.test(String(键 || '').trim());
+  }
+  // —— B:2960-2962
+  function 是气血魂环槽位键_桥接(键 = '') {
+    return /^第\d+气血魂环$/.test(String(键 || '').trim());
+  }
+  // —— B:2964-2966
+  function 是血脉魂技槽位键_桥接(键 = '') {
+    return /^第\d+血脉魂技(?:_2)?$/.test(String(键 || '').trim());
+  }
+  // —— B:2968-2970
+  function 取槽位条目_桥接(对象 = {}, 判断函数 = () => false) {
+    return safeEntries(对象).filter(([键, 值]) => 判断函数(键) && 值 && typeof 值 === 'object' && !Array.isArray(值));
+  }
+  // —— B:2972-2974
+  function 取角色武魂条目_桥接(角色 = {}) {
+    return 取槽位条目_桥接(角色, 是武魂槽位键_桥接);
+  }
+  // —— B:2976-2981
+  function 取角色主武魂系别_桥接(角色 = {}, fallback = '强攻系') {
+    const 条目 = 取角色武魂条目_桥接(角色);
+    const 第1武魂 = 条目.find(([键]) => 键 === '第1武魂')?.[1] || 条目[0]?.[1] || {};
+    const 系别 = normalizeSkillUiText(第1武魂?.系别 || 第1武魂?.type, '');
+    return 系别 && 系别 !== '未知系' ? 系别 : fallback;
+  }
+  // —— B:2983-2985
+  function 取武魂魂灵条目_桥接(武魂 = {}) {
+    return 取槽位条目_桥接(武魂, 是魂灵槽位键_桥接);
+  }
+  // —— B:2987-2989
+  function 取武魂直接魂环条目_桥接(武魂 = {}) {
+    return 取槽位条目_桥接(武魂, 是魂环槽位键_桥接);
+  }
+  // —— B:2991-2993
+  function 取魂灵魂环条目_桥接(魂灵 = {}) {
+    return 取槽位条目_桥接(魂灵, 是魂环槽位键_桥接);
+  }
+  // —— B:2995-2997
+  function 取魂环魂技条目_桥接(魂环 = {}) {
+    return 取槽位条目_桥接(魂环, 是魂技槽位键_桥接);
+  }
+  // —— B:2999-3001
+  function 取血脉气血魂环条目_桥接(血脉 = {}) {
+    return 取槽位条目_桥接(血脉, 是气血魂环槽位键_桥接);
+  }
+  // —— B:3003-3005
+  function 取气血魂环魂技条目_桥接(魂环 = {}) {
+    return 取槽位条目_桥接(魂环, 是血脉魂技槽位键_桥接);
+  }
+  // —— B:4702-4710
+  function cloneJsonValue(value, fallback = {}) {
+    try {
+      return structuredClone(value);
+    } catch (error) {}
+    try {
+      return JSON.parse(JSON.stringify(value));
+    } catch (error) {}
+    return fallback;
+  }
+  // —— B:17301-17303
+  function isTodoPlaceholderText(value) {
+    return hasUiPlaceholderToken(value);
+  }
+  // —— B:17305-17311
+  function normalizeSkillUiText(value, fallback = '未知') {
+    const text = toText(value, '')
+      .replace(/\[续台推演\]\s*/g, '')
+      .trim();
+    if (!text || text === '无' || text === '未生成' || isTodoPlaceholderText(text)) return fallback;
+    return text;
+  }
+  // —— B:17313-17345
+  function 格式化技能消耗显示文本_桥接(消耗值, 兜底文本 = '无') {
+    if (消耗值 === undefined || 消耗值 === null || 消耗值 === '') return 兜底文本;
+    if (typeof 消耗值 !== 'object') return normalizeSkillUiText(消耗值, 兜底文本);
+    const 格式化原子值 = 值 => {
+      if (值 === undefined || 值 === null || 值 === '') return '';
+      if (typeof 值 === 'number') return Number.isFinite(值) ? formatNumber(值) : '';
+      if (typeof 值 === 'string') return normalizeSkillUiText(值, '');
+      return '';
+    };
+    const 格式化资源对象 = 资源对象 => {
+      if (!资源对象 || typeof 资源对象 !== 'object') return 格式化原子值(资源对象);
+      return Object.entries(资源对象)
+        .filter(([资源名]) => !['启动', 'upfront', '维持', 'sustain'].includes(String(资源名 || '')))
+        .map(([资源名, 数值]) => {
+          const 文本 = 格式化原子值(数值);
+          return 文本 ? `${资源名}:${文本}` : '';
+        })
+        .filter(Boolean)
+        .join(' | ');
+    };
+    if (Array.isArray(消耗值)) {
+      const 文本 = 消耗值.map(条目 => 格式化技能消耗显示文本_桥接(条目, '')).filter(Boolean).join(' | ');
+      return 文本 || 兜底文本;
+    }
+    const 启动消耗 = 消耗值.启动 || 消耗值.upfront || null;
+    const 维持消耗 = 消耗值.维持 || 消耗值.sustain || null;
+    const 基础文本 = 格式化资源对象(启动消耗 || 消耗值);
+    const 维持文本 = 格式化资源对象(维持消耗);
+    const 片段 = [];
+    if (基础文本) 片段.push(基础文本);
+    if (维持文本) 片段.push(`维持:${维持文本}`);
+    return 片段.join(' ') || 兜底文本;
+  }
+  // —— B:17385-17403
+  function summarizeSummonEffectUi(effect) {
+    const 单位类型 = normalizeSkillUiText(effect && effect['召唤单位类型'], '魂兽');
+    const 名称 = normalizeSkillUiText(effect && effect['召唤物名称'], '召唤物');
+    const 数量 = Math.max(1, toNumber(effect && (effect['数量'] ?? effect['召唤数量']), 1));
+    const 持续回合 = Math.max(0, toNumber(effect && effect['持续回合'], 0));
+    const 行动模式 = normalizeSkillUiText(effect && effect['行动模式'], '');
+    const 强度 = Number(effect && effect['强度']);
+    const 继承比例 = Math.max(0, Math.min(1, toNumber(effect && effect['继承属性比例'], 0)));
+    const 使用继承 = 继承比例 > 0;
+    return [
+      `召唤${单位类型}【${名称}】×${数量}`,
+      行动模式,
+      !使用继承 && Number.isFinite(强度) ? `强度:${强度}` : '',
+      使用继承 ? `平均继承:${Math.round(继承比例 * 100)}%` : '',
+      持续回合 > 0 ? `持续:${持续回合}回合` : '',
+    ]
+      .filter(Boolean)
+      .join(' / ');
+  }
+  // —— B:17418
+  const SKILL_DESIGNER_PREVIEW_PREFIX = '技能设计台：';
+  // —— B:17420
+  const SKILL_DESIGNER_SELF_FUSION_PARTNER = '自身双武魂';
+  // —— B:17421-17425
+  const SHARED_SKILL_MECHANISM_REGISTRY =
+    __mvuBridgeRoot.__LWCS_SKILL_MECHANISM_REGISTRY__ &&
+    typeof __mvuBridgeRoot.__LWCS_SKILL_MECHANISM_REGISTRY__ === 'object'
+      ? __mvuBridgeRoot.__LWCS_SKILL_MECHANISM_REGISTRY__
+      : null;
+  // —— B:17426
+  const SKILL_DESIGNER_MECHANISM_META = Object.freeze(SHARED_SKILL_MECHANISM_REGISTRY?.机制定义 || {});
+  // —— B:17427
+  const SKILL_DESIGNER_PROTOTYPE_REGISTRY = Object.freeze(SHARED_SKILL_MECHANISM_REGISTRY?.原型定义 || {});
+  // —— B:17428
+  const 技能设计台机制抹消可匹配字段表 = Object.freeze(SHARED_SKILL_MECHANISM_REGISTRY?.机制抹消可匹配字段 || {});
+  // —— B:17429
+  const 技能设计台嵌套效果数组字段表 = Object.freeze(SHARED_SKILL_MECHANISM_REGISTRY?.嵌套效果数组字段 || []);
+  // —— B:17430
+  const 技能设计台条件分支效果数组字段表 = Object.freeze(SHARED_SKILL_MECHANISM_REGISTRY?.条件分支效果数组字段 || []);
+  // —— B:17432-17454
+  const 技能设计台机制抹消支持原型默认选项 = Object.freeze([
+    '资源变化',
+    '资源转移',
+    '护盾变化',
+    '属性修正',
+    '判定修正',
+    '结算修正',
+    '炸环',
+    '状态施加',
+    '时窗修正',
+    '状态移除',
+    '规则防御',
+    '状态转移',
+    '状态交换',
+    '资源锁定',
+    '规则改写',
+    '机制授予',
+    '复制执行',
+    '时光回溯',
+    '位移执行',
+    '决策干扰',
+    '召唤生成',
+  ]);
+  // —— B:17455
+  const 技能设计台机制授予禁止授予原型集合 = new Set(['伤害结算', '机制授予', '修炼增益', '战斗外复活']);
+  // —— B:17456-17458
+  const 技能设计台机制授予允许授予原型集合 = new Set(
+    Object.keys(SKILL_DESIGNER_PROTOTYPE_REGISTRY || {}).filter(原型 => !技能设计台机制授予禁止授予原型集合.has(normalizeSkillUiText(原型, ''))),
+  );
+  // —— B:17460-17469
+  function 技能设计台原型支持驱动判定字段(原型 = '', 字段 = {}) {
+    const 原型名 = normalizeSkillUiText(原型, '');
+    if (原型名 === '结算修正') {
+      const 支持字段 = 技能设计台结算修正支持字段矩阵[normalizeSkillUiText(字段 && 字段['结算'], '')];
+      return !!支持字段 && 支持字段.includes('驱动属性') && 支持字段.includes('影响方向');
+    }
+    const 定义 = SKILL_DESIGNER_PROTOTYPE_REGISTRY[原型名];
+    const 字段列表 = Array.isArray(定义 && 定义['允许字段']) ? 定义['允许字段'] : [];
+    return 字段列表.includes('驱动属性') && 字段列表.includes('影响方向');
+  }
+  // —— B:17481-17494
+  function 技能设计台原型命中绝对值默认无驱动(字段 = {}) {
+    if (!字段 || typeof 字段 !== 'object') return false;
+    const 数值列表 = ['数值', '结算倍率', '转化比例', '概率'].flatMap(key => {
+      const 原值 = 字段[key];
+      if (原值 === undefined || 原值 === null) return [];
+      return Array.isArray(原值) ? 原值 : [原值];
+    });
+    if (!数值列表.length) return false;
+    return 数值列表.every(原值 => {
+      if (typeof 原值 === 'number') return Number.isFinite(原值);
+      const 文本 = normalizeSkillUiText(原值, '');
+      return !!文本 && 技能设计台字段值是数值修正(文本) && !技能设计台字段值是百分比修正(文本);
+    });
+  }
+  // —— B:17496-17507
+  function 技能设计台原型需要默认驱动判定(原型 = '', 字段 = {}) {
+    const 原型名 = normalizeSkillUiText(原型, '');
+    if (!字段 || typeof 字段 !== 'object') return false;
+    if (原型名 === '伤害结算') return false;
+    if (!技能设计台原型支持驱动判定字段(原型名, 字段)) return false;
+    if (原型名 === '时光回溯') return true;
+    if (原型名 === '机制授予') return true;
+    if (原型名 === '复制执行') return /属性|全部/.test(normalizeSkillUiText(字段['复制类型'], ''));
+    if (normalizeSkillUiText(字段['目标'], '') === '自身' && 原型名 !== '位移执行') return false;
+    if (原型名 === '状态施加') return !技能设计台原型命中绝对值默认无驱动(字段);
+    return !技能设计台原型命中绝对值默认无驱动(字段);
+  }
+  // —— B:17509-17515
+  function 读取技能设计台影响方向选项值(原型 = '', 字段 = {}) {
+    const 原始选项 = 读取技能设计台原型字段选项(原型, '影响方向', { 当前效果: 字段 });
+    return (Array.isArray(原始选项) ? 原始选项 : []).flatMap(选项 => {
+      if (选项 && typeof 选项 === 'object' && Array.isArray(选项.options)) return 选项.options;
+      return [选项];
+    }).map(选项 => normalizeSkillUiText(选项 && typeof 选项 === 'object' ? 选项.value : 选项, '')).filter(Boolean);
+  }
+  // —— B:17517-17537
+  function 选择技能设计台默认影响方向(原型 = '', 字段 = {}, fallback = '效果强度') {
+    const 原型名 = normalizeSkillUiText(原型, '');
+    const 结算 = normalizeSkillUiText(字段 && 字段['结算'], '');
+    const 调整字段 = normalizeSkillUiText(字段 && 字段['调整字段'], '');
+    let 默认方向 = fallback;
+    if (原型名 === '位移执行') 默认方向 = '效果强度';
+    else if (原型名 === '状态施加') 默认方向 = '效果强度';
+    else if (原型名 === '复制执行') 默认方向 = '效果强度';
+    else if (['判定修正', '决策干扰', '机制抹消', '资源锁定', '规则改写'].includes(原型名))
+      默认方向 = '成功率';
+    else if (原型名 === '机制授予') 默认方向 = '效果强度';
+    else if (原型名 === '结算修正' && 结算 === '消耗分摊') 默认方向 = '效果强度';
+    else if (原型名 === '结算修正' && 结算 === '消耗') 默认方向 = '消耗';
+    else if (原型名 === '结算修正' && 结算 === '前摇') 默认方向 = '前摇';
+    else if (原型名 === '时光回溯') 默认方向 = '成功率';
+    else if (原型名 === '时窗修正') 默认方向 = ['持续回合', '有效期tick'].includes(调整字段) ? '持续时间' : '效果强度';
+    else if (原型名 === '状态移除') 默认方向 = '成功率';
+    else 默认方向 = '效果强度';
+    const 选项列表 = 读取技能设计台影响方向选项值(原型名, 字段);
+    return 选项列表.includes(默认方向) ? 默认方向 : 选项列表[0] || fallback;
+  }
+  // —— B:17539-17573
+  function 应用技能设计台目标驱动契约(原型 = '', 字段 = {}) {
+    if (!字段 || typeof 字段 !== 'object') return;
+    const 原型名 = normalizeSkillUiText(原型, '');
+    if (字段['__显式无驱动属性']) {
+      delete 字段['驱动属性'];
+      delete 字段['影响方向'];
+      return;
+    }
+    if (原型名 === '伤害结算' || !技能设计台原型支持驱动判定字段(原型名, 字段)) {
+      delete 字段['驱动属性'];
+      delete 字段['影响方向'];
+      return;
+    }
+    if (!['机制授予', '时光回溯', '位移执行', '复制执行'].includes(原型名) && normalizeSkillUiText(字段['目标'], '') === '自身') {
+      delete 字段['驱动属性'];
+      delete 字段['影响方向'];
+      return;
+    }
+    if (!技能设计台原型需要默认驱动判定(原型名, 字段)) {
+      delete 字段['驱动属性'];
+      delete 字段['影响方向'];
+      return;
+    }
+    if (String(字段['驱动属性'] ?? '').trim() === '无') {
+      delete 字段['驱动属性'];
+      delete 字段['影响方向'];
+      return;
+    }
+    if (!normalizeSkillUiText(字段['驱动属性'], ''))
+      字段['驱动属性'] = 选择技能设计台默认驱动属性(原型名, 字段);
+    const 首个方向 = 选择技能设计台默认影响方向(原型名, 字段, '效果强度');
+    const 方向选项 = 读取技能设计台影响方向选项值(原型名, 字段);
+    if (!normalizeSkillUiText(字段['影响方向'], '') || !方向选项.includes(normalizeSkillUiText(字段['影响方向'], '')))
+      字段['影响方向'] = 首个方向;
+  }
+  // —— B:17574
+  const SKILL_DESIGNER_MECHANISM_COMPILER_TABLE = Object.freeze(SHARED_SKILL_MECHANISM_REGISTRY?.机制编译表 || {});
+  // —— B:17575-17587
+  const SKILL_DESIGNER_SKILL_TYPES = Object.freeze([
+    '输出',
+    '控制',
+    '辅助',
+    '防御',
+    '回复',
+    '位移',
+    '领域',
+    '被动',
+    '真身',
+    '召唤',
+    '造物',
+  ]);
+  // —— B:17588-17603
+  const SKILL_DESIGNER_SOURCE_TYPE_TO_SKILL_TYPE = Object.freeze({
+    强攻系: '输出',
+    敏攻系: '输出',
+    元素系: '输出',
+    精神系: '控制',
+    控制系: '控制',
+    防御系: '防御',
+    辅助系: '辅助',
+    食物系: '造物',
+    治疗系: '回复',
+    召唤系: '召唤',
+    武魂融合技: '输出',
+    功法: '被动',
+    自创魂技: '输出',
+    血脉被动: '被动',
+  });
+  // —— B:17604
+  const SKILL_DESIGNER_TARGET_OPTIONS = Object.freeze(['自身', '单体', '群体', '全场', '召唤物']);
+  // —— B:17605
+  const SKILL_DESIGNER_CLONE_TARGET_OPTIONS = Object.freeze([...SKILL_DESIGNER_TARGET_OPTIONS, '分身']);
+  // —— B:17606-17662
+  const SKILL_DESIGNER_MAIN_MECHANIC_POOL = Object.freeze(
+    SHARED_SKILL_MECHANISM_REGISTRY?.mainArchetypes || {
+      伤害类: Object.freeze(['单体伤害', '群体伤害', '多段伤害', '持续伤害']),
+      控制类: Object.freeze(['硬控', '软控', '迟缓', '节奏打断', '封技']),
+      削弱类: Object.freeze([
+        '单属性削弱',
+        '多属性削弱',
+        '禁疗',
+        '消耗',
+        '前摇',
+        '掌控压制',
+        '速度压制',
+        '治疗反转',
+      ]),
+      增益类: Object.freeze([
+        '单属性增益',
+        '多属性增益',
+        '全属性增益',
+        '消耗',
+        '前摇',
+        '掌控提升',
+        '速度提升',
+        '修炼增益',
+      ]),
+      防御类: Object.freeze([
+        '护盾',
+        '承伤修正',
+        '免伤',
+        '霸体',
+        '免死/锁血',
+        '无敌金身',
+        '伤害反射',
+        '伤害转移',
+        '伤害分摊',
+        '消耗分摊',
+      ]),
+      回复类: Object.freeze(['体力恢复', '魂力恢复', '精神恢复', '持续恢复', '净化/解控']),
+      '感知/认知类': Object.freeze(['感知干扰', '标记锁定', '共享视野', '幻境', '催眠', '认知扭曲']),
+      位移类: Object.freeze(['自身位移', '强制位移', '位移交换', '追击位移', '脱离位移']),
+      特殊规则类: Object.freeze([
+        '召唤',
+        '分身',
+        '复制',
+        '反制',
+        '转化',
+        '状态交换',
+        '状态转移',
+        '强制绑定/锁定',
+        '规则改写',
+        '引爆持续伤害',
+        '斩盾',
+        '吞噬',
+        '能力共享',
+        '机制抹消',
+      ]),
+    },
+  );
+  // —— B:17663-17666
+  const SKILL_DESIGNER_DELIVERY_FORM_POOL = Object.freeze([
+    '直接生效',
+    '造物承载',
+  ]);
+  // —— B:17667-17681
+  const SKILL_DESIGNER_DELIVERY_FORM_BY_TYPE = Object.freeze({
+    强攻系: Object.freeze(['直接生效']),
+    控制系: Object.freeze(['直接生效']),
+    食物系: Object.freeze(['造物承载', '直接生效']),
+    精神系: Object.freeze(['直接生效']),
+    防御系: Object.freeze(['直接生效']),
+    敏攻系: Object.freeze(['直接生效']),
+    元素系: Object.freeze(['直接生效']),
+    辅助系: Object.freeze(['直接生效', '造物承载']),
+    治疗系: Object.freeze(['直接生效', '造物承载']),
+    召唤系: Object.freeze(['直接生效']),
+    被动: Object.freeze(['直接生效']),
+    功法: Object.freeze(['直接生效']),
+    自创魂技: Object.freeze(['直接生效', '造物承载']),
+  });
+  // —— B:17682-17693
+  const SKILL_DESIGNER_ATTRIBUTE_HINTS_BY_TYPE = Object.freeze({
+    强攻系: Object.freeze(['力量', '魂力', '防御']),
+    控制系: Object.freeze(['魂力', '精神力', '敏捷']),
+    食物系: Object.freeze(['魂力', '精神力']),
+    精神系: Object.freeze(['精神力', '魂力']),
+    防御系: Object.freeze(['防御', '魂力']),
+    敏攻系: Object.freeze(['敏捷', '力量', '魂力']),
+    元素系: Object.freeze(['精神力', '魂力', '敏捷']),
+    辅助系: Object.freeze(['魂力', '精神力', '防御']),
+    治疗系: Object.freeze(['魂力', '精神力']),
+    召唤系: Object.freeze(['精神力', '魂力', '防御']),
+  });
+  // —— B:17694-17791
+  const SKILL_DESIGNER_SECONDARY_BY_MAIN = Object.freeze(
+    SHARED_SKILL_MECHANISM_REGISTRY?.secondaryByMain || {
+      伤害类: Object.freeze([
+        '穿透',
+        '伤害吸收',
+        '斩杀补伤',
+        '流血DOT',
+        '打断',
+        '反击',
+        '追击',
+        '引爆持续伤害',
+        '斩盾',
+        '吞噬',
+      ]),
+      控制类: Object.freeze(['打断', '沉默', '减速', '致盲', '迟缓', '禁疗', '嘲讽', '破隐', '封技']),
+      削弱类: Object.freeze([
+        '禁疗',
+        '减速',
+        '迟缓',
+        '标记弱点',
+        '驱散增益',
+        '破隐',
+        '治疗反转',
+        '封技',
+        '斩盾',
+        '吞噬',
+        '机制抹消',
+      ]),
+      增益类: Object.freeze([
+        '小护盾',
+        '净化',
+        '解控',
+        '共享视野',
+        '隐身',
+        '护卫',
+        '无敌金身',
+        '能力共享',
+        '修炼增益',
+      ]),
+      防御类: Object.freeze([
+        '小护盾',
+        '反击',
+        '净化',
+        '解控',
+        '护卫',
+        '嘲讽',
+        '无敌金身',
+        '伤害反射',
+        '伤害转移',
+        '伤害分摊',
+        '消耗分摊',
+      ]),
+      回复类: Object.freeze([
+        '净化',
+        '解控',
+        '小护盾',
+        '魂力恢复',
+        '精神恢复',
+        '驱散增益',
+        '护卫',
+        '能力共享',
+        '修炼增益',
+      ]),
+      '感知/认知类': Object.freeze([
+        '标记弱点',
+        '共享视野',
+        '目标锁定',
+        '打断',
+        '沉默',
+        '驱散增益',
+        '窃取增益',
+        '破隐',
+      ]),
+      位移类: Object.freeze(['打断', '反击', '标记弱点', '隐身', '破隐']),
+      特殊规则类: Object.freeze([
+        '共享视野',
+        '标记弱点',
+        '净化',
+        '驱散增益',
+        '窃取增益',
+        '隐身',
+        '护卫',
+        '状态转移',
+        '引爆持续伤害',
+        '斩盾',
+        '吞噬',
+        '能力共享',
+        '机制抹消',
+        '治疗反转',
+        '封技',
+        '无敌金身',
+        '伤害反射',
+        '伤害转移',
+        '伤害分摊',
+        '消耗分摊',
+      ]),
+    },
+  );
+  // —— B:17792-17825
+  const SKILL_DESIGNER_SECONDARY_TYPE_BIAS = Object.freeze(
+    SHARED_SKILL_MECHANISM_REGISTRY?.secondaryTypeBias || {
+      强攻系: Object.freeze(['斩盾', '引爆持续伤害', '无敌金身', '伤害反射', '反击', '追击']),
+      防御系: Object.freeze(['伤害反射', '护卫']),
+      敏攻系: Object.freeze(['隐身', '追击', '破隐', '无敌金身', '斩盾']),
+      控制系: Object.freeze([
+        '封技',
+        '治疗反转',
+        '目标锁定',
+        '驱散增益',
+        '嘲讽',
+        '伤害分摊',
+        '状态转移',
+        '吞噬',
+        '机制抹消',
+      ]),
+      精神系: Object.freeze([
+        '状态转移',
+        '封技',
+        '治疗反转',
+        '窃取增益',
+        '目标锁定',
+        '隐身',
+        '吞噬',
+        '能力共享',
+        '机制抹消',
+      ]),
+      元素系: Object.freeze(['引爆持续伤害', '斩盾', '封技', '治疗反转', '驱散增益', '破隐', '吞噬', '机制抹消']),
+      辅助系: Object.freeze(['护卫', '共享视野', '驱散增益', '无敌金身', '伤害分摊', '消耗分摊', '能力共享']),
+      治疗系: Object.freeze(['护卫', '驱散增益', '共享视野', '无敌金身', '伤害分摊', '消耗分摊', '能力共享']),
+      食物系: Object.freeze(['修炼增益', '驱散增益', '共享视野', '治疗反转', '护卫', '能力共享']),
+      召唤系: Object.freeze(['共享视野', '护卫', '能力共享', '伤害分摊']),
+    },
+  );
+  // —— B:17826
+  const SKILL_DESIGNER_TARGET_SEMANTICS = Object.freeze(SHARED_SKILL_MECHANISM_REGISTRY?.目标语义表 || {});
+  // —— B:17852-17854
+  const SKILL_DESIGNER_ALL_SECONDARY_OPTIONS = Object.freeze(
+    Array.from(new Set(Object.values(SKILL_DESIGNER_SECONDARY_BY_MAIN).flat())).sort(),
+  );
+  // —— B:17855-17871
+  const SKILL_DESIGNER_ATTRIBUTE_OPTIONS = Object.freeze([
+    '金',
+    '木',
+    '水',
+    '火',
+    '土',
+    '风',
+    '雷',
+    '冰',
+    '光',
+    '暗',
+    '精神',
+    '空间',
+    '时间',
+    '创造',
+    '毁灭',
+  ]);
+  // —— B:17872
+  const SKILL_DESIGNER_RESOURCE_TYPE_OPTIONS = Object.freeze(['无', '魂力', '精神力', '体力', '混合']);
+  // —— B:17873
+  const SKILL_DESIGNER_COST_RESOURCE_KEYS = Object.freeze(['魂力', '精神力', '体力']);
+  // —— B:17874-18063
+  const 技能设计台参数提示表 = Object.freeze({
+    交出状态: '状态交换时你交给对方的状态。',
+    位移幅度: '移动的距离或格数。',
+    修正数值: '在原值基础上加减多少；填百分比按比例，填数字按绝对值。',
+    削弱属性: '要压低目标的哪一项属性。',
+    增幅对象: '要提升哪一项属性。',
+    属性组: '同时作用的多项属性。',
+    压制幅度: '压低的幅度。',
+    压缩倍率: '压缩后每回合的伤害倍率。',
+    压缩回合: '压缩后剩余的回合数。',
+    转化规则: '压缩时剩余伤害怎么处理。',
+    延长回合: '延长几个回合。',
+    层数变化: '延长时叠层数怎么变。',
+    去向: '状态转移的接收方。',
+    来源: '状态转移的提供方。',
+    状态筛选: '只转移符合条件的状态。',
+    数量: '一次处理几个。',
+    吸收来源: '按打出的伤害转化，还是按挨到的伤害转化。',
+    固定强度: '不随属性缩放的固定强度值。',
+    力量继承: '召唤物继承你力量的比例。',
+    防御继承: '召唤物继承你防御的比例。',
+    敏捷继承: '召唤物继承你敏捷的比例。',
+    体力继承: '召唤物继承你体力的比例。',
+    魂力继承: '召唤物继承你魂力的比例。',
+    精神继承: '召唤物继承你精神力的比例。',
+    复活恢复比例: '复活后恢复多少生命。',
+    规则: '要改写的战斗规则。',
+    规则持续回合: '改写后的规则维持几个回合。',
+    封禁元素: '要封禁的元素类别。',
+    封禁强度: '封禁的强度。',
+    限定元素: '只对指定元素的技能生效。',
+    强化倍率: '炸环时的强化倍率。',
+    打断时机: '在目标动作的哪个阶段打断。',
+    收益倍率: '修炼收益提升的倍率。',
+    效果倍率: '技能效果放大的倍率。',
+    每回合燃烧: '每回合损失的资源量。',
+    燃烧资源: '被持续损失的资源种类。',
+    锁定类型: '锁定回复、锁定使用，还是两者。',
+    锁定资源: '被锁定的资源种类。',
+    锁定比例: '锁定的比例。',
+    气运修正: '对气运判定的修正值。',
+    致盲回合: '致盲持续几个回合。',
+    覆盖类型: '这条承伤修正覆盖哪类伤害。',
+    转化比例: '吞噬所得转成自身资源的比例。',
+    转移对象: '伤害转移的承接方。',
+    转移比例: '转移出去的伤害比例。',
+    迟缓幅度: '拉长出手间隔的幅度。',
+    链接规则: '生命链接的分摊规则。',
+    威力: '打出去的基础威力',
+    威力倍率: '打出去的基础威力',
+    对应等级: '物品或装备自身等级基准；非伤害物品效果超过该等级无效',
+    强度倍率: '这招压出去的力道',
+    攻击段数: '会结算几次',
+    作用范围: '能打到哪里',
+    作用半径: '能覆盖多大',
+    段数: '分成几段结算',
+    单段倍率: '每一段的力道',
+    延迟时长: '多久续爆发',
+    爆发倍率: '爆发时的力道',
+    触发条件: '什么时候生效',
+    触发次数: '最多触发几次',
+    每跳倍率: '每次跳伤的力道',
+    持续回合: '能维持多久',
+    控制回合: '能控多久',
+    沉默回合: '能封多久',
+    睡眠回合: '能睡多久',
+    叠层上限: '最多叠几层',
+    控制强度: '越高越难挣脱',
+    控制幅度: '压低对方行动',
+    命中条件: '怎样才算打中',
+    解除条件: '怎样能摆脱',
+    降低倍率: '压低到多少',
+    削弱幅度: '削弱多少',
+    压制倍率: '压低到多少',
+    统一倍率: '统一压到多少',
+    增益幅度: '提高多少',
+    增幅倍率: '提高到多少',
+    全属性倍率: '全属性提高多少',
+    提高倍率: '提高到多少',
+    提升倍率: '提高到多少',
+    拉长倍率: '拖慢到多少',
+    缩短倍率: '加快到多少',
+    防护强度: '挡下多少压力',
+    护盾倍率: '护盾厚度',
+    护盾上限: '护盾按什么封顶',
+    承伤修正: '少吃多少伤害',
+    免伤次数: '能抵消几次伤害',
+    单次上限: '单次最多挡多少',
+    免控级别: '能挡住哪类控制',
+    额外减伤: '额外少吃多少伤害',
+    触发阈值: '低到哪里触发',
+    锁血下限: '最低保留多少',
+    每日触发: '一天能触发几次',
+    反射比例: '反弹多少伤害',
+    分摊比例: '分摊多少比例',
+    分摊人数: '由几个人承担',
+    抵消次数: '能抵消几次',
+    回复倍率: '一次回多少',
+    每回合倍率: '每回合回多少',
+    生效次数: '会生效几次',
+    清除条目数: '能清掉几项',
+    净化优先级: '先清哪一类',
+    附带收益: '清掉后附带什么',
+    干扰强度: '干扰对方判断',
+    标记时长: '标记保留多久',
+    锁定目标数: '能锁几个目标',
+    追踪规则: '目标怎么被追踪',
+    共享范围: '能共享给谁',
+    共享深度: '能看见多少',
+    幻境范围: '幻境覆盖哪里',
+    幻术强度: '幻境压迫程度',
+    唤醒条件: '怎样醒来',
+    扭曲强度: '认知被扭曲多少',
+    命中增益: '更容易打中',
+    锁定强度: '越高越难躲开',
+    位移距离: '位移幅度',
+    交换范围: '多远内可交换',
+    交换条件: '怎样交换',
+    追击距离: '追出去多远',
+    追击窗口: '多久内能追上',
+    追加倍率: '追击附带力道',
+    脱离距离: '撤开多远',
+    脱离条件: '怎样触发撤离',
+    脱离收益: '撤离后获得什么',
+    分身类型: '生成哪类分身',
+    分身数量: '生成几个分身',
+    隐蔽度: '越高越难发现',
+    实力继承: '分身继承多少实力',
+    分身称谓: '分身的名字',
+    召唤单位类型: '召唤出的单位类别',
+    召唤物名称: '召唤出的对象',
+    召唤数量: '召唤几个',
+    召唤强度: '非继承召唤的固定战力',
+    力量继承比例: '继承召唤者多少力量',
+    防御继承比例: '继承召唤者多少防御',
+    敏捷继承比例: '继承召唤者多少敏捷',
+    体力继承比例: '继承召唤者多少体力',
+    魂力继承比例: '继承召唤者多少魂力',
+    精神继承比例: '继承召唤者多少精神力',
+    行动模式: '决定协同、护卫或自主行动',
+    承伤规则: '召唤物怎么承伤',
+    复制类型: '复制什么',
+    复制模式: '怎样复制',
+    保存上限: '最多保存几个复刻技能',
+    削减比例: '属性复制时按比例削弱',
+    可用次数: '能用几次',
+    保留时长tick: '非战斗保留多久',
+    反制对象: '反制哪类动作',
+    反制倍率: '反制时的力道',
+    转化方向: '把什么转成什么',
+    转化比率: '转化多少',
+    交换对象: '交换哪类状态',
+    交换层数: '交换几层',
+    转移模式: '状态怎么转移',
+    转移条件: '怎样发生转移',
+    绑定回合: '绑定多久',
+    绑定目标数: '能绑几个',
+    触发结果: '触发后发生什么',
+    引爆倍率: '引爆时的力道',
+    消耗规则: '引爆会消耗什么',
+    吞噬资源: '吞噬哪种资源',
+    吞噬比例: '吞噬多少',
+    共享资源: '共享哪种资源',
+    共享比例: '共享多少',
+    抹消对象: '匹配哪个原型',
+    穿透比例: '无视多少防护',
+    穿透对象: '穿透哪类防护',
+    吸收比例: '按伤害吸收多少',
+    吸收资源: '吸收哪种资源',
+    触发血线: '低到哪里触发',
+    补伤倍率: '补上的力道',
+    追加僵直: '让对方多停多久',
+    反击条件: '什么时候反击',
+    反击倍率: '反击时的力道',
+    追击倍率: '追击时的力道',
+    限制范围: '限制哪些动作',
+    减速幅度: '减慢多少',
+    影响内容: '影响哪类行动',
+    禁疗幅度: '压住多少治疗',
+    反转倍率: '治疗反成多少伤害',
+    弱点类型: '暴露哪类弱点',
+    驱散数量: '能驱散几项',
+    窃取数量: '能偷几项',
+    闪避增益: '更容易躲开',
+    反应增益: '更容易反应',
+    护卫减伤: '护卫时少吃多少',
+    聚火规则: '敌人会优先打谁',
+    中心等级: '发挥一半左右',
+    圆满等级: '接近完整释放',
+  });
+  // —— B:18064
+  const SKILL_ATTRIBUTE_DIM_KEYS = Object.freeze(['掌控', '威力', '消耗', '前摇', '控制', '速度']);
+  // —— B:18178-18194
+  const SKILL_DESIGNER_PACKED_PROPERTY_LABELS = Object.freeze({
+    str: '力量',
+    def: '防御',
+    agi: '敏捷',
+    vit_max: '体力上限',
+    sp_max: '魂力上限',
+    men_max: '精神力上限',
+    vit: '体力',
+    sp: '魂力',
+    men: '精神力',
+    掌控: '掌控',
+    威力: '威力',
+    消耗: '消耗',
+    前摇: '前摇',
+    控制: '控制',
+    速度: '速度',
+  });
+  // —— B:18195-18211
+  const SKILL_DESIGNER_PARAM_ATTRIBUTE_OPTIONS = Object.freeze([
+    '力量',
+    '防御',
+    '敏捷',
+    '体力上限',
+    '魂力上限',
+    '精神力上限',
+    '体力',
+    '魂力',
+    '精神力',
+    '掌控',
+    '威力',
+    '消耗',
+    '前摇',
+    '控制',
+    '速度',
+  ]);
+  // —— B:18212-18226
+  const SKILL_DESIGNER_PARAM_ATTRIBUTE_GROUP_OPTIONS = Object.freeze([
+    '力量/防御',
+    '力量/敏捷',
+    '防御/敏捷',
+    '力量/防御/敏捷',
+    '体力上限/魂力上限',
+    '体力上限/精神力上限',
+    '魂力上限/精神力上限',
+    '体力上限/魂力上限/精神力上限',
+    '魂力/精神力',
+    '掌控/威力',
+    '掌控/控制',
+    '消耗/前摇',
+    '速度/敏捷',
+  ]);
+  // —— B:18227
+  const SKILL_DESIGNER_PARAM_PANEL_OPTIONS = Object.freeze(['攻击', '防御', '回复', '速度', '控制']);
+  // —— B:18228
+  const SKILL_DESIGNER_PARAM_SUPPORT_TARGET_OPTIONS = SKILL_DESIGNER_TARGET_OPTIONS;
+  // —— B:18229
+  const SKILL_DESIGNER_PARAM_SHIELD_CAP_OPTIONS = Object.freeze(['基于体力', '基于魂力', '基于精神力']);
+  // —— B:18230
+  const SKILL_DESIGNER_PARAM_IMMUNE_LEVEL_OPTIONS = Object.freeze(['硬控', '软控', '全部控制']);
+  // —— B:18231-18235
+  const SKILL_DESIGNER_PARAM_CLEANSE_PRIORITY_OPTIONS = Object.freeze([
+    '控制 > 削弱 > 异常',
+    '削弱 > 控制 > 异常',
+    '异常 > 控制 > 削弱',
+  ]);
+  // —— B:18236
+  const SKILL_DESIGNER_PARAM_CLEANSE_GAIN_OPTIONS = Object.freeze(['回复', '护盾', '免疫']);
+  // —— B:18237
+  const SKILL_DESIGNER_PARAM_TRACKING_RULE_OPTIONS = Object.freeze(['不可脱锁', '共享坐标', '命中显形']);
+  // —— B:18238
+  const SKILL_DESIGNER_PARAM_INFO_DEPTH_OPTIONS = Object.freeze(['位置', '视野', '状态', '位置+视野', '完整共享']);
+  // —— B:18239
+  const SKILL_DESIGNER_PARAM_WAKE_RULE_OPTIONS = Object.freeze(['受伤', '净化', '时间结束']);
+  // —— B:18240
+  const SKILL_DESIGNER_PARAM_ESCAPE_GAIN_OPTIONS = Object.freeze(['隐匿', '护盾', '加速']);
+  // —— B:18241
+  const SKILL_DESIGNER_PARAM_COPY_TARGET_OPTIONS = Object.freeze(['复制技能', '复制属性', '复制全部']);
+  // —— B:18242
+  const 技能设计器参数复制模式选项 = Object.freeze(['即时镜像', '复刻友方']);
+  // —— B:18243
+  const SKILL_DESIGNER_PARAM_COUNTER_TARGET_OPTIONS = Object.freeze(['远程', '控制', '召唤', '近战']);
+  // —— B:18244
+  const SKILL_DESIGNER_PARAM_TRIGGER_RESULT_OPTIONS = Object.freeze(['爆发', '刷新', '召唤']);
+  // —— B:18245-18248
+  const SKILL_DESIGNER_PARAM_RULE_REWRITE_OPTIONS = Object.freeze([
+    '缴械',
+    { value: '死亡转存活', label: '复活' },
+  ]);
+  // —— B:18249
+  const 技能设计台规则改写选项值 = Object.freeze(normalizeSkillDesignerOptionList(SKILL_DESIGNER_PARAM_RULE_REWRITE_OPTIONS).map(item => item.value));
+  // —— B:18250
+  const 技能设计台战斗外可继承状态选项 = Object.freeze(SHARED_SKILL_MECHANISM_REGISTRY?.战斗外可继承技能状态选项 || ['中毒', '灼烧', '冻伤', '虚弱', '反噬', '精神紊乱', '魂力枯竭']);
+  // —— B:18251
+  const 技能设计台日常系统状态选项 = Object.freeze(SHARED_SKILL_MECHANISM_REGISTRY?.日常系统状态选项 || ['饥饿']);
+  // —— B:18252
+  const 技能设计台战斗外复活代价类型选项 = Object.freeze(['状态代价', '封印能力', '永久代价', '消耗实体物品']);
+  // —— B:18253
+  const 技能设计台战斗外复活物品代价对象选项 = Object.freeze(['神器', '魂骨', '复活类丹药', '绑定祭器']);
+  // —— B:18254
+  const 技能设计台战斗外复活封印代价对象选项 = Object.freeze(['武魂', '魂技', '魂环', '魂骨', '精神力', '魂力']);
+  // —— B:18255
+  const 技能设计台战斗外复活永久代价对象选项 = Object.freeze(['等级上限', '力量', '防御', '敏捷', '体力上限', '魂力上限', '精神力上限']);
+  // —— B:18256
+  const SKILL_DESIGNER_PARAM_CLONE_TYPE_OPTIONS = Object.freeze(['物理分身', '精神力分身']);
+  // —— B:18257
+  const 技能设计台召唤单位类型选项 = Object.freeze(['魂师', '魂兽', '本命召唤兽', '分身', '深渊生物', '其他召唤生物']);
+  // —— B:18258
+  const 技能设计台召唤承伤规则选项 = Object.freeze(['可承伤', '护卫承伤', '分摊承伤']);
+  // —— B:18259
+  const SKILL_DESIGNER_PARAM_PENETRATION_TARGET_OPTIONS = Object.freeze(['防御', '护盾', '抗性']);
+  // —— B:18260
+  const 技能设计台伤害转移对象选项 = Object.freeze(['攻击者', '攻击方队友', '攻击方任意', '防守方队友']);
+  // —— B:18261
+  const 技能设计台伤害吸收来源选项 = Object.freeze(['造成伤害', '受到伤害']);
+  // —— B:18262
+  const 技能设计台伤害吸收资源选项 = Object.freeze(['生命', '体力', '魂力', '精神力']);
+  // —— B:18263
+  const 技能设计台资源锁定类型选项 = Object.freeze(['资源池锁定', '回复锁定', '转化锁定']);
+  // —— B:18264
+  const SKILL_DESIGNER_PARAM_RESOURCE_TRANSFER_TYPE_OPTIONS = Object.freeze(['魂力', '精神力', '双资源']);
+  // —— B:18265-18269
+  const 技能设计台机制抹消对象原型选项 = Object.freeze(
+    Array.isArray(SHARED_SKILL_MECHANISM_REGISTRY?.机制抹消支持原型)
+      ? SHARED_SKILL_MECHANISM_REGISTRY.机制抹消支持原型.filter(原型 => SKILL_DESIGNER_PROTOTYPE_REGISTRY?.[原型])
+      : 技能设计台机制抹消支持原型默认选项.filter(原型 => SKILL_DESIGNER_PROTOTYPE_REGISTRY?.[原型]),
+  );
+  // —— B:18270
+  const 技能设计台机制授予触发条件选项 = Object.freeze(['主动触发', '随下次行动触发', '下次魂技成功释放']);
+  // —— B:18271
+  const 技能设计台召唤行动模式选项 = Object.freeze(['自主行动', '护卫', '协同攻击']);
+  // —— B:18272
+  const SKILL_DESIGNER_PARAM_INTERRUPT_WINDOW_OPTIONS = Object.freeze(['前摇', '吟唱中', '引导中']);
+  // —— B:18273
+  const SKILL_DESIGNER_PARAM_COUNTER_RULE_OPTIONS = Object.freeze(['受击后', '免伤后', '受控后']);
+  // —— B:18274
+  const SKILL_DESIGNER_PARAM_MUTE_SCOPE_OPTIONS = Object.freeze(['主动技', '咏唱技', '造物技', '全部技能']);
+  // —— B:18275
+  const SKILL_DESIGNER_PARAM_BLIND_EFFECT_OPTIONS = Object.freeze(['命中', '视野', '锁定']);
+  // —— B:18276
+  const SKILL_DESIGNER_PARAM_WEAK_POINT_TYPE_OPTIONS = Object.freeze(['防御剥夺', '精神抗性剥夺', '双抗剥夺']);
+  // —— B:18277-18308
+  const SKILL_DESIGNER_PARAM_OPTION_REGISTRY = Object.freeze({
+    ATTRIBUTE: SKILL_DESIGNER_PARAM_ATTRIBUTE_OPTIONS,
+    ATTRIBUTE_GROUP: SKILL_DESIGNER_PARAM_ATTRIBUTE_GROUP_OPTIONS,
+    SHIELD_CAP: SKILL_DESIGNER_PARAM_SHIELD_CAP_OPTIONS,
+    IMMUNE_LEVEL: SKILL_DESIGNER_PARAM_IMMUNE_LEVEL_OPTIONS,
+    CLEANSE_PRIORITY: SKILL_DESIGNER_PARAM_CLEANSE_PRIORITY_OPTIONS,
+    CLEANSE_GAIN: SKILL_DESIGNER_PARAM_CLEANSE_GAIN_OPTIONS,
+    TRACKING_RULE: SKILL_DESIGNER_PARAM_TRACKING_RULE_OPTIONS,
+    INFO_DEPTH: SKILL_DESIGNER_PARAM_INFO_DEPTH_OPTIONS,
+    WAKE_RULE: SKILL_DESIGNER_PARAM_WAKE_RULE_OPTIONS,
+    ESCAPE_GAIN: SKILL_DESIGNER_PARAM_ESCAPE_GAIN_OPTIONS,
+    COPY_TARGET: SKILL_DESIGNER_PARAM_COPY_TARGET_OPTIONS,
+    COPY_MODE: 技能设计器参数复制模式选项,
+    COUNTER_TARGET: SKILL_DESIGNER_PARAM_COUNTER_TARGET_OPTIONS,
+    TRIGGER_RESULT: SKILL_DESIGNER_PARAM_TRIGGER_RESULT_OPTIONS,
+    RULE_REWRITE: SKILL_DESIGNER_PARAM_RULE_REWRITE_OPTIONS,
+    CLONE_TYPE: SKILL_DESIGNER_PARAM_CLONE_TYPE_OPTIONS,
+    SUMMON_UNIT_TYPE: 技能设计台召唤单位类型选项,
+    SUMMON_DAMAGE_RULE: 技能设计台召唤承伤规则选项,
+    PENETRATION_TARGET: SKILL_DESIGNER_PARAM_PENETRATION_TARGET_OPTIONS,
+    ABSORB_SOURCE: 技能设计台伤害吸收来源选项,
+    ABSORB_RESOURCE: 技能设计台伤害吸收资源选项,
+    DAMAGE_TRANSFER_TARGET: 技能设计台伤害转移对象选项,
+    RESOURCE_LOCK_TYPE: 技能设计台资源锁定类型选项,
+    RESOURCE_TRANSFER_TYPE: SKILL_DESIGNER_PARAM_RESOURCE_TRANSFER_TYPE_OPTIONS,
+    MECHANISM_GRANT_TRIGGER: 技能设计台机制授予触发条件选项,
+    INTERRUPT_WINDOW: SKILL_DESIGNER_PARAM_INTERRUPT_WINDOW_OPTIONS,
+    COUNTER_RULE: SKILL_DESIGNER_PARAM_COUNTER_RULE_OPTIONS,
+    MUTE_SCOPE: SKILL_DESIGNER_PARAM_MUTE_SCOPE_OPTIONS,
+    BLIND_EFFECT: SKILL_DESIGNER_PARAM_BLIND_EFFECT_OPTIONS,
+    WEAK_POINT_TYPE: SKILL_DESIGNER_PARAM_WEAK_POINT_TYPE_OPTIONS,
+  });
+  // —— B:18311-18314
+  function 技能设计台召唤允许继承属性比例(效果 = {}) {
+    const 单位类型 = typeof 效果 === 'string' ? 效果 : 效果 && 效果['召唤单位类型'];
+    return ['本命召唤兽', '分身'].includes(normalizeSkillUiText(单位类型, ''));
+  }
+  // —— B:18316-18319
+  function 技能设计台召唤允许普通批量(效果 = {}) {
+    const 单位类型 = typeof 效果 === 'string' ? 效果 : 效果 && 效果['召唤单位类型'];
+    return normalizeSkillUiText(单位类型, '') === '其他召唤生物';
+  }
+  // —— B:18321-18323
+  function 技能设计台召唤使用继承属性比例(效果 = {}) {
+    return toNumber(效果 && 效果['继承属性比例'], 0) > 0;
+  }
+  // —— B:18324-18334
+  const 技能设计台副作用类型候选_V1 = Object.freeze([
+    '全属性降低',
+    '自损反噬',
+    '致死献祭',
+    '精神紊乱',
+    '魂力反噬',
+    '命中下降',
+    '动作迟缓',
+    '目标错乱',
+    '施法僵直',
+  ]);
+  // —— B:18335
+  const 技能设计台副作用触发时机选项_V1 = Object.freeze(['效果生效后', '命中后', '回合结束时', '效果结束后']);
+  // —— B:18336
+  const 技能设计台副作用生效对象选项_V1 = Object.freeze(['技能释放者', '效果承受者', '双方']);
+  // —— B:18337-18347
+  const 技能设计台副作用配置表_V1 = Object.freeze({
+    全属性降低: Object.freeze({ 状态: '虚弱', 数值: '+10%', 副数值: '', 持续回合: 2, 数值标签: '虚弱强度' }),
+    自损反噬: Object.freeze({ 状态: '反噬', 数值: '+3%', 副数值: '', 持续回合: 1, 数值标签: '反噬伤害' }),
+    致死献祭: Object.freeze({ 致死: true }),
+    精神紊乱: Object.freeze({ 状态: '精神紊乱', 数值: '+25%', 副数值: '+8%', 持续回合: 2, 数值标签: '错乱概率', 副数值标签: '反应惩罚' }),
+    魂力反噬: Object.freeze({ 状态: '魂力枯竭', 数值: '+5%', 副数值: '', 持续回合: 1, 数值标签: '魂力流失' }),
+    命中下降: Object.freeze({ 状态: '精神紊乱', 数值: '+10%', 副数值: '', 持续回合: 2, 数值标签: '命中惩罚' }),
+    动作迟缓: Object.freeze({ 状态: '迟缓', 数值: '+15%', 副数值: '+10%', 持续回合: 1, 数值标签: '反应惩罚', 副数值标签: '闪避惩罚' }),
+    目标错乱: Object.freeze({ 状态: '混乱', 数值: '+30%', 副数值: '', 持续回合: 1, 数值标签: '敌我错乱' }),
+    施法僵直: Object.freeze({ 状态: '僵直', 数值: '+20%', 副数值: '', 持续回合: 1, 数值标签: '施法僵直' }),
+  });
+  // —— B:18348-18352
+  const 技能执行旧数组键表_V1 = Object.freeze([
+    '授予效果数组',
+    '结算效果数组',
+    '使用效果数组',
+  ]);
+  // —— B:18353-18382
+  const 技能执行黑名单键表_V1 = Object.freeze([
+    '文本',
+    '描述',
+    '效果描述',
+    '副作用说明',
+    '运行机制',
+    '战斗效果',
+    '计算层效果',
+    '状态名称',
+    '特殊机制标识',
+    '瞬时结算',
+    '状态承载',
+    '场地承载',
+    '结算参数',
+    '机制标签',
+    '基础威力倍率',
+    '护盾绝对值',
+    'dot_damage',
+    'armor_pen',
+    'final_damage_mult',
+    'shield_gain_bonus',
+    '加成属性',
+    '持续伤害值',
+    '防御穿透值',
+    '造成伤害倍率',
+    '护盾获得加值',
+    '副作用列表',
+    '机制决策临时',
+    ...技能执行旧数组键表_V1,
+  ]);
+  // —— B:18383
+  const 技能执行黑名单键集合_V1 = new Set(技能执行黑名单键表_V1);
+  // —— B:18385-18388
+  function isSkillSummaryEffect(effect) {
+    void effect;
+    return false;
+  }
+  // —— B:18390-18405
+  function normalizeSkillDesignerArray(value) {
+    if (Array.isArray(value)) {
+      return Array.from(new Set(value.map(item => toText(item, '').trim()).filter(Boolean)));
+    }
+    if (typeof value === 'string') {
+      return Array.from(
+        new Set(
+          value
+            .split(/[、,，/｜|]+/)
+            .map(item => toText(item, '').trim())
+            .filter(Boolean),
+        ),
+      );
+    }
+    return [];
+  }
+  // —— B:18407-18416
+  function buildSkillDesignerSideEffectSummary(draft = {}) {
+    const 施展列表 = 规范化技能设计台副作用列表(draft && draft.副作用列表);
+    const 格式化 = list => list
+      .map(格式化技能设计台副作用摘要)
+      .filter(Boolean)
+      .join('；');
+    const 片段 = [];
+    if (施展列表.length) 片段.push(`施展副作用：${格式化(施展列表)}`);
+    return 片段.join('；');
+  }
+  // —— B:18418-18465
+  function 规范化技能设计台副作用条目(value = {}, recordViolation = () => {}) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const 副作用类型 = normalizeSkillUiText(value['副作用类型'], '');
+    if (!技能设计台副作用类型候选_V1.includes(副作用类型)) {
+      recordViolation('副作用列表.副作用类型');
+      return null;
+    }
+    if (value['参数'] !== undefined || value['战斗效果'] !== undefined || value['面板修改比例'] !== undefined || value['面板固定修正'] !== undefined)
+      recordViolation('副作用列表.旧自由效果字段');
+    safeEntries(value).forEach(([key]) => {
+      const 允许字段 = 副作用类型 === '致死献祭'
+        ? ['副作用类型', '触发时机', '生效对象', '触发概率']
+        : ['副作用类型', '触发时机', '生效对象', '触发概率', '持续回合', '副作用状态', '数值', '副数值', '关联状态'];
+      if (!允许字段.includes(key)) recordViolation(`副作用列表.${key}`);
+    });
+    const 配置 = 技能设计台副作用配置表_V1[副作用类型] || {};
+    const 触发时机 = normalizeSkillUiText(value['触发时机'], '效果生效后');
+    const 生效对象 = normalizeSkillUiText(value['生效对象'], '技能释放者');
+    if (!技能设计台副作用触发时机选项_V1.includes(触发时机)) recordViolation('副作用列表.触发时机');
+    if (!技能设计台副作用生效对象选项_V1.includes(生效对象)) recordViolation('副作用列表.生效对象');
+    const 概率文本 = normalizeSkillUiText(value['触发概率'], '1');
+    const 概率原值 = Number(String(概率文本).replace('%', ''));
+    const 概率 = /%$/.test(概率文本) ? 概率原值 / 100 : 概率原值;
+    if (!Number.isFinite(概率) || 概率 < 0 || 概率 > 1) recordViolation('副作用列表.触发概率');
+    const 条目 = {
+      副作用类型,
+      触发时机: 技能设计台副作用触发时机选项_V1.includes(触发时机) ? 触发时机 : '效果生效后',
+      生效对象: 技能设计台副作用生效对象选项_V1.includes(生效对象) ? 生效对象 : '技能释放者',
+      触发概率: Number.isFinite(概率) ? Math.max(0, Math.min(1, Number(概率.toFixed(4)))) : 1,
+    };
+    if (副作用类型 === '致死献祭') return 条目;
+    const 持续 = Number(value['持续回合'] ?? 配置.持续回合 ?? 1);
+    if (!Number.isFinite(持续) || 持续 < 0 || Math.round(持续) !== 持续) recordViolation('副作用列表.持续回合');
+    条目['持续回合'] = Number.isFinite(持续) ? Math.max(0, Math.round(持续)) : Math.max(0, Number(配置.持续回合 || 1));
+    const 输入状态 = normalizeSkillUiText(value['副作用状态'], 配置.状态 || 副作用类型);
+    if (输入状态 && 输入状态 !== normalizeSkillUiText(配置.状态, 副作用类型)) recordViolation('副作用列表.副作用状态');
+    条目['副作用状态'] = normalizeSkillUiText(配置.状态, 副作用类型);
+    const 数值 = normalizeSkillUiText(value['数值'], 配置.数值 || '');
+    const 副数值 = normalizeSkillUiText(value['副数值'], 配置.副数值 || '');
+    if (数值) 条目['数值'] = 数值;
+    if (副数值) 条目['副数值'] = 副数值;
+    if (条目['触发时机'] === '效果结束后') {
+      const 关联状态 = normalizeSkillUiText(value['关联状态'], '');
+      if (!关联状态) recordViolation('副作用列表.关联状态');
+      else 条目['关联状态'] = 关联状态;
+    }
+    return 条目;
+  }
+  // —— B:18467-18471
+  function 规范化技能设计台副作用列表(value = [], recordViolation = () => {}) {
+    return (Array.isArray(value) ? value : [])
+      .map(item => 规范化技能设计台副作用条目(item, recordViolation))
+      .filter(Boolean);
+  }
+  // —— B:18473-18484
+  function 创建技能设计台默认副作用条目(副作用类型 = '自损反噬', 选项 = {}) {
+    const 默认对象 = normalizeSkillUiText(选项?.生效对象, '技能释放者');
+    return 规范化技能设计台副作用条目({ 副作用类型, 生效对象: 默认对象 }, () => {}) || {
+      副作用类型: '自损反噬',
+      触发时机: '效果生效后',
+      生效对象: 默认对象,
+      触发概率: 1,
+      持续回合: 1,
+      副作用状态: '反噬',
+      数值: '+3%',
+    };
+  }
+  // —— B:18486-18491
+  function 读取技能设计台默认副作用对象(draft = {}, 阶段 = '施展') {
+    if (normalizeSkillUiText(阶段, '施展') === '使用') return '效果承受者';
+    return normalizeSkillUiText(draft?.type, '') === '食物系' && normalizeSkillUiText(draft?.deliveryForm, '') !== '造物承载'
+      ? '效果承受者'
+      : '技能释放者';
+  }
+  // —— B:18493-18497
+  function 格式化技能设计台概率百分比(value = 1) {
+    const 数值 = Math.max(0, Math.min(1, Number(value ?? 1)));
+    const 百分比 = 数值 * 100;
+    return `${Math.abs(百分比 % 1) < 0.0001 ? 百分比.toFixed(0) : 百分比.toFixed(1)}%`;
+  }
+  // —— B:18499-18525
+  function 格式化技能设计台副作用摘要(条目 = {}) {
+    const 类型 = normalizeSkillUiText(条目 && 条目['副作用类型'], '');
+    if (!类型) return '';
+    const 配置 = 技能设计台副作用配置表_V1[类型] || {};
+    const 概率 = Math.max(0, Math.min(1, Number((条目 && 条目['触发概率']) ?? 1)));
+    const 持续 = Math.max(0, Number((条目 && 条目['持续回合']) || 0));
+    const 百分值 = 输入 => {
+      const 数字 = Number(normalizeSkillUiText(输入, '').replace(/[+%-]/g, ''));
+      return Number.isFinite(数字) ? Math.abs(数字) : 0;
+    };
+    const 数值 = 百分值(条目 && 条目['数值']);
+    const 副数值 = 百分值(条目 && 条目['副数值']);
+    const 触发 = normalizeSkillUiText(条目 && 条目['触发时机'], '效果生效后');
+    const 对象 = normalizeSkillUiText(条目 && 条目['生效对象'], '技能释放者');
+    const 效果 = ({
+      全属性降低: `力量、防御、敏捷降低${数值 || 10}%`,
+      自损反噬: `立即承受上限${数值 || 3}%反噬伤害`,
+      致死献祭: '技能释放者进入致死代价',
+      精神紊乱: `精神判定降低${数值 || 10}%`,
+      魂力反噬: `魂力流失${数值 || 5}%`,
+      命中下降: `命中率降低${数值 || 10}%`,
+      动作迟缓: `反应降低${数值 || 15}%${副数值 ? `，闪避降低${副数值}%` : ''}`,
+      目标错乱: `${数值 || 30}%概率错乱目标`,
+      施法僵直: `施法僵直${数值 || 20}%`,
+    })[类型] || `${类型}${数值 ? ` ${数值}%` : ''}`;
+    return `${触发}，${Math.round(概率 * 100)}%使${对象}${效果}${持续 > 0 ? `，持续${持续}回合` : ''}`;
+  }
+  // —— B:18527-18585
+  function 构建技能设计台副作用行列表(副作用列表 = [], 选项 = {}) {
+    const 列表 = 规范化技能设计台副作用列表(副作用列表);
+    if (!列表.length) return '';
+    const 字段名 = normalizeSkillUiText(选项 && 选项.字段名, '副作用列表');
+    return 列表.map(条目 => {
+      const 类型 = normalizeSkillUiText(条目['副作用类型'], '自损反噬');
+      const 是致死献祭 = 类型 === '致死献祭';
+      const 配置 = 技能设计台副作用配置表_V1[类型] || {};
+      const 效果说明 = 格式化技能设计台副作用摘要(条目);
+      return `
+        <div class="skill-designer-side-effect-row" data-skill-designer-side-effect-row data-skill-designer-side-effect-scope="${escapeHtmlAttr(字段名)}">
+          <button type="button" class="skill-designer-remove-btn" data-skill-designer-remove-side-effect data-skill-designer-disableable aria-label="删除副作用" title="删除副作用">×</button>
+          <label class="mvu-editor-field">
+            ${构建技能设计台说明标签('类型', 技能设计台副作用字段提示.类型)}
+            <select class="mvu-editor-select" data-skill-designer-side-effect-field="副作用类型" data-skill-designer-disableable>
+              ${buildSkillDesignerSelectOptions(技能设计台副作用类型候选_V1, 类型)}
+            </select>
+          </label>
+          <label class="mvu-editor-field">
+            ${构建技能设计台说明标签('时机', 技能设计台副作用字段提示.时机)}
+            <select class="mvu-editor-select" data-skill-designer-side-effect-field="触发时机" data-skill-designer-disableable>
+              ${buildSkillDesignerSelectOptions(技能设计台副作用触发时机选项_V1, 条目['触发时机'] || '效果生效后')}
+            </select>
+          </label>
+          <label class="mvu-editor-field">
+            ${构建技能设计台说明标签('对象', 技能设计台副作用字段提示.对象)}
+            <select class="mvu-editor-select" data-skill-designer-side-effect-field="生效对象" data-skill-designer-disableable>
+              ${buildSkillDesignerSelectOptions(技能设计台副作用生效对象选项_V1, 条目['生效对象'] || '技能释放者')}
+            </select>
+          </label>
+          <label class="mvu-editor-field">
+            ${构建技能设计台说明标签('概率', 技能设计台副作用字段提示.概率)}
+            <input class="mvu-editor-input" type="text" value="${escapeHtmlAttr(格式化技能设计台概率百分比(条目['触发概率'] ?? 1))}" data-skill-designer-side-effect-field="触发概率" data-skill-designer-disableable />
+          </label>
+          ${是致死献祭 ? '' : `
+            <label class="mvu-editor-field">
+              ${构建技能设计台说明标签('持续', 技能设计台副作用字段提示.持续)}
+              <input class="mvu-editor-input" type="number" min="0" step="1" value="${escapeHtmlAttr(String(条目['持续回合'] ?? 1))}" data-skill-designer-side-effect-field="持续回合" data-skill-designer-disableable />
+            </label>
+            <label class="mvu-editor-field">
+              <span class="mvu-editor-label">${htmlEscape(配置.数值标签 || '强度')}</span>
+              <input class="mvu-editor-input" type="text" value="${escapeHtmlAttr(条目['数值'] || '')}" placeholder="${escapeHtmlAttr(配置.数值 || '+10%')}" data-skill-designer-side-effect-field="数值" data-skill-designer-disableable />
+            </label>
+            ${配置.副数值 ? `
+              <label class="mvu-editor-field">
+                <span class="mvu-editor-label">${htmlEscape(配置.副数值标签 || '附加强度')}</span>
+                <input class="mvu-editor-input" type="text" value="${escapeHtmlAttr(条目['副数值'] || '')}" placeholder="${escapeHtmlAttr(配置.副数值)}" data-skill-designer-side-effect-field="副数值" data-skill-designer-disableable />
+              </label>
+            ` : ''}
+            ${效果说明 ? `<div class="mvu-editor-field skill-designer-side-effect-summary"><span>${htmlEscape(效果说明)}</span></div>` : ''}
+            <label class="mvu-editor-field" data-skill-designer-side-effect-link-field${条目['触发时机'] === '效果结束后' ? '' : ' hidden style="display:none"'}>
+              <span class="mvu-editor-label">关联效果</span>
+              <input class="mvu-editor-input" type="text" value="${escapeHtmlAttr(条目['关联状态'] || '')}" placeholder="食物增幅" data-skill-designer-side-effect-field="关联状态" data-skill-designer-disableable />
+            </label>
+          `}
+        </div>
+      `;
+    }).join('');
+  }
+  // —— B:18587-18591
+  function normalizeSkillDesignerExecutionTargetModel(value = '', fallback = '单体') {
+    const text = normalizeSkillUiText(value, '');
+    if (!text) return normalizeSkillDesignerEffectTargetValue(fallback, '单体');
+    return normalizeSkillDesignerEffectTargetValue(text, normalizeSkillDesignerEffectTargetValue(fallback, '单体'));
+  }
+  // —— B:18593-18602
+  function normalizeSkillDesignerTimeRewindTargetValue(value = '', fallback = '单体') {
+    const text = normalizeSkillUiText(value, '');
+    const fallbackText = ['单体', '群体', '全场'].includes(normalizeSkillUiText(fallback, ''))
+      ? normalizeSkillUiText(fallback, '')
+      : '单体';
+    if (/全场/.test(text)) return '全场';
+    if (/群体|范围|多个/.test(text)) return '群体';
+    if (/目标|单体|双方|彼此|二者/.test(text)) return '单体';
+    return fallbackText;
+  }
+  // —— B:18604-18608
+  function 读取技能设计台时光回溯目标候选(effect = {}, context = {}) {
+    void effect;
+    void context;
+    return ['单体', '群体', '全场'];
+  }
+  // —— B:18610-18612
+  function 技能设计台分摊结算目标候选() {
+    return ['单体', '群体'];
+  }
+  // —— B:18614-18617
+  function 规范化技能设计台分摊结算目标(value = '') {
+    const 目标 = normalizeSkillDesignerEffectTargetValue(value, '单体');
+    return 技能设计台分摊结算目标候选().includes(目标) ? 目标 : '单体';
+  }
+  // —— B:18619-18632
+  function normalizeSkillDesignerEffectTargetValue(value = '', fallback = '单体') {
+    const text = normalizeSkillUiText(value, '');
+    if (SKILL_DESIGNER_CLONE_TARGET_OPTIONS.includes(text)) return text;
+    if (['友方单体', '友方群体', '敌方单体', '敌方群体', '己方/单体', '己方/群体', '敌方/单体', '敌方/群体'].includes(text))
+      return SKILL_DESIGNER_CLONE_TARGET_OPTIONS.includes(fallback) ? fallback : '单体';
+    if (/全场敌方|敌方全场|全体敌|所有敌|全部敌/.test(text)) return '群体';
+    if (/分身/.test(text)) return '分身';
+    if (/召唤物|召唤/.test(text)) return '召唤物';
+    if (/自身|施术者/.test(text)) return '自身';
+    if (/全场/.test(text)) return '全场';
+    if (/群体|全员|范围/.test(text)) return '群体';
+    if (/单体|目标/.test(text)) return '单体';
+    return SKILL_DESIGNER_CLONE_TARGET_OPTIONS.includes(fallback) ? fallback : '单体';
+  }
+  // —— B:18634-18636
+  function 机制授予目标允许下次行动触发(目标 = '') {
+    return normalizeSkillDesignerEffectTargetValue(目标, '单体') === '自身';
+  }
+  // —— B:18638-18642
+  function 读取技能设计台机制授予触发条件选项(目标 = '') {
+    return 机制授予目标允许下次行动触发(目标)
+      ? 技能设计台机制授予触发条件选项
+      : ['主动触发'];
+  }
+  // —— B:18644-18650
+  function formatSkillDesignerSignedValue(value, asPercent = true) {
+    const num = Number(value || 0);
+    if (!Number.isFinite(num)) return asPercent ? '+0%' : '+0';
+    const digits = Math.abs((asPercent ? num * 100 : num) % 1) < 0.0001 ? 0 : 2;
+    const text = String(Number((asPercent ? num * 100 : num).toFixed(digits)));
+    return `${num >= 0 ? '+' : ''}${text}${asPercent ? '%' : ''}`;
+  }
+  // —— B:18652-18661
+  function parseSkillDesignerSignedValue(value) {
+    const text = normalizeSkillUiText(value, '');
+    if (!text) return 0;
+    if (/%$/.test(text)) {
+      const parsed = Number(text.replace('%', ''));
+      return Number.isFinite(parsed) ? parsed / 100 : 0;
+    }
+    const parsed = Number(text);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  // —— B:18663-18676
+  function normalizeSkillDesignerEffectValue(value, action = '') {
+    if (value === undefined || value === null) return value;
+    if (typeof value === 'string') return normalizeSkillUiText(value, '');
+    const num = Number(value);
+    if (!Number.isFinite(num)) return value;
+    const actionText = normalizeSkillUiText(action, '');
+    if (['倍率提升', '倍率压制'].includes(actionText)) {
+      return formatSkillDesignerSignedValue(num - 1, true);
+    }
+    if (actionText === '减值') return formatSkillDesignerSignedValue(-Math.abs(num), Math.abs(num) <= 1);
+    if (actionText === '加值' || actionText === '持续恢复')
+      return formatSkillDesignerSignedValue(Math.abs(num), Math.abs(num) <= 1);
+    return Number(num.toFixed(4));
+  }
+  // —— B:18678-18681
+  function normalizeSkillDesignerResourceLockRatio(value, fallback = 0.5) {
+    const ratio = Math.abs(parseSkillDesignerPercentRatio(value, fallback));
+    return formatSkillDesignerSignedValue(Math.max(0.01, Math.min(1, ratio)), true);
+  }
+  // —— B:18683-18687
+  function 转换技能设计台原型资源字段(value = '') {
+    const text = normalizeSkillUiText(value, '');
+    if (text === '双资源') return ['魂力', '精神力'];
+    return { vit: '体力', hp: '生命', sp: '魂力', men: '精神力' }[text] || text || '魂力';
+  }
+  // —— B:18689-18696
+  function 格式化技能设计台原型比例变化(value, 方向 = 1, 按倍率 = false) {
+    const text = normalizeSkillUiText(value, '');
+    if (!text) return '';
+    const num = /%$/.test(text) ? Number(text.replace('%', '')) / 100 : Number(text);
+    if (!Number.isFinite(num)) return text;
+    const abs = Math.abs(按倍率 && num > 1 ? num - 1 : num);
+    return formatSkillDesignerSignedValue(abs * (方向 < 0 ? -1 : 1), true);
+  }
+  // —— B:18698-18710
+  function 格式化技能设计台资源转移数值方向(value = '', 方式 = '吞噬') {
+    const text = normalizeSkillUiText(value, '');
+    if (/%$/.test(text)) {
+      const 百分比 = Math.abs(Number(text.replace('%', '')) || 0);
+      const digits = Math.abs(百分比 % 1) < 0.0001 ? 0 : 2;
+      const 符号 = 方式 === '吞噬' ? '-' : '+';
+      return `${符号}${String(Number(百分比.toFixed(digits)))}%`;
+    }
+    const 数值 = Math.abs(Number(text) || 0);
+    const digits = Math.abs(数值 % 1) < 0.0001 ? 0 : 2;
+    const 符号 = 方式 === '吞噬' ? '-' : '+';
+    return `${符号}${String(Number(数值.toFixed(digits)))}`;
+  }
+  // —— B:18712-18716
+  function 规范化技能设计台被动触发(value = '') {
+    const text = normalizeSkillUiText(value, '');
+    if (!text) return '';
+    return 技能设计台被动触发选项.includes(text) ? text : '';
+  }
+  // —— B:18718-18739
+  const SKILL_DESIGNER_CONDITION_BRANCH_TYPE_OPTIONS = Object.freeze([
+    '当前行动',
+    '命中',
+    '被闪避',
+    '状态存在',
+    '护盾',
+    '生命比例',
+    '体力比例',
+    '魂力比例',
+    '精神力比例',
+    '生命数值',
+    '体力数值',
+    '魂力数值',
+    '精神力数值',
+    '目标',
+    '使用者',
+    '环境满足',
+    '时间',
+    '装备状态',
+    '自身状态',
+    '连携前提',
+  ]);
+  // —— B:18740-18748
+  const SKILL_DESIGNER_CONDITION_BRANCH_TYPE_GROUPS = Object.freeze([
+    Object.freeze({ label: '使用时机', options: Object.freeze(['当前行动']) }),
+    Object.freeze({ label: '命中结果', options: Object.freeze(['命中', '被闪避']) }),
+    Object.freeze({ label: '自身/目标状态', options: Object.freeze(['状态存在', '护盾']) }),
+    Object.freeze({ label: '资源门槛', options: Object.freeze(['生命比例', '体力比例', '魂力比例', '精神力比例', '生命数值', '体力数值', '魂力数值', '精神力数值']) }),
+    Object.freeze({ label: '目标关系', options: Object.freeze(['目标', '使用者']) }),
+    Object.freeze({ label: '环境与装备', options: Object.freeze(['环境满足', '时间', '装备状态', '自身状态']) }),
+    Object.freeze({ label: '连携前提', options: Object.freeze(['连携前提']) }),
+  ]);
+  // —— B:18749
+  const SKILL_DESIGNER_CONDITION_BRANCH_OBJECT_OPTIONS = Object.freeze(['目标', '自身', '施术者', '召唤物', '使用者', '制作者']);
+  // —— B:18750
+  const SKILL_DESIGNER_CONDITION_BRANCH_COMPARE_OPTIONS = Object.freeze(['==', '!=', '>', '>=', '<', '<=', '有', '无', '包含']);
+  // —— B:18751
+  const SKILL_DESIGNER_CONDITION_BRANCH_ACTION_OPTIONS = Object.freeze(['生效', '替换效果', '追加效果', '禁用']);
+  // —— B:18752-18755
+  const SKILL_DESIGNER_CONDITION_BRANCH_FLAG_TYPES = Object.freeze([
+    '命中',
+    '被闪避',
+  ]);
+  // —— B:18756
+  const 技能设计台释放前结算禁用条件类型 = Object.freeze(['命中', '被闪避']);
+  // —— B:18757-18766
+  const SKILL_DESIGNER_CONDITION_BRANCH_ENUM_VALUE_OPTIONS = Object.freeze({
+    目标: Object.freeze(['自身', '他人', '己方', '敌方', '全场', '召唤物']),
+    使用者: Object.freeze(['使用者', '制作者']),
+    当前行动: Object.freeze(['常规攻击', '释放魂技', '武魂融合技', '使用物品', '防御', '闪避', '撤离', '穿戴装备']),
+    环境满足: Object.freeze(['冰面', '水域', '阴影', '高空', '狭窄地形', '领域内', '场地内']),
+    时间: Object.freeze(['白天', '黑夜', '清晨', '上午', '中午', '下午', '黄昏', '夜晚', '深夜']),
+    装备状态: Object.freeze(['已装备主武器', '已装备防具', '已装备斗铠', '已装备机甲']),
+    自身状态: Object.freeze(['蓄力中', '隐匿中']),
+    连携前提: Object.freeze(['上一动作命中', '目标被控制']),
+  });
+  // —— B:18767
+  const SKILL_DESIGNER_CONDITION_BRANCH_RATIO_TYPES = Object.freeze(['生命比例', '体力比例', '魂力比例', '精神力比例']);
+  // —— B:18768-18776
+  const SKILL_DESIGNER_CONDITION_BRANCH_NUMBER_TYPES = Object.freeze([
+    '年龄',
+    '等级',
+    '生命数值',
+    '体力数值',
+    '魂力数值',
+    '精神力数值',
+    '护盾',
+  ]);
+  // —— B:18777-18787
+  const SKILL_DESIGNER_CONDITION_BRANCH_RATIO_VALUE_OPTIONS = Object.freeze([
+    '5%',
+    '10%',
+    '20%',
+    '30%',
+    '35%',
+    '50%',
+    '70%',
+    '80%',
+    '100%',
+  ]);
+  // —— B:18789-18792
+  function 技能设计台条件类型是否枚举值(类型 = '') {
+    const type = normalizeSkillUiText(类型, '');
+    return !!SKILL_DESIGNER_CONDITION_BRANCH_ENUM_VALUE_OPTIONS[type] && type !== '目标';
+  }
+  // —— B:18794-18802
+  function 技能设计台条件类型是否显示比较(类型 = '') {
+    const type = normalizeSkillUiText(类型, '');
+    return (
+      SKILL_DESIGNER_CONDITION_BRANCH_FLAG_TYPES.includes(type) ||
+      ['环境满足', '时间', '装备状态', '自身状态', '连携前提'].includes(type) ||
+      SKILL_DESIGNER_CONDITION_BRANCH_RATIO_TYPES.includes(type) ||
+      SKILL_DESIGNER_CONDITION_BRANCH_NUMBER_TYPES.includes(type)
+    );
+  }
+  // —— B:18804-18817
+  function 读取技能设计台条件分支比较选项(类型 = '') {
+    const type = normalizeSkillUiText(类型, '生命比例');
+    if (type === '目标') return ['=='];
+    if (SKILL_DESIGNER_CONDITION_BRANCH_FLAG_TYPES.includes(type)) return ['有', '无'];
+    if (type === '状态存在') return ['包含', '无'];
+    if (['使用者', '环境满足', '时间', '装备状态', '自身状态', '连携前提'].includes(type)) return ['==', '!='];
+    if (
+      SKILL_DESIGNER_CONDITION_BRANCH_RATIO_TYPES.includes(type) ||
+      SKILL_DESIGNER_CONDITION_BRANCH_NUMBER_TYPES.includes(type)
+    ) {
+      return ['<=', '<', '>=', '>', '==', '!='];
+    }
+    return ['=='];
+  }
+  // —— B:18819-18823
+  function 规范化技能设计台条件分支比较值(类型 = '', value = '') {
+    const 选项 = 读取技能设计台条件分支比较选项(类型);
+    const 文本 = toText(value, '').trim();
+    return 选项.includes(文本) ? 文本 : 选项[0];
+  }
+  // —— B:18825-18848
+  function 读取技能设计台条件分支值控件配置(类型 = '', 比较 = '') {
+    const type = normalizeSkillUiText(类型, '生命比例');
+    const compare = 规范化技能设计台条件分支比较值(type, 比较);
+    const 是状态条件 = type === '状态存在';
+    const 值选项 = SKILL_DESIGNER_CONDITION_BRANCH_ENUM_VALUE_OPTIONS[type] || [];
+    let 值控件 = '无';
+    if (type === '目标') 值控件 = '枚举';
+    else if (技能设计台条件类型是否枚举值(type)) 值控件 = '枚举';
+    else if (compare !== '有' && compare !== '无' && compare !== '包含' && type !== '状态存在') {
+      if (SKILL_DESIGNER_CONDITION_BRANCH_RATIO_TYPES.includes(type)) 值控件 = '比例';
+      else if (SKILL_DESIGNER_CONDITION_BRANCH_NUMBER_TYPES.includes(type)) 值控件 = '数字';
+    }
+    return {
+      比较选项: 读取技能设计台条件分支比较选项(type),
+      显示比较: 技能设计台条件类型是否显示比较(type),
+      显示值: 值控件 !== '无',
+      显示状态: 是状态条件,
+      值控件,
+      值选项: 值控件 === '比例' ? SKILL_DESIGNER_CONDITION_BRANCH_RATIO_VALUE_OPTIONS : 值选项,
+      对象标签: '目标',
+      比较标签: SKILL_DESIGNER_CONDITION_BRANCH_FLAG_TYPES.includes(type) ? '是否' : '比较',
+      值标签: type,
+    };
+  }
+  // —— B:18850-18863
+  function 构建技能设计台条件分支对象选项() {
+    const 标签表 = {
+      目标: '目标',
+      自身: '自身',
+      施术者: '施术者',
+      召唤物: '召唤物',
+      使用者: '使用者',
+      制作者: '制作者',
+    };
+    return SKILL_DESIGNER_CONDITION_BRANCH_OBJECT_OPTIONS.map(item => ({
+      value: item,
+      label: 标签表[item] || item,
+    }));
+  }
+  // —— B:18865-18867
+  function 构建技能设计台条件分支比较选项(类型 = '') {
+    return 读取技能设计台条件分支比较选项(normalizeSkillUiText(类型, '生命比例'));
+  }
+  // —— B:18869-18883
+  function 构建技能设计台条件分支比较控件选项(类型 = '', 当前值 = '') {
+    const type = normalizeSkillUiText(类型, '生命比例');
+    const current = 规范化技能设计台条件分支比较值(type, 当前值);
+    return 构建技能设计台条件分支比较选项(type)
+      .map(value => {
+        const label =
+          SKILL_DESIGNER_CONDITION_BRANCH_FLAG_TYPES.includes(type) || type === '状态存在'
+            ? value === '无'
+              ? '否'
+              : '是'
+            : value;
+        return `<option value="${escapeHtmlAttr(value)}"${value === current ? ' selected' : ''}>${htmlEscape(label)}</option>`;
+      })
+      .join('');
+  }
+  // —— B:18885-18889
+  function 读取技能设计台条件分支对象显示名(value = '') {
+    const key = normalizeSkillUiText(value, '目标');
+    const match = 构建技能设计台条件分支对象选项().find(item => item.value === key);
+    return match ? match.label : key;
+  }
+  // —— B:18891-18910
+  function 构建技能设计台条件分支条件预览(condition = {}) {
+    const 类型 = normalizeSkillUiText(condition['类型'], '生命比例');
+    const 对象 = 读取技能设计台条件分支对象显示名(condition['对象']);
+    const 比较 = 规范化技能设计台条件分支比较值(类型, condition['比较']);
+    if (类型 === '目标') return `条件：目标为${normalizeSkillUiText(condition['值'], '自身')}`;
+    if (类型 === '使用者') return `条件：${对象}${比较 === '!=' ? '不是' : '是'}${normalizeSkillUiText(condition['值'], '制作者')}`;
+    if (SKILL_DESIGNER_CONDITION_BRANCH_FLAG_TYPES.includes(类型)) {
+      return `条件：${对象}${比较 === '无' ? '不是' : '是'}${类型}`;
+    }
+    if (类型 === '状态存在')
+      return `条件：${对象}${比较 === '无' ? '不存在' : '存在'}${normalizeSkillUiText(condition['状态'] || condition['值'], '状态')}`;
+    if (类型 === '环境满足') return `条件：环境${比较 === '!=' ? '不满足' : '满足'}${normalizeSkillUiText(condition['值'], '阴影')}`;
+    if (类型 === '时间') return `条件：时间${比较 === '!=' ? '不是' : '处于'}${normalizeSkillUiText(condition['值'], '白天')}`;
+    if (类型 === '装备状态') return `条件：${对象}${比较 === '!=' ? '未满足' : '满足'}${normalizeSkillUiText(condition['值'], '已装备主武器')}`;
+    if (类型 === '自身状态') return `条件：${对象}${比较 === '!=' ? '不是' : '处于'}${normalizeSkillUiText(condition['值'], '蓄力中')}`;
+    if (类型 === '连携前提') return `条件：${比较 === '!=' ? '不满足' : '满足'}${normalizeSkillUiText(condition['值'], '上一动作命中')}`;
+    if (技能设计台条件类型是否枚举值(类型))
+      return condition['值'] !== undefined && normalizeSkillUiText(condition['值'], '') ? `条件：${对象}${类型}为${normalizeSkillUiText(condition['值'], '')}` : '';
+    return condition['值'] !== undefined && normalizeSkillUiText(condition['值'], '') ? `条件：${对象}${类型} ${比较} ${normalizeSkillUiText(condition['值'], '')}` : '';
+  }
+  // —— B:18912-18931
+  function 构建技能设计台条件分支摘要(value = []) {
+    const branches = Array.isArray(value) ? value : [];
+    if (!branches.length) return '';
+    return branches
+      .slice(0, 3)
+      .map(branch => {
+        const conditions = Array.isArray(branch && branch['条件']) ? branch['条件'] : [];
+        const conditionText = conditions
+          .map(item => 构建技能设计台条件分支条件预览(item).replace(/^条件：/, ''))
+          .filter(Boolean)
+          .join(' 且 ');
+        if (!conditionText) return '';
+        const action = normalizeSkillUiText(branch && branch['处理'], '生效');
+        const effectKey = action === '追加效果' ? '追加效果' : '替换效果';
+        const effectCount = 技能设计台条件分支效果数组字段表.includes(action) && Array.isArray(branch && branch[effectKey]) ? branch[effectKey].length : 0;
+        return `${conditionText} → ${action}${effectCount ? `(${effectCount}原型)` : ''}`;
+      })
+      .filter(Boolean)
+      .join('；');
+  }
+  // —— B:18933-18935
+  function 构建技能设计台条件分支隐藏属性(显示 = true) {
+    return 显示 ? '' : ' hidden style="display:none"';
+  }
+  // —— B:18937-18946
+  function 构建技能设计台条件分支值控件(类型 = '', 比较 = '', value = '') {
+    const 显示配置 = 读取技能设计台条件分支值控件配置(类型, 比较);
+    if (显示配置.值控件 === '无') return '';
+    if (显示配置.值控件 === '数字') {
+      return `<input class=\"mvu-editor-input\" type=\"number\" min=\"0\" step=\"1\" value=\"${escapeHtmlAttr(value)}\" data-skill-designer-condition-field=\"值\" data-skill-designer-disableable />`;
+    }
+    return `<select class=\"mvu-editor-select\" data-skill-designer-condition-field=\"值\" data-skill-designer-disableable>
+        ${buildSkillDesignerSelectOptions(显示配置.值选项, value)}
+      </select>`;
+  }
+  // —— B:18948-18981
+  function normalizeSkillDesignerConditionBranchConditionList(value = [], recordViolation = () => {}) {
+    return (Array.isArray(value) ? value : [])
+      .map(condition => {
+        if (!condition || typeof condition !== 'object' || Array.isArray(condition)) return null;
+        const 类型 = normalizeSkillUiText(condition['类型'], '');
+        if (!SKILL_DESIGNER_CONDITION_BRANCH_TYPE_OPTIONS.includes(类型)) {
+          recordViolation('条件分支.条件.类型');
+          return null;
+        }
+        const 对象 = SKILL_DESIGNER_CONDITION_BRANCH_OBJECT_OPTIONS.includes(
+          normalizeSkillUiText(condition['对象'], ''),
+        )
+          ? normalizeSkillUiText(condition['对象'], '')
+          : '目标';
+        const 比较 = 规范化技能设计台条件分支比较值(类型, condition['比较']);
+        const normalized = { 类型, 对象, 比较 };
+        const 显示配置 = 读取技能设计台条件分支值控件配置(类型, 比较);
+        if (显示配置.显示值) {
+          const 值 = 读取技能设计台原型字段输入值(condition['值'] ?? condition['数值'] ?? '');
+          if (显示配置.值控件 === '枚举')
+            normalized['值'] = normalizeSkillDesignerSelectValue(值, 显示配置.值选项, 显示配置.值选项[0] || '');
+          else if (显示配置.值控件 === '比例')
+            normalized['值'] = normalizeSkillDesignerSelectValue(值, 显示配置.值选项, 显示配置.值选项[0] || '20%');
+          else if (值 !== '') normalized['值'] = 值;
+        }
+        if (类型 === '目标') normalized['对象'] = '目标';
+        if (显示配置.显示状态) {
+          const 状态 = normalizeSkillUiText(condition['状态'], '');
+          if (状态) normalized['状态'] = 状态;
+        }
+        return normalized;
+      })
+      .filter(Boolean);
+  }
+  // —— B:18983-18994
+  function 规范化技能设计台等价比较效果(效果 = {}) {
+    if (!效果 || typeof 效果 !== 'object' || Array.isArray(效果)) return 效果;
+    const 副本 = cloneJsonValue(效果);
+    delete 副本['条件分支'];
+    if (副本['目标'] === undefined || 副本['目标'] === null || normalizeSkillUiText(副本['目标'], '') === '')
+      delete 副本['目标'];
+    Object.keys(副本).forEach(键 => {
+      const 值 = 副本[键];
+      if (值 === undefined || 值 === null || (typeof 值 === 'string' && !值.trim())) delete 副本[键];
+    });
+    return 副本;
+  }
+  // —— B:18996-19005
+  function 稳定序列化技能设计台效果(值) {
+    if (Array.isArray(值)) return `[${值.map(稳定序列化技能设计台效果).join(',')}]`;
+    if (值 && typeof 值 === 'object') {
+      return `{${Object.keys(值)
+        .sort()
+        .map(键 => `${JSON.stringify(键)}:${稳定序列化技能设计台效果(值[键])}`)
+        .join(',')}}`;
+    }
+    return JSON.stringify(值);
+  }
+  // —— B:19007-19016
+  function 技能设计台条件分支替换效果等价(父效果 = {}, 替换效果列表 = []) {
+    const 效果列表 = Array.isArray(替换效果列表) ? 替换效果列表 : [];
+    if (效果列表.length !== 1) return false;
+    const 基础 = 规范化技能设计台等价比较效果(父效果);
+    const 替换 = 规范化技能设计台等价比较效果(效果列表[0]);
+    if (!替换['目标'] && 基础['目标']) 替换['目标'] = 基础['目标'];
+    if (!基础['目标'] && 替换['目标'] === '自身') delete 替换['目标'];
+    else if (!基础['目标'] && 替换['目标']) 基础['目标'] = 替换['目标'];
+    return 稳定序列化技能设计台效果(基础) === 稳定序列化技能设计台效果(替换);
+  }
+  // —— B:19018-19022
+  function 读取技能设计台机制抹消可匹配字段(原型 = '') {
+    const 原型名 = normalizeSkillUiText(原型, '');
+    const 字段列表 = 技能设计台机制抹消可匹配字段表[原型名];
+    return Array.isArray(字段列表) ? 字段列表 : [];
+  }
+  // —— B:19024
+  const 技能设计台机制抹消全部字段值 = new Set(['全部', '抹消全部', '全部状态', '全部规则', '全部资源', '全部结算', '全部属性', '全部原型', '全部转移方式', '全部复制类型']);
+  // —— B:19026-19036
+  function 规范化技能设计台机制抹消字段值(值) {
+    const 原始列表 = Array.isArray(值) ? 值 : String(值 ?? '').split(/[、,，|/]/);
+    if (原始列表.some(item => 技能设计台机制抹消全部字段值.has(normalizeSkillUiText(item, '')))) return undefined;
+    const 列表 = Array.from(new Set(
+      原始列表
+        .map(item => normalizeSkillUiText(item, ''))
+        .filter(item => item && item !== '无' && !技能设计台机制抹消全部字段值.has(item)),
+    ));
+    if (!列表.length) return undefined;
+    return 列表.length === 1 ? 列表[0] : 列表;
+  }
+  // —— B:19038-19040
+  function 格式化技能设计台机制抹消字段值(值) {
+    return Array.isArray(值) ? 值.map(item => normalizeSkillUiText(item, '')).filter(Boolean).join('、') : normalizeSkillUiText(值, '');
+  }
+  // —— B:19051-19067
+  function 规范化技能设计台机制抹消对象(值 = {}) {
+    if (typeof 值 === 'string' && /^[\[{]/.test(值.trim())) {
+      try {
+        return 规范化技能设计台机制抹消对象(JSON.parse(值));
+      } catch (_) {}
+    }
+    const 来源 = 值 && typeof 值 === 'object' && !Array.isArray(值)
+      ? 值
+      : { 原型: normalizeSkillUiText(值, '') || '机制授予' };
+    const 原型 = normalizeSkillUiText(来源['原型'], '') || '机制授予';
+    const 结果 = { 原型 };
+    读取技能设计台机制抹消可匹配字段(原型).forEach(key => {
+      const 字段值 = 规范化技能设计台机制抹消字段值(来源[key]);
+      if (字段值 !== undefined) 结果[key] = 字段值;
+    });
+    return 结果;
+  }
+  // —— B:19069-19075
+  function 构建技能设计台机制抹消对象摘要(值 = {}) {
+    const 对象 = 规范化技能设计台机制抹消对象(值);
+    return ['原型', ...读取技能设计台机制抹消可匹配字段(对象['原型'])]
+      .map(key => 格式化技能设计台机制抹消字段值(对象[key]))
+      .filter(Boolean)
+      .join('/');
+  }
+  // —— B:19081-19093
+  function 读取技能设计台机制抹消对象字段选项(原型 = '', 字段 = '') {
+    const 原型名 = normalizeSkillUiText(原型, '');
+    const 字段名 = normalizeSkillUiText(字段, '');
+    if (!读取技能设计台机制抹消可匹配字段(原型名).includes(字段名)) return [];
+    const 选项 = 读取技能设计台原型字段选项(原型名, 字段名);
+    if (字段名 === '状态') {
+      return normalizeSkillDesignerOptionList(选项)
+        .map(item => item.value)
+        .filter(item => normalizeSkillUiText(item, '') && !/^任意/.test(normalizeSkillUiText(item, '')));
+    }
+    if (字段名 === '匹配原型') return 选项;
+    return normalizeSkillDesignerOptionList(选项).map(item => item.value).filter(Boolean);
+  }
+  // —— B:19095-19106
+  function 读取技能设计台机制抹消全部标签(字段 = '') {
+    return ({
+      状态: '全部状态',
+      规则: '全部规则',
+      资源: '全部资源',
+      结算: '全部结算',
+      属性: '全部属性',
+      匹配原型: '全部原型',
+      资源转移方式: '全部转移方式',
+      复制类型: '全部复制类型',
+    })[normalizeSkillUiText(字段, '')] || '抹消全部';
+  }
+  // —— B:19108-19143
+  function 构建技能设计台机制抹消对象字段控件(对象 = {}, 字段前缀 = '') {
+    const 匹配器 = 规范化技能设计台机制抹消对象(对象);
+    const 原型 = normalizeSkillUiText(匹配器['原型'], '机制授予');
+    return 读取技能设计台机制抹消可匹配字段(原型)
+      .map(字段 => {
+        const 选项 = 读取技能设计台机制抹消对象字段选项(原型, 字段);
+        const 值列表 = Array.isArray(匹配器[字段])
+          ? 匹配器[字段].map(item => normalizeSkillUiText(item, '')).filter(Boolean)
+          : [normalizeSkillUiText(匹配器[字段], '')].filter(Boolean);
+        const 属性名 = 字段前缀 ? `${字段前缀}-field` : 'data-skill-designer-suppress-object-field';
+        if (选项.length) {
+          const 全部标签 = 读取技能设计台机制抹消全部标签(字段);
+          const 全部选中 = !值列表.length;
+          return `
+              <label class=\"mvu-editor-field\">
+                <span class=\"mvu-editor-label\">${htmlEscape(字段)}</span>
+                <select class=\"mvu-editor-select\" multiple size=\"${Math.min(4, Math.max(2, 选项.length + 1))}\" ${属性名}=\"${escapeHtmlAttr(字段)}\" data-skill-designer-disableable>
+                  <option value=\"${escapeHtmlAttr(全部标签)}\"${全部选中 ? ' selected' : ''}>${htmlEscape(全部标签)}</option>
+                  ${normalizeSkillDesignerOptionList(选项).map(option => {
+                    const value = normalizeSkillUiText(option.value, '');
+                    return `<option value=\"${escapeHtmlAttr(value)}\"${值列表.includes(value) ? ' selected' : ''}>${htmlEscape(option.label || value)}</option>`;
+                  }).join('')}
+                </select>
+              </label>
+            `;
+        }
+        const 值 = 格式化技能设计台机制抹消字段值(匹配器[字段]);
+        return `
+              <label class=\"mvu-editor-field\">
+                <span class=\"mvu-editor-label\">${htmlEscape(字段)}</span>
+                <input class=\"mvu-editor-input\" type=\"text\" value=\"${escapeHtmlAttr(值)}\" placeholder=\"留空 = 无\" ${属性名}=\"${escapeHtmlAttr(字段)}\" data-skill-designer-disableable />
+              </label>
+            `;
+      })
+      .join('');
+  }
+  // —— B:19145-19172
+  function 清理技能设计台等价替换条件分支(值) {
+    if (!值 || typeof 值 !== 'object') return 值;
+    if (Array.isArray(值)) {
+      值.forEach(条目 => 清理技能设计台等价替换条件分支(条目));
+      return 值;
+    }
+    if (Array.isArray(值['条件分支'])) {
+      值['条件分支'] = 值['条件分支']
+        .filter(
+          分支 =>
+            !(
+              normalizeSkillUiText(分支 && 分支['处理'], '') === '替换效果' &&
+              技能设计台条件分支替换效果等价(值, (分支 && 分支['替换效果']) || [])
+            ),
+        )
+        .map(分支 => {
+          技能设计台条件分支效果数组字段表.forEach(键 => {
+            if (Array.isArray(分支 && 分支[键])) 清理技能设计台等价替换条件分支(分支[键]);
+          });
+          return 分支;
+        });
+      if (!值['条件分支'].length) delete 值['条件分支'];
+    }
+    技能设计台嵌套效果数组字段表.forEach(键 => {
+      if (Array.isArray(值[键])) 清理技能设计台等价替换条件分支(值[键]);
+    });
+    return 值;
+  }
+  // —— B:19174-19219
+  function normalizeSkillDesignerConditionBranchList(
+    值 = [],
+    fallbackTarget = '单体',
+    recordViolation = () => {},
+    parentEffect = {},
+  ) {
+    return (Array.isArray(值) ? 值 : [])
+      .map(分支 => {
+        if (!分支 || typeof 分支 !== 'object' || Array.isArray(分支)) return null;
+        const 条件 = normalizeSkillDesignerConditionBranchConditionList(分支['条件'] || [], recordViolation);
+        if (!条件.length) return null;
+        const 处理源 = normalizeSkillUiText(分支['处理'], '');
+        const 处理 = SKILL_DESIGNER_CONDITION_BRANCH_ACTION_OPTIONS.includes(处理源)
+          ? 处理源
+          : Array.isArray(分支['替换效果']) && 分支['替换效果'].length
+            ? '替换效果'
+            : Array.isArray(分支['追加效果']) && 分支['追加效果'].length
+              ? '追加效果'
+              : '生效';
+        const 收口结果 = { 条件, 处理 };
+        if (处理 === '生效') {
+          if (技能设计台条件分支效果数组字段表.some(字段名 => Array.isArray(分支[字段名]) && 分支[字段名].length)) {
+            recordViolation('条件分支.生效.禁止携带改写效果');
+            return null;
+          }
+          return 收口结果;
+        }
+        if (处理 === '替换效果' || 处理 === '追加效果') {
+          const 字段名 = 处理 === '替换效果' ? '替换效果' : '追加效果';
+          const 效果列表 = normalizeSkillDesignerExecutionEffectArray(分支[字段名] || [], fallbackTarget, {
+            条件分支: true,
+            强制独立: true,
+            禁用释放前降低结算: 技能设计台条件列表包含释放后条件(条件),
+          });
+          if (!效果列表.length) return null;
+          if (技能设计台条件列表包含释放后条件(条件) && 技能设计台效果列表包含释放前降低结算(效果列表)) {
+            recordViolation(`条件分支.${字段名}.释放前结算`);
+            return null;
+          }
+          if (处理 === '替换效果' && 技能设计台条件分支替换效果等价(parentEffect, 效果列表)) return null;
+          收口结果[字段名] = 效果列表;
+        }
+        return 收口结果;
+      })
+      .filter(Boolean);
+  }
+  // —— B:19221-19229
+  function getSkillDesignerMechanismCompiledPrototypeList(mechanism = '') {
+    const key = normalizeSkillUiText(mechanism, '');
+    if (!key) return [];
+    const entry = SKILL_DESIGNER_MECHANISM_COMPILER_TABLE[key];
+    if (entry && Array.isArray(entry['原型列表']) && entry['原型列表'].length)
+      return entry['原型列表'].map(item => cloneJsonValue(item));
+    if (SKILL_DESIGNER_PROTOTYPE_REGISTRY[key]) return [{ 原型: key }];
+    return [];
+  }
+  // —— B:19231
+  const SKILL_DESIGNER_BATCH_EFFECT_FIELD_KEYS = Object.freeze(['原型', '属性', '资源', '状态', '类型']);
+  // —— B:19232
+  const 技能设计台嵌套效果数组字段集合 = new Set(技能设计台嵌套效果数组字段表);
+  // —— B:19233
+  const 技能设计台伤害类型选项 = Object.freeze(['近身攻击', '远程攻击', '精神攻击', '真实攻击']);
+  // —— B:19235-19243
+  function 规范化技能设计台伤害类型(value = '', draft = {}) {
+    const text = normalizeSkillUiText(value, '');
+    if (技能设计台伤害类型选项.includes(text)) return text;
+    const merged = `${text} ${normalizeSkillUiText(draft?.type, '')} ${normalizeSkillUiText(draft?.deliveryForm, '')} ${normalizeSkillUiText(draft?.name || draft?.魂技名 || draft?.技能名称, '')} ${normalizeSkillUiText(draft?.description || draft?.效果描述, '')}`;
+    if (/真实|规则|法则|无视|穿透本源|毁灭|时光/.test(merged)) return '真实攻击';
+    if (/精神|识海|幻境|灵魂|眩晕|混乱|封技|恐惧/.test(merged)) return '精神攻击';
+    if (/远程|射线|光束|飞刃|投掷|炮|波|箭|弹|雷|电|冰|火|光|暗|星|空间|元素|爆炸/.test(merged)) return '远程攻击';
+    return '近身攻击';
+  }
+  // —— B:19245-19252
+  function 读取技能设计台伤害绑定(伤害类型 = '', draft = {}) {
+    const type = 规范化技能设计台伤害类型(伤害类型, draft);
+    return {
+      伤害类型: type,
+      结算标签: type === '真实攻击' ? '真实伤害' : '标准伤害',
+      抗性类型: type === '真实攻击' ? '真实无视' : type === '精神攻击' ? '精神抗性' : type === '远程攻击' ? '元素抗性' : '物理抗性',
+    };
+  }
+  // —— B:19254-19272
+  const SKILL_DESIGNER_PROTOTYPE_FORBIDDEN_FIELDS = new Set([
+    '对象',
+    '结算策略',
+    '动作',
+    '状态持续',
+    'cast_time',
+    '环境条件',
+    '装备条件',
+    '姿态条件',
+    '连招条件',
+    '动作时窗',
+    '中断条件',
+    '应用' + '原型',
+    '参数',
+    '判定属性',
+    '判定阈值',
+    '成功参数',
+    '失败参数',
+  ]);
+  // —— B:19274-19281
+  function 构建缺少状态禁用条件分支(状态 = '持续创伤', 对象 = '目标') {
+    return [
+      {
+        条件: [{ 类型: '状态存在', 对象, 比较: '无', 状态 }],
+        处理: '禁用',
+      },
+    ];
+  }
+  // —— B:19283-19295
+  function 是技能设计台持续伤害引爆自动条件(条件分支 = []) {
+    if (!Array.isArray(条件分支) || 条件分支.length !== 1) return false;
+    const 分支 = 条件分支[0];
+    const 条件列表 = Array.isArray(分支 && 分支['条件']) ? 分支['条件'] : [];
+    if (normalizeSkillUiText(分支 && 分支['处理'], '') !== '禁用' || 条件列表.length !== 1) return false;
+    const 条件 = 条件列表[0] || {};
+    return (
+      normalizeSkillUiText(条件['类型'], '') === '状态存在' &&
+      normalizeSkillUiText(条件['对象'], '') === '目标' &&
+      normalizeSkillUiText(条件['比较'], '') === '无' &&
+      normalizeSkillUiText(条件['状态'], '') === '持续创伤'
+    );
+  }
+  // —— B:19306-19644
+  function fillSkillDesignerPrototypeValueFromTemplate(原型 = '', 字段 = {}, source = {}) {
+    if (!字段 || typeof 字段 !== 'object') return;
+    const pick = keys => {
+      for (const key of keys) {
+        if (source[key] !== undefined && source[key] !== null && String(source[key]).trim() !== '') return source[key];
+      }
+      return undefined;
+    };
+    if (原型 === '伤害结算') {
+      if (字段['威力倍率'] === undefined) {
+        const rawPower = pick([
+          '威力倍率',
+          'powerRatio',
+          '强度倍率',
+          '单段倍率',
+          '爆发倍率',
+          '每跳倍率',
+          '数值',
+        ]);
+        const powerNumber = Number(rawPower);
+        if (Number.isFinite(powerNumber))
+          字段['威力倍率'] = Math.max(1, Math.round(powerNumber));
+      }
+      if (字段['伤害类型'] === undefined)
+        字段['伤害类型'] = 规范化技能设计台伤害类型(source['伤害类型'] || source.damageType, source);
+      if (字段['攻击段数'] === undefined) {
+        const rawHitCount = pick(['攻击段数', '段数', 'hitCount', 'segmentCount']);
+        if (rawHitCount !== undefined)
+          字段['攻击段数'] = Math.max(1, parseSkillDesignerIntegerInputValue(rawHitCount, 1, 1));
+      }
+      if (字段['防御穿透'] === undefined) {
+        const rawPen = pick(['防御穿透', '破甲比例']);
+        if (rawPen !== undefined) 字段['防御穿透'] = parseSkillDesignerNumericInputValue(rawPen, 0, 4);
+      }
+      return;
+    }
+    if (原型 === '护盾变化') {
+      if (字段['数值'] === undefined) {
+        const rawShield = pick(['数值', '护盾值', 'shieldValue']);
+        if (rawShield !== undefined)
+          字段['数值'] = normalizeSkillDesignerEffectValue(rawShield, Number(rawShield) < 0 ? '减值' : '加值');
+      }
+      return;
+    }
+    if (原型 === '资源变化' || 原型 === '资源转移') {
+      if (字段['资源'] === undefined) {
+        const rawResource = normalizeSkillUiText(原型 === '资源转移' ? source['资源'] : source['资源'] || source['属性'] || source['资源类型'], '');
+        字段['资源'] = 转换技能设计台原型资源字段(rawResource);
+      }
+      if (字段['数值'] === undefined) {
+        const 目标 = normalizeSkillUiText(字段['目标'] || source['目标'], '');
+        const rawDrain = pick(['夺取比例', 'drainRatio']);
+        const rawBurn = pick(['燃烧比例', 'burnRatio']);
+        const rawRefeed = pick(['反灌比例', '共享比例', 'refeedRatio']);
+        const rawResourceValue = pick([
+          '数值',
+          '恢复比例',
+          '回复比例',
+          'sp_gain_ratio',
+          'men_gain_ratio',
+          '资源变化',
+          '消耗比例',
+        ]);
+        if (原型 === '资源变化' && rawBurn !== undefined) 字段['数值'] = 格式化技能设计台原型比例变化(rawBurn, -1);
+        else if (原型 === '资源转移' && rawDrain !== undefined) {
+          const 转化比例 = Math.max(0, Number(source['转化比例'] ?? source.convertRatio ?? 1) || 1);
+          字段['数值'] = 格式化技能设计台原型比例变化(
+            Number(rawDrain || 0) * (目标 === '自身' ? 转化比例 : 1),
+            目标 === '自身' ? 1 : -1,
+          );
+        } else if (原型 === '资源转移' && rawRefeed !== undefined) 字段['数值'] = 格式化技能设计台原型比例变化(rawRefeed, 1);
+        else if (rawResourceValue !== undefined) {
+          字段['数值'] = 原型 === '资源转移'
+            ? normalizeSkillUiText(rawResourceValue, '')
+            : normalizeSkillDesignerEffectValue(
+                rawResourceValue,
+                Number(rawResourceValue) < 0 ? '减值' : '加值',
+              );
+        }
+      }
+      if (字段['持续回合'] === undefined && source['持续回合'] !== undefined) {
+        字段['持续回合'] = Math.max(0, parseSkillDesignerIntegerInputValue(source['持续回合'], 0, 0));
+      }
+      return;
+    }
+    if (原型 === '属性修正') {
+      if (字段['属性'] === undefined) {
+        const rawProperty = normalizeSkillUiText(source['属性'], '');
+        if (rawProperty) 字段['属性'] = getSkillDesignerPackedPropertyLabel(rawProperty);
+      }
+      if (字段['数值'] === undefined) {
+        const rawAttributeValue = pick(['数值', '属性倍率', '倍率', 'agi_ratio', 'speed_ratio', 'mastery_ratio']);
+        if (rawAttributeValue !== undefined)
+          字段['数值'] = normalizeSkillDesignerEffectValue(rawAttributeValue, source['动作'] || source.action || '');
+      }
+      return;
+    }
+    if (
+      原型 === '结算修正' &&
+      normalizeSkillUiText(字段['结算'] || source['结算'], '') === '持续伤害引爆' &&
+      字段['条件分支'] === undefined
+    ) {
+      字段['条件分支'] = 构建缺少状态禁用条件分支(
+        normalizeSkillUiText(source['状态'], '持续创伤'),
+      );
+    }
+    if (原型 === '时窗修正' && 字段['调整字段'] === undefined) 字段['调整字段'] = '持续回合';
+    if (字段['数值'] !== undefined) return;
+    let raw;
+    if (原型 === '判定修正') {
+      const 判定 = normalizeSkillUiText(字段['判定'], '');
+      const map = {
+        命中: ['增加命中', '降低命中'],
+        闪避: ['增加闪避', '降低闪避'],
+        反应: ['增加反应', '降低反应'],
+      };
+      raw = pick(map[判定] || []);
+    } else if (原型 === '决策干扰') {
+      const 干扰 = normalizeSkillUiText(字段['干扰'], '');
+      const map = {
+        判断干扰: ['数值'],
+        索敌干扰: ['数值'],
+      };
+      raw = pick(map[干扰] || []);
+    } else if (原型 === '结算修正') {
+      const 结算 = normalizeSkillUiText(字段['结算'], '');
+      const map = {
+        造成伤害: ['数值'],
+        受到伤害: ['数值'],
+        治疗: ['数值'],
+        消耗: ['数值'],
+        前摇: ['数值'],
+        技能效果: ['技能效果倍率'],
+        反伤: ['反射比例'],
+        伤害转移: ['转移比例'],
+        伤害吸收: ['吸收比例'],
+        伤害转治疗: ['转化比例', 'rewriteValue', '数值'],
+        治疗转伤害: ['转化比例', 'rewriteValue', '数值'],
+        伤害分摊: ['分摊比例'],
+        消耗分摊: ['分摊比例'],
+        防御穿透: ['破甲比例'],
+        反击: ['反击倍率'],
+        持续伤害引爆: ['引爆倍率', 'detonateRatio'],
+      };
+      raw = pick(map[结算] || []);
+      if (raw !== undefined) {
+        const 按倍率 = ['造成伤害', '受到伤害', '治疗', '消耗', '前摇', '技能效果'].includes(结算);
+        if (按倍率 && Math.abs(Number(raw) - 1) < 0.0001) return;
+        const 格式化数值 = 格式化技能设计台原型比例变化(raw, 1, 按倍率);
+        if (parseSkillDesignerSignedValue(格式化数值) === 0) return;
+        字段['数值'] = 格式化数值;
+        if (结算 === '伤害转移')
+          字段['转移对象'] = normalizeSkillUiText(source['转移对象'], '攻击者');
+        if (结算 === '伤害吸收') {
+          字段['吸收来源'] = 技能设计台伤害吸收来源选项.includes(normalizeSkillUiText(source['吸收来源'] || source.absorbSource, ''))
+            ? normalizeSkillUiText(source['吸收来源'] || source.absorbSource, '')
+            : '造成伤害';
+          字段['吸收资源'] = 技能设计台伤害吸收资源选项.includes(normalizeSkillUiText(source['吸收资源'] || source.resourceType, ''))
+            ? normalizeSkillUiText(source['吸收资源'] || source.resourceType, '')
+            : '生命';
+        }
+        if (结算 === '持续伤害引爆' && 字段['条件分支'] === undefined)
+          字段['条件分支'] = 构建缺少状态禁用条件分支(
+            normalizeSkillUiText(source['状态'], '持续创伤'),
+          );
+        return;
+      }
+    } else if (原型 === '时窗修正') {
+      const 调整字段 = normalizeSkillUiText(字段['调整字段'], '持续回合');
+      if (字段['调整方式'] === undefined) {
+        const sourceText = normalizeSkillUiText(source['调整方式'] || source['机制'] || source['动作'], '');
+        字段['调整方式'] = /压缩|引爆|缩短/.test(sourceText) ? '压缩' : '延长';
+      }
+      if (调整字段 === '持续回合') {
+        if (字段['调整回合'] === undefined)
+          字段['调整回合'] = Math.max(
+            1,
+            Math.min(
+              3,
+              parseSkillDesignerIntegerInputValue(
+                source['调整回合'] || source['持续回合'] || source.extendRounds || source.consumeRounds,
+                1,
+                1,
+              ),
+            ),
+          );
+        if (字段['结算倍率'] === undefined) {
+          const rawRatio = pick(['结算倍率', '引爆倍率', '压缩倍率', 'compressRatio']);
+          if (rawRatio !== undefined) 字段['结算倍率'] = 格式化技能设计台原型比例变化(rawRatio, 1, true);
+        }
+      } else if (调整字段 === '有效期tick') {
+        if (字段['调整tick'] === undefined)
+          字段['调整tick'] = Math.max(
+            1,
+            Math.min(1008, parseSkillDesignerIntegerInputValue(source['调整tick'] || source['有效期tick'] || source['持续tick'], 6, 1)),
+          );
+      } else if (['触发次数', '使用次数'].includes(调整字段)) {
+        if (字段['调整次数'] === undefined)
+          字段['调整次数'] = Math.max(
+            1,
+            Math.min(3, parseSkillDesignerIntegerInputValue(source['调整次数'], 1, 1)),
+          );
+      }
+      return;
+    } else if (原型 === '规则防御') {
+      raw = pick([
+        '次数',
+        '免伤次数',
+        '免死次数',
+        '抵消次数',
+      ]);
+      if (raw !== undefined) 字段['次数'] = Math.max(1, parseSkillDesignerIntegerInputValue(raw, 1, 1));
+      return;
+    } else if (原型 === '规则改写') {
+      字段['规则'] = 技能设计台规则改写选项值.includes(normalizeSkillUiText(字段['规则'] || source['规则'], ''))
+        ? normalizeSkillUiText(字段['规则'] || source['规则'], '')
+        : '缴械';
+      if (字段['规则'] === '死亡转存活') {
+        字段['目标'] = '自身';
+        if (字段['数值'] === undefined) 字段['数值'] = 格式化技能设计台原型比例变化(pick(['数值', 'rewriteValue']) ?? 0.25, 0.25, true);
+        delete 字段['持续回合'];
+        delete 字段['死亡时限tick'];
+        delete 字段['复活代价类型'];
+        delete 字段['复活代价对象'];
+        delete 字段['复活代价值'];
+        delete 字段['复活代价时限tick'];
+        delete 字段['复活后状态'];
+        delete 字段['复活后状态时限tick'];
+      } else {
+        delete 字段['数值'];
+        if (字段['持续回合'] === undefined) 字段['持续回合'] = Math.max(1, parseSkillDesignerIntegerInputValue(source['持续回合'] || source.duration, 1, 1));
+        delete 字段['死亡时限tick'];
+        delete 字段['复活代价类型'];
+        delete 字段['复活代价对象'];
+        delete 字段['复活代价值'];
+        delete 字段['复活代价时限tick'];
+        delete 字段['复活后状态'];
+        delete 字段['复活后状态时限tick'];
+      }
+      return;
+    } else if (原型 === '战斗外复活') {
+      字段['数值'] = 格式化技能设计台原型比例变化(pick(['数值']) ?? 0.25, 0.25, true);
+      字段['死亡时限tick'] = Math.max(1, parseSkillDesignerIntegerInputValue(source['死亡时限tick'] || 字段['死亡时限tick'], 144, 1));
+      字段['复活代价类型'] = 技能设计台战斗外复活代价类型选项.includes(normalizeSkillUiText(字段['复活代价类型'] || source['复活代价类型'], ''))
+        ? normalizeSkillUiText(字段['复活代价类型'] || source['复活代价类型'], '')
+        : '状态代价';
+      字段['复活代价对象'] = normalizeSkillUiText(字段['复活代价对象'] || source['复活代价对象'], 字段['复活代价类型'] === '消耗实体物品' ? '复活类丹药' : 字段['复活代价类型'] === '封印能力' ? '魂技' : 字段['复活代价类型'] === '永久代价' ? '等级上限' : '虚弱');
+      字段['复活代价值'] = normalizeSkillUiText(字段['复活代价值'] || source['复活代价值'], '+1');
+      字段['复活代价时限tick'] = Math.max(1, parseSkillDesignerIntegerInputValue(source['复活代价时限tick'] || 字段['复活代价时限tick'], 144, 1));
+      字段['复活后状态'] = normalizeSkillUiText(字段['复活后状态'] || source['复活后状态'], '虚弱');
+      字段['复活后状态时限tick'] = Math.max(1, parseSkillDesignerIntegerInputValue(source['复活后状态时限tick'] || 字段['复活后状态时限tick'], 144, 1));
+      return;
+    } else if (原型 === '机制抹消') {
+      字段['抹消对象'] = 规范化技能设计台机制抹消对象(字段['抹消对象'] ?? source['抹消对象']);
+      return;
+  } else if (原型 === '复制执行') {
+    const 复制类型 = normalizeSkillUiText(字段['复制类型'] || source['复制类型'], '复制技能');
+    字段['复制类型'] = SKILL_DESIGNER_PARAM_COPY_TARGET_OPTIONS.includes(复制类型) ? 复制类型 : '复制技能';
+    const 复制模式 = normalizeSkillUiText(字段['复制模式'] || source['复制模式'], '即时镜像');
+    字段['复制模式'] = 技能设计器参数复制模式选项.includes(复制模式) ? 复制模式 : '即时镜像';
+    if (!/属性|全部/.test(String(字段['复制类型'] || ''))) delete 字段['削减比例'];
+    if (!['复制技能', '复制全部'].includes(String(字段['复制类型'] || ''))) {
+      delete 字段['保存上限'];
+      delete 字段['可用次数'];
+    }
+      if (字段['保留时长tick'] !== undefined) {
+        const tick = Math.max(0, parseSkillDesignerIntegerInputValue(字段['保留时长tick'], 0, 0));
+        if (tick > 0) 字段['保留时长tick'] = tick;
+        else delete 字段['保留时长tick'];
+      }
+      return;
+    } else if (原型 === '状态施加') {
+      if (字段['状态'] === undefined)
+        字段['状态'] = normalizeSkillUiText(source['状态'], '持续创伤');
+      return;
+    } else if (原型 === '状态移除') {
+      if (字段['状态'] === undefined) 字段['状态'] = normalizeSkillUiText(source['状态'], '任意负面');
+      if (字段['条件分支'] === undefined)
+        字段['条件分支'] = 构建缺少状态禁用条件分支(
+          字段['状态'] || '任意状态',
+          normalizeSkillUiText(字段['目标'], '') === '自身' ? '自身' : '目标',
+        );
+      return;
+    } else if (原型 === '状态交换') {
+      字段['状态'] = normalizeSkillUiText(字段['状态'] ?? source['状态'], '') || '任意负面';
+      return;
+    } else if (原型 === '状态转移') {
+      if (字段['状态'] === undefined) 字段['状态'] = normalizeSkillUiText(source['状态'], '任意状态');
+      if (字段['数量'] === undefined) {
+        const 数量文本 = normalizeSkillUiText(source['数量'], '');
+        字段['数量'] = 数量文本 === '全部' ? '全部' : Math.max(1, parseSkillDesignerIntegerInputValue(source['数量'], 1, 1));
+      }
+      const 来源 = normalizeSkillUiText(source['来源'], '自身');
+      const 去向 = normalizeSkillUiText(source['去向'], '目标');
+      if (字段['来源'] === undefined) 字段['来源'] = ['自身', '目标', '友方', '敌方'].includes(来源) ? 来源 : '自身';
+      if (字段['去向'] === undefined) 字段['去向'] = ['自身', '目标', '友方', '敌方'].includes(去向) ? 去向 : '目标';
+      return;
+    } else if (原型 === '召唤生成') {
+      if (字段['召唤单位类型'] === undefined)
+        字段['召唤单位类型'] = normalizeSkillUiText(source['召唤单位类型'], '魂兽');
+      if (字段['召唤物名称'] === undefined)
+        字段['召唤物名称'] = normalizeSkillUiText(
+          source['召唤物名称'] || source['实体名称'],
+          '召唤物',
+        );
+      if (字段['数量'] === undefined)
+        字段['数量'] = Math.max(
+          1,
+          parseSkillDesignerIntegerInputValue(source['数量'] || source['召唤数量'] || source.repeatCount, 1, 1),
+        );
+      const 使用继承 = 技能设计台召唤允许继承属性比例(字段) && toNumber(字段['继承属性比例'], 0) > 0;
+      if (使用继承) {
+        字段['继承属性比例'] = Math.max(0.01, Math.min(1, toNumber(字段['继承属性比例'], 0.45)));
+        delete 字段['强度'];
+      } else {
+        if (!(toNumber(字段['继承属性比例'], 0) > 0)) delete 字段['继承属性比例'];
+        if (字段['强度'] === undefined) 字段['强度'] = Math.max(0.01, toNumber(source['强度'] || source['召唤强度'], 1));
+      }
+      return;
+    } else if (原型 === '修炼增益') {
+      const 收益类型 = normalizeSkillUiText(字段['收益类型'] || source['收益类型'], '训练方式收益');
+      字段['收益类型'] = ['属性修炼速度', '训练方式收益'].includes(收益类型) ? 收益类型 : '训练方式收益';
+      if (字段['收益类型'] === '属性修炼速度') {
+        const 修炼属性 = getSkillDesignerPackedPropertyLabel(字段['修炼属性'] || source['修炼属性']);
+        字段['修炼属性'] = ['力量', '防御', '敏捷', '体力上限', '魂力上限', '精神力上限'].includes(修炼属性) ? 修炼属性 : '魂力上限';
+        delete 字段['训练方式'];
+      } else {
+        const 训练方式 = normalizeSkillUiText(字段['训练方式'] || source['训练方式'], '冥想');
+        字段['训练方式'] = ['冥想', '肉体训练', '精神训练', '日常训练', '副职业经验'].includes(训练方式) ? 训练方式 : '冥想';
+        delete 字段['修炼属性'];
+      }
+      raw = pick(['数值', '收益倍率']);
+    }
+    if (raw !== undefined) {
+      字段['数值'] = 原型 === '修炼增益'
+        ? 格式化技能设计台原型比例变化(raw, 1, true)
+        : normalizeSkillDesignerEffectValue(raw);
+    }
+  }
+  // —— B:19646-19665
+  function expandSkillDesignerBatchEffectFields(value = {}) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
+    if (normalizeSkillUiText(value['原型'], '') === '属性修正') return [value];
+    let entries = [cloneJsonValue(value)];
+    let expanded = false;
+    const expandTopLevel = key => {
+      entries = entries.flatMap(entry => {
+        const raw = entry && entry[key];
+        if (!Array.isArray(raw)) return [entry];
+        const list = raw.map(item => normalizeSkillUiText(item, '')).filter(Boolean);
+        if (!list.length) return [entry];
+        expanded = true;
+        return list.map(item => ({ ...entry, [key]: item }));
+      });
+    };
+    SKILL_DESIGNER_BATCH_EFFECT_FIELD_KEYS.forEach(key => {
+      expandTopLevel(key);
+    });
+    return expanded ? entries : [value];
+  }
+  // —— B:19667-19672
+  function 技能设计台原型值需要默认驱动判定(原型 = '', 字段 = {}) {
+    if (!字段 || typeof 字段 !== 'object') return false;
+    if (字段['__显式无驱动属性']) return false;
+    if (Object.prototype.hasOwnProperty.call(字段, '驱动属性')) return false;
+    return 技能设计台原型需要默认驱动判定(原型, 字段);
+  }
+  // —— B:19674
+  const 技能设计台状态施加状态分类矩阵 = Object.freeze(SHARED_SKILL_MECHANISM_REGISTRY?.状态施加状态分类矩阵 || {});
+  // —— B:19675-19677
+  const 技能设计台状态施加分类索引 = Object.freeze(Object.fromEntries(
+    Object.entries(技能设计台状态施加状态分类矩阵).flatMap(([分类, 状态列表]) => 状态列表.map(状态 => [状态, 分类])),
+  ));
+  // —— B:19678-19712
+  const 技能设计台状态施加默认驱动属性表 = Object.freeze({
+    中毒: '魂力上限',
+    流血: '魂力上限',
+    灼烧: '魂力上限',
+    冻伤: '魂力上限',
+    持续创伤: '魂力上限',
+    持续恢复: '魂力上限',
+    护盾: '魂力上限',
+    无视异常: '魂力上限',
+    麻痹: '魂力上限',
+    僵直: '魂力上限',
+    迟缓: '魂力上限',
+    虚弱: '魂力上限',
+    防御剥夺: '魂力上限',
+    资源燃烧: '魂力上限',
+    魂力枯竭: '魂力上限',
+    眩晕: '精神力上限',
+    沉默: '精神力上限',
+    致盲: '精神力上限',
+    封技: '精神力上限',
+    混乱: '精神力上限',
+    失控: '精神力上限',
+    精神紊乱: '精神力上限',
+    隐匿: '精神力上限',
+    探查屏蔽: '精神力上限',
+    共享视野: '精神力上限',
+    标记: '精神力上限',
+    嘲讽: '精神力上限',
+    精神抗性剥夺: '精神力上限',
+    禁疗: '精神力上限',
+    治疗反转: '精神力上限',
+    反噬: '精神力上限',
+    霸体: '体力上限',
+    护卫: '体力上限',
+  });
+  // —— B:19713-19716
+  function 技能设计台判定修正允许打断效果(字段 = {}) {
+    if (parseSkillDesignerIntegerInputValue(字段 && 字段['持续回合'], 0, 0) > 0) return false;
+    return 解析技能设计台正负数值(字段 && 字段['数值']) < 0;
+  }
+  // —— B:19718-19720
+  function 读取技能设计台状态施加分类(状态 = '') {
+    return 技能设计台状态施加分类索引[normalizeSkillUiText(状态, '')] || '';
+  }
+  // —— B:19722-19750
+  function 构建技能设计台状态施加分组选项(状态选项 = []) {
+    状态选项 = (Array.isArray(状态选项) ? 状态选项 : [])
+      .map(状态 => normalizeSkillUiText(状态, ''))
+      .filter(状态 => 状态 && 状态 !== '无');
+    const 分类标签 = {
+      持续伤害类: '持续伤害',
+      恢复资源类: '资源持续',
+      硬控封禁类: '控制封禁',
+      防御布尔类: '防御状态',
+      防御数值类: '防御状态',
+      增益类: '增益状态',
+      削弱标记类: '削弱标记',
+    };
+    const 分组选项 = new Map();
+    const 已分组状态 = new Set();
+    Object.entries(技能设计台状态施加状态分类矩阵).forEach(([分类, 分类状态列表]) => {
+      const 标签 = 分类标签[分类] || 分类;
+      (Array.isArray(分类状态列表) ? 分类状态列表 : []).forEach(状态名 => {
+        const 状态 = normalizeSkillUiText(状态名, '');
+        if (!状态 || !状态选项.includes(状态)) return;
+        if (!分组选项.has(标签)) 分组选项.set(标签, []);
+        分组选项.get(标签).push(状态);
+        已分组状态.add(状态);
+      });
+    });
+    const 未分类状态 = 状态选项.filter(状态 => !已分组状态.has(状态));
+    if (未分类状态.length) 分组选项.set('其他状态', 未分类状态);
+    return Array.from(分组选项, ([label, options]) => ({ label, options }));
+  }
+  // —— B:19752-19756
+  function 技能设计台状态施加允许数值字段(状态 = '') {
+    const 状态名 = normalizeSkillUiText(状态, '');
+    return ['持续伤害类', '恢复资源类', '防御数值类'].includes(读取技能设计台状态施加分类(状态名)) ||
+      ['禁疗', '治疗反转', '标记', '嘲讽', '共享视野', '防御剥夺', '精神抗性剥夺', '虚弱', '迟缓', '资源燃烧', '失控', '反噬', '精神紊乱', '僵直', '麻痹', '混乱', '魂力枯竭'].includes(状态名);
+  }
+  // —— B:19758-19760
+  function 技能设计台状态施加允许副数值字段(状态 = '') {
+    return ['中毒', '流血', '灼烧', '冻伤', '持续创伤', '资源燃烧', '迟缓', '失控', '精神紊乱', '魂力枯竭', '僵直', '麻痹', '混乱', '共享视野'].includes(normalizeSkillUiText(状态, ''));
+  }
+  // —— B:19762-19786
+  function 技能设计台状态施加默认数值(状态 = '') {
+    const 状态名 = normalizeSkillUiText(状态, '');
+    if (状态名 === '中毒') return '-3%';
+    if (状态名 === '流血') return '-3%';
+    if (状态名 === '持续恢复') return '+5%';
+    if (状态名 === '护盾') return '+10%';
+    if (状态名 === '禁疗') return '+40%';
+    if (状态名 === '治疗反转') return '+100%';
+    if (状态名 === '护卫') return '+10%';
+    if (状态名 === '嘲讽') return '+100%';
+    if (状态名 === '共享视野') return '+10%';
+    if (['资源燃烧', '魂力枯竭'].includes(状态名)) return '+3%';
+    if (状态名 === '冻伤') return '-2%';
+    if (状态名 === '迟缓') return '-10%';
+    if (状态名 === '虚弱') return '-8%';
+    if (状态名 === '失控') return '+35%';
+    if (状态名 === '反噬') return '+3%';
+    if (状态名 === '精神紊乱') return '+25%';
+    if (状态名 === '僵直') return '-50%';
+    if (状态名 === '麻痹') return '-50%';
+    if (状态名 === '混乱') return '+40%';
+    if (状态名 === '标记') return '-100%';
+    if (['防御剥夺', '精神抗性剥夺'].includes(状态名)) return '+20%';
+    return '-3%';
+  }
+  // —— B:19788-19801
+  function 技能设计台状态施加默认副数值(状态 = '') {
+    const 状态名 = normalizeSkillUiText(状态, '');
+    if (状态名 === '中毒') return '-5%';
+    if (状态名 === '流血') return '+5%';
+    if (['灼烧', '冻伤'].includes(状态名)) return '+20%';
+    if (状态名 === '持续创伤') return '-5%';
+    if (['资源燃烧', '魂力枯竭'].includes(状态名)) return '+5%';
+    if (状态名 === '共享视野') return '+10%';
+    if (状态名 === '迟缓') return '-8%';
+    if (['失控', '混乱'].includes(状态名)) return '-10%';
+    if (状态名 === '精神紊乱') return '-8%';
+    if (['僵直', '麻痹'].includes(状态名)) return '-20%';
+    return '+5%';
+  }
+  // —— B:19803-19850
+  function 技能设计台状态摘要(effect = {}) {
+    const 状态名 = normalizeSkillUiText(effect && effect['状态'], '');
+    const 数值 = normalizeSkillUiText(effect && effect['数值'], 技能设计台状态施加默认数值(状态名));
+    const 副数值 = normalizeSkillUiText(effect && effect['副数值'], 技能设计台状态施加默认副数值(状态名));
+    const 触发方式 = normalizeSkillUiText(effect && effect['触发方式'], '立即触发');
+    const 延迟回合 = parseSkillDesignerIntegerInputValue(effect && effect['延迟回合'], 1, 1);
+    const 触发前缀 = 触发方式 === '延迟触发'
+      ? `延迟${延迟回合}回合后，`
+      : 触发方式 === '遥控触发'
+        ? '遥控触发时，'
+        : '';
+    const 映射 = {
+      中毒: `每回合生命${数值}，命中率${副数值}。`,
+      流血: `每回合生命${数值}，受到伤害${副数值}。`,
+      灼烧: `每回合生命${数值}，火元素承伤${副数值}。`,
+      冻伤: `每回合生命${数值}，冰元素承伤${副数值}。`,
+      持续创伤: `每回合生命${数值}，反应${副数值}。`,
+      持续恢复: `每回合生命${数值}。`,
+      迟缓: `敏捷${数值}，反应${副数值}。`,
+      资源燃烧: `每回合燃烧魂力${String(数值).replace(/^\+/, '')}，技能消耗${副数值}。`,
+      眩晕: '跳过行动，无法反应。',
+      沉默: '目标暂时无法施展魂技与主动技能。',
+      致盲: '目标感知被扰乱，攻击命中下降35%。',
+      禁疗: `目标生机受压制，受到的治疗降低${String(数值).replace(/^\+/, '')}。`,
+      治疗反转: `目标生机被扭曲，治疗按${String(数值).replace(/^\+/, '')}转化为伤害。`,
+      隐匿: '无法被单体敌对效果直接锁定，范围与全场效果仍会命中。',
+      探查屏蔽: '屏蔽精神力感知、目标锁定与精神标记对自身的捕捉。',
+      共享视野: `命中率${数值}，反应${副数值}。`,
+      护盾: `获得生命上限${String(数值).replace(/^\+/, '')}的护盾。`,
+      无视异常: '短时间进入无视异常状态，免疫负面状态与削减类效果。',
+      霸体: '身形稳固如山，行动不易被打断。',
+      标记: `目标被精神标记，闪避率${数值}。`,
+      防御剥夺: `防御参与伤害结算时，目标防御按${String(数值).replace(/^\+/, '')}剥夺。`,
+      精神抗性剥夺: `防守精神参与精神攻击结算时，目标精神抗性按${String(数值).replace(/^\+/, '')}剥夺。`,
+      护卫: `施术者护卫目标，替其拦截攻击，护卫者承伤降低${String(数值).replace(/^\+/, '')}。`,
+      嘲讽: '目标会优先攻击施术者。',
+      封技: '技能回路被封锁，暂时无法施展技能。',
+      虚弱: `目标力量、防御、敏捷各${数值}。`,
+      失控: `${String(数值).replace(/^\+/, '')}概率偏转目标，命中率${副数值}。`,
+      反噬: `主动施技续受到自身生命上限${String(数值).replace(/^\+/, '')}的伤害。`,
+      精神紊乱: `${String(数值).replace(/^\+/, '')}概率偏转目标，反应${副数值}。`,
+      魂力枯竭: `每回合流失魂力${String(数值).replace(/^\+/, '')}，技能消耗${副数值}。`,
+      僵直: `目标无法反应，闪避率${副数值}。`,
+      麻痹: `目标反应${数值}，闪避率${副数值}。`,
+      混乱: `${String(数值).replace(/^\+/, '')}概率偏转目标，命中率${副数值}。`,
+    };
+    return 映射[状态名] ? `${触发前缀}${映射[状态名]}` : '';
+  }
+  // —— B:19852-19864
+  function 技能设计台位移执行摘要(effect = {}) {
+    const 位移类型 = normalizeSkillUiText(effect && effect['位移类型'], '瞬移');
+    const 位移对象 = normalizeSkillUiText(effect && effect['位移对象'], 推断技能设计台位移对象(effect));
+    const 距离 = Math.max(1, Math.min(30, toNumber(effect && effect['距离'], 1)));
+    const 强度文本 = normalizeSkillUiText(effect && effect['数值'], '') || `约+${Math.round(Math.min(45, 距离 * 4))}%`;
+    if (位移对象 === '自身与目标' || 位移类型 === '换位') return `双方节奏扰动：反应/闪避变化${强度文本}。`;
+    if (位移对象 === '自身' || ['瞬移', '脱离'].includes(位移类型)) {
+      return `${位移类型}收益：自身闪避/反应${强度文本}${位移类型 === '脱离' ? '，降低被锁定' : ''}。`;
+    }
+    if (位移类型 === '拉近') return `压迫目标：命中/锁定提高，目标反应${强度文本}。`;
+    if (位移类型 === '击退') return `压制目标：反应/闪避/命中${强度文本}。`;
+    return `战斗折算：反应与闪避${强度文本}。`;
+  }
+  // —— B:19866-19868
+  function 技能设计台状态一句话说明(状态 = '') {
+    return 技能设计台状态摘要({ 状态 });
+  }
+  // —— B:19870-19872
+  function 技能设计台状态施加使用正向强度数值(状态 = '') {
+    return ['资源燃烧', '魂力枯竭', '防御剥夺', '精神抗性剥夺'].includes(normalizeSkillUiText(状态, ''));
+  }
+  // —— B:19874-19903
+  function 技能设计台状态施加字段显示名(状态 = '', 字段 = '') {
+    const 状态名 = normalizeSkillUiText(状态, '');
+    const 字段名 = normalizeSkillUiText(字段, '');
+    if (!['数值', '副数值'].includes(字段名)) return '';
+    const 字段名矩阵 = {
+      中毒: { 数值: '生命流失', 副数值: '命中修正' },
+      流血: { 数值: '生命流失', 副数值: '承伤修正' },
+      灼烧: { 数值: '生命流失', 副数值: '火元素承伤' },
+      冻伤: { 数值: '生命流失', 副数值: '冰元素承伤' },
+      持续创伤: { 数值: '生命流失', 副数值: '反应修正' },
+      持续恢复: { 数值: '生命恢复' },
+      迟缓: { 数值: '敏捷修正', 副数值: '反应修正' },
+      资源燃烧: { 数值: '魂力流失', 副数值: '消耗修正' },
+      禁疗: { 数值: '治疗削弱' },
+      治疗反转: { 数值: '转伤比例' },
+      护盾: { 数值: '护盾比例' },
+      标记: { 数值: '闪避修正' },
+      防御剥夺: { 数值: '防御剥夺' },
+      精神抗性剥夺: { 数值: '精神抗性剥夺' },
+      虚弱: { 数值: '属性修正' },
+      失控: { 数值: '偏转概率', 副数值: '命中修正' },
+      反噬: { 数值: '自伤比例' },
+      精神紊乱: { 数值: '偏转概率', 副数值: '反应修正' },
+      魂力枯竭: { 数值: '魂力流失', 副数值: '消耗修正' },
+      僵直: { 数值: '反应修正', 副数值: '闪避修正' },
+      麻痹: { 数值: '反应修正', 副数值: '闪避修正' },
+      混乱: { 数值: '偏转概率', 副数值: '命中修正' },
+    };
+    return 字段名矩阵[状态名]?.[字段名] || (字段名 === '副数值' ? '附加数值' : 字段名);
+  }
+  // —— B:19905-19913
+  function 格式化技能设计台状态施加比例字段(value, fallback = '+5%') {
+    const 原文 = normalizeSkillUiText(value, '');
+    if (!原文) return fallback;
+    const 数值 = parseSkillDesignerSignedValue(原文);
+    if (!Number.isFinite(数值)) return fallback;
+    if (/%$/.test(原文)) return formatSkillDesignerSignedValue(数值, true);
+    if (Math.abs(数值) <= 1) return formatSkillDesignerSignedValue(数值, true);
+    return formatSkillDesignerSignedValue(数值 / 100, true);
+  }
+  // —— B:19915-19929
+  function 限制技能设计台状态施加比例字段(状态 = '', 字段名 = '', value = '') {
+    const 状态名 = normalizeSkillUiText(状态, '');
+    const 字段 = normalizeSkillUiText(字段名, '');
+    const 数值 = parseSkillDesignerSignedValue(value);
+    if (!Number.isFinite(数值)) return value;
+    if (字段 === '数值' && (技能设计台状态施加状态分类矩阵.持续伤害类 || []).includes(状态名))
+      return formatSkillDesignerSignedValue(-Math.max(0.01, Math.abs(数值)), true);
+    if (字段 === '数值' && 状态名 === '持续恢复')
+      return formatSkillDesignerSignedValue(Math.max(0.05, Math.abs(数值)), true);
+    if (字段 === '数值' && ['资源燃烧', '魂力枯竭'].includes(状态名))
+      return formatSkillDesignerSignedValue(Math.max(0.01, Math.abs(数值)), true);
+    if (字段 === '数值' && ['护盾', '禁疗', '治疗反转', '防御剥夺', '精神抗性剥夺'].includes(状态名))
+      return formatSkillDesignerSignedValue(Math.max(0.05, Math.abs(数值)), true);
+    return value;
+  }
+  // —— B:19931-19935
+  function 技能设计台状态施加清理驱动字段(状态 = '', 目标 = '') {
+    const 分类 = 读取技能设计台状态施加分类(状态);
+    return ['硬控封禁类', '防御布尔类', '增益类'].includes(分类) &&
+      ['自身', '召唤物', '分身'].includes(normalizeSkillUiText(目标, ''));
+  }
+  // —— B:19937-19940
+  function 技能设计台状态施加是负面语义(状态 = '') {
+    const 分类 = 读取技能设计台状态施加分类(状态);
+    return ['持续伤害类', '硬控封禁类', '削弱标记类'].includes(分类) || normalizeSkillUiText(状态, '') === '资源燃烧';
+  }
+  // —— B:19942-19945
+  function 技能设计台状态交换状态有效(状态 = '') {
+    const 状态名 = normalizeSkillUiText(状态, '');
+    return 状态名 === '任意负面' || 技能设计台状态施加是负面语义(状态名);
+  }
+  // —— B:19947-19949
+  function 技能设计台状态施加是防护语义(状态 = '') {
+    return ['防御布尔类', '防御数值类'].includes(读取技能设计台状态施加分类(状态));
+  }
+  // —— B:19951-19957
+  function 技能设计台状态施加允许触发限制(状态 = '', 目标 = '') {
+    const 状态名 = normalizeSkillUiText(状态, '');
+    const 目标名 = normalizeSkillUiText(目标, '');
+    const 分类 = 读取技能设计台状态施加分类(状态名);
+    return 状态名 === '无视异常' ||
+      (['群体', '全场'].includes(目标名) && (分类 === '硬控封禁类' || 技能设计台状态施加是防护语义(状态名)));
+  }
+  // —— B:19959-19977
+  function 技能设计台状态施加强度约束错误(effect = {}, path = '_效果数组', index = 0) {
+    const 状态名 = normalizeSkillUiText(effect && effect['状态'], '');
+    const 目标 = normalizeSkillUiText(effect && effect['目标'], '');
+    const 顶层 = path === '_效果数组';
+    const 嵌套或代价 = !顶层 || /\.(授予效果|结算效果|使用效果|副作用)(?:\[|$)/.test(path);
+    const 持续回合 = parseSkillDesignerIntegerInputValue(effect && effect['持续回合'], 0, 0);
+    const 有触发限制 = !!(effect && effect['触发限制'] && typeof effect['触发限制'] === 'object' && !Array.isArray(effect['触发限制']));
+    if (顶层 && !嵌套或代价 && 目标 === '自身' && 技能设计台状态施加是负面语义(状态名))
+      return `技能执行结构错误:${path}[${index}]负面状态顶层不能直接作用自身，需放入副作用或代价槽位`;
+    if (['群体', '全场'].includes(目标) && 读取技能设计台状态施加分类(状态名) === '硬控封禁类') {
+      if (!(持续回合 > 0 || 有触发限制)) return `技能执行结构错误:${path}[${index}]群体硬控必须有持续或触发约束`;
+      if (持续回合 > 1 && !有触发限制) return `技能执行结构错误:${path}[${index}]群体硬控持续回合必须为短窗或带触发限制`;
+    }
+    if (['群体', '全场'].includes(目标) && 技能设计台状态施加是防护语义(状态名) && !(持续回合 > 0 || 有触发限制))
+      return `技能执行结构错误:${path}[${index}]群体防护状态必须有持续或触发约束`;
+    if (['群体', '全场'].includes(目标) && (技能设计台状态施加状态分类矩阵.持续伤害类 || []).includes(状态名) && 持续回合 > 3)
+      return `技能执行结构错误:${path}[${index}]群体DOT持续回合过长`;
+    return '';
+  }
+  // —— B:19979-20015
+  function 清理技能设计台纯布尔控制字段(原型 = '', 字段 = {}) {
+    if (normalizeSkillUiText(原型, '') !== '状态施加' || !字段 || typeof 字段 !== 'object') return;
+    const 状态名 = normalizeSkillUiText(字段['状态'], '');
+    const 触发方式 = normalizeSkillUiText(字段['触发方式'], '立即触发');
+    字段['触发方式'] = ['立即触发', '延迟触发', '遥控触发'].includes(触发方式)
+      ? 触发方式
+      : 字段['延迟回合'] !== undefined
+        ? '延迟触发'
+        : '立即触发';
+    if (字段['触发方式'] === '延迟触发' || 字段['延迟回合'] !== undefined) {
+      字段['触发方式'] = '延迟触发';
+      字段['延迟回合'] = Math.max(1, parseSkillDesignerIntegerInputValue(字段['延迟回合'], 1, 1));
+    } else {
+      delete 字段['延迟回合'];
+    }
+    if (!技能设计台状态施加允许数值字段(状态名)) delete 字段['数值'];
+    if (!技能设计台状态施加允许副数值字段(状态名)) delete 字段['副数值'];
+    if (字段['数值'] !== undefined) 字段['数值'] = 格式化技能设计台状态施加比例字段(字段['数值'], 技能设计台状态施加默认数值(状态名));
+    if (字段['副数值'] !== undefined) 字段['副数值'] = 格式化技能设计台状态施加比例字段(字段['副数值'], 技能设计台状态施加默认副数值(状态名));
+    if (字段['数值'] !== undefined) 字段['数值'] = 限制技能设计台状态施加比例字段(状态名, '数值', 字段['数值']);
+    if (字段['副数值'] !== undefined) 字段['副数值'] = 限制技能设计台状态施加比例字段(状态名, '副数值', 字段['副数值']);
+    if (['禁疗', '治疗反转'].includes(状态名) && 字段['数值'] !== undefined) {
+      字段['数值'] = formatSkillDesignerSignedValue(
+        Math.abs(parseSkillDesignerSignedValue(字段['数值'])),
+        /%$/.test(normalizeSkillUiText(字段['数值'], '')),
+      );
+    }
+    if (技能设计台状态施加清理驱动字段(状态名, 字段['目标'])) {
+      delete 字段['驱动属性'];
+      delete 字段['影响方向'];
+    } else if (状态名 === '标记') {
+      if (!normalizeSkillUiText(字段['驱动属性'], '')) 字段['驱动属性'] = '精神力上限';
+      if (!normalizeSkillUiText(字段['影响方向'], '')) 字段['影响方向'] = '效果强度';
+    }
+    delete 字段['概率'];
+    delete 字段['打断效果'];
+  }
+  // —— B:20017-20042
+  function 清理技能设计台打断效果字段(原型 = '', 字段 = {}) {
+    if (!字段 || typeof 字段 !== 'object') return;
+    delete 字段['打断类型'];
+    delete 字段['中断概率'];
+    if (normalizeSkillUiText(原型, '') === '判定修正') {
+      if (parseSkillDesignerIntegerInputValue(字段 && 字段['持续回合'], 0, 0) > 0) {
+        delete 字段['打断效果'];
+        return;
+      }
+      if (!Object.prototype.hasOwnProperty.call(字段, '打断效果')) {
+        if (技能设计台判定修正允许打断效果(字段)) 字段['打断效果'] = true;
+        return;
+      }
+      if (!技能设计台判定修正允许打断效果(字段)) {
+        delete 字段['打断效果'];
+        return;
+      }
+      字段['打断效果'] = !!字段['打断效果'];
+      return;
+    }
+    if (normalizeSkillUiText(原型, '') === '状态施加') {
+      delete 字段['打断效果'];
+      return;
+    }
+    delete 字段['打断效果'];
+  }
+  // —— B:20044-20054
+  function 推断技能设计台位移对象(字段 = {}) {
+    const 位移类型 = normalizeSkillUiText(字段 && 字段['位移类型'], '');
+    const 目标 = normalizeSkillUiText(字段 && 字段['目标'], '');
+    const 显式对象 = normalizeSkillUiText(字段 && 字段['位移对象'], '');
+    if (['自身', '目标', '自身与目标'].includes(显式对象)) return 显式对象;
+    if (位移类型 === '换位') return '自身与目标';
+    if (['瞬移', '脱离'].includes(位移类型)) return '自身';
+    if (['自身', '友方', '召唤物'].includes(目标)) return '自身';
+    if (位移类型 === '拉近') return '自身';
+    return '目标';
+  }
+  // —— B:20056-20058
+  function 技能设计台位移对象包含目标(位移对象 = '') {
+    return ['目标', '自身与目标'].includes(normalizeSkillUiText(位移对象, ''));
+  }
+  // —— B:20060-20064
+  function 技能设计台位移目标需要判定(字段 = {}) {
+    const 目标 = normalizeSkillUiText(字段 && 字段['目标'], '');
+    if (['自身', '友方', '友方单体', '友方群体', '召唤物'].includes(目标)) return false;
+    return 技能设计台位移对象包含目标(字段 && 字段['位移对象']);
+  }
+  // —— B:20066-20088
+  function 清理技能设计台位移字段(原型 = '', 字段 = {}) {
+    if (normalizeSkillUiText(原型, '') !== '位移执行' || !字段 || typeof 字段 !== 'object') return;
+    delete 字段['方位'];
+    delete 字段['数量'];
+    字段['距离'] = Math.max(1, Math.min(30, toNumber(字段['距离'], 1)));
+    字段['持续回合'] = Math.max(1, Math.min(10, parseSkillDesignerIntegerInputValue(字段['持续回合'], 1, 1)));
+    if (字段['数值'] !== undefined) {
+      const 数值文本 = normalizeSkillUiText(字段['数值'], '');
+      if (技能设计台字段值是百分比修正(数值文本)) 字段['数值'] = formatSkillDesignerSignedValue(解析技能设计台正负数值(数值文本), true);
+      else delete 字段['数值'];
+    }
+    字段['位移对象'] = 推断技能设计台位移对象(字段);
+    if (技能设计台位移目标需要判定(字段)) {
+      if (!normalizeSkillUiText(字段['驱动属性'], '')) 字段['驱动属性'] = '魂力上限';
+      if (!normalizeSkillUiText(字段['影响方向'], '')) 字段['影响方向'] = '效果强度';
+    } else if (
+      normalizeSkillUiText(字段['影响方向'], '') === '成功率' &&
+      !技能设计台原型值需要默认驱动判定(原型, 字段)
+    ) {
+      delete 字段['驱动属性'];
+      delete 字段['影响方向'];
+    }
+  }
+  // —— B:20090-20104
+  function 限制技能设计台护盾变化数值(字段 = {}) {
+    if (!字段 || typeof 字段 !== 'object' || 字段['数值'] === undefined) return;
+    const 模式 = normalizeSkillUiText(字段['护盾模式'], '正向护盾');
+    const 文本 = normalizeSkillUiText(字段['数值'], '');
+    const 匹配 = 文本.match(/^[+-]?(\d+(?:\.\d+)?)(%)?$/);
+    if (匹配) {
+      const 符号 = 模式 === '正向护盾' ? '+' : '-';
+      const 数值 = Math.abs(Number(匹配[1]) || 0);
+      const 精度 = Math.abs(数值 % 1) < 0.0001 ? 0 : 2;
+      字段['数值'] = `${符号}${Number(数值.toFixed(精度))}${匹配[2] ? '%' : ''}`;
+      return;
+    }
+    const 数值 = Math.abs(解析技能设计台正负数值(字段['数值']));
+    if (数值 > 0) 字段['数值'] = `${模式 === '正向护盾' ? '+' : '-'}${数值}`;
+  }
+  // —— B:20106-20126
+  function 清理技能设计台召唤字段(原型 = '', 字段 = {}) {
+    if (normalizeSkillUiText(原型, '') !== '召唤生成' || !字段 || typeof 字段 !== 'object') return;
+    字段['召唤单位类型'] = normalizeSkillUiText(字段['召唤单位类型'], '魂兽');
+    if (!技能设计台召唤单位类型选项.includes(字段['召唤单位类型'])) 字段['召唤单位类型'] = '魂兽';
+    字段['目标'] = '自身';
+    字段['数量'] = Math.max(1, parseSkillDesignerIntegerInputValue(字段['数量'], 1, 1));
+    const 默认行动模式 = ['魂师', '魂兽', '本命召唤兽', '深渊生物'].includes(字段['召唤单位类型']) ? '自主行动' : '协同攻击';
+    if (!['自主行动', '护卫', '协同攻击'].includes(normalizeSkillUiText(字段['行动模式'], '')))
+      字段['行动模式'] = 默认行动模式;
+    const 使用继承 = 技能设计台召唤允许继承属性比例(字段);
+    if (使用继承) {
+      delete 字段['强度'];
+      字段['继承属性比例'] = Math.max(0.01, Math.min(1, toNumber(字段['继承属性比例'], 0.45)));
+    } else {
+      if (!(toNumber(字段['继承属性比例'], 0) > 0)) delete 字段['继承属性比例'];
+      字段['强度'] = Math.max(0.01, toNumber(字段['强度'], 1));
+    }
+    if (normalizeSkillUiText(字段['行动模式'], '') === '护卫') {
+      if (!['可承伤', '护卫承伤', '分摊承伤'].includes(normalizeSkillUiText(字段['承伤规则'], ''))) 字段['承伤规则'] = '护卫承伤';
+    } else delete 字段['承伤规则'];
+  }
+  // —— B:20128-20135
+  function 解析技能设计台正负数值(数值) {
+    if (typeof 数值 === 'number') return Number.isFinite(数值) ? 数值 : 0;
+    const 文本 = normalizeSkillUiText(数值, '');
+    const 匹配 = 文本.match(/^([+-]?)(\d+(?:\.\d+)?)(%)?$/);
+    if (!匹配) return 0;
+    const 符号 = 匹配[1] === '-' ? -1 : 1;
+    return 符号 * (Number(匹配[2]) || 0);
+  }
+  // —— B:20137-20139
+  function 技能设计台字段值是百分比修正(数值) {
+    return /^[-+]?\d+(?:\.\d+)?%$/.test(normalizeSkillUiText(数值, ''));
+  }
+  // —— B:20141-20143
+  function 技能设计台字段值是数值修正(数值) {
+    return /^[-+]?\d+(?:\.\d+)?%?$/.test(normalizeSkillUiText(数值, ''));
+  }
+  // —— B:20145-20147
+  function 技能设计台数值字段使用单位下拉(原型 = '', 字段 = '', effect = {}) {
+    return ['混合', '百分比', '点数'].includes(读取技能设计台数值字段口径(原型, 字段, effect));
+  }
+  // —— B:20149-20151
+  function 读取技能设计台数值单位(value = '') {
+    return /%$/.test(normalizeSkillUiText(value, '')) ? '百分比' : '点数';
+  }
+  // —— B:20153-20163
+  function 格式化技能设计台单位数值(value = '', 单位 = '点数') {
+    const 文本 = normalizeSkillUiText(value, '');
+    if (!文本) return '';
+    const 匹配 = 文本.match(/^([+-]?)(\d+(?:\.\d+)?)(%)?$/);
+    if (!匹配) return 文本;
+    const 数值 = Number(匹配[2]);
+    if (!Number.isFinite(数值)) return 文本;
+    const 精度 = Math.abs(数值 % 1) < 0.0001 ? 0 : 2;
+    const 符号 = 匹配[1] === '-' ? '-' : '+';
+    return `${符号}${Number(数值.toFixed(精度))}${单位 === '百分比' ? '%' : ''}`;
+  }
+  // —— B:20173-20180
+  function 构建技能设计台数值单位下拉(当前单位 = '点数', 禁用 = false) {
+    const disabledAttr = 禁用 ? ' disabled aria-disabled="true"' : '';
+    return `
+              <select class=\"mvu-editor-select\" data-skill-designer-value-unit data-skill-designer-disableable${disabledAttr}>
+                <option value=\"点数\"${当前单位 === '点数' ? ' selected' : ''}>点数</option>
+                <option value=\"百分比\"${当前单位 === '百分比' ? ' selected' : ''}>百分比</option>
+              </select>`;
+  }
+  // —— B:20182-20196
+  function 读取技能设计台数值字段口径(原型 = '', 字段 = '', effect = {}) {
+    const 原型名 = normalizeSkillUiText(原型, '');
+    const 字段名 = normalizeSkillUiText(字段, '');
+    if (!['数值', '副数值', '强化倍率', '结算倍率'].includes(字段名)) return '';
+    if (字段名 === '强化倍率' || 字段名 === '结算倍率') return '百分比';
+    if (原型名 === '状态施加') return '百分比';
+    if (['属性修正', '判定修正', '资源锁定', '决策干扰'].includes(原型名)) return '百分比';
+    if (['资源变化', '资源转移', '护盾变化'].includes(原型名)) return '混合';
+    if (原型名 === '结算修正') {
+      const 结算 = normalizeSkillUiText(effect && effect['结算'], '');
+      return ['消耗', '前摇'].includes(结算) ? '混合' : '百分比';
+    }
+    if (原型名 === '规则改写' && normalizeSkillUiText(effect && effect['规则'], '') === '死亡转存活') return '百分比';
+    return '';
+  }
+  // —— B:20198-20208
+  function 格式化技能设计台百分比字段值(value, fallback = '+5%') {
+    if (typeof value === 'number') {
+      if (!Number.isFinite(value)) return fallback;
+      return formatSkillDesignerSignedValue(Math.abs(value) <= 1 ? value : value / 100, true);
+    }
+    const 文本 = normalizeSkillUiText(value, '');
+    if (!文本) return fallback;
+    if (/%$/.test(文本)) return formatSkillDesignerSignedValue(parseSkillDesignerSignedValue(文本), true);
+    const 百分点 = 解析技能设计台正负数值(文本);
+    return Number.isFinite(百分点) ? formatSkillDesignerSignedValue(百分点 / 100, true) : fallback;
+  }
+  // —— B:20210-20216
+  function 规范化技能设计台数值字段值(原型 = '', 字段 = '', value = '', effect = {}) {
+    const 口径 = 读取技能设计台数值字段口径(原型, 字段, effect);
+    if (口径 === '混合') return 格式化技能设计台单位数值(value, 读取技能设计台数值单位(value));
+    if (口径 === '点数') return 格式化技能设计台单位数值(value, '点数');
+    if (口径 === '百分比') return 格式化技能设计台百分比字段值(value);
+    return normalizeSkillDesignerEffectValue(value);
+  }
+  // —— B:20218-20237
+  const 技能设计台结算修正支持字段矩阵 = Object.freeze({
+    造成伤害: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合', '限定元素', '驱动属性', '影响方向']),
+    受到伤害: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合', '限定元素', '驱动属性', '影响方向']),
+    治疗: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合', '驱动属性', '影响方向']),
+    消耗: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合', '限定元素', '驱动属性', '影响方向']),
+    前摇: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合', '限定元素', '驱动属性', '影响方向']),
+    反伤: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合']),
+    伤害转移: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '转移对象', '持续回合']),
+    伤害吸收: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '对应等级', '吸收来源', '吸收资源', '转化效果', '增幅上限', '持续回合']),
+    伤害转治疗: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合']),
+    治疗转伤害: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合']),
+    伤害分摊: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '数量', '持续回合']),
+    消耗分摊: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '数量', '持续回合']),
+    防御穿透: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合']),
+    防御剥夺: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合', '驱动属性', '影响方向']),
+    精神抗性剥夺: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合', '驱动属性', '影响方向']),
+    技能效果: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合', '限定元素', '驱动属性', '影响方向']),
+    反击: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合', '触发限制']),
+    持续伤害引爆: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值']),
+  });
+  // —— B:20239-20249
+  function 读取技能设计台限定元素列表(value) {
+    const 原始列表 = Array.isArray(value) ? value : normalizeSkillUiText(value, '').split(/[、,，/|｜；;\s]+/g);
+    const 展开表 = {
+      五行类: WUXING_ATTRIBUTE_TOKEN_OPTIONS,
+      元素类: ELEMENT_ATTRIBUTE_TOKEN_OPTIONS,
+    };
+    return Array.from(new Set(原始列表
+      .map(项 => normalizeSkillUiText(项, ''))
+      .filter(Boolean)
+      .flatMap(项 => 展开表[项] || [项])));
+  }
+  // —— B:20251-20263
+  function 格式化技能设计台限定元素显示(value) {
+    const 原始列表 = Array.isArray(value) ? value : normalizeSkillUiText(value, '').split(/[、,，/|｜；;\s]+/g);
+    const 原始集合 = new Set(原始列表.map(项 => normalizeSkillUiText(项, '')).filter(Boolean));
+    if (原始集合.has('元素类')) return '元素类';
+    if (原始集合.has('五行类')) return '五行类';
+    const 列表 = 读取技能设计台限定元素列表(value).filter(元素 => SPIRIT_ATTRIBUTE_TOKEN_OPTIONS.includes(元素));
+    const 等于集合 = 目标 => 列表.length === 目标.length && 目标.every(元素 => 列表.includes(元素));
+    if (等于集合(ELEMENT_ATTRIBUTE_TOKEN_OPTIONS)) return '元素类';
+    if (等于集合(WUXING_ATTRIBUTE_TOKEN_OPTIONS)) return '五行类';
+    if (!列表.length) return '';
+    if (列表.length <= 6) return 列表.join('、');
+    return `${列表.slice(0, 6).join('、')}等${列表.length}项`;
+  }
+  // —— B:20276-20280
+  function 技能设计台条件分支包含释放后条件(effect = {}) {
+    return (Array.isArray(effect && effect['条件分支']) ? effect['条件分支'] : []).some(分支 =>
+      技能设计台条件列表包含释放后条件(分支 && 分支['条件']),
+    );
+  }
+  // —— B:20282-20286
+  function 技能设计台条件列表包含释放后条件(条件列表 = []) {
+    return (Array.isArray(条件列表) ? 条件列表 : []).some(条件 =>
+      技能设计台释放前结算禁用条件类型.includes(normalizeSkillUiText(条件 && 条件['类型'], '')),
+    );
+  }
+  // —— B:20288-20299
+  function 技能设计台效果列表包含释放前降低结算(效果列表 = []) {
+    return (Array.isArray(效果列表) ? 效果列表 : []).some(effect => {
+      if (!effect || typeof effect !== 'object' || Array.isArray(effect)) return false;
+      const 原型 = normalizeSkillUiText(effect['原型'], '');
+      const 结算 = normalizeSkillUiText(effect['结算'], '');
+      if (原型 === '结算修正' && ['消耗', '前摇'].includes(结算) && 解析技能设计台正负数值(effect['数值']) < 0) return true;
+      return 技能设计台嵌套效果数组字段表.some(键 => 技能设计台效果列表包含释放前降低结算(effect[键]))
+        || (Array.isArray(effect['条件分支']) ? effect['条件分支'] : []).some(分支 =>
+          技能设计台条件分支效果数组字段表.some(键 => 技能设计台效果列表包含释放前降低结算(分支 && 分支[键])),
+        );
+    });
+  }
+  // —— B:20301-20311
+  function 断言技能设计台释放后分支不携带释放前降低结算(effect = {}, path = '_效果数组', index = 0) {
+    if (!Array.isArray(effect && effect['条件分支'])) return;
+    effect['条件分支'].forEach((分支, 分支序号) => {
+      if (!技能设计台条件列表包含释放后条件(分支 && 分支['条件'])) return;
+      技能设计台条件分支效果数组字段表.forEach(字段名 => {
+        if (技能设计台效果列表包含释放前降低结算(分支 && 分支[字段名])) {
+          throw new Error(`技能执行结构错误:${path}[${index}].条件分支[${分支序号}]${字段名}不能用命中/被闪避条件降低消耗或前摇`);
+        }
+      });
+    });
+  }
+  // —— B:20313-20377
+  function 断言技能设计台结算修正字段范围(effect = {}, path = '_效果数组', index = 0) {
+    const 结算 = normalizeSkillUiText(effect['结算'], '');
+    if (/\.状态效果(?:\[|$)/.test(path) && 结算 === '伤害') {
+      throw new Error(`技能执行结构错误:${path}[${index}]状态内结算修正必须使用受到伤害`);
+    }
+    const 支持字段 = 技能设计台结算修正支持字段矩阵[结算];
+    if (!支持字段) throw new Error(`技能执行结构错误:${path}[${index}]结算修正选项无效`);
+    Object.keys(effect || {}).forEach(字段名 => {
+      if (!支持字段.includes(字段名)) throw new Error(`技能执行结构错误:${path}[${index}]${结算}不支持字段${字段名}`);
+    });
+    const 允许绝对值 = ['消耗', '前摇'].includes(结算);
+    if (允许绝对值 ? !技能设计台字段值是数值修正(effect['数值']) : !技能设计台字段值是百分比修正(effect['数值']))
+      throw new Error(`技能执行结构错误:${path}[${index}]${结算}数值${允许绝对值 ? '只能填写百分比或绝对值' : '必须使用百分比'}`);
+    const 数值 = 解析技能设计台正负数值(effect['数值']);
+    if (!Number.isFinite(数值) || 数值 === 0) throw new Error(`技能执行结构错误:${path}[${index}]结算修正数值不能为0`);
+    if (['消耗', '前摇'].includes(结算) && 数值 < 0 && 技能设计台条件分支包含释放后条件(effect)) {
+      throw new Error(`技能执行结构错误:${path}[${index}]${结算}降低不能使用命中/被闪避条件`);
+    }
+    if (['反伤', '伤害转移', '伤害吸收', '伤害转治疗', '治疗转伤害', '伤害分摊', '消耗分摊', '防御穿透', '防御剥夺', '精神抗性剥夺', '反击', '持续伤害引爆'].includes(结算) && 数值 <= 0)
+      throw new Error(`技能执行结构错误:${path}[${index}]${结算}数值必须为正向百分比`);
+    if (['反伤', '伤害转移', '伤害吸收', '伤害转治疗', '治疗转伤害', '伤害分摊', '消耗分摊', '防御穿透', '防御剥夺', '精神抗性剥夺', '反击'].includes(结算) && 数值 > 100)
+      throw new Error(`技能执行结构错误:${path}[${index}]${结算}数值不能超过100%`);
+    if (结算 === '伤害转移') {
+      if (!技能设计台伤害转移对象选项.includes(normalizeSkillUiText(effect['转移对象'], '攻击者')))
+        throw new Error(`技能执行结构错误:${path}[${index}]伤害转移对象无效`);
+    } else if (effect['转移对象'] !== undefined) {
+      throw new Error(`技能执行结构错误:${path}[${index}]${结算}不支持字段转移对象`);
+    }
+    if (结算 === '伤害吸收') {
+      if (!技能设计台伤害吸收来源选项.includes(normalizeSkillUiText(effect['吸收来源'], '造成伤害')))
+        throw new Error(`技能执行结构错误:${path}[${index}]伤害吸收来源无效`);
+      if (!技能设计台伤害吸收资源选项.includes(normalizeSkillUiText(effect['吸收资源'], '生命')))
+        throw new Error(`技能执行结构错误:${path}[${index}]伤害吸收资源无效`);
+      if (effect['对应等级'] !== undefined && (!Number.isInteger(Number(effect['对应等级'])) || Number(effect['对应等级']) <= 0))
+        throw new Error(`技能执行结构错误:${path}[${index}]伤害吸收对应等级必须为正整数`);
+      const 转化效果 = normalizeSkillUiText(effect['转化效果'], '');
+      if (转化效果 && !['恢复资源', '下次造成伤害'].includes(转化效果))
+        throw new Error(`技能执行结构错误:${path}[${index}]伤害吸收转化效果无效`);
+      if (effect['增幅上限'] !== undefined && !技能设计台字段值是百分比修正(effect['增幅上限']))
+        throw new Error(`技能执行结构错误:${path}[${index}]伤害吸收增幅上限必须使用百分比`);
+    } else {
+      if (effect['吸收来源'] !== undefined) throw new Error(`技能执行结构错误:${path}[${index}]${结算}不支持字段吸收来源`);
+      if (effect['吸收资源'] !== undefined) throw new Error(`技能执行结构错误:${path}[${index}]${结算}不支持字段吸收资源`);
+    }
+    if (['伤害分摊', '消耗分摊'].includes(结算)) {
+      if (normalizeSkillDesignerEffectTargetValue(effect['目标'], '单体') !== '群体' && effect['数量'] !== undefined)
+        throw new Error(`技能执行结构错误:${path}[${index}]${结算}单体目标不支持数量`);
+      if (normalizeSkillDesignerEffectTargetValue(effect['目标'], '单体') === '群体' && effect['数量'] !== undefined) {
+        const 数量 = Number(effect['数量']);
+        if (!(Number.isInteger(数量) && 数量 >= 1)) throw new Error(`技能执行结构错误:${path}[${index}]${结算}数量必须为正整数`);
+      }
+    }
+    if (effect['持续回合'] !== undefined) {
+      const 持续回合 = Number(effect['持续回合']);
+      if (!(Number.isInteger(持续回合) && 持续回合 >= 1))
+        throw new Error(`技能执行结构错误:${path}[${index}]结算修正持续回合必须为正整数`);
+    }
+    if (effect['限定元素'] !== undefined) {
+      const 限定元素列表 = 读取技能设计台限定元素列表(effect['限定元素']);
+      if (!限定元素列表.length) throw new Error(`技能执行结构错误:${path}[${index}]${结算}必须填写限定元素`);
+      if (限定元素列表.some(元素 => !SPIRIT_ATTRIBUTE_TOKEN_OPTIONS.includes(元素))) throw new Error(`技能执行结构错误:${path}[${index}]${结算}限定元素无效`);
+    }
+    if (结算 === '反击' && path === '_效果数组') throw new Error(`技能执行结构错误:${path}[${index}]反击只能放在后续触发槽位`);
+    if (结算 === '技能效果' && !Array.isArray(effect['条件分支']) && effect['限定元素'] === undefined) throw new Error(`技能执行结构错误:${path}[${index}]技能效果必须绑定条件`);
+  }
+  // —— B:20389-20396
+  function 技能设计台效果支持维持释放(effect = {}) {
+    const 原型 = normalizeSkillUiText(effect && effect['原型'], '');
+    if (['伤害结算', '资源变化', '资源转移', '护盾变化', '属性修正', '判定修正', '状态施加', '时窗修正', '状态移除', '资源锁定', '决策干扰'].includes(原型)) return true;
+    if (原型 === '结算修正') return ['造成伤害', '受到伤害', '治疗', '消耗', '前摇', '技能效果', '防御剥夺', '精神抗性剥夺', '伤害转治疗', '治疗转伤害'].includes(normalizeSkillUiText(effect['结算'], ''));
+    if (原型 === '规则改写') return normalizeSkillUiText(effect['规则'], '') === '缴械';
+    if (原型 === '机制抹消') return true;
+    return false;
+  }
+  // —— B:20398-20425
+  function 断言技能设计台维持契约(skill = {}) {
+    const 消耗文本 = 格式化技能消耗显示文本_桥接(skill && skill['消耗'], '');
+    if (!/维持[:：]?/.test(消耗文本)) return;
+    const 扫描 = (效果列表 = [], path = '_效果数组') => {
+      (Array.isArray(效果列表) ? 效果列表 : []).forEach((effect, index) => {
+        const 原型 = normalizeSkillUiText(effect && effect['原型'], '');
+    if (原型 === '炸环') throw new Error(`技能执行结构错误:${path}[${index}]炸环不支持维持`);
+    if (原型 === '时光回溯') throw new Error(`技能执行结构错误:${path}[${index}]时光回溯不支持维持`);
+    if (原型 === '修炼增益') throw new Error(`技能执行结构错误:${path}[${index}]修炼增益不进入战斗维持`);
+    if (原型 === '战斗外复活') throw new Error(`技能执行结构错误:${path}[${index}]战斗外复活不进入战斗维持`);
+        if (原型 === '伤害结算' && effect['持续回合'] !== undefined)
+          throw new Error(`技能执行结构错误:${path}[${index}]伤害结算不支持持续回合`);
+        if (['召唤生成', '机制授予', '复制执行'].includes(原型) && 技能设计台效果支持维持释放(effect))
+          throw new Error(`技能执行结构错误:${path}[${index}]${原型}只能维持存在，不能维持重复释放`);
+        技能设计台嵌套效果数组字段表.forEach(key => {
+          if (Array.isArray(effect && effect[key])) 扫描(effect[key], `${path}[${index}].${key}`);
+        });
+        if (Array.isArray(effect && effect['条件分支'])) {
+          effect['条件分支'].forEach((branch, branchIndex) => {
+            技能设计台条件分支效果数组字段表.forEach(key => {
+              if (Array.isArray(branch && branch[key])) 扫描(branch[key], `${path}[${index}].条件分支[${branchIndex}].${key}`);
+            });
+          });
+        }
+      });
+    };
+    扫描(skill['_效果数组']);
+  }
+  // —— B:20427-20691
+  function 清理技能设计台行为闭环字段(原型 = '', 字段 = {}, context = {}) {
+    if (!字段 || typeof 字段 !== 'object') return;
+    const 允许对应等级 = !!(context && context.允许对应等级);
+    delete 字段['事件优先级'];
+    delete 字段['快照规则'];
+    技能执行旧数组键表_V1.forEach(字段名 => {
+      delete 字段[字段名];
+    });
+    if (原型 === '伤害结算') {
+      ['每段倍率', '段间隔', '范围半径', '目标数量上限', '装备条件', '姿态条件', '连招条件', '动作时窗', '中断条件', '主驱动资源', '触发限制'].forEach(字段名 => {
+        delete 字段[字段名];
+      });
+      delete 字段['驱动属性'];
+      delete 字段['影响方向'];
+      字段['攻击段数'] = Math.max(1, parseSkillDesignerIntegerInputValue(字段['攻击段数'], 1, 1));
+      字段['威力倍率'] = 规范化技能设计台伤害威力倍率(字段['威力倍率'], 100);
+      if (允许对应等级 && 字段['对应等级'] !== undefined) {
+        const 对应等级 = Math.round(toNumber(字段['对应等级'], 0));
+        if (Number.isFinite(对应等级) && 对应等级 > 0) 字段['对应等级'] = Math.max(1, Math.min(180, 对应等级));
+        else delete 字段['对应等级'];
+      } else delete 字段['对应等级'];
+      if (!['单体', '群体', '全场'].includes(normalizeSkillUiText(字段['目标'], ''))) delete 字段['目标'];
+      const 伤害绑定 = 读取技能设计台伤害绑定(字段['伤害类型'], context?.draft || context?.skill || {});
+      字段['伤害类型'] = 伤害绑定.伤害类型;
+      字段['结算标签'] = 伤害绑定.结算标签;
+      字段['抗性类型'] = 伤害绑定.抗性类型;
+    }
+    const 原型定义 = SKILL_DESIGNER_PROTOTYPE_REGISTRY[原型];
+    const 允许延迟回合 = ['伤害结算', '护盾变化', '属性修正', '状态施加'].includes(原型);
+    if (允许延迟回合 && 字段['延迟回合'] !== undefined) {
+      const 延迟回合 = Math.max(0, parseSkillDesignerIntegerInputValue(字段['延迟回合'], 0, 0));
+      if (延迟回合 > 0) 字段['延迟回合'] = 延迟回合;
+      else delete 字段['延迟回合'];
+    }
+    if (原型 === '时窗修正') {
+      const 调整字段 = ['持续回合', '有效期tick', '触发次数', '使用次数'].includes(normalizeSkillUiText(字段['调整字段'], ''))
+        ? normalizeSkillUiText(字段['调整字段'], '')
+        : '持续回合';
+      字段['调整字段'] = 调整字段;
+      if (调整字段 === '持续回合') {
+        字段['调整回合'] = Math.max(1, Math.min(3, parseSkillDesignerIntegerInputValue(字段['调整回合'] || 字段['持续回合'], 1, 1)));
+        delete 字段['状态'];
+        delete 字段['调整tick'];
+        delete 字段['调整次数'];
+        delete 字段['造物名称'];
+        const 调整方式 = normalizeSkillUiText(字段['调整方式'], '延长');
+        if (调整方式 !== '压缩') delete 字段['结算倍率'];
+        else if (!normalizeSkillUiText(字段['结算倍率'], '')) 字段['结算倍率'] = '+100%';
+      } else if (调整字段 === '有效期tick') {
+        字段['调整tick'] = Math.max(1, Math.min(1008, parseSkillDesignerIntegerInputValue(字段['调整tick'] || 字段['有效期tick'], 6, 1)));
+        delete 字段['状态'];
+        delete 字段['调整回合'];
+        delete 字段['调整次数'];
+        delete 字段['造物名称'];
+        delete 字段['结算倍率'];
+      } else {
+        字段['调整次数'] = Math.max(1, Math.min(3, parseSkillDesignerIntegerInputValue(字段['调整次数'] || 字段['调整回合'], 1, 1)));
+        delete 字段['状态'];
+        delete 字段['调整回合'];
+        delete 字段['调整tick'];
+        delete 字段['造物名称'];
+        delete 字段['结算倍率'];
+      }
+      字段['单日使用次数上限'] = Math.max(1, Math.min(3, parseSkillDesignerIntegerInputValue(字段['单日使用次数上限'], 1, 1)));
+    }
+    if (原型 === '资源变化') {
+      delete 字段['持续tick'];
+      delete 字段['主驱动资源'];
+      delete 字段['结算标签'];
+      delete 字段['资源转移方式'];
+      delete 字段['转化比例'];
+      if (normalizeSkillUiText(字段['资源'], '') === '生命' && 解析技能设计台正负数值(字段['数值']) < 0) {
+        throw new Error(`技能执行结构错误:${上下文?.path || '_效果数组'}[${上下文?.index || 0}]资源变化生命不允许负数，请使用伤害结算`);
+      }
+    }
+    if (原型 === '资源转移') {
+      delete 字段['持续tick'];
+      delete 字段['主驱动资源'];
+      delete 字段['结算标签'];
+      if (字段['持续回合'] !== undefined) {
+        const 持续回合 = Math.max(0, Math.min(10, parseSkillDesignerIntegerInputValue(字段['持续回合'], 0, 0)));
+        if (持续回合 > 0) 字段['持续回合'] = 持续回合;
+        else delete 字段['持续回合'];
+      }
+      const 资源转移方式 = normalizeSkillUiText(字段['资源转移方式'], '');
+      if (!['吞噬', '共享', '均分', '转移'].includes(资源转移方式)) {
+        throw new Error(`技能执行结构错误:${上下文?.path || '_效果数组'}[${上下文?.index || 0}]资源转移方式无效`);
+      }
+      if (字段['资源转移方式'] === '均分') {
+        delete 字段['转化比例'];
+      } else {
+        const 转化比例 = Number(字段['转化比例'] ?? 1);
+        if (!Number.isFinite(转化比例) || 转化比例 < 0 || 转化比例 > 2) throw new Error('资源转移转化比例必须在0到2之间');
+        字段['转化比例'] = 转化比例;
+      }
+      字段['数值'] = 格式化技能设计台资源转移数值方向(字段['数值'], 字段['资源转移方式']);
+    }
+    if (原型 === '战斗外复活') {
+      字段['数值'] = normalizeSkillUiText(字段['数值'], '+25%');
+      字段['死亡时限tick'] = Math.max(1, parseSkillDesignerIntegerInputValue(字段['死亡时限tick'], 144, 1));
+      字段['复活代价类型'] = 技能设计台战斗外复活代价类型选项.includes(normalizeSkillUiText(字段['复活代价类型'], ''))
+        ? normalizeSkillUiText(字段['复活代价类型'], '')
+        : '状态代价';
+      字段['复活代价对象'] = normalizeSkillUiText(字段['复活代价对象'], 字段['复活代价类型'] === '消耗实体物品' ? '复活类丹药' : 字段['复活代价类型'] === '封印能力' ? '魂技' : 字段['复活代价类型'] === '永久代价' ? '等级上限' : '虚弱');
+      字段['复活代价值'] = normalizeSkillUiText(字段['复活代价值'], '+1');
+      字段['复活代价时限tick'] = Math.max(1, parseSkillDesignerIntegerInputValue(字段['复活代价时限tick'], 144, 1));
+      字段['复活后状态'] = normalizeSkillUiText(字段['复活后状态'], '虚弱');
+      字段['复活后状态时限tick'] = Math.max(1, parseSkillDesignerIntegerInputValue(字段['复活后状态时限tick'], 144, 1));
+    }
+    if (原型 === '属性修正') {
+      const 合法属性 = ['力量', '防御', '敏捷', '生命上限', '体力上限', '魂力上限', '精神力上限'];
+      if (Array.isArray(字段['属性'])) {
+        const 属性列表 = 字段['属性'].map(item => normalizeSkillUiText(item, '')).filter(item => 合法属性.includes(item));
+        字段['属性'] = 属性列表.length > 1 ? Array.from(new Set(属性列表)) : 属性列表[0] || '力量';
+      } else {
+        const 属性 = normalizeSkillUiText(字段['属性'], '');
+        字段['属性'] = 合法属性.includes(属性) ? 属性 : '力量';
+      }
+    }
+    if (字段['触发限制'] && typeof 字段['触发限制'] === 'object' && !Array.isArray(字段['触发限制'])) {
+      字段['触发限制'] = {
+        周期: normalizeSkillUiText(字段['触发限制']['周期'], '主动使用') || '主动使用',
+        次数: Math.max(1, parseSkillDesignerIntegerInputValue(字段['触发限制']['次数'], 1, 1)),
+      };
+    }
+    const 持续回合 = Math.max(0, parseSkillDesignerIntegerInputValue(字段['持续回合'], 0, 0));
+    if (原型 === '规则防御') {
+      delete 字段['驱动属性'];
+      delete 字段['影响方向'];
+    }
+    if (原型 === '状态移除') {
+      delete 字段['概率'];
+      const 数量 = normalizeSkillUiText(字段['数量'], '');
+      if (数量) 字段['数量'] = 数量 === '全部' ? '全部' : Math.max(1, Math.min(3, parseSkillDesignerIntegerInputValue(数量, 1, 1)));
+      const 匹配原型 = normalizeSkillUiText(字段['匹配原型'], '');
+      if (!['资源变化', '护盾变化'].includes(匹配原型)) {
+        delete 字段['匹配原型'];
+        delete 字段['资源'];
+        delete 字段['数值方向'];
+      } else if (匹配原型 === '资源变化') {
+        字段['资源'] = '生命';
+        const 数值方向 = normalizeSkillUiText(字段['数值方向'], '任意');
+        字段['数值方向'] = ['负向', '正向', '任意'].includes(数值方向) ? 数值方向 : '任意';
+      } else {
+        delete 字段['资源'];
+        delete 字段['数值方向'];
+      }
+    }
+    if (原型 === '规则改写') {
+      字段['规则'] = 技能设计台规则改写选项值.includes(normalizeSkillUiText(字段['规则'], '')) ? normalizeSkillUiText(字段['规则'], '') : '缴械';
+      if (字段['规则'] === '死亡转存活') {
+        字段['目标'] = '自身';
+        字段['数值'] = normalizeSkillUiText(字段['数值'], '+25%');
+        delete 字段['持续回合'];
+        delete 字段['死亡时限tick'];
+        delete 字段['复活代价类型'];
+        delete 字段['复活代价对象'];
+        delete 字段['复活代价值'];
+        delete 字段['复活代价时限tick'];
+        delete 字段['复活后状态'];
+        delete 字段['复活后状态时限tick'];
+      } else {
+        字段['持续回合'] = Math.max(1, parseSkillDesignerIntegerInputValue(字段['持续回合'], 1, 1));
+        delete 字段['数值'];
+        delete 字段['死亡时限tick'];
+        delete 字段['复活代价类型'];
+        delete 字段['复活代价对象'];
+        delete 字段['复活代价值'];
+        delete 字段['复活代价时限tick'];
+        delete 字段['复活后状态'];
+        delete 字段['复活后状态时限tick'];
+      }
+    }
+    if (['规则防御', '状态移除', '状态转移', '状态交换'].includes(原型) && 字段['持续回合'] !== undefined) {
+      const 持续回合 = Math.max(0, Math.min(10, parseSkillDesignerIntegerInputValue(字段['持续回合'], 0, 0)));
+      if (持续回合 > 0) 字段['持续回合'] = 持续回合;
+      else delete 字段['持续回合'];
+    }
+    if (原型 === '状态交换') {
+      if (!normalizeSkillUiText(字段['状态'], '')) 字段['状态'] = '任意负面';
+    }
+    if (原型 === '护盾变化') {
+      if (!['正向护盾', '斩盾', '窃盾'].includes(normalizeSkillUiText(字段['护盾模式'], ''))) 字段['护盾模式'] = 解析技能设计台正负数值(字段['数值']) < 0 ? '斩盾' : '正向护盾';
+      限制技能设计台护盾变化数值(字段);
+      if (normalizeSkillUiText(字段['护盾模式'], '') !== '正向护盾') delete 字段['持续回合'];
+    }
+    if (原型 === '结算修正' && 字段['限定元素'] !== undefined) {
+      const 限定元素列表 = 读取技能设计台限定元素列表(字段['限定元素']).filter(元素 =>
+        SPIRIT_ATTRIBUTE_TOKEN_OPTIONS.includes(元素),
+      );
+      if (限定元素列表.length) {
+        字段['限定元素'] = 限定元素列表.length > 1 ? 限定元素列表 : 限定元素列表[0];
+      } else {
+        delete 字段['限定元素'];
+      }
+    }
+    if (原型 === '结算修正') {
+      if (normalizeSkillUiText(字段['结算'], '') === '伤害吸收') {
+        字段['吸收来源'] = 技能设计台伤害吸收来源选项.includes(normalizeSkillUiText(字段['吸收来源'], ''))
+          ? normalizeSkillUiText(字段['吸收来源'], '')
+          : '造成伤害';
+        字段['吸收资源'] = 技能设计台伤害吸收资源选项.includes(normalizeSkillUiText(字段['吸收资源'], ''))
+          ? normalizeSkillUiText(字段['吸收资源'], '')
+          : '生命';
+        if (字段['对应等级'] !== undefined) {
+          const 对应等级 = Math.round(toNumber(字段['对应等级'], 0));
+          if (Number.isFinite(对应等级) && 对应等级 > 0) 字段['对应等级'] = Math.max(1, Math.min(180, 对应等级));
+          else delete 字段['对应等级'];
+        }
+        const 转化效果 = normalizeSkillUiText(字段['转化效果'], '');
+        if (转化效果 === '恢复资源' || 转化效果 === '下次造成伤害') 字段['转化效果'] = 转化效果;
+        else delete 字段['转化效果'];
+        if (字段['增幅上限'] !== undefined) 字段['增幅上限'] = 格式化技能设计台百分比字段值(字段['增幅上限'], '+100%');
+      }
+      const 支持字段 = 技能设计台结算修正支持字段矩阵[normalizeSkillUiText(字段['结算'], '')];
+      if (支持字段) {
+        Object.keys(字段).forEach(字段名 => {
+          if (!支持字段.includes(字段名)) delete 字段[字段名];
+        });
+      }
+      if (normalizeSkillUiText(字段['结算'], '') !== '持续伤害引爆') {
+        if (是技能设计台持续伤害引爆自动条件(字段['条件分支'])) delete 字段['条件分支'];
+      }
+      if (['伤害分摊', '消耗分摊'].includes(normalizeSkillUiText(字段['结算'], ''))) {
+        if (normalizeSkillDesignerEffectTargetValue(字段['目标'], '单体') === '群体') 字段['数量'] = Math.max(1, parseSkillDesignerIntegerInputValue(字段['数量'], 1, 1));
+        else delete 字段['数量'];
+      }
+    }
+    if (原型 === '魂骨年限提升') {
+      字段['目标'] = '自身';
+      字段['数值'] = 格式化技能设计台百分比字段值(字段['数值'], '+10%');
+      字段['年限上限'] = Math.max(1, Math.min(10000, Math.round(toNumber(字段['年限上限'], 10000))));
+    }
+    if (原型 === '修炼增益') {
+      const 收益类型 = normalizeSkillUiText(字段['收益类型'], '');
+      字段['收益类型'] = ['属性修炼速度', '训练方式收益'].includes(收益类型) ? 收益类型 : '训练方式收益';
+      if (字段['收益类型'] === '属性修炼速度') {
+        const 修炼属性 = normalizeSkillUiText(字段['修炼属性'], '');
+        字段['修炼属性'] = ['力量', '防御', '敏捷', '体力上限', '魂力上限', '精神力上限'].includes(修炼属性) ? 修炼属性 : '魂力上限';
+        delete 字段['训练方式'];
+      } else {
+        const 训练方式 = normalizeSkillUiText(字段['训练方式'], '');
+        字段['训练方式'] = ['冥想', '肉体训练', '精神训练', '日常训练', '副职业经验'].includes(训练方式) ? 训练方式 : '冥想';
+        delete 字段['修炼属性'];
+      }
+    }
+    if (原型 === '状态施加') {
+      const 状态名 = normalizeSkillUiText(字段['状态'], '');
+      if (['任意负面', '任意增益', '任意状态'].includes(状态名)) 字段['状态'] = '眩晕';
+      if (!技能设计台状态施加允许触发限制(字段['状态'], 字段['目标'])) delete 字段['触发限制'];
+    }
+    if (原型 === '时光回溯') {
+      字段['发动方式'] = ['主动', '被动'].includes(normalizeSkillUiText(字段['发动方式'], '')) ? normalizeSkillUiText(字段['发动方式'], '') : '被动';
+      if (字段['发动方式'] === '主动' && normalizeSkillUiText(字段['目标'], '') === '自身') 字段['目标'] = '单体';
+      if (!normalizeSkillUiText(字段['驱动属性'], '')) 字段['驱动属性'] = '精神力上限';
+    }
+    const 方向选项 = normalizeSkillDesignerOptionList(读取技能设计台原型字段选项(原型, '影响方向', { 当前效果: 字段 })).map(选项 => 选项.value);
+    if (normalizeSkillUiText(字段['驱动属性'], '') && normalizeSkillUiText(字段['驱动属性'], '') !== '无') {
+      if (!方向选项.length) delete 字段['影响方向'];
+      else if (!方向选项.includes(normalizeSkillUiText(字段['影响方向'], ''))) 字段['影响方向'] = 选择技能设计台默认影响方向(原型, 字段, 方向选项[0]);
+    } else if (normalizeSkillUiText(字段['影响方向'], '')) {
+      if (!方向选项.length) delete 字段['影响方向'];
+      else if (!方向选项.includes(normalizeSkillUiText(字段['影响方向'], ''))) 字段['影响方向'] = 选择技能设计台默认影响方向(原型, 字段, 方向选项[0]);
+    }
+  }
+  // —— B:20693-20702
+  const 技能设计台精神默认驱动原型集合 = new Set([
+    '状态移除',
+    '状态转移',
+    '状态交换',
+    '判定修正',
+    '决策干扰',
+    '机制抹消',
+    '资源锁定',
+    '规则改写',
+  ]);
+  // —— B:20704-20712
+  function 选择技能设计台默认驱动属性(原型 = '', 字段 = {}) {
+    const 原型名 = normalizeSkillUiText(原型, '');
+    const 状态名 = normalizeSkillUiText(字段 && 字段['状态'], '');
+    if (原型名 === '时光回溯') return '精神力上限';
+    if (原型名 === '复制执行') return '精神力上限';
+    if (技能设计台精神默认驱动原型集合.has(原型名)) return '精神力上限';
+    if (原型名 === '状态施加') return 技能设计台状态施加默认驱动属性表[状态名] || '魂力上限';
+    return '魂力上限';
+  }
+  // —— B:20714-20718
+  function 补齐技能设计台非固定数值默认驱动判定(原型 = '', 字段 = {}) {
+    if (!技能设计台原型值需要默认驱动判定(原型, 字段)) return;
+    字段['驱动属性'] = 选择技能设计台默认驱动属性(原型, 字段);
+    字段['影响方向'] = 选择技能设计台默认影响方向(原型, 字段, '效果强度');
+  }
+  // —— B:20720-20744
+  function normalizeSkillDesignerPrototypeFieldValue(value) {
+    if (Array.isArray(value)) return value.map(item => normalizeSkillDesignerPrototypeFieldValue(item));
+    if (!value || typeof value !== 'object') return value;
+    const 英文机制键中文名 = {
+      str: '力量',
+      def: '防御',
+      agi: '敏捷',
+      vit: '体力',
+      vit_max: '体力上限',
+      hp: '生命',
+      hp_ratio: '生命比例',
+      sp: '魂力',
+      sp_max: '魂力上限',
+      sp_ratio: '魂力比例',
+      men: '精神力',
+      men_max: '精神力上限',
+      men_ratio: '精神力比例',
+    };
+    const result = {};
+    safeEntries(value).forEach(([key, raw]) => {
+      const nextKey = 英文机制键中文名[key] || key;
+      result[nextKey] = normalizeSkillDesignerPrototypeFieldValue(raw);
+    });
+    return result;
+  }
+  // —— B:20746-20984
+  function normalizeSkillDesignerPrototypeEffectEntry(
+    value = {},
+    fallbackTargetKind = '单体',
+    recordViolation = () => {},
+    forcedPrototype = '',
+    context = {},
+  ) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const 来自机制模板 = forcedPrototype && typeof forcedPrototype === 'object' && !Array.isArray(forcedPrototype);
+    const forcedEntry =
+      forcedPrototype && typeof forcedPrototype === 'object' && !Array.isArray(forcedPrototype)
+        ? forcedPrototype
+        : { 原型: forcedPrototype };
+    const 原型 = normalizeSkillUiText(forcedEntry['原型'] || value['原型'], '');
+    const 原型定义 = SKILL_DESIGNER_PROTOTYPE_REGISTRY[原型];
+    if (!原型 || !原型定义) return null;
+    const allowedFields = new Set(Array.isArray(原型定义['允许字段']) ? 原型定义['允许字段'] : ['原型', '目标']);
+    safeEntries(value).forEach(([key]) => {
+      if (技能执行黑名单键集合_V1.has(key) || SKILL_DESIGNER_PROTOTYPE_FORBIDDEN_FIELDS.has(key))
+        recordViolation(`${原型}.${key}`);
+    });
+    const 旧独立条件字段 = ['环境条件', '装备条件', '姿态条件', '连招条件', '动作时窗', '中断条件'].find(字段名 => value[字段名] !== undefined);
+    if (旧独立条件字段) recordViolation(`${原型}.${旧独立条件字段}.已删除`);
+    const 嵌套字段 = normalizeSkillUiText(context && context.嵌套字段, '');
+    const 目标默认值 = 技能设计台按上下文默认目标(原型, value['目标'] || fallbackTargetKind, context);
+    const 目标 = normalizeSkillDesignerExecutionTargetModel(value['目标'] || 目标默认值, 目标默认值);
+    const 持续回合 = Math.max(0, parseSkillDesignerIntegerInputValue(value['持续回合'], 0, 0));
+    const 持续tick = Math.max(0, parseSkillDesignerIntegerInputValue(value['持续tick'], 0, 0));
+    const 有效期tick = Math.max(0, parseSkillDesignerIntegerInputValue(value['有效期tick'], 0, 0));
+    const 字段 = {};
+    const 字段允许数组 = key =>
+      SKILL_DESIGNER_BATCH_EFFECT_FIELD_KEYS.includes(key) ||
+      技能设计台嵌套效果数组字段集合.has(key) ||
+      normalizeSkillUiText(原型定义 && 原型定义['字段定义'] && 原型定义['字段定义'][key] && 原型定义['字段定义'][key]['类型'], '') === '多枚举';
+    safeEntries(forcedEntry).forEach(([key, raw]) => {
+      if (key === '原型' || key === '目标' || raw === undefined || raw === null) return;
+      if (技能执行黑名单键集合_V1.has(key) || SKILL_DESIGNER_PROTOTYPE_FORBIDDEN_FIELDS.has(key)) {
+        recordViolation(`${原型}.${key}`);
+        return;
+      }
+      if (!allowedFields.has(key)) return;
+      if (Array.isArray(raw) && !字段允许数组(key)) {
+        recordViolation(`${原型}.${key}.数组`);
+        return;
+      }
+      字段[key] = normalizeSkillDesignerPrototypeFieldValue(cloneJsonValue(raw));
+    });
+    safeEntries(value).forEach(([key, raw]) => {
+      if (
+        [
+          '原型',
+          '机制',
+          '目标',
+          '持续回合',
+          '持续tick',
+          '有效期tick',
+          '条件分支',
+          '表现语义',
+          '推荐语义',
+        ].includes(key)
+      )
+        return;
+      if (技能执行黑名单键集合_V1.has(key) || SKILL_DESIGNER_PROTOTYPE_FORBIDDEN_FIELDS.has(key)) {
+        recordViolation(`${原型}.${key}`);
+        return;
+      }
+      if (raw === undefined || raw === null) return;
+      if (typeof raw === 'string' && !raw.trim()) return;
+      const normalizedField = normalizeSkillDesignerPrototypeFieldValue({ [key]: cloneJsonValue(raw) });
+      safeEntries(normalizedField).forEach(([fieldKey, fieldValue]) => {
+        if (Array.isArray(fieldValue) && !字段允许数组(fieldKey)) {
+          recordViolation(`${原型}.${fieldKey}.数组`);
+          return;
+        }
+        if (!allowedFields.has(fieldKey)) {
+          if (!来自机制模板) recordViolation(`${原型}.${fieldKey}`);
+          return;
+        }
+        字段[fieldKey] = fieldValue;
+      });
+    });
+    if (字段['属性'] !== undefined) 字段['属性'] = getSkillDesignerPackedPropertyLabel(字段['属性']);
+    if (字段['驱动属性'] !== undefined) 字段['驱动属性'] = getSkillDesignerPackedPropertyLabel(字段['驱动属性']);
+    if (字段['数值'] !== undefined) {
+      const 原始数值 = 原型 === '资源转移' && value && value['数值'] !== undefined ? value['数值'] : 字段['数值'];
+      字段['数值'] = 规范化技能设计台数值字段值(原型, '数值', 原始数值, 字段);
+    }
+    if (
+      context &&
+      context.禁用释放前降低结算 &&
+      原型 === '结算修正' &&
+      ['消耗', '前摇'].includes(normalizeSkillUiText(字段['结算'], '')) &&
+      解析技能设计台正负数值(字段['数值']) < 0
+    ) {
+      recordViolation('结算修正.释放前结算');
+      return null;
+    }
+    if (字段['结算倍率'] !== undefined) 字段['结算倍率'] = 规范化技能设计台数值字段值(原型, '结算倍率', 字段['结算倍率'], 字段);
+    if (原型 === '护盾变化') 限制技能设计台护盾变化数值(字段);
+    if (!['独立生效', '跟随主原型'].includes(normalizeSkillUiText(字段['生效方式'], ''))) 字段['生效方式'] = '独立生效';
+    if (context && (context.强制独立 || context.条件分支 || 嵌套字段)) 字段['生效方式'] = '独立生效';
+    if (字段['生效方式'] === '跟随主原型' && normalizeSkillUiText(字段['目标'], '') === '自身') {
+      delete 字段['驱动属性'];
+      delete 字段['影响方向'];
+    }
+    if (原型 === '炸环') {
+      字段['目标'] = '自身';
+      字段['强化倍率'] = formatSkillDesignerSignedValue(Math.max(0.01, parseSkillDesignerPercentRatio(字段['强化倍率'], 1)), true);
+    }
+    if (原型 === '资源锁定') 字段['数值'] = normalizeSkillDesignerResourceLockRatio(字段['数值'], 0.5);
+    if (字段['匹配原型'] === '无') delete 字段['匹配原型'];
+    if (原型 === '状态移除') {
+      const 匹配原型 = normalizeSkillUiText(字段['匹配原型'], '');
+      if (!['资源变化', '护盾变化'].includes(匹配原型)) {
+        delete 字段['匹配原型'];
+        delete 字段['资源'];
+        delete 字段['数值方向'];
+      } else if (匹配原型 === '资源变化') {
+        字段['资源'] = '生命';
+        const 数值方向 = normalizeSkillUiText(字段['数值方向'], '任意');
+        字段['数值方向'] = ['负向', '正向', '任意'].includes(数值方向) ? 数值方向 : '任意';
+      } else {
+        delete 字段['资源'];
+        delete 字段['数值方向'];
+      }
+    } else {
+      delete 字段['数值方向'];
+    }
+    if (持续回合 > 0 && allowedFields.has('持续回合')) 字段['持续回合'] = 持续回合;
+    if (持续tick > 0 && allowedFields.has('持续tick')) 字段['持续tick'] = 持续tick;
+    if (有效期tick > 0 && allowedFields.has('有效期tick')) 字段['有效期tick'] = 有效期tick;
+    fillSkillDesignerPrototypeValueFromTemplate(原型, 字段, value);
+    if (原型 === '规则改写') {
+      字段['目标'] = 约束技能设计台原型正式目标(原型, 目标, 目标默认值, 字段);
+      delete 字段['死亡时限tick'];
+      delete 字段['复活代价类型'];
+      delete 字段['复活代价对象'];
+      delete 字段['复活代价值'];
+      delete 字段['复活代价时限tick'];
+      delete 字段['复活后状态'];
+      delete 字段['复活后状态时限tick'];
+    }
+    if (原型 === '机制授予') {
+      const 触发条件 = normalizeSkillUiText(字段['触发条件'] || value['触发条件'], '主动触发');
+      const 授予目标 = 约束技能设计台原型正式目标(原型, 目标, 目标默认值, 字段);
+      字段['触发条件'] = 读取技能设计台机制授予触发条件选项(授予目标).includes(触发条件) ? 触发条件 : '主动触发';
+      if (字段['触发条件'] === '随下次行动触发') {
+        delete 字段['可用次数'];
+      } else {
+        字段['可用次数'] = Math.max(
+          1,
+          parseSkillDesignerIntegerInputValue(字段['可用次数'] ?? value['可用次数'] ?? value.useCount, 1, 1),
+        );
+      }
+      if (字段['触发条件'] === '主动触发' || normalizeSkillUiText(value['持续回合'] ?? value.duration, '')) {
+        字段['持续回合'] = Math.max(
+          1,
+          parseSkillDesignerIntegerInputValue(字段['持续回合'] ?? value['持续回合'] ?? value.duration, 1, 1),
+        );
+      } else delete 字段['持续回合'];
+    }
+    if (原型 === '机制抹消') {
+      字段['抹消对象'] = 规范化技能设计台机制抹消对象(字段['抹消对象']);
+    }
+    字段['目标'] = 原型 === '位移执行' ? 目标 : 约束技能设计台原型正式目标(原型, 目标, 目标默认值, 字段);
+    if (原型 === '护盾变化') {
+      if (!['正向护盾', '斩盾', '窃盾'].includes(normalizeSkillUiText(字段['护盾模式'], ''))) 字段['护盾模式'] = 解析技能设计台正负数值(字段['数值']) < 0 ? '斩盾' : '正向护盾';
+      限制技能设计台护盾变化数值(字段);
+      if (normalizeSkillUiText(字段['护盾模式'], '') !== '正向护盾') delete 字段['持续回合'];
+    }
+    清理技能设计台位移字段(原型, 字段);
+    清理技能设计台召唤字段(原型, 字段);
+    清理技能设计台行为闭环字段(原型, 字段, context);
+    补齐技能设计台非固定数值默认驱动判定(原型, 字段);
+    清理技能设计台行为闭环字段(原型, 字段, context);
+    应用技能设计台目标驱动契约(原型, 字段);
+    清理技能设计台打断效果字段(原型, 字段);
+    清理技能设计台纯布尔控制字段(原型, 字段);
+    safeEntries(字段).forEach(([key, raw]) => {
+      const 字段定义 =
+        原型定义['字段定义'] && typeof 原型定义['字段定义'] === 'object' ? 原型定义['字段定义'][key] : null;
+      const 类型 = normalizeSkillUiText(字段定义 && 字段定义['类型'], '');
+      const 选项 = normalizeSkillDesignerOptionList(Array.isArray(字段定义 && 字段定义['选项']) ? 字段定义['选项'] : []).map(
+        选项项 => 选项项.value,
+      );
+      if (!选项.length || !['枚举', '多枚举'].includes(类型)) return;
+      if (Array.isArray(raw)) {
+        const 合法列表 = raw.filter(item => 选项.includes(normalizeSkillUiText(item, '')));
+        if (合法列表.length) 字段[key] = 合法列表;
+        else delete 字段[key];
+        return;
+      }
+      if (!选项.includes(normalizeSkillUiText(raw, ''))) {
+        delete 字段[key];
+      }
+    });
+    if (原型 === '状态施加') {
+      const 状态名 = normalizeSkillUiText(字段['状态'], '');
+      if (字段['数值'] !== undefined) {
+        字段['数值'] = 格式化技能设计台状态施加比例字段(字段['数值'], 技能设计台状态施加默认数值(状态名));
+        字段['数值'] = 限制技能设计台状态施加比例字段(状态名, '数值', 字段['数值']);
+      }
+      if (字段['副数值'] !== undefined) {
+        字段['副数值'] = 格式化技能设计台状态施加比例字段(字段['副数值'], 技能设计台状态施加默认副数值(状态名));
+        字段['副数值'] = 限制技能设计台状态施加比例字段(状态名, '副数值', 字段['副数值']);
+      }
+      if (!技能设计台状态施加允许触发限制(状态名, 字段['目标'])) delete 字段['触发限制'];
+    }
+    if (原型 === '状态移除' && !['1', '2', '3', '全部'].includes(normalizeSkillUiText(字段['数量'], '1')))
+      delete 字段['数量'];
+    技能设计台嵌套效果数组字段表.forEach(key => {
+      const nested = Array.isArray(value[key]) ? value[key] : [];
+      if (!nested.length) return;
+      if (!allowedFields.has(key)) {
+        recordViolation(`${原型}.${key}`);
+        return;
+      }
+      字段[key] = nested
+        .flatMap(effect =>
+          normalizeSkillDesignerExecutionEffectEntryList(effect, 目标, recordViolation, {
+            嵌套字段: key,
+            父原型: 原型,
+          }),
+        )
+        .filter(Boolean);
+    });
+    const 条件分支源 =
+      Array.isArray(字段['条件分支']) && 字段['条件分支'].length
+        ? 字段['条件分支']
+        : value['条件分支'] || [];
+    delete 字段['条件分支'];
+    const normalized = { 原型: 原型, 目标: 目标, ...字段 };
+    normalized['目标'] = 约束技能设计台原型正式目标(原型, normalizeSkillDesignerExecutionTargetModel(normalized['目标'], 目标), 目标默认值, normalized);
+    const 条件分支 = normalizeSkillDesignerConditionBranchList(条件分支源, 目标, recordViolation, normalized);
+    if (条件分支.length) normalized['条件分支'] = 条件分支;
+    应用技能设计台目标驱动契约(原型, normalized);
+    normalized['目标'] = 约束技能设计台原型正式目标(原型, normalizeSkillDesignerExecutionTargetModel(normalized['目标'], 目标), 目标默认值, normalized);
+    return normalized;
+  }
+  // —— B:20986-21012
+  function normalizeSkillDesignerExecutionEffectEntryList(
+    value = {},
+    fallbackTargetKind = '单体',
+    recordViolation = () => {},
+    context = {},
+  ) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
+    const batchEntries = expandSkillDesignerBatchEffectFields(value);
+    if (batchEntries.length !== 1 || batchEntries[0] !== value) {
+      return batchEntries.flatMap(entry =>
+        normalizeSkillDesignerExecutionEffectEntryList(entry, fallbackTargetKind, recordViolation, context),
+      );
+    }
+    const explicitPrototype = normalizeSkillUiText(value['原型'], '');
+    if (explicitPrototype) {
+      const normalized = normalizeSkillDesignerPrototypeEffectEntry(
+        value,
+        fallbackTargetKind,
+        recordViolation,
+        explicitPrototype,
+        context,
+      );
+      return normalized ? [normalized] : [];
+    }
+    if (normalizeSkillUiText(value['机制'], '')) recordViolation('机制字段');
+    return [];
+  }
+  // —— B:21022-21039
+  function normalizeSkillDesignerExecutionEffectArray(effectArray = [], fallbackTargetKind = '单体', context = {}) {
+    const source = Array.isArray(effectArray) ? effectArray : [];
+    const violationList = [];
+    const recordViolation = path => {
+      if (!path) return;
+      violationList.push(path);
+    };
+    const effectList = source
+      .flatMap(effect =>
+        normalizeSkillDesignerExecutionEffectEntryList(effect, fallbackTargetKind, recordViolation, context),
+      )
+      .filter(Boolean);
+    if (violationList.length) {
+      const uniqueList = Array.from(new Set(violationList));
+      throw new Error(`[技能执行结构校验失败] 检测到黑名单字段：${uniqueList.join('、')}`);
+    }
+    return effectList;
+  }
+  // —— B:21041-21620
+  function 断言技能设计台效果数组契约(效果数组 = [], path = '_效果数组') {
+    if (!Array.isArray(效果数组)) return;
+    const 主目标 = normalizeSkillUiText(效果数组[0] && 效果数组[0]['目标'], '');
+    const 是结算效果路径 = /\.结算效果(?:\[|$)/.test(path);
+    const 是授予效果路径 = /\.授予效果(?:\[|$)/.test(path);
+    效果数组.forEach((effect, index) => {
+      if (!effect || typeof effect !== 'object' || Array.isArray(effect)) {
+        throw new Error(`技能执行结构错误:${path}[${index}]不是效果对象`);
+      }
+      const 原型 = normalizeSkillUiText(effect['原型'], '');
+      if (!原型) throw new Error(`技能执行结构错误:${path}[${index}]缺少原型`);
+      const 原型定义 = SKILL_DESIGNER_PROTOTYPE_REGISTRY[原型];
+      if (!原型定义) throw new Error(`技能执行结构错误:${path}[${index}]未知原型${原型}`);
+      const 缺失必填字段 = (Array.isArray(原型定义['必填字段']) ? 原型定义['必填字段'] : []).filter(字段名 => {
+        const 原值 = effect[字段名];
+        return 原值 === undefined || 原值 === null || (typeof 原值 === 'string' && !原值.trim()) || (Array.isArray(原值) && !原值.length);
+      });
+      if (原型 === '状态移除' && !normalizeSkillUiText(effect['状态'], '') && !normalizeSkillUiText(effect['匹配原型'], '')) {
+        缺失必填字段.push('状态/匹配原型');
+      }
+      if (缺失必填字段.length) throw new Error(`技能执行结构错误:${path}[${index}]缺少必填字段${缺失必填字段.join('、')}`);
+      if (原型 === '伤害结算' && effect['持续回合'] !== undefined)
+        throw new Error(`技能执行结构错误:${path}[${index}]伤害结算不支持持续回合`);
+      const 允许对应等级字段 = 原型 === '伤害结算'
+        || (原型 === '结算修正' && normalizeSkillUiText(effect['结算'], '') === '伤害吸收');
+      if (effect['对应等级'] !== undefined) {
+        if (!允许对应等级字段) throw new Error(`技能执行结构错误:${path}[${index}]对应等级只允许伤害结算或伤害吸收`);
+        const 对应等级 = Number(effect['对应等级']);
+        if (!Number.isInteger(对应等级) || 对应等级 <= 0) throw new Error(`技能执行结构错误:${path}[${index}]对应等级必须为正整数`);
+      }
+      if (effect['资源转移角色'] !== undefined)
+        throw new Error(`技能执行结构错误:${path}[${index}]资源转移角色已删除`);
+      const 正式字段集合 = new Set(Array.isArray(原型定义 && 原型定义['允许字段']) ? 原型定义['允许字段'] : []);
+      if (原型 === '结算修正') {
+        const 支持字段 = 技能设计台结算修正支持字段矩阵[normalizeSkillUiText(effect['结算'], '')];
+        if (支持字段) 支持字段.forEach(字段名 => 正式字段集合.add(字段名));
+      }
+      Object.keys(effect).forEach(字段名 => {
+        if (!正式字段集合.has(字段名)) throw new Error(`技能执行结构错误:${path}[${index}]${原型}不支持字段${字段名}`);
+      });
+      if (['友方单体', '友方群体', '敌方单体', '敌方群体', '己方/单体', '己方/群体', '敌方/单体', '敌方/群体'].includes(normalizeSkillUiText(effect['目标'], '')))
+        throw new Error(`技能执行结构错误:${path}[${index}]原型目标只能写正式目标范围`);
+      if (normalizeSkillUiText(effect['机制'], '')) throw new Error(`技能执行结构错误:${path}[${index}]仍写入机制字段`);
+      if (normalizeSkillUiText(effect['运行机制'], ''))
+        throw new Error(`技能执行结构错误:${path}[${index}]仍写入运行机制字段`);
+      if (normalizeSkillUiText(effect['副作用列表'], '') || Array.isArray(effect['副作用列表']))
+        throw new Error(`技能执行结构错误:${path}[${index}]仍写入副作用列表`);
+      if (effect['机制决策临时'] && typeof effect['机制决策临时'] === 'object')
+        throw new Error(`技能执行结构错误:${path}[${index}]仍写入机制决策临时`);
+      const 当前目标 = normalizeSkillDesignerEffectTargetValue(effect['目标'], normalizeSkillUiText(effect['目标'], ''));
+      const 是顶层路径 = path === '_效果数组';
+      if (当前目标 === '分身' && !技能设计台原型允许分身目标(原型))
+        throw new Error(`技能执行结构错误:${path}[${index}]只有资源变化/属性修正/判定修正/结算修正可以选择分身目标`);
+      if (原型 === '结算修正' && ['伤害分摊', '消耗分摊'].includes(normalizeSkillUiText(effect['结算'], '')) && !技能设计台分摊结算目标候选().includes(当前目标))
+        throw new Error(`技能执行结构错误:${path}[${index}]${normalizeSkillUiText(effect['结算'], '')}目标只允许单体/群体`);
+      if (原型 === '修炼增益' && !['自身', '单体', '群体', '全场'].includes(当前目标))
+        throw new Error(`技能执行结构错误:${path}[${index}]修炼增益目标只允许自身/单体/群体/全场`);
+      if (原型 === '魂骨年限提升') {
+        if (当前目标 !== '自身') throw new Error(`技能执行结构错误:${path}[${index}]魂骨年限提升目标必须是自身`);
+        if (!技能设计台字段值是百分比修正(effect['数值'])) throw new Error(`技能执行结构错误:${path}[${index}]魂骨年限提升数值必须使用百分比`);
+        const 提升比例 = 解析技能设计台正负数值(effect['数值']);
+        if (!(提升比例 > 0 && 提升比例 <= 100)) throw new Error(`技能执行结构错误:${path}[${index}]魂骨年限提升比例必须在0到100%之间`);
+        const 年限上限 = Number(effect['年限上限']);
+        if (!Number.isInteger(年限上限) || 年限上限 < 1 || 年限上限 > 10000) throw new Error(`技能执行结构错误:${path}[${index}]魂骨年限提升年限上限必须是1到10000的整数`);
+      }
+      if (原型 === '战斗外复活') {
+        if (当前目标 === '自身') throw new Error(`技能执行结构错误:${path}[${index}]战斗外复活目标不能是自身`);
+        if (!['单体', '群体', '全场'].includes(当前目标)) throw new Error(`技能执行结构错误:${path}[${index}]战斗外复活目标只允许单体/群体/全场`);
+        if (!技能设计台战斗外复活代价类型选项.includes(normalizeSkillUiText(effect['复活代价类型'], ''))) throw new Error(`技能执行结构错误:${path}[${index}]战斗外复活代价类型无效`);
+        ['死亡时限tick', '复活代价时限tick', '复活后状态时限tick'].forEach(字段名 => {
+          const 数值 = toNumber(effect[字段名], NaN);
+          if (!Number.isFinite(数值) || 数值 < 1 || Math.round(数值) !== 数值) throw new Error(`技能执行结构错误:${path}[${index}]${字段名}必须为正整数`);
+        });
+      }
+      if (是顶层路径 && ['状态转移', '状态交换'].includes(原型) && 当前目标 !== '单体')
+        throw new Error(`技能执行结构错误:${path}[${index}]${原型}顶层目标只允许单体`);
+      if (是顶层路径 && 原型 === '状态移除' && !['自身', '单体', '群体'].includes(当前目标))
+        throw new Error(`技能执行结构错误:${path}[${index}]状态移除顶层目标只允许自身/单体/群体`);
+      if (是顶层路径 && 原型 === '规则防御' && !['自身', '单体', '群体'].includes(当前目标))
+        throw new Error(`技能执行结构错误:${path}[${index}]规则防御顶层目标只允许自身/单体/群体`);
+      if (原型 === '规则防御' && (effect['驱动属性'] !== undefined || effect['影响方向'] !== undefined))
+        throw new Error(`技能执行结构错误:${path}[${index}]${原型}不允许驱动属性或影响方向`);
+      if (原型 === '状态移除' && effect['概率'] !== undefined)
+        throw new Error(`技能执行结构错误:${path}[${index}]状态移除不允许概率，成功率由驱动属性修正`);
+      if (原型 === '状态移除' && effect['抵抗判定'] !== undefined)
+        throw new Error(`技能执行结构错误:${path}[${index}]状态移除不允许抵抗判定，成功率由驱动属性修正`);
+      if (原型 === '状态移除') {
+        const 匹配原型 = normalizeSkillUiText(effect['匹配原型'], '');
+        if (匹配原型 && !['资源变化', '护盾变化'].includes(匹配原型))
+          throw new Error(`技能执行结构错误:${path}[${index}]状态移除匹配原型只允许资源变化/护盾变化`);
+        if (匹配原型 === '资源变化') {
+          if (normalizeSkillUiText(effect['资源'], '') !== '生命')
+            throw new Error(`技能执行结构错误:${path}[${index}]状态移除资源变化只支持生命`);
+          if (!['负向', '正向', '任意'].includes(normalizeSkillUiText(effect['数值方向'], '')))
+            throw new Error(`技能执行结构错误:${path}[${index}]状态移除数值方向无效`);
+        } else if (effect['资源'] !== undefined || effect['数值方向'] !== undefined) {
+          throw new Error(`技能执行结构错误:${path}[${index}]状态移除非资源变化不允许资源或数值方向`);
+        }
+        if (effect['持续回合'] !== undefined) {
+          const 持续回合 = toNumber(effect['持续回合'], 0);
+          if (!Number.isFinite(持续回合) || 持续回合 < 1 || 持续回合 > 10 || Math.round(持续回合) !== 持续回合)
+            throw new Error(`技能执行结构错误:${path}[${index}]状态移除持续回合必须为1到10的整数`);
+        }
+      }
+      if (原型 === '状态交换' && !技能设计台状态交换状态有效(effect['状态']))
+        throw new Error(`技能执行结构错误:${path}[${index}]状态交换只允许自身负面状态筛选`);
+      if (原型 === '状态交换') {
+        const 交换状态 = normalizeSkillUiText(effect['状态'], '任意负面');
+        const 有自身前置 = (Array.isArray(effect['条件分支']) ? effect['条件分支'] : []).some(分支 =>
+          (Array.isArray(分支 &&分支['条件']) ? 分支['条件'] : []).some(条件 =>
+            normalizeSkillUiText(条件 && 条件['类型'], '') === '状态存在' &&
+            normalizeSkillUiText(条件 && 条件['对象'], '') === '自身' &&
+            normalizeSkillUiText(条件 && 条件['比较'], '') === '无' &&
+            normalizeSkillUiText(条件 && 条件['状态'], '') === 交换状态,
+          ),
+        );
+        if (!有自身前置) throw new Error(`技能执行结构错误:${path}[${index}]状态交换缺少状态前置条件`);
+        if (effect['持续回合'] !== undefined) {
+          const 持续回合 = toNumber(effect['持续回合'], 0);
+          if (!Number.isFinite(持续回合) || 持续回合 < 1 || 持续回合 > 10 || Math.round(持续回合) !== 持续回合)
+            throw new Error(`技能执行结构错误:${path}[${index}]状态交换持续回合必须为1到10的整数`);
+        }
+      }
+      if (
+        原型 === '状态转移' &&
+        (!['自身', '目标', '友方', '敌方'].includes(normalizeSkillUiText(effect['来源'], '')) ||
+          !['自身', '目标', '友方', '敌方'].includes(normalizeSkillUiText(effect['去向'], '')))
+      )
+        throw new Error(`技能执行结构错误:${path}[${index}]状态转移来源或去向无效`);
+      if (原型 === '状态转移') {
+        const 数量文本 = normalizeSkillUiText(effect['数量'], '');
+        const 数量合法 = 数量文本 === '全部' || (Number.isInteger(Number(数量文本)) && Number(数量文本) > 0);
+        if (!数量合法) throw new Error(`技能执行结构错误:${path}[${index}]状态转移数量只允许正整数或全部`);
+        if (effect['持续回合'] !== undefined) {
+          const 持续回合 = toNumber(effect['持续回合'], 0);
+          if (!Number.isFinite(持续回合) || 持续回合 < 1 || 持续回合 > 10 || Math.round(持续回合) !== 持续回合)
+          throw new Error(`技能执行结构错误:${path}[${index}]状态转移持续回合必须为1到10的整数`);
+        }
+      }
+      if (原型 === '召唤生成') {
+        const 单位类型 = normalizeSkillUiText(effect['召唤单位类型'], '');
+        if (!技能设计台召唤单位类型选项.includes(单位类型))
+          throw new Error(`技能执行结构错误:${path}[${index}]召唤单位类型无效`);
+        if (!['自主行动', '护卫', '协同攻击'].includes(normalizeSkillUiText(effect['行动模式'], '')))
+          throw new Error(`技能执行结构错误:${path}[${index}]召唤行动模式无效`);
+        if (单位类型 === '本命召唤兽' && !技能设计台召唤使用继承属性比例(effect))
+          throw new Error(`技能执行结构错误:${path}[${index}]本命召唤兽必须携带继承属性比例`);
+        if (单位类型 === '分身' && !技能设计台召唤使用继承属性比例(effect))
+          throw new Error(`技能执行结构错误:${path}[${index}]分身必须携带继承属性比例`);
+        if (!技能设计台召唤允许继承属性比例(effect) && (effect['继承属性比例'] !== undefined || effect['属性继承比例'] !== undefined))
+          throw new Error(`技能执行结构错误:${path}[${index}]${单位类型}不允许继承属性比例`);
+        if (技能设计台召唤允许继承属性比例(effect) && effect['强度'] !== undefined)
+          throw new Error(`技能执行结构错误:${path}[${index}]继承型召唤不应携带强度`);
+        if (!技能设计台召唤允许继承属性比例(effect) && effect['强度'] === undefined)
+          throw new Error(`技能执行结构错误:${path}[${index}]模板召唤缺少强度`);
+        const 召唤数量 = Math.max(1, Math.round(toNumber(effect['数量'] ?? effect['召唤数量'], 1)));
+        if (单位类型 === '本命召唤兽' && 召唤数量 !== 1)
+          throw new Error(`技能执行结构错误:${path}[${index}]本命召唤兽数量必须为1`);
+        if (单位类型 !== '分身' && !技能设计台召唤允许普通批量(effect) && 召唤数量 !== 1)
+          throw new Error(`技能执行结构错误:${path}[${index}]${单位类型}不允许批量召唤`);
+        if (normalizeSkillUiText(effect['行动模式'], '') === '护卫' && !技能设计台召唤承伤规则选项.includes(normalizeSkillUiText(effect['承伤规则'], '')))
+          throw new Error(`技能执行结构错误:${path}[${index}]护卫召唤必须允许承伤`);
+        if (normalizeSkillUiText(effect['行动模式'], '') !== '护卫' && effect['承伤规则'] !== undefined)
+          throw new Error(`技能执行结构错误:${path}[${index}]非护卫召唤不应携带承伤规则`);
+      }
+      if (原型 === '复制执行') {
+        const 复制类型 = normalizeSkillUiText(effect['复制类型'], '复制技能');
+        if (!SKILL_DESIGNER_PARAM_COPY_TARGET_OPTIONS.includes(复制类型))
+          throw new Error(`技能执行结构错误:${path}[${index}]复制类型无效`);
+        if (!技能设计器参数复制模式选项.includes(normalizeSkillUiText(effect['复制模式'], '即时镜像')))
+          throw new Error(`技能执行结构错误:${path}[${index}]复制模式无效`);
+        const 允许字段 = new Set(['原型', '目标', '复制类型', '复制模式', '保存上限', '削减比例', '可用次数', '保留回合', '保留时长tick', '条件分支', '生效方式', '驱动属性', '影响方向']);
+        Object.keys(effect).forEach(字段名 => {
+          if (!允许字段.has(字段名)) throw new Error(`技能执行结构错误:${path}[${index}]复制执行包含不支持字段`);
+        });
+      if (effect['削减比例'] !== undefined && !/属性|全部/.test(复制类型))
+        throw new Error(`技能执行结构错误:${path}[${index}]复制削减比例只允许属性或全部复制使用`);
+      ['保存上限', '可用次数'].forEach(字段名 => {
+        if (effect[字段名] !== undefined && !['复制技能', '复制全部'].includes(复制类型))
+          throw new Error(`技能执行结构错误:${path}[${index}]复制${字段名}只允许复制技能或复制全部使用`);
+      });
+        if (!/属性|全部/.test(复制类型) && (effect['驱动属性'] !== undefined || effect['影响方向'] !== undefined))
+          throw new Error(`技能执行结构错误:${path}[${index}]复制技能不允许驱动属性或影响方向`);
+      }
+      if (原型 === '规则防御' && !['免伤', '免死'].includes(normalizeSkillUiText(effect['规则'], '')))
+        throw new Error(`技能执行结构错误:${path}[${index}]规则防御规则只允许免伤/免死`);
+      if (原型 === '规则防御' && effect['持续回合'] !== undefined) {
+        const 持续回合 = toNumber(effect['持续回合'], 0);
+        if (!Number.isFinite(持续回合) || 持续回合 < 1 || 持续回合 > 99 || Math.round(持续回合) !== 持续回合)
+          throw new Error(`技能执行结构错误:${path}[${index}]规则防御持续回合必须为1到99的整数`);
+      }
+      if (原型 === '规则改写') {
+        if (!技能设计台规则改写选项值.includes(normalizeSkillUiText(effect['规则'], '')))
+          throw new Error(`技能执行结构错误:${path}[${index}]规则改写规则无效`);
+        if (normalizeSkillUiText(effect['规则'], '') === '死亡转存活') {
+          if (当前目标 === '自身') {
+            if (effect['持续回合'] !== undefined || effect['死亡时限tick'] !== undefined || effect['复活代价类型'] !== undefined || effect['复活代价对象'] !== undefined || effect['复活代价值'] !== undefined || effect['复活代价时限tick'] !== undefined || effect['复活后状态'] !== undefined || effect['复活后状态时限tick'] !== undefined) {
+              const 战斗内禁用字段 = ['死亡时限tick', '复活代价类型', '复活代价对象', '复活代价值', '复活代价时限tick', '复活后状态', '复活后状态时限tick', '持续回合'].find(字段名 => effect[字段名] !== undefined);
+              throw new Error(`技能执行结构错误:${path}[${index}]自身死亡转存活不支持字段${战斗内禁用字段}`);
+            }
+          }
+        } else {
+          if (!(toNumber(effect['持续回合'], 0) > 0)) throw new Error(`技能执行结构错误:${path}[${index}]规则改写必须提供持续回合`);
+          const 复活字段 = ['死亡时限tick', '复活代价类型', '复活代价对象', '复活代价值', '复活代价时限tick', '复活后状态', '复活后状态时限tick'].find(字段名 => effect[字段名] !== undefined);
+          if (复活字段) throw new Error(`技能执行结构错误:${path}[${index}]非死亡转存活不支持字段${复活字段}`);
+        }
+      }
+      if (原型 === '机制抹消') {
+        if (
+          effect['抹消对象'] &&
+          typeof effect['抹消对象'] === 'object' &&
+          !Array.isArray(effect['抹消对象']) &&
+          effect['抹消对象']['授予效果'] !== undefined
+        )
+          throw new Error(`技能执行结构错误:${path}[${index}]机制抹消抹消对象不允许授予效果`);
+        if (!effect['抹消对象'] || typeof effect['抹消对象'] !== 'object' || Array.isArray(effect['抹消对象']))
+          throw new Error(`技能执行结构错误:${path}[${index}]机制抹消缺少抹消对象`);
+        const 抹消对象原型 = normalizeSkillUiText(effect['抹消对象']['原型'], '');
+        if (!抹消对象原型 || !技能设计台机制抹消对象原型选项.includes(抹消对象原型))
+          throw new Error(`技能执行结构错误:${path}[${index}]机制抹消对象原型无效`);
+        const 抹消对象允许字段 = new Set(['原型', ...读取技能设计台机制抹消可匹配字段(抹消对象原型)]);
+        const 无效字段 = Object.keys(effect['抹消对象']).filter(字段 => !抹消对象允许字段.has(字段));
+        if (无效字段.length)
+          throw new Error(`技能执行结构错误:${path}[${index}]机制抹消对象不支持字段${无效字段[0]}`);
+      }
+      if (原型 === '伤害结算' && (effect['驱动属性'] !== undefined || effect['影响方向'] !== undefined))
+        throw new Error(`技能执行结构错误:${path}[${index}]伤害结算不允许驱动属性或影响方向`);
+      if (原型 === '状态施加') {
+        const 状态名 = normalizeSkillUiText(effect['状态'], '');
+        if (['任意负面', '任意增益', '任意状态'].includes(状态名))
+          throw new Error(`技能执行结构错误:${path}[${index}]状态施加不能使用匹配占位状态`);
+        if (技能设计台日常系统状态选项.includes(状态名))
+          throw new Error(`技能执行结构错误:${path}[${index}]${状态名}是日常系统状态，不能通过状态施加赋予`);
+        const 强度约束错误 = 技能设计台状态施加强度约束错误(effect, path, index);
+        if (强度约束错误) throw new Error(强度约束错误);
+      }
+      if (原型 !== '伤害结算' && 技能设计台原型支持驱动判定字段(原型)) {
+        if (
+          原型 !== '机制授予' &&
+          原型 !== '时光回溯' &&
+          原型 !== '位移执行' &&
+          原型 !== '复制执行' &&
+          normalizeSkillUiText(effect['目标'], '') === '自身' &&
+          (effect['驱动属性'] !== undefined || effect['影响方向'] !== undefined)
+        )
+          throw new Error(`技能执行结构错误:${path}[${index}]自身目标不允许驱动属性或影响方向`);
+        if (原型 === '时光回溯') {
+          const 发动方式 = normalizeSkillUiText(effect['发动方式'], '被动');
+          const 目标 = normalizeSkillUiText(effect['目标'], '单体');
+          const 方向选项 = 发动方式 === '主动' ? ['成功率', '效果强度'] : ['成功率'];
+          if (!['主动', '被动'].includes(发动方式))
+            throw new Error(`技能执行结构错误:${path}[${index}]时光回溯发动方式只能为主动或被动`);
+          if (!['单体', '群体', '全场'].includes(目标))
+            throw new Error(`技能执行结构错误:${path}[${index}]时光回溯目标只允许单体、群体或全场`);
+          if (!方向选项.includes(normalizeSkillUiText(effect['影响方向'], '')))
+            throw new Error(`技能执行结构错误:${path}[${index}]时光回溯影响方向与发动方式不匹配`);
+        }
+        if (
+          技能设计台原型需要默认驱动判定(原型, effect) &&
+          (!normalizeSkillUiText(effect['驱动属性'], '') || !normalizeSkillUiText(effect['影响方向'], ''))
+        )
+          throw new Error(`技能执行结构错误:${path}[${index}]目标驱动效果必须提供驱动属性和影响方向`);
+      }
+      if (原型 === '伤害结算' && effect['触发限制'] !== undefined)
+        throw new Error(`技能执行结构错误:${path}[${index}]伤害结算不允许触发限制`);
+      const 允许延迟回合 = ['伤害结算', '护盾变化', '属性修正', '状态施加'].includes(原型);
+      if (effect['延迟回合'] !== undefined && !允许延迟回合)
+        throw new Error(`技能执行结构错误:${path}[${index}]延迟回合只允许用于正式战斗或行为原型`);
+      if (
+        允许延迟回合 &&
+        effect['延迟回合'] !== undefined &&
+        !(toNumber(effect['延迟回合'], 0) > 0)
+      )
+        throw new Error(`技能执行结构错误:${path}[${index}]延迟回合必须大于0，未设置请不要落盘`);
+      if (原型 === '判定修正' && !读取技能设计台原型字段选项('判定修正', '判定').includes(normalizeSkillUiText(effect['判定'], '')))
+        throw new Error(`技能执行结构错误:${path}[${index}]判定修正判定类型无效`);
+      if (原型 === '决策干扰') {
+        if (!['判断干扰', '索敌干扰'].includes(normalizeSkillUiText(effect['干扰'], '')))
+          throw new Error(`技能执行结构错误:${path}[${index}]决策干扰类型无效`);
+      if (!技能设计台字段值是百分比修正(effect['数值']))
+        throw new Error(`技能执行结构错误:${path}[${index}]决策干扰数值必须使用百分比`);
+      const 数值 = 解析技能设计台正负数值(effect['数值']);
+      if (!(数值 >= 1 && 数值 <= 100))
+        throw new Error(`技能执行结构错误:${path}[${index}]决策干扰数值必须在1%到100%之间`);
+      const 旧字段 = [
+        '决' + '策',
+        '行动' + '权重',
+        '目标' + '权重',
+        '锁' + '定',
+        '护' + '卫',
+        '嘲' + '讽',
+        '追' + '击',
+        '弱' + '点',
+        'decision_' + 'action_' + 'weight',
+        'decision_' + 'target_' + 'weight',
+      ].find(字段名 => effect[字段名] !== undefined);
+      if (旧字段)
+        throw new Error(`技能执行结构错误:${path}[${index}]决策干扰不允许旧字段${旧字段}`);
+    }
+      if (原型 === '资源变化') {
+        ['持续tick', '主驱动资源', '结算标签'].forEach(字段名 => {
+          if (effect[字段名] !== undefined) throw new Error(`技能执行结构错误:${path}[${index}]资源变化不允许${字段名}`);
+        });
+        if (effect['持续回合'] !== undefined && (!Number.isFinite(Number(effect['持续回合'])) || Number(effect['持续回合']) < 1 || Number(effect['持续回合']) > 10))
+          throw new Error(`技能执行结构错误:${path}[${index}]资源变化持续回合必须为1到10`);
+        if (effect['资源转移方式'] !== undefined || effect['转化比例'] !== undefined)
+          throw new Error(`技能执行结构错误:${path}[${index}]资源变化不允许资源转移字段`);
+        if (effect['资源转移角色'] !== undefined)
+          throw new Error(`技能执行结构错误:${path}[${index}]资源转移角色已删除`);
+        if (normalizeSkillUiText(effect['资源'], '') === '生命' && 解析技能设计台正负数值(effect['数值']) < 0)
+          throw new Error(`技能执行结构错误:${path}[${index}]资源变化生命不允许负数，请使用伤害结算`);
+      }
+      if (原型 === '资源转移') {
+        ['持续tick', '主驱动资源', '结算标签'].forEach(字段名 => {
+          if (effect[字段名] !== undefined) throw new Error(`技能执行结构错误:${path}[${index}]资源转移不允许${字段名}`);
+        });
+        if (effect['持续回合'] !== undefined) {
+          const 持续回合 = toNumber(effect['持续回合'], 0);
+          if (!Number.isFinite(持续回合) || 持续回合 < 1 || 持续回合 > 10 || Math.round(持续回合) !== 持续回合)
+            throw new Error(`技能执行结构错误:${path}[${index}]资源转移持续回合必须为1到10的整数`);
+        }
+        if (effect['资源转移角色'] !== undefined)
+          throw new Error(`技能执行结构错误:${path}[${index}]资源转移角色已删除`);
+        const 转移方式 = normalizeSkillUiText(effect['资源转移方式'], '');
+        if (!['吞噬', '共享', '均分', '转移'].includes(转移方式))
+          throw new Error(`技能执行结构错误:${path}[${index}]资源转移方式无效`);
+        const 目标 = normalizeSkillUiText(effect['目标'], '');
+        const 合法目标 = 转移方式 === '均分' ? ['单体', '群体', '全场'] : ['单体', '群体'];
+        if (!合法目标.includes(目标))
+          throw new Error(`技能执行结构错误:${path}[${index}]${转移方式}不允许目标${目标 || '空'}`);
+        if (转移方式 === '均分' && effect['转化比例'] !== undefined)
+          throw new Error(`技能执行结构错误:${path}[${index}]${转移方式}不允许转化比例`);
+        if (['吞噬', '共享', '转移'].includes(转移方式)) {
+          const 转化比例 = Number(effect['转化比例'] ?? 1);
+          if (!Number.isFinite(转化比例) || 转化比例 < 0 || 转化比例 > 2)
+            throw new Error(`技能执行结构错误:${path}[${index}]转化比例必须在0到2之间`);
+        }
+      }
+      if (原型 === '资源锁定') {
+        const 资源列表 = Array.isArray(effect['资源']) ? effect['资源'] : [effect['资源']];
+        if (资源列表.some(资源 => !['生命', '体力', '魂力', '精神力'].includes(normalizeSkillUiText(资源, ''))))
+          throw new Error(`技能执行结构错误:${path}[${index}]资源锁定资源无效`);
+        if (!技能设计台资源锁定类型选项.includes(normalizeSkillUiText(effect['锁定类型'], '')))
+          throw new Error(`技能执行结构错误:${path}[${index}]资源锁定类型无效`);
+        if (!技能设计台字段值是百分比修正(effect['数值']))
+          throw new Error(`技能执行结构错误:${path}[${index}]资源锁定数值必须使用百分比`);
+        const 数值 = 解析技能设计台正负数值(effect['数值']);
+        if (!(数值 > 0) || 数值 > 100)
+          throw new Error(`技能执行结构错误:${path}[${index}]资源锁定数值必须为0%~100%的正百分比`);
+        if (!(toNumber(effect['持续回合'], 0) > 0))
+          throw new Error(`技能执行结构错误:${path}[${index}]资源锁定必须提供持续回合`);
+      }
+      if (原型 === '护盾变化') {
+        const 模式 = normalizeSkillUiText(effect['护盾模式'], '');
+        if (!['正向护盾', '斩盾', '窃盾'].includes(模式)) throw new Error(`技能执行结构错误:${path}[${index}]护盾变化护盾模式无效`);
+        const 数值 = 解析技能设计台正负数值(effect['数值']);
+        if (模式 === '正向护盾' && !(数值 > 0)) throw new Error(`技能执行结构错误:${path}[${index}]正向护盾数值必须为正`);
+        if (模式 !== '正向护盾' && !(数值 < 0)) throw new Error(`技能执行结构错误:${path}[${index}]斩盾/窃盾数值必须为负`);
+        if (模式 !== '正向护盾' && effect['持续回合'] !== undefined) throw new Error(`技能执行结构错误:${path}[${index}]斩盾/窃盾不允许持续回合`);
+      }
+      if (原型 === '属性修正') {
+        const 属性列表 = Array.isArray(effect['属性']) ? effect['属性'] : [effect['属性']];
+        if (属性列表.some(属性 => !['力量', '防御', '敏捷', '生命上限', '体力上限', '魂力上限', '精神力上限'].includes(normalizeSkillUiText(属性, ''))))
+          throw new Error(`技能执行结构错误:${path}[${index}]属性修正属性无效`);
+      }
+      if (原型 === '位移执行' && effect['方位'] !== undefined)
+        throw new Error(`技能执行结构错误:${path}[${index}]位移方位没有行为约束`);
+      if (原型 === '位移执行') {
+        const 位移类型 = normalizeSkillUiText(effect['位移类型'], '');
+        const 目标 = normalizeSkillUiText(effect['目标'], '');
+        const 位移对象 = normalizeSkillUiText(effect['位移对象'], '');
+        if (!['拉近', '击退', '换位', '瞬移', '脱离'].includes(位移类型))
+          throw new Error(`技能执行结构错误:${path}[${index}]位移类型无效`);
+        if (!['自身', '目标', '自身与目标'].includes(位移对象))
+          throw new Error(`技能执行结构错误:${path}[${index}]位移对象无效`);
+        if (目标 === '自身' && 位移对象 !== '自身')
+          throw new Error(`技能执行结构错误:${path}[${index}]自身目标必须使用自身位移对象`);
+        if ((位移类型 === '换位' || 位移对象 === '自身与目标') && (!目标 || 目标 === '自身'))
+          throw new Error(`技能执行结构错误:${path}[${index}]换位必须提供自身以外目标`);
+        if (位移类型 === '换位' && 位移对象 !== '自身与目标')
+          throw new Error(`技能执行结构错误:${path}[${index}]换位必须声明自身与目标双参与者`);
+        if (位移类型 !== '换位' && 位移对象 === '自身与目标')
+          throw new Error(`技能执行结构错误:${path}[${index}]非换位不能使用自身与目标双参与者`);
+        if (['瞬移', '脱离'].includes(位移类型) && 位移对象 !== '自身')
+          throw new Error(`技能执行结构错误:${path}[${index}]${位移类型}只能移动自身`);
+        if (effect['数量'] !== undefined) throw new Error(`技能执行结构错误:${path}[${index}]位移执行不允许触发次数或数量`);
+        if (toNumber(effect['距离'], 0) <= 0) throw new Error(`技能执行结构错误:${path}[${index}]位移幅度必须大于0`);
+        if (toNumber(effect['距离'], 0) > 30) throw new Error(`技能执行结构错误:${path}[${index}]位移幅度不能超过30`);
+        if (effect['数值'] !== undefined && !技能设计台字段值是百分比修正(effect['数值']))
+          throw new Error(`技能执行结构错误:${path}[${index}]位移收益强度覆写必须是百分比`);
+        if (effect['数值'] !== undefined && Math.abs(解析技能设计台正负数值(effect['数值'])) > 0.45)
+          throw new Error(`技能执行结构错误:${path}[${index}]位移收益强度覆写不能超过45%`);
+        if (effect['持续回合'] !== undefined && (!Number.isFinite(Number(effect['持续回合'])) || Number(effect['持续回合']) < 1 || Number(effect['持续回合']) > 10))
+          throw new Error(`技能执行结构错误:${path}[${index}]位移持续回合必须为1到10`);
+      }
+      if (原型 === '伤害结算') {
+        const 结算标签 = normalizeSkillUiText(effect['结算标签'], '');
+        const 抗性类型 = normalizeSkillUiText(effect['抗性类型'], '');
+        const 伤害类型 = normalizeSkillUiText(effect['伤害类型'], '');
+        if (!['标准伤害', '真实伤害'].includes(结算标签))
+          throw new Error(`技能执行结构错误:${path}[${index}]伤害结算标签无效`);
+        if (!['物理抗性', '精神抗性', '元素抗性', '毒素抗性', '真实无视'].includes(抗性类型))
+          throw new Error(`技能执行结构错误:${path}[${index}]抗性类型无效`);
+        if (!技能设计台伤害类型选项.includes(伤害类型))
+          throw new Error(`技能执行结构错误:${path}[${index}]伤害类型无效`);
+        const 伤害绑定 = 读取技能设计台伤害绑定(伤害类型);
+        const 预期结算标签 = 伤害绑定.结算标签;
+        const 预期抗性类型 = 伤害绑定.抗性类型;
+        if (结算标签 !== 预期结算标签 || 抗性类型 !== 预期抗性类型)
+          throw new Error(`技能执行结构错误:${path}[${index}]伤害类型自动绑定字段不一致`);
+        if (!['单体', '群体', '全场'].includes(normalizeSkillUiText(effect['目标'], '')))
+          throw new Error(`技能执行结构错误:${path}[${index}]主伤害目标无效`);
+      }
+      if (原型 === '判定修正' && !技能设计台字段值是百分比修正(effect['数值']))
+        throw new Error(`技能执行结构错误:${path}[${index}]判定修正数值必须使用百分比`);
+      if (原型 === '判定修正' && effect['持续回合'] !== undefined) {
+        const 持续回合 = toNumber(effect['持续回合'], 0);
+        if (!Number.isFinite(持续回合) || 持续回合 < 1 || 持续回合 > 10 || Math.round(持续回合) !== 持续回合)
+          throw new Error(`技能执行结构错误:${path}[${index}]判定修正持续回合必须为1到10的整数`);
+        if (effect['打断效果'] !== undefined)
+          throw new Error(`技能执行结构错误:${path}[${index}]持续判定修正不允许附带打断效果`);
+      }
+      if (原型 === '结算修正') 断言技能设计台结算修正字段范围(effect, path, index);
+      断言技能设计台释放后分支不携带释放前降低结算(effect, path, index);
+      if (原型 === '判定修正' && effect['打断效果'] !== undefined && !技能设计台判定修正允许打断效果(effect))
+        throw new Error(`技能执行结构错误:${path}[${index}]正向判定修正不允许开启打断效果`);
+      if (effect['事件优先级'] !== undefined) throw new Error(`技能执行结构错误:${path}[${index}]事件优先级已删除`);
+      if (effect['快照规则'] !== undefined) throw new Error(`技能执行结构错误:${path}[${index}]快照规则已删除`);
+      if (effect['影响方向'] !== undefined && !读取技能设计台影响方向选项值(原型, effect).includes(normalizeSkillUiText(effect['影响方向'], '')))
+        throw new Error(`技能执行结构错误:${path}[${index}]影响方向不适用于${原型}`);
+      if (
+        (是结算效果路径 || 是授予效果路径) &&
+        normalizeSkillUiText(effect['生效方式'], '') === '跟随主原型'
+      )
+        throw new Error(`技能执行结构错误:${path}[${index}]嵌套效果必须独立生效`);
+      if (原型 === '状态施加') {
+        const 状态名 = normalizeSkillUiText(effect['状态'], '');
+        const 触发方式 = normalizeSkillUiText(effect['触发方式'], '立即触发');
+        if (状态名 === '护卫' && normalizeSkillUiText(effect['目标'], '') === '自身')
+          throw new Error(`技能执行结构错误:${path}[${index}]护卫目标不能是自身`);
+        if (!['立即触发', '延迟触发', '遥控触发'].includes(触发方式))
+          throw new Error(`技能执行结构错误:${path}[${index}]状态触发方式无效`);
+        if (触发方式 === '延迟触发' && !(toNumber(effect['延迟回合'], 0) > 0))
+          throw new Error(`技能执行结构错误:${path}[${index}]延迟触发必须提供延迟回合`);
+        if (触发方式 !== '延迟触发' && effect['延迟回合'] !== undefined)
+          throw new Error(`技能执行结构错误:${path}[${index}]非延迟触发不允许延迟回合`);
+        const 数值 = 解析技能设计台正负数值(effect['数值']);
+        if (!技能设计台状态施加允许数值字段(状态名) && effect['数值'] !== undefined)
+          throw new Error(`技能执行结构错误:${path}[${index}]${状态名}不允许数值`);
+        if (!技能设计台状态施加允许副数值字段(状态名) && effect['副数值'] !== undefined)
+          throw new Error(`技能执行结构错误:${path}[${index}]${状态名}不允许副数值`);
+        if (技能设计台状态施加状态分类矩阵.持续伤害类.includes(状态名) && !(数值 < 0))
+          throw new Error(`技能执行结构错误:${path}[${index}]${状态名}数值必须为负`);
+        if (状态名 === '持续恢复' && !(数值 > 0))
+          throw new Error(`技能执行结构错误:${path}[${index}]持续恢复数值必须为正`);
+        if (状态名 === '资源燃烧' && !(数值 > 0))
+          throw new Error(`技能执行结构错误:${path}[${index}]资源燃烧数值必须为正`);
+        if (状态名 === '魂力枯竭' && !(数值 > 0))
+          throw new Error(`技能执行结构错误:${path}[${index}]魂力枯竭数值必须为正`);
+        if (状态名 === '护盾' && !(数值 > 0))
+          throw new Error(`技能执行结构错误:${path}[${index}]护盾数值必须为正`);
+        if (['禁疗', '治疗反转', '防御剥夺', '精神抗性剥夺'].includes(状态名) && !(数值 > 0))
+          throw new Error(`技能执行结构错误:${path}[${index}]${状态名}数值必须为正`);
+        if (技能设计台状态施加清理驱动字段(状态名, effect['目标']) && (effect['驱动属性'] !== undefined || effect['影响方向'] !== undefined))
+          throw new Error(`技能执行结构错误:${path}[${index}]${状态名}不应携带驱动属性或影响方向`);
+        if (effect['概率'] !== undefined)
+          throw new Error(`技能执行结构错误:${path}[${index}]状态施加不允许概率`);
+        if (effect['打断效果'] !== undefined)
+          throw new Error(`技能执行结构错误:${path}[${index}]该状态不允许打断效果`);
+        if (effect['触发限制'] !== undefined && !技能设计台状态施加允许触发限制(状态名, effect['目标']))
+          throw new Error(`技能执行结构错误:${path}[${index}]该状态不允许触发限制`);
+      }
+      if (是授予效果路径 && 原型 === '机制授予')
+        throw new Error(`技能执行结构错误:${path}[${index}]授予效果不能继续授予机制`);
+      if (原型 === '机制授予' && (!Array.isArray(effect['授予效果']) || !effect['授予效果'].length))
+        throw new Error(`技能执行结构错误:${path}[${index}]机制授予缺少授予效果`);
+      if (原型 === '机制授予' && !技能设计台机制授予触发条件选项.includes(normalizeSkillUiText(effect['触发条件'], '主动触发')))
+        throw new Error(`技能执行结构错误:${path}[${index}]机制授予触发条件无效`);
+      if (原型 === '机制授予' && normalizeSkillUiText(effect['触发条件'], '主动触发') === '随下次行动触发' && !机制授予目标允许下次行动触发(effect['目标']))
+        throw new Error(`技能执行结构错误:${path}[${index}]非自身机制授予不允许随下次行动触发`);
+      if (原型 === '机制授予' && normalizeSkillUiText(effect['触发条件'], '主动触发') === '随下次行动触发' && effect['可用次数'] !== undefined)
+        throw new Error(`技能执行结构错误:${path}[${index}]随下次行动触发固定使用一次，不支持可用次数`);
+      if (原型 === '机制授予' && effect['触发条件'] === '下次魂技成功释放' && !机制授予目标允许下次行动触发(effect['目标']))
+        throw new Error(`技能执行结构错误:${path}[${index}]非自身机制授予不允许在下次魂技成功释放时触发`);
+      if (原型 === '机制授予' && effect['触发条件'] === '下次魂技成功释放' && !(Number.isInteger(Number(effect['可用次数'])) && Number(effect['可用次数']) > 0))
+        throw new Error(`技能执行结构错误:${path}[${index}]下次魂技成功释放机制授予必须有正整数可用次数`);
+      if (原型 === '机制授予' && effect['持续回合'] !== undefined && !(Number.isInteger(Number(effect['持续回合'])) && Number(effect['持续回合']) > 0))
+        throw new Error(`技能执行结构错误:${path}[${index}]机制授予持续回合必须为正整数`);
+      if (原型 === '机制授予' && normalizeSkillUiText(effect['触发条件'], '主动触发') === '主动触发' && !(toNumber(effect['可用次数'], 0) > 0 && toNumber(effect['持续回合'], 0) > 0))
+        throw new Error(`技能执行结构错误:${path}[${index}]主动触发机制授予缺少可用次数或持续回合`);
+      if (
+        原型 === '机制授予' &&
+        (Array.isArray(effect['授予效果']) ? effect['授予效果'] : []).some(item => {
+          const grantPrototype = normalizeSkillUiText(item && item['原型'], '');
+          return !grantPrototype || !技能设计台机制授予允许授予原型集合.has(grantPrototype);
+        })
+      )
+        throw new Error(`技能执行结构错误:${path}[${index}]机制授予授予效果原型无效`);
+      if (原型 === '召唤生成' && normalizeSkillUiText(effect['目标'], '') !== '自身')
+        throw new Error(`技能执行结构错误:${path}[${index}]召唤生成只能挂载自身`);
+      if (
+        (原型 === '资源变化' && 解析技能设计台正负数值(effect['数值']) > 0) ||
+        (原型 === '护盾变化' && 解析技能设计台正负数值(effect['数值']) > 0)
+      ) {
+      }
+      if (原型 === '时窗修正') {
+        const 调整字段 = normalizeSkillUiText(effect['调整字段'], '');
+        if (effect['状态'] !== undefined || effect['造物名称'] !== undefined)
+          throw new Error(`技能执行结构错误:${path}[${index}]时窗修正不允许指定状态或造物`);
+        if (调整字段 === '持续回合') {
+          if (effect['调整tick'] !== undefined || effect['调整次数'] !== undefined)
+            throw new Error(`技能执行结构错误:${path}[${index}]时窗修正字段组合无效`);
+          const 调整回合 = Math.round(toNumber(effect['调整回合'], 1));
+          if (!(调整回合 >= 1 && 调整回合 <= 3))
+            throw new Error(`技能执行结构错误:${path}[${index}]时窗修正调整回合必须为1~3`);
+        }
+        if (调整字段 === '有效期tick' && (effect['调整回合'] !== undefined || effect['调整次数'] !== undefined || effect['结算倍率'] !== undefined))
+          throw new Error(`技能执行结构错误:${path}[${index}]时窗修正字段组合无效`);
+        if (调整字段 === '有效期tick') {
+          const 调整tick = Math.round(toNumber(effect['调整tick'], 1));
+          if (!(调整tick >= 1 && 调整tick <= 1008))
+            throw new Error(`技能执行结构错误:${path}[${index}]时窗修正有效期调整必须为1~1008tick`);
+        }
+        if (['触发次数', '使用次数'].includes(调整字段)) {
+          if (effect['调整回合'] !== undefined || effect['调整tick'] !== undefined || effect['结算倍率'] !== undefined)
+            throw new Error(`技能执行结构错误:${path}[${index}]时窗修正字段组合无效`);
+          const 调整次数 = Math.round(toNumber(effect['调整次数'], 1));
+          if (!(调整次数 >= 1 && 调整次数 <= 3))
+            throw new Error(`技能执行结构错误:${path}[${index}]时窗修正调整次数必须为1~3`);
+        }
+        const 单日使用次数上限 = Math.round(toNumber(effect['单日使用次数上限'], 1));
+        if (!(单日使用次数上限 >= 1 && 单日使用次数上限 <= 3))
+          throw new Error(`技能执行结构错误:${path}[${index}]时窗修正单日使用次数上限必须为1~3`);
+        if (effect['结算倍率'] !== undefined) {
+          const 倍率文本 = normalizeSkillUiText(effect['结算倍率'], '');
+          const 倍率数值 = parseSkillDesignerSignedValue(倍率文本);
+          if (调整字段 !== '持续回合' || normalizeSkillUiText(effect['调整方式'], '') !== '压缩')
+            throw new Error(`技能执行结构错误:${path}[${index}]时窗修正结算倍率仅允许持续回合压缩`);
+          if (!/%$/.test(倍率文本) || !(倍率数值 >= 0.5 && 倍率数值 <= 3))
+            throw new Error(`技能执行结构错误:${path}[${index}]时窗修正结算倍率必须为+50%~+300%`);
+        }
+      }
+      if (
+        index > 0 &&
+        normalizeSkillUiText(effect['生效方式'], '') === '跟随主原型' &&
+        主目标 &&
+        normalizeSkillUiText(effect['目标'], '') !== 主目标
+      ) {
+        throw new Error(`技能执行结构错误:${path}[${index}]目标不同不能跟随主原型`);
+      }
+      技能设计台嵌套效果数组字段表.forEach(key => {
+        if (Array.isArray(effect[key])) 断言技能设计台效果数组契约(effect[key], `${path}[${index}].${key}`);
+      });
+      if (Array.isArray(effect['条件分支'])) {
+        effect['条件分支'].forEach((branch, branchIndex) => {
+          const 条件列表 = Array.isArray(branch && branch['条件']) ? branch['条件'] : [];
+          if (!条件列表.length) throw new Error(`技能执行结构错误:${path}[${index}].条件分支[${branchIndex}]缺少条件`);
+          const 处理 = normalizeSkillUiText(branch && branch['处理'], '');
+          if (!['生效', '替换效果', '追加效果', '禁用'].includes(处理))
+            throw new Error(`技能执行结构错误:${path}[${index}].条件分支[${branchIndex}]处理方式无效`);
+          if (
+            处理 === '生效' &&
+            (
+              (Array.isArray(branch && branch['替换效果']) && branch['替换效果'].length) ||
+              (Array.isArray(branch && branch['追加效果']) && branch['追加效果'].length)
+            )
+          )
+            throw new Error(`技能执行结构错误:${path}[${index}].条件分支[${branchIndex}]生效分支不可携带替换或追加效果`);
+          if (处理 === '替换效果' && (!Array.isArray(branch && branch['替换效果']) || !branch['替换效果'].length))
+            throw new Error(`技能执行结构错误:${path}[${index}].条件分支[${branchIndex}]缺少替换效果`);
+          if (处理 === '追加效果' && (!Array.isArray(branch && branch['追加效果']) || !branch['追加效果'].length))
+            throw new Error(`技能执行结构错误:${path}[${index}].条件分支[${branchIndex}]缺少追加效果`);
+          技能设计台条件分支效果数组字段表.forEach(key => {
+            if (Array.isArray(branch && branch[key]))
+              断言技能设计台效果数组契约(branch[key], `${path}[${index}].条件分支[${branchIndex}].${key}`);
+          });
+        });
+      }
+    });
+  }
+  // —— B:21622-21626
+  function formatSkillDesignerNumericInput(value, digits = 4) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return '';
+    return String(Number(parsed.toFixed(digits)));
+  }
+  // —— B:21628-21635
+  function getSkillDesignerEffectDuration(effect = {}) {
+    const candidates = [effect && effect['持续'], effect && effect['持续回合']];
+    for (const item of candidates) {
+      const parsed = Number(item);
+      if (Number.isFinite(parsed) && parsed > 0) return parsed;
+    }
+    return 0;
+  }
+  // —— B:21637-21641
+  function getSkillDesignerPackedPropertyLabel(property = '') {
+    if (Array.isArray(property)) return property.map(item => getSkillDesignerPackedPropertyLabel(item)).filter(Boolean);
+    const key = normalizeSkillUiText(property, '');
+    return SKILL_DESIGNER_PACKED_PROPERTY_LABELS[key] || key;
+  }
+  // —— B:21660-21678
+  function resolveSkillDesignerNestedEffectMechanism(entry = {}) {
+    const explicitMechanism = normalizeSkillUiText(entry && entry['机制'], '');
+    if (explicitMechanism) return explicitMechanism;
+    const description = '';
+    if (!description) return '';
+    if (/分身/.test(description)) return '分身';
+    if (/霸体/.test(description)) return '霸体';
+    if (/护盾/.test(description)) return '护盾';
+    if (/承伤|减伤/.test(description)) return '承伤修正';
+    if (/免死|锁血/.test(description)) return '免死';
+    if (/解控/.test(description)) return '解控';
+    if (/净化/.test(description)) return '净化';
+    if (/(回复|恢复)/.test(description) && /魂力/.test(description)) return '魂力恢复';
+    if (/(回复|恢复)/.test(description) && /精神/.test(description)) return '精神恢复';
+    if (/(回复|恢复)/.test(description) && /(体力|生命)/.test(description)) return '体力恢复';
+    if (/共享视野/.test(description)) return '共享视野';
+    if (/标记/.test(description) && /锁定/.test(description)) return '标记锁定';
+    return '';
+  }
+  // —— B:21680-21725
+  function buildSkillDesignerNestedEffectEntry(entry = {}, fallback = {}) {
+    const entryValue = entry && typeof entry === 'object' ? entry : {};
+    const valueConfig = entryValue && entryValue.value && typeof entryValue.value === 'object' ? entryValue.value : {};
+    const hasStructuredPayload =
+      Object.prototype.hasOwnProperty.call(entryValue, 'type') ||
+      Object.prototype.hasOwnProperty.call(entryValue, 'target') ||
+      Object.prototype.hasOwnProperty.call(entryValue, '目标') ||
+      Object.prototype.hasOwnProperty.call(entryValue, '持续回合') ||
+      Object.prototype.hasOwnProperty.call(entryValue, '持续') ||
+      Object.prototype.hasOwnProperty.call(valueConfig, 'durationRounds') ||
+      Object.prototype.hasOwnProperty.call(valueConfig, 'duration');
+    if (!hasStructuredPayload) return null;
+
+    const mechanism = resolveSkillDesignerNestedEffectMechanism(entryValue);
+    if (!mechanism) return null;
+    const target = normalizeSkillUiText(entryValue['目标'] || entryValue.target || (fallback && fallback.target), '');
+    const duration = Math.max(
+      0,
+      toNumber(
+        entryValue['持续回合'] ??
+          entryValue['持续'] ??
+          valueConfig.durationRounds ??
+          valueConfig.duration ??
+          valueConfig.rounds,
+        0,
+      ),
+    );
+    const 原型列表 = getSkillDesignerMechanismCompiledPrototypeList(mechanism);
+    if (!原型列表.length) return null;
+    const 原型条目 =
+      原型列表[0] && typeof 原型列表[0] === 'object'
+        ? cloneJsonValue(原型列表[0])
+        : { 原型: normalizeSkillUiText(原型列表[0], '') };
+    const normalizedEffect = buildSkillDesignerRuntimeObject(原型条目);
+    if (!normalizedEffect || !normalizeSkillUiText(normalizedEffect['原型'], '')) return null;
+    if (target) normalizedEffect['目标'] = target;
+    if (duration > 0) normalizedEffect['持续回合'] = duration;
+
+    const immuneLevel = normalizeSkillUiText(entryValue['免控级别'] || valueConfig.immuneLevel, '');
+    const reduceRatio = formatSkillDesignerNumericInput(entryValue['承伤修正'] ?? valueConfig.reduceRatio);
+    const shieldSource = normalizeSkillUiText(entryValue['护盾来源'] || valueConfig.shieldSource, '');
+    if (immuneLevel) normalizedEffect['免控级别'] = immuneLevel;
+    if (reduceRatio) normalizedEffect['承伤修正'] = reduceRatio;
+    if (shieldSource) normalizedEffect['护盾来源'] = shieldSource;
+    return normalizedEffect;
+  }
+  // —— B:21727-21737
+  function getSkillDesignerEffectSignature(effect = {}) {
+    const mechanism = normalizeSkillUiText(effect && effect['原型'], '');
+    const target = normalizeSkillUiText(effect && effect['目标'], '');
+    const property = normalizeSkillUiText(effect && effect['属性'], '');
+    const action = normalizeSkillUiText(
+      effect && (effect['判定'] || effect['结算'] || effect['状态'] || effect['规则']),
+      '',
+    );
+    const duration = getSkillDesignerEffectDuration(effect);
+    return [mechanism, target, property, action, String(duration)].join('|');
+  }
+  // —— B:21739-21747
+  function appendSkillDesignerEffectEntry(bucket = [], seen = new Set(), effect = null) {
+    if (!effect || typeof effect !== 'object') return;
+    const mechanism = normalizeSkillUiText(effect['原型'], '');
+    if (!mechanism || mechanism === '系统基础' || isSkillSummaryEffect(effect)) return;
+    const signature = getSkillDesignerEffectSignature(effect);
+    if (!signature || seen.has(signature)) return;
+    seen.add(signature);
+    bucket.push(effect);
+  }
+  // —— B:21749-21782
+  function appendSkillDesignerEffectEntries(source, bucket = [], seen = new Set(), context = {}) {
+    if (Array.isArray(source)) {
+      source.forEach(entry => appendSkillDesignerEffectEntries(entry, bucket, seen, context));
+      return bucket;
+    }
+    if (!source || typeof source !== 'object') return bucket;
+
+    const fallbackTarget = normalizeSkillUiText(context && context.target, '');
+    const resolvedTarget = normalizeSkillUiText(source['目标'] || source.target || fallbackTarget, fallbackTarget);
+    const explicitPrototype = normalizeSkillUiText(source['原型'], '');
+    if (explicitPrototype) {
+      const clonedEffect = cloneJsonValue(source);
+      if (!normalizeSkillUiText(clonedEffect['目标'], '') && resolvedTarget) {
+        clonedEffect['目标'] = resolvedTarget;
+      }
+      appendSkillDesignerEffectEntry(bucket, seen, clonedEffect);
+    } else {
+      const nestedEffect = buildSkillDesignerNestedEffectEntry(source, { target: resolvedTarget });
+      const runtimeEffect = buildSkillDesignerRuntimeObject(nestedEffect);
+      appendSkillDesignerEffectEntry(
+        bucket,
+        seen,
+        runtimeEffect && normalizeSkillUiText(runtimeEffect['原型'], '') ? runtimeEffect : null,
+      );
+    }
+
+    if (Array.isArray(source['使用效果'])) {
+      appendSkillDesignerEffectEntries(source['使用效果'], bucket, seen, { target: resolvedTarget || fallbackTarget });
+    }
+    if (Array.isArray(source.effects)) {
+      appendSkillDesignerEffectEntries(source.effects, bucket, seen, { target: resolvedTarget || fallbackTarget });
+    }
+    return bucket;
+  }
+  // —— B:22222-22230
+  function normalizeSkillDesignerCoeffMap(value) {
+    const source = value && typeof value === 'object' ? value : {};
+    const result = {};
+    SKILL_ATTRIBUTE_DIM_KEYS.forEach(key => {
+      const parsed = Number(source[key]);
+      result[key] = Number.isFinite(parsed) ? parsed : 1;
+    });
+    return result;
+  }
+  // —— B:22232-22234
+  function getSkillDesignerEffectEntries(effectArray = []) {
+    return appendSkillDesignerEffectEntries(Array.isArray(effectArray) ? effectArray : [], [], new Set());
+  }
+  // —— B:22333-22349
+  function inferSkillDesignerDeliveryForm(effectArray = [], type = '', target = '') {
+    const effectEntries = getSkillDesignerEffectEntries(effectArray);
+    const mechanisms = effectEntries.map(effect => normalizeSkillUiText(effect && effect['原型'], ''));
+    const normalizedType = normalizeSkillUiText(type, '');
+    const normalizedTarget = normalizeSkillUiText(target, '');
+    if (
+      effectEntries.some(
+        effect =>
+          !normalizeSkillUiText(effect && effect['原型'], '') && Array.isArray(effect && effect['使用效果']),
+      ) ||
+      /食物系/.test(normalizedType)
+    )
+      return '造物承载';
+    void mechanisms;
+    void normalizedTarget;
+    return '直接生效';
+  }
+  // —— B:22351-22366
+  function inferSkillDesignerMainRole(type = '', target = '', primaryMain = '', primarySub = '') {
+    const normalizedType = normalizeSkillUiText(type, '');
+    const normalizedTarget = normalizeSkillUiText(target, '');
+    const normalizedMain = normalizeSkillUiText(primaryMain, '');
+    const normalizedSub = normalizeSkillUiText(primarySub, '');
+    if (/被动/.test(normalizedType)) return '被动固化';
+    if (normalizedMain === '伤害类') return /持续/.test(normalizedSub) ? '持续压制' : '爆发输出';
+    if (normalizedMain === '控制类' || normalizedMain === '削弱类') return '控制起手';
+    if (normalizedMain === '防御类') return '保护承伤';
+    if (normalizedMain === '回复类') return '回复续航';
+    if (normalizedMain === '增益类') return '增益辅助';
+    if (normalizedMain === '感知/认知类' || normalizedMain === '位移类' || normalizedMain === '特殊规则类')
+      return '特殊规则';
+    if (/自身/.test(normalizedTarget)) return '增益辅助';
+    return '未知';
+  }
+  // —— B:22374-22376
+  function isSkillDesignerSlotLabel(value = '') {
+    return /^第(?:\d+|[一二三四五六七八九十百]+)魂技(?:_2)?$/u.test(toText(value, '').trim());
+  }
+  // —— B:22378-22385
+  function getSkillDesignerNameFallback(previewMeta = {}) {
+    const scope = toText(previewMeta && previewMeta.scope, '魂技');
+    const label = toText(previewMeta && previewMeta.label, '')
+      .replace(/\[续台推演\]\s*/g, '')
+      .trim();
+    if (scope === '魂技' && isSkillDesignerSlotLabel(label)) return '';
+    return label;
+  }
+  // —— B:22387-22391
+  function 是第七魂环魂技设计_桥接(previewMeta = {}) {
+    if (toText(previewMeta && previewMeta.scope, '') !== '魂技') return false;
+    const path = Array.isArray(previewMeta && previewMeta.path) ? previewMeta.path : [];
+    return path.some(片段 => 是魂环槽位键_桥接(片段) && 读取槽位序号_桥接(片段, 0) === 7);
+  }
+  // —— B:22393-22404
+  function 读取第七魂环真身默认名_桥接(previewMeta = {}) {
+    const path = Array.isArray(previewMeta && previewMeta.path) ? previewMeta.path : [];
+    const rootData = (liveSnapshot && liveSnapshot.rootData) || readLatestMvuDataByEditor() || {};
+    const 魂环索引 = path.findIndex(片段 => 是魂环槽位键_桥接(片段));
+    const 候选路径列表 = 魂环索引 >= 0 ? [path.slice(0, 魂环索引), path.slice(0, Math.max(0, 魂环索引 - 1))] : [];
+    for (const 候选路径 of 候选路径列表) {
+      const 节点 = 候选路径.length ? deepGet(rootData, 候选路径, null) : null;
+      const 名称 = normalizeSkillUiText(节点 && (节点.表象名称 || 节点.名称 || 节点.name), '');
+      if (名称 && !hasUiPlaceholderToken(名称) && 名称 !== '未展露') return /真身/.test(名称) ? 名称 : `${名称}真身`;
+    }
+    return '武魂真身';
+  }
+  // —— B:22406-22412
+  function 规范第七魂环真身名称_桥接(名称 = '', previewMeta = {}) {
+    const 原名 = normalizeSkillUiText(名称, '');
+    if (!是第七魂环魂技设计_桥接(previewMeta)) return 原名;
+    if (!原名 || hasUiPlaceholderToken(原名) || /^(待补全|未知|未命名|第7魂技|第七魂技)$/u.test(原名))
+      return 读取第七魂环真身默认名_桥接(previewMeta);
+    return /真身/.test(原名) ? 原名 : `${原名}真身`;
+  }
+  // —— B:22414-22421
+  function cleanSkillDisplayName(skill, rawName = '') {
+    const explicitName = normalizeSkillUiText((skill && skill['魂技名']) || (skill && skill['name']), '');
+    if (explicitName) return explicitName;
+    const cleanName = toText(rawName, '')
+      .replace(/\[续台推演\]\s*/g, '')
+      .trim();
+    return isSkillDesignerSlotLabel(cleanName) ? '' : cleanName;
+  }
+  // —— B:22423-22433
+  function buildSkillDesignerPreviewKey(meta = {}) {
+    const path = Array.isArray(meta.path) ? meta.path : [];
+    if (!path.length) return '';
+    const payload = {
+      path,
+      label: toText(meta.label, '技能'),
+      category: toText(meta.category, '技能'),
+      scope: toText(meta.scope, '魂技'),
+    };
+    return `${SKILL_DESIGNER_PREVIEW_PREFIX}${encodeURIComponent(JSON.stringify(payload))}`;
+  }
+  // —— B:22453-22467
+  function parseSkillDesignerPreviewKey(previewKey = '') {
+    const raw = toText(previewKey, '');
+    if (!raw.startsWith(SKILL_DESIGNER_PREVIEW_PREFIX)) return null;
+    try {
+      const payload = JSON.parse(decodeURIComponent(raw.slice(SKILL_DESIGNER_PREVIEW_PREFIX.length)));
+      return {
+        path: Array.isArray(payload && payload.path) ? payload.path : [],
+        label: toText(payload && payload.label, '技能'),
+        category: toText(payload && payload.category, '技能'),
+        scope: toText(payload && payload.scope, '魂技'),
+      };
+    } catch (error) {
+      return null;
+    }
+  }
+  // —— B:22469-22486
+  function formatSkillDesignerChineseOrdinal(value, suffix = '') {
+    const safeValue = Math.max(0, Math.floor(Number(value) || 0));
+    if (!safeValue) return '';
+    const digits = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+    let numeral = '';
+    if (safeValue < 10) {
+      numeral = digits[safeValue];
+    } else if (safeValue < 20) {
+      numeral = safeValue === 10 ? '十' : `十${digits[safeValue - 10]}`;
+    } else if (safeValue < 100) {
+      const tens = Math.floor(safeValue / 10);
+      const ones = safeValue % 10;
+      numeral = `${digits[tens]}十${ones ? digits[ones] : ''}`;
+    } else {
+      numeral = String(safeValue);
+    }
+    return `第${numeral}${suffix}`;
+  }
+  // —— B:22499-22504
+  function 读取技能设计台槽位序号标签(槽位名 = '', 默认值 = '') {
+    const 文本 = toText(槽位名, '').trim();
+    const 匹配 = 文本.match(/^第(\d+)(血脉)?魂技(.*)$/u);
+    if (!匹配) return toText(默认值, '').trim();
+    return `${formatSkillDesignerChineseOrdinal(匹配[1], `${匹配[2] || ''}魂技`) || 文本}${匹配[3] || ''}`;
+  }
+  // —— B:22506-22510
+  function 技能设计台标签是同一槽位(左侧标签 = '', 右侧标签 = '') {
+    const 左侧 = 读取技能设计台槽位序号标签(左侧标签, 左侧标签);
+    const 右侧 = 读取技能设计台槽位序号标签(右侧标签, 右侧标签);
+    return !!左侧 && 左侧 === 右侧;
+  }
+  // —— B:22512-22515
+  function 读取技能设计台技能显示名(技能 = {}, 备用名 = '') {
+    const 显式名称 = normalizeSkillUiText(技能 && (技能['魂技名'] || 技能.name || 技能['名称']), '');
+    return 显式名称 || cleanSkillDisplayName(技能, 备用名) || toText(备用名, '').trim() || '未命名技能';
+  }
+  // —— B:22517-22590
+  function 获取技能设计台同组切换项(rootData = {}, previewMeta = {}) {
+    const path = Array.isArray(previewMeta && previewMeta.path) ? previewMeta.path : [];
+    if (path.length < 2) return [];
+    const scope = toText(previewMeta && previewMeta.scope, '');
+    const 当前键 = toText(path[path.length - 1], '').trim();
+    const 当前路径键 = path.join('\u0001');
+    const category = toText(previewMeta && previewMeta.category, '技能');
+    const 列表 = [];
+    const 加入技能 = (技能路径, 键, 技能, 环位名 = '') => {
+      if (!Array.isArray(技能路径) || !技能路径.length || !技能 || typeof 技能 !== 'object' || Array.isArray(技能))
+        return;
+      const 槽位标签 = 读取技能设计台槽位序号标签(键, 键);
+      const 技能名 = 读取技能设计台技能显示名(技能, 键);
+      const 环位标签 = 环位名 ? 读取技能设计台槽位序号标签(环位名.replace('魂环', '魂技'), '') : '';
+      const 前缀 = 槽位标签 || 环位标签;
+      const 显示标签 =
+        前缀 && 前缀 !== 技能名 && !技能设计台标签是同一槽位(前缀, 技能名) ? `${前缀} / ${技能名}` : 前缀 || 技能名;
+      列表.push({
+        key: 键,
+        skillName: 技能名,
+        path: [...技能路径],
+        label: 显示标签,
+        title: 显示标签,
+        preview: buildSkillDesignerPreviewKey({
+          path: [...技能路径],
+          label: 技能名,
+          category,
+          scope: scope || '魂技',
+        }),
+        active: 技能路径.join('\u0001') === 当前路径键,
+        order: 读取槽位序号_桥接(环位名 || 键, 999) * 10 + (/_2$/.test(键) ? 1 : 0),
+      });
+    };
+    if (['魂技', 'independent_ring_skill'].includes(scope)) {
+      const 武魂索引 = path.findIndex(片段 => 是武魂槽位键_桥接(片段));
+      const 武魂路径 = 武魂索引 >= 0 ? path.slice(0, 武魂索引 + 1) : path.slice(0, -3);
+      const 武魂 = deepGet(rootData, 武魂路径, null);
+      取武魂魂灵条目_桥接(武魂)
+        .sort((a, b) => 读取槽位序号_桥接(a[0], 999) - 读取槽位序号_桥接(b[0], 999))
+        .forEach(([魂灵名, 魂灵]) => {
+          const 魂灵路径 = [...武魂路径, 魂灵名];
+          取魂灵魂环条目_桥接(魂灵)
+            .sort((a, b) => 读取槽位序号_桥接(a[0], 999) - 读取槽位序号_桥接(b[0], 999))
+            .forEach(([环位名, 魂环]) => {
+              取魂环魂技条目_桥接(魂环).forEach(([键, 技能]) => 加入技能([...魂灵路径, 环位名, 键], 键, 技能, 环位名));
+            });
+        });
+      取武魂直接魂环条目_桥接(武魂)
+        .sort((a, b) => 读取槽位序号_桥接(a[0], 999) - 读取槽位序号_桥接(b[0], 999))
+        .forEach(([环位名, 魂环]) => {
+          取魂环魂技条目_桥接(魂环).forEach(([键, 技能]) => 加入技能([...武魂路径, 环位名, 键], 键, 技能, 环位名));
+        });
+    } else if (scope === 'blood_ring_skill') {
+      const 环位索引 = path.findIndex(片段 => 是气血魂环槽位键_桥接(片段));
+      const 载体路径 = 环位索引 >= 0 ? path.slice(0, 环位索引) : path.slice(0, -2);
+      const 载体 = deepGet(rootData, 载体路径, null);
+      取血脉气血魂环条目_桥接(载体)
+        .sort((a, b) => 读取槽位序号_桥接(a[0], 999) - 读取槽位序号_桥接(b[0], 999))
+        .forEach(([环位名, 魂环]) => {
+          取气血魂环魂技条目_桥接(魂环).forEach(([键, 技能]) => 加入技能([...载体路径, 环位名, 键], 键, 技能, 环位名));
+        });
+    } else {
+      const parentPath = path.slice(0, -1);
+      const parent = deepGet(rootData, parentPath, null);
+      if (parent && typeof parent === 'object' && !Array.isArray(parent)) {
+        safeEntries(parent).forEach(([键, 技能]) => {
+          if (scope === '武魂融合技' && 键 !== 当前键) return;
+          if (scope !== '武魂融合技' && !['自创魂技', 'art', 'blood_skill', 'blood_passive'].includes(scope)) return;
+          加入技能([...parentPath, 键], 键, 技能);
+        });
+      }
+    }
+    return 列表.sort((a, b) => a.order - b.order || String(a.label).localeCompare(String(b.label), 'zh-Hans'));
+  }
+  // —— B:22592-22601
+  function 获取技能设计台当前标题(rootData = {}, previewMeta = {}, skillSource = {}) {
+    const path = Array.isArray(previewMeta && previewMeta.path) ? previewMeta.path : [];
+    const 当前键 = toText(path[path.length - 1], '').trim();
+    const 槽位标签 = 读取技能设计台槽位序号标签(当前键, '');
+    const 技能名 = 读取技能设计台技能显示名(skillSource, toText(previewMeta && previewMeta.label, 当前键 || '技能'));
+    if (槽位标签 && 槽位标签 !== 技能名 && !技能设计台标签是同一槽位(槽位标签, 技能名)) return `${槽位标签} / ${技能名}`;
+    if (槽位标签 && 技能设计台标签是同一槽位(槽位标签, 技能名)) return 槽位标签;
+    void rootData;
+    return 技能名;
+  }
+  // —— B:22621-22646
+  function resolveSkillDesignerSourceTypeMeta(previewMeta = {}) {
+    const scope = toText(previewMeta && previewMeta.scope, '魂技');
+    const path = Array.isArray(previewMeta && previewMeta.path) ? previewMeta.path : [];
+    const rootData = (liveSnapshot && liveSnapshot.rootData) || readLatestMvuDataByEditor() || {};
+    if (scope === '魂技') {
+      const spiritBasePath = path.length >= 4 ? path.slice(0, 4) : [];
+      const spiritSlot = normalizeSkillUiText(spiritBasePath[3], '');
+      const spiritType = normalizeSkillUiText(
+        spiritBasePath.length ? deepGet(rootData, [...spiritBasePath, 'type'], '') : '',
+        '未设置',
+      );
+      return {
+        value: spiritType || '未设置',
+        display: spiritSlot && spiritType ? `${spiritSlot} / ${spiritType}` : spiritType || spiritSlot || '未设置',
+      };
+    }
+    if (scope === '武魂融合技') return { value: '武魂融合技', display: '武魂融合技' };
+    if (scope === 'art') return { value: '功法', display: '功法' };
+    if (scope === '自创魂技') return { value: '自创魂技', display: '自创魂技' };
+    if (scope === 'blood_passive') return { value: '血脉被动', display: '血脉被动' };
+    const category = toText(previewMeta && previewMeta.category, '技能');
+    return {
+      value: category || '未设置',
+      display: category || '未设置',
+    };
+  }
+  // —— B:22648-22659
+  function resolveSkillDesignerTypeMeta(previewMeta = {}, fallbackType = '') {
+    const normalizedFallback = normalizeSkillUiText(fallbackType, '');
+    if (SKILL_DESIGNER_SKILL_TYPES.includes(normalizedFallback)) {
+      return { value: normalizedFallback, display: normalizedFallback };
+    }
+    const sourceType = resolveSkillDesignerSourceTypeMeta(previewMeta).value;
+    const mappedType = SKILL_DESIGNER_SOURCE_TYPE_TO_SKILL_TYPE[sourceType] || '输出';
+    return {
+      value: mappedType,
+      display: mappedType,
+    };
+  }
+  // —— B:22661-22738
+  function 推断技能设计台技能分类(原型效果列表 = [], fallbackType = '') {
+    const fallback = SKILL_DESIGNER_SKILL_TYPES.includes(normalizeSkillUiText(fallbackType, ''))
+      ? normalizeSkillUiText(fallbackType, '')
+      : '输出';
+    const effects = Array.isArray(原型效果列表)
+      ? 原型效果列表.filter(effect => effect && typeof effect === 'object')
+      : [];
+    if (!effects.length) return fallback;
+    const 有原型 = name => effects.some(effect => normalizeSkillUiText(effect['原型'], '') === name);
+    if (有原型('召唤生成')) return '召唤';
+    if (有原型('位移执行')) return '位移';
+    if (有原型('伤害结算')) return '输出';
+    const 状态类型 = new Set(
+      effects
+        .filter(effect => normalizeSkillUiText(effect['原型'], '') === '状态施加')
+        .map(effect => normalizeSkillUiText(effect['状态'], '')),
+    );
+    const 防御状态 = ['护盾', '无视异常', '霸体'];
+    const 负面状态 = [
+      '中毒',
+      '流血',
+      '灼烧',
+      '冻伤',
+      '眩晕',
+      '沉默',
+      '致盲',
+      '禁疗',
+      '治疗反转',
+      '标记',
+      '封技',
+      '迟缓',
+    ];
+    if (防御状态.some(state => 状态类型.has(state))) return '防御';
+    if (负面状态.some(state => 状态类型.has(state))) return '控制';
+    if (有原型('护盾变化') || 有原型('规则防御')) return '防御';
+    if (有原型('状态移除') || 有原型('修炼增益')) return '辅助';
+    const 读取数值方向 = effect => {
+      const text = normalizeSkillUiText(effect && effect['数值'], '');
+      if (/^-/.test(text)) return -1;
+      if (/^\+/.test(text)) return 1;
+      const num = Number(text.replace('%', ''));
+      return Number.isFinite(num) ? Math.sign(num) : 0;
+    };
+    if (
+      effects.some(
+        effect =>
+          normalizeSkillUiText(effect['原型'], '') === '资源变化' &&
+          normalizeSkillUiText(effect['资源'], '') === '生命' &&
+          读取数值方向(effect) > 0,
+      )
+    )
+      return '回复';
+    if (
+      effects.some(
+        effect =>
+          ['属性修正', '判定修正', '结算修正', '资源变化'].includes(normalizeSkillUiText(effect['原型'], '')) &&
+          读取数值方向(effect) < 0,
+      )
+    )
+      return '控制';
+    if (
+      effects.some(
+        effect =>
+          ['属性修正', '判定修正', '结算修正', '资源变化'].includes(normalizeSkillUiText(effect['原型'], '')) &&
+          读取数值方向(effect) > 0,
+      )
+    )
+      return '辅助';
+    if (
+      有原型('决策干扰') ||
+      有原型('规则改写') ||
+      有原型('机制抹消')
+    )
+      return '控制';
+    if (有原型('机制授予') || 有原型('复制执行') || 有原型('时光回溯') || 有原型('状态转移') || 有原型('状态交换'))
+      return '辅助';
+    return fallback;
+  }
+  // —— B:22749-22797
+  function getSkillDesignerScopeLabels(previewMeta = {}) {
+    const scope = toText(previewMeta && previewMeta.scope, '魂技');
+    if (scope === 'art') {
+      return {
+        studioTitle: '功法设计台',
+        parameterTitle: '功法设置',
+        summaryTitle: '功法速览',
+        nameFieldLabel: '功法名',
+        targetLabel: '目标',
+        deliveryLabel: '运转方式',
+        visualLabel: '运转表现',
+        effectLabel: '功法描述',
+      };
+    }
+    if (scope === '自创魂技') {
+      return {
+        studioTitle: '自创魂技设计台',
+        parameterTitle: '自创魂技设置',
+        summaryTitle: '自创魂技速览',
+        nameFieldLabel: '自创魂技名',
+        targetLabel: '目标',
+        deliveryLabel: '施展方式',
+        visualLabel: '表现描述',
+        effectLabel: '魂技描述',
+      };
+    }
+    if (scope === '武魂融合技') {
+      return {
+        studioTitle: '武魂融合技设计台',
+        parameterTitle: '武魂融合结构',
+        summaryTitle: '武魂融合速览',
+        nameFieldLabel: '武魂融合技名',
+        targetLabel: '目标',
+        deliveryLabel: '施放形式',
+        visualLabel: '融合表现',
+        effectLabel: '融合效果',
+      };
+    }
+    return {
+      studioTitle: '技能设计台',
+      parameterTitle: '魂技设置',
+      summaryTitle: '设计速览',
+      nameFieldLabel: '魂技名',
+      targetLabel: '目标',
+      deliveryLabel: '释放形式',
+      visualLabel: '画面描述',
+      effectLabel: '效果描述',
+    };
+  }
+  // —— B:22799-22804
+  function getSkillDesignerDefaultTarget(previewMeta = {}, type = '') {
+    const scope = toText(previewMeta && previewMeta.scope, 'skill');
+    const normalizedType = normalizeSkillUiText(type, '');
+    if (scope === 'art' || scope === 'blood_passive' || /被动/.test(normalizedType)) return '自身';
+    return '单体';
+  }
+  // —— B:22806-22809
+  function normalizeSkillDesignerTargetForForm(target = '', fallback = '') {
+    const text = normalizeSkillUiText(target, fallback);
+    return normalizeSkillDesignerEffectTargetValue(text, normalizeSkillDesignerEffectTargetValue(fallback, '单体'));
+  }
+  // —— B:22811-22827
+  function resolveSkillDesignerImplicitAttributeConfig(state = {}, previewMeta = {}) {
+    const attachedAttributes = normalizeSkillDesignerArray(state && state.attachedAttributes);
+    const scope = toText(previewMeta && previewMeta.scope, 'skill');
+    const type = normalizeSkillUiText(state && state.type, '');
+    const allWuxing =
+      attachedAttributes.length >= 2 && attachedAttributes.every(attr => WUXING_ATTRIBUTE_TOKEN_OPTIONS.includes(attr));
+    let source = '无';
+    if (attachedAttributes.length) {
+      if (allWuxing) source = '魂技调用';
+      else if (scope === 'art' || scope === '自创魂技' || /元素|精神|功法|自创/.test(type)) source = '自身操控';
+    }
+    return {
+      source,
+      role: source === '魂技调用' ? '结构术式' : source === '自身操控' ? '增幅器' : '无',
+      coeff: normalizeSkillDesignerCoeffMap({}),
+    };
+  }
+  // —— B:22829-22838
+  function normalizeSkillDesignerLevelControl(数值 = {}) {
+    const 来源 = 数值 && typeof 数值 === 'object' && !Array.isArray(数值) ? 数值 : {};
+    const 中心等级 = Number(来源.中心等级);
+    const 圆满等级 = Number(来源.圆满等级);
+    if (!Number.isFinite(中心等级) || !Number.isFinite(圆满等级) || 圆满等级 <= 中心等级) return null;
+    return {
+      中心等级: Number(中心等级.toFixed(2)),
+      圆满等级: Number(圆满等级.toFixed(2)),
+    };
+  }
+  // —— B:22840-22848
+  function buildSkillDesignerLevelControlFromDraft(草稿 = {}) {
+    return (
+      normalizeSkillDesignerLevelControl(草稿 && 草稿.技能掌控度) ||
+      normalizeSkillDesignerLevelControl({
+        中心等级: 草稿 && 草稿.技能掌控度中心等级,
+        圆满等级: 草稿 && 草稿.技能掌控度圆满等级,
+      })
+    );
+  }
+  // —— B:22850-22857
+  function 技能设计台启用技能掌控度(previewMeta = {}, 草稿 = {}) {
+    if (草稿 && 草稿.技能掌控度 && typeof 草稿.技能掌控度 === 'object' && !Array.isArray(草稿.技能掌控度)) return true;
+    const 显式值 = normalizeSkillUiText(草稿 && 草稿.启用技能掌控度, '');
+    if (/启用|有|true|yes|1/.test(显式值)) return true;
+    if (/无|禁用|关闭|false|no|0/.test(显式值)) return false;
+    void previewMeta;
+    return false;
+  }
+  // —— B:22859
+  const 技能设计台被动触发选项 = Object.freeze(['常驻', '战斗开始', '回合开始', '受击前', '受击后', '濒死时', '被控制时', '命中后']);
+  // —— B:22860
+  const 技能设计台被动触发周期选项 = Object.freeze(['无限制', '每战', '每回合']);
+  // —— B:22861
+  const 技能设计台使用限制周期选项 = Object.freeze(['无限制', '每战', '每日']);
+  // —— B:22863-22872
+  function 技能设计台效果是自身死亡转存活(effect = {}) {
+    return (
+      effect &&
+      typeof effect === 'object' &&
+      !Array.isArray(effect) &&
+      normalizeSkillUiText(effect['原型'], '') === '规则改写' &&
+      normalizeSkillUiText(effect['规则'], '') === '死亡转存活' &&
+      normalizeSkillDesignerEffectTargetValue(effect['目标'], '自身') === '自身'
+    );
+  }
+  // —— B:22874-22880
+  function 技能设计台包含自身死亡转存活(草稿 = {}) {
+    const effects = [
+      ...(Array.isArray(草稿 && 草稿.prototypeEffects) ? 草稿.prototypeEffects : []),
+      ...(Array.isArray(草稿 && 草稿['_效果数组']) ? 草稿['_效果数组'] : []),
+    ];
+    return effects.some(effect => 技能设计台效果是自身死亡转存活(effect));
+  }
+  // —— B:22882-22888
+  function 技能设计台启用被动(previewMeta = {}, 草稿 = {}) {
+    const 显式值 = normalizeSkillUiText(草稿 && 草稿.启用被动, '');
+    if (/启用|有|true|yes|1/.test(显式值)) return true;
+    if (技能设计台包含自身死亡转存活(草稿)) return true;
+    if (/无|禁用|关闭|false|no|0/.test(显式值)) return false;
+    return toText(previewMeta && previewMeta.scope, '') === 'blood_passive';
+  }
+  // —— B:22890-22904
+  function 读取技能设计台被动触发默认值(草稿 = {}) {
+    if (技能设计台包含自身死亡转存活(草稿)) return '濒死时';
+    const 显式触发 = normalizeSkillDesignerSelectValue(
+      草稿 && 草稿.被动触发,
+      技能设计台被动触发选项,
+      '',
+    );
+    if (显式触发) return 显式触发;
+    const effects = Array.isArray(草稿 && 草稿.prototypeEffects) ? 草稿.prototypeEffects : [];
+    if (effects.some(effect => normalizeSkillUiText(effect && effect['原型'], '') === '规则防御' && normalizeSkillUiText(effect && effect['规则'], '') === '免死'))
+      return '濒死时';
+    if (effects.some(effect => normalizeSkillUiText(effect && effect['原型'], '') === '规则防御' && normalizeSkillUiText(effect && effect['规则'], '') === '免伤'))
+      return '受击前';
+    return '常驻';
+  }
+  // —— B:22906-22925
+  function 读取技能设计台被动触发限制(草稿 = {}) {
+    const 技能级限制 = 草稿 && 草稿['触发限制'] && typeof 草稿['触发限制'] === 'object' && !Array.isArray(草稿['触发限制'])
+      ? 草稿['触发限制']
+      : {};
+    const 技能级被动周期 = normalizeSkillDesignerSelectValue(
+      技能级限制['周期'],
+      技能设计台被动触发周期选项,
+      '',
+    );
+    const 默认周期 = 技能设计台包含自身死亡转存活(草稿) ? '每战' : '无限制';
+    const 周期 = normalizeSkillDesignerSelectValue(
+      (草稿 && 草稿.被动触发周期) || (技能级被动周期 === '每回合' ? 技能级被动周期 : '') || 默认周期,
+      技能设计台被动触发周期选项,
+      '无限制',
+    );
+    return {
+      周期,
+      次数: Math.max(1, parseSkillDesignerIntegerInputValue(草稿 && (草稿.被动触发次数 || (技能级被动周期 === '每回合' ? 技能级限制['次数'] : '')), 1, 1)),
+    };
+  }
+  // —— B:22927-22940
+  function 读取技能设计台使用限制(草稿 = {}) {
+    const 限制 = 草稿 && 草稿['触发限制'] && typeof 草稿['触发限制'] === 'object' && !Array.isArray(草稿['触发限制'])
+      ? 草稿['触发限制']
+      : {};
+    const 周期 = normalizeSkillDesignerSelectValue(
+      草稿 && (草稿.使用限制周期 || 限制['周期']),
+      技能设计台使用限制周期选项,
+      '无限制',
+    );
+    return {
+      周期,
+      次数: Math.max(1, parseSkillDesignerIntegerInputValue(草稿 && (草稿.使用限制次数 || 限制['次数']), 1, 1)),
+    };
+  }
+  // —— B:22942-22949
+  function 读取技能设计台有效触发限制(草稿 = {}, 预览元数据 = {}) {
+    const 使用限制 = 读取技能设计台使用限制(草稿);
+    if (使用限制.周期 !== '无限制') return cloneJsonValue(使用限制);
+    if (!技能设计台启用被动(预览元数据, 草稿)) return null;
+    const 被动触发限制 = 读取技能设计台被动触发限制(草稿);
+    if (被动触发限制.周期 !== '无限制') return cloneJsonValue(被动触发限制);
+    return null;
+  }
+  // —— B:22951-23091
+  function readSkillDesignerDraft(skill = {}, rawName = '', previewMeta = {}) {
+    const safeSkill = skill && typeof skill === 'object' ? skill : {};
+    const 预览路径 = Array.isArray(previewMeta && previewMeta.path) ? previewMeta.path : [];
+    const 外层记录 = 预览路径.length > 1 && toText(预览路径[预览路径.length - 1], '') === '技能数据'
+      ? deepGet(liveSnapshot?.rootData || lastRenderableSnapshot?.rootData || {}, 预览路径.slice(0, -1), {}) || {}
+      : {};
+    const 功法记录 = toText(previewMeta && previewMeta.scope, '') === 'art' && 预览路径[0] === 'char' && 预览路径.length
+      ? deepGet(liveSnapshot?.rootData || lastRenderableSnapshot?.rootData || {}, ['char', 预览路径[1], '功法', toText(预览路径[预览路径.length - 1], rawName)], {}) || {}
+      : {};
+    const effectArray = Array.isArray(safeSkill['_效果数组']) ? safeSkill['_效果数组'] : [];
+    const constructTemplate =
+      effectArray.find(
+        effect =>
+          effect &&
+          typeof effect === 'object' &&
+          !normalizeSkillUiText(effect['原型'], '') &&
+          Array.isArray(effect['使用效果']),
+      ) || null;
+    const designDraft = {};
+    const levelControl = normalizeSkillDesignerLevelControl(safeSkill['技能掌控度']);
+    const resolvedType = normalizeSkillUiText(designDraft.type || safeSkill.type, '未知');
+    const 启用技能掌控度 = 技能设计台启用技能掌控度(previewMeta, {
+      ...designDraft,
+      type: resolvedType,
+      技能掌控度: levelControl,
+      启用技能掌控度: designDraft['启用技能掌控度'] || (levelControl ? '启用' : ''),
+    });
+    const resolvedTarget = normalizeSkillUiText(
+      (Array.isArray(constructTemplate?.['使用效果']) ? constructTemplate['使用效果'] : effectArray).find(
+        effect => effect && effect['目标'],
+      )?.['目标'],
+      getSkillDesignerDefaultTarget(previewMeta, resolvedType),
+    );
+    const allPrototypeEffects = 提取技能设计台原型效果列表(
+      constructTemplate ? constructTemplate['使用效果'] : effectArray,
+      resolvedTarget,
+    );
+    const resolvedPrototypeEffects = allPrototypeEffects;
+    const resolvedPrimaryMain = '';
+    const resolvedPrimarySub = '';
+    const resolvedSecondaryMechanics = [];
+    const inferredDeliveryForm = inferSkillDesignerDeliveryForm(effectArray, resolvedType, resolvedTarget);
+    const inferredMainRole = inferSkillDesignerMainRole(
+      resolvedType,
+      resolvedTarget,
+      resolvedPrimaryMain,
+      resolvedPrimarySub,
+    );
+    const mergedMechanicParams = {};
+    const costConfig = parseSkillDesignerCostConfig(
+      designDraft['消耗'] || safeSkill['消耗'],
+      designDraft['消耗资源'],
+      designDraft['消耗值'],
+    );
+    const resolvedDeliveryForm = normalizeSkillUiText(
+      designDraft['承载方式'] ||
+        designDraft['释放形式'] ||
+        safeSkill['承载方式'] ||
+        safeSkill['释放形式'] ||
+        inferredDeliveryForm,
+      '',
+    );
+    const 启用被动 = 技能设计台启用被动(previewMeta, {
+      ...designDraft,
+      type: resolvedType,
+      启用被动: designDraft['启用被动'],
+    });
+    const 被动触发 = 读取技能设计台被动触发默认值({
+      ...designDraft,
+      prototypeEffects: resolvedPrototypeEffects,
+    });
+    const 被动触发限制 = 读取技能设计台被动触发限制({
+      ...designDraft,
+      prototypeEffects: resolvedPrototypeEffects,
+      触发限制: safeSkill['触发限制'],
+    });
+    const 使用限制 = 读取技能设计台使用限制(safeSkill);
+    return {
+      name: cleanSkillDisplayName(safeSkill, rawName),
+      type: 启用被动 ? '被动' : resolvedType,
+      target: resolvedTarget,
+      cost: formatSkillDesignerFullCostText(costConfig.resourceType, costConfig.resourceValues, costConfig.sustainText),
+      resourceType: costConfig.resourceType,
+      resourceValues: cloneJsonValue(costConfig.resourceValues || {}),
+      resourceValue: costConfig.resourceValue,
+      sustainCostText: costConfig.sustainText || '',
+      前摇: Math.max(0, toNumber(safeSkill['前摇'], 0)),
+      bonus: '无',
+      mainRole: normalizeSkillUiText(inferredMainRole, '未知'),
+      primaryMain: resolvedPrimaryMain,
+      primarySub: resolvedPrimarySub,
+      prototypeEffects: resolvedPrototypeEffects,
+      deliveryForm: resolvedDeliveryForm,
+      constructItemCount: Math.max(
+        1,
+        parseSkillDesignerIntegerInputValue(constructTemplate && constructTemplate['数量'], 1, 1),
+      ),
+      constructDurationTick: Math.max(
+        0,
+        parseSkillDesignerIntegerInputValue(constructTemplate && constructTemplate['有效期tick'], 0, 0),
+      ),
+      constructDescription: normalizeSkillUiText(constructTemplate && constructTemplate['描述'], ''),
+      secondaryMechanics: resolvedSecondaryMechanics,
+      attachedAttributes: normalizeSkillDesignerArray(designDraft['附带属性'] || safeSkill['附带属性']),
+      attributeSource: normalizeSkillUiText(designDraft['属性来源'], '无'),
+      attributeRole: normalizeSkillUiText(designDraft['魂技作用'], '无'),
+      coeff: normalizeSkillDesignerCoeffMap(designDraft['属性系数']),
+      artStage: normalizeSkillUiText(功法记录['境界'] || designDraft['境界'], '未入门'),
+      artLevel: Math.max(0, toNumber(功法记录['lv'] ?? designDraft['lv'], 0)),
+      fusionMode:
+        designDraft['融合模式'] || 外层记录['融合模式']
+          ? normalizeSkillDesignerFusionMode(designDraft['融合模式'] || 外层记录['融合模式'])
+          : '',
+      用法模式: 规范化技能设计台融合用法模式(designDraft['用法模式'] || 外层记录['用法模式']),
+      fusionPartner: normalizeSkillUiText(designDraft['融合对象'] || 外层记录['融合对象'], ''),
+      fusionSourceSpirits: normalizeSkillDesignerArray(designDraft['来源武魂'] || 外层记录['来源武魂']),
+      fusionParticipants: getSkillDesignerRawFusionParticipants(designDraft, 外层记录),
+      mechanicParams: normalizeSkillDesignerMechanicParamMap(mergedMechanicParams, {
+        target: resolvedTarget,
+        primaryMain: resolvedPrimaryMain,
+        primarySub: resolvedPrimarySub,
+        secondaryMechanics: resolvedSecondaryMechanics,
+      }),
+      visualDesc: normalizeSkillUiText(safeSkill['画面描述'], '未知'),
+      effectDesc: normalizeSkillUiText(safeSkill['效果描述'], '未知'),
+      summaryText: normalizeSkillUiText(designDraft['设计摘要'], ''),
+      副作用列表: Array.isArray(safeSkill['副作用列表']) ? cloneJsonValue(safeSkill['副作用列表']) : [],
+      使用副作用列表: Array.isArray(constructTemplate?.['副作用列表']) ? cloneJsonValue(constructTemplate['副作用列表']) : [],
+      启用技能掌控度: 启用技能掌控度 ? '启用' : '无',
+      技能掌控度: 启用技能掌控度 ? levelControl : null,
+      技能掌控度中心等级: 启用技能掌控度 && levelControl ? String(levelControl.中心等级) : '',
+      技能掌控度圆满等级: 启用技能掌控度 && levelControl ? String(levelControl.圆满等级) : '',
+      启用被动: 启用被动 ? '启用' : '无',
+      被动触发,
+      被动触发周期: 被动触发限制.周期,
+      被动触发次数: String(被动触发限制.次数),
+      使用限制周期: 使用限制.周期,
+      使用限制次数: String(使用限制.次数),
+      阵营判定: '自动',
+    };
+  }
+  // —— B:23137-23177
+  function 构建技能设计台模板原型效果列表(draft = {}, previewMeta = {}) {
+    try {
+      const 目标 = normalizeSkillDesignerTargetForForm(
+        draft && draft.target,
+        getSkillDesignerDefaultTarget(previewMeta, draft && draft.type),
+      );
+      const 模板名列表 = Array.from(
+        new Set(
+          [
+            getSkillDesignerEffectivePrimaryLabel(draft),
+            ...normalizeSkillDesignerSecondarySelection(
+              draft && draft.primaryMain,
+              draft && draft.secondaryMechanics,
+              draft && draft.type,
+              draft && draft.primarySub,
+            ),
+          ]
+            .map(label => normalizeSkillUiText(label, ''))
+            .filter(Boolean),
+        ),
+      );
+      const runtimeEffects = 模板名列表.flatMap(label => {
+        const 编译列表 = getSkillDesignerMechanismCompiledPrototypeList(label);
+        return 编译列表
+          .map(编译条目 => {
+            const 原型 = normalizeSkillUiText(编译条目 && 编译条目['原型'], '');
+            if (!原型) return null;
+            return {
+              ...创建技能设计台默认原型效果(原型, 目标),
+              ...cloneJsonValue(编译条目),
+              目标,
+            };
+          })
+          .filter(Boolean);
+      });
+      return normalizeSkillDesignerExecutionEffectArray(cloneJsonValue(runtimeEffects), 目标);
+    } catch (error) {
+      console.warn('[SkillDesigner] 机制模板编译原型失败', error);
+      return [];
+    }
+  }
+  // —— B:23179-23184
+  function buildSkillDesignerConstructSummary(draft = {}) {
+    if (normalizeSkillUiText(draft && draft.deliveryForm, '') !== '造物承载') return '';
+    const count = Math.max(1, parseSkillDesignerIntegerInputValue(draft && draft.constructItemCount, 1, 1));
+    const duration = Math.max(0, parseSkillDesignerIntegerInputValue(draft && draft.constructDurationTick, 0, 0));
+    return `造物：×${count}${duration > 0 ? `；${duration}tick` : ''}`;
+  }
+  // —— B:23222-23231
+  function buildSkillDesignerExecutionSummary(draft = {}) {
+    const parts = [];
+    const cost = formatSkillDesignerCostText(draft.costType, draft.costValues);
+    const constructSummary = buildSkillDesignerConstructSummary(draft);
+    if (cost && cost !== '无') parts.push(`消耗：${cost}`);
+    if (constructSummary) parts.push(constructSummary);
+    const sideEffectSummary = buildSkillDesignerSideEffectSummary(draft);
+    if (sideEffectSummary) parts.push(`副作用：${sideEffectSummary}`);
+    return parts.join('；');
+  }
+  // —— B:23233-23240
+  function buildSkillDesignerArtProgressSummary(draft = {}) {
+    const type = normalizeSkillUiText(draft.type, '');
+    if (type !== '功法') return '';
+    if (normalizeSkillUiText(draft.name, '') !== '紫极魔瞳') return '';
+    const stage = normalizeSkillUiText(draft.artStage, '未入门');
+    const level = Math.max(0, toNumber(draft.artLevel, 0));
+    return `境界：${stage}；等级：${level}`;
+  }
+  // —— B:23242-23245
+  function buildSkillDesignerAttributeSummary(draft = {}) {
+    const attachedAttributes = normalizeSkillDesignerArray(draft.attachedAttributes);
+    return attachedAttributes.length ? `附带属性：${attachedAttributes.join('/')}` : '';
+  }
+  // —— B:23247-23285
+  function 构建技能设计台临时技能(草稿 = {}, 预览元数据 = {}) {
+    const 规范化草稿 = buildSkillDesignerFormStateFromDraft(草稿, 预览元数据);
+    const 启用被动 = 技能设计台启用被动(预览元数据, 规范化草稿);
+    const 有效触发限制 = 读取技能设计台有效触发限制(规范化草稿, 预览元数据);
+    const 临时技能 = {
+      魂技名: normalizeSkillUiText(规范化草稿.name, ''),
+      承载方式: 启用被动 ? '直接生效' : normalizeSkillUiText(规范化草稿.deliveryForm, '直接生效'),
+      消耗: 格式化技能设计台正式消耗文本(规范化草稿.costType, 规范化草稿.costValues, 规范化草稿.sustainCostText, 预览元数据, 规范化草稿, liveSnapshot?.rootData || lastRenderableSnapshot?.rootData || {}),
+      前摇: Math.max(0, toNumber(规范化草稿['前摇'], 0)),
+      附带属性: normalizeSkillDesignerArray(规范化草稿.attachedAttributes),
+      _效果数组: buildSkillDesignerRuntimeEffects(规范化草稿, {}, 预览元数据),
+    };
+    if (有效触发限制) 临时技能['触发限制'] = 有效触发限制;
+    临时技能.__魂环位 = 推断技能设计台魂环位(预览元数据);
+    临时技能.__战斗来源类别 = ['魂技', 'independent_ring_skill'].includes(normalizeSkillUiText(预览元数据 && 预览元数据.scope, ''))
+      ? '魂技'
+      : normalizeSkillUiText(预览元数据 && 预览元数据.scope, '');
+    if (临时技能['承载方式'] === '造物承载') {
+      const 使用效果 = normalizeSkillDesignerExecutionEffectArray(
+        cloneJsonValue(临时技能['_效果数组']),
+        normalizeSkillDesignerTargetForForm(规范化草稿.target, '单体'),
+        { draft: 规范化草稿, 技能: {}, passiveMode: false },
+      );
+      临时技能['_效果数组'] = [buildSkillDesignerConstructEffect(规范化草稿, 使用效果)].filter(
+        效果 => Array.isArray(效果['使用效果']) && 效果['使用效果'].length,
+      );
+      临时技能['产物描述'] = normalizeSkillUiText(规范化草稿.constructDescription, '');
+    }
+    if (规范化草稿['技能掌控度']) 临时技能['技能掌控度'] = cloneJsonValue(规范化草稿['技能掌控度']);
+    if (Array.isArray(规范化草稿['副作用列表']) && 规范化草稿['副作用列表'].length)
+      临时技能['副作用列表'] = cloneJsonValue(规范化草稿['副作用列表']);
+    if (预览元数据 && 预览元数据.scope === '武魂融合技') {
+      临时技能['融合参与者'] = (Array.isArray(规范化草稿.fusionParticipants) ? 规范化草稿.fusionParticipants : [])
+        .map(参与者 => normalizeSkillUiText(参与者 && (参与者.name || 参与者.charKey), ''))
+        .filter(Boolean);
+      临时技能['失败回滚'] = true;
+    }
+    return { 临时技能, 规范化草稿 };
+  }
+  // —— B:23287-23464
+  function 构建技能设计台COST试算Html(草稿 = {}, 预览元数据 = {}, 根数据 = {}) {
+    try {
+      const COST助手 = (typeof globalThis !== 'undefined' && globalThis.__LWCS_SKILL_COST_HELPERS_V1__)
+        || (typeof window !== 'undefined' && window.__LWCS_SKILL_COST_HELPERS_V1__)
+        || null;
+      if (!COST助手 || typeof COST助手.评估技能预算_V1 !== 'function') return '';
+      const { 临时技能, 规范化草稿 } = 构建技能设计台临时技能(草稿, 预览元数据);
+      const 预算上下文 = 构建技能设计台预算上下文(预览元数据, 根数据, 规范化草稿);
+      const 评估 = COST助手.评估技能预算_V1(临时技能, {
+        ...预算上下文,
+        path: 预览元数据 && 预览元数据.path,
+        来源: 预算上下文.来源类别,
+        启用位级硬上限: true,
+      });
+      if (!评估) return '';
+      const 差额 = Number((Number(评估.实际门禁 || 0) - Number(评估.实际COST || 0)).toFixed(2));
+      const 状态 = 差额 >= 0 ? `剩余 ${差额.toFixed(1)}` : `超出 ${Math.abs(差额).toFixed(1)}`;
+      const 明细 = (Array.isArray(评估.效果明细) ? 评估.效果明细 : []).slice(0, 12);
+      const 副作用明细 = (Array.isArray(评估.副作用明细) ? 评估.副作用明细 : []).slice(0, 6);
+      const 条件来源标签 = 项 => {
+        const 路径 = String(项 && 项.路径 || '');
+        const 匹配 = 路径.match(/条件分支\[(\d+)\]\.(替换效果|追加效果)/);
+        if (!匹配) return String(项 && 项.分支角色 || '').trim();
+        const 序号 = Number(匹配[1]) + 1;
+        return `条件${序号}${匹配[2] === '替换效果' ? '替换' : '追加'}`;
+      };
+      const 明细标签 = 项 => {
+        const 角色 = 条件来源标签(项);
+        const 原型 = String(项.原型 || '').trim();
+        const 字段 = String(项.关键字段 || '').trim();
+        const 名称 = 原型 === '规则改写' && 字段 === '规则' && String(项.关键值 || '').trim() === '死亡转存活'
+          ? '复活'
+          : String(项.关键值 || '').trim();
+        const 目标 = String(项.目标 || '').trim();
+        const 原始数值文本 = 项.数值 !== undefined && 项.数值 !== '' ? String(项.数值) : '';
+        const 数值 = 原始数值文本
+          ? `${原始数值文本}${项.绝对值每COST点数 ? '点' : ''}`
+          : (项.威力倍率 !== undefined && 项.威力倍率 !== '' ? `威力${项.威力倍率}` : '');
+        const 伤害类型 = 原型 === '伤害结算' && 项.伤害类型 ? String(项.伤害类型).trim() : '';
+        const 限定 = 格式化技能设计台限定元素显示(项.限定元素);
+        return [
+          角色 || '基础',
+          原型,
+          字段 && 名称 ? `${字段}:${名称}` : 名称,
+          数值,
+          伤害类型,
+          目标,
+          项.持续回合 ? `持续${项.持续回合}回合` : '',
+          限定 ? `限定${限定}` : '',
+        ].filter(Boolean).join(' / ') || '效果';
+      };
+      const 明细字段 = 项 => {
+        const 字段列表 = [
+          项.路径 ? `路径 ${项.路径}` : '',
+          条件来源标签(项) ? `来源 ${条件来源标签(项)}` : '',
+          项.原型 ? `原型 ${项.原型}` : '',
+          项.关键字段 ? `${项.关键字段} ${项.原型 === '规则改写' && 项.关键字段 === '规则' && 项.关键值 === '死亡转存活' ? '复活' : 项.关键值 || '-'}` : '',
+          项.目标 ? `目标 ${项.目标}` : '',
+          项.持续回合 ? `持续 ${项.持续回合}` : '',
+          项.威力倍率 !== undefined && 项.威力倍率 !== '' ? `威力 ${项.威力倍率}` : '',
+          项.数值 !== undefined && 项.数值 !== '' ? `数值 ${项.数值}` : '',
+          项.数值类型 ? `类型 ${项.数值类型}` : '',
+          项.百分点 !== null && 项.百分点 !== undefined ? `百分点 ${Number(项.百分点 || 0).toFixed(2)}` : '',
+          项.绝对值 !== null && 项.绝对值 !== undefined ? `绝对值 ${Number(项.绝对值 || 0).toFixed(2)}` : '',
+          项.绝对值每COST点数 !== null && 项.绝对值每COST点数 !== undefined ? `${Number(项.绝对值每COST点数 || 0).toFixed(0)}点/COST` : '',
+          项.单位COST !== null && 项.单位COST !== undefined ? `单位COST ${Number(项.单位COST || 0).toFixed(2)}` : '',
+          项.数值倍率 !== null && 项.数值倍率 !== undefined ? `数值倍率 ${Number(项.数值倍率 || 0).toFixed(2)}` : '',
+          项.目标系数 !== null && 项.目标系数 !== undefined ? `目标系数 ${Number(项.目标系数 || 0).toFixed(2)}` : '',
+          项.持续系数 !== null && 项.持续系数 !== undefined ? `持续系数 ${Number(项.持续系数 || 0).toFixed(2)}` : '',
+          项.限定元素 ? `限定元素 ${格式化技能设计台限定元素显示(项.限定元素)}` : '',
+          项.限制来源 ? `限制来源 ${项.限制来源}` : '',
+          项.限制抵扣率 ? `限制抵扣率 ${(Number(项.限制抵扣率 || 0) * 100).toFixed(0)}%` : '',
+          Number(项.限制抵扣 || 0) > 0 ? `限制 -${Number(项.限制抵扣 || 0).toFixed(1)}` : '',
+        ].filter(Boolean);
+        return 字段列表.join(' · ');
+      };
+      const 明细辅助文本 = 项 => [
+        项.百分点 !== null && 项.百分点 !== undefined ? `百分点 ${Number(项.百分点 || 0).toFixed(1)}` : '',
+        项.绝对值每COST点数 !== null && 项.绝对值每COST点数 !== undefined ? `${Number(项.绝对值每COST点数 || 0).toFixed(0)}点/COST` : '',
+        项.单位COST !== null && 项.单位COST !== undefined ? `单位 ${Number(项.单位COST || 0).toFixed(2)}` : '',
+        项.目标系数 !== null && 项.目标系数 !== undefined ? `目标 ${Number(项.目标系数 || 0).toFixed(2)}` : '',
+        项.持续系数 !== null && 项.持续系数 !== undefined ? `持续 ${Number(项.持续系数 || 0).toFixed(2)}` : '',
+        项.限制抵扣率 ? `${项.限制来源 || '限制'} -${(Number(项.限制抵扣率 || 0) * 100).toFixed(0)}%` : '',
+      ].filter(Boolean).join(' ｜ ');
+      const 副作用标签 = 项 => [
+        项.来源 || '副作用',
+        项.副作用类型 || '',
+        项.触发时机 || '',
+        项.生效对象 || '',
+        项.触发概率 !== undefined ? `${(Number(项.触发概率 || 0) * 100).toFixed(0)}%` : '',
+        项.持续回合 ? `持续${项.持续回合}回合` : '',
+      ].filter(Boolean).join(' / ');
+      const 副作用字段 = 项 => [
+        项.路径 ? `路径 ${项.路径}` : '',
+        项.来源 ? `来源 ${项.来源}` : '',
+        项.副作用类型 ? `副作用 ${项.副作用类型}` : '',
+        项.副作用状态 ? `状态 ${项.副作用状态}` : '',
+        项.触发时机 ? `触发 ${项.触发时机}` : '',
+        项.生效对象 ? `对象 ${项.生效对象}` : '',
+        项.触发概率 !== undefined ? `概率 ${(Number(项.触发概率 || 0) * 100).toFixed(0)}%` : '',
+        项.持续回合 ? `持续 ${项.持续回合}` : '',
+        项.数值 ? `数值 ${项.数值}` : '',
+        项.副数值 ? `副数值 ${项.副数值}` : '',
+      ].filter(Boolean).join(' · ');
+      const 副作用辅助文本 = 项 => [
+        项.数值 ? `数值 ${项.数值}` : '',
+        项.副数值 ? `副值 ${项.副数值}` : '',
+        项.触发概率 !== undefined ? `概率 ${(Number(项.触发概率 || 0) * 100).toFixed(0)}%` : '',
+        项.持续回合 ? `持续 ${项.持续回合}` : '',
+      ].filter(Boolean).join(' ｜ ');
+      const 明细Html = 明细.length || 副作用明细.length ? `
+            <div class="skill-designer-cost-detail">
+              ${明细.map(项 => `
+                <div class="skill-designer-cost-detail-row${项.计入COST === false ? ' muted' : ''}">
+                  <em title="${escapeHtmlAttr(明细字段(项))}">${htmlEscape(明细标签(项))}${明细辅助文本(项) ? `<small>${htmlEscape(明细辅助文本(项))}</small>` : ''}</em>
+                  <span>${项.计入COST === false ? '候选 ' : ''}${htmlEscape(`${Number(项.原始COST || 0).toFixed(1)} / ${Number(项.净COST || 项.原始COST || 0).toFixed(1)}`)}</span>
+                </div>
+              `).join('')}
+              ${副作用明细.map(项 => `
+                <div class="skill-designer-cost-detail-row muted">
+                  <em title="${escapeHtmlAttr(副作用字段(项))}">${htmlEscape(副作用标签(项))}${副作用辅助文本(项) ? `<small>${htmlEscape(副作用辅助文本(项))}</small>` : ''}</em>
+                  <span>${htmlEscape(`-${Number(项.COST || 0).toFixed(1)}`)}</span>
+                </div>
+              `).join('')}
+            </div>
+          ` : '';
+      const 位级上限行 = Number(评估.位级硬上限 || 0) > 0 && Number(评估.位级硬上限 || 0) < Number(评估.对等基线 || 0) - 0.05
+        ? [['位级上限', Number(评估.位级硬上限 || 0).toFixed(1)]]
+        : [];
+      const 公式Html = `
+            <div class="skill-designer-cost-detail">
+              ${[
+                ['魂技位', 评估.魂技位],
+                ['基础 COST', Number(评估.基础参考 || 0).toFixed(1)],
+                ['来源承载', `${Number(评估.来源承载 || 0).toFixed(2)}x`],
+                ['魂环加值', `${Number(评估.魂环年限COST修正 || 0) >= 0 ? '+' : ''}${Number(评估.魂环年限COST修正 || 0).toFixed(1)}`],
+                ['天赋加值', `${Number(评估.天赋修正 || 0) >= 0 ? '+' : ''}${Number(评估.天赋修正 || 0).toFixed(1)}`],
+                ['运转基准', Number(评估.运转基准 || 0).toFixed(1)],
+                ['标准消耗', 评估.运转标准消耗 === null || 评估.标准消耗 === null ? '百分比' : Number(评估.标准消耗 || 0).toFixed(0)],
+                ['实际消耗', Number(评估.实际消耗 || 0).toFixed(0)],
+                ['标准前摇', Number(评估.标准前摇 || 0).toFixed(0)],
+                ['实际前摇', Number(评估.实际前摇 || 0).toFixed(0)],
+                ['消耗倍数', `${Number(评估.消耗倍数 || 0).toFixed(2)}x`],
+                ['前摇倍数', `${Number(评估.前摇倍数 || 0).toFixed(2)}x`],
+                ['代价能量', `${Number(评估.代价能量 || 0).toFixed(3)}x`],
+                ['当前对等上限', Number(评估.对等基线 || 0).toFixed(1)],
+                ...位级上限行,
+              ].map(([标签, 数值]) => `
+                <div class="skill-designer-cost-detail-row">
+                  <em>${htmlEscape(标签)}</em>
+                  <span>${htmlEscape(String(数值))}</span>
+                </div>
+              `).join('')}
+            </div>
+          `;
+      return `
+        <div class="skill-designer-cost-panel">
+          <details class="skill-designer-cost-block" open>
+            <summary class="skill-designer-trial-row skill-designer-cost-head"><em>效果 COST</em><span>${htmlEscape(Number(评估.效果原始COST || 0).toFixed(1))}</span></summary>
+            ${明细Html}
+          </details>
+          <div class="skill-designer-trial-row"><em>限制抵扣</em><span>-${htmlEscape(Number(评估.限制COST || 0).toFixed(1))}</span></div>
+          <div class="skill-designer-trial-row"><em>实际 COST</em><span>${htmlEscape(Number(评估.实际COST || 0).toFixed(1))}</span></div>
+          <details class="skill-designer-cost-block" open>
+            <summary class="skill-designer-trial-row skill-designer-cost-head">
+              <em>运转可承载上限 <button type="button" class="skill-designer-cost-help" data-cost-tip="当前消耗、前摇、魂环、来源与天赋可承载的净 COST 上限。" aria-label="运转可承载上限说明">i</button></em>
+              <span>${htmlEscape(Number(评估.实际门禁 || 0).toFixed(1))}</span>
+            </summary>
+            ${公式Html}
+          </details>
+          <div class="skill-designer-trial-row"><em>预算利用率</em><span>${htmlEscape(`${Number(评估.实际门禁 || 0) > 0 ? Math.min(999, Math.max(0, Number(评估.实际COST || 0) / Math.max(0.01, Number(评估.实际门禁 || 0))) * 100).toFixed(0) : '0'}%`)}</span></div>
+          <div class="skill-designer-trial-row${差额 < 0 ? ' muted' : ''}"><em>状态</em><span>${htmlEscape(状态)}</span></div>
+        </div>
+      `;
+    } catch (error) {
+      return '';
+    }
+  }
+  // —— B:23488-23498
+  function buildSkillDesignerCompactSummary(draft = {}) {
+    return [
+      buildSkillDesignerFusionSummary(draft),
+      构建技能设计台原型摘要(draft),
+      buildSkillDesignerExecutionSummary(draft),
+      buildSkillDesignerArtProgressSummary(draft),
+      buildSkillDesignerAttributeSummary(draft),
+    ]
+      .filter(Boolean)
+      .join(' ｜ ');
+  }
+  // —— B:23500-23514
+  function 构建技能设计台当前翻译摘要(draft = {}, previewMeta = {}, 根数据 = {}) {
+    const 正式翻译器 = 读取正式技能结构翻译器();
+    const { 临时技能, 规范化草稿 } = 构建技能设计台临时技能(draft, previewMeta);
+    if (typeof 正式翻译器 !== 'function') return buildSkillDesignerCompactSummary(规范化草稿);
+    const 计算预算 = 读取窗口函数('__LWCS_CALC_DIRECT_SETTLE_BUDGET__');
+    const 预算 = typeof 计算预算 === 'function'
+      ? 计算预算(临时技能, 构建技能设计台预算上下文(previewMeta, 根数据, 规范化草稿))
+      : null;
+    const 翻译文本 = normalizeSkillUiText(正式翻译器(临时技能, { 预算 }), '') || buildSkillDesignerCompactSummary(规范化草稿);
+    const 运行态消耗 = 构建技能设计台运行态消耗展示(临时技能['消耗'], 临时技能['_效果数组'], previewMeta, 临时技能);
+    const 原消耗展示 = 格式化技能消耗显示文本_桥接(临时技能['消耗'], '无');
+    return 运行态消耗 !== 原消耗展示
+      ? 翻译文本.replace(`消耗:${原消耗展示}`, `消耗:${运行态消耗}`).replace(`消耗:${String({})}`, `消耗:${运行态消耗}`)
+      : 翻译文本;
+  }
+  // —— B:23539-23545
+  function 读取技能设计台天赋训练系数(天赋梯队 = '正常') {
+    return (
+      { 绝世妖孽: 1.6, 顶级天才: 1.2, 天才: 1, 优秀: 0.8, 正常: 0.5, 劣等: 0.2, 天赋极差: 0 }[
+        String(天赋梯队 || '').trim()
+      ] ?? 0.5
+    );
+  }
+  // —— B:23547-23550
+  function 读取技能设计台精神训练系数(天赋梯队 = '正常') {
+    const 梯队 = String(天赋梯队 || '').trim();
+    return 梯队 === '绝世妖孽' ? 2.0 : 读取技能设计台天赋训练系数(梯队);
+  }
+  // —— B:23552-23611
+  function 构建技能设计台标准战斗属性(等级 = 1, 系别 = '强攻系', 选项 = {}) {
+    const 等级值 = Math.max(1, Number(等级 || 1));
+    const 基础属性函数 = 读取窗口函数('__LWCS_GET_BASE_STATS__');
+    if (typeof 基础属性函数 !== 'function') throw new Error('MVU基础属性函数未加载');
+    const 基础 = 基础属性函数(等级值) || {};
+    const 系数表 = {
+      强攻系: { sp_max: 1, men_max: 1, str: 1, def: 1, agi: 1, vit_max: 1 },
+      防御系: { sp_max: 1, men_max: 1, str: 0.9, def: 1.5, agi: 0.7, vit_max: 1 },
+      敏攻系: { sp_max: 1, men_max: 1, str: 0.8, def: 0.7, agi: 1.6, vit_max: 0.8 },
+      控制系: { sp_max: 1, men_max: 1.2, str: 0.9, def: 0.8, agi: 1.1, vit_max: 0.9 },
+      辅助系: { sp_max: 1, men_max: 1.2, str: 0.7, def: 0.6, agi: 0.8, vit_max: 0.7 },
+      治疗系: { sp_max: 1, men_max: 1.2, str: 0.7, def: 0.6, agi: 0.8, vit_max: 0.7 },
+      食物系: { sp_max: 1, men_max: 1.2, str: 0.7, def: 0.6, agi: 0.8, vit_max: 0.7 },
+      精神系: { sp_max: 1, men_max: 1.7, str: 0.7, def: 0.6, agi: 0.8, vit_max: 0.7 },
+      元素系: { sp_max: 1, men_max: 1.5, str: 0.8, def: 0.6, agi: 0.8, vit_max: 0.7 },
+      召唤系: { sp_max: 1, men_max: 1.35, str: 0.8, def: 0.8, agi: 0.8, vit_max: 0.8 },
+    };
+    const 系数 = 系数表[String(系别 || '').trim()] || 系数表.强攻系;
+    const 天赋训练系数 = 读取技能设计台天赋训练系数(选项?.天赋梯队 || '正常');
+    const 精神训练系数 = 读取技能设计台精神训练系数(选项?.天赋梯队 || '正常');
+    const 常规训练倍率 = 等级值 > 10 ? 1 + 0.005 * (等级值 - 10) * 天赋训练系数 : 1;
+    const 精神训练倍率 = 等级值 > 10 ? 1 + 0.005 * (等级值 - 10) * 精神训练系数 : 1;
+    const 属性 = {
+      name: `标准${Math.round(等级值)}级`,
+      type: 系别 || '强攻系',
+      lv: 等级值,
+      等级: 等级值,
+      str: Math.max(1, Math.round(Number(基础.str || 1) * 系数.str * 常规训练倍率)),
+      def: Math.max(1, Math.round(Number(基础.def || 1) * 系数.def * 常规训练倍率)),
+      agi: Math.max(1, Math.round(Number(基础.agi || 1) * 系数.agi * 常规训练倍率)),
+      men_max: Math.max(1, Math.round(Number(基础.men_max || 1) * 系数.men_max * 精神训练倍率)),
+      sp_max: Math.max(1, Math.round(Number(基础.sp_max || 1) * 系数.sp_max)),
+      vit_max: Math.max(1, Math.round(Number(基础.vit_max || 1) * 系数.vit_max * 常规训练倍率)),
+      属性: { 天赋梯队: String(选项?.天赋梯队 || '正常').trim() || '正常' },
+    };
+    属性.sp = 属性.sp_max;
+    属性.men = 属性.men_max;
+    属性.hp_max = 属性.vit_max;
+    属性.HP上限 = 属性.vit_max;
+    属性.HP = 属性.vit_max;
+    属性.属性 = {
+      ...属性.属性,
+      等级: 属性.等级,
+      系别: 属性.type,
+      力量: 属性.str,
+      防御: 属性.def,
+      敏捷: 属性.agi,
+      HP上限: 属性.HP上限,
+      生命上限: 属性.HP上限,
+      体力上限: 属性.vit_max,
+      魂力上限: 属性.sp_max,
+      精神力上限: 属性.men_max,
+      hp_max: 属性.hp_max,
+      vit_max: 属性.vit_max,
+      sp_max: 属性.sp_max,
+      men_max: 属性.men_max,
+    };
+    属性.final = { ...属性 };
+    return 属性;
+  }
+  // —— B:23648-23670
+  function 构建技能设计台角色战斗属性(角色键 = '', 角色数据 = {}, 默认系别 = '强攻系') {
+    const 来源 = 角色数据 && typeof 角色数据 === 'object' ? (角色数据['属性'] || 角色数据) : {};
+    const 属性 = {
+      name: getSkillDesignerCharDisplayName(角色键, 角色数据),
+      type: normalizeSkillUiText(来源.系别 || 角色数据?.type, 默认系别 || '强攻系'),
+      lv: Math.max(1, Number(来源.等级 || 角色数据?.lv || 角色数据?.等级 || 1)),
+      等级: Math.max(1, Number(来源.等级 || 角色数据?.lv || 角色数据?.等级 || 1)),
+      str: Math.max(1, Number(来源.力量 || 来源.str || 1)),
+      def: Math.max(1, Number(来源.防御 || 来源.def || 1)),
+      agi: Math.max(1, Number(来源.敏捷 || 来源.agi || 1)),
+      vit_max: Math.max(1, Number(来源.体力上限 || 来源.HP上限 || 来源.hp_max || 来源.vit_max || 1)),
+      sp_max: Math.max(1, Number(来源.魂力上限 || 来源.sp_max || 1)),
+      men_max: Math.max(1, Number(来源.精神力上限 || 来源.men_max || 1)),
+      属性: { 天赋梯队: String(来源.天赋梯队 || 角色数据?.属性?.天赋梯队 || 角色数据?.天赋梯队 || '正常').trim() || '正常' },
+    };
+    属性.sp = Math.max(0, Math.min(属性.sp_max, Number(来源.魂力 ?? 来源.sp ?? 属性.sp_max)));
+    属性.men = Math.max(0, Math.min(属性.men_max, Number(来源.精神力 ?? 来源.men ?? 属性.men_max)));
+    属性.hp_max = 属性.vit_max;
+    属性.HP上限 = 属性.vit_max;
+    属性.HP = Math.max(0, Math.min(属性.vit_max, Number(来源.HP ?? 来源.体力 ?? 来源.hp ?? 属性.vit_max)));
+    属性.final = { ...属性 };
+    return 属性;
+  }
+  // —— B:23672-23676
+  function 推断技能设计台魂环位(previewMeta = {}) {
+    const path = Array.isArray(previewMeta && previewMeta.path) ? previewMeta.path : [];
+    const 槽位 = path.find(片段 => 是魂环槽位键_桥接(片段) || 是气血魂环槽位键_桥接(片段)) || previewMeta?.label || '';
+    return Math.max(1, 读取槽位序号_桥接(槽位, 1));
+  }
+  // —— B:23678-23684
+  function 读取技能设计台魂环数据(previewMeta = {}, 根数据 = {}) {
+    const path = Array.isArray(previewMeta && previewMeta.path) ? previewMeta.path : [];
+    const 环位索引 = path.findIndex(片段 => 是魂环槽位键_桥接(片段) || 是气血魂环槽位键_桥接(片段));
+    if (环位索引 < 0) return null;
+    const 魂环数据 = deepGet(根数据, path.slice(0, 环位索引 + 1), null);
+    return 魂环数据 && typeof 魂环数据 === 'object' && !Array.isArray(魂环数据) ? 魂环数据 : null;
+  }
+  // —— B:23686-23747
+  function 构建技能设计台预算上下文(previewMeta = {}, 根数据 = {}, 草稿 = {}) {
+    const 范围 = normalizeSkillUiText(previewMeta && previewMeta.scope, '');
+    const 分类 = normalizeSkillUiText(previewMeta && previewMeta.category, '');
+    const { charKey: 角色键, charData: 角色数据 } = getSkillDesignerCharByPreviewPath(根数据, previewMeta);
+    const 魂环位 = 推断技能设计台魂环位(previewMeta);
+    const 魂环数据 = 读取技能设计台魂环数据(previewMeta, 根数据);
+    const 角色属性 = 角色数据 && Object.keys(角色数据).length
+      ? 构建技能设计台角色战斗属性(角色键, 角色数据, normalizeSkillUiText(草稿 && 草稿.type, '强攻系'))
+      : 构建技能设计台标准战斗属性(草稿?.level || 草稿?.lv || 50, 草稿?.type || '强攻系');
+    const 路径 = Array.isArray(previewMeta && previewMeta.path) ? previewMeta.path : [];
+    const 武魂索引 = 路径.findIndex(片段 => ['第1武魂', '第2武魂'].includes(normalizeSkillUiText(片段, '')));
+    const 武魂数据 = 武魂索引 >= 0 ? deepGet(根数据, 路径.slice(0, 武魂索引 + 1), {}) : {};
+    const 武魂元素上下文 = 读取技能设计台武魂上下文(根数据, previewMeta);
+    const 预算系别 = normalizeSkillUiText(
+      武魂数据?.系别 ||
+        武魂数据?.type ||
+        草稿?.type ||
+        角色属性?.系别 ||
+        角色属性?.type ||
+        取角色主武魂系别_桥接(角色数据) ||
+        '强攻系',
+      '强攻系',
+    );
+    let 来源类别 = '魂技';
+    let 预算角色 = 角色属性;
+    if (['魂技', 'independent_ring_skill'].includes(范围)) {
+      来源类别 = '魂技';
+      预算角色 = 构建技能设计台标准战斗属性(10 * Math.min(9, 魂环位) + 1, 角色属性.type || 草稿?.type || '强攻系', {
+        天赋梯队: 角色属性?.属性?.天赋梯队 || 角色数据?.属性?.天赋梯队 || 角色数据?.天赋梯队 || '正常',
+      });
+    } else if (范围 === 'blood_ring_skill') {
+      来源类别 = '气血魂技';
+    } else if (范围 === 'blood_skill' || 范围 === 'blood_passive') {
+      来源类别 = '血脉技能';
+    } else if (范围 === '自创魂技') {
+      来源类别 = '自创魂技';
+    } else if (范围 === '武魂融合技') {
+      来源类别 = '武魂融合技';
+    } else if (范围 === 'soul_bone_skill') {
+      来源类别 = '魂骨技能';
+    } else if (范围 === 'art') {
+      来源类别 = '精神领域';
+    } else if (分类.includes('装备')) {
+      来源类别 = '装备技能';
+    } else if (分类.includes('物品')) {
+      来源类别 = '物品技能';
+    }
+    return {
+      角色: 预算角色,
+      施术者: 预算角色,
+      来源类别,
+      系别: 预算系别,
+      武魂系别: 预算系别,
+      可调用元素: 武魂元素上下文.可调用元素,
+      callableElements: 武魂元素上下文.可调用元素,
+      魂环位,
+      魂环数据,
+      ringAge: 魂环数据?.年限,
+      ringColor: 魂环数据?.颜色,
+      融合记录: 范围 === '武魂融合技' ? getSkillDesignerFusionRecord(根数据, previewMeta) : undefined,
+    };
+  }
+  // —— B:23749-23757
+  function 读取技能设计台伤害效果列表(effectArray = []) {
+    return (Array.isArray(effectArray) ? effectArray : []).filter(
+      effect =>
+        effect &&
+        typeof effect === 'object' &&
+        toText(effect['原型'], '').trim() === '伤害结算' &&
+        (Number(effect['威力倍率'] || 0) > 0 || normalizeSkillUiText(effect['数值'], '')),
+    );
+  }
+  // —— B:23763-23771
+  function 技能设计台是普通魂环伤害魂技(previewMeta = {}, effectArray = [], skill = {}) {
+    const 范围 = normalizeSkillUiText(previewMeta && previewMeta.scope, '');
+    if (!['魂技', 'independent_ring_skill'].includes(范围)) return false;
+    const 魂环位 = 推断技能设计台魂环位(previewMeta);
+    if (!(魂环位 > 0) || 魂环位 === 7) return false;
+    const 名称文本 = `${skill?.魂技名 || ''}${skill?.name || ''}${skill?.技能名称 || ''}`;
+    if (/武魂真身|真身/.test(名称文本)) return false;
+    return 读取技能设计台伤害效果列表(effectArray).length > 0;
+  }
+  // —— B:23773-23778
+  function 构建技能设计台运行态消耗展示(基础消耗 = '', effectArray = [], previewMeta = {}, skill = {}) {
+    void effectArray;
+    void previewMeta;
+    void skill;
+    return 格式化技能消耗显示文本_桥接(基础消耗, '无');
+  }
+  // —— B:23912-23918
+  function 计算技能设计台固定结算消耗比例(draft = {}) {
+    const effects = buildSkillDesignerRuntimeEffects(buildSkillDesignerFormStateFromDraft(draft, {}), {}, {});
+    if (!effects.some(effect => normalizeSkillUiText(effect && effect['原型'], '') === '伤害结算')) return 0;
+    const ringIndex = Math.max(1, Math.min(9, Math.floor(Number(draft.ringIndex || draft.ring || 1) || 1)));
+    if (ringIndex === 7) return 0;
+    return Math.max(0, Math.min(0.27, ringIndex * 0.03));
+  }
+  // —— B:24169-24171
+  function getSkillDesignerChildMechanicOptions(primaryMain = '') {
+    return SKILL_DESIGNER_MAIN_MECHANIC_POOL[normalizeSkillUiText(primaryMain, '')] || [];
+  }
+  // —— B:24173-24175
+  function getSkillDesignerDeliveryOptions(type = '') {
+    return SKILL_DESIGNER_DELIVERY_FORM_BY_TYPE[normalizeSkillUiText(type, '')] || SKILL_DESIGNER_DELIVERY_FORM_POOL;
+  }
+  // —— B:24177-24179
+  function getSkillDesignerSecondaryOptions(primaryMain = '') {
+    return SKILL_DESIGNER_SECONDARY_BY_MAIN[normalizeSkillUiText(primaryMain, '')] || [];
+  }
+  // —— B:24181-24186
+  function getSkillDesignerRecommendedSecondaryOptions(primaryMain = '', type = '') {
+    return normalizeSkillDesignerArray([
+      ...getSkillDesignerSecondaryOptions(primaryMain),
+      ...(SKILL_DESIGNER_SECONDARY_TYPE_BIAS[normalizeSkillUiText(type, '')] || []),
+    ]);
+  }
+  // —— B:24194-24206
+  function normalizeSkillDesignerSecondarySelection(primaryMain = '', values = [], type = '', primarySub = '') {
+    const knownSet = new Set([
+      ...SKILL_DESIGNER_ALL_SECONDARY_OPTIONS,
+      ...getSkillDesignerRecommendedSecondaryOptions(primaryMain, type),
+    ]);
+    const primarySubLabel = normalizeSkillUiText(primarySub, '');
+    return normalizeSkillDesignerArray(values).filter(label => {
+      if (primarySubLabel && label === primarySubLabel) return false;
+      if (!knownSet.has(label)) return false;
+      const meta = getSkillDesignerMechanismRegistryMeta(label);
+      return !meta || meta.可副机制 === true || normalizeSkillUiText(meta.designerSecondaryHint, '') === label;
+    });
+  }
+  // —— B:24219-24233
+  function normalizeSkillDesignerOptionList(选项列表 = []) {
+    const 原始选项列表 = Array.isArray(选项列表) ? 选项列表 : [];
+    return 原始选项列表.flatMap(选项 => {
+      if (选项 && typeof 选项 === 'object' && Array.isArray(选项.options)) {
+        return normalizeSkillDesignerOptionList(选项.options);
+      }
+      if (选项 && typeof 选项 === 'object') {
+        const 值 = toText(选项.value ?? 选项.label, '').trim();
+        const 标签 = toText(选项.label ?? 选项.value, 值).trim();
+        return 值 ? [{ value: 值, label: 标签 || 值 }] : [];
+      }
+      const 值 = toText(选项, '').trim();
+      return 值 ? [{ value: 值, label: 值 }] : [];
+    });
+  }
+  // —— B:24235-24246
+  function normalizeSkillDesignerOptionEntries(选项列表 = []) {
+    const 原始选项列表 = Array.isArray(选项列表) ? 选项列表 : [];
+    return 原始选项列表.flatMap(选项 => {
+      if (选项 && typeof 选项 === 'object' && Array.isArray(选项.options)) {
+        const 标签 = toText(选项.label, '').trim();
+        const 子选项 = normalizeSkillDesignerOptionList(选项.options);
+        return 标签 && 子选项.length ? [{ type: 'group', label: 标签, options: 子选项 }] : 子选项;
+      }
+      const 普通选项 = normalizeSkillDesignerOptionList([选项]);
+      return 普通选项.map(item => ({ type: 'option', ...item }));
+    });
+  }
+  // —— B:24248-24251
+  function getSkillDesignerFirstOptionValue(选项列表 = [], 回退值 = '') {
+    const 首项 = normalizeSkillDesignerOptionList(选项列表)[0] || null;
+    return 首项 ? 首项.value : normalizeSkillUiText(回退值, '');
+  }
+  // —— B:24253-24260
+  function normalizeSkillDesignerSelectValue(当前值 = '', 选项列表 = [], 回退值 = '') {
+    const 规范选项列表 = normalizeSkillDesignerOptionList(选项列表);
+    const 原始值 = toText(当前值, '').trim();
+    if (原始值 && 规范选项列表.some(选项 => 选项.value === 原始值)) return 原始值;
+    const 选中值 = normalizeSkillUiText(原始值, '');
+    if (选中值 && 规范选项列表.some(选项 => 选项.value === 选中值)) return 选中值;
+    return 规范选项列表[0] ? 规范选项列表[0].value : normalizeSkillUiText(回退值, '');
+  }
+  // —— B:24262-24309
+  function buildSkillDesignerSelectOptions(选项列表 = [], 当前值 = '', 空状态文本 = '') {
+    const 规范条目列表 = normalizeSkillDesignerOptionEntries(选项列表);
+    const 规范选项列表 = normalizeSkillDesignerOptionList(选项列表);
+    const 不允许空值 = 规范选项列表.length > 0 && 规范选项列表.every(选项 => 选项.value !== '无');
+    if (!规范选项列表.length) {
+      const 空文本 =
+        normalizeSkillUiText(空状态文本, '') && !/未设置/.test(normalizeSkillUiText(空状态文本, ''))
+          ? normalizeSkillUiText(空状态文本, '')
+          : '暂无可选';
+      return `<option value=\"\" selected disabled>${htmlEscape(空文本)}</option>`;
+    }
+    const 输出选项列表 = [];
+    const 输出条目列表 = [];
+    const 已见 = new Set();
+    const 加入选项 = 选项 => {
+      if (已见.has(选项.value)) return;
+      已见.add(选项.value);
+      输出选项列表.push(选项);
+      return 选项;
+    };
+    规范条目列表.forEach(条目 => {
+      if (条目.type === 'group') {
+        const 组选项 = 条目.options.map(加入选项).filter(Boolean);
+        if (组选项.length) 输出条目列表.push({ ...条目, options: 组选项 });
+        return;
+      }
+      const 选项 = 加入选项(条目);
+      if (选项) 输出条目列表.push({ type: 'option', ...选项 });
+    });
+    const 当前文本 = toText(当前值, '').trim();
+    const 选中值 = 输出选项列表.some(选项 => 选项.value === 当前文本)
+      ? toText(当前值, '').trim()
+      : 不允许空值 && 当前文本 === '无'
+        ? 输出选项列表[0].value
+      : 输出选项列表[0].value;
+    const 构建选项 = 选项 => {
+      const 安全值 = toText(选项.value, '');
+      const 标签 = toText(选项.label, 安全值);
+      return `<option value=\"${escapeHtmlAttr(安全值)}\"${安全值 === 选中值 ? ' selected' : ''}>${htmlEscape(标签)}</option>`;
+    };
+    return 输出条目列表
+      .map(条目 => {
+        if (条目.type !== 'group') return 构建选项(条目);
+        const 选项文本 = 条目.options.map(构建选项).join('');
+        return `<optgroup label=\"${escapeHtmlAttr(条目.label)}\">${选项文本}</optgroup>`;
+      })
+      .join('');
+  }
+  // —— B:24311-24325
+  function 构建技能设计台条件类型分组选项(当前值 = '') {
+    const 选中值 = SKILL_DESIGNER_CONDITION_BRANCH_TYPE_OPTIONS.includes(toText(当前值, '').trim())
+      ? toText(当前值, '').trim()
+      : SKILL_DESIGNER_CONDITION_BRANCH_TYPE_OPTIONS[0];
+    return SKILL_DESIGNER_CONDITION_BRANCH_TYPE_GROUPS
+      .map(分组 => {
+        const 选项文本 = 分组.options
+          .filter(选项 => SKILL_DESIGNER_CONDITION_BRANCH_TYPE_OPTIONS.includes(选项))
+          .map(选项 => `<option value=\"${escapeHtmlAttr(选项)}\"${选项 === 选中值 ? ' selected' : ''}>${htmlEscape(选项)}</option>`)
+          .join('');
+        if (!选项文本) return '';
+        return `<optgroup label=\"${escapeHtmlAttr(分组.label)}\">${选项文本}</optgroup>`;
+      })
+      .join('');
+  }
+  // —— B:24327-24347
+  function buildSkillDesignerCheckChipList(
+    options = [],
+    selectedValues = [],
+    inputName = '',
+    extraClassResolver = null,
+  ) {
+    const selectedSet = new Set(normalizeSkillDesignerArray(selectedValues));
+    return (Array.isArray(options) ? options : [])
+      .map(option => {
+        const label = toText(option, '').trim();
+        if (!label) return '';
+        const extraClass = typeof extraClassResolver === 'function' ? toText(extraClassResolver(label), '') : '';
+        return `
+          <label class=\"skill-designer-check-chip ${selectedSet.has(label) ? 'active' : ''} ${extraClass}\">
+            <input type=\"checkbox\" name=\"${escapeHtmlAttr(inputName)}\" value=\"${escapeHtmlAttr(label)}\"${selectedSet.has(label) ? ' checked' : ''} />
+            <span>${htmlEscape(label)}</span>
+          </label>
+        `;
+      })
+      .join('');
+  }
+  // —— B:24349-24354
+  function normalizeSkillDesignerFusionMode(value = '') {
+    const raw = normalizeSkillUiText(value, '').trim();
+    if (!raw) return 'partner';
+    if (raw === 'self' || /自体|自身|自己|双生|双武魂/.test(raw)) return 'self';
+    return 'partner';
+  }
+  // —— B:24356-24360
+  function 规范化技能设计台融合用法模式(value = '') {
+    const raw = normalizeSkillUiText(value, '').trim();
+    if (/增幅|共享|持续/.test(raw)) return '融合增幅';
+    return '一次性释放';
+  }
+  // —— B:24362-24365
+  function formatSkillDesignerFusionModeLabel(mode = '', participants = []) {
+    if (normalizeSkillDesignerFusionMode(mode) === 'self') return '自体融合';
+    return normalizeSkillDesignerFusionParticipantList(participants).length > 2 ? '多人融合' : '双人融合';
+  }
+  // —— B:24367-24373
+  function resolveSkillDesignerSpiritDisplayName(slotName = '', spiritData = {}) {
+    const safeSpirit = spiritData && typeof spiritData === 'object' ? spiritData : {};
+    return normalizeSkillUiText(
+      safeSpirit['表象名称'] || safeSpirit.name || safeSpirit.type || slotName,
+      slotName || '武魂',
+    );
+  }
+  // —— B:24375-24381
+  function getSkillDesignerSpiritNameOptions(charData = {}) {
+    const names = 取角色武魂条目_桥接(charData)
+      .map(([slotName, spiritData]) => resolveSkillDesignerSpiritDisplayName(slotName, spiritData))
+      .map(name => normalizeSkillUiText(name, '').trim())
+      .filter(name => name && !/^(未设置|未知|无)$/.test(name));
+    return Array.from(new Set(names));
+  }
+  // —— B:24383-24388
+  function getSkillDesignerCharDisplayName(charKey = '', charData = {}) {
+    return normalizeSkillUiText(
+      charData && (charData.name || deepGet(charData, 'base.name', '')),
+      charKey || '未命名角色',
+    );
+  }
+  // —— B:24390-24397
+  function getSkillDesignerCharByPreviewPath(rootData = {}, previewMeta = {}) {
+    const path = Array.isArray(previewMeta && previewMeta.path) ? previewMeta.path : [];
+    const charKey = path[0] === 'char' ? toText(path[1], '').trim() : '';
+    return {
+      charKey,
+      charData: charKey ? deepGet(rootData, ['char', charKey], {}) : {},
+    };
+  }
+  // —— B:24399-24411
+  function 读取技能设计台武魂上下文(rootData = {}, previewMeta = {}) {
+    const path = Array.isArray(previewMeta && previewMeta.path) ? previewMeta.path : [];
+    const 武魂索引 = path.findIndex(片段 => ['第1武魂', '第2武魂'].includes(normalizeSkillUiText(片段, '')));
+    const 武魂数据 = 武魂索引 >= 0 ? deepGet(rootData, path.slice(0, 武魂索引 + 1), {}) : {};
+    const 属性体系 = normalizeSkillUiText(武魂数据 && 武魂数据['属性体系'], '无');
+    const 可调用元素 = 规范化技能元素列表_桥接(武魂数据 && 武魂数据['可调用元素']);
+    return {
+      武魂数据,
+      系别: normalizeSkillUiText(武魂数据 && 武魂数据['系别'], ''),
+      属性体系,
+      可调用元素: 属性体系 === '五行' && !可调用元素.length ? [...WUXING_ATTRIBUTE_TOKEN_OPTIONS] : 可调用元素,
+    };
+  }
+  // —— B:24413-24417
+  function 技能设计台是元素系上下文(rootData = {}, previewMeta = {}, 草稿 = {}) {
+    const 武魂上下文 = 读取技能设计台武魂上下文(rootData, previewMeta);
+    const 系别文本 = [武魂上下文.系别, 草稿 && 草稿.type, 武魂上下文.属性体系].map(item => normalizeSkillUiText(item, '')).join('/');
+    return /元素系|元素|五行/.test(系别文本);
+  }
+  // —— B:24419-24436
+  function 收口技能设计台元素字段(效果数组 = [], 可调用元素 = []) {
+    const 默认元素 = 规范化技能元素列表_桥接(可调用元素);
+    const 访问 = 效果 => {
+      if (!效果 || typeof 效果 !== 'object' || Array.isArray(效果)) return;
+      if (效果['限定元素'] !== undefined) {
+        const 限定元素列表 = 读取技能设计台限定元素列表(效果['限定元素']).filter(元素 => SPIRIT_ATTRIBUTE_TOKEN_OPTIONS.includes(元素));
+        const 限定交集 = 默认元素.length ? 限定元素列表.filter(元素 => 默认元素.includes(元素)) : 限定元素列表;
+        const 生效元素 = 限定交集.length ? 限定交集 : 默认元素;
+        if (生效元素.length) 效果['限定元素'] = 生效元素.length > 1 ? 生效元素 : 生效元素[0];
+      }
+      技能设计台嵌套效果数组字段表.forEach(字段名 => (Array.isArray(效果[字段名]) ? 效果[字段名] : []).forEach(访问));
+      (Array.isArray(效果['条件分支']) ? 效果['条件分支'] : []).forEach(分支 =>
+        技能设计台条件分支效果数组字段表.forEach(字段名 => (Array.isArray(分支 && 分支[字段名]) ? 分支[字段名] : []).forEach(访问)),
+      );
+    };
+    (Array.isArray(效果数组) ? 效果数组 : []).forEach(访问);
+    return 效果数组;
+  }
+  // —— B:24438-24451
+  function 技能设计台效果列表包含本命召唤(效果数组 = []) {
+    const 访问 = 效果 => {
+      if (!效果 || typeof 效果 !== 'object' || Array.isArray(效果)) return false;
+      if (
+        normalizeSkillUiText(效果['原型'], '') === '召唤生成' &&
+        normalizeSkillUiText(效果['召唤单位类型'], '') === '本命召唤兽'
+      ) return true;
+      if (技能设计台嵌套效果数组字段表.some(字段名 => (Array.isArray(效果[字段名]) ? 效果[字段名] : []).some(访问))) return true;
+      return (Array.isArray(效果['条件分支']) ? 效果['条件分支'] : []).some(分支 =>
+        技能设计台条件分支效果数组字段表.some(字段名 => (Array.isArray(分支 && 分支[字段名]) ? 分支[字段名] : []).some(访问)),
+      );
+    };
+    return (Array.isArray(效果数组) ? 效果数组 : []).some(访问);
+  }
+  // —— B:24453-24479
+  function 断言技能设计台本命召唤唯一(previewMeta = {}, nextSkill = {}, rootData = {}) {
+    if (!技能设计台效果列表包含本命召唤(nextSkill && nextSkill['_效果数组'])) return;
+    const { charKey, charData } = getSkillDesignerCharByPreviewPath(rootData, previewMeta);
+    if (!charData || typeof charData !== 'object') return;
+    const 预览路径 = Array.isArray(previewMeta && previewMeta.path) ? previewMeta.path : [];
+    const 当前路径 = JSON.stringify(预览路径);
+    const 冲突路径列表 = [];
+    const 扫描 = (节点, 路径) => {
+      if (!节点 || typeof 节点 !== 'object') return;
+      if (
+        !Array.isArray(节点) &&
+        Array.isArray(节点['_效果数组']) &&
+        JSON.stringify(['char', charKey, ...路径]) !== 当前路径 &&
+        技能设计台效果列表包含本命召唤(节点['_效果数组'])
+      ) {
+        冲突路径列表.push(路径.join('.'));
+        return;
+      }
+      Object.entries(节点).forEach(([键, 值]) => {
+        if (键 === '_效果数组') return;
+        扫描(值, [...路径, 键]);
+      });
+    };
+    扫描(charData, []);
+    if (冲突路径列表.length)
+      throw new Error(`本命召唤兽已存在：${冲突路径列表[0]}。同一角色全技能只能有一个本命召唤兽生成效果。`);
+  }
+  // —— B:24481-24487
+  function getSkillDesignerFusionRecord(rootData = {}, previewMeta = {}) {
+    const path = Array.isArray(previewMeta && previewMeta.path) ? previewMeta.path : [];
+    if (toText(previewMeta && previewMeta.scope, '') !== '武魂融合技') return {};
+    if (toText(path[path.length - 1], '') !== '技能数据') return {};
+    const record = deepGet(rootData, path.slice(0, -1), {});
+    return record && typeof record === 'object' ? record : {};
+  }
+  // —— B:24489-24498
+  function findSkillDesignerCharKeyByName(rootData = {}, rawName = '') {
+    const target = normalizeSkillUiText(rawName, '').trim();
+    if (!target) return '';
+    const charRoot = deepGet(rootData, 'char', {});
+    if (charRoot && Object.prototype.hasOwnProperty.call(charRoot, target)) return target;
+    const match = safeEntries(charRoot).find(
+      ([key, charData]) => getSkillDesignerCharDisplayName(key, charData) === target,
+    );
+    return match ? match[0] : '';
+  }
+  // —— B:24500-24509
+  function getSkillDesignerFusionSelfEntry(rootData = {}, previewMeta = {}, snapshot = {}) {
+    const { charKey, charData } = getSkillDesignerCharByPreviewPath(rootData, previewMeta);
+    const fallbackName = normalizeSkillUiText(snapshot && snapshot.activeName, charKey || '当前角色');
+    return {
+      charKey,
+      charName: getSkillDesignerCharDisplayName(charKey, charData) || fallbackName,
+      charData,
+      spirits: getSkillDesignerSpiritNameOptions(charData),
+    };
+  }
+  // —— B:24511-24530
+  function getSkillDesignerFusionCharOptions(rootData = {}, previewMeta = {}, extraParticipants = []) {
+    const selfEntry = getSkillDesignerFusionSelfEntry(rootData, previewMeta);
+    const charOptions = safeEntries(deepGet(rootData, 'char', {}))
+      .map(([key, charData]) => ({
+        value: key,
+        label: getSkillDesignerCharDisplayName(key, charData),
+      }))
+      .filter(option => option.value && option.label && option.value !== selfEntry.charKey);
+    normalizeSkillDesignerFusionParticipantList(extraParticipants).forEach(participant => {
+      if (
+        participant.charKey &&
+        participant.charName &&
+        participant.charKey !== selfEntry.charKey &&
+        !charOptions.some(option => option.value === participant.charKey)
+      ) {
+        charOptions.unshift({ value: participant.charKey, label: participant.charName });
+      }
+    });
+    return charOptions;
+  }
+  // —— B:24532-24534
+  function getSkillDesignerFusionCharData(rootData = {}, charKey = '') {
+    return charKey ? deepGet(rootData, ['char', charKey], {}) : {};
+  }
+  // —— B:24536-24541
+  function getSkillDesignerFusionSpiritOptions(rootData = {}, charKey = '', fallbackSpirit = '') {
+    const options = getSkillDesignerSpiritNameOptions(getSkillDesignerFusionCharData(rootData, charKey));
+    const fallback = normalizeSkillUiText(fallbackSpirit, '');
+    if (fallback && !options.includes(fallback)) options.unshift(fallback);
+    return options;
+  }
+  // —— B:24543-24548
+  function resolveSkillDesignerFusionSpirit(rootData = {}, charKey = '', currentSpirit = '') {
+    const spiritOptions = getSkillDesignerSpiritNameOptions(getSkillDesignerFusionCharData(rootData, charKey));
+    const current = normalizeSkillUiText(currentSpirit, '');
+    if (current && spiritOptions.includes(current)) return current;
+    return spiritOptions[0] || current;
+  }
+  // —— B:24550-24578
+  function normalizeSkillDesignerFusionParticipant(participant = {}, rootData = {}) {
+    const raw = participant && typeof participant === 'object' ? participant : {};
+    const roleText = normalizeSkillUiText(raw.role || raw['类型'] || raw['身份'], '');
+    const role = roleText === 'self' || /自身|自体|自己|本体/.test(roleText) ? 'self' : 'partner';
+    const rawCharName = normalizeSkillUiText(
+      raw.charName || raw.char_name || raw.name || raw['角色'] || raw['角色名'],
+      '',
+    );
+    let charKey = normalizeSkillUiText(raw.charKey || raw.char_key || raw.key || raw['角色键'] || raw['角色key'], '');
+    if (!charKey && rawCharName) charKey = findSkillDesignerCharKeyByName(rootData, rawCharName);
+    const charData = getSkillDesignerFusionCharData(rootData, charKey);
+    const charName = getSkillDesignerCharDisplayName(charKey, charData) || rawCharName || charKey;
+    const spirit = normalizeSkillUiText(
+      raw.spirit ||
+        raw.spiritName ||
+        raw.spirit_name ||
+        raw.sourceSpirit ||
+        raw.source_spirit ||
+        raw['武魂'] ||
+        raw['来源武魂'],
+      '',
+    );
+    return {
+      role,
+      charKey,
+      charName,
+      spirit,
+    };
+  }
+  // —— B:24580-24585
+  function normalizeSkillDesignerFusionParticipantList(participants = [], rootData = {}) {
+    if (!Array.isArray(participants)) return [];
+    return participants
+      .map(participant => normalizeSkillDesignerFusionParticipant(participant, rootData))
+      .filter(participant => participant.charKey || participant.charName || participant.spirit);
+  }
+  // —— B:24587-24594
+  function getSkillDesignerRawFusionParticipants(draft = {}, fusionRecord = {}) {
+    const safeDraft = draft && typeof draft === 'object' ? draft : {};
+    const safeRecord = fusionRecord && typeof fusionRecord === 'object' ? fusionRecord : {};
+    const raw = [safeDraft.fusionParticipants, safeDraft['融合参与者'], safeRecord['融合参与者']].find(
+      candidate => Array.isArray(candidate) && candidate.length,
+    );
+    return Array.isArray(raw) ? raw : [];
+  }
+  // —— B:24596-24603
+  function parseSkillDesignerFusionPartnerNames(value = '') {
+    const raw = normalizeSkillUiText(value, '');
+    if (!raw || raw === SKILL_DESIGNER_SELF_FUSION_PARTNER) return [];
+    return raw
+      .split(/[、,，+\/|｜；;]/)
+      .map(item => normalizeSkillUiText(item, '').trim())
+      .filter(Boolean);
+  }
+  // —— B:24605-24612
+  function createSkillDesignerFusionParticipant(role = 'partner', charKey = '', charName = '', spirit = '') {
+    return {
+      role: role === 'self' ? 'self' : 'partner',
+      charKey: normalizeSkillUiText(charKey, ''),
+      charName: normalizeSkillUiText(charName, ''),
+      spirit: normalizeSkillUiText(spirit, ''),
+    };
+  }
+  // —— B:24614-24620
+  function createSkillDesignerDefaultPartnerParticipant(rootData = {}, previewMeta = {}, usedCharKeys = []) {
+    const used = new Set(normalizeSkillDesignerArray(usedCharKeys));
+    const options = getSkillDesignerFusionCharOptions(rootData, previewMeta);
+    const option = options.find(item => !used.has(item.value)) || options[0] || { value: '', label: '' };
+    const spiritOptions = getSkillDesignerFusionSpiritOptions(rootData, option.value);
+    return createSkillDesignerFusionParticipant('partner', option.value, option.label, spiritOptions[0] || '');
+  }
+  // —— B:24622-24734
+  function buildSkillDesignerFusionParticipants(snapshot = {}, previewMeta = {}, baseDraft = {}, fusionRecord = {}) {
+    if (toText(previewMeta && previewMeta.scope, '') !== '武魂融合技') return [];
+    const rootData = snapshot && snapshot.rootData ? snapshot.rootData : {};
+    const selfEntry = getSkillDesignerFusionSelfEntry(rootData, previewMeta, snapshot);
+    const selfSpiritOptions = selfEntry.spirits;
+    let fusionMode = normalizeSkillDesignerFusionMode(
+      baseDraft.fusionMode || baseDraft['融合模式'] || fusionRecord.融合模式 || '',
+    );
+    if (fusionMode === 'self' && selfSpiritOptions.length < 2) fusionMode = 'partner';
+    const rawParticipants = getSkillDesignerRawFusionParticipants(baseDraft, fusionRecord);
+    let participants = normalizeSkillDesignerFusionParticipantList(rawParticipants, rootData);
+    if (!participants.length) {
+      const sourceSpirits = normalizeSkillDesignerArray(
+        baseDraft.fusionSourceSpirits || baseDraft['来源武魂'] || fusionRecord.来源武魂,
+      );
+      if (fusionMode === 'self') {
+        participants = [
+          createSkillDesignerFusionParticipant(
+            'self',
+            selfEntry.charKey,
+            selfEntry.charName,
+            sourceSpirits[0] || selfSpiritOptions[0] || '',
+          ),
+          createSkillDesignerFusionParticipant(
+            'self',
+            selfEntry.charKey,
+            selfEntry.charName,
+            sourceSpirits[1] || selfSpiritOptions[1] || selfSpiritOptions[0] || '',
+          ),
+        ];
+      } else {
+        const partnerNames = parseSkillDesignerFusionPartnerNames(
+          baseDraft.fusionPartner || baseDraft['融合对象'] || fusionRecord['融合对象'] || '',
+        );
+        participants = [
+          createSkillDesignerFusionParticipant(
+            'self',
+            selfEntry.charKey,
+            selfEntry.charName,
+            sourceSpirits[0] || selfSpiritOptions[0] || '',
+          ),
+        ];
+        partnerNames.forEach((name, index) => {
+          const charKey = findSkillDesignerCharKeyByName(rootData, name);
+          const charName = charKey
+            ? getSkillDesignerCharDisplayName(charKey, getSkillDesignerFusionCharData(rootData, charKey))
+            : name;
+          const spiritOptions = getSkillDesignerFusionSpiritOptions(rootData, charKey);
+          participants.push(
+            createSkillDesignerFusionParticipant(
+              'partner',
+              charKey,
+              charName,
+              sourceSpirits[index + 1] || spiritOptions[0] || '',
+            ),
+          );
+        });
+        if (participants.length < 2) {
+          participants.push(
+            createSkillDesignerDefaultPartnerParticipant(
+              rootData,
+              previewMeta,
+              participants.map(item => item.charKey),
+            ),
+          );
+        }
+      }
+    }
+    if (fusionMode === 'self') {
+      const selfRows = participants.filter(participant => participant.role === 'self');
+      const firstSpirit = resolveSkillDesignerFusionSpirit(
+        rootData,
+        selfEntry.charKey,
+        selfRows[0] && selfRows[0].spirit ? selfRows[0].spirit : selfSpiritOptions[0] || '',
+      );
+      let secondSpirit = resolveSkillDesignerFusionSpirit(
+        rootData,
+        selfEntry.charKey,
+        selfRows[1] && selfRows[1].spirit
+          ? selfRows[1].spirit
+          : selfSpiritOptions.find(name => name !== firstSpirit) || selfSpiritOptions[1] || firstSpirit,
+      );
+      if (selfSpiritOptions.length > 1 && secondSpirit === firstSpirit) {
+        secondSpirit = selfSpiritOptions.find(name => name !== firstSpirit) || secondSpirit;
+      }
+      return [
+        createSkillDesignerFusionParticipant('self', selfEntry.charKey, selfEntry.charName, firstSpirit),
+        createSkillDesignerFusionParticipant('self', selfEntry.charKey, selfEntry.charName, secondSpirit),
+      ];
+    }
+    const normalized = participants.map((participant, index) => {
+      if (index === 0 || participant.role === 'self') {
+        const spirit = resolveSkillDesignerFusionSpirit(rootData, selfEntry.charKey, participant.spirit);
+        return createSkillDesignerFusionParticipant('self', selfEntry.charKey, selfEntry.charName, spirit);
+      }
+      const charKey = participant.charKey || findSkillDesignerCharKeyByName(rootData, participant.charName);
+      const charName =
+        getSkillDesignerCharDisplayName(charKey, getSkillDesignerFusionCharData(rootData, charKey)) ||
+        participant.charName;
+      const spirit = resolveSkillDesignerFusionSpirit(rootData, charKey, participant.spirit);
+      return createSkillDesignerFusionParticipant('partner', charKey, charName, spirit);
+    });
+    if (!normalized.some(participant => participant.role === 'partner')) {
+      normalized.push(
+        createSkillDesignerDefaultPartnerParticipant(
+          rootData,
+          previewMeta,
+          normalized.map(item => item.charKey),
+        ),
+      );
+    }
+    return normalized;
+  }
+  // —— B:24736-24754
+  function deriveSkillDesignerFusionFields(mode = '', participants = [], fallbackPartner = '') {
+    const participantList = normalizeSkillDesignerFusionParticipantList(participants);
+    const fusionMode = normalizeSkillDesignerFusionMode(mode);
+    const partnerNames = participantList
+      .filter(participant => participant.role !== 'self')
+      .map(participant => participant.charName || participant.charKey)
+      .filter(Boolean);
+    return {
+      fusionMode,
+      fusionPartner:
+        fusionMode === 'self'
+          ? SKILL_DESIGNER_SELF_FUSION_PARTNER
+          : partnerNames.length
+            ? Array.from(new Set(partnerNames)).join('、')
+            : normalizeSkillUiText(fallbackPartner, ''),
+      fusionSourceSpirits: participantList.map(participant => participant.spirit).filter(Boolean),
+      fusionParticipants: participantList,
+    };
+  }
+  // —— B:24756-24759
+  function isSkillDesignerFusionBlankText(value = '') {
+    const text = normalizeSkillUiText(value, '').trim();
+    return !text || /^(未设置|未知|无|未接入武魂)$/.test(text);
+  }
+  // —— B:24761-24787
+  function assertSkillDesignerFusionState(draft = {}) {
+    const fields = deriveSkillDesignerFusionFields(draft.fusionMode, draft.fusionParticipants, draft.fusionPartner);
+    const participants = fields.fusionParticipants;
+    const 用法模式 = 规范化技能设计台融合用法模式(draft['用法模式']);
+    if (participants.length < 2) throw new Error('融合技至少需要两个参与武魂。');
+    const incomplete = participants.some(
+      participant =>
+        (isSkillDesignerFusionBlankText(participant.charKey) && isSkillDesignerFusionBlankText(participant.charName)) ||
+        isSkillDesignerFusionBlankText(participant.spirit),
+    );
+    if (incomplete) throw new Error('融合对象需要指定角色与武魂。');
+    if (fields.fusionMode === 'self') {
+      const spirits = participants
+        .map(participant => participant.spirit)
+        .filter(spirit => !isSkillDesignerFusionBlankText(spirit));
+      if (new Set(spirits).size < 2) throw new Error('自体融合需要选择两个不同武魂。');
+    }
+    if (
+      用法模式 === '融合增幅' &&
+      (['伤害类', '控制类'].includes(normalizeSkillUiText(draft.primaryMain, '')) ||
+        ['直接伤害', '单体伤害', '群体伤害', '多段伤害', '持续伤害', '硬控', '软控', '封技'].includes(
+          normalizeSkillUiText(draft.primarySub, ''),
+        ))
+    )
+      throw new Error('融合增幅模式不能混入一次性伤害或封控主机制。');
+    return fields;
+  }
+  // —— B:24789-24836
+  function buildSkillDesignerFusionParticipantRows(participants = [], rootData = {}, previewMeta = {}) {
+    const participantList = normalizeSkillDesignerFusionParticipantList(participants, rootData);
+    const mode = participantList.filter(participant => participant.role === 'partner').length ? 'partner' : 'self';
+    const partnerCount = participantList.filter(participant => participant.role === 'partner').length;
+    return participantList
+      .map((participant, index) => {
+        const isSelf = participant.role === 'self';
+        const charOptions = isSelf
+          ? [{ value: participant.charKey, label: participant.charName || participant.charKey || '当前角色' }]
+          : getSkillDesignerFusionCharOptions(rootData, previewMeta, participantList);
+        const spiritOptions = getSkillDesignerFusionSpiritOptions(rootData, participant.charKey, participant.spirit);
+        const charLabel = participant.charName || participant.charKey || '未设置';
+        return `
+          <div class=\"skill-designer-fusion-participant-row\" data-fusion-participant-row>
+            <input type=\"hidden\" value=\"${escapeHtmlAttr(participant.role)}\" data-skill-designer-fusion-role />
+            <label class=\"mvu-editor-field skill-designer-fusion-char-field\">
+              <span class=\"mvu-editor-label\">角色</span>
+              ${
+                isSelf
+                  ? `
+                  <div class=\"mvu-editor-static skill-designer-fusion-self-char\">${htmlEscape(charLabel)}</div>
+                  <input type=\"hidden\" value=\"${escapeHtmlAttr(participant.charKey)}\" data-skill-designer-fusion-char data-skill-designer-fusion-char-name=\"${escapeHtmlAttr(charLabel)}\" />
+                `
+                  : `
+                  <select class=\"mvu-editor-select\" data-skill-designer-fusion-char data-skill-designer-disableable>
+                    ${buildSkillDesignerSelectOptions(charOptions, participant.charKey, '暂无对象')}
+                  </select>
+                `
+              }
+            </label>
+            <label class=\"mvu-editor-field skill-designer-fusion-spirit-field\">
+              <span class=\"mvu-editor-label\">武魂</span>
+              <select class=\"mvu-editor-select\" data-skill-designer-fusion-spirit data-skill-designer-disableable>
+                ${buildSkillDesignerSelectOptions(spiritOptions, participant.spirit, spiritOptions.length ? '' : '未接入武魂')}
+              </select>
+            </label>
+            <div class=\"skill-designer-fusion-row-actions\">
+              ${
+                !isSelf && mode === 'partner' && partnerCount > 1
+                  ? `<button type=\"button\" class=\"tag-chip\" data-skill-designer-remove-fusion-participant data-skill-designer-disableable>移除</button>`
+                  : ''
+              }
+            </div>
+          </div>
+        `;
+      })
+      .join('');
+  }
+  // —— B:24838-24865
+  function getSkillDesignerFusionDraftSeed(snapshot = {}, previewMeta = {}, baseDraft = {}) {
+    if (toText(previewMeta && previewMeta.scope, '') !== '武魂融合技') return {};
+    const rootData = snapshot && snapshot.rootData ? snapshot.rootData : {};
+    const fusionRecord = getSkillDesignerFusionRecord(rootData, previewMeta);
+    const selfEntry = getSkillDesignerFusionSelfEntry(rootData, previewMeta, snapshot);
+    const spiritNames = selfEntry.spirits;
+    const rawMode = baseDraft.fusionMode || baseDraft['融合模式'] || fusionRecord.融合模式 || '';
+    let fusionMode = normalizeSkillDesignerFusionMode(rawMode);
+    if (fusionMode === 'self' && spiritNames.length < 2) fusionMode = 'partner';
+    const rawPartner = baseDraft.fusionPartner || baseDraft['融合对象'] || fusionRecord['融合对象'] || '';
+    const fusionPartner =
+      fusionMode === 'self' ? SKILL_DESIGNER_SELF_FUSION_PARTNER : normalizeSkillUiText(rawPartner, '');
+    let fusionSourceSpirits = normalizeSkillDesignerArray(
+      baseDraft.fusionSourceSpirits || baseDraft['来源武魂'] || fusionRecord.来源武魂,
+    );
+    if (fusionMode === 'self' && !fusionSourceSpirits.length) fusionSourceSpirits = spiritNames.slice(0, 2);
+    const fusionParticipants = buildSkillDesignerFusionParticipants(snapshot, previewMeta, baseDraft, fusionRecord);
+    const derivedFields = deriveSkillDesignerFusionFields(fusionMode, fusionParticipants, fusionPartner);
+    return {
+      fusionMode: derivedFields.fusionMode,
+      用法模式: 规范化技能设计台融合用法模式(baseDraft['用法模式'] || fusionRecord['用法模式']),
+      fusionPartner: derivedFields.fusionPartner,
+      fusionSourceSpirits: derivedFields.fusionSourceSpirits.length
+        ? derivedFields.fusionSourceSpirits
+        : fusionSourceSpirits,
+      fusionParticipants: derivedFields.fusionParticipants,
+    };
+  }
+  // —— B:24867-24889
+  function buildSkillDesignerFusionSummary(draft = {}) {
+    if (!draft || !draft.fusionMode) return '';
+    const derivedFields = deriveSkillDesignerFusionFields(
+      draft.fusionMode,
+      draft.fusionParticipants,
+      draft.fusionPartner,
+    );
+    const participantText = derivedFields.fusionParticipants
+      .map(participant => {
+        const charName = participant.charName || participant.charKey || '未设置';
+        const spirit = participant.spirit || '未设置';
+        return `${charName}:${spirit}`;
+      })
+      .join(' + ');
+    const fallbackSourceText = normalizeSkillDesignerArray(draft.fusionSourceSpirits).join('/');
+    return [
+      规范化技能设计台融合用法模式(draft['用法模式']),
+      formatSkillDesignerFusionModeLabel(derivedFields.fusionMode, derivedFields.fusionParticipants),
+      participantText || derivedFields.fusionPartner || fallbackSourceText,
+    ]
+      .filter(Boolean)
+      .join(' / ');
+  }
+  // —— B:24891-24895
+  function getSkillDesignerParamHint(标签 = '', 字段键 = '') {
+    const 标题 = normalizeSkillUiText(标签, '');
+    const 规范字段键 = normalizeSkillUiText(字段键, '');
+    return 技能设计台参数提示表[标题] || 技能设计台参数提示表[规范字段键] || '';
+  }
+  // —— B:24897-24905
+  function createSkillDesignerTextParam(key, label, placeholder = '', hint = '') {
+    return Object.freeze({
+      key,
+      label,
+      type: 'text',
+      placeholder,
+      hint: normalizeSkillUiText(hint, getSkillDesignerParamHint(label, key)),
+    });
+  }
+  // —— B:24907-24916
+  function createSkillDesignerNumberParam(key, label, placeholder = '', step = '0.1', hint = '') {
+    return Object.freeze({
+      key,
+      label,
+      type: 'number',
+      placeholder,
+      step,
+      hint: normalizeSkillUiText(hint, getSkillDesignerParamHint(label, key)),
+    });
+  }
+  // —— B:24918-24927
+  function createSkillDesignerSelectParam(key, label, options = [], placeholder = '', hint = '') {
+    return Object.freeze({
+      key,
+      label,
+      type: 'select',
+      options,
+      placeholder,
+      hint: normalizeSkillUiText(hint, getSkillDesignerParamHint(label, key)),
+    });
+  }
+  // —— B:24929-24934
+  function parseSkillDesignerCostAmount(value = '') {
+    const text = normalizeSkillUiText(value, '');
+    if (!text || text === '无') return '';
+    if (!/^\d+(?:\.\d+)?%?$/.test(text)) return null;
+    return /%$/.test(text) ? text : Number(text);
+  }
+  // —— B:24936-24941
+  function 格式化技能设计台消耗片段(消耗值 = {}) {
+    const 数值表 = normalizeSkillDesignerCostValues(消耗值);
+    return SKILL_DESIGNER_COST_RESOURCE_KEYS.filter(key => 数值表[key] !== undefined)
+      .map(key => `${key}:${数值表[key]}`)
+      .join(' | ');
+  }
+  // —— B:24943-25003
+  function 解析技能设计台消耗文本配置(rawCost = '') {
+    const 结果 = { resourceType: '无', resourceValues: {}, resourceValue: '', sustainText: '' };
+    if (rawCost === undefined || rawCost === null) return 结果;
+    if (rawCost && typeof rawCost === 'object' && !Array.isArray(rawCost)) {
+      if (rawCost['启动'] || rawCost['维持']) {
+        const 启动数值 = normalizeSkillDesignerCostValues(rawCost['启动']);
+        const 启动条目 = safeEntries(启动数值);
+        const 维持文本 = 格式化技能设计台消耗片段(rawCost['维持']);
+        结果.sustainText = 维持文本;
+        if (!启动条目.length) return 结果;
+        if (启动条目.length === 1) {
+          结果.resourceType = 启动条目[0][0];
+          结果.resourceValues = 启动数值;
+          结果.resourceValue = 启动条目[0][1];
+          return 结果;
+        }
+        结果.resourceType = '混合';
+        结果.resourceValues = 启动数值;
+        return 结果;
+      }
+      const 数值表 = normalizeSkillDesignerCostValues(rawCost);
+      const 条目 = safeEntries(数值表);
+      if (!条目.length) return 结果;
+      if (条目.length === 1) {
+        结果.resourceType = 条目[0][0];
+        结果.resourceValues = 数值表;
+        结果.resourceValue = 条目[0][1];
+        return 结果;
+      }
+      结果.resourceType = '混合';
+      结果.resourceValues = 数值表;
+      return 结果;
+    }
+    const 原始文本 = normalizeSkillUiText(rawCost, '');
+    if (!原始文本 || 原始文本 === '无') return 结果;
+    const 文本分段 = 原始文本.split(/维持[:：]?/);
+    const 启动文本 = normalizeSkillUiText(文本分段[0], '');
+    结果.sustainText = normalizeSkillUiText(文本分段.slice(1).join('维持:'), '');
+    const 匹配结果 = 启动文本.matchAll(
+      /(魂力|体力|精神力)\s*[:：]\s*([^|+＋]+?)(?=\s*(?:魂力|体力|精神力)\s*[:：]|[|+＋]|$)/g,
+    );
+    const 数值表 = {};
+    Array.from(匹配结果).forEach(匹配 => {
+      const 资源名 = normalizeSkillUiText(匹配[1], '');
+      const 消耗文本 = normalizeSkillUiText(匹配[2], '');
+      const 数值 = parseSkillDesignerCostAmount(消耗文本);
+      if (!资源名 || 数值 === null || 数值 === '') return;
+      数值表[资源名] = 数值;
+    });
+    const 条目 = safeEntries(数值表);
+    if (!条目.length) return 结果;
+    if (条目.length === 1) {
+      结果.resourceType = 条目[0][0];
+      结果.resourceValues = 数值表;
+      结果.resourceValue = 条目[0][1];
+      return 结果;
+    }
+    结果.resourceType = '混合';
+    结果.resourceValues = 数值表;
+    return 结果;
+  }
+  // —— B:25005-25013
+  function normalizeSkillDesignerCostValues(value = {}) {
+    const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    const result = {};
+    SKILL_DESIGNER_COST_RESOURCE_KEYS.forEach(key => {
+      const amount = parseSkillDesignerCostAmount(source[key]);
+      if (amount !== null && amount !== '') result[key] = amount;
+    });
+    return result;
+  }
+  // —— B:25015-25030
+  function parseSkillDesignerCostConfig(rawCost = '', explicitType = '', explicitValues = {}) {
+    const explicitResourceType = normalizeSkillUiText(explicitType, '');
+    if (explicitResourceType) {
+      const values = normalizeSkillDesignerCostValues(explicitValues);
+      const 文本配置 = 解析技能设计台消耗文本配置(rawCost);
+      return {
+        resourceType: SKILL_DESIGNER_RESOURCE_TYPE_OPTIONS.includes(explicitResourceType)
+          ? explicitResourceType
+          : '混合',
+        resourceValues: values,
+        resourceValue: values[explicitResourceType] !== undefined ? values[explicitResourceType] : '',
+        sustainText: 文本配置.sustainText || '',
+      };
+    }
+    return 解析技能设计台消耗文本配置(rawCost);
+  }
+  // —— B:25032-25041
+  function formatSkillDesignerCostText(resourceType = '', resourceValues = {}) {
+    const safeType = normalizeSkillUiText(resourceType, '无') || '无';
+    const values = normalizeSkillDesignerCostValues(resourceValues);
+    if (safeType === '无') return '无';
+    if (safeType !== '混合') return values[safeType] !== undefined ? `${safeType}:${values[safeType]}` : safeType;
+    const text = SKILL_DESIGNER_COST_RESOURCE_KEYS.filter(key => values[key] !== undefined)
+      .map(key => `${key}:${values[key]}`)
+      .join(' | ');
+    return text || '混合';
+  }
+  // —— B:25043-25049
+  function formatSkillDesignerFullCostText(resourceType = '', resourceValues = {}, sustainText = '') {
+    const 启动文本 = formatSkillDesignerCostText(resourceType, resourceValues);
+    const 持续文本 = normalizeSkillUiText(sustainText, '');
+    if (!持续文本) return 启动文本 || '无';
+    if (!启动文本 || 启动文本 === '无') return `维持:${持续文本}`;
+    return `${启动文本} 维持:${持续文本}`;
+  }
+  // —— B:25051-25095
+  function 格式化技能设计台正式消耗文本(resourceType = '', resourceValues = {}, sustainText = '', previewMeta = {}, draft = {}, rootData = {}) {
+    const scope = normalizeSkillUiText(previewMeta && previewMeta.scope, '');
+    const nameText = normalizeSkillUiText(draft?.name || draft?.魂技名 || draft?.技能名称, '');
+    const keepPercent =
+      scope === '武魂融合技' ||
+      /武魂真身|真身/.test(nameText);
+    if (keepPercent) return formatSkillDesignerFullCostText(resourceType, resourceValues, sustainText);
+    if (!['魂技', 'independent_ring_skill', '自创魂技'].includes(scope)) return formatSkillDesignerFullCostText(resourceType, resourceValues, sustainText);
+
+    const budget = 构建技能设计台预算上下文(previewMeta, rootData, draft);
+    const actor = budget?.角色 || {};
+    const maxByResource = {
+      魂力: Math.max(1, Number(actor.sp_max || actor.魂力上限 || 1)),
+      体力: Math.max(1, Number(actor.vit_max || actor.体力上限 || actor.HP上限 || 1)),
+      精神力: Math.max(1, Number(actor.men_max || actor.精神力上限 || 1)),
+    };
+    const 转换消耗值 = values => {
+      const converted = {};
+      safeEntries(normalizeSkillDesignerCostValues(values)).forEach(([resource, value]) => {
+        const text = normalizeSkillUiText(value, '');
+        if (/%$/.test(text)) {
+          const ratio = Math.max(0, Number(text.replace('%', '')) || 0) / 100;
+          converted[resource] = Math.max(0, Math.floor((maxByResource[resource] || 1) * ratio));
+        } else {
+          converted[resource] = value;
+        }
+      });
+      return converted;
+    };
+    const cost = normalizeSkillDesignerCostValues(resourceValues);
+    const upfrontHasPercent = safeEntries(cost).some(([, value]) => /%$/.test(normalizeSkillUiText(value, '')));
+    const converted = 转换消耗值(cost);
+    let convertedSustain = normalizeSkillUiText(sustainText, '');
+    const sustainHasPercent = /%/.test(convertedSustain);
+    if (convertedSustain) {
+      const sustainConfig = 解析技能设计台消耗文本配置(convertedSustain);
+      if (safeEntries(sustainConfig.resourceValues).length) {
+        convertedSustain = formatSkillDesignerCostText(sustainConfig.resourceType, 转换消耗值(sustainConfig.resourceValues));
+      }
+    }
+    if (!upfrontHasPercent && !sustainHasPercent) {
+      return formatSkillDesignerFullCostText(resourceType, resourceValues, sustainText);
+    }
+    return formatSkillDesignerFullCostText(resourceType, converted, convertedSustain);
+  }
+  // —— B:25097-25125
+  function buildSkillDesignerCostObject(resourceType = '', resourceValues = {}, strict = false) {
+    const safeType = normalizeSkillUiText(resourceType, '无') || '无';
+    if (safeType === '无') return {};
+    const source =
+      resourceValues && typeof resourceValues === 'object' && !Array.isArray(resourceValues) ? resourceValues : {};
+    const values = normalizeSkillDesignerCostValues(source);
+    if (strict) {
+      const fields = safeType === '混合' ? SKILL_DESIGNER_COST_RESOURCE_KEYS : [safeType];
+      fields.forEach(key => {
+        const raw = normalizeSkillUiText(source[key], '');
+        if (raw && parseSkillDesignerCostAmount(raw) === null) throw new Error('消耗数值只能填写数字或百分比。');
+      });
+    }
+    if (safeType === '混合') {
+      if (!safeEntries(values).length && strict) throw new Error('混合消耗至少填写一项。');
+      return values;
+    }
+    if (!['魂力', '精神力', '体力'].includes(safeType)) return {};
+    const amount = parseSkillDesignerCostAmount(values[safeType]);
+    if (amount === null) {
+      if (strict) throw new Error('消耗数值只能填写数字或百分比。');
+      return {};
+    }
+    if (amount === '') {
+      if (strict) throw new Error(`${safeType}消耗不能为空。`);
+      return {};
+    }
+    return { [safeType]: amount };
+  }
+  // —— B:25127-25652
+  function getSkillDesignerMechanicParamDefs(mechanicLabel = '') {
+    const label = normalizeSkillUiText(mechanicLabel, '');
+    const registryDefs = resolveSkillDesignerMechanismParamDefsFromRegistry(label);
+    if (registryDefs.length) return registryDefs;
+    switch (label) {
+      case '伤害类':
+        return [
+          createSkillDesignerNumberParam('powerRatio', '强度倍率', '100'),
+          createSkillDesignerNumberParam('hitCount', '攻击段数', '1', '1'),
+          createSkillDesignerTextParam('range', '作用范围', '单体 / 半径3米'),
+        ];
+      case '控制类':
+        return [
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+          createSkillDesignerNumberParam('controlPower', '控制强度', '1.0'),
+          createSkillDesignerTextParam('hitRule', '命中条件', '命中后 / 破防后'),
+        ];
+      case '削弱类':
+        return [
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+          createSkillDesignerNumberParam('weakenRatio', '削弱幅度', '0.2'),
+          createSkillDesignerSelectParam('affectedPanel', '影响对象', SKILL_DESIGNER_PARAM_PANEL_OPTIONS),
+        ];
+      case '增益类':
+        return [
+          createSkillDesignerNumberParam('duration', '持续回合', '3', '1'),
+          createSkillDesignerNumberParam('gainRatio', '增益幅度', '0.25'),
+          createSkillDesignerSelectParam('gainTarget', '覆盖对象', SKILL_DESIGNER_PARAM_SUPPORT_TARGET_OPTIONS),
+        ];
+      case '防御类':
+        return [
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+          createSkillDesignerNumberParam('guardValue', '防护强度', '1.0'),
+          createSkillDesignerTextParam('triggerRule', '触发条件', '受击时 / 常驻'),
+        ];
+      case '回复类':
+        return [
+          createSkillDesignerNumberParam('recoverRatio', '回复倍率', '0.3'),
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+          createSkillDesignerNumberParam('repeatCount', '生效次数', '1', '1'),
+        ];
+      case '感知/认知类':
+        return [
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+          createSkillDesignerTextParam('senseRange', '感知范围', '半径20米'),
+          createSkillDesignerNumberParam('disturbPower', '干扰强度', '1.0'),
+        ];
+      case '位移类':
+        return [
+          createSkillDesignerTextParam('moveDistance', '位移幅度', '5米'),
+          createSkillDesignerTextParam('followWindow', '追击窗口', '1回合内'),
+        ];
+      case '特殊规则类':
+        return [
+          createSkillDesignerTextParam('triggerRule', '触发条件', '被击中后 / 结算前'),
+          createSkillDesignerTextParam('ruleTarget', '改写对象', '单次技能 / 状态'),
+          createSkillDesignerTextParam('maintainCost', '维持代价', '每回合额外消耗'),
+        ];
+      case '单体伤害':
+        return [
+          createSkillDesignerNumberParam('powerRatio', '威力', '140'),
+          createSkillDesignerNumberParam('hitCount', '攻击段数', '1', '1'),
+          createSkillDesignerTextParam('range', '作用范围', '单体 / 直线 / 点杀'),
+        ];
+      case '群体伤害':
+        return [
+          createSkillDesignerNumberParam('powerRatio', '威力', '110'),
+          createSkillDesignerTextParam('range', '作用半径', '半径5米'),
+          createSkillDesignerNumberParam('hitCount', '攻击段数', '1', '1'),
+        ];
+      case '多段伤害':
+        return [
+          createSkillDesignerNumberParam('segmentCount', '段数', '3', '1'),
+          createSkillDesignerNumberParam('segmentRatio', '单段倍率', '45'),
+          createSkillDesignerTextParam('segmentInterval', '段间间隔', '0.2秒'),
+        ];
+      case '持续伤害':
+        return [
+          createSkillDesignerNumberParam('dotRatio', '每跳倍率', '35'),
+          createSkillDesignerNumberParam('duration', '持续回合', '3', '1'),
+          createSkillDesignerNumberParam('stackLimit', '叠层上限', '3', '1'),
+        ];
+      case '硬控':
+        return [
+          createSkillDesignerNumberParam('duration', '控制回合', '2', '1'),
+          createSkillDesignerNumberParam('controlPower', '控制强度', '1.2'),
+          createSkillDesignerTextParam('breakRule', '解除条件', '受伤 / 净化'),
+        ];
+      case '软控':
+        return [
+          createSkillDesignerNumberParam('duration', '控制回合', '2', '1'),
+          createSkillDesignerNumberParam('slowRatio', '控制幅度', '0.3'),
+          createSkillDesignerTextParam('hitRule', '命中条件', '接触续 / 视线锁定'),
+        ];
+      case '迟缓':
+        return [
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+          createSkillDesignerNumberParam('slowRatio', '迟缓幅度', '0.2'),
+        ];
+      case '节奏打断':
+        return [
+          createSkillDesignerNumberParam('interruptCount', '可打断次数', '1', '1'),
+          createSkillDesignerNumberParam('extraDelay', '追加僵直', '0.5'),
+        ];
+      case '单属性削弱':
+        return [
+          createSkillDesignerSelectParam('debuffAttr', '压制对象', SKILL_DESIGNER_PARAM_ATTRIBUTE_OPTIONS),
+          createSkillDesignerNumberParam('reduceRatio', '压制倍率', '0.8'),
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+        ];
+      case '多属性削弱':
+        return [
+          createSkillDesignerSelectParam('debuffAttrGroup', '属性组', SKILL_DESIGNER_PARAM_ATTRIBUTE_GROUP_OPTIONS),
+          createSkillDesignerNumberParam('reduceRatio', '统一倍率', '0.85'),
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+        ];
+      case '消耗':
+        return [
+          createSkillDesignerNumberParam('gainRatio', '修正数值', '-20%'),
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+        ];
+      case '前摇':
+        return [
+          createSkillDesignerNumberParam('gainRatio', '修正数值', '-20%'),
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+        ];
+      case '掌控压制':
+        return [
+          createSkillDesignerNumberParam('gainRatio', '压制倍率', '0.8'),
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+        ];
+      case '速度压制':
+        return [
+          createSkillDesignerNumberParam('gainRatio', '压制倍率', '0.85'),
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+        ];
+      case '单属性增益':
+        return [
+          createSkillDesignerSelectParam('buffAttr', '增幅对象', SKILL_DESIGNER_PARAM_ATTRIBUTE_OPTIONS),
+          createSkillDesignerNumberParam('gainRatio', '增幅倍率', '0.3'),
+          createSkillDesignerNumberParam('duration', '持续回合', '3', '1'),
+        ];
+      case '多属性增益':
+        return [
+          createSkillDesignerSelectParam('buffAttrGroup', '属性组', SKILL_DESIGNER_PARAM_ATTRIBUTE_GROUP_OPTIONS),
+          createSkillDesignerNumberParam('gainRatio', '增幅倍率', '0.2'),
+          createSkillDesignerNumberParam('duration', '持续回合', '3', '1'),
+        ];
+      case '全属性增益':
+        return [
+          createSkillDesignerNumberParam('allGainRatio', '全属性倍率', '0.15'),
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+        ];
+      case '掌控提升':
+        return [
+          createSkillDesignerNumberParam('gainRatio', '提升倍率', '1.2'),
+          createSkillDesignerNumberParam('duration', '持续回合', '3', '1'),
+        ];
+      case '速度提升':
+        return [
+          createSkillDesignerNumberParam('gainRatio', '提升倍率', '1.15'),
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+        ];
+      case '护盾':
+      case '小护盾':
+        return [
+          createSkillDesignerNumberParam('shieldRatio', '护盾倍率', '0.8'),
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+          createSkillDesignerSelectParam('shieldCap', '护盾上限', SKILL_DESIGNER_PARAM_SHIELD_CAP_OPTIONS),
+        ];
+      case '承伤修正':
+        return [
+          createSkillDesignerNumberParam('reduceRatio', '承伤修正', '0.35'),
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+          createSkillDesignerTextParam('damageType', '覆盖类型', '物理 / 元素 / 全伤'),
+        ];
+      case '免伤':
+        return [
+          createSkillDesignerNumberParam('blockCount', '免伤次数', '1', '1'),
+          createSkillDesignerTextParam('blockCap', '单次上限', '最多抵消一次大招'),
+          createSkillDesignerTextParam('triggerRule', '触发条件', '受击瞬间'),
+        ];
+      case '霸体':
+        return [
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+          createSkillDesignerSelectParam('immuneLevel', '免控级别', SKILL_DESIGNER_PARAM_IMMUNE_LEVEL_OPTIONS),
+          createSkillDesignerNumberParam('reduceRatio', '额外减伤', '0.2'),
+        ];
+      case '免死/锁血':
+        return [
+          createSkillDesignerTextParam('triggerThreshold', '触发阈值', '低于20%生命'),
+          createSkillDesignerTextParam('lockBloodFloor', '锁血下限', '保留1点 / 10%'),
+          createSkillDesignerNumberParam('triggerCount', '触发次数', '1', '1'),
+        ];
+      case '无敌金身':
+        return [
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+          createSkillDesignerNumberParam('每日触发次数', '每日触发', '3', '1'),
+        ];
+      case '伤害反射':
+        return [
+          createSkillDesignerNumberParam('reflectRatio', '反射比例', '0.25'),
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+          createSkillDesignerTextParam('reflectRule', '触发条件', '受击后'),
+        ];
+      case '伤害转移':
+        return [
+          createSkillDesignerNumberParam('transferRatio', '转移比例', '0.25'),
+          createSkillDesignerSelectParam('transferTarget', '转移对象', 技能设计台伤害转移对象选项),
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+        ];
+      case '伤害分摊':
+        return [
+          createSkillDesignerNumberParam('shareRatio', '分摊比例', '0.35'),
+          createSkillDesignerNumberParam('shareCount', '分摊人数', '1', '1'),
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+        ];
+      case '消耗分摊':
+        return [
+          createSkillDesignerNumberParam('shareRatio', '分摊比例', '0.35'),
+          createSkillDesignerNumberParam('shareCount', '分摊人数', '1', '1'),
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+        ];
+      case '体力恢复':
+      case '魂力恢复':
+      case '精神恢复':
+        return [
+          createSkillDesignerNumberParam('recoverRatio', '回复倍率', '0.35'),
+          createSkillDesignerNumberParam('repeatCount', '生效次数', '1', '1'),
+        ];
+      case '持续恢复':
+        return [
+          createSkillDesignerNumberParam('recoverRatio', '每回合倍率', '0.2'),
+          createSkillDesignerNumberParam('duration', '持续回合', '3', '1'),
+          createSkillDesignerNumberParam('stackLimit', '叠层上限', '2', '1'),
+        ];
+      case '净化/解控':
+      case '净化':
+      case '解控':
+        return [
+          createSkillDesignerNumberParam('cleanseCount', '清除条目数', '2', '1'),
+          createSkillDesignerNumberParam('duration', '持续回合', '1', '1'),
+          createSkillDesignerSelectParam(
+            'cleansePriority',
+            '净化优先级',
+            SKILL_DESIGNER_PARAM_CLEANSE_PRIORITY_OPTIONS,
+          ),
+          createSkillDesignerSelectParam('extraGain', '附带收益', SKILL_DESIGNER_PARAM_CLEANSE_GAIN_OPTIONS),
+        ];
+      case '感知干扰':
+        return [
+          createSkillDesignerNumberParam('disturbPower', '干扰强度', '1.1'),
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+        ];
+      case '标记锁定':
+        return [
+          createSkillDesignerNumberParam('markDuration', '标记时长', '2', '1'),
+          createSkillDesignerNumberParam('targetCap', '锁定目标数', '1', '1'),
+          createSkillDesignerSelectParam('trackingRule', '追踪规则', SKILL_DESIGNER_PARAM_TRACKING_RULE_OPTIONS),
+        ];
+      case '共享视野':
+        return [
+          createSkillDesignerTextParam('shareRange', '共享范围', '队伍 / 半径30米'),
+          createSkillDesignerNumberParam('duration', '持续回合', '3', '1'),
+          createSkillDesignerSelectParam('infoDepth', '共享深度', SKILL_DESIGNER_PARAM_INFO_DEPTH_OPTIONS),
+        ];
+      case '幻境':
+        return [
+          createSkillDesignerTextParam('illusionRange', '幻境范围', '半径8米'),
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+          createSkillDesignerNumberParam('illusionPower', '幻术强度', '1.1'),
+        ];
+      case '催眠':
+        return [
+          createSkillDesignerNumberParam('duration', '睡眠回合', '2', '1'),
+          createSkillDesignerSelectParam('wakeRule', '唤醒条件', SKILL_DESIGNER_PARAM_WAKE_RULE_OPTIONS),
+          createSkillDesignerTextParam('hitRule', '命中条件', '视线锁定 / 声波接触'),
+        ];
+      case '认知扭曲':
+        return [
+          createSkillDesignerNumberParam('twistPower', '扭曲强度', '0.18'),
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+        ];
+      case '目标锁定':
+        return [
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+          createSkillDesignerNumberParam('hitBonus', '命中增益', '0.1'),
+          createSkillDesignerNumberParam('lockLevel', '锁定强度', '1', '1'),
+        ];
+      case '自身位移':
+        return [createSkillDesignerTextParam('moveDistance', '位移幅度', '5米')];
+      case '强制位移':
+        return [createSkillDesignerTextParam('moveDistance', '位移幅度', '4米')];
+      case '位移交换':
+        return [
+          createSkillDesignerTextParam('exchangeRange', '交换范围', '8米'),
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+          createSkillDesignerTextParam('triggerRule', '交换条件', '命中标记目标'),
+        ];
+      case '追击位移':
+        return [
+          createSkillDesignerTextParam('moveDistance', '追击幅度', '6米'),
+          createSkillDesignerTextParam('followWindow', '追击窗口', '命中后1秒'),
+          createSkillDesignerNumberParam('extraRatio', '追加倍率', '0.3'),
+        ];
+      case '脱离位移':
+        return [
+          createSkillDesignerTextParam('moveDistance', '脱离幅度', '7米'),
+          createSkillDesignerTextParam('escapeRule', '脱离条件', '生命低于50%'),
+          createSkillDesignerSelectParam('extraGain', '脱离收益', SKILL_DESIGNER_PARAM_ESCAPE_GAIN_OPTIONS),
+        ];
+      case '分身':
+        return [
+          createSkillDesignerSelectParam('cloneType', '分身类型', SKILL_DESIGNER_PARAM_CLONE_TYPE_OPTIONS),
+          createSkillDesignerNumberParam('cloneCount', '分身数量', '2', '1'),
+          createSkillDesignerNumberParam('stealthRatio', '隐蔽度', '0.45'),
+          createSkillDesignerNumberParam('inheritRatio', '实力继承', '0.55'),
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+          createSkillDesignerTextParam('cloneName', '分身称谓', '影分身 / 心像'),
+        ];
+      case '召唤':
+        return [
+          createSkillDesignerSelectParam('召唤单位类型', '召唤单位类型', 技能设计台召唤单位类型选项),
+          createSkillDesignerTextParam('summonName', '召唤物名称', '本命召唤兽'),
+          createSkillDesignerNumberParam('summonCount', '召唤数量', '1', '1'),
+          createSkillDesignerNumberParam('召唤强度', '固定强度', '1.0'),
+          createSkillDesignerNumberParam('力量继承比例', '力量继承', '0.45', '0.01'),
+          createSkillDesignerNumberParam('防御继承比例', '防御继承', '0.45', '0.01'),
+          createSkillDesignerNumberParam('敏捷继承比例', '敏捷继承', '0.45', '0.01'),
+          createSkillDesignerNumberParam('体力继承比例', '体力继承', '0.45', '0.01'),
+          createSkillDesignerNumberParam('魂力继承比例', '魂力继承', '0.45', '0.01'),
+          createSkillDesignerNumberParam('精神继承比例', '精神继承', '0.45', '0.01'),
+          createSkillDesignerNumberParam('duration', '持续回合', '3', '1'),
+          createSkillDesignerSelectParam('summonMode', '行动模式', 技能设计台召唤行动模式选项),
+          createSkillDesignerSelectParam('damageRule', '承伤规则', 技能设计台召唤承伤规则选项),
+        ];
+      case '复制':
+        return [
+          createSkillDesignerSelectParam('copyTarget', '复制类型', SKILL_DESIGNER_PARAM_COPY_TARGET_OPTIONS),
+          createSkillDesignerSelectParam('copyMode', '复制模式', 技能设计器参数复制模式选项),
+          createSkillDesignerNumberParam('saveLimit', '保存上限', '1', '1'),
+          createSkillDesignerNumberParam('reductionRatio', '削减比例', '0.2'),
+          createSkillDesignerNumberParam('useCount', '可用次数', '1', '1'),
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+          createSkillDesignerNumberParam('keepDurationTick', '保留时长tick', '144', '1'),
+        ];
+      case '炸环':
+        return [
+          createSkillDesignerNumberParam('burstEnhanceRatio', '强化倍率 × 年限', '100', '0.1', '实际增幅按该倍率再乘炸环总年限/40万；默认 40万年约把 97级基础属性推近 100级。'),
+        ];
+      case '反制':
+        return [
+          createSkillDesignerSelectParam('counterTarget', '反制对象', SKILL_DESIGNER_PARAM_COUNTER_TARGET_OPTIONS),
+          createSkillDesignerTextParam('triggerRule', '触发条件', '被锁定时 / 命中前'),
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+          createSkillDesignerNumberParam('counterRatio', '反制倍率', '1.0'),
+        ];
+      case '转化':
+        return [
+          createSkillDesignerTextParam('convertPath', '转化方向', '伤害→治疗 / 治疗→伤害'),
+          createSkillDesignerNumberParam('convertRatio', '转化比率', '0.6'),
+        ];
+      case '状态交换':
+        return [
+          createSkillDesignerSelectParam('状态', '交出状态', 读取技能设计台原型字段选项('状态交换', '状态')),
+          createSkillDesignerNumberParam('duration', '持续回合', '1', '1'),
+        ];
+      case '状态转移':
+        return [
+          createSkillDesignerSelectParam('状态', '状态筛选', 读取技能设计台原型字段选项('状态转移', '状态')),
+          createSkillDesignerSelectParam('来源', '来源', ['自身', '目标', '友方', '敌方']),
+          createSkillDesignerSelectParam('去向', '去向', ['自身', '目标', '友方', '敌方']),
+          createSkillDesignerTextParam('数量', '数量', '1 或 全部'),
+          createSkillDesignerNumberParam('duration', '持续回合', '1', '1'),
+        ];
+      case '强制绑定/锁定':
+        return [
+          createSkillDesignerNumberParam('bindDuration', '绑定回合', '2', '1'),
+          createSkillDesignerNumberParam('targetCap', '绑定目标数', '1', '1'),
+          createSkillDesignerTextParam('releaseRule', '解除条件', '超距离 / 净化'),
+        ];
+      case '规则改写':
+        return [
+          createSkillDesignerSelectParam('rewriteRule', '规则', SKILL_DESIGNER_PARAM_RULE_REWRITE_OPTIONS),
+          createSkillDesignerNumberParam('rewriteValue', '复活恢复比例', '25%'),
+          createSkillDesignerNumberParam('duration', '规则持续回合', '1', '1'),
+        ];
+      case '引爆持续伤害':
+        return [
+          createSkillDesignerNumberParam('detonateRatio', '引爆倍率', '1.2'),
+          createSkillDesignerTextParam('consumeMode', '消耗规则', '消耗全部持续伤害'),
+        ];
+      case '斩盾':
+        return [];
+      case '吞噬':
+        return [
+          createSkillDesignerSelectParam(
+            'resourceType',
+            '吞噬资源',
+            SKILL_DESIGNER_PARAM_RESOURCE_TRANSFER_TYPE_OPTIONS,
+          ),
+          createSkillDesignerNumberParam('drainRatio', '吞噬比例', '0.18'),
+          createSkillDesignerNumberParam('convertRatio', '转化比例', '1.0'),
+          createSkillDesignerNumberParam('duration', '持续回合', '1', '1'),
+        ];
+      case '能力共享':
+        return [
+          createSkillDesignerSelectParam(
+            'resourceType',
+            '共享资源',
+            SKILL_DESIGNER_PARAM_RESOURCE_TRANSFER_TYPE_OPTIONS,
+          ),
+          createSkillDesignerNumberParam('refeedRatio', '共享比例', '0.2'),
+          createSkillDesignerNumberParam('duration', '持续回合', '1', '1'),
+        ];
+      case '机制抹消':
+        return [
+          createSkillDesignerTextParam('suppressObject', '抹消对象', '{"原型":"机制授予"}'),
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+        ];
+      case '机制授予':
+        return [
+          createSkillDesignerSelectParam('grantTrigger', '触发条件', 技能设计台机制授予触发条件选项),
+          createSkillDesignerNumberParam('useCount', '可用次数', '1', '1'),
+          createSkillDesignerNumberParam('duration', '持续回合', '1', '1', '待机触发可留空表示无回合期限；填写后逾期失效。主动触发默认1回合。'),
+        ];
+      case '穿透':
+        return [
+          createSkillDesignerNumberParam('penetrationRatio', '穿透比例', '0.25'),
+          createSkillDesignerSelectParam(
+            'penetrationTarget',
+            '穿透对象',
+            SKILL_DESIGNER_PARAM_PENETRATION_TARGET_OPTIONS,
+          ),
+        ];
+      case '伤害吸收':
+        return [
+          createSkillDesignerNumberParam('absorbRatio', '吸收比例', '0.2'),
+          createSkillDesignerSelectParam('absorbSource', '吸收来源', 技能设计台伤害吸收来源选项),
+          createSkillDesignerSelectParam('resourceType', '吸收资源', 技能设计台伤害吸收资源选项),
+        ];
+      case '斩杀补伤':
+        return [
+          createSkillDesignerTextParam('executeLine', '触发血线', '低于25%'),
+          createSkillDesignerNumberParam('bonusRatio', '补伤倍率', '0.5'),
+        ];
+      case '流血DOT':
+        return [
+          createSkillDesignerNumberParam('dotRatio', '每跳倍率', '20'),
+          createSkillDesignerNumberParam('duration', '持续回合', '3', '1'),
+        ];
+      case '打断':
+        return [
+          createSkillDesignerNumberParam('extraDelay', '追加僵直', '0.5'),
+        ];
+      case '反击':
+        return [
+          createSkillDesignerSelectParam('counterRule', '反击条件', SKILL_DESIGNER_PARAM_COUNTER_RULE_OPTIONS),
+          createSkillDesignerNumberParam('counterRatio', '反击倍率', '0.8'),
+        ];
+      case '追击':
+        return [
+          createSkillDesignerTextParam('followWindow', '追击窗口', '命中后1秒'),
+          createSkillDesignerNumberParam('bonusRatio', '追击倍率', '1.2'),
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+        ];
+      case '沉默':
+        return [
+          createSkillDesignerNumberParam('duration', '沉默回合', '2', '1'),
+          createSkillDesignerSelectParam('muteScope', '限制范围', SKILL_DESIGNER_PARAM_MUTE_SCOPE_OPTIONS),
+        ];
+      case '减速':
+      case '迟缓':
+        return [
+          createSkillDesignerNumberParam('slowRatio', '减速幅度', '0.3'),
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+        ];
+      case '致盲':
+        return [
+          createSkillDesignerNumberParam('duration', '致盲回合', '2', '1'),
+          createSkillDesignerSelectParam('blindEffect', '影响内容', SKILL_DESIGNER_PARAM_BLIND_EFFECT_OPTIONS),
+        ];
+      case '禁疗':
+        return [
+          createSkillDesignerNumberParam('banHealRatio', '禁疗幅度', '1.0'),
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+        ];
+      case '治疗反转':
+        return [
+          createSkillDesignerNumberParam('invertRatio', '反转倍率', '1.0'),
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+        ];
+      case '标记弱点':
+        return [
+          createSkillDesignerSelectParam('weakPointType', '弱点类型', SKILL_DESIGNER_PARAM_WEAK_POINT_TYPE_OPTIONS),
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+        ];
+      case '驱散增益':
+        return [createSkillDesignerNumberParam('dispelCount', '驱散数量', '1', '1')];
+      case '窃取增益':
+        return [createSkillDesignerNumberParam('stealCount', '窃取数量', '1', '1')];
+      case '隐身':
+        return [
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+        ];
+      case '护卫':
+        return [
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+          createSkillDesignerNumberParam('reduceRatio', '护卫减伤', '0.1'),
+        ];
+      case '嘲讽':
+        return [
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+          createSkillDesignerTextParam('focusRule', '聚火规则', '强制优先自身'),
+        ];
+      case '破隐':
+        return [];
+      case '封技':
+        return [
+          createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
+          createSkillDesignerSelectParam('muteScope', '限制范围', SKILL_DESIGNER_PARAM_MUTE_SCOPE_OPTIONS),
+        ];
+      default:
+        return [];
+    }
+  }
+  // —— B:25654-25669
+  function getSkillDesignerMechanicParamSections(draft = {}) {
+    const sections = [];
+    const primaryLabel = getSkillDesignerEffectivePrimaryLabel(draft);
+    const primaryMain = normalizeSkillUiText(draft.primaryMain, '');
+    if (primaryLabel) {
+      sections.push({ kind: 'primary', label: primaryLabel });
+    } else if (primaryMain && getSkillDesignerMechanicParamDefs(primaryMain).length) {
+      sections.push({ kind: 'primary', label: primaryMain });
+    }
+    normalizeSkillDesignerSecondarySelection(primaryMain, draft.secondaryMechanics, draft.type, primaryLabel).forEach(
+      label => {
+        sections.push({ kind: 'secondary', label });
+      },
+    );
+    return sections;
+  }
+  // —— B:25671-25679
+  function collectSkillDesignerMechanicLabels(draft = {}) {
+    return Array.from(
+      new Set(
+        getSkillDesignerMechanicParamSections(draft)
+          .map(section => normalizeSkillUiText(section && section.label, ''))
+          .filter(Boolean),
+      ),
+    );
+  }
+  // —— B:25681-25708
+  function normalizeSkillDesignerMechanicParamMap(value = {}, draft = {}) {
+    const safeMap = value && typeof value === 'object' ? value : {};
+    const normalized = {};
+    collectSkillDesignerMechanicLabels(draft).forEach(label => {
+      const defs = getSkillDesignerMechanicParamDefs(label);
+      const source = safeMap[label] && typeof safeMap[label] === 'object' ? safeMap[label] : {};
+      const nextEntry = {};
+      defs.forEach(def => {
+        if (label === '机制抹消' && def.key === 'suppressObject') {
+          const 对象 = 规范化技能设计台机制抹消对象(source[def.key]);
+          if (safeEntries(对象).length) nextEntry[def.key] = 对象;
+          return;
+        }
+        const currentValue = normalizeSkillUiText(source[def.key], '');
+        if (currentValue) nextEntry[def.key] = currentValue;
+      });
+      if (label === '机制授予') {
+        const 授予目标 = resolveSkillDesignerGrantableMechanismTargetForRuntime(draft && draft.target, label);
+        const 触发条件 = normalizeSkillUiText(nextEntry['grantTrigger'], '主动触发');
+        nextEntry['grantTrigger'] = 读取技能设计台机制授予触发条件选项(授予目标).includes(触发条件) ? 触发条件 : '主动触发';
+        if (nextEntry['grantTrigger'] === '随下次行动触发') {
+          delete nextEntry['useCount'];
+        }
+      }
+      if (safeEntries(nextEntry).length) normalized[label] = nextEntry;
+    });
+    return normalized;
+  }
+  // —— B:25875
+  const 技能设计台原型字段隐藏集合 = new Set(['原型']);
+  // —— B:25876
+  const 技能设计台玩家可选原型排除集合 = new Set();
+  // —— B:25878-25882
+  function 读取技能设计台原型名称列表() {
+    return Object.keys(SKILL_DESIGNER_PROTOTYPE_REGISTRY || {}).filter(
+      name => !技能设计台玩家可选原型排除集合.has(name),
+    );
+  }
+  // —— B:25884-25896
+  function 读取技能设计台原型摘要(原型 = '') {
+    const 原型名 = normalizeSkillUiText(原型, '');
+    const 定义 = SKILL_DESIGNER_PROTOTYPE_REGISTRY[原型名] || {};
+    const 类别 = normalizeSkillUiText(定义['类别'], '');
+    const 方向 = normalizeSkillUiText(定义['默认方向'], '');
+    const 描述 = normalizeSkillUiText(定义['描述'], '');
+    return {
+      类别,
+      方向,
+      描述,
+      文本: [类别, 方向, 描述].filter(Boolean).join(' · '),
+    };
+  }
+  // —— B:25898-25917
+  function 构建技能设计台原型选项(当前原型 = '') {
+    const 当前值 = normalizeSkillUiText(当前原型, '');
+    const 分组 = [
+      ['战斗内', 读取技能设计台原型名称列表().filter(原型名 => 读取技能设计台原型摘要(原型名).类别 !== '战斗外')],
+      ['战斗外', 读取技能设计台原型名称列表().filter(原型名 => 读取技能设计台原型摘要(原型名).类别 === '战斗外')],
+    ];
+    return 分组
+      .map(([标题, 原型列表]) => {
+        if (!原型列表.length) return '';
+        return [
+          `<option value="" disabled>── ${htmlEscape(标题)} ──</option>`,
+          ...原型列表.map(原型名 => {
+            const 摘要 = 读取技能设计台原型摘要(原型名);
+            const 标签 = `${原型名}｜${摘要.描述 || 原型名}`;
+            return `<option value="${escapeHtmlAttr(原型名)}"${原型名 === 当前值 ? ' selected' : ''}>${htmlEscape(标签)}</option>`;
+          }),
+        ].join('');
+      })
+      .join('');
+  }
+  // —— B:25919-25997
+  function 技能设计台原型字段是否显示(原型 = '', 字段 = '', effect = {}) {
+    const prototype = normalizeSkillUiText(原型, '');
+    const key = normalizeSkillUiText(字段, '');
+    const valueOf = name => normalizeSkillUiText(effect && effect[name], '');
+    const target = normalizeSkillDesignerEffectTargetValue(effect && effect['目标'], '单体');
+    if (prototype === '伤害结算' && key === '持续回合') return false;
+    if (prototype === '伤害结算' && ['装备条件', '姿态条件', '连招条件', '动作时窗', '中断条件', '主驱动资源', '每段倍率', '段间隔', '范围半径', '目标数量上限', '触发限制', '结算标签', '抗性类型'].includes(key)) return false;
+    if (prototype === '资源变化' && ['持续tick', '主驱动资源', '结算标签', '资源转移角色', '资源转移方式', '转化比例'].includes(key)) return false;
+    if (prototype === '资源转移' && ['持续tick', '主驱动资源', '结算标签', '资源转移角色'].includes(key)) return false;
+    if (prototype === '资源转移' && key === '转化比例') return ['吞噬', '共享', '转移'].includes(valueOf('资源转移方式'));
+    if (prototype === '修炼增益' && key === '修炼属性') return valueOf('收益类型') === '属性修炼速度';
+    if (prototype === '修炼增益' && key === '训练方式') return valueOf('收益类型') !== '属性修炼速度';
+    if (prototype === '护盾变化' && key === '持续回合') return valueOf('护盾模式') === '正向护盾';
+    if (prototype === '时光回溯') return ['目标', '原型', '生效方式', '条件分支', '发动方式', '驱动属性', '影响方向'].includes(key);
+    if (prototype === '规则改写') {
+      if (key === '目标') return valueOf('规则') !== '死亡转存活';
+      if (key === '数值') return valueOf('规则') === '死亡转存活';
+      if (key === '持续回合') return valueOf('规则') !== '死亡转存活';
+      return !['死亡时限tick', '复活代价类型', '复活代价对象', '复活代价值', '复活代价时限tick', '复活后状态', '复活后状态时限tick'].includes(key);
+    }
+    if (prototype === '战斗外复活') return ['目标', '数值', '死亡时限tick', '复活代价类型', '复活代价对象', '复活代价值', '复活代价时限tick', '复活后状态', '复活后状态时限tick'].includes(key);
+    if (prototype === '复制执行') {
+      const 复制类型 = valueOf('复制类型') || '复制技能';
+      if (key === '削减比例') return /属性|全部/.test(复制类型);
+      if (['保存上限', '可用次数'].includes(key)) return ['复制技能', '复制全部'].includes(复制类型);
+      if (['驱动属性', '影响方向'].includes(key)) return /属性|全部/.test(复制类型);
+    }
+    if (prototype === '召唤生成') {
+      const 单位类型 = valueOf('召唤单位类型') || '魂兽';
+      const 使用继承 = ['分身', '本命召唤兽'].includes(单位类型);
+      if (key === '强度') return !使用继承;
+      if (key === '继承属性比例') return false;
+      if (key === '力量继承比例') return 使用继承;
+      if (['防御继承比例', '敏捷继承比例', '体力继承比例', '魂力继承比例', '精神继承比例'].includes(key)) return false;
+    }
+    if (prototype === '位移执行' && key === '方位') return false;
+    if (prototype === '炸环') return ['目标', '原型', '生效方式', '条件分支', '强化倍率'].includes(key);
+    if (prototype === '结算修正') {
+      const 结算 = valueOf('结算');
+      const 支持字段 = 技能设计台结算修正支持字段矩阵[结算] || 技能设计台结算修正支持字段矩阵['造成伤害'];
+      if (key === '数量' && ['伤害分摊', '消耗分摊'].includes(结算)) return target === '群体';
+      return !!支持字段 && 支持字段.includes(key);
+    }
+    if (prototype === '判定修正' && key === '打断效果') return 技能设计台判定修正允许打断效果(effect);
+    if (prototype === '判定修正') return key !== '持续tick';
+    if (prototype === '状态施加' && key === '概率') return false;
+    if (prototype === '状态施加' && key === '延迟回合') return valueOf('触发方式') === '延迟触发';
+    if (prototype === '资源变化' && key === '触发限制') return true;
+    if (prototype === '状态施加' && key === '触发限制') return 技能设计台状态施加允许触发限制(valueOf('状态'), target);
+    if (prototype === '状态施加' && ['驱动属性', '影响方向'].includes(key))
+      return !技能设计台状态施加清理驱动字段(valueOf('状态'), target);
+    if (prototype === '状态施加' && key === '数值') {
+      return 读取技能设计台多枚举值(effect && effect['状态']).some(state =>
+        技能设计台状态施加允许数值字段(state),
+      );
+    }
+    if (prototype === '状态施加' && key === '副数值') {
+      return 读取技能设计台多枚举值(effect && effect['状态']).some(state =>
+        技能设计台状态施加允许副数值字段(state),
+      );
+    }
+    if (prototype === '召唤生成' && key === '承伤规则') return valueOf('行动模式') === '护卫';
+    if (prototype === '状态移除' && ['资源', '数值方向'].includes(key)) return valueOf('匹配原型') === '资源变化';
+    if (prototype === '时窗修正' && key === '调整回合') {
+      return valueOf('调整字段') === '持续回合' || !valueOf('调整字段');
+    }
+    if (prototype === '时窗修正' && key === '调整tick') return valueOf('调整字段') === '有效期tick';
+    if (prototype === '时窗修正' && key === '调整次数') return ['触发次数', '使用次数'].includes(valueOf('调整字段'));
+    if (prototype === '时窗修正' && key === '结算倍率') {
+      return (
+        valueOf('调整字段') === '持续回合' &&
+        valueOf('调整方式') === '压缩'
+      );
+    }
+    if (prototype === '机制授予' && key === '可用次数') {
+      return !机制授予目标允许下次行动触发(target) || valueOf('触发条件') !== '随下次行动触发';
+    }
+    return true;
+  }
+  // —— B:25999-26024
+  function 读取技能设计台原型字段列表(原型 = '', effect = {}, context = {}) {
+    const 原型名 = normalizeSkillUiText(原型, '');
+    const 定义 = SKILL_DESIGNER_PROTOTYPE_REGISTRY[原型名];
+    const 字段 = Array.isArray(定义 && 定义['允许字段']) ? [...定义['允许字段']] : [];
+    if (原型名 === '结算修正') {
+      const 支持字段 = 技能设计台结算修正支持字段矩阵[normalizeSkillUiText(effect && effect['结算'], '')];
+      if (支持字段) 字段.push(...支持字段);
+    }
+    const 允许字段 = key => key && !技能设计台原型字段隐藏集合.has(key) && (key !== '对应等级' || !!(context && context.允许对应等级));
+    if (原型名 === '炸环' && !字段.includes('强化倍率')) return ['目标', '原型', '生效方式', '强化倍率', '条件分支'];
+    if (原型名 === '规则改写') {
+      const 规则 = normalizeSkillUiText(effect && effect['规则'], '缴械');
+      const 固定顺序 = 规则 === '死亡转存活'
+        ? ['规则', '数值', '生效方式', '条件分支']
+        : ['规则', '目标', '持续回合', '生效方式', '条件分支'];
+      return 固定顺序.filter(key =>
+        字段.includes(key) &&
+        允许字段(key) &&
+        技能设计台原型字段是否显示(原型名, key, effect),
+      );
+    }
+    return Array.from(new Set(字段))
+      .map(key => normalizeSkillUiText(key, ''))
+      .filter(允许字段)
+      .filter(key => 技能设计台原型字段是否显示(原型名, key, effect));
+  }
+  // —— B:26026-26169
+  function 读取技能设计台原型字段定义(原型 = '', 字段 = '', options = {}) {
+    const 原型名 = normalizeSkillUiText(原型, '');
+    const 字段名 = normalizeSkillUiText(字段, '');
+    if (原型名 === '规则改写' && 字段名 === '数值' && normalizeSkillUiText(options?.当前效果?.['规则'] || options?.规则, '') === '死亡转存活') {
+      return { 字段: 字段名, 类型: '带符号数值', 默认值: '+25%' };
+    }
+    if (原型名 === '战斗外复活' && 字段名 === '数值') {
+      return { 字段: 字段名, 类型: '带符号数值', 默认值: '+25%' };
+    }
+    if (原型名 === '战斗外复活' && 字段名 === '死亡时限tick') {
+      return { 字段: 字段名, 类型: '整数', 默认值: '144', 最小值: 1, 最大值: 10080 };
+    }
+    if (原型名 === '战斗外复活' && 字段名 === '复活代价类型') {
+      return { 字段: 字段名, 类型: '枚举', 选项: 技能设计台战斗外复活代价类型选项, 默认值: '状态代价' };
+    }
+    if (原型名 === '战斗外复活' && 字段名 === '复活代价对象') {
+      const 代价类型 = normalizeSkillUiText(options?.当前效果?.['复活代价类型'] || options?.复活代价类型, '状态代价');
+      const 选项 = 代价类型 === '消耗实体物品'
+        ? 技能设计台战斗外复活物品代价对象选项
+        : 代价类型 === '封印能力'
+          ? 技能设计台战斗外复活封印代价对象选项
+          : 代价类型 === '永久代价'
+            ? 技能设计台战斗外复活永久代价对象选项
+            : [...技能设计台战斗外可继承状态选项, ...技能设计台日常系统状态选项];
+      return { 字段: 字段名, 类型: '枚举', 选项, 默认值: 选项[0] || '虚弱' };
+    }
+    if (原型名 === '战斗外复活' && 字段名 === '复活后状态') {
+      return { 字段: 字段名, 类型: '枚举', 选项: [...技能设计台战斗外可继承状态选项, ...技能设计台日常系统状态选项], 默认值: '虚弱' };
+    }
+    if (原型名 === '战斗外复活' && ['复活代价时限tick', '复活后状态时限tick'].includes(字段名)) {
+      return { 字段: 字段名, 类型: '整数', 默认值: '144', 最小值: 1, 最大值: 10080 };
+    }
+    if (原型名 === '状态移除' && 字段名 === '数量') {
+      return { 字段: 字段名, 类型: '枚举', 选项: ['1', '2', '3', '全部'], 默认值: '1' };
+    }
+    if (原型名 === '时光回溯' && 字段名 === '发动方式') {
+      return { 字段: 字段名, 类型: '枚举', 选项: ['主动', '被动'], 默认值: '被动' };
+    }
+    if (原型名 === '时窗修正' && 字段名 === '调整回合') {
+      return { 字段: 字段名, 类型: '整数', 默认值: '1', 最小值: 1, 最大值: 3 };
+    }
+    if (原型名 === '时窗修正' && 字段名 === '调整tick') {
+      return { 字段: 字段名, 类型: '整数', 默认值: '6', 最小值: 1, 最大值: 1008 };
+    }
+    if (原型名 === '时窗修正' && 字段名 === '调整次数') {
+      return { 字段: 字段名, 类型: '整数', 默认值: '1', 最小值: 1, 最大值: 3 };
+    }
+    if (原型名 === '时窗修正' && 字段名 === '单日使用次数上限') {
+      return { 字段: 字段名, 类型: '整数', 默认值: '1', 最小值: 1, 最大值: 3 };
+    }
+    if (原型名 === '时光回溯' && 字段名 === '驱动属性') {
+      return { 字段: 字段名, 类型: '枚举', 选项: ['无', '力量', '防御', '敏捷', '魂力上限', '精神力上限', '体力上限'], 默认值: '精神力上限' };
+    }
+    if (原型名 === '时光回溯' && 字段名 === '影响方向') {
+      return { 字段: 字段名, 类型: '枚举', 选项: ['成功率', '效果强度'], 默认值: '成功率' };
+    }
+    if (原型名 === '炸环' && 字段名 === '强化倍率') {
+      return { 字段: 字段名, 类型: '带符号数值', 默认值: '+100%' };
+    }
+    if (原型名 === '结算修正' && 字段名 === '吸收资源') {
+      return { 字段: 字段名, 类型: '枚举', 选项: 技能设计台伤害吸收资源选项, 默认值: '生命' };
+    }
+    if (原型名 === '结算修正' && 字段名 === '吸收来源') {
+      return { 字段: 字段名, 类型: '枚举', 选项: 技能设计台伤害吸收来源选项, 默认值: '造成伤害' };
+    }
+    if (原型名 === '结算修正' && 字段名 === '转化效果') {
+      return { 字段: 字段名, 类型: '枚举', 选项: ['', '恢复资源', '下次造成伤害'], 默认值: '' };
+    }
+    if (原型名 === '结算修正' && 字段名 === '增幅上限') {
+      return { 字段: 字段名, 类型: '带符号数值', 默认值: '+100%' };
+    }
+    if (原型名 === '结算修正' && 字段名 === '对应等级') {
+      return { 字段: 字段名, 类型: '整数', 默认值: '10', 最小值: 1, 最大值: 180 };
+    }
+    if (原型名 === '结算修正' && 字段名 === '转移对象') {
+      return { 字段: 字段名, 类型: '枚举', 选项: 技能设计台伤害转移对象选项, 默认值: '攻击者' };
+    }
+    if (原型名 === '结算修正' && 字段名 === '数量') {
+      return { 字段: 字段名, 类型: '整数', 默认值: '1', 最小值: 1 };
+    }
+    if (原型名 === '魂骨年限提升' && 字段名 === '数值') {
+      return { 字段: 字段名, 类型: '带符号数值', 默认值: '+10%' };
+    }
+    if (原型名 === '魂骨年限提升' && 字段名 === '年限上限') {
+      return { 字段: 字段名, 类型: '整数', 默认值: '10000', 最小值: 1, 最大值: 10000 };
+    }
+    if (
+      原型名 === '结算修正' &&
+      字段名 === '结算' &&
+      options &&
+      options.禁用释放前降低结算 &&
+      解析技能设计台正负数值(options?.当前效果?.['数值'] ?? options?.['数值']) < 0
+    ) {
+      const 字段定义 = SKILL_DESIGNER_PROTOTYPE_REGISTRY[原型名]?.['字段定义']?.[字段名] || {};
+      const 选项 = normalizeSkillDesignerOptionList(字段定义['选项']).map(item => normalizeSkillUiText(item.value, '')).filter(Boolean);
+      return {
+        ...字段定义,
+        类型: '枚举',
+        选项: 选项.filter(选项值 => !['消耗', '前摇'].includes(选项值)),
+        默认值: '造成伤害',
+      };
+    }
+    if (原型名 === '资源锁定' && 字段名 === '锁定类型') {
+      return { 字段: 字段名, 类型: '枚举', 选项: 技能设计台资源锁定类型选项, 默认值: '回复锁定' };
+    }
+    if (原型名 === '状态转移' && 字段名 === '来源') {
+      return { 字段: 字段名, 类型: '枚举', 选项: ['自身', '目标', '友方', '敌方'], 默认值: '自身' };
+    }
+    if (原型名 === '状态转移' && 字段名 === '去向') {
+      return { 字段: 字段名, 类型: '枚举', 选项: ['自身', '目标', '友方', '敌方'], 默认值: '目标' };
+    }
+    const 定义 = SKILL_DESIGNER_PROTOTYPE_REGISTRY[原型名];
+    const 字段定义 = 定义 && 定义['字段定义'] && typeof 定义['字段定义'] === 'object' ? 定义['字段定义'][字段名] : null;
+    if (原型名 === '状态施加' && 字段名 === '状态' && 字段定义 && typeof 字段定义 === 'object') {
+      const 正式状态选项 = (Array.isArray(字段定义['选项']) ? 字段定义['选项'] : [])
+        .map(item => normalizeSkillUiText(item, ''))
+        .filter(item => item && !/^任意/.test(item));
+      return {
+        ...字段定义,
+        类型: '枚举',
+        选项: 构建技能设计台状态施加分组选项(正式状态选项),
+      };
+    }
+    if (原型名 === '状态施加' && 字段名 === '副数值') {
+      return { 字段: 字段名, 类型: '带符号数值', 默认值: 技能设计台状态施加默认副数值(options?.当前效果?.['状态'] || options?.状态) };
+    }
+    if (原型名 === '规则防御' && 字段名 === '规则' && 字段定义 && typeof 字段定义 === 'object') {
+      return {
+        ...字段定义,
+        选项: (Array.isArray(字段定义['选项']) ? 字段定义['选项'] : []).filter(item =>
+          ['免伤', '免死'].includes(normalizeSkillUiText(item, '')),
+        ),
+      };
+    }
+    if (原型名 === '属性修正' && 字段名 === '属性' && 字段定义 && typeof 字段定义 === 'object') {
+      return {
+        ...字段定义,
+        选项: (Array.isArray(字段定义['选项']) ? 字段定义['选项'] : []).filter(item =>
+          ['力量', '防御', '敏捷', '生命上限', '体力上限', '魂力上限', '精神力上限'].includes(normalizeSkillUiText(item, '')),
+        ),
+      };
+    }
+    return 字段定义 && typeof 字段定义 === 'object' ? 字段定义 : { 字段: 字段名, 类型: '文本', 选项: [] };
+  }
+  // —— B:26171-26236
+  function 读取技能设计台原型字段选项(原型 = '', 字段 = '', options = {}) {
+    const 原型名 = normalizeSkillUiText(原型, '');
+    const 字段名 = normalizeSkillUiText(字段, '');
+    if (原型名 === '状态交换' && 字段名 === '状态') {
+      const 状态选项 = 读取技能设计台原型字段选项('状态施加', '状态').filter(状态 => 技能设计台状态施加是负面语义(状态));
+      return [{ label: '交出状态', options: ['任意负面', ...状态选项] }];
+    }
+    // 护盾模式是严格三值枚举：结构校验对非法值直接 throw，不能留成自由输入框。
+    if (原型名 === '护盾变化' && 字段名 === '护盾模式') return ['正向护盾', '斩盾', '窃盾'];
+    if (原型名 === '状态移除' && 字段名 === '匹配原型') return ['无', '资源变化', '护盾变化'];
+    if (原型名 === '状态移除' && 字段名 === '资源') return ['生命'];
+    if (原型名 === '机制授予' && 字段名 === '触发条件') {
+      return 读取技能设计台机制授予触发条件选项(options?.当前效果?.['目标'] || options?.目标 || '单体');
+    }
+    if (原型名 === '战斗外复活' && 字段名 === '复活代价类型') return 技能设计台战斗外复活代价类型选项;
+    if (原型名 === '战斗外复活' && 字段名 === '复活代价对象') {
+      const 代价类型 = normalizeSkillUiText(options?.当前效果?.['复活代价类型'] || options?.复活代价类型, '状态代价');
+      if (代价类型 === '消耗实体物品') return 技能设计台战斗外复活物品代价对象选项;
+      if (代价类型 === '封印能力') return 技能设计台战斗外复活封印代价对象选项;
+      if (代价类型 === '永久代价') return 技能设计台战斗外复活永久代价对象选项;
+      return [...技能设计台战斗外可继承状态选项, ...技能设计台日常系统状态选项];
+    }
+    if (原型名 === '战斗外复活' && 字段名 === '复活后状态') return [...技能设计台战斗外可继承状态选项, ...技能设计台日常系统状态选项];
+    if (['状态移除', '状态转移'].includes(原型名) && 字段名 === '状态') {
+      const 字段定义 = 读取技能设计台原型字段定义(原型名, 字段名);
+      const 原始选项 = Array.isArray(字段定义['选项']) ? 字段定义['选项'] : [];
+      const 匹配占位 = 原始选项.filter(选项值 => ['任意状态', '任意负面', '任意增益'].includes(normalizeSkillUiText(选项值, '')));
+      const 正式状态 = 原始选项.filter(选项值 => !匹配占位.includes(选项值));
+      return [
+        { label: '匹配占位', options: 匹配占位 },
+        { label: '正式状态', options: 正式状态 },
+      ].filter(分组 => 分组.options.length);
+    }
+    if (字段名 === '影响方向') {
+      if (原型名 === '时光回溯') {
+        const 发动方式 = normalizeSkillUiText(options?.当前效果?.['发动方式'] || options?.发动方式 || '', '被动');
+        return 发动方式 === '主动' ? ['成功率', '效果强度'] : ['成功率'];
+      }
+      if (原型名 === '伤害结算') return ['效果强度'];
+      if (原型名 === '资源锁定') return ['成功率', '效果强度', '消耗', '前摇'];
+      if (原型名 === '复制执行') return ['效果强度', '消耗', '前摇'];
+      if (原型名 === '机制授予') return ['成功率', '效果强度', '持续时间', '消耗', '前摇'];
+      if (原型名 === '状态施加') {
+        const 当前效果 = options?.当前效果 || {};
+        const 有持续回合 = parseSkillDesignerIntegerInputValue(当前效果['持续回合'], 0, 0) > 0;
+        return 有持续回合 ? ['成功率', '效果强度', '持续时间', '消耗', '前摇'] : ['成功率', '效果强度', '消耗', '前摇'];
+      }
+      if (原型名 === '时窗修正') {
+        const 调整字段 = normalizeSkillUiText(options?.当前效果?.['调整字段'] || '', '持续回合');
+        return ['持续回合', '有效期tick'].includes(调整字段)
+          ? ['持续时间', '消耗', '前摇']
+          : ['效果强度', '消耗', '前摇'];
+      }
+      return ['成功率', '效果强度', '持续时间', '消耗', '前摇'];
+    }
+    if (原型名 === '时窗修正' && 字段名 === '调整字段') {
+      return [
+        '持续回合',
+        '有效期tick',
+        '触发次数',
+        '使用次数',
+      ];
+    }
+    const 定义 = 读取技能设计台原型字段定义(原型, 字段, options);
+    return normalizeSkillDesignerOptionList(定义['选项']).map(item => normalizeSkillUiText(item.value, '')).filter(Boolean);
+  }
+  // —— B:26238-26283
+  function 构建技能设计台原型字段下拉选项(字段 = '', 选项 = [], 是必填 = false) {
+    const 字段名 = normalizeSkillUiText(字段, '');
+    const 标签表 = {
+      驱动属性: {
+        力量: '力量｜按力量差影响',
+        防御: '防御｜按防御差影响',
+        敏捷: '敏捷｜按敏捷差影响',
+        魂力上限: '魂力上限｜按魂力差影响',
+        精神力上限: '精神力上限｜按精神差影响',
+        体力上限: '体力上限｜按体魄差影响',
+      },
+      影响方向: {
+        成功率: '成功率｜影响命中概率',
+        效果强度: '效果强度｜影响数值大小',
+        持续时间: '持续时间｜影响持续长短',
+        消耗: '消耗｜影响自身消耗',
+        前摇: '前摇｜影响自身前摇',
+      },
+      调整字段: {
+        有效期tick: '造物有效期',
+      },
+      规则: {
+        死亡转存活: '复活',
+      },
+    };
+    const 原始选项 = Array.isArray(选项) ? 选项 : [];
+    const 是否分组 = 原始选项.some(item => item && typeof item === 'object' && !Array.isArray(item));
+    const 构建标签 = 值 => 标签表[字段名]?.[值] || 值;
+    const 显示选项 = 是否分组
+      ? 原始选项
+          .filter(item => item && typeof item === 'object')
+          .map(item => ({
+            label: normalizeSkillUiText(item.label, ''),
+            options: (Array.isArray(item.options) ? item.options : [])
+              .filter(值 => 值 !== '无')
+              .map(值 => ({ value: 值, label: 构建标签(值) })),
+          }))
+          .filter(item => item.label && item.options.length)
+      : 原始选项
+          .filter(item => item !== '无')
+          .map(item => ({
+            value: item,
+            label: 构建标签(item),
+          }));
+    return 是必填 ? 显示选项 : [{ value: '无', label: '默认无' }, ...显示选项];
+  }
+  // —— B:26285-26452
+  function 获取技能设计台原型字段提示(原型 = '', 字段 = '', effect = {}) {
+    const 原型名 = normalizeSkillUiText(原型, '');
+    const 字段名 = normalizeSkillUiText(字段, '');
+    const 结算 = normalizeSkillUiText(effect && effect['结算'], '');
+    const 数值口径 = 读取技能设计台数值字段口径(原型名, 字段名, effect);
+    const 通用提示表 = {
+      原型: '选择技能效果的结构类型；切换后表单字段会按该原型重建。',
+      目标: '选择该原型实际作用对象。',
+      生效方式: '主效果用独立生效；副效果只有必须跟主效果命中、结算或存在同一前置时才用跟随主原型。',
+      条件分支: '只有效果需要满足条件才触发、替换或禁用时开启；普通直达效果不要开。',
+      数值: 数值口径 === '百分比'
+        ? '按百分点填写；右侧单位固定为百分比。'
+        : 数值口径 === '混合'
+          ? '右侧选择点数或百分比；切换单位不换算数字。'
+          : '填写实际强度，正负号表达方向。',
+      副数值: 数值口径 === '百分比'
+        ? '按百分点填写；右侧单位固定为百分比。'
+        : '填写附加强度，正负号表达方向。',
+      持续回合: '命中后保留几回合；不影响后来入场目标。',
+      延迟回合: '只用于需要延迟落地的战斗效果；无延迟时不要落盘。',
+      触发限制: '限制触发周期和次数；只在规则壳或限定触发次数的效果上填写。',
+      驱动属性: '选择无时不按属性差缩放；选择属性时按双方属性差影响指定方向。',
+      影响方向: '说明驱动属性影响什么：成功率、效果强度、持续时间、消耗或前摇。',
+      概率: '只在效果本身不是必定发生时填写；确定生效不要用概率占位。',
+      数量: '限制本次处理的目标、状态、链式对象或机制数量；不限制时按原型默认。',
+      打断效果: '只在负向判定修正会打断释放、蓄力、引导时勾选；普通命中加成不要勾。',
+      强化倍率: '基础属性增幅比例，运行时会再乘以炸掉魂环的年限系数，只影响下一次魂技释放时的自身属性。',
+    };
+    const 原型提示表 = {
+      伤害结算: {
+        威力倍率: '技能基础伤害倍率；直伤主效果才填，持续 DOT 不用它伪装。',
+        攻击段数: '多段攻击的段数；每段都能参与命中/护盾/触发时才提高。',
+        伤害类型: '选择攻击口径：近身攻击、远程攻击、精神攻击或真实攻击；目标范围仍由目标字段决定。',
+        防御穿透: '内联穿透百分比；只在本次伤害自身带破防时填写。',
+      },
+      资源变化: {
+        资源: '选择恢复或扣减的资源；生命负数必须走伤害结算。',
+      },
+      资源转移: {
+        资源: '选择要回收、共享或重分配的资源。',
+        资源转移方式: '吞噬扣目标并回补自身，共享或转移由自身给目标，均分按目标集合重分配。',
+        转化比例: '吞噬、共享或转移时的换算比例；均分不要填。',
+      },
+      属性修正: {
+        属性: '选择要改变的面板属性；多属性增减应明确每个属性。',
+      },
+      护盾变化: {
+        护盾模式: '选择护盾效果类型：正向护盾、斩盾或窃盾。',
+        数值: '正向护盾填增加量；斩盾/窃盾填削减比例，设计台会按模式自动修正正负号。',
+        持续回合: '只用于正向护盾保留；斩盾和窃盾是即时结算。',
+      },
+      判定修正: {
+        判定: '选择要修改的判定入口；命中影响技能成功命中，闪避/反应影响躲避与响应。',
+      },
+      结算修正: {
+        结算: '选择要修正的结算环节；伤害/治疗/消耗/前摇用数值正负表达增减。',
+        数值: 结算 === '伤害转移'
+          ? '转移比例；例如 +30% 表示受击成立续，将本次伤害的30%打到转移对象身上。'
+          : ['伤害分摊', '消耗分摊'].includes(结算)
+          ? '分摊比例；例如 +30% 表示把本次伤害或消耗的30%转给同阵营其他存活单位。'
+          : '消耗/前摇可填百分比或绝对值；消耗绝对值按当前技能实际消耗加减，前摇绝对值单位为tick。其他结算只填百分比。',
+        持续回合: ['消耗', '前摇'].includes(结算)
+          ? '持续1回合适合一次性起手修正，例如白天施展更省力、蓄势完成续更快出手；需要由某个主效果触发时，可放在条件分支追加效果或跟随主原型。'
+          : '只在结算修正需要跨回合保留时填写；即时修正不要填。',
+        数量: '群体分摊时最多由几个同阵营其他存活单位承接；单体分摊不需要数量。',
+        转移对象: '受击成立续，额外伤害落到谁身上。',
+        吸收来源: '选伤害吸收时才填：吸收「造成伤害」按你打出的量转化，吸收「受到伤害」按你挨打的量转化。',
+        吸收资源: '吸收得到的量补进哪种资源；运行时按该资源结算，不填按生命处理。',
+        限定元素: '限定当前行动技能元素；未命中元素不计收益。',
+        结算倍率: '持续伤害压缩或引爆用倍率；普通时长调整不要填。',
+      },
+      状态施加: {
+        状态: '选择要施加的正式状态；正式状态会直接写入战斗效果。',
+        数值: '状态主效果强度；例如每回合掉血、治疗削弱、护盾量、反应下降。',
+        副数值: '状态附加效果强度；例如命中下降、承伤提高、技能消耗提高、闪避下降。',
+      },
+      时窗修正: {
+        调整字段: '选择要调整的窗口对象。',
+        调整方式: '延长增加剩余窗口，压缩减少剩余窗口。',
+        调整回合: '持续回合窗口的调整量，最多3回合。',
+        调整tick: '本次生成造物有效期的调整量，最多7天。',
+        调整次数: '触发次数或使用次数的调整量，最多3次。',
+        单日使用次数上限: '单日最多使用几次该时窗修正。',
+        结算倍率: '只允许 DOT 压缩时填写，范围 +50%~+300%。',
+      },
+      状态移除: {
+        状态: '选择要移除的状态；普通净化/驱散只填这里。',
+        匹配原型: '高级筛选：按状态内部效果筛选；例如只移除带持续扣生命效果的状态。',
+        资源: '仅在匹配原型为资源变化时填写，用于筛 DOT、恢复等状态。',
+        数值方向: '仅在匹配资源变化时填写，区分正向恢复、负向扣减或任意。',
+      },
+      规则防御: {
+        规则: '免伤用于抵消伤害，免死用于致命结算锁血。',
+        次数: '规则壳可触发次数；触发后会扣减。',
+      },
+      状态转移: {
+        状态: '指定状态或任意状态。',
+        来源: '状态从谁身上取出。',
+        去向: '状态被搬到谁身上。',
+      },
+      状态交换: {
+        状态: '选择自身要交出的负面状态；目标侧固定夺取一个增益状态。',
+      },
+      资源锁定: {
+        资源: '要锁定的资源类型。',
+        锁定类型: '资源池锁定压低可用上限；回复锁定削减恢复；转化锁定削减吞噬、共享、吸收回补。',
+        数值: '锁定比例，正百分比；10% 与 +10% 都表示锁定 10%。',
+      },
+      规则改写: {
+        规则: '选择要临时改写的定向结算规则。',
+        持续回合: '规则改写器持续回合；不作为状态写入。',
+      },
+      机制抹消: {
+        抹消对象: '填写原型匹配器；源动作、中间机制和最终结果都会按它匹配。',
+      },
+      机制授予: {
+        授予效果: '被授予后实际可触发的效果列表；不能再嵌套授予机制。',
+        触发条件: '主动触发进入技能池；下次行动触发一次；魂技成功释放触发每次扣一次，未命中不代表释放失败。待机期限可留空。',
+        可用次数: '主动触发时授予壳还能使用几次。',
+        持续回合: '主动触发时必须在几回合内使用。',
+      },
+      复制执行: {
+        复制类型: '选择复制技能、复制属性或复制全部。',
+        复制模式: '即时镜像响应战斗动作，复刻友方走剧情裁定。',
+        保存上限: '最多保存多少个复刻技能。',
+        削减比例: '只影响复制属性和复制全部。',
+        保留回合: '复制结果保留多久。',
+        保留时长tick: '非战斗保留多久。',
+      },
+      时光回溯: {
+        目标: '单体会覆盖施术者与主目标；全场不分敌我，主动排除施术者。',
+        发动方式: '主动释放时压低目标反应；被动=目标结算前回溯规避。',
+        驱动属性: '默认精神力上限，可改。',
+        影响方向: '主动可影响成功率或反应压制强度；被动只影响成功率。',
+      },
+      位移执行: {
+        位移类型: '拉近、击退、换位、瞬移或脱离。',
+        位移对象: '选择战斗收益或压制落在自身、目标还是双方。',
+        距离: '位移幅度；越大对行动、反应与命中压制影响越强。',
+        数值: '可选强度覆写；只填百分比，不填时按位移幅度自动折算。',
+        持续回合: '战斗收益或压制持续多久，默认1回合。',
+      },
+      决策干扰: {
+        干扰: '选择判断干扰或索敌干扰。',
+        数值: '例如 20%，越高干扰越强。',
+      },
+      修炼增益: {
+        收益类型: '选择按属性修炼速度，或按训练方式收益。',
+        修炼属性: '只影响该属性的成长速度。',
+        训练方式: '只影响该训练方式的收益。',
+        有效期tick: '收益修正保留多久。',
+      },
+      召唤生成: {
+        召唤单位类型: '决定召唤物类别。',
+        召唤物名称: '运行时显示和状态引用的召唤物名称。',
+        行动模式: '决定召唤物协同、护卫或自主行动。',
+        强度: '非继承召唤的固定战力系数。',
+        力量继承比例: '按召唤者力量折算。',
+        防御继承比例: '按召唤者防御折算。',
+        敏捷继承比例: '按召唤者敏捷折算。',
+        体力继承比例: '按召唤者体力上限折算。',
+        魂力继承比例: '按召唤者魂力上限折算。',
+        精神继承比例: '按召唤者精神力上限折算。',
+        承伤规则: '护卫模式下折算为承伤收益。',
+      },
+    };
+    return 原型提示表[原型名]?.[字段名] || 通用提示表[字段名] || '';
+  }
+  // —— B:26510-26514
+  function 构建技能设计台说明标签(显示名 = '', 提示 = '') {
+    const 文本 = normalizeSkillUiText(提示, '');
+    if (!文本) return `<span class="mvu-editor-label">${htmlEscape(显示名)}</span>`;
+    return `<span class="mvu-editor-label mvu-editor-label--with-hint">${htmlEscape(显示名)}<button type="button" class="mvu-editor-hint-badge" tabindex="0" aria-label="${escapeHtmlAttr(显示名)}说明" data-hint-text="${escapeHtmlAttr(文本)}">?</button></span>`;
+  }
+  // —— B:26516-26522
+  const 技能设计台条件字段提示 = Object.freeze({
+    类型: '选择用什么条件来判断，例如目标生命比例、是否命中、是否存在护盾。',
+    比较: '条件的比较方式；与右侧阈值一起构成判断式。',
+    处理: '条件成立时怎么办：替换掉原效果，或在原效果之外追加。',
+    替换效果: '条件成立时改为执行这里的效果，原效果不再结算。',
+    追加效果: '条件成立时在原效果之外额外执行这里的效果。',
+  });
+  // —— B:26524-26530
+  const 技能设计台副作用字段提示 = Object.freeze({
+    类型: '选择副作用的种类；不同种类决定下面填强度还是关联效果。',
+    时机: '副作用在什么时候结算：效果生效后、命中后、回合结束时或效果结束后。',
+    对象: '副作用落在谁身上：技能释放者、效果承受者或双方。',
+    概率: '副作用的触发概率；填 100% 表示必定触发。',
+    持续: '副作用生效几个回合。',
+  });
+  // —— B:26532-26545
+  function 构建技能设计台原型字段标签(原型 = '', 字段 = '', 显示名 = '', effect = {}) {
+    const 提示 = 获取技能设计台原型字段提示(原型, 字段, effect);
+    const 原型名 = normalizeSkillUiText(原型, '');
+    const 字段名 = normalizeSkillUiText(字段, '');
+    const 基础标签 = 原型名 === '炸环' && 字段名 === '强化倍率'
+      ? '强化倍率 × 年限'
+      : 原型名 === '状态施加' && ['数值', '副数值'].includes(字段名)
+        ? 技能设计台状态施加字段显示名(effect && effect['状态'], 字段名)
+        : 显示名 || 字段;
+    // 说明改为图标触发：常驻小字会把表单堆成一堵字墙，纯 title 又让触屏无解。
+    // 折中为标签旁一个 ? 徽标，hover 与 focus 都能唤出气泡，且可被键盘聚焦。
+    if (!提示) return `<span class=\"mvu-editor-label\">${htmlEscape(基础标签)}</span>`;
+    return `<span class=\"mvu-editor-label mvu-editor-label--with-hint\">${htmlEscape(基础标签)}<button type=\"button\" class=\"mvu-editor-hint-badge\" tabindex=\"0\" aria-label=\"${escapeHtmlAttr(基础标签)}说明\" data-hint-text=\"${escapeHtmlAttr(提示)}\">?</button></span>`;
+  }
+  // —— B:26547-26550
+  function 技能设计台原型字段是否必填(原型 = '', 字段 = '') {
+    const 定义 = SKILL_DESIGNER_PROTOTYPE_REGISTRY[normalizeSkillUiText(原型, '')] || {};
+    return Array.isArray(定义['必填字段']) && 定义['必填字段'].includes(字段);
+  }
+  // —— B:26552-26616
+  function 创建技能设计台默认原型效果(原型 = '伤害结算', target = '单体') {
+    const prototype = normalizeSkillUiText(原型, 读取技能设计台原型名称列表()[0] || '伤害结算');
+    const effect = {
+      原型: prototype,
+      目标: prototype === '时光回溯'
+        ? normalizeSkillDesignerTimeRewindTargetValue(target, '单体')
+        : normalizeSkillDesignerEffectTargetValue(target, '单体'),
+    };
+    const 定义 = SKILL_DESIGNER_PROTOTYPE_REGISTRY[prototype] || {};
+    const 必填字段 = Array.isArray(定义['必填字段']) ? 定义['必填字段'] : [];
+    必填字段.forEach(key => {
+      const 字段定义 = 读取技能设计台原型字段定义(prototype, key);
+      const 类型 = normalizeSkillUiText(字段定义['类型'], '文本');
+      const 选项 = 读取技能设计台原型字段选项(prototype, key);
+      if (字段定义['默认值'] !== undefined) effect[key] = cloneJsonValue(字段定义['默认值']);
+      else if (key === '威力倍率') effect[key] = 100;
+      else if (key === '伤害类型') effect[key] = '近身攻击';
+      else if (key === '数值') effect[key] = '+10%';
+      else if (key === '数量' || key === '次数') effect[key] = 1;
+      else if (类型 === '原型列表') effect[key] = [创建技能设计台默认原型效果('判定修正', effect['目标'])];
+      else if (类型 === '对象') effect[key] = {};
+      else if (类型 === '枚举' || 类型 === '多枚举') effect[key] = getSkillDesignerFirstOptionValue(选项, '');
+      else effect[key] = '';
+    });
+    if (prototype === '状态施加') {
+      const 状态名 = normalizeSkillUiText(effect['状态'], '眩晕');
+      effect['状态'] = 状态名;
+    }
+    if (prototype === '护盾变化') {
+      effect['护盾模式'] = '正向护盾';
+    }
+    if (prototype === '时窗修正') {
+      const 调整字段 = normalizeSkillUiText(effect['调整字段'], '持续回合');
+      effect['调整字段'] = 调整字段;
+      effect['调整方式'] = normalizeSkillUiText(effect['调整方式'], '延长');
+      if (调整字段 === '持续回合') {
+        effect['调整回合'] = Math.max(1, Math.min(3, Number(effect['调整回合'] || 1)));
+        delete effect['状态'];
+        delete effect['造物名称'];
+        if (effect['调整方式'] !== '压缩') delete effect['结算倍率'];
+        else effect['结算倍率'] = normalizeSkillUiText(effect['结算倍率'], '+100%');
+      } else if (调整字段 === '有效期tick') {
+        effect['调整tick'] = Math.max(1, Math.min(1008, Number(effect['调整tick'] || 6)));
+        delete effect['状态'];
+        delete effect['造物名称'];
+      } else if (['触发次数', '使用次数'].includes(调整字段)) {
+        effect['调整次数'] = Math.max(1, Math.min(3, Number(effect['调整次数'] || 1)));
+        delete effect['状态'];
+        delete effect['造物名称'];
+      }
+      effect['单日使用次数上限'] = Math.max(1, Math.min(3, Math.round(Number(effect['单日使用次数上限'] || 1))));
+    }
+    if (prototype === '修炼增益') {
+      const 收益类型 = normalizeSkillUiText(effect['收益类型'], '训练方式收益');
+      effect['收益类型'] = ['属性修炼速度', '训练方式收益'].includes(收益类型) ? 收益类型 : '训练方式收益';
+      if (effect['收益类型'] === '属性修炼速度') {
+        effect['修炼属性'] = normalizeSkillUiText(effect['修炼属性'], '魂力上限');
+        delete effect['训练方式'];
+      } else {
+        effect['训练方式'] = normalizeSkillUiText(effect['训练方式'], '冥想');
+        delete effect['修炼属性'];
+      }
+    }
+    return effect;
+  }
+  // —— B:26618-26620
+  function 技能设计台按上下文默认目标(原型 = '伤害结算', fallbackTarget = '单体', context = {}) {
+    return 约束技能设计台原型正式目标(原型, fallbackTarget, fallbackTarget);
+  }
+  // —— B:26622
+  const 技能设计台分身目标允许原型集合 = new Set(['资源变化', '属性修正', '判定修正', '结算修正']);
+  // —— B:26624-26626
+  function 技能设计台原型允许分身目标(原型 = '') {
+    return 技能设计台分身目标允许原型集合.has(normalizeSkillUiText(原型, ''));
+  }
+  // —— B:26628-26631
+  function 约束技能设计台分身目标(原型 = '', 目标 = '') {
+    const 当前目标 = normalizeSkillDesignerEffectTargetValue(目标, '单体');
+    return 当前目标 === '分身' && !技能设计台原型允许分身目标(原型) ? '单体' : 当前目标;
+  }
+  // —— B:26633-26646
+  function 技能设计台效果是正向辅助(原型 = '', effect = {}) {
+    const 原型名 = normalizeSkillUiText(原型, '');
+    const 数值 = 解析技能设计台正负数值(effect && effect['数值']);
+    if (['属性修正', '资源变化', '资源转移', '判定修正', '资源锁定', '决策干扰'].includes(原型名)) return 数值 > 0;
+    if (原型名 === '护盾变化') return normalizeSkillUiText(effect && effect['护盾模式'], '') === '正向护盾' || 数值 > 0;
+    if (原型名 === '结算修正') {
+      const 结算 = normalizeSkillUiText(effect && effect['结算'], '');
+      if (['治疗', '技能效果', '伤害转治疗'].includes(结算)) return 数值 > 0;
+      if (结算 === '受到伤害') return 数值 < 0;
+      return ['伤害分摊', '消耗分摊', '伤害吸收'].includes(结算);
+    }
+    if (原型名 === '状态施加') return ['持续恢复', '护盾', '隐匿', '共享视野', '无视异常', '霸体', '护卫'].includes(normalizeSkillUiText(effect && effect['状态'], ''));
+    return false;
+  }
+  // —— B:26648-26664
+  function 约束技能设计台原型正式目标(原型 = '', 目标 = '', fallbackTarget = '单体', 效果 = null) {
+    const 原型名 = normalizeSkillUiText(原型, '');
+    const 默认目标 = normalizeSkillDesignerEffectTargetValue(fallbackTarget, '单体');
+    const 当前目标 = 约束技能设计台分身目标(原型名, normalizeSkillDesignerEffectTargetValue(目标, 默认目标));
+    const 状态名 = 原型名 === '状态施加' ? normalizeSkillUiText(效果 && 效果['状态'], '') : '';
+    if (原型名 === '状态施加' && 状态名 === '护卫') return ['单体', '群体', '全场'].includes(当前目标) ? 当前目标 : '单体';
+    if (原型名 === '战斗外复活') return ['单体', '群体', '全场'].includes(当前目标) ? 当前目标 : '单体';
+    if (['状态转移', '状态交换'].includes(原型名)) return '单体';
+    if (原型名 === '状态移除') return ['自身', '单体', '群体'].includes(当前目标) ? 当前目标 : '单体';
+    if (原型名 === '规则防御') return ['自身', '单体', '群体'].includes(当前目标) ? 当前目标 : '自身';
+    if (原型名 === '时光回溯') return normalizeSkillDesignerTimeRewindTargetValue(当前目标, '单体');
+    if (['召唤生成', '炸环'].includes(原型名)) return '自身';
+    if (['伤害结算', '资源转移'].includes(原型名) && !['单体', '群体', '全场'].includes(当前目标)) return '单体';
+    if (原型名 === '修炼增益' && 当前目标 === '召唤物') return 默认目标 === '自身' ? '自身' : '单体';
+    if (当前目标 === '全场' && 技能设计台效果是正向辅助(原型名, 效果 || {})) return '群体';
+    return 当前目标;
+  }
+  // —— B:26666-26684
+  function 读取技能设计台目标候选(原型 = '', context = {}) {
+    const 原型名 = normalizeSkillUiText(原型, '');
+    const 嵌套字段 = normalizeSkillUiText(context && context.嵌套字段, '');
+    const 当前状态 = normalizeSkillUiText(context?.当前效果?.['状态'], '');
+    if (原型名 === '状态施加' && 当前状态 === '护卫') return ['单体', '群体', '全场'];
+    if (原型名 === '修炼增益') return ['自身', '单体', '群体', '全场'];
+    if (嵌套字段 === '授予效果') return 技能设计台原型允许分身目标(原型名) ? SKILL_DESIGNER_CLONE_TARGET_OPTIONS : SKILL_DESIGNER_TARGET_OPTIONS;
+    if (嵌套字段 === '使用效果') return 技能设计台原型允许分身目标(原型名) ? SKILL_DESIGNER_CLONE_TARGET_OPTIONS : SKILL_DESIGNER_TARGET_OPTIONS;
+    if (嵌套字段 === '结算效果') return 技能设计台原型允许分身目标(原型名) ? SKILL_DESIGNER_CLONE_TARGET_OPTIONS : SKILL_DESIGNER_TARGET_OPTIONS;
+    if (原型名 === '时光回溯') return 读取技能设计台时光回溯目标候选(context?.当前效果 || {}, context);
+    if (原型名 === '结算修正' && ['伤害分摊', '消耗分摊'].includes(normalizeSkillUiText(context?.当前效果?.['结算'], ''))) return 技能设计台分摊结算目标候选();
+    if (技能设计台原型允许分身目标(原型名)) return ['自身', '单体', '群体', '全场', '分身'];
+    if (原型名 === '伤害结算') return ['单体', '群体', '全场'];
+    if (原型名 === '战斗外复活') return ['单体', '群体', '全场'];
+    if (原型名 === '状态转移' || 原型名 === '状态交换') return ['单体'];
+    if (原型名 === '状态移除' || 原型名 === '规则防御') return ['自身', '单体', '群体'];
+    if (技能设计台效果是正向辅助(原型名, context?.当前效果 || {})) return ['自身', '单体', '群体'];
+    return ['自身', '单体', '群体', '全场'];
+  }
+  // —— B:26686-26879
+  function 技能设计台清理并水合原型效果(effect = {}, fallbackTarget = '单体', context = {}) {
+    const source = effect && typeof effect === 'object' && !Array.isArray(effect) ? effect : {};
+    const prototype = normalizeSkillUiText(source['原型'], '伤害结算');
+    const 定义 = SKILL_DESIGNER_PROTOTYPE_REGISTRY[prototype] || {};
+    const 允许字段 = new Set(Array.isArray(定义['允许字段']) ? 定义['允许字段'] : ['原型', '目标']);
+    if (!(context && context.允许对应等级)) 允许字段.delete('对应等级');
+    const target = 技能设计台按上下文默认目标(prototype, source['目标'] || fallbackTarget, context);
+    const next = 创建技能设计台默认原型效果(prototype, target);
+    ['原型', '目标', '生效方式', '条件分支'].forEach(key => {
+      if (source[key] !== undefined && source[key] !== null && String(source[key]).trim() !== '')
+        next[key] = cloneJsonValue(source[key]);
+    });
+    Object.entries(source).forEach(([key, raw]) => {
+      if (!允许字段.has(key) || raw === undefined || raw === null) return;
+      if (typeof raw === 'string' && !raw.trim()) return;
+      next[key] = cloneJsonValue(raw);
+    });
+    if (prototype === '规则改写') {
+      const 规则 = 技能设计台规则改写选项值.includes(normalizeSkillUiText(source['规则'], ''))
+        ? normalizeSkillUiText(source['规则'], '')
+        : normalizeSkillUiText(next['规则'], '缴械');
+      next['规则'] = 规则;
+      if (规则 === '死亡转存活') {
+        next['目标'] = '自身';
+        next['数值'] = normalizeSkillUiText(source['数值'] ?? next['数值'], '+25%');
+        delete next['持续回合'];
+        delete next['死亡时限tick'];
+        delete next['复活代价类型'];
+        delete next['复活代价对象'];
+        delete next['复活代价值'];
+        delete next['复活代价时限tick'];
+        delete next['复活后状态'];
+        delete next['复活后状态时限tick'];
+      } else {
+        delete next['数值'];
+        delete next['死亡时限tick'];
+        delete next['复活代价类型'];
+        delete next['复活代价对象'];
+        delete next['复活代价值'];
+        delete next['复活代价时限tick'];
+        delete next['复活后状态'];
+        delete next['复活后状态时限tick'];
+      }
+    }
+    if (prototype === '战斗外复活') {
+      next['数值'] = normalizeSkillUiText(source['数值'] ?? next['数值'], '+25%');
+      next['死亡时限tick'] = Math.max(1, parseSkillDesignerIntegerInputValue(source['死亡时限tick'] ?? next['死亡时限tick'], 144, 1));
+      next['复活代价类型'] = 技能设计台战斗外复活代价类型选项.includes(normalizeSkillUiText(source['复活代价类型'] ?? next['复活代价类型'], ''))
+        ? normalizeSkillUiText(source['复活代价类型'] ?? next['复活代价类型'], '')
+        : '状态代价';
+      next['复活代价对象'] = normalizeSkillUiText(source['复活代价对象'] ?? next['复活代价对象'], next['复活代价类型'] === '消耗实体物品' ? '复活类丹药' : next['复活代价类型'] === '封印能力' ? '魂技' : next['复活代价类型'] === '永久代价' ? '等级上限' : '虚弱');
+      next['复活代价值'] = normalizeSkillUiText(source['复活代价值'] ?? next['复活代价值'], '+1');
+      next['复活代价时限tick'] = Math.max(1, parseSkillDesignerIntegerInputValue(source['复活代价时限tick'] ?? next['复活代价时限tick'], 144, 1));
+      next['复活后状态'] = normalizeSkillUiText(source['复活后状态'] ?? next['复活后状态'], '虚弱');
+      next['复活后状态时限tick'] = Math.max(1, parseSkillDesignerIntegerInputValue(source['复活后状态时限tick'] ?? next['复活后状态时限tick'], 144, 1));
+    }
+    if (prototype === '资源锁定' && source['数值'] === undefined) delete next['数值'];
+    if (prototype === '机制抹消') {
+      next['抹消对象'] = 规范化技能设计台机制抹消对象(next['抹消对象']);
+    }
+      next['原型'] = prototype;
+      next['目标'] = prototype === '时光回溯'
+        ? normalizeSkillDesignerTimeRewindTargetValue(target, '单体')
+      : prototype === '规则改写' && normalizeSkillUiText(next['规则'], '') === '死亡转存活' && normalizeSkillUiText(next['目标'], '') === '自身'
+        ? '自身'
+      : prototype === '战斗外复活'
+        ? 约束技能设计台原型正式目标(prototype, normalizeSkillDesignerEffectTargetValue(next['目标'] || target, '单体'), fallbackTarget)
+      : prototype === '结算修正' && ['伤害分摊', '消耗分摊'].includes(normalizeSkillUiText(next['结算'], ''))
+        ? 规范化技能设计台分摊结算目标(next['目标'])
+      : 约束技能设计台原型正式目标(prototype, target, fallbackTarget, next);
+    next['目标'] = 约束技能设计台原型正式目标(prototype, next['目标'], fallbackTarget, next);
+    if (prototype === '伤害结算') {
+      delete next['持续回合'];
+    }
+    if (prototype === '机制授予') {
+      const 触发条件 = normalizeSkillUiText(next['触发条件'], '主动触发');
+      next['触发条件'] = 读取技能设计台机制授予触发条件选项(next['目标']).includes(触发条件) ? 触发条件 : '主动触发';
+      if (next['触发条件'] === '随下次行动触发') {
+        delete next['可用次数'];
+      } else {
+        next['可用次数'] = Math.max(1, parseSkillDesignerIntegerInputValue(next['可用次数'], 1, 1));
+      }
+      if (next['触发条件'] === '主动触发' || normalizeSkillUiText(effect['持续回合'], '')) {
+        next['持续回合'] = Math.max(1, parseSkillDesignerIntegerInputValue(next['持续回合'], 1, 1));
+      } else delete next['持续回合'];
+    }
+    if (prototype === '资源变化' && next['持续回合'] !== undefined) {
+      const 持续回合 = Math.max(0, Math.min(10, parseSkillDesignerIntegerInputValue(next['持续回合'], 0, 0)));
+      if (持续回合 > 0) next['持续回合'] = 持续回合;
+      else delete next['持续回合'];
+    }
+    if (prototype === '判定修正' && next['持续回合'] !== undefined) {
+      const 持续回合 = Math.max(0, Math.min(10, parseSkillDesignerIntegerInputValue(next['持续回合'], 0, 0)));
+      if (持续回合 > 0) next['持续回合'] = 持续回合;
+      else delete next['持续回合'];
+    }
+    if (['资源转移', '规则防御', '状态移除', '状态转移', '状态交换'].includes(prototype) && next['持续回合'] !== undefined) {
+      const 持续回合 = Math.max(0, Math.min(10, parseSkillDesignerIntegerInputValue(next['持续回合'], 0, 0)));
+      if (持续回合 > 0) next['持续回合'] = 持续回合;
+      else delete next['持续回合'];
+    }
+    if (prototype === '时光回溯') {
+      next['发动方式'] = ['主动', '被动'].includes(normalizeSkillUiText(next['发动方式'], '')) ? normalizeSkillUiText(next['发动方式'], '') : '被动';
+      next['目标'] = normalizeSkillDesignerTimeRewindTargetValue(next['目标'], '单体');
+      if (!normalizeSkillUiText(next['驱动属性'], '')) next['驱动属性'] = '精神力上限';
+      const 时光回溯方向选项 = next['发动方式'] === '主动' ? ['成功率', '效果强度'] : ['成功率'];
+      if (!时光回溯方向选项.includes(normalizeSkillUiText(next['影响方向'], ''))) next['影响方向'] = '成功率';
+    }
+    if (prototype === '状态施加') {
+      const 状态名 = normalizeSkillUiText(next['状态'], '眩晕');
+      next['状态'] = 状态名;
+      next['目标'] = 约束技能设计台原型正式目标(prototype, next['目标'], fallbackTarget, next);
+      const 触发方式 = normalizeSkillUiText(next['触发方式'], '立即触发');
+      next['触发方式'] = ['立即触发', '延迟触发', '遥控触发'].includes(触发方式)
+        ? 触发方式
+        : next['延迟回合'] !== undefined
+          ? '延迟触发'
+          : '立即触发';
+      if (next['触发方式'] === '延迟触发' || next['延迟回合'] !== undefined) {
+        next['延迟回合'] = Math.max(1, parseSkillDesignerIntegerInputValue(next['延迟回合'], 1, 1));
+      } else {
+        delete next['延迟回合'];
+      }
+      if (!(parseSkillDesignerIntegerInputValue(next['持续回合'], 0, 0) > 0)) next['持续回合'] = 3;
+      if (技能设计台状态施加允许数值字段(状态名) && next['数值'] === undefined) {
+        next['数值'] = 技能设计台状态施加默认数值(状态名);
+      }
+      if (技能设计台状态施加允许副数值字段(状态名) && next['副数值'] === undefined) {
+        next['副数值'] = 技能设计台状态施加默认副数值(状态名);
+      }
+      if (状态名 === '迟缓') {
+        if (!normalizeSkillUiText(next['驱动属性'], '')) next['驱动属性'] = '魂力上限';
+        if (!normalizeSkillUiText(next['影响方向'], '')) next['影响方向'] = '效果强度';
+      }
+      if (['禁疗', '治疗反转'].includes(状态名) && next['数值'] !== undefined) {
+        next['数值'] = formatSkillDesignerSignedValue(
+          Math.abs(parseSkillDesignerSignedValue(next['数值'])),
+          /%$/.test(normalizeSkillUiText(next['数值'], '')),
+        );
+      }
+      if (技能设计台状态施加使用正向强度数值(状态名) && next['数值'] !== undefined) {
+        next['数值'] = formatSkillDesignerSignedValue(
+          Math.abs(parseSkillDesignerSignedValue(next['数值'])),
+          /%$/.test(normalizeSkillUiText(next['数值'], '')),
+        );
+      }
+      if (next['数值'] !== undefined) {
+        next['数值'] = 格式化技能设计台状态施加比例字段(next['数值'], 技能设计台状态施加默认数值(状态名));
+        next['数值'] = 限制技能设计台状态施加比例字段(状态名, '数值', next['数值']);
+      }
+      if (next['副数值'] !== undefined) {
+        next['副数值'] = 格式化技能设计台状态施加比例字段(next['副数值'], 技能设计台状态施加默认副数值(状态名));
+        next['副数值'] = 限制技能设计台状态施加比例字段(状态名, '副数值', next['副数值']);
+      }
+    }
+    if (prototype === '召唤生成') {
+      const 单位类型 = normalizeSkillUiText(next['召唤单位类型'], '魂兽');
+      const 使用继承 = 技能设计台召唤允许继承属性比例(单位类型);
+      if (使用继承) {
+        next['继承属性比例'] = parseSkillDesignerPercentRatio(next['继承属性比例'] ?? next['力量继承比例'], 0.45);
+        delete next['强度'];
+      } else {
+        if (!(toNumber(next['继承属性比例'], 0) > 0)) delete next['继承属性比例'];
+        next['强度'] = Math.max(0.01, toNumber(next['强度'], 1));
+      }
+      delete next['力量继承比例'];
+      delete next['防御继承比例'];
+      delete next['敏捷继承比例'];
+      delete next['体力继承比例'];
+      delete next['魂力继承比例'];
+      delete next['精神继承比例'];
+    }
+    if (prototype === '护盾变化') {
+      if (!['正向护盾', '斩盾', '窃盾'].includes(normalizeSkillUiText(next['护盾模式'], ''))) next['护盾模式'] = 解析技能设计台正负数值(next['数值']) < 0 ? '斩盾' : '正向护盾';
+      限制技能设计台护盾变化数值(next);
+      if (normalizeSkillUiText(next['护盾模式'], '') !== '正向护盾') delete next['持续回合'];
+    }
+    if (context && context.强制独立) next['生效方式'] = '独立生效';
+    if (next['生效方式'] === '跟随主原型') {
+      delete next['驱动属性'];
+      delete next['影响方向'];
+    }
+    if (String(next['驱动属性'] ?? '').trim() === '无') {
+      delete next['驱动属性'];
+      delete next['影响方向'];
+      next['__显式无驱动属性'] = true;
+    }
+    清理技能设计台打断效果字段(prototype, next);
+    清理技能设计台行为闭环字段(prototype, next, context);
+    应用技能设计台目标驱动契约(prototype, next);
+    清理技能设计台纯布尔控制字段(prototype, next);
+    delete next['__显式无驱动属性'];
+    return next;
+  }
+  // —— B:26881-26901
+  function 筛选技能设计台显式原型效果列表(value = [], fallbackTarget = '单体', context = {}) {
+    const target = normalizeSkillDesignerEffectTargetValue(fallbackTarget, '单体');
+    const source = Array.isArray(value) ? value : [];
+    return source
+      .map(entry => {
+        const safeEntry = entry && typeof entry === 'object' ? entry : {};
+        const prototype = normalizeSkillUiText(safeEntry['原型'], '');
+        if (!prototype || !SKILL_DESIGNER_PROTOTYPE_REGISTRY[prototype]) return null;
+        const normalized = {
+          原型: prototype,
+          目标: normalizeSkillDesignerEffectTargetValue(safeEntry['目标'], target),
+        };
+        读取技能设计台原型字段列表(prototype, safeEntry, context).forEach(key => {
+          if (safeEntry[key] === undefined || safeEntry[key] === null) return;
+          if (typeof safeEntry[key] === 'string' && !safeEntry[key].trim()) return;
+          normalized[key] = cloneJsonValue(safeEntry[key]);
+        });
+        return normalized;
+      })
+      .filter(Boolean);
+  }
+  // —— B:26903-26909
+  function 规范化技能设计台原型效果列表(value = [], fallbackTarget = '单体', context = {}) {
+    const target = normalizeSkillDesignerEffectTargetValue(fallbackTarget, '单体');
+    const list = 筛选技能设计台显式原型效果列表(value, target, context);
+    if (list.length) return list;
+    const fallbackPrototype = 读取技能设计台原型名称列表()[0] || '伤害结算';
+    return [创建技能设计台默认原型效果(fallbackPrototype, target)];
+  }
+  // —— B:26911-26922
+  function 提取技能设计台原型效果列表(effectArray = [], fallbackTarget = '单体') {
+    const source = Array.isArray(effectArray) ? effectArray : [];
+    const target = normalizeSkillDesignerEffectTargetValue(fallbackTarget, '单体');
+    return 筛选技能设计台显式原型效果列表(
+      source
+        .filter(effect => effect && typeof effect === 'object')
+        .filter(effect => normalizeSkillUiText(effect['原型'], ''))
+        .map(effect => cloneJsonValue(effect)),
+      target,
+      {},
+    );
+  }
+  // —— B:26937-26944
+  function 技能设计台原型需要落盘(effect = {}) {
+    const prototype = normalizeSkillUiText(effect && effect['原型'], '');
+    if (!prototype) return false;
+    const meta = 读取技能设计台原型摘要(prototype);
+    if (meta.类别 !== '战斗外') return true;
+    if (['修炼增益', '战斗外复活', '召唤生成'].includes(prototype)) return true;
+    return false;
+  }
+  // —— B:26946-26950
+  function 技能设计台允许纯描述技能(draft = {}) {
+    const type = normalizeSkillUiText(draft && draft.type, '');
+    const hasText = !!normalizeSkillUiText((draft && draft.effectDesc) || (draft && draft.visualDesc), '');
+    return hasText && ['辅助', '被动'].includes(type);
+  }
+  // —— B:26952-26956
+  function 格式化技能设计台原型字段值(value) {
+    if (value === undefined || value === null) return '';
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
+  }
+  // —— B:26958-26969
+  function 读取技能设计台原型字段输入值(raw = '') {
+    const text = toText(raw, '').trim();
+    if (!text) return '';
+    if (/^[\[{]/.test(text)) {
+      try {
+        return JSON.parse(text);
+      } catch (error) {
+        return text;
+      }
+    }
+    return text;
+  }
+  // —— B:26971-27030
+  function 构建技能设计台条件分支条件编辑器(condition = {}, 允许删除 = false, 追加动画 = false) {
+    const 类型 = normalizeSkillUiText(condition['类型'], '生命比例');
+    const 对象 = normalizeSkillUiText(condition['对象'], '目标');
+    const 比较选项 = 读取技能设计台条件分支比较选项(类型);
+    const 比较 = 规范化技能设计台条件分支比较值(类型, condition['比较']);
+    const 值 = 格式化技能设计台原型字段值(condition['值'] ?? (类型 === '目标' ? '自身' : ''));
+    const 状态 = normalizeSkillUiText(condition['状态'], '中毒');
+    const 显示配置 = 读取技能设计台条件分支值控件配置(类型, 比较);
+    const 显示比较 = 显示配置.显示比较;
+    if (类型 === '目标') {
+      return `
+          <div class=\"mvu-editor-field-grid skill-designer-condition-row skill-designer-condition-row--target\" data-skill-designer-condition-row data-skill-designer-condition-type=\"${escapeHtmlAttr(类型)}\">
+            ${允许删除 ? '<button type=\"button\" class=\"skill-designer-remove-btn\" data-skill-designer-remove-condition data-skill-designer-disableable aria-label=\"删除判定条件\" title=\"删除该判定条件\">×</button>' : ''}
+            <label class=\"mvu-editor-field\">
+              ${构建技能设计台说明标签('类型', 技能设计台条件字段提示.类型)}
+              <select class=\"mvu-editor-select\" data-skill-designer-condition-field=\"类型\" data-skill-designer-disableable>
+                ${构建技能设计台条件类型分组选项(类型)}
+              </select>
+            </label>
+            <input type=\"hidden\" value=\"目标\" data-skill-designer-condition-field=\"对象\" />
+            <input type=\"hidden\" value=\"==\" data-skill-designer-condition-field=\"比较\" />
+            <label class=\"mvu-editor-field\">
+              <span class=\"mvu-editor-label\">目标</span>
+              ${构建技能设计台条件分支值控件(类型, 比较, 值 || '自身')}
+            </label>
+            <div class=\"skill-designer-condition-preview\" data-skill-designer-condition-preview>${htmlEscape(构建技能设计台条件分支条件预览({ 类型, 对象: '目标', 比较: '==', 值: 值 || '自身' }))}</div>
+          </div>
+        `;
+    }
+    return `
+        <div class=\"mvu-editor-field-grid skill-designer-condition-row${追加动画 ? ' skill-designer-fade-in' : ''}\" data-skill-designer-condition-row data-skill-designer-condition-type=\"${escapeHtmlAttr(类型)}\">
+          ${允许删除 ? '<button type=\"button\" class=\"skill-designer-remove-btn\" data-skill-designer-remove-condition data-skill-designer-disableable aria-label=\"删除判定条件\" title=\"删除该判定条件\">×</button>' : ''}
+          <label class=\"mvu-editor-field\">
+            ${构建技能设计台说明标签('类型', 技能设计台条件字段提示.类型)}
+            <select class=\"mvu-editor-select\" data-skill-designer-condition-field=\"类型\" data-skill-designer-disableable>
+              ${构建技能设计台条件类型分组选项(类型)}
+            </select>
+          </label>
+          <input type=\"hidden\" value=\"${escapeHtmlAttr(对象)}\" data-skill-designer-condition-field=\"对象\" />
+          <input type=\"hidden\" value=\"${escapeHtmlAttr(比较)}\" data-skill-designer-condition-field=\"比较\"${显示比较 ? ' disabled' : ''} />
+          <label class=\"mvu-editor-field\" data-skill-designer-condition-compare-field${显示比较 ? '' : ' hidden style=\"display:none\"'}>
+            <span class=\"mvu-editor-label\" data-skill-designer-condition-compare-label>${htmlEscape(显示配置.比较标签)}</span>
+            <select class=\"mvu-editor-select\" data-skill-designer-condition-field=\"比较\" data-skill-designer-disableable>
+              ${构建技能设计台条件分支比较控件选项(类型, 比较)}
+            </select>
+          </label>
+          <label class=\"mvu-editor-field\" data-skill-designer-condition-value-field${构建技能设计台条件分支隐藏属性(显示配置.显示值)}>
+            <span class=\"mvu-editor-label\" data-skill-designer-condition-value-label>${htmlEscape(显示配置.值标签)}</span>
+            ${构建技能设计台条件分支值控件(类型, 比较, 值)}
+          </label>
+          <label class=\"mvu-editor-field\" data-skill-designer-condition-state-field${构建技能设计台条件分支隐藏属性(显示配置.显示状态)}>
+            <span class=\"mvu-editor-label\">状态</span>
+            <select class=\"mvu-editor-select\" data-skill-designer-condition-field=\"状态\" data-skill-designer-disableable>
+              ${buildSkillDesignerSelectOptions(构建技能设计台状态施加分组选项(读取技能设计台原型字段选项('状态施加', '状态')), 状态)}
+            </select>
+          </label>
+          <div class=\"skill-designer-condition-preview\" data-skill-designer-condition-preview>${htmlEscape(构建技能设计台条件分支条件预览(condition))}</div>
+        </div>
+      `;
+  }
+  // —— B:27032-27074
+  function 构建技能设计台条件分支条目编辑器(branch = {}, fallbackTarget = '单体', 追加动画 = false) {
+    const 处理 = normalizeSkillUiText(branch['处理'], '生效');
+    const 条件 =
+      Array.isArray(branch['条件']) && branch['条件'].length
+        ? branch['条件']
+        : [{ 类型: '生命比例', 对象: '目标', 比较: '<=', 值: '20%' }];
+    const 替换效果 = Array.isArray(branch['替换效果']) ? branch['替换效果'] : [];
+    const 追加效果 = Array.isArray(branch['追加效果']) ? branch['追加效果'] : [];
+    const 禁用释放前降低结算 = 技能设计台条件列表包含释放后条件(条件);
+    return `
+        <div class=\"skill-designer-subsection${追加动画 ? ' skill-designer-fade-in' : ''}\" data-skill-designer-condition-branch-row>
+          <button type=\"button\" class=\"skill-designer-remove-btn\" data-skill-designer-remove-condition-branch data-skill-designer-disableable aria-label=\"删除逻辑分支\" title=\"删除该逻辑分支模块\">×</button>
+          <div class=\"skill-designer-preview-stack\" data-skill-designer-condition-list>
+            ${条件.map(item => 构建技能设计台条件分支条件编辑器(item, 条件.length > 1)).join('')}
+          </div>
+          <div class=\"mvu-editor-actions\">
+            <button type=\"button\" class=\"tag-chip\" data-skill-designer-add-condition data-skill-designer-disableable>新增条件</button>
+          </div>
+          <div class=\"mvu-editor-field-grid\">
+            <label class=\"mvu-editor-field\">
+              ${构建技能设计台说明标签('处理', 技能设计台条件字段提示.处理)}
+              <select class=\"mvu-editor-select\" data-skill-designer-condition-branch-action data-skill-designer-disableable>
+                ${buildSkillDesignerSelectOptions(SKILL_DESIGNER_CONDITION_BRANCH_ACTION_OPTIONS, 处理)}
+              </select>
+            </label>
+          </div>
+          <div class=\"mvu-editor-field mvu-editor-field-wide skill-designer-nested-prototype-field\" data-skill-designer-condition-effect=\"替换效果\"${处理 === '替换效果' ? '' : ' hidden'}${处理 === '替换效果' ? '' : ' style=\"display:none\"'}>
+            ${构建技能设计台说明标签('替换效果', 技能设计台条件字段提示.替换效果)}
+            <div class=\"skill-designer-preview-stack\" data-skill-designer-prototype-grid=\"condition-replace\" data-skill-designer-allow-empty=\"true\">
+              ${替换效果.length ? 构建技能设计台原型效果行列表(替换效果, fallbackTarget, true, { 禁用条件分支: true, 禁用释放前降低结算 }) : ''}
+            </div>
+            <div class=\"mvu-editor-actions\"><button type=\"button\" class=\"tag-chip\" data-skill-designer-add-condition-effect data-skill-designer-condition-effect-kind=\"替换效果\" data-skill-designer-disableable>新增原型</button></div>
+          </div>
+          <div class=\"mvu-editor-field mvu-editor-field-wide skill-designer-nested-prototype-field\" data-skill-designer-condition-effect=\"追加效果\"${处理 === '追加效果' ? '' : ' hidden'}${处理 === '追加效果' ? '' : ' style=\"display:none\"'}>
+            ${构建技能设计台说明标签('追加效果', 技能设计台条件字段提示.追加效果)}
+            <div class=\"skill-designer-preview-stack\" data-skill-designer-prototype-grid=\"condition-append\" data-skill-designer-allow-empty=\"true\">
+              ${追加效果.length ? 构建技能设计台原型效果行列表(追加效果, fallbackTarget, true, { 禁用条件分支: true, 禁用释放前降低结算 }) : ''}
+            </div>
+            <div class=\"mvu-editor-actions\"><button type=\"button\" class=\"tag-chip\" data-skill-designer-add-condition-effect data-skill-designer-condition-effect-kind=\"追加效果\" data-skill-designer-disableable>新增原型</button></div>
+          </div>
+        </div>
+      `;
+  }
+  // —— B:27076-27083
+  function 创建技能设计台默认条件分支(fallbackTarget = '单体') {
+    const target = normalizeSkillDesignerEffectTargetValue(fallbackTarget, '单体');
+    return {
+      条件: [{ 类型: '生命比例', 对象: '目标', 比较: '<=', 值: '20%' }],
+      处理: '替换效果',
+      替换效果: [创建技能设计台默认原型效果('伤害结算', target)],
+    };
+  }
+  // —— B:27085-27105
+  function 构建技能设计台条件分支编辑器(原型 = '', value = [], fallbackTarget = '单体') {
+    const branches = Array.isArray(value) ? value : [];
+    void 原型;
+    return `
+        <div class=\"mvu-editor-field mvu-editor-field-wide\" data-skill-designer-condition-branch>
+          <div class=\"skill-designer-inline-toggle\">
+            <span class=\"mvu-editor-label\">条件分支</span>
+            <label class=\"skill-designer-check-toggle\">
+              <input type=\"checkbox\"${branches.length ? ' checked' : ''} data-skill-designer-condition-branch-enabled data-skill-designer-disableable />
+              <span></span>
+            </label>
+          </div>
+          <div class=\"skill-designer-preview-stack\" data-skill-designer-condition-branch-list${branches.length ? '' : ' hidden'}${branches.length ? '' : ' style=\"display:none\"'}>
+            ${branches.map(branch => 构建技能设计台条件分支条目编辑器(branch, fallbackTarget)).join('')}
+          </div>
+          <div class=\"mvu-editor-actions\" data-skill-designer-condition-branch-actions${branches.length ? '' : ' hidden'}${branches.length ? '' : ' style=\"display:none\"'}>
+            <button type=\"button\" class=\"tag-chip\" data-skill-designer-add-condition-branch data-skill-designer-disableable>新增分支</button>
+          </div>
+        </div>
+      `;
+  }
+  // —— B:27107-27123
+  function 构建技能设计台嵌套原型列表编辑器(字段名 = '', value = [], fallbackTarget = '单体') {
+    const source = Array.isArray(value) ? value : [];
+    const 嵌套目标 = 字段名 === '授予效果' ? '单体' : fallbackTarget;
+    const 显示字段名 = 字段名 === '授予效果' ? '作用效果' : 字段名 === '结算效果' ? '结算效果' : 字段名;
+    const 默认原型 = 字段名 === '结算效果' ? '伤害结算' : '判定修正';
+    return `
+        <div class="mvu-editor-field mvu-editor-field-wide skill-designer-nested-prototype-field" data-skill-designer-nested-prototype-field="${escapeHtmlAttr(字段名)}">
+          <span class="mvu-editor-label">${htmlEscape(显示字段名)}</span>
+          <div class="skill-designer-preview-stack" data-skill-designer-prototype-grid="nested" data-skill-designer-nested-kind="${escapeHtmlAttr(字段名)}" data-skill-designer-allow-empty="true">
+            ${source.length ? 构建技能设计台原型效果行列表(source, 嵌套目标, true, { 嵌套字段: 字段名, 强制独立: true }) : ''}
+          </div>
+          <div class="mvu-editor-actions">
+            <button type="button" class="tag-chip" data-skill-designer-add-nested-prototype data-skill-designer-default-prototype="${escapeHtmlAttr(默认原型)}" data-skill-designer-disableable>新增原型</button>
+          </div>
+        </div>
+      `;
+  }
+  // —— B:27125-27129
+  function 读取技能设计台多枚举值(value = '') {
+    return (Array.isArray(value) ? value : String(value || '').split(/[、,，|/]/))
+      .map(item => normalizeSkillUiText(item, ''))
+      .filter(Boolean);
+  }
+  // —— B:27131
+  const 技能设计台每tick分钟 = 10;
+  // —— B:27132
+  const 技能设计台时窗最大调整tick = 7 * 24 * 6;
+  // —— B:27134-27145
+  function 拆分技能设计台tick时长(value = 0, options = {}) {
+    const 最小tick = Math.max(0, parseSkillDesignerIntegerInputValue(options.最小tick, 0, 0));
+    const 最大tick = Number.isFinite(Number(options.最大tick)) ? Math.max(最小tick, Math.round(Number(options.最大tick))) : 0;
+    const 默认tick = Math.max(最小tick, parseSkillDesignerIntegerInputValue(options.默认tick, 最小tick, 最小tick));
+    const 原始tick = parseSkillDesignerIntegerInputValue(value, 默认tick, 最小tick);
+    const tick = 最大tick > 0 ? Math.max(最小tick, Math.min(最大tick, 原始tick)) : Math.max(最小tick, 原始tick);
+    const 总分钟 = tick * 技能设计台每tick分钟;
+    const 日 = Math.floor(总分钟 / 1440);
+    const 小时 = Math.floor((总分钟 % 1440) / 60);
+    const 分钟 = 总分钟 % 60;
+    return { 日, 小时, 分钟, tick };
+  }
+  // —— B:27147-27173
+  function 构建技能设计台tick时长输入(标签 = '', 字段名 = '', value = 0, options = {}) {
+    const 最小tick = Math.max(0, parseSkillDesignerIntegerInputValue(options.最小tick, 0, 0));
+    const 最大tick = Number.isFinite(Number(options.最大tick)) ? Math.max(最小tick, Math.round(Number(options.最大tick))) : 0;
+    const 时长 = 拆分技能设计台tick时长(value, { 最小tick, 最大tick, 默认tick: options.默认tick ?? 最小tick });
+    const 字段属性名 = options.字段属性名 || 'data-skill-designer-prototype-field';
+    const 日最大值 = 最大tick > 0 ? ` max=\"${escapeHtmlAttr(String(Math.floor((最大tick * 技能设计台每tick分钟) / 1440)))}\"` : '';
+    return `
+          <div class=\"mvu-editor-field mvu-editor-field-wide skill-designer-time-parts\" data-skill-designer-time-parts data-skill-designer-time-min-tick=\"${escapeHtmlAttr(String(最小tick))}\"${最大tick > 0 ? ` data-skill-designer-time-max-tick=\"${escapeHtmlAttr(String(最大tick))}\"` : ''}>
+            ${标签}
+            <div class=\"skill-designer-time-parts-grid\">
+              <label>
+                <span>日</span>
+                <input class=\"mvu-editor-input\" type=\"number\" min=\"0\"${日最大值} step=\"1\" value=\"${escapeHtmlAttr(时长.日)}\" data-skill-designer-time-part=\"日\" data-skill-designer-disableable />
+              </label>
+              <label>
+                <span>时</span>
+                <input class=\"mvu-editor-input\" type=\"number\" min=\"0\" max=\"23\" step=\"1\" value=\"${escapeHtmlAttr(时长.小时)}\" data-skill-designer-time-part=\"时\" data-skill-designer-disableable />
+              </label>
+              <label>
+                <span>分</span>
+                <input class=\"mvu-editor-input\" type=\"number\" min=\"0\" max=\"59\" step=\"10\" value=\"${escapeHtmlAttr(时长.分钟)}\" data-skill-designer-time-part=\"分\" data-skill-designer-disableable />
+              </label>
+            </div>
+            <input type=\"hidden\" value=\"${escapeHtmlAttr(时长.tick)}\" ${字段属性名}=\"${escapeHtmlAttr(字段名)}\" data-skill-designer-time-hidden />
+          </div>
+        `;
+  }
+  // —— B:27175-27177
+  function 技能设计台字段是tick时长(key = '') {
+    return /tick$/i.test(String(key || ''));
+  }
+  // —— B:27179-27426
+  function 构建技能设计台原型字段输入(原型 = '', key = '', value = '', fallbackTarget = '单体', options = {}) {
+    const 定义 = 读取技能设计台原型字段定义(原型, key, options);
+    const 类型 = normalizeSkillUiText(定义['类型'], '文本');
+    const 选项 = 读取技能设计台原型字段选项(原型, key, options);
+    const 嵌套字段 = normalizeSkillUiText(options && options.嵌套字段, '');
+    const effect = options && options.当前效果 && typeof options.当前效果 === 'object' ? options.当前效果 : { ...(options || {}), [key]: value };
+    const 时窗字段显示名 = 原型 === '时窗修正'
+      ? ({
+          调整字段: '调整对象',
+          调整方式: '方向',
+          调整回合: '回合数',
+          调整tick: '时长',
+          调整次数: effect['调整字段'] === '触发次数' ? '触发次数' : effect['调整字段'] === '使用次数' ? '使用次数' : '次数',
+          结算倍率: '压缩结算',
+        }[key] || '')
+      : '';
+    const 显示字段名 = 时窗字段显示名 || (key === '防御穿透'
+      ? '伤害内联穿透%'
+      : 原型 === '规则改写' && key === '数值' && normalizeSkillUiText(effect && effect['规则'], '') === '死亡转存活'
+        ? '复活恢复比例'
+      : 原型 === '战斗外复活' && key === '数值'
+        ? '复活恢复比例'
+      : key === '资源转移方式'
+        ? '转移模式'
+      : 原型 === '状态移除' && key === '状态'
+        ? '移除状态'
+      : 原型 === '状态移除' && key === '匹配原型'
+        ? '内部效果'
+      : 原型 === '状态移除' && key === '数值方向'
+        ? '方向'
+      : key === '目标' && 原型 === '机制授予'
+        ? '授予对象'
+        : key === '目标' && 嵌套字段 === '授予效果'
+            ? '作用目标'
+              : key === '目标' && 嵌套字段 === '结算效果'
+                ? '结算目标'
+                : key);
+    const 标签 = 构建技能设计台原型字段标签(原型, key, 显示字段名, effect);
+    if (key === '条件分支' && options && options.禁用条件分支) return '';
+    if (key === '条件分支') return 构建技能设计台条件分支编辑器(原型, value, fallbackTarget);
+    if (类型 === '原型列表') return 构建技能设计台嵌套原型列表编辑器(key, value, fallbackTarget);
+    if (原型 === '机制抹消' && key === '抹消对象') {
+      const 对象 = 规范化技能设计台机制抹消对象(value);
+      const 原型选项 = 构建技能设计台原型字段下拉选项('原型', 技能设计台机制抹消对象原型选项, true);
+      return `
+          <div class=\"mvu-editor-field mvu-editor-field-wide\" data-skill-designer-suppress-object-editor>
+            ${标签}
+            <div class=\"mvu-editor-field-grid\">
+              <label class=\"mvu-editor-field\">
+                <span class=\"mvu-editor-label\">原型</span>
+                <select class=\"mvu-editor-select\" data-skill-designer-suppress-object-field=\"原型\" data-skill-designer-disableable>
+                  ${buildSkillDesignerSelectOptions(原型选项, 对象['原型'])}
+                </select>
+              </label>
+              ${构建技能设计台机制抹消对象字段控件(对象)}
+            </div>
+            <input type=\"hidden\" value=\"${escapeHtmlAttr(JSON.stringify(对象))}\" data-skill-designer-prototype-field=\"抹消对象\" data-skill-designer-prototype-json />
+          </div>
+        `;
+    }
+    const 是必填 = key === '目标' || key === '生效方式' || 技能设计台原型字段是否必填(原型, key);
+    const 禁用空值 = Boolean(options && options.禁用空值);
+    if (原型 === '炸环' && key === '目标') {
+      return `
+          <label class=\"mvu-editor-field\">
+            ${标签}
+            <div class=\"mvu-editor-static skill-designer-static-token\">自身</div>
+            <input type=\"hidden\" value=\"自身\" data-skill-designer-prototype-field=\"目标\" />
+          </label>
+        `;
+    }
+    if (key === '生效方式' && options && options.强制独立) {
+      return `<input type=\"hidden\" value=\"独立生效\" data-skill-designer-prototype-field=\"生效方式\" />`;
+    }
+    if (key === '生效方式' && options && options.固定生效方式) {
+      const 固定值 = normalizeSkillUiText(options.固定生效方式, '独立生效');
+      return `
+          <label class=\"mvu-editor-field\">
+            ${标签}
+            <div class=\"mvu-editor-static skill-designer-static-token\">${htmlEscape(固定值)}</div>
+            <input type=\"hidden\" value=\"${escapeHtmlAttr(固定值)}\" data-skill-designer-prototype-field=\"生效方式\" />
+          </label>
+        `;
+    }
+    if (类型 === '枚举') {
+      const 可用选项 =
+        key === '目标'
+          ? 读取技能设计台目标候选(原型, { ...options, 当前效果: options?.当前效果 || { ...(options || {}), [key]: value } })
+          : 选项;
+      if (!可用选项.length) return '';
+      const 下拉选项 = 构建技能设计台原型字段下拉选项(key, 可用选项, 是必填 || 禁用空值);
+      const 渲染选项 = 原型 === '状态施加' && key === '状态'
+        ? 构建技能设计台状态施加分组选项(normalizeSkillDesignerOptionList(下拉选项).map(item => item.value))
+        : 下拉选项;
+      const 首个合法值 = Array.isArray(可用选项[0]?.options) ? 可用选项[0].options[0] : 可用选项[0];
+      const 当前值 =
+        value ||
+        (key === '生效方式' && options && options.默认生效方式 ? options.默认生效方式 : '') ||
+        ((是必填 || 禁用空值) ? 首个合法值 : '无') ||
+        '';
+      if (原型 === '状态施加' && key === '状态') {
+        const 摘要 = 技能设计台状态摘要({ ...(options?.当前效果 || {}), 状态: 当前值 });
+        return `
+          <label class=\"mvu-editor-field\">
+            ${标签}
+            <select class=\"mvu-editor-select\" data-skill-designer-prototype-field=\"${escapeHtmlAttr(key)}\" data-skill-designer-disableable>
+              ${buildSkillDesignerSelectOptions(渲染选项, 当前值)}
+            </select>
+            <span class=\"skill-designer-state-summary\" data-skill-designer-state-summary>${htmlEscape(摘要)}</span>
+          </label>
+        `;
+      }
+      if (原型 === '位移执行' && key === '位移类型') {
+        const 摘要 = 技能设计台位移执行摘要({ ...(options?.当前效果 || {}), 位移类型: 当前值 });
+        return `
+          <label class=\"mvu-editor-field\">
+            ${标签}
+            <select class=\"mvu-editor-select\" data-skill-designer-prototype-field=\"${escapeHtmlAttr(key)}\" data-skill-designer-disableable>
+              ${buildSkillDesignerSelectOptions(渲染选项, 当前值)}
+            </select>
+            <span class=\"skill-designer-state-summary\" data-skill-designer-movement-summary>${htmlEscape(摘要)}</span>
+          </label>
+        `;
+      }
+      return `
+          <label class=\"mvu-editor-field\">
+            ${标签}
+            <select class=\"mvu-editor-select\" data-skill-designer-prototype-field=\"${escapeHtmlAttr(key)}\" data-skill-designer-disableable>
+              ${buildSkillDesignerSelectOptions(渲染选项, 当前值)}
+            </select>
+          </label>
+        `;
+    }
+    if (类型 === '多枚举') {
+      const 可选项 = key === '限定元素' ? SKILL_LIMITED_ELEMENT_OPTIONS : 选项;
+      const selected = 读取技能设计台多枚举值(value).filter(item => 可选项.includes(item));
+      const selectedText = selected.length ? selected.join('、') : '默认无';
+      return `
+          <div class=\"mvu-editor-field skill-designer-filter-select${key === '限定元素' ? ' skill-designer-filter-select--wide' : ''}\" data-skill-designer-filter-select>
+            ${标签}
+            <details class=\"skill-designer-filter-select-box\">
+              <summary><span data-skill-designer-filter-summary>${htmlEscape(selectedText)}</span></summary>
+              <div class=\"skill-designer-filter-options\">
+                ${可选项
+                  .map(
+                    option => `
+                  <label class=\"skill-designer-filter-option\" data-skill-designer-filter-option=\"${escapeHtmlAttr(option)}\">
+                    <input type=\"checkbox\" value=\"${escapeHtmlAttr(option)}\"${selected.includes(option) ? ' checked' : ''} data-skill-designer-filter-checkbox data-skill-designer-disableable />
+                    <span>${htmlEscape(option)}</span>
+                  </label>
+                `,
+                  )
+                  .join('')}
+              </div>
+            </details>
+            <input type=\"hidden\" value=\"${escapeHtmlAttr(selected.join('|'))}\" data-skill-designer-prototype-field=\"${escapeHtmlAttr(key)}\" data-skill-designer-prototype-multiple />
+          </div>
+        `;
+    }
+    if (原型 === '时窗修正' && key === '调整tick') {
+      return 构建技能设计台tick时长输入(标签, '调整tick', value || 6, {
+        最小tick: 1,
+        最大tick: 技能设计台时窗最大调整tick,
+        默认tick: 6,
+      });
+    }
+    if (类型 === '数字' || 类型 === '整数') {
+      if (技能设计台字段是tick时长(key)) return 构建技能设计台tick时长输入(标签, key, value, { 最小tick: 0, 默认tick: 0 });
+      const 最大值属性 = 定义['最大值'] !== undefined ? ` max=\"${escapeHtmlAttr(String(定义['最大值']))}\"` : key === '防御穿透' ? ' max=\"100\"' : '';
+      const 最小值属性 = 定义['最小值'] !== undefined ? String(定义['最小值']) : '0';
+      const 当前数值 = value;
+      const 占位文本 = '留空 = 无';
+      const 字段类 = 原型 === '时窗修正' && key === '延迟回合' ? ' mvu-editor-field-wide' : '';
+      return `
+          <label class=\"mvu-editor-field${字段类}\">
+            ${标签}
+            <input class=\"mvu-editor-input\" type=\"number\" ${类型 === '整数' || key === '防御穿透' ? 'step=\"1\"' : 'step=\"0.01\"'} min=\"${最小值属性}\"${最大值属性} value=\"${escapeHtmlAttr(当前数值)}\" placeholder=\"${escapeHtmlAttr(占位文本)}\" data-skill-designer-prototype-field=\"${escapeHtmlAttr(key)}\" data-skill-designer-disableable />
+          </label>
+        `;
+    }
+    if (类型 === '带符号数值') {
+      const 结算 = normalizeSkillUiText(
+        options && options.当前效果 && options.当前效果['结算'] !== undefined ? options.当前效果['结算'] : options && options['结算'],
+        '',
+      );
+      const 状态名 = normalizeSkillUiText(
+        options && options.当前效果 && options.当前效果['状态'] !== undefined ? options.当前效果['状态'] : options && options['状态'],
+        '',
+      );
+      const 只允许正向强度 = normalizeSkillUiText(原型, '') === '状态施加' && key === '数值' && 技能设计台状态施加使用正向强度数值(状态名);
+      const 允许结算绝对值 = normalizeSkillUiText(原型, '') === '结算修正' && ['消耗', '前摇'].includes(结算) && key === '数值';
+      const 必须百分比修正 =
+        (['判定修正', '结算修正', '位移执行', '决策干扰'].includes(normalizeSkillUiText(原型, '')) && key === '数值') &&
+        !允许结算绝对值;
+      const pattern = 只允许正向强度
+        ? '\\+?[0-9]+(\\.[0-9]+)?%?'
+        : 必须百分比修正
+        ? '(?:\\+|-)?[0-9]+(\\.[0-9]+)?%'
+        : '(?:\\+|-)?[0-9]+(\\.[0-9]+)?%?|x[0-9]+(\\.[0-9]+)?';
+      const 占位文本 = 允许结算绝对值
+        ? (结算 === '前摇' ? '+20% / -20% / +2 / -2' : '+20% / -20% / +500 / -500')
+        : 只允许正向强度 ? '例如 10%'
+        : normalizeSkillUiText(原型, '') === '决策干扰' && key === '数值' ? '例如 20%，越高干扰越强'
+          : 必须百分比修正 ? '例如 +12%' : '留空 = 无';
+      const 数值单位口径 = 读取技能设计台数值字段口径(原型, key, effect);
+      if (技能设计台数值字段使用单位下拉(原型, key, effect)) {
+        const 当前单位 = 数值单位口径 === '混合' ? 读取技能设计台数值单位(value) : 数值单位口径;
+        const 当前值 = 数值单位口径 === '百分比'
+          ? 格式化技能设计台百分比字段值(value, '')
+          : 格式化技能设计台单位数值(value, 当前单位);
+        const 单位禁用 = 数值单位口径 !== '混合';
+        return `
+          <label class=\"mvu-editor-field\">
+            ${标签}
+            <div class=\"skill-designer-value-unit-control\" data-skill-designer-value-unit-control>
+              <input class=\"mvu-editor-input\" type=\"text\" pattern=\"${escapeHtmlAttr(pattern)}\" value=\"${escapeHtmlAttr(当前值)}\" placeholder=\"${escapeHtmlAttr(占位文本)}\" data-skill-designer-prototype-field=\"${escapeHtmlAttr(key)}\"${只允许正向强度 ? ' data-skill-designer-positive-value=\"true\"' : ''} data-skill-designer-disableable />
+              ${构建技能设计台数值单位下拉(当前单位, 单位禁用)}
+            </div>
+          </label>
+        `;
+      }
+      return `
+          <label class=\"mvu-editor-field\">
+            ${标签}
+            <input class=\"mvu-editor-input\" type=\"text\" pattern=\"${escapeHtmlAttr(pattern)}\" value=\"${escapeHtmlAttr(value)}\" placeholder=\"${escapeHtmlAttr(占位文本)}\" data-skill-designer-prototype-field=\"${escapeHtmlAttr(key)}\"${只允许正向强度 ? ' data-skill-designer-positive-value=\"true\"' : ''} data-skill-designer-disableable />
+          </label>
+        `;
+    }
+    if (类型 === '布尔') {
+      const 已启用 = value === true || normalizeSkillUiText(value, '') === 'true' || normalizeSkillUiText(value, '') === '启用';
+      return `
+          <div class=\"mvu-editor-field\">
+            ${标签}
+            <label class=\"skill-designer-check-toggle\">
+              <input type=\"checkbox\"${已启用 ? ' checked' : ''} data-skill-designer-prototype-field=\"${escapeHtmlAttr(key)}\" data-skill-designer-disableable />
+              <span></span>
+            </label>
+          </div>
+        `;
+    }
+    if (类型 === '对象') return '';
+    return `
+        <label class=\"mvu-editor-field\">
+          ${标签}
+          <input class=\"mvu-editor-input\" type=\"text\" value=\"${escapeHtmlAttr(value)}\" placeholder=\"留空 = 无\" data-skill-designer-prototype-field=\"${escapeHtmlAttr(key)}\" data-skill-designer-disableable />
+        </label>
+      `;
+  }
+  // —— B:27428-27485
+  function 构建技能设计台驱动判定属性编辑器(effect = {}) {
+    const 原型 = normalizeSkillUiText(effect && effect['原型'], '');
+    const 目标 = normalizeSkillUiText(effect && effect['目标'], '');
+    if (原型 === '伤害结算' || (目标 === '自身' && !['机制授予', '时光回溯', '位移执行', '复制执行'].includes(原型)) || !技能设计台原型需要默认驱动判定(原型, effect)) {
+      return `
+        <div class=\"mvu-editor-field-grid mvu-editor-field-wide skill-designer-scaling-field\" data-skill-designer-scaling-field hidden style=\"display:none\">
+          <input type=\"hidden\" value=\"无\" data-skill-designer-prototype-field=\"驱动属性\" data-skill-designer-scaling-driver />
+          <input type=\"hidden\" value=\"无\" data-skill-designer-prototype-field=\"影响方向\" />
+        </div>
+      `;
+    }
+    const 驱动属性 = String((effect && effect['驱动属性']) ?? '无').trim() || '无';
+    const 有驱动 = 驱动属性 && 驱动属性 !== '无';
+    const 方向原始选项 = 读取技能设计台原型字段选项(原型, '影响方向', { 当前效果: effect });
+    const 首个合法方向 = 选择技能设计台默认影响方向(原型, effect, '效果强度');
+    const 方向值 = normalizeSkillUiText(effect && effect['影响方向'], 首个合法方向);
+    const 方向列表 = 读取技能设计台影响方向选项值(原型, effect);
+    const 影响方向 = 有驱动 ? (方向列表.includes(方向值) ? 方向值 : 首个合法方向) : '无';
+    const 驱动选项 = 构建技能设计台原型字段下拉选项(
+      '驱动属性',
+      读取技能设计台原型字段选项(原型, '驱动属性'),
+      有驱动,
+    );
+    if (原型 === '状态移除') {
+      return `
+        <div class=\"mvu-editor-field-grid mvu-editor-field-wide skill-designer-scaling-field\" data-skill-designer-scaling-field>
+          <label class=\"mvu-editor-field\">
+            ${构建技能设计台原型字段标签(原型, '驱动属性', '驱动/判定属性')}
+            <select class=\"mvu-editor-select\" data-skill-designer-prototype-field=\"驱动属性\" data-skill-designer-scaling-driver data-skill-designer-disableable>
+              ${buildSkillDesignerSelectOptions(驱动选项, 有驱动 ? 驱动属性 : 选择技能设计台默认驱动属性(原型, effect))}
+            </select>
+          </label>
+          <input type=\"hidden\" value=\"成功率\" data-skill-designer-prototype-field=\"影响方向\" />
+        </div>
+      `;
+    }
+    const 方向选项 = 构建技能设计台原型字段下拉选项(
+      '影响方向',
+      方向原始选项,
+      true,
+    );
+    return `
+        <div class=\"mvu-editor-field-grid mvu-editor-field-wide skill-designer-scaling-field\" data-skill-designer-scaling-field>
+          <label class=\"mvu-editor-field\">
+            ${构建技能设计台原型字段标签(原型, '驱动属性', '驱动/判定属性')}
+            <select class=\"mvu-editor-select\" data-skill-designer-prototype-field=\"驱动属性\" data-skill-designer-scaling-driver data-skill-designer-disableable>
+              ${buildSkillDesignerSelectOptions(驱动选项, 有驱动 ? 驱动属性 : '无')}
+            </select>
+          </label>
+          <label class=\"mvu-editor-field\" data-skill-designer-scaling-direction${有驱动 ? '' : ' hidden style=\"display:none\"'}>
+            ${构建技能设计台原型字段标签(原型, '影响方向', '影响方向')}
+            <select class=\"mvu-editor-select\" data-skill-designer-prototype-field=\"影响方向\" data-skill-designer-disableable>
+              ${buildSkillDesignerSelectOptions(方向选项, 有驱动 ? 影响方向 : 首个合法方向)}
+            </select>
+          </label>
+        </div>
+      `;
+  }
+  // —— B:27487-27518
+  function 构建技能设计台状态移除内部筛选编辑器(effect = {}, fallbackTarget = '单体', options = {}) {
+    const 内部字段 = ['匹配原型', '资源', '数值方向']
+      .filter(key => 读取技能设计台原型字段列表('状态移除', effect).includes(key))
+      .map(key => 构建技能设计台原型字段输入('状态移除', key, 格式化技能设计台原型字段值(effect && effect[key]), fallbackTarget, options));
+    if (!内部字段.length) return '';
+    const 已启用 = normalizeSkillUiText(effect && effect['匹配原型'], '') && normalizeSkillUiText(effect && effect['匹配原型'], '') !== '无';
+    const 匹配原型 = normalizeSkillUiText(effect && effect['匹配原型'], '');
+    const 资源 = normalizeSkillUiText(effect && effect['资源'], '');
+    const 数值方向 = normalizeSkillUiText(effect && effect['数值方向'], '任意');
+    const 摘要 = (() => {
+      if (!已启用) return '未启用';
+      if (匹配原型 === '资源变化') {
+        if (资源 === '生命' && 数值方向 === '负向') return '扣生命状态';
+        if (资源 === '生命' && 数值方向 === '正向') return '恢复生命状态';
+        if (资源) return `${资源}${数值方向 === '负向' ? '扣减' : 数值方向 === '正向' ? '恢复' : '变化'}状态`;
+        return '资源变化状态';
+      }
+      if (匹配原型 === '护盾变化') return '护盾状态';
+      return '内部筛选';
+    })();
+    return `
+        <details class="mvu-editor-field-wide skill-designer-advanced-fields"${已启用 ? ' open' : ''}>
+          <summary>
+            <span>内部效果筛选</span>
+            <b>${htmlEscape(摘要)}</b>
+          </summary>
+          <div class="mvu-editor-field-grid">
+            ${内部字段.join('')}
+          </div>
+        </details>
+      `;
+  }
+  // —— B:27520-27562
+  function 构建技能设计台原型字段编辑器(effect = {}, options = {}) {
+    const prototype = normalizeSkillUiText(effect && effect['原型'], 读取技能设计台原型名称列表()[0] || '伤害结算');
+    const target = normalizeSkillDesignerEffectTargetValue(effect && effect['目标'], '单体');
+    const 当前效果 = 技能设计台清理并水合原型效果(effect, target, {
+      嵌套字段: options && options.嵌套字段,
+      强制独立: options && options.强制独立,
+      允许对应等级: options && options.允许对应等级,
+    });
+    const 原始字段列表 = 读取技能设计台原型字段列表(prototype, 当前效果, options);
+    const 字段列表 =
+      prototype === '时窗修正'
+        ? (() => {
+            const 调整字段 = normalizeSkillUiText(当前效果 && 当前效果['调整字段'], '持续回合');
+            const 模式字段 =
+              调整字段 === '有效期tick'
+                ? ['调整tick']
+                : ['触发次数', '使用次数'].includes(调整字段)
+                  ? ['调整次数']
+                  : ['调整回合', '结算倍率'];
+            const 固定顺序 = ['目标', '生效方式', '调整字段', '调整方式', ...模式字段, '单日使用次数上限', '驱动属性', '影响方向', '条件分支'];
+            return [
+              ...固定顺序.filter(key => 原始字段列表.includes(key)),
+              ...原始字段列表.filter(key => !固定顺序.includes(key)),
+            ];
+          })()
+        : 原始字段列表;
+    const 内部筛选字段 = prototype === '状态移除' ? new Set(['匹配原型', '资源', '数值方向']) : new Set();
+    const 字段内容 = 字段列表
+      .filter(key => !['驱动属性', '影响方向', '条件分支'].includes(key) && !内部筛选字段.has(key))
+      .map(key => {
+        const rawValue = 当前效果 && 当前效果[key];
+        const value = Array.isArray(rawValue) ? rawValue : 格式化技能设计台原型字段值(rawValue);
+        return 构建技能设计台原型字段输入(prototype, key, value, target, { ...options, 当前效果 });
+      });
+    if (prototype === '状态移除') 字段内容.push(构建技能设计台状态移除内部筛选编辑器(当前效果, target, options));
+    if (字段列表.includes('驱动属性') && 字段列表.includes('影响方向'))
+      字段内容.push(构建技能设计台驱动判定属性编辑器(当前效果));
+    if (字段列表.includes('条件分支'))
+      字段内容.push(
+        构建技能设计台原型字段输入(prototype, '条件分支', 当前效果 && 当前效果['条件分支'], target, options),
+      );
+    return 字段内容.join('');
+  }
+  // —— B:27564-27586
+  function 规范化技能设计台原型生效方式列表(效果列表 = [], context = {}) {
+    const 列表 = Array.isArray(效果列表) ? 效果列表 : [];
+    const 主目标 = normalizeSkillDesignerEffectTargetValue(列表[0] && 列表[0]['目标'], '');
+    const 主原型 = normalizeSkillUiText(列表[0] && 列表[0]['原型'], '');
+    const 嵌套字段 = normalizeSkillUiText(context && context.嵌套字段, '');
+    const 强制独立 = !!(context && (context.强制独立 || context.条件分支 || 嵌套字段));
+    const 可跟随主原型 = 效果条目 => {
+      const 原型 = normalizeSkillUiText(效果条目 && 效果条目['原型'], '');
+      if (!主原型 || !原型 || 原型 === 主原型) return false;
+      return ['状态施加', '状态移除', '判定修正', '结算修正', '决策干扰'].includes(
+        原型,
+      );
+    };
+    return 列表.map((效果条目, 序号) => {
+      if (!效果条目 || typeof 效果条目 !== 'object') return 效果条目;
+        const 下一条 = 技能设计台清理并水合原型效果(效果条目, 主目标 || '单体', { 嵌套字段, 强制独立, 允许对应等级: context && context.允许对应等级 });
+      const 当前目标 = normalizeSkillDesignerEffectTargetValue(下一条['目标'], 主目标 || '单体');
+      const 当前生效方式 = normalizeSkillUiText(效果条目['生效方式'], '独立生效');
+      下一条['生效方式'] =
+        强制独立 || 序号 === 0 || (主目标 && 当前目标 !== 主目标) || !可跟随主原型(下一条) ? '独立生效' : 当前生效方式;
+      return 下一条;
+    });
+  }
+  // —— B:27588-27610
+  function 规范化技能设计台运行效果生效方式(效果数组 = [], context = {}) {
+    const 列表 = Array.isArray(效果数组) ? 效果数组 : [];
+    const 主目标 = normalizeSkillDesignerEffectTargetValue(列表[0] && 列表[0]['目标'], '');
+    const 主原型 = normalizeSkillUiText(列表[0] && 列表[0]['原型'], '');
+    const 嵌套字段 = normalizeSkillUiText(context && context.嵌套字段, '');
+    const 强制独立 = !!(context && (context.强制独立 || context.条件分支 || 嵌套字段));
+    const 可跟随主原型 = 效果条目 => {
+      const 原型 = normalizeSkillUiText(效果条目 && 效果条目['原型'], '');
+      if (!主原型 || !原型 || 原型 === 主原型) return false;
+      return ['状态施加', '状态移除', '判定修正', '结算修正', '决策干扰'].includes(
+        原型,
+      );
+    };
+    return 列表.map((效果条目, 序号) => {
+      if (!效果条目 || typeof 效果条目 !== 'object' || Array.isArray(效果条目)) return 效果条目;
+      const 下一条 = 技能设计台清理并水合原型效果(效果条目, 主目标 || '单体', { 嵌套字段, 强制独立, 允许对应等级: context && context.允许对应等级 });
+      const 当前目标 = normalizeSkillDesignerEffectTargetValue(下一条['目标'], 主目标 || '单体');
+      const 当前生效方式 = normalizeSkillUiText(效果条目['生效方式'], '独立生效');
+      下一条['生效方式'] =
+        强制独立 || 序号 === 0 || (主目标 && 当前目标 !== 主目标) || !可跟随主原型(下一条) ? '独立生效' : 当前生效方式;
+      return 下一条;
+    });
+  }
+  // —— B:27612-27654
+  function 构建技能设计台原型效果行列表(
+    effects = [],
+    fallbackTarget = '单体',
+    允许删空 = false,
+    options = {},
+    追加动画 = false,
+  ) {
+    const source = Array.isArray(effects) ? effects : [];
+    const normalized = 允许删空 && !source.length ? [] : 规范化技能设计台原型效果列表(source, fallbackTarget, options);
+    const prototypeOptions = 读取技能设计台原型名称列表();
+    return normalized
+      .map((effect, index) => {
+        const prototype = normalizeSkillUiText(effect['原型'], prototypeOptions[0] || '伤害结算');
+        const 允许删除当前原型 = 允许删空 || normalized.length > 1;
+        const 行选项 = {
+          ...options,
+          当前效果: effect,
+          默认生效方式: options && options.默认生效方式 ? options.默认生效方式 : '跟随主原型',
+          固定生效方式:
+            options && options.固定首个独立生效 && index === 0 ? '独立生效' : options && options.固定生效方式,
+        };
+        const 状态标记 = prototype === '状态施加'
+          ? ` data-skill-designer-rendered-state=\"${escapeHtmlAttr(normalizeSkillUiText(effect['状态'], ''))}\"`
+          : '';
+        return `
+          <div class=\"skill-designer-subsection${追加动画 ? ' skill-designer-fade-in' : ''}${prototype === '状态施加' ? ' skill-designer-status-prototype-row' : ''}\" data-skill-designer-prototype-row data-skill-designer-rendered-prototype=\"${escapeHtmlAttr(prototype)}\"${状态标记}>
+            ${允许删除当前原型 ? '<button type=\"button\" class=\"skill-designer-remove-btn\" data-skill-designer-remove-prototype data-skill-designer-disableable aria-label=\"删除该原型机制\" title=\"删除该原型机制\">×</button>' : ''}
+            <div class=\"mvu-editor-field-grid\">
+              <label class=\"mvu-editor-field\">
+                <span class=\"mvu-editor-label\">原型</span>
+                <select class=\"mvu-editor-select\" data-skill-designer-prototype-select data-skill-designer-disableable>
+                  ${构建技能设计台原型选项(prototype)}
+                </select>
+              </label>
+            </div>
+            <div class=\"mvu-editor-field-grid\" data-skill-designer-prototype-fields>
+              ${构建技能设计台原型字段编辑器(effect, 行选项)}
+            </div>
+          </div>
+        `;
+      })
+      .join('');
+  }
+  // —— B:27799-27936
+  function 构建技能设计台原型摘要(draft = {}) {
+    const 简写 = (value, fallback = '') => normalizeSkillUiText(格式化技能设计台原型字段值(value), fallback);
+    const 目标文本 = effect => {
+      const 目标 = normalizeSkillDesignerEffectTargetValue(effect && effect['目标'], '单体');
+      if (目标 === '单体') return '，作用于目标';
+      if (目标 === '群体') return '，作用于多个目标';
+      if (目标 === '全场') return '，作用于全场';
+      if (目标 === '召唤物') return '，作用于召唤物';
+      return `，作用于${目标}`;
+    };
+    const 持续文本 = effect => {
+      const round = Math.max(0, parseSkillDesignerIntegerInputValue(effect && effect['持续回合'], 0, 0));
+      const tick = Math.max(0, parseSkillDesignerIntegerInputValue(effect && effect['持续tick'], 0, 0));
+      if (round > 0) return `，${round}回合`;
+      if (tick > 0) return `，${tick}tick`;
+      return '';
+    };
+    const 数值文本 = (effect, fallback = '') => 简写(effect && effect['数值'], fallback);
+    const 条件文本 = effect => {
+      const text = 构建技能设计台条件分支摘要(effect && effect['条件分支']);
+      return text ? `；条件：${text}` : '';
+    };
+    const 单条摘要 = effect => {
+      const prototype = normalizeSkillUiText(effect && effect['原型'], '');
+      if (!prototype) return '';
+      if (prototype === '伤害结算') {
+        const power = 简写(effect['威力倍率'], '100');
+        const type = 简写(effect['伤害类型']);
+        const hits = Math.max(1, parseSkillDesignerIntegerInputValue(effect['攻击段数'], 1, 1));
+        const penetration = 简写(effect['防御穿透']);
+        const fixedPower = 简写(effect['对应等级']);
+        return (
+          [`伤害，威力倍率${power}`, type, hits > 1 ? `${hits}段` : '', penetration ? `穿透${penetration}%` : '', fixedPower ? `对应等级${fixedPower}级` : '']
+            .filter(Boolean)
+            .join('，') +
+          目标文本(effect) +
+          持续文本(effect) +
+          条件文本(effect)
+        );
+      }
+      if (prototype === '资源变化') {
+        const 数值 = 数值文本(effect, '+0');
+        const 资源 = 简写(effect['资源'], '资源');
+        const 动作 = 数值.startsWith('-') && 资源 !== '生命' ? `泯灭 ${资源} ${数值.replace(/^-/, '')}` : `${资源} ${数值}`;
+        return (
+          动作 +
+          目标文本(effect) +
+          持续文本(effect) +
+          条件文本(effect)
+        );
+      }
+      if (prototype === '资源转移') {
+        const 方式 = 简写(effect['资源转移方式'], '资源转移');
+        const 资源 = 简写(effect['资源'], '资源');
+        const 数值 = 数值文本(effect, '+0').replace(/^[+-]/, '');
+        if (方式 === '吞噬') return `吞噬目标${数值}${资源}，并转化为自身${资源}${持续文本(effect)}${条件文本(effect)}`;
+        if (方式 === '共享') return `向目标共享${数值}${资源}${持续文本(effect)}${条件文本(effect)}`;
+        if (方式 === '均分') return `均分目标${资源}${持续文本(effect)}${条件文本(effect)}`;
+        return `转移目标${数值}${资源}${持续文本(effect)}${条件文本(effect)}`;
+      }
+      if (prototype === '护盾变化') {
+        const 模式 = 简写(effect['护盾模式'], 解析技能设计台正负数值(effect['数值']) < 0 ? '斩盾' : '正向护盾');
+        const 数值 = 数值文本(effect, '+0').replace(/^[+-]/, '');
+        if (模式 === '窃盾') return `窃取目标护盾${数值}${持续文本(effect)}${条件文本(effect)}`;
+        if (模式 === '斩盾') return `削减目标护盾${数值}${持续文本(effect)}${条件文本(effect)}`;
+        return `生成护盾${数值}${目标文本(effect)}${持续文本(effect)}${条件文本(effect)}`;
+      }
+      if (prototype === '属性修正')
+        return `${简写(effect['属性'], '属性')} ${数值文本(effect, '+0')}${目标文本(effect)}${持续文本(effect)}${条件文本(effect)}`;
+      if (prototype === '判定修正')
+        return `调整${简写(effect['判定'], '判定')}${数值文本(effect, '+0')}${effect['打断效果'] === true ? '，附带打断' : ''}${目标文本(effect)}${持续文本(effect)}${条件文本(effect)}`;
+      if (prototype === '结算修正') {
+        const 限定元素 = 简写(effect['限定元素']);
+        const 结算 = 简写(effect['结算']);
+        const 数量 = ['伤害分摊', '消耗分摊'].includes(结算) && normalizeSkillDesignerEffectTargetValue(effect['目标'], '单体') === '群体'
+          ? 简写(effect['数量'])
+          : '';
+        const 转移对象 = 结算 === '伤害转移' ? 简写(effect['转移对象'], '攻击者') : '';
+        return `结算：${结算 || '结算'} ${数值文本(effect, '+0')}${转移对象 ? `，转给${转移对象}` : ''}${数量 ? `，最多${数量}人` : ''}${限定元素 ? `，限定${限定元素}` : ''}${持续文本(effect)}${条件文本(effect)}`;
+      }
+      if (prototype === '状态施加') {
+        return `施加${简写(effect['状态'], '状态')}${目标文本(effect)}${持续文本(effect)}${条件文本(effect)}`;
+      }
+      if (prototype === '状态移除') {
+        const state = 简写(effect['状态']) || 简写(effect['类型']) || 简写(effect['匹配原型'], '状态');
+        const label =
+          state === '任意负面'
+            ? '负面状态'
+            : state === '任意增益'
+              ? '增益状态'
+              : state === '任意状态'
+                ? '匹配状态'
+                : state;
+        const count = 简写(effect['数量']);
+        return `移除${label}${count ? ` ${count}` : ''}${目标文本(effect)}${持续文本(effect)}${条件文本(effect)}`;
+      }
+      if (prototype === '规则防御') {
+        const 规则 = 简写(effect['规则'], '规则');
+        const 次数 = 简写(effect['次数']) || '1';
+        if (规则 === '免伤') return `抵消伤害 ${次数}次${目标文本(effect)}${持续文本(effect)}${条件文本(effect)}`;
+        if (规则 === '免死') return `致命结算锁血 ${次数}次${目标文本(effect)}${持续文本(effect)}${条件文本(effect)}`;
+        return `规则防御：${规则}${次数 ? ` ${次数}次` : ''}${目标文本(effect)}${持续文本(effect)}${条件文本(effect)}`;
+      }
+      if (prototype === '机制授予') {
+        const 授予文本 = (Array.isArray(effect['授予效果']) ? effect['授予效果'] : [])
+          .map(单条摘要)
+          .filter(Boolean)
+          .slice(0, 3)
+          .join('；') || '后续效果';
+        const 触发条件 = 简写(effect['触发条件'], '主动触发');
+        const 待机期限 = effect['持续回合'] !== undefined ? `待机期限${简写(effect['持续回合'])}回合，逾期失效` : '无回合期限';
+        if (触发条件 === '随下次行动触发') return `下次行动时触发一次：${授予文本}；${待机期限}${条件文本(effect)}`;
+        const 次数 = 简写(effect['可用次数']) || '1';
+        if (触发条件 === '下次魂技成功释放') return `魂技成功释放时附带：${授予文本}；每次消耗一次，共${次数}次，${待机期限}${条件文本(effect)}`;
+        const 回合 = 简写(effect['持续回合']) || '1';
+        return `主动触发${次数}次，${回合}回合内：${授予文本}${条件文本(effect)}`;
+      }
+      if (prototype === '决策干扰')
+        return `干扰：${简写(effect['干扰'], '判断干扰')} ${数值文本(effect, '20%')}${持续文本(effect)}${条件文本(effect)}`;
+      if (prototype === '召唤生成') return `${summarizeSummonEffectUi(effect)}${条件文本(effect)}`;
+      if (prototype === '修炼增益') {
+        const 收益类型 = 简写(effect['收益类型'], '训练方式收益');
+        const 对象 = 收益类型 === '属性修炼速度'
+          ? `${简写(effect['修炼属性'], '魂力上限')}修炼`
+          : `${简写(effect['训练方式'], '冥想')}收益`;
+        return `修炼增益：${对象} ${数值文本(effect, '+0')}${持续文本(effect)}${条件文本(effect)}`;
+      }
+      return [prototype, 数值文本(effect), 持续文本(effect).replace(/^，/, '')].filter(Boolean).join(' ');
+    };
+    return 规范化技能设计台原型效果列表(draft.prototypeEffects, draft.target)
+      .map(effect => {
+        const text = 单条摘要(effect);
+        if (!text) return '';
+        return normalizeSkillUiText(effect && effect['生效方式'], '') === '跟随主原型' ? `附加${text}` : text;
+      })
+      .filter(Boolean)
+      .join('；');
+  }
+  // —— B:27938-27962
+  function readSkillDesignerMechanicParamState(mountEl, draft = {}) {
+    const nextMap = {};
+    collectSkillDesignerMechanicLabels(draft).forEach(label => {
+      const defs = getSkillDesignerMechanicParamDefs(label);
+      const entry = {};
+      defs.forEach(def => {
+        const input = mountEl
+          ? Array.from(mountEl.querySelectorAll('[data-skill-designer-param-key]')).find(
+              node =>
+                node.getAttribute('data-skill-designer-mechanic') === label &&
+                node.getAttribute('data-skill-designer-param-key') === def.key,
+            )
+          : null;
+        const rawValue = input ? normalizeSkillUiText(input.value, '') : '';
+        if (!rawValue) return;
+        if (label === '机制抹消' && def.key === 'suppressObject') {
+          entry[def.key] = 规范化技能设计台机制抹消对象(rawValue);
+          return;
+        }
+        entry[def.key] = rawValue;
+      });
+      if (safeEntries(entry).length) nextMap[label] = entry;
+    });
+    return nextMap;
+  }
+  // —— B:27964-28123
+  function buildSkillDesignerFormStateFromDraft(draft = {}, previewMeta = {}) {
+    const baseDraft = draft && typeof draft === 'object' ? draft : {};
+    const 显式被动值 = normalizeSkillUiText(baseDraft.启用被动, '');
+    const 原始类型 = normalizeSkillUiText(baseDraft.type, '');
+    const typeMeta = resolveSkillDesignerTypeMeta(previewMeta, /无|禁用|关闭|false|no|0/.test(显式被动值) ? '' : baseDraft.type);
+    const costConfig = parseSkillDesignerCostConfig(
+      baseDraft.cost || baseDraft['消耗'],
+      baseDraft.resourceType || baseDraft.costType,
+      baseDraft.resourceValues || baseDraft.costValues,
+    );
+    const 原始主机制 = normalizeSkillUiText(baseDraft.primaryMain || baseDraft['主机制'], '');
+    const resolvedPrimaryMain = Object.keys(SKILL_DESIGNER_MAIN_MECHANIC_POOL).includes(原始主机制) ? 原始主机制 : '';
+    let resolvedTarget = normalizeSkillDesignerSelectValue(
+      normalizeSkillDesignerTargetForForm(
+        (Array.isArray(baseDraft.prototypeEffects) &&
+          baseDraft.prototypeEffects[0] &&
+          baseDraft.prototypeEffects[0]['目标']) ||
+          baseDraft.target,
+        getSkillDesignerDefaultTarget(previewMeta, typeMeta.value),
+      ),
+      SKILL_DESIGNER_TARGET_OPTIONS,
+      getSkillDesignerFirstOptionValue(SKILL_DESIGNER_TARGET_OPTIONS),
+    );
+    if (/^(未知|未设置|无)$/.test(resolvedTarget))
+      resolvedTarget = getSkillDesignerDefaultTarget(previewMeta, typeMeta.value);
+    const isFusionScope = toText(previewMeta && previewMeta.scope, '') === '武魂融合技';
+    const rawFusionMode = isFusionScope
+      ? normalizeSkillDesignerFusionMode(baseDraft.fusionMode || baseDraft['融合模式'])
+      : '';
+    const 原始融合用法模式 = isFusionScope ? 规范化技能设计台融合用法模式(baseDraft['用法模式']) : '';
+    const rawFusionPartner = isFusionScope
+      ? normalizeSkillUiText(baseDraft.fusionPartner || baseDraft['融合对象'], '')
+      : '';
+    const rawFusionParticipants = isFusionScope
+      ? normalizeSkillDesignerFusionParticipantList(getSkillDesignerRawFusionParticipants(baseDraft))
+      : [];
+    const derivedFusionFields = isFusionScope
+      ? deriveSkillDesignerFusionFields(rawFusionMode, rawFusionParticipants, rawFusionPartner)
+      : { fusionMode: '', fusionPartner: '', fusionSourceSpirits: [], fusionParticipants: [] };
+    const 原始细分机制 = normalizeSkillUiText(baseDraft.primarySub || baseDraft['细分机制'], '');
+    const resolvedPrimarySub =
+      resolvedPrimaryMain && getSkillDesignerChildMechanicOptions(resolvedPrimaryMain).includes(原始细分机制)
+        ? 原始细分机制
+        : '';
+    const resolvedDeliveryForm = normalizeSkillDesignerSelectValue(
+      baseDraft.deliveryForm,
+      getSkillDesignerDeliveryOptions(typeMeta.value),
+      getSkillDesignerFirstOptionValue(getSkillDesignerDeliveryOptions(typeMeta.value), '直接生效'),
+    );
+    const derivedMainRole = inferSkillDesignerMainRole(
+      typeMeta.value,
+      resolvedTarget,
+      resolvedPrimaryMain,
+      resolvedPrimarySub,
+    );
+    const 启用技能掌控度 = 技能设计台启用技能掌控度(previewMeta, baseDraft);
+    const levelControl = 启用技能掌控度 ? buildSkillDesignerLevelControlFromDraft(baseDraft) : null;
+    const 显式原型效果 = 筛选技能设计台显式原型效果列表(baseDraft.prototypeEffects, resolvedTarget);
+    const 启用被动 = 技能设计台启用被动(previewMeta, baseDraft);
+    const 被动触发 = 读取技能设计台被动触发默认值({ ...baseDraft, prototypeEffects: 显式原型效果 });
+    const 被动触发限制 = 读取技能设计台被动触发限制(baseDraft);
+    const 使用限制 = 读取技能设计台使用限制(baseDraft);
+    const 预览根数据 = (liveSnapshot && liveSnapshot.rootData) || (lastRenderableSnapshot && lastRenderableSnapshot.rootData) || {};
+    const 武魂元素上下文 = 读取技能设计台武魂上下文(预览根数据, previewMeta);
+    let 初始附带属性 = 规范化技能元素列表_桥接(baseDraft.attachedAttributes);
+    if (!初始附带属性.length && 技能设计台是元素系上下文(预览根数据, previewMeta, { type: typeMeta.value })) {
+      初始附带属性 = [...武魂元素上下文.可调用元素];
+    }
+    const coreState = {
+      name: 规范第七魂环真身名称_桥接(
+        normalizeSkillUiText(baseDraft.name, getSkillDesignerNameFallback(previewMeta)),
+        previewMeta,
+      ),
+      type: typeMeta.value,
+      typeDisplay: typeMeta.display,
+      target: 启用被动 ? '自身' : resolvedTarget,
+      cost: buildSkillDesignerCostObject(costConfig.resourceType, costConfig.resourceValues),
+      costType: normalizeSkillDesignerSelectValue(costConfig.resourceType, SKILL_DESIGNER_RESOURCE_TYPE_OPTIONS, '无'),
+      costValues: cloneJsonValue(costConfig.resourceValues || {}),
+      costValue: costConfig.resourceValue,
+      sustainCostText: costConfig.sustainText || '',
+      前摇: Math.max(
+        0,
+        toNumber(baseDraft['前摇'], SKILL_DESIGNER_RUNTIME_CAST_TIME_BY_DELIVERY[resolvedDeliveryForm] || 10),
+      ),
+      启用技能掌控度: 启用技能掌控度 ? '启用' : '无',
+      启用被动: 启用被动 ? '启用' : '无',
+      被动触发,
+      被动触发周期: 被动触发限制.周期,
+      被动触发次数: String(被动触发限制.次数),
+      使用限制周期: 使用限制.周期,
+      使用限制次数: String(使用限制.次数),
+      bonus: '无',
+      mainRole: normalizeSkillUiText(derivedMainRole, '未知'),
+      primaryMain: resolvedPrimaryMain,
+      primarySub: resolvedPrimarySub,
+      prototypeEffects: 显式原型效果,
+      deliveryForm: resolvedDeliveryForm,
+      constructItemCount: Math.max(
+        1,
+        parseSkillDesignerIntegerInputValue(baseDraft.constructItemCount || baseDraft['数量'], 1, 1),
+      ),
+      constructDurationTick: Math.max(
+        0,
+        parseSkillDesignerIntegerInputValue(baseDraft.constructDurationTick || baseDraft['有效期tick'], 0, 0),
+      ),
+      constructDescription: normalizeSkillUiText(baseDraft.constructDescription || baseDraft['描述'], ''),
+      secondaryMechanics: resolvedPrimaryMain
+        ? normalizeSkillDesignerSecondarySelection(
+            resolvedPrimaryMain,
+            baseDraft.secondaryMechanics,
+            typeMeta.value,
+            resolvedPrimarySub,
+          )
+        : [],
+      attachedAttributes: 初始附带属性,
+      attributeSource: '无',
+      attributeRole: '无',
+      coeff: normalizeSkillDesignerCoeffMap({}),
+      visualDesc: normalizeSkillUiText(baseDraft.visualDesc, ''),
+      effectDesc: normalizeSkillUiText(baseDraft.effectDesc, ''),
+      artStage: normalizeSkillUiText(baseDraft.artStage, '未入门'),
+      artLevel: Math.max(0, toNumber(baseDraft.artLevel, 0)),
+      fusionMode: derivedFusionFields.fusionMode,
+      用法模式: 原始融合用法模式,
+      fusionPartner: derivedFusionFields.fusionPartner,
+      fusionSourceSpirits: derivedFusionFields.fusionSourceSpirits.length
+        ? derivedFusionFields.fusionSourceSpirits
+        : isFusionScope
+          ? normalizeSkillDesignerArray(baseDraft.fusionSourceSpirits || baseDraft['来源武魂'])
+          : [],
+      fusionParticipants: derivedFusionFields.fusionParticipants,
+      副作用列表: 规范化技能设计台副作用列表(baseDraft.副作用列表),
+      使用副作用列表: 规范化技能设计台副作用列表(baseDraft.使用副作用列表),
+      技能掌控度: levelControl,
+      技能掌控度中心等级: levelControl ? String(levelControl.中心等级) : '',
+      技能掌控度圆满等级: levelControl ? String(levelControl.圆满等级) : '',
+      阵营判定: '自动',
+    };
+    if (!coreState.prototypeEffects.length) {
+      const 模板原型效果 = 构建技能设计台模板原型效果列表(coreState, previewMeta);
+      coreState.prototypeEffects = 模板原型效果.length
+        ? 模板原型效果
+        : 规范化技能设计台原型效果列表([], resolvedTarget);
+    }
+    coreState.type = 推断技能设计台技能分类(coreState.prototypeEffects, typeMeta.value);
+    coreState.typeDisplay = coreState.type;
+    coreState.mainRole = normalizeSkillUiText(
+      inferSkillDesignerMainRole(coreState.type, coreState.target, coreState.primaryMain, coreState.primarySub),
+      '未知',
+    );
+    const implicitAttributeConfig = resolveSkillDesignerImplicitAttributeConfig(coreState, previewMeta);
+    return {
+      ...coreState,
+      attributeSource: implicitAttributeConfig.source,
+      attributeRole: implicitAttributeConfig.role,
+      coeff: implicitAttributeConfig.coeff,
+      mechanicParams: normalizeSkillDesignerMechanicParamMap(baseDraft.mechanicParams, coreState),
+    };
+  }
+  // —— B:28336-28339
+  const SKILL_DESIGNER_RUNTIME_CAST_TIME_BY_DELIVERY = Object.freeze({
+    直接生效: 10,
+    造物承载: 20,
+  });
+  // —— B:28341-28364
+  function buildSkillDesignerRuntimeObject(source = {}) {
+    const result = {};
+    safeEntries(source && typeof source === 'object' ? source : {}).forEach(([key, value]) => {
+      if (value === undefined || value === null) return;
+      if (typeof value === 'string' && !value.trim()) return;
+      if (Array.isArray(value) && !value.length) return;
+      if (value && typeof value === 'object' && !Array.isArray(value) && !safeEntries(value).length) return;
+      result[key] = value;
+    });
+      if (!normalizeSkillUiText(result['原型'], '') && normalizeSkillUiText(result['机制'], '')) {
+        const 原型列表 = getSkillDesignerMechanismCompiledPrototypeList(result['机制']);
+        if (原型列表.length) {
+          const 原型条目 = 原型列表[0];
+          const 原型 = typeof 原型条目 === 'string' ? 原型条目 : normalizeSkillUiText(原型条目 && 原型条目['原型'], '');
+          if (原型) {
+            const 转换结果 = { ...result, ...(typeof 原型条目 === 'object' && 原型条目 ? 原型条目 : {}), 原型: 原型 };
+            delete 转换结果['机制'];
+            return 转换结果;
+          }
+        }
+      }
+    delete result['机制'];
+    return result;
+  }
+  // —— B:28366-28373
+  function parseSkillDesignerNumericInputValue(value, fallback = 0, digits = 4) {
+    const rawText = toText(value, '').trim();
+    if (!rawText) return Number(Number(fallback || 0).toFixed(digits));
+    const match = rawText.match(/-?\d+(?:\.\d+)?/);
+    const parsed = Number(match ? match[0] : rawText);
+    if (!Number.isFinite(parsed)) return Number(Number(fallback || 0).toFixed(digits));
+    return Number(parsed.toFixed(digits));
+  }
+  // —— B:28375-28379
+  function parseSkillDesignerIntegerInputValue(value, fallback = 0, minimum = 0) {
+    const parsed = Math.round(parseSkillDesignerNumericInputValue(value, fallback, 0));
+    if (!Number.isFinite(parsed)) return Math.max(minimum, Math.round(Number(fallback || 0)));
+    return Math.max(minimum, parsed);
+  }
+  // —— B:28381-28388
+  function parseSkillDesignerPercentRatio(value, fallback = 0) {
+    const rawText = toText(value, '').trim();
+    if (!rawText) return Number(Number(fallback || 0).toFixed(4));
+    const parsed = parseSkillDesignerNumericInputValue(rawText, fallback, 4);
+    if (!Number.isFinite(parsed)) return Number(Number(fallback || 0).toFixed(4));
+    if (/%/.test(rawText) || parsed > 1) return Number((parsed / 100).toFixed(4));
+    return Number(parsed.toFixed(4));
+  }
+  // —— B:28404-28408
+  function 规范化技能设计台伤害威力倍率(value, fallback = 100) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed <= 0) return Math.max(1, Number(fallback || 100));
+    return Math.max(1, Math.round(parsed));
+  }
+  // —— B:28433-28435
+  function normalizeSkillDesignerTargetForRuntime(target = '') {
+    return normalizeSkillDesignerEffectTargetValue(target, '单体');
+  }
+  // —— B:28441-28446
+  function isSkillDesignerGrantableMechanism(label = '') {
+    const normalizedLabel = normalizeSkillUiText(label, '');
+    return Array.isArray(SKILL_DESIGNER_TARGET_SEMANTICS.可赋予)
+      ? SKILL_DESIGNER_TARGET_SEMANTICS.可赋予.includes(normalizedLabel)
+      : false;
+  }
+  // —— B:28455-28460
+  function getSkillDesignerMechanismRegistryMeta(label = '') {
+    const normalizedLabel = normalizeSkillUiText(label, '');
+    if (!normalizedLabel) return null;
+    const meta = SKILL_DESIGNER_MECHANISM_META[normalizedLabel];
+    return meta && typeof meta === 'object' ? meta : null;
+  }
+  // —— B:28483-28510
+  function resolveSkillDesignerMechanismParamDefsFromRegistry(label = '') {
+    const meta = getSkillDesignerMechanismRegistryMeta(label);
+    const schema = Array.isArray(meta && meta.设计台参数定义) ? meta.设计台参数定义 : [];
+    if (!schema.length) return [];
+    return schema
+      .map(def => {
+        if (!def || typeof def !== 'object') return null;
+        const type = normalizeSkillUiText(def.type, 'text');
+        const key = normalizeSkillUiText(def.key, '');
+        const title = normalizeSkillUiText(def.label, '');
+        if (!key || !title) return null;
+        const placeholder = normalizeSkillUiText(def.placeholder, '');
+        if (type === 'select') {
+          const optionKey = normalizeSkillUiText(def.optionsKey, '');
+          const options = optionKey
+            ? SKILL_DESIGNER_PARAM_OPTION_REGISTRY[optionKey] || []
+            : Array.isArray(def.options)
+              ? def.options
+              : [];
+          return createSkillDesignerSelectParam(key, title, options, placeholder || '未设置');
+        }
+        if (type === 'number') {
+          return createSkillDesignerNumberParam(key, title, placeholder, normalizeSkillUiText(def.step, '0.1'));
+        }
+        return createSkillDesignerTextParam(key, title, placeholder);
+      })
+      .filter(Boolean);
+  }
+  // —— B:28529-28534
+  function resolveSkillDesignerGrantableMechanismTargetForRuntime(target = '', mechanismLabel = '') {
+    const normalizedTarget = normalizeSkillDesignerTargetForRuntime(target);
+    if (mechanismLabel && !isSkillDesignerGrantableMechanism(mechanismLabel)) return normalizedTarget || '自身';
+    if (normalizeSkillUiText(mechanismLabel, '') === '能力共享' && normalizedTarget === '自身') return '群体';
+    return normalizedTarget || '自身';
+  }
+  // —— B:28574-28579
+  function getSkillDesignerEffectivePrimaryLabel(draft = {}) {
+    const primarySub = normalizeSkillUiText(draft && draft.primarySub, '');
+    if (primarySub) return primarySub;
+    const primaryMain = normalizeSkillUiText(draft && draft.primaryMain, '');
+    return primaryMain;
+  }
+  // —— B:30619-30639
+  function normalizeSkillDesignerPassiveEffects(effectArray = [], draft = {}, previewMeta = {}) {
+    const isPassive =
+      /被动/.test(normalizeSkillUiText(draft && draft.type, '')) ||
+      toText(previewMeta && previewMeta.scope, '') === 'blood_passive';
+    if (!isPassive) return Array.isArray(effectArray) ? effectArray : [];
+    return (Array.isArray(effectArray) ? effectArray : []).map(effect => {
+      if (!effect || typeof effect !== 'object') return effect;
+      const cloned = cloneJsonValue(effect);
+      const 原型 = toText(cloned && cloned['原型'], '').trim();
+      if (['属性修正', '资源变化', '状态施加', '结算修正'].includes(原型)) {
+        cloned['目标'] = cloned['目标'] || '自身';
+        delete cloned['对象'];
+        if (Number(cloned['持续回合'] || 0) > 10) delete cloned['持续回合'];
+      }
+      if (['护盾变化', '规则防御', '机制授予', '召唤生成', '复制执行'].includes(原型)) {
+        cloned['目标'] = cloned['目标'] || '自身';
+        if (Number(cloned['持续回合'] || 0) > 10) delete cloned['持续回合'];
+      }
+      return cloned;
+    });
+  }
+  // —— B:30641-30653
+  function 套用技能设计台被动触发(effectArray = [], draft = {}) {
+    if (!技能设计台启用被动({}, draft)) return Array.isArray(effectArray) ? effectArray : [];
+    return (Array.isArray(effectArray) ? effectArray : []).map(effect => {
+      if (!effect || typeof effect !== 'object') return effect;
+      const cloned = cloneJsonValue(effect);
+      const 原型 = normalizeSkillUiText(cloned['原型'], '');
+      cloned['目标'] = '自身';
+      delete cloned['对象'];
+      if (原型 !== '伤害结算' && Number(cloned['持续回合'] || 0) > 10) delete cloned['持续回合'];
+      delete cloned['触发限制'];
+      return cloned;
+    });
+  }
+  // —— B:30655-30696
+  function buildSkillDesignerConstructEffect(draft = {}, runtimeEffects = []) {
+    const 造物默认驱动属性 =
+      cloneJsonValue(Array.isArray(runtimeEffects) ? runtimeEffects : []).find(effect =>
+        effect &&
+        typeof effect === 'object' &&
+        normalizeSkillUiText(effect['原型'], '') !== '伤害结算' &&
+        normalizeSkillUiText(effect['驱动属性'], '无') !== '无',
+      )?.['驱动属性'] || '魂力上限';
+    const usageEffects = cloneJsonValue(Array.isArray(runtimeEffects) ? runtimeEffects : []).map(effect => {
+      if (!effect || typeof effect !== 'object') return effect;
+      const cloned = cloneJsonValue(effect);
+      const 原型 = normalizeSkillUiText(cloned['原型'], '');
+      const 字段列表 = 读取技能设计台原型字段列表(原型, cloned);
+      const 支持驱动 = 字段列表.includes('驱动属性');
+      const 支持影响方向 = 字段列表.includes('影响方向');
+      if (原型 !== '伤害结算' && 原型 && 支持驱动 && 支持影响方向) {
+        if (String(cloned['驱动属性'] ?? '').trim() === '无') {
+          delete cloned['驱动属性'];
+          delete cloned['影响方向'];
+        } else {
+          if (!normalizeSkillUiText(cloned['驱动属性'], '')) {
+            cloned['驱动属性'] = 造物默认驱动属性;
+          }
+        }
+      }
+      应用技能设计台目标驱动契约(原型, cloned);
+      return cloned;
+    });
+    const result = buildSkillDesignerRuntimeObject({
+      数量: Math.max(1, parseSkillDesignerIntegerInputValue(draft && draft.constructItemCount, 1, 1)),
+      描述: normalizeSkillUiText(
+        draft && draft.constructDescription,
+        buildSkillDesignerCompactSummary(draft) || '使用后触发对应魂技效果',
+      ),
+      使用效果: usageEffects,
+    });
+    const 使用副作用列表 = 规范化技能设计台副作用列表(draft && draft.使用副作用列表);
+    if (使用副作用列表.length) result['副作用列表'] = 使用副作用列表;
+    const durationTick = Math.max(0, parseSkillDesignerIntegerInputValue(draft && draft.constructDurationTick, 0, 0));
+    if (durationTick > 0) result['有效期tick'] = durationTick;
+    return result;
+  }
+  // —— B:30698-30706
+  function buildSkillDesignerRuntimeEffects(draft = {}, skillSource = {}, previewMeta = {}) {
+    const prototypeEffects = 筛选技能设计台显式原型效果列表(
+      draft && draft.prototypeEffects,
+      draft && draft.target,
+    ).filter(effect => 技能设计台原型需要落盘(effect));
+    void skillSource;
+    void previewMeta;
+    return 规范化技能设计台运行效果生效方式(prototypeEffects);
+  }
+  // —— B:30708-30839
+  function buildSkillDesignerUpdatedSkill(skillSource = {}, formState = {}, previewMeta = {}, 根数据 = {}) {
+    const safeSkill = {};
+    const 原始副作用违规列表 = [];
+    const 记录原始副作用违规 = (列表, 前缀) => {
+      if (!Array.isArray(列表)) return;
+      规范化技能设计台副作用列表(列表, path => {
+        if (path) 原始副作用违规列表.push(path.replace(/^副作用列表/, 前缀));
+      });
+    };
+    记录原始副作用违规(formState && formState['副作用列表'], '副作用列表');
+    记录原始副作用违规(formState && formState['使用副作用列表'], '使用副作用列表');
+    if (原始副作用违规列表.length) throw new Error(`副作用结构错误：${Array.from(new Set(原始副作用违规列表)).join('、')}`);
+    const 原始范围 = normalizeSkillUiText(previewMeta && previewMeta.scope, '');
+    if (原始范围 !== 'art' && !设计台规则.战斗外原型可保存) {
+      const 原始战斗外原型 = [];
+      const 战斗外原型集合 = new Set(['修炼增益', '战斗外复活']);
+      const 扫描原始战斗外原型 = effect => {
+        if (!effect || typeof effect !== 'object' || Array.isArray(effect)) return;
+        const 原型 = normalizeSkillUiText(effect['原型'], '');
+        if (战斗外原型集合.has(原型)) 原始战斗外原型.push(原型);
+        技能设计台嵌套效果数组字段表.forEach(key => {
+          (Array.isArray(effect[key]) ? effect[key] : []).forEach(扫描原始战斗外原型);
+        });
+      };
+      (Array.isArray(formState && formState.prototypeEffects) ? formState.prototypeEffects : []).forEach(扫描原始战斗外原型);
+      if (原始战斗外原型.length)
+        throw new Error(`战斗外原型不可保存为主动战斗技能：${Array.from(new Set(原始战斗外原型)).join('、')}`);
+    }
+    const normalized = buildSkillDesignerFormStateFromDraft(formState, previewMeta);
+    const normalizedFusionFields =
+      previewMeta && previewMeta.scope === '武魂融合技' ? assertSkillDesignerFusionState(normalized) : null;
+    if (!normalizeSkillUiText(normalized.name, ''))
+      throw new Error(`请填写${getSkillDesignerScopeLabels(previewMeta).nameFieldLabel || '技能名'}。`);
+    const designSummary = buildSkillDesignerCompactSummary(normalized);
+    const 启用被动 = 技能设计台启用被动(previewMeta, normalized);
+    const 有效触发限制 = 读取技能设计台有效触发限制(normalized, previewMeta);
+    safeSkill['魂技名'] = 规范第七魂环真身名称_桥接(normalized.name, previewMeta);
+    safeSkill['承载方式'] = 启用被动 ? '直接生效' : normalized.deliveryForm || '直接生效';
+    safeSkill['消耗'] = 格式化技能设计台正式消耗文本(normalized.costType, normalized.costValues, normalized.sustainCostText, previewMeta, normalized, 根数据);
+    safeSkill['前摇'] = Math.max(0, toNumber(normalized['前摇'], 0));
+    if (有效触发限制) safeSkill['触发限制'] = cloneJsonValue(有效触发限制);
+    else delete safeSkill['触发限制'];
+    if (normalized['技能掌控度']) safeSkill['技能掌控度'] = cloneJsonValue(normalized['技能掌控度']);
+    else delete safeSkill['技能掌控度'];
+    safeSkill['画面描述'] = normalized.visualDesc;
+    safeSkill['效果描述'] = normalized.effectDesc;
+    const 技能设计台写回元数据 = {};
+    if (previewMeta && previewMeta.scope === 'art') {
+      技能设计台写回元数据['功法境界'] = normalizeSkillUiText(normalized.artStage, '未入门');
+      技能设计台写回元数据['功法等级'] = Math.max(0, toNumber(normalized.artLevel, 0));
+    }
+    if (previewMeta && previewMeta.scope === '武魂融合技') {
+      技能设计台写回元数据['融合模式'] = normalizedFusionFields.fusionMode;
+      技能设计台写回元数据['融合用法模式'] = normalized['用法模式'];
+      技能设计台写回元数据['融合对象'] = normalizedFusionFields.fusionPartner;
+      技能设计台写回元数据['融合来源武魂'] = [...normalizedFusionFields.fusionSourceSpirits];
+      技能设计台写回元数据['融合参与者'] = cloneJsonValue(normalizedFusionFields.fusionParticipants);
+    }
+    if (Object.keys(技能设计台写回元数据).length) {
+      Object.defineProperty(safeSkill, '技能设计台写回元数据', {
+        value: 技能设计台写回元数据,
+        enumerable: false,
+        configurable: true,
+      });
+    }
+    const 武魂元素上下文 = 读取技能设计台武魂上下文(根数据, previewMeta);
+    let 正式附带属性 = 规范化技能元素列表_桥接(normalized.attachedAttributes);
+    if (!正式附带属性.length && 技能设计台是元素系上下文(根数据, previewMeta, normalized)) {
+      if (!武魂元素上下文.可调用元素.length) throw new Error('元素系技能需要先补全武魂可调用元素。');
+      正式附带属性 = [...武魂元素上下文.可调用元素];
+    }
+    safeSkill['附带属性'] = 正式附带属性;
+    const 副作用违规列表 = [];
+    const 副作用列表 = 规范化技能设计台副作用列表(normalized['副作用列表'], path => {
+      if (path) 副作用违规列表.push(path);
+    });
+    规范化技能设计台副作用列表(normalized['使用副作用列表'], path => {
+      if (path) 副作用违规列表.push(path.replace(/^副作用列表/, '使用副作用列表'));
+    });
+    if (副作用违规列表.length) throw new Error(`副作用结构错误：${Array.from(new Set(副作用违规列表)).join('、')}`);
+    if (副作用列表.length) safeSkill['副作用列表'] = 副作用列表;
+    else delete safeSkill['副作用列表'];
+    void designSummary;
+    const 当前范围 = normalizeSkillUiText(previewMeta && previewMeta.scope, '');
+    if (当前范围 !== 'art' && !设计台规则.战斗外原型可保存) {
+      const 战斗外主动原型 = [];
+      const 战斗外原型集合 = new Set(['修炼增益', '战斗外复活']);
+      const 记录战斗外主动原型 = effect => {
+        if (!effect || typeof effect !== 'object' || Array.isArray(effect)) return;
+        const 原型 = normalizeSkillUiText(effect['原型'], '');
+        if (战斗外原型集合.has(原型)) 战斗外主动原型.push(原型);
+        技能设计台嵌套效果数组字段表.forEach(key => {
+          (Array.isArray(effect[key]) ? effect[key] : []).forEach(记录战斗外主动原型);
+        });
+      };
+      (Array.isArray(normalized.prototypeEffects) ? normalized.prototypeEffects : []).forEach(记录战斗外主动原型);
+      if (战斗外主动原型.length)
+        throw new Error(`战斗外原型不可保存为主动战斗技能：${Array.from(new Set(战斗外主动原型)).join('、')}`);
+    }
+    let runtimeEffects = buildSkillDesignerRuntimeEffects(normalized, skillSource, previewMeta);
+    runtimeEffects = 套用技能设计台被动触发(
+      normalizeSkillDesignerPassiveEffects(runtimeEffects, normalized, previewMeta),
+      normalized,
+    );
+    const normalizedRuntimeEffects = normalizeSkillDesignerExecutionEffectArray(
+      cloneJsonValue(runtimeEffects),
+      normalizeSkillDesignerTargetForForm(normalized.target, '单体'),
+      { draft: normalized, 技能: safeSkill, passiveMode: 技能设计台启用被动(previewMeta, normalized) },
+    );
+    safeSkill['_效果数组'] =
+      normalized.deliveryForm === '造物承载'
+        ? [buildSkillDesignerConstructEffect(normalized, normalizedRuntimeEffects)].filter(
+            effect => Array.isArray(effect['使用效果']) && effect['使用效果'].length,
+          )
+        : normalizedRuntimeEffects;
+    收口技能设计台元素字段(safeSkill['_效果数组'], safeSkill['附带属性']);
+    if (!safeSkill['_效果数组'].length && !技能设计台允许纯描述技能(normalized))
+      throw new Error('至少需要一个可执行原型。');
+    if (normalized.deliveryForm === '造物承载') {
+      safeSkill['_效果数组'].forEach((effect, index) =>
+        断言技能设计台效果数组契约(effect['使用效果'] || [], `_效果数组[${index}].使用效果`),
+      );
+    } else {
+      断言技能设计台效果数组契约(safeSkill['_效果数组']);
+    }
+    断言技能设计台维持契约(safeSkill);
+    const 断言预算 = 读取窗口函数('__LWCS_ASSERT_DIRECT_SETTLE_BUDGET__');
+    if (typeof 断言预算 === 'function') {
+      断言预算(safeSkill, '技能', 构建技能设计台预算上下文(previewMeta, 根数据, normalized));
+    }
+    return safeSkill;
+  }
+  // —— B:30841-30925
+  function buildSkillDesignerWriteUpdates(previewMeta = {}, nextSkill = {}, rootData = {}) {
+    const path = Array.isArray(previewMeta && previewMeta.path) ? previewMeta.path : [];
+    if (!path.length) return [];
+    断言技能设计台本命召唤唯一(previewMeta, nextSkill, rootData);
+    const 技能设计台写回元数据 = nextSkill && typeof nextSkill === 'object' ? (nextSkill.技能设计台写回元数据 || {}) : {};
+    const 功法境界 = normalizeSkillUiText(技能设计台写回元数据['功法境界'], '未入门');
+    const 功法等级 = Math.max(0, toNumber(技能设计台写回元数据['功法等级'], 0));
+    const 融合模式草稿 = 技能设计台写回元数据['融合模式'];
+    const 融合用法模式草稿 = 技能设计台写回元数据['融合用法模式'];
+    const 融合对象草稿 = 技能设计台写回元数据['融合对象'];
+    const 融合来源武魂草稿 = 技能设计台写回元数据['融合来源武魂'];
+    const 融合参与者草稿 = 技能设计台写回元数据['融合参与者'];
+    const updates = toText(previewMeta && previewMeta.scope, '') === 'art' ? [] : [{ path, value: nextSkill }];
+    if (toText(previewMeta && previewMeta.scope, '') === 'art') {
+      const charKey = path[0] === 'char' ? toText(path[1], '') : '';
+      const 功法名 = normalizeSkillUiText(nextSkill?.魂技名 || path[path.length - 1], path[path.length - 1] || '未命名功法');
+      if (charKey && 功法名) {
+        const 功法路径 = ['char', charKey, '功法', 功法名];
+        if (功法名 === '紫极魔瞳') {
+          const 已有获得tick = toNumber(deepGet(rootData, [...功法路径, '获得tick'], deepGet(rootData, ['world', '时间', 'tick'], 0)), 0);
+          updates.push({ path: 功法路径, value: {
+            境界: ['纵观', '入微', '芥子', '浩瀚'].includes(功法境界) ? 功法境界 : '纵观',
+            lv: Math.max(1, Math.min(4, 功法等级 || 1)),
+            获得tick: Math.max(0, Math.floor(已有获得tick)),
+            描述: normalizeSkillUiText(nextSkill?.效果描述, '无'),
+          } });
+        } else {
+          updates.push({ path: 功法路径, value: { 描述: normalizeSkillUiText(nextSkill?.效果描述, '无') } });
+        }
+      }
+    }
+    if (
+      toText(previewMeta && previewMeta.scope, '') === '武魂融合技' &&
+      toText(path[path.length - 1], '') === '技能数据'
+    ) {
+      const fusionRecordPath = path.slice(0, -1);
+      const existingFusion = deepGet(rootData, fusionRecordPath, {});
+      const fusionName = normalizeSkillUiText(
+        nextSkill && (nextSkill['魂技名'] || nextSkill.name),
+        toText(previewMeta && previewMeta.label, '未命名融合技'),
+      );
+      const charKey = path[0] === 'char' ? toText(path[1], '') : '';
+      const spiritOptions = getSkillDesignerSpiritNameOptions(charKey ? deepGet(rootData, ['char', charKey], {}) : {});
+      const canUseSelfFusion = spiritOptions.length >= 2;
+      let fusionMode = normalizeSkillDesignerFusionMode(
+        融合模式草稿 || existingFusion.融合模式 || 'partner',
+      );
+      if (fusionMode === 'self' && !canUseSelfFusion) fusionMode = 'partner';
+      const 用法模式 = 规范化技能设计台融合用法模式(
+        融合用法模式草稿 || existingFusion['用法模式'],
+      );
+      const 临时融合数据 = {
+        融合参与者: 融合参与者草稿,
+        来源武魂: 融合来源武魂草稿,
+        融合对象: 融合对象草稿,
+      };
+      const rawParticipants = getSkillDesignerRawFusionParticipants(临时融合数据, {}).length
+        ? getSkillDesignerRawFusionParticipants(临时融合数据, {})
+        : getSkillDesignerRawFusionParticipants({}, existingFusion);
+      const fusionParticipants = normalizeSkillDesignerFusionParticipantList(rawParticipants, rootData);
+      const fusionFields = deriveSkillDesignerFusionFields(
+        fusionMode,
+        fusionParticipants,
+        normalizeSkillUiText(
+          融合对象草稿 || existingFusion['融合对象'],
+          '未知搭档',
+        ),
+      );
+      const partnerValue = fusionFields.fusionPartner;
+      let sourceSpirits = fusionFields.fusionSourceSpirits.length
+        ? fusionFields.fusionSourceSpirits
+        : normalizeSkillDesignerArray(融合来源武魂草稿 || existingFusion.来源武魂);
+      if (fusionMode === 'self' && !sourceSpirits.length) sourceSpirits = spiritOptions.slice(0, 2);
+      updates.push({ path: [...fusionRecordPath, '名称'], value: fusionName });
+      updates.push({ path: [...fusionRecordPath, '融合模式'], value: fusionMode });
+      updates.push({ path: [...fusionRecordPath, '用法模式'], value: 用法模式 });
+      updates.push({ path: [...fusionRecordPath, '融合对象'], value: partnerValue });
+      updates.push({ path: [...fusionRecordPath, '来源武魂'], value: sourceSpirits });
+      updates.push({
+        path: [...fusionRecordPath, '融合参与者'],
+        value: cloneJsonValue(fusionFields.fusionParticipants),
+      });
+    }
+    return updates;
+  }
+
+  // ════════════════ 二、预览页局部量（B:38640-38678，逐字切片） ════════════════
+  function 设计台模板上下文(snapshot, previewMeta, designerDraft) {
+      const recommendedAttrs = new Set(
+        normalizeSkillDesignerArray(SKILL_DESIGNER_ATTRIBUTE_HINTS_BY_TYPE[designerDraft.type] || []),
+      );
+      const isFusionDesigner = previewMeta.scope === '武魂融合技';
+      const 启用技能掌控度 = 技能设计台启用技能掌控度(previewMeta, designerDraft);
+      const 启用被动 = 技能设计台启用被动(previewMeta, designerDraft);
+      const { charData: fusionCharData } = getSkillDesignerCharByPreviewPath(snapshot.rootData, previewMeta);
+      const fusionSpiritOptions = isFusionDesigner ? getSkillDesignerSpiritNameOptions(fusionCharData) : [];
+      const fusionModeOptions = isFusionDesigner
+        ? [
+            { value: 'partner', label: '双人/多人融合' },
+            ...(fusionSpiritOptions.length >= 2 || designerDraft.fusionMode === 'self'
+              ? [{ value: 'self', label: '自体融合' }]
+              : []),
+          ]
+        : [];
+      const 融合用法模式选项 = isFusionDesigner
+        ? [
+            { value: '一次性释放', label: '一次性释放' },
+            { value: '融合增幅', label: '融合增幅' },
+          ]
+        : [];
+      const 被动触发限制 = 读取技能设计台被动触发限制(designerDraft);
+      const 是造物承载 = normalizeSkillUiText(designerDraft.deliveryForm, '') === '造物承载';
+      const 消耗值 =
+        designerDraft.costValues && typeof designerDraft.costValues === 'object' ? designerDraft.costValues : {};
+      const 维持消耗值 = 解析技能设计台消耗文本配置(designerDraft.sustainCostText || '').resourceValues || {};
+      const 固定百分比消耗比例 = 技能设计台是普通魂环伤害魂技(previewMeta, 构建技能设计台临时技能(designerDraft, previewMeta).临时技能?._效果数组 || [], designerDraft)
+        ? 计算技能设计台固定结算消耗比例(designerDraft)
+        : 0;
+      const 标题提示表 = {
+        基础框架载体: '填写名称与承载方式。造物承载用于先生成造物、再使用触发效果的技能。',
+        核心术式阵列: '填写技能真正执行的原型效果；先放主效果，再补条件、状态或修正。',
+        使用效果阵列: '填写造物被使用后触发的效果。',
+        运转能量配置: '启动填保存真实消耗。维持每回合扣费。',
+        技能掌控度: '只在技能随等级逐步发挥时启用；普通魂技不需要填写。',
+        元属性特征: '只勾选技能实际携带的元素或概念属性。',
+        终端解析图谱: '填写给玩家看的画面与效果摘要，不参与战斗结算。',
+      };
+    return { recommendedAttrs, isFusionDesigner, 启用技能掌控度, 启用被动, fusionCharData, fusionSpiritOptions, fusionModeOptions, 融合用法模式选项, 被动触发限制, 是造物承载, 消耗值, 维持消耗值, 固定百分比消耗比例, 标题提示表 };
+  }
+
+  // ════════════════ 三、移植层 ════════════════
+  // 说明：本段手写。原版设计台的保存链是「designerDraft → 拼 HTML → 挂载时同步若干控件 → 从 DOM 回读 →
+  // buildSkillDesignerUpdatedSkill」。这里用「虚拟控件树」逐函数复刻那条 HTML/DOM 链：
+  //   描述* 系列 ≙ 构建技能设计台*（原版 HTML 生成器），产出控件描述而非 HTML；
+  //   同步* 系列 ≙ onMount 里的 syncScalingField / 同步原型行默认驱动判定 / syncConditionRow 等；
+  //   读取* 系列 ≙ readSkillDesignerFormState / 读取技能设计台原型效果状态（DOM 回读）。
+  // 控件值一律保存「DOM 里 input.value 会读到的字符串」，下拉值遵循浏览器 <select> 的选中规则。
+
+  // ───────────── 0. 根数据与快照 ─────────────
+  let 设计台根数据 = null;
+  function readLatestMvuDataByEditor() {
+    // 原版从 MVU 宿主读取最新变量；独立页面里改为返回当前注入的根数据
+    return 设计台根数据 || null;
+  }
+  function 设计台取根(root, meta) {
+    if (root && typeof root === 'object') return root;
+    if (meta && meta.root && typeof meta.root === 'object') return meta.root;
+    if (设计台根数据) return 设计台根数据;
+    if (typeof window !== 'undefined' && window.LWCS_SAVE) return window.LWCS_SAVE;
+    return {};
+  }
+  function 设计台规范元数据(meta = {}) {
+    // 去掉便捷参数 root，其余原样作为 previewMeta 传给原版函数
+    const { root, ...rest } = meta && typeof meta === 'object' ? meta : {};
+    void root;
+    return { path: Array.isArray(rest.path) ? rest.path : [], label: toText(rest.label, '技能'), category: toText(rest.category, '技能'), scope: toText(rest.scope, '魂技'), ...rest };
+  }
+  // 建立原版依赖的 liveSnapshot：rootData + 当前角色（取 previewMeta.path[1]，否则玩家名）
+  function 设计台使用快照(root, meta) {
+    const 根 = 设计台取根(root, meta);
+    设计台根数据 = 根;
+    const 路径 = Array.isArray(meta && meta.path) ? meta.path : [];
+    const 玩家 = toText(deepGet(根, 'sys.玩家名', ''), '');
+    const 角色名 = 路径[0] === 'char' && 根 && 根.char && 根.char[路径[1]] ? 路径[1] : 玩家;
+    const 快照 = { rootData: 根, activeName: 角色名, activeChar: (根 && 根.char && 根.char[角色名]) || {} };
+    liveSnapshot = 快照;
+    lastRenderableSnapshot = 快照;
+    return 快照;
+  }
+
+  // ───────────── 1. HTML 往返等价 ─────────────
+  // 原版把值写进 HTML 属性/文本再由浏览器解析，这里按同样的转义 + 解码计算出 DOM 中的值
+  function 解码实体(文本) {
+    return String(文本).replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|#39);/gi, (m, e) => {
+      const k = e.toLowerCase();
+      if (k === 'amp') return '&'; if (k === 'lt') return '<'; if (k === 'gt') return '>'; if (k === 'quot') return '"'; if (k === '#39') return "'";
+      return String.fromCodePoint(k[1] === 'x' ? parseInt(k.slice(2), 16) : parseInt(k.slice(1), 10));
+    });
+  }
+  const 属性回读 = 值 => 解码实体(escapeHtmlAttr(值));
+  const 文本回读 = 值 => 解码实体(htmlEscape(值));
+  // <input type="number"> 的取值净化：非合法浮点数文本读出为空串（浏览器行为）
+  const 数字输入回读 = 值 => {
+    const 文本 = 属性回读(值);
+    return /^-?(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][-+]?\d+)?$/.test(文本) ? 文本 : '';
+  };
+  const 数字净化 = 文本 => (/^-?(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][-+]?\d+)?$/.test(String(文本)) ? String(文本) : '');
+  // <textarea> 解析会吃掉开头一个换行
+  const 文本域回读 = 值 => 文本回读(值).replace(/^\n/, '');
+
+  // ───────────── 2. 下拉 ≙ buildSkillDesignerSelectOptions ─────────────
+  function 设计台下拉(选项列表 = [], 当前值 = '', 空状态文本 = '') {
+    const 规范条目列表 = normalizeSkillDesignerOptionEntries(选项列表);
+    const 规范选项列表 = normalizeSkillDesignerOptionList(选项列表);
+    const 不允许空值 = 规范选项列表.length > 0 && 规范选项列表.every(选项 => 选项.value !== '无');
+    if (!规范选项列表.length) {
+      const 空文本 =
+        normalizeSkillUiText(空状态文本, '') && !/未设置/.test(normalizeSkillUiText(空状态文本, ''))
+          ? normalizeSkillUiText(空状态文本, '')
+          : '暂无可选';
+      return { options: [{ value: '', label: 空文本, disabled: true }], value: '', empty: true };
+    }
+    const 输出选项列表 = [];
+    const 输出条目列表 = [];
+    const 已见 = new Set();
+    const 加入选项 = 选项 => {
+      if (已见.has(选项.value)) return;
+      已见.add(选项.value);
+      输出选项列表.push(选项);
+      return 选项;
+    };
+    规范条目列表.forEach(条目 => {
+      if (条目.type === 'group') {
+        const 组选项 = 条目.options.map(加入选项).filter(Boolean);
+        if (组选项.length) 输出条目列表.push({ ...条目, options: 组选项 });
+        return;
+      }
+      const 选项 = 加入选项(条目);
+      if (选项) 输出条目列表.push({ type: 'option', ...选项 });
+    });
+    const 当前文本 = toText(当前值, '').trim();
+    const 选中值 = 输出选项列表.some(选项 => 选项.value === 当前文本)
+      ? toText(当前值, '').trim()
+      : 不允许空值 && 当前文本 === '无'
+        ? 输出选项列表[0].value
+        : 输出选项列表[0].value;
+    const options = [];
+    const 推入 = (选项, 分组) => {
+      const 安全值 = toText(选项.value, '');
+      const 项 = { value: 属性回读(安全值), label: 文本回读(toText(选项.label, 安全值)) };
+      if (分组) 项.group = 分组;
+      项.__selected = 安全值 === 选中值;
+      options.push(项);
+    };
+    输出条目列表.forEach(条目 => {
+      if (条目.type !== 'group') 推入(条目);
+      else 条目.options.forEach(选项 => 推入(选项, 条目.label));
+    });
+    return 下拉收口({ options });
+  }
+  // 依 <select> 规则求当前值：有 selected 取最后一个，否则首个非 disabled 选项
+  function 下拉收口(下拉) {
+    const 选中 = 下拉.options.filter(项 => 项.__selected);
+    let value = '';
+    if (选中.length) value = 选中[选中.length - 1].value;
+    else { const 首个 = 下拉.options.find(项 => !项.disabled); value = 首个 ? 首个.value : ''; }
+    下拉.options.forEach(项 => { delete 项.__selected; });
+    下拉.value = value;
+    return 下拉;
+  }
+  // 给 select 控件赋值：浏览器里赋不存在的值会变为未选中（value 读出空串）
+  function 设控件值(控件, 值) {
+    if (!控件) return;
+    const 文本 = String(值 == null ? '' : 值);
+    if (控件.kind === 'select') 控件.value = 控件.options.some(项 => 项.value === 文本) ? 文本 : '';
+    else if (控件.kind === 'number') 控件.value = 数字净化(文本);
+    else 控件.value = 文本;
+  }
+  // 选项说明：原版在标签里用「值｜说明」的，拆出 hint；状态施加的状态取原版一句话说明
+  function 补选项说明(控件, 原型 = '', 字段 = '') {
+    if (!控件 || !Array.isArray(控件.options)) return 控件;
+    控件.options.forEach(项 => {
+      const 分隔 = String(项.label || '').indexOf('｜');
+      if (分隔 > 0) 项.hint = 项.label.slice(分隔 + 1);
+      if (字段 === '状态' && ['状态施加', '状态移除', '状态转移', '状态交换', '__条件'].includes(原型) && 项.value) {
+        const 说明 = 技能设计台状态一句话说明(项.value);
+        if (说明) 项.hint = 说明;
+      }
+    });
+    return 控件;
+  }
+
+  // ───────────── 3. 原型行 ≙ 构建技能设计台原型效果行列表 / 字段编辑器 / 字段输入 ─────────────
+  const 设计台驱动例外原型 = ['机制授予', '时光回溯', '位移执行', '复制执行'];
+  function 设计台原型下拉(当前原型 = '') {
+    // ≙ 构建技能设计台原型选项：分「战斗内 / 战斗外」两组，组标题是 disabled 选项
+    const 当前值 = normalizeSkillUiText(当前原型, '');
+    const options = [];
+    [
+      ['战斗内', 读取技能设计台原型名称列表().filter(原型名 => 读取技能设计台原型摘要(原型名).类别 !== '战斗外')],
+      ['战斗外', 读取技能设计台原型名称列表().filter(原型名 => 读取技能设计台原型摘要(原型名).类别 === '战斗外')],
+    ].forEach(([标题, 列表]) => {
+      if (!列表.length) return;
+      options.push({ value: '', label: `── ${标题} ──`, disabled: true, header: true, group: 标题 });
+      列表.forEach(原型名 => {
+        const 摘要 = 读取技能设计台原型摘要(原型名);
+        options.push({ value: 原型名, label: `${原型名}｜${摘要.描述 || 原型名}`, hint: 摘要.描述 || '', group: 标题, category: 摘要.类别, direction: 摘要.方向, __selected: 原型名 === 当前值 });
+      });
+    });
+    return 下拉收口({ kind: 'select', options });
+  }
+  function 设计台原型字段标签(原型 = '', 字段 = '', 显示名 = '', effect = {}) {
+    // ≙ 构建技能设计台原型字段标签：返回 { label, hint }
+    const 提示 = 获取技能设计台原型字段提示(原型, 字段, effect);
+    const 原型名 = normalizeSkillUiText(原型, '');
+    const 字段名 = normalizeSkillUiText(字段, '');
+    const 基础标签 = 原型名 === '炸环' && 字段名 === '强化倍率'
+      ? '强化倍率 × 年限'
+      : 原型名 === '状态施加' && ['数值', '副数值'].includes(字段名)
+        ? 技能设计台状态施加字段显示名(effect && effect['状态'], 字段名)
+        : 显示名 || 字段;
+    return { label: 文本回读(基础标签), hint: 提示 ? 属性回读(提示) : '' };
+  }
+  function 描述tick输入(标签 = {}, 字段名 = '', value = 0, options = {}) {
+    // ≙ 构建技能设计台tick时长输入：日/时/分三格 + 隐藏 tick
+    const 最小tick = Math.max(0, parseSkillDesignerIntegerInputValue(options.最小tick, 0, 0));
+    const 最大tick = Number.isFinite(Number(options.最大tick)) ? Math.max(最小tick, Math.round(Number(options.最大tick))) : 0;
+    const 时长 = 拆分技能设计台tick时长(value, { 最小tick, 最大tick, 默认tick: options.默认tick ?? 最小tick });
+    return {
+      kind: 'tick', key: 字段名, field: true, ...标签,
+      value: 属性回读(时长.tick), tick: 时长.tick,
+      parts: { 日: 时长.日, 时: 时长.小时, 分: 时长.分钟 },
+      partLimits: { 日: { min: 0, max: 最大tick > 0 ? Math.floor((最大tick * 技能设计台每tick分钟) / 1440) : undefined, step: 1 }, 时: { min: 0, max: 23, step: 1 }, 分: { min: 0, max: 59, step: 10 } },
+      minTick: 最小tick, maxTick: 最大tick,
+    };
+  }
+  function 描述原型字段输入(原型 = '', key = '', value = '', fallbackTarget = '单体', options = {}) {
+    const 定义 = 读取技能设计台原型字段定义(原型, key, options);
+    const 类型 = normalizeSkillUiText(定义['类型'], '文本');
+    const 选项 = 读取技能设计台原型字段选项(原型, key, options);
+    const 嵌套字段 = normalizeSkillUiText(options && options.嵌套字段, '');
+    const effect = options && options.当前效果 && typeof options.当前效果 === 'object' ? options.当前效果 : { ...(options || {}), [key]: value };
+    const 时窗字段显示名 = 原型 === '时窗修正'
+      ? ({
+          调整字段: '调整对象',
+          调整方式: '方向',
+          调整回合: '回合数',
+          调整tick: '时长',
+          调整次数: effect['调整字段'] === '触发次数' ? '触发次数' : effect['调整字段'] === '使用次数' ? '使用次数' : '次数',
+          结算倍率: '压缩结算',
+        }[key] || '')
+      : '';
+    const 显示字段名 = 时窗字段显示名 || (key === '防御穿透'
+      ? '伤害内联穿透%'
+      : 原型 === '规则改写' && key === '数值' && normalizeSkillUiText(effect && effect['规则'], '') === '死亡转存活'
+        ? '复活恢复比例'
+      : 原型 === '战斗外复活' && key === '数值'
+        ? '复活恢复比例'
+      : key === '资源转移方式'
+        ? '转移模式'
+      : 原型 === '状态移除' && key === '状态'
+        ? '移除状态'
+      : 原型 === '状态移除' && key === '匹配原型'
+        ? '内部效果'
+      : 原型 === '状态移除' && key === '数值方向'
+        ? '方向'
+      : key === '目标' && 原型 === '机制授予'
+        ? '授予对象'
+        : key === '目标' && 嵌套字段 === '授予效果'
+            ? '作用目标'
+              : key === '目标' && 嵌套字段 === '结算效果'
+                ? '结算目标'
+                : key);
+    const 标签 = 设计台原型字段标签(原型, key, 显示字段名, effect);
+    const 公共 = { key, field: true, ...标签, type: 类型, default: 定义['默认值'] };
+    if (key === '条件分支' && options && options.禁用条件分支) return null;
+    if (key === '条件分支') return 描述条件分支编辑器(原型, value, fallbackTarget, 标签.hint);
+    if (类型 === '原型列表') return 描述嵌套原型列表编辑器(key, value, fallbackTarget, 标签.hint);
+    if (原型 === '机制抹消' && key === '抹消对象') {
+      const 对象 = 规范化技能设计台机制抹消对象(value);
+      return { ...公共, kind: 'object', value: 对象, json: JSON.stringify(对象), subfields: 描述机制抹消对象字段(对象) };
+    }
+    const 是必填 = key === '目标' || key === '生效方式' || 技能设计台原型字段是否必填(原型, key);
+    const 禁用空值 = Boolean(options && options.禁用空值);
+    if (原型 === '炸环' && key === '目标') return { ...公共, kind: 'static', value: '自身', display: '自身', required: true };
+    if (key === '生效方式' && options && options.强制独立) return { key, field: true, kind: 'hidden', value: '独立生效', label: '', hint: '', hidden: true };
+    if (key === '生效方式' && options && options.固定生效方式) {
+      const 固定值 = normalizeSkillUiText(options.固定生效方式, '独立生效');
+      return { ...公共, kind: 'static', value: 属性回读(固定值), display: 文本回读(固定值), required: true };
+    }
+    if (类型 === '枚举') {
+      const 可用选项 =
+        key === '目标'
+          ? 读取技能设计台目标候选(原型, { ...options, 当前效果: options?.当前效果 || { ...(options || {}), [key]: value } })
+          : 选项;
+      if (!可用选项.length) return null;
+      const 下拉选项 = 构建技能设计台原型字段下拉选项(key, 可用选项, 是必填 || 禁用空值);
+      const 渲染选项 = 原型 === '状态施加' && key === '状态'
+        ? 构建技能设计台状态施加分组选项(normalizeSkillDesignerOptionList(下拉选项).map(item => item.value))
+        : 下拉选项;
+      const 首个合法值 = Array.isArray(可用选项[0]?.options) ? 可用选项[0].options[0] : 可用选项[0];
+      const 当前值 =
+        value ||
+        (key === '生效方式' && options && options.默认生效方式 ? options.默认生效方式 : '') ||
+        ((是必填 || 禁用空值) ? 首个合法值 : '无') ||
+        '';
+      const 控件 = { ...公共, kind: 'select', required: !!(是必填 || 禁用空值), ...设计台下拉(渲染选项, 当前值) };
+      补选项说明(控件, 原型, key);
+      if (原型 === '状态施加' && key === '状态') 控件.summary = 技能设计台状态摘要({ ...(options?.当前效果 || {}), 状态: 当前值 });
+      if (原型 === '位移执行' && key === '位移类型') 控件.summary = 技能设计台位移执行摘要({ ...(options?.当前效果 || {}), 位移类型: 当前值 });
+      return 控件;
+    }
+    if (类型 === '多枚举') {
+      const 可选项 = key === '限定元素' ? SKILL_LIMITED_ELEMENT_OPTIONS : 选项;
+      const selected = 读取技能设计台多枚举值(value).filter(item => 可选项.includes(item));
+      return {
+        ...公共, kind: 'multi', multiple: true,
+        options: 可选项.map(option => ({ value: 属性回读(option), label: 文本回读(option) })),
+        selected: selected.map(item => 属性回读(item)),
+        value: 属性回读(selected.join('|')),
+        summary: selected.length ? selected.join('、') : '默认无',
+        wide: key === '限定元素',
+      };
+    }
+    if (原型 === '时窗修正' && key === '调整tick') {
+      return { ...描述tick输入(标签, '调整tick', value || 6, { 最小tick: 1, 最大tick: 技能设计台时窗最大调整tick, 默认tick: 6 }), type: 类型, default: 定义['默认值'] };
+    }
+    if (类型 === '数字' || 类型 === '整数') {
+      if (技能设计台字段是tick时长(key)) return { ...描述tick输入(标签, key, value, { 最小tick: 0, 默认tick: 0 }), type: 类型, default: 定义['默认值'] };
+      const 最大值 = 定义['最大值'] !== undefined ? String(定义['最大值']) : key === '防御穿透' ? '100' : undefined;
+      const 最小值 = 定义['最小值'] !== undefined ? String(定义['最小值']) : '0';
+      return {
+        ...公共, kind: 'number',
+        min: 最小值, max: 最大值, step: 类型 === '整数' || key === '防御穿透' ? '1' : '0.01',
+        value: 数字输入回读(value), placeholder: '留空 = 无',
+        wide: 原型 === '时窗修正' && key === '延迟回合',
+      };
+    }
+    if (类型 === '带符号数值') {
+      const 结算 = normalizeSkillUiText(
+        options && options.当前效果 && options.当前效果['结算'] !== undefined ? options.当前效果['结算'] : options && options['结算'],
+        '',
+      );
+      const 状态名 = normalizeSkillUiText(
+        options && options.当前效果 && options.当前效果['状态'] !== undefined ? options.当前效果['状态'] : options && options['状态'],
+        '',
+      );
+      const 只允许正向强度 = normalizeSkillUiText(原型, '') === '状态施加' && key === '数值' && 技能设计台状态施加使用正向强度数值(状态名);
+      const 允许结算绝对值 = normalizeSkillUiText(原型, '') === '结算修正' && ['消耗', '前摇'].includes(结算) && key === '数值';
+      const 必须百分比修正 =
+        (['判定修正', '结算修正', '位移执行', '决策干扰'].includes(normalizeSkillUiText(原型, '')) && key === '数值') &&
+        !允许结算绝对值;
+      const pattern = 只允许正向强度
+        ? '\\+?[0-9]+(\\.[0-9]+)?%?'
+        : 必须百分比修正
+        ? '(?:\\+|-)?[0-9]+(\\.[0-9]+)?%'
+        : '(?:\\+|-)?[0-9]+(\\.[0-9]+)?%?|x[0-9]+(\\.[0-9]+)?';
+      const 占位文本 = 允许结算绝对值
+        ? (结算 === '前摇' ? '+20% / -20% / +2 / -2' : '+20% / -20% / +500 / -500')
+        : 只允许正向强度 ? '例如 10%'
+        : normalizeSkillUiText(原型, '') === '决策干扰' && key === '数值' ? '例如 20%，越高干扰越强'
+          : 必须百分比修正 ? '例如 +12%' : '留空 = 无';
+      const 数值单位口径 = 读取技能设计台数值字段口径(原型, key, effect);
+      if (技能设计台数值字段使用单位下拉(原型, key, effect)) {
+        const 当前单位 = 数值单位口径 === '混合' ? 读取技能设计台数值单位(value) : 数值单位口径;
+        const 当前值 = 数值单位口径 === '百分比'
+          ? 格式化技能设计台百分比字段值(value, '')
+          : 格式化技能设计台单位数值(value, 当前单位);
+        const 单位禁用 = 数值单位口径 !== '混合';
+        // 单位下拉 ≙ 构建技能设计台数值单位下拉：当前单位若非「点数/百分比」则浏览器默认选首项「点数」
+        const 单位值 = ['点数', '百分比'].includes(当前单位) ? 当前单位 : '点数';
+        return {
+          ...公共, kind: 数值单位口径 === '百分比' ? 'percent' : 'signed',
+          value: 属性回读(当前值), pattern, placeholder: 占位文本, positiveOnly: 只允许正向强度,
+          unit: { value: 单位值, locked: 单位禁用, options: [{ value: '点数', label: '点数' }, { value: '百分比', label: '百分比' }], basis: 数值单位口径 },
+        };
+      }
+      return { ...公共, kind: 'signed', value: 属性回读(value), pattern, placeholder: 占位文本, positiveOnly: 只允许正向强度 };
+    }
+    if (类型 === '布尔') {
+      const 已启用 = value === true || normalizeSkillUiText(value, '') === 'true' || normalizeSkillUiText(value, '') === '启用';
+      return { ...公共, kind: 'bool', value: 已启用 };
+    }
+    if (类型 === '对象') return null;
+    return { ...公共, kind: 'text', value: 属性回读(value), placeholder: '留空 = 无' };
+  }
+  function 描述机制抹消对象字段(对象 = {}) {
+    // ≙ 构建技能设计台机制抹消对象字段控件 + 「原型」下拉
+    const 匹配器 = 规范化技能设计台机制抹消对象(对象);
+    const 原型 = normalizeSkillUiText(匹配器['原型'], '机制授予');
+    const 原型下拉 = 设计台下拉(构建技能设计台原型字段下拉选项('原型', 技能设计台机制抹消对象原型选项, true), 对象['原型']);
+    const 字段列表 = [{ key: '原型', kind: 'select', label: '原型', hint: '', ...原型下拉 }];
+    读取技能设计台机制抹消可匹配字段(原型).forEach(字段 => {
+      const 选项 = 读取技能设计台机制抹消对象字段选项(原型, 字段);
+      const 值列表 = Array.isArray(匹配器[字段])
+        ? 匹配器[字段].map(item => normalizeSkillUiText(item, '')).filter(Boolean)
+        : [normalizeSkillUiText(匹配器[字段], '')].filter(Boolean);
+      if (选项.length) {
+        const 全部标签 = 读取技能设计台机制抹消全部标签(字段);
+        const 全部选中 = !值列表.length;
+        const options = [{ value: 属性回读(全部标签), label: 文本回读(全部标签), all: true, selected: 全部选中 }];
+        normalizeSkillDesignerOptionList(选项).forEach(option => {
+          const v = normalizeSkillUiText(option.value, '');
+          options.push({ value: 属性回读(v), label: 文本回读(option.label || v), selected: 值列表.includes(v) });
+        });
+        字段列表.push({ key: 字段, kind: 'multi', multiple: true, label: 文本回读(字段), hint: '', options, selected: options.filter(o => o.selected).map(o => o.value), allLabel: 全部标签 });
+      } else {
+        字段列表.push({ key: 字段, kind: 'text', label: 文本回读(字段), hint: '', value: 属性回读(格式化技能设计台机制抹消字段值(匹配器[字段])), placeholder: '留空 = 无' });
+      }
+    });
+    return 字段列表;
+  }
+  function 描述驱动判定属性编辑器(effect = {}) {
+    // ≙ 构建技能设计台驱动判定属性编辑器
+    const 原型 = normalizeSkillUiText(effect && effect['原型'], '');
+    const 目标 = normalizeSkillUiText(effect && effect['目标'], '');
+    if (原型 === '伤害结算' || (目标 === '自身' && !设计台驱动例外原型.includes(原型)) || !技能设计台原型需要默认驱动判定(原型, effect)) {
+      return {
+        kind: 'scaling', hidden: true, rendered: 'hidden',
+        controls: [
+          { key: '驱动属性', field: true, kind: 'hidden', value: '无', scalingDriver: true, label: '', hint: '' },
+          { key: '影响方向', field: true, kind: 'hidden', value: '无', label: '', hint: '' },
+        ],
+      };
+    }
+    const 驱动属性 = String((effect && effect['驱动属性']) ?? '无').trim() || '无';
+    const 有驱动 = 驱动属性 && 驱动属性 !== '无';
+    const 方向原始选项 = 读取技能设计台原型字段选项(原型, '影响方向', { 当前效果: effect });
+    const 首个合法方向 = 选择技能设计台默认影响方向(原型, effect, '效果强度');
+    const 方向值 = normalizeSkillUiText(effect && effect['影响方向'], 首个合法方向);
+    const 方向列表 = 读取技能设计台影响方向选项值(原型, effect);
+    const 影响方向 = 有驱动 ? (方向列表.includes(方向值) ? 方向值 : 首个合法方向) : '无';
+    const 驱动选项 = 构建技能设计台原型字段下拉选项('驱动属性', 读取技能设计台原型字段选项(原型, '驱动属性'), 有驱动);
+    const 驱动标签 = 设计台原型字段标签(原型, '驱动属性', '驱动/判定属性');
+    if (原型 === '状态移除') {
+      return {
+        kind: 'scaling', hidden: false, rendered: 'remove',
+        controls: [
+          补选项说明({ key: '驱动属性', field: true, kind: 'select', scalingDriver: true, ...驱动标签, ...设计台下拉(驱动选项, 有驱动 ? 驱动属性 : 选择技能设计台默认驱动属性(原型, effect)) }),
+          { key: '影响方向', field: true, kind: 'hidden', value: '成功率', label: '', hint: '' },
+        ],
+      };
+    }
+    const 方向选项 = 构建技能设计台原型字段下拉选项('影响方向', 方向原始选项, true);
+    return {
+      kind: 'scaling', hidden: false, rendered: 'full',
+      controls: [
+        补选项说明({ key: '驱动属性', field: true, kind: 'select', scalingDriver: true, ...驱动标签, ...设计台下拉(驱动选项, 有驱动 ? 驱动属性 : '无') }),
+        补选项说明({ key: '影响方向', field: true, kind: 'select', directionField: true, hidden: !有驱动, ...设计台原型字段标签(原型, '影响方向', '影响方向'), ...设计台下拉(方向选项, 有驱动 ? 影响方向 : 首个合法方向) }),
+      ],
+    };
+  }
+  function 描述状态移除内部筛选编辑器(effect = {}, fallbackTarget = '单体', options = {}) {
+    const 内部字段 = ['匹配原型', '资源', '数值方向']
+      .filter(key => 读取技能设计台原型字段列表('状态移除', effect).includes(key))
+      .map(key => 描述原型字段输入('状态移除', key, 格式化技能设计台原型字段值(effect && effect[key]), fallbackTarget, options))
+      .filter(Boolean);
+    if (!内部字段.length) return null;
+    const 已启用 = normalizeSkillUiText(effect && effect['匹配原型'], '') && normalizeSkillUiText(effect && effect['匹配原型'], '') !== '无';
+    const 匹配原型 = normalizeSkillUiText(effect && effect['匹配原型'], '');
+    const 资源 = normalizeSkillUiText(effect && effect['资源'], '');
+    const 数值方向 = normalizeSkillUiText(effect && effect['数值方向'], '任意');
+    const 摘要 = (() => {
+      if (!已启用) return '未启用';
+      if (匹配原型 === '资源变化') {
+        if (资源 === '生命' && 数值方向 === '负向') return '扣生命状态';
+        if (资源 === '生命' && 数值方向 === '正向') return '恢复生命状态';
+        if (资源) return `${资源}${数值方向 === '负向' ? '扣减' : 数值方向 === '正向' ? '恢复' : '变化'}状态`;
+        return '资源变化状态';
+      }
+      if (匹配原型 === '护盾变化') return '护盾状态';
+      return '内部筛选';
+    })();
+    return { kind: 'group', label: '内部效果筛选', summary: 摘要, open: !!已启用, controls: 内部字段 };
+  }
+  function 描述原型字段编辑器(effect = {}, options = {}) {
+    // ≙ 构建技能设计台原型字段编辑器（字段顺序、驱动/条件分支放末尾、时窗修正固定顺序全部照搬）
+    const prototype = normalizeSkillUiText(effect && effect['原型'], 读取技能设计台原型名称列表()[0] || '伤害结算');
+    const target = normalizeSkillDesignerEffectTargetValue(effect && effect['目标'], '单体');
+    const 当前效果 = 技能设计台清理并水合原型效果(effect, target, {
+      嵌套字段: options && options.嵌套字段,
+      强制独立: options && options.强制独立,
+      允许对应等级: options && options.允许对应等级,
+    });
+    const 原始字段列表 = 读取技能设计台原型字段列表(prototype, 当前效果, options);
+    const 字段列表 =
+      prototype === '时窗修正'
+        ? (() => {
+            const 调整字段 = normalizeSkillUiText(当前效果 && 当前效果['调整字段'], '持续回合');
+            const 模式字段 =
+              调整字段 === '有效期tick'
+                ? ['调整tick']
+                : ['触发次数', '使用次数'].includes(调整字段)
+                  ? ['调整次数']
+                  : ['调整回合', '结算倍率'];
+            const 固定顺序 = ['目标', '生效方式', '调整字段', '调整方式', ...模式字段, '单日使用次数上限', '驱动属性', '影响方向', '条件分支'];
+            return [
+              ...固定顺序.filter(key => 原始字段列表.includes(key)),
+              ...原始字段列表.filter(key => !固定顺序.includes(key)),
+            ];
+          })()
+        : 原始字段列表;
+    const 内部筛选字段 = prototype === '状态移除' ? new Set(['匹配原型', '资源', '数值方向']) : new Set();
+    const 字段内容 = 字段列表
+      .filter(key => !['驱动属性', '影响方向', '条件分支'].includes(key) && !内部筛选字段.has(key))
+      .map(key => {
+        const rawValue = 当前效果 && 当前效果[key];
+        const value = Array.isArray(rawValue) ? rawValue : 格式化技能设计台原型字段值(rawValue);
+        return 描述原型字段输入(prototype, key, value, target, { ...options, 当前效果 });
+      });
+    if (prototype === '状态移除') 字段内容.push(描述状态移除内部筛选编辑器(当前效果, target, options));
+    if (字段列表.includes('驱动属性') && 字段列表.includes('影响方向')) 字段内容.push(描述驱动判定属性编辑器(当前效果));
+    if (字段列表.includes('条件分支'))
+      字段内容.push(描述原型字段输入(prototype, '条件分支', 当前效果 && 当前效果['条件分支'], target, options));
+    return { 当前效果, controls: 字段内容.filter(Boolean) };
+  }
+  function 描述原型效果行列表(effects = [], fallbackTarget = '单体', 允许删空 = false, options = {}, 网格 = {}) {
+    // ≙ 构建技能设计台原型效果行列表；网格 = { name: main|condition-replace|condition-append|nested, nestedKind, conditionEffect, branchEntry }
+    const source = Array.isArray(effects) ? effects : [];
+    const normalized = 允许删空 && !source.length ? [] : 规范化技能设计台原型效果列表(source, fallbackTarget, options);
+    const prototypeOptions = 读取技能设计台原型名称列表();
+    const 网格对象 = { name: 网格.name || 'main', nestedKind: 网格.nestedKind || '', allowEmpty: !!网格.allowEmpty, conditionEffect: !!网格.conditionEffect, branchEntry: 网格.branchEntry || null, rows: [] };
+    normalized.forEach((effect, index) => {
+      const prototype = normalizeSkillUiText(effect['原型'], prototypeOptions[0] || '伤害结算');
+      const 允许删除当前原型 = 允许删空 || normalized.length > 1;
+      const 行选项 = {
+        ...options,
+        当前效果: effect,
+        默认生效方式: options && options.默认生效方式 ? options.默认生效方式 : '跟随主原型',
+        固定生效方式:
+          options && options.固定首个独立生效 && index === 0 ? '独立生效' : options && options.固定生效方式,
+      };
+      const 行 = { kind: 'row', prototype, renderedState: prototype === '状态施加' ? normalizeSkillUiText(effect['状态'], '') : '', removable: !!允许删除当前原型, prototypeSelect: 设计台原型下拉(prototype) };
+      Object.defineProperty(行, '__grid', { value: 网格对象, writable: true, enumerable: false });
+      const 编辑 = 描述原型字段编辑器(effect, 行选项);
+      行.fields = 编辑.controls;
+      Object.defineProperty(行, '__effect', { value: 编辑.当前效果, writable: true, enumerable: false });
+      绑定子网格(行);
+      网格对象.rows.push(行);
+    });
+    Object.defineProperty(网格对象.rows, '__grid', { value: 网格对象, writable: true, enumerable: false });
+    return 网格对象.rows;
+  }
+  // 给行内的嵌套列表 / 条件分支效果列表补父链（模拟 DOM 的 closest 关系）
+  function 绑定子网格(行) {
+    行.fields.forEach(控件 => {
+      if (控件.kind === 'nested') 控件.rows.forEach(子行 => { Object.defineProperty(子行, '__parentRow', { value: 行, writable: true, enumerable: false }); });
+      if (控件.kind === 'branch') 控件.branches.forEach(条目 => 绑定分支条目(条目, 行));
+    });
+  }
+  function 绑定分支条目(条目, 行) {
+    Object.defineProperty(条目, '__parentRow', { value: 行, writable: true, enumerable: false });
+    ['替换效果', '追加效果'].forEach(键 => {
+      const 列表 = 条目.effects[键].rows;
+      if (列表.__grid) 列表.__grid.branchEntry = 条目;
+      列表.forEach(子行 => { Object.defineProperty(子行, '__parentRow', { value: 行, writable: true, enumerable: false }); });
+    });
+  }
+
+  // ───────────── 4. 条件分支 ≙ 构建技能设计台条件分支编辑器 / 条目 / 条件 ─────────────
+  function 描述条件分支编辑器(原型 = '', value = [], fallbackTarget = '单体', 表内提示 = '') {
+    const branches = Array.isArray(value) ? value : [];
+    void 原型;
+    // 原版这里的「条件分支」标签是纯文本，不显示 获取技能设计台原型字段提示 的说明（放在 tableHint）
+    return { kind: 'branch', key: '条件分支', field: false, label: '条件分支', hint: '', tableHint: 表内提示 || '', enabled: !!branches.length, fallbackTarget, branches: branches.map(branch => 描述条件分支条目编辑器(branch, fallbackTarget)) };
+  }
+  function 描述条件分支条目编辑器(branch = {}, fallbackTarget = '单体') {
+    const 处理 = normalizeSkillUiText(branch['处理'], '生效');
+    const 条件 =
+      Array.isArray(branch['条件']) && branch['条件'].length
+        ? branch['条件']
+        : [{ 类型: '生命比例', 对象: '目标', 比较: '<=', 值: '20%' }];
+    const 替换效果 = Array.isArray(branch['替换效果']) ? branch['替换效果'] : [];
+    const 追加效果 = Array.isArray(branch['追加效果']) ? branch['追加效果'] : [];
+    const 禁用释放前降低结算 = 技能设计台条件列表包含释放后条件(条件);
+    const 条目 = {
+      kind: 'branchEntry', fallbackTarget,
+      conditions: 条件.map(item => 描述条件分支条件编辑器(item, 条件.length > 1)),
+      action: { key: '处理', kind: 'select', label: '处理', hint: 技能设计台条件字段提示.处理, ...设计台下拉(SKILL_DESIGNER_CONDITION_BRANCH_ACTION_OPTIONS, 处理) },
+      effects: {},
+    };
+    [['替换效果', 'condition-replace', 替换效果], ['追加效果', 'condition-append', 追加效果]].forEach(([键, 网格名, 列表]) => {
+      条目.effects[键] = {
+        key: 键, label: 键, hint: 技能设计台条件字段提示[键], hidden: 处理 !== 键, grid: 网格名,
+        rows: 列表.length
+          ? 描述原型效果行列表(列表, fallbackTarget, true, { 禁用条件分支: true, 禁用释放前降低结算 }, { name: 网格名, allowEmpty: true, conditionEffect: true })
+          : 描述原型效果行列表([], fallbackTarget, true, {}, { name: 网格名, allowEmpty: true, conditionEffect: true }),
+      };
+    });
+    return 条目;
+  }
+  function 条件类型下拉(当前值 = '') {
+    // ≙ 构建技能设计台条件类型分组选项
+    const 选中值 = SKILL_DESIGNER_CONDITION_BRANCH_TYPE_OPTIONS.includes(toText(当前值, '').trim())
+      ? toText(当前值, '').trim()
+      : SKILL_DESIGNER_CONDITION_BRANCH_TYPE_OPTIONS[0];
+    const options = [];
+    SKILL_DESIGNER_CONDITION_BRANCH_TYPE_GROUPS.forEach(分组 => {
+      分组.options.filter(选项 => SKILL_DESIGNER_CONDITION_BRANCH_TYPE_OPTIONS.includes(选项)).forEach(选项 => {
+        options.push({ value: 选项, label: 选项, group: 分组.label, __selected: 选项 === 选中值 });
+      });
+    });
+    return 下拉收口({ options });
+  }
+  function 条件比较下拉(类型 = '', 当前值 = '') {
+    // ≙ 构建技能设计台条件分支比较控件选项（旗标/状态类型显示「是/否」）
+    const type = normalizeSkillUiText(类型, '生命比例');
+    const current = 规范化技能设计台条件分支比较值(type, 当前值);
+    const options = 构建技能设计台条件分支比较选项(type).map(value => ({
+      value,
+      label: SKILL_DESIGNER_CONDITION_BRANCH_FLAG_TYPES.includes(type) || type === '状态存在' ? (value === '无' ? '否' : '是') : value,
+      __selected: value === current,
+    }));
+    return 下拉收口({ options });
+  }
+  function 条件值控件(类型 = '', 比较 = '', value = '') {
+    // ≙ 构建技能设计台条件分支值控件
+    const 显示配置 = 读取技能设计台条件分支值控件配置(类型, 比较);
+    if (显示配置.值控件 === '无') return null;
+    if (显示配置.值控件 === '数字') return { key: '值', kind: 'number', min: '0', step: '1', value: 数字输入回读(value) };
+    return { key: '值', kind: 'select', ...设计台下拉(显示配置.值选项, value) };
+  }
+  function 条件状态下拉(状态) {
+    return 补选项说明({ key: '状态', kind: 'select', label: '状态', hint: '', ...设计台下拉(构建技能设计台状态施加分组选项(读取技能设计台原型字段选项('状态施加', '状态')), 状态) }, '__条件', '状态');
+  }
+  function 描述条件分支条件编辑器(condition = {}, 允许删除 = false) {
+    const 类型 = normalizeSkillUiText(condition['类型'], '生命比例');
+    const 对象 = normalizeSkillUiText(condition['对象'], '目标');
+    const 比较 = 规范化技能设计台条件分支比较值(类型, condition['比较']);
+    const 值 = 格式化技能设计台原型字段值(condition['值'] ?? (类型 === '目标' ? '自身' : ''));
+    const 状态 = normalizeSkillUiText(condition['状态'], '中毒');
+    const 显示配置 = 读取技能设计台条件分支值控件配置(类型, 比较);
+    const 类型控件 = { key: '类型', kind: 'select', label: '类型', hint: 技能设计台条件字段提示.类型, ...条件类型下拉(类型) };
+    if (类型 === '目标') {
+      return {
+        kind: 'condition', isTargetRow: true, renderedType: 类型, removable: !!允许删除,
+        类型: 类型控件,
+        对象: { key: '对象', kind: 'hidden', value: '目标' },
+        比较隐藏: { key: '比较', kind: 'hidden', value: '==', disabled: false },
+        比较: null,
+        值: { label: '目标', hidden: false, control: 条件值控件(类型, 比较, 值 || '自身') },
+        状态: null,
+        preview: 构建技能设计台条件分支条件预览({ 类型, 对象: '目标', 比较: '==', 值: 值 || '自身' }),
+      };
+    }
+    return {
+      kind: 'condition', isTargetRow: false, renderedType: 类型, removable: !!允许删除,
+      类型: 类型控件,
+      对象: { key: '对象', kind: 'hidden', value: 属性回读(对象) },
+      比较隐藏: { key: '比较', kind: 'hidden', value: 属性回读(比较), disabled: !!显示配置.显示比较 },
+      比较: { key: '比较', kind: 'select', label: 显示配置.比较标签, hint: '', tableHint: 技能设计台条件字段提示.比较, hidden: !显示配置.显示比较, ...条件比较下拉(类型, 比较) },
+      值: { label: 显示配置.值标签, hidden: !显示配置.显示值, control: 条件值控件(类型, 比较, 值) },
+      状态: { ...条件状态下拉(状态), hidden: !显示配置.显示状态 },
+      preview: 构建技能设计台条件分支条件预览(condition),
+    };
+  }
+  function 描述嵌套原型列表编辑器(字段名 = '', value = [], fallbackTarget = '单体', 表内提示 = '') {
+    // ≙ 构建技能设计台嵌套原型列表编辑器（标签为纯文本，原版不显示说明徽标）
+    const source = Array.isArray(value) ? value : [];
+    const 嵌套目标 = 字段名 === '授予效果' ? '单体' : fallbackTarget;
+    const 显示字段名 = 字段名 === '授予效果' ? '作用效果' : 字段名 === '结算效果' ? '结算效果' : 字段名;
+    const 默认原型 = 字段名 === '结算效果' ? '伤害结算' : '判定修正';
+    return {
+      kind: 'nested', key: 字段名, field: false, label: 文本回读(显示字段名), hint: '', tableHint: 表内提示 || '',
+      defaultPrototype: 默认原型, nestedTarget: 嵌套目标,
+      rows: 描述原型效果行列表(source, 嵌套目标, true, { 嵌套字段: 字段名, 强制独立: true }, { name: 'nested', nestedKind: 字段名, allowEmpty: true }),
+    };
+  }
+
+  // ───────────── 5. 虚拟 DOM 遍历（文档顺序） ─────────────
+  // 行内全部「data-skill-designer-prototype-field」输入，按 DOM 顺序，包含嵌套行（owner 标出所属行）
+  function* 行内输入(行) { for (const 控件 of 行.fields) yield* 控件输入(控件, 行); }
+  function* 控件输入(控件, owner) {
+    if (!控件) return;
+    if (控件.kind === 'scaling') { for (const c of 控件.controls) yield { ctl: c, owner }; return; }
+    if (控件.kind === 'group') { for (const c of 控件.controls) yield* 控件输入(c, owner); return; }
+    if (控件.kind === 'nested') { for (const r of 控件.rows) yield* 行内输入(r); return; }
+    if (控件.kind === 'branch') { for (const b of 控件.branches) for (const k of ['替换效果', '追加效果']) for (const r of b.effects[k].rows) yield* 行内输入(r); return; }
+    if (控件.field) yield { ctl: 控件, owner };
+  }
+  function* 遍历行(rows) {
+    for (const 行 of rows) {
+      yield 行;
+      for (const 控件 of 行.fields) {
+        if (控件.kind === 'nested') yield* 遍历行(控件.rows);
+        if (控件.kind === 'branch') for (const b of 控件.branches) for (const k of ['替换效果', '追加效果']) yield* 遍历行(b.effects[k].rows);
+      }
+    }
+  }
+  function* 遍历缩放块(rows) {
+    for (const 行 of rows) for (const 控件 of 行.fields) {
+      if (控件.kind === 'scaling') yield { block: 控件, row: 行 };
+      else if (控件.kind === 'nested') yield* 遍历缩放块(控件.rows);
+      else if (控件.kind === 'branch') for (const b of 控件.branches) for (const k of ['替换效果', '追加效果']) yield* 遍历缩放块(b.effects[k].rows);
+    }
+  }
+  function* 遍历条件行(rows) {
+    for (const 行 of rows) for (const 控件 of 行.fields) {
+      if (控件.kind === 'nested') yield* 遍历条件行(控件.rows);
+      else if (控件.kind === 'branch') for (const b of 控件.branches) yield* 条目内条件行(b);
+    }
+  }
+  function* 条目内条件行(条目) {
+    for (const c of 条目.conditions) yield { cond: c, entry: 条目 };
+    for (const k of ['替换效果', '追加效果']) yield* 遍历条件行(条目.effects[k].rows);
+  }
+  function 控件读值(控件) {
+    if (!控件) return undefined;
+    if (控件.kind === 'object') return 控件.json;
+    if (控件.kind === 'bool') return 'on';
+    return 控件.value;
+  }
+  function 行字段控件(行, 字段名) { for (const { ctl } of 行内输入(行)) if (ctl.key === 字段名) return ctl; return null; }
+  const 原型行字段值 = (行, 字段名) => normalizeSkillUiText(控件读值(行字段控件(行, 字段名)), '');
+
+  // ───────────── 6. 挂载期同步 ≙ onMount 的 syncScalingField / 同步原型行默认驱动判定 / syncConditionRow ─────────────
+  function 同步缩放块(block, 行) {
+    if (!block) return;
+    const 原型 = normalizeSkillUiText(行.prototypeSelect.value || 原型行字段值(行, '原型'), '');
+    const 目标 = 原型行字段值(行, '目标');
+    const 驱动 = block.controls.find(c => c.key === '驱动属性');
+    const 方向 = block.controls.find(c => c.key === '影响方向');
+    if (原型 === '伤害结算' || (!设计台驱动例外原型.includes(原型) && 目标 === '自身')) {
+      block.hidden = true;
+      if (驱动) 设控件值(驱动, '无');
+      if (方向) 设控件值(方向, '无');
+      return;
+    }
+    block.hidden = false;
+    const driver = block.controls.find(c => c.scalingDriver);
+    const direction = block.controls.find(c => c.directionField) || null;
+    const 刷新方向选项 = (控件, 选项列表, 当前值, 默认值) => {
+      const 下拉 = 设计台下拉(选项列表, 选项列表.includes(当前值) ? 当前值 : 默认值);
+      控件.options = 下拉.options; 控件.value = 下拉.value;
+    };
+    const hasDriver = normalizeSkillUiText(driver && driver.value, '无') !== '无';
+    const 当前字段 = {
+      目标,
+      发动方式: 原型行字段值(行, '发动方式'),
+      状态: 原型行字段值(行, '状态'),
+      数值: 原型行字段值(行, '数值'),
+      持续回合: 原型行字段值(行, '持续回合'),
+      结算: 原型行字段值(行, '结算'),
+    };
+    const 合法方向列表 = 读取技能设计台影响方向选项值(原型, 当前字段);
+    const 首个合法方向 = 选择技能设计台默认影响方向(原型, 当前字段, '效果强度');
+    if (direction) {
+      direction.hidden = 原型 === '状态移除' || !hasDriver;
+      const 当前方向 = normalizeSkillUiText(direction.value, '');
+      刷新方向选项(direction, 合法方向列表, 当前方向, 首个合法方向);
+      设控件值(direction, 原型 === '状态移除' && hasDriver
+        ? '成功率'
+        : hasDriver
+          ? (当前方向 === '无' || (合法方向列表.length && !合法方向列表.includes(当前方向)) ? 首个合法方向 : 当前方向)
+          : '无');
+    }
+  }
+  function 原型行需要默认驱动判定(行) {
+    if (!行) return false;
+    if (原型行字段值(行, '驱动属性')) return false;
+    const 原型 = normalizeSkillUiText(行.prototypeSelect.value || 原型行字段值(行, '原型'), '');
+    if (原型 === '伤害结算' || (!设计台驱动例外原型.includes(原型) && 原型行字段值(行, '目标') === '自身')) return false;
+    return 技能设计台原型需要默认驱动判定(原型, {
+      目标: 原型行字段值(行, '目标'),
+      状态: 原型行字段值(行, '状态'),
+      数值: 原型行字段值(行, '数值'),
+      结算: 原型行字段值(行, '结算'),
+      发动方式: 原型行字段值(行, '发动方式'),
+      结算倍率: 原型行字段值(行, '结算倍率'),
+      转化比例: 原型行字段值(行, '转化比例'),
+      概率: 原型行字段值(行, '概率'),
+    });
+  }
+  function 同步原型行默认驱动判定(行) {
+    if (!行 || !原型行需要默认驱动判定(行)) return;
+    const 驱动输入 = 行字段控件(行, '驱动属性');
+    const 方向输入 = 行字段控件(行, '影响方向');
+    const 原型 = normalizeSkillUiText(行.prototypeSelect.value || 原型行字段值(行, '原型'), '');
+    const 字段 = {};
+    ['状态', '数值', '结算', '威力倍率', '发动方式'].forEach(字段名 => {
+      const 字段值 = 原型行字段值(行, 字段名);
+      if (字段值) 字段[字段名] = 字段值;
+    });
+    if (驱动输入) 设控件值(驱动输入, 选择技能设计台默认驱动属性(原型, 字段));
+    if (方向输入) 设控件值(方向输入, 选择技能设计台默认影响方向(原型, 字段, '效果强度'));
+    const 首块 = 遍历缩放块([行]).next().value;
+    if (首块) 同步缩放块(首块.block, 首块.row);
+  }
+  // 原版 handleSubmit 先 setBusy(true) 把所有 [data-skill-designer-disableable] 控件设为 disabled 再回读表单；
+  // readCondition 只取未 disabled 的输入，于是保存时条件的「类型/比较/值/状态」都读不到 → 条件分支在保存中被整体丢弃。
+  // 保存链默认复刻该行为（忙碌态），可用 { keepConditionBranches: true } 关闭。
+  let 设计台回读忙碌态 = false;
+  // 有意偏离原版的规则开关（build_model.js 的「偏离」表织入原版代码）；默认 false = 与原版一致
+  const 设计台规则 = { 战斗外原型可保存: false, 物品被动保持承载方式: false };
+  function 条件读值(条件, 字段名) {
+    // ≙ readCondition：同名字段中第一个未 disabled 的输入（DOM 顺序：类型、对象、隐藏比较、比较下拉、值、状态）
+    const 可禁用 = 设计台回读忙碌态 ? [条件.类型, 条件.比较, 条件.值 && 条件.值.control, 条件.状态] : [];
+    const 候选 = [条件.类型, 条件.对象, 条件.比较隐藏, 条件.比较, 条件.值 && 条件.值.control, 条件.状态].filter(c => c && !可禁用.includes(c));
+    const 命中 = 候选.find(c => c.key === 字段名 && !c.disabled);
+    return 命中 ? 读取技能设计台原型字段输入值(命中.value) : '';
+  }
+  function 同步条件行(条件, 条目) {
+    // ≙ syncConditionRow
+    if (!条件) return 条件;
+    const type = normalizeSkillUiText(条件.类型.value, '生命比例');
+    const 原类型 = normalizeSkillUiText(条件.renderedType, type);
+    if (原类型 !== type || (type === '目标') !== 条件.isTargetRow) {
+      const 默认配置 = 读取技能设计台条件分支值控件配置(type, '');
+      const 当前值 = normalizeSkillUiText(条件.值 && 条件.值.control ? 条件.值.control.value : '', '');
+      const nextCondition = { 类型: type, 对象: '目标', 比较: 规范化技能设计台条件分支比较值(type, '') };
+      if (默认配置.显示值) nextCondition['值'] = normalizeSkillDesignerSelectValue(当前值, 默认配置.值选项, 默认配置.值选项[0] || (type === '目标' ? '自身' : ''));
+      if (默认配置.显示状态) nextCondition['状态'] = normalizeSkillUiText(条件.状态 && 条件.状态.value, '中毒');
+      const 新行 = 描述条件分支条件编辑器(nextCondition, !!条件.removable);
+      const 序号 = 条目.conditions.indexOf(条件);
+      if (序号 >= 0) 条目.conditions.splice(序号, 1, 新行);
+      同步条件行(新行, 条目);
+      同步条件分支后置结算限制(条目);
+      return 新行;
+    }
+    if (type === '目标') {
+      条件.preview = 构建技能设计台条件分支条件预览({ 类型: '目标', 对象: '目标', 比较: '==', 值: normalizeSkillUiText(条件.值 && 条件.值.control ? 条件.值.control.value : '', '自身') });
+      return 条件;
+    }
+    const compareSelect = 条件.比较;
+    const compareHidden = 条件.比较隐藏;
+    const compareInput = compareSelect && !compareSelect.disabled ? compareSelect : compareHidden;
+    const 显示配置 = 读取技能设计台条件分支值控件配置(type, compareInput && compareInput.value);
+    if (compareSelect) compareSelect.label = 显示配置.比较标签;
+    if (条件.值) 条件.值.label = 显示配置.值标签;
+    if (compareSelect) compareSelect.hidden = !显示配置.显示比较;
+    if (compareHidden) {
+      compareHidden.disabled = !!显示配置.显示比较;
+      compareHidden.value = 规范化技能设计台条件分支比较值(type, compareHidden.value || (compareInput && compareInput.value));
+    }
+    if (compareSelect) {
+      const currentCompare = 规范化技能设计台条件分支比较值(type, compareSelect.value || (compareHidden && compareHidden.value));
+      const 下拉 = 条件比较下拉(type, currentCompare);
+      compareSelect.options = 下拉.options; compareSelect.value = 下拉.value;
+    }
+    const 比较源 = 显示配置.显示比较 ? compareSelect : compareHidden;
+    const compare = 规范化技能设计台条件分支比较值(type, 比较源 && 比较源.value);
+    const nextConfig = 读取技能设计台条件分支值控件配置(type, compare);
+    const 当前值 = normalizeSkillUiText(条件.值 && 条件.值.control ? 条件.值.control.value : '', '');
+    条件.值 = { label: nextConfig.值标签, hidden: !nextConfig.显示值, control: 条件值控件(type, compare, 当前值) };
+    if (条件.状态) 条件.状态.hidden = !nextConfig.显示状态;
+    条件.preview = 构建技能设计台条件分支条件预览({
+      类型: type,
+      对象: normalizeSkillUiText(条件.对象 && 条件.对象.value, '目标'),
+      比较: compare,
+      值: normalizeSkillUiText(条件.值.control ? 条件.值.control.value : '', ''),
+      状态: normalizeSkillUiText(条件.状态 && 条件.状态.value, ''),
+    });
+    同步条件分支后置结算限制(条目);
+    return 条件;
+  }
+  function 同步条件分支后置结算限制(条目) {
+    if (!条目) return;
+    const 条件列表 = [...条目内条件行(条目)].map(({ cond }) => ({ 类型: normalizeSkillUiText(cond.类型.value, '') }));
+    const 禁用释放前降低结算 = 技能设计台条件列表包含释放后条件(条件列表);
+    ['替换效果', '追加效果'].forEach(键 => {
+      [...遍历行(条目.effects[键].rows)].forEach(行 => {
+        const 原型 = normalizeSkillUiText(行.prototypeSelect.value, '');
+        if (原型 !== '结算修正') return;
+        let 结算输入 = null, 数值输入 = null;
+        for (const { ctl, owner } of 行内输入(行)) {
+          if (owner !== 行) continue;
+          if (!结算输入 && ctl.key === '结算') 结算输入 = ctl;
+          if (!数值输入 && ctl.key === '数值') 数值输入 = ctl;
+        }
+        if (!结算输入) return;
+        const 结算 = normalizeSkillUiText(结算输入.value, '');
+        const 数值 = 解析技能设计台正负数值(数值输入 && 数值输入.value);
+        if (禁用释放前降低结算 && ['消耗', '前摇'].includes(结算) && 数值 < 0) {
+          设控件值(结算输入, '造成伤害');
+          重建原型行(行);
+        }
+      });
+    });
+  }
+  function 重建原型行(行) {
+    // ≙ rebuildPrototypeRowFields：按当前行值重新水合并重渲染本行字段
+    if (!行) return;
+    const nextPrototype = normalizeSkillUiText(行.prototypeSelect.value, '');
+    if (!nextPrototype || !SKILL_DESIGNER_PROTOTYPE_REGISTRY[nextPrototype]) return;
+    const renderedPrototype = normalizeSkillUiText(行.prototype, '');
+    const renderedState = normalizeSkillUiText(行.renderedState, '');
+    const 目标控件 = 行字段控件(行, '目标');
+    const currentTarget = normalizeSkillUiText(目标控件 && 目标控件.value, '单体');
+    const 网格 = 行.__grid;
+    const rows = 网格 ? 网格.rows : [];
+    const rowIndex = rows.indexOf(行);
+    const gridName = normalizeSkillUiText(网格 && 网格.name, '');
+    const 允许对应等级 = gridName === 'item-use';
+    const currentEffects = 网格 ? 读取虚拟行列表(rows, currentTarget, '', true, { 允许对应等级 }) : [];
+    const nestedKind = normalizeSkillUiText(网格 && 网格.nestedKind, '');
+    const branchRow = 网格 && 网格.branchEntry;
+    const 禁用释放前降低结算 = !!branchRow && 技能设计台条件列表包含释放后条件([...条目内条件行(branchRow)].map(({ cond }) => ({ 类型: cond.类型.value })));
+    const currentSource = currentEffects[rowIndex] || {};
+    const sourceEffect =
+      renderedPrototype && renderedPrototype !== nextPrototype
+        ? { 原型: nextPrototype, 目标: currentTarget, 生效方式: currentSource['生效方式'] }
+        : { ...currentSource, 原型: nextPrototype, 目标: currentTarget };
+    if (nextPrototype === '状态施加' && renderedPrototype === '状态施加' && renderedState && normalizeSkillUiText(sourceEffect['状态'], '') !== renderedState) {
+      delete sourceEffect['数值'];
+      delete sourceEffect['副数值'];
+    }
+    if (nextPrototype === '结算修正' && normalizeSkillUiText(sourceEffect['结算'], '') !== '持续伤害引爆' && 是技能设计台持续伤害引爆自动条件(sourceEffect['条件分支'])) {
+      delete sourceEffect['条件分支'];
+    }
+    const currentEffect = 技能设计台清理并水合原型效果(sourceEffect, currentTarget, { 嵌套字段: nestedKind, 强制独立: gridName !== 'main', 允许对应等级 });
+    const 禁用条件分支 = !!(网格 && 网格.conditionEffect);
+    const 编辑 = 描述原型字段编辑器(currentEffect, {
+      禁用条件分支,
+      嵌套字段: nestedKind,
+      强制独立: gridName !== 'main',
+      禁用释放前降低结算,
+      固定生效方式: gridName === 'main' && rowIndex === 0 ? '独立生效' : '',
+      默认生效方式: '独立生效',
+      当前效果: currentEffect,
+      允许对应等级,
+    });
+    行.fields = 编辑.控件 || 编辑.controls;
+    行.__effect = 编辑.当前效果;
+    绑定子网格(行);
+    行.prototype = currentEffect['原型'];
+    行.renderedState = currentEffect['原型'] === '状态施加' ? normalizeSkillUiText(currentEffect['状态'], '') : '';
+    行.prototypeSelect = 设计台原型下拉(行.prototype);
+    for (const { cond, entry } of [...遍历条件行([行])]) 同步条件行(cond, entry);
+    for (const { block, row } of [...遍历缩放块([行])]) 同步缩放块(block, row);
+  }
+  function 挂载同步行(rows) {
+    // ≙ onMount 末尾：全部原型行默认驱动 → 全部缩放块 → 全部条件行（均为文档顺序）
+    [...遍历行(rows)].forEach(同步原型行默认驱动判定);
+    [...遍历缩放块(rows)].forEach(({ block, row }) => 同步缩放块(block, row));
+    [...遍历条件行(rows)].forEach(({ cond, entry }) => 同步条件行(cond, entry));
+  }
+
+  // ───────────── 7. 回读 ≙ 读取技能设计台原型效果状态 ─────────────
+  function 读取虚拟行列表(rows = [], fallbackTarget = '单体', gridName = '', 允许空列表 = false, context = {}) {
+    const target = normalizeSkillDesignerEffectTargetValue(fallbackTarget, '单体');
+    if (!rows.length && (gridName === 'side' || 允许空列表)) return [];
+    const effects = rows
+      .map(行 => {
+        const prototype = normalizeSkillUiText(行.prototypeSelect && 行.prototypeSelect.value, '');
+        if (!prototype || !SKILL_DESIGNER_PROTOTYPE_REGISTRY[prototype]) return null;
+        const effect = { 原型: prototype, 目标: target };
+        for (const { ctl, owner } of 行内输入(行)) {
+          if (owner !== 行) continue;
+          const key = normalizeSkillUiText(ctl.key, '');
+          if (!key) continue;
+          if (ctl.kind === 'bool') {
+            if (ctl.value === true) effect[key] = true;
+            continue;
+          }
+          const value = ctl.kind === 'object'
+            ? (() => {
+                try {
+                  const parsed = JSON.parse(ctl.json || '{}');
+                  return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+                } catch (_) {
+                  return {};
+                }
+              })()
+            : ctl.kind === 'multi'
+              ? 读取技能设计台多枚举值(ctl.value)
+              : 读取技能设计台原型字段输入值(ctl.value);
+          if (value === '无') continue;
+          if (value !== '' && !(value && typeof value === 'object' && !Array.isArray(value) && !Object.keys(value).length))
+            effect[key] = key === '防御穿透' ? Math.max(0, Math.min(100, parseSkillDesignerIntegerInputValue(value, 0, 0))) : value;
+        }
+        if (prototype === '状态施加' && normalizeSkillUiText(effect['状态'], '') === '无视异常' && !effect['触发限制']) {
+          effect['触发限制'] = { 周期: '每日', 次数: 3 };
+        }
+        行.fields.filter(控件 => 控件.kind === 'branch').forEach(block => {
+          if (!block.enabled) return;
+          const branches = block.branches
+            .map(条目 => {
+              const action = normalizeSkillUiText(条目.action && 条目.action.value, '替换效果');
+              const conditions = [...条目内条件行(条目)]
+                .map(({ cond }) => {
+                  const 类型 = normalizeSkillUiText(条件读值(cond, '类型'), '');
+                  const 比较 = 规范化技能设计台条件分支比较值(类型, 条件读值(cond, '比较'));
+                  const condition = { 类型, 对象: normalizeSkillUiText(条件读值(cond, '对象'), '目标'), 比较 };
+                  const 显示配置 = 读取技能设计台条件分支值控件配置(类型, 比较);
+                  if (显示配置.显示值) {
+                    const value = 条件读值(cond, '值');
+                    if (value !== '') condition['值'] = value;
+                  }
+                  if (显示配置.显示状态) {
+                    const state = normalizeSkillUiText(条件读值(cond, '状态'), '');
+                    if (state) condition['状态'] = state;
+                  }
+                  return condition['类型'] ? condition : null;
+                })
+                .filter(Boolean);
+              if (!conditions.length) return null;
+              const branch = { 条件: conditions, 处理: action };
+              if (action === '替换效果' || action === '追加效果') {
+                const effectKey = action === '替换效果' ? '替换效果' : '追加效果';
+                const nestedEffects = 读取虚拟行列表(条目.effects[effectKey].rows, target, '', true, {
+                  条件分支: true,
+                  强制独立: true,
+                  允许对应等级: context && context.允许对应等级,
+                });
+                if (nestedEffects.length) branch[effectKey] = nestedEffects;
+              }
+              return branch;
+            })
+            .filter(Boolean);
+          if (branches.length) effect['条件分支'] = branches;
+        });
+        行.fields.filter(控件 => 控件.kind === 'nested').forEach(block => {
+          const key = normalizeSkillUiText(block.key, '');
+          if (!key) return;
+          const nestedEffects = 读取虚拟行列表(block.rows, target, '', true, {
+            嵌套字段: key,
+            强制独立: true,
+            允许对应等级: context && context.允许对应等级,
+          });
+          if (nestedEffects.length) effect[key] = nestedEffects;
+        });
+        return effect;
+      })
+      .filter(Boolean);
+    const 规范续效果列表 = 规范化技能设计台原型生效方式列表(effects, context);
+    const 归一效果列表 =
+      允许空列表 && !规范续效果列表.length ? [] : 规范化技能设计台原型效果列表(规范续效果列表, target, context);
+    清理技能设计台等价替换条件分支(归一效果列表);
+    return 归一效果列表;
+  }
+
+  // ───────────── 8. 副作用行 ≙ 构建技能设计台副作用行列表 / readSideEffects ─────────────
+  function 描述副作用行列表(副作用列表 = [], 选项 = {}) {
+    const 列表 = 规范化技能设计台副作用列表(副作用列表);
+    const 字段名 = normalizeSkillUiText(选项 && 选项.字段名, '副作用列表');
+    return 列表.map(条目 => 描述副作用行(条目, 字段名));
+  }
+  function 描述副作用行(条目 = {}, 字段名 = '副作用列表') {
+    const 类型 = normalizeSkillUiText(条目['副作用类型'], '自损反噬');
+    const 是致死献祭 = 类型 === '致死献祭';
+    const 配置 = 技能设计台副作用配置表_V1[类型] || {};
+    const 效果说明 = 格式化技能设计台副作用摘要(条目);
+    const 字段 = [
+      { key: '副作用类型', kind: 'select', label: '类型', hint: 技能设计台副作用字段提示.类型, ...设计台下拉(技能设计台副作用类型候选_V1, 类型) },
+      { key: '触发时机', kind: 'select', label: '时机', hint: 技能设计台副作用字段提示.时机, ...设计台下拉(技能设计台副作用触发时机选项_V1, 条目['触发时机'] || '效果生效后') },
+      { key: '生效对象', kind: 'select', label: '对象', hint: 技能设计台副作用字段提示.对象, ...设计台下拉(技能设计台副作用生效对象选项_V1, 条目['生效对象'] || '技能释放者') },
+      { key: '触发概率', kind: 'text', label: '概率', hint: 技能设计台副作用字段提示.概率, value: 属性回读(格式化技能设计台概率百分比(条目['触发概率'] ?? 1)) },
+    ];
+    if (!是致死献祭) {
+      字段.push({ key: '持续回合', kind: 'number', label: '持续', hint: 技能设计台副作用字段提示.持续, min: '0', step: '1', value: 数字输入回读(String(条目['持续回合'] ?? 1)) });
+      字段.push({ key: '数值', kind: 'text', label: 文本回读(配置.数值标签 || '强度'), hint: '', value: 属性回读(条目['数值'] || ''), placeholder: 属性回读(配置.数值 || '+10%') });
+      if (配置.副数值) 字段.push({ key: '副数值', kind: 'text', label: 文本回读(配置.副数值标签 || '附加强度'), hint: '', value: 属性回读(条目['副数值'] || ''), placeholder: 属性回读(配置.副数值) });
+      字段.push({ key: '关联状态', kind: 'text', label: '关联效果', hint: '', value: 属性回读(条目['关联状态'] || ''), placeholder: '食物增幅', hidden: 条目['触发时机'] !== '效果结束后' });
+    }
+    // 类型选项说明：原版副作用摘要（按该类型默认参数）
+    字段[0].options.forEach(项 => { const 示例 = 创建技能设计台默认副作用条目(项.value); const 说明 = 示例 && 示例.副作用类型 === 项.value ? 格式化技能设计台副作用摘要(示例) : ''; if (说明) 项.hint = 说明; });
+    return { kind: 'sideEffect', scope: 字段名, fields: 字段, summary: 是致死献祭 ? '' : 效果说明 };
+  }
+  function 读取副作用行列表(行列表 = []) {
+    return 规范化技能设计台副作用列表(
+      行列表.map(行 => {
+        const 条目 = {};
+        行.fields.forEach(控件 => {
+          const key = normalizeSkillUiText(控件.key, '');
+          if (!key) return;
+          const value = normalizeSkillUiText(控件.value, '');
+          if (value || ['触发概率', '持续回合'].includes(key)) 条目[key] = value;
+        });
+        return 条目;
+      }),
+    );
+  }
+
+  // ───────────── 9. 整张表单 ≙ 预览页模板 + readSkillDesignerFormState ─────────────
+  function 构建虚拟表单(designerDraft = {}, previewMeta = {}, snapshot = {}) {
+    const 上下文 = 设计台模板上下文(snapshot, previewMeta, designerDraft);
+    const scopeLabels = getSkillDesignerScopeLabels(previewMeta);
+    const 下拉 = (选项, 当前, 空) => ({ kind: 'select', ...设计台下拉(选项, 当前, 空) });
+    const 使用限制无 = (designerDraft.使用限制周期 || '无限制') === '无限制';
+    const 是紫极魔瞳功法 = previewMeta.scope === 'art' && (designerDraft.name || previewMeta.label) === '紫极魔瞳';
+    const top = {
+      name: { kind: 'text', value: 属性回读(designerDraft.name), placeholder: 属性回读(`请输入${scopeLabels.nameFieldLabel}`) },
+      type: { kind: 'hidden', value: 属性回读(designerDraft.type || '输出') },
+      typeDisplay: 文本回读(designerDraft.typeDisplay || designerDraft.type || '输出'),
+      deliveryForm: 下拉(getSkillDesignerDeliveryOptions(designerDraft.type), designerDraft.deliveryForm || '直接生效'),
+      使用限制周期: 下拉(技能设计台使用限制周期选项, designerDraft.使用限制周期 || '无限制'),
+      使用限制次数: { kind: 'number', min: '1', step: '1', value: 数字输入回读(String(Math.max(1, toNumber(designerDraft.使用限制次数, 1)))), disabled: 使用限制无 },
+      启用被动: { kind: 'bool', value: !!上下文.启用被动 },
+      被动触发: 下拉(技能设计台被动触发选项, designerDraft.被动触发 || '常驻'),
+      被动触发周期: 下拉(技能设计台被动触发周期选项, 上下文.被动触发限制.周期),
+      被动触发次数: { kind: 'number', min: '1', step: '1', value: 数字输入回读(String(上下文.被动触发限制.次数)) },
+      artStage: 是紫极魔瞳功法 ? { kind: 'text', value: 属性回读(designerDraft.artStage || '未入门') } : null,
+      artLevel: 是紫极魔瞳功法 ? { kind: 'number', min: '1', max: '4', step: '1', value: 数字输入回读(String(Math.max(1, toNumber(designerDraft.artLevel, 1)))) } : null,
+      constructItemCount: { kind: 'number', min: '1', step: '1', value: 数字输入回读(String(Math.max(1, toNumber(designerDraft.constructItemCount, 1)))) },
+      constructDurationTick: 描述tick输入({ label: '有效期', hint: '' }, 'constructDurationTick', Math.max(0, toNumber(designerDraft.constructDurationTick, 0)), { 最小tick: 0, 默认tick: 0 }),
+      constructDescription: { kind: 'text', value: 属性回读(designerDraft.constructDescription || ''), placeholder: '例如：闪烁着暗金光芒的晶体' },
+      costType: 下拉(SKILL_DESIGNER_RESOURCE_TYPE_OPTIONS, designerDraft.costType),
+      costValues: Object.fromEntries(SKILL_DESIGNER_COST_RESOURCE_KEYS.map(资源 => [资源, { kind: 'text', value: 属性回读(上下文.消耗值[资源] ?? ''), placeholder: '无', pattern: '[0-9]+(\\.[0-9]+)?%?' }])),
+      sustainValues: Object.fromEntries(SKILL_DESIGNER_COST_RESOURCE_KEYS.map(资源 => [资源, { kind: 'text', value: 属性回读(上下文.维持消耗值[资源] ?? ''), placeholder: '无', pattern: '[0-9]+(\\.[0-9]+)?%?' }])),
+      fixedCostRatio: 上下文.固定百分比消耗比例,
+      前摇: { kind: 'number', min: '0', step: '1', value: 数字输入回读(String(Math.max(0, toNumber(designerDraft['前摇'], 0)))) },
+      启用技能掌控度: { kind: 'bool', value: !!上下文.启用技能掌控度 },
+      技能掌控度中心等级: { kind: 'number', min: '1', step: '1', value: 数字输入回读(designerDraft.技能掌控度中心等级 || ''), placeholder: '85' },
+      技能掌控度圆满等级: { kind: 'number', min: '1', step: '1', value: 数字输入回读(designerDraft.技能掌控度圆满等级 || ''), placeholder: '99' },
+      attachedAttributes: (() => {
+        const 已选 = new Set(normalizeSkillDesignerArray(designerDraft.attachedAttributes));
+        return { kind: 'multi', options: SKILL_DESIGNER_ATTRIBUTE_OPTIONS.map(项 => toText(项, '').trim()).filter(Boolean).map(项 => ({ value: 属性回读(项), label: 文本回读(项), recommended: 上下文.recommendedAttrs.has(项) })), selected: SKILL_DESIGNER_ATTRIBUTE_OPTIONS.map(项 => toText(项, '').trim()).filter(项 => 项 && 已选.has(项)).map(属性回读) };
+      })(),
+      visualDesc: { kind: 'textarea', value: 文本域回读(designerDraft.visualDesc), placeholder: '例如：空间剧烈震荡，一柄漆黑如墨的巨刃破空而出...' },
+      effectDesc: { kind: 'textarea', value: 文本域回读(designerDraft.effectDesc), placeholder: '总结技能的实际作用，如：造成中等伤害并附带破甲效果' },
+      用法模式: 上下文.isFusionDesigner ? 下拉(上下文.融合用法模式选项, designerDraft['用法模式'], '') : null,
+      fusionMode: 上下文.isFusionDesigner ? 下拉(上下文.fusionModeOptions, designerDraft.fusionMode, '') : null,
+      fusionParticipants: 上下文.isFusionDesigner ? 描述融合参与者行(designerDraft.fusionParticipants, snapshot.rootData, previewMeta) : [],
+    };
+    const vf = {
+      previewMeta, scopeLabels, top,
+      rows: designerDraft.prototypeEffects && designerDraft.prototypeEffects.length > 0
+        ? 描述原型效果行列表(designerDraft.prototypeEffects, designerDraft.target, false, { 固定首个独立生效: true }, { name: 'main' })
+        : [],
+      sideEffects: 描述副作用行列表(designerDraft['副作用列表'], { 字段名: '副作用列表' }),
+      isConstruct: !!上下文.是造物承载,
+      isFusion: !!上下文.isFusionDesigner,
+    };
+    if (!vf.rows.__grid) Object.defineProperty(vf.rows, '__grid', { value: { name: 'main', nestedKind: '', allowEmpty: false, conditionEffect: false, branchEntry: null, rows: vf.rows }, writable: true, enumerable: false });
+    return vf;
+  }
+  function 描述融合参与者行(participants = [], rootData = {}, previewMeta = {}) {
+    // ≙ buildSkillDesignerFusionParticipantRows
+    const participantList = normalizeSkillDesignerFusionParticipantList(participants, rootData);
+    const mode = participantList.filter(participant => participant.role === 'partner').length ? 'partner' : 'self';
+    const partnerCount = participantList.filter(participant => participant.role === 'partner').length;
+    return participantList.map(participant => {
+      const isSelf = participant.role === 'self';
+      const charOptions = isSelf
+        ? [{ value: participant.charKey, label: participant.charName || participant.charKey || '当前角色' }]
+        : getSkillDesignerFusionCharOptions(rootData, previewMeta, participantList);
+      const spiritOptions = getSkillDesignerFusionSpiritOptions(rootData, participant.charKey, participant.spirit);
+      const charLabel = participant.charName || participant.charKey || '未设置';
+      return {
+        role: participant.role,
+        char: isSelf
+          ? { kind: 'static', value: 属性回读(participant.charKey), display: 文本回读(charLabel), charName: 属性回读(charLabel) }
+          : { kind: 'select', ...设计台下拉(charOptions, participant.charKey, '暂无对象') },
+        spirit: { kind: 'select', ...设计台下拉(spiritOptions, participant.spirit, spiritOptions.length ? '' : '未接入武魂') },
+        removable: !isSelf && mode === 'partner' && partnerCount > 1,
+      };
+    });
+  }
+  function 读取虚拟表单(vf, previewMeta = {}) {
+    // ≙ readSkillDesignerFormState（字段读取改为读虚拟控件，其余逻辑原样）
+    const T = vf.top;
+    const 字段表 = {
+      name: T.name, type: T.type, deliveryForm: T.deliveryForm, 使用限制周期: T.使用限制周期, 使用限制次数: T.使用限制次数,
+      启用被动: T.启用被动, 被动触发: T.被动触发, 被动触发周期: T.被动触发周期, 被动触发次数: T.被动触发次数,
+      用法模式: T.用法模式, fusionMode: T.fusionMode, artStage: T.artStage, artLevel: T.artLevel,
+      constructItemCount: T.constructItemCount, constructDurationTick: T.constructDurationTick, constructDescription: T.constructDescription,
+      costType: T.costType, 前摇: T.前摇, 启用技能掌控度: T.启用技能掌控度, 技能掌控度中心等级: T.技能掌控度中心等级, 技能掌控度圆满等级: T.技能掌控度圆满等级,
+      visualDesc: T.visualDesc, effectDesc: T.effectDesc,
+    };
+    const readField = key => {
+      const input = 字段表[key];
+      if (input && input.kind === 'bool') return input.value ? '启用' : '无';
+      return input ? toText(input.value, '').trim() : '';
+    };
+    const readToggleField = key => (字段表[key] && 字段表[key].kind === 'bool' && 字段表[key].value ? '启用' : '无');
+    const 选中资源 = () => {
+      const costType = readField('costType') || '无';
+      return costType === '混合' ? SKILL_DESIGNER_COST_RESOURCE_KEYS : SKILL_DESIGNER_COST_RESOURCE_KEYS.includes(costType) ? [costType] : [];
+    };
+    const readCostValues = () => {
+      const result = {};
+      选中资源().forEach(key => { const value = normalizeSkillUiText(T.costValues[key] && T.costValues[key].value, ''); if (value) result[key] = value; });
+      return result;
+    };
+    const readSustainCostText = () => {
+      const result = {};
+      选中资源().forEach(key => { const value = normalizeSkillUiText(T.sustainValues[key] && T.sustainValues[key].value, ''); if (value) result[key] = value; });
+      return 格式化技能设计台消耗片段(result);
+    };
+    const readFusionParticipants = () =>
+      (T.fusionParticipants || [])
+        .map(行 => {
+          const role = normalizeSkillUiText(行.role, '') === 'self' ? 'self' : 'partner';
+          const charKey = normalizeSkillUiText(行.char && 行.char.value, '');
+          const 选中项 = 行.char && 行.char.kind === 'select' ? 行.char.options.find(项 => 项.value === 行.char.value) || null : null;
+          const charName = normalizeSkillUiText(行.char && 行.char.kind === 'static' ? 行.char.charName : null, normalizeSkillUiText(选中项 && 选中项.label, charKey));
+          const spirit = normalizeSkillUiText(行.spirit && 行.spirit.value, '');
+          return createSkillDesignerFusionParticipant(role, charKey, charName, spirit);
+        })
+        .filter(participant => participant.charKey || participant.charName || participant.spirit);
+    const 被动开关值 = readToggleField('启用被动');
+    const 类型字段值 = readField('type');
+    const typeMeta = resolveSkillDesignerTypeMeta(previewMeta, 被动开关值 === '无' ? '' : 类型字段值);
+    const resolvedPrimaryMain = '';
+    const resolvedPrimarySub = '';
+    const resolvedTarget = getSkillDesignerDefaultTarget(previewMeta, typeMeta.value);
+    const isFusionScope = toText(previewMeta && previewMeta.scope, '') === '武魂融合技';
+    const fusionMode = isFusionScope ? normalizeSkillDesignerFusionMode(readField('fusionMode')) : '';
+    const 用法模式 = isFusionScope ? 规范化技能设计台融合用法模式(readField('用法模式')) : '';
+    const fusionParticipants = isFusionScope ? readFusionParticipants() : [];
+    const derivedFusionFields = isFusionScope
+      ? deriveSkillDesignerFusionFields(fusionMode, fusionParticipants, '')
+      : { fusionPartner: '', fusionSourceSpirits: [], fusionParticipants: [] };
+    const derivedMainRole = inferSkillDesignerMainRole(typeMeta.value, resolvedTarget, resolvedPrimaryMain, resolvedPrimarySub);
+    const 启用技能掌控度 = 技能设计台启用技能掌控度(previewMeta, { type: typeMeta.value, 启用技能掌控度: readToggleField('启用技能掌控度') });
+    const 启用被动 = 技能设计台启用被动(previewMeta, { type: typeMeta.value, 启用被动: 被动开关值 });
+    const levelControl = 启用技能掌控度
+      ? normalizeSkillDesignerLevelControl({ 中心等级: readField('技能掌控度中心等级'), 圆满等级: readField('技能掌控度圆满等级') })
+      : null;
+    const 被动触发限制 = 读取技能设计台被动触发限制({ 被动触发周期: readField('被动触发周期'), 被动触发次数: readField('被动触发次数') });
+    const 使用限制 = 读取技能设计台使用限制({ 使用限制周期: readField('使用限制周期'), 使用限制次数: readField('使用限制次数') });
+    const baseState = {
+      name: readField('name') || toText(previewMeta && previewMeta.label, '未命名技能'),
+      type: typeMeta.value,
+      typeDisplay: typeMeta.display,
+      target: 启用被动 ? '自身' : resolvedTarget,
+      costType: readField('costType') || '无',
+      costValues: readCostValues(),
+      sustainCostText: readSustainCostText(),
+      前摇: Math.max(0, toNumber(readField('前摇'), 0)),
+      启用技能掌控度: 启用技能掌控度 ? '启用' : '无',
+      启用被动: 启用被动 ? '启用' : '无',
+      被动触发: 启用被动 ? normalizeSkillDesignerSelectValue(readField('被动触发'), 技能设计台被动触发选项, '常驻') : '',
+      被动触发周期: 被动触发限制.周期,
+      被动触发次数: String(被动触发限制.次数),
+      使用限制周期: 使用限制.周期,
+      使用限制次数: String(使用限制.次数),
+      bonus: '无',
+      mainRole: normalizeSkillUiText(derivedMainRole, '未知'),
+      primaryMain: resolvedPrimaryMain,
+      primarySub: resolvedPrimarySub,
+      prototypeEffects: 读取虚拟行列表(vf.rows, resolvedTarget, 'main'),
+      deliveryForm: readField('deliveryForm'),
+      constructItemCount: Math.max(1, parseSkillDesignerIntegerInputValue(readField('constructItemCount'), 1, 1)),
+      constructDurationTick: Math.max(0, parseSkillDesignerIntegerInputValue(readField('constructDurationTick'), 0, 0)),
+      constructDescription: normalizeSkillUiText(readField('constructDescription'), ''),
+      secondaryMechanics: [],
+      attachedAttributes: (T.attachedAttributes.selected || []).map(值 => toText(值, '').trim()).filter(Boolean),
+      attributeSource: '无',
+      attributeRole: '无',
+      coeff: normalizeSkillDesignerCoeffMap({}),
+      visualDesc: readField('visualDesc'),
+      effectDesc: readField('effectDesc'),
+      artStage: readField('artStage') || '未入门',
+      artLevel: Math.max(0, toNumber(readField('artLevel'), 0)),
+      fusionMode,
+      用法模式,
+      fusionPartner: derivedFusionFields.fusionPartner,
+      fusionSourceSpirits: derivedFusionFields.fusionSourceSpirits,
+      fusionParticipants: derivedFusionFields.fusionParticipants,
+      副作用列表: 读取副作用行列表(vf.sideEffects),
+      使用副作用列表: 读取副作用行列表([]),
+      技能掌控度: levelControl,
+      技能掌控度中心等级: 启用技能掌控度 ? readField('技能掌控度中心等级') : '',
+      技能掌控度圆满等级: 启用技能掌控度 ? readField('技能掌控度圆满等级') : '',
+      阵营判定: '自动',
+    };
+    const firstPrototypeTarget = normalizeSkillUiText(baseState.prototypeEffects && baseState.prototypeEffects[0] && baseState.prototypeEffects[0]['目标'], '');
+    if (firstPrototypeTarget) baseState.target = firstPrototypeTarget;
+    if (启用被动) baseState.target = '自身';
+    baseState.type = 推断技能设计台技能分类(baseState.prototypeEffects, typeMeta.value);
+    baseState.typeDisplay = baseState.type;
+    baseState.mainRole = normalizeSkillUiText(inferSkillDesignerMainRole(baseState.type, baseState.target, baseState.primaryMain, baseState.primarySub), '未知');
+    const implicitAttributeConfig = resolveSkillDesignerImplicitAttributeConfig(baseState, previewMeta);
+    return {
+      ...baseState,
+      attributeSource: implicitAttributeConfig.source,
+      attributeRole: implicitAttributeConfig.role,
+      coeff: implicitAttributeConfig.coeff,
+      cost: formatSkillDesignerFullCostText(baseState.costType, baseState.costValues, baseState.sustainCostText),
+      mechanicParams: readSkillDesignerMechanicParamState(null, baseState),
+    };
+  }
+  function 同步草稿(vf, previewMeta, snapshot) {
+    // ≙ syncDraftCache：回读 → (融合种子) → buildSkillDesignerFormStateFromDraft
+    const formState = 读取虚拟表单(vf, previewMeta);
+    const fusionSeed = vf.isFusion ? getSkillDesignerFusionDraftSeed(snapshot, previewMeta, formState) : {};
+    return buildSkillDesignerFormStateFromDraft({ ...formState, ...fusionSeed }, previewMeta);
+  }
+  function 重建承载下拉(vf) {
+    // ≙ rebuildDeliveryOptions
+    const 当前值 = toText(vf.top.deliveryForm.value, '').trim();
+    vf.top.deliveryForm = { kind: 'select', ...设计台下拉(getSkillDesignerDeliveryOptions(vf.top.type.value), 当前值) };
+  }
+  function 挂载虚拟表单(vf, previewMeta, snapshot) {
+    // ≙ onMount 初始化顺序：handleInteractiveRefresh(承载下拉、融合行、refreshPreview) → 行级同步
+    重建承载下拉(vf);
+    if (vf.isFusion && vf.top.fusionMode) {
+      const formState = 读取虚拟表单(vf, previewMeta);
+      const fusionSeed = getSkillDesignerFusionDraftSeed(snapshot, previewMeta, formState);
+      vf.top.fusionParticipants = 描述融合参与者行(fusionSeed.fusionParticipants, snapshot.rootData, previewMeta);
+    }
+    const 刷新草稿 = 同步草稿(vf, previewMeta, snapshot);
+    vf.openSummaryDraft = 刷新草稿; // 打开瞬间（行级同步之前）原版摘要所用草稿
+    vf.top.type.value = 属性回读(刷新草稿.type || '输出');
+    vf.top.typeDisplay = 文本回读(刷新草稿.typeDisplay || 刷新草稿.type || '输出');
+    重建承载下拉(vf);
+    挂载同步行(vf.rows);
+    return vf;
+  }
+  function 渲染并挂载(form, previewMeta, snapshot) {
+    return 挂载虚拟表单(构建虚拟表单(form, previewMeta, snapshot), previewMeta, snapshot);
+  }
+
+
+  // ───────────── 10. 对外描述（去掉内部链接，补 visible） ─────────────
+  function 导出选项(options) {
+    return (Array.isArray(options) ? options : []).map(项 => {
+      const 出 = { value: 项.value, label: 项.label };
+      ['hint', 'group', 'disabled', 'header', 'category', 'direction', 'recommended', 'all', 'selected'].forEach(k => { if (项[k] !== undefined && 项[k] !== '' && 项[k] !== false) 出[k] = 项[k]; });
+      return 出;
+    });
+  }
+  const 导出键 = ['key', 'kind', 'label', 'hint', 'tableHint', 'value', 'display', 'required', 'default', 'min', 'max', 'step', 'placeholder', 'pattern', 'positiveOnly', 'multiple', 'selected', 'summary', 'wide', 'tick', 'parts', 'partLimits', 'minTick', 'maxTick', 'json', 'allLabel', 'type', 'disabled'];
+  function 导出控件(控件, 路径, 附加 = {}) {
+    if (!控件) return null;
+    if (控件.kind === 'scaling') return 控件.controls.map(c => 导出控件(c, 路径, { scaling: true, visible: !控件.hidden && !c.hidden && c.kind !== 'hidden' }));
+    if (控件.kind === 'group') return { kind: 'group', label: 控件.label, summary: 控件.summary, open: !!控件.open, visible: true, fields: 控件.controls.flatMap(c => [].concat(导出控件(c, 路径) || [])) };
+    if (控件.kind === 'nested') return { kind: 'nested', key: 控件.key, label: 控件.label, hint: '', tableHint: 控件.tableHint, visible: true, defaultPrototype: 控件.defaultPrototype, rows: 控件.rows.map((行, j) => 导出行(行, [...路径, 控件.key, j])) };
+    if (控件.kind === 'branch') {
+      return {
+        kind: 'branch', key: '条件分支', label: 控件.label, hint: '', tableHint: 控件.tableHint, visible: true, enabled: !!控件.enabled,
+        branches: 控件.branches.map((条目, b) => {
+          const 列 = 键 => ({ label: 条目.effects[键].label, hint: 条目.effects[键].hint, visible: !条目.effects[键].hidden, rows: 条目.effects[键].rows.map((行, j) => 导出行(行, [...路径, '条件分支', b, 键, j])) });
+          return { action: 导出控件(条目.action, 路径), conditions: 条目.conditions.map(导出条件), 替换效果: 列('替换效果'), 追加效果: 列('追加效果') };
+        }),
+      };
+    }
+    const 出 = {};
+    导出键.forEach(k => { if (控件[k] !== undefined) 出[k] = Array.isArray(控件[k]) ? 控件[k].slice() : 控件[k]; });
+    if (控件.options) 出.options = 导出选项(控件.options);
+    // 驱动属性 / 影响方向：原版标签表里有逐项说明（挂载同步重建方向下拉后标签变为纯值，但说明仍属原版文本）
+    if (['驱动属性', '影响方向'].includes(控件.key) && 出.options) 出.options.forEach(项 => { if (!项.hint) { const 说明 = 设计台选项说明(控件.key, 项.value); if (说明) 项.hint = 说明; } });
+    if (控件.unit) 出.unit = { ...控件.unit, options: 导出选项(控件.unit.options) };
+    if (控件.subfields) 出.subfields = 控件.subfields.map(c => 导出控件(c, 路径));
+    出.visible = 附加.visible !== undefined ? 附加.visible : !控件.hidden && 控件.kind !== 'hidden';
+    if (附加.scaling) 出.scaling = true;
+    if (控件.kind === 'select' && 控件.value === '' && 控件.options && !控件.options.some(项 => 项.value === '')) 出.unselected = true;
+    return 出;
+  }
+  function 设计台选项说明(字段, 值) {
+    const 项 = 构建技能设计台原型字段下拉选项(字段, [值], true)[0];
+    const 标签 = String((项 && 项.label) || '');
+    const 分隔 = 标签.indexOf('｜');
+    return 分隔 > 0 ? 标签.slice(分隔 + 1) : '';
+  }
+  function 导出条件(条件) {
+    const 出 = { kind: 'condition', isTargetRow: !!条件.isTargetRow, removable: !!条件.removable, preview: 条件.preview };
+    出.类型 = 导出控件(条件.类型);
+    出.对象 = { key: '对象', kind: 'hidden', value: 条件.对象.value, visible: false };
+    出.比较 = 条件.比较 ? 导出控件(条件.比较) : { key: '比较', kind: 'hidden', value: 条件.比较隐藏.value, visible: false };
+    if (条件.比较) 出.比较隐藏 = { value: 条件.比较隐藏.value, disabled: !!条件.比较隐藏.disabled };
+    出.值 = 条件.值 && 条件.值.control ? { ...导出控件(条件.值.control), label: 条件.值.label, visible: !条件.值.hidden } : { key: '值', kind: 'none', label: 条件.值 ? 条件.值.label : '', visible: false };
+    if (条件.状态) 出.状态 = 导出控件(条件.状态);
+    return 出;
+  }
+  function 导出行(行, 路径) {
+    return {
+      path: 路径,
+      prototype: 行.prototypeSelect.value || 行.prototype,
+      removable: !!行.removable,
+      prototypeSelect: { key: '原型', kind: 'select', label: '原型', hint: '', value: 行.prototypeSelect.value, options: 导出选项(行.prototypeSelect.options), visible: true },
+      fields: 行.fields.flatMap(控件 => [].concat(导出控件(控件, 路径) || [])),
+    };
+  }
+
+  // ───────────── 11. 表单分区（原版 section 顺序 + 分页） ─────────────
+  function 读取分区页名(标题, 标记 = '') {
+    const 页 = 技能设计台分页定义.find(定义 => (定义.标题集 || []).includes(标题) || (标记 && (定义.标记集 || []).includes(标记)));
+    return 页 ? 页.名称 : '';
+  }
+  const 是造物 = form => normalizeSkillUiText(form && form.deliveryForm, '') === '造物承载';
+  const 设计台分区定义 = [
+    { id: 'basic', title: () => '基础框架载体', hintKey: '基础框架载体', visible: () => true },
+    { id: 'fusion', title: () => '融合对象', hintKey: '', visible: (form, meta) => meta.scope === '武魂融合技' },
+    { id: 'artProgress', title: () => '功法进度', hintKey: '', visible: (form, meta) => meta.scope === 'art' && ((form && form.name) || meta.label) === '紫极魔瞳' },
+    { id: 'construct', title: () => '实体凝结参数', hintKey: '', visible: form => 是造物(form) },
+    // 模板标题「核心术式阵列 / 使用效果阵列」；挂载后 syncDeliverySections 把文本改成「原型设计 / 使用效果」，说明改走 title 属性
+    { id: 'prototypes', title: form => (是造物(form) ? '使用效果' : '原型设计'), templateTitle: form => (是造物(form) ? '使用效果阵列' : '核心术式阵列'), hintKey: form => (是造物(form) ? '使用效果阵列' : '核心术式阵列'), marker: '[data-skill-designer-prototype-title]', visible: () => true },
+    { id: 'sideEffects', title: form => (是造物(form) ? '施展副作用' : '副作用'), hintKey: '', marker: '[data-skill-designer-side-effect-title]', visible: () => true },
+    { id: 'energy', title: () => '运转能量配置', hintKey: '运转能量配置', visible: () => true },
+    { id: 'mastery', title: () => '技能掌控度', hintKey: '技能掌控度', visible: () => true },
+    { id: 'attributes', title: () => '元属性特征', hintKey: '元属性特征', visible: () => true },
+    { id: 'terminal', title: () => '终端解析图谱', hintKey: '终端解析图谱', visible: () => true },
+  ];
+  function 设计台分区列表(form = {}, meta = {}, 标题提示表 = {}) {
+    return 设计台分区定义.map(定义 => {
+      const title = 定义.title(form, meta);
+      const 模板标题 = 定义.templateTitle ? 定义.templateTitle(form, meta) : title;
+      const 提示键 = typeof 定义.hintKey === 'function' ? 定义.hintKey(form, meta) : 定义.hintKey;
+      return { id: 定义.id, title, templateTitle: 模板标题, tab: 读取分区页名(模板标题, 定义.marker), hint: (提示键 && 标题提示表[提示键]) || '', visible: !!定义.visible(form, meta) };
+    });
+  }
+  function 顶层字段描述(vf, form, previewMeta) {
+    // 各分区内字段（值取挂载后的虚拟控件）。原版顶层字段没有逐项说明徽标，只有分区标题说明
+    const T = vf.top;
+    const L = vf.scopeLabels;
+    const 字段 = (key, label, 控件, 附加 = {}) => (控件 ? { ...导出控件({ ...控件, key, label, hint: '' }), ...附加, key, label } : null);
+    const 启用被动 = 技能设计台启用被动(previewMeta, form);
+    const 被动周期 = normalizeSkillUiText(T.被动触发周期.value, '无限制');
+    const 使用周期 = normalizeSkillUiText(T.使用限制周期.value, '无限制');
+    const costType = normalizeSkillUiText(T.costType.value, '无');
+    const 显示资源 = 资源 => costType === 资源 || costType === '混合';
+    const 掌控显示 = 技能设计台启用技能掌控度(previewMeta, form);
+    return {
+      basic: [
+        字段('name', L.nameFieldLabel, T.name),
+        字段('deliveryForm', '承载方式', T.deliveryForm, { typeDisplay: T.typeDisplay, typeValue: T.type.value }),
+        字段('使用限制周期', '使用限制', T.使用限制周期),
+        字段('使用限制次数', '限制次数', T.使用限制次数, { visible: 使用周期 !== '无限制', disabled: 使用周期 === '无限制' }),
+        字段('启用被动', '被动', T.启用被动, { title: '被动技能' }),
+        字段('被动触发', '触发时机', T.被动触发, { visible: 启用被动 }),
+        字段('被动触发周期', '次数周期', T.被动触发周期, { visible: 启用被动 }),
+        字段('被动触发次数', '触发次数', T.被动触发次数, { visible: 启用被动 && 被动周期 !== '无限制' }),
+      ].filter(Boolean),
+      fusion: vf.isFusion
+        ? [
+            字段('用法模式', '用法', T.用法模式),
+            字段('fusionMode', '模式', T.fusionMode),
+            {
+              key: 'fusionParticipants', kind: 'fusionParticipants', label: '融合对象', hint: '', visible: true,
+              canAdd: normalizeSkillUiText(T.fusionMode && T.fusionMode.value, '') !== 'self',
+              rows: (T.fusionParticipants || []).map(行 => ({ role: 行.role, removable: 行.removable, char: 导出控件({ ...行.char, key: 'char', label: '角色' }), spirit: 导出控件({ ...行.spirit, key: 'spirit', label: '武魂' }) })),
+            },
+          ].filter(Boolean)
+        : [],
+      artProgress: T.artStage ? [字段('artStage', '境界', T.artStage), 字段('artLevel', '等级', T.artLevel)] : [],
+      construct: [
+        字段('constructItemCount', '数量', T.constructItemCount),
+        { ...导出控件(T.constructDurationTick), key: 'constructDurationTick', label: '有效期' },
+        字段('constructDescription', '物品描述', T.constructDescription),
+      ],
+      energy: [
+        字段('costType', '消耗资源', T.costType, { group: '启动消耗 / 维持重扫' }),
+        ...SKILL_DESIGNER_COST_RESOURCE_KEYS.map(资源 => 字段(`cost.${资源}`, `${资源}消耗`, T.costValues[资源], { visible: 显示资源(资源), resource: 资源, badge: 资源 === '魂力' && T.fixedCostRatio > 0 ? `结算${(T.fixedCostRatio * 100).toFixed(0)}%` : '' })),
+        ...SKILL_DESIGNER_COST_RESOURCE_KEYS.map(资源 => 字段(`sustain.${资源}`, `${资源}维持`, T.sustainValues[资源], { visible: 显示资源(资源), resource: 资源 })),
+        字段('前摇', '前摇', T.前摇),
+      ],
+      mastery: [
+        字段('启用技能掌控度', '技能掌控度', T.启用技能掌控度, { title: '技能掌控度' }),
+        字段('技能掌控度中心等级', '中心等级', T.技能掌控度中心等级, { visible: 掌控显示 }),
+        字段('技能掌控度圆满等级', '圆满等级', T.技能掌控度圆满等级, { visible: 掌控显示 }),
+      ],
+      attributes: [{ key: 'attachedAttributes', kind: 'multi', multiple: true, label: '附带属性', hint: '', visible: true, options: 导出选项(T.attachedAttributes.options), selected: T.attachedAttributes.selected.slice() }],
+      terminal: [字段('visualDesc', L.visualLabel, T.visualDesc), 字段('effectDesc', L.effectLabel, T.effectDesc)],
+    };
+  }
+
+  // ───────────── 12. 定位（路径 = 效果内路径） ─────────────
+  // 行路径：[i] 主列表第 i 行；[i, '授予效果', j] 嵌套列表；[i, '条件分支', b, '替换效果'|'追加效果', j] 分支效果
+  function 定位列表(vf, 路径 = []) {
+    let rows = vf.rows;
+    let 结果 = { rows };
+    let i = 0;
+    while (i < 路径.length) {
+      const 行 = rows[路径[i]];
+      if (!行) throw new Error(`路径无效：${JSON.stringify(路径)}`);
+      const 键 = 路径[i + 1];
+      if (键 === undefined) return { ...结果, rows, row: 行 };
+      if (键 === '条件分支') {
+        const 块 = 行.fields.find(c => c.kind === 'branch');
+        const 条目 = 块 && 块.branches[路径[i + 2]];
+        if (!条目) throw new Error(`条件分支不存在：${JSON.stringify(路径)}`);
+        const 类别 = 路径[i + 3];
+        if (类别 === undefined) return { rows, row: 行, block: 块, entry: 条目 };
+        rows = 条目.effects[类别].rows;
+        结果 = { rows, entry: 条目, kind: 类别, parentRow: 行 };
+        i += 4;
+        continue;
+      }
+      const 嵌套 = 行.fields.find(c => c.kind === 'nested' && c.key === 键);
+      if (!嵌套) throw new Error(`嵌套列表不存在：${键}`);
+      rows = 嵌套.rows;
+      结果 = { rows, nested: 嵌套, parentRow: 行 };
+      i += 2;
+    }
+    return 结果;
+  }
+  function 定位行(vf, 路径) {
+    const 结果 = 定位列表(vf, 路径);
+    if (!结果.row) throw new Error(`行不存在：${JSON.stringify(路径)}`);
+    return 结果;
+  }
+  function 行内控件(行, key) {
+    for (const 控件 of 行.fields) {
+      if (控件.kind === 'scaling' || 控件.kind === 'group') { const 命中 = 控件.controls.find(c => c.key === key); if (命中) return 命中; }
+      else if (控件.key === key && 控件.kind !== 'nested' && 控件.kind !== 'branch') return 控件;
+    }
+    return null;
+  }
+  function 同步tick(控件, parts = {}) {
+    // ≙ syncTimeParts
+    const 取值 = (k, fallback = 0) => parseSkillDesignerIntegerInputValue(parts[k], fallback, 0);
+    const 最小tick = Math.max(0, parseSkillDesignerIntegerInputValue(控件.minTick, 0, 0));
+    const 最大tick = Math.max(0, parseSkillDesignerIntegerInputValue(控件.maxTick, 0, 0));
+    const 总分钟 = Math.max(0, 取值('日') * 1440 + 取值('时') * 60 + 取值('分'));
+    const 原始tick = 总分钟 > 0 ? Math.ceil(总分钟 / 技能设计台每tick分钟) : 0;
+    const tick = 最大tick > 0 ? Math.max(最小tick, Math.min(最大tick, 原始tick)) : Math.max(最小tick, 原始tick);
+    const 显示 = 拆分技能设计台tick时长(tick, { 最小tick, 最大tick, 默认tick: 最小tick });
+    控件.parts = { 日: 显示.日, 时: 显示.小时, 分: 显示.分钟 };
+    控件.tick = tick;
+    控件.value = String(tick);
+  }
+  function 写控件(控件, 值, 选项 = {}) {
+    if (!控件) throw new Error('控件不存在');
+    if (控件.kind === 'tick') {
+      // 传 {日,时,分} 按 syncTimeParts 折算；传数字视为 tick
+      同步tick(控件, 值 && typeof 值 === 'object' ? 值 : { 分: Math.max(0, parseSkillDesignerIntegerInputValue(值, 0, 0)) * 技能设计台每tick分钟 });
+      return;
+    }
+    if (控件.kind === 'bool') { 控件.value = !!值; return; }
+    if (控件.kind === 'multi') {
+      const 列表 = (Array.isArray(值) ? 值 : 读取技能设计台多枚举值(值)).map(v => toText(v, '').trim()).filter(Boolean);
+      const 可选 = (控件.options || []).map(项 => 项.value);
+      控件.selected = 可选.filter(v => 列表.includes(v));
+      控件.value = 控件.selected.join('|');
+      控件.summary = 控件.selected.length ? 控件.selected.join('、') : '未选择';
+      return;
+    }
+    let 文本 = String(值 == null ? '' : 值);
+    if (控件.positiveOnly && !选项.raw) 文本 = 文本.replace(/^-+/, '');
+    设控件值(控件, 文本);
+  }
+
+  // ───────────── 13. 交互动作 ≙ handleChange / handleClick ─────────────
+  const 设计台重建字段键 = ['目标', '状态', '来源', '去向', '匹配原型', '选择', '触发条件', '触发方式', '延迟回合', '规则', '判断', '生效方式', '发动方式', '攻击段数', '结算', '数值', '调整字段', '调整方式', '位移类型', '复制类型'];
+  function 执行动作(vf, 动作, previewMeta, snapshot) {
+    const 类型 = 动作 && 动作.type;
+    const 刷新位移摘要 = 行 => {
+      const 控件 = 行内控件(行, '位移类型');
+      if (控件) 控件.summary = 技能设计台位移执行摘要({ 位移类型: 原型行字段值(行, '位移类型'), 位移对象: 原型行字段值(行, '位移对象'), 距离: 原型行字段值(行, '距离'), 数值: 原型行字段值(行, '数值') });
+    };
+    const 刷新状态摘要 = 行 => {
+      const 控件 = 行内控件(行, '状态');
+      if (控件 && 行.prototypeSelect.value === '状态施加') 控件.summary = 技能设计台状态摘要({ 状态: 原型行字段值(行, '状态'), 数值: 原型行字段值(行, '数值'), 副数值: 原型行字段值(行, '副数值'), 触发方式: 原型行字段值(行, '触发方式'), 延迟回合: 原型行字段值(行, '延迟回合') });
+    };
+    // ≙ syncFusionFields / applyFusionParticipants：按种子重绘参与者行，并以 buildSkillDesignerFormStateFromDraft 结果刷新预览
+    const 刷新融合行 = (覆盖 = {}) => {
+      const formState = 读取虚拟表单(vf, previewMeta);
+      const fusionSeed = getSkillDesignerFusionDraftSeed(snapshot, previewMeta, { ...formState, ...覆盖 });
+      vf.top.fusionParticipants = 描述融合参与者行(fusionSeed.fusionParticipants, snapshot.rootData, previewMeta);
+      vf.__post = { refresh: buildSkillDesignerFormStateFromDraft({ ...formState, ...fusionSeed }, previewMeta) };
+    };
+    if (类型 === 'top') {
+      const key = 动作.key;
+      if (/^cost\./.test(key)) return 写控件(vf.top.costValues[key.slice(5)], 动作.value);
+      if (/^sustain\./.test(key)) return 写控件(vf.top.sustainValues[key.slice(8)], 动作.value);
+      if (key === 'attachedAttributes') return 写控件(vf.top.attachedAttributes, 动作.value);
+      if (key === 'constructDurationTick') return 写控件(vf.top.constructDurationTick, 动作.value);
+      const 控件 = vf.top[key];
+      if (!控件 || typeof 控件 !== 'object') throw new Error(`未知字段：${key}`);
+      写控件(控件, 动作.value);
+      if (key === 'name') {
+        const 真身名称 = 规范第七魂环真身名称_桥接(控件.value, previewMeta);
+        if (真身名称 && 控件.value !== 真身名称) 控件.value = 真身名称;
+      }
+      if (key === 'fusionMode') 刷新融合行();
+      if (key === 'deliveryForm') vf.__post = { rebuildMain: 'reread', refresh: 'reread' }; // ≙ rebuildPrototypeGrid(syncDraftCache())
+      return;
+    }
+    if (类型 === 'fusionParticipant') {
+      const 行 = vf.top.fusionParticipants[动作.index];
+      if (!行) throw new Error('融合对象行不存在');
+      写控件(动作.key === 'spirit' ? 行.spirit : 行.char, 动作.value);
+      if (动作.key !== 'spirit') 刷新融合行();
+      return;
+    }
+    if (类型 === 'fusionAdd' || 类型 === 'fusionRemove') {
+      if (!vf.top.fusionMode) return;
+      if (类型 === 'fusionAdd') 写控件(vf.top.fusionMode, 'partner');
+      const 当前 = 同步草稿(vf, previewMeta, snapshot);
+      const 参与者 = 类型 === 'fusionAdd'
+        ? [...当前.fusionParticipants, createSkillDesignerDefaultPartnerParticipant(snapshot.rootData, previewMeta, 当前.fusionParticipants.map(p => p.charKey))]
+        : 当前.fusionParticipants.filter((p, i) => i !== 动作.index);
+      刷新融合行({ fusionMode: vf.top.fusionMode.value, fusionParticipants: 参与者 });
+      return;
+    }
+    if (类型 === 'prototype') {
+      const { row } = 定位行(vf, 动作.path);
+      写控件(row.prototypeSelect, 动作.value);
+      重建原型行(row);
+      同步原型行默认驱动判定(row);
+      return;
+    }
+    if (类型 === 'effectField' || 类型 === 'unit' || 类型 === 'objectField') {
+      const { row } = 定位行(vf, 动作.path);
+      const 控件 = 行内控件(row, 类型 === 'objectField' ? '抹消对象' : 动作.key);
+      if (!控件) throw new Error(`该行没有字段：${动作.key || '抹消对象'}`);
+      if (类型 === 'unit') {
+        // ≙ 同步技能设计台数值单位选择
+        if (!控件.unit || 控件.unit.locked) return;
+        控件.unit.value = ['点数', '百分比'].includes(动作.unit) ? 动作.unit : '';
+        控件.value = 格式化技能设计台单位数值(控件.value, normalizeSkillUiText(控件.unit.value, '点数'));
+        return;
+      }
+      if (类型 === 'objectField') {
+        // 抹消对象子字段 ≙ handleChange 的 suppress-object 分支
+        const sub = 控件.subfields.find(c => c.key === 动作.key);
+        if (!sub) throw new Error(`抹消对象没有子字段：${动作.key}`);
+        if (动作.key === '原型') {
+          写控件(sub, 动作.value);
+          const 当前目标 = normalizeSkillUiText((行字段控件(row, '目标') || {}).value, '单体');
+          const 新效果 = { 原型: '机制抹消', 目标: 当前目标, 抹消对象: { 原型: sub.value } };
+          const 编辑 = 描述原型字段编辑器(新效果, { 当前效果: 新效果 });
+          row.fields = 编辑.controls; row.__effect = 编辑.当前效果; 绑定子网格(row);
+          const 新控件 = 行内控件(row, '抹消对象');
+          if (新控件) { 新控件.value = 规范化技能设计台机制抹消对象({ 原型: sub.value }); 新控件.json = JSON.stringify(新控件.value); }
+          return;
+        }
+        if (sub.kind === 'multi') {
+          let 列表 = (Array.isArray(动作.value) ? 动作.value : [动作.value]).map(v => normalizeSkillUiText(v, '')).filter(Boolean);
+          if (列表.some(v => 技能设计台机制抹消全部字段值.has(v))) 列表 = sub.options.filter(o => 技能设计台机制抹消全部字段值.has(normalizeSkillUiText(o.value, ''))).map(o => o.value);
+          sub.options.forEach(o => { o.selected = 列表.includes(o.value); });
+          sub.selected = sub.options.filter(o => o.selected).map(o => o.value);
+        } else 写控件(sub, 动作.value);
+        const 对象 = {};
+        控件.subfields.forEach(c => {
+          const 值 = c.kind === 'multi' ? c.options.filter(o => o.selected).map(o => normalizeSkillUiText(o.value, '')) : normalizeSkillUiText(c.value, '');
+          if (c.key && 值 && 值 !== '无') 对象[c.key] = 值;
+        });
+        if (!对象['原型']) 对象['原型'] = '机制授予';
+        控件.value = 规范化技能设计台机制抹消对象(对象);
+        控件.json = JSON.stringify(控件.value);
+        return;
+      }
+      写控件(控件, 动作.value);
+      if (控件.scalingDriver) { const 块 = row.fields.find(c => c.kind === 'scaling'); if (块) 同步缩放块(块, row); }
+      if (设计台重建字段键.includes(动作.key)) 重建原型行(row);
+      if (动作.key === '持续回合') { const 块 = row.fields.find(c => c.kind === 'scaling'); if (块) 同步缩放块(块, row); }
+      if (['位移类型', '位移对象', '距离', '数值'].includes(动作.key)) 刷新位移摘要(row);
+      if (['状态', '数值', '副数值', '触发方式', '延迟回合'].includes(动作.key)) 刷新状态摘要(row);
+      同步原型行默认驱动判定(row);
+      return;
+    }
+    if (类型 === 'addEffect') {
+      const 列表路径 = Array.isArray(动作.path) ? 动作.path : [];
+      if (!列表路径.length) {
+        // 主列表 ≙ addPrototype：以同步草稿 + 新效果重建整列
+        const 当前 = 同步草稿(vf, previewMeta, snapshot);
+        const 首个原型 = 读取技能设计台原型名称列表()[0] || '伤害结算';
+        const 新效果 = 技能设计台清理并水合原型效果({ 原型: 首个原型 }, 当前.target, {});
+        if (Array.isArray(当前.prototypeEffects) && 当前.prototypeEffects.length > 0) 新效果['生效方式'] = '独立生效';
+        const 下一草稿 = { ...当前, prototypeEffects: [...规范化技能设计台原型效果列表(当前.prototypeEffects, 当前.target), 新效果] };
+        vf.__post = { rebuildMain: 下一草稿, refresh: 下一草稿 };
+        return;
+      }
+      const 定位 = 定位列表(vf, 列表路径);
+      const 网格 = 定位.rows.__grid;
+      const 父行 = 定位.parentRow;
+      const 目标值 = normalizeSkillUiText((父行 && (行字段控件(父行, '目标') || {}).value) || '', '单体');
+      let 新行;
+      if (定位.entry) {
+        // ≙ addConditionEffect
+        const 禁用 = 技能设计台条件列表包含释放后条件([...条目内条件行(定位.entry)].map(({ cond }) => ({ 类型: cond.类型.value })));
+        const 新效果 = 技能设计台清理并水合原型效果({ 原型: '伤害结算', 生效方式: '独立生效' }, 目标值, { 强制独立: true, 禁用释放前降低结算: 禁用 });
+        新行 = 描述原型效果行列表([新效果], 目标值, true, { 禁用条件分支: true, 强制独立: true, 禁用释放前降低结算: 禁用 }, { name: 网格.name, allowEmpty: true, conditionEffect: true })[0];
+      } else {
+        // ≙ addNestedPrototype
+        const 嵌套字段 = normalizeSkillUiText(定位.nested && 定位.nested.key, '');
+        const 新效果 = 技能设计台清理并水合原型效果({ 原型: (定位.nested && 定位.nested.defaultPrototype) || '判定修正', 生效方式: '独立生效' }, '单体', { 嵌套字段, 强制独立: true });
+        新行 = 描述原型效果行列表([新效果], '单体', true, { 嵌套字段, 强制独立: true }, { name: 'nested', nestedKind: 嵌套字段, allowEmpty: true })[0];
+      }
+      新行.__grid = 网格; 网格.rows.push(新行);
+      if (父行) Object.defineProperty(新行, '__parentRow', { value: 父行, writable: true, enumerable: false });
+      return;
+    }
+    if (类型 === 'removeEffect') {
+      const { rows, row } = 定位行(vf, 动作.path);
+      const 网格 = rows.__grid || {};
+      const 允许空 = 网格.name === 'side' || !!网格.allowEmpty;
+      if (rows.length > (允许空 ? 0 : 1)) {
+        rows.splice(rows.indexOf(row), 1);
+        const 下一草稿 = 同步草稿(vf, previewMeta, snapshot);
+        vf.__post = 网格.name === 'main' ? { rebuildMain: 下一草稿, refresh: 下一草稿 } : { refresh: 下一草稿 };
+      }
+      return;
+    }
+    if (['branchEnabled', 'addBranch', 'removeBranch', 'branchAction', 'addCondition', 'removeCondition', 'conditionField'].includes(类型)) {
+      const { row } = 定位行(vf, 动作.path);
+      const 块 = row.fields.find(c => c.kind === 'branch');
+      if (!块) throw new Error('该行没有条件分支');
+      const 目标值 = normalizeSkillUiText((行字段控件(row, '目标') || {}).value, '单体');
+      const 新条目 = () => { const 条目 = 描述条件分支条目编辑器(创建技能设计台默认条件分支(目标值), 目标值); 绑定分支条目(条目, row); return 条目; };
+      if (类型 === 'branchEnabled') {
+        块.enabled = !!动作.value;
+        if (块.enabled && !块.branches.length) { const 条目 = 新条目(); 块.branches.push(条目); 条目.conditions.slice().forEach(c => 同步条件行(c, 条目)); }
+        return;
+      }
+      if (类型 === 'addBranch') { 块.branches.push(新条目()); return; }
+      const 条目 = 块.branches[动作.branch];
+      if (!条目) throw new Error('条件分支条目不存在');
+      if (类型 === 'removeBranch') { 块.branches.splice(动作.branch, 1); return; }
+      if (类型 === 'branchAction') {
+        写控件(条目.action, 动作.value);
+        const 处理 = normalizeSkillUiText(条目.action.value, '替换效果');
+        ['替换效果', '追加效果'].forEach(键 => { 条目.effects[键].hidden = 键 !== 处理; });
+        return;
+      }
+      if (类型 === 'addCondition') {
+        条目.conditions.push(描述条件分支条件编辑器({ 类型: '生命比例', 对象: '目标', 比较: '<=', 值: '20%' }, true));
+        条目.conditions.forEach(c => { c.removable = true; });
+        同步条件行(条目.conditions[条目.conditions.length - 1], 条目);
+        return;
+      }
+      const 条件 = 条目.conditions[动作.index];
+      if (!条件) throw new Error('条件不存在');
+      if (类型 === 'removeCondition') {
+        const 数量 = 条目.conditions.length;
+        if (数量 > 1) 条目.conditions.splice(动作.index, 1);
+        if (数量 === 2) 条目.conditions.forEach(c => { c.removable = false; });
+        return;
+      }
+      const 字段控件 = 动作.key === '类型' ? 条件.类型 : 动作.key === '比较' ? (条件.比较 || 条件.比较隐藏) : 动作.key === '值' ? 条件.值 && 条件.值.control : 动作.key === '状态' ? 条件.状态 : null;
+      if (!字段控件) throw new Error(`条件没有字段：${动作.key}`);
+      写控件(字段控件, 动作.value);
+      if (['类型', '比较'].includes(动作.key)) 同步条件行(条件, 条目);
+      return;
+    }
+    if (类型 === 'addSideEffect') {
+      const 当前 = 同步草稿(vf, previewMeta, snapshot);
+      const 下一列表 = [...规范化技能设计台副作用列表(当前['副作用列表']), 创建技能设计台默认副作用条目('自损反噬', { 生效对象: 读取技能设计台默认副作用对象(当前, '施展') })];
+      vf.sideEffects = 描述副作用行列表(下一列表, { 字段名: '副作用列表' });
+      vf.__post = { refresh: { ...当前, 副作用列表: 下一列表 } };
+      return;
+    }
+    if (类型 === 'removeSideEffect') {
+      vf.sideEffects.splice(动作.index, 1);
+      const 下一草稿 = 同步草稿(vf, previewMeta, snapshot);
+      vf.sideEffects = 描述副作用行列表(下一草稿['副作用列表'], { 字段名: '副作用列表' });
+      vf.__post = { refresh: 下一草稿 };
+      return;
+    }
+    if (类型 === 'sideEffectField') {
+      const 行 = vf.sideEffects[动作.index];
+      if (!行) throw new Error('副作用行不存在');
+      const 控件 = 行.fields.find(c => c.key === 动作.key);
+      if (!控件) throw new Error(`副作用没有字段：${动作.key}`);
+      写控件(控件, 动作.value);
+      if (动作.key === '副作用类型') {
+        // ≙ syncSideEffectRow：按新类型规范化后重绘该行
+        const 当前 = {};
+        行.fields.forEach(c => { 当前[c.key] = normalizeSkillUiText(c.value, ''); });
+        const 下一 = 规范化技能设计台副作用条目(当前, () => {}) || 创建技能设计台默认副作用条目();
+        vf.sideEffects[动作.index] = 描述副作用行(下一, 行.scope);
+      } else {
+        const 时机 = normalizeSkillUiText((行.fields.find(c => c.key === '触发时机') || {}).value, '效果生效后');
+        const 关联 = 行.fields.find(c => c.key === '关联状态');
+        if (关联) 关联.hidden = 时机 !== '效果结束后';
+      }
+      return;
+    }
+    throw new Error(`未知动作：${类型}`);
+  }
+
+  // ───────────── 14. 公共 API ─────────────
+  // 物品技能（装备 / 魂骨附带）：运行时只认承载方式「被动」为物品被动（MVU_Skill_Runtime 读取物品被动技能条目_V1），
+  // 原版设计台却只有「直接生效 / 造物承载」+ 战斗被动开关，存一次物品被动就变成要手动施放的技能。
+  // 规则开关打开时：设计台「被动」开关 ⇔ 承载方式「被动」。战斗技能不受影响。
+  const 是物品技能范围 = previewMeta => ['equipment_skill', 'soul_bone_skill'].includes(normalizeSkillUiText(previewMeta && previewMeta.scope, ''));
+  function 物品被动承载(skill, previewMeta, formState) {
+    if (skill && 设计台规则.物品被动保持承载方式 && 是物品技能范围(previewMeta) && 技能设计台启用被动(previewMeta, formState)) skill.承载方式 = '被动';
+    return skill;
+  }
+  function 设计台准备(meta, root) {
+    const previewMeta = 设计台规范元数据(meta);
+    const snapshot = 设计台使用快照(root, previewMeta);
+    return { previewMeta, snapshot };
+  }
+  function 设计台原始草稿(skill, previewMeta, snapshot) {
+    const skillSource = skill && typeof skill === 'object'
+      ? skill
+      : previewMeta.path.length ? deepGet(snapshot.rootData, previewMeta.path, {}) || {} : {};
+    const rawDesignerDraft = readSkillDesignerDraft(skillSource, previewMeta.label, previewMeta);
+    // 规则开关：物品技能承载方式「被动」→ 打开时「被动」开关为开（原版设计台没有被动承载，见 物品被动承载）
+    if (设计台规则.物品被动保持承载方式 && 是物品技能范围(previewMeta) && normalizeSkillUiText(skillSource.承载方式, '') === '被动' && !normalizeSkillUiText(rawDesignerDraft.启用被动, ''))
+      rawDesignerDraft.启用被动 = '启用';
+    const fusionDraftSeed = getSkillDesignerFusionDraftSeed(snapshot, previewMeta, rawDesignerDraft);
+    return { skillSource, rawDesignerDraft, designerDraft: buildSkillDesignerFormStateFromDraft({ ...rawDesignerDraft, ...fusionDraftSeed }, previewMeta) };
+  }
+  function 读取COST助手() {
+    return (typeof globalThis !== 'undefined' && globalThis.__LWCS_SKILL_COST_HELPERS_V1__)
+      || (typeof window !== 'undefined' && window.__LWCS_SKILL_COST_HELPERS_V1__)
+      || null;
+  }
+  // 动作执行后的收尾 ≙ rebuildPrototypeGrid(按需) + refreshPreview（类型隐藏值、承载下拉）
+  function 动作后刷新(vf, previewMeta, snapshot) {
+    const post = vf.__post || {};
+    vf.__post = null;
+    if (post.rebuildMain) {
+      const 重建草稿 = post.rebuildMain === 'reread' ? 同步草稿(vf, previewMeta, snapshot) : post.rebuildMain;
+      vf.rows = 描述原型效果行列表(重建草稿.prototypeEffects, 重建草稿.target, false, { 固定首个独立生效: true }, { name: 'main' });
+    }
+    const 草稿 = post.refresh && post.refresh !== 'reread' ? post.refresh : 同步草稿(vf, previewMeta, snapshot);
+    vf.top.type.value = 属性回读(草稿.type || '输出');
+    vf.top.typeDisplay = 文本回读(草稿.typeDisplay || 草稿.type || '输出');
+    重建承载下拉(vf);
+    return 草稿;
+  }
+  // ≙ handleSubmit：回读 → buildSkillDesignerUpdatedSkill → COST 截断/分支约束/预算断言 → 写回更新列表
+  function 设计台保存(form, meta, baseSkill, root, 选项 = {}) {
+    const { previewMeta, snapshot } = 设计台准备(meta, root);
+    let vf = null;
+    try { vf = 渲染并挂载(form, previewMeta, snapshot); } catch (error) { return { ok: false, skill: null, updates: [], messages: [{ level: 'error', text: error && error.message ? error.message : '技能设计写回失败。' }], formState: null }; }
+    return 保存核心(vf, previewMeta, snapshot, baseSkill, 选项);
+  }
+  function 保存核心(vf, previewMeta, snapshot, baseSkill, 选项 = {}) {
+    const messages = [];
+    const 结果 = { ok: false, skill: null, updates: [], messages, formState: null };
+    try {
+      if (!Array.isArray(previewMeta.path) || !previewMeta.path.length) throw new Error('当前技能缺少可写回路径。');
+      结果.formStateIdle = 读取虚拟表单(vf, previewMeta);
+      设计台回读忙碌态 = 选项.keepConditionBranches !== true;
+      let formState;
+      try { formState = 读取虚拟表单(vf, previewMeta); } finally { 设计台回读忙碌态 = false; }
+      结果.formState = formState;
+      const skillSource = baseSkill && typeof baseSkill === 'object' ? baseSkill : deepGet(snapshot.rootData, previewMeta.path, {}) || {};
+      const nextSkill = 物品被动承载(buildSkillDesignerUpdatedSkill(skillSource, formState, previewMeta, snapshot.rootData), previewMeta, formState);
+      结果.skill = nextSkill;
+      const COST助手 = 读取COST助手();
+      if (COST助手 && typeof COST助手.评估技能预算_V1 === 'function') {
+        const 预算上下文 = 构建技能设计台预算上下文(previewMeta, snapshot.rootData || {}, formState || {});
+        const 魂技位 = Math.max(1, Number(previewMeta?.__魂环位 || 预算上下文.魂环位 || 1) || 1);
+        const 来源标识 = (() => {
+          const 路径 = Array.isArray(previewMeta.path) ? previewMeta.path : [];
+          if (路径.includes('武魂融合技')) return '武魂融合技';
+          if (路径.includes('魂骨')) return '魂骨技能';
+          if (路径.includes('自创魂技')) return '自创魂技';
+          return '魂技';
+        })();
+        if (typeof COST助手.按原型数上限截断_V1 === 'function') {
+          const 截断结果 = COST助手.按原型数上限截断_V1(nextSkill, 魂技位, 来源标识);
+          if (截断结果?.截断记录) {
+            const 记录 = 截断结果.截断记录;
+            messages.push({ level: 'warn', title: '原型数超限', text: `效果原型数 ${记录.原数量} 超过该魂技位上限 ${记录.上限}，已截断；丢弃 ${记录.丢弃数} 项: ${记录.丢弃原型.join('、') || '无'}` });
+          }
+        }
+        if (typeof COST助手.条件分支约束_V1 === 'function') {
+          const 分支统计 = COST助手.条件分支约束_V1(nextSkill);
+          if (分支统计 && (分支统计.截断分支 > 0 || 分支统计.拍平层 > 0 || 分支统计.合并对 > 0)) {
+            messages.push({ level: 'warn', title: '条件分支约束', text: `条件分支已规整：截断 ${分支统计.截断分支} 个、拍平嵌套 ${分支统计.拍平层} 层、近似合并 ${分支统计.合并对} 对` });
+          }
+        }
+        // 供界面显示：与保存断言同一技能、同一上下文的预算求值（只读，不改变保存行为）
+        try { 结果.budget = COST助手.评估技能预算_V1(nextSkill, { ...预算上下文, path: previewMeta.path, 魂环位: 魂技位, 来源: 预算上下文.来源类别, 启用位级硬上限: true }); } catch (error) { 结果.budget = null; }
+        if (选项.跳过预算断言 !== true) {
+          if (typeof COST助手.断言技能预算_V1 !== 'function') throw new Error('技能预算断言不可用');
+          COST助手.断言技能预算_V1(nextSkill, {
+            ...预算上下文,
+            path: previewMeta.path,
+            魂环位: 魂技位,
+            来源: 预算上下文.来源类别,
+            启用位级硬上限: true,
+          }, normalizeSkillUiText(previewMeta.label || formState.name || '技能设计', '技能设计'));
+        }
+      }
+      if (选项.跳过预算断言 !== true) 结果.updates = buildSkillDesignerWriteUpdates(previewMeta, nextSkill, snapshot.rootData);
+      结果.ok = true;
+    } catch (error) {
+      messages.push({ level: 'error', text: error && error.message ? error.message : '技能设计写回失败。' });
+    }
+    return 结果;
+  }
+  function 设计台动作(form, 动作, meta, root) {
+    // 无状态：从 form 渲染并挂载一次，按顺序执行全部动作（同一份虚拟 DOM），返回 refreshPreview 所用草稿
+    const { previewMeta, snapshot } = 设计台准备(meta, root);
+    const vf = 渲染并挂载(form, previewMeta, snapshot);
+    let 草稿 = form;
+    (Array.isArray(动作) ? 动作 : [动作]).forEach(单个 => { 执行动作(vf, 单个, previewMeta, snapshot); 草稿 = 动作后刷新(vf, previewMeta, snapshot); });
+    return 草稿;
+  }
+  // 有状态会话：保留虚拟 DOM（≙ 原版设计台打开后的 DOM），动作之间不重渲染，与原版显示/回读同生命周期
+  function 设计台会话(skill, meta, root) {
+    const { previewMeta, snapshot } = 设计台准备(meta, root);
+    const 起始 = 设计台原始草稿(skill, previewMeta, snapshot);
+    const vf = 渲染并挂载(起始.designerDraft, previewMeta, snapshot);
+    let 草稿 = 同步草稿(vf, previewMeta, snapshot);
+    const 激活 = () => 设计台使用快照(snapshot.rootData, previewMeta);
+    const 会话 = {
+      meta: previewMeta,
+      initialForm: 起始.designerDraft,
+      /** 当前表单 ≙ syncDraftCache()（从虚拟 DOM 现读） */
+      get form() { 激活(); return 同步草稿(vf, previewMeta, snapshot); },
+      /** 最近一次 refreshPreview 实际使用的草稿（新增原型/副作用等动作原版直接用拼好的草稿刷新预览） */
+      get previewForm() { return 草稿; },
+      act(动作) {
+        激活();
+        (Array.isArray(动作) ? 动作 : [动作]).forEach(单个 => { 执行动作(vf, 单个, previewMeta, snapshot); 草稿 = 动作后刷新(vf, previewMeta, snapshot); });
+        return 会话;
+      },
+      view() { 激活(); return 视图核心(vf, previewMeta, snapshot); },
+      save(opts = {}) { 激活(); return 保存核心(vf, previewMeta, snapshot, 起始.skillSource, { keepConditionBranches: !!opts.keepConditionBranches }); },
+      toSkill(opts = {}) {
+        激活();
+        const 结果 = 保存核心(vf, previewMeta, snapshot, 起始.skillSource, { 跳过预算断言: true, keepConditionBranches: !!opts.keepConditionBranches });
+        const 错误 = 结果.messages.find(m => m.level === 'error');
+        if (错误) throw new Error(错误.text);
+        return 结果.skill;
+      },
+      validate(opts = {}) { return 会话.save(opts).messages; },
+      tempSkill() { 激活(); const 表单 = 同步草稿(vf, previewMeta, snapshot); return 物品被动承载(构建技能设计台临时技能(表单, previewMeta).临时技能, previewMeta, 表单); },
+      summary() { 激活(); return 构建技能设计台当前翻译摘要(同步草稿(vf, previewMeta, snapshot), previewMeta, snapshot.rootData) || '未设置'; },
+    };
+    return 会话;
+  }
+  function 设计台视图(form, meta, root) {
+    const { previewMeta, snapshot } = 设计台准备(meta, root);
+    return 视图核心(渲染并挂载(form, previewMeta, snapshot), previewMeta, snapshot);
+  }
+  function 视图核心(vf, previewMeta, snapshot) {
+    const 当前草稿 = 同步草稿(vf, previewMeta, snapshot);
+    const 上下文 = 设计台模板上下文(snapshot, previewMeta, 当前草稿);
+    const 分区 = 设计台分区列表(当前草稿, previewMeta, 上下文.标题提示表);
+    const 字段 = 顶层字段描述(vf, 当前草稿, previewMeta);
+    const scopeLabels = getSkillDesignerScopeLabels(previewMeta);
+    return {
+      titles: scopeLabels,
+      title: `${scopeLabels.studioTitle} / ${获取技能设计台当前标题(snapshot.rootData, previewMeta, deepGet(snapshot.rootData, previewMeta.path, {}) || {}) || 当前草稿.name || previewMeta.label || '未命名'}`,
+      typeDisplay: vf.top.typeDisplay,
+      sections: 分区.map(区 => ({ ...区, fields: 字段[区.id] || [] })),
+      rows: vf.rows.map((行, i) => 导出行(行, [i])),
+      emptyGuide: vf.rows.length ? null : { icon: '✦', title: '术式阵列未装配', desc: '请点击下方按钮，为该技能添加基础机制（如：伤害、判定修正、状态授予等）。您可以组合多个原型来构建复杂技能。' },
+      sideEffects: vf.sideEffects.map((行, i) => ({ index: i, scope: 行.scope, summary: 行.summary, fields: 行.fields.map(c => 导出控件(c, [])) })),
+      draft: 当前草稿,
+      preview: {
+        fusion: previewMeta.scope === '武魂融合技' ? buildSkillDesignerFusionSummary(当前草稿) || '未设置' : '',
+        summary: 构建技能设计台当前翻译摘要(当前草稿, previewMeta, snapshot.rootData) || '未设置',
+        progress: previewMeta.scope === 'art' ? buildSkillDesignerArtProgressSummary(当前草稿) || '未设置' : '',
+        attribute: buildSkillDesignerAttributeSummary(当前草稿) || '未设置',
+      },
+    };
+  }
+  function 单行字段(effect, ctx = {}) {
+    const 网格名 = ctx.grid || 'main';
+    const 序号 = Math.max(0, Number(ctx.index) || 0);
+    const fallbackTarget = ctx.fallbackTarget || (effect && effect['目标']) || '单体';
+    const 选项 = 网格名 === 'main'
+      ? { 固定首个独立生效: 序号 === 0 }
+      : 网格名 === 'nested' ? { 嵌套字段: ctx.nestedKind || '', 强制独立: true } : { 禁用条件分支: true, 禁用释放前降低结算: !!ctx.禁用释放前降低结算 };
+    const rows = 描述原型效果行列表([effect], fallbackTarget, 网格名 !== 'main', 选项, { name: 网格名, nestedKind: ctx.nestedKind || '', allowEmpty: 网格名 !== 'main', conditionEffect: /^condition/.test(网格名) });
+    挂载同步行(rows);
+    return rows.length ? 导出行(rows[0], [序号]).fields : [];
+  }
+
+  const 公共接口 = {
+    version: 1,
+    /** 有意偏离原版的规则开关（可改）：{ 战斗外原型可保存, 物品被动保持承载方式 } */
+    rules: 设计台规则,
+    /** 设置默认根数据（不传 root 的调用都用它；缺省回退 window.LWCS_SAVE） */
+    setRoot(root) { 设计台根数据 = root && typeof root === 'object' ? root : null; },
+    /** previewMeta 构造器（与原版各入口一致） */
+    meta: {
+      ring: (角色, 武魂槽, 魂灵槽, 魂环槽, 魂技键, label) => ({ path: ['char', 角色, 武魂槽, 魂灵槽, 魂环槽, 魂技键], label: label || 魂技键, category: '魂环魂技', scope: '魂技' }),
+      independentRing: (角色, 武魂槽, 魂环槽, 魂技键, label) => ({ path: ['char', 角色, 武魂槽, 魂环槽, 魂技键], label: label || 魂技键, category: '独立魂环魂技', scope: 'independent_ring_skill' }),
+      fusion: (角色, 记录键, label) => ({ path: ['char', 角色, '武魂融合技', 记录键, '技能数据'], label: label || 记录键, category: '武魂融合技', scope: '武魂融合技' }),
+      art: (角色, 功法名) => ({ path: ['char', 角色, '功法', 功法名], label: 功法名, category: '功法', scope: 'art' }),
+      custom: (角色, 技能键, label) => ({ path: ['char', 角色, '自创魂技', 技能键], label: label || 技能键, category: '自创魂技', scope: '自创魂技' }),
+      // 血脉三类与魂骨：路径与 scope 同原版 buildBloodlineConfig / 构建技能设计台预算上下文（原版魂骨技能只在物品定义里改 JSON，这里补设计台入口）
+      blood: (角色, 技能键, label) => ({ path: ['char', 角色, '血脉之力', '技能', 技能键], label: label || 技能键, category: '血脉散技', scope: 'blood_skill' }),
+      bloodPassive: (角色, 技能键, label) => ({ path: ['char', 角色, '血脉之力', '被动', 技能键], label: label || 技能键, category: '血脉特性', scope: 'blood_passive' }),
+      bloodRing: (角色, 环位, 魂技键, label) => ({ path: ['char', 角色, '血脉之力', 环位, 魂技键], label: label || 魂技键, category: '血脉魂环', scope: 'blood_ring_skill' }),
+      bone: (角色, 槽位, 技能键, label) => ({ path: ['char', 角色, '魂骨', 槽位, '附带技能', 技能键], label: label || 技能键, category: '魂骨技能', scope: 'soul_bone_skill' }),
+      // 装备技能：原版没有设计台入口（只在物品定义编辑器里裸改 JSON）。槽位可多段（魂导器 / 装配 / 一号位）；
+      // 分类含「装备」→ 原版预算上下文的来源类别 = 装备技能（来源承载 1.35），预算角色 = 佩戴者
+      equip: (角色, 槽位, 技能键, label) => ({ path: ['char', 角色, '装备', ...[].concat(槽位), '装备技能', 技能键], label: label || 技能键, category: '装备技能', scope: 'equipment_skill' }),
+      fromPreviewKey: key => parseSkillDesignerPreviewKey(key),
+      toPreviewKey: meta => buildSkillDesignerPreviewKey(设计台规范元数据(meta)),
+    },
+    /** 技能 → 原版初始表单 designerDraft（≙ readSkillDesignerDraft + 融合种子 + buildSkillDesignerFormStateFromDraft） */
+    fromSkill(skill, meta, root) {
+      const { previewMeta, snapshot } = 设计台准备(meta, root);
+      return 设计台原始草稿(skill, previewMeta, snapshot).designerDraft;
+    },
+    /** 打开设计台后的实时表单：初始表单经「渲染 → 挂载同步 → 回读 → syncDraftCache」 */
+    open(skill, meta, root) {
+      const { previewMeta, snapshot } = 设计台准备(meta, root);
+      const { designerDraft } = 设计台原始草稿(skill, previewMeta, snapshot);
+      return 同步草稿(渲染并挂载(designerDraft, previewMeta, snapshot), previewMeta, snapshot);
+    },
+    /** 表单 → 原版保存的技能（只含正式字段；结构校验失败抛出原版错误文本；不做 COST 预算断言，断言见 validate/save） */
+    toSkill(form, meta, baseSkill, root, opts = {}) {
+      const 结果 = 设计台保存(form, meta, baseSkill, root, { 跳过预算断言: true, keepConditionBranches: !!(opts && opts.keepConditionBranches) });
+      const 错误 = 结果.messages.find(m => m.level === 'error');
+      if (错误) throw new Error(错误.text);
+      return 结果.skill;
+    },
+    /** 完整保存链 ≙ handleSubmit：{ ok, skill, updates:[{path,value}], messages:[{level,text,title?}] } */
+    save(form, meta, baseSkill, root, opts = {}) { return 设计台保存(form, meta, baseSkill, root, { keepConditionBranches: !!(opts && opts.keepConditionBranches) }); },
+    /** ≙ 构建技能设计台临时技能（COST 引擎与试算用）；默认 live：先按原版 refreshPreview 刷新草稿 */
+    tempSkill(form, meta, root, 选项 = {}) {
+      const { previewMeta, snapshot } = 设计台准备(meta, root);
+      const 草稿 = 选项.live === false ? form : 同步草稿(渲染并挂载(form, previewMeta, snapshot), previewMeta, snapshot);
+      return 构建技能设计台临时技能(草稿, previewMeta).临时技能;
+    },
+    /** ≙「最终摘要」行文本（原版空串显示「未设置」） */
+    summary(form, meta, root, 选项 = {}) {
+      const { previewMeta, snapshot } = 设计台准备(meta, root);
+      const 草稿 = 选项.live === false ? form : 同步草稿(渲染并挂载(form, previewMeta, snapshot), previewMeta, snapshot);
+      return 构建技能设计台当前翻译摘要(草稿, previewMeta, snapshot.rootData) || '未设置';
+    },
+    /** 原版保存时的全部检查（按原版顺序，第一处错误即中止，与原版 toast 一致）：[{ level:'error'|'warn', text, title? }] */
+    validate(form, meta, root, baseSkill, opts = {}) { return 设计台保存(form, meta, baseSkill, root, { keepConditionBranches: !!(opts && opts.keepConditionBranches) }).messages; },
+    /** 新增原型 ≙ 点「新增原型」再把该行原型下拉切到 prototypeName；opts.path = 列表路径（[] 主列表 / [i,'授予效果'] / [i,'条件分支',b,'替换效果']） */
+    newEffect(prototypeName, form, meta, root, opts = {}) {
+      const 列表路径 = Array.isArray(opts.path) ? opts.path : [];
+      const { previewMeta, snapshot } = 设计台准备(meta, root);
+      let 下一 = 设计台动作(form, { type: 'addEffect', path: 列表路径 }, meta, root);
+      const 列表 = 定位列表(渲染并挂载(下一, previewMeta, snapshot), 列表路径).rows;
+      const 末行路径 = [...列表路径, Math.max(0, 列表.length - 1)];
+      if (prototypeName && 列表.length && 列表[列表.length - 1].prototypeSelect.value !== prototypeName) {
+        下一 = 设计台动作(下一, { type: 'prototype', path: 末行路径, value: prototypeName }, meta, root);
+      }
+      const 列表2 = 定位列表(渲染并挂载(下一, previewMeta, snapshot), 列表路径).rows;
+      const 主列表 = !列表路径.length;
+      const 效果们 = 读取虚拟行列表(列表2, 主列表 ? getSkillDesignerDefaultTarget(previewMeta, 下一.type) : '单体', 主列表 ? 'main' : '', !主列表, 主列表 ? {} : { 强制独立: true });
+      return { effect: 效果们[效果们.length - 1] || null, form: 下一, path: 末行路径 };
+    },
+    /** ≙ 开启条件分支 / 新增分支：创建技能设计台默认条件分支(行目标) */
+    newBranch(effect) { return 创建技能设计台默认条件分支(normalizeSkillUiText(effect && effect['目标'], '单体')); },
+    /** ≙「新增条件」 */
+    newCondition() { return { 类型: '生命比例', 对象: '目标', 比较: '<=', 值: '20%' }; },
+    /** ≙「+ 副作用」：默认自损反噬，对象按草稿推断 */
+    newSideEffect(form) { return 创建技能设计台默认副作用条目('自损反噬', { 生效对象: 读取技能设计台默认副作用对象(form || {}, '施展') }); },
+    /** 交互动作（与原版事件处理同语义），返回新的实时表单；可传动作数组顺序执行 */
+    act(form, action, meta, root) { return 设计台动作(form, action, meta, root); },
+    /** 有状态会话（推荐 UI 使用）：session(skill|null, meta, root) → { form, act(), view(), save(), toSkill(), tempSkill(), summary(), validate() } */
+    session(skill, meta, root) { return 设计台会话(skill, meta, root); },
+    /** 整张设计台视图：分区/字段/原型行/副作用/摘要（值为原版挂载后 DOM 中的值） */
+    view(form, meta, root) { return 设计台视图(form, meta, root); },
+    schema: {
+      sections: 设计台分区定义.map(定义 => ({
+        id: 定义.id,
+        title: 定义.title({}, {}),
+        templateTitle: 定义.templateTitle ? 定义.templateTitle({}, {}) : 定义.title({}, {}),
+        tab: 读取分区页名(定义.templateTitle ? 定义.templateTitle({}, {}) : 定义.title({}, {}), 定义.marker),
+        hint: (() => { const 表 = 设计台模板上下文({ rootData: {} }, { path: [], scope: '魂技' }, {}).标题提示表; const 键 = typeof 定义.hintKey === 'function' ? 定义.hintKey({}, {}) : 定义.hintKey; return (键 && 表[键]) || ''; })(),
+        visible: (form, meta) => !!定义.visible(form || {}, 设计台规范元数据(meta)),
+      })),
+      sectionsFor(form, meta, root) {
+        const { previewMeta, snapshot } = 设计台准备(meta, root);
+        return 设计台分区列表(form || {}, previewMeta, 设计台模板上下文(snapshot, previewMeta, form || {}).标题提示表);
+      },
+      tabs: 技能设计台分页定义.map(页 => ({ name: 页.名称, titles: [...页.标题集] })),
+      top: {
+        deliveryOptions: type => getSkillDesignerDeliveryOptions(type).map(v => ({ value: v, label: v })),
+        useLimitPeriods: 技能设计台使用限制周期选项.map(v => ({ value: v, label: v })),
+        passiveTriggers: 技能设计台被动触发选项.map(v => ({ value: v, label: v })),
+        passivePeriods: 技能设计台被动触发周期选项.map(v => ({ value: v, label: v })),
+        resourceTypes: SKILL_DESIGNER_RESOURCE_TYPE_OPTIONS.map(v => ({ value: v, label: v })),
+        costKeys: [...SKILL_DESIGNER_COST_RESOURCE_KEYS],
+        attributes: SKILL_DESIGNER_ATTRIBUTE_OPTIONS.map(v => ({ value: v, label: v })),
+        recommendedAttributes: form => normalizeSkillDesignerArray(SKILL_DESIGNER_ATTRIBUTE_HINTS_BY_TYPE[(form && form.type) || ''] || []),
+        scopeLabels: meta => getSkillDesignerScopeLabels(设计台规范元数据(meta)),
+        castTimeByDelivery: { ...SKILL_DESIGNER_RUNTIME_CAST_TIME_BY_DELIVERY },
+      },
+      prototypes: 设计台原型下拉('').options.filter(项 => !项.header).map(项 => ({ name: 项.value, category: 项.category, group: 项.group, label: 项.label, hint: 项.hint, direction: 项.direction })),
+      prototypeRegistry: name => SKILL_DESIGNER_PROTOTYPE_REGISTRY[name] || null,
+      /** 单个效果行的字段（≙ 该效果在 ctx.grid 第 ctx.index 行渲染并挂载同步后的控件） */
+      fields: 单行字段,
+      targets(effect, ctx = {}) {
+        const 原型 = normalizeSkillUiText(effect && effect['原型'], '伤害结算');
+        const 当前效果 = 技能设计台清理并水合原型效果(effect || {}, normalizeSkillDesignerEffectTargetValue(effect && effect['目标'], '单体'), { 嵌套字段: ctx.nestedKind, 强制独立: !!(ctx.grid && ctx.grid !== 'main') });
+        return 读取技能设计台目标候选(原型, { 嵌套字段: ctx.nestedKind || '', 当前效果 }).map(v => ({ value: v, label: v }));
+      },
+      condition: {
+        typeGroups: SKILL_DESIGNER_CONDITION_BRANCH_TYPE_GROUPS.map(组 => ({ label: 组.label, options: 组.options.filter(o => SKILL_DESIGNER_CONDITION_BRANCH_TYPE_OPTIONS.includes(o)).map(o => ({ value: o, label: o, group: 组.label })) })),
+        objects: 构建技能设计台条件分支对象选项(),
+        compare: type => 条件比较下拉(type, '').options.map(({ value, label }) => ({ value, label })),
+        valueControl: (type, compare) => {
+          const 配置 = 读取技能设计台条件分支值控件配置(type, compare);
+          return {
+            kind: 配置.值控件 === '数字' ? 'number' : 配置.值控件 === '无' ? 'none' : 'select',
+            options: 配置.值控件 === '数字' || 配置.值控件 === '无' ? [] : normalizeSkillDesignerOptionList(配置.值选项),
+            label: 配置.值标签, compareLabel: 配置.比较标签, showCompare: 配置.显示比较, showValue: 配置.显示值, showState: 配置.显示状态,
+          };
+        },
+        states: 条件状态下拉('中毒').options.map(({ value, label, group, hint }) => ({ value, label, group, ...(hint ? { hint } : {}) })),
+        actions: SKILL_DESIGNER_CONDITION_BRANCH_ACTION_OPTIONS.map(v => ({ value: v, label: v })),
+        hints: { ...技能设计台条件字段提示 },
+        preview: condition => 构建技能设计台条件分支条件预览(condition || {}),
+        summary: branches => 构建技能设计台条件分支摘要(branches || []),
+      },
+      sideEffect: {
+        types: 技能设计台副作用类型候选_V1.map(v => ({ value: v, label: v, config: { ...(技能设计台副作用配置表_V1[v] || {}) } })),
+        triggers: 技能设计台副作用触发时机选项_V1.map(v => ({ value: v, label: v })),
+        targets: 技能设计台副作用生效对象选项_V1.map(v => ({ value: v, label: v })),
+        hints: { ...技能设计台副作用字段提示 },
+        fields: row => 描述副作用行(规范化技能设计台副作用条目(row || {}, () => {}) || 创建技能设计台默认副作用条目(), '副作用列表').fields.map(c => 导出控件(c, [])),
+        summary: row => 格式化技能设计台副作用摘要(row || {}),
+      },
+      tick: {
+        parts: ['日', '时', '分'],
+        minutesPerTick: 技能设计台每tick分钟,
+        windowMaxTick: 技能设计台时窗最大调整tick,
+        toTick(parts = {}, opts = {}) { const 控件 = { minTick: opts.minTick || 0, maxTick: opts.maxTick || 0 }; 同步tick(控件, parts); return 控件.tick; },
+        fromTick(tick = 0, opts = {}) { const r = 拆分技能设计台tick时长(tick, { 最小tick: opts.minTick || 0, 最大tick: opts.maxTick, 默认tick: opts.minTick || 0 }); return { 日: r.日, 时: r.小时, 分: r.分钟, tick: r.tick }; },
+      },
+      units: { options: [{ value: '点数', label: '点数' }, { value: '百分比', label: '百分比' }], format: (value, unit) => 格式化技能设计台单位数值(value, unit), basis: (原型, 字段, effect) => 读取技能设计台数值字段口径(原型, 字段, effect || {}) },
+      hints: {
+        prototypeField: (原型, 字段, effect) => 获取技能设计台原型字段提示(原型, 字段, effect || {}),
+        condition: { ...技能设计台条件字段提示 },
+        sideEffect: { ...技能设计台副作用字段提示 },
+        sections: { ...设计台模板上下文({ rootData: {} }, { path: [], scope: '魂技' }, {}).标题提示表 },
+        legacyParam: { ...技能设计台参数提示表 },
+      },
+    },
+    /** 调试：原版 HTML 生成器与虚拟表单（对照用） */
+    _debug: {
+      rowHtml: (effects, fallbackTarget, 允许删空, options) => 构建技能设计台原型效果行列表(effects, fallbackTarget, 允许删空, options),
+      virtualForm: (form, meta, root) => { const { previewMeta, snapshot } = 设计台准备(meta, root); return 渲染并挂载(form, previewMeta, snapshot); },
+      readVirtualForm: (vf, meta) => 读取虚拟表单(vf, 设计台规范元数据(meta)),
+      writeUpdates: (meta, skill, root) => { const { previewMeta, snapshot } = 设计台准备(meta, root); return buildSkillDesignerWriteUpdates(previewMeta, skill, snapshot.rootData); },
+      liveDraft: (form, meta, root) => { const { previewMeta, snapshot } = 设计台准备(meta, root); return 同步草稿(渲染并挂载(form, previewMeta, snapshot), previewMeta, snapshot); },
+      openSummaryDraft: (form, meta, root) => { const { previewMeta, snapshot } = 设计台准备(meta, root); return 渲染并挂载(form, previewMeta, snapshot).openSummaryDraft; },
+    },
+  };
+  if (typeof window !== 'undefined') window.LWCS_DESIGNER_MODEL = 公共接口;
+  globalThis.LWCS_DESIGNER_MODEL = 公共接口;
+
+})();
+
+;
+/* source: cockpit/cockpit.js */
+/* 球体座舱：导航、三种模式、检视器、动效、手机转向。页面内容由 pages-*.js 注册。
+   数据与写回经适配器：lwcs 里由 mvu_logic_bridge.js 提供（读当前聊天 MVU 根数据、经编辑器写回、切换查看角色）；
+   没有适配器时（原型页）直接读写 window.LWCS_SAVE。挂载：COCKPIT.mount(host, adapter)。 */
+(() => {
+  let S = window.LWCS_SAVE || null, ADP = null, ROOT = document, mounted = false;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const $ = (s, r = ROOT) => r.querySelector(s);
+  const $$ = (s, r = ROOT) => [...r.querySelectorAll(s)];
+  const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const num = v => Number.isFinite(Number(v)) ? Number(v) : 0;
+  const fmt = v => Number.isFinite(Number(v)) ? Number(v).toLocaleString('en-US', { maximumFractionDigits: 2 }) : String(v ?? '—');
+  const entries = o => (o && typeof o === 'object' && !Array.isArray(o)) ? Object.entries(o) : [];
+  const blank = v => v === undefined || v === null || v === '' || v === '无' || /待补全|待生成/.test(String(v));
+
+  // 斗罗历：144 tick 一日，30 日一月，360 日一年
+  const tickDate = t => {
+    const d = num(t) / 144, Y = Math.floor(d / 360), M = Math.floor((d % 360) / 30) + 1, D = Math.floor(d % 30) + 1;
+    const m = Math.floor((d % 1) * 1440);
+    return `斗罗历${Y}年${M}月${D}日 ${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+  };
+  const rankTitle = lv => { lv = num(lv); return lv >= 91 ? '封号斗罗' : lv >= 81 ? '魂斗罗' : lv >= 71 ? '魂圣' : lv >= 61 ? '魂帝' : lv >= 51 ? '魂王' : lv >= 41 ? '魂宗' : lv >= 31 ? '魂尊' : lv >= 21 ? '大魂师' : lv >= 11 ? '魂师' : '魂士'; };
+  const ringColorClass = r => {
+    const c = String(r?.颜色 || ''), y = num(r?.年限);
+    if (/红/.test(c) || y >= 100000) return 'color-red';
+    if (/黑/.test(c) || y >= 10000) return 'color-black';
+    if (/紫/.test(c) || y >= 1000) return 'color-purple';
+    if (/黄/.test(c) || y >= 100) return 'color-yellow';
+    if (/金/.test(c)) return 'color-gold';
+    return 'color-white';
+  };
+  const yearTier = y => { y = num(y); return y >= 100000 ? '十万年' : y >= 10000 ? '万年' : y >= 1000 ? '千年' : y >= 100 ? '百年' : '十年'; };
+
+  // ---------- 魂环：与 mvu_logic_bridge.js 渲染魂环SVG 同构 ----------
+  const ringSvg = () => {
+    const base = 'var(--c-base)'; let major = '', minor = '', fleur = '';
+    for (let a = 0; a < 360; a += 90) major += `<use href="#spike-major" transform="rotate(${a} 100 100)"/>`;
+    for (let a = 0; a < 360; a += 15) if (a % 90) minor += `<use href="#spike-minor" transform="rotate(${a} 100 100)"/>`;
+    for (let a = 0; a < 360; a += 45) fleur += `<use href="#fleur-inner" transform="rotate(${a} 100 100)"/>`;
+    return `<svg class="mvu-soul-ring-svg" viewBox="0 0 200 200" aria-hidden="true"><defs>
+      <g id="spike-major"><polygon points="100,2 108,22 100,35 92,22" fill="none" stroke="${base}" stroke-width="1.5" stroke-linejoin="round"/><polygon points="100,6 103,22 100,32 97,22" fill="var(--c-acc)"/></g>
+      <g id="spike-minor"><polygon points="100,18 103,28 100,35 97,28" fill="none" stroke="${base}" stroke-width="1.5" stroke-linejoin="round"/><polygon points="100,20 101,28 100,33 99,28" fill="var(--c-acc)"/></g>
+      <g id="fleur-inner"><polygon points="100,32 104,45 100,58 96,45" fill="var(--c-acc)"/><path d="M 100 35 Q 115 40 108 52 Q 104 46 100 42 Q 96 46 92 52 Q 85 40 100 35 Z" fill="none" stroke="${base}" stroke-width="1.5"/></g>
+      </defs><g class="spin-cw"><circle cx="100" cy="100" r="66" fill="none" stroke="var(--c-band)" stroke-width="14"/><circle cx="100" cy="100" r="59" fill="none" stroke="${base}" stroke-width="1.5" opacity=".8"/><circle cx="100" cy="100" r="73" fill="none" stroke="${base}" stroke-width="1.5" opacity=".8"/>${major}${minor}${fleur}</g>
+      <g class="spin-ccw"><circle cx="100" cy="100" r="66" fill="none" stroke="var(--c-acc)" stroke-width="2" stroke-dasharray="2 4 8 4 3 10"/></g><circle class="mvu-soul-ring-hit" cx="100" cy="100" r="66" fill="none" stroke="transparent" stroke-width="22"/></svg>`;
+  };
+  // 魂环舞台（soul_ring_engine 原样）：平时同心叠环，悬停倾斜为 3D 魂环塔；attrs(ring, i) 可给每一圈挂额外属性
+  const ringStage = (rings, attrs) => {
+    const n = rings.length;
+    if (!n) return '<div class="mvu-soul-ring-showcase mvu-soul-ring-showcase--empty"><div class="mvu-soul-ring-empty-core"></div></div>';
+    const slots = rings.map((ring, i) => {
+      const r = n > 1 ? i / (n - 1) : .5, d = n > 1 ? 1 - r : .5;
+      // 塔间距：原公式固定铺满 -80~120px，两三环时会被拉到舞台两端；改为每圈 ≤28px、总高 ≤200px、以舞台中心对称（只动间距，不动魂环造型）
+      const step = n > 1 ? Math.min(28, 200 / (n - 1)) : 0, z = ((n - 1) / 2 - i) * step;
+      return `<div class="mvu-soul-ring-slot ${ringColorClass(ring)}" tabindex="0" data-ring-index="${i + 1}" aria-label="第${i + 1}魂环" ${attrs ? attrs(ring, i) : ''} style="--ring-scale:${(.58 + r * 1.22).toFixed(3)};--ring-depth-scale:${(1.34 - d * .74).toFixed(3)};--ring-z:${z.toFixed(0)}px;--ring-depth-opacity:${(.78 + r * .22).toFixed(2)};--ring-z-index:${n - i}">${ringSvg()}</div>`;
+    }).join('');
+    return `<div class="mvu-soul-ring-showcase mvu-soul-ring-showcase--standard"><div class="mvu-soul-ring-stage" data-ring-count="${n}">${slots}</div></div>`;
+  };
+  const ringMedal = (ring, label, micro = false) => `<div class="medal"><div class="mvu-soul-ring-showcase${micro ? ' mvu-soul-ring-showcase--micro' : ''}"><div class="mvu-soul-ring-stage" data-ring-count="1"><div class="mvu-soul-ring-slot ${ringColorClass(ring)}" style="--ring-scale:1">${ringSvg()}</div></div></div>${label === '' ? '' : `<b>${esc(label)}</b>`}</div>`;
+
+  // ---------- 角色数据读取 ----------
+  const souls = ch => entries(ch).filter(([k, v]) => /^第\d+武魂$/.test(k) && v && v.表象名称).map(([slot, v]) => {
+    const spirits = entries(v).filter(([k, x]) => /^第\d+魂灵$/.test(k) && x && typeof x === 'object').map(([sk, sp]) => ({
+      slot: sk, ...sp,
+      rings: entries(sp).filter(([k, x]) => /^第\d+魂环$/.test(k) && x && typeof x === 'object').map(([rk, ring]) => ({
+        slot: rk, ...ring, skills: entries(ring).filter(([, x]) => x && typeof x === 'object' && x.魂技名).map(([kk, sk2]) => ({ slot: kk, ...sk2 })),
+      })),
+    }));
+    return { slot, ...v, spirits, rings: spirits.flatMap(sp => sp.rings) };
+  });
+  // 运行时全局：lwcs 里 MVU 运行时（技能 / 结构 / 商品池 / 修炼公式等）跑在酒馆助手的脚本 iframe 里，只有部分 __LWCS_* 对象共享到主页面。
+  // 先找本窗口与顶层窗口，再找各 iframe（记住找到的窗口）；原型页这些都在本窗口
+  const rtWin = {};
+  const rt = name => {
+    try { const w = rtWin[name]; if (w && w[name] !== undefined) return w[name]; } catch (e) {}
+    const wins = [window]; try { if (window.top && window.top !== window) wins.push(window.top); } catch (e) {}
+    document.querySelectorAll('iframe').forEach(f => { try { if (f.contentWindow) wins.push(f.contentWindow); } catch (e) {} });
+    for (const w of wins) { try { if (w[name] !== undefined) { rtWin[name] = w; return w[name]; } } catch (e) {} }
+    return undefined;
+  };
+  // 内置库（地点 / 势力）：按当前 tick 所在的资源时代取该时代的库（时代数据注册表给出 globalKey），没加载就请求加载、加载完重绘；
+  // 原型页没有时代运行时，直接用页面里的 __LWCS_内置地点库__ / __LWCS_内置势力库__
+  const libAsked = new Set();
+  const library = type => {
+    const fallback = { location: '__LWCS_内置地点库__', faction: '__LWCS_内置势力库__' }[type];
+    const I = rt('__LWCS_ERA_RUNTIME_INTEGRATION_V1__'), reg = rt('__LWCS_ERA_DATA_REGISTRY_V1__'), tick = num(S?.world?.时间?.tick);
+    if (!I || !reg || !S?.world?.时间) return rt(fallback);
+    let key = '', era = '';
+    try { era = I.resolveResourceEraAtTick(tick); key = reg.getResourceDescriptor(era, type)?.globalKey || ''; } catch (e) { return rt(fallback); }
+    const lib = key ? rt(key) : undefined;
+    if (!lib && key && !libAsked.has(era + '/' + type)) {
+      libAsked.add(era + '/' + type);
+      Promise.resolve(I.ensureEraResourcesForTick(tick, [type])).then(() => C.refresh()).catch(err => console.warn('[座舱] 内置库加载失败', type, err));
+    }
+    return lib;
+  };
+  const portraitIndex = {};
+  const portraitBase = () => document.documentElement.dataset.lwcsCharacterAssets || 'http://127.0.0.1:39281/assets/characters/';
+  const loadPortraits = () => fetch(portraitBase() + 'manifest.json').then(r => r.json()).then(m => {
+    for (const c of m.characters || []) { if (!portraitIndex[c.name] || c.book === 'dl3') portraitIndex[c.name] = c; }
+    C.refresh();
+  }).catch(() => {});
+  const AVATAR_KEY = 'lwcs-cockpit-avatar-';
+  const avatarSrc = name => {
+    const own = ADP?.avatarSrc?.(name); if (own) return own;
+    try { const up = localStorage.getItem(AVATAR_KEY + name); if (up) return up; } catch (e) {}
+    const p = portraitIndex[name]; return p ? portraitBase() + p.avatar : '';
+  };
+  const standingSrc = name => { const p = portraitIndex[name]; return p ? portraitBase() + p.standing : ''; };
+  const miniAva = name => { const src = avatarSrc(name); return `<span class="mini-ava">${src ? `<img src="${esc(src)}" alt="">` : esc(String(name).slice(-2, -1) || name[0])}</span>`; };
+
+  // ---------- 小部件 ----------
+  const bar = (cls, cur, max) => { const pct = max > 0 ? Math.max(0, Math.min(100, cur / max * 100)) : 0; return `<div class="bar ${cls}" role="meter" aria-valuenow="${num(cur)}" aria-valuemax="${num(max)}"><div class="tr"><i data-w="${pct.toFixed(2)}"></i></div></div>`; };
+  const count = (v, cls = '') => `<b class="${cls}" data-count="${num(v)}">0</b>`;
+  const sock = (icon, tint = '') => `<span class="sock ${tint}"><i class="fa-solid fa-${icon}"></i></span>`;
+  const head = (icon, title, en, tint = '', aside = '') => `<h2 class="h">${sock(icon, tint)}${esc(title)}${en ? `<span class="en">${esc(en)}</span>` : ''}${aside}</h2>`;
+  // 说明一律悬停显示，不占版面：hintMark 是标签旁的小「?」，桌面悬停、键盘聚焦、手机点按都能看
+  const hintMark = text => text ? `<i class="hint" tabindex="0" role="button" aria-label="说明" data-hint="${esc(text)}">?</i>` : '';
+  const empty = (icon, title, hint = '') => `<div class="void"><span class="sock" style="--s:2.6em"><i class="fa-solid fa-${icon}"></i></span><strong>${esc(title)}${hintMark(hint)}</strong></div>`;
+  // 选择控件：带逐项说明的下拉（原生 select 无法给选项配悬停说明）。options 为字符串或 { value, label, hint, group }；
+  // 选中后在控件上派发 picker:change（detail: { path, value }）。悬停控件本身显示当前选项的说明
+  const optOf = o => o && typeof o === 'object' ? { value: String(o.value ?? o.label ?? ''), label: String(o.label ?? o.value ?? ''), hint: o.hint || '', group: o.group || '' } : { value: String(o ?? ''), label: String(o ?? ''), hint: '', group: '' };
+  const pick = (path, value, options = [], o = {}) => {
+    const opts = options.map(optOf), v = String(value ?? ''), cur = opts.find(x => x.value === v);
+    return `<span class="picker${o.cls ? ' ' + o.cls : ''}" data-picker="${esc(path)}" data-picker-opts="${esc(JSON.stringify(opts))}" data-picker-value="${esc(v)}"><button type="button" class="picker-btn" aria-haspopup="listbox" aria-expanded="false"${o.disabled ? ' disabled' : ''}${cur?.hint ? ` data-hint="${esc(cur.hint)}"` : ''}><span>${esc(cur ? cur.label : (v || o.placeholder || '请选择'))}</span><i class="fa-solid fa-chevron-down"></i></button></span>`;
+  };
+  const kv = rows => `<dl class="kv">${rows.filter(Boolean).map(([k, v, cls]) => `<dt>${esc(k)}</dt><dd class="${cls || ''}">${v}</dd>`).join('')}</dl>`;
+  const val = (v, fallback = '未记录') => blank(v) ? `<span class="dim">${esc(fallback)}</span>` : esc(v);
+
+  // ---------- 注册表与状态 ----------
+  const order = ['page-archive', 'page-ability', 'page-supplies', 'page-map', 'page-world', 'page-terminal'];
+  const domains = {};
+  const state = { domain: null, page: {}, inspect: null, view: S?.sys?.玩家名 || '', face: 0, ui: {} };
+  // ---------- 内联编辑（与原项目 makeInlineEditableValue / beginInlineEdit 同一语义）----------
+  // 常驻：点击可编辑值即原地编辑；kind = string | number | enum | text（多行）。path 是存档根下的键路径数组。
+  // 原型写回内存存档后重绘；移植时换成 replaceStatDataByEditor → 整根 MVU schema 校验 → replaceMvuData。
+  const ed = (text, path, o = {}) => `<span class="ie" tabindex="0" role="button" data-ie-path="${esc(JSON.stringify(path))}" data-ie-kind="${o.kind || 'string'}" data-ie-meta="${esc(JSON.stringify({ min: o.min, max: o.max, integer: o.integer, options: o.options, suffix: o.suffix }))}" data-ie-raw="${esc(String(o.raw ?? text ?? ''))}" title="点击编辑">${o.html ?? esc(String(text ?? ''))}</span>`;
+  const ctx = () => {
+    if (!S.char[state.view]) state.view = S.sys.玩家名;
+    const ch = S.char[state.view] || {};
+    return { rt, library, S, name: state.view, ch, st: ch.属性 || {}, isPlayer: state.view === S.sys.玩家名, player: S.sys.玩家名, souls: souls(ch), tickDate, rankTitle, yearTier, ringStage, ringMedal, ringColorClass, bar, count, sock, head, empty, kv, val, hint: hintMark, pick, esc, fmt, num, entries, blank, avatarSrc, standingSrc, miniAva, state, ed, P: (...p) => ['char', state.view, ...p] };
+  };
+
+  // 写回：ops = [{ path, value }] 或 [{ path, del: true }]，path 是存档根下的键路径。
+  // 有适配器时交给桥接（整根 MVU 校验后落楼，桥接刷新后经 setData 回灌）；原型直接改内存存档并重绘
+  const getAt = p => p.reduce((o, k) => (o == null ? o : o[k]), S);
+  const setAt = (p, v) => { let o = S; for (const k of p.slice(0, -1)) { if (o[k] == null || typeof o[k] !== 'object') o[k] = {}; o = o[k]; } o[p[p.length - 1]] = v; };
+  const delAt = p => { const parent = getAt(p.slice(0, -1)), k = p[p.length - 1]; if (Array.isArray(parent)) parent.splice(Number(k), 1); else if (parent) delete parent[k]; };
+  const write = async ops => {
+    ops = (ops || []).filter(o => o && Array.isArray(o.path) && o.path.length);
+    if (!ops.length) return true;
+    if (ADP?.write) {
+      try { await ADP.write(ops); return true; }
+      catch (err) { console.error('[座舱] 写回失败', err); ADP.toast?.(err?.message || '变量写回失败', 'error'); api.refresh?.(); return false; }
+    }
+    for (const o of ops) o.del ? delAt(o.path) : setAt(o.path, o.value);
+    api.refresh?.(); api.syncReadout?.();
+    return true;
+  };
+  let api = {};
+  const C = window.COCKPIT = {
+    ctx: () => ctx(),
+    register(id, def) { domains[id] = def; },
+    has(id) { return !!domains[id]; },
+    write,
+    rt,
+    library,
+    get mounted() { return mounted; },
+    refresh() { api.refresh?.(); },
+    go(id, page) { api.switchDomain?.(id, page); },
+    page(key) { api.switchPage?.(key); },
+    inspect(kind, id) { api.openInspector?.(kind, id); },
+    closeInspector() { api.closeInspector?.(); },
+    reproject() { api.reproject?.(); },
+    view(name) { if (!S?.char?.[name]) return; state.view = name; state.inspect = null; ADP?.setActive?.(name); api.refresh?.(); },
+    // 桥接刷新后回灌最新根数据：编辑进行中先记下，提交 / 取消后再重绘，不打断输入
+    setData(root) { if (!root || typeof root !== 'object') return; S = root; if (!S.char?.[state.view]) state.view = S.sys?.玩家名 || state.view; if (!mounted) return; if (api.isEditing?.()) { api.pending = true; return; } api.refresh?.(); api.syncReadout?.(); },
+    // 挂到宿主元素里：首次构建座舱 DOM 并初始化；之后宿主重建时把同一棵 DOM 移过去（事件监听随节点保留）
+    mount(host, adapter) {
+      if (adapter) ADP = adapter;
+      const root0 = ADP?.getRoot?.(); if (root0) S = root0;
+      if (!S || !host) return false;
+      // 先挂进宿主再初始化：窄屏判断、画布尺寸、滑块位置都要读真实宽度
+      if (!mounted) { state.view = ADP?.activeName?.() || S.sys?.玩家名 || ''; buildDom(); host.appendChild(ROOT); init(); mounted = true; loadPortraits(); api.start(); }
+      else if (ROOT.parentElement !== host) host.appendChild(ROOT);
+      api.relayout?.();
+      return true;
+    },
+    unmount() { if (ROOT.parentElement) ROOT.remove(); },
+  };
+  // 座舱外壳：作用域类 lwcs-ck（样式全部收在其下，不污染酒馆与其他界面）；浮层（悬停说明 / 下拉 / 浮动编辑器）挂在同作用域的 body 级容器里
+  let OVERLAY = null;
+  const buildDom = () => {
+    ROOT = document.createElement('div'); ROOT.className = 'lwcs-ck lwcs-ck-root';
+    ROOT.innerHTML = `<section class="cockpit" aria-label="球体座舱">
+  <canvas class="motes" aria-hidden="true"></canvas>
+  <div class="stage">
+    <nav class="arc" aria-label="状态栏领域"><div class="bz"><div class="b2"><div class="b3"><div class="track" id="ck-track"><span class="slider" aria-hidden="true"></span></div></div></div></div></nav>
+    <div class="screens">
+      <span class="hinge l" aria-hidden="true"></span><span class="hinge r" aria-hidden="true"></span>
+      <div class="wing l"><div class="float"><div class="bz"><div class="b2"><div class="b3">
+        <span class="tagline" aria-hidden="true">SM-L01</span><span class="led tr" aria-hidden="true"></span><span class="screw br" aria-hidden="true"></span>
+        <div class="scr"><div class="host" id="ck-wingL"></div></div>
+      </div></div></div></div></div>
+      <div class="center"><div class="float"><div class="bz"><div class="b2"><div class="b3">
+        <span class="tagline" aria-hidden="true" id="ck-coreTag">CORE</span><span class="led tr" aria-hidden="true"></span><span class="led bl" aria-hidden="true"></span><span class="screw br" aria-hidden="true"></span><span class="screw tl" aria-hidden="true"></span>
+        <div class="scr"><div class="host" id="ck-core"></div></div>
+      </div></div></div></div></div>
+      <div class="wing r"><div class="float"><div class="bz"><div class="b2"><div class="b3">
+        <span class="tagline" aria-hidden="true">SM-R01</span><span class="led tr" aria-hidden="true"></span><span class="screw br" aria-hidden="true"></span>
+        <div class="scr"><div class="host" id="ck-wingR"></div></div>
+      </div></div></div></div></div>
+    </div>
+    <nav class="dots" aria-label="切换屏面"><button type="button" data-face="-1">根基</button><button type="button" data-face="0" class="on">主屏</button><button type="button" data-face="1">操作</button></nav>
+    <div class="deck"><div class="bz"><div class="b2"><div class="b3">
+      <div class="keybed"><nav class="keys" id="ck-keys" aria-label="领域页面"></nav></div>
+      <div class="readout">
+        <span class="door" data-go="page-map/place" role="link" tabindex="0" title="查看当地"><i class="fa-solid fa-location-dot"></i> <span id="ck-rLoc"></span></span>
+        <span class="num"><i class="fa-regular fa-clock"></i> <span id="ck-rTime"></span></span>
+        <span class="res" id="ck-rRes" aria-label="随行资源"></span>
+        <div class="tick" aria-label="系统播报"><span><b>播报</b><span id="ck-rTick"></span></span></div>
+      </div>
+    </div></div></div></div>
+  </div>
+</section>`;
+    OVERLAY = document.createElement('div'); OVERLAY.className = 'lwcs-ck lwcs-ck-overlay'; document.body.append(OVERLAY);
+  };
+
+  function init() {
+  // ---------- DOM ----------
+  const track = $('#ck-track'), slider = $('.slider', track), screens = $('.screens');
+  const host = { l: $('#ck-wingL'), c: $('#ck-core'), r: $('#ck-wingR') };
+  const wingEl = { l: $('.wing.l'), r: $('.wing.r') };
+  // 窄屏判断缓存座舱宽度：切换和视差循环里反复调用，现读 clientWidth 会在 DOM 刚改完时触发强制同步布局。
+  // 窗口 resize（本监听最先注册，先于其他 resize 处理）与 ResizeObserver 两处更新
+  let mobileNow = $('.cockpit').clientWidth <= 700;
+  const syncMobile = () => { mobileNow = $('.cockpit').clientWidth <= 700; };
+  addEventListener('resize', syncMobile);
+  new ResizeObserver(syncMobile).observe($('.cockpit'));
+  const isMobile = () => mobileNow;
+
+  const charge = (root, quiet = false) => {
+    if (quiet) {
+      $$('.bar i[data-w]', root).forEach(i => { i.style.width = i.dataset.w + '%'; });
+      $$('.dial .arc[data-off]', root).forEach(a => { a.style.strokeDashoffset = a.dataset.off; });
+      $$('[data-count]', root).forEach(el => { el.textContent = fmt(Number(el.dataset.count)); });
+      return;
+    }
+    // 入场：条目按顺序扫描显现（clip 擦出 + 扫描线），不做透明度闪烁
+    if (!reduce && !root.closest?.('.fcard')) $$('.row,.card,.dark,.fx,.tile,.meter,.stat,.outfit>div,.strip,.cast,.dial,.radar', root).slice(0, 36).forEach((el, i) => { el.classList.add('reveal'); el.style.setProperty('--i', i); });
+    requestAnimationFrame(() => requestAnimationFrame(() => $$('.bar i[data-w]', root).forEach(i => { i.style.width = i.dataset.w + '%'; })));
+    requestAnimationFrame(() => requestAnimationFrame(() => $$('.dial .arc[data-off]', root).forEach(a => { a.style.strokeDashoffset = a.dataset.off; })));
+    $$('[data-count]', root).forEach(el => {
+      const to = Number(el.dataset.count);
+      if (reduce) { el.textContent = fmt(to); return; }
+      // 数字滚动约每 50ms 换一次字（每次换字都要重排所在行）；高刷屏上逐帧换字会把切换动画拖慢
+      const t0 = performance.now(), dur = 850; let shown = 0;
+      const step = now => { const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3); if (p === 1 || now - shown >= 50) { shown = now; el.textContent = fmt(Math.round(to * e)); } if (p < 1) requestAnimationFrame(step); };
+      requestAnimationFrame(step);
+    });
+  };
+  // 页内状态变化（页签 / 筛选 / 编辑写回）走静默更新：内容没变的区域原样保留（返回 null，不重复挂载），变了的就地替换、保留滚动位置
+  const lastHtml = new WeakMap();
+  const SCROLLERS = '.scroll,.dz-body,.pad,.list';
+  const scrollOf = root => [root, ...$$(SCROLLERS, root)].map(e => e.scrollTop);
+  const put = (el, html, anim, quiet = false) => {
+    // 只保留当前一层：先清掉上次切换残留的退场层（动画被打断、或窗口在后台不推进动画时 onfinish 不会触发）
+    $$('.face.leaving', el).forEach(f => f.remove());
+    const old = $$('.face', el).pop();
+    if (quiet && old && lastHtml.get(el) === html) return null;
+    lastHtml.set(el, html);
+    const next = document.createElement('div'); next.className = 'face'; next.innerHTML = html;
+    if (quiet && old) { const st = scrollOf(old); el.replaceChildren(next); charge(next, true); [next, ...$$(SCROLLERS, next)].forEach((e, i) => { if (st[i]) e.scrollTop = st[i]; }); return next; }
+    if (!old || reduce || !anim) { el.replaceChildren(next); charge(next); return next; }
+    old.classList.add('leaving'); el.appendChild(next);
+    const drop = () => old.remove();
+    old.animate([{ transform: 'none', opacity: 1 }, { transform: anim.out, opacity: 0 }], { duration: 300, easing: 'cubic-bezier(.4,0,1,1)' }).onfinish = drop;
+    setTimeout(drop, 380);
+    next.animate([{ transform: anim.in, opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 480, delay: 80, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'backwards' });
+    charge(next);
+    return next;
+  };
+  const angle = side => parseFloat(getComputedStyle(wingEl[side]).getPropertyValue(side === 'l' ? '--la' : '--ra')) || 26;
+  // 两翼动作：fold=领域切换（向后收折），dip=子页 / 检视器（轻点头）。
+  // from / to = 切换前后的翼板角度：收窄 / 展开时角度由这段动画带过去（只走合成），列宽已在切换瞬间一次到位
+  const swing = (side, html, mode, from = angle(side), to = from) => {
+    const el = wingEl[side], sign = side === 'l' ? 1 : -1;
+    if (reduce || isMobile()) { put(host[side], html, isMobile() ? { out: 'translateY(-3%)', in: 'translateY(3%)' } : null); return; }
+    const rot = a => `rotateY(${sign * a}deg)`;
+    const frames = mode === 'fold'
+      ? [{ transform: rot(from) }, { transform: `rotateY(${sign * -72}deg) translateZ(-40px)`, offset: .42 }, { transform: rot(to + 5), offset: .8 }, { transform: rot(to) }]
+      : [{ transform: rot(from) }, { transform: rot(to + 16), offset: .45 }, { transform: rot(to) }];
+    const dur = mode === 'fold' ? 900 : 560;
+    el.animate(frames, { duration: dur, easing: 'cubic-bezier(.45,0,.25,1)' });
+    // 宽度变了的一侧立即换内容（旧内容不该挤在新宽度里转回去）；宽度没变的照旧在翻到最远处时换
+    if (from !== to) put(host[side], html, null);
+    else setTimeout(() => put(host[side], html, null), dur * (mode === 'fold' ? .42 : .45));
+  };
+  const keysFor = d => d.keys.map(k => `<button class="key" type="button" data-page="${k.id}"><i class="fa-solid fa-${k.icon}"></i>${esc(k.label)}</button>`).join('');
+  const markKeys = () => $$('#ck-keys .key').forEach(k => { const on = k.dataset.page === state.page[state.domain]; k.classList.toggle('on', on); on ? k.setAttribute('aria-current', 'page') : k.removeAttribute('aria-current'); });
+  const swapKeys = (d, first) => {
+    const keys = $('#ck-keys');
+    const set = () => { keys.innerHTML = keysFor(d); markKeys(); };
+    if (reduce) { set(); return; }
+    if (first) { set(); keys.animate([{ transform: 'translateY(120%)' }, { transform: 'none' }], { duration: 600, delay: 250, easing: 'cubic-bezier(.2,.9,.3,1.2)', fill: 'backwards' }); return; }
+    // 换键只执行一次：动画结束或超时兜底（窗口在后台时动画不推进，onfinish 不触发）
+    let done = false;
+    const swap = () => { if (done) return; done = true; set(); keys.animate([{ transform: 'translateY(120%)' }, { transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2,.9,.3,1.25)' }); };
+    keys.animate([{ transform: 'none' }, { transform: 'translateY(120%)' }], { duration: 240, easing: 'ease-in' }).onfinish = swap;
+    setTimeout(swap, 320);
+  };
+  const moveSlider = tab => { if (tab) { slider.style.left = tab.offsetLeft + 'px'; slider.style.width = tab.offsetWidth + 'px'; } };
+
+  const currentView = () => {
+    const d = domains[state.domain], key = state.page[state.domain] || d.keys[0].id;
+    const page = d.keys.find(k => k.id === key) || d.keys[0];
+    return { d, page, v: page.view(ctx()) };
+  };
+  const applyWide = v => {
+    $('.cockpit').dataset.view = `${state.domain}/${state.page[state.domain] || domains[state.domain].keys[0].id}`;
+    const wide = isMobile() ? '' : (v.wide || '');
+    screens.classList.toggle('wide-l', wide === 'both' || wide === 'l');
+    screens.classList.toggle('wide-r', wide === 'both' || wide === 'r');
+  };
+  const wingHtml = (v, side) => {
+    const wideSide = !isMobile() && (v.wide === 'both' || v.wide === side);
+    if (wideSide) return v[side === 'l' ? 'railL' : 'railR'] || `<div class="rail"></div>`;
+    return v[side === 'l' ? 'left' : 'right'] || v[side === 'l' ? 'railL' : 'railR'] || '';
+  };
+  // 手机端三面切换的标签：页面可用 faces 指定；否则取该翼第一个标题（背包 / 钱包 …），只有侧轨时取侧轨小字，都没有才用通用名
+  const faceLabel = (html, rail, dflt) => (String(html || '').match(/<h2 class="h"><span class="sock[^"]*"><i[^>]*><\/i><\/span>([^<]+)/) || [])[1]?.trim()
+    || (!html && (String(rail || '').match(/<small>([^<]+)<\/small>/) || [])[1]?.trim()) || dflt;
+  const setFaceLabels = v => { const [l, , r] = $$('.dots button'); if (l) l.textContent = v.faces?.l || faceLabel(v.left, v.railL, '根基'); if (r) r.textContent = v.faces?.r || faceLabel(v.right, v.railR, '详情'); };
+  const setFace = i => {
+    state.face = i;
+    screens.style.setProperty('--turn', `${-i * 60}deg`);
+    $$('.dots button').forEach(b => b.classList.toggle('on', Number(b.dataset.face) === i));
+    requestAnimationFrame(fitCarousel);
+  };
+  const fitCarousel = () => {
+    if (!isMobile()) { screens.style.removeProperty('--carousel-h'); return; }
+    const el = state.face === -1 ? wingEl.l : state.face === 1 ? wingEl.r : $('.center');
+    screens.style.setProperty('--carousel-h', Math.max(320, el.scrollHeight) + 'px');
+  };
+
+  // 页面可提供 mount(face, ctx) 挂交互（沙盘拖拽、缩放等），每次主屏换面后调用
+  const mount = (v, face) => { if (face && typeof v.mount === 'function') try { v.mount(face, ctx()); } catch (err) { console.error(err); } };
+  function renderPage(how) {
+    const { d, v } = currentView();
+    $('#ck-coreTag').textContent = v.tag || d.tag || 'CORE';
+    // 两翼宽度在切换瞬间一次到位：原先列宽过渡 0.7s，每帧整个座舱重排重绘（世界页两翼都收窄，最卡）
+    const fromA = { l: angle('l'), r: angle('r') };
+    applyWide(v); setFaceLabels(v);
+    const toA = { l: angle('l'), r: angle('r') };
+    if (how.kind === 'domain') {
+      mount(v, put(host.c, v.core, { out: `translateX(${-how.dir * 9}%)`, in: `translateX(${how.dir * 9}%)` }));
+      swing('l', wingHtml(v, 'l'), how.first ? 'none' : 'fold', fromA.l, toA.l);
+      swing('r', wingHtml(v, 'r'), how.first ? 'none' : 'fold', fromA.r, toA.r);
+    } else if (how.kind === 'page') {
+      mount(v, put(host.c, v.core, { out: 'translateY(-4%)', in: 'translateY(4%)' }));
+      swing('l', wingHtml(v, 'l'), 'dip', fromA.l, toA.l);
+      swing('r', wingHtml(v, 'r'), 'dip', fromA.r, toA.r);
+    } else {
+      mount(v, put(host.c, v.core, null, true)); put(host.l, wingHtml(v, 'l'), null, true); put(host.r, wingHtml(v, 'r'), null, true);
+    }
+    setTimeout(fitCarousel, 700);
+  }
+
+  let busy = 0;
+  function switchDomain(id, page, first = false) {
+    if (!domains[id]) return;
+    if (id === state.domain && !page) return;
+    const dir = state.domain ? Math.sign(order.indexOf(id) - order.indexOf(state.domain)) || 1 : 1;
+    state.domain = id; state.inspect = null; clearFloat();
+    if (page) state.page[id] = page; else state.page[id] = state.page[id] || domains[id].keys[0].id;
+    $$('.tab', track).forEach(t => { const on = t.dataset.tab === id; t.classList.toggle('on', on); on ? t.setAttribute('aria-current', 'page') : t.removeAttribute('aria-current'); if (on) moveSlider(t); });
+    swapKeys(domains[id], first);
+    if (isMobile()) setFace(0);
+    renderPage({ kind: 'domain', dir, first });
+    if (first && !reduce) $('.center').animate([{ transform: 'translateZ(-160px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 800, easing: 'cubic-bezier(.2,.9,.25,1)' });
+  }
+  function switchPage(key) {
+    const d = domains[state.domain];
+    if (!d.keys.some(k => k.id === key) || state.page[state.domain] === key) return;
+    state.page[state.domain] = key; state.inspect = null; clearFloat(); markKeys();
+    if (isMobile()) setFace(0);
+    renderPage({ kind: 'page' });
+  }
+  // 锚定浮窗：贴在来源元素旁浮出，无遮罩、不阻断其他操作（严格禁止模态弹窗）；手机上在原位展开
+  const cockpitEl = $('.cockpit');
+  const layer = document.createElement('div'); layer.className = 'float-layer'; cockpitEl.appendChild(layer);
+  const floatOpen = () => !!layer.firstChild || !!$('.inline-detail');
+  function clearFloat() { layer.replaceChildren(); $$('.inline-detail').forEach(el => el.remove()); }
+  function project(html, anchor, swap = false) {
+    const old = swap && !isMobile() ? $('.fcard', layer) : null;
+    if (old) { $('.holo-in', old).innerHTML = html; old.style.transition = reduce ? '' : 'top .2s cubic-bezier(.2,.8,.2,1)'; place(old, anchor); return; }
+    clearFloat();
+    const body = `<div class="holo" role="region" aria-label="详情"><div class="holo-in">${html}</div></div>`;
+    if (isMobile() && anchor) {
+      const box = document.createElement('div'); box.className = 'inline-detail'; box.innerHTML = body;
+      // 锚点在成排容器（如魂环舞台）里时，详情插在整个容器之后，不塞进绝对定位的舞台内部
+      (anchor.closest('[data-float]') || anchor).insertAdjacentElement('afterend', box); charge(box);
+      if (!reduce) box.animate([{ opacity: 0, transform: 'translateY(-6px)' }, { opacity: 1, transform: 'none' }], { duration: 240, easing: 'ease-out' });
+      requestAnimationFrame(fitCarousel); return;
+    }
+    layer.innerHTML = `<svg class="float-link" aria-hidden="true"><path></path><circle r="3.5"></circle></svg><div class="fcard">${body}</div>`;
+    const card = $('.fcard', layer), side = place(card, anchor);
+    charge(card);
+    if (!reduce) card.animate([{ opacity: 0, transform: `translate(${side === 'r' ? -10 : side === 'l' ? 10 : 0}px,${side === 'b' ? -8 : side === 't' ? 8 : 0}px) scale(.96)` }, { opacity: 1, transform: 'none' }], { duration: 220, easing: 'cubic-bezier(.2,.8,.2,1)' });
+  }
+  let floatHost = null;
+  function place(card, anchor) {
+    const cr = cockpitEl.getBoundingClientRect(), sr = $('.screens').getBoundingClientRect();
+    const top0 = sr.top - cr.top, bot0 = sr.bottom - cr.top;
+    card.style.maxHeight = `${Math.max(160, bot0 - top0)}px`;
+    const ar = anchor ? anchor.getBoundingClientRect() : { left: cr.left + cr.width / 2, right: cr.left + cr.width / 2, top: cr.top + cr.height / 2, bottom: cr.top + cr.height / 2, width: 0, height: 0 };
+    // 成排锚点：先按容器外侧可用宽度收窄浮窗（不低于 280px），钉住的完整卡也能放在外侧
+    const host = anchor?.closest('[data-float]'), hr = host?.getBoundingClientRect(); floatHost = host || null; card.style.width = '';
+    const hl = hr ? hr.left - cr.left : 0, hrt = hr ? hr.right - cr.left : 0, room = Math.floor(host?.dataset.float === 'l' ? hl : host?.dataset.float === 'r' ? cr.width - hrt : Math.max(cr.width - hrt, hl)) - 28;
+    if (host && room >= 280 && card.offsetWidth > room) card.style.width = `${room}px`;
+    const w = card.offsetWidth, h = card.offsetHeight, gap = 16, pad = 8;
+    const a = { l: ar.left - cr.left, r: ar.right - cr.left, t: ar.top - cr.top, b: ar.bottom - cr.top };
+    let x, y, side;
+    // 成排锚点（data-float 容器，如魂环网格）：浮窗整个放到容器外侧，任何一个锚点都不被遮住；两侧都放不下才退到 t / b 偏好
+    const pref = host?.dataset.float;
+    const fitT = a.t - top0 >= h + gap, fitB = bot0 - a.b >= h + gap;
+    const vside = pref === 't' ? (fitT ? 't' : fitB ? 'b' : '') : pref === 'b' ? (fitB ? 'b' : fitT ? 't' : '') : '';
+    const fitR = host && cr.width - hrt >= w + gap + pad, fitL = host && hl >= w + gap + pad;
+    if (pref === 'l' && fitL) { x = hl - gap - w; side = 'l'; }
+    else if (fitR) { x = hrt + gap; side = 'r'; }
+    else if (fitL) { x = hl - gap - w; side = 'l'; }
+    else if (vside) { side = vside; x = Math.min(Math.max(pad, (a.l + a.r) / 2 - w / 2), cr.width - w - pad); }
+    else if (cr.width - a.r >= w + gap + pad) { x = a.r + gap; side = 'r'; }
+    else if (a.l >= w + gap + pad) { x = a.l - gap - w; side = 'l'; }
+    else { x = Math.min(Math.max(pad, (a.l + a.r) / 2 - w / 2), cr.width - w - pad); side = a.t > cr.height / 2 ? 't' : 'b'; }
+    if (side === 'r' || side === 'l') y = Math.min(Math.max(top0, (a.t + a.b) / 2 - h / 2), bot0 - h);
+    else y = side === 'b' ? Math.min(a.b + gap, bot0 - h) : Math.max(top0, a.t - gap - h);
+    y = Math.max(top0, y);
+    card.style.left = x + 'px'; card.style.top = y + 'px';
+    // 成排锚点放在外侧时，连线从容器边缘出发，不横穿同排其他锚点
+    const ax = side === 'r' ? (host ? hrt : a.r) : side === 'l' ? (host ? hl : a.l) : (a.l + a.r) / 2, ay =side === 't' ? a.t : side === 'b' ? a.b : (a.t + a.b) / 2;
+    const ex = side === 'r' ? x : side === 'l' ? x + w : ax, ey = side === 't' ? y + h : side === 'b' ? y : Math.min(Math.max(ay, y + 18), y + h - 18);
+    $('.float-link path', layer).setAttribute('d', `M${ax} ${ay} L${ex} ${ey}`);
+    const dot = $('.float-link circle', layer); dot.setAttribute('cx', ax); dot.setAttribute('cy', ay);
+    return side;
+  }
+  // mode：hover（鼠标悬停预览）/ click（点击：桌面端钉住浮窗，触屏端原位展开或收起）
+  let pinned = false;
+  function openInspector(kind, id, anchor, mode = 'click') {
+    const { page } = currentView();
+    if (!page.inspect) return;
+    const same = state.inspect && state.inspect.kind === kind && state.inspect.id === id && floatOpen();
+    if (same && (mode === 'hover' || mode === 'scan')) return;
+    if (same && mode === 'click' && !(hoverable() && !pinned)) return closeInspector();
+    const html = page.inspect(ctx(), kind, id, mode === 'click' ? 'full' : 'hover');
+    if (!html) return;
+    const swap = mode === 'scan' && floatOpen() && !pinned && anchor?.closest('[data-float]') === floatHost;
+    state.inspect = { kind, id }; pinned = mode === 'click' && hoverable(); layer.classList.toggle('pinned', pinned);
+    $$('[data-inspect]').forEach(el => { const on = el.dataset.inspect === `${kind}:${id}`; el.classList.toggle('on', on); ringSlotOf(el)?.classList.toggle('mvu-hover-floating-active', on); });
+    project(html, anchor, swap);
+  }
+  // 浮窗打开时给对应魂环挂引擎激活态（.mvu-hover-floating-active），魂环舞台随之保持塔形
+  function ringSlotOf(el) { return el.matches('.mvu-soul-ring-slot') ? el : el.querySelector('.mvu-soul-ring-slot'); }
+  function closeInspector() {
+    if (!floatOpen()) return;
+    pinned = false; layer.classList.remove('pinned');
+    state.inspect = null; $$('[data-inspect].on').forEach(el => { el.classList.remove('on'); ringSlotOf(el)?.classList.remove('mvu-hover-floating-active'); });
+    const card = $('.fcard', layer);
+    // 淡出后清除；超时兜底只清这一张（期间若已打开新浮窗，旧卡已脱离文档，不会误清）
+    if (card && !reduce) { const kill = () => { if (card.isConnected) clearFloat(); }; card.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: 'ease-in' }).onfinish = kill; setTimeout(kill, 220); }
+    else clearFloat();
+    requestAnimationFrame(fitCarousel);
+  }
+  addEventListener('keydown', e => { if (e.key === 'Escape' && floatOpen()) closeInspector(); });
+  // 悬停浮窗：鼠标停在条目上约 0.15 秒浮出；移开（且没有移进浮窗）约 0.25 秒后收起；钉住后只在点外部 / Esc 时收起
+  const hoverable = () => matchMedia('(hover: hover) and (pointer: fine)').matches && !isMobile();
+  let openTimer = 0, closeTimer = 0;
+  // 设置页的交互偏好（悬停快慢 / 魂环扫描开关），每次读取，改完立即生效
+  const pref = k => { try { return JSON.parse(localStorage.getItem('lwcs-cockpit-settings') || '{}')[k]; } catch (e) { return undefined; } };
+  const hoverMs = () => ({ 快: 80, 标准: 150, 慢: 320 }[pref('hover')] || 150);
+  cockpitEl.addEventListener('pointerover', e => {
+    // 拖着沙盘时不弹浮窗（经过的地标太多）
+    if (!hoverable() || e.pointerType !== 'mouse' || editing || e.target.closest('.grabbing')) return;
+    const item = e.target.closest('[data-inspect]'), inCard = e.target.closest('.fcard');
+    if (!inCard && pref('scan') !== '关闭' && e.target.closest('[data-scan]')) { clearTimeout(closeTimer); return; }
+    if (item && !inCard) {
+      clearTimeout(closeTimer); clearTimeout(openTimer);
+      if (pinned && state.inspect && item.dataset.inspect !== `${state.inspect.kind}:${state.inspect.id}`) return;
+      // 条目可用 data-hover-delay 放慢（沙盘地标密，扫过时不该频频弹出）
+      openTimer = setTimeout(() => { const [kind, ...rest] = item.dataset.inspect.split(':'); openInspector(kind, rest.join(':'), item, 'hover'); }, Number(item.dataset.hoverDelay) || hoverMs());
+      return;
+    }
+    clearTimeout(openTimer);
+    if (inCard) { clearTimeout(closeTimer); return; }
+    if (floatOpen() && !pinned) { clearTimeout(closeTimer); closeTimer = setTimeout(closeInspector, 250); }
+  });
+  // 魂环扫描：魂环的命中带是细窄的环线（成塔后只剩几像素高），直接悬停很难瞄准。
+  // 声明 data-scan 的容器（武魂卡）整片都是扫描区：取离鼠标最近的一圈。首次打开约 0.09 秒防误触，之后切换即时、浮窗复用不闪。
+  const nearestRing = (host, x, y) => {
+    const tower = host.matches(':hover,:focus-within') || !!host.querySelector('.mvu-hover-floating-active');
+    let best = null, bd = Infinity;
+    for (const el of host.querySelectorAll('[data-inspect]')) {
+      const r = (el.querySelector('svg') || el).getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      const d = tower ? Math.abs(y - cy) : Math.abs(Math.hypot(x - cx, y - cy) - r.width * .33);
+      if (d < bd) { bd = d; best = el; }
+    }
+    return best;
+  };
+  // 按时间节流（约 30ms 一次，末次移动必处理），不依赖绘帧：窗口在后台时 rAF 会暂停
+  let scanAt = 0, scanTimer = 0, scanEv = null;
+  const scanPick = () => {
+    scanAt = performance.now(); scanTimer = 0;
+    const { host, x, y } = scanEv, el = nearestRing(host, x, y); if (!el || pinned) return;
+    const [kind, ...rest] = el.dataset.inspect.split(':'), id = rest.join(':');
+    if (floatOpen() && state.inspect?.kind === kind && state.inspect?.id === id) return;
+    clearTimeout(openTimer);
+    if (floatOpen()) openInspector(kind, id, el, 'scan');
+    else openTimer = setTimeout(() => openInspector(kind, id, el, 'scan'), 90);
+  };
+  cockpitEl.addEventListener('pointermove', e => {
+    if (!hoverable() || e.pointerType !== 'mouse' || pinned || editing || pref('scan') === '关闭') return;
+    const host = e.target.closest('[data-scan]');
+    if (!host || e.target.closest('.fcard')) return;
+    clearTimeout(closeTimer); scanEv = { host, x: e.clientX, y: e.clientY };
+    const dt = performance.now() - scanAt;
+    if (dt >= 30) scanPick(); else if (!scanTimer) scanTimer = setTimeout(scanPick, 30 - dt);
+  });
+  cockpitEl.addEventListener('pointerleave', () => { clearTimeout(openTimer); if (floatOpen() && !pinned) closeTimer = setTimeout(closeInspector, 250); });
+  // 点浮窗与条目以外的地方、或屏内滚动时收起（浮窗锚点会移动）
+  addEventListener('pointerdown', e => { if (floatOpen() && !e.target.closest('.fcard,.inline-detail,[data-inspect],[data-scan],.picker-list,.ie-floatbox')) closeInspector(); });
+  cockpitEl.addEventListener('scroll', e => { if (layer.firstChild && !e.target.closest?.('.fcard')) closeInspector(); }, true);
+
+  let editing = null;
+  // 编辑结束后若桥接在编辑期间送来过新数据，补一次重绘
+  const flushPending = () => { if (api.pending && !editing) { api.pending = false; renderPage({ kind: 'refresh' }); syncReadout(); } };
+  const parseEdit = (kind, meta, str) => {
+    const t = String(str).trim();
+    if (kind === 'number') {
+      if (t === '' || !Number.isFinite(Number(t))) return { err: '请输入数字' };
+      const n = Number(t);
+      if (meta.integer && !Number.isInteger(n)) return { err: '需为整数' };
+      if (meta.min != null && n < meta.min) return { err: `不能小于 ${meta.min}` };
+      if (meta.max != null && n > meta.max) return { err: `不能大于 ${meta.max}` };
+      return { value: n };
+    }
+    if (kind === 'enum') return (meta.options || []).includes(t) ? { value: t } : { err: '只能从选项中选择' };
+    return { value: kind === 'text' ? String(str) : t };
+  };
+  function beginEdit(el) {
+    if (editing) commitEdit();
+    const kind = el.dataset.ieKind, meta = JSON.parse(el.dataset.ieMeta || '{}'), raw = el.dataset.ieRaw;
+    if (kind === 'enum' && !(meta.options || []).includes(raw)) meta.options = [raw, ...(meta.options || [])];
+    const path = JSON.parse(el.dataset.iePath), inFloat = !!el.closest('.fcard');
+    const wrap = document.createElement('span');
+    // 单行编辑（数字 / 文字 / 枚举）浮在原值正上方：原位留一个同尺寸的占位，编辑器挂到页面最外层按原值的屏幕位置摆放——
+    // 不挤开旁边的内容（「9 岁」这类小字段原先会被输入框撑开、压到旁边的资源条），也不会被带切角的外框裁掉。多行文本仍原地展开
+    const keep = kind === 'text' ? null : el.getBoundingClientRect(), fs0 = Math.max(14, parseFloat(getComputedStyle(el).fontSize) || 14) + 'px';
+    let box = null;
+    const floatIt = () => {
+      if (!keep) return;
+      wrap.classList.add('float'); wrap.style.width = keep.width + 'px'; wrap.style.height = keep.height + 'px';
+      box = document.createElement('div'); box.className = 'ie-floatbox'; box.style.fontSize = fs0;
+      box.append(...wrap.childNodes); OVERLAY.append(box); placeBox(wrap, box);
+    };
+    // 枚举：原地换成座舱选择控件并展开；选中即提交，未选就收起则取消（closePick 里处理）
+    if (kind === 'enum') {
+      wrap.className = 'ie-edit ie-pick'; wrap.innerHTML = pick('__ie', raw, meta.options || []);
+      el.replaceWith(wrap); floatIt();
+      const host = (box || wrap).firstElementChild, val = { value: raw, focus: () => $('.picker-btn', host)?.focus() };
+      editing = { el, wrap, box, input: val, kind, meta, path, inFloat, pickHost: host };
+      host.addEventListener('picker:change', e => { e.stopPropagation(); val.value = e.detail.value; commitEdit(); });
+      openPick(host);
+      return;
+    }
+    let input;
+    if (kind === 'text') { input = document.createElement('textarea'); input.rows = 4; input.value = raw; }
+    else { input = document.createElement('input'); input.type = kind === 'number' ? 'number' : 'text'; input.value = raw; if (kind === 'number') { if (meta.min != null) input.min = meta.min; if (meta.max != null) input.max = meta.max; input.step = meta.integer ? '1' : 'any'; } }
+    input.className = 'ie-input';
+    wrap.className = 'ie-edit' + (kind === 'text' ? ' multi' : kind === 'number' ? ' num' : '');
+    // 操作提示（范围 / 回车提交 / Esc 取消）走悬停说明，不在版面上放字
+    input.dataset.hint = [kind !== 'number' ? '' : meta.min != null && meta.max != null ? `范围 ${meta.min} ~ ${meta.max}` : meta.min != null ? `最小 ${meta.min}` : meta.max != null ? `最大 ${meta.max}` : '', kind === 'text' ? 'Ctrl+回车提交' : '回车提交', 'Esc 取消'].filter(Boolean).join(' · ');
+    if (kind === 'number') {
+      // 数字：两侧步进键；按下时不抢焦点，避免输入框失焦提前提交
+      const step = d => { const st = meta.integer || !String(input.value).includes('.') ? 1 : 0.1, n = (Number(input.value) || 0) + d * st; input.value = String(Number(Math.min(meta.max ?? Infinity, Math.max(meta.min ?? -Infinity, n)).toFixed(4))); };
+      const mk = d => { const b = document.createElement('button'); b.type = 'button'; b.className = 'ie-step'; b.tabIndex = -1; b.setAttribute('aria-label', d < 0 ? '减少' : '增加'); b.innerHTML = `<i class="fa-solid fa-${d < 0 ? 'minus' : 'plus'}"></i>`; b.addEventListener('pointerdown', e => e.preventDefault()); b.addEventListener('click', e => { e.stopPropagation(); step(d); }); return b; };
+      const row = document.createElement('span'); row.className = 'ie-numrow'; row.append(mk(-1), input, mk(1)); wrap.append(row);
+    } else wrap.append(input);
+    el.replaceWith(wrap); floatIt();
+    // 输入框按内容定宽：数字按位数，单行文字按字数（中文约 1em 一字）
+    const fit = () => { if (kind === 'text') return; const n = String(input.value || '').length; input.style.width = kind === 'number' ? `${Math.max(2, n) + 1.4}ch` : `${Math.max(4, Math.min(22, n * 1.05 + 1.6))}em`; };
+    fit(); input.addEventListener('input', fit);
+    editing = { el, wrap, box, input, kind, meta, path, inFloat };
+    input.focus(); if (input.select) input.select();
+    input.addEventListener('keydown', e => {
+      e.stopPropagation();
+      if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
+      else if (e.key === 'Enter' && (kind !== 'text' || e.ctrlKey || e.metaKey)) { e.preventDefault(); commitEdit(); }
+    });
+    input.addEventListener('blur', () => setTimeout(() => { if (editing && editing.input === input) commitEdit(); }, 0));
+  }
+  function commitEdit() {
+    const cur = editing; if (!cur) return;
+    const r = parseEdit(cur.kind, cur.meta, cur.input.value);
+    const host = cur.box || cur.wrap;
+    if (r.err) { let tip = host.querySelector('.ie-err'); if (!tip) { tip = document.createElement('small'); tip.className = 'ie-err'; host.append(tip); } tip.textContent = r.err; cur.input.focus(); return; }
+    editing = null; cur.box?.remove();
+    if (r.value === getAt(cur.path)) { cur.wrap.replaceWith(cur.el); flushPending(); return; }
+    // 先在界面上落下新值（原值处显示），写回完成后由桥接回灌刷新
+    cur.el.textContent = String(r.value); cur.wrap.replaceWith(cur.el);
+    const ev = new CustomEvent('cockpit:edited', { detail: { path: cur.path, value: r.value, extra: [] } }); document.dispatchEvent(ev);
+    write([{ path: cur.path, value: r.value }, ...ev.detail.extra]).then(() => { flushPending(); if (cur.inFloat) reproject(); });
+  }
+  function cancelEdit() { const cur = editing; editing = null; if (cur) { cur.box?.remove(); cur.wrap.replaceWith(cur.el); } flushPending(); }
+  // 浮动编辑器跟住占位：面板滚动时重新摆放
+  const placeBox = (wrap, box) => { const r = wrap.getBoundingClientRect(); box.style.left = r.left + r.width / 2 + 'px'; box.style.top = r.top + r.height / 2 + 'px'; };
+  addEventListener('scroll', () => { if (editing?.box) placeBox(editing.wrap, editing.box); }, true);
+  // ---------- 悬停说明层 ----------
+  const tip = document.createElement('div'); tip.className = 'hint-tip'; tip.setAttribute('role', 'tooltip'); OVERLAY.append(tip);
+  let tipFor = null, tipTimer = 0;
+  const showTip = el => {
+    const text = el?.dataset.hint; if (!text) return;
+    tipFor = el; tip.textContent = text; tip.className = 'hint-tip';
+    tip.style.maxWidth = Math.min(300, innerWidth - 24) + 'px'; tip.style.left = '0px'; tip.style.top = '0px';
+    const r = el.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight, side = el.dataset.hintSide;
+    let x, y, cls = 'top';
+    if (side === 'r' && r.right + 10 + tw <= innerWidth - 8) { x = r.right + 10; y = r.top + r.height / 2 - th / 2; cls = 'right'; }
+    else if (side === 'r' && r.left - 10 - tw >= 8) { x = r.left - 10 - tw; y = r.top + r.height / 2 - th / 2; cls = 'left'; }
+    else { x = r.left + r.width / 2 - tw / 2; y = r.top - th - 9; if (y < 8) { y = r.bottom + 9; cls = 'bottom'; } }
+    tip.style.left = Math.max(8, Math.min(innerWidth - tw - 8, x)) + 'px'; tip.style.top = Math.max(8, Math.min(innerHeight - th - 8, y)) + 'px';
+    tip.classList.add(cls, 'on');
+  };
+  const hideTip = () => { clearTimeout(tipTimer); tipFor = null; tip.classList.remove('on'); };
+  document.addEventListener('pointerover', e => {
+    if (e.pointerType === 'touch') return;
+    const el = e.target.closest?.('[data-hint]'); if (el === tipFor) return;
+    clearTimeout(tipTimer); if (!el) { if (tipFor) hideTip(); return; }
+    tipTimer = setTimeout(() => showTip(el), tipFor ? 60 : 220);
+  });
+  document.addEventListener('focusin', e => { const el = e.target.closest?.('[data-hint]'); if (el && e.target.matches(':focus-visible')) showTip(el); });
+  document.addEventListener('focusout', () => { if (tipFor) hideTip(); });
+  document.addEventListener('click', e => {
+    const h = e.target.closest('.hint');
+    if (h) { e.preventDefault(); e.stopPropagation(); tipFor === h && tip.classList.contains('on') ? hideTip() : showTip(h); return; }
+    if (tipFor) hideTip();
+  }, true);
+  addEventListener('scroll', () => { if (tipFor && !pickOpen) hideTip(); }, true);
+
+  // ---------- 选择控件：展开 / 选择 / 键盘 ----------
+  let pickOpen = null;
+  const closePick = () => {
+    if (!pickOpen) return; const h = pickOpen.host;
+    pickOpen.list.remove(); pickOpen.btn.setAttribute('aria-expanded', 'false'); h.classList.remove('open'); pickOpen = null; hideTip();
+    // 内联编辑的枚举选择：收起时若没有选出新值（choosePick 会同步提交），就取消编辑、还原成原值
+    if (editing?.pickHost === h) setTimeout(() => { if (editing?.pickHost === h) cancelEdit(); }, 0);
+  };
+  const openPick = host => {
+    closePick();
+    const btn = $('.picker-btn', host), opts = JSON.parse(host.dataset.pickerOpts || '[]'), val = host.dataset.pickerValue;
+    const list = document.createElement('div'); list.className = 'picker-list'; list.setAttribute('role', 'listbox');
+    let g = null, html = '';
+    for (const x of opts) {
+      if (x.group && x.group !== g) { g = x.group; html += `<div class="picker-group">${esc(g)}</div>`; }
+      html += `<button type="button" role="option" class="picker-opt${x.value === val ? ' on' : ''}" aria-selected="${x.value === val}" data-v="${esc(x.value)}"${x.hint ? ` data-hint="${esc(x.hint)}" data-hint-side="r"` : ''}><span>${esc(x.label)}</span>${x.hint ? '<i class="fa-solid fa-circle-info"></i>' : ''}</button>`;
+    }
+    list.innerHTML = html; OVERLAY.append(list);
+    const r = btn.getBoundingClientRect();
+    list.style.minWidth = Math.max(r.width, 150) + 'px';
+    const room = innerHeight - r.bottom - 12, need = Math.min(list.scrollHeight, 340), below = room >= Math.min(need, 220) || r.top < need;
+    list.style.maxHeight = Math.min(340, below ? room : r.top - 12) + 'px';
+    list.style.left = Math.max(8, Math.min(innerWidth - list.offsetWidth - 8, r.left)) + 'px';
+    list.style.top = (below ? r.bottom + 4 : r.top - list.offsetHeight - 4) + 'px';
+    btn.setAttribute('aria-expanded', 'true'); host.classList.add('open');
+    pickOpen = { host, btn, list };
+    const on = $('.picker-opt.on', list) || $('.picker-opt', list); on?.focus({ preventScroll: true }); on?.scrollIntoView({ block: 'nearest' });
+  };
+  const choosePick = v => {
+    const { host, btn } = pickOpen; closePick(); btn.focus({ preventScroll: true });
+    if (v === host.dataset.pickerValue) return;
+    const o = JSON.parse(host.dataset.pickerOpts || '[]').find(x => x.value === v);
+    host.dataset.pickerValue = v; $('span', btn).textContent = o ? o.label : v;
+    if (o?.hint) btn.dataset.hint = o.hint; else delete btn.dataset.hint;
+    host.dispatchEvent(new CustomEvent('picker:change', { bubbles: true, detail: { path: host.dataset.picker, value: v } }));
+  };
+  document.addEventListener('click', e => {
+    const opt = e.target.closest('.picker-opt'); if (opt && pickOpen) return choosePick(opt.dataset.v);
+    const btn = e.target.closest('.picker-btn'); if (btn) { const host = btn.closest('.picker'); return pickOpen?.host === host ? closePick() : openPick(host); }
+    if (pickOpen && !e.target.closest('.picker-list')) closePick();
+  });
+  document.addEventListener('keydown', e => {
+    if (!pickOpen) { if (e.key === 'ArrowDown' && e.target.classList?.contains('picker-btn')) { e.preventDefault(); openPick(e.target.closest('.picker')); } return; }
+    const opts = $$('.picker-opt', pickOpen.list), i = opts.indexOf(document.activeElement);
+    if (e.key === 'Escape') { e.preventDefault(); const b = pickOpen.btn; closePick(); b.focus(); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); opts[Math.min(opts.length - 1, i + 1)]?.focus(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); opts[Math.max(0, i - 1)]?.focus(); }
+    else if (e.key === 'Home' || e.key === 'End') { e.preventDefault(); opts[e.key === 'Home' ? 0 : opts.length - 1]?.focus(); }
+    else if (e.key === 'Tab') closePick();
+  });
+  addEventListener('scroll', e => { if (pickOpen && !pickOpen.list.contains(e.target)) closePick(); }, true);
+  addEventListener('resize', () => closePick());
+
+  // 编辑浮窗里的字段后：用新数据重绘浮窗内容，保持钉住与锚点
+  function reproject() {
+    if (!state.inspect || !floatOpen()) return;
+    const { kind, id } = state.inspect, { page } = currentView();
+    const html = page.inspect?.(ctx(), kind, id, pinned ? 'full' : 'hover'); if (!html) return closeInspector();
+    const anchor = $$('[data-inspect]').find(el => el.dataset.inspect === `${kind}:${id}`), card = $('.fcard', layer);
+    if (anchor) { anchor.classList.add('on'); ringSlotOf(anchor)?.classList.add('mvu-hover-floating-active'); }
+    if (card) { $('.holo-in', card).innerHTML = html; if (anchor) place(card, anchor); }
+  }
+  cockpitEl.addEventListener('keydown', e => { const el = e.target.closest?.('.ie'); if (el && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); beginEdit(el); } });
+
+  // ---------- 事件委托 ----------
+  track.addEventListener('click', e => { const t = e.target.closest('.tab'); if (t) switchDomain(t.dataset.tab); });
+  $('#ck-keys').addEventListener('click', e => { const k = e.target.closest('.key'); if (k) switchPage(k.dataset.page); });
+  $('.cockpit').addEventListener('click', e => {
+    if (e.target.closest('.ie-edit')) return;
+    const ieEl = e.target.closest('.ie'); if (ieEl) { e.stopPropagation(); return beginEdit(ieEl); }
+    const scanHost = !e.target.closest('.fcard,.inline-detail,[data-go]') && e.target.closest('[data-scan]');
+    if (scanHost) {
+      const el = (state.inspect && scanHost.querySelector('[data-inspect].on')) || nearestRing(scanHost, e.clientX, e.clientY);
+      if (el) { const [kind, ...rest] = el.dataset.inspect.split(':'); return openInspector(kind, rest.join(':'), el); }
+    }
+    const t = e.target.closest('[data-confirm],[data-confirm-go],[data-confirm-no],[data-del-path],[data-inspect],[data-go],[data-view-char],[data-close-inspector],[data-pick],[data-set],[data-clamp],[data-dur]');
+    if (!t) return;
+    // 改变状态的操作先确认：展开「将要…」条，写明要做什么，再点「确认」才执行
+    if (t.dataset.confirmNo !== undefined) { t.closest('.confirm-strip')?.remove(); return; }
+    if (t.dataset.confirmGo !== undefined) { const strip = t.closest('.confirm-strip'); strip.innerHTML = '<i class="fa-solid fa-circle-check"></i><span>已提交，等待叙事结算</span>'; strip.classList.add('done'); return; }
+    if (t.dataset.confirm) {
+      // 按钮直接放在面板里（翼底主按钮）时确认条插在按钮上方，否则插在按钮所在行后面——不能落到面板外被裁掉
+      const inPad = t.parentElement.matches('.pad'), host = inPad ? t : t.parentElement;
+      (inPad ? t.parentElement : host.parentElement).querySelector('.confirm-strip')?.remove();
+      host.insertAdjacentHTML(inPad ? 'beforebegin' : 'afterend', `<div class="confirm-strip"><i class="fa-solid fa-circle-question"></i><span>将要：${esc(t.dataset.confirm)}</span><button class="key-s" type="button" data-confirm-go>确认</button><button class="key-s" type="button" data-confirm-no>取消</button></div>`);
+      return;
+    }
+    // 危险操作原地二次确认：第一次点亮为「再点一次确认删除」，3 秒内再点才执行
+    if (t.dataset.delPath) {
+      if (!t.classList.contains('armed')) {
+        t.classList.add('armed'); t.dataset.label = t.innerHTML; t.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> 再点一次确认删除';
+        clearTimeout(t._disarm); t._disarm = setTimeout(() => { t.classList.remove('armed'); t.innerHTML = t.dataset.label; }, 3000); return;
+      }
+      if (t.closest('.fcard')) closeInspector();
+      write([{ path: JSON.parse(t.dataset.delPath), del: true }]); return;
+    }
+    if (t.dataset.closeInspector !== undefined) return closeInspector();
+    if (t.dataset.clamp !== undefined) return t.classList.toggle('clamp');
+    if (t.dataset.inspect) { const [kind, ...rest] = t.dataset.inspect.split(':'); return openInspector(kind, rest.join(':'), t); }
+    if (t.closest(".fcard,.inline-detail") && t.dataset.pick === undefined) closeInspector();
+    if (t.dataset.setDest) state.ui.dest = t.dataset.setDest;
+    if (t.dataset.go && t.dataset.goSet) for (const kv of t.dataset.goSet.split(';')) { const [k, v] = kv.split('='); state.ui[k] = v; }
+    if (t.dataset.go) { const [dom, pg] = t.dataset.go.split('/'); return dom === state.domain ? switchPage(pg) : switchDomain(dom, pg); }
+    if (t.dataset.viewChar) return C.view(t.dataset.viewChar);
+    if (t.dataset.set) {
+      const [key, value] = t.dataset.set.split('='); state.ui[key] = value; state.inspect = null; clearFloat(); renderPage({ kind: 'refresh' });
+      // 手机端：在左翼列表里点选后转到主屏看详情；主屏里的选择（星图 / 竖牌）可用 data-face-after 指定转去哪一面
+      if (isMobile()) {
+        const f = t.dataset.faceAfter !== undefined ? Number(t.dataset.faceAfter) : t.closest('.wing.l') && t.matches('.row, .hpt, .tz') ? 0 : null;
+        if (f !== null && f !== state.face) setFace(f);
+      }
+      return;
+    }
+    if (t.dataset.dur) {
+      const box = t.closest('[data-dur-box]'), out = box.querySelector('output');
+      const m = Math.max(10, Math.min(720, num(out.dataset.min) + num(t.dataset.dur)));
+      out.dataset.min = m; out.textContent = `${m} 分钟`;
+      const end = box.querySelector('[data-dur-end]'); if (end && C.endAt) end.textContent = C.endAt(ctx(), m);
+      return;
+    }
+    if (t.dataset.pick !== undefined) { const group = t.closest('[data-pick-group]'); $$('[data-pick]', group || t.parentElement).forEach(b => { b.classList.toggle('on', b === t); b.setAttribute('aria-pressed', b === t); }); }
+  });
+  $('.cockpit').addEventListener('change', e => {
+    const f = e.target.closest('.ava-file'); if (!f || !f.files[0]) return;
+    const r = new FileReader(); r.onload = async () => { if (ADP?.saveAvatar) await ADP.saveAvatar(f.dataset.name, r.result); else { try { localStorage.setItem(AVATAR_KEY + f.dataset.name, r.result); } catch (err) {} } C.refresh(); }; r.readAsDataURL(f.files[0]);
+  });
+
+  // ---------- 手机：滑动绕球心转向 ----------
+  const dots = $('.dots');
+  dots.addEventListener('click', e => { const b = e.target.closest('button'); if (b) setFace(Number(b.dataset.face)); });
+  let drag = null;
+  screens.addEventListener('pointerdown', e => { if (!isMobile() || e.target.closest('button,input,select,textarea,a,label')) return; drag = { x: e.clientX, y: e.clientY, base: -state.face * 60, moved: false }; });
+  addEventListener('pointermove', e => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x;
+    if (!drag.moved && Math.abs(dx) < 8) return;
+    if (!drag.moved && Math.abs(e.clientY - drag.y) > Math.abs(dx)) { drag = null; return; }
+    drag.moved = true; screens.classList.add('dragging');
+    const turn = Math.max(-75, Math.min(75, drag.base + dx / screens.clientWidth * 70));
+    screens.style.setProperty('--turn', `${turn}deg`);
+  });
+  addEventListener('pointerup', e => {
+    if (!drag) return;
+    screens.classList.remove('dragging');
+    if (drag.moved) { const turn = parseFloat(screens.style.getPropertyValue('--turn')) || 0; setFace(Math.max(-1, Math.min(1, Math.round(-turn / 60)))); }
+    drag = null;
+  });
+
+  // ---------- 惯性视差 ----------
+  const cockpit = $('.cockpit'), stage = $('.stage'), arc = $('.arc'), deck = $('.deck');
+  let tx = 0, ty = 0, cx = 0, cy = 0, raf = 0;
+  const loop = () => {
+    cx += (tx - cx) * .07; cy += (ty - cy) * .07;
+    if (!isMobile()) {
+      stage.style.transform = `translateZ(-120px) rotateX(${(-cy * 2.6).toFixed(3)}deg) rotateY(${(cx * 3.6).toFixed(3)}deg)`;
+      arc.style.translate = `${(-cx * 10).toFixed(2)}px ${(-cy * 4).toFixed(2)}px`;
+      deck.style.translate = `${(cx * 8).toFixed(2)}px ${(cy * 3).toFixed(2)}px`;
+    }
+    raf = Math.abs(tx - cx) + Math.abs(ty - cy) > .001 ? requestAnimationFrame(loop) : 0;
+  };
+  const kick = () => { if (!raf && !reduce) raf = requestAnimationFrame(loop); };
+  // 视差：指针在声明了 data-no-tilt 的区域（沙盘）里时回正，免得拖动、瞄准时整个场景跟着歪
+  cockpit.addEventListener('pointermove', e => { if (e.pointerType !== 'mouse') return; if (e.target.closest('[data-no-tilt]')) { if (tx || ty) { tx = 0; ty = 0; kick(); } return; } const r = cockpit.getBoundingClientRect(); tx = (e.clientX - r.left) / r.width - .5; ty = (e.clientY - r.top) / r.height - .5; kick(); });
+  cockpit.addEventListener('pointerleave', () => { tx = 0; ty = 0; kick(); });
+
+  // ---------- 魂力光尘 ----------
+  // 整幅画布每帧重画会让合成器整屏重绘，和切换动画抢 GPU：光点预渲染成两张贴图（不再每粒每帧新建径向渐变），
+  // 并限到 30fps、按实际间隔推进（光尘漂得慢，30fps 看不出差别）
+  const cv = $('.motes'), g2 = cv.getContext('2d');
+  let W = 0, H = 0, motes = [], lastDraw = 0;
+  const size = () => { const dpr = Math.min(2, devicePixelRatio || 1); W = cockpit.clientWidth; H = cockpit.clientHeight; cv.width = W * dpr; cv.height = H * dpr; g2.setTransform(dpr, 0, 0, dpr, 0, 0); };
+  const spawn = y => ({ x: Math.random() * W, y: y ?? H + 10, r: .8 + Math.random() * 1.8, v: .15 + Math.random() * .35, a: .15 + Math.random() * .45, s: Math.random() * 6.28, gold: Math.random() < .3 });
+  const sprite = rgb => {
+    const c = document.createElement('canvas'), s = 64; c.width = c.height = s;
+    const g = c.getContext('2d'), gr = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+    gr.addColorStop(0, `rgba(${rgb},1)`); gr.addColorStop(1, `rgba(${rgb},0)`); g.fillStyle = gr; g.fillRect(0, 0, s, s);
+    return c;
+  };
+  const SPRITE = { gold: sprite('255,214,120'), blue: sprite('140,200,255') };
+  const draw = now => {
+    requestAnimationFrame(draw);
+    if (now - lastDraw < 33) return;
+    const k = lastDraw ? Math.min(4, (now - lastDraw) / 16.7) : 1; lastDraw = now;
+    g2.clearRect(0, 0, W, H);
+    for (const m of motes) {
+      m.y -= m.v * k; m.s += .012 * k; const x = m.x + Math.sin(m.s) * 8;
+      if (m.y < -10) Object.assign(m, spawn());
+      const d = m.r * 8; g2.globalAlpha = m.a; g2.drawImage(m.gold ? SPRITE.gold : SPRITE.blue, x - d / 2, m.y - d / 2, d, d);
+    }
+    g2.globalAlpha = 1;
+  };
+
+  // ---------- 读数条 ----------
+  const syncReadout = () => {
+    const me = S.char?.[S.sys?.玩家名] || {}, st = me.属性 || {};
+    $('#ck-rLoc').textContent = String(me.状态?.位置 || '').replace(/^斗罗大陆-/, '').replace(/-/g, ' · ');
+    $('#ck-rTime').textContent = S.world.时间._calendar || tickDate(S.world.时间.tick);
+    $('#ck-rTick').textContent = S.sys.系统播报 || '暂无播报'; $('.readout .tick').title = S.sys.系统播报 || '';
+    const m = [['hp', st.HP, st.HP上限], ['sp', st.魂力, st.魂力上限], ['vp', st.体力, st.体力上限], ['mp', st.精神力, st.精神力上限]];
+    $('#ck-rRes').innerHTML = m.map(([c, a, b]) => `<span class="mini ${c}" title="${a} / ${b}"><i style="width:${b > 0 ? Math.min(100, a / b * 100) : 0}%"></i></span>`).join('');
+  };
+
+  const start = () => {
+    track.insertAdjacentHTML('beforeend', order.filter(id => domains[id]).map(id => `<button class="tab" type="button" data-tab="${id}"><i class="fa-solid fa-${domains[id].icon}"></i>${esc(domains[id].label)}</button>`).join(''));
+    syncReadout();
+    slider.style.transition = 'none';
+    switchDomain(order[0], null, true);
+    requestAnimationFrame(() => { slider.style.transition = ''; });
+    addEventListener('resize', () => { moveSlider($('.tab.on', track)); size(); applyWide(currentView().v); fitCarousel(); });
+    size(); motes = Array.from({ length: 42 }, () => spawn(Math.random() * H));
+    if (!reduce) requestAnimationFrame(draw);
+  };
+  // 宿主尺寸变化（挂到新宿主、聊天栏宽度变化）后重排
+  const relayout = () => { syncMobile(); moveSlider($('.tab.on', track)); size(); if (state.domain) { applyWide(currentView().v); fitCarousel(); } };
+  api = { refresh: () => { if (!state.domain) return; if (editing) { api.pending = true; return; } renderPage({ kind: 'refresh' }); }, switchDomain, switchPage, openInspector, closeInspector, reproject, syncReadout, start, relayout, isEditing: () => !!editing, pending: false };
+  }
+})();
+
+;
+/* source: cockpit/pages-role.js */
+/* 角色领域：总览 · 档案 · 成长 · 关系 · 身份 · 权限 · 目录（私密档案不在导航中，见 canOpenPrivateArchive 注释） */
+(() => {
+  const WOUND_PARTS = ['头部', '躯干', '左臂', '右臂', '左腿', '右腿'];
+  const avatarBlock = c => {
+    const src = c.avatarSrc(c.name);
+    return `<div class="ava"><span class="ring1 oct"></span><span class="ring2 oct"></span>
+      <div class="face-img oct">${src ? `<img src="${c.esc(src)}" alt="${c.esc(c.name)}头像">` : `<span class="mono">${c.esc(c.name.slice(1, 2) || c.name[0])}</span>`}</div>
+      <label class="upload" title="上传头像"><i class="fa-solid fa-camera"></i><input type="file" accept="image/*" class="ava-file" data-name="${c.esc(c.name)}" aria-label="上传${c.esc(c.name)}的头像"></label></div>`;
+  };
+  const growthOf = c => {
+    // 本级起点与下一级所需魂力：原项目运行时 getCharacterBaseSoulPowerRequirementAtLevel（MVU_Skill_Runtime.js），所有角色同一算法
+    const f = c.rt('getCharacterBaseSoulPowerRequirementAtLevel'); if (typeof f !== 'function') return null;
+    const lv = c.num(c.st.等级), start = c.num(f(c.ch, lv)), end = c.num(f(c.ch, lv + 1));
+    return end > start ? { start, end, need: Math.max(0, end - c.num(c.st.魂力上限)) } : null;
+  };
+  const relationList = c => c.entries(c.ch.社交?.关系).map(([name, r]) => ({ name, ...r, aff: c.num(r.好感度) })).sort((a, b) => b.aff - a.aff);
+  const affBar = v => `<div class="aff"><i style="${v >= 0 ? `left:50%;width:${Math.min(50, v / 2)}%` : `left:${50 + v / 2}%;width:${Math.min(50, -v / 2)}%;background:linear-gradient(90deg,#4a8bff,#6fb4ff)`}"></i></div>`;
+  const where = c => String(c.ch.状态?.位置 || '').replace(/^斗罗大陆-/, '').replace(/-/g, ' · ');
+  // 位置能否识别：内置地点库（目标路径整段相等）或存档地点树里有这一层；日常行动预演依赖它
+  const placeKnown = c => {
+    const p = String(c.ch.状态?.位置 || '').split('-').filter(x => x && x !== '斗罗大陆'); if (!p.length) return false;
+    const lib = Object.values(c.library('location')?.地点 || {}).some(e => { const t = Object.values(e.目标路径 || {}); return t.length === p.length && t.every((x, i) => x === p[i]); });
+    return lib || !!p.reduce((o, k, i) => o && (i ? o.子节点?.[k] : o[k]), c.S.world.地点 || {});
+  };
+  // 图标块：图标 + 大字 + 小注；值为空时整块转灰
+  const tile = (c, icon, label, value, tint = '', dim = false, extra = '') => `<div class="tile ${dim ? 'dim' : ''} ${extra}">${c.sock(icon, tint)}<b title="${c.esc(value)}">${c.esc(value)}</b><small>${c.esc(label)}</small></div>`;
+  // 环形刻度：本级起点 → 下一级所需魂力；没有实测需求时只画满圈刻度
+  const realmDial = (c, g) => {
+    const lv = c.num(c.st.等级), R = 52, L = 2 * Math.PI * R * .75;
+    const pct = g ? Math.max(0, Math.min(1, (c.num(c.st.魂力上限) - g.start) / (g.end - g.start))) : 0;
+    return `<div class="dial" title="${g ? `魂力上限 ${c.fmt(c.st.魂力上限)} / 晋级需 ${c.fmt(g.end)}` : ''}"><svg viewBox="0 0 120 120" aria-hidden="true"><defs><linearGradient id="dialGrad" x1="0" x2="1"><stop offset="0" stop-color="#5aaeff"/><stop offset="1" stop-color="#1460e3"/></linearGradient></defs>
+      <g transform="rotate(135 60 60)"><circle class="track" cx="60" cy="60" r="${R}" stroke-dasharray="${L} 999"/><circle class="ticks" cx="60" cy="60" r="${R}" stroke-dasharray="1 7.5" style="stroke-dasharray:1 ${(L / 30 - 1).toFixed(2)};clip-path:none"/>
+      <circle class="arc" cx="60" cy="60" r="${R}" stroke-dasharray="${L} 999" style="stroke-dashoffset:${L}" data-off="${(L * (1 - Math.max(pct, .05))).toFixed(1)}"/></g></svg>
+      <div class="core"><small>当前</small><span class="lv">${lv}</span><b>${g ? (g.need ? `还需 ${c.fmt(g.need)}` : '可晋级') : '—'}</b><small>→ ${lv + 1} 级</small></div></div>`;
+  };
+
+  const ringHint = (c, s) => {
+    const lv = c.num(c.st.等级), next = Array.from({ length: Math.max(0, 9 - s.rings.length) }, (_, k) => s.rings.length + k + 1);
+    const open = next.filter(n => lv >= n * 10).length, locked = next.find(n => lv < n * 10);
+    return open ? `<span class="nx ok">可附 ${open} 环</span>` : locked ? `<span class="nx">${locked * 10} 级开第 ${locked} 环</span>` : '';
+  };
+  // 武魂投影台：上方魂环舞台（引擎原样：平时同心叠环，悬停变 3D 魂环塔，塔里扫到哪一圈就浮出那一环的魂技卡），
+  // 下方椭圆台座 + 银色铭牌。不用方框卡片。data-float 让魂技卡出现在外侧：左台往左、右台往右，不遮挡魂环塔。
+  const soulPlate = (label, name, sub, go = '') => `<div class="soul-plate${go ? ' door' : ''}" ${go}><small>${label}</small><strong>${name}</strong>${sub ? `<div class="sp-sub">${sub}</div>` : ''}</div>`;
+  const soulCard = (c, s, i) => {
+    const keyOf = r => { const sk = r.skills[0], sp = s.spirits.find(x => x.rings.includes(r)); return sk && sp ? `${s.slot}/${sp.slot}/${r.slot}/${sk.slot}` : ''; };
+    const sub = `${!c.blank(s.系别) ? `<span class="sys">${c.esc(s.系别)}</span>` : ''}${s.rings.length ? `<em>${s.rings.length} 环</em>` : ringHint(c, s).includes('nx ok') ? '' : '<em>未附环</em>'}${ringHint(c, s)}`;
+    return `<div class="soul-card" data-scan data-float="${i % 2 ? 'r' : 'l'}">
+      <div class="soul-stage">${s.rings.length ? c.ringStage(s.rings, r => { const key = keyOf(r); return key ? `data-inspect="sk:${c.esc(key)}"` : ''; }) : '<div class="soul-empty"><i></i><span>尚未附环</span></div>'}</div>
+      ${soulPlate(`${['第一', '第二', '第三', '第四'][i] || ''}武魂`, c.esc(s.表象名称), sub, `data-go="page-ability/martial" data-go-set="soul=${i}" role="link" tabindex="0" title="查看${c.esc(s.表象名称)}的武魂详情"`)}
+    </div>`;
+  };
+  const bloodCard = c => {
+    const bl = c.ch.血脉之力 || {}, rings = c.entries(bl).filter(([k, v]) => /魂环/.test(k) && v && typeof v === 'object').map(([, v]) => v);
+    if (c.blank(bl.血脉) || !rings.length) return '';
+    return `<div class="soul-card blood"><div class="soul-stage">${c.ringStage(rings)}</div>${soulPlate('血脉', c.esc(bl.血脉), `<em>${rings.length} 环</em>`)}</div>`;
+  };
+  const genderMark = g => g === '女' ? '♀' : g === '男' ? '♂' : '';
+  // 行动时长：1 tick = 10 分钟；结束时刻跨日时标「次日」
+  const endAt = (c, min) => {
+    const t = c.num(c.S.world?.时间?.tick), e = t + min / 10, days = Math.floor(e / 144) - Math.floor(t / 144);
+    return `${days ? (days === 1 ? '次日 ' : `${days} 日后 `) : ''}${c.tickDate(e).slice(-5)}`;
+  };
+  window.COCKPIT.endAt = endAt;
+  const status = c => {
+    const st = c.st, g = growthOf(c);
+    const wounds = c.entries(c.ch.状态?.受伤部位), arts = c.entries(c.ch.功法), core = c.ch.魂核?.核心 || {};
+    // 新增伤势：原地展开一行表单（部位 / 程度 / 描述），保存写入 状态.受伤部位.<部位>
+    // 记录伤势：部位点选常见部位（「其他」才出输入框），程度三档分段；受伤部位在 MVU 里是自由键，所以保留自定义
+    const woundForm = c.state.ui.woundForm ? `<div class="wound-form" data-deg="轻">
+        <div class="wf-row"><span class="wf-l">部位</span><div class="wf-chips">${[...WOUND_PARTS, '其他'].map(p => `<button type="button" class="dz-chip" data-wf-part="${p}" aria-pressed="false">${p}</button>`).join('')}</div><input data-wf="part" placeholder="部位名称" hidden></div>
+        <div class="wf-row"><span class="wf-l">程度</span><div class="wf-seg" role="group">${['轻', '中', '重'].map(d => `<button type="button" class="${d === '轻' ? 'on' : ''} d${d}" data-wf-deg="${d}" aria-pressed="${d === '轻'}">${d}</button>`).join('')}</div><input data-wf="desc" placeholder="描述"></div>
+        <div class="wf-row end"><button class="key-s" type="button" data-wound-cancel>取消</button><button class="key-s on" type="button" data-wound-save>保存</button></div>
+      </div>` : '';
+    const fact = (icon, label, value, dim, title = '') => `<div class="fact ${dim ? 'dim' : ''}" ${title ? `title="${c.esc(title)}"` : ''}><i class="fa-solid fa-${icon}"></i><span>${label}</span><b>${c.esc(value)}</b></div>`;
+    return {
+      tag: 'CORE · STATUS',
+      core: `<div class="pad home-core">
+        <div class="home-top">
+        <div class="id-row">${avatarBlock(c)}
+          <div class="who">
+            <div class="name-line"><h1 class="name">${c.esc(c.name)}</h1>${genderMark(st.性别) || c.num(st.年龄) ? `<span class="gender ${st.性别 === '女' ? 'f' : st.性别 === '男' ? 'm' : ''}" title="${c.esc(st.性别 || '')} · ${c.num(st.年龄)} 岁">${genderMark(st.性别)}<b>${c.ed(c.num(st.年龄) || '?', c.P('属性', '年龄'), { kind: 'number', integer: true, min: 0, raw: c.num(st.年龄) })}</b><small>岁</small></span>` : ''}</div>
+            <div class="title-line">${c.esc(c.rankTitle(st.等级))} · ${c.ed(st.精神境界 || '灵元境', c.P('属性', '精神境界'), { kind: 'enum', options: ['灵元境', '灵通境', '灵海境', '灵渊境', '灵域境', '神元境'] })}</div>
+            <div class="plaques">${!c.blank(c.ch.社交?.主身份) ? `<span class="plq">${c.ed(c.ch.社交.主身份, c.P('社交', '主身份'))}</span>` : ''}${st.邪魂师 ? '<span class="plq" style="--pc:#ff4d6a">邪魂师</span>' : ''}</div>
+          </div>
+        </div>
+        <div class="meters">
+          <div class="meter">${c.sock('heart', 'hp')}<div class="lb">生命 ${c.ed(null, c.P('属性', 'HP'), { kind: 'number', integer: true, min: 0, max: c.num(st.HP上限), raw: c.num(st.HP), html: c.count(st.HP) })}<span class="num">/ ${c.fmt(st.HP上限)}</span></div>${c.bar('hp', st.HP, st.HP上限)}</div>
+          <div class="meter">${c.sock('fire-flame-curved', 'sp')}<div class="lb">魂力 ${c.ed(null, c.P('属性', '魂力'), { kind: 'number', integer: true, min: 0, max: c.num(st.魂力上限), raw: c.num(st.魂力), html: c.count(st.魂力) })}<span class="num">/ ${c.fmt(st.魂力上限)}</span></div>${c.bar('sp', st.魂力, st.魂力上限)}</div>
+          <div class="meter">${c.sock('brain', 'mp')}<div class="lb">精神 ${c.ed(null, c.P('属性', '精神力'), { kind: 'number', integer: true, min: 0, max: c.num(st.精神力上限), raw: c.num(st.精神力), html: c.count(st.精神力) })}<span class="num">/ ${c.fmt(st.精神力上限)}</span></div>${c.bar('mp', st.精神力, st.精神力上限)}</div>
+          <div class="meter">${c.sock('person-running', 'vp')}<div class="lb">体力 ${c.ed(null, c.P('属性', '体力'), { kind: 'number', integer: true, min: 0, max: c.num(st.体力上限), raw: c.num(st.体力), html: c.count(st.体力) })}<span class="num">/ ${c.fmt(st.体力上限)}</span></div>${c.bar('vp', st.体力, st.体力上限)}</div>
+        </div>
+        </div>
+        <section class="soul-deck" aria-label="武魂与魂环">${c.souls.map((s, i) => soulCard(c, s, i)).join('')}${bloodCard(c)}</section>
+        ${wounds.length
+          ? `<div class="sec wound-sec"><div class="strip" style="color:#a3301f;background:linear-gradient(90deg,rgba(230,60,40,.16),transparent 70%);box-shadow:inset 2px 0 0 #d6452a"><i class="fa-solid fa-kit-medical"></i><span>伤势 ${wounds.length} 处</span><button class="key-s" type="button" style="margin-left:auto" data-wound-add><i class="fa-solid fa-plus"></i> 记录</button></div>
+             <div class="list">${wounds.map(([part, w]) => `<div class="row" style="cursor:default"><span class="chip">${c.ed(w.程度 || '轻', c.P('状态', '受伤部位', part, '程度'), { kind: 'enum', options: ['轻', '中', '重'] })}</span><div><strong>${c.esc(part)}</strong><small>${c.ed(w.描述 || '未描述', c.P('状态', '受伤部位', part, '描述'), { raw: w.描述 || '' })}</small></div><button class="key-s danger" type="button" data-del-path="${c.esc(JSON.stringify(c.P('状态', '受伤部位', part)))}"><i class="fa-solid fa-trash"></i></button></div>`).join('')}</div>${woundForm}</div>`
+          : `<div class="strip wound-sec"><i class="fa-solid fa-shield-heart"></i><span>身体无伤 · 气息平稳</span><button class="key-s" type="button" style="margin-left:auto" data-wound-add><i class="fa-solid fa-plus"></i> 记录伤势</button></div>${woundForm}`}
+      </div>`,
+      left: `<div class="pad">
+        ${c.head('arrow-trend-up', '修为', 'Cultivation', 'gd')}
+        <div class="door" data-go="page-archive/growth" role="link" tabindex="0" title="查看属性构成与成长">${realmDial(c, g)}</div>
+        <div class="attrs compact">${[['hand-fist', '力量', st.力量, st.训练加成?.力量], ['shield-halved', '防御', st.防御, st.训练加成?.防御], ['feather-pointed', '敏捷', st.敏捷, st.训练加成?.敏捷]].map(([ic, l, v, t]) => `<div class="attr">${c.sock(ic)}<span>${l}</span><b>${c.ed(null, c.P('属性', l), { kind: 'number', integer: true, min: 0, raw: c.num(v), html: c.count(v) })}</b><em>训练 +${c.ed(c.fmt(t || 0), c.P('属性', '训练加成', l), { kind: 'number', integer: true, min: 0, raw: c.num(t) })}</em></div>`).join('')}</div>
+        <div class="facts door" data-go="page-archive/growth" role="link" tabindex="0" title="查看成长">
+          ${fact('atom', '魂核', c.num(core.数量) ? `${c.fmt(core.数量)} 枚` : '未凝聚', !c.num(core.数量) && !c.num(core.进度), c.num(core.进度) ? `凝聚进度 ${c.fmt(core.进度)}%` : '')}
+          ${fact('scroll', '功法', arts.length ? (arts.length > 1 ? `${arts[0][0]} 等 ${arts.length} 部` : arts[0][0]) : '未修习', !arts.length)}
+          ${c.num(st.等级惩罚) ? `<div class="fact bad"><i class="fa-solid fa-triangle-exclamation"></i><span>等级惩罚</span><b>-${c.fmt(st.等级惩罚)}</b></div>` : ''}
+        </div>
+      </div>`,
+      right: `<div class="pad">
+        ${c.head('gear', '日常行动', 'Routine')}
+        <div class="opts" data-pick-group>
+          ${[['mug-hot', '休整', '静息调养'], ['bed', '睡眠', '安眠休养'], ['person-praying', '冥想', '凝神修行'], ['dumbbell', '训练', '锤炼身心']].map(([ic, t, s], i) => `<button class="opt ${i === 0 ? 'on' : ''}" type="button" data-pick aria-pressed="${i === 0}"><i class="fa-solid fa-${ic}"></i>${t}<small>${s}</small></button>`).join('')}
+        </div>
+        <div class="plan" data-dur-box>
+          <div class="dur"><button type="button" data-dur="-10" aria-label="减少十分钟">−</button><output data-min="60">60 分钟</output><button type="button" data-dur="10" aria-label="增加十分钟">＋</button></div>
+          <div class="plan-end"><i class="fa-regular fa-clock"></i><span>结束于</span><b data-dur-end>${endAt(c, 60)}</b></div>
+        </div>
+        ${placeKnown(c) ? `<button class="cta" type="button" data-routine data-hint="按所选行动与时长预演体力、魂力等变化后结算"><i class="fa-solid fa-play"></i>开始行动</button>`
+          : `<div class="warn"><i class="fa-solid fa-triangle-exclamation"></i><span>当前位置「${c.esc(where(c))}」未能识别，暂时无法预演行动效果。</span></div>
+        <button class="cta" type="button" disabled><i class="fa-solid fa-lock"></i>暂不可行动</button>`}
+      </div>`,
+    };
+  };
+
+  // 颜色词 → 色块；匹配顺序由具体到笼统
+  const COLOR_WORDS = [['天蓝', '#66c6ff'], ['冰蓝', '#a8e4ff'], ['湛蓝', '#2f86e0'], ['深蓝', '#24439a'], ['蓝', '#3d7bd8'], ['灰白', '#d2d4d8'], ['银', '#c3cad4'], ['白', '#f4f4f2'], ['灰', '#8c8f96'], ['暗褐', '#4e3426'], ['褐', '#6b4630'], ['棕', '#7a4e2d'], ['金', '#e3bd57'], ['黄', '#e8cf5a'], ['橙', '#e8873a'], ['红', '#c8323a'], ['粉', '#f1a3bf'], ['紫', '#8a5cd6'], ['绿', '#3f9a5a'], ['青', '#2bb3b3'], ['黑', '#1f2026']];
+  const colorOf = t => (COLOR_WORDS.find(([w]) => String(t || '').includes(w)) || [])[1];
+  const swatchPlq = (c, label, v, p) => c.blank(v) && !p ? '' : `<span class="plq steel swatch" title="${label}">${colorOf(v) ? `<i style="background:${colorOf(v)}"></i>` : ''}${label} · ${p ? c.ed(c.blank(v) ? '未记录' : v, p, { raw: c.blank(v) ? '' : v }) : c.esc(v)}</span>`;
+  const heightRuler = (c, v, p) => {
+    const cm = parseFloat(String(v || '').replace(/[^\d.]/g, ''));
+    if (!Number.isFinite(cm) || cm < 50 || cm > 250) return c.blank(v) && !p ? '' : `<span class="lbl">身高 · ${p ? c.ed(c.blank(v) ? '未记录' : v, p, { raw: c.blank(v) ? '' : v }) : c.esc(v)}</span>`;
+    const pct = Math.max(0, Math.min(100, (cm - 100) / 100 * 100));
+    return `<div class="ruler" title="身高 ${cm}cm"><div class="scale"></div><span class="mark" style="left:${pct}%">${p ? c.ed(v, p) : `${cm}cm`}</span><small style="left:0">100</small><small style="left:50%;translate:-50% 0">150</small><small style="right:0">200</small></div>`;
+  };
+  // 档案：左翼身份牌（一张牌，不是一列方框）；中屏两栏——外貌（色块 · 身高尺 · 穿搭）/ 长相与性格叙述；
+  // 右翼只在有内置立绘时展开，没有立绘就折成侧轨，只留上传头像入口（不做大块占位）
+  const idRow = (c, icon, label, value, tint = '') => `<div class="idr ${tint}"><i class="fa-solid fa-${icon}"></i><span>${label}</span><b title="${c.esc(value)}">${c.esc(value)}</b></div>`;
+  const profile = c => {
+    const a = c.ch.外貌 || {}, w = c.ch.穿搭 || {}, st = c.st, standing = c.standingSrc(c.name);
+    const alive = c.ch.状态?.存活 !== false;
+    const upload = `<input type="file" accept="image/*" class="ava-file" data-name="${c.esc(c.name)}" aria-label="上传${c.esc(c.name)}的头像">`;
+    const wear = [['shirt', '上装', w.上装], ['socks', '下装', w.下装], ['shoe-prints', '鞋子', w.鞋子]];
+    return {
+      tag: 'CORE · PROFILE', wide: standing ? '' : 'r',
+      core: `<div class="pad">
+        ${c.head('id-card', c.name, 'Profile', 'gd')}
+        <div class="dossier">
+          <div class="dossier-col">
+            <div class="plaques">
+              ${swatchPlq(c, '发色', a.发色, c.P('外貌', '发色'))}${swatchPlq(c, '瞳色', a.瞳色, c.P('外貌', '瞳色'))}
+              <span class="plq steel">发型 · ${c.ed(c.blank(a.发型) ? '未记录' : a.发型, c.P('外貌', '发型'), { raw: c.blank(a.发型) ? '' : a.发型 })}</span><span class="plq steel">体型 · ${c.ed(c.blank(a.体型) ? '未记录' : a.体型, c.P('外貌', '体型'), { raw: c.blank(a.体型) ? '' : a.体型 })}</span>
+              ${(a.特殊特征 || []).map(t => `<span class="plq gold">${c.esc(t)}</span>`).join('')}
+            </div>
+            ${heightRuler(c, a.身高, c.P('外貌', '身高'))}
+            ${wear.length ? `<section class="sec"><h3>穿搭<span class="en">Outfit</span></h3><div class="wear">${wear.map(([ic, l, v]) => `<div class="wear-row">${c.sock(ic)}<small>${l}</small><b>${c.ed(v, c.P('穿搭', l))}</b></div>`).join('')}</div></section>` : ''}
+          </div>
+          <div class="dossier-col">
+            <section class="sec"><h3>长相<span class="en">Looks</span></h3><p class="narr">${c.ed(c.blank(a.长相描述) ? '未记录' : a.长相描述, c.P('外貌', '长相描述'), { kind: 'text', raw: c.blank(a.长相描述) ? '' : a.长相描述 })}</p></section>
+            <section class="sec"><h3>性格<span class="en">Temper</span></h3><p class="narr">${c.ed(c.blank(c.ch.性格) ? '未记录' : c.ch.性格, c.P('性格'), { kind: 'text', raw: c.blank(c.ch.性格) ? '' : c.ch.性格 })}</p></section>
+          </div>
+        </div></div>`,
+      left: `<div class="pad">
+        ${c.head('user', '基础信息', 'Basic')}
+        <div class="id-photo">${avatarBlock(c)}</div>
+        <div class="idcard">
+          ${idRow(c, 'cake-candles', '生辰', `${st.生日 || '未记录'} · ${c.num(st.年龄)} 岁`)}
+          ${idRow(c, st.性别 === '女' ? 'venus' : st.性别 === '男' ? 'mars' : 'genderless', '性别', st.性别 || '未记录')}
+          ${idRow(c, st.邪魂师 ? 'skull' : 'shield-halved', '阵营', st.邪魂师 ? '邪魂师' : '正统魂师', st.邪魂师 ? 'bad' : '')}
+          <div class="idr"><i class="fa-solid fa-location-dot"></i><span>所在</span><b>${c.ed(c.ch.状态?.位置 || '', c.P('状态', '位置'))}</b></div>
+          ${alive ? '' : idRow(c, 'cross', '状态', `已故 · ${c.ch.状态?.死亡类型 || ''}${c.num(c.ch.状态?.死亡tick) >= 0 ? ' · ' + c.tickDate(c.ch.状态.死亡tick) : ''}`, 'bad')}
+        </div>
+      </div>`,
+      right: standing ? `<div class="pad standing-pad">
+        <div class="standing"><img src="${c.esc(standing)}" alt="${c.esc(c.name)}立绘"></div>
+        <label class="key-s upload-s"><i class="fa-solid fa-camera"></i> 更换头像${upload}</label>
+      </div>` : '',
+      faces: { r: '立绘' },
+      railR: `<div class="rail" title="该角色没有内置立绘">${c.sock('image')}<small>暂无立绘</small></div>`,
+    };
+  };
+
+  // 六维雷达：按六项中的最大值归一；训练所得画成内层绿色虚线
+  const radar = (c, six, peak) => {
+    const R = 70, cx = 100, cy = 92, pt = (i, r) => { const a = -Math.PI / 2 + i * Math.PI / 3; return [cx + Math.cos(a) * r, cy + Math.sin(a) * r]; };
+    const poly = vals => vals.map((v, i) => pt(i, R * Math.max(.04, Math.min(1, v / peak))).map(n => n.toFixed(1)).join(',')).join(' ');
+    const web = [.25, .5, .75, 1].map(k => `<polygon class="web" points="${[0, 1, 2, 3, 4, 5].map(i => pt(i, R * k).map(n => n.toFixed(1)).join(',')).join(' ')}"/>`).join('');
+    const axes = [0, 1, 2, 3, 4, 5].map(i => { const [x, y] = pt(i, R); return `<line class="axis" x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/>`; }).join('');
+    const labels = six.map(([, l, v], i) => { const [x, y] = pt(i, R + 16); return `<text x="${x.toFixed(1)}" y="${(y + 3).toFixed(1)}" text-anchor="middle">${c.esc(l.replace('上限', ''))}</text>`; }).join('');
+    return `<svg class="radar" viewBox="0 0 200 190" role="img" aria-label="六维雷达">${web}${axes}<g class="shape"><polygon class="base" points="${poly(six.map(x => c.num(x[2])))}"/><polygon class="gain" points="${poly(six.map(x => c.num(x[3])))}"/></g>${labels}</svg>`;
+  };
+  // 成长：属性构成条（基础 / 训练所得），每项按自身数值归一，不同量纲不再挤在一张雷达图里；
+  // 左翼战绩 + 魂灵塔两块数据牌；右翼交战对象
+  const growth = c => {
+    const st = c.st, tb = st.训练加成 || {}, hist = c.entries(c.ch.战斗历史), tower = c.ch.魂灵塔记录 || {}, five = tower.当前五折魂灵 || {};
+    const six = [['hand-fist', '力量', st.力量, tb.力量], ['shield-halved', '防御', st.防御, tb.防御], ['feather-pointed', '敏捷', st.敏捷, tb.敏捷], ['person-running', '体力上限', st.体力上限, tb.体力上限], ['brain', '精神力上限', st.精神力上限, tb.精神力上限], ['fire-flame-curved', '魂力上限', st.魂力上限, tb.魂力上限]];
+    const sum = k => hist.reduce((s, [, h]) => s + c.num(h[k]), 0);
+    return {
+      tag: 'CORE · GROWTH', wide: hist.length ? '' : 'r',
+      railR: `<div class="rail">${c.sock('khanda')}<b>0</b><small>交战对象</small></div>`,
+      core: `<div class="pad">
+        ${c.head('chart-line', '属性构成', 'Attributes', 'gd', '<span class="legend"><i class="b"></i>基础<i class="t"></i>训练所得</span>')}
+        <div class="compo">${six.map(([ic, l, v, t]) => {
+          const val = c.num(v), tr = Math.min(val, c.num(t)), pct = val ? tr / val * 100 : 0;
+          return `<div class="cp-row">${c.sock(ic)}<div class="cp-main">
+            <div class="cp-top"><span>${l}</span><b>${c.count(v)}</b>${tr ? `<em>训练 +${c.fmt(tr)}<small>${pct.toFixed(1)}%</small></em>` : '<em class="none">未经训练</em>'}</div>
+            <div class="cp-bar"><i class="base" style="width:${(100 - pct).toFixed(2)}%"></i><i class="train" style="width:${pct.toFixed(2)}%"></i></div>
+          </div></div>`;
+        }).join('')}</div>
+      </div>`,
+      left: `<div class="pad">
+        ${c.head('khanda', '战绩', 'Record', '', c.hint('战斗结算后自动累计。'))}
+        <div class="statline ${hist.length ? '' : 'dim'}">${[['总场次', '次数'], ['胜', '胜'], ['负', '负'], ['平', '平']].map(([l, k]) => `<div><b>${c.fmt(sum(k))}</b><small>${l}</small></div>`).join('')}</div>
+        <div class="groove"></div>
+        ${c.head('tower-observation', '魂灵塔', 'Tower')}
+        <div class="statline ${c.num(tower.最高层) ? '' : 'dim'}" style="--n:2"><div><b>${c.ed(c.fmt(tower.最高层 || 0), c.P('魂灵塔记录', '最高层'), { kind: 'number', integer: true, min: 0, raw: c.num(tower.最高层) })}</b><small>最高通关层</small></div><div><b>${c.num(five.层数) ? c.fmt(five.层数) : '—'}</b><small>五折魂灵层</small></div></div>
+        ${!c.blank(five.名称) ? `<div class="idcard">${idRow(c, 'ghost', '五折魂灵', `${five.名称} · ${c.fmt(five.年限)} 年${five.品质 ? ' · ' + five.品质 : ''}${five.已使用 ? '（已使用）' : ''}`)}</div>` : '<span class="lbl">尚未挑战魂灵塔</span>'}
+      </div>`,
+      right: `<div class="pad">${c.head('khanda', '交战对象', 'Opponents')}
+        ${hist.length ? `<div class="list q-list">${hist.map(([who, h]) => `<div class="row" style="cursor:default">${c.miniAva(who)}<div><strong>${c.esc(who)}</strong><small>${c.fmt(h.次数)} 战 · 最近${c.esc(h.最近结果 || '—')}${h.最近tick ? ' · ' + c.tickDate(h.最近tick) : ''}</small></div><span class="end">${c.fmt(h.胜)}胜 ${c.fmt(h.负)}负 ${c.fmt(h.平)}平</span></div>`).join('')}</div>` : c.empty('khanda', '还没有交战对象')}
+      </div>`,
+    };
+  };
+
+  // 关系：左翼 = 关系名单（已结识按好感排序 / 同地未结识），主屏 = 圆形星盘（点星选中），右翼 = 选中对象的关系档案与操作。
+  // 星盘：自己居中；内轨 = 已结识（好感越高越靠近中心），外轨 = 同地未结识（暗星，不连线）
+  const relations = c => {
+    const list = relationList(c), others = Object.keys(c.S.char).filter(n => n !== c.name);
+    const sameLoc = name => c.S.char[name] && c.S.char[name].状态?.位置 === c.ch.状态?.位置;
+    const strangers = others.filter(n => !list.some(r => r.name === n) && sameLoc(n)).map(name => ({ name, stranger: true }));
+    const place = (arr, r0, offset) => arr.map((r, i) => { const a = -Math.PI / 2 + offset + i * (2 * Math.PI / Math.max(arr.length, 1)); const rad = r.stranger ? r0 : r0 - Math.max(0, Math.min(100, r.aff)) / 100 * 6; return { ...r, x: 50 + Math.cos(a) * rad, y: 50 + Math.sin(a) * rad }; });
+    const inner = place(list, 27, 0), outer = place(strangers, 38, Math.PI / Math.max(strangers.length, 1) / (list.length ? 1 : 2));
+    const short = t => String(t || '').length > 7 ? String(t).slice(0, 7) + '…' : String(t || '');
+    const total = inner.length + outer.length, sel = [...list, ...strangers].find(r => r.name === c.state.ui.relsel) || list[0] || strangers[0];
+    const on = n => sel && n === sel.name ? ' on' : '';
+    const row = r => `<button class="row${on(r.name)}" type="button" data-set="relsel=${c.esc(r.name)}" data-face-after="1" aria-current="${!!on(r.name)}">${c.miniAva(r.name)}<div><strong>${c.esc(r.name)}</strong><small>${c.esc(r.stranger ? '同地 · 未结识' : r.关系 || '关系未记录')}</small></div>${r.stranger ? '<span></span>' : `<span class="end ${r.aff >= 0 ? 'warm' : 'cold'}">${r.aff >= 0 ? '+' : ''}${c.fmt(r.aff)}</span>`}</button>`;
+    return {
+      tag: 'CORE · RELATIONS',
+      left: `<div class="pad">${c.head('people-arrows', '关系', 'Relations', 'gd')}
+        ${total ? `<div class="list q-list">${list.length ? `<small class="list-cap">已结识 · ${list.length}</small>${list.map(row).join('')}` : ''}${strangers.length ? `<small class="list-cap">同地未结识 · ${strangers.length}</small>${strangers.map(row).join('')}` : ''}</div>` : c.empty('people-arrows', '还没有记录任何关系', `${others.length} 位角色在目录中`)}
+      </div>`,
+      core: !total ? `<div class="pad sparse">${c.empty('circle-nodes', '星图是空的')}</div>` : `<div class="pad">
+        ${c.head('circle-nodes', '关系星图', 'Constellation', '', `<span class="legend"><i class="fa-solid fa-handshake-simple" style="color:#e07b3a;width:auto;height:auto"></i>好感${c.hint('连线粗细与数字是好感（-100 ~ 100）；好感越高的人越靠近中心。')}</span>`)}
+        <div class="constellation orbital"><div class="orbitfield">
+          <svg viewBox="0 0 100 100" aria-hidden="true">
+            <circle class="orbit" cx="50" cy="50" r="27"/><circle class="orbit outer" cx="50" cy="50" r="38"/>
+            ${inner.map(r => `<line class="link" x1="50" y1="50" x2="${r.x.toFixed(2)}" y2="${r.y.toFixed(2)}" style="color:${r.aff >= 0 ? '#ffb27a' : '#7cb4ff'}" stroke="currentColor" stroke-width="${(.5 + Math.abs(r.aff) / 120).toFixed(2)}"/>`).join('')}
+          </svg>
+          <span class="orbit-label" style="top:${50 + 27}%">已结识 ${list.length}</span>${strangers.length ? `<span class="orbit-label dim" style="top:${50 + 38}%">同地未结识 ${strangers.length}</span>` : ''}
+          ${inner.map(r => `<span class="link-tag" style="left:${50 + (r.x - 50) * .42}%;top:${50 + (r.y - 50) * .42}%;color:${r.aff >= 0 ? '#ffd9b8' : '#cfe2ff'}"><i class="fa-solid fa-handshake-simple"></i> ${r.aff >= 0 ? '+' : ''}${c.fmt(r.aff)}</span>`).join('')}
+          <div class="star self" style="left:50%;top:50%">${c.miniAva(c.name)}<b>${c.esc(c.name)}</b></div>
+          ${inner.map(r => `<button type="button" class="star${on(r.name)}" data-set="relsel=${c.esc(r.name)}" data-face-after="1" style="left:${r.x}%;top:${r.y}%">${c.miniAva(r.name)}<b>${c.esc(r.name)}</b><small>${c.esc(short(r.关系))}</small></button>`).join('')}
+          ${outer.map(r => `<button type="button" class="star stranger${on(r.name)}" data-set="relsel=${c.esc(r.name)}" data-face-after="1" style="left:${r.x}%;top:${r.y}%">${c.miniAva(r.name)}<b>${c.esc(r.name)}</b><small>同地 · 未结识</small></button>`).join('')}
+        </div></div>
+      </div>`,
+      right: `<div class="pad">${sel ? relDetail(c, sel.name) : c.empty('user', '选择一个人查看关系')}</div>`,
+    };
+  };
+  // 关系档案（右翼）：已结识 = 关系 / 好感可改 + 好感条 + 所在 / 武魂相关度；未结识只给所在与查看
+  const relDetail = (c, name) => {
+    const r = c.ch.社交?.关系?.[name], other = c.S.char[name], loc = String(other?.状态?.位置 || '未知').replace(/^斗罗大陆-/, '').replace(/-/g, ' · ');
+    const view = other ? `<button class="cta" type="button" data-view-char="${c.esc(name)}"><i class="fa-solid fa-eye"></i>查看 ${c.esc(name)}</button>` : '';
+    if (!r) return `<div class="insp-head">${c.miniAva(name)}<div><strong style="font-size:1.1em">${c.esc(name)}</strong><br><small class="lbl">${c.esc(other?.社交?.主身份 || '')}</small></div></div>
+      <div class="tiles"><div class="tile">${c.sock('location-dot')}<b>${c.esc(loc)}</b><small>同地 · 尚未结识</small></div></div>
+      <div class="acts">${view}</div>`;
+    const aff = c.num(r.好感度), base = c.num(r.武魂相关度基础);
+    return `<div class="insp-head">${c.miniAva(name)}<div><strong style="font-size:1.1em">${c.esc(name)}</strong><br><small class="lbl">${c.esc(r.对方身份 || other?.社交?.主身份 || '')}</small></div></div>
+      ${c.kv([['关系', c.ed(r.关系 || '', c.P('社交', '关系', name, '关系'))], ['好感', `${c.ed(`${aff >= 0 ? '+' : ''}${c.fmt(aff)}`, c.P('社交', '关系', name, '好感度'), { kind: 'number', integer: true, min: -100, max: 100, raw: aff })} / 100`]])}
+      ${affBar(aff)}
+      <div class="tiles">
+        <div class="tile">${c.sock('location-dot')}<b>${c.esc(loc)}</b><small>所在</small></div>
+        <div class="tile">${c.sock('link')}<b>${base}</b><small>武魂相关度基础${c.hint('总相关度由运行时按武魂、属性与关系计算，≥70 时可触发武魂融合。')}</small></div>
+      </div>
+      <div class="acts">${view}</div>`;
+  };
+
+  // 身份：不是「列表选一项」的页，所以不拆左翼——左翼折成侧轨，主屏 = 身份名片（主身份 / 名望 / 家世）+ 势力与称号两栏
+  // （没有时以空状态占位，附各方势力入口）；右翼 = 特殊权限（悬停看详情）与去关系 / 情报，没有特殊权限时也折成侧轨
+  const identity = c => {
+    const so = c.ch.社交 || {}, titles = c.entries(so.称号), facs = c.entries(so.势力);
+    const rels = c.entries(so.关系).length, intel = (c.ch.已掌握情报 || []).length;
+    const privs = c.entries(c.S.world.特殊权限).filter(([, p]) => p.持有人 === c.player);
+    return {
+      tag: 'CORE · IDENTITY', wide: privs.length ? 'l' : 'both',
+      railL: `<div class="rail rail-stack"><div class="rail-item">${c.sock('flag', 'gd')}<b>${facs.length}</b><small>势力</small></div><div class="rail-item">${c.sock('crown', 'gd')}<b>${titles.length}</b><small>称号</small></div></div>`,
+      railR: `<div class="rail rail-stack"><button class="rail-item" type="button" data-go="page-archive/relations">${c.sock('people-arrows')}<b>${rels}</b><small>关系</small></button><button class="rail-item" type="button" data-go="page-terminal/intel">${c.sock('eye')}<b>${intel}</b><small>情报</small></button></div>`,
+      core: `<div class="pad detail">
+        <div class="q-title">${c.sock('landmark', 'gd')}<span class="chip">主身份</span><h2>${c.ed(c.blank(so.主身份) ? '身份未记录' : so.主身份, c.P('社交', '主身份'), { raw: c.blank(so.主身份) ? '' : so.主身份 })}</h2></div>
+        <div class="fame"><div><small>名望</small><b>${c.val(so.名望等级, '名望未定')}</b></div><div><small>声望</small><b class="num">${c.ed(c.fmt(so.声望 || 0), c.P('社交', '声望'), { kind: 'number', integer: true, raw: c.num(so.声望) })}</b></div><div><small>称号</small><b class="num">${titles.length}</b></div><div><small>势力</small><b class="num">${facs.length}</b></div></div>
+        <section class="sec"><h3>家世<span class="en">Lineage</span></h3><p class="narr">${c.ed(c.blank(so.家世描述) ? '未记录' : so.家世描述, c.P('社交', '家世描述'), { kind: 'text', raw: c.blank(so.家世描述) ? '' : so.家世描述 })}</p></section>
+        <div class="dossier id-cols">
+          <section class="sec"><h3>所属势力<span class="en">${facs.length || 'Factions'}</span><button class="key-s h3-act" type="button" data-go="page-world/faction"><i class="fa-solid fa-chess-rook"></i> 各方势力</button></h3>
+            ${facs.length ? `<div class="wear">${facs.map(([f, x]) => `<div class="wear-row">${c.sock('flag', 'gd')}<small>${c.ed(x.身份 || '成员', c.P('社交', '势力', f, '身份'))}</small><b>${c.esc(f)}<span class="chip-s">权限 ${c.ed(c.fmt(x.权限级), c.P('社交', '势力', f, '权限级'), { kind: 'number', integer: true, min: 0, raw: c.num(x.权限级) })}</span></b></div>`).join('')}</div>` : c.empty('flag', '未加入任何势力')}</section>
+          <section class="sec"><h3>称号<span class="en">${titles.length || 'Titles'}</span></h3>
+            ${titles.length ? `<div class="wear">${titles.map(([t, x]) => `<div class="wear-row">${c.sock('crown', 'gd')}<small>${c.num(x.声望加成) ? `声望 +${c.fmt(x.声望加成)}` : '称号'}</small><b>${c.esc(t)}${x.来源 ? `<span class="chip-s">${c.esc(x.来源)}</span>` : ''}</b></div>`).join('')}</div>` : c.empty('crown', '暂无称号')}</section>
+        </div>
+      </div>`,
+      right: `<div class="pad">${c.head('key', '特殊权限', 'Privileges', 'gd')}
+        <div class="list q-list">${privs.map(([id, p]) => { const [ic, tint] = PRIV_KIND[p.权限?.类型] || ['key', '']; return `<button class="row priv-row" type="button" data-inspect="priv:${c.esc(id)}">${c.sock(ic, tint)}<div><strong>${c.esc(p.名称)}</strong><small>${privScope(c, p.权限)}</small></div><span class="end">${quotaPips(c, p.使用配额)}</span></button>`; }).join('')}</div>
+        <div class="groove"></div>
+        <div class="tiles"><button class="tile" type="button" data-go="page-archive/relations">${c.sock('people-arrows')}<b>${rels}</b><small>关系</small></button><button class="tile" type="button" data-go="page-terminal/intel">${c.sock('eye')}<b>${intel}</b><small>情报</small></button></div>
+      </div>`,
+    };
+  };
+
+
+  // 特殊权限：按 MVU 特殊权限Schema 的四种类型（资格 / 折扣 / 物品选择 / 奖励加成）各自摘要适用范围；
+  // 配额用格子表示，悬停出完整浮窗；两翼折成侧轨（持有数 / 即将到期数）
+  const PRIV_KIND = { 资格: ['id-badge', ''], 折扣: ['percent', 'gd'], 物品选择: ['gift', 'sp'], 奖励加成: ['arrow-up-right-dots', 'vp'] };
+  const privScope = (c, q = {}) => q.类型 === '资格' ? `可参加：${c.esc(q.项目)}`
+    : q.类型 === '折扣' ? `支付 ${Math.round(c.num(q.支付比例) * 100)}%${[q.地点, q.商店, q.物品分类, q.物品].filter(Boolean).length ? ' · ' + [q.地点, q.商店, q.物品分类, q.物品].filter(Boolean).map(c.esc).join(' / ') : ''}`
+    : q.类型 === '物品选择' ? `从 ${c.esc(q.来源)} 选 ${c.fmt(q.数量)} 件${q.品质 ? ' · ' + c.esc(q.品质) : ''}${q.分类 ? ' · ' + c.esc(q.分类) : ''}`
+    : q.类型 === '奖励加成' ? `${c.esc(q.来源)} 奖励 ×${c.num(q.倍率)}` : '';
+  const quotaPips = (c, u) => !u ? '<span class="chip-s">不限次数</span>' : `<span class="pips" title="剩余 ${u.剩余} / ${u.上限}">${Array.from({ length: Math.min(12, c.num(u.上限)) }, (_, i) => `<i class="${i < c.num(u.剩余) ? 'on' : ''}"></i>`).join('')}${c.num(u.上限) > 12 ? `<b>${u.剩余}/${u.上限}</b>` : ''}</span>`;
+  const privInspect = (c, kind, id) => {
+    const p = c.S.world.特殊权限?.[id]; if (!p) return '';
+    const q = p.权限 || {}, u = p.使用配额, [ic, tint] = PRIV_KIND[q.类型] || ['key', ''];
+    const scope = Object.entries(q).filter(([k]) => k !== '类型').map(([k, v]) => [k, k === '支付比例' ? `${Math.round(c.num(v) * 100)}%` : k === '倍率' ? `×${c.num(v)}` : c.esc(v)]);
+    return `<div class="insp-head">${c.sock(ic, tint)}<div><strong style="font-size:1.1em">${c.esc(p.名称)}</strong><br><small>${c.esc(q.类型)} · ${privScope(c, q)}</small></div><button class="x" type="button" data-close-inspector aria-label="关闭">×</button></div>
+      <div class="groove"></div>
+      ${c.kv(scope)}
+      ${c.kv([['配额', u ? `剩余 ${u.剩余} / ${u.上限}${u.重置周期 ? ` · 每${c.esc(u.重置周期)}重置` : ''}` : '不限次数'], u?.下次重置tick ? ['下次重置', c.tickDate(u.下次重置tick)] : null, ['到期', p.到期tick ? c.tickDate(p.到期tick) : '长期有效']].filter(Boolean))}`;
+  };
+
+  // 角色目录：左翼 = 范围筛选（全部 / 同地 / 已结识 / 其他地点），主屏 = 选角式竖牌（点选），右翼 = 选中角色的名片与切换查看。
+  // 牌上直接标玩家、正在查看、已结识与好感
+  const DIR_TABS = ['全部', '同地', '已结识', '其他地点'];
+  const directory = c => {
+    const names = Object.keys(c.S.char), me = c.S.char[c.player], here = me?.状态?.位置;
+    const rel = me?.社交?.关系 || {}, loc = n => String(c.S.char[n]?.状态?.位置 || '未知').replace(/^斗罗大陆-/, '').replace(/-/g, ' · ');
+    const near = names.filter(n => c.S.char[n].状态?.位置 === here), far = names.filter(n => !near.includes(n)), known = names.filter(n => rel[n]);
+    const pool = { 全部: names, 同地: near, 已结识: known, 其他地点: far }, tab = pool[c.state.ui.dtab2] ? c.state.ui.dtab2 : '全部';
+    const sel = names.find(n => n === c.state.ui.dirsel) || c.name;
+    const card = n => {
+      const x = c.S.char[n], lv = c.num(x.属性?.等级), r = rel[n], aff = c.num(r?.好感度);
+      const tags = [n === c.player ? '<span class="rc-tag gold">玩家</span>' : '', n === c.name && n !== c.player ? '<span class="rc-tag blue">正在查看</span>' : '', r ? `<span class="rc-tag ${aff >= 0 ? 'warm' : 'cold'}"><i class="fa-solid fa-handshake-simple"></i> ${aff >= 0 ? '+' : ''}${c.fmt(aff)}</span>` : ''].join('');
+      return `<button class="rc${n === sel ? ' sel' : ''}${n === c.name ? ' on' : ''}" type="button" data-set="dirsel=${c.esc(n)}" data-face-after="1" aria-current="${n === sel}">
+        <span class="rc-lv">Lv.${lv}</span>${c.miniAva(n)}
+        <strong>${c.esc(n)}</strong><em>${c.rankTitle(lv)}${x.属性?.精神境界 ? ' · ' + c.esc(x.属性.精神境界) : ''}</em>
+        <small>${c.esc(x.社交?.主身份 || '')}</small>
+        ${x.状态?.位置 !== here ? `<small class="rc-loc"><i class="fa-solid fa-location-dot"></i> ${c.esc(loc(n))}</small>` : ''}
+        ${tags ? `<span class="rc-tags">${tags}</span>` : ''}
+      </button>`;
+    };
+    const groups = tab === '全部' ? [[`同在 · ${loc(c.player)}`, 'Here', near], ['其他地点', 'Elsewhere', far]] : [[tab, '', pool[tab]]];
+    return {
+      tag: 'CORE · ROSTER',
+      left: `<div class="pad">${c.head('users', '目录', 'Roster', 'gd')}
+        <div class="list">${DIR_TABS.map(k => `<button class="row${k === tab ? ' on' : ''}" type="button" data-set="dtab2=${k}" aria-current="${k === tab}">${c.sock({ 全部: 'users', 同地: 'location-dot', 已结识: 'handshake-simple', 其他地点: 'map' }[k], k === tab ? 'gd' : '')}<div><strong>${k}</strong></div><span class="end">${pool[k].length}</span></button>`).join('')}</div>
+      </div>`,
+      core: `<div class="pad">
+        ${groups.filter(g => g[2].length).map(([h, en, arr]) => `<section class="sec"><h3>${c.esc(h)}${en ? `<span class="en">${en}</span>` : ''}</h3><div class="roster">${arr.map(card).join('')}</div></section>`).join('') || c.empty('users', `没有「${tab}」的角色`)}
+      </div>`,
+      right: `<div class="pad">${charDetail(c, sel)}</div>`,
+    };
+  };
+  // 角色名片（右翼）：身份 / 年龄 / 武魂 / 所在 + 切换查看；删除只对非玩家、非当前查看的角色开放（两步确认）
+  const charDetail = (c, name) => {
+    const x = c.S.char[name]; if (!x) return '';
+    const souls = [x.第1武魂?.表象名称, x.第2武魂?.表象名称].filter(v => !c.blank(v)).map(c.esc).join(' / ');
+    return `<div class="insp-head">${c.miniAva(name)}<div><strong style="font-size:1.1em">${c.esc(name)}</strong><br><small class="lbl">Lv.${c.esc(x.属性?.等级)} · ${c.esc(x.属性?.精神境界 || '')}</small></div></div>
+      <div class="tiles">
+        <div class="tile">${c.sock('landmark')}<b>${c.esc(x.社交?.主身份 || '—')}</b><small>身份</small></div>
+        <div class="tile">${c.sock('cake-candles')}<b>${c.esc(x.属性?.年龄 ?? '—')} 岁</b><small>年龄</small></div>
+        <div class="tile">${c.sock('fire')}<b>${souls || '—'}</b><small>武魂</small></div>
+        <div class="tile">${c.sock('location-dot')}<b>${c.esc(String(x.状态?.位置 || '未知').replace(/^斗罗大陆-/, '').replace(/-/g, ' · '))}</b><small>所在</small></div>
+      </div>
+      <div class="acts"><button class="cta" type="button" data-view-char="${c.esc(name)}"${name === c.name ? ' disabled' : ''}><i class="fa-solid fa-eye"></i>${name === c.name ? '正在查看' : '切换查看'}</button>
+      ${name !== c.player && name !== c.name ? `<button class="key-s danger" type="button" data-del-path="${c.esc(JSON.stringify(['char', name]))}"><i class="fa-solid fa-trash"></i> 删除角色</button>` : ''}</div>`;
+  };
+
+  document.addEventListener('click', e => {
+    const c = window.COCKPIT.ctx?.(); if (!c) return;
+    if (e.target.closest('[data-wound-add]')) { c.state.ui.woundForm = true; window.COCKPIT.refresh(); setTimeout(() => document.querySelector('[data-wf-part]')?.focus(), 30); return; }
+    const wp = e.target.closest('[data-wf-part]'), wd = e.target.closest('[data-wf-deg]');
+    if (wp || wd) {
+      const f = (wp || wd).closest('.wound-form'), sel = wp ? '[data-wf-part]' : '[data-wf-deg]', b = wp || wd;
+      f.querySelectorAll(sel).forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); });
+      if (wd) { f.dataset.deg = wd.dataset.wfDeg; return; }
+      f.dataset.part = wp.dataset.wfPart; const other = f.querySelector('[data-wf="part"]'); other.hidden = wp.dataset.wfPart !== '其他'; if (!other.hidden) other.focus();
+      return;
+    }
+    if (e.target.closest('[data-wound-cancel]')) { c.state.ui.woundForm = false; window.COCKPIT.refresh(); return; }
+    if (e.target.closest('[data-wound-save]')) {
+      const f = e.target.closest('.wound-form'), other = f.querySelector('[data-wf="part"]'), part = (f.dataset.part === '其他' ? other.value : f.dataset.part || '').trim();
+      if (!part) { (f.dataset.part === '其他' ? other : f.querySelector('[data-wf-part]')).focus(); f.querySelector('.wf-chips').classList.add('need'); return; }
+      c.state.ui.woundForm = false;
+      window.COCKPIT.write([{ path: c.P('状态', '受伤部位', part), value: { 程度: f.dataset.deg || '轻', 描述: f.querySelector('[data-wf="desc"]').value.trim() } }]);
+    }
+  });
+
+  // 日常行动：点下时把所选行动与时长写进原地确认条（真实预演与结算移植时接原项目）
+  document.addEventListener('click', e => {
+    const t = e.target.closest('[data-routine]'); if (!t) return;
+    const box = t.closest('.pad'), opt = box?.querySelector('.opt.on')?.childNodes[1]?.textContent?.trim() || '休整';
+    const min = Number(box?.querySelector('[data-dur-box] output')?.dataset.min) || 60;
+    t.dataset.confirm = `${opt} ${min} 分钟，结束于 ${window.COCKPIT.endAt(window.COCKPIT.ctx(), min)}`;
+  }, true);
+
+  window.COCKPIT.register('page-archive', {
+    label: '角色', icon: 'user', tag: 'CORE · STATUS',
+    keys: [
+      { id: 'status', icon: 'gauge-high', label: '总览', view: status, inspect: (c, kind, id, mode) => kind === 'sk' ? window.COCKPIT.skillCard?.(c, id, mode) || '' : '' },
+      { id: 'profile', icon: 'id-card', label: '档案', view: profile },
+      { id: 'growth', icon: 'chart-line', label: '成长', view: growth },
+      { id: 'relations', icon: 'people-arrows', label: '关系', view: relations },
+      { id: 'identity', icon: 'landmark', label: '身份', view: identity, inspect: privInspect },
+      { id: 'directory', icon: 'users', label: '目录', view: directory },
+    ],
+  });
+})();
+
+;
+/* source: cockpit/designer-sim.js */
+/*
+ * 技能设计台「对抗试算」独立移植版（UI 原型用）
+ * 来源：lwcs/mvu_logic_bridge.js 23516-24157（试算核心）及其调用链；
+ *       基础属性曲线来自 lwcs/MVU_Skill_Runtime.js 191-248 / 2166-2214；
+ *       原型注册表摘要来自 MVU_Skill_Runtime.js SKILL_PROTOTYPE_REGISTRY_V1。
+ * 用法：window.LWCS_DESIGNER_SIM.simulate(draft, character[, options])
+ *   draft     MVU 技能对象（魂技名/承载方式/消耗/_效果数组…），或设计台表单草稿（含 prototypeEffects）
+ *   character MVU 角色对象（含 属性:{等级,力量,防御,…}）
+ *   options   { name?: 角色名 }
+ * 返回结构化数据，不生成 HTML。
+ */
+(function () {
+  'use strict';
+
+  // ===== 基础工具（bridge 2037-2075 / 2526 / 2902-2915 / 4702 / 17301-17311 / 18390-18405）=====
+  function hasUiPlaceholderToken(value) {
+    const text = String(value === undefined || value === null ? '' : value).trim();
+    return !!text && /待补全|待生成|未知|未详|不详/i.test(text);
+  }
+
+  function toText(value, fallback = '无') {
+    if (value === undefined || value === null || value === '') return fallback;
+    const text = String(value);
+    return hasUiPlaceholderToken(text) ? fallback : text;
+  }
+
+  function toNumber(value, fallback = 0) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+
+  function formatNumber(value) {
+    return new Intl.NumberFormat('zh-CN').format(toNumber(value, 0));
+  }
+
+  function deepGet(source, path, fallback) {
+    if (!source || !path) return fallback;
+    const keys = Array.isArray(path) ? path : String(path).split('.');
+    let current = source;
+    for (const key of keys) {
+      if (current == null || typeof current !== 'object' || !(key in current)) return fallback;
+      current = current[key];
+    }
+    return current === undefined ? fallback : current;
+  }
+
+  function safeEntries(obj) {
+    return obj && typeof obj === 'object' ? Object.entries(obj) : [];
+  }
+
+  function cloneJsonValue(value, fallback = {}) {
+    try {
+      return structuredClone(value);
+    } catch (error) {}
+    try {
+      return JSON.parse(JSON.stringify(value));
+    } catch (error) {}
+    return fallback;
+  }
+
+  function normalizeSkillUiText(value, fallback = '未知') {
+    const text = toText(value, '')
+      .replace(/\[续台推演\]\s*/g, '')
+      .trim();
+    if (!text || text === '无' || text === '未生成' || hasUiPlaceholderToken(text)) return fallback;
+    return text;
+  }
+
+  function normalizeSkillDesignerArray(value) {
+    if (Array.isArray(value)) {
+      return Array.from(new Set(value.map(item => toText(item, '').trim()).filter(Boolean)));
+    }
+    if (typeof value === 'string') {
+      return Array.from(
+        new Set(
+          value
+            .split(/[、,，/｜|]+/)
+            .map(item => toText(item, '').trim())
+            .filter(Boolean),
+        ),
+      );
+    }
+    return [];
+  }
+
+  // ===== 目标规范化（bridge 17604-17605 / 18619-18633 / 26625-26662）=====
+  const SKILL_DESIGNER_TARGET_OPTIONS = Object.freeze(['自身', '单体', '群体', '全场', '召唤物']);
+  const SKILL_DESIGNER_CLONE_TARGET_OPTIONS = Object.freeze([...SKILL_DESIGNER_TARGET_OPTIONS, '分身']);
+
+  function normalizeSkillDesignerEffectTargetValue(value = '', fallback = '单体') {
+    const text = normalizeSkillUiText(value, '');
+    if (SKILL_DESIGNER_CLONE_TARGET_OPTIONS.includes(text)) return text;
+    if (['友方单体', '友方群体', '敌方单体', '敌方群体', '己方/单体', '己方/群体', '敌方/单体', '敌方/群体'].includes(text))
+      return SKILL_DESIGNER_CLONE_TARGET_OPTIONS.includes(fallback) ? fallback : '单体';
+    if (/全场敌方|敌方全场|全体敌|所有敌|全部敌/.test(text)) return '群体';
+    if (/分身/.test(text)) return '分身';
+    if (/召唤物|召唤/.test(text)) return '召唤物';
+    if (/自身|施术者/.test(text)) return '自身';
+    if (/全场/.test(text)) return '全场';
+    if (/群体|全员|范围/.test(text)) return '群体';
+    if (/单体|目标/.test(text)) return '单体';
+    return SKILL_DESIGNER_CLONE_TARGET_OPTIONS.includes(fallback) ? fallback : '单体';
+  }
+
+  const 技能设计台分身目标允许原型集合 = new Set(['资源变化', '属性修正', '判定修正', '结算修正']);
+
+  function 约束技能设计台分身目标(原型 = '', 目标 = '') {
+    const 当前目标 = normalizeSkillDesignerEffectTargetValue(目标, '单体');
+    return 当前目标 === '分身' && !技能设计台分身目标允许原型集合.has(normalizeSkillUiText(原型, '')) ? '单体' : 当前目标;
+  }
+
+  function 技能设计台效果是正向辅助(原型 = '', effect = {}) {
+    const 原型名 = normalizeSkillUiText(原型, '');
+    const 数值 = 解析技能设计台正负数值(effect && effect['数值']);
+    if (['属性修正', '资源变化', '资源转移', '判定修正', '资源锁定', '决策干扰'].includes(原型名)) return 数值 > 0;
+    if (原型名 === '护盾变化') return normalizeSkillUiText(effect && effect['护盾模式'], '') === '正向护盾' || 数值 > 0;
+    if (原型名 === '结算修正') {
+      const 结算 = normalizeSkillUiText(effect && effect['结算'], '');
+      if (['治疗', '技能效果', '伤害转治疗'].includes(结算)) return 数值 > 0;
+      if (结算 === '受到伤害') return 数值 < 0;
+      return ['伤害分摊', '消耗分摊', '伤害吸收'].includes(结算);
+    }
+    if (原型名 === '状态施加') return ['持续恢复', '护盾', '隐匿', '共享视野', '无视异常', '霸体', '护卫'].includes(normalizeSkillUiText(effect && effect['状态'], ''));
+    return false;
+  }
+
+  // 时光回溯/分摊结算的专用目标规范化未移植（与试算无关），直接沿用通用目标
+  function 约束技能设计台原型正式目标(原型 = '', 目标 = '', fallbackTarget = '单体', 效果 = null) {
+    const 原型名 = normalizeSkillUiText(原型, '');
+    const 默认目标 = normalizeSkillDesignerEffectTargetValue(fallbackTarget, '单体');
+    const 当前目标 = 约束技能设计台分身目标(原型名, normalizeSkillDesignerEffectTargetValue(目标, 默认目标));
+    const 状态名 = 原型名 === '状态施加' ? normalizeSkillUiText(效果 && 效果['状态'], '') : '';
+    if (原型名 === '状态施加' && 状态名 === '护卫') return ['单体', '群体', '全场'].includes(当前目标) ? 当前目标 : '单体';
+    if (原型名 === '战斗外复活') return ['单体', '群体', '全场'].includes(当前目标) ? 当前目标 : '单体';
+    if (['状态转移', '状态交换'].includes(原型名)) return '单体';
+    if (原型名 === '状态移除') return ['自身', '单体', '群体'].includes(当前目标) ? 当前目标 : '单体';
+    if (原型名 === '规则防御') return ['自身', '单体', '群体'].includes(当前目标) ? 当前目标 : '自身';
+    if (['召唤生成', '炸环'].includes(原型名)) return '自身';
+    if (['伤害结算', '资源转移'].includes(原型名) && !['单体', '群体', '全场'].includes(当前目标)) return '单体';
+    if (原型名 === '修炼增益' && 当前目标 === '召唤物') return 默认目标 === '自身' ? '自身' : '单体';
+    if (当前目标 === '全场' && 技能设计台效果是正向辅助(原型名, 效果 || {})) return '群体';
+    return 当前目标;
+  }
+
+  // ===== 数值解析（bridge 18644-18661 / 20128-20135 / 28366-28417）=====
+  function formatSkillDesignerSignedValue(value, asPercent = true) {
+    const num = Number(value || 0);
+    if (!Number.isFinite(num)) return asPercent ? '+0%' : '+0';
+    const digits = Math.abs((asPercent ? num * 100 : num) % 1) < 0.0001 ? 0 : 2;
+    const text = String(Number((asPercent ? num * 100 : num).toFixed(digits)));
+    return `${num >= 0 ? '+' : ''}${text}${asPercent ? '%' : ''}`;
+  }
+
+  function parseSkillDesignerSignedValue(value) {
+    const text = normalizeSkillUiText(value, '');
+    if (!text) return 0;
+    if (/%$/.test(text)) {
+      const parsed = Number(text.replace('%', ''));
+      return Number.isFinite(parsed) ? parsed / 100 : 0;
+    }
+    const parsed = Number(text);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  function 解析技能设计台正负数值(数值) {
+    if (typeof 数值 === 'number') return Number.isFinite(数值) ? 数值 : 0;
+    const 文本 = normalizeSkillUiText(数值, '');
+    const 匹配 = 文本.match(/^([+-]?)(\d+(?:\.\d+)?)(%)?$/);
+    if (!匹配) return 0;
+    const 符号 = 匹配[1] === '-' ? -1 : 1;
+    return 符号 * (Number(匹配[2]) || 0);
+  }
+
+  function parseSkillDesignerNumericInputValue(value, fallback = 0, digits = 4) {
+    const rawText = toText(value, '').trim();
+    if (!rawText) return Number(Number(fallback || 0).toFixed(digits));
+    const match = rawText.match(/-?\d+(?:\.\d+)?/);
+    const parsed = Number(match ? match[0] : rawText);
+    if (!Number.isFinite(parsed)) return Number(Number(fallback || 0).toFixed(digits));
+    return Number(parsed.toFixed(digits));
+  }
+
+  function parseSkillDesignerIntegerInputValue(value, fallback = 0, minimum = 0) {
+    const parsed = Math.round(parseSkillDesignerNumericInputValue(value, fallback, 0));
+    if (!Number.isFinite(parsed)) return Math.max(minimum, Math.round(Number(fallback || 0)));
+    return Math.max(minimum, parsed);
+  }
+
+  function parseSkillDesignerPercentRatio(value, fallback = 0) {
+    const rawText = toText(value, '').trim();
+    if (!rawText) return Number(Number(fallback || 0).toFixed(4));
+    const parsed = parseSkillDesignerNumericInputValue(rawText, fallback, 4);
+    if (!Number.isFinite(parsed)) return Number(Number(fallback || 0).toFixed(4));
+    if (/%/.test(rawText) || parsed > 1) return Number((parsed / 100).toFixed(4));
+    return Number(parsed.toFixed(4));
+  }
+
+  function parseSkillDesignerFactorInputValue(value, fallback = 1, options = {}) {
+    const rawText = toText(value, '').trim();
+    const plusBase = !!(options && options.plusBase);
+    if (!rawText) return Number(Number(fallback || 0).toFixed(4));
+    const parsed = parseSkillDesignerNumericInputValue(rawText, fallback, 4);
+    if (!Number.isFinite(parsed)) return Number(Number(fallback || 0).toFixed(4));
+    if (/%/.test(rawText)) {
+      const ratio = parsed / 100;
+      return Number((plusBase ? 1 + ratio : ratio).toFixed(4));
+    }
+    if (plusBase && parsed >= 0 && parsed <= 1) return Number((1 + parsed).toFixed(4));
+    return Number(parsed.toFixed(4));
+  }
+
+  function 规范化技能设计台伤害威力倍率(value, fallback = 100) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed <= 0) return Math.max(1, Number(fallback || 100));
+    return Math.max(1, Math.round(parsed));
+  }
+
+  // ===== 伤害类型（bridge 19233-19253）=====
+  const 技能设计台伤害类型选项 = Object.freeze(['近身攻击', '远程攻击', '精神攻击', '真实攻击']);
+
+  function 规范化技能设计台伤害类型(value = '', draft = {}) {
+    const text = normalizeSkillUiText(value, '');
+    if (技能设计台伤害类型选项.includes(text)) return text;
+    const merged = `${text} ${normalizeSkillUiText(draft?.type, '')} ${normalizeSkillUiText(draft?.deliveryForm, '')} ${normalizeSkillUiText(draft?.name || draft?.魂技名 || draft?.技能名称, '')} ${normalizeSkillUiText(draft?.description || draft?.效果描述, '')}`;
+    if (/真实|规则|法则|无视|穿透本源|毁灭|时光/.test(merged)) return '真实攻击';
+    if (/精神|识海|幻境|灵魂|眩晕|混乱|封技|恐惧/.test(merged)) return '精神攻击';
+    if (/远程|射线|光束|飞刃|投掷|炮|波|箭|弹|雷|电|冰|火|光|暗|星|空间|元素|爆炸/.test(merged)) return '远程攻击';
+    return '近身攻击';
+  }
+
+  function 读取技能设计台伤害绑定(伤害类型 = '', draft = {}) {
+    const type = 规范化技能设计台伤害类型(伤害类型, draft);
+    return {
+      伤害类型: type,
+      结算标签: type === '真实攻击' ? '真实伤害' : '标准伤害',
+      抗性类型: type === '真实攻击' ? '真实无视' : type === '精神攻击' ? '精神抗性' : type === '远程攻击' ? '元素抗性' : '物理抗性',
+    };
+  }
+
+  // ===== 属性标签映射（bridge 28319-28335 / 28556-28559）=====
+  const SKILL_DESIGNER_RUNTIME_PROPERTY_KEY_BY_LABEL = Object.freeze({
+    力量: 'str',
+    防御: 'def',
+    敏捷: 'agi',
+    体力上限: 'vit_max',
+    魂力上限: 'sp_max',
+    精神力上限: 'men_max',
+    体力: 'vit',
+    魂力: 'sp',
+    精神力: 'men',
+    掌控: '掌控',
+    威力: '威力',
+    消耗: '消耗',
+    前摇: '前摇',
+    控制: '控制',
+    速度: '速度',
+  });
+
+  function resolveSkillDesignerPropertyKeyByLabel(label = '') {
+    const normalized = normalizeSkillUiText(label, '');
+    return SKILL_DESIGNER_RUNTIME_PROPERTY_KEY_BY_LABEL[normalized] || normalized;
+  }
+
+  // ===== 基础属性曲线（MVU_Skill_Runtime.js 191-248 / 2166-2214）=====
+  const 魂力上限曲线锚点_V1 = Object.freeze([
+    { 等级: 1, 魂力上限: 100 },
+    { 等级: 10, 魂力上限: 800 },
+    { 等级: 20, 魂力上限: 2000 },
+    { 等级: 30, 魂力上限: 4500 },
+    { 等级: 40, 魂力上限: 8500 },
+    { 等级: 50, 魂力上限: 15000 },
+    { 等级: 60, 魂力上限: 26000 },
+    { 等级: 70, 魂力上限: 55000 },
+    { 等级: 80, 魂力上限: 95000 },
+    { 等级: 90, 魂力上限: 180000 },
+    { 等级: 95, 魂力上限: 360000 },
+  ]);
+
+  function 平滑插值比例_V1(比例 = 0) {
+    const 安全比例 = Math.max(0, Math.min(1, Number(比例) || 0));
+    return 安全比例 * 安全比例 * (3 - 2 * 安全比例);
+  }
+
+  function 计算魂力曲线值_V1(等级值 = 1) {
+    const 等级 = Math.max(1, Math.min(180, Number(等级值) || 1));
+    const 最后锚点 = 魂力上限曲线锚点_V1[魂力上限曲线锚点_V1.length - 1];
+    if (等级 >= 最后锚点.等级 && 等级 <= 99) {
+      return 最后锚点.魂力上限 * Math.pow(2, 等级 - 最后锚点.等级);
+    }
+    if (等级 > 99 && 等级 <= 99.5) {
+      return 最后锚点.魂力上限 * 16 * Math.pow(2, (等级 - 99) / 0.5);
+    }
+    if (等级 > 99.5 && 等级 <= 100) {
+      return 最后锚点.魂力上限 * 32 * Math.pow(2, (等级 - 99.5) / 0.5);
+    }
+    if (等级 > 100) {
+      return 最后锚点.魂力上限 * 64 * Math.pow(10, (等级 - 100) / 10);
+    }
+    for (let 序号 = 0; 序号 < 魂力上限曲线锚点_V1.length - 1; 序号 += 1) {
+      const 起点 = 魂力上限曲线锚点_V1[序号];
+      const 终点 = 魂力上限曲线锚点_V1[序号 + 1];
+      if (等级 >= 起点.等级 && 等级 <= 终点.等级) {
+        const 比例 = 平滑插值比例_V1((等级 - 起点.等级) / (终点.等级 - 起点.等级));
+        return 起点.魂力上限 + (终点.魂力上限 - 起点.魂力上限) * 比例;
+      }
+    }
+    return 魂力上限曲线锚点_V1[0].魂力上限;
+  }
+
+  function getBaseStats(lv) {
+    const 等级值 = Math.max(1, Math.min(180, Number(lv) || 1));
+    const 百级后 = 百级基值 => 百级基值 * Math.pow(10, (等级值 - 100) / 10);
+    const 魂力上限 = 计算魂力曲线值_V1(等级值);
+    let 力量 = 10;
+    if (等级值 <= 29) 力量 = 10 + ((900 - 10) / 28) * (等级值 - 1);
+    else if (等级值 === 30) 力量 = 1200;
+    else if (等级值 <= 69) 力量 = 1300 + ((4200 - 1300) / 38) * (等级值 - 31);
+    else if (等级值 === 70) 力量 = 7000;
+    else if (等级值 <= 89) 力量 = 7200 + ((8600 - 7200) / 18) * (等级值 - 71);
+    else if (等级值 === 90) 力量 = 9000;
+    else if (等级值 <= 94) 力量 = 9250 + ((10000 - 9250) / 3) * (等级值 - 91);
+    else if (等级值 <= 99.5) 力量 = 10000 * Math.pow(1.5, 等级值 - 94);
+    else if (等级值 <= 100) 力量 = 10000 * Math.pow(1.5, 99.5 - 94) * 2;
+    else 力量 = 百级后(10000 * Math.pow(1.5, 99.5 - 94) * 2);
+
+    let 精神力上限 = 等级值;
+    if (等级值 <= 10) 精神力上限 = 8 + ((27 - 8) / 9) * (等级值 - 1);
+    else if (等级值 <= 20) 精神力上限 = 27 + ((30 - 27) / 10) * (等级值 - 10);
+    else if (等级值 <= 21) 精神力上限 = 32;
+    else if (等级值 <= 30) 精神力上限 = 32 + ((160 - 32) / 9) * (等级值 - 21);
+    else if (等级值 <= 40) 精神力上限 = 160 + ((800 - 160) / 10) * (等级值 - 30);
+    else if (等级值 <= 50) 精神力上限 = 800 + ((850 - 800) / 10) * (等级值 - 40);
+    else if (等级值 <= 60) 精神力上限 = 850 + ((900 - 850) / 10) * (等级值 - 50);
+    else if (等级值 <= 70) 精神力上限 = 900 + ((950 - 900) / 10) * (等级值 - 60);
+    else if (等级值 <= 80) 精神力上限 = 950 + ((1050 - 950) / 10) * (等级值 - 70);
+    else if (等级值 <= 90) 精神力上限 = 1050 + ((2300 - 1050) / 10) * (等级值 - 80);
+    else if (等级值 < 98) 精神力上限 = 2300 + ((3750 - 2300) / 8) * (等级值 - 90);
+    else if (等级值 === 98) 精神力上限 = 3750;
+    else if (等级值 === 99) 精神力上限 = 4200;
+    else if (等级值 === 99.5) 精神力上限 = 6500;
+    else if (等级值 <= 100) 精神力上限 = 15000;
+    else 精神力上限 = 百级后(15000);
+
+    return {
+      sp_max: Math.floor(魂力上限),
+      men_max: Math.floor(精神力上限),
+      str: Math.floor(力量),
+      def: Math.floor(力量),
+      agi: Math.floor(力量 / 2),
+      vit_max: Math.floor(力量),
+    };
+  }
+
+  // 原版从宿主窗口读取 MVU 基础属性函数；宿主已加载时优先使用，否则用内联副本
+  function 读取窗口函数(键名) {
+    const root = typeof window !== 'undefined' ? window : globalThis;
+    const 函数值 = root && root[键名];
+    if (typeof 函数值 === 'function') return 函数值.bind(root);
+    if (键名 === '__LWCS_GET_BASE_STATS__') return getBaseStats;
+    return null;
+  }
+
+  // ===== 消耗解析（bridge 17872-17873 / 24929-25029 / 25097-25124）=====
+  const SKILL_DESIGNER_RESOURCE_TYPE_OPTIONS = Object.freeze(['无', '魂力', '精神力', '体力', '混合']);
+  const SKILL_DESIGNER_COST_RESOURCE_KEYS = Object.freeze(['魂力', '精神力', '体力']);
+
+  function parseSkillDesignerCostAmount(value = '') {
+    const text = normalizeSkillUiText(value, '');
+    if (!text || text === '无') return '';
+    if (!/^\d+(?:\.\d+)?%?$/.test(text)) return null;
+    return /%$/.test(text) ? text : Number(text);
+  }
+
+  function normalizeSkillDesignerCostValues(value = {}) {
+    const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    const result = {};
+    SKILL_DESIGNER_COST_RESOURCE_KEYS.forEach(key => {
+      const amount = parseSkillDesignerCostAmount(source[key]);
+      if (amount !== null && amount !== '') result[key] = amount;
+    });
+    return result;
+  }
+
+  function 格式化技能设计台消耗片段(消耗值 = {}) {
+    const 数值表 = normalizeSkillDesignerCostValues(消耗值);
+    return SKILL_DESIGNER_COST_RESOURCE_KEYS.filter(key => 数值表[key] !== undefined)
+      .map(key => `${key}:${数值表[key]}`)
+      .join(' | ');
+  }
+
+  function 解析技能设计台消耗文本配置(rawCost = '') {
+    const 结果 = { resourceType: '无', resourceValues: {}, resourceValue: '', sustainText: '' };
+    if (rawCost === undefined || rawCost === null) return 结果;
+    if (rawCost && typeof rawCost === 'object' && !Array.isArray(rawCost)) {
+      if (rawCost['启动'] || rawCost['维持']) {
+        const 启动数值 = normalizeSkillDesignerCostValues(rawCost['启动']);
+        const 启动条目 = safeEntries(启动数值);
+        结果.sustainText = 格式化技能设计台消耗片段(rawCost['维持']);
+        if (!启动条目.length) return 结果;
+        if (启动条目.length === 1) {
+          结果.resourceType = 启动条目[0][0];
+          结果.resourceValues = 启动数值;
+          结果.resourceValue = 启动条目[0][1];
+          return 结果;
+        }
+        结果.resourceType = '混合';
+        结果.resourceValues = 启动数值;
+        return 结果;
+      }
+      const 数值表 = normalizeSkillDesignerCostValues(rawCost);
+      const 条目 = safeEntries(数值表);
+      if (!条目.length) return 结果;
+      if (条目.length === 1) {
+        结果.resourceType = 条目[0][0];
+        结果.resourceValues = 数值表;
+        结果.resourceValue = 条目[0][1];
+        return 结果;
+      }
+      结果.resourceType = '混合';
+      结果.resourceValues = 数值表;
+      return 结果;
+    }
+    const 原始文本 = normalizeSkillUiText(rawCost, '');
+    if (!原始文本 || 原始文本 === '无') return 结果;
+    const 文本分段 = 原始文本.split(/维持[:：]?/);
+    const 启动文本 = normalizeSkillUiText(文本分段[0], '');
+    结果.sustainText = normalizeSkillUiText(文本分段.slice(1).join('维持:'), '');
+    const 匹配结果 = 启动文本.matchAll(
+      /(魂力|体力|精神力)\s*[:：]\s*([^|+＋]+?)(?=\s*(?:魂力|体力|精神力)\s*[:：]|[|+＋]|$)/g,
+    );
+    const 数值表 = {};
+    Array.from(匹配结果).forEach(匹配 => {
+      const 资源名 = normalizeSkillUiText(匹配[1], '');
+      const 数值 = parseSkillDesignerCostAmount(normalizeSkillUiText(匹配[2], ''));
+      if (!资源名 || 数值 === null || 数值 === '') return;
+      数值表[资源名] = 数值;
+    });
+    const 条目 = safeEntries(数值表);
+    if (!条目.length) return 结果;
+    if (条目.length === 1) {
+      结果.resourceType = 条目[0][0];
+      结果.resourceValues = 数值表;
+      结果.resourceValue = 条目[0][1];
+      return 结果;
+    }
+    结果.resourceType = '混合';
+    结果.resourceValues = 数值表;
+    return 结果;
+  }
+
+  function parseSkillDesignerCostConfig(rawCost = '', explicitType = '', explicitValues = {}) {
+    const explicitResourceType = normalizeSkillUiText(explicitType, '');
+    if (explicitResourceType) {
+      const values = normalizeSkillDesignerCostValues(explicitValues);
+      const 文本配置 = 解析技能设计台消耗文本配置(rawCost);
+      return {
+        resourceType: SKILL_DESIGNER_RESOURCE_TYPE_OPTIONS.includes(explicitResourceType) ? explicitResourceType : '混合',
+        resourceValues: values,
+        resourceValue: values[explicitResourceType] !== undefined ? values[explicitResourceType] : '',
+        sustainText: 文本配置.sustainText || '',
+      };
+    }
+    return 解析技能设计台消耗文本配置(rawCost);
+  }
+
+  function buildSkillDesignerCostObject(resourceType = '', resourceValues = {}) {
+    const safeType = normalizeSkillUiText(resourceType, '无') || '无';
+    if (safeType === '无') return {};
+    const source =
+      resourceValues && typeof resourceValues === 'object' && !Array.isArray(resourceValues) ? resourceValues : {};
+    const values = normalizeSkillDesignerCostValues(source);
+    if (safeType === '混合') return values;
+    if (!['魂力', '精神力', '体力'].includes(safeType)) return {};
+    const amount = parseSkillDesignerCostAmount(values[safeType]);
+    if (amount === null || amount === '') return {};
+    return { [safeType]: amount };
+  }
+
+  // ===== 原型注册表摘要（MVU_Skill_Runtime.js SKILL_PROTOTYPE_REGISTRY_V1，仅保留试算所需）=====
+  const 原型类别表 = Object.freeze({
+    伤害结算: '战斗结算', 资源变化: '战斗结算', 资源转移: '战斗结算', 护盾变化: '战斗结算', 属性修正: '战斗结算',
+    判定修正: '战斗结算', 结算修正: '战斗结算', 炸环: '战斗结算', 状态施加: '战斗结算', 时窗修正: '战斗结算',
+    状态移除: '战斗结算', 规则防御: '战斗结算', 状态转移: '战斗结算', 状态交换: '战斗结算', 资源锁定: '战斗结算',
+    规则改写: '战斗结算', 机制抹消: '战斗结算', 机制授予: '战斗结算', 复制执行: '战斗结算', 时光回溯: '战斗结算',
+    位移执行: '行为推导', 决策干扰: '行为推导', 修炼增益: '战斗外', 天赋提升: '战斗外', 永久属性提升: '战斗外',
+    魂骨年限提升: '战斗外', 战斗外复活: '战斗外', 等级提升: '战斗外', 群体撤离: '战斗外', 召唤生成: '战斗结算',
+  });
+
+  // 试算相关原型：必填字段默认值 + 筛选后保留的字段（允许字段 ∩ 设计台显示字段，见 bridge 25919-25998）
+  const 试算原型定义表 = Object.freeze({
+    伤害结算: { 默认值: { 威力倍率: 100, 伤害类型: '近身攻击' }, 字段: ['威力倍率', '伤害类型', '攻击段数', '防御穿透', '生效方式', '条件分支'] },
+    结算修正: { 默认值: { 结算: '造成伤害', 数值: '+10%' }, 字段: ['结算', '数值', '持续回合', '生效方式', '条件分支'] },
+    护盾变化: { 默认值: { 护盾模式: '正向护盾', 数值: '+10%' }, 字段: ['护盾模式', '数值', '持续回合', '生效方式', '条件分支'] },
+    规则防御: { 默认值: { 规则: '免伤', 次数: 1 }, 字段: ['规则', '次数', '持续回合', '生效方式', '条件分支'] },
+    状态施加: { 默认值: { 状态: '眩晕' }, 字段: ['状态', '持续回合', '生效方式', '条件分支'] },
+    属性修正: { 默认值: { 属性: '力量', 数值: '+10%' }, 字段: ['属性', '数值', '持续回合', '生效方式', '条件分支'] },
+    炸环: { 默认值: { 强化倍率: '+100%' }, 字段: ['强化倍率', '生效方式', '条件分支'] },
+  });
+
+  function 限制技能设计台护盾变化数值(字段 = {}) {
+    if (!字段 || typeof 字段 !== 'object' || 字段['数值'] === undefined) return;
+    const 模式 = normalizeSkillUiText(字段['护盾模式'], '正向护盾');
+    const 文本 = normalizeSkillUiText(字段['数值'], '');
+    const 匹配 = 文本.match(/^[+-]?(\d+(?:\.\d+)?)(%)?$/);
+    if (匹配) {
+      const 符号 = 模式 === '正向护盾' ? '+' : '-';
+      const 数值 = Math.abs(Number(匹配[1]) || 0);
+      const 精度 = Math.abs(数值 % 1) < 0.0001 ? 0 : 2;
+      字段['数值'] = `${符号}${Number(数值.toFixed(精度))}${匹配[2] ? '%' : ''}`;
+      return;
+    }
+    const 数值 = Math.abs(解析技能设计台正负数值(字段['数值']));
+    if (数值 > 0) 字段['数值'] = `${模式 === '正向护盾' ? '+' : '-'}${数值}`;
+  }
+
+  // 合并 筛选技能设计台显式原型效果列表(26881) + 技能设计台原型需要落盘(26937)
+  // + 技能设计台清理并水合原型效果(26686) + 清理技能设计台行为闭环字段(20427) 中与试算有关的部分
+  function 规范化试算原型效果(entry = {}, fallbackTarget = '单体', warnings = []) {
+    const source = entry && typeof entry === 'object' && !Array.isArray(entry) ? entry : {};
+    const prototype = normalizeSkillUiText(source['原型'], '');
+    if (!prototype) return null;
+    if (!原型类别表[prototype]) {
+      warnings.push(`「${prototype}」不是可识别的效果原型，这条效果不计入试算`);
+      return null;
+    }
+    if (原型类别表[prototype] === '战斗外' && !['修炼增益', '战斗外复活', '召唤生成'].includes(prototype)) return null;
+    const 定义 = 试算原型定义表[prototype];
+    const next = { 原型: prototype };
+    if (定义) {
+      Object.assign(next, cloneJsonValue(定义.默认值));
+      定义.字段.forEach(key => {
+        const raw = source[key];
+        if (raw === undefined || raw === null) return;
+        if (typeof raw === 'string' && !raw.trim()) return;
+        next[key] = cloneJsonValue(raw);
+      });
+    } else {
+      // 与试算数值无关的原型：保留原字段，仅供技能分类推断
+      safeEntries(source).forEach(([key, raw]) => {
+        if (key === '原型' || raw === undefined || raw === null) return;
+        if (typeof raw === 'string' && !raw.trim()) return;
+        next[key] = cloneJsonValue(raw);
+      });
+    }
+    next['目标'] = 约束技能设计台原型正式目标(
+      prototype,
+      normalizeSkillDesignerEffectTargetValue(source['目标'], fallbackTarget),
+      fallbackTarget,
+      next,
+    );
+    if (prototype === '伤害结算') {
+      next['攻击段数'] = Math.max(1, parseSkillDesignerIntegerInputValue(next['攻击段数'], 1, 1));
+      next['威力倍率'] = 规范化技能设计台伤害威力倍率(next['威力倍率'], 100);
+      // 运行态水合不带 draft 上下文，伤害类型只按自身文本归一
+      const 伤害绑定 = 读取技能设计台伤害绑定(next['伤害类型'], {});
+      next['伤害类型'] = 伤害绑定.伤害类型;
+      next['结算标签'] = 伤害绑定.结算标签;
+      next['抗性类型'] = 伤害绑定.抗性类型;
+      delete next['持续回合'];
+    }
+    if (prototype === '护盾变化') {
+      if (!['正向护盾', '斩盾', '窃盾'].includes(normalizeSkillUiText(next['护盾模式'], '')))
+        next['护盾模式'] = 解析技能设计台正负数值(next['数值']) < 0 ? '斩盾' : '正向护盾';
+      限制技能设计台护盾变化数值(next);
+    }
+    if (prototype === '状态施加') next['状态'] = normalizeSkillUiText(next['状态'], '眩晕');
+    if (prototype === '属性修正') {
+      const 合法属性 = ['力量', '防御', '敏捷', '生命上限', '体力上限', '魂力上限', '精神力上限'];
+      if (Array.isArray(next['属性'])) {
+        const 属性列表 = next['属性'].map(item => normalizeSkillUiText(item, '')).filter(item => 合法属性.includes(item));
+        next['属性'] = 属性列表.length > 1 ? Array.from(new Set(属性列表)) : 属性列表[0] || '力量';
+      } else {
+        const 属性 = normalizeSkillUiText(next['属性'], '');
+        next['属性'] = 合法属性.includes(属性) ? 属性 : '力量';
+      }
+    }
+    if (prototype === '资源变化' && normalizeSkillUiText(next['资源'], '') === '生命' && 解析技能设计台正负数值(next['数值']) < 0) {
+      throw new Error('技能执行结构错误:资源变化生命不允许负数，请使用伤害结算');
+    }
+    return next;
+  }
+
+  // ===== 技能分类推断（bridge 22661-22738）=====
+  const SKILL_DESIGNER_SKILL_TYPES = Object.freeze(['输出', '控制', '辅助', '防御', '回复', '位移', '领域', '被动', '真身', '召唤', '造物']);
+
+  function 推断技能设计台技能分类(原型效果列表 = [], fallbackType = '') {
+    const fallback = SKILL_DESIGNER_SKILL_TYPES.includes(normalizeSkillUiText(fallbackType, ''))
+      ? normalizeSkillUiText(fallbackType, '')
+      : '输出';
+    const effects = Array.isArray(原型效果列表) ? 原型效果列表.filter(effect => effect && typeof effect === 'object') : [];
+    if (!effects.length) return fallback;
+    const 有原型 = name => effects.some(effect => normalizeSkillUiText(effect['原型'], '') === name);
+    if (有原型('召唤生成')) return '召唤';
+    if (有原型('位移执行')) return '位移';
+    if (有原型('伤害结算')) return '输出';
+    const 状态类型 = new Set(
+      effects
+        .filter(effect => normalizeSkillUiText(effect['原型'], '') === '状态施加')
+        .map(effect => normalizeSkillUiText(effect['状态'], '')),
+    );
+    const 防御状态 = ['护盾', '无视异常', '霸体'];
+    const 负面状态 = ['中毒', '流血', '灼烧', '冻伤', '眩晕', '沉默', '致盲', '禁疗', '治疗反转', '标记', '封技', '迟缓'];
+    if (防御状态.some(state => 状态类型.has(state))) return '防御';
+    if (负面状态.some(state => 状态类型.has(state))) return '控制';
+    if (有原型('护盾变化') || 有原型('规则防御')) return '防御';
+    if (有原型('状态移除') || 有原型('修炼增益')) return '辅助';
+    const 读取数值方向 = effect => {
+      const text = normalizeSkillUiText(effect && effect['数值'], '');
+      if (/^-/.test(text)) return -1;
+      if (/^\+/.test(text)) return 1;
+      const num = Number(text.replace('%', ''));
+      return Number.isFinite(num) ? Math.sign(num) : 0;
+    };
+    if (effects.some(effect => normalizeSkillUiText(effect['原型'], '') === '资源变化' && normalizeSkillUiText(effect['资源'], '') === '生命' && 读取数值方向(effect) > 0))
+      return '回复';
+    if (effects.some(effect => ['属性修正', '判定修正', '结算修正', '资源变化'].includes(normalizeSkillUiText(effect['原型'], '')) && 读取数值方向(effect) < 0))
+      return '控制';
+    if (effects.some(effect => ['属性修正', '判定修正', '结算修正', '资源变化'].includes(normalizeSkillUiText(effect['原型'], '')) && 读取数值方向(effect) > 0))
+      return '辅助';
+    if (有原型('决策干扰') || 有原型('规则改写') || 有原型('机制抹消')) return '控制';
+    if (有原型('机制授予') || 有原型('复制执行') || 有原型('时光回溯') || 有原型('状态转移') || 有原型('状态交换'))
+      return '辅助';
+    return fallback;
+  }
+
+  // ===== 技能掌控度（bridge 22829-22857 / 23516-23537）=====
+  function normalizeSkillDesignerLevelControl(数值 = {}) {
+    const 来源 = 数值 && typeof 数值 === 'object' && !Array.isArray(数值) ? 数值 : {};
+    const 中心等级 = Number(来源.中心等级);
+    const 圆满等级 = Number(来源.圆满等级);
+    if (!Number.isFinite(中心等级) || !Number.isFinite(圆满等级) || 圆满等级 <= 中心等级) return null;
+    return { 中心等级: Number(中心等级.toFixed(2)), 圆满等级: Number(圆满等级.toFixed(2)) };
+  }
+
+  function buildSkillDesignerLevelControlFromDraft(草稿 = {}) {
+    return (
+      normalizeSkillDesignerLevelControl(草稿 && 草稿.技能掌控度) ||
+      normalizeSkillDesignerLevelControl({
+        中心等级: 草稿 && 草稿.技能掌控度中心等级,
+        圆满等级: 草稿 && 草稿.技能掌控度圆满等级,
+      })
+    );
+  }
+
+  function 技能设计台启用技能掌控度(previewMeta = {}, 草稿 = {}) {
+    if (草稿 && 草稿.技能掌控度 && typeof 草稿.技能掌控度 === 'object' && !Array.isArray(草稿.技能掌控度)) return true;
+    const 显式值 = normalizeSkillUiText(草稿 && 草稿.启用技能掌控度, '');
+    if (/启用|有|true|yes|1/.test(显式值)) return true;
+    if (/无|禁用|关闭|false|no|0/.test(显式值)) return false;
+    void previewMeta;
+    return false;
+  }
+
+  function 计算技能设计台技能掌控度完整度(施术等级 = 1, 技能掌控度 = null) {
+    const 掌控配置 = normalizeSkillDesignerLevelControl(技能掌控度);
+    if (!掌控配置) return 1;
+    const 等级 = Math.max(1, Number(施术等级 || 1));
+    if (等级 >= 掌控配置.圆满等级) return 1;
+    const 标准差 = (掌控配置.圆满等级 - 掌控配置.中心等级) / 1.8807936081512509;
+    const 偏移 = (等级 - 掌控配置.中心等级) / Math.max(0.0001, 标准差);
+    const 完整度 = 1 / (1 + Math.exp(-1.702 * 偏移));
+    return Math.max(0, Math.min(1, Number(完整度.toFixed(4))));
+  }
+
+  function 按技能设计台掌控缩放倍率(数值, 完整度 = 1) {
+    const 原值 = Number(数值);
+    if (!Number.isFinite(原值)) return 数值;
+    return Number((1 + (原值 - 1) * 完整度).toFixed(4));
+  }
+
+  function 按技能设计台掌控缩放数值(数值, 完整度 = 1) {
+    const 原值 = Number(数值);
+    if (!Number.isFinite(原值)) return 数值;
+    return Number((原值 * 完整度).toFixed(4));
+  }
+
+  // ===== 草稿规范化：等价于 readSkillDesignerDraft(22951) → buildSkillDesignerFormStateFromDraft(27964)
+  //       → buildSkillDesignerRuntimeEffects(30698) 中试算会读到的字段 =====
+  function 构建技能设计台试算草稿(draft = {}, warnings = []) {
+    const safe = draft && typeof draft === 'object' ? draft : {};
+    const 是表单草稿 = Array.isArray(safe.prototypeEffects);
+    let 原始效果 = [];
+    let deliveryForm = '';
+    let cost = {};
+    let levelControl = null;
+    let 启用掌控 = false;
+    if (是表单草稿) {
+      原始效果 = safe.prototypeEffects;
+      deliveryForm = normalizeSkillUiText(safe.deliveryForm, '');
+      const costConfig = parseSkillDesignerCostConfig(
+        safe.cost || safe['消耗'],
+        safe.resourceType || safe.costType,
+        safe.resourceValues || safe.costValues,
+      );
+      cost = buildSkillDesignerCostObject(costConfig.resourceType, costConfig.resourceValues);
+      启用掌控 = 技能设计台启用技能掌控度({}, safe);
+      levelControl = 启用掌控 ? buildSkillDesignerLevelControlFromDraft(safe) : null;
+    } else {
+      // MVU 技能：造物承载取模板的使用效果，否则直接取 _效果数组
+      const effectArray = Array.isArray(safe['_效果数组']) ? safe['_效果数组'] : [];
+      const constructTemplate =
+        effectArray.find(
+          effect => effect && typeof effect === 'object' && !normalizeSkillUiText(effect['原型'], '') && Array.isArray(effect['使用效果']),
+        ) || null;
+      原始效果 = constructTemplate ? constructTemplate['使用效果'] : effectArray;
+      deliveryForm = normalizeSkillUiText(safe['承载方式'] || safe['释放形式'], '');
+      const costConfig = 解析技能设计台消耗文本配置(safe['消耗']);
+      cost = buildSkillDesignerCostObject(costConfig.resourceType, costConfig.resourceValues);
+      levelControl = normalizeSkillDesignerLevelControl(safe['技能掌控度']);
+      启用掌控 = !!levelControl;
+    }
+    const 有效原始效果 = (Array.isArray(原始效果) ? 原始效果 : []).filter(
+      effect => effect && typeof effect === 'object' && normalizeSkillUiText(effect['原型'], ''),
+    );
+    const 主目标 = normalizeSkillDesignerEffectTargetValue(有效原始效果[0] && 有效原始效果[0]['目标'], '单体');
+    const prototypeEffects = 有效原始效果.map(effect => 规范化试算原型效果(effect, 主目标, warnings)).filter(Boolean);
+    // 原版 formState 无可用原型时回落到「首个注册原型的默认效果」（bridge 28103-28108 / 26903-26909）
+    if (!prototypeEffects.length) {
+      prototypeEffects.push(规范化试算原型效果({ 原型: '伤害结算', 目标: 主目标 }, 主目标, warnings));
+      warnings.push('没有可识别的效果，试算按一次威力倍率 100 的普通伤害估算');
+    }
+    if (有效原始效果.some(effect => Array.isArray(effect['条件分支']) && effect['条件分支'].length))
+      warnings.push('条件分支不计入试算，结果按未触发分支计算');
+    const fallbackType = SKILL_DESIGNER_SKILL_TYPES.includes(normalizeSkillUiText(safe.type, '')) ? normalizeSkillUiText(safe.type, '') : '输出';
+    return {
+      name: normalizeSkillUiText(safe.name || safe['魂技名'], ''),
+      type: 推断技能设计台技能分类(prototypeEffects, fallbackType),
+      deliveryForm,
+      target: 主目标,
+      cost,
+      启用技能掌控度: 启用掌控 ? '启用' : '无',
+      技能掌控度: levelControl,
+      技能掌控度中心等级: levelControl ? String(levelControl.中心等级) : '',
+      技能掌控度圆满等级: levelControl ? String(levelControl.圆满等级) : '',
+      prototypeEffects,
+    };
+  }
+
+  // ===== 试算核心（bridge 23539-24157）=====
+  function 读取技能设计台天赋训练系数(天赋梯队 = '正常') {
+    return ({ 绝世妖孽: 1.6, 顶级天才: 1.2, 天才: 1, 优秀: 0.8, 正常: 0.5, 劣等: 0.2, 天赋极差: 0 }[String(天赋梯队 || '').trim()] ?? 0.5);
+  }
+
+  function 读取技能设计台精神训练系数(天赋梯队 = '正常') {
+    const 梯队 = String(天赋梯队 || '').trim();
+    return 梯队 === '绝世妖孽' ? 2.0 : 读取技能设计台天赋训练系数(梯队);
+  }
+
+  function 构建技能设计台标准战斗属性(等级 = 1, 系别 = '强攻系', 选项 = {}) {
+    const 等级值 = Math.max(1, Number(等级 || 1));
+    const 基础属性函数 = 读取窗口函数('__LWCS_GET_BASE_STATS__');
+    if (typeof 基础属性函数 !== 'function') throw new Error('MVU基础属性函数未加载');
+    const 基础 = 基础属性函数(等级值) || {};
+    const 系数表 = {
+      强攻系: { sp_max: 1, men_max: 1, str: 1, def: 1, agi: 1, vit_max: 1 },
+      防御系: { sp_max: 1, men_max: 1, str: 0.9, def: 1.5, agi: 0.7, vit_max: 1 },
+      敏攻系: { sp_max: 1, men_max: 1, str: 0.8, def: 0.7, agi: 1.6, vit_max: 0.8 },
+      控制系: { sp_max: 1, men_max: 1.2, str: 0.9, def: 0.8, agi: 1.1, vit_max: 0.9 },
+      辅助系: { sp_max: 1, men_max: 1.2, str: 0.7, def: 0.6, agi: 0.8, vit_max: 0.7 },
+      治疗系: { sp_max: 1, men_max: 1.2, str: 0.7, def: 0.6, agi: 0.8, vit_max: 0.7 },
+      食物系: { sp_max: 1, men_max: 1.2, str: 0.7, def: 0.6, agi: 0.8, vit_max: 0.7 },
+      精神系: { sp_max: 1, men_max: 1.7, str: 0.7, def: 0.6, agi: 0.8, vit_max: 0.7 },
+      元素系: { sp_max: 1, men_max: 1.5, str: 0.8, def: 0.6, agi: 0.8, vit_max: 0.7 },
+      召唤系: { sp_max: 1, men_max: 1.35, str: 0.8, def: 0.8, agi: 0.8, vit_max: 0.8 },
+    };
+    const 系数 = 系数表[String(系别 || '').trim()] || 系数表.强攻系;
+    const 天赋训练系数 = 读取技能设计台天赋训练系数(选项?.天赋梯队 || '正常');
+    const 精神训练系数 = 读取技能设计台精神训练系数(选项?.天赋梯队 || '正常');
+    const 常规训练倍率 = 等级值 > 10 ? 1 + 0.005 * (等级值 - 10) * 天赋训练系数 : 1;
+    const 精神训练倍率 = 等级值 > 10 ? 1 + 0.005 * (等级值 - 10) * 精神训练系数 : 1;
+    const 属性 = {
+      name: `标准${Math.round(等级值)}级`,
+      type: 系别 || '强攻系',
+      lv: 等级值,
+      等级: 等级值,
+      str: Math.max(1, Math.round(Number(基础.str || 1) * 系数.str * 常规训练倍率)),
+      def: Math.max(1, Math.round(Number(基础.def || 1) * 系数.def * 常规训练倍率)),
+      agi: Math.max(1, Math.round(Number(基础.agi || 1) * 系数.agi * 常规训练倍率)),
+      men_max: Math.max(1, Math.round(Number(基础.men_max || 1) * 系数.men_max * 精神训练倍率)),
+      sp_max: Math.max(1, Math.round(Number(基础.sp_max || 1) * 系数.sp_max)),
+      vit_max: Math.max(1, Math.round(Number(基础.vit_max || 1) * 系数.vit_max * 常规训练倍率)),
+      属性: { 天赋梯队: String(选项?.天赋梯队 || '正常').trim() || '正常' },
+    };
+    属性.sp = 属性.sp_max;
+    属性.men = 属性.men_max;
+    属性.hp_max = 属性.vit_max;
+    属性.HP上限 = 属性.vit_max;
+    属性.HP = 属性.vit_max;
+    属性.属性 = {
+      ...属性.属性,
+      等级: 属性.等级,
+      系别: 属性.type,
+      力量: 属性.str,
+      防御: 属性.def,
+      敏捷: 属性.agi,
+      HP上限: 属性.HP上限,
+      生命上限: 属性.HP上限,
+      体力上限: 属性.vit_max,
+      魂力上限: 属性.sp_max,
+      精神力上限: 属性.men_max,
+      hp_max: 属性.hp_max,
+      vit_max: 属性.vit_max,
+      sp_max: 属性.sp_max,
+      men_max: 属性.men_max,
+    };
+    属性.final = { ...属性 };
+    return 属性;
+  }
+
+  function 读取技能设计台当前等级(snapshot = {}) {
+    return Math.max(
+      1,
+      Number(
+        deepGet(snapshot, 'activeChar.属性.等级', 0) || deepGet(snapshot, 'activeChar.lv', 0) || deepGet(snapshot, 'activeChar.等级', 0) || 1,
+      ) || 1,
+    );
+  }
+
+  // MVU 角色 属性 → 试算战斗属性（str/def/agi/vit_max/sp_max/men_max …）
+  function 构建技能设计台当前战斗属性(snapshot = {}) {
+    const 来源 = deepGet(snapshot, 'activeChar.属性', {}) || {};
+    const 属性 = {
+      name: toText(deepGet(snapshot, 'activeName', ''), '当前角色'),
+      type: normalizeSkillUiText(来源.系别, '强攻系'),
+      lv: Math.max(1, Number(来源.等级 || 1)),
+      等级: Math.max(1, Number(来源.等级 || 1)),
+      str: Math.max(1, Number(来源.力量 || 1)),
+      def: Math.max(1, Number(来源.防御 || 1)),
+      agi: Math.max(1, Number(来源.敏捷 || 1)),
+      vit_max: Math.max(1, Number(来源.体力上限 || 来源.HP上限 || 1)),
+      sp_max: Math.max(1, Number(来源.魂力上限 || 1)),
+      men_max: Math.max(1, Number(来源.精神力上限 || 1)),
+    };
+    属性.sp = Math.max(0, Math.min(属性.sp_max, Number(来源.魂力 ?? 属性.sp_max)));
+    属性.men = Math.max(0, Math.min(属性.men_max, Number(来源.精神力 ?? 属性.men_max)));
+    属性.hp_max = 属性.vit_max;
+    属性.HP上限 = 属性.vit_max;
+    属性.HP = Math.max(0, Math.min(属性.vit_max, Number(来源.HP ?? 来源.体力 ?? 属性.vit_max)));
+    属性.final = { ...属性 };
+    return 属性;
+  }
+
+  function 读取技能设计台伤害效果列表(effectArray = []) {
+    return (Array.isArray(effectArray) ? effectArray : []).filter(
+      effect =>
+        effect &&
+        typeof effect === 'object' &&
+        toText(effect['原型'], '').trim() === '伤害结算' &&
+        (Number(effect['威力倍率'] || 0) > 0 || normalizeSkillUiText(effect['数值'], '')),
+    );
+  }
+
+  function 读取技能设计台防御效果列表(effectArray = []) {
+    return (Array.isArray(effectArray) ? effectArray : []).filter(effect => {
+      if (!effect || typeof effect !== 'object') return false;
+      const prototype = toText(effect['原型'], '').trim();
+      return (
+        ['护盾变化', '规则防御'].includes(prototype) ||
+        (prototype === '状态施加' && ['霸体', '无视异常'].includes(normalizeSkillUiText(effect['状态'], ''))) ||
+        (prototype === '结算修正' &&
+          (['伤害分摊', '反伤'].includes(normalizeSkillUiText(effect['结算'], '')) ||
+            (normalizeSkillUiText(effect['结算'], '') === '受到伤害' && 解析技能设计台正负数值(effect['数值']) < 0)))
+      );
+    });
+  }
+
+  function 构建技能设计台试算效果列表(draft = {}, 施术等级 = 1) {
+    const levelControl = normalizeSkillDesignerLevelControl(draft['技能掌控度']);
+    const 完整度 = 计算技能设计台技能掌控度完整度(施术等级, levelControl);
+    const effectArray = cloneJsonValue(draft.prototypeEffects || [], []);
+    if (!levelControl || 完整度 >= 0.9999) return effectArray;
+    return effectArray.map(effect => {
+      if (!effect || typeof effect !== 'object') return effect;
+      if (effect['数值'] !== undefined) {
+        const action = toText(effect['动作'], '');
+        effect['数值'] = ['倍率提升', '倍率压制'].includes(action)
+          ? 按技能设计台掌控缩放倍率(effect['数值'], 完整度)
+          : 按技能设计台掌控缩放数值(effect['数值'], 完整度);
+      }
+      ['护盾值', '每回合伤害'].forEach(key => {
+        if (effect[key] !== undefined) effect[key] = 按技能设计台掌控缩放数值(effect[key], 完整度);
+      });
+      if (effect['威力倍率'] !== undefined) effect['威力倍率'] = 按技能设计台掌控缩放数值(effect['威力倍率'], 完整度);
+      const statMods = effect['面板修改比例'] && typeof effect['面板修改比例'] === 'object' ? effect['面板修改比例'] : null;
+      if (statMods) {
+        ['str', 'def', 'agi', 'vit_max', 'sp_max', 'men_max'].forEach(key => {
+          if (statMods[key] !== undefined) statMods[key] = 按技能设计台掌控缩放倍率(statMods[key], 完整度);
+        });
+      }
+      return effect;
+    });
+  }
+
+  function 读取技能设计台试算类型(draft = {}) {
+    const effectArray = 构建技能设计台试算效果列表(draft, 读取技能设计台当前等级({}));
+    if (effectArray.some(effect => normalizeSkillUiText(effect && effect['原型'], '') === '炸环')) return '炸环';
+    if (读取技能设计台伤害效果列表(effectArray).length > 0) return '攻击';
+    if (读取技能设计台防御效果列表(effectArray).length > 0) return '防御';
+    return '';
+  }
+
+  function 估算技能设计台属性等效等级(属性键 = 'str', 属性值 = 0) {
+    const 基础属性函数 = 读取窗口函数('__LWCS_GET_BASE_STATS__');
+    const 数值 = Number(属性值 || 0);
+    if (typeof 基础属性函数 !== 'function' || !(数值 > 0)) return '';
+    let 最接近等级 = 1;
+    let 最小差值 = Infinity;
+    for (let 等级 = 1; 等级 <= 100; 等级 += 0.5) {
+      const 基准 = Number((基础属性函数(等级) || {})[属性键] || 0);
+      const 差值 = Math.abs(基准 - 数值);
+      if (差值 < 最小差值) {
+        最小差值 = 差值;
+        最接近等级 = 等级;
+      }
+    }
+    return Number.isInteger(最接近等级) ? String(最接近等级) : 最接近等级.toFixed(1);
+  }
+
+  function 获取技能设计台炸环百级校准倍率(属性键 = 'str') {
+    const 基础属性函数 = 读取窗口函数('__LWCS_GET_BASE_STATS__');
+    const 九十七级 = typeof 基础属性函数 === 'function' ? 基础属性函数(97) : null;
+    const 百级 = typeof 基础属性函数 === 'function' ? 基础属性函数(100) : null;
+    const 基准 = Number((九十七级 && 九十七级[属性键]) || 0);
+    const 目标 = Number((百级 && 百级[属性键]) || 0);
+    if (基准 > 0 && 目标 > 基准) return 目标 / 基准;
+    return (
+      {
+        str: 5.511348148148148,
+        def: 5.511348148148148,
+        agi: 5.511348148148148,
+        vit_max: 5.511348148148148,
+        men_max: 4.166666666666667,
+        sp_max: 16,
+      }[属性键] || 5.511348148148148
+    );
+  }
+
+  function 计算技能设计台炸环属性倍率(属性键 = 'str', 总年限 = 100000, 强化倍率 = 1) {
+    const 年限比例 = Math.max(0, Number(总年限 || 0)) / 400000;
+    const 基础倍率 = Math.max(0.01, Number(强化倍率 || 1));
+    return Math.max(1.005, Number((1 + 基础倍率 * 年限比例 * (获取技能设计台炸环百级校准倍率(属性键) - 1)).toFixed(4)));
+  }
+
+  function 构建技能设计台炸环十万年试算行(战斗属性 = {}, 强化倍率 = 1) {
+    const 项目 = [
+      ['力量', 'str'],
+      ['防御', 'def'],
+      ['敏捷', 'agi'],
+      ['魂力', 'sp_max'],
+      ['精神', 'men_max'],
+      ['体力', 'vit_max'],
+    ];
+    return 项目.map(([标签, 属性]) => {
+      const 倍率 = 计算技能设计台炸环属性倍率(属性, 100000, 强化倍率);
+      const 数值 = Number(战斗属性[属性] || 0) * 倍率;
+      const 等效等级 = 估算技能设计台属性等效等级(属性, 数值);
+      return { 标签, 属性键: 属性, 倍率, 数值, 等效等级 };
+    });
+  }
+
+  function 应用于技能设计台试算属性(属性 = {}, 修改比例 = {}) {
+    const next = { ...属性 };
+    ['str', 'def', 'agi', 'vit_max', 'sp_max', 'men_max'].forEach(key => {
+      const ratio = Number(修改比例 && 修改比例[key]);
+      if (Number.isFinite(ratio) && ratio > 0) next[key] = Number((Number(next[key] || 0) * ratio).toFixed(2));
+    });
+    next.hp_max = next.vit_max || next.hp_max;
+    next.HP上限 = next.hp_max;
+    next.HP = next.hp_max;
+    next.sp = Math.min(Number(next.sp || next.sp_max || 1), Number(next.sp_max || 1));
+    next.men = Math.min(Number(next.men || next.men_max || 1), Number(next.men_max || 1));
+    next.final = { ...next };
+    return next;
+  }
+
+  function 计算技能设计台资源压制倍率(attacker = {}, defender = {}, resourceKey = 'sp') {
+    const attackerCurrent = Math.max(1, Number(attacker[resourceKey] || attacker[`${resourceKey}_max`] || 1));
+    const defenderCurrent = Math.max(1, Number(defender[resourceKey] || defender[`${resourceKey}_max`] || 1));
+    const attackerMax = Math.max(1, Number(attacker[`${resourceKey}_max`] || attackerCurrent));
+    const remainRatio = Math.max(0, Math.min(1, attackerCurrent / attackerMax));
+    const pressure = Math.pow(Math.max(0.01, attackerCurrent / defenderCurrent), 0.45);
+    return Math.max(0.35, Math.min(1.85, pressure * (0.45 + 0.55 * remainRatio)));
+  }
+
+  // 原版 formState 不携带 ringIndex，因此此处恒按 1 环取 3%
+  function 计算技能设计台固定结算消耗比例(draft = {}) {
+    const effects = Array.isArray(draft.prototypeEffects) ? draft.prototypeEffects : [];
+    if (!effects.some(effect => normalizeSkillUiText(effect && effect['原型'], '') === '伤害结算')) return 0;
+    const ringIndex = Math.max(1, Math.min(9, Math.floor(Number(draft.ringIndex || draft.ring || 1) || 1)));
+    if (ringIndex === 7) return 0;
+    return Math.max(0, Math.min(0.27, ringIndex * 0.03));
+  }
+
+  function 计算技能设计台消耗加成系数(draft = {}, attacker = {}) {
+    const cost =
+      draft && draft.cost && typeof draft.cost === 'object' && !Array.isArray(draft.cost)
+        ? draft.cost
+        : buildSkillDesignerCostObject(draft.costType || draft.resourceType, draft.costValues || draft.resourceValues);
+    const 承载比例 = safeEntries(cost).reduce((sum, [resource, raw]) => {
+      const text = normalizeSkillUiText(raw, '');
+      const 上限 = Math.max(1, Number(attacker[resource === '精神力' ? 'men_max' : resource === '体力' ? 'vit_max' : 'sp_max'] || 1));
+      const 比例 = /%$/.test(text) ? Math.max(0, parseSkillDesignerNumericInputValue(text, 0)) / 100 : Math.max(0, Number(raw || 0)) / 上限;
+      return sum + 比例;
+    }, 0);
+    if (!(承载比例 > 0)) return 1;
+    const 固定比例 = 计算技能设计台固定结算消耗比例(draft);
+    return Math.max(0, (承载比例 + 固定比例) / 承载比例);
+  }
+
+  function 计算技能设计台单段伤害(effect = {}, attacker = {}, defender = {}, finalDamageMult = 1, finalDamageBonus = 0, draft = {}) {
+    const rawPower = Math.max(0, Number(effect['威力倍率'] || 0) || parseSkillDesignerFactorInputValue(effect['数值'], 0));
+    const power = rawPower;
+    const penetration = Math.max(0, Number(effect['防御穿透'] || 0));
+    const effectivePenetration = penetration >= 100 ? 100 : Math.min(92, penetration);
+    const defense = Math.max(1, Number(defender.def || 1) * (1 - effectivePenetration / 100));
+    const damageType = 规范化技能设计台伤害类型(effect['伤害类型'], draft);
+    const mentalDamage = damageType === '精神攻击';
+    const rangedDamage = damageType === '远程攻击';
+    const trueDamage = damageType === '真实攻击';
+    const driveScale = mentalDamage
+      ? 计算技能设计台资源压制倍率(attacker, defender, 'men')
+      : 计算技能设计台资源压制倍率(attacker, defender, 'sp');
+    const attackValue = trueDamage
+      ? Math.max(Number(attacker.men_max || 1), Number(attacker.sp_max || 1))
+      : mentalDamage
+        ? Math.max(Number(attacker.men_max || 1), Number(attacker.sp_max || 1) * 0.7)
+        : rangedDamage
+          ? Math.max(Number(attacker.sp_max || 1), Number(attacker.str || 1) * 0.75)
+          : Number(attacker.str || 1);
+    const costScale = 计算技能设计台消耗加成系数(draft, attacker);
+    const defenseScale = trueDamage ? Math.max(1, Math.sqrt(attackValue)) * 0.12 : attackValue / defense;
+    return Math.max(0, power * defenseScale * driveScale * costScale * finalDamageMult + finalDamageBonus);
+  }
+
+  function 获取技能设计台标准攻击威力倍率(等级 = 1) {
+    const ringIndex = Math.max(1, Math.min(9, Math.ceil(Math.max(1, Number(等级 || 1)) / 10)));
+    if (ringIndex === 7) return 770;
+    return [70, 104, 155, 232, 346, 516, 770, 1149, 2100][ringIndex - 1] || 70;
+  }
+
+  function 计算技能设计台伤害次数系数(effect = {}) {
+    return Math.max(1, parseSkillDesignerIntegerInputValue(effect['攻击段数'], 1, 1));
+  }
+
+  function 计算技能设计台附加伤害(effectArray = [], baseDamage = 0) {
+    void effectArray;
+    void baseDamage;
+    return 0;
+  }
+
+  // 返回值在原版基础上附带 明细/incomingRaw/hp 等字段，数值计算不变
+  function 估算技能设计台防御续承伤(draft = {}, 施术等级 = 1, 攻击等级 = 1, 防御者属性 = null) {
+    const effectArray = 构建技能设计台试算效果列表(draft, 施术等级);
+    const defenseEffects = 读取技能设计台防御效果列表(effectArray);
+    if (!defenseEffects.length) return { ok: false, reason: '非防御技能', damage: 0 };
+    const defender = 防御者属性 || 构建技能设计台标准战斗属性(施术等级, normalizeSkillUiText(draft.type, '防御系'));
+    const attacker = 构建技能设计台标准战斗属性(攻击等级, '强攻系');
+    const 无防御伤害 = 计算技能设计台单段伤害(
+      { 原型: '伤害结算', 威力倍率: 获取技能设计台标准攻击威力倍率(攻击等级), 伤害类型: '近身攻击' },
+      attacker,
+      defender,
+      1,
+      0,
+    );
+    let incoming = 无防御伤害;
+    let shield = 0;
+    let reduction = 0;
+    let blockCount = 0;
+    let deathSave = 0;
+    defenseEffects.forEach(effect => {
+      const prototype = toText(effect['原型'], '').trim();
+      if (prototype === '护盾变化') shield += Math.max(0, parseSkillDesignerNumericInputValue(effect['数值'], 0));
+      if (prototype === '结算修正' && normalizeSkillUiText(effect['结算'], '') === '受到伤害' && 解析技能设计台正负数值(effect['数值']) < 0)
+        reduction = Math.max(reduction, Math.abs(parseSkillDesignerPercentRatio(effect['数值'], 0)));
+      if (prototype === '规则防御') {
+        const 次数 = Math.max(0, parseSkillDesignerIntegerInputValue(effect['次数'], 0, 0));
+        if (normalizeSkillUiText(effect['规则'], '') === '免死') deathSave += 次数;
+        else blockCount += 次数;
+      }
+      if (prototype === '状态施加' && ['霸体', '无视异常'].includes(normalizeSkillUiText(effect['状态'], ''))) blockCount += 1;
+    });
+    if (blockCount > 0) incoming = 0;
+    incoming = Math.max(0, incoming * (1 - Math.min(0.95, reduction)) - shield);
+    const hp = Math.max(1, Number(defender.hp_max || defender.vit_max || 1));
+    const 防御收益 = Math.max(0, 无防御伤害 - incoming);
+    const 有有效防御 = deathSave > 0 || blockCount > 0 || 防御收益 >= Math.max(1, hp * 0.1);
+    return {
+      ok: true,
+      damage: incoming,
+      survivable: 有有效防御 && (incoming < hp || deathSave > 0),
+      明细: { 攻击等级, 攻击威力倍率: 获取技能设计台标准攻击威力倍率(攻击等级), 无防御伤害, shield, reduction, blockCount, deathSave, hp, 防御收益, 有有效防御, attacker, defender },
+    };
+  }
+
+  function 计算技能设计台可承受最高等级(draft = {}, 施术等级 = 1, 防御者属性 = null) {
+    const first = 估算技能设计台防御续承伤(draft, 施术等级, 1, 防御者属性);
+    if (!first.ok) return { ok: false, reason: first.reason };
+    let 最高等级 = 0;
+    for (let 攻击等级值 = 1; 攻击等级值 <= 120; 攻击等级值 += 1) {
+      const result = 估算技能设计台防御续承伤(draft, 施术等级, 攻击等级值, 防御者属性);
+      if (result.ok && result.survivable) 最高等级 = 攻击等级值;
+    }
+    if (最高等级 <= 0) return { ok: true, text: '不足 Lv.1', 最高等级 };
+    return { ok: true, text: 最高等级 >= 120 ? '可承受 Lv.120+' : `可承受 Lv.${最高等级}`, 最高等级 };
+  }
+
+  function 估算技能设计台伤害占比(draft = {}, 施术等级 = 1, 目标等级 = 1, 施术者属性 = null) {
+    const effectArray = 构建技能设计台试算效果列表(draft, 施术等级);
+    const damageEffects = 读取技能设计台伤害效果列表(effectArray);
+    if (!damageEffects.length) return { ok: false, reason: '非伤害技能', ratio: 0 };
+    let attacker = 施术者属性 || 构建技能设计台标准战斗属性(施术等级, normalizeSkillUiText(draft.type, '强攻系'));
+    let defender = 构建技能设计台标准战斗属性(目标等级, '强攻系');
+    let finalDamageMult = 1;
+    const finalDamageBonus = 0;
+    effectArray.forEach(effect => {
+      if (!effect || typeof effect !== 'object') return;
+      const prototype = normalizeSkillUiText(effect['原型'], '');
+      if (prototype === '属性修正') {
+        const 修正值 = parseSkillDesignerSignedValue(effect['数值']);
+        const 面板修改比例 = {};
+        normalizeSkillDesignerArray(effect['属性']).forEach(属性 => {
+          const key = SKILL_DESIGNER_RUNTIME_PROPERTY_KEY_BY_LABEL[属性] || resolveSkillDesignerPropertyKeyByLabel(属性);
+          if (['str', 'def', 'agi', 'vit_max', 'sp_max', 'men_max'].includes(key)) 面板修改比例[key] = Math.max(0.01, 1 + 修正值);
+        });
+        const targetText = normalizeSkillUiText(effect['目标'], '自身');
+        if (safeEntries(面板修改比例).length && !damageEffects.includes(effect)) {
+          if (['单体', '群体', '全场'].includes(targetText) && 修正值 < 0) defender = 应用于技能设计台试算属性(defender, 面板修改比例);
+          else attacker = 应用于技能设计台试算属性(attacker, 面板修改比例);
+        }
+      }
+      if (prototype === '结算修正' && normalizeSkillUiText(effect['结算'], '') === '造成伤害' && 解析技能设计台正负数值(effect['数值']) > 0) {
+        const rawText = normalizeSkillUiText(effect['数值'], '');
+        if (/^x/i.test(rawText)) finalDamageMult *= Math.max(0, parseSkillDesignerNumericInputValue(rawText, 1));
+        else finalDamageMult *= Math.max(0, 1 + parseSkillDesignerSignedValue(rawText));
+      }
+    });
+    const 段明细 = damageEffects.map(effect => {
+      const 单段 = 计算技能设计台单段伤害(effect, attacker, defender, finalDamageMult, finalDamageBonus, draft);
+      const 段数 = 计算技能设计台伤害次数系数(effect);
+      return {
+        威力倍率: Number(effect['威力倍率'] || 0),
+        伤害类型: 规范化技能设计台伤害类型(effect['伤害类型'], draft),
+        防御穿透: Math.max(0, Number(effect['防御穿透'] || 0)),
+        攻击段数: 段数,
+        perHit: 单段,
+        subtotal: 单段 * 段数,
+      };
+    });
+    const baseDamage = 段明细.reduce((total, item) => total + item.subtotal, 0);
+    const damage = baseDamage + 计算技能设计台附加伤害(effectArray, baseDamage);
+    const targetHp = Math.max(1, Number(defender.hp_max || defender.vit_max || 1));
+    return {
+      ok: true,
+      ratio: damage / targetHp,
+      damage,
+      明细: { 段明细, finalDamageMult, costScale: 计算技能设计台消耗加成系数(draft, attacker), targetHp, attacker, defender },
+    };
+  }
+
+  function 计算技能设计台可重创最高等级(draft = {}, 施术等级 = 1, 施术者属性 = null) {
+    const first = 估算技能设计台伤害占比(draft, 施术等级, 1, 施术者属性);
+    if (!first.ok) return { ok: false, reason: first.reason };
+    let 最高等级 = 0;
+    for (let 目标等级值 = 1; 目标等级值 <= 120; 目标等级值 += 1) {
+      const result = 估算技能设计台伤害占比(draft, 施术等级, 目标等级值, 施术者属性);
+      if (result.ok && result.ratio >= 0.5) 最高等级 = 目标等级值;
+    }
+    if (最高等级 <= 0) return { ok: true, text: '不足50%', 最高等级 };
+    return { ok: true, text: 最高等级 >= 120 ? '可重创 Lv.120+' : `可重创 Lv.${最高等级}`, 最高等级 };
+  }
+
+  // ===== 对外接口：buildSkillDesignerSimulationHtml(24096) 的数据版 =====
+  function 精简战斗属性(属性 = {}) {
+    const 键表 = ['name', 'type', 'lv', 'str', 'def', 'agi', 'vit_max', 'sp_max', 'men_max', 'sp', 'men', 'hp_max', 'HP'];
+    return Object.fromEntries(键表.filter(key => 属性[key] !== undefined).map(key => [key, 属性[key]]));
+  }
+
+  function 取两位(数值) {
+    return Number(Number(数值 || 0).toFixed(2));
+  }
+
+  function simulate(draft = {}, character = {}, options = {}) {
+    const warnings = [];
+    const snapshot = {
+      activeChar: character && typeof character === 'object' ? character : {},
+      activeName: (options && options.name) || (character && (character.name || character.姓名)) || '',
+    };
+    let 草稿;
+    try {
+      草稿 = 构建技能设计台试算草稿(draft, warnings);
+    } catch (error) {
+      return { kind: '', skillType: '', hidden: true, rows: [], summary: '', error: String(error && error.message || error), warnings };
+    }
+    const 当前等级 = 读取技能设计台当前等级(snapshot);
+    const 当前战斗属性 = 构建技能设计台当前战斗属性(snapshot);
+    const base = {
+      skillType: 草稿.type,
+      level: 当前等级,
+      attacker: 精简战斗属性(当前战斗属性),
+      effects: 草稿.prototypeEffects,
+      warnings,
+    };
+    const 试算类型 = 读取技能设计台试算类型(草稿);
+    // 原版无试算类型时返回空 HTML，试算行整体隐藏，无兜底文案
+    if (!试算类型) return { kind: '', hidden: true, rows: [], summary: '', ...base };
+    const 当前天赋梯队 = normalizeSkillUiText(deepGet(snapshot, 'activeChar.属性.天赋梯队', ''), '正常');
+
+    if (试算类型 === '炸环') {
+      const effect = 构建技能设计台试算效果列表(草稿, 当前等级).find(item => normalizeSkillUiText(item && item['原型'], '') === '炸环') || {};
+      const 强化倍率 = parseSkillDesignerPercentRatio(effect['强化倍率'], 1);
+      const 属性行 = 构建技能设计台炸环十万年试算行(当前战斗属性, 强化倍率);
+      const rows = [
+        { label: '公式', value: `倍率${formatSkillDesignerSignedValue(强化倍率, true)} × 年限/40万`, note: '炸环强化按十万年魂环折算' },
+        ...属性行.map(item => ({
+          label: item.标签,
+          value: `10万年倍率 x${item.倍率.toFixed(2)} ｜ ${formatNumber(Math.round(item.数值))}${item.等效等级 ? ` ｜ 约Lv.${item.等效等级}` : ''}`,
+          note: `原值 ${formatNumber(Number(当前战斗属性[item.属性键] || 0))}`,
+          data: { key: item.属性键, ratio: item.倍率, value: item.数值, equivalentLevel: item.等效等级 },
+        })),
+      ];
+      return {
+        kind: '炸环',
+        hidden: false,
+        rows,
+        summary: rows.map(row => `${row.label} ${row.value}`).join('；'),
+        burst: { 强化倍率, rows: 属性行 },
+        ...base,
+      };
+    }
+
+    const rows = [];
+    const 添加试算行 = (标签, 等级值, 战斗属性 = null, note = '') => {
+      const 结果 = 试算类型 === '防御'
+        ? 计算技能设计台可承受最高等级(草稿, 等级值, 战斗属性)
+        : 计算技能设计台可重创最高等级(草稿, 等级值, 战斗属性);
+      rows.push({
+        label: 标签,
+        value: 结果.ok ? 结果.text : 结果.reason,
+        note,
+        data: { level: 等级值, maxLevel: 结果.ok ? 结果.最高等级 : null },
+      });
+    };
+    添加试算行(`当前 Lv.${Number(当前等级.toFixed(1)).toString()}`, 当前等级, 当前战斗属性, '当前角色面板');
+    if (技能设计台启用技能掌控度({}, 草稿)) {
+      const 掌控等级 = buildSkillDesignerLevelControlFromDraft(草稿);
+      if (掌控等级) {
+        const 系别 = normalizeSkillUiText(草稿.type, 试算类型 === '防御' ? '防御系' : '强攻系');
+        const 标准说明 = `标准属性（${当前天赋梯队}）`;
+        添加试算行(`中心 Lv.${掌控等级.中心等级}`, 掌控等级.中心等级, 构建技能设计台标准战斗属性(掌控等级.中心等级, 系别, { 天赋梯队: 当前天赋梯队 }), 标准说明);
+        添加试算行(`圆满 Lv.${掌控等级.圆满等级}`, 掌控等级.圆满等级, 构建技能设计台标准战斗属性(掌控等级.圆满等级, 系别, { 天赋梯队: 当前天赋梯队 }), 标准说明);
+      } else {
+        rows.push({ label: '技能掌控度', value: '缺少释放等级', note: '', muted: true });
+      }
+    }
+    const result = {
+      kind: 试算类型,
+      hidden: false,
+      rows,
+      summary: rows.map(row => `${row.label}：${row.value}`).join('；'),
+      ...base,
+    };
+
+    // 以下为补充明细（原版 HTML 不展示）：同等级标准强攻系对手的单次对抗数值
+    if (试算类型 === '攻击') {
+      const 对抗 = 估算技能设计台伤害占比(草稿, 当前等级, 当前等级, 当前战斗属性);
+      if (对抗.ok) {
+        const 段 = 对抗.明细.段明细;
+        result.damage = {
+          perHit: 取两位(段[0] ? 段[0].perHit : 0),
+          hits: 段.reduce((sum, item) => sum + item.攻击段数, 0),
+          total: 取两位(对抗.damage),
+          segments: 段.map(item => ({ ...item, perHit: 取两位(item.perHit), subtotal: 取两位(item.subtotal) })),
+          finalDamageMult: 对抗.明细.finalDamageMult,
+          costScale: 取两位(对抗.明细.costScale),
+          vsDefender: {
+            label: `标准强攻系 Lv.${Number(当前等级.toFixed(1))}`,
+            level: 当前等级,
+            hp: 对抗.明细.targetHp,
+            def: 对抗.明细.defender.def,
+            ratio: 取两位(对抗.ratio),
+            重创: 对抗.ratio >= 0.5,
+            defender: 精简战斗属性(对抗.明细.defender),
+          },
+          maxLevel: rows[0] && rows[0].data ? rows[0].data.maxLevel : null,
+        };
+      }
+    } else if (试算类型 === '防御') {
+      const 对抗 = 估算技能设计台防御续承伤(草稿, 当前等级, 当前等级, 当前战斗属性);
+      if (对抗.ok) {
+        const 明细 = 对抗.明细;
+        result.defense = {
+          vsAttacker: {
+            label: `标准强攻系 Lv.${Number(当前等级.toFixed(1))}`,
+            level: 当前等级,
+            威力倍率: 明细.攻击威力倍率,
+            rawDamage: 取两位(明细.无防御伤害),
+            incoming: 取两位(对抗.damage),
+            hp: 明细.hp,
+            survivable: 对抗.survivable,
+            attacker: 精简战斗属性(明细.attacker),
+          },
+          shield: 明细.shield,
+          reduction: 明细.reduction,
+          blockCount: 明细.blockCount,
+          deathSave: 明细.deathSave,
+          maxLevel: rows[0] && rows[0].data ? rows[0].data.maxLevel : null,
+        };
+      }
+    }
+    return result;
+  }
+
+  const root = typeof window !== 'undefined' ? window : globalThis;
+  root.LWCS_DESIGNER_SIM = {
+    simulate,
+    // 调试用内部函数
+    _internal: {
+      getBaseStats,
+      构建技能设计台试算草稿,
+      构建技能设计台当前战斗属性,
+      构建技能设计台标准战斗属性,
+      计算技能设计台单段伤害,
+      估算技能设计台伤害占比,
+      估算技能设计台防御续承伤,
+    },
+  };
+})();
+
+;
+/* source: cockpit/designer-ui.js */
+/* 技能设计台 v2 界面层
+ * 数据全部来自 designer-model.js（移植自原项目技能设计台，与原版逐项对拍一致）：分区、字段、选项、显示条件、说明、保存都走它。
+ * 这里只做两件事：把 session.view() 的分区 / 字段画成座舱控件；把操作翻译成 session.act() 动作。
+ * 说明文字一律走悬停（c.hint / data-hint），界面上不直接放说明。保存时保留条件分支（原版保存会误丢分支，见数据层注释）。
+ */
+(() => {
+  const esc = v => String(v ?? '').replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
+  const M = () => window.LWCS_DESIGNER_MODEL;
+  // 页签：原版「基础」「消耗与成长」各只有几项，合成一页；分区归属仍按数据层给的 tab。[界面键, 名称, 包含的数据层页签]
+  const TABS = [['basic', '基础与消耗', ['基础', '消耗与成长']], ['fx', '效果', ['效果']], ['show', '属性与呈现', ['属性与呈现']]];
+  const SAVE_OPTS = { keepConditionBranches: true };
+
+  // 选项：原型选项的 label 是「名称｜说明」，拆成名称 + 悬停说明；分隔行（── 战斗内 ──）不作为可选项
+  const opts = list => (list || []).filter(o => !o.disabled && !/^──/.test(String(o.label ?? o.value ?? ''))).map(o => {
+    const raw = String(o.label ?? o.value ?? ''), cut = raw.indexOf('｜');
+    return { value: String(o.value ?? ''), label: cut > 0 ? raw.slice(0, cut) : raw, hint: o.hint || (cut > 0 ? raw.slice(cut + 1) : ''), group: o.group || '' };
+  });
+  const A = a => esc(JSON.stringify(a));
+  const hintOf = (f, extra = []) => [f.hint || f.tableHint, ...extra].filter(Boolean).join('\n\n');
+  const curOptHint = f => { const o = opts(f.options).find(x => x.value === String(f.value ?? '')); return o?.hint ? `当前「${o.label}」：${o.hint}` : ''; };
+  const lab = (c, f, extra = []) => `<span class="dzf-l">${esc(f.label || f.key || '')}${f.required ? '<b>*</b>' : ''}${c.hint(hintOf(f, extra))}</span>`;
+
+  // ---------- 数值类控件 ----------
+  // 原版这些字段多是裸文本框。这里按字段类型（原项目字段类型表：整数 / 数字 / 带符号数值 / 概率 / COST，或带 resource 的消耗）
+  // 换成步进、正负、单位、概率控件；写回的仍是原版格式的字符串（+12%、347、6%、30%、魂力:100），由 COMPOSE 拼出
+  const numIn = (value, o = {}, extra = '') => `<input type="number" inputmode="decimal" value="${esc(value)}"${o.min != null && o.min !== '' ? ` min="${esc(o.min)}"` : ''}${o.max != null && o.max !== '' ? ` max="${esc(o.max)}"` : ''} step="${o.stepBy || 'any'}" placeholder="无"${extra}>`;
+  const stepper = (input, attrs = '', cls = '') => `<div class="dz-num${cls ? ' ' + cls : ''}"${attrs}><button type="button" class="dz-step" data-step="-1" tabindex="-1" aria-label="减少"><i class="fa-solid fa-minus"></i></button>${input}<button type="button" class="dz-step" data-step="1" tabindex="-1" aria-label="增加"><i class="fa-solid fa-plus"></i></button></div>`;
+  const unitSeg = pct => `<span class="dz-useg" role="group" aria-label="单位">${[['0', '点'], ['1', '%']].map(([k, l]) => `<button type="button" data-pctset="${k}" class="${(pct ? '1' : '0') === k ? 'on' : ''}" aria-pressed="${(pct ? '1' : '0') === k}">${l}</button>`).join('')}</span>`;
+  const COST_RES = ['魂力', '精神力', '体力'];
+  const COMPOSE = {
+    // 正负：负数写「-」；正数只在原值 / 默认值带「+」时写「+」（修炼增益 1.15 这类原样不带号）
+    signed: h => { const n = h.querySelector('input').value.trim(); return n === '' ? '' : `${h.dataset.sign === '-' ? '-' : h.dataset.plus === '1' ? '+' : ''}${n}${h.dataset.pct === '1' ? '%' : ''}`; },
+    amt: h => { const n = h.querySelector('input').value.trim(); return n === '' ? '' : `${n}${h.dataset.pct === '1' ? '%' : ''}`; },
+    pct: h => { const n = h.querySelector('input[type=number]').value.trim(); return n === '' ? '' : `${n}%`; },
+    plain: h => h.querySelector('input').value.trim(),
+    // 多资源：每格「资源:数值[%]」，逗号连接；全空 = 无
+    costmap: h => [...h.querySelectorAll('[data-res]')].map(r => { const n = r.querySelector('input').value.trim(); return Number(n) > 0 ? `${r.dataset.res}:${Number(n)}${r.dataset.pct === '1' ? '%' : ''}` : ''; }).filter(Boolean).join(','),
+  };
+  const unitCtl = (c, f, a) => {
+    if (!f.unit) return '';
+    const uo = (f.unit.options || []).map(o => typeof o === 'object' ? { value: String(o.value), label: String(o.label ?? o.value) } : { value: String(o), label: String(o) });
+    if (f.unit.locked || !uo.length) return `<span class="dz-ufix">${esc(f.unit.value === '百分比' ? '%' : f.unit.value || '点数')}</span>`;
+    // 只有「点数 / 百分比」两档时用紧凑的「点 | %」切换（与消耗字段一致），否则用下拉
+    if (uo.length === 2 && uo.every(o => ['点数', '百分比'].includes(o.value))) return `<span class="dz-useg" role="group" aria-label="单位" data-unit-act="${A({ ...a, type: 'unit' })}">${uo.map(o => `<button type="button" data-unitset="${esc(o.value)}" class="${o.value === (f.unit.value || '点数') ? 'on' : ''}" aria-pressed="${o.value === (f.unit.value || '点数')}">${o.value === '百分比' ? '%' : '点'}</button>`).join('')}</span>`;
+    return c.pick(JSON.stringify({ ...a, type: 'unit' }), f.unit.value || '点数', uo);
+  };
+  // 百分号规则：数据层给了单位 → 按单位（锁定即固定）；没给 → 看校验式第一段：「%」结尾必带、「%?」可选（给点 / % 切换）、没有就不带
+  const pctRule = f => {
+    if (f.kind === 'percent') return 'force';
+    if (f.unit) return f.unit.locked ? (f.unit.value === '百分比' ? 'force' : 'none') : 'model';
+    const alt = String(f.pattern || '').split('|')[0];
+    return /%\?$/.test(alt) ? 'toggle' : /%$/.test(alt) ? 'force' : f.pattern ? 'none' : 'toggle';
+  };
+  const sgnBtn = sign => `<button type="button" class="dz-sgn ${sign === '-' ? 'neg' : 'pos'}" data-sgn aria-label="正负，当前${sign === '-' ? '减少' : '增加'}"><i class="fa-solid fa-${sign === '-' ? 'minus' : 'plus'}"></i></button>`;
+  const signedCtl = (c, f, a, act) => {
+    const s = String(f.value ?? '').trim(), m = /^([+-]?)(\d+(?:\.\d+)?)(%?)$/.exec(s); if (s && !m) return null; // x1.5 倍率写法退回文本框
+    const ref = String(f.default ?? f.placeholder ?? ''), rule = pctRule(f), sign = m?.[1] === '-' ? '-' : '+', plus = m ? m[1] === '+' : !/^\d/.test(ref);
+    const pct = rule === 'force' ? true : rule === 'none' ? false : s ? !!m[3] : rule === 'model' ? f.unit.value === '百分比' : /%$/.test(ref);
+    const unit = f.unit && rule !== 'toggle' ? unitCtl(c, f, a) : rule === 'toggle' ? unitSeg(pct) : rule === 'force' ? '<span class="dz-ufix">%</span>' : '<span></span>';
+    // 1.15 这类小数倍率按 0.05 步进，其余按 1
+    const fine = !pct && m && m[2].includes('.') && Number(m[2]) < 10;
+    return `<div class="dz-signed"${act} data-compose="signed" data-sign="${sign}" data-plus="${plus ? 1 : 0}" data-pct="${pct ? 1 : 0}">${f.positiveOnly ? '<span></span>' : sgnBtn(sign)}${stepper(numIn(m?.[2] ?? '', { min: 0, stepBy: fine ? 0.05 : null }))}${unit}</div>`;
+  };
+  // 原版类型是「文本」、内容却是数字的字段
+  const NUM_TEXT = { 转化比例: { min: 0, stepBy: 0.1 } };
+  const numCtl = (c, f, a) => {
+    const k = f.kind, s = String(f.value ?? '').trim(), act = ` data-act="${A(a)}"`;
+    if (k === 'number') return f.unit && a.type === 'effectField' ? `<div class="dz-unit">${stepper(numIn(s, f), act)}${unitCtl(c, f, a)}</div>` : stepper(numIn(s, f), act);
+    if (k === 'signed' || k === 'percent') return signedCtl(c, f, a, act);
+    if (k !== 'text') return null;
+    if (f.resource) { const pct = /%$/.test(s); return `<div class="dz-amt"${act} data-compose="amt" data-pct="${pct ? 1 : 0}">${stepper(numIn(s.replace(/%$/, ''), { min: 0, max: pct ? 100 : null }))}${unitSeg(pct)}</div>`; }
+    if (f.type === '概率' || f.key === '触发概率') {
+      const n = /%$/.test(s) ? s.slice(0, -1) : s === '' ? '' : String(Number((Number(s) * 100).toFixed(2)));
+      return `<div class="dz-pct"${act} data-compose="pct"><input type="range" min="0" max="100" step="1" value="${esc(n || 0)}" style="--p:${Number(n) || 0}%" aria-label="${esc(f.label || '概率')}"${n === '' ? ' class="unset"' : ''}><span class="dz-pct-v">${numIn(n, { min: 0, max: 100 })}<i>%</i></span></div>`;
+    }
+    if (f.type === 'COST') {
+      // 伤害结算的触发消耗只收启动阶段绝对值（原版断言），不给 % 切换
+      const abs = f.key === '触发消耗', map = Object.fromEntries([...s.matchAll(/([^\s|｜+，,;；:：]+)\s*[:：]\s*(\d+(?:\.\d+)?%?)/g)].map(x => [x[1], x[2]]));
+      return `<div class="dz-costmap"${act} data-compose="costmap">${COST_RES.map(r => { const v = map[r] || '', pct = /%$/.test(v); return `<div class="dz-res" data-res="${r}" data-pct="${pct ? 1 : 0}"><span>${r}</span><div class="dz-amt">${stepper(numIn(v.replace(/%$/, ''), { min: 0 }), '', 'mini')}${abs ? '' : unitSeg(pct)}</div></div>`; }).join('')}</div>`;
+    }
+    if (f.key === '数值') return signedCtl(c, f, a, act);
+    if (NUM_TEXT[f.key] && (s === '' || /^\d+(\.\d+)?$/.test(s))) return stepper(numIn(s, NUM_TEXT[f.key]), `${act} data-compose="plain"`);
+    return null;
+  };
+
+  // ---------- 单个控件 ----------
+  const ctl = (c, f, a) => {
+    const k = f.kind;
+    const nc = numCtl(c, f, a); if (nc) return nc;
+    if (k === 'select') { const o = opts(f.options); return c.pick(JSON.stringify(a), f.value ?? '', o.length ? o : [{ value: String(f.value ?? ''), label: String(f.value || '无') }]); }
+    if (k === 'multi') {
+      const sel = new Set(Array.isArray(f.selected) ? f.selected.map(String) : String(f.value || '').split('|').filter(Boolean));
+      return `<div class="dz-chips" role="group" data-act="${A(a)}" data-multi="${f.multiple === false ? 'one' : 'many'}">${opts(f.options).map(o => `<button type="button" class="dz-chip${sel.has(o.value) ? ' on' : ''}${(f.recommended || []).includes(o.value) ? ' rec' : ''}" aria-pressed="${sel.has(o.value)}" data-v="${esc(o.value)}"${o.hint ? ` data-hint="${esc(o.hint)}"` : ''}>${esc(o.label)}</button>`).join('')}</div>`;
+    }
+    if (k === 'bool') return `<label class="dz-tg"><input type="checkbox" data-act="${A(a)}" data-bool${f.value === true || f.value === '启用' ? ' checked' : ''}><i></i></label>`;
+    if (k === 'textarea') return `<textarea data-act="${A(a)}" rows="3"${f.placeholder ? ` placeholder="${esc(f.placeholder)}"` : ''}>${esc(f.value)}</textarea>`;
+    if (k === 'tick') return `<div class="dz-tick" data-act="${A(a)}" data-tick>${['日', '时', '分'].map(p => { const lim = f.partLimits?.[p] || {}; return stepper(`<span class="dz-nv"><input type="number" data-part="${p}" value="${esc(f.parts?.[p] ?? 0)}" min="${lim.min ?? 0}"${lim.max != null ? ` max="${lim.max}"` : ''} step="${lim.step ?? 1}" aria-label="${p}"><i>${p}</i></span>`, '', 'mini'); }).join('')}</div>`;
+    if (k === 'static') return `<span class="dz-static">${esc(f.display ?? f.value)}</span>`;
+    const input = `<input type="${k === 'number' ? 'number' : 'text'}" data-act="${A(a)}" value="${esc(f.value)}"${f.min != null ? ` min="${f.min}"` : ''}${f.max != null ? ` max="${f.max}"` : ''}${f.step != null ? ` step="${f.step}"` : ''}${f.placeholder ? ` placeholder="${esc(f.placeholder)}"` : ''}>`;
+    if (f.unit && a.type === 'effectField') return `<div class="dz-unit">${input}${unitCtl(c, f, a)}</div>`;
+    return input;
+  };
+  // 字段 = 标签（含悬停说明）+ 控件；多选 / 时长 / 只读用 div，避免 label 把点击转给第一个按钮
+  const field = (c, f, a) => {
+    if (!f || f.visible === false || f.kind === 'hidden') return '';
+    const wide = f.wide || ['textarea', 'multi'].includes(f.kind) && (f.options || []).length > 4 || f.kind === 'text' && /描述/.test(f.label || '');
+    const extra = [f.kind === 'select' ? curOptHint(f) : '', f.summary && f.kind !== 'multi' ? `效果：${f.summary}` : ''];
+    // 内含按钮的控件（步进 / 正负 / 单位）不能包在 label 里：点标签文字会触发第一个按钮
+    const tag = ['multi', 'tick', 'static', 'number', 'signed', 'percent'].includes(f.kind) || f.kind === 'text' && (f.resource || ['概率', 'COST'].includes(f.type) || ['触发概率', '数值'].includes(f.key) || NUM_TEXT[f.key]) ? 'div' : 'label';
+    return `<${tag} class="dzf${wide ? ' wide' : ''}">${lab(c, f, extra)}${ctl(c, f, a)}</${tag}>`;
+  };
+  const btn = (a, html, o = {}) => `<button type="button" class="key-s${o.cls ? ' ' + o.cls : ''}" data-dz2="${A(a)}"${o.arm ? ' data-arm' : ''}${o.title ? ` title="${esc(o.title)}"` : ''}>${html}</button>`;
+
+  // ---------- 效果行 ----------
+  const fv = (row, key) => row.fields.find(f => f.key === key)?.value;
+  const rowBrief = row => {
+    const key = ['数值', '威力倍率', '状态', '结算', '判定', '规则', '资源', '属性', '干扰', '位移类型', '授予效果'].map(k => fv(row, k)).find(v => v && typeof v !== 'object');
+    return [fv(row, '目标'), key && String(key).replace(/\|/g, '、')].filter(Boolean).join(' · ');
+  };
+  // 原版把一些固定选项字段画成了文本框（如护盾模式）：引擎的原型字段选项表里有选项的，改成下拉
+  const engineOpts = (proto, key) => { try { const o = window.COCKPIT.rt('读取原型字段选项_V1')?.(proto, key); return Array.isArray(o) && o.length ? [...o] : null; } catch (e) { return null; } };
+  const asSelect = (f, proto) => {
+    if (f.kind !== 'text') return f;
+    const o = engineOpts(proto, f.key); if (!o) return f;
+    const v = String(f.value ?? '');
+    return { ...f, kind: 'select', options: (v && !o.includes(v) ? [v, ...o] : o).map(x => ({ value: x, label: x })) };
+  };
+  const rowFields = (c, row) => row.fields.map(f => {
+    if (f.visible === false || f.kind === 'hidden' || f.kind === 'branch') return '';
+    // 效果级「副作用列表」：原版保存时把它当黑名单字段拦下（填了就存不了），副作用在独立的副作用分区里设，这里不画
+    if (f.key === '副作用列表') return '';
+    f = asSelect(f, row.prototypeSelect?.value);
+    if (f.kind === 'nested') return nestedBlock(c, row, f);
+    if (f.kind === 'object') return `<div class="dzf wide">${lab(c, f)}<div class="dz2-grid">${(f.subfields || []).map(s => field(c, s, { type: 'objectField', path: row.path, key: s.key })).join('')}</div></div>`;
+    if (f.kind === 'group') return `<details class="dz-group dzf wide"${f.open ? ' open' : ''}><summary>${esc(f.label)}<span>${esc(f.summary || '')}</span>${c.hint(f.hint || '')}</summary><div class="dz2-grid">${(f.fields || []).filter(s => s.key !== '副作用列表').map(s => field(c, asSelect(s, row.prototypeSelect?.value), { type: 'effectField', path: row.path, key: s.key })).join('')}</div></details>`;
+    return field(c, f, { type: 'effectField', path: row.path, key: f.key });
+  }).join('');
+  // 子效果（机制授予的作用效果、条件分支的替换 / 追加效果）：紧凑块，原型可换、可删
+  const subRow = (c, row) => `<div class="fx-sub">
+      <div class="fx-sub-head">${field(c, { ...row.prototypeSelect, label: '原型' }, { type: 'prototype', path: row.path })}${row.removable ? btn({ type: 'removeEffect', path: row.path }, '<i class="fa-solid fa-xmark"></i>', { cls: 'danger', arm: true, title: '删除这条子效果' }) : ''}</div>
+      <div class="dz2-grid">${rowFields(c, row)}</div>${branchBlock(c, row)}</div>`;
+  const nestedBlock = (c, row, f) => `<div class="dzf wide fx-nested">${lab(c, f)}${(f.rows || []).map(r => subRow(c, r)).join('')}<div class="dz2-actions">${btn({ type: 'addEffect', path: [...row.path, f.key] }, `<i class="fa-solid fa-plus"></i> ${esc(f.label || '子效果')}`, { cls: 'mini' })}</div></div>`;
+  const branchBlock = (c, row) => {
+    const f = row.fields.find(x => x.kind === 'branch'); if (!f || f.visible === false) return '';
+    const p = row.path;
+    const conds = (b, bi) => b.conditions.map((cd, ci) => {
+      const base = { type: 'conditionField', path: p, branch: bi, index: ci };
+      const val = cd.值 && cd.值.control ? { ...cd.值.control, label: cd.值.label || '值' } : cd.值 ? { ...cd.值, label: cd.值.label || '值' } : null;
+      return `<div class="fx-cond"${cd.preview ? ` data-hint="${esc(cd.preview)}"` : ''}>${field(c, cd.类型, { ...base, key: '类型' })}${cd.对象 && cd.对象.visible !== false && cd.对象.kind !== 'hidden' ? field(c, { ...cd.对象, kind: 'static' }, base) : ''}${cd.比较 && cd.比较.visible !== false ? field(c, cd.比较, { ...base, key: '比较' }) : ''}${val && val.visible !== false ? field(c, val, { ...base, key: '值' }) : ''}${cd.状态 && cd.状态.visible !== false ? field(c, cd.状态, { ...base, key: '状态' }) : ''}${cd.removable ? btn({ type: 'removeCondition', path: p, branch: bi, index: ci }, '<i class="fa-solid fa-xmark"></i>', { cls: 'danger dz2-row-del', title: '删除这个条件' }) : '<span></span>'}</div>`;
+    }).join('');
+    const lists = (b, bi) => ['替换效果', '追加效果'].map(k => b[k] && b[k].visible !== false ? `<div class="fx-nested"><span class="dzf-l">${esc(b[k].label || k)}${c.hint(b[k].hint || '')}</span>${(b[k].rows || []).map(r => subRow(c, r)).join('')}<div class="dz2-actions">${btn({ type: 'addEffect', path: [...p, '条件分支', bi, k] }, `<i class="fa-solid fa-plus"></i> ${esc(k)}`, { cls: 'mini' })}</div></div>` : '').join('');
+    return `<div class="fx-branches">
+      <div class="dz2-inline">${lab(c, { label: '条件分支', hint: f.hint, tableHint: f.tableHint })}<label class="dz-tg"><input type="checkbox" data-act="${A({ type: 'branchEnabled', path: p })}" data-bool${f.enabled ? ' checked' : ''}><i></i></label></div>
+      ${f.enabled ? (f.branches || []).map((b, bi) => `<div class="fx-branch">
+        <div class="fx-branch-head"><i class="fa-solid fa-code-branch"></i>分支 ${bi + 1}${btn({ type: 'removeBranch', path: p, branch: bi }, '<i class="fa-solid fa-trash"></i>', { cls: 'danger', arm: true, title: '删除这个分支' })}</div>
+        ${conds(b, bi)}
+        <div class="dz2-actions">${btn({ type: 'addCondition', path: p, branch: bi }, '<i class="fa-solid fa-plus"></i> 条件', { cls: 'mini' })}</div>
+        <div class="dz2-grid">${field(c, b.action, { type: 'branchAction', path: p, branch: bi })}</div>
+        ${lists(b, bi)}
+      </div>`).join('') + `<div class="dz2-actions">${btn({ type: 'addBranch', path: p }, '<i class="fa-solid fa-code-branch"></i> 分支', { cls: 'mini' })}</div>` : ''}
+    </div>`;
+  };
+
+  // ---------- 分区 ----------
+  // 附带属性：原版按技能类型推荐的属性标成推荐样式（schema.top.recommendedAttributes）
+  const recAttrs = form => { try { return M().schema.top.recommendedAttributes(form) || []; } catch (e) { return []; } };
+  const topFields = (c, sec, v) => `<div class="dz2-grid">${(sec.fields || []).filter(f => f.kind !== 'fusionParticipants').map(f => field(c, f.key === 'attachedAttributes' ? { ...f, recommended: recAttrs(v.draft) } : f, { type: 'top', key: f.key })).join('')}</div>`;
+  // 融合对象：每行「角色 + 武魂」；本人那一行角色固定、不可移除（数据层 role=self）
+  const fusionRows = (c, f) => { const rows = f?.rows || [], selfN = rows.filter(r => r.role === 'self').length; let si = 0, pi = 0; return rows.map((r, i) => `<div class="dz2-item fx-party${r.role === 'self' ? ' self' : ''}"><span class="chip s">${r.role === 'self' ? `本人${selfN > 1 ? ' ' + ++si : ''}` : `搭档 ${++pi}`}</span><div class="dz2-grid">${field(c, r.char, { type: 'fusionParticipant', index: i, key: 'char' })}${field(c, r.spirit, { type: 'fusionParticipant', index: i, key: 'spirit' })}</div>${r.removable ? btn({ type: 'fusionRemove', index: i }, '<i class="fa-solid fa-xmark"></i>', { cls: 'danger', arm: true, title: '移除这个融合对象' }) : '<span></span>'}</div>`).join(''); };
+  const secHead = (c, sec, en) => `<h3>${esc(sec.title)}${en ? `<span class="en">${esc(en)}</span>` : ''}${c.hint(sec.hint || '')}</h3>`;
+  const effectsSec = (c, v, sec, ui) => {
+    const rows = v.rows || [], sel = Math.min(Math.max(0, ui.dzRow || 0), Math.max(0, rows.length - 1)), row = rows[sel];
+    const protoOpts = opts(rows[0]?.prototypeSelect?.options || []);
+    return `<section class="dz2-sec">${secHead(c, sec, `${rows.length} 条`)}
+      <div class="fx-strip" role="tablist">${rows.map((r, i) => `<button type="button" role="tab" class="fx-card${i === sel ? ' on' : ''}" aria-selected="${i === sel}" data-dz2-row="${i}"${opts(r.prototypeSelect.options).find(o => o.value === r.prototypeSelect.value)?.hint ? ` data-hint="${esc(opts(r.prototypeSelect.options).find(o => o.value === r.prototypeSelect.value).hint)}"` : ''}><b>${i + 1}</b><strong>${esc(r.prototypeSelect.value)}</strong><small>${esc(rowBrief(r) || '—')}</small></button>`).join('')}
+        <span class="fx-add">${c.pick(JSON.stringify({ type: '__addEffect' }), '', protoOpts, { placeholder: '＋ 新增效果' })}</span></div>
+      ${row ? `<div class="fx-detail">
+        <div class="fx-detail-head">${field(c, { ...row.prototypeSelect, label: '原型' }, { type: 'prototype', path: row.path })}<span></span>${row.removable ? btn({ type: 'removeEffect', path: row.path }, '<i class="fa-solid fa-trash"></i> 删除', { cls: 'danger', arm: true }) : ''}</div>
+        <div class="dz2-grid">${rowFields(c, row)}</div>
+        ${branchBlock(c, row)}
+      </div>` : `<span class="lbl">术式阵列未装配${c.hint(v.emptyGuide?.desc || v.emptyGuide || '')}</span>`}
+    </section>`;
+  };
+  const sideSec = (c, v, sec) => {
+    const list = Array.isArray(v.sideEffects) ? v.sideEffects : (v.sideEffects?.rows || []);
+    return `<section class="dz2-sec">${secHead(c, sec, list.length ? `${list.length} 条` : '')}
+      ${list.map((r, i) => `<div class="dz2-item"${r.summary ? ` data-hint="${esc(r.summary)}"` : ''}><div class="dz2-grid">${(r.fields || []).map(f => f.hidden ? '' : field(c, f, { type: 'sideEffectField', index: i, key: f.key })).join('')}</div>${btn({ type: 'removeSideEffect', index: i }, '<i class="fa-solid fa-xmark"></i>', { cls: 'danger', arm: true, title: '删除这条副作用' })}</div>`).join('')}
+      <div class="dz2-actions">${btn({ type: 'addSideEffect' }, '<i class="fa-solid fa-plus"></i> 副作用', { cls: 'mini' })}</div></section>`;
+  };
+  const sectionHtml = (c, v, sec, ui) => {
+    if (sec.visible === false) return '';
+    if (sec.id === 'prototypes') return effectsSec(c, v, sec, ui);
+    if (sec.id === 'sideEffects') return sideSec(c, v, sec);
+    if (sec.id === 'fusion') { const pf = (sec.fields || []).find(f => f.kind === 'fusionParticipants'); return `<section class="dz2-sec">${secHead(c, sec, pf ? `${(pf.rows || []).length} 人` : '')}${topFields(c, sec, v)}${fusionRows(c, pf)}${pf?.canAdd ? `<div class="dz2-actions">${btn({ type: 'fusionAdd' }, '<i class="fa-solid fa-plus"></i> 融合对象', { cls: 'mini' })}</div>` : ''}</section>`; }
+    if (!(sec.fields || []).some(f => f.visible !== false && f.kind !== 'hidden')) return '';
+    const grow = (sec.fields || []).some(f => f.kind === 'textarea' && f.visible !== false);
+    // 分区的总开关（第一个可见字段是与分区同名的开关，如「技能掌控度」）放进标题行，不再重复一行标签
+    const lead = (sec.fields || []).find(f => f.visible !== false && f.kind !== 'hidden');
+    if (lead?.kind === 'bool' && lead.label === sec.title) {
+      const rest = { ...sec, fields: sec.fields.filter(f => f !== lead) };
+      return `<section class="dz2-sec"><h3>${esc(sec.title)}${c.hint([sec.hint, lead.hint].filter(Boolean).join('\n\n'))}<span class="dz2-headtg">${ctl(c, lead, { type: 'top', key: lead.key })}</span></h3>${rest.fields.some(f => f.visible !== false && f.kind !== 'hidden') ? topFields(c, rest, v) : ''}</section>`;
+    }
+    return `<section class="dz2-sec${grow ? ' grow' : ''}">${secHead(c, sec)}${topFields(c, sec, v)}</section>`;
+  };
+
+  // ---------- 会话 ----------
+  const metaOf = (c, cur) => {
+    const m = M().meta, parts = cur.key.split('/'), rest = parts.slice(1).join('/'), tail = parts.slice(2).join('/');
+    switch (cur.group) {
+      case '魂环魂技': return m.ring(c.name, parts[0], parts[1], parts[2], parts[3], cur.魂技名);
+      case '自创魂技': return m.custom(c.name, rest, cur.魂技名);
+      case '武魂融合技': return m.fusion(c.name, rest, cur.魂技名);
+      case '血脉散技': return m.blood(c.name, rest, cur.魂技名);
+      case '血脉特性': return m.bloodPassive(c.name, rest, cur.魂技名);
+      case '血脉魂环': return m.bloodRing(c.name, parts[1], tail, cur.魂技名);
+      case '魂骨附带': return m.bone(c.name, parts[1], tail, cur.魂技名);
+      case '装备技能': return m.equip(c.name, cur.slotPath, cur.skKey, cur.魂技名);
+      default: return null;
+    }
+  };
+  const samePath = (a, b) => Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((x, i) => String(x) === String(b[i]));
+  const sKey = (c, cur) => `${c.name}\u0001${cur.key}`;
+  const sessionOf = (c, cur) => {
+    const ui = c.state.ui, k = sKey(c, cur); ui.dz2 = ui.dz2 || {};
+    if (!ui.dz2[k]) {
+      const meta = metaOf(c, cur); if (!meta) return null;
+      // 魂骨实例上没有、取自物品定义的技能：会话仍挂在佩戴者路径上（预算按佩戴者算），技能显式传入，保存时改写到定义路径
+      const writePath = cur.srcPath && !samePath(cur.srcPath, meta.path) ? cur.srcPath : null;
+      ui.dz2[k] = { ss: M().session(writePath ? cur.src : null, meta, c.S), meta, writePath, entryKey: cur.key, isNew: !!cur.isNew };
+    }
+    return ui.dz2[k];
+  };
+  const DESIGNABLE = ['魂环魂技', '自创魂技', '武魂融合技', '血脉散技', '血脉特性', '血脉魂环', '魂骨附带', '装备技能'];
+  // 列表图标：魂环技能用魂环章，其余按来源
+  const GROUP_ICON = { 自创魂技: 'pen-nib', 武魂融合技: 'link', 血脉散技: 'droplet', 血脉特性: 'droplet', 血脉魂环: 'droplet', 魂骨附带: 'bone', 装备技能: 'hammer' };
+  const designable = s => DESIGNABLE.includes(s.group);
+  // 新建：同原版「新建自创魂技 / 新建武魂融合技」入口——在新路径上打开空白设计台，保存后才写进存档
+  const NEW_KIND = { 自创魂技: { prefix: '自创', label: '新建自创魂技' }, 武魂融合技: { prefix: '融合', label: '新建武魂融合技' } };
+  const newEntries = c => (c.state.ui.dzNew || []).filter(n => n.char === c.name);
+  const createNew = (c, group) => {
+    const k = NEW_KIND[group]; if (!k) return null;
+    const id = `${group}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+    const entry = { key: `${k.prefix}/${id}`, group, 魂技名: k.label, from: '未保存', char: c.name, isNew: true };
+    (c.state.ui.dzNew = c.state.ui.dzNew || []).push(entry);
+    return entry;
+  };
+  const dropNew = (c, key) => { const ui = c.state.ui; ui.dzNew = (ui.dzNew || []).filter(n => !(n.key === key && n.char === c.name)); if (ui.dz2) delete ui.dz2[`${c.name}\u0001${key}`]; };
+  const newBtns = () => `<div class="dz2-new">${Object.keys(NEW_KIND).map(g => `<button class="key-s mini" type="button" data-dz2-new="${g}"><i class="fa-solid fa-plus"></i> ${g}</button>`).join('')}</div>`;
+  // 删除 / 放弃类按钮原地二次确认：第一次点亮，3 秒内再点才执行；返回 true 表示这次只是点亮
+  const armFirst = b => {
+    if (b.classList.contains('armed')) return false;
+    b.classList.add('armed'); b.dataset.label = b.innerHTML; b.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> 再点确认';
+    clearTimeout(b._t); b._t = setTimeout(() => { b.classList.remove('armed'); b.innerHTML = b.dataset.label; }, 3000);
+    return true;
+  };
+
+  // 左翼底部：对抗试算；最终摘要放右翼预算明细之后（摘要只露几行，全文悬停看）
+  const readout = (c, ss, deps) => `<div class="dz-sim">${deps.dzSim(c, ss.tempSkill())}</div>`;
+  const summaryHtml = ss => { const sum = ss.summary(), none = sum === '未设置'; return `<div class="dz2-summary"><h3>最终摘要</h3><p class="${none ? 'empty' : 'clamp'}"${none ? '' : ` data-hint="${esc(sum)}"`}>${esc(sum)}</p></div>`; };
+  const withSummary = (html, sum) => { const i = html.search(/<div class="(?:warn|okline)">/); return i < 0 ? sum + html : html.slice(0, i) + sum + html.slice(i); };
+  const budget = (c, ss, cur, deps) => {
+    // 一次保存试跑：拿到与保存断言同一技能、同一上下文的预算（原版魂环魂技按魂环位的标准角色算），以及原版保存校验结果
+    let res; try { res = ss.save(SAVE_OPTS); } catch (e) { res = { budget: null, messages: [{ level: 'error', text: String(e.message || e) }] }; }
+    const msgs = res.messages || [], err = msgs.find(m => m.level === 'error');
+    let html = res.budget ? deps.dzGauge(c, { r: res.budget, block: err ? String(err.text).replace(/^技能生成错误[:：]?/, '') : '' }) : deps.dzPreview(c, ss.tempSkill(), cur.ring);
+    // 保存按钮以数据层的原版保存校验为准（含 COST 断言与结构校验）
+    // 魂骨 / 装备的技能取自物品定义时，保存写回定义：悬停保存键说明影响范围
+    const defHint = cur.srcPath?.[0] === '物品' ? ` data-hint="${esc(`保存写回物品定义「${cur.srcPath[2]}」：持有这件物品的角色一起生效`)}"` : '';
+    html = html.replace(/<button class="cta" type="button" data-dz-save[^>]*>/, `<button class="cta" type="button" data-dz2-save${err ? ' disabled' : ''}${defHint}>`);
+    if (err && !/无法保存/.test(html)) html = html.replace('<button class="cta"', `<div class="warn"><i class="fa-solid fa-ban"></i><span>无法保存：${esc(err.text)}</span></div><button class="cta"`);
+    html = withSummary(html, summaryHtml(ss));
+    const warns = msgs.filter(m => m.level === 'warn').map(m => `<li>${esc(m.text)}</li>`).join('');
+    return html + (warns ? `<div class="dz2-warns"><i class="fa-solid fa-circle-exclamation"></i><span>保存提醒 ${msgs.filter(m => m.level === 'warn').length} 条</span>${c.hint(msgs.filter(m => m.level === 'warn').map(m => m.text).join('\n'))}</div>` : '');
+  };
+
+  const design = (c, deps) => {
+    if (!M()) return null;
+    const ui = c.state.ui, saved = deps.allSkills(c).filter(designable);
+    const all = [...saved, ...newEntries(c).filter(n => !saved.some(s => s.key === n.key))];
+    if (!all.length) return { tag: 'CORE · DESIGNER', wide: 'both', core: `<div class="pad sparse">${c.empty('pen-ruler', '还没有可设计的技能')}${newBtns()}</div>`, railL: '', railR: '' };
+    const cur = all.find(s => s.key === ui.skill) || all[0], tabDef = TABS.find(t => t[0] === ui.dtab) || TABS[0], tab = tabDef[0];
+    const S = sessionOf(c, cur); if (!S) return null;
+    const { ss } = S; let v;
+    try { v = ss.view(); } catch (e) { console.error(e); return null; }
+    if (ui.dzRowFor !== cur.key) { ui.dzRow = 0; ui.dzRowFor = cur.key; }
+    const secs = v.sections.filter(s => tabDef[2].includes(s.tab));
+    const body = secs.map(s => sectionHtml(c, v, s, ui)).join('') || '<span class="lbl">本页没有可设置的项目</span>';
+    return {
+      tag: 'CORE · DESIGNER',
+      core: `<div class="pad" data-dz2-key="${esc(sKey(c, cur))}">
+        ${c.head('pen-ruler', v.draft?.name || cur.魂技名 || '技能设计台', 'Designer', 'gd', `<span class="legend">${esc(v.typeDisplay || '')} · ${esc(cur.group)}</span>`)}
+        <div class="seg" role="tablist">${TABS.map(([k, l]) => `<button class="key-s ${k === tab ? 'on' : ''}" type="button" role="tab" aria-selected="${k === tab}" data-set="dtab=${k}">${l}</button>`).join('')}</div>
+        <div class="dz-body"><div class="dz2${tab === 'show' ? ' fill' : ''}">${body}</div></div>
+        ${ui.dzErr ? `<div class="warn"><i class="fa-solid fa-triangle-exclamation"></i><span>${esc(ui.dzErr)}</span></div>` : ''}
+      </div>`,
+      mount: face => mount(face, c, cur, S, deps),
+      // 左翼：选技能 → 和标准对手比（对抗试算）；右翼：预算 → 最终摘要 → 保存
+      left: `<div class="pad">${c.head('book', '技能', 'Skills')}<div class="list dz2-skills">${all.map(s => `<button class="row${s === cur ? ' on' : ''}" type="button" data-set="skill=${esc(s.key)}" aria-current="${s === cur}">${s.ring ? c.ringMedal(s.ring, String(s.ring.slot).replace(/\D/g, ''), true) : c.sock(GROUP_ICON[s.group] || 'pen-ruler')}<div><strong>${esc(s.魂技名)}</strong><small>${s.isNew ? '未保存' : s.ring ? esc(s.from || '') : esc(s.group)}</small></div><span></span></button>`).join('')}</div>${newBtns()}<div class="groove"></div><div class="dz2-readout">${readout(c, ss, deps)}</div></div>`,
+      railL: `<div class="rail">${c.sock('pen-ruler', 'gd')}<b>${all.length}</b><small>可设计技能</small></div>`,
+      right: `<div class="pad">${c.head('scale-balanced', '预算核算', 'Budget', 'gd')}<div class="dz-preview">${budget(c, ss, cur, deps)}</div>${ui.dzSaved === cur.key ? '<div class="okline dz2-saved"><i class="fa-solid fa-floppy-disk"></i>已写入存档</div>' : ''}${cur.isNew ? '<button class="key-s danger dz2-discard" type="button" data-dz2-discard><i class="fa-solid fa-trash"></i> 放弃新建</button>' : ''}</div>`,
+    };
+  };
+
+  // ---------- 事件 ----------
+  const focusKey = () => { const el = document.activeElement; const host = el?.closest?.('[data-act],[data-picker]'); return host ? { act: host.dataset.act || host.dataset.picker, part: el.dataset.part || el.dataset.res || '' } : null; };
+  const restoreFocus = k => {
+    if (!k) return;
+    const el = [...document.querySelectorAll('#core [data-act],#core [data-picker]')].find(x => (x.dataset.act || x.dataset.picker) === k.act); if (!el) return;
+    const t = k.part ? el.querySelector(`[data-part="${k.part}"],[data-res="${k.part}"]`) : el.matches('input,textarea') ? el : el.querySelector('.picker-btn,input:not([type=range]),input,button');
+    t?.focus({ preventScroll: true });
+  };
+  function mount(face, c, cur, S, deps) {
+    const { ss } = S, ui = c.state.ui;
+    // 左翼列表里选中的技能滚到可见处（新建项排在末尾）；翼板在主屏之后重绘，等下一帧
+    requestAnimationFrame(() => {
+      const list = [...document.querySelectorAll('.dz2-skills')].pop(), on = list?.querySelector('.row.on'); if (!on) return;
+      const lr = list.getBoundingClientRect(), r = on.getBoundingClientRect();
+      if (r.top < lr.top || r.bottom > lr.bottom) list.scrollTop += r.top - lr.top - (lr.height - r.height) / 2;
+    });
+    const run = (a, quiet = false) => {
+      try { ss.act(a); ui.dzErr = ''; } catch (e) { ui.dzErr = String(e.message || e); }
+      ui.dzSaved = '';
+      if (quiet) return livePreview();
+      const k = focusKey(); window.COCKPIT.refresh(); restoreFocus(k);
+    };
+    // 输入中：只刷新预算 / 摘要 / 试算，不重绘表单（保住光标）；提交（change）时再整体重绘
+    const livePreview = () => {
+      const pv = [...document.querySelectorAll('.dz-preview')].pop(); if (pv) pv.innerHTML = budget(c, ss, cur, deps);
+      const ro = [...document.querySelectorAll('.dz2-readout')].pop(); if (ro) ro.innerHTML = readout(c, ss, deps);
+    };
+    const withValue = (a, value) => a.type === 'unit' ? { ...a, unit: value } : { ...a, value };
+    face.addEventListener('picker:change', e => {
+      const a = JSON.parse(e.detail.path);
+      if (a.type === '__addEffect') { const n = (ss.view().rows || []).length; ui.dzRow = n; return run([{ type: 'addEffect', path: [] }, { type: 'prototype', path: [n], value: e.detail.value }]); }
+      run(withValue(a, e.detail.value));
+    });
+    // 组合控件（正负 / 单位 / 概率 / 多资源）的值由 COMPOSE 从整组输入拼出；概率滑条与数字框互相同步
+    const valueOf = (host, t) => {
+      if (t.type === 'range') { const n = host.querySelector('input[type=number]'); n.value = t.value; t.classList.remove('unset'); t.style.setProperty('--p', t.value + '%'); }
+      else if (host.dataset.compose === 'pct') { const r = host.querySelector('input[type=range]'); r.value = t.value || 0; r.classList.toggle('unset', t.value === ''); r.style.setProperty('--p', (Number(t.value) || 0) + '%'); }
+      return host.dataset.compose ? COMPOSE[host.dataset.compose](host) : t.value;
+    };
+    face.addEventListener('input', e => {
+      const t = e.target; if (t.matches('[data-part]')) return;
+      const host = t.closest('[data-act]'); if (!host || t.type === 'checkbox') return;
+      run(withValue(JSON.parse(host.dataset.act), valueOf(host, t)), true);
+    });
+    face.addEventListener('change', e => {
+      const t = e.target, host = t.closest('[data-act]'); if (!host) return;
+      const a = JSON.parse(host.dataset.act);
+      if (host.matches('[data-tick]')) { const v = {}; host.querySelectorAll('[data-part]').forEach(i => { v[i.dataset.part] = Number(i.value) || 0; }); return run({ ...a, value: v }); }
+      if (t.type === 'checkbox') return run({ ...a, value: t.checked });
+      run(withValue(a, valueOf(host, t)));
+    });
+    // 步进：按输入框的 step（时长的「分」是 10）增减，夹在 min / max 内；空值从 0 起步。改完派发 change，走同一条写回路径
+    const nudge = (input, dir) => {
+      const st = Number(input.step) > 0 ? Number(input.step) : 1, cur = input.value === '' ? 0 : Number(input.value) || 0;
+      let n = Number((cur + dir * st).toFixed(4));
+      if (input.min !== '' && n < Number(input.min)) n = Number(input.min);
+      if (input.max !== '' && n > Number(input.max)) n = Number(input.max);
+      input.value = String(n); input.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+    face.addEventListener('click', e => {
+      const step = e.target.closest('[data-step]');
+      if (step) { const i = step.closest('.dz-num')?.querySelector('input'); if (i) nudge(i, Number(step.dataset.step)); return; }
+      const sgn = e.target.closest('[data-sgn]');
+      if (sgn) {
+        const h = sgn.closest('[data-compose]'), neg = h.dataset.sign !== '-';
+        h.dataset.sign = neg ? '-' : '+'; sgn.className = `dz-sgn ${neg ? 'neg' : 'pos'}`; sgn.innerHTML = `<i class="fa-solid fa-${neg ? 'minus' : 'plus'}"></i>`;
+        const i = h.querySelector('input'); if (i.value !== '') i.dispatchEvent(new Event('change', { bubbles: true }));
+        return;
+      }
+      const uset = e.target.closest('[data-unitset]');
+      if (uset) { if (!uset.classList.contains('on')) run({ ...JSON.parse(uset.parentElement.dataset.unitAct), unit: uset.dataset.unitset }); return; }
+      const us = e.target.closest('[data-pctset]');
+      // 点 / % 切换：单位记在最近的 data-pct 上（单个数值控件本身，或多资源里的那一格）；空值只改按钮状态
+      if (us) { const h = us.closest('[data-pct]'); if (h.dataset.pct === us.dataset.pctset) return; h.dataset.pct = us.dataset.pctset; const i = h.querySelector('input[type=number]'); us.parentElement.querySelectorAll('[data-pctset]').forEach(x => { x.classList.toggle('on', x === us); x.setAttribute('aria-pressed', x === us); }); if (i.value !== '') i.dispatchEvent(new Event('change', { bubbles: true })); return; }
+      const chip = e.target.closest('.dz-chip');
+      if (chip) {
+        const host = chip.closest('[data-multi]'), a = JSON.parse(host.dataset.act);
+        const on = new Set([...host.querySelectorAll('.dz-chip.on')].map(x => x.dataset.v));
+        if (host.dataset.multi === 'one') { on.clear(); on.add(chip.dataset.v); } else on.has(chip.dataset.v) ? on.delete(chip.dataset.v) : on.add(chip.dataset.v);
+        return run({ ...a, value: [...on] });
+      }
+      const card = e.target.closest('[data-dz2-row]');
+      if (card) { ui.dzRow = Number(card.dataset.dz2Row); return window.COCKPIT.refresh(); }
+      const b = e.target.closest('[data-dz2]'); if (!b) return;
+      // 删除类操作原地二次确认：第一次点亮，3 秒内再点才执行
+      if (b.hasAttribute('data-arm') && armFirst(b)) return;
+      const a = JSON.parse(b.dataset.dz2);
+      if (a.type === 'removeEffect' && a.path.length === 1) ui.dzRow = Math.max(0, a.path[0] - 1);
+      run(a);
+    });
+  }
+  // 保存：走数据层的原版保存链（结构校验 + COST 断言 + 写回路径），通过后把 updates 写进存档
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-dz2-save]'); if (!b || b.disabled) return;
+    const c = window.COCKPIT.ctx?.(), key = document.querySelector('[data-dz2-key]')?.dataset.dz2Key, S = c?.state.ui.dz2?.[key]; if (!S) return;
+    const r = S.ss.save(SAVE_OPTS);
+    if (!r.ok) { c.state.ui.dzErr = (r.messages.find(m => m.level === 'error') || {}).text || '保存失败'; return window.COCKPIT.refresh(); }
+    // 保存结果的 updates 一次性写回（lwcs 经桥接走 MVU 校验落楼；原型改内存存档）
+    const ops = (r.updates || []).map(u => ({ path: (S.writePath && samePath(u.path, S.meta.path) ? S.writePath : u.path).slice(), value: u.value }));
+    if (S.isNew) dropNew(c, S.entryKey);
+    delete c.state.ui.dz2[key]; c.state.ui.dzErr = ''; c.state.ui.dzSaved = S.entryKey;
+    window.COCKPIT.write(ops);
+  });
+  // 新建：捕获阶段先建好条目、选中它；按钮带 data-go（典籍页入口）时再由座舱完成跳转，否则原地刷新
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-dz2-new]'); if (!b) return;
+    const c = window.COCKPIT.ctx?.(); if (!c) return;
+    const n = createNew(c, b.dataset.dz2New); if (!n) return;
+    Object.assign(c.state.ui, { skill: n.key, dtab: 'basic', dzErr: '' });
+    if (!b.dataset.go) window.COCKPIT.refresh();
+  }, true);
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-dz2-discard]'); if (!b || armFirst(b)) return;
+    const c = window.COCKPIT.ctx?.(), S = c?.state.ui.dz2?.[document.querySelector('[data-dz2-key]')?.dataset.dz2Key]; if (!S?.isNew) return;
+    dropNew(c, S.entryKey); Object.assign(c.state.ui, { skill: '', dzErr: '' });
+    window.COCKPIT.refresh();
+  });
+
+  window.LWCS_DESIGNER_UI = { design };
+})();
+
+;
+/* source: cockpit/pages-ability.js */
+/* 能力领域：武魂 · 魂环 · 魂灵 · 血脉 · 典籍 · 融合 · 设计 · 待处理 */
+(() => {
+  const pickSoul = c => {
+    const i = Math.max(0, Math.min(c.souls.length - 1, Number(c.state.ui.soul || 0)));
+    return { soul: c.souls[i], idx: i };
+  };
+  const costText = (c, cost) => {
+    if (cost === undefined || cost === null || cost === '' || cost === '无') return '无消耗';
+    if (typeof cost === 'object') return c.entries(cost).map(([k, v]) => `${c.esc(k)} ${c.fmt(v)}`).join(' · ');
+    return c.esc(cost);
+  };
+  const allSkills = c => {
+    const out = [];
+    for (const s of c.souls) for (const sp of s.spirits) for (const r of sp.rings) for (const sk of r.skills) out.push({ key: `${s.slot}/${sp.slot}/${r.slot}/${sk.slot}`, group: '魂环魂技', from: `${s.表象名称} · ${r.slot}`, ring: r, ...sk });
+    for (const [n, sk] of c.entries(c.ch.自创魂技)) out.push({ key: `自创/${n}`, group: '自创魂技', from: '自创', ...sk, 魂技名: sk.魂技名 || n });
+    // 魂骨：同原版「合并魂骨 = { ...物品定义, ...实例 }」取附带技能；表来自物品定义时记下 srcPath，设计台保存写回定义
+    for (const [slot, b] of c.entries(c.ch.魂骨)) {
+      if (!b || typeof b !== 'object') continue;
+      const name = b.name || b.名称 || b.表象名称 || '', [cat, def] = itemDef(c, name), merged = { ...(def || {}), ...b };
+      const field = merged.附带技能 ? '附带技能' : '装备技能', fromDef = !b[field] && def?.[field];
+      for (const [n, sk] of c.entries(merged[field])) if (sk && typeof sk === 'object') out.push({ key: `魂骨/${slot}/${n}`, group: '魂骨附带', from: name ? `${slot} · ${name}` : slot, src: sk, srcPath: fromDef ? ['物品', cat, name, field, n] : ['char', c.name, '魂骨', slot, field, n], ...sk, 魂技名: sk.魂技名 || n });
+    }
+    // 装备：武器 / 防具 / 斗铠 / 机甲 + 魂导器各装配位。同原版收集口径「实例上的装备技能 || 物品定义里的」；
+    // 武器防具实例只存名称，技能在物品定义里（保存写回定义）；魂导器装配时把技能复制到了实例上（写回实例）
+    const gear = [...c.entries(c.ch.装备).filter(([k]) => k !== '魂导器').map(([k, v]) => [[k], v]), ...c.entries(c.ch.装备?.魂导器?.装配).map(([k, v]) => [['魂导器', '装配', k], v])];
+    for (const [slot, g] of gear) {
+      if (!g || typeof g !== 'object') continue;
+      const name = String(g.名称 || g.name || '').trim(), [cat, def] = itemDef(c, name), own = c.entries(g.装备技能).length > 0;
+      const field = own || def?.装备技能 ? '装备技能' : '附带技能', table = own ? g.装备技能 : def?.[field];
+      for (const [n, sk] of c.entries(table)) if (sk && typeof sk === 'object') out.push({ key: `装备/${slot.join('/')}/${n}`, group: '装备技能', slotPath: slot, skKey: n, from: `${slot[slot.length - 1]} · ${name || '未命名'}`, src: sk, srcPath: own ? ['char', c.name, '装备', ...slot, '装备技能', n] : ['物品', cat, name, field, n], ...sk, 魂技名: sk.魂技名 || n });
+    }
+    // 血脉：散技 / 特性 / 气血魂环魂技三处（同原版 buildBloodlineConfig）
+    const bl = c.ch.血脉之力 || {}, blName = c.blank(bl.血脉) ? '血脉' : bl.血脉;
+    for (const [n, sk] of c.entries(bl.技能)) out.push({ key: `血脉/${n}`, group: '血脉散技', from: blName, ...sk, 魂技名: sk.魂技名 || n });
+    for (const [n, sk] of c.entries(bl.被动)) out.push({ key: `血脉特性/${n}`, group: '血脉特性', from: blName, ...sk, 魂技名: sk.魂技名 || n });
+    for (const [rs, ring] of c.entries(bl).filter(([k, v]) => /^第\d+气血魂环$/.test(k) && v && typeof v === 'object').sort((a, b) => parseInt(a[0].slice(1), 10) - parseInt(b[0].slice(1), 10)))
+      for (const [n, sk] of c.entries(ring).filter(([k, v]) => /^第\d+血脉魂技(?:_2)?$/.test(k) && v && typeof v === 'object')) out.push({ key: `血脉环/${rs}/${n}`, group: '血脉魂环', from: `${blName} · ${rs}`, ring: { ...ring, slot: rs }, ...sk, 魂技名: sk.魂技名 || n });
+    for (const [src, cp] of c.entries(c.ch.复制效果)) for (const [n, it] of c.entries(cp?.技能列表)) out.push({ key: `复制/${src}/${n}`, group: '复制效果', from: `复制自 ${src}${cp.到期tick ? ' · 至 ' + c.tickDate(cp.到期tick) : ''}${it.剩余次数 !== undefined ? ` · 剩 ${it.剩余次数} 次` : ''}`, ...(it.技能数据 || {}), 魂技名: it.技能数据?.魂技名 || n });
+    // 融合技：技能本体在「技能数据」里，记录层只有模式 / 搭档 / 来源武魂
+    for (const [n, f] of c.entries(c.ch.武魂融合技)) out.push({ key: `融合/${n}`, group: '武魂融合技', from: `${f.融合模式 === 'self' ? '自体' : '搭档'} · ${f.融合对象 || ''}`, ...(f.技能数据 || {}), 魂技名: f.技能数据?.魂技名 || f.名称 || n });
+    return out;
+  };
+  const itemDef = (c, name) => { if (name) for (const [k, g] of c.entries(c.S.物品)) if (g && typeof g === 'object' && g[name] && typeof g[name] === 'object') return [k, g[name]]; return ['', null]; };
+  const SOURCE_GROUPS = ['魂环魂技', '自创魂技', '武魂融合技', '魂骨附带', '装备技能', '血脉散技', '血脉特性', '血脉魂环', '复制效果'];
+  const BLOOD_CHIP = { 血脉散技: '主动', 血脉特性: '被动', 血脉魂环: '环技' };
+  // 结构化效果：读 _效果数组，把「原型 / 目标 / 数值 / 持续 / 条件分支」变成图标行，原文折叠
+  const FX = {
+    资源变化: e => ({ icon: String(e.资源 || '').includes('魂力') ? 'fire-flame-curved' : 'heart-pulse', title: `${String(e.数值).startsWith('-') ? '削减' : '恢复'}${e.资源 || '资源'}` }),
+    结算修正: e => ({ icon: 'shield-halved', title: `${e.结算 || '结算'}修正` }),
+    属性变化: e => ({ icon: 'arrow-trend-up', title: `${e.属性 || '属性'}变化` }),
+  };
+  const fxOf = e => (FX[e.原型] || (() => ({ icon: 'bolt', title: e.原型 || '效果' })))(e);
+  const fxRow = (c, e) => {
+    const down = String(e.数值 || '').trim().startsWith('-'), f = fxOf(e);
+    const meta = [e.目标, e.持续回合 ? `持续 ${c.fmt(e.持续回合)} 回合` : '', e.生效方式].filter(Boolean).map(c.esc).join(' · ');
+    return `<div class="fx"><span class="ic ${down ? 'down' : ''}"><i class="fa-solid fa-${f.icon}"></i></span><strong>${c.esc(f.title)}</strong><span class="v ${down ? 'down' : ''}">${c.esc(e.数值 || '')}</span><small>${meta}</small></div>`;
+  };
+  const branchRow = (c, b) => {
+    const cond = (b.条件 || []).map(x => `${x.类型 === '使用者' ? '食用者' : c.esc(x.类型)}是${c.esc(x.值)}`).join('且');
+    const alt = (b.替换效果 || []).map(e => `${c.esc(fxOf(e).title)} ${c.esc(e.数值)}`).join('、');
+    return `<div class="fx-branch"><i class="fa-solid fa-code-branch"></i><span>若${cond}：${b.处理 === '替换效果' ? '改为' : c.esc(b.处理)} ${alt}</span></div>`;
+  };
+  // compact：悬停预览只给「效果 + 代价」，点击钉住后才展开产物、画面、原文与操作
+  const skillDetail = (c, sk, compact = false, page = false) => {
+    const cond = sk.使用条件 || {}, lim = sk.触发限制, mast = sk.技能掌控度;
+    // _效果数组 两种形态：造物承载是「包」列表（数量 / 有效期 / 使用效果），其余承载直接是效果列表——后者包成一个包
+    const list = Array.isArray(sk._效果数组) ? sk._效果数组.filter(Boolean) : [], pkgs = list.some(p => Array.isArray(p.使用效果)) ? list : list.length ? [{ 使用效果: list }] : [];
+    const sp = typeof sk.消耗 === 'object' ? c.num(sk.消耗?.魂力) : 0, pool = c.num(c.st.魂力), casts = sp ? Math.floor(pool / sp) : 0;
+    if (compact) return `<div class="insp-head">${sk.ring ? c.ringMedal(sk.ring, String(sk.ring.slot || '').replace(/\D/g, '')) : c.sock('book', 'gd')}<div><strong style="font-size:1.1em">${c.esc(sk.魂技名)}</strong><br><small>${sk.ring ? `${c.esc(sk.ring.slot)} · ${c.yearTier(sk.ring.年限)} · ${c.fmt(sk.ring.年限)} 年` : c.esc(sk.group)}${!c.blank(sk.承载方式) ? ' · ' + c.esc(sk.承载方式) : ''}</small></div></div>
+      ${pkgs.flatMap(p => (p.使用效果 || []).map(e => fxRow(c, e) + (e.条件分支 || []).map(b => branchRow(c, b)).join(''))).join('')}
+      <div class="peek-cost"><span><i class="fa-solid fa-fire-flame-curved"></i> ${sp ? `魂力 ${c.fmt(sp)} · 可放 ${casts} 次` : costText(c, sk.消耗)}</span><span><i class="fa-solid fa-hourglass-half"></i> 前摇 ${c.fmt(sk.前摇 || 0)}</span></div>
+      <small class="peek-hint">点击钉住，查看产物、画面与施展</small>`;
+    return `<div class="insp-head">${sk.ring ? c.ringMedal(sk.ring, String(sk.ring.slot || '').replace(/\D/g, '')) : c.sock('book', 'gd')}<div><strong style="font-size:1.15em">${c.esc(sk.魂技名)}</strong><br><small>${c.esc(sk.group)} · ${c.esc(sk.from)}</small></div>${page ? '' : '<button class="x" type="button" data-close-inspector aria-label="关闭">×</button>'}</div>
+      <div style="display:flex;gap:.35em;flex-wrap:wrap">${sk.ring ? `<span class="chip">${c.yearTier(sk.ring.年限)} · ${c.fmt(sk.ring.年限)} 年</span>` : ''}${!c.blank(sk.承载方式) ? `<span class="chip s">${c.esc(sk.承载方式)}</span>` : ''}${sk.触发方式 ? `<span class="chip s">触发：${c.esc(sk.触发方式)}</span>` : ''}${(sk.附带属性 || []).map(a => `<span class="chip s">${c.esc(a)}</span>`).join('')}</div>
+      ${pkgs.length ? `<section class="sec"><h3>效果</h3>${pkgs.map(p => `${(p.使用效果 || []).map(e => fxRow(c, e) + (e.条件分支 || []).map(b => branchRow(c, b)).join('')).join('')}${p.有效期tick || p.数量 ? `<small style="padding-left:.2em">产出 ${c.fmt(p.数量 || 1)} 份${p.有效期tick ? ` · 有效期 ${Math.floor(p.有效期tick / 6)} 小时` : ''}</small>` : ''}`).join('')}</section>` : ''}
+      ${sk.ring && sk.group === '魂环魂技' ? (rp => { const rows = [['palette', '颜色', c.ed(sk.ring.颜色 || '无', [...rp, '颜色'], { kind: 'enum', options: ['白', '黄', '紫', '黑', '红', '金', '无'] })], ['hourglass-half', '年限', c.ed(c.fmt(sk.ring.年限), [...rp, '年限'], { kind: 'number', integer: true, min: 0, raw: c.num(sk.ring.年限) })], ['map-pin', '来源', c.ed(c.blank(sk.ring.来源) ? '未记录' : sk.ring.来源, [...rp, '来源'], { raw: c.blank(sk.ring.来源) ? '' : sk.ring.来源 })]];
+        // 典籍主屏用数据块；浮窗里仍是紧凑的键值行
+        return `<section class="sec"><h3>魂环</h3>${page ? `<div class="tiles three">${rows.map(([i, l, v]) => `<div class="tile">${c.sock(i)}<b>${v}</b><small>${l}</small></div>`).join('')}</div>` : c.kv(rows.map(([, l, v]) => [l, v]))}</section>`; })(c.P(...sk.key.split('/').slice(0, 3))) : ''}
+      <section class="sec"><h3>代价</h3>
+        <div style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:.4em .9em;align-items:center">
+          ${sp ? `<span class="sock sp" style="--s:2em"><i class="fa-solid fa-fire-flame-curved"></i></span><div><strong class="num" style="font-size:1.25em">魂力 ${c.fmt(sp)}</strong> <small>当前可连续施放 ${casts} 次</small><div class="pips" style="margin-top:.3em">${Array.from({ length: Math.min(12, Math.max(casts, 1)) }, (_, i) => `<i class="${i < casts ? 'on' : 'off'}"></i>`).join('')}</div></div>` : `<span class="sock" style="--s:2em"><i class="fa-solid fa-feather"></i></span><strong>${costText(c, sk.消耗)}</strong>`}
+          <span class="sock" style="--s:2em"><i class="fa-solid fa-hourglass-half"></i></span><div><strong>前摇 ${c.fmt(sk.前摇 || 0)}</strong>${sk.场外冷却至tick ? ` <small>· 冷却至 ${c.tickDate(sk.场外冷却至tick)}</small>` : ''}</div>
+        </div>
+        ${c.kv([(cond.最低等级 || cond.最低魂力 || cond.最低精神力) ? ['条件', [cond.最低等级 ? `≥${cond.最低等级} 级` : '', cond.最低魂力 ? `魂力 ≥${c.fmt(cond.最低魂力)}` : '', cond.最低精神力 ? `精神 ≥${c.fmt(cond.最低精神力)}` : ''].filter(Boolean).join(' · ')] : null, lim ? ['限制', `${c.esc(lim.周期)} ${c.fmt(lim.次数)} 次`] : null, mast ? ['掌控度', `${c.fmt(mast.中心等级)} → ${c.fmt(mast.圆满等级)} 级圆满`] : null, sk.限定来源 ? ['限定来源', c.esc(sk.限定来源)] : null])}
+      </section>
+      ${!c.blank(sk.产物描述) ? `<section class="sec"><h3>产物</h3><div style="display:flex;gap:.7em;align-items:flex-start"><span class="sock gd" style="--s:2.2em;flex:none"><i class="fa-solid fa-cube"></i></span><p class="quote" style="flex:1">${c.esc(sk.产物描述)}</p></div></section>` : ''}
+      ${!c.blank(sk.画面描述) ? `<section class="sec"><h3>画面</h3><p class="quote">${c.esc(sk.画面描述)}</p></section>` : ''}
+      ${!c.blank(sk.效果描述) ? `<details class="fold"><summary>效果原文</summary><p class="quote" style="margin-top:.5em">${c.esc(sk.效果描述)}</p></details>` : ''}
+      ${page ? '' : `<div style="display:flex;gap:.4em">${castBtn(c, sk, ' style="flex:1;font-size:.95em;margin:0"')}${sk.group === '复制效果' ? '' : `<button class="key-s" type="button" data-go="page-ability/design" data-go-set="skill=${c.esc(sk.key)};dtab=basic"><i class="fa-solid fa-pen-ruler"></i> 设计</button>`}</div>`}`;
+  };
+  // 日常施展：被动 / 血脉特性是常驻效果，不给施放；魂力不够时锁定并在悬停说明；可施放的走原地确认条（结算由叙事 / 运行时）
+  const castBtn = (c, sk, extra = '') => {
+    if (sk.承载方式 === '被动' || sk.group === '血脉特性') return `<button class="cta" type="button" disabled${extra}><i class="fa-solid fa-infinity"></i>被动生效</button>`;
+    const sp = typeof sk.消耗 === 'object' ? c.num(sk.消耗?.魂力) : 0, short = sp > 0 && c.num(c.st.魂力) < sp;
+    const btn = `<button class="cta" type="button"${extra}${short ? ' disabled' : ` data-confirm="${c.esc(`日常施展「${sk.魂技名}」${sp ? `，消耗魂力 ${c.fmt(sp)}` : ''}`)}"`}><i class="fa-solid fa-hand-sparkles"></i>日常施展</button>`;
+    return short ? `<span class="cta-wrap" data-hint="魂力不足：需要 ${c.fmt(sp)}">${btn}</span>` : btn;
+  };
+  const skillInspect = (c, kind, key, mode) => { const sk = allSkills(c).find(x => x.key === key); return sk ? skillDetail(c, sk, mode === 'hover') : ''; };
+  window.COCKPIT.skillCard = (c, key, mode) => skillInspect(c, 'sk', key, mode);
+  // 魂灵卡：标题行（名称 · 年限）+ 品质 / 契合 / 状态 / 对标芯片 + 描述；full 时附六项属性条（按对标面板自身最大值归一）
+  const spiritCard = (c, sp, full = false) => {
+    const p = sp.战力面板, stats = p ? [['str', '力量'], ['def', '防御'], ['agi', '敏捷'], ['vit_max', '体魄'], ['men_max', '精神'], ['sp_max', '魂力']].map(([k, l]) => [l, c.num(p[k])]) : [];
+    const peak = Math.max(1, ...stats.map(x => x[1]));
+    return `<div class="spirit-card">
+      <div class="sc-head">${c.sock('paw', 'gd')}<div><strong>${c.esc(sp.表象名称)}</strong><small>${c.esc(sp.slot || '')}</small></div><b class="num">${c.fmt(sp.年限)}<small>年</small></b></div>
+      <div class="sc-chips"><span class="chip-s">品质 ${c.esc(sp.品质)}</span><span class="chip-s">契合 ${c.fmt(sp.契合度)}%</span><span class="chip-s">${c.esc(sp.状态)}</span>${p ? `<span class="chip-s">对标 ${c.fmt(p.对标等级)} 级</span>` : ''}</div>
+      ${full && !c.blank(sp.描述) ? `<p class="narr">${c.esc(sp.描述)}</p>` : ''}
+      ${full && stats.length ? `<div class="sc-stats">${stats.map(([l, v]) => `<div><span>${l}</span><i><b style="width:${(v / peak * 100).toFixed(1)}%"></b></i><em>${c.fmt(v)}</em></div>`).join('')}</div>` : ''}
+    </div>`;
+  };
+
+  // 武魂：左翼 = 武魂列表与魂技列表（悬停出魂技卡，点击钉住），主屏 = 选中武魂档案（投影台魂环塔为主体，魂灵档案在下），
+  // 右翼 = 按当前魂力的施放次数与血脉
+  const martial = c => {
+    const { soul, idx } = pickSoul(c);
+    if (!soul) return { tag: 'CORE · MARTIAL SOUL', wide: 'both', core: `<div class="pad sparse">${c.empty('fire', '尚未记录武魂')}</div>`, railL: '', railR: '' };
+    const pool = c.num(c.st.魂力);
+    const pendRing = c.ch.状态?.待选魂环 && typeof c.ch.状态.待选魂环 === 'object' ? c.ch.状态.待选魂环 : null;
+    const bl = c.ch.血脉之力 || {}, blOn = !c.blank(bl.血脉);
+    const tags = [soul.系别, !c.blank(soul.属性体系) ? '属性 · ' + soul.属性体系 : '', ((soul.可调用元素 || []).filter(x => x && x !== '无').join('、')) ? '可调用 · ' + soul.可调用元素.filter(x => x && x !== '无').join('、') : ''].filter(Boolean);
+    const skills = soul.spirits.flatMap(p => p.rings.map(r => ({ p, r, sk: r.skills[0] }))).filter(x => x.sk);
+    const skKey = ({ p, r, sk }) => c.esc(`${soul.slot}/${p.slot}/${r.slot}/${sk.slot}`);
+    return {
+      tag: 'CORE · MARTIAL SOUL',
+      left: `<div class="pad">${c.head('fire', '武魂', 'Martial Souls', 'gd')}
+        <div class="list">${c.souls.map((s, i) => `<button class="row${i === idx ? ' on' : ''}" type="button" data-set="soul=${i}" aria-current="${i === idx}">${c.sock('fire', i === idx ? 'gd' : '')}<div><strong>${c.esc(s.表象名称)}</strong><small>${c.esc([s.slot, s.系别, `${s.rings.length} 环`].filter(Boolean).join(' · '))}</small></div><span></span></button>`).join('')}</div>
+        <section class="sec grow"><h3>魂技<span class="en">${skills.length}</span>${c.hint('悬停查看魂技卡，点击钉住；完整档案与编辑在「典籍」。')}</h3>
+        ${skills.length ? `<div class="list q-list">${skills.map(x => `<button class="row" type="button" data-inspect="sk:${skKey(x)}">${c.ringMedal(x.r, x.r.slot.replace(/\D/g, ''))}<div><strong>${c.esc(x.sk.魂技名)}</strong><small>${c.yearTier(x.r.年限)} · ${costText(c, x.sk.消耗)} · 前摇 ${c.fmt(x.sk.前摇 || 0)}</small></div><i class="fa-solid fa-chevron-right"></i></button>`).join('')}</div>` : '<span class="lbl">尚未附环</span>'}</section>
+      </div>`,
+      core: `<div class="pad detail martial-core">
+        <div class="q-title">${c.sock('fire', 'gd')}<span class="chip">${c.esc(soul.slot)}</span><h2>${c.esc(soul.表象名称)}</h2></div>
+        ${pendRing ? `<div class="banner"><i class="fa-solid fa-circle-plus"></i><div><strong>有一枚待生成的魂环</strong><small>${c.esc(Object.entries(pendRing).slice(0, 3).map(([k, v]) => `${k} ${typeof v === 'object' ? '' : v}`).join(' · '))}</small></div><button class="key-s" type="button">使用该魂灵生成</button><button class="key-s" type="button">暂不生成</button></div>` : ''}
+        ${tags.length ? `<div class="plaques">${tags.map((t, i) => `<span class="plq${i ? ' steel' : ''}">${c.esc(t)}</span>`).join('')}</div>` : ''}
+        <p class="narr">${c.ed(c.blank(soul.描述) ? '未记录' : soul.描述, [...c.P(soul.slot), '描述'], { kind: 'text', raw: c.blank(soul.描述) ? '' : soul.描述 })}</p>
+        ${soul.rings.length ? `<div class="soul-card" data-scan data-float="r"><div class="soul-stage">${c.ringStage(soul.rings, r => { const p = soul.spirits.find(x => x.rings.includes(r)), sk = r.skills[0]; return p && sk ? `data-inspect="sk:${c.esc(`${soul.slot}/${p.slot}/${r.slot}/${sk.slot}`)}"` : ''; })}</div></div>`
+          : `<div class="soul-card"><div class="soul-stage"><div class="soul-empty"><i></i><span>尚未附环</span></div></div><small class="lbl">下一魂环于 ${Math.floor(c.num(c.st.等级) / 10 + 1) * 10} 级开放</small></div>`}
+        <div class="spirit-grid">${soul.spirits.map(p => `<div class="spirit-link" data-inspect="spirit:${c.esc(`${soul.slot}/${p.slot}`)}" tabindex="0">${spiritCard(c, p)}<i class="fa-solid fa-circle-info"></i></div>`).join('')}</div>
+      </div>`,
+      right: `<div class="pad">
+        ${c.head('fire-flame-curved', '施放次数', 'Casts', 'sp')}
+        <div class="need"><span>当前魂力</span><b>${c.fmt(pool)} / ${c.fmt(c.st.魂力上限)}</b></div>
+        ${skills.length ? `<div class="casts">${skills.map(x => { const cost = typeof x.sk.消耗 === 'object' ? c.num(x.sk.消耗?.魂力) : 0; return `<button class="cast" type="button" data-inspect="sk:${skKey(x)}"><div><strong>${c.esc(x.sk.魂技名)}</strong><small>${cost ? `每次 ${c.fmt(cost)} 魂力` : '无魂力消耗'}</small></div><b>×${cost ? Math.floor(pool / cost) : '∞'}</b></button>`; }).join('')}</div>` : '<span class="lbl">尚无可施放的魂技</span>'}
+        ${blOn ? `<div class="groove"></div>${c.head('droplet', bl.血脉, 'Bloodline', 'hp')}${c.kv([['解封层数', c.fmt(bl.解封层数 || 0)], ['气血魂核', c.esc(bl.核心 || '未凝聚')], ['生命之火', bl.生命之火 ? '已点燃' : '未点燃']])}${allSkills(c).filter(s => BLOOD_CHIP[s.group]).map(s => `<button class="row" type="button" data-inspect="sk:${c.esc(s.key)}"><span class="chip s">${BLOOD_CHIP[s.group]}</span><div><strong>${c.esc(s.魂技名)}</strong></div><i class="fa-solid fa-chevron-right"></i></button>`).join('')}` : ''}
+      </div>`,
+    };
+  };
+
+  // 典籍：左翼 = 来源筛选 + 技能列表，主屏 = 选中技能完整档案（效果 / 魂环 / 代价 / 产物 / 画面 / 原文），右翼 = 施展 / 设计与新建
+  const codex = c => {
+    const all = allSkills(c), have = SOURCE_GROUPS.filter(g => all.some(s => s.group === g));
+    const grp = c.state.ui.skg && (c.state.ui.skg === '全部' || have.includes(c.state.ui.skg)) ? c.state.ui.skg : '全部';
+    const shown = grp === '全部' ? all : all.filter(s => s.group === grp), sel = shown.find(s => s.key === c.state.ui.sksel) || shown[0];
+    const src = !sel ? null : sel.group === '魂骨附带' ? ['page-supplies/bones', `bonesel=${sel.key.split('/')[1]}`, '魂骨'] : sel.group === '装备技能' ? ['page-supplies/equip', `eqsel=${sel.slotPath?.[0] || ''}`, '装备'] : sel.ring || BLOOD_CHIP[sel.group] ? ['page-ability/martial', '', '武魂'] : null;
+    return {
+      tag: 'CORE · CODEX',
+      left: `<div class="pad">${c.head('book', '典籍', 'Codex', 'gd')}
+        <div class="pick-row">${c.pick('skg', grp, [{ value: '全部', label: `全部 · ${all.length}` }, ...have.map(g => ({ value: g, label: `${g} · ${all.filter(s => s.group === g).length}` }))])}</div>
+        ${shown.length ? `<div class="list q-list">${shown.map(s => `<button class="row${s === sel ? ' on' : ''}" type="button" data-set="sksel=${c.esc(s.key)}" aria-current="${s === sel}">${s.ring ? c.ringMedal(s.ring, s.ring.slot.replace(/\D/g, '')) : c.sock(s.group === '装备技能' ? 'shield-halved' : s.group === '魂骨附带' ? 'bone' : 'book')}<div><strong>${c.esc(s.魂技名)}</strong><small>${c.esc(s.from)}</small></div><span></span></button>`).join('')}</div>` : c.empty('book', '还没有任何技能', '附环、装备或自创后会出现在这里')}
+      </div>`,
+      core: sel ? `<div class="pad detail">${skillDetail(c, sel, false, true)}</div>` : `<div class="pad sparse">${c.empty('book', '还没有任何技能')}</div>`,
+      right: `<div class="pad">
+        ${sel ? `${c.head('hand-sparkles', '施展', 'Cast')}
+        <div class="acts">${castBtn(c, sel)}
+        ${sel.group === '复制效果' ? '' : `<button class="key-s" type="button" data-go="page-ability/design" data-go-set="skill=${c.esc(sel.key)};dtab=basic"><i class="fa-solid fa-pen-ruler"></i> 在设计台编辑</button>`}
+        ${src ? `<button class="key-s" type="button" data-go="${src[0]}"${src[1] ? ` data-go-set="${c.esc(src[1])}"` : ''}><i class="fa-solid fa-location-arrow"></i> 查看来源 · ${src[2]}</button>` : ''}</div>
+        <div class="groove"></div>` : ''}
+        ${c.head('plus', '新建', 'Create')}
+        <div class="acts"><button class="key-s" type="button" data-go="page-ability/design" data-go-set="dtab=basic" data-dz2-new="自创魂技"><i class="fa-solid fa-plus"></i> 新建自创魂技</button><button class="key-s" type="button" data-go="page-ability/design" data-go-set="dtab=basic" data-dz2-new="武魂融合技"><i class="fa-solid fa-link"></i> 新建武魂融合技</button></div>
+      </div>`,
+    };
+  };
+  document.addEventListener('picker:change', e => { if (e.detail.path !== 'skg') return; const c = window.COCKPIT.ctx(); Object.assign(c.state.ui, { skg: e.detail.value, sksel: '' }); window.COCKPIT.refresh(); });
+
+
+  // 技能设计台的预算仪表与对抗试算（界面与表单在 designer-ui.js）：预算直接调用原项目 COST 引擎
+  // （MVU_Skill_Runtime.js 的 __LWCS_SKILL_COST_HELPERS_V1__.评估技能预算_V1 / 断言技能预算_V1）。
+  // 对抗试算：designer-sim.js（移植自原项目技能设计台试算）加载后才显示
+  // 结论行沿用原项目文案（当前 Lv.x ⇒ 可重创 / 可承受 Lv.y）；下面补一行与同级标准强攻系的对位数字，原项目只在内部计算、不显示
+  const dzSim = (c, draft) => {
+    const SIM = window.LWCS_DESIGNER_SIM; if (!SIM) return '';
+    let r; try { r = SIM.simulate(draft, c.ch, { name: c.name }); } catch (e) { r = { error: e.message, rows: [], warnings: [] }; }
+    const notes = '';
+    const head = `<h3>对抗试算<span class="en">${r.kind ? `${esc0(r.kind)} · 对同级标准强攻系` : 'Trial'}</span>${c.hint((r.warnings || []).join('\n'))}</h3>`;
+    if (r.error) return `<section class="sec dz-simbox">${head}<div class="warn"><i class="fa-solid fa-triangle-exclamation"></i><span>试算失败：${esc0(r.error)}</span></div>${notes}</section>`;
+    // 不试算的技能：标题行挂一枚「不适用」，原因放悬停
+    if (r.hidden) return `<section class="sec dz-simbox na"><h3>对抗试算<span class="chip s" data-hint="${esc0(`${r.skillType || '这类'}技能不做对抗试算：只有伤害、防御与炸环类效果会和标准对手比较。`)}">不适用</span></h3></section>`;
+    const rows = r.rows.map(x => {
+      const d = x.data || {}, gap = Number.isFinite(d.maxLevel) && Number.isFinite(d.level) && !/\+$/.test(x.value) ? d.maxLevel - d.level : null;
+      return `<div class="sim-row${x.muted ? ' muted' : ''}${gap == null ? '' : gap >= 0 ? ' up' : ' down'}"><small>${esc0(x.label)}</small><i class="fa-solid fa-angles-right"></i><b>${esc0(x.value)}</b>${gap == null ? '' : `<em>${gap >= 0 ? `越 ${gap}` : `低 ${-gap}`} 级</em>`}</div>`;
+    }).join('');
+    const dm = r.damage, df = r.defense;
+    const vs = dm?.vsDefender ? `<div class="sim-vs"><span>每段 <b>${c.fmt(Math.round(dm.perHit))}</b> × ${dm.hits} 段 = <b>${c.fmt(Math.round(dm.total))}</b></span><span>占对手生命 <b>${Math.round(dm.vsDefender.ratio * 100)}%</b>${dm.vsDefender.重创 ? ' · 重创' : ''}</span></div>`
+      : df?.vsAttacker ? `<div class="sim-vs"><span>对手一击 <b>${c.fmt(Math.round(df.vsAttacker.rawDamage))}</b> → 实受 <b>${c.fmt(Math.round(df.vsAttacker.incoming))}</b></span><span>自身生命 <b>${c.fmt(df.vsAttacker.hp)}</b>${df.reduction ? ` · 减伤 ${Math.round(df.reduction * 1000) / 10}%` : ''}${df.shield ? ` · 护盾 ${c.fmt(df.shield)}` : ''}${df.blockCount ? ` · 格挡 ${df.blockCount} 次` : ''}${df.deathSave ? ' · 免死' : ''}</span></div>` : '';
+    return `<section class="sec dz-simbox">${head}<div class="sim-body"><div class="sim-rows">${rows}</div>${vs}</div>${notes}</section>`;
+  };
+  const dzCtx = (c, ring) => ({ 魂环位: ring ? Math.max(1, parseInt(String(ring.slot).replace(/\D/g, ''), 10) || 1) : 1, 角色: c.ch });
+  const dzEval = (c, sk, ring) => {
+    const H = window.__LWCS_SKILL_COST_HELPERS_V1__; if (!H) return { err: 'COST 引擎未加载' };
+    try { const r = H.评估技能预算_V1(sk, dzCtx(c, ring)); let block = ''; try { H.断言技能预算_V1(sk, dzCtx(c, ring)); } catch (e) { block = String(e.message || e).replace(/^技能生成错误[:：]?/, ''); } return { r, block }; } catch (e) { return { err: String(e.message || e) }; }
+  };
+  // 造物双行动：rule-overrides.js 已把这项抵扣归零，剩下挂在这个来源上的只可能是技能级触发限制
+  const LIMIT_SRC = { 造物双行动: '技能触发限制', 技能限制: '技能触发限制', 触发限制: '效果触发限制', 次数限制: '效果次数限制' };
+  const limitWhy = r => {
+    const m = new Map();
+    for (const x of r.限制明细 || []) { const k = x.限制来源 || '限制'; const o = m.get(k) || { rate: 0 }; o.rate = Math.max(o.rate, Number(x.限制抵扣率) || 0); m.set(k, o); }
+    return [...m].map(([k, o]) => `${LIMIT_SRC[k] || (/^限定/.test(k) ? `${k}：只对特定对象生效` : k)}，按 ${Math.round(o.rate * 100)}% 抵扣`);
+  };
+  const energyText = (c, e) => { e = Number(e) || 0; return e > 0 && e < 0.1 ? String(Number(e.toPrecision(2))) : c.fmt(e); };
+  const dzPreview = (c, sk, ring) => dzGauge(c, dzEval(c, sk, ring));
+  // 只负责画：r = 评估技能预算_V1 的结果，block = 保存被拦截的原因（设计台 v2 传入与保存断言同源的结果）
+  const dzGauge = (c, { r, block, err }) => {
+    if (err) return `<div class="warn"><i class="fa-solid fa-triangle-exclamation"></i><span>${c.esc(err)}</span></div>`;
+    const cap = Math.max(r.位级硬上限 || 1, r.实际COST, r.允许上限), pc = v => `${Math.max(0, Math.min(100, v / cap * 100)).toFixed(1)}%`;
+    const util = r.允许上限 ? r.实际COST / r.允许上限 * 100 : 0;
+    return `<div class="budget">
+        <div class="bg-bar"><i class="cur ${r.是否超预算 ? 'over' : block ? 'low' : ''}" style="width:${pc(r.实际COST)}"></i><b class="mk min" style="left:${pc(r.最低有效COST)}" title="最低有效 ${r.最低有效COST}"></b><b class="mk cap" style="left:${pc(r.允许上限)}" title="允许上限 ${r.允许上限}"></b></div>
+        <div class="bg-legend"><span><i class="cur"></i>实际 ${c.fmt(r.实际COST)}</span><span data-hint="实际 COST 低于最低有效值超过 1 点时不能保存（引擎容差 1 点）。"><i class="min"></i>最低 ${c.fmt(r.最低有效COST)}</span><span><i class="cap"></i>上限 ${c.fmt(r.允许上限)}</span></div>
+        <div class="bg-util"><b>${util.toFixed(0)}%</b><small>预算利用率</small></div>
+      </div>
+      ${c.kv([['效果 COST', c.fmt(r.效果原始COST)], ['限制抵扣', r.限制COST ? `−${c.fmt(r.限制COST)}${c.hint(limitWhy(r).join('；'))}` : '<span class="none">无</span>'], ['副作用', r.副作用原始COST ? `−${c.fmt(r.副作用COST)}${r.副作用原始COST !== r.副作用COST ? c.hint(`原始 ${c.fmt(r.副作用原始COST)}，按规则折算`) : ''}` : '<span class="none">无</span>'], ['实际 COST', `<b>${c.fmt(r.实际COST)}</b>`], ['运转基准', `${c.fmt(r.运转基准)} × 代价能量 ${energyText(c, r.代价能量)}`], ['硬上限', Number(r.位级硬上限) > 0 ? c.fmt(r.位级硬上限) : '<span class="none">无</span>']])}
+      ${block || r.是否超预算 ? `<div class="warn"><i class="fa-solid fa-ban"></i><span>无法保存：${c.esc(block || `超出 ${c.fmt(r.超出COST)}`)}</span></div>` : '<div class="okline"><i class="fa-solid fa-circle-check"></i>预算合规，可以保存</div>'}
+      <button class="cta" type="button" data-dz-save ${block || r.是否超预算 ? 'disabled' : ''}><i class="fa-solid fa-floppy-disk"></i>保存设计</button>`;
+  };
+  const esc0 = v => String(v ?? '').replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
+  // 设计台：designer-ui.js（界面）+ designer-model.js（原项目数据层）；数据层未加载时只给空状态
+  const design = c => (window.LWCS_DESIGNER_UI && window.LWCS_DESIGNER_UI.design(c, { allSkills, dzPreview, dzGauge, dzSim }))
+    || { tag: 'CORE · DESIGNER', wide: 'both', core: `<div class="pad sparse">${c.empty('pen-ruler', '设计台未就绪', '需要先加载 MVU_Skill_Runtime.js 与 designer-model.js')}</div>`, railL: '', railR: '' };
+
+  // 待处理：两翼折叠；有待生成魂环时给出入口，否则空状态居中
+
+  // 魂灵悬停档案：spirit:<武魂槽>/<魂灵槽>
+  const abilityInspect = (c, kind, id, mode) => {
+    if (kind !== 'spirit') return skillInspect(c, kind, id, mode);
+    const [ss, ps] = id.split('/'), soul = c.souls.find(s => s.slot === ss), sp = soul?.spirits.find(p => p.slot === ps);
+    if (!sp) return '';
+    const pp = c.P(ss, ps);
+    return `<div class="insp-head">${c.sock('paw', 'gd')}<div><strong style="font-size:1.1em">${c.ed(sp.表象名称, [...pp, '表象名称'])}</strong><br><small>${c.esc(soul.表象名称)} · ${c.esc(ps)} · 附 ${sp.rings.length} 环</small></div></div>
+      ${c.kv([['品质', c.ed(sp.品质 || 'F', [...pp, '品质'], { kind: 'enum', options: ['F', 'D', 'C', 'B', 'A', 'S', 'S+'] })], ['状态', c.ed(sp.状态 || '沉睡', [...pp, '状态'])], ['年限', c.ed(c.fmt(sp.年限), [...pp, '年限'], { kind: 'number', integer: true, min: 0, raw: c.num(sp.年限) })], ['契合度', `${c.ed(c.fmt(sp.契合度), [...pp, '契合度'], { kind: 'number', integer: true, min: 0, max: 100, raw: c.num(sp.契合度) })}%`]])}
+      <p class="narr">${c.ed(c.blank(sp.描述) ? '未记录' : sp.描述, [...pp, '描述'], { kind: 'text', raw: c.blank(sp.描述) ? '' : sp.描述 })}</p>
+      ${spiritCard(c, sp, true).replace(/<p class="narr">[\s\S]*?<\/p>/, '')}`;
+  };
+  window.COCKPIT.register('page-ability', {
+    label: '能力', icon: 'wand-sparkles', tag: 'CORE · MARTIAL SOUL',
+    keys: [
+      { id: 'martial', icon: 'fire', label: '武魂', view: martial, inspect: abilityInspect },
+      { id: 'codex', icon: 'book', label: '典籍', view: codex, inspect: skillInspect },
+      { id: 'design', icon: 'pen-ruler', label: '设计', view: design },
+    ],
+  });
+})();
+
+;
+/* source: cockpit/pages-supplies.js */
+/* 物资领域：装备 · 魂骨 · 背包。三页都是 左翼选 → 主屏完整档案与编辑 → 右翼汇总与操作 */
+(() => {
+  const ERA_COINS = [['联邦币', '联邦币'], ['星罗币', '星罗币'], ['唐门积分', '唐门积分'], ['学院积分', '史莱克学院积分'], ['战功', '血神功勋']];
+  window.COCKPIT.eraCoins = ERA_COINS;
+  const SLOTS = [
+    ['武器', 'khanda', '主武器', g => g.名称, g => g.品阶],
+    ['防具', 'shield', '防具', g => g.名称, g => g.品阶],
+    ['斗铠', 'user-shield', '斗铠', g => g.名称, g => g.等级 ? `${g.等级} 字斗铠` : ''],
+    ['机甲', 'robot', '机甲', g => g.名称, g => g.等级],
+  ];
+  const BONES = [['头部魂骨', '头部'], ['躯干魂骨', '躯干'], ['左臂魂骨', '左臂'], ['右臂魂骨', '右臂'], ['左腿魂骨', '左腿'], ['右腿魂骨', '右腿'], ['外附魂骨1', '外附 I'], ['外附魂骨2', '外附 II']];
+  const filled = v => v && !['无', '', undefined].includes(v);
+  const sumBonus = (c, eq) => {
+    const keys = ['力量', '防御', '敏捷', '体力上限', '精神力上限', '魂力上限'], total = Object.fromEntries(keys.map(k => [k, 0]));
+    for (const g of [eq.武器, eq.防具]) for (const k of keys) total[k] += c.num(g?.属性加成?.[k]);
+    for (const g of [eq.斗铠, eq.机甲]) for (const k of keys) total[k] += c.num(g?._属性加成?.[k]);
+    return total;
+  };
+  const ON_OFF = ['未装备', '已装备'];
+  const MECH_ROLES = ['近战', '远程', '均衡', '重装', '高速', '支援'];
+  // 斗铠部件槽位与别名：与原项目 读取斗铠部件槽位列表_桥接 / resolveArmorPartData 一致
+  const ARMOR_PARTS = sex => ['头盔', '胸铠', '左肩', '右肩', '左臂', '右臂', ...(sex === '女' ? ['战裙'] : ['左腿', '右腿']), '战靴'];
+  const PART_ALIAS = { 头盔: ['头部'], 胸铠: ['胸甲'], 左肩: ['肩甲左'], 右肩: ['肩甲右'], 左臂: ['臂甲左'], 右臂: ['臂甲右'], 左腿: ['腿甲左'], 右腿: ['腿甲右'], 战裙: ['裙甲'], 战靴: ['靴子'] };
+  // 装备档案（主屏）：武器 / 防具实例常只存名称，品质 / 耐久 / 描述 / 装备技能取物品定义——同原版收集口径「实例上的 || 物品定义里的」；
+  // 定义字段改动写回物品库，实例字段写回角色。技能行直达设计台（键与能力页 allSkills 一致）
+  const ROW_ICON = { 材质: 'cubes', 品阶: 'layer-group', 装备状态: 'power-off', 等级: 'star', 领域: 'circle-radiation', 级别: 'star', 定位: 'crosshairs', 机体状态: 'heart-pulse', 机载武器: 'gun', 品质系数: 'percent' };
+  const MOUNTS = ['一号位', '二号位', '三号位', '四号位', '五号位', '六号位', '七号位', '八号位', '九号位', '十号位'];
+  const gearSkills = (c, g) => {
+    const [, def] = defOf(c, String(g?.名称 || g?.name || '').trim()), own = c.entries(g?.装备技能).length > 0;
+    return c.entries(own ? g.装备技能 : def?.装备技能 || def?.附带技能).filter(([, s]) => s && typeof s === 'object');
+  };
+  const skillRows = (c, list, none) => list.length ? `<div class="list">${list.map(({ key, n, s, from }) => `<button class="row" type="button" data-go="page-ability/design" data-go-set="skill=${c.esc(key)};dtab=basic" data-hint="在设计台中编辑">${c.sock('bolt', 'gd')}<div><strong>${c.esc(s.魂技名 || n)}</strong><small>${c.esc([from, String(s.效果描述 || s.画面描述 || '').slice(0, 44)].filter(Boolean).join(' · '))}</small></div><span class="chip s">${c.esc(s.承载方式 || '—')}</span></button>`).join('')}</div>` : `<span class="lbl">${none}</span>`;
+  const eqCore = (c, key) => {
+    const g = c.ch.装备?.[key]; if (!g) return '';
+    const gp = c.P('装备', key);
+    if (key === '魂导器') {
+      const all = [...new Set([...MOUNTS, ...Object.keys(g.装配 || {})])], on = all.filter(s => filled(g.装配?.[s]?.名称));
+      const sk = on.flatMap(s => gearSkills(c, g.装配[s]).map(([n, x]) => ({ key: `装备/魂导器/装配/${s}/${n}`, n, s: x, from: s })));
+      return `<div class="pad detail">
+        <div class="q-title">${c.sock('microchip', 'gd')}<span class="chip">魂导器</span><h2>魂导器装配</h2><span class="q-state">${on.length} / ${all.length}</span></div>
+        <section class="sec"><h3>装配位<span class="en">Mounts</span></h3><div class="part-grid">${all.map(s => { const x = g.装配?.[s]; return `<div class="pt${filled(x?.名称) ? ' on' : ''}"><b>${s}</b><span>${filled(x?.名称) ? c.ed(x.名称, [...gp, '装配', s, '名称']) : '空'}</span></div>`; }).join('')}</div></section>
+        <section class="sec"><h3>装备技能<span class="en">${sk.length}</span></h3>${skillRows(c, sk, '已装配的魂导器没有附带技能')}</section>
+      </div>`;
+    }
+    const name = String(g.名称 || '').trim(), [cat, def] = defOf(c, name), dp = ['物品', cat, name];
+    const str = (k, dflt = '无') => c.ed(c.blank(g[k]) ? dflt : g[k], [...gp, k], { raw: c.blank(g[k]) ? '' : g[k] });
+    const coef = (v, p) => c.ed(c.fmt(v ?? 1), p, { kind: 'number', min: 0.8, max: 2, raw: v ?? 1 });
+    const onoff = () => c.ed(g.装备状态 || '未装备', [...gp, '装备状态'], { kind: 'enum', options: ON_OFF });
+    const rows = key === '武器' ? [['材质', str('材质')], ['品阶', str('品阶')]]
+      : key === '防具' ? [['品阶', str('品阶')], ['装备状态', onoff()]]
+      : key === '斗铠' ? [['等级', `${c.ed(c.fmt(g.等级 || 0), [...gp, '等级'], { kind: 'number', integer: true, min: 0, max: 4, raw: c.num(g.等级) })} 字`], ['领域', str('领域')], ['材质', str('材质')], ['装备状态', onoff()]]
+      : key === '机甲' ? [['级别', str('等级')], ['定位', c.ed(g.型号 || '无', [...gp, '型号'], { kind: 'enum', options: MECH_ROLES })], ['机体状态', str('状态', '完好')], ['装备状态', onoff()], ['机载武器', str('武装')], ['材质', str('材质')], ['品质系数', coef(g.品质系数, [...gp, '品质系数'])]]
+      : [];
+    const tiles = [
+      def ? ['gem', c.ed(def.品质 || '普通', [...dp, '品质'], { kind: 'enum', options: ITEM_QUALITY }), '品质'] : null,
+      def?.基础耐久 !== undefined ? ['shield-halved', c.ed(c.fmt(def.基础耐久), [...dp, '基础耐久'], { kind: 'number', integer: true, min: 0, raw: c.num(def.基础耐久) }), '基础耐久'] : null,
+      ...rows.map(([l, v]) => [ROW_ICON[l] || 'circle', v, l]),
+    ].filter(Boolean);
+    const sk = gearSkills(c, g).map(([n, s]) => ({ key: `装备/${key}/${n}`, n, s }));
+    const bonus = c.entries(g.属性加成 || g._属性加成 || def?.属性加成).filter(([k, v]) => c.num(v) && k !== '等效等级');
+    const dirs = def?.加成方向 || [], feats = c.entries(g.特性);
+    const slots = key === '斗铠' ? ARMOR_PARTS(c.st.性别) : [];
+    const partKey = s => [s, ...(PART_ALIAS[s] || [])].find(k => g.部件?.[k]) || s;
+    const forged = slots.filter(s => { const p = g.部件?.[partKey(s)]; return p && p.状态 && p.状态 !== '未打造'; }).length;
+    const descRaw = c.blank(def?.描述) || def?.描述 === '无' ? '' : def?.描述;
+    return `<div class="pad detail">
+      <div class="q-title">${c.sock(EQ_KEYS.find(x => x.k === key)?.ic || 'shield-halved', 'gd')}<span class="chip">${c.esc(key)}</span><h2>${c.ed(g.名称, [...gp, '名称'])}</h2></div>
+      ${def ? `<div class="q-from">${c.esc(cat)} · 物品库定义${c.hint('品质、耐久、描述与装备技能来自物品库定义，改动会影响所有同名物品。')}</div>` : ['武器', '防具'].includes(key) ? `<div class="q-from">物品库未登记${c.hint('物品库里没有这件装备的定义，只能改实例上的字段。')}</div>` : ''}
+      <div class="tiles four">${tiles.map(([i, v, l]) => `<div class="tile">${c.sock(i)}<b>${v}</b><small>${l}</small></div>`).join('')}</div>
+      ${def ? `<section class="sec"><h3>描述<span class="en">Lore</span></h3><p class="prose">${c.ed(descRaw || '未记录描述', [...dp, '描述'], { kind: 'text', raw: descRaw })}</p></section>` : ''}
+      <section class="sec"><h3>装备技能<span class="en">${sk.length}</span></h3>${skillRows(c, sk, '这件装备没有附带技能')}</section>
+      ${slots.length ? `<section class="sec"><h3>部件<span class="en">已打造 ${forged} / ${slots.length}</span></h3><div class="part-grid">${slots.map(s => { const k = partKey(s), p = g.部件?.[k] || {}, on = p.状态 && p.状态 !== '未打造'; return `<div class="pt${on ? ' on' : ''}"><b>${s}</b><span>${c.ed(p.状态 || '未打造', [...gp, '部件', k, '状态'], { raw: p.状态 || '未打造' })}</span><em>×${coef(p.品质系数, [...gp, '部件', k, '品质系数'])}</em></div>`; }).join('')}</div></section>` : ''}
+      ${feats.length ? `<section class="sec"><h3>特性<span class="en">${feats.length}</span></h3>${feats.map(([n, t]) => `<p class="prose"><b>${c.esc(n)}</b>：${c.esc(t.描述)}${t.限定来源 ? `（限 ${c.esc(t.限定来源)}）` : ''}</p>`).join('')}</section>` : ''}
+      ${bonus.length || dirs.length ? `<section class="sec"><h3>属性加成<span class="en">Bonus</span></h3>${bonus.length ? `<div class="chips-row">${bonus.map(([k, v]) => `<span class="chip gold">${c.esc(k)} +${c.esc(v)}</span>`).join('')}</div>` : ''}${dirs.length ? `<div class="chips-row"><span class="lbl">加成方向</span>${dirs.map(d => `<span class="chip s">${c.esc(d)}</span>`).join('')}</div>` : ''}</section>` : ''}
+    </div>`;
+  };
+
+  const boneInspect = (c, kind, key) => {
+    const b = c.ch.魂骨?.[key]; if (!b) return '';
+    return `<div class="insp-head">${c.sock('bone', 'gd')}<div><strong style="font-size:1.1em">${c.esc(b.名称 || b.表象名称)}</strong><br><small class="lbl">${c.esc(key)}</small></div><button class="x" type="button" data-close-inspector aria-label="关闭">×</button></div>
+      ${c.kv([['年限', `${c.fmt(b.年限)} 年`], ['品质', c.val(b.品质)], ['品阶', c.val(b.品阶)], ['来源', c.val(b.来源)]])}
+      ${!c.blank(b.描述) ? `<p class="prose">${c.esc(b.描述)}</p>` : ''}
+      ${c.entries(b.附带技能).length ? `<section class="sec"><h3>附带技能</h3>${c.entries(b.附带技能).map(([n]) => `<button class="row" type="button" data-go="page-ability/codex"><span class="chip s">技能</span><div><strong>${c.esc(n)}</strong></div><i class="fa-solid fa-chevron-right"></i></button>`).join('')}</section>` : ''}`;
+  };
+
+  // 物品定义编辑：选项与原项目同源（物品经济品质列表 / 物品装备槽位选项 / 魂灵品质选项）；改名与改分类涉及搬移键，留给移植时接原项目编辑器
+  const ITEM_QUALITY = ['普通', '优秀', '稀有', '史诗', '传说', '神器', '超神器'];
+  const SPIRIT_QUALITY = ['F', 'D', 'C', 'B', 'A', 'S', 'S+'];
+  const EQ_SLOT = ['无', '头部', '躯干', '左臂', '右臂', '左腿', '右腿', '武器', '防具', '饰品'];
+  const EQ_KINDS = new Set(['近战武器', '远程武器', '战术装备', '防具装备', '斗铠部件', '机甲机体']);
+  const USABLE = new Set(['丹药', '天然灵物', '近战武器', '远程武器', '战术装备', '功能道具', '一次性道具', '魂技造物']);
+  const defOf = (c, n) => { for (const [k, g] of c.entries(c.S.物品)) if (g && typeof g === 'object' && g[n] && typeof g[n] === 'object') return [k, g[n]]; return ['', null]; };
+  // 大额价格按万 / 亿缩写显示，编辑时仍是原值
+  const wan = n => n >= 1e8 ? `${+(n / 1e8).toFixed(2)} 亿` : n >= 1e4 ? `${+(n / 1e4).toFixed(2)} 万` : String(n);
+  const ITEM_ICON = { 品质: 'gem', 基础价格: 'coins', 阶位: 'layer-group', 魂导等级: 'microchip', 魂灵品质: 'gem', 表象名称: 'dragon', 标准物种: 'paw', 年限: 'hourglass-half', 装备槽位: 'shield-halved', 基础耐久: 'wrench', 图纸目标: 'compass-drafting' };
+  // 物品档案（主屏）：定义字段写回物品库，持有数量 / 批次写回背包；操作（使用 / 装备 / 丢弃）在右翼
+  const itemOf = (c, name) => {
+    const it = c.ch.背包?.[name]; if (!it) return null;
+    const [cat, def] = defOf(c, name), batches = it.批次 || [];
+    const total = batches.length ? batches.reduce((s, b) => s + c.num(b.数量), 0) : c.num(it.数量);
+    const isEq = def && (EQ_KINDS.has(cat) || def.装备槽位 !== undefined);
+    return { it, cat, def, batches, total, isEq, usable: USABLE.has(cat), equipable: isEq && def.装备槽位 !== '无' };
+  };
+  const itemCore = (c, name) => {
+    const o = itemOf(c, name); if (!o) return '';
+    const { cat, def, batches, total, isEq } = o, dp = ['物品', cat, name], coins = ERA_COINS.map(x => x[1]);
+    const dstr = (k, label, x = {}) => [label, c.ed(c.blank(def[k]) ? (x.dflt || '无') : def[k], [...dp, k], { raw: c.blank(def[k]) ? '' : def[k], ...x })];
+    const dnum = (k, label, x = {}) => [label, c.ed(c.fmt(def[k] || 0), [...dp, k], { kind: 'number', integer: true, min: 0, raw: c.num(def[k]), ...x })];
+    const defRows = def ? [
+      dstr('品质', '品质', { kind: 'enum', options: ITEM_QUALITY, dflt: '普通' }),
+      ['基础价格', c.ed(wan(c.num(def.基础价格)), [...dp, '基础价格'], { kind: 'number', integer: true, min: 0, raw: c.num(def.基础价格) }), `基础价格 · ${c.ed(def.默认货币 || coins[0], [...dp, '默认货币'], { kind: 'enum', options: coins })}`],
+      cat === '锻造金属' ? dnum('阶位', '阶位') : null,
+      cat !== '魂灵' && (def.魂导等级 !== undefined || EQ_KINDS.has(cat)) ? dnum('魂导等级', '魂导等级') : null,
+      ...(cat === '魂灵' ? [dstr('魂灵品质', '魂灵品质', { kind: 'enum', options: SPIRIT_QUALITY, dflt: 'F' }), dstr('表象名称', '表象名称'), dstr('标准物种', '标准物种'), dnum('年限', '年限')] : []),
+      ...(isEq ? [dstr('装备槽位', '装备槽位', { kind: 'enum', options: EQ_SLOT }), dnum('基础耐久', '基础耐久')] : []),
+      cat === '设计图纸' ? dstr('图纸目标', '图纸目标') : null,
+    ].filter(Boolean) : [];
+    const addon = def ? c.entries(def.属性加成).map(([k, v]) => [k, c.ed(String(v), [...dp, '属性加成', k], typeof v === 'number' ? { kind: 'number', raw: v } : { raw: v })]) : [];
+    const dirs = def?.加成方向 || [];
+    const skills = def ? [...(Array.isArray(def.装备技能) ? def.装备技能 : c.entries(def.装备技能).map(([k, s]) => s?.魂技名 || k)), ...(Array.isArray(def.附带魂技) ? def.附带魂技 : [])].map(x => typeof x === 'object' ? x.名称 || x.技能名 || '' : x).filter(Boolean) : [];
+    const bnum = (b, i, k, label, x = {}) => b[k] !== undefined ? [label, c.ed(c.fmt(b[k]), c.P('背包', name, '批次', i, k), { kind: 'number', integer: true, min: 0, raw: c.num(b[k]), ...x })] : null;
+    const batchRows = (b, i) => [b.品质 !== undefined ? ['品质', c.ed(b.品质 || '普通', c.P('背包', name, '批次', i, '品质'), ITEM_QUALITY.includes(b.品质) ? { kind: 'enum', options: ITEM_QUALITY } : { raw: b.品质 || '' })] : null, bnum(b, i, '品质系数', '品质系数', { integer: false }), bnum(b, i, '阶位', '阶位'), b.基础金属 ? ['基础金属', c.esc(b.基础金属)] : null, bnum(b, i, '魂导等级', '魂导等级'), b.副职业参数?.融合参数 ? ['融合', `${b.副职业参数.融合参数.数量} 种 · ${b.副职业参数.融合参数.融合率}%`] : null, bnum(b, i, '耐久', '耐久'), bnum(b, i, '剩余使用次数', '剩余次数'), b.绑定者 ? ['绑定', c.esc(b.绑定者)] : null, b.有效期至tick ? ['有效期', `至 ${c.tickDate(b.有效期至tick)}`] : null].filter(Boolean);
+    const descRaw = c.blank(def?.描述) || def?.描述 === '无' ? '' : def?.描述;
+    return `<div class="pad detail">
+      <div class="q-title">${c.sock(isEq ? 'shield-halved' : 'cube', 'gd')}<span class="chip">${c.esc(cat || '未登记')}</span><h2>${c.esc(name)}</h2><span class="q-state">持有 ${batches.length ? c.fmt(total) : c.ed(c.fmt(total), c.P('背包', name, '数量'), { kind: 'number', integer: true, min: 1, raw: total })}</span></div>
+      <div class="q-from">${def ? `物品库 · ${c.esc(cat)}${c.hint('品质、价格、描述等来自物品库定义，改动会影响所有同名物品；持有数量与批次只改自己的背包。')}` : `物品库未登记${c.hint('物品库里没有这件物品的定义，只能改持有数量与批次。')}`}</div>
+      ${defRows.length ? `<div class="tiles four">${defRows.map(([l, v, sub]) => `<div class="tile">${c.sock(ITEM_ICON[l] || 'circle')}<b>${v}</b><small>${sub || l}</small></div>`).join('')}</div>` : ''}
+      ${def ? `<section class="sec"><h3>描述<span class="en">Lore</span></h3><p class="prose">${c.ed(descRaw || '未记录描述', [...dp, '描述'], { kind: 'text', raw: descRaw })}</p></section>` : ''}
+      ${addon.length || dirs.length ? `<section class="sec"><h3>属性加成<span class="en">Bonus</span></h3>${addon.length ? `<div class="tiles four">${addon.map(([k, v]) => `<div class="tile">${c.sock('arrow-trend-up')}<b class="plus">${v}</b><small>${c.esc(k)}</small></div>`).join('')}</div>` : ''}${dirs.length ? `<div class="chips-row"><span class="lbl">加成方向</span>${dirs.map(d => `<span class="chip s">${c.esc(d)}</span>`).join('')}</div>` : ''}</section>` : ''}
+      ${skills.length ? `<section class="sec"><h3>附带技能<span class="en">${skills.length}</span>${c.hint('装备后可在能力页的技能图鉴与设计台中查看、编辑。')}</h3><div class="chips-row">${skills.map(s => `<span class="chip gold"><i class="fa-solid fa-bolt"></i> ${c.esc(s)}</span>`).join('')}</div></section>` : ''}
+      ${batches.length ? `<section class="sec"><h3>持有批次<span class="en">${batches.length}</span></h3><div class="batches">${batches.map((b, i) => `<div class="batch"><div class="t">批次 ${i + 1}<span>×${c.ed(c.fmt(b.数量), c.P('背包', name, '批次', i, '数量'), { kind: 'number', integer: true, min: 1, raw: c.num(b.数量) })}</span></div>${c.kv(batchRows(b, i))}</div>`).join('')}</div></section>` : ''}
+    </div>`;
+  };
+  const itemActs = (c, name) => {
+    const o = itemOf(c, name); if (!o) return '';
+    return `<div class="acts">${o.usable ? `<button class="cta" type="button" data-confirm="使用 ${c.esc(name)} ×1，效果由叙事结算"><i class="fa-solid fa-hand-sparkles"></i>使用</button>` : ''}
+      <div class="act-row">${o.equipable ? `<button class="key-s" type="button" data-confirm="装备 ${c.esc(name)}"><i class="fa-solid fa-shield-halved"></i> 装备</button>` : ''}${o.total > 1 ? `<button class="key-s danger" type="button" data-drop-one="${c.esc(name)}"><i class="fa-solid fa-minus"></i> 丢弃 1 件</button>` : ''}<button class="key-s danger" type="button" data-del-path="${c.esc(JSON.stringify(c.P('背包', name)))}"><i class="fa-solid fa-trash"></i> ${o.total > 1 ? '全部丢弃' : '丢弃'}</button></div></div>`;
+  };
+
+  // 三页同一结构：左翼选（挂点 / 魂骨位 / 物品），主屏是选中项的完整档案与编辑，右翼是汇总与操作
+  const EQ_KEYS = [...SLOTS.map(([k, ic, l, n, s]) => ({ k, ic, l, n, s })), { k: '魂导器', ic: 'microchip', l: '魂导器', n: () => '', s: () => '' }];
+  const equipment = c => {
+    const eq = c.ch.装备 || {}, bonus = sumBonus(c, eq), gear = eq.魂导器?.装配 || {};
+    const mounted = c.entries(gear).filter(([, g]) => filled(g?.名称));
+    const warm = eq._温养目标 && eq._温养目标 !== '无' ? eq._温养目标 : '';
+    const nameOf = x => x.k === '魂导器' ? (mounted.length ? `已装配 ${mounted.length} / 10` : '') : x.n(eq[x.k] || {});
+    const sel = EQ_KEYS.find(x => x.k === c.state.ui.eqsel) || EQ_KEYS.find(x => filled(nameOf(x))) || EQ_KEYS[0], selName = nameOf(sel);
+    return {
+      tag: 'CORE · ARMORY',
+      left: `<div class="pad">${c.head('shield-halved', '挂点', 'Hardpoints', 'gd')}
+        <div class="list q-list">${EQ_KEYS.map(x => { const nm = nameOf(x); return `<button class="row${x === sel ? ' on' : ''}${filled(nm) ? '' : ' idle'}" type="button" data-set="eqsel=${x.k}" aria-current="${x === sel}">${c.sock(x.ic, filled(nm) ? 'gd' : '')}<div><strong>${c.esc(filled(nm) && x.k !== '魂导器' ? nm : x.l)}</strong><small>${!filled(nm) ? '空挂点' : x.k === '魂导器' ? nm : c.esc(x.l + (x.s(eq[x.k] || {}) ? ' · ' + x.s(eq[x.k] || {}) : ''))}</small></div><span></span></button>`; }).join('')}</div>
+      </div>`,
+      core: filled(selName) ? eqCore(c, sel.k) : `<div class="pad sparse">${c.empty(sel.ic, `${sel.l}挂点空着`, '在背包里选中装备后可以挂载到这里')}<button class="key-s" type="button" data-go="page-supplies/pack" style="align-self:center"><i class="fa-solid fa-box-open"></i> 去背包</button></div>`,
+      right: `<div class="pad">${c.head('bolt', '武装共鸣', 'Resonance')}
+        ${Object.values(bonus).some(v => v) ? `<div class="tiles">${Object.entries(bonus).filter(([, v]) => v).map(([k, v]) => `<div class="tile">${c.sock('arrow-trend-up')}<b class="plus">+${c.fmt(v)}</b><small>${k}</small></div>`).join('')}</div>` : c.empty('bolt', '暂无武装加成')}
+        <section class="sec"><h3>温养<span class="en">Nurture</span>${c.hint('斗铠 / 机甲的温养进度由运行时投影。')}</h3>${warm ? `<div class="relic-card">${c.sock('temperature-half', 'gd')}<div><strong>${c.esc(warm)}</strong><small>温养中</small></div></div>` : '<span class="lbl">没有温养目标</span>'}${eq.斗铠?._已排异 ? '<span class="plq" style="--pc:#ff4d6a">斗铠已排异</span>' : ''}</section>
+        <div class="groove"></div>${c.head('hand-pointer', '操作', 'Actions')}
+        <div class="act-row"><button class="key-s" type="button" data-go="page-supplies/pack"><i class="fa-solid fa-box-open"></i> 从背包换装</button>${sel.k !== '魂导器' && gearSkills(c, eq[sel.k]).length ? '<button class="key-s" type="button" data-go="page-ability/codex"><i class="fa-solid fa-book"></i> 技能图鉴</button>' : ''}</div>
+      </div>`,
+    };
+  };
+
+  // 魂骨：左翼是八个骨位的人形图（点选），主屏是选中魂骨档案与附带技能，右翼是套装共鸣与总年限
+  const bones = c => {
+    const b = c.ch.魂骨 || {}, has = k => filled(b[k]?.名称) || filled(b[k]?.name) || c.num(b[k]?.年限) > 0;
+    const n6 = BONES.slice(0, 6).filter(([k]) => has(k)).length, n = BONES.filter(([k]) => has(k)).length;
+    const sel = BONES.find(([k]) => k === c.state.ui.bonesel) || BONES.find(([k]) => has(k)) || BONES[0], [sk, sl] = sel;
+    const slot = ([k, l], i) => `<button class="hpt bone${has(k) ? '' : ' idle'}${k === sk ? ' on' : ''}" type="button" style="grid-area:b${i}" data-set="bonesel=${k}" aria-current="${k === sk}">${c.sock('bone', has(k) ? 'gd' : '')}<strong>${l}</strong><small>${has(k) ? `${c.fmt(b[k].年限)} 年` : '未装载'}</small></button>`;
+    const bo = b[sk] || {}, bname = bo.名称 || bo.name || bo.表象名称 || '', merged = { ...(defOf(c, bname)[1] || {}), ...bo };
+    const skills = c.entries(merged.附带技能 || merged.装备技能).filter(([, s]) => s && typeof s === 'object').map(([n, s]) => ({ key: `魂骨/${sk}/${n}`, n, s }));
+    const years = BONES.reduce((s, [k]) => s + (has(k) ? c.num(b[k].年限) : 0), 0);
+    return {
+      tag: 'CORE · SOUL BONES',
+      left: `<div class="pad">${c.head('bone', '骨位', 'Slots', 'gd')}<div class="bone-map">${BONES.map(slot).join('')}</div></div>`,
+      core: has(sk) ? `<div class="pad detail">
+        <div class="q-title">${c.sock('bone', 'gd')}<span class="chip">${c.esc(sl)}</span><h2>${c.esc(bname || sk)}</h2></div>
+        <div class="tiles four">${[['hourglass-half', wan(c.num(merged.年限)), '年限 · 年'], ['gem', c.esc(merged.品质 || '—'), '品质'], ['layer-group', c.esc(merged.品阶 || '—'), '品阶'], ['map-pin', c.esc(merged.来源 || '—'), '来源']].map(([i, v, l]) => `<div class="tile">${c.sock(i)}<b>${v}</b><small>${l}</small></div>`).join('')}</div>
+        ${!c.blank(merged.描述) ? `<section class="sec"><h3>描述<span class="en">Lore</span></h3><p class="prose">${c.esc(merged.描述)}</p></section>` : ''}
+        <section class="sec"><h3>附带技能<span class="en">${skills.length}</span></h3>${skillRows(c, skills, '没有附带技能')}</section>
+      </div>` : `<div class="pad sparse">${c.empty('bone', `${sl}未装载`, '击杀魂兽或通过交易获得魂骨后，在背包中装载')}<button class="key-s" type="button" data-go="page-supplies/pack" style="align-self:center"><i class="fa-solid fa-box-open"></i> 去背包</button></div>`,
+      right: `<div class="pad">${c.head('link', '套装共鸣', 'Set')}
+        <div class="q-meter"><div class="q-mh"><small>普通六骨</small><b>${n6} / 6</b><em>${n6 >= 6 ? '套装已激活' : `还差 ${6 - n6} 块激活共鸣`}</em></div>${c.bar('vp', n6, 6)}</div>
+        <div class="tiles">${[['bone', n, '已装载'], ['hourglass-half', c.fmt(years), '总年限'], ['puzzle-piece', `${BONES.slice(6).filter(([k]) => has(k)).length} / 2`, '外附魂骨']].map(([i, v, l]) => `<div class="tile">${c.sock(i)}<b>${v}</b><small>${l}</small></div>`).join('')}</div>
+      </div>`,
+    };
+  };
+
+  // 背包：左翼是分类筛选与物品列表，主屏是选中物品的定义、批次与使用 / 丢弃，右翼是钱包
+  const PACK_CATS = ['全部', '魂骨', '装备', '灵物', '金属', '武器', '消耗', '身份', '入场', '杂项'];
+  const pack = c => {
+    const items = c.entries(c.ch.背包), defs = c.S.物品 || {};
+    const kindOf = n => { for (const [k, g] of c.entries(defs)) if (g && typeof g === 'object' && g[n]) return k; return '杂项'; };
+    const cat = PACK_CATS.includes(c.state.ui.cat) ? c.state.ui.cat : '全部', shown = items.filter(([n]) => cat === '全部' || kindOf(n) === cat);
+    const sel = shown.find(([n]) => n === c.state.ui.itemsel) || shown[0], wealth = c.ch.财富 || {};
+    return {
+      tag: 'CORE · INVENTORY', wide: items.length ? '' : 'l', railL: `<div class="rail">${c.sock('box-open')}<b>0</b><small>背包</small></div>`,
+      left: `<div class="pad">${c.head('box-open', '背包', 'Inventory', 'gd')}
+        <div class="pick-row">${c.pick('cat', cat, PACK_CATS.map(k => ({ value: k, label: `${k} · ${k === '全部' ? items.length : items.filter(([n]) => kindOf(n) === k).length}` })))}</div>
+        ${shown.length ? `<div class="list q-list">${shown.map(([n, it]) => `<button class="row${sel && n === sel[0] ? ' on' : ''}" type="button" data-set="itemsel=${c.esc(n)}">${c.sock('cube')}<div><strong>${c.esc(n)}</strong><small>${c.esc(kindOf(n))}${it.批次?.[0]?.品质 ? ` · ${c.esc(it.批次[0].品质)}` : ''}</small></div><span class="end">×${c.fmt(it.数量)}</span></button>`).join('')}</div>` : c.empty('box-open', items.length ? `没有「${cat}」类物品` : '背包是空的', items.length ? '' : '获得的物品会出现在这里')}
+      </div>`,
+      core: sel ? itemCore(c, sel[0]) : `<div class="pad sparse">${c.empty('box-open', '背包是空的')}<button class="key-s" type="button" data-go="page-terminal/trade" style="align-self:center"><i class="fa-solid fa-store"></i> 去交易</button></div>`,
+      right: `<div class="pad">${sel ? `${c.head('hand-pointer', '操作', 'Actions')}${itemActs(c, sel[0])}<div class="groove"></div>` : ''}
+        ${c.head('coins', '钱包', 'Wallet', 'gd')}
+        <div class="tiles wallet">${ERA_COINS.map(([k, l]) => `<div class="tile">${c.sock('coins', k === '联邦币' ? 'gd' : '')}<b>${c.ed(c.fmt(wealth[k] || 0), c.P('财富', k), { kind: 'number', integer: true, min: 0, raw: c.num(wealth[k]) })}</b><small>${l}</small></div>`).join('')}</div>
+        <button class="key-s" type="button" data-go="page-terminal/trade" style="align-self:flex-start"><i class="fa-solid fa-scale-balanced"></i> 去交易</button>
+      </div>`,
+    };
+  };
+  document.addEventListener('picker:change', e => { if (e.detail.path !== 'cat') return; const c = window.COCKPIT.ctx(); c.state.ui.cat = e.detail.value; window.COCKPIT.refresh(); });
+
+  document.addEventListener('cockpit:edited', e => {
+    const p = e.detail.path, i = p.indexOf('背包'); if (i < 0 || p[i + 2] !== '批次' || p[i + 4] !== '数量') return;
+    const c = window.COCKPIT.ctx?.(), it = c && p.slice(0, i + 2).reduce((o, k) => o?.[k], c.S); if (!it) return;
+    const idx = Number(p[i + 3]), sum = (it.批次 || []).reduce((s, b, j) => s + c.num(j === idx ? e.detail.value : b.数量), 0);
+    e.detail.extra.push({ path: [...p.slice(0, i + 2), '数量'], value: sum });
+  });
+  document.addEventListener('click', e => {
+    const t = e.target.closest('[data-drop-one]'); if (!t) return;
+    if (!t.classList.contains('armed')) {
+      t.classList.add('armed'); t.dataset.label = t.innerHTML; t.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> 再点一次丢弃 1 件';
+      clearTimeout(t._disarm); t._disarm = setTimeout(() => { t.classList.remove('armed'); t.innerHTML = t.dataset.label; }, 3000); return;
+    }
+    const c = window.COCKPIT.ctx?.(), name = t.dataset.dropOne, it = c?.ch.背包?.[name]; if (!it) return;
+    const next = JSON.parse(JSON.stringify(it)), bs = Array.isArray(next.批次) ? next.批次 : [];
+    if (bs.length) { const last = bs[bs.length - 1]; last.数量 = c.num(last.数量) - 1; if (last.数量 <= 0) bs.pop(); next.数量 = bs.reduce((s, b) => s + c.num(b.数量), 0); }
+    else next.数量 = c.num(next.数量) - 1;
+    if (next.数量 <= 0) window.COCKPIT.closeInspector();
+    window.COCKPIT.write([next.数量 > 0 ? { path: c.P('背包', name), value: next } : { path: c.P('背包', name), del: true }]);
+  });
+
+  window.COCKPIT.register('page-supplies', {
+    label: '物资', icon: 'cube', tag: 'CORE · ARMORY',
+    keys: [
+      { id: 'equip', icon: 'shield-halved', label: '装备', view: equipment },
+      { id: 'bones', icon: 'bone', label: '魂骨', view: bones },
+      { id: 'pack', icon: 'box-open', label: '背包', view: pack },
+    ],
+  });
+})();
+
+;
+/* source: cockpit/pages-map.js */
+/* 探索领域：星图 · 地点 · 人物 · 行程 */
+(() => {
+  // 总图底图：资源基址取 lwcs 运行时给的素材目录（角色素材目录的上一级），原型页回落本地 39281
+  const MAP = { get src() { return (document.documentElement.dataset.lwcsCharacterAssets || 'http://127.0.0.1:39281/assets/characters/').replace(/assets\/characters\/$/, '') + 'MAP.webp'; }, w: 3174, h: 2246 };
+  const pathOf = c => String(c.ch.状态?.位置 || '').split('-').filter(Boolean);
+  const nodeOf = c => {
+    const parts = pathOf(c).filter(p => p !== '斗罗大陆');
+    let node = null, chain = [];
+    let pool = c.S.world.地点 || {};
+    for (const p of parts) { if (pool && pool[p]) { node = pool[p]; chain.push([p, node]); pool = node.子节点 || {}; } }
+    return { node, chain, city: chain[0] };
+  };
+  const locals = c => Object.entries(c.S.char).filter(([n, x]) => n !== c.name && x.状态?.位置 === c.ch.状态?.位置);
+  const statusText = s => ({ intact: '完好', damaged: '受损', destroyed: '已毁' }[s] || s || '未知');
+  // ---------- 全息沙盘 ----------
+  // 底图（子图为全息底板）铺在倾斜平面里；地标不进 3D：平面里只放 0 尺寸锚点，地标画在平面外的 2D 层，
+  // 每次平移 / 缩放后按锚点的屏幕位置摆放——大小、文字不随缩放与透视变形，地名牌立在光柱顶上。
+  // 子图同原版「进入子图」：坐标契约是「x/y 为直接父节点子图的局部坐标」（与总图同一坐标系尺寸），不改变当前位置
+  const KINDS = [[/学院|学校/, '#b28bff', '学院'], [/宗|总部|据点|分部|组织|军/, '#ff9a62', '势力据点'], [/森林|山|海|岛|湖|原|谷|渊|位面/, '#5ee0ae', '地域'], [/城|都|镇|村/, '#6fb4ff', '城市']];
+  const kindOf = t => KINDS.find(([re]) => re.test(String(t || ''))) || [null, '#cfd8e6', '其他'];
+  const pct = (v, total) => (v / total * 100).toFixed(2);
+  const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+  const libRows = () => Object.values(window.COCKPIT.library('location')?.地点 || {}).map(e => ({ path: Object.values(e.目标路径 || {}), n: e.节点 || {}, rules: e.世界规则 }));
+  const herePath = c => pathOf(c).filter(p => p !== '斗罗大陆');
+  const under = (rows, prefix, depth) => rows.filter(r => r.path.length === depth && prefix.every((t, i) => r.path[i] === t));
+  const worldNodes = c => {
+    const out = {}, rows = libRows();
+    for (const r of under(rows, [], 1)) if (Number.isFinite(r.n.x) && Number.isFinite(r.n.y)) out[r.path[0]] = { name: r.path[0], ...r.n, rules: r.rules, kids: [] };
+    for (const r of under(rows, [], 2)) if (out[r.path[0]]) out[r.path[0]].kids.push(r.path[1]);
+    for (const [n, v] of Object.entries(c.S.world.地点 || {})) if (Number.isFinite(v.x)) out[n] = { ...(out[n] || {}), name: n, ...v, kids: [...new Set([...(out[n]?.kids || []), ...Object.keys(v.子节点 || {})])], rules: out[n]?.rules };
+    return Object.values(out);
+  };
+  // 某一层（trail = 从总图往下的地点名）上可画的地点：内置地点库 + 存档地点树；能否继续下钻看库里 / 存档里有没有更深一层
+  const levelNodes = (c, trail) => {
+    const rows = libRows(), kidsOf = p => [...new Set([...under(rows, p, p.length + 1).map(r => r.path.at(-1)), ...Object.keys(savedAt(c, p) || {})])];
+    const base = trail.length ? (() => {
+      const out = {};
+      for (const r of under(rows, trail, trail.length + 1)) out[r.path.at(-1)] = { name: r.path.at(-1), ...r.n, rules: r.rules };
+      for (const [k, v] of Object.entries(savedAt(c, trail) || {})) out[k] = { ...(out[k] || {}), name: k, ...v };
+      return Object.values(out).filter(n => Number.isFinite(n.x) && Number.isFinite(n.y));
+    })() : worldNodes(c);
+    return base.map(n => { const kids = kidsOf([...trail, n.name]); return { ...n, kids, enterable: kids.length > 0 }; });
+  };
+  // 存档地点树里 trail 这一层的子节点表
+  const savedAt = (c, trail) => { let pool = c.S.world.地点 || {}; for (const t of trail) pool = pool?.[t]?.子节点; return pool; };
+  // 地标分级：0 当前位置 · 1 近处 · 2 其他 · 3 地域（总图上地域类默认只留光点）。光柱高度随级别
+  const BEAM = [40, 26, 18, 10];
+  const sandTable = (c, trail) => {
+    const hp = herePath(c), onPath = trail.every((t, i) => hp[i] === t), hereName = onPath ? hp[trail.length] : null, sub = trail.length > 0;
+    const nodes = levelNodes(c, trail), f = nodes.find(n => n.name === hereName);
+    const ref = f || { x: MAP.w / 2, y: MAP.h / 2 }, d = n => Math.hypot(n.x - ref.x, n.y - ref.y);
+    const near = new Set(nodes.filter(n => n !== f).sort((p, q) => d(p) - d(q)).slice(0, sub ? 12 : 8).map(n => n.name));
+    const rank = n => n === f ? 0 : near.has(n.name) ? 1 : !sub && kindOf(n.类型)[2] === '地域' ? 3 : 2;
+    const key = n => [...trail, n.name].join('/');
+    const holo = sub ? `<div class="holo-base" style="background-image:${[...nodes.map(n => `radial-gradient(circle at ${pct(n.x, MAP.w)}% ${pct(n.y, MAP.h)}%,${rgba(kindOf(n.类型)[1], .3)} 0,transparent 8%)`), 'radial-gradient(ellipse at 50% 50%,rgba(70,150,255,.22),transparent 68%)'].join(',')}"><b>${c.esc(trail.at(-1))}</b></div>` : '';
+    return `<div class="table${sub ? ' sub' : ''}" data-table data-no-tilt data-trail="${c.esc(trail.join('/'))}">
+      <div class="plane">${sub ? holo : `<img src="${MAP.src}" alt="斗罗大陆总图" draggable="false">`}<div class="grid"></div>${nodes.map(n => `<i class="anc" style="left:${pct(n.x, MAP.w)}%;top:${pct(n.y, MAP.h)}%"></i>`).join('')}</div>
+      <div class="marks">${nodes.map(n => { const r = rank(n), color = r === 0 ? '#ffd36b' : kindOf(n.类型)[1]; return `<button class="mk r${r}${r === 0 ? ' here' : ''}" type="button" style="--pc:${color};--bh:${BEAM[r]}px" data-rank="${r}" data-inspect="node:${c.esc(key(n))}" data-hover-delay="320"${n.enterable ? ` data-map-enter="${c.esc(key(n))}"` : ''} aria-label="${c.esc(n.name)}"><i class="mk-lead"></i><i class="mk-beam"></i><i class="mk-base"></i><span class="mk-tag">${c.esc(n.name)}${n.enterable ? '<i class="fa-solid fa-layer-group"></i>' : ''}</span></button>`; }).join('')}</div>
+      ${sub ? `<div class="table-crumb"><button class="key-s" type="button" data-map-up aria-label="返回上级"><i class="fa-solid fa-chevron-left"></i></button><span>${['斗罗大陆', ...trail].map((t, i) => i === trail.length ? `<b aria-current="location">${c.esc(t)}</b>` : `<button type="button" data-map-to="${c.esc(trail.slice(0, i).join('/'))}">${c.esc(t)}</button>`).join('<i class="fa-solid fa-angle-right"></i>')}</span>${onPath ? '' : `<span class="chip s" data-hint="${c.esc(`这里只能查看；要在「${trail[0]}」里行动，先前往那里。`)}">远端预览</span>`}</div>` : ''}
+      <div class="table-ui"><button class="key-s" type="button" data-zoom="1.25" aria-label="放大">＋</button><button class="key-s" type="button" data-zoom="0.8" aria-label="缩小">－</button><button class="key-s" type="button" data-zoom="home" aria-label="${f ? '回到当前位置' : '回到中心'}"><i class="fa-solid fa-crosshairs"></i></button></div>
+      <div class="table-legend">${KINDS.map(([, col, l]) => `<span><i style="--pc:${col}"></i>${l}</span>`).join('')}<span><i style="--pc:#ffd36b"></i>当前位置</span><span><b class="fa-solid fa-layer-group"></b>可进入子图</span></div>
+    </div>`;
+  };
+  // 交互：拖动平移（开始拖动才捕获指针，单击仍是点地标）· 滚轮 / 双指以指针处为中心缩放 · 按钮缩放与回中走短补间
+  const mountTable = face => {
+    const table = face.querySelector('[data-table]'); if (!table) return;
+    const plane = table.querySelector('.plane'), ancs = [...plane.querySelectorAll('.anc')], marks = [...table.querySelectorAll('.mk')];
+    const COS = Math.cos(50 * Math.PI / 180), Z = [.7, 5], st = { z: 1.6, tx: 0, ty: 0 };
+    let raf = 0;
+    const clampZ = z => Math.max(Z[0], Math.min(Z[1], z));
+    const apply = () => { plane.style.setProperty('--z', st.z); plane.style.setProperty('--tx', st.tx + 'px'); plane.style.setProperty('--ty', st.ty + 'px'); if (!raf) raf = requestAnimationFrame(place); };
+    // 摆地标：读锚点的屏幕位置（只有 transform 变了，不触发重排）；越靠上（越远）越小；地名牌按级别先占位，被挡住的只留光点
+    const place = () => {
+      raf = 0;
+      // 图例 / 路径条 / 缩放键占的区域先记为已占，地名牌不钻到它们底下
+      const tr = table.getBoundingClientRect(), showMinor = st.z >= 2.6;
+      const placed = [...table.querySelectorAll('.table-legend,.table-crumb,.table-ui')].map(el => { const r = el.getBoundingClientRect(); return [r.left - tr.left, r.top - tr.top, r.right - tr.left, r.bottom - tr.top]; });
+      const pts = ancs.map(a => { const r = a.getBoundingClientRect(); return [r.left - tr.left, r.top - tr.top]; });
+      const vis = pts.map(([x, y]) => x > -60 && x < tr.width + 60 && y > -10 && y < tr.height + 70);
+      // 坐标重合 / 挨得太近（屏幕上底座相距不到 22px）的地标就地散开：两个左右分开，三个以上绕一圈；
+      // 散开的地标拉一条虚线回到真实位置。放大到点自然分开后不再散开
+      const off = pts.map(() => [0, 0]), grouped = new Set();
+      for (let i = 0; i < pts.length; i++) {
+        if (!vis[i] || grouped.has(i)) continue;
+        const g = [i];
+        for (let j = i + 1; j < pts.length; j++) if (vis[j] && !grouped.has(j) && g.some(k => Math.hypot(pts[k][0] - pts[j][0], pts[k][1] - pts[j][1]) < 22)) g.push(j);
+        if (g.length < 2) continue;
+        g.forEach(k => grouped.add(k));
+        const cx = g.reduce((s, k) => s + pts[k][0], 0) / g.length, cy = g.reduce((s, k) => s + pts[k][1], 0) / g.length, rad = g.length === 2 ? 22 : 12 + 6 * g.length;
+        g.sort((a, b) => pts[a][0] - pts[b][0] || pts[a][1] - pts[b][1]).forEach((k, n) => {
+          const ang = g.length === 2 ? (n ? 0 : Math.PI) : -Math.PI / 2 + n * 2 * Math.PI / g.length;
+          off[k] = [cx + Math.cos(ang) * rad - pts[k][0], cy + Math.sin(ang) * rad * .6 - pts[k][1]];
+        });
+      }
+      const order = marks.map((m, i) => i).sort((a, b) => marks[a].dataset.rank - marks[b].dataset.rank || pts[b][1] - pts[a][1]);
+      for (const i of order) {
+        const m = marks[i], r = +m.dataset.rank;
+        m.hidden = !vis[i]; if (!vis[i]) continue;
+        const x = pts[i][0] + off[i][0], y = pts[i][1] + off[i][1], ds = Math.max(.74, Math.min(1.1, .72 + .45 * y / tr.height));
+        m.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px) scale(${ds.toFixed(3)})`;
+        m.style.zIndex = Math.round(y);
+        // 引线：从散开后的底座指回真实位置（标记自身被 ds 缩放，长度要除回去）
+        const ll = Math.hypot(...off[i]);
+        m.classList.toggle('spread', ll > .5);
+        if (ll > .5) { m.style.setProperty('--ll', (ll / ds).toFixed(1) + 'px'); m.style.setProperty('--lr', Math.atan2(-off[i][1], -off[i][0]).toFixed(3) + 'rad'); }
+        let label = r <= 2 || showMinor;
+        if (label) {
+          const tag = m.querySelector('.mk-tag'), w = (m._tw ||= tag.offsetWidth) * ds, h = (m._th ||= tag.offsetHeight) * ds, top = y - (BEAM[r] + 2) * ds - h;
+          // 先放光柱正上方，撞了依次试偏右 / 偏左 / 上抬一行（及其左右），都撞才只留光点
+          const hit = bx => placed.some(b => bx[0] < b[2] + 4 && bx[2] > b[0] - 4 && bx[1] < b[3] + 2 && bx[3] > b[1] - 2);
+          const at = ([ox, oy]) => [x + ox - w / 2, top + oy, x + ox + w / 2, top + oy + h];
+          const up = -(h + 3), pick = [[0, 0], [w * .55, 0], [-w * .55, 0], [0, up], [w * .55, up], [-w * .55, up]].find(o => !hit(at(o)));
+          if (!pick) label = false;
+          else { placed.push(at(pick)); m.style.setProperty('--lx', (pick[0] / ds).toFixed(1) + 'px'); m.style.setProperty('--ly', (pick[1] / ds).toFixed(1) + 'px'); }
+        }
+        m.classList.toggle('nolabel', !label);
+      }
+    };
+    const tween = (to, ms = 260) => {
+      const from = { ...st }, t0 = performance.now();
+      const step = t => { const k = Math.min(1, (t - t0) / ms), e = 1 - Math.pow(1 - k, 3); for (const p of ['z', 'tx', 'ty']) st[p] = from[p] + (to[p] - from[p]) * e; apply(); if (k < 1) requestAnimationFrame(step); };
+      requestAnimationFrame(step);
+    };
+    // 以屏幕点（相对平面中心的偏移 cx / cy）为中心缩放：保持该点下的地图位置不动（忽略透视的近似）
+    const zoomAt = (nz, cx, cy) => { nz = clampZ(nz); st.tx += cx / nz - cx / st.z; st.ty += cy / (nz * COS) - cy / (st.z * COS); st.z = nz; apply(); };
+    const centerOff = (x, y) => { const tr = table.getBoundingClientRect(); return [x - (tr.left + tr.width / 2), y - (tr.top + tr.height * .56)]; };
+    // 回中取景：总图对准当前位置；子图地点少，把全部地点框进画面（避开四角的图例与路径条）
+    const homeState = () => {
+      const pw = table.clientWidth * 1.05, ph = pw * MAP.h / MAP.w;
+      if (table.classList.contains('sub') && ancs.length) {
+        const xs = ancs.map(a => parseFloat(a.style.left) / 100), ys = ancs.map(a => parseFloat(a.style.top) / 100);
+        const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+        const z = Math.max(.9, Math.min(3, (table.clientWidth * .62) / Math.max((x1 - x0) * pw, 1), (table.clientHeight * .5) / Math.max((y1 - y0) * ph * COS, 1)));
+        return { pw, s: { z, tx: (.5 - (x0 + x1) / 2) * pw, ty: (.5 - (y0 + y1) / 2) * ph } };
+      }
+      const here = marks.find(m => m.classList.contains('here')), a = here ? ancs[marks.indexOf(here)] : null;
+      const fx = a ? parseFloat(a.style.left) / 100 : .5, fy = a ? parseFloat(a.style.top) / 100 : .5;
+      return { pw, s: { z: 1.6, tx: (.5 - fx) * pw, ty: (.5 - fy) * ph } };
+    };
+    const h = homeState(); plane.style.setProperty('--pw', h.pw + 'px');
+    // 进出子图：下钻从拉远处推近，返回从推近处拉远（只是入场感，落点同回中）
+    const ui = window.COCKPIT.ctx().state.ui, depth = (ui.mapTrail || []).length, prev = ui.mapDepthShown ?? depth; ui.mapDepthShown = depth;
+    Object.assign(st, h.s, depth !== prev ? { z: depth > prev ? .9 : 2.8 } : {}); apply();
+    if (depth !== prev) tween(h.s, 420);
+    new ResizeObserver(() => { plane.style.setProperty('--pw', table.clientWidth * 1.05 + 'px'); apply(); }).observe(table);
+
+    const ptrs = new Map(); let drag = null, pinch = null, moved = false;
+    table.addEventListener('pointerdown', e => {
+      if (e.target.closest('.table-ui,.table-crumb') || e.button > 0) return;
+      ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (ptrs.size === 1) { drag = { x: e.clientX, y: e.clientY, tx: st.tx, ty: st.ty, id: e.pointerId }; moved = false; }
+      if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, z: st.z }; drag = null; }
+    });
+    table.addEventListener('pointermove', e => {
+      if (!ptrs.has(e.pointerId)) return;
+      ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pinch && ptrs.size === 2) { const [a, b] = [...ptrs.values()], [cx, cy] = centerOff((a.x + b.x) / 2, (a.y + b.y) / 2); moved = true; zoomAt(pinch.z * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d, cx, cy); return; }
+      if (!drag) return;
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      if (!moved) {
+        if (Math.hypot(dx, dy) < 5) return;
+        moved = true; table.classList.add('grabbing'); try { table.setPointerCapture(e.pointerId); } catch (err) { /* 合成事件没有活动指针 */ }
+        if (window.COCKPIT.ctx().state.inspect) window.COCKPIT.closeInspector();
+      }
+      st.tx = drag.tx + dx / st.z; st.ty = drag.ty + dy / (st.z * COS); apply();
+    });
+    const end = e => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = null; if (!ptrs.size) { drag = null; table.classList.remove('grabbing'); } };
+    table.addEventListener('pointerup', end); table.addEventListener('pointercancel', end);
+    table.addEventListener('click', e => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true);
+    table.addEventListener('wheel', e => { e.preventDefault(); const [cx, cy] = centerOff(e.clientX, e.clientY); zoomAt(st.z * Math.exp(-e.deltaY * .0016), cx, cy); }, { passive: false });
+    table.querySelector('.table-ui').addEventListener('click', e => {
+      const b = e.target.closest('[data-zoom]'); if (!b) return; e.stopPropagation();
+      if (b.dataset.zoom === 'home') return tween(homeState().s);
+      const nz = clampZ(st.z * Number(b.dataset.zoom)); tween({ z: nz, tx: st.tx, ty: st.ty }, 200);
+    });
+  };
+  // 子图导航：双击可下钻的地标 / 浮窗「进入子图」进入；路径条返回任一级。只是查看，不改变当前位置
+  const setTrail = trail => { const c = window.COCKPIT.ctx(); c.state.ui.mapTrail = trail; if (c.state.inspect) window.COCKPIT.closeInspector(); window.COCKPIT.refresh(); };
+  document.addEventListener('dblclick', e => { const m = e.target.closest('.mk[data-map-enter]'); if (m) setTrail(m.dataset.mapEnter.split('/')); });
+  document.addEventListener('click', e => {
+    const en = e.target.closest('[data-map-enter-btn]'); if (en) return setTrail(en.dataset.mapEnterBtn.split('/'));
+    if (e.target.closest('[data-map-up]')) return setTrail((window.COCKPIT.ctx().state.ui.mapTrail || []).slice(0, -1));
+    const to = e.target.closest('[data-map-to]'); if (to) setTrail(to.dataset.mapTo ? to.dataset.mapTo.split('/') : []);
+  });
+  const nodeInspect = (c, kind, id) => {
+    const path = String(id).split('/'), name = path.at(-1), trail = path.slice(0, -1);
+    const n = levelNodes(c, trail).find(x => x.name === name); if (!n) return '';
+    const [, color, kname] = kindOf(n.类型), hp = herePath(c), here = path.every((t, i) => hp[i] === t);
+    const desc = String(n.描述 || '').split('\n')[0];
+    const funcs = Object.values(n.rules?.功能档案 || {});
+    // 行动：总图上的地点 / 所在城市里的地点可设为目的地；别的城市的子图地点要先前往那座城
+    const act = here ? '<button class="cta" type="button" data-go="page-map/place"><i class="fa-solid fa-city"></i>查看所在地点</button>'
+      : !trail.length || trail[0] === hp[0] ? `<button class="cta" type="button" data-go="page-map/star" data-set-dest="${c.esc(name)}"><i class="fa-solid fa-route"></i>设为目的地</button>`
+        : `<button class="cta" type="button" data-go="page-map/star" data-set-dest="${c.esc(trail[0])}"><i class="fa-solid fa-route"></i>前往${c.esc(trail[0])}</button>`;
+    return `<div class="insp-head"><span class="sock" style="--s:2.4em;--tint:${color}"><i class="fa-solid fa-location-dot"></i></span><div><strong style="font-size:1.15em">${c.esc(name)}</strong><br><small>${c.esc(n.类型 || kname)}${n.掌控势力 ? ' · ' + c.esc(n.掌控势力) : ''}</small></div><button class="x" type="button" data-close-inspector aria-label="关闭">×</button></div>
+      ${trail.length ? `<div class="crumb">${['斗罗大陆', ...trail].map(c.esc).join('<i class="fa-solid fa-angle-right"></i>')}</div>` : ''}
+      ${desc ? `<p class="quote">${c.esc(desc)}</p>` : ''}
+      ${!trail.length ? `<div class="minigrid" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div><b>${n.人口 ? c.fmt(n.人口) : '—'}</b><small>人口</small></div><div><b>${c.esc(n.经济状况 || '—')}</b><small>经济</small></div><div><b>${c.esc(n.守护军团 || '—')}</b><small>守军</small></div></div>` : n.状态 ? `<div class="minigrid" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div><b>${c.esc(statusText(n.状态))}</b><small>状态</small></div><div><b>${c.esc(n.掌控势力 || '—')}</b><small>掌控</small></div></div>` : ''}
+      ${funcs.length ? `<div style="display:flex;gap:.3em;flex-wrap:wrap">${funcs.map(x => `<span class="chip s">${c.esc(x)}</span>`).join('')}</div>` : ''}
+      ${n.kids.length ? `<section class="sec"><h3>下辖地点 · ${n.kids.length}</h3><div style="display:flex;gap:.3em;flex-wrap:wrap">${n.kids.slice(0, 14).map(k => `<span class="chip s">${c.esc(k)}</span>`).join('')}${n.kids.length > 14 ? `<span class="chip s">+${n.kids.length - 14}</span>` : ''}</div></section>` : ''}
+      ${n.enterable ? `<button class="key-s" type="button" data-map-enter-btn="${c.esc(path.join('/'))}" style="align-self:flex-start"><i class="fa-solid fa-layer-group"></i> 进入子图</button>` : ''}
+      ${act}`;
+  };
+
+  const place = c => {
+    const { node, chain } = nodeOf(c), city = chain[0]?.[1] || {};
+    const desc = String(city.描述 || '').split('\n')[0];
+    const shops = Object.entries(city.商店 || {});
+    const dyn = Object.entries(c.S.world.动态地点 || {});
+    const loc = locals(c), rel = c.ch.社交?.关系 || {};
+    return {
+      tag: 'CORE · LOCATION',
+      core: `<div class="pad">
+        ${c.head('city', chain[0]?.[0] || '未知地点', city.类型 || 'Location', 'gd')}
+        <div class="crumb">${['斗罗大陆', ...chain.map(x => x[0])].map(c.esc).join('<i class="fa-solid fa-angle-right"></i>')}</div>
+        <p class="prose">${c.esc(desc)}${!c.blank(city.现状描述) ? `<br><b>现状：</b>${c.esc(city.现状描述)}` : ''}</p>
+        <div class="fame even" style="--n:5">${[['掌控', '掌控势力', city.掌控势力], ['守军', '守护军团', city.守护军团], ['人口', '人口', city.人口, 'number'], ['经济', '经济状况', city.经济状况, 'enum'], ['状态', null, String(statusText(city.状态)).replace(/<[^>]+>/g, '')]].map(([l, k, v, kind]) => `<div><small>${l}</small><b>${k && chain[0] ? c.ed(kind === 'number' ? c.fmt(v || 0) : (v || '—'), ['world', '地点', chain[0][0], k], kind === 'number' ? { kind: 'number', integer: true, min: 0, raw: c.num(v) } : kind === 'enum' ? { kind: 'enum', options: ['繁荣', '富足', '一般', '萧条', '凋敝'] } : { raw: v || '' }) : c.esc(v || '—')}</b></div>`).join('')}</div>
+        <section class="sec"><h3>商店<span class="en">${shops.length}</span></h3><div class="list two">${shops.map(([n, s]) => `<button class="row" type="button" data-go="page-terminal/trade" data-go-set="venue=shop:${c.esc(n)};good=;tqty=1"><span class="sock" style="--s:1.8em"><i class="fa-solid fa-store"></i></span><div><strong>${c.esc(n)}</strong><small>${Object.keys(s.库存 || {}).length} 种商品${s._下次刷新tick ? ` · ${c.tickDate(s._下次刷新tick).replace('斗罗历', '')} 补货` : ''}</small></div><i class="fa-solid fa-chevron-right"></i></button>`).join('')}</div></section>
+      </div>`,
+      left: `<div class="pad">
+        ${c.head('users', '在场人物', 'Locals', 'gd')}
+        ${loc.length ? `<div class="list">${loc.map(([n, x]) => { const r = rel[n], aff = c.num(r?.好感度); return `<button class="row" type="button" data-inspect="npc:${c.esc(n)}">${c.miniAva(n)}<div><strong>${c.esc(n)}</strong><small>Lv.${c.esc(x.属性?.等级)} · ${c.esc(x.社交?.主身份 || '')}</small></div>${r ? `<span class="rc-tag ${aff >= 0 ? 'warm' : 'cold'}">${aff >= 0 ? '+' : ''}${c.fmt(aff)}</span>` : '<span class="rc-tag dim">未结识</span>'}</button>`; }).join('')}</div>` : '<span class="lbl">这里没有其他人。</span>'}
+        ${dyn.length ? `<div class="groove"></div>${c.head('location-crosshairs', '动态地点', 'Dynamic')}<div class="list">${dyn.map(([n, d]) => `<button class="row" type="button" data-inspect="dyn:${c.esc(n)}"><span class="sock" style="--s:1.8em"><i class="fa-solid fa-location-crosshairs"></i></span><div><strong>${c.esc(n)}</strong><small>${c.esc(d.归属父节点 || '未归属')} · ${c.esc(d.势力 || '未知')}</small></div><i class="fa-solid fa-chevron-right"></i></button>`).join('')}</div>` : ''}
+      </div>`,
+      right: `<div class="pad">
+        ${c.head('door-open', '设施', 'Facilities')}
+        <div class="list">
+          <button class="row" type="button" data-go="page-terminal/trial"><span class="sock" style="--s:1.8em"><i class="fa-solid fa-tower-observation"></i></span><div><strong>升灵台 / 魂灵塔</strong><small>需门票</small></div><i class="fa-solid fa-chevron-right"></i></button>
+          <button class="row" type="button" data-go="page-terminal/workshop"><span class="sock" style="--s:1.8em"><i class="fa-solid fa-hammer"></i></span><div><strong>工坊委托</strong><small>副职业</small></div><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+        <button class="cta" type="button" disabled style="font-size:.95em"><i class="fa-solid fa-person-walking-arrow-right"></i>已在此处</button>
+      </div>`,
+    };
+  };
+
+  // 在场人物：与角色目录同款选角牌（头像 · 等级角标 · 称号 · 身份 · 好感标签）；互动按钮在人物浮窗里，两翼折成侧轨
+  const dynInspect = (c, name) => {
+    const d = c.S.world.动态地点?.[name]; if (!d) return '';
+    const dp = ['world', '动态地点', name], none = v => c.blank(v) || v === '无';
+    const s = (k, dflt = '未记录') => c.ed(none(d[k]) ? dflt : d[k], [...dp, k], { raw: none(d[k]) ? '' : d[k] });
+    const t = (k, dflt) => c.ed(none(d[k]) ? dflt : d[k], [...dp, k], { kind: 'text', raw: none(d[k]) ? '' : d[k] });
+    return `<div class="insp-head">${c.sock('location-crosshairs', 'gd')}<div><strong style="font-size:1.1em">${c.esc(name)}</strong><br><small class="lbl">动态地点 · ${c.esc(statusText(d.状态))}</small></div><button class="x" type="button" data-close-inspector aria-label="关闭">×</button></div>
+      ${c.kv([['归属', s('归属父节点')], ['类型', s('类型')], ['势力', s('势力', '未知')]])}
+      <section class="sec"><h3>描述</h3><p class="prose">${t('描述', '未记录描述')}</p></section>
+      <section class="sec"><h3>现状</h3><p class="prose">${t('现状描述', '暂无变化')}</p></section>`;
+  };
+  const npcInspect = (c, kind, name) => {
+    const x = c.S.char[name]; if (!x) return '';
+    const r = c.ch.社交?.关系?.[name];
+    const acts = [['comments', '对话'], ['circle-question', '请教'], ['hand-fist', '切磋'], ['scale-balanced', '交易'], ['file-signature', '委托'], ['eye', '情报']];
+    return `<div class="insp-head">${c.miniAva(name)}<div><strong style="font-size:1.1em">${c.esc(name)}</strong><br><small class="lbl">Lv.${c.esc(x.属性?.等级)} · ${c.esc(x.第1武魂?.表象名称 || '')}</small></div><button class="x" type="button" data-close-inspector aria-label="关闭">×</button></div>
+      ${c.kv([['身份', c.esc(x.社交?.主身份 || '')], ['关系', r ? `${c.esc(r.关系)} · 好感 ${c.fmt(r.好感度)}` : '<span class="dim">尚未结识</span>']])}
+      <div class="opts">${acts.map(([ic, l]) => `<button class="opt" type="button" style="min-height:52px"><i class="fa-solid fa-${ic}"></i>${l}</button>`).join('')}</div>
+      <button class="key-s" type="button" data-view-char="${c.esc(name)}" style="align-self:flex-start"><i class="fa-solid fa-id-card"></i> 查看档案</button>`;
+  };
+
+  const travel = c => {
+    const { city } = nodeOf(c);
+    const here = pathOf(c).slice(-1)[0], dest = c.state.ui.dest || '';
+    const nodes = worldNodes(c), cur = nodes.find(n => n.name === city?.[0]);
+    const near = cur ? nodes.filter(n => n !== cur).map(n => ({ n, d: Math.hypot(n.x - cur.x, n.y - cur.y) })).sort((a, b) => a.d - b.d).slice(0, 6) : [];
+    const kids = Object.keys(city?.[1]?.子节点 || {}).map(k => ({ name: k, 类型: city[1].子节点[k].类型 }));
+    return {
+      tag: 'CORE · STAR MAP', wide: 'l',
+      core: `<div class="pad">${c.head('map', '行旅星图', 'Star Map', 'gd', c.hint('点地标看详情、设目的地；带层叠标记的地标可双击（或在详情里）进入子图，子图只是查看，不改变当前位置。拖动平移，滚轮或双指缩放。'))}${sandTable(c, c.state.ui.mapTrail || [])}</div>`,
+      mount: mountTable,
+      railL: `<div class="rail">${c.sock('location-dot')}<small>${c.esc(here || '')}</small></div>`,
+      right: `<div class="pad">
+        ${c.head('flag-checkered', '目的地', 'Destination')}
+        ${kids.length ? `<span class="lbl">${c.esc(city[0])} 城内</span><div class="list">${kids.map(k => `<button class="row ${k.name === dest ? 'on' : ''}" type="button" data-set="dest=${c.esc(k.name)}" ${k.name === here ? 'disabled' : ''}><span class="chip s">${c.esc(k.类型 || '')}</span><div><strong>${c.esc(k.name)}</strong>${k.name === here ? '<small>当前位置</small>' : ''}</div><span></span></button>`).join('')}</div>` : ''}
+        <span class="lbl">邻近城市</span>
+        <div class="list">${near.map(({ n, d }) => `<button class="row ${n.name === dest ? 'on' : ''}" type="button" data-set="dest=${c.esc(n.name)}"><span class="chip s">${c.esc(kindOf(n.类型)[2])}</span><div><strong>${c.esc(n.name)}</strong><small>图上距离 ${Math.round(d)}</small></div><span></span></button>`).join('')}</div>
+        ${dest ? `<div class="warn" style="color:var(--ink2);background:rgba(47,124,246,.1);box-shadow:inset 2px 0 0 var(--blue)"><i class="fa-solid fa-route"></i><span>前往「${c.esc(dest)}」${c.hint('耗时与魂力、体力、财富消耗由运行时预演。')}</span></div>` : `<span class="lbl">未选择目的地${c.hint('选择一个目的地查看移动预演。')}</span>`}
+        ${dest ? `<button class="cta" type="button" data-confirm="${c.esc(`前往「${dest}」，路程耗时与消耗由运行时预演`)}"><i class="fa-solid fa-person-walking-arrow-right"></i>出发</button>`
+          : `<span class="cta-wrap" data-hint="先在星图或上面的列表里选一个目的地"><button class="cta" type="button" disabled><i class="fa-solid fa-person-walking-arrow-right"></i>出发</button></span>`}
+      </div>`,
+    };
+  };
+
+  window.COCKPIT.register('page-map', {
+    label: '探索', icon: 'compass', tag: 'CORE · STAR MAP',
+    keys: [
+      { id: 'star', icon: 'map', label: '地图', view: travel, inspect: nodeInspect },
+      { id: 'place', icon: 'city', label: '当地', view: place, inspect: (c, kind, id, mode) => kind === 'dyn' ? dynInspect(c, id) : npcInspect(c, kind, id, mode) },
+    ],
+  });
+})();
+
+;
+/* source: cockpit/pages-world.js */
+/* 世界领域：概况 · 编年 · 势力 · 阵营 · 赛事 · 图鉴 */
+(() => {
+  const lib = () => window.COCKPIT.library('faction')?.势力 || {};
+  const factions = c => {
+    const merged = { ...lib(), ...(c.S.world && c.S.org) };
+    return Object.entries(merged).map(([n, f]) => ({ name: n, ...f })).sort((a, b) => (b.影响力 || 0) - (a.影响力 || 0));
+  };
+  const deviationTier = v => v >= 80 ? '崩坏' : v >= 50 ? '剧变' : v >= 20 ? '偏移' : '平稳';
+  const cityOf = c => { const p = String(c.ch.状态?.位置 || '').split('-').filter(x => x && x !== '斗罗大陆'); return [p[0], c.S.world.地点?.[p[0]] || {}]; };
+  const upcoming = c => {
+    const w = c.S.world, now = c.num(w.时间.tick), out = [];
+    for (const [n, e] of Object.entries(w.时间线 || {})) out.push({ t: c.num(e.触发tick), icon: 'scroll', kind: '世界事件', title: e.事件 || n, sub: `${e.地点 || ''} · ${e.状态 || ''}`, ref: { e } });
+    if (w.拍卖?.下次刷新tick) out.push({ t: c.num(w.拍卖.下次刷新tick), icon: 'gavel', kind: '拍卖', title: '拍卖会换季', sub: `${w.拍卖.地点} · 本期 ${Object.keys(w.拍卖.拍品 || {}).length} 件拍品`, ref: { lots: Object.entries(w.拍卖.拍品 || {}) } });
+    for (const [n, q] of Object.entries(w.委托板 || {})) if (q.截止tick) out.push({ t: c.num(q.截止tick), icon: 'file-signature', kind: '委托截止', title: q.标题 || n, sub: `${q.难度} · ${q.发布者}`, ref: { id: n, q } });
+    for (const [n, q] of Object.entries(c.ch.我的任务 || {})) if (q.截止tick) out.push({ t: c.num(q.截止tick), icon: 'flag', kind: '任务截止', title: n, sub: q.任务线, ref: { id: n, q } });
+    const [cn, city] = cityOf(c); const shops = Object.entries(city.商店 || {}).filter(([, s]) => c.num(s._下次刷新tick)), restock = shops.map(([, s]) => c.num(s._下次刷新tick));
+    if (restock.length) out.push({ t: Math.min(...restock), icon: 'store', kind: '商店补货', title: '各商店补货', sub: `${cn} · ${restock.length} 家`, ref: { shops } });
+    return out.filter(x => x.t >= now).sort((a, b) => a.t - b.t);
+  };
+  const days = (c, t) => { const d = (t - c.num(c.S.world.时间.tick)) / 144; return d < 1 ? `${Math.max(1, Math.round(d * 24))} 小时后` : `${Math.round(d)} 天后`; };
+
+  // 大数按「万 / 亿」缩写（四列图块放不下 1,000,000）
+  const wan = (c, n) => { n = c.num(n); return n >= 1e8 ? `${Number((n / 1e8).toFixed(2))}亿` : n >= 1e4 ? `${Number((n / 1e4).toFixed(n % 1e4 ? 1 : 0))}万` : c.fmt(n); };
+  const tile = (c, icon, value, label, cls = '') => `<div class="tile${cls ? ' ' + cls : ''}">${c.sock(icon)}<b>${value}</b><small>${label}</small></div>`;
+
+  // 概况：左翼 = 所在城市，主屏 = 时空中枢（日期、世界线、魂兽森林、拍卖），右翼 = 近期安排
+  const overview = c => {
+    const w = c.S.world, [cn, city] = cityOf(c), kill = c.num(w.累计击杀年限), cap = 1000000;
+    const here = Object.entries(c.S.char).filter(([n, x]) => n !== c.name && x.状态?.位置 === c.ch.状态?.位置).length, soon = upcoming(c).slice(0, 6);
+    const lots = Object.entries(w.拍卖?.拍品 || {});
+    return {
+      tag: 'CORE · WORLD',
+      left: `<div class="pad">${c.head('city', cn || '未知地点', city.类型 || 'City', 'gd')}
+        <div class="tiles">${tile(c, 'chart-line', c.esc(city.经济状况 || '—'), '经济')}${tile(c, 'people-group', city.人口 ? c.fmt(city.人口) : '—', '人口')}${tile(c, 'flag', c.esc(city.掌控势力 || '—'), '掌控势力')}${tile(c, 'shield-halved', c.esc(city.守护军团 || '—'), '守军')}${tile(c, 'store', Object.keys(city.商店 || {}).length, '商店')}${tile(c, 'user-group', here, '同地人物')}</div>
+        <button class="key-s" type="button" data-go="page-map/place"><i class="fa-solid fa-city"></i> 查看当地</button>
+      </div>`,
+      core: `<div class="pad">
+        ${c.head('globe', '时空中枢', 'Chronos', 'gd')}
+        <div class="chronos"><span class="lv">${c.esc((w.时间._calendar || '').replace(/ .*/, ''))}</span><span class="num">${c.esc((w.时间._calendar || '').split(' ')[1] || '')}</span></div>
+        <div class="fame even" style="--n:3">
+          <div><small>世界线偏差</small><b>${deviationTier(c.num(w.偏差值))}</b><em>偏差值 ${c.fmt(w.偏差值)} · 倍率 ×${c.fmt(w.偏差倍率)}</em></div>
+          <div><small>核心阶段</small><b>${Object.keys(w.时间线 || {}).length ? c.esc(Object.values(w.时间线)[0].事件) : '未记录'}</b><em>${Object.keys(w.时间线 || {}).length ? '主线进行中' : '尚无主线节点'}</em></div>
+          <div><small>拍卖</small><b>${c.esc(w.拍卖?.状态 || '休市')}</b><em>${c.esc(w.拍卖?.地点 || '')} · ${Object.keys(w.拍卖?.拍品 || {}).length} 件拍品</em></div>
+        </div>
+        <section class="sec"><h3>魂兽森林<span class="en">Forest</span>${c.hint('人类累计猎杀的魂兽年限；接近上限会引发兽潮。')}</h3>
+          <div class="q-meter"><div class="q-mh"><small>累计击杀年限</small><b>${c.fmt(kill)}</b><em>${w.兽潮已触发 ? '兽潮已爆发' : kill / cap > .7 ? '仇恨高涨' : '相对安全'} · 上限 ${c.fmt(cap)}</em></div>${c.bar('hp', kill, cap)}</div></section>
+        ${lots.length ? `<section class="sec"><h3>拍卖行<span class="en">${c.esc(w.拍卖?.地点 || '')} · ${lots.length} 件</span></h3><div class="list two">${lots.map(([n, a]) => `<button class="row" type="button" data-go="page-terminal/trade" data-go-set="venue=auction;good=${c.esc(n)};tqty=1">${c.sock('gavel')}<div><strong>${c.esc(n)}</strong><small>${c.esc([a.品级, a.分类].filter(Boolean).join(' · '))}</small></div><span class="end">${wan(c, a.价格)}</span></button>`).join('')}</div></section>` : ''}
+      </div>`,
+      right: `<div class="pad">${c.head('calendar-day', '近期安排', 'Upcoming')}
+        ${soon.length ? `<div class="list q-list">${soon.map(x => `<button class="row" type="button" data-go="page-world/chronicle" data-go-set="csel=${c.esc(x.kind + ':' + x.title)}">${c.sock(x.icon)}<div><strong>${c.esc(x.title)}</strong><small>${c.esc([x.kind, x.sub].filter(Boolean).join(' · '))}</small></div><span class="end">${days(c, x.t)}</span></button>`).join('')}</div>` : c.empty('calendar-day', '近期没有安排')}
+      </div>`,
+    };
+  };
+
+  // 编年：左翼 = 未来节点（按类别分页），主屏 = 选中节点（倒计时、日期、地点 / 状态、去处），右翼 = 今天与各类计数
+  const nodeDetail = (c, x) => {
+    const r = x.ref || {}, q = r.q, mine = q && q.承接者 === c.name;
+    if (x.kind === '委托截止' && q) return `<section class="sec"><h3>${mine ? '委托内容' : '公开简报'}<span class="en">Brief</span></h3><p class="prose">${c.esc((mine ? q.描述 : q.框架描述) || q.描述 || '—')}</p></section>
+        <div class="tiles four">${tile(c, 'user-tie', c.esc(q.发布者 || '—'), '发布者')}${tile(c, 'bullhorn', c.esc(q.面向 || '公开'), '面向')}${tile(c, 'coins', c.fmt(q.奖励币 || 0), '联邦币')}${tile(c, 'star', c.fmt(q.奖励声望 || 0), '声望')}</div>`;
+    if (x.kind === '任务截止' && q) return `<section class="sec"><h3>任务<span class="en">Quest</span></h3><p class="prose">${c.esc(q.描述 || q.目标 || '—')}</p></section><div class="tiles">${tile(c, 'flag', c.esc(q.任务线 || '支线'), '任务线')}${tile(c, 'circle-half-stroke', c.esc(q.状态 || '进行中'), '状态')}</div>`;
+    if (r.lots) return `<section class="sec"><h3>本期拍品<span class="en">${r.lots.length} 件</span></h3><div class="list two">${r.lots.map(([n, a]) => `<button class="row" type="button" data-go="page-terminal/trade" data-go-set="venue=auction;good=${c.esc(n)};tqty=1">${c.sock('gavel')}<div><strong>${c.esc(n)}</strong><small>${c.esc([a.品级, a.分类].filter(Boolean).join(' · '))}</small></div><span class="end">${wan(c, a.价格)}</span></button>`).join('')}</div></section>`;
+    if (r.shops) return `<section class="sec"><h3>各店补货<span class="en">${r.shops.length} 家</span></h3><div class="list two">${r.shops.sort((a, b) => c.num(a[1]._下次刷新tick) - c.num(b[1]._下次刷新tick)).map(([n, sh]) => `<button class="row" type="button" data-go="page-terminal/trade" data-go-set="venue=shop:${c.esc(n)};good=;tqty=1">${c.sock('store')}<div><strong>${c.esc(n)}</strong><small>${Object.keys(sh.库存 || {}).length} 种商品</small></div><span class="end">${days(c, c.num(sh._下次刷新tick))}</span></button>`).join('')}</div></section>`;
+    if (r.e) return `<div class="tiles">${tile(c, 'location-dot', c.esc(r.e.地点 || '—'), '地点')}${tile(c, 'circle-half-stroke', c.esc(r.e.状态 || '—'), '状态')}</div>${r.e.描述 ? `<section class="sec"><h3>事件<span class="en">Event</span></h3><p class="prose">${c.esc(r.e.描述)}</p></section>` : ''}`;
+    return `<section class="sec"><h3>详情<span class="en">Detail</span></h3><p class="prose">${c.esc(x.sub || '—')}</p></section>`;
+  };
+  const KIND_GO = { 委托截止: ['page-terminal/quests', 'qtab=委托板'], 任务截止: ['page-terminal/quests', ''], 拍卖: ['page-terminal/trade', 'venue=auction'], 商店补货: ['page-terminal/trade', ''] };
+  const chronicle = c => {
+    const all = upcoming(c), kinds = [...new Set(all.map(x => x.kind))], now = c.num(c.S.world.时间.tick);
+    const tab = kinds.includes(c.state.ui.ctab) ? c.state.ui.ctab : '全部', list = tab === '全部' ? all : all.filter(x => x.kind === tab);
+    const key = x => x.kind + ':' + x.title, sel = list.find(x => key(x) === c.state.ui.csel) || list[0], go = sel && KIND_GO[sel.kind];
+    return {
+      tag: 'CORE · CHRONICLE',
+      left: `<div class="pad">${c.head('timeline', '未来节点', 'Timeline', 'gd')}
+        ${all.length ? `<div class="pick-row">${c.pick('ctab', tab, ['全部', ...kinds].map(k => ({ value: k, label: `${k} · ${k === '全部' ? all.length : all.filter(x => x.kind === k).length}` })))}</div>
+        <div class="list q-list timeline-list">${list.map(x => `<button class="row${x === sel ? ' on' : ''}" type="button" data-set="csel=${c.esc(key(x))}" aria-current="${x === sel}">${c.sock(x.icon)}<div><strong>${c.esc(x.title)}</strong><small>${c.esc(c.tickDate(x.t).replace(/^斗罗历\d+年/, ''))}</small></div><span class="end">${days(c, x.t)}</span></button>`).join('')}</div>` : c.empty('timeline', '还没有记录未来事件')}
+      </div>`,
+      core: sel ? `<div class="pad">
+        <div class="q-title">${c.sock(sel.icon, 'gd')}<span class="chip">${sel.kind}</span><h2>${c.esc(sel.title)}</h2></div>
+        <div class="q-meters"><div class="q-meter"><div class="q-mh"><small>距今</small><b>${days(c, sel.t)}</b><em>${c.esc(c.tickDate(sel.t))}</em></div>${c.bar('vp', Math.max(0, 1440 - (sel.t - now)), 1440)}</div></div>
+        ${nodeDetail(c, sel)}
+        ${go ? `<button class="key-s" type="button" style="align-self:flex-start" data-go="${go[0]}" data-go-set="${c.esc([go[1], sel.ref?.id && sel.kind === '委托截止' ? `qsel=${sel.ref.id}` : '', sel.ref?.id && sel.kind === '任务截止' ? `qsel=${sel.ref.id}` : ''].filter(Boolean).join(';'))}"><i class="fa-solid fa-arrow-right"></i> 前往处理</button>` : ''}
+      </div>` : `<div class="pad sparse">${c.empty('timeline', '还没有记录未来事件')}</div>`,
+      right: `<div class="pad">${c.head('hourglass-half', '今日', 'Today')}
+        <div class="chronos small"><span class="lv">${c.esc((c.S.world.时间._calendar || '').replace(/ .*/, ''))}</span><span class="num">${c.esc((c.S.world.时间._calendar || '').split(' ')[1] || '')}</span></div>
+        <div class="tiles">${tile(c, 'book-open', Object.keys(c.S.world.时间线 || {}).length, '世界事件')}${tile(c, 'hourglass-half', all.length, '未来节点')}${kinds.map(k => tile(c, all.find(x => x.kind === k).icon, all.filter(x => x.kind === k).length, k)).join('')}</div>
+      </div>`,
+    };
+  };
+
+  // 势力：左翼 = 势力列表（类型筛选，我所属的置顶），主屏 = 选中势力的档案，右翼 = 对外态度与我在其中的身份
+  const factionView = c => {
+    const all = factions(c), mineMap = c.ch.社交?.势力 || {}, types = [...new Set(all.map(f => f.类型 || '其他'))];
+    const ftype = types.includes(c.state.ui.ftype) ? c.state.ui.ftype : '全部';
+    const list = (ftype === '全部' ? all : all.filter(f => (f.类型 || '其他') === ftype)).sort((a, b) => (mineMap[b.name] ? 1 : 0) - (mineMap[a.name] ? 1 : 0));
+    const f = list.find(x => x.name === c.state.ui.fsel) || list[0], st = f?.战力统计 || {}, me = f && mineMap[f.name];
+    const desc = f ? String(f.描述 || '').replace(/[#*]/g, '').split('\n').map(s => s.trim()).filter(Boolean).join(' ') : '';
+    const rel = f ? Object.entries(f.关系 || {}) : [], editable = f && c.S.org?.[f.name];
+    return {
+      tag: 'CORE · FACTIONS',
+      left: `<div class="pad">${c.head('chess-rook', '势力', 'Factions', 'gd')}
+        <div class="pick-row">${c.pick('ftype', ftype, ['全部', ...types].map(t => ({ value: t, label: `${t} · ${t === '全部' ? all.length : all.filter(x => (x.类型 || '其他') === t).length}` })))}</div>
+        <div class="list q-list">${list.map(x => `<button class="row${x === f ? ' on' : ''}" type="button" data-set="fsel=${c.esc(x.name)}" aria-current="${x === f}"><span class="chip${mineMap[x.name] ? ' gold' : ''}">${mineMap[x.name] ? '所属' : c.esc(x.状态 || x.类型 || '—')}</span><div><strong>${c.esc(x.name)}</strong><small>${c.esc(x.类型 || '')}</small></div><span class="end">${wan(c, x.影响力)}</span></button>`).join('')}</div>
+      </div>`,
+      core: f ? `<div class="pad">
+        <div class="q-title">${c.sock('chess-rook', 'gd')}<span class="chip">${c.esc(f.类型 || '势力')}</span><h2>${c.esc(f.name)}</h2><span class="q-state">${c.esc(f.状态 || '—')}</span></div>
+        ${f.上级势力 && f.上级势力 !== '无' ? `<div class="q-from">上级 ${c.esc(f.上级势力)}</div>` : ''}
+        <div class="tiles four">${tile(c, 'crown', wan(c, f.影响力), '影响力')}${tile(c, 'users', wan(c, f.规模), '规模')}${tile(c, 'bolt', c.fmt(st.极限斗罗 || 0), '极限斗罗')}${tile(c, 'star', c.fmt(st.超级斗罗 || 0), '超级斗罗')}</div>
+        ${!c.blank(f.现状描述) ? `<section class="sec"><h3>现状<span class="en">Now</span></h3><p class="prose">${c.esc(f.现状描述)}</p></section>` : ''}
+        <section class="sec"><h3>简介<span class="en">Profile</span></h3><p class="prose">${c.esc(desc || '没有收录简介')}</p></section>
+      </div>` : `<div class="pad sparse">${c.empty('chess-rook', '没有势力资料')}</div>`,
+      right: `<div class="pad">${c.head('handshake', '关系', 'Relations')}
+        ${me ? `<div class="spirit-card">${c.sock('id-badge', 'gd')}<div><strong>${c.esc(me.身份 || '成员')}</strong><small>权限级 ${c.fmt(me.权限级 || 0)}</small></div><span class="q-state">所属</span></div>` : ''}
+        ${rel.length ? `<div class="list q-list">${rel.map(([k, v]) => `<div class="row" style="cursor:default"><span class="chip">${c.esc(typeof v === 'object' ? v.态度 || v.关系 || '—' : v)}</span><div><strong>${c.esc(k)}</strong>${editable ? '' : '<small>内置资料</small>'}</div><span></span></div>`).join('')}</div>` : c.empty('handshake', '没有记录对外态度')}
+      </div>`,
+    };
+  };
+
+  // 赛事：左翼 = 赛事列表，主屏 = 选中赛事（日程、项目、参赛规模），右翼 = 我的参赛
+  const games = c => {
+    const list = Object.entries(c.S.world.赛事 || {}), [id, g] = list.find(([k]) => k === c.state.ui.gsel) || list[0] || [];
+    const mine = list.filter(([, x]) => Object.values(x.项目 || {}).some(p => p?.参赛者?.[c.name]));
+    const items = g ? Object.entries(g.项目 || {}).filter(([, p]) => p) : [];
+    return {
+      tag: 'CORE · TOURNAMENT', wide: list.length ? '' : 'both', railR: `<div class="rail">${c.sock('user-check')}<b>0</b><small>我的参赛</small></div>`, railL: `<div class="rail">${c.sock('trophy')}<b>0</b><small>赛事</small></div>`,
+      left: `<div class="pad">${c.head('trophy', '赛事', 'Tournament', 'gd')}
+        ${list.length ? `<div class="list q-list">${list.map(([k, x]) => `<button class="row${k === id ? ' on' : ''}" type="button" data-set="gsel=${c.esc(k)}"><span class="chip">${c.esc(x.状态 || '筹备')}</span><div><strong>${c.esc(x.名称 || k)}</strong><small>${c.esc(c.tickDate(x.日程?.开始tick || 0))}</small></div><span></span></button>`).join('')}</div>` : c.empty('trophy', '暂无赛事')}
+      </div>`,
+      core: g ? `<div class="pad">
+        <div class="q-title">${c.sock('trophy', 'gd')}<span class="chip">${c.esc(g.状态 || '筹备')}</span><h2>${c.esc(g.名称 || id)}</h2></div>
+        <div class="q-meters"><div class="q-meter"><div class="q-mh"><small>日程</small><b>${c.esc(c.tickDate(g.日程?.开始tick || 0))}</b><em>至 ${c.esc(c.tickDate(g.日程?.结束tick || 0))}</em></div></div></div>
+        <section class="sec"><h3>项目<span class="en">Events</span></h3><div class="tiles">${items.map(([k, p]) => tile(c, k === '团体赛' ? 'people-group' : 'user', `${Object.keys(p.参赛者 || {}).length} / ${c.fmt(p.参赛总数)}`, `${k} · 参赛`)).join('') || '<span class="lbl">尚未设项目</span>'}</div></section>
+      </div>` : `<div class="pad sparse">${c.empty('trophy', '暂无赛事', '赛事由剧情发起；筹备期可以报名参赛')}</div>`,
+      right: `<div class="pad">${c.head('user-check', '我的参赛', 'Entry')}
+        <div class="tiles">${tile(c, 'user-check', mine.length, '已报名')}${tile(c, 'trophy', list.filter(([, x]) => x.状态 === '进行中').length, '进行中')}</div>
+        ${g && g.状态 === '筹备' ? `<button class="cta" type="button" data-game-join="${c.esc(id)}"><i class="fa-solid fa-signature"></i>报名参赛</button>` : ''}
+      </div>`,
+    };
+  };
+
+  // 图鉴：左翼 = 已收录条目，主屏 = 选中条目档案（可原地改），右翼 = 研究档位与收集奖励。
+  // 档位 / 奖励同原项目：研究档位门槛从 50 起每档翻倍（见习生态学者 → 世界边境观察者）；每 25 条反应校准 +1%，至多 +6%
+  const RANKS = ['见习生态学者', '野外调查员', '生态编目官', '危险谱系研究员', '世界边境观察者'];
+  const rankOf = n => { let need = 50, left = n, i = 0; while (left >= need && need < 51200) { left -= need; i = Math.min(i + 1, RANKS.length - 1); need *= 2; } return { name: RANKS[i], cur: Math.min(need, left), need }; };
+  const bestiary = c => {
+    const list = Object.entries(c.S.world.图鉴 || {}), [key, b] = list.find(([k]) => k === c.state.ui.bsel) || list[0] || [];
+    const rk = rankOf(list.length), reward = Math.min(6, Math.floor(list.length / 25));
+    const bp = ['world', '图鉴', key];
+    const s = (k, dflt = '未记录') => c.ed(c.blank(b[k]) ? dflt : b[k], [...bp, k], { raw: c.blank(b[k]) ? '' : b[k] });
+    const n = k => c.ed(b[k] == null ? '—' : c.fmt(b[k]), [...bp, k], { kind: 'number', integer: true, min: 0, raw: b[k] ?? '' });
+    return {
+      tag: 'CORE · BESTIARY', wide: list.length ? '' : 'l', railL: `<div class="rail">${c.sock('dragon')}<b>0</b><small>图鉴</small></div>`,
+      left: `<div class="pad">${c.head('dragon', '图鉴', 'Bestiary', 'gd')}
+        ${list.length ? `<div class="list q-list">${list.map(([k, x]) => `<button class="row${k === key ? ' on' : ''}" type="button" data-set="bsel=${c.esc(k)}"><span class="chip">${c.esc(x.年限档 || '—')}</span><div><strong>${c.esc(x.名称 || k)}</strong><small>对标 ${c.fmt(x.对标等级)} 级</small></div><span></span></button>`).join('')}</div>` : c.empty('dragon', '还没有收录魂兽', '遭遇或击败魂兽后会自动收录')}
+      </div>`,
+      core: b ? `<div class="pad">
+        <div class="q-title">${c.sock('dragon', 'gd')}<span class="chip">${c.esc(b.年限档 || b.类型 || '魂兽')}</span><h2>${c.ed(b.名称 || key, [...bp, '名称'])}</h2></div>
+        <div class="q-from">${c.esc(key)}</div>
+        <div class="tiles four">${tile(c, 'chart-simple', n('对标等级'), '对标等级')}${tile(c, 'hourglass-start', n('年限下限'), '年限下限')}${tile(c, 'hourglass-end', n('年限上限'), '年限上限')}${tile(c, 'gem', s('物种品质'), '物种品质')}</div>
+        <section class="sec"><h3>物种<span class="en">Species</span></h3>${c.kv([['类型', s('类型', '怪物')], ['具体物种', s('具体物种')], ['标准物种', s('标准物种')], ['标准种族', s('标准种族')], ['常见级别', s('常见级别')]])}</section>
+        ${c.entries(b.标准技能).length ? `<section class="sec"><h3>标准技能<span class="en">${c.entries(b.标准技能).length}</span></h3><div class="chips-row">${c.entries(b.标准技能).map(([k]) => `<span class="chip s">${c.esc(k)}</span>`).join('')}</div></section>` : ''}
+      </div>` : `<div class="pad sparse">${c.empty('dragon', '还没有收录魂兽')}</div>`,
+      right: `<div class="pad">${c.head('microscope', '研究', 'Research')}
+        <div class="q-meter"><div class="q-mh"><small>研究档位</small><b>${rk.name}</b><em>下一档还需 ${c.fmt(rk.need - rk.cur)} 条</em></div>${c.bar('vp', rk.cur, rk.need)}</div>
+        <div class="tiles">${tile(c, 'book', list.length, '已收录')}${tile(c, 'crosshairs', `+${reward}%`, '反应校准')}</div>
+      </div>`,
+    };
+  };
+  // 下拉筛选（编年类别 / 势力类型）：选中即切换
+  document.addEventListener('picker:change', e => {
+    const k = e.detail.path; if (!['ctab', 'ftype'].includes(k)) return;
+    const c = window.COCKPIT.ctx(); c.state.ui[k] = e.detail.value; window.COCKPIT.refresh();
+  });
+
+  document.addEventListener('click', e => {
+    const t = e.target.closest('[data-game-join]'); if (!t) return;
+    t.dataset.confirm = `报名参加「${t.dataset.gameJoin}」`;
+  }, true);
+
+  window.COCKPIT.register('page-world', {
+    label: '世界', icon: 'globe', tag: 'CORE · WORLD',
+    keys: [
+      { id: 'overview', icon: 'globe', label: '概况', view: overview },
+      { id: 'chronicle', icon: 'timeline', label: '编年', view: chronicle },
+      { id: 'faction', icon: 'chess-rook', label: '势力', view: factionView },
+      { id: 'games', icon: 'trophy', label: '赛事', view: games },
+      { id: 'bestiary', icon: 'dragon', label: '图鉴', view: bestiary },
+    ],
+  });
+})();
+
+;
+/* source: cockpit/pages-terminal.js */
+/* 事务领域：任务 · 试炼 · 工坊 · 情报 · 交易 · 战斗 · 设置 */
+(() => {
+  const left = (c, t) => { const d = (c.num(t) - c.num(c.S.world.时间.tick)) / 144; return d <= 0 ? '已截止' : d < 1 ? `剩 ${Math.max(1, Math.round(d * 24))} 小时` : `剩 ${Math.round(d)} 天`; };
+
+  // 任务：左翼 = 分页列表（主线 / 支线 / 委托板），主屏 = 选中任务的简报（进度、时限、要求、说明、奖励），右翼 = 操作。
+  // 同原项目「列表 + 焦点详情 + 操作条」：推进 / 提交 / 放弃 / 接取走 AI 请求（data-quest-action，移植时接 buildQuestDispatchRequest），
+  // 删除走记录删除。分组同原版：任务线不是「主线」的都算支线
+  const QUEST_ICON = { 主线: 'crown', 支线: 'route', 委托板: 'file-signature' };
+  const quests = c => {
+    const ui = c.state.ui, now = c.num(c.S.world.时间.tick);
+    const mine = Object.entries(c.ch.我的任务 || {}), board = Object.entries(c.S.world.委托板 || {});
+    const lines = { 主线: mine.filter(([, q]) => q.任务线 === '主线'), 支线: mine.filter(([, q]) => q.任务线 !== '主线'), 委托板: board };
+    const tab = lines[ui.qtab] ? ui.qtab : lines.主线.length ? '主线' : lines.支线.length ? '支线' : '委托板';
+    const list = lines[tab], selId = list.some(([id]) => id === ui.qsel) ? ui.qsel : list[0]?.[0], sel = list.find(([id]) => id === selId)?.[1];
+    const isBoard = tab === '委托板', active = mine.filter(([, q]) => q.状态 === '进行中').length, open = board.filter(([, q]) => (q.状态 || '待接取') === '待接取').length;
+    const rowOf = ([id, q]) => `<button class="row${id === selId ? ' on' : ''}" type="button" data-set="qsel=${c.esc(id)}" aria-current="${id === selId}"><span class="chip">${c.esc(isBoard ? q.难度 || '委托' : q.状态 || '进行中')}</span><div><strong>${c.esc(isBoard ? q.标题 || id : id)}</strong><small>${c.esc(isBoard ? q.发布者 || '' : `进度 ${c.fmt(q.当前进度)}%`)}</small></div><span class="end">${q.截止tick ? left(c, q.截止tick) : ''}</span></button>`;
+    return {
+      tag: 'CORE · QUESTS',
+      left: `<div class="pad">${c.head('list-check', '任务', 'Quest Log', 'gd')}
+        <div class="seg q-tabs" role="tablist">${Object.entries(lines).map(([k, l]) => `<button class="key-s${k === tab ? ' on' : ''}" type="button" role="tab" aria-selected="${k === tab}" data-set="qtab=${k}"><i class="fa-solid fa-${QUEST_ICON[k]}"></i> ${k}<b>${l.length}</b></button>`).join('')}</div>
+        ${list.length ? `<div class="list q-list">${list.map(rowOf).join('')}</div>` : c.empty(QUEST_ICON[tab], isBoard ? '委托板是空的' : `没有${tab}任务`)}
+      </div>`,
+      core: sel ? questBrief(c, tab, selId, sel, now) : `<div class="pad sparse">${c.empty('clipboard-list', isBoard ? '委托板是空的' : `没有${tab}任务`)}${!isBoard && board.length ? `<button class="key-s" type="button" data-set="qtab=委托板" style="align-self:center"><i class="fa-solid fa-file-signature"></i> 看委托板 · ${board.length}</button>` : ''}</div>`,
+      // 右翼：上方是总览数字，操作键沉到底部（主按钮 .cta 自带 margin-top:auto）
+      right: `<div class="pad">${c.head('bolt', '行动', 'Actions')}
+        <div class="tiles"><div class="tile">${c.sock('list-check')}<b>${active}</b><small>进行中</small></div><div class="tile">${c.sock('file-signature')}<b>${open}</b><small>待接取委托</small></div></div>
+        ${sel ? questActions(c, isBoard, selId, sel) : c.empty('bolt', '暂无可执行的操作')}
+      </div>`,
+    };
+  };
+  // 简报：委托未接取时只给公开的框架描述（完整描述接取后公开，同原版）
+  const questBrief = (c, tab, id, q, now) => {
+    const isBoard = tab === '委托板', qp = isBoard ? ['world', '委托板', id] : c.P('我的任务', id);
+    const start = c.num(isBoard ? q.生成tick : q.最后更新时间tick), end = c.num(q.截止tick);
+    const timeLeft = end ? Math.max(0, end - now) : 0, span = end && start && end > start ? end - start : 0, urgent = span && timeLeft / span < .25;
+    const need = q.交付需求, have = need ? c.num(c.ch.背包?.[need.名称]?.数量) : 0;
+    const desc = isBoard ? q.框架描述 || '' : q.描述 || '';
+    return `<div class="pad">
+      <div class="q-title">${c.sock(QUEST_ICON[tab], 'gd')}<span class="chip">${c.esc(isBoard ? q.难度 || '委托' : q.任务线 || '支线')}</span><h2>${isBoard ? c.ed(q.标题 || id, [...qp, '标题']) : c.esc(id)}</h2><span class="q-state">${c.esc(isBoard ? q.状态 || '待接取' : q.状态 || '进行中')}</span></div>
+      <div class="q-from">${c.esc(isBoard ? `${q.发布者 || '未知发布者'} · ${q.面向 || '公开'}${q.指定对象 && q.指定对象 !== '无' ? ` · 指定 ${q.指定对象}` : ''}` : `${q.任务线 || '支线'}任务`)}</div>
+      <div class="q-meters">
+        ${isBoard ? '' : `<div class="q-meter"><div class="q-mh"><small>进度</small><b>${c.ed(c.fmt(q.当前进度), [...qp, '当前进度'], { kind: 'number', min: 0, max: 100, raw: c.num(q.当前进度) })}%</b></div>${c.bar('mp', c.num(q.当前进度), 100)}</div>`}
+        ${end ? `<div class="q-meter"><div class="q-mh"><small>时限</small><b${urgent ? ' class="warn-t"' : ''}>${left(c, end)}</b><em>截止 ${c.esc(c.tickDate(end))}</em></div>${span ? c.bar(urgent ? 'hp' : 'vp', timeLeft, span) : ''}</div>` : '<div class="q-meter"><div class="q-mh"><small>时限</small><b>无</b></div></div>'}
+      </div>
+      <section class="sec"><h3>${isBoard ? '公开简报' : '任务说明'}<span class="en">Brief</span></h3>
+        <p class="prose">${c.ed(desc || '未记录', [...qp, isBoard ? '框架描述' : '描述'], { kind: 'text', raw: desc })}</p>
+        ${isBoard ? `<div class="q-locked"><i class="fa-solid fa-lock"></i><span>完整内容</span>${c.hint('接取后公开目标坐标、比对要求或路线与交接人。')}</div>` : ''}
+      </section>
+      ${need || q.资源级别 ? `<section class="sec"><h3>要求<span class="en">Requirement</span></h3><div class="tiles">
+        ${need ? `<div class="tile wide">${c.sock('box')}<b>${c.esc(need.名称)} × ${c.fmt(need.数量)}${need.品质下限 ? ` · ${c.esc(need.品质下限)}以上` : ''}</b><small>持有 ${c.fmt(have)}${have >= c.num(need.数量) ? ' · 可交付' : ''}</small></div>` : ''}
+        ${q.资源级别 ? `<div class="tile wide">${c.sock('flask')}<b>${c.esc(q.资源级别)}</b><small>资源级别</small></div>` : ''}
+      </div></section>` : ''}
+      <section class="sec"><h3>奖励<span class="en">Reward</span></h3><div class="tiles">
+        <div class="tile">${c.sock('coins', 'gd')}<b>${c.ed(c.fmt(q.奖励币 || 0), [...qp, '奖励币'], { kind: 'number', integer: true, min: 0, raw: c.num(q.奖励币) })}</b><small>联邦币</small></div>
+        <div class="tile">${c.sock('star', 'gd')}<b>${c.ed(c.fmt(q.奖励声望 || 0), [...qp, '奖励声望'], { kind: 'number', integer: true, raw: c.num(q.奖励声望) })}</b><small>声望</small></div>
+      </div></section>
+    </div>`;
+  };
+  // 操作：同原版按状态给出——委托待接取才可接取；任务未结束才可推进 / 提交 / 放弃；有交付需求或「可提交」时主按钮是提交
+  const questActions = (c, isBoard, id, q) => {
+    const st = q.状态 || (isBoard ? '待接取' : '进行中'), done = ['已完成', '已放弃', '失败', '已失败'].includes(st), del = JSON.stringify(isBoard ? ['world', '委托板', id] : c.P('我的任务', id));
+    if (isBoard) return `${st === '待接取' ? `<button class="cta" type="button" data-quest-action="accept" data-quest-target="${c.esc(id)}"><i class="fa-solid fa-signature"></i>接取委托</button>` : `<span class="lbl">${c.esc(st)}</span>`}
+      <button class="key-s danger" type="button" data-del-path="${c.esc(del)}"><i class="fa-solid fa-trash"></i> 删除委托</button>`;
+    const submitFirst = q.交付需求 || st === '可提交';
+    return `${done ? `<span class="lbl">${c.esc(st)}</span>` : `${submitFirst ? `<button class="cta" type="button" data-quest-action="submit" data-quest-target="${c.esc(id)}"><i class="fa-solid fa-box-open"></i>提交任务</button>` : `<button class="cta" type="button" data-quest-action="progress" data-quest-target="${c.esc(id)}"><i class="fa-solid fa-forward"></i>推进任务</button>`}
+      <div class="q-acts">${submitFirst ? '' : `<button class="key-s" type="button" data-quest-action="submit" data-quest-target="${c.esc(id)}"><i class="fa-solid fa-box-open"></i> 提交</button>`}<button class="key-s" type="button" data-quest-action="abandon" data-quest-target="${c.esc(id)}"><i class="fa-solid fa-flag"></i> 放弃</button></div>`}
+      <button class="key-s danger" type="button" data-del-path="${c.esc(del)}"><i class="fa-solid fa-trash"></i> 删除任务</button>`;
+  };
+
+  // 试炼（魂灵塔）：左翼 = 塔层阶梯（四个魂灵区，点选），主屏 = 选中魂灵区的详情与五折资格，右翼 = 冲塔 / 门票 / 兑换。
+  // 分区、年限、品质档、组队限制同原项目 SOUL_TOWER_*（B:33273-33330）：共 108 层，队伍至多 7 人、30 岁以下、年龄差不超过 3 岁
+  const TOWER = [
+    { key: 'thousand', label: '千年魂灵区', from: 1, to: 18, age: [1000, 9999], q: ['C', 'B', 'A'], color: '#b28bff' },
+    { key: 'ten_thousand', label: '万年魂灵区', from: 19, to: 36, age: [10000, 99999], q: ['B', 'A', 'S'], color: '#ff9a62' },
+    { key: 'pre_beast', label: '万年以上魂灵区', from: 37, to: 99, age: [10000, 99999], q: ['A', 'S'], color: '#ff6b6b' },
+    { key: 'beast', label: '凶兽魂灵区', from: 100, to: 108, age: [100000, 200000], q: ['S+'], color: '#ffd36b' },
+  ];
+  const TOWER_TOP = 108, TEAM = { size: 7, age: 30, gap: 3 };
+  const ticketsOf = (c, re) => Object.entries(c.ch.背包 || {}).filter(([n]) => re.test(n)).reduce((s, [, it]) => s + (c.num(it?.数量) || 1), 0);
+  const trial = c => {
+    const tower = c.ch.魂灵塔记录 || {}, top = c.num(tower.最高层), next = Math.min(TOWER_TOP, top + 1), half = tower.当前五折魂灵 || {};
+    const here = TOWER.find(z => next >= z.from && next <= z.to) || TOWER[0], zone = TOWER.find(z => z.key === c.state.ui.tzone) || here;
+    const tickets = ticketsOf(c, /魂灵塔门票/), hallTickets = ticketsOf(c, /升灵台门票/);
+    const cleared = z => Math.max(0, Math.min(z.to, top) - z.from + 1), span = z => z.to - z.from + 1;
+    return {
+      tag: 'CORE · TRIAL',
+      left: `<div class="pad">${c.head('tower-observation', '魂灵塔', 'Spirit Tower', 'gd')}
+        <div class="tower">${[...TOWER].reverse().map(z => `<button class="tz${z === zone ? ' on' : ''}${z === here ? ' cur' : ''}" type="button" data-set="tzone=${z.key}" style="--zc:${z.color};--fill:${(cleared(z) / span(z) * 100).toFixed(1)}%" aria-current="${z === zone}">
+          <span class="tz-fill"></span><b>${z.label}</b><small>第 ${z.from}–${z.to} 层</small><em>${cleared(z)}/${span(z)}</em></button>`).join('')}</div>
+        <div class="tower-top"><span>最高</span><b>${c.ed(c.fmt(top), c.P('魂灵塔记录', '最高层'), { kind: 'number', integer: true, min: 0, max: TOWER_TOP, raw: top })}</b><small>/ ${TOWER_TOP} 层</small></div>
+      </div>`,
+      core: `<div class="pad">
+        <div class="q-title">${c.sock('dungeon', 'gd')}<span class="chip" style="--tint:${zone.color}">第 ${zone.from}–${zone.to} 层</span><h2>${zone.label}</h2>${zone === here ? '<span class="q-state">当前进度</span>' : top >= zone.to ? '<span class="q-state done">已通关</span>' : ''}</div>
+        <div class="q-meters">
+          <div class="q-meter"><div class="q-mh"><small>本区进度</small><b>${cleared(zone)} / ${span(zone)}</b><em>${zone === here ? `下一层：第 ${next} 层` : top >= zone.to ? '本区已全部击破' : `从第 ${zone.from} 层开始`}</em></div>${c.bar('mp', cleared(zone), span(zone))}</div>
+          <div class="q-meter"><div class="q-mh"><small>全塔</small><b>${c.fmt(top)} / ${TOWER_TOP}</b><em>${TOWER.filter(z => top >= z.to).length} 个魂灵区已通关</em></div>${c.bar('vp', top, TOWER_TOP)}</div>
+        </div>
+        <section class="sec"><h3>守塔魂灵<span class="en">Guardians</span></h3><div class="tiles">
+          <div class="tile">${c.sock('hourglass-half')}<b>${c.fmt(zone.age[0])}–${c.fmt(zone.age[1])} 年</b><small>年限</small></div>
+          <div class="tile">${c.sock('gem')}<b>${zone.q.join(' / ')}</b><small>品质档</small></div>
+        </div></section>
+        <section class="sec"><h3>五折魂灵资格<span class="en">Discount</span>${c.hint('击败守塔魂灵后可选择结束冲塔、保留该魂灵的五折兑换资格。')}</h3>
+          ${half.名称 ? `<div class="relic-card${half.已使用 ? ' used' : ''}">${c.sock('dragon', 'gd')}<div><strong>${c.esc(half.名称)}</strong><small>${c.esc(half.标准物种 || '')} · ${c.fmt(half.年限)} 年 · ${c.esc(half.品质 || '')} · 第 ${c.fmt(half.层数)} 层</small></div><span class="q-state${half.已使用 ? ' done' : ''}">${half.已使用 ? '已使用' : '可兑换'}</span></div>` : `<div class="tile wide dim">${c.sock('dragon')}<b>暂无</b><small>还没有保留的五折资格</small></div>`}
+        </section>
+      </div>`,
+      right: `<div class="pad">${c.head('bolt', '行动', 'Actions')}
+        <div class="tiles"><div class="tile${tickets ? '' : ' dim'}">${c.sock('ticket', 'gd')}<b>${tickets}</b><small>魂灵塔门票</small></div><div class="tile${hallTickets ? '' : ' dim'}">${c.sock('ticket')}<b>${hallTickets}</b><small>升灵台门票</small></div></div>
+        <section class="sec"><h3>组队规则${c.hint(`队伍至多 ${TEAM.size} 人；成员须在 ${TEAM.age} 岁以下，年龄差不超过 ${TEAM.gap} 岁；队友须是已建档角色。`)}</h3>
+          <div class="chips-row"><span class="chip s">≤ ${TEAM.size} 人</span><span class="chip s">≤ ${TEAM.age} 岁</span><span class="chip s">年龄差 ≤ ${TEAM.gap}</span></div></section>
+        ${half.名称 && !half.已使用 ? '<button class="key-s" type="button" data-go="page-terminal/trade"><i class="fa-solid fa-store"></i> 去特许兑换</button>' : ''}
+        ${tickets ? `<button class="cta" type="button" data-trial-action="climb" data-floor="${next}"><i class="fa-solid fa-dungeon"></i>冲塔 · 第 ${next} 层</button>`
+          : `<button class="cta" type="button" data-go="page-terminal/trade"><i class="fa-solid fa-ticket"></i>购买门票</button>`}
+      </div>`,
+    };
+  };
+
+  // 工坊：左翼 = 四种工序（及我在对应副职业的等级），主屏 = 选中工序的职业档案（等级 / 经验 / 称号）与 1–5 阶消耗、经验收益，
+  // 右翼 = 当前资源与开工。配置同原项目 ProfessionUI_Module PROFESSION_CONFIG（消耗三元组依次是 体力 / 魂力 / 精神力），
+  // 等级经验门槛用运行时 JobExpThresholds；开工后的选目标 / 选材料 / 天数仍是原项目工坊模块，移植时接上
+  const WORK = [
+    { key: 'forge', name: '锻造', job: '锻造师', icon: 'hammer', act: '开始锻造', mats: '需要材料，多选同阶材料为融锻', costs: { 1: [100, 100, 0], 2: [200, 1500, 20], 3: [500, 5000, 50], 4: [15000, 15000, 5000], 5: [80000, 80000, 18000] } },
+    { key: 'manufacture', name: '机甲制造', job: '制造师', icon: 'robot', act: '开始制造', mats: '需要材料：金属、图纸、模块、回路等', costs: { 1: [20, 35, 20], 2: [160, 280, 160], 3: [700, 1225, 600], 4: [3000, 5250, 2000], 5: [16000, 28000, 7200] } },
+    { key: 'design', name: '机甲设计', job: '设计师', icon: 'compass-drafting', act: '开始设计', mats: '可无材料起草；选入模板 / 旧图纸视为协同设计', costs: { 1: [5, 10, 25], 2: [20, 40, 200], 3: [80, 150, 750], 4: [300, 600, 2500], 5: [1000, 2000, 9000] } },
+    { key: 'repair', name: '机甲修理', job: '修理师', icon: 'screwdriver-wrench', act: '开始修理', mats: '可选维护套件、修复包、金属或零件；不选也能纯资源抢修', costs: { 1: [5, 10, 5], 2: [40, 80, 40], 3: [175, 350, 150], 4: [750, 1500, 500], 5: [4000, 8000, 2700] } },
+  ];
+  const WORK_EXP = { 1: 50, 2: 400, 3: 2000, 4: 10000, 5: 50000 };
+  const expSteps = () => window.COCKPIT.rt('JobExpThresholds') || [0, 1000, 5000, 12000, 60000, 80000, 400000, 500000, 3000000, 99999999];
+  const workshop = c => {
+    const jobs = c.ch.副职业 || {}, w = WORK.find(x => x.key === c.state.ui.wtab) || WORK.find(x => jobs[x.job]) || WORK[0];
+    const job = jobs[w.job], lv = c.num(job?.等级), exp = c.num(job?.经验), th = expSteps(), cur = th[Math.max(0, Math.min(lv, 10) - 1)] || 0, nxt = lv >= 10 ? 0 : th[Math.min(lv, 9)] || 0;
+    const st = c.st, res = [['体力', st.体力], ['魂力', st.魂力], ['精神力', st.精神力]];
+    return {
+      tag: 'CORE · WORKSHOP',
+      left: `<div class="pad">${c.head('industry', '工序', 'Workshop', 'gd')}
+        <div class="list">${WORK.map(x => { const j = jobs[x.job]; return `<button class="row${x === w ? ' on' : ''}" type="button" data-set="wtab=${x.key}" aria-current="${x === w}">${c.sock(x.icon, j ? 'gd' : '')}<div><strong>${x.name}</strong><small>${j ? `${x.job} Lv.${c.fmt(j.等级)}` : `未习得${x.job}`}</small></div><span></span></button>`; }).join('')}</div>
+      </div>`,
+      core: `<div class="pad">
+        <div class="q-title">${c.sock(w.icon, 'gd')}<span class="chip">${w.job}</span><h2>${w.name}工序</h2>${job ? `<span class="q-state">Lv.${c.fmt(lv)}</span>` : '<span class="q-state done">未习得</span>'}</div>
+        ${job ? `<div class="q-meters">
+          <div class="q-meter"><div class="q-mh"><small>经验</small><b>${c.ed(c.fmt(exp), c.P('副职业', w.job, '经验'), { kind: 'number', integer: true, min: 0, raw: exp })}</b><em>${lv >= 10 ? '已满级' : `下一级需 ${c.fmt(nxt)}`}</em></div>${c.bar('mp', Math.max(0, exp - cur), Math.max(1, (nxt || exp) - cur))}</div>
+          <div class="q-meter"><div class="q-mh"><small>称号</small><b>${c.ed(c.blank(job.称号) || job.称号 === '无' ? '暂无' : job.称号, c.P('副职业', w.job, '称号'), { raw: job.称号 === '无' ? '' : job.称号 || '' })}</b><em>等级 ${c.ed(c.fmt(lv), c.P('副职业', w.job, '等级'), { kind: 'number', integer: true, min: 0, max: 10, raw: lv })} / 10</em></div></div>
+        </div>` : `<div class="tile wide dim">${c.sock(w.icon)}<b>未习得${w.job}${c.hint('学会后才能开工；也可以发布委托请别人代工。')}</b><small>副职业</small></div>`}
+        <section class="sec"><h3>各阶消耗<span class="en">Cost</span>${c.hint(`每次开工按目标阶位扣除体力 / 魂力 / 精神力；材料要求：${w.mats}。`)}</h3>
+          <div class="cost-table" role="table"><div class="ct-row ct-head" role="row"><span>阶位</span><span>体力</span><span>魂力</span><span>精神力</span><span>经验</span></div>
+          ${Object.entries(w.costs).map(([t, [a, b, d]]) => `<div class="ct-row" role="row"><span><b>${t}</b> 阶</span>${[[a, st.体力], [b, st.魂力], [d, st.精神力]].map(([v, have]) => `<span class="${c.num(have) < v ? 'short' : ''}">${c.fmt(v)}</span>`).join('')}<span>+${c.fmt(WORK_EXP[t])}</span></div>`).join('')}</div>
+        </section>
+      </div>`,
+      right: `<div class="pad">${c.head('bolt', '开工', 'Start')}
+        <div class="tiles">${res.map(([k, v]) => `<div class="tile">${c.sock({ 体力: 'person-running', 魂力: 'fire', 精神力: 'brain' }[k])}<b>${c.fmt(v)}</b><small>${k}</small></div>`).join('')}</div>
+        ${(btn => job ? btn : `<span class="cta-wrap" data-hint="还没有学会${w.job}">${btn}</span>`)(`<button class="cta" type="button" data-work="${w.key}"${job ? '' : ' disabled'}><i class="fa-solid fa-${w.icon}"></i>${w.act}</button>`)}
+      </div>`,
+    };
+  };
+
+  // 情报：左翼 = 情报列表（机密 / 记录 分页），主屏 = 选中条目全文（记录可原地改、删除），右翼 = 写入新情报。
+  // 机密情报来自 world.机密情报，只列出知情规则里有自己的
+  const intel = c => {
+    const known = (c.ch.已掌握情报 || []).map((t, i) => ({ id: 'k' + i, i, kind: '记录', text: String(t) }));
+    const secret = Object.entries(c.S.world.机密情报 || {}).filter(([, s]) => (s.知情规则 || []).includes(c.name)).map(([t, s]) => ({ id: 's' + t, kind: '机密', title: t, text: String(s.内容 || ''), who: s.知情规则 || [] }));
+    const tabs0 = { 全部: [...secret, ...known], 机密: secret, 记录: known };
+    const tab = tabs0[c.state.ui.itab] ? c.state.ui.itab : '全部', list = tabs0[tab], sel = list.find(x => x.id === c.state.ui.isel) || list[0];
+    return {
+      tag: 'CORE · INTEL', wide: tabs0.全部.length ? '' : 'l', railL: `<div class="rail">${c.sock('eye')}<b>0</b><small>情报</small></div>`,
+      left: `<div class="pad">${c.head('eye', '情报', 'Intel', 'gd')}
+        <div class="seg q-tabs" role="tablist">${Object.entries(tabs0).map(([k, l]) => `<button class="key-s${k === tab ? ' on' : ''}" type="button" role="tab" aria-selected="${k === tab}" data-set="itab=${k}">${k}<b>${l.length}</b></button>`).join('')}</div>
+        ${list.length ? `<div class="list q-list">${list.map(x => `<button class="row${x === sel ? ' on' : ''}" type="button" data-set="isel=${c.esc(x.id)}" aria-current="${x === sel}"><span class="chip${x.kind === '机密' ? ' gold' : ''}">${x.kind}</span><div><strong>${c.esc(x.title || x.text.slice(0, 18))}</strong><small>${c.esc(x.title ? x.text.slice(0, 22) : x.text.slice(18, 40) || ' ')}</small></div><span></span></button>`).join('')}</div>` : c.empty('eye', '还没有掌握任何情报', '剧情中获知的秘密会记录在这里；与自己无关的机密不会显示')}
+      </div>`,
+      core: sel ? `<div class="pad">
+        <div class="q-title">${c.sock(sel.kind === '机密' ? 'user-secret' : 'file-lines', 'gd')}<span class="chip">${sel.kind}</span><h2>${c.esc(sel.title || '情报记录')}</h2></div>
+        <section class="sec intel-body"><p class="prose">${sel.kind === '记录' ? c.ed(sel.text, c.P('已掌握情报', sel.i), { kind: 'text' }) : c.esc(sel.text)}</p></section>
+        ${sel.kind === '机密' ? `<section class="sec"><h3>知情者<span class="en">Who Knows</span></h3><div class="chips-row">${sel.who.map(n => `<span class="chip s">${c.esc(n)}</span>`).join('')}</div></section>` : ''}
+        ${sel.kind === '记录' ? `<button class="key-s danger" type="button" style="align-self:flex-start" data-del-path="${c.esc(JSON.stringify(c.P('已掌握情报', sel.i)))}"><i class="fa-solid fa-trash"></i> 删除这条</button>` : ''}
+      </div>` : `<div class="pad sparse">${c.empty('eye', '还没有掌握任何情报')}</div>`,
+      right: `<div class="pad">${c.head('pen-nib', '写入情报', 'Record')}
+        <textarea class="intel-new" rows="6" placeholder="记下一条情报" aria-label="新情报"></textarea>
+        <button class="cta" type="button" data-intel-add><i class="fa-solid fa-floppy-disk"></i>写入</button>
+      </div>`,
+    };
+  };
+  // 交易场所下拉：选中即切换
+  document.addEventListener('picker:change', e => { if (e.detail.path !== 'venue') return; const c = window.COCKPIT.ctx(); Object.assign(c.state.ui, { venue: e.detail.value, good: '', tqty: 1 }); window.COCKPIT.refresh(); });
+  document.addEventListener('click', e => {
+    if (!e.target.closest('[data-intel-add]')) return;
+    const c = window.COCKPIT.ctx?.(), ta = document.querySelector('.intel-new'), t = ta?.value.trim(); if (!c || !t) { ta?.focus(); return; }
+    const list = [...(Array.isArray(c.ch.已掌握情报) ? c.ch.已掌握情报 : []), t];
+    Object.assign(c.state.ui, { itab: '记录', isel: 'k' + (list.length - 1) });
+    ta.value = '';
+    window.COCKPIT.write([{ path: c.P('已掌握情报'), value: list }]);
+  });
+
+  // 交易：左翼 = 场所（本城商店 / 拍卖行）与货品列表，主屏 = 选中货品的详情（物品定义、价格、库存、购买条件），
+  // 右翼 = 结算（数量、总价、钱包）。价格按物品定义的基础价格 × 店内价格倍率估算；原项目交易模块另有批次、币种按场所、黑市，移植时接上
+  // 物品定义：先查存档 物品 表，再查原项目商店货源 BaseProductPool（MVU_Schema_Runtime.js；字段是 价格 / 货币 / 分类 / 描述）
+  const itemDefOf = (c, name) => {
+    for (const [cat, g] of Object.entries(c.S.物品 || {})) if (g && g[name]) return [cat, g[name]];
+    const pool = window.COCKPIT.rt('BaseProductPool'), p = pool && typeof pool === 'object' ? pool[name] : null;
+    return p ? [p.分类 || '', { ...p, 基础价格: p.价格, 默认货币: p.货币 }] : ['', null];
+  };
+  // 列表里的价格按万 / 亿缩写，给货品名留出宽度；主屏与结算仍显示全额
+  const shortNum = (c, n) => n >= 1e8 ? `${+(n / 1e8).toFixed(2)}亿` : n >= 1e4 ? `${+(n / 1e4).toFixed(1)}万` : c.fmt(n);
+  const trade = c => {
+    const ui = c.state.ui, p = String(c.ch.状态?.位置 || '').split('-').filter(x => x && x !== '斗罗大陆');
+    const city = c.S.world.地点?.[p[0]] || {}, shops = Object.entries(city.商店 || {}), auction = c.S.world.拍卖 || {}, coins = c.ch.财富 || {};
+    const venues = [...shops.map(([n, s]) => ({ id: 'shop:' + n, name: n.replace('分店', ''), icon: 'store', goods: Object.entries(s.库存 || {}).map(([g, x]) => ({ id: g, name: g, stock: x.库存, rate: x.价格倍率 ?? 1, rep: x.需求声望, req: x.需求 })) })),
+      ...(Object.keys(auction.拍品 || {}).length ? [{ id: 'auction', name: '拍卖行', icon: 'gavel', goods: Object.entries(auction.拍品).map(([g, a]) => ({ id: g, name: g, price: a.价格, grade: a.品级, cat: a.分类, story: a.背景 })) }] : []),
+      // 出售：背包里的物品，价格先按定义基础价格作参考（原项目出售另按批次品质折算）
+      { id: 'sell', name: '出售', icon: 'hand-holding-dollar', sell: true, goods: Object.entries(c.ch.背包 || {}).map(([g, r]) => ({ id: g, name: g, stock: c.num(r?.数量) || (r?.批次 || []).reduce((s, b) => s + c.num(b.数量), 0) || 1 })) }];
+    const v = venues.find(x => x.id === ui.venue) || venues[0], goods = v?.goods || [], g = goods.find(x => x.id === ui.good) || goods[0];
+    const [cat, def] = g ? itemDefOf(c, g.name) : ['', null], unit = g ? Math.round(g.price ?? c.num(def?.基础价格) * (g.rate ?? 1)) : 0, cur = def?.默认货币 || '联邦币';
+    const qty = Math.max(1, Math.min(c.num(g?.stock) || 99, c.num(ui.tqty) || 1)), total = unit * qty, have = c.num(coins[cur]);
+    const myFac = g?.req?.势力 ? c.ch.社交?.势力?.[g.req.势力] : null;
+    const block = !g || v.sell ? '' : have < total ? `${cur}不足` : g.rep && c.num(c.ch.社交?.声望) < g.rep ? `声望不足：需要 ${c.fmt(g.rep)}`
+      : g.req?.势力 && (!myFac || ((g.req.阶级 || []).length && !g.req.阶级.includes(myFac.身份))) ? `需要${g.req.势力}${(g.req.阶级 || []).length ? g.req.阶级.join('、') : '成员'}身份` : '';
+    return {
+      tag: 'CORE · MARKET',
+      left: `<div class="pad">${c.head('scale-balanced', '交易', 'Market', 'gd')}
+        <div class="venue-pick">${c.pick('venue', v?.id || '', venues.map(x => ({ value: x.id, label: x.name, group: x.id.startsWith('shop:') ? '本城商店' : '其他' })))}</div>
+        ${goods.length ? `<div class="list q-list">${goods.map(x => `<button class="row${x === g ? ' on' : ''}" type="button" data-set="good=${c.esc(x.id)}" aria-current="${x === g}">${(q => q ? `<span class="chip">${c.esc(q)}</span>` : c.sock(v.icon))(x.grade || itemDefOf(c, x.name)[1]?.品质)}<div><strong>${c.esc(x.name)}</strong><small>${c.esc([x.cat || itemDefOf(c, x.name)[0], x.stock !== undefined ? `库存 ${c.fmt(x.stock)}` : ''].filter(Boolean).join(' · '))}</small></div><span class="end">${shortNum(c, Math.round(x.price ?? c.num(itemDefOf(c, x.name)[1]?.基础价格) * (x.rate ?? 1)))}</span></button>`).join('')}</div>` : c.empty('store', v ? '这里暂时没有货' : `${p[0] || '当地'}没有商店`)}
+      </div>`,
+      core: g ? `<div class="pad">
+        <div class="q-title">${c.sock(v.icon, 'gd')}<span class="chip">${c.esc(g.grade || def?.品质 || cat || '货品')}</span><h2>${c.esc(g.name)}</h2><span class="q-state">${c.esc(v.name)}</span></div>
+        ${(from => from ? `<div class="q-from">${c.esc(from)}</div>` : '')([cat || g.cat, def?.装备槽位 && def.装备槽位 !== '无' ? `${def.装备槽位}装备` : ''].filter(x => x && x !== (g.grade || def?.品质 || cat)).join(' · '))}
+        <section class="sec"><h3>${v.id === 'auction' ? '拍品背景' : '物品说明'}<span class="en">Item</span></h3><p class="prose">${c.esc(v.id === 'auction' ? String(g.story || '').replace(/^[^：]*：/, '') : def?.描述 || '没有收录这件物品的说明')}</p></section>
+        ${Array.isArray(def?.使用效果) && def.使用效果.length ? `<section class="sec"><h3>使用效果<span class="en">Effect</span></h3><div class="chips-row">${def.使用效果.map(x => `<span class="chip s">${c.esc([x.目标 && x.目标 !== '自身' ? x.目标 : '', x.资源 || x.属性 || x.状态 || x.原型, x.数值 || ''].filter(Boolean).join(' '))}</span>`).join('')}</div></section>` : ''}
+        <section class="sec"><h3>价格<span class="en">Price</span></h3><div class="tiles">
+          <div class="tile">${c.sock('coins', 'gd')}<b>${c.fmt(unit)}</b><small>${cur} / 件</small></div>
+          ${g.rate !== undefined && g.rate !== 1 ? `<div class="tile">${c.sock('percent')}<b>×${c.fmt(g.rate)}</b><small>本店价格倍率</small></div>` : ''}
+          ${g.stock !== undefined ? `<div class="tile">${c.sock('boxes-stacked')}<b>${c.fmt(g.stock)}</b><small>库存</small></div>` : ''}
+        </div></section>
+        ${g.rep || g.req?.势力 ? `<section class="sec"><h3>购买条件<span class="en">Requirement</span></h3><div class="tiles">
+          ${g.rep ? `<div class="tile${c.num(c.ch.社交?.声望) >= g.rep ? '' : ' dim'}">${c.sock('star')}<b>声望 ${c.fmt(g.rep)}</b><small>当前 ${c.fmt(c.ch.社交?.声望 || 0)}</small></div>` : ''}
+          ${g.req?.势力 ? `<div class="tile">${c.sock('flag')}<b>${c.esc(g.req.势力)}</b><small>${c.esc((g.req.阶级 || []).join('、') || '成员')}</small></div>` : ''}
+        </div></section>` : ''}
+      </div>` : `<div class="pad sparse">${c.empty('scale-balanced', '选一件货品查看')}</div>`,
+      right: `<div class="pad">${c.head('receipt', '结算', 'Checkout')}
+        <div class="tiles wallet">${(window.COCKPIT.eraCoins || [['联邦币', '联邦币']]).map(([k, l]) => `<div class="tile${k === cur ? '' : ' dim'}">${c.sock('coins', k === cur ? 'gd' : '')}<b>${c.fmt(coins[k] || 0)}</b><small>${l}</small></div>`).join('')}</div>
+        ${g ? `<div class="checkout">
+          <div class="co-row"><span>数量</span><span class="dz-num co-qty"><button type="button" class="dz-step" data-set="tqty=${Math.max(1, qty - 1)}" aria-label="减少"><i class="fa-solid fa-minus"></i></button><b>${qty}</b><button type="button" class="dz-step" data-set="tqty=${qty + 1}" aria-label="增加"><i class="fa-solid fa-plus"></i></button></span></div>
+          <div class="co-row total"><span>${v.sell ? '参考收入' : '合计'}</span><b class="${!v.sell && have < total ? 'warn-t' : ''}">${c.fmt(total)} ${cur}</b></div>
+        </div>
+        ${v.sell ? `<button class="cta" type="button" data-sell="${c.esc(g.name)}"><i class="fa-solid fa-hand-holding-dollar"></i>出售</button>` : (btn => block ? `<span class="cta-wrap" data-hint="${c.esc(block)}">${btn}</span>` : btn)(`<button class="cta" type="button" data-buy="${c.esc(g.name)}"${block ? ' disabled' : ''}><i class="fa-solid fa-cart-shopping"></i>${v.id === 'auction' ? '出价竞拍' : '确认购买'}</button>`)}` : ''}
+      </div>`,
+    };
+  };
+
+  // 设置：只放原项目里真实生效的选项，按用途分组。AI 维护已按用户决定移除——它的「模型接口」（选 AI 维护调用哪个 API 预设）一并去掉；
+  // 角色目录 / 头像入口与别处重复，不再放这里。冷归档只在标准 ST 下工作（原项目 当前启用标准ST冷归档_桥接，TauriTavern 下全部返回
+  // tt_cold_archive_disabled，冷实体激活保护同样停用），本卡跑在 TauriTavern，整组不放。原型存本机 localStorage，移植时对接原项目各自的存储键。
+  const SET_KEY = 'lwcs-cockpit-settings';
+  const readSet = () => { try { return JSON.parse(localStorage.getItem(SET_KEY) || '{}'); } catch (e) { return {}; } };
+// 每个选项：[值, 图标, 悬停说明]；设置项图标
+  const SET_ICON = { motion: 'wand-magic-sparkles', hover: 'arrow-pointer', scan: 'bullseye', battle: 'khanda' };
+  const SET_OPTS = {
+    motion: [['标准', 'wand-magic-sparkles'], ['柔和', 'feather'], ['关闭', 'ban']],
+    hover: [['快', 'bolt'], ['标准', 'arrow-pointer'], ['慢', 'hourglass-half']],
+    scan: [['开启', 'bullseye'], ['关闭', 'circle']],
+    battle: [['自动', 'robot', 'AI 代为出手'], ['手动', 'hand', '每回合自己选'], ['自由', 'feather-pointed', '只叙事不结算']],
+  };
+  const SET_GROUPS = [
+    ['显示', 'palette', [
+      ['motion', '动效强度', '页面切换、魂环旋转与浮窗动画；「关闭」等同系统减少动态效果。', ['标准', '柔和', '关闭'], '标准'],
+    ]],
+    ['交互', 'hand-pointer', [
+      ['hover', '悬停浮窗', '鼠标停留多久后浮出详情。', ['快', '标准', '慢'], '标准'],
+      ['scan', '魂环扫描', '在武魂卡上移动即逐圈选中魂环，不必瞄准环线。', ['开启', '关闭'], '开启'],
+    ]],
+    ['战斗', 'khanda', [
+      ['battle', '代理模式', '自动：AI 代为出手；手动：每回合自己选；自由：只叙事不结算。', ['自动', '手动', '自由'], '手动'],
+    ]],
+  ];
+  try { const m = JSON.parse(localStorage.getItem('lwcs-cockpit-settings') || '{}').motion; if (m) document.querySelector('.cockpit').dataset.motion = m; } catch (e) {}
+  const settings = c => {
+    const v = readSet();
+    // 设置项做成整块面板（2×2 铺满）：头部是分组 + 名称，下面是一排游戏化选项键（同首页日常行动键）
+    const tile = (g, [k, l, d, , def]) => `<section class="set-tile"><header>${c.sock(SET_ICON[k], 'gd')}<div><small>${g}</small><strong>${l}${c.hint(d)}</strong></div></header>
+      <div class="opts set-opts" data-setting-group="${k}" style="--n:${SET_OPTS[k].length}">${SET_OPTS[k].map(([o, ic, h]) => `<button class="opt ${(v[k] || def) === o ? 'on' : ''}" type="button" data-setting="${k}=${o}" aria-pressed="${(v[k] || def) === o}"${h ? ` data-hint="${h}"` : ''}><i class="fa-solid fa-${ic}"></i>${o}</button>`).join('')}</div></section>`;
+    return {
+      tag: 'CORE · SYSTEM', wide: 'both',
+      core: `<div class="pad">
+        ${c.head('sliders', '设置', 'Settings', 'gd', c.hint('设置保存在本机，只影响这台设备。'))}
+        <div class="set-tiles">${SET_GROUPS.flatMap(([g, , rows]) => rows.map(r => tile(g, r))).join('')}</div>
+      </div>`,
+      railL: `<div class="rail">${c.sock('sliders', 'gd')}<small>设置</small></div>`,
+      // 运行环境：原型按本卡目标环境（TauriTavern）显示；移植时换成原项目 当前为TauriTavern环境_桥接()
+      railR: `<div class="rail">${c.sock('circle-info')}<small>TauriTavern</small></div>`,
+    };
+  };
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-setting]'); if (!b) return;
+    const [k, val] = b.dataset.setting.split('='), v = readSet(); v[k] = val;
+    try { localStorage.setItem(SET_KEY, JSON.stringify(v)); } catch (err) {}
+    b.closest('[data-setting-group]')?.querySelectorAll('[data-setting]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); });
+    if (k === 'motion') document.querySelector('.cockpit').dataset.motion = val;
+  });
+
+  // 行动按钮（接取 / 推进 / 提交 / 放弃、冲塔、开工、购买 / 出售）：原型里统一走原地确认条，写明将要做什么；
+  // 原 data-* 保留，移植时接原项目对应请求（任务走 buildQuestDispatchRequest，其余走各模块）
+  const QUEST_VERB = { accept: '接取委托', progress: '推进任务', submit: '提交任务', abandon: '放弃任务' };
+  document.addEventListener('click', e => {
+    const t = e.target.closest('[data-quest-action],[data-trial-action],[data-work],[data-buy],[data-sell]'); if (!t || t.disabled) return;
+    const box = t.closest('.pad'), qty = box?.querySelector('.co-qty b')?.textContent || '1', total = box?.querySelector('.co-row.total b')?.textContent || '';
+    t.dataset.confirm = t.dataset.questAction ? `${QUEST_VERB[t.dataset.questAction] || '处理任务'}「${t.dataset.questTarget || ''}」`
+      : t.dataset.trialAction ? `挑战魂灵塔第 ${t.dataset.floor} 层`
+      : t.dataset.work ? `${t.textContent.trim()}，开工后选择目标、材料与天数`
+      : t.dataset.buy ? `购买 ${t.dataset.buy} ×${qty}，共 ${total}`
+      : `出售 ${t.dataset.sell} ×${qty}，参考收入 ${total}`;
+  }, true);
+
+  window.COCKPIT.register('page-terminal', {
+    label: '事务', icon: 'clipboard-list', tag: 'CORE · AFFAIRS',
+    keys: [
+      { id: 'quests', icon: 'clipboard-list', label: '任务', view: quests },
+      { id: 'trial', icon: 'tower-observation', label: '试炼', view: trial },
+      { id: 'workshop', icon: 'hammer', label: '工坊', view: workshop },
+      { id: 'intel', icon: 'eye', label: '情报', view: intel },
+      { id: 'trade', icon: 'scale-balanced', label: '交易', view: trade },
+      { id: 'settings', icon: 'sliders', label: '设置', view: settings },
+    ],
+  });
 })();
 
 ;

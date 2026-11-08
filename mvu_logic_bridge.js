@@ -1,5 +1,7 @@
 (() => {
   const __mvuBridgeRoot = typeof globalThis !== 'undefined' ? globalThis : window;
+  const 消息语义_桥接 = __mvuBridgeRoot.__LWCS_MESSAGE_SEMANTICS_V1__;
+  if (!消息语义_桥接) throw new Error('LWCS 消息语义模块未加载，请更新 UI 集成包。');
   const 读取C2消费者规则_桥接 = () => {
     const roots = [__mvuBridgeRoot];
     try { if (window.parent && window.parent !== window) roots.push(window.parent); } catch (错误) {}
@@ -1899,7 +1901,6 @@
   let inlineEditSessionToken = 0;
   let inlineEditGuardUntil = 0;
   let pendingLiveRefresh = false;
-  let skillDesignerDraftStateByPreviewKey = Object.create(null);
   let lastHeaderRenderSignature = '';
   let lastDashboardRenderSignature = '';
   let lastDashboardSectionRenderSignatures = null;
@@ -2088,30 +2089,6 @@
     return toNumber(value, fallback);
   }
 
-  const 非神器品质等级段表_桥接 = Object.freeze({
-    普通: Object.freeze([1, 30]),
-    优秀: Object.freeze([31, 50]),
-    稀有: Object.freeze([51, 70]),
-    史诗: Object.freeze([71, 90]),
-    传说: Object.freeze([91, 99]),
-  });
-
-  const 品质道具灵物年限表_桥接 = Object.freeze({
-    普通: 100,
-    优秀: 500,
-    稀有: 1000,
-    史诗: 10000,
-    传说: 100000,
-  });
-
-  const 品质道具修炼倍率表_桥接 = Object.freeze({
-    普通: 1.1,
-    优秀: 1.25,
-    稀有: 1.5,
-    史诗: 2,
-    传说: 3,
-  });
-
   function 计算稳定哈希数值_桥接(文本 = '') {
     let 哈希 = 2166136261;
     String(文本 || '').split('').forEach(字符 => {
@@ -2123,44 +2100,6 @@
 
   function 读取稳定随机数_桥接(文本 = '') {
     return (计算稳定哈希数值_桥接(文本) % 10000) / 10000;
-  }
-
-  function 读取品质随机等级_桥接(品质 = '普通', 种子 = '') {
-    const 等级段 = 非神器品质等级段表_桥接[品质];
-    if (!等级段) return 0;
-    const [下限, 上限] = 等级段;
-    return 下限 + Math.floor(读取稳定随机数_桥接(`${品质}|${种子}`) * (上限 - 下限 + 1));
-  }
-
-  function 读取品质基础属性_桥接(品质 = '普通', 属性键 = 'sp_max', 种子 = '') {
-    const 基础属性函数 = 读取窗口函数('__LWCS_GET_BASE_STATS__');
-    const 等级 = 读取品质随机等级_桥接(品质, 种子);
-    if (typeof 基础属性函数 !== 'function' || !(等级 > 0)) return 0;
-    return Math.floor(toNumber(基础属性函数(等级)?.[属性键], 0) * 0.3);
-  }
-
-  function 读取品质使用效果属性键_桥接(属性 = '') {
-    const 文本 = toText(属性, '').trim();
-    const 映射 = {
-      体力: 'vit_max',
-      生命: 'vit_max',
-      HP: 'vit_max',
-      魂力: 'sp_max',
-      精神力: 'men_max',
-      力量: 'str',
-      防御: 'def',
-      敏捷: 'agi',
-      体力上限: 'vit_max',
-      魂力上限: 'sp_max',
-      精神力上限: 'men_max',
-      速度: 'agi',
-    };
-    return 映射[文本] || '';
-  }
-
-  function 读取品质道具绝对数值_桥接(品质 = '普通', 属性 = '魂力', 种子 = '') {
-    const 属性键 = 读取品质使用效果属性键_桥接(属性);
-    return 属性键 ? 读取品质基础属性_桥接(品质, 属性键, 种子) : 0;
   }
 
   const 常规魂骨槽位列表_桥接 = Object.freeze(['头部魂骨', '躯干魂骨', '右臂魂骨', '左臂魂骨', '右腿魂骨', '左腿魂骨']);
@@ -2526,20 +2465,20 @@
   function readCachedSkillDesignerDraft(previewKey = '') {
     const key = String(previewKey || '').trim();
     if (!key) return null;
-    const draft = skillDesignerDraftStateByPreviewKey[key];
+    const draft = __mvuBridgeRoot.__LWCS_HOST_COMPATIBILITY_V1__.sessionMap(getCurrentUiRequestChatId(), 'skill-designer').get(key);
     return draft && typeof draft === 'object' ? cloneJsonValue(draft) : null;
   }
 
   function writeCachedSkillDesignerDraft(previewKey = '', draft = {}) {
     const key = String(previewKey || '').trim();
     if (!key) return;
-    skillDesignerDraftStateByPreviewKey[key] = cloneJsonValue(draft && typeof draft === 'object' ? draft : {});
+    __mvuBridgeRoot.__LWCS_HOST_COMPATIBILITY_V1__.sessionMap(getCurrentUiRequestChatId(), 'skill-designer').set(key, cloneJsonValue(draft && typeof draft === 'object' ? draft : {}));
   }
 
   function clearCachedSkillDesignerDraft(previewKey = '') {
     const key = String(previewKey || '').trim();
     if (!key) return;
-    delete skillDesignerDraftStateByPreviewKey[key];
+    __mvuBridgeRoot.__LWCS_HOST_COMPATIBILITY_V1__.sessionMap(getCurrentUiRequestChatId(), 'skill-designer').delete(key);
   }
 
   function clearCachedSkillDesignerDrafts(previewKeys = []) {
@@ -3675,6 +3614,9 @@
       基础价格: Math.max(1, Math.floor(toNumber(来源.基础价格, 1))),
       默认货币: toText(来源.默认货币, ''),
     };
+    if (物品分类 === '魂技造物' && toText(来源.名称, '').trim() && toText(来源.名称, '').trim() !== 物品名) {
+      记录.名称 = toText(来源.名称, '').trim();
+    }
     if (物品分类 === '魂灵') {
       const 魂灵品质 = normalizeSoulSpiritQuality(来源.魂灵品质 || '');
       if (魂灵品质) 记录.魂灵品质 = 魂灵品质;
@@ -5495,7 +5437,7 @@
   function 读取当前最后AI正文_桥接() {
     const 聊天 = 读取当前聊天数组_桥接();
     const 消息 = 聊天.length ? 聊天[聊天.length - 1] : null;
-    if (!消息 || 消息.is_user) return '';
+    if (!消息语义_桥接.isNarrative(消息)) return '';
     return 读取聊天消息正文_桥接(消息);
   }
 
@@ -5579,7 +5521,7 @@
 
   function 向前查找用户消息索引_桥接(聊天 = [], 起始索引 = -1) {
     for (let 索引 = Math.min(Number(起始索引) || 0, 聊天.length - 1); 索引 >= 0; 索引 -= 1) {
-      if (聊天[索引] && 聊天[索引].is_user) return 索引;
+      if (消息语义_桥接.roleOf(聊天[索引]) === 'user') return 索引;
     }
     return -1;
   }
@@ -5587,8 +5529,8 @@
   function 向后查找角色消息索引_桥接(聊天 = [], 起始索引 = 0) {
     for (let 索引 = Math.max(0, Number(起始索引) || 0); 索引 < 聊天.length; 索引 += 1) {
       if (!聊天[索引]) continue;
-      if (聊天[索引].is_user) return -1;
-      return 索引;
+      if (消息语义_桥接.roleOf(聊天[索引]) === 'user') return -1;
+      if (消息语义_桥接.isNarrative(聊天[索引])) return 索引;
     }
     return -1;
   }
@@ -5602,10 +5544,10 @@
     let 角色索引 = -1;
     if (目标索引 >= 0) {
       const 目标消息 = 聊天[目标索引];
-      if (目标消息 && 目标消息.is_user) {
+      if (消息语义_桥接.roleOf(目标消息) === 'user') {
         用户索引 = 目标索引;
         角色索引 = 向后查找角色消息索引_桥接(聊天, 目标索引 + 1);
-      } else if (目标消息) {
+      } else if (消息语义_桥接.isNarrative(目标消息)) {
         角色索引 = 目标索引;
         用户索引 = 向前查找用户消息索引_桥接(聊天, 目标索引 - 1);
       }
@@ -5613,7 +5555,7 @@
     }
     if (角色索引 < 0) {
       for (let 索引 = 聊天.length - 1; 索引 >= 0; 索引 -= 1) {
-        if (聊天[索引] && !聊天[索引].is_user) {
+        if (消息语义_桥接.isNarrative(聊天[索引])) {
           角色索引 = 索引;
           break;
         }
@@ -5640,7 +5582,7 @@
     const 聊天 = 读取当前聊天数组_桥接();
     const 索引 = Math.floor(Number(消息索引));
     const 消息 = Number.isInteger(索引) && 索引 >= 0 && 索引 < 聊天.length ? 聊天[索引] : null;
-    if (!消息 || 消息.is_user) return null;
+    if (!消息语义_桥接.isNarrative(消息)) return null;
     return {
       chatKey: 取当前聊天归档标识_桥接(),
       消息索引: 索引,
@@ -12083,9 +12025,17 @@
     }
   }
 
+  function 解析UI续写消息编号_桥接(messageId) {
+    if (typeof messageId !== 'number' && typeof messageId !== 'string') return null;
+    const 候选编号 = typeof messageId === 'string' ? messageId.trim() : messageId;
+    if (候选编号 === '' || (typeof 候选编号 === 'string' && !/^\d+$/.test(候选编号))) return null;
+    const 安全消息编号 = Number(候选编号);
+    return Number.isSafeInteger(安全消息编号) && 安全消息编号 >= 0 ? 安全消息编号 : null;
+  }
+
   function 读取UI续写消息_桥接(messageId) {
-    const 安全消息编号 = Number(messageId);
-    if (!Number.isInteger(安全消息编号) || 安全消息编号 < 0) return null;
+    const 安全消息编号 = 解析UI续写消息编号_桥接(messageId);
+    if (安全消息编号 === null) return null;
     const 聊天 = 读取当前聊天数组_桥接();
     const 消息索引 = 聊天.findIndex((消息, 索引) => Number(读取聊天消息编号_桥接(消息, 索引)) === 安全消息编号);
     if (消息索引 < 0 || !聊天[消息索引]) return null;
@@ -12097,15 +12047,116 @@
     return 元数据 && typeof 元数据 === 'object' ? cloneJsonValue(元数据, null) : null;
   }
 
-  function 写入UI续写元数据_桥接(helper, messageId, 元数据) {
+  function 创建UI续写代已被替换错误_桥接(message = 'ui_continuation_user_message_changed') {
+    const error = new Error(message);
+    error.code = 'UI_CONTINUATION_GENERATION_SUPERSEDED';
+    return error;
+  }
+
+  function 断言UI续写源用户代仍有效_桥接(请求) {
+    if (!请求 || !Number.isInteger(请求.userMessageId)) throw 创建UI续写代已被替换错误_桥接();
+    const 用户楼层 = 读取UI续写消息_桥接(请求.userMessageId);
+    const 当前元数据 = 用户楼层 && 读取UI续写元数据_桥接(用户楼层.消息);
+    if (!用户楼层 || 用户楼层.消息编号 !== 请求.userMessageId
+      || 消息语义_桥接.roleOf(用户楼层.消息) !== 'user'
+      || 当前元数据?.requestId !== 请求.requestId
+      || 当前元数据?.generationId !== 请求.generationId) {
+      throw 创建UI续写代已被替换错误_桥接();
+    }
+    return 用户楼层;
+  }
+
+  function 写入UI续写元数据_桥接(helper, messageId, 元数据, 请求 = null) {
+    const chatId = getCurrentUiRequestChatId();
+    if (请求 && 请求.chatId !== chatId) return Promise.reject(new Error('ui_continuation_chat_changed'));
     const 楼层 = 读取UI续写消息_桥接(messageId);
     if (!楼层 || !helper || typeof helper.setChatMessages !== 'function') return Promise.resolve(false);
+    if (请求) {
+      const 当前元数据 = 读取UI续写元数据_桥接(楼层.消息);
+      const 是同一代 = 请求.userMessageId === 楼层.消息编号
+        && 消息语义_桥接.roleOf(楼层.消息) === 'user'
+        && 当前元数据?.requestId === 请求.requestId
+        && 当前元数据?.generationId === 请求.generationId;
+      const 可开始新一代 = 元数据?.state === 'pending'
+        && 请求.allowGenerationAdvance === true
+        && 请求.userMessageId === 楼层.消息编号
+        && 消息语义_桥接.roleOf(楼层.消息) === 'user'
+        && 当前元数据?.requestId === 请求.requestId
+        && 当前元数据?.generationId === 请求.previousGenerationId
+        && (
+          ['failed', 'regenerate_failed'].includes(当前元数据?.state)
+          || (请求.重生成目标 === true && 当前元数据?.state === 'completed')
+          || (请求.allowPendingGenerationReplacement === true && 当前元数据?.state === 'pending')
+        );
+      if (!是同一代 && !可开始新一代) throw 创建UI续写代已被替换错误_桥接();
+    }
+    const selectedSwipe = Number.isInteger(楼层.消息.swipe_id) ? 楼层.消息.swipe_id : 0;
+    const selectedInfo = Array.isArray(楼层.消息.swipe_info) ? 楼层.消息.swipe_info[selectedSwipe] : null;
     const extra = {
-      ...(楼层.消息.extra && typeof 楼层.消息.extra === 'object' ? 楼层.消息.extra : {}),
+      ...(selectedInfo && typeof selectedInfo === 'object' && !Array.isArray(selectedInfo) ? selectedInfo : {}),
+      ...(楼层.消息.extra && typeof 楼层.消息.extra === 'object' && !Array.isArray(楼层.消息.extra) ? 楼层.消息.extra : {}),
       __lwcs_ui_continuation: cloneJsonValue(元数据, {}),
     };
-    楼层.消息.extra = extra;
-    return helper.setChatMessages([{ message_id: 楼层.消息编号, extra }], { refresh: 'affected' }).then(() => true);
+    const message = 消息语义_桥接.bodyOf(楼层.消息);
+    let patch = { message_id: 楼层.消息编号, message, extra };
+    const 有多个候选槽 = value => Array.isArray(value)
+      ? value.length > 1
+      : !!value && typeof value === 'object' && Object.keys(value).some(key => /^[1-9]\d*$/.test(key));
+    const hasMultipleCandidates = [
+      楼层.消息.swipes,
+      读取UI续写候选字段_桥接(楼层.消息, 'variables', 'swipes_data'),
+      读取UI续写候选字段_桥接(楼层.消息, 'swipe_info', 'swipes_info'),
+    ].some(有多个候选槽);
+    if (hasMultipleCandidates) {
+      // Tavern Helper 4.10.0's ordinary `extra` branch can reinitialize the
+      // canonical swipe_info array. Use its full-swipe branch for existing
+      // multi-candidate messages so metadata on sibling candidates survives.
+      const candidates = 校验UI续写候选对齐_桥接(楼层.消息);
+      candidates.swipesInfo[candidates.swipeId] = extra;
+      patch = {
+        message_id: 楼层.消息编号,
+        swipe_id: candidates.swipeId,
+        swipes: candidates.swipes,
+        swipes_data: candidates.swipesData,
+        swipes_info: candidates.swipesInfo,
+      };
+    }
+    return Promise.resolve(helper.setChatMessages([patch], { refresh: 'affected' })).then(() => {
+      const currentChatId = getCurrentUiRequestChatId();
+      if (chatId !== currentChatId || (请求 && 请求.chatId !== currentChatId)) {
+        throw 创建UI续写写入状态未知错误_桥接('续写请求元数据', new Error('ui_continuation_chat_changed'), 'unknown', 请求);
+      }
+      if (请求) 断言UI续写源用户代仍有效_桥接(请求);
+      return true;
+    }).catch(error => {
+      if (error?.uiContinuationCommitStatus === 'unknown') throw error;
+      if (error?.code === 'UI_CONTINUATION_GENERATION_SUPERSEDED') throw error;
+      const currentChatId = getCurrentUiRequestChatId();
+      const current = chatId === currentChatId && (!请求 || 请求.chatId === currentChatId)
+        ? 读取UI续写消息_桥接(楼层.消息编号)
+        : null;
+      const observed = current && UI续写Canonical已匹配Patch_桥接(current.消息, patch);
+      throw 创建UI续写写入状态未知错误_桥接('续写请求元数据', error, observed ? 'applied_unconfirmed' : 'unknown', 请求);
+    });
+  }
+
+  function UI续写Canonical已匹配Patch_桥接(message, patch) {
+    const canonicalField = { message: 'mes', swipes_data: 'variables', swipes_info: 'swipe_info' };
+    const fieldsMatch = Object.entries(patch).filter(([key]) => key !== 'message_id').every(([key, value]) => {
+      const field = canonicalField[key] || key;
+      return JSON.stringify(message?.[field]) === JSON.stringify(value);
+    });
+    if (!fieldsMatch) return false;
+    if (Array.isArray(patch.swipes) && Number.isInteger(patch.swipe_id)) {
+      const selectedInfo = patch.swipes_info?.[patch.swipe_id];
+      return message?.mes === patch.swipes[patch.swipe_id]
+        && JSON.stringify(message?.extra) === JSON.stringify(selectedInfo);
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'extra')) {
+      const selectedSwipe = message?.swipe_id ?? 0;
+      if (JSON.stringify(message?.swipe_info?.[selectedSwipe]) !== JSON.stringify(patch.extra)) return false;
+    }
+    return true;
   }
 
   function 读取请求级UI续写元数据_桥接(requestId = '') {
@@ -12158,7 +12209,7 @@
 
   function 注册UI续写重Roll记录_桥接(请求, assistantMessageId) {
     const 基底 = 请求.rollbackBase;
-    if (!请求.patchOps.length || !基底?.目标消息元信息 || !assistantMessageId) return;
+    if (!请求.patchOps.length || !基底?.目标消息元信息 || !Number.isInteger(assistantMessageId)) return;
     if (请求.预写待确认键) 前端模块预写待确认表.delete(请求.预写待确认键);
     登记前端模块重Roll恢复记录({
       requestKind: 请求.requestKind,
@@ -12173,7 +12224,83 @@
     });
   }
 
+  function 校验UI续写写入目标_桥接(请求, 允许冷槽 = false) {
+    if (!请求.chatId || 请求.chatId !== getCurrentUiRequestChatId()) throw new Error('ui_continuation_chat_changed');
+    断言UI续写源用户代仍有效_桥接(请求);
+    if (!Number.isInteger(请求.assistantMessageId)) return null;
+    const 现有助手 = 读取UI续写消息_桥接(请求.assistantMessageId);
+    if (!现有助手 || !消息语义_桥接.isNarrative(现有助手.消息)) throw new Error('ui_continuation_regenerate_target_missing');
+    // 冷候选必须先由宿主补齐，不能把不完整的候选数组交给写入接口。
+    const hostCompatibility = __mvuBridgeRoot.__LWCS_HOST_COMPATIBILITY_V1__;
+    if (!允许冷槽 && (hostCompatibility.hasColdSlots(现有助手.消息) || hostCompatibility.hasColdVariableSlots(现有助手.消息))) {
+      throw new Error('目标楼层包含未加载的历史候选，请先在酒馆中加载候选后再重生成。');
+    }
+    if (!允许冷槽) 校验UI续写候选对齐_桥接(现有助手.消息);
+    return 现有助手;
+  }
+
+  function 创建UI续写写入状态未知错误_桥接(operation, cause, canonicalStatus = 'unknown', 请求 = null) {
+    const statusText = canonicalStatus === 'applied_unconfirmed'
+      ? '当前聊天已观察到 canonical patch，但刷新或持久化仍未确认'
+      : '无法确认 canonical patch 是否已应用';
+    const error = new Error(`${operation}写入结果未确认：${statusText}；没有执行回滚或自动重试付费生成。请先核对当前聊天。`, { cause });
+    error.code = 'UI_CONTINUATION_WRITE_UNCERTAIN';
+    error.uiContinuationCommitStatus = 'unknown';
+    error.uiContinuationCanonicalStatus = canonicalStatus;
+    if (请求 && typeof 请求 === 'object') {
+      请求.writeOutcome = { operation, commitStatus: 'unknown', canonicalStatus, updatedAt: Date.now() };
+    }
+    return error;
+  }
+
+  function 规范化UI续写滑动字段_桥接(value, count, field) {
+    if (value === undefined) return Array.from({ length: count }, () => ({}));
+    if (value === null) throw new Error(`UI 续写候选字段 ${field} 含未加载的变量槽，已停止写入。`);
+    if (Array.isArray(value)) {
+      if (value.length !== 0 && value.length !== count) throw new Error(`UI 续写候选字段 ${field} 与正文数组不对齐。`);
+      if (value.length === 0) return Array.from({ length: count }, () => ({}));
+      return Array.from({ length: count }, (_, index) => {
+        if (!Object.prototype.hasOwnProperty.call(value, index)) return {};
+        if (value[index] == null) throw new Error(`UI 续写候选字段 ${field} 含未加载的变量槽，已停止写入。`);
+        return value[index];
+      });
+    }
+    if (typeof value !== 'object') throw new Error(`UI 续写候选字段 ${field} 格式无效。`);
+    const result = Array.from({ length: count }, () => ({}));
+    for (const [key, entry] of Object.entries(value)) {
+      if (!/^(0|[1-9]\d*)$/.test(key) || Number(key) >= count) throw new Error(`UI 续写候选字段 ${field} 与正文数组不对齐。`);
+      if (entry == null) throw new Error(`UI 续写候选字段 ${field} 含未加载的变量槽，已停止写入。`);
+      result[Number(key)] = entry;
+    }
+    return result;
+  }
+
+  function 读取UI续写候选字段_桥接(message, canonical, helperAlias) {
+    return message?.[canonical] !== undefined ? message[canonical] : message?.[helperAlias];
+  }
+
+  function 校验UI续写候选对齐_桥接(message) {
+    const swipes = Array.isArray(message?.swipes) && message.swipes.length ? message.swipes.slice() : [消息语义_桥接.bodyOf(message)];
+    const count = swipes.length;
+    for (let index = 0; index < count; index += 1) {
+      if (!Object.prototype.hasOwnProperty.call(swipes, index) || swipes[index] == null) {
+        throw new Error('UI 续写正文候选含未加载的历史槽，已停止写入。');
+      }
+    }
+    const selectedSwipe = message?.swipe_id === undefined ? 0 : message.swipe_id;
+    if (!Number.isInteger(selectedSwipe) || selectedSwipe < 0 || selectedSwipe >= count) {
+      throw new Error('ui_continuation_regenerate_target_changed: UI 续写当前候选编号与正文数组不对齐。');
+    }
+    // Canonical `mes` is the live floor body; keep unsaved edits in the selected
+    // slot before a full-candidate patch can make the helper project that slot.
+    swipes[selectedSwipe] = 消息语义_桥接.bodyOf(message);
+    const swipesData = 规范化UI续写滑动字段_桥接(读取UI续写候选字段_桥接(message, 'variables', 'swipes_data'), count, 'variables');
+    const swipesInfo = 规范化UI续写滑动字段_桥接(读取UI续写候选字段_桥接(message, 'swipe_info', 'swipes_info'), count, 'swipe_info');
+    return { swipes, swipesData, swipesInfo, swipeId: selectedSwipe };
+  }
+
   async function 写入UI续写助手消息_桥接(helper, 请求, assistantText) {
+    const 现有助手 = 校验UI续写写入目标_桥接(请求);
     const assistantMeta = 构建UI续写元数据_桥接(请求, 'completed', {
       sourceUserMessageId: 请求.userMessageId,
       systemPrompt: undefined,
@@ -12181,53 +12308,84 @@
       rollbackBase: undefined,
       writeAfter: undefined,
     });
-    if (!请求.assistantMessageId) {
+    if (!现有助手) {
+      // Let already-queued chat-change work settle before the pinned Helper
+      // conversion microtasks reach chat.splice, then validate the source again.
+      await new Promise(resolve => setTimeout(resolve, 0));
+      校验UI续写写入目标_桥接(请求);
+      const sourceUserFloor = 读取UI续写消息_桥接(请求.userMessageId);
+      const sourceUserMeta = sourceUserFloor && 读取UI续写元数据_桥接(sourceUserFloor.消息);
+      if (!sourceUserFloor || 消息语义_桥接.roleOf(sourceUserFloor.消息) !== 'user'
+        || sourceUserMeta?.requestId !== 请求.requestId
+        || sourceUserMeta?.generationId !== 请求.generationId) {
+        throw 创建UI续写代已被替换错误_桥接();
+      }
       await helper.createChatMessages([{ role: 'assistant', message: assistantText, extra: { __lwcs_ui_continuation: assistantMeta } }], { refresh: 'affected' });
+      if (请求.chatId !== getCurrentUiRequestChatId()) {
+        throw 创建UI续写写入状态未知错误_桥接('续写助手楼', new Error('ui_continuation_chat_changed'), 'unknown', 请求);
+      }
       const 聊天 = 读取当前聊天数组_桥接();
       const 助手索引 = 聊天.findIndex((消息, 索引) => {
         const 元数据 = 读取UI续写元数据_桥接(消息);
-        return !消息?.is_user && 元数据?.requestId === 请求.requestId && 元数据?.generationId === 请求.generationId && Number(读取聊天消息编号_桥接(消息, 索引)) >= 请求.userMessageId;
+        return 消息语义_桥接.isNarrative(消息) && 元数据?.requestId === 请求.requestId && 元数据?.generationId === 请求.generationId && Number(读取聊天消息编号_桥接(消息, 索引)) >= 请求.userMessageId;
       });
       if (助手索引 < 0) throw new Error('ui_continuation_assistant_message_missing');
       请求.assistantMessageId = Number(读取聊天消息编号_桥接(聊天[助手索引], 助手索引));
       return 请求.assistantMessageId;
     }
-    const 现有助手 = 读取UI续写消息_桥接(请求.assistantMessageId);
-    if (!现有助手 || 现有助手.消息.is_user) throw new Error('ui_continuation_regenerate_target_missing');
-    const 当前swipes = Array.isArray(现有助手.消息.swipes) && 现有助手.消息.swipes.length
-      ? 现有助手.消息.swipes.slice()
-      : [toText(现有助手.消息.mes, '')];
-    const 当前swipesData = Array.isArray(现有助手.消息.swipes_data) ? 现有助手.消息.swipes_data.slice() : [];
-    while (当前swipesData.length < 当前swipes.length) 当前swipesData.push({});
-    当前swipes.push(assistantText);
-    当前swipesData.push({ extra: { __lwcs_ui_continuation: assistantMeta } });
+    const 候选状态 = 校验UI续写候选对齐_桥接(现有助手.消息);
+    候选状态.swipes.push(assistantText);
+    候选状态.swipesData.push({});
+    const 当前候选信息 = 候选状态.swipesInfo[候选状态.swipeId];
+    const 当前extra = 现有助手.消息.extra;
     const extra = {
-      ...(现有助手.消息.extra && typeof 现有助手.消息.extra === 'object' ? 现有助手.消息.extra : {}),
+      ...(当前候选信息 && typeof 当前候选信息 === 'object' && !Array.isArray(当前候选信息) ? 当前候选信息 : {}),
+      ...(当前extra && typeof 当前extra === 'object' && !Array.isArray(当前extra) ? 当前extra : {}),
       __lwcs_ui_continuation: assistantMeta,
     };
-    现有助手.消息.extra = extra;
-    await helper.setChatMessages([
-      {
-        message_id: 请求.assistantMessageId,
-        swipes: 当前swipes,
-        swipes_data: 当前swipesData,
-        swipe_id: 当前swipes.length - 1,
-        extra,
-      },
-    ], { refresh: 'affected' });
+    候选状态.swipesInfo.push(extra);
+    const patch = {
+      message_id: 请求.assistantMessageId,
+      swipes: 候选状态.swipes,
+      swipes_data: 候选状态.swipesData,
+      swipes_info: 候选状态.swipesInfo,
+      swipe_id: 候选状态.swipes.length - 1,
+    };
+    try {
+      await helper.setChatMessages([patch], { refresh: 'affected' });
+    } catch (error) {
+      const current = 请求.chatId === getCurrentUiRequestChatId() ? 读取UI续写消息_桥接(请求.assistantMessageId) : null;
+      const landed = current && UI续写Canonical已匹配Patch_桥接(current.消息, patch);
+      throw 创建UI续写写入状态未知错误_桥接('续写助手候选', error, landed ? 'applied_unconfirmed' : 'unknown', 请求);
+    }
+    if (请求.chatId !== getCurrentUiRequestChatId()) throw 创建UI续写写入状态未知错误_桥接('续写助手候选', new Error('ui_continuation_chat_changed'), 'unknown', 请求);
     return 请求.assistantMessageId;
   }
 
   async function 执行UI续写生成_桥接(helper, 请求) {
-    if (!helper || typeof helper.generate !== 'function' || typeof helper.createChatMessages !== 'function') {
+    if (!helper || typeof helper.generate !== 'function' || typeof helper.createChatMessages !== 'function' || typeof helper.setChatMessages !== 'function') {
       throw new Error('ui_continuation_helper_unavailable');
     }
-    if (!请求.chatId || 请求.chatId !== getCurrentUiRequestChatId()) throw new Error('ui_continuation_chat_changed');
+    const 生成目标 = 校验UI续写写入目标_桥接(请求, true);
+    const 目标正文 = 生成目标 ? 消息语义_桥接.bodyOf(生成目标.消息) : '';
+    const 目标滑动 = 生成目标?.消息.swipe_id;
+    if (生成目标) {
+      await __mvuBridgeRoot.__LWCS_HOST_COMPATIBILITY_V1__.ensureWarmSwipes(生成目标.消息, () => {
+        const 当前 = 校验UI续写写入目标_桥接(请求, true);
+        if (当前?.消息 !== 生成目标.消息 || 当前.消息.swipe_id !== 目标滑动 || 消息语义_桥接.bodyOf(当前.消息) !== 目标正文) {
+          throw new Error('ui_continuation_regenerate_target_changed');
+        }
+      });
+      const 已加载目标 = 校验UI续写写入目标_桥接(请求);
+      if (已加载目标?.消息 !== 生成目标.消息 || 已加载目标.消息.swipe_id !== 目标滑动 || 消息语义_桥接.bodyOf(已加载目标.消息) !== 目标正文) {
+        throw new Error('ui_continuation_regenerate_target_changed');
+      }
+    }
     发送UI续写监视桥接事件_桥接('request-monitor:ui-generation-started', {
       chatId: 请求.chatId,
       generationId: 请求.generationId,
     });
-    const 结果 = await helper.generate({
+    const 生成配置 = {
       generation_id: 请求.generationId,
       user_input: '',
       /* should_scan 必须为 false：注入内容里全是角色名、地名、技能名，
@@ -12235,15 +12393,31 @@
       injects: 请求.systemPrompt
         ? [{ role: 'system', content: 请求.systemPrompt, position: 'in_chat', depth: 0, should_scan: false }]
         : [],
-    });
+    };
+    const 召回上下文 = await window.AutoCardUpdaterAPI?.prepareUiContinuationGeneration?.(生成配置, 请求.playerInput || 请求.userText || 读取UI续写消息_桥接(请求.userMessageId)?.消息?.mes || '');
+    const 待生成目标 = 校验UI续写写入目标_桥接(请求);
+    if (待生成目标?.消息 !== 生成目标?.消息 || 待生成目标?.消息?.swipe_id !== 目标滑动 || 消息语义_桥接.bodyOf(待生成目标?.消息) !== 目标正文) {
+      召回上下文?.release();
+      throw new Error('ui_continuation_regenerate_target_changed');
+    }
+    let 结果;
+    try {
+      结果 = await helper.generate(召回上下文?.config || 生成配置);
+      召回上下文?.assertCurrent();
+    } finally { 召回上下文?.release(); }
     const 原始助手文本 = 读取UI生成返回文本_桥接(结果);
+    const 当前目标 = 校验UI续写写入目标_桥接(请求);
+    if (生成目标 && (当前目标?.消息 !== 生成目标.消息 || 当前目标.消息.swipe_id !== 目标滑动 || 消息语义_桥接.bodyOf(当前目标.消息) !== 目标正文)) {
+      throw new Error('ui_continuation_regenerate_target_changed');
+    }
     if (!原始助手文本) throw new Error('ui_continuation_empty_response');
     const 助手文本 = sanitizeUiContinuationVisibleText(原始助手文本);
     if (!助手文本) throw new Error('ui_continuation_empty_visible_response');
     const assistantMessageId = await 写入UI续写助手消息_桥接(helper, 请求, 助手文本);
     请求.assistantMessageId = assistantMessageId;
     await 应用复刻裁定结果(原始助手文本, 请求.requestKind);
-    await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'completed'));
+    const metadataSaved = await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'completed'), 请求);
+    if (!metadataSaved) throw 创建UI续写写入状态未知错误_桥接('续写请求元数据', new Error('ui_continuation_metadata_target_missing'), 'unknown', 请求);
     注册UI续写重Roll记录_桥接(请求, assistantMessageId);
     if (请求.重生成目标) await 处理前端模块重Roll恢复_桥接('ui_continuation_regenerate', [assistantMessageId]);
     发送UI续写监视桥接事件_桥接('request-monitor:generation-message-linked', {
@@ -12354,20 +12528,26 @@
       if (!请求.chatId) throw new Error('ui_continuation_chat_unavailable');
       uiContinuationRequests.set(请求.requestId, 请求);
       await helper.createChatMessages([{ role: 'user', message: userText, extra: { __lwcs_ui_continuation: 构建UI续写元数据_桥接(请求, 'pending') } }], { refresh: 'affected' });
+      if (请求.chatId !== getCurrentUiRequestChatId()) {
+        throw 创建UI续写写入状态未知错误_桥接('续写用户楼', new Error('ui_continuation_chat_changed'), 'unknown', 请求);
+      }
       assertContext?.();
       const 用户楼层 = 读取请求级UI续写元数据_桥接(请求.requestId);
       if (!用户楼层 || !Number.isInteger(用户楼层.消息编号)) throw new Error('ui_continuation_user_message_missing');
       请求.userMessageId = 用户楼层.消息编号;
-      await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'pending'));
+      const pendingSaved = await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'pending'), 请求);
+      if (!pendingSaved) throw new Error('ui_continuation_pending_metadata_missing');
       assertContext?.();
       const result = await 执行UI续写生成_桥接(helper, 请求);
       return { ...result, settlementCommitted, requestId: 请求.requestId, userMessageId: 请求.userMessageId };
     } catch (error) {
       if (请求?.预写待确认键) 前端模块预写待确认表.delete(请求.预写待确认键);
-      if (Number.isInteger(请求?.userMessageId) && 请求.chatId === getCurrentUiRequestChatId()) {
+      if (error?.uiContinuationCommitStatus !== 'unknown'
+        && error?.code !== 'UI_CONTINUATION_GENERATION_SUPERSEDED'
+        && Number.isInteger(请求?.userMessageId) && 请求.chatId === getCurrentUiRequestChatId()) {
         const failure = error && error.message ? error.message : 'ui_continuation_failed';
         try {
-          await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'failed', { lastError: failure }));
+          await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'failed', { lastError: failure }), 请求);
         } catch (metadataError) {
           console.warn('[DragonUI] UI continuation failure metadata could not be saved', metadataError);
         }
@@ -12380,12 +12560,15 @@
     }
   }
 
-  function 从UI续写元数据恢复请求_桥接(元数据, userMessageId, userText, assistantMessageId, 重生成目标 = false) {
+  function 从UI续写元数据恢复请求_桥接(元数据, userMessageId, userText, assistantMessageId, 重生成目标 = false, 允许覆盖待处理代 = false) {
     const requestKind = toText(元数据?.requestKind, 'ui_request') || 'ui_request';
     const requestId = toText(元数据?.requestId, '').trim() || buildUiContinuationRequestId(requestKind);
     return {
       requestId,
       generationId: `${buildUiContinuationRequestId(requestKind)}-generation`,
+      previousGenerationId: 元数据?.generationId,
+      allowGenerationAdvance: true,
+      allowPendingGenerationReplacement: 允许覆盖待处理代 === true,
       chatId: toText(元数据?.chatId, '').trim() || getCurrentUiRequestChatId(),
       requestKind,
       userText: toText(userText, '').trim(),
@@ -12395,7 +12578,7 @@
       writeAfter: Array.isArray(元数据?.writeAfter) ? cloneJsonValue(元数据.writeAfter, []) : [],
       预写待确认键: '',
       userMessageId,
-      assistantMessageId: assistantMessageId || undefined,
+      assistantMessageId: Number.isInteger(assistantMessageId) ? assistantMessageId : undefined,
       retryCount: Math.max(0, Number(元数据?.retryCount || 0)) + 1,
       createdAt: Date.now(),
       重生成目标,
@@ -12404,30 +12587,45 @@
 
   async function 重试UI续写请求_桥接(messageIdOrRequestId, options = {}) {
     const helper = window.TavernHelper && typeof window.TavernHelper === 'object' ? window.TavernHelper : null;
-    const 目标编号 = Number(messageIdOrRequestId);
-    const 用户楼层 = Number.isInteger(目标编号)
+    const 目标编号 = 解析UI续写消息编号_桥接(messageIdOrRequestId);
+    const 请求编号 = typeof messageIdOrRequestId === 'string' ? messageIdOrRequestId.trim() : '';
+    const 用户楼层 = 目标编号 !== null
       ? 读取UI续写消息_桥接(目标编号)
-      : 读取请求级UI续写元数据_桥接(toText(messageIdOrRequestId, ''));
+      : 请求编号 ? 读取请求级UI续写元数据_桥接(请求编号) : null;
     const 元数据 = 用户楼层 ? 读取UI续写元数据_桥接(用户楼层.消息) : null;
     if (!helper || !用户楼层?.消息?.is_user || !元数据) return { ok: false, reason: 'ui_continuation_not_found' };
     if (!['failed', 'regenerate_failed'].includes(toText(元数据.state, '')) && !(options.allowPending === true && 元数据.state === 'pending' && uiContinuationRequests.has(元数据.requestId))) return { ok: false, reason: 'ui_continuation_not_retryable' };
+    const assistantMessageId = 解析UI续写消息编号_桥接(元数据.assistantMessageId);
+    const 允许覆盖待处理代 = options.allowPending === true
+      && 元数据.state === 'pending'
+      && uiContinuationRequests.has(元数据.requestId);
     const 请求 = 从UI续写元数据恢复请求_桥接(
       元数据,
       用户楼层.消息编号,
       toText(用户楼层.消息.mes, ''),
-      Number(元数据.assistantMessageId),
-      Number.isInteger(Number(元数据.assistantMessageId)),
+      assistantMessageId,
+      assistantMessageId !== null,
+      允许覆盖待处理代,
     );
     if (!请求.userText || 请求.chatId !== getCurrentUiRequestChatId()) return { ok: false, reason: 'ui_continuation_retry_context_invalid' };
     const 动作锁键 = 构建异步动作锁键(请求.requestKind, 请求.userText, { lockKey: `retry:${请求.userMessageId}` });
     if (!尝试占用异步动作锁(动作锁键)) return { ok: false, reason: 'request_locked' };
     try {
       uiContinuationRequests.set(请求.requestId, 请求);
-      await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'pending'));
+      const pendingSaved = await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'pending'), 请求);
+      if (!pendingSaved) throw new Error('ui_continuation_pending_metadata_missing');
       return await 执行UI续写生成_桥接(helper, 请求);
     } catch (error) {
       const failure = error && error.message ? error.message : 'ui_continuation_retry_failed';
-      await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 请求.assistantMessageId ? 'regenerate_failed' : 'failed', { lastError: failure }));
+      if (error?.uiContinuationCommitStatus !== 'unknown'
+        && error?.code !== 'UI_CONTINUATION_GENERATION_SUPERSEDED'
+        && 请求.chatId === getCurrentUiRequestChatId()) {
+        try {
+          await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, Number.isInteger(请求.assistantMessageId) ? 'regenerate_failed' : 'failed', { lastError: failure }), 请求);
+        } catch (metadataError) {
+          console.warn('[DragonUI] UI continuation retry failure metadata could not be saved', metadataError);
+        }
+      }
       if (!options.silent) showUiToast(`续写重试失败：${failure}`, 'error', 4200);
       return { ok: false, reason: 'ui_continuation_retry_failed', error };
     } finally {
@@ -12439,9 +12637,18 @@
     const helper = window.TavernHelper && typeof window.TavernHelper === 'object' ? window.TavernHelper : null;
     const 助手楼层 = 读取UI续写消息_桥接(assistantMessageId);
     const 助手元数据 = 助手楼层 ? 读取UI续写元数据_桥接(助手楼层.消息) : null;
-    const 用户楼层 = 助手元数据 ? 读取UI续写消息_桥接(助手元数据.sourceUserMessageId || 助手元数据.userMessageId) : null;
+    const 用户楼层 = 助手元数据 ? 读取UI续写消息_桥接(助手元数据.sourceUserMessageId ?? 助手元数据.userMessageId) : null;
     const 用户元数据 = 用户楼层 ? 读取UI续写元数据_桥接(用户楼层.消息) : null;
     if (!helper || !助手楼层 || 助手楼层.消息.is_user || !用户楼层?.消息?.is_user || !用户元数据) return { handled: false };
+    const 来源用户楼编号 = 解析UI续写消息编号_桥接(助手元数据.sourceUserMessageId ?? 助手元数据.userMessageId);
+    const 当前助手楼编号 = 解析UI续写消息编号_桥接(用户元数据.assistantMessageId);
+    if (!['completed', 'failed', 'regenerate_failed'].includes(toText(用户元数据.state, ''))
+      || 助手元数据.requestId !== 用户元数据.requestId
+      || 来源用户楼编号 !== 用户楼层.消息编号
+      || 当前助手楼编号 !== 助手楼层.消息编号) {
+      showUiToast('该 UI 楼层已不属于当前续写请求，未执行重生成。', 'warning', 4200);
+      return { handled: true, ok: false, reason: 'ui_continuation_regenerate_context_invalid' };
+    }
     const 请求 = 从UI续写元数据恢复请求_桥接(
       用户元数据,
       用户楼层.消息编号,
@@ -12460,11 +12667,20 @@
     }
     try {
       uiContinuationRequests.set(请求.requestId, 请求);
-      await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'pending'));
+      const pendingSaved = await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'pending'), 请求);
+      if (!pendingSaved) throw new Error('ui_continuation_pending_metadata_missing');
       return { handled: true, ...(await 执行UI续写生成_桥接(helper, 请求)) };
     } catch (error) {
       const failure = error && error.message ? error.message : 'ui_continuation_regenerate_failed';
-      await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'regenerate_failed', { lastError: failure }));
+      if (error?.uiContinuationCommitStatus !== 'unknown'
+        && error?.code !== 'UI_CONTINUATION_GENERATION_SUPERSEDED'
+        && 请求.chatId === getCurrentUiRequestChatId()) {
+        try {
+          await 写入UI续写元数据_桥接(helper, 请求.userMessageId, 构建UI续写元数据_桥接(请求, 'regenerate_failed', { lastError: failure }), 请求);
+        } catch (metadataError) {
+          console.warn('[DragonUI] UI continuation regenerate failure metadata could not be saved', metadataError);
+        }
+      }
       showUiToast(`UI 楼层重生成失败：${failure}`, 'error', 4200);
       return { handled: true, ok: false, reason: 'ui_continuation_regenerate_failed', error };
     } finally {
@@ -12480,7 +12696,8 @@
       const 类型 = toText(参数[0], '').toLowerCase();
       if (类型 !== 'regenerate') return 原生生成.apply(this, 参数);
       const 聊天 = 读取当前聊天数组_桥接();
-      const 最后助手索引 = [...聊天].map((_, 索引) => 索引).reverse().find(索引 => 聊天[索引] && !聊天[索引].is_user);
+      const 最后助手索引 = 聊天.length - 1;
+      if (!消息语义_桥接.isNarrative(聊天[最后助手索引])) return 原生生成.apply(this, 参数);
       const 最后助手编号 = Number.isInteger(最后助手索引) ? Number(读取聊天消息编号_桥接(聊天[最后助手索引], 最后助手索引)) : NaN;
       if (!Number.isInteger(最后助手编号) || !读取UI续写元数据_桥接(聊天[最后助手索引])) return 原生生成.apply(this, 参数);
       const 结果 = await 重生成UI续写助手楼_桥接(最后助手编号);
@@ -13573,7 +13790,7 @@
   function 查找剧情模块正文楼结算记录_桥接(目标消息编号 = '') {
     const 聊天 = 读取当前聊天数组_桥接();
     const 目标索引 = 定位聊天消息索引_桥接(聊天, 目标消息编号);
-    if (目标索引 < 0 || !聊天[目标索引] || 聊天[目标索引].is_user) return null;
+    if (目标索引 < 0 || !消息语义_桥接.isNarrative(聊天[目标索引])) return null;
     return Array.from(剧情模块预结算事务表.values())
       .filter(记录 => 记录 && 记录.settledStatData && Array.isArray(记录.settledPaths))
       .filter(记录 => {
@@ -13697,11 +13914,10 @@
     if (!Number.isInteger(起点) || 起点 < 0) return null;
     const 聊天 = 读取当前聊天数组_桥接();
     const 后续 = 聊天.slice(起点 + 1);
-    const 用户相对索引 = 后续.findIndex(消息 => 消息 && 消息.is_user);
+    const 用户相对索引 = 后续.findIndex(消息 => 消息语义_桥接.roleOf(消息) === 'user');
     if (用户相对索引 < 0) return null;
-    const AI相对索引 = 后续.slice(用户相对索引 + 1).findIndex(消息 => 消息 && !消息.is_user);
-    if (AI相对索引 < 0) return null;
-    const 消息索引 = 起点 + 1 + 用户相对索引 + 1 + AI相对索引;
+    const 消息索引 = 向后查找角色消息索引_桥接(聊天, 起点 + 1 + 用户相对索引 + 1);
+    if (消息索引 < 0) return null;
     const 消息 = 聊天[消息索引];
     return {
       消息,
@@ -33557,12 +33773,16 @@
     return '当前无门票，仅常规狩猎';
   }
 
+  // 私密档案入口规则（设计约定）：
+  // - 只对「女性」且 属性.年龄 为有效数值、满 18 岁的角色开放；年龄缺失、为 0 或无法解析一律视为不满足，此时入口、路由与页面都不存在。
+  // - 不在任何导航中直接显示（座舱子页列表、操作台按键都不列出），也不为它单独设计控件；只借用已有内容（角色名、档案天幕、档案标题等）挂 data-longpress 长按触发。
+  // - 所有打开路径（长按、预览路由、详情页构建）都要经过本函数复核；新增入口时同样遵守。
   function canOpenPrivateArchive(snapshot) {
     const activeChar = getActiveSnapshotCharacter(snapshot);
     const genderText = toText(deepGet(activeChar, '属性.性别', ''), '');
     if (!isFemaleGenderText(genderText)) return false;
     const ageValue = getPrivateArchiveAgeValue(deepGet(activeChar, '属性.年龄', null));
-    return Number.isFinite(ageValue) && ageValue >= 6;
+    return Number.isFinite(ageValue) && ageValue >= 18;
   }
 
   function getActiveNsfwPath(snapshot) {
@@ -34294,7 +34514,7 @@
     const identity = toText(character.社交?.主身份, '身份未记录');
     const themeNames = [['经典状态栏', '经典'], ['炫世唐门', '唐门'], ['金龙王', '金龙'], ['银龙王', '银龙'], ['幻海蝶舞', '幻海']];
     const theme = document.body?.dataset.mvuHoloTheme || '经典状态栏';
-    const pages = (window.__LWCS_CABIN_PAGES__ || []).filter(page => page.tab === 'page-archive' && (page.id !== 'private' || canOpenPrivateArchive(snapshot)));
+    const pages = (window.__LWCS_CABIN_PAGES__ || []).filter(page => page.tab === 'page-archive' && page.id !== 'private');
     return {
       contextKey: current.contextKey, revision: current.revision, charKey: current.charKey, name: current.charKey || '当前角色',
       rank: [formatCultivationLevelBadge(stat.等级, '0'), 读取显示精神境界(stat)].filter(Boolean).join(' · '),
@@ -34350,6 +34570,7 @@
     if (statusCabinHost !== host) {
       disposeStatusCabin(); statusCabinHost = host;
       statusCabinInstance = createStatusCabin(host, {
+        sessionStates: __mvuBridgeRoot.__LWCS_HOST_COMPATIBILITY_V1__.sessionMap(getCurrentUiRequestChatId(), 'status-cabin'),
         isVisible: () => !!host.closest('.is-status-cabin'),
       previewRoutineAction: statusRoutineActions.previewRoutineAction,
         executeRoutineAction: statusRoutineActions.executeRoutineAction,
@@ -37031,7 +37252,7 @@
 
   function mountWorkspaceCabin(container, snapshot, { tab, title, pageId = '', preview = '', centerNodes = [], rightNodes = [] }) {
     const domains = [['page-archive', '角色'], ['page-ability', '能力'], ['page-supplies', '物资'], ['page-map', '探索'], ['page-world', '世界'], ['page-terminal', '事务']];
-    const pages = (window.__LWCS_CABIN_PAGES__ || []).filter(page => page.tab === tab && (page.id !== 'private' || canOpenPrivateArchive(snapshot)));
+    const pages = (window.__LWCS_CABIN_PAGES__ || []).filter(page => page.tab === tab && page.id !== 'private');
     const frame = document.createElement('div');
     frame.className = 'dc-host dc-workspace-host';
     const pageMarkup = pages.map(page => `<button type="button" data-dc-workspace-page="${escapeHtmlAttr(page.id)}"${(pageId ? page.id === pageId : preview ? page.preview === preview : !page.preview) ? ' aria-current="page"' : ''}>${htmlEscape(page.title)}</button>`).join('');
@@ -37137,7 +37358,7 @@
     const stat = snapshot.activeChar?.属性 || {};
     const name = toText(snapshot.activeName, '当前角色');
     const domains = [['page-archive', '角色'], ['page-ability', '能力'], ['page-supplies', '物资'], ['page-map', '探索'], ['page-world', '世界'], ['page-terminal', '事务']];
-    const pages = (window.__LWCS_CABIN_PAGES__ || []).filter(page => page.tab === 'page-archive' && (page.id !== 'private' || canOpenPrivateArchive(snapshot)));
+    const pages = (window.__LWCS_CABIN_PAGES__ || []).filter(page => page.tab === 'page-archive' && page.id !== 'private');
     const frame = document.createElement('div');
     frame.className = 'dc-host dc-profile-host';
     frame.innerHTML = `<header class="dc-context"><div><span class="dc-context-sigil" aria-hidden="true">籍</span><strong class="dc-profile-character">${htmlEscape(name)}</strong><span class="dc-rank">${htmlEscape(String(stat.等级 ?? '—') + ' 级 · ' + 读取显示精神境界(stat))}</span></div><p class="dc-location">${htmlEscape(toText(snapshot.currentLoc, '所在地未记录'))}</p><p class="dc-time">${htmlEscape(getSnapshotWorldTimeText(snapshot))}</p></header>
@@ -38284,7 +38505,47 @@
     return 'archive';
   }
 
+  // ===== 球体座舱（2026-11 起直接替换旧仪表盘，源码见 cockpit/） =====
+  // 座舱挂在 #mvu-unified-mount 里、盖住旧壳层（旧壳层隐藏但保留占位，挂载点尺寸不变）。
+  // 旧壳层只在下列原详情面打开时让出画面（战斗终端、魂环待选确认、私密档案），关闭后回到座舱；
+  // 其他旧详情面（旧座舱各页都是详情面，刷新后会恢复上次打开的那页）在座舱接管时清掉。
+  const 座舱让位详情键 = new Set([BATTLE_INLINE_PREVIEW_KEY, PENDING_SOUL_RING_PREVIEW_KEY, '私密档案详细页']);
+  const 座舱适配器 = {
+    getRoot: () => deepGet(liveSnapshot, 'rootData', null),
+    activeName: () => toText(deepGet(liveSnapshot, 'activeName', ''), ''),
+    // 座舱里切换查看角色时同步给桥接（战斗、私密档案长按等仍按桥接的当前角色判断）
+    setActive: 名称 => { if (名称 && toText(deepGet(liveSnapshot, 'activeName', ''), '') !== 名称) applyActiveCharacterSelection(名称); },
+    // 一次写回里同时处理设值与删除：整根经编辑器链路校验后落楼，桥接随后刷新并回灌座舱
+    write: ops => mutateStatDataByEditor(statData => {
+      (Array.isArray(ops) ? ops : []).forEach(op => {
+        if (!op || !Array.isArray(op.path) || !op.path.length) return;
+        if (op.del) deepDeleteMutable(statData, op.path);
+        else deepSetMutable(statData, op.path, op.value);
+      });
+    }),
+    toast: (文本, 类型 = 'info') => showUiToast(文本, 类型, 3600),
+  };
+  function 同步座舱可见性(详情键 = getEffectiveUnifiedPreviewKey()) {
+    const 挂载点 = document.getElementById('mvu-unified-mount');
+    if (!挂载点 || !window.COCKPIT?.mounted) return;
+    const 让位 = !!详情键 && 座舱让位详情键.has(详情键) && isUnifiedInlinePreviewActive();
+    挂载点.classList.toggle('lwcs-ck-active', !让位);
+  }
+  function 同步座舱(snapshot = liveSnapshot) {
+    const 座舱 = window.COCKPIT, 挂载点 = document.getElementById('mvu-unified-mount');
+    const 根数据 = deepGet(snapshot, 'rootData', null);
+    if (!座舱 || typeof 座舱.mount !== 'function' || !挂载点 || !根数据 || typeof 根数据 !== 'object' || !根数据.char) return false;
+    const 首次 = !座舱.mounted;
+    const 详情键 = getEffectiveUnifiedPreviewKey();
+    if (详情键 && !座舱让位详情键.has(详情键)) clearUnifiedInlinePreview();
+    座舱.setData(根数据);
+    座舱.mount(挂载点, 座舱适配器);
+    同步座舱可见性();
+    if (首次) 设置UI首屏内容状态(true);
+    return true;
+  }
   function renderLiveCards(snapshot, precomputedSectionSignatures = null, options = {}) {
+    if (同步座舱(snapshot)) return true;
     syncStatusCabin(snapshot);
     const dashboardNodes = getCurrentDashboardRenderNodes();
     if (!dashboardNodes || !snapshot) {
@@ -45704,6 +45965,8 @@
       }
       if (!结果守卫通过()) return null;
       syncPrivateArchiveLongPressTargets(liveSnapshot);
+      // 座舱不依赖旧仪表盘节点：每轮刷新都把最新根数据交给座舱
+      if (同步座舱(liveSnapshot)) 已写回真实卡片 = true;
       if (!结果守卫通过()) return null;
       maybeAutoOpenPendingSoulRingPreview(liveSnapshot, options);
 
@@ -47885,6 +48148,19 @@ ${播报文本}
         if (bone && typeof bone === 'object') participant.魂骨[boneSlot] = hydrateEquipmentItem(bone);
       });
     }
+    if (participant.背包 && typeof participant.背包 === 'object' && !Array.isArray(participant.背包)) {
+      Object.entries(participant.背包).forEach(([itemName, item]) => {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) return;
+        const definition = 查找物品定义_桥接(rootData, itemName);
+        if (!definition) return;
+        participant.背包[itemName] = {
+          ...cloneJsonValue(definition.定义, {}),
+          ...item,
+          ...(definition.定义.名称 ? { id: itemName } : {}),
+          物品分类: definition.分类,
+        };
+      });
+    }
     const stat = participant.属性 && typeof participant.属性 === 'object' ? participant.属性 : {};
     const status = participant.状态 && typeof participant.状态 === 'object' ? participant.状态 : {};
     participant.name = toText(participant.name || deepGet(participant, 'base.name', ''), charKey);
@@ -49305,6 +49581,15 @@ ${播报文本}
     const nextTeamEnemy = nextCombat.参战者.team_enemy;
     if (!nextTeamPlayer.length || !nextTeamEnemy.length) return null;
     if (!nextTeamPlayer.every(isExpandedBattleParticipant) || !nextTeamEnemy.every(isExpandedBattleParticipant)) return null;
+    const worldTick = deepGet(snapshot, 'rootData.world.时间.tick', undefined);
+    if (worldTick !== undefined) {
+      const currentTick = Number(worldTick);
+      if (!Number.isFinite(currentTick) || currentTick < 0) return null;
+      if (nextCombat.当前世界tick !== currentTick) {
+        nextCombat = nextCombat === combatData ? cloneJsonValue(combatData, {}) : nextCombat;
+        nextCombat.当前世界tick = currentTick;
+      }
+    }
     return nextCombat;
   }
 
@@ -49572,6 +49857,12 @@ ${播报文本}
     if (!runtime || typeof runtime.ensureCombatRuntime !== 'function') {
       throw new Error('battle_runtime_module_missing');
     }
+    const worldTick = deepGet(liveSnapshot || lastRenderableSnapshot || {}, 'rootData.world.时间.tick', undefined);
+    if (worldTick !== undefined) {
+      const currentTick = Number(worldTick);
+      if (!Number.isFinite(currentTick) || currentTick < 0) throw new Error('battle_world_tick_invalid');
+      combatData = { ...combatData, 当前世界tick: currentTick };
+    }
     const runtimeState = runtime.ensureCombatRuntime(combatData);
     const maxRounds = battleMode === 'multi_round'
       ? Math.max(1, Math.min(20, Math.floor(toNumber(options.rounds || combatData?.胜负条件?.maxRounds, 20))))
@@ -49743,7 +50034,7 @@ ${播报文本}
     });
   }
 
-  function 构建正式战斗写回补丁(finalSnapshot = {}) {
+  function 构建正式战斗写回补丁(finalSnapshot = {}, createdInventoryAssets = []) {
     if (!finalSnapshot || typeof finalSnapshot !== 'object' || Array.isArray(finalSnapshot)) {
       throw new Error('battle_commit_final_snapshot_invalid');
     }
@@ -49763,6 +50054,14 @@ ${播报文本}
       path: '/world/战斗',
       value: compactCombatData,
     }];
+    const createdByOwner = new Map();
+    (Array.isArray(createdInventoryAssets) ? createdInventoryAssets : []).forEach(({ ownerId, assetId }) => {
+      if (!ownerId || !assetId) return;
+      if (!createdByOwner.has(ownerId)) createdByOwner.set(ownerId, new Set());
+      createdByOwner.get(ownerId).add(assetId);
+    });
+    let itemDraft;
+    const addedDefinitions = new Set();
 
     [...participants.team_player, ...participants.team_enemy].forEach(participant => {
       if (!participant || typeof participant !== 'object') return;
@@ -49806,7 +50105,43 @@ ${播报文本}
           participant[key],
         );
       });
+      const ownerId = toText(participant.id || participant.角色ID || participant.uid || participantName, '').trim();
+      (createdByOwner.get(ownerId) || []).forEach(assetId => {
+        const item = participant.背包?.[assetId];
+        if (!item || 读取背包总数量_桥接(item) <= 0) return;
+        if (!Array.isArray(item.使用效果) || !item.使用效果.length) {
+          throw new Error(`battle_created_item_definition_missing:${assetId}`);
+        }
+        const definition = 构建物品定义记录_桥接(assetId, {
+          ...item,
+          名称: toText(item.name || item.名称 || item.物品名, assetId),
+        }, '魂技造物');
+        itemDraft ||= { 物品: cloneJsonValue(currentRoot.物品, {}) };
+        const existing = 查找物品定义_桥接(itemDraft, assetId);
+        if (existing) {
+          const previous = 构建物品定义记录_桥接(assetId, existing.定义, existing.分类);
+          const useSemantics = value => [value.使用效果 || [], value.副作用列表 || [], value.使用后消耗 !== false,
+            value.基础使用次数 || 0, value.使用次数恢复周期 || ''];
+          if (existing.分类 !== '魂技造物' ||
+            稳定序列化技能设计台效果(useSemantics(previous)) !== 稳定序列化技能设计台效果(useSemantics(definition))
+          ) throw new Error(`battle_created_item_definition_conflict:${assetId}`);
+          return;
+        }
+        写入分类物品定义_桥接(itemDraft, assetId, definition, '魂技造物');
+        addedDefinitions.add(assetId);
+      });
     });
+    if (addedDefinitions.size) {
+      if (!currentRoot.物品) {
+        追加战斗提交字段补丁(patchOps, currentRoot, ['物品'], itemDraft.物品);
+      } else if (!currentRoot.物品.魂技造物) {
+        追加战斗提交字段补丁(patchOps, currentRoot, ['物品', '魂技造物'], itemDraft.物品.魂技造物);
+      } else {
+        addedDefinitions.forEach(assetId => 追加战斗提交字段补丁(
+          patchOps, currentRoot, ['物品', '魂技造物', assetId], itemDraft.物品.魂技造物[assetId],
+        ));
+      }
+    }
     return patchOps;
   }
 
@@ -49816,7 +50151,7 @@ ${播报文本}
       throw new Error('battle_runtime_package_verifier_missing');
     }
     const verifiedPackage = runtime.verifySealedBattlePackage(sealedPackage);
-    const patchOps = 构建正式战斗写回补丁(verifiedPackage.finalSnapshot);
+    const patchOps = 构建正式战斗写回补丁(verifiedPackage.finalSnapshot, verifiedPackage.createdInventoryAssets);
     runtime.verifySealedBattlePackage(verifiedPackage);
     await applyBattlePatchOpsByEditor(patchOps, {
       force: true,
@@ -54100,10 +54435,11 @@ ${播报文本}
     lastRenderedUnifiedPreviewKey = '';
     syncUnifiedTitleLongPress('');
     同步AI维护标题入口('');
-    if (!host) return;
+    if (!host) { 同步座舱可见性(''); return; }
     host.innerHTML = '';
     delete host.dataset.holoPreview;
     delete host.dataset.cabinFocus;
+    同步座舱可见性('');
   }
 
   function wrapUnifiedInlineBody(html = '', options = {}) {
@@ -54430,6 +54766,7 @@ ${播报文本}
     currentUnifiedPreviewKey = targetKey;
     lastRenderedUnifiedPreviewKey = targetKey;
     host.dataset.holoPreview = targetKey;
+    同步座舱可见性(targetKey);
     bindUnifiedDetailDelegation(host);
 
     const 本次渲染序号 = ++统一详情渲染序号;
@@ -59204,90 +59541,27 @@ ${播报文本}
     },
 
     calculateDailySkillMasteryRate(skill = {}, charData = {}) {
-      const mastery =
-        skill && skill.技能掌控度 && typeof skill.技能掌控度 === 'object' && !Array.isArray(skill.技能掌控度)
-          ? skill.技能掌控度
-          : null;
-      if (!mastery) return 1;
-      const center = Number(mastery.中心等级);
-      const full = Number(mastery.圆满等级);
-      if (!Number.isFinite(center) || !Number.isFinite(full) || full <= center) return 1;
-      const level = Math.max(1, toNumber(charData.lv ?? charData.等级 ?? charData.属性?.等级, 1));
-      if (level >= full) return 1;
-      const standard = (full - center) / 1.8807936081512509;
-      const x = (level - center) / Math.max(0.0001, standard);
-      return Math.max(0, Math.min(1, Number((1 / (1 + Math.exp(-1.702 * x))).toFixed(4))));
-    },
-
-    scaleDailySkillMasteryValue(value, rate = 1) {
-      const text = toText(value, '');
-      if (/%$/.test(text)) {
-        const num = Number(text.replace('%', ''));
-        if (!Number.isFinite(num)) return value;
-        return `${num >= 0 ? '+' : ''}${Number((num * rate).toFixed(2))}%`;
-      }
-      const num = Number(value);
-      return Number.isFinite(num) ? Number((num * rate).toFixed(4)) : value;
-    },
-
-    读取背包批次使用效果倍率(物品数据 = {}) {
-      const 品质系数 = toNumber(物品数据?.品质系数, 1);
-      if (!Number.isFinite(品质系数) || Math.abs(品质系数 - 1) < 0.0001) return 1;
-      return Math.max(0.8, Math.min(1.25, Number((1 + (品质系数 - 1) * 0.25).toFixed(4))));
+      if (!skill?.技能掌控度 || typeof skill.技能掌控度 !== 'object' || Array.isArray(skill.技能掌控度)) return 1;
+      const rules = 读取C2消费者规则_桥接();
+      if (typeof rules?.计算技能掌控度完整度_V1 !== 'function') throw new Error('skill_mastery_runtime_missing');
+      return rules.计算技能掌控度完整度_V1(skill, charData);
     },
 
     按品质结算道具使用效果列表(效果列表 = [], 物品数据 = {}, 物品名 = '') {
       const 分类 = toText(物品数据?.物品分类 || 物品数据?.分类, '');
-      if (分类 === '魂技造物') return cloneJsonValue(Array.isArray(效果列表) ? 效果列表 : [], []);
       const 品质 = 规范化物品经济品质_桥接(物品数据?.品质 || '普通', 物品名, 分类);
-      if (判断神器品质_桥接(品质)) return cloneJsonValue(Array.isArray(效果列表) ? 效果列表 : [], []);
-      const 倍率 = this.读取背包批次使用效果倍率(物品数据);
-      const 计算数值 = (属性, 盐) => Math.max(1, Math.floor(读取品质道具绝对数值_桥接(品质, 属性, `${物品名}|${分类}|${盐}`) * 倍率));
-      const 处理效果 = (效果, 路径 = '') => {
-        if (!效果 || typeof 效果 !== 'object' || Array.isArray(效果)) return 效果;
-        const 输出 = cloneJsonValue(效果, {});
-        const 原型 = toText(输出.原型 || 输出.type, '').trim();
-        if (原型 === '耐久修复' || 输出.type === 'durability_repair') return 输出;
-        const 原始数值文本 = toText(输出.数值 ?? 输出.value?.数值, '').trim();
-        if (/^-/.test(原始数值文本)) return 输出;
-        const 属性 = toText(输出.资源 || 输出.属性 || 输出.value?.属性, '魂力');
-        if (原型 === '资源变化') 输出.数值 = 计算数值(属性, `${路径}|资源变化|${属性}`);
-        else if (原型 === '属性修正') 输出.数值 = 计算数值(属性, `${路径}|属性修正|${属性}`);
-        else if (原型 === '护盾变化') 输出.数值 = 计算数值(属性 || '体力上限', `${路径}|护盾变化`);
-        else if (原型 === '灵物吸收') 输出.数值 = Math.max(1, Math.floor(toNumber(品质道具灵物年限表_桥接[品质], 100) * 倍率));
-        else if (原型 === '修炼增益') 输出.数值 = Number((Math.max(1, toNumber(品质道具修炼倍率表_桥接[品质], 1.1)) * 倍率).toFixed(2));
-        ['使用效果', '授予效果', '结算效果'].forEach(字段名 => {
-          if (Array.isArray(输出[字段名])) 输出[字段名] = 输出[字段名].map((子效果, 子索引) => 处理效果(子效果, `${路径}|${字段名}${子索引}`));
-        });
-        if (Array.isArray(输出.条件分支)) {
-          输出.条件分支 = 输出.条件分支.map((分支, 分支索引) => {
-            const 下一分支 = cloneJsonValue(分支, {});
-            if (Array.isArray(下一分支.替换效果)) 下一分支.替换效果 = 下一分支.替换效果.map((子效果, 子索引) => 处理效果(子效果, `${路径}|替换${分支索引}_${子索引}`));
-            if (Array.isArray(下一分支.追加效果)) 下一分支.追加效果 = 下一分支.追加效果.map((子效果, 子索引) => 处理效果(子效果, `${路径}|追加${分支索引}_${子索引}`));
-            return 下一分支;
-          });
-        }
-        return 输出;
-      };
-      return (Array.isArray(效果列表) ? 效果列表 : []).map((效果, 索引) => 处理效果(效果, `效果${索引}`));
+      const 运行时接口 = 读取MVUSchema运行时接口_桥接();
+      if (typeof 运行时接口?.按品质结算道具使用效果列表 !== 'function') throw new Error('MVU Schema 道具品质结算接口未加载');
+      return 运行时接口.按品质结算道具使用效果列表(效果列表, { ...物品数据, 物品分类: 分类, 品质 }, 物品名);
     },
 
     applyDailySkillMastery(skill = {}, charData = {}) {
       const rate = this.calculateDailySkillMasteryRate(skill, charData);
       if (rate >= 0.9999) return skill;
+      const rules = 读取C2消费者规则_桥接();
+      if (typeof rules?.应用技能掌控度效果数组_V1 !== 'function') throw new Error('skill_mastery_runtime_missing');
       const nextSkill = cloneJsonValue(skill, {});
-      const scaleEffects = effects =>
-        (Array.isArray(effects) ? effects : []).forEach(effect => {
-          if (!effect || typeof effect !== 'object') return;
-          if (effect.数值 !== undefined) effect.数值 = this.scaleDailySkillMasteryValue(effect.数值, rate);
-          if (effect.威力倍率 !== undefined) effect.威力倍率 = this.scaleDailySkillMasteryValue(effect.威力倍率, rate);
-          ['使用效果', '授予效果'].forEach(key => scaleEffects(effect[key]));
-          (Array.isArray(effect.条件分支) ? effect.条件分支 : []).forEach(branch => {
-            scaleEffects(branch && branch.替换效果);
-            scaleEffects(branch && branch.追加效果);
-          });
-        });
-      scaleEffects(nextSkill._效果数组);
+      nextSkill._效果数组 = rules.应用技能掌控度效果数组_V1(nextSkill._效果数组, rate);
       return nextSkill;
     },
 
@@ -59444,7 +59718,7 @@ ${播报文本}
       });
       if (!批次) return { available: false, changed, reason: 'DAILY_USAGE_EXHAUSTED' };
       const 剩余次数 = 批次.剩余使用次数 === undefined ? 定义次数 : Math.max(0, Math.floor(toNumber(批次.剩余使用次数, 0)));
-      if (!提交) return { available: true, changed, remaining: 剩余次数 };
+      if (!提交) return { available: true, changed, remaining: 剩余次数, batch: 批次 };
       if (剩余次数 > 1) {
         批次.剩余使用次数 = 剩余次数 - 1;
         return { available: true, changed: true, remaining: 剩余次数 - 1 };
@@ -59475,16 +59749,19 @@ ${播报文本}
               : { consume: true };
             const 定义次数 = Math.max(0, Math.floor(toNumber(物品定义.基础使用次数, 0)));
             const 是可重复使用批次 = 消费规则.consume === false && 定义次数 > 0 && 物品定义.使用次数恢复周期 === '每日';
+            let 使用批次 = null;
             if (是可重复使用批次) {
               const 每日使用状态 = this.结算物品批次每日使用次数(inventory[itemName], 定义次数, 当前tick);
               if (!每日使用状态.available) throw new Error(`【${itemName}】今日使用次数已耗尽。`);
+              使用批次 = 每日使用状态.batch;
             }
-            const 物品数据 = 合并物品定义与状态_桥接(statData, itemName, inventory[itemName]);
+            const 物品数据 = 合并物品定义与状态_桥接(statData, itemName,
+              使用批次 ? { 数量: 0, 批次: [使用批次] } : inventory[itemName]);
             if (!this.isUsableInventoryItem(物品数据, itemName)) throw new Error('当前物品没有可执行的使用效果。');
             const 绑定者 = toText(物品数据.绑定者, '').trim();
             if (绑定者 && 绑定者 !== charKey) throw new Error(`【${itemName}】当前绑定者不是${charKey}。`);
             const 有效期至tick = Math.max(0, toNumber(物品数据.有效期至tick, 0));
-            if (有效期至tick > 0 && 当前tick > 有效期至tick) throw new Error(`【${itemName}】已经过期。`);
+            if (有效期至tick > 0 && 当前tick >= 有效期至tick) throw new Error(`【${itemName}】已经过期。`);
             if (读取背包总数量_桥接(inventory[itemName]) <= 0) throw new Error(`【${itemName}】剩余次数不足。`);
             actionLabel = '使用';
             if (!charData.属性 || typeof charData.属性 !== 'object') charData.属性 = {};

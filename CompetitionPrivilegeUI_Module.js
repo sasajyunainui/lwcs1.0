@@ -97,11 +97,11 @@
       if (!赛事) return '<div class="cp-empty">赛事不存在。</div>';
       const 项目 = 赛事.项目?.[this.项目名];
       const 进度 = 赛事._进度?.[this.项目名];
-      return `<header class="cp-event-head"><div><h3>${转义(赛事.名称)}</h3><p>${转义(赛事.状态)} · ${转义(this.格式日程(赛事))}</p></div>
+      return `<div class="cp-command-console"><header class="cp-event-head"><div><h3>${转义(赛事.名称)}</h3><p>${转义(赛事.状态)} · ${转义(this.格式日程(赛事))}</p></div>
         <div class="cp-head-actions">${赛事.状态 === '筹备' ? '<button type="button" class="cp-command" data-start>启动</button>' : ''}${赛事.状态 === '进行中' ? '<button type="button" class="cp-command" data-simulate>推进场外赛</button>' : ''}</div></header>
         <div class="cp-sub-tabs">${Object.keys(赛事.项目 || {}).map(名称 => `<button type="button" class="cp-sub-tab${名称 === this.项目名 ? ' active' : ''}" data-project="${名称}">${名称}</button>`).join('')}</div>
         <div class="cp-sub-tabs">${['总览', '参赛者', '规则'].map(页面 => `<button type="button" class="cp-sub-tab${页面 === this.页面 ? ' active' : ''}" data-page="${页面}">${页面}</button>`).join('')}</div>
-        ${this.页面 === '参赛者' ? this.渲染参赛者(赛事, 项目, 进度) : this.页面 === '规则' ? this.渲染规则(项目) : this.渲染总览(赛事, 项目, 进度)}`;
+        </div><div class="cp-page-body">${this.页面 === '参赛者' ? this.渲染参赛者(赛事, 项目, 进度) : this.页面 === '规则' ? this.渲染规则(项目) : this.渲染总览(赛事, 项目, 进度)}</div>`;
     }
 
     格式日程(赛事) {

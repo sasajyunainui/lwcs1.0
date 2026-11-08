@@ -9658,6 +9658,7 @@ ${logMsg}
     注册生命周期定时器(640);
     try {
       window.__sheepMapBridge = {
+    ...(window.__sheepMapBridge || {}),
         buildUnifiedNodePanels: 构建星图外壳节点面板,
         describeTravelToNode,
         travelToNode,

@@ -27,7 +27,7 @@
 // a SUMMON_WINDOW scheduled fact, carrier identity is fail-closed EITHER
 // (UNSUPPORTED_CARRIER_REQUIRES_UNPACK, never INVALID_OPTION_VALUE, never silent), missing
 // or 变身期间 duration never fabricates turns (PENDING_DURATION_PROJECTION);
-// 结算修正 projects settlement.primary PERCENT only (never HP/RESOURCE double rows);
+// 结算修正 projects settlement.primary PERCENT, or ABS for 消耗/前摇 (never HP/RESOURCE double rows);
 // projectionFamilies [{sourceEffectId, prototype}] is audit-only routing identity, never a
 // weight; mechanicMetadataEntries per-effect array subsets with 限定元素 normalized to a sorted
 // string array, deep-frozen and never weighted. Registry separates contract enrollment
@@ -271,7 +271,7 @@
     '护盾变化': ['原型', '目标', '生效方式', '护盾模式', '数值', '持续回合', '驱动属性', '影响方向', '条件分支', '对应等级'],
     '属性修正': ['原型', '目标', '生效方式', '属性', '数值', '持续回合', '驱动属性', '影响方向', '条件分支', '对应等级'],
     '判定修正': ['原型', '目标', '生效方式', '判定', '数值', '持续回合', '驱动属性', '影响方向', '条件分支', '对应等级'],
-    '状态施加': ['原型', '目标', '状态', '数值', '副数值', '持续回合', '生效方式', '触发方式', '触发限制', '条件分支', '驱动属性', '影响方向', '对应等级'],
+    '状态施加': ['原型', '目标', '状态', '数值', '副数值', '持续回合', '延迟回合', '生效方式', '触发方式', '触发限制', '条件分支', '驱动属性', '影响方向', '对应等级'],
     '召唤生成': ['原型', '目标', '召唤单位类型', '召唤物名称', '数量', '强度', '继承属性比例', '持续回合', '行动模式', '生效方式', '触发限制'],
     '结算修正': ['原型', '目标', '结算', '数值', '持续回合', '生效方式', '限定元素', '吸收资源', '吸收来源', '影响方向', '驱动属性', '对应等级', '条件分支']
   };
@@ -569,6 +569,15 @@
     if (m[1] === '' && n !== 0) return { pending: 'PENDING_DIRECTION_PROJECTION' };
     return { amount: amount, unit: 'PERCENT' };
   }
+  function parseSettlementValue(effect) {
+    var value = effect['数值'];
+    if (['消耗', '前摇'].indexOf(effect['结算']) >= 0) {
+      var absolute = typeof value === 'number' ? value : typeof value === 'string' && /^[+-]?(\d+(\.\d+)?|\.\d+)$/.test(value.trim()) ? Number(value.trim()) : null;
+      if (absolute !== null) return Number.isFinite(absolute) && absolute !== 0
+        ? { amount: normZero(absolute), unit: 'ABS' } : { error: 'INVALID_OPTION_VALUE' };
+    }
+    return parseStatePercent(value);
+  }
   function batch2PendingCodes(effect, proto) {
     var codes = [];
     if (Array.isArray(effect['条件分支']) && effect['条件分支'].length) codes.push('PENDING_CONDITIONAL_PROJECTION');
@@ -585,7 +594,7 @@
       if (v2.pending) codes.push(v2.pending);
     }
     if (proto === '结算修正') {
-      var sv = parseStatePercent(effect['数值']);
+      var sv = parseSettlementValue(effect);
       if (sv.pending) codes.push(sv.pending);
     }
     return codes;
@@ -885,7 +894,9 @@
         schedIdx += 1;
       }
       if (hasOwn(effect, '结算倍率')) {
-        sched.push({ entryId: String(rowCtx.sourceEffectId) + ':schedule:' + schedIdx, operation: 'SETTLEMENT_RATIO_ADJUST', 结算倍率: Number(effect['结算倍率']) });
+        var settlementRatio = numericDualOf(effect['结算倍率'], '结算倍率');
+        if (settlementRatio.error || settlementRatio.pending) return projectionWithUnsupported(settlementRatio.error || 'PENDING_DIRECTION_PROJECTION', { legalityModifiers: legMods, opportunityModifiers: oppMods });
+        sched.push({ entryId: String(rowCtx.sourceEffectId) + ':schedule:' + schedIdx, operation: 'SETTLEMENT_RATIO_ADJUST', 结算倍率: settlementRatio.amount / (settlementRatio.unit === 'PERCENT' ? 100 : 1) });
       }
       out.scheduledFacts = sched;
       out.legalityModifiers = legMods;
@@ -1259,6 +1270,9 @@
       var st = String(effect['状态']).trim();
       if (!st) return 'MISSING_REQUIRED_FIELD';
       if (STATE_APPLY_OPTIONS.indexOf(st) < 0) return 'UNKNOWN_STATE';
+      if (effect['触发方式'] === '延迟触发') {
+        if (typeof effect['延迟回合'] !== 'number' || !Number.isInteger(effect['延迟回合']) || effect['延迟回合'] <= 0) return 'INVALID_OPTION_VALUE';
+      } else if (hasOwn(effect, '延迟回合')) return 'INVALID_OPTION_VALUE';
       if (hasOwn(effect, '副数值') && !hasOwn(effect, '数值')) return 'INVALID_OPTION_VALUE';
       if (hasOwn(effect, '数值')) {
         var v1 = parseStatePercent(effect['数值']);
@@ -1270,7 +1284,7 @@
       }
     }
     if (spec.protoName === '结算修正') {
-      var sv = parseStatePercent(effect['数值']);
+      var sv = parseSettlementValue(effect);
       if (sv.error) return sv.error;
     }
     if (spec.protoName === '召唤生成') {
@@ -1359,9 +1373,9 @@
       win.entryId = String(rowCtx.sourceEffectId) + ':schedule:' + scheduledFacts.length;
       scheduledFacts.push(win);
     } else if (proto === '结算修正') {
-      var sv = parseStatePercent(effect['数值']);
+      var sv = parseSettlementValue(effect);
       if (sv.error) return { error: sv.error, rows: rows };
-      rows.push(makeRow(rowCtx, 'STATE_DELTA', 'settlement.primary', sv.amount, 'PERCENT', dur));
+      rows.push(makeRow(rowCtx, 'STATE_DELTA', 'settlement.primary', sv.amount, sv.unit, dur));
     }
     for (var i = 0; i < rows.length; i += 1) {
       var verr = validateDirectFactRow(rows[i]);
@@ -1933,7 +1947,7 @@
         },
         pending13Projection: cloneDeep(PENDING13_SPEC),
         numericForms: {
-          '数值': 'signed percent string => PERCENT with sign; unsigned percent => PENDING_DIRECTION_PROJECTION; number => ABS (batch-1); 状态施加/结算修正 数值 is percent-string only (plain numeric strings rejected INVALID_OPTION_VALUE, zero is sign-neutral and projects directly)',
+          '数值': 'signed percent string => PERCENT with sign; unsigned percent => PENDING_DIRECTION_PROJECTION; number => ABS (batch-1); 状态施加 remains percent-string only; 结算修正 消耗/前摇 also accept finite nonzero numbers or plain signed decimal strings as ABS, other settlement options remain percent-string only',
           '防御穿透': 'finite number or percent string; both normalize to PERCENT',
           '持续回合': 'nonnegative integer => TURNS; missing => 0 for batch-1/状态施加/结算修正, no fabrication; 变身期间 => PENDING_DURATION_PROJECTION; 召唤生成 missing or 变身期间 => no summon.duration row + PENDING_DURATION_PROJECTION',
           '数量': '召唤生成 数量 positive integer => COUNT; non-positive or non-integer rejects INVALID_OPTION_VALUE',
@@ -2008,7 +2022,7 @@
         formalOutOfBattle: '灵物吸收 (formal library, no registry path) rejects FORMAL_LIBRARY_OUT_OF_BATTLE_SCOPE',
         batch2StateApply: '状态施加: signed 数值 => state.primary PERCENT; signed 副数值 => state.secondary PERCENT; unsigned => PENDING_DIRECTION_PROJECTION; no 数值 => BOOL presence row key=state name; taunt legality {state,target} + forced taunt target set; trigger limit/条件分支/变身期间 => explicit pending',
         batch2Summon: '召唤生成: carrier identity fail-closed EITHER => UNSUPPORTED_CARRIER_REQUIRES_UNPACK (never INVALID_OPTION_VALUE, never silent); 数量 COUNT, 强度 RATIO raw, 继承属性比例 RATIO distinct row; summon.duration TURNS only from explicit 持续回合, never fabricated; SUMMON_WINDOW scheduled fact keeps identity + durationTurns when known and carries entryId = sourceEffectId + :schedule: + 0-based index inside the effect own scheduledFacts array',
-        batch2Settlement: '结算修正: settlement.primary PERCENT only; the same effect never emits HP_DELTA/RESOURCE rows (no double count); 结算/限定元素/吸收资源/吸收来源 live in mechanicMetadataEntries only',
+        batch2Settlement: '结算修正: settlement.primary PERCENT, or ABS for 消耗/前摇; the same effect never emits HP_DELTA/RESOURCE rows (no double count); 结算/限定元素/吸收资源/吸收来源 live in mechanicMetadataEntries only',
         pending13Direct: 'PENDING13 (rev5Spec.pending13Projection): whitelist-valid forms project direct contributions (资源转移 RESOURCE_TRANSFER, 炸环 STATE_DELTA RATIO, 状态移除 with explicit 数量 STATE_DELTA COUNT + tauntRemoved, 规则防御 RULE_DEFENSE_COUNTER, 位移执行 POSITION_DELTA, 时窗修正 WINDOW_ADJUST/SETTLEMENT_RATIO_ADJUST scheduled with entryId, 机制授予 FOLLOW_UP scheduled with entryId + payloadDirectFacts, 决策干扰 bare 索敌干扰 interferenceRates, 资源锁定 resourceLocks, 规则改写 缴械 opportunityConstraints, 状态转移 stateMigration, 状态交换 stateSwap, 机制抹消 mechanismRemoval); remaining forms (时窗修正 without adjust value, 状态移除 任意* or without explicit finite 数量, 决策干扰 判断干扰 or 索敌干扰 with 驱动属性/影响方向, 规则改写 死亡转存活) stay PENDING_DIRECT_PROJECTION with retainedInCandidateAudit',
         implementationNumbersFrozen: 'registry implementation numbers (243/338) are the frozen contract enrollment (contract counts.implementationTarget); per-form behavior follows rev5 cases 85+24'
       }
@@ -2095,6 +2109,8 @@
 (function () {
   'use strict';
 
+  const { Object, Array, String, JSON } = typeof globalThis !== 'undefined' ? globalThis : typeof self !== 'undefined' ? self : window;
+
   var MOUNT_NAME = '__LWCS_BEHAVIOR_CANDIDATE_FEATURE_BRIDGE__';
   var ROLE = 'R9_CANDIDATE_UNREGISTERED';
   var SCHEMA_VERSION = 'BehaviorCandidateFeatureBridgeV1';
@@ -2138,7 +2154,7 @@
   var HARD_EXCLUSION_CODES = [
     'ACTOR_DISABLED', 'ACTOR_TERMINAL', 'TARGET_EMPTY', 'INVALID_OPTION_VALUE',
     'MISSING_REQUIRED_FIELD', 'UNKNOWN_STATE', 'UNKNOWN_RULE',
-    'AMBIGUOUS_TAUNT_TARGET', 'ILLEGAL_TARGET', 'RESOURCE_INSUFFICIENT'
+    'AMBIGUOUS_TAUNT_TARGET', 'ILLEGAL_TARGET', 'RESOURCE_INSUFFICIENT', 'PREVIEW_BUDGET_EXCEEDED'
   ];
   var CARRIER_KIND = 'UNSUPPORTED_CARRIER_REQUIRES_UNPACK';
   var FATAL_ZERO = 'ZERO_SUPPORTED_PROJECTION';
@@ -2847,9 +2863,10 @@
 (function () {
   'use strict';
 
+  const { Number, String, Object, Array, Math, JSON, Set } = typeof globalThis !== 'undefined' ? globalThis : typeof self !== 'undefined' ? self : window;
   var MOUNT_NAME = '__LWCS_BEHAVIOR_IMMEDIATE_FEATURE__';
   var ROLE = 'R9_CANDIDATE_UNREGISTERED';
-  var REVISION = 19;
+  var REVISION = 20;
   var REGISTRY_ID = 'RC6-M2-BEHAVIOR-IMMEDIATE-FEATURE-V1-2026-08-14';
   var SCHEMA_VERSION = 'BehaviorImmediateFeatureV1';
   var F0 = 14;
@@ -2924,7 +2941,7 @@
   };
   var BOOL_CODES = ['OVERKILL_AVAILABILITY', 'HARD_EXCLUSION', 'DAMAGE_TYPE', 'STATE_PRESENCE', 'TARGET_CHARGE_ACTIVE', 'REACTION_COUNTER_WINDOW_OPEN'];
 
-  var ATTRIBUTE_KEYS = ['力量', '防御', '敏捷', '魂力上限', '精神力上限', '体力上限'];
+  var ATTRIBUTE_KEYS = ['力量', '防御', '敏捷', '生命上限', '魂力上限', '精神力上限', '体力上限'];
   var JUDGMENT_KEYS = ['命中', '闪避', '反应'];
   var RESOURCE_FIELD = { '魂力': 'sp', '精神力': 'men', '体力': 'vit', '生命': 'hp' };
   var RESOURCE_NAMES = ['魂力', '精神力', '体力', '生命'];
@@ -2938,7 +2955,7 @@
   var HARD_EXCLUSION_CODES = [
     'ACTOR_DISABLED', 'ACTOR_TERMINAL', 'TARGET_EMPTY', 'INVALID_OPTION_VALUE',
     'MISSING_REQUIRED_FIELD', 'UNKNOWN_STATE', 'UNKNOWN_RULE', 'AMBIGUOUS_TAUNT_TARGET',
-    'ILLEGAL_TARGET', 'RESOURCE_INSUFFICIENT'
+    'ILLEGAL_TARGET', 'RESOURCE_INSUFFICIENT', 'PREVIEW_BUDGET_EXCEEDED'
   ];
   var UNKNOWN_REASONS = [
     'NO_PUBLIC_DECLARATION', 'CONDITIONAL_PROBABILITY_UNRESOLVED', 'FINAL_SETTLEMENT_UNKNOWN',
@@ -3804,12 +3821,23 @@
       }
     } else if (factType === 'STATE_DELTA') {
       if (key === 'settlement.primary') {
-        expectUnit(unit, 'PERCENT');
-        out.push(kKnown('SETTLEMENT_MODIFIER_PERCENT', 'PERCENT', amount));
+        // The frozen scalar is percentage-only. Keep legitimate ABS cost or
+        // windup facts in the source document for target-aware causal consumers,
+        // without coercing their unit or inventing a scalar/OUTSIDE contribution.
+        if (unit !== 'ABS') {
+          expectUnit(unit, 'PERCENT');
+          out.push(kKnown('SETTLEMENT_MODIFIER_PERCENT', 'PERCENT', amount));
+        }
       } else {
         if (ATTRIBUTE_KEYS.indexOf(key) >= 0) {
-          expectUnit(unit, 'PERCENT');
-          out.push(kKnown('ATTRIBUTE_DELTA', 'PERCENT', amount));
+          // This legacy scalar is percent-only. Known ABS stats retain their
+          // original direct facts and are valued by actual causal capacity;
+          // they are neither percent magnitudes nor unowned outside rows.
+          // Keep the source-referenced duration below for either valid unit.
+          if (unit !== 'ABS') {
+            expectUnit(unit, 'PERCENT');
+            out.push(kKnown('ATTRIBUTE_DELTA', 'PERCENT', amount));
+          }
         } else if (JUDGMENT_KEYS.indexOf(key) >= 0) {
           expectUnit(unit, 'PERCENT');
           out.push(kKnown('JUDGMENT_DELTA', 'PERCENT', amount));
@@ -3941,7 +3969,45 @@
       }
     }
     recs = collapseAttributeDeltaRows(recs);
+    recs = collapseShieldDeltaRows(recs);
     return { recs: recs, outsideCount: outside, outsideFactIds: outsideFactIds };
+  }
+
+  // This legacy scalar describes declared ABS magnitude, not settled shield
+  // stock or protection. Keep one candidate-local cell and all source refs;
+  // the unchanged causal kernel owns order, clipping, gates and expiry.
+  // Any unresolved percent source makes the whole total unresolved, never a
+  // known ABS subset. Do not add a new frozen provider aggregation operator.
+  function collapseShieldDeltaRows(recs) {
+    var shields = [], kept = [];
+    for (var i = 0; i < recs.length; i += 1) {
+      if (recs[i].featureCode === 'SHIELD_DELTA') shields.push(recs[i]);
+      else kept.push(recs[i]);
+    }
+    if (shields.length <= 1) return recs;
+    shields.sort(function (a, b) { return cmpStr(a._seid, b._seid) || cmpStr(a._key, b._key); });
+    var effects = new Set(), facts = [], events = [], unresolved = null;
+    var sum = 0, correction = 0;
+    for (var s = 0; s < shields.length; s += 1) {
+      var row = shields[s];
+      if (row.unitFamily !== 'ABS') throw rejection('UNIT_FAMILY_MISMATCH', { featureCode: 'SHIELD_DELTA', unit: row.unitFamily, expected: 'ABS' });
+      if (effects.has(row._seid)) throw rejection('DUPLICATE_FEATURE', { featureCode: 'SHIELD_DELTA', sourceEffectId: row._seid });
+      effects.add(row._seid);
+      facts = facts.concat(row.sourceFactIds || []); events = events.concat(row.sourceEventIds || []);
+      if (row.status === 'UNKNOWN') { unresolved = unresolved || row; continue; }
+      if (row.status !== 'KNOWN') throw rejection('INVALID_STATUS_VALUE', { featureCode: 'SHIELD_DELTA', status: row.status });
+      var value = row.value;
+      if (typeof value !== 'number' || !Number.isFinite(value)) throw rejection('NON_FINITE_REJECTED', { featureCode: 'SHIELD_DELTA' });
+      var next = sum + value;
+      correction += Math.abs(sum) >= Math.abs(value) ? (sum - next) + value : (value - next) + sum;
+      sum = next;
+      if (!Number.isFinite(sum) || !Number.isFinite(correction)) throw rejection('NON_FINITE_REJECTED', { featureCode: 'SHIELD_DELTA' });
+    }
+    var total = sum + correction;
+    if (!Number.isFinite(total)) throw rejection('NON_FINITE_REJECTED', { featureCode: 'SHIELD_DELTA' });
+    kept.push(rec('SHIELD_DELTA', 'ABS', unresolved ? 'UNKNOWN' : 'KNOWN', unresolved ? unresolved.reasonCode : 'OK',
+      unresolved ? undefined : normZero(total), dedupSort(facts), dedupSort(events), 1, shields[0]._seid, shields[0]._key));
+    return kept;
   }
 
   // Same-candidate duplicate KNOWN ATTRIBUTE_DELTA rows (same unit) collapse to
@@ -4599,12 +4665,13 @@
         multiTargetOnce: 'RELATION_TARGET_COUNT counts the unique declared target set once; EFFECT_ROW features never expand per targetIds',
         unknownNeverZero: 'UNKNOWN/NOT_APPLICABLE never carry value; 0 placeholders are forbidden',
         declaredNeverSettlement: 'SETTLEMENT_DAMAGE and ROLL_REALIZATION are always UNKNOWN',
+        shieldDeclaredScalar: 'one candidate-local SHIELD_DELTA cell: source-ordered compensated signed sum of all known ABS declarations with unioned provenance; any unresolved percent declaration makes the whole total UNKNOWN without value, never a known subset; duplicate shield sourceEffectId rejects; original typed facts and causal order/clipping/expiry/target protection remain downstream, never inferred from this nominal total',
         costActorOnly: 'COST_AFFORDABILITY reads publicSnapshot.units[actorId] only; frozen resource map 魂力->sp, 精神力->men, 体力->vit, 生命->hp; clamp(available/required,0,1), min over entries; target resources never consulted',
         recipientNeedMatch: 'PUBLIC_RECIPIENT_NEED_MATCH reads only the structured creationProfile (recipientId + closed useEffects rows) against the same observer-visible recipient resource axes (frozen map 魂力->sp, 精神力->men, 体力->vit, 生命->hp); recovery channel = 资源变化 row with positive percent 数值 (percent /100 is the sole admitted unit; negative/zero rows are drains and never count); per (recipientId, resource) duplicates take max, never sum; value = arithmetic mean over the actual recovery channels; no recovery channel (absent creationProfile, non-recovery or empty useEffects) => KNOWN 0; missing recipientId, recipient unit/current/max unprovable, max<=0, unmappable resource name or unprovable percent unit => UNKNOWN (MISSING_SOURCE_FACT / HIDDEN_AXIS_UNOBSERVED), never guessed; no hidden reads, no future route, no role/skill-name special-casing',
         resourceInsufficientDerivation: 'RESOURCE_INSUFFICIENT derives from the same actor-only affordability check, last in precedence (after legalityFlags/legalityModifiers, actorStatus, TARGET_EMPTY): KNOWN min ratio < 1 (strict cost > available) => RESOURCE_INSUFFICIENT; equality and affordable => not excluded; no publicCost, missing actor/axis or UNKNOWN => no exclusion, never guessed; other hard-exclusion codes keep first-code precedence',
         targetSide: 'sides-map equality only (SELF by id equality, ALLY by side equality, ENEMY otherwise, MIXED on distinct classes, SIDE_UNOBSERVED when any declared target side missing, NO_TARGET_AXIS on empty axis); no prefix guessing/default ALLY/neutral folding',
         successProbability: 'R4b2 damage-delivery hit axis: only outcomeKind HP_DELTA rows with evidence.damageBasis.basisView DECISION_VISIBLE, nonempty effectInstanceId/targetId and finite hitProbability are deliveries; dedupe by (effectInstanceId,targetId), same identity differing probability => UNKNOWN(CONFLICTING_DELIVERIES); per-target mean over independent deliveries then mean over hit-axis targets (targets without delivery are NO_HIT_AXIS and excluded from the denominator); no damage delivery at all => NOT_APPLICABLE(NO_HIT_AXIS); deliveryStatus MISSING/NON_FINITE or missing identity/basis => UNKNOWN fail-closed; empty targetSet keeps existing missing semantics; no FIRST/JOINT/MIN/MAX/applicationProbability/Runtime roll; actionKind never special-cased',
-        outsideRowCounting: 'only unrecognized/unowned direct rows and unresolved scheduledFacts count into OUTSIDE_BATCH1_ROW_COUNT; RESOURCE_TRANSFER is delegated to the realized two-sided causal resource chain; SUMMON_WINDOW and summon.inheritRatio are delegated to summon-family plus causal action-potential ownership; WINDOW_ADJUST is delegated to preview STATE_CHANGED/SCHEDULED_HP_DELTA ownership; unresolved direct fact ids use sourceFactIds and unresolved scheduled entryIds use sourceEventIds',
+        outsideRowCounting: 'only unrecognized/unowned direct rows and unresolved scheduledFacts count into OUTSIDE_BATCH1_ROW_COUNT; known attribute ABS magnitudes are delegated to actual causal capacity with original typed direct facts retained and only STATE_DURATION emitted here; RESOURCE_TRANSFER is delegated to the realized two-sided causal resource chain; SUMMON_WINDOW and summon.inheritRatio are delegated to summon-family plus causal action-potential ownership; WINDOW_ADJUST is delegated to preview STATE_CHANGED/SCHEDULED_HP_DELTA ownership; unresolved direct fact ids use sourceFactIds and unresolved scheduled entryIds use sourceEventIds',
         statePresence: 'STATE_DELTA non-attribute/judgment key: unit=BOOL => KNOWN 1 (amount>0) or 0 (amount<=0); unit=COUNT => UNKNOWN(STATE_FORM_UNMAPPED), never coerced to BOOL; other units => UNIT_FAMILY_MISMATCH; BOOL KNOWN domain strictly {0,1}',
         batch2StateDeltaPercent: 'STATE_DELTA state.primary/state.secondary PERCENT => STATE_DELTA_PERCENT (signed declared magnitude, never multiplied by duration); other PERCENT keys => UNKNOWN(MISSING_SOURCE_FACT); other units/keys keep revision-2 STATE_PRESENCE/UNIT_FAMILY_MISMATCH rules',
         resourceDeltaPercent: 'RESOURCE_OPTION_CHANGED key=resource name unit=PERCENT => RESOURCE_DELTA_PERCENT (raw signed percent, never multiplied by duration); ABS rows keep RESOURCE_DELTA; unsigned percent rows stay PENDING_DIRECTION_PROJECTION upstream and never reach the compiler',
@@ -4685,6 +4752,7 @@
 (function (root) {
   'use strict';
 
+  const { Number, String, Object, Array, Math, JSON, Map, Set, WeakMap } = root;
   var RESOURCES = ['sp', 'men', 'vit', 'hp'];
   var RESOURCE_FIELDS = { sp: 'sp', men: 'men', vit: 'vit', hp: 'hp' };
   var RESOURCE_LABEL_KEYS = { 魂力: 'sp', 精神力: 'men', 体力: 'vit', 生命: 'hp' };
@@ -5370,7 +5438,7 @@
     }
     return rows;
   }
-  function scanCandidate(candidate, request, previewApi, pdaApi, verified, closure, unitEntries, visibleUnitIndex, followUpAudit, injection) {
+  function scanCandidate(candidate, request, previewApi, pdaApi, verified, closure, unitEntries, visibleUnitIndex, followUpAudit, injection, releasePending, decisionApi, ownedPreview) {
     var entries = [], identities = Object.create(null), status = { TEAM_EFFECT: 'COMPLETE', RESOURCE_SUPPLY: 'COMPLETE', FOLLOW_UP: 'COMPLETE' };
     var catalogComplete = true;
     var declaration = candidate.declaration === undefined ? {} : candidate.declaration;
@@ -5388,7 +5456,9 @@
     addVerified(verified.events, actionId); addVerified(verified.actions, actionId);
     var previewDeclaration = Object.assign({}, declaration || {}, { actionId: actionId });
     var preview = null;
-    if (injection) {
+    if (ownedPreview) {
+      preview = ownedPreview;
+    } else if (injection) {
       var injectedPreview = isObject(injection.previewResultsById) ? injection.previewResultsById[candidate.candidateId] : undefined;
       if (injectedPreview === undefined || !isObject(injectedPreview)) fail('SOURCE_PREVIEW_INJECTION_MISSING', candidate.candidateId);
       preview = injectedPreview;
@@ -5399,6 +5469,54 @@
         status.TEAM_EFFECT = 'PARTIAL'; status.RESOURCE_SUPPLY = 'PARTIAL'; status.FOLLOW_UP = 'PARTIAL';
         catalogComplete = false;
       }
+    }
+    if (Array.isArray(preview && preview.outcomeBranches)) {
+      if (injection) fail('SOURCE_PREVIEW_JOINT_INJECTION');
+      requireFunction(decisionApi && decisionApi.actualizeLinearProjection, 'decisionApi.actualizeLinearProjection');
+      var mass = 0;
+      var outcomeSources = preview.outcomeBranches.map(function (branch) {
+        if (!branch || !Number.isFinite(branch.probability) || !(branch.probability > 0) || !isObject(branch.result) ||
+            branch.result.actionId !== actionId || branch.result.actorId !== request.actorId) fail('SOURCE_PREVIEW_OUTCOME_IDENTITY', candidate.candidateId);
+        mass += branch.probability;
+        var physical = branch.result, passives = Object.create(null);
+        (physical.contributions || []).forEach(function (row) {
+          var body = row && row.evidence && row.evidence.passiveConsumerEvidence;
+          if (!body || !isObject(body.applicationIdentity) || row.sourceActionId === actionId) return;
+          var ownSource = 'passive-consumer:' + body.applicationKey + (body.triggerPhase === '受击前'
+            ? ':before:' + body.triggerSourceEffectId + ':' + body.triggerTargetId : '');
+          if (body.triggerEventId === actionId && body.actorId === row.actorId && row.sourceActionId === ownSource &&
+              body.applicationKey === 'passive:' + previewApi.stableHash(body.applicationIdentity) &&
+              Array.isArray(body.targetIds) && body.targetIds.indexOf(row.targetId) !== -1 &&
+              visibleUnitIndex[row.actorId]) passives[ownSource] = body;
+        });
+        var rootRows = (physical.contributions || []).filter(function (row) {
+          if (row && row.sourceActionId === actionId) return true;
+          var body = row && passives[row.sourceActionId];
+          if (!body || row.rootCauseId !== row.sourceActionId || row.actorId !== body.actorId || row.actionRole !== 'STATE_TICK' ||
+              typeof row.effectInstanceId !== 'string' || row.effectInstanceId.indexOf(row.sourceActionId + ':') !== 0 ||
+              row.windowId === 'ACTION_COST' && row.evidence.passiveApplicationKey !== body.applicationKey) fail('SOURCE_PREVIEW_SOURCE_ACTION_MISMATCH', candidate.candidateId);
+          return false;
+        });
+        var leaf = Object.assign({}, physical, { contributions: rootRows });
+        var source = scanCandidate(candidate, request, previewApi, pdaApi, verified, closure, unitEntries, visibleUnitIndex,
+          followUpAudit, null, releasePending, decisionApi, leaf);
+        return { probability: branch.probability, source: source };
+      });
+      if (Math.abs(mass - 1) > 1e-9 || !outcomeSources.length) fail('SOURCE_PREVIEW_OUTCOME_MASS', candidate.candidateId);
+      var common = outcomeSources[0].source.entries.filter(function (entry) {
+        var signature = JSON.stringify(entry);
+        return outcomeSources.every(function (branch) { return branch.source.entries.some(function (row) { return JSON.stringify(row) === signature; }); });
+      });
+      var axes = ['TEAM_EFFECT', 'RESOURCE_SUPPLY', 'FOLLOW_UP'], status = {};
+      axes.forEach(function (axis) {
+        var retainedCount = common.filter(function (entry) { return entry.capabilityKind === axis; }).length;
+        status[axis] = outcomeSources.every(function (branch) {
+          return branch.source.status[axis] === 'COMPLETE' && branch.source.entries.filter(function (entry) { return entry.capabilityKind === axis; }).length === retainedCount;
+        }) ? 'COMPLETE' : 'PARTIAL';
+      });
+      return { entries: sortObjects(common), status: status, outcomeSources: outcomeSources, catalogComplete: outcomeSources.every(function (branch) {
+        return branch.source.catalogComplete && branch.source.entries.length === common.length;
+      }) };
     }
     var contributions = Array.isArray(preview && preview.contributions) ? preview.contributions : [];
     contributions.forEach(function (item) {
@@ -5443,6 +5561,9 @@
         status.FOLLOW_UP = 'PARTIAL';
         catalogComplete = false; followUpAudit.pending = true;
       }
+      if (ownedPreview && unpacked === null) projection = decisionApi.actualizeLinearProjection({ effect: row, projection: projection,
+        sourceEffectId: effectId, request: request, declaration: previewDeclaration, previewResult: ownedPreview, sourceMode: true,
+        actorSide: previewApi.sideOf(request.visibleWorld, previewApi.findUnit(request.visibleWorld, request.actorId)) });
       var direct = Array.isArray(projection && projection.directFacts) ? projection.directFacts : [];
       var scheduled = Array.isArray(projection && projection.scheduledFacts) ? projection.scheduledFacts : [];
       direct.forEach(function (fact) { if (!indexCandidatePdaRow(fact, verified, closure, visibleUnitIndex, followUpAudit, false)) { status.FOLLOW_UP = isFollowUpRow(fact) ? 'PARTIAL' : status.FOLLOW_UP; catalogComplete = isFollowUpRow(fact) ? false : catalogComplete; } });
@@ -5456,12 +5577,12 @@
       }
       if (registry.capabilityKind === 'TEAM_EFFECT') {
         if (!direct.length && !scheduled.length) { status.TEAM_EFFECT = 'PARTIAL'; continue; }
-        direct.forEach(function (fact) { var made = teamEntries(registry, fact, false, effectId, verified, closure, visibleUnitIndex); if (!made.complete) status.TEAM_EFFECT = 'PARTIAL'; else authenticatePdaRow(verified, fact); made.entries.forEach(function (entry) { if (!addEntry(entries, identities, entry)) status.TEAM_EFFECT = 'PARTIAL'; }); });
+        direct.forEach(function (fact) { var made = teamEntries(registry, fact, releasePending, effectId, verified, closure, visibleUnitIndex); if (!made.complete) status.TEAM_EFFECT = 'PARTIAL'; else authenticatePdaRow(verified, fact); made.entries.forEach(function (entry) { if (!addEntry(entries, identities, entry)) status.TEAM_EFFECT = 'PARTIAL'; }); });
         scheduled.forEach(function (fact) { var made = teamEntries(registry, fact, true, effectId, verified, closure, visibleUnitIndex); if (!made.complete) status.TEAM_EFFECT = 'PARTIAL'; else authenticatePdaRow(verified, fact); made.entries.forEach(function (entry) { if (!addEntry(entries, identities, entry)) status.TEAM_EFFECT = 'PARTIAL'; }); });
       } else if (registry.capabilityKind === 'RESOURCE_SUPPLY') {
         if (!direct.length && !scheduled.length) { status.RESOURCE_SUPPLY = 'PARTIAL'; return; }
         if (!resourceEffectShape(direct, scheduled, effectId, contributions)) status.RESOURCE_SUPPLY = 'PARTIAL';
-        direct.forEach(function (fact) { var made = resourceEntries(fact, false, effectId, contributions, verified, closure, unitEntries); if (!made.complete) status.RESOURCE_SUPPLY = 'PARTIAL'; else authenticatePdaRow(verified, fact); made.entries.forEach(function (entry) { if (!addEntry(entries, identities, entry)) status.RESOURCE_SUPPLY = 'PARTIAL'; }); });
+        direct.forEach(function (fact) { var made = resourceEntries(fact, releasePending, effectId, contributions, verified, closure, unitEntries); if (!made.complete) status.RESOURCE_SUPPLY = 'PARTIAL'; else authenticatePdaRow(verified, fact); made.entries.forEach(function (entry) { if (!addEntry(entries, identities, entry)) status.RESOURCE_SUPPLY = 'PARTIAL'; }); });
         scheduled.forEach(function (fact) { var made = resourceEntries(fact, true, effectId, contributions, verified, closure, unitEntries); if (!made.complete) status.RESOURCE_SUPPLY = 'PARTIAL'; else authenticatePdaRow(verified, fact); made.entries.forEach(function (entry) { if (!addEntry(entries, identities, entry)) status.RESOURCE_SUPPLY = 'PARTIAL'; }); });
       } else if (registry.capabilityKind === 'NOT_RELATIONAL') {
         scheduled.forEach(function (fact) {
@@ -5501,6 +5622,7 @@
     requireFunction(pdaApi && pdaApi.admit, 'pdaApi.admit'); requireFunction(pdaApi && pdaApi.project, 'pdaApi.project');
     requireFunction(pdaApi && pdaApi.registry, 'pdaApi.registry');
     requireFunction(decisionApi && decisionApi.collectSkills, 'decisionApi.collectSkills');
+    requireFunction(decisionApi && decisionApi.isNaturalSkillReleasePending, 'decisionApi.isNaturalSkillReleasePending');
     var candidateIds = new Set(), frozen = request.frozenCandidates.map(function (candidate) {
       var candidateId = candidate && candidate.candidateId;
       if (!validId(candidateId) || candidateIds.has(candidateId)) fail('SOURCE_CANDIDATE_CLOSURE', candidateId);
@@ -5521,13 +5643,17 @@
     var candidateResults = {};
     request.frozenCandidates.forEach(function (candidate) {
       var candidateId = candidate.candidateId;
-      var result = scanCandidate(candidate, request, previewApi, pdaApi, verified, closure, unitData.entries, unitData.byId, followUpAudit, injection);
+      var result = scanCandidate(candidate, request, previewApi, pdaApi, verified, closure, unitData.entries, unitData.byId, followUpAudit, injection,
+        decisionApi.isNaturalSkillReleasePending(request, candidate), decisionApi);
       candidateResults[candidateId] = result;
       if (result.catalogComplete !== true) catalogComplete = false;
     });
     if (!finalizeFollowUpCatalog(catalog, followUpAudit)) {
       catalogComplete = false;
-      Object.keys(candidateResults).forEach(function (candidateId) { candidateResults[candidateId].status.FOLLOW_UP = 'PARTIAL'; });
+      Object.keys(candidateResults).forEach(function (candidateId) {
+        candidateResults[candidateId].status.FOLLOW_UP = 'PARTIAL';
+        (candidateResults[candidateId].outcomeSources || []).forEach(function (branch) { branch.source.status.FOLLOW_UP = 'PARTIAL'; });
+      });
     }
     var candidateEntriesById = {}, candidateCompletenessByAxis = {};
     frozen.forEach(function (candidateId) {
@@ -5544,6 +5670,13 @@
       sourceClosure: { factIds: factIds, eventIds: eventIds, closureHash: 'closure:' + previewApi.stableHash({ factIds: factIds, eventIds: eventIds }) },
       registryAttestation: attestation,
     };
+    var outcomeSourcesByCandidate = {};
+    Object.keys(candidateResults).forEach(function (candidateId) {
+      if (candidateResults[candidateId].outcomeSources) outcomeSourcesByCandidate[candidateId] = candidateResults[candidateId].outcomeSources;
+    });
+    if (Object.keys(outcomeSourcesByCandidate).length) Object.defineProperty(output, 'outcomeSourcesByCandidate', {
+      enumerable: false, value: freeze(outcomeSourcesByCandidate),
+    });
     return freeze(output);
   }
   root.__LWCS_BEHAVIOR_CANDIDATE_FEATURE_SOURCE__ = Object.freeze({
@@ -5556,6 +5689,7 @@
 
 (function (root) {
   'use strict';
+  const { Number, String, Object, Array, Math, JSON } = root;
   var SCHEMA = 'BehaviorRelationalFeatureV1';
   var FEATURES = ['TEAM_EFFECT_MARGINAL_GAIN', 'TEAM_EFFECT_REDUNDANCY_RATIO', 'RESOURCE_DEFICIT_COVERAGE', 'RESOURCE_CONSUMER_FIT', 'TEAM_FOLLOWUP_COVERAGE'];
   var TOP = ['schemaVersion', 'frozenCandidateIds', 'baselineEntries', 'candidateEntriesById', 'publicConsumers', 'baselineCompletenessByAxis', 'candidateCompletenessByAxis', 'actionCatalogCompleteness', 'sourceClosure', 'registryAttestation'];
@@ -6011,6 +6145,7 @@
 (function (root) {
   'use strict';
 
+  const { Number, String, Object, Array, Math, JSON, Map, Set } = root;
   const PROVIDER_ID = 'r9v2';
   const ENGINE = 'R9V2_LINEAR';
   const SCHEMA_VERSION = 'BehaviorLinearScoreProviderV3';
@@ -6086,7 +6221,7 @@
   const HARD_EXCLUSION_CODES = Object.freeze([
     'ACTOR_DISABLED', 'ACTOR_TERMINAL', 'TARGET_EMPTY', 'INVALID_OPTION_VALUE',
     'MISSING_REQUIRED_FIELD', 'UNKNOWN_STATE', 'UNKNOWN_RULE',
-    'AMBIGUOUS_TAUNT_TARGET', 'ILLEGAL_TARGET', 'RESOURCE_INSUFFICIENT',
+    'AMBIGUOUS_TAUNT_TARGET', 'ILLEGAL_TARGET', 'RESOURCE_INSUFFICIENT', 'PREVIEW_BUDGET_EXCEEDED',
   ]);
 
   // DistilledBehaviorPolicyV1 rev15 missingPolicyV1 (scoreable codes only).
@@ -6137,15 +6272,15 @@
     DAMAGE_TYPE: 'MAX',
   });
 
-  // Multi-row closure inventory (AGGREGATION_CLOSURE_V2): the 31 scoreable
+  // Multi-row closure inventory (AGGREGATION_CLOSURE_V3): the 31 scoreable
   // codes are partitioned into contract-adjudicated multi-row codes with a
   // frozen operator (multiRowCodes, 9), fail-closed multi-row-capable codes
-  // (6), and single-row codes (16).
-  // (singleRowCodes, 16: candidate-scope BIF codes + five relational codes +
-  // ATTRIBUTE_DELTA, which is collapsed inside BIF). Codes outside
+  // (5), and single-row codes (17).
+  // (singleRowCodes, 17: candidate-scope BIF codes + five relational codes +
+  // ATTRIBUTE_DELTA/SHIELD_DELTA, collapsed inside BIF). Codes outside
   // multiRowCodes keep the fatal as a source-drift safety net.
   const AGGREGATION_CLOSURE = Object.freeze({
-    version: 'AGGREGATION_CLOSURE_V2',
+    version: 'AGGREGATION_CLOSURE_V3',
     multiRowCodes: Object.freeze([
       'JUDGMENT_DELTA', 'STATE_DURATION', 'STATE_DELTA_PERCENT',
       'SETTLEMENT_MODIFIER_PERCENT', 'RESOURCE_DELTA_PERCENT',
@@ -6153,7 +6288,7 @@
     ]),
     failClosedMultiRowCodes: Object.freeze([
       'DAMAGE_PENETRATION',
-      'SHIELD_DELTA', 'STATE_PRESENCE', 'SUMMON_COUNT',
+      'STATE_PRESENCE', 'SUMMON_COUNT',
       'SUMMON_STRENGTH', 'SUMMON_DURATION',
     ]),
     singleRowCodes: Object.freeze([
@@ -6164,9 +6299,9 @@
       'TEAM_EFFECT_MARGINAL_GAIN', 'TEAM_EFFECT_REDUNDANCY_RATIO',
       'RESOURCE_DEFICIT_COVERAGE', 'RESOURCE_CONSUMER_FIT',
       'TEAM_FOLLOWUP_COVERAGE',
-      'ATTRIBUTE_DELTA',
+      'ATTRIBUTE_DELTA', 'SHIELD_DELTA',
     ]),
-    collapsedInBif: Object.freeze(['ATTRIBUTE_DELTA']),
+    collapsedInBif: Object.freeze(['ATTRIBUTE_DELTA', 'SHIELD_DELTA']),
   });
 
   // Sealed normalization (training KNOWN rows only; scales = std + 1e-6), except
@@ -6356,8 +6491,11 @@
         fail('AGGREGATION_MISSING_EFFECT_ID', code + ':' + index);
       }
       if (typeof row.value !== 'number' || !Number.isFinite(row.value)) fail('AGGREGATION_NON_FINITE_VALUE', code + ':' + index);
-      if (seen.has(sourceEffectId)) fail('AGGREGATION_DUPLICATE_SOURCE_EFFECT', code + ':' + sourceEffectId);
-      seen.add(sourceEffectId);
+      // One admitted resource effect may contain several resource keys. They
+      // remain a vector (masked below), not duplicate deliveries or an ABS sum.
+      const identity = code === 'RESOURCE_DELTA' ? JSON.stringify([sourceEffectId, key]) : sourceEffectId;
+      if (seen.has(identity)) fail('AGGREGATION_DUPLICATE_SOURCE_EFFECT', code + ':' + sourceEffectId);
+      seen.add(identity);
       const value = Object.is(row.value, -0) ? 0 : row.value;
       if (code === 'DAMAGE_SEGMENTS' && !Number.isSafeInteger(value)) fail('AGGREGATION_INVALID_SEGMENT_DOMAIN', code + ':' + value);
       if (code === 'DAMAGE_TYPE' && value !== 0 && value !== 1) fail('AGGREGATION_INVALID_TYPE_DOMAIN', code + ':' + value);
@@ -6389,12 +6527,35 @@
   // Per-candidate 35-code scalarization, isomorphic to the trainer's
   // scalarizeCode (single-instance identity; duplicate rows via frozen perCode
   // SUM/MAX; ENUM identity; missing rows become UNKNOWN:NOT_EMITTED).
-  function scalarizeCode(doc, code, aggregation) {
-    const sourceRows = CAUSAL_CODES.indexOf(code) >= 0
-      ? (doc.document.causal?.features || []).filter(f => f.featureCode === code)
-      : RELATIONAL_CODES.indexOf(code) >= 0
-        ? (doc.document.relational.features || []).filter(f => f.featureCode === code)
-        : (doc.document.immediate.features || []).filter(f => f.featureCode === code);
+  function scalarizeCode(doc, code, aggregation, rowsByScope) {
+    const scope = CAUSAL_CODES.indexOf(code) >= 0 ? 'causal'
+      : RELATIONAL_CODES.indexOf(code) >= 0 ? 'relational' : 'immediate';
+    let rowsByCode = rowsByScope.get(scope);
+    if (!rowsByCode) {
+      const features = scope === 'causal' ? (doc.document.causal?.features || [])
+        : (doc.document[scope].features || []);
+      rowsByCode = new Map();
+      if (!Array.isArray(features)) {
+        // Keep the existing filter boundary for malformed/non-array inputs.
+        rowsByCode.set(code, scope === 'causal'
+          ? (doc.document.causal?.features || []).filter(f => f.featureCode === code)
+          : scope === 'relational'
+            ? (doc.document.relational.features || []).filter(f => f.featureCode === code)
+            : (doc.document.immediate.features || []).filter(f => f.featureCode === code));
+      } else {
+        features.forEach(feature => {
+          const featureCode = feature.featureCode;
+          let rows = rowsByCode.get(featureCode);
+          if (!rows) {
+            rows = [];
+            rowsByCode.set(featureCode, rows);
+          }
+          rows.push(feature);
+        });
+        rowsByScope.set(scope, rowsByCode);
+      }
+    }
+    const sourceRows = rowsByCode.get(code) || [];
     if (sourceRows.length === 0) return { status: 'UNKNOWN', value: null, reasonCode: 'NOT_EMITTED', rowCount: 0, kind: 'NONE' };
     const knownRows = sourceRows.filter(r => r.status === 'KNOWN');
     if (knownRows.length > 0) {
@@ -6705,7 +6866,7 @@
     ) ? BASE_WEIGHT_POLICY.active.nonDamageSkill : BASE_WEIGHT_POLICY.active.otherwise;
   }
 
-  // Exclusion-surface reader (closed 10-code set). HARD_EXCLUSION is a BOOL
+  // Exclusion-surface reader (closed 11-code set). HARD_EXCLUSION is a BOOL
   // row and HARD_EXCLUSION_REASON an ENUM row; they are read verbatim for the
   // exclusion judgement only and never scalarized into the 31-code cells.
   function readExclusion(doc) {
@@ -6752,8 +6913,9 @@
     for (const candidateId of candidateIds) {
       const doc = docByCandidate.get(candidateId);
       const cells = {};
+      const rowsByScope = new Map();
       for (const code of SCOREABLE_INVENTORY) {
-        cells[code] = scalarizeCode(doc, code, AGGREGATION);
+        cells[code] = scalarizeCode(doc, code, AGGREGATION, rowsByScope);
         work.scalarizeCalls += 1;
       }
       const exclusion = readExclusion(doc);
@@ -7034,6 +7196,8 @@
 
   var SCHEMA_VERSION = 'DecisionContributionTraceV1';
   var TOLERANCE = 1e-12;
+  const { Object, Array, Number, String, Math, JSON, Set } = typeof globalThis !== 'undefined' ? globalThis : typeof self !== 'undefined' ? self : window;
+
   var MOUNT_NAME = '__LWCS_BEHAVIOR_CONTRIBUTION_TRACE__';
 
   // Frozen from DecisionContributionTraceV1 revision 11. Trace admits exactly
@@ -7273,7 +7437,7 @@
   // A row is "real" only when it is an admitted Provider factor (KNOWN or an
   // exact semantic-zero NA). Raw BIF/catalog/exclusion rows never reach this
   // function's output carriers.
-  function contributionOf(feature, model, audit) {
+  function contributionOf(feature, model, audit, providerFactor) {
     var code = text(feature && feature.featureCode);
     if (ENUM_CODES.has(code)) return null;
     if (!NUMERIC_CODE_SET.has(code)) {
@@ -7304,9 +7468,9 @@
     var coefficients = model.linear.coefficients || {};
     var means = model.normalization.means || {};
     var scales = model.normalization.scales || {};
-    var weight = coefficients[code];
-    var mean = means[code];
-    var scale = scales[code];
+    var weight = providerFactor ? providerFactor.coefficient : coefficients[code];
+    var mean = providerFactor ? providerFactor.mean : means[code];
+    var scale = providerFactor ? providerFactor.scale : scales[code];
     if (status === 'KNOWN' || status === 'NOT_APPLICABLE') {
       if (!isFiniteNumber(weight)) throw new Error('TRACE_PROVIDER_COEFFICIENT_MISSING:' + code);
       if (!isFiniteNumber(mean) || !isFiniteNumber(scale) || scale <= 0) {
@@ -7322,7 +7486,7 @@
     if (status === 'KNOWN') {
       var value = feature.value;
       if (!isFiniteNumber(value)) return maskedRow(base, 'UNKNOWN', audit, code, reasonCode || 'NON_FINITE_VALUE');
-      var normalized = (value - mean) / scale;
+      var normalized = providerFactor ? providerFactor.z : (value - mean) / scale;
       var contribution = weight * normalized;
       if (!isFiniteNumber(normalized) || !isFiniteNumber(contribution)) {
         throw new Error('TRACE_NON_FINITE_CONTRIBUTION:' + code);
@@ -7342,7 +7506,7 @@
     }
     var policy = MISSING_POLICY[code] || { semanticZeroReasons: [] };
     if ((policy.semanticZeroReasons || []).indexOf(reasonCode) !== -1) {
-      var z = (0 - mean) / scale;
+      var z = providerFactor ? providerFactor.z : (0 - mean) / scale;
       var semanticContribution = weight * z;
       if (!isFiniteNumber(z) || !isFiniteNumber(semanticContribution)) {
         throw new Error('TRACE_NON_FINITE_SEMANTIC_ZERO:' + code);
@@ -7364,21 +7528,53 @@
     return maskedRow(base, 'NOT_APPLICABLE', audit, code, reasonCode);
   }
 
-  function buildCandidateCore(candidateId, features, model, inputScore) {
+  function buildCandidateCore(candidateId, features, model, inputScore, providerScore) {
     var contributions = [];
     var missingMask = [];
     var seenCodes = new Set();
     var factorAudit = { candidateId: candidateId, factors: [], ignoredCodes: [] };
+    var providerFactors = null;
+    if (providerScore !== undefined) {
+      if (!providerScore || !Array.isArray(providerScore.factors) || !isFiniteNumber(providerScore.score) ||
+        inputScore !== undefined && inputScore !== providerScore.score) throw new Error('TRACE_PROVIDER_SCORE_INVALID:' + candidateId);
+      inputScore = providerScore.score;
+      providerFactors = Object.create(null);
+      providerScore.factors.forEach(function (factor) {
+        var code = text(factor && factor.code);
+        if (!NUMERIC_CODE_SET.has(code) && !ENUM_CODES.has(code) || Object.prototype.hasOwnProperty.call(providerFactors, code)) {
+          throw new Error('TRACE_PROVIDER_FACTOR_CODE:' + candidateId + ':' + code);
+        }
+        providerFactors[code] = factor;
+      });
+    }
     (Array.isArray(features) ? features : []).forEach(function (feature) {
       var code = text(feature && feature.featureCode);
       if (NUMERIC_CODE_SET.has(code)) {
         if (seenCodes.has(code)) throw new Error('TRACE_DUPLICATE_PROVIDER_FACTOR:' + candidateId + ':' + code);
         seenCodes.add(code);
       }
-      var row = contributionOf(feature, model, factorAudit);
+      var providerFactor = providerFactors && NUMERIC_CODE_SET.has(code) ? providerFactors[code] : null;
+      if (providerFactors && NUMERIC_CODE_SET.has(code)) {
+        if (!providerFactor || providerFactor.status !== feature.status || text(providerFactor.reasonCode) !== text(feature.reasonCode) ||
+          (providerFactor.raw != null || feature.value != null) && providerFactor.raw !== feature.value ||
+          !['z', 'coefficient', 'mean', 'scale', 'contribution'].every(function (key) { return isFiniteNumber(providerFactor[key]); }) ||
+          providerFactor.scale <= 0 || Math.abs(providerFactor.coefficient * providerFactor.z - providerFactor.contribution) > TOLERANCE) {
+          throw new Error('TRACE_PROVIDER_FACTOR_MISMATCH:' + candidateId + ':' + code);
+        }
+      }
+      // The Provider may apply contextual normalization (e.g. friendly resource
+      // vulnerability is gated off). Retain its raw observation and actual z /
+      // coefficient; do not rescore it with another candidate's model.
+      var row = contributionOf(feature, model, factorAudit, providerFactor);
+      if (providerFactor && Math.abs((row && !row.missingMasked ? row.contribution : 0) - providerFactor.contribution) > TOLERANCE) {
+        throw new Error('TRACE_PROVIDER_MASKED_CONTRIBUTION:' + candidateId + ':' + code);
+      }
       if (!row) return;
       contributions.push(row);
       if (row.missingMasked === true) missingMask.push(row.featureCode);
+    });
+    if (providerFactors) Object.keys(providerFactors).forEach(function (code) {
+      if (NUMERIC_CODE_SET.has(code) && !seenCodes.has(code)) throw new Error('TRACE_PROVIDER_FACTOR_UNBOUND:' + candidateId + ':' + code);
     });
     contributions.sort(function (a, b) { return cmpUtf16(a.featureCode, b.featureCode); });
     var score = model.linear.intercept;
@@ -7387,6 +7583,7 @@
     });
     var conservationError = 0;
     if (isFiniteNumber(inputScore)) conservationError = Math.abs(inputScore - score);
+    if (providerFactors && conservationError > TOLERANCE) throw new Error('TRACE_PROVIDER_SCORE_CONSERVATION:' + candidateId);
     var topPositive = contributions
       .filter(function (row) { return row.missingMasked !== true && row.contribution > 0; })
       .sort(function (a, b) { return Math.abs(b.contribution) - Math.abs(a.contribution) || cmpUtf16(a.featureCode, b.featureCode); })
@@ -7641,11 +7838,15 @@
     if (!selectedId) throw new Error('TRACE_SELECTED_MISSING');
     var featuresByCandidate = input.featuresByCandidate || {};
     var selectedFeatures = featuresByCandidate[selectedId] || [];
-    var selectedCore = buildCandidateCore(selectedId, selectedFeatures, input.model, input.score);
+    var providerScores = input.providerScoresByCandidate;
     var alternativeId = text(input.alternativeCandidateId);
+    if (providerScores !== undefined && (!providerScores || typeof providerScores !== 'object' || Array.isArray(providerScores) ||
+      !Object.prototype.hasOwnProperty.call(providerScores, selectedId) ||
+      alternativeId && !Object.prototype.hasOwnProperty.call(providerScores, alternativeId))) throw new Error('TRACE_PROVIDER_CANDIDATE_MISSING');
+    var selectedCore = buildCandidateCore(selectedId, selectedFeatures, input.model, input.score, providerScores && providerScores[selectedId]);
     var alternativeCore = null;
     if (alternativeId) {
-      alternativeCore = buildCandidateCore(alternativeId, featuresByCandidate[alternativeId] || [], input.model, undefined);
+      alternativeCore = buildCandidateCore(alternativeId, featuresByCandidate[alternativeId] || [], input.model, undefined, providerScores && providerScores[alternativeId]);
     }
     var selection = buildSelection(selectedCore, alternativeCore);
     var topContributions = {

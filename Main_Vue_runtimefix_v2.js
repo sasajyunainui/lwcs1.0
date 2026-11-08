@@ -819,7 +819,7 @@ const DesktopUnifiedLayout = {
           </div>
         </header>
         <nav class="mvu-cabin-page-nav" aria-label="当前领域页面" :inert="移动状态栏折叠 ? '' : null">
-          <button v-for="页面 in 座舱页面列表" :key="页面.id" type="button" :data-cabin-private="页面.id === 'private' ? '' : null" :class="{ active: 当前座舱页面.id === 页面.id }" :aria-current="当前座舱页面.id === 页面.id ? 'page' : null" @click="打开座舱页面(页面)">{{ 页面.title }}</button>
+          <button v-for="页面 in 座舱页面列表" :key="页面.id" type="button" :class="{ active: 当前座舱页面.id === 页面.id }" :aria-current="当前座舱页面.id === 页面.id ? 'page' : null" @click="打开座舱页面(页面)">{{ 页面.title }}</button>
         </nav>
         <div class="mvu-unified-stage-switch" :data-holo-theme-key="当前主题键">
           <div class="mvu-unified-page-stack" :class="detailState.isOpen ? 'is-stage-inactive' : 'is-stage-active'" :data-unified-overview-tab="tabState.current" :aria-hidden="detailState.isOpen || (移动状态栏折叠 && tabState.current !== 'page-archive') ? 'true' : 'false'" :inert="detailState.isOpen || (移动状态栏折叠 && tabState.current !== 'page-archive') ? '' : null">
@@ -845,7 +845,7 @@ const DesktopUnifiedLayout = {
     const detailHostRef = ref(null);
     const detailState = mvuUnifiedDetailState;
     const 前屏展开 = ref(false);
-    const 座舱页面列表 = computed(() => CABIN_PAGES.filter(page => page.tab === mvuTabState.current));
+    const 座舱页面列表 = computed(() => CABIN_PAGES.filter(page => page.tab === mvuTabState.current && page.id !== 'private'));
     const 当前座舱页面 = computed(() => {
       const 页面 = CABIN_PAGES.find(page => page.id === detailState.cabinPageId && page.tab === mvuTabState.current);
       if (detailState.isOpen && 页面) return 页面;
@@ -1038,14 +1038,28 @@ const DesktopUnifiedLayout = {
       详情滚动容器缓存起点 = 起点;
       return 兜底;
     };
+    let shellActive = true;
+    const ownedFrameTasks = new Set();
+    const ownedTimers = new Set();
+    const scheduleOwnedTimeout = (callback, delay = 0) => {
+      if (!shellActive) return 0;
+      const id = window.setTimeout(() => { ownedTimers.delete(id); if (shellActive) callback(); }, delay);
+      ownedTimers.add(id);
+      return id;
+    };
+    const scheduleOwnedFrame = callback => {
+      if (!shellActive) return;
+      const id = window.requestAnimationFrame(() => { ownedFrameTasks.delete(id); if (shellActive) callback(); });
+      ownedFrameTasks.add(id);
+    };
     const scheduleFrameTask = task => {
       const run = () => {
         if (typeof task === 'function') task();
       };
       if (typeof window.requestAnimationFrame === 'function') {
-        window.requestAnimationFrame(() => window.requestAnimationFrame(run));
+        scheduleOwnedFrame(() => scheduleOwnedFrame(run));
       } else {
-        window.setTimeout(run, 0);
+        scheduleOwnedTimeout(run, 0);
       }
     };
     let cabinNavigationAnchor = null;
@@ -1075,7 +1089,7 @@ const DesktopUnifiedLayout = {
       scheduleFrameTask(() => {
         if (detailState.isOpen && !选项.允许详情态) return;
         if (!选项.force && 仍在详情切换避让期()) {
-          if (重试次数 < 6) window.setTimeout(() => 请求统一概览同步(原因, { ...选项, 重试次数: 重试次数 + 1 }), 96);
+          if (重试次数 < 6) scheduleOwnedTimeout(() => 请求统一概览同步(原因, { ...选项, 重试次数: 重试次数 + 1 }), 96);
           return;
         }
         const 概览页 = document.querySelector('#mvu-unified-mount .mvu-unified-page.active');
@@ -1094,7 +1108,7 @@ const DesktopUnifiedLayout = {
           } catch (错误) {}
         }
         if ((!可同步 || !概览结构就绪) && 重试次数 < 8) {
-          window.setTimeout(() => 请求统一概览同步(原因, { ...选项, 重试次数: 重试次数 + 1 }), 80);
+          scheduleOwnedTimeout(() => 请求统一概览同步(原因, { ...选项, 重试次数: 重试次数 + 1 }), 80);
         }
       });
     };
@@ -1157,14 +1171,14 @@ const DesktopUnifiedLayout = {
         记录详情切换性能('详情渲染帧到达', { 预览键: nextPreviewKey, 重试次数 });
         const host = detailHostRef.value;
         if ((!host || !host.isConnected) && nextPreviewKey && detailState.isOpen && 重试次数 < 8) {
-          window.setTimeout(() => requestUnifiedDetailRender({ ...options, 重试次数: 重试次数 + 1 }), 80);
+          scheduleOwnedTimeout(() => requestUnifiedDetailRender({ ...options, 重试次数: 重试次数 + 1 }), 80);
           return;
         }
         if (!host || !host.isConnected || !nextPreviewKey || !detailState.isOpen) return;
         bindDetailWheelBridge();
         if (typeof window.__MVU_RENDER_UNIFIED_PREVIEW__ !== 'function') {
           if (重试次数 < 8) {
-            window.setTimeout(() => requestUnifiedDetailRender({ ...options, 重试次数: 重试次数 + 1 }), 80);
+            scheduleOwnedTimeout(() => requestUnifiedDetailRender({ ...options, 重试次数: 重试次数 + 1 }), 80);
           }
           return;
         }
@@ -1179,7 +1193,7 @@ const DesktopUnifiedLayout = {
           const 已渲染预览键 = String(host.dataset.holoPreview || '').trim();
           if (detailState.previewKey === nextPreviewKey && 已渲染预览键 !== nextPreviewKey) {
             if (重试次数 < 8) {
-              window.setTimeout(
+              scheduleOwnedTimeout(
                 () => requestUnifiedDetailRender({ ...options, force: true, 重试次数: 重试次数 + 1 }),
                 80,
               );
@@ -1189,7 +1203,7 @@ const DesktopUnifiedLayout = {
           syncUnifiedFrameViewport();
         } catch (err) {
           if (重试次数 < 8) {
-            window.setTimeout(() => requestUnifiedDetailRender({ ...options, force: true, 重试次数: 重试次数 + 1 }), 80);
+            scheduleOwnedTimeout(() => requestUnifiedDetailRender({ ...options, force: true, 重试次数: 重试次数 + 1 }), 80);
           }
         }
       });
@@ -1255,11 +1269,11 @@ const DesktopUnifiedLayout = {
     };
     const requestMapSurfaceSync = () => {
       if (typeof window.__sheepMapResync !== 'function') return;
-      window.setTimeout(() => {
+      scheduleOwnedTimeout(() => {
         try { window.__sheepMapResync({ center: false, syncVisual: false }); } catch (err) {}
         if (typeof window.__MVU_CLAMP_UNIFIED_MAP_CANVAS__ === 'function') {
           try { window.__MVU_CLAMP_UNIFIED_MAP_CANVAS__(); } catch (err) {}
-          window.setTimeout(() => {
+          scheduleOwnedTimeout(() => {
             try { window.__MVU_CLAMP_UNIFIED_MAP_CANVAS__(); } catch (err) {}
           }, 80);
         }
@@ -1348,6 +1362,10 @@ const DesktopUnifiedLayout = {
       }
     });
     onUnmounted(() => {
+      shellActive = false;
+      for (const id of ownedFrameTasks) window.cancelAnimationFrame(id);
+      for (const id of ownedTimers) window.clearTimeout(id);
+      ownedFrameTasks.clear(); ownedTimers.clear();
       if (cabinNavigationAnchor) { cabinNavigationAnchor.frame.style.minHeight = cabinNavigationAnchor.minHeight; cabinNavigationAnchor = null; }
       window.dispatchEvent(new CustomEvent('mvu-status-cabin-dispose'));
       if (window.__MVU_SET_UNIFIED_TAB__ === setUnifiedTab) delete window.__MVU_SET_UNIFIED_TAB__;

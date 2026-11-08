@@ -19,7 +19,7 @@ const MVU_UI_PREFETCH_FILES_V1 = Object.freeze([
   'sheep_map_restore.js',
 ]);
 const MVU_ENGINE_UPSTREAM_COMMIT_V1 = '0a730cd4a9b99689d1135a49b542c780b977c24c';
-const MVU_ENGINE_BUNDLE_SHA256_V1 = 'ba33961b9894872611e21229d4ce430e2c7c54e249156d33a4113b60cfd78a8b';
+const MVU_ENGINE_BUNDLE_SHA256_V1 = 'fe7598b21c0cc8d42511f7ffedeb7478e2cc89cc64ce6d09612fba950d399e6d';
 const MVU追踪模块顺序_V1 = Object.freeze([
   'MVU_ZOD_Entry.js',
   MVU_ENGINE_BUNDLE_FILE_V1,

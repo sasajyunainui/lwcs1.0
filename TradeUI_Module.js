@@ -41,6 +41,9 @@ const TradeStyles = `
 
   .trade-module-scope .trade-tab {
     flex: 1;
+    appearance: none;
+    border: 0;
+    background: transparent;
     text-align: center;
     padding: 10px 0;
     font-size: 12px;
@@ -209,15 +212,16 @@ const TradeTemplate = `
   </div>
 
   <div class="trade-tabs">
-    <div class="trade-tab active" data-target="tab-shop">商店采购</div>
-    <div class="trade-tab" data-target="tab-sell">资产出售</div>
-    <div class="trade-tab" data-target="tab-private">私下交易</div>
-    <div class="trade-tab" data-target="tab-auction">拍卖行</div>
+    <button type="button" class="trade-tab active" data-target="tab-shop">商店采购</button>
+    <button type="button" class="trade-tab" data-target="tab-sell">资产出售</button>
+    <button type="button" class="trade-tab" data-target="tab-private">私下交易</button>
+    <button type="button" class="trade-tab" data-target="tab-auction">拍卖行</button>
   </div>
 
   <div class="trade-body">
     <!-- 商店采购 -->
     <div id="tab-shop" class="tab-content active">
+      <section class="trade-cabin-controls">
       <div class="form-group">
         <label>选择商店</label>
         <select id="shop-store-sel" class="tech-select"></select>
@@ -230,6 +234,7 @@ const TradeTemplate = `
         <label>购买数量</label>
         <input type="number" id="shop-qty" class="tech-input" value="1" min="1">
       </div>
+      </section><section class="trade-cabin-detail">
       <div class="info-panel">
         <div class="info-row"><span>基础单价:</span><span class="val-highlight" id="shop-base-price">-</span></div>
         <div class="info-row"><span>市场调整:</span><span class="market-adjust" id="shop-market">-</span></div>
@@ -243,10 +248,12 @@ const TradeTemplate = `
         <div class="info-row"><span>物品说明:</span><span class="val-highlight" style="white-space: normal; text-align: right;" id="shop-desc">-</span></div>
       </div>
       <button class="action-btn" id="btn-buy">确认购买</button>
+      </section>
     </div>
 
     <!-- 资产出售 -->
     <div id="tab-sell" class="tab-content">
+      <section class="trade-cabin-controls">
       <div class="form-group">
         <label>背包物品</label>
         <select id="sell-item-sel" class="tech-select"></select>
@@ -255,6 +262,7 @@ const TradeTemplate = `
         <label>出售数量</label>
         <input type="number" id="sell-qty" class="tech-input" value="1" min="1">
       </div>
+      </section><section class="trade-cabin-detail">
       <div class="info-panel">
         <div class="info-row"><span>基础估值:</span><span class="val-highlight" id="sell-base-price">-</span></div>
         <div class="info-row"><span>市场调整:</span><span class="market-adjust" id="sell-market">-</span></div>
@@ -266,10 +274,12 @@ const TradeTemplate = `
         <div class="info-row"><span>物品说明:</span><span class="val-highlight" style="white-space: normal; text-align: right;" id="sell-desc">-</span></div>
       </div>
       <button class="action-btn" id="btn-sell">确认出售</button>
+      </section>
     </div>
 
     <!-- 私下交易 -->
     <div id="tab-private" class="tab-content">
+      <section class="trade-cabin-controls">
       <div class="form-group">
         <label>交易类型</label>
         <select id="priv-action" class="tech-select">
@@ -293,6 +303,7 @@ const TradeTemplate = `
         <label>你的出价 / 单价</label>
         <input type="number" id="priv-price" class="tech-input" value="1000" min="1">
       </div>
+      </section><section class="trade-cabin-detail">
       <div class="info-panel">
         <div class="info-row"><span>市场参考:</span><span class="val-highlight" id="priv-base-price">-</span></div>
         <div class="info-row"><span>市场调整:</span><span class="market-adjust" id="priv-market">-</span></div>
@@ -304,10 +315,12 @@ const TradeTemplate = `
         <div class="info-row"><span>物品说明:</span><span class="val-highlight" style="white-space: normal; text-align: right;" id="priv-desc">-</span></div>
       </div>
       <button class="action-btn" id="btn-private">执行交易</button>
+      </section>
     </div>
 
     <!-- 拍卖行 -->
     <div id="tab-auction" class="tab-content">
+      <section class="trade-cabin-controls">
       <div class="form-group">
         <label>当前拍品</label>
         <select id="auc-item-sel" class="tech-select"></select>
@@ -316,11 +329,13 @@ const TradeTemplate = `
         <label>竞拍出价</label>
         <input type="number" id="auc-bid" class="tech-input" value="0" min="1">
       </div>
+      </section><section class="trade-cabin-detail">
       <div class="info-panel">
         <div class="info-row"><span>当前起拍/最高价:</span><span class="val-highlight" id="auc-current-price">-</span></div>
         <div class="info-row"><span>拍品描述:</span><span class="val-highlight" style="white-space: normal; text-align: right;" id="auc-desc">-</span></div>
       </div>
       <button class="action-btn" id="btn-auc">参与竞拍</button>
+      </section>
     </div>
   </div>
 </div>

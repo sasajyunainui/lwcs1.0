@@ -1,0 +1,125 @@
+/* ============ 首页重构（v9）：身份行 · 武魂魂环板 · 资源 ============ */
+.home-core{gap:.9em}
+.id-row{display:grid;grid-template-columns:auto minmax(0,1fr);gap:1.3em;align-items:center}
+.id-row .ava{width:clamp(82px,9.5cqw,108px)}
+.name-line{display:flex;align-items:center;gap:.7em;flex-wrap:wrap}
+.gender{display:inline-flex;align-items:baseline;gap:.2em;padding:.12em .6em .16em .5em;font-size:1.05em;font-weight:900;color:#fff;background:linear-gradient(180deg,#7d8da6,#55647c);clip-path:polygon(6px 0,100% 0,calc(100% - 6px) 100%,0 100%)}
+.gender.f{background:linear-gradient(180deg,#ff8fb1,#d64f7d)}
+.gender.m{background:linear-gradient(180deg,#6fb4ff,#2f6fd6)}
+.gender b{font-family:Bahnschrift,sans-serif;font-size:.95em;font-weight:700}
+.gender small{font-size:.68em;font-weight:800;opacity:.9}
+.title-line{font-size:1.18em;font-weight:900;letter-spacing:.12em;background:linear-gradient(90deg,#b07b06,#e3b13c 40%,#1453c4 75%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 1px 0 rgba(255,255,255,.8))}
+
+/* 左翼：紧凑属性行 + 事实条 */
+.attrs.compact{gap:.35em}
+.attrs.compact .attr{grid-template-columns:auto 3em auto minmax(0,1fr);padding:.4em .6em}
+.attrs.compact .attr b{font-size:1.15em}
+.facts{display:grid;grid-template-columns:1fr 1fr;gap:.35em}
+.fact{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto;column-gap:.45em;align-items:center;padding:.4em .55em;background:rgba(255,255,255,.55);box-shadow:inset 0 0 0 1px rgba(30,48,80,.14);clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px)}
+.fact i{grid-row:span 2;color:var(--blue-d);font-size:1.05em}
+.fact span{font-size:.7em;font-weight:800;color:var(--ink3)}
+.fact b{font-size:.9em;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fact.dim i,.fact.dim b{color:var(--ink3)}
+.fact.bad{grid-column:1/-1;background:rgba(230,60,40,.12);box-shadow:inset 2px 0 0 #d6452a}
+.fact.bad i,.fact.bad b{color:#b8321f}
+
+/* 右翼：时长 + 结束时刻 */
+.plan{display:flex;flex-direction:column;gap:.45em}
+.plan-end{display:flex;align-items:center;gap:.45em;font-size:.86em;font-weight:800;color:var(--ink2);padding:0 .2em}
+.plan-end i{color:var(--blue-d)}
+.plan-end b{margin-left:auto;font-family:Bahnschrift,sans-serif;font-size:1.15em;color:var(--ink)}
+.cta[disabled]{filter:none;color:rgba(255,255,255,.82);background:linear-gradient(180deg,#a7b2c3,#7e8a9d 55%,#6b778a);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset 0 -3px 0 rgba(0,0,0,.18)}
+.cta[disabled]::after{display:none}
+
+/* 悬停浮窗被钉住时，连线改为实线以示区别 */
+.float-layer.pinned .float-link path{stroke-dasharray:none;stroke:#ffd36b;filter:drop-shadow(0 0 4px #ffb84a)}
+
+/* 悬停预览：精简卡 */
+.peek-cost{display:flex;gap:1.2em;flex-wrap:wrap;font-weight:800;font-size:.9em;color:#cfe0f7}
+.peek-cost i{color:#6cc0ff}
+.peek-hint{color:#7f96bb!important;font-size:.76em;letter-spacing:.05em}
+.fcard:has(.peek-hint){width:min(320px,44%)}
+
+
+/* 第二轮：表盘放大、告警贴近行动按钮、底栏播报静态显示 */
+.wing .dial{width:min(100%,12.5em);margin:auto}
+.pad>.warn:has(+ .cta){margin-top:auto}
+.warn + .cta{margin-top:0}
+.readout .tick{mask-image:none;min-width:0}
+.readout .tick>span{display:block;padding-left:0;animation:none;overflow:hidden;text-overflow:ellipsis}
+.readout .tick>span span{display:inline;padding:0;animation:none}
+.cockpit[data-view="page-archive/status"] #rRes{display:none}
+
+
+/* 三屏行高锁定在容器高度内：内容超出时屏内滚动，不再把屏幕撑高压到操作台 */
+.screens{grid-template-rows:minmax(0,1fr)}
+
+
+/* ============ 首页 v10：顶部身份 + 资源并排；武魂投影台 ============ */
+/* 顶部一行：左身份、右资源条（竖排紧凑），右上角不再空着 */
+.home-top{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:1.1em;align-items:center}
+.home-top .id-row{gap:.9em}
+.home-top .name{font-size:clamp(22px,2.7cqw,31px)}
+.home-top .title-line{font-size:1.05em;letter-spacing:.08em;white-space:nowrap}
+.home-top .name-line{flex-wrap:nowrap}
+.home-top .id-row .ava{width:clamp(70px,7.6cqw,86px)}
+.home-top .meters{grid-template-columns:1fr;gap:.36em}
+.home-top .meter{gap:.12em .6em}
+.home-top .meter .sock{--s:1.85em}
+.home-top .meter .lb{font-size:.9em}
+.home-top .meter .lb b{font-size:1.25em}
+
+/* 武魂区：每个武魂一座投影台——上方魂环舞台（soul_ring_engine 原样，不覆盖造型），下方椭圆台座 + 银色铭牌；不用方框卡片 */
+.soul-deck{container-type:inline-size;position:relative;flex:1 1 auto;min-height:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,12em),1fr));gap:.4em}
+.soul-deck:has(>.soul-card:nth-child(2))::before{content:"";position:absolute;left:50%;top:8%;bottom:4%;width:1px;background:linear-gradient(180deg,transparent,rgba(110,130,165,.45) 30%,rgba(110,130,165,.45) 70%,transparent)}
+.soul-card{--rsz:clamp(64px,20cqw,100px);position:relative;z-index:0;display:flex;flex-direction:column;align-items:center;min-height:0}
+.soul-stage{position:relative;isolation:isolate;flex:1 1 auto;width:100%;min-height:calc(var(--rsz) * 2.1);display:grid;place-items:center}
+/* 台座：舞台底部的椭圆投影台，银色金属外沿 + 金色内光；魂环悬浮在台座上方 */
+.soul-stage::after{content:"";position:absolute;left:50%;bottom:4px;width:calc(var(--rsz) * 1.7);height:calc(var(--rsz) * .36);translate:-50% 0;border-radius:50%;z-index:-1;
+  background:radial-gradient(ellipse at 50% 42%,rgba(255,212,110,.5),rgba(255,212,110,.12) 46%,rgba(206,218,236,.6) 60%,#f3f6fa 68%,#c3cedd 71%,transparent 72%);
+  box-shadow:0 0 0 1.5px rgba(140,156,184,.65),0 0 0 4px rgba(255,255,255,.8),0 0 0 5px rgba(120,138,168,.4),0 12px 18px rgba(20,40,80,.16)}
+.soul-card.blood .soul-stage::after{background:radial-gradient(ellipse at 50% 42%,rgba(255,110,110,.45),rgba(255,110,110,.1) 46%,rgba(206,218,236,.6) 60%,#f3f6fa 68%,#c3cedd 71%,transparent 72%)}
+.soul-card .mvu-soul-ring-showcase{--ring-size:var(--rsz);--ring-stage-width:100%;--ring-stage-height:calc(var(--rsz) * 1.9);min-height:var(--ring-stage-height)}
+/* 未附环：台座上方一圈金色虚线空环 */
+.soul-empty{display:grid;place-items:center}
+.soul-empty i{width:calc(var(--rsz) * 1.15);aspect-ratio:1;border-radius:50%;border:2px dashed rgba(201,149,34,.5);background:radial-gradient(circle,rgba(255,214,120,.14),transparent 70%)}
+.soul-empty span{position:absolute;font-size:.8em;font-weight:800;color:#a87400;letter-spacing:.12em}
+
+/* 铭牌：银色金属尖角牌（外层投影 + 内层 2px 金属边），名称居中，顶部一条金色细线 */
+.soul-plate{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:.08em;min-width:min(100%,12.5em);max-width:100%;padding:.32em 1.7em .42em;margin-top:.3em;
+  clip-path:polygon(14px 0,calc(100% - 14px) 0,100% 50%,calc(100% - 14px) 100%,14px 100%,0 50%);background:linear-gradient(180deg,#a9b6c9,#7d8ba1)}
+.soul-plate::before{content:"";position:absolute;inset:2px;z-index:-1;clip-path:polygon(13px 0,calc(100% - 13px) 0,100% 50%,calc(100% - 13px) 100%,13px 100%,0 50%);
+  background:linear-gradient(90deg,transparent 15%,rgba(214,160,40,.95) 50%,transparent 85%) top/100% 2px no-repeat,linear-gradient(180deg,#ffffff,#e6ecf4 55%,#d2dbe7)}
+.soul-plate small{font-size:.74em;font-weight:800;color:var(--ink3);letter-spacing:.2em}
+.soul-plate strong{font-size:1.22em;font-weight:900;letter-spacing:.08em;color:var(--ink);line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.sp-sub{display:flex;align-items:center;gap:.6em;justify-content:center;font-size:.8em;font-weight:800;color:var(--ink2);white-space:nowrap}
+.sp-sub em{font-style:normal}
+.sp-sub .sys{font-weight:900;padding:.04em .5em;color:#fff;background:linear-gradient(180deg,#c99522,#9c6d0c);clip-path:polygon(4px 0,100% 0,calc(100% - 4px) 100%,0 100%)}
+.sp-sub .nx{color:var(--ink3)}
+.sp-sub .nx.ok{color:#a87400}
+
+/* 悬停投影台 → 3D 魂环塔（与原项目档案魂灵卡 .mvu-archive-spirit-card:hover 同一套规则，魂环造型不覆盖）；浮出魂技卡期间（激活态）塔保持展开 */
+.soul-card:hover,.soul-card:focus-within,.soul-card:has(.mvu-hover-floating-active){z-index:5}
+.soul-card:hover .mvu-soul-ring-stage,.soul-card:focus-within .mvu-soul-ring-stage{transform:rotateX(65deg) rotateZ(-15deg)}
+.soul-card:hover .mvu-soul-ring-slot,.soul-card:focus-within .mvu-soul-ring-slot{pointer-events:none;opacity:var(--ring-depth-opacity,.92);transform:translate(-50%,-50%) translateZ(var(--ring-z,0px)) translateY(var(--ring-hover-y,0)) scale(var(--ring-depth-scale,1))}
+.soul-card .mvu-soul-ring-stage{transition:transform .48s cubic-bezier(.2,.8,.2,1),translate .48s cubic-bezier(.2,.8,.2,1)}
+.soul-card:is(:hover,:focus-within,:has(.mvu-hover-floating-active)) .mvu-soul-ring-stage{translate:0 -12px}
+.soul-deck>.inline-detail{grid-column:1/-1}
+/* 三座投影台（两个武魂 + 血脉）：同排三列、魂环缩小。auto-fit 换成两行时第二行会溢出武魂区、压住下方伤势条 */
+.soul-deck:has(>.soul-card+.soul-card+.soul-card){grid-template-columns:repeat(3,minmax(0,1fr))}
+.soul-deck:has(>.soul-card+.soul-card+.soul-card)>.soul-card{--rsz:clamp(48px,14cqw,90px)}
+.soul-deck:has(>.soul-card+.soul-card+.soul-card)::before{display:none}
+.soul-deck:has(>.soul-card+.soul-card+.soul-card)>.soul-card+.soul-card::before{content:"";position:absolute;left:-.2em;top:8%;bottom:4%;width:1px;background:linear-gradient(180deg,transparent,rgba(110,130,165,.45) 30%,rgba(110,130,165,.45) 70%,transparent)}
+.soul-deck:has(>.soul-card+.soul-card+.soul-card) .soul-plate{padding-inline:1.1em}
+.soul-deck:has(>.soul-card+.soul-card+.soul-card) .sp-sub{flex-wrap:wrap;row-gap:.1em;white-space:normal}
+
+/* 手机：身份与资源上下排，投影台单列。查询按座舱宽度（具名容器），不能落到武魂区自身 */
+.cockpit{container-name:cockpit}
+@container cockpit (max-width:700px){
+  .home-top{grid-template-columns:1fr}
+  .soul-deck,.soul-deck:has(>.soul-card+.soul-card+.soul-card){grid-template-columns:1fr}
+  .soul-deck::before,.soul-deck>.soul-card+.soul-card::before{display:none}
+  .soul-card,.soul-deck:has(>.soul-card+.soul-card+.soul-card)>.soul-card{--rsz:86px}
+  .soul-stage{min-height:236px}
+}
+@container cockpit (max-width:700px){.soul-card:is(:hover,:focus-within,:has(.mvu-hover-floating-active)) .mvu-soul-ring-stage{translate:none}}

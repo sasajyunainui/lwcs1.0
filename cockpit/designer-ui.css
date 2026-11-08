@@ -1,0 +1,172 @@
+/* 技能设计台 v2：分区 / 字段 / 控件。数据层是 designer-model.js（移植自原项目），这里只管外观 */
+
+/* ---------- 分区与字段 ---------- */
+/* 右侧留边：手机的悬浮滚动条不压住最右一列控件 */
+.dz-body{display:flex;flex-direction:column;padding-right:.45em}
+.dz2{flex:none;display:flex;flex-direction:column;gap:.9em}
+.dz2-sec{display:flex;flex-direction:column;gap:.55em}
+.dz2-sec>h3{display:flex;align-items:center;gap:.4em;margin:0;font-size:.95em;font-weight:900;color:var(--ink);letter-spacing:.04em}
+.dz2-sec>h3::before{content:"";width:3px;height:1em;background:linear-gradient(180deg,#5aa5ff,#1a5ad6)}
+.dz2-headtg{margin-left:auto}
+.dz2-sec>h3 .en{font:800 .62em Bahnschrift,sans-serif;letter-spacing:.18em;color:var(--ink3);text-transform:uppercase}
+.dz2-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.6em .8em;align-items:end}
+.dzf{display:flex;flex-direction:column;gap:.25em;min-width:0}
+.dzf.wide,.dzf:has(>.dz-chips),.dzf:has(>.dz-costmap){grid-column:1/-1}
+.dzf:has(>.dz-tick){grid-column:span 2}
+.dzf-l{display:flex;align-items:center;font-size:.74em;font-weight:800;color:var(--ink3);letter-spacing:.05em;white-space:nowrap}
+.dzf-l b{color:#c8323a;margin-left:.15em}
+.dzf input,.dzf textarea{font:inherit;font-size:.9em;font-weight:700;color:var(--ink);padding:.45em .6em;border:0;background:#fff;box-shadow:inset 0 0 0 1px #c3cdda,inset 0 2px 3px rgba(27,42,74,.08);min-width:0;width:100%;box-sizing:border-box;min-height:2.2em}
+.dzf textarea{resize:vertical;min-height:4.6em;line-height:1.55;background:linear-gradient(180deg,#fff,#f6f9fd);clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))}
+.dzf input:focus,.dzf textarea:focus{outline:none;box-shadow:inset 0 0 0 1.5px var(--blue),0 0 0 3px rgba(47,124,246,.18)}
+.dzf.bad input,.dzf.bad .picker-btn{box-shadow:inset 0 0 0 1.5px #d9453a}
+/* 属性与呈现：描述框吃满剩余高度 */
+.dz2.fill{flex:1 0 auto}
+.dz2.fill>.dz2-sec.grow{flex:1 1 0;min-height:11em}
+.dz2.fill>.dz2-sec.grow>.dz2-grid{flex:1;align-items:stretch;grid-auto-rows:minmax(8em,1fr)}
+.dz2.fill>.dz2-sec.grow .dzf:has(>textarea){min-height:0}
+.dz2.fill>.dz2-sec.grow textarea{flex:1;resize:none}
+
+/* ---------- 数值类控件：步进 / 正负 / 单位 / 概率 / 多资源 ---------- */
+.dz-num{display:grid;grid-template-columns:2em minmax(0,1fr) 2em;min-width:0;height:2.3em;background:#fff;box-shadow:inset 0 0 0 1px #c3cdda,inset 0 2px 3px rgba(27,42,74,.08);clip-path:polygon(6px 0,calc(100% - 6px) 0,100% 6px,100% calc(100% - 6px),calc(100% - 6px) 100%,6px 100%,0 calc(100% - 6px),0 6px)}
+.dz-num:focus-within{box-shadow:inset 0 0 0 1.5px var(--blue),inset 0 0 0 4px rgba(47,124,246,.14)}
+.dzf .dz-num input{height:100%;min-height:0;padding:0 .2em;text-align:center;font:800 1em Bahnschrift,"Microsoft YaHei",sans-serif;letter-spacing:.02em;background:transparent;box-shadow:none;-moz-appearance:textfield;appearance:textfield}
+.dzf .dz-num input:focus{box-shadow:none}
+.dz-num input::-webkit-inner-spin-button,.dz-num input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.dz-num input::placeholder{color:#a3aec0;font-weight:700}
+.dz-step{all:unset;box-sizing:border-box;display:grid;place-items:center;cursor:pointer;color:var(--blue-d);font-size:.72em;background:linear-gradient(180deg,#f5f8fc,#dfe6f1);box-shadow:inset 0 0 0 1px #c3cdda,inset 0 1px 0 #fff}
+.dz-step:hover{color:#fff;background:linear-gradient(180deg,#5aa5ff,#1a5ad6);box-shadow:none}
+.dz-step:active{background:linear-gradient(180deg,#1a5ad6,#164aa8)}
+.dz-num.mini{grid-template-columns:1.6em minmax(0,1fr) 1.6em;height:2.1em}
+.dz-signed .dz-num,.dz-amt .dz-num{grid-template-columns:1.55em minmax(2.4em,1fr) 1.55em}
+.dz-ufix{min-width:2em}
+/* 正负：极性按钮（增加蓝 / 减少红）+ 绝对值 + 单位 */
+.dz-signed,.dz-amt{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:.3em;align-items:stretch;min-width:0}
+.dz-amt{grid-template-columns:minmax(0,1fr) auto}
+.dz-sgn{all:unset;box-sizing:border-box;width:1.9em;display:grid;place-items:center;cursor:pointer;color:#fff;font-size:.8em;clip-path:polygon(5px 0,100% 0,100% calc(100% - 5px),calc(100% - 5px) 100%,0 100%,0 5px)}
+.dz-sgn.pos{background:linear-gradient(180deg,#5aa5ff,#1a5ad6)}
+.dz-sgn.neg{background:linear-gradient(180deg,#ff7d7d,#c8323a)}
+.dz-sgn:focus-visible,.dz-useg button:focus-visible,.dz-step:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+.dz-signed .picker-btn,.dz-unit .picker-btn{height:100%;min-width:4.6em;background:#eef3fb}
+.dz-ufix{display:grid;place-items:center;padding:0 .6em;font-size:.84em;font-weight:800;color:var(--ink2);background:#eef3fb;box-shadow:inset 0 0 0 1px #c3cdda}
+.dz-useg{display:flex;box-shadow:inset 0 0 0 1px #c3cdda;background:#eef3fb}
+.dz-useg button{all:unset;box-sizing:border-box;min-width:2.1em;padding:0 .45em;display:grid;place-items:center;cursor:pointer;font-size:.82em;font-weight:900;color:var(--ink3)}
+.dz-useg button.on{color:#fff;background:linear-gradient(180deg,#5aa5ff,#1a5ad6)}
+.dz-unit{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.3em}
+/* 概率：滑条 + 百分数 */
+.dz-pct{display:grid;grid-template-columns:minmax(0,1fr) 5.2em;gap:.6em;align-items:center;min-width:0}
+.dz-pct input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;margin:0;min-height:0;padding:0;background:linear-gradient(90deg,#5aa5ff,#1a5ad6) 0/var(--p,0%) 100% no-repeat,#d5dde9;box-shadow:inset 0 1px 2px rgba(10,22,48,.25);cursor:pointer}
+.dz-pct input[type=range].unset{background:#d5dde9}
+.dz-pct input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;rotate:45deg;background:#fff;border:2px solid var(--blue-d);box-shadow:0 1px 3px rgba(10,22,48,.35)}
+.dz-pct input[type=range].unset::-webkit-slider-thumb{border-color:#a3aec0}
+.dz-pct-v{position:relative;display:block}
+.dzf .dz-pct-v input{padding-right:1.4em;text-align:right;font:800 1em Bahnschrift,sans-serif;-moz-appearance:textfield;appearance:textfield}
+.dz-pct-v input::-webkit-inner-spin-button{-webkit-appearance:none}
+.dz-pct-v i{position:absolute;right:.5em;top:50%;translate:0 -50%;font-style:normal;font-size:.8em;font-weight:900;color:var(--ink3)}
+/* 多资源消耗：魂力 / 精神力 / 体力 各一格 */
+.dz-costmap{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.4em}
+.dz-res{display:flex;flex-direction:column;gap:.2em;min-width:0}
+.dz-res>.dz-amt{gap:.2em}
+.dz-res .dz-useg button{min-width:1.6em;padding:0 .3em}
+.dz-res>span{font-size:.72em;font-weight:900;color:var(--ink2);padding-left:.4em;box-shadow:inset 2px 0 0 var(--rc,#5aa5ff)}
+.dz-res:nth-child(2){--rc:#9b6bff}.dz-res:nth-child(3){--rc:#2bb673}
+/* 时长：日 / 时 / 分 各一个步进器 */
+.dz-tick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.35em}
+/* 单位在数字框里（右侧小字），不挂在 + 号外面 */
+.dz-nv{position:relative;display:block;min-width:0}
+.dzf .dz-nv input{padding-right:1.3em}
+.dz-nv i{position:absolute;right:.35em;top:50%;translate:0 -50%;font-style:normal;font-size:.72em;font-weight:900;color:var(--ink3);pointer-events:none}
+
+/* ---------- 开关 / 多选 / 只读 / 折叠组 ---------- */
+.dz-tg{position:relative;display:inline-flex;align-items:center;gap:.55em;cursor:pointer;user-select:none;font-size:.86em;font-weight:800;color:var(--ink2)}
+.dz-tg input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;pointer-events:none}
+.dz-tg i{position:relative;width:2.6em;height:1.35em;background:#c9d3e2;box-shadow:inset 0 1px 2px rgba(10,22,48,.25);clip-path:polygon(4px 0,100% 0,100% calc(100% - 4px),calc(100% - 4px) 100%,0 100%,0 4px);transition:background .18s}
+.dz-tg i::after{content:"";position:absolute;top:.17em;left:.18em;width:1em;height:1em;background:#fff;box-shadow:0 1px 2px rgba(10,22,48,.35);transition:translate .18s}
+.dz-tg input:checked+i{background:linear-gradient(180deg,#5aa5ff,#1a5ad6)}
+.dz-tg input:checked+i::after{translate:1.22em 0}
+.dz-tg input:focus-visible+i{outline:2px solid var(--blue);outline-offset:2px}
+.dz-chips{display:flex;flex-wrap:wrap;gap:.35em}
+.dz-chip{all:unset;box-sizing:border-box;padding:.32em .7em;font-size:.84em;font-weight:800;color:var(--ink2);background:#fff;box-shadow:inset 0 0 0 1px #c3cdda;cursor:pointer;clip-path:polygon(5px 0,100% 0,calc(100% - 5px) 100%,0 100%)}
+.dz-chip:hover{box-shadow:inset 0 0 0 1px var(--blue)}
+.dz-chip:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+.dz-chip.on{color:#fff;background:linear-gradient(180deg,#5aa5ff,#1a5ad6);box-shadow:none}
+.dz-chip.rec:not(.on){box-shadow:inset 0 0 0 1px #e5a72c;color:#9a5d00}
+/* 只读值：锁定徽记 + 文本，不画成灰色输入框 */
+.dz-static{display:flex;align-items:center;gap:.45em;min-height:2.2em;font-size:.88em;font-weight:800;color:var(--ink2)}
+.dz-static::before{content:"\f023";font:900 .72em "Font Awesome 6 Free";color:var(--ink3);display:grid;place-items:center;width:1.9em;height:1.9em;background:linear-gradient(180deg,#eef3fa,#dde5f0);clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%)}
+.dz-group{padding:.4em .6em;background:rgba(30,48,80,.04);box-shadow:inset 0 0 0 1px rgba(30,48,80,.12)}
+.dz-group>summary{display:flex;align-items:center;gap:.5em;cursor:pointer;font-size:.8em;font-weight:900;color:var(--ink2);list-style:none}
+.dz-group>summary::before{content:"\f054";font:900 .8em "Font Awesome 6 Free";color:var(--blue-d);transition:rotate .15s}
+.dz-group[open]>summary::before{rotate:90deg}
+.dz-group>summary span{font-weight:700;color:var(--ink3)}
+.dz-group>.dz2-grid{margin-top:.5em}
+
+/* ---------- 效果：卡条（列表层）→ 详情层 → 子效果 / 条件分支 ---------- */
+.fx-strip{display:flex;flex-wrap:wrap;gap:.4em;align-items:stretch}
+.fx-card{all:unset;box-sizing:border-box;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto;column-gap:.5em;min-width:9.5em;max-width:16em;padding:.45em .7em;cursor:pointer;background:#fff;box-shadow:inset 0 0 0 1px #c3cdda;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,0 100%)}
+.fx-card>b{grid-row:1/3;align-self:center;font:900 1.15em Bahnschrift,sans-serif;color:var(--blue-d)}
+.fx-card>strong{font-size:.86em;font-weight:900;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fx-card>small{font-size:.74em;font-weight:700;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fx-card:hover{box-shadow:inset 0 0 0 1px var(--blue)}
+.fx-card:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+.fx-card.on{background:linear-gradient(180deg,#eaf2ff,#d9e7ff);box-shadow:inset 0 0 0 1.5px var(--blue),inset 0 -3px 0 var(--blue)}
+.fx-card.on>b{color:var(--blue)}
+.fx-add{min-width:9em;align-self:stretch;display:flex}
+.fx-add .picker{flex:1}
+.fx-add .picker-btn{height:100%;justify-content:center;color:var(--blue-d);background:rgba(47,124,246,.08);box-shadow:inset 0 0 0 1px rgba(47,124,246,.4)}
+.fx-add .picker-btn>span{flex:none}
+.fx-detail{display:flex;flex-direction:column;gap:.6em;padding:.7em .8em;background:rgba(255,255,255,.6);box-shadow:inset 0 0 0 1px rgba(30,48,80,.14),inset 3px 0 0 var(--blue)}
+.fx-detail-head{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) auto;gap:.6em;align-items:end}
+.fx-nested{display:flex;flex-direction:column;gap:.45em;margin-left:.8em;padding-left:.7em;box-shadow:inset 2px 0 0 rgba(47,124,246,.3)}
+.fx-sub{display:flex;flex-direction:column;gap:.45em;padding:.5em .6em;background:#fff;box-shadow:inset 0 0 0 1px rgba(30,48,80,.14)}
+.fx-sub-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.5em;align-items:end}
+.fx-branches{display:flex;flex-direction:column;gap:.5em}
+.fx-branch{display:flex;flex-direction:column;gap:.45em;padding:.55em .65em;background:rgba(47,124,246,.06);box-shadow:inset 2px 0 0 rgba(47,124,246,.5)}
+.fx-branch-head{display:flex;align-items:center;gap:.5em;font-size:.82em;font-weight:900;color:var(--blue-d)}
+.fx-branch-head .key-s{margin-left:auto}
+.fx-cond{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr)) auto;gap:.45em;align-items:end}
+.fx-cond>.key-s,.dz2-row-del{align-self:end}
+.dz2-inline{display:flex;align-items:center;gap:.6em}
+.dz2-inline .dzf-l{font-size:.8em}
+.dz2-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.6em;align-items:start;padding:.55em .65em;background:rgba(255,255,255,.55);box-shadow:inset 0 0 0 1px rgba(30,48,80,.12)}
+.dz2-item .dz2-row-del,.dz2-item>.key-s{align-self:center}
+.dz2-actions{display:flex;flex-wrap:wrap;gap:.4em}
+/* 融合对象行：本人那一行描金 */
+.fx-party{grid-template-columns:auto minmax(0,1fr) auto;align-items:end}
+.fx-party>.chip{align-self:center;white-space:nowrap}
+.fx-party.self{background:rgba(212,160,23,.08);box-shadow:inset 2px 0 0 rgba(212,160,23,.7),inset 0 0 0 1px rgba(30,48,80,.1)}
+
+/* ---------- 翼板：左 = 技能列表 + 对抗试算；右 = 预算 + 最终摘要 + 保存 ---------- */
+/* 列表按内容高、放不下时收缩滚动；对抗试算沉到翼板底部 */
+.dz2-skills{flex:0 1 auto;min-height:0;overflow:auto;overflow-x:hidden}
+.dz2-new+.groove{margin-top:auto}
+.dz2-skills .row{grid-template-columns:auto minmax(0,1fr) auto;padding-block:.35em}
+.dz2-skills .row.on{background:linear-gradient(90deg,rgba(47,124,246,.16),rgba(47,124,246,.04));box-shadow:inset 3px 0 0 var(--blue)}
+.dz2-skills .row strong,.dz2-skills .row small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dz2-skills .row .mvu-soul-ring-medal,.dz2-skills .row .ring-medal{--s:2em}
+.dz2-new{display:flex;flex-wrap:wrap;gap:.4em}
+.pad.sparse>.dz2-new{justify-content:center;margin-top:.9em}
+.dz2-readout{flex:none;display:flex;flex-direction:column;gap:.8em}
+.dz2-readout .dz-sim{min-width:0}
+.dz2-readout .sim-body{grid-template-columns:minmax(0,1fr)}
+.dz2-readout .sim-row{grid-template-columns:auto auto minmax(0,1fr)}
+.dz2-readout .sim-row em{grid-column:1/-1;justify-self:start}
+.dz2-summary{display:flex;flex-direction:column;gap:.25em;padding:.5em .65em;background:rgba(255,255,255,.55);box-shadow:inset 0 0 0 1px rgba(30,48,80,.12),inset 2px 0 0 #5aa5ff}
+.dz2-summary>h3{margin:0;font-size:.78em;font-weight:900;letter-spacing:.06em;color:var(--ink3)}
+.dz2-summary>p{margin:0;font-size:.84em;font-weight:700;line-height:1.55;color:var(--ink2)}
+.dz2-summary>p.clamp{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;cursor:help}
+.dz2-summary>p.empty{color:var(--ink3)}
+.dz2-warns{display:flex;align-items:center;gap:.4em;font-size:.8em;font-weight:800;color:#9a5d00}
+.dz2-discard{width:100%;margin-top:.55em}
+.dz2-saved{margin-top:.5em}
+
+@container cockpit (max-width:700px){
+  .fx-detail-head{grid-template-columns:minmax(0,1fr) auto}
+  .fx-detail-head>.dzf:nth-child(2){grid-column:1/2}
+  .fx-cond{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .fx-card{max-width:none;flex:1 1 9em}
+  .fx-party{grid-template-columns:minmax(0,1fr) auto}
+  .fx-party>.chip{grid-column:1/-1;justify-self:start}
+  .dzf:has(>.dz-tick){grid-column:1/-1}
+  .dz2-skills{flex:none;max-height:16em}
+  .dz2.fill>.dz2-sec.grow>.dz2-grid{grid-template-columns:minmax(0,1fr)}
+}
