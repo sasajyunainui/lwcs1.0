@@ -149,7 +149,7 @@
   const search = (key, ph) => `<label class="q-search"><i class="fa-solid fa-magnifying-glass"></i><input type="search" data-qs="${esc(key)}" value="${esc(state.ui.qs?.[key] || '')}" placeholder="${esc(ph)}" aria-label="${esc(ph)}" autocomplete="off"></label>`;
   const filterRows = inp => {
     const q = inp.value.trim().toLowerCase(), pad = inp.closest('.pad') || inp.parentElement;
-    $('.list .row, .roster .rc', pad).forEach(r => { r.hidden = !!q && !r.textContent.toLowerCase().includes(q); });
+    $$('.list .row, .roster .rc', pad).forEach(r => { r.hidden = !!q && !r.textContent.toLowerCase().includes(q); });
   };
   document.addEventListener('input', e => { const t = e.target.closest?.('[data-qs]'); if (!t) return; (state.ui.qs ||= {})[t.dataset.qs] = t.value; filterRows(t); });
   const ctx = () => {
