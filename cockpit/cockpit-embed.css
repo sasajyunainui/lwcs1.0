@@ -10,7 +10,7 @@
 /* 宽屏：台面不再往后推（原型为给斜翼留透视余量整体缩到约 93%，实测斜翼外沿是向内收的，不会出界）；
    窄屏三面轮播自己有纵深，保持原样 */
 @container cockpit (min-width:701px){.stage{--stage-z:0px}.screens{margin:14px 0 18px}}
-/* 桌面布局里两翼都偏窄（上下布局 27%、侧轨 ≥240px）：英文副标题不显示（截成半截不好看），属性行名称列按内容宽、间距收紧，
+/* 桌面布局里两翼都偏窄（27%）：英文副标题不显示（截成半截不好看），属性行名称列按内容宽、间距收紧，
    任务页签只留文字与数量，设计台技能来源允许两行；中屏身份行窄时两行均分 */
 @container cockpit (min-width:701px){
   .wing .h .en{display:none}
@@ -19,36 +19,53 @@
   .wing .q-tabs .key-s i{display:none}
   .wing .dz2-skills .row strong,.wing .dz2-skills .row small{white-space:normal;text-overflow:clip;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
 }
-/* 侧轨占掉两侧宽度后中屏偏窄：身份行一律允许两行均分 */
+/* 桌面中屏身份行窄时两行均分 */
 @container cockpit (min-width:701px){.home-top .title-line{white-space:normal;text-wrap:balance}}
-/* 座舱较窄（侧轨 + 两翼下限收窄时）：标题英文副标题全隐藏，属性训练增量可折两行，任务页签去内边距、字号收小 */
+/* 座舱较窄：标题英文副标题全隐藏，属性训练增量可折两行，任务页签去内边距、字号收小 */
 @container cockpit (min-width:701px) and (max-width:879px){
   .h .en{display:none}
   .wing .attr em{white-space:normal;text-align:right;line-height:1.1}
   .wing .q-tabs .key-s{padding-inline:0;font-size:.78em}
 }
-/* 桌面侧轨（座舱宽 ≥760px）：聊天流里高度金贵——领域标签与页面按键从上下两条横栏改为左右两条竖轨，
-   读数条压成中屏下方一条细线；两翼斜角加大、透视拉近，侧轨也斜一点，整体形成包围 */
-@container (min-width:760px){.cockpit{perspective:1000px;perspective-origin:50% 45%}}
-@container cockpit (min-width:760px){
-  .stage{--rail:clamp(52px,4.8cqw,62px);display:grid;grid-template-columns:var(--rail) minmax(0,1fr) var(--rail);grid-template-rows:auto auto;column-gap:clamp(4px,.6cqw,10px);align-items:stretch;padding-top:4px}
-  .arc{grid-column:1;grid-row:1;width:auto;margin:0;transform-origin:100% 50%;transform:rotateY(28deg)}
-  .deck{grid-column:3;grid-row:1;width:auto;margin:0;transform-origin:0 50%;transform:rotateY(-28deg);filter:drop-shadow(0 10px 14px rgba(0,0,0,.45))}
-  /* 两翼宽 ≥240px 时翼内属性行、页签、技能名不挤；座舱窄时下限随宽度收到约 26%，给中屏留够宽度 */
-  .screens{grid-column:2;grid-row:1;margin:0;--lw:max(23%,min(240px,26cqw));--rw:max(23%,min(240px,26cqw))}
-  .wing.l{--la:32deg}.wing.r{--ra:32deg}
-  .readout{grid-column:2;grid-row:2;width:auto;margin:4px 0 0;padding:.28em .9em;gap:1em;font-size:.84em}
-  .arc .bz,.arc .b2,.arc .b3,.deck .bz,.deck .b2,.deck .b3{height:100%}
-  .arc .bz,.arc .b2,.arc .b3{clip-path:polygon(0 0,100% 22px,100% calc(100% - 22px),0 100%)!important}
-  .deck .bz,.deck .b2,.deck .b3{clip-path:polygon(0 22px,100% 0,100% 100%,0 calc(100% - 22px))!important}
-  .arc .bz>.b2>.b3,.deck .bz>.b2>.b3{padding:26px 6px}
-  .track{flex-direction:column;justify-content:center;height:100%;gap:4px;clip-path:none}
-  .tab{flex-direction:column;gap:.3em;padding:.75em .1em;font-size:.8em}
-  .tab i{font-size:1.25em}
-  .slider{bottom:auto;left:4px;right:4px;width:auto;clip-path:polygon(0 0,100% 6px,100% calc(100% - 6px),0 100%)}
-  .keybed{height:100%;overflow:visible;padding:0;margin:0;display:flex;align-items:center}
-  .keys{flex-direction:column;justify-content:center;gap:.5em;width:100%}
-  .key{min-width:0;width:100%;font-size:.8em;padding:.5em .1em .45em}
+/* 播报喇叭只在指挥栏收起播报时出现 */
+.readout .tick-ico{display:none}
+/* 桌面指挥栏（座舱宽 ≥701px）：聊天流里高度金贵——领域标签、页面按键、地址时间并成三屏上方一条 40px 的指挥栏，
+   不再有上方梯形标签台、下方按键台与底部读数条；三屏吃满整宽，两翼斜角加大、透视拉近，形成包围 */
+@container (min-width:701px){.cockpit{perspective:900px;perspective-origin:50% 58%}}
+@container cockpit (min-width:701px){
+  .stage{display:flex;flex-wrap:wrap;align-items:stretch;padding-top:2px}
+  .arc,.deck,.readout{transform:none;filter:none;margin:0;width:auto;height:40px;box-sizing:border-box}
+  .arc .bz,.arc .b2,.arc .b3,.deck .bz,.deck .b2,.deck .b3{clip-path:none!important;background:none;padding:0!important;height:100%}
+  /* 领域：只亮当前领域的文字，其余只留图标（悬停显示名称） */
+  .arc{order:1;flex:none}
+  .track{height:100%;box-sizing:border-box;padding:3px 14px 3px 3px;gap:2px;clip-path:polygon(0 0,100% 0,calc(100% - 12px) 100%,0 100%)}
+  .tab{padding:0 .75em;font-size:.86em;gap:.4em}
+  .tab:not(.on) .lb{display:none}
+  .slider{top:3px;bottom:3px;height:auto}
+  /* 页面按键：横排小键，图标与文字并列，贴着领域栏 */
+  .deck{order:2;flex:1 1 0;min-width:0;margin-left:-12px}
+  .keybed{height:100%;margin:0;padding:0 8px 0 18px;overflow:hidden;display:flex;align-items:center;background:linear-gradient(180deg,#eef2f6,#c9d2de);box-shadow:inset 0 1px 0 #fff,inset 0 -2px 0 rgba(60,78,108,.25);clip-path:polygon(12px 0,100% 0,calc(100% - 12px) 100%,0 100%)}
+  .keys{flex-wrap:nowrap;justify-content:flex-start;gap:3px;min-width:0}
+  .key{flex-direction:row;gap:.35em;min-width:0;padding:.38em .62em;font-size:.8em;white-space:nowrap}
+  .key::before{display:none}
+  /* 地址与时间收在栏尾；播报宽时滚动，窄时收成喇叭（悬停看全文） */
+  .readout{order:3;flex:none;margin-left:-12px;padding:0 .9em 0 1.4em;gap:.8em;font-size:.8em;clip-path:polygon(12px 0,100% 0,100% 100%,0 100%)}
+  .readout .door{max-width:13em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .readout .res,.readout .tick{display:none}
+  .readout .tick-ico{display:inline-block;cursor:help}
+  .screens{order:4;flex:1 0 100%;margin:12px 0 4px;--lw:27%;--rw:27%}
+  .wing.l{--la:30deg}.wing.r{--ra:30deg}
+}
+/* 座舱够宽时播报回到栏里滚动显示 */
+@container cockpit (min-width:1150px){
+  .readout{flex:1 1 0;min-width:0}
+  .readout .tick{display:block}
+  .readout .tick-ico{display:none}
+}
+/* 较窄（< 860）：页面按键也只亮当前页的文字 */
+@container cockpit (min-width:701px) and (max-width:859px){
+  .key:not(.on) .lb{display:none}
+  .key{padding:.38em .55em}
 }
 .lwcs-ck-overlay{position:static;font-size:14px}
 /* 酒馆全局对 button / input / h2 等的主题样式不能渗进座舱：控件统一回到座舱自己的基线 */

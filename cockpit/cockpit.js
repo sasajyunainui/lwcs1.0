@@ -250,6 +250,7 @@
         <span class="pends" id="ck-rPend" aria-label="待处理"></span>
         <span class="res" id="ck-rRes" aria-label="随行资源"></span>
         <div class="tick" aria-label="系统播报"><span><b>播报</b><span id="ck-rTick"></span></span></div>
+        <i class="fa-solid fa-bullhorn tick-ico" tabindex="0" role="button" aria-label="系统播报" data-hint=""></i>
     </div>
   </div>
 </section>`;
@@ -334,7 +335,7 @@
     if (from !== to) put(host[side], html, null);
     else setTimeout(() => put(host[side], html, null), dur * (mode === 'fold' ? .42 : .45));
   };
-  const keysFor = d => d.keys.map(k => `<button class="key" type="button" data-page="${k.id}"><i class="fa-solid fa-${k.icon}"></i>${esc(k.label)}</button>`).join('');
+  const keysFor = d => d.keys.map(k => `<button class="key" type="button" data-page="${k.id}" aria-label="${esc(k.label)}"><i class="fa-solid fa-${k.icon}"></i><span class="lb">${esc(k.label)}</span></button>`).join('');
   const markKeys = () => $$('#ck-keys .key').forEach(k => { const on = k.dataset.page === state.page[state.domain]; k.classList.toggle('on', on); on ? k.setAttribute('aria-current', 'page') : k.removeAttribute('aria-current'); });
   const swapKeys = (d, first) => {
     const keys = $('#ck-keys');
@@ -921,8 +922,10 @@
   const syncReadout = () => {
     const me = S.char?.[S.sys?.玩家名] || {}, st = me.属性 || {};
     $('#ck-rLoc').textContent = String(me.状态?.位置 || '').replace(/^斗罗大陆-/, '').replace(/-/g, ' · ');
-    $('#ck-rTime').textContent = S.world.时间._calendar || tickDate(S.world.时间.tick);
-    $('#ck-rTick').textContent = S.sys.系统播报 || '暂无播报'; $('.readout .tick').title = S.sys.系统播报 || '';
+    // 时间：指挥栏里只放月日与时刻，完整历法放悬停
+    const cal = S.world.时间._calendar || tickDate(S.world.时间.tick);
+    $('#ck-rTime').textContent = String(cal).replace(/^(斗罗历|斗灵历)?\d+年/, ''); $('#ck-rTime').parentElement.title = cal;
+    $('#ck-rTick').textContent = S.sys.系统播报 || '暂无播报'; $('.readout .tick').title = S.sys.系统播报 || ''; $('.readout .tick-ico').dataset.hint = S.sys.系统播报 || '暂无播报';
     // 待处理（原项目「待处理能力」）：待生成的魂环、待确认的新技能，点了直接去处理
     const pend = ADP?.pending?.() || {}, ring = pend.soulRing, sd = pend.skillDesign;
     $('#ck-rPend').innerHTML = [ring ? `<button class="pend" type="button" data-route="ringPick" title="${esc([ring.charName, ring.spiritName, `第 ${ring.ringIndex} 魂环`].filter(Boolean).join(' · '))}"><i class="fa-solid fa-circle-plus"></i>待生成魂环</button>` : '', sd ? `<button class="pend" type="button" data-route="skillConfirm" title="${esc([sd.charName, sd.skillName].filter(Boolean).join(' · '))}"><i class="fa-solid fa-wand-sparkles"></i>新技能待确认</button>` : ''].join('');
@@ -931,7 +934,7 @@
   };
 
   const start = () => {
-    track.insertAdjacentHTML('beforeend', order.filter(id => domains[id]).map(id => `<button class="tab" type="button" data-tab="${id}"><i class="fa-solid fa-${domains[id].icon}"></i>${esc(domains[id].label)}</button>`).join(''));
+    track.insertAdjacentHTML('beforeend', order.filter(id => domains[id]).map(id => `<button class="tab" type="button" data-tab="${id}" aria-label="${esc(domains[id].label)}" data-hint="${esc(domains[id].label)}"><i class="fa-solid fa-${domains[id].icon}"></i><span class="lb">${esc(domains[id].label)}</span></button>`).join(''));
     syncReadout();
     slider.style.transition = 'none';
     switchDomain(order[0], null, true);
