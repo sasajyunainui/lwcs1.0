@@ -38834,6 +38834,56 @@
       requestKind: 动作.requestKind, patchOps: 动作.patchOps, privilegeID: 动作.privilegeID, privilegeCost: 动作.privilegeCost, 交易参数: 动作.交易参数,
     }));
   }
+  // ---------- 新建个人任务 / 发布委托（与原项目「任务界面」同一写回与叙事） ----------
+  async function 座舱新增个人任务(快照, 表单 = {}) {
+    const 角色键 = resolveSnapshotCharKey(快照, toText(快照.activeName, '')) || toText(快照.activeName, '');
+    const 任务名 = toText(表单.名称, '').trim(), 描述 = toText(表单.描述, '').trim();
+    const 任务线 = toText(表单.任务线, '') === '主线' ? '主线' : '支线';
+    const 状态 = ['进行中', '可提交', '已完成', '已放弃', '失败'].includes(toText(表单.状态, '')) ? toText(表单.状态, '') : '进行中';
+    const 时限天数 = Math.max(0, Math.floor(toNumber(表单.时限天数, 0))), 奖励币 = Math.max(0, Math.floor(toNumber(表单.奖励币, 0))), 奖励声望 = Math.max(0, Math.floor(toNumber(表单.奖励声望, 0)));
+    if (!角色键) return { ok: false, message: '缺少角色信息。' };
+    if (!任务名) return { ok: false, message: '请输入任务名。' };
+    if (!描述) return { ok: false, message: '请填写任务目标。' };
+    await mutateStatDataByEditor(statData => {
+      const 路径 = ['char', 角色键, '我的任务'];
+      let 任务表 = deepGet(statData, 路径, null);
+      if (!任务表 || typeof 任务表 !== 'object' || Array.isArray(任务表)) { deepSetMutable(statData, 路径, {}); 任务表 = deepGet(statData, 路径, null); }
+      if (任务表[任务名] !== undefined) throw new Error('同名任务已存在。');
+      const 当前tick = Math.max(0, Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0)));
+      const 任务 = { 任务线, 状态, 当前进度: 0, 奖励币, 奖励声望, 描述, 最后更新时间tick: 当前tick };
+      if (时限天数 > 0) 任务.截止tick = 当前tick + 时限天数 * 144;
+      任务表[任务名] = 任务;
+    });
+    return { ok: true, message: '已新增任务' };
+  }
+  async function 座舱发布委托(快照, 表单 = {}) {
+    const 委托名 = toText(表单.名称, '').trim(), 发布者 = toText(表单.发布者, '').trim() || '系统', 描述 = toText(表单.描述, '').trim();
+    const 面向 = toText(表单.面向, '') === '指定对象' ? '指定对象' : '公开', 指定对象 = 面向 === '指定对象' ? toText(表单.指定对象, '').trim() || '无' : '无';
+    const 难度 = ['低', '中', '高', '极高'].includes(toText(表单.难度, '')) ? toText(表单.难度, '') : '中';
+    const 资源级别 = ['无', '低', '中', '高', '稀有'].includes(toText(表单.资源级别, '')) ? toText(表单.资源级别, '') : '无';
+    const 时限天数 = Math.max(0, Math.floor(toNumber(表单.时限天数, 0))), 奖励币 = Math.max(0, Math.floor(toNumber(表单.奖励币, 0))), 奖励声望 = Math.max(0, Math.floor(toNumber(表单.奖励声望, 0)));
+    if (!委托名) return { ok: false, message: '请输入委托名。' };
+    if (!描述) return { ok: false, message: '请填写委托目标。' };
+    const 委托板 = deepGet(快照, 'rootData.world.委托板', {});
+    if (委托板 && typeof 委托板 === 'object' && !Array.isArray(委托板) && 委托板[委托名] !== undefined) return { ok: false, message: '同名委托已存在。' };
+    const 角色名 = toText(快照.activeName, '当前角色'), 当前位置 = toText(deepGet(快照, 'activeChar.状态.位置', 快照.currentLoc), 快照.currentLoc || '当前位置');
+    const 当前tick = Math.max(0, Math.floor(toNumber(deepGet(快照, 'rootData.world.时间.tick', 0), 0)));
+    const 法币 = 读取当前时代法定货币_桥接(快照.rootData || {}, 当前位置);
+    if (法币.status !== 'resolved') return { ok: false, message: '当前时代委托货币未就绪。' };
+    const 委托 = { 标题: 委托名, 状态: '待接取', 发布者, 面向, 指定对象, 承接者: '无', 难度, 资源级别, 奖励币, 奖励声望, 框架描述: 描述, 描述, 生成tick: 当前tick };
+    if (时限天数 > 0) 委托.截止tick = 当前tick + 时限天数 * 144;
+    // 原项目任务界面的同名格式化函数是渲染函数里的局部量（发布处理里引用它会报错），这里直接按同样规则格式化
+    const 截止文本 = 委托.截止tick > 0 ? formatTickToCalendarDateText(委托.截止tick).replace(/^斗罗历/, '') : '不限';
+    const 补丁 = [
+      { op: 'replace', path: `/world/委托板/${escapeJsonPointerValue(委托名)}`, value: 委托 },
+      { op: 'replace', path: '/sys/系统播报', value: `[委托发布] ${角色名} 在【${当前位置}】发布委托【${委托名}】。` },
+    ];
+    return 座舱请求结果(await dispatchUiAiRequest(
+      `我想在【${当前位置}】发布委托【${委托名}】。`,
+      `以下内容属于前端已经完成的委托发布登记，不要在正文直接复述“JSONPatch / 系统分析 / 仲裁日志”等术语。\n\n[委托发布]\n发布者：${发布者}\n委托名：${委托名}\n目标：${描述}\n难度：${难度}\n资源级别：${资源级别}\n截止：${截止文本}\n奖励：${奖励币} ${法币.currency} / ${奖励声望} 声望\n\n委托已经写入委托板。正文需要自然反馈发布结果、周围反应与后续可接取空间，不要重复输出这批变量更新。`,
+      { requestKind: '委托发布', patchOps: 补丁 },
+    ), '委托已发布');
+  }
   async function 座舱执行动作(名称, 参数 = {}) {
     const 快照 = liveSnapshot;
     if (!快照 || !快照.rootData) return { ok: false, message: '状态未就绪' };
@@ -38943,6 +38993,10 @@
           // 生成后原流程会打开「技能设计确认」，由座舱接管跳到设计台
           if (参数.op === 'generate') { await handlePendingSoulRingGenerate(快照, toText(参数.candidate, '')); return { ok: true, message: '已生成魂环' }; }
           return { ok: false, message: '未知的魂环操作' };
+        }
+        case 'questCreate': {
+          const 表单 = 参数.form && typeof 参数.form === 'object' ? 参数.form : {};
+          return 参数.kind === 'board' ? await 座舱发布委托(快照, 表单) : await 座舱新增个人任务(快照, 表单);
         }
         case 'competition': {
           const 动作 = toText(参数.action, ''), 载荷 = 参数.payload && typeof 参数.payload === 'object' ? 参数.payload : {};

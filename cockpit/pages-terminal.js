@@ -18,16 +18,54 @@
       tag: 'CORE · QUESTS',
       left: `<div class="pad">${c.head('list-check', '任务', 'Quest Log', 'gd')}
         <div class="seg q-tabs" role="tablist">${Object.entries(lines).map(([k, l]) => `<button class="key-s${k === tab ? ' on' : ''}" type="button" role="tab" aria-selected="${k === tab}" data-set="qtab=${k}"><i class="fa-solid fa-${QUEST_ICON[k]}"></i> ${k}<b>${l.length}</b></button>`).join('')}</div>
+        ${c.isPlayer ? `<button class="key-s${ui.qnew ? ' on' : ''}" type="button" data-set="qnew=${isBoard ? 'board' : 'record'}"><i class="fa-solid fa-plus"></i> ${isBoard ? '发布委托' : `新建${tab}任务`}</button>` : ''}
         ${list.length ? `<div class="list q-list">${list.map(rowOf).join('')}</div>` : c.empty(QUEST_ICON[tab], isBoard ? '委托板是空的' : `没有${tab}任务`)}
       </div>`,
-      core: sel ? questBrief(c, tab, selId, sel, now) : `<div class="pad sparse">${c.empty('clipboard-list', isBoard ? '委托板是空的' : `没有${tab}任务`)}${!isBoard && board.length ? `<button class="key-s" type="button" data-set="qtab=委托板" style="align-self:center"><i class="fa-solid fa-file-signature"></i> 看委托板 · ${board.length}</button>` : ''}</div>`,
+      ...(ui.qnew ? questNew(c, ui.qnew === 'board' ? 'board' : 'record', tab) : {}),
+      core: ui.qnew ? questNew(c, ui.qnew === 'board' ? 'board' : 'record', tab).core : sel ? questBrief(c, tab, selId, sel, now) : `<div class="pad sparse">${c.empty('clipboard-list', isBoard ? '委托板是空的' : `没有${tab}任务`)}${!isBoard && board.length ? `<button class="key-s" type="button" data-set="qtab=委托板" style="align-self:center"><i class="fa-solid fa-file-signature"></i> 看委托板 · ${board.length}</button>` : ''}</div>`,
       // 右翼：上方是总览数字，操作键沉到底部（主按钮 .cta 自带 margin-top:auto）
-      right: `<div class="pad">${c.head('bolt', '行动', 'Actions')}
+      right: ui.qnew ? questNew(c, ui.qnew === 'board' ? 'board' : 'record', tab).right : `<div class="pad">${c.head('bolt', '行动', 'Actions')}
         <div class="tiles"><div class="tile">${c.sock('list-check')}<b>${active}</b><small>进行中</small></div><div class="tile">${c.sock('file-signature')}<b>${open}</b><small>待接取委托</small></div></div>
         ${sel ? questActions(c, isBoard, selId, sel) : c.empty('bolt', '暂无可执行的操作')}
       </div>`,
     };
   };
+  // 新建个人任务 / 发布委托：字段与选项同原项目「任务界面」；表单值存在界面状态 qf 里，提交时由桥接按原逻辑写回
+  const QF_OPTS = { 任务线: ['主线', '支线'], 状态: ['进行中', '可提交', '已完成', '已放弃', '失败'], 面向: ['公开', '指定对象'], 难度: ['低', '中', '高', '极高'], 资源级别: ['无', '低', '中', '高', '稀有'] };
+  const questNew = (c, kind, tab) => {
+    const ui = c.state.ui, f = ui.qf = ui.qf || {}, board = kind === 'board';
+    if (f._kind !== kind) Object.assign(f, { _kind: kind, 名称: '', 描述: '', 任务线: tab === '主线' ? '主线' : '支线', 状态: '进行中', 发布者: '传灵塔', 面向: '公开', 指定对象: '', 难度: '中', 资源级别: '无', 时限天数: 0, 奖励币: 0, 奖励声望: 0 });
+    const text = (k, label, ph = '') => `<div class="dzf"><span class="dzf-l">${label}</span><input type="text" data-qf="${k}" value="${c.esc(f[k] || '')}" placeholder="${c.esc(ph)}" aria-label="${label}"></div>`;
+    const num = (k, label, hint = '') => `<div class="dzf"><span class="dzf-l">${label}${hint ? c.hint(hint) : ''}</span><input type="number" min="0" step="1" data-qf="${k}" value="${c.esc(f[k] ?? 0)}" aria-label="${label}"></div>`;
+    const sel = (k, label, opts) => `<div class="dzf"><span class="dzf-l">${label}</span>${c.pick('qf:' + k, f[k], opts)}</div>`;
+    const chars = Object.keys(c.S.char || {}).filter(n => n !== c.player);
+    const fields = board
+      ? [text('名称', '委托名', '护送样本'), text('发布者', '发布者'), sel('面向', '面向', QF_OPTS.面向), f.面向 === '指定对象' ? sel('指定对象', '指定对象', chars) : '', sel('难度', '难度', QF_OPTS.难度), sel('资源级别', '资源级别', QF_OPTS.资源级别)]
+      : [text('名称', '任务名'), sel('任务线', '任务线', QF_OPTS.任务线), sel('状态', '状态', QF_OPTS.状态)];
+    fields.push(num('时限天数', '时限（天）', '0 表示不限时'), num('奖励币', '奖励货币'), num('奖励声望', '奖励声望'));
+    return {
+      core: `<div class="pad"><div class="q-title">${c.sock(board ? 'file-signature' : 'plus', 'gd')}<span class="chip">${board ? '委托板' : c.esc(f.任务线)}</span><h2>${board ? '发布委托' : '新建任务'}</h2></div>
+        <div class="dz2-grid">${fields.join('')}<label class="dzf wide"><span class="dzf-l">${board ? '委托目标' : '任务目标'}</span><textarea data-qf="描述" rows="4" aria-label="目标">${c.esc(f.描述 || '')}</textarea></label></div></div>`,
+      right: `<div class="pad">${c.head(board ? 'file-signature' : 'plus', board ? '发布' : '新建', 'Create')}${c.kv([[board ? '委托名' : '任务名', c.esc(f.名称 || '—')], ['时限', f.时限天数 > 0 ? `${c.fmt(f.时限天数)} 天` : '不限'], ['奖励', `${c.fmt(f.奖励币 || 0)} · 声望 ${c.fmt(f.奖励声望 || 0)}`]])}
+        <button class="cta" type="button" data-qf-submit="${kind}"><i class="fa-solid fa-${board ? 'bullhorn' : 'check'}"></i>${board ? '发布委托' : '新建任务'}</button>
+        <div class="act-row"><button class="key-s" type="button" data-set="qnew="><i class="fa-solid fa-xmark"></i> 取消</button></div></div>`,
+    };
+  };
+  document.addEventListener('input', e => { const t = e.target.closest?.('[data-qf]'); if (t) (window.COCKPIT.ctx().state.ui.qf ||= {})[t.dataset.qf] = t.type === 'number' ? Math.max(0, Math.floor(Number(t.value) || 0)) : t.value; });
+  document.addEventListener('change', e => { if (e.target.closest?.('[data-qf]')) window.COCKPIT.refresh(); });
+  document.addEventListener('picker:change', e => { if (!String(e.detail.path).startsWith('qf:')) return; (window.COCKPIT.ctx().state.ui.qf ||= {})[e.detail.path.slice(3)] = e.detail.value; window.COCKPIT.refresh(); });
+  // 提交：捕获阶段把表单写进动作；缺必填项时直接给原因
+  document.addEventListener('click', e => {
+    const t = e.target.closest('[data-qf-submit]'); if (!t) return;
+    const f = window.COCKPIT.ctx().state.ui.qf || {}, board = t.dataset.qfSubmit === 'board';
+    delete t.dataset.blocked;
+    const miss = !String(f.名称 || '').trim() ? (board ? '先填写委托名' : '先填写任务名') : !String(f.描述 || '').trim() ? (board ? '先填写委托目标' : '先填写任务目标') : '';
+    if (miss) { t.dataset.blocked = miss; delete t.dataset.act; return; }
+    const form = Object.fromEntries(Object.entries(f).filter(([k]) => !k.startsWith('_')));
+    t.dataset.confirm = board ? `发布委托「${f.名称}」（${f.难度} · ${f.面向 === '指定对象' ? '指定 ' + (f.指定对象 || '未选') : '公开'}）` : `新建${f.任务线}任务「${f.名称}」`;
+    t.dataset.act = JSON.stringify({ name: 'questCreate', kind: board ? 'board' : 'record', form });
+  }, true);
+
   // 简报：委托未接取时只给公开的框架描述（完整描述接取后公开，同原版）
   const questBrief = (c, tab, id, q, now) => {
     const isBoard = tab === '委托板', qp = isBoard ? ['world', '委托板', id] : c.P('我的任务', id);
