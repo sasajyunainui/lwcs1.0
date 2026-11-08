@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:5cbcfca980f7afa9fd00b46f337920c0e8b8d6d62cd8c8d175fe1c8da4ae4ce4|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:c49202260ed6b2f1a1edfd1c025893a3b966dda0c69d0519284f7480f6ffa790|cockpit/pages-role.js:a0fa73086bf227c7b6e658a5d0097aeb4a2731610dd9e0e01ac98fc4341a242c|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:afe7c39c6437be94149d9d9d4809c3e198b189241a8997297cba7329a9f619ba|cockpit/pages-ability.js:c692feb0aaebd6f28360829098826f576cd660710001d30dd9bc5341dac9aa72|cockpit/pages-supplies.js:2c20652e62132ecf1fcdc8da32cf339e5128de56f21d9337bfafc199d63611f7|cockpit/pages-map.js:bb5b1f07a1035a0294cdb32fbc61c97c36a49946297500421647eee91fe093da|cockpit/pages-world.js:53d47819477ad0b7398941a27519ecbf1e668b1462a013f0601efb57f91507d5|cockpit/pages-terminal.js:432d05e3f0c4abd997ac1b79dbea3631fdc189407285aa178f7890e08961afb6 */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:c49ae1d88090bc7dbc6bf266c07dc4684a6bd33b5244865298aefb66fe5ec9c1|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:14da65b51faac6fd6b1f52c6441c6e394227cf7ac8a2bd5df17ba53610aa073a|cockpit/pages-role.js:a0fa73086bf227c7b6e658a5d0097aeb4a2731610dd9e0e01ac98fc4341a242c|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:afe7c39c6437be94149d9d9d4809c3e198b189241a8997297cba7329a9f619ba|cockpit/pages-ability.js:c692feb0aaebd6f28360829098826f576cd660710001d30dd9bc5341dac9aa72|cockpit/pages-supplies.js:2c20652e62132ecf1fcdc8da32cf339e5128de56f21d9337bfafc199d63611f7|cockpit/pages-map.js:bb5b1f07a1035a0294cdb32fbc61c97c36a49946297500421647eee91fe093da|cockpit/pages-world.js:53d47819477ad0b7398941a27519ecbf1e668b1462a013f0601efb57f91507d5|cockpit/pages-terminal.js:1cb54fc26a12e9a82171ea7500160361ea3db3d3439238fc7d916f867dfa8734 */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -40254,6 +40254,12 @@
   async function 座舱动作预演异步(名称, 参数 = {}) {
     try {
       if (名称 === 'travel') return await 座舱规划移动(参数);
+      if (名称 === 'privateTrade') {
+        if (参数.op === 'open') return await 座舱交易打开(参数);
+        if (参数.op === 'set') return 座舱交易设置(参数.changes || {});
+        if (参数.op === 'sync') { if (座舱交易.实例 && typeof 座舱交易.实例.updateData === 'function') 座舱交易.实例.updateData(liveSnapshot); return 座舱交易状态(); }
+        return 座舱交易状态();
+      }
       if (名称 === 'workshop') {
         if (参数.op === 'open') return await 座舱工坊打开(参数);
         if (参数.op === 'set') return 座舱工坊设置(参数.changes || {});
@@ -40356,6 +40362,71 @@
     座舱工坊.待提交 = null;
     return 座舱请求结果(await dispatchUiAiRequest(数据.playerInput, 数据.systemPrompt, { requestKind: 数据.requestKind, patchOps: 数据.patchOps }));
   }
+  // ---------- 座舱私下交易 / 黑市：原项目交易模块常驻隐藏容器 ----------
+  const 座舱交易 = { 容器: null, 实例: null, 键: '', 待提交: null, 失败: null };
+  function 座舱交易状态() {
+    const 容器 = 座舱交易.容器, 实例 = 座舱交易.实例;
+    if (!容器 || !实例) return null;
+    const 取 = 选择器 => 容器.querySelector(选择器), 文 = 选择器 => toText(取(选择器) && 取(选择器).innerText, '').replace(/\s+/g, ' ').trim();
+    const 按钮 = 取('#btn-private'), 态度 = 取('#priv-attitude');
+    return {
+      key: 座舱交易.键,
+      action: toText(取('#priv-action') && 取('#priv-action').value, '私下买入'),
+      npc: toText(取('#priv-npc') && 取('#priv-npc').value, ''),
+      item: toText(取('#priv-item') && 取('#priv-item').value, ''),
+      qty: toNumber(取('#priv-qty') && 取('#priv-qty').value, 1), price: toNumber(取('#priv-price') && 取('#priv-price').value, 0),
+      basePrice: 文('#priv-base-price'), market: 文('#priv-market'), total: 文('#priv-total'),
+      attitude: 文('#priv-attitude'), attitudeOk: !!(态度 && /val-highlight/.test(态度.className)),
+      desc: 文('#priv-desc'), source: 文('#priv-source'),
+      blocked: !!(按钮 && 按钮.disabled), reason: toText(按钮 && 按钮.dataset.blockReason, ''),
+      // 交易模块额外加入的商店（如魂灵塔特许兑换）与当前地点的全部商店
+      storeGoods: Object.fromEntries(Object.entries(实例.currentStores || {}).map(([店, 数据]) => [店, cloneJsonValue((数据 && 数据.库存) || {}, {})])),
+    };
+  }
+  async function 座舱交易打开(参数 = {}) {
+    if (!await 确保交互模块已加载('交易模块', 'mountTradeUI') || typeof window.mountTradeUI !== 'function') return { ok: false, reason: '交易模块未就绪' };
+    const 快照 = liveSnapshot;
+    if (!快照 || !快照.rootData) return { ok: false, reason: '状态未就绪' };
+    const 黑市 = toText(参数.mode, '') === 'black', 对象 = toText(黑市 ? 参数.store : 参数.npc, '');
+    if (!座舱交易.容器) {
+      座舱交易.容器 = document.createElement('div');
+      座舱交易.容器.className = 'lwcs-ck-trade-engine';
+      座舱交易.容器.style.cssText = 'position:fixed;left:-10000px;top:0;width:960px;height:720px;overflow:hidden;opacity:0;pointer-events:none';
+      座舱交易.容器.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(座舱交易.容器);
+    }
+    if (座舱交易.实例 && typeof 座舱交易.实例.destroy === 'function') { try { 座舱交易.实例.destroy(); } catch (错误) {} }
+    座舱交易.容器.innerHTML = '';
+    座舱交易.实例 = window.mountTradeUI(座舱交易.容器, 快照, {
+      actionType: 黑市 ? 'trade_private_black_market' : 'trade', initialTab: 'tab-private',
+      prefillNpc: 对象, lockNpc: !!对象, preferredStore: 黑市 ? 对象 : '',
+      onTradeAction: 数据 => { 座舱交易.待提交 = 数据; },
+      内联动作失败: 详情 => { 座舱交易.失败 = 详情; },
+    });
+    座舱交易.键 = JSON.stringify([toText(快照.activeName, ''), 黑市 ? 'black' : 'npc', 对象]);
+    return 座舱交易状态();
+  }
+  function 座舱交易设置(改动 = {}) {
+    const 容器 = 座舱交易.容器, 实例 = 座舱交易.实例;
+    if (!容器 || !实例) return null;
+    const 设值 = (选择器, 值) => { const 元素 = 容器.querySelector(选择器); if (!元素 || 值 === undefined || 值 === null) return; 元素.value = String(值); 元素.dispatchEvent(new Event('input', { bubbles: true })); 元素.dispatchEvent(new Event('change', { bubbles: true })); };
+    设值('#priv-action', 改动.action); 设值('#priv-item', 改动.item); 设值('#priv-qty', 改动.qty); 设值('#priv-price', 改动.price);
+    if (typeof 实例.updatePrivPreview === 'function') 实例.updatePrivPreview();
+    return 座舱交易状态();
+  }
+  async function 座舱交易成交() {
+    const 实例 = 座舱交易.实例;
+    if (!实例) return { ok: false, message: '交易未打开' };
+    座舱交易.待提交 = null; 座舱交易.失败 = null;
+    const 截获 = await 座舱截取提示(() => 实例.executePrivateTrade());
+    if (座舱交易.失败) return { ok: false, message: toText(座舱交易.失败.原因, '交易校验未通过') };
+    const 动作 = 座舱交易.待提交 ? normalizeInlineModuleAction(座舱交易.待提交, 'trade', {}) : null;
+    if (!动作) return { ok: false, message: 截获.ok ? '交易没有提交动作' : 截获.message };
+    座舱交易.待提交 = null;
+    return 座舱请求结果(await dispatchUiAiRequest(动作.playerInput, 动作.systemPrompt, {
+      requestKind: 动作.requestKind, patchOps: 动作.patchOps, privilegeID: 动作.privilegeID, privilegeCost: 动作.privilegeCost, 交易参数: 动作.交易参数,
+    }));
+  }
   async function 座舱执行动作(名称, 参数 = {}) {
     const 快照 = liveSnapshot;
     if (!快照 || !快照.rootData) return { ok: false, message: '状态未就绪' };
@@ -40371,6 +40442,7 @@
           return 座舱请求结果(await dispatchUiAiRequest(数据.playerInput, 数据.systemPrompt, { requestKind: 数据.requestKind, patchOps: 数据.patchOps }));
         }
         case 'trade': {
+          if (参数.op === 'private') return await 座舱交易成交();
           const 捕获 = await buildInlineTradeAction(快照, {
             动作: toText(参数.动作, '购买'), 目标: toText(参数.目标, ''), 物品: toText(参数.物品, ''),
             数量: Math.max(1, toNumber(参数.数量, 1)), 价格: Math.max(0, toNumber(参数.价格, 0)), 自动执行: true,
@@ -74163,7 +74235,8 @@ ${播报文本}
     try { const up = localStorage.getItem(AVATAR_KEY + name); if (up) return up; } catch (e) {}
     const p = portraitIndex[name]; return p ? portraitBase() + p.avatar : '';
   };
-  const standingSrc = name => { const p = portraitIndex[name]; return p ? portraitBase() + p.standing : ''; };
+  // 只有头像、没有立绘的角色（如从百科补的头像）不拼立绘地址
+  const standingSrc = name => { const p = portraitIndex[name]; return p && p.standing ? portraitBase() + p.standing : ''; };
   const miniAva = name => { const src = avatarSrc(name); return `<span class="mini-ava">${src ? `<img src="${esc(src)}" alt="">` : esc(String(name).slice(-2, -1) || name[0])}</span>`; };
 
   // ---------- 小部件 ----------
@@ -78553,14 +78626,71 @@ ${播报文本}
   window.COCKPIT.addRoute?.('workshop', () => { const c = window.COCKPIT.ctx(); Object.assign(c.state.ui, { wsExec: 'flow', wsFlow: '1', wsFor: '' }); window.COCKPIT.go('page-terminal', 'workshop'); return true; });
 
   const shortNum = (c, n) => n >= 1e8 ? `${+(n / 1e8).toFixed(2)}亿` : n >= 1e4 ? `${+(n / 1e4).toFixed(1)}万` : c.fmt(n);
+
+  // ---------- 私下交易 / 黑市（lwcs）：原项目交易模块常驻隐藏（私下页签），这里只做选择与显示 ----------
+  const tpWant = (c, v) => JSON.stringify([c.name, c.ch.状态?.位置, v ? v.kind : 'base', v ? (v.npc || v.store) : '']);
+  const tpCall = (c, payload, after) => { const ui = c.state.ui; ui.tpPending = true; window.COCKPIT.previewAsync('privateTrade', payload).then(st => { ui.tpPending = false; after(st); window.COCKPIT.refresh(); }); };
+  // 进交易页先挂一次（拿模块额外加入的商店，如特许兑换）；进私下 / 黑市场所时按对象重挂
+  const tpLoad = (c, v) => {
+    const ui = c.state.ui, want = tpWant(c, v);
+    if (ui.tpPending || ui.tpFor === want || !c.rt('__LWCS_ERA_RUNTIME_INTEGRATION_V1__')) return;
+    tpCall(c, { op: 'open', mode: v?.kind === 'black' ? 'black' : 'npc', npc: v?.npc || '', store: v?.store || '' }, st => { ui.tpFor = want; ui.tpReq = ''; ui.tps = st && st.key ? st : null; ui.tpErr = st && !st.key ? st.reason || '交易模块未就绪' : ''; });
+  };
+  const tradePrivate = (c, v, venues) => {
+    const ui = c.state.ui, act = ui.tpAct === '私下卖出' ? '私下卖出' : '私下买入', city = c.S.world.地点?.[String(c.ch.状态?.位置 || '').split('-').filter(x => x && x !== '斗罗大陆')[0]] || {};
+    tpLoad(c, v);
+    const pool = act === '私下卖出' ? c.ch.背包 : v.kind === 'black' ? city.商店?.[v.store]?.库存 : c.S.char?.[v.npc]?.背包;
+    const goods = Object.entries(pool || {}).map(([n, x]) => ({ id: n, name: n, stock: c.num(x?.库存 ?? x?.数量) || (x?.批次 || []).reduce((s2, b) => s2 + c.num(b.数量), 0), rate: x?.价格倍率 }));
+    const g = goods.find(x => x.id === ui.good) || goods[0], [cat, def] = g ? itemDefOf(c, g.name) : ['', null];
+    const qty = Math.max(1, Math.min(c.num(g?.stock) || 99, c.num(ui.tqty) || 1));
+    const base = g ? Math.max(1, Math.round(c.num(def?.基础价格) * (g.rate ?? 1)) || 1) : 1;
+    const [pFor, pAmt] = String(ui.tpPrice || '').split('|'), price = g && pFor === g.id && c.num(pAmt) > 0 ? c.num(pAmt) : base, step = Math.max(1, Math.ceil(price * .05));
+    // 只在请求的参数变了时同步给模块（模块可能修正数值，别来回打架）
+    const req = JSON.stringify([act, g?.name || '', qty, price]);
+    if (ui.tps && !ui.tpPending && ui.tpFor === tpWant(c, v) && ui.tpReq !== req) { ui.tpReq = req; tpCall(c, { op: 'set', changes: { action: act, item: g?.name || '', qty, price } }, st => { if (st) ui.tps = st; }); }
+    const tp = ui.tps && ui.tpFor === tpWant(c, v) ? ui.tps : null, who = v.kind === 'black' ? v.store : v.npc;
+    const blocked = !g ? '这里没有可交易的物品' : !tp ? (ui.tpErr || '正在准备交易') : tp.blocked ? (tp.reason || tp.attitude || '现在不能成交') : '';
+    const verb = act === '私下买入' ? '求购' : '推销';
+    return {
+      tag: 'CORE · MARKET',
+      left: `<div class="pad">${c.head('scale-balanced', '交易', 'Market', 'gd')}
+        <div class="venue-pick">${c.pick('venue', v.id, venues.map(x => ({ value: x.id, label: x.name, group: x.group || (x.id.startsWith('shop:') ? '本城商店' : '其他') })))}</div>
+        <div class="seg"><button class="key-s${act === '私下买入' ? ' on' : ''}" type="button" data-set="tpAct=私下买入">求购${c.hint(v.kind === 'black' ? '从黑市渠道买入' : `向${who}求购对方持有的物品`)}</button><button class="key-s${act === '私下卖出' ? ' on' : ''}" type="button" data-set="tpAct=私下卖出">推销${c.hint('把自己背包里的物品卖给对方')}</button></div>
+        ${goods.length ? `<div class="list q-list">${goods.map(x => `<button class="row${x === g ? ' on' : ''}" type="button" data-set="good=${c.esc(x.id)}" aria-current="${x === g}">${c.sock(v.icon)}<div><strong>${c.esc(x.name)}</strong><small>${act === '私下买入' ? (v.kind === 'black' ? '库存' : '对方持有') : '持有'} ${c.fmt(x.stock)}</small></div><span></span></button>`).join('')}</div>` : c.empty('box-open', act === '私下买入' ? `${who}没有可交易的物品` : '背包是空的')}
+      </div>`,
+      core: g ? `<div class="pad">
+        <div class="q-title">${c.sock(v.icon, 'gd')}<span class="chip">${c.esc(def?.品质 || cat || '物品')}</span><h2>${c.esc(g.name)}</h2><span class="q-state">${c.esc(`${verb} · ${who}`)}</span></div>
+        <section class="sec"><h3>物品说明<span class="en">Item</span></h3><p class="prose">${c.esc(def?.描述 || '没有收录这件物品的说明')}</p></section>
+        ${tp ? `<section class="sec"><h3>行情<span class="en">Quote</span></h3>${c.kv([['基础价', c.esc(tp.basePrice || '—')], ['市场调整', c.esc(tp.market || '—')], ['成交把握', `<span class="${tp.attitudeOk ? '' : 'warn-t'}">${c.esc(tp.attitude || '—')}</span>`]])}</section>` : ''}
+      </div>` : `<div class="pad sparse">${c.empty('handshake', '选一件物品')}</div>`,
+      right: `<div class="pad">${c.head('handshake', v.kind === 'black' ? '黑市' : '私下交易', 'Deal')}
+        ${g ? `<div class="checkout">
+          <div class="co-row"><span>数量</span><span class="dz-num co-qty"><button type="button" class="dz-step" data-set="tqty=${Math.max(1, qty - 1)}" aria-label="减少"><i class="fa-solid fa-minus"></i></button><b>${qty}</b><button type="button" class="dz-step" data-set="tqty=${qty + 1}" aria-label="增加"><i class="fa-solid fa-plus"></i></button></span></div>
+          <div class="co-row"><span>出价 / 件${c.hint('每步加减 5%；出价越贴近市场价越容易成交')}</span><span class="dz-num co-qty"><button type="button" class="dz-step" data-set="tpPrice=${c.esc(g.id)}|${Math.max(1, price - step)}" aria-label="降低出价"><i class="fa-solid fa-minus"></i></button><b>${c.fmt(price)}</b><button type="button" class="dz-step" data-set="tpPrice=${c.esc(g.id)}|${price + step}" aria-label="提高出价"><i class="fa-solid fa-plus"></i></button></span></div>
+          <div class="co-row total"><span>${act === '私下买入' ? '合计支付' : '合计收入'}</span><b>${c.esc(tp?.total || c.fmt(price * qty))}</b></div>
+        </div>
+        ${blocked ? `<span class="cta-wrap" data-hint="${c.esc(blocked)}"><button class="cta" type="button" disabled><i class="fa-solid fa-handshake"></i>${verb}</button></span>`
+          : `<button class="cta" type="button" data-confirm="${c.esc(`${verb}「${g.name}」×${qty}，出价 ${c.fmt(price)} / 件`)}" data-act='{"name":"trade","op":"private"}'><i class="fa-solid fa-handshake"></i>${verb}</button>`}` : ''}
+      </div>`,
+    };
+  };
   const trade = c => {
     const ui = c.state.ui, p = String(c.ch.状态?.位置 || '').split('-').filter(x => x && x !== '斗罗大陆');
     const city = c.S.world.地点?.[p[0]] || {}, shops = Object.entries(city.商店 || {}), auction = c.S.world.拍卖 || {}, coins = c.ch.财富 || {};
-    const venues = [...shops.map(([n, s]) => ({ id: 'shop:' + n, name: n.replace('分店', ''), icon: 'store', goods: Object.entries(s.库存 || {}).map(([g, x]) => ({ id: g, name: g, stock: x.库存, rate: x.价格倍率 ?? 1, rep: x.需求声望, req: x.需求 })) })),
+    // 商店列表（含特许兑换）取自任一已挂的交易会话；同一地点只在还没有会话时挂一次基础会话（私下场所有自己的会话，别来回重挂）
+    if (!/^(npc|black):/.test(String(ui.venue || '')) && (!ui.tps || JSON.parse(ui.tpFor || '[]')[1] !== c.ch.状态?.位置)) tpLoad(c, null);
+    // 本城商店 + 交易模块额外加入的商店（魂灵塔特许兑换）；黑市店单列；在场人物可私下交易
+    const extra = Object.entries(ui.tps?.storeGoods || {}).filter(([n]) => !(city.商店 || {})[n]).map(([n, goods]) => [n, { 库存: goods }]);
+    const locals = Object.entries(c.S.char || {}).filter(([n, x]) => n !== c.name && x?.状态?.位置 && x.状态.位置 === c.ch.状态?.位置).map(([n]) => n);
+    const venues = [...[...shops.filter(([n]) => !/黑市/.test(n)), ...extra].map(([n, s]) => ({ id: 'shop:' + n, name: n.replace('分店', ''), icon: 'store', goods: Object.entries(s.库存 || {}).map(([g, x]) => ({ id: g, name: g, stock: x.库存, rate: x.价格倍率 ?? 1, rep: x.需求声望, req: x.需求 })) })),
+      ...shops.filter(([n]) => /黑市/.test(n)).map(([n]) => ({ id: 'black:' + n, kind: 'black', store: n, name: n, icon: 'mask', group: '黑市' })),
+      ...locals.map(n => ({ id: 'npc:' + n, kind: 'private', npc: n, name: n, icon: 'handshake', group: '私下交易' })),
       ...(Object.keys(auction.拍品 || {}).length ? [{ id: 'auction', name: '拍卖行', icon: 'gavel', goods: Object.entries(auction.拍品).map(([g, a]) => ({ id: g, name: g, price: a.价格, grade: a.品级, cat: a.分类, story: a.背景 })) }] : []),
       // 出售：背包里的物品，价格先按定义基础价格作参考（原项目出售另按批次品质折算）
       { id: 'sell', name: '出售', icon: 'hand-holding-dollar', sell: true, goods: Object.entries(c.ch.背包 || {}).map(([g, r]) => ({ id: g, name: g, stock: c.num(r?.数量) || (r?.批次 || []).reduce((s, b) => s + c.num(b.数量), 0) || 1 })) }];
-    const v = venues.find(x => x.id === ui.venue) || venues[0], goods = v?.goods || [], g = goods.find(x => x.id === ui.good) || goods[0];
+    const v = venues.find(x => x.id === ui.venue) || venues[0];
+    if (v?.kind) return tradePrivate(c, v, venues);
+    const goods = v?.goods || [], g = goods.find(x => x.id === ui.good) || goods[0];
     const [cat, def] = g ? itemDefOf(c, g.name) : ['', null], unit = g ? Math.round(g.price ?? c.num(def?.基础价格) * (g.rate ?? 1)) : 0, cur = def?.默认货币 || '联邦币';
     const isBid = v?.id === 'auction', minBid = Math.ceil(unit * 1.05), [bidFor, bidAmt] = String(ui.tbid || '').split('|'), bid = isBid ? Math.max(minBid, bidFor === g?.id ? c.num(bidAmt) : 0) : 0, bidStep = Math.max(1, Math.ceil(unit * .05));
     const qty = isBid ? 1 : Math.max(1, Math.min(c.num(g?.stock) || 99, c.num(ui.tqty) || 1)), total = isBid ? bid : unit * qty, have = c.num(coins[cur]);
@@ -78572,7 +78702,7 @@ ${播报文本}
     return {
       tag: 'CORE · MARKET',
       left: `<div class="pad">${c.head('scale-balanced', '交易', 'Market', 'gd')}
-        <div class="venue-pick">${c.pick('venue', v?.id || '', venues.map(x => ({ value: x.id, label: x.name, group: x.id.startsWith('shop:') ? '本城商店' : '其他' })))}</div>
+        <div class="venue-pick">${c.pick('venue', v?.id || '', venues.map(x => ({ value: x.id, label: x.name, group: x.group || (x.id.startsWith('shop:') ? '本城商店' : '其他') })))}</div>
         ${goods.length ? `<div class="list q-list">${goods.map(x => `<button class="row${x === g ? ' on' : ''}" type="button" data-set="good=${c.esc(x.id)}" aria-current="${x === g}">${(q => q ? `<span class="chip">${c.esc(q)}</span>` : c.sock(v.icon))(x.grade || itemDefOf(c, x.name)[1]?.品质)}<div><strong>${c.esc(x.name)}</strong><small>${c.esc([x.cat || itemDefOf(c, x.name)[0], x.stock !== undefined ? `库存 ${c.fmt(x.stock)}` : ''].filter(Boolean).join(' · '))}</small></div><span class="end">${shortNum(c, Math.round(x.price ?? c.num(itemDefOf(c, x.name)[1]?.基础价格) * (x.rate ?? 1)))}</span></button>`).join('')}</div>` : c.empty('store', v ? '这里暂时没有货' : `${p[0] || '当地'}没有商店`)}
       </div>`,
       core: g ? `<div class="pad">
