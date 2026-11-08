@@ -143,11 +143,11 @@
   // ---------- 内联编辑（与原项目 makeInlineEditableValue / beginInlineEdit 同一语义）----------
   // 常驻：点击可编辑值即原地编辑；kind = string | number | enum | text（多行）。path 是存档根下的键路径数组。
   // 原型写回内存存档后重绘；移植时换成 replaceStatDataByEditor → 整根 MVU schema 校验 → replaceMvuData。
-  const ed = (text, path, o = {}) => `<span class="ie" tabindex="0" role="button" data-ie-path="${esc(JSON.stringify(path))}" data-ie-kind="${o.kind || 'string'}" data-ie-meta="${esc(JSON.stringify({ min: o.min, max: o.max, integer: o.integer, options: o.options, suffix: o.suffix }))}" data-ie-raw="${esc(String(o.raw ?? text ?? ''))}" title="点击编辑">${o.html ?? esc(String(text ?? ''))}</span>`;
+  const ed = (text, path, o = {}) => `<span class="ie" tabindex="0" role="button" data-ie-path="${esc(JSON.stringify(path))}" data-ie-kind="${o.kind || 'string'}" data-ie-meta="${esc(JSON.stringify({ min: o.min, max: o.max, integer: o.integer, options: o.options, suffix: o.suffix, renameKey: o.renameKey }))}" data-ie-raw="${esc(String(o.raw ?? text ?? ''))}" title="点击编辑">${o.html ?? esc(String(text ?? ''))}</span>`;
   const ctx = () => {
     if (!S.char[state.view]) state.view = S.sys.玩家名;
     const ch = S.char[state.view] || {};
-    return { rt, library, S, name: state.view, ch, st: ch.属性 || {}, isPlayer: state.view === S.sys.玩家名, player: S.sys.玩家名, souls: souls(ch), tickDate, rankTitle, yearTier, ringStage, ringMedal, ringColorClass, bar, count, sock, head, empty, kv, val, hint: hintMark, pick, esc, fmt, num, entries, blank, avatarSrc, standingSrc, miniAva, state, ed, P: (...p) => ['char', state.view, ...p] };
+    return { rt, library, S, name: state.view, ch, st: ch.属性 || {}, isPlayer: state.view === S.sys.玩家名, player: S.sys.玩家名, souls: souls(ch), tickDate, rankTitle, yearTier, ringStage, ringMedal, ringColorClass, bar, count, sock, head, empty, kv, val, hint: hintMark, pick, esc, fmt, num, entries, blank, avatarSrc, standingSrc, miniAva, state, ed, search, P: (...p) => ['char', state.view, ...p] };
   };
 
   // 写回：ops = [{ path, value }] 或 [{ path, del: true }]，path 是存档根下的键路径。
@@ -278,7 +278,16 @@
   }).observe($('.cockpit'));
   const isMobile = () => mobileNow;
 
+  // 列表检索（原项目角色目录 / 技能检索 / 图鉴检索）：输入框按同一面板里列表行的文字筛选，不重绘、不丢焦点；
+  // 关键词存在 ui.qs，面板重绘后重新套用
+  const search = (key, ph) => `<label class="q-search"><i class="fa-solid fa-magnifying-glass"></i><input type="search" data-qs="${esc(key)}" value="${esc(state.ui.qs?.[key] || '')}" placeholder="${esc(ph)}" aria-label="${esc(ph)}" autocomplete="off"></label>`;
+  const filterRows = inp => {
+    const q = inp.value.trim().toLowerCase(), pad = inp.closest('.pad') || inp.parentElement;
+    $$('.list .row, .roster .rc', pad).forEach(r => { r.hidden = !!q && !r.textContent.toLowerCase().includes(q); });
+  };
+  document.addEventListener('input', e => { const t = e.target.closest?.('[data-qs]'); if (!t) return; (state.ui.qs ||= {})[t.dataset.qs] = t.value; filterRows(t); });
   const charge = (root, quiet = false) => {
+    $$('[data-qs]', root).forEach(i => { if (i.value) filterRows(i); });
     if (quiet) {
       $$('.bar i[data-w]', root).forEach(i => { i.style.width = i.dataset.w + '%'; });
       $$('.dial .arc[data-off]', root).forEach(a => { a.style.strokeDashoffset = a.dataset.off; });
@@ -650,6 +659,16 @@
     const r = parseEdit(cur.kind, cur.meta, cur.input.value);
     const host = cur.box || cur.wrap;
     if (r.err) { let tip = host.querySelector('.ie-err'); if (!tip) { tip = document.createElement('small'); tip.className = 'ie-err'; host.append(tip); } tip.textContent = r.err; cur.input.focus(); return; }
+    // 改键名（如伤势部位）：path 指向条目本身，值是新键名——写到同级新键并删掉旧键，同名已存在则不改
+    if (cur.meta.renameKey) {
+      const name = String(r.value).trim(), parent = cur.path.slice(0, -1), old = cur.path.at(-1);
+      if (name && name !== old && getAt([...parent, name]) !== undefined) { let tip = host.querySelector('.ie-err'); if (!tip) { tip = document.createElement('small'); tip.className = 'ie-err'; host.append(tip); } tip.textContent = '已有同名条目'; cur.input.focus(); return; }
+      editing = null; cur.box?.remove();
+      if (!name || name === old) { cur.wrap.replaceWith(cur.el); flushPending(); return; }
+      cur.el.textContent = name; cur.wrap.replaceWith(cur.el);
+      write([{ path: [...parent, name], value: getAt(cur.path) }, { path: cur.path, del: true }]).then(() => { flushPending(); if (cur.inFloat) reproject(); });
+      return;
+    }
     editing = null; cur.box?.remove();
     if (r.value === getAt(cur.path)) { cur.wrap.replaceWith(cur.el); flushPending(); return; }
     // 先在界面上落下新值（原值处显示），写回完成后由桥接回灌刷新

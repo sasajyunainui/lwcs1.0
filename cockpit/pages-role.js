@@ -94,7 +94,7 @@
         <section class="soul-deck" aria-label="武魂与魂环">${c.souls.map((s, i) => soulCard(c, s, i)).join('')}${bloodCard(c)}</section>
         ${wounds.length
           ? `<div class="sec wound-sec"><div class="strip" style="color:#a3301f;background:linear-gradient(90deg,rgba(230,60,40,.16),transparent 70%);box-shadow:inset 2px 0 0 #d6452a"><i class="fa-solid fa-kit-medical"></i><span>伤势 ${wounds.length} 处</span><button class="key-s" type="button" style="margin-left:auto" data-wound-add><i class="fa-solid fa-plus"></i> 记录</button></div>
-             <div class="list">${wounds.map(([part, w]) => `<div class="row" style="cursor:default"><span class="chip">${c.ed(w.程度 || '轻', c.P('状态', '受伤部位', part, '程度'), { kind: 'enum', options: ['轻', '中', '重'] })}</span><div><strong>${c.esc(part)}</strong><small>${c.ed(w.描述 || '未描述', c.P('状态', '受伤部位', part, '描述'), { raw: w.描述 || '' })}</small></div><button class="key-s danger" type="button" data-del-path="${c.esc(JSON.stringify(c.P('状态', '受伤部位', part)))}"><i class="fa-solid fa-trash"></i></button></div>`).join('')}</div>${woundForm}</div>`
+             <div class="list">${wounds.map(([part, w]) => `<div class="row" style="cursor:default"><span class="chip">${c.ed(w.程度 || '轻', c.P('状态', '受伤部位', part, '程度'), { kind: 'enum', options: ['轻', '中', '重'] })}</span><div><strong>${c.ed(part, c.P('状态', '受伤部位', part), { renameKey: true })}</strong><small>${c.ed(w.描述 || '未描述', c.P('状态', '受伤部位', part, '描述'), { raw: w.描述 || '' })}</small></div><button class="key-s danger" type="button" data-del-path="${c.esc(JSON.stringify(c.P('状态', '受伤部位', part)))}"><i class="fa-solid fa-trash"></i></button></div>`).join('')}</div>${woundForm}</div>`
           : `<div class="strip wound-sec"><i class="fa-solid fa-shield-heart"></i><span>身体无伤 · 气息平稳</span><button class="key-s" type="button" style="margin-left:auto" data-wound-add><i class="fa-solid fa-plus"></i> 记录伤势</button></div>${woundForm}`}
       </div>`,
       left: `<div class="pad">
@@ -367,6 +367,7 @@
         <div class="list">${DIR_TABS.map(k => `<button class="row${k === tab ? ' on' : ''}" type="button" data-set="dtab2=${k}" aria-current="${k === tab}">${c.sock({ 全部: 'users', 同地: 'location-dot', 已结识: 'handshake-simple', 其他地点: 'map' }[k], k === tab ? 'gd' : '')}<div><strong>${k}</strong></div><span class="end">${pool[k].length}</span></button>`).join('')}</div>
       </div>`,
       core: `<div class="pad">
+        ${c.search('roster', '名字 / 身份 / 地点')}
         ${groups.filter(g => g[2].length).map(([h, en, arr]) => `<section class="sec"><h3>${c.esc(h)}${en ? `<span class="en">${en}</span>` : ''}</h3><div class="roster">${arr.map(card).join('')}</div></section>`).join('') || c.empty('users', `没有「${tab}」的角色`)}
       </div>`,
       right: `<div class="pad">${charDetail(c, sel)}</div>`,

@@ -222,6 +222,7 @@
     return {
       tag: 'CORE · CODEX',
       left: `<div class="pad">${c.head('book', '典籍', 'Codex', 'gd')}
+        ${c.search('codex', '技能名或来源')}
         <div class="pick-row">${c.pick('skg', grp, [{ value: '全部', label: `全部 · ${all.length}` }, ...have.map(g => ({ value: g, label: `${g} · ${all.filter(s => s.group === g).length}` }))])}</div>
         ${shown.length ? `<div class="list q-list">${shown.map(s => `<button class="row${s === sel ? ' on' : ''}" type="button" data-set="sksel=${c.esc(s.key)}" aria-current="${s === sel}">${s.ring ? c.ringMedal(s.ring, s.ring.slot.replace(/\D/g, ''), true) : c.sock(s.group === '装备技能' ? 'shield-halved' : s.group === '魂骨附带' ? 'bone' : 'book')}<div><strong>${c.esc(s.魂技名)}</strong><small>${c.esc(s.from)}</small></div><span></span></button>`).join('')}</div>` : c.empty('book', '还没有任何技能', '附环、装备或自创后会出现在这里')}
       </div>`,

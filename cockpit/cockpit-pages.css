@@ -578,3 +578,9 @@ div.rail-item{cursor:default}
 .idf-dirs .key-s.on,.dzf .act-row .key-s.on{background:linear-gradient(180deg,#5aa5ff,#1a5ad6);color:#fff;box-shadow:0 2px 0 #0d3384}
 .callable{align-items:center;flex-wrap:wrap;gap:.3em}
 .callable .key-s.on{background:linear-gradient(180deg,#5aa5ff,#1a5ad6);color:#fff;box-shadow:0 2px 0 #0d3384}
+/* 列表检索框：放大镜 + 输入；被筛掉的行隐藏 */
+.q-search{display:flex;align-items:center;gap:.45em;padding:.35em .6em;margin:.1em 0 .2em;background:#fff;box-shadow:inset 0 0 0 1px #c3cdda,inset 0 2px 3px rgba(27,42,74,.08)}
+.q-search i{color:#7d8aa3;font-size:.85em}
+.q-search input{flex:1;min-width:0;border:0;outline:none;background:none;font:inherit;font-size:.88em;font-weight:700;color:var(--ink)}
+.q-search:focus-within{box-shadow:inset 0 0 0 1.5px var(--blue),0 0 0 3px rgba(47,124,246,.18)}
+.list .row[hidden],.roster .rc[hidden]{display:none!important}

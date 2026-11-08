@@ -133,22 +133,26 @@
     const f = list.find(x => x.name === c.state.ui.fsel) || list[0], st = f?.战力统计 || {}, me = f && mineMap[f.name];
     const desc = f ? String(f.描述 || '').replace(/[#*]/g, '').split('\n').map(s => s.trim()).filter(Boolean).join(' ') : '';
     const rel = f ? Object.entries(f.关系 || {}) : [], editable = f && c.S.org?.[f.name];
+    // 存档里的势力（org）可改，同原项目势力档案：状态、上级、影响力、规模、战力统计、对外关系；内置资料只读
+    const fe = (text, tail, o = {}) => editable ? c.ed(text, ['org', f.name, ...tail], o) : c.esc(text);
+    const fn = (shown, tail, raw) => editable ? c.ed(shown, ['org', f.name, ...tail], { kind: 'number', integer: true, min: 0, raw: c.num(raw) }) : shown;
     return {
       tag: 'CORE · FACTIONS',
       left: `<div class="pad">${c.head('chess-rook', '势力', 'Factions', 'gd')}
-        <div class="pick-row">${c.pick('ftype', ftype, ['全部', ...types].map(t => ({ value: t, label: `${t} · ${t === '全部' ? all.length : all.filter(x => (x.类型 || '其他') === t).length}` })))}</div>
+        ${c.search('faction', '势力名')}<div class="pick-row">${c.pick('ftype', ftype, ['全部', ...types].map(t => ({ value: t, label: `${t} · ${t === '全部' ? all.length : all.filter(x => (x.类型 || '其他') === t).length}` })))}</div>
         <div class="list q-list">${list.map(x => `<button class="row${x === f ? ' on' : ''}" type="button" data-set="fsel=${c.esc(x.name)}" aria-current="${x === f}"><span class="chip${mineMap[x.name] ? ' gold' : ''}">${mineMap[x.name] ? '所属' : c.esc(x.状态 || x.类型 || '—')}</span><div><strong>${c.esc(x.name)}</strong><small>${c.esc(x.类型 || '')}</small></div><span class="end">${wan(c, x.影响力)}</span></button>`).join('')}</div>
       </div>`,
       core: f ? `<div class="pad">
-        <div class="q-title">${c.sock('chess-rook', 'gd')}<span class="chip">${c.esc(f.类型 || '势力')}</span><h2>${c.esc(f.name)}</h2><span class="q-state">${c.esc(f.状态 || '—')}</span></div>
-        ${f.上级势力 && f.上级势力 !== '无' ? `<div class="q-from">上级 ${c.esc(f.上级势力)}</div>` : ''}
-        <div class="tiles four">${tile(c, 'crown', wan(c, f.影响力), '影响力')}${tile(c, 'users', wan(c, f.规模), '规模')}${tile(c, 'bolt', c.fmt(st.极限斗罗 || 0), '极限斗罗')}${tile(c, 'star', c.fmt(st.超级斗罗 || 0), '超级斗罗')}</div>
+        <div class="q-title">${c.sock('chess-rook', 'gd')}<span class="chip">${c.esc(f.类型 || '势力')}</span><h2>${c.esc(f.name)}</h2><span class="q-state">${fe(f.状态 || '—', ['状态'], { raw: f.状态 || '' })}</span></div>
+        ${editable || (f.上级势力 && f.上级势力 !== '无') ? `<div class="q-from">上级 ${fe(f.上级势力 && f.上级势力 !== '无' ? f.上级势力 : '无', ['上级势力'], { raw: f.上级势力 || '' })}</div>` : ''}
+        <div class="tiles four">${tile(c, 'crown', fn(wan(c, f.影响力), ['影响力'], f.影响力), '影响力')}${tile(c, 'users', fn(wan(c, f.规模), ['规模'], f.规模), '规模')}${tile(c, 'bolt', fn(c.fmt(st.极限斗罗 || 0), ['战力统计', '极限斗罗'], st.极限斗罗), '极限斗罗')}${tile(c, 'star', fn(c.fmt(st.超级斗罗 || 0), ['战力统计', '超级斗罗'], st.超级斗罗), '超级斗罗')}</div>
+        ${editable ? `<div class="chips-row"><span class="lbl">封号斗罗</span><span class="chip s">${fn(c.fmt(st.封号斗罗 || 0), ['战力统计', '封号斗罗'], st.封号斗罗)}</span></div>` : ''}
         ${!c.blank(f.现状描述) ? `<section class="sec"><h3>现状<span class="en">Now</span></h3><p class="prose">${c.esc(f.现状描述)}</p></section>` : ''}
         <section class="sec"><h3>简介<span class="en">Profile</span></h3><p class="prose">${c.esc(desc || '没有收录简介')}</p></section>
       </div>` : `<div class="pad sparse">${c.empty('chess-rook', '没有势力资料')}</div>`,
       right: `<div class="pad">${c.head('handshake', '关系', 'Relations')}
         ${me ? `<div class="relic-card">${c.sock('id-badge', 'gd')}<div><strong>${c.esc(me.身份 || '成员')}</strong><small>权限级 ${c.fmt(me.权限级 || 0)}</small></div><span class="q-state">所属</span></div>` : ''}
-        ${rel.length ? `<div class="list q-list${me ? ' natural' : ''}">${rel.map(([k, v]) => `<div class="row" style="cursor:default"><span class="chip">${c.esc(typeof v === 'object' ? v.态度 || v.关系 || '—' : v)}</span><div><strong>${c.esc(k)}</strong>${editable ? '' : '<small>内置资料</small>'}</div><span></span></div>`).join('')}</div>` : c.empty('handshake', '没有记录对外态度')}
+        ${rel.length ? `<div class="list q-list${me ? ' natural' : ''}">${rel.map(([k, v]) => `<div class="row" style="cursor:default"><span class="chip">${typeof v === 'object' ? fe(v.态度 || v.关系 || '—', ['关系', k, v.态度 !== undefined || v.关系 === undefined ? '态度' : '关系'], { raw: v.态度 ?? v.关系 ?? '' }) : fe(v, ['关系', k], { raw: v })}</span><div><strong>${c.esc(k)}</strong>${editable ? '' : '<small>内置资料</small>'}</div><span></span></div>`).join('')}</div>` : c.empty('handshake', '没有记录对外态度')}
         ${me ? donate(c, f.name) : ''}
       </div>`,
     };
@@ -227,6 +231,7 @@
     return {
       tag: 'CORE · BESTIARY', wide: list.length ? '' : 'l', railL: `<div class="rail">${c.sock('dragon')}<b>0</b><small>图鉴</small></div>`,
       left: `<div class="pad">${c.head('dragon', '图鉴', 'Bestiary', 'gd')}
+        ${c.search('beast', '编号 / 名称')}
         ${list.length ? `<div class="list q-list">${list.map(([k, x]) => `<button class="row${k === key ? ' on' : ''}" type="button" data-set="bsel=${c.esc(k)}"><span class="chip">${c.esc(x.年限档 || '—')}</span><div><strong>${c.esc(x.名称 || k)}</strong><small>对标 ${c.fmt(x.对标等级)} 级</small></div><span></span></button>`).join('')}</div>` : c.empty('dragon', '还没有收录魂兽', '遭遇或击败魂兽后会自动收录')}
       </div>`,
       core: b ? `<div class="pad">

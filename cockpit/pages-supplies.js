@@ -311,7 +311,7 @@
     return {
       tag: 'CORE · INVENTORY', wide: items.length ? '' : 'l', railL: `<div class="rail">${c.sock('box-open')}<b>0</b><small>背包</small></div>`,
       left: `<div class="pad">${c.head('box-open', '背包', 'Inventory', 'gd', '<button class="key-s mini" type="button" data-idf-open="" data-hint="新建一件物品并登记到物品库"><i class="fa-solid fa-plus"></i> 新建</button>')}
-        <div class="pick-row">${c.pick('cat', cat, PACK_CATS.map(k => ({ value: k, label: `${k} · ${k === '全部' ? items.length : items.filter(([n]) => kindOf(n) === k).length}` })))}</div>
+        ${c.search('pack', '物品名')}<div class="pick-row">${c.pick('cat', cat, PACK_CATS.map(k => ({ value: k, label: `${k} · ${k === '全部' ? items.length : items.filter(([n]) => kindOf(n) === k).length}` })))}</div>
         ${shown.length ? `<div class="list q-list">${shown.map(([n, it]) => `<button class="row${sel && n === sel[0] ? ' on' : ''}" type="button" data-set="itemsel=${c.esc(n)}">${c.sock('cube')}<div><strong>${c.esc(n)}</strong><small>${c.esc(kindOf(n))}${it.批次?.[0]?.品质 ? ` · ${c.esc(it.批次[0].品质)}` : ''}</small></div><span class="end">×${c.fmt(it.数量)}</span></button>`).join('')}</div>` : c.empty('box-open', items.length ? `没有「${cat}」类物品` : '背包是空的', items.length ? '' : '获得的物品会出现在这里')}
       </div>`,
       core: c.state.ui.idf ? idfEditor(c) : sel ? itemCore(c, sel[0]) : `<div class="pad sparse">${c.empty('box-open', '背包是空的')}<div class="act-row" style="justify-content:center"><button class="key-s" type="button" data-go="page-terminal/trade"><i class="fa-solid fa-store"></i> 去交易</button><button class="key-s" type="button" data-idf-open=""><i class="fa-solid fa-plus"></i> 新建物品</button></div></div>`,
