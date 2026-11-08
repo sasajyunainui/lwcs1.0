@@ -22,7 +22,15 @@
 /* 桌面中屏身份行窄时两行均分 */
 @container cockpit (min-width:701px){.home-top .title-line{white-space:normal;text-wrap:balance}.home-top .title-line .nw{white-space:nowrap}}
 /* 窄桌面（中屏约 400px）：总览顶部改上下两段——身份区占整宽，四条资源条两列两行，不再左右挤 */
-@container cockpit (min-width:701px) and (max-width:999px){.home-top{grid-template-columns:1fr;gap:.55em}.home-top .meters{grid-template-columns:1fr 1fr;gap:.35em 1em}}
+@container cockpit (min-width:701px) and (max-width:999px){
+  .home-top{grid-template-columns:1fr;gap:.55em}.home-top .meters{grid-template-columns:1fr 1fr;gap:.35em 1em}
+  /* 中屏变宽后魂环随宽放大会顶到伤势栏：窄桌面魂环收一档 */
+  .soul-card{--rsz:clamp(56px,15cqw,80px)}
+  /* 侧屏约 190px：钱包单列横排、结算标签不折行 */
+  .wing .tiles.wallet{grid-template-columns:1fr}
+  .wing .tiles.wallet .tile:last-child:nth-child(odd){grid-column:auto}
+  .wing .co-row>span:first-child{white-space:nowrap;flex:none}
+}
 /* 座舱较窄：标题英文副标题全隐藏，属性训练增量可折两行，任务页签去内边距、字号收小 */
 @container cockpit (min-width:701px) and (max-width:879px){
   .h .en{display:none}
