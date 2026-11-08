@@ -123,7 +123,7 @@
     const btn = p.here
       ? `<button class="key-s" type="button" data-confirm="${c.esc(`进入升灵台（消耗 ${ticket}）`)}" data-act="${c.esc(JSON.stringify({ name: 'ascension', ticket }))}"><i class="fa-solid fa-place-of-worship"></i> 进入升灵台</button>`
       : `<span class="cta-wrap" data-hint="升灵台只能从传灵塔入口进入"><button class="key-s" type="button" disabled><i class="fa-solid fa-place-of-worship"></i> 进入升灵台</button></span>`;
-    return `<div class="groove"></div>${list.length > 1 ? `<div class="pick-row">${c.pick('ascTicket', ticket, list)}</div>` : ''}<div class="act-row">${btn}</div>`;
+    return `<section class="sec"><h3>升灵台<span class="en">Ascension</span></h3>${list.length > 1 ? `<div class="pick-row">${c.pick('ascTicket', ticket, list)}</div>` : ''}<div class="act-row">${btn}</div></section>`;
   };
   const trial = c => {
     const tower = c.ch.魂灵塔记录 || {}, top = c.num(tower.最高层), next = Math.min(TOWER_TOP, top + 1), half = tower.当前五折魂灵 || {};
@@ -156,9 +156,9 @@
         <section class="sec"><h3>组队规则${c.hint(`队伍至多 ${TEAM.size} 人；成员须在 ${TEAM.age} 岁以下，年龄差不超过 ${TEAM.gap} 岁；队友须是已建档角色。`)}</h3>
           <div class="chips-row"><span class="chip s">≤ ${TEAM.size} 人</span><span class="chip s">≤ ${TEAM.age} 岁</span><span class="chip s">年龄差 ≤ ${TEAM.gap}</span></div></section>
         ${half.名称 && !half.已使用 ? '<button class="key-s" type="button" data-go="page-terminal/trade"><i class="fa-solid fa-store"></i> 去特许兑换</button>' : ''}
+        ${ascend(c)}
         ${tickets ? `<button class="cta" type="button" data-trial-action="climb" data-floor="${next}" data-ticket="${c.esc(ticketKey)}"><i class="fa-solid fa-dungeon"></i>冲塔 · 第 ${next} 层</button>`
           : `<button class="cta" type="button" data-go="page-terminal/trade"><i class="fa-solid fa-ticket"></i>购买门票</button>`}
-        ${ascend(c)}
       </div>`,
     };
   };

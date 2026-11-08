@@ -386,6 +386,8 @@ div.spirit-link:hover .spirit-card,div.spirit-link.on .spirit-card{box-shadow:in
 .q-tabs .key-s b{font:800 .82em Bahnschrift,sans-serif;padding:0 .35em;margin-left:.1em;background:rgba(30,48,80,.1);border-radius:2px}
 .q-tabs .key-s.on b{background:rgba(255,255,255,.25)}
 .q-list{flex:1 1 auto;min-height:0;overflow:auto}
+/* 翼里还有下文（如捐献表单）时列表按内容撑开，由整翼滚动，不被挤成一行 */
+.q-list.natural{flex:none;overflow:visible}
 .q-list .row{grid-template-columns:auto minmax(0,1fr) auto}
 .q-list .row strong,.q-list .row small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .q-list .end{font-size:.8em;font-weight:800;color:var(--ink3);white-space:nowrap}
