@@ -39103,7 +39103,7 @@
             )).catch(() => {});
             return { ok: true, message: `已抵达${规划.target}` };
           }
-          const 结果 = await window.__sheepMapBridge.travelToNode(规划.mapNode, { method: toText(规划.method, '') });
+          const 结果 = await window.__sheepMapBridge.travelToNode(规划.mapNode, { method: toText(规划.method, ''), followUp: 规划.mode === 'map' ? toText(参数.then, '') : '' });
           if (结果 && 结果.ok === false) return { ok: false, message: toText(结果.reason, '移动未结算') };
           return { ok: true, message: 规划.mode === 'via' ? `已出发前往${规划.via}` : `已出发前往${规划.target}` };
         }

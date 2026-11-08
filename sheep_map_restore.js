@@ -7927,8 +7927,16 @@ ${logMsg}
         reason: toText(deepGet(request, 'costs.reason', ''), ''),
         request: cloneJsonValue(request),
         ...(options && options.listMethods ? { methods: 列出节点可选移动方式(preview.distance) } : {}),
+        followUps: 列出节点到达后动作(targetItem),
       };
     }) || { ok: false, reason: '地图节点未匹配到当前可选项。', reasonCode: 'map_node_unresolved' };
+  }
+
+  // 到达后可接着执行的节点动作（同地图节点面板的动作槽；移动 / 查看 / 进入不算）
+  function 列出节点到达后动作(item) {
+    const 列表 = (Array.isArray(item && item.actionSlots) && item.actionSlots.length ? item.actionSlots : (item && item.interactions) || [])
+      .map(动作 => toText(动作, '')).filter(动作 => 动作 && !['travel', 'travel_anchor', 'inspect', 'enter'].includes(动作));
+    return [...new Set(列表)].map(action => ({ action, label: getNodeInteractionLabel(action) }));
   }
 
   async function travelToNode(nodeName, options = {}) {
@@ -7968,7 +7976,10 @@ ${logMsg}
       syncInteractiveMapUI({ center: false, updateInfo: true });
       return { ok: false, reason: request.costs.reason || '资源不足，无法前往该节点。', request };
     }
-    const 结算 = await commitMapTravel();
+    // 到达后接着执行的动作（原项目「移动后待执行动作」）：结算到达后由地图按该节点动作分发
+    const 后续动作 = toText(options && options.followUp, '');
+    if (后续动作) 设置移动后待执行动作(后续动作, targetItem);
+    const 结算 = await commitMapTravel(后续动作 ? { followUpAction: 后续动作, 自动执行后续动作: true } : undefined);
     if (结算 && 结算.ok === false) return { ...结算, request };
     return { ok: true, committed: true, ...(结算 || {}), request };
   }

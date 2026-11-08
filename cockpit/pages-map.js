@@ -324,9 +324,13 @@
       ? `<span class="lbl">移动方式${c.hint('只列出这段路能用的方式；用不了的注明原因。')}</span><div class="pick-row">${c.pick('travelMethod', pick.method, methods.map(m => ({ value: m.method, label: m.canAfford ? `${m.method} · ${m.duration || ''}` : `${m.method}（${m.reason || '不可用'}）`, hint: m.canAfford ? `消耗 ${m.costText || '无'}` : m.reason })))}</div>`
       : '';
     const info = c.kv([['方式', c.esc(pick.method || '步行')], ['耗时', c.esc(pick.duration || '—')], ['消耗', c.esc(pick.costText || '无消耗')]]);
+    // 到达后接着做（原项目「移动后待执行动作」）：只给直达的星图节点，选项是该节点自己的动作槽
+    const thens = p.mode === 'map' && Array.isArray(p.followUps) ? p.followUps : [];
+    const then = (ui.travelThenFor === dest && thens.find(t => t.action === ui.travelThen)) || null;
+    const thenSel = thens.length ? `<span class="lbl">到达后${c.hint('到达后接着在目的地执行这个动作。')}</span><div class="pick-row">${c.pick('travelThen', then ? then.action : '', [{ value: '', label: '只移动' }, ...thens.map(t => ({ value: t.action, label: t.label }))])}</div>` : '';
     const btn = pick.canAfford === false ? lockBtn(pick.reason || '现在去不了')
-      : `<button class="cta" type="button" data-confirm="${c.esc(`前往「${target}」：${[pick.method, pick.duration && `约 ${pick.duration}`, pick.costText && `消耗 ${pick.costText}`].filter(Boolean).join('，')}`)}" data-act="${c.esc(JSON.stringify(ptOf(dest) ? { name: 'travel', point: ptOf(dest), method: pick.method } : { name: 'travel', node: dest, path: destPath(c, dest), method: p.mode === 'local' ? '' : pick.method }))}"><i class="fa-solid fa-person-walking-arrow-right"></i>${p.mode === 'via' ? `前往${c.esc(p.via)}` : '出发'}</button>`;
-    return `<div class="warn" style="color:var(--ink2);background:rgba(47,124,246,.1);box-shadow:inset 2px 0 0 var(--blue)"><i class="fa-solid fa-route"></i><span>${lead}</span></div>${sel}${info}${btn}`;
+      : `<button class="cta" type="button" data-confirm="${c.esc(`前往「${target}」：${[pick.method, pick.duration && `约 ${pick.duration}`, pick.costText && `消耗 ${pick.costText}`].filter(Boolean).join('，')}${then ? `，到达后${then.label}` : ''}`)}" data-act="${c.esc(JSON.stringify(ptOf(dest) ? { name: 'travel', point: ptOf(dest), method: pick.method } : { name: 'travel', node: dest, path: destPath(c, dest), method: p.mode === 'local' ? '' : pick.method, then: then ? then.action : '' }))}"><i class="fa-solid fa-person-walking-arrow-right"></i>${p.mode === 'via' ? `前往${c.esc(p.via)}` : '出发'}</button>`;
+    return `<div class="warn" style="color:var(--ink2);background:rgba(47,124,246,.1);box-shadow:inset 2px 0 0 var(--blue)"><i class="fa-solid fa-route"></i><span>${lead}</span></div>${sel}${info}${thenSel}${btn}`;
   };
   // 在坐标处新增地点（原项目地图维护「新增地点」）：类型同原项目模板；普通地点 / 城市可附带商店、工坊
   const addHere = (c, pt) => {
@@ -385,6 +389,11 @@
     };
   };
 
+  document.addEventListener('picker:change', e => {
+    if (e.detail.path !== 'travelThen') return;
+    const ui = window.COCKPIT.ctx().state.ui; ui.travelThenFor = ui.dest; ui.travelThen = e.detail.value;
+    window.COCKPIT.refresh();
+  });
   document.addEventListener('picker:change', e => {
     if (e.detail.path !== 'travelMethod') return;
     const ui = window.COCKPIT.ctx().state.ui; ui.travelMethodFor = ui.dest; ui.travelMethod = e.detail.value;
