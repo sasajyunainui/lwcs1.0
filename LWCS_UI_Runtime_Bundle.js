@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:6b481875f040450063d17bf37035620b49d268944fac46263b4e04b542d536fc|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:cc42c46c4ef317a0c40709d2b3c23bdda67e233fffbf1976891c8984ac0b7fbc|cockpit/pages-role.js:11e3f30178d7d4a98dc38b4e9d88f194ed71089f0993e6f4ed65b77eeb78f213|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:d35728afb9ae39fa0c94f77b83df40149167487d7a8ec69072c495acecaf8e19|cockpit/pages-ability.js:5da4da4cf9dee034e8246e693a2d73aa7e472dc6487cecaa453bb25b576ceefc|cockpit/pages-supplies.js:bfda775de1b4e3d3c2f253a11ae1d7b3f263ddc35d68df165df82e7a4c6ad43f|cockpit/pages-map.js:161545076c81469f294f8462bb581ca2c990cd078f5075b2c88cc030d526bbd4|cockpit/pages-world.js:ca5dc37c07a41d3603ee2c089f84171de2b47453d125868dc3dc361fa9449723|cockpit/pages-terminal.js:4d51455d552329d8cada13b0f1d4336d30962e5d7dae64ae93d9a8bc0a9395a6|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:289fe455da8dfe0c8f42e39afaaa254d1c724b00f602e5094ca7626b17151097|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:0f069c40932c449e11a384911a2d0b182c3bd6574f6fc4411e8411188a17b7f4|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:cc42c46c4ef317a0c40709d2b3c23bdda67e233fffbf1976891c8984ac0b7fbc|cockpit/pages-role.js:11e3f30178d7d4a98dc38b4e9d88f194ed71089f0993e6f4ed65b77eeb78f213|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:d35728afb9ae39fa0c94f77b83df40149167487d7a8ec69072c495acecaf8e19|cockpit/pages-ability.js:5da4da4cf9dee034e8246e693a2d73aa7e472dc6487cecaa453bb25b576ceefc|cockpit/pages-supplies.js:bfda775de1b4e3d3c2f253a11ae1d7b3f263ddc35d68df165df82e7a4c6ad43f|cockpit/pages-map.js:f5b96e3ff3473f44b0df11259c791d84ae81b423911485d4721cf0a00cf105bf|cockpit/pages-world.js:ca5dc37c07a41d3603ee2c089f84171de2b47453d125868dc3dc361fa9449723|cockpit/pages-terminal.js:4d51455d552329d8cada13b0f1d4336d30962e5d7dae64ae93d9a8bc0a9395a6|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:289fe455da8dfe0c8f42e39afaaa254d1c724b00f602e5094ca7626b17151097|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -40717,7 +40717,7 @@
             )).catch(() => {});
             return { ok: true, message: `已抵达${规划.target}` };
           }
-          const 结果 = await window.__sheepMapBridge.travelToNode(规划.mapNode, { method: toText(规划.method, '') });
+          const 结果 = await window.__sheepMapBridge.travelToNode(规划.mapNode, { method: toText(规划.method, ''), followUp: 规划.mode === 'map' ? toText(参数.then, '') : '' });
           if (结果 && 结果.ok === false) return { ok: false, message: toText(结果.reason, '移动未结算') };
           return { ok: true, message: 规划.mode === 'via' ? `已出发前往${规划.via}` : `已出发前往${规划.target}` };
         }
@@ -78585,9 +78585,13 @@ ${播报文本}
       ? `<span class="lbl">移动方式${c.hint('只列出这段路能用的方式；用不了的注明原因。')}</span><div class="pick-row">${c.pick('travelMethod', pick.method, methods.map(m => ({ value: m.method, label: m.canAfford ? `${m.method} · ${m.duration || ''}` : `${m.method}（${m.reason || '不可用'}）`, hint: m.canAfford ? `消耗 ${m.costText || '无'}` : m.reason })))}</div>`
       : '';
     const info = c.kv([['方式', c.esc(pick.method || '步行')], ['耗时', c.esc(pick.duration || '—')], ['消耗', c.esc(pick.costText || '无消耗')]]);
+    // 到达后接着做（原项目「移动后待执行动作」）：只给直达的星图节点，选项是该节点自己的动作槽
+    const thens = p.mode === 'map' && Array.isArray(p.followUps) ? p.followUps : [];
+    const then = (ui.travelThenFor === dest && thens.find(t => t.action === ui.travelThen)) || null;
+    const thenSel = thens.length ? `<span class="lbl">到达后${c.hint('到达后接着在目的地执行这个动作。')}</span><div class="pick-row">${c.pick('travelThen', then ? then.action : '', [{ value: '', label: '只移动' }, ...thens.map(t => ({ value: t.action, label: t.label }))])}</div>` : '';
     const btn = pick.canAfford === false ? lockBtn(pick.reason || '现在去不了')
-      : `<button class="cta" type="button" data-confirm="${c.esc(`前往「${target}」：${[pick.method, pick.duration && `约 ${pick.duration}`, pick.costText && `消耗 ${pick.costText}`].filter(Boolean).join('，')}`)}" data-act="${c.esc(JSON.stringify(ptOf(dest) ? { name: 'travel', point: ptOf(dest), method: pick.method } : { name: 'travel', node: dest, path: destPath(c, dest), method: p.mode === 'local' ? '' : pick.method }))}"><i class="fa-solid fa-person-walking-arrow-right"></i>${p.mode === 'via' ? `前往${c.esc(p.via)}` : '出发'}</button>`;
-    return `<div class="warn" style="color:var(--ink2);background:rgba(47,124,246,.1);box-shadow:inset 2px 0 0 var(--blue)"><i class="fa-solid fa-route"></i><span>${lead}</span></div>${sel}${info}${btn}`;
+      : `<button class="cta" type="button" data-confirm="${c.esc(`前往「${target}」：${[pick.method, pick.duration && `约 ${pick.duration}`, pick.costText && `消耗 ${pick.costText}`].filter(Boolean).join('，')}${then ? `，到达后${then.label}` : ''}`)}" data-act="${c.esc(JSON.stringify(ptOf(dest) ? { name: 'travel', point: ptOf(dest), method: pick.method } : { name: 'travel', node: dest, path: destPath(c, dest), method: p.mode === 'local' ? '' : pick.method, then: then ? then.action : '' }))}"><i class="fa-solid fa-person-walking-arrow-right"></i>${p.mode === 'via' ? `前往${c.esc(p.via)}` : '出发'}</button>`;
+    return `<div class="warn" style="color:var(--ink2);background:rgba(47,124,246,.1);box-shadow:inset 2px 0 0 var(--blue)"><i class="fa-solid fa-route"></i><span>${lead}</span></div>${sel}${info}${thenSel}${btn}`;
   };
   // 在坐标处新增地点（原项目地图维护「新增地点」）：类型同原项目模板；普通地点 / 城市可附带商店、工坊
   const addHere = (c, pt) => {
@@ -78646,6 +78650,11 @@ ${播报文本}
     };
   };
 
+  document.addEventListener('picker:change', e => {
+    if (e.detail.path !== 'travelThen') return;
+    const ui = window.COCKPIT.ctx().state.ui; ui.travelThenFor = ui.dest; ui.travelThen = e.detail.value;
+    window.COCKPIT.refresh();
+  });
   document.addEventListener('picker:change', e => {
     if (e.detail.path !== 'travelMethod') return;
     const ui = window.COCKPIT.ctx().state.ui; ui.travelMethodFor = ui.dest; ui.travelMethod = e.detail.value;
