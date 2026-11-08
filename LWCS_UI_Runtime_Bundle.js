@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:c49ae1d88090bc7dbc6bf266c07dc4684a6bd33b5244865298aefb66fe5ec9c1|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:14da65b51faac6fd6b1f52c6441c6e394227cf7ac8a2bd5df17ba53610aa073a|cockpit/pages-role.js:a0fa73086bf227c7b6e658a5d0097aeb4a2731610dd9e0e01ac98fc4341a242c|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:afe7c39c6437be94149d9d9d4809c3e198b189241a8997297cba7329a9f619ba|cockpit/pages-ability.js:c692feb0aaebd6f28360829098826f576cd660710001d30dd9bc5341dac9aa72|cockpit/pages-supplies.js:2c20652e62132ecf1fcdc8da32cf339e5128de56f21d9337bfafc199d63611f7|cockpit/pages-map.js:bb5b1f07a1035a0294cdb32fbc61c97c36a49946297500421647eee91fe093da|cockpit/pages-world.js:53d47819477ad0b7398941a27519ecbf1e668b1462a013f0601efb57f91507d5|cockpit/pages-terminal.js:1cb54fc26a12e9a82171ea7500160361ea3db3d3439238fc7d916f867dfa8734|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:289fe455da8dfe0c8f42e39afaaa254d1c724b00f602e5094ca7626b17151097|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:234ba4e34b92d03067ec48af910df0644ca21257f1158c5fc901c5a8a838b0a9|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:14da65b51faac6fd6b1f52c6441c6e394227cf7ac8a2bd5df17ba53610aa073a|cockpit/pages-role.js:a0fa73086bf227c7b6e658a5d0097aeb4a2731610dd9e0e01ac98fc4341a242c|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:afe7c39c6437be94149d9d9d4809c3e198b189241a8997297cba7329a9f619ba|cockpit/pages-ability.js:c692feb0aaebd6f28360829098826f576cd660710001d30dd9bc5341dac9aa72|cockpit/pages-supplies.js:2c20652e62132ecf1fcdc8da32cf339e5128de56f21d9337bfafc199d63611f7|cockpit/pages-map.js:bb5b1f07a1035a0294cdb32fbc61c97c36a49946297500421647eee91fe093da|cockpit/pages-world.js:53d47819477ad0b7398941a27519ecbf1e668b1462a013f0601efb57f91507d5|cockpit/pages-terminal.js:d009f25364208fcd87d85700255131b2e8947569284394a7996ef0584171e9e3|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:289fe455da8dfe0c8f42e39afaaa254d1c724b00f602e5094ca7626b17151097|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -40095,7 +40095,7 @@
   // 座舱挂在 #mvu-unified-mount 里、盖住旧壳层（旧壳层隐藏但保留占位，挂载点尺寸不变）。
   // 旧壳层只在下列原详情面打开时让出画面（战斗终端、魂环待选确认、私密档案），关闭后回到座舱；
   // 其他旧详情面（旧座舱各页都是详情面，刷新后会恢复上次打开的那页）在座舱接管时清掉。
-  const 座舱让位详情键 = new Set([BATTLE_INLINE_PREVIEW_KEY, '私密档案详细页', '交易网络']);
+  const 座舱让位详情键 = new Set([BATTLE_INLINE_PREVIEW_KEY, '私密档案详细页']);
   // 原项目各处流程（回到某页、模块意图路由等）打开的旧详情面 → 座舱里对应的页面
   const 座舱旧详情页映射 = Object.freeze({
     第1武魂详细页: ['page-ability', 'martial', { soul: '0', ringPick: '' }], 第2武魂详细页: ['page-ability', 'martial', { soul: '1', ringPick: '' }], 血脉封印详细页: ['page-ability', 'martial'],
@@ -40117,6 +40117,11 @@
     if (!键 || 座舱让位详情键.has(键)) return false;
     if (键 === PENDING_SOUL_RING_PREVIEW_KEY) return 座舱.route({ to: 'ringPick' });
     if (键 === PENDING_SKILL_DESIGN_PREVIEW_KEY) return 座舱.route({ to: 'skillConfirm' });
+    // 交易网络（NPC「交易」、模块意图预填）：跳到座舱交易页，按委托上下文预选私下交易对象或黑市店
+    if (键 === '交易网络' || 键 === '交易模块弹窗') {
+      const 上下文 = mapDispatchContext || {}, 服务 = normalizeMapDispatchServices(上下文), 黑市 = 服务.includes('black_market') || /black[_-]?market|黑市/i.test(toText(上下文.action, ''));
+      return 座舱.route({ to: 'trade', npc: toText(上下文.npcTarget, ''), store: toText(上下文.preferredStore || 上下文.storeName, ''), black: 黑市, item: toText(上下文.tradeRequest && 上下文.tradeRequest.物品, '') });
+    }
     // 工坊：沿用发起流程准备好的委托上下文（mapDispatchContext：执行者、NPC、预填工序）
     if (键 === '副职业工坊') { 座舱工坊.待用上下文 = mapDispatchContext ? cloneJsonValue(mapDispatchContext, {}) : null; return 座舱.route({ to: 'workshop' }); }
     if (isSkillDesignerPreviewKey(键)) {
@@ -78621,6 +78626,14 @@ ${播报文本}
   document.addEventListener('picker:change', e => {
     if (e.detail.path === 'wsTier') return wsSet({ tier: e.detail.value });
     if (e.detail.path === 'wsExec') { const c = window.COCKPIT.ctx(); Object.assign(c.state.ui, { wsExec: e.detail.value, wsFor: '' }); window.COCKPIT.refresh(); }
+  });
+  // 原项目流程打开交易网络（NPC「交易」、模块意图）：预选私下交易对象 / 黑市店 / 商店与物品
+  window.COCKPIT.addRoute?.('trade', spec => {
+    const c = window.COCKPIT.ctx();
+    const venue = spec.black && spec.store ? 'black:' + spec.store : spec.npc ? 'npc:' + spec.npc : spec.store ? 'shop:' + spec.store : '';
+    Object.assign(c.state.ui, { venue, good: spec.item || '', tqty: 1 });
+    window.COCKPIT.go('page-terminal', 'trade');
+    return true;
   });
   // 原项目流程（NPC 委托、任务、模块意图）打开工坊：沿用那次的委托上下文
   window.COCKPIT.addRoute?.('workshop', () => { const c = window.COCKPIT.ctx(); Object.assign(c.state.ui, { wsExec: 'flow', wsFlow: '1', wsFor: '' }); window.COCKPIT.go('page-terminal', 'workshop'); return true; });
