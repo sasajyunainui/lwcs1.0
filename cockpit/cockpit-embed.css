@@ -3,7 +3,13 @@
 :root{font-family:"HarmonyOS Sans SC","Microsoft YaHei UI","Microsoft YaHei","PingFang SC",sans-serif;color:var(--ink);line-height:normal;text-align:left;letter-spacing:normal;text-shadow:none}
 /* 高度随座舱自身（挂载点在聊天流里，跟着长高），不在内部再套一层滚动 */
 /* 根是尺寸容器：座舱字号（1.42cqw）按座舱实际宽度缩放，与原型的版面比例一致；嵌在窄聊天栏里时最小 12.5px */
-.lwcs-ck-root{container-type:inline-size;display:block;width:100%;padding:8px 6px 4px;background:#12151b;font-size:14px;border-radius:6px}
+.lwcs-ck-root{container-type:inline-size;display:block;width:100%;padding:0;background:none;font-size:14px}
+/* 嵌在聊天流里不要原型页的外围舞台：座舱直接铺满聊天栏宽度，没有深色底、渐变光晕、光尘与宽度上限，上下只留必要间隙 */
+.cockpit{width:100%;background:none;padding:0 0 4px}
+.motes{display:none}
+/* 宽屏：台面不再往后推（原型为给斜翼留透视余量整体缩到约 93%，实测斜翼外沿是向内收的，不会出界）；
+   窄屏三面轮播自己有纵深，保持原样 */
+@container cockpit (min-width:701px){.stage{transform:none}.screens{margin:14px 0 18px}}
 .lwcs-ck-overlay{position:static;font-size:14px}
 /* 酒馆全局对 button / input / h2 等的主题样式不能渗进座舱：控件统一回到座舱自己的基线 */
 button,input,select,textarea{font:inherit;color:inherit;margin:0}

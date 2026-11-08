@@ -859,7 +859,9 @@
   // 并限到 30fps、按实际间隔推进（光尘漂得慢，30fps 看不出差别）
   const cv = $('.motes'), g2 = cv.getContext('2d');
   let W = 0, H = 0, motes = [], lastDraw = 0;
-  const size = () => { const dpr = Math.min(2, devicePixelRatio || 1); W = cockpit.clientWidth; H = cockpit.clientHeight; cv.width = W * dpr; cv.height = H * dpr; g2.setTransform(dpr, 0, 0, dpr, 0, 0); };
+  // 光尘画布被样式关掉时（lwcs 嵌入）不分配画布、不跑动画循环
+  const motesOn = () => getComputedStyle(cv).display !== 'none';
+  const size = () => { W = cockpit.clientWidth; H = cockpit.clientHeight; if (!motesOn()) { cv.width = cv.height = 0; return; } const dpr = Math.min(2, devicePixelRatio || 1); cv.width = W * dpr; cv.height = H * dpr; g2.setTransform(dpr, 0, 0, dpr, 0, 0); };
   const spawn = y => ({ x: Math.random() * W, y: y ?? H + 10, r: .8 + Math.random() * 1.8, v: .15 + Math.random() * .35, a: .15 + Math.random() * .45, s: Math.random() * 6.28, gold: Math.random() < .3 });
   const sprite = rgb => {
     const c = document.createElement('canvas'), s = 64; c.width = c.height = s;
@@ -899,7 +901,7 @@
     requestAnimationFrame(() => { slider.style.transition = ''; });
     addEventListener('resize', () => { moveSlider($('.tab.on', track)); size(); applyWide(currentView().v); fitCarousel(); });
     size(); motes = Array.from({ length: 42 }, () => spawn(Math.random() * H));
-    if (!reduce) requestAnimationFrame(draw);
+    if (!reduce && motesOn()) requestAnimationFrame(draw);
   };
   // 宿主尺寸变化（挂到新宿主、聊天栏宽度变化）后重排
   const relayout = () => { syncMobile(); moveSlider($('.tab.on', track)); size(); if (state.domain) { applyWide(currentView().v); fitCarousel(); } };

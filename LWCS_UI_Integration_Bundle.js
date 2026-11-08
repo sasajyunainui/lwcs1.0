@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:2ac986b5bd7dce12da9d32a7e996deaab52357bcddb30f8efed5f78798187d17|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:e9bc16689997bbf849693f257c91ba257a2839b110635ab8c179e175552f95e3|cockpit/pages-role.js:908d0a9a9e323fcc62e4abb109ea7203b82ec6fd107ec5a8a7c0c36cb436d9a2|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:94cbf9ca01a696d2305db0bdfecb124b932b80d922c6b4bbaea917e530047f71|cockpit/pages-ability.js:f49d2d49b995ba07f84ff57e3dfe3fca1457b61d53541e0c2cb229ce63b3b5f8|cockpit/pages-supplies.js:6bb2f0535c71419f26784a612c3d84fa59722a816128d909b2b2db7f74961eb5|cockpit/pages-map.js:bb5b1f07a1035a0294cdb32fbc61c97c36a49946297500421647eee91fe093da|cockpit/pages-world.js:53d47819477ad0b7398941a27519ecbf1e668b1462a013f0601efb57f91507d5|cockpit/pages-terminal.js:4839b10b0361497898b513d151fff284614a4bb763f17662ea6857e4428cce41 */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:2ac986b5bd7dce12da9d32a7e996deaab52357bcddb30f8efed5f78798187d17|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:780db7a0c6e1d65203951662dcaccb42756756d967724d9d73fdedd12239f7a2|cockpit/pages-role.js:908d0a9a9e323fcc62e4abb109ea7203b82ec6fd107ec5a8a7c0c36cb436d9a2|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:94cbf9ca01a696d2305db0bdfecb124b932b80d922c6b4bbaea917e530047f71|cockpit/pages-ability.js:f49d2d49b995ba07f84ff57e3dfe3fca1457b61d53541e0c2cb229ce63b3b5f8|cockpit/pages-supplies.js:6bb2f0535c71419f26784a612c3d84fa59722a816128d909b2b2db7f74961eb5|cockpit/pages-map.js:bb5b1f07a1035a0294cdb32fbc61c97c36a49946297500421647eee91fe093da|cockpit/pages-world.js:53d47819477ad0b7398941a27519ecbf1e668b1462a013f0601efb57f91507d5|cockpit/pages-terminal.js:4839b10b0361497898b513d151fff284614a4bb763f17662ea6857e4428cce41 */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -74741,7 +74741,9 @@ ${播报文本}
   // 并限到 30fps、按实际间隔推进（光尘漂得慢，30fps 看不出差别）
   const cv = $('.motes'), g2 = cv.getContext('2d');
   let W = 0, H = 0, motes = [], lastDraw = 0;
-  const size = () => { const dpr = Math.min(2, devicePixelRatio || 1); W = cockpit.clientWidth; H = cockpit.clientHeight; cv.width = W * dpr; cv.height = H * dpr; g2.setTransform(dpr, 0, 0, dpr, 0, 0); };
+  // 光尘画布被样式关掉时（lwcs 嵌入）不分配画布、不跑动画循环
+  const motesOn = () => getComputedStyle(cv).display !== 'none';
+  const size = () => { W = cockpit.clientWidth; H = cockpit.clientHeight; if (!motesOn()) { cv.width = cv.height = 0; return; } const dpr = Math.min(2, devicePixelRatio || 1); cv.width = W * dpr; cv.height = H * dpr; g2.setTransform(dpr, 0, 0, dpr, 0, 0); };
   const spawn = y => ({ x: Math.random() * W, y: y ?? H + 10, r: .8 + Math.random() * 1.8, v: .15 + Math.random() * .35, a: .15 + Math.random() * .45, s: Math.random() * 6.28, gold: Math.random() < .3 });
   const sprite = rgb => {
     const c = document.createElement('canvas'), s = 64; c.width = c.height = s;
@@ -74781,7 +74783,7 @@ ${播报文本}
     requestAnimationFrame(() => { slider.style.transition = ''; });
     addEventListener('resize', () => { moveSlider($('.tab.on', track)); size(); applyWide(currentView().v); fitCarousel(); });
     size(); motes = Array.from({ length: 42 }, () => spawn(Math.random() * H));
-    if (!reduce) requestAnimationFrame(draw);
+    if (!reduce && motesOn()) requestAnimationFrame(draw);
   };
   // 宿主尺寸变化（挂到新宿主、聊天栏宽度变化）后重排
   const relayout = () => { syncMobile(); moveSlider($('.tab.on', track)); size(); if (state.domain) { applyWide(currentView().v); fitCarousel(); } };
