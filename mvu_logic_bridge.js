@@ -38640,6 +38640,12 @@
   async function 座舱动作预演异步(名称, 参数 = {}) {
     try {
       if (名称 === 'travel') return await 座舱规划移动(参数);
+      if (名称 === 'privateTrade') {
+        if (参数.op === 'open') return await 座舱交易打开(参数);
+        if (参数.op === 'set') return 座舱交易设置(参数.changes || {});
+        if (参数.op === 'sync') { if (座舱交易.实例 && typeof 座舱交易.实例.updateData === 'function') 座舱交易.实例.updateData(liveSnapshot); return 座舱交易状态(); }
+        return 座舱交易状态();
+      }
       if (名称 === 'workshop') {
         if (参数.op === 'open') return await 座舱工坊打开(参数);
         if (参数.op === 'set') return 座舱工坊设置(参数.changes || {});
@@ -38742,6 +38748,71 @@
     座舱工坊.待提交 = null;
     return 座舱请求结果(await dispatchUiAiRequest(数据.playerInput, 数据.systemPrompt, { requestKind: 数据.requestKind, patchOps: 数据.patchOps }));
   }
+  // ---------- 座舱私下交易 / 黑市：原项目交易模块常驻隐藏容器 ----------
+  const 座舱交易 = { 容器: null, 实例: null, 键: '', 待提交: null, 失败: null };
+  function 座舱交易状态() {
+    const 容器 = 座舱交易.容器, 实例 = 座舱交易.实例;
+    if (!容器 || !实例) return null;
+    const 取 = 选择器 => 容器.querySelector(选择器), 文 = 选择器 => toText(取(选择器) && 取(选择器).innerText, '').replace(/\s+/g, ' ').trim();
+    const 按钮 = 取('#btn-private'), 态度 = 取('#priv-attitude');
+    return {
+      key: 座舱交易.键,
+      action: toText(取('#priv-action') && 取('#priv-action').value, '私下买入'),
+      npc: toText(取('#priv-npc') && 取('#priv-npc').value, ''),
+      item: toText(取('#priv-item') && 取('#priv-item').value, ''),
+      qty: toNumber(取('#priv-qty') && 取('#priv-qty').value, 1), price: toNumber(取('#priv-price') && 取('#priv-price').value, 0),
+      basePrice: 文('#priv-base-price'), market: 文('#priv-market'), total: 文('#priv-total'),
+      attitude: 文('#priv-attitude'), attitudeOk: !!(态度 && /val-highlight/.test(态度.className)),
+      desc: 文('#priv-desc'), source: 文('#priv-source'),
+      blocked: !!(按钮 && 按钮.disabled), reason: toText(按钮 && 按钮.dataset.blockReason, ''),
+      // 交易模块额外加入的商店（如魂灵塔特许兑换）与当前地点的全部商店
+      storeGoods: Object.fromEntries(Object.entries(实例.currentStores || {}).map(([店, 数据]) => [店, cloneJsonValue((数据 && 数据.库存) || {}, {})])),
+    };
+  }
+  async function 座舱交易打开(参数 = {}) {
+    if (!await 确保交互模块已加载('交易模块', 'mountTradeUI') || typeof window.mountTradeUI !== 'function') return { ok: false, reason: '交易模块未就绪' };
+    const 快照 = liveSnapshot;
+    if (!快照 || !快照.rootData) return { ok: false, reason: '状态未就绪' };
+    const 黑市 = toText(参数.mode, '') === 'black', 对象 = toText(黑市 ? 参数.store : 参数.npc, '');
+    if (!座舱交易.容器) {
+      座舱交易.容器 = document.createElement('div');
+      座舱交易.容器.className = 'lwcs-ck-trade-engine';
+      座舱交易.容器.style.cssText = 'position:fixed;left:-10000px;top:0;width:960px;height:720px;overflow:hidden;opacity:0;pointer-events:none';
+      座舱交易.容器.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(座舱交易.容器);
+    }
+    if (座舱交易.实例 && typeof 座舱交易.实例.destroy === 'function') { try { 座舱交易.实例.destroy(); } catch (错误) {} }
+    座舱交易.容器.innerHTML = '';
+    座舱交易.实例 = window.mountTradeUI(座舱交易.容器, 快照, {
+      actionType: 黑市 ? 'trade_private_black_market' : 'trade', initialTab: 'tab-private',
+      prefillNpc: 对象, lockNpc: !!对象, preferredStore: 黑市 ? 对象 : '',
+      onTradeAction: 数据 => { 座舱交易.待提交 = 数据; },
+      内联动作失败: 详情 => { 座舱交易.失败 = 详情; },
+    });
+    座舱交易.键 = JSON.stringify([toText(快照.activeName, ''), 黑市 ? 'black' : 'npc', 对象]);
+    return 座舱交易状态();
+  }
+  function 座舱交易设置(改动 = {}) {
+    const 容器 = 座舱交易.容器, 实例 = 座舱交易.实例;
+    if (!容器 || !实例) return null;
+    const 设值 = (选择器, 值) => { const 元素 = 容器.querySelector(选择器); if (!元素 || 值 === undefined || 值 === null) return; 元素.value = String(值); 元素.dispatchEvent(new Event('input', { bubbles: true })); 元素.dispatchEvent(new Event('change', { bubbles: true })); };
+    设值('#priv-action', 改动.action); 设值('#priv-item', 改动.item); 设值('#priv-qty', 改动.qty); 设值('#priv-price', 改动.price);
+    if (typeof 实例.updatePrivPreview === 'function') 实例.updatePrivPreview();
+    return 座舱交易状态();
+  }
+  async function 座舱交易成交() {
+    const 实例 = 座舱交易.实例;
+    if (!实例) return { ok: false, message: '交易未打开' };
+    座舱交易.待提交 = null; 座舱交易.失败 = null;
+    const 截获 = await 座舱截取提示(() => 实例.executePrivateTrade());
+    if (座舱交易.失败) return { ok: false, message: toText(座舱交易.失败.原因, '交易校验未通过') };
+    const 动作 = 座舱交易.待提交 ? normalizeInlineModuleAction(座舱交易.待提交, 'trade', {}) : null;
+    if (!动作) return { ok: false, message: 截获.ok ? '交易没有提交动作' : 截获.message };
+    座舱交易.待提交 = null;
+    return 座舱请求结果(await dispatchUiAiRequest(动作.playerInput, 动作.systemPrompt, {
+      requestKind: 动作.requestKind, patchOps: 动作.patchOps, privilegeID: 动作.privilegeID, privilegeCost: 动作.privilegeCost, 交易参数: 动作.交易参数,
+    }));
+  }
   async function 座舱执行动作(名称, 参数 = {}) {
     const 快照 = liveSnapshot;
     if (!快照 || !快照.rootData) return { ok: false, message: '状态未就绪' };
@@ -38757,6 +38828,7 @@
           return 座舱请求结果(await dispatchUiAiRequest(数据.playerInput, 数据.systemPrompt, { requestKind: 数据.requestKind, patchOps: 数据.patchOps }));
         }
         case 'trade': {
+          if (参数.op === 'private') return await 座舱交易成交();
           const 捕获 = await buildInlineTradeAction(快照, {
             动作: toText(参数.动作, '购买'), 目标: toText(参数.目标, ''), 物品: toText(参数.物品, ''),
             数量: Math.max(1, toNumber(参数.数量, 1)), 价格: Math.max(0, toNumber(参数.价格, 0)), 自动执行: true,

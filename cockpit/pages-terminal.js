@@ -273,14 +273,70 @@
   window.COCKPIT.addRoute?.('workshop', () => { const c = window.COCKPIT.ctx(); Object.assign(c.state.ui, { wsExec: 'flow', wsFlow: '1', wsFor: '' }); window.COCKPIT.go('page-terminal', 'workshop'); return true; });
 
   const shortNum = (c, n) => n >= 1e8 ? `${+(n / 1e8).toFixed(2)}亿` : n >= 1e4 ? `${+(n / 1e4).toFixed(1)}万` : c.fmt(n);
+
+  // ---------- 私下交易 / 黑市（lwcs）：原项目交易模块常驻隐藏（私下页签），这里只做选择与显示 ----------
+  const tpWant = (c, v) => JSON.stringify([c.name, c.ch.状态?.位置, v ? v.kind : 'base', v ? (v.npc || v.store) : '']);
+  const tpCall = (c, payload, after) => { const ui = c.state.ui; ui.tpPending = true; window.COCKPIT.previewAsync('privateTrade', payload).then(st => { ui.tpPending = false; after(st); window.COCKPIT.refresh(); }); };
+  // 进交易页先挂一次（拿模块额外加入的商店，如特许兑换）；进私下 / 黑市场所时按对象重挂
+  const tpLoad = (c, v) => {
+    const ui = c.state.ui, want = tpWant(c, v);
+    if (ui.tpPending || ui.tpFor === want || !c.rt('__LWCS_ERA_RUNTIME_INTEGRATION_V1__')) return;
+    tpCall(c, { op: 'open', mode: v?.kind === 'black' ? 'black' : 'npc', npc: v?.npc || '', store: v?.store || '' }, st => { ui.tpFor = want; ui.tpReq = ''; ui.tps = st && st.key ? st : null; ui.tpErr = st?.reason || ''; });
+  };
+  const tradePrivate = (c, v, venues) => {
+    const ui = c.state.ui, act = ui.tpAct === '私下卖出' ? '私下卖出' : '私下买入', city = c.S.world.地点?.[String(c.ch.状态?.位置 || '').split('-').filter(x => x && x !== '斗罗大陆')[0]] || {};
+    tpLoad(c, v);
+    const pool = act === '私下卖出' ? c.ch.背包 : v.kind === 'black' ? city.商店?.[v.store]?.库存 : c.S.char?.[v.npc]?.背包;
+    const goods = Object.entries(pool || {}).map(([n, x]) => ({ id: n, name: n, stock: c.num(x?.库存 ?? x?.数量) || (x?.批次 || []).reduce((s2, b) => s2 + c.num(b.数量), 0), rate: x?.价格倍率 }));
+    const g = goods.find(x => x.id === ui.good) || goods[0], [cat, def] = g ? itemDefOf(c, g.name) : ['', null];
+    const qty = Math.max(1, Math.min(c.num(g?.stock) || 99, c.num(ui.tqty) || 1));
+    const base = g ? Math.max(1, Math.round(c.num(def?.基础价格) * (g.rate ?? 1)) || 1) : 1;
+    const [pFor, pAmt] = String(ui.tpPrice || '').split('|'), price = g && pFor === g.id && c.num(pAmt) > 0 ? c.num(pAmt) : base, step = Math.max(1, Math.ceil(price * .05));
+    // 只在请求的参数变了时同步给模块（模块可能修正数值，别来回打架）
+    const req = JSON.stringify([act, g?.name || '', qty, price]);
+    if (ui.tps && !ui.tpPending && ui.tpFor === tpWant(c, v) && ui.tpReq !== req) { ui.tpReq = req; tpCall(c, { op: 'set', changes: { action: act, item: g?.name || '', qty, price } }, st => { if (st) ui.tps = st; }); }
+    const tp = ui.tps && ui.tpFor === tpWant(c, v) ? ui.tps : null, who = v.kind === 'black' ? v.store : v.npc;
+    const blocked = !g ? '这里没有可交易的物品' : !tp ? (ui.tpErr || '正在准备交易') : tp.blocked ? (tp.reason || tp.attitude || '现在不能成交') : '';
+    const verb = act === '私下买入' ? '求购' : '推销';
+    return {
+      tag: 'CORE · MARKET',
+      left: `<div class="pad">${c.head('scale-balanced', '交易', 'Market', 'gd')}
+        <div class="venue-pick">${c.pick('venue', v.id, venues.map(x => ({ value: x.id, label: x.name, group: x.group || (x.id.startsWith('shop:') ? '本城商店' : '其他') })))}</div>
+        <div class="seg"><button class="key-s${act === '私下买入' ? ' on' : ''}" type="button" data-set="tpAct=私下买入">求购${c.hint(v.kind === 'black' ? '从黑市渠道买入' : `向${who}求购对方持有的物品`)}</button><button class="key-s${act === '私下卖出' ? ' on' : ''}" type="button" data-set="tpAct=私下卖出">推销${c.hint('把自己背包里的物品卖给对方')}</button></div>
+        ${goods.length ? `<div class="list q-list">${goods.map(x => `<button class="row${x === g ? ' on' : ''}" type="button" data-set="good=${c.esc(x.id)}" aria-current="${x === g}">${c.sock(v.icon)}<div><strong>${c.esc(x.name)}</strong><small>${act === '私下买入' ? (v.kind === 'black' ? '库存' : '对方持有') : '持有'} ${c.fmt(x.stock)}</small></div><span></span></button>`).join('')}</div>` : c.empty('box-open', act === '私下买入' ? `${who}没有可交易的物品` : '背包是空的')}
+      </div>`,
+      core: g ? `<div class="pad">
+        <div class="q-title">${c.sock(v.icon, 'gd')}<span class="chip">${c.esc(def?.品质 || cat || '物品')}</span><h2>${c.esc(g.name)}</h2><span class="q-state">${c.esc(`${verb} · ${who}`)}</span></div>
+        <section class="sec"><h3>物品说明<span class="en">Item</span></h3><p class="prose">${c.esc(def?.描述 || '没有收录这件物品的说明')}</p></section>
+        ${tp ? `<section class="sec"><h3>行情<span class="en">Quote</span></h3>${c.kv([['基础价', c.esc(tp.basePrice || '—')], ['市场调整', c.esc(tp.market || '—')], ['成交把握', `<span class="${tp.attitudeOk ? '' : 'warn-t'}">${c.esc(tp.attitude || '—')}</span>`]])}</section>` : ''}
+      </div>` : `<div class="pad sparse">${c.empty('handshake', '选一件物品')}</div>`,
+      right: `<div class="pad">${c.head('handshake', v.kind === 'black' ? '黑市' : '私下交易', 'Deal')}
+        ${g ? `<div class="checkout">
+          <div class="co-row"><span>数量</span><span class="dz-num co-qty"><button type="button" class="dz-step" data-set="tqty=${Math.max(1, qty - 1)}" aria-label="减少"><i class="fa-solid fa-minus"></i></button><b>${qty}</b><button type="button" class="dz-step" data-set="tqty=${qty + 1}" aria-label="增加"><i class="fa-solid fa-plus"></i></button></span></div>
+          <div class="co-row"><span>出价 / 件${c.hint('每步加减 5%；出价越贴近市场价越容易成交')}</span><span class="dz-num co-qty"><button type="button" class="dz-step" data-set="tpPrice=${c.esc(g.id)}|${Math.max(1, price - step)}" aria-label="降低出价"><i class="fa-solid fa-minus"></i></button><b>${c.fmt(price)}</b><button type="button" class="dz-step" data-set="tpPrice=${c.esc(g.id)}|${price + step}" aria-label="提高出价"><i class="fa-solid fa-plus"></i></button></span></div>
+          <div class="co-row total"><span>${act === '私下买入' ? '合计支付' : '合计收入'}</span><b>${c.esc(tp?.total || c.fmt(price * qty))}</b></div>
+        </div>
+        ${blocked ? `<span class="cta-wrap" data-hint="${c.esc(blocked)}"><button class="cta" type="button" disabled><i class="fa-solid fa-handshake"></i>${verb}</button></span>`
+          : `<button class="cta" type="button" data-confirm="${c.esc(`${verb}「${g.name}」×${qty}，出价 ${c.fmt(price)} / 件`)}" data-act='{"name":"trade","op":"private"}'><i class="fa-solid fa-handshake"></i>${verb}</button>`}` : ''}
+      </div>`,
+    };
+  };
   const trade = c => {
     const ui = c.state.ui, p = String(c.ch.状态?.位置 || '').split('-').filter(x => x && x !== '斗罗大陆');
     const city = c.S.world.地点?.[p[0]] || {}, shops = Object.entries(city.商店 || {}), auction = c.S.world.拍卖 || {}, coins = c.ch.财富 || {};
-    const venues = [...shops.map(([n, s]) => ({ id: 'shop:' + n, name: n.replace('分店', ''), icon: 'store', goods: Object.entries(s.库存 || {}).map(([g, x]) => ({ id: g, name: g, stock: x.库存, rate: x.价格倍率 ?? 1, rep: x.需求声望, req: x.需求 })) })),
+    tpLoad(c, null);
+    // 本城商店 + 交易模块额外加入的商店（魂灵塔特许兑换）；黑市店单列；在场人物可私下交易
+    const extra = Object.entries(ui.tps?.storeGoods || {}).filter(([n]) => !(city.商店 || {})[n]).map(([n, goods]) => [n, { 库存: goods }]);
+    const locals = Object.entries(c.S.char || {}).filter(([n, x]) => n !== c.name && x?.状态?.位置 && x.状态.位置 === c.ch.状态?.位置).map(([n]) => n);
+    const venues = [...[...shops.filter(([n]) => !/黑市/.test(n)), ...extra].map(([n, s]) => ({ id: 'shop:' + n, name: n.replace('分店', ''), icon: 'store', goods: Object.entries(s.库存 || {}).map(([g, x]) => ({ id: g, name: g, stock: x.库存, rate: x.价格倍率 ?? 1, rep: x.需求声望, req: x.需求 })) })),
+      ...shops.filter(([n]) => /黑市/.test(n)).map(([n]) => ({ id: 'black:' + n, kind: 'black', store: n, name: n, icon: 'mask', group: '黑市' })),
+      ...locals.map(n => ({ id: 'npc:' + n, kind: 'private', npc: n, name: n, icon: 'handshake', group: '私下交易' })),
       ...(Object.keys(auction.拍品 || {}).length ? [{ id: 'auction', name: '拍卖行', icon: 'gavel', goods: Object.entries(auction.拍品).map(([g, a]) => ({ id: g, name: g, price: a.价格, grade: a.品级, cat: a.分类, story: a.背景 })) }] : []),
       // 出售：背包里的物品，价格先按定义基础价格作参考（原项目出售另按批次品质折算）
       { id: 'sell', name: '出售', icon: 'hand-holding-dollar', sell: true, goods: Object.entries(c.ch.背包 || {}).map(([g, r]) => ({ id: g, name: g, stock: c.num(r?.数量) || (r?.批次 || []).reduce((s, b) => s + c.num(b.数量), 0) || 1 })) }];
-    const v = venues.find(x => x.id === ui.venue) || venues[0], goods = v?.goods || [], g = goods.find(x => x.id === ui.good) || goods[0];
+    const v = venues.find(x => x.id === ui.venue) || venues[0];
+    if (v?.kind) return tradePrivate(c, v, venues);
+    const goods = v?.goods || [], g = goods.find(x => x.id === ui.good) || goods[0];
     const [cat, def] = g ? itemDefOf(c, g.name) : ['', null], unit = g ? Math.round(g.price ?? c.num(def?.基础价格) * (g.rate ?? 1)) : 0, cur = def?.默认货币 || '联邦币';
     const isBid = v?.id === 'auction', minBid = Math.ceil(unit * 1.05), [bidFor, bidAmt] = String(ui.tbid || '').split('|'), bid = isBid ? Math.max(minBid, bidFor === g?.id ? c.num(bidAmt) : 0) : 0, bidStep = Math.max(1, Math.ceil(unit * .05));
     const qty = isBid ? 1 : Math.max(1, Math.min(c.num(g?.stock) || 99, c.num(ui.tqty) || 1)), total = isBid ? bid : unit * qty, have = c.num(coins[cur]);
@@ -292,7 +348,7 @@
     return {
       tag: 'CORE · MARKET',
       left: `<div class="pad">${c.head('scale-balanced', '交易', 'Market', 'gd')}
-        <div class="venue-pick">${c.pick('venue', v?.id || '', venues.map(x => ({ value: x.id, label: x.name, group: x.id.startsWith('shop:') ? '本城商店' : '其他' })))}</div>
+        <div class="venue-pick">${c.pick('venue', v?.id || '', venues.map(x => ({ value: x.id, label: x.name, group: x.group || (x.id.startsWith('shop:') ? '本城商店' : '其他') })))}</div>
         ${goods.length ? `<div class="list q-list">${goods.map(x => `<button class="row${x === g ? ' on' : ''}" type="button" data-set="good=${c.esc(x.id)}" aria-current="${x === g}">${(q => q ? `<span class="chip">${c.esc(q)}</span>` : c.sock(v.icon))(x.grade || itemDefOf(c, x.name)[1]?.品质)}<div><strong>${c.esc(x.name)}</strong><small>${c.esc([x.cat || itemDefOf(c, x.name)[0], x.stock !== undefined ? `库存 ${c.fmt(x.stock)}` : ''].filter(Boolean).join(' · '))}</small></div><span class="end">${shortNum(c, Math.round(x.price ?? c.num(itemDefOf(c, x.name)[1]?.基础价格) * (x.rate ?? 1)))}</span></button>`).join('')}</div>` : c.empty('store', v ? '这里暂时没有货' : `${p[0] || '当地'}没有商店`)}
       </div>`,
       core: g ? `<div class="pad">

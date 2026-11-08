@@ -105,7 +105,8 @@
     try { const up = localStorage.getItem(AVATAR_KEY + name); if (up) return up; } catch (e) {}
     const p = portraitIndex[name]; return p ? portraitBase() + p.avatar : '';
   };
-  const standingSrc = name => { const p = portraitIndex[name]; return p ? portraitBase() + p.standing : ''; };
+  // 只有头像、没有立绘的角色（如从百科补的头像）不拼立绘地址
+  const standingSrc = name => { const p = portraitIndex[name]; return p && p.standing ? portraitBase() + p.standing : ''; };
   const miniAva = name => { const src = avatarSrc(name); return `<span class="mini-ava">${src ? `<img src="${esc(src)}" alt="">` : esc(String(name).slice(-2, -1) || name[0])}</span>`; };
 
   // ---------- 小部件 ----------
