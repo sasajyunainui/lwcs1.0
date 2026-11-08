@@ -351,18 +351,9 @@ function 规范化全息星轨主题(主题) {
   return 全息星轨主题列表.some(条目 => 条目.名称 === 值) ? 值 : '经典状态栏';
 }
 
+// 显示主题已放弃（只保留座舱主题）：外壳固定经典样式
 function 读取全息星轨主题() {
-  try {
-    return 规范化全息星轨主题(window.localStorage.getItem(全息星轨主题存储键));
-  } catch (err) {
-    return '经典状态栏';
-  }
-}
-
-function 写入全息星轨主题(主题) {
-  try {
-    window.localStorage.setItem(全息星轨主题存储键, 规范化全息星轨主题(主题));
-  } catch (err) {}
+  return '经典状态栏';
 }
 
 function resolveUnifiedTabMeta(tabId) {
@@ -793,50 +784,24 @@ const DesktopUnifiedLayout = {
   template: `
     <div class="mvu-unified-shell mvu-unified-panel-host mvu-root">
       <section class="mvu-unified-frame mvu-cabin"
-        :class="{ 'is-workspace-cabin': tabState.current !== 'page-archive' || (detailState.isOpen && !(detailState.cabinPageId === 'profile' && detailState.previewKey === '生命图谱详细页')), 'is-status-cabin': tabState.current === 'page-archive' && !detailState.isOpen, 'is-profile-cabin': detailState.isOpen && detailState.cabinPageId === 'profile' && detailState.previewKey === '生命图谱详细页', 'is-detail': detailState.isOpen, 'is-holo-animation-paused': 全息动画暂停, 'is-mobile-collapsed': 移动状态栏折叠 && tabState.current !== 'page-archive', 'is-cabin-front-expanded': 前屏展开 && tabState.current !== 'page-archive' }"
+        :class="{ 'is-workspace-cabin': tabState.current !== 'page-archive' || (detailState.isOpen && !(detailState.cabinPageId === 'profile' && detailState.previewKey === '生命图谱详细页')), 'is-status-cabin': tabState.current === 'page-archive' && !detailState.isOpen, 'is-profile-cabin': detailState.isOpen && detailState.cabinPageId === 'profile' && detailState.previewKey === '生命图谱详细页', 'is-detail': detailState.isOpen, 'is-holo-animation-paused': 全息动画暂停, 'is-cabin-front-expanded': 前屏展开 && tabState.current !== 'page-archive' }"
         :data-holo-theme="全息星轨状态.主题" :data-unified-tab="tabState.current" :data-cabin-page="当前座舱页面.id"
         @pointerdown.passive="标记全息动画临停" @wheel.passive="标记全息动画临停" @keydown="标记全息动画临停">
-        <header class="mvu-unified-toolbar" :class="{ 'is-detail': detailState.isOpen }" @click="处理移动状态栏标题点击">
+        <!-- 旧仪表盘（领域页、导航、主题）已由座舱取代；外壳只留给仍借用详情宿主的界面（战斗终端、私密档案）：标题栏 + 详情宿主 -->
+        <header class="mvu-unified-toolbar is-detail">
           <div class="mvu-unified-toolbar-main">
-            <div class="mvu-unified-status-strip">
-              <button type="button" class="character-switch mvu-unified-character-switch clickable" data-preview="角色切换器" data-detail-mode="embed" aria-label="查看角色目录"><span class="char-emblem">角</span><span class="char-name">当前角色</span></button>
-              <div class="header-loc mvu-unified-header-loc" aria-live="polite"
-                :role="移动状态栏模式 ? 'button' : null" :tabindex="移动状态栏模式 ? 0 : -1"
-                :aria-expanded="移动状态栏模式 ? (移动状态栏折叠 ? 'false' : 'true') : null"
-                :aria-label="移动状态栏模式 ? (移动状态栏折叠 ? '展开状态栏' : '收起状态栏') : null"
-                @keydown.enter.prevent="切换移动状态栏折叠" @keydown.space.prevent="切换移动状态栏折叠"><span>时间与地点同步中</span></div>
-            </div>
             <div class="mvu-cabin-heading">
               <button v-if="detailState.isOpen" type="button" class="mvu-unified-detail-back" aria-label="返回上一页" @click.stop="closeUnifiedDetail">‹</button>
-              <strong class="mvu-unified-detail-title">{{ detailState.isOpen ? 详情路径标题 : 当前座舱页面.title }}</strong>
-              <button type="button" class="mvu-cabin-read-toggle" :aria-pressed="前屏展开 ? 'true' : 'false'" @click.stop="前屏展开 = !前屏展开">{{ 前屏展开 ? '恢复双屏' : '展开前屏' }}</button>
+              <strong class="mvu-unified-detail-title">{{ detailState.isOpen ? 详情路径标题 : '' }}</strong>
               <div class="mvu-unified-detail-actions" data-detail-title-actions></div>
             </div>
           </div>
-          <div class="mvu-unified-theme-dock" :data-holo-theme="全息星轨状态.主题" :class="{ 'is-open': 全息星轨状态.主题面板展开 }" @focusout="处理全息主题面板失焦" @keydown.esc="关闭全息主题面板">
-            <button type="button" class="mvu-unified-theme-toggle" :aria-expanded="全息星轨状态.主题面板展开 ? 'true' : 'false'" aria-label="显示主题" @click.stop="切换全息主题面板"><span>⚙</span></button>
-            <div class="mvu-unified-theme-panel" aria-label="主题切换"><button v-for="主题 in 全息星轨主题" :key="主题.名称" type="button" class="mvu-holo-theme-btn" :aria-pressed="全息星轨状态.主题 === 主题.名称 ? 'true' : 'false'" @click="设置全息星轨主题(主题.名称)">{{ 主题.短名 }}</button></div>
-          </div>
         </header>
-        <nav class="mvu-cabin-page-nav" aria-label="当前领域页面" :inert="移动状态栏折叠 ? '' : null">
-          <button v-for="页面 in 座舱页面列表" :key="页面.id" type="button" :class="{ active: 当前座舱页面.id === 页面.id }" :aria-current="当前座舱页面.id === 页面.id ? 'page' : null" @click="打开座舱页面(页面)">{{ 页面.title }}</button>
-        </nav>
         <div class="mvu-unified-stage-switch" :data-holo-theme-key="当前主题键">
-          <div class="mvu-unified-page-stack" :class="detailState.isOpen ? 'is-stage-inactive' : 'is-stage-active'" :data-unified-overview-tab="tabState.current" :aria-hidden="detailState.isOpen || (移动状态栏折叠 && tabState.current !== 'page-archive') ? 'true' : 'false'" :inert="detailState.isOpen || (移动状态栏折叠 && tabState.current !== 'page-archive') ? '' : null">
-            <section class="mvu-unified-page mvu-cabin-overview mvu-cabin-overview--role" :class="{ active: tabState.current === 'page-archive' }" data-target="page-archive"><div data-status-cabin></div></section>
-<section class="mvu-unified-page mvu-cabin-overview mvu-cabin-overview--ability" :class="{ active: tabState.current === 'page-ability' }" data-target="page-ability"><div class="mvu-cabin-screen mvu-cabin-screen--rear " data-cabin-scroll="rear"><section class="mvu-cabin-card " data-unified-card="spirit-stage" data-unified-surface="panel"></section></div><div class="mvu-cabin-screen mvu-cabin-screen--front " data-cabin-scroll="front"><section class="mvu-cabin-card " data-unified-card="cabin-ability-focus" data-unified-surface="panel"></section></div></section>
-<section class="mvu-unified-page mvu-cabin-overview mvu-cabin-overview--supplies" :class="{ active: tabState.current === 'page-supplies' }" data-target="page-supplies"><div class="mvu-cabin-screen mvu-cabin-screen--rear " data-cabin-scroll="rear"><section class="mvu-cabin-card " data-unified-card="armory" data-unified-surface="panel"></section></div><div class="mvu-cabin-screen mvu-cabin-screen--front " data-cabin-scroll="front"><section class="mvu-cabin-card " data-unified-card="cabin-supplies-focus" data-unified-surface="panel"></section></div></section>
-<section class="mvu-unified-page mvu-cabin-overview mvu-cabin-overview--map" :class="{ active: tabState.current === 'page-map' }" data-target="page-map"><div class="mvu-cabin-screen mvu-cabin-screen--rear " data-cabin-scroll="rear"><div class="mvu-unified-map-stage" data-mvu-map-stage="panel"></div><section class="mvu-cabin-card " data-unified-card="map-locals" data-unified-surface="panel"></section></div><div class="mvu-cabin-screen mvu-cabin-screen--front " data-cabin-scroll="front"><section class="mvu-cabin-card " data-unified-card="map-current" data-unified-surface="panel"></section></div></section>
-<section class="mvu-unified-page mvu-cabin-overview mvu-cabin-overview--world" :class="{ active: tabState.current === 'page-world' }" data-target="page-world"><div class="mvu-cabin-screen mvu-cabin-screen--rear " data-cabin-scroll="rear"><section class="mvu-cabin-card " data-unified-card="world-hero" data-unified-surface="panel"></section><section class="mvu-cabin-card " data-unified-card="world-timeline" data-unified-surface="panel"></section><section class="mvu-cabin-card " data-unified-card="org-hero" data-unified-surface="panel"></section><section class="mvu-cabin-card " data-unified-card="org-node" data-unified-surface="panel"></section></div><div class="mvu-cabin-screen mvu-cabin-screen--front " data-cabin-scroll="front"><section class="mvu-cabin-card " data-unified-card="world-competition" data-unified-surface="panel"></section><section class="mvu-cabin-card " data-unified-card="world-bestiary" data-unified-surface="panel"></section><section class="mvu-cabin-card " data-unified-card="org-faction" data-unified-surface="panel"></section></div></section>
-<section class="mvu-unified-page mvu-cabin-overview mvu-cabin-overview--affairs" :class="{ active: tabState.current === 'page-terminal' }" data-target="page-terminal"><div class="mvu-cabin-screen mvu-cabin-screen--rear " data-cabin-scroll="rear"><section class="mvu-cabin-card " data-unified-card="terminal-hero" data-unified-surface="panel"></section><section class="mvu-cabin-card " data-unified-card="vault" data-unified-surface="panel"></section><section class="mvu-cabin-card " data-unified-card="terminal-quest" data-unified-surface="panel"></section></div><div class="mvu-cabin-screen mvu-cabin-screen--front " data-cabin-scroll="front"><section class="mvu-cabin-card " data-unified-card="terminal-intel" data-unified-surface="panel"></section><section class="mvu-cabin-card " data-unified-card="terminal-profession" data-unified-surface="panel"></section></div></section>
-          </div>
-          <section class="mvu-unified-detail-page" :class="detailState.isOpen ? 'is-stage-active' : 'is-stage-inactive'" :data-unified-detail-preview="detailState.previewKey" :aria-hidden="detailState.isOpen && !移动状态栏折叠 ? 'false' : 'true'" :inert="!detailState.isOpen || (移动状态栏折叠 && tabState.current !== 'page-archive') ? '' : null">
+          <section class="mvu-unified-detail-page" :class="detailState.isOpen ? 'is-stage-active' : 'is-stage-inactive'" :data-unified-detail-preview="detailState.previewKey" :aria-hidden="detailState.isOpen ? 'false' : 'true'" :inert="!detailState.isOpen ? '' : null">
             <div ref="detailHostRef" class="mvu-unified-detail-host mvu-holo-detail-stage" data-unified-detail-host data-holo-detail-host></div>
           </section>
         </div>
-        <nav class="mvu-unified-tab-row mvu-cabin-domain-nav" aria-label="状态栏领域" :inert="移动状态栏折叠 ? '' : null">
-          <button v-for="标签 in tabs" :key="标签.id" type="button" class="mvu-tab-btn mvu-unified-tab-btn" :class="{ active: tabState.current === 标签.id }" :data-target="标签.id" :aria-pressed="tabState.current === 标签.id ? 'true' : 'false'" @click="setTab(标签.id)"><span class="mvu-unified-tab-icon" v-html="标签.icon"></span><span>{{ 标签.label }}</span></button>
-        </nav>
       </section>
     </div>
   `,
@@ -859,12 +824,6 @@ const DesktopUnifiedLayout = {
     const 当前全息星轨状态 = 全息星轨状态;
     const 当前主题键 = computed(() => 全息星轨主题键映射[当前全息星轨状态.主题] || 'classic');
     const 页面可见 = ref(typeof document === 'undefined' || document.visibilityState === 'visible');
-    const 移动状态栏模式 = ref(
-      typeof window !== 'undefined'
-      && typeof window.matchMedia === 'function'
-      && window.matchMedia('(max-width: 760px)').matches
-    );
-    const 移动状态栏折叠 = ref(false);
     const 全息动画临停 = ref(false);
     const 全息动画暂停 = computed(() => !页面可见.value || 全息动画临停.value);
     const 上次详情标题 = ref('详情');
@@ -1295,45 +1254,8 @@ const DesktopUnifiedLayout = {
       请求统一概览同步('tab-change');
       scheduleUnifiedFrameViewportSync();
     };
-    const 设置全息星轨主题 = 主题 => {
-      标记全息动画临停();
-      当前全息星轨状态.主题 = 规范化全息星轨主题(主题);
-      写入全息星轨主题(当前全息星轨状态.主题);
-      当前全息星轨状态.主题面板展开 = false;
-    };
-    const 切换全息主题面板 = () => {
-      标记全息动画临停();
-      当前全息星轨状态.主题面板展开 = !当前全息星轨状态.主题面板展开;
-    };
-    const 关闭全息主题面板 = () => {
-      if (!当前全息星轨状态.主题面板展开) return;
-      标记全息动画临停();
-      当前全息星轨状态.主题面板展开 = false;
-    };
-    const 处理全息主题面板失焦 = event => {
-      const 下个焦点 = event && event.relatedTarget;
-      if (下个焦点 instanceof Node && event.currentTarget instanceof Node && event.currentTarget.contains(下个焦点)) return;
-      关闭全息主题面板();
-    };
-    const 切换移动状态栏折叠 = () => {
-      if (!移动状态栏模式.value) return;
-      标记全息动画临停();
-      移动状态栏折叠.value = !移动状态栏折叠.value;
-      if (移动状态栏折叠.value) 关闭全息主题面板();
-      scheduleUnifiedFrameViewportSync();
-    };
-    const 处理移动状态栏标题点击 = event => {
-      if (!移动状态栏模式.value) return;
-      const 目标 = event && event.target instanceof Element ? event.target : null;
-      if (!目标 || 目标.closest('button, nav, a, input, select, textarea, [data-preview], .mvu-unified-theme-dock')) return;
-      切换移动状态栏折叠();
-    };
     const handleDesktopUnifiedResize = () => {
       清除详情滚动容器缓存();
-      移动状态栏模式.value = typeof window.matchMedia === 'function'
-        ? window.matchMedia('(max-width: 760px)').matches
-        : window.innerWidth <= 760;
-      if (!移动状态栏模式.value) 移动状态栏折叠.value = false;
       scheduleUnifiedFrameViewportSync();
     };
     const handleDesktopUnifiedFocusRestore = () => {
@@ -1342,7 +1264,6 @@ const DesktopUnifiedLayout = {
     };
     onMounted(() => {
       window.__MVU_SET_UNIFIED_TAB__ = setUnifiedTab;
-      window.__MVU_SET_CABIN_THEME__ = 设置全息星轨主题;
       window.__MVU_OPEN_UNIFIED_PREVIEW__ = openUnifiedPreview;
       window.__MVU_CLOSE_UNIFIED_PREVIEW__ = closeUnifiedDetail;
       window.__MVU_GET_UNIFIED_DETAIL_HOST__ = () => detailHostRef.value;
@@ -1392,7 +1313,6 @@ const DesktopUnifiedLayout = {
         removeDetailWheelBridge();
         removeDetailWheelBridge = null;
       }
-      if (window.__MVU_SET_CABIN_THEME__ === 设置全息星轨主题) delete window.__MVU_SET_CABIN_THEME__;
       if (window.__MVU_OPEN_UNIFIED_PREVIEW__ === openUnifiedPreview) delete window.__MVU_OPEN_UNIFIED_PREVIEW__;
       if (window.__MVU_CLOSE_UNIFIED_PREVIEW__ === closeUnifiedDetail) delete window.__MVU_CLOSE_UNIFIED_PREVIEW__;
       if (typeof window.__MVU_GET_UNIFIED_DETAIL_HOST__ === 'function' && window.__MVU_GET_UNIFIED_DETAIL_HOST__() === detailHostRef.value) {
@@ -1421,15 +1341,6 @@ const DesktopUnifiedLayout = {
       全息动画暂停,
       标记全息动画临停,
       全息星轨状态: 当前全息星轨状态,
-      全息星轨主题: 全息星轨主题列表,
-      设置全息星轨主题,
-      切换全息主题面板,
-      关闭全息主题面板,
-      处理全息主题面板失焦,
-      移动状态栏模式,
-      移动状态栏折叠,
-      切换移动状态栏折叠,
-      处理移动状态栏标题点击,
       详情路径标题,
       tabState: mvuTabState,
       layoutState: mvuLayoutState,
