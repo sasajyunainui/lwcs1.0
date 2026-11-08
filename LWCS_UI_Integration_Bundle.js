@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:11c2e606ec4f4b36549265f1007ec05219fea517712a7a21683bdbb672a7eb1b|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:c49202260ed6b2f1a1edfd1c025893a3b966dda0c69d0519284f7480f6ffa790|cockpit/pages-role.js:a0fa73086bf227c7b6e658a5d0097aeb4a2731610dd9e0e01ac98fc4341a242c|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:afe7c39c6437be94149d9d9d4809c3e198b189241a8997297cba7329a9f619ba|cockpit/pages-ability.js:c692feb0aaebd6f28360829098826f576cd660710001d30dd9bc5341dac9aa72|cockpit/pages-supplies.js:2c20652e62132ecf1fcdc8da32cf339e5128de56f21d9337bfafc199d63611f7|cockpit/pages-map.js:bb5b1f07a1035a0294cdb32fbc61c97c36a49946297500421647eee91fe093da|cockpit/pages-world.js:53d47819477ad0b7398941a27519ecbf1e668b1462a013f0601efb57f91507d5|cockpit/pages-terminal.js:ce98d34a8b48010be2a7112bd2ae798bafa820e71afff27f75673291a96b7ee3 */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:5cbcfca980f7afa9fd00b46f337920c0e8b8d6d62cd8c8d175fe1c8da4ae4ce4|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:c49202260ed6b2f1a1edfd1c025893a3b966dda0c69d0519284f7480f6ffa790|cockpit/pages-role.js:a0fa73086bf227c7b6e658a5d0097aeb4a2731610dd9e0e01ac98fc4341a242c|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:afe7c39c6437be94149d9d9d4809c3e198b189241a8997297cba7329a9f619ba|cockpit/pages-ability.js:c692feb0aaebd6f28360829098826f576cd660710001d30dd9bc5341dac9aa72|cockpit/pages-supplies.js:2c20652e62132ecf1fcdc8da32cf339e5128de56f21d9337bfafc199d63611f7|cockpit/pages-map.js:bb5b1f07a1035a0294cdb32fbc61c97c36a49946297500421647eee91fe093da|cockpit/pages-world.js:53d47819477ad0b7398941a27519ecbf1e668b1462a013f0601efb57f91507d5|cockpit/pages-terminal.js:432d05e3f0c4abd997ac1b79dbea3631fdc189407285aa178f7890e08961afb6 */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -40095,7 +40095,7 @@
   // 座舱挂在 #mvu-unified-mount 里、盖住旧壳层（旧壳层隐藏但保留占位，挂载点尺寸不变）。
   // 旧壳层只在下列原详情面打开时让出画面（战斗终端、魂环待选确认、私密档案），关闭后回到座舱；
   // 其他旧详情面（旧座舱各页都是详情面，刷新后会恢复上次打开的那页）在座舱接管时清掉。
-  const 座舱让位详情键 = new Set([BATTLE_INLINE_PREVIEW_KEY, '私密档案详细页', '副职业工坊', '交易网络']);
+  const 座舱让位详情键 = new Set([BATTLE_INLINE_PREVIEW_KEY, '私密档案详细页', '交易网络']);
   // 原项目各处流程（回到某页、模块意图路由等）打开的旧详情面 → 座舱里对应的页面
   const 座舱旧详情页映射 = Object.freeze({
     第1武魂详细页: ['page-ability', 'martial', { soul: '0', ringPick: '' }], 第2武魂详细页: ['page-ability', 'martial', { soul: '1', ringPick: '' }], 血脉封印详细页: ['page-ability', 'martial'],
@@ -40117,6 +40117,8 @@
     if (!键 || 座舱让位详情键.has(键)) return false;
     if (键 === PENDING_SOUL_RING_PREVIEW_KEY) return 座舱.route({ to: 'ringPick' });
     if (键 === PENDING_SKILL_DESIGN_PREVIEW_KEY) return 座舱.route({ to: 'skillConfirm' });
+    // 工坊：沿用发起流程准备好的委托上下文（mapDispatchContext：执行者、NPC、预填工序）
+    if (键 === '副职业工坊') { 座舱工坊.待用上下文 = mapDispatchContext ? cloneJsonValue(mapDispatchContext, {}) : null; return 座舱.route({ to: 'workshop' }); }
     if (isSkillDesignerPreviewKey(键)) {
       const 元数据 = parseSkillDesignerPreviewKey(键);
       return Array.isArray(元数据 && 元数据.path) && 元数据.path.length ? 座舱.route({ to: 'designer', path: 元数据.path }) : false;
@@ -40252,6 +40254,12 @@
   async function 座舱动作预演异步(名称, 参数 = {}) {
     try {
       if (名称 === 'travel') return await 座舱规划移动(参数);
+      if (名称 === 'workshop') {
+        if (参数.op === 'open') return await 座舱工坊打开(参数);
+        if (参数.op === 'set') return 座舱工坊设置(参数.changes || {});
+        if (参数.op === 'sync') { if (座舱工坊.实例 && typeof 座舱工坊.实例.updateData === 'function') 座舱工坊.实例.updateData(liveSnapshot); return 座舱工坊状态(); }
+        return 座舱工坊状态();
+      }
     } catch (错误) {
       return { ok: false, reason: 错误 && 错误.message ? 错误.message : String(错误) };
     }
@@ -40268,6 +40276,85 @@
     }
     const 错误 = 记录.find(项 => /error|warn/i.test(项.类型));
     return 错误 ? { ok: false, message: 错误.文本 || '操作失败' } : { ok: true, message: (记录[记录.length - 1] || {}).文本 || '' };
+  }
+  // ---------- 座舱工坊：原项目工坊模块常驻隐藏容器 ----------
+  const 座舱工坊 = { 容器: null, 实例: null, 键: '', 待提交: null, 失败: null, 待用上下文: null };
+  const 座舱工坊预览字段 = Object.freeze({ 'prev-job': '副职业', 'prev-executor': '执行者', 'prev-rate': '成功率', 'prev-fee': '委托费', 'prev-costs': '消耗', 'prev-res': '当前资源', 'prev-exp': '经验', 'prev-fusion': '融合', 'prev-maxfusion': '融合上限', 'prev-maxq': '品质上限', 'prev-loop': '连续', 'prev-note': '说明' });
+  function 座舱工坊状态() {
+    const 容器 = 座舱工坊.容器, 实例 = 座舱工坊.实例;
+    if (!容器 || !实例) return null;
+    const 取 = 选择器 => 容器.querySelector(选择器), 文 = 选择器 => toText(取(选择器) && 取(选择器).innerText, '').replace(/\s+/g, ' ').trim();
+    const 阶位 = 取('#prof-tier'), 提交 = 取('#prof-submit');
+    return {
+      key: 座舱工坊.键, mode: toText(实例.activeMode, ''),
+      modes: Array.from(容器.querySelectorAll('.tab-btn')).map(按钮 => ({ mode: 按钮.dataset.mode, label: 按钮.innerText.trim() })),
+      title: 文('#prof-ui-title'), subtitle: 文('#prof-ui-subtitle'),
+      tierLabel: 文('#tier-label'), tier: 阶位 ? 阶位.value : '', tierDisabled: !!(阶位 && 阶位.disabled),
+      tiers: 阶位 ? Array.from(阶位.options).map(项 => ({ value: 项.value, label: 项.textContent.trim(), disabled: 项.disabled })) : [],
+      qtyLabel: 文('#qty-label'), qty: toNumber(取('#prof-cost') && 取('#prof-cost').value, 1), qtyDisabled: !!(取('#prof-cost') && 取('#prof-cost').disabled), qtyHint: 文('#qty-hint'),
+      loop: toText(取('#prof-loop-enabled') && 取('#prof-loop-enabled').value, '0') === '1', days: toNumber(取('#prof-loop-days') && 取('#prof-loop-days').value, 1),
+      targetLabel: 文('#target-label'), target: toText(取('#prof-target') && 取('#prof-target').value, ''), targetHint: 文('#target-hint'),
+      materialsLabel: 文('#materials-label'), materialsHint: 文('#materials-hint'),
+      materials: Array.from(容器.querySelectorAll('.material-cb')).map(框 => ({ value: 框.value, checked: 框.checked, disabled: 框.disabled, label: toText(框.closest('label') && 框.closest('label').innerText, 框.value).replace(/\s+/g, ' ').trim() })),
+      preview: Object.entries(座舱工坊预览字段).map(([编号, 名称]) => [名称, 文('#' + 编号)]).filter(([, 值]) => 值 && 值 !== '-'),
+      warning: 文('#prof-action-warning'), submitLabel: 文('#prof-submit') || '开工', submitDisabled: !!(提交 && 提交.disabled),
+    };
+  }
+  async function 座舱工坊打开(参数 = {}) {
+    if (!await 确保交互模块已加载('副职业模块', 'mountProfessionUI') || typeof window.mountProfessionUI !== 'function') return { ok: false, reason: '工坊模块未就绪' };
+    const 快照 = liveSnapshot;
+    if (!快照 || !快照.rootData) return { ok: false, reason: '状态未就绪' };
+    let 上下文 = null;
+    if (参数.useFlow && 座舱工坊.待用上下文) { 上下文 = 座舱工坊.待用上下文; 座舱工坊.待用上下文 = null; }
+    else {
+      const 执行者 = toText(参数.executor, 'self'), 请求 = { 模式: toText(参数.mode, 'forge'), 副职业: toText(参数.job, ''), 执行者类型: 执行者 === 'npc' ? 'private' : 执行者, 对象: 执行者 === 'npc' ? toText(参数.npc, '') : '', 状态: 'pending', 自动执行: false };
+      上下文 = buildCraftDispatchFromRequest(快照, 请求);
+      上下文.executorType = 请求.执行者类型; 上下文.npcTarget = 请求.对象; 上下文.npcTargets = 请求.对象 ? [请求.对象] : [];
+      上下文.professionRequest = 请求;
+    }
+    if (!座舱工坊.容器) {
+      座舱工坊.容器 = document.createElement('div');
+      座舱工坊.容器.className = 'lwcs-ck-workshop-engine';
+      座舱工坊.容器.style.cssText = 'position:fixed;left:-10000px;top:0;width:960px;height:720px;overflow:hidden;opacity:0;pointer-events:none';
+      座舱工坊.容器.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(座舱工坊.容器);
+    }
+    座舱工坊.容器.innerHTML = '';
+    座舱工坊.实例 = window.mountProfessionUI(座舱工坊.容器, 快照, {
+      dispatchContext: 上下文,
+      onAction: 数据 => { 座舱工坊.待提交 = 数据; },
+      内联动作失败: 详情 => { 座舱工坊.失败 = 详情; },
+    });
+    座舱工坊.键 = JSON.stringify([toText(快照.activeName, ''), 上下文.executorType || 'self', 上下文.npcTarget || '', toText(参数.mode, '')]);
+    座舱工坊.上下文 = 上下文;
+    return 座舱工坊状态();
+  }
+  function 座舱工坊设置(改动 = {}) {
+    const 容器 = 座舱工坊.容器, 实例 = 座舱工坊.实例;
+    if (!容器 || !实例) return null;
+    const 触发 = (元素, 事件) => 元素.dispatchEvent(new Event(事件, { bubbles: true }));
+    if (改动.mode && 改动.mode !== 实例.activeMode) { const 按钮 = 容器.querySelector(`.tab-btn[data-mode="${改动.mode}"]`); if (按钮) 按钮.click(); }
+    const 设值 = (选择器, 值) => { const 元素 = 容器.querySelector(选择器); if (!元素 || 值 === undefined || 值 === null) return; 元素.value = String(值); 触发(元素, 'input'); 触发(元素, 'change'); };
+    // 顺序：材料与阶位改动会触发模块自动命名，目标物最后写，免得玩家填的名字被覆盖
+    if (Array.isArray(改动.materials)) {
+      const 选中 = new Set(改动.materials.map(String));
+      容器.querySelectorAll('.material-cb').forEach(框 => { const 要 = 选中.has(框.value); if (框.checked !== 要 && !框.disabled) { 框.checked = 要; 触发(框, 'change'); } });
+    }
+    设值('#prof-tier', 改动.tier); 设值('#prof-cost', 改动.qty); 设值('#prof-loop-enabled', 改动.loop === undefined ? undefined : (改动.loop ? '1' : '0')); 设值('#prof-loop-days', 改动.days); 设值('#prof-target', 改动.target);
+    if (改动.autoName && typeof 实例.autoGenerateTargetName === 'function') 实例.autoGenerateTargetName();
+    if (typeof 实例.updatePreview === 'function') 实例.updatePreview();
+    return 座舱工坊状态();
+  }
+  async function 座舱工坊开工() {
+    const 实例 = 座舱工坊.实例;
+    if (!实例) return { ok: false, message: '工坊未打开' };
+    座舱工坊.待提交 = null; 座舱工坊.失败 = null;
+    const 截获 = await 座舱截取提示(() => 实例.executeProfessionAction());
+    if (座舱工坊.失败) return { ok: false, message: toText(座舱工坊.失败.原因, '工坊校验未通过') };
+    const 数据 = 座舱工坊.待提交;
+    if (!数据) return { ok: false, message: 截获.ok ? '工坊没有提交动作' : 截获.message };
+    座舱工坊.待提交 = null;
+    return 座舱请求结果(await dispatchUiAiRequest(数据.playerInput, 数据.systemPrompt, { requestKind: 数据.requestKind, patchOps: 数据.patchOps }));
   }
   async function 座舱执行动作(名称, 参数 = {}) {
     const 快照 = liveSnapshot;
@@ -40367,6 +40454,7 @@
           return 座舱截取提示(() => 状态.kind === 'construct' ? 管理器.performConstructSkillUse(参数.path) : 管理器.performDailyWritebackSkillUse(参数.path));
         }
         case 'workshop': {
+          if (参数.op === 'start') return await 座舱工坊开工();
           const 结果 = 执行副职业工坊打开路由(快照, { 模式: toText(参数.mode, 'forge'), 副职业: toText(参数.job, '') });
           const 失败 = !结果 || 结果.ok === false || 结果.dispatchMode === 'failed_summary';
           return { ok: !失败, message: 失败 ? toText(结果 && 结果.reason, '工坊打开失败') : '' };
@@ -78317,7 +78405,7 @@ ${播报文本}
   ];
   const WORK_EXP = { 1: 50, 2: 400, 3: 2000, 4: 10000, 5: 50000 };
   const expSteps = () => window.COCKPIT.rt('JobExpThresholds') || [0, 1000, 5000, 12000, 60000, 80000, 400000, 500000, 3000000, 99999999];
-  const workshop = c => {
+  const workshopStatic = c => {
     const jobs = c.ch.副职业 || {}, w = WORK.find(x => x.key === c.state.ui.wtab) || WORK.find(x => jobs[x.job]) || WORK[0];
     const job = jobs[w.job], lv = c.num(job?.等级), exp = c.num(job?.经验), th = expSteps(), cur = th[Math.max(0, Math.min(lv, 10) - 1)] || 0, nxt = lv >= 10 ? 0 : th[Math.min(lv, 9)] || 0;
     const st = c.st, res = [['体力', st.体力], ['魂力', st.魂力], ['精神力', st.精神力]];
@@ -78389,6 +78477,81 @@ ${播报文本}
     return p ? [p.分类 || '', { ...p, 基础价格: p.价格, 默认货币: p.货币 }] : ['', null];
   };
   // 列表里的价格按万 / 亿缩写，给货品名留出宽度；主屏与结算仍显示全额
+
+  // ---------- 工坊（lwcs）：原项目工坊模块在桥接里常驻隐藏，这里只做表单与预览；成功率、消耗、校验、开工全由模块完成 ----------
+  // 执行者：自己 / 官方工坊 / 委托在场人物；由原项目流程（NPC 委托、任务）打开时沿用那次的委托上下文（flow）
+  const wsExecs = c => [['self', '自己动手'], ['official', '官方工坊'],
+    ...Object.entries(c.S.char).filter(([n, x]) => n !== c.name && x?.状态?.位置 && x.状态.位置 === c.ch.状态?.位置).map(([n]) => [`npc:${n}`, `委托 ${n}`]),
+    ...(c.state.ui.wsExec === 'flow' ? [['flow', '当前委托']] : [])];
+  const wsSig = c => JSON.stringify([c.S.world?.时间?.tick, c.st.体力, c.st.魂力, c.st.精神力, Object.keys(c.ch.背包 || {}).join('|')]);
+  const wsCall = (c, payload, after) => {
+    const ui = c.state.ui; ui.wsPending = true;
+    window.COCKPIT.previewAsync('workshop', payload).then(st => { ui.wsPending = false; after(st); window.COCKPIT.refresh(); });
+  };
+  // 需要时向桥接要模块状态：换角色 / 执行者 → 重新挂载；换工序 → 只改模式；时间、资源、背包变了 → 模块同步一次
+  const wsLoad = (c, w) => {
+    const ui = c.state.ui, ex = ui.wsExec || 'self', want = JSON.stringify([c.name, ex]);
+    if (ui.wsPending) return;
+    if (ui.wsFor !== want) {
+      const flow = ex === 'flow' && ui.wsFlow === '1'; ui.wsFlow = '';
+      return wsCall(c, { op: 'open', mode: w.key, job: w.job, executor: ex.startsWith('npc:') ? 'npc' : ex === 'flow' ? 'self' : ex, npc: ex.startsWith('npc:') ? ex.slice(4) : '', useFlow: flow }, st => {
+        ui.wsFor = want; ui.wsSig = wsSig(c);
+        if (st && st.mode) { ui.ws = st; ui.wsErr = ''; if (flow) ui.wtab = st.mode; } else { ui.ws = null; ui.wsErr = st ? st.reason || '工坊模块未就绪' : ''; }
+      });
+    }
+    if (ui.ws && ui.ws.mode !== w.key) return wsCall(c, { op: 'set', changes: { mode: w.key } }, st => { if (st) ui.ws = st; });
+    if (ui.ws && ui.wsSig !== wsSig(c)) { ui.wsSig = wsSig(c); return wsCall(c, { op: 'sync' }, st => { if (st) ui.ws = st; }); }
+  };
+  const wsStep = (c, key, val, min, max) => `<span class="dz-num co-qty"><button type="button" class="dz-step" data-ws="${key}=${Math.max(min, val - 1)}" aria-label="减少"><i class="fa-solid fa-minus"></i></button><b>${c.fmt(val)}</b><button type="button" class="dz-step" data-ws="${key}=${Math.min(max, val + 1)}" aria-label="增加"><i class="fa-solid fa-plus"></i></button></span>`;
+  const workshop = c => {
+    const ui = c.state.ui, jobs = c.ch.副职业 || {}, w = WORK.find(x => x.key === ui.wtab) || WORK.find(x => jobs[x.job]) || WORK[0];
+    if (!c.rt('__LWCS_ERA_RUNTIME_INTEGRATION_V1__')) return workshopStatic(c);
+    wsLoad(c, w);
+    const base = workshopStatic(c), ws = ui.ws && ui.ws.mode === w.key ? ui.ws : null;
+    const job = jobs[w.job], lv = c.num(job?.等级), exp = c.num(job?.经验), th = expSteps(), cur = th[Math.max(0, Math.min(lv, 10) - 1)] || 0, nxt = lv >= 10 ? 0 : th[Math.min(lv, 9)] || 0;
+    const ex = ui.wsExec || 'self';
+    const left = base.left.replace(/<\/div>\s*$/, `<span class="lbl">执行者${c.hint('委托在场人物或官方工坊代工时，不扣你的副职业资源，按委托规则收费')}</span><div class="pick-row">${c.pick('wsExec', ex, wsExecs(c).map(([v, l]) => ({ value: v, label: l })))}</div></div>`);
+    const meters = job ? `<div class="q-meters"><div class="q-meter"><div class="q-mh"><small>经验</small><b>${c.fmt(exp)}</b><em>${lv >= 10 ? '已满级' : `下一级需 ${c.fmt(nxt)}`}</em></div>${c.bar('mp', Math.max(0, exp - cur), Math.max(1, (nxt || exp) - cur))}</div><div class="q-meter"><div class="q-mh"><small>称号</small><b>${c.esc(c.blank(job.称号) || job.称号 === '无' ? '暂无' : job.称号)}</b><em>等级 ${c.fmt(lv)} / 10</em></div></div></div>` : '';
+    const head = `<div class="q-title">${c.sock(w.icon, 'gd')}<span class="chip">${w.job}</span><h2>${c.esc(ws?.title || `${w.name}工序`)}</h2>${job ? `<span class="q-state">Lv.${c.fmt(lv)}</span>` : '<span class="q-state done">未习得</span>'}</div>`;
+    if (!ws) return { ...base, left, core: `<div class="pad">${head}${meters}<div class="warn" style="color:var(--ink2);background:rgba(47,124,246,.1);box-shadow:inset 2px 0 0 var(--blue)"><i class="fa-solid fa-gear"></i><span>${ui.wsErr ? c.esc(ui.wsErr) : '正在准备工坊'}</span></div></div>`,
+      right: `<div class="pad">${c.head('bolt', '开工', 'Start')}<span class="cta-wrap" data-hint="${c.esc(ui.wsErr || '工坊准备中')}"><button class="cta" type="button" disabled><i class="fa-solid fa-${w.icon}"></i>${w.act}</button></span></div>` };
+    const mats = ws.materials.map(m => `<button type="button" class="dz-chip${m.checked ? ' on' : ''}" data-ws-mat="${c.esc(m.value)}"${m.disabled ? ' disabled' : ''} aria-pressed="${m.checked}">${c.esc(m.label)}</button>`).join('');
+    const form = `<section class="sec"><h3>工序设置<span class="en">Process</span>${c.hint(ws.subtitle)}</h3><div class="dz2-grid ws-form">
+        <div class="dzf"><span class="dzf-l">${c.esc(ws.tierLabel || '阶位')}</span>${c.pick('wsTier', ws.tier, ws.tiers.map(t => ({ value: t.value, label: t.disabled ? `${t.label}（不可用）` : t.label })), { disabled: ws.tierDisabled })}</div>
+        <div class="dzf"><span class="dzf-l">${c.esc(ws.qtyLabel || '数量')}${c.hint(ws.qtyHint)}</span>${ws.qtyDisabled ? `<b>${c.fmt(ws.qty)}</b>` : wsStep(c, 'qty', ws.qty, 1, 999)}</div>
+        <div class="dzf"><span class="dzf-l">连续模式${c.hint('连续多天开工，按每天恢复情况自动安排次数')}</span><div class="seg"><button class="key-s${ws.loop ? '' : ' on'}" type="button" data-ws="loop=0">单次</button><button class="key-s${ws.loop ? ' on' : ''}" type="button" data-ws="loop=1">连续</button></div></div>
+        ${ws.loop ? `<div class="dzf"><span class="dzf-l">连续天数</span>${wsStep(c, 'days', ws.days, 1, 365)}</div>` : ''}
+        <div class="dzf wide"><span class="dzf-l">${c.esc(ws.targetLabel || '目标物')}${c.hint(ws.targetHint)}</span><div class="ws-target"><input type="text" data-ws-target value="${c.esc(ws.target)}" placeholder="自动生成或手动输入" aria-label="${c.esc(ws.targetLabel || '目标物')}"><button class="key-s" type="button" data-ws="autoName=1"><i class="fa-solid fa-wand-magic-sparkles"></i> 自动命名</button></div></div>
+        <div class="dzf wide"><span class="dzf-l">${c.esc(ws.materialsLabel || '材料')}${c.hint(ws.materialsHint)}</span>${mats ? `<div class="dz-chips">${mats}</div>` : '<span class="lbl">背包里没有这道工序能用的材料</span>'}</div>
+      </div></section>`;
+    const target = ws.target ? `「${ws.target}」` : '';
+    const cta = ws.submitDisabled ? `<span class="cta-wrap" data-hint="${c.esc(ws.warning || '现在不能开工')}"><button class="cta" type="button" disabled><i class="fa-solid fa-${w.icon}"></i>${c.esc(ws.submitLabel)}</button></span>`
+      : `<button class="cta" type="button" data-confirm="${c.esc(`${ws.submitLabel}${target}`)}" data-act='{"name":"workshop","op":"start"}'><i class="fa-solid fa-${w.icon}"></i>${c.esc(ws.submitLabel)}</button>`;
+    return {
+      tag: 'CORE · WORKSHOP', left,
+      core: `<div class="pad">${head}${meters}${form}</div>`,
+      right: `<div class="pad">${c.head('bolt', '开工', 'Start')}${ws.preview.length ? c.kv(ws.preview.map(([k, v]) => [k, c.esc(v)])) : ''}${ws.warning ? `<div class="warn"><i class="fa-solid fa-triangle-exclamation"></i><span>${c.esc(ws.warning)}</span></div>` : ''}${cta}</div>`,
+    };
+  };
+  // 工坊表单 → 模块
+  const wsSet = changes => { const c = window.COCKPIT.ctx(); wsCall(c, { op: 'set', changes }, st => { if (st) c.state.ui.ws = st; }); };
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-ws]');
+    if (b) { const [k, v] = b.dataset.ws.split('='); return wsSet(k === 'loop' ? { loop: v === '1' } : k === 'autoName' ? { autoName: true } : { [k]: Number(v) }); }
+    const m = e.target.closest('[data-ws-mat]'); if (!m || m.disabled) return;
+    const ws = window.COCKPIT.ctx().state.ui.ws; if (!ws) return;
+    const on = new Set(ws.materials.filter(x => x.checked).map(x => x.value));
+    on.has(m.dataset.wsMat) ? on.delete(m.dataset.wsMat) : on.add(m.dataset.wsMat);
+    wsSet({ materials: [...on] });
+  });
+  document.addEventListener('change', e => { const t = e.target.closest?.('[data-ws-target]'); if (t) wsSet({ target: t.value }); });
+  document.addEventListener('picker:change', e => {
+    if (e.detail.path === 'wsTier') return wsSet({ tier: e.detail.value });
+    if (e.detail.path === 'wsExec') { const c = window.COCKPIT.ctx(); Object.assign(c.state.ui, { wsExec: e.detail.value, wsFor: '' }); window.COCKPIT.refresh(); }
+  });
+  // 原项目流程（NPC 委托、任务、模块意图）打开工坊：沿用那次的委托上下文
+  window.COCKPIT.addRoute?.('workshop', () => { const c = window.COCKPIT.ctx(); Object.assign(c.state.ui, { wsExec: 'flow', wsFlow: '1', wsFor: '' }); window.COCKPIT.go('page-terminal', 'workshop'); return true; });
+
   const shortNum = (c, n) => n >= 1e8 ? `${+(n / 1e8).toFixed(2)}亿` : n >= 1e4 ? `${+(n / 1e4).toFixed(1)}万` : c.fmt(n);
   const trade = c => {
     const ui = c.state.ui, p = String(c.ch.状态?.位置 || '').split('-').filter(x => x && x !== '斗罗大陆');
