@@ -27,13 +27,16 @@
   .wing .attr em{white-space:normal;text-align:right;line-height:1.1}
   .wing .q-tabs .key-s{padding-inline:0;font-size:.78em}
 }
+/* 旧状态栏样式里有一条全局 .stage（flex 竖排、overflow:hidden、内边距）会漏进座舱：overflow 非 visible 时 3D 透视被压平，
+   两翼看起来就是平铺的。这里把座舱台面复位（删旧界面后这条仍无害） */
+.stage{display:block;flex:none;min-height:0;padding:0;overflow:visible;z-index:auto}
 /* 播报喇叭只在指挥栏收起播报时出现 */
 .readout .tick-ico{display:none}
 /* 桌面指挥栏（座舱宽 ≥701px）：聊天流里高度金贵——领域标签、页面按键、地址时间并成三屏上方一条 40px 的指挥栏，
    不再有上方梯形标签台、下方按键台与底部读数条；三屏吃满整宽，两翼斜角加大、透视拉近，形成包围 */
 @container (min-width:701px){.cockpit{perspective:900px;perspective-origin:50% 58%}}
 @container cockpit (min-width:701px){
-  .stage{display:flex;flex-wrap:wrap;align-items:stretch;padding-top:2px}
+  .stage{display:flex;flex-direction:row;flex-wrap:wrap;align-items:stretch;padding-top:2px}
   .arc,.deck,.readout{transform:none;filter:none;margin:0;width:auto;height:40px;box-sizing:border-box}
   .arc .bz,.arc .b2,.arc .b3,.deck .bz,.deck .b2,.deck .b3{clip-path:none!important;background:none;padding:0!important;height:100%}
   /* 领域：只亮当前领域的文字，其余只留图标（悬停显示名称） */
