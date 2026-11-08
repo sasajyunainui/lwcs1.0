@@ -93,8 +93,8 @@
         ${go ? `<button class="key-s" type="button" style="align-self:flex-start" data-go="${go[0]}" data-go-set="${c.esc([go[1], sel.ref?.id && sel.kind === '委托截止' ? `qsel=${sel.ref.id}` : '', sel.ref?.id && sel.kind === '任务截止' ? `qsel=${sel.ref.id}` : ''].filter(Boolean).join(';'))}"><i class="fa-solid fa-arrow-right"></i> 前往处理</button>` : ''}
       </div>` : `<div class="pad sparse">${c.empty('timeline', mode === 'past' ? '还没有已发生的世界事件' : '还没有记录未来事件')}</div>`,
       right: `<div class="pad">${c.head('hourglass-half', '今日', 'Today')}
-        <div class="chronos small"><span class="lv">${c.esc((c.S.world.时间._calendar || '').replace(/ .*/, ''))}</span><span class="num">${c.esc((c.S.world.时间._calendar || '').split(' ')[1] || '')}</span></div>
-        <div class="tiles">${tile(c, 'book-open', Object.keys(c.S.world.时间线 || {}).length, '世界事件')}${tile(c, 'hourglass-half', all.length, '未来节点')}${kinds.map(k => tile(c, all.find(x => x.kind === k).icon, all.filter(x => x.kind === k).length, k)).join('')}</div>
+        <div class="chronos small"><span class="lv">${c.esc((c.S.world.时间._calendar || '').replace(/ .*/, '')).replace(/^(斗罗历|斗灵历)/, '<i>$1</i>')}</span><span class="num">${c.esc((c.S.world.时间._calendar || '').split(' ')[1] || '')}</span></div>
+        <div class="tiles">${tile(c, 'book-open', Object.keys(c.S.world.时间线 || {}).length, '时间线条目')}${tile(c, 'hourglass-half', all.length, '未来节点')}${kinds.map(k => tile(c, all.find(x => x.kind === k).icon, all.filter(x => x.kind === k).length, k)).join('')}</div>
       </div>`,
     };
   };
