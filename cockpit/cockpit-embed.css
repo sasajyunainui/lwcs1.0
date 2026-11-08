@@ -21,6 +21,8 @@
 }
 /* 桌面中屏身份行窄时两行均分 */
 @container cockpit (min-width:701px){.home-top .title-line{white-space:normal;text-wrap:balance}.home-top .title-line .nw{white-space:nowrap}}
+/* 窄桌面（中屏约 400px）：总览顶部改上下两段——身份区占整宽，四条资源条两列两行，不再左右挤 */
+@container cockpit (min-width:701px) and (max-width:999px){.home-top{grid-template-columns:1fr;gap:.55em}.home-top .meters{grid-template-columns:1fr 1fr;gap:.35em 1em}}
 /* 座舱较窄：标题英文副标题全隐藏，属性训练增量可折两行，任务页签去内边距、字号收小 */
 @container cockpit (min-width:701px) and (max-width:879px){
   .h .en{display:none}
@@ -57,7 +59,7 @@
   .readout .res,.readout .tick{display:none}
   .readout .tick-ico{display:inline-block;cursor:help}
   /* 两翼近端会向前、向外凸出：上下各留余量，不压指挥栏、不被座舱底边裁 */
-  .screens{order:4;flex:1 0 100%;margin:26px 10px 22px;--lw:27%;--rw:27%}
+  .screens{order:4;flex:1 0 calc(100% - 28px);max-width:calc(100% - 28px);margin:26px 14px 22px;--lw:27%;--rw:27%}
   .wing.l{--la:22deg}.wing.r{--ra:22deg}
 }
 /* 座舱够宽时播报回到栏里滚动显示 */
