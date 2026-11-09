@@ -216,15 +216,22 @@
 .lwcs-ck-battle details>summary{cursor:pointer;font-weight:800;color:#9fd0ff}
 .lwcs-ck-battle .tag-chip{display:inline-block;font-size:.85em;font-weight:800;padding:0 .45em;color:#cfe0f7;box-shadow:inset 0 0 0 1px rgba(140,200,255,.3)}
 
-/* ---------- 窄屏：一列，己方 / 敌方并排在上，指令在中 ---------- */
+/* ---------- 窄屏：己方 / 敌方压成紧凑卡并排在上，指令、执行栏、记录依次在下 ---------- */
 @container cockpit (max-width:700px){
   .battle-deck{margin:6px 0 0}
-  .lwcs-ck-battle.battle-module-scope{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"chips chips" "alert alert" "ally foe" "main main" "exec exec" "rec rec";padding:.9em .7em}
+  .lwcs-ck-battle.battle-module-scope{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"chips chips" "alert alert" "ally foe" "main main" "exec exec" "rec rec";gap:.6em;padding:.9em .6em}
+  .lwcs-ck-battle .combatant-card{padding:.55em .55em .6em;gap:.4em}
+  .lwcs-ck-battle .combatant-name{font-size:.95em}
+  .lwcs-ck-battle .combatant-type{font-size:.68em}
+  .lwcs-ck-battle .resource-bar{grid-template-columns:minmax(0,1fr) auto;gap:.1em .3em}
+  .lwcs-ck-battle .resource-track{grid-column:1/-1;grid-row:2;height:8px}
+  .lwcs-ck-battle .resource-label,.lwcs-ck-battle .resource-text{font-size:.68em}
+  .lwcs-ck-battle .stats-grid{gap:.2em}
+  .lwcs-ck-battle .stat-item{padding:.15em .3em;flex-direction:column;align-items:flex-start;gap:0}
+  .lwcs-ck-battle .intent-pill{font-size:.8em}
+  .lwcs-ck-battle .action-grid{grid-template-columns:repeat(auto-fill,minmax(9.5em,1fr))}
   .lwcs-ck-battle .battle-exec-bar{grid-template-columns:minmax(0,1fr)}
+  .lwcs-ck-battle .battle-settings-strip>.battle-terminal-row{flex:1 1 11em}
   .lwcs-ck-battle .battle-exec-actions>.ghost-btn{flex:1 1 auto}
-  .lwcs-ck-battle .resource-bar{grid-template-columns:2em minmax(0,1fr)}
-  .lwcs-ck-battle .resource-text{grid-column:2;font-size:.7em}
-}
-@container cockpit (max-width:440px){
-  .lwcs-ck-battle.battle-module-scope{grid-template-columns:minmax(0,1fr);grid-template-areas:"chips" "alert" "ally" "foe" "main" "exec" "rec"}
+  .lwcs-ck-battle .battle-submit-btn{min-width:0}
 }
