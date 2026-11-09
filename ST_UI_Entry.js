@@ -895,42 +895,7 @@
       宿主文档.body.appendChild(pageMap);
     }
 
-    const existingModal = 宿主文档.getElementById('detailModal');
-    const modalIncomplete = existingModal && (!existingModal.querySelector('.mvu-modal-panel, .modal-panel')
-      || !宿主文档.getElementById('modalTitle')
-      || !宿主文档.getElementById('modalBody')
-      || !宿主文档.getElementById('modalClose'));
-
-    if (!existingModal || modalIncomplete) {
-      const wrapper = 宿主文档.createElement('div');
-      wrapper.innerHTML = `
-      <div class="mvu-modal-mask modal-mask mvu-root" id="detailModal" aria-hidden="true">
-        <div class="mvu-modal-panel modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-          <div class="modal-head">
-            <div class="modal-head-main">
-              <div class="modal-meta-row">
-                <span class="modal-level-chip" id="modalLevel"></span>
-                <span class="modal-path-chip" id="modalPath"></span>
-              </div>
-              <div class="modal-title-wrap">
-                <div class="modal-title" id="modalTitle"></div>
-                <div class="modal-subtitle" id="modalSubtitle"></div>
-              </div>
-            </div>
-            <button class="modal-close" id="modalClose">关闭</button>
-          </div>
-          <div class="modal-summary" id="modalSummary"></div>
-          <div class="modal-body" id="modalBody"></div>
-        </div>
-      </div>
-    `;
-      const nextModal = wrapper.firstElementChild;
-      if (existingModal && existingModal.parentNode) {
-        existingModal.parentNode.replaceChild(nextModal, existingModal);
-      } else {
-        宿主文档.body.appendChild(nextModal);
-      }
-    }
+    // 旧详情弹窗（#detailModal）已随旧界面删除，状态栏只有座舱
   }
 
   function ensureGetAllVariablesShim() {
@@ -997,8 +962,7 @@
     while (Date.now() - start < limit) {
       ensureHostNodes();
       const unified = 宿主文档.getElementById('mvu-unified-mount');
-      const modal = 宿主文档.getElementById('detailModal');
-      if (unified && modal) return true;
+      if (unified) return true;
       await 睡眠(100);
     }
     throw new Error('Mount points not ready');

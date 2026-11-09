@@ -95,23 +95,7 @@
     return nextValue;
   }
 
-  const detailModal = document.getElementById('detailModal');
-  if (detailModal && detailModal.parentElement !== document.body) {
-    document.body.appendChild(detailModal);
-  }
 
-  const modalPanel = detailModal
-    ? detailModal.querySelector('.mvu-modal-panel') || detailModal.querySelector('.modal-panel')
-    : null;
-  const modalTitle = document.getElementById('modalTitle');
-  const modalSubtitle = document.getElementById('modalSubtitle');
-  const modalLevel = document.getElementById('modalLevel');
-  const modalPath = document.getElementById('modalPath');
-  const modalSummary = document.getElementById('modalSummary');
-  const modalBody = document.getElementById('modalBody');
-  const modalClose = document.getElementById('modalClose');
-
-  let modalStack = [];
   function getModalRefs() {
     return {};
   }
@@ -316,7 +300,6 @@
   let currentModalPreviewKey = '';
   let currentUnifiedPreviewKey = '';
   let mapDispatchContext = null;
-  let activeSubUI = null;
   let lastAutoOpenedPendingSoulRingSignature = '';
   let 待处理技能设计确认 = null;
   const 已跳过成长技能确认签名 = new Set();
@@ -576,11 +559,6 @@
 
 
 
-  function clearCachedSkillDesignerDraft(previewKey = '') {
-    const key = String(previewKey || '').trim();
-    if (!key) return;
-    __mvuBridgeRoot.__LWCS_HOST_COMPATIBILITY_V1__.sessionMap(getCurrentUiRequestChatId(), 'skill-designer').delete(key);
-  }
 
 
   function formatTickToCalendarDateText(tickValue) {
@@ -11827,7 +11805,6 @@
   }
 
   const AI维护_API存储键 = 'LWCS_AI维护_API预设';
-  const AI维护_方式列表 = Object.freeze(['补全空值', '根据剧情修正', '整理格式', '生成缺失条目', '检查并修复']);
   const AI维护_状态 = {
     active: false,
     root: null,
@@ -11837,17 +11814,7 @@
     busy: false,
   };
 
-  function 构建AI维护路径键(pathValue = []) {
-    return normalizeEditorPath(pathValue)
-      .map(token => String(token))
-      .join('\u0001');
-  }
 
-  function 格式化AI维护路径(pathValue = []) {
-    const path = normalizeEditorPath(pathValue);
-    if (!path.length) return '';
-    return `/${path.map(token => escapeJsonPointerValue(token)).join('/')}`;
-  }
 
 
 
@@ -11908,13 +11875,6 @@
     }
   }
 
-  function 保存AI维护已选API预设(presetName = '') {
-    const safePresetName = toText(presetName, '').trim();
-    try {
-      if (window.localStorage) window.localStorage.setItem(AI维护_API存储键, safePresetName);
-    } catch (error) {}
-    return safePresetName;
-  }
 
   function 读取AI维护有效API预设() {
     const selected = 读取AI维护已选API预设();
@@ -11924,28 +11884,7 @@
 
 
 
-  function 同步AI维护标题按钮状态() {
-    const 是否激活 = !!(AI维护_状态.active && AI维护_状态.root && AI维护_状态.root.isConnected);
-    document.querySelectorAll('[data-ai-maintenance-toggle]').forEach(button => {
-      button.classList.toggle('is-ai-active', 是否激活);
-      button.setAttribute('aria-pressed', 是否激活 ? 'true' : 'false');
-      button.textContent = 是否激活 ? '选择中' : 'AI维护';
-    });
-  }
 
-  function 查找AI维护根(previewKey = '') {
-    const key = toText(previewKey, '').trim();
-    const candidates = Array.from(document.querySelectorAll('[data-ai-maintenance-root]'));
-    if (!key) return candidates.find(node => node instanceof Element && node.isConnected) || null;
-    return (
-      candidates.find(
-        node =>
-          node instanceof Element &&
-          node.isConnected &&
-          toText(node.getAttribute('data-holo-preview'), '').trim() === key,
-      ) || null
-    );
-  }
 
 
 
@@ -11955,355 +11894,20 @@
     return !!(root && root.isConnected && root.contains(target));
   }
 
-  function 解析AI维护路径属性(element) {
-    if (!element || !(element instanceof Element)) return [];
-    try {
-      const parsed = JSON.parse(element.getAttribute('data-mvu-path') || '[]');
-      return normalizeEditorPath(parsed);
-    } catch (error) {
-      return [];
-    }
-  }
-
-  function 构建AI维护页面变量组(previewKey = '', snapshot = liveSnapshot || lastRenderableSnapshot || {}) {
-    const activeName = toText(snapshot && snapshot.activeName, '');
-    const activeCharKey = resolveSnapshotCharKey(snapshot, activeName) || activeName;
-    const groups = [];
-    const add = (label, path, keywords = []) => {
-      const safePath = normalizeEditorPath(path);
-      if (!label || !safePath.length) return;
-      groups.push({
-        label,
-        path: safePath,
-        keywords: (Array.isArray(keywords) ? keywords : []).map(item => toText(item, '').trim()).filter(Boolean),
-      });
-    };
-
-    const key = toText(previewKey, '').trim();
-    if (activeCharKey) {
-      if (key === '任务界面') {
-        add('我的任务', ['char', activeCharKey, '我的任务'], ['我的任务', '任务详情', '任务']);
-      }
-      if (key === '人物关系详细页')
-        add('人物关系', ['char', activeCharKey, '社交', '关系'], ['关系', '人物关系', '互动']);
-      if (key === '情报库详细页' || key === '试炼与情报') {
-        add('已掌握情报', ['char', activeCharKey, '已掌握情报'], ['近期情报', '已掌握情报', '情报']);
-        add('我的任务', ['char', activeCharKey, '我的任务'], ['我的任务', '任务']);
-      }
-      if (key === '储物仓库详细页') {
-        add('背包', ['char', activeCharKey, '背包'], ['背包', '物品', '仓库']);
-        add('财富', ['char', activeCharKey, '财富'], ['财富', '货币']);
-      }
-      if (key === '武装工坊详细页' || key.startsWith('武装详情')) {
-        add('装备', ['char', activeCharKey, '装备'], ['装备', '武装', '斗铠', '机甲']);
-      }
-      if (key === '副职业工坊') {
-        add('副职业', ['char', activeCharKey, '副职业'], ['副职业', '工坊']);
-        add('背包', ['char', activeCharKey, '背包'], ['材料', '背包', '工坊']);
-        add('属性', ['char', activeCharKey, '属性'], ['体力', '魂力', '精神力']);
-      }
-      if (key === '生命图谱详细页' || key === '生命图谱详情页') {
-        add('状态', ['char', activeCharKey, '状态'], ['状态', '当前状态']);
-        add('属性', ['char', activeCharKey, '属性'], ['属性', '生命体征']);
-        add('外貌', ['char', activeCharKey, '外貌'], ['外貌', '外观']);
-      }
-      if (key === '社会档案详细页') add('社会档案', ['char', activeCharKey, '社交'], ['社会', '声望', '称号']);
-      if (key === '第1武魂详细页' || key === '第2武魂详细页' || key === '武魂融合技详细页') {
-        add('武魂', ['char', activeCharKey], ['第1武魂', '第2武魂', '第1魂灵', '第1魂灵.第1魂环', '第1魂灵.第1魂环.第1魂技']);
-        add('融合技', ['char', activeCharKey, '武魂融合技'], ['融合']);
-      }
-      if (key === '血脉封印详细页') add('血脉', ['char', activeCharKey, '血脉之力'], ['血脉', '封印']);
-      if (key === '当前节点详情') add('位置状态', ['char', activeCharKey, '状态', '位置'], ['当前节点', '所在位置']);
-      if (key === '试炼与情报') add('魂灵塔记录', ['char', activeCharKey, '魂灵塔记录'], ['魂灵塔', '试炼总览']);
-    }
-
-    if (key === '任务界面') add('委托板', ['world', '委托板'], ['委托板', '委托详情', '发布委托']);
-    if (key === '试炼与情报') {
-      add('图鉴', ['world', '图鉴'], ['图鉴', '怪物']);
-    }
-    if (key === '近期见闻' || key === '近期安排')
-      add('全息编年史', ['world', '时间线'], ['见闻', '编年', '时间线', '事件']);
-    if (key === '当前节点详情' || key.startsWith('地图节点：')) {
-      add('地点', ['world', '地点'], ['地点', '当前节点', '据点']);
-      add('动态地点', ['world', '动态地点'], ['动态地点', '扩展节点']);
-    }
-    if (key === '势力矩阵总览' || key === '我的阵营详情' || key === '所属势力详细页')
-      add('势力', ['org'], ['势力', '阵营']);
-    if (key === '怪物图鉴') add('图鉴', ['world', '图鉴'], ['图鉴', '怪物']);
-    return groups;
-  }
 
 
-  function AI维护路径是否只读(path = []) {
-    const safePath = normalizeEditorPath(path);
-    if (!safePath.length) return true;
-    if (路径命中本轮模块结算(safePath)) return true;
-    if (['display_all', 'display_chars'].includes(toText(safePath[0], ''))) return true;
-    return safePath.some(token => {
-      const text = toText(token, '').trim();
-      return !text || text === '当前' || text === '相关实体索引' || text.startsWith('__') || text.startsWith('_');
-    });
-  }
-
-  function AI维护候选值可直接维护(value) {
-    if (value === null) return true;
-    if (Array.isArray(value)) return value.length > 0 && value.length <= 12;
-    return typeof value !== 'object';
-  }
-
-  function 收集AI维护可写候选路径(source, basePath = [], result = [], depth = 0) {
-    const path = normalizeEditorPath(basePath);
-    if (AI维护路径是否只读(path)) return result;
-    if (AI维护候选值可直接维护(source)) {
-      result.push({ kind: '字段', label: path.slice(-3).map(toText).join(' / '), path });
-      return result;
-    }
-    if (!source || typeof source !== 'object' || depth >= 4) {
-      if (path.length) result.push({ kind: '变量组', label: path.slice(-2).map(toText).join(' / '), path });
-      return result;
-    }
-    safeEntries(source).forEach(([key, value]) => {
-      const nextPath = [...path, key];
-      if (AI维护路径是否只读(nextPath)) return;
-      if (AI维护候选值可直接维护(value)) {
-        result.push({ kind: '字段', label: nextPath.slice(-3).map(toText).join(' / '), path: nextPath });
-        return;
-      }
-      if (value && typeof value === 'object') {
-        const entryCount = safeEntries(value).length;
-        if (entryCount && (depth >= 2 || entryCount <= 8))
-          result.push({ kind: '变量组', label: nextPath.slice(-3).map(toText).join(' / '), path: nextPath });
-        if (depth < 3) 收集AI维护可写候选路径(value, nextPath, result, depth + 1);
-      }
-    });
-    return result;
-  }
-
-  function 构建AI维护候选项(snapshot = liveSnapshot || lastRenderableSnapshot || {}) {
-    const statData = snapshot && snapshot.rootData ? snapshot.rootData : snapshot;
-    const groups = 构建AI维护页面变量组(AI维护_状态.previewKey, snapshot);
-    const result = [];
-    const seen = new Set();
-    groups.forEach(group => {
-      if (!group || AI维护路径是否只读(group.path)) return;
-      const groupKey = 构建AI维护路径键(group.path);
-      if (!seen.has(`变量组:${groupKey}`)) {
-        result.push({ kind: '变量组', label: group.label || 格式化AI维护路径(group.path), path: group.path });
-        seen.add(`变量组:${groupKey}`);
-      }
-      收集AI维护可写候选路径(deepGet(statData, group.path, undefined), group.path).forEach(item => {
-        const key = `${item.kind}:${构建AI维护路径键(item.path)}`;
-        if (seen.has(key)) return;
-        result.push(item);
-        seen.add(key);
-      });
-    });
-    return result.slice(0, 80);
-  }
-
-  function 获取AI维护节点标签(node, path = []) {
-    const safePath = normalizeEditorPath(path);
-    const leaf = toText(safePath[safePath.length - 1], '').trim();
-    const card =
-      node && typeof node.closest === 'function'
-        ? node.closest(
-            '.archive-card, .timeline-card, .intel-card, .relation-card, .archive-tile, .role-switch-tile, .dossier-row, .mvu-holo-row',
-          )
-        : null;
-    const titleNode = card ? card.querySelector('.archive-card-title, .mvu-holo-card-title, .role-switch-head b, b') : null;
-    const title = toText(titleNode ? titleNode.textContent : '', '')
-      .replace(/\s+/g, ' ')
-      .trim();
-    const inlineText = toText(node && node.textContent, '')
-      .replace(/\s+/g, ' ')
-      .trim();
-    const valueText = inlineText && inlineText.length <= 18 ? inlineText : '';
-    return [title, leaf, valueText].filter(Boolean).join(' / ') || 格式化AI维护路径(safePath);
-  }
-
-  function 标记AI维护可选目标(root, previewKey = '') {
-    if (!root || !(root instanceof Element)) return 0;
-    let count = 0;
-    root.querySelectorAll('[data-mvu-path]').forEach(node => {
-      const path = 解析AI维护路径属性(node);
-      if (!path.length) return;
-      const label = 获取AI维护节点标签(node, path);
-      node.classList.add('mvu-ai-maintenance-selectable');
-      node.setAttribute('data-ai-maintenance-field', 构建AI维护路径键(path));
-      node.setAttribute('data-ai-maintenance-label', label);
-      node.setAttribute('title', node.getAttribute('title') || 格式化AI维护路径(path));
-      count += 1;
-    });
-
-    const groups = 构建AI维护页面变量组(previewKey, liveSnapshot || lastRenderableSnapshot || {});
-    const cards = Array.from(
-      root.querySelectorAll(
-        '.archive-card, .timeline-card, .intel-card, .relation-card, .archive-tile, .role-switch-tile',
-      ),
-    );
-    groups.forEach(group => {
-      const pathKey = 构建AI维护路径键(group.path);
-      const keywords = group.keywords && group.keywords.length ? group.keywords : [group.label];
-      const matched = cards.filter(card => {
-        const titleNode = card.querySelector('.archive-card-title, b, .mvu-holo-card-title, .role-switch-head');
-        const titleText = toText(titleNode ? titleNode.textContent : card.textContent, '').trim();
-        return keywords.some(keyword => keyword && titleText.includes(keyword));
-      });
-      matched.slice(0, 6).forEach(card => {
-        if (card.hasAttribute('data-ai-maintenance-group')) return;
-        card.classList.add('mvu-ai-maintenance-group-target');
-        card.setAttribute('data-ai-maintenance-group', pathKey);
-        card.setAttribute('data-ai-maintenance-label', group.label);
-        card.setAttribute('title', card.getAttribute('title') || `${group.label} ${格式化AI维护路径(group.path)}`);
-        count += 1;
-      });
-    });
-    return count;
-  }
-
-  function 清理AI维护目标(root) {
-    if (!root || !(root instanceof Element)) return;
-    root.querySelectorAll('.mvu-ai-maintenance-selectable').forEach(node => {
-      node.classList.remove('mvu-ai-maintenance-selectable', 'is-ai-selected', 'is-ai-click-feedback');
-      node.removeAttribute('data-ai-maintenance-field');
-      node.removeAttribute('data-ai-maintenance-label');
-      node.removeAttribute('data-ai-maintenance-selected-order');
-    });
-    root.querySelectorAll('.mvu-ai-maintenance-group-target').forEach(node => {
-      node.classList.remove('mvu-ai-maintenance-group-target', 'is-ai-selected', 'is-ai-click-feedback');
-      node.removeAttribute('data-ai-maintenance-group');
-      node.removeAttribute('data-ai-maintenance-label');
-      node.removeAttribute('data-ai-maintenance-selected-order');
-    });
-    const bar = root.querySelector('[data-ai-maintenance-bar]');
-    if (bar) bar.remove();
-  }
-
-  function 构建AI维护浮条() {
-    const modeOptions = AI维护_方式列表.map(
-      (mode, index) =>
-        `<option value="${escapeHtmlAttr(mode)}"${index === 0 ? ' selected' : ''}>${htmlEscape(mode)}</option>`,
-    ).join('');
-    return `
-        <div class="mvu-ai-maintenance-bar" data-ai-maintenance-bar>
-          <div class="mvu-ai-maintenance-selection-panel">
-            <div class="mvu-ai-maintenance-count" data-ai-maintenance-count>未选择</div>
-            <div class="mvu-ai-maintenance-selected-list" data-ai-maintenance-selected-list><span class="mvu-ai-maintenance-empty">点击高亮字段或卡片</span></div>
-            <div class="mvu-ai-maintenance-candidates" data-ai-maintenance-candidates></div>
-          </div>
-          <select class="mvu-ai-maintenance-mode-select" data-ai-maintenance-mode aria-label="维护方式">${modeOptions}</select>
-          <input class="mvu-ai-maintenance-extra" data-ai-maintenance-extra placeholder="额外要求" />
-          <button type="button" class="tag-chip live" data-ai-maintenance-action="submit">提交</button>
-          <button type="button" class="tag-chip" data-ai-maintenance-action="clear">清空</button>
-          <button type="button" class="tag-chip" data-ai-maintenance-action="cancel">取消</button>
-        </div>
-      `;
-  }
-
-  function 更新AI维护浮条(root = AI维护_状态.root) {
-    if (!root || !(root instanceof Element)) return;
-    const selectedEntries = Array.from(AI维护_状态.selected.entries());
-    const selectedOrderMap = new Map(selectedEntries.map(([key], index) => [key, String(index + 1)]));
-    const countEl = root.querySelector('[data-ai-maintenance-count]');
-    if (countEl) {
-      const labelText = selectedEntries
-        .slice(0, 3)
-        .map(([, item], index) => `#${index + 1} ${shortenText(item.label || 格式化AI维护路径(item.path), 14)}`)
-        .join(' / ');
-      countEl.textContent = selectedEntries.length
-        ? `已选 ${selectedEntries.length} 项 · ${labelText}${selectedEntries.length > 3 ? ` / +${selectedEntries.length - 3}` : ''}`
-        : '未选择';
-    }
-    const listEl = root.querySelector('[data-ai-maintenance-selected-list]');
-    if (listEl) {
-      listEl.innerHTML = selectedEntries.length
-        ? selectedEntries
-            .slice(0, 10)
-            .map(([, item], index) => {
-              const label = item.label || 格式化AI维护路径(item.path);
-              const pathText = 格式化AI维护路径(item.path);
-              return `
-              <span class="mvu-ai-maintenance-selected-chip ${item.kind === '变量组' ? 'is-group' : 'is-field'}" title="${escapeHtmlAttr(`${item.kind} ${item.label || 格式化AI维护路径(item.path)} ${格式化AI维护路径(item.path)}`)}">
-                <b>#${index + 1} ${htmlEscape(item.kind)}</b>
-                <span>${htmlEscape(shortenText(label, 30))}</span>
-                <small>${htmlEscape(shortenText(pathText, 56))}</small>
-              </span>
-            `;
-            })
-            .join('') +
-          (selectedEntries.length > 10
-            ? `<span class="mvu-ai-maintenance-selected-chip is-more">+${selectedEntries.length - 10}</span>`
-            : '')
-        : '<span class="mvu-ai-maintenance-empty">点击高亮字段或卡片</span>';
-    }
-    const candidateEl = root.querySelector('[data-ai-maintenance-candidates]');
-    if (candidateEl) {
-      const candidates = 构建AI维护候选项(liveSnapshot || lastRenderableSnapshot || {});
-      candidateEl.innerHTML = candidates.length
-        ? candidates
-            .map(group => {
-              const pathKey = 构建AI维护路径键(group.path);
-              const isGroup = group.kind === '变量组';
-              const selected = AI维护_状态.selected.has(`${isGroup ? '变量组' : '字段'}:${pathKey}`);
-              const attrName = isGroup ? 'data-ai-maintenance-group' : 'data-ai-maintenance-field';
-              return `<button type="button" class="mvu-ai-maintenance-candidate ${isGroup ? 'is-group' : 'is-field'} ${selected ? 'is-ai-selected' : ''}" ${attrName}="${escapeHtmlAttr(pathKey)}" data-ai-maintenance-label="${escapeHtmlAttr(group.label)}" title="${escapeHtmlAttr(格式化AI维护路径(group.path))}">${htmlEscape(group.label)}</button>`;
-            })
-            .join('')
-        : '';
-    }
-    root.querySelectorAll('[data-ai-maintenance-field], [data-ai-maintenance-group]').forEach(node => {
-      const fieldKey = node.getAttribute('data-ai-maintenance-field');
-      const groupKey = node.getAttribute('data-ai-maintenance-group');
-      const selectedKey = fieldKey ? `字段:${fieldKey}` : groupKey ? `变量组:${groupKey}` : '';
-      const selected = selectedKey && AI维护_状态.selected.has(selectedKey);
-      node.classList.toggle('is-ai-selected', !!selected);
-      if (selected) node.setAttribute('data-ai-maintenance-selected-order', selectedOrderMap.get(selectedKey) || '');
-      else node.removeAttribute('data-ai-maintenance-selected-order');
-    });
-    同步AI维护标题按钮状态();
-  }
 
 
-  function 启动AI维护模式(root, previewKey = '', options = {}) {
-    if (!root || !(root instanceof Element)) return false;
-    if (AI维护_状态.active && AI维护_状态.root === root) {
-      结束AI维护模式();
-      return true;
-    }
-    结束AI维护模式();
-    AI维护_状态.active = true;
-    AI维护_状态.root = root;
-    AI维护_状态.previewKey = toText(previewKey, '').trim();
-    AI维护_状态.surfaceOptions = options || {};
-    AI维护_状态.selected = new Map();
-    AI维护_状态.busy = false;
-    root.classList.add('mvu-ai-maintenance-mode');
-    const targetCount = 标记AI维护可选目标(root, AI维护_状态.previewKey);
-    root.insertAdjacentHTML('beforeend', 构建AI维护浮条());
-    更新AI维护浮条(root);
-    const candidateCount = 构建AI维护候选项(liveSnapshot || lastRenderableSnapshot || {}).length;
-    if (!targetCount && !candidateCount) {
-      showUiToast('当前页没有可维护变量。', 'info', 2400);
-    } else {
-      showUiToast('选择要交给 AI 维护的变量。', 'info', 1800);
-    }
-    return true;
-  }
 
-  function 结束AI维护模式() {
-    const root = AI维护_状态.root;
-    if (root && root instanceof Element) {
-      root.classList.remove('mvu-ai-maintenance-mode');
-      清理AI维护目标(root);
-    }
-    AI维护_状态.active = false;
-    AI维护_状态.root = null;
-    AI维护_状态.previewKey = '';
-    AI维护_状态.surfaceOptions = {};
-    AI维护_状态.selected = new Map();
-    AI维护_状态.busy = false;
-    同步AI维护标题按钮状态();
-  }
+
+
+
+
+
+
+
+
+
 
 
 
@@ -12356,11 +11960,6 @@
     return '未定';
   }
 
-  function shortenText(value, max = 18) {
-    const text = toText(value, '');
-    if (!text) return '';
-    return text.length > max ? `${text.slice(0, Math.max(1, max - 1))}…` : text;
-  }
 
   function getRingColorKey(color = '') {
     return RING_COLOR_ALIAS_MAP[toText(color, '').trim()] || '';
@@ -21834,27 +21433,12 @@
     lastHeaderRenderSignature = buildHeaderRenderSignature(liveSnapshot);
     const nextDashboardSectionRenderSignatures = buildDashboardSectionRenderSignatures(liveSnapshot);
     lastDashboardSectionRenderSignatures = null;
-    renderHeader(liveSnapshot);
     if (renderLiveCards(liveSnapshot, nextDashboardSectionRenderSignatures)) {
       lastDashboardRenderSignature = buildDashboardRenderSignature(liveSnapshot, nextDashboardSectionRenderSignatures);
     }
-    syncPrivateArchiveLongPressTargets(liveSnapshot);
     maybeAutoOpenPendingSoulRingPreview(liveSnapshot, { force: true });
 
     syncBattleUiForSnapshot(liveSnapshot, { force: true });
-
-    const activeDetailPreviewKey = getEffectiveUnifiedPreviewKey() || currentModalPreviewKey;
-    if ((detailModal.classList.contains('show') || isUnifiedInlinePreviewActive()) && activeDetailPreviewKey) {
-      if (options.closeModal !== false) {
-        if (isUnifiedInlinePreviewActive() && getEffectiveUnifiedPreviewKey())
-          closeDetailSurface({ surface: 'unified' });
-        else closeModal();
-      } else {
-        rerenderDetailSurface(activeDetailPreviewKey, {
-          surface: getEffectiveUnifiedPreviewKey() ? 'unified' : 'modal',
-        });
-      }
-    }
 
     return true;
   }
@@ -22993,9 +22577,7 @@
 
   function 渲染统一空态卡片() {}
 
-  function rerenderUnifiedCardsFromLive() {}
 
-  window.__MVU_RERENDER_UNIFIED_CARDS__ = rerenderUnifiedCardsFromLive;
 
   function clampUnifiedMapCanvas(root = document) {
     if (!document.body || !document.body.classList.contains('mvu-layout-holo')) return;
@@ -23052,7 +22634,6 @@
     window.setTimeout(run, 220);
   }
 
-  window.__MVU_CLAMP_UNIFIED_MAP_CANVAS__ = scheduleUnifiedMapCanvasClamp;
   window.addEventListener('resize', () => scheduleUnifiedMapCanvasClamp());
 
   function getVisibleDashboardSectionKey() {
@@ -24213,20 +23794,6 @@
   var inventoryHoverFlipY = false;
   var inventoryHoverPinned = false;
 
-  function ensureInventoryHoverPanel() {
-    if (inventoryHoverPanel) return inventoryHoverPanel;
-    inventoryHoverPanel = document.createElement('div');
-    inventoryHoverPanel.className = 'inventory-hover-panel';
-    inventoryHoverPanel.addEventListener('mouseenter', () => {
-      inventoryHoverPinned = true;
-    });
-    inventoryHoverPanel.addEventListener('mouseleave', () => {
-      inventoryHoverPinned = false;
-      hideInventoryHoverPanel();
-    });
-    document.body.appendChild(inventoryHoverPanel);
-    return inventoryHoverPanel;
-  }
 
   function hideInventoryHoverPanel() {
     if (inventoryHoverPinned) return;
@@ -24236,103 +23803,8 @@
     activeInventoryHoverCell = null;
   }
 
-  function placeInventoryHoverPanel(panel, event) {
-    const gap = 18;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const panelWidth = panel.offsetWidth || 236;
-    const panelHeight = panel.offsetHeight || 168;
 
-    let left = event.clientX + gap;
-    if (left + panelWidth > vw - 12) {
-      left = event.clientX - panelWidth - gap;
-    }
-    left = Math.max(12, Math.min(left, vw - panelWidth - 12));
 
-    let top = event.clientY + gap;
-    inventoryHoverFlipY = false;
-    if (top + panelHeight > vh - 12) {
-      top = event.clientY - panelHeight - gap;
-      inventoryHoverFlipY = true;
-    }
-    top = Math.max(12, Math.min(top, vh - panelHeight - 12));
-
-    panel.classList.toggle('flip-y', inventoryHoverFlipY);
-    panel.style.left = `${left}px`;
-    panel.style.top = `${top}px`;
-  }
-
-  function showInventoryHoverPanel(cell, event, forceRender = false) {
-    const panel = ensureInventoryHoverPanel();
-    if (forceRender || activeInventoryHoverCell !== cell) {
-      const tags = (cell.dataset.hoverTags || '').split('|').filter(Boolean);
-      panel.innerHTML = `
-          <div class="inventory-hover-title">${cell.dataset.hoverTitle || ''}</div>
-          <div class="inventory-hover-grid">
-            <div class="meta-item"><b>类型</b><span>${cell.dataset.hoverType || '--'}</span></div>
-            <div class="meta-item"><b>稀有度</b><span>${cell.dataset.hoverRarity || '--'}</span></div>
-            <div class="meta-item"><b>数量</b><span>${cell.dataset.hoverQty || '--'}</span></div>
-            <div class="meta-item"><b>有效期至</b><span>${cell.dataset.hoverExpiry || '--'}</span></div>
-            <div class="meta-item"><b>来源</b><span>${cell.dataset.hoverSource || '--'}</span></div>
-            <div class="meta-item"><b>说明</b><span>${cell.dataset.hoverUsage || '--'}</span></div>
-          </div>
-          <div class="inventory-hover-tags">${tags
-            .filter(Boolean)
-            .map(tag => `<span class="tag-chip">${tag}</span>`)
-            .join('')}</div>
-          ${
-            cell.dataset.hoverUsable === 'true'
-              ? `
-          <button type="button" class="inventory-hover-action-btn" data-inventory-action="use" data-inventory-char="${escapeHtmlAttr(cell.dataset.hoverChar || '')}" data-inventory-item="${escapeHtmlAttr(cell.dataset.hoverTitle || '')}">
-            ${htmlEscape(cell.dataset.hoverActionLabel || '使用')}
-          </button>
-          `
-              : ''
-          }
-          ${
-            cell.dataset.hoverEquip === 'true'
-              ? `
-          <button type="button" class="inventory-hover-action-btn" data-inventory-action="equip" data-inventory-char="${escapeHtmlAttr(cell.dataset.hoverChar || '')}" data-inventory-item="${escapeHtmlAttr(cell.dataset.hoverTitle || '')}">
-            穿戴装备 / 装载
-          </button>
-          `
-              : ''
-          }
-          ${
-            cell.dataset.hoverTitle
-              ? `
-          <div class="tag-cloud armory-quick-actions mvu-detail-toolbar mvu-detail-toolbar--tight">
-            <button type="button" class="inventory-hover-action-btn" data-inventory-action="discard" data-inventory-mode="one" data-inventory-char="${escapeHtmlAttr(cell.dataset.hoverChar || '')}" data-inventory-item="${escapeHtmlAttr(cell.dataset.hoverTitle || '')}">丢弃1件</button>
-            ${toNumber(cell.dataset.hoverCount, 1) > 1 ? `<button type="button" class="inventory-hover-action-btn" data-inventory-action="discard" data-inventory-mode="all" data-inventory-char="${escapeHtmlAttr(cell.dataset.hoverChar || '')}" data-inventory-item="${escapeHtmlAttr(cell.dataset.hoverTitle || '')}">全部丢弃</button>` : ''}
-          </div>
-          `
-              : ''
-          }
-        `;
-      activeInventoryHoverCell = cell;
-    }
-    panel.classList.add('show');
-    placeInventoryHoverPanel(panel, event);
-  }
-
-  document.addEventListener('mousemove', event => {
-    const eventTarget =
-      event.target instanceof Element
-        ? event.target
-        : event.target && event.target.parentElement
-          ? event.target.parentElement
-          : null;
-    if (inventoryHoverPanel && eventTarget && inventoryHoverPanel.contains(eventTarget)) return;
-    const cell = eventTarget ? eventTarget.closest('.inventory-cell[data-hover-title]') : null;
-    const 统一内嵌宿主 = getUnifiedInlineHost();
-    const 属于统一内嵌单元 = !!(cell && 统一内嵌宿主 && 统一内嵌宿主.contains(cell));
-    if (!cell || (!(detailModal.classList.contains('show') && detailModal.contains(cell)) && !属于统一内嵌单元)) {
-      hideInventoryHoverPanel();
-      return;
-    }
-    inventoryHoverPinned = false;
-    showInventoryHoverPanel(cell, event);
-  });
 
   document.addEventListener(
     'mouseleave',
@@ -31295,11 +30767,9 @@ ${播报文本}
   window.addEventListener('battle-ui-mvu-update-request', handleBattleMvuUpdateRequest);
   window.addEventListener('battle-ui-close-request', handleBattleUiCloseRequest);
 
-  var currentModalDisplayMode = 'auto';
 
 
 
-  function applyModalDisplayMode() {}
 
 
 
@@ -31356,9 +30826,6 @@ ${播报文本}
 
 
 
-  function renderUnifiedInlinePreview() {
-    return false;
-  }
 
   function 构建成长技能确认签名(记录 = {}) {
     const 角色名 = toText(记录 && 记录.角色名, '').trim();
@@ -31391,181 +30858,23 @@ ${播报文本}
     openDetailPreview(PENDING_SKILL_DESIGN_PREVIEW_KEY, { preserveMapDispatchContext: true, replace: true });
     return true;
   }
-  window.__MVU_RENDER_UNIFIED_PREVIEW__ = renderUnifiedInlinePreview;
-  window.__MVU_CLEAR_UNIFIED_PREVIEW__ = clearUnifiedInlinePreview;
 
-  // 浮动弹窗只剩私密档案（战斗终端走行内预览；其余旧详情已由座舱取代）
-  function renderModalContent() {}
 
-  function popModalOrClose() {
-    if (modalStack.length > 1) {
-      const poppedPreviewKey = modalStack.pop();
-      if (isSkillDesignerPreviewKey(poppedPreviewKey)) clearCachedSkillDesignerDraft(poppedPreviewKey);
-      currentModalPreviewKey = modalStack[modalStack.length - 1] || '';
-      if (currentModalPreviewKey) {
-        renderModalContent(currentModalPreviewKey, getModalRefs());
-        return;
-      }
-    }
-    closeModal();
-  }
 
   function closeModal() {
     mapDispatchContext = null;
     flushPendingLiveRefresh();
   }
-  window.__MVU_CLOSE_DETAIL_MODAL__ = closeModal;
-  window.__MVU_SYNC_DETAIL_MODAL_HOST__ = () => {
-    const refs = getModalRefs();
-    applyModalDisplayMode(refs, { displayMode: currentModalDisplayMode });
-  };
-
-  function 应用终端标签切换(终端标签按钮) {
-    if (!终端标签按钮 || !(终端标签按钮 instanceof Element)) return false;
-    const 标签宿主 = 终端标签按钮.closest('[data-terminal-tab-host]');
-    if (!标签宿主) return false;
-    const 目标标签 = toText(终端标签按钮.getAttribute('data-terminal-tab'), '状态').trim() || '状态';
-    标签宿主.querySelectorAll('[data-terminal-tab]').forEach(btn => {
-      const isActive = btn === 终端标签按钮;
-      btn.classList.toggle('active', isActive);
-      if (isActive) btn.setAttribute('aria-pressed', 'true');
-      else btn.removeAttribute('aria-pressed');
-    });
-    标签宿主.querySelectorAll('[data-terminal-tab-panel]').forEach(panel => {
-      panel.classList.toggle('active', toText(panel.getAttribute('data-terminal-tab-panel'), '') === 目标标签);
-    });
-    const 目标预览 = toText(终端标签按钮.getAttribute('data-terminal-preview'), '').trim();
-    if (目标预览) {
-      const 可点击卡片 = 标签宿主.closest('.clickable[data-preview]');
-      if (可点击卡片) 可点击卡片.setAttribute('data-preview', 目标预览);
-    }
-    return true;
-  }
-
-  function 是否保留卡片内部控件点击(eventTarget, mountEl) {
-    if (!eventTarget || typeof eventTarget.closest !== 'function') return false;
-    const 控件节点 = eventTarget.closest(
-      'button, a, input, select, textarea, label, summary, [role="button"], [role="menuitem"], [contenteditable="true"], .skill-inline-action-btn[data-skill-action]',
-    );
-    if (!控件节点 || (mountEl && !mountEl.contains(控件节点))) return false;
-    const 自带预览入口 = 控件节点.closest('.clickable[data-preview]');
-    if (自带预览入口 === 控件节点) return false;
-    const 外层预览卡 = 控件节点.closest('.clickable[data-preview]');
-    return !!(外层预览卡 && 外层预览卡 !== 控件节点);
-  }
 
 
-  function 打开预览入口(预览入口, 预览键输入) {
-    return !!座舱接管详情(预览键输入);
-  }
 
 
-  function bindAllVueModalDelegations() {}
 
-  function installVueModalDelegationObserver() {
-    if (
-      window.__MVU_MODAL_DELEGATION_OBSERVER__ &&
-      typeof window.__MVU_MODAL_DELEGATION_OBSERVER__.disconnect === 'function'
-    ) {
-      try {
-        window.__MVU_MODAL_DELEGATION_OBSERVER__.disconnect();
-      } catch (err) {}
-    }
-    const root = document.body || document.documentElement;
-    if (!root) return;
-    const observer = new MutationObserver(records => {
-      const mount = document.getElementById('mvu-unified-mount');
-      const mountNeedsBinding = !!mount && !mount.__mvuModalDelegationBound;
-      const mountWasChanged = records.some(record =>
-        [record.addedNodes, record.removedNodes].some(nodes =>
-          Array.from(nodes || []).some(node =>
-            (node.nodeType === 1 || node.nodeType === 11) &&
-            (node.id === 'mvu-unified-mount' || node.querySelector?.('#mvu-unified-mount'))
-          )
-        )
-      );
-      if (mountNeedsBinding || mountWasChanged) bindAllVueModalDelegations();
-    });
-    observer.observe(root, { childList: true, subtree: true });
-    window.__MVU_MODAL_DELEGATION_OBSERVER__ = observer;
-  }
 
-  document.addEventListener('click', event => {
-    const eventTarget =
-      event.target instanceof Element
-        ? event.target
-        : event.target && event.target.parentElement
-          ? event.target.parentElement
-          : null;
-    if (isInlineEditInteractionTarget(eventTarget)) return;
-    const 终端标签按钮 = eventTarget ? eventTarget.closest('[data-terminal-tab]') : null;
-    if (终端标签按钮 && 应用终端标签切换(终端标签按钮)) {
-      event.preventDefault();
-      event.stopPropagation();
-      return;
-    }
-    const AI维护标题按钮 = eventTarget ? eventTarget.closest('[data-ai-maintenance-toggle]') : null;
-    if (AI维护标题按钮 && document.contains(AI维护标题按钮)) {
-      event.preventDefault();
-      event.stopPropagation();
-      const previewKey =
-        toText(AI维护标题按钮.getAttribute('data-ai-maintenance-preview'), '').trim() ||
-        currentUnifiedPreviewKey ||
-        currentModalPreviewKey ||
-        getDomUnifiedPreviewKey();
-      const root = 查找AI维护根(previewKey);
-      if (!root) {
-        showUiToast('当前页还没有可维护内容。', 'info', 1800);
-        return;
-      }
-      启动AI维护模式(root, previewKey, { surface: currentUnifiedPreviewKey ? 'unified' : 'modal' });
-      return;
-    }
-    const clickable = eventTarget ? eventTarget.closest('.clickable') : null;
-    const unifiedMount = document.getElementById('mvu-unified-mount');
-    const inUnifiedSurface = !!(unifiedMount && unifiedMount.contains(clickable));
 
-    if (!clickable || !inUnifiedSurface) return;
-    if (是否保留卡片内部控件点击(eventTarget, unifiedMount || document.body)) return;
-    const previewKey = clickable.dataset.preview;
-    if (!previewKey) return;
-    event.preventDefault();
-    event.stopPropagation();
-    打开预览入口(clickable, previewKey);
-  });
 
-  // 键盘等价路径：32 个 .clickable 入口里原本只有 3 个是 <button>，其余
-  // 是 div/section/span，键盘完全打不开任何详情窗口，182 条 :focus-visible
-  // 规则对它们也永远不生效。这里复用同一个 打开预览入口，不新增分支逻辑。
-  document.addEventListener('keydown', event => {
-    if (event.key !== 'Enter' && event.key !== ' ' && event.key !== 'Spacebar') return;
-    const 目标 = event.target instanceof Element ? event.target : null;
-    if (!目标) return;
-    // 原生可交互元素交给浏览器默认行为，避免重复触发
-    if (目标.matches('button, a, input, select, textarea, [contenteditable="true"]')) return;
-    const clickable = 目标.closest('.clickable[data-preview]');
-    if (!clickable) return;
-    const unifiedMount = document.getElementById('mvu-unified-mount');
-    if (!unifiedMount || !unifiedMount.contains(clickable)) return;
-    const previewKey = clickable.dataset.preview;
-    if (!previewKey) return;
-    event.preventDefault();
-    event.stopPropagation();
-    打开预览入口(clickable, previewKey);
-  });
 
-  // 给委托式入口补上语义与可聚焦性；它们由多处 HTML 模板生成，
-  // 逐个模板加属性容易漏，改为挂载后统一补齐。
-  function 补齐可点击入口无障碍属性(根节点) {
-    const 根 = 根节点 instanceof Element ? 根节点 : document.getElementById('mvu-unified-mount');
-    if (!根) return;
-    根.querySelectorAll('.clickable[data-preview]').forEach(节点 => {
-      if (节点.matches('button, a, input, select, textarea')) return;
-      if (!节点.hasAttribute('role')) 节点.setAttribute('role', 'button');
-      if (!节点.hasAttribute('tabindex')) 节点.setAttribute('tabindex', '0');
-    });
-  }
-  window.__LWCS_补齐入口无障碍__ = 补齐可点击入口无障碍属性;
+
 
 
   function rerenderDetailSurface() {}
@@ -31579,13 +30888,6 @@ ${播报文本}
     closeModal();
   }
 
-  if (modalClose) modalClose.addEventListener('click', popModalOrClose);
-  // 浮动弹窗只剩私密档案：点面板外关闭（旧详情各按钮的委托处理已随旧界面删除）
-  if (detailModal)
-    detailModal.addEventListener('click', event => {
-      const 目标 = event.target instanceof Element ? event.target : null;
-      if (!(目标 && modalPanel && modalPanel.contains(目标))) popModalOrClose();
-    });
 
   function 同步图鉴详情焦点(图鉴壳, 目标名 = '') {
     if (!(图鉴壳 instanceof HTMLElement)) return;
@@ -31636,32 +30938,6 @@ ${播报文本}
     }
   }
 
-  document.addEventListener('change', event => {
-    const eventTarget = event.target instanceof Element ? event.target : null;
-    const 关系检索控件 = eventTarget ? eventTarget.closest('[data-relation-focus-select]') : null;
-    if (关系检索控件) {
-      const 目标名 = toText(关系检索控件.value, '').trim();
-      const 统一挂载 = document.getElementById('mvu-unified-mount');
-      const 在统一页 = !!(统一挂载 && 统一挂载.contains(关系检索控件));
-      const 预览键 = 在统一页
-        ? currentUnifiedPreviewKey || getDomUnifiedPreviewKey() || ''
-        : currentModalPreviewKey || currentUnifiedPreviewKey || '';
-      if (目标名 && 预览键 === '人物关系详细页') {
-        modalFocusState[`${预览键}::relation-focus`] = 目标名;
-        rerenderDetailSurface(预览键, { surface: 在统一页 ? 'unified' : 'modal', force: true });
-      }
-      return;
-    }
-    const 图鉴筛选控件 = eventTarget ? eventTarget.closest('[data-bestiary-filter]') : null;
-    if (图鉴筛选控件) {
-      同步图鉴筛选(图鉴筛选控件.closest('.bestiary-research-shell'));
-      return;
-    }
-    const apiSelect = eventTarget ? eventTarget.closest('[data-ai-maintenance-api-select]') : null;
-    if (!apiSelect) return;
-    const presetName = 保存AI维护已选API预设(apiSelect.value || '');
-    showUiToast(presetName ? `维护接口：${presetName}` : '维护接口：默认接口', 'info', 1800);
-  });
 
   document.addEventListener('input', event => {
     const eventTarget = event.target instanceof Element ? event.target : null;
@@ -32072,7 +31348,6 @@ ${播报文本}
 
   function positionFloatingHoverCard() {}
 
-  window.__MVU_CLEAR_FLOATING_HOVER__ = clearAllFloatingHoverCards;
 
   document.addEventListener(
     'pointerover',
@@ -34750,37 +34025,11 @@ ${播报文本}
     true,
   );
 
-  document.addEventListener('keydown', event => {
-    if (event.key !== 'Escape') return;
-    if (isUnifiedInlinePreviewActive() && typeof window.__MVU_CLOSE_UNIFIED_PREVIEW__ === 'function') {
-      window.__MVU_CLOSE_UNIFIED_PREVIEW__();
-      return;
-    }
-    closeModal();
-  });
 
-  window.addEventListener('resize', () => {
-    const refs = getModalRefs();
-    if (!refs.detailModal || !refs.detailModal.classList.contains('show')) return;
-    applyModalDisplayMode(refs, { displayMode: currentModalDisplayMode });
-  });
 
-  if (document.body) {
-    const layoutClassObserver = new MutationObserver(() => {
-      const refs = getModalRefs();
-      if (!refs.detailModal || !refs.detailModal.classList.contains('show')) return;
-      applyModalDisplayMode(refs);
-    });
-    layoutClassObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
-  }
 
   const initialModalRefs = getModalRefs();
-  if (initialModalRefs.detailModal && initialModalRefs.detailModal.classList.contains('show')) {
-    applyModalDisplayMode(initialModalRefs);
-  }
 
-  bindAllVueModalDelegations();
-  installVueModalDelegationObserver();
 
   const UI首屏内容就绪承诺 = initLiveBindings().catch(error => {
     设置UI首屏内容状态(false, error && error.message ? error.message : String(error || 'MVU 首屏数据初始化失败'));
