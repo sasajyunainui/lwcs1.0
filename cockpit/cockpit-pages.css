@@ -616,3 +616,13 @@ div.rail-item{cursor:default}
 .priv-part header .sock{--s:1.8em}
 .priv-part header .chip{margin-left:auto}
 .priv-part .tiles{grid-template-columns:minmax(0,1fr)}
+/* 私密档案：进度行（名称左、数值右、条在下）；格内文字可换行；部位卡标题不折 */
+.priv-bar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.25em .5em;align-items:baseline}
+.priv-bar>span{font-size:.86em;font-weight:800;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.priv-bar>b{font-family:Bahnschrift,sans-serif;font-weight:900}
+.priv-bar>b small{color:var(--ink3);font-weight:700}
+.priv-bar>.bar{grid-column:1/-1}
+.priv-sec .tile b,.priv-part .tile b{white-space:normal;overflow-wrap:anywhere;min-width:0}
+.priv-part header strong{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.priv-part header .chip{flex:none;white-space:nowrap}
+.priv-sec .tile b .ie,.priv-part .tile b .ie{white-space:normal}
