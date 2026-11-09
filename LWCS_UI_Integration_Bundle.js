@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:ab5a4b5798801d4e947fbda37220391791e46db0b26fa6219b084f23183a999f|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:e2c3cf1e86cde78161cb1897d76b51c0b5cea56def6e5050c9dca9432a38fe65|cockpit/pages-role.js:ea00d94e994576a533ab9cfb560cdd432adb466805f0d67c984d2ad891f5bedc|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:d9d42878c9d8d513ebef84b384a06f800143c89ba0beb45f5d2b93189bac4ac8|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:33c325aab13aef52d2811e81492f147b2a533790487da1419353c482c7e6c33b|cockpit/pages-world.js:6851fc81ee4d831a1af87aa85b490557d452ef5b31ea776d50f871cb97f5574e|cockpit/pages-terminal.js:c73e78b78d6a7a80f96d774bcf3a88bfa17642c7ad81a5d5b89ff863e053125e */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:ab5a4b5798801d4e947fbda37220391791e46db0b26fa6219b084f23183a999f|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:ba5190b0f2fe5d45cf2f45686fc6cdd8bb0b4fb3c85a43435a5bb45b6162ef1d|cockpit/pages-role.js:ea00d94e994576a533ab9cfb560cdd432adb466805f0d67c984d2ad891f5bedc|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:d9d42878c9d8d513ebef84b384a06f800143c89ba0beb45f5d2b93189bac4ac8|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:33c325aab13aef52d2811e81492f147b2a533790487da1419353c482c7e6c33b|cockpit/pages-world.js:6851fc81ee4d831a1af87aa85b490557d452ef5b31ea776d50f871cb97f5574e|cockpit/pages-terminal.js:c73e78b78d6a7a80f96d774bcf3a88bfa17642c7ad81a5d5b89ff863e053125e */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -48429,19 +48429,40 @@ ${播报文本}
   });
   $('.cockpit').addEventListener('click', e => { const r = e.target.closest('[data-route]'); if (r) C.route({ to: r.dataset.route }); });
   $('#ck-back').addEventListener('click', () => switchPage(domains[state.domain].keys[0].id));
-  // 滚轮归屏：桌面三屏里指针在哪块屏就只滚那块屏。落在屏框 / 屏内不可滚的地方也滚这块屏的内容；
-  // 屏里内容滚到头时吞掉这次滚轮，不再串到酒馆聊天区。只有整块屏根本没有可滚内容才放行（让聊天区照常滚）
+  // 滚轮归屏 + 到头接力：按「一次滚动手势」（相邻滚轮间隔不到 200ms 算同一次）决定归属，同浏览器原生的滚动锁定。
+  // 手势开始时屏里还能往这个方向滚：整次手势都归屏（落在屏框 / 不可滚处也滚这块屏的主内容），滚到头也不串出去——
+  // 免得一甩滚轮、惯性把聊天区一起带走；手势开始时屏里已经到头（或本来就没有可滚内容）：这次交给聊天区接着滚。
+  // 屏内滚动区带 overscroll-behavior:contain，原生滚动不会自己串出去，所以接力由这里替聊天区滚
   const scrollable = el => el.scrollHeight > el.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(el).overflowY);
+  const outerScroller = () => { for (let el = ROOT.parentElement; el; el = el.parentElement) if (scrollable(el)) return el; return document.scrollingElement; };
+  let wheelGesture = null;
   screens.addEventListener('wheel', e => {
     if (e.defaultPrevented || e.ctrlKey || isMobile()) return;
     const panel = e.target.closest('.wing,.center'); if (!panel) return;
     const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? panel.clientHeight : 1); if (!dy) return;
     const room = el => dy > 0 ? el.scrollHeight - el.clientHeight - el.scrollTop > 1 : el.scrollTop > 0;
-    for (let el = e.target; el && el !== panel; el = el.parentElement) if (scrollable(el) && room(el)) return;
-    const main = $$('.face:not(.leaving) :is(.pad,.scroll,.list,.q-list,.dz-body,.set-tiles,.dz2-skills)', panel).find(scrollable);
-    if (!main) return;
+    const now = performance.now(), dir = Math.sign(dy);
+    if (!wheelGesture || now - wheelGesture.t > 200 || wheelGesture.dir !== dir || wheelGesture.panel !== panel) {
+      let inner = null;
+      for (let el = e.target; el && el !== panel; el = el.parentElement) if (scrollable(el) && room(el)) { inner = el; break; }
+      if (!inner) { const main = $$('.face:not(.leaving) :is(.pad,.scroll,.list,.q-list,.dz-body,.set-tiles,.dz2-skills)', panel).find(scrollable); if (main && room(main)) inner = main; }
+      wheelGesture = { inner, dir, panel };
+    }
+    wheelGesture.t = now;
+    const { inner } = wheelGesture;
+    if (inner) {
+      // 指针就在这个滚动区里：交给原生滚动（带平滑），到头由 overscroll-behavior 拦住；指针在屏框上：替它滚
+      if (inner.contains(e.target) && room(inner)) return;
+      e.preventDefault();
+      if (room(inner)) inner.scrollTop += dy;
+      return;
+    }
+    // 接力滚聊天区：同一次手势累计目标位置，逐帧缓动过去；300ms 内没到位（窗口在后台、动画帧被节流）就直接落到目标
     e.preventDefault();
-    if (!main.contains(e.target) && room(main)) main.scrollTop += dy;
+    const g = wheelGesture, outer = g.outer ||= outerScroller(); if (!outer) return;
+    g.to = Math.max(0, Math.min(outer.scrollHeight - outer.clientHeight, (g.to ?? outer.scrollTop) + dy));
+    if (!g.raf) { const step = () => { const d = g.to - outer.scrollTop; if (Math.abs(d) < 1) { outer.scrollTop = g.to; g.raf = 0; return; } outer.scrollTop += Math.sign(d) * Math.max(1, Math.abs(d) * .32); g.raf = requestAnimationFrame(step); }; g.raf = requestAnimationFrame(step); }
+    clearTimeout(g.snap); g.snap = setTimeout(() => { cancelAnimationFrame(g.raf); g.raf = 0; outer.scrollTop = g.to; }, 300);
   }, { passive: false });
   $('.cockpit').addEventListener('click', e => {
     if (e.target.closest('.ie-edit')) return;
