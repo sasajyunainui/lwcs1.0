@@ -117,3 +117,10 @@ img{max-width:none}
 }
 .attr em i{font-size:.85em;margin-right:.15em;opacity:.75}
 .sim-kind{flex-basis:100%;font-weight:700;color:var(--ink3)}
+/* 窄桌面（侧屏约 190px）：检索列表行的图标座多为同一图标（如交易货品的商店图标），不承载信息，让给名称 */
+@container cockpit (min-width:701px) and (max-width:999px){
+  .wing .q-list .row>.sock:first-child{display:none}
+  .wing .q-list .row:has(>.sock:first-child){grid-template-columns:minmax(0,1fr)}
+  .wing .q-list .row:has(>.sock:first-child)>:nth-child(3){grid-column:1}
+}
+@container cockpit (min-width:701px){.martial-stage{grid-template-columns:minmax(0,1fr) minmax(0,15.5em)}}

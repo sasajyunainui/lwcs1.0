@@ -65,7 +65,7 @@ body{margin:0;padding:28px 16px;min-height:100vh;background:#12151b;font-family:
    角度变化由 cockpit.js 的翻折 / 点头动画从旧角度带到新角度（只走合成）。变量各自挂在用到它的元素上，不继承 */
 .screens{--lw:27%;--rw:27%;position:relative;display:grid;grid-template-columns:var(--lw) minmax(0,1fr) var(--rw);align-items:stretch;transform-style:preserve-3d}
 .screens{height:clamp(420px,54cqw,570px)}
-.pad{overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#9aa7ba transparent}
+.pad{overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#9aa7ba transparent}
 .screens.wide-l{--lw:9%}.screens.wide-r{--rw:9%}
 .screens.wide-l .wing.l{--la:56deg}.screens.wide-r .wing.r{--ra:56deg}
 .screens.wide-l .hinge.l{--lw:9%}.screens.wide-r .hinge.r{--rw:9%}
