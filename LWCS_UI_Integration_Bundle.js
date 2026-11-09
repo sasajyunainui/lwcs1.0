@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:ab5a4b5798801d4e947fbda37220391791e46db0b26fa6219b084f23183a999f|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:89ad7b659675df850dc4ea51fa62b4cd37cb96947d5e6d9e78f87470c7ea9457|cockpit/pages-role.js:350137a12a97733415cea354acc0cda0e631eba0b53372bf4e2ab90448f6d9db|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:98f5ff0a52f7ea92c5abee33c3c3e2437a65e11541eed3c26dd5f2d7b0228491|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:33c325aab13aef52d2811e81492f147b2a533790487da1419353c482c7e6c33b|cockpit/pages-world.js:6851fc81ee4d831a1af87aa85b490557d452ef5b31ea776d50f871cb97f5574e|cockpit/pages-terminal.js:c73e78b78d6a7a80f96d774bcf3a88bfa17642c7ad81a5d5b89ff863e053125e */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:ab5a4b5798801d4e947fbda37220391791e46db0b26fa6219b084f23183a999f|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:e2c3cf1e86cde78161cb1897d76b51c0b5cea56def6e5050c9dca9432a38fe65|cockpit/pages-role.js:9c287b21fe2b4580f90aba06aecdfe36d62398a338dc2123a3a621e9cfc1d09b|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:d9d42878c9d8d513ebef84b384a06f800143c89ba0beb45f5d2b93189bac4ac8|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:33c325aab13aef52d2811e81492f147b2a533790487da1419353c482c7e6c33b|cockpit/pages-world.js:6851fc81ee4d831a1af87aa85b490557d452ef5b31ea776d50f871cb97f5574e|cockpit/pages-terminal.js:c73e78b78d6a7a80f96d774bcf3a88bfa17642c7ad81a5d5b89ff863e053125e */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -48195,6 +48195,19 @@ ${播报文本}
   let editing = null, holding = false;
   // 编辑结束后若桥接在编辑期间送来过新数据，补一次重绘
   const flushPending = () => { if (api.pending && !editing && !holding) { api.pending = false; renderPage({ kind: 'refresh' }); syncReadout(); } };
+  // 日常行动时长：± 键与直接输入共用；记进 ui，数据刷新重绘后不回到 60
+  const setDur = (box, minutes, typing = false) => {
+    if (!box) return;
+    const out = box.querySelector('output'), input = box.querySelector('[data-dur-input]'), m = Math.max(10, Math.min(1440, Math.round(num(minutes))));
+    if (!Number.isFinite(m)) return;
+    out.dataset.min = m; state.ui.routineMin = m;
+    if (input && !typing) input.value = m;
+    const end = box.querySelector('[data-dur-end]'); if (end && C.endAt) end.textContent = C.endAt(ctx(), m);
+  };
+  cockpitEl.addEventListener('input', e => { const t = e.target.closest?.('[data-dur-input]'); if (t && t.value !== '' && num(t.value) >= 10) setDur(t.closest('[data-dur-box]'), t.value, true); });
+  cockpitEl.addEventListener('change', e => { const t = e.target.closest?.('[data-dur-input]'); if (t) setDur(t.closest('[data-dur-box]'), t.value === '' ? 60 : t.value); });
+  cockpitEl.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches?.('[data-dur-input]')) e.target.blur(); });
+  cockpitEl.addEventListener('click', e => { const o = e.target.closest?.('.dur output'); if (o && !e.target.matches('input')) o.querySelector('input')?.focus(); });
   const parseEdit = (kind, meta, str) => {
     const t = String(str).trim();
     if (kind === 'number') {
@@ -48281,8 +48294,16 @@ ${播报文本}
     // 先在界面上落下新值（原值处显示），写回完成后由桥接回灌刷新
     cur.el.textContent = String(r.value); cur.wrap.replaceWith(cur.el);
     const ev = new CustomEvent('cockpit:edited', { detail: { path: cur.path, value: r.value, extra: [] } }); document.dispatchEvent(ev);
-    write([{ path: cur.path, value: r.value }, ...ev.detail.extra]).then(() => { flushPending(); if (cur.inFloat) reproject(); });
+    write([{ path: cur.path, value: r.value }, ...ev.detail.extra]).then(() => { settleEdit(cur.path, r.value); flushPending(); if (cur.inFloat) reproject(); });
   }
+  // 写回后存档里的值可能被规则改掉（例：等级会按魂力上限自动突破回去）。界面上先落下的新值要换回真实值并说明，
+  // 否则重绘时内容与上次相同被跳过，假值一直留在那里
+  const settleEdit = (path, wanted) => {
+    const now = getAt(path); if (now === undefined || String(now) === String(wanted)) return;
+    [host.l, host.c, host.r].forEach(h => lastHtml.delete(h)); renderPage({ kind: 'refresh' });
+    const why = path.at(-1) === '等级' ? '：等级由魂力上限决定，魂力上限够到哪一级就会自动突破到哪一级（魂环数封顶）' : '';
+    ADP?.toast?.(`没有改成 ${wanted}，存档里仍是 ${now}${why}`, 'warning');
+  };
   function cancelEdit() { const cur = editing; editing = null; if (cur) { cur.box?.remove(); cur.wrap.replaceWith(cur.el); } flushPending(); }
   // 浮动编辑器跟住占位：面板滚动时重新摆放
   const placeBox = (wrap, box) => { const r = wrap.getBoundingClientRect(); box.style.left = r.left + r.width / 2 + 'px'; box.style.top = r.top + r.height / 2 + 'px'; };
@@ -48480,10 +48501,7 @@ ${播报文本}
       return;
     }
     if (t.dataset.dur) {
-      const box = t.closest('[data-dur-box]'), out = box.querySelector('output');
-      const m = Math.max(10, Math.min(1440, num(out.dataset.min) + num(t.dataset.dur)));
-      out.dataset.min = m; out.textContent = `${m} 分钟`;
-      const end = box.querySelector('[data-dur-end]'); if (end && C.endAt) end.textContent = C.endAt(ctx(), m);
+      setDur(t.closest('[data-dur-box]'), num(t.closest('[data-dur-box]').querySelector('output').dataset.min) + num(t.dataset.dur));
       return;
     }
     if (t.dataset.pick !== undefined) { const group = t.closest('[data-pick-group]'); $$('[data-pick]', group || t.parentElement).forEach(b => { b.classList.toggle('on', b === t); b.setAttribute('aria-pressed', b === t); }); }
@@ -48726,10 +48744,10 @@ ${播报文本}
           ${[['mug-hot', '休整', '静息调养'], ['bed', '睡眠', '安眠休养'], ['person-praying', '冥想', '凝神修行'], ['dumbbell', '训练', '锤炼身心']].map(([ic, t, s], i) => `<button class="opt ${i === 0 ? 'on' : ''}" type="button" data-pick aria-pressed="${i === 0}"><i class="fa-solid fa-${ic}"></i>${t}<small>${s}</small></button>`).join('')}
         </div>
         <div class="train-pick chips-row" data-pick-group hidden>${['力量', '防御', '敏捷', '体魄', '精神'].map((p, i) => `<button class="key-s${i ? '' : ' on'}" type="button" data-pick data-project="${p}" aria-pressed="${!i}">${p}</button>`).join('')}</div>
-        <div class="plan" data-dur-box>
-          <div class="dur"><button type="button" data-dur="-10" aria-label="减少十分钟">−</button><output data-min="60">60 分钟</output><button type="button" data-dur="10" aria-label="增加十分钟">＋</button></div>
-          <div class="plan-end"><i class="fa-regular fa-clock"></i><span>结束于</span><b data-dur-end>${endAt(c, 60)}</b></div>
-        </div>
+        ${(m => `<div class="plan" data-dur-box>
+          <div class="dur"><button type="button" data-dur="-10" aria-label="减少十分钟">−</button><output data-min="${m}"><input type="number" inputmode="numeric" data-dur-input min="10" max="1440" step="10" value="${m}" aria-label="行动时长（分钟）"><span>分钟</span></output><button type="button" data-dur="10" aria-label="增加十分钟">＋</button></div>
+          <div class="plan-end"><i class="fa-regular fa-clock"></i><span>结束于</span><b data-dur-end>${endAt(c, m)}</b></div>
+        </div>`)(Math.max(10, Math.min(1440, c.num(c.state.ui.routineMin) || 60)))}
         ${(nar => nar ? `<div class="warn"><i class="fa-solid fa-triangle-exclamation"></i><span>上一项行动已结算，叙事未完成</span></div><button class="cta" type="button" data-hint="只补写叙事，不会再次结算行动收益" data-act="${c.esc(JSON.stringify({ name: 'routine', op: 'retry', receiptId: nar.receiptId }))}"><i class="fa-solid fa-rotate-right"></i>重试叙事</button>` : '')(c.isPlayer ? window.COCKPIT.preview('routineNarration') : null)}
         ${c.isPlayer && window.COCKPIT.preview('routineNarration') ? '' : placeKnown(c) || c.rt('__LWCS_ERA_RUNTIME_INTEGRATION_V1__') ? `<button class="cta" type="button" data-routine data-hint="按所选行动与时长预演体力、魂力等变化后结算"><i class="fa-solid fa-play"></i>开始行动</button>`
           : `<div class="warn"><i class="fa-solid fa-triangle-exclamation"></i><span>当前位置「${c.esc(where(c))}」未能识别，暂时无法预演行动效果。</span></div>
@@ -51039,9 +51057,9 @@ ${播报文本}
     return {
       tag: 'CORE · SOUL RING',
       left: `<div class="pad">${c.head('ghost', '候选魂灵', 'Candidates', 'gd')}
-        ${list.length ? `<div class="list">${list.map(x => `<button class="row${x === cur ? ' on' : ''}" type="button" data-set="ringCand=${c.esc(x.soulName)}" aria-current="${x === cur}">${c.ringMedal(ringOf(x), '')}<div><strong>${c.esc(x.displayName)}</strong><small>${c.esc([x.ageText, x.quality, `契合 ${x.compValue}%`].join(' · '))}</small></div><span></span></button>`).join('')}</div>` : c.empty('ghost', '没有候选魂灵', '请先通过剧情补足候选魂灵')}
+        ${list.length ? `<div class="list">${list.map(x => `<button class="row${x === cur ? ' on' : ''}" type="button" data-set="ringCand=${c.esc(x.soulName)}" aria-current="${x === cur}">${c.ringMedal(ringOf(x), '')}<div><strong>${c.esc(x.displayName)}</strong><small>${c.esc([x.ageText, x.quality].filter(Boolean).join(' · '))}</small></div><span class="chip s" data-hint="契合度">${c.fmt(x.compValue)}%</span></button>`).join('')}</div>` : c.empty('ghost', '没有候选魂灵', '请先通过剧情补足候选魂灵')}
       </div>`,
-      core: cur ? `<div class="pad detail">
+      core: cur ? `<div class="pad detail ring-pick">
         <div class="q-title">${c.sock('circle-plus', 'gd')}<span class="chip">第 ${p.ringIndex} 魂环</span><h2>${c.esc(cur.displayName)}</h2><span class="q-state">${c.esc(cur.state)}</span></div>
         <div class="soul-card"><div class="soul-stage">${c.ringStage([{ 年限: cur.ageValue, slot: `第${p.ringIndex}魂环`, skills: [] }], () => '')}</div><small class="lbl">本次魂环 · ${c.esc(cur.nextRingColorLabel)}</small></div>
         <div class="tiles">
