@@ -1,0 +1,12 @@
+/* 座舱战斗屏：战斗进行时三屏换成一整块战斗屏，外框沿用座舱屏框；内部是战斗终端网格（BattleUI_Module 按 id 驱动）。
+   战斗规则一律以 .lwcs-ck-battle 为根（构建时以 .lwcs-ck 开头的选择器不加作用域）：记录终端与魂技浮窗在宽屏会被移到 body 下，
+   它们自己也带这个类，样式与座舱变量跟着走 */
+.cockpit.in-battle .screens,.cockpit.in-battle .dots{display:none}
+.battle-deck{position:relative;z-index:2}
+.battle-deck[hidden]{display:none}
+.battle-deck .float{height:auto}
+.battle-deck .bz,.battle-deck .bz>.b2,.battle-deck .bz>.b2>.b3{height:auto}
+.battle-deck .scr{height:auto;min-height:420px;overflow:visible}
+@container cockpit (min-width:701px){
+  .battle-deck{order:4;flex:1 0 calc(100% - 28px);max-width:calc(100% - 28px);margin:26px 14px 22px}
+}

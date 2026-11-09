@@ -26190,6 +26190,8 @@
     pending: () => 座舱待处理(),
     // 战斗进行中但终端被收起时，座舱给出返回入口
     battleActive: () => !!deepGet(liveSnapshot, 'rootData.world.战斗.进行中', false),
+    // 座舱离开战斗屏（点领域标签）：同「退出战斗终端」，战斗不中断，总览给返回入口
+    closeBattle: () => handleBattleUiCloseRequest({ detail: {} }),
   };
   function 同步座舱可见性(详情键 = getEffectiveUnifiedPreviewKey()) {
     const 挂载点 = document.getElementById('mvu-unified-mount');
@@ -27714,15 +27716,17 @@ ${播报文本}
     };
   }
 
+  // 战斗终端标记：座舱战斗屏的网格（己方 | 指令 | 敌方，上方警报与状态条，下方执行栏与记录）。
+  // 所有 ui-* id 与 data-* 属性保持不变（BattleUI_Module 只按它们驱动）；lwcs-ck-battle 是座舱战斗样式的根类，
+  // 记录终端与魂技浮窗在宽屏会被 BattleUI 移到 body 下，所以它们自己也带这个类
   function buildBattleInlineHostMarkup() {
     return `
-        <div id="mvu-battle-inline-host" class="mvu-battle-inline-host">
-          <div class="battle-module-scope">
-            <section class="battle-shell" aria-label="战斗">
-              <div class="battle-smart-alert-layer" id="ui-smart-alert-layer" aria-live="polite"></div>
-              <div class="battle-control-bar" id="ui-combat-chips"></div>
-              <div class="battle-hud-layer">
-                <div class="combatant-card player" id="ui-player-panel">
+      <div id="lwcs-battle-host" class="lwcs-battle-host">
+        <div class="battle-module-scope lwcs-ck-battle">
+          <div class="battle-smart-alert-layer" id="ui-smart-alert-layer" aria-live="polite"></div>
+          <div class="battle-control-bar" id="ui-combat-chips"></div>
+          <section class="bt-side bt-ally" aria-label="己方">
+          <div class="combatant-card player" id="ui-player-panel">
                   <div class="name-row">
                     <div class="name-block">
                       <span class="lv-badge" id="ui-player-lv">Lv.0</span>
@@ -27740,8 +27744,23 @@ ${播报文本}
                   <div class="stats-grid" id="ui-player-stats"></div>
                   <div class="buff-row" id="ui-player-buffs"></div>
                   <div class="battle-team-strip" id="ui-team-player"></div>
-                </div>
-                <div class="combatant-card enemy" id="ui-enemy-panel">
+          </div>
+          </section>
+          <section class="bt-main" aria-label="指令">
+            <div class="summon-queue" id="ui-summon-queue" hidden></div>
+            <div class="battle-command-deck">
+                  <div class="action-filters" id="ui-action-filters"></div>
+                  <div class="action-grid" id="ui-action-grid"></div>
+            </div>
+            <div class="battle-target-deck">
+              <div class="battle-action-summary" id="ui-action-summary"></div>
+                  <div class="battle-target-controls" id="ui-target-controls" hidden></div>
+                  <div class="tower-settlement-panel" id="ui-tower-settlement" hidden></div>
+                  <input id="ui-intent-output" type="hidden" value="">
+            </div>
+          </section>
+          <section class="bt-side bt-foe" aria-label="敌方">
+          <div class="combatant-card enemy" id="ui-enemy-panel">
                   <div class="name-row">
                     <div class="name-block">
                       <span class="lv-badge" id="ui-enemy-lv">Lv.0</span>
@@ -27759,20 +27778,9 @@ ${播报文本}
                   <div class="stats-grid" id="ui-enemy-stats"></div>
                   <div class="buff-row" id="ui-enemy-buffs"></div>
                   <div class="battle-team-strip" id="ui-team-enemy"></div>
-                </div>
-              </div>
-              <div class="battle-dashboard-layer">
-                <div class="summon-queue" id="ui-summon-queue" hidden></div>
-                <div class="battle-command-deck">
-                  <div class="action-filters" id="ui-action-filters"></div>
-                  <div class="action-grid" id="ui-action-grid"></div>
-                </div>
-                <div class="battle-target-deck">
-                  <div class="battle-action-summary" id="ui-action-summary"></div>
-                  <div class="battle-target-controls" id="ui-target-controls" hidden></div>
-                  <div class="tower-settlement-panel" id="ui-tower-settlement" hidden></div>
-                  <input id="ui-intent-output" type="hidden" value="">
-                  <div class="battle-exec-bar">
+          </div>
+          </section>
+          <div class="battle-exec-bar">
                     <div class="battle-settings-strip">
                       <div class="battle-terminal-row">
                         <span class="battle-terminal-label">执行轮次</span>
@@ -27842,13 +27850,10 @@ ${播报文本}
                       <button class="ghost-btn battle-close-btn" id="ui-battle-close" type="button" aria-label="退出战斗">&lt; 退出</button>
                       <button class="ghost-btn battle-preview-btn" id="ui-battle-preview" type="button">预演</button>
                       <button class="ghost-btn battle-submit-btn" id="ui-arbitrate" type="button">⚡ 结算 EXECUTE</button>
-                    </div>
-                  </div>
-                </div>
               </div>
-              <div class="battle-skill-tooltip-floating" id="ui-skill-tooltip" role="tooltip" hidden></div>
-            </section>
-            <div class="battle-record-terminal battle-record-terminal--collapsed" id="ui-battle-record-terminal">
+            </div>
+          <div class="battle-skill-tooltip-floating lwcs-ck-battle" id="ui-skill-tooltip" role="tooltip" hidden></div>
+          <div class="battle-record-terminal battle-record-terminal--collapsed lwcs-ck-battle" id="ui-battle-record-terminal">
               <div class="battle-record-header">
                 <button class="battle-record-toggle" id="ui-battle-record-toggle" type="button" aria-expanded="false">记录</button>
               </div>
@@ -27858,15 +27863,15 @@ ${播报文本}
                   <button class="battle-record-tab" type="button" role="tab" data-battle-record-tab="preview" aria-selected="false" tabindex="-1">预演记录</button>
                 </div>
                 <div class="battle-preview-panel" id="ui-battle-preview-panel"></div>
-              </div>
-            </div>
           </div>
-        </div>`;
+        </div>
+        </div>
+      </div>`;
   }
 
 
   function getBattleInlineHost() {
-    const host = document.getElementById('mvu-battle-inline-host');
+    const host = document.getElementById('lwcs-battle-host');
     return host instanceof Element && host.isConnected ? host : null;
   }
 
@@ -28168,7 +28173,22 @@ ${播报文本}
     [80, 240, 520].forEach(delay => window.setTimeout(run, delay));
   }
 
+  // 座舱战斗屏开关（战斗终端只在座舱里显示）
+  function 座舱战斗屏已打开() {
+    return !!window.COCKPIT?.battleShown?.();
+  }
+  function 关闭座舱战斗屏() {
+    if (window.COCKPIT?.battleShown?.()) window.COCKPIT.showBattle(false);
+  }
+
   function openBattleInlineSurface() {
+    // 座舱就绪时战斗终端挂进座舱战斗屏，不再走旧的内嵌详情面
+    if (window.COCKPIT?.mounted && typeof window.COCKPIT.battleHost === 'function') {
+      const 宿主 = window.COCKPIT.battleHost();
+      if (宿主 && !getBattleInlineHost()) 宿主.innerHTML = buildBattleInlineHostMarkup();
+      window.COCKPIT.showBattle(true);
+      return Promise.resolve(getBattleInlineHost());
+    }
     const 当前宿主 = getBattleInlineHost();
     const 统一宿主 = getUnifiedInlineHost();
     if (
@@ -29729,6 +29749,7 @@ ${播报文本}
       removeBattleReturnEntries();
       if (activeBattleUI && typeof activeBattleUI.destroy === 'function') activeBattleUI.destroy();
       activeBattleUI = null;
+      关闭座舱战斗屏();
       if (getEffectiveUnifiedPreviewKey() === BATTLE_INLINE_PREVIEW_KEY) {
         clearUnifiedInlinePreview();
       }
@@ -33855,6 +33876,7 @@ ${播报文本}
     activeBattleUI = null;
     battleInlineMountToken++;
     pendingBattleInlineMount = null;
+    关闭座舱战斗屏();
     if (currentUnifiedPreviewKey === BATTLE_INLINE_PREVIEW_KEY && typeof window.__MVU_CLOSE_UNIFIED_PREVIEW__ === 'function') {
       window.__MVU_CLOSE_UNIFIED_PREVIEW__({ force: true });
     }
@@ -34338,7 +34360,7 @@ ${播报文本}
         '.skill-designer-layout',
         '.map-action-grid',
         '.map-dispatch-action-btn',
-        '#mvu-battle-inline-host',
+        '#lwcs-battle-host',
         '.battle-shell',
       ].join(','),
     );

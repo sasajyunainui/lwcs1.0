@@ -92,6 +92,7 @@ const 座舱样式列表 = Object.freeze([
   'cockpit/cockpit-home.css',
   'cockpit/cockpit-pages.css',
   'cockpit/designer-ui.css',
+  'cockpit/cockpit-battle.css',
   'cockpit/cockpit-embed.css',
 ]);
 

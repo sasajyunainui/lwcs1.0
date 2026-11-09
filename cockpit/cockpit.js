@@ -202,6 +202,16 @@
       try { return fn(spec) !== false; } catch (err) { console.error('[座舱] 跳转失败', err); return false; }
     },
     battleActive: () => !!ADP?.battleActive?.(),
+    // 战斗终端宿主：战斗进行且玩家打开战斗时，三屏换成一整块战斗屏（桥接把战斗终端标记挂进 battleHost，BattleUI 按 id 驱动）；
+    // 关闭时清空，三屏回来。点领域标签离开战斗屏时交给桥接按「退出战斗终端」处理（战斗本身不中断，总览有返回入口）
+    battleHost: () => (ROOT ? ROOT.querySelector('#ck-battle-mount') : null),
+    battleShown: () => !!ROOT && !ROOT.querySelector('#ck-battle').hidden,
+    showBattle(on) {
+      if (!ROOT) return;
+      const deck = ROOT.querySelector('#ck-battle'); deck.hidden = !on;
+      ROOT.querySelector('.cockpit').classList.toggle('in-battle', !!on);
+      if (!on) ROOT.querySelector('#ck-battle-mount').replaceChildren();
+    },
     get mounted() { return mounted; },
     refresh() { api.refresh?.(); },
     // 输入框失焦后的重绘：按键还没松开时等这次点击结束再重绘，免得按钮被换掉、点击落空
@@ -250,6 +260,10 @@
         <div class="scr"><div class="host" id="ck-wingR"></div></div>
       </div></div></div></div></div>
     </div>
+    <div class="battle-deck" id="ck-battle" hidden><div class="float"><div class="bz"><div class="b2"><div class="b3">
+      <span class="tagline" aria-hidden="true">COMBAT · TERMINAL</span><span class="led tr" aria-hidden="true"></span><span class="led bl" aria-hidden="true"></span><span class="screw br" aria-hidden="true"></span><span class="screw tl" aria-hidden="true"></span>
+      <div class="scr"><div class="battle-mount" id="ck-battle-mount"></div></div>
+    </div></div></div></div></div>
     <nav class="dots" aria-label="切换屏面"><button type="button" data-face="-1">根基</button><button type="button" data-face="0" class="on">主屏</button><button type="button" data-face="1">操作</button></nav>
     <div class="readout">
         <span class="door" data-go="page-map/place" role="link" tabindex="0" title="查看当地"><i class="fa-solid fa-location-dot"></i> <span id="ck-rLoc"></span></span>
@@ -795,7 +809,11 @@
   cockpitEl.addEventListener('keydown', e => { const el = e.target.closest?.('.ie'); if (el && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); beginEdit(el); } });
 
   // ---------- 事件委托 ----------
-  track.addEventListener('click', e => { const t = e.target.closest('.tab'); if (t) switchDomain(t.dataset.tab); });
+  track.addEventListener('click', e => {
+    const t = e.target.closest('.tab'); if (!t) return;
+    if (C.battleShown()) { ADP?.closeBattle?.(); C.showBattle(false); return switchDomain(t.dataset.tab, domains[t.dataset.tab]?.keys[0].id); }
+    switchDomain(t.dataset.tab);
+  });
   $('.cockpit').addEventListener('click', e => { const r = e.target.closest('[data-route]'); if (r) C.route({ to: r.dataset.route }); });
   $('#ck-back').addEventListener('click', () => switchPage(domains[state.domain].keys[0].id));
   // 滚轮归屏：桌面三屏里指针在哪块屏就只滚那块屏。落在屏框 / 屏内不可滚的地方也滚这块屏的内容；
