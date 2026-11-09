@@ -200,9 +200,13 @@ body{margin:0;padding:28px 16px;min-height:100vh;background:#12151b;font-family:
 .minigrid b{font-family:Bahnschrift,sans-serif;font-size:1.05em}
 .minigrid small{font-size:.7em;color:#9db0cf;font-weight:700}
 .skill{display:grid;grid-template-columns:auto minmax(0,1fr);gap:.8em;padding:.6em .7em;background:rgba(255,255,255,.55);box-shadow:inset 0 0 0 1px rgba(30,48,80,.18);clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
-.skill .medal{position:relative;width:3.1em;height:3.1em}
-.skill .medal .mvu-soul-ring-showcase{--ring-size:3.1em;--ring-stage-width:3.1em;--ring-stage-height:3.1em;min-height:3.1em}
-.skill .medal b{position:absolute;inset:0;display:grid;place-items:center;font-family:Bahnschrift,sans-serif;font-size:1.05em;color:#6b4800;text-shadow:0 0 4px #fff}
+/* 行内魂环徽章（技能卡 / 列表行 / 浮窗标题）：魂环缩到徽章尺寸，环序号压在环心；不设尺寸时魂环按展台原尺寸撑开，把名字挤成一字一行 */
+.skill .medal,.row .medal,.insp-head .medal{position:relative;flex:none;width:var(--md,3.1em);height:var(--md,3.1em)}
+.skill .medal .mvu-soul-ring-showcase,.row .medal .mvu-soul-ring-showcase,.insp-head .medal .mvu-soul-ring-showcase{--ring-size:var(--md,3.1em);--ring-stage-width:var(--md,3.1em);--ring-stage-height:var(--md,3.1em);min-height:var(--md,3.1em);width:var(--md,3.1em)}
+.skill .medal b,.row .medal b,.insp-head .medal b{position:absolute;inset:0;display:grid;place-items:center;font-family:Bahnschrift,sans-serif;font-size:1.05em;color:#6b4800;text-shadow:0 0 4px #fff}
+.row .medal{--md:2.6em}.insp-head .medal{--md:3.4em}
+.holo .medal b{color:#ffe7a6;text-shadow:0 0 5px rgba(0,0,0,.85)}
+.insp-head>div:not(.medal){flex:1;min-width:0}
 .skill .top{display:flex;align-items:baseline;gap:.55em;flex-wrap:wrap}
 .skill .top strong{font-size:1.08em;font-weight:900}
 .skill .cost{margin-left:auto;font-weight:800;color:var(--blue-d);font-size:.9em;white-space:nowrap}
