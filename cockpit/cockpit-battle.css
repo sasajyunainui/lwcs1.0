@@ -10,3 +10,217 @@
 @container cockpit (min-width:701px){
   .battle-deck{order:4;flex:1 0 calc(100% - 28px);max-width:calc(100% - 28px);margin:26px 14px 22px}
 }
+
+/* ---------- 变量（body 下的浮层也要有） ---------- */
+.lwcs-ck-battle{
+  --ink:#16223d;--ink2:#465572;--ink3:#76839a;--blue:#2f7cf6;--blue-d:#1453c4;--cyan:#5fc4ff;--glow:rgba(47,124,246,.5);
+  --bt-red:#d6452a;--bt-gold:#c9952a;
+  --brush:repeating-linear-gradient(90deg,rgba(255,255,255,0) 0 1px,rgba(255,255,255,.1) 1px 2px,rgba(0,0,0,.018) 2px 3px);
+  font-family:"HarmonyOS Sans SC","Microsoft YaHei UI","Microsoft YaHei","PingFang SC",sans-serif;color:var(--ink);line-height:1.35;letter-spacing:normal;text-align:left
+}
+.lwcs-ck-battle *,.lwcs-ck-battle *::before,.lwcs-ck-battle *::after{box-sizing:border-box}
+.lwcs-ck-battle button{font:inherit;color:inherit;margin:0}
+.lwcs-ck-battle [hidden]{display:none!important}
+
+/* ---------- 网格：状态条 / 警报 / 己方 | 指令 | 敌方 / 执行栏 / 记录 ---------- */
+.lwcs-ck-battle.battle-module-scope{display:grid;grid-template-columns:minmax(0,24%) minmax(0,1fr) minmax(0,24%);grid-template-areas:"chips chips chips" "alert alert alert" "ally main foe" "exec exec exec" "rec rec rec";gap:.75em;padding:1.2em 1.2em 1.1em}
+.lwcs-ck-battle #ui-combat-chips{grid-area:chips}
+.lwcs-ck-battle #ui-smart-alert-layer{grid-area:alert}
+.lwcs-ck-battle .bt-ally{grid-area:ally}
+.lwcs-ck-battle .bt-main{grid-area:main}
+.lwcs-ck-battle .bt-foe{grid-area:foe}
+.lwcs-ck-battle .battle-exec-bar{grid-area:exec}
+.lwcs-ck-battle.battle-module-scope>#ui-battle-record-terminal{grid-area:rec}
+.lwcs-ck-battle .bt-side,.lwcs-ck-battle .bt-main{min-width:0;display:flex;flex-direction:column;gap:.6em}
+
+/* ---------- 顶部状态条：回合 / 战斗 / 阶段 / 指向 ---------- */
+.lwcs-ck-battle .battle-control-bar{display:flex;flex-wrap:wrap;gap:.4em;align-items:stretch}
+.lwcs-ck-battle .intent-pill{display:inline-flex;align-items:baseline;gap:.45em;padding:.3em .8em;font-size:.86em;color:#cfe0f7;background:linear-gradient(180deg,#0f1828,#1b2539);box-shadow:inset 0 0 0 1px #3a4b66,inset 0 0 12px rgba(70,140,255,.25);clip-path:polygon(7px 0,100% 0,calc(100% - 7px) 100%,0 100%)}
+.lwcs-ck-battle .intent-pill>span{font-size:.86em;font-weight:700;color:#8ea6c8}
+.lwcs-ck-battle .intent-pill>b{font-weight:900;color:#fff}
+.lwcs-ck-battle .intent-pill:last-child{flex:1 1 auto;min-width:0}
+.lwcs-ck-battle .intent-pill:last-child>b{color:#ffd36b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ---------- 警报 ---------- */
+.lwcs-ck-battle .battle-smart-alert-layer{display:flex;flex-direction:column;gap:.35em}
+.lwcs-ck-battle .battle-smart-alert-layer:empty{display:none}
+.lwcs-ck-battle .battle-alert-card{display:flex;align-items:center;gap:.6em;padding:.45em .8em;font-size:.86em;font-weight:800;color:#8a2a17;background:linear-gradient(90deg,rgba(214,69,42,.16),rgba(214,69,42,.03) 70%);box-shadow:inset 3px 0 0 var(--bt-red);clip-path:polygon(8px 0,100% 0,100% 100%,0 100%,0 8px)}
+.lwcs-ck-battle .battle-alert-card.is-critical{color:#fff;background:linear-gradient(90deg,#c43a22,#a32a17)}
+.lwcs-ck-battle .battle-alert-card--system{color:var(--blue-d);background:linear-gradient(90deg,rgba(47,124,246,.14),rgba(47,124,246,.02) 70%);box-shadow:inset 3px 0 0 var(--blue)}
+.lwcs-ck-battle .battle-alert-card.is-acknowledged{opacity:.6}
+
+/* ---------- 交战卡：名牌 / 资源条 / 三维 / 状态 / 队列 ---------- */
+.lwcs-ck-battle .combatant-card{position:relative;display:flex;flex-direction:column;gap:.55em;padding:.75em .8em .8em;background:var(--brush),linear-gradient(180deg,rgba(255,255,255,.88),rgba(226,233,243,.8));box-shadow:inset 0 0 0 1px rgba(30,48,80,.18),0 3px 0 rgba(74,86,107,.35);clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)}
+.lwcs-ck-battle .combatant-card.player{box-shadow:inset 3px 0 0 var(--blue),inset 0 0 0 1px rgba(30,48,80,.18),0 3px 0 rgba(74,86,107,.35)}
+.lwcs-ck-battle .combatant-card.enemy{box-shadow:inset -3px 0 0 var(--bt-red),inset 0 0 0 1px rgba(30,48,80,.18),0 3px 0 rgba(74,86,107,.35)}
+.lwcs-ck-battle .name-row{display:flex;flex-wrap:wrap;align-items:center;gap:.3em .5em}
+.lwcs-ck-battle .name-block{display:flex;align-items:center;gap:.4em;min-width:0;flex:1 1 auto}
+.lwcs-ck-battle .lv-badge{flex:none;font-family:Bahnschrift,sans-serif;font-size:.78em;font-weight:900;color:#fff;padding:.08em .45em;background:linear-gradient(180deg,#5aa5ff,#1a5ad6);clip-path:polygon(4px 0,100% 0,calc(100% - 4px) 100%,0 100%)}
+.lwcs-ck-battle .enemy .lv-badge{background:linear-gradient(180deg,#f07a64,#c13a22)}
+.lwcs-ck-battle .combatant-name{min-width:0;font-size:1.08em;font-weight:900;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lwcs-ck-battle .combatant-switch{flex:none;appearance:none;border:0;cursor:pointer;width:1.7em;height:1.7em;display:grid;place-items:center;font-size:.8em;color:var(--ink2);background:linear-gradient(180deg,#fff,#d3dbe6);box-shadow:0 2px 0 #7d8ba0;clip-path:polygon(4px 0,100% 0,100% calc(100% - 4px),calc(100% - 4px) 100%,0 100%,0 4px)}
+.lwcs-ck-battle .combatant-switch[aria-expanded="true"]{color:#fff;background:linear-gradient(180deg,#5aa5ff,#1a5ad6);box-shadow:0 2px 0 #0d3384}
+.lwcs-ck-battle .combatant-type{font-size:.74em;font-weight:800;padding:.08em .5em;color:#7a5200;background:rgba(242,191,63,.22);box-shadow:inset 0 0 0 1px rgba(200,150,30,.45)}
+.lwcs-ck-battle .bar-stack{display:flex;flex-direction:column;gap:.32em}
+.lwcs-ck-battle .resource-bar{display:grid;grid-template-columns:2.2em minmax(0,1fr) auto;align-items:center;gap:.4em}
+.lwcs-ck-battle .resource-label{font-size:.74em;font-weight:800;color:var(--ink3)}
+.lwcs-ck-battle .resource-track{position:relative;height:11px;padding:2px;background:linear-gradient(180deg,#1b2437,#3a4760);clip-path:polygon(5px 0,100% 0,calc(100% - 5px) 100%,0 100%)}
+.lwcs-ck-battle .resource-fill{height:100%;min-width:4px;background:linear-gradient(180deg,var(--a),var(--b));box-shadow:0 0 8px var(--g);clip-path:polygon(0 0,100% 0,calc(100% - 4px) 100%,0 100%);transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.lwcs-ck-battle .resource-fill.hp{--a:#ff7a8b;--b:#d01c3a;--g:rgba(240,50,80,.6)}
+.lwcs-ck-battle .resource-fill.sp{--a:#6cbaff;--b:#155fe0;--g:rgba(40,130,255,.6)}
+.lwcs-ck-battle .resource-fill.vit{--a:#56e4ae;--b:#0e9660;--g:rgba(30,190,120,.5)}
+.lwcs-ck-battle .resource-fill.men{--a:#c8a2ff;--b:#6a36e0;--g:rgba(140,90,240,.5)}
+.lwcs-ck-battle .resource-text{font-family:Bahnschrift,sans-serif;font-size:.74em;font-weight:800;color:var(--ink2);white-space:nowrap}
+.lwcs-ck-battle .stats-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.3em}
+.lwcs-ck-battle .stat-item{display:flex;align-items:baseline;justify-content:space-between;gap:.3em;padding:.25em .45em;background:rgba(255,255,255,.65);box-shadow:inset 0 0 0 1px rgba(30,48,80,.12)}
+.lwcs-ck-battle .stat-label{font-size:.72em;font-weight:800;color:var(--ink3)}
+.lwcs-ck-battle .stat-value{font-family:Bahnschrift,sans-serif;font-weight:900;font-size:.92em;color:var(--ink)}
+.lwcs-ck-battle .buff-row{display:flex;flex-wrap:wrap;gap:.3em}
+.lwcs-ck-battle .buff-row:empty{display:none}
+.lwcs-ck-battle .buff-row>*{font-size:.74em;font-weight:800;padding:.1em .5em;color:var(--blue-d);background:rgba(47,124,246,.1);box-shadow:inset 0 0 0 1px rgba(47,124,246,.3)}
+.lwcs-ck-battle .buff-row>.debuff,.lwcs-ck-battle .buff-row>[class*="debuff"]{color:#a3301f;background:rgba(214,69,42,.1);box-shadow:inset 0 0 0 1px rgba(214,69,42,.35)}
+.lwcs-ck-battle .battle-team-strip{display:none;flex-direction:column;gap:.3em}
+.lwcs-ck-battle .combatant-card.has-team-open .battle-team-strip{display:flex}
+.lwcs-ck-battle .side-card{appearance:none;border:0;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:.25em;padding:.4em .55em;background:rgba(255,255,255,.7);box-shadow:inset 0 0 0 1px rgba(30,48,80,.14)}
+.lwcs-ck-battle .side-card:hover{background:#fff}
+.lwcs-ck-battle .side-card.active{box-shadow:inset 3px 0 0 var(--blue),inset 0 0 0 1px rgba(47,124,246,.4);background:#fff}
+.lwcs-ck-battle .side-card.is-current-target{box-shadow:inset 3px 0 0 var(--bt-red),inset 0 0 0 1px rgba(214,69,42,.45)}
+.lwcs-ck-battle .side-head{display:flex;align-items:center;gap:.4em;min-width:0}
+.lwcs-ck-battle .side-name{font-size:.86em;font-weight:900;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lwcs-ck-battle .side-meta{font-size:.72em;color:var(--ink3);font-weight:700}
+.lwcs-ck-battle .side-target-mark{margin-left:auto;font-size:.7em;font-weight:900;color:var(--bt-red)}
+.lwcs-ck-battle .side-mini-bar{height:5px;background:#1f2a40}
+.lwcs-ck-battle .side-mini-fill{height:100%;background:linear-gradient(90deg,#ff7a8b,#d01c3a)}
+
+/* ---------- 指令区：分类 / 动作卡 / 当前动作 / 目标 ---------- */
+.lwcs-ck-battle .battle-command-deck{display:flex;flex-direction:column;gap:.5em}
+.lwcs-ck-battle .action-filters{display:flex;flex-wrap:wrap;gap:.3em}
+.lwcs-ck-battle .filter-btn{appearance:none;border:0;cursor:pointer;font-size:.84em;font-weight:800;padding:.32em .9em;color:var(--ink);background:linear-gradient(180deg,#fff,#d7dfe9);box-shadow:0 2px 0 #8391a6;clip-path:polygon(5px 0,100% 0,100% calc(100% - 5px),calc(100% - 5px) 100%,0 100%,0 5px)}
+.lwcs-ck-battle .filter-btn.active{color:#fff;background:linear-gradient(180deg,#5aa5ff,#1a5ad6);box-shadow:0 2px 0 #0d3384}
+.lwcs-ck-battle .action-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(11.5em,1fr));gap:.4em}
+.lwcs-ck-battle .action-btn{appearance:none;border:0;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:.3em;padding:.5em .65em;color:var(--ink);background:var(--brush),linear-gradient(180deg,#ffffff,#dbe3ee);box-shadow:0 3px 0 #7d8ba0,0 4px 8px rgba(0,0,0,.12);clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px);transition:transform .12s,box-shadow .12s}
+.lwcs-ck-battle .action-btn:hover{transform:translateY(-1px)}
+.lwcs-ck-battle .action-btn:active{transform:translateY(2px);box-shadow:0 1px 0 #7d8ba0}
+.lwcs-ck-battle .action-btn.is-selected{color:#fff;background:linear-gradient(180deg,#5aa5ff,#1a5ad6 65%,#1446b0);box-shadow:0 3px 0 #0d3384,0 0 14px var(--glow)}
+.lwcs-ck-battle .action-btn[disabled],.lwcs-ck-battle .action-btn.is-disabled{opacity:.5;cursor:not-allowed}
+.lwcs-ck-battle .battle-skill-head{display:flex;align-items:center;gap:.4em;min-width:0}
+.lwcs-ck-battle .battle-skill-name{font-weight:900;min-width:0;flex:1 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lwcs-ck-battle .battle-skill-tag{flex:none;font-size:.7em;font-weight:900;padding:.05em .4em;color:#7a5200;background:rgba(242,191,63,.25);box-shadow:inset 0 0 0 1px rgba(200,150,30,.45)}
+.lwcs-ck-battle .is-selected .battle-skill-tag{color:#fff;background:rgba(255,255,255,.2);box-shadow:inset 0 0 0 1px rgba(255,255,255,.45)}
+.lwcs-ck-battle .battle-skill-meta{display:flex;flex-wrap:wrap;gap:.15em .7em;font-size:.74em}
+.lwcs-ck-battle .battle-skill-meta em{font-style:normal;color:var(--ink3);margin-right:.25em}
+.lwcs-ck-battle .is-selected .battle-skill-meta em{color:rgba(255,255,255,.7)}
+.lwcs-ck-battle .battle-skill-meta b{font-weight:800}
+.lwcs-ck-battle .battle-target-deck{display:flex;flex-direction:column;gap:.45em}
+.lwcs-ck-battle .battle-terminal-current{display:flex;flex-wrap:wrap;align-items:baseline;gap:.2em .6em;padding:.5em .8em;color:#cfe0f7;background:linear-gradient(180deg,#0f1828,#1b2539);box-shadow:inset 0 0 0 1px #3a4b66,inset 0 0 16px rgba(70,140,255,.25)}
+.lwcs-ck-battle .battle-terminal-current>span{font-size:.78em;font-weight:800;color:#8ea6c8}
+.lwcs-ck-battle .battle-terminal-current>b{font-weight:900;color:#fff}
+.lwcs-ck-battle .battle-terminal-current>em{font-style:normal;font-size:.8em;color:#9db7da}
+.lwcs-ck-battle .battle-target-controls{display:flex;flex-direction:column;gap:.35em}
+
+/* ---------- 下拉（全息选择器）与设置行 ---------- */
+.lwcs-ck-battle .battle-terminal-row{display:flex;align-items:center;gap:.5em;min-width:0}
+.lwcs-ck-battle .battle-terminal-label{flex:none;font-size:.78em;font-weight:800;color:var(--ink3);white-space:nowrap}
+.lwcs-ck-battle .battle-holo-select{position:relative;min-width:0;flex:1 1 auto}
+.lwcs-ck-battle .battle-holo-trigger{appearance:none;border:0;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:space-between;gap:.5em;padding:.32em .65em;font-size:.86em;font-weight:800;color:var(--ink);background:linear-gradient(180deg,#fff,#dde4ee);box-shadow:inset 0 0 0 1px rgba(30,48,80,.2),0 2px 0 #8391a6}
+.lwcs-ck-battle .battle-holo-trigger>span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lwcs-ck-battle .battle-holo-trigger>i{font-style:normal;color:var(--ink3)}
+.lwcs-ck-battle .battle-holo-menu{display:none;position:absolute;z-index:20;left:0;right:0;top:calc(100% + 3px);max-height:16em;overflow:auto;padding:.25em;flex-direction:column;background:linear-gradient(180deg,#f7faff,#e9f0fb);box-shadow:0 0 0 1px #9fb4d3,inset 0 2px 0 #fff,0 14px 30px rgba(10,22,48,.3)}
+.lwcs-ck-battle .battle-holo-select.is-open .battle-holo-menu{display:flex}
+.lwcs-ck-battle .battle-holo-option{appearance:none;border:0;cursor:pointer;text-align:left;padding:.4em .6em;font-size:.86em;font-weight:700;color:var(--ink);background:none}
+.lwcs-ck-battle .battle-holo-option:hover{background:rgba(47,124,246,.1)}
+.lwcs-ck-battle .battle-holo-option.active{color:#fff;background:linear-gradient(180deg,#5aa5ff,#1a5ad6)}
+.lwcs-ck-battle .battle-holo-empty{font-size:.8em;color:var(--ink3);padding:.3em}
+.lwcs-ck-battle .battle-number-field{display:inline-flex;align-items:center;gap:.25em;padding:.15em .45em;background:#fff;box-shadow:inset 0 0 0 1px rgba(30,48,80,.2)}
+.lwcs-ck-battle .battle-number-field input{width:3.6em;border:0;outline:none;background:none;font:inherit;font-weight:800;color:var(--ink)}
+.lwcs-ck-battle .battle-number-field em{font-style:normal;font-size:.78em;color:var(--ink3)}
+
+/* ---------- 执行栏：设置（一行排开）+ 退出 / 预演 / 结算 ---------- */
+.lwcs-ck-battle .battle-exec-bar{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:.6em 1em;padding:.7em .8em;background:linear-gradient(180deg,rgba(30,48,80,.08),rgba(30,48,80,.02));box-shadow:inset 0 1px 0 rgba(30,48,80,.22),inset 0 2px 0 rgba(255,255,255,.85)}
+.lwcs-ck-battle .battle-settings-strip{display:flex;flex-wrap:wrap;gap:.45em 1em;min-width:0}
+.lwcs-ck-battle .battle-settings-strip>.battle-terminal-row{flex:0 1 13em}
+.lwcs-ck-battle .battle-auto-continue-settings{display:flex;flex-wrap:wrap;gap:.45em 1em;flex-basis:100%}
+.lwcs-ck-battle .battle-exec-actions{display:flex;gap:.45em;align-items:stretch}
+.lwcs-ck-battle .ghost-btn{appearance:none;border:0;cursor:pointer;font-weight:900;font-size:.9em;padding:.55em 1.1em;color:var(--ink);background:linear-gradient(180deg,#fff,#d7dfe9);box-shadow:0 3px 0 #8391a6;clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px);white-space:nowrap}
+.lwcs-ck-battle .ghost-btn:active{transform:translateY(2px);box-shadow:0 1px 0 #8391a6}
+.lwcs-ck-battle .battle-close-btn{color:var(--ink2)}
+.lwcs-ck-battle .battle-submit-btn{min-width:9em;font-size:1.02em;letter-spacing:.1em;color:#fff;background:linear-gradient(180deg,#5aa5ff,#1a5ad6 60%,#1446b0);box-shadow:0 3px 0 #0d3384,0 0 16px var(--glow)}
+.lwcs-ck-battle .battle-submit-btn:active{box-shadow:0 1px 0 #0d3384}
+.lwcs-ck-battle .ghost-btn[disabled]{opacity:.5;cursor:not-allowed}
+
+/* ---------- 召唤队列 / 魂灵塔结算 ---------- */
+.lwcs-ck-battle .summon-queue{display:grid;grid-template-columns:repeat(auto-fill,minmax(10em,1fr));gap:.35em}
+.lwcs-ck-battle .summon-card{display:flex;flex-direction:column;gap:.25em;padding:.45em .55em;background:rgba(255,255,255,.7);box-shadow:inset 0 0 0 1px rgba(30,48,80,.14),inset 3px 0 0 var(--bt-gold)}
+.lwcs-ck-battle .summon-card-head{display:flex;align-items:center;justify-content:space-between;gap:.4em;font-weight:900;font-size:.88em}
+.lwcs-ck-battle .summon-card-meta,.lwcs-ck-battle .summon-card-foot{font-size:.74em;color:var(--ink3);font-weight:700}
+.lwcs-ck-battle .summon-hp{height:5px;background:#1f2a40}
+.lwcs-ck-battle .tower-settlement-panel{display:flex;flex-direction:column;gap:.4em}
+.lwcs-ck-battle .tower-settlement-card{display:flex;flex-direction:column;gap:.4em;padding:.6em .7em;background:linear-gradient(180deg,rgba(255,231,166,.5),rgba(242,193,78,.18));box-shadow:inset 0 0 0 1px rgba(200,150,30,.45)}
+.lwcs-ck-battle .tower-settlement-head{font-weight:900;color:#7a4f00}
+.lwcs-ck-battle .tower-settlement-body,.lwcs-ck-battle .tower-settlement-note{font-size:.84em;color:var(--ink2)}
+.lwcs-ck-battle .tower-settlement-actions{display:flex;flex-wrap:wrap;gap:.35em}
+.lwcs-ck-battle .tower-settlement-action{appearance:none;border:0;cursor:pointer;font-weight:800;font-size:.86em;padding:.35em .8em;background:linear-gradient(180deg,#fff,#d7dfe9);box-shadow:0 2px 0 #8391a6}
+
+/* ---------- 魂技浮窗（悬停动作卡；宽屏挂在 body 下） ---------- */
+.lwcs-ck-battle.battle-skill-tooltip-floating{position:absolute;z-index:40;max-width:320px;padding:.75em .9em;display:flex;flex-direction:column;gap:.45em;color:#e6eef9;font-size:13px;background:linear-gradient(180deg,#16233d,#0e1729);box-shadow:0 0 0 1px #3a5a8e,0 12px 28px rgba(5,10,22,.5);clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);pointer-events:none}
+.lwcs-ck-battle.battle-skill-tooltip-floating--portal{position:fixed;z-index:10060}
+.lwcs-ck-battle .battle-ring-tooltip-title{font-weight:900;font-size:1.05em;color:#fff}
+.lwcs-ck-battle .battle-ring-tooltip-meta{display:flex;flex-direction:column;gap:.15em}
+.lwcs-ck-battle .battle-ring-tooltip-meta-row{display:flex;justify-content:space-between;gap:.8em;font-size:.86em;color:#cfe0f7}
+.lwcs-ck-battle .battle-ring-tooltip-desc,.lwcs-ck-battle .battle-ring-tooltip-copy{font-size:.84em;line-height:1.55;color:#b9cbe6}
+.lwcs-ck-battle .battle-ring-tooltip-tags{display:flex;flex-wrap:wrap;gap:.25em}
+.lwcs-ck-battle .battle-ring-tooltip-chip{font-size:.74em;font-weight:800;padding:.05em .45em;color:#ffd36b;box-shadow:inset 0 0 0 1px rgba(255,211,107,.45)}
+
+/* ---------- 战斗记录：窄屏排在执行栏下；宽屏由 BattleUI 挂到 body，贴在座舱右侧（可拖动），收起时只剩「记录」键 ---------- */
+.lwcs-ck-battle.battle-record-terminal{display:flex;flex-direction:column;gap:.5em;min-width:0;color:#dfe9f8;font-size:12.5px;padding:.6em .7em;background:linear-gradient(180deg,#121c2f,#0b1322);box-shadow:inset 0 0 0 1px #2c4166,inset 0 0 18px rgba(70,140,255,.18)}
+.lwcs-ck-battle.battle-record-terminal.battle-record-terminal--portal{position:fixed;top:var(--战斗记录外置-top,72px);left:var(--战斗记录外置-left,360px);z-index:10050;width:var(--战斗记录外置-width,min(640px,calc(100vw - 20px)));max-height:var(--战斗记录外置-height,min(720px,calc(100vh - 92px)));overflow:hidden;box-shadow:0 0 0 1px #3a5a8e,0 14px 30px rgba(0,0,0,.45);clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
+.lwcs-ck-battle.battle-record-terminal.battle-record-terminal--collapsed{width:auto;padding:0;background:none;box-shadow:none}
+.lwcs-ck-battle.battle-record-terminal--portal.battle-record-terminal--collapsed{clip-path:none}
+.lwcs-ck-battle.battle-record-terminal--dragging{cursor:grabbing;opacity:.92}
+.lwcs-ck-battle .battle-record-header{display:flex;align-items:center;gap:.5em;cursor:grab}
+.lwcs-ck-battle .battle-record-toggle{appearance:none;border:0;cursor:pointer;font-weight:900;font-size:.95em;letter-spacing:.1em;padding:.45em 1em;color:#fff;background:linear-gradient(180deg,#2a3b5c,#16233d);box-shadow:0 0 0 1px #3a5a8e,0 3px 0 #0a1222}
+.lwcs-ck-battle .battle-record-toggle[aria-expanded="true"]{background:linear-gradient(180deg,#5aa5ff,#1a5ad6);box-shadow:0 3px 0 #0d3384}
+.lwcs-ck-battle .battle-record-body{display:flex;flex-direction:column;gap:.5em;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#3d5f9e transparent}
+.lwcs-ck-battle .battle-record-tabs,.lwcs-ck-battle .battle-record-view-tabs{display:flex;flex-wrap:wrap;gap:.3em}
+.lwcs-ck-battle .battle-record-tab,.lwcs-ck-battle .battle-record-view-tab{appearance:none;border:0;cursor:pointer;font-size:.92em;font-weight:800;padding:.3em .8em;color:#b9cbe6;background:rgba(140,200,255,.08);box-shadow:inset 0 0 0 1px rgba(140,200,255,.25)}
+.lwcs-ck-battle .battle-record-tab.active,.lwcs-ck-battle .battle-record-view-tab.active{color:#fff;background:linear-gradient(180deg,#5aa5ff,#1a5ad6);box-shadow:none}
+/* 记录正文（预演 / 实战报告、决策链、终局汇总）：深色全息版式，分组间距 + 折叠 */
+.lwcs-ck-battle .battle-preview-panel{display:flex;flex-direction:column;gap:.55em;line-height:1.55}
+.lwcs-ck-battle .battle-preview-empty,.lwcs-ck-battle .battle-final-summary-empty{color:#8ea6c8;padding:.4em 0}
+.lwcs-ck-battle .battle-preview-head,.lwcs-ck-battle .battle-structured-report-head,.lwcs-ck-battle .battle-final-summary-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:.3em .7em;font-weight:900;color:#fff}
+.lwcs-ck-battle .battle-preview-report,.lwcs-ck-battle .battle-preview-report-group,.lwcs-ck-battle .battle-final-summary,.lwcs-ck-battle .battle-chain{display:flex;flex-direction:column;gap:.4em;padding:.5em .6em;background:rgba(140,200,255,.05);box-shadow:inset 0 0 0 1px rgba(140,200,255,.16)}
+.lwcs-ck-battle .battle-preview-report-badges,.lwcs-ck-battle .battle-final-summary-sides{display:flex;flex-wrap:wrap;gap:.3em}
+.lwcs-ck-battle .battle-preview-report-badge{font-size:.86em;font-weight:800;padding:.05em .5em;color:#cfe0f7;box-shadow:inset 0 0 0 1px rgba(140,200,255,.3)}
+.lwcs-ck-battle .battle-preview-report-badge--resource{color:#ffd36b;box-shadow:inset 0 0 0 1px rgba(255,211,107,.4)}
+.lwcs-ck-battle .battle-final-summary-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(14em,1fr));gap:.4em}
+.lwcs-ck-battle .battle-final-summary-side,.lwcs-ck-battle .battle-final-summary-unit{padding:.35em .5em;background:rgba(140,200,255,.06)}
+.lwcs-ck-battle .battle-final-summary-list{display:flex;flex-direction:column;gap:.2em}
+.lwcs-ck-battle .battle-final-summary-intent{color:#ffd36b;font-weight:800}
+.lwcs-ck-battle .battle-report-round-overview{display:flex;flex-direction:column;gap:.2em}
+.lwcs-ck-battle .battle-report-round-overview-row{display:flex;flex-wrap:wrap;gap:.2em .7em}
+.lwcs-ck-battle [class^="battle-report-decision"]{font-size:.95em}
+.lwcs-ck-battle .battle-report-decision-result{font-weight:900;color:#fff}
+.lwcs-ck-battle .battle-report-decision-reason,.lwcs-ck-battle .battle-report-decision-explanation{color:#b9cbe6}
+.lwcs-ck-battle .battle-report-decision-numbers,.lwcs-ck-battle .battle-report-decision-rolls{font-family:Bahnschrift,Consolas,monospace;color:#9fd0ff}
+.lwcs-ck-battle .battle-chain-section{display:flex;flex-direction:column;gap:.25em;padding-left:.6em;box-shadow:inset 2px 0 0 rgba(95,196,255,.4)}
+.lwcs-ck-battle .battle-chain-section--threat{box-shadow:inset 2px 0 0 rgba(255,122,100,.6)}
+.lwcs-ck-battle .battle-chain-section--settle{box-shadow:inset 2px 0 0 rgba(255,211,107,.6)}
+.lwcs-ck-battle .battle-chain-step,.lwcs-ck-battle .battle-chain-candidate,.lwcs-ck-battle .battle-chain-check{display:flex;flex-wrap:wrap;gap:.2em .6em}
+.lwcs-ck-battle .battle-chain-candidate-reason,.lwcs-ck-battle .battle-chain-check-kind{color:#8ea6c8}
+.lwcs-ck-battle .battle-chain-suboptimal,.lwcs-ck-battle .battle-chain-lost{color:#ff9d8a}
+.lwcs-ck-battle .battle-chain-unconfirmed{color:#ffd36b}
+.lwcs-ck-battle details>summary{cursor:pointer;font-weight:800;color:#9fd0ff}
+.lwcs-ck-battle .tag-chip{display:inline-block;font-size:.85em;font-weight:800;padding:0 .45em;color:#cfe0f7;box-shadow:inset 0 0 0 1px rgba(140,200,255,.3)}
+
+/* ---------- 窄屏：一列，己方 / 敌方并排在上，指令在中 ---------- */
+@container cockpit (max-width:700px){
+  .battle-deck{margin:6px 0 0}
+  .lwcs-ck-battle.battle-module-scope{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"chips chips" "alert alert" "ally foe" "main main" "exec exec" "rec rec";padding:.9em .7em}
+  .lwcs-ck-battle .battle-exec-bar{grid-template-columns:minmax(0,1fr)}
+  .lwcs-ck-battle .battle-exec-actions>.ghost-btn{flex:1 1 auto}
+  .lwcs-ck-battle .resource-bar{grid-template-columns:2em minmax(0,1fr)}
+  .lwcs-ck-battle .resource-text{grid-column:2;font-size:.7em}
+}
+@container cockpit (max-width:440px){
+  .lwcs-ck-battle.battle-module-scope{grid-template-columns:minmax(0,1fr);grid-template-areas:"chips" "alert" "ally" "foe" "main" "exec" "rec"}
+}
