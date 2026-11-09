@@ -239,7 +239,7 @@ body{margin:0;padding:28px 16px;min-height:100vh;background:#12151b;font-family:
 .door-key:active{transform:translateY(2px);box-shadow:0 1px 0 #6f7d93}
 .door-key:focus-visible{outline:2px solid var(--cyan);outline-offset:1px}
 /* 返回牌：其他页面时挂在中屏顶边、像插在屏框上的蓝色拉片，写首页名 */
-.back-plate{position:absolute;top:-17px;left:26px;z-index:6;appearance:none;border:0;font:inherit;font-size:.8em;font-weight:900;letter-spacing:.06em;color:#fff;cursor:pointer;display:inline-flex;align-items:center;gap:.4em;height:20px;padding:0 1em 0 .8em;
+.back-plate{position:absolute;top:-20px;left:26px;z-index:6;appearance:none;border:0;font:inherit;font-size:.88em;font-weight:900;letter-spacing:.06em;color:#fff;cursor:pointer;display:inline-flex;align-items:center;gap:.45em;height:23px;padding:0 1.2em 0 .95em;
   background:linear-gradient(180deg,#5aa5ff,#1a5ad6 70%,#1446b0);clip-path:polygon(7px 0,calc(100% - 7px) 0,100% 100%,0 100%);transition:filter .2s}
 .back-plate[hidden]{display:none}
 .back-plate i{font-size:.85em}
