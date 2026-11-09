@@ -276,6 +276,34 @@
     return [...m].map(([k, o]) => `${LIMIT_SRC[k] || (/^限定/.test(k) ? `${k}：只对特定对象生效` : k)}，按 ${Math.round(o.rate * 100)}% 抵扣`);
   };
   const energyText = (c, e) => { e = Number(e) || 0; return e > 0 && e < 0.1 ? String(Number(e.toPrecision(2))) : c.fmt(e); };
+  // 预算核算悬停：效果 COST 逐条来源（引擎 效果明细：原型 / 目标 / 数值 / 持续 + 各分项 COST 与系数）
+  const n2 = v => { const x = Number(v); return Number.isFinite(x) ? String(Number(x.toFixed(2))) : ''; };
+  const effectWhy = (c, r) => {
+    const rows = (r.效果明细 || []).filter(x => x && x.计入COST !== false && Number(x.原始COST) > 0);
+    if (!rows.length) return '还没有计入 COST 的效果';
+    const sum = rows.reduce((a, x) => a + Number(x.原始COST || 0), 0);
+    const lines = [`效果 COST ${c.fmt(r.效果原始COST)}${Math.abs(sum - Number(r.效果原始COST || 0)) < 0.05 ? ' = 各效果合计' : `（百分比类 ${n2(r.百分比COST)} · 定值类 ${n2(r.绝对值COST)} 合成）`}`];
+    for (const x of rows) {
+      const val = [x.目标, x.数值 !== '' ? String(x.数值) : '', Number(x.持续回合) > 1 ? `${x.持续回合}回合` : ''].filter(Boolean).join(' · ');
+      lines.push(`· ${x.原型 || '效果'}${x.分支角色 && x.分支角色 !== '基础' ? `（分支 ${x.分支角色}）` : ''}${val ? `（${val}）` : ''}：${n2(x.原始COST)}`);
+      const segs = [['主数值', x.主数值COST], ['副数值', x.副数值COST], ['固定规则', x.固定规则COST], ['触发方式', x.触发方式COST], ['延迟回合', x.延迟回合COST], ['附加规则', x.附加规则COST]].filter(([, v]) => v != null && Number(v));
+      const coef = [Number(x.目标系数) && Number(x.目标系数) !== 1 ? `目标 ×${n2(x.目标系数)}${x.目标系数原因 ? `（${x.目标系数原因}）` : ''}` : '', Number(x.持续系数) && Number(x.持续系数) !== 1 ? `持续 ×${n2(x.持续系数)}` : ''].filter(Boolean);
+      if (segs.length || coef.length) lines.push(`   ${segs.map(([k, v]) => `${k} ${n2(v)}`).join(' + ')}${segs.length && coef.length ? '｜' : ''}${coef.join(' · ')}`);
+      if (Number(x.限制抵扣) > 0) lines.push(`   限制抵扣 −${n2(x.限制抵扣)}（${Math.round(Number(x.限制抵扣率) * 100)}%）`);
+    }
+    return lines.join('\n');
+  };
+  const sideWhy = (c, r) => {
+    if (!Number(r.副作用原始COST)) return '没有副作用，不扣减';
+    const rows = r.副作用明细 || [];
+    const lines = [`副作用 −${c.fmt(r.副作用COST)}${Number(r.副作用原始COST) !== Number(r.副作用COST) ? `（原始 ${c.fmt(r.副作用原始COST)}，最多扣到效果 COST 用完为止）` : ''}`];
+    for (const x of rows) {
+      if (!x || typeof x !== 'object') continue;
+      const name = x.副作用类型 || x.名称 || x.副作用状态 || '副作用', v = x.COST ?? x.原始COST ?? x.折算COST;
+      lines.push(`· ${name}${x.副作用状态 && x.副作用状态 !== name ? `（${x.副作用状态}）` : ''}${v != null ? `：${n2(v)}` : ''}`);
+    }
+    return lines.join('\n');
+  };
   const dzPreview = (c, sk, ring) => dzGauge(c, dzEval(c, sk, ring));
   // 只负责画：r = 评估技能预算_V1 的结果，block = 保存被拦截的原因（设计台 v2 传入与保存断言同源的结果）
   const dzGauge = (c, { r, block, err }) => {
@@ -286,18 +314,17 @@
     const span = Math.max((gate - lo) * 1.2, gate * 0.06, 0.5), d0 = Math.max(0, Math.min(cur, lo) - span), d1 = Math.max(cur, gate) + span;
     const at = v => `${((v - d0) / (d1 - d0) * 100).toFixed(1)}%`;
     const state = r.是否超预算 ? 'over' : block ? 'low' : 'ok';
-    const stateText = r.是否超预算 ? `超出 ${c.fmt(r.超出COST)}` : block ? '低于最低' : '在窗口内';
-    // COST 构成：以效果 COST 为满格，扣减项画成红色斜纹段，最后一行是实际 COST
+    // COST 构成：以效果 COST 为满格，四行常驻（扣减为零写「无」），实际 = 效果 − 限制抵扣 − 副作用；悬停每行看计算来源
     const full = Math.max(Number(r.效果原始COST) || 0, cur, 0.01), w = v => `${Math.max(0, Math.min(100, v / full * 100)).toFixed(1)}%`;
     const parts = [
-      ['效果', Number(r.效果原始COST) || 0, ''],
-      r.限制COST ? ['限制抵扣', -r.限制COST, c.hint(limitWhy(r).join('；'))] : null,
-      r.副作用COST ? ['副作用', -r.副作用COST, r.副作用原始COST !== r.副作用COST ? c.hint(`原始 ${c.fmt(r.副作用原始COST)}，按规则折算`) : ''] : null,
-      ['实际', cur, ''],
-    ].filter(Boolean);
+      ['效果', Number(r.效果原始COST) || 0, effectWhy(c, r)],
+      ['限制抵扣', -(Number(r.限制COST) || 0), r.限制COST ? `限制抵扣 −${c.fmt(r.限制COST)}\n${limitWhy(r).join('\n')}` : '没有触发 / 次数 / 对象限制，不抵扣'],
+      ['副作用', -(Number(r.副作用COST) || 0), sideWhy(c, r)],
+      ['实际', cur, `实际 COST = 效果 ${c.fmt(r.效果原始COST)} − 限制抵扣 ${c.fmt(r.限制COST || 0)} − 副作用 ${c.fmt(r.副作用COST || 0)} = ${c.fmt(cur)}\n这个数要落在最低有效与上限之间才能保存`],
+    ];
     const capped = Number(r.位级硬上限) > 0 && Number(r.允许上限) > Number(r.位级硬上限);
     return `<div class="bgw ${state}">
-        <div class="bgw-head"><b>${util.toFixed(0)}%</b><small>预算利用率</small><span class="bgw-state">${stateText}</span></div>
+        <div class="bgw-head"><b>${util.toFixed(0)}%</b><small>预算利用率</small></div>
         <div class="bgw-scale" role="img" aria-label="实际 ${c.fmt(cur)}，合规窗口 ${c.fmt(lo)} 至 ${c.fmt(gate)}">
           <i class="bgw-win" style="left:${at(lo)};width:calc(${at(gate)} - ${at(lo)})"></i>
           <i class="bgw-needle" style="left:${at(cur)}"><em>${c.fmt(cur)}</em></i>
@@ -305,7 +332,7 @@
           <span class="bgw-tick hi" style="left:${at(gate)}" data-hint="预算上限：实际 COST 不能超过">${c.fmt(gate)}</span>
         </div>
       </div>
-      <section class="bgc"><h4>COST 构成</h4>${parts.map(([l, v, h]) => `<div class="bgc-row${v < 0 ? ' neg' : ''}${l === '实际' ? ' sum' : ''}"><span>${l}${h}</span><i><b style="width:${w(Math.abs(v))}"></b></i><em>${v < 0 ? '−' : ''}${c.fmt(Math.abs(v))}</em></div>`).join('')}</section>
+      <section class="bgc"><h4>COST 构成</h4>${parts.map(([l, v, h]) => `<div class="bgc-row${v < 0 ? ' neg' : ''}${!v && l !== '实际' ? ' zero' : ''}${l === '实际' ? ' sum' : ''}" data-hint="${c.esc(h)}"><span>${l}</span><i><b style="width:${w(Math.abs(v))}"></b></i><em>${!v && l !== '实际' ? '无' : `${v < 0 ? '−' : ''}${c.fmt(Math.abs(v))}`}</em></div>`).join('')}</section>
       <section class="bge"><h4>上限从哪来</h4>
         <div class="bge-eq">
           <span data-hint="这个魂技位本身的预算：由魂环位、魂环年限、天赋、魂技品质决定"><b>${c.fmt(r.运转基准)}</b><small>运转基准</small></span><i>×</i>

@@ -636,9 +636,6 @@ div.rail-item{cursor:default}
 .bgw-head{display:flex;align-items:baseline;gap:.4em;flex-wrap:wrap}
 .bgw-head>b{font:900 1.5em/1 Bahnschrift,sans-serif;color:var(--blue-d)}
 .bgw-head>small{color:var(--ink3);font-weight:700}
-.bgw-state{margin-left:auto;font-size:max(10.5px,.78em);font-weight:900;padding:.05em .5em;color:#0d7d50;background:rgba(22,170,110,.12);box-shadow:inset 0 0 0 1px rgba(22,170,110,.4)}
-.bgw.low .bgw-state{color:#9a6a12;background:rgba(242,179,61,.16);box-shadow:inset 0 0 0 1px rgba(200,150,30,.5)}
-.bgw.over .bgw-state{color:#b3311f;background:rgba(214,69,42,.12);box-shadow:inset 0 0 0 1px rgba(214,69,42,.45)}
 .bgw-scale{position:relative;height:14px;margin:1.5em .5em 1.6em;background:linear-gradient(180deg,#1b2437,#3a4760);box-shadow:inset 0 0 0 1px #33415b}
 .bgw-win{position:absolute;top:0;bottom:0;background:linear-gradient(180deg,rgba(86,228,174,.8),rgba(14,150,96,.8));box-shadow:0 0 8px rgba(30,190,120,.5)}
 .bgw-needle{position:absolute;top:-6px;bottom:-6px;width:3px;translate:-1.5px 0;background:#fff;box-shadow:0 0 0 1px #1d6ae6,0 0 8px rgba(60,150,255,.9)}
@@ -673,3 +670,8 @@ div.rail-item{cursor:default}
 .bge-cap{font-size:max(10.5px,.76em);font-weight:800;color:var(--ink3);cursor:help}
 .bge-cap i{margin-right:.3em}
 .bge-cap.on{color:#b3311f}
+/* COST 构成行：悬停看计算来源；扣减为零的行弱化 */
+.bgc-row{cursor:help}
+.bgc-row:hover{background:rgba(47,124,246,.06)}
+.bgc-row.zero{opacity:.55}
+.bgc-row.zero>em{font-family:inherit;font-weight:800;color:var(--ink3)}
