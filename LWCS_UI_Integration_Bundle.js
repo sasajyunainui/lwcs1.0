@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:ab5a4b5798801d4e947fbda37220391791e46db0b26fa6219b084f23183a999f|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:9c4264c78fdf1a97367085566aee156544e79eb24da1de2d8466612ec1cc4353|cockpit/pages-role.js:350137a12a97733415cea354acc0cda0e631eba0b53372bf4e2ab90448f6d9db|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:ae5dadb5c9f30296c700314c9e032ca42ff24f5d6c6f183571f6010f2181eeac|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:362fea182fda961cc308405f5f8a432b63b28940b18bb4ac2e7d86e324f6b259|cockpit/pages-world.js:6851fc81ee4d831a1af87aa85b490557d452ef5b31ea776d50f871cb97f5574e|cockpit/pages-terminal.js:c73e78b78d6a7a80f96d774bcf3a88bfa17642c7ad81a5d5b89ff863e053125e */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:ab5a4b5798801d4e947fbda37220391791e46db0b26fa6219b084f23183a999f|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:cc2a8a9c80edf72ed5618606d947bbe31c88ae29e2584b13b9379610af3a7290|cockpit/pages-role.js:350137a12a97733415cea354acc0cda0e631eba0b53372bf4e2ab90448f6d9db|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:be1c634960cdbd9f781cf92ae3c6ba9f9929926fd49e328d5681c37b5b588ab6|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:362fea182fda961cc308405f5f8a432b63b28940b18bb4ac2e7d86e324f6b259|cockpit/pages-world.js:6851fc81ee4d831a1af87aa85b490557d452ef5b31ea776d50f871cb97f5574e|cockpit/pages-terminal.js:c73e78b78d6a7a80f96d774bcf3a88bfa17642c7ad81a5d5b89ff863e053125e */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -48035,7 +48035,7 @@ ${播报文本}
   function clearFloat() { layer.replaceChildren(); $$('.inline-detail').forEach(el => el.remove()); }
   function project(html, anchor, swap = false) {
     const old = swap && !isMobile() ? $('.fcard', layer) : null;
-    if (old) { $('.holo-in', old).innerHTML = html; old.style.transition = reduce ? '' : 'top .2s cubic-bezier(.2,.8,.2,1)'; place(old, anchor); return; }
+    if (old) { $('.holo-in', old).innerHTML = html; tbdPass(old); old.style.transition = reduce ? '' : 'top .2s cubic-bezier(.2,.8,.2,1)'; place(old, anchor); return; }
     clearFloat();
     const body = `<div class="holo" role="region" aria-label="详情"><div class="holo-in">${html}</div></div>`;
     if (isMobile() && anchor) {
@@ -48121,7 +48121,7 @@ ${播报文本}
   let openTimer = 0, closeTimer = 0;
   // 设置页的交互偏好（悬停快慢 / 魂环扫描开关），每次读取，改完立即生效
   const pref = k => { try { return JSON.parse(localStorage.getItem('lwcs-cockpit-settings') || '{}')[k]; } catch (e) { return undefined; } };
-  const hoverMs = () => ({ 快: 80, 标准: 150, 慢: 320 }[pref('hover')] || 150);
+  const hoverMs = () => ({ 快: 60, 标准: 100, 慢: 300 }[pref('hover')] || 100);
   cockpitEl.addEventListener('pointerover', e => {
     // 拖着沙盘时不弹浮窗（经过的地标太多）
     if (!hoverable() || e.pointerType !== 'mouse' || editing || e.target.closest('.grabbing')) return;
@@ -48169,7 +48169,20 @@ ${播报文本}
     const dt = performance.now() - scanAt;
     if (dt >= 30) scanPick(); else if (!scanTimer) scanTimer = setTimeout(scanPick, 30 - dt);
   });
-  cockpitEl.addEventListener('pointerleave', () => { clearTimeout(openTimer); if (floatOpen() && !pinned) closeTimer = setTimeout(closeInspector, 250); });
+  cockpitEl.addEventListener('pointerleave', () => { clearTimeout(openTimer); hoverItem = null; if (floatOpen() && !pinned) closeTimer = setTimeout(closeInspector, 250); });
+  // 悬停兜底：pointerover 只在进入新元素时触发——鼠标停着时条目被重绘、或浮窗刚收起，鼠标就停在条目上却不会再弹出。
+  // 移动中只要指着的条目还没浮出就补一次（同一条目只排一次）
+  let hoverItem = null, hoverPending = false;
+  cockpitEl.addEventListener('pointermove', e => {
+    if (!hoverable() || e.pointerType !== 'mouse' || editing || pinned || e.target.closest('.fcard,.grabbing')) return;
+    if (pref('scan') !== '关闭' && e.target.closest('[data-scan]')) return;
+    const item = e.target.closest('[data-inspect]');
+    if (!item) { hoverItem = null; return; }
+    const key = item.dataset.inspect, shown = floatOpen() && state.inspect && `${state.inspect.kind}:${state.inspect.id}` === key;
+    if (shown || (hoverItem === item && hoverPending)) return;
+    hoverItem = item; hoverPending = true; clearTimeout(closeTimer); clearTimeout(openTimer);
+    openTimer = setTimeout(() => { hoverPending = false; if (!item.isConnected) return; const [kind, ...rest] = key.split(':'); openInspector(kind, rest.join(':'), item, 'hover'); }, Number(item.dataset.hoverDelay) || hoverMs());
+  });
   // 点浮窗与条目以外的地方、或屏内滚动时收起（浮窗锚点会移动）
   addEventListener('pointerdown', e => { if (floatOpen() && !e.target.closest('.fcard,.inline-detail,[data-inspect],[data-scan],.picker-list,.ie-floatbox')) closeInspector(); });
   cockpitEl.addEventListener('scroll', e => { if (layer.firstChild && !e.target.closest?.('.fcard')) closeInspector(); }, true);
@@ -48378,7 +48391,7 @@ ${播报文本}
     const html = page.inspect?.(ctx(), kind, id, pinned ? 'full' : 'hover'); if (!html) return closeInspector();
     const anchor = $$('[data-inspect]').find(el => el.dataset.inspect === `${kind}:${id}`), card = $('.fcard', layer);
     if (anchor) { anchor.classList.add('on'); ringSlotOf(anchor)?.classList.add('mvu-hover-floating-active'); }
-    if (card) { $('.holo-in', card).innerHTML = html; if (anchor) place(card, anchor); }
+    if (card) { $('.holo-in', card).innerHTML = html; tbdPass(card); if (anchor) place(card, anchor); }
   }
   cockpitEl.addEventListener('keydown', e => { const el = e.target.closest?.('.ie'); if (el && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); beginEdit(el); } });
 
@@ -51101,6 +51114,54 @@ ${播报文本}
     return [...m].map(([k, o]) => `${LIMIT_SRC[k] || (/^限定/.test(k) ? `${k}：只对特定对象生效` : k)}，按 ${Math.round(o.rate * 100)}% 抵扣`);
   };
   const energyText = (c, e) => { e = Number(e) || 0; return e > 0 && e < 0.1 ? String(Number(e.toPrecision(2))) : c.fmt(e); };
+  // 预算核算悬停：效果 COST 逐条来源（引擎 效果明细：原型 / 目标 / 数值 / 持续 + 各分项 COST 与系数）
+  const n2 = v => { const x = Number(v); return Number.isFinite(x) ? String(Number(x.toFixed(2))) : ''; };
+  // 引擎规则（计算技能效果累计COST_V1）：每个效果的「原效果（并入追加效果）」与各条件分支的「替换效果」互为候选，只按净 COST 最高的一方计入
+  const effectWhy = (c, r) => {
+    const rows = (r.效果明细 || []).filter(x => x && Number(x.原始COST) > 0);
+    if (!rows.length) return '还没有计入 COST 的效果';
+    // 候选分组：替换效果按「所属效果 + 分支序号」分组，其余（原效果、追加效果）归所属效果的原候选
+    const cand = x => { const m = String(x.路径 || '').match(/^(.*?)\.条件分支\[(\d+)\]\.替换效果/); return m ? [m[1], `替换${Number(m[2]) + 1}`] : [null, '原效果']; };
+    const owner = x => { const p = String(x.路径 || ''); const m = p.match(/^(.*?)\.条件分支\[\d+\]\.替换效果/); return m ? m[1] : null; };
+    const groups = new Map();
+    for (const x of rows) {
+      const [own, id] = cand(x);
+      const key = own ?? (rows.map(owner).filter(Boolean).find(o => String(x.路径).startsWith(o)) || String(x.路径));
+      if (!groups.has(key)) groups.set(key, new Map());
+      const g = groups.get(key); g.set(id, (g.get(id) || 0) + Number(x.净COST ?? x.原始COST));
+    }
+    const chosen = new Map([...groups].map(([k, g]) => [k, [...g].reduce((best, cur) => cur[1] > best[1] ? cur : best)[0]]));
+    const hasAlt = [...groups.values()].some(g => g.size > 1);
+    const lines = [`效果 COST ${c.fmt(r.效果原始COST)}`];
+    for (const x of rows) {
+      const [own, id] = cand(x);
+      const key = own ?? (rows.map(owner).filter(Boolean).find(o => String(x.路径).startsWith(o)) || String(x.路径));
+      const counted = chosen.get(key) === id;
+      const val = [x.目标, x.数值 !== '' ? String(x.数值) : '', Number(x.持续回合) > 1 ? `${x.持续回合}回合` : ''].filter(Boolean).join(' · ');
+      const tag = id !== '原效果' ? `〔分支${id.replace('替换', '')}·替换〕` : /\.追加效果/.test(String(x.路径)) ? '〔分支·追加〕' : '';
+      lines.push(`${counted ? '✓' : '·'} ${tag}${x.原型 || '效果'}${val ? `（${val}）` : ''}：${n2(x.原始COST)}${counted ? '' : '（候选，未计入）'}`);
+      const segs = [['主数值', x.主数值COST], ['副数值', x.副数值COST], ['固定规则', x.固定规则COST], ['触发方式', x.触发方式COST], ['延迟回合', x.延迟回合COST], ['附加规则', x.附加规则COST]].filter(([, v]) => v != null && Number(v)).map(([k, v]) => `${k} ${n2(v)}`);
+      // 没有分项时给基础算式：百分点 × 每点 COST
+      const pts = Number(x.百分点) || Number(x.绝对值折算百分点);
+      if (!segs.length && Number(x.单位COST) && pts) segs.push(`${n2(Math.abs(pts))} 点 × 每点 ${n2(x.单位COST)} = ${n2(Math.abs(pts) * Number(x.单位COST))}`);
+      const coef = [Number(x.目标系数) && Number(x.目标系数) !== 1 ? `目标 ×${n2(x.目标系数)}${x.目标系数原因 ? `（${x.目标系数原因}）` : ''}` : '', Number(x.持续系数) && Number(x.持续系数) !== 1 ? `持续 ×${n2(x.持续系数)}` : ''].filter(Boolean);
+      if (segs.length || coef.length) lines.push(`   ${segs.join(' + ')}${segs.length && coef.length ? '｜' : ''}${coef.join(' · ')}`);
+      if (Number(x.限制抵扣) > 0) lines.push(`   限制抵扣 −${n2(x.限制抵扣)}（${Math.round(Number(x.限制抵扣率) * 100)}%）`);
+    }
+    if (hasAlt) lines.push('条件分支的替换效果与原效果二选一，按 COST 较高的一方计入；追加效果并入原效果');
+    return lines.join('\n');
+  };
+  const sideWhy = (c, r) => {
+    if (!Number(r.副作用原始COST)) return '没有副作用，不扣减';
+    const rows = r.副作用明细 || [];
+    const lines = [`副作用 −${c.fmt(r.副作用COST)}${Number(r.副作用原始COST) !== Number(r.副作用COST) ? `（原始 ${c.fmt(r.副作用原始COST)}，最多扣到效果 COST 用完为止）` : ''}`];
+    for (const x of rows) {
+      if (!x || typeof x !== 'object') continue;
+      const name = x.副作用类型 || x.名称 || x.副作用状态 || '副作用', v = x.COST ?? x.原始COST ?? x.折算COST;
+      lines.push(`· ${name}${x.副作用状态 && x.副作用状态 !== name ? `（${x.副作用状态}）` : ''}${v != null ? `：${n2(v)}` : ''}`);
+    }
+    return lines.join('\n');
+  };
   const dzPreview = (c, sk, ring) => dzGauge(c, dzEval(c, sk, ring));
   // 只负责画：r = 评估技能预算_V1 的结果，block = 保存被拦截的原因（设计台 v2 传入与保存断言同源的结果）
   const dzGauge = (c, { r, block, err }) => {
@@ -51111,18 +51172,17 @@ ${播报文本}
     const span = Math.max((gate - lo) * 1.2, gate * 0.06, 0.5), d0 = Math.max(0, Math.min(cur, lo) - span), d1 = Math.max(cur, gate) + span;
     const at = v => `${((v - d0) / (d1 - d0) * 100).toFixed(1)}%`;
     const state = r.是否超预算 ? 'over' : block ? 'low' : 'ok';
-    const stateText = r.是否超预算 ? `超出 ${c.fmt(r.超出COST)}` : block ? '低于最低' : '在窗口内';
-    // COST 构成：以效果 COST 为满格，扣减项画成红色斜纹段，最后一行是实际 COST
+    // COST 构成：以效果 COST 为满格，四行常驻（扣减为零写「无」），实际 = 效果 − 限制抵扣 − 副作用；悬停每行看计算来源
     const full = Math.max(Number(r.效果原始COST) || 0, cur, 0.01), w = v => `${Math.max(0, Math.min(100, v / full * 100)).toFixed(1)}%`;
     const parts = [
-      ['效果', Number(r.效果原始COST) || 0, ''],
-      r.限制COST ? ['限制抵扣', -r.限制COST, c.hint(limitWhy(r).join('；'))] : null,
-      r.副作用COST ? ['副作用', -r.副作用COST, r.副作用原始COST !== r.副作用COST ? c.hint(`原始 ${c.fmt(r.副作用原始COST)}，按规则折算`) : ''] : null,
-      ['实际', cur, ''],
-    ].filter(Boolean);
+      ['效果', Number(r.效果原始COST) || 0, effectWhy(c, r)],
+      ['限制抵扣', -(Number(r.限制COST) || 0), r.限制COST ? `限制抵扣 −${c.fmt(r.限制COST)}\n${limitWhy(r).join('\n')}` : '没有触发 / 次数 / 对象限制，不抵扣'],
+      ['副作用', -(Number(r.副作用COST) || 0), sideWhy(c, r)],
+      ['实际', cur, `实际 COST = 效果 ${c.fmt(r.效果原始COST)} − 限制抵扣 ${c.fmt(r.限制COST || 0)} − 副作用 ${c.fmt(r.副作用COST || 0)} = ${c.fmt(cur)}\n这个数要落在最低有效与上限之间才能保存`],
+    ];
     const capped = Number(r.位级硬上限) > 0 && Number(r.允许上限) > Number(r.位级硬上限);
     return `<div class="bgw ${state}">
-        <div class="bgw-head"><b>${util.toFixed(0)}%</b><small>预算利用率</small><span class="bgw-state">${stateText}</span></div>
+        <div class="bgw-head"><b>${util.toFixed(0)}%</b><small>预算利用率</small></div>
         <div class="bgw-scale" role="img" aria-label="实际 ${c.fmt(cur)}，合规窗口 ${c.fmt(lo)} 至 ${c.fmt(gate)}">
           <i class="bgw-win" style="left:${at(lo)};width:calc(${at(gate)} - ${at(lo)})"></i>
           <i class="bgw-needle" style="left:${at(cur)}"><em>${c.fmt(cur)}</em></i>
@@ -51130,7 +51190,7 @@ ${播报文本}
           <span class="bgw-tick hi" style="left:${at(gate)}" data-hint="预算上限：实际 COST 不能超过">${c.fmt(gate)}</span>
         </div>
       </div>
-      <section class="bgc"><h4>COST 构成</h4>${parts.map(([l, v, h]) => `<div class="bgc-row${v < 0 ? ' neg' : ''}${l === '实际' ? ' sum' : ''}"><span>${l}${h}</span><i><b style="width:${w(Math.abs(v))}"></b></i><em>${v < 0 ? '−' : ''}${c.fmt(Math.abs(v))}</em></div>`).join('')}</section>
+      <section class="bgc"><h4>COST 构成</h4>${parts.map(([l, v, h]) => `<div class="bgc-row${v < 0 ? ' neg' : ''}${!v && l !== '实际' ? ' zero' : ''}${l === '实际' ? ' sum' : ''}" data-hint="${c.esc(h)}"><span>${l}</span><i><b style="width:${w(Math.abs(v))}"></b></i><em>${!v && l !== '实际' ? '无' : `${v < 0 ? '−' : ''}${c.fmt(Math.abs(v))}`}</em></div>`).join('')}</section>
       <section class="bge"><h4>上限从哪来</h4>
         <div class="bge-eq">
           <span data-hint="这个魂技位本身的预算：由魂环位、魂环年限、天赋、魂技品质决定"><b>${c.fmt(r.运转基准)}</b><small>运转基准</small></span><i>×</i>
