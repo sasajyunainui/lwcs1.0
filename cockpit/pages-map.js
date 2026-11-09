@@ -404,7 +404,7 @@
     label: '探索', icon: 'compass', tag: 'CORE · STAR MAP',
     keys: [
       { id: 'star', icon: 'map', label: '地图', view: travel, inspect: nodeInspect },
-      { id: 'place', icon: 'city', label: '当地', view: place, inspect: (c, kind, id, mode) => kind === 'dyn' ? dynInspect(c, id) : npcInspect(c, kind, id, mode) },
+      { id: 'place', icon: 'city', label: '当地', brief: c => String(c.ch.状态?.位置 || '').split('-').filter(x => x && x !== '斗罗大陆').pop() || '', view: place, inspect: (c, kind, id, mode) => kind === 'dyn' ? dynInspect(c, id) : npcInspect(c, kind, id, mode) },
     ],
   });
 })();

@@ -335,8 +335,8 @@
     label: '能力', icon: 'wand-sparkles', tag: 'CORE · MARTIAL SOUL',
     keys: [
       { id: 'martial', icon: 'fire', label: '武魂', view: martial, inspect: abilityInspect },
-      { id: 'codex', icon: 'book', label: '典籍', view: codex, inspect: skillInspect },
-      { id: 'design', icon: 'pen-ruler', label: '设计', view: design },
+      { id: 'codex', icon: 'book', label: '典籍', view: codex, inspect: skillInspect, brief: c => `${allSkills(c).length} 项技能` },
+      { id: 'design', icon: 'pen-ruler', label: '设计', view: design, brief: () => (window.COCKPIT.pending()?.skillDesign ? '有待确认设计' : '') },
     ],
   });
 })();

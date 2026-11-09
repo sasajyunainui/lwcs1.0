@@ -42,46 +42,32 @@
 .stage{display:block;flex:none;min-height:0;padding:0;overflow:visible;z-index:auto}
 /* 播报喇叭只在指挥栏收起播报时出现 */
 .readout .tick-ico{display:none}
-/* 桌面指挥栏（座舱宽 ≥701px）：聊天流里高度金贵——领域标签、页面按键、地址时间并成三屏上方一条 40px 的指挥栏，
-   不再有上方梯形标签台、下方按键台与底部读数条；三屏吃满整宽，两翼斜角加大、透视拉近，形成包围 */
+/* 桌面指挥栏（座舱宽 ≥701px）：聊天流里高度金贵——领域标签与地址时间播报并成三屏上方一条 44px 的指挥栏；
+   不设子页标签（领域首页中屏底部的入口门进其他页，中屏顶边返回牌回首页）。三屏吃满整宽，两翼斜向中间 */
 @container (min-width:701px){.cockpit{perspective:1300px;perspective-origin:50% 55%}}
 @container cockpit (min-width:701px){
   .stage{display:flex;flex-direction:row;flex-wrap:wrap;align-items:stretch;padding-top:2px}
-  .arc,.deck,.readout{transform:none;filter:none;margin:0;width:auto;height:44px;box-sizing:border-box}
-  .arc .bz,.arc .b2,.arc .b3,.deck .bz,.deck .b2,.deck .b3{clip-path:none!important;background:none;padding:0!important;height:100%}
-  /* 领域：只亮当前领域的文字，其余只留图标（悬停显示名称） */
+  .arc,.readout{transform:none;filter:none;margin:0;width:auto;height:44px;box-sizing:border-box}
+  .arc .bz,.arc .b2,.arc .b3{clip-path:none!important;background:none;padding:0!important;height:100%}
   .arc{order:1;flex:none}
   .track{height:100%;box-sizing:border-box;padding:3px 14px 3px 3px;gap:2px;clip-path:polygon(0 0,100% 0,calc(100% - 12px) 100%,0 100%)}
   .tab{padding:0 .85em;font-size:.95em;gap:.4em}
-  .tab:not(.on) .lb{display:none}
   .slider{top:3px;bottom:3px;height:auto}
-  /* 页面按键：横排小键，图标与文字并列，贴着领域栏 */
-  .deck{order:2;flex:1 1 0;min-width:0;margin-left:-12px}
-  .keybed{height:100%;margin:0;padding:0 8px 0 18px;overflow:hidden;display:flex;align-items:center;background:linear-gradient(180deg,#eef2f6,#c9d2de);box-shadow:inset 0 1px 0 #fff,inset 0 -2px 0 rgba(60,78,108,.25);clip-path:polygon(12px 0,100% 0,calc(100% - 12px) 100%,0 100%)}
-  .keys{flex-wrap:nowrap;justify-content:flex-start;gap:3px;min-width:0}
-  .key{flex-direction:row;gap:.35em;min-width:0;padding:.42em .7em;font-size:.88em;white-space:nowrap}
-  .key::before{display:none}
-  /* 地址与时间收在栏尾；播报宽时滚动，窄时收成喇叭（悬停看全文） */
-  .readout{order:3;flex:none;margin-left:-12px;padding:0 .9em 0 1.4em;gap:.8em;font-size:.88em;clip-path:polygon(12px 0,100% 0,100% 100%,0 100%)}
+  /* 地址、时间、待办与播报占栏的其余宽度；播报滚动显示 */
+  .readout{order:3;flex:1 1 0;min-width:0;margin-left:-12px;padding:0 .9em 0 1.4em;gap:.8em;font-size:.88em;clip-path:polygon(12px 0,100% 0,100% 100%,0 100%)}
   .readout .door{max-width:13em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .readout .res,.readout .tick{display:none}
-  .readout .tick-ico{display:inline-block;cursor:help}
+  .readout .res{display:none}
   /* 两翼近端会向前、向外凸出：上下各留余量，不压指挥栏、不被座舱底边裁 */
   .screens{order:4;flex:1 0 calc(100% - 28px);max-width:calc(100% - 28px);margin:26px 14px 22px;--lw:22%;--rw:22%}
   .wing.l{--la:22deg}.wing.r{--ra:22deg}
   /* 接缝铰链线自带 --lw:27%（原型比例），要跟着侧屏 22% 走，否则落进中屏 */
   .hinge.l{--lw:22%}.hinge.r{--rw:22%}
 }
-/* 座舱够宽时播报回到栏里滚动显示 */
-@container cockpit (min-width:1150px){
-  .readout{flex:1 1 0;min-width:0}
-  .readout .tick{display:block}
-  .readout .tick-ico{display:none}
-}
-/* 较窄（< 860）：页面按键也只亮当前页的文字 */
+/* 较窄（< 860）：领域标签只亮当前领域的文字（其余悬停显示名称），播报收成喇叭（悬停看全文） */
 @container cockpit (min-width:701px) and (max-width:859px){
-  .key:not(.on) .lb{display:none}
-  .key{padding:.38em .55em}
+  .tab:not(.on) .lb{display:none}
+  .readout .tick{display:none}
+  .readout .tick-ico{display:inline-block;cursor:help}
 }
 .lwcs-ck-overlay{position:static;font-size:14px}
 /* 酒馆全局对 button / input / h2 等的主题样式不能渗进座舱：控件统一回到座舱自己的基线 */

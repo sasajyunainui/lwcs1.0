@@ -239,9 +239,9 @@
         <span class="tagline" aria-hidden="true">SM-L01</span><span class="led tr" aria-hidden="true"></span><span class="screw br" aria-hidden="true"></span>
         <div class="scr"><div class="host" id="ck-wingL"></div></div>
       </div></div></div></div></div>
-      <div class="center"><div class="float"><div class="bz"><div class="b2"><div class="b3">
+      <div class="center"><div class="float"><button type="button" class="back-plate" id="ck-back" hidden><i class="fa-solid fa-chevron-left"></i><span></span></button><div class="bz"><div class="b2"><div class="b3">
         <span class="tagline" aria-hidden="true" id="ck-coreTag">CORE</span><span class="led tr" aria-hidden="true"></span><span class="led bl" aria-hidden="true"></span><span class="screw br" aria-hidden="true"></span><span class="screw tl" aria-hidden="true"></span>
-        <div class="scr"><div class="host" id="ck-core"></div></div>
+        <div class="scr"><div class="host" id="ck-core"></div><nav class="doors" id="ck-doors" aria-label="本领域其他页面" hidden></nav></div>
       </div></div></div></div></div>
       <div class="wing r"><div class="float"><div class="bz"><div class="b2"><div class="b3">
         <span class="tagline" aria-hidden="true">SM-R01</span><span class="led tr" aria-hidden="true"></span><span class="screw br" aria-hidden="true"></span>
@@ -249,9 +249,6 @@
       </div></div></div></div></div>
     </div>
     <nav class="dots" aria-label="切换屏面"><button type="button" data-face="-1">根基</button><button type="button" data-face="0" class="on">主屏</button><button type="button" data-face="1">操作</button></nav>
-    <div class="deck"><div class="bz"><div class="b2"><div class="b3">
-      <div class="keybed"><nav class="keys" id="ck-keys" aria-label="领域页面"></nav></div>
-    </div></div></div></div>
     <div class="readout">
         <span class="door" data-go="page-map/place" role="link" tabindex="0" title="查看当地"><i class="fa-solid fa-location-dot"></i> <span id="ck-rLoc"></span></span>
         <span class="num"><i class="fa-regular fa-clock"></i> <span id="ck-rTime"></span></span>
@@ -344,20 +341,6 @@
     if (from !== to) put(host[side], html, null);
     else setTimeout(() => put(host[side], html, null), dur * (mode === 'fold' ? .42 : .45));
   };
-  const keysFor = d => d.keys.map(k => `<button class="key" type="button" data-page="${k.id}" aria-label="${esc(k.label)}"><i class="fa-solid fa-${k.icon}"></i><span class="lb">${esc(k.label)}</span></button>`).join('');
-  const markKeys = () => $$('#ck-keys .key').forEach(k => { const on = k.dataset.page === state.page[state.domain]; k.classList.toggle('on', on); on ? k.setAttribute('aria-current', 'page') : k.removeAttribute('aria-current'); });
-  const swapKeys = (d, first) => {
-    const keys = $('#ck-keys');
-    const set = () => { keys.innerHTML = keysFor(d); markKeys(); };
-    const away = getComputedStyle(keys).flexDirection === 'column' ? 'translateX(120%)' : 'translateY(120%)';
-    if (reduce) { set(); return; }
-    if (first) { set(); keys.animate([{ transform: away }, { transform: 'none' }], { duration: 600, delay: 250, easing: 'cubic-bezier(.2,.9,.3,1.2)', fill: 'backwards' }); return; }
-    // 换键只执行一次：动画结束或超时兜底（窗口在后台时动画不推进，onfinish 不触发）
-    let done = false;
-    const swap = () => { if (done) return; done = true; set(); keys.animate([{ transform: away }, { transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2,.9,.3,1.25)' }); };
-    keys.animate([{ transform: 'none' }, { transform: away }], { duration: 240, easing: 'ease-in' }).onfinish = swap;
-    setTimeout(swap, 320);
-  };
   // 领域标签竖排（宽屏侧轨）时滑块按纵向定位，横排时按横向；另一方向交回样式表
   const moveSlider = tab => {
     if (!tab) return;
@@ -397,6 +380,18 @@
     screens.style.setProperty('--carousel-h', Math.max(320, el.scrollHeight) + 'px');
   };
 
+  // 领域内导航（不设子页标签）：领域首页（keys[0]）的中屏底部是本领域其他页面的入口门，带一行实时摘要；
+  // 进到其他页面后，中屏顶边挂一块「‹ 首页名」返回牌，再点一次当前领域标签也回首页
+  const syncNav = () => {
+    const d = domains[state.domain], home = d.keys[0], atHome = (state.page[state.domain] || home.id) === home.id, c = ctx();
+    const back = $('#ck-back'); back.hidden = atHome; $('span', back).textContent = home.label; back.setAttribute('aria-label', `返回${home.label}`);
+    const doors = $('#ck-doors'), html = atHome ? d.keys.slice(1).map(k => {
+      let b = ''; try { b = k.brief?.(c) || ''; } catch (err) { b = ''; }
+      return `<button class="door-key" type="button" data-page="${k.id}">${sock(k.icon)}<span class="dk-t"><b>${esc(k.label)}</b>${b ? `<small>${esc(b)}</small>` : ''}</span><i class="fa-solid fa-chevron-right dk-go" aria-hidden="true"></i></button>`;
+    }).join('') : '';
+    if (doors.innerHTML !== html) doors.innerHTML = html;
+    doors.hidden = !html; $('.center').classList.toggle('has-doors', !!html);
+  };
   // 页面可提供 mount(face, ctx) 挂交互（沙盘拖拽、缩放等），每次主屏换面后调用
   const mount = (v, face) => { if (face && typeof v.mount === 'function') try { v.mount(face, ctx()); } catch (err) { console.error(err); } };
   function renderPage(how) {
@@ -406,7 +401,7 @@
     // 翼板角度只给领域 / 子页切换的动画用；数据刷新不读（读 CSS 自定义属性会强制整页样式重算，酒馆页面很重）
     const animated = how.kind === 'domain' || how.kind === 'page';
     const fromA = animated ? { l: angle('l'), r: angle('r') } : null;
-    applyWide(v); setFaceLabels(v);
+    applyWide(v); setFaceLabels(v); syncNav();
     const toA = animated ? { l: angle('l'), r: angle('r') } : null;
     if (how.kind === 'domain') {
       mount(v, put(host.c, v.core, { out: `translateX(${-how.dir * 9}%)`, in: `translateX(${how.dir * 9}%)` }));
@@ -425,12 +420,12 @@
   let busy = 0;
   function switchDomain(id, page, first = false) {
     if (!domains[id]) return;
-    if (id === state.domain && !page) return;
+    // 同领域：回首页 / 换页；页面没变但带了要选中的条目（route 的 ui）就重绘
+    if (id === state.domain) { const pg = page || domains[id].keys[0].id; if ((state.page[id] || domains[id].keys[0].id) !== pg) return switchPage(pg); if (page) api.refresh?.(); return; }
     const dir = state.domain ? Math.sign(order.indexOf(id) - order.indexOf(state.domain)) || 1 : 1;
     state.domain = id; state.inspect = null; clearFloat();
     if (page) state.page[id] = page; else state.page[id] = state.page[id] || domains[id].keys[0].id;
     $$('.tab', track).forEach(t => { const on = t.dataset.tab === id; t.classList.toggle('on', on); on ? t.setAttribute('aria-current', 'page') : t.removeAttribute('aria-current'); if (on) moveSlider(t); });
-    swapKeys(domains[id], first);
     if (isMobile()) setFace(0);
     renderPage({ kind: 'domain', dir, first });
     if (first && !reduce) $('.center').animate([{ transform: 'translateZ(-160px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 800, easing: 'cubic-bezier(.2,.9,.25,1)' });
@@ -438,7 +433,7 @@
   function switchPage(key) {
     const d = domains[state.domain];
     if (!d.keys.some(k => k.id === key) || state.page[state.domain] === key) return;
-    state.page[state.domain] = key; state.inspect = null; clearFloat(); markKeys();
+    state.page[state.domain] = key; state.inspect = null; clearFloat();
     if (isMobile()) setFace(0);
     renderPage({ kind: 'page' });
   }
@@ -796,7 +791,8 @@
   // ---------- 事件委托 ----------
   track.addEventListener('click', e => { const t = e.target.closest('.tab'); if (t) switchDomain(t.dataset.tab); });
   $('.cockpit').addEventListener('click', e => { const r = e.target.closest('[data-route]'); if (r) C.route({ to: r.dataset.route }); });
-  $('#ck-keys').addEventListener('click', e => { const k = e.target.closest('.key'); if (k) switchPage(k.dataset.page); });
+  $('#ck-doors').addEventListener('click', e => { const k = e.target.closest('.door-key'); if (k) switchPage(k.dataset.page); });
+  $('#ck-back').addEventListener('click', () => switchPage(domains[state.domain].keys[0].id));
   // 滚轮归屏：桌面三屏里指针在哪块屏就只滚那块屏。落在屏框 / 屏内不可滚的地方也滚这块屏的内容；
   // 屏里内容滚到头时吞掉这次滚轮，不再串到酒馆聊天区。只有整块屏根本没有可滚内容才放行（让聊天区照常滚）
   const scrollable = el => el.scrollHeight > el.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(el).overflowY);

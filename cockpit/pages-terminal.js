@@ -515,10 +515,10 @@
     label: '事务', icon: 'clipboard-list', tag: 'CORE · AFFAIRS',
     keys: [
       { id: 'quests', icon: 'clipboard-list', label: '任务', view: quests },
-      { id: 'trial', icon: 'tower-observation', label: '试炼', view: trial },
-      { id: 'workshop', icon: 'hammer', label: '工坊', view: workshop },
-      { id: 'intel', icon: 'eye', label: '情报', view: intel },
-      { id: 'trade', icon: 'scale-balanced', label: '交易', view: trade },
+      { id: 'trial', icon: 'tower-observation', label: '试炼', view: trial, brief: c => `魂灵塔 ${c.num(c.ch.魂灵塔记录?.最高层)} 层` },
+      { id: 'workshop', icon: 'hammer', label: '工坊', view: workshop, brief: c => { const n = Object.keys(c.ch.副职业 || {}).length; return n ? `${n} 项副职业` : '未习副职业'; } },
+      { id: 'intel', icon: 'eye', label: '情报', view: intel, brief: c => `${(c.ch.已掌握情报 || []).length + Object.values(c.S.world.机密情报 || {}).filter(s => (s.知情规则 || []).includes(c.name)).length} 条` },
+      { id: 'trade', icon: 'scale-balanced', label: '交易', view: trade, brief: c => { const p = String(c.ch.状态?.位置 || '').split('-').filter(x => x && x !== '斗罗大陆'); const n = Object.keys(c.S.world.地点?.[p[0]]?.商店 || {}).length; return n ? `本地 ${n} 家商店` : '本地无商店'; } },
       { id: 'settings', icon: 'sliders', label: '设置', view: settings },
     ],
   });

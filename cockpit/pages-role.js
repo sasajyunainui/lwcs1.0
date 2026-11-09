@@ -428,10 +428,10 @@
     keys: [
       { id: 'status', icon: 'gauge-high', label: '总览', view: status, inspect: (c, kind, id, mode) => kind === 'sk' ? window.COCKPIT.skillCard?.(c, id, mode) || '' : '' },
       { id: 'profile', icon: 'id-card', label: '档案', view: profile },
-      { id: 'growth', icon: 'chart-line', label: '成长', view: growth },
-      { id: 'relations', icon: 'people-arrows', label: '关系', view: relations },
-      { id: 'identity', icon: 'landmark', label: '身份', view: identity, inspect: privInspect },
-      { id: 'directory', icon: 'users', label: '目录', view: directory },
+      { id: 'growth', icon: 'chart-line', label: '成长', view: growth, brief: c => `战斗 ${c.entries(c.ch.战斗历史).length} 场` },
+      { id: 'relations', icon: 'people-arrows', label: '关系', view: relations, brief: c => `${c.entries(c.ch.社交?.关系).length} 人` },
+      { id: 'identity', icon: 'landmark', label: '身份', view: identity, inspect: privInspect, brief: c => `${c.entries(c.ch.社交?.势力).length} 势力 · ${c.entries(c.ch.社交?.称号).length} 称号` },
+      { id: 'directory', icon: 'users', label: '目录', view: directory, brief: c => `${Object.keys(c.S.char).length} 人` },
     ],
   });
 })();

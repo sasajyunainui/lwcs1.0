@@ -335,8 +335,8 @@
     label: '物资', icon: 'cube', tag: 'CORE · ARMORY',
     keys: [
       { id: 'equip', icon: 'shield-halved', label: '装备', view: equipment },
-      { id: 'bones', icon: 'bone', label: '魂骨', view: bones },
-      { id: 'pack', icon: 'box-open', label: '背包', view: pack },
+      { id: 'bones', icon: 'bone', label: '魂骨', view: bones, brief: c => `${BONES.filter(([k]) => { const b = c.ch.魂骨?.[k]; return filled(b?.名称) || filled(b?.name) || c.num(b?.年限) > 0; }).length} 块` },
+      { id: 'pack', icon: 'box-open', label: '背包', view: pack, brief: c => `${c.entries(c.ch.背包).length} 种物品` },
     ],
   });
 })();
