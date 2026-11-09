@@ -925,8 +925,8 @@
     }
     if (t.dataset.closeInspector !== undefined) return closeInspector();
     if (t.dataset.clamp !== undefined) return t.classList.toggle('clamp');
-    // 既能悬停预览又是入口的控件（施放次数行等）：点击走跳转，悬停照旧出卡
-    if (t.dataset.inspect && !t.dataset.go) { const [kind, ...rest] = t.dataset.inspect.split(':'); return openInspector(kind, rest.join(':'), t); }
+    // 既能悬停预览又是入口的控件（施放次数行、星图地标等）：点击走跳转 / 设值，悬停照旧出卡
+    if (t.dataset.inspect && !t.dataset.go && !t.dataset.set) { const [kind, ...rest] = t.dataset.inspect.split(':'); return openInspector(kind, rest.join(':'), t); }
     if (t.closest(".fcard,.inline-detail") && t.dataset.pick === undefined) closeInspector();
     if (t.dataset.setDest) state.ui.dest = t.dataset.setDest;
     if (t.dataset.go && t.dataset.goSet) for (const kv of t.dataset.goSet.split(';')) { const [k, v] = kv.split('='); state.ui[k] = v; }
