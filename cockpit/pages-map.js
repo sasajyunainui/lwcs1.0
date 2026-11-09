@@ -117,7 +117,9 @@
         });
       }
       prevGroup = group;
-      const order = marks.map((m, i) => i).sort((a, b) => marks[a].dataset.rank - marks[b].dataset.rank || pts[b][1] - pts[a][1]);
+      // 目的地的地名牌仅次于当前位置先占位
+      const prio = m => m.classList.contains('dest') ? .5 : +m.dataset.rank;
+      const order = marks.map((m, i) => i).sort((a, b) => prio(marks[a]) - prio(marks[b]) || pts[b][1] - pts[a][1]);
       for (const i of order) {
         const m = marks[i], r = +m.dataset.rank;
         m.hidden = !vis[i]; if (!vis[i]) continue;
