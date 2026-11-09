@@ -69,6 +69,8 @@
   /* 两翼近端会向前、向外凸出：上下各留余量，不压指挥栏、不被座舱底边裁 */
   .screens{order:4;flex:1 0 calc(100% - 28px);max-width:calc(100% - 28px);margin:26px 14px 22px;--lw:22%;--rw:22%}
   .wing.l{--la:22deg}.wing.r{--ra:22deg}
+  /* 接缝铰链线自带 --lw:27%（原型比例），要跟着侧屏 22% 走，否则落进中屏 */
+  .hinge.l{--lw:22%}.hinge.r{--rw:22%}
 }
 /* 座舱够宽时播报回到栏里滚动显示 */
 @container cockpit (min-width:1150px){
