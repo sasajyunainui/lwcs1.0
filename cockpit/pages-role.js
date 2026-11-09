@@ -100,7 +100,7 @@
       left: `<div class="pad">
         ${c.head('arrow-trend-up', '修为', 'Cultivation', 'gd')}
         <div class="door" data-go="page-archive/growth" role="link" tabindex="0" title="查看属性构成与成长">${realmDial(c, g)}</div>
-        <div class="attrs compact">${[['hand-fist', '力量', st.力量, st.训练加成?.力量], ['shield-halved', '防御', st.防御, st.训练加成?.防御], ['feather-pointed', '敏捷', st.敏捷, st.训练加成?.敏捷]].map(([ic, l, v, t]) => `<div class="attr">${c.sock(ic)}<span>${l}</span><b>${c.ed(null, c.P('属性', l), { kind: 'number', integer: true, min: 0, raw: c.num(v), html: c.count(v) })}</b><em>训练 +${c.ed(c.fmt(t || 0), c.P('属性', '训练加成', l), { kind: 'number', integer: true, min: 0, raw: c.num(t) })}</em></div>`).join('')}</div>
+        <div class="attrs compact">${[['hand-fist', '力量', st.力量, st.训练加成?.力量], ['shield-halved', '防御', st.防御, st.训练加成?.防御], ['feather-pointed', '敏捷', st.敏捷, st.训练加成?.敏捷]].map(([ic, l, v, t]) => `<div class="attr">${c.sock(ic)}<span>${l}</span><b>${c.ed(null, c.P('属性', l), { kind: 'number', integer: true, min: 0, raw: c.num(v), html: c.count(v) })}</b><em data-hint="训练加成"><i class="fa-solid fa-dumbbell" aria-label="训练加成"></i>+${c.ed(c.fmt(t || 0), c.P('属性', '训练加成', l), { kind: 'number', integer: true, min: 0, raw: c.num(t) })}</em></div>`).join('')}</div>
         <div class="facts door" data-go="page-archive/growth" role="link" tabindex="0" title="查看成长">
           ${fact('atom', '魂核', c.num(core.数量) ? `${c.fmt(core.数量)} 枚` : '未凝聚', !c.num(core.数量) && !c.num(core.进度), c.num(core.进度) ? `凝聚进度 ${c.fmt(core.进度)}%` : '')}
           ${fact('scroll', '功法', arts.length ? (arts.length > 1 ? `${arts[0][0]} 等 ${arts.length} 部` : arts[0][0]) : '未修习', !arts.length)}

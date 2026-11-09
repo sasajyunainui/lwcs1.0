@@ -250,7 +250,7 @@
     const SIM = window.LWCS_DESIGNER_SIM; if (!SIM) return '';
     let r; try { r = SIM.simulate(draft, c.ch, { name: c.name }); } catch (e) { r = { error: e.message, rows: [], warnings: [] }; }
     const notes = '';
-    const head = `<h3>对抗试算<span class="en">${r.kind ? `${esc0(r.kind)} · 对同级标准强攻系` : 'Trial'}</span>${c.hint((r.warnings || []).join('\n'))}</h3>`;
+    const head = `<h3>对抗试算${r.kind ? `<small class="sim-kind">${esc0(r.kind)} · 对同级标准强攻系</small>` : '<span class="en">Trial</span>'}${c.hint((r.warnings || []).join('\n'))}</h3>`;
     if (r.error) return `<section class="sec dz-simbox">${head}<div class="warn"><i class="fa-solid fa-triangle-exclamation"></i><span>试算失败：${esc0(r.error)}</span></div>${notes}</section>`;
     // 不试算的技能：标题行挂一枚「不适用」，原因放悬停
     if (r.hidden) return `<section class="sec dz-simbox na"><h3>对抗试算<span class="chip s" data-hint="${esc0(`${r.skillType || '这类'}技能不做对抗试算：只有伤害、防御与炸环类效果会和标准对手比较。`)}">不适用</span></h3></section>`;

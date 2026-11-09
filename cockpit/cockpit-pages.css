@@ -462,7 +462,7 @@ div.spirit-link:hover .spirit-card,div.spirit-link.on .spirit-card{box-shadow:in
 .chronos.small{flex-direction:column;align-items:flex-start;gap:.15em}
 .chronos.small .lv{font-size:1.35em;white-space:nowrap}
 .chronos.small .lv i{display:block;font-size:.5em;font-style:normal;letter-spacing:.2em;opacity:.75}
-.tiles.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+.tiles.four{grid-template-columns:repeat(auto-fill,minmax(9em,1fr))}
 @container cockpit (max-width:700px){.tiles.four{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .pick-row{display:flex}
 .pick-row .picker{flex:1}
