@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:8790670d9561ddadb0145e57a7b0f2c248d4f3a197ffaf28da93e24b213193b7|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:cdb9ae92c2529fb690edc09fec8b4f89a2f9df9b9235601c21e75d30a34ad480|cockpit/pages-role.js:a95b4b06280a1e23e58c9062ec648c0e8b6622a0994db5d8121102a1344fbda6|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:10c44a13d6e04c2f27129d1f92d4b0ec5dd55092c45a1394f2b7819d873d3b0f|cockpit/pages-ability.js:73edb53ba86389028800dc6af46a434d8bf80be363167c76e26b665ad737ced7|cockpit/pages-supplies.js:8e64e24ba4d704035ef0cfee05b472a383de5ae01d5d7312aeca94aa9fe649f3|cockpit/pages-map.js:f5b96e3ff3473f44b0df11259c791d84ae81b423911485d4721cf0a00cf105bf|cockpit/pages-world.js:8487e0a1bc390c8e1a1d5898ea84013ec3498a1f03800dc14103a1dcc7a7b69a|cockpit/pages-terminal.js:4d51455d552329d8cada13b0f1d4336d30962e5d7dae64ae93d9a8bc0a9395a6 */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:8790670d9561ddadb0145e57a7b0f2c248d4f3a197ffaf28da93e24b213193b7|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:8e5e3d2931869f4b543017227f346f7c483b6925b21c9960673890ae40c9a5dd|cockpit/pages-role.js:f7cfcca9c21e792184b7229f4b12ecc90e3c18a7cc7d3b62e1334a6a8a1a6dba|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:10c44a13d6e04c2f27129d1f92d4b0ec5dd55092c45a1394f2b7819d873d3b0f|cockpit/pages-ability.js:3b36266bc16c72fbeefde70b131539e9e0296be40bacac7d7079d17878f6755d|cockpit/pages-supplies.js:8dbf2be6eb2d478ae681f0be5d0d1e9e707dc5722012e59846336277a4c22221|cockpit/pages-map.js:abda5a48cc5c7df554c1eca45a4abc932f2d895036ca60e0686212bf2763df80|cockpit/pages-world.js:55d91ee270a818c16b7ac67bf1473b1101c18793919508f45e751f80ed16edb2|cockpit/pages-terminal.js:ab98c82c74dfa9f590015d586d1d7cc888aebd154c83b5cd250579c0e70b2181 */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -52366,9 +52366,9 @@ ${播报文本}
         <span class="tagline" aria-hidden="true">SM-L01</span><span class="led tr" aria-hidden="true"></span><span class="screw br" aria-hidden="true"></span>
         <div class="scr"><div class="host" id="ck-wingL"></div></div>
       </div></div></div></div></div>
-      <div class="center"><div class="float"><div class="bz"><div class="b2"><div class="b3">
+      <div class="center"><div class="float"><button type="button" class="back-plate" id="ck-back" hidden><i class="fa-solid fa-chevron-left"></i><span></span></button><div class="bz"><div class="b2"><div class="b3">
         <span class="tagline" aria-hidden="true" id="ck-coreTag">CORE</span><span class="led tr" aria-hidden="true"></span><span class="led bl" aria-hidden="true"></span><span class="screw br" aria-hidden="true"></span><span class="screw tl" aria-hidden="true"></span>
-        <div class="scr"><div class="host" id="ck-core"></div></div>
+        <div class="scr"><div class="host" id="ck-core"></div><nav class="doors" id="ck-doors" aria-label="本领域其他页面" hidden></nav></div>
       </div></div></div></div></div>
       <div class="wing r"><div class="float"><div class="bz"><div class="b2"><div class="b3">
         <span class="tagline" aria-hidden="true">SM-R01</span><span class="led tr" aria-hidden="true"></span><span class="screw br" aria-hidden="true"></span>
@@ -52376,9 +52376,6 @@ ${播报文本}
       </div></div></div></div></div>
     </div>
     <nav class="dots" aria-label="切换屏面"><button type="button" data-face="-1">根基</button><button type="button" data-face="0" class="on">主屏</button><button type="button" data-face="1">操作</button></nav>
-    <div class="deck"><div class="bz"><div class="b2"><div class="b3">
-      <div class="keybed"><nav class="keys" id="ck-keys" aria-label="领域页面"></nav></div>
-    </div></div></div></div>
     <div class="readout">
         <span class="door" data-go="page-map/place" role="link" tabindex="0" title="查看当地"><i class="fa-solid fa-location-dot"></i> <span id="ck-rLoc"></span></span>
         <span class="num"><i class="fa-regular fa-clock"></i> <span id="ck-rTime"></span></span>
@@ -52471,20 +52468,6 @@ ${播报文本}
     if (from !== to) put(host[side], html, null);
     else setTimeout(() => put(host[side], html, null), dur * (mode === 'fold' ? .42 : .45));
   };
-  const keysFor = d => d.keys.map(k => `<button class="key" type="button" data-page="${k.id}" aria-label="${esc(k.label)}"><i class="fa-solid fa-${k.icon}"></i><span class="lb">${esc(k.label)}</span></button>`).join('');
-  const markKeys = () => $$('#ck-keys .key').forEach(k => { const on = k.dataset.page === state.page[state.domain]; k.classList.toggle('on', on); on ? k.setAttribute('aria-current', 'page') : k.removeAttribute('aria-current'); });
-  const swapKeys = (d, first) => {
-    const keys = $('#ck-keys');
-    const set = () => { keys.innerHTML = keysFor(d); markKeys(); };
-    const away = getComputedStyle(keys).flexDirection === 'column' ? 'translateX(120%)' : 'translateY(120%)';
-    if (reduce) { set(); return; }
-    if (first) { set(); keys.animate([{ transform: away }, { transform: 'none' }], { duration: 600, delay: 250, easing: 'cubic-bezier(.2,.9,.3,1.2)', fill: 'backwards' }); return; }
-    // 换键只执行一次：动画结束或超时兜底（窗口在后台时动画不推进，onfinish 不触发）
-    let done = false;
-    const swap = () => { if (done) return; done = true; set(); keys.animate([{ transform: away }, { transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2,.9,.3,1.25)' }); };
-    keys.animate([{ transform: 'none' }, { transform: away }], { duration: 240, easing: 'ease-in' }).onfinish = swap;
-    setTimeout(swap, 320);
-  };
   // 领域标签竖排（宽屏侧轨）时滑块按纵向定位，横排时按横向；另一方向交回样式表
   const moveSlider = tab => {
     if (!tab) return;
@@ -52524,6 +52507,18 @@ ${播报文本}
     screens.style.setProperty('--carousel-h', Math.max(320, el.scrollHeight) + 'px');
   };
 
+  // 领域内导航（不设子页标签）：领域首页（keys[0]）的中屏底部是本领域其他页面的入口门，带一行实时摘要；
+  // 进到其他页面后，中屏顶边挂一块「‹ 首页名」返回牌，再点一次当前领域标签也回首页
+  const syncNav = () => {
+    const d = domains[state.domain], home = d.keys[0], atHome = (state.page[state.domain] || home.id) === home.id, c = ctx();
+    const back = $('#ck-back'); back.hidden = atHome; $('span', back).textContent = home.label; back.setAttribute('aria-label', `返回${home.label}`);
+    const doors = $('#ck-doors'), html = atHome ? d.keys.slice(1).map(k => {
+      let b = ''; try { b = k.brief?.(c) || ''; } catch (err) { b = ''; }
+      return `<button class="door-key" type="button" data-page="${k.id}">${sock(k.icon)}<span class="dk-t"><b>${esc(k.label)}</b>${b ? `<small>${esc(b)}</small>` : ''}</span></button>`;
+    }).join('') : '';
+    if (doors.innerHTML !== html) doors.innerHTML = html;
+    doors.hidden = !html; $('.center').classList.toggle('has-doors', !!html);
+  };
   // 页面可提供 mount(face, ctx) 挂交互（沙盘拖拽、缩放等），每次主屏换面后调用
   const mount = (v, face) => { if (face && typeof v.mount === 'function') try { v.mount(face, ctx()); } catch (err) { console.error(err); } };
   function renderPage(how) {
@@ -52533,7 +52528,7 @@ ${播报文本}
     // 翼板角度只给领域 / 子页切换的动画用；数据刷新不读（读 CSS 自定义属性会强制整页样式重算，酒馆页面很重）
     const animated = how.kind === 'domain' || how.kind === 'page';
     const fromA = animated ? { l: angle('l'), r: angle('r') } : null;
-    applyWide(v); setFaceLabels(v);
+    applyWide(v); setFaceLabels(v); syncNav();
     const toA = animated ? { l: angle('l'), r: angle('r') } : null;
     if (how.kind === 'domain') {
       mount(v, put(host.c, v.core, { out: `translateX(${-how.dir * 9}%)`, in: `translateX(${how.dir * 9}%)` }));
@@ -52552,12 +52547,12 @@ ${播报文本}
   let busy = 0;
   function switchDomain(id, page, first = false) {
     if (!domains[id]) return;
-    if (id === state.domain && !page) return;
+    // 同领域：回首页 / 换页；页面没变但带了要选中的条目（route 的 ui）就重绘
+    if (id === state.domain) { const pg = page || domains[id].keys[0].id; if ((state.page[id] || domains[id].keys[0].id) !== pg) return switchPage(pg); if (page) api.refresh?.(); return; }
     const dir = state.domain ? Math.sign(order.indexOf(id) - order.indexOf(state.domain)) || 1 : 1;
     state.domain = id; state.inspect = null; clearFloat();
     if (page) state.page[id] = page; else state.page[id] = state.page[id] || domains[id].keys[0].id;
     $$('.tab', track).forEach(t => { const on = t.dataset.tab === id; t.classList.toggle('on', on); on ? t.setAttribute('aria-current', 'page') : t.removeAttribute('aria-current'); if (on) moveSlider(t); });
-    swapKeys(domains[id], first);
     if (isMobile()) setFace(0);
     renderPage({ kind: 'domain', dir, first });
     if (first && !reduce) $('.center').animate([{ transform: 'translateZ(-160px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 800, easing: 'cubic-bezier(.2,.9,.25,1)' });
@@ -52565,7 +52560,7 @@ ${播报文本}
   function switchPage(key) {
     const d = domains[state.domain];
     if (!d.keys.some(k => k.id === key) || state.page[state.domain] === key) return;
-    state.page[state.domain] = key; state.inspect = null; clearFloat(); markKeys();
+    state.page[state.domain] = key; state.inspect = null; clearFloat();
     if (isMobile()) setFace(0);
     renderPage({ kind: 'page' });
   }
@@ -52923,7 +52918,8 @@ ${播报文本}
   // ---------- 事件委托 ----------
   track.addEventListener('click', e => { const t = e.target.closest('.tab'); if (t) switchDomain(t.dataset.tab); });
   $('.cockpit').addEventListener('click', e => { const r = e.target.closest('[data-route]'); if (r) C.route({ to: r.dataset.route }); });
-  $('#ck-keys').addEventListener('click', e => { const k = e.target.closest('.key'); if (k) switchPage(k.dataset.page); });
+  $('#ck-doors').addEventListener('click', e => { const k = e.target.closest('.door-key'); if (k) switchPage(k.dataset.page); });
+  $('#ck-back').addEventListener('click', () => switchPage(domains[state.domain].keys[0].id));
   // 滚轮归屏：桌面三屏里指针在哪块屏就只滚那块屏。落在屏框 / 屏内不可滚的地方也滚这块屏的内容；
   // 屏里内容滚到头时吞掉这次滚轮，不再串到酒馆聊天区。只有整块屏根本没有可滚内容才放行（让聊天区照常滚）
   const scrollable = el => el.scrollHeight > el.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(el).overflowY);
@@ -53030,7 +53026,7 @@ ${播报文本}
   });
 
   // ---------- 惯性视差 ----------
-  const cockpit = $('.cockpit'), stage = $('.stage'), arc = $('.arc'), deck = $('.deck');
+  const cockpit = $('.cockpit'), stage = $('.stage'), arc = $('.arc');
   let tx = 0, ty = 0, cx = 0, cy = 0, raf = 0;
   // 台面后推深度由样式表决定（原型页 -120px，嵌入宽屏 0）；重排时读一次，动画帧里不读样式
   let stageZ = '-120px';
@@ -53040,7 +53036,6 @@ ${播报文本}
     if (!isMobile()) {
       stage.style.transform = `translateZ(${stageZ}) rotateX(${(-cy * 2.6).toFixed(3)}deg) rotateY(${(cx * 3.6).toFixed(3)}deg)`;
       arc.style.translate = `${(-cx * 10).toFixed(2)}px ${(-cy * 4).toFixed(2)}px`;
-      deck.style.translate = `${(cx * 8).toFixed(2)}px ${(cy * 3).toFixed(2)}px`;
     }
     raf = Math.abs(tx - cx) + Math.abs(ty - cy) > .001 ? requestAnimationFrame(loop) : 0;
   };
@@ -53541,10 +53536,10 @@ ${播报文本}
     keys: [
       { id: 'status', icon: 'gauge-high', label: '总览', view: status, inspect: (c, kind, id, mode) => kind === 'sk' ? window.COCKPIT.skillCard?.(c, id, mode) || '' : '' },
       { id: 'profile', icon: 'id-card', label: '档案', view: profile },
-      { id: 'growth', icon: 'chart-line', label: '成长', view: growth },
-      { id: 'relations', icon: 'people-arrows', label: '关系', view: relations },
-      { id: 'identity', icon: 'landmark', label: '身份', view: identity, inspect: privInspect },
-      { id: 'directory', icon: 'users', label: '目录', view: directory },
+      { id: 'growth', icon: 'chart-line', label: '成长', view: growth, brief: c => `${c.entries(c.ch.战斗历史).length} 场战斗` },
+      { id: 'relations', icon: 'people-arrows', label: '关系', view: relations, brief: c => `${c.entries(c.ch.社交?.关系).length} 人` },
+      { id: 'identity', icon: 'landmark', label: '身份', view: identity, inspect: privInspect, brief: c => `${c.entries(c.ch.社交?.势力).length} 个势力` },
+      { id: 'directory', icon: 'users', label: '目录', view: directory, brief: c => `${Object.keys(c.S.char).length} 人` },
     ],
   });
 })();
@@ -55531,9 +55526,9 @@ ${播报文本}
         <div class="plaques"><span class="plq">${c.ed(c.blank(soul.系别) ? '未定系别' : soul.系别, [...c.P(soul.slot), '系别'], { raw: c.blank(soul.系别) ? '' : soul.系别 })}</span><span class="plq steel">属性 · ${c.ed(soul.属性体系 || '无', [...c.P(soul.slot), '属性体系'], { kind: 'enum', options: SOUL_SYSTEMS })}</span></div>
         ${soul.属性体系 && soul.属性体系 !== '无' ? (on => `<div class="chips-row callable"><span class="lbl">可调用${c.hint('点选这个武魂能调用的元素。')}</span>${(soul.属性体系 === '五行' ? WUXING : ELEMENTS).map(x => `<button class="key-s mini${on.includes(x) ? ' on' : ''}" type="button" aria-pressed="${on.includes(x)}" data-callable="${c.esc(JSON.stringify({ path: [...c.P(soul.slot), '可调用元素'], x, on }))}">${c.esc(x)}</button>`).join('')}</div>`)((soul.可调用元素 || []).filter(x => x && x !== '无')) : ''}
         <p class="narr">${c.ed(c.blank(soul.描述) ? '未记录' : soul.描述, [...c.P(soul.slot), '描述'], { kind: 'text', raw: c.blank(soul.描述) ? '' : soul.描述 })}</p>
-        ${soul.rings.length ? `<div class="soul-card" data-scan data-float="r"><div class="soul-stage">${c.ringStage(soul.rings, r => { const p = soul.spirits.find(x => x.rings.includes(r)), sk = r.skills[0]; return sk && (p || r.independent) ? `data-inspect="sk:${skKey({ p, r, sk })}"` : ''; })}</div></div>`
+        <div class="martial-stage">${soul.rings.length ? `<div class="soul-card" data-scan data-float="r"><div class="soul-stage">${c.ringStage(soul.rings, r => { const p = soul.spirits.find(x => x.rings.includes(r)), sk = r.skills[0]; return sk && (p || r.independent) ? `data-inspect="sk:${skKey({ p, r, sk })}"` : ''; })}</div></div>`
           : `<div class="soul-card"><div class="soul-stage"><div class="soul-empty"><i></i><span>尚未附环</span></div></div><small class="lbl">下一魂环于 ${Math.floor(c.num(c.st.等级) / 10 + 1) * 10} 级开放</small></div>`}
-        <div class="spirit-grid">${soul.spirits.map(p => `<div class="spirit-link" data-inspect="spirit:${c.esc(`${soul.slot}/${p.slot}`)}" tabindex="0">${spiritCard(c, p)}<i class="fa-solid fa-circle-info"></i></div>`).join('')}</div>
+        <div class="spirit-grid">${soul.spirits.map(p => `<div class="spirit-link" data-inspect="spirit:${c.esc(`${soul.slot}/${p.slot}`)}" tabindex="0">${spiritCard(c, p)}<i class="fa-solid fa-circle-info"></i></div>`).join('')}</div></div>
       </div>`,
       right: `<div class="pad">
         ${c.head('fire-flame-curved', '施放次数', 'Casts', 'sp')}
@@ -55666,8 +55661,8 @@ ${播报文本}
     label: '能力', icon: 'wand-sparkles', tag: 'CORE · MARTIAL SOUL',
     keys: [
       { id: 'martial', icon: 'fire', label: '武魂', view: martial, inspect: abilityInspect },
-      { id: 'codex', icon: 'book', label: '典籍', view: codex, inspect: skillInspect },
-      { id: 'design', icon: 'pen-ruler', label: '设计', view: design },
+      { id: 'codex', icon: 'book', label: '典籍', view: codex, inspect: skillInspect, brief: c => `${allSkills(c).length} 项技能` },
+      { id: 'design', icon: 'pen-ruler', label: '设计', view: design, brief: () => (window.COCKPIT.pending()?.skillDesign ? '有待确认设计' : '') },
     ],
   });
 })();
@@ -56011,8 +56006,8 @@ ${播报文本}
     label: '物资', icon: 'cube', tag: 'CORE · ARMORY',
     keys: [
       { id: 'equip', icon: 'shield-halved', label: '装备', view: equipment },
-      { id: 'bones', icon: 'bone', label: '魂骨', view: bones },
-      { id: 'pack', icon: 'box-open', label: '背包', view: pack },
+      { id: 'bones', icon: 'bone', label: '魂骨', view: bones, brief: c => `${BONES.filter(([k]) => { const b = c.ch.魂骨?.[k]; return filled(b?.名称) || filled(b?.name) || c.num(b?.年限) > 0; }).length} 块` },
+      { id: 'pack', icon: 'box-open', label: '背包', view: pack, brief: c => `${c.entries(c.ch.背包).length} 种物品` },
     ],
   });
 })();
@@ -56425,7 +56420,7 @@ ${播报文本}
     label: '探索', icon: 'compass', tag: 'CORE · STAR MAP',
     keys: [
       { id: 'star', icon: 'map', label: '地图', view: travel, inspect: nodeInspect },
-      { id: 'place', icon: 'city', label: '当地', view: place, inspect: (c, kind, id, mode) => kind === 'dyn' ? dynInspect(c, id) : npcInspect(c, kind, id, mode) },
+      { id: 'place', icon: 'city', label: '当地', brief: c => String(c.ch.状态?.位置 || '').split('-').filter(x => x && x !== '斗罗大陆').pop() || '', view: place, inspect: (c, kind, id, mode) => kind === 'dyn' ? dynInspect(c, id) : npcInspect(c, kind, id, mode) },
     ],
   });
 })();
@@ -56703,10 +56698,10 @@ ${播报文本}
     label: '世界', icon: 'globe', tag: 'CORE · WORLD',
     keys: [
       { id: 'overview', icon: 'globe', label: '概况', view: overview },
-      { id: 'chronicle', icon: 'timeline', label: '编年', view: chronicle },
-      { id: 'faction', icon: 'chess-rook', label: '势力', view: factionView },
-      { id: 'games', icon: 'trophy', label: '赛事', view: games },
-      { id: 'bestiary', icon: 'dragon', label: '图鉴', view: bestiary },
+      { id: 'chronicle', icon: 'timeline', label: '编年', view: chronicle, brief: c => `${upcoming(c).length} 个节点` },
+      { id: 'faction', icon: 'chess-rook', label: '势力', view: factionView, brief: c => `${factions(c).length} 方势力` },
+      { id: 'games', icon: 'trophy', label: '赛事', view: games, brief: c => { const n = Object.values(c.S.world.赛事 || {}).filter(x => x?.状态 !== '已完成').length; return n ? `${n} 项进行` : '暂无'; } },
+      { id: 'bestiary', icon: 'dragon', label: '图鉴', view: bestiary, brief: c => `已录 ${Object.keys(c.S.world.图鉴 || {}).length} 种` },
     ],
   });
 })();
@@ -57230,10 +57225,10 @@ ${播报文本}
     label: '事务', icon: 'clipboard-list', tag: 'CORE · AFFAIRS',
     keys: [
       { id: 'quests', icon: 'clipboard-list', label: '任务', view: quests },
-      { id: 'trial', icon: 'tower-observation', label: '试炼', view: trial },
-      { id: 'workshop', icon: 'hammer', label: '工坊', view: workshop },
-      { id: 'intel', icon: 'eye', label: '情报', view: intel },
-      { id: 'trade', icon: 'scale-balanced', label: '交易', view: trade },
+      { id: 'trial', icon: 'tower-observation', label: '试炼', view: trial, brief: c => `塔 ${c.num(c.ch.魂灵塔记录?.最高层)} 层` },
+      { id: 'workshop', icon: 'hammer', label: '工坊', view: workshop, brief: c => { const n = Object.keys(c.ch.副职业 || {}).length; return n ? `${n} 项副职` : '未习副职'; } },
+      { id: 'intel', icon: 'eye', label: '情报', view: intel, brief: c => `${(c.ch.已掌握情报 || []).length + Object.values(c.S.world.机密情报 || {}).filter(s => (s.知情规则 || []).includes(c.name)).length} 条` },
+      { id: 'trade', icon: 'scale-balanced', label: '交易', view: trade, brief: c => { const p = String(c.ch.状态?.位置 || '').split('-').filter(x => x && x !== '斗罗大陆'); const n = Object.keys(c.S.world.地点?.[p[0]]?.商店 || {}).length; return n ? `${n} 家商店` : '无商店'; } },
       { id: 'settings', icon: 'sliders', label: '设置', view: settings },
     ],
   });
