@@ -301,7 +301,39 @@
   }).observe($('.cockpit'));
   const isMobile = () => mobileNow;
 
+  // 存档里尚未生成的值常写成「待补全（……填写说明……）」：渲染后统一缩成一枚「待补全」占位，说明放进悬停提示。
+  // 只改显示文字；可编辑值的原始内容在 data-ie-raw 里，点开编辑仍是完整原文
+  const TBD_HEAD = /(待补全|待生成|待填写)\s*[（(]/g;
+  const shrinkTbd = text => {
+    let out = '', i = 0, hit = false, m;
+    TBD_HEAD.lastIndex = 0;
+    while ((m = TBD_HEAD.exec(text))) {
+      let d = 0, j = m.index + m[0].length - 1;
+      for (; j < text.length; j++) { const ch = text[j]; if (ch === '（' || ch === '(') d++; else if ((ch === '）' || ch === ')') && --d === 0) break; }
+      if (j >= text.length) break;
+      out += text.slice(i, m.index) + '\u0000' + m[1] + '\u0001' + text.slice(m.index + m[0].length, j) + '\u0002';
+      i = j + 1; TBD_HEAD.lastIndex = i; hit = true;
+    }
+    return hit ? out + text.slice(i) : null;
+  };
+  const tbdPass = root => {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: n => /待补全|待生成|待填写/.test(n.nodeValue) && !n.parentElement?.closest('textarea,input,.tbd,script,style') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT });
+    const nodes = []; for (let n = walker.nextNode(); n; n = walker.nextNode()) nodes.push(n);
+    for (const n of nodes) {
+      const marked = shrinkTbd(n.nodeValue); if (marked === null) continue;
+      const frag = document.createDocumentFragment();
+      for (const part of marked.split('\u0002')) {
+        const k = part.indexOf('\u0000');
+        if (k < 0) { if (part) frag.append(part); continue; }
+        if (k > 0) frag.append(part.slice(0, k));
+        const [label, note] = part.slice(k + 1).split('\u0001');
+        const tag = document.createElement('span'); tag.className = 'tbd'; tag.textContent = label; tag.dataset.hint = note.trim(); frag.append(tag);
+      }
+      n.replaceWith(frag);
+    }
+  };
   const charge = (root, quiet = false) => {
+    tbdPass(root);
     $$('[data-qs]', root).forEach(i => { if (i.value) filterRows(i); });
     if (quiet) {
       $$('.bar i[data-w]', root).forEach(i => { i.style.width = i.dataset.w + '%'; });

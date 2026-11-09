@@ -628,3 +628,6 @@ div.rail-item{cursor:default}
 .wing .priv-part header .sock{display:none}
 .priv-part header .chip{flex:none;white-space:nowrap}
 .priv-sec .tile b .ie,.priv-part .tile b .ie{white-space:normal}
+/* 「待补全」占位：灰色虚线小牌，悬停看原填写说明 */
+.tbd{display:inline-block;padding:0 .45em;font-size:.86em;font-weight:800;font-style:normal;line-height:1.5;color:var(--ink3);background:rgba(30,48,80,.06);box-shadow:inset 0 0 0 1px rgba(30,48,80,.22);border-radius:2px;cursor:help;vertical-align:.05em;white-space:nowrap}
+.holo .tbd,.cast .tbd,.intent-pill .tbd{color:#9db7da;background:rgba(140,200,255,.08);box-shadow:inset 0 0 0 1px rgba(140,200,255,.3)}
