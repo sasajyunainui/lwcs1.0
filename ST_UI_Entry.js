@@ -115,6 +115,15 @@
     };
     return [资源基础地址, ...候选列表.map(清理地址)].filter((地址, 序号, 列表) => 地址 && 列表.indexOf(地址) === 序号);
   })();
+  // jsDelivr 各镜像共用同一后端，会一起拒绝（2026-11-09 Database_Module.js 四个镜像同时 403），文本读取最后改走 GitHub raw。
+  // raw 以 text/plain + nosniff 返回，只能读成文本后内联执行，不能用于 <script src>。
+  const GitHub原始资源基础地址 = (() => {
+    for (const 基础地址 of 资源基础地址候选列表) {
+      const 匹配 = /^https:\/\/[^/]+\/gh\/([^/@]+)\/([^/@]+)@([0-9a-f]{40})\/$/i.exec(基础地址);
+      if (匹配) return `https://raw.githubusercontent.com/${匹配[1]}/${匹配[2]}/${匹配[3]}/`;
+    }
+    return '';
+  })();
   const 资源版本后缀 = '';
   for (const 文档 of new Set([document, 宿主窗口.document])) {
     文档.documentElement.dataset.lwcsCharacterAssets = 资源基础地址 + 'assets/characters/';
@@ -438,7 +447,7 @@
   }
 
   function 是提交哈希资源地址(地址) {
-    return /\/gh\/[^?#]+@[0-9a-f]{40}(?:\/|$)/i.test(String(地址 || ''));
+    return /(?:\/gh\/[^?#]+@|raw\.githubusercontent\.com\/[^/?#]+\/[^/?#]+\/)[0-9a-f]{40}(?:\/|$)/i.test(String(地址 || ''));
   }
 
   function 取资源请求选项(地址) {
@@ -480,11 +489,17 @@
     return 资源基础地址候选列表.map(候选基础地址 => 候选基础地址 + 文件路径);
   }
 
+  function 取文本候选资源地址列表(地址) {
+    const 候选列表 = 取候选资源地址列表(地址);
+    if (!GitHub原始资源基础地址 || !String(地址).startsWith(资源基础地址)) return 候选列表;
+    return [...候选列表, GitHub原始资源基础地址 + String(地址).slice(资源基础地址.length)];
+  }
+
   async function 读取文本资源(地址, 错误前缀) {
     if (!文本资源缓存表.has(地址)) {
       const 读取承诺 = (async () => {
         const 错误列表 = [];
-        for (const 候选地址 of 取候选资源地址列表(地址)) {
+        for (const 候选地址 of 取文本候选资源地址列表(地址)) {
           try {
             if (typeof 共享文本读取 === 'function') {
               return await 共享文本读取(
@@ -622,7 +637,7 @@
       文本资源缓存表.delete(地址);
       const 共享文本请求表 = 宿主窗口.__LWCS_SHARED_TEXT_REQUESTS_V1__;
       if (共享文本请求表 && typeof 共享文本请求表.delete === 'function') {
-        for (const 候选地址 of 取候选资源地址列表(地址)) {
+        for (const 候选地址 of 取文本候选资源地址列表(地址)) {
           共享文本请求表.delete(`${共享资源提交哈希 || 'local'}:${候选地址}`);
         }
       }
