@@ -424,6 +424,31 @@
     t.dataset.act = JSON.stringify({ name: 'routine', action, minutes, project });
   }, true);
 
+  // 私密档案：不在任何导航里，只由长按角色名经桥接复核后路由进来；数据为 null（规则不满足）时页面不存在，退回总览。
+  // 字段与旧详情页一致（桥接 构建私密档案数据），这里只负责座舱样式的渲染与编辑
+  const privEd = (c, x) => c.ed(x.value, x.path, { kind: x.kind || 'string', options: x.options, values: x.values, raw: x.value, integer: x.kind === 'number' });
+  const privField = (c, x) => `<div class="tile${x.wide ? ' wide' : ''}${x.tone ? ' ' + x.tone : ''}"><b>${privEd(c, x)}</b><small>${c.esc(x.label)}</small></div>`;
+  const privItem = (c, x) => x.k === 'bar' ? `<div class="meter">${c.sock('heart-pulse', 'hp')}<div class="lb">${c.esc(x.label)} ${c.ed(x.value, x.path, { kind: 'number', integer: true, min: 0, max: x.max, raw: x.value })}<span class="num">/ ${x.max}</span></div>${c.bar('hp', x.value, x.max)}</div>`
+    : x.k === 'multi' ? `<div class="tile wide"><b>${x.parts.map(q => c.ed(q.value, q.path, { kind: q.kind, raw: q.value })).join(' / ')}</b><small>${c.esc(x.label)}</small></div>`
+    : x.k === 'tags' ? `<div class="priv-tags"><span class="lbl">${c.esc(x.label)}</span><div class="plaques">${x.list.map(t => `<span class="plq">${c.ed(t.value, t.path, { raw: t.value })}<button class="plq-x" type="button" data-del-path="${c.esc(JSON.stringify(t.path))}" aria-label="删除"><i class="fa-solid fa-xmark"></i></button></span>`).join('')}<button class="plq add" type="button" data-priv-add="${c.esc(JSON.stringify(x.path))}" aria-label="添加${c.esc(x.label)}"><i class="fa-solid fa-plus"></i></button></div></div>`
+    : x.k === 'part' ? `<section class="priv-part"><header>${c.sock('gem')}<strong>${c.esc(x.name)}</strong><span class="chip">开发 ${c.ed(x.dev.value, x.dev.path, { kind: 'number', integer: true, raw: x.dev.value })}</span></header><div class="tiles">${x.fields.map(f => privField(c, { ...f, wide: f.kind === 'text' })).join('')}</div></section>`
+    : privField(c, x);
+  const privSec = (c, s) => { const bars = s.items.filter(x => x.k === 'bar' || x.k === 'tags' || x.k === 'part'), rest = s.items.filter(x => !bars.includes(x));
+    return `<section class="sec priv-sec"><h3>${c.esc(s.title)}</h3>${bars.map(x => privItem(c, x)).join('')}${rest.length ? `<div class="tiles${s.counts ? ' three' : ''}">${rest.map(x => privItem(c, x)).join('')}</div>` : ''}${!s.items.length && s.empty ? `<span class="lbl">${c.esc(s.empty)}</span>` : ''}</section>`; };
+  const privateView = c => {
+    const d = window.COCKPIT.privateArchive?.();
+    if (!d) { c.state.page['page-archive'] = 'status'; return status(c); }
+    const [desire, body, cycle, hist, kink, parts] = d.sections;
+    return {
+      tag: 'CORE · PRIVATE',
+      left: `<div class="pad">${c.head('heart', desire.title, '', 'hp')}${privSec(c, { ...desire, title: '' }).replace('<h3></h3>', '')}${privSec(c, cycle)}</div>`,
+      core: `<div class="pad">${c.head('lock', '私密档案', 'Private', 'hp')}${privSec(c, body)}${privSec(c, hist)}${privSec(c, kink)}</div>`,
+      right: `<div class="pad">${c.head(parts.icon, parts.title, '', 'hp')}${privSec(c, { ...parts, title: '' }).replace('<h3></h3>', '')}</div>`,
+    };
+  };
+  document.addEventListener('click', e => { const t = e.target.closest?.('[data-priv-add]'); if (!t) return; const path = JSON.parse(t.dataset.privAdd), cur = path.reduce((o, k) => o?.[k], window.COCKPIT.ctx().S); window.COCKPIT.write([{ path, value: [...(Array.isArray(cur) ? cur : []), '新条目'] }]); });
+  window.COCKPIT.addRoute?.('privateArchive', () => { if (!window.COCKPIT.privateArchive?.()) return false; window.COCKPIT.go('page-archive', 'private'); return true; });
+
   window.COCKPIT.register('page-archive', {
     label: '角色', icon: 'user', tag: 'CORE · STATUS',
     keys: [
@@ -433,6 +458,8 @@
       { id: 'relations', icon: 'people-arrows', label: '关系', view: relations },
       { id: 'identity', icon: 'landmark', label: '身份', view: identity, inspect: privInspect },
       { id: 'directory', icon: 'users', label: '目录', view: directory },
+      // 不在任何导航里：只有 privateArchive 路由（长按角色名）能进
+      { id: 'private', icon: 'lock', label: '私密档案', hidden: true, view: privateView },
     ],
   });
 })();

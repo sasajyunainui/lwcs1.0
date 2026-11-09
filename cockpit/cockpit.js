@@ -143,7 +143,7 @@
   // ---------- 内联编辑（与原项目 makeInlineEditableValue / beginInlineEdit 同一语义）----------
   // 常驻：点击可编辑值即原地编辑；kind = string | number | enum | text（多行）。path 是存档根下的键路径数组。
   // 原型写回内存存档后重绘；移植时换成 replaceStatDataByEditor → 整根 MVU schema 校验 → replaceMvuData。
-  const ed = (text, path, o = {}) => `<span class="ie" tabindex="0" role="button" data-ie-path="${esc(JSON.stringify(path))}" data-ie-kind="${o.kind || 'string'}" data-ie-meta="${esc(JSON.stringify({ min: o.min, max: o.max, integer: o.integer, options: o.options, suffix: o.suffix, renameKey: o.renameKey }))}" data-ie-raw="${esc(String(o.raw ?? text ?? ''))}" title="点击编辑">${o.html ?? esc(String(text ?? ''))}</span>`;
+  const ed = (text, path, o = {}) => `<span class="ie" tabindex="0" role="button" data-ie-path="${esc(JSON.stringify(path))}" data-ie-kind="${o.kind || 'string'}" data-ie-meta="${esc(JSON.stringify({ min: o.min, max: o.max, integer: o.integer, options: o.options, values: o.values, suffix: o.suffix, renameKey: o.renameKey }))}" data-ie-raw="${esc(String(o.raw ?? text ?? ''))}" title="点击编辑">${o.html ?? esc(String(text ?? ''))}</span>`;
   // 列表检索（原项目角色目录 / 技能检索 / 图鉴检索）：输入框按同一面板里列表行的文字筛选，不重绘、不丢焦点；
   // 关键词存在 ui.qs，面板重绘后重新套用
   const search = (key, ph) => `<label class="q-search"><i class="fa-solid fa-magnifying-glass"></i><input type="search" data-qs="${esc(key)}" value="${esc(state.ui.qs?.[key] || '')}" placeholder="${esc(ph)}" aria-label="${esc(ph)}" autocomplete="off"></label>`;
@@ -188,6 +188,8 @@
     // 需要先同步运行时状态的预演（如移动要先刷新星图节点表）；没有异步实现时退回同步预演
     previewAsync: async (name, payload = {}) => { try { return (await (ADP?.previewAsync ? ADP.previewAsync(name, payload) : ADP?.preview?.(name, payload))) ?? null; } catch (err) { return { ok: false, allowed: false, reason: err?.message || String(err) }; } },
     privateArchiveKey: () => (ADP?.privateArchiveAllowed?.() ? ADP.privateArchiveKey : ''),
+    // 私密档案数据：规则不满足时为 null，页面随之不存在（见桥接 canOpenPrivateArchive）
+    privateArchive: () => { try { return ADP?.privateArchive?.() || null; } catch (err) { return null; } },
     // 待处理事项（待选魂环、待确认技能设计）；原型页没有运行时，返回 null
     pending: () => { try { return ADP?.pending?.() || null; } catch (err) { return null; } },
     addRoute(name, fn) { routes[name] = fn; },
@@ -597,7 +599,8 @@
       if (meta.max != null && n > meta.max) return { err: `不能大于 ${meta.max}` };
       return { value: n };
     }
-    if (kind === 'enum') return (meta.options || []).includes(t) ? { value: t } : { err: '只能从选项中选择' };
+    // values：选项显示文字 → 实际写回值（如「已初潮 / 未初潮」写回布尔）
+    if (kind === 'enum') return (meta.options || []).includes(t) ? { value: meta.values && t in meta.values ? meta.values[t] : t } : { err: '只能从选项中选择' };
     return { value: kind === 'text' ? String(str) : t };
   };
   function beginEdit(el) {

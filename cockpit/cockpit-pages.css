@@ -603,3 +603,16 @@ div.rail-item{cursor:default}
 .plq.add{appearance:none;border:0;font:inherit;cursor:pointer;padding-inline:.7em}
 /* 武魂页施放次数翼底：自创魂技格贴底，进设计台 */
 .tile.self-made{margin-top:auto}
+
+/* 私密档案（座舱样式）：分节数据格；标签可编辑增删；部位卡 */
+.priv-sec .tiles{grid-template-columns:repeat(auto-fill,minmax(8.5em,1fr))}
+.priv-sec .tiles.three{grid-template-columns:repeat(auto-fill,minmax(6.5em,1fr))}
+.priv-sec .tile{grid-template-columns:minmax(0,1fr)}
+.priv-sec .tile.wide{grid-column:1/-1}
+.priv-sec .tile.red b{color:#b8321f}
+.priv-tags{display:flex;flex-direction:column;gap:.35em}
+.priv-part{display:flex;flex-direction:column;gap:.45em;padding:.55em .6em;background:rgba(255,255,255,.45);box-shadow:inset 0 0 0 1px rgba(30,48,80,.14)}
+.priv-part header{display:flex;align-items:center;gap:.5em}
+.priv-part header .sock{--s:1.8em}
+.priv-part header .chip{margin-left:auto}
+.priv-part .tiles{grid-template-columns:minmax(0,1fr)}

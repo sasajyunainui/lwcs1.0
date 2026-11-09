@@ -25501,7 +25501,7 @@
   // 座舱挂在 #mvu-unified-mount 里、盖住旧壳层（旧壳层隐藏但保留占位，挂载点尺寸不变）。
   // 旧壳层只在下列原详情面打开时让出画面（战斗终端、魂环待选确认、私密档案），关闭后回到座舱；
   // 其他旧详情面（旧座舱各页都是详情面，刷新后会恢复上次打开的那页）在座舱接管时清掉。
-  const 座舱让位详情键 = new Set([BATTLE_INLINE_PREVIEW_KEY, '私密档案详细页']);
+  const 座舱让位详情键 = new Set([BATTLE_INLINE_PREVIEW_KEY]);
   // 原项目各处流程（回到某页、模块意图路由等）打开的旧详情面 → 座舱里对应的页面
   const 座舱旧详情页映射 = Object.freeze({
     第1武魂详细页: ['page-ability', 'martial', { soul: '0', ringPick: '' }], 第2武魂详细页: ['page-ability', 'martial', { soul: '1', ringPick: '' }], 血脉封印详细页: ['page-ability', 'martial'],
@@ -26184,6 +26184,8 @@
     // 私密档案入口规则不变：只借用已有内容挂长按（见 canOpenPrivateArchive 注释）
     privateArchiveAllowed: () => canOpenPrivateArchive(liveSnapshot),
     privateArchiveKey: '私密档案详细页',
+    // 私密档案数据：入口规则不满足时为 null（见 canOpenPrivateArchive）
+    privateArchive: () => 构建私密档案数据(liveSnapshot),
     // 待选魂环、待确认技能设计（座舱据此显示横幅与确认面）
     pending: () => 座舱待处理(),
     // 战斗进行中但终端被收起时，座舱给出返回入口
@@ -26213,256 +26215,54 @@
     return 同步座舱(snapshot);
   }
 
-  // 旧详情界面已由座舱取代：详情构建只剩私密档案（座舱不设计其内容；入口规则见 canOpenPrivateArchive）
-  function buildLiveArchiveModal(previewKey) {
-    previewKey = 归一化详情预览键(previewKey);
-    if (!liveSnapshot || previewKey !== PRIVATE_ARCHIVE_PREVIEW_KEY) return null;
-    return 构建私密档案详情(liveSnapshot);
+  // 旧详情界面已全部由座舱取代（私密档案也由座舱渲染，数据见 构建私密档案数据）
+  function buildLiveArchiveModal() {
+    return null;
   }
 
-  function 构建私密档案详情(snapshot) {
+  // 私密档案数据（座舱渲染；字段、标签、路径、缺省值与旧详情页逐项一致，座舱不设计其内容）。
+  // 入口规则见 canOpenPrivateArchive：不满足时返回 null，座舱据此不渲染任何页面
+  function 构建私密档案数据(snapshot) {
     if (!canOpenPrivateArchive(snapshot)) return null;
-    const nsfwPath = getActiveNsfwPath(snapshot);
+    const p = getActiveNsfwPath(snapshot);
     const nsfw = getActiveNsfwData(snapshot);
-    const bodyPartEntries = safeEntries(deepGet(nsfw, '身体部位', {}));
-
+    const num = (v, d = 0) => toNumber(v, d);
+    const f = (label, value, path, kind = 'string', extra = {}) => ({ k: 'field', label, value, path: [...p, ...path], kind, ...extra });
+    const tags = (label, key) => ({ k: 'tags', label, path: [...p, key], list: (Array.isArray(nsfw[key]) ? nsfw[key] : []).map((v, i) => ({ value: toText(v), path: [...p, key, i] })) });
     return {
-      title: '私密档案',
-      onMount: modalBody => {
-        const panel = modalBody.closest('.mvu-modal-panel');
-        if (panel) {
-          panel.classList.add('nsfw-theme-active');
-          const observer = new MutationObserver(() => {
-            if (!modalBody.querySelector('.nsfw-modal-grid')) {
-              panel.classList.remove('nsfw-theme-active');
-              observer.disconnect();
-            }
-          });
-          observer.observe(modalBody, { childList: true });
-        }
-      },
-      body: `
-          <div class="nsfw-modal-grid">
-
-            <!-- 1. 核心欲念 -->
-            <div class="nsfw-theme-card">
-              <div class="nsfw-theme-head">
-                <div class="nsfw-theme-title">💕 核心欲念</div>
-              </div>
-              <div class="nsfw-theme-body">
-                <div class="nsfw-progress-container">
-                  <div class="nsfw-progress-label">
-                    <span>发情度</span>
-                    <span>${makeInlineEditableValue(toText(nsfw.发情度, '0'), { path: [...nsfwPath, '发情度'], kind: 'number' })} / 100</span>
-                  </div>
-                  <div class="nsfw-progress-track arousal">
-                    <div class="nsfw-fill-arousal" style="width: ${Math.min(100, Math.max(0, toNumber(nsfw.发情度, 0)))}%;"></div>
-                  </div>
-                </div>
-                <div class="nsfw-progress-container">
-                  <div class="nsfw-progress-label">
-                    <span>开发度</span>
-                    <span>${makeInlineEditableValue(toText(nsfw.开发度, '0'), { path: [...nsfwPath, '开发度'], kind: 'number' })} / 100</span>
-                  </div>
-                  <div class="nsfw-progress-track dev">
-                    <div class="nsfw-fill-dev" style="width: ${Math.min(100, Math.max(0, toNumber(nsfw.开发度, 0)))}%;"></div>
-                  </div>
-                </div>
-                <div class="identity-growth-grid identity-growth-grid--one">
-                  <div class="nsfw-meta-item">
-                    <b>敏感度基础值</b>
-                    <span>${makeInlineEditableValue(toText(nsfw.敏感度, '10'), { path: [...nsfwPath, '敏感度'], kind: 'number' })}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 2. 肉体密码 & 着装 -->
-            <div class="nsfw-theme-card">
-              <div class="nsfw-theme-head">
-                <div class="nsfw-theme-title">👙 肉体密码与私密着装</div>
-              </div>
-              <div class="nsfw-theme-body">
-                <div class="identity-growth-grid identity-growth-grid--two">
-                  <div class="nsfw-meta-item">
-                    <b>罩杯</b>
-                    <span>${makeInlineEditableValue(toText(deepGet(nsfw, '身材数据.罩杯'), '未知'), { path: [...nsfwPath, '身材数据', '罩杯'], kind: 'string' })}</span>
-                  </div>
-                  <div class="nsfw-meta-item">
-                    <b>三围 (胸/腰/臀)</b>
-                    <span>
-                      ${makeInlineEditableValue(toText(deepGet(nsfw, '身材数据.胸围'), '0'), { path: [...nsfwPath, '身材数据', '胸围'], kind: 'number' })} /
-                      ${makeInlineEditableValue(toText(deepGet(nsfw, '身材数据.腰围'), '0'), { path: [...nsfwPath, '身材数据', '腰围'], kind: 'number' })} /
-                      ${makeInlineEditableValue(toText(deepGet(nsfw, '身材数据.臀围'), '0'), { path: [...nsfwPath, '身材数据', '臀围'], kind: 'number' })}
-                    </span>
-                  </div>
-                  <div class="nsfw-meta-item">
-                    <b>内衣</b>
-                    <span>${makeInlineEditableValue(toText(deepGet(nsfw, '贴身衣物.内衣'), '未知'), { path: [...nsfwPath, '贴身衣物', '内衣'], kind: 'string' })}</span>
-                  </div>
-                  <div class="nsfw-meta-item">
-                    <b>内裤</b>
-                    <span>${makeInlineEditableValue(toText(deepGet(nsfw, '贴身衣物.内裤'), '未知'), { path: [...nsfwPath, '贴身衣物', '内裤'], kind: 'string' })}</span>
-                  </div>
-                </div>
-                <div class="nsfw-meta-item nsfw-meta-item--spaced">
-                  <b>身材描述</b>
-                  <span class="nsfw-text-wrap">${makeInlineEditableValue(toText(deepGet(nsfw, '身材数据.身材描述'), '无'), { path: [...nsfwPath, '身材数据', '身材描述'], kind: 'string' })}</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- 3. 生理节律 -->
-            <div class="nsfw-theme-card">
-              <div class="nsfw-theme-head">
-                <div class="nsfw-theme-title">🩸 生理节律</div>
-              </div>
-              <div class="nsfw-theme-body">
-                <div class="identity-growth-grid identity-growth-grid--two">
-                  <div class="nsfw-meta-item">
-                    <b>当前生理阶段</b>
-                    <span class="nsfw-highlight-red">${makeInlineEditableValue(toText(nsfw._生理阶段, '安全期'), { path: [...nsfwPath, '_生理阶段'], kind: 'string' })}</span>
-                  </div>
-                  <div class="nsfw-meta-item">
-                    <b>是否初潮</b>
-                    <span>${makeInlineEditableValue(nsfw._已来初潮 ? '已初潮' : '未初潮', { path: [...nsfwPath, '_已来初潮'], kind: 'boolean' })}</span>
-                  </div>
-                  <div class="nsfw-meta-item">
-                    <b>受孕节点</b>
-                    <span>${makeInlineEditableValue(String(toNumber(nsfw.受孕tick, -1)), { path: [...nsfwPath, '受孕tick'], kind: 'number' })}</span>
-                  </div>
-                  <div class="nsfw-meta-item">
-                    <b>当前怀孕天数</b>
-                    <span>${makeInlineEditableValue(String(toNumber(nsfw._怀孕天数, 0)), { path: [...nsfwPath, '_怀孕天数'], kind: 'number' })}</span>
-                  </div>
-                  <div class="nsfw-meta-item nsfw-meta-item--wide">
-                    <b>孕父</b>
-                    <span>${makeInlineEditableValue(toText(nsfw.受孕对象, '无'), { path: [...nsfwPath, '受孕对象'], kind: 'string' })}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 4. 堕落履历 -->
-            <div class="nsfw-theme-card">
-              <div class="nsfw-theme-head">
-                <div class="nsfw-theme-title">📈 开发履历</div>
-              </div>
-              <div class="nsfw-theme-body">
-                <div class="identity-growth-grid identity-growth-grid--three">
-                  ${[
-                    '高潮',
-                    '颜射',
-                    '内射',
-                    '吞精',
-                    '宠物扮演',
-                    '自慰',
-                    '性交',
-                    '手交',
-                    '足交',
-                    '口交',
-                    '素股',
-                    '发交',
-                    'SM',
-                    'COSPLAY',
-                  ]
-                    .map(
-                      exp => `
-                    <div class="nsfw-meta-item">
-                      <b>${exp}</b>
-                      <span>${makeInlineEditableValue(String(toNumber(deepGet(nsfw, ['经历次数', exp]), 0)), { path: [...nsfwPath, '经历次数', exp], kind: 'number' })}</span>
-                    </div>
-                  `,
-                    )
-                    .join('')}
-                </div>
-              </div>
-            </div>
-
-            <!-- 5. 深层性癖 -->
-            <div class="nsfw-theme-card">
-              <div class="nsfw-theme-head">
-                <div class="nsfw-theme-title">😈 深层性癖</div>
-              </div>
-              <div class="nsfw-theme-body">
-                <div class="nsfw-tag-section">
-                  <b class="nsfw-tag-label">性癖</b>
-                  <div class="nsfw-tag-list">
-                    ${(Array.isArray(nsfw.性癖) ? nsfw.性癖 : [])
-                      .map(
-                        (f, i) => `
-                      <span class="nsfw-tag">${makeInlineEditableValue(toText(f), { path: [...nsfwPath, '性癖', i], kind: 'string' })}</span>
-                    `,
-                      )
-                      .join('')}
-                  </div>
-                </div>
-                <div>
-                  <b class="nsfw-tag-label">性幻想</b>
-                  <div class="nsfw-tag-list">
-                    ${(Array.isArray(nsfw.性幻想) ? nsfw.性幻想 : [])
-                      .map(
-                        (f, i) => `
-                      <span class="nsfw-tag">${makeInlineEditableValue(toText(f), { path: [...nsfwPath, '性幻想', i], kind: 'string' })}</span>
-                    `,
-                      )
-                      .join('')}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 6. 身体部位 -->
-            <div class="nsfw-theme-card">
-              <div class="nsfw-theme-head">
-                <div class="nsfw-theme-title">💠 敏感部位档案</div>
-              </div>
-              <div class="nsfw-theme-body">
-                ${
-                  bodyPartEntries.length
-                    ? `
-                  <div class="nsfw-bodypart-grid">
-                    ${bodyPartEntries
-                      .map(
-                        ([partName, partData]) => `
-                      <div class="nsfw-bodypart-card">
-                        <div class="nsfw-bodypart-head">
-                          <div class="nsfw-bodypart-name">${htmlEscape(partName)}</div>
-                          <span class="nsfw-bodypart-badge">开发 ${makeInlineEditableValue(String(toNumber(deepGet(partData, '开发度', 0), 0)), { path: [...nsfwPath, '身体部位', partName, '开发度'], kind: 'number' })}</span>
-                        </div>
-                        <div class="nsfw-bodypart-meta">
-                          <div class="nsfw-meta-item">
-                            <b>外观特征</b>
-                            <span class="nsfw-text-wrap">${makeInlineEditableValue(toText(deepGet(partData, '外观特征', '无'), '无'), { path: [...nsfwPath, '身体部位', partName, '外观特征'], kind: 'string' })}</span>
-                          </div>
-                          <div class="identity-growth-grid identity-growth-grid--two">
-                            <div class="nsfw-meta-item">
-                              <b>敏感度加成</b>
-                              <span>${makeInlineEditableValue(String(toNumber(deepGet(partData, '敏感度加成', 0), 0)), { path: [...nsfwPath, '身体部位', partName, '敏感度加成'], kind: 'number' })}</span>
-                            </div>
-                            <div class="nsfw-meta-item">
-                              <b>状态描述</b>
-                              <span>${makeInlineEditableValue(toText(deepGet(partData, '状态描述', '正常'), '正常'), { path: [...nsfwPath, '身体部位', partName, '状态描述'], kind: 'string' })}</span>
-                            </div>
-                          </div>
-                          <div class="nsfw-meta-item">
-                            <b>体液残留</b>
-                            <span>${makeInlineEditableValue(toText(deepGet(partData, '体液残留', '无'), '无'), { path: [...nsfwPath, '身体部位', partName, '体液残留'], kind: 'string' })}</span>
-                          </div>
-                        </div>
-                      </div>
-                    `,
-                      )
-                      .join('')}
-                  </div>
-                `
-                    : '<div class="dossier-empty-note">当前角色尚未录入身体部位结构。</div>'
-                }
-              </div>
-            </div>
-
-          </div>
-        `,
+      sections: [
+        { title: '核心欲念', icon: 'heart', items: [
+          { k: 'bar', label: '发情度', value: num(nsfw.发情度), max: 100, path: [...p, '发情度'] },
+          { k: 'bar', label: '开发度', value: num(nsfw.开发度), max: 100, path: [...p, '开发度'] },
+          f('敏感度基础值', num(nsfw.敏感度, 10), ['敏感度'], 'number'),
+        ] },
+        { title: '肉体密码与私密着装', icon: 'shirt', items: [
+          f('罩杯', toText(deepGet(nsfw, '身材数据.罩杯'), '未知'), ['身材数据', '罩杯']),
+          { k: 'multi', label: '三围 (胸/腰/臀)', parts: ['胸围', '腰围', '臀围'].map(x => ({ value: num(deepGet(nsfw, ['身材数据', x])), path: [...p, '身材数据', x], kind: 'number' })) },
+          f('内衣', toText(deepGet(nsfw, '贴身衣物.内衣'), '未知'), ['贴身衣物', '内衣']),
+          f('内裤', toText(deepGet(nsfw, '贴身衣物.内裤'), '未知'), ['贴身衣物', '内裤']),
+          f('身材描述', toText(deepGet(nsfw, '身材数据.身材描述'), '无'), ['身材数据', '身材描述'], 'text', { wide: true }),
+        ] },
+        { title: '生理节律', icon: 'droplet', items: [
+          f('当前生理阶段', toText(nsfw._生理阶段, '安全期'), ['_生理阶段'], 'string', { tone: 'red' }),
+          f('是否初潮', nsfw._已来初潮 ? '已初潮' : '未初潮', ['_已来初潮'], 'enum', { options: ['已初潮', '未初潮'], values: { 已初潮: true, 未初潮: false } }),
+          f('受孕节点', num(nsfw.受孕tick, -1), ['受孕tick'], 'number'),
+          f('当前怀孕天数', num(nsfw._怀孕天数), ['_怀孕天数'], 'number'),
+          f('孕父', toText(nsfw.受孕对象, '无'), ['受孕对象'], 'string', { wide: true }),
+        ] },
+        { title: '开发履历', icon: 'chart-line', counts: true, items: ['高潮', '颜射', '内射', '吞精', '宠物扮演', '自慰', '性交', '手交', '足交', '口交', '素股', '发交', 'SM', 'COSPLAY']
+          .map(x => f(x, num(deepGet(nsfw, ['经历次数', x])), ['经历次数', x], 'number')) },
+        { title: '深层性癖', icon: 'tags', items: [tags('性癖', '性癖'), tags('性幻想', '性幻想')] },
+        { title: '敏感部位档案', icon: 'gem', empty: '当前角色尚未录入身体部位结构。', items: safeEntries(deepGet(nsfw, '身体部位', {})).map(([name, d]) => ({
+          k: 'part', name, dev: { value: num(deepGet(d, '开发度', 0)), path: [...p, '身体部位', name, '开发度'] },
+          fields: [
+            f('外观特征', toText(deepGet(d, '外观特征', '无'), '无'), ['身体部位', name, '外观特征'], 'text'),
+            f('敏感度加成', num(deepGet(d, '敏感度加成', 0)), ['身体部位', name, '敏感度加成'], 'number'),
+            f('状态描述', toText(deepGet(d, '状态描述', '正常'), '正常'), ['身体部位', name, '状态描述']),
+            f('体液残留', toText(deepGet(d, '体液残留', '无'), '无'), ['身体部位', name, '体液残留']),
+          ],
+        })) },
+      ],
     };
   }
 
@@ -36086,6 +35886,11 @@ ${播报文本}
   }
 
   function openLongPressPreview(previewKey, target) {
+    // 私密档案由座舱渲染：长按（座舱里唯一入口）复核规则后交给座舱路由
+    if (previewKey === PRIVATE_ARCHIVE_PREVIEW_KEY && window.COCKPIT?.mounted) {
+      if (canOpenPrivateArchive(liveSnapshot)) window.COCKPIT.route({ to: 'privateArchive' });
+      return;
+    }
     const targetInUnified = !!(target && typeof target.closest === 'function' && target.closest('#mvu-unified-mount'));
     if (targetInUnified && typeof window.__MVU_OPEN_UNIFIED_PREVIEW__ === 'function') {
       window.__MVU_OPEN_UNIFIED_PREVIEW__(previewKey, { preserveMapDispatchContext: true });
