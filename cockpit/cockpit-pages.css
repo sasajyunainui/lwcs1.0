@@ -631,3 +631,45 @@ div.rail-item{cursor:default}
 /* 未生成值的占位「—」：弱色，不带说明 */
 .tbd{color:var(--ink3);font-weight:700;font-style:normal}
 .holo .tbd,.cast .tbd,.intent-pill .tbd{color:#8ea6c8}
+/* 设计台预算核算（图形化）：合规窗口刻度（只取最低 ~ 上限附近，指针 = 实际 COST）/ COST 构成条 / 上限算式 */
+.bgw{display:flex;flex-direction:column;gap:.45em}
+.bgw-head{display:flex;align-items:baseline;gap:.4em;flex-wrap:wrap}
+.bgw-head>b{font:900 1.5em/1 Bahnschrift,sans-serif;color:var(--blue-d)}
+.bgw-head>small{color:var(--ink3);font-weight:700}
+.bgw-state{margin-left:auto;font-size:max(10.5px,.78em);font-weight:900;padding:.05em .5em;color:#0d7d50;background:rgba(22,170,110,.12);box-shadow:inset 0 0 0 1px rgba(22,170,110,.4)}
+.bgw.low .bgw-state{color:#9a6a12;background:rgba(242,179,61,.16);box-shadow:inset 0 0 0 1px rgba(200,150,30,.5)}
+.bgw.over .bgw-state{color:#b3311f;background:rgba(214,69,42,.12);box-shadow:inset 0 0 0 1px rgba(214,69,42,.45)}
+.bgw-scale{position:relative;height:14px;margin:1.5em .5em 1.6em;background:linear-gradient(180deg,#1b2437,#3a4760);box-shadow:inset 0 0 0 1px #33415b}
+.bgw-win{position:absolute;top:0;bottom:0;background:linear-gradient(180deg,rgba(86,228,174,.8),rgba(14,150,96,.8));box-shadow:0 0 8px rgba(30,190,120,.5)}
+.bgw-needle{position:absolute;top:-6px;bottom:-6px;width:3px;translate:-1.5px 0;background:#fff;box-shadow:0 0 0 1px #1d6ae6,0 0 8px rgba(60,150,255,.9)}
+.bgw-needle em{position:absolute;bottom:calc(100% + 2px);left:50%;translate:-50% 0;font:900 max(10.5px,.8em) Bahnschrift,sans-serif;font-style:normal;color:var(--blue-d);white-space:nowrap}
+.bgw.over .bgw-needle{box-shadow:0 0 0 1px #c8323a,0 0 8px rgba(214,69,42,.9)}
+.bgw.over .bgw-needle em{color:#b3311f}
+.bgw.low .bgw-needle{box-shadow:0 0 0 1px #d98a1c,0 0 8px rgba(242,179,61,.9)}
+.bgw.low .bgw-needle em{color:#9a6a12}
+.bgw-tick{position:absolute;top:calc(100% + 4px);font:800 max(10.5px,.74em) Bahnschrift,sans-serif;white-space:nowrap;cursor:help}
+.bgw-tick::before{content:"";position:absolute;bottom:100%;width:1px;height:5px;background:currentColor}
+.bgw-tick.lo{translate:-100% 0;color:#9a6a12}
+.bgw-tick.lo::before{right:0}
+.bgw-tick.hi{color:#b3311f}
+.bgw-tick.hi::before{left:0}
+.bgc,.bge{display:flex;flex-direction:column;gap:.3em}
+.bgc h4,.bge h4{margin:0;font-size:max(10.5px,.8em);font-weight:900;color:var(--ink2);letter-spacing:.05em}
+.bgc-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:.4em;font-size:max(10.5px,.8em);font-weight:800;color:var(--ink2)}
+.bgc-row>span{white-space:nowrap;min-width:3em}
+.bgc-row>i{height:7px;background:rgba(30,48,80,.1)}
+.bgc-row>i>b{display:block;height:100%;background:linear-gradient(90deg,#7cc0ff,#1d6ae6)}
+.bgc-row.neg>i>b{background:repeating-linear-gradient(135deg,#e05a48 0 3px,#f2a091 3px 6px)}
+.bgc-row.neg>em{color:#b3311f}
+.bgc-row.sum{padding-top:.25em;box-shadow:inset 0 1px 0 rgba(30,48,80,.18);color:var(--ink)}
+.bgc-row>em{font-style:normal;font-family:Bahnschrift,sans-serif;font-weight:900}
+.bge-eq{display:flex;align-items:center;gap:.25em;flex-wrap:wrap}
+.bge-eq>span{display:flex;flex-direction:column;align-items:center;padding:.25em .45em;background:rgba(255,255,255,.7);box-shadow:inset 0 0 0 1px rgba(30,48,80,.16);cursor:help}
+.bge-eq>span.res{background:linear-gradient(180deg,#eaf2ff,#d9e7ff);box-shadow:inset 0 0 0 1px rgba(47,124,246,.45);cursor:default}
+.bge-eq b{font:900 1em Bahnschrift,sans-serif;color:var(--ink)}
+.bge-eq small{font-size:max(10.5px,.7em);color:var(--ink3);font-weight:700}
+.bge-eq>i{font-style:normal;font-weight:900;color:var(--ink3)}
+.bge-src{display:flex;gap:.6em;font-size:max(10.5px,.74em);font-weight:800;color:var(--ink3)}
+.bge-cap{font-size:max(10.5px,.76em);font-weight:800;color:var(--ink3);cursor:help}
+.bge-cap i{margin-right:.3em}
+.bge-cap.on{color:#b3311f}

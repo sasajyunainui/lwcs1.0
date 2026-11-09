@@ -280,14 +280,41 @@
   // 只负责画：r = 评估技能预算_V1 的结果，block = 保存被拦截的原因（设计台 v2 传入与保存断言同源的结果）
   const dzGauge = (c, { r, block, err }) => {
     if (err) return `<div class="warn"><i class="fa-solid fa-triangle-exclamation"></i><span>${c.esc(err)}</span></div>`;
-    const cap = Math.max(r.位级硬上限 || 1, r.实际COST, r.允许上限), pc = v => `${Math.max(0, Math.min(100, v / cap * 100)).toFixed(1)}%`;
-    const util = r.允许上限 ? r.实际COST / r.允许上限 * 100 : 0;
-    return `<div class="budget">
-        <div class="bg-bar"><i class="cur ${r.是否超预算 ? 'over' : block ? 'low' : ''}" style="width:${pc(r.实际COST)}"></i><b class="mk min" style="left:${pc(r.最低有效COST)}" title="最低有效 ${r.最低有效COST}"></b><b class="mk cap" style="left:${pc(r.允许上限)}" title="允许上限 ${r.允许上限}"></b></div>
-        <div class="bg-legend"><span><i class="cur"></i>实际 ${c.fmt(r.实际COST)}</span><span data-hint="实际 COST 低于最低有效值超过 1 点时不能保存（引擎容差 1 点）。"><i class="min"></i>最低 ${c.fmt(r.最低有效COST)}</span><span><i class="cap"></i>上限 ${c.fmt(r.允许上限)}</span></div>
-        <div class="bg-util"><b>${util.toFixed(0)}%</b><small>预算利用率</small></div>
+    const lo = Number(r.最低有效COST) || 0, gate = Number(r.实际门禁 ?? r.允许上限) || 0, cur = Number(r.实际COST) || 0;
+    const util = gate ? cur / gate * 100 : 0;
+    // 合规窗口：刻度只取「最低有效 ~ 上限」附近（全量程 0~硬上限 时窗口太窄，标记挤成一条线），指针 = 实际 COST
+    const span = Math.max((gate - lo) * 1.2, gate * 0.06, 0.5), d0 = Math.max(0, Math.min(cur, lo) - span), d1 = Math.max(cur, gate) + span;
+    const at = v => `${((v - d0) / (d1 - d0) * 100).toFixed(1)}%`;
+    const state = r.是否超预算 ? 'over' : block ? 'low' : 'ok';
+    const stateText = r.是否超预算 ? `超出 ${c.fmt(r.超出COST)}` : block ? '低于最低' : '在窗口内';
+    // COST 构成：以效果 COST 为满格，扣减项画成红色斜纹段，最后一行是实际 COST
+    const full = Math.max(Number(r.效果原始COST) || 0, cur, 0.01), w = v => `${Math.max(0, Math.min(100, v / full * 100)).toFixed(1)}%`;
+    const parts = [
+      ['效果', Number(r.效果原始COST) || 0, ''],
+      r.限制COST ? ['限制抵扣', -r.限制COST, c.hint(limitWhy(r).join('；'))] : null,
+      r.副作用COST ? ['副作用', -r.副作用COST, r.副作用原始COST !== r.副作用COST ? c.hint(`原始 ${c.fmt(r.副作用原始COST)}，按规则折算`) : ''] : null,
+      ['实际', cur, ''],
+    ].filter(Boolean);
+    const capped = Number(r.位级硬上限) > 0 && Number(r.允许上限) > Number(r.位级硬上限);
+    return `<div class="bgw ${state}">
+        <div class="bgw-head"><b>${util.toFixed(0)}%</b><small>预算利用率</small><span class="bgw-state">${stateText}</span></div>
+        <div class="bgw-scale" role="img" aria-label="实际 ${c.fmt(cur)}，合规窗口 ${c.fmt(lo)} 至 ${c.fmt(gate)}">
+          <i class="bgw-win" style="left:${at(lo)};width:calc(${at(gate)} - ${at(lo)})"></i>
+          <i class="bgw-needle" style="left:${at(cur)}"><em>${c.fmt(cur)}</em></i>
+          <span class="bgw-tick lo" style="left:${at(lo)}" data-hint="最低有效 COST：实际 COST 低于它超过 1 点时不能保存（引擎容差 1 点）">${c.fmt(lo)}</span>
+          <span class="bgw-tick hi" style="left:${at(gate)}" data-hint="预算上限：实际 COST 不能超过">${c.fmt(gate)}</span>
+        </div>
       </div>
-      ${c.kv([['效果 COST', c.fmt(r.效果原始COST)], ['限制抵扣', r.限制COST ? `−${c.fmt(r.限制COST)}${c.hint(limitWhy(r).join('；'))}` : '<span class="none">无</span>'], ['副作用', r.副作用原始COST ? `−${c.fmt(r.副作用COST)}${r.副作用原始COST !== r.副作用COST ? c.hint(`原始 ${c.fmt(r.副作用原始COST)}，按规则折算`) : ''}` : '<span class="none">无</span>'], ['实际 COST', `<b>${c.fmt(r.实际COST)}</b>`], ['运转基准', `${c.fmt(r.运转基准)} × 代价能量 ${energyText(c, r.代价能量)}`], ['硬上限', Number(r.位级硬上限) > 0 ? c.fmt(r.位级硬上限) : '<span class="none">无</span>']])}
+      <section class="bgc"><h4>COST 构成</h4>${parts.map(([l, v, h]) => `<div class="bgc-row${v < 0 ? ' neg' : ''}${l === '实际' ? ' sum' : ''}"><span>${l}${h}</span><i><b style="width:${w(Math.abs(v))}"></b></i><em>${v < 0 ? '−' : ''}${c.fmt(Math.abs(v))}</em></div>`).join('')}</section>
+      <section class="bge"><h4>上限从哪来</h4>
+        <div class="bge-eq">
+          <span data-hint="这个魂技位本身的预算：由魂环位、魂环年限、天赋、魂技品质决定"><b>${c.fmt(r.运转基准)}</b><small>运转基准</small></span><i>×</i>
+          <span data-hint="施放代价换来的预算倍率 = 魂力消耗倍数 × 前摇倍数（乘积不到 1 时直接取乘积，到 1 以上取立方根）。消耗越多、前摇越长，上限越高"><b>${energyText(c, r.代价能量)}</b><small>代价能量</small></span><i>=</i>
+          <span class="res"><b>${c.fmt(r.允许上限)}</b><small>上限</small></span>
+        </div>
+        ${Number.isFinite(Number(r.消耗倍数)) && Number.isFinite(Number(r.前摇倍数)) ? `<div class="bge-src"><span>消耗 ×${Number(r.消耗倍数).toFixed(2)}</span><span>前摇 ×${Number(r.前摇倍数).toFixed(2)}</span></div>` : ''}
+        ${Number(r.位级硬上限) > 0 ? `<div class="bge-cap${capped ? ' on' : ''}" data-hint="这个魂技位的预算封顶，提高代价也不能超过"><i class="fa-solid fa-lock"></i>硬上限 ${c.fmt(r.位级硬上限)}${capped ? '（已封顶）' : ''}</div>` : ''}
+      </section>
       ${block || r.是否超预算 ? `<div class="warn"><i class="fa-solid fa-ban"></i><span>无法保存：${c.esc(block || `超出 ${c.fmt(r.超出COST)}`)}</span></div>` : '<div class="okline"><i class="fa-solid fa-circle-check"></i>预算合规，可以保存</div>'}
       <button class="cta" type="button" data-dz-save ${block || r.是否超预算 ? 'disabled' : ''}><i class="fa-solid fa-floppy-disk"></i>保存设计</button>`;
   };
