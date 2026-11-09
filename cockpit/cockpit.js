@@ -919,12 +919,12 @@
       if (room(inner)) inner.scrollTop += dy;
       return;
     }
-    // 接力滚聊天区：同一次手势累计目标位置再平滑滚过去（连续调用平滑滚动会从动画中途重新起步、丢距离）
+    // 接力滚聊天区：同一次手势累计目标位置，逐帧缓动过去；300ms 内没到位（窗口在后台、动画帧被节流）就直接落到目标
     e.preventDefault();
-    const outer = wheelGesture.outer ||= outerScroller(); if (!outer) return;
-    const top = Math.max(0, Math.min(outer.scrollHeight - outer.clientHeight, (wheelGesture.to ?? outer.scrollTop) + dy));
-    wheelGesture.to = top;
-    outer.scrollTo({ top, behavior: Math.abs(dy) >= 40 ? 'smooth' : 'instant' });
+    const g = wheelGesture, outer = g.outer ||= outerScroller(); if (!outer) return;
+    g.to = Math.max(0, Math.min(outer.scrollHeight - outer.clientHeight, (g.to ?? outer.scrollTop) + dy));
+    if (!g.raf) { const step = () => { const d = g.to - outer.scrollTop; if (Math.abs(d) < 1) { outer.scrollTop = g.to; g.raf = 0; return; } outer.scrollTop += Math.sign(d) * Math.max(1, Math.abs(d) * .32); g.raf = requestAnimationFrame(step); }; g.raf = requestAnimationFrame(step); }
+    clearTimeout(g.snap); g.snap = setTimeout(() => { cancelAnimationFrame(g.raf); g.raf = 0; outer.scrollTop = g.to; }, 300);
   }, { passive: false });
   $('.cockpit').addEventListener('click', e => {
     if (e.target.closest('.ie-edit')) return;
