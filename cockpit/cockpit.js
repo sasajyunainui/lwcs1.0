@@ -126,7 +126,10 @@
   const optOf = o => o && typeof o === 'object' ? { value: String(o.value ?? o.label ?? ''), label: String(o.label ?? o.value ?? ''), hint: o.hint || '', group: o.group || '' } : { value: String(o ?? ''), label: String(o ?? ''), hint: '', group: '' };
   let pointerHeld = false;
   document.addEventListener('pointerdown', () => { pointerHeld = true; }, true);
-  document.addEventListener('pointerup', () => { pointerHeld = false; }, true);
+  // 松手（含在座舱外松手、指针被取消）一律解除手势挂起，不会因为漏掉 pointerup 让刷新一直挂着
+  const release = () => { pointerHeld = false; api.hold?.(false); };
+  document.addEventListener('pointerup', release, true);
+  document.addEventListener('pointercancel', release, true);
   const pick = (path, value, options = [], o = {}) => {
     const opts = options.map(optOf), v = String(value ?? ''), cur = opts.find(x => x.value === v);
     return `<span class="picker${o.cls ? ' ' + o.cls : ''}" data-picker="${esc(path)}" data-picker-opts="${esc(JSON.stringify(opts))}" data-picker-value="${esc(v)}"><button type="button" class="picker-btn" aria-haspopup="listbox" aria-expanded="false"${o.disabled ? ' disabled' : ''}${cur?.hint ? ` data-hint="${esc(cur.hint)}"` : ''}><span>${esc(cur ? cur.label : (v || o.placeholder || '请选择'))}</span><i class="fa-solid fa-chevron-down"></i></button></span>`;
@@ -214,6 +217,8 @@
     },
     get mounted() { return mounted; },
     refresh() { api.refresh?.(); },
+    // 手势进行中（拖沙盘）挂起桥接刷新，结束后补一次重绘
+    hold(on) { api.hold?.(on); },
     // 输入框失焦后的重绘：按键还没松开时等这次点击结束再重绘，免得按钮被换掉、点击落空
     refreshSoon() { if (!pointerHeld) return api.refresh?.(); document.addEventListener('click', () => setTimeout(() => api.refresh?.()), { once: true, capture: true }); },
     go(id, page) { api.switchDomain?.(id, page); },
@@ -593,7 +598,7 @@
       clearTimeout(closeTimer); clearTimeout(openTimer);
       if (pinned && state.inspect && item.dataset.inspect !== `${state.inspect.kind}:${state.inspect.id}`) return;
       // 条目可用 data-hover-delay 放慢（沙盘地标密，扫过时不该频频弹出）
-      openTimer = setTimeout(() => { const [kind, ...rest] = item.dataset.inspect.split(':'); openInspector(kind, rest.join(':'), item, 'hover'); }, Number(item.dataset.hoverDelay) || hoverMs());
+      openTimer = setTimeout(() => { if (holding || item.closest('.grabbing')) return; const [kind, ...rest] = item.dataset.inspect.split(':'); openInspector(kind, rest.join(':'), item, 'hover'); }, Number(item.dataset.hoverDelay) || hoverMs());
       return;
     }
     clearTimeout(openTimer);
@@ -643,15 +648,15 @@
     const key = item.dataset.inspect, shown = floatOpen() && state.inspect && `${state.inspect.kind}:${state.inspect.id}` === key;
     if (shown || (hoverItem === item && hoverPending)) return;
     hoverItem = item; hoverPending = true; clearTimeout(closeTimer); clearTimeout(openTimer);
-    openTimer = setTimeout(() => { hoverPending = false; if (!item.isConnected) return; const [kind, ...rest] = key.split(':'); openInspector(kind, rest.join(':'), item, 'hover'); }, Number(item.dataset.hoverDelay) || hoverMs());
+    openTimer = setTimeout(() => { hoverPending = false; if (!item.isConnected || holding || item.closest('.grabbing')) return; const [kind, ...rest] = key.split(':'); openInspector(kind, rest.join(':'), item, 'hover'); }, Number(item.dataset.hoverDelay) || hoverMs());
   });
   // 点浮窗与条目以外的地方、或屏内滚动时收起（浮窗锚点会移动）
   addEventListener('pointerdown', e => { if (floatOpen() && !e.target.closest('.fcard,.inline-detail,[data-inspect],[data-scan],.picker-list,.ie-floatbox')) closeInspector(); });
   cockpitEl.addEventListener('scroll', e => { if (layer.firstChild && !e.target.closest?.('.fcard')) closeInspector(); }, true);
 
-  let editing = null;
+  let editing = null, holding = false;
   // 编辑结束后若桥接在编辑期间送来过新数据，补一次重绘
-  const flushPending = () => { if (api.pending && !editing) { api.pending = false; renderPage({ kind: 'refresh' }); syncReadout(); } };
+  const flushPending = () => { if (api.pending && !editing && !holding) { api.pending = false; renderPage({ kind: 'refresh' }); syncReadout(); } };
   const parseEdit = (kind, meta, str) => {
     const t = String(str).trim();
     if (kind === 'number') {
@@ -1062,6 +1067,6 @@
   };
   // 宿主尺寸变化（挂到新宿主、聊天栏宽度变化）后重排
   const relayout = () => { syncMobile(); readStageZ(); moveSlider($('.tab.on', track)); size(); if (state.domain) { applyWide(currentView().v); fitCarousel(); } if (tickText !== null) syncTicker(tickText); };
-  api = { refresh: () => { if (!state.domain) return; if (editing) { api.pending = true; return; } renderPage({ kind: 'refresh' }); }, switchDomain, switchPage, openInspector, closeInspector, reproject, syncReadout, start, relayout, isEditing: () => !!editing, pending: false };
+  api = { refresh: () => { if (!state.domain) return; if (editing) { api.pending = true; return; } renderPage({ kind: 'refresh' }); }, switchDomain, switchPage, openInspector, closeInspector, reproject, syncReadout, start, relayout, isEditing: () => !!editing || holding, hold: on => { if (holding === !!on) return; holding = !!on; if (!on) setTimeout(flushPending); }, pending: false };
   }
 })();

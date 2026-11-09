@@ -66,7 +66,7 @@ details.fold[open]>summary::after{content:" －"}
 .narr.clamp .txt{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 
 /* 全息沙盘 */
-.table{position:relative;flex:1;min-height:0;perspective:900px;perspective-origin:50% 0%;overflow:hidden;cursor:grab;touch-action:none;
+.table{position:relative;flex:1;min-height:0;perspective:900px;perspective-origin:50% 0%;overflow:hidden;cursor:grab;touch-action:none;-webkit-user-select:none;user-select:none;
   background:radial-gradient(70% 55% at 50% 60%,rgba(80,150,255,.28),transparent 70%),linear-gradient(180deg,#0d1830,#16284a);clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px);box-shadow:inset 0 0 0 1px rgba(110,180,255,.4)}
 .table.grabbing{cursor:grabbing}
 .table .plane{position:absolute;left:50%;top:56%;width:var(--pw,1000px);aspect-ratio:3174/2246;transform-style:preserve-3d;transform:translate(-50%,-50%) rotateX(50deg) scale(var(--z,1)) translate(var(--tx,0px),var(--ty,0px))}
