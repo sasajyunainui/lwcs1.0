@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:8790670d9561ddadb0145e57a7b0f2c248d4f3a197ffaf28da93e24b213193b7|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:a73016f163dcd2a0139d7780be8207fd2468568efd099c1245286f699fb919f8|cockpit/pages-role.js:a95b4b06280a1e23e58c9062ec648c0e8b6622a0994db5d8121102a1344fbda6|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:10c44a13d6e04c2f27129d1f92d4b0ec5dd55092c45a1394f2b7819d873d3b0f|cockpit/pages-ability.js:73edb53ba86389028800dc6af46a434d8bf80be363167c76e26b665ad737ced7|cockpit/pages-supplies.js:8e64e24ba4d704035ef0cfee05b472a383de5ae01d5d7312aeca94aa9fe649f3|cockpit/pages-map.js:f5b96e3ff3473f44b0df11259c791d84ae81b423911485d4721cf0a00cf105bf|cockpit/pages-world.js:8487e0a1bc390c8e1a1d5898ea84013ec3498a1f03800dc14103a1dcc7a7b69a|cockpit/pages-terminal.js:4d51455d552329d8cada13b0f1d4336d30962e5d7dae64ae93d9a8bc0a9395a6 */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:8790670d9561ddadb0145e57a7b0f2c248d4f3a197ffaf28da93e24b213193b7|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:cdb9ae92c2529fb690edc09fec8b4f89a2f9df9b9235601c21e75d30a34ad480|cockpit/pages-role.js:a95b4b06280a1e23e58c9062ec648c0e8b6622a0994db5d8121102a1344fbda6|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:10c44a13d6e04c2f27129d1f92d4b0ec5dd55092c45a1394f2b7819d873d3b0f|cockpit/pages-ability.js:73edb53ba86389028800dc6af46a434d8bf80be363167c76e26b665ad737ced7|cockpit/pages-supplies.js:8e64e24ba4d704035ef0cfee05b472a383de5ae01d5d7312aeca94aa9fe649f3|cockpit/pages-map.js:f5b96e3ff3473f44b0df11259c791d84ae81b423911485d4721cf0a00cf105bf|cockpit/pages-world.js:8487e0a1bc390c8e1a1d5898ea84013ec3498a1f03800dc14103a1dcc7a7b69a|cockpit/pages-terminal.js:4d51455d552329d8cada13b0f1d4336d30962e5d7dae64ae93d9a8bc0a9395a6 */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -52924,6 +52924,20 @@ ${播报文本}
   track.addEventListener('click', e => { const t = e.target.closest('.tab'); if (t) switchDomain(t.dataset.tab); });
   $('.cockpit').addEventListener('click', e => { const r = e.target.closest('[data-route]'); if (r) C.route({ to: r.dataset.route }); });
   $('#ck-keys').addEventListener('click', e => { const k = e.target.closest('.key'); if (k) switchPage(k.dataset.page); });
+  // 滚轮归屏：桌面三屏里指针在哪块屏就只滚那块屏。落在屏框 / 屏内不可滚的地方也滚这块屏的内容；
+  // 屏里内容滚到头时吞掉这次滚轮，不再串到酒馆聊天区。只有整块屏根本没有可滚内容才放行（让聊天区照常滚）
+  const scrollable = el => el.scrollHeight > el.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(el).overflowY);
+  screens.addEventListener('wheel', e => {
+    if (e.defaultPrevented || e.ctrlKey || isMobile()) return;
+    const panel = e.target.closest('.wing,.center'); if (!panel) return;
+    const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? panel.clientHeight : 1); if (!dy) return;
+    const room = el => dy > 0 ? el.scrollHeight - el.clientHeight - el.scrollTop > 1 : el.scrollTop > 0;
+    for (let el = e.target; el && el !== panel; el = el.parentElement) if (scrollable(el) && room(el)) return;
+    const main = $$('.face:not(.leaving) :is(.pad,.scroll,.list,.q-list,.dz-body,.set-tiles,.dz2-skills)', panel).find(scrollable);
+    if (!main) return;
+    e.preventDefault();
+    if (!main.contains(e.target) && room(main)) main.scrollTop += dy;
+  }, { passive: false });
   $('.cockpit').addEventListener('click', e => {
     if (e.target.closest('.ie-edit')) return;
     const ieEl = e.target.closest('.ie'); if (ieEl) { e.stopPropagation(); return beginEdit(ieEl); }
