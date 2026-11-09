@@ -82,8 +82,8 @@
     召唤生成: e => ({ icon: 'ghost', title: `召唤${txt(e.召唤物名称) || txt(e.召唤单位类型) || ''}` }),
   };
   const fxOf = e => (FX[e.原型] || (() => ({ icon: 'bolt', title: e.原型 || '效果' })))(e);
-  // 数值：伤害结算没有「数值」，给威力倍率与段数
-  const fxVal = (c, e) => !c.blank(e.数值) ? String(e.数值) : e.原型 === '伤害结算' && e.威力倍率 != null ? `×${e.威力倍率}${Number(e.攻击段数) > 1 ? ` · ${e.攻击段数} 段` : ''}` : '';
+  // 数值：伤害结算没有「数值」，给威力倍率（百分比口径，基准 100）与段数
+  const fxVal = (c, e) => !c.blank(e.数值) ? String(e.数值) : e.原型 === '伤害结算' && e.威力倍率 != null ? `${e.威力倍率}%${Number(e.攻击段数) > 1 ? ` × ${e.攻击段数} 段` : ''}` : '';
   const fxRow = (c, e) => {
     const down = neg(e), f = fxOf(e);
     const meta = [e.目标, e.持续回合 ? `持续 ${c.fmt(e.持续回合)} 回合` : '', e.生效方式].filter(Boolean).map(c.esc).join(' · ');
