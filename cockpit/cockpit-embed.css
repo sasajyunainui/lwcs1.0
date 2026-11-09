@@ -15,7 +15,7 @@
 @container cockpit (min-width:701px){
   .wing .h .en{display:none}
   .wing .attrs.compact .attr{grid-template-columns:auto auto auto minmax(0,1fr);gap:.45em;padding:.4em .5em}
-  .wing .attr em{font-size:.72em}
+  .wing .attr em{font-size:max(10.5px,.72em)}
   .wing .q-tabs .key-s i{display:none}
   .wing .dz2-skills .row strong,.wing .dz2-skills .row small{white-space:normal;text-overflow:clip;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
 }
@@ -33,7 +33,7 @@
 @container cockpit (min-width:701px) and (max-width:879px){
   .h .en{display:none}
   .wing .attr em{white-space:normal;text-align:right;line-height:1.1}
-  .wing .q-tabs .key-s{padding-inline:0;font-size:.78em}
+  .wing .q-tabs .key-s{padding-inline:0;font-size:max(10.5px,.78em)}
 }
 /* 旧状态栏样式里有一条全局 .stage（flex 竖排、overflow:hidden、内边距）会漏进座舱：overflow 非 visible 时 3D 透视被压平，
    两翼看起来就是平铺的。这里把座舱台面复位（删旧界面后这条仍无害） */
@@ -95,3 +95,15 @@
 button,input,select,textarea{font:inherit;color:inherit;margin:0}
 h1,h2,h3,h4,p,dl,dd,ul,ol{margin:0}
 img{max-width:none}
+/* 侧屏列表行（宽约 190px）：前置徽签（鼎盛 / 盟友与竞争…）与行尾数值会把名称挤成一两个字一行——
+   名称独占第一行，徽签、数值移到第二行；前置是图标座的行，图标跨两行、行尾数值落到名称下方；箭头去掉（整行本身就是按钮） */
+@container cockpit (min-width:701px){
+  .wing .list .row{grid-template-columns:auto minmax(0,1fr);row-gap:.15em}
+  .wing .list .row>.sock:first-child,.wing .list .row>.medal:first-child{grid-row:span 2}
+  .wing .list .row>:nth-child(3){grid-column:2;justify-self:start}
+  .wing .list .row>i.fa-chevron-right{display:none}
+  .wing .list .row:has(>.chip:first-child,>.plq:first-child){grid-template-columns:minmax(0,1fr) auto}
+  .wing .list .row:has(>.chip:first-child,>.plq:first-child)>:first-child{grid-row:2;grid-column:1;justify-self:start}
+  .wing .list .row:has(>.chip:first-child,>.plq:first-child)>div{grid-row:1;grid-column:1/-1}
+  .wing .list .row:has(>.chip:first-child,>.plq:first-child)>:nth-child(3){grid-row:2;grid-column:2;justify-self:end}
+}

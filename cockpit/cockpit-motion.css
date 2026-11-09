@@ -19,7 +19,7 @@
 .tile{display:grid;grid-template-columns:auto minmax(0,1fr);gap:.1em .55em;align-items:center;padding:.5em .6em;background:rgba(255,255,255,.6);box-shadow:inset 0 0 0 1px rgba(30,48,80,.15);clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)}
 .tile .sock{grid-row:span 2;--s:2em}
 .tile b{font-weight:900;font-size:.92em;line-height:1.2;min-width:0;overflow-wrap:anywhere}
-.tile small{font-size:.74em;color:var(--ink3);font-weight:800}
+.tile small{font-size:max(10.5px,.74em);color:var(--ink3);font-weight:800}
 .tile.dim b{color:var(--ink3)}
 .tile.wide{grid-column:1/-1}
 .tile.big b{font-family:Bahnschrift,sans-serif;font-size:1.5em;transform:skewX(-8deg);display:inline-block}
@@ -32,7 +32,7 @@
 .dial .arc{fill:none;stroke:url(#dialGrad);stroke-width:9;stroke-linecap:round;filter:drop-shadow(0 0 5px rgba(40,130,255,.7));transition:stroke-dashoffset 1.2s cubic-bezier(.2,.8,.2,1)}
 .dial .core{position:absolute;inset:22%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;border-radius:50%;background:radial-gradient(circle at 40% 30%,#ffffff,#dde6f1 70%);box-shadow:inset 0 0 0 1px rgba(30,48,80,.2),0 4px 10px rgba(20,40,80,.18)}
 .dial .core .lv{font-size:2.2em}
-.dial .core small{font-size:.72em;color:var(--ink3);font-weight:800}
+.dial .core small{font-size:max(10.5px,.72em);color:var(--ink3);font-weight:800}
 .dial .core b{font-size:.86em;color:var(--blue-d);font-weight:900}
 
 /* 六维雷达 */
@@ -57,7 +57,7 @@
 .star .mini-ava{width:3.6em;height:3.6em;box-shadow:0 0 0 2px rgba(190,225,255,.9),0 0 14px rgba(90,170,255,.8)}
 .star.self .mini-ava{width:4.4em;height:4.4em;box-shadow:0 0 0 2px #ffd36b,0 0 18px rgba(255,200,90,.8)}
 .star b{font-size:.84em;padding:.05em .45em;background:rgba(9,18,38,.8);clip-path:polygon(4px 0,100% 0,calc(100% - 4px) 100%,0 100%)}
-.star small{font-weight:800;font-size:.76em}
+.star small{font-weight:800;font-size:max(10.5px,.76em)}
 
 @media (prefers-reduced-motion:reduce){.face .reveal{clip-path:none!important}.fcard .holo{clip-path:polygon(16px 0,100% 0,100% calc(100% - 16px),calc(100% - 16px) 100%,0 100%,0 16px)!important}}
 
@@ -74,20 +74,20 @@
 .attr .sock{--s:1.8em}
 .attr span{font-weight:800;color:var(--ink2);font-size:.9em;white-space:nowrap}
 .attr b{font-family:Bahnschrift,sans-serif;font-weight:700;font-size:1.3em;transform:skewX(-8deg)}
-.attr em{font-style:normal;font-size:.78em;font-weight:800;color:#0e8e5a;text-align:right;white-space:nowrap}
+.attr em{font-style:normal;font-size:max(10.5px,.78em);font-weight:800;color:#0e8e5a;text-align:right;white-space:nowrap}
 
 /* 数字横条：短统计并排，数字在上、标签在下 */
 .statline{display:grid;grid-template-columns:repeat(var(--n,4),minmax(0,1fr));background:linear-gradient(180deg,#1f2a42,#141c2f);clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);box-shadow:inset 0 1px 0 rgba(255,255,255,.14)}
 .statline div{display:flex;flex-direction:column;align-items:center;padding:.55em 0 .45em;color:#e6edf9}
 .statline div+div{box-shadow:-1px 0 0 rgba(140,180,240,.2)}
 .statline b{font-family:Bahnschrift,sans-serif;font-size:1.45em;line-height:1;transform:skewX(-8deg)}
-.statline small{font-size:.72em;font-weight:800;color:#9db0cf;margin-top:.2em}
+.statline small{font-size:max(10.5px,.72em);font-weight:800;color:#9db0cf;margin-top:.2em}
 .statline.dim b{color:#6f82a3}
 
 .star.stranger{opacity:.72}
 .star.stranger .mini-ava{filter:grayscale(.85) brightness(.85);box-shadow:0 0 0 1px rgba(190,225,255,.5)}
 .star.stranger small{color:#8fa6c8}
-.link-tag{position:absolute;translate:-50% -50%;font-size:.74em;font-weight:800;color:#ffd9b8;padding:.1em .5em;background:rgba(9,18,38,.85);box-shadow:inset 0 0 0 1px rgba(255,178,122,.45);clip-path:polygon(5px 0,100% 0,calc(100% - 5px) 100%,0 100%);white-space:nowrap;pointer-events:none}
+.link-tag{position:absolute;translate:-50% -50%;font-size:max(10.5px,.74em);font-weight:800;color:#ffd9b8;padding:.1em .5em;background:rgba(9,18,38,.85);box-shadow:inset 0 0 0 1px rgba(255,178,122,.45);clip-path:polygon(5px 0,100% 0,calc(100% - 5px) 100%,0 100%);white-space:nowrap;pointer-events:none}
 
 /* 两翼里的空状态保持紧凑，不撑满屏面 */
 .wing .void{flex:0;padding:1em .6em}

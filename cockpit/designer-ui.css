@@ -13,7 +13,7 @@
 .dzf{display:flex;flex-direction:column;gap:.25em;min-width:0}
 .dzf.wide,.dzf:has(>.dz-chips),.dzf:has(>.dz-costmap){grid-column:1/-1}
 .dzf:has(>.dz-tick){grid-column:span 2}
-.dzf-l{display:flex;align-items:center;font-size:.74em;font-weight:800;color:var(--ink3);letter-spacing:.05em;white-space:nowrap}
+.dzf-l{display:flex;align-items:center;font-size:max(10.5px,.74em);font-weight:800;color:var(--ink3);letter-spacing:.05em;white-space:nowrap}
 .dzf-l b{color:#c8323a;margin-left:.15em}
 .dzf input,.dzf textarea{font:inherit;font-size:.9em;font-weight:700;color:var(--ink);padding:.45em .6em;border:0;background:#fff;box-shadow:inset 0 0 0 1px #c3cdda,inset 0 2px 3px rgba(27,42,74,.08);min-width:0;width:100%;box-sizing:border-box;min-height:2.2em}
 .dzf textarea{resize:vertical;min-height:4.6em;line-height:1.55;background:linear-gradient(180deg,#fff,#f6f9fd);clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))}
@@ -33,7 +33,7 @@
 .dzf .dz-num input:focus{box-shadow:none}
 .dz-num input::-webkit-inner-spin-button,.dz-num input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .dz-num input::placeholder{color:#a3aec0;font-weight:700}
-.dz-step{all:unset;box-sizing:border-box;display:grid;place-items:center;cursor:pointer;color:var(--blue-d);font-size:.72em;background:linear-gradient(180deg,#f5f8fc,#dfe6f1);box-shadow:inset 0 0 0 1px #c3cdda,inset 0 1px 0 #fff}
+.dz-step{all:unset;box-sizing:border-box;display:grid;place-items:center;cursor:pointer;color:var(--blue-d);font-size:max(10.5px,.72em);background:linear-gradient(180deg,#f5f8fc,#dfe6f1);box-shadow:inset 0 0 0 1px #c3cdda,inset 0 1px 0 #fff}
 .dz-step:hover{color:#fff;background:linear-gradient(180deg,#5aa5ff,#1a5ad6);box-shadow:none}
 .dz-step:active{background:linear-gradient(180deg,#1a5ad6,#164aa8)}
 .dz-num.mini{grid-template-columns:1.6em minmax(0,1fr) 1.6em;height:2.1em}
@@ -42,14 +42,14 @@
 /* 正负：极性按钮（增加蓝 / 减少红）+ 绝对值 + 单位 */
 .dz-signed,.dz-amt{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:.3em;align-items:stretch;min-width:0}
 .dz-amt{grid-template-columns:minmax(0,1fr) auto}
-.dz-sgn{all:unset;box-sizing:border-box;width:1.9em;display:grid;place-items:center;cursor:pointer;color:#fff;font-size:.8em;clip-path:polygon(5px 0,100% 0,100% calc(100% - 5px),calc(100% - 5px) 100%,0 100%,0 5px)}
+.dz-sgn{all:unset;box-sizing:border-box;width:1.9em;display:grid;place-items:center;cursor:pointer;color:#fff;font-size:max(10.5px,.8em);clip-path:polygon(5px 0,100% 0,100% calc(100% - 5px),calc(100% - 5px) 100%,0 100%,0 5px)}
 .dz-sgn.pos{background:linear-gradient(180deg,#5aa5ff,#1a5ad6)}
 .dz-sgn.neg{background:linear-gradient(180deg,#ff7d7d,#c8323a)}
 .dz-sgn:focus-visible,.dz-useg button:focus-visible,.dz-step:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
 .dz-signed .picker-btn,.dz-unit .picker-btn{height:100%;min-width:4.6em;background:#eef3fb}
 .dz-ufix{display:grid;place-items:center;padding:0 .6em;font-size:.84em;font-weight:800;color:var(--ink2);background:#eef3fb;box-shadow:inset 0 0 0 1px #c3cdda}
 .dz-useg{display:flex;box-shadow:inset 0 0 0 1px #c3cdda;background:#eef3fb}
-.dz-useg button{all:unset;box-sizing:border-box;min-width:2.1em;padding:0 .45em;display:grid;place-items:center;cursor:pointer;font-size:.82em;font-weight:900;color:var(--ink3)}
+.dz-useg button{all:unset;box-sizing:border-box;min-width:2.1em;padding:0 .45em;display:grid;place-items:center;cursor:pointer;font-size:max(10.5px,.82em);font-weight:900;color:var(--ink3)}
 .dz-useg button.on{color:#fff;background:linear-gradient(180deg,#5aa5ff,#1a5ad6)}
 .dz-unit{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.3em}
 /* 概率：滑条 + 百分数 */
@@ -61,20 +61,20 @@
 .dz-pct-v{position:relative;display:block}
 .dzf .dz-pct-v input{padding-right:1.4em;text-align:right;font:800 1em Bahnschrift,sans-serif;-moz-appearance:textfield;appearance:textfield}
 .dz-pct-v input::-webkit-inner-spin-button{-webkit-appearance:none}
-.dz-pct-v i{position:absolute;right:.5em;top:50%;translate:0 -50%;font-style:normal;font-size:.8em;font-weight:900;color:var(--ink3)}
+.dz-pct-v i{position:absolute;right:.5em;top:50%;translate:0 -50%;font-style:normal;font-size:max(10.5px,.8em);font-weight:900;color:var(--ink3)}
 /* 多资源消耗：魂力 / 精神力 / 体力 各一格 */
 .dz-costmap{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.4em}
 .dz-res{display:flex;flex-direction:column;gap:.2em;min-width:0}
 .dz-res>.dz-amt{gap:.2em}
 .dz-res .dz-useg button{min-width:1.6em;padding:0 .3em}
-.dz-res>span{font-size:.72em;font-weight:900;color:var(--ink2);padding-left:.4em;box-shadow:inset 2px 0 0 var(--rc,#5aa5ff)}
+.dz-res>span{font-size:max(10.5px,.72em);font-weight:900;color:var(--ink2);padding-left:.4em;box-shadow:inset 2px 0 0 var(--rc,#5aa5ff)}
 .dz-res:nth-child(2){--rc:#9b6bff}.dz-res:nth-child(3){--rc:#2bb673}
 /* 时长：日 / 时 / 分 各一个步进器 */
 .dz-tick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.35em}
 /* 单位在数字框里（右侧小字），不挂在 + 号外面 */
 .dz-nv{position:relative;display:block;min-width:0}
 .dzf .dz-nv input{padding-right:1.3em}
-.dz-nv i{position:absolute;right:.35em;top:50%;translate:0 -50%;font-style:normal;font-size:.72em;font-weight:900;color:var(--ink3);pointer-events:none}
+.dz-nv i{position:absolute;right:.35em;top:50%;translate:0 -50%;font-style:normal;font-size:max(10.5px,.72em);font-weight:900;color:var(--ink3);pointer-events:none}
 
 /* ---------- 开关 / 多选 / 只读 / 折叠组 ---------- */
 .dz-tg{position:relative;display:inline-flex;align-items:center;gap:.55em;cursor:pointer;user-select:none;font-size:.86em;font-weight:800;color:var(--ink2)}
@@ -94,7 +94,7 @@
 .dz-static{display:flex;align-items:center;gap:.45em;min-height:2.2em;font-size:.88em;font-weight:800;color:var(--ink2)}
 .dz-static::before{content:"\f023";font:900 .72em "Font Awesome 6 Free";color:var(--ink3);display:grid;place-items:center;width:1.9em;height:1.9em;background:linear-gradient(180deg,#eef3fa,#dde5f0);clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%)}
 .dz-group{padding:.4em .6em;background:rgba(30,48,80,.04);box-shadow:inset 0 0 0 1px rgba(30,48,80,.12)}
-.dz-group>summary{display:flex;align-items:center;gap:.5em;cursor:pointer;font-size:.8em;font-weight:900;color:var(--ink2);list-style:none}
+.dz-group>summary{display:flex;align-items:center;gap:.5em;cursor:pointer;font-size:max(10.5px,.8em);font-weight:900;color:var(--ink2);list-style:none}
 .dz-group>summary::before{content:"\f054";font:900 .8em "Font Awesome 6 Free";color:var(--blue-d);transition:rotate .15s}
 .dz-group[open]>summary::before{rotate:90deg}
 .dz-group>summary span{font-weight:700;color:var(--ink3)}
@@ -105,7 +105,7 @@
 .fx-card{all:unset;box-sizing:border-box;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto;column-gap:.5em;min-width:9.5em;max-width:16em;padding:.45em .7em;cursor:pointer;background:#fff;box-shadow:inset 0 0 0 1px #c3cdda;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,0 100%)}
 .fx-card>b{grid-row:1/3;align-self:center;font:900 1.15em Bahnschrift,sans-serif;color:var(--blue-d)}
 .fx-card>strong{font-size:.86em;font-weight:900;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.fx-card>small{font-size:.74em;font-weight:700;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fx-card>small{font-size:max(10.5px,.74em);font-weight:700;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fx-card:hover{box-shadow:inset 0 0 0 1px var(--blue)}
 .fx-card:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
 .fx-card.on{background:linear-gradient(180deg,#eaf2ff,#d9e7ff);box-shadow:inset 0 0 0 1.5px var(--blue),inset 0 -3px 0 var(--blue)}
@@ -121,12 +121,12 @@
 .fx-sub-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.5em;align-items:end}
 .fx-branches{display:flex;flex-direction:column;gap:.5em}
 .fx-branch{display:flex;flex-direction:column;gap:.45em;padding:.55em .65em;background:rgba(47,124,246,.06);box-shadow:inset 2px 0 0 rgba(47,124,246,.5)}
-.fx-branch-head{display:flex;align-items:center;gap:.5em;font-size:.82em;font-weight:900;color:var(--blue-d)}
+.fx-branch-head{display:flex;align-items:center;gap:.5em;font-size:max(10.5px,.82em);font-weight:900;color:var(--blue-d)}
 .fx-branch-head .key-s{margin-left:auto}
 .fx-cond{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr)) auto;gap:.45em;align-items:end}
 .fx-cond>.key-s,.dz2-row-del{align-self:end}
 .dz2-inline{display:flex;align-items:center;gap:.6em}
-.dz2-inline .dzf-l{font-size:.8em}
+.dz2-inline .dzf-l{font-size:max(10.5px,.8em)}
 .dz2-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.6em;align-items:start;padding:.55em .65em;background:rgba(255,255,255,.55);box-shadow:inset 0 0 0 1px rgba(30,48,80,.12)}
 .dz2-item .dz2-row-del,.dz2-item>.key-s{align-self:center}
 .dz2-actions{display:flex;flex-wrap:wrap;gap:.4em}
@@ -151,11 +151,11 @@
 .dz2-readout .sim-row{grid-template-columns:auto auto minmax(0,1fr)}
 .dz2-readout .sim-row em{grid-column:1/-1;justify-self:start}
 .dz2-summary{display:flex;flex-direction:column;gap:.25em;padding:.5em .65em;background:rgba(255,255,255,.55);box-shadow:inset 0 0 0 1px rgba(30,48,80,.12),inset 2px 0 0 #5aa5ff}
-.dz2-summary>h3{margin:0;font-size:.78em;font-weight:900;letter-spacing:.06em;color:var(--ink3)}
+.dz2-summary>h3{margin:0;font-size:max(10.5px,.78em);font-weight:900;letter-spacing:.06em;color:var(--ink3)}
 .dz2-summary>p{margin:0;font-size:.84em;font-weight:700;line-height:1.55;color:var(--ink2)}
 .dz2-summary>p.clamp{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;cursor:help}
 .dz2-summary>p.empty{color:var(--ink3)}
-.dz2-warns{display:flex;align-items:center;gap:.4em;font-size:.8em;font-weight:800;color:#9a5d00}
+.dz2-warns{display:flex;align-items:center;gap:.4em;font-size:max(10.5px,.8em);font-weight:800;color:#9a5d00}
 .dz2-discard{width:100%;margin-top:.55em}
 .dz2-saved{margin-top:.5em}
 

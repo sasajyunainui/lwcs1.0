@@ -7,7 +7,7 @@
 .gender.f{background:linear-gradient(180deg,#ff8fb1,#d64f7d)}
 .gender.m{background:linear-gradient(180deg,#6fb4ff,#2f6fd6)}
 .gender b{font-family:Bahnschrift,sans-serif;font-size:.95em;font-weight:700}
-.gender small{font-size:.68em;font-weight:800;opacity:.9}
+.gender small{font-size:max(10.5px,.68em);font-weight:800;opacity:.9}
 .title-line{font-size:1.18em;font-weight:900;letter-spacing:.12em;background:linear-gradient(90deg,#b07b06,#e3b13c 40%,#1453c4 75%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 1px 0 rgba(255,255,255,.8))}
 
 /* 左翼：紧凑属性行 + 事实条 */
@@ -17,7 +17,7 @@
 .facts{display:grid;grid-template-columns:1fr 1fr;gap:.35em}
 .fact{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto;column-gap:.45em;align-items:center;padding:.4em .55em;background:rgba(255,255,255,.55);box-shadow:inset 0 0 0 1px rgba(30,48,80,.14);clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px)}
 .fact i{grid-row:span 2;color:var(--blue-d);font-size:1.05em}
-.fact span{font-size:.7em;font-weight:800;color:var(--ink3)}
+.fact span{font-size:max(10.5px,.7em);font-weight:800;color:var(--ink3)}
 .fact b{font-size:.9em;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fact.dim i,.fact.dim b{color:var(--ink3)}
 .fact.bad{grid-column:1/-1;background:rgba(230,60,40,.12);box-shadow:inset 2px 0 0 #d6452a}
@@ -37,7 +37,7 @@
 /* 悬停预览：精简卡 */
 .peek-cost{display:flex;gap:1.2em;flex-wrap:wrap;font-weight:800;font-size:.9em;color:#cfe0f7}
 .peek-cost i{color:#6cc0ff}
-.peek-hint{color:#7f96bb!important;font-size:.76em;letter-spacing:.05em}
+.peek-hint{color:#7f96bb!important;font-size:max(10.5px,.76em);letter-spacing:.05em}
 .fcard:has(.peek-hint){width:min(320px,44%)}
 
 
@@ -83,16 +83,16 @@
 /* 未附环：台座上方一圈金色虚线空环 */
 .soul-empty{display:grid;place-items:center}
 .soul-empty i{width:calc(var(--rsz) * 1.15);aspect-ratio:1;border-radius:50%;border:2px dashed rgba(201,149,34,.5);background:radial-gradient(circle,rgba(255,214,120,.14),transparent 70%)}
-.soul-empty span{position:absolute;font-size:.8em;font-weight:800;color:#a87400;letter-spacing:.12em}
+.soul-empty span{position:absolute;font-size:max(10.5px,.8em);font-weight:800;color:#a87400;letter-spacing:.12em}
 
 /* 铭牌：银色金属尖角牌（外层投影 + 内层 2px 金属边），名称居中，顶部一条金色细线 */
 .soul-plate{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:.08em;min-width:min(100%,12.5em);max-width:100%;padding:.32em 1.7em .42em;margin-top:.3em;
   clip-path:polygon(14px 0,calc(100% - 14px) 0,100% 50%,calc(100% - 14px) 100%,14px 100%,0 50%);background:linear-gradient(180deg,#a9b6c9,#7d8ba1)}
 .soul-plate::before{content:"";position:absolute;inset:2px;z-index:-1;clip-path:polygon(13px 0,calc(100% - 13px) 0,100% 50%,calc(100% - 13px) 100%,13px 100%,0 50%);
   background:linear-gradient(90deg,transparent 15%,rgba(214,160,40,.95) 50%,transparent 85%) top/100% 2px no-repeat,linear-gradient(180deg,#ffffff,#e6ecf4 55%,#d2dbe7)}
-.soul-plate small{font-size:.74em;font-weight:800;color:var(--ink3);letter-spacing:.2em}
+.soul-plate small{font-size:max(10.5px,.74em);font-weight:800;color:var(--ink3);letter-spacing:.2em}
 .soul-plate strong{font-size:1.22em;font-weight:900;letter-spacing:.08em;color:var(--ink);line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
-.sp-sub{display:flex;align-items:center;gap:.6em;justify-content:center;font-size:.8em;font-weight:800;color:var(--ink2);white-space:nowrap}
+.sp-sub{display:flex;align-items:center;gap:.6em;justify-content:center;font-size:max(10.5px,.8em);font-weight:800;color:var(--ink2);white-space:nowrap}
 .sp-sub em{font-style:normal}
 .sp-sub .sys{font-weight:900;padding:.04em .5em;color:#fff;background:linear-gradient(180deg,#c99522,#9c6d0c);clip-path:polygon(4px 0,100% 0,calc(100% - 4px) 100%,0 100%)}
 .sp-sub .nx{color:var(--ink3)}
