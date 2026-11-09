@@ -278,21 +278,39 @@
   const energyText = (c, e) => { e = Number(e) || 0; return e > 0 && e < 0.1 ? String(Number(e.toPrecision(2))) : c.fmt(e); };
   // 预算核算悬停：效果 COST 逐条来源（引擎 效果明细：原型 / 目标 / 数值 / 持续 + 各分项 COST 与系数）
   const n2 = v => { const x = Number(v); return Number.isFinite(x) ? String(Number(x.toFixed(2))) : ''; };
+  // 引擎规则（计算技能效果累计COST_V1）：每个效果的「原效果（并入追加效果）」与各条件分支的「替换效果」互为候选，只按净 COST 最高的一方计入
   const effectWhy = (c, r) => {
-    const rows = (r.效果明细 || []).filter(x => x && x.计入COST !== false && Number(x.原始COST) > 0);
+    const rows = (r.效果明细 || []).filter(x => x && Number(x.原始COST) > 0);
     if (!rows.length) return '还没有计入 COST 的效果';
-    const sum = rows.reduce((a, x) => a + Number(x.原始COST || 0), 0);
-    const lines = [`效果 COST ${c.fmt(r.效果原始COST)}${Math.abs(sum - Number(r.效果原始COST || 0)) < 0.05 ? ' = 各效果合计' : `（百分比类 ${n2(r.百分比COST)} · 定值类 ${n2(r.绝对值COST)} 合成）`}`];
+    // 候选分组：替换效果按「所属效果 + 分支序号」分组，其余（原效果、追加效果）归所属效果的原候选
+    const cand = x => { const m = String(x.路径 || '').match(/^(.*?)\.条件分支\[(\d+)\]\.替换效果/); return m ? [m[1], `替换${Number(m[2]) + 1}`] : [null, '原效果']; };
+    const owner = x => { const p = String(x.路径 || ''); const m = p.match(/^(.*?)\.条件分支\[\d+\]\.替换效果/); return m ? m[1] : null; };
+    const groups = new Map();
     for (const x of rows) {
+      const [own, id] = cand(x);
+      const key = own ?? (rows.map(owner).filter(Boolean).find(o => String(x.路径).startsWith(o)) || String(x.路径));
+      if (!groups.has(key)) groups.set(key, new Map());
+      const g = groups.get(key); g.set(id, (g.get(id) || 0) + Number(x.净COST ?? x.原始COST));
+    }
+    const chosen = new Map([...groups].map(([k, g]) => [k, [...g].reduce((best, cur) => cur[1] > best[1] ? cur : best)[0]]));
+    const hasAlt = [...groups.values()].some(g => g.size > 1);
+    const lines = [`效果 COST ${c.fmt(r.效果原始COST)}`];
+    for (const x of rows) {
+      const [own, id] = cand(x);
+      const key = own ?? (rows.map(owner).filter(Boolean).find(o => String(x.路径).startsWith(o)) || String(x.路径));
+      const counted = chosen.get(key) === id;
       const val = [x.目标, x.数值 !== '' ? String(x.数值) : '', Number(x.持续回合) > 1 ? `${x.持续回合}回合` : ''].filter(Boolean).join(' · ');
-      lines.push(`· ${x.原型 || '效果'}${x.分支角色 && x.分支角色 !== '基础' ? `（分支 ${x.分支角色}）` : ''}${val ? `（${val}）` : ''}：${n2(x.原始COST)}`);
-      const segs = [['主数值', x.主数值COST], ['副数值', x.副数值COST], ['固定规则', x.固定规则COST], ['触发方式', x.触发方式COST], ['延迟回合', x.延迟回合COST], ['附加规则', x.附加规则COST]].filter(([, v]) => v != null && Number(v));
+      const tag = id !== '原效果' ? `〔分支${id.replace('替换', '')}·替换〕` : /\.追加效果/.test(String(x.路径)) ? '〔分支·追加〕' : '';
+      lines.push(`${counted ? '✓' : '·'} ${tag}${x.原型 || '效果'}${val ? `（${val}）` : ''}：${n2(x.原始COST)}${counted ? '' : '（候选，未计入）'}`);
+      const segs = [['主数值', x.主数值COST], ['副数值', x.副数值COST], ['固定规则', x.固定规则COST], ['触发方式', x.触发方式COST], ['延迟回合', x.延迟回合COST], ['附加规则', x.附加规则COST]].filter(([, v]) => v != null && Number(v)).map(([k, v]) => `${k} ${n2(v)}`);
       // 没有分项时给基础算式：百分点 × 单位 COST（× 数值倍率）
-      if (!segs.length && Number(x.单位COST) && (Number(x.百分点) || Number(x.绝对值折算百分点))) segs.push([`${n2(Number(x.百分点) || Number(x.绝对值折算百分点))} 点 × 单位`, `${n2(x.单位COST)}${Number(x.数值倍率) && Number(x.数值倍率) !== 1 ? ` × 倍率 ${n2(x.数值倍率)}` : ''}`]);
+      const pts = Number(x.百分点) || Number(x.绝对值折算百分点);
+      if (!segs.length && Number(x.单位COST) && pts) segs.push(`${n2(Math.abs(pts))} 点 × 单位 ${n2(x.单位COST)}${Number(x.数值倍率) && Number(x.数值倍率) !== 1 ? ` × 倍率 ${n2(x.数值倍率)}` : ''}`);
       const coef = [Number(x.目标系数) && Number(x.目标系数) !== 1 ? `目标 ×${n2(x.目标系数)}${x.目标系数原因 ? `（${x.目标系数原因}）` : ''}` : '', Number(x.持续系数) && Number(x.持续系数) !== 1 ? `持续 ×${n2(x.持续系数)}` : ''].filter(Boolean);
-      if (segs.length || coef.length) lines.push(`   ${segs.map(([k, v]) => `${k} ${n2(v)}`).join(' + ')}${segs.length && coef.length ? '｜' : ''}${coef.join(' · ')}`);
+      if (segs.length || coef.length) lines.push(`   ${segs.join(' + ')}${segs.length && coef.length ? '｜' : ''}${coef.join(' · ')}`);
       if (Number(x.限制抵扣) > 0) lines.push(`   限制抵扣 −${n2(x.限制抵扣)}（${Math.round(Number(x.限制抵扣率) * 100)}%）`);
     }
+    if (hasAlt) lines.push('条件分支的替换效果与原效果二选一，按 COST 较高的一方计入；追加效果并入原效果');
     return lines.join('\n');
   };
   const sideWhy = (c, r) => {
