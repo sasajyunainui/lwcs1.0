@@ -92,7 +92,8 @@ class BattleUIComponent {
       const viewportWidth = Math.max(Number(root.innerWidth) || 0, Number(globalDocument?.documentElement?.clientWidth) || 0);
       const viewportHeight = Math.max(Number(root.innerHeight) || 0, Number(globalDocument?.documentElement?.clientHeight) || 0);
       if (!rect.width || !rect.height || !viewportWidth || !viewportHeight) return;
-      const inline = viewportWidth <= 1180;
+      // 挂在座舱战斗屏里时记录终端始终排在网格内（座舱右侧没有外置空间）；旧界面宽屏仍外置到 body
+      const inline = viewportWidth <= 1180 || !!component.container?.closest?.('.lwcs-ck');
       node.classList.toggle('battle-record-terminal--inline', inline);
       if (inline) {
         if (node.parentNode !== wrapperElement) wrapperElement.appendChild(node);

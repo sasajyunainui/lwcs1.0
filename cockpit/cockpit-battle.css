@@ -6,7 +6,7 @@
 .battle-deck[hidden]{display:none}
 .battle-deck .float{height:auto}
 .battle-deck .bz,.battle-deck .bz>.b2,.battle-deck .bz>.b2>.b3{height:auto}
-.battle-deck .scr{height:auto;min-height:420px;overflow:visible}
+.battle-deck .scr{height:auto;overflow:visible}
 @container cockpit (min-width:701px){
   .battle-deck{order:4;flex:1 0 calc(100% - 28px);max-width:calc(100% - 28px);margin:26px 14px 22px}
 }
