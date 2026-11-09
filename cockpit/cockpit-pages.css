@@ -236,7 +236,7 @@ div.spirit-link:hover .spirit-card,div.spirit-link.on .spirit-card{box-shadow:in
 /* 技能设计台 */
 .seg{display:flex;gap:.35em}
 .seg .key-s.on{background:linear-gradient(180deg,#5aa5ff,#1a5ad6);color:#fff;box-shadow:0 2px 0 #0d3384}
-.dz-body{flex:1;min-height:0;overflow:auto}
+.dz-body{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain}
 /* 预算仪表：0 → 位级硬上限；蓝 = 实际 COST（低于最低线转橙、超限转红），金线 = 最低有效，红线 = 允许上限 */
 .budget{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.5em .9em;align-items:center}
 .bg-bar{position:relative;height:16px;background:#0f182a;box-shadow:inset 0 0 0 1px #33415b;clip-path:polygon(5px 0,100% 0,calc(100% - 5px) 100%,0 100%)}
@@ -261,7 +261,7 @@ div.spirit-link:hover .spirit-card,div.spirit-link.on .spirit-card{box-shadow:in
 
 /* 设置：分组两列，每行 = 名称 + 说明 + 分段选择 */
 /* 设置面板：2×2 铺满主屏；选项键沿用日常行动键（.opt）样式，按选项数均分 */
-.set-tiles{flex:1;min-height:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:.9em;overflow:auto}
+.set-tiles{flex:1;min-height:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:.9em;overflow:auto;overscroll-behavior:contain}
 .set-tile{display:flex;flex-direction:column;gap:.75em;min-height:0;padding:.85em .95em .95em;background:linear-gradient(180deg,rgba(255,255,255,.72),rgba(226,234,245,.6));box-shadow:inset 0 0 0 1px rgba(30,48,80,.14),inset 3px 0 0 var(--blue);clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)}
 .set-tile header{display:flex;align-items:center;gap:.7em}
 .set-tile header small{display:block;font-size:.7em;font-weight:900;letter-spacing:.2em;color:var(--ink3)}
@@ -385,7 +385,7 @@ div.spirit-link:hover .spirit-card,div.spirit-link.on .spirit-card{box-shadow:in
 .q-tabs .key-s i{font-size:.85em}
 .q-tabs .key-s b{font:800 .82em Bahnschrift,sans-serif;padding:0 .35em;margin-left:.1em;background:rgba(30,48,80,.1);border-radius:2px}
 .q-tabs .key-s.on b{background:rgba(255,255,255,.25)}
-.q-list{flex:1 1 auto;min-height:0;overflow:auto}
+.q-list{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain}
 /* 翼里还有下文（如捐献表单）时列表按内容撑开，由整翼滚动，不被挤成一行 */
 .q-list.natural{flex:none;overflow:visible}
 .q-list .row{grid-template-columns:auto minmax(0,1fr) auto}

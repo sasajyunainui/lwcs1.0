@@ -137,7 +137,7 @@
 
 /* ---------- 翼板：左 = 技能列表 + 对抗试算；右 = 预算 + 最终摘要 + 保存 ---------- */
 /* 列表按内容高、放不下时收缩滚动；对抗试算沉到翼板底部 */
-.dz2-skills{flex:0 1 auto;min-height:0;overflow:auto;overflow-x:hidden}
+.dz2-skills{flex:0 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;overflow-x:hidden}
 .dz2-new+.groove{margin-top:auto}
 .dz2-skills .row{grid-template-columns:auto minmax(0,1fr) auto;padding-block:.35em}
 .dz2-skills .row.on{background:linear-gradient(90deg,rgba(47,124,246,.16),rgba(47,124,246,.04));box-shadow:inset 3px 0 0 var(--blue)}

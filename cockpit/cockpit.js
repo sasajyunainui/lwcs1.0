@@ -797,6 +797,20 @@
   track.addEventListener('click', e => { const t = e.target.closest('.tab'); if (t) switchDomain(t.dataset.tab); });
   $('.cockpit').addEventListener('click', e => { const r = e.target.closest('[data-route]'); if (r) C.route({ to: r.dataset.route }); });
   $('#ck-keys').addEventListener('click', e => { const k = e.target.closest('.key'); if (k) switchPage(k.dataset.page); });
+  // 滚轮归屏：桌面三屏里指针在哪块屏就只滚那块屏。落在屏框 / 屏内不可滚的地方也滚这块屏的内容；
+  // 屏里内容滚到头时吞掉这次滚轮，不再串到酒馆聊天区。只有整块屏根本没有可滚内容才放行（让聊天区照常滚）
+  const scrollable = el => el.scrollHeight > el.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(el).overflowY);
+  screens.addEventListener('wheel', e => {
+    if (e.defaultPrevented || e.ctrlKey || isMobile()) return;
+    const panel = e.target.closest('.wing,.center'); if (!panel) return;
+    const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? panel.clientHeight : 1); if (!dy) return;
+    const room = el => dy > 0 ? el.scrollHeight - el.clientHeight - el.scrollTop > 1 : el.scrollTop > 0;
+    for (let el = e.target; el && el !== panel; el = el.parentElement) if (scrollable(el) && room(el)) return;
+    const main = $$('.face:not(.leaving) :is(.pad,.scroll,.list,.q-list,.dz-body,.set-tiles,.dz2-skills)', panel).find(scrollable);
+    if (!main) return;
+    e.preventDefault();
+    if (!main.contains(e.target) && room(main)) main.scrollTop += dy;
+  }, { passive: false });
   $('.cockpit').addEventListener('click', e => {
     if (e.target.closest('.ie-edit')) return;
     const ieEl = e.target.closest('.ie'); if (ieEl) { e.stopPropagation(); return beginEdit(ieEl); }
