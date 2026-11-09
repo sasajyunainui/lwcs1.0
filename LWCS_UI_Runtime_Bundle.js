@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:ab5a4b5798801d4e947fbda37220391791e46db0b26fa6219b084f23183a999f|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:444499c0e8f37ffd37b3e405c485de3a6e1020ae2fe57188a57d51e1094b3a57|cockpit/pages-role.js:350137a12a97733415cea354acc0cda0e631eba0b53372bf4e2ab90448f6d9db|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:10c44a13d6e04c2f27129d1f92d4b0ec5dd55092c45a1394f2b7819d873d3b0f|cockpit/pages-ability.js:ee3c8c5ce6d902b564eb9ae67c4210ddc62559c393393316832576912934e83e|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:362fea182fda961cc308405f5f8a432b63b28940b18bb4ac2e7d86e324f6b259|cockpit/pages-world.js:6851fc81ee4d831a1af87aa85b490557d452ef5b31ea776d50f871cb97f5574e|cockpit/pages-terminal.js:c73e78b78d6a7a80f96d774bcf3a88bfa17642c7ad81a5d5b89ff863e053125e|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:1d3091d67e7dacfc78d2c9b3dc3f7acd28c068f5cdc653495ff56bc36c19a29d|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:ab5a4b5798801d4e947fbda37220391791e46db0b26fa6219b084f23183a999f|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:9c4264c78fdf1a97367085566aee156544e79eb24da1de2d8466612ec1cc4353|cockpit/pages-role.js:350137a12a97733415cea354acc0cda0e631eba0b53372bf4e2ab90448f6d9db|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:909691c11e6a2c9f362accdf388af3f5466174e48bb2449d089b109dfb1a502c|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:362fea182fda961cc308405f5f8a432b63b28940b18bb4ac2e7d86e324f6b259|cockpit/pages-world.js:6851fc81ee4d831a1af87aa85b490557d452ef5b31ea776d50f871cb97f5574e|cockpit/pages-terminal.js:c73e78b78d6a7a80f96d774bcf3a88bfa17642c7ad81a5d5b89ff863e053125e|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:1d3091d67e7dacfc78d2c9b3dc3f7acd28c068f5cdc653495ff56bc36c19a29d|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -47839,7 +47839,43 @@ ${播报文本}
   }).observe($('.cockpit'));
   const isMobile = () => mobileNow;
 
+  // 存档里尚未生成的值（「待补全」「待生成」「待填写」，常带一段括号填写说明）：渲染后整段换成「—」占位，说明不显示。
+  // 只改显示文字；可编辑值的原始内容在 data-ie-raw 里，点开编辑仍是完整原文
+  const TBD_WORD = /待补全|待生成|待填写/g;
+  // 返回 [普通文字, 占位, 普通文字, 占位, …]；没有命中返回 null
+  const splitTbd = text => {
+    const parts = []; let i = 0, m;
+    TBD_WORD.lastIndex = 0;
+    while ((m = TBD_WORD.exec(text))) {
+      let j = m.index + m[0].length;
+      while (j < text.length && /\s/.test(text[j])) j++;
+      if (text[j] === '（' || text[j] === '(') {
+        let d = 0, k = j;
+        for (; k < text.length; k++) { const ch = text[k]; if (ch === '（' || ch === '(') d++; else if ((ch === '）' || ch === ')') && --d === 0) break; }
+        j = k < text.length ? k + 1 : text.length;
+      } else j = m.index + m[0].length;
+      parts.push(text.slice(i, m.index), null);
+      i = j; TBD_WORD.lastIndex = j;
+    }
+    if (!parts.length) return null;
+    parts.push(text.slice(i));
+    return parts;
+  };
+  const tbdPass = root => {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: n => /待补全|待生成|待填写/.test(n.nodeValue) && !n.parentElement?.closest('textarea,input,.tbd,script,style') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT });
+    const nodes = []; for (let n = walker.nextNode(); n; n = walker.nextNode()) nodes.push(n);
+    for (const n of nodes) {
+      const parts = splitTbd(n.nodeValue); if (!parts) continue;
+      const frag = document.createDocumentFragment();
+      for (const p of parts) {
+        if (p !== null) { if (p) frag.append(p); continue; }
+        const tag = document.createElement('span'); tag.className = 'tbd'; tag.textContent = '—'; frag.append(tag);
+      }
+      n.replaceWith(frag);
+    }
+  };
   const charge = (root, quiet = false) => {
+    tbdPass(root);
     $$('[data-qs]', root).forEach(i => { if (i.value) filterRows(i); });
     if (quiet) {
       $$('.bar i[data-w]', root).forEach(i => { i.style.width = i.dataset.w + '%'; });
@@ -50392,7 +50428,7 @@ ${播报文本}
     const alt = String(f.pattern || '').split('|')[0];
     return /%\?$/.test(alt) ? 'toggle' : /%$/.test(alt) ? 'force' : f.pattern ? 'none' : 'toggle';
   };
-  const sgnBtn = sign => `<button type="button" class="dz-sgn ${sign === '-' ? 'neg' : 'pos'}" data-sgn aria-label="正负，当前${sign === '-' ? '减少' : '增加'}"><i class="fa-solid fa-${sign === '-' ? 'minus' : 'plus'}"></i></button>`;
+  const sgnBtn = sign => `<button type="button" class="dz-sgn ${sign === '-' ? 'neg' : 'pos'}" data-sgn aria-label="正负，当前${sign === '-' ? '减少' : '增加'}" data-hint="点击切换增加 / 减少">${sign === '-' ? '减' : '增'}</button>`;
   const signedCtl = (c, f, a, act) => {
     const s = String(f.value ?? '').trim(), m = /^([+-]?)(\d+(?:\.\d+)?)(%?)$/.exec(s); if (s && !m) return null; // x1.5 倍率写法退回文本框
     const ref = String(f.default ?? f.placeholder ?? ''), rule = pctRule(f), sign = m?.[1] === '-' ? '-' : '+', plus = m ? m[1] === '+' : !/^\d/.test(ref);
@@ -50718,7 +50754,7 @@ ${播报文本}
       const sgn = e.target.closest('[data-sgn]');
       if (sgn) {
         const h = sgn.closest('[data-compose]'), neg = h.dataset.sign !== '-';
-        h.dataset.sign = neg ? '-' : '+'; sgn.className = `dz-sgn ${neg ? 'neg' : 'pos'}`; sgn.innerHTML = `<i class="fa-solid fa-${neg ? 'minus' : 'plus'}"></i>`;
+        h.dataset.sign = neg ? '-' : '+'; sgn.className = `dz-sgn ${neg ? 'neg' : 'pos'}`; sgn.textContent = neg ? '减' : '增'; sgn.setAttribute('aria-label', `正负，当前${neg ? '减少' : '增加'}`);
         const i = h.querySelector('input'); if (i.value !== '') i.dispatchEvent(new Event('change', { bubbles: true }));
         return;
       }
@@ -50859,7 +50895,7 @@ ${播报文本}
   const branchRow = (c, b) => {
     const cond = (b.条件 || []).map(x => `${x.类型 === '使用者' ? '食用者' : c.esc(x.类型)}是${c.esc(x.值)}`).join('且');
     const alt = (b.替换效果 || []).map(e => `${c.esc(fxOf(e).title)} ${c.esc(e.数值)}`).join('、');
-    return `<div class="fx-branch"><i class="fa-solid fa-code-branch"></i><span>若${cond}：${b.处理 === '替换效果' ? '改为' : c.esc(b.处理)} ${alt}</span></div>`;
+    return `<div class="fx-if"><i class="fa-solid fa-code-branch"></i><span>若${cond}：${b.处理 === '替换效果' ? '改为' : c.esc(b.处理)} ${alt}</span></div>`;
   };
   // compact：悬停预览只给「效果 + 代价」，点击钉住后才展开产物、画面、原文与操作
   const skillDetail = (c, sk, compact = false, page = false) => {
