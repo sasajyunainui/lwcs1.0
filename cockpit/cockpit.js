@@ -497,7 +497,7 @@
   function clearFloat() { layer.replaceChildren(); $$('.inline-detail').forEach(el => el.remove()); }
   function project(html, anchor, swap = false) {
     const old = swap && !isMobile() ? $('.fcard', layer) : null;
-    if (old) { $('.holo-in', old).innerHTML = html; old.style.transition = reduce ? '' : 'top .2s cubic-bezier(.2,.8,.2,1)'; place(old, anchor); return; }
+    if (old) { $('.holo-in', old).innerHTML = html; tbdPass(old); old.style.transition = reduce ? '' : 'top .2s cubic-bezier(.2,.8,.2,1)'; place(old, anchor); return; }
     clearFloat();
     const body = `<div class="holo" role="region" aria-label="详情"><div class="holo-in">${html}</div></div>`;
     if (isMobile() && anchor) {
@@ -583,7 +583,7 @@
   let openTimer = 0, closeTimer = 0;
   // 设置页的交互偏好（悬停快慢 / 魂环扫描开关），每次读取，改完立即生效
   const pref = k => { try { return JSON.parse(localStorage.getItem('lwcs-cockpit-settings') || '{}')[k]; } catch (e) { return undefined; } };
-  const hoverMs = () => ({ 快: 80, 标准: 150, 慢: 320 }[pref('hover')] || 150);
+  const hoverMs = () => ({ 快: 60, 标准: 100, 慢: 300 }[pref('hover')] || 100);
   cockpitEl.addEventListener('pointerover', e => {
     // 拖着沙盘时不弹浮窗（经过的地标太多）
     if (!hoverable() || e.pointerType !== 'mouse' || editing || e.target.closest('.grabbing')) return;
@@ -631,7 +631,20 @@
     const dt = performance.now() - scanAt;
     if (dt >= 30) scanPick(); else if (!scanTimer) scanTimer = setTimeout(scanPick, 30 - dt);
   });
-  cockpitEl.addEventListener('pointerleave', () => { clearTimeout(openTimer); if (floatOpen() && !pinned) closeTimer = setTimeout(closeInspector, 250); });
+  cockpitEl.addEventListener('pointerleave', () => { clearTimeout(openTimer); hoverItem = null; if (floatOpen() && !pinned) closeTimer = setTimeout(closeInspector, 250); });
+  // 悬停兜底：pointerover 只在进入新元素时触发——鼠标停着时条目被重绘、或浮窗刚收起，鼠标就停在条目上却不会再弹出。
+  // 移动中只要指着的条目还没浮出就补一次（同一条目只排一次）
+  let hoverItem = null, hoverPending = false;
+  cockpitEl.addEventListener('pointermove', e => {
+    if (!hoverable() || e.pointerType !== 'mouse' || editing || pinned || e.target.closest('.fcard,.grabbing')) return;
+    if (pref('scan') !== '关闭' && e.target.closest('[data-scan]')) return;
+    const item = e.target.closest('[data-inspect]');
+    if (!item) { hoverItem = null; return; }
+    const key = item.dataset.inspect, shown = floatOpen() && state.inspect && `${state.inspect.kind}:${state.inspect.id}` === key;
+    if (shown || (hoverItem === item && hoverPending)) return;
+    hoverItem = item; hoverPending = true; clearTimeout(closeTimer); clearTimeout(openTimer);
+    openTimer = setTimeout(() => { hoverPending = false; if (!item.isConnected) return; const [kind, ...rest] = key.split(':'); openInspector(kind, rest.join(':'), item, 'hover'); }, Number(item.dataset.hoverDelay) || hoverMs());
+  });
   // 点浮窗与条目以外的地方、或屏内滚动时收起（浮窗锚点会移动）
   addEventListener('pointerdown', e => { if (floatOpen() && !e.target.closest('.fcard,.inline-detail,[data-inspect],[data-scan],.picker-list,.ie-floatbox')) closeInspector(); });
   cockpitEl.addEventListener('scroll', e => { if (layer.firstChild && !e.target.closest?.('.fcard')) closeInspector(); }, true);
@@ -840,7 +853,7 @@
     const html = page.inspect?.(ctx(), kind, id, pinned ? 'full' : 'hover'); if (!html) return closeInspector();
     const anchor = $$('[data-inspect]').find(el => el.dataset.inspect === `${kind}:${id}`), card = $('.fcard', layer);
     if (anchor) { anchor.classList.add('on'); ringSlotOf(anchor)?.classList.add('mvu-hover-floating-active'); }
-    if (card) { $('.holo-in', card).innerHTML = html; if (anchor) place(card, anchor); }
+    if (card) { $('.holo-in', card).innerHTML = html; tbdPass(card); if (anchor) place(card, anchor); }
   }
   cockpitEl.addEventListener('keydown', e => { const el = e.target.closest?.('.ie'); if (el && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); beginEdit(el); } });
 
