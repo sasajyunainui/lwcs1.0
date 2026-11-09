@@ -50,6 +50,13 @@
   const savedAt = (c, trail) => { let pool = c.S.world.地点 || {}; for (const t of trail) pool = pool?.[t]?.子节点; return pool; };
   // 地标分级：0 当前位置 · 1 近处 · 2 其他 · 3 地域（总图上地域类默认只留光点）。光柱高度随级别
   const BEAM = [40, 26, 18, 10];
+  // 点地标的主操作：所在地（及其上级）→ 看当地；总图 / 所在城市里的地点 → 设为目的地；别的城市的子图地点 → 以那座城为目的地
+  const markGo = (c, path) => {
+    const hp = herePath(c);
+    if (path.every((t, i) => hp[i] === t)) return { go: 'page-map/place', dest: '', label: '查看当地' };
+    const dest = path.length === 1 || path[0] === hp[0] ? path.at(-1) : path[0];
+    return { go: 'page-map/star', dest, label: dest === path.at(-1) ? '设为目的地' : `前往${dest}` };
+  };
   const sandTable = (c, trail) => {
     const hp = herePath(c), onPath = trail.every((t, i) => hp[i] === t), hereName = onPath ? hp[trail.length] : null, sub = trail.length > 0;
     const nodes = levelNodes(c, trail), f = nodes.find(n => n.name === hereName);
@@ -61,7 +68,7 @@
     const holo = sub ? `<div class="holo-base" style="background-image:${[...nodes.map(n => `radial-gradient(circle at ${pct(n.x, MAP.w)}% ${pct(n.y, MAP.h)}%,${rgba(kindOf(n.类型)[1], .3)} 0,transparent 8%)`), 'radial-gradient(ellipse at 50% 50%,rgba(70,150,255,.22),transparent 68%)'].join(',')}"><b>${c.esc(trail.at(-1))}</b></div>` : '';
     return `<div class="table${sub ? ' sub' : ''}" data-table data-no-tilt data-trail="${c.esc(trail.join('/'))}">
       <div class="plane">${sub ? holo : `<img src="${MAP.src}" alt="斗罗大陆总图" draggable="false">`}<div class="grid"></div>${nodes.map(n => `<i class="anc" style="left:${pct(n.x, MAP.w)}%;top:${pct(n.y, MAP.h)}%"></i>`).join('')}${pin ? `<i class="anc" style="left:${pct(pin.x, MAP.w)}%;top:${pct(pin.y, MAP.h)}%"></i>` : ''}<i class="anc cn" style="left:0;top:0"></i><i class="anc cn" style="left:100%;top:0"></i><i class="anc cn" style="left:100%;top:100%"></i><i class="anc cn" style="left:0;top:100%"></i></div>
-      <div class="marks">${nodes.map(n => { const r = rank(n), color = r === 0 ? '#ffd36b' : kindOf(n.类型)[1]; return `<button class="mk r${r}${r === 0 ? ' here' : ''}" type="button" style="--pc:${color};--bh:${BEAM[r]}px" data-rank="${r}" data-inspect="node:${c.esc(key(n))}" data-hover-delay="320"${n.enterable ? ` data-map-enter="${c.esc(key(n))}"` : ''} aria-label="${c.esc(n.name)}"><i class="mk-lead"></i><i class="mk-beam"></i><i class="mk-base"></i><span class="mk-tag">${c.esc(n.name)}${n.enterable ? '<i class="fa-solid fa-layer-group"></i>' : ''}</span></button>`; }).join('')}${pin ? `<button class="mk r0 fpin" type="button" style="--pc:#ff7ab6;--bh:${BEAM[0]}px" data-rank="0" data-set="dest=" aria-label="清除坐标目的地" data-hint="坐标目的地 · 点一下清除"><i class="mk-lead"></i><i class="mk-beam"></i><i class="mk-base"></i><span class="mk-tag"><i class="fa-solid fa-location-crosshairs"></i> ${Math.round(pin.x)}, ${Math.round(pin.y)}</span></button>` : ''}</div>
+      <div class="marks">${nodes.map(n => { const r = rank(n), color = r === 0 ? '#ffd36b' : kindOf(n.类型)[1], g = markGo(c, [...trail, n.name]), isDest = !!g.dest && g.dest === n.name && c.state.ui.dest === g.dest; return `<button class="mk r${r}${r === 0 ? ' here' : ''}${isDest ? ' dest' : ''}" type="button" style="--pc:${isDest ? '#ff7ab6' : color};--bh:${BEAM[r]}px" data-rank="${r}" data-inspect="node:${c.esc(key(n))}" data-hover-delay="320" data-go="${g.go}"${g.dest ? ` data-set-dest="${c.esc(g.dest)}"` : ''}${n.enterable ? ` data-map-enter="${c.esc(key(n))}"` : ''} aria-label="${c.esc(`${n.name}：${g.label}`)}"><i class="mk-lead"></i><i class="mk-beam"></i><i class="mk-base"></i><span class="mk-tag">${c.esc(n.name)}${n.enterable ? '<i class="fa-solid fa-layer-group"></i>' : ''}</span></button>`; }).join('')}${pin ? `<button class="mk r0 fpin" type="button" style="--pc:#ff7ab6;--bh:${BEAM[0]}px" data-rank="0" data-set="dest=" aria-label="清除坐标目的地" data-hint="坐标目的地 · 点一下清除"><i class="mk-lead"></i><i class="mk-beam"></i><i class="mk-base"></i><span class="mk-tag"><i class="fa-solid fa-location-crosshairs"></i> ${Math.round(pin.x)}, ${Math.round(pin.y)}</span></button>` : ''}</div>
       ${sub ? `<div class="table-crumb"><button class="key-s" type="button" data-map-up aria-label="返回上级"><i class="fa-solid fa-chevron-left"></i></button><span>${['斗罗大陆', ...trail].map((t, i) => i === trail.length ? `<b aria-current="location">${c.esc(t)}</b>` : `<button type="button" data-map-to="${c.esc(trail.slice(0, i).join('/'))}">${c.esc(t)}</button>`).join('<i class="fa-solid fa-angle-right"></i>')}</span>${onPath ? '' : `<span class="chip s" data-hint="${c.esc(`这里只能查看；要在「${trail[0]}」里行动，先前往那里。`)}">远端预览</span>`}</div>` : ''}
       <div class="table-ui"><button class="key-s" type="button" data-zoom="1.25" aria-label="放大">＋</button><button class="key-s" type="button" data-zoom="0.8" aria-label="缩小">－</button><button class="key-s" type="button" data-zoom="home" aria-label="${f ? '回到当前位置' : '回到中心'}"><i class="fa-solid fa-crosshairs"></i></button></div>
       <div class="table-legend">${KINDS.map(([, col, l]) => `<span><i style="--pc:${col}"></i>${l}</span>`).join('')}<span><i style="--pc:#ffd36b"></i>当前位置</span><span><b class="fa-solid fa-layer-group"></b>可进入子图</span></div>
@@ -246,18 +253,15 @@
     const [, color, kname] = kindOf(n.类型), hp = herePath(c), here = path.every((t, i) => hp[i] === t);
     const desc = String(n.描述 || '').split('\n')[0];
     const funcs = Object.values(n.rules?.功能档案 || {});
-    // 行动：总图上的地点 / 所在城市里的地点可设为目的地；别的城市的子图地点要先前往那座城
-    const act = here ? '<button class="cta" type="button" data-go="page-map/place"><i class="fa-solid fa-city"></i>查看所在地点</button>'
-      : !trail.length || trail[0] === hp[0] ? `<button class="cta" type="button" data-go="page-map/star" data-set-dest="${c.esc(name)}"><i class="fa-solid fa-route"></i>设为目的地</button>`
-        : `<button class="cta" type="button" data-go="page-map/star" data-set-dest="${c.esc(trail[0])}"><i class="fa-solid fa-route"></i>前往${c.esc(trail[0])}</button>`;
-    return `<div class="insp-head"><span class="sock" style="--s:2.4em;--tint:${color}"><i class="fa-solid fa-location-dot"></i></span><div><strong style="font-size:1.15em">${c.esc(name)}</strong><br><small>${c.esc(n.类型 || kname)}${n.掌控势力 ? ' · ' + c.esc(n.掌控势力) : ''}</small></div><button class="x" type="button" data-close-inspector aria-label="关闭">×</button></div>
+    // 主操作在地标本身（点地标 = 设目的地 / 看当地，见 markGo），卡片只标出它现在的身份
+    const dest = c.state.ui.dest, role = here ? '当前位置' : dest && dest === markGo(c, path).dest ? '目的地' : '';
+    return `<div class="insp-head"><span class="sock" style="--s:2.4em;--tint:${color}"><i class="fa-solid fa-location-dot"></i></span><div><strong style="font-size:1.15em">${c.esc(name)}</strong>${role ? ` <span class="chip s${here ? ' gd' : ' dst'}">${role}</span>` : ''}<br><small>${c.esc(n.类型 || kname)}${n.掌控势力 ? ' · ' + c.esc(n.掌控势力) : ''}</small></div><button class="x" type="button" data-close-inspector aria-label="关闭">×</button></div>
       ${trail.length ? `<div class="crumb">${['斗罗大陆', ...trail].map(c.esc).join('<i class="fa-solid fa-angle-right"></i>')}</div>` : ''}
       ${desc ? `<p class="quote">${c.esc(desc)}</p>` : ''}
       ${!trail.length ? `<div class="minigrid" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div><b>${n.人口 ? c.fmt(n.人口) : '—'}</b><small>人口</small></div><div><b>${c.esc(n.经济状况 || '—')}</b><small>经济</small></div><div><b>${c.esc(n.守护军团 || '—')}</b><small>守军</small></div></div>` : n.状态 ? `<div class="minigrid" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div><b>${c.esc(statusText(n.状态))}</b><small>状态</small></div><div><b>${c.esc(n.掌控势力 || '—')}</b><small>掌控</small></div></div>` : ''}
       ${funcs.length ? `<div style="display:flex;gap:.3em;flex-wrap:wrap">${funcs.map(x => `<span class="chip s">${c.esc(x)}</span>`).join('')}</div>` : ''}
       ${n.kids.length ? `<section class="sec"><h3>下辖地点 · ${n.kids.length}</h3><div style="display:flex;gap:.3em;flex-wrap:wrap">${n.kids.slice(0, 14).map(k => `<span class="chip s">${c.esc(k)}</span>`).join('')}${n.kids.length > 14 ? `<span class="chip s">+${n.kids.length - 14}</span>` : ''}</div></section>` : ''}
       ${n.enterable ? `<button class="key-s" type="button" data-map-enter-btn="${c.esc(path.join('/'))}" style="align-self:flex-start"><i class="fa-solid fa-layer-group"></i> 进入子图</button>` : ''}
-      ${act}
       ${maintRow(c, name, n.状态, !!n.dyn || !!c.S.world.动态地点?.[name])}`;
   };
 
@@ -409,7 +413,7 @@
     const kids = Object.keys(city?.[1]?.子节点 || {}).map(k => ({ name: k, 类型: city[1].子节点[k].类型 }));
     return {
       tag: 'CORE · STAR MAP', wide: 'l',
-      core: `<div class="pad">${c.head('map', '行旅星图', 'Star Map', 'gd', c.hint('点地标看详情、设目的地；带层叠标记的地标可双击（或在详情里）进入子图，子图只是查看，不改变当前位置。拖动平移，滚轮或双指缩放。'))}${sandTable(c, c.state.ui.mapTrail || [])}</div>`,
+      core: `<div class="pad">${c.head('map', '行旅星图', 'Star Map', 'gd', c.hint('点地标直接设为目的地（点所在地看当地），悬停看详情；点空白处设坐标目的地。带层叠标记的地标可双击（或在悬停详情里）进入子图，子图只是查看，不改变当前位置。拖动平移，滚轮或双指缩放。'))}${sandTable(c, c.state.ui.mapTrail || [])}</div>`,
       mount: mountTable,
       railL: `<div class="rail door" data-go="page-map/place" role="link" tabindex="0" data-hint="查看当地">${c.sock('location-dot')}<small>${c.esc(here || '')}</small></div>`,
       right: `<div class="pad">
@@ -418,7 +422,7 @@
         ${kids.length ? `<span class="lbl">${c.esc(city[0])} 城内</span><div class="list">${kids.map(k => `<button class="row ${k.name === dest ? 'on' : ''}" type="button" data-set="dest=${c.esc(k.name)}" ${k.name === here ? 'disabled' : ''}><span class="chip s">${c.esc(k.类型 || '')}</span><div><strong>${c.esc(k.name)}</strong>${k.name === here ? '<small>当前位置</small>' : ''}</div><span></span></button>`).join('')}</div>` : ''}
         <span class="lbl">邻近城市</span>
         <div class="list">${near.map(({ n, d }) => `<button class="row ${n.name === dest ? 'on' : ''}" type="button" data-set="dest=${c.esc(n.name)}"><span class="chip s">${c.esc(kindOf(n.类型)[2])}</span><div><strong>${c.esc(n.name)}</strong><small>图上距离 ${Math.round(d)}</small></div><span></span></button>`).join('')}</div>
-        ${ptOf(dest) ? '' : dest ? routeBox(c, dest) : `<span class="lbl">未选择目的地${c.hint('选择一个目的地查看移动预演。')}</span><span class="cta-wrap" data-hint="先在星图或上面的列表里选一个目的地"><button class="cta" type="button" disabled><i class="fa-solid fa-person-walking-arrow-right"></i>出发</button></span>`}
+        ${ptOf(dest) ? '' : dest ? `${nodes.find(n => n.name === dest)?.kids?.length ? `<button class="key-s" type="button" data-map-enter-btn="${c.esc(dest)}" style="align-self:flex-start"><i class="fa-solid fa-layer-group"></i> 进入${c.esc(dest)}子图</button>` : ''}${routeBox(c, dest)}` :`<span class="lbl">未选择目的地${c.hint('选择一个目的地查看移动预演。')}</span><span class="cta-wrap" data-hint="先在星图或上面的列表里选一个目的地"><button class="cta" type="button" disabled><i class="fa-solid fa-person-walking-arrow-right"></i>出发</button></span>`}
       </div>`,
     };
   };

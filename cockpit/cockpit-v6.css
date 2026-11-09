@@ -133,3 +133,8 @@ details.fold[open]>summary::after{content:" －"}
 .rb-ring .medal .mvu-soul-ring-showcase{--ring-size:2.5em;--ring-stage-width:2.5em;--ring-stage-height:2.5em;min-height:2.5em}
 .rb-ring .medal b{font-size:.9em}
 .rb-empty{width:1.9em;height:1.9em;border-radius:50%;border:2px dashed #a9b5c5}
+/* 星图：点地标即设目的地——被选为目的地的地标换粉色光柱、地名牌描粉边；浮窗里的身份签（当前位置 / 目的地） */
+.mk.dest .mk-tag{color:#ffd0e6;box-shadow:inset 0 0 0 1px rgba(255,122,182,.75),0 0 10px rgba(255,122,182,.45)}
+.mk.dest .mk-base{left:-12px;top:-6px;width:24px;height:12px}
+.chip.s.gd{color:#ffe3a1;background:rgba(255,211,107,.12);box-shadow:inset 0 0 0 1px rgba(255,211,107,.5)}
+.chip.s.dst{color:#ffb3d6;background:rgba(255,122,182,.12);box-shadow:inset 0 0 0 1px rgba(255,122,182,.55)}
