@@ -180,9 +180,9 @@
     return {
       tag: 'CORE · SOUL RING',
       left: `<div class="pad">${c.head('ghost', '候选魂灵', 'Candidates', 'gd')}
-        ${list.length ? `<div class="list">${list.map(x => `<button class="row${x === cur ? ' on' : ''}" type="button" data-set="ringCand=${c.esc(x.soulName)}" aria-current="${x === cur}">${c.ringMedal(ringOf(x), '')}<div><strong>${c.esc(x.displayName)}</strong><small>${c.esc([x.ageText, x.quality, `契合 ${x.compValue}%`].join(' · '))}</small></div><span></span></button>`).join('')}</div>` : c.empty('ghost', '没有候选魂灵', '请先通过剧情补足候选魂灵')}
+        ${list.length ? `<div class="list">${list.map(x => `<button class="row${x === cur ? ' on' : ''}" type="button" data-set="ringCand=${c.esc(x.soulName)}" aria-current="${x === cur}">${c.ringMedal(ringOf(x), '')}<div><strong>${c.esc(x.displayName)}</strong><small>${c.esc([x.ageText, x.quality].filter(Boolean).join(' · '))}</small></div><span class="chip s" data-hint="契合度">${c.fmt(x.compValue)}%</span></button>`).join('')}</div>` : c.empty('ghost', '没有候选魂灵', '请先通过剧情补足候选魂灵')}
       </div>`,
-      core: cur ? `<div class="pad detail">
+      core: cur ? `<div class="pad detail ring-pick">
         <div class="q-title">${c.sock('circle-plus', 'gd')}<span class="chip">第 ${p.ringIndex} 魂环</span><h2>${c.esc(cur.displayName)}</h2><span class="q-state">${c.esc(cur.state)}</span></div>
         <div class="soul-card"><div class="soul-stage">${c.ringStage([{ 年限: cur.ageValue, slot: `第${p.ringIndex}魂环`, skills: [] }], () => '')}</div><small class="lbl">本次魂环 · ${c.esc(cur.nextRingColorLabel)}</small></div>
         <div class="tiles">

@@ -684,7 +684,10 @@ div.rail-item{cursor:default}
 .dur output:focus-within{box-shadow:inset 0 0 0 1px #6fb4ff,0 0 10px rgba(80,160,255,.45)}
 /* 确认条：放不下时文字独占一行、按钮换到下一行靠右（窄的侧屏里原四列网格会把文字挤成一字一行） */
 .confirm-strip{display:flex;flex-wrap:wrap;align-items:center}
-.confirm-strip>i{flex:none}
-.confirm-strip>span{flex:1 1 12em;min-width:0;overflow-wrap:anywhere}
+.confirm-strip>i{flex:none;align-self:flex-start;margin-top:.25em}
+.confirm-strip>span{flex:1 1 min(12em,calc(100% - 1.8em));min-width:0;overflow-wrap:anywhere}
 .confirm-strip>.key-s{flex:none}
 .confirm-strip>span+.key-s{margin-left:auto}
+/* 选魂灵生成魂环：魂环台固定高度，内容多时屏内滚动（原先台子被压扁、底座压到数据块上） */
+.ring-pick>.soul-card{flex:none}
+.ring-pick .soul-stage{flex:0 0 auto;height:calc(var(--rsz) * 2.2);min-height:0}
