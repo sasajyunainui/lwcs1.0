@@ -24,8 +24,6 @@
 /* 窄桌面（中屏约 400px）：总览顶部改上下两段——身份区占整宽，四条资源条两列两行，不再左右挤 */
 @container cockpit (min-width:701px) and (max-width:999px){
   .home-top{grid-template-columns:1fr;gap:.55em}.home-top .meters{grid-template-columns:1fr 1fr;gap:.35em 1em}
-  /* 中屏变宽后魂环随宽放大会顶到伤势栏：窄桌面魂环收一档 */
-  .soul-card{--rsz:clamp(56px,15cqw,80px)}
   /* 侧屏约 190px：钱包单列横排、结算标签不折行 */
   .wing .tiles.wallet{grid-template-columns:1fr}
   .wing .tiles.wallet .tile:last-child:nth-child(odd){grid-column:auto}
@@ -63,11 +61,22 @@
   /* 接缝铰链线自带 --lw:27%（原型比例），要跟着侧屏 22% 走，否则落进中屏 */
   .hinge.l{--lw:22%}.hinge.r{--rw:22%}
 }
-/* 较窄（< 860）：领域标签只亮当前领域的文字（其余悬停显示名称），播报收成喇叭（悬停看全文） */
-@container cockpit (min-width:701px) and (max-width:859px){
+/* 很窄（< 760）：领域标签只亮当前领域的文字（其余悬停显示名称），播报收成喇叭（悬停看全文） */
+@container cockpit (min-width:701px) and (max-width:759px){
   .tab:not(.on) .lb{display:none}
   .readout .tick{display:none}
   .readout .tick-ico{display:inline-block;cursor:help}
+}
+/* 总览中屏：魂环区按剩余高度封顶（首页底部有入口门，中屏可用高度随座舱宽度和身份区行数变）——
+   魂环区取尺寸容器，魂环尺寸 = min(按宽度, 按高度能放下舞台 2.1 倍 + 铭牌)；否则舞台撑出去压住伤势栏 */
+@container cockpit (min-width:701px){
+  .home-core>.soul-deck{container-type:size}
+  .home-core>.soul-deck>.soul-card{--rsz:min(clamp(64px,20cqw,100px),max(36px,calc((100cqh - 58px) / 2.1)))}
+  .home-core>.soul-deck:has(>.soul-card+.soul-card+.soul-card)>.soul-card{--rsz:min(clamp(48px,14cqw,90px),max(36px,calc((100cqh - 58px) / 2.1)))}
+}
+/* 窄桌面魂环按宽度再收一档（中屏约 400px） */
+@container cockpit (min-width:701px) and (max-width:999px){
+  .home-core>.soul-deck>.soul-card{--rsz:min(clamp(56px,15cqw,80px),max(36px,calc((100cqh - 58px) / 2.1)))}
 }
 .lwcs-ck-overlay{position:static;font-size:14px}
 /* 酒馆全局对 button / input / h2 等的主题样式不能渗进座舱：控件统一回到座舱自己的基线 */

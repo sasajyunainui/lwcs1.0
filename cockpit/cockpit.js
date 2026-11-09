@@ -387,7 +387,7 @@
     const back = $('#ck-back'); back.hidden = atHome; $('span', back).textContent = home.label; back.setAttribute('aria-label', `返回${home.label}`);
     const doors = $('#ck-doors'), html = atHome ? d.keys.slice(1).map(k => {
       let b = ''; try { b = k.brief?.(c) || ''; } catch (err) { b = ''; }
-      return `<button class="door-key" type="button" data-page="${k.id}">${sock(k.icon)}<span class="dk-t"><b>${esc(k.label)}</b>${b ? `<small>${esc(b)}</small>` : ''}</span><i class="fa-solid fa-chevron-right dk-go" aria-hidden="true"></i></button>`;
+      return `<button class="door-key" type="button" data-page="${k.id}">${sock(k.icon)}<span class="dk-t"><b>${esc(k.label)}</b>${b ? `<small>${esc(b)}</small>` : ''}</span></button>`;
     }).join('') : '';
     if (doors.innerHTML !== html) doors.innerHTML = html;
     doors.hidden = !html; $('.center').classList.toggle('has-doors', !!html);

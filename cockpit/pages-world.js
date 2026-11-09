@@ -269,9 +269,9 @@
     label: '世界', icon: 'globe', tag: 'CORE · WORLD',
     keys: [
       { id: 'overview', icon: 'globe', label: '概况', view: overview },
-      { id: 'chronicle', icon: 'timeline', label: '编年', view: chronicle, brief: c => `${upcoming(c).length} 个未来节点` },
+      { id: 'chronicle', icon: 'timeline', label: '编年', view: chronicle, brief: c => `${upcoming(c).length} 个节点` },
       { id: 'faction', icon: 'chess-rook', label: '势力', view: factionView, brief: c => `${factions(c).length} 方势力` },
-      { id: 'games', icon: 'trophy', label: '赛事', view: games, brief: c => { const n = Object.values(c.S.world.赛事 || {}).filter(x => x?.状态 !== '已完成').length; return n ? `${n} 项进行中` : '暂无赛事'; } },
+      { id: 'games', icon: 'trophy', label: '赛事', view: games, brief: c => { const n = Object.values(c.S.world.赛事 || {}).filter(x => x?.状态 !== '已完成').length; return n ? `${n} 项进行` : '暂无'; } },
       { id: 'bestiary', icon: 'dragon', label: '图鉴', view: bestiary, brief: c => `已录 ${Object.keys(c.S.world.图鉴 || {}).length} 种` },
     ],
   });
