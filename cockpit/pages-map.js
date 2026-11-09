@@ -244,7 +244,15 @@
   };
   // 子图导航：双击可下钻的地标 / 浮窗「进入子图」进入；路径条返回任一级。只是查看，不改变当前位置
   const setTrail = trail => { const c = window.COCKPIT.ctx(); c.state.ui.mapTrail = trail; if (c.state.inspect) window.COCKPIT.closeInspector(); window.COCKPIT.refresh(); };
-  document.addEventListener('dblclick', e => { const m = e.target.closest('.mk[data-map-enter]'); if (m) setTrail(m.dataset.mapEnter.split('/')); });
+  // 双击按「同一地标、0.45 秒内两次点击」自己认：第一次点击设目的地会重绘沙盘、换掉地标元素，浏览器的 dblclick 靠不住；手机双击同样适用
+  // 双击只为进子图：把第一次点击顺手设的目的地还原（捕获阶段先记下点击前的目的地）
+  let lastTap = { key: '', t: 0, dest: '' };
+  document.addEventListener('click', e => {
+    const m = e.target.closest('.mk[data-map-enter]'); if (!m) return;
+    const key = m.dataset.mapEnter, now = performance.now(), ui = window.COCKPIT.ctx().state.ui;
+    if (lastTap.key === key && now - lastTap.t < 450) { e.stopPropagation(); ui.dest = lastTap.dest; lastTap = { key: '', t: 0, dest: '' }; setTrail(key.split('/')); }
+    else lastTap = { key, t: now, dest: ui.dest || '' };
+  }, true);
   document.addEventListener('click', e => {
     const en = e.target.closest('[data-map-enter-btn]'); if (en) return setTrail(en.dataset.mapEnterBtn.split('/'));
     if (e.target.closest('[data-map-up]')) return setTrail((window.COCKPIT.ctx().state.ui.mapTrail || []).slice(0, -1));
