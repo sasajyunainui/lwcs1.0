@@ -13,6 +13,22 @@
     const lv = c.num(c.st.等级), start = c.num(f(c.ch, lv)), end = c.num(f(c.ch, lv + 1));
     return end > start ? { start, end, need: Math.max(0, end - c.num(c.st.魂力上限)) } : null;
   };
+  // 手动改等级：等级由魂力上限自动突破得出（运行时每次结算都按魂力上限补突破），只改等级会被冲回去。
+  // 所以改成 N 级时同一次写回把魂力上限设为 N 级门槛 + 魂环魂骨加成（当前魂力超出新上限的截掉）；
+  // 可改范围 = 魂环等级底线 ~ 魂环数封顶（再低会被底线拉回，再高没有对应魂环）
+  const levelRange = c => {
+    const floor = c.rt('读取真实魂环等级底线_V1'), cap = c.rt('getCharacterSoulRingLevelCap');
+    return { min: typeof floor === 'function' ? Math.max(0, c.num(floor(c.ch))) : 0, ...(typeof cap === 'function' ? { max: c.num(cap(c.ch)) } : {}) };
+  };
+  document.addEventListener('cockpit:edited', e => {
+    const p = e.detail.path; if (p.length !== 4 || p[0] !== 'char' || p[2] !== '属性' || p[3] !== '等级') return;
+    const c = window.COCKPIT.ctx?.(), ch = c?.S.char?.[p[1]]; if (!ch) return;
+    const req = c.rt('getCharacterBaseSoulPowerRequirementAtLevel'), bonus = c.rt('getCharacterCurrentRingAndBoneSoulPowerBonus_ACU');
+    if (typeof req !== 'function') return;
+    const max = Math.floor(c.num(req(ch, e.detail.value)) + (typeof bonus === 'function' ? c.num(bonus(ch)) : 0));
+    e.detail.extra.push({ path: ['char', p[1], '属性', '魂力上限'], value: max });
+    if (c.num(ch.属性?.魂力) > max) e.detail.extra.push({ path: ['char', p[1], '属性', '魂力'], value: max });
+  });
   const relationList = c => c.entries(c.ch.社交?.关系).map(([name, r]) => ({ name, ...r, aff: c.num(r.好感度) })).sort((a, b) => b.aff - a.aff);
   const affBar = v => `<div class="aff"><i style="${v >= 0 ? `left:50%;width:${Math.min(50, v / 2)}%` : `left:${50 + v / 2}%;width:${Math.min(50, -v / 2)}%;background:linear-gradient(90deg,#4a8bff,#6fb4ff)`}"></i></div>`;
   const where = c => String(c.ch.状态?.位置 || '').replace(/^斗罗大陆-/, '').replace(/-/g, ' · ');
@@ -80,7 +96,7 @@
         <div class="id-row">${avatarBlock(c, 'page-archive/profile')}
           <div class="who">
             <div class="name-line"><h1 class="name door" data-go="page-archive/directory" role="link" tabindex="0" data-hint="角色目录"${(pk => pk ? ` data-longpress="${c.esc(pk)}" data-longpress-delay="600"` : '')(window.COCKPIT.privateArchiveKey?.())}>${c.esc(c.name)}</h1>${genderMark(st.性别) || c.num(st.年龄) ? `<span class="gender ${st.性别 === '女' ? 'f' : st.性别 === '男' ? 'm' : ''}" title="${c.esc(st.性别 || '')} · ${c.num(st.年龄)} 岁">${genderMark(st.性别)}<b>${c.ed(c.num(st.年龄) || '?', c.P('属性', '年龄'), { kind: 'number', integer: true, min: 0, raw: c.num(st.年龄) })}</b><small>岁</small></span>` : ''}</div>
-            <div class="title-line"><span class="nw">Lv.${c.ed(c.num(st.等级), c.P('属性', '等级'), { kind: 'number', integer: true, min: 0, raw: c.num(st.等级) })} ${c.esc(c.rankTitle(st.等级))}</span> · <span class="nw">${c.ed(st.精神境界 || '灵元境', c.P('属性', '精神境界'), { kind: 'enum', options: ['灵元境', '灵通境', '灵海境', '灵渊境', '灵域境', '神元境'] })}</span></div>
+            <div class="title-line"><span class="nw">Lv.${c.ed(c.num(st.等级), c.P('属性', '等级'), { kind: 'number', integer: true, ...levelRange(c), raw: c.num(st.等级) })} ${c.esc(c.rankTitle(st.等级))}</span> · <span class="nw">${c.ed(st.精神境界 || '灵元境', c.P('属性', '精神境界'), { kind: 'enum', options: ['灵元境', '灵通境', '灵海境', '灵渊境', '灵域境', '神元境'] })}</span></div>
             <div class="plaques"><span class="plq door${c.blank(c.ch.社交?.主身份) ? ' dim' : ''}" data-go="page-archive/identity" role="link" tabindex="0" data-hint="身份与势力">${c.esc(c.blank(c.ch.社交?.主身份) ? '身份未记录' : c.ch.社交.主身份)}</span>${(rl => `<span class="rel-stack door" data-go="page-archive/relations" role="link" tabindex="0" data-hint="${rl.length ? `关系：${c.esc(rl.slice(0, 3).map(r => r.name).join('、'))}${rl.length > 3 ? ' 等' : ''}` : '关系'}">${rl.slice(0, 3).map(r => c.miniAva(r.name)).join('')}<b>关系 ${rl.length}</b></span>`)(relationList(c))}${st.邪魂师 ? '<span class="plq" style="--pc:#ff4d6a">邪魂师</span>' : ''}</div>
           </div>
         </div>
