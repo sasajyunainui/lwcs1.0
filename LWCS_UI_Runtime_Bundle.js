@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:8790670d9561ddadb0145e57a7b0f2c248d4f3a197ffaf28da93e24b213193b7|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:8e5e3d2931869f4b543017227f346f7c483b6925b21c9960673890ae40c9a5dd|cockpit/pages-role.js:f7cfcca9c21e792184b7229f4b12ecc90e3c18a7cc7d3b62e1334a6a8a1a6dba|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:10c44a13d6e04c2f27129d1f92d4b0ec5dd55092c45a1394f2b7819d873d3b0f|cockpit/pages-ability.js:3b36266bc16c72fbeefde70b131539e9e0296be40bacac7d7079d17878f6755d|cockpit/pages-supplies.js:8dbf2be6eb2d478ae681f0be5d0d1e9e707dc5722012e59846336277a4c22221|cockpit/pages-map.js:abda5a48cc5c7df554c1eca45a4abc932f2d895036ca60e0686212bf2763df80|cockpit/pages-world.js:55d91ee270a818c16b7ac67bf1473b1101c18793919508f45e751f80ed16edb2|cockpit/pages-terminal.js:ab98c82c74dfa9f590015d586d1d7cc888aebd154c83b5cd250579c0e70b2181|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:289fe455da8dfe0c8f42e39afaaa254d1c724b00f602e5094ca7626b17151097|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:ea48e5db9620c007fa94c6d8b132c0ce996e9af462b862f4669df59767b30922|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:0d1a3f3127ed9eb422c40d7b5262b36c720c23e1ce89f21d2af6d8dd478e55e6|cockpit/pages-role.js:2e3f8e37e5ed17495323de1535f96ed8e9854a941e38845dd6720968a529321e|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:10c44a13d6e04c2f27129d1f92d4b0ec5dd55092c45a1394f2b7819d873d3b0f|cockpit/pages-ability.js:83d13d6bfc33220a18eac2bb90b30f99aa49bd430006bf0a0a900a35c19264b6|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:362fea182fda961cc308405f5f8a432b63b28940b18bb4ac2e7d86e324f6b259|cockpit/pages-world.js:6851fc81ee4d831a1af87aa85b490557d452ef5b31ea776d50f871cb97f5574e|cockpit/pages-terminal.js:c73e78b78d6a7a80f96d774bcf3a88bfa17642c7ad81a5d5b89ff863e053125e|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:289fe455da8dfe0c8f42e39afaaa254d1c724b00f602e5094ca7626b17151097|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -27750,7 +27750,14 @@
         case 'deleteChar': {
           const 角色键 = resolveSnapshotCharKey(快照, toText(参数.char, '')), 角色数据 = deepGet(快照, ['rootData', 'char', 角色键], null);
           if (!角色键 || !角色数据 || typeof 角色数据 !== 'object') return { ok: false, message: '角色不存在。' };
-          if (!判断角色允许删除(角色键, 角色数据, 快照)) return { ok: false, message: '该角色不可删除。' };
+          // 座舱目录里点角色卡即切换查看，要删的往往就是正在查看的角色：先切回玩家再删（玩家本身仍不可删）
+          let 删除判定快照 = 快照;
+          const 删除时玩家名 = toText(deepGet(快照, 'rootData.sys.玩家名', ''), '').trim();
+          if (删除时玩家名 && 角色键 !== 删除时玩家名 && toText(快照.activeName, '').trim() === 角色键 && deepGet(快照, ['rootData', 'char', 删除时玩家名], null)) {
+            if (window.COCKPIT?.mounted) window.COCKPIT.view(删除时玩家名); else applyActiveCharacterSelection(删除时玩家名);
+            删除判定快照 = { ...快照, activeName: 删除时玩家名 };
+          }
+          if (!判断角色允许删除(角色键, 角色数据, 删除判定快照)) return { ok: false, message: '该角色不可删除。' };
           const 显示名 = toText(角色数据.name || deepGet(角色数据, 'base.name', ''), 角色键);
           await mutateStatDataByEditor(statData => {
             if (!deepGet(statData, ['char', 角色键], null)) throw new Error('角色不存在。');
@@ -52368,7 +52375,7 @@ ${播报文本}
       </div></div></div></div></div>
       <div class="center"><div class="float"><button type="button" class="back-plate" id="ck-back" hidden><i class="fa-solid fa-chevron-left"></i><span></span></button><div class="bz"><div class="b2"><div class="b3">
         <span class="tagline" aria-hidden="true" id="ck-coreTag">CORE</span><span class="led tr" aria-hidden="true"></span><span class="led bl" aria-hidden="true"></span><span class="screw br" aria-hidden="true"></span><span class="screw tl" aria-hidden="true"></span>
-        <div class="scr"><div class="host" id="ck-core"></div><nav class="doors" id="ck-doors" aria-label="本领域其他页面" hidden></nav></div>
+        <div class="scr"><div class="host" id="ck-core"></div></div>
       </div></div></div></div></div>
       <div class="wing r"><div class="float"><div class="bz"><div class="b2"><div class="b3">
         <span class="tagline" aria-hidden="true">SM-R01</span><span class="led tr" aria-hidden="true"></span><span class="screw br" aria-hidden="true"></span>
@@ -52379,10 +52386,12 @@ ${播报文本}
     <div class="readout">
         <span class="door" data-go="page-map/place" role="link" tabindex="0" title="查看当地"><i class="fa-solid fa-location-dot"></i> <span id="ck-rLoc"></span></span>
         <span class="num"><i class="fa-regular fa-clock"></i> <span id="ck-rTime"></span></span>
+        <button type="button" class="viewing" id="ck-viewing" hidden></button>
         <span class="pends" id="ck-rPend" aria-label="待处理"></span>
         <span class="res" id="ck-rRes" aria-label="随行资源"></span>
         <div class="tick" aria-label="系统播报"><span><b>播报</b><span id="ck-rTick"></span></span></div>
         <i class="fa-solid fa-bullhorn tick-ico" tabindex="0" role="button" aria-label="系统播报" data-hint=""></i>
+        <button type="button" class="gear" data-go="page-terminal/settings" aria-label="设置" data-hint="设置"><i class="fa-solid fa-sliders"></i></button>
     </div>
   </div>
 </section>`;
@@ -52507,17 +52516,15 @@ ${播报文本}
     screens.style.setProperty('--carousel-h', Math.max(320, el.scrollHeight) + 'px');
   };
 
-  // 领域内导航（不设子页标签）：领域首页（keys[0]）的中屏底部是本领域其他页面的入口门，带一行实时摘要；
+  // 领域内导航（不设子页标签）：首页上的控件本身就是入口——承载信息的同时点击跳到对应页面（名字 → 目录、修为 → 成长…，各页用 data-go 标出）；
   // 进到其他页面后，中屏顶边挂一块「‹ 首页名」返回牌，再点一次当前领域标签也回首页
   const syncNav = () => {
-    const d = domains[state.domain], home = d.keys[0], atHome = (state.page[state.domain] || home.id) === home.id, c = ctx();
+    const home = domains[state.domain].keys[0], atHome = (state.page[state.domain] || home.id) === home.id;
     const back = $('#ck-back'); back.hidden = atHome; $('span', back).textContent = home.label; back.setAttribute('aria-label', `返回${home.label}`);
-    const doors = $('#ck-doors'), html = atHome ? d.keys.slice(1).map(k => {
-      let b = ''; try { b = k.brief?.(c) || ''; } catch (err) { b = ''; }
-      return `<button class="door-key" type="button" data-page="${k.id}">${sock(k.icon)}<span class="dk-t"><b>${esc(k.label)}</b>${b ? `<small>${esc(b)}</small>` : ''}</span></button>`;
-    }).join('') : '';
-    if (doors.innerHTML !== html) doors.innerHTML = html;
-    doors.hidden = !html; $('.center').classList.toggle('has-doors', !!html);
+    // 查看的不是玩家时，指挥栏挂一枚「正在查看 X · 回到玩家」，任何页面一点即回
+    const vw = $('#ck-viewing'), pl = S?.sys?.玩家名, other = !!pl && !!state.view && state.view !== pl && !!S.char?.[pl];
+    vw.hidden = !other;
+    if (other) { vw.dataset.viewChar = pl; vw.innerHTML = `<i class="fa-solid fa-eye"></i>${esc(state.view)}<span>· 回到${esc(pl)}</span>`; vw.dataset.hint = `正在查看「${state.view}」，点此回到「${pl}」`; }
   };
   // 页面可提供 mount(face, ctx) 挂交互（沙盘拖拽、缩放等），每次主屏换面后调用
   const mount = (v, face) => { if (face && typeof v.mount === 'function') try { v.mount(face, ctx()); } catch (err) { console.error(err); } };
@@ -52551,7 +52558,8 @@ ${播报文本}
     if (id === state.domain) { const pg = page || domains[id].keys[0].id; if ((state.page[id] || domains[id].keys[0].id) !== pg) return switchPage(pg); if (page) api.refresh?.(); return; }
     const dir = state.domain ? Math.sign(order.indexOf(id) - order.indexOf(state.domain)) || 1 : 1;
     state.domain = id; state.inspect = null; clearFloat();
-    if (page) state.page[id] = page; else state.page[id] = state.page[id] || domains[id].keys[0].id;
+    // 点领域标签一律回该领域首页（不记上次停在哪个子页）；页面里的链接带 page 时直达
+    state.page[id] = page || domains[id].keys[0].id;
     $$('.tab', track).forEach(t => { const on = t.dataset.tab === id; t.classList.toggle('on', on); on ? t.setAttribute('aria-current', 'page') : t.removeAttribute('aria-current'); if (on) moveSlider(t); });
     if (isMobile()) setFace(0);
     renderPage({ kind: 'domain', dir, first });
@@ -52636,6 +52644,8 @@ ${播报文本}
     state.inspect = { kind, id }; pinned = mode === 'click' && hoverable(); layer.classList.toggle('pinned', pinned);
     $$('[data-inspect]').forEach(el => { const on = el.dataset.inspect === `${kind}:${id}`; el.classList.toggle('on', on); ringSlotOf(el)?.classList.toggle('mvu-hover-floating-active', on); });
     project(html, anchor, swap);
+    // 来源控件点击是跳转（不是钉住）时，卡上「点击钉住」的提示不适用
+    if (anchor?.dataset.go) $$('.peek-hint', cockpitEl).forEach(el => el.remove());
   }
   // 浮窗打开时给对应魂环挂引擎激活态（.mvu-hover-floating-active），魂环舞台随之保持塔形
   function ringSlotOf(el) { return el.matches('.mvu-soul-ring-slot') ? el : el.querySelector('.mvu-soul-ring-slot'); }
@@ -52918,7 +52928,6 @@ ${播报文本}
   // ---------- 事件委托 ----------
   track.addEventListener('click', e => { const t = e.target.closest('.tab'); if (t) switchDomain(t.dataset.tab); });
   $('.cockpit').addEventListener('click', e => { const r = e.target.closest('[data-route]'); if (r) C.route({ to: r.dataset.route }); });
-  $('#ck-doors').addEventListener('click', e => { const k = e.target.closest('.door-key'); if (k) switchPage(k.dataset.page); });
   $('#ck-back').addEventListener('click', () => switchPage(domains[state.domain].keys[0].id));
   // 滚轮归屏：桌面三屏里指针在哪块屏就只滚那块屏。落在屏框 / 屏内不可滚的地方也滚这块屏的内容；
   // 屏里内容滚到头时吞掉这次滚轮，不再串到酒馆聊天区。只有整块屏根本没有可滚内容才放行（让聊天区照常滚）
@@ -52975,7 +52984,8 @@ ${播报文本}
     }
     if (t.dataset.closeInspector !== undefined) return closeInspector();
     if (t.dataset.clamp !== undefined) return t.classList.toggle('clamp');
-    if (t.dataset.inspect) { const [kind, ...rest] = t.dataset.inspect.split(':'); return openInspector(kind, rest.join(':'), t); }
+    // 既能悬停预览又是入口的控件（施放次数行等）：点击走跳转，悬停照旧出卡
+    if (t.dataset.inspect && !t.dataset.go) { const [kind, ...rest] = t.dataset.inspect.split(':'); return openInspector(kind, rest.join(':'), t); }
     if (t.closest(".fcard,.inline-detail") && t.dataset.pick === undefined) closeInspector();
     if (t.dataset.setDest) state.ui.dest = t.dataset.setDest;
     if (t.dataset.go && t.dataset.goSet) for (const kv of t.dataset.goSet.split(';')) { const [k, v] = kv.split('='); state.ui[k] = v; }
@@ -53109,10 +53119,10 @@ ${播报文本}
 /* 角色领域：总览 · 档案 · 成长 · 关系 · 身份 · 权限 · 目录（私密档案不在导航中，见 canOpenPrivateArchive 注释） */
 (() => {
   const WOUND_PARTS = ['头部', '躯干', '左臂', '右臂', '左腿', '右腿'];
-  const avatarBlock = c => {
+  const avatarBlock = (c, go = '') => {
     const src = c.avatarSrc(c.name);
     return `<div class="ava"><span class="ring1 oct"></span><span class="ring2 oct"></span>
-      <div class="face-img oct">${src ? `<img src="${c.esc(src)}" alt="${c.esc(c.name)}头像">` : `<span class="mono">${c.esc(c.name.slice(1, 2) || c.name[0])}</span>`}</div>
+      <div class="face-img oct${go ? ' door' : ''}"${go ? ` data-go="${go}" role="link" tabindex="0" data-hint="外貌与档案"` : ''}>${src ? `<img src="${c.esc(src)}" alt="${c.esc(c.name)}头像">` : `<span class="mono">${c.esc(c.name.slice(1, 2) || c.name[0])}</span>`}</div>
       <label class="upload" title="上传头像"><i class="fa-solid fa-camera"></i><input type="file" accept="image/*" class="ava-file" data-name="${c.esc(c.name)}" aria-label="上传${c.esc(c.name)}的头像"></label></div>`;
   };
   const growthOf = c => {
@@ -53185,11 +53195,11 @@ ${播报文本}
       tag: 'CORE · STATUS',
       core: `<div class="pad home-core">${window.COCKPIT.battleActive?.() ? `<div class="banner battle-back"><i class="fa-solid fa-khanda"></i><div><strong>战斗进行中</strong></div><button class="key-s" type="button" data-act='{"name":"battle"}'>返回战斗</button></div>` : ''}
         <div class="home-top">
-        <div class="id-row">${avatarBlock(c)}
+        <div class="id-row">${avatarBlock(c, 'page-archive/profile')}
           <div class="who">
-            <div class="name-line"><h1 class="name"${(pk => pk ? ` data-longpress="${c.esc(pk)}" data-longpress-delay="600"` : '')(window.COCKPIT.privateArchiveKey?.())}>${c.esc(c.name)}</h1>${genderMark(st.性别) || c.num(st.年龄) ? `<span class="gender ${st.性别 === '女' ? 'f' : st.性别 === '男' ? 'm' : ''}" title="${c.esc(st.性别 || '')} · ${c.num(st.年龄)} 岁">${genderMark(st.性别)}<b>${c.ed(c.num(st.年龄) || '?', c.P('属性', '年龄'), { kind: 'number', integer: true, min: 0, raw: c.num(st.年龄) })}</b><small>岁</small></span>` : ''}</div>
+            <div class="name-line"><h1 class="name door" data-go="page-archive/directory" role="link" tabindex="0" data-hint="角色目录"${(pk => pk ? ` data-longpress="${c.esc(pk)}" data-longpress-delay="600"` : '')(window.COCKPIT.privateArchiveKey?.())}>${c.esc(c.name)}</h1>${genderMark(st.性别) || c.num(st.年龄) ? `<span class="gender ${st.性别 === '女' ? 'f' : st.性别 === '男' ? 'm' : ''}" title="${c.esc(st.性别 || '')} · ${c.num(st.年龄)} 岁">${genderMark(st.性别)}<b>${c.ed(c.num(st.年龄) || '?', c.P('属性', '年龄'), { kind: 'number', integer: true, min: 0, raw: c.num(st.年龄) })}</b><small>岁</small></span>` : ''}</div>
             <div class="title-line"><span class="nw">Lv.${c.ed(c.num(st.等级), c.P('属性', '等级'), { kind: 'number', integer: true, min: 0, raw: c.num(st.等级) })} ${c.esc(c.rankTitle(st.等级))}</span> · <span class="nw">${c.ed(st.精神境界 || '灵元境', c.P('属性', '精神境界'), { kind: 'enum', options: ['灵元境', '灵通境', '灵海境', '灵渊境', '灵域境', '神元境'] })}</span></div>
-            <div class="plaques">${!c.blank(c.ch.社交?.主身份) ? `<span class="plq">${c.ed(c.ch.社交.主身份, c.P('社交', '主身份'))}</span>` : ''}${st.邪魂师 ? '<span class="plq" style="--pc:#ff4d6a">邪魂师</span>' : ''}</div>
+            <div class="plaques"><span class="plq door${c.blank(c.ch.社交?.主身份) ? ' dim' : ''}" data-go="page-archive/identity" role="link" tabindex="0" data-hint="身份与势力">${c.esc(c.blank(c.ch.社交?.主身份) ? '身份未记录' : c.ch.社交.主身份)}</span>${(rl => `<span class="rel-stack door" data-go="page-archive/relations" role="link" tabindex="0" data-hint="${rl.length ? `关系：${c.esc(rl.slice(0, 3).map(r => r.name).join('、'))}${rl.length > 3 ? ' 等' : ''}` : '关系'}">${rl.slice(0, 3).map(r => c.miniAva(r.name)).join('')}<b>${rl.length ? rl.length : '<i class="fa-solid fa-people-arrows"></i>'}</b></span>`)(relationList(c))}${st.邪魂师 ? '<span class="plq" style="--pc:#ff4d6a">邪魂师</span>' : ''}</div>
           </div>
         </div>
         <div class="meters">
@@ -53260,7 +53270,7 @@ ${播报文本}
             <div class="plaques">
               ${swatchPlq(c, '发色', a.发色, c.P('外貌', '发色'))}${swatchPlq(c, '瞳色', a.瞳色, c.P('外貌', '瞳色'))}
               <span class="plq steel">发型 · ${c.ed(c.blank(a.发型) ? '未记录' : a.发型, c.P('外貌', '发型'), { raw: c.blank(a.发型) ? '' : a.发型 })}</span><span class="plq steel">体型 · ${c.ed(c.blank(a.体型) ? '未记录' : a.体型, c.P('外貌', '体型'), { raw: c.blank(a.体型) ? '' : a.体型 })}</span>
-              ${(a.特殊特征 || []).map(t => `<span class="plq gold">${c.esc(t)}</span>`).join('')}
+              ${(a.特殊特征 || []).map((t, i) => `<span class="plq gold">${c.ed(t, c.P('外貌', '特殊特征', i), { raw: t })}<button class="plq-x" type="button" data-del-path="${c.esc(JSON.stringify(c.P('外貌', '特殊特征', i)))}" aria-label="删除特征"><i class="fa-solid fa-xmark"></i></button></span>`).join('')}<button class="plq gold add" type="button" data-add-feature aria-label="添加特殊特征"><i class="fa-solid fa-plus"></i></button>
             </div>
             ${heightRuler(c, a.身高, c.P('外貌', '身高'))}
             ${wear.length ? `<section class="sec"><h3>穿搭<span class="en">Outfit</span></h3><div class="wear">${wear.map(([ic, l, v]) => `<div class="wear-row">${c.sock(ic)}<small>${l}</small><b>${c.ed(v, c.P('穿搭', l))}</b></div>`).join('')}</div><p class="prose">${c.ed(c.blank(w.描述) ? '未记录整体描述' : w.描述, c.P('穿搭', '描述'), { kind: 'text', raw: c.blank(w.描述) ? '' : w.描述 })}</p></section>` : ''}
@@ -53274,9 +53284,9 @@ ${播报文本}
         ${c.head('user', '基础信息', 'Basic')}
         <div class="id-photo">${avatarBlock(c)}</div>
         <div class="idcard">
-          ${idRow(c, 'cake-candles', '生辰', `${st.生日 || '未记录'} · ${c.num(st.年龄)} 岁`)}
-          ${idRow(c, st.性别 === '女' ? 'venus' : st.性别 === '男' ? 'mars' : 'genderless', '性别', st.性别 || '未记录')}
-          ${idRow(c, st.邪魂师 ? 'skull' : 'shield-halved', '阵营', st.邪魂师 ? '邪魂师' : '正统魂师', st.邪魂师 ? 'bad' : '')}
+          <div class="idr"><i class="fa-solid fa-cake-candles"></i><span>生辰</span><b>${c.ed(c.blank(st.生日) ? '未记录' : st.生日, c.P('属性', '生日'), { raw: c.blank(st.生日) ? '' : st.生日 })} · ${c.ed(c.num(st.年龄), c.P('属性', '年龄'), { kind: 'number', integer: true, min: 0, raw: c.num(st.年龄) })} 岁</b></div>
+          <div class="idr"><i class="fa-solid fa-${st.性别 === '女' ? 'venus' : st.性别 === '男' ? 'mars' : 'genderless'}"></i><span>性别</span><b>${c.ed(st.性别 || '未记录', c.P('属性', '性别'), { kind: 'enum', options: ['男', '女'] })}</b></div>
+          ${(f => `<div class="idr door${st.邪魂师 ? ' bad' : ''}" data-go="page-archive/identity" role="link" tabindex="0" data-hint="身份与势力"><i class="fa-solid fa-${st.邪魂师 ? 'skull' : 'flag'}"></i><span>阵营</span><b>${c.esc(f ? f + (st.邪魂师 ? ' · 邪魂师' : '') : st.邪魂师 ? '邪魂师' : '无所属')}</b></div>`)(Object.keys(c.ch.社交?.势力 || {})[0] || '')}
           <div class="idr"><i class="fa-solid fa-location-dot"></i><span>所在</span><b>${c.ed(c.ch.状态?.位置 || '', c.P('状态', '位置'))}</b></div>
           ${alive ? '' : idRow(c, 'cross', '状态', `已故 · ${c.ch.状态?.死亡类型 || ''}${c.num(c.ch.状态?.死亡tick) >= 0 ? ' · ' + c.tickDate(c.ch.状态.死亡tick) : ''}`, 'bad')}
         </div>
@@ -53456,11 +53466,11 @@ ${播报文本}
     const rel = me?.社交?.关系 || {}, loc = n => String(c.S.char[n]?.状态?.位置 || '未知').replace(/^斗罗大陆-/, '').replace(/-/g, ' · ');
     const near = names.filter(n => c.S.char[n].状态?.位置 === here), far = names.filter(n => !near.includes(n)), known = names.filter(n => rel[n]);
     const pool = { 全部: names, 同地: near, 已结识: known, 其他地点: far }, tab = pool[c.state.ui.dtab2] ? c.state.ui.dtab2 : '全部';
-    const sel = names.find(n => n === c.state.ui.dirsel) || c.name;
+    const sel = c.name;
     const card = n => {
       const x = c.S.char[n], lv = c.num(x.属性?.等级), r = rel[n], aff = c.num(r?.好感度);
       const tags = [n === c.player ? '<span class="rc-tag gold">玩家</span>' : '', n === c.name && n !== c.player ? '<span class="rc-tag blue">正在查看</span>' : '', r ? `<span class="rc-tag ${aff >= 0 ? 'warm' : 'cold'}"><i class="fa-solid fa-handshake-simple"></i> ${aff >= 0 ? '+' : ''}${c.fmt(aff)}</span>` : ''].join('');
-      return `<button class="rc${n === sel ? ' sel' : ''}${n === c.name ? ' on' : ''}" type="button" data-set="dirsel=${c.esc(n)}" data-face-after="1" aria-current="${n === sel}">
+      return `<button class="rc${n === c.name ? ' sel on' : ''}" type="button" data-view-char="${c.esc(n)}" aria-current="${n === c.name}" data-hint="${n === c.name ? '正在查看' : `切换查看${c.esc(n)}`}">
         <span class="rc-lv">Lv.${lv}</span>${c.miniAva(n)}
         <strong>${c.esc(n)}</strong><em>${c.rankTitle(lv)}${x.属性?.精神境界 ? ' · ' + c.esc(x.属性.精神境界) : ''}</em>
         <small>${c.esc(x.社交?.主身份 || '')}</small>
@@ -53481,7 +53491,7 @@ ${播报文本}
       right: `<div class="pad">${charDetail(c, sel)}</div>`,
     };
   };
-  // 角色名片（右翼）：身份 / 年龄 / 武魂 / 所在 + 切换查看；删除只对非玩家、非当前查看的角色开放（两步确认）
+  // 角色名片（右翼）：正在查看的角色的身份 / 年龄 / 武魂 / 所在；查看的不是玩家时给「回到玩家」，可删除（桥接先切回玩家再删，两步确认）
   const charDetail = (c, name) => {
     const x = c.S.char[name]; if (!x) return '';
     const souls = [x.第1武魂?.表象名称, x.第2武魂?.表象名称].filter(v => !c.blank(v)).map(c.esc).join(' / ');
@@ -53492,12 +53502,13 @@ ${播报文本}
         <div class="tile">${c.sock('fire')}<b>${souls || '—'}</b><small>武魂</small></div>
         <div class="tile">${c.sock('location-dot')}<b>${c.esc(String(x.状态?.位置 || '未知').replace(/^斗罗大陆-/, '').replace(/-/g, ' · '))}</b><small>所在</small></div>
       </div>
-      <div class="acts"><button class="cta" type="button" data-view-char="${c.esc(name)}"${name === c.name ? ' disabled' : ''}><i class="fa-solid fa-eye"></i>${name === c.name ? '正在查看' : '切换查看'}</button>
-      ${name !== c.player && name !== c.name ? `<button class="key-s danger" type="button" data-confirm="${c.esc(`删除角色「${name}」，并清理其他角色关系表里对它的引用`)}" data-act="${c.esc(JSON.stringify({ name: 'deleteChar', char: name }))}"><i class="fa-solid fa-trash"></i> 删除角色</button>` : ''}</div>`;
+      <div class="acts">${name !== c.player ? `<button class="cta" type="button" data-view-char="${c.esc(c.player)}"><i class="fa-solid fa-user"></i>回到${c.esc(c.player)}</button>` : ''}
+      ${name !== c.player ? `<button class="key-s danger" type="button" data-confirm="${c.esc(`删除角色「${name}」，并清理其他角色关系表里对它的引用`)}" data-act="${c.esc(JSON.stringify({ name: 'deleteChar', char: name }))}"><i class="fa-solid fa-trash"></i> 删除角色</button>` : ''}</div>`;
   };
 
   document.addEventListener('click', e => {
     const c = window.COCKPIT.ctx?.(); if (!c) return;
+    if (e.target.closest('[data-add-feature]')) { const arr = c.ch.外貌?.特殊特征; window.COCKPIT.write([{ path: c.P('外貌', '特殊特征'), value: [...(Array.isArray(arr) ? arr : []), '新特征'] }]); return; }
     if (e.target.closest('[data-wound-add]')) { c.state.ui.woundForm = true; window.COCKPIT.refresh(); setTimeout(() => document.querySelector('[data-wf-part]')?.focus(), 30); return; }
     const wp = e.target.closest('[data-wf-part]'), wd = e.target.closest('[data-wf-deg]');
     if (wp || wd) {
@@ -53536,10 +53547,10 @@ ${播报文本}
     keys: [
       { id: 'status', icon: 'gauge-high', label: '总览', view: status, inspect: (c, kind, id, mode) => kind === 'sk' ? window.COCKPIT.skillCard?.(c, id, mode) || '' : '' },
       { id: 'profile', icon: 'id-card', label: '档案', view: profile },
-      { id: 'growth', icon: 'chart-line', label: '成长', view: growth, brief: c => `${c.entries(c.ch.战斗历史).length} 场战斗` },
-      { id: 'relations', icon: 'people-arrows', label: '关系', view: relations, brief: c => `${c.entries(c.ch.社交?.关系).length} 人` },
-      { id: 'identity', icon: 'landmark', label: '身份', view: identity, inspect: privInspect, brief: c => `${c.entries(c.ch.社交?.势力).length} 个势力` },
-      { id: 'directory', icon: 'users', label: '目录', view: directory, brief: c => `${Object.keys(c.S.char).length} 人` },
+      { id: 'growth', icon: 'chart-line', label: '成长', view: growth },
+      { id: 'relations', icon: 'people-arrows', label: '关系', view: relations },
+      { id: 'identity', icon: 'landmark', label: '身份', view: identity, inspect: privInspect },
+      { id: 'directory', icon: 'users', label: '目录', view: directory },
     ],
   });
 })();
@@ -55517,7 +55528,7 @@ ${播报文本}
       tag: 'CORE · MARTIAL SOUL',
       left: `<div class="pad">${c.head('fire', '武魂', 'Martial Souls', 'gd')}
         <div class="list">${c.souls.map((s, i) => `<button class="row${i === idx ? ' on' : ''}" type="button" data-set="soul=${i}" aria-current="${i === idx}">${c.sock('fire', i === idx ? 'gd' : '')}<div><strong>${c.esc(s.表象名称)}</strong><small>${c.esc([s.slot, s.系别, `${s.rings.length} 环`].filter(Boolean).join(' · '))}</small></div><span></span></button>`).join('')}</div>
-        <section class="sec grow"><h3>魂技<span class="en">${skills.length}</span>${c.hint('悬停查看魂技卡，点击钉住；完整档案与编辑在「典籍」。')}</h3>
+        <section class="sec grow"><h3 class="door" data-go="page-ability/codex" data-go-set="skg=全部" role="link" tabindex="0">魂技<span class="en">${skills.length}</span>${c.hint('悬停查看魂技卡，点击钉住；完整档案与编辑在「典籍」。')}</h3>
         ${skills.length ? `<div class="list q-list">${skills.map(x => `<button class="row" type="button" data-inspect="sk:${skKey(x)}">${c.ringMedal(x.r, x.r.slot.replace(/\D/g, ''), true)}<div><strong>${c.esc(x.sk.魂技名)}</strong><small>${c.yearTier(x.r.年限)} · ${costText(c, x.sk.消耗)} · 前摇 ${c.fmt(x.sk.前摇 || 0)}</small></div><i class="fa-solid fa-chevron-right"></i></button>`).join('')}</div>` : '<span class="lbl">尚未附环</span>'}</section>
       </div>`,
       core: `<div class="pad detail martial-core">
@@ -55533,8 +55544,9 @@ ${播报文本}
       right: `<div class="pad">
         ${c.head('fire-flame-curved', '施放次数', 'Casts', 'sp')}
         <div class="need"><span>当前魂力</span><b>${c.fmt(pool)} / ${c.fmt(c.st.魂力上限)}</b></div>
-        ${skills.length ? `<div class="casts">${skills.map(x => { const cost = typeof x.sk.消耗 === 'object' ? c.num(x.sk.消耗?.魂力) : 0; return `<button class="cast" type="button" data-inspect="sk:${skKey(x)}"><div><strong>${c.esc(x.sk.魂技名)}</strong><small>${cost ? `每次 ${c.fmt(cost)} 魂力` : '无魂力消耗'}</small></div><b>×${cost ? Math.floor(pool / cost) : '∞'}</b></button>`; }).join('')}</div>` : '<span class="lbl">尚无可施放的魂技</span>'}
+        ${skills.length ? `<div class="casts">${skills.map(x => { const cost = typeof x.sk.消耗 === 'object' ? c.num(x.sk.消耗?.魂力) : 0; return `<button class="cast" type="button" data-inspect="sk:${skKey(x)}" data-go="page-ability/codex" data-go-set="skg=全部;sksel=${skKey(x)}"><div><strong>${c.esc(x.sk.魂技名)}</strong><small>${cost ? `每次 ${c.fmt(cost)} 魂力` : '无魂力消耗'}</small></div><b>×${cost ? Math.floor(pool / cost) : '∞'}</b></button>`; }).join('')}</div>` : '<span class="lbl">尚无可施放的魂技</span>'}
         ${blOn ? `<div class="groove"></div>${c.head('droplet', bl.血脉, 'Bloodline', 'hp')}${c.kv([['血脉', c.ed(bl.血脉, c.P('血脉之力', '血脉'))], ['解封层数', c.ed(c.fmt(bl.解封层数 || 0), c.P('血脉之力', '解封层数'), { kind: 'number', integer: true, min: 0, raw: c.num(bl.解封层数) })], ['气血魂核', c.ed(bl.核心 || '未凝聚', c.P('血脉之力', '核心'), { raw: bl.核心 || '' })], ['生命之火', bl.生命之火 ? '已点燃' : '未点燃']])}${allSkills(c).filter(s => BLOOD_CHIP[s.group]).map(s => `<button class="row" type="button" data-inspect="sk:${c.esc(s.key)}"><span class="chip s">${BLOOD_CHIP[s.group]}</span><div><strong>${c.esc(s.魂技名)}</strong></div><i class="fa-solid fa-chevron-right"></i></button>`).join('')}` : ''}
+        ${(n => `<button class="tile door self-made" type="button" data-go="page-ability/design" data-hint="设计台">${c.sock('pen-ruler', 'gd')}<b>${n} 项</b><small>${window.COCKPIT.pending()?.skillDesign ? '有待确认的设计' : '自创魂技'}</small></button>`)(c.entries(c.ch.自创魂技).length)}
       </div>`,
     };
   };
@@ -55661,8 +55673,8 @@ ${播报文本}
     label: '能力', icon: 'wand-sparkles', tag: 'CORE · MARTIAL SOUL',
     keys: [
       { id: 'martial', icon: 'fire', label: '武魂', view: martial, inspect: abilityInspect },
-      { id: 'codex', icon: 'book', label: '典籍', view: codex, inspect: skillInspect, brief: c => `${allSkills(c).length} 项技能` },
-      { id: 'design', icon: 'pen-ruler', label: '设计', view: design, brief: () => (window.COCKPIT.pending()?.skillDesign ? '有待确认设计' : '') },
+      { id: 'codex', icon: 'book', label: '典籍', view: codex, inspect: skillInspect },
+      { id: 'design', icon: 'pen-ruler', label: '设计', view: design },
     ],
   });
 })();
@@ -55935,7 +55947,7 @@ ${播报文本}
     return {
       tag: 'CORE · ARMORY',
       left: `<div class="pad">${c.head('shield-halved', '挂点', 'Hardpoints', 'gd')}
-        <div class="list q-list">${EQ_KEYS.map(x => { const nm = nameOf(x); return `<button class="row${x === sel ? ' on' : ''}${filled(nm) ? '' : ' idle'}" type="button" data-set="eqsel=${x.k}" aria-current="${x === sel}">${c.sock(x.ic, filled(nm) ? 'gd' : '')}<div><strong>${c.esc(filled(nm) && x.k !== '魂导器' ? nm : x.l)}</strong><small>${!filled(nm) ? '空挂点' : x.k === '魂导器' ? nm : c.esc(x.l + (x.s(eq[x.k] || {}) ? ' · ' + x.s(eq[x.k] || {}) : ''))}</small></div><span></span></button>`; }).join('')}</div>
+        <div class="list q-list">${EQ_KEYS.map(x => { const nm = nameOf(x); return `<button class="row${x === sel ? ' on' : ''}${filled(nm) ? '' : ' idle'}" type="button" data-set="eqsel=${x.k}" aria-current="${x === sel}">${c.sock(x.ic, filled(nm) ? 'gd' : '')}<div><strong>${c.esc(filled(nm) && x.k !== '魂导器' ? nm : x.l)}</strong><small>${!filled(nm) ? '空挂点' : x.k === '魂导器' ? nm : c.esc(x.l + (x.s(eq[x.k] || {}) ? ' · ' + x.s(eq[x.k] || {}) : ''))}</small></div><span></span></button>`; }).join('')}${(n => `<button class="row${n ? '' : ' idle'}" type="button" data-go="page-supplies/bones">${c.sock('bone', n ? 'gd' : '')}<div><strong>魂骨</strong><small>${n ? `已镶嵌 ${n} 块` : '未镶嵌'}</small></div><span></span></button>`)(BONES.filter(([k]) => { const b = c.ch.魂骨?.[k]; return filled(b?.名称) || filled(b?.name) || c.num(b?.年限) > 0; }).length)}</div>
       </div>`,
       core: filled(selName) ? eqCore(c, sel.k) : `<div class="pad sparse">${c.empty(sel.ic, `${sel.l}挂点空着`, '在背包里选中装备后可以挂载到这里')}<button class="key-s" type="button" data-go="page-supplies/pack" style="align-self:center"><i class="fa-solid fa-box-open"></i> 去背包</button></div>`,
       right: `<div class="pad">${c.head('bolt', '武装共鸣', 'Resonance')}
@@ -56006,8 +56018,8 @@ ${播报文本}
     label: '物资', icon: 'cube', tag: 'CORE · ARMORY',
     keys: [
       { id: 'equip', icon: 'shield-halved', label: '装备', view: equipment },
-      { id: 'bones', icon: 'bone', label: '魂骨', view: bones, brief: c => `${BONES.filter(([k]) => { const b = c.ch.魂骨?.[k]; return filled(b?.名称) || filled(b?.name) || c.num(b?.年限) > 0; }).length} 块` },
-      { id: 'pack', icon: 'box-open', label: '背包', view: pack, brief: c => `${c.entries(c.ch.背包).length} 种物品` },
+      { id: 'bones', icon: 'bone', label: '魂骨', view: bones },
+      { id: 'pack', icon: 'box-open', label: '背包', view: pack },
     ],
   });
 })();
@@ -56393,7 +56405,7 @@ ${播报文本}
       tag: 'CORE · STAR MAP', wide: 'l',
       core: `<div class="pad">${c.head('map', '行旅星图', 'Star Map', 'gd', c.hint('点地标看详情、设目的地；带层叠标记的地标可双击（或在详情里）进入子图，子图只是查看，不改变当前位置。拖动平移，滚轮或双指缩放。'))}${sandTable(c, c.state.ui.mapTrail || [])}</div>`,
       mount: mountTable,
-      railL: `<div class="rail">${c.sock('location-dot')}<small>${c.esc(here || '')}</small></div>`,
+      railL: `<div class="rail door" data-go="page-map/place" role="link" tabindex="0" data-hint="查看当地">${c.sock('location-dot')}<small>${c.esc(here || '')}</small></div>`,
       right: `<div class="pad">
         ${c.head('flag-checkered', '目的地', 'Destination')}
         ${ptOf(dest) ? `<div class="relic-card">${c.sock('location-crosshairs', 'gd')}<div><strong>${ptOf(dest).x}, ${ptOf(dest).y}</strong><small>坐标目的地</small></div><button class="key-s" type="button" data-set="dest=" aria-label="清除坐标目的地"><i class="fa-solid fa-xmark"></i></button></div>${routeBox(c, dest)}${addHere(c, ptOf(dest))}<div class="groove"></div>` : ''}
@@ -56420,7 +56432,7 @@ ${播报文本}
     label: '探索', icon: 'compass', tag: 'CORE · STAR MAP',
     keys: [
       { id: 'star', icon: 'map', label: '地图', view: travel, inspect: nodeInspect },
-      { id: 'place', icon: 'city', label: '当地', brief: c => String(c.ch.状态?.位置 || '').split('-').filter(x => x && x !== '斗罗大陆').pop() || '', view: place, inspect: (c, kind, id, mode) => kind === 'dyn' ? dynInspect(c, id) : npcInspect(c, kind, id, mode) },
+      { id: 'place', icon: 'city', label: '当地', view: place, inspect: (c, kind, id, mode) => kind === 'dyn' ? dynInspect(c, id) : npcInspect(c, kind, id, mode) },
     ],
   });
 })();
@@ -56461,7 +56473,9 @@ ${播报文本}
 
   // 大数按「万 / 亿」缩写（四列图块放不下 1,000,000）
   const wan = (c, n) => { n = c.num(n); return n >= 1e8 ? `${Number((n / 1e8).toFixed(2))}亿` : n >= 1e4 ? `${Number((n / 1e4).toFixed(n % 1e4 ? 1 : 0))}万` : c.fmt(n); };
-  const tile = (c, icon, value, label, cls = '') => `<div class="tile${cls ? ' ' + cls : ''}">${c.sock(icon)}<b>${value}</b><small>${label}</small></div>`;
+  // go：控件本身即入口（'域/页' 或 '域/页|键=值;…' 顺带选中条目）
+  const goAttr = (c, go, hint = '') => { const [to, set] = String(go).split('|'); return ` data-go="${to}"${set ? ` data-go-set="${c.esc(set)}"` : ''} role="link" tabindex="0"${hint ? ` data-hint="${c.esc(hint)}"` : ''}`; };
+  const tile = (c, icon, value, label, cls = '', go = '', hint = '') => `<div class="tile${cls ? ' ' + cls : ''}${go ? ' door' : ''}"${go ? goAttr(c, go, hint) : ''}>${c.sock(icon)}<b>${value}</b><small>${label}</small></div>`;
 
   // 概况：左翼 = 所在城市，主屏 = 时空中枢（日期、世界线、魂兽森林、拍卖），右翼 = 近期安排
   const overview = c => {
@@ -56471,20 +56485,19 @@ ${播报文本}
     return {
       tag: 'CORE · WORLD',
       left: `<div class="pad">${c.head('city', cn || '未知地点', city.类型 || 'City', 'gd')}
-        <div class="tiles">${tile(c, 'chart-line', c.esc(city.经济状况 || '—'), '经济')}${tile(c, 'people-group', city.人口 ? c.fmt(city.人口) : '—', '人口')}${tile(c, 'flag', c.esc(city.掌控势力 || '—'), '掌控势力')}${tile(c, 'shield-halved', c.esc(city.守护军团 || '—'), '守军')}${tile(c, 'store', Object.keys(city.商店 || {}).length, '商店')}${tile(c, 'user-group', here, '同地人物')}</div>
-        <button class="key-s" type="button" data-go="page-map/place"><i class="fa-solid fa-city"></i> 查看当地</button>
+        <div class="tiles">${tile(c, 'chart-line', c.esc(city.经济状况 || '—'), '经济')}${tile(c, 'people-group', city.人口 ? c.fmt(city.人口) : '—', '人口')}${tile(c, 'flag', c.esc(city.掌控势力 || '—'), '掌控势力', '', city.掌控势力 ? `page-world/faction|fsel=${city.掌控势力}` : 'page-world/faction', '势力')}${tile(c, 'shield-halved', c.esc(city.守护军团 || '—'), '守军')}${tile(c, 'store', Object.keys(city.商店 || {}).length, '商店', '', 'page-terminal/trade', '交易')}${tile(c, 'user-group', here, '同地人物', '', 'page-map/place', '查看当地')}</div>
       </div>`,
       core: `<div class="pad">
         ${c.head('globe', '时空中枢', 'Chronos', 'gd')}
-        <div class="chronos"><span class="lv">${c.esc((w.时间._calendar || '').replace(/ .*/, ''))}</span><span class="num">${c.esc((w.时间._calendar || '').split(' ')[1] || '')}</span></div>
+        <div class="chronos door"${goAttr(c, 'page-world/chronicle|cmode=past', '编年')}><span class="lv">${c.esc((w.时间._calendar || '').replace(/ .*/, ''))}</span><span class="num">${c.esc((w.时间._calendar || '').split(' ')[1] || '')}</span></div>
         <div class="fame even" style="--n:3">
           <div><small>世界线偏差</small><b>${deviationTier(c.num(w.偏差值))}</b><em>偏差值 ${c.fmt(w.偏差值)} · 倍率 ×${c.fmt(w.偏差倍率)}</em></div>
-          <div><small>核心阶段</small><b>${Object.keys(w.时间线 || {}).length ? c.esc(Object.values(w.时间线)[0].事件) : '未记录'}</b><em>${Object.keys(w.时间线 || {}).length ? '主线进行中' : '尚无主线节点'}</em></div>
-          <div><small>拍卖</small><b>${c.esc(w.拍卖?.状态 || '休市')}</b><em>${c.esc(w.拍卖?.地点 || '')} · ${Object.keys(w.拍卖?.拍品 || {}).length} 件拍品</em></div>
+          <div class="door"${goAttr(c, 'page-world/chronicle|cmode=future', '编年')}><small>核心阶段</small><b>${Object.keys(w.时间线 || {}).length ? c.esc(Object.values(w.时间线)[0].事件) : '未记录'}</b><em>${Object.keys(w.时间线 || {}).length ? '主线进行中' : '尚无主线节点'}</em></div>
+          ${(gs => `<div class="door"${goAttr(c, 'page-world/games', '赛事')}><small>赛事</small><b>${gs.length ? `${gs.length} 项进行中` : '暂无'}</b><em>${c.esc(gs[0]?.名称 || gs[0]?.标题 || (gs.length ? '' : '没有进行中的赛事'))}</em></div>`)(Object.values(w.赛事 || {}).filter(x => x?.状态 !== '已完成'))}
         </div>
         <section class="sec"><h3>魂兽森林<span class="en">Forest</span>${c.hint('人类累计猎杀的魂兽年限；接近上限会引发兽潮。')}</h3>
-          <div class="q-meter"><div class="q-mh"><small>累计击杀年限</small><b>${c.fmt(kill)}</b><em>${w.兽潮已触发 ? '兽潮已爆发' : kill / cap > .7 ? '仇恨高涨' : '相对安全'} · 上限 ${c.fmt(cap)}</em></div>${c.bar('hp', kill, cap)}</div></section>
-        ${lots.length ? `<section class="sec"><h3>拍卖行<span class="en">${c.esc(w.拍卖?.地点 || '')} · ${lots.length} 件</span></h3><div class="list two">${lots.map(([n, a]) => `<button class="row" type="button" data-go="page-terminal/trade" data-go-set="venue=auction;good=${c.esc(n)};tqty=1">${c.sock('gavel')}<div><strong>${c.esc(n)}</strong><small>${c.esc([a.品级, a.分类].filter(Boolean).join(' · '))}</small></div><span class="end">${wan(c, a.价格)}</span></button>`).join('')}</div></section>` : ''}
+          <div class="q-meter door"${goAttr(c, 'page-world/bestiary', '魂兽图鉴')}><div class="q-mh"><small>累计击杀年限</small><b>${c.fmt(kill)}</b><em>${w.兽潮已触发 ? '兽潮已爆发' : kill / cap > .7 ? '仇恨高涨' : '相对安全'} · 上限 ${c.fmt(cap)}</em></div>${c.bar('hp', kill, cap)}</div></section>
+        ${lots.length ? `<section class="sec"><h3>拍卖行<span class="en">${c.esc(w.拍卖?.状态 || '')} · ${c.esc(w.拍卖?.地点 || '')} · ${lots.length} 件</span></h3><div class="list two">${lots.map(([n, a]) => `<button class="row" type="button" data-go="page-terminal/trade" data-go-set="venue=auction;good=${c.esc(n)};tqty=1">${c.sock('gavel')}<div><strong>${c.esc(n)}</strong><small>${c.esc([a.品级, a.分类].filter(Boolean).join(' · '))}</small></div><span class="end">${wan(c, a.价格)}</span></button>`).join('')}</div></section>` : ''}
       </div>`,
       right: `<div class="pad">${c.head('calendar-day', '近期安排', 'Upcoming')}
         ${soon.length ? `<div class="list q-list">${soon.map(x => `<button class="row" type="button" data-go="page-world/chronicle" data-go-set="csel=${c.esc(x.kind + ':' + x.title)}">${c.sock(x.icon)}<div><strong>${c.esc(x.title)}</strong><small>${c.esc([x.kind, x.sub].filter(Boolean).join(' · '))}</small></div><span class="end">${days(c, x.t, x.pend)}</span></button>`).join('')}</div>` : c.empty('calendar-day', '近期没有安排')}
@@ -56698,10 +56711,10 @@ ${播报文本}
     label: '世界', icon: 'globe', tag: 'CORE · WORLD',
     keys: [
       { id: 'overview', icon: 'globe', label: '概况', view: overview },
-      { id: 'chronicle', icon: 'timeline', label: '编年', view: chronicle, brief: c => `${upcoming(c).length} 个节点` },
-      { id: 'faction', icon: 'chess-rook', label: '势力', view: factionView, brief: c => `${factions(c).length} 方势力` },
-      { id: 'games', icon: 'trophy', label: '赛事', view: games, brief: c => { const n = Object.values(c.S.world.赛事 || {}).filter(x => x?.状态 !== '已完成').length; return n ? `${n} 项进行` : '暂无'; } },
-      { id: 'bestiary', icon: 'dragon', label: '图鉴', view: bestiary, brief: c => `已录 ${Object.keys(c.S.world.图鉴 || {}).length} 种` },
+      { id: 'chronicle', icon: 'timeline', label: '编年', view: chronicle },
+      { id: 'faction', icon: 'chess-rook', label: '势力', view: factionView },
+      { id: 'games', icon: 'trophy', label: '赛事', view: games },
+      { id: 'bestiary', icon: 'dragon', label: '图鉴', view: bestiary },
     ],
   });
 })();
@@ -56736,9 +56749,22 @@ ${播报文本}
       // 右翼：上方是总览数字，操作键沉到底部（主按钮 .cta 自带 margin-top:auto）
       right: ui.qnew ? questNew(c, ui.qnew === 'board' ? 'board' : 'record', tab).right : `<div class="pad">${c.head('bolt', '行动', 'Actions')}
         <div class="tiles"><div class="tile">${c.sock('list-check')}<b>${active}</b><small>进行中</small></div><div class="tile">${c.sock('file-signature')}<b>${open}</b><small>待接取委托</small></div></div>
+        ${affairTiles(c)}
         ${sel ? questActions(c, isBoard, selId, sel) : c.empty('bolt', '暂无可执行的操作')}
       </div>`,
     };
+  };
+  // 事务格：数据本身就是入口——魂灵塔层数 → 试炼，副职业 → 工坊，情报条数 → 情报，本地商店 → 交易
+  const affairTiles = c => {
+    const jobs = Object.entries(c.ch.副职业 || {}), p = String(c.ch.状态?.位置 || '').split('-').filter(x => x && x !== '斗罗大陆');
+    const intelN = (c.ch.已掌握情报 || []).length + Object.values(c.S.world.机密情报 || {}).filter(s => (s.知情规则 || []).includes(c.name)).length;
+    const shops = Object.keys(c.S.world.地点?.[p[0]]?.商店 || {}).length;
+    return `<div class="tiles affairs">${[
+      ['tower-observation', `${c.fmt(c.num(c.ch.魂灵塔记录?.最高层))} 层`, '魂灵塔', 'trial', '试炼'],
+      ['hammer', jobs.length ? `${c.esc(jobs[0][0])} ${c.fmt(c.num(jobs[0][1]?.等级))} 级` : '未习', '副职业', 'workshop', '工坊'],
+      ['eye', `${c.fmt(intelN)} 条`, '情报', 'intel', '情报'],
+      ['scale-balanced', `${c.fmt(shops)} 家`, '本地商店', 'trade', '交易'],
+    ].map(([ic, v, l, pg, h]) => `<button class="tile door" type="button" data-go="page-terminal/${pg}" data-hint="${h}">${c.sock(ic)}<b>${v}</b><small>${l}</small></button>`).join('')}</div>`;
   };
   // 新建个人任务 / 发布委托：字段与选项同原项目「任务界面」；表单值存在界面状态 qf 里，提交时由桥接按原逻辑写回
   const QF_OPTS = { 任务线: ['主线', '支线'], 状态: ['进行中', '可提交', '已完成', '已放弃', '失败'], 面向: ['公开', '指定对象'], 难度: ['低', '中', '高', '极高'], 资源级别: ['无', '低', '中', '高', '稀有'] };
@@ -57225,10 +57251,10 @@ ${播报文本}
     label: '事务', icon: 'clipboard-list', tag: 'CORE · AFFAIRS',
     keys: [
       { id: 'quests', icon: 'clipboard-list', label: '任务', view: quests },
-      { id: 'trial', icon: 'tower-observation', label: '试炼', view: trial, brief: c => `塔 ${c.num(c.ch.魂灵塔记录?.最高层)} 层` },
-      { id: 'workshop', icon: 'hammer', label: '工坊', view: workshop, brief: c => { const n = Object.keys(c.ch.副职业 || {}).length; return n ? `${n} 项副职` : '未习副职'; } },
-      { id: 'intel', icon: 'eye', label: '情报', view: intel, brief: c => `${(c.ch.已掌握情报 || []).length + Object.values(c.S.world.机密情报 || {}).filter(s => (s.知情规则 || []).includes(c.name)).length} 条` },
-      { id: 'trade', icon: 'scale-balanced', label: '交易', view: trade, brief: c => { const p = String(c.ch.状态?.位置 || '').split('-').filter(x => x && x !== '斗罗大陆'); const n = Object.keys(c.S.world.地点?.[p[0]]?.商店 || {}).length; return n ? `${n} 家商店` : '无商店'; } },
+      { id: 'trial', icon: 'tower-observation', label: '试炼', view: trial },
+      { id: 'workshop', icon: 'hammer', label: '工坊', view: workshop },
+      { id: 'intel', icon: 'eye', label: '情报', view: intel },
+      { id: 'trade', icon: 'scale-balanced', label: '交易', view: trade },
       { id: 'settings', icon: 'sliders', label: '设置', view: settings },
     ],
   });
