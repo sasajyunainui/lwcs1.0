@@ -48,7 +48,7 @@
 .readout .tick{min-width:0;mask-image:none}
 /* 播报：放得下就静止；放不下时整条无缝循环滚动（内容复制一份接在后面，平移一半），悬停暂停 */
 .readout .tick>span{display:inline-block;white-space:nowrap}
-.readout .tick>span>span{display:inline}
+.readout .tick>span>span{display:inline-block}
 .readout .tick.run{mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent)}
 .readout .tick.run>span{animation:tick var(--tick-dur,20s) linear infinite}
 .readout .tick.run:hover>span{animation-play-state:paused}

@@ -1028,13 +1028,13 @@
     tickText = text; tickWidth = box.clientWidth;
     $('#ck-rTick').textContent = text;
     run.querySelectorAll('.tick-gap,.tick-copy').forEach(n => n.remove());
-    const over = item.scrollWidth > box.clientWidth + 2 && box.clientWidth > 0;
+    const itemW = item.getBoundingClientRect().width, over = itemW > box.clientWidth + 2 && box.clientWidth > 0;
     box.classList.toggle('run', over);
     if (!over) return;
     const gap = document.createElement('span'); gap.className = 'tick-gap';
     const copy = item.cloneNode(true); copy.className = 'tick-copy'; copy.setAttribute('aria-hidden', 'true'); copy.querySelector('#ck-rTick')?.removeAttribute('id');
     run.append(gap, copy);
-    box.style.setProperty('--tick-dur', `${Math.max(8, Math.round((item.scrollWidth + gap.offsetWidth) / 45))}s`);
+    box.style.setProperty('--tick-dur', `${Math.max(8, Math.round((itemW + gap.getBoundingClientRect().width) / 45))}s`);
   };
   const syncReadout = () => {
     const me = S.char?.[S.sys?.玩家名] || {}, st = me.属性 || {};
