@@ -58,8 +58,8 @@
   /* 设置齿轮贴在栏尾 */
   .readout .gear{all:unset;flex:none;margin-left:auto;padding:0 .25em;cursor:pointer;color:#6fb4ff}
   .readout .gear:hover,.readout .gear:focus-visible{color:#fff}
-  /* 两翼近端会向前、向外凸出：上下各留余量，不压指挥栏、不被座舱底边裁 */
-  .screens{order:4;flex:1 0 calc(100% - 28px);max-width:calc(100% - 28px);margin:26px 14px 22px;--lw:22%;--rw:22%}
+  /* 两翼近端会向前、向外凸出约 13px：上下余量只留到刚好不压指挥栏、不被座舱底边裁（聊天流里高度金贵） */
+  .screens{order:4;flex:1 0 calc(100% - 28px);max-width:calc(100% - 28px);margin:16px 14px 12px;--lw:22%;--rw:22%}
   .wing.l{--la:22deg}.wing.r{--ra:22deg}
   /* 接缝铰链线自带 --lw:27%（原型比例），要跟着侧屏 22% 走，否则落进中屏 */
   .hinge.l{--lw:22%}.hinge.r{--rw:22%}
