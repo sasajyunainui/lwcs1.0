@@ -891,19 +891,40 @@
   });
   $('.cockpit').addEventListener('click', e => { const r = e.target.closest('[data-route]'); if (r) C.route({ to: r.dataset.route }); });
   $('#ck-back').addEventListener('click', () => switchPage(domains[state.domain].keys[0].id));
-  // 滚轮归屏：桌面三屏里指针在哪块屏就只滚那块屏。落在屏框 / 屏内不可滚的地方也滚这块屏的内容；
-  // 屏里内容滚到头时吞掉这次滚轮，不再串到酒馆聊天区。只有整块屏根本没有可滚内容才放行（让聊天区照常滚）
+  // 滚轮归屏 + 到头接力：按「一次滚动手势」（相邻滚轮间隔不到 200ms 算同一次）决定归属，同浏览器原生的滚动锁定。
+  // 手势开始时屏里还能往这个方向滚：整次手势都归屏（落在屏框 / 不可滚处也滚这块屏的主内容），滚到头也不串出去——
+  // 免得一甩滚轮、惯性把聊天区一起带走；手势开始时屏里已经到头（或本来就没有可滚内容）：这次交给聊天区接着滚。
+  // 屏内滚动区带 overscroll-behavior:contain，原生滚动不会自己串出去，所以接力由这里替聊天区滚
   const scrollable = el => el.scrollHeight > el.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(el).overflowY);
+  const outerScroller = () => { for (let el = ROOT.parentElement; el; el = el.parentElement) if (scrollable(el)) return el; return document.scrollingElement; };
+  let wheelGesture = null;
   screens.addEventListener('wheel', e => {
     if (e.defaultPrevented || e.ctrlKey || isMobile()) return;
     const panel = e.target.closest('.wing,.center'); if (!panel) return;
     const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? panel.clientHeight : 1); if (!dy) return;
     const room = el => dy > 0 ? el.scrollHeight - el.clientHeight - el.scrollTop > 1 : el.scrollTop > 0;
-    for (let el = e.target; el && el !== panel; el = el.parentElement) if (scrollable(el) && room(el)) return;
-    const main = $$('.face:not(.leaving) :is(.pad,.scroll,.list,.q-list,.dz-body,.set-tiles,.dz2-skills)', panel).find(scrollable);
-    if (!main) return;
+    const now = performance.now(), dir = Math.sign(dy);
+    if (!wheelGesture || now - wheelGesture.t > 200 || wheelGesture.dir !== dir || wheelGesture.panel !== panel) {
+      let inner = null;
+      for (let el = e.target; el && el !== panel; el = el.parentElement) if (scrollable(el) && room(el)) { inner = el; break; }
+      if (!inner) { const main = $$('.face:not(.leaving) :is(.pad,.scroll,.list,.q-list,.dz-body,.set-tiles,.dz2-skills)', panel).find(scrollable); if (main && room(main)) inner = main; }
+      wheelGesture = { inner, dir, panel };
+    }
+    wheelGesture.t = now;
+    const { inner } = wheelGesture;
+    if (inner) {
+      // 指针就在这个滚动区里：交给原生滚动（带平滑），到头由 overscroll-behavior 拦住；指针在屏框上：替它滚
+      if (inner.contains(e.target) && room(inner)) return;
+      e.preventDefault();
+      if (room(inner)) inner.scrollTop += dy;
+      return;
+    }
+    // 接力滚聊天区：同一次手势累计目标位置再平滑滚过去（连续调用平滑滚动会从动画中途重新起步、丢距离）
     e.preventDefault();
-    if (!main.contains(e.target) && room(main)) main.scrollTop += dy;
+    const outer = wheelGesture.outer ||= outerScroller(); if (!outer) return;
+    const top = Math.max(0, Math.min(outer.scrollHeight - outer.clientHeight, (wheelGesture.to ?? outer.scrollTop) + dy));
+    wheelGesture.to = top;
+    outer.scrollTo({ top, behavior: Math.abs(dy) >= 40 ? 'smooth' : 'instant' });
   }, { passive: false });
   $('.cockpit').addEventListener('click', e => {
     if (e.target.closest('.ie-edit')) return;
