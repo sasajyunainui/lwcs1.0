@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:289fe455da8dfe0c8f42e39afaaa254d1c724b00f602e5094ca7626b17151097 */
+/* sources-sha256: TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:1d3091d67e7dacfc78d2c9b3dc3f7acd28c068f5cdc653495ff56bc36c19a29d */
 ;
 /* source: TradeUI_Module.js */
 /* TradeUI_Module.js - 交易网络组件 (JS 模块版) */
@@ -133678,7 +133678,8 @@ class BattleUIComponent {
       const viewportWidth = Math.max(Number(root.innerWidth) || 0, Number(globalDocument?.documentElement?.clientWidth) || 0);
       const viewportHeight = Math.max(Number(root.innerHeight) || 0, Number(globalDocument?.documentElement?.clientHeight) || 0);
       if (!rect.width || !rect.height || !viewportWidth || !viewportHeight) return;
-      const inline = viewportWidth <= 1180;
+      // 挂在座舱战斗屏里时记录终端始终排在网格内（座舱右侧没有外置空间）；旧界面宽屏仍外置到 body
+      const inline = viewportWidth <= 1180 || !!component.container?.closest?.('.lwcs-ck');
       node.classList.toggle('battle-record-terminal--inline', inline);
       if (inline) {
         if (node.parentNode !== wrapperElement) wrapperElement.appendChild(node);

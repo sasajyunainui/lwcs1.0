@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:6f729e13bcb2c3415feaf536cbca2e62adf5aa574e1c676d307b201683677e97|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:7cede5927e8a442436fa7f5a1ea6f18b39ac612f21ffcb18b1e6da0e07e7cda9|cockpit/pages-role.js:30389973a40a1d19333ac0edee31ee4dce8d6f93a27672f831ec255b6678569c|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:10c44a13d6e04c2f27129d1f92d4b0ec5dd55092c45a1394f2b7819d873d3b0f|cockpit/pages-ability.js:83d13d6bfc33220a18eac2bb90b30f99aa49bd430006bf0a0a900a35c19264b6|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:362fea182fda961cc308405f5f8a432b63b28940b18bb4ac2e7d86e324f6b259|cockpit/pages-world.js:6851fc81ee4d831a1af87aa85b490557d452ef5b31ea776d50f871cb97f5574e|cockpit/pages-terminal.js:c73e78b78d6a7a80f96d774bcf3a88bfa17642c7ad81a5d5b89ff863e053125e|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:289fe455da8dfe0c8f42e39afaaa254d1c724b00f602e5094ca7626b17151097|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:855fcd78cfbd85757727611c6264878058a01908b032581e721703bc0a47896f|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:444499c0e8f37ffd37b3e405c485de3a6e1020ae2fe57188a57d51e1094b3a57|cockpit/pages-role.js:30389973a40a1d19333ac0edee31ee4dce8d6f93a27672f831ec255b6678569c|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:10c44a13d6e04c2f27129d1f92d4b0ec5dd55092c45a1394f2b7819d873d3b0f|cockpit/pages-ability.js:83d13d6bfc33220a18eac2bb90b30f99aa49bd430006bf0a0a900a35c19264b6|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:362fea182fda961cc308405f5f8a432b63b28940b18bb4ac2e7d86e324f6b259|cockpit/pages-world.js:6851fc81ee4d831a1af87aa85b490557d452ef5b31ea776d50f871cb97f5574e|cockpit/pages-terminal.js:c73e78b78d6a7a80f96d774bcf3a88bfa17642c7ad81a5d5b89ff863e053125e|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:1d3091d67e7dacfc78d2c9b3dc3f7acd28c068f5cdc653495ff56bc36c19a29d|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -27804,6 +27804,8 @@
     pending: () => 座舱待处理(),
     // 战斗进行中但终端被收起时，座舱给出返回入口
     battleActive: () => !!deepGet(liveSnapshot, 'rootData.world.战斗.进行中', false),
+    // 座舱离开战斗屏（点领域标签）：同「退出战斗终端」，战斗不中断，总览给返回入口
+    closeBattle: () => handleBattleUiCloseRequest({ detail: {} }),
   };
   function 同步座舱可见性(详情键 = getEffectiveUnifiedPreviewKey()) {
     const 挂载点 = document.getElementById('mvu-unified-mount');
@@ -29328,15 +29330,17 @@ ${播报文本}
     };
   }
 
+  // 战斗终端标记：座舱战斗屏的网格（己方 | 指令 | 敌方，上方警报与状态条，下方执行栏与记录）。
+  // 所有 ui-* id 与 data-* 属性保持不变（BattleUI_Module 只按它们驱动）；lwcs-ck-battle 是座舱战斗样式的根类，
+  // 记录终端与魂技浮窗在宽屏会被 BattleUI 移到 body 下，所以它们自己也带这个类
   function buildBattleInlineHostMarkup() {
     return `
-        <div id="mvu-battle-inline-host" class="mvu-battle-inline-host">
-          <div class="battle-module-scope">
-            <section class="battle-shell" aria-label="战斗">
-              <div class="battle-smart-alert-layer" id="ui-smart-alert-layer" aria-live="polite"></div>
-              <div class="battle-control-bar" id="ui-combat-chips"></div>
-              <div class="battle-hud-layer">
-                <div class="combatant-card player" id="ui-player-panel">
+      <div id="lwcs-battle-host" class="lwcs-battle-host">
+        <div class="battle-module-scope lwcs-ck-battle">
+          <div class="battle-smart-alert-layer" id="ui-smart-alert-layer" aria-live="polite"></div>
+          <div class="battle-control-bar" id="ui-combat-chips"></div>
+          <section class="bt-side bt-ally" aria-label="己方">
+          <div class="combatant-card player" id="ui-player-panel">
                   <div class="name-row">
                     <div class="name-block">
                       <span class="lv-badge" id="ui-player-lv">Lv.0</span>
@@ -29354,8 +29358,23 @@ ${播报文本}
                   <div class="stats-grid" id="ui-player-stats"></div>
                   <div class="buff-row" id="ui-player-buffs"></div>
                   <div class="battle-team-strip" id="ui-team-player"></div>
-                </div>
-                <div class="combatant-card enemy" id="ui-enemy-panel">
+          </div>
+          </section>
+          <section class="bt-main" aria-label="指令">
+            <div class="summon-queue" id="ui-summon-queue" hidden></div>
+            <div class="battle-command-deck">
+                  <div class="action-filters" id="ui-action-filters"></div>
+                  <div class="action-grid" id="ui-action-grid"></div>
+            </div>
+            <div class="battle-target-deck">
+              <div class="battle-action-summary" id="ui-action-summary"></div>
+                  <div class="battle-target-controls" id="ui-target-controls" hidden></div>
+                  <div class="tower-settlement-panel" id="ui-tower-settlement" hidden></div>
+                  <input id="ui-intent-output" type="hidden" value="">
+            </div>
+          </section>
+          <section class="bt-side bt-foe" aria-label="敌方">
+          <div class="combatant-card enemy" id="ui-enemy-panel">
                   <div class="name-row">
                     <div class="name-block">
                       <span class="lv-badge" id="ui-enemy-lv">Lv.0</span>
@@ -29373,20 +29392,9 @@ ${播报文本}
                   <div class="stats-grid" id="ui-enemy-stats"></div>
                   <div class="buff-row" id="ui-enemy-buffs"></div>
                   <div class="battle-team-strip" id="ui-team-enemy"></div>
-                </div>
-              </div>
-              <div class="battle-dashboard-layer">
-                <div class="summon-queue" id="ui-summon-queue" hidden></div>
-                <div class="battle-command-deck">
-                  <div class="action-filters" id="ui-action-filters"></div>
-                  <div class="action-grid" id="ui-action-grid"></div>
-                </div>
-                <div class="battle-target-deck">
-                  <div class="battle-action-summary" id="ui-action-summary"></div>
-                  <div class="battle-target-controls" id="ui-target-controls" hidden></div>
-                  <div class="tower-settlement-panel" id="ui-tower-settlement" hidden></div>
-                  <input id="ui-intent-output" type="hidden" value="">
-                  <div class="battle-exec-bar">
+          </div>
+          </section>
+          <div class="battle-exec-bar">
                     <div class="battle-settings-strip">
                       <div class="battle-terminal-row">
                         <span class="battle-terminal-label">执行轮次</span>
@@ -29456,13 +29464,10 @@ ${播报文本}
                       <button class="ghost-btn battle-close-btn" id="ui-battle-close" type="button" aria-label="退出战斗">&lt; 退出</button>
                       <button class="ghost-btn battle-preview-btn" id="ui-battle-preview" type="button">预演</button>
                       <button class="ghost-btn battle-submit-btn" id="ui-arbitrate" type="button">⚡ 结算 EXECUTE</button>
-                    </div>
-                  </div>
-                </div>
               </div>
-              <div class="battle-skill-tooltip-floating" id="ui-skill-tooltip" role="tooltip" hidden></div>
-            </section>
-            <div class="battle-record-terminal battle-record-terminal--collapsed" id="ui-battle-record-terminal">
+            </div>
+          <div class="battle-skill-tooltip-floating lwcs-ck-battle" id="ui-skill-tooltip" role="tooltip" hidden></div>
+          <div class="battle-record-terminal battle-record-terminal--collapsed lwcs-ck-battle" id="ui-battle-record-terminal">
               <div class="battle-record-header">
                 <button class="battle-record-toggle" id="ui-battle-record-toggle" type="button" aria-expanded="false">记录</button>
               </div>
@@ -29472,15 +29477,15 @@ ${播报文本}
                   <button class="battle-record-tab" type="button" role="tab" data-battle-record-tab="preview" aria-selected="false" tabindex="-1">预演记录</button>
                 </div>
                 <div class="battle-preview-panel" id="ui-battle-preview-panel"></div>
-              </div>
-            </div>
           </div>
-        </div>`;
+        </div>
+        </div>
+      </div>`;
   }
 
 
   function getBattleInlineHost() {
-    const host = document.getElementById('mvu-battle-inline-host');
+    const host = document.getElementById('lwcs-battle-host');
     return host instanceof Element && host.isConnected ? host : null;
   }
 
@@ -29782,7 +29787,22 @@ ${播报文本}
     [80, 240, 520].forEach(delay => window.setTimeout(run, delay));
   }
 
+  // 座舱战斗屏开关（战斗终端只在座舱里显示）
+  function 座舱战斗屏已打开() {
+    return !!window.COCKPIT?.battleShown?.();
+  }
+  function 关闭座舱战斗屏() {
+    if (window.COCKPIT?.battleShown?.()) window.COCKPIT.showBattle(false);
+  }
+
   function openBattleInlineSurface() {
+    // 座舱就绪时战斗终端挂进座舱战斗屏，不再走旧的内嵌详情面
+    if (window.COCKPIT?.mounted && typeof window.COCKPIT.battleHost === 'function') {
+      const 宿主 = window.COCKPIT.battleHost();
+      if (宿主 && !getBattleInlineHost()) 宿主.innerHTML = buildBattleInlineHostMarkup();
+      window.COCKPIT.showBattle(true);
+      return Promise.resolve(getBattleInlineHost());
+    }
     const 当前宿主 = getBattleInlineHost();
     const 统一宿主 = getUnifiedInlineHost();
     if (
@@ -31343,6 +31363,7 @@ ${播报文本}
       removeBattleReturnEntries();
       if (activeBattleUI && typeof activeBattleUI.destroy === 'function') activeBattleUI.destroy();
       activeBattleUI = null;
+      关闭座舱战斗屏();
       if (getEffectiveUnifiedPreviewKey() === BATTLE_INLINE_PREVIEW_KEY) {
         clearUnifiedInlinePreview();
       }
@@ -35469,6 +35490,7 @@ ${播报文本}
     activeBattleUI = null;
     battleInlineMountToken++;
     pendingBattleInlineMount = null;
+    关闭座舱战斗屏();
     if (currentUnifiedPreviewKey === BATTLE_INLINE_PREVIEW_KEY && typeof window.__MVU_CLOSE_UNIFIED_PREVIEW__ === 'function') {
       window.__MVU_CLOSE_UNIFIED_PREVIEW__({ force: true });
     }
@@ -35952,7 +35974,7 @@ ${播报文本}
         '.skill-designer-layout',
         '.map-action-grid',
         '.map-dispatch-action-btn',
-        '#mvu-battle-inline-host',
+        '#lwcs-battle-host',
         '.battle-shell',
       ].join(','),
     );
@@ -52141,6 +52163,16 @@ ${播报文本}
       try { return fn(spec) !== false; } catch (err) { console.error('[座舱] 跳转失败', err); return false; }
     },
     battleActive: () => !!ADP?.battleActive?.(),
+    // 战斗终端宿主：战斗进行且玩家打开战斗时，三屏换成一整块战斗屏（桥接把战斗终端标记挂进 battleHost，BattleUI 按 id 驱动）；
+    // 关闭时清空，三屏回来。点领域标签离开战斗屏时交给桥接按「退出战斗终端」处理（战斗本身不中断，总览有返回入口）
+    battleHost: () => (ROOT ? ROOT.querySelector('#ck-battle-mount') : null),
+    battleShown: () => !!ROOT && !ROOT.querySelector('#ck-battle').hidden,
+    showBattle(on) {
+      if (!ROOT) return;
+      const deck = ROOT.querySelector('#ck-battle'); deck.hidden = !on;
+      ROOT.querySelector('.cockpit').classList.toggle('in-battle', !!on);
+      if (!on) ROOT.querySelector('#ck-battle-mount').replaceChildren();
+    },
     get mounted() { return mounted; },
     refresh() { api.refresh?.(); },
     // 输入框失焦后的重绘：按键还没松开时等这次点击结束再重绘，免得按钮被换掉、点击落空
@@ -52189,6 +52221,10 @@ ${播报文本}
         <div class="scr"><div class="host" id="ck-wingR"></div></div>
       </div></div></div></div></div>
     </div>
+    <div class="battle-deck" id="ck-battle" hidden><div class="float"><div class="bz"><div class="b2"><div class="b3">
+      <span class="tagline" aria-hidden="true">COMBAT · TERMINAL</span><span class="led tr" aria-hidden="true"></span><span class="led bl" aria-hidden="true"></span><span class="screw br" aria-hidden="true"></span><span class="screw tl" aria-hidden="true"></span>
+      <div class="scr"><div class="battle-mount" id="ck-battle-mount"></div></div>
+    </div></div></div></div></div>
     <nav class="dots" aria-label="切换屏面"><button type="button" data-face="-1">根基</button><button type="button" data-face="0" class="on">主屏</button><button type="button" data-face="1">操作</button></nav>
     <div class="readout">
         <span class="door" data-go="page-map/place" role="link" tabindex="0" title="查看当地"><i class="fa-solid fa-location-dot"></i> <span id="ck-rLoc"></span></span>
@@ -52734,7 +52770,11 @@ ${播报文本}
   cockpitEl.addEventListener('keydown', e => { const el = e.target.closest?.('.ie'); if (el && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); beginEdit(el); } });
 
   // ---------- 事件委托 ----------
-  track.addEventListener('click', e => { const t = e.target.closest('.tab'); if (t) switchDomain(t.dataset.tab); });
+  track.addEventListener('click', e => {
+    const t = e.target.closest('.tab'); if (!t) return;
+    if (C.battleShown()) { ADP?.closeBattle?.(); C.showBattle(false); return switchDomain(t.dataset.tab, domains[t.dataset.tab]?.keys[0].id); }
+    switchDomain(t.dataset.tab);
+  });
   $('.cockpit').addEventListener('click', e => { const r = e.target.closest('[data-route]'); if (r) C.route({ to: r.dataset.route }); });
   $('#ck-back').addEventListener('click', () => switchPage(domains[state.domain].keys[0].id));
   // 滚轮归屏：桌面三屏里指针在哪块屏就只滚那块屏。落在屏框 / 屏内不可滚的地方也滚这块屏的内容；
@@ -190772,7 +190812,8 @@ class BattleUIComponent {
       const viewportWidth = Math.max(Number(root.innerWidth) || 0, Number(globalDocument?.documentElement?.clientWidth) || 0);
       const viewportHeight = Math.max(Number(root.innerHeight) || 0, Number(globalDocument?.documentElement?.clientHeight) || 0);
       if (!rect.width || !rect.height || !viewportWidth || !viewportHeight) return;
-      const inline = viewportWidth <= 1180;
+      // 挂在座舱战斗屏里时记录终端始终排在网格内（座舱右侧没有外置空间）；旧界面宽屏仍外置到 body
+      const inline = viewportWidth <= 1180 || !!component.container?.closest?.('.lwcs-ck');
       node.classList.toggle('battle-record-terminal--inline', inline);
       if (inline) {
         if (node.parentNode !== wrapperElement) wrapperElement.appendChild(node);
