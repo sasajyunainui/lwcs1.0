@@ -141,3 +141,5 @@ img{max-width:none}
   .wing .list .row:has(>.medal){gap:.5em;padding-inline:.55em;grid-template-columns:auto minmax(0,1fr)}
   .wing .list .row>.medal{--md:2.3em}
 }
+/* 侧屏列表行折行时两行均分，不留单字尾巴（「第1魂 / 环」） */
+.wing .list .row strong,.wing .list .row small{text-wrap:balance}
