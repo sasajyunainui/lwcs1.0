@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:ab5a4b5798801d4e947fbda37220391791e46db0b26fa6219b084f23183a999f|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:9c4264c78fdf1a97367085566aee156544e79eb24da1de2d8466612ec1cc4353|cockpit/pages-role.js:350137a12a97733415cea354acc0cda0e631eba0b53372bf4e2ab90448f6d9db|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:909691c11e6a2c9f362accdf388af3f5466174e48bb2449d089b109dfb1a502c|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:362fea182fda961cc308405f5f8a432b63b28940b18bb4ac2e7d86e324f6b259|cockpit/pages-world.js:6851fc81ee4d831a1af87aa85b490557d452ef5b31ea776d50f871cb97f5574e|cockpit/pages-terminal.js:c73e78b78d6a7a80f96d774bcf3a88bfa17642c7ad81a5d5b89ff863e053125e|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:1d3091d67e7dacfc78d2c9b3dc3f7acd28c068f5cdc653495ff56bc36c19a29d|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:ab5a4b5798801d4e947fbda37220391791e46db0b26fa6219b084f23183a999f|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:9c4264c78fdf1a97367085566aee156544e79eb24da1de2d8466612ec1cc4353|cockpit/pages-role.js:350137a12a97733415cea354acc0cda0e631eba0b53372bf4e2ab90448f6d9db|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:ae5dadb5c9f30296c700314c9e032ca42ff24f5d6c6f183571f6010f2181eeac|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:362fea182fda961cc308405f5f8a432b63b28940b18bb4ac2e7d86e324f6b259|cockpit/pages-world.js:6851fc81ee4d831a1af87aa85b490557d452ef5b31ea776d50f871cb97f5574e|cockpit/pages-terminal.js:c73e78b78d6a7a80f96d774bcf3a88bfa17642c7ad81a5d5b89ff863e053125e|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:1d3091d67e7dacfc78d2c9b3dc3f7acd28c068f5cdc653495ff56bc36c19a29d|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -51105,14 +51105,41 @@ ${播报文本}
   // 只负责画：r = 评估技能预算_V1 的结果，block = 保存被拦截的原因（设计台 v2 传入与保存断言同源的结果）
   const dzGauge = (c, { r, block, err }) => {
     if (err) return `<div class="warn"><i class="fa-solid fa-triangle-exclamation"></i><span>${c.esc(err)}</span></div>`;
-    const cap = Math.max(r.位级硬上限 || 1, r.实际COST, r.允许上限), pc = v => `${Math.max(0, Math.min(100, v / cap * 100)).toFixed(1)}%`;
-    const util = r.允许上限 ? r.实际COST / r.允许上限 * 100 : 0;
-    return `<div class="budget">
-        <div class="bg-bar"><i class="cur ${r.是否超预算 ? 'over' : block ? 'low' : ''}" style="width:${pc(r.实际COST)}"></i><b class="mk min" style="left:${pc(r.最低有效COST)}" title="最低有效 ${r.最低有效COST}"></b><b class="mk cap" style="left:${pc(r.允许上限)}" title="允许上限 ${r.允许上限}"></b></div>
-        <div class="bg-legend"><span><i class="cur"></i>实际 ${c.fmt(r.实际COST)}</span><span data-hint="实际 COST 低于最低有效值超过 1 点时不能保存（引擎容差 1 点）。"><i class="min"></i>最低 ${c.fmt(r.最低有效COST)}</span><span><i class="cap"></i>上限 ${c.fmt(r.允许上限)}</span></div>
-        <div class="bg-util"><b>${util.toFixed(0)}%</b><small>预算利用率</small></div>
+    const lo = Number(r.最低有效COST) || 0, gate = Number(r.实际门禁 ?? r.允许上限) || 0, cur = Number(r.实际COST) || 0;
+    const util = gate ? cur / gate * 100 : 0;
+    // 合规窗口：刻度只取「最低有效 ~ 上限」附近（全量程 0~硬上限 时窗口太窄，标记挤成一条线），指针 = 实际 COST
+    const span = Math.max((gate - lo) * 1.2, gate * 0.06, 0.5), d0 = Math.max(0, Math.min(cur, lo) - span), d1 = Math.max(cur, gate) + span;
+    const at = v => `${((v - d0) / (d1 - d0) * 100).toFixed(1)}%`;
+    const state = r.是否超预算 ? 'over' : block ? 'low' : 'ok';
+    const stateText = r.是否超预算 ? `超出 ${c.fmt(r.超出COST)}` : block ? '低于最低' : '在窗口内';
+    // COST 构成：以效果 COST 为满格，扣减项画成红色斜纹段，最后一行是实际 COST
+    const full = Math.max(Number(r.效果原始COST) || 0, cur, 0.01), w = v => `${Math.max(0, Math.min(100, v / full * 100)).toFixed(1)}%`;
+    const parts = [
+      ['效果', Number(r.效果原始COST) || 0, ''],
+      r.限制COST ? ['限制抵扣', -r.限制COST, c.hint(limitWhy(r).join('；'))] : null,
+      r.副作用COST ? ['副作用', -r.副作用COST, r.副作用原始COST !== r.副作用COST ? c.hint(`原始 ${c.fmt(r.副作用原始COST)}，按规则折算`) : ''] : null,
+      ['实际', cur, ''],
+    ].filter(Boolean);
+    const capped = Number(r.位级硬上限) > 0 && Number(r.允许上限) > Number(r.位级硬上限);
+    return `<div class="bgw ${state}">
+        <div class="bgw-head"><b>${util.toFixed(0)}%</b><small>预算利用率</small><span class="bgw-state">${stateText}</span></div>
+        <div class="bgw-scale" role="img" aria-label="实际 ${c.fmt(cur)}，合规窗口 ${c.fmt(lo)} 至 ${c.fmt(gate)}">
+          <i class="bgw-win" style="left:${at(lo)};width:calc(${at(gate)} - ${at(lo)})"></i>
+          <i class="bgw-needle" style="left:${at(cur)}"><em>${c.fmt(cur)}</em></i>
+          <span class="bgw-tick lo" style="left:${at(lo)}" data-hint="最低有效 COST：实际 COST 低于它超过 1 点时不能保存（引擎容差 1 点）">${c.fmt(lo)}</span>
+          <span class="bgw-tick hi" style="left:${at(gate)}" data-hint="预算上限：实际 COST 不能超过">${c.fmt(gate)}</span>
+        </div>
       </div>
-      ${c.kv([['效果 COST', c.fmt(r.效果原始COST)], ['限制抵扣', r.限制COST ? `−${c.fmt(r.限制COST)}${c.hint(limitWhy(r).join('；'))}` : '<span class="none">无</span>'], ['副作用', r.副作用原始COST ? `−${c.fmt(r.副作用COST)}${r.副作用原始COST !== r.副作用COST ? c.hint(`原始 ${c.fmt(r.副作用原始COST)}，按规则折算`) : ''}` : '<span class="none">无</span>'], ['实际 COST', `<b>${c.fmt(r.实际COST)}</b>`], ['运转基准', `${c.fmt(r.运转基准)} × 代价能量 ${energyText(c, r.代价能量)}`], ['硬上限', Number(r.位级硬上限) > 0 ? c.fmt(r.位级硬上限) : '<span class="none">无</span>']])}
+      <section class="bgc"><h4>COST 构成</h4>${parts.map(([l, v, h]) => `<div class="bgc-row${v < 0 ? ' neg' : ''}${l === '实际' ? ' sum' : ''}"><span>${l}${h}</span><i><b style="width:${w(Math.abs(v))}"></b></i><em>${v < 0 ? '−' : ''}${c.fmt(Math.abs(v))}</em></div>`).join('')}</section>
+      <section class="bge"><h4>上限从哪来</h4>
+        <div class="bge-eq">
+          <span data-hint="这个魂技位本身的预算：由魂环位、魂环年限、天赋、魂技品质决定"><b>${c.fmt(r.运转基准)}</b><small>运转基准</small></span><i>×</i>
+          <span data-hint="施放代价换来的预算倍率 = 魂力消耗倍数 × 前摇倍数（乘积不到 1 时直接取乘积，到 1 以上取立方根）。消耗越多、前摇越长，上限越高"><b>${energyText(c, r.代价能量)}</b><small>代价能量</small></span><i>=</i>
+          <span class="res"><b>${c.fmt(r.允许上限)}</b><small>上限</small></span>
+        </div>
+        ${Number.isFinite(Number(r.消耗倍数)) && Number.isFinite(Number(r.前摇倍数)) ? `<div class="bge-src"><span>消耗 ×${Number(r.消耗倍数).toFixed(2)}</span><span>前摇 ×${Number(r.前摇倍数).toFixed(2)}</span></div>` : ''}
+        ${Number(r.位级硬上限) > 0 ? `<div class="bge-cap${capped ? ' on' : ''}" data-hint="这个魂技位的预算封顶，提高代价也不能超过"><i class="fa-solid fa-lock"></i>硬上限 ${c.fmt(r.位级硬上限)}${capped ? '（已封顶）' : ''}</div>` : ''}
+      </section>
       ${block || r.是否超预算 ? `<div class="warn"><i class="fa-solid fa-ban"></i><span>无法保存：${c.esc(block || `超出 ${c.fmt(r.超出COST)}`)}</span></div>` : '<div class="okline"><i class="fa-solid fa-circle-check"></i>预算合规，可以保存</div>'}
       <button class="cta" type="button" data-dz-save ${block || r.是否超预算 ? 'disabled' : ''}><i class="fa-solid fa-floppy-disk"></i>保存设计</button>`;
   };
