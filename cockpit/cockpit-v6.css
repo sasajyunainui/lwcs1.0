@@ -37,8 +37,8 @@
 .fx .ic.down{background:linear-gradient(180deg,#a8ccff,#4a8bff)}
 .fx .v{grid-row:span 2;font-family:Bahnschrift,sans-serif;font-weight:700;font-size:1.7em;transform:skewX(-8deg);color:#7dffc4;text-shadow:0 0 10px rgba(80,240,170,.5)}
 .fx .v.down{color:#9cc8ff;text-shadow:0 0 10px rgba(90,160,255,.5)}
-.fx-branch{margin-left:1.4em;display:flex;align-items:center;gap:.5em;font-size:.84em;color:#c6d6ee}
-.fx-branch i{color:#ffd47a}
+.fx-if{margin-left:1.4em;display:flex;align-items:center;gap:.5em;font-size:.84em;color:#c6d6ee}
+.fx-if i{color:#ffd47a}
 .pips{display:flex;flex-wrap:wrap;gap:3px}
 .pips i{width:9px;height:12px;background:linear-gradient(180deg,#8fd0ff,#2f7cf6);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
 .pips i.off{background:rgba(140,200,255,.18)}

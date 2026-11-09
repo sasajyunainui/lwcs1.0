@@ -301,33 +301,37 @@
   }).observe($('.cockpit'));
   const isMobile = () => mobileNow;
 
-  // 存档里尚未生成的值常写成「待补全（……填写说明……）」：渲染后统一缩成一枚「待补全」占位，说明放进悬停提示。
+  // 存档里尚未生成的值（「待补全」「待生成」「待填写」，常带一段括号填写说明）：渲染后整段换成「—」占位，说明不显示。
   // 只改显示文字；可编辑值的原始内容在 data-ie-raw 里，点开编辑仍是完整原文
-  const TBD_HEAD = /(待补全|待生成|待填写)\s*[（(]/g;
-  const shrinkTbd = text => {
-    let out = '', i = 0, hit = false, m;
-    TBD_HEAD.lastIndex = 0;
-    while ((m = TBD_HEAD.exec(text))) {
-      let d = 0, j = m.index + m[0].length - 1;
-      for (; j < text.length; j++) { const ch = text[j]; if (ch === '（' || ch === '(') d++; else if ((ch === '）' || ch === ')') && --d === 0) break; }
-      if (j >= text.length) break;
-      out += text.slice(i, m.index) + '\u0000' + m[1] + '\u0001' + text.slice(m.index + m[0].length, j) + '\u0002';
-      i = j + 1; TBD_HEAD.lastIndex = i; hit = true;
+  const TBD_WORD = /待补全|待生成|待填写/g;
+  // 返回 [普通文字, 占位, 普通文字, 占位, …]；没有命中返回 null
+  const splitTbd = text => {
+    const parts = []; let i = 0, m;
+    TBD_WORD.lastIndex = 0;
+    while ((m = TBD_WORD.exec(text))) {
+      let j = m.index + m[0].length;
+      while (j < text.length && /\s/.test(text[j])) j++;
+      if (text[j] === '（' || text[j] === '(') {
+        let d = 0, k = j;
+        for (; k < text.length; k++) { const ch = text[k]; if (ch === '（' || ch === '(') d++; else if ((ch === '）' || ch === ')') && --d === 0) break; }
+        j = k < text.length ? k + 1 : text.length;
+      } else j = m.index + m[0].length;
+      parts.push(text.slice(i, m.index), null);
+      i = j; TBD_WORD.lastIndex = j;
     }
-    return hit ? out + text.slice(i) : null;
+    if (!parts.length) return null;
+    parts.push(text.slice(i));
+    return parts;
   };
   const tbdPass = root => {
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: n => /待补全|待生成|待填写/.test(n.nodeValue) && !n.parentElement?.closest('textarea,input,.tbd,script,style') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT });
     const nodes = []; for (let n = walker.nextNode(); n; n = walker.nextNode()) nodes.push(n);
     for (const n of nodes) {
-      const marked = shrinkTbd(n.nodeValue); if (marked === null) continue;
+      const parts = splitTbd(n.nodeValue); if (!parts) continue;
       const frag = document.createDocumentFragment();
-      for (const part of marked.split('\u0002')) {
-        const k = part.indexOf('\u0000');
-        if (k < 0) { if (part) frag.append(part); continue; }
-        if (k > 0) frag.append(part.slice(0, k));
-        const [label, note] = part.slice(k + 1).split('\u0001');
-        const tag = document.createElement('span'); tag.className = 'tbd'; tag.textContent = label; tag.dataset.hint = note.trim(); frag.append(tag);
+      for (const p of parts) {
+        if (p !== null) { if (p) frag.append(p); continue; }
+        const tag = document.createElement('span'); tag.className = 'tbd'; tag.textContent = '—'; frag.append(tag);
       }
       n.replaceWith(frag);
     }

@@ -70,7 +70,7 @@
   const branchRow = (c, b) => {
     const cond = (b.条件 || []).map(x => `${x.类型 === '使用者' ? '食用者' : c.esc(x.类型)}是${c.esc(x.值)}`).join('且');
     const alt = (b.替换效果 || []).map(e => `${c.esc(fxOf(e).title)} ${c.esc(e.数值)}`).join('、');
-    return `<div class="fx-branch"><i class="fa-solid fa-code-branch"></i><span>若${cond}：${b.处理 === '替换效果' ? '改为' : c.esc(b.处理)} ${alt}</span></div>`;
+    return `<div class="fx-if"><i class="fa-solid fa-code-branch"></i><span>若${cond}：${b.处理 === '替换效果' ? '改为' : c.esc(b.处理)} ${alt}</span></div>`;
   };
   // compact：悬停预览只给「效果 + 代价」，点击钉住后才展开产物、画面、原文与操作
   const skillDetail = (c, sk, compact = false, page = false) => {
