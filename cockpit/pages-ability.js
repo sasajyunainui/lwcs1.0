@@ -56,21 +56,45 @@
     window.COCKPIT.write([{ path, value: next.length ? next : ['无'] }]);
   });
   // 结构化效果：读 _效果数组，把「原型 / 目标 / 数值 / 持续 / 条件分支」变成图标行，原文折叠
+  // 标题写出原型的关键字段（改哪项属性、施加什么状态……），只写原型名等于没说；字段口径同设计台原型字段表
+  const txt = v => (Array.isArray(v) ? v : [v]).map(x => String(x ?? '').trim()).filter(Boolean).join('、');
+  const neg = e => String(e.数值 ?? '').trim().startsWith('-');
   const FX = {
-    资源变化: e => ({ icon: String(e.资源 || '').includes('魂力') ? 'fire-flame-curved' : 'heart-pulse', title: `${String(e.数值).startsWith('-') ? '削减' : '恢复'}${e.资源 || '资源'}` }),
-    结算修正: e => ({ icon: 'shield-halved', title: `${e.结算 || '结算'}修正` }),
-    属性变化: e => ({ icon: 'arrow-trend-up', title: `${e.属性 || '属性'}变化` }),
+    资源变化: e => ({ icon: String(e.资源 || '').includes('魂力') ? 'fire-flame-curved' : 'heart-pulse', title: `${neg(e) ? '削减' : '恢复'}${txt(e.资源) || '资源'}` }),
+    资源转移: e => ({ icon: 'right-left', title: `${txt(e.资源转移方式) || '转移'}${txt(e.资源) || '资源'}` }),
+    资源锁定: e => ({ icon: 'lock', title: `${txt(e.资源) || '资源'}${txt(e.锁定类型) || '锁定'}` }),
+    属性修正: e => ({ icon: neg(e) ? 'arrow-trend-down' : 'arrow-trend-up', title: `${txt(e.属性) || '属性'}${neg(e) ? '降低' : '提升'}` }),
+    属性变化: e => ({ icon: 'arrow-trend-up', title: `${txt(e.属性) || '属性'}变化` }),
+    判定修正: e => ({ icon: 'crosshairs', title: `${txt(e.判定) || '判定'}${neg(e) ? '下降' : '提升'}` }),
+    结算修正: e => ({ icon: 'shield-halved', title: `${txt(e.结算) || '结算'}修正` }),
+    护盾变化: e => ({ icon: 'shield', title: txt(e.护盾模式) === '正向护盾' || !txt(e.护盾模式) ? '护盾' : txt(e.护盾模式) }),
+    伤害结算: e => ({ icon: 'burst', title: txt(e.伤害类型) || '伤害' }),
+    状态施加: e => ({ icon: 'circle-radiation', title: `施加${txt(e.状态) || '状态'}` }),
+    状态移除: e => ({ icon: 'broom', title: `移除${txt(e.状态) || txt(e.匹配原型) || '状态'}` }),
+    状态转移: e => ({ icon: 'arrows-turn-to-dots', title: `转移${txt(e.状态) || '状态'}` }),
+    状态交换: e => ({ icon: 'arrows-rotate', title: `交换${txt(e.状态) || '状态'}` }),
+    时窗修正: e => ({ icon: 'clock-rotate-left', title: `${txt(e.调整方式) || '调整'}${txt(e.调整字段) || '时窗'}` }),
+    规则防御: e => ({ icon: 'shield-heart', title: txt(e.规则) || '规则防御' }),
+    规则改写: e => ({ icon: 'scale-balanced', title: `改写${txt(e.规则) || '规则'}` }),
+    位移执行: e => ({ icon: 'person-running', title: txt(e.位移类型) || '位移' }),
+    决策干扰: e => ({ icon: 'brain', title: txt(e.干扰) || '决策干扰' }),
+    修炼增益: e => ({ icon: 'seedling', title: `${txt(e.修炼属性) || txt(e.训练方式) || '修炼'}增益` }),
+    召唤生成: e => ({ icon: 'ghost', title: `召唤${txt(e.召唤物名称) || txt(e.召唤单位类型) || ''}` }),
   };
   const fxOf = e => (FX[e.原型] || (() => ({ icon: 'bolt', title: e.原型 || '效果' })))(e);
+  // 数值：伤害结算没有「数值」，给威力倍率与段数
+  const fxVal = (c, e) => !c.blank(e.数值) ? String(e.数值) : e.原型 === '伤害结算' && e.威力倍率 != null ? `×${e.威力倍率}${Number(e.攻击段数) > 1 ? ` · ${e.攻击段数} 段` : ''}` : '';
   const fxRow = (c, e) => {
-    const down = String(e.数值 || '').trim().startsWith('-'), f = fxOf(e);
+    const down = neg(e), f = fxOf(e);
     const meta = [e.目标, e.持续回合 ? `持续 ${c.fmt(e.持续回合)} 回合` : '', e.生效方式].filter(Boolean).map(c.esc).join(' · ');
-    return `<div class="fx"><span class="ic ${down ? 'down' : ''}"><i class="fa-solid fa-${f.icon}"></i></span><strong>${c.esc(f.title)}</strong><span class="v ${down ? 'down' : ''}">${c.esc(e.数值 || '')}</span><small>${meta}</small></div>`;
+    return `<div class="fx"><span class="ic ${down ? 'down' : ''}"><i class="fa-solid fa-${f.icon}"></i></span><strong>${c.esc(f.title)}</strong><span class="v ${down ? 'down' : ''}">${c.esc(fxVal(c, e))}</span><small>${meta}</small></div>`;
   };
   const branchRow = (c, b) => {
     const cond = (b.条件 || []).map(x => `${x.类型 === '使用者' ? '食用者' : c.esc(x.类型)}是${c.esc(x.值)}`).join('且');
-    const alt = (b.替换效果 || []).map(e => `${c.esc(fxOf(e).title)} ${c.esc(e.数值)}`).join('、');
-    return `<div class="fx-if"><i class="fa-solid fa-code-branch"></i><span>若${cond}：${b.处理 === '替换效果' ? '改为' : c.esc(b.处理)} ${alt}</span></div>`;
+    // 处理四种（同设计台）：生效 = 满足才生效；替换效果 = 改为；追加效果 = 另加；禁用 = 满足时不生效
+    const list = es => (es || []).map(e => `${c.esc(fxOf(e).title)} ${c.esc(fxVal(c, e))}`.trim()).join('、');
+    const act = b.处理 === '替换效果' ? `改为 ${list(b.替换效果)}` : b.处理 === '追加效果' ? `追加 ${list(b.追加效果)}` : b.处理 === '禁用' ? '不生效' : '才生效';
+    return `<div class="fx-if"><i class="fa-solid fa-code-branch"></i><span>若${cond}：${act}</span></div>`;
   };
   // compact：悬停预览只给「效果 + 代价」，点击钉住后才展开产物、画面、原文与操作
   const skillDetail = (c, sk, compact = false, page = false) => {
