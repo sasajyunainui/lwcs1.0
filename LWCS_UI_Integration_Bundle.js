@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:ab5a4b5798801d4e947fbda37220391791e46db0b26fa6219b084f23183a999f|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:369aef61c25f33da5b4e8bf0fbcaa692bd091f07c457ae148730988925fa695f|cockpit/pages-role.js:350137a12a97733415cea354acc0cda0e631eba0b53372bf4e2ab90448f6d9db|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:be1c634960cdbd9f781cf92ae3c6ba9f9929926fd49e328d5681c37b5b588ab6|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:362fea182fda961cc308405f5f8a432b63b28940b18bb4ac2e7d86e324f6b259|cockpit/pages-world.js:6851fc81ee4d831a1af87aa85b490557d452ef5b31ea776d50f871cb97f5574e|cockpit/pages-terminal.js:c73e78b78d6a7a80f96d774bcf3a88bfa17642c7ad81a5d5b89ff863e053125e */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:ab5a4b5798801d4e947fbda37220391791e46db0b26fa6219b084f23183a999f|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:ce44032d1a1de9ec260c6fa6e214f8073c98e178df8e41cfedf4ecd8d68eb18a|cockpit/pages-role.js:350137a12a97733415cea354acc0cda0e631eba0b53372bf4e2ab90448f6d9db|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:be1c634960cdbd9f781cf92ae3c6ba9f9929926fd49e328d5681c37b5b588ab6|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:8d5381084212c292a66e5defdc8bd66d82ccae0afc7c35dce840f80078b7a8e8|cockpit/pages-world.js:6851fc81ee4d831a1af87aa85b490557d452ef5b31ea776d50f871cb97f5574e|cockpit/pages-terminal.js:c73e78b78d6a7a80f96d774bcf3a88bfa17642c7ad81a5d5b89ff863e053125e */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -47664,7 +47664,10 @@ ${播报文本}
   const optOf = o => o && typeof o === 'object' ? { value: String(o.value ?? o.label ?? ''), label: String(o.label ?? o.value ?? ''), hint: o.hint || '', group: o.group || '' } : { value: String(o ?? ''), label: String(o ?? ''), hint: '', group: '' };
   let pointerHeld = false;
   document.addEventListener('pointerdown', () => { pointerHeld = true; }, true);
-  document.addEventListener('pointerup', () => { pointerHeld = false; }, true);
+  // 松手（含在座舱外松手、指针被取消）一律解除手势挂起，不会因为漏掉 pointerup 让刷新一直挂着
+  const release = () => { pointerHeld = false; api.hold?.(false); };
+  document.addEventListener('pointerup', release, true);
+  document.addEventListener('pointercancel', release, true);
   const pick = (path, value, options = [], o = {}) => {
     const opts = options.map(optOf), v = String(value ?? ''), cur = opts.find(x => x.value === v);
     return `<span class="picker${o.cls ? ' ' + o.cls : ''}" data-picker="${esc(path)}" data-picker-opts="${esc(JSON.stringify(opts))}" data-picker-value="${esc(v)}"><button type="button" class="picker-btn" aria-haspopup="listbox" aria-expanded="false"${o.disabled ? ' disabled' : ''}${cur?.hint ? ` data-hint="${esc(cur.hint)}"` : ''}><span>${esc(cur ? cur.label : (v || o.placeholder || '请选择'))}</span><i class="fa-solid fa-chevron-down"></i></button></span>`;
@@ -47752,6 +47755,8 @@ ${播报文本}
     },
     get mounted() { return mounted; },
     refresh() { api.refresh?.(); },
+    // 手势进行中（拖沙盘）挂起桥接刷新，结束后补一次重绘
+    hold(on) { api.hold?.(on); },
     // 输入框失焦后的重绘：按键还没松开时等这次点击结束再重绘，免得按钮被换掉、点击落空
     refreshSoon() { if (!pointerHeld) return api.refresh?.(); document.addEventListener('click', () => setTimeout(() => api.refresh?.()), { once: true, capture: true }); },
     go(id, page) { api.switchDomain?.(id, page); },
@@ -48131,7 +48136,7 @@ ${播报文本}
       clearTimeout(closeTimer); clearTimeout(openTimer);
       if (pinned && state.inspect && item.dataset.inspect !== `${state.inspect.kind}:${state.inspect.id}`) return;
       // 条目可用 data-hover-delay 放慢（沙盘地标密，扫过时不该频频弹出）
-      openTimer = setTimeout(() => { const [kind, ...rest] = item.dataset.inspect.split(':'); openInspector(kind, rest.join(':'), item, 'hover'); }, Number(item.dataset.hoverDelay) || hoverMs());
+      openTimer = setTimeout(() => { if (holding || item.closest('.grabbing')) return; const [kind, ...rest] = item.dataset.inspect.split(':'); openInspector(kind, rest.join(':'), item, 'hover'); }, Number(item.dataset.hoverDelay) || hoverMs());
       return;
     }
     clearTimeout(openTimer);
@@ -48181,15 +48186,15 @@ ${播报文本}
     const key = item.dataset.inspect, shown = floatOpen() && state.inspect && `${state.inspect.kind}:${state.inspect.id}` === key;
     if (shown || (hoverItem === item && hoverPending)) return;
     hoverItem = item; hoverPending = true; clearTimeout(closeTimer); clearTimeout(openTimer);
-    openTimer = setTimeout(() => { hoverPending = false; if (!item.isConnected) return; const [kind, ...rest] = key.split(':'); openInspector(kind, rest.join(':'), item, 'hover'); }, Number(item.dataset.hoverDelay) || hoverMs());
+    openTimer = setTimeout(() => { hoverPending = false; if (!item.isConnected || holding || item.closest('.grabbing')) return; const [kind, ...rest] = key.split(':'); openInspector(kind, rest.join(':'), item, 'hover'); }, Number(item.dataset.hoverDelay) || hoverMs());
   });
   // 点浮窗与条目以外的地方、或屏内滚动时收起（浮窗锚点会移动）
   addEventListener('pointerdown', e => { if (floatOpen() && !e.target.closest('.fcard,.inline-detail,[data-inspect],[data-scan],.picker-list,.ie-floatbox')) closeInspector(); });
   cockpitEl.addEventListener('scroll', e => { if (layer.firstChild && !e.target.closest?.('.fcard')) closeInspector(); }, true);
 
-  let editing = null;
+  let editing = null, holding = false;
   // 编辑结束后若桥接在编辑期间送来过新数据，补一次重绘
-  const flushPending = () => { if (api.pending && !editing) { api.pending = false; renderPage({ kind: 'refresh' }); syncReadout(); } };
+  const flushPending = () => { if (api.pending && !editing && !holding) { api.pending = false; renderPage({ kind: 'refresh' }); syncReadout(); } };
   const parseEdit = (kind, meta, str) => {
     const t = String(str).trim();
     if (kind === 'number') {
@@ -48600,7 +48605,7 @@ ${播报文本}
   };
   // 宿主尺寸变化（挂到新宿主、聊天栏宽度变化）后重排
   const relayout = () => { syncMobile(); readStageZ(); moveSlider($('.tab.on', track)); size(); if (state.domain) { applyWide(currentView().v); fitCarousel(); } if (tickText !== null) syncTicker(tickText); };
-  api = { refresh: () => { if (!state.domain) return; if (editing) { api.pending = true; return; } renderPage({ kind: 'refresh' }); }, switchDomain, switchPage, openInspector, closeInspector, reproject, syncReadout, start, relayout, isEditing: () => !!editing, pending: false };
+  api = { refresh: () => { if (!state.domain) return; if (editing) { api.pending = true; return; } renderPage({ kind: 'refresh' }); }, switchDomain, switchPage, openInspector, closeInspector, reproject, syncReadout, start, relayout, isEditing: () => !!editing || holding, hold: on => { if (holding === !!on) return; holding = !!on; if (!on) setTimeout(flushPending); }, pending: false };
   }
 })();
 
@@ -51691,9 +51696,18 @@ ${播报文本}
     const table = face.querySelector('[data-table]'); if (!table) return;
     const plane = table.querySelector('.plane'), ancs = [...plane.querySelectorAll('.anc:not(.cn)')], marks = [...table.querySelectorAll('.mk')], corners = [...plane.querySelectorAll('.anc.cn')];
     const COS = Math.cos(50 * Math.PI / 180), Z = [.7, 5], st = { z: 1.6, tx: 0, ty: 0 };
-    let raf = 0;
+    const ui = window.COCKPIT.ctx().state.ui, viewKey = table.dataset.trail || '/', views = ui.mapView ||= {};
+    let raf = 0, pw = 1;
     const clampZ = z => Math.max(Z[0], Math.min(Z[1], z));
-    const apply = () => { plane.style.setProperty('--z', st.z); plane.style.setProperty('--tx', st.tx + 'px'); plane.style.setProperty('--ty', st.ty + 'px'); if (!raf) raf = requestAnimationFrame(place); };
+    // 平移限位：画面中心始终落在地图上，拖不丢；视角按地图尺寸归一后记进 ui，重绘（设目的地、数据刷新）后原样恢复
+    const apply = () => {
+      const ph = pw * MAP.h / MAP.w;
+      st.tx = Math.max(-pw / 2, Math.min(pw / 2, st.tx)); st.ty = Math.max(-ph / 2, Math.min(ph / 2, st.ty));
+      views[viewKey] = { z: st.z, x: st.tx / pw, y: st.ty / ph };
+      plane.style.setProperty('--z', st.z); plane.style.setProperty('--tx', st.tx + 'px'); plane.style.setProperty('--ty', st.ty + 'px'); if (!raf) raf = requestAnimationFrame(place);
+    };
+    // 上一帧的散开分组与地名牌落点：本帧优先沿用，拖动时牌子不在上 / 左 / 右之间来回跳
+    let prevGroup = [];
     // 摆地标：读锚点的屏幕位置（只有 transform 变了，不触发重排）；越靠上（越远）越小；地名牌按级别先占位，被挡住的只留光点
     const place = () => {
       raf = 0;
@@ -51704,19 +51718,22 @@ ${播报文本}
       const vis = pts.map(([x, y]) => x > -60 && x < tr.width + 60 && y > -10 && y < tr.height + 70);
       // 坐标重合 / 挨得太近（屏幕上底座相距不到 22px）的地标就地散开：两个左右分开，三个以上绕一圈；
       // 散开的地标拉一条虚线回到真实位置。放大到点自然分开后不再散开
-      const off = pts.map(() => [0, 0]), grouped = new Set();
+      // 分组带回差：上一帧同组的放宽到 34px 才拆开，免得在临界距离上反复散开 / 合拢
+      const off = pts.map(() => [0, 0]), grouped = new Set(), group = [];
+      const close = (k, j) => Math.hypot(pts[k][0] - pts[j][0], pts[k][1] - pts[j][1]) < (prevGroup[k] != null && prevGroup[k] === prevGroup[j] ? 34 : 22);
       for (let i = 0; i < pts.length; i++) {
         if (!vis[i] || grouped.has(i)) continue;
         const g = [i];
-        for (let j = i + 1; j < pts.length; j++) if (vis[j] && !grouped.has(j) && g.some(k => Math.hypot(pts[k][0] - pts[j][0], pts[k][1] - pts[j][1]) < 22)) g.push(j);
+        for (let j = i + 1; j < pts.length; j++) if (vis[j] && !grouped.has(j) && g.some(k => close(k, j))) g.push(j);
         if (g.length < 2) continue;
-        g.forEach(k => grouped.add(k));
+        g.forEach(k => { grouped.add(k); group[k] = i; });
         const cx = g.reduce((s, k) => s + pts[k][0], 0) / g.length, cy = g.reduce((s, k) => s + pts[k][1], 0) / g.length, rad = g.length === 2 ? 22 : 12 + 6 * g.length;
         g.sort((a, b) => pts[a][0] - pts[b][0] || pts[a][1] - pts[b][1]).forEach((k, n) => {
           const ang = g.length === 2 ? (n ? 0 : Math.PI) : -Math.PI / 2 + n * 2 * Math.PI / g.length;
           off[k] = [cx + Math.cos(ang) * rad - pts[k][0], cy + Math.sin(ang) * rad * .6 - pts[k][1]];
         });
       }
+      prevGroup = group;
       const order = marks.map((m, i) => i).sort((a, b) => marks[a].dataset.rank - marks[b].dataset.rank || pts[b][1] - pts[a][1]);
       for (const i of order) {
         const m = marks[i], r = +m.dataset.rank;
@@ -51734,9 +51751,11 @@ ${播报文本}
           // 先放光柱正上方，撞了依次试偏右 / 偏左 / 上抬一行（及其左右），都撞才只留光点
           const hit = bx => placed.some(b => bx[0] < b[2] + 4 && bx[2] > b[0] - 4 && bx[1] < b[3] + 2 && bx[3] > b[1] - 2);
           const at = ([ox, oy]) => [x + ox - w / 2, top + oy, x + ox + w / 2, top + oy + h];
-          const up = -(h + 3), pick = [[0, 0], [w * .55, 0], [-w * .55, 0], [0, up], [w * .55, up], [-w * .55, up]].find(o => !hit(at(o)));
-          if (!pick) label = false;
-          else { placed.push(at(pick)); m.style.setProperty('--lx', (pick[0] / ds).toFixed(1) + 'px'); m.style.setProperty('--ly', (pick[1] / ds).toFixed(1) + 'px'); }
+          const up = -(h + 3), cands = [[0, 0], [w * .55, 0], [-w * .55, 0], [0, up], [w * .55, up], [-w * .55, up]];
+          const pi = [m._pick ?? 0, ...cands.keys()].find(n => !hit(at(cands[n])));
+          m._pick = pi;
+          if (pi == null) label = false;
+          else { const pick = cands[pi]; placed.push(at(pick)); m.style.setProperty('--lx', (pick[0] / ds).toFixed(1) + 'px'); m.style.setProperty('--ly', (pick[1] / ds).toFixed(1) + 'px'); }
         }
         m.classList.toggle('nolabel', !label);
       }
@@ -51762,17 +51781,26 @@ ${播报文本}
       const fx = a ? parseFloat(a.style.left) / 100 : .5, fy = a ? parseFloat(a.style.top) / 100 : .5;
       return { pw, s: { z: 1.6, tx: (.5 - fx) * pw, ty: (.5 - fy) * ph } };
     };
-    const h = homeState(); plane.style.setProperty('--pw', h.pw + 'px');
-    // 进出子图：下钻从拉远处推近，返回从推近处拉远（只是入场感，落点同回中）
-    const ui = window.COCKPIT.ctx().state.ui, depth = (ui.mapTrail || []).length, prev = ui.mapDepthShown ?? depth; ui.mapDepthShown = depth;
-    Object.assign(st, h.s, depth !== prev ? { z: depth > prev ? .9 : 2.8 } : {}); apply();
-    if (depth !== prev) tween(h.s, 420);
-    new ResizeObserver(() => { plane.style.setProperty('--pw', table.clientWidth * 1.05 + 'px'); apply(); }).observe(table);
+    const h = homeState(); pw = h.pw; plane.style.setProperty('--pw', pw + 'px');
+    // 进出子图：下钻从拉远处推近，返回从推近处拉远（只是入场感，落点同回中）；同一层重绘时沿用上次的视角
+    const depth = (ui.mapTrail || []).length, prev = ui.mapDepthShown ?? depth, saved = views[viewKey]; ui.mapDepthShown = depth;
+    if (depth !== prev) { Object.assign(st, h.s, { z: depth > prev ? .9 : 2.8 }); apply(); tween(h.s, 420); }
+    else { Object.assign(st, saved ? { z: clampZ(saved.z), tx: saved.x * pw, ty: saved.y * pw * MAP.h / MAP.w } : h.s); apply(); }
+    const ro = new ResizeObserver(() => {
+      if (!table.isConnected) return ro.disconnect();
+      const k = table.clientWidth * 1.05 / pw; pw *= k; st.tx *= k; st.ty *= k; plane.style.setProperty('--pw', pw + 'px'); apply();
+    });
+    ro.observe(table);
 
+    // 拖动期间桥接送来的新数据先挂起，松手再重绘，免得拖到一半整张图被换掉
     const ptrs = new Map(); let drag = null, pinch = null, moved = false;
+    const hold = on => window.COCKPIT.hold?.(on);
+    // 按住拖动不选中文字（否则拖出界会把整页选成一片）
+    table.addEventListener('selectstart', e => e.preventDefault());
     table.addEventListener('pointerdown', e => {
       if (e.target.closest('.table-ui,.table-crumb') || e.button > 0) return;
-      ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (e.pointerType === 'mouse') { e.preventDefault(); getSelection()?.removeAllRanges(); }
+      ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); hold(true);
       if (ptrs.size === 1) { drag = { x: e.clientX, y: e.clientY, tx: st.tx, ty: st.ty, id: e.pointerId }; moved = false; }
       if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, z: st.z }; drag = null; }
     });
@@ -51789,7 +51817,7 @@ ${播报文本}
       }
       st.tx = drag.tx + dx / st.z; st.ty = drag.ty + dy / (st.z * COS); apply();
     });
-    const end = e => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = null; if (!ptrs.size) { drag = null; table.classList.remove('grabbing'); } };
+    const end = e => { if (!ptrs.delete(e.pointerId)) return; if (ptrs.size < 2) pinch = null; if (!ptrs.size) { drag = null; table.classList.remove('grabbing'); hold(false); } };
     table.addEventListener('pointerup', end); table.addEventListener('pointercancel', end);
     table.addEventListener('click', e => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true);
     table.addEventListener('click', e => {
@@ -51800,7 +51828,18 @@ ${播报文本}
       if (c.state.inspect) window.COCKPIT.closeInspector();
       window.COCKPIT.refresh();
     });
-    table.addEventListener('wheel', e => { e.preventDefault(); const [cx, cy] = centerOff(e.clientX, e.clientY); zoomAt(st.z * Math.exp(-e.deltaY * .0016), cx, cy); }, { passive: false });
+    // 滚轮缩放：记下目标倍率，逐帧以指针处为中心逼近（鼠标滚轮一格不再一下跳 15%），触控板的细碎增量照样连续
+    let wz = 0, wat = [0, 0], wraf = 0;
+    const wheelStep = () => {
+      wraf = 0; const nz = Math.abs(wz - st.z) < .004 ? wz : st.z + (wz - st.z) * .35;
+      zoomAt(nz, ...wat); if (st.z !== wz) wraf = requestAnimationFrame(wheelStep); else wz = 0;
+    };
+    table.addEventListener('wheel', e => {
+      e.preventDefault(); if (!e.deltaY) return;
+      const dy = e.deltaY * (e.deltaMode === 1 ? 16 : 1);
+      wat = centerOff(e.clientX, e.clientY); wz = clampZ((wz || st.z) * Math.exp(-dy * .0016));
+      if (!wraf) wraf = requestAnimationFrame(wheelStep);
+    }, { passive: false });
     table.querySelector('.table-ui').addEventListener('click', e => {
       const b = e.target.closest('[data-zoom]'); if (!b) return; e.stopPropagation();
       if (b.dataset.zoom === 'home') return tween(homeState().s);
