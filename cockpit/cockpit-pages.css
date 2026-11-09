@@ -601,3 +601,5 @@ div.rail-item{cursor:default}
 .plq-x:hover,.plq-x:focus-visible{opacity:1}
 .plq-x.armed{opacity:1;color:#b8321f;font-weight:900}
 .plq.add{appearance:none;border:0;font:inherit;cursor:pointer;padding-inline:.7em}
+/* 武魂页施放次数翼底：自创魂技格贴底，进设计台 */
+.tile.self-made{margin-top:auto}
