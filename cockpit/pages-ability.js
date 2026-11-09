@@ -287,6 +287,8 @@
       const val = [x.目标, x.数值 !== '' ? String(x.数值) : '', Number(x.持续回合) > 1 ? `${x.持续回合}回合` : ''].filter(Boolean).join(' · ');
       lines.push(`· ${x.原型 || '效果'}${x.分支角色 && x.分支角色 !== '基础' ? `（分支 ${x.分支角色}）` : ''}${val ? `（${val}）` : ''}：${n2(x.原始COST)}`);
       const segs = [['主数值', x.主数值COST], ['副数值', x.副数值COST], ['固定规则', x.固定规则COST], ['触发方式', x.触发方式COST], ['延迟回合', x.延迟回合COST], ['附加规则', x.附加规则COST]].filter(([, v]) => v != null && Number(v));
+      // 没有分项时给基础算式：百分点 × 单位 COST（× 数值倍率）
+      if (!segs.length && Number(x.单位COST) && (Number(x.百分点) || Number(x.绝对值折算百分点))) segs.push([`${n2(Number(x.百分点) || Number(x.绝对值折算百分点))} 点 × 单位`, `${n2(x.单位COST)}${Number(x.数值倍率) && Number(x.数值倍率) !== 1 ? ` × 倍率 ${n2(x.数值倍率)}` : ''}`]);
       const coef = [Number(x.目标系数) && Number(x.目标系数) !== 1 ? `目标 ×${n2(x.目标系数)}${x.目标系数原因 ? `（${x.目标系数原因}）` : ''}` : '', Number(x.持续系数) && Number(x.持续系数) !== 1 ? `持续 ×${n2(x.持续系数)}` : ''].filter(Boolean);
       if (segs.length || coef.length) lines.push(`   ${segs.map(([k, v]) => `${k} ${n2(v)}`).join(' + ')}${segs.length && coef.length ? '｜' : ''}${coef.join(' · ')}`);
       if (Number(x.限制抵扣) > 0) lines.push(`   限制抵扣 −${n2(x.限制抵扣)}（${Math.round(Number(x.限制抵扣率) * 100)}%）`);
