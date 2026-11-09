@@ -42,7 +42,7 @@
 /* 正负：极性按钮（增加蓝 / 减少红）+ 绝对值 + 单位 */
 .dz-signed,.dz-amt{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:.3em;align-items:stretch;min-width:0}
 .dz-amt{grid-template-columns:minmax(0,1fr) auto}
-.dz-sgn{all:unset;box-sizing:border-box;width:1.9em;display:grid;place-items:center;cursor:pointer;color:#fff;font-size:max(10.5px,.8em);clip-path:polygon(5px 0,100% 0,100% calc(100% - 5px),calc(100% - 5px) 100%,0 100%,0 5px)}
+.dz-sgn{all:unset;box-sizing:border-box;width:1.9em;display:grid;place-items:center;cursor:pointer;color:#fff;font-size:max(10.5px,.84em);font-weight:900;clip-path:polygon(5px 0,100% 0,100% calc(100% - 5px),calc(100% - 5px) 100%,0 100%,0 5px)}
 .dz-sgn.pos{background:linear-gradient(180deg,#5aa5ff,#1a5ad6)}
 .dz-sgn.neg{background:linear-gradient(180deg,#ff7d7d,#c8323a)}
 .dz-sgn:focus-visible,.dz-useg button:focus-visible,.dz-step:focus-visible{outline:2px solid var(--blue);outline-offset:1px}

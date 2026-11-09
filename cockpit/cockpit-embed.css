@@ -135,3 +135,9 @@ img{max-width:none}
   .ie{padding-block:.35em}
   .door,.rel-stack,.plq.door{min-height:28px}
 }
+/* 设计台侧屏：预算条 / 图例 / 利用率上下排（利用率原先钉在第二列，窄屏挤出第二列）；技能列表的魂环徽章行同武魂页收紧 */
+@container cockpit (min-width:701px){
+  .wing .budget>.bg-util{grid-column:1;justify-self:start;display:flex;align-items:baseline;gap:.45em}
+  .wing .list .row:has(>.medal){gap:.5em;padding-inline:.55em;grid-template-columns:auto minmax(0,1fr)}
+  .wing .list .row>.medal{--md:2.3em}
+}

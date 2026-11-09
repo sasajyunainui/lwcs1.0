@@ -51,7 +51,7 @@
     const alt = String(f.pattern || '').split('|')[0];
     return /%\?$/.test(alt) ? 'toggle' : /%$/.test(alt) ? 'force' : f.pattern ? 'none' : 'toggle';
   };
-  const sgnBtn = sign => `<button type="button" class="dz-sgn ${sign === '-' ? 'neg' : 'pos'}" data-sgn aria-label="正负，当前${sign === '-' ? '减少' : '增加'}"><i class="fa-solid fa-${sign === '-' ? 'minus' : 'plus'}"></i></button>`;
+  const sgnBtn = sign => `<button type="button" class="dz-sgn ${sign === '-' ? 'neg' : 'pos'}" data-sgn aria-label="正负，当前${sign === '-' ? '减少' : '增加'}" data-hint="点击切换增加 / 减少">${sign === '-' ? '减' : '增'}</button>`;
   const signedCtl = (c, f, a, act) => {
     const s = String(f.value ?? '').trim(), m = /^([+-]?)(\d+(?:\.\d+)?)(%?)$/.exec(s); if (s && !m) return null; // x1.5 倍率写法退回文本框
     const ref = String(f.default ?? f.placeholder ?? ''), rule = pctRule(f), sign = m?.[1] === '-' ? '-' : '+', plus = m ? m[1] === '+' : !/^\d/.test(ref);
@@ -377,7 +377,7 @@
       const sgn = e.target.closest('[data-sgn]');
       if (sgn) {
         const h = sgn.closest('[data-compose]'), neg = h.dataset.sign !== '-';
-        h.dataset.sign = neg ? '-' : '+'; sgn.className = `dz-sgn ${neg ? 'neg' : 'pos'}`; sgn.innerHTML = `<i class="fa-solid fa-${neg ? 'minus' : 'plus'}"></i>`;
+        h.dataset.sign = neg ? '-' : '+'; sgn.className = `dz-sgn ${neg ? 'neg' : 'pos'}`; sgn.textContent = neg ? '减' : '增'; sgn.setAttribute('aria-label', `正负，当前${neg ? '减少' : '增加'}`);
         const i = h.querySelector('input'); if (i.value !== '') i.dispatchEvent(new Event('change', { bubbles: true }));
         return;
       }
