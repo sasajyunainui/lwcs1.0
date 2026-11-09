@@ -377,7 +377,7 @@
       tag: 'CORE · STAR MAP', wide: 'l',
       core: `<div class="pad">${c.head('map', '行旅星图', 'Star Map', 'gd', c.hint('点地标看详情、设目的地；带层叠标记的地标可双击（或在详情里）进入子图，子图只是查看，不改变当前位置。拖动平移，滚轮或双指缩放。'))}${sandTable(c, c.state.ui.mapTrail || [])}</div>`,
       mount: mountTable,
-      railL: `<div class="rail">${c.sock('location-dot')}<small>${c.esc(here || '')}</small></div>`,
+      railL: `<div class="rail door" data-go="page-map/place" role="link" tabindex="0" data-hint="查看当地">${c.sock('location-dot')}<small>${c.esc(here || '')}</small></div>`,
       right: `<div class="pad">
         ${c.head('flag-checkered', '目的地', 'Destination')}
         ${ptOf(dest) ? `<div class="relic-card">${c.sock('location-crosshairs', 'gd')}<div><strong>${ptOf(dest).x}, ${ptOf(dest).y}</strong><small>坐标目的地</small></div><button class="key-s" type="button" data-set="dest=" aria-label="清除坐标目的地"><i class="fa-solid fa-xmark"></i></button></div>${routeBox(c, dest)}${addHere(c, ptOf(dest))}<div class="groove"></div>` : ''}
@@ -404,7 +404,7 @@
     label: '探索', icon: 'compass', tag: 'CORE · STAR MAP',
     keys: [
       { id: 'star', icon: 'map', label: '地图', view: travel, inspect: nodeInspect },
-      { id: 'place', icon: 'city', label: '当地', brief: c => String(c.ch.状态?.位置 || '').split('-').filter(x => x && x !== '斗罗大陆').pop() || '', view: place, inspect: (c, kind, id, mode) => kind === 'dyn' ? dynInspect(c, id) : npcInspect(c, kind, id, mode) },
+      { id: 'place', icon: 'city', label: '当地', view: place, inspect: (c, kind, id, mode) => kind === 'dyn' ? dynInspect(c, id) : npcInspect(c, kind, id, mode) },
     ],
   });
 })();

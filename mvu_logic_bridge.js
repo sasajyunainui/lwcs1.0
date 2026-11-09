@@ -26136,7 +26136,14 @@
         case 'deleteChar': {
           const 角色键 = resolveSnapshotCharKey(快照, toText(参数.char, '')), 角色数据 = deepGet(快照, ['rootData', 'char', 角色键], null);
           if (!角色键 || !角色数据 || typeof 角色数据 !== 'object') return { ok: false, message: '角色不存在。' };
-          if (!判断角色允许删除(角色键, 角色数据, 快照)) return { ok: false, message: '该角色不可删除。' };
+          // 座舱目录里点角色卡即切换查看，要删的往往就是正在查看的角色：先切回玩家再删（玩家本身仍不可删）
+          let 删除判定快照 = 快照;
+          const 删除时玩家名 = toText(deepGet(快照, 'rootData.sys.玩家名', ''), '').trim();
+          if (删除时玩家名 && 角色键 !== 删除时玩家名 && toText(快照.activeName, '').trim() === 角色键 && deepGet(快照, ['rootData', 'char', 删除时玩家名], null)) {
+            if (window.COCKPIT?.mounted) window.COCKPIT.view(删除时玩家名); else applyActiveCharacterSelection(删除时玩家名);
+            删除判定快照 = { ...快照, activeName: 删除时玩家名 };
+          }
+          if (!判断角色允许删除(角色键, 角色数据, 删除判定快照)) return { ok: false, message: '该角色不可删除。' };
           const 显示名 = toText(角色数据.name || deepGet(角色数据, 'base.name', ''), 角色键);
           await mutateStatDataByEditor(statData => {
             if (!deepGet(statData, ['char', 角色键], null)) throw new Error('角色不存在。');

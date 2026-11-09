@@ -1,10 +1,10 @@
 /* 角色领域：总览 · 档案 · 成长 · 关系 · 身份 · 权限 · 目录（私密档案不在导航中，见 canOpenPrivateArchive 注释） */
 (() => {
   const WOUND_PARTS = ['头部', '躯干', '左臂', '右臂', '左腿', '右腿'];
-  const avatarBlock = c => {
+  const avatarBlock = (c, go = '') => {
     const src = c.avatarSrc(c.name);
     return `<div class="ava"><span class="ring1 oct"></span><span class="ring2 oct"></span>
-      <div class="face-img oct">${src ? `<img src="${c.esc(src)}" alt="${c.esc(c.name)}头像">` : `<span class="mono">${c.esc(c.name.slice(1, 2) || c.name[0])}</span>`}</div>
+      <div class="face-img oct${go ? ' door' : ''}"${go ? ` data-go="${go}" role="link" tabindex="0" data-hint="外貌与档案"` : ''}>${src ? `<img src="${c.esc(src)}" alt="${c.esc(c.name)}头像">` : `<span class="mono">${c.esc(c.name.slice(1, 2) || c.name[0])}</span>`}</div>
       <label class="upload" title="上传头像"><i class="fa-solid fa-camera"></i><input type="file" accept="image/*" class="ava-file" data-name="${c.esc(c.name)}" aria-label="上传${c.esc(c.name)}的头像"></label></div>`;
   };
   const growthOf = c => {
@@ -77,11 +77,11 @@
       tag: 'CORE · STATUS',
       core: `<div class="pad home-core">${window.COCKPIT.battleActive?.() ? `<div class="banner battle-back"><i class="fa-solid fa-khanda"></i><div><strong>战斗进行中</strong></div><button class="key-s" type="button" data-act='{"name":"battle"}'>返回战斗</button></div>` : ''}
         <div class="home-top">
-        <div class="id-row">${avatarBlock(c)}
+        <div class="id-row">${avatarBlock(c, 'page-archive/profile')}
           <div class="who">
-            <div class="name-line"><h1 class="name"${(pk => pk ? ` data-longpress="${c.esc(pk)}" data-longpress-delay="600"` : '')(window.COCKPIT.privateArchiveKey?.())}>${c.esc(c.name)}</h1>${genderMark(st.性别) || c.num(st.年龄) ? `<span class="gender ${st.性别 === '女' ? 'f' : st.性别 === '男' ? 'm' : ''}" title="${c.esc(st.性别 || '')} · ${c.num(st.年龄)} 岁">${genderMark(st.性别)}<b>${c.ed(c.num(st.年龄) || '?', c.P('属性', '年龄'), { kind: 'number', integer: true, min: 0, raw: c.num(st.年龄) })}</b><small>岁</small></span>` : ''}</div>
+            <div class="name-line"><h1 class="name door" data-go="page-archive/directory" role="link" tabindex="0" data-hint="角色目录"${(pk => pk ? ` data-longpress="${c.esc(pk)}" data-longpress-delay="600"` : '')(window.COCKPIT.privateArchiveKey?.())}>${c.esc(c.name)}</h1>${genderMark(st.性别) || c.num(st.年龄) ? `<span class="gender ${st.性别 === '女' ? 'f' : st.性别 === '男' ? 'm' : ''}" title="${c.esc(st.性别 || '')} · ${c.num(st.年龄)} 岁">${genderMark(st.性别)}<b>${c.ed(c.num(st.年龄) || '?', c.P('属性', '年龄'), { kind: 'number', integer: true, min: 0, raw: c.num(st.年龄) })}</b><small>岁</small></span>` : ''}</div>
             <div class="title-line"><span class="nw">Lv.${c.ed(c.num(st.等级), c.P('属性', '等级'), { kind: 'number', integer: true, min: 0, raw: c.num(st.等级) })} ${c.esc(c.rankTitle(st.等级))}</span> · <span class="nw">${c.ed(st.精神境界 || '灵元境', c.P('属性', '精神境界'), { kind: 'enum', options: ['灵元境', '灵通境', '灵海境', '灵渊境', '灵域境', '神元境'] })}</span></div>
-            <div class="plaques">${!c.blank(c.ch.社交?.主身份) ? `<span class="plq">${c.ed(c.ch.社交.主身份, c.P('社交', '主身份'))}</span>` : ''}${st.邪魂师 ? '<span class="plq" style="--pc:#ff4d6a">邪魂师</span>' : ''}</div>
+            <div class="plaques"><span class="plq door${c.blank(c.ch.社交?.主身份) ? ' dim' : ''}" data-go="page-archive/identity" role="link" tabindex="0" data-hint="身份与势力">${c.esc(c.blank(c.ch.社交?.主身份) ? '身份未记录' : c.ch.社交.主身份)}</span>${(rl => `<span class="rel-stack door" data-go="page-archive/relations" role="link" tabindex="0" data-hint="${rl.length ? `关系：${c.esc(rl.slice(0, 3).map(r => r.name).join('、'))}${rl.length > 3 ? ' 等' : ''}` : '关系'}">${rl.slice(0, 3).map(r => c.miniAva(r.name)).join('')}<b>${rl.length ? rl.length : '<i class="fa-solid fa-people-arrows"></i>'}</b></span>`)(relationList(c))}${st.邪魂师 ? '<span class="plq" style="--pc:#ff4d6a">邪魂师</span>' : ''}</div>
           </div>
         </div>
         <div class="meters">
@@ -152,7 +152,7 @@
             <div class="plaques">
               ${swatchPlq(c, '发色', a.发色, c.P('外貌', '发色'))}${swatchPlq(c, '瞳色', a.瞳色, c.P('外貌', '瞳色'))}
               <span class="plq steel">发型 · ${c.ed(c.blank(a.发型) ? '未记录' : a.发型, c.P('外貌', '发型'), { raw: c.blank(a.发型) ? '' : a.发型 })}</span><span class="plq steel">体型 · ${c.ed(c.blank(a.体型) ? '未记录' : a.体型, c.P('外貌', '体型'), { raw: c.blank(a.体型) ? '' : a.体型 })}</span>
-              ${(a.特殊特征 || []).map(t => `<span class="plq gold">${c.esc(t)}</span>`).join('')}
+              ${(a.特殊特征 || []).map((t, i) => `<span class="plq gold">${c.ed(t, c.P('外貌', '特殊特征', i), { raw: t })}<button class="plq-x" type="button" data-del-path="${c.esc(JSON.stringify(c.P('外貌', '特殊特征', i)))}" aria-label="删除特征"><i class="fa-solid fa-xmark"></i></button></span>`).join('')}<button class="plq gold add" type="button" data-add-feature aria-label="添加特殊特征"><i class="fa-solid fa-plus"></i></button>
             </div>
             ${heightRuler(c, a.身高, c.P('外貌', '身高'))}
             ${wear.length ? `<section class="sec"><h3>穿搭<span class="en">Outfit</span></h3><div class="wear">${wear.map(([ic, l, v]) => `<div class="wear-row">${c.sock(ic)}<small>${l}</small><b>${c.ed(v, c.P('穿搭', l))}</b></div>`).join('')}</div><p class="prose">${c.ed(c.blank(w.描述) ? '未记录整体描述' : w.描述, c.P('穿搭', '描述'), { kind: 'text', raw: c.blank(w.描述) ? '' : w.描述 })}</p></section>` : ''}
@@ -166,9 +166,9 @@
         ${c.head('user', '基础信息', 'Basic')}
         <div class="id-photo">${avatarBlock(c)}</div>
         <div class="idcard">
-          ${idRow(c, 'cake-candles', '生辰', `${st.生日 || '未记录'} · ${c.num(st.年龄)} 岁`)}
-          ${idRow(c, st.性别 === '女' ? 'venus' : st.性别 === '男' ? 'mars' : 'genderless', '性别', st.性别 || '未记录')}
-          ${idRow(c, st.邪魂师 ? 'skull' : 'shield-halved', '阵营', st.邪魂师 ? '邪魂师' : '正统魂师', st.邪魂师 ? 'bad' : '')}
+          <div class="idr"><i class="fa-solid fa-cake-candles"></i><span>生辰</span><b>${c.ed(c.blank(st.生日) ? '未记录' : st.生日, c.P('属性', '生日'), { raw: c.blank(st.生日) ? '' : st.生日 })} · ${c.ed(c.num(st.年龄), c.P('属性', '年龄'), { kind: 'number', integer: true, min: 0, raw: c.num(st.年龄) })} 岁</b></div>
+          <div class="idr"><i class="fa-solid fa-${st.性别 === '女' ? 'venus' : st.性别 === '男' ? 'mars' : 'genderless'}"></i><span>性别</span><b>${c.ed(st.性别 || '未记录', c.P('属性', '性别'), { kind: 'enum', options: ['男', '女'] })}</b></div>
+          ${(f => `<div class="idr door${st.邪魂师 ? ' bad' : ''}" data-go="page-archive/identity" role="link" tabindex="0" data-hint="身份与势力"><i class="fa-solid fa-${st.邪魂师 ? 'skull' : 'flag'}"></i><span>阵营</span><b>${c.esc(f ? f + (st.邪魂师 ? ' · 邪魂师' : '') : st.邪魂师 ? '邪魂师' : '无所属')}</b></div>`)(Object.keys(c.ch.社交?.势力 || {})[0] || '')}
           <div class="idr"><i class="fa-solid fa-location-dot"></i><span>所在</span><b>${c.ed(c.ch.状态?.位置 || '', c.P('状态', '位置'))}</b></div>
           ${alive ? '' : idRow(c, 'cross', '状态', `已故 · ${c.ch.状态?.死亡类型 || ''}${c.num(c.ch.状态?.死亡tick) >= 0 ? ' · ' + c.tickDate(c.ch.状态.死亡tick) : ''}`, 'bad')}
         </div>
@@ -348,11 +348,11 @@
     const rel = me?.社交?.关系 || {}, loc = n => String(c.S.char[n]?.状态?.位置 || '未知').replace(/^斗罗大陆-/, '').replace(/-/g, ' · ');
     const near = names.filter(n => c.S.char[n].状态?.位置 === here), far = names.filter(n => !near.includes(n)), known = names.filter(n => rel[n]);
     const pool = { 全部: names, 同地: near, 已结识: known, 其他地点: far }, tab = pool[c.state.ui.dtab2] ? c.state.ui.dtab2 : '全部';
-    const sel = names.find(n => n === c.state.ui.dirsel) || c.name;
+    const sel = c.name;
     const card = n => {
       const x = c.S.char[n], lv = c.num(x.属性?.等级), r = rel[n], aff = c.num(r?.好感度);
       const tags = [n === c.player ? '<span class="rc-tag gold">玩家</span>' : '', n === c.name && n !== c.player ? '<span class="rc-tag blue">正在查看</span>' : '', r ? `<span class="rc-tag ${aff >= 0 ? 'warm' : 'cold'}"><i class="fa-solid fa-handshake-simple"></i> ${aff >= 0 ? '+' : ''}${c.fmt(aff)}</span>` : ''].join('');
-      return `<button class="rc${n === sel ? ' sel' : ''}${n === c.name ? ' on' : ''}" type="button" data-set="dirsel=${c.esc(n)}" data-face-after="1" aria-current="${n === sel}">
+      return `<button class="rc${n === c.name ? ' sel on' : ''}" type="button" data-view-char="${c.esc(n)}" aria-current="${n === c.name}" data-hint="${n === c.name ? '正在查看' : `切换查看${c.esc(n)}`}">
         <span class="rc-lv">Lv.${lv}</span>${c.miniAva(n)}
         <strong>${c.esc(n)}</strong><em>${c.rankTitle(lv)}${x.属性?.精神境界 ? ' · ' + c.esc(x.属性.精神境界) : ''}</em>
         <small>${c.esc(x.社交?.主身份 || '')}</small>
@@ -373,7 +373,7 @@
       right: `<div class="pad">${charDetail(c, sel)}</div>`,
     };
   };
-  // 角色名片（右翼）：身份 / 年龄 / 武魂 / 所在 + 切换查看；删除只对非玩家、非当前查看的角色开放（两步确认）
+  // 角色名片（右翼）：正在查看的角色的身份 / 年龄 / 武魂 / 所在；查看的不是玩家时给「回到玩家」，可删除（桥接先切回玩家再删，两步确认）
   const charDetail = (c, name) => {
     const x = c.S.char[name]; if (!x) return '';
     const souls = [x.第1武魂?.表象名称, x.第2武魂?.表象名称].filter(v => !c.blank(v)).map(c.esc).join(' / ');
@@ -384,12 +384,13 @@
         <div class="tile">${c.sock('fire')}<b>${souls || '—'}</b><small>武魂</small></div>
         <div class="tile">${c.sock('location-dot')}<b>${c.esc(String(x.状态?.位置 || '未知').replace(/^斗罗大陆-/, '').replace(/-/g, ' · '))}</b><small>所在</small></div>
       </div>
-      <div class="acts"><button class="cta" type="button" data-view-char="${c.esc(name)}"${name === c.name ? ' disabled' : ''}><i class="fa-solid fa-eye"></i>${name === c.name ? '正在查看' : '切换查看'}</button>
-      ${name !== c.player && name !== c.name ? `<button class="key-s danger" type="button" data-confirm="${c.esc(`删除角色「${name}」，并清理其他角色关系表里对它的引用`)}" data-act="${c.esc(JSON.stringify({ name: 'deleteChar', char: name }))}"><i class="fa-solid fa-trash"></i> 删除角色</button>` : ''}</div>`;
+      <div class="acts">${name !== c.player ? `<button class="cta" type="button" data-view-char="${c.esc(c.player)}"><i class="fa-solid fa-user"></i>回到${c.esc(c.player)}</button>` : ''}
+      ${name !== c.player ? `<button class="key-s danger" type="button" data-confirm="${c.esc(`删除角色「${name}」，并清理其他角色关系表里对它的引用`)}" data-act="${c.esc(JSON.stringify({ name: 'deleteChar', char: name }))}"><i class="fa-solid fa-trash"></i> 删除角色</button>` : ''}</div>`;
   };
 
   document.addEventListener('click', e => {
     const c = window.COCKPIT.ctx?.(); if (!c) return;
+    if (e.target.closest('[data-add-feature]')) { const arr = c.ch.外貌?.特殊特征; window.COCKPIT.write([{ path: c.P('外貌', '特殊特征'), value: [...(Array.isArray(arr) ? arr : []), '新特征'] }]); return; }
     if (e.target.closest('[data-wound-add]')) { c.state.ui.woundForm = true; window.COCKPIT.refresh(); setTimeout(() => document.querySelector('[data-wf-part]')?.focus(), 30); return; }
     const wp = e.target.closest('[data-wf-part]'), wd = e.target.closest('[data-wf-deg]');
     if (wp || wd) {
@@ -428,10 +429,10 @@
     keys: [
       { id: 'status', icon: 'gauge-high', label: '总览', view: status, inspect: (c, kind, id, mode) => kind === 'sk' ? window.COCKPIT.skillCard?.(c, id, mode) || '' : '' },
       { id: 'profile', icon: 'id-card', label: '档案', view: profile },
-      { id: 'growth', icon: 'chart-line', label: '成长', view: growth, brief: c => `${c.entries(c.ch.战斗历史).length} 场战斗` },
-      { id: 'relations', icon: 'people-arrows', label: '关系', view: relations, brief: c => `${c.entries(c.ch.社交?.关系).length} 人` },
-      { id: 'identity', icon: 'landmark', label: '身份', view: identity, inspect: privInspect, brief: c => `${c.entries(c.ch.社交?.势力).length} 个势力` },
-      { id: 'directory', icon: 'users', label: '目录', view: directory, brief: c => `${Object.keys(c.S.char).length} 人` },
+      { id: 'growth', icon: 'chart-line', label: '成长', view: growth },
+      { id: 'relations', icon: 'people-arrows', label: '关系', view: relations },
+      { id: 'identity', icon: 'landmark', label: '身份', view: identity, inspect: privInspect },
+      { id: 'directory', icon: 'users', label: '目录', view: directory },
     ],
   });
 })();

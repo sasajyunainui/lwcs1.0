@@ -26,9 +26,22 @@
       // 右翼：上方是总览数字，操作键沉到底部（主按钮 .cta 自带 margin-top:auto）
       right: ui.qnew ? questNew(c, ui.qnew === 'board' ? 'board' : 'record', tab).right : `<div class="pad">${c.head('bolt', '行动', 'Actions')}
         <div class="tiles"><div class="tile">${c.sock('list-check')}<b>${active}</b><small>进行中</small></div><div class="tile">${c.sock('file-signature')}<b>${open}</b><small>待接取委托</small></div></div>
+        ${affairTiles(c)}
         ${sel ? questActions(c, isBoard, selId, sel) : c.empty('bolt', '暂无可执行的操作')}
       </div>`,
     };
+  };
+  // 事务格：数据本身就是入口——魂灵塔层数 → 试炼，副职业 → 工坊，情报条数 → 情报，本地商店 → 交易
+  const affairTiles = c => {
+    const jobs = Object.entries(c.ch.副职业 || {}), p = String(c.ch.状态?.位置 || '').split('-').filter(x => x && x !== '斗罗大陆');
+    const intelN = (c.ch.已掌握情报 || []).length + Object.values(c.S.world.机密情报 || {}).filter(s => (s.知情规则 || []).includes(c.name)).length;
+    const shops = Object.keys(c.S.world.地点?.[p[0]]?.商店 || {}).length;
+    return `<div class="tiles affairs">${[
+      ['tower-observation', `${c.fmt(c.num(c.ch.魂灵塔记录?.最高层))} 层`, '魂灵塔', 'trial', '试炼'],
+      ['hammer', jobs.length ? `${c.esc(jobs[0][0])} ${c.fmt(c.num(jobs[0][1]?.等级))} 级` : '未习', '副职业', 'workshop', '工坊'],
+      ['eye', `${c.fmt(intelN)} 条`, '情报', 'intel', '情报'],
+      ['scale-balanced', `${c.fmt(shops)} 家`, '本地商店', 'trade', '交易'],
+    ].map(([ic, v, l, pg, h]) => `<button class="tile door" type="button" data-go="page-terminal/${pg}" data-hint="${h}">${c.sock(ic)}<b>${v}</b><small>${l}</small></button>`).join('')}</div>`;
   };
   // 新建个人任务 / 发布委托：字段与选项同原项目「任务界面」；表单值存在界面状态 qf 里，提交时由桥接按原逻辑写回
   const QF_OPTS = { 任务线: ['主线', '支线'], 状态: ['进行中', '可提交', '已完成', '已放弃', '失败'], 面向: ['公开', '指定对象'], 难度: ['低', '中', '高', '极高'], 资源级别: ['无', '低', '中', '高', '稀有'] };
@@ -515,10 +528,10 @@
     label: '事务', icon: 'clipboard-list', tag: 'CORE · AFFAIRS',
     keys: [
       { id: 'quests', icon: 'clipboard-list', label: '任务', view: quests },
-      { id: 'trial', icon: 'tower-observation', label: '试炼', view: trial, brief: c => `塔 ${c.num(c.ch.魂灵塔记录?.最高层)} 层` },
-      { id: 'workshop', icon: 'hammer', label: '工坊', view: workshop, brief: c => { const n = Object.keys(c.ch.副职业 || {}).length; return n ? `${n} 项副职` : '未习副职'; } },
-      { id: 'intel', icon: 'eye', label: '情报', view: intel, brief: c => `${(c.ch.已掌握情报 || []).length + Object.values(c.S.world.机密情报 || {}).filter(s => (s.知情规则 || []).includes(c.name)).length} 条` },
-      { id: 'trade', icon: 'scale-balanced', label: '交易', view: trade, brief: c => { const p = String(c.ch.状态?.位置 || '').split('-').filter(x => x && x !== '斗罗大陆'); const n = Object.keys(c.S.world.地点?.[p[0]]?.商店 || {}).length; return n ? `${n} 家商店` : '无商店'; } },
+      { id: 'trial', icon: 'tower-observation', label: '试炼', view: trial },
+      { id: 'workshop', icon: 'hammer', label: '工坊', view: workshop },
+      { id: 'intel', icon: 'eye', label: '情报', view: intel },
+      { id: 'trade', icon: 'scale-balanced', label: '交易', view: trade },
       { id: 'settings', icon: 'sliders', label: '设置', view: settings },
     ],
   });

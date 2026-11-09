@@ -32,7 +32,9 @@
 
   // 大数按「万 / 亿」缩写（四列图块放不下 1,000,000）
   const wan = (c, n) => { n = c.num(n); return n >= 1e8 ? `${Number((n / 1e8).toFixed(2))}亿` : n >= 1e4 ? `${Number((n / 1e4).toFixed(n % 1e4 ? 1 : 0))}万` : c.fmt(n); };
-  const tile = (c, icon, value, label, cls = '') => `<div class="tile${cls ? ' ' + cls : ''}">${c.sock(icon)}<b>${value}</b><small>${label}</small></div>`;
+  // go：控件本身即入口（'域/页' 或 '域/页|键=值;…' 顺带选中条目）
+  const goAttr = (c, go, hint = '') => { const [to, set] = String(go).split('|'); return ` data-go="${to}"${set ? ` data-go-set="${c.esc(set)}"` : ''} role="link" tabindex="0"${hint ? ` data-hint="${c.esc(hint)}"` : ''}`; };
+  const tile = (c, icon, value, label, cls = '', go = '', hint = '') => `<div class="tile${cls ? ' ' + cls : ''}${go ? ' door' : ''}"${go ? goAttr(c, go, hint) : ''}>${c.sock(icon)}<b>${value}</b><small>${label}</small></div>`;
 
   // 概况：左翼 = 所在城市，主屏 = 时空中枢（日期、世界线、魂兽森林、拍卖），右翼 = 近期安排
   const overview = c => {
@@ -42,20 +44,19 @@
     return {
       tag: 'CORE · WORLD',
       left: `<div class="pad">${c.head('city', cn || '未知地点', city.类型 || 'City', 'gd')}
-        <div class="tiles">${tile(c, 'chart-line', c.esc(city.经济状况 || '—'), '经济')}${tile(c, 'people-group', city.人口 ? c.fmt(city.人口) : '—', '人口')}${tile(c, 'flag', c.esc(city.掌控势力 || '—'), '掌控势力')}${tile(c, 'shield-halved', c.esc(city.守护军团 || '—'), '守军')}${tile(c, 'store', Object.keys(city.商店 || {}).length, '商店')}${tile(c, 'user-group', here, '同地人物')}</div>
-        <button class="key-s" type="button" data-go="page-map/place"><i class="fa-solid fa-city"></i> 查看当地</button>
+        <div class="tiles">${tile(c, 'chart-line', c.esc(city.经济状况 || '—'), '经济')}${tile(c, 'people-group', city.人口 ? c.fmt(city.人口) : '—', '人口')}${tile(c, 'flag', c.esc(city.掌控势力 || '—'), '掌控势力', '', city.掌控势力 ? `page-world/faction|fsel=${city.掌控势力}` : 'page-world/faction', '势力')}${tile(c, 'shield-halved', c.esc(city.守护军团 || '—'), '守军')}${tile(c, 'store', Object.keys(city.商店 || {}).length, '商店', '', 'page-terminal/trade', '交易')}${tile(c, 'user-group', here, '同地人物', '', 'page-map/place', '查看当地')}</div>
       </div>`,
       core: `<div class="pad">
         ${c.head('globe', '时空中枢', 'Chronos', 'gd')}
-        <div class="chronos"><span class="lv">${c.esc((w.时间._calendar || '').replace(/ .*/, ''))}</span><span class="num">${c.esc((w.时间._calendar || '').split(' ')[1] || '')}</span></div>
+        <div class="chronos door"${goAttr(c, 'page-world/chronicle|cmode=past', '编年')}><span class="lv">${c.esc((w.时间._calendar || '').replace(/ .*/, ''))}</span><span class="num">${c.esc((w.时间._calendar || '').split(' ')[1] || '')}</span></div>
         <div class="fame even" style="--n:3">
           <div><small>世界线偏差</small><b>${deviationTier(c.num(w.偏差值))}</b><em>偏差值 ${c.fmt(w.偏差值)} · 倍率 ×${c.fmt(w.偏差倍率)}</em></div>
-          <div><small>核心阶段</small><b>${Object.keys(w.时间线 || {}).length ? c.esc(Object.values(w.时间线)[0].事件) : '未记录'}</b><em>${Object.keys(w.时间线 || {}).length ? '主线进行中' : '尚无主线节点'}</em></div>
-          <div><small>拍卖</small><b>${c.esc(w.拍卖?.状态 || '休市')}</b><em>${c.esc(w.拍卖?.地点 || '')} · ${Object.keys(w.拍卖?.拍品 || {}).length} 件拍品</em></div>
+          <div class="door"${goAttr(c, 'page-world/chronicle|cmode=future', '编年')}><small>核心阶段</small><b>${Object.keys(w.时间线 || {}).length ? c.esc(Object.values(w.时间线)[0].事件) : '未记录'}</b><em>${Object.keys(w.时间线 || {}).length ? '主线进行中' : '尚无主线节点'}</em></div>
+          ${(gs => `<div class="door"${goAttr(c, 'page-world/games', '赛事')}><small>赛事</small><b>${gs.length ? `${gs.length} 项进行中` : '暂无'}</b><em>${c.esc(gs[0]?.名称 || gs[0]?.标题 || (gs.length ? '' : '没有进行中的赛事'))}</em></div>`)(Object.values(w.赛事 || {}).filter(x => x?.状态 !== '已完成'))}
         </div>
         <section class="sec"><h3>魂兽森林<span class="en">Forest</span>${c.hint('人类累计猎杀的魂兽年限；接近上限会引发兽潮。')}</h3>
-          <div class="q-meter"><div class="q-mh"><small>累计击杀年限</small><b>${c.fmt(kill)}</b><em>${w.兽潮已触发 ? '兽潮已爆发' : kill / cap > .7 ? '仇恨高涨' : '相对安全'} · 上限 ${c.fmt(cap)}</em></div>${c.bar('hp', kill, cap)}</div></section>
-        ${lots.length ? `<section class="sec"><h3>拍卖行<span class="en">${c.esc(w.拍卖?.地点 || '')} · ${lots.length} 件</span></h3><div class="list two">${lots.map(([n, a]) => `<button class="row" type="button" data-go="page-terminal/trade" data-go-set="venue=auction;good=${c.esc(n)};tqty=1">${c.sock('gavel')}<div><strong>${c.esc(n)}</strong><small>${c.esc([a.品级, a.分类].filter(Boolean).join(' · '))}</small></div><span class="end">${wan(c, a.价格)}</span></button>`).join('')}</div></section>` : ''}
+          <div class="q-meter door"${goAttr(c, 'page-world/bestiary', '魂兽图鉴')}><div class="q-mh"><small>累计击杀年限</small><b>${c.fmt(kill)}</b><em>${w.兽潮已触发 ? '兽潮已爆发' : kill / cap > .7 ? '仇恨高涨' : '相对安全'} · 上限 ${c.fmt(cap)}</em></div>${c.bar('hp', kill, cap)}</div></section>
+        ${lots.length ? `<section class="sec"><h3>拍卖行<span class="en">${c.esc(w.拍卖?.状态 || '')} · ${c.esc(w.拍卖?.地点 || '')} · ${lots.length} 件</span></h3><div class="list two">${lots.map(([n, a]) => `<button class="row" type="button" data-go="page-terminal/trade" data-go-set="venue=auction;good=${c.esc(n)};tqty=1">${c.sock('gavel')}<div><strong>${c.esc(n)}</strong><small>${c.esc([a.品级, a.分类].filter(Boolean).join(' · '))}</small></div><span class="end">${wan(c, a.价格)}</span></button>`).join('')}</div></section>` : ''}
       </div>`,
       right: `<div class="pad">${c.head('calendar-day', '近期安排', 'Upcoming')}
         ${soon.length ? `<div class="list q-list">${soon.map(x => `<button class="row" type="button" data-go="page-world/chronicle" data-go-set="csel=${c.esc(x.kind + ':' + x.title)}">${c.sock(x.icon)}<div><strong>${c.esc(x.title)}</strong><small>${c.esc([x.kind, x.sub].filter(Boolean).join(' · '))}</small></div><span class="end">${days(c, x.t, x.pend)}</span></button>`).join('')}</div>` : c.empty('calendar-day', '近期没有安排')}
@@ -269,10 +270,10 @@
     label: '世界', icon: 'globe', tag: 'CORE · WORLD',
     keys: [
       { id: 'overview', icon: 'globe', label: '概况', view: overview },
-      { id: 'chronicle', icon: 'timeline', label: '编年', view: chronicle, brief: c => `${upcoming(c).length} 个节点` },
-      { id: 'faction', icon: 'chess-rook', label: '势力', view: factionView, brief: c => `${factions(c).length} 方势力` },
-      { id: 'games', icon: 'trophy', label: '赛事', view: games, brief: c => { const n = Object.values(c.S.world.赛事 || {}).filter(x => x?.状态 !== '已完成').length; return n ? `${n} 项进行` : '暂无'; } },
-      { id: 'bestiary', icon: 'dragon', label: '图鉴', view: bestiary, brief: c => `已录 ${Object.keys(c.S.world.图鉴 || {}).length} 种` },
+      { id: 'chronicle', icon: 'timeline', label: '编年', view: chronicle },
+      { id: 'faction', icon: 'chess-rook', label: '势力', view: factionView },
+      { id: 'games', icon: 'trophy', label: '赛事', view: games },
+      { id: 'bestiary', icon: 'dragon', label: '图鉴', view: bestiary },
     ],
   });
 })();

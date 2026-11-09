@@ -191,7 +191,7 @@
       tag: 'CORE · MARTIAL SOUL',
       left: `<div class="pad">${c.head('fire', '武魂', 'Martial Souls', 'gd')}
         <div class="list">${c.souls.map((s, i) => `<button class="row${i === idx ? ' on' : ''}" type="button" data-set="soul=${i}" aria-current="${i === idx}">${c.sock('fire', i === idx ? 'gd' : '')}<div><strong>${c.esc(s.表象名称)}</strong><small>${c.esc([s.slot, s.系别, `${s.rings.length} 环`].filter(Boolean).join(' · '))}</small></div><span></span></button>`).join('')}</div>
-        <section class="sec grow"><h3>魂技<span class="en">${skills.length}</span>${c.hint('悬停查看魂技卡，点击钉住；完整档案与编辑在「典籍」。')}</h3>
+        <section class="sec grow"><h3 class="door" data-go="page-ability/codex" data-go-set="skg=全部" role="link" tabindex="0">魂技<span class="en">${skills.length}</span>${c.hint('悬停查看魂技卡，点击钉住；完整档案与编辑在「典籍」。')}</h3>
         ${skills.length ? `<div class="list q-list">${skills.map(x => `<button class="row" type="button" data-inspect="sk:${skKey(x)}">${c.ringMedal(x.r, x.r.slot.replace(/\D/g, ''), true)}<div><strong>${c.esc(x.sk.魂技名)}</strong><small>${c.yearTier(x.r.年限)} · ${costText(c, x.sk.消耗)} · 前摇 ${c.fmt(x.sk.前摇 || 0)}</small></div><i class="fa-solid fa-chevron-right"></i></button>`).join('')}</div>` : '<span class="lbl">尚未附环</span>'}</section>
       </div>`,
       core: `<div class="pad detail martial-core">
@@ -207,7 +207,7 @@
       right: `<div class="pad">
         ${c.head('fire-flame-curved', '施放次数', 'Casts', 'sp')}
         <div class="need"><span>当前魂力</span><b>${c.fmt(pool)} / ${c.fmt(c.st.魂力上限)}</b></div>
-        ${skills.length ? `<div class="casts">${skills.map(x => { const cost = typeof x.sk.消耗 === 'object' ? c.num(x.sk.消耗?.魂力) : 0; return `<button class="cast" type="button" data-inspect="sk:${skKey(x)}"><div><strong>${c.esc(x.sk.魂技名)}</strong><small>${cost ? `每次 ${c.fmt(cost)} 魂力` : '无魂力消耗'}</small></div><b>×${cost ? Math.floor(pool / cost) : '∞'}</b></button>`; }).join('')}</div>` : '<span class="lbl">尚无可施放的魂技</span>'}
+        ${skills.length ? `<div class="casts">${skills.map(x => { const cost = typeof x.sk.消耗 === 'object' ? c.num(x.sk.消耗?.魂力) : 0; return `<button class="cast" type="button" data-inspect="sk:${skKey(x)}" data-go="page-ability/codex" data-go-set="skg=全部;sksel=${skKey(x)}"><div><strong>${c.esc(x.sk.魂技名)}</strong><small>${cost ? `每次 ${c.fmt(cost)} 魂力` : '无魂力消耗'}</small></div><b>×${cost ? Math.floor(pool / cost) : '∞'}</b></button>`; }).join('')}</div>` : '<span class="lbl">尚无可施放的魂技</span>'}
         ${blOn ? `<div class="groove"></div>${c.head('droplet', bl.血脉, 'Bloodline', 'hp')}${c.kv([['血脉', c.ed(bl.血脉, c.P('血脉之力', '血脉'))], ['解封层数', c.ed(c.fmt(bl.解封层数 || 0), c.P('血脉之力', '解封层数'), { kind: 'number', integer: true, min: 0, raw: c.num(bl.解封层数) })], ['气血魂核', c.ed(bl.核心 || '未凝聚', c.P('血脉之力', '核心'), { raw: bl.核心 || '' })], ['生命之火', bl.生命之火 ? '已点燃' : '未点燃']])}${allSkills(c).filter(s => BLOOD_CHIP[s.group]).map(s => `<button class="row" type="button" data-inspect="sk:${c.esc(s.key)}"><span class="chip s">${BLOOD_CHIP[s.group]}</span><div><strong>${c.esc(s.魂技名)}</strong></div><i class="fa-solid fa-chevron-right"></i></button>`).join('')}` : ''}
       </div>`,
     };
@@ -335,8 +335,8 @@
     label: '能力', icon: 'wand-sparkles', tag: 'CORE · MARTIAL SOUL',
     keys: [
       { id: 'martial', icon: 'fire', label: '武魂', view: martial, inspect: abilityInspect },
-      { id: 'codex', icon: 'book', label: '典籍', view: codex, inspect: skillInspect, brief: c => `${allSkills(c).length} 项技能` },
-      { id: 'design', icon: 'pen-ruler', label: '设计', view: design, brief: () => (window.COCKPIT.pending()?.skillDesign ? '有待确认设计' : '') },
+      { id: 'codex', icon: 'book', label: '典籍', view: codex, inspect: skillInspect },
+      { id: 'design', icon: 'pen-ruler', label: '设计', view: design },
     ],
   });
 })();

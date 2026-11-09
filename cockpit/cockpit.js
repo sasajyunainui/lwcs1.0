@@ -241,7 +241,7 @@
       </div></div></div></div></div>
       <div class="center"><div class="float"><button type="button" class="back-plate" id="ck-back" hidden><i class="fa-solid fa-chevron-left"></i><span></span></button><div class="bz"><div class="b2"><div class="b3">
         <span class="tagline" aria-hidden="true" id="ck-coreTag">CORE</span><span class="led tr" aria-hidden="true"></span><span class="led bl" aria-hidden="true"></span><span class="screw br" aria-hidden="true"></span><span class="screw tl" aria-hidden="true"></span>
-        <div class="scr"><div class="host" id="ck-core"></div><nav class="doors" id="ck-doors" aria-label="本领域其他页面" hidden></nav></div>
+        <div class="scr"><div class="host" id="ck-core"></div></div>
       </div></div></div></div></div>
       <div class="wing r"><div class="float"><div class="bz"><div class="b2"><div class="b3">
         <span class="tagline" aria-hidden="true">SM-R01</span><span class="led tr" aria-hidden="true"></span><span class="screw br" aria-hidden="true"></span>
@@ -252,10 +252,12 @@
     <div class="readout">
         <span class="door" data-go="page-map/place" role="link" tabindex="0" title="查看当地"><i class="fa-solid fa-location-dot"></i> <span id="ck-rLoc"></span></span>
         <span class="num"><i class="fa-regular fa-clock"></i> <span id="ck-rTime"></span></span>
+        <button type="button" class="viewing" id="ck-viewing" hidden></button>
         <span class="pends" id="ck-rPend" aria-label="待处理"></span>
         <span class="res" id="ck-rRes" aria-label="随行资源"></span>
         <div class="tick" aria-label="系统播报"><span><b>播报</b><span id="ck-rTick"></span></span></div>
         <i class="fa-solid fa-bullhorn tick-ico" tabindex="0" role="button" aria-label="系统播报" data-hint=""></i>
+        <button type="button" class="gear" data-go="page-terminal/settings" aria-label="设置" data-hint="设置"><i class="fa-solid fa-sliders"></i></button>
     </div>
   </div>
 </section>`;
@@ -380,17 +382,15 @@
     screens.style.setProperty('--carousel-h', Math.max(320, el.scrollHeight) + 'px');
   };
 
-  // 领域内导航（不设子页标签）：领域首页（keys[0]）的中屏底部是本领域其他页面的入口门，带一行实时摘要；
+  // 领域内导航（不设子页标签）：首页上的控件本身就是入口——承载信息的同时点击跳到对应页面（名字 → 目录、修为 → 成长…，各页用 data-go 标出）；
   // 进到其他页面后，中屏顶边挂一块「‹ 首页名」返回牌，再点一次当前领域标签也回首页
   const syncNav = () => {
-    const d = domains[state.domain], home = d.keys[0], atHome = (state.page[state.domain] || home.id) === home.id, c = ctx();
+    const home = domains[state.domain].keys[0], atHome = (state.page[state.domain] || home.id) === home.id;
     const back = $('#ck-back'); back.hidden = atHome; $('span', back).textContent = home.label; back.setAttribute('aria-label', `返回${home.label}`);
-    const doors = $('#ck-doors'), html = atHome ? d.keys.slice(1).map(k => {
-      let b = ''; try { b = k.brief?.(c) || ''; } catch (err) { b = ''; }
-      return `<button class="door-key" type="button" data-page="${k.id}">${sock(k.icon)}<span class="dk-t"><b>${esc(k.label)}</b>${b ? `<small>${esc(b)}</small>` : ''}</span></button>`;
-    }).join('') : '';
-    if (doors.innerHTML !== html) doors.innerHTML = html;
-    doors.hidden = !html; $('.center').classList.toggle('has-doors', !!html);
+    // 查看的不是玩家时，指挥栏挂一枚「正在查看 X · 回到玩家」，任何页面一点即回
+    const vw = $('#ck-viewing'), pl = S?.sys?.玩家名, other = !!pl && !!state.view && state.view !== pl && !!S.char?.[pl];
+    vw.hidden = !other;
+    if (other) { vw.dataset.viewChar = pl; vw.innerHTML = `<i class="fa-solid fa-eye"></i>${esc(state.view)}<span>· 回到${esc(pl)}</span>`; vw.dataset.hint = `正在查看「${state.view}」，点此回到「${pl}」`; }
   };
   // 页面可提供 mount(face, ctx) 挂交互（沙盘拖拽、缩放等），每次主屏换面后调用
   const mount = (v, face) => { if (face && typeof v.mount === 'function') try { v.mount(face, ctx()); } catch (err) { console.error(err); } };
@@ -424,7 +424,8 @@
     if (id === state.domain) { const pg = page || domains[id].keys[0].id; if ((state.page[id] || domains[id].keys[0].id) !== pg) return switchPage(pg); if (page) api.refresh?.(); return; }
     const dir = state.domain ? Math.sign(order.indexOf(id) - order.indexOf(state.domain)) || 1 : 1;
     state.domain = id; state.inspect = null; clearFloat();
-    if (page) state.page[id] = page; else state.page[id] = state.page[id] || domains[id].keys[0].id;
+    // 点领域标签一律回该领域首页（不记上次停在哪个子页）；页面里的链接带 page 时直达
+    state.page[id] = page || domains[id].keys[0].id;
     $$('.tab', track).forEach(t => { const on = t.dataset.tab === id; t.classList.toggle('on', on); on ? t.setAttribute('aria-current', 'page') : t.removeAttribute('aria-current'); if (on) moveSlider(t); });
     if (isMobile()) setFace(0);
     renderPage({ kind: 'domain', dir, first });
@@ -509,6 +510,8 @@
     state.inspect = { kind, id }; pinned = mode === 'click' && hoverable(); layer.classList.toggle('pinned', pinned);
     $$('[data-inspect]').forEach(el => { const on = el.dataset.inspect === `${kind}:${id}`; el.classList.toggle('on', on); ringSlotOf(el)?.classList.toggle('mvu-hover-floating-active', on); });
     project(html, anchor, swap);
+    // 来源控件点击是跳转（不是钉住）时，卡上「点击钉住」的提示不适用
+    if (anchor?.dataset.go) $$('.peek-hint', cockpitEl).forEach(el => el.remove());
   }
   // 浮窗打开时给对应魂环挂引擎激活态（.mvu-hover-floating-active），魂环舞台随之保持塔形
   function ringSlotOf(el) { return el.matches('.mvu-soul-ring-slot') ? el : el.querySelector('.mvu-soul-ring-slot'); }
@@ -791,7 +794,6 @@
   // ---------- 事件委托 ----------
   track.addEventListener('click', e => { const t = e.target.closest('.tab'); if (t) switchDomain(t.dataset.tab); });
   $('.cockpit').addEventListener('click', e => { const r = e.target.closest('[data-route]'); if (r) C.route({ to: r.dataset.route }); });
-  $('#ck-doors').addEventListener('click', e => { const k = e.target.closest('.door-key'); if (k) switchPage(k.dataset.page); });
   $('#ck-back').addEventListener('click', () => switchPage(domains[state.domain].keys[0].id));
   // 滚轮归屏：桌面三屏里指针在哪块屏就只滚那块屏。落在屏框 / 屏内不可滚的地方也滚这块屏的内容；
   // 屏里内容滚到头时吞掉这次滚轮，不再串到酒馆聊天区。只有整块屏根本没有可滚内容才放行（让聊天区照常滚）
@@ -848,7 +850,8 @@
     }
     if (t.dataset.closeInspector !== undefined) return closeInspector();
     if (t.dataset.clamp !== undefined) return t.classList.toggle('clamp');
-    if (t.dataset.inspect) { const [kind, ...rest] = t.dataset.inspect.split(':'); return openInspector(kind, rest.join(':'), t); }
+    // 既能悬停预览又是入口的控件（施放次数行等）：点击走跳转，悬停照旧出卡
+    if (t.dataset.inspect && !t.dataset.go) { const [kind, ...rest] = t.dataset.inspect.split(':'); return openInspector(kind, rest.join(':'), t); }
     if (t.closest(".fcard,.inline-detail") && t.dataset.pick === undefined) closeInspector();
     if (t.dataset.setDest) state.ui.dest = t.dataset.setDest;
     if (t.dataset.go && t.dataset.goSet) for (const kv of t.dataset.goSet.split(';')) { const [k, v] = kv.split('='); state.ui[k] = v; }

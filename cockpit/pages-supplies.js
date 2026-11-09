@@ -264,7 +264,7 @@
     return {
       tag: 'CORE · ARMORY',
       left: `<div class="pad">${c.head('shield-halved', '挂点', 'Hardpoints', 'gd')}
-        <div class="list q-list">${EQ_KEYS.map(x => { const nm = nameOf(x); return `<button class="row${x === sel ? ' on' : ''}${filled(nm) ? '' : ' idle'}" type="button" data-set="eqsel=${x.k}" aria-current="${x === sel}">${c.sock(x.ic, filled(nm) ? 'gd' : '')}<div><strong>${c.esc(filled(nm) && x.k !== '魂导器' ? nm : x.l)}</strong><small>${!filled(nm) ? '空挂点' : x.k === '魂导器' ? nm : c.esc(x.l + (x.s(eq[x.k] || {}) ? ' · ' + x.s(eq[x.k] || {}) : ''))}</small></div><span></span></button>`; }).join('')}</div>
+        <div class="list q-list">${EQ_KEYS.map(x => { const nm = nameOf(x); return `<button class="row${x === sel ? ' on' : ''}${filled(nm) ? '' : ' idle'}" type="button" data-set="eqsel=${x.k}" aria-current="${x === sel}">${c.sock(x.ic, filled(nm) ? 'gd' : '')}<div><strong>${c.esc(filled(nm) && x.k !== '魂导器' ? nm : x.l)}</strong><small>${!filled(nm) ? '空挂点' : x.k === '魂导器' ? nm : c.esc(x.l + (x.s(eq[x.k] || {}) ? ' · ' + x.s(eq[x.k] || {}) : ''))}</small></div><span></span></button>`; }).join('')}${(n => `<button class="row${n ? '' : ' idle'}" type="button" data-go="page-supplies/bones">${c.sock('bone', n ? 'gd' : '')}<div><strong>魂骨</strong><small>${n ? `已镶嵌 ${n} 块` : '未镶嵌'}</small></div><span></span></button>`)(BONES.filter(([k]) => { const b = c.ch.魂骨?.[k]; return filled(b?.名称) || filled(b?.name) || c.num(b?.年限) > 0; }).length)}</div>
       </div>`,
       core: filled(selName) ? eqCore(c, sel.k) : `<div class="pad sparse">${c.empty(sel.ic, `${sel.l}挂点空着`, '在背包里选中装备后可以挂载到这里')}<button class="key-s" type="button" data-go="page-supplies/pack" style="align-self:center"><i class="fa-solid fa-box-open"></i> 去背包</button></div>`,
       right: `<div class="pad">${c.head('bolt', '武装共鸣', 'Resonance')}
@@ -335,8 +335,8 @@
     label: '物资', icon: 'cube', tag: 'CORE · ARMORY',
     keys: [
       { id: 'equip', icon: 'shield-halved', label: '装备', view: equipment },
-      { id: 'bones', icon: 'bone', label: '魂骨', view: bones, brief: c => `${BONES.filter(([k]) => { const b = c.ch.魂骨?.[k]; return filled(b?.名称) || filled(b?.name) || c.num(b?.年限) > 0; }).length} 块` },
-      { id: 'pack', icon: 'box-open', label: '背包', view: pack, brief: c => `${c.entries(c.ch.背包).length} 种物品` },
+      { id: 'bones', icon: 'bone', label: '魂骨', view: bones },
+      { id: 'pack', icon: 'box-open', label: '背包', view: pack },
     ],
   });
 })();

@@ -55,6 +55,9 @@
   .readout{order:3;flex:1 1 0;min-width:0;margin-left:-12px;padding:0 .9em 0 1.4em;gap:.8em;font-size:.88em;clip-path:polygon(12px 0,100% 0,100% 100%,0 100%)}
   .readout .door{max-width:13em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .readout .res{display:none}
+  /* 设置齿轮贴在栏尾 */
+  .readout .gear{all:unset;flex:none;margin-left:auto;padding:0 .25em;cursor:pointer;color:#6fb4ff}
+  .readout .gear:hover,.readout .gear:focus-visible{color:#fff}
   /* 两翼近端会向前、向外凸出：上下各留余量，不压指挥栏、不被座舱底边裁 */
   .screens{order:4;flex:1 0 calc(100% - 28px);max-width:calc(100% - 28px);margin:26px 14px 22px;--lw:22%;--rw:22%}
   .wing.l{--la:22deg}.wing.r{--ra:22deg}

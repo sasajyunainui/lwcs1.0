@@ -590,3 +590,14 @@ div.rail-item{cursor:default}
 .q-search:focus-within{box-shadow:inset 0 0 0 1.5px var(--blue),0 0 0 3px rgba(47,124,246,.18)}
 .list .row[hidden],.roster .rc[hidden]{display:none!important}
 .tile b .ie{white-space:nowrap}
+
+/* 档案基础信息在窄翼里：图标占两行，名称在上、数值在下整行，不再把值挤成一字一行 */
+.wing .idr{grid-template-columns:1.6em minmax(0,1fr);grid-template-rows:auto auto;row-gap:.12em;padding:.5em .7em}
+.wing .idr i{grid-row:1/3}
+.wing .idr span,.wing .idr b{grid-column:2}
+.wing .idr b{overflow-wrap:anywhere}
+/* 特殊特征牌：可编辑文字 + 删除叉；末尾加号新增 */
+.plq-x{all:unset;cursor:pointer;margin-left:.45em;font-size:.8em;opacity:.55}
+.plq-x:hover,.plq-x:focus-visible{opacity:1}
+.plq-x.armed{opacity:1;color:#b8321f;font-weight:900}
+.plq.add{appearance:none;border:0;font:inherit;cursor:pointer;padding-inline:.7em}

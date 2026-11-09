@@ -222,22 +222,16 @@ body{margin:0;padding:28px 16px;min-height:100vh;background:#12151b;font-family:
 .standby strong{color:var(--ink2);font-size:1.15em}
 
 /* ============ 操作台 ============ */
-/* ============ 领域内导航：首页入口门 + 返回牌（不设子页标签） ============ */
-/* 入口门：领域首页中屏底部一排拉丝金属门牌，图标 + 页名 + 一行实时摘要；门在屏内，跟屏一起浮动 */
-.center.has-doors .scr{display:flex;flex-direction:column}
-.center.has-doors .scr>.host{flex:1 1 auto;min-height:0;height:auto}
-.doors{position:relative;z-index:2;flex:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:.4em;padding:.45em .8em .6em;background:linear-gradient(180deg,rgba(30,48,80,.1),rgba(30,48,80,.03));box-shadow:inset 0 1px 0 rgba(30,48,80,.22),inset 0 2px 0 rgba(255,255,255,.85)}
-.doors[hidden]{display:none}
-.door-key{position:relative;appearance:none;border:0;font:inherit;color:var(--ink);cursor:pointer;min-width:0;display:flex;align-items:center;gap:.4em;padding:.34em .45em;text-align:left;
-  background:var(--brush),linear-gradient(180deg,#ffffff,#d2dae5);box-shadow:0 3px 0 #6f7d93,0 5px 8px rgba(0,0,0,.18);clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px);transition:transform .12s,box-shadow .12s}
-.door-key .sock{--s:1.75em;flex:none}
-.door-key .dk-t{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.2}
-.door-key b{font-size:.92em;font-weight:900;white-space:nowrap}
-.door-key small{font-size:.7em;font-weight:700;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.door-key:hover{transform:translateY(-1px)}
-.door-key:hover .sock,.door-key:focus-visible .sock{filter:drop-shadow(0 0 6px rgba(80,160,255,.8))}
-.door-key:active{transform:translateY(2px);box-shadow:0 1px 0 #6f7d93}
-.door-key:focus-visible{outline:2px solid var(--cyan);outline-offset:1px}
+/* ============ 领域内导航：首页控件即入口（data-go）+ 返回牌（不设子页标签） ============ */
+/* 做成按钮的数据格（事务格等）：去掉按钮外观，沿用数据格样式 */
+button.tile{appearance:none;border:0;font:inherit;color:inherit;text-align:left;width:100%}
+/* 羁绊头像串：主身份牌旁的前几位关系人头像 + 人数，点进关系页 */
+.rel-stack{display:inline-flex;align-items:center;padding:.1em .45em .1em .2em;vertical-align:middle;background:rgba(255,255,255,.6);box-shadow:inset 0 0 0 1px rgba(30,48,80,.16);clip-path:polygon(5px 0,100% 0,calc(100% - 5px) 100%,0 100%)}
+.rel-stack .mini-ava{width:2.2em;height:2.2em;font-size:.6em;margin-left:-.45em;box-shadow:0 0 0 1.5px #fff}
+.rel-stack .mini-ava:first-child{margin-left:0}
+.rel-stack b{margin-left:.35em;font-size:.78em;font-weight:900;color:var(--ink2)}
+.plq.dim{opacity:.6}
+.name.door{display:inline-block}
 /* 返回牌：其他页面时挂在中屏顶边、像插在屏框上的蓝色拉片，写首页名 */
 .back-plate{position:absolute;top:-20px;left:26px;z-index:6;appearance:none;border:0;font:inherit;font-size:.88em;font-weight:900;letter-spacing:.06em;color:#fff;cursor:pointer;display:inline-flex;align-items:center;gap:.45em;height:23px;padding:0 1.2em 0 .95em;
   background:linear-gradient(180deg,#5aa5ff,#1a5ad6 70%,#1446b0);clip-path:polygon(7px 0,calc(100% - 7px) 0,100% 100%,0 100%);transition:filter .2s}
@@ -247,6 +241,12 @@ body{margin:0;padding:28px 16px;min-height:100vh;background:#12151b;font-family:
 .back-plate:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 .readout{position:relative;z-index:3;width:84%;display:flex;align-items:center;gap:1.2em;margin:.4em auto 0;padding:.5em 1em;color:#cfe0f7;background:linear-gradient(180deg,#0f1828,#1b2539);box-shadow:inset 0 0 0 1px #3a4b66,inset 0 0 16px rgba(70,140,255,.3);font-weight:800;font-size:.9em}
 .readout i{color:#6fb4ff}
+/* 正在查看别的角色：指挥栏里的金色芯片，点击回到玩家 */
+.readout .viewing{all:unset;flex:none;display:inline-flex;align-items:center;gap:.35em;padding:.15em .65em;cursor:pointer;white-space:nowrap;font-size:.86em;font-weight:900;color:#1b1407;background:linear-gradient(180deg,#bfe0ff,#6fb4ff);box-shadow:0 2px 0 #2c5f9e}
+.readout .viewing[hidden]{display:none}
+.readout .viewing i{color:inherit}
+.readout .viewing span{font-weight:800;opacity:.75}
+.readout .viewing:hover,.readout .viewing:focus-visible{background:linear-gradient(180deg,#e2f1ff,#8cc4ff)}
 .readout .pends{display:contents}
 .readout .pend{all:unset;display:inline-flex;align-items:center;gap:.35em;padding:.15em .6em;cursor:pointer;font-size:.86em;font-weight:900;white-space:nowrap;color:#1b1407;background:linear-gradient(180deg,#ffe08a,#f2b33d);box-shadow:0 2px 0 #9a6a12}
 .readout .pend i{color:inherit}
@@ -303,9 +303,8 @@ body{margin:0;padding:28px 16px;min-height:100vh;background:#12151b;font-family:
   .screens>.wing.l{transform:rotateY(-60deg) translateZ(var(--r));transform-origin:50% 50%}
   .screens>.wing.r{transform:rotateY(60deg) translateZ(var(--r));transform-origin:50% 50%}
   .hinge{display:none}
-  /* 手机：返回牌放进流里（屏面上方没有余量），门牌两列 */
+  /* 手机：返回牌放进流里（屏面上方没有余量） */
   .back-plate{position:relative;top:0;left:12px;margin-bottom:-2px}
-  .doors{grid-template-columns:repeat(2,minmax(0,1fr))}
   .hero{padding-right:0}.rings{grid-column:1/-1;position:static;translate:none;width:100%;flex-direction:row;justify-content:center;gap:1em}
   .rings .mvu-soul-ring-showcase{--ring-stage-width:8em;--ring-stage-height:7em;width:8em}
   .meters{grid-template-columns:1fr}
