@@ -124,3 +124,14 @@ img{max-width:none}
   .wing .q-list .row:has(>.sock:first-child)>:nth-child(3){grid-column:1}
 }
 @container cockpit (min-width:701px){.martial-stage{grid-template-columns:minmax(0,1fr) minmax(0,15.5em)}}
+/* 手机：点按目标至少约 32px（小键、下拉、时长加减、提示「?」、可点编辑的数值）；提示按钮只扩点按区不改外观 */
+@container cockpit (max-width:700px){
+  .key-s{min-height:32px}
+  .key-s.mini{min-height:28px}
+  .picker-btn{min-height:34px}
+  .dur>button{min-width:36px}
+  .hint{position:relative}
+  .hint::after{content:"";position:absolute;inset:-10px}
+  .ie{padding-block:.35em}
+  .door,.rel-stack,.plq.door{min-height:28px}
+}
