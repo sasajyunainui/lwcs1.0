@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:ab5a4b5798801d4e947fbda37220391791e46db0b26fa6219b084f23183a999f|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:cc2a8a9c80edf72ed5618606d947bbe31c88ae29e2584b13b9379610af3a7290|cockpit/pages-role.js:350137a12a97733415cea354acc0cda0e631eba0b53372bf4e2ab90448f6d9db|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:be1c634960cdbd9f781cf92ae3c6ba9f9929926fd49e328d5681c37b5b588ab6|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:362fea182fda961cc308405f5f8a432b63b28940b18bb4ac2e7d86e324f6b259|cockpit/pages-world.js:6851fc81ee4d831a1af87aa85b490557d452ef5b31ea776d50f871cb97f5574e|cockpit/pages-terminal.js:c73e78b78d6a7a80f96d774bcf3a88bfa17642c7ad81a5d5b89ff863e053125e|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:1d3091d67e7dacfc78d2c9b3dc3f7acd28c068f5cdc653495ff56bc36c19a29d|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:ab5a4b5798801d4e947fbda37220391791e46db0b26fa6219b084f23183a999f|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:cc2a8a9c80edf72ed5618606d947bbe31c88ae29e2584b13b9379610af3a7290|cockpit/pages-role.js:350137a12a97733415cea354acc0cda0e631eba0b53372bf4e2ab90448f6d9db|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:be1c634960cdbd9f781cf92ae3c6ba9f9929926fd49e328d5681c37b5b588ab6|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:362fea182fda961cc308405f5f8a432b63b28940b18bb4ac2e7d86e324f6b259|cockpit/pages-world.js:6851fc81ee4d831a1af87aa85b490557d452ef5b31ea776d50f871cb97f5574e|cockpit/pages-terminal.js:c73e78b78d6a7a80f96d774bcf3a88bfa17642c7ad81a5d5b89ff863e053125e|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:1d3091d67e7dacfc78d2c9b3dc3f7acd28c068f5cdc653495ff56bc36c19a29d|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -57856,14 +57856,22 @@ class ProfessionUIComponent {
     };
 
     ctx.worldContext = this.resolveWorldActionContext(`profession_${cfg.mode}`, currentLoc, 1);
-    ctx.worldActionState = this.getProfessionActionState(ctx.worldContext, cfg);
+    // 自己动手不需要当地设施（2026-11-09 玩家决定）：只有委托（官方代工 / 私人委托）检查设施与设施等级；
+    // 自己动手仍保留与设施、地点解析无关的世界阻断（如环境禁止调用魂力），阶位只受副职业等级限制
+    if (type === 'self') {
+      const 非设施阻断 = (Array.isArray(ctx.worldContext?.blockers) ? ctx.worldContext.blockers : [])
+        .find(text => typeof text === 'string' && text.trim() && !/设施|地点未解析|没有可解析的地点|地点资源不可用/.test(text));
+      ctx.worldActionState = 非设施阻断 ? { ok: false, reason: 非设施阻断, facility: null, facilityLevel: 0 } : { ok: true, reason: '', facility: null, facilityLevel: 0 };
+    } else {
+      ctx.worldActionState = this.getProfessionActionState(ctx.worldContext, cfg);
+    }
     ctx.facility = ctx.worldActionState.facility || null;
     ctx.facilityLevel = Number(ctx.worldActionState.facilityLevel || 0);
     if (!ctx.worldActionState.ok) {
       ctx.error = ctx.worldActionState.reason;
       return ctx;
     }
-    if (ctx.facilityLevel < tier) {
+    if (ctx.isCommission && ctx.facilityLevel < tier) {
       ctx.error = `当前${ctx.facility.功能}设施等级为 ${ctx.facilityLevel}，无法承担 ${tier} 阶工序。`;
       return ctx;
     }

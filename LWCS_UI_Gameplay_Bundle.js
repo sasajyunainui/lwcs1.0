@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:1d3091d67e7dacfc78d2c9b3dc3f7acd28c068f5cdc653495ff56bc36c19a29d */
+/* sources-sha256: TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:1d3091d67e7dacfc78d2c9b3dc3f7acd28c068f5cdc653495ff56bc36c19a29d */
 ;
 /* source: TradeUI_Module.js */
 /* TradeUI_Module.js - 交易网络组件 (JS 模块版) */
@@ -5022,14 +5022,22 @@ class ProfessionUIComponent {
     };
 
     ctx.worldContext = this.resolveWorldActionContext(`profession_${cfg.mode}`, currentLoc, 1);
-    ctx.worldActionState = this.getProfessionActionState(ctx.worldContext, cfg);
+    // 自己动手不需要当地设施（2026-11-09 玩家决定）：只有委托（官方代工 / 私人委托）检查设施与设施等级；
+    // 自己动手仍保留与设施、地点解析无关的世界阻断（如环境禁止调用魂力），阶位只受副职业等级限制
+    if (type === 'self') {
+      const 非设施阻断 = (Array.isArray(ctx.worldContext?.blockers) ? ctx.worldContext.blockers : [])
+        .find(text => typeof text === 'string' && text.trim() && !/设施|地点未解析|没有可解析的地点|地点资源不可用/.test(text));
+      ctx.worldActionState = 非设施阻断 ? { ok: false, reason: 非设施阻断, facility: null, facilityLevel: 0 } : { ok: true, reason: '', facility: null, facilityLevel: 0 };
+    } else {
+      ctx.worldActionState = this.getProfessionActionState(ctx.worldContext, cfg);
+    }
     ctx.facility = ctx.worldActionState.facility || null;
     ctx.facilityLevel = Number(ctx.worldActionState.facilityLevel || 0);
     if (!ctx.worldActionState.ok) {
       ctx.error = ctx.worldActionState.reason;
       return ctx;
     }
-    if (ctx.facilityLevel < tier) {
+    if (ctx.isCommission && ctx.facilityLevel < tier) {
       ctx.error = `当前${ctx.facility.功能}设施等级为 ${ctx.facilityLevel}，无法承担 ${tier} 阶工序。`;
       return ctx;
     }
