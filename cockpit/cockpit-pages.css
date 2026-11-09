@@ -623,6 +623,8 @@ div.rail-item{cursor:default}
 .priv-bar>b small{color:var(--ink3);font-weight:700}
 .priv-bar>.bar{grid-column:1/-1}
 .priv-sec .tile b,.priv-part .tile b{white-space:normal;overflow-wrap:anywhere;min-width:0}
-.priv-part header strong{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.priv-part header{flex-wrap:wrap}
+.priv-part header strong{min-width:0;flex:1 1 auto;white-space:normal}
+.wing .priv-part header .sock{display:none}
 .priv-part header .chip{flex:none;white-space:nowrap}
 .priv-sec .tile b .ie,.priv-part .tile b .ie{white-space:normal}
