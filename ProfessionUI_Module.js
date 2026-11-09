@@ -2626,14 +2626,22 @@ class ProfessionUIComponent {
     };
 
     ctx.worldContext = this.resolveWorldActionContext(`profession_${cfg.mode}`, currentLoc, 1);
-    ctx.worldActionState = this.getProfessionActionState(ctx.worldContext, cfg);
+    // 自己动手不需要当地设施（2026-11-09 玩家决定）：只有委托（官方代工 / 私人委托）检查设施与设施等级；
+    // 自己动手仍保留与设施、地点解析无关的世界阻断（如环境禁止调用魂力），阶位只受副职业等级限制
+    if (type === 'self') {
+      const 非设施阻断 = (Array.isArray(ctx.worldContext?.blockers) ? ctx.worldContext.blockers : [])
+        .find(text => typeof text === 'string' && text.trim() && !/设施|地点未解析|没有可解析的地点|地点资源不可用/.test(text));
+      ctx.worldActionState = 非设施阻断 ? { ok: false, reason: 非设施阻断, facility: null, facilityLevel: 0 } : { ok: true, reason: '', facility: null, facilityLevel: 0 };
+    } else {
+      ctx.worldActionState = this.getProfessionActionState(ctx.worldContext, cfg);
+    }
     ctx.facility = ctx.worldActionState.facility || null;
     ctx.facilityLevel = Number(ctx.worldActionState.facilityLevel || 0);
     if (!ctx.worldActionState.ok) {
       ctx.error = ctx.worldActionState.reason;
       return ctx;
     }
-    if (ctx.facilityLevel < tier) {
+    if (ctx.isCommission && ctx.facilityLevel < tier) {
       ctx.error = `当前${ctx.facility.功能}设施等级为 ${ctx.facilityLevel}，无法承担 ${tier} 阶工序。`;
       return ctx;
     }
