@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:ea48e5db9620c007fa94c6d8b132c0ce996e9af462b862f4669df59767b30922|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:0d1a3f3127ed9eb422c40d7b5262b36c720c23e1ce89f21d2af6d8dd478e55e6|cockpit/pages-role.js:cc67f5f753a6595ea5652900c51b15bfcff675f084f7bff8467a9ba6b308aeef|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:10c44a13d6e04c2f27129d1f92d4b0ec5dd55092c45a1394f2b7819d873d3b0f|cockpit/pages-ability.js:83d13d6bfc33220a18eac2bb90b30f99aa49bd430006bf0a0a900a35c19264b6|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:362fea182fda961cc308405f5f8a432b63b28940b18bb4ac2e7d86e324f6b259|cockpit/pages-world.js:6851fc81ee4d831a1af87aa85b490557d452ef5b31ea776d50f871cb97f5574e|cockpit/pages-terminal.js:c73e78b78d6a7a80f96d774bcf3a88bfa17642c7ad81a5d5b89ff863e053125e|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:289fe455da8dfe0c8f42e39afaaa254d1c724b00f602e5094ca7626b17151097|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:6f729e13bcb2c3415feaf536cbca2e62adf5aa574e1c676d307b201683677e97|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:7cede5927e8a442436fa7f5a1ea6f18b39ac612f21ffcb18b1e6da0e07e7cda9|cockpit/pages-role.js:30389973a40a1d19333ac0edee31ee4dce8d6f93a27672f831ec255b6678569c|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:10c44a13d6e04c2f27129d1f92d4b0ec5dd55092c45a1394f2b7819d873d3b0f|cockpit/pages-ability.js:83d13d6bfc33220a18eac2bb90b30f99aa49bd430006bf0a0a900a35c19264b6|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:362fea182fda961cc308405f5f8a432b63b28940b18bb4ac2e7d86e324f6b259|cockpit/pages-world.js:6851fc81ee4d831a1af87aa85b490557d452ef5b31ea776d50f871cb97f5574e|cockpit/pages-terminal.js:c73e78b78d6a7a80f96d774bcf3a88bfa17642c7ad81a5d5b89ff863e053125e|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:59ae7a0820416e5b8184885e52021bbbfbca35b7a8de620d0e57d75a3c27ed39|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:289fe455da8dfe0c8f42e39afaaa254d1c724b00f602e5094ca7626b17151097|Database_Module.js:819d469d7a74a7d0f6d985eb56e671e595cd72325f0b08a3f7d8fbb4467b69aa */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -27115,7 +27115,7 @@
   // 座舱挂在 #mvu-unified-mount 里、盖住旧壳层（旧壳层隐藏但保留占位，挂载点尺寸不变）。
   // 旧壳层只在下列原详情面打开时让出画面（战斗终端、魂环待选确认、私密档案），关闭后回到座舱；
   // 其他旧详情面（旧座舱各页都是详情面，刷新后会恢复上次打开的那页）在座舱接管时清掉。
-  const 座舱让位详情键 = new Set([BATTLE_INLINE_PREVIEW_KEY, '私密档案详细页']);
+  const 座舱让位详情键 = new Set([BATTLE_INLINE_PREVIEW_KEY]);
   // 原项目各处流程（回到某页、模块意图路由等）打开的旧详情面 → 座舱里对应的页面
   const 座舱旧详情页映射 = Object.freeze({
     第1武魂详细页: ['page-ability', 'martial', { soul: '0', ringPick: '' }], 第2武魂详细页: ['page-ability', 'martial', { soul: '1', ringPick: '' }], 血脉封印详细页: ['page-ability', 'martial'],
@@ -27798,6 +27798,8 @@
     // 私密档案入口规则不变：只借用已有内容挂长按（见 canOpenPrivateArchive 注释）
     privateArchiveAllowed: () => canOpenPrivateArchive(liveSnapshot),
     privateArchiveKey: '私密档案详细页',
+    // 私密档案数据：入口规则不满足时为 null（见 canOpenPrivateArchive）
+    privateArchive: () => 构建私密档案数据(liveSnapshot),
     // 待选魂环、待确认技能设计（座舱据此显示横幅与确认面）
     pending: () => 座舱待处理(),
     // 战斗进行中但终端被收起时，座舱给出返回入口
@@ -27827,256 +27829,54 @@
     return 同步座舱(snapshot);
   }
 
-  // 旧详情界面已由座舱取代：详情构建只剩私密档案（座舱不设计其内容；入口规则见 canOpenPrivateArchive）
-  function buildLiveArchiveModal(previewKey) {
-    previewKey = 归一化详情预览键(previewKey);
-    if (!liveSnapshot || previewKey !== PRIVATE_ARCHIVE_PREVIEW_KEY) return null;
-    return 构建私密档案详情(liveSnapshot);
+  // 旧详情界面已全部由座舱取代（私密档案也由座舱渲染，数据见 构建私密档案数据）
+  function buildLiveArchiveModal() {
+    return null;
   }
 
-  function 构建私密档案详情(snapshot) {
+  // 私密档案数据（座舱渲染；字段、标签、路径、缺省值与旧详情页逐项一致，座舱不设计其内容）。
+  // 入口规则见 canOpenPrivateArchive：不满足时返回 null，座舱据此不渲染任何页面
+  function 构建私密档案数据(snapshot) {
     if (!canOpenPrivateArchive(snapshot)) return null;
-    const nsfwPath = getActiveNsfwPath(snapshot);
+    const p = getActiveNsfwPath(snapshot);
     const nsfw = getActiveNsfwData(snapshot);
-    const bodyPartEntries = safeEntries(deepGet(nsfw, '身体部位', {}));
-
+    const num = (v, d = 0) => toNumber(v, d);
+    const f = (label, value, path, kind = 'string', extra = {}) => ({ k: 'field', label, value, path: [...p, ...path], kind, ...extra });
+    const tags = (label, key) => ({ k: 'tags', label, path: [...p, key], list: (Array.isArray(nsfw[key]) ? nsfw[key] : []).map((v, i) => ({ value: toText(v), path: [...p, key, i] })) });
     return {
-      title: '私密档案',
-      onMount: modalBody => {
-        const panel = modalBody.closest('.mvu-modal-panel');
-        if (panel) {
-          panel.classList.add('nsfw-theme-active');
-          const observer = new MutationObserver(() => {
-            if (!modalBody.querySelector('.nsfw-modal-grid')) {
-              panel.classList.remove('nsfw-theme-active');
-              observer.disconnect();
-            }
-          });
-          observer.observe(modalBody, { childList: true });
-        }
-      },
-      body: `
-          <div class="nsfw-modal-grid">
-
-            <!-- 1. 核心欲念 -->
-            <div class="nsfw-theme-card">
-              <div class="nsfw-theme-head">
-                <div class="nsfw-theme-title">💕 核心欲念</div>
-              </div>
-              <div class="nsfw-theme-body">
-                <div class="nsfw-progress-container">
-                  <div class="nsfw-progress-label">
-                    <span>发情度</span>
-                    <span>${makeInlineEditableValue(toText(nsfw.发情度, '0'), { path: [...nsfwPath, '发情度'], kind: 'number' })} / 100</span>
-                  </div>
-                  <div class="nsfw-progress-track arousal">
-                    <div class="nsfw-fill-arousal" style="width: ${Math.min(100, Math.max(0, toNumber(nsfw.发情度, 0)))}%;"></div>
-                  </div>
-                </div>
-                <div class="nsfw-progress-container">
-                  <div class="nsfw-progress-label">
-                    <span>开发度</span>
-                    <span>${makeInlineEditableValue(toText(nsfw.开发度, '0'), { path: [...nsfwPath, '开发度'], kind: 'number' })} / 100</span>
-                  </div>
-                  <div class="nsfw-progress-track dev">
-                    <div class="nsfw-fill-dev" style="width: ${Math.min(100, Math.max(0, toNumber(nsfw.开发度, 0)))}%;"></div>
-                  </div>
-                </div>
-                <div class="identity-growth-grid identity-growth-grid--one">
-                  <div class="nsfw-meta-item">
-                    <b>敏感度基础值</b>
-                    <span>${makeInlineEditableValue(toText(nsfw.敏感度, '10'), { path: [...nsfwPath, '敏感度'], kind: 'number' })}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 2. 肉体密码 & 着装 -->
-            <div class="nsfw-theme-card">
-              <div class="nsfw-theme-head">
-                <div class="nsfw-theme-title">👙 肉体密码与私密着装</div>
-              </div>
-              <div class="nsfw-theme-body">
-                <div class="identity-growth-grid identity-growth-grid--two">
-                  <div class="nsfw-meta-item">
-                    <b>罩杯</b>
-                    <span>${makeInlineEditableValue(toText(deepGet(nsfw, '身材数据.罩杯'), '未知'), { path: [...nsfwPath, '身材数据', '罩杯'], kind: 'string' })}</span>
-                  </div>
-                  <div class="nsfw-meta-item">
-                    <b>三围 (胸/腰/臀)</b>
-                    <span>
-                      ${makeInlineEditableValue(toText(deepGet(nsfw, '身材数据.胸围'), '0'), { path: [...nsfwPath, '身材数据', '胸围'], kind: 'number' })} /
-                      ${makeInlineEditableValue(toText(deepGet(nsfw, '身材数据.腰围'), '0'), { path: [...nsfwPath, '身材数据', '腰围'], kind: 'number' })} /
-                      ${makeInlineEditableValue(toText(deepGet(nsfw, '身材数据.臀围'), '0'), { path: [...nsfwPath, '身材数据', '臀围'], kind: 'number' })}
-                    </span>
-                  </div>
-                  <div class="nsfw-meta-item">
-                    <b>内衣</b>
-                    <span>${makeInlineEditableValue(toText(deepGet(nsfw, '贴身衣物.内衣'), '未知'), { path: [...nsfwPath, '贴身衣物', '内衣'], kind: 'string' })}</span>
-                  </div>
-                  <div class="nsfw-meta-item">
-                    <b>内裤</b>
-                    <span>${makeInlineEditableValue(toText(deepGet(nsfw, '贴身衣物.内裤'), '未知'), { path: [...nsfwPath, '贴身衣物', '内裤'], kind: 'string' })}</span>
-                  </div>
-                </div>
-                <div class="nsfw-meta-item nsfw-meta-item--spaced">
-                  <b>身材描述</b>
-                  <span class="nsfw-text-wrap">${makeInlineEditableValue(toText(deepGet(nsfw, '身材数据.身材描述'), '无'), { path: [...nsfwPath, '身材数据', '身材描述'], kind: 'string' })}</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- 3. 生理节律 -->
-            <div class="nsfw-theme-card">
-              <div class="nsfw-theme-head">
-                <div class="nsfw-theme-title">🩸 生理节律</div>
-              </div>
-              <div class="nsfw-theme-body">
-                <div class="identity-growth-grid identity-growth-grid--two">
-                  <div class="nsfw-meta-item">
-                    <b>当前生理阶段</b>
-                    <span class="nsfw-highlight-red">${makeInlineEditableValue(toText(nsfw._生理阶段, '安全期'), { path: [...nsfwPath, '_生理阶段'], kind: 'string' })}</span>
-                  </div>
-                  <div class="nsfw-meta-item">
-                    <b>是否初潮</b>
-                    <span>${makeInlineEditableValue(nsfw._已来初潮 ? '已初潮' : '未初潮', { path: [...nsfwPath, '_已来初潮'], kind: 'boolean' })}</span>
-                  </div>
-                  <div class="nsfw-meta-item">
-                    <b>受孕节点</b>
-                    <span>${makeInlineEditableValue(String(toNumber(nsfw.受孕tick, -1)), { path: [...nsfwPath, '受孕tick'], kind: 'number' })}</span>
-                  </div>
-                  <div class="nsfw-meta-item">
-                    <b>当前怀孕天数</b>
-                    <span>${makeInlineEditableValue(String(toNumber(nsfw._怀孕天数, 0)), { path: [...nsfwPath, '_怀孕天数'], kind: 'number' })}</span>
-                  </div>
-                  <div class="nsfw-meta-item nsfw-meta-item--wide">
-                    <b>孕父</b>
-                    <span>${makeInlineEditableValue(toText(nsfw.受孕对象, '无'), { path: [...nsfwPath, '受孕对象'], kind: 'string' })}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 4. 堕落履历 -->
-            <div class="nsfw-theme-card">
-              <div class="nsfw-theme-head">
-                <div class="nsfw-theme-title">📈 开发履历</div>
-              </div>
-              <div class="nsfw-theme-body">
-                <div class="identity-growth-grid identity-growth-grid--three">
-                  ${[
-                    '高潮',
-                    '颜射',
-                    '内射',
-                    '吞精',
-                    '宠物扮演',
-                    '自慰',
-                    '性交',
-                    '手交',
-                    '足交',
-                    '口交',
-                    '素股',
-                    '发交',
-                    'SM',
-                    'COSPLAY',
-                  ]
-                    .map(
-                      exp => `
-                    <div class="nsfw-meta-item">
-                      <b>${exp}</b>
-                      <span>${makeInlineEditableValue(String(toNumber(deepGet(nsfw, ['经历次数', exp]), 0)), { path: [...nsfwPath, '经历次数', exp], kind: 'number' })}</span>
-                    </div>
-                  `,
-                    )
-                    .join('')}
-                </div>
-              </div>
-            </div>
-
-            <!-- 5. 深层性癖 -->
-            <div class="nsfw-theme-card">
-              <div class="nsfw-theme-head">
-                <div class="nsfw-theme-title">😈 深层性癖</div>
-              </div>
-              <div class="nsfw-theme-body">
-                <div class="nsfw-tag-section">
-                  <b class="nsfw-tag-label">性癖</b>
-                  <div class="nsfw-tag-list">
-                    ${(Array.isArray(nsfw.性癖) ? nsfw.性癖 : [])
-                      .map(
-                        (f, i) => `
-                      <span class="nsfw-tag">${makeInlineEditableValue(toText(f), { path: [...nsfwPath, '性癖', i], kind: 'string' })}</span>
-                    `,
-                      )
-                      .join('')}
-                  </div>
-                </div>
-                <div>
-                  <b class="nsfw-tag-label">性幻想</b>
-                  <div class="nsfw-tag-list">
-                    ${(Array.isArray(nsfw.性幻想) ? nsfw.性幻想 : [])
-                      .map(
-                        (f, i) => `
-                      <span class="nsfw-tag">${makeInlineEditableValue(toText(f), { path: [...nsfwPath, '性幻想', i], kind: 'string' })}</span>
-                    `,
-                      )
-                      .join('')}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 6. 身体部位 -->
-            <div class="nsfw-theme-card">
-              <div class="nsfw-theme-head">
-                <div class="nsfw-theme-title">💠 敏感部位档案</div>
-              </div>
-              <div class="nsfw-theme-body">
-                ${
-                  bodyPartEntries.length
-                    ? `
-                  <div class="nsfw-bodypart-grid">
-                    ${bodyPartEntries
-                      .map(
-                        ([partName, partData]) => `
-                      <div class="nsfw-bodypart-card">
-                        <div class="nsfw-bodypart-head">
-                          <div class="nsfw-bodypart-name">${htmlEscape(partName)}</div>
-                          <span class="nsfw-bodypart-badge">开发 ${makeInlineEditableValue(String(toNumber(deepGet(partData, '开发度', 0), 0)), { path: [...nsfwPath, '身体部位', partName, '开发度'], kind: 'number' })}</span>
-                        </div>
-                        <div class="nsfw-bodypart-meta">
-                          <div class="nsfw-meta-item">
-                            <b>外观特征</b>
-                            <span class="nsfw-text-wrap">${makeInlineEditableValue(toText(deepGet(partData, '外观特征', '无'), '无'), { path: [...nsfwPath, '身体部位', partName, '外观特征'], kind: 'string' })}</span>
-                          </div>
-                          <div class="identity-growth-grid identity-growth-grid--two">
-                            <div class="nsfw-meta-item">
-                              <b>敏感度加成</b>
-                              <span>${makeInlineEditableValue(String(toNumber(deepGet(partData, '敏感度加成', 0), 0)), { path: [...nsfwPath, '身体部位', partName, '敏感度加成'], kind: 'number' })}</span>
-                            </div>
-                            <div class="nsfw-meta-item">
-                              <b>状态描述</b>
-                              <span>${makeInlineEditableValue(toText(deepGet(partData, '状态描述', '正常'), '正常'), { path: [...nsfwPath, '身体部位', partName, '状态描述'], kind: 'string' })}</span>
-                            </div>
-                          </div>
-                          <div class="nsfw-meta-item">
-                            <b>体液残留</b>
-                            <span>${makeInlineEditableValue(toText(deepGet(partData, '体液残留', '无'), '无'), { path: [...nsfwPath, '身体部位', partName, '体液残留'], kind: 'string' })}</span>
-                          </div>
-                        </div>
-                      </div>
-                    `,
-                      )
-                      .join('')}
-                  </div>
-                `
-                    : '<div class="dossier-empty-note">当前角色尚未录入身体部位结构。</div>'
-                }
-              </div>
-            </div>
-
-          </div>
-        `,
+      sections: [
+        { title: '核心欲念', icon: 'heart', items: [
+          { k: 'bar', label: '发情度', value: num(nsfw.发情度), max: 100, path: [...p, '发情度'] },
+          { k: 'bar', label: '开发度', value: num(nsfw.开发度), max: 100, path: [...p, '开发度'] },
+          f('敏感度基础值', num(nsfw.敏感度, 10), ['敏感度'], 'number'),
+        ] },
+        { title: '肉体密码与私密着装', icon: 'shirt', items: [
+          f('罩杯', toText(deepGet(nsfw, '身材数据.罩杯'), '未知'), ['身材数据', '罩杯']),
+          { k: 'multi', label: '三围 (胸/腰/臀)', parts: ['胸围', '腰围', '臀围'].map(x => ({ value: num(deepGet(nsfw, ['身材数据', x])), path: [...p, '身材数据', x], kind: 'number' })) },
+          f('内衣', toText(deepGet(nsfw, '贴身衣物.内衣'), '未知'), ['贴身衣物', '内衣']),
+          f('内裤', toText(deepGet(nsfw, '贴身衣物.内裤'), '未知'), ['贴身衣物', '内裤']),
+          f('身材描述', toText(deepGet(nsfw, '身材数据.身材描述'), '无'), ['身材数据', '身材描述'], 'text', { wide: true }),
+        ] },
+        { title: '生理节律', icon: 'droplet', items: [
+          f('当前生理阶段', toText(nsfw._生理阶段, '安全期'), ['_生理阶段'], 'string', { tone: 'red' }),
+          f('是否初潮', nsfw._已来初潮 ? '已初潮' : '未初潮', ['_已来初潮'], 'enum', { options: ['已初潮', '未初潮'], values: { 已初潮: true, 未初潮: false } }),
+          f('受孕节点', num(nsfw.受孕tick, -1), ['受孕tick'], 'number'),
+          f('当前怀孕天数', num(nsfw._怀孕天数), ['_怀孕天数'], 'number'),
+          f('孕父', toText(nsfw.受孕对象, '无'), ['受孕对象'], 'string', { wide: true }),
+        ] },
+        { title: '开发履历', icon: 'chart-line', counts: true, items: ['高潮', '颜射', '内射', '吞精', '宠物扮演', '自慰', '性交', '手交', '足交', '口交', '素股', '发交', 'SM', 'COSPLAY']
+          .map(x => f(x, num(deepGet(nsfw, ['经历次数', x])), ['经历次数', x], 'number')) },
+        { title: '深层性癖', icon: 'tags', items: [tags('性癖', '性癖'), tags('性幻想', '性幻想')] },
+        { title: '敏感部位档案', icon: 'gem', empty: '当前角色尚未录入身体部位结构。', items: safeEntries(deepGet(nsfw, '身体部位', {})).map(([name, d]) => ({
+          k: 'part', name, dev: { value: num(deepGet(d, '开发度', 0)), path: [...p, '身体部位', name, '开发度'] },
+          fields: [
+            f('外观特征', toText(deepGet(d, '外观特征', '无'), '无'), ['身体部位', name, '外观特征'], 'text'),
+            f('敏感度加成', num(deepGet(d, '敏感度加成', 0)), ['身体部位', name, '敏感度加成'], 'number'),
+            f('状态描述', toText(deepGet(d, '状态描述', '正常'), '正常'), ['身体部位', name, '状态描述']),
+            f('体液残留', toText(deepGet(d, '体液残留', '无'), '无'), ['身体部位', name, '体液残留']),
+          ],
+        })) },
+      ],
     };
   }
 
@@ -37700,6 +37500,11 @@ ${播报文本}
   }
 
   function openLongPressPreview(previewKey, target) {
+    // 私密档案由座舱渲染：长按（座舱里唯一入口）复核规则后交给座舱路由
+    if (previewKey === PRIVATE_ARCHIVE_PREVIEW_KEY && window.COCKPIT?.mounted) {
+      if (canOpenPrivateArchive(liveSnapshot)) window.COCKPIT.route({ to: 'privateArchive' });
+      return;
+    }
     const targetInUnified = !!(target && typeof target.closest === 'function' && target.closest('#mvu-unified-mount'));
     if (targetInUnified && typeof window.__MVU_OPEN_UNIFIED_PREVIEW__ === 'function') {
       window.__MVU_OPEN_UNIFIED_PREVIEW__(previewKey, { preserveMapDispatchContext: true });
@@ -52277,7 +52082,7 @@ ${播报文本}
   // ---------- 内联编辑（与原项目 makeInlineEditableValue / beginInlineEdit 同一语义）----------
   // 常驻：点击可编辑值即原地编辑；kind = string | number | enum | text（多行）。path 是存档根下的键路径数组。
   // 原型写回内存存档后重绘；移植时换成 replaceStatDataByEditor → 整根 MVU schema 校验 → replaceMvuData。
-  const ed = (text, path, o = {}) => `<span class="ie" tabindex="0" role="button" data-ie-path="${esc(JSON.stringify(path))}" data-ie-kind="${o.kind || 'string'}" data-ie-meta="${esc(JSON.stringify({ min: o.min, max: o.max, integer: o.integer, options: o.options, suffix: o.suffix, renameKey: o.renameKey }))}" data-ie-raw="${esc(String(o.raw ?? text ?? ''))}" title="点击编辑">${o.html ?? esc(String(text ?? ''))}</span>`;
+  const ed = (text, path, o = {}) => `<span class="ie" tabindex="0" role="button" data-ie-path="${esc(JSON.stringify(path))}" data-ie-kind="${o.kind || 'string'}" data-ie-meta="${esc(JSON.stringify({ min: o.min, max: o.max, integer: o.integer, options: o.options, values: o.values, suffix: o.suffix, renameKey: o.renameKey }))}" data-ie-raw="${esc(String(o.raw ?? text ?? ''))}" title="点击编辑">${o.html ?? esc(String(text ?? ''))}</span>`;
   // 列表检索（原项目角色目录 / 技能检索 / 图鉴检索）：输入框按同一面板里列表行的文字筛选，不重绘、不丢焦点；
   // 关键词存在 ui.qs，面板重绘后重新套用
   const search = (key, ph) => `<label class="q-search"><i class="fa-solid fa-magnifying-glass"></i><input type="search" data-qs="${esc(key)}" value="${esc(state.ui.qs?.[key] || '')}" placeholder="${esc(ph)}" aria-label="${esc(ph)}" autocomplete="off"></label>`;
@@ -52322,6 +52127,8 @@ ${播报文本}
     // 需要先同步运行时状态的预演（如移动要先刷新星图节点表）；没有异步实现时退回同步预演
     previewAsync: async (name, payload = {}) => { try { return (await (ADP?.previewAsync ? ADP.previewAsync(name, payload) : ADP?.preview?.(name, payload))) ?? null; } catch (err) { return { ok: false, allowed: false, reason: err?.message || String(err) }; } },
     privateArchiveKey: () => (ADP?.privateArchiveAllowed?.() ? ADP.privateArchiveKey : ''),
+    // 私密档案数据：规则不满足时为 null，页面随之不存在（见桥接 canOpenPrivateArchive）
+    privateArchive: () => { try { return ADP?.privateArchive?.() || null; } catch (err) { return null; } },
     // 待处理事项（待选魂环、待确认技能设计）；原型页没有运行时，返回 null
     pending: () => { try { return ADP?.pending?.() || null; } catch (err) { return null; } },
     addRoute(name, fn) { routes[name] = fn; },
@@ -52731,7 +52538,8 @@ ${播报文本}
       if (meta.max != null && n > meta.max) return { err: `不能大于 ${meta.max}` };
       return { value: n };
     }
-    if (kind === 'enum') return (meta.options || []).includes(t) ? { value: t } : { err: '只能从选项中选择' };
+    // values：选项显示文字 → 实际写回值（如「已初潮 / 未初潮」写回布尔）
+    if (kind === 'enum') return (meta.options || []).includes(t) ? { value: meta.values && t in meta.values ? meta.values[t] : t } : { err: '只能从选项中选择' };
     return { value: kind === 'text' ? String(str) : t };
   };
   function beginEdit(el) {
@@ -53542,6 +53350,31 @@ ${播报文本}
     t.dataset.act = JSON.stringify({ name: 'routine', action, minutes, project });
   }, true);
 
+  // 私密档案：不在任何导航里，只由长按角色名经桥接复核后路由进来；数据为 null（规则不满足）时页面不存在，退回总览。
+  // 字段与旧详情页一致（桥接 构建私密档案数据），这里只负责座舱样式的渲染与编辑
+  const privEd = (c, x) => c.ed(x.value, x.path, { kind: x.kind || 'string', options: x.options, values: x.values, raw: x.value, integer: x.kind === 'number' });
+  const privField = (c, x) => `<div class="tile${x.wide ? ' wide' : ''}${x.tone ? ' ' + x.tone : ''}"><b>${privEd(c, x)}</b><small>${c.esc(x.label)}</small></div>`;
+  const privItem = (c, x) => x.k === 'bar' ? `<div class="priv-bar"><span>${c.esc(x.label)}</span><b>${c.ed(x.value, x.path, { kind: 'number', integer: true, min: 0, max: x.max, raw: x.value })}<small> / ${x.max}</small></b>${c.bar('hp', x.value, x.max)}</div>`
+    : x.k === 'multi' ? `<div class="tile wide"><b>${x.parts.map(q => c.ed(q.value, q.path, { kind: q.kind, raw: q.value })).join(' / ')}</b><small>${c.esc(x.label)}</small></div>`
+    : x.k === 'tags' ? `<div class="priv-tags"><span class="lbl">${c.esc(x.label)}</span><div class="plaques">${x.list.map(t => `<span class="plq">${c.ed(t.value, t.path, { raw: t.value })}<button class="plq-x" type="button" data-del-path="${c.esc(JSON.stringify(t.path))}" aria-label="删除"><i class="fa-solid fa-xmark"></i></button></span>`).join('')}<button class="plq add" type="button" data-priv-add="${c.esc(JSON.stringify(x.path))}" aria-label="添加${c.esc(x.label)}"><i class="fa-solid fa-plus"></i></button></div></div>`
+    : x.k === 'part' ? `<section class="priv-part"><header>${c.sock('gem')}<strong>${c.esc(x.name)}</strong><span class="chip">开发 ${c.ed(x.dev.value, x.dev.path, { kind: 'number', integer: true, raw: x.dev.value })}</span></header><div class="tiles">${x.fields.map(f => privField(c, { ...f, wide: f.kind === 'text' })).join('')}</div></section>`
+    : privField(c, x);
+  const privSec = (c, s) => { const bars = s.items.filter(x => x.k === 'bar' || x.k === 'tags' || x.k === 'part'), rest = s.items.filter(x => !bars.includes(x));
+    return `<section class="sec priv-sec"><h3>${c.esc(s.title)}</h3>${bars.map(x => privItem(c, x)).join('')}${rest.length ? `<div class="tiles${s.counts ? ' three' : ''}">${rest.map(x => privItem(c, x)).join('')}</div>` : ''}${!s.items.length && s.empty ? `<span class="lbl">${c.esc(s.empty)}</span>` : ''}</section>`; };
+  const privateView = c => {
+    const d = window.COCKPIT.privateArchive?.();
+    if (!d) { c.state.page['page-archive'] = 'status'; return status(c); }
+    const [desire, body, cycle, hist, kink, parts] = d.sections;
+    return {
+      tag: 'CORE · PRIVATE',
+      left: `<div class="pad">${c.head('heart', desire.title, '', 'hp')}${privSec(c, { ...desire, title: '' }).replace('<h3></h3>', '')}${privSec(c, cycle)}</div>`,
+      core: `<div class="pad">${c.head('lock', '私密档案', 'Private', 'hp')}${privSec(c, body)}${privSec(c, hist)}${privSec(c, kink)}</div>`,
+      right: `<div class="pad">${c.head(parts.icon, parts.title, '', 'hp')}${privSec(c, { ...parts, title: '' }).replace('<h3></h3>', '')}</div>`,
+    };
+  };
+  document.addEventListener('click', e => { const t = e.target.closest?.('[data-priv-add]'); if (!t) return; const path = JSON.parse(t.dataset.privAdd), cur = path.reduce((o, k) => o?.[k], window.COCKPIT.ctx().S); window.COCKPIT.write([{ path, value: [...(Array.isArray(cur) ? cur : []), '新条目'] }]); });
+  window.COCKPIT.addRoute?.('privateArchive', () => { if (!window.COCKPIT.privateArchive?.()) return false; window.COCKPIT.go('page-archive', 'private'); return true; });
+
   window.COCKPIT.register('page-archive', {
     label: '角色', icon: 'user', tag: 'CORE · STATUS',
     keys: [
@@ -53551,6 +53384,8 @@ ${播报文本}
       { id: 'relations', icon: 'people-arrows', label: '关系', view: relations },
       { id: 'identity', icon: 'landmark', label: '身份', view: identity, inspect: privInspect },
       { id: 'directory', icon: 'users', label: '目录', view: directory },
+      // 不在任何导航里：只有 privateArchive 路由（长按角色名）能进
+      { id: 'private', icon: 'lock', label: '私密档案', hidden: true, view: privateView },
     ],
   });
 })();
