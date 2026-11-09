@@ -74,10 +74,14 @@
   .home-core>.soul-deck>.soul-card{--rsz:min(clamp(64px,20cqw,100px),max(36px,calc((100cqh - 58px) / 2.1)))}
   .home-core>.soul-deck:has(>.soul-card+.soul-card+.soul-card)>.soul-card{--rsz:min(clamp(48px,14cqw,90px),max(36px,calc((100cqh - 58px) / 2.1)))}
 }
-/* 武魂页中屏：魂环卡吃掉标题 / 简介 / 魂灵档案之外的剩余高度（尺寸容器），魂环按卡高封顶；卡至少 150px，再挤就整屏滚动而不是压住下文 */
+/* 武魂页中屏：魂环与魂灵档案并排（档案卡本来只占半宽），一起吃掉标题 / 简介之外的剩余高度；
+   魂环卡是尺寸容器，魂环按卡高封顶；至少 150px，再挤就整屏滚动而不是压住下文 */
 @container cockpit (min-width:701px){
-  .martial-core>.soul-card{container-type:size;flex:1 1 0;min-height:150px}
-  .martial-core>.soul-card>.soul-stage{--rsz:min(clamp(64px,20cqw,100px),max(40px,calc((100cqh - 60px) / 2.2)))}
+  .martial-stage{flex:1 1 0;min-height:150px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,14em);gap:.6em;align-items:center}
+  .martial-stage:has(>.spirit-grid:empty){grid-template-columns:minmax(0,1fr)}
+  .martial-stage>.spirit-grid{grid-template-columns:minmax(0,1fr);max-height:100%;overflow:auto;overscroll-behavior:contain}
+  .martial-stage>.soul-card{container-type:size;align-self:stretch;min-height:0}
+  .martial-stage>.soul-card>.soul-stage{--rsz:min(clamp(64px,30cqw,100px),max(40px,calc((100cqh - 24px) / 2.2)))}
 }
 /* 窄桌面魂环按宽度再收一档（中屏约 400px） */
 @container cockpit (min-width:701px) and (max-width:999px){

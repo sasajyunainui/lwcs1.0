@@ -500,7 +500,7 @@ div.spirit-link:hover .spirit-card,div.spirit-link.on .spirit-card{box-shadow:in
 .tiles.four>.tile:last-child:nth-child(odd){grid-column:auto}
 /* 武魂主屏：魂环塔为主体，魂灵档案排在下面；左翼魂技列表吃满剩余高度 */
 .martial-core{gap:.6em}
-.martial-core>.soul-card{flex:1 1 auto;justify-content:center;min-height:calc(var(--rsz) * 2.2)}
+.martial-core .soul-card{flex:1 1 auto;justify-content:center;min-height:calc(var(--rsz) * 2.2)}
 .martial-core .soul-stage{flex:0 0 auto;height:calc(var(--rsz) * 2.2);min-height:0}
 .spirit-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(15em,1fr));gap:.5em}
 .sec.grow{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}

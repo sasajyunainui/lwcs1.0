@@ -899,7 +899,7 @@
   });
 
   // ---------- 惯性视差 ----------
-  const cockpit = $('.cockpit'), stage = $('.stage'), arc = $('.arc'), deck = $('.deck');
+  const cockpit = $('.cockpit'), stage = $('.stage'), arc = $('.arc');
   let tx = 0, ty = 0, cx = 0, cy = 0, raf = 0;
   // 台面后推深度由样式表决定（原型页 -120px，嵌入宽屏 0）；重排时读一次，动画帧里不读样式
   let stageZ = '-120px';
@@ -909,7 +909,6 @@
     if (!isMobile()) {
       stage.style.transform = `translateZ(${stageZ}) rotateX(${(-cy * 2.6).toFixed(3)}deg) rotateY(${(cx * 3.6).toFixed(3)}deg)`;
       arc.style.translate = `${(-cx * 10).toFixed(2)}px ${(-cy * 4).toFixed(2)}px`;
-      deck.style.translate = `${(cx * 8).toFixed(2)}px ${(cy * 3).toFixed(2)}px`;
     }
     raf = Math.abs(tx - cx) + Math.abs(ty - cy) > .001 ? requestAnimationFrame(loop) : 0;
   };
