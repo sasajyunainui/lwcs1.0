@@ -675,3 +675,16 @@ div.rail-item{cursor:default}
 .bgc-row:hover{background:rgba(47,124,246,.06)}
 .bgc-row.zero{opacity:.55}
 .bgc-row.zero>em{font-family:inherit;font-weight:800;color:var(--ink3)}
+/* 日常行动时长：数字可直接输入（± 键仍按 10 分钟步进） */
+.dur output{display:flex;align-items:baseline;justify-content:center;gap:.25em;cursor:text}
+.dur output>input{all:unset;width:4.2ch;text-align:right;font:inherit;color:#fff;cursor:text}
+.dur output>input::-webkit-inner-spin-button,.dur output>input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.dur output>input:focus{box-shadow:0 1px 0 #6fb4ff}
+.dur output>span{font-size:.8em;color:#bfe3ff}
+.dur output:focus-within{box-shadow:inset 0 0 0 1px #6fb4ff,0 0 10px rgba(80,160,255,.45)}
+/* 确认条：放不下时文字独占一行、按钮换到下一行靠右（窄的侧屏里原四列网格会把文字挤成一字一行） */
+.confirm-strip{display:flex;flex-wrap:wrap;align-items:center}
+.confirm-strip>i{flex:none}
+.confirm-strip>span{flex:1 1 12em;min-width:0;overflow-wrap:anywhere}
+.confirm-strip>.key-s{flex:none}
+.confirm-strip>span+.key-s{margin-left:auto}

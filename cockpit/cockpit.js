@@ -657,6 +657,19 @@
   let editing = null, holding = false;
   // 编辑结束后若桥接在编辑期间送来过新数据，补一次重绘
   const flushPending = () => { if (api.pending && !editing && !holding) { api.pending = false; renderPage({ kind: 'refresh' }); syncReadout(); } };
+  // 日常行动时长：± 键与直接输入共用；记进 ui，数据刷新重绘后不回到 60
+  const setDur = (box, minutes, typing = false) => {
+    if (!box) return;
+    const out = box.querySelector('output'), input = box.querySelector('[data-dur-input]'), m = Math.max(10, Math.min(1440, Math.round(num(minutes))));
+    if (!Number.isFinite(m)) return;
+    out.dataset.min = m; state.ui.routineMin = m;
+    if (input && !typing) input.value = m;
+    const end = box.querySelector('[data-dur-end]'); if (end && C.endAt) end.textContent = C.endAt(ctx(), m);
+  };
+  cockpitEl.addEventListener('input', e => { const t = e.target.closest?.('[data-dur-input]'); if (t && t.value !== '' && num(t.value) >= 10) setDur(t.closest('[data-dur-box]'), t.value, true); });
+  cockpitEl.addEventListener('change', e => { const t = e.target.closest?.('[data-dur-input]'); if (t) setDur(t.closest('[data-dur-box]'), t.value === '' ? 60 : t.value); });
+  cockpitEl.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches?.('[data-dur-input]')) e.target.blur(); });
+  cockpitEl.addEventListener('click', e => { const o = e.target.closest?.('.dur output'); if (o && !e.target.matches('input')) o.querySelector('input')?.focus(); });
   const parseEdit = (kind, meta, str) => {
     const t = String(str).trim();
     if (kind === 'number') {
@@ -743,8 +756,16 @@
     // 先在界面上落下新值（原值处显示），写回完成后由桥接回灌刷新
     cur.el.textContent = String(r.value); cur.wrap.replaceWith(cur.el);
     const ev = new CustomEvent('cockpit:edited', { detail: { path: cur.path, value: r.value, extra: [] } }); document.dispatchEvent(ev);
-    write([{ path: cur.path, value: r.value }, ...ev.detail.extra]).then(() => { flushPending(); if (cur.inFloat) reproject(); });
+    write([{ path: cur.path, value: r.value }, ...ev.detail.extra]).then(() => { settleEdit(cur.path, r.value); flushPending(); if (cur.inFloat) reproject(); });
   }
+  // 写回后存档里的值可能被规则改掉（例：等级会按魂力上限自动突破回去）。界面上先落下的新值要换回真实值并说明，
+  // 否则重绘时内容与上次相同被跳过，假值一直留在那里
+  const settleEdit = (path, wanted) => {
+    const now = getAt(path); if (now === undefined || String(now) === String(wanted)) return;
+    [host.l, host.c, host.r].forEach(h => lastHtml.delete(h)); renderPage({ kind: 'refresh' });
+    const why = path.at(-1) === '等级' ? '：等级由魂力上限决定，魂力上限够到哪一级就会自动突破到哪一级（魂环数封顶）' : '';
+    ADP?.toast?.(`没有改成 ${wanted}，存档里仍是 ${now}${why}`, 'warning');
+  };
   function cancelEdit() { const cur = editing; editing = null; if (cur) { cur.box?.remove(); cur.wrap.replaceWith(cur.el); } flushPending(); }
   // 浮动编辑器跟住占位：面板滚动时重新摆放
   const placeBox = (wrap, box) => { const r = wrap.getBoundingClientRect(); box.style.left = r.left + r.width / 2 + 'px'; box.style.top = r.top + r.height / 2 + 'px'; };
@@ -942,10 +963,7 @@
       return;
     }
     if (t.dataset.dur) {
-      const box = t.closest('[data-dur-box]'), out = box.querySelector('output');
-      const m = Math.max(10, Math.min(1440, num(out.dataset.min) + num(t.dataset.dur)));
-      out.dataset.min = m; out.textContent = `${m} 分钟`;
-      const end = box.querySelector('[data-dur-end]'); if (end && C.endAt) end.textContent = C.endAt(ctx(), m);
+      setDur(t.closest('[data-dur-box]'), num(t.closest('[data-dur-box]').querySelector('output').dataset.min) + num(t.dataset.dur));
       return;
     }
     if (t.dataset.pick !== undefined) { const group = t.closest('[data-pick-group]'); $$('[data-pick]', group || t.parentElement).forEach(b => { b.classList.toggle('on', b === t); b.setAttribute('aria-pressed', b === t); }); }
