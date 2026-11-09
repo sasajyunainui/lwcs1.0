@@ -45,9 +45,14 @@
 .wing .dial{width:min(100%,12.5em);margin:auto}
 .pad>.warn:has(+ .cta){margin-top:auto}
 .warn + .cta{margin-top:0}
-.readout .tick{mask-image:none;min-width:0}
-.readout .tick>span{display:block;padding-left:0;animation:none;overflow:hidden;text-overflow:ellipsis}
-.readout .tick>span span{display:inline;padding:0;animation:none}
+.readout .tick{min-width:0;mask-image:none}
+/* 播报：放得下就静止；放不下时整条无缝循环滚动（内容复制一份接在后面，平移一半），悬停暂停 */
+.readout .tick>span{display:inline-block;white-space:nowrap}
+.readout .tick>span>span{display:inline}
+.readout .tick.run{mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent)}
+.readout .tick.run>span{animation:tick var(--tick-dur,20s) linear infinite}
+.readout .tick.run:hover>span{animation-play-state:paused}
+.readout .tick .tick-gap{display:inline-block;width:3em}
 .cockpit[data-view="page-archive/status"] #rRes{display:none}
 
 

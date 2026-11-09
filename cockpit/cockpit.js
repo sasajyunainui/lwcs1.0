@@ -271,7 +271,7 @@
         <button type="button" class="viewing" id="ck-viewing" hidden></button>
         <span class="pends" id="ck-rPend" aria-label="待处理"></span>
         <span class="res" id="ck-rRes" aria-label="随行资源"></span>
-        <div class="tick" aria-label="系统播报"><span><b>播报</b><span id="ck-rTick"></span></span></div>
+        <div class="tick" aria-label="系统播报"><span><span class="tick-item"><b>播报</b><span id="ck-rTick"></span></span></span></div>
         <i class="fa-solid fa-bullhorn tick-ico" tabindex="0" role="button" aria-label="系统播报" data-hint=""></i>
         <button type="button" class="gear" data-go="page-terminal/settings" aria-label="设置" data-hint="设置"><i class="fa-solid fa-sliders"></i></button>
     </div>
@@ -1020,13 +1020,29 @@
   };
 
   // ---------- 读数条 ----------
+  // 播报：文字放得下就静止；放不下时复制一份接在后面无缝循环（约每秒 45px），文字没变不重排、不重启动画
+  let tickText = null, tickWidth = -1;
+  const syncTicker = text => {
+    const box = $('.readout .tick'), run = box.firstElementChild, item = $('.tick-item', run);
+    if (text === tickText && box.clientWidth === tickWidth) return;
+    tickText = text; tickWidth = box.clientWidth;
+    $('#ck-rTick').textContent = text;
+    run.querySelectorAll('.tick-gap,.tick-copy').forEach(n => n.remove());
+    const over = item.scrollWidth > box.clientWidth + 2 && box.clientWidth > 0;
+    box.classList.toggle('run', over);
+    if (!over) return;
+    const gap = document.createElement('span'); gap.className = 'tick-gap';
+    const copy = item.cloneNode(true); copy.className = 'tick-copy'; copy.setAttribute('aria-hidden', 'true'); copy.querySelector('#ck-rTick')?.removeAttribute('id');
+    run.append(gap, copy);
+    box.style.setProperty('--tick-dur', `${Math.max(8, Math.round((item.scrollWidth + gap.offsetWidth) / 45))}s`);
+  };
   const syncReadout = () => {
     const me = S.char?.[S.sys?.玩家名] || {}, st = me.属性 || {};
     $('#ck-rLoc').textContent = String(me.状态?.位置 || '').replace(/^斗罗大陆-/, '').replace(/-/g, ' · ');
     // 时间：指挥栏里只放月日与时刻，完整历法放悬停
     const cal = S.world.时间._calendar || tickDate(S.world.时间.tick);
     $('#ck-rTime').textContent = String(cal).replace(/^(斗罗历|斗灵历)?\d+年/, ''); $('#ck-rTime').parentElement.title = cal;
-    $('#ck-rTick').textContent = S.sys.系统播报 || '暂无播报'; $('.readout .tick').title = S.sys.系统播报 || ''; $('.readout .tick-ico').dataset.hint = S.sys.系统播报 || '暂无播报';
+    syncTicker(S.sys.系统播报 || '暂无播报'); $('.readout .tick').title = S.sys.系统播报 || ''; $('.readout .tick-ico').dataset.hint = S.sys.系统播报 || '暂无播报';
     // 待处理（原项目「待处理能力」）：待生成的魂环、待确认的新技能，点了直接去处理
     const pend = ADP?.pending?.() || {}, ring = pend.soulRing, sd = pend.skillDesign;
     $('#ck-rPend').innerHTML = [ring ? `<button class="pend" type="button" data-route="ringPick" title="${esc([ring.charName, ring.spiritName, `第 ${ring.ringIndex} 魂环`].filter(Boolean).join(' · '))}"><i class="fa-solid fa-circle-plus"></i>待生成魂环</button>` : '', sd ? `<button class="pend" type="button" data-route="skillConfirm" title="${esc([sd.charName, sd.skillName].filter(Boolean).join(' · '))}"><i class="fa-solid fa-wand-sparkles"></i>新技能待确认</button>` : ''].join('');
@@ -1045,7 +1061,7 @@
     if (!reduce && motesOn()) requestAnimationFrame(draw);
   };
   // 宿主尺寸变化（挂到新宿主、聊天栏宽度变化）后重排
-  const relayout = () => { syncMobile(); readStageZ(); moveSlider($('.tab.on', track)); size(); if (state.domain) { applyWide(currentView().v); fitCarousel(); } };
+  const relayout = () => { syncMobile(); readStageZ(); moveSlider($('.tab.on', track)); size(); if (state.domain) { applyWide(currentView().v); fitCarousel(); } if (tickText !== null) syncTicker(tickText); };
   api = { refresh: () => { if (!state.domain) return; if (editing) { api.pending = true; return; } renderPage({ kind: 'refresh' }); }, switchDomain, switchPage, openInspector, closeInspector, reproject, syncReadout, start, relayout, isEditing: () => !!editing, pending: false };
   }
 })();
