@@ -173,9 +173,13 @@
 
 /* ---------- 战斗记录：窄屏排在执行栏下；宽屏由 BattleUI 挂到 body，贴在座舱右侧（可拖动），收起时只剩「记录」键 ---------- */
 .lwcs-ck-battle.battle-record-terminal{display:flex;flex-direction:column;gap:.5em;min-width:0;color:#dfe9f8;font-size:12.5px;padding:.6em .7em;background:linear-gradient(180deg,#121c2f,#0b1322);box-shadow:inset 0 0 0 1px #2c4166,inset 0 0 18px rgba(70,140,255,.18)}
-.lwcs-ck-battle.battle-record-terminal.battle-record-terminal--portal{position:fixed;top:var(--战斗记录外置-top,72px);left:var(--战斗记录外置-left,360px);z-index:10050;width:var(--战斗记录外置-width,min(640px,calc(100vw - 20px)));max-height:var(--战斗记录外置-height,min(720px,calc(100vh - 92px)));overflow:hidden;box-shadow:0 0 0 1px #3a5a8e,0 14px 30px rgba(0,0,0,.45);clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
+.lwcs-ck-battle.battle-record-terminal.battle-record-terminal--portal:not(.battle-record-terminal--inline){position:fixed;top:var(--战斗记录外置-top,72px);left:var(--战斗记录外置-left,360px);z-index:10050;width:var(--战斗记录外置-width,min(640px,calc(100vw - 20px)));max-height:var(--战斗记录外置-height,min(720px,calc(100vh - 92px)));overflow:hidden;box-shadow:0 0 0 1px #3a5a8e,0 14px 30px rgba(0,0,0,.45);clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
 .lwcs-ck-battle.battle-record-terminal.battle-record-terminal--collapsed{width:auto;padding:0;background:none;box-shadow:none}
 .lwcs-ck-battle.battle-record-terminal--portal.battle-record-terminal--collapsed{clip-path:none}
+/* 座舱里的记录终端排在执行栏下：收起时「记录」键靠左，展开时整宽、限高滚动 */
+.lwcs-ck-battle.battle-record-terminal--inline{position:static;width:auto}
+.lwcs-ck-battle.battle-record-terminal--inline:not(.battle-record-terminal--collapsed){max-height:22em}
+.lwcs-ck-battle.battle-record-terminal--inline .battle-record-header{cursor:default}
 .lwcs-ck-battle.battle-record-terminal--dragging{cursor:grabbing;opacity:.92}
 .lwcs-ck-battle .battle-record-header{display:flex;align-items:center;gap:.5em;cursor:grab}
 .lwcs-ck-battle .battle-record-toggle{appearance:none;border:0;cursor:pointer;font-weight:900;font-size:.95em;letter-spacing:.1em;padding:.45em 1em;color:#fff;background:linear-gradient(180deg,#2a3b5c,#16233d);box-shadow:0 0 0 1px #3a5a8e,0 3px 0 #0a1222}
