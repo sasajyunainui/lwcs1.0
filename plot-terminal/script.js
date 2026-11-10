@@ -419,7 +419,20 @@ function renderModulesDetail(){const modules=state.game.modules,f=frag(detailHea
 function battleError(message,text){return frag(h("div","pt-diagnostic",message),rawBlock(text))}
 function renderBattle(text){if(!text)return emptyState("khanda","本轮没有战斗裁断任务");let parsed;try{parsed=JSON.parse(text)}catch(e){return battleError("战斗裁断不是有效JSON："+e.message,text)}const s=parsed?.模块结算;if(!s||Array.isArray(s)||typeof s.是否结束!=="boolean")return battleError("战斗裁断缺少 模块结算.是否结束 布尔值。",text);const keys=Object.keys(s);if(s.是否结束===false){if(keys.length!==1||keys[0]!=="是否结束")return battleError("未结束裁断只能包含 是否结束 字段。",text);const box=h("div","pt-battle-status",h("strong","","裁断声明：战斗继续"),h("span","pt-muted","结构校验通过；实际战斗状态由运行时执行层复核"));box.dataset.finished="false";return box}const required=["是否结束","胜方","败方","败方剩余HP比例"];if(keys.length!==required.length||required.some(k=>!Object.prototype.hasOwnProperty.call(s,k)))return battleError("已结束裁断必须且只能包含规定的4个字段。",text);const winner=clean(s.胜方),loser=clean(s.败方),hp=Number(s.败方剩余HP比例);if(!winner||!loser||winner===loser)return battleError("胜方与败方必须是两个不同的非空角色名。",text);if(!Number.isFinite(hp)||hp<0||hp>100)return battleError("败方剩余HP比例必须是0到100之间的数字。",text);const box=h("div","pt-battle-status",h("strong","","裁断声明：战斗结束"),h("span","pt-muted",winner+" 战胜 "+loser+"；参与者归属与实际写入由运行时执行层复核"));box.dataset.finished="true";const grid=node("div","pt-grid-3");grid.append(keyValue("胜方",winner),keyValue("败方",loser),keyValue("败方剩余HP比例",String(hp)+"%"));return frag(box,grid)}
 function rulingDetail(section){const g=state.game;if(section==="knowledge")return renderKnowledge();if(section==="route")return renderRouteDetail();if(section==="butterfly")return renderButterfly();if(section==="audit")return renderAuditDetail();if(section==="modules")return renderModulesDetail();if(section==="battle")return frag(detailHead("khanda","战斗裁断","BATTLE"),renderBattle(g.routing.battle_adjudication));if(section==="plan")return frag(detailHead("chess","后台推演","DM · SET"),stepsList(g.ruling.dm_set));return renderCurrentRuling()}
-function renderRuling(){if(!clean(state.snapshot?.tasks?.ruling?.raw))return h("div","pt-scroll",emptyState("scale-balanced","当前没有剧情裁定资料","裁定任务写回后会显示在这里。"));const items=rulingItems();if(!items.some(i=>i.id===state.rulingSection))state.rulingSection="current";return splitPage(items,state.rulingSection,"ruling",rulingDetail(state.rulingSection),"ruling")}
+
+// 看板：每节一个章节，宽屏下章节内的牌子两列排；舞台卡、情报卡、实力标尺等宽内容占整行
+const WIDE_SELECTOR=".pt-stagecard,.pt-intel-cards,.pt-rels,.pt-lenses,.pt-verdict,.pt-ladder,.pt-steps,.pt-know,.pt-tl,.pt-ev,.pt-quotes";
+function boardPage(items,render,key){const strip=h("nav","pt-jump");strip.setAttribute("aria-label","跳到");for(const it of items){const b=btn("pt-jump-btn",{jump:key+"-"+it.id},icon(it.icon),h("span","",it.label));if(it.count)b.append(h("em","",String(it.count)));strip.append(b)}
+ const main=h("section","pt-board pt-scroll");main.dataset.scroll=key+"-board";
+ for(const it of items){const ch=h("section","pt-chapter");ch.id=key+"-"+it.id;ch.append(render(it.id));for(const p of ch.querySelectorAll(".pt-stack>.pt-plate"))if(p.querySelector(WIDE_SELECTOR))p.classList.add("pt-wide");main.append(ch)}
+ // 跳转条跟着滚动标出当前章节
+ const mark=()=>{let cur=items[0]?.id;for(const it of items){const el=main.querySelector("#"+key+"-"+it.id);if(el&& el.offsetTop-main.scrollTop<=40)cur=it.id}for(const b of strip.children)b.setAttribute("aria-current",b.dataset.jump===key+"-"+cur?"true":"false")};
+ let raf=0;main.addEventListener("scroll",()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(mark)},{passive:true});queueMicrotask(mark);
+ return h("div","pt-board-wrap",strip,main)}
+function jumpTo(id){const el=app.querySelector("#"+id),main=el?.closest(".pt-board");if(el&& main)main.scrollTop=Math.max(0,el.offsetTop-8)}
+// 后台推演是长篇思考过程，看板里默认折叠
+function rulingBoardSection(id){if(id!=="plan")return rulingDetail(id);return frag(detailHead("chess","后台推演","DM · SET"),h("details","pt-fold",h("summary","",icon("chess"),"展开推演步骤"),h("div","pt-fold-body",stepsList(state.game.ruling.dm_set))))}
+function renderRuling(){if(!clean(state.snapshot?.tasks?.ruling?.raw))return h("div","pt-scroll",emptyState("scale-balanced","当前没有剧情裁定资料","裁定任务写回后会显示在这里。"));return boardPage(rulingItems(),rulingBoardSection,"ruling")}
 
 /* ===== 情报 ===== */
 function recordCodes(text,prefix){const matches=clean(text).match(new RegExp("\\b"+prefix+"\\d+\\b","gi"))||[];return[...new Set(matches.map(code=>code.toUpperCase()))]}
@@ -449,7 +462,7 @@ function renderTimeDetail(){const g=state.game,list=[],jump=clean(g.recall.time_
 function renderSeedDetail(){const src=clean(state.game.recall.original_character_seed);if(ptBlank(src))return frag(detailHead("id-card","必要负责人","SEED"),emptyState("id-card","本轮无需新增负责人"));const cards=[];for(const line of src.split("\n").map(clean).filter(Boolean)){const p=line.split(/\s*[｜|]\s*/);if(p.length>=4){const duty=p.length>4?p[p.length-1]:"";cards.push(plate("pt-idcard",avatar(p[0],"npc",54),h("div","",h("h3","",p[0]),h("div","pt-dos-tags",(duty?p.slice(1,-1):p.slice(1)).map((x,i)=>chip(x,i===0?"blue":""))),duty?h("p","",duty):null)))}else cards.push(plate("",prose(line)))}return frag(detailHead("id-card","必要负责人","SEED"),h("div","pt-stack",cards))}
 function intelItems(){const g=state.game,r=g.recall;return[{id:"clue",icon:"timeline",label:"原著线索",count:g.timeline.length||undefined},{id:"am",icon:"scroll",label:"事件纪要",count:recordCodes(r.recall,"AM").length||undefined},{id:"dv",icon:"code-branch",label:"偏差档案",count:recordCodes(r.deviation_ledger_recall,"DV").length||undefined},{id:"time",icon:"clock",label:"时间定位"},{id:"seed",icon:"id-card",label:"必要负责人",count:ptBlank(r.original_character_seed)?undefined:clean(r.original_character_seed).split("\n").filter(Boolean).length}]}
 function intelDetail(section){const r=state.game.recall;if(section==="am")return renderArchiveDetail("AM",r.recall,"事件纪要","scroll");if(section==="dv")return renderArchiveDetail("DV",r.deviation_ledger_recall,"偏差档案","code-branch");if(section==="time")return renderTimeDetail();if(section==="seed")return renderSeedDetail();return renderClueDetail()}
-function renderIntel(){if(!state.game||noTaskData())return h("div","pt-scroll",emptyState("book-open","当前没有情报资料"));const items=intelItems();if(!items.some(i=>i.id===state.intelSection))state.intelSection="clue";return splitPage(items,state.intelSection,"intel",intelDetail(state.intelSection),"intel")}
+function renderIntel(){if(!state.game||noTaskData())return h("div","pt-scroll",emptyState("book-open","当前没有情报资料"));return boardPage(intelItems(),intelDetail,"intel")}
 
 /* ===== 开发记录（原文） ===== */
 function renderRaw(){const p=PAGES[state.page],root=h("div","pt-scroll pt-main");root.dataset.scroll="raw:"+state.page;const back=btn("pt-text-btn",{page:state.lastMain},icon("arrow-left")," 返回"+PAGES[state.lastMain].label);root.append(detailHead("file-code",p.label,"",back));
@@ -462,7 +475,7 @@ function saveScroll(){for(const el of queryAll("[data-scroll]"))state.scroll[el.
 function restoreScroll(){for(const el of queryAll("[data-scroll]"))el.scrollTop=state.scroll[el.dataset.scroll]||0}
 function renderPage(animate=true){const content=$("[data-role=content]");saveScroll();let view;
  if(state.page==="overview")view=renderOverview();else if(state.page==="people")view=renderPeople();else if(state.page==="ruling")view=renderRuling();else if(state.page==="intel")view=renderIntel();else view=renderRaw();
- app.dataset.page=state.page;content.replaceChildren(view);if(animate){content.classList.remove("pt-enter");void content.offsetWidth;content.classList.add("pt-enter")}renderTabs();restoreScroll();savePrefs()}
+ app.dataset.page=state.page;content.replaceChildren(view);if(animate){content.classList.remove("pt-enter");void content.offsetWidth;content.classList.add("pt-enter")}renderTabs();restoreScroll();if(state.jumpTo){const id=state.jumpTo;state.jumpTo="";jumpTo(id)}savePrefs()}
 function openPage(id,patch){if(!PAGES[id])return;saveScroll();state.page=id;if(MAIN.includes(id))state.lastMain=id;Object.assign(state,patch||{});closeSettings();if(app.dataset.collapsed==="true")setCollapsed(false);renderPage(true)}
 function closeSettings(){const box=$("[data-role=settings]");if(box?.dataset.open==="true"){box.dataset.open="false";box.querySelector("[data-action=settings]")?.setAttribute("aria-expanded","false")}}
 function applyPrefs(){app.dataset.density=state.prefs.density;app.style.setProperty("--pt-font",String(state.prefs.font))}
@@ -471,7 +484,8 @@ function detectLayout(){const width=app.getBoundingClientRect().width<720?"compa
 const handleClick=e=>{const t=e.target;
  if(!t.closest("[data-role=settings]"))closeSettings();
  const page=t.closest("[data-page]");if(page&& app.contains(page)&& page!==app){openPage(page.dataset.page);return}
- const go=t.closest("[data-goto]");if(go){const [p,s]=go.dataset.goto.split(":"),patch={};if(p==="ruling")patch.rulingSection=s;if(p==="intel")patch.intelSection=s;if(go.dataset.moduleIndex!==undefined)patch.moduleSelected=Number(go.dataset.moduleIndex)||0;openPage(p,patch);return}
+ const jump=t.closest("[data-jump]");if(jump){jumpTo(jump.dataset.jump);return}
+ const go=t.closest("[data-goto]");if(go){const [p,s]=go.dataset.goto.split(":"),patch={};if(p==="ruling"||p==="intel")patch.jumpTo=p+"-"+s;if(go.dataset.moduleIndex!==undefined)patch.moduleSelected=Number(go.dataset.moduleIndex)||0;openPage(p,patch);return}
  const person=t.closest("[data-person]");if(person){openPage("people",{personKey:person.dataset.person,peopleView:"person"});return}
  const pv=t.closest("[data-people-view]");if(pv){openPage("people",{peopleView:pv.dataset.peopleView});return}
  const intel=t.closest("[data-intel-section]");if(intel){openPage("intel",{intelSection:intel.dataset.intelSection});return}
