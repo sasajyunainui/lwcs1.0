@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:ab5a4b5798801d4e947fbda37220391791e46db0b26fa6219b084f23183a999f|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:ba5190b0f2fe5d45cf2f45686fc6cdd8bb0b4fb3c85a43435a5bb45b6162ef1d|cockpit/pages-role.js:ea00d94e994576a533ab9cfb560cdd432adb466805f0d67c984d2ad891f5bedc|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:d9d42878c9d8d513ebef84b384a06f800143c89ba0beb45f5d2b93189bac4ac8|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:33c325aab13aef52d2811e81492f147b2a533790487da1419353c482c7e6c33b|cockpit/pages-world.js:6851fc81ee4d831a1af87aa85b490557d452ef5b31ea776d50f871cb97f5574e|cockpit/pages-terminal.js:c73e78b78d6a7a80f96d774bcf3a88bfa17642c7ad81a5d5b89ff863e053125e */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:ab5a4b5798801d4e947fbda37220391791e46db0b26fa6219b084f23183a999f|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:3c1d98eaaf18f362be0cd98cdb62dea5371c4fdce0dbdd772d2a560a8649db5f|cockpit/pages-role.js:ea00d94e994576a533ab9cfb560cdd432adb466805f0d67c984d2ad891f5bedc|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:d9d42878c9d8d513ebef84b384a06f800143c89ba0beb45f5d2b93189bac4ac8|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:33c325aab13aef52d2811e81492f147b2a533790487da1419353c482c7e6c33b|cockpit/pages-world.js:6851fc81ee4d831a1af87aa85b490557d452ef5b31ea776d50f871cb97f5574e|cockpit/pages-terminal.js:c73e78b78d6a7a80f96d774bcf3a88bfa17642c7ad81a5d5b89ff863e053125e */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -48569,7 +48569,15 @@ ${播报文本}
   };
   const kick = () => { if (!raf && !reduce) raf = requestAnimationFrame(loop); };
   // 视差：指针在声明了 data-no-tilt 的区域（沙盘）里时回正，免得拖动、瞄准时整个场景跟着歪
-  cockpit.addEventListener('pointermove', e => { if (e.pointerType !== 'mouse') return; if (e.target.closest('[data-no-tilt]')) { if (tx || ty) { tx = 0; ty = 0; kick(); } return; } const r = cockpit.getBoundingClientRect(); tx = (e.clientX - r.left) / r.width - .5; ty = (e.clientY - r.top) / r.height - .5; kick(); });
+  // 指针落在可交互的东西上时视差就地停住（目标设为当前角度，惯性也随之停）：舞台一转，指针下的按钮跟着挪几像素，
+  // 边缘一带反复进出悬停，光标在箭头 / 手指间闪、悬停卡也触发不稳。只在空白处移动时跟随
+  const AIM = 'button,a,input,select,textarea,label,[role="button"],[role="link"],[data-go],[data-inspect],[data-set],[data-act],[data-hint],[data-scan],.ie,.row,.tile,.opt,.rc,.hpt,.card,.fcard';
+  cockpit.addEventListener('pointermove', e => {
+    if (e.pointerType !== 'mouse') return;
+    if (e.target.closest('[data-no-tilt]')) { if (tx || ty) { tx = 0; ty = 0; kick(); } return; }
+    if (e.target.closest(AIM)) { tx = cx; ty = cy; return; }
+    const r = cockpit.getBoundingClientRect(); tx = (e.clientX - r.left) / r.width - .5; ty = (e.clientY - r.top) / r.height - .5; kick();
+  });
   cockpit.addEventListener('pointerleave', () => { tx = 0; ty = 0; kick(); });
 
   // ---------- 魂力光尘 ----------
