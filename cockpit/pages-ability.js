@@ -59,6 +59,37 @@
   // 标题写出原型的关键字段（改哪项属性、施加什么状态……），只写原型名等于没说；字段口径同设计台原型字段表
   const txt = v => (Array.isArray(v) ? v : [v]).map(x => String(x ?? '').trim()).filter(Boolean).join('、');
   const neg = e => String(e.数值 ?? '').trim().startsWith('-');
+  // 结算修正：按结算项和正负说成玩家的话（造成伤害 +20% = 增伤，受到伤害 -20% = 减伤）；
+  // 方向词已含正负时数值只给幅度（减伤 20%，不写 -20%），颜色按对持有者有利与否（good）
+  const SETTLE = {
+    造成伤害: ['burst', '增伤', '输出降低'],
+    受到伤害: ['shield-halved', '易伤', '减伤', true],
+    治疗: ['hand-holding-medical', '治疗增强', '治疗削弱'],
+    消耗: ['fire-flame-curved', '消耗增加', '消耗降低', true],
+    前摇: ['hourglass-half', '前摇延长', '前摇缩短', true],
+    技能效果: ['wand-sparkles', '技能效果增强', '技能效果减弱'],
+  };
+  const absorbTitle = (src, res) => src === '受到伤害' ? `受击转化${res}` : res === '生命' ? '吸血' : `伤害转化${res}`;
+  const settleFx = e => {
+    const k = txt(e.结算), d = SETTLE[k], el = txt(e.限定元素).replace(/^无$/, ''), pre = el ? `${el}系` : '';
+    if (d) { const down = neg(e), good = d[3] ? down : !down;
+      return { icon: d[0], title: pre + (down ? d[2] : d[1]), good, mag: true }; }
+    const T = {
+      反伤: ['arrow-rotate-left', '反伤'],
+      伤害转移: ['people-arrows', `伤害转给${txt(e.转移对象) || '攻击者'}`],
+      伤害吸收: ['magnet', absorbTitle(txt(e.吸收来源) || '造成伤害', txt(e.吸收资源) || '生命')],
+      伤害转治疗: ['heart-circle-plus', '伤害转为治疗'],
+      治疗转伤害: ['heart-crack', '治疗转为伤害'],
+      伤害分摊: ['users', '伤害分摊'],
+      消耗分摊: ['users', '消耗分摊'],
+      防御穿透: ['hammer', '破甲'],
+      防御剥夺: ['shield-virus', '削减防御'],
+      精神抗性剥夺: ['brain', '削减精神抗性'],
+      反击: ['hand-fist', '反击'],
+      持续伤害引爆: ['explosion', '引爆持续伤害'],
+    }[k];
+    return T ? { icon: T[0], title: pre + T[1] } : { icon: 'shield-halved', title: `${k || '结算'}修正` };
+  };
   const FX = {
     资源变化: e => ({ icon: String(e.资源 || '').includes('魂力') ? 'fire-flame-curved' : 'heart-pulse', title: `${neg(e) ? '削减' : '恢复'}${txt(e.资源) || '资源'}` }),
     资源转移: e => ({ icon: 'right-left', title: `${txt(e.资源转移方式) || '转移'}${txt(e.资源) || '资源'}` }),
@@ -66,7 +97,7 @@
     属性修正: e => ({ icon: neg(e) ? 'arrow-trend-down' : 'arrow-trend-up', title: `${txt(e.属性) || '属性'}${neg(e) ? '降低' : '提升'}` }),
     属性变化: e => ({ icon: 'arrow-trend-up', title: `${txt(e.属性) || '属性'}变化` }),
     判定修正: e => ({ icon: 'crosshairs', title: `${txt(e.判定) || '判定'}${neg(e) ? '下降' : '提升'}` }),
-    结算修正: e => ({ icon: 'shield-halved', title: `${txt(e.结算) || '结算'}修正` }),
+    结算修正: e => settleFx(e),
     护盾变化: e => ({ icon: 'shield', title: txt(e.护盾模式) === '正向护盾' || !txt(e.护盾模式) ? '护盾' : txt(e.护盾模式) }),
     伤害结算: e => ({ icon: 'burst', title: txt(e.伤害类型) || '伤害' }),
     状态施加: e => ({ icon: 'circle-radiation', title: `施加${txt(e.状态) || '状态'}` }),
@@ -83,9 +114,9 @@
   };
   const fxOf = e => (FX[e.原型] || (() => ({ icon: 'bolt', title: e.原型 || '效果' })))(e);
   // 数值：伤害结算没有「数值」，给威力倍率（百分比口径，基准 100）与段数
-  const fxVal = (c, e) => !c.blank(e.数值) ? String(e.数值) : e.原型 === '伤害结算' && e.威力倍率 != null ? `${e.威力倍率}%${Number(e.攻击段数) > 1 ? ` × ${e.攻击段数} 段` : ''}` : '';
+  const fxVal = (c, e) => !c.blank(e.数值) ? String(e.数值).trim().replace(fxOf(e).mag ? /^[+-]\s*/ : /^$/, '') : e.原型 === '伤害结算' && e.威力倍率 != null ? `${e.威力倍率}%${Number(e.攻击段数) > 1 ? ` × ${e.攻击段数} 段` : ''}` : '';
   const fxRow = (c, e) => {
-    const down = neg(e), f = fxOf(e);
+    const f = fxOf(e), down = f.good === undefined ? neg(e) : !f.good;
     const meta = [e.目标, e.持续回合 ? `持续 ${c.fmt(e.持续回合)} 回合` : '', e.生效方式].filter(Boolean).map(c.esc).join(' · ');
     return `<div class="fx"><span class="ic ${down ? 'down' : ''}"><i class="fa-solid fa-${f.icon}"></i></span><strong>${c.esc(f.title)}</strong><span class="v ${down ? 'down' : ''}">${c.esc(fxVal(c, e))}</span><small>${meta}</small></div>`;
   };
