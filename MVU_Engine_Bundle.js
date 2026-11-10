@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Persistence_Adapter.js:7436c12abd132a0730c8426fbadfac51bd0f7fce0166278dd7ed9dcbfa5f500b|LWCS_MVU_Persistence_Provider.js:2e300d0011b1160a0b65fe9fdd2afc1b976a174b1c04498df6c8115ac3c349b5|MVU_Engine_Runtime.js:ba09380c3b77e80d91d4b1db7425e2944ff085c0de6d605fbf88454f8dc60995 */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Persistence_Adapter.js:56843b86a1d2394420776f51498ef6879cca7c63565f9b123e21465b2376c886|LWCS_MVU_Persistence_Provider.js:2e300d0011b1160a0b65fe9fdd2afc1b976a174b1c04498df6c8115ac3c349b5|MVU_Engine_Runtime.js:ba09380c3b77e80d91d4b1db7425e2944ff085c0de6d605fbf88454f8dc60995 */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -393,7 +393,34 @@
       }
     }
 
+    // 酒馆换了对话、却没人重开会话时（引擎复用仍判为有效的旧会话），旧会话会一直写进上一个对话的存储：
+    // 上一个对话还在就串档，被删了就报「Chat payload not found」（「开始新聊天 + 删除当前聊天」即如此）。
+    // 所以打开会话时记下酒馆当时的 chatId，之后读 / 断言对话代数前先看酒馆 chatId 变没变（只比酒馆自己的标识，
+    // 不假设 TT 的 stableId 与哪个字段相等）；变了就让代数前进，旧会话随之失效，下次使用时按当前对话重开。切换途中读不到 chatId 时不判
+    let activeStChatId = '';
+    function currentStChatId() {
+      for (const candidate of collectWindows()) {
+        try {
+          const context = candidate?.SillyTavern?.getContext?.();
+          if (!context) continue;
+          const id = context.chatId ?? context.chat_id;
+          return typeof id === 'string' || typeof id === 'number' ? String(id).trim() : '';
+        } catch (_) { /* 跨源窗口读不到就看下一个 */ }
+      }
+      return '';
+    }
+    function syncActiveChat() {
+      if (!activeStableChatId || !activeStChatId) return;
+      const current = currentStChatId();
+      if (current && current !== activeStChatId) {
+        chatGeneration += 1;
+        activeStableChatId = null;
+        activeStChatId = '';
+      }
+    }
+
     function assertGeneration(expectedGeneration) {
+      syncActiveChat();
       if (expectedGeneration !== chatGeneration) throw new StaleChatError();
     }
 
@@ -466,6 +493,7 @@
       }
       if (activeStableChatId && activeStableChatId !== stableChatId) chatGeneration += 1;
       activeStableChatId = stableChatId;
+      activeStChatId = currentStChatId();
       return { handle, stableChatId, chatGeneration, identitySource };
     }
 
@@ -602,6 +630,7 @@
 
     async function openSession({ domain, fallbackStableChatId } = {}) {
       assertDomain(domain);
+      syncActiveChat();
       const startGeneration = chatGeneration;
       const startDomainGeneration = getDomainGeneration(domain);
       let sessionIdentity;
@@ -812,7 +841,7 @@
       registerBackend,
       invalidateChatGeneration,
       invalidateDomainGeneration,
-      getChatGeneration: () => chatGeneration,
+      getChatGeneration: () => { syncActiveChat(); return chatGeneration; },
       getDomainGeneration,
     });
   }
