@@ -402,9 +402,8 @@
     const 当前预设名 = String(数据库接口.getCurrentPlotPreset() || '').trim();
 
     const 预设地址 = 资源基础地址 + 预设文件名 + 资源版本后缀;
-    const 响应 = await fetchWithTimeout(预设地址, 取资源请求选项(预设地址));
-    if (!响应.ok) throw new Error(`LWCS 剧情推进预设读取失败: ${响应.status}`);
-    const 预设数组 = await 响应.json();
+    // 与模块文件同一读取路径：jsDelivr 各镜像依次尝试，最后走 GitHub raw（刚推送后 jsDelivr 常短暂 403）
+    const 预设数组 = JSON.parse(await 读取文本资源(预设地址, 'LWCS 剧情推进预设读取失败'));
     const 预设名 = String(预设数组 && 预设数组[0] && 预设数组[0].name ? 预设数组[0].name : '').trim();
     if (!预设名) throw new Error('LWCS 剧情推进预设缺少正式名称');
     const 导入结果 = await 数据库接口.importPlotPresetsFromData(预设数组, { overwrite: true });
