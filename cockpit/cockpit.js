@@ -1031,7 +1031,15 @@
   };
   const kick = () => { if (!raf && !reduce) raf = requestAnimationFrame(loop); };
   // 视差：指针在声明了 data-no-tilt 的区域（沙盘）里时回正，免得拖动、瞄准时整个场景跟着歪
-  cockpit.addEventListener('pointermove', e => { if (e.pointerType !== 'mouse') return; if (e.target.closest('[data-no-tilt]')) { if (tx || ty) { tx = 0; ty = 0; kick(); } return; } const r = cockpit.getBoundingClientRect(); tx = (e.clientX - r.left) / r.width - .5; ty = (e.clientY - r.top) / r.height - .5; kick(); });
+  // 指针落在可交互的东西上时视差就地停住（目标设为当前角度，惯性也随之停）：舞台一转，指针下的按钮跟着挪几像素，
+  // 边缘一带反复进出悬停，光标在箭头 / 手指间闪、悬停卡也触发不稳。只在空白处移动时跟随
+  const AIM = 'button,a,input,select,textarea,label,[role="button"],[role="link"],[data-go],[data-inspect],[data-set],[data-act],[data-hint],[data-scan],.ie,.row,.tile,.opt,.rc,.hpt,.card,.fcard';
+  cockpit.addEventListener('pointermove', e => {
+    if (e.pointerType !== 'mouse') return;
+    if (e.target.closest('[data-no-tilt]')) { if (tx || ty) { tx = 0; ty = 0; kick(); } return; }
+    if (e.target.closest(AIM)) { tx = cx; ty = cy; return; }
+    const r = cockpit.getBoundingClientRect(); tx = (e.clientX - r.left) / r.width - .5; ty = (e.clientY - r.top) / r.height - .5; kick();
+  });
   cockpit.addEventListener('pointerleave', () => { tx = 0; ty = 0; kick(); });
 
   // ---------- 魂力光尘 ----------

@@ -5,8 +5,8 @@
 @keyframes wipe{to{clip-path:inset(0 0 0 0)}}
 @keyframes scanline{0%{background-position:0 0,0 0;opacity:1}90%{opacity:1}100%{background-position:100% 0,100% 0;opacity:0}}
 .row,.card,.dark,.fx,.tile{transition:transform .28s cubic-bezier(.2,.8,.2,1),box-shadow .28s,background .28s,filter .28s}
-.row:hover{transform:translateX(3px);box-shadow:inset 3px 0 0 rgba(47,124,246,.55),inset 0 0 0 1px rgba(47,124,246,.3)}
-.card:hover,.tile:hover{transform:translateY(-3px);filter:drop-shadow(0 6px 10px rgba(20,40,80,.25))}
+.row:hover{box-shadow:inset 3px 0 0 rgba(47,124,246,.55),inset 0 0 0 1px rgba(47,124,246,.3)}
+.card:hover,.tile:hover{filter:drop-shadow(0 6px 10px rgba(20,40,80,.25)) brightness(1.03)}
 .row.on,.card.on{position:relative}
 .row.on::before,.card.on::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,transparent,#8fd0ff 30%,#2f7cf6 50%,#8fd0ff 70%,transparent);background-size:100% 220%;animation:rail 1.8s linear infinite;box-shadow:0 0 8px #4fa2ff}
 @keyframes rail{from{background-position:0 0}to{background-position:0 -220%}}

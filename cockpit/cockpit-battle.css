@@ -99,7 +99,7 @@
 .lwcs-ck-battle .filter-btn.active{color:#fff;background:linear-gradient(180deg,#5aa5ff,#1a5ad6);box-shadow:0 2px 0 #0d3384}
 .lwcs-ck-battle .action-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(11.5em,1fr));gap:.4em}
 .lwcs-ck-battle .action-btn{appearance:none;border:0;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:.3em;padding:.5em .65em;color:var(--ink);background:var(--brush),linear-gradient(180deg,#ffffff,#dbe3ee);box-shadow:0 3px 0 #7d8ba0,0 4px 8px rgba(0,0,0,.12);clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px);transition:transform .12s,box-shadow .12s}
-.lwcs-ck-battle .action-btn:hover{transform:translateY(-1px)}
+.lwcs-ck-battle .action-btn:hover{filter:brightness(1.08)}
 .lwcs-ck-battle .action-btn:active{transform:translateY(2px);box-shadow:0 1px 0 #7d8ba0}
 .lwcs-ck-battle .action-btn.is-selected{color:#fff;background:linear-gradient(180deg,#5aa5ff,#1a5ad6 65%,#1446b0);box-shadow:0 3px 0 #0d3384,0 0 14px var(--glow)}
 .lwcs-ck-battle .action-btn[disabled],.lwcs-ck-battle .action-btn.is-disabled{opacity:.5;cursor:not-allowed}
