@@ -97,7 +97,9 @@ function parseBlock(text){const out=[];let group=null;
   group=null;out.push(entry)}
  return out}
 function blockFields(text){return Object.fromEntries(parseBlock(text).filter(e=>e.type==="kv").map(e=>[e.key,e.value]))}
-function splitSource(v){const m=clean(v).match(/^(.*?)[（(]([^（()）]{1,14})[）)][。.]?$/);return m?[clean(m[1]),clean(m[2])]:[clean(v),""]}
+// 句末括号只有是信息来源时才拆成标签；「自身双生武魂（严守昊天锤秘密）」这类括号是内容本身
+const SOURCE_WORD_RE=/^(?:亲历|目击|听闻|传闻|感知|可靠消息|公开常识|公开信息|公开|既有关系|职责渠道|职责|告知|推断|亲历核验)(?:[\/、／](?:亲历|目击|听闻|传闻|感知|可靠消息|公开常识|公开|既有关系|职责渠道|职责|告知|推断))*$/;
+function splitSource(v){const m=clean(v).match(/^(.*?)[（(]([^（()）]{1,14})[）)][。.]?$/);return m&& SOURCE_WORD_RE.test(clean(m[2]))?[clean(m[1]),clean(m[2])]:[clean(v),""]}
 function blockValue(v,withSrc){const s=clean(v);if(ptBlank(s))return h("span","pt-none",s||"无");if(withSrc){const [t,src]=splitSource(s);return h("span","",t,src?chip(src,"violet"):null)}return document.createTextNode(s)}
 // 世界进程的状态格做成标签
 const BLOCK_STATUS_RE=/^(?:未触发|未到达|临近酝酿|酝酿中|条件满足待触发|正在发生|刚完成|已进入后续|尚未发生|进行中)$/;
@@ -139,10 +141,10 @@ function parseList(text){const items=[];for(const raw of clean(text).split("\n")
 function parseKnowledge(text){const rows=[],notes=[];for(const raw of clean(text).split("\n")){const line=clean(raw);if(!line)continue;const m=line.match(/^(.{1,14}?)当前掌握(?:的)?信息[：:]\s*(.*)$/);if(m)rows.push({name:clean(m[1]),items:m[2].split(/[；;]/).map(clean).filter(Boolean).map(item=>{const s=item.match(/^(.*?)[（(]([^（()）]{1,12})[）)][。.]?$/);return s?{text:clean(s[1]),src:clean(s[2])}:{text:item.replace(/[。.]$/,""),src:""}})});else notes.push(...line.split(/(?<=。)(?![”」』])/).map(clean).filter(Boolean))}return{rows,notes}}
 // 实力标尺：常见 / 优秀 / 顶尖三段区间 + 场景参照里点名的代表人物
 function tierRow(text,label){return clean(text).split("\n").map(clean).find(l=>new RegExp("^[-*•]?\\s*"+label+"\\s*[｜|]").test(l))||""}
-function parseLadder(audit){const rng=t=>{const s=clean(t);let m=s.match(/(\d+)\s*级?\s*(?:至|到|~|～|—|–|-)\s*(\d+)\s*级/);if(m)return[+m[1],+m[2]];m=s.match(/从\s*(\d+)\s*级开始[\s\S]*?(?:最高|到)[^\d]{0,6}(\d+)\s*级/);if(m)return[+m[1],+m[2]];m=s.match(/(\d+)\s*级/);return m?[+m[1],+m[1]]:null};const tiers=[["常见","常见区间","common"],["优秀","优秀区间","excellent"],["顶尖","顶尖区间","top"]].map(([label,key,id])=>({label,id,range:rng(audit[key]||tierRow(audit["环境实力坐标"],label))})).filter(t=>t.range&& t.range[1]>=t.range[0]);if(tiers.length<2)return null;let lo=Math.min(...tiers.map(t=>t.range[0])),hi=Math.max(...tiers.map(t=>t.range[1]));// 人名：先认已知人物（「由唐凌雪（21级）」取唐凌雪），认不出再去掉开头的介词
+function parseLadder(audit,extra=[]){const rng=t=>{const s=clean(t);let m=s.match(/(\d+)\s*级?\s*(?:至|到|~|～|—|–|-)\s*(\d+)\s*级/);if(m)return[+m[1],+m[2]];m=s.match(/从\s*(\d+)\s*级开始[\s\S]*?(?:最高|到)[^\d]{0,6}(\d+)\s*级/);if(m)return[+m[1],+m[2]];m=s.match(/(\d+)\s*级/);return m?[+m[1],+m[1]]:null};const tiers=[["常见","常见区间","common"],["优秀","优秀区间","excellent"],["顶尖","顶尖区间","top"]].map(([label,key,id])=>({label,id,range:rng(audit[key]||tierRow(audit["环境实力坐标"],label))})).filter(t=>t.range&& t.range[1]>=t.range[0]);if(tiers.length<2)return null;let lo=Math.min(...tiers.map(t=>t.range[0])),hi=Math.max(...tiers.map(t=>t.range[1]));// 人名：先认已知人物（「由唐凌雪（21级）」取唐凌雪），认不出再去掉开头的介词
  const known=[...allPeople().map(p=>p.name),...(state.game?.evidence||[]).map(e=>e.name),state.snapshot?.persona].filter(Boolean).sort((x,y)=>y.length-x.length);
  const nameOf=raw=>known.find(n=>raw.endsWith(n))||raw.replace(/^(?:由|是|为|如|和|与|及|被|让|将|对|向|比|像)+/,"");
- const marks=[];const text=AUDIT_LABELS.map(k=>audit[k]||"").join("\n");for(const m of text.matchAll(/([一-龥·]{2,7})[（(]\s*(\d+)\s*级/g)){const level=+m[2],name=nameOf(m[1]);if(name.length<2||marks.some(x=>x.name===name)||level<lo-3||level>hi+3)continue;marks.push({name,level})}for(const x of marks){lo=Math.min(lo,x.level);hi=Math.max(hi,x.level)}return{tiers,marks,lo:lo-1,hi:hi+2}}
+ const marks=[];const text=AUDIT_LABELS.map(k=>audit[k]||"").join("\n");for(const m of text.matchAll(/([一-龥·]{2,7})[（(]\s*(\d+)\s*级/g)){const level=+m[2],name=nameOf(m[1]);if(name.length<2||marks.some(x=>x.name===name)||level<lo-3||level>hi+3)continue;marks.push({name,level})}for(const x of extra)if(!marks.some(mk=>mk.name===x.name))marks.push(x);for(const x of marks){lo=Math.min(lo,x.level);hi=Math.max(hi,x.level)}return{tiers,marks,lo:lo-1,hi:hi+2}}
 
 // 人物身份速查：「姓名｜在场或不在场｜身份：…｜所在：…」，每人一行
 function parseRoster(text){const out=new Map();const src=clean(text);if(ptBlank(src))return out;for(const line of src.split("\n").map(clean).filter(Boolean)){const p=line.split(/\s*[｜|]\s*/);if(p.length<2)continue;const name=characterName(p[0].replace(/^[-*•]\s*/,""));if(!name)continue;const row={name,present:/^在场/.test(p[1]),role:"",where:""};for(const part of p.slice(1)){const m=part.match(/^(身份|所在)\s*[：:]\s*(.*)$/);if(m)row[m[1]==="身份"?"role":"where"]=clean(m[2])}out.set(name,row)}return out}
@@ -220,7 +222,7 @@ function renderOverview(){const g=state.game,root=h("div","pt-scroll pt-ov");roo
  const route=plate("pt-route",plateHead("route","本轮推进","ROUTE"));const track=h("div","pt-track");
  // 落点节点只留标签：落点全文就在轨道下方
  for(const [label,text] of [["世界进程",g.world],["本轮推进",g.progress],["本轮落点",""]]){const n=btn("pt-track-node",{goto:"ruling:route"},h("b","",label),text?h("span","",(g.v2?blockSummary(text):firstSentence(text,""))||"—"):null);if(text)n.title=clean(text);track.append(n)}
- route.append(track);if(g.landing.land)route.append(prose(g.landing.land,"pt-landing"));
+ route.append(track);if(g.landing.land)route.append(prose(g.landing.land,"pt-landing"));const ovc=overviewChanges(g);if(ovc)route.append(ovc);
  if(g.landing.next)route.append(nextCallout(g));
  const m=g.characters,cast=plate("pt-cast",plateHead("users","在场人物","CAST",chip(String(g.people.length),"blue")));const list=h("div","pt-cast-list");for(const p of g.people)list.append(personToken(p));if(!g.people.length)list.append(h("p","pt-empty-inline","本轮没有人物演出资料"));cast.append(list);
  if(m.away.length){cast.append(lbl("person-walking-arrow-right","离场 "+m.away.length),h("div","pt-cast-list",m.away.map(p=>personToken(p))));cast.lastChild.previousSibling.classList.add("pt-cast-sep")}
@@ -274,17 +276,106 @@ function detailHead(ic,title,code,tools){return h("header","pt-dh",hexIcon(ic),h
 function readout(ic,title,code,text){if(ptBlank(text))return null;const lead=firstSentence(text),rest=clean(clean(text).slice(lead.length));return plate("pt-readout",plateHead(ic,title,code),prose(lead,"pt-prose pt-lead"),rest?prose(rest):null)}
 function frag(...els){const f=document.createDocumentFragment();f.append(...els.filter(Boolean));return f}
 
+
+/* ===== 分项格式的图形化部件：数据形状对不上时退回 renderBlock 列表 ===== */
+function blockMap(text){const m=new Map();for(const e of parseBlock(text)){if(e.type==="kv")m.set(e.key,{value:e.value,entries:[]});else if(e.type==="group")m.set(e.name,{value:"",entries:e.entries,sub:e.sub})}return m}
+function entryText(e){return e.type==="kv"?e.key+"："+e.value:e.type==="row"?e.cells.join("｜"):e.text||""}
+function fieldLines(m,key){const f=m.get(key);if(!f)return[];const lines=f.entries.length?f.entries.map(entryText):[f.value];return lines.map(clean).filter(x=>!ptBlank(x))}
+function fieldText(m,key){return clean(m.get(key)?.value||"")}
+function splitList(text){return clean(text).split(/[；;]\s*/).map(x=>clean(x).replace(/[。.]$/,"")).filter(x=>!ptBlank(x))}
+function noneLine(){return h("p","pt-empty-inline","无")}
+function extraLines(m,known){return [...m.keys()].filter(k=>!known.includes(k)).map(k=>h("p","pt-lane-extra",h("b","",k+"："),fieldLines(m,k).join("；")||"无"))}
+// 场景：舞台卡
+function sceneStage(text){const m=blockMap(text);if(!m.has("时间")&& !m.has("地点"))return renderBlock(parseBlock(text));const card=h("div","pt-stagecard");
+ const time=fieldText(m,"时间"),hm=(time.match(/(\d{1,2}:\d{2})/)||[])[1]||"",date=clean(time.replace(hm,""));
+ const where=fieldText(m,"地点").split(/\s*[·•>＞]\s*/).map(clean).filter(Boolean);
+ card.append(h("div","pt-stage-top",hm?h("div","pt-stage-clock",h("b","",hm),date?h("small","",date):null):null,h("div","pt-stage-path",where.map((p,i)=>h("span","",i?icon("angle-right"):icon("location-dot"),p)))));
+ const run=fieldText(m,"场所运行");if(!ptBlank(run))card.append(h("p","pt-stage-run",icon("gears"),run));
+ const mood=splitList(fieldText(m,"现场状态"));if(mood.length)card.append(h("div","pt-stage-mood",mood.map(x=>chip(x))));
+ const cast=fieldLines(m,"在场人物");if(cast.length)card.append(h("div","pt-stage-cast",cast.map(line=>{const mm=line.match(/^(.*?)[：:]\s*(.*)$/),who=clean(mm?mm[1]:line),state=clean(mm?mm[2]:"");const names=who.replace(/等.*$/,"").split(/[、，,]/).map(clean).filter(n=>n.length>=2&& n.length<=6);return h("div","pt-stage-who",h("span","pt-stage-avatars",(names.length?names:[who]).slice(0,6).map(n=>avatar(n,kindOf(n),28))),h("span","",h("b","",who),state?h("small","",state):null))})));
+ const gap=fieldText(m,"客观落差");if(!ptBlank(gap))card.append(h("div","pt-gap",icon("scale-unbalanced"),h("b","","客观落差"),h("p","",gap)));
+ card.append(...extraLines(m,["时间","地点","场所运行","现场状态","在场人物","客观落差"]));return card}
+// 关系与权限：头像—说明—头像
+function relationMap(text){const b=parseBlock(text),rows=b.filter(e=>e.type==="row"&& e.cells.length>=2);if(!rows.length)return renderBlock(b);
+ const end=n=>/^(彼此|互相|相互)$/.test(n)?h("span","pt-rel-node",hexIcon("arrows-left-right",30),h("b","",n)):h("span","pt-rel-node",avatar(n,kindOf(n),30),h("b","",n));
+ return h("div","pt-rels",rows.map(r=>{const [a,b2,...rest]=r.cells;return h("div","pt-relcard",end(a),h("span","pt-rel-edge",h("i","",rest.join("；")),h("span","pt-rel-line")),end(b2))}),b.filter(e=>e.type!=="row").map(e=>h("p","pt-lane-extra",entryText(e))))}
+// 各方信息：每人一张情报卡，五条信息通道
+const INTEL_LANES=[["已掌握","eye","known"],["本轮获得","wand-magic-sparkles","new"],["不知道","eye-slash","unknown"],["有限判断","brain","judge"],["当前","hourglass-half","now"]];
+function intelCards(text){const b=parseBlock(text),groups=b.filter(e=>e.type==="group");if(!groups.length)return renderBlock(b,{src:true});
+ return h("div","pt-intel-cards",groups.map(g=>{const kv=new Map(g.entries.filter(e=>e.type==="kv").map(e=>[e.key,e.value]));const card=h("article","pt-intelcard",h("header","",avatar(g.name,kindOf(g.name),36),h("b","",g.name),g.sub?h("small","",g.sub):null));card.dataset.player=isPlayer(g.name)?"true":"false";
+  for(const [key,ic,tone] of INTEL_LANES){if(!kv.has(key))continue;const lane=h("div","pt-lane",h("span","pt-lane-h",icon(ic),key));lane.dataset.tone=tone;const items=splitList(kv.get(key));if(!items.length)lane.append(h("span","pt-none","无"));for(const it of items){const [t,src]=splitSource(it);lane.append(h("span","pt-lane-item",t,src?chip(src,"violet"):null))}card.append(lane)}
+  for(const e of g.entries)if(e.type!=="kv"||!INTEL_LANES.some(l=>l[0]===e.key))card.append(h("p","pt-lane-extra",entryText(e)));return card}),b.filter(e=>e.type!=="group").map(e=>h("p","pt-lane-extra",entryText(e))))}
+// 行动检定：结果印章 + 条件清单
+function checkPanel(text){const m=blockMap(text);if(!m.has("行动")&& !m.has("完成程度"))return renderBlock(parseBlock(text));const done=fieldText(m,"完成程度"),tone=/失败/.test(done)?"fail":/受阻/.test(done)?"blocked":/部分/.test(done)?"partial":"ok";
+ const head=done.split(/[，,；;（(]/)[0],why=clean(done.slice(head.length).replace(/^[，,；;]\s*/,"")),panel=h("div","pt-check");panel.dataset.tone=tone;
+ panel.append(h("div","pt-check-head",h("div","",h("p","pt-lbl",icon("person-running"),"行动"),h("p","pt-check-act",fieldText(m,"行动")||"—")),h("div","pt-stamp",icon(tone==="ok"?"circle-check":tone==="fail"?"circle-xmark":"circle-half-stroke"),h("b","",head||"—"))));
+ if(why)panel.append(h("p","pt-check-why",why));
+ const req=splitList(fieldText(m,"能力与条件"));if(req.length)panel.append(h("ul","pt-check-req",req.map(x=>h("li","",icon("check"),x))));
+ const cost=fieldText(m,"消耗"),res=fieldText(m,"直接结果");panel.append(h("div","pt-check-foot",h("span","",icon("bolt"),h("b","","消耗"),ptBlank(cost)?"无":cost),!ptBlank(res)?h("span","",icon("arrow-right"),h("b","","结果"),res):null));
+ panel.append(...extraLines(m,["行动","能力与条件","完成程度","消耗","直接结果"]));return panel}
+// 影响与传播：现场变化 + 传播信号
+const MEDIA_ICON=[[/口|传|议论|谈|说/,"comments"],[/声|响|喊|叫|惊呼/,"volume-high"],[/视|目|看|光/,"eye"],[/消息|信|通知|公告|文书/,"envelope"],[/震|爆|烟|尘|火/,"burst"]];
+const RECV_TONE=[["可靠消息","green"],["目击","blue"],["感知","violet"],["传闻","gold"],["听闻","gold"]];
+function ripplePanel(text){const m=blockMap(text);if(!m.has("实际变化")&& !m.has("传播"))return renderBlock(parseBlock(text));const box=h("div","pt-ripple");
+ const changes=fieldLines(m,"实际变化");box.append(h("div","pt-ripple-core",h("p","pt-lbl",icon("bullseye"),"现场变化"),changes.length?h("ul","pt-deltas",changes.map(x=>h("li","",icon("caret-right"),x))):noneLine()));
+ const keep=fieldLines(m,"维持原状");box.append(h("p","pt-ripple-keep",icon("lock"),h("b","","维持原状"),keep.join("；")||"无"));
+ const spread=fieldLines(m,"传播"),sig=h("div","pt-signals",h("p","pt-lbl",icon("tower-broadcast"),"传播"));
+ if(!spread.length)sig.append(noneLine());for(const line of spread){const c=line.split(/\s*[｜|]\s*/).map(clean);if(c.length<2){sig.append(h("p","pt-lane-extra",line));continue}const [info,media,range,recv]=c,tone=RECV_TONE.find(([k])=>(recv||"").includes(k))?.[1]||"";sig.append(h("div","pt-signal",hexIcon((MEDIA_ICON.find(([re])=>re.test(media||""))||[0,"tower-broadcast"])[1],30),h("div","",h("b","",info),h("small","",[media,range].filter(Boolean).join(" · "))),recv?chip(recv,tone):null))}
+ box.append(sig,...extraLines(m,["实际变化","维持原状","传播"]));return box}
+// 世界进程：泳道，和玩家路线的关系分交汇 / 联系 / 分流
+// 关系词只认格子开头：「走独立特优生路线，直接跳过……」里的「直接」不是关系
+const RELATION_KIND=[[/^直接(?:交汇|介入|相遇|接触)?/,"merge","code-merge"],[/^间接(?:联系|影响)?/,"link","link"],[/^(?:暂时分流|分流|无交集)/,"split","code-fork"]];
+function worldLanes(text){const b=parseBlock(text),rows=b.filter(e=>e.type==="row");if(!rows.length)return renderBlock(b);
+ return h("div","pt-lanes",rows.map(r=>{const [name,...rest]=r.cells,status=rest.find(c=>BLOCK_STATUS_RE.test(c))||"",rel=rest.find(c=>c!==status&& RELATION_KIND.some(([re])=>re.test(c)))||"",kind=RELATION_KIND.find(([re])=>re.test(rel)),progress=rest.filter(c=>c!==status&& c!==rel).join("；");
+  const lane=h("div","pt-worldlane",h("span","pt-wl-dot"),h("div","pt-wl-body",h("div","pt-wl-head",h("b","",name),status?chip(status,"blue"):null),progress?h("p","",progress):null,rel?h("p","pt-wl-rel",icon(kind?kind[2]:"link"),rel):null));lane.dataset.rel=kind?kind[1]:"";if(/玩家/.test(name)||isPlayer(name))lane.dataset.player="true";return lane}),b.filter(e=>e.type!=="row").map(e=>h("p","pt-lane-extra",entryText(e))))}
+// 本轮推进：承接 → 各步（动作 ↳ 变化），主体与目标在头部
+function pushTrack(text){const b=parseBlock(text),steps=b.filter(e=>e.type==="step");if(!steps.length)return renderBlock(b);const kv=new Map(b.filter(e=>e.type==="kv").map(e=>[e.key,e.value])),box=h("div","pt-push");
+ const who=clean(kv.get("主体")),goal=clean(kv.get("目标"));if(who||goal)box.append(h("div","pt-push-goal",who?h("span","",avatar(who,kindOf(who),28),h("b","",who)):null,goal?h("span","pt-push-target",icon("flag"),goal):null));
+ const track=h("ol","pt-pushtrack");if(!ptBlank(kv.get("承接")))track.append(h("li","pt-push-start",h("span","pt-push-node",icon("play")),h("div","",h("small","","承接"),h("p","",kv.get("承接")))));
+ for(const s of steps){const [act,...chg]=s.text.split(/\s*(?:→|->|⇒)\s*/);track.append(h("li","",h("span","pt-push-node",s.n),h("div","",h("p","",act),chg.length?h("small","pt-push-chg",icon("arrow-turn-down"),chg.join(" → ")):null)))}
+ box.append(track,...b.filter(e=>e.type!=="step"&& !(e.type==="kv"&& ["承接","主体","目标"].includes(e.key))).map(e=>h("p","pt-lane-extra",entryText(e))));return box}
+// 落点：当前局面 + 已完成标签 + 分类变化（从 → 到）
+const CHANGE_ICON={位置:"location-dot",物品:"bag-shopping",关系:"handshake",信息:"lightbulb",流程:"list-ol",环境:"cloud-sun",地点结构:"building",伤势:"heart-crack",资源:"coins"};
+function changeRows(lines){return lines.map(line=>{const mm=line.match(/^([^：:]{1,6})[：:]\s*(.*)$/),cat=mm?clean(mm[1]):"",val=clean(mm?mm[2]:line),parts=val.split(/\s*(?:→|->|⇒)\s*/);return h("div","pt-diff-row",hexIcon(CHANGE_ICON[cat]||"pen",28),h("div","",cat?h("small","",cat):null,parts.length>1?h("p","pt-diff-move",h("span","",parts[0]),icon("arrow-right-long"),h("b","",parts.slice(1).join(" → "))):h("p","",val)))})}
+function landingPanel(text){const m=blockMap(text);if(!m.has("当前局面")&& !m.has("已变化"))return renderBlock(parseBlock(text));const box=h("div","pt-landpanel");
+ const now=fieldText(m,"当前局面");if(!ptBlank(now))box.append(prose(now,"pt-landing"));
+ const done=splitList(fieldText(m,"已完成")).flatMap(x=>x.split(/[、，,]/)).map(clean).filter(Boolean);if(done.length)box.append(h("div","pt-done",h("p","pt-lbl",icon("circle-check"),"已完成"),h("div","pt-done-list",done.map(x=>chip(x,"green")))));
+ const ch=fieldLines(m,"已变化");box.append(h("div","pt-diff",h("p","pt-lbl",icon("code-compare"),"已变化"),...(ch.length?changeRows(ch):[noneLine()])));
+ box.append(...extraLines(m,["当前局面","已完成","已变化"]));return box}
+function nextCards(text){const m=blockMap(text),lines=m.has("场外接入条件")?fieldLines(m,"场外接入条件"):parseBlock(text).map(entryText).filter(x=>!ptBlank(x));if(!lines.length)return noneLine();return h("div","pt-nexts",lines.map(x=>h("div","pt-nextcard",icon("door-open"),h("p","",x))))}
+// 场景参照：群体与规则、年龄标尺、眼界卡、评价引述
+function ageOf(t){const m=clean(t).match(/(\d+)\s*岁(?:\s*零?\s*(\d+)\s*个?月)?/);return m?+m[1]+(m[2]?+m[2]/12:0):null}
+function ageLadder(m){const rng=t=>{const r=clean(t).match(/(\d+)\s*岁?\s*(?:至|到|~|～|—|–|-)\s*(\d+)\s*岁/);return r?[+r[1],+r[2]]:null};const usual=rng(fieldText(m,"通常")),edge=rng(fieldText(m,"规则边界"));if(!usual&& !edge)return null;
+ const tiers=[edge&&{label:"规则边界",id:"common",range:edge},usual&&{label:"通常",id:"excellent",range:usual}].filter(Boolean);const marks=[];for(const mm of fieldText(m,"代表").matchAll(/([一-龥·]{2,6})[（(]([^）)]*岁[^）)]*)[）)]/g)){const a=ageOf(mm[2]);if(a!==null)marks.push({name:mm[1],level:a,label:mm[2]})}
+ let lo=Math.min(...tiers.map(t=>t.range[0]),...marks.map(x=>x.level)),hi=Math.max(...tiers.map(t=>t.range[1]+1),...marks.map(x=>x.level));return{tiers,marks,lo:Math.floor(lo)-1,hi:Math.ceil(hi)+1}}
+function auditGroup(a){const g=blockMap(a["场景参照群体"]),age=blockMap(a["参照年龄区间"]),box=h("div","pt-auditgroup");
+ const name=fieldText(g,"群体")||clean(a["场景参照群体"]).split("\n")[0];box.append(h("div","pt-ag-head",hexIcon("people-group",40),h("div","",h("b","",name),fieldText(g,"采用理由")?h("p","",fieldText(g,"采用理由")):null)));
+ const rules=fieldLines(g,"适用规则");if(rules.length)box.append(h("div","pt-ag-rules",rules.map(x=>h("span","pt-rulechip",icon("gavel"),x))));
+ const lad=ageLadder(age);if(lad)box.append(h("div","pt-sub",h("p","pt-lbl",icon("cake-candles"),"年龄区间"),ladderWidget(lad,{unit:"岁",offset:0,markText:mk=>mk.label})));
+ else if(!ptBlank(a["参照年龄区间"]))box.append(h("div","pt-sub",h("p","pt-lbl",icon("cake-candles"),"年龄区间"),renderBlock(parseBlock(a["参照年龄区间"]))));
+ box.append(...extraLines(g,["群体","采用理由","适用规则"]));return box}
+const LENS_ROWS=[["熟悉","book-open-reader"],["识别","magnifying-glass"],["判断","gavel"]];
+function lensCards(text){const b=parseBlock(text),groups=b.filter(e=>e.type==="group");if(!groups.length)return renderBlock(b);
+ return h("div","pt-lenses",groups.map(g=>{const kv=new Map(g.entries.filter(e=>e.type==="kv").map(e=>[e.key,e.value]));return h("article","pt-lens",h("header","",avatar(g.name,kindOf(g.name),32),h("div","",h("b","",g.name),g.sub?h("small","",g.sub):null)),...LENS_ROWS.filter(([k])=>kv.has(k)).map(([k,ic])=>h("p","pt-lens-row",icon(ic),h("em","",k),kv.get(k))),...g.entries.filter(e=>e.type!=="kv"||!LENS_ROWS.some(l=>l[0]===e.key)).map(e=>h("p","pt-lane-extra",entryText(e))))}),b.filter(e=>e.type!=="group").map(e=>h("p","pt-lane-extra",entryText(e))))}
+function verdictPanel(text){const m=blockMap(text);if(!m.has("真实资料")&& !m.has("各方评价"))return renderBlock(parseBlock(text));const box=h("div","pt-verdict");
+ box.append(h("div","pt-verdict-pos",icon("crown"),h("div","",h("b","",fieldText(m,"真实资料")||"—"),fieldText(m,"客观位置")?h("p","",fieldText(m,"客观位置")):null)));
+ const seen=fieldText(m,"可见表现");if(!ptBlank(seen))box.append(h("div","pt-sub",h("p","pt-lbl",icon("eye"),"可见表现"),h("div","pt-stage-mood",seen.split(/[，,；;]/).map(clean).filter(Boolean).map(x=>chip(x,"blue")))));
+ const evals=fieldLines(m,"各方评价");if(evals.length)box.append(h("div","pt-quotes",evals.map(line=>{const mm=line.match(/^([^：:]{1,20})[：:]\s*(.*)$/),who=clean(mm?mm[1]:""),say=clean(mm?mm[2]:line),lead=who.split(/[与和、]/)[0];return h("blockquote","pt-quote",who?h("header","",avatar(lead,kindOf(lead),26),h("b","",who)):null,h("p","",say))})));
+ box.append(...extraLines(m,["真实资料","客观位置","可见表现","各方评价"]));return box}
+function playerLevelMark(a){const lv=(fieldText(blockMap(a["表象实力与相对评价"]),"真实资料").match(/(\d+)\s*级/)||[])[1];const name=state.snapshot?.persona;return lv&& name?[{name,level:+lv}]:[]}
+function overviewChanges(g){if(!g.v2)return null;const lines=fieldLines(blockMap(g.route["落点"]),"已变化");if(!lines.length)return null;return h("div","pt-ov-changes",lines.map(line=>{const mm=line.match(/^([^：:]{1,6})[：:]\s*(.*)$/),cat=mm?clean(mm[1]):"";return h("span","pt-ov-change",icon(CHANGE_ICON[cat]||"pen"),cat?h("b","",cat):null,clean(mm?mm[2]:line))}))}
+
 /* ===== 裁定 ===== */
 function rulingItems(){const g=state.game,items=[{id:"current",icon:"location-crosshairs",label:"当前裁定"},{id:"knowledge",icon:"eye",label:"认知边界"},{id:"route",icon:"route",label:"路线推进"}];const changes=parseList(g.butterfly["本轮已成立的变化"]).length;if(clean(g.ruling.butterfly_analysis))items.push({id:"butterfly",icon:"wind",label:"蝴蝶效应",count:changes||undefined});items.push({id:"audit",icon:"ruler-combined",label:"场景参照"},{id:"modules",icon:"puzzle-piece",label:"模块结果",count:g.moduleHits.length||undefined});if(clean(g.routing.battle_adjudication))items.push({id:"battle",icon:"khanda",label:"战斗裁断"});if(clean(g.ruling.dm_set))items.push({id:"plan",icon:"chess",label:"后台推演"});return items}
-function renderCurrentRuling(){const s=state.game.scene;if(state.game.v2){const list=[blockPlate("mountain-city","场景","SCENE",s["场景"]),blockPlate("bullseye","行动检定","CHECK",s["行动检定"]),blockPlate("tower-broadcast","影响与传播","ECHO",s["影响与传播"])].filter(Boolean);if(clean(s.__unparsed))list.push(plate("",plateHead("circle-question","未归类内容",""),prose(s.__unparsed)));return frag(detailHead("location-crosshairs","当前裁定","RULING"),list.length?h("div","pt-stack",list):emptyState("location-crosshairs","当前没有可显示的客观裁定"))}
+function renderCurrentRuling(){const s=state.game.scene;if(state.game.v2){const P=(ic,t,c,text,fn)=>ptBlank(text)?null:plate("",plateHead(ic,t,c),fn(text));const list=[P("mountain-city","场景","SCENE",s["场景"],sceneStage),P("bullseye","行动检定","CHECK",s["行动检定"],checkPanel),P("tower-broadcast","影响与传播","ECHO",s["影响与传播"],ripplePanel)].filter(Boolean);if(clean(s.__unparsed))list.push(plate("",plateHead("circle-question","未归类内容",""),prose(s.__unparsed)));return frag(detailHead("location-crosshairs","当前裁定","RULING"),list.length?h("div","pt-stack",list):emptyState("location-crosshairs","当前没有可显示的客观裁定"))}
  const list=[readout("mountain-city","场域与生态","FIELD",s["场域与生态构建"]),readout("bullseye","能力与筹码检验","CHECK",s["内在能力与筹码检验"]),readout("earth-asia","社会与自然回响","ECHO",s["外在社会与自然回响"])].filter(Boolean);if(clean(s.__unparsed))list.push(plate("",plateHead("circle-question","未归类内容",""),prose(s.__unparsed)));return frag(detailHead("location-crosshairs","当前裁定","RULING"),list.length?h("div","pt-stack",list):emptyState("location-crosshairs","当前没有可显示的客观裁定"))}
-function renderKnowledge(){const s=state.game.scene;if(state.game.v2){const list=[blockPlate("handshake","关系与权限","BOND",s["关系与权限"]),blockPlate("eye","各方信息","INTEL",s["各方信息"],{avatar:true,src:true})].filter(Boolean);return frag(detailHead("eye","认知边界","KNOW"),list.length?h("div","pt-stack",list):emptyState("eye","本轮没有认知边界资料"))}
+function renderKnowledge(){const s=state.game.scene;if(state.game.v2){const P=(ic,t,c,text,fn)=>ptBlank(text)?null:plate("",plateHead(ic,t,c),fn(text));const list=[P("handshake","关系与权限","BOND",s["关系与权限"],relationMap),P("eye","各方信息","INTEL",s["各方信息"],intelCards)].filter(Boolean);return frag(detailHead("eye","认知边界","KNOW"),list.length?h("div","pt-stack",list):emptyState("eye","本轮没有认知边界资料"))}
  const k=parseKnowledge(s["认知与权限边界"]),list=[];
  if(k.notes.length)list.push(plate("",plateHead("handshake","关系与权限","BOND"),h("ul","pt-notes",k.notes.map(n=>h("li","",n)))));
  if(k.rows.length){list.push(plate("",plateHead("eye","各方掌握的信息","INTEL"),h("div","pt-know",k.rows.map(r=>h("div","pt-know-row",avatar(r.name,kindOf(r.name),32),h("div","",h("b","",r.name),h("ul","pt-know-items",r.items.map(it=>h("li","",it.text,it.src?chip(it.src,"violet"):null)))))))))}
  const blind=readout("eye-slash","信息盲区","BLIND",s["信息盲区与认知边界"]);if(blind)list.push(blind);
  return frag(detailHead("eye","认知边界","KNOW"),list.length?h("div","pt-stack",list):emptyState("eye","本轮没有认知边界资料"))}
-function renderRouteDetail(){const g=state.game;if(g.v2){const list=[blockPlate("globe","世界进程","WORLD",g.route["世界进程"]),blockPlate("route","本轮推进","ROUTE",g.route["本轮推进"]),blockPlate("flag-checkered","落点","LANDING",g.route["落点"]),blockPlate("door-open","后续接力","NEXT",g.route["后续接力"])].filter(Boolean);if(clean(g.route.__unparsed))list.push(plate("",plateHead("circle-question","未归类内容",""),prose(g.route.__unparsed)));return frag(detailHead("route","路线推进","ROUTE"),list.length?h("div","pt-stack",list):emptyState("route","本轮没有路线推进资料"))}
+function renderRouteDetail(){const g=state.game;if(g.v2){const P=(ic,t,c,text,fn)=>ptBlank(text)?null:plate("",plateHead(ic,t,c),fn(text));const list=[P("globe","世界进程","WORLD",g.route["世界进程"],worldLanes),P("route","本轮推进","ROUTE",g.route["本轮推进"],pushTrack),P("flag-checkered","落点","LANDING",g.route["落点"],landingPanel),P("door-open","后续接力","NEXT",g.route["后续接力"],nextCards)].filter(Boolean);if(clean(g.route.__unparsed))list.push(plate("",plateHead("circle-question","未归类内容",""),prose(g.route.__unparsed)));return frag(detailHead("route","路线推进","ROUTE"),list.length?h("div","pt-stack",list):emptyState("route","本轮没有路线推进资料"))}
  const track=h("div","pt-vtrack");for(const [label,text,end] of [["世界进程与路线关系",g.route["世界进程与路线关系"]],["本轮剧情推进",g.progress],["本轮落点",g.landing.land,true]]){const n=h("div","pt-vnode",lbl("",label),prose(clean(text)||"暂无"));if(end)n.dataset.end="true";track.append(n)}
  const out=[detailHead("route","路线推进","ROUTE"),track];if(g.landing.next)out.push(nextCallout(g));if(clean(g.route.__unparsed))out.push(plate("",plateHead("circle-question","未归类内容",""),prose(g.route.__unparsed)));return frag(...out)}
 function renderButterfly(){const b=state.game.butterfly,list=[],ol=items=>h("ol","pt-ol",items.map((x,i)=>h("li","",hexNum(i+1,24),h("span","",x))));
@@ -293,14 +384,15 @@ function renderButterfly(){const b=state.game.butterfly,list=[],ol=items=>h("ol"
  const spread=parseList(b["可能的传播路径"]);if(spread.length)list.push(plate("",plateHead("diagram-project","可能的传播路径","SPREAD"),ol(spread)));
  if(clean(b.__unparsed))list.push(plate("",plateHead("circle-question","未归类内容",""),prose(b.__unparsed)));
  return frag(detailHead("wind","蝴蝶效应","BUTTERFLY"),h("div","pt-stack",list))}
-function ladderWidget(lad){const span=lad.hi-lad.lo,pos=v=>((v-lad.lo)/span*100).toFixed(2)+"%";const bar=h("div","pt-ladder-bar");
- for(const t of lad.tiers){const seg=h("div","pt-ladder-seg",h("span","",t.label+" ",h("i","",t.range[0]===t.range[1]?t.range[0]+"级":t.range[0]+"–"+t.range[1])));seg.dataset.tier=t.id;seg.style.left=pos(t.range[0]);seg.style.width=((t.range[1]+1-t.range[0])/span*100).toFixed(2)+"%";bar.append(seg)}
+function ladderWidget(lad,opt={}){const unit=opt.unit||"级",off=opt.offset??.5,markText=opt.markText||(mk=>mk.level+unit),span=lad.hi-lad.lo,pos=v=>((v-lad.lo)/span*100).toFixed(2)+"%";const bar=h("div","pt-ladder-bar");
+ // 区间互相重叠（年龄的「规则边界」包着「通常」）时，后一段的标签往下错开一行
+ let stacked=false,prevEnd=-Infinity;for(const t of lad.tiers){const seg=h("div","pt-ladder-seg",h("span","",t.label+" ",h("i","",t.range[0]===t.range[1]?t.range[0]+unit:t.range[0]+"–"+t.range[1]+(unit==="级"?"":unit))));seg.dataset.tier=t.id;seg.style.left=pos(t.range[0]);seg.style.width=((t.range[1]+1-t.range[0])/span*100).toFixed(2)+"%";if(t.range[0]<=prevEnd){seg.dataset.stack="1";stacked=true}prevEnd=Math.max(prevEnd,t.range[1]);bar.append(seg)}
  // 代表人物按等级钉在尺上；靠得太近的错开高度
- const rows=[];const marks=[...lad.marks].sort((x,y)=>x.level-y.level);for(const mk of marks){const x=(mk.level+.5-lad.lo)/span;let row=0;while(rows[row]!==undefined&& x-rows[row]<.14)row++;rows[row]=x;const pin=h("div","pt-ladder-pin",h("b","",mk.name,h("i","",mk.level+"级")));pin.style.left=(x*100).toFixed(2)+"%";pin.style.setProperty("--stem",(8+row*24)+"px");if(isPlayer(mk.name))pin.dataset.kind="player";bar.append(pin)}
- const box=h("div","pt-ladder",bar);box.style.setProperty("--pin-pad",(34+Math.max(0,rows.length-1)*24)+"px");return box}
+ const rows=[];const marks=[...lad.marks].sort((x,y)=>x.level-y.level);for(const mk of marks){const x=(mk.level+off-lad.lo)/span;let row=0;while(rows[row]!==undefined&& x-rows[row]<.14)row++;rows[row]=x;const pin=h("div","pt-ladder-pin",h("b","",mk.name,h("i","",markText(mk))));pin.style.left=(x*100).toFixed(2)+"%";pin.style.setProperty("--stem",(8+row*24)+"px");if(isPlayer(mk.name))pin.dataset.kind="player";bar.append(pin)}
+ const box=h("div","pt-ladder",bar);box.style.setProperty("--pin-pad",(34+Math.max(0,rows.length-1)*24)+"px");if(stacked)box.dataset.stacked="true";return box}
 function renderAuditDetail(){const a=state.game.audit,list=[];
  // 分项格式：区间在【环境实力坐标】的表行里，各栏按字段渲染
- if(!clean(a["常见区间"])&& /[｜|]/.test(a["环境实力坐标"]||"")){const lad=parseLadder(a);list.push(...[blockPlate("people-group","参照群体","GROUP",a["场景参照群体"]),blockPlate("cake-candles","年龄区间","AGE",a["参照年龄区间"])].filter(Boolean));list.push(plate("",plateHead("chart-simple","环境实力坐标","SCALE"),lad?ladderWidget(lad):null,lad?h("details","pt-fold",h("summary","",icon("align-left"),"区间明细"),h("div","pt-fold-body",renderBlock(parseBlock(a["环境实力坐标"])))):renderBlock(parseBlock(a["环境实力坐标"]))));for(const [ic,label,key,code] of [["binoculars","NPC 观察眼界","观察NPC眼界","VIEW"],["star","表象实力与相对评价","表象实力与相对评价","VERDICT"],["dna","新登场原创角色核对","新登场原创角色核对","ORIGIN"]]){const p=blockPlate(ic,label,code,a[key]);if(p)list.push(p)}if(clean(a.__unparsed))list.push(plate("",plateHead("circle-question","未归类内容",""),prose(a.__unparsed)));return frag(detailHead("ruler-combined","场景参照","AUDIT"),h("div","pt-stack",list))}const grp=!ptBlank(a["场景参照群体"]),age=!ptBlank(a["参照年龄区间"]);
+ if(!clean(a["常见区间"])&& /[｜|]/.test(a["环境实力坐标"]||"")){const lad=parseLadder(a,playerLevelMark(a));list.push(plate("",plateHead("people-group","参照群体","GROUP"),auditGroup(a)));list.push(plate("",plateHead("chart-simple","环境实力坐标","SCALE"),lad?ladderWidget(lad):null,lad?h("details","pt-fold",h("summary","",icon("align-left"),"区间明细"),h("div","pt-fold-body",renderBlock(parseBlock(a["环境实力坐标"])))):renderBlock(parseBlock(a["环境实力坐标"]))));if(!ptBlank(a["观察NPC眼界"]))list.push(plate("",plateHead("binoculars","NPC 观察眼界","VIEW"),lensCards(a["观察NPC眼界"])));if(!ptBlank(a["表象实力与相对评价"]))list.push(plate("",plateHead("star","表象实力与相对评价","VERDICT"),verdictPanel(a["表象实力与相对评价"])));const og=blockPlate("dna","新登场原创角色核对","ORIGIN",a["新登场原创角色核对"]);if(og)list.push(og);if(clean(a.__unparsed))list.push(plate("",plateHead("circle-question","未归类内容",""),prose(a.__unparsed)));return frag(detailHead("ruler-combined","场景参照","AUDIT"),h("div","pt-stack",list))}const grp=!ptBlank(a["场景参照群体"]),age=!ptBlank(a["参照年龄区间"]);
  if(grp||age)list.push(plate("",plateHead("people-group","参照群体","GROUP"),grp?prose(a["场景参照群体"]):null,age?h("div",grp?"pt-sub":"",lbl("cake-candles","年龄区间"),prose(a["参照年龄区间"])):null));
  const lad=parseLadder(a);if(lad)list.push(plate("",plateHead("chart-simple","环境实力坐标","SCALE"),ladderWidget(lad),h("details","pt-fold",h("summary","",icon("align-left"),"区间原文"),h("div","pt-fold-body",h("dl","pt-kv",["常见区间","优秀区间","顶尖区间"].filter(k=>!ptBlank(a[k])).flatMap(k=>[h("dt","",k),h("dd","",a[k])]))))));
  else{const t=["常见区间","优秀区间","顶尖区间"].filter(k=>!ptBlank(a[k]));if(t.length)list.push(plate("",plateHead("chart-simple","环境实力坐标","SCALE"),h("dl","pt-kv",t.flatMap(k=>[h("dt","",k),h("dd","",a[k])]))))}
