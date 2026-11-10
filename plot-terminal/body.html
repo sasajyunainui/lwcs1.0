@@ -1,0 +1,30 @@
+<textarea class="pt-buffer">$1</textarea>
+<main class="pt-app" data-collapsed="true" data-width="wide" data-density="standard" data-page="overview" data-pt-root="true">
+  <div class="pt-live" aria-live="polite" data-role="live"></div>
+  <div class="pt-shell">
+    <header class="pt-bar" data-collapse-surface tabindex="0" role="button" aria-expanded="false" aria-label="展开剧情推进">
+      <span class="pt-floor" aria-hidden="true"><small>TURN</small><b data-role="floor">#?</b></span>
+      <div class="pt-bar-main">
+        <div class="pt-bar-facts" data-role="bar-facts"></div>
+        <div class="pt-bar-current"><i class="fa-solid fa-flag-checkered" aria-hidden="true"></i><b data-role="bar-current">等待读取本轮剧情</b></div>
+      </div>
+      <div class="pt-bar-cast" data-role="bar-cast" aria-hidden="true"></div>
+      <div class="pt-bar-tools">
+        <span class="pt-mod-badge" data-role="bar-module" hidden></span>
+        <div class="pt-settings" data-role="settings">
+          <button class="pt-icon" type="button" data-action="settings" aria-label="显示设置" aria-expanded="false"><i class="fa-solid fa-gear" aria-hidden="true"></i></button>
+          <div class="pt-settings-panel">
+            <div class="pt-setting-row"><button type="button" data-action="font">字号</button><button type="button" data-action="density">密度</button></div>
+            <p class="pt-setting-title">开发记录</p>
+            <div class="pt-dev-records"><button type="button" data-open-page="raw_recall">任务1原文</button><button type="button" data-open-page="raw_clue">原著线索原文</button><button type="button" data-open-page="raw_ruling">任务2原文</button><button type="button" data-open-page="raw_character">任务3原文</button><button type="button" data-open-page="raw_combined">汇总原文</button><button type="button" data-open-page="raw_message">用户消息</button><button type="button" data-open-page="raw_diagnostics">解析诊断</button></div>
+          </div>
+        </div>
+        <span class="pt-chev" aria-hidden="true"><i class="fa-solid fa-chevron-down"></i></span>
+      </div>
+    </header>
+    <div class="pt-body"><div class="pt-body-inner">
+      <nav class="pt-tabs" data-role="tabs" aria-label="剧情推进分页"></nav>
+      <section class="pt-view" data-role="content" tabindex="-1"></section>
+    </div></div>
+  </div>
+</main>
