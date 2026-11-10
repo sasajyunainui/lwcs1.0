@@ -211,6 +211,8 @@ button{font:inherit;color:inherit}
 .pt-dos-head .pt-hex{--s:60px}
 .pt-dos-head h2{margin:0;font:900 1.34em/1.2 var(--ui-font);letter-spacing:.05em}
 .pt-dos-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.pt-dos-role{display:flex;flex-wrap:wrap;gap:2px 16px;margin:4px 0 0;color:var(--muted);font-size:.86em;line-height:1.6}
+.pt-dos-role .fa-solid{margin-right:6px;color:var(--blue)}
 .pt-rel{display:grid;grid-template-columns:auto minmax(0,1fr);gap:5px 12px;padding:10px 12px;background:rgba(255,255,255,.55);box-shadow:inset 0 0 0 1px rgba(30,48,80,.12)}
 .pt-rel dt{color:var(--quiet);font:850 .74em/1.9 var(--ui-font);letter-spacing:.12em}
 .pt-rel dd{margin:0;font-size:.88em;line-height:1.7}
