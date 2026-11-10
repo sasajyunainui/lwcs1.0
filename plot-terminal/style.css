@@ -275,6 +275,24 @@ button{font:inherit;color:inherit}
 .pt-ladder-pin::after{content:"";width:2px;height:var(--stem,8px);background:#16223d}
 .pt-ladder-pin[data-kind="player"]::after{background:var(--gold)}
 .pt-steps{display:grid;gap:12px;margin:0;padding:0;list-style:none}
+/* 分项格式 */
+.pt-block{display:grid;gap:8px;min-width:0}
+.pt-none{color:var(--quiet)}
+.pt-bgroup{padding:8px 11px 10px;background:rgba(255,255,255,.55);box-shadow:inset 0 0 0 1px rgba(30,48,80,.12)}
+.pt-bgroup-h{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin:0 0 6px}
+.pt-bgroup-h .pt-hex{--s:26px}
+.pt-bgroup-h b{font:850 .9em/1.4 var(--ui-font)}
+.pt-bgroup-h small{color:var(--muted);font-size:.8em}
+.pt-brow{display:flex;flex-wrap:wrap;gap:2px 12px;padding:6px 10px;font-size:.88em;line-height:1.65;background:rgba(255,255,255,.55);box-shadow:inset 0 0 0 1px rgba(30,48,80,.12)}
+.pt-brow-h{font-weight:850}
+.pt-brow>span+span::before{content:"·";margin-right:12px;color:var(--quiet);font-weight:900}
+.pt-brow em{margin-right:4px;color:var(--quiet);font-style:normal;font-weight:800}
+.pt-steps2{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.pt-steps2 li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:start;font-size:.9em;line-height:1.7}
+.pt-steps2 small{display:flex;align-items:baseline;gap:6px;color:var(--muted)}
+.pt-steps2 small .fa-solid{color:var(--gold)}
+.pt-kv dd .pt-chip{margin-left:6px;vertical-align:1px}
+.pt-next .pt-block{font-size:.92em}
 .pt-step{display:grid;grid-template-columns:auto minmax(0,1fr);gap:11px;align-items:start}
 .pt-step .pt-hex{--s:30px}
 .pt-step b{display:block;margin:4px 0 3px;font:850 .9em/1.4 var(--ui-font)}
@@ -370,3 +388,5 @@ button{font:inherit;color:inherit}
 .pt-app[data-width="compact"] .pt-near li{grid-template-columns:minmax(0,1fr);gap:2px}
 .pt-app[data-width="compact"] .pt-settings-panel{right:-30px}
 @media(prefers-reduced-motion:reduce){.pt-app *,.pt-app *::before,.pt-app *::after{animation:none!important;transition:none!important}}
+.pt-brow>.pt-brow-st::before{display:none}
+.pt-brow>.pt-brow-st+span::before{display:none}

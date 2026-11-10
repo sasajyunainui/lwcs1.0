@@ -77,6 +77,45 @@ const RULING_LABELS=["场域与生态构建","认知与权限边界","行动逻�
 const ROUTE_LABELS=["世界进程与路线关系","本轮剧情推进","本轮落点与后续接力"];
 const AUDIT_LABELS=["新登场原创角色核对","实力描述与评价","场景参照群体","参照年龄区间","环境实力坐标","常见区间","优秀区间","顶尖区间","观察NPC眼界","表象实力与相对评价"];
 const BUTTERFLY_LABELS=["沿用的已有偏差","本轮已成立的变化","可能的传播路径"];
+// 分项格式（2026-11 起的裁定输出）：一行一件事。字段「键：值」、条目「- …」、表行「a｜b｜c」、步骤「1. …」；
+// 分组 = 名称行（人名或「名称｜身份」）+ 其下条目，或空值字段（「在场人物：」「实际变化：」）+ 其下各行
+const SCENE_V2_LABELS=["场景","关系与权限","各方信息","行动检定","影响与传播"];
+const ROUTE_V2_LABELS=["世界进程","本轮推进","落点","后续接力"];
+const BLOCK_SUB_KEYS=new Set(["已掌握","本轮获得","不知道","有限判断","当前","熟悉","识别","判断"]);
+const BLOCK_FIELD_KEYS=new Set(["时间","地点","场所运行","现场状态","在场人物","客观落差","行动","能力与条件","完成程度","消耗","直接结果","实际变化","维持原状","传播","承接","主体","目标","已完成","已变化","当前局面","场外接入条件","群体","采用理由","适用规则","通常","规则边界","代表","真实资料","客观位置","可见表现","各方评价"]);
+function parseBlock(text){const out=[];let group=null;
+ for(const raw of clean(text).split("\n")){const line=clean(raw);if(!line)continue;
+  const bm=line.match(/^[-*•]\s*(.*)$/),bullet=!!bm,body=bm?clean(bm[1]):line;
+  const step=!bullet&& body.match(/^(\d+)\s*[.、)）]\s*(.*)$/);
+  const kv=!step&& body.match(/^([^：:｜|]{1,16})[：:]\s*(.*)$/);
+  const entry=step?{type:"step",n:step[1],text:clean(step[2])}:kv?{type:"kv",key:clean(kv[1]),value:clean(kv[2])}:/[｜|]/.test(body)?{type:"row",cells:body.split(/\s*[｜|]\s*/).map(clean)}:{type:"text",text:body};
+  const sub=!bullet&& entry.type==="kv"&& BLOCK_SUB_KEYS.has(entry.key);
+  if(bullet||sub){if(!group||group.field&& sub){const last=out[out.length-1];if(last&&(last.type==="row"||last.type==="text")){group={type:"group",name:last.type==="row"?last.cells[0]:last.text,sub:last.type==="row"?last.cells.slice(1).join("｜"):"",entries:[]};out[out.length-1]=group}}
+   if(group)group.entries.push(entry);else out.push({...entry,bullet:true});continue}
+  if(entry.type==="kv"&& (BLOCK_FIELD_KEYS.has(entry.key)||!group||!group.field)){group=null;if(!entry.value){group={type:"group",name:entry.key,sub:"",entries:[],field:true};out.push(group)}else out.push(entry);continue}
+  if(group&& group.field){group.entries.push(entry);continue}
+  group=null;out.push(entry)}
+ return out}
+function blockFields(text){return Object.fromEntries(parseBlock(text).filter(e=>e.type==="kv").map(e=>[e.key,e.value]))}
+function splitSource(v){const m=clean(v).match(/^(.*?)[（(]([^（()）]{1,14})[）)][。.]?$/);return m?[clean(m[1]),clean(m[2])]:[clean(v),""]}
+function blockValue(v,withSrc){const s=clean(v);if(ptBlank(s))return h("span","pt-none",s||"无");if(withSrc){const [t,src]=splitSource(s);return h("span","",t,src?chip(src,"violet"):null)}return document.createTextNode(s)}
+// 世界进程的状态格做成标签
+const BLOCK_STATUS_RE=/^(?:未触发|未到达|临近酝酿|酝酿中|条件满足待触发|正在发生|刚完成|已进入后续|尚未发生|进行中)$/;
+function blockRow(cells){const r=h("div","pt-brow");cells.forEach((c,i)=>{const kv=i>0&& c.match(/^([^：:]{1,12})[：:]\s*(.*)$/);r.append(i>0&& BLOCK_STATUS_RE.test(c)?h("span","pt-brow-st",chip(c,"blue")):h("span",i===0?"pt-brow-h":"",kv?[h("em","",kv[1]),kv[2]]:c))});return r}
+function renderBlock(entries,opt={}){const box=h("div","pt-block");let dl=null,ul=null,ol=null;
+ for(const e of entries){
+  if(e.type==="kv"&& !e.bullet){ul=ol=null;if(!dl){dl=h("dl","pt-kv");box.append(dl)}dl.append(h("dt","",e.key),h("dd","",blockValue(e.value,opt.src)));continue}
+  if(e.type==="step"){dl=ul=null;if(!ol){ol=h("ol","pt-steps2");box.append(ol)}const [act,...rest]=e.text.split(/\s*(?:→|->|⇒)\s*/);ol.append(h("li","",hexNum(e.n,24),h("div","",h("span","",act),rest.length?h("small","",icon("arrow-right"),rest.join(" → ")):null)));continue}
+  dl=ol=null;
+  if(e.type==="group"){ul=null;box.append(h("section","pt-bgroup",h("p","pt-bgroup-h",opt.avatar?avatar(e.name,kindOf(e.name),26):null,h("b","",e.name),e.sub?h("small","",e.sub):null),e.entries.length?renderBlock(e.entries,{...opt,avatar:false}):h("span","pt-none","无")));continue}
+  if(e.type==="row"){ul=null;box.append(blockRow(e.cells));continue}
+  if(!ul){ul=h("ul","pt-notes");box.append(ul)}ul.append(h("li","",e.type==="kv"?[h("b","",e.key+"："),blockValue(e.value,opt.src)]:blockValue(e.text,opt.src)))}
+ return box}
+function blockPlate(ic,title,code,text,opt){if(ptBlank(text))return null;return plate("",plateHead(ic,title,code),renderBlock(parseBlock(text),opt))}
+// 总览轨道一句话：有步骤取第一步，有表行取前两格，否则取第一句
+function blockSummary(text){const b=parseBlock(text);const step=b.find(e=>e.type==="step");if(step)return step.text.split(/\s*(?:→|->|⇒)\s*/)[0];const row=b.find(e=>e.type==="row");if(row)return row.cells.slice(0,2).join(" · ");return firstSentence(text,"")}
+function landingV2(route){const f=blockFields(route["落点"]),next=clean(route["后续接力"]).replace(/^场外接入条件[：:]\s*/,"");return{land:clean(f["当前局面"])||clean(route["落点"]),next:ptBlank(next)?"":next}}
+
 function normalizeHeading(raw){return clean(String(raw||"").replace(/^\s*(?:[-*+]\s*|\d+[.)、]\s*)+/u,"").replace(/^\*+|\*+$/gu,"").replace(/[：:]\s*$/u,"").replace(/^(?:【|\[)\s*|\s*(?:】|\])$/gu,""))}
 function canonicalFieldKey(raw){const key=normalizeHeading(raw);const low=key.toLowerCase();if(FIELD_ALIASES[key])return FIELD_ALIASES[key];if(FIELD_ALIASES[low])return FIELD_ALIASES[low];return /^[a-z][a-z_ ]*$/i.test(key)?low.replace(/\s+/g,"_"):key}
 function parseFields(text){const out=[];let cur=null;for(const raw of clean(text).split("\n")){const m=raw.match(/^\s*[-*+]?\s*(?:\d+[.)、]\s*)?([^：:\n]{1,40})[：:]\s*(.*)$/);if(m){cur={key:canonicalFieldKey(m[1]),value:clean(m[2])};out.push(cur)}else if(cur&& raw.trim())cur.value+=(cur.value?"\n":"")+raw.trim()}return out}
@@ -99,7 +138,8 @@ function parseList(text){const items=[];for(const raw of clean(text).split("\n")
 // 认知边界：「X当前掌握信息：……」按人分行，其余是关系说明
 function parseKnowledge(text){const rows=[],notes=[];for(const raw of clean(text).split("\n")){const line=clean(raw);if(!line)continue;const m=line.match(/^(.{1,14}?)当前掌握(?:的)?信息[：:]\s*(.*)$/);if(m)rows.push({name:clean(m[1]),items:m[2].split(/[；;]/).map(clean).filter(Boolean).map(item=>{const s=item.match(/^(.*?)[（(]([^（()）]{1,12})[）)][。.]?$/);return s?{text:clean(s[1]),src:clean(s[2])}:{text:item.replace(/[。.]$/,""),src:""}})});else notes.push(...line.split(/(?<=。)(?![”」』])/).map(clean).filter(Boolean))}return{rows,notes}}
 // 实力标尺：常见 / 优秀 / 顶尖三段区间 + 场景参照里点名的代表人物
-function parseLadder(audit){const rng=t=>{const s=clean(t);let m=s.match(/(\d+)\s*级?\s*(?:至|到|~|～|—|-)\s*(\d+)\s*级/);if(m)return[+m[1],+m[2]];m=s.match(/从\s*(\d+)\s*级开始[\s\S]*?(?:最高|到)[^\d]{0,6}(\d+)\s*级/);if(m)return[+m[1],+m[2]];m=s.match(/(\d+)\s*级/);return m?[+m[1],+m[1]]:null};const tiers=[["常见","常见区间","common"],["优秀","优秀区间","excellent"],["顶尖","顶尖区间","top"]].map(([label,key,id])=>({label,id,range:rng(audit[key])})).filter(t=>t.range&& t.range[1]>=t.range[0]);if(tiers.length<2)return null;let lo=Math.min(...tiers.map(t=>t.range[0])),hi=Math.max(...tiers.map(t=>t.range[1]));// 人名：先认已知人物（「由唐凌雪（21级）」取唐凌雪），认不出再去掉开头的介词
+function tierRow(text,label){return clean(text).split("\n").map(clean).find(l=>new RegExp("^[-*•]?\\s*"+label+"\\s*[｜|]").test(l))||""}
+function parseLadder(audit){const rng=t=>{const s=clean(t);let m=s.match(/(\d+)\s*级?\s*(?:至|到|~|～|—|–|-)\s*(\d+)\s*级/);if(m)return[+m[1],+m[2]];m=s.match(/从\s*(\d+)\s*级开始[\s\S]*?(?:最高|到)[^\d]{0,6}(\d+)\s*级/);if(m)return[+m[1],+m[2]];m=s.match(/(\d+)\s*级/);return m?[+m[1],+m[1]]:null};const tiers=[["常见","常见区间","common"],["优秀","优秀区间","excellent"],["顶尖","顶尖区间","top"]].map(([label,key,id])=>({label,id,range:rng(audit[key]||tierRow(audit["环境实力坐标"],label))})).filter(t=>t.range&& t.range[1]>=t.range[0]);if(tiers.length<2)return null;let lo=Math.min(...tiers.map(t=>t.range[0])),hi=Math.max(...tiers.map(t=>t.range[1]));// 人名：先认已知人物（「由唐凌雪（21级）」取唐凌雪），认不出再去掉开头的介词
  const known=[...allPeople().map(p=>p.name),...(state.game?.evidence||[]).map(e=>e.name),state.snapshot?.persona].filter(Boolean).sort((x,y)=>y.length-x.length);
  const nameOf=raw=>known.find(n=>raw.endsWith(n))||raw.replace(/^(?:由|是|为|如|和|与|及|被|让|将|对|向|比|像)+/,"");
  const marks=[];const text=AUDIT_LABELS.map(k=>audit[k]||"").join("\n");for(const m of text.matchAll(/([一-龥·]{2,7})[（(]\s*(\d+)\s*级/g)){const level=+m[2],name=nameOf(m[1]);if(name.length<2||marks.some(x=>x.name===name)||level<lo-3||level>hi+3)continue;marks.push({name,level})}for(const x of marks){lo=Math.min(lo,x.level);hi=Math.max(hi,x.level)}return{tiers,marks,lo:lo-1,hi:hi+2}}
@@ -131,12 +171,13 @@ function buildCharacterModel(){const tags=characterTags(),diagnostics=[],people=
 
 function buildGameModel(){const T=k=>state.snapshot?.tasks?.[k]?.tags||{};const recall=T("recall"),clue=T("clue"),routingTags=T("routing"),ruling=T("ruling");
  const routing={module_routing:clean(routingTags.module_routing)||clean(ruling.module_routing),battle_adjudication:clean(routingTags.battle_adjudication)||clean(ruling.battle_adjudication)};
- const audit=splitSections(ruling.scene_audit||"",AUDIT_LABELS),scene=splitSections(ruling.scene_ruling||"",RULING_LABELS),route=splitSections(ruling.route_boundary||"",ROUTE_LABELS),butterfly=splitSections(ruling.butterfly_analysis||"",BUTTERFLY_LABELS);
- const anchor=parseSceneAnchor(scene["场域与生态构建"]),landing=parseLanding(route["本轮落点与后续接力"]),progress=clean(route["本轮剧情推进"]);
+ const v2=/(^|\n)\s*【场景】/.test(ruling.scene_ruling||"")||/(^|\n)\s*【本轮推进】/.test(ruling.route_boundary||"");
+ const audit=splitSections(ruling.scene_audit||"",AUDIT_LABELS),scene=splitSections(ruling.scene_ruling||"",v2?SCENE_V2_LABELS:RULING_LABELS),route=splitSections(ruling.route_boundary||"",v2?ROUTE_V2_LABELS:ROUTE_LABELS),butterfly=splitSections(ruling.butterfly_analysis||"",BUTTERFLY_LABELS);
+ const anchor=parseSceneAnchor(v2?scene["场景"]:scene["场域与生态构建"]),landing=v2?landingV2(route):parseLanding(route["本轮落点与后续接力"]),progress=clean(v2?route["本轮推进"]:route["本轮剧情推进"]),world=clean(v2?route["世界进程"]:route["世界进程与路线关系"]);
  const modules=parseModuleRouting(routing.module_routing),moduleHits=modules.filter(item=>item.id&& item.id!=="未命中");
  let characters={active:[],away:[],mentioned:[],interplay:"",dmSet:"",unassigned:[],diagnostics:[]};try{characters=buildCharacterModel()}catch(error){characters.diagnostics=[String(error?.message||error)]}
  const people=characters.active;
- return{recall,clue,routing,ruling,audit,scene,route,butterfly,anchor,landing,progress,current:firstSentence(landing.land,firstSentence(progress,"")),modules,moduleHits,characters,people,evidence:parseEvidence(clue.npc_behavior_evidence),timeline:parseTimelineRecall(clue.timeline_recall)}}
+ return{v2,recall,clue,routing,ruling,audit,scene,route,butterfly,anchor,landing,progress,world,current:firstSentence(landing.land,v2?blockSummary(progress):firstSentence(progress,"")),modules,moduleHits,characters,people,evidence:parseEvidence(clue.npc_behavior_evidence),timeline:parseTimelineRecall(clue.timeline_recall)}}
 function allPeople(){const m=state.game?.characters;return m?[...m.active,...m.away,...(m.mentioned||[])]:[]}
 // 玩家不进人物名单，只在认知边界、原著依据、实力标尺里按酒馆人设名标金色
 function isPlayer(name){return!!name&& name===state.snapshot?.persona}
@@ -169,6 +210,8 @@ function moduleCard(m){const map=m.map||new Map(),f=k=>clean(map.get(k)),card=bt
  else{const keys=(m.fields||[]).map(x=>x.key).filter(k=>k!=="模块"&& k!=="理由").slice(0,4);card.append(h("div","pt-mod-meta",keys.map(k=>f(k)&& chip(k+" · "+f(k)))))}
  return card}
 function statBtn(ic,label,n,go){const b=btn("pt-stat",{goto:go},icon(ic),h("span","",label),h("b","",String(n)));b.dataset.empty=n?"false":"true";return b}
+// 旧格式「后续接力条件」写的是等玩家决定的事；分项格式的玩家局面在落点·当前局面里，这里只剩场外接入条件
+function nextCallout(g){return h("div","pt-next",icon(g.v2?"door-open":"hand-pointer"),h("b","",g.v2?"场外接入":"接下来由你决定"),g.v2?renderBlock(parseBlock(g.landing.next)):h("p","",g.landing.next))}
 function renderOverview(){const g=state.game,root=h("div","pt-scroll pt-ov");root.dataset.scroll="overview";
  if(!g||!clean(state.snapshot?.tasks?.ruling?.raw)&&!clean(state.snapshot?.tasks?.character?.raw)){root.append(noTaskData()?emptyState("circle-info","没有可读取的推进数据",state.snapshot.diagnostics?.[0]):emptyState("hourglass-half","等待本轮推进任务完成","推进任务写回后，这里会显示本轮的场景、推进与在场人物。"));return root}
  const a=g.anchor,clock=h("div","pt-clock",a.time?h("b","",a.time):null,jumpText()?chip(jumpText()+" 本轮耗时","gold"):null);
@@ -176,9 +219,9 @@ function renderOverview(){const g=state.game,root=h("div","pt-scroll pt-ov");roo
  // 推进轨道 + 落点 + 等你决定
  const route=plate("pt-route",plateHead("route","本轮推进","ROUTE"));const track=h("div","pt-track");
  // 落点节点只留标签：落点全文就在轨道下方
- for(const [label,text] of [["世界进程",g.route["世界进程与路线关系"]],["本轮推进",g.progress],["本轮落点",""]]){const n=btn("pt-track-node",{goto:"ruling:route"},h("b","",label),text?h("span","",firstSentence(text,"—")):null);if(text)n.title=clean(text);track.append(n)}
+ for(const [label,text] of [["世界进程",g.world],["本轮推进",g.progress],["本轮落点",""]]){const n=btn("pt-track-node",{goto:"ruling:route"},h("b","",label),text?h("span","",(g.v2?blockSummary(text):firstSentence(text,""))||"—"):null);if(text)n.title=clean(text);track.append(n)}
  route.append(track);if(g.landing.land)route.append(prose(g.landing.land,"pt-landing"));
- if(g.landing.next)route.append(h("div","pt-next",icon("hand-pointer"),h("b","","接下来由你决定"),h("p","",g.landing.next)));
+ if(g.landing.next)route.append(nextCallout(g));
  const m=g.characters,cast=plate("pt-cast",plateHead("users","在场人物","CAST",chip(String(g.people.length),"blue")));const list=h("div","pt-cast-list");for(const p of g.people)list.append(personToken(p));if(!g.people.length)list.append(h("p","pt-empty-inline","本轮没有人物演出资料"));cast.append(list);
  if(m.away.length){cast.append(lbl("person-walking-arrow-right","离场 "+m.away.length),h("div","pt-cast-list",m.away.map(p=>personToken(p))));cast.lastChild.previousSibling.classList.add("pt-cast-sep")}
  root.append(h("div","pt-ov-grid",route,cast));
@@ -233,14 +276,17 @@ function frag(...els){const f=document.createDocumentFragment();f.append(...els.
 
 /* ===== 裁定 ===== */
 function rulingItems(){const g=state.game,items=[{id:"current",icon:"location-crosshairs",label:"当前裁定"},{id:"knowledge",icon:"eye",label:"认知边界"},{id:"route",icon:"route",label:"路线推进"}];const changes=parseList(g.butterfly["本轮已成立的变化"]).length;if(clean(g.ruling.butterfly_analysis))items.push({id:"butterfly",icon:"wind",label:"蝴蝶效应",count:changes||undefined});items.push({id:"audit",icon:"ruler-combined",label:"场景参照"},{id:"modules",icon:"puzzle-piece",label:"模块结果",count:g.moduleHits.length||undefined});if(clean(g.routing.battle_adjudication))items.push({id:"battle",icon:"khanda",label:"战斗裁断"});if(clean(g.ruling.dm_set))items.push({id:"plan",icon:"chess",label:"后台推演"});return items}
-function renderCurrentRuling(){const s=state.game.scene,list=[readout("mountain-city","场域与生态","FIELD",s["场域与生态构建"]),readout("bullseye","能力与筹码检验","CHECK",s["内在能力与筹码检验"]),readout("earth-asia","社会与自然回响","ECHO",s["外在社会与自然回响"])].filter(Boolean);if(clean(s.__unparsed))list.push(plate("",plateHead("circle-question","未归类内容",""),prose(s.__unparsed)));return frag(detailHead("location-crosshairs","当前裁定","RULING"),list.length?h("div","pt-stack",list):emptyState("location-crosshairs","当前没有可显示的客观裁定"))}
-function renderKnowledge(){const s=state.game.scene,k=parseKnowledge(s["认知与权限边界"]),list=[];
+function renderCurrentRuling(){const s=state.game.scene;if(state.game.v2){const list=[blockPlate("mountain-city","场景","SCENE",s["场景"]),blockPlate("bullseye","行动检定","CHECK",s["行动检定"]),blockPlate("tower-broadcast","影响与传播","ECHO",s["影响与传播"])].filter(Boolean);if(clean(s.__unparsed))list.push(plate("",plateHead("circle-question","未归类内容",""),prose(s.__unparsed)));return frag(detailHead("location-crosshairs","当前裁定","RULING"),list.length?h("div","pt-stack",list):emptyState("location-crosshairs","当前没有可显示的客观裁定"))}
+ const list=[readout("mountain-city","场域与生态","FIELD",s["场域与生态构建"]),readout("bullseye","能力与筹码检验","CHECK",s["内在能力与筹码检验"]),readout("earth-asia","社会与自然回响","ECHO",s["外在社会与自然回响"])].filter(Boolean);if(clean(s.__unparsed))list.push(plate("",plateHead("circle-question","未归类内容",""),prose(s.__unparsed)));return frag(detailHead("location-crosshairs","当前裁定","RULING"),list.length?h("div","pt-stack",list):emptyState("location-crosshairs","当前没有可显示的客观裁定"))}
+function renderKnowledge(){const s=state.game.scene;if(state.game.v2){const list=[blockPlate("handshake","关系与权限","BOND",s["关系与权限"]),blockPlate("eye","各方信息","INTEL",s["各方信息"],{avatar:true,src:true})].filter(Boolean);return frag(detailHead("eye","认知边界","KNOW"),list.length?h("div","pt-stack",list):emptyState("eye","本轮没有认知边界资料"))}
+ const k=parseKnowledge(s["认知与权限边界"]),list=[];
  if(k.notes.length)list.push(plate("",plateHead("handshake","关系与权限","BOND"),h("ul","pt-notes",k.notes.map(n=>h("li","",n)))));
  if(k.rows.length){list.push(plate("",plateHead("eye","各方掌握的信息","INTEL"),h("div","pt-know",k.rows.map(r=>h("div","pt-know-row",avatar(r.name,kindOf(r.name),32),h("div","",h("b","",r.name),h("ul","pt-know-items",r.items.map(it=>h("li","",it.text,it.src?chip(it.src,"violet"):null)))))))))}
  const blind=readout("eye-slash","信息盲区","BLIND",s["信息盲区与认知边界"]);if(blind)list.push(blind);
  return frag(detailHead("eye","认知边界","KNOW"),list.length?h("div","pt-stack",list):emptyState("eye","本轮没有认知边界资料"))}
-function renderRouteDetail(){const g=state.game,track=h("div","pt-vtrack");for(const [label,text,end] of [["世界进程与路线关系",g.route["世界进程与路线关系"]],["本轮剧情推进",g.progress],["本轮落点",g.landing.land,true]]){const n=h("div","pt-vnode",lbl("",label),prose(clean(text)||"暂无"));if(end)n.dataset.end="true";track.append(n)}
- const out=[detailHead("route","路线推进","ROUTE"),track];if(g.landing.next)out.push(h("div","pt-next",icon("hand-pointer"),h("b","","接下来由你决定"),h("p","",g.landing.next)));if(clean(g.route.__unparsed))out.push(plate("",plateHead("circle-question","未归类内容",""),prose(g.route.__unparsed)));return frag(...out)}
+function renderRouteDetail(){const g=state.game;if(g.v2){const list=[blockPlate("globe","世界进程","WORLD",g.route["世界进程"]),blockPlate("route","本轮推进","ROUTE",g.route["本轮推进"]),blockPlate("flag-checkered","落点","LANDING",g.route["落点"]),blockPlate("door-open","后续接力","NEXT",g.route["后续接力"])].filter(Boolean);if(clean(g.route.__unparsed))list.push(plate("",plateHead("circle-question","未归类内容",""),prose(g.route.__unparsed)));return frag(detailHead("route","路线推进","ROUTE"),list.length?h("div","pt-stack",list):emptyState("route","本轮没有路线推进资料"))}
+ const track=h("div","pt-vtrack");for(const [label,text,end] of [["世界进程与路线关系",g.route["世界进程与路线关系"]],["本轮剧情推进",g.progress],["本轮落点",g.landing.land,true]]){const n=h("div","pt-vnode",lbl("",label),prose(clean(text)||"暂无"));if(end)n.dataset.end="true";track.append(n)}
+ const out=[detailHead("route","路线推进","ROUTE"),track];if(g.landing.next)out.push(nextCallout(g));if(clean(g.route.__unparsed))out.push(plate("",plateHead("circle-question","未归类内容",""),prose(g.route.__unparsed)));return frag(...out)}
 function renderButterfly(){const b=state.game.butterfly,list=[],ol=items=>h("ol","pt-ol",items.map((x,i)=>h("li","",hexNum(i+1,24),h("span","",x))));
  const kept=parseList(b["沿用的已有偏差"]);list.push(plate("",plateHead("clock-rotate-left","沿用的已有偏差","KEPT"),kept.length?ol(kept):h("p","pt-empty-inline","无")));
  const now=parseList(b["本轮已成立的变化"]);if(now.length)list.push(plate("",plateHead("bolt","本轮已成立的变化","CHANGED"),ol(now)));
@@ -252,7 +298,9 @@ function ladderWidget(lad){const span=lad.hi-lad.lo,pos=v=>((v-lad.lo)/span*100)
  // 代表人物按等级钉在尺上；靠得太近的错开高度
  const rows=[];const marks=[...lad.marks].sort((x,y)=>x.level-y.level);for(const mk of marks){const x=(mk.level+.5-lad.lo)/span;let row=0;while(rows[row]!==undefined&& x-rows[row]<.14)row++;rows[row]=x;const pin=h("div","pt-ladder-pin",h("b","",mk.name,h("i","",mk.level+"级")));pin.style.left=(x*100).toFixed(2)+"%";pin.style.setProperty("--stem",(8+row*24)+"px");if(isPlayer(mk.name))pin.dataset.kind="player";bar.append(pin)}
  const box=h("div","pt-ladder",bar);box.style.setProperty("--pin-pad",(34+Math.max(0,rows.length-1)*24)+"px");return box}
-function renderAuditDetail(){const a=state.game.audit,list=[];const grp=!ptBlank(a["场景参照群体"]),age=!ptBlank(a["参照年龄区间"]);
+function renderAuditDetail(){const a=state.game.audit,list=[];
+ // 分项格式：区间在【环境实力坐标】的表行里，各栏按字段渲染
+ if(!clean(a["常见区间"])&& /[｜|]/.test(a["环境实力坐标"]||"")){const lad=parseLadder(a);list.push(...[blockPlate("people-group","参照群体","GROUP",a["场景参照群体"]),blockPlate("cake-candles","年龄区间","AGE",a["参照年龄区间"])].filter(Boolean));list.push(plate("",plateHead("chart-simple","环境实力坐标","SCALE"),lad?ladderWidget(lad):null,lad?h("details","pt-fold",h("summary","",icon("align-left"),"区间明细"),h("div","pt-fold-body",renderBlock(parseBlock(a["环境实力坐标"])))):renderBlock(parseBlock(a["环境实力坐标"]))));for(const [ic,label,key,code] of [["binoculars","NPC 观察眼界","观察NPC眼界","VIEW"],["star","表象实力与相对评价","表象实力与相对评价","VERDICT"],["dna","新登场原创角色核对","新登场原创角色核对","ORIGIN"]]){const p=blockPlate(ic,label,code,a[key]);if(p)list.push(p)}if(clean(a.__unparsed))list.push(plate("",plateHead("circle-question","未归类内容",""),prose(a.__unparsed)));return frag(detailHead("ruler-combined","场景参照","AUDIT"),h("div","pt-stack",list))}const grp=!ptBlank(a["场景参照群体"]),age=!ptBlank(a["参照年龄区间"]);
  if(grp||age)list.push(plate("",plateHead("people-group","参照群体","GROUP"),grp?prose(a["场景参照群体"]):null,age?h("div",grp?"pt-sub":"",lbl("cake-candles","年龄区间"),prose(a["参照年龄区间"])):null));
  const lad=parseLadder(a);if(lad)list.push(plate("",plateHead("chart-simple","环境实力坐标","SCALE"),ladderWidget(lad),h("details","pt-fold",h("summary","",icon("align-left"),"区间原文"),h("div","pt-fold-body",h("dl","pt-kv",["常见区间","优秀区间","顶尖区间"].filter(k=>!ptBlank(a[k])).flatMap(k=>[h("dt","",k),h("dd","",a[k])]))))));
  else{const t=["常见区间","优秀区间","顶尖区间"].filter(k=>!ptBlank(a[k]));if(t.length)list.push(plate("",plateHead("chart-simple","环境实力坐标","SCALE"),h("dl","pt-kv",t.flatMap(k=>[h("dt","",k),h("dd","",a[k])]))))}
