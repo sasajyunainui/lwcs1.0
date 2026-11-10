@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:ab5a4b5798801d4e947fbda37220391791e46db0b26fa6219b084f23183a999f|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:3c1d98eaaf18f362be0cd98cdb62dea5371c4fdce0dbdd772d2a560a8649db5f|cockpit/pages-role.js:ea00d94e994576a533ab9cfb560cdd432adb466805f0d67c984d2ad891f5bedc|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:d9d42878c9d8d513ebef84b384a06f800143c89ba0beb45f5d2b93189bac4ac8|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:33c325aab13aef52d2811e81492f147b2a533790487da1419353c482c7e6c33b|cockpit/pages-world.js:6851fc81ee4d831a1af87aa85b490557d452ef5b31ea776d50f871cb97f5574e|cockpit/pages-terminal.js:c73e78b78d6a7a80f96d774bcf3a88bfa17642c7ad81a5d5b89ff863e053125e|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:1d3091d67e7dacfc78d2c9b3dc3f7acd28c068f5cdc653495ff56bc36c19a29d|Database_Module.js:cbe3ff2fe09a62f957c9a8eb967ff9a833402a2076434a2cb075b1df97cebfeb */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:ab5a4b5798801d4e947fbda37220391791e46db0b26fa6219b084f23183a999f|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:3c1d98eaaf18f362be0cd98cdb62dea5371c4fdce0dbdd772d2a560a8649db5f|cockpit/pages-role.js:ea00d94e994576a533ab9cfb560cdd432adb466805f0d67c984d2ad891f5bedc|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:31b84a896b0ecfd57ec9274ce575c48b55e1b1fc779106dc6eb734c699584cc8|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:33c325aab13aef52d2811e81492f147b2a533790487da1419353c482c7e6c33b|cockpit/pages-world.js:6851fc81ee4d831a1af87aa85b490557d452ef5b31ea776d50f871cb97f5574e|cockpit/pages-terminal.js:c73e78b78d6a7a80f96d774bcf3a88bfa17642c7ad81a5d5b89ff863e053125e|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:1d3091d67e7dacfc78d2c9b3dc3f7acd28c068f5cdc653495ff56bc36c19a29d|Database_Module.js:cbe3ff2fe09a62f957c9a8eb967ff9a833402a2076434a2cb075b1df97cebfeb */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -50981,6 +50981,37 @@ ${播报文本}
   // 标题写出原型的关键字段（改哪项属性、施加什么状态……），只写原型名等于没说；字段口径同设计台原型字段表
   const txt = v => (Array.isArray(v) ? v : [v]).map(x => String(x ?? '').trim()).filter(Boolean).join('、');
   const neg = e => String(e.数值 ?? '').trim().startsWith('-');
+  // 结算修正：按结算项和正负说成玩家的话（造成伤害 +20% = 增伤，受到伤害 -20% = 减伤）；
+  // 方向词已含正负时数值只给幅度（减伤 20%，不写 -20%），颜色按对持有者有利与否（good）
+  const SETTLE = {
+    造成伤害: ['burst', '增伤', '输出降低'],
+    受到伤害: ['shield-halved', '易伤', '减伤', true],
+    治疗: ['hand-holding-medical', '治疗增强', '治疗削弱'],
+    消耗: ['fire-flame-curved', '消耗增加', '消耗降低', true],
+    前摇: ['hourglass-half', '前摇延长', '前摇缩短', true],
+    技能效果: ['wand-sparkles', '技能效果增强', '技能效果减弱'],
+  };
+  const absorbTitle = (src, res) => src === '受到伤害' ? `受击转化${res}` : res === '生命' ? '吸血' : `伤害转化${res}`;
+  const settleFx = e => {
+    const k = txt(e.结算), d = SETTLE[k], el = txt(e.限定元素).replace(/^无$/, ''), pre = el ? `${el}系` : '';
+    if (d) { const down = neg(e), good = d[3] ? down : !down;
+      return { icon: d[0], title: pre + (down ? d[2] : d[1]), good, mag: true }; }
+    const T = {
+      反伤: ['arrow-rotate-left', '反伤'],
+      伤害转移: ['people-arrows', `伤害转给${txt(e.转移对象) || '攻击者'}`],
+      伤害吸收: ['magnet', absorbTitle(txt(e.吸收来源) || '造成伤害', txt(e.吸收资源) || '生命')],
+      伤害转治疗: ['heart-circle-plus', '伤害转为治疗'],
+      治疗转伤害: ['heart-crack', '治疗转为伤害'],
+      伤害分摊: ['users', '伤害分摊'],
+      消耗分摊: ['users', '消耗分摊'],
+      防御穿透: ['hammer', '破甲'],
+      防御剥夺: ['shield-virus', '削减防御'],
+      精神抗性剥夺: ['brain', '削减精神抗性'],
+      反击: ['hand-fist', '反击'],
+      持续伤害引爆: ['explosion', '引爆持续伤害'],
+    }[k];
+    return T ? { icon: T[0], title: pre + T[1] } : { icon: 'shield-halved', title: `${k || '结算'}修正` };
+  };
   const FX = {
     资源变化: e => ({ icon: String(e.资源 || '').includes('魂力') ? 'fire-flame-curved' : 'heart-pulse', title: `${neg(e) ? '削减' : '恢复'}${txt(e.资源) || '资源'}` }),
     资源转移: e => ({ icon: 'right-left', title: `${txt(e.资源转移方式) || '转移'}${txt(e.资源) || '资源'}` }),
@@ -50988,7 +51019,7 @@ ${播报文本}
     属性修正: e => ({ icon: neg(e) ? 'arrow-trend-down' : 'arrow-trend-up', title: `${txt(e.属性) || '属性'}${neg(e) ? '降低' : '提升'}` }),
     属性变化: e => ({ icon: 'arrow-trend-up', title: `${txt(e.属性) || '属性'}变化` }),
     判定修正: e => ({ icon: 'crosshairs', title: `${txt(e.判定) || '判定'}${neg(e) ? '下降' : '提升'}` }),
-    结算修正: e => ({ icon: 'shield-halved', title: `${txt(e.结算) || '结算'}修正` }),
+    结算修正: e => settleFx(e),
     护盾变化: e => ({ icon: 'shield', title: txt(e.护盾模式) === '正向护盾' || !txt(e.护盾模式) ? '护盾' : txt(e.护盾模式) }),
     伤害结算: e => ({ icon: 'burst', title: txt(e.伤害类型) || '伤害' }),
     状态施加: e => ({ icon: 'circle-radiation', title: `施加${txt(e.状态) || '状态'}` }),
@@ -51005,9 +51036,9 @@ ${播报文本}
   };
   const fxOf = e => (FX[e.原型] || (() => ({ icon: 'bolt', title: e.原型 || '效果' })))(e);
   // 数值：伤害结算没有「数值」，给威力倍率（百分比口径，基准 100）与段数
-  const fxVal = (c, e) => !c.blank(e.数值) ? String(e.数值) : e.原型 === '伤害结算' && e.威力倍率 != null ? `${e.威力倍率}%${Number(e.攻击段数) > 1 ? ` × ${e.攻击段数} 段` : ''}` : '';
+  const fxVal = (c, e) => !c.blank(e.数值) ? String(e.数值).trim().replace(fxOf(e).mag ? /^[+-]\s*/ : /^$/, '') : e.原型 === '伤害结算' && e.威力倍率 != null ? `${e.威力倍率}%${Number(e.攻击段数) > 1 ? ` × ${e.攻击段数} 段` : ''}` : '';
   const fxRow = (c, e) => {
-    const down = neg(e), f = fxOf(e);
+    const f = fxOf(e), down = f.good === undefined ? neg(e) : !f.good;
     const meta = [e.目标, e.持续回合 ? `持续 ${c.fmt(e.持续回合)} 回合` : '', e.生效方式].filter(Boolean).map(c.esc).join(' · ');
     return `<div class="fx"><span class="ic ${down ? 'down' : ''}"><i class="fa-solid fa-${f.icon}"></i></span><strong>${c.esc(f.title)}</strong><span class="v ${down ? 'down' : ''}">${c.esc(fxVal(c, e))}</span><small>${meta}</small></div>`;
   };
