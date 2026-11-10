@@ -320,7 +320,34 @@
       }
     }
 
+    // 酒馆换了对话、却没人重开会话时（引擎复用仍判为有效的旧会话），旧会话会一直写进上一个对话的存储：
+    // 上一个对话还在就串档，被删了就报「Chat payload not found」（「开始新聊天 + 删除当前聊天」即如此）。
+    // 所以打开会话时记下酒馆当时的 chatId，之后读 / 断言对话代数前先看酒馆 chatId 变没变（只比酒馆自己的标识，
+    // 不假设 TT 的 stableId 与哪个字段相等）；变了就让代数前进，旧会话随之失效，下次使用时按当前对话重开。切换途中读不到 chatId 时不判
+    let activeStChatId = '';
+    function currentStChatId() {
+      for (const candidate of collectWindows()) {
+        try {
+          const context = candidate?.SillyTavern?.getContext?.();
+          if (!context) continue;
+          const id = context.chatId ?? context.chat_id;
+          return typeof id === 'string' || typeof id === 'number' ? String(id).trim() : '';
+        } catch (_) { /* 跨源窗口读不到就看下一个 */ }
+      }
+      return '';
+    }
+    function syncActiveChat() {
+      if (!activeStableChatId || !activeStChatId) return;
+      const current = currentStChatId();
+      if (current && current !== activeStChatId) {
+        chatGeneration += 1;
+        activeStableChatId = null;
+        activeStChatId = '';
+      }
+    }
+
     function assertGeneration(expectedGeneration) {
+      syncActiveChat();
       if (expectedGeneration !== chatGeneration) throw new StaleChatError();
     }
 
@@ -393,6 +420,7 @@
       }
       if (activeStableChatId && activeStableChatId !== stableChatId) chatGeneration += 1;
       activeStableChatId = stableChatId;
+      activeStChatId = currentStChatId();
       return { handle, stableChatId, chatGeneration, identitySource };
     }
 
@@ -529,6 +557,7 @@
 
     async function openSession({ domain, fallbackStableChatId } = {}) {
       assertDomain(domain);
+      syncActiveChat();
       const startGeneration = chatGeneration;
       const startDomainGeneration = getDomainGeneration(domain);
       let sessionIdentity;
@@ -739,7 +768,7 @@
       registerBackend,
       invalidateChatGeneration,
       invalidateDomainGeneration,
-      getChatGeneration: () => chatGeneration,
+      getChatGeneration: () => { syncActiveChat(); return chatGeneration; },
       getDomainGeneration,
     });
   }
