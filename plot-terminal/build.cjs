@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const dir = __dirname;
 const target = path.join(dir, '..', 'regex-缝合怪東方花映塚剧情推进美化v1_0.json');
-const VERSION = '3.6.1';
+const VERSION = '3.6.2';
 // 消息渲染（markdown）会把代码块里的「&字母」当 HTML 实体解码：child&&current → child&¤t，整段脚本语法错误、界面点不动。
 // 源码里 & 后面不许直接跟字母或 #（写成 && current）
 const read = name => {

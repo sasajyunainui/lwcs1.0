@@ -13,7 +13,7 @@ const $=(s,r=app)=>r.querySelector(s);const queryAll=(s,r=app)=>[...r.querySelec
 const TASKS={recall:["plotTask2"],clue:["plotTask2C"],routing:["lwcs_module_routing"],ruling:["lwcs_integrated_ruling"],character:["defaultPlotTask"]};
 // 原著线索（plotTask2C）与独立模块路由是可选任务：旧楼层没有，缺了不算异常；模块路由旧版写在裁定任务里
 const REQUIRED=["recall","ruling","character"];
-const TASK_TAGS={recall:["time_jump","original_character_seed","recall","deviation_ledger_recall"],clue:["timeline_recall","npc_behavior_evidence"],routing:["module_routing","battle_adjudication"],ruling:["dm_set","scene_audit","scene_ruling","route_boundary","butterfly_analysis","module_routing","battle_adjudication"],character:["dm_set","player_portrayal","file","inner","act","dm_track"]};
+const TASK_TAGS={recall:["time_jump","original_character_seed","recall","deviation_ledger_recall"],clue:["timeline_recall","npc_behavior_evidence"],routing:["module_routing","battle_adjudication"],ruling:["dm_set","scene_audit","scene_ruling","route_boundary","butterfly_analysis","module_routing","battle_adjudication"],character:["dm_set","file","inner","act","dm_track"]};
 const PAGES={
  overview:{label:"本轮",icon:"compass"},people:{label:"人物",icon:"users"},ruling:{label:"裁定",icon:"scale-balanced"},intel:{label:"情报",icon:"book-open"},
  raw_recall:{label:"任务1原文",raw:"recall"},raw_clue:{label:"原著线索原文",raw:"clue"},raw_ruling:{label:"任务2原文",raw:"ruling"},raw_character:{label:"任务3原文",raw:"character"},raw_combined:{label:"汇总原文",raw:"combined"},raw_message:{label:"用户消息",raw:"message"},raw_diagnostics:{label:"解析诊断",raw:"diagnostics"}
@@ -111,11 +111,6 @@ function characterBlocks(text,label,diagnostics){const source=clean(text);if(ptB
 function characterTags(){return state.snapshot?.tasks?.character?.tags||{}}
 function splitCharacterInterplay(text){const source=clean(text);const match=source.match(/(?:^|\n)[\s>*+-]*(?:【\s*)?(?:interplay|他们之间|彼此之间)(?:\s*】)?[：:]\s*([\s\S]*)$/i);if(!match||match.index===undefined)return{body:source,interplay:""};return{body:clean(source.slice(0,match.index)),interplay:clean(match[1])}}
 function buildCharacterModel(){const tags=characterTags(),diagnostics=[],people=new Map(),activeOrder=[],awayOrder=[];
- // 玩家：新格式是「【人名】」标题行 + 【面对当前场合】/【本轮表象】；旧格式写「角色名称：」
- const portrayal=clean(tags.player_portrayal),playerFields=characterFieldMap(portrayal);
- const playerName=clean(playerFields["角色名称"])||clean((portrayal.match(/^\s*(?:#+\s*)?【([^】\n]+)】\s*$/m)||[])[1])||state.snapshot?.persona||"玩家";
- delete playerFields["角色名称"];
- const player=Object.keys(playerFields).length?{key:"player",name:playerName,kind:"player",fields:playerFields,file:{}}:null;
  const touch=name=>{const key=characterName(name);if(!key)return null;if(!people.has(key))people.set(key,{key:"npc:"+key,name:key,file:{},inner:{},act:{},track:{},hasAct:false,hasTrack:false});return people.get(key)};
  for(const block of characterBlocks(tags.file,"关系摘要",diagnostics)){const person=touch(block.name);if(person)person.file=characterFieldMap(block.text)}
  for(const block of characterBlocks(tags.inner,"人物内心",diagnostics)){const person=touch(block.name);if(person)person.inner=characterFieldMap(block.text)}
@@ -126,18 +121,21 @@ function buildCharacterModel(){const tags=characterTags(),diagnostics=[],people=
  const active=[],away=[],unassigned=[];
  for(const name of activeOrder){const person=people.get(name);if(!person)continue;if(person.hasTrack)diagnostics.push(name+"同时出现在人物演出与离场追踪中，已按在场显示。");active.push({...person,kind:"active"})}
  for(const name of awayOrder){const person=people.get(name);if(person&&!person.hasAct)away.push({...person,kind:"away"})}
- for(const person of people.values())if(!person.hasAct&&!person.hasTrack){if(player&& person.name===player.name){player.file=person.file;continue}diagnostics.push(person.name+"只有关系或内心资料，缺少在场或离场依据。");unassigned.push(person)}
- return{player,active,away,interplay:ptBlank(act.interplay)?"":act.interplay,dmSet:clean(tags.dm_set),unassigned,diagnostics}}
+ for(const person of people.values())if(!person.hasAct&&!person.hasTrack){if(isPlayer(person.name))continue;diagnostics.push(person.name+"只有关系或内心资料，缺少在场或离场依据。");unassigned.push(person)}
+ return{active,away,interplay:ptBlank(act.interplay)?"":act.interplay,dmSet:clean(tags.dm_set),unassigned,diagnostics}}
 
 function buildGameModel(){const T=k=>state.snapshot?.tasks?.[k]?.tags||{};const recall=T("recall"),clue=T("clue"),routingTags=T("routing"),ruling=T("ruling");
  const routing={module_routing:clean(routingTags.module_routing)||clean(ruling.module_routing),battle_adjudication:clean(routingTags.battle_adjudication)||clean(ruling.battle_adjudication)};
  const audit=splitSections(ruling.scene_audit||"",AUDIT_LABELS),scene=splitSections(ruling.scene_ruling||"",RULING_LABELS),route=splitSections(ruling.route_boundary||"",ROUTE_LABELS),butterfly=splitSections(ruling.butterfly_analysis||"",BUTTERFLY_LABELS);
  const anchor=parseSceneAnchor(scene["场域与生态构建"]),landing=parseLanding(route["本轮落点与后续接力"]),progress=clean(route["本轮剧情推进"]);
  const modules=parseModuleRouting(routing.module_routing),moduleHits=modules.filter(item=>item.id&& item.id!=="未命中");
- let characters={player:null,active:[],away:[],interplay:"",dmSet:"",unassigned:[],diagnostics:[]};try{characters=buildCharacterModel()}catch(error){characters.diagnostics=[String(error?.message||error)]}
- const people=[characters.player,...characters.active].filter(Boolean);
+ let characters={active:[],away:[],interplay:"",dmSet:"",unassigned:[],diagnostics:[]};try{characters=buildCharacterModel()}catch(error){characters.diagnostics=[String(error?.message||error)]}
+ const people=characters.active;
  return{recall,clue,routing,ruling,audit,scene,route,butterfly,anchor,landing,progress,current:firstSentence(landing.land,firstSentence(progress,"")),modules,moduleHits,characters,people,evidence:parseEvidence(clue.npc_behavior_evidence),timeline:parseTimelineRecall(clue.timeline_recall)}}
-function allPeople(){const m=state.game?.characters;return m?[m.player,...m.active,...m.away].filter(Boolean):[]}
+function allPeople(){const m=state.game?.characters;return m?[...m.active,...m.away]:[]}
+// 玩家不进人物名单，只在认知边界、原著依据、实力标尺里按酒馆人设名标金色
+function isPlayer(name){return!!name&& name===state.snapshot?.persona}
+function kindOf(name){return isPlayer(name)?"player":"npc"}
 function jumpText(){const j=clean(state.game?.recall?.time_jump);return!j||/^(?:0\s*分|无|0)$/.test(j)?"":"+"+j}
 function taskHealth(task){const raw=clean(state.snapshot?.tasks?.[task]?.raw);if(!raw)return"waiting";const ids=TASKS[task]||[];return(state.snapshot?.diagnostics||[]).some(item=>ids.some(id=>item.includes("任务 "+id)))?"error":"ready"}
 function pageStatus(id){if(id==="overview"||id==="ruling")return taskHealth("ruling");if(id==="people")return taskHealth("character");if(id==="intel")return taskHealth("recall");return"ready"}
@@ -148,16 +146,16 @@ function noTaskData(){return!!state.snapshot&&!Object.keys(state.snapshot.tasks|
 
 /* ===== 指挥栏 ===== */
 function renderBar(){const g=state.game,facts=$("[data-role=bar-facts]");facts.replaceChildren();
- if(g){const add=(ic,text,cls)=>{if(clean(text))facts.append(h("span","pt-fact"+(cls?" "+cls:""),icon(ic),h("b","",text)))};add("location-dot",g.anchor.location);add("clock",g.anchor.time,"pt-fact-time");const jump=jumpText();if(jump)facts.append(h("span","pt-fact-jump",jump));add("users",g.people.length?g.people.length+" 人在场":"")}
+ if(g){const add=(ic,text,cls)=>{if(clean(text))facts.append(h("span","pt-fact"+(cls?" "+cls:""),icon(ic),h("b","",text)))};add("location-dot",g.anchor.location);add("clock",g.anchor.time,"pt-fact-time");const jump=jumpText();if(jump)facts.append(h("span","pt-fact-jump",jump));add("users",g.people.length?"在场 "+g.people.length:"")}
  const current=$("[data-role=bar-current]");current.textContent=g?.current||(noTaskData()?state.snapshot.diagnostics?.[0]||"没有可读取的推进数据":state.snapshot&&!coreTasksReady()?"等待本轮推进任务完成…":"等待读取本轮剧情");current.title=g?.current||"";
- const cast=$("[data-role=bar-cast]"),people=g?.people||[];cast.replaceChildren(...people.slice(0,5).map(p=>avatar(p.name,p.kind==="player"?"player":"npc")));if(people.length>5)cast.append(h("span","pt-more","+"+(people.length-5)));
+ const cast=$("[data-role=bar-cast]"),people=g?.people||[];cast.replaceChildren(...people.slice(0,5).map(p=>avatar(p.name,"npc")));if(people.length>5)cast.append(h("span","pt-more","+"+(people.length-5)));
  const badge=$("[data-role=bar-module]"),hits=g?.moduleHits||[];badge.hidden=!hits.length;badge.replaceChildren(...(hits.length?[icon(MODULE_ICONS[hits[0].id]||"puzzle-piece"),hits.map(x=>x.label).join("、")]:[]));
  for(const t of queryAll("[data-role=floor]"))t.textContent=state.snapshot?.floor||"#?"}
 function renderTabs(){const f=document.createDocumentFragment(),people=allPeople().length;for(const id of MAIN){const p=PAGES[id],st=pageStatus(id),b=btn("pt-tab",{page:id},icon(p.icon),h("span","",p.label));b.setAttribute("aria-current",state.lastMain===id&&!PAGES[state.page].raw?"page":"false");if(id==="people"&& people)b.append(h("em","",String(people)));if(st!=="ready"){const pip=h("span","pt-pip");pip.dataset.status=st;pip.title=statusCopy(st);b.append(pip)}f.append(b)}$("[data-role=tabs]").replaceChildren(f)}
 
 /* ===== 本轮总览 ===== */
-function personSub(p){if(p.kind==="player")return firstSentence(p.fields["本轮表象"]||p.fields["面对当前场合"],"玩家");if(p.kind==="away")return firstSentence(p.track["当前动向"],"离场");return firstSentence(p.act.now,"在场")}
-function personToken(p,current){const b=btn("pt-token",{person:p.key},avatar(p.name,p.kind==="player"?"player":p.kind==="away"?"away":"npc"),h("span","pt-token-txt",h("b","",p.name),h("small","",personSub(p))));const mood=clean(p.file?.["好感"]);if(!ptBlank(mood))b.append(chip(mood.replace(/[。.]$/,""),"blue"));else if(p.kind==="player")b.append(chip("玩家","gold"));if(current!==undefined)b.setAttribute("aria-current",current?"true":"false");return b}
+function personSub(p){if(p.kind==="away")return firstSentence(p.track["当前动向"],"离场");return firstSentence(p.act.now,"在场")}
+function personToken(p,current){const b=btn("pt-token",{person:p.key},avatar(p.name,p.kind==="away"?"away":"npc"),h("span","pt-token-txt",h("b","",p.name),h("small","",personSub(p))));const mood=clean(p.file?.["好感"]);if(!ptBlank(mood))b.append(chip(mood.replace(/[。.]$/,""),"blue"));if(current!==undefined)b.setAttribute("aria-current",current?"true":"false");return b}
 function moduleCard(m){const map=m.map||new Map(),f=k=>clean(map.get(k)),card=btn("pt-mod-card",{goto:"ruling:modules",moduleIndex:String(state.game.modules.indexOf(m))});card.append(h("div","pt-mod-title",icon(MODULE_ICONS[m.id]||"puzzle-piece"),h("span","",m.label),h("small","",m.id.toUpperCase())));
  if(m.id==="battle"){card.append(h("div","pt-vs",h("div","pt-vs-side",h("small","","我方"),f("我方")||"—"),h("span","pt-vs-x","VS"),h("div","pt-vs-side",h("small","","敌方"),f("敌方")||"—")));card.lastChild.lastChild.dataset.side="foe";card.append(h("div","pt-mod-meta",[f("地点")&& chip(f("地点")),f("战斗类型")&& chip(f("战斗类型"),"red"),f("最大回合")&& chip("最多 "+f("最大回合")+" 回合")]))}
  else if(m.id==="travel")card.append(h("div","pt-path",f("角色")||"—",icon("arrow-right-long"),f("目标地点")||"—"),h("div","pt-mod-meta",[f("移动方式")&& chip(f("移动方式")),f("耗时tick")&& chip(f("耗时tick")+" tick")]));
@@ -196,10 +194,9 @@ function thinkBlock(text,variant){if(ptBlank(text))return null;const t=h("p","pt
 function miniBlock(ic,title,text){return ptBlank(text)?null:h("div","pt-mini",lbl(ic,title),h("p","",clean(text)))}
 function evidenceBody(e){return h("dl","pt-kv",[e.role?[h("dt","","身份"),h("dd","",e.role)]:[],...e.fields.map(([k,v])=>[h("dt","",k||"·"),h("dd","",v)])].flat())}
 function evidenceFold(name){const list=evidenceOf(name);if(!list.length)return null;return h("details","pt-fold",h("summary","",icon("book-bookmark"),"原著行为依据",list.length>1?chip(list.length+" 条"):null),h("div","pt-fold-body pt-ev",list.map(evidenceBody)))}
-function dossier(p){const kind=p.kind==="player"?"玩家":p.kind==="away"?"离场":"在场",tone=p.kind==="player"?"gold":p.kind==="away"?"red":"green";const tags=h("div","pt-dos-tags",chip(kind,tone));const mood=clean(p.file?.["好感"]);if(!ptBlank(mood))tags.append(chip("好感 · "+mood.replace(/[。.]$/,""),"blue"));
- const root=h("article","pt-dos",h("header","pt-dos-head",avatar(p.name,p.kind==="player"?"player":p.kind==="away"?"away":"npc",60),h("div","",h("h2","",p.name),tags)));
+function dossier(p){const kind=p.kind==="away"?"离场":"在场",tone=p.kind==="away"?"red":"green";const tags=h("div","pt-dos-tags",chip(kind,tone));const mood=clean(p.file?.["好感"]);if(!ptBlank(mood))tags.append(chip("好感 · "+mood.replace(/[。.]$/,""),"blue"));
+ const root=h("article","pt-dos",h("header","pt-dos-head",avatar(p.name,p.kind==="away"?"away":"npc",60),h("div","",h("h2","",p.name),tags)));
  const add=(...els)=>root.append(...els.filter(Boolean));
- if(p.kind==="player"){const f=p.fields;add(!ptBlank(f["本轮表象"])&& h("div","",lbl("person-walking","本轮表象"),h("p","pt-stage",clean(f["本轮表象"]))),!ptBlank(f["面对当前场合"])&& h("div","",lbl("masks-theater","面对当前场合"),prose(f["面对当前场合"])),!ptBlank(f["性格底色"])&& h("div","",lbl("fingerprint","性格底色"),prose(f["性格底色"])));for(const [k,v] of Object.entries(f))if(!["本轮表象","面对当前场合","性格底色"].includes(k)&&!ptBlank(v))add(h("div","",lbl("",k),prose(v)));add(relBlock(p.file),evidenceFold(p.name));return root}
  if(p.kind==="away"){const t=p.track;add(!ptBlank(t["当前动向"])&& h("div","",lbl("person-walking","当前动向"),h("p","pt-stage",clean(t["当前动向"]))),h("div","pt-duo",miniBlock("list-check","近期打算",t["近期打算"]),miniBlock("brain","当前认知",t["当前认知"])),miniBlock("code-merge","与玩家路线的交汇条件",t["与玩家路线的交汇条件"]),relBlock(p.file),evidenceFold(p.name));if(root.querySelector(".pt-duo")&&!root.querySelector(".pt-duo").childElementCount)root.querySelector(".pt-duo").remove();return root}
  const a=p.act,inner=p.inner;add(!ptBlank(a.now)&& h("div","",lbl("eye","此刻"),h("p","pt-stage",clean(a.now))));const beat=beatBlock(a.beat);if(beat)add(h("div","",lbl("comment-dots","演出"),beat));
  const thoughts=[thinkBlock(inner.inner_voice),thinkBlock(inner.aside,"aside")].filter(Boolean);if(thoughts.length)add(h("div","pt-beat",lbl("cloud","心声"),...thoughts));
@@ -209,7 +206,6 @@ function stepsList(text){const steps=splitSteps(text);if(!steps.length)return em
 function renderPeople(){const m=state.game?.characters,all=allPeople();if(!all.length)return h("div","pt-scroll",emptyState("users","当前没有人物追踪资料",clean(state.snapshot?.tasks?.character?.raw)?"人物任务的输出无法识别，可在设置 › 开发记录里查看原文。":"人物任务写回后会显示在这里。"));
  if(!all.some(p=>p.key===state.personKey))state.personKey=(m.active[0]||all[0]).key;
  const side=h("nav","pt-side pt-scroll");side.dataset.scroll="people-side";const cur=p=>state.peopleView==="person"&& p.key===state.personKey;
- if(m.player)side.append(h("p","pt-side-title","PLAYER"),personToken(m.player,cur(m.player)));
  if(m.active.length)side.append(h("p","pt-side-title","ON STAGE · "+m.active.length),...m.active.map(p=>personToken(p,cur(p))));
  if(m.away.length)side.append(h("p","pt-side-title","OFF STAGE · "+m.away.length),...m.away.map(p=>personToken(p,cur(p))));
  const extra=[];if(m.interplay)extra.push(["interplay","masks-theater","场上互动"]);if(m.dmSet)extra.push(["plan","chess","人物推演"]);if(m.unassigned.length)extra.push(["unassigned","triangle-exclamation","未归档 "+m.unassigned.length]);
@@ -232,7 +228,7 @@ function rulingItems(){const g=state.game,items=[{id:"current",icon:"location-cr
 function renderCurrentRuling(){const s=state.game.scene,list=[readout("mountain-city","场域与生态","FIELD",s["场域与生态构建"]),readout("bullseye","能力与筹码检验","CHECK",s["内在能力与筹码检验"]),readout("earth-asia","社会与自然回响","ECHO",s["外在社会与自然回响"])].filter(Boolean);if(clean(s.__unparsed))list.push(plate("",plateHead("circle-question","未归类内容",""),prose(s.__unparsed)));return frag(detailHead("location-crosshairs","当前裁定","RULING"),list.length?h("div","pt-stack",list):emptyState("location-crosshairs","当前没有可显示的客观裁定"))}
 function renderKnowledge(){const s=state.game.scene,k=parseKnowledge(s["认知与权限边界"]),list=[];
  if(k.notes.length)list.push(plate("",plateHead("handshake","关系与权限","BOND"),h("ul","pt-notes",k.notes.map(n=>h("li","",n)))));
- if(k.rows.length){const who=name=>allPeople().find(p=>p.name===name);list.push(plate("",plateHead("eye","各方掌握的信息","INTEL"),h("div","pt-know",k.rows.map(r=>h("div","pt-know-row",avatar(r.name,who(r.name)?.kind==="player"?"player":"npc",32),h("div","",h("b","",r.name),h("ul","pt-know-items",r.items.map(it=>h("li","",it.text,it.src?chip(it.src,"violet"):null)))))))))}
+ if(k.rows.length){list.push(plate("",plateHead("eye","各方掌握的信息","INTEL"),h("div","pt-know",k.rows.map(r=>h("div","pt-know-row",avatar(r.name,kindOf(r.name),32),h("div","",h("b","",r.name),h("ul","pt-know-items",r.items.map(it=>h("li","",it.text,it.src?chip(it.src,"violet"):null)))))))))}
  const blind=readout("eye-slash","信息盲区","BLIND",s["信息盲区与认知边界"]);if(blind)list.push(blind);
  return frag(detailHead("eye","认知边界","KNOW"),list.length?h("div","pt-stack",list):emptyState("eye","本轮没有认知边界资料"))}
 function renderRouteDetail(){const g=state.game,track=h("div","pt-vtrack");for(const [label,text,end] of [["世界进程与路线关系",g.route["世界进程与路线关系"]],["本轮剧情推进",g.progress],["本轮落点",g.landing.land,true]]){const n=h("div","pt-vnode",lbl("",label),prose(clean(text)||"暂无"));if(end)n.dataset.end="true";track.append(n)}
@@ -246,7 +242,7 @@ function renderButterfly(){const b=state.game.butterfly,list=[],ol=items=>h("ol"
 function ladderWidget(lad){const span=lad.hi-lad.lo,pos=v=>((v-lad.lo)/span*100).toFixed(2)+"%";const bar=h("div","pt-ladder-bar");
  for(const t of lad.tiers){const seg=h("div","pt-ladder-seg",h("span","",t.label+" ",h("i","",t.range[0]===t.range[1]?t.range[0]+"级":t.range[0]+"–"+t.range[1])));seg.dataset.tier=t.id;seg.style.left=pos(t.range[0]);seg.style.width=((t.range[1]+1-t.range[0])/span*100).toFixed(2)+"%";bar.append(seg)}
  // 代表人物按等级钉在尺上；靠得太近的错开高度
- const rows=[];const marks=[...lad.marks].sort((x,y)=>x.level-y.level);for(const mk of marks){const x=(mk.level+.5-lad.lo)/span;let row=0;while(rows[row]!==undefined&& x-rows[row]<.14)row++;rows[row]=x;const who=allPeople().find(p=>p.name===mk.name);const pin=h("div","pt-ladder-pin",h("b","",mk.name,h("i","",mk.level+"级")));pin.style.left=(x*100).toFixed(2)+"%";pin.style.setProperty("--stem",(8+row*24)+"px");if(who?.kind==="player"||mk.name===state.snapshot?.persona)pin.dataset.kind="player";bar.append(pin)}
+ const rows=[];const marks=[...lad.marks].sort((x,y)=>x.level-y.level);for(const mk of marks){const x=(mk.level+.5-lad.lo)/span;let row=0;while(rows[row]!==undefined&& x-rows[row]<.14)row++;rows[row]=x;const pin=h("div","pt-ladder-pin",h("b","",mk.name,h("i","",mk.level+"级")));pin.style.left=(x*100).toFixed(2)+"%";pin.style.setProperty("--stem",(8+row*24)+"px");if(isPlayer(mk.name))pin.dataset.kind="player";bar.append(pin)}
  const box=h("div","pt-ladder",bar);box.style.setProperty("--pin-pad",(34+Math.max(0,rows.length-1)*24)+"px");return box}
 function renderAuditDetail(){const a=state.game.audit,list=[];const grp=!ptBlank(a["场景参照群体"]),age=!ptBlank(a["参照年龄区间"]);
  if(grp||age)list.push(plate("",plateHead("people-group","参照群体","GROUP"),grp?prose(a["场景参照群体"]):null,age?h("div",grp?"pt-sub":"",lbl("cake-candles","年龄区间"),prose(a["参照年龄区间"])):null));
@@ -294,7 +290,7 @@ function renderArchiveDetail(prefix,text,label,ic){const codes=recordCodes(text,
 function renderClueDetail(){const g=state.game,list=[];
  // 时间线：本档时间点在前，「原本世界线于 X 后发生」的未来节点标金色
  if(g.timeline.length)list.push(plate("",plateHead("timeline","原著时间线","CANON"),h("ol","pt-tl",g.timeline.map((t,i)=>h("li","",hexNum(i+1,28),h("div","",h("small","",t.when?chip(t.when,t.future?"gold":"blue"):null,t.code?" "+t.code:""),h("strong","",t.event),t.hits?.length?h("div","pt-hits",t.hits.map(x=>chip(x))):null))))));
- if(g.evidence.length)list.push(plate("",plateHead("book-bookmark","人物原著行为依据","EVIDENCE"),h("div","pt-ev",g.evidence.map(e=>h("details","pt-fold",h("summary","",avatar(e.name,allPeople().find(p=>p.name===e.name)?.kind==="player"?"player":"npc",26),e.name,e.role?chip(e.role):null),h("div","pt-fold-body",evidenceBody(e)))))));
+ if(g.evidence.length)list.push(plate("",plateHead("book-bookmark","人物原著行为依据","EVIDENCE"),h("div","pt-ev",g.evidence.map(e=>h("details","pt-fold",h("summary","",avatar(e.name,kindOf(e.name),26),e.name,e.role?chip(e.role):null),h("div","pt-fold-body",evidenceBody(e)))))));
  return frag(detailHead("timeline","原著线索","CANON"),list.length?h("div","pt-stack",list):emptyState("timeline","本轮没有原著线索",clean(state.snapshot?.tasks?.clue?.raw)?"":"这一楼没有运行原著线索任务。"))}
 function renderTimeDetail(){const g=state.game,list=[],jump=clean(g.recall.time_jump);
  if(jump)list.push(plate("",plateHead("stopwatch","本轮耗时","TIME"),h("div","pt-big",h("b","",jump),h("span","",g.anchor.date?g.anchor.date+(g.anchor.time?" "+g.anchor.time:""):""))));
