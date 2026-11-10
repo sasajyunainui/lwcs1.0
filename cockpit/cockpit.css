@@ -21,6 +21,8 @@ body{margin:0;padding:28px 16px;min-height:100vh;background:#12151b;font-family:
 /* 面板投影：原先是整块面板上的 drop-shadow 滤镜——面板内容一变（切换扫描、流光）整块都要重算滤镜，切换时掉帧。
    改为两层只画一次的伪元素：3px 厚度边（与 .bz 同切角）+ 柔和落影（box-shadow） */
 .float{position:relative;height:100%;isolation:isolate;animation:bob 7s ease-in-out infinite}
+/* 指针在座舱上时悬浮就地暂停：屏一直上下浮 4px，指针下的按钮跟着挪，边缘一带反复进出悬停（光标闪、悬停卡不稳） */
+.cockpit:hover .float{animation-play-state:paused}
 .float::before{content:"";position:absolute;inset:0;z-index:-1;translate:0 3px;background:#4a566b;clip-path:polygon(20px 0,100% 0,100% calc(100% - 20px),calc(100% - 20px) 100%,0 100%,0 20px);pointer-events:none}
 .float::after{content:"";position:absolute;inset:16px 10px 6px;z-index:-2;box-shadow:0 24px 28px rgba(0,0,0,.6);pointer-events:none}
 .center .float{animation-delay:-2.3s}.wing.r .float{animation-delay:-4.6s}
