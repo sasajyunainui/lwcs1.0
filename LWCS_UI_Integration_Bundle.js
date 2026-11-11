@@ -1,6 +1,62 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:9b917ccc2f2a58d507c67d5a36c0e72abeda8de5648bca16d57e66085ae87eee|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/locations.js:532f7df63767ca3868ef74d2a58375213c8651e54802bd75ab1ec19d83e66b3b|cockpit/cockpit.js:432470d08e4ffbc314d59280d8494ce7689401896380cfae89aa07067a180473|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:31b84a896b0ecfd57ec9274ce575c48b55e1b1fc779106dc6eb734c699584cc8|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:1162c9efcd013102826d4126135b2119eb20021b68b09de96aca7bdd848e898f|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:8f5fdcb220928298fc71f93c977150379113d9fd9d7d2089ab5666def66c079e|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:432470d08e4ffbc314d59280d8494ce7689401896380cfae89aa07067a180473|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:31b84a896b0ecfd57ec9274ce575c48b55e1b1fc779106dc6eb734c699584cc8|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:1162c9efcd013102826d4126135b2119eb20021b68b09de96aca7bdd848e898f|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
+;
+/* source: LWCS_Location_Path.js */
+/* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
+(() => {
+  const root = typeof globalThis !== 'undefined' ? globalThis : window;
+  const KEY = '__LWCS_LOCATION_PATH_V1__';
+  if (root[KEY]) return;
+  // 斗一 / 斗二的地点库按完整路径实例化：位置串和 world.地点 都以「斗罗大陆」为根，城市挂在根的子节点下；斗三没有这一层；
+  // 斗四是「星系 / 行星 / 城市」三层。位置串里的根一律跳过，写回时再按存档里的真实键补回
+  const ROOTS = new Set(['斗罗大陆', '斗灵大陆', '斗罗星际']);
+  const isRecord = v => !!v && typeof v === 'object' && !Array.isArray(v);
+  const isTown = node => /城|都|镇|村|聚落/.test(String(node?.类型 || ''));
+  const segs = pos => String(pos || '').split('-').map(s => s.trim()).filter(s => s && !ROOTS.has(s));
+  const tree = dataRoot => isRecord(dataRoot?.world?.地点) ? dataRoot.world.地点 : {};
+  const rootKey = dataRoot => { const w = tree(dataRoot); return Object.keys(w).find(k => ROOTS.has(k) && isRecord(w[k]?.子节点)) || ''; };
+  // 顶层（已跳过根）：{ 名称: { node, keys } }，keys 是 world.地点 下的真实键路径
+  const top = dataRoot => {
+    const w = tree(dataRoot), r = rootKey(dataRoot), out = {};
+    for (const [k, v] of Object.entries(w)) if (k !== r && isRecord(v)) out[k] = { node: v, keys: ['world', '地点', k] };
+    if (r) for (const [k, v] of Object.entries(w[r].子节点)) if (isRecord(v)) out[k] = { node: v, keys: ['world', '地点', r, '子节点', k] };
+    return out;
+  };
+  // 位置串逐段落到地点树上；树上没有的段跳过
+  const chain = (dataRoot, pos) => {
+    const out = []; let level = top(dataRoot);
+    for (const name of segs(pos)) {
+      const hit = level[name]; if (!hit) continue;
+      out.push({ name, node: hit.node, keys: hit.keys });
+      level = Object.fromEntries(Object.entries(isRecord(hit.node.子节点) ? hit.node.子节点 : {}).filter(([, v]) => isRecord(v)).map(([k, v]) => [k, { node: v, keys: [...hit.keys, '子节点', k] }]));
+    }
+    return out;
+  };
+  // 所在城市：链上第一个城镇类地点；没有时陆地取顶层、斗四（stellar）取第三层
+  const cityIndex = (list, stellar = false) => { const i = list.findIndex(e => isTown(e.node)); return i >= 0 ? i : Math.min(stellar ? 2 : 0, Math.max(0, list.length - 1)); };
+  const city = (dataRoot, pos, options = {}) => { const list = chain(dataRoot, pos); return list.length ? { ...list[cityIndex(list, !!options.stellar)], chain: list } : null; };
+  // 按真实键路径取节点（只认 world / 地点 / … / 子节点 / … 形状）
+  const atKeys = (dataRoot, keys) => {
+    if (!Array.isArray(keys) || keys.length < 3 || keys[0] !== 'world' || keys[1] !== '地点') return null;
+    for (let i = 3; i < keys.length; i += 2) if (keys[i] !== '子节点') return null;
+    let cur = dataRoot; for (const k of keys) { cur = cur?.[k]; if (cur === undefined) return null; }
+    return isRecord(cur) ? cur : null;
+  };
+  // 按地点名找节点：先顶层（含根下），再逐层广度查找
+  const find = (dataRoot, name) => {
+    const target = String(name || '').trim(); if (!target) return null;
+    let level = Object.entries(top(dataRoot));
+    while (level.length) {
+      const hit = level.find(([k]) => k === target); if (hit) return { name: target, node: hit[1].node, keys: hit[1].keys };
+      level = level.flatMap(([, e]) => Object.entries(isRecord(e.node.子节点) ? e.node.子节点 : {}).filter(([, v]) => isRecord(v)).map(([k, v]) => [k, { node: v, keys: [...e.keys, '子节点', k] }]));
+    }
+    return null;
+  };
+  const pointer = keys => '/' + keys.map(k => String(k).replace(/~/g, '~0').replace(/\//g, '~1')).join('/');
+  root[KEY] = Object.freeze({ roots: ROOTS, isTown, segs, top, chain, cityIndex, city, atKeys, find, pointer });
+})();
+
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -5826,7 +5882,7 @@
       });
     }
     const 当前地点 = toText(deepGet(statData, '当前.地点', ''), '').trim();
-    const 当前静态地点 = deepGet(statData, ['world', '地点', 当前地点], null);
+    const 当前静态地点 = deepGet(statData, ['world', '地点', 当前地点], null) || 解析交易地点_桥接(statData, { 地点: 当前地点 })?.node || null;
     safeEntries(当前静态地点 && 当前静态地点.商店).forEach(([, 商店]) => {
       safeEntries(商店 && 商店.库存).forEach(([物品名]) => 添加(物品名));
     });
@@ -8638,10 +8694,23 @@
     return 配置.registry?.isDirectlySpendable(配置.eraId, toText(货币, '').trim()) === true;
   }
 
-  function 交易市场单价_桥接(数据根 = {}, 地点 = '', 基础单价 = 0, 固定价格 = false) {
+  // 交易地点节点：优先用交易模块给的真实键路径（所在城市节点），否则顶层同名，再按位置串取所在城市 / 按名查找。
+  // 斗一 / 斗二的城市挂在「斗罗大陆」根下、斗四在行星下，只查顶层会找不到
+  function 解析交易地点_桥接(数据根 = {}, 参数 = {}) {
+    const 解析 = __mvuBridgeRoot.__LWCS_LOCATION_PATH_V1__;
+    const 路径 = Array.isArray(参数.地点路径) ? 参数.地点路径.map(值 => toText(值, '')) : null;
+    const 按路径 = 路径 && 解析?.atKeys(数据根, 路径);
+    if (按路径) return { node: 按路径, keys: 路径 };
+    const 地点 = toText(参数.地点, '').trim();
+    const 顶层 = 数据根?.world?.地点?.[地点];
+    if (顶层 && typeof 顶层 === 'object') return { node: 顶层, keys: ['world', '地点', 地点] };
+    const 命中 = 解析?.city(数据根, 地点) || 解析?.find(数据根, 地点);
+    return 命中 ? { node: 命中.node, keys: 命中.keys } : null;
+  }
+
+  function 交易市场单价_桥接(数据根 = {}, 地点数据 = {}, 基础单价 = 0, 固定价格 = false) {
     if (固定价格) return Math.max(0, Math.floor(toNumber(基础单价, 0)));
-    const 地点数据 = 数据根?.world?.地点?.[地点] || {};
-    const 市场 = 构建市场派生模型(地点数据, 数据根);
+    const 市场 = 构建市场派生模型(地点数据 || {}, 数据根);
     return Math.max(0, Math.floor(toNumber(基础单价, 0) * toNumber(市场?.买入倍率, 1)));
   }
 
@@ -8677,7 +8746,8 @@
 
     if (请求类型 === 'trade_shop_buy') {
       const 商店名 = toText(参数.商店, '').trim();
-      const 地点数据 = 数据根?.world?.地点?.[地点];
+      const 地点项 = 解析交易地点_桥接(数据根, 参数);
+      const 地点数据 = 地点项?.node;
       const 商店 = 地点数据?.商店?.[商店名];
       const 商品 = 商店?.库存?.[物品名];
       if (!地点数据 || !商店 || !商品) throw new Error('商店、地点或商品已不存在');
@@ -8696,7 +8766,7 @@
         ),
       );
       const 固定价格 = 商品._tower_discount_virtual === true;
-      const 市场单价 = 交易市场单价_桥接(数据根, 地点, 基础价格, 固定价格);
+      const 市场单价 = 交易市场单价_桥接(数据根, 地点数据, 基础价格, 固定价格);
       const 折扣 = 运行时.计算购买支付比例(数据根, 角色名, {
         地点, 商店: 商店名, 物品分类: 命中定义?.分类 || 定义.分类 || '', 物品: 物品名,
       });
@@ -8713,7 +8783,7 @@
       const 提交财富 = 交易补丁目标值_桥接(补丁列表, 财富路径);
       if (提交财富 === undefined || toNumber(提交财富, NaN) !== 新财富) throw new Error('客户端扣款结果与实时结算不一致');
       if (商品._tower_discount_virtual !== true) {
-        const 库存路径 = ['world', '地点', 地点, '商店', 商店名, '库存', 物品名, '库存'];
+        const 库存路径 = [...地点项.keys, '商店', 商店名, '库存', 物品名, '库存'];
         const 提交库存 = 交易补丁目标值_桥接(补丁列表, 库存路径);
         if (提交库存 === undefined || toNumber(提交库存, NaN) !== toNumber(商品.库存, 0) - 数量) {
           throw new Error('客户端库存结果与实时结算不一致');
@@ -9124,7 +9194,7 @@
         角色.背包 ||= {};
         if (权限记录.权限.来源 !== '全局物品库') {
           const [地点, 商店] = 权限记录.权限.来源.split('-', 2);
-          const 库存项 = statData?.world?.地点?.[地点]?.商店?.[商店]?.库存?.[物品名];
+          const 库存项 = 解析交易地点_桥接(statData, { 地点 })?.node?.商店?.[商店]?.库存?.[物品名];
           if (!库存项 || toNumber(库存项.库存, 0) < 数量) throw new Error('商店库存不足');
           库存项.库存 -= 数量;
         }
@@ -47540,28 +47610,23 @@ ${播报文本}
 /* source: cockpit/locations.js */
 /* 座舱地点解析：各页共用 */
 (() => {
-  // 斗一 / 斗二的地点库按完整路径实例化：位置串和存档地点树都以「斗罗大陆」为根，城市挂在根的子节点下；斗三库没有这一层；
-  // 斗四是「星系 / 行星 / 城市」三层。各页统一经这里跳过根、取所在城市
-  const ROOTS = new Set(['斗罗大陆', '斗罗星际']);
-  const isTown = n => /城|都|镇|村|聚落/.test(String(n?.类型 || ''));
+  // 存档地点树的解析（跳过「斗罗大陆」根、所在城市、真实键路径）与交易模块、桥接共用 LWCS_Location_Path.js；这里只补时代地图配置，
+  // 并转成座舱页面用的形状：chain 为 [名称, 节点]，top 为 { 名称: 节点 }
+  const P = (typeof globalThis !== 'undefined' ? globalThis : window).__LWCS_LOCATION_PATH_V1__;
   window.LWCS_COCKPIT_LOC = (S, rt) => {
     // 时代地图配置（斗一斗罗大陆1地图、斗二 / 斗三 MAP、斗四星际总图）；原型页没有时代运行时，按陆地处理
     const profile = () => { try { const p = rt?.('__LWCS_ERA_RUNTIME_INTEGRATION_V1__')?.getMapProfileForTick?.(Number(S?.world?.时间?.tick)); if (p?.asset) return p; } catch (e) { /* 时间未就绪 */ } return { asset: 'MAP.webp', topology: 'terrestrial' }; };
     const stellar = () => profile().topology === 'stellar';
-    const rootKey = () => { const w = S?.world?.地点 || {}; return Object.keys(w).find(k => ROOTS.has(k) && w[k]?.子节点) || ''; };
-    // 存档地点树的顶层（已跳过根）；写回时由 path 补回真实键路径
-    const top = () => { const w = S?.world?.地点 || {}, r = rootKey(); return r ? { ...Object.fromEntries(Object.entries(w).filter(([k]) => k !== r)), ...w[r].子节点 } : w; };
-    const path = names => { const r = rootKey(), lead = r && (S.world.地点[r].子节点 || {})[names[0]] ? [r, '子节点'] : []; return ['world', '地点', ...lead, ...names.flatMap((n, i) => i ? ['子节点', n] : [n])]; };
-    const segs = pos => String(pos || '').split('-').filter(p => p && !ROOTS.has(p));
-    // 位置串逐段落到存档地点树上；树上没有的段跳过
-    const chain = pos => { const out = []; let pool = top(); for (const p of segs(pos)) if (pool && pool[p]) { out.push([p, pool[p]]); pool = pool[p].子节点 || {}; } return out; };
-    // 所在城市：链上第一个城镇类地点；没有时陆地取顶层、斗四取第三层
-    const cityIndex = ch => { const i = ch.findIndex(([, n]) => isTown(n)); return i >= 0 ? i : Math.min(stellar() ? 2 : 0, Math.max(0, ch.length - 1)); };
-    const city = pos => { const ch = chain(pos), ci = cityIndex(ch), e = ch[ci]; return { chain: ch, ci, name: e?.[0] || '', node: e?.[1] || {}, path: e ? path(ch.slice(0, ci + 1).map(x => x[0])) : null }; };
-    return { roots: ROOTS, isTown, profile, stellar, rootName: () => stellar() ? '斗罗星际' : '斗罗大陆', top, path, segs, chain, cityIndex, city };
+    const top = () => Object.fromEntries(Object.entries(P.top(S)).map(([k, e]) => [k, e.node]));
+    // 写回路径：按名称逐级落到地点树上取真实键（斗一 / 斗二补回根）；树上没有时按顶层拼
+    const path = names => { const hit = P.chain(S, names.join('-')); return hit.length === names.length ? hit.at(-1).keys : ['world', '地点', ...names.flatMap((n, i) => i ? ['子节点', n] : [n])]; };
+    const chain = pos => P.chain(S, pos).map(e => [e.name, e.node]);
+    const cityIndex = ch => P.cityIndex(ch.map(([, node]) => ({ node })), stellar());
+    const city = pos => { const list = P.chain(S, pos), ci = P.cityIndex(list, stellar()), e = list[ci]; return { chain: list.map(x => [x.name, x.node]), ci, name: e?.name || '', node: e?.node || {}, path: e ? e.keys : null }; };
+    return { roots: P.roots, isTown: P.isTown, profile, stellar, rootName: () => stellar() ? '斗罗星际' : '斗罗大陆', top, path, segs: P.segs, chain, cityIndex, city };
   };
   // 不依赖存档的部分也挂在工厂上，页面模块顶层可直接用
-  Object.assign(window.LWCS_COCKPIT_LOC, { roots: ROOTS, isTown });
+  Object.assign(window.LWCS_COCKPIT_LOC, { roots: P.roots, isTown: P.isTown });
 })();
 
 ;

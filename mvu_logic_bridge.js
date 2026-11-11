@@ -4212,7 +4212,7 @@
       });
     }
     const 当前地点 = toText(deepGet(statData, '当前.地点', ''), '').trim();
-    const 当前静态地点 = deepGet(statData, ['world', '地点', 当前地点], null);
+    const 当前静态地点 = deepGet(statData, ['world', '地点', 当前地点], null) || 解析交易地点_桥接(statData, { 地点: 当前地点 })?.node || null;
     safeEntries(当前静态地点 && 当前静态地点.商店).forEach(([, 商店]) => {
       safeEntries(商店 && 商店.库存).forEach(([物品名]) => 添加(物品名));
     });
@@ -7024,10 +7024,23 @@
     return 配置.registry?.isDirectlySpendable(配置.eraId, toText(货币, '').trim()) === true;
   }
 
-  function 交易市场单价_桥接(数据根 = {}, 地点 = '', 基础单价 = 0, 固定价格 = false) {
+  // 交易地点节点：优先用交易模块给的真实键路径（所在城市节点），否则顶层同名，再按位置串取所在城市 / 按名查找。
+  // 斗一 / 斗二的城市挂在「斗罗大陆」根下、斗四在行星下，只查顶层会找不到
+  function 解析交易地点_桥接(数据根 = {}, 参数 = {}) {
+    const 解析 = __mvuBridgeRoot.__LWCS_LOCATION_PATH_V1__;
+    const 路径 = Array.isArray(参数.地点路径) ? 参数.地点路径.map(值 => toText(值, '')) : null;
+    const 按路径 = 路径 && 解析?.atKeys(数据根, 路径);
+    if (按路径) return { node: 按路径, keys: 路径 };
+    const 地点 = toText(参数.地点, '').trim();
+    const 顶层 = 数据根?.world?.地点?.[地点];
+    if (顶层 && typeof 顶层 === 'object') return { node: 顶层, keys: ['world', '地点', 地点] };
+    const 命中 = 解析?.city(数据根, 地点) || 解析?.find(数据根, 地点);
+    return 命中 ? { node: 命中.node, keys: 命中.keys } : null;
+  }
+
+  function 交易市场单价_桥接(数据根 = {}, 地点数据 = {}, 基础单价 = 0, 固定价格 = false) {
     if (固定价格) return Math.max(0, Math.floor(toNumber(基础单价, 0)));
-    const 地点数据 = 数据根?.world?.地点?.[地点] || {};
-    const 市场 = 构建市场派生模型(地点数据, 数据根);
+    const 市场 = 构建市场派生模型(地点数据 || {}, 数据根);
     return Math.max(0, Math.floor(toNumber(基础单价, 0) * toNumber(市场?.买入倍率, 1)));
   }
 
@@ -7063,7 +7076,8 @@
 
     if (请求类型 === 'trade_shop_buy') {
       const 商店名 = toText(参数.商店, '').trim();
-      const 地点数据 = 数据根?.world?.地点?.[地点];
+      const 地点项 = 解析交易地点_桥接(数据根, 参数);
+      const 地点数据 = 地点项?.node;
       const 商店 = 地点数据?.商店?.[商店名];
       const 商品 = 商店?.库存?.[物品名];
       if (!地点数据 || !商店 || !商品) throw new Error('商店、地点或商品已不存在');
@@ -7082,7 +7096,7 @@
         ),
       );
       const 固定价格 = 商品._tower_discount_virtual === true;
-      const 市场单价 = 交易市场单价_桥接(数据根, 地点, 基础价格, 固定价格);
+      const 市场单价 = 交易市场单价_桥接(数据根, 地点数据, 基础价格, 固定价格);
       const 折扣 = 运行时.计算购买支付比例(数据根, 角色名, {
         地点, 商店: 商店名, 物品分类: 命中定义?.分类 || 定义.分类 || '', 物品: 物品名,
       });
@@ -7099,7 +7113,7 @@
       const 提交财富 = 交易补丁目标值_桥接(补丁列表, 财富路径);
       if (提交财富 === undefined || toNumber(提交财富, NaN) !== 新财富) throw new Error('客户端扣款结果与实时结算不一致');
       if (商品._tower_discount_virtual !== true) {
-        const 库存路径 = ['world', '地点', 地点, '商店', 商店名, '库存', 物品名, '库存'];
+        const 库存路径 = [...地点项.keys, '商店', 商店名, '库存', 物品名, '库存'];
         const 提交库存 = 交易补丁目标值_桥接(补丁列表, 库存路径);
         if (提交库存 === undefined || toNumber(提交库存, NaN) !== toNumber(商品.库存, 0) - 数量) {
           throw new Error('客户端库存结果与实时结算不一致');
@@ -7510,7 +7524,7 @@
         角色.背包 ||= {};
         if (权限记录.权限.来源 !== '全局物品库') {
           const [地点, 商店] = 权限记录.权限.来源.split('-', 2);
-          const 库存项 = statData?.world?.地点?.[地点]?.商店?.[商店]?.库存?.[物品名];
+          const 库存项 = 解析交易地点_桥接(statData, { 地点 })?.node?.商店?.[商店]?.库存?.[物品名];
           if (!库存项 || toNumber(库存项.库存, 0) < 数量) throw new Error('商店库存不足');
           库存项.库存 -= 数量;
         }

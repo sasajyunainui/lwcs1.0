@@ -1398,16 +1398,20 @@ class TradeUIComponent {
       && 当前地点.segments.some(片段 => 片段 && 目标地点.segments.includes(片段) && /拍卖|交易中心/.test(当前地点.raw));
   }
 
+  // 所在城市节点：沿位置逐级找第一个城镇类地点（跳过「斗罗大陆」根；斗一 / 斗二城市在帝国之下，斗四在行星之下），
+  // 身处城内地点（如「东海城-东海学院」）时归到所在城市。pointer 是节点在存档里的真实路径，库存补丁写回这里
   resolveTradeLocationNode(location) {
+    const resolver = (typeof globalThis !== 'undefined' ? globalThis : window).__LWCS_LOCATION_PATH_V1__;
+    const hit = resolver?.city({ world: this.worldData || {} }, location, { stellar: this.currentEraId === 'zjdl' });
+    if (hit) return { key: hit.name, data: hit.node, keys: hit.keys, pointer: resolver.pointer(hit.keys) };
     const worldLocations = this.worldData?.地点 || {};
     const raw = String(location || '').trim();
     const normalized = this.normalizeLocForMatch(raw);
-    // 身处城内地点（如「东海城-东海学院」）时归到所在城市，与桥接快照的当前地点一致
     const candidates = [raw, normalized.raw, normalized.segments[0]].filter(Boolean);
     for (const key of candidates) {
-      if (worldLocations[key]) return { key, data: worldLocations[key] };
+      if (worldLocations[key]) return { key, data: worldLocations[key], keys: ['world', '地点', key], pointer: `/world/地点/${this.escapeJsonPointer(key)}` };
     }
-    return { key: '', data: null };
+    return { key: '', data: null, keys: null, pointer: '' };
   }
 
   getPrivateTradeContext(action, targetNpcName, itemName, qty, price) {
@@ -1430,6 +1434,7 @@ class TradeUIComponent {
     const currentLoc = String(this.charData?.状态?.位置 || '');
     const currentLocation = this.resolveTradeLocationNode(currentLoc);
     ctx.locationKey = currentLocation.key || currentLoc;
+    ctx.locationPointer = currentLocation.pointer || `/world/地点/${this.escapeJsonPointer(ctx.locationKey)}`;
     ctx.storeData = ctx.usesMarketStore ? this.currentStores?.[ctx.storeName] || null : null;
     ctx.worldContext = this.resolveWorldActionContext(ctx.isBlackMarket ? 'trade_private_black_market' : 'trade_private', currentLoc);
     const privateActionState = this.getWorldActionState(ctx.worldContext, ctx.isBlackMarket
@@ -1953,6 +1958,7 @@ class TradeUIComponent {
     const item = this.currentStores?.[storeName]?.库存?.[itemName];
     if (!item) return this.显示提示('当前没有可交易的商品。');
     const loc = this.charData?.状态?.位置 || '';
+    const shopNode = this.resolveTradeLocationNode(loc);
     const worldAction = this.getConfiguredTradeWorldAction('trade_buy');
     const worldContext = this.resolveWorldActionContext(worldAction.actionType, loc);
     const worldActionState = this.getWorldActionState(worldContext, { market: true, marketFunction: worldAction.marketFunction, storeName });
@@ -1978,7 +1984,7 @@ class TradeUIComponent {
     let newWealth = (this.charData.财富?.[currency] || 0) - total;
     patchOps.push({ op: "replace", path: `${this.activeCharBasePath}/财富/${this.escapeJsonPointer(currency)}`, value: newWealth });
     if (!isSoulTowerDiscountTrade) {
-      patchOps.push({ op: "replace", path: `/world/地点/${this.escapeJsonPointer(loc)}/商店/${this.escapeJsonPointer(storeName)}/库存/${this.escapeJsonPointer(itemName)}/库存`, value: Number(item.库存 || 0) - qty });
+      patchOps.push({ op: "replace", path: `${shopNode.pointer || `/world/地点/${this.escapeJsonPointer(loc)}`}/商店/${this.escapeJsonPointer(storeName)}/库存/${this.escapeJsonPointer(itemName)}/库存`, value: Number(item.库存 || 0) - qty });
     }
 
     const 采购定义 = { ...(item._临时定义 || this.取物品定义(itemName)), ...(item || {}) };
@@ -2017,6 +2023,7 @@ class TradeUIComponent {
         交易参数: {
           角色名: this.activeName,
           地点: loc,
+          地点路径: shopNode.keys || null,
           商店: storeName,
           物品: itemName,
           数量: qty,
@@ -2218,7 +2225,7 @@ class TradeUIComponent {
         if (ctx.usesMarketStore) {
           patchOps.push({
             op: "replace",
-            path: `/world/地点/${this.escapeJsonPointer(ctx.locationKey)}/商店/${this.escapeJsonPointer(ctx.storeName)}/库存/${this.escapeJsonPointer(itemName)}/库存`,
+            path: `${ctx.locationPointer}/商店/${this.escapeJsonPointer(ctx.storeName)}/库存/${this.escapeJsonPointer(itemName)}/库存`,
             value: Number(ctx.npcItem?.库存 || 0) - qty,
           });
         } else {
@@ -2234,7 +2241,7 @@ class TradeUIComponent {
         this.appendInventoryConsumePatches(patchOps, this.activeCharBasePath, this.charData.背包 || {}, itemName, qty);
         patchOps.push({ op: "replace", path: `${this.activeCharBasePath}/财富/${this.escapeJsonPointer(ctx.currency)}`, value: (this.charData.财富?.[ctx.currency] || 0) + ctx.total });
         if (ctx.usesMarketStore) {
-          const stockPath = `/world/地点/${this.escapeJsonPointer(ctx.locationKey)}/商店/${this.escapeJsonPointer(ctx.storeName)}/库存/${this.escapeJsonPointer(itemName)}`;
+          const stockPath = `${ctx.locationPointer}/商店/${this.escapeJsonPointer(ctx.storeName)}/库存/${this.escapeJsonPointer(itemName)}`;
           const existingStock = ctx.storeData?.库存?.[itemName];
           patchOps.push(existingStock
             ? { op: "replace", path: `${stockPath}/库存`, value: Number(existingStock.库存 || 0) + qty }

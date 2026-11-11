@@ -48,6 +48,7 @@ const 打包定义 = Object.freeze({
     'timeline.js',
   ],
   'LWCS_UI_Integration_Bundle.js': [
+    'LWCS_Location_Path.js',
     'LWCS_Message_Semantics.js',
     'LWCS_Host_Compatibility.js',
     'LWCS_TT_AutoUpdate_Debug.js',
@@ -65,6 +66,7 @@ const 打包定义 = Object.freeze({
     'BattleRuntime_Module.js',
   ],
   'LWCS_UI_Gameplay_Bundle.js': [
+    'LWCS_Location_Path.js',
     'TradeUI_Module.js',
     'ProfessionUI_Module.js',
     'CompetitionPrivilegeUI_Module.js',
@@ -76,6 +78,7 @@ const 打包定义 = Object.freeze({
     'BattleUI_Module.js',
   ],
   'LWCS_UI_Runtime_Bundle.js': [
+    'LWCS_Location_Path.js',
     'LWCS_Message_Semantics.js',
     'LWCS_Host_Compatibility.js',
     'LWCS_TT_AutoUpdate_Debug.js',

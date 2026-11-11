@@ -1,25 +1,20 @@
 /* 座舱地点解析：各页共用 */
 (() => {
-  // 斗一 / 斗二的地点库按完整路径实例化：位置串和存档地点树都以「斗罗大陆」为根，城市挂在根的子节点下；斗三库没有这一层；
-  // 斗四是「星系 / 行星 / 城市」三层。各页统一经这里跳过根、取所在城市
-  const ROOTS = new Set(['斗罗大陆', '斗罗星际']);
-  const isTown = n => /城|都|镇|村|聚落/.test(String(n?.类型 || ''));
+  // 存档地点树的解析（跳过「斗罗大陆」根、所在城市、真实键路径）与交易模块、桥接共用 LWCS_Location_Path.js；这里只补时代地图配置，
+  // 并转成座舱页面用的形状：chain 为 [名称, 节点]，top 为 { 名称: 节点 }
+  const P = (typeof globalThis !== 'undefined' ? globalThis : window).__LWCS_LOCATION_PATH_V1__;
   window.LWCS_COCKPIT_LOC = (S, rt) => {
     // 时代地图配置（斗一斗罗大陆1地图、斗二 / 斗三 MAP、斗四星际总图）；原型页没有时代运行时，按陆地处理
     const profile = () => { try { const p = rt?.('__LWCS_ERA_RUNTIME_INTEGRATION_V1__')?.getMapProfileForTick?.(Number(S?.world?.时间?.tick)); if (p?.asset) return p; } catch (e) { /* 时间未就绪 */ } return { asset: 'MAP.webp', topology: 'terrestrial' }; };
     const stellar = () => profile().topology === 'stellar';
-    const rootKey = () => { const w = S?.world?.地点 || {}; return Object.keys(w).find(k => ROOTS.has(k) && w[k]?.子节点) || ''; };
-    // 存档地点树的顶层（已跳过根）；写回时由 path 补回真实键路径
-    const top = () => { const w = S?.world?.地点 || {}, r = rootKey(); return r ? { ...Object.fromEntries(Object.entries(w).filter(([k]) => k !== r)), ...w[r].子节点 } : w; };
-    const path = names => { const r = rootKey(), lead = r && (S.world.地点[r].子节点 || {})[names[0]] ? [r, '子节点'] : []; return ['world', '地点', ...lead, ...names.flatMap((n, i) => i ? ['子节点', n] : [n])]; };
-    const segs = pos => String(pos || '').split('-').filter(p => p && !ROOTS.has(p));
-    // 位置串逐段落到存档地点树上；树上没有的段跳过
-    const chain = pos => { const out = []; let pool = top(); for (const p of segs(pos)) if (pool && pool[p]) { out.push([p, pool[p]]); pool = pool[p].子节点 || {}; } return out; };
-    // 所在城市：链上第一个城镇类地点；没有时陆地取顶层、斗四取第三层
-    const cityIndex = ch => { const i = ch.findIndex(([, n]) => isTown(n)); return i >= 0 ? i : Math.min(stellar() ? 2 : 0, Math.max(0, ch.length - 1)); };
-    const city = pos => { const ch = chain(pos), ci = cityIndex(ch), e = ch[ci]; return { chain: ch, ci, name: e?.[0] || '', node: e?.[1] || {}, path: e ? path(ch.slice(0, ci + 1).map(x => x[0])) : null }; };
-    return { roots: ROOTS, isTown, profile, stellar, rootName: () => stellar() ? '斗罗星际' : '斗罗大陆', top, path, segs, chain, cityIndex, city };
+    const top = () => Object.fromEntries(Object.entries(P.top(S)).map(([k, e]) => [k, e.node]));
+    // 写回路径：按名称逐级落到地点树上取真实键（斗一 / 斗二补回根）；树上没有时按顶层拼
+    const path = names => { const hit = P.chain(S, names.join('-')); return hit.length === names.length ? hit.at(-1).keys : ['world', '地点', ...names.flatMap((n, i) => i ? ['子节点', n] : [n])]; };
+    const chain = pos => P.chain(S, pos).map(e => [e.name, e.node]);
+    const cityIndex = ch => P.cityIndex(ch.map(([, node]) => ({ node })), stellar());
+    const city = pos => { const list = P.chain(S, pos), ci = P.cityIndex(list, stellar()), e = list[ci]; return { chain: list.map(x => [x.name, x.node]), ci, name: e?.name || '', node: e?.node || {}, path: e ? e.keys : null }; };
+    return { roots: P.roots, isTown: P.isTown, profile, stellar, rootName: () => stellar() ? '斗罗星际' : '斗罗大陆', top, path, segs: P.segs, chain, cityIndex, city };
   };
   // 不依赖存档的部分也挂在工厂上，页面模块顶层可直接用
-  Object.assign(window.LWCS_COCKPIT_LOC, { roots: ROOTS, isTown });
+  Object.assign(window.LWCS_COCKPIT_LOC, { roots: P.roots, isTown: P.isTown });
 })();
