@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:a047634ae51ef5efaba0b6213f994e9f9d263cab2d4022d831c95907c3ec2dca|MVU_Schema_Runtime.js:a173fbef52748f995d607be544151366fdbbde1cb9b23ef8dbea7bb3244b3152|MVU_Competition_Runtime.js:2a5d78b856d3123e857393fca07fb365d91ce9ea4877cc37dfafd86b384e8904|MVU_Runtime_View.js:f1cdb932eb407effb83cc5252749b7c093882c1328ce746565cdb1ec607791da */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:539fca10c2ce38767f4cfaaa053551ee2e8fe9950edc083737dd25b35a0543a6|MVU_Schema_Runtime.js:a173fbef52748f995d607be544151366fdbbde1cb9b23ef8dbea7bb3244b3152|MVU_Competition_Runtime.js:2a5d78b856d3123e857393fca07fb365d91ce9ea4877cc37dfafd86b384e8904|MVU_Runtime_View.js:f1cdb932eb407effb83cc5252749b7c093882c1328ce746565cdb1ec607791da */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -4626,7 +4626,7 @@ function 归类技能生成错误_V1(错误 = null) {
 
 function 匹配技能生成失败机制_V1(错误 = null) {
   const 文本 = String(错误?.message || 错误 || '').trim();
-  const 匹配 = 文本.match(/技能生成错误:([^:：\s]+?)(?:COST仍超预算|最低COST超预算|兜底失败|利用率不达标|五环重复|三环|不可调机制低于最低有效COST|不满足当前品质门槛|没有共享原型编译定义|已被本轮排除|未生成可执行原型|没有合法子原型)/);
+  const 匹配 = 文本.match(/技能生成错误:([^:：\s]+?)(?:预算预筛后(?=没有合法子原型))?(?:COST仍超预算|最低COST超预算|兜底失败|利用率不达标|五环重复|三环|不可调机制低于最低有效COST|不满足当前品质门槛|没有共享原型编译定义|已被本轮排除|未生成可执行原型|没有合法子原型)/);
   return String(匹配?.[1] || '').trim();
 }
 
@@ -7397,7 +7397,7 @@ var SKILL_MAIN_MECHANIC_POOL_V1 = {
   },
   回复类: {
     desc: '以恢复当前生命、魂力、精神力或清除异常为核心结果的技能骨架',
-    children: ['体力恢复', '魂力恢复', '精神恢复', '持续恢复', '净化/解控'],
+    children: ['生命恢复', '体力恢复', '魂力恢复', '精神恢复', '持续恢复', '净化/解控'],
   },
   '感知/认知类': {
     desc: '以干涉感知、认知、情报或判断为核心结果的技能骨架',
@@ -7537,12 +7537,19 @@ var SKILL_ARCHETYPE_POOL_V1 = {
   削弱类: ['单属性削弱', '多属性削弱', '禁疗', '消耗', '前摇', '掌控压制', '元素封禁'],
   增益类: ['单属性增益', '多属性增益', '全属性增益', '威力增幅', '技能效果增幅', '消耗', '前摇', '掌控提升', '速度提升', '修炼增益'],
   防御类: ['护盾', '承伤修正', '免伤', '霸体', '免死/锁血', '无敌金身', '伤害反射', '伤害转移', '伤害分摊', '消耗分摊'],
-  回复类: ['体力恢复', '魂力恢复', '精神恢复', '持续恢复', '净化/解控'],
+  回复类: ['生命恢复', '体力恢复', '魂力恢复', '精神恢复', '持续恢复', '净化/解控'],
   '感知/认知类': ['感知干扰', '标记锁定', '共享视野', '幻境', '催眠', '认知扭曲'],
   位移类: ['自身位移', '强制位移', '位移交换', '追击位移', '脱离位移'],
   特殊规则类: ['召唤', '分身', '复制', '反制', '转化', '状态交换', '状态转移', '强制绑定/锁定', '规则改写', '引爆持续伤害', '斩盾', '吞噬', '能力共享', '机制抹消', '炸环', '时光回溯', '气运干涉', '资源燃烧', '资源锁定'],
 };
-var 自动生成禁止主机制原型集合_V1 = new Set(['消耗', '前摇']);
+// 消耗、前摇同时登记在增益类和削弱类：降低消耗、缩短前摇是辅助（增益类，作用于自己或队友），提高消耗、拉长前摇是削弱
+// （削弱类，作用于敌方）。方向跟着所在大类走；只按名字反查大类时默认取增益类，削弱义由调用方带上大类。
+// 原先（f8728de）因为同名两义被归错类，直接禁止二者作主机制，现已改为按大类区分。
+var 双向修正机制_V1 = new Set(['消耗', '前摇']);
+
+function 双向修正机制为削弱_V1(机制 = '', 大类 = '') {
+  return 双向修正机制_V1.has(String(机制 || '').trim()) && String(大类 || '').trim() === '削弱类';
+}
 
 var AUTO_GENERATED_EXCLUSIVE_MAIN_ARCHETYPES_V1 = new Set([
   '吞噬',
@@ -7609,6 +7616,15 @@ var SKILL_SECONDARY_BY_MAIN_V1 = {
   位移类: ['打断', '反击', '标记弱点', '隐身', '破隐'],
   特殊规则类: ['共享视野', '标记弱点', '净化', '驱散增益', '窃取增益', '隐身', '护卫', '状态转移', '引爆持续伤害', '斩盾', '吞噬', '能力共享', '机制抹消', '炸环', '时光回溯', '气运干涉', '规则改写', '治疗反转', '封技', '无敌金身', '伤害反射', '伤害转移', '伤害分摊', '消耗分摊', '生命链接', '资源燃烧', '资源锁定'],
 };
+
+// 系别专属副机制（用户 2026-11-09：敏攻系抽到攻速的概率最高，其次是元素系）。只进本系的副机制池；其余副机制权重
+// 1–14（主机制匹配 +7、系别潜力 +2、系别偏好 +4），敏攻的攻速与最高一档同权，元素低一档。削弱类主机制下前摇会变成
+// 给敌人加前摇，主机制本身就是前摇时会和自己重复，这两种不进。元素系的限定元素在收口时按可调用元素写入
+// （应用生成魂技系别驱动属性_V1）。
+var SKILL_SECONDARY_TYPE_EXCLUSIVE_V1 = Object.freeze({
+  敏攻系: Object.freeze({ 前摇: 14 }),
+  元素系: Object.freeze({ 前摇: 8 }),
+});
 
 var SKILL_SECONDARY_TYPE_BIAS_V1 = {
   强攻系: ['斩盾', '引爆持续伤害', '无敌金身', '伤害反射', '反击', '追击'],
@@ -8131,6 +8147,17 @@ var SKILL_MECHANISM_META_V1 = (() => {
       num('shareCount', '分摊人数', '1', '1'),
       num('duration', '持续回合', '2', '1'),
     ],
+  });
+  // 用户 2026-11-09: 体力 and 生命 are separate resources. 生命恢复 is the HP heal this mechanism used to compile to;
+  // 体力恢复 now restores stamina.
+  register('生命恢复', {
+    说明: '按倍率回复生命。',
+    可主机制: true,
+    目标语义: '可赋予',
+    摘要提示: { skillType: '辅助', mainType: '回复类', recoverNature: '生命恢复' },
+    designerMainHint: '回复类',
+    designerSubHint: '生命恢复',
+    设计台参数定义: [num('recoverRatio', '回复倍率', '0.35'), num('repeatCount', '生效次数', '1', '1')],
   });
   register('体力恢复', {
     说明: '按倍率回复体力。',
@@ -8992,7 +9019,8 @@ var SKILL_MECHANISM_NAME_TO_PROTOTYPES_V1 = Object.freeze({
   伤害转移: [原型编译条目('结算修正', { 结算: '伤害转移', 数值: '+20%' })],
   伤害分摊: [原型编译条目('结算修正', { 结算: '伤害分摊', 数值: '+20%' })],
   消耗分摊: [原型编译条目('结算修正', { 结算: '消耗分摊', 数值: '+20%' })],
-  体力恢复: [原型编译条目('资源变化', { 资源: '生命' })],
+  生命恢复: [原型编译条目('资源变化', { 资源: '生命' })],
+  体力恢复: [原型编译条目('资源变化', { 资源: '体力' })],
   魂力恢复: [原型编译条目('资源变化', { 资源: '魂力' })],
   精神恢复: [原型编译条目('资源变化', { 资源: '精神力' })],
   持续恢复: [原型编译条目('状态施加', { 状态: '持续恢复' })],
@@ -9610,6 +9638,12 @@ function 获取运转标准消耗_V1(魂技位 = 1) {
   return 获取标准消耗_V1(魂技位);
 }
 function 获取武魂真身运转标准消耗比例_V1() { return SKILL_AVATAR_STANDARD_COST_RATIO_V1; }
+var 武魂真身标志大类_V1 = Object.freeze({ 控制系: '控制类', 防御系: '防御类' });
+
+function 读取武魂真身燃料模型_V1(系别 = '强攻系') {
+  return buildFuelModelByType(系别, 武魂真身标志大类_V1[系别] || '');
+}
+
 function 构建武魂真身默认承载消耗_V1(type = '强攻系', grade = 'B', delivery = '直接生效') {
   const 系别 = String(type || '强攻系').trim() || '强攻系';
   const 品质基准 = 获取魂技品质消耗基准_V1(grade);
@@ -9617,17 +9651,12 @@ function 构建武魂真身默认承载消耗_V1(type = '强攻系', grade = 'B'
   const 分摊表 = {
     精神主导: { 魂力: 0.3, 精神力: 0.7 },
     附加微量精神力: { 魂力: 0.9, 精神力: 0.1 },
+    附加常规体力: { 魂力: 0.85, 体力: 0.15 },
+    附加大量体力: { 魂力: 0.75, 体力: 0.25 },
     魂神平摊: { 魂力: 0.5, 精神力: 0.5 },
     纯耗魂力: { 魂力: 1 },
   };
-  const 燃料模型 =
-    系别 === '精神系' || 系别 === '召唤系'
-      ? '精神主导'
-      : 系别 === '元素系'
-        ? '魂神平摊'
-        : ['辅助系', '食物系', '治疗系'].includes(系别)
-          ? '附加微量精神力'
-          : '纯耗魂力';
+  const 燃料模型 = 读取武魂真身燃料模型_V1(系别);
   return Object.fromEntries(
     Object.entries(分摊表[燃料模型] || 分摊表.纯耗魂力)
       .map(([资源名, 分摊比例]) => [资源名, `${Math.max(1, Math.round(品质基准 * 释放倍率 * Math.max(0, Number(分摊比例 || 0))))}%`]),
@@ -10208,16 +10237,24 @@ function getSecondaryRingScale(ringIndex = 1) {
 
 var 魂技年限档位阈值_V1 = Object.freeze([100, 1000, 10000, 100000, 1000000]);
 var 魂技年限次数进阶阈值_V1 = Object.freeze([1000, 10000, 100000, 1000000]);
-var 魂技年限次数字段集合_V1 = new Set([
-  '攻击段数',
-  '触发次数',
-  '抵消次数',
-  '分摊人数',
-  '驱散数量',
-  '窃取数量',
-  '转移数量',
-  '召唤数量',
-]);
+// 魂环年限跨档时加次数的字段，按现行原型字段名（旧表写的触发次数、抵消次数、驱散数量、召唤数量等字段已不存在，
+// 只有攻击段数生效）。召唤只给允许批量的类型加数量：本命召唤兽与普通召唤按契约固定为 1。
+var 魂技年限次数字段表_V1 = Object.freeze({
+  伤害结算: Object.freeze(['攻击段数']),
+  规则防御: Object.freeze(['次数']),
+  状态移除: Object.freeze(['数量']),
+  状态转移: Object.freeze(['数量']),
+  召唤生成: Object.freeze(['数量']),
+  机制授予: Object.freeze(['可用次数']),
+  复制执行: Object.freeze(['可用次数']),
+  时窗修正: Object.freeze(['调整次数']),
+});
+
+function 读取魂技年限次数字段_V1(效果 = {}) {
+  const 原型 = String(效果?.原型 || '').trim();
+  if (原型 === '召唤生成' && String(效果?.召唤单位类型 || '').trim() !== '分身' && !召唤生成允许普通批量_V1(效果)) return [];
+  return 魂技年限次数字段表_V1[原型] || [];
+}
 
 function 限幅数值_V1(值, 下限 = -Infinity, 上限 = Infinity) {
   const 数值 = Number(值);
@@ -10297,6 +10334,27 @@ function 计算年限跨档次数增量_V1(旧年限 = 0, 新年限 = 0) {
 function 获取魂技位对应等级_V1(魂环位 = 1) {
   const 安全魂环位 = Math.max(1, Math.floor(Number(魂环位 || 1)));
   return 安全魂环位 * 10 + 1;
+}
+
+// 用户 2026-11-09：品质越高魂技越强、副作用越少；B 级"不上不下"，常见"强力魂技 + 副作用"。
+// 目标：按本品质基准消耗与前摇释放时，预算门槛相对 B 为
+//   F 0.55 / D 0.70 / C 0.85 / B 1 / A 1.12 / S 1.25 / S+ 1.5（S ≈ B + 约 25% 副作用抵扣，S+ ≈ S × 1.2）。
+// 门槛 = 运转基准 × 代价能量，品质基准消耗下的代价能量为 F 0.49 … S+ 1.191（低品质平方下降、高品质立方根上升），
+// 所以普通魂技的运转基准乘"目标 ÷ 该代价能量"。消耗、前摇的反推公式都只看运转基准与代价能量，不需要改。
+// 预算与副作用用的魂技品质：上下文里明确给出的品质优先，其次是技能自己记下的品质等级，最后才退回魂灵品质或年限。
+// 生成外层收敛、挂副作用时的上下文只带魂灵品质（sourceQuality），不能拿它当魂技品质。
+function 读取预算品质等级_V1(上下文 = {}, 技能 = {}) {
+  // 完全没有品质线索（品质、魂灵品质、年限都没给）时按中性的 B 处理；年限回退会把它当成 F。
+  const 线索 = [上下文?.gradeOverride, 上下文?.grade, 上下文?.品质等级, 技能?.品质等级, 上下文?.qualityOverride, 上下文?.quality,
+    上下文?.品质, 上下文?.sourceQuality, 上下文?.来源品质, 上下文?.age, 上下文?.ringAge, 上下文?.年限];
+  if (!线索.some(值 => String(值 ?? '').trim() && String(值).trim() !== '0')) return 'B';
+  return 获取技能机制品质等级_V1({ ...(上下文 || {}), 品质等级: 上下文?.品质等级 || 技能?.品质等级 });
+}
+var 魂技品质目标门槛系数_V1 = Object.freeze({ F: 0.55, D: 0.70, C: 0.85, B: 1, A: 1.12, S: 1.25, 'S+': 1.5 });
+function 读取魂技品质运转系数_V1(品质等级 = 'B') {
+  const 等级 = normalizeSkillGradeSymbol(品质等级);
+  const 基准倍率 = Math.max(0.05, 获取魂技品质消耗基准_V1(等级) / 50);
+  return (魂技品质目标门槛系数_V1[等级] ?? 1) / 计算运转代价能量_V1(基准倍率, 基准倍率);
 }
 
 function 获取魂技品质消耗基准_V1(品质等级 = 'B') {
@@ -10611,8 +10669,9 @@ function 应用年限变化到技能效果数组_V1(skill = {}, 旧年限 = 0, �
   const 次数增量 = 计算年限跨档次数增量_V1(旧值, 新值);
   if (次数增量 > 0) {
     skill._效果数组.forEach(效果 => {
+      const 次数字段 = 读取魂技年限次数字段_V1(效果);
       遍历技能效果数值容器_V1(效果, 容器 => {
-        魂技年限次数字段集合_V1.forEach(字段 => {
+        次数字段.forEach(字段 => {
           if (!(字段 in 容器)) return;
           const 原值 = Number(容器[字段]);
           if (!Number.isFinite(原值) || 原值 <= 0) return;
@@ -10642,8 +10701,11 @@ function pickUniqueRandom(list = [], count = 1) {
   return result;
 }
 
+// 职业的燃料模型（耗哪种资源）。普通魂技与武魂真身共用这一份：真身按本系标志大类取（控制系按控制类、防御系按防御类）。
+// 召唤系原先没有分支、落成纯耗魂力，而真身写的是精神主导；两边统一为精神主导。
 function buildFuelModelByType(type, main) {
   if (type === '精神系') return '精神主导';
+  if (type === '召唤系') return '精神主导';
   if (type === '食物系') return '纯耗魂力';
   if (type === '控制系') return main === '控制类' || main === '削弱类' ? '附加微量精神力' : '纯耗魂力';
   if (type === '治疗系') return '附加微量精神力';
@@ -10704,7 +10766,9 @@ function rollWeightedBucket(table = [], roll = 1) {
 
 function judgeSkillGrade(talentTier, ringAge, ringIndex, compatibility = 100, sourceQuality = '') {
   const roll = Math.floor(Math.random() * 100) + 1;
-  const talentScore = { 绝世妖孽: 100, 顶级天才: 80, 天才: 60, 优秀: 40, 正常: 20, 劣等: 0, 天赋极差: -100 }[talentTier] || 20;
+  const 天赋分表 = { 绝世妖孽: 100, 顶级天才: 80, 天才: 60, 优秀: 40, 正常: 20, 劣等: 0, 天赋极差: -100 };
+  // 劣等的 0 分不能被 || 当成缺省值（原先劣等与正常同分）。
+  const talentScore = Object.prototype.hasOwnProperty.call(天赋分表, talentTier) ? 天赋分表[talentTier] : 20;
   const normalizedQuality = normalizeSoulSpiritQuality(sourceQuality);
   const sourceQualityScore =
     {
@@ -10785,11 +10849,12 @@ function normalizeWeightedTableTotal(table = [], totalWeight = 100) {
   const safeTotal = Math.max(source.length, Math.floor(Number(totalWeight || 100)));
   const currentTotal = source.reduce((sum, item) => sum + item.weight, 0);
   if (!(currentTotal > 0)) return source;
-  const distributable = safeTotal - source.length;
+  // Largest-remainder split of the whole total by weight, so the integer table keeps the table's proportions.
+  // A legal candidate keeps at least one point; the points that floor takes are returned by the largest entries.
   const allocations = source.map((item, index) => {
-    const exact = distributable > 0 ? (item.weight / currentTotal) * distributable : 0;
+    const exact = (item.weight / currentTotal) * safeTotal;
     const floor = Math.floor(exact);
-    return { index, weight: 1 + floor, remainder: exact - floor };
+    return { index, weight: Math.max(1, floor), remainder: exact - floor };
   });
   let unassigned = safeTotal - allocations.reduce((sum, item) => sum + item.weight, 0);
   [...allocations]
@@ -10799,6 +10864,12 @@ function normalizeWeightedTableTotal(table = [], totalWeight = 100) {
       allocations[item.index].weight += 1;
       unassigned -= 1;
     });
+  while (unassigned < 0) {
+    const largest = allocations.reduce((best, item) => (item.weight > best.weight ? item : best));
+    if (largest.weight <= 1) break;
+    largest.weight -= 1;
+    unassigned += 1;
+  }
   return source.map((item, index) => ({ ...item, weight: allocations[index].weight }));
 }
 
@@ -10834,6 +10905,28 @@ function rebalanceWeightedTableWithPreferredValue(table = [], preferredValue = '
   const normalizedOthers = normalizeWeightedTableTotal(otherItems, 100 - targetWeight);
   const otherWeights = new Map(normalizedOthers.map(item => [item.value, item.weight]));
   otherItems.forEach(item => { item.weight = Number(otherWeights.get(item.value) || 1); });
+  return source;
+}
+
+// Several preferred values set together. Each keeps its own weight (scaled down together when they ask for more than 90
+// of the 100) and the other entries share the rest by their own weights. Set one by one, each call squashed the ones
+// before it: 精神系 状态转移 nominal 28 ended near 5. One preference behaves as rebalanceWeightedTableWithPreferredValue.
+function rebalanceWeightedTableWithPreferredValues(table = [], preferences = []) {
+  const source = Array.isArray(table) ? table.map(item => ({ ...item })) : [];
+  const wanted = new Map(preferences
+    .filter(([value, weight]) => Number(weight) > 0 && source.some(item => item?.value === value))
+    .map(([value, weight]) => [value, Math.max(1, Math.round(Number(weight) || 1))]));
+  if (wanted.size <= 1) {
+    const [value, weight] = [...wanted][0] || [];
+    return value === undefined ? source : rebalanceWeightedTableWithPreferredValue(source, value, weight);
+  }
+  const preferred = source.filter(item => wanted.has(item?.value)), others = source.filter(item => !wanted.has(item?.value));
+  const requested = [...wanted.values()].reduce((sum, weight) => sum + weight, 0);
+  const preferredTotal = Math.min(requested, others.length ? Math.min(90, 100 - others.length) : 100);
+  const preferredWeights = new Map(normalizeWeightedTableTotal(preferred.map(item => ({ value: item.value, weight: wanted.get(item.value) })), preferredTotal)
+    .map(item => [item.value, item.weight]));
+  const otherWeights = new Map(normalizeWeightedTableTotal(others, 100 - preferredTotal).map(item => [item.value, item.weight]));
+  source.forEach(item => { item.weight = Number((wanted.has(item.value) ? preferredWeights : otherWeights).get(item.value) || 1); });
   return source;
 }
 
@@ -10889,26 +10982,17 @@ function buildDefenseArchetypeWeightedTableByContext(grade, type = '强攻系', 
     ],
   };
   let table = (baseTables[tableGrade] || baseTables.B).map(item => ({ ...item }));
-    if (type === '防御系') {
-      table = rebalanceWeightedTableWithPreferredValue(table, '无敌金身', { C: 2, B: 3, A: 4, S: 6 }[tableGrade] || 3);
-      table = rebalanceWeightedTableWithPreferredValue(table, '伤害反射', { C: 12, B: 15, A: 20, S: 26 }[tableGrade] || 15);
-      table = rebalanceWeightedTableWithPreferredValue(table, '伤害分摊', { C: 4, B: 5, A: 6, S: 8 }[tableGrade] || 5);
-      table = rebalanceWeightedTableWithPreferredValue(table, '消耗分摊', { C: 3, B: 4, A: 5, S: 7 }[tableGrade] || 4);
-  } else if (type === '敏攻系') {
-    table = rebalanceWeightedTableWithPreferredValue(table, '无敌金身', { C: 16, B: 24, A: 34, S: 45 }[tableGrade] || 24);
-    table = rebalanceWeightedTableWithPreferredValue(table, '免伤', { C: 24, B: 34, A: 44, S: 56 }[tableGrade] || 34);
-  } else if (type === '强攻系') {
-    table = rebalanceWeightedTableWithPreferredValue(table, '无敌金身', { C: 8, B: 12, A: 18, S: 24 }[tableGrade] || 12);
-    table = rebalanceWeightedTableWithPreferredValue(table, '伤害反射', { C: 10, B: 16, A: 24, S: 32 }[tableGrade] || 16);
-  } else if (type === '控制系') {
-    table = rebalanceWeightedTableWithPreferredValue(table, '伤害分摊', { C: 14, B: 22, A: 30, S: 40 }[tableGrade] || 22);
-  } else if (type === '辅助系') {
-    table = rebalanceWeightedTableWithPreferredValue(table, '伤害分摊', { C: 18, B: 28, A: 38, S: 48 }[tableGrade] || 28);
-    table = rebalanceWeightedTableWithPreferredValue(table, '消耗分摊', { C: 12, B: 20, A: 28, S: 36 }[tableGrade] || 20);
-  } else if (type === '治疗系') {
-    table = rebalanceWeightedTableWithPreferredValue(table, '伤害分摊', { C: 12, B: 20, A: 28, S: 36 }[tableGrade] || 20);
-    table = rebalanceWeightedTableWithPreferredValue(table, '消耗分摊', { C: 8, B: 14, A: 20, S: 28 }[tableGrade] || 14);
-  }
+  const pick = byGrade => byGrade[tableGrade];
+  const preferences = {
+    防御系: [['无敌金身', pick({ C: 2, B: 3, A: 4, S: 6 }) || 3], ['伤害反射', pick({ C: 12, B: 15, A: 20, S: 26 }) || 15],
+      ['伤害分摊', pick({ C: 4, B: 5, A: 6, S: 8 }) || 5], ['消耗分摊', pick({ C: 3, B: 4, A: 5, S: 7 }) || 4]],
+    敏攻系: [['无敌金身', pick({ C: 16, B: 24, A: 34, S: 45 }) || 24], ['免伤', pick({ C: 24, B: 34, A: 44, S: 56 }) || 34]],
+    强攻系: [['无敌金身', pick({ C: 8, B: 12, A: 18, S: 24 }) || 12], ['伤害反射', pick({ C: 10, B: 16, A: 24, S: 32 }) || 16]],
+    控制系: [['伤害分摊', pick({ C: 14, B: 22, A: 30, S: 40 }) || 22]],
+    辅助系: [['伤害分摊', pick({ C: 18, B: 28, A: 38, S: 48 }) || 28], ['消耗分摊', pick({ C: 12, B: 20, A: 28, S: 36 }) || 20]],
+    治疗系: [['伤害分摊', pick({ C: 12, B: 20, A: 28, S: 36 }) || 20], ['消耗分摊', pick({ C: 8, B: 14, A: 20, S: 28 }) || 14]],
+  }[type];
+  if (preferences) table = rebalanceWeightedTableWithPreferredValues(table, preferences);
   if (isRouguRabbitFlavorSource(sourceName)) {
     table = rebalanceWeightedTableWithPreferredValue(table, '无敌金身', { C: 30, B: 45, A: 58, S: 72 }[tableGrade] || 45);
   }
@@ -10997,38 +11081,24 @@ function buildSpecialRuleArchetypeWeightedTableByContext(grade, type = '强攻�
   };
   let table = (baseTables[tableGrade] || baseTables.B).map(item => ({ ...item }));
   table = table.filter(item => 技能机制满足品质门槛_V1(item?.value, { grade }) && 机制具备共享原型编译_V1(item?.value));
-  if (type === '精神系') {
-    table = rebalanceWeightedTableWithPreferredValue(table, '状态转移', { C: 18, B: 28, A: 38, S: 50 }[tableGrade] || 28);
-    table = rebalanceWeightedTableWithPreferredValue(table, '吞噬', { C: 14, B: 22, A: 32, S: 44 }[tableGrade] || 22);
-    table = rebalanceWeightedTableWithPreferredValue(table, '能力共享', { C: 10, B: 16, A: 24, S: 34 }[tableGrade] || 16);
-    table = rebalanceWeightedTableWithPreferredValue(table, '机制抹消', { C: 12, B: 20, A: 30, S: 40 }[tableGrade] || 20);
-    table = rebalanceWeightedTableWithPreferredValue(table, '分身', { C: 34, B: 32, A: 28, S: 26 }[tableGrade] || 32);
-  }
-  if (type === '控制系') {
-    table = rebalanceWeightedTableWithPreferredValue(table, '状态转移', { C: 12, B: 20, A: 28, S: 36 }[tableGrade] || 20);
-    table = rebalanceWeightedTableWithPreferredValue(table, '机制抹消', { C: 14, B: 22, A: 34, S: 46 }[tableGrade] || 22);
-  }
-  if (type === '强攻系') {
-    table = rebalanceWeightedTableWithPreferredValue(table, '斩盾', { C: 10, B: 16, A: 24, S: 32 }[tableGrade] || 16);
-  }
-  if (type === '敏攻系') {
-    table = rebalanceWeightedTableWithPreferredValue(table, '斩盾', { C: 14, B: 22, A: 30, S: 38 }[tableGrade] || 22);
-    table = rebalanceWeightedTableWithPreferredValue(table, '分身', { C: 38, B: 36, A: 32, S: 30 }[tableGrade] || 36);
-  }
-  if (type === '元素系') {
-    table = rebalanceWeightedTableWithPreferredValue(table, '斩盾', { C: 12, B: 20, A: 30, S: 40 }[tableGrade] || 20);
-    table = rebalanceWeightedTableWithPreferredValue(table, '引爆持续伤害', { C: 16, B: 24, A: 34, S: 46 }[tableGrade] || 24);
-    table = rebalanceWeightedTableWithPreferredValue(table, '吞噬', { C: 12, B: 18, A: 26, S: 34 }[tableGrade] || 18);
-  }
-  if (type === '辅助系' || type === '治疗系') {
-    table = rebalanceWeightedTableWithPreferredValue(table, '能力共享', { C: 14, B: 22, A: 32, S: 42 }[tableGrade] || 22);
-  }
-  if (type === '食物系') {
-    table = rebalanceWeightedTableWithPreferredValue(table, '能力共享', { C: 12, B: 18, A: 28, S: 36 }[tableGrade] || 18);
-  }
-  if (type === '召唤系') {
-    table = rebalanceWeightedTableWithPreferredValue(table, '召唤', { C: 64, B: 68, A: 72, S: 76 }[tableGrade] || 68);
-  }
+  // The expansion bucket (getSpecialRuleExpansionChance, with its class bonus) still caps the expanded archetypes
+  // together by grade; these preferences shape the split inside and outside it.
+  const pick = byGrade => byGrade[tableGrade];
+  const preferences = {
+    精神系: [['状态转移', pick({ C: 18, B: 28, A: 38, S: 50 }) || 28], ['吞噬', pick({ C: 14, B: 22, A: 32, S: 44 }) || 22],
+      ['能力共享', pick({ C: 10, B: 16, A: 24, S: 34 }) || 16], ['机制抹消', pick({ C: 12, B: 20, A: 30, S: 40 }) || 20],
+      ['分身', pick({ C: 34, B: 32, A: 28, S: 26 }) || 32]],
+    控制系: [['状态转移', pick({ C: 12, B: 20, A: 28, S: 36 }) || 20], ['机制抹消', pick({ C: 14, B: 22, A: 34, S: 46 }) || 22]],
+    强攻系: [['斩盾', pick({ C: 10, B: 16, A: 24, S: 32 }) || 16]],
+    敏攻系: [['斩盾', pick({ C: 14, B: 22, A: 30, S: 38 }) || 22], ['分身', pick({ C: 38, B: 36, A: 32, S: 30 }) || 36]],
+    元素系: [['斩盾', pick({ C: 12, B: 20, A: 30, S: 40 }) || 20], ['引爆持续伤害', pick({ C: 16, B: 24, A: 34, S: 46 }) || 24],
+      ['吞噬', pick({ C: 12, B: 18, A: 26, S: 34 }) || 18]],
+    辅助系: [['能力共享', pick({ C: 14, B: 22, A: 32, S: 42 }) || 22]],
+    治疗系: [['能力共享', pick({ C: 14, B: 22, A: 32, S: 42 }) || 22]],
+    食物系: [['能力共享', pick({ C: 12, B: 18, A: 28, S: 36 }) || 18]],
+    召唤系: [['召唤', pick({ C: 64, B: 68, A: 72, S: 76 }) || 68]],
+  }[type];
+  if (preferences) table = rebalanceWeightedTableWithPreferredValues(table, preferences);
   return table;
 }
 
@@ -11098,7 +11168,6 @@ function rollSpecialRuleArchetypeByContext(grade, type = '强攻系', roll = 1) 
 function 机制是合法生成主机制_V1(机制名 = '', context = {}) {
   const 机制 = String(机制名 || '').trim();
   if (!机制 || ['无', '无效', '未设置'].includes(机制)) return false;
-  if (自动生成禁止主机制原型集合_V1.has(机制)) return false;
   return (
     SKILL_MECHANISM_META_V1[机制]?.可主机制 === true &&
     机制具备共享原型编译_V1(机制) &&
@@ -11109,7 +11178,8 @@ function 机制是合法生成主机制_V1(机制名 = '', context = {}) {
 function 机制属于当前系别主候选池_V1(机制名 = '', context = {}) {
   const 机制 = String(机制名 || '').trim();
   if (!机制) return false;
-  const 大类 = findMainMechanicGroupByArchetype(机制);
+  // 消耗、前摇两义：调用方带了大类就按它判断（削弱义查削弱类），否则按增益类。
+  const 大类 = 双向修正机制_V1.has(机制) && String(context?.主机制大类 || '').trim() ? String(context.主机制大类).trim() : findMainMechanicGroupByArchetype(机制);
   if (!大类) return false;
   const 系别 = String(context?.type || context?.系别 || '强攻系').trim() || '强攻系';
   const 品质 = normalizeSkillTableGrade(context?.gradeOverride || context?.grade || context?.sourceQuality || context?.品质 || 'B');
@@ -11131,42 +11201,49 @@ function 过滤合法生成主机制权重表_V1(table = [], context = {}) {
 }
 
 function 读取普通回复随机原型池_V1() {
-  return ['魂力恢复', '体力恢复', '精神恢复'];
+  return ['魂力恢复', '生命恢复', '体力恢复', '精神恢复'];
 }
 
 var 普通回复随机权重表_V1 = Object.freeze({
   F: Object.freeze([
     Object.freeze({ value: '魂力恢复', weight: 50 }),
-    Object.freeze({ value: '体力恢复', weight: 35 }),
+    Object.freeze({ value: '生命恢复', weight: 35 }),
+    Object.freeze({ value: '体力恢复', weight: 15 }),
     Object.freeze({ value: '精神恢复', weight: 15 }),
   ]),
   D: Object.freeze([
     Object.freeze({ value: '魂力恢复', weight: 50 }),
-    Object.freeze({ value: '体力恢复', weight: 35 }),
+    Object.freeze({ value: '生命恢复', weight: 35 }),
+    Object.freeze({ value: '体力恢复', weight: 15 }),
     Object.freeze({ value: '精神恢复', weight: 15 }),
   ]),
   C: Object.freeze([
     Object.freeze({ value: '魂力恢复', weight: 50 }),
-    Object.freeze({ value: '体力恢复', weight: 35 }),
+    Object.freeze({ value: '生命恢复', weight: 35 }),
+    Object.freeze({ value: '体力恢复', weight: 15 }),
     Object.freeze({ value: '精神恢复', weight: 15 }),
   ]),
   B: Object.freeze([
     Object.freeze({ value: '魂力恢复', weight: 45 }),
-    Object.freeze({ value: '体力恢复', weight: 35 }),
+    Object.freeze({ value: '生命恢复', weight: 35 }),
+    Object.freeze({ value: '体力恢复', weight: 15 }),
     Object.freeze({ value: '精神恢复', weight: 20 }),
   ]),
   A: Object.freeze([
     Object.freeze({ value: '魂力恢复', weight: 1 }),
+    Object.freeze({ value: '生命恢复', weight: 1 }),
     Object.freeze({ value: '体力恢复', weight: 1 }),
     Object.freeze({ value: '精神恢复', weight: 1 }),
   ]),
   S: Object.freeze([
     Object.freeze({ value: '魂力恢复', weight: 1 }),
+    Object.freeze({ value: '生命恢复', weight: 1 }),
     Object.freeze({ value: '体力恢复', weight: 1 }),
     Object.freeze({ value: '精神恢复', weight: 1 }),
   ]),
   'S+': Object.freeze([
     Object.freeze({ value: '魂力恢复', weight: 1 }),
+    Object.freeze({ value: '生命恢复', weight: 1 }),
     Object.freeze({ value: '体力恢复', weight: 1 }),
     Object.freeze({ value: '精神恢复', weight: 1 }),
   ]),
@@ -11179,7 +11256,8 @@ function 读取普通回复随机权重表_V1(品质 = 'B') {
 
 var 普通恢复原型资源映射_V1 = Object.freeze({
   魂力恢复: '魂力',
-  体力恢复: '生命',
+  生命恢复: '生命',
+  体力恢复: '体力',
   精神恢复: '精神力',
 });
 var 自动生成增益属性集合_V1 = new Set(['力量', '防御', '敏捷', '魂力', '精神力']);
@@ -11560,6 +11638,8 @@ function 构建自动生成预算摘要键_V1(context = {}) {
     String(context?.type || context?.系别 || context?.武魂系别 || '').trim(),
     String(context?.sourceCategory || context?.来源 || context?.来源类别 || '').trim(),
     String(context?.sourceQuality || context?.来源品质 || '').trim(),
+    // 门禁随品质变化（初始消耗、前摇倍率），摘要按品质分开缓存；原先首次按 B 级写入，其他品质共用。
+    String(context?.grade || context?.品质 || context?.quality || '').trim(),
     String(context?.forceTrueBody === true ? '真身' : ''),
     String(属性.天赋梯队 ?? 角色?.天赋梯队 ?? context?.talentTier ?? '').trim(),
     String(属性.等级 ?? 角色?.等级 ?? '').trim(),
@@ -11595,7 +11675,8 @@ function 估算自动生成预算摘要_V1(context = {}) {
     0.5,
     特殊预算
       ? Number(特殊预算.特殊运转基准 || 0)
-      : 获取基础预算_V1(虚拟魂技位) * 来源承载系数_V1(来源) + 计算魂环年限COST修正_V1(角色, 魂环位, context) + 计算天赋梯队COST修正_V1(角色),
+      : (获取基础预算_V1(虚拟魂技位) * 来源承载系数_V1(来源) + 计算魂环年限COST修正_V1(角色, 魂环位, context) + 计算天赋梯队COST修正_V1(角色)) *
+        (来源 === '魂技' ? 读取魂技品质运转系数_V1(获取技能机制品质等级_V1(context)) : 1),
   );
   const 初始倍率 = 读取自动生成初始消耗前摇倍率_V1({}, { ...(context || {}), 预算评估摘要: { 运转基准 } });
   const 代价能量 = 计算运转代价能量_V1(初始倍率.消耗倍率, 初始倍率.前摇倍率);
@@ -11773,9 +11854,14 @@ function 读取技能机制原型条目基础预算档_V1(条目 = {}, 上下文
   if (原型 === '状态施加') {
     const 状态 = (String(条目.状态 || '虚弱').trim() || '虚弱') === '沉默' ? '封技' : (String(条目.状态 || '虚弱').trim() || '虚弱');
     const 配置 = SKILL_UNIT_COST_TABLE_V1.状态施加?.[状态];
-    const 数值单位 = Number(typeof 配置 === 'object' ? (配置.数值 ??配置.固定COST) : 配置);
+    // 只有固定 COST 的状态（眩晕、封技、无视异常、霸体）没有数值单价。原先回退成固定COST，条目一带数值就按"数值单价"
+    // 算出 300–4260 这类区间，与只收固定 COST 的实际记账不一致。
+    const 数值单位 = Number(typeof 配置 === 'object' ? 配置.数值 : 配置);
     const 副数值单位 = Number(typeof 配置 === 'object' ? (配置.副数值 ?? 0) : 0);
-    const 固定COST = Math.max(0, Number(typeof 配置 === 'object' ? 配置.固定COST : 配置));
+    // A numeric state with no 固定COST (中毒, 持续创伤, 持续恢复, 迟缓, 护盾…) adds no fixed part. Number(undefined) made the
+    // maximum NaN, which 可调 then collapsed onto the minimum, so these states could only be generated at their weakest
+    // grade and 持续创伤 fell under every ring's budget floor.
+    const 固定COST = Math.max(0, Number(typeof 配置 === 'object' ? (配置.固定COST ?? 0) : 配置) || 0);
     const 允许数值 = 状态施加状态分类矩阵_V1.持续伤害类.includes(状态) ||
       状态施加状态分类矩阵_V1.恢复资源类.includes(状态) ||
       状态施加状态分类矩阵_V1.防御数值类.includes(状态) ||
@@ -11851,7 +11937,10 @@ function 读取技能机制原型条目基础预算档_V1(条目 = {}, 上下文
   if (原型 === '召唤生成') {
     const 类型 = String(条目.召唤单位类型 || '魂兽').trim() || '魂兽';
     const 单位 = Number(SKILL_UNIT_COST_TABLE_V1.召唤生成?.[类型] ?? 30);
-    return 可调(单位 * 0.5, Math.max(单位, 单位 * 3), ['强度', '继承属性比例'], ['数量', '持续回合']);
+    // 原先常规上限 = 单价 × 3（魂兽 90 COST），第 8–9 环的最低 COST 线高于它，召唤在预筛阶段就被过滤，
+    // 召唤系高环抽不到召唤。按可达参数取常规上限：强度 2、持续 6 回合，可批量的单位最多 3 只。
+    const 数量上限 = 类型 === '分身' || 召唤生成允许普通批量_V1(条目) ? 3 : 1;
+    return 可调(单位 * 0.5, 单位 * 数量上限 * 2 * 读取技能效果持续系数_V1({ 持续回合: 6 }), ['强度', '继承属性比例'], ['数量', '持续回合']);
   }
   if (原型 === '修炼增益') {
     const 类型 = String(条目.收益类型 || '训练方式收益').trim() || '训练方式收益';
@@ -11977,8 +12066,19 @@ function 读取技能机制预算档案_V1(机制名 = '') {
   return 技能机制预算档案表_V1.get(机制) || null;
 }
 
+// 敌对类食物（用户 2026-11-10："要分清楚是食用后获得这个机制（机制赋予），还是使用这个食物直接目标敌方。前者的话必须套机制赋予，
+// 后者的话就相当于攻击型魂技了，概率应该非常低"）：敌对主机制的食物默认做成"食用后获得机制"——食用者得到一次机制授予，授予的
+// 效果照常指向敌方；直接对敌使用只占其中一小部分。伤害不能被授予，伤害类食物（食物系主机制分布里占 1%）仍直接对敌。
+const 食物敌对直接使用概率_V1 = 0.05;
+function 抽取食物敌对形态_V1(系别 = '', 机制名 = '', 主机制大类 = '') {
+  if (String(系别 || '').trim() !== '食物系' || 读取技能机制目标侧_V1(机制名, 主机制大类) !== '敌对') return '';
+  const 可授予 = 读取机制编译原型列表_V1(机制名).every(条目 => 机制授予允许授予原型集合_V1.has(String(条目?.原型 || '').trim()));
+  if (主机制大类 === '伤害类' || !可授予) return '直接';
+  return Math.random() < 食物敌对直接使用概率_V1 ? '直接' : '授予';
+}
+
 function 食物造物机制需要授予壳预算_V1(机制名 = '', context = {}) {
-  if (读取技能机制目标侧_V1(机制名) === '敌对') return false;
+  if (读取技能机制目标侧_V1(机制名) === '敌对' && context?.食物敌对形态 !== '授予') return false;
   const 原型列表 = 读取机制编译原型列表_V1(机制名);
   if (!原型列表.length) return false;
   return 原型列表.some(条目 => {
@@ -12008,8 +12108,9 @@ function 自动生成机制需要运行授予壳预算_V1(机制名 = '', contex
   });
 }
 
-function 食物造物机制可作为使用效果_V1(机制名 = '') {
-  if (读取技能机制目标侧_V1(机制名) === '敌对') return true;
+function 食物造物机制可作为使用效果_V1(机制名 = '', context = {}) {
+  // 授予形态的敌对食物：效果必须能装进机制授予。
+  if (读取技能机制目标侧_V1(机制名) === '敌对' && context?.食物敌对形态 !== '授予') return true;
   const 原型列表 = 读取机制编译原型列表_V1(机制名);
   if (!原型列表.length) return false;
   return 原型列表.every(条目 => {
@@ -12073,7 +12174,7 @@ function 估算机制组合预算区间_V1(机制名 = '', context = {}) {
   if (
     String(context?.系别 || context?.type || '').trim() === '食物系' &&
     String(context?.释放形态 || '').trim() === '造物承载' &&
-    !食物造物机制可作为使用效果_V1(机制)
+    !食物造物机制可作为使用效果_V1(机制, context)
   ) {
     return { 可用: false, 默认COST: Infinity, 固定COST: Infinity, 最低可达COST: Infinity, 补强可达COST: Infinity, 可调整: false, 门禁, 低COST线, 缺档案: [`食物造物非法使用效果:${机制}`] };
   }
@@ -12398,45 +12499,51 @@ function rollSubModelByGrade(mainMechanic, grade, roll, context = {}) {
         { value: '前摇', weight: 1 },
       ],
     }
+    // 用户 2026-11-09：敏攻增益按 速度 > 力量 > 前摇 的顺序（前摇即攻速：降低自身包括普攻在内的全攻击前摇）；
+    // 元素增益里精神、控制、威力、消耗、前摇等各类概率差不多（元素系的前摇只降自身所拥有元素的技能）。其余系别用通用表。
     : 系别 === '敏攻系'
       ? {
         C: [
-          { value: '单属性增益', weight: 52 },
-          { value: '速度提升', weight: 22 },
-          { value: '前摇', weight: 12 },
+          { value: '速度提升', weight: 34 },
+          { value: '单属性增益', weight: 30 },
+          { value: '前摇', weight: 22 },
           { value: '威力增幅', weight: 10 },
           { value: '消耗', weight: 4 },
         ],
         B: [
-          { value: '单属性增益', weight: 34 },
-          { value: '速度提升', weight: 22 },
-          { value: '前摇', weight: 16 },
+          { value: '速度提升', weight: 28 },
+          { value: '单属性增益', weight: 24 },
+          { value: '前摇', weight: 20 },
           { value: '威力增幅', weight: 14 },
           { value: '多属性增益', weight: 8 },
           { value: '技能效果增幅', weight: 6 },
         ],
         A: [
-          { value: '速度提升', weight: 22 },
+          { value: '速度提升', weight: 24 },
+          { value: '单属性增益', weight: 20 },
           { value: '前摇', weight: 18 },
-          { value: '威力增幅', weight: 18 },
-          { value: '单属性增益', weight: 16 },
-          { value: '多属性增益', weight: 12 },
-          { value: '技能效果增幅', weight: 8 },
+          { value: '威力增幅', weight: 16 },
+          { value: '多属性增益', weight: 10 },
+          { value: '技能效果增幅', weight: 6 },
           { value: '全属性增益', weight: 4 },
           { value: '掌控提升', weight: 2 },
         ],
         S: [
           { value: '速度提升', weight: 24 },
-          { value: '威力增幅', weight: 20 },
-          { value: '前摇', weight: 16 },
-          { value: '技能效果增幅', weight: 14 },
-          { value: '多属性增益', weight: 12 },
-          { value: '单属性增益', weight: 8 },
+          { value: '单属性增益', weight: 20 },
+          { value: '前摇', weight: 18 },
+          { value: '威力增幅', weight: 16 },
+          { value: '技能效果增幅', weight: 10 },
+          { value: '多属性增益', weight: 6 },
           { value: '全属性增益', weight: 4 },
           { value: '掌控提升', weight: 2 },
         ],
       }
-      : null;
+      : 系别 === '元素系'
+        // 各类同权，品质门槛（技能机制最低品质_V1）照常过滤：消耗 B 起，威力增幅、技能效果增幅 A 起。
+        ? Object.fromEntries(['C', 'B', 'A', 'S'].map(品质 => [品质, ['单属性增益', '多属性增益', '全属性增益', '掌控提升', '威力增幅',
+          '技能效果增幅', '消耗', '前摇', '速度提升'].map(value => ({ value, weight: 10 }))]))
+        : null;
   const tables = {
     伤害类: {
       C: [
@@ -12995,8 +13102,8 @@ function rollAttributeDirectionByType(type, subModel, roll, context = {}) {
 
 function rollExtraMechanics(main, grade, ringIndex, preferredSecondary = [], type = '强攻系', context = {}) {
   const 排除原型 = new Set(Array.isArray(context?.排除子原型) ? context.排除子原型.map(项 => String(项 || '').trim()).filter(Boolean) : []);
-  const 主机制目标侧 = 读取技能机制目标侧_V1(context?.主机制原型);
-  const 理论候选池 = buildSecondaryWeightedPool(main, type, preferredSecondary);
+  const 主机制目标侧 = 读取技能机制目标侧_V1(context?.主机制原型, context?.主机制大类);
+  const 理论候选池 = buildSecondaryWeightedPool(main, type, preferredSecondary, context?.主机制原型);
   const 全局品质合法候选池 = 理论候选池.filter(item => 技能机制满足品质门槛_V1(item?.value, {
     ...(context || {}),
     type,
@@ -13007,7 +13114,7 @@ function rollExtraMechanics(main, grade, ringIndex, preferredSecondary = [], typ
     魂环位: ringIndex,
   }));
   let weightedPool = 全局品质合法候选池
-    .filter(item => !(主机制目标侧 === '友方' && 读取技能机制目标侧_V1(item?.value) === '敌对'));
+    .filter(item => !(主机制目标侧 === '友方' && 读取技能机制目标侧_V1(item?.value, context?.主机制大类) === '敌对'));
   const 初始候选权重 = weightedPool.map(item => ({ 原型: item.value, 权重: Number(item.weight || 0), 来源标签: [...(item.来源标签 || [])] }));
   const 主机制COST = Math.max(0, Number(context?.主机制COST || 0));
   const 主机制最高COST = Math.max(主机制COST, Number(context?.主机制最高COST ?? context?.主机制补强COST ?? 主机制COST));
@@ -13158,6 +13265,11 @@ function rollExtraMechanics(main, grade, ringIndex, preferredSecondary = [], typ
 
 // v9.3：主机制多样性约束——保留最近生成的主机制大类，避免连续 3 次出同一类
 var v9_3_最近主机制队列_V1 = [];
+// 只有最近 2 次都是同一大类时，第 3 次再抽到它才算重复。原先与最近 2 次任一相同就重抽，连 2 次都挡，
+// 召唤系这类集中职业连续两环拿到核心大类的概率只剩约 25%。
+function v9_3_会连续三次(main = '') {
+  return v9_3_最近主机制队列_V1.length >= 2 && v9_3_最近主机制队列_V1.every(item => item === main);
+}
 function v9_3_推入主机制(main = '') {
   if (!main) return;
   v9_3_最近主机制队列_V1.push(main);
@@ -13197,10 +13309,10 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
       });
   if (!main) throw new Error(`技能生成错误:${type || '未知系别'}没有合法主机制`);
   // v9.3：若与最近 2 次主机制大类重复，最多重 roll 3 次以避让（避免连续 3 次相同）
-  for (let 尝试 = 0; !是治疗系第一魂技 && 尝试 < 3 && v9_3_最近主机制队列_V1.includes(main); 尝试 += 1) {
+  for (let 尝试 = 0; !是治疗系第一魂技 && 尝试 < 3 && v9_3_会连续三次(main); 尝试 += 1) {
     const 重roll = Math.floor(Math.random() * 100) + 1;
     const 候选 = rollMainMechanicByGrade(type, grade, 重roll, ringIndex, { ...options, 抽取用途: '多样性重抽' });
-    if (候选 && !v9_3_最近主机制队列_V1.includes(候选)) {
+    if (候选 && !v9_3_会连续三次(候选)) {
       main = 候选;
       break;
     }
@@ -13220,7 +13332,7 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
   let 最后子原型错误 = null;
   for (let 子原型尝试 = 0; 子原型尝试 < 6; 子原型尝试 += 1) {
     const 子原型开始毫秒 = 读取性能计时毫秒_V1();
-    let subModel = 是治疗系第一魂技 ? '体力恢复' : '';
+    let subModel = 是治疗系第一魂技 ? '生命恢复' : '';
     const subRoll = Math.floor(Math.random() * 100) + 1;
     try {
       if (!是治疗系第一魂技) {
@@ -13293,6 +13405,7 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
     });
     const 指定释放形态 = String(options?.释放形态 || '').trim();
     const delivery = type === '食物系' ? '造物承载' : (指定释放形态 || pickRandom(deliveryPool) || '直接生效');
+    const 食物敌对形态 = delivery === '造物承载' ? 抽取食物敌对形态_V1(type, subModel, main) : '';
     const target = 生成技能机制正式目标_V1(subModel, {
       type,
       系别: type,
@@ -13312,6 +13425,7 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
       sourceCategory: options?.sourceCategory,
       主机制大类: main,
       释放形态: delivery,
+      食物敌对形态,
       目标: target,
       属性候选: attrHints,
       预算门禁,
@@ -13348,6 +13462,7 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
       魂环位: ringIndex,
       释放形态: delivery,
       造物使用效果: delivery === '造物承载',
+      食物敌对形态,
       预算门禁,
       预算门禁优先: true,
       sourceName,
@@ -13362,6 +13477,7 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
       主机制原型: subModel,
       副机制: extra.secondary.filter(机制 => !自动生成缺少上下文子原型.has(String(机制 || '').trim())),
       释放形态: delivery,
+      ...(食物敌对形态 ? { 食物敌对形态 } : {}),
       目标: target,
       加成属性候选: [...attrHints],
       燃料模型: buildFuelModelByType(type, main),
@@ -13397,7 +13513,7 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
 function findMainMechanicGroupByArchetype(主机制原型 = '') {
   const normalizedArchetype = String(主机制原型 || '').trim();
   if (!normalizedArchetype) return '';
-  if (自动生成禁止主机制原型集合_V1.has(normalizedArchetype)) return '';
+  if (双向修正机制_V1.has(normalizedArchetype)) return '增益类';
   for (const [主机制大类, 原型列表] of Object.entries(SKILL_ARCHETYPE_POOL_V1 || {})) {
     if ((Array.isArray(原型列表) ? 原型列表 : []).includes(normalizedArchetype)) return 主机制大类;
   }
@@ -13452,12 +13568,14 @@ function normalizeBlueprintOverrideForAutoGenerate(blueprintOverride = {}, type 
     排除子原型: options?.排除子原型,
   });
   // 武魂真身的本系专属增幅机制不受常规魂技的禁止主机制与品质门槛限制（见 武魂真身机制合法_V1）。
-  const 真身专属机制 = String(options?.来源 || options?.sourceCategory || options?.来源类别 || '').trim() === '真身生成' &&
-    (武魂真身专属增幅机制_V1[type] || []).includes(archetype);
-  if (!(真身专属机制 ? 武魂真身机制合法_V1(archetype, { ...指定机制基础上下文, type }) : 机制是合法生成主机制_V1(archetype, 指定机制基础上下文))) {
+  const 真身生成 = String(options?.来源 || options?.sourceCategory || options?.来源类别 || '').trim() === '真身生成';
+  const 真身专属机制 = 真身生成 && (武魂真身专属增幅机制_V1[type] || []).includes(archetype);
+  // 真身的变异机制按"辅助自身"分类放行，不要求属于本系常规主候选池（仍受合法性与品质门槛约束）。
+  const 真身分类机制 = 真身生成 && 武魂真身分类允许机制_V1(type, archetype);
+  if (!(真身专属机制 || 真身分类机制 ? 武魂真身机制合法_V1(archetype, { ...指定机制基础上下文, type }) : 机制是合法生成主机制_V1(archetype, 指定机制基础上下文))) {
     throw new Error(`技能生成错误:${type || '未知系别'}不允许主机制原型${archetype || '未命名机制'}`);
   }
-  if (!真身专属机制 && !机制属于当前系别主候选池_V1(archetype, { ...指定机制基础上下文, sourceName })) {
+  if (!真身专属机制 && !真身分类机制 && !机制属于当前系别主候选池_V1(archetype, { ...指定机制基础上下文, sourceName })) {
     throw new Error(`技能生成错误:${type || '未知系别'}不允许主机制原型${archetype || '未命名机制'}`);
   }
   if (!机制具备共享原型编译_V1(archetype)) {
@@ -13523,7 +13641,7 @@ function normalizeBlueprintOverrideForAutoGenerate(blueprintOverride = {}, type 
       技能机制满足品质门槛_V1(机制, 指定机制基础上下文) &&
       自动生成机制满足五环恢复增益约束_V1(机制, 重复门禁上下文) &&
       自动生成机制满足预算范围_V1(机制, { ...options, type, 系别: type, grade, ringIndex, 魂环位: ringIndex, sourceName, 预算门禁, 预算门禁优先: true, 释放形态: delivery }) &&
-      !(读取技能机制目标侧_V1(archetype) === '友方' && 读取技能机制目标侧_V1(机制) === '敌对'),
+      !(读取技能机制目标侧_V1(archetype, main) === '友方' && 读取技能机制目标侧_V1(机制, main) === '敌对'),
     ),
     释放形态: delivery,
     目标: 归一化执行效果作用目标_V1(blueprintOverride?.目标 || '', ''),
@@ -13643,6 +13761,7 @@ var 自动生成被动主机制候选集合_V1 = new Set([
   '技能效果增幅',
   '速度提升',
   '掌控提升',
+  '生命恢复',
   '体力恢复',
   '魂力恢复',
   '精神恢复',
@@ -13866,7 +13985,8 @@ function 约束第三批原型顶层目标_V1(原型 = '', 目标 = '') {
   return 当前目标;
 }
 
-function 读取技能机制目标侧_V1(机制名 = '') {
+function 读取技能机制目标侧_V1(机制名 = '', 大类 = '') {
+  if (双向修正机制为削弱_V1(机制名, 大类)) return '敌对';
   const 目标语义 = String(SKILL_MECHANISM_META_V1?.[String(机制名 || '').trim()]?.目标语义 || '').trim();
   if (目标语义 === '敌对') return '敌对';
   if (['可赋予', '仅自身'].includes(目标语义)) return '友方';
@@ -13887,11 +14007,14 @@ function 生成技能机制正式目标_V1(机制名 = '', 上下文 = {}) {
   const 是群体赋予 = (Array.isArray(语义表.群体赋予) ? 语义表.群体赋予 : []).includes(机制);
   const 是食物造物 = 系别 === '食物系' && 造物使用效果;
   const 允许全场机制 = new Set(['时光回溯', '规则改写', '气运干涉', '持续伤害', '引爆持续伤害']);
-  const 按品质抽取 = 表 => rollWeightedBucket(表[品质] || 表.B || 表.C || [], Math.floor(Math.random() * 100) + 1);
+  // The tables are written for C/B/A/S; S+ uses the S row and D/F the C row (they used to fall back to B, which gave
+  // the best grade a narrower spread than S).
+  const 表品质 = ({ 'S+': 'S', D: 'C', F: 'C' })[品质] || 品质;
+  const 按品质抽取 = 表 => rollWeightedBucket(表[表品质] || 表.B || 表.C || [], Math.floor(Math.random() * 100) + 1);
   if (是食物造物 && !是敌对 && 主机制大类 !== '伤害类') return '自身';
   if (是仅自身) return '自身';
   if (机制 === '召唤') return '自身';
-  if (系别 === '召唤系' && ['技能效果增幅', '消耗', '前摇'].includes(机制)) return '召唤物';
+  if (系别 === '召唤系' && ['技能效果增幅', '消耗', '前摇'].includes(机制) && !双向修正机制为削弱_V1(机制, 主机制大类)) return '召唤物';
   if (是敌对 || 主机制大类 === '伤害类' || ['控制类', '削弱类', '位移类'].includes(主机制大类)) {
     const 表 = {
       C: [{ value: '单体', weight: 100 }],
@@ -13904,6 +14027,16 @@ function 生成技能机制正式目标_V1(机制名 = '', 上下文 = {}) {
         : [{ value: '单体', weight: 45 }, { value: '群体', weight: 55 }],
     };
     return 按品质抽取(表) || '单体';
+  }
+  // 用户 2026-11-08: a healer heals its allies first. Its recovery and protection go mostly to an ally or the team;
+  // healing itself stays possible but rare (the generic table below put 45–65% of a C/B healer's heals on itself).
+  if (系别 === '治疗系' && ['回复类', '防御类'].includes(主机制大类)) {
+    return 按品质抽取({
+      C: [{ value: '自身', weight: 25 }, { value: '单体', weight: 75 }],
+      B: [{ value: '自身', weight: 15 }, { value: '单体', weight: 65 }, { value: '群体', weight: 20 }],
+      A: [{ value: '自身', weight: 10 }, { value: '单体', weight: 55 }, { value: '群体', weight: 35 }],
+      S: [{ value: '自身', weight: 5 }, { value: '单体', weight: 45 }, { value: '群体', weight: 50 }],
+    }) || '单体';
   }
   if (是可赋予 || ['增益类', '防御类', '回复类'].includes(主机制大类)) {
     const 表 = 是群体赋予
@@ -13919,6 +14052,19 @@ function 生成技能机制正式目标_V1(机制名 = '', 上下文 = {}) {
           A: [{ value: '自身', weight: 25 }, { value: '单体', weight: 50 }, { value: '群体', weight: 25 }],
           S: [{ value: '自身', weight: 15 }, { value: '单体', weight: 40 }, { value: '群体', weight: 45 }],
         };
+    // 用户 2026-11-09，按系别定位：辅助、食物绝大部分魂技都不给自身（自身 10%，其余按上表单体与群体之比给队友；友方
+    // 单体也能选到自身，1v1 里照样能放）。精神、元素发展方向宽泛（可强攻、控制、辅助、治疗），控制也可能给队友辅助
+    // （提高命中、增加精神力等），这三系按上表。其余系别的增幅类只给自身，给队友约 1%，属于变异——原先它们也按上表，
+    // C/B/A/S 给自身只有 65/45/25/15%（敏攻的前摇增益一半多给了队友），强攻系此前单独定为 90% 自身；它们的治疗、护盾、
+    // 守护（回复类、防御类）不是增幅，仍按上表。召唤系给自己召唤物的增幅在上面单独处理。
+    const 抽队友 = () => {
+      const 行 = (表[表品质] || 表.B).filter(项 => 项.value !== '自身'), 总 = 行.reduce((sum, 项) => sum + 项.weight, 0);
+      let 点 = Math.random() * 总;
+      for (const 项 of 行) if ((点 -= 项.weight) < 0) return 项.value;
+      return 行.at(-1)?.value || '单体';
+    };
+    if (['辅助系', '食物系'].includes(系别)) return Math.random() < 0.1 ? '自身' : 抽队友();
+    if (主机制大类 === '增益类' && !['精神系', '控制系', '元素系'].includes(系别)) return Math.random() < 0.99 ? '自身' : 抽队友();
     return 按品质抽取(表) || '自身';
   }
   if (主机制大类 === '感知/认知类') return 机制 === '共享视野' ? (品质 === 'S' ? '群体' : '单体') : '单体';
@@ -14816,8 +14962,12 @@ function 构建机制编译输入覆盖列表_V1(机制名 = '', 原型列表 = 
         造成伤害: [中性倍率转默认(结算参数.伤害倍率系数, 副机制 ? 1.12 : 1.2), 副机制 ? 1.12 : 1.2, 1, true],
         受到伤害: [机制 === '承伤修正' ? 结算参数.受到伤害降低 : 中性倍率转默认(结算参数.伤害倍率系数, 1.2), 机制 === '承伤修正' ? 0.15 : 1.2, 机制 === '承伤修正' ? -1 : 1, 机制 !== '承伤修正'],
         治疗: [中性倍率转默认(结算参数.治疗倍率, 1.2), 1.2, 1, true],
-        消耗: [中性倍率转默认(结算参数.消耗修正倍率, 0.8), 0.8, 1, true],
-        前摇: [中性倍率转默认(结算参数.前摇修正倍率 || 结算参数.施放速度压制, 机制 === '感知干扰' || 机制 === '软控' || 机制 === '认知扭曲' ? 1.12 : 0.8), 机制 === '感知干扰' || 机制 === '软控' || 机制 === '认知扭曲' ? 1.12 : 0.8, 机制 === '感知干扰' || 机制 === '软控' || 机制 === '认知扭曲' ? 1 : 1, true],
+        消耗: 双向修正机制为削弱_V1(机制, 上下文?.主机制大类)
+          ? [中性倍率转默认(结算参数.消耗修正倍率 > 1 ? 结算参数.消耗修正倍率 : undefined, 1.2), 1.2, 1, true]
+          : [中性倍率转默认(结算参数.消耗修正倍率 > 0 && 结算参数.消耗修正倍率 < 1 ? 结算参数.消耗修正倍率 : undefined, 0.8), 0.8, 1, true],
+        前摇: 双向修正机制为削弱_V1(机制, 上下文?.主机制大类)
+          ? [中性倍率转默认(Number(结算参数.前摇修正倍率 || 结算参数.施放速度压制) > 1 ? 结算参数.前摇修正倍率 || 结算参数.施放速度压制 : undefined, 1.2), 1.2, 1, true]
+          : [中性倍率转默认(结算参数.前摇修正倍率 || 结算参数.施放速度压制, 机制 === '感知干扰' || 机制 === '软控' || 机制 === '认知扭曲' ? 1.12 : 0.8), 机制 === '感知干扰' || 机制 === '软控' || 机制 === '认知扭曲' ? 1.12 : 0.8, 机制 === '感知干扰' || 机制 === '软控' || 机制 === '认知扭曲' ? 1 : 1, true],
         反伤: [结算参数.反伤比例, 0.2, 1, false],
         伤害转移: [结算参数.伤害转移比例, 0.2, 1, false],
         伤害吸收: [结算参数.伤害吸收比例, 0.2, 1, false],
@@ -14833,6 +14983,8 @@ function 构建机制编译输入覆盖列表_V1(机制名 = '', 原型列表 = 
         持续伤害引爆: [结算参数.引爆倍率, 副机制 ? 1.2 : 1.55, 1, true],
       };
       const 参数 = 默认表[结算] || [undefined, 0.2, 1, false];
+      // 消耗、前摇的编译条目写死了 -20%，方向要由所在大类决定（削弱类为提高），先丢掉写死的默认值。
+      if (双向修正机制_V1.has(机制) && 结算 === 机制) delete 字段.数值;
       字段.数值 ??= 数值倍率(...参数);
       if (['伤害分摊', '消耗分摊'].includes(结算)) 字段.数量 = Math.max(1, Math.round(Number(结算 === '伤害分摊' ? 结算参数.伤害分摊数量 : 结算参数.消耗分摊数量) || 1));
       if (结算 === '伤害转移') 字段.转移对象 = String(结算参数.伤害转移对象 || '攻击者').trim() || '攻击者';
@@ -14848,9 +15000,9 @@ function 构建机制编译输入覆盖列表_V1(机制名 = '', 原型列表 = 
         if (parseSkillSignedChangeNumber(斩杀补伤数值) !== 0) 字段.数值 = 斩杀补伤数值;
       }
     } else if (原型 === '资源变化') {
-      const 资源 = 机制 === '魂力恢复' ? '魂力' : 机制 === '精神恢复' ? '精神力' : '生命';
+      const 资源 = 机制 === '魂力恢复' ? '魂力' : 机制 === '精神恢复' ? '精神力' : 机制 === '体力恢复' ? '体力' : '生命';
       字段.资源 ??= 资源;
-      字段.数值 ??= 数值倍率(机制 === '体力恢复' ? (伤害意图.恢复比例 || 8) / 100 : 0.1, 0.1, 1);
+      字段.数值 ??= 数值倍率(['生命恢复', '体力恢复'].includes(机制) ? (伤害意图.恢复比例 || 8) / 100 : 0.1, 0.1, 1);
     } else if (原型 === '资源转移') {
       字段.资源 ??= 资源类型();
       字段.资源转移方式 ??= 机制 === '能力共享' ? '共享' : '吞噬';
@@ -16002,15 +16154,37 @@ var 精神系默认驱动原型集合_V1 = new Set([
   '规则改写',
 ]);
 
-function 应用生成魂技系别驱动属性_V1(效果数组 = [], 系别 = '') {
-  if (String(系别 || '').trim() !== '精神系') return;
+// 元素系攻速的限定元素：施术者的可调用元素（单个元素写字符串、多个写数组）；读不到具体元素时限定为元素类。
+function 读取元素系攻速限定元素_V1(上下文 = {}) {
+  const 元素 = [...new Set(buildSkillAttributeGateContext(上下文).callableElements
+    .map(项 => String(项 || '').trim())
+    .filter(项 => SKILL_PROTOTYPE_FIELD_OPTIONS_V1.限定元素.includes(项) && !['元素类', '五行类'].includes(项)))];
+  return 元素.length > 1 ? 元素 : 元素[0] || '元素类';
+}
+
+// 生成后按系别改写效果：精神系的默认驱动属性换成精神力上限；元素系给己方的前摇降低只对自身所拥有元素的技能生效
+// （用户 2026-11-09："其次是元素系（仅针对自身拥有元素）"），已写了限定元素的不动。
+function 应用生成魂技系别驱动属性_V1(效果数组 = [], 系别 = '', 上下文 = {}) {
+  const 系 = String(系别 || '').trim();
+  const 元素限定 = 系 === '元素系' ? 读取元素系攻速限定元素_V1(上下文) : null;
+  if (系 !== '精神系' && !元素限定) return;
   const 处理 = 效果 => {
     if (!效果 || typeof 效果 !== 'object' || Array.isArray(效果)) return;
     if (
+      系 === '精神系' &&
       精神系默认驱动原型集合_V1.has(String(效果.原型 || '').trim()) &&
       String(效果.驱动属性 || '').trim() === '魂力上限'
     ) {
       效果.驱动属性 = '精神力上限';
+    }
+    if (
+      元素限定 &&
+      String(效果.原型 || '').trim() === '结算修正' &&
+      String(效果.结算 || '').trim() === '前摇' &&
+      parseSkillSignedChangeNumber(效果.数值) < 0 &&
+      效果.限定元素 === undefined
+    ) {
+      效果.限定元素 = Array.isArray(元素限定) ? [...元素限定] : 元素限定;
     }
     技能执行嵌套效果数组字段表_V1.forEach(键 => {
       if (Array.isArray(效果[键])) 效果[键].forEach(处理);
@@ -16025,6 +16199,17 @@ function 应用生成魂技系别驱动属性_V1(效果数组 = [], 系别 = '')
   };
   (Array.isArray(效果数组) ? 效果数组 : []).forEach(处理);
 }
+
+// 与 LibraryData_Runtime.js 的 DURATION_FIELDS 一致：作者时长字段 → 编译派生的 tick 字段。
+var 库编译时长派生字段_V1 = Object.freeze({
+  时长: '时长tick',
+  调整时长: '调整tick',
+  保留时长: '保留时长tick',
+  有效期: '有效期tick',
+  死亡时限: '死亡时限tick',
+  复活代价时限: '复活代价时限tick',
+  复活后状态时限: '复活后状态时限tick',
+});
 
 function 收口原型效果条目_V1(value = {}, fallbackTargetKind = '单体', recordViolation = () => {}, forcedPrototype = '', 上下文 = {}) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
@@ -16092,6 +16277,8 @@ function 收口原型效果条目_V1(value = {}, fallbackTargetKind = '单体', 
       ].includes(key)
     )
       return;
+    // 物品库作者写时长（如 有效期 {年,月,日,时,分}），库编译器在旁边派生 tick 字段；技能契约只读 tick 字段。
+    if (库编译时长派生字段_V1[key] && value[库编译时长派生字段_V1[key]] !== undefined) return;
     if (key !== '副作用列表' && (技能执行黑名单键集合_V1.has(key) || 技能执行原型禁用字段集合_V1.has(key))) {
       recordViolation(`${原型}.${key}`);
       return;
@@ -17266,6 +17453,10 @@ function buildSkillCombatProfile(blueprint, qualityCtx = {}) {
   })();
 
   const getDamageType = () => {
+    // 真实攻击（真实伤害、无视抗性，COST 系数 1.45）引擎早已支持，生成器原先只按系别给近身、远程、精神。
+    // 用户 2026-11-09：A 级以上按概率生成。
+    const 真实攻击概率 = { A: 0.10, S: 0.15, 'S+': 0.25 }[grade] || 0;
+    if (真实攻击概率 > 0 && Math.random() < 真实攻击概率) return '真实攻击';
     if (type === '精神系') return '精神攻击';
     if (type === '食物系' || type === '控制系' || type === '元素系') return '远程攻击';
     return '近身攻击';
@@ -17277,7 +17468,17 @@ function buildSkillCombatProfile(blueprint, qualityCtx = {}) {
     伤害意图.伤害类型 = getDamageType();
     if (archetype === '多段伤害') 伤害意图.威力倍率 = Math.round(powerBase * 0.85);
     if (archetype === '持续伤害') {
-      效果意图.状态 = '持续创伤';
+      // C1（用户 2026-11-09）：持续伤害按武魂分化，副效果见 BattlePreview deriveStateCombatEffect。
+      // 可调用火元素给灼烧，冰或水给冻伤，木给中毒；没有元素的在中毒、流血、持续创伤中抽。原先一律是持续创伤。
+      const 可调用元素 = (Array.isArray(qualityCtx?.可调用元素) ? qualityCtx.可调用元素
+        : Array.isArray(qualityCtx?.callableElements) ? qualityCtx.callableElements : []).map(元素 => String(元素 || '').trim());
+      const 元素持续伤害 = [
+        ...(可调用元素.includes('火') ? ['灼烧'] : []),
+        ...(可调用元素.some(元素 => ['冰', '水'].includes(元素)) ? ['冻伤'] : []),
+        ...(可调用元素.includes('木') ? ['中毒'] : []),
+      ];
+      const 持续伤害候选 = 元素持续伤害.length ? 元素持续伤害 : ['中毒', '流血', '持续创伤'];
+      效果意图.状态 = 持续伤害候选[Math.min(持续伤害候选.length - 1, Math.floor(Math.random() * 持续伤害候选.length))];
       效果意图.持续回合 = 3;
       效果意图.持续伤害数值 = Math.round(powerBase * 0.4 * targetFactor);
       效果意图.结算参数.持续伤害数值 = 效果意图.持续伤害数值;
@@ -17461,7 +17662,7 @@ function buildSkillCombatProfile(blueprint, qualityCtx = {}) {
     if (targetFactor < 1) 效果意图.持续回合 = Math.max(1, Math.round(效果意图.持续回合 * Math.max(0.8, targetFactor)));
   } else if (main === '回复类') {
     战斗.技能分类 = '辅助';
-    if (archetype === '体力恢复')
+    if (['生命恢复', '体力恢复'].includes(archetype))
       伤害意图.恢复比例 = Number(
         (randomInRange({ C: [8, 12], B: [12, 20], A: [20, 35], S: [35, 60] }) * targetFactor).toFixed(2),
       );
@@ -18062,16 +18263,18 @@ function 判定修正是否增益语义_V1(effect = {}) {
   return Number.isFinite(数值) && 数值 > 0;
 }
 
+// 食物效果按正负区分（用户 2026-11-10："本质上就是用正面效果和负面效果来区分"；"正面效果通常是直接食用获得效果，感觉不用套
+// 机制赋予？反而绕了一圈"）：对承受者有利的效果——回复、增益、护盾、净化、正向修正、规则防御——吃下（或喂给队友）直接生效，
+// 不论给谁；对承受者不利的——减益、负面状态、驱散增益——才装进机制授予。其余原型（召唤、时窗、位移、转移等）仍走授予。
 function 食物造物效果可直接食用_V1(effect = {}) {
   const 原型 = String(effect?.原型 || '').trim();
-  const 目标 = String(effect?.目标 || '').trim();
-  const 自身目标 = !目标 || 目标 === '自身';
+  const 状态 = String(effect?.状态 || '').trim();
   if (原型 === '资源变化' || 原型 === '属性修正' || 原型 === '护盾变化') return 食物造物效果为正向数值_V1(effect);
-  if (原型 === '状态移除') return true;
+  if (原型 === '状态移除') return 状态 !== '任意增益' && (!状态 || ['任意负面', '任意状态'].includes(状态) || 状态施加是否负面语义_V1(状态));
   if (原型 === '状态施加') return !状态施加是否负面语义_V1(effect?.状态);
-  if (原型 === '结算修正') return 自身目标 && 结算修正是否增益语义_V1(effect);
-  if (原型 === '判定修正') return 自身目标 && 判定修正是否增益语义_V1(effect);
-  if (原型 === '规则防御') return 自身目标;
+  if (原型 === '结算修正') return 结算修正是否增益语义_V1(effect);
+  if (原型 === '判定修正') return 判定修正是否增益语义_V1(effect);
+  if (原型 === '规则防御') return true;
   return 原型 === '机制授予';
 }
 
@@ -18090,14 +18293,14 @@ function 食物造物授予效果_V1(effect = {}) {
   return next;
 }
 
-function buildCreationUsageEffects(packedEffects, type = '', mainArchetype = '') {
+function buildCreationUsageEffects(packedEffects, type = '', mainArchetype = '', 食物敌对形态 = '') {
   const 效果列表 = clonePackedSkillEffects(getMeaningfulSkillEffects(packedEffects))
     .map(effect => {
       if (!effect || typeof effect !== 'object') return effect;
       return { ...effect };
   });
   if (String(type || '').trim() !== '食物系') return 效果列表;
-  if (读取技能机制目标侧_V1(mainArchetype) === '敌对') return 效果列表;
+  if (读取技能机制目标侧_V1(mainArchetype) === '敌对' && 食物敌对形态 !== '授予') return 效果列表;
   const 输出列表 = [];
   const 授予效果列表 = [];
   效果列表.forEach(effect => {
@@ -18792,6 +18995,19 @@ function 解析消耗为绝对值_V1(消耗字段 = '无', 上下文 = {}) {
   }, 0);
 }
 
+// 预算口径的消耗：各资源按各自上限折成魂力当量再相加（技能模块审计：百分比先在资源间分摊，再按对应上限换算）。
+// 直接把魂力、精神力、体力的绝对值相加，精神力为主的技能（精神力上限远小于魂力上限）会被算成几乎不耗，
+// 消耗倍数约 0.32，收敛时再把消耗往上推，精神力可能超过上限。
+function 解析消耗为魂力当量_V1(消耗字段 = '无', 上下文 = {}) {
+  const 解析结果 = 解析技能阶段消耗_V1(消耗字段, 上下文);
+  const 魂力上限 = 读取直接结算预算资源上限_V1('魂力', 上下文);
+  return 解析结果.启动.reduce((总和, 项) => {
+    const 资源上限 = 读取直接结算预算资源上限_V1(项.资源, 上下文);
+    const 绝对值 = 项.百分比 ? 资源上限 * 项.数值 / 100 : 项.数值;
+    return 总和 + (String(项.资源 || '').trim() === '魂力' ? 绝对值 : 绝对值 / 资源上限 * 魂力上限);
+  }, 0);
+}
+
 function 技能消耗字段缺失_V1(skill = {}) {
   if (!skill || typeof skill !== 'object') return true;
   if (!Object.prototype.hasOwnProperty.call(skill, '消耗')) return true;
@@ -18802,7 +19018,7 @@ function 技能消耗字段缺失_V1(skill = {}) {
 
 function 读取技能实际消耗_V1(skill = {}, 上下文 = {}, 标准消耗 = 0) {
   if (技能消耗字段缺失_V1(skill)) return 标准消耗;
-  const 实际 = 解析消耗为绝对值_V1(skill.消耗, 上下文);
+  const 实际 = 解析消耗为魂力当量_V1(skill.消耗, 上下文);
   return Number.isFinite(实际) ? Math.max(0, 实际) : 标准消耗;
 }
 
@@ -20517,7 +20733,8 @@ function 评估技能预算_V1(技能 = {}, 上下文或魂技位 = {}, 旧上�
     0.5,
     特殊预算
       ? Number(特殊预算.特殊运转基准 || 0)
-      : 基础参考 * 来源承载 + 魂环年限COST修正 + 天赋修正,
+      : (基础参考 * 来源承载 + 魂环年限COST修正 + 天赋修正) *
+        (来源 === '魂技' ? 读取魂技品质运转系数_V1(读取预算品质等级_V1(上下文, 技能)) : 1),
   );
   const 抵扣前净COST = Number(Math.max(0, 效果原始COST - 限制COST).toFixed(2));
   const 对等基线 = 运转基准 * 代价能量;
@@ -20535,10 +20752,10 @@ function 评估技能预算_V1(技能 = {}, 上下文或魂技位 = {}, 旧上�
     ? Math.max(0.5, Number(魂骨技能门禁 || 0))
     : Math.min(允许上限, 位级硬上限);
   const 最低有效COST = 读取预算评估最低有效COST_V1({ 运转基准, 实际门禁 }, 上下文);
-  const 副作用COST = Number(Math.min(
-    Math.max(0, 副作用原始COST),
-    Math.max(0, 抵扣前净COST - 最低有效COST),
-  ).toFixed(2));
+  // 副作用按原始 COST 抵扣，只限制不超过效果本身。原先上限是"净 COST − 最低有效 COST"：抵扣永远不会让净 COST 低于下限，
+  // 收敛也就不会补强效果，副作用放得再大也只是被吸收（实测抵扣仅门槛的 5%–12%，带副作用的总强度只高约 5%）。
+  // 现在抵扣后低于下限时，收敛按下限补强效果，总强度 = 门槛区间 + 抵扣（用户 2026-11-09：B + 副作用 ≈ S）。
+  const 副作用COST = Number(Math.min(Math.max(0, 副作用原始COST), Math.max(0, 抵扣前净COST)).toFixed(2));
   const 实际COST = Number(Math.max(0, 抵扣前净COST - 副作用COST).toFixed(2));
 
   return {
@@ -20891,8 +21108,11 @@ function 按明细目标COST补强效果数值_V1(效果 = {}, 明细 = {}, 目�
   const 数值基数 = 可分配COST / Math.max(0.0001, 单位COST * 数量系数 * 目标系数 * 持续系数);
   if (!(数值基数 > 0)) return 0;
   if (字段名 === '威力倍率') {
+    // 伤害 COST = 单位COST × (威力/70)^(ln9/ln30)，单位COST（10 × 伤害系数）已含目标系数。原先按"数值基数 × 100"线性换算，
+    // 还把目标系数又除了一次：补强过冲或不足（高预算武魂真身从 78.8 一次补到 768.8，超过门槛 721.9）。
     const 上限 = 读取生成补强数值上限_V1(效果, '威力倍率');
-    const 新值 = Math.min(上限, Math.max(Number(效果.威力倍率 || 0), Math.round(数值基数 * 100)));
+    const 反推威力 = Math.round(70 * Math.pow(可分配COST / Math.max(0.0001, 单位COST * 数量系数 * 持续系数), Math.log(30) / Math.log(9)));
+    const 新值 = Math.min(上限, Math.max(Number(效果.威力倍率 || 0), 反推威力));
     if (新值 <= Number(效果.威力倍率 || 0)) return 0;
     效果.威力倍率 = 新值;
     return 1;
@@ -20969,7 +21189,7 @@ function 提高技能效果到目标COST_V1(技能 = {}, 上下文 = {}, 目标C
       技能,
       passiveMode: 上下文?.passiveMode === true,
     });
-    if (预算上下文.系别) 应用生成魂技系别驱动属性_V1(技能._效果数组, 预算上下文.系别);
+    if (预算上下文.系别) 应用生成魂技系别驱动属性_V1(技能._效果数组, 预算上下文.系别, 预算上下文);
     评估 = 评估技能预算_V1(技能, 预算上下文);
   };
   const 执行补强 = (倍率, 模式 = '数值') => {
@@ -21123,7 +21343,7 @@ function 收敛技能到预算区间_V1(技能 = {}, 上下文 = {}, 候选档�
       技能,
       passiveMode: 上下文?.passiveMode === true,
     });
-    if (Array.isArray(技能._效果数组) && 预算上下文.系别) 应用生成魂技系别驱动属性_V1(技能._效果数组, 预算上下文.系别);
+    if (Array.isArray(技能._效果数组) && 预算上下文.系别) 应用生成魂技系别驱动属性_V1(技能._效果数组, 预算上下文.系别, 预算上下文);
   };
   收口当前技能();
   let 评估 = 评估技能预算_V1(技能, 预算上下文);
@@ -21402,6 +21622,40 @@ function 生成技能命中原型_V1(技能 = {}, 原型列表 = []) {
   return 命中;
 }
 
+// 固有副作用概率随品质先升后降（用户 2026-11-09）：B 级最高，品质越高越少。各风险档写的是 B 级概率，
+// 按品质乘系数，上限 60%。原先只看原型和系别（常规 5%），各品质实测 2%–7%，反而随品质略升。
+var 魂技品质副作用系数_V1 = Object.freeze({ F: 0.33, D: 0.40, C: 0.60, B: 1, A: 0.50, S: 0.20, 'S+': 0.067 });
+function 按品质调整副作用风险_V1(档案 = {}, 上下文 = {}, 技能 = {}) {
+  const 品质 = 读取预算品质等级_V1(上下文, 技能);
+  const 系数 = 魂技品质副作用系数_V1[品质] ?? 1;
+  return { ...档案, 概率: Number(Math.min(0.6, Math.max(0, Number(档案.概率 || 0) * 系数)).toFixed(4)), 品质, 品质系数: 系数 };
+}
+
+// 副作用的轻重按抵扣目标定：约为预算门槛的 25%，这样"强力魂技 + 副作用"的总强度与高一档相当（B + 副作用 ≈ S）。
+// 原先参数写死（施法僵直 +20% 1 回合只抵 4 COST，约门槛的 5%–12%）。先放大数值（最多 50%），到顶再延长回合
+// （最多 3 回合）；只放大、不缩小。
+var 生成阶段副作用目标抵扣比例_V1 = 0.25;
+function 按抵扣目标缩放生成阶段副作用_V1(条目 = null, 技能 = {}, 上下文 = {}) {
+  if (!条目 || 条目.副作用类型 === '致死献祭') return 条目;
+  const 门禁 = Number(评估技能预算_V1(技能, 上下文)?.实际门禁 || 0);
+  const 当前 = Number(计算单项副作用COST_V1(条目).COST || 0);
+  const 目标 = 门禁 * 生成阶段副作用目标抵扣比例_V1;
+  if (!(当前 > 0) || !(目标 > 当前)) return 条目;
+  let 倍率 = 目标 / 当前;
+  const 结果 = { ...条目 };
+  const 数值 = 读取副作用数值百分数_V1(结果.数值, 0);
+  const 数值倍率 = 数值 > 0 ? Math.max(1, Math.min(倍率, 50 / 数值)) : 1;
+  if (数值倍率 > 1) {
+    结果.数值 = `+${Math.round(数值 * 数值倍率)}%`;
+    const 副数值 = 读取副作用数值百分数_V1(结果.副数值, 0);
+    if (副数值 > 0) 结果.副数值 = `+${Math.min(50, Math.round(副数值 * 数值倍率))}%`;
+    倍率 /= 数值倍率;
+  }
+  const 原回合 = Math.max(1, Number(结果.持续回合 || 1));
+  if (倍率 > 1.05) 结果.持续回合 = Math.min(3, Math.max(原回合, Math.round(原回合 * 倍率)));
+  return normalizeSkillSideEffectEntry(结果);
+}
+
 function 读取生成阶段副作用风险档案_V1(技能 = {}, 上下文 = {}) {
   if (!允许生成阶段自动副作用_V1(技能, 上下文)) {
     if (生成技能是武魂真身_V1(技能, 上下文)) {
@@ -21419,13 +21673,13 @@ function 读取生成阶段副作用风险档案_V1(技能 = {}, 上下文 = {})
       if (属性.includes('全属性') || 属性.length >= 5) 全属性 = true;
       else if (属性.length >= 2) 多属性 = true;
     });
-    if (全属性) return { 可生成: true, 概率: 0.40, 风险档: '全属性增幅', 原因: '全属性增幅收益覆盖面最高' };
-    if (多属性) return { 可生成: true, 概率: 0.20, 风险档: '多属性增幅', 原因: '多属性增幅收益覆盖面较高' };
+    if (全属性) return 按品质调整副作用风险_V1({ 可生成: true, 概率: 0.60, 风险档: '全属性增幅', 原因: '全属性增幅收益覆盖面最高' }, 上下文, 技能);
+    if (多属性) return 按品质调整副作用风险_V1({ 可生成: true, 概率: 0.50, 风险档: '多属性增幅', 原因: '多属性增幅收益覆盖面较高' }, 上下文, 技能);
   }
   if (生成技能属于食物辅助系_V1(上下文)) {
-    return { 可生成: true, 概率: 0.10, 风险档: '支援增幅', 原因: '辅助、治疗、食物增幅技能基础风险' };
+    return 按品质调整副作用风险_V1({ 可生成: true, 概率: 0.40, 风险档: '支援增幅', 原因: '辅助、治疗、食物增幅技能基础风险' }, 上下文, 技能);
   }
-  return { 可生成: true, 概率: 0.05, 风险档: '常规技能', 原因: '常规技能基础风险' };
+  return 按品质调整副作用风险_V1({ 可生成: true, 概率: 0.30, 风险档: '常规技能', 原因: '常规技能基础风险' }, 上下文, 技能);
 }
 
 function 生成阶段已有自动副作用_V1(技能 = {}) {
@@ -21565,7 +21819,7 @@ function 构建生成阶段自动副作用条目_V1(技能 = {}, 上下文 = {},
   const 增幅载体 = 查找生成阶段高覆盖增幅载体_V1(技能, 风险档);
   const 关联状态 = 增幅载体 ? 读取技能效果运行状态名_V1(增幅载体.效果) : 查找技能首个持续状态_V1(效果数组);
   if (是高覆盖属性增幅 && 关联状态) {
-    return normalizeSkillSideEffectEntry({
+    return 按抵扣目标缩放生成阶段副作用_V1(normalizeSkillSideEffectEntry({
       副作用类型: '全属性降低',
       触发时机: '效果结束后',
       生效对象: '效果承受者',
@@ -21573,7 +21827,7 @@ function 构建生成阶段自动副作用条目_V1(技能 = {}, 上下文 = {},
       持续回合: 2,
       数值: '+10%',
       关联状态,
-    });
+    }), 技能, 上下文);
   }
   const 原型集合 = new Set();
   遍历直接结算预算效果_V1(Array.isArray(技能?._效果数组) ? 技能._效果数组 : [], 效果 => {
@@ -21605,7 +21859,7 @@ function 构建生成阶段自动副作用条目_V1(技能 = {}, 上下文 = {},
     目标错乱: { 持续回合: 1, 数值: '+30%' },
     施法僵直: { 持续回合: 1, 数值: '+20%' },
   }[副作用类型] || { 持续回合: 1, 数值: '+20%' };
-  return normalizeSkillSideEffectEntry({
+  return 按抵扣目标缩放生成阶段副作用_V1(normalizeSkillSideEffectEntry({
     副作用类型,
     触发时机: '效果生效后',
     生效对象,
@@ -21613,7 +21867,7 @@ function 构建生成阶段自动副作用条目_V1(技能 = {}, 上下文 = {},
     持续回合: 类型参数.持续回合,
     数值: 类型参数.数值,
     副数值: 类型参数.副数值 || '',
-  });
+  }), 技能, 上下文);
 }
 
 function 尝试生成阶段固有副作用_V1(技能 = {}, 上下文 = {}) {
@@ -21942,7 +22196,7 @@ function 尝试生成阶段副作用降压_V1(技能 = {}, 上下文 = {}) {
     });
     return 0;
   }
-  const 副作用 = normalizeSkillSideEffectEntry({
+  const 副作用 = 按抵扣目标缩放生成阶段副作用_V1(normalizeSkillSideEffectEntry({
     副作用类型: '施法僵直',
     触发时机: 结束后副作用 ? '效果结束后' : '效果生效后',
     生效对象,
@@ -21950,7 +22204,7 @@ function 尝试生成阶段副作用降压_V1(技能 = {}, 上下文 = {}) {
     持续回合: 1,
     数值: '+20%',
     关联状态,
-  });
+  }), 技能, 上下文);
   if (!副作用) {
     记录技能生成事件_V1(上下文, {
       类型: '副作用写入失败',
@@ -22477,7 +22731,7 @@ function 生成阶段收敛目标COST填充_V1(技能 = {}, 上下文 = {}) {
       passiveMode: 上下文?.passiveMode === true,
       技能,
     });
-    if (Array.isArray(技能._效果数组) && 上下文?.系别) 应用生成魂技系别驱动属性_V1(技能._效果数组, 上下文.系别);
+    if (Array.isArray(技能._效果数组) && 上下文?.系别) 应用生成魂技系别驱动属性_V1(技能._效果数组, 上下文.系别, 上下文);
     const 后评估 = 评估技能预算_V1(技能, 预算上下文);
     结果 = { ...(结果 || {}), 评估: 后评估 };
     if (Number(后评估.实际COST || 0) >= Math.max(0, 最低目标COST - 技能预算COST容差_V1)) break;
@@ -24450,8 +24704,10 @@ function buildSingleSkillEffectSummary(effect) {
         durationText
       );
     }
-    case '体力恢复':
+    case '生命恢复':
       return '为' + target + '恢复体力/气血，溢出转为体力增幅，回复倍率' + formatSkillPercent(effect.回复倍率 || effect.数值 || 0);
+    case '体力恢复':
+      return '为' + target + '恢复体力，回复倍率' + formatSkillPercent(effect.回复倍率 || effect.数值 || 0);
     case '魂力恢复':
       return '为' + target + '恢复魂力，回复倍率' + formatSkillPercent(effect.回复倍率 || effect.数值 || 0);
     case '精神恢复':
@@ -25675,30 +25931,88 @@ Object.values(银龙王血脉技能_V1).forEach(skill => {
   if (skill && Array.isArray(skill._效果数组)) 收口技能执行结构_V1(skill, { 目标: '单体' });
 });
 
-var 武魂真身基础增幅机制_V1 = Object.freeze(['单属性增益', '多属性增益', '全属性增益']);
-var 武魂真身通用增幅机制_V1 = Object.freeze(['威力增幅', '技能效果增幅', '掌控提升', '速度提升']);
-var 武魂真身自身辅助增幅机制_V1 = Object.freeze(['技能效果增幅', '多属性增益', '修炼增益']);
-// 武魂真身以自身为目标、放大本系专属能力；专属机制按此概率抽取，其余合法机制作为低概率变异。
+// 原型按作用分两类（用户 2026-11-09 确认）：
+// - 辅助自身：放大或改善自己的能力，本身不产生结算，效果在之后的技能里体现。
+// - 直接释放：施放当下就对目标结算（伤害、回复、护盾、控制、削弱、召唤等）。
+// 武魂真身只用辅助自身类；防御系兼顾保护队友，另可用保护队友的直接释放。
+var 武魂真身辅助自身机制_V1 = Object.freeze([
+  '单属性增益', '多属性增益', '全属性增益', '威力增幅', '技能效果增幅', '掌控提升', '速度提升',
+  '消耗', '前摇', '修炼增益', '炸环', '承伤修正', '霸体',
+]);
+var 武魂真身防御系保护机制_V1 = Object.freeze(['护卫', '护盾', '免伤', '伤害分摊', '消耗分摊']);
+
+function 武魂真身分类允许机制_V1(系别 = '强攻系', 机制 = '') {
+  const 名称 = String(机制 || '').trim();
+  return 武魂真身辅助自身机制_V1.includes(名称) || (系别 === '防御系' && 武魂真身防御系保护机制_V1.includes(名称));
+}
+// 武魂真身放大本系能力，唯一限制是不做一次性攻击、偏辅助（用户 2026-11-09）：可以辅助自己、放大自己的辅助能力，
+// 防御系也可以防御全场。专属机制按此概率抽取，其余合法机制作为低概率变异。
 var 武魂真身专属增幅概率_V1 = 0.8;
-var 武魂真身专属增幅机制_V1 = Object.freeze({
-  强攻系: Object.freeze(['全属性增益', '威力增幅']),
-  敏攻系: Object.freeze(['速度提升']),
-  防御系: Object.freeze(['承伤修正', '免伤', '护盾', '护卫', '伤害分摊']),
-  控制系: Object.freeze(['掌控提升', '技能效果增幅']),
-  元素系: Object.freeze(['威力增幅', '技能效果增幅']),
-  治疗系: Object.freeze(['技能效果增幅', '持续恢复', '魂力恢复', '精神恢复']),
-  辅助系: Object.freeze(['技能效果增幅', '多属性增益']),
-  精神系: Object.freeze(['掌控提升', '单属性增益']),
-  召唤系: Object.freeze(['前摇', '消耗', '技能效果增幅']),
-  食物系: Object.freeze(['前摇', '消耗', '技能效果增幅']),
+// 专属机制的抽取权重（用户 2026-11-09）：强攻、防御以自身全属性增益为最高；敏攻是"敏 + 攻"，按 速度 > 力量 > 前摇（攻速）；
+// 元素系各项均分，其前摇只降自身所拥有元素的技能；
+// 治疗系增强自己的治疗能力（技能效果增幅、降耗、减前摇），不直接当治疗技能，和攻击型真身不直接攻击一样；
+// 食物系三项均分。未列出权重的机制按 1 计。
+var 武魂真身专属增幅权重_V1 = Object.freeze({
+  强攻系: Object.freeze({ 全属性增益: 60, 威力增幅: 40 }),
+  敏攻系: Object.freeze({ 速度提升: 35, 单属性增益: 25, 前摇: 20, 多属性增益: 20 }),
+  防御系: Object.freeze({ 全属性增益: 40, 护卫: 12, 伤害分摊: 12, 护盾: 12, 承伤修正: 12, 免伤: 12 }),
+  控制系: Object.freeze({ 掌控提升: 1, 技能效果增幅: 1 }),
+  元素系: Object.freeze({ 威力增幅: 1, 技能效果增幅: 1, 前摇: 1 }),
+  治疗系: Object.freeze({ 技能效果增幅: 60, 消耗: 20, 前摇: 20 }),
+  辅助系: Object.freeze({ 技能效果增幅: 1, 多属性增益: 1 }),
+  精神系: Object.freeze({ 掌控提升: 1, 单属性增益: 1 }),
+  召唤系: Object.freeze({ 前摇: 1, 消耗: 1, 技能效果增幅: 1 }),
+  食物系: Object.freeze({ 前摇: 1, 消耗: 1, 技能效果增幅: 1 }),
+});
+var 武魂真身专属增幅机制_V1 = Object.freeze(Object.fromEntries(
+  Object.entries(武魂真身专属增幅权重_V1).map(([系别, 权重]) => [系别, Object.freeze(Object.keys(权重))])));
+// 敏攻系的专属属性增益固定偏攻：单属性加力量，多属性加力量与敏捷。
+var 武魂真身专属增幅属性_V1 = Object.freeze({
+  敏攻系: Object.freeze({ 单属性增益: Object.freeze(['力量']), 多属性增益: Object.freeze(['力量', '敏捷']) }),
 });
 
-// 真身类型已固定为自身增幅：本系专属机制只要求可作主机制且具备共享原型编译，
+// 变异（20%）也按本系特点给权重，不平均：靠近本系定位的辅助自身机制更常见。未列出的按 1 计。
+var 武魂真身变异权重_V1 = Object.freeze({
+  强攻系: Object.freeze({ 单属性增益: 5, 多属性增益: 4, 承伤修正: 3, 速度提升: 2, 技能效果增幅: 2 }),
+  敏攻系: Object.freeze({ 威力增幅: 4, 全属性增益: 3, 前摇: 3, 掌控提升: 2 }),
+  防御系: Object.freeze({ 单属性增益: 4, 多属性增益: 3 }),
+  控制系: Object.freeze({ 前摇: 4, 速度提升: 3, 单属性增益: 2, 多属性增益: 2, 消耗: 2 }),
+  元素系: Object.freeze({ 掌控提升: 4, 消耗: 3, 前摇: 3, 多属性增益: 2 }),
+  治疗系: Object.freeze({ 多属性增益: 3, 单属性增益: 3, 承伤修正: 2, 掌控提升: 2, 威力增幅: 0.5 }),
+  辅助系: Object.freeze({ 消耗: 4, 前摇: 3, 单属性增益: 2, 全属性增益: 2, 掌控提升: 2 }),
+  精神系: Object.freeze({ 技能效果增幅: 4, 前摇: 3, 多属性增益: 3, 消耗: 2 }),
+  召唤系: Object.freeze({ 多属性增益: 3, 单属性增益: 2, 掌控提升: 2 }),
+  食物系: Object.freeze({ 多属性增益: 3, 单属性增益: 2, 修炼增益: 2 }),
+});
+// 少数真身带一个保护自身的副效果；主效果仍是辅助自身。品质门照常（无敌金身仅高品质）。
+var 武魂真身保护副效果概率_V1 = 0.08;
+var 武魂真身保护副机制权重_V1 = Object.freeze({ 霸体: 50, 免伤: 30, 无敌金身: 20 });
+
+function 按权重抽取武魂真身机制_V1(系别 = '强攻系', 机制列表 = [], 权重来源 = 武魂真身专属增幅权重_V1) {
+  const 唯一 = [...new Set(机制列表)];
+  if (!唯一.length) return '';
+  const 权重表 = 权重来源[系别] || {};
+  const 权重 = 唯一.map(机制 => Math.max(0, Number(权重表[机制] ?? 1)));
+  const 总和 = 权重.reduce((sum, value) => sum + value, 0);
+  if (!(总和 > 0)) return pickRandom(唯一);
+  let 点 = Math.random() * 总和;
+  for (let 序号 = 0; 序号 < 唯一.length; 序号 += 1) {
+    点 -= 权重[序号];
+    if (点 < 0) return 唯一[序号];
+  }
+  return 唯一[唯一.length - 1];
+}
+
+// 真身类型已固定为非攻击的增幅：本系专属机制只要求可作主机制且具备共享原型编译，
 // 不受常规魂技的禁止主机制与品质门槛限制（品质只影响增幅强度，不影响增幅种类）。
 function 武魂真身机制合法_V1(机制 = '', context = {}) {
   const 系别 = String(context?.type || context?.系别 || '').trim();
   if ((武魂真身专属增幅机制_V1[系别] || []).includes(机制)) {
     return SKILL_MECHANISM_META_V1[机制]?.可主机制 === true && 机制具备共享原型编译_V1(机制);
+  }
+  // 真身的辅助自身机制按分类放行，不要求属于本系常规主候选池，仍受品质门槛。
+  if (武魂真身分类允许机制_V1(系别, 机制)) {
+    return SKILL_MECHANISM_META_V1[机制]?.可主机制 === true && 机制具备共享原型编译_V1(机制) && 技能机制满足品质门槛_V1(机制, context);
   }
   return 机制是合法生成主机制_V1(机制, context);
 }
@@ -25706,16 +26020,9 @@ function 武魂真身机制合法_V1(机制 = '', context = {}) {
 function 获取武魂真身增幅机制候选_V1(type = '强攻系', grade = 'B', context = {}) {
   const 系别 = String(type || '强攻系').trim() || '强攻系';
   const 排除原型 = new Set(Array.isArray(context?.排除子原型) ? context.排除子原型.map(项 => String(项 || '').trim()).filter(Boolean) : []);
-  let 候选 = [...武魂真身基础增幅机制_V1, ...武魂真身通用增幅机制_V1];
-  if (系别 === '敏攻系') 候选.push('速度提升');
-  if (['控制系', '精神系', '元素系'].includes(系别)) 候选.push('掌控提升');
-  if (系别 === '防御系') 候选 = ['护卫', '承伤修正', '护盾', '免伤', '伤害分摊', '消耗分摊', ...候选];
-  if (系别 === '治疗系') 候选 = ['护卫', '持续恢复', '净化/解控', '护盾', '魂力恢复', '精神恢复', ...候选];
-  if (['辅助系', '食物系'].includes(系别)) 候选 = [...武魂真身自身辅助增幅机制_V1, ...候选];
-  if (系别 === '食物系') 候选 = ['护卫', '持续恢复', '净化/解控', '护盾', ...候选];
-  if (系别 === '召唤系') 候选 = ['技能效果增幅', ...候选];
-  // 专属机制须进入候选，才可能被加权抽中（召唤/造物效率 = 自身前摇与消耗降低）。
-  候选 = [...候选, ...(武魂真身专属增幅机制_V1[系别] || [])];
+  // 候选按分类生成：全部辅助自身机制（防御系另加保护队友的机制），本系专属机制按权重另抽。
+  let 候选 = [...武魂真身辅助自身机制_V1, ...(系别 === '防御系' ? 武魂真身防御系保护机制_V1 : [])];
+  候选 = [...候选, ...(武魂真身专属增幅机制_V1[系别] || [])].filter(机制 => 武魂真身分类允许机制_V1(系别, 机制));
   const 释放形态 = context?.释放形态 || (系别 === '食物系' ? '造物承载' : '直接生效');
   const 真身预算 = 评估技能预算_V1({
     魂技名: '武魂真身',
@@ -25765,6 +26072,7 @@ function 获取武魂真身增幅机制候选_V1(type = '强攻系', grade = 'B'
 
 function 查找机制大类_V1(机制 = '') {
   const 机制名 = String(机制 || '').trim();
+  if (双向修正机制_V1.has(机制名)) return '增益类';
   return (
     Object.keys(SKILL_ARCHETYPE_POOL_V1 || {}).find(大类 =>
       Array.isArray(SKILL_ARCHETYPE_POOL_V1[大类]) && SKILL_ARCHETYPE_POOL_V1[大类].includes(机制名),
@@ -25781,17 +26089,12 @@ function 构建武魂真身消耗文本_V1(type = '强攻系', grade = 'B', ring
   const 分摊表 = {
     精神主导: { 魂力: 0.3, 精神力: 0.7 },
     附加微量精神力: { 魂力: 0.9, 精神力: 0.1 },
+    附加常规体力: { 魂力: 0.85, 体力: 0.15 },
+    附加大量体力: { 魂力: 0.75, 体力: 0.25 },
     魂神平摊: { 魂力: 0.5, 精神力: 0.5 },
     纯耗魂力: { 魂力: 1 },
   };
-  const 燃料模型 =
-    系别 === '精神系' || 系别 === '召唤系'
-      ? '精神主导'
-      : 系别 === '元素系'
-        ? '魂神平摊'
-        : ['辅助系', '食物系', '治疗系'].includes(系别)
-          ? '附加微量精神力'
-          : '纯耗魂力';
+  const 燃料模型 = 读取武魂真身燃料模型_V1(系别);
   const 构建比例消耗 = 消耗基准 => {
     const 基准 = Math.max(1, Number(消耗基准 || 0));
     return Object.entries(分摊表[燃料模型] || 分摊表.纯耗魂力)
@@ -25806,11 +26109,37 @@ function 构建武魂真身消耗文本_V1(type = '强攻系', grade = 'B', ring
   return `${释放消耗} 维持:${维持消耗}`;
 }
 
-function 强制武魂真身效果作用自身_V1(效果数组 = []) {
+// 真身目标跟着机制走。护卫、伤害分摊、消耗分摊本来就是替别人承担，给队友群体（防御全场）；
+// 防御系的护盾、承伤、免伤与辅助系的属性增益一半给自己、一半给全场；
+// 放大自身能力的技能效果增幅、修炼增益、效率类，以及造物承载的食物真身，仍以自身为目标。
+var 武魂真身群体承担机制_V1 = Object.freeze(['护卫', '伤害分摊', '消耗分摊']);
+var 武魂真身可群体机制_V1 = Object.freeze({
+  防御系: Object.freeze(['护盾', '承伤修正', '免伤']),
+  辅助系: Object.freeze(['单属性增益', '多属性增益', '全属性增益']),
+});
+
+function 选择武魂真身目标_V1(系别 = '强攻系', 机制 = '', 释放形态 = '直接生效') {
+  if (释放形态 === '造物承载') return '自身';
+  if (系别 === '防御系' && 武魂真身群体承担机制_V1.includes(机制)) return '群体';
+  if ((武魂真身可群体机制_V1[系别] || []).includes(机制)) return Math.random() < 0.5 ? '群体' : '自身';
+  return '自身';
+}
+
+function 是武魂真身保护副效果_V1(效果 = {}, 副机制 = '') {
+  const 原型 = String(效果?.原型 || '').trim(), 状态 = String(效果?.状态 || 效果?.规则 || '').trim();
+  // 有的系别把保护副效果包成机制授予（主动触发的霸体等），按授予内容认。
+  if (原型 === '机制授予') return (Array.isArray(效果?.授予效果) ? 效果.授予效果 : []).some(授予 => 是武魂真身保护副效果_V1(授予, 副机制));
+  if (副机制 === '霸体') return 原型 === '状态施加' && 状态 === '霸体';
+  if (副机制 === '免伤') return 原型 === '规则防御' && /免伤/.test(状态);
+  if (副机制 === '无敌金身') return 原型 === '规则防御' && /无敌/.test(状态);
+  return false;
+}
+
+function 强制武魂真身效果目标_V1(效果数组 = [], 目标 = '自身') {
   const 访问 = 效果 => {
     if (!效果 || typeof 效果 !== 'object' || Array.isArray(效果)) return;
     if (String(效果.原型 || '').trim() || Object.prototype.hasOwnProperty.call(效果, '目标')) {
-      效果.目标 = '自身';
+      效果.目标 = 目标;
     }
     技能执行嵌套效果数组字段表_V1.forEach(字段名 => {
       (Array.isArray(效果[字段名]) ? 效果[字段名] : []).forEach(访问);
@@ -25844,9 +26173,10 @@ function 生成武魂真身基础技能_V1(配置 = {}) {
       blueprintOverride: {
         主机制大类: 查找机制大类_V1(机制) || '增益类',
         主机制原型: 机制,
-        副机制: [],
+        副机制: Array.isArray(配置.副机制) ? [...配置.副机制] : [],
         释放形态: String(配置.delivery || '直接生效').trim() || '直接生效',
-        目标: '自身',
+        目标: String(配置.targetKind || '自身').trim() || '自身',
+        ...(Array.isArray(配置.副机制) && 配置.副机制.length ? { 副机制: [...配置.副机制] } : {}),
         加成属性候选: Array.isArray(配置.加成属性候选) && 配置.加成属性候选.length ? [...配置.加成属性候选] : undefined,
       },
     },
@@ -26018,8 +26348,8 @@ function buildSeventhRingTrueBodySkill(
     return (
       !排除原型.has(机制) &&
       武魂真身机制合法_V1(机制, 上下文) &&
-      ((武魂真身专属增幅机制_V1[系别] || []).includes(机制) ||
-        (机制属于当前系别主候选池_V1(机制, 上下文) && 自动生成机制满足五环恢复增益约束_V1(机制, 上下文)))
+      武魂真身分类允许机制_V1(系别, 机制) &&
+      ((武魂真身专属增幅机制_V1[系别] || []).includes(机制) || 自动生成机制满足五环恢复增益约束_V1(机制, 上下文))
     );
   };
   const 候选 = 获取武魂真身增幅机制候选_V1(系别, grade, 真身上下文)
@@ -26030,13 +26360,18 @@ function buildSeventhRingTrueBodySkill(
     : 候选[0];
   if (!默认机制) throw new Error(`技能生成错误:${系别}武魂真身缺少合法增幅机制`);
   const 专属机制 = 武魂真身专属增幅机制_V1[系别] || [];
-  const 专属候选 = 候选.filter(项 => 专属机制.includes(项));
-  const 变异候选 = 候选.filter(项 => !专属机制.includes(项));
-  const 抽取池 = 专属候选.length && 变异候选.length
-    ? (Math.random() < 武魂真身专属增幅概率_V1 ? 专属候选 : 变异候选)
-    : 候选;
-  const 机制 = 食物工具分支 ? 默认机制 : pickRandom(抽取池) || 默认机制;
-  const 加成属性候选 = rollAttributeDirectionByType(系别, 机制, 50, 真身上下文);
+  const 专属候选 = [...new Set(候选.filter(项 => 专属机制.includes(项)))];
+  const 变异候选 = [...new Set(候选.filter(项 => !专属机制.includes(项)))];
+  const 抽专属 = 食物工具分支 || !变异候选.length || (专属候选.length > 0 && Math.random() < 武魂真身专属增幅概率_V1);
+  const 机制 = (抽专属 && 专属候选.length ? 按权重抽取武魂真身机制_V1(系别, 专属候选)
+    : 按权重抽取武魂真身机制_V1(系别, 变异候选.length ? 变异候选 : 候选, 武魂真身变异权重_V1)) || 默认机制;
+  const 保护副候选 = 释放形态 === '造物承载' ? [] : Object.keys(武魂真身保护副机制权重_V1).filter(副机制 => 副机制 !== 机制 &&
+    机制具备共享原型编译_V1(副机制) && 技能机制满足品质门槛_V1(副机制, { ...真身上下文, type: 系别, 系别, grade }));
+  const 保护副机制 = 保护副候选.length && Math.random() < 武魂真身保护副效果概率_V1
+    ? 按权重抽取武魂真身机制_V1('保护副效果', 保护副候选, { 保护副效果: 武魂真身保护副机制权重_V1 }) : '';
+  const 专属属性 = 抽专属 ? 武魂真身专属增幅属性_V1[系别]?.[机制] : null;
+  const 加成属性候选 = 专属属性 ? [...专属属性] : rollAttributeDirectionByType(系别, 机制, 50, 真身上下文);
+  const 真身目标 = 选择武魂真身目标_V1(系别, 机制, 释放形态);
   const skill = 生成武魂真身基础技能_V1({
     ...真身上下文,
     type: 系别,
@@ -26049,8 +26384,9 @@ function buildSeventhRingTrueBodySkill(
     grade,
     archetype: 机制,
     delivery: 释放形态,
-    targetKind: '自身',
+    targetKind: 真身目标,
     加成属性候选,
+    ...(保护副机制 ? { 副机制: [保护副机制] } : {}),
   });
   skill.魂技名 = '武魂真身';
   skill.画面描述 = AI_TODO_SKILL_VISUAL;
@@ -26082,8 +26418,11 @@ function buildSeventhRingTrueBodySkill(
       throw new Error(`技能生成错误:武魂真身显式副作用${副作用.副作用类型 || '未命名'}缺少合法承载位置`);
     }
   });
-  强制武魂真身效果作用自身_V1(skill._效果数组);
-  return 收口技能执行结构_V1(skill, { 目标: '自身' });
+  强制武魂真身效果目标_V1(skill._效果数组, 真身目标);
+  if (保护副机制 && 真身目标 !== '自身') (skill._效果数组 || []).forEach(效果 => {
+    if (是武魂真身保护副效果_V1(效果, 保护副机制)) 强制武魂真身效果目标_V1([效果], '自身');
+  });
+  return 收口技能执行结构_V1(skill, { 目标: 真身目标 });
 }
 
 function autoGenerateSkill(
@@ -26166,8 +26505,8 @@ function autoGenerateSkill(
     typeof globalThis.__LWCS_SKILL_MECHANISM_REGISTRY__ === 'object'
       ? globalThis.__LWCS_SKILL_MECHANISM_REGISTRY__
       : SKILL_MECHANISM_REGISTRY_V1;
-  const 主机制目标侧 = 读取技能机制目标侧_V1(archetype);
-  const secondary = 原始副机制.filter(机制名 => !(主机制目标侧 === '友方' && 读取技能机制目标侧_V1(机制名) === '敌对'));
+  const 主机制目标侧 = 读取技能机制目标侧_V1(archetype, main);
+  const secondary = 原始副机制.filter(机制名 => !(主机制目标侧 === '友方' && 读取技能机制目标侧_V1(机制名, main) === '敌对'));
   if (secondary.length !== 原始副机制.length) {
     记录技能生成事件_V1(options, {
       类型: '副机制目标侧过滤',
@@ -26341,7 +26680,7 @@ function autoGenerateSkill(
   };
   const 标记副机制跟随主原型_V1 = (effect, 机制名 = '') => {
     if (!effect || typeof effect !== 'object' || Array.isArray(effect)) return effect;
-    const 副机制目标侧 = 读取技能机制目标侧_V1(机制名);
+    const 副机制目标侧 = 读取技能机制目标侧_V1(机制名, main);
     if (主机制目标侧 && 副机制目标侧 && 主机制目标侧 !== 副机制目标侧) {
       return {
         ...effect,
@@ -26490,6 +26829,15 @@ function autoGenerateSkill(
     packedEffects.length = 0;
     写入已编译效果列表_V1(passiveEffects, '自身');
     packedEffects.splice(0, packedEffects.length, ...收口生成后正式效果列表_V1(packedEffects, '自身'));
+    if (skillSourceCategory !== '魂技') {
+      // 战斗只在被动触发时机（SKILL_PASSIVE_TRIGGER_PHASE_OPTIONS_V1）结算被动效果；生成的被动效果都带持续回合，
+      // 不走物品常驻，「立即触发」或没写触发方式的改为战斗开始（用户 2026-11-09 定）。战斗外原型不加触发。
+      packedEffects.forEach(effect => {
+        const 原型 = String(effect?.原型 || '').trim();
+        if (!原型 || 物品被动战斗外原型集合_V1.has(原型) || SKILL_PASSIVE_TRIGGER_PHASE_OPTIONS_V1.includes(String(effect?.触发方式 || '').trim())) return;
+        effect.触发方式 = '战斗开始';
+      });
+    }
   }
 
   if (!packedEffects.some(effect => effect && typeof effect === 'object' && (String(effect.原型 || '').trim() || Array.isArray(effect.使用效果)))) {
@@ -26500,7 +26848,7 @@ function autoGenerateSkill(
   packedEffects.splice(0, packedEffects.length, ...收口生成后正式效果列表_V1(packedEffects, blueprint.释放形态 === '造物承载' ? '自身' : '单体'));
 
   if (blueprint.释放形态 === '造物承载') {
-    let usageEffects = 收口生成正式效果终态_V1(buildCreationUsageEffects(packedEffects, type, archetype), {
+    let usageEffects = 收口生成正式效果终态_V1(buildCreationUsageEffects(packedEffects, type, archetype, blueprint.食物敌对形态), {
       目标: '单体',
       path: '造物使用效果',
       技能: { _效果数组: packedEffects },
@@ -26554,13 +26902,20 @@ function autoGenerateSkill(
     效果描述: AI_TODO_SKILL_EFFECT,
     消耗: 战斗.消耗 || '无',
     前摇: 战斗.前摇 || 0,
-    承载方式: blueprint.释放形态 || '直接生效',
+    // 魂骨、血脉的被动技能标「被动」：战斗按承载方式区分被动与主动（BattleDecision isPassiveSkill）。
+    承载方式: passiveMode && skillSourceCategory !== '魂技' ? '被动' : blueprint.释放形态 || '直接生效',
     _效果数组: packedEffects,
   };
   if (!passiveMode && archetype === '反制') 生成结果.触发方式 = '受击前';
+  // 被动时机由技能级给出（有些原型如前摇、反伤、伤害分摊的结算修正、机制授予不收效果级触发方式），与效果级的战斗开始一致；
+  // 战斗只结算带触发限制的被动（BattlePreview readPassiveTriggerLimit），写法同 CharacterLibrary 的战斗开始被动。
+  if (passiveMode && skillSourceCategory !== '魂技') {
+    生成结果.触发方式 = '战斗开始';
+    生成结果.触发限制 = { 周期: '每战', 次数: 1 };
+  }
   if (副作用列表.length) 生成结果.副作用列表 = 副作用列表;
   let 收口结果 = 收口技能执行结构_V1(生成结果, { 目标: blueprint.释放形态 === '造物承载' ? '自身' : '单体', passiveMode });
-  应用生成魂技系别驱动属性_V1(收口结果._效果数组, type);
+  应用生成魂技系别驱动属性_V1(收口结果._效果数组, type, options);
   const 预算上下文 = 构建自动生成预算上下文_V1({
     ...(options || {}),
     角色: options?.角色,
@@ -26598,7 +26953,7 @@ function autoGenerateSkill(
   };
   收口食物自服分支_V1();
   收口技能执行结构_V1(收口结果, { 目标: blueprint.释放形态 === '造物承载' ? '自身' : '单体', passiveMode });
-  应用生成魂技系别驱动属性_V1(收口结果._效果数组, type);
+  应用生成魂技系别驱动属性_V1(收口结果._效果数组, type, options);
   断言直接结算收益预算_V1(收口结果, '生成技能', 预算上下文);
   // 在预算前只做条件分支结构约束；效果强度统一交给 COST 收口。
   条件分支约束_V1(收口结果);
@@ -27531,7 +27886,7 @@ function pickUniqueWeightedRandom(entries = [], count = 1) {
   return result;
 }
 
-function buildSecondaryWeightedPool(main = '', type = '强攻系', preferredSecondary = []) {
+function buildSecondaryWeightedPool(main = '', type = '强攻系', preferredSecondary = [], mainArchetype = '') {
   const mainSet = new Set(SKILL_SECONDARY_BY_MAIN_V1[main] || []);
   const typePotentialSet = new Set(getPotentialSecondaryOptionsByType(type));
   const typeBiasSet = new Set(SKILL_SECONDARY_TYPE_BIAS_V1[type] || []);
@@ -27544,7 +27899,7 @@ function buildSecondaryWeightedPool(main = '', type = '强攻系', preferredSeco
         机制具备共享原型编译_V1(item),
       ),
   );
-  return SOUL_SPIRIT_SECONDARY_OPTIONS_V1.map(option => {
+  const pool = SOUL_SPIRIT_SECONDARY_OPTIONS_V1.map(option => {
     let weight = 1;
     const 来源标签 = [];
     if (mainSet.has(option)) {
@@ -27571,6 +27926,11 @@ function buildSecondaryWeightedPool(main = '', type = '强攻系', preferredSeco
     SKILL_MECHANISM_META_V1[String(entry.value || '').trim()]?.可副机制 === true &&
     机制具备共享原型编译_V1(entry.value),
   );
+  const 专属 = main === '削弱类' ? [] : Object.entries(SKILL_SECONDARY_TYPE_EXCLUSIVE_V1[type] || {})
+    .filter(([option, weight]) => weight > 0 && option !== String(mainArchetype || '').trim() &&
+      !pool.some(entry => entry.value === option) && 机制具备共享原型编译_V1(option))
+    .map(([option, weight]) => ({ value: option, weight, 来源标签: ['系别专属'] }));
+  return [...pool, ...专属];
 }
 
 function getBattleRewardRecipientName(data = {}, defeatedName = '') {
@@ -28612,6 +28972,7 @@ var 技能机制最低品质_V1 = Object.freeze({
   伤害反射: 'B',
   伤害分摊: 'B',
   消耗分摊: 'B',
+  生命恢复: 'F',
   体力恢复: 'F',
   魂力恢复: 'F',
   精神恢复: 'D',
@@ -28641,6 +29002,11 @@ var 技能机制最低品质_V1 = Object.freeze({
   斩盾: 'C',
   吞噬: 'A',
   能力共享: 'A',
+  // 原先缺省为 F：D/F 品质的特殊规则池只剩这两项，召唤系低品质魂技全落到资源类。强度与转化、反制相当，定 B。
+  资源燃烧: 'B',
+  资源锁定: 'B',
+  // 与伤害分摊、伤害反射同类。
+  伤害转移: 'B',
   机制抹消: 'A',
   炸环: 'S',
   时光回溯: 'S',
@@ -29127,7 +29493,9 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
     String(蓝图覆盖?.主机制大类 || '').trim()
   );
   const 指定蓝图 = 蓝图指定机制 ? 蓝图覆盖 : (临时蓝图 || null);
-  const 显式生成品质 = String(context?.gradeOverride || context?.grade || context?.品质 || context?.sourceQuality || context?.来源品质 || '').trim();
+  // 魂技品质 = d100 + 天赋 + 魂灵品质（judgeSkillGrade），魂灵品质只是其中一项。原先没有明确品质时取魂灵品质，
+  // 重试候选因此换成了魂灵品质，预算收敛和副作用也按它算。现在只认明确给出的品质，否则沿用第一次生成掷出的品质。
+  const 显式生成品质 = String(context?.gradeOverride || context?.grade || context?.品质 || '').trim();
   let 固定生成品质 = 显式生成品质 ? normalizeSkillTableGrade(显式生成品质) : '';
   let 临时技能 = null;
   let 接受候选序号 = 0;
@@ -29218,6 +29586,8 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
       候选技能.前摇 = Math.max(0, Number(生成结果.前摇 ?? 候选技能.前摇 ?? 0) || 0);
       if (String(生成结果.触发方式 || '').trim()) 候选技能.触发方式 = String(生成结果.触发方式).trim();
       else delete 候选技能.触发方式;
+      if (生成结果.触发限制 && typeof 生成结果.触发限制 === 'object') 候选技能.触发限制 = cloneJsonValue(生成结果.触发限制);
+      else delete 候选技能.触发限制;
       候选技能._效果数组 = 效果数组;
       const 副作用列表 = normalizeSkillSideEffectList(生成结果.副作用列表 || 候选技能.副作用列表 || []);
       if (副作用列表.length) 候选技能.副作用列表 = 副作用列表;
@@ -29231,8 +29601,10 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
         passiveMode: context?.passiveMode === true,
       });
       syncConstructSkillMetadata(候选技能);
+      const 当前候选品质 = normalizeSkillTableGrade(String(生成结果?.品质等级 || 固定生成品质 || '').trim() || 'B');
       const 候选预算上下文 = {
         ...(context || {}),
+        grade: 当前候选品质,
         消耗前摇收口方案: 候选消耗前摇方案,
         ...(候选序号 > 0 ? {
           阶段最高预算门禁: 候选预算门禁,
@@ -29283,8 +29655,8 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
         ...(候选预算上下文 || {}),
         候选序号,
         type: 系别,
-        品质: String(最终正式技能?.品质等级 || 固定生成品质 || '').trim(),
-        grade: String(最终正式技能?.品质等级 || 固定生成品质 || '').trim(),
+        品质: 当前候选品质,
+        grade: 当前候选品质,
         魂环位,
         ringIndex: 魂环位,
         sourceCategory: 基础生成选项.sourceCategory,
@@ -29368,7 +29740,8 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
         错误.预算收敛技能 = cloneJsonValue(当前候选保留技能, {});
       }
       const 错误文本 = String(错误?.message || 错误 || '未知错误');
-      const 大类匹配 = 错误文本.match(/技能生成错误:([^:：]+?)没有合法子原型/);
+      // 预筛失败的报错是"X预算预筛后没有合法子原型"，大类名不含这段后缀。
+      const 大类匹配 = 错误文本.match(/技能生成错误:([^:：]+?)(?:预算预筛后)?没有合法子原型/);
       if (大类匹配?.[1]) 失败主机制大类.add(String(大类匹配[1]).trim());
       const 超预算匹配 = 错误文本.match(/技能生成错误:([^:：]+?)(?:COST仍超预算|最低COST超预算|兜底失败|五环重复|三环)/);
       if (超预算匹配?.[1]) 失败子原型.add(String(超预算匹配[1]).trim());

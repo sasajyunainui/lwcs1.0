@@ -1775,6 +1775,23 @@
     if (kind === 'RELEASE_SKILL') return Math.max(0, Number(declaration?.skill?.前摇 ?? declaration?.skill?.cast_time ?? 0));
     return 0;
   }
+  // 2026-11-11 (用户："B的反应需要根据A的敏捷+前摇，决定自己来不来得及反应和释放技能。A是进攻方，所以B的允许前摇可以比A长一点，
+  // 这个长可根据敏捷比例来算"；"这个数字后面调也行"；"A 的前摇超过 40 时不是应该默认B随便使用低于40的技能吗"): the windup a
+  // reactor's skill may take against an attack is the attack's windup scaled by the two units' effective agility (agility under
+  // speed states), with REACTION_DEFENDER_MARGIN more for the defending side, never over the action budget; an attack whose
+  // windup exceeds that budget (a charged release) leaves the whole budget. Defending and evading take no windup and stay
+  // open, and skills marked as reactions (即时反应, 受击触发, …) are not held to it (BattleDecision isImmediateReactionSkill).
+  const REACTION_DEFENDER_MARGIN = 0.2;
+  function reactionWindupBudget(attacker = {}, declaration = {}, reactor = {}) {
+    const windup = actionWindup(attacker, declaration);
+    if (windup > CONTINUOUS_ACTION_BUDGET) return CONTINUOUS_ACTION_BUDGET;
+    const attackerAgility = naturalActionOrderProfile(attacker).effectiveAgility;
+    if (!(attackerAgility > 0)) return CONTINUOUS_ACTION_BUDGET;
+    return Math.min(
+      CONTINUOUS_ACTION_BUDGET,
+      windup * (naturalActionOrderProfile(reactor).effectiveAgility / attackerAgility) * (1 + REACTION_DEFENDER_MARGIN),
+    );
+  }
 
   function actionStaminaCost(actor = {}, nature = '', opponent = null) {
     const rate = ACTION_STAMINA_RATES[nature];
@@ -21682,6 +21699,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     setAttackOpening,
     actionStaminaCost,
     actionWindup,
+    reactionWindupBudget,
     basicAttackWindup,
     CONTINUOUS_ACTION_BUDGET,
     refreshStaminaAdjustedFinal,

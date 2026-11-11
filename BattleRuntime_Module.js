@@ -16254,7 +16254,8 @@
                 role: 'REACTION',
                 imminentThreat: true,
                 sourceActorId,
-                immediateBudget: naturalActionBudget,
+                // What the reactor's skill may take against this attack (BattlePreview reactionWindupBudget).
+                immediateBudget: previewRuntime.reactionWindupBudget(sourceActor, shared.declaration, actor),
                 actionContext,
                 incomingAction,
               });

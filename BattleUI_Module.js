@@ -1835,7 +1835,7 @@ class BattleUIComponent {
         if (!sourceCombatData || typeof sourceCombatData !== 'object') throw new Error('battle_combat_data_missing');
         const battleMode = options.mode === 'multi_round' ? 'multi_round' : 'single_round';
         const maxRounds = battleMode === 'multi_round'
-          ? Math.max(1, Math.min(20, Math.floor(Number(options.autoContinueConfig?.maxRounds || sourceCombatData?.胜负条件?.maxRounds || 20))))
+          ? Math.max(1, Math.min(BATTLE_PREVIEW.battleRoundLimit, Math.floor(Number(options.autoContinueConfig?.maxRounds || sourceCombatData?.胜负条件?.maxRounds || BATTLE_PREVIEW.battleRoundLimit))))
           : 1;
         const executeTransaction = root.BattleUIBridge?.executeBattleTransaction;
         if (typeof executeTransaction !== 'function') throw new Error('battle_transaction_unavailable');

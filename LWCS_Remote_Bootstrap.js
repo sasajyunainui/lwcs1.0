@@ -4,6 +4,7 @@
   const 仓库名 = 'sasajyunainui/lwcs1.0';
   const 分支名 = 'master';
   const CDN地址列表 = Object.freeze([
+    'http://127.0.0.1:39281',
     'https://testingcf.jsdelivr.net',
     'https://cdn.jsdelivr.net',
     'https://gcore.jsdelivr.net',
@@ -561,6 +562,9 @@
   })();
 
   function 构建资源基础地址(CDN地址, 提交哈希) {
+    if (CDN地址.startsWith('http://127.0.0.1') || CDN地址.startsWith('http://localhost')) {
+      return `${CDN地址.replace(/\/+$/, '')}/`;
+    }
     return `${CDN地址}/gh/${仓库名}@${提交哈希}/`;
   }
 
