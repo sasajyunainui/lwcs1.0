@@ -27,6 +27,7 @@ const 打包定义 = Object.freeze({
     'MVU_Engine_Runtime.js',
   ],
   'LWCS_MVU_Project_Runtime_Bundle.js': [
+    'LWCS_Location_Path.js',
     'LWCS_TT_AutoUpdate_Debug.js',
     'LibraryData_Runtime.js',
     'EraDataRegistry.js',

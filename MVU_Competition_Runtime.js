@@ -233,7 +233,9 @@
       Object.values(tableOrEmpty(数据根?.物品)).forEach(表 => { if (对象(表)) 名称列表.push(...Object.keys(表)); });
     } else {
       const [地点, 商店] = 文本(权限.来源).split('-', 2);
-      const 库存 = 数据根?.world?.地点?.[地点]?.商店?.[商店]?.库存;
+      // 斗一 / 斗二城市挂在「斗罗大陆」根下、斗四在行星下：顶层没有就按名逐层找（共用地点解析）
+      const 地点节点 = 数据根?.world?.地点?.[地点] || (typeof globalThis !== 'undefined' ? globalThis : window).__LWCS_LOCATION_PATH_V1__?.find(数据根, 地点)?.node;
+      const 库存 = 地点节点?.商店?.[商店]?.库存;
       if (!对象(库存)) return [];
       Object.entries(库存).forEach(([名称, 记录]) => { if (数值(记录?.库存) > 0) 名称列表.push(名称); });
     }
