@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:9b917ccc2f2a58d507c67d5a36c0e72abeda8de5648bca16d57e66085ae87eee|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:3c1d98eaaf18f362be0cd98cdb62dea5371c4fdce0dbdd772d2a560a8649db5f|cockpit/pages-role.js:ea00d94e994576a533ab9cfb560cdd432adb466805f0d67c984d2ad891f5bedc|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:31b84a896b0ecfd57ec9274ce575c48b55e1b1fc779106dc6eb734c699584cc8|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:33c325aab13aef52d2811e81492f147b2a533790487da1419353c482c7e6c33b|cockpit/pages-world.js:6851fc81ee4d831a1af87aa85b490557d452ef5b31ea776d50f871cb97f5574e|cockpit/pages-terminal.js:c73e78b78d6a7a80f96d774bcf3a88bfa17642c7ad81a5d5b89ff863e053125e */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:9b917ccc2f2a58d507c67d5a36c0e72abeda8de5648bca16d57e66085ae87eee|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:3c1d98eaaf18f362be0cd98cdb62dea5371c4fdce0dbdd772d2a560a8649db5f|cockpit/pages-role.js:ea00d94e994576a533ab9cfb560cdd432adb466805f0d67c984d2ad891f5bedc|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:31b84a896b0ecfd57ec9274ce575c48b55e1b1fc779106dc6eb734c699584cc8|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:9b8292c32e589a237845ff640ea917b3dc0fcaf171f4d2ad8122d42904033ed1|cockpit/pages-world.js:6851fc81ee4d831a1af87aa85b490557d452ef5b31ea776d50f871cb97f5574e|cockpit/pages-terminal.js:c73e78b78d6a7a80f96d774bcf3a88bfa17642c7ad81a5d5b89ff863e053125e */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -51744,18 +51744,34 @@ ${播报文本}
 /* source: cockpit/pages-map.js */
 /* 探索领域：星图 · 地点 · 人物 · 行程 */
 (() => {
-  // 总图底图：资源基址取 lwcs 运行时给的素材目录（角色素材目录的上一级），原型页回落本地 39281
-  const MAP = { get src() { return (document.documentElement.dataset.lwcsCharacterAssets || 'http://127.0.0.1:39281/assets/characters/').replace(/assets\/characters\/$/, '') + 'MAP.webp'; }, w: 3174, h: 2246 };
+  // 总图底图按时代取（时代运行时的地图配置：斗一「斗罗大陆1地图」、斗二 / 斗三 MAP、斗四星际总图），四张图同一坐标系 3174×2246；
+  // 资源基址取 lwcs 运行时给的素材目录（角色素材目录的上一级），原型页回落本地 39281
+  const MAP = { w: 3174, h: 2246 };
+  const assetUrl = file => (document.documentElement.dataset.lwcsCharacterAssets || 'http://127.0.0.1:39281/assets/characters/').replace(/assets\/characters\/$/, '') + encodeURI(file);
+  const profileOf = c => { try { const p = c.rt('__LWCS_ERA_RUNTIME_INTEGRATION_V1__')?.getMapProfileForTick?.(c.num(c.S?.world?.时间?.tick)); if (p?.asset) return p; } catch (e) { /* 原型页没有时代运行时 */ } return { asset: 'MAP.webp', topology: 'terrestrial' }; };
+  const stellar = c => profileOf(c).topology === 'stellar';
+  const rootName = c => stellar(c) ? '斗罗星际' : '斗罗大陆';
+  // 「当地」取所在链上第一个城镇类地点（斗一 / 斗二城市在帝国之下）；链上没有城镇时按时代默认层：陆地是顶层，斗四是「星系 / 行星 / 城市」第三层
+  const isTown = n => /城|都|镇|村|聚落/.test(String(n?.类型 || ''));
+  const cityIndex = (c, chain) => { const i = chain.findIndex(([, n]) => isTown(n)); return i >= 0 ? i : Math.min(stellar(c) ? 2 : 0, Math.max(0, chain.length - 1)); };
+  // 斗四星系 / 行星的专属子图（同原项目）：只认完整路径，城市以下仍是全息底板
+  const SUBMAPS = { '斗罗星系': 'MAP_ZJDL_DOULUO_SYSTEM.webp', '斗罗星系/斗罗星': 'MAP_ZJDL_DOULUO.webp', '斗罗星系/天斗星': 'MAP_ZJDL_TIANDOU.webp', '斗罗星系/天罗星': 'MAP_ZJDL_TIANLUO.webp', '斗罗星系/龙源星': 'MAP_ZJDL_LONGYUAN.webp', '斗罗星系/森罗星': 'MAP_ZJDL_SENLUO.webp', '斗罗星系/精灵星': 'MAP_ZJDL_JINGLING.webp', '天堂星域/天堂星': 'MAP_ZJDL_TIANTANG.webp', '龙马星系': 'MAP_ZJDL_LONGMA_SYSTEM.webp', '龙马星系/天龙星': 'MAP_ZJDL_TIANLONG.webp', '龙马星系/天马星': 'MAP_ZJDL_TIANMA.webp', '龙马星系/御空族七十六号星球': 'MAP_ZJDL_YUKONG76.webp' };
+  // 位置串与斗一 / 斗二地点库的路径以「斗罗大陆」开头，斗三库没有这一层：统一去掉根，顶层就是帝国 / 城市 / 星系
+  const ROOTS = new Set(['斗罗大陆', '斗罗星际']);
   const pathOf = c => String(c.ch.状态?.位置 || '').split('-').filter(Boolean);
+  // 存档地点树同理：斗一 / 斗二按库路径实例化，城市挂在「斗罗大陆」的子节点下；读时跳过这一层，写回时由 locPath 补回真实路径
+  const rootKey = c => { const w = c.S.world.地点 || {}; return Object.keys(w).find(k => ROOTS.has(k) && w[k]?.子节点) || ''; };
+  const savedTop = c => { const w = c.S.world.地点 || {}, r = rootKey(c); return r ? { ...Object.fromEntries(Object.entries(w).filter(([k]) => k !== r)), ...w[r].子节点 } : w; };
+  const locPath = (c, names) => { const r = rootKey(c), lead = r && (c.S.world.地点[r].子节点 || {})[names[0]] ? [r, '子节点'] : []; return ['world', '地点', ...lead, ...names.flatMap((n, i) => i ? ['子节点', n] : [n])]; };
   const nodeOf = c => {
-    const parts = pathOf(c).filter(p => p !== '斗罗大陆');
+    const parts = pathOf(c).filter(p => !ROOTS.has(p));
     let node = null, chain = [];
-    let pool = c.S.world.地点 || {};
+    let pool = savedTop(c);
     for (const p of parts) { if (pool && pool[p]) { node = pool[p]; chain.push([p, node]); pool = node.子节点 || {}; } }
     return { node, chain, city: chain[0] };
   };
   const locals = c => Object.entries(c.S.char).filter(([n, x]) => n !== c.name && x.状态?.位置 === c.ch.状态?.位置);
-  const statusText = s => ({ intact: '完好', damaged: '受损', destroyed: '已毁', ruins: '废墟' }[s] || s || '未知');
+  const statusText = s => ({ intact: '完好', active: '正常', damaged: '受损', destroyed: '已毁', ruins: '废墟', restricted: '受限', 'military-zone': '军事管制', dangerous: '危险', protected: '受保护', contested: '争夺中', neutral: '中立', hostile: '敌对', sealed: '封闭', unavailable: '不可进入' }[s] || s || '未知');
   // 坐标目的地：dest 写成「@x,y」（总图坐标）
   const ptOf = dest => { const m = /^@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)$/.exec(String(dest || '')); return m ? { x: Number(m[1]), y: Number(m[2]) } : null; };
   const RUINED = /^(ruins|destroyed|damaged|废弃|损毁|破坏|遗址)$/i;
@@ -51764,19 +51780,22 @@ ${播报文本}
   // 每次平移 / 缩放后按锚点的屏幕位置摆放——大小、文字不随缩放与透视变形，地名牌立在光柱顶上。
   // 子图同原版「进入子图」：坐标契约是「x/y 为直接父节点子图的局部坐标」（与总图同一坐标系尺寸），不改变当前位置
   // 城市先判：「沿海城市」「海外首都」「军事城市」这类类型名里带海 / 军字，仍是城市
-  const KINDS = [[/城|都|镇|村/, '#6fb4ff', '城市'], [/学院|学校/, '#b28bff', '学院'], [/宗|总部|据点|分部|组织|军/, '#ff9a62', '势力据点'], [/森林|山|海|岛|湖|原|谷|渊|位面/, '#5ee0ae', '地域']];
-  const kindOf = t => KINDS.find(([re]) => re.test(String(t || ''))) || [null, '#cfd8e6', '其他'];
+  const KINDS = [[/城|都|镇|村/, '#6fb4ff', '城市'], [/学院|学校/, '#b28bff', '学院'], [/宗|总部|据点|分部|组织|军/, '#ff9a62', '势力据点'], [/森林|山|海|岛|湖|原|谷|渊|位面/, '#5ee0ae', '地域'], [/帝国|王国|联邦|疆域/, '#a3d977', '国家疆域']];
+  // 斗四：星系 / 行星 / 位面 / 基地先判（「固定空间基地」算基地、「行政星」算行星），行星表面再落回城市等陆地类
+  const STELLAR_KINDS = [[/基地|堡垒|交易所|站|战场/, '#ff7a8a', '基地站点'], [/星系|星域|恒星|星际/, '#ffb15e', '星系星域'], [/位面|空间|试炼/, '#c08bff', '位面空间'], KINDS[0], KINDS[1], [/星|球/, '#5ee0ae', '行星'], KINDS[2], [/森林|山|海|岛|湖|原|谷|渊|保护|栖息|自治/, '#3fc7a0', '地域']];
+  const kindsOf = c => stellar(c) ? STELLAR_KINDS : KINDS;
+  const kindOf = (t, ks = KINDS) => ks.find(([re]) => re.test(String(t || ''))) || [null, '#cfd8e6', '其他'];
   const pct = (v, total) => (v / total * 100).toFixed(2);
   const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
-  const libRows = () => Object.values(window.COCKPIT.library('location')?.地点 || {}).map(e => ({ path: Object.values(e.目标路径 || {}), n: e.节点 || {}, rules: e.世界规则 }));
-  const herePath = c => pathOf(c).filter(p => p !== '斗罗大陆');
+  const libRows = () => Object.values(window.COCKPIT.library('location')?.地点 || {}).map(e => ({ path: Object.values(e.目标路径 || {}).filter((t, i) => !(i === 0 && ROOTS.has(t))), n: e.节点 || {}, rules: e.世界规则 })).filter(r => r.path.length);
+  const herePath = c => pathOf(c).filter(p => !ROOTS.has(p));
   const under = (rows, prefix, depth) => rows.filter(r => r.path.length === depth && prefix.every((t, i) => r.path[i] === t));
   const worldNodes = c => {
     const out = {}, rows = libRows();
     for (const r of under(rows, [], 1)) if (Number.isFinite(r.n.x) && Number.isFinite(r.n.y)) out[r.path[0]] = { name: r.path[0], ...r.n, rules: r.rules, kids: [] };
     for (const r of under(rows, [], 2)) if (out[r.path[0]]) out[r.path[0]].kids.push(r.path[1]);
-    for (const [n, v] of Object.entries(c.S.world.地点 || {})) if (Number.isFinite(v.x)) out[n] = { ...(out[n] || {}), name: n, ...v, kids: [...new Set([...(out[n]?.kids || []), ...Object.keys(v.子节点 || {})])], rules: out[n]?.rules };
-    for (const [n, v] of Object.entries(c.S.world.动态地点 || {})) if (v && !out[n] && Number.isFinite(v.x) && Number.isFinite(v.y) && (!v.归属父节点 || v.归属父节点 === '斗罗大陆')) out[n] = { name: n, ...v, dyn: true, kids: [] };
+    for (const [n, v] of Object.entries(savedTop(c))) if (Number.isFinite(v?.x)) out[n] = { ...(out[n] || {}), name: n, ...v, kids: [...new Set([...(out[n]?.kids || []), ...Object.keys(v.子节点 || {})])], rules: out[n]?.rules };
+    for (const [n, v] of Object.entries(c.S.world.动态地点 || {})) if (v && !out[n] && Number.isFinite(v.x) && Number.isFinite(v.y) && (!v.归属父节点 || ROOTS.has(v.归属父节点))) out[n] = { name: n, ...v, dyn: true, kids: [] };
     return Object.values(out);
   };
   // 某一层（trail = 从总图往下的地点名）上可画的地点：内置地点库 + 存档地点树；能否继续下钻看库里 / 存档里有没有更深一层
@@ -51791,7 +51810,7 @@ ${播报文本}
     return base.map(n => { const kids = kidsOf([...trail, n.name]); return { ...n, kids, enterable: kids.length > 0 }; });
   };
   // 存档地点树里 trail 这一层的子节点表
-  const savedAt = (c, trail) => { let pool = c.S.world.地点 || {}; for (const t of trail) pool = pool?.[t]?.子节点; return pool; };
+  const savedAt = (c, trail) => { let pool = savedTop(c); for (const t of trail) pool = pool?.[t]?.子节点; return pool; };
   // 地标分级：0 当前位置 · 1 近处 · 2 其他 · 3 地域（总图上地域类默认只留光点）。光柱高度随级别
   const BEAM = [40, 26, 18, 10];
   // 点地标的主操作：所在地（及其上级）→ 看当地；总图 / 所在城市里的地点 → 设为目的地；别的城市的子图地点 → 以那座城为目的地。
@@ -51807,16 +51826,17 @@ ${播报文本}
     const nodes = levelNodes(c, trail), f = nodes.find(n => n.name === hereName);
     const ref = f || { x: MAP.w / 2, y: MAP.h / 2 }, d = n => Math.hypot(n.x - ref.x, n.y - ref.y);
     const near = new Set(nodes.filter(n => n !== f).sort((p, q) => d(p) - d(q)).slice(0, sub ? 12 : 8).map(n => n.name));
-    const rank = n => n === f ? 0 : near.has(n.name) ? 1 : !sub && kindOf(n.类型)[2] === '地域' ? 3 : 2;
+    const ks = kindsOf(c), rank = n => n === f ? 0 : near.has(n.name) ? 1 : !sub && kindOf(n.类型, ks)[2] === '地域' ? 3 : 2;
     const key = n => [...trail, n.name].join('/');
     const pt = !sub && ptOf(c.state.ui.dest), pin = pt ? { x: pt.x, y: pt.y } : null;
-    const holo = sub ? `<div class="holo-base" style="background-image:${[...nodes.map(n => `radial-gradient(circle at ${pct(n.x, MAP.w)}% ${pct(n.y, MAP.h)}%,${rgba(kindOf(n.类型)[1], .3)} 0,transparent 8%)`), 'radial-gradient(ellipse at 50% 50%,rgba(70,150,255,.22),transparent 68%)'].join(',')}"><b>${c.esc(trail.at(-1))}</b></div>` : '';
+    const submap = sub && stellar(c) && SUBMAPS[trail.join('/')], root = rootName(c);
+    const holo = sub && !submap ? `<div class="holo-base" style="background-image:${[...nodes.map(n => `radial-gradient(circle at ${pct(n.x, MAP.w)}% ${pct(n.y, MAP.h)}%,${rgba(kindOf(n.类型, ks)[1], .3)} 0,transparent 8%)`), 'radial-gradient(ellipse at 50% 50%,rgba(70,150,255,.22),transparent 68%)'].join(',')}"><b>${c.esc(trail.at(-1))}</b></div>` : '';
     return `<div class="table${sub ? ' sub' : ''}" data-table data-no-tilt data-trail="${c.esc(trail.join('/'))}">
-      <div class="plane">${sub ? holo : `<img src="${MAP.src}" alt="斗罗大陆总图" draggable="false">`}<div class="grid"></div>${nodes.map(n => `<i class="anc" style="left:${pct(n.x, MAP.w)}%;top:${pct(n.y, MAP.h)}%"></i>`).join('')}${pin ? `<i class="anc" style="left:${pct(pin.x, MAP.w)}%;top:${pct(pin.y, MAP.h)}%"></i>` : ''}<i class="anc cn" style="left:0;top:0"></i><i class="anc cn" style="left:100%;top:0"></i><i class="anc cn" style="left:100%;top:100%"></i><i class="anc cn" style="left:0;top:100%"></i></div>
-      <div class="marks">${nodes.map(n => { const r = rank(n), color = r === 0 ? '#ffd36b' : kindOf(n.类型)[1], g = markGo(c, [...trail, n.name]), isDest = !!g.dest && g.dest === n.name && c.state.ui.dest === g.dest; return `<button class="mk r${r}${r === 0 ? ' here' : ''}${isDest ? ' dest' : ''}" type="button" style="--pc:${isDest ? '#ff7ab6' : color};--bh:${BEAM[r]}px" data-rank="${r}" data-inspect="node:${c.esc(key(n))}" data-hover-delay="320" ${g.dest ? `data-set="dest=${c.esc(g.dest)}"` : `data-go="${g.go}"`}${n.enterable ? ` data-map-enter="${c.esc(key(n))}"` : ''} aria-label="${c.esc(`${n.name}：${g.label}`)}"><i class="mk-lead"></i><i class="mk-beam"></i><i class="mk-base"></i><span class="mk-tag">${c.esc(n.name)}${n.enterable ? '<i class="fa-solid fa-layer-group"></i>' : ''}</span></button>`; }).join('')}${pin ? `<button class="mk r0 fpin" type="button" style="--pc:#ff7ab6;--bh:${BEAM[0]}px" data-rank="0" data-set="dest=" aria-label="清除坐标目的地" data-hint="坐标目的地 · 点一下清除"><i class="mk-lead"></i><i class="mk-beam"></i><i class="mk-base"></i><span class="mk-tag"><i class="fa-solid fa-location-crosshairs"></i> ${Math.round(pin.x)}, ${Math.round(pin.y)}</span></button>` : ''}</div>
-      ${sub ? `<div class="table-crumb"><button class="key-s" type="button" data-map-up aria-label="返回上级"><i class="fa-solid fa-chevron-left"></i></button><span>${['斗罗大陆', ...trail].map((t, i) => i === trail.length ? `<b aria-current="location">${c.esc(t)}</b>` : `<button type="button" data-map-to="${c.esc(trail.slice(0, i).join('/'))}">${c.esc(t)}</button>`).join('<i class="fa-solid fa-angle-right"></i>')}</span>${onPath ? '' : `<span class="chip s" data-hint="${c.esc(`这里只能查看；要在「${trail[0]}」里行动，先前往那里。`)}">远端预览</span>`}</div>` : ''}
+      <div class="plane">${submap ? `<img src="${assetUrl(submap)}" alt="${c.esc(trail.at(-1))}子图" draggable="false">` : sub ? holo : `<img src="${assetUrl(profileOf(c).asset)}" alt="${root}总图" draggable="false">`}<div class="grid"></div>${nodes.map(n => `<i class="anc" style="left:${pct(n.x, MAP.w)}%;top:${pct(n.y, MAP.h)}%"></i>`).join('')}${pin ? `<i class="anc" style="left:${pct(pin.x, MAP.w)}%;top:${pct(pin.y, MAP.h)}%"></i>` : ''}<i class="anc cn" style="left:0;top:0"></i><i class="anc cn" style="left:100%;top:0"></i><i class="anc cn" style="left:100%;top:100%"></i><i class="anc cn" style="left:0;top:100%"></i></div>
+      <div class="marks">${nodes.map(n => { const r = rank(n), color = r === 0 ? '#ffd36b' : kindOf(n.类型, ks)[1], g = markGo(c, [...trail, n.name]), isDest = !!g.dest && g.dest === n.name && c.state.ui.dest === g.dest; return `<button class="mk r${r}${r === 0 ? ' here' : ''}${isDest ? ' dest' : ''}" type="button" style="--pc:${isDest ? '#ff7ab6' : color};--bh:${BEAM[r]}px" data-rank="${r}" data-inspect="node:${c.esc(key(n))}" data-hover-delay="320" ${g.dest ? `data-set="dest=${c.esc(g.dest)}"` : `data-go="${g.go}"`}${n.enterable ? ` data-map-enter="${c.esc(key(n))}"` : ''} aria-label="${c.esc(`${n.name}：${g.label}`)}"><i class="mk-lead"></i><i class="mk-beam"></i><i class="mk-base"></i><span class="mk-tag">${c.esc(n.name)}${n.enterable ? '<i class="fa-solid fa-layer-group"></i>' : ''}</span></button>`; }).join('')}${pin ? `<button class="mk r0 fpin" type="button" style="--pc:#ff7ab6;--bh:${BEAM[0]}px" data-rank="0" data-set="dest=" aria-label="清除坐标目的地" data-hint="坐标目的地 · 点一下清除"><i class="mk-lead"></i><i class="mk-beam"></i><i class="mk-base"></i><span class="mk-tag"><i class="fa-solid fa-location-crosshairs"></i> ${Math.round(pin.x)}, ${Math.round(pin.y)}</span></button>` : ''}</div>
+      ${sub ? `<div class="table-crumb"><button class="key-s" type="button" data-map-up aria-label="返回上级"><i class="fa-solid fa-chevron-left"></i></button><span>${[root, ...trail].map((t, i) => i === trail.length ? `<b aria-current="location">${c.esc(t)}</b>` : `<button type="button" data-map-to="${c.esc(trail.slice(0, i).join('/'))}">${c.esc(t)}</button>`).join('<i class="fa-solid fa-angle-right"></i>')}</span>${onPath ? '' : `<span class="chip s" data-hint="${c.esc(`这里只能查看；要在「${trail[0]}」里行动，先前往那里。`)}">远端预览</span>`}</div>` : ''}
       <div class="table-ui"><button class="key-s" type="button" data-zoom="1.25" aria-label="放大">＋</button><button class="key-s" type="button" data-zoom="0.8" aria-label="缩小">－</button><button class="key-s" type="button" data-zoom="home" aria-label="${f ? '回到当前位置' : '回到中心'}"><i class="fa-solid fa-crosshairs"></i></button></div>
-      <div class="table-legend">${KINDS.map(([, col, l]) => `<span><i style="--pc:${col}"></i>${l}</span>`).join('')}<span><i style="--pc:#ffd36b"></i>当前位置</span><span><b class="fa-solid fa-layer-group"></b>可进入子图</span></div>
+      <div class="table-legend">${(ks === KINDS ? KINDS : ks.filter(k => nodes.some(n => kindOf(n.类型, ks) === k))).map(([, col, l]) => `<span><i style="--pc:${col}"></i>${l}</span>`).join('')}<span><i style="--pc:#ffd36b"></i>当前位置</span><span><b class="fa-solid fa-layer-group"></b>可进入子图</span></div>
     </div>`;
   };
   // 交互：拖动平移（开始拖动才捕获指针，单击仍是点地标）· 滚轮 / 双指以指针处为中心缩放 · 按钮缩放与回中走短补间
@@ -52005,23 +52025,24 @@ ${播报文本}
   const nodeInspect = (c, kind, id) => {
     const path = String(id).split('/'), name = path.at(-1), trail = path.slice(0, -1);
     const n = levelNodes(c, trail).find(x => x.name === name); if (!n) return '';
-    const [, color, kname] = kindOf(n.类型), hp = herePath(c), here = path.every((t, i) => hp[i] === t);
+    const [, color, kname] = kindOf(n.类型, kindsOf(c)), hp = herePath(c), here = path.every((t, i) => hp[i] === t);
     const desc = String(n.描述 || '').split('\n')[0];
     const funcs = Object.values(n.rules?.功能档案 || {});
     // 主操作在地标本身（点地标 = 设目的地 / 看当地，见 markGo），卡片只标出它现在的身份
     const dest = c.state.ui.dest, role = here ? '当前位置' : dest && dest === markGo(c, path).dest ? '目的地' : '';
     return `<div class="insp-head"><span class="sock" style="--s:2.4em;--tint:${color}"><i class="fa-solid fa-location-dot"></i></span><div><strong style="font-size:1.15em">${c.esc(name)}</strong>${role ? ` <span class="chip s${here ? ' gd' : ' dst'}">${role}</span>` : ''}<br><small>${c.esc(n.类型 || kname)}${n.掌控势力 ? ' · ' + c.esc(n.掌控势力) : ''}</small></div><button class="x" type="button" data-close-inspector aria-label="关闭">×</button></div>
-      ${trail.length ? `<div class="crumb">${['斗罗大陆', ...trail].map(c.esc).join('<i class="fa-solid fa-angle-right"></i>')}</div>` : ''}
+      ${trail.length ? `<div class="crumb">${[rootName(c), ...trail].map(c.esc).join('<i class="fa-solid fa-angle-right"></i>')}</div>` : ''}
       ${desc ? `<p class="quote">${c.esc(desc)}</p>` : ''}
-      ${!trail.length ? `<div class="minigrid" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div><b>${n.人口 ? c.fmt(n.人口) : '—'}</b><small>人口</small></div><div><b>${c.esc(n.经济状况 || '—')}</b><small>经济</small></div><div><b>${c.esc(n.守护军团 || '—')}</b><small>守军</small></div></div>` : n.状态 ? `<div class="minigrid" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div><b>${c.esc(statusText(n.状态))}</b><small>状态</small></div><div><b>${c.esc(n.掌控势力 || '—')}</b><small>掌控</small></div></div>` : ''}
+      ${isTown(n) || (!trail.length && !stellar(c)) ? `<div class="minigrid" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div><b>${n.人口 ? c.fmt(n.人口) : '—'}</b><small>人口</small></div><div><b>${c.esc(n.经济状况 || '—')}</b><small>经济</small></div><div><b>${c.esc(n.守护军团 || '—')}</b><small>守军</small></div></div>` : n.状态 ? `<div class="minigrid" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div><b>${c.esc(statusText(n.状态))}</b><small>状态</small></div><div><b>${c.esc(n.掌控势力 || '—')}</b><small>掌控</small></div></div>` : ''}
       ${funcs.length ? `<div style="display:flex;gap:.3em;flex-wrap:wrap">${funcs.map(x => `<span class="chip s">${c.esc(x)}</span>`).join('')}</div>` : ''}
       ${n.kids.length ? `<section class="sec"><h3>下辖地点 · ${n.kids.length}</h3><div style="display:flex;gap:.3em;flex-wrap:wrap">${n.kids.slice(0, 14).map(k => `<span class="chip s">${c.esc(k)}</span>`).join('')}${n.kids.length > 14 ? `<span class="chip s">+${n.kids.length - 14}</span>` : ''}</div></section>` : ''}
       ${n.enterable ? `<button class="key-s" type="button" data-map-enter-btn="${c.esc(path.join('/'))}" style="align-self:flex-start"><i class="fa-solid fa-layer-group"></i> 进入子图</button>` : ''}
-      ${maintRow(c, name, n.状态, !!n.dyn || !!c.S.world.动态地点?.[name])}`;
+      ${stellar(c) && trail.length < 2 ? '' : maintRow(c, name, n.状态, !!n.dyn || !!c.S.world.动态地点?.[name])}`;
   };
 
   const place = c => {
-    const { node, chain } = nodeOf(c), city = chain[0]?.[1] || {};
+    const { chain } = nodeOf(c), ci = cityIndex(c, chain), cityEntry = chain[ci], city = cityEntry?.[1] || {};
+    const cityPath = locPath(c, chain.slice(0, ci + 1).map(x => x[0]));
     const desc = String(city.描述 || '').split('\n')[0];
     const shops = Object.entries(city.商店 || {});
     const dyn = Object.entries(c.S.world.动态地点 || {});
@@ -52029,10 +52050,10 @@ ${播报文本}
     return {
       tag: 'CORE · LOCATION',
       core: `<div class="pad">
-        ${c.head('city', chain[0]?.[0] || '未知地点', city.类型 || 'Location', 'gd')}
-        <div class="crumb">${['斗罗大陆', ...chain.map(x => x[0])].map(c.esc).join('<i class="fa-solid fa-angle-right"></i>')}</div>
+        ${c.head('city', cityEntry?.[0] || '未知地点', city.类型 || 'Location', 'gd')}
+        <div class="crumb">${[rootName(c), ...chain.map(x => x[0])].map(c.esc).join('<i class="fa-solid fa-angle-right"></i>')}</div>
         <p class="prose">${c.esc(desc)}${!c.blank(city.现状描述) ? `<br><b>现状：</b>${c.esc(city.现状描述)}` : ''}</p>
-        <div class="fame even" style="--n:5">${[['掌控', '掌控势力', city.掌控势力], ['守军', '守护军团', city.守护军团], ['人口', '人口', city.人口, 'number'], ['经济', '经济状况', city.经济状况, 'enum'], ['状态', null, String(statusText(city.状态)).replace(/<[^>]+>/g, '')]].map(([l, k, v, kind]) => `<div><small>${l}</small><b>${k && chain[0] ? c.ed(kind === 'number' ? c.fmt(v || 0) : (v || '—'), ['world', '地点', chain[0][0], k], kind === 'number' ? { kind: 'number', integer: true, min: 0, raw: c.num(v) } : kind === 'enum' ? { kind: 'enum', options: ['繁荣', '富足', '一般', '萧条', '凋敝'] } : { raw: v || '' }) : c.esc(v || '—')}</b></div>`).join('')}</div>
+        <div class="fame even" style="--n:5">${[['掌控', '掌控势力', city.掌控势力], ['守军', '守护军团', city.守护军团], ['人口', '人口', city.人口, 'number'], ['经济', '经济状况', city.经济状况, 'enum'], ['状态', null, String(statusText(city.状态)).replace(/<[^>]+>/g, '')]].map(([l, k, v, kind]) => `<div><small>${l}</small><b>${k && cityEntry ? c.ed(kind === 'number' ? c.fmt(v || 0) : (v || '—'), [...cityPath, k], kind === 'number' ? { kind: 'number', integer: true, min: 0, raw: c.num(v) } : kind === 'enum' ? { kind: 'enum', options: ['繁荣', '富足', '一般', '萧条', '凋敝'] } : { raw: v || '' }) : c.esc(v || '—')}</b></div>`).join('')}</div>
         <section class="sec"><h3>商店<span class="en">${shops.length}</span></h3><div class="list two">${shops.map(([n, s]) => `<button class="row" type="button" data-go="page-terminal/trade" data-go-set="venue=shop:${c.esc(n)};good=;tqty=1"><span class="sock" style="--s:1.8em"><i class="fa-solid fa-store"></i></span><div><strong>${c.esc(n)}</strong><small>${Object.keys(s.库存 || {}).length} 种商品${s._下次刷新tick ? ` · ${c.tickDate(s._下次刷新tick).replace('斗罗历', '')} 补货` : ''}</small></div><i class="fa-solid fa-chevron-right"></i></button>`).join('')}</div></section>
       </div>`,
       left: `<div class="pad">
@@ -52082,7 +52103,7 @@ ${播报文本}
     const row = libRows().find(r => r.path[0] === city && r.path.at(-1) === dest);
     if (row) return row.path;
     const walk = (pool, trail) => { for (const [k, v] of Object.entries(pool || {})) { const p = [...trail, k]; if (k === dest) return p; const r = walk(v?.子节点, p); if (r) return r; } return null; };
-    return (city && walk(c.S.world.地点?.[city]?.子节点, [city])) || [dest];
+    return (city && walk(savedTop(c)[city]?.子节点, [city])) || [dest];
   };
   // 移动预演：选定目的地后向运行时取一次（耗时、各移动方式的消耗、能否成行），位置 / 时间 / 资源变了再重取
   const planKey = (c, dest) => JSON.stringify([c.name, dest, c.ch.状态?.位置, c.S.world?.时间?.tick, c.ch.属性?.魂力, c.ch.属性?.体力]);
@@ -52161,11 +52182,15 @@ ${播报文本}
     return `<div class="act-row">${ruined ? act('repair', '修复', 'trowel-bricks', `修复「${name}」，恢复节点动作`) : act('damage', '破坏', 'house-crack', `破坏「${name}」，节点动作暂停`, true)}${dyn ? act('delete', '删除', 'trash', `删除动态地点「${name}」`, true) : ''}</div>`;
   };
   const travel = c => {
-    const { city } = nodeOf(c);
+    const { chain } = nodeOf(c), sd = stellar(c), ks = kindsOf(c);
+    const ci = cityIndex(c, chain), city = chain[ci];
     const here = pathOf(c).slice(-1)[0], dest = c.state.ui.dest || '';
-    const nodes = worldNodes(c), cur = nodes.find(n => n.name === city?.[0]);
-    const near = cur ? nodes.filter(n => n !== cur).map(n => ({ n, d: Math.hypot(n.x - cur.x, n.y - cur.y) })).sort((a, b) => a.d - b.d).slice(0, 6) : [];
+    // 邻近：城市在顶层时是总图上的其他城市；城市挂在上级之下（斗一 / 斗二的帝国、斗四的行星）时是同一张子图上的其他地点；斗四跨星系不比图上距离，另列「其他星域」
+    const nodes = worldNodes(c), peers = ci > 0 ? levelNodes(c, chain.slice(0, ci).map(x => x[0])) : nodes, cur = peers.find(n => n.name === city?.[0]);
+    const near = cur && !(sd && ci === 0) ? peers.filter(n => n !== cur).map(n => ({ n, d: Math.hypot(n.x - cur.x, n.y - cur.y) })).sort((a, b) => a.d - b.d).slice(0, 6) : [];
+    const far = sd ? nodes.filter(n => n.name !== chain[0]?.[0]) : [];
     const kids = Object.keys(city?.[1]?.子节点 || {}).map(k => ({ name: k, 类型: city[1].子节点[k].类型 }));
+    const nearLabel = ci > 0 ? `${chain[ci - 1][0]}${sd ? '上' : '内'}的其他地点` : sd ? '' : '邻近城市';
     return {
       tag: 'CORE · STAR MAP', wide: 'l',
       core: `<div class="pad">${c.head('map', '行旅星图', 'Star Map', 'gd', c.hint('点地标直接设为目的地（点所在地看当地），悬停看详情；点空白处设坐标目的地。带层叠标记的地标可双击（或在悬停详情里）进入子图，子图只是查看，不改变当前位置。拖动平移，滚轮或双指缩放。'))}${sandTable(c, c.state.ui.mapTrail || [])}</div>`,
@@ -52174,9 +52199,11 @@ ${播报文本}
       right: `<div class="pad">
         ${c.head('flag-checkered', '目的地', 'Destination')}
         ${ptOf(dest) ? `<div class="relic-card">${c.sock('location-crosshairs', 'gd')}<div><strong>${ptOf(dest).x}, ${ptOf(dest).y}</strong><small>坐标目的地</small></div><button class="key-s" type="button" data-set="dest=" aria-label="清除坐标目的地"><i class="fa-solid fa-xmark"></i></button></div>${routeBox(c, dest)}${addHere(c, ptOf(dest))}<div class="groove"></div>` : ''}
-        ${kids.length ? `<span class="lbl">${c.esc(city[0])} 城内</span><div class="list">${kids.map(k => `<button class="row ${k.name === dest ? 'on' : ''}" type="button" data-set="dest=${c.esc(k.name)}" ${k.name === here ? 'disabled' : ''}><span class="chip s">${c.esc(k.类型 || '')}</span><div><strong>${c.esc(k.name)}</strong>${k.name === here ? '<small>当前位置</small>' : ''}</div><span></span></button>`).join('')}</div>` : ''}
-        <span class="lbl">邻近城市</span>
-        <div class="list">${near.map(({ n, d }) => `<button class="row ${n.name === dest ? 'on' : ''}" type="button" data-set="dest=${c.esc(n.name)}"><span class="chip s">${c.esc(kindOf(n.类型)[2])}</span><div><strong>${c.esc(n.name)}</strong><small>图上距离 ${Math.round(d)}</small></div><span></span></button>`).join('')}</div>
+        ${kids.length ? `<span class="lbl">${c.esc(city[0])} ${isTown(city[1]) ? '城内' : '内'}</span><div class="list">${kids.map(k => `<button class="row ${k.name === dest ? 'on' : ''}" type="button" data-set="dest=${c.esc(k.name)}" ${k.name === here ? 'disabled' : ''}><span class="chip s">${c.esc(k.类型 || '')}</span><div><strong>${c.esc(k.name)}</strong>${k.name === here ? '<small>当前位置</small>' : ''}</div><span></span></button>`).join('')}</div>` : ''}
+        ${near.length ? `<span class="lbl">${c.esc(nearLabel)}</span>
+        <div class="list">${near.map(({ n, d }) => `<button class="row ${n.name === dest ? 'on' : ''}" type="button" data-set="dest=${c.esc(n.name)}"><span class="chip s">${c.esc(kindOf(n.类型, ks)[2])}</span><div><strong>${c.esc(n.name)}</strong><small>图上距离 ${Math.round(d)}</small></div><span></span></button>`).join('')}</div>` : ''}
+        ${far.length ? `<span class="lbl">其他星域</span>
+        <div class="list">${far.map(n => `<button class="row ${n.name === dest ? 'on' : ''}" type="button" data-set="dest=${c.esc(n.name)}"><span class="chip s">${c.esc(kindOf(n.类型, ks)[2])}</span><div><strong>${c.esc(n.name)}</strong><small>${c.esc(n.类型 || '')}</small></div><span></span></button>`).join('')}</div>` : ''}
         ${ptOf(dest) ? '' : dest ? `${nodes.find(n => n.name === dest)?.kids?.length ? `<button class="key-s" type="button" data-map-enter-btn="${c.esc(dest)}" style="align-self:flex-start"><i class="fa-solid fa-layer-group"></i> 进入${c.esc(dest)}子图</button>` : ''}${routeBox(c, dest)}` :`<span class="lbl">未选择目的地${c.hint('选择一个目的地查看移动预演。')}</span><span class="cta-wrap" data-hint="先在星图或上面的列表里选一个目的地"><button class="cta" type="button" disabled><i class="fa-solid fa-person-walking-arrow-right"></i>出发</button></span>`}
       </div>`,
     };
