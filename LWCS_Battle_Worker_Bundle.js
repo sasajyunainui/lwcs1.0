@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:a047634ae51ef5efaba0b6213f994e9f9d263cab2d4022d831c95907c3ec2dca|MVU_Schema_Runtime.js:a173fbef52748f995d607be544151366fdbbde1cb9b23ef8dbea7bb3244b3152|BattlePreview_Module.js:680e7964aac65bb51bbe381dda6937a38ae1ae9c4c797e0358afaee0caefbcfa|BehaviorDecisionPipeline_Module.js:81eceda18d6a015890368b2f8ad167dbdfc4503b0a20d5806194fb5ec9f4b725|BattleDecision_Module.js:d943e417ed7df959fc4921b5be36ae44d31a87e6f4c5e4d494d799ba5e66d799|BattleRuntime_Module.js:f4f41294d99470260e0c7e73e03e47d4a2023757a7612dafcb09517f49f92f5e */
+/* sources-sha256: MVU_Skill_Runtime.js:a047634ae51ef5efaba0b6213f994e9f9d263cab2d4022d831c95907c3ec2dca|MVU_Schema_Runtime.js:a173fbef52748f995d607be544151366fdbbde1cb9b23ef8dbea7bb3244b3152|BattlePreview_Module.js:680e7964aac65bb51bbe381dda6937a38ae1ae9c4c797e0358afaee0caefbcfa|BehaviorDecisionPipeline_Module.js:81eceda18d6a015890368b2f8ad167dbdfc4503b0a20d5806194fb5ec9f4b725|BattleDecision_Module.js:516a514aec5225e84ed7788c6bda4730e8d1aef516c35e252bd49b3ae2d1f3e6|BattleRuntime_Module.js:f4f41294d99470260e0c7e73e03e47d4a2023757a7612dafcb09517f49f92f5e */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -65531,6 +65531,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       semanticCapacityKeys: raw.semanticCapacityKeys === true ? true : null,
       capacityPerWorld: raw.capacityPerWorld === true ? true : null,
       frozenStaminaPanel: raw.frozenStaminaPanel === true ? true : null,
+      exactRiskStates: raw.exactRiskStates === true ? true : null,
       projectedSummonFollowups: raw.projectedSummonFollowups === true ? true : null,
       twoStageFullCheap: raw.twoStageFullCheap === true ? true : null,
       runwayPaidRebuild: raw.runwayPaidRebuild === true ? true : null,
@@ -126962,13 +126963,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
 
   // R12 (主线, delta-driven valuation): a formula cast's settled capacity per caster, skill and target set, kept with
   // what it read — the caster and its declared targets (the objects themselves), the field its conditions and stamina
-  // price read (intent, time, environment, site, rules; by value, as projected frames copy them), and who is on which
-  // side, alive and able to act (a recipient that falls out resolves to the first one left) — and reused on any world
-  // where all of that is the same: a candidate's or a branch's world values again only the sets that read a unit it
-  // changed. A cast whose recipients go beyond its caster and declared targets (a group, a fallback, a partner), under a
-  // 点到为止 intent (its HP floor reads the objectives' units) or with a condition on a creator is kept for its own world
-  // only. searchBounds.capacityPerWorld (development) values every world apart again.
-  const R12_CAST_FRAME_FIELDS = ['战斗意图', '时间段', '时间', '环境', '战斗环境', '场地', '战斗规则'];
+  // price read (intent, time, environment, site, rules, and the objectives a 点到为止 HP floor reads; by value, as
+  // projected frames copy them), and who is on which side, alive and able to act (a recipient that falls out resolves to
+  // the first one left) — and reused on any world where all of that is the same: a candidate's or a branch's world values
+  // again only the sets that read a unit it changed. A cast whose recipients go beyond its caster and declared targets (a
+  // group, a fallback, a partner) or with a condition on a creator is kept for its own world only.
+  // searchBounds.capacityPerWorld (development) values every world apart again.
+  const R12_CAST_FRAME_FIELDS = ['战斗意图', '时间段', '时间', '环境', '战斗环境', '场地', '战斗规则', '胜负条件'];
   let r12CastRecipients = null;
   const r12CastRosters = new WeakMap();
   function r12CastRoster(world) {
@@ -126986,6 +126987,24 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return r12CreatorConditions.get(skill);
   };
   const r12FormulaCasts = new WeakMap();
+  // R14: casters and targets that are copies of one another — a candidate's and a branch's frames project every unit
+  // anew, so one caster's cast on the same targets was settled again for each (7v7: 12 000 casts a heavy decision, 1 440
+  // distinct) — are matched by content as well: the same fields, hidden ones included (BattlePreview contentFingerprint),
+  // and the caster's projected resource supports (its payment reads them: unitAfterResourceCosts). Kept for the outermost
+  // decision (runProvider clears it with the fingerprints). __LWCS_DECISION_DEBUG__.verifyCaches settles every match
+  // again and throws on a difference.
+  let r12CastsByContent = new Map();
+  function r12CastContentKey(world, unit, skill, targetIds, roster) {
+    try {
+      return [preview.contentFingerprint(unit),
+        JSON.stringify(R12_PROJECTED_RESOURCES.map(resource => preview.projectedResourceDistribution(unit, resource) ?? null)),
+        preview.contentFingerprint(skill), targetIds.join('\u0001'),
+        ...targetIds.map(id => preview.contentFingerprint(findUnitInWorld(world, id) ?? null)), roster,
+        ...R12_CAST_FRAME_FIELDS.map(field => preview.contentFingerprint(world[field] ?? null))].join('|');
+    } catch {
+      return '';
+    }
+  }
   function r12FormulaSettledCapacity(world, unit, skill, targetIds) {
     if (searchBounds?.capacityPerWorld === true) return r9v2LinearFormulaSettledCapacity(world, unit, skill, targetIds);
     let bySkill = r12FormulaCasts.get(unit);
@@ -127000,6 +127019,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       r10Work.castReuses += 1;
       return hit.value;
     }
+    const keep = value => {
+      const list = entries || [];
+      if (!entries) byTargets.set(key, list);
+      if (list.length < 8) list.push({ roster, frame: R12_CAST_FRAME_FIELDS.map(field => world[field]),
+        targets: targetIds.map(id => findUnitInWorld(world, id)), value });
+    };
+    const contentKey = r12CastContentKey(world, unit, skill, targetIds, roster);
+    const known = contentKey ? r12CastsByContent.get(contentKey) : undefined;
+    const verify = root.__LWCS_DECISION_DEBUG__?.verifyCaches === true;
+    if (known && !verify) {
+      r10Work.castReuses += 1;
+      keep(known);
+      return known;
+    }
     const outer = r12CastRecipients, recipients = r12CastRecipients = new Set();
     let value;
     try {
@@ -127007,13 +127040,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     } finally {
       r12CastRecipients = outer;
     }
+    if (known && (!Object.is(known.overall, value.overall) || !Object.is(known.hostile, value.hostile))) {
+      throw new Error('R14_CAST_CONTENT_STALE:' + preview.unitId(unit) + ':' + skillId(skill) + ':' + targetIds.join(','));
+    }
     const read = new Set([preview.unitId(unit), ...targetIds.map(String)]);
-    if ([...recipients].every(id => read.has(id)) && !/点到为止|切磋|训练|非致命/.test(String(world.战斗意图 || '')) &&
-      !r12CreatorConditioned(skill)) {
-      const list = entries || [];
-      if (!entries) byTargets.set(key, list);
-      if (list.length < 8) list.push({ roster, frame: R12_CAST_FRAME_FIELDS.map(field => world[field]),
-        targets: targetIds.map(id => findUnitInWorld(world, id)), value });
+    if ([...recipients].every(id => read.has(id)) && !r12CreatorConditioned(skill)) {
+      keep(value);
+      if (contentKey) r12CastsByContent.set(contentKey, value);
     }
     return value;
   }
@@ -129887,7 +129920,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // expectedSegmentedDamageOutcome against the shields its source may hit, the remaining HP above the floor and the
   // charges); packetAt(index, path, shield), when given, reads a packet for a path's own HP, stamina and shield (a hurt,
   // tired defender is hit and targeted as it now stands); at the round end closing window w the periodic HP and stamina
-  // changes apply; pools and charges past their lifetime are gone in the next window. Paths with equal numbers merge.
+  // changes apply; pools and charges past their lifetime are gone in the next window. Paths with equal numbers merge;
+  // an incapable path settles nothing further, so those merge whatever their numbers (keeping only whether stamina put
+  // them out with HP left). R14 (主线, user 2026-11-11 "还有待改项？改完再说吧"): a path's packets depend on its own HP and
+  // stamina (attention follows the hurt, a tired defender reads a reduced panel), so hardly any two paths of 18 packets
+  // were equal and one curve reached 27 000 states (7v7: 3 million settled states a heavy decision, half its time).
+  // Capable paths now merge on a grid of R14_RISK_GRID of maximum HP (HP, shield) and of maximum stamina, at their
+  // probability-weighted mean (HP kept whole), with equal charges: the distribution is settled at that resolution, the
+  // same law. searchBounds.exactRiskStates (development) merges equal numbers only again.
   // Returns the expected HP lost and shield absorbed (each a share of maximum HP) and, per window, the chance of being
   // incapable after its hits (r9v2LinearRoutineIncapacityRisk's curve; stamina exhaustion counts unless
   // excludeStaminaIncapacity).
@@ -129916,7 +129956,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       defender.hp, defender.hpMax, defender.stamina, defender.staminaMax, defender.floor, defender.capable ? 1 : 0, defender.scalar,
       defender.pools.map(pool => pool.value + '@' + pool.lifetime).join(','), defender.blocks.map(row => row.count + '@' + row.lifetime).join(','),
       defender.saves.map(row => row.count + '@' + row.lifetime).join(','), options.excludeStaminaIncapacity === true ? 1 : 0,
-      ...windows.map(row => row.signature)].join('|') : '';
+      searchBounds?.exactRiskStates === true ? 1 : 0, ...windows.map(row => row.signature)].join('|') : '';
     if (memoKey && r10RiskMemo.has(memoKey)) return r10RiskMemo.get(memoKey);
     const settled = r10SettleIncomingRisk(defender, windows, options);
     if (memoKey) {
@@ -129925,6 +129965,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     return settled;
   }
+  const R14_RISK_GRID = 0.005;
   function r10SettleIncomingRisk(defender, windows, options = {}) {
     const { hpMax, floor, staminaMax } = defender;
     if (!(defender.hp + (defender.pools.reduce((sum, pool) => sum + pool.value, 0) || defender.scalar) > 0)) {
@@ -129936,14 +129977,26 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       out: !defender.capable, stamina0: false }];
     let pressure = 0, shieldAbsorption = 0;
     const curve = [];
-    const keyOf = state => [state.out ? 1 : 0, state.stamina0 ? 1 : 0, state.hp, Math.round(state.stamina * 1e6), state.scalar,
-      ...state.pools, '|', ...state.blocks, '|', ...state.saves].join(',');
+    const grid = searchBounds?.exactRiskStates === true ? 0 : R14_RISK_GRID;
+    const hpCell = grid * hpMax, staminaCell = staminaMax > 0 ? grid * staminaMax : 0;
+    const cell = (value, size) => size > 0 ? Math.round(value / size) : value;
+    const keyOf = state => state.out ? (state.stamina0 && state.hp > 0 ? 'out:stamina' : 'out')
+      : [cell(state.hp, hpCell), staminaCell ? cell(state.stamina, staminaCell) : Math.round(state.stamina * 1e6), cell(state.scalar, hpCell),
+        ...state.pools.map(value => cell(value, hpCell)), '|', ...state.blocks, '|', ...state.saves].join(',');
     const merge = list => {
       const merged = new Map();
       for (const state of list) {
         const key = keyOf(state), found = merged.get(key);
-        if (found) found.probability += state.probability;
-        else merged.set(key, state);
+        if (!found) { merged.set(key, state); continue; }
+        const total = found.probability + state.probability;
+        if (grid && !state.out && total > 0) {
+          const a = found.probability / total, b = state.probability / total;
+          found.hp = Math.round(a * found.hp + b * state.hp);
+          found.stamina = a * found.stamina + b * state.stamina;
+          found.scalar = a * found.scalar + b * state.scalar;
+          found.pools = found.pools.map((value, index) => a * value + b * state.pools[index]);
+        }
+        found.probability = total;
       }
       return [...merged.values()];
     };
@@ -136041,6 +136094,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       preview.clearFingerprints?.();
       enemyTargetShareCache = new WeakMap();
       formulaSuccessorCache = new WeakMap();
+      r12CastsByContent = new Map();
       if (comparedSearchBounds !== undefined) searchBounds = comparedSearchBounds;
       else if (searchBoundSides) searchBounds = searchBoundSides.includes(String(input?.request?.actorSide || '')) ? configuredSearchBounds : null;
       // R13 (searchBounds.frozenStaminaPanel): the look-ahead holds every unit's stamina panel scale at the decision
