@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:748f42d9bcbd5b9abaa36d8df54c64be9d7621cdeb10b38bdba8c0c27e92e80f|BehaviorDecisionPipeline_Module.js:6cc374ee6564729385fd803d73445eb5701c55cdafc4269332c2c8f9040b6d85|BattleDecision_Module.js:1fe0a6a303ac78fe36be6923dab4be58c265ae224f06fec3f307a739c39e9caa|BattleRuntime_Module.js:62674e0d8af02334f149ddbdf5bed9b742601bfd6f214ae844a49969104013ff|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:981503b2b0bb5bf4d804320e5cd7406d97cd63fd3080e0db1910dccfd1ce271d */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:748f42d9bcbd5b9abaa36d8df54c64be9d7621cdeb10b38bdba8c0c27e92e80f|BehaviorDecisionPipeline_Module.js:310cde745a4f74f297fad02f931e687b884fb150e19c7005d82894515eb5e5f6|BattleDecision_Module.js:1ce2c825870fc754e6ac7e812683bb74ee2553d67d034092a15ae9410d27f604|BattleRuntime_Module.js:763e05b2e9c91d95ce05ac326ee57fbc3eb9ce6563248f691aca14924c29f623|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:981503b2b0bb5bf4d804320e5cd7406d97cd63fd3080e0db1910dccfd1ce271d */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -34961,8 +34961,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ? REACTION_CAUSAL_LINEAR
       : ACTIVE_CAUSAL_LINEAR;
     const override = globalThis.__LWCS_CAUSAL_COEFFICIENT_OVERRIDE__;
-    if (linear !== ACTIVE_CAUSAL_LINEAR || !override?.active || !Array.isArray(override.sides) || !override.sides.includes(side)) return linear;
-    return { intercept: linear.intercept, coefficients: { ...linear.coefficients, ...override.active } };
+    if (!override || !Array.isArray(override.sides) || !override.sides.includes(side)) return linear;
+    // `active` replaces active-head coefficients, `reaction` the reaction and counter head's.
+    const replaced = linear === ACTIVE_CAUSAL_LINEAR ? override.active : override.reaction;
+    return replaced ? { intercept: linear.intercept, coefficients: { ...linear.coefficients, ...replaced } } : linear;
   }
 
   function causalContributionOf(cells, code, role, side = '') {
@@ -102051,9 +102053,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // them). The cells are the settlement layer's to build; they sit here until they move there.
   // ---------------------------------------------------------------------------------------------------------------------
   const R20_ROUNDS_CAP = 99, R20_ROUNDS_FLOOR = 0.25, R20_HORIZON = 6, R20_RESOURCE_PRICE = 0.15, R20_ROUND_DISCOUNT = 0.85, R20_SHADOW_SCALE = 30,
-    R20_UPKEEP_ROUNDS = 3, R20_COUNTER_SHARE = 0.7, R20_CHAIN_LIMIT = 8, R20_WIN_SLOPE = 2;
+    R20_UPKEEP_ROUNDS = 3, R20_COUNTER_SHARE = 0.5, R20_COUNTER_START = 0.2, R20_COUNTER_CONTINUE = 0.5, R20_CHAIN_LIMIT = 8, R20_WIN_SLOPE = 2,
+    R20_OBJECTIVE_WEIGHT = 2, R20_OBSERVE_VALUE = 0.02, R20_ITEM_EFFECT_VALUE = 0.1, R20_ITEM_USE_SHARE = 0.375;
   const r20Tables = new WeakMap();
-  const r20Work = { tables: 0, sheets: 0, rebuiltUnits: 0, cells: 0 };
+  // What the valuation did and what it took (milliseconds), by stage: every behaviour added to it must show here.
+  // root.__LWCS_DECISION_DEBUG__.r20Work reads it.
+  const r20Work = { tables: 0, sheets: 0, rebuiltUnits: 0, ownCellRebuilds: 0, addedUnits: 0, cells: 0, races: 0,
+    tableMs: 0, readMs: 0, rebuildMs: 0, addedMs: 0, termsMs: 0, raceMs: 0 };
   // One cell: the best action of `unit` on `other` — an enemy, or with `friendly` a unit of its own side (`self`: itself).
   function r20Cell(unit, other, friendly, self, context, world, skipped) {
     r20Work.cells += 1;
@@ -102128,17 +102134,26 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // The exchange one attack opens (the engagement chain, at most R20_CHAIN_LIMIT strikes back — the runtime's
   // ENGAGEMENT_CHAIN_LIMIT): the target answers and strikes back, the attacker answers that and strikes again, each
   // link as likely as the answers before it, a strike back worth R20_COUNTER_SHARE of the unit's best action. Returns
-  // what the attacker lands beyond its first hit and what it takes, shares of the HP maxima. First mirror traces: a
-  // 防御系 duel was decided in two rounds by eight-deep exchanges that the single-hit race did not see.
+  // what the attacker lands beyond its first hit and what it takes, shares of the HP maxima.
+  // Measured (chain-census.mjs, 20 mirror battles under the causal valuation): an answered attack drew 0.42–0.53 strikes
+  // back on average — none in about 83%, one in about 10%, the full eight in 2–3% (防御系 duels) — nearly all basic
+  // attacks. So a chain starts with R20_COUNTER_START and each further link holds with R20_COUNTER_CONTINUE, on top of
+  // the answers; the first version (every defended hit struck back, eight deep) overstated it and lost ground.
   function r20Exchange(answerTarget, answerAttacker, hitAttacker, hitTarget) {
     let chance = 1, more = 0, taken = 0;
     for (let depth = 1; depth <= R20_CHAIN_LIMIT; depth += 1) {
-      chance *= depth % 2 ? answerTarget : answerAttacker;
+      chance *= (depth % 2 ? answerTarget : answerAttacker) * (depth === 1 ? R20_COUNTER_START : R20_COUNTER_CONTINUE);
       if (!(chance > 1e-3)) break;
       if (depth % 2) taken += chance * hitTarget; else more += chance * hitAttacker;
     }
     return { more: R20_COUNTER_SHARE * more, taken: R20_COUNTER_SHARE * taken };
   }
+  // What of a unit's hits goes where it aims: 混乱/目标错乱 send a share to a random unit, its own side's as often as that
+  // side is of the field (BattleDecision W7).
+  const r20Aim = (unit, ownShare) => 1 - clamp(r9v2LinearStateEffectMax(unit, ['random_target_rate']), 0, 1) * ownShare;
+  // A unit's HP change at a round end from its periodic states, a share of its HP maximum (the runtime's own settlement,
+  // read without writing: r10RoundEndDelta).
+  const r20Tick = (request, unit) => Number(r10RoundEndDelta(r10DecisionTable(request), unit, null).hp || 0) / Math.max(1, preview.readHpMax(unit));
   // A taunted unit's hits go to its taunters only (null: free to choose).
   const r20Bound = (world, unit) => {
     const sources = visibleTauntSources(world, unit).map(row => row.sourceId);
@@ -102168,29 +102183,38 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // table forward as a flow: each side turns on the enemy unit whose fall takes the most from it for the least (worth ÷
   // rounds to down), every unit that can act either hits that unit (or, if it cannot, its own best target) or gives the
   // ally under fire its best support, whichever is larger; charges take whole hits first; time moves to the next fall
-  // (or the end of a denial or of a candidate's states), up to R20_RACE_ROUNDS. The score, from `own`'s view: what is
+  // (or the end of a denial or of a candidate's states), up to the rounds the battle still has (at most R20_RACE_ROUNDS);
+  // periodic HP (持续伤害, 持续治疗) flows all the while. The score, from `own`'s view: what is
   // left of its units less what is left of the enemy's (shares of HP maxima), and R20_WIN_VALUE for winning, smooth in
   // that margin and discounted by the rounds it took. A candidate is worth the change of this score: output
   // after the enemy has fallen counts for nothing, and neither does lasting longer against an enemy that will not win.
   // `plan`: denied[u] (rounds u cannot act), until[u] (rounds the candidate's states on u last) with base (the table's
-  // cells, read once they have run out).
+  // cells, read once they have run out), leaves[u] (rounds a unit the candidate brought stays) with baseCount (units
+  // from that index on are not in the table).
   const R20_RACE_ROUNDS = 12, R20_WIN_VALUE = 1;
   function r20Race(facts, own, plan = null) {
+    r20Work.races += 1;
     const { sides, remaining, alive } = facts, count = sides.length;
     const left = remaining.map((value, index) => value * alive[index]), charges = facts.guard.slice();
     const denied = plan?.denied || null, until = plan?.until || null, base = plan?.base || facts;
+    const leaves = plan?.leaves || null, held = plan?.baseCount ?? count;
+    const horizon = Math.max(1, Math.min(R20_RACE_ROUNDS, Number(facts.horizon) || R20_RACE_ROUNDS)), tick = facts.tick || null;
     const dealt = new Array(count), mended = new Array(count), hits = new Array(count), worth = new Array(count), pressed = new Array(count);
     let time = 0;
-    for (let step = 0; step < 64 && time < R20_RACE_ROUNDS - 1e-9; step += 1) {
-      const cells = (unit, other) => !until || time < until[unit] && time < until[other] ? facts : base;
+    for (let step = 0; step < 64 && time < horizon - 1e-9; step += 1) {
+      const cells = (unit, other) => unit >= held || other >= held || !until || time < until[unit] && time < until[other] ? facts : base;
       const acting = unit => left[unit] > 1e-9 && !(denied && time < denied[unit]);
-      let nextChange = R20_RACE_ROUNDS;
+      let nextChange = horizon;
+      if (leaves) for (let unit = 0; unit < count; unit += 1) {
+        if (leaves[unit] <= time + 1e-9) left[unit] = 0; else nextChange = Math.min(nextChange, leaves[unit]);
+      }
       if (denied) for (let unit = 0; unit < count; unit += 1) if (denied[unit] > time + 1e-9) nextChange = Math.min(nextChange, denied[unit]);
       if (until) for (let unit = 0; unit < count; unit += 1) if (until[unit] > time + 1e-9) nextChange = Math.min(nextChange, until[unit]);
       // What each unit brings in a round, and what its enemies could land on it together.
       for (let unit = 0; unit < count; unit += 1) {
         worth[unit] = 0; pressed[unit] = 0; dealt[unit] = 0; mended[unit] = 0; hits[unit] = 0;
         if (!(left[unit] > 1e-9)) continue;
+        if (tick && tick[unit]) { if (tick[unit] < 0) dealt[unit] -= tick[unit]; else mended[unit] += tick[unit]; }
         for (let other = 0; other < count; other += 1) {
           if (!(left[other] > 1e-9)) continue;
           if (sides[other] === sides[unit]) { if (acting(unit)) worth[unit] = Math.max(worth[unit], cells(unit, other).support[unit][other]); continue; }
@@ -102254,11 +102278,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     // The margin, and winning itself: smooth in the margin (a level fight tips either way on a hair, and a hard ±1 made
     // every candidate of a mirror match worth the whole battle or nothing), worth more the sooner it is decided.
-    return score + R20_WIN_VALUE * Math.tanh(R20_WIN_SLOPE * score) * R20_ROUND_DISCOUNT ** (standing.size === 1 ? time : R20_RACE_ROUNDS);
+    return score + R20_WIN_VALUE * Math.tanh(R20_WIN_SLOPE * score) * R20_ROUND_DISCOUNT ** (standing.size === 1 ? time : horizon);
   }
   function r20Facts(request) {
     if (r20Tables.has(request)) return r20Tables.get(request);
     r20Work.tables += 1;
+    const tableStartedAt = performance.now();
+    if (root.__LWCS_DECISION_DEBUG__ && root.__LWCS_DECISION_DEBUG__.r20Work !== r20Work) root.__LWCS_DECISION_DEBUG__.r20Work = r20Work;
     const world = request.visibleWorld;
     const contexts = { projectionContextsByWorld: new WeakMap() };
     const context = r9v2LinearCapacityProjectionContext(world, contexts);
@@ -102268,6 +102294,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const count = units.length, ids = units.map(unit => preview.unitId(unit));
     const acts = units.map(unit => !hasActionCancellation(unit)), bound = units.map(unit => r20Bound(world, unit));
     const skipped = { count: 0 };
+    const ownShare = side => sides.filter(other => other === side).length / Math.max(1, count);
+    const aim = units.map((unit, row) => r20Aim(unit, ownShare(sides[row])));
     const out = [], support = [], stop = [], keep = [], answer = [];
     for (let index = 0; index < count; index += 1) {
       out.push(new Array(count).fill(0)); support.push(new Array(count).fill(0)); stop.push(new Array(count).fill(0)); keep.push(new Array(count).fill(1));
@@ -102276,20 +102304,31 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (sides[index] === sides[other]) { if (acts[index]) support[index][other] = r20Cell(units[index], units[other], true, index === other, context, world, skipped); continue; }
         if (acts[index]) { keep[index][other] = r20Keep(units[index], units[other]); answer[index][other] = r20Answer(units[index], units[other]); }
         if (!acts[index] || bound[index] && !bound[index].has(ids[other])) continue;
-        out[index][other] = r20Cell(units[index], units[other], false, false, context, world, skipped);
+        out[index][other] = aim[index] * r20Cell(units[index], units[other], false, false, context, world, skipped);
         stop[index][other] = r20Stop(units[index], units[other]);
       }
     }
     const round = Number(world?.回合 || 0);
+    const waiting = Array.isArray(request.actionOpportunity?.pendingNaturalActorIds) ? new Set(request.actionOpportunity.pendingNaturalActorIds.map(String)) : null;
     const table = { request, world, contexts, units, ids, index: new Map(ids.map((id, row) => [id, row])), sides, acts, bound, out, support, stop, keep, answer,
       remaining: units.map((unit, row) => r20Left(unit, sides[row] === request.actorSide)),
       alive: new Array(count).fill(1), guard: units.map(r20Guard), skippedSkills: skipped.count,
-      pending: units.map(unit => unit.__battleRuntime?.naturalOpportunity?.status === 'PENDING' &&
+      tick: units.map(unit => r20Tick(request, unit)),
+      horizon: Number.isFinite(Number(request.actionOpportunity?.battleHorizon?.remainingRounds)) ? Number(request.actionOpportunity.battleHorizon.remainingRounds) + 1 : R20_RACE_ROUNDS,
+      // Who is still to act this round: the runtime's list on the opportunity (an enemy as believed carries no runtime
+      // field of its own), else the unit's own pending natural opportunity.
+      pending: units.map((unit, row) => waiting ? waiting.has(ids[row]) : unit.__battleRuntime?.naturalOpportunity?.status === 'PENDING' &&
         Number(unit.__battleRuntime.naturalOpportunity.round) === round),
       agility: units.map(unit => preview.naturalActionOrderProfile(unit).effectiveAgility) };
     Object.assign(table, r20Derive(table));
+    // Conditions besides bringing the other side down (坚持回合, 先倒, 抽魂, 保护): their progress counts beside the race.
+    const objectives = request?.objectiveContract || request?.battleIntent?.objectives || world?.胜负条件 || {};
+    table.objectives = /"type":"(?!TEAM_INCAPACITATED")/.test(JSON.stringify(objectives) || '') ? objectives : null;
+    if (table.objectives) table.objectiveBase = r9v2LinearTerminalValue(preview.evaluateBattleObjectivesCompact(world, objectives), request.actorSide) +
+      preview.battleObjectiveProgress(world, objectives, request.actorSide);
     table.score = Object.fromEntries([...new Set(sides)].map(side => [side, r20Race(table, side)]));
     r20Tables.set(request, Object.freeze(table));
+    r20Work.tableMs += performance.now() - tableStartedAt;
     return table;
   }
 
@@ -102298,29 +102337,41 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // kept from acting, whether its cells must be rebuilt (its states, stamina band or resources changed), what the actor
   // spent and keeps paying, and the strike back its attack invites —
   // and valued as the change of the race's score (r20Race), plus the action an enemy loses by falling before it acts this
-  // round, less the price of the resources spent.
+  // round, less the price of the resources spent. The same sheet serves every role: an ACTIVE action, a summon's ASSIST,
+  // a COUNTER (its strike is in the settlement), an answer to an attack (REACTION) and a stance, which add what they do
+  // to the hit that is coming.
   // Outcome branches are not settled again: a hit's chance of downing its target comes from the outcome distribution
   // the settlement already carries. Shadow only (root.__LWCS_DECISION_DEBUG__.onShadow); the choice is not read from it.
   function r20Shadow(request, result, candidate = null) {
     if (!result || typeof result !== 'object') return null;
     const table = r20Facts(request);
     r20Work.sheets += 1;
+    let markedAt = performance.now();
+    const mark = stage => { const now = performance.now(); r20Work[stage] += now - markedAt; markedAt = now; };
     const count = table.units.length, after = result.afterSnapshot || table.world;
     const actorRow = table.index.get(request.actorId);
     const touched = new Set((result.changedUnitIds || []).map(String));
     for (const entry of result.contributions || []) if (entry.targetId) touched.add(String(entry.targetId));
     const remaining = table.remaining.slice(), alive = table.alive.slice(), guard = table.guard.slice(), denied = new Array(count).fill(0);
-    const until = new Array(count).fill(Infinity);
-    const rebuilt = [];
-    let spent = 0, outside = 0;
+    const until = new Array(count).fill(Infinity), tick = table.tick.slice();
+    const rebuilt = [], added = [];
+    let spent = 0, outside = 0, seen = 0;
     for (const id of touched) {
       const row = table.index.get(id);
-      if (row === undefined) { outside += 1; continue; }
+      if (row === undefined) {
+        const unit = findUnitInWorld(after, id);
+        if (unit && preview.isBattleCapable(unit) && sideOf(after, unit)) added.push(unit); else outside += 1;
+        continue;
+      }
       const prior = table.units[row], next = findUnitInWorld(after, id);
-      if (!next || !preview.isBattleCapable(next)) { remaining[row] = 0; alive[row] = 0; continue; }
+      if (!next || !preview.isBattleCapable(next)) { remaining[row] = 0; alive[row] = 0; seen += 1; continue; }
       if (next === prior) continue;
       remaining[row] = r20Left(next, table.sides[row] === request.actorSide);
       guard[row] = r20Guard(next);
+      tick[row] = r20Tick(request, next);
+      // What was read of the candidate besides the actor paying for it (`seen`, for the blind census).
+      if (guard[row] !== table.guard[row] || Math.abs(tick[row] - table.tick[row]) > 1e-9 ||
+        Math.abs(preview.readHp(next) + preview.readShield(next) - preview.readHp(prior) - preview.readShield(prior)) > 1e-9) seen += 1;
       const priorStates = prior.状态效果 || {}, nextStates = next.状态效果 || {};
       let changed = Object.keys(priorStates).some(key => !Object.hasOwn(nextStates, key)), lasting = 0;
       for (const [key, state] of Object.entries(nextStates)) {
@@ -102329,14 +102380,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const effect = state?.战斗效果 || {};
         if (!Object.hasOwn(priorStates, key) && (effect.cannot_act === true || effect.skip_turn === true)) {
           denied[row] += clamp(Number(state.__previewApplicationProbability ?? 1), 0, 1) * Math.max(1, Number(state.duration ?? state.持续回合) || 1);
+          seen += 1;
         } else changed = true;
       }
       if (changed || preview.staminaScaleForUnit(next) !== preview.staminaScaleForUnit(prior)) {
         rebuilt.push([row, next, false]);
+        if (changed) seen += 1;
         until[row] = preview.staminaScaleForUnit(next) !== preview.staminaScaleForUnit(prior) || !(lasting > 0) ? Infinity : lasting;
-      } else if (['魂力', '精神力'].some(resource => preview.readResource(next, resource) !== preview.readResource(prior, resource))) {
+      } else if (['魂力', '精神力', '体力'].some(resource => preview.readResource(next, resource) !== preview.readResource(prior, resource))) {
         // Only what it can pay for changed: its own cells, for good.
         rebuilt.push([row, next, true]);
+        if (row !== actorRow || ['魂力', '精神力', '体力'].some(resource => preview.readResource(next, resource) > preview.readResource(prior, resource))) seen += 1;
       }
       if (row === actorRow) for (const resource of ['魂力', '精神力']) {
         spent += Math.max(0, preview.readResource(prior, resource) - preview.readResource(next, resource)) / Math.max(1, preview.readResourceMax(prior, resource));
@@ -102349,11 +102403,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const hp = preview.readHp(table.units[row]);
       alive[row] *= 1 - clamp(outcomes.reduce((sum, outcome) => sum + (Number(outcome.hpDamage) >= hp - 1 - 1e-9 ? Number(outcome.probability) : 0), 0), 0, 1);
     }
-    let { out, support, stop, keep, answer, acts } = table;
+    mark('readMs');
+    let { out, support, stop, keep, answer, acts } = table, unitsNow = table.units, sidesNow = table.sides, leaves = null;
     if (rebuilt.length) {
       r20Work.rebuiltUnits += rebuilt.length;
+      r20Work.ownCellRebuilds += rebuilt.filter(entry => entry[2]).length;
       const context = r9v2LinearCapacityProjectionContext(after, table.contexts);
-      const units = table.units.slice();
+      const units = unitsNow = table.units.slice();
       out = out.map(row => row.slice()); support = support.map(row => row.slice()); stop = stop.map(row => row.slice()); keep = keep.map(row => row.slice());
       answer = answer.map(row => row.slice());
       acts = acts.slice();
@@ -102367,7 +102423,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             continue;
           }
           const free = acts[row] && (!bound || bound.has(table.ids[other])), reach = acts[other] && (!table.bound[other] || table.bound[other].has(table.ids[row]));
-          out[row][other] = free ? r20Cell(next, units[other], false, false, context, after, null) : 0;
+          out[row][other] = free ? r20Aim(next, table.sides.filter(side => side === table.sides[row]).length / Math.max(1, count)) * r20Cell(next, units[other], false, false, context, after, null) : 0;
           stop[row][other] = free ? r20Stop(next, units[other]) : 0;
           if (ownCellsOnly) continue;
           out[other][row] = reach ? r20Cell(units[other], next, false, false, context, after, null) : 0;
@@ -102379,9 +102435,44 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         }
       }
     }
+    mark('rebuildMs');
+    // Units the candidate brings onto the field (a summon): rows and columns of their own, built against everyone, by the
+    // chance they appear, for the windows they last (剩余窗口) — after that they are gone from the race. A guard summon
+    // (护卫) is counted as any unit: it does not yet answer for its host here.
+    if (added.length) {
+      r20Work.addedUnits += added.length;
+      const context = r9v2LinearCapacityProjectionContext(after, table.contexts);
+      const all = unitsNow.concat(added), size = all.length;
+      sidesNow = table.sides.concat(added.map(unit => sideOf(after, unit)));
+      const grow = (matrix, fill) => matrix.map(row => row.concat(new Array(added.length).fill(fill))).concat(added.map(() => new Array(size).fill(fill)));
+      out = grow(out, 0); support = grow(support, 0); stop = grow(stop, 0); keep = grow(keep, 1); answer = grow(answer, 0);
+      acts = acts.concat(added.map(unit => !hasActionCancellation(unit)));
+      leaves = new Array(count).fill(Infinity);
+      for (let extra = 0; extra < added.length; extra += 1) {
+        const row = count + extra, unit = added[extra], id = preview.unitId(unit);
+        const created = (result.contributions || []).find(entry => entry.outcomeKind === 'SUMMON_WINDOW' && String(entry.targetId) === id);
+        remaining.push(r20Left(unit, sidesNow[row] === request.actorSide)); alive.push(created ? clamp(preview.contributionProbability(created), 0, 1) : 1);
+        guard.push(r20Guard(unit)); tick.push(0); denied.push(0); until.push(Infinity);
+        const windows = Number(unit.剩余窗口 ?? unit.remainingWindows);
+        leaves.push(Number.isFinite(windows) && windows > 0 ? windows : Infinity);
+        for (let other = 0; other < size; other += 1) {
+          const otherUnit = all[other];
+          if (sidesNow[other] === sidesNow[row]) {
+            support[row][other] = acts[row] ? r20Cell(unit, otherUnit, true, other === row, context, after, null) : 0;
+            if (other !== row) support[other][row] = acts[other] ? r20Cell(otherUnit, unit, true, false, context, after, null) : 0;
+            continue;
+          }
+          out[row][other] = acts[row] ? r20Cell(unit, otherUnit, false, false, context, after, null) : 0;
+          out[other][row] = acts[other] ? r20Cell(otherUnit, unit, false, false, context, after, null) : 0;
+          keep[row][other] = acts[row] ? r20Keep(unit, otherUnit) : 1; keep[other][row] = acts[other] ? r20Keep(otherUnit, unit) : 1;
+          answer[row][other] = acts[row] ? r20Answer(unit, otherUnit) : 0; answer[other][row] = acts[other] ? r20Answer(otherUnit, unit) : 0;
+        }
+      }
+    }
+    mark('addedMs');
     // An attack opens an exchange (r20Exchange): a target that can still act answers and strikes back, the actor answers
     // that and strikes again (战斗决策原理 例二: 打高反击目标等于白送对方出手). What the actor takes and what more it lands.
-    let counter = 0;
+    let counter = 0, struckAny = false;
     if (actorRow !== undefined && alive[actorRow] > 0) {
       const struck = new Set();
       for (const entry of result.contributions || []) {
@@ -102395,6 +102486,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         remaining[row] = Math.max(0, remaining[row] - exchange.more);
       }
       remaining[actorRow] = Math.max(0, remaining[actorRow] - counter);
+      struckAny = struck.size > 0;
     }
     // What the release keeps costing: its upkeep over the rounds still to play, as shares of the pools (W11).
     const declaration = candidate?.declaration;
@@ -102406,13 +102498,124 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (Number.isFinite(share) && share > 0) spent += share * R20_UPKEEP_ROUNDS;
       }
     }
-    const facts = { sides: table.sides, out, support, stop, keep, answer, remaining, alive, guard };
     const own = request.actorSide, foe = table.sides.find(side => side !== own) || '';
-    const race = r20Race(facts, own, { denied, until, base: table }) - Number(table.score[own] || 0);
-    let tempo = 0;
+    const roleName = String(request.actionOpportunity?.role || 'ACTIVE').toUpperCase(), actionKind = String(declaration?.actionKind || '').toUpperCase();
+    const sourceRow = table.index.get(String(request.actionOpportunity?.sourceActorId || ''));
+    // Answering an attack (REACTION): what the answer leaves of the hit that is coming — the attacker's declared action on
+    // the actor as it stands after the answer (a response skill's shield or mitigation is on it), under defending or
+    // the chance of evading — the stamina a basic answer costs, and the strike back it opens (R15: after defending, after
+    // an evasion that succeeds, or a skill that grants one).
+    if (roleName === 'REACTION' && actorRow !== undefined && sourceRow !== undefined && alive[actorRow] > 0) {
+      if (actionKind !== 'PASS_OPPORTUNITY') seen += 1;
+      const incoming = request.actionOpportunity?.incomingAction || {};
+      const actorNext = findUnitInWorld(after, request.actorId) || table.units[actorRow], source = table.units[sourceRow];
+      const basicIncoming = String(incoming.actionKind || '').toUpperCase() === 'BASIC_ATTACK';
+      const hit = cachedBaseActionValue(source, actorNext, basicIncoming ? 'BASIC_ATTACK' : 'RELEASE_SKILL', basicIncoming ? null : incoming.skill || null,
+        r9v2LinearCapacityProjectionContext(after, table.contexts), after) / 100;
+      const dodge = preview.calculateDodgeProbability(actorNext, source, false);
+      const share = actionKind === 'DEFEND' ? preview.calculateDefenseDamageMultiplier(actorNext, source, false) : actionKind === 'EVADE' ? 1 - dodge : 1;
+      const strikesBack = actionKind === 'DEFEND' ? 1 : actionKind === 'EVADE' ? dodge : preview.declarationGrantsCounter(declaration || {}) ? 1 : 0;
+      const staminaMaximum = preview.readResourceMax(actorNext, '体力'), maximum = Math.max(1, preview.readHpMax(actorNext)), shield = preview.readShield(actorNext) / maximum;
+      const stamina = ['DEFEND', 'EVADE'].includes(actionKind) && staminaMaximum > 0 && preview.actionStaminaEnabled(table.world)
+        ? preview.actionStaminaCost(actorNext, actionKind, source) / staminaMaximum : 0;
+      const hpLeft = preview.readHp(actorNext) / maximum + shield - hit * share;
+      remaining[actorRow] = Math.max(0, staminaMaximum > 0 ? Math.min(hpLeft, preview.readResource(actorNext, '体力') / staminaMaximum + shield - hit * share - stamina) : hpLeft);
+      remaining[sourceRow] = Math.max(0, remaining[sourceRow] - strikesBack * R20_COUNTER_SHARE * out[actorRow][sourceRow] * keep[sourceRow][actorRow]);
+    }
+    // Taking a stance instead of acting (ACTIVE DEFEND / EVADE; 用户 2026-11-12: 敏攻"选择闪避，等对方攻击露出破绽，也就是所谓的
+    // 闪避反击"): against each enemy still to act this round, who may turn on the actor as on any of its side, the prepared
+    // answer keeps more off than the ordinary one would, and it strikes back for certain after defending or evading, where
+    // an ordinary answer does only now and then (R20_COUNTER_START).
+    if (roleName === 'ACTIVE' && ['DEFEND', 'EVADE'].includes(actionKind) && actorRow !== undefined && alive[actorRow] > 0) {
+      const actor = table.units[actorRow];
+      const standing = table.sides.reduce((sum, side, row) => sum + Number(side === own && alive[row] > 0 && remaining[row] > 0), 0);
+      for (let row = 0; row < count; row += 1) {
+        if (table.sides[row] === own || !table.pending[row] || !acts[row] || !(alive[row] > 0) || denied[row] > 0) continue;
+        seen += 1;
+        const dodge = preview.calculateDodgeProbability(actor, table.units[row], true);
+        const held = actionKind === 'DEFEND' ? preview.calculateDefenseDamageMultiplier(actor, table.units[row], true) : 1 - dodge;
+        const turned = alive[row] / Math.max(1, standing);
+        remaining[actorRow] += turned * out[row][actorRow] * Math.max(0, keep[actorRow][row] - held);
+        const strikes = Math.max(0, (actionKind === 'DEFEND' ? 1 : dodge) - R20_COUNTER_START * answer[actorRow][row]);
+        remaining[row] = Math.max(0, remaining[row] - turned * strikes * R20_COUNTER_SHARE * out[actorRow][row] * keep[row][actorRow]);
+      }
+    }
+    let tempo = 0, granted = 0;
+    for (const entry of result.contributions || []) {
+      const row = entry.targetId ? table.index.get(String(entry.targetId)) : undefined;
+      if (row === undefined) continue;
+      // Damage or healing the release schedules for later lands on what is left now (its timing is not kept).
+      if (entry.outcomeKind === 'SCHEDULED_HP_DELTA' && alive[row] > 0) {
+        remaining[row] = Math.max(0, remaining[row] + preview.contributionProbability(entry) * (Number(entry.expectedDelta ?? entry.evidence?.delta) || 0) /
+          Math.max(1, preview.readHpMax(table.units[row])));
+      }
+      // An action granted is one more of that unit's actions.
+      if (entry.outcomeKind === 'ACTION_GRANTED') granted += (table.sides[row] === own ? 1 : -1) * preview.contributionProbability(entry) * table.worth[row];
+    }
+    // The opening an attack leaves (攻击破绽): until its next action the actor keeps less off the enemies still to act
+    // this round, who may turn on it as on any of its side.
+    if (actorRow !== undefined && alive[actorRow] > 0 && struckAny) {
+      const actorNext = findUnitInWorld(after, request.actorId);
+      const standing = table.sides.reduce((sum, side, row) => sum + Number(side === own && alive[row] > 0 && remaining[row] > 0), 0);
+      if (actorNext) for (let row = 0; row < count; row += 1) {
+        if (table.sides[row] === own || !table.pending[row] || !acts[row] || !(alive[row] > 0) || denied[row] > 0) continue;
+        remaining[actorRow] = Math.max(0, remaining[actorRow] - alive[row] * out[row][actorRow] * Math.max(0, r20Keep(actorNext, table.units[row]) - keep[actorRow][row]) / Math.max(1, standing));
+      }
+    }
+    const facts = { sides: sidesNow, out, support, stop, keep, answer, remaining, alive, guard, tick, horizon: table.horizon };
+    const plan = { denied, until, base: table, leaves, baseCount: count };
+    // A unit that may or may not be down is valued both ways (the settlement is not run again): the race with it gone
+    // and with what is left of it if it stands, by the chance of each — only the most open such unit; the others keep
+    // their chance as a weight.
+    mark('termsMs');
+    let open = -1;
+    for (let row = 0; row < count; row += 1) {
+      const chance = 1 - alive[row];
+      if (chance > 0.05 && chance < 0.95 && (open < 0 || Math.abs(chance - 0.5) < Math.abs(0.5 - alive[open]))) open = row;
+    }
+    let raced;
+    if (open < 0) raced = r20Race(facts, own, plan);
+    else {
+      const chance = 1 - alive[open], standingLeft = Math.min(table.remaining[open] + Math.max(0, remaining[open] - table.remaining[open]), remaining[open] / alive[open]);
+      const withUnit = (left, weight) => ({ ...facts, remaining: remaining.map((value, row) => row === open ? left : value), alive: alive.map((value, row) => row === open ? weight : value) });
+      raced = chance * r20Race(withUnit(0, 0), own, plan) + (1 - chance) * r20Race(withUnit(standingLeft, 1), own, plan);
+    }
+    mark('raceMs');
+    const race = raced - Number(table.score[own] || 0);
     for (let row = 0; row < count; row += 1) if (table.sides[row] === foe && table.pending[row]) tempo += table.worth[row] * (1 - alive[row]);
     const cost = R20_RESOURCE_PRICE * spent;
-    return { value: race + tempo - cost, race, tempo, cost, counter, rebuilt: rebuilt.length, outside };
+    let objective = 0;
+    if (table.objectives) objective = R20_OBJECTIVE_WEIGHT * (r9v2LinearTerminalValue(preview.evaluateBattleObjectivesCompact(after, table.objectives), own) +
+      preview.battleObjectiveProgress(after, table.objectives, own) - table.objectiveBase);
+    // An item made for later (造物; first version, to be measured): what its use would give its recipient — healing and
+    // shield as shares of HP, a refill at the price of that share of the pool, any other effect a flat
+    // R20_ITEM_EFFECT_VALUE — less the part of an action using it takes (an item's windup of 15 in the 40 of a turn), a
+    // round later.
+    let stock = 0;
+    const creation = candidate?.creation;
+    if (creation && creation.useful !== false && Array.isArray(creation.useEffects)) {
+      const recipientRow = table.index.get(String(creation.recipientId || request.actorId));
+      if (recipientRow !== undefined && alive[recipientRow] > 0) {
+        const recipient = table.units[recipientRow], maximum = Math.max(1, preview.readHpMax(recipient));
+        let gift = 0;
+        for (const effect of creation.useEffects) {
+          const text = String(effect?.数值 ?? '').trim(), amount = Math.abs(Number.parseFloat(text)) || 0, percent = /%$/.test(text);
+          if (effect?.原型 === '护盾变化' || effect?.原型 === '资源变化' && /生命|HP/i.test(String(effect.资源 || ''))) gift += Math.min(1, percent ? amount / 100 : amount / maximum);
+          else if (effect?.原型 === '资源变化') gift += R20_RESOURCE_PRICE * Math.min(1, percent ? amount / 100 : amount / Math.max(1, preview.readResourceMax(recipient, String(effect.资源 || '魂力'))));
+          else gift += R20_ITEM_EFFECT_VALUE;
+        }
+        stock = R20_ROUND_DISCOUNT * Math.max(0, gift - R20_ITEM_USE_SHARE * table.worth[recipientRow]);
+        if (stock > 0) seen += 1;
+      }
+    }
+    // Withdrawing ends the fight unbeaten: worth what staying stands to lose, by its chance. Observing is worth a little.
+    let leave = 0;
+    if (actionKind === 'WITHDRAW') {
+      const contest = (result.contributions || []).find(entry => entry.outcomeKind === 'WITHDRAWAL_CONTEST');
+      leave = (contest ? preview.contributionProbability(contest) : 1) * Math.max(0, -Number(table.score[own] || 0));
+    } else if (actionKind === 'OBSERVE') leave = R20_OBSERVE_VALUE;
+    return { value: race + tempo + granted + objective + leave + stock - cost, race, tempo, granted, objective, leave, stock, cost, counter, rebuilt: rebuilt.length, added: added.length, outside,
+      seen: seen + added.length + Number(granted !== 0) + Number(objective !== 0) + Number(leave !== 0) };
   }
 
   // ---------------------------------------------------------------------------------------------------------------------
@@ -107603,13 +107806,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // Development hook (absent in play): the R20 shadow valuation of every candidate of an outermost decision beside its
     // causal rows, each timed. The rows returned are the causal rows; nothing reads the shadow value.
     const shadowHook = providerDepth === 1 ? root.__LWCS_DECISION_DEBUG__?.onShadow : null;
-    // Development switch (absent in play): __LWCS_DECISION_DEBUG__.shadowSides lists sides whose ACTIVE decisions choose by
+    // Development switch (absent in play): __LWCS_DECISION_DEBUG__.shadowSides lists sides whose decisions (every role) choose by
     // the R20 shadow value — carried as the causal row OBJECTIVE_PROGRESS (value ÷ R20_SHADOW_SCALE, clamped), the others
     // zero — so a mirror match measures the new valuation against the causal one by who wins. OPPONENT_RESPONSE_PRESSURE
     // carries it too, for the scorer's pure-damage dominance filter, which compares that row (all zero, a basic attack
     // dominated every damage skill); the match sets that row's coefficient to 0 and OBJECTIVE_PROGRESS's high enough to
     // decide alone (__LWCS_CAUSAL_COEFFICIENT_OVERRIDE__).
-    const shadowChooses = providerDepth === 1 && surrogateRole === 'ACTIVE' &&
+    const shadowChooses = providerDepth === 1 && ['ACTIVE', 'ASSIST', 'REACTION', 'COUNTER'].includes(surrogateRole) &&
       Array.isArray(root.__LWCS_DECISION_DEBUG__?.shadowSides) && root.__LWCS_DECISION_DEBUG__.shadowSides.includes(request.actorSide);
     const shadowCausalRows = candidateId => {
       const shadow = illegalTargetCandidateIds.has(candidateId) ? null : r20Shadow(request, previewResultsById[candidateId], frozenById.get(candidateId));
@@ -122020,7 +122223,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         event,
         evaded,
         damageMultiplier: 1,
-        opensCounterCheck: !preparedDefense && evaded,
+        // 2026-11-12 (用户：敏攻"选择闪避，等对方攻击露出破绽，也就是所谓的闪避反击"；主动姿态成功后也允许反击): a prepared
+        // stance strikes back like any evasion that succeeds; it used to give the better odds and no counter.
+        opensCounterCheck: evaded,
       };
     }
     if (actionKind === 'DEFEND' || actionKind === 'GUARD') {
@@ -122041,7 +122246,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         event,
         evaded: false,
         damageMultiplier,
-        opensCounterCheck: !preparedDefense,
+        opensCounterCheck: true,
       };
     }
     const actionContext = beginStructuredDeclaration({

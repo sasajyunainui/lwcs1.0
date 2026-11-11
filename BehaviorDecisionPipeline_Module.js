@@ -6748,8 +6748,10 @@
       ? REACTION_CAUSAL_LINEAR
       : ACTIVE_CAUSAL_LINEAR;
     const override = globalThis.__LWCS_CAUSAL_COEFFICIENT_OVERRIDE__;
-    if (linear !== ACTIVE_CAUSAL_LINEAR || !override?.active || !Array.isArray(override.sides) || !override.sides.includes(side)) return linear;
-    return { intercept: linear.intercept, coefficients: { ...linear.coefficients, ...override.active } };
+    if (!override || !Array.isArray(override.sides) || !override.sides.includes(side)) return linear;
+    // `active` replaces active-head coefficients, `reaction` the reaction and counter head's.
+    const replaced = linear === ACTIVE_CAUSAL_LINEAR ? override.active : override.reaction;
+    return replaced ? { intercept: linear.intercept, coefficients: { ...linear.coefficients, ...replaced } } : linear;
   }
 
   function causalContributionOf(cells, code, role, side = '') {

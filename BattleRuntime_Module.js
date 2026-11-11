@@ -13280,7 +13280,9 @@
         event,
         evaded,
         damageMultiplier: 1,
-        opensCounterCheck: !preparedDefense && evaded,
+        // 2026-11-12 (用户：敏攻"选择闪避，等对方攻击露出破绽，也就是所谓的闪避反击"；主动姿态成功后也允许反击): a prepared
+        // stance strikes back like any evasion that succeeds; it used to give the better odds and no counter.
+        opensCounterCheck: evaded,
       };
     }
     if (actionKind === 'DEFEND' || actionKind === 'GUARD') {
@@ -13301,7 +13303,7 @@
         event,
         evaded: false,
         damageMultiplier,
-        opensCounterCheck: !preparedDefense,
+        opensCounterCheck: true,
       };
     }
     const actionContext = beginStructuredDeclaration({

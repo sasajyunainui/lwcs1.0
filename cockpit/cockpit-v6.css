@@ -77,6 +77,8 @@ details.fold[open]>summary::after{content:" －"}
 .table .marks{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
 .mk{all:unset;display:block;position:absolute;left:0;top:0;width:0;height:0;transform-origin:0 0;pointer-events:none}
 .mk[hidden]{display:none}
+/* 坐标目的地标记只做显示：整枚不接指针，拖动从它上面开始也不会误点 */
+.mk.fpin,.mk.fpin *{pointer-events:none!important}
 .mk-base{position:absolute;left:-10px;top:-5px;width:20px;height:10px;border-radius:50%;border:2px solid var(--pc);box-sizing:border-box;background:radial-gradient(closest-side,color-mix(in srgb,var(--pc) 45%,transparent),transparent);box-shadow:0 0 8px var(--pc);pointer-events:auto;cursor:pointer}
 .mk-base::before{content:"";position:absolute;inset:-10px -8px}
 .mk-beam{position:absolute;left:-1px;bottom:0;width:2px;height:var(--bh);background:linear-gradient(0deg,var(--pc),transparent);box-shadow:0 0 6px var(--pc)}
