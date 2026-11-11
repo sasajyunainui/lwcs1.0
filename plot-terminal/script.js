@@ -19,7 +19,7 @@ const PAGES={
  raw_recall:{label:"任务1原文",raw:"recall"},raw_clue:{label:"原著线索原文",raw:"clue"},raw_ruling:{label:"任务2原文",raw:"ruling"},raw_character:{label:"任务3原文",raw:"character"},raw_combined:{label:"汇总原文",raw:"combined"},raw_message:{label:"用户消息",raw:"message"},raw_diagnostics:{label:"解析诊断",raw:"diagnostics"}
 };
 const MAIN=["overview","people","ruling","intel"];
-const state={page:"overview",lastMain:"overview",snapshot:null,game:null,hash:"",request:0,personKey:"",peopleView:"person",intelSection:"clue",rulingSection:"current",moduleSelected:0,expandedRecords:{AM:new Set(),DV:new Set()},recordIndex:new Map(),recordIndexReady:false,recordIndexError:"",floorKey:"",scroll:{},prefs:{font:1,density:"standard"},rendered:false};
+const state={page:"overview",lastMain:"overview",snapshot:null,game:null,hash:"",request:0,jumpTo:"",moduleSelected:0,expandedRecords:{AM:new Set(),DV:new Set()},recordIndex:new Map(),recordIndexReady:false,recordIndexError:"",floorKey:"",scroll:{},prefs:{font:1,density:"standard"},rendered:false};
 const storageKey="plot-terminal-ui:v7";
 
 /* ===== 小工具 ===== */
@@ -203,7 +203,6 @@ function renderTabs(){const f=document.createDocumentFragment(),people=allPeople
 
 /* ===== 本轮总览 ===== */
 function personSub(p){if(p.kind==="mention")return p.roster?.role||"提及";if(p.kind==="away")return firstSentence(p.track["当前动向"],"离场");return firstSentence(p.act.now,"在场")}
-function personToken(p,current){const b=btn("pt-token",{person:p.key},avatar(p.name,p.kind==="away"||p.kind==="mention"?"away":"npc"),h("span","pt-token-txt",h("b","",p.name),h("small","",personSub(p))));const mood=clean(p.file?.["好感"]);if(!ptBlank(mood))b.append(chip(mood.replace(/[。.]$/,""),"blue"));if(current!==undefined)b.setAttribute("aria-current",current?"true":"false");return b}
 function moduleCard(m){const map=m.map||new Map(),f=k=>clean(map.get(k)),card=btn("pt-mod-card",{goto:"ruling:modules",moduleIndex:String(state.game.modules.indexOf(m))});card.append(h("div","pt-mod-title",icon(MODULE_ICONS[m.id]||"puzzle-piece"),h("span","",m.label),h("small","",m.id.toUpperCase())));
  if(m.id==="battle"){card.append(h("div","pt-vs",h("div","pt-vs-side",h("small","","我方"),f("我方")||"—"),h("span","pt-vs-x","VS"),h("div","pt-vs-side",h("small","","敌方"),f("敌方")||"—")));card.lastChild.lastChild.dataset.side="foe";card.append(h("div","pt-mod-meta",[f("地点")&& chip(f("地点")),f("战斗类型")&& chip(f("战斗类型"),"red"),f("最大回合")&& chip("最多 "+f("最大回合")+" 回合")]))}
  else if(m.id==="travel")card.append(h("div","pt-path",f("角色")||"—",icon("arrow-right-long"),f("目标地点")||"—"),h("div","pt-mod-meta",[f("移动方式")&& chip(f("移动方式")),f("耗时tick")&& chip(f("耗时tick")+" tick")]));
@@ -224,8 +223,8 @@ function renderOverview(){const g=state.game,root=h("div","pt-scroll pt-ov");roo
  for(const [label,text] of [["世界进程",g.world],["本轮推进",g.progress],["本轮落点",""]]){const n=btn("pt-track-node",{goto:"ruling:route"},h("b","",label),text?h("span","",(g.v2?blockSummary(text):firstSentence(text,""))||"—"):null);if(text)n.title=clean(text);track.append(n)}
  route.append(track);if(g.landing.land)route.append(prose(g.landing.land,"pt-landing"));const ovc=overviewChanges(g);if(ovc)route.append(ovc);
  if(g.landing.next)route.append(nextCallout(g));
- const m=g.characters,cast=plate("pt-cast",plateHead("users","在场人物","CAST",chip(String(g.people.length),"blue")));const list=h("div","pt-cast-list");for(const p of g.people)list.append(personToken(p));if(!g.people.length)list.append(h("p","pt-empty-inline","本轮没有人物演出资料"));cast.append(list);
- if(m.away.length){cast.append(lbl("person-walking-arrow-right","离场 "+m.away.length),h("div","pt-cast-list",m.away.map(p=>personToken(p))));cast.lastChild.previousSibling.classList.add("pt-cast-sep")}
+ const m=g.characters,cast=plate("pt-cast",plateHead("users","在场人物","CAST",chip(String(g.people.length),"blue")));const list=h("div","pt-cast-list");for(const p of g.people)list.append(castTile(p));if(!g.people.length)list.append(h("p","pt-empty-inline","本轮没有人物演出资料"));cast.append(list);
+ if(m.away.length){cast.append(lbl("person-walking-arrow-right","离场 "+m.away.length),h("div","pt-cast-list",m.away.map(p=>castTile(p))));cast.lastChild.previousSibling.classList.add("pt-cast-sep")}
  root.append(h("div","pt-ov-grid",route,cast));
  // 模块 + 情报
  const mod=plate("pt-mod",plateHead("puzzle-piece","触发模块","MODULE"));
@@ -256,22 +255,24 @@ function dossier(p){const kind=p.kind==="mention"?"提及":p.kind==="away"?"离�
  add(relBlock(p.file),!ptBlank(a["底线"])&& h("p","pt-limit",icon("shield-halved"),h("span","",h("b","","底线 "),clean(a["底线"]))),evidenceFold(p.name));return root}
 function stepsList(text){const steps=splitSteps(text);if(!steps.length)return emptyState("chess","本轮没有推演内容");return h("ol","pt-steps",steps.map(s=>h("li","pt-step",hexNum(s.n,30),h("div","",h("b","",s.title),prose(s.lines.join("\n")||"无补充内容")))))}
 function renderPeople(){const m=state.game?.characters,all=allPeople();if(!all.length)return h("div","pt-scroll",emptyState("users","当前没有人物追踪资料",clean(state.snapshot?.tasks?.character?.raw)?"人物任务的输出无法识别，可在设置 › 开发记录里查看原文。":"人物任务写回后会显示在这里。"));
- if(!all.some(p=>p.key===state.personKey))state.personKey=(m.active[0]||all[0]).key;
- const side=h("nav","pt-side pt-scroll");side.dataset.scroll="people-side";const cur=p=>state.peopleView==="person"&& p.key===state.personKey;
- if(m.active.length)side.append(h("p","pt-side-title","ON STAGE · "+m.active.length),...m.active.map(p=>personToken(p,cur(p))));
- if(m.away.length)side.append(h("p","pt-side-title","OFF STAGE · "+m.away.length),...m.away.map(p=>personToken(p,cur(p))));
- if(m.mentioned?.length)side.append(h("p","pt-side-title","MENTIONED · "+m.mentioned.length),...m.mentioned.map(p=>personToken(p,cur(p))));
- const extra=[];if(m.interplay)extra.push(["interplay","masks-theater","场上互动"]);if(m.dmSet)extra.push(["plan","chess","人物推演"]);if(m.unassigned.length)extra.push(["unassigned","triangle-exclamation","未归档 "+m.unassigned.length]);
- if(extra.length){side.append(h("p","pt-side-title","NOTES"));for(const [id,ic,label] of extra){const b=btn("pt-nav-btn",{peopleView:id},hexIcon(ic,28),h("span","",label));b.setAttribute("aria-current",state.peopleView===id?"true":"false");side.append(b)}}
- const main=h("section","pt-main pt-scroll");main.dataset.scroll="people:"+state.peopleView+":"+state.personKey;
- if(state.peopleView==="interplay")main.append(h("header","pt-dh",hexIcon("masks-theater"),h("h2","","场上互动"),h("small","pt-code","INTERPLAY")),prose(m.interplay));
- else if(state.peopleView==="plan")main.append(h("header","pt-dh",hexIcon("chess"),h("h2","","人物推演"),h("small","pt-code","DM · SET")),stepsList(m.dmSet));
- else if(state.peopleView==="unassigned")main.append(h("header","pt-dh",hexIcon("triangle-exclamation"),h("h2","","未归档人物资料"),h("small","pt-code","UNSORTED")),h("div","pt-stack",m.unassigned.map(p=>plate("",plateHead("user",p.name,""),h("dl","pt-kv",[...Object.entries(p.file||{}),...Object.entries(p.inner||{})].filter(([,v])=>!ptBlank(v)).flatMap(([k,v])=>[h("dt","",k),h("dd","",v)]))))));
- else main.append(dossier(all.find(p=>p.key===state.personKey)));
- return h("div","pt-split",side,main)}
+ // 人物看板：所有人的档案卡按在场 / 离场 / 提及分组铺开；顶部头像条点谁滚到谁
+ const strip=h("nav","pt-jump");strip.setAttribute("aria-label","跳到人物");const main=h("section","pt-board pt-scroll");main.dataset.scroll="people-board";
+ let idx=0;
+ for(const [label,code,ic,list] of [["在场","ON STAGE","users",m.active],["离场","OFF STAGE","person-walking-arrow-right",m.away],["提及","MENTIONED","comment-dots",m.mentioned||[]]]){if(!list.length)continue;
+  const grid=h("div","pt-people-grid");for(const p of list){const id="people-"+(idx++),card=plate("pt-personcard",dossier(p));card.id=id;card.dataset.kind=p.kind;grid.append(card);strip.append(btn("pt-jump-btn pt-jump-person",{jump:id},avatar(p.name,p.kind==="active"?"npc":"away",22),h("span","",p.name)))}
+  main.append(h("section","pt-chapter",h("header","pt-dh",hexIcon(ic),h("h2","",label+" "+list.length),h("small","pt-code",code)),grid))}
+ const note=(id,ic,title,code,content)=>{const ch=h("section","pt-chapter",h("header","pt-dh",hexIcon(ic),h("h2","",title),h("small","pt-code",code)),content);ch.id=id;main.append(ch);strip.append(btn("pt-jump-btn",{jump:id},icon(ic),h("span","",title)))};
+ if(m.interplay)note("people-interplay","masks-theater","场上互动","INTERPLAY",plate("",prose(m.interplay)));
+ if(m.unassigned.length)note("people-unassigned","triangle-exclamation","未归档 "+m.unassigned.length,"UNSORTED",h("div","pt-people-grid",m.unassigned.map(p=>plate("",plateHead("user",p.name,""),h("dl","pt-kv",[...Object.entries(p.file||{}),...Object.entries(p.inner||{})].filter(([,v])=>!ptBlank(v)).flatMap(([k,v])=>[h("dt","",k),h("dd","",v)]))))));
+ if(m.dmSet)note("people-plan","chess","人物推演","DM · SET",h("details","pt-fold",h("summary","",icon("chess"),"展开推演步骤"),h("div","pt-fold-body",stepsList(m.dmSet))));
+ const targets=[...main.querySelectorAll(".pt-personcard,.pt-chapter[id]")];
+ const mark=()=>{let cur=targets[0]?.id;for(const el of targets)if(el.offsetTop-main.scrollTop<=40)cur=el.id;for(const b of strip.children)b.setAttribute("aria-current",b.dataset.jump===cur?"true":"false")};
+ let raf=0;main.addEventListener("scroll",()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(mark)},{passive:true});queueMicrotask(mark);
+ return h("div","pt-board-wrap",strip,main)}
+// 总览的在场人物方块
+function castTile(p){const b=btn("pt-casttile",{person:p.key},avatar(p.name,p.kind==="away"?"away":"npc",44),h("b","",p.name));const mood=clean(p.file?.["好感"]);if(!ptBlank(mood))b.append(chip(mood.replace(/[。.]$/,""),"blue"));b.append(h("small","",personSub(p)));return b}
 
 /* ===== 分栏页通用：左侧目录 + 右侧详情 ===== */
-function splitPage(items,selected,type,content,key){const side=h("nav","pt-side pt-scroll");side.dataset.scroll=key+"-side";side.append(h("p","pt-side-title",type==="intel"?"ARCHIVE":"RULING"));for(const item of items){const b=btn("pt-nav-btn",{[type+"Section"]:item.id},hexIcon(item.icon,28),h("span","",item.label));if(item.count)b.append(h("em","",String(item.count)));b.setAttribute("aria-current",item.id===selected?"true":"false");side.append(b)}const main=h("section","pt-main pt-scroll");main.dataset.scroll=key+":"+selected;main.append(content);return h("div","pt-split",side,main)}
 function detailHead(ic,title,code,tools){return h("header","pt-dh",hexIcon(ic),h("h2","",title),tools?h("div","pt-dh-tools",tools):h("small","pt-code",code||""))}
 function readout(ic,title,code,text){if(ptBlank(text))return null;const lead=firstSentence(text),rest=clean(clean(text).slice(lead.length));return plate("pt-readout",plateHead(ic,title,code),prose(lead,"pt-prose pt-lead"),rest?prose(rest):null)}
 function frag(...els){const f=document.createDocumentFragment();f.append(...els.filter(Boolean));return f}
@@ -486,10 +487,7 @@ const handleClick=e=>{const t=e.target;
  const page=t.closest("[data-page]");if(page&& app.contains(page)&& page!==app){openPage(page.dataset.page);return}
  const jump=t.closest("[data-jump]");if(jump){jumpTo(jump.dataset.jump);return}
  const go=t.closest("[data-goto]");if(go){const [p,s]=go.dataset.goto.split(":"),patch={};if(p==="ruling"||p==="intel")patch.jumpTo=p+"-"+s;if(go.dataset.moduleIndex!==undefined)patch.moduleSelected=Number(go.dataset.moduleIndex)||0;openPage(p,patch);return}
- const person=t.closest("[data-person]");if(person){openPage("people",{personKey:person.dataset.person,peopleView:"person"});return}
- const pv=t.closest("[data-people-view]");if(pv){openPage("people",{peopleView:pv.dataset.peopleView});return}
- const intel=t.closest("[data-intel-section]");if(intel){openPage("intel",{intelSection:intel.dataset.intelSection});return}
- const ruling=t.closest("[data-ruling-section]");if(ruling){openPage("ruling",{rulingSection:ruling.dataset.rulingSection});return}
+ const person=t.closest("[data-person]");if(person){const i=allPeople().findIndex(p=>p.key===person.dataset.person);openPage("people",{jumpTo:i>=0?"people-"+i:""});return}
  const choice=t.closest("[data-module-index]");if(choice){state.moduleSelected=Number(choice.dataset.moduleIndex)||0;renderPage(false);return}
  const record=t.closest("[data-record-code]");if(record){toggleRecordPreview(record);const arrow=record.querySelector(".pt-record-arrow");if(arrow)arrow.replaceChildren(icon(record.getAttribute("aria-expanded")==="true"?"chevron-up":"chevron-down"));return}
  const raw=t.closest("[data-open-page]");if(raw){openPage(raw.dataset.openPage);return}
@@ -511,7 +509,7 @@ function taskProgressState(){const ctx=getChatContext(),chat=Array.isArray(ctx?.
 function scheduleRefresh(force){if(performance.now()-refreshStartedAt>=120000)return;clearTimeout(refreshRetryTimer);refreshRetryTimer=setTimeout(()=>runRefresh(force),250)}
 function runRefresh(force=true){if(!refreshStartedAt)refreshStartedAt=performance.now();const progress=taskProgressState();if(!force&& progress===refreshTaskState){scheduleRefresh(false);return}refreshTaskState=progress;refresh().then(()=>{if(coreTasksReady()){refreshStartedAt=0;clearTimeout(refreshRetryTimer);return}scheduleRefresh(false)}).catch(error=>{const message=clean(error?.message||error||"未知错误");announce("读取失败");$("[data-role=bar-current]").textContent="剧情数据读取失败："+message;try{console.error("[剧情推进终端] 读取失败",error)}catch(_){}scheduleRefresh(true)})}
 function announce(text){$("[data-role=live]").textContent=text}
-async function refresh(){const request=++state.request;announce("正在读取…");await Promise.resolve();const next=buildSnapshot();if(request!==state.request)return;const floorKey=String(next.index)+"|"+String(next.terminalIndex);if(state.floorKey&& state.floorKey!==floorKey){state.expandedRecords.AM.clear();state.expandedRecords.DV.clear();state.recordIndex=new Map();state.recordIndexReady=false;state.recordIndexError="";state.moduleSelected=0;state.personKey="";state.scroll={}}state.floorKey=floorKey;const hash=hashText(JSON.stringify({index:next.index,terminalIndex:next.terminalIndex,tasks:next.tasks,nearTimeline:next.nearTimeline,crossedTimeline:next.crossedTimeline,combined:next.combined,message:next.message,swipes:next.swipes,diagnostics:next.diagnostics})),changed=hash!==state.hash;state.snapshot=next;state.game=buildGameModel();state.hash=hash;announce(next.terminalIndex>=0?(changed?"读取完成":"数据未变化"):"未找到任务数据");renderBar();if(!changed&& state.rendered)return;const first=!state.rendered;state.rendered=true;renderPage(first)}
+async function refresh(){const request=++state.request;announce("正在读取…");await Promise.resolve();const next=buildSnapshot();if(request!==state.request)return;const floorKey=String(next.index)+"|"+String(next.terminalIndex);if(state.floorKey&& state.floorKey!==floorKey){state.expandedRecords.AM.clear();state.expandedRecords.DV.clear();state.recordIndex=new Map();state.recordIndexReady=false;state.recordIndexError="";state.moduleSelected=0;state.scroll={}}state.floorKey=floorKey;const hash=hashText(JSON.stringify({index:next.index,terminalIndex:next.terminalIndex,tasks:next.tasks,nearTimeline:next.nearTimeline,crossedTimeline:next.crossedTimeline,combined:next.combined,message:next.message,swipes:next.swipes,diagnostics:next.diagnostics})),changed=hash!==state.hash;state.snapshot=next;state.game=buildGameModel();state.hash=hash;announce(next.terminalIndex>=0?(changed?"读取完成":"数据未变化"):"未找到任务数据");renderBar();if(!changed&& state.rendered)return;const first=!state.rendered;state.rendered=true;renderPage(first)}
 window.addEventListener("pagehide",()=>{clearTimeout(resizeTimer);clearTimeout(refreshRetryTimer);try{ptResizeObserver?.disconnect()}catch(_){}},{once:true});
 try{loadPrefs();applyPrefs();detectLayout();renderTabs();runRefresh()}catch(error){const message=clean(error?.message||error||"未知错误");try{announce("初始化失败");$("[data-role=bar-current]").textContent="剧情终端初始化失败："+message}catch(_){}try{console.error("[剧情推进终端] 初始化失败",error)}catch(_){}}
 };
