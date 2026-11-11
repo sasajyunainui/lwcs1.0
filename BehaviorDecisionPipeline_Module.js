@@ -4204,8 +4204,13 @@
     return known('PUBLIC_HP_RATIO', 'RATIO_0_1', sum / targets.length);
   }
 
+  // Read over hostile targets only. The learned weight prefers enemies whose resources run low; on the actor itself or an
+  // ally the same reading charged every self-buff and food for the user's full resources (about −1.5 a candidate). A
+  // friendly-target action has no hostile fact to read: unknown, the training mean, no contribution (its resource value to
+  // allies is ALLY_RESOURCE_RUNWAY_GAIN's).
   function resourceRatioRec(input) {
-    var targets = input.candidate.targetSet;
+    var sides = input.publicSnapshot.sides || {};
+    var targets = input.candidate.targetSet.filter(function (t) { return t !== input.candidate.actorId && hasOwn(sides, t) && sides[t] !== input.candidate.actorSide; });
     if (targets.length === 0) return unk('PUBLIC_RESOURCE_RATIO', 'RATIO_0_1', 'MISSING_SOURCE_FACT');
     var units = input.publicSnapshot.units;
     var sum = 0;
@@ -6401,7 +6406,11 @@
       SELF_FOLLOWUP_POOL_GAIN: 10.302556723848836,
       SELF_FOLLOWUP_MECHANICAL_GAIN: 8.201659516257939,
       RESOURCE_RUNWAY_GAIN: 14.848683457044219,
-      ENEMY_RESPONSE_OPTION_DENIAL: 1.4789589148898896,
+      // W6 (2026-11-09): the feature is now the enemy damage it denies, as a share of the actor's HP maximum, which
+      // is what OBJECTIVE_PROGRESS counts for the actor's own damage, so it takes that coefficient. Before, it was a
+      // capability share averaged over enemies, fitted to 1.48 in d6c028b (hand-set 4 beside OBJECTIVE_PROGRESS 8),
+      // which priced a full-round stun at under a third of one basic attack.
+      ENEMY_RESPONSE_OPTION_DENIAL: 33.38215225116526,
       OPPONENT_RESPONSE_PRESSURE: 11.747833245997066,
       REACTION_FOLLOWUP_GAIN: 0,
       SETUP_INTERRUPT_RISK: 0,
@@ -6416,8 +6425,11 @@
     intercept: 0,
     coefficients: Object.freeze({
       OBJECTIVE_PROGRESS: 0,
-      SELF_FOLLOWUP_POOL_GAIN: 0.25,
-      SELF_FOLLOWUP_MECHANICAL_GAIN: 0.25,
+      // A response that costs the actor its own later actions (a self 僵直 side effect cancels its natural action) loses
+      // them just as an active action would; at 0.25 that loss was free, and a 防御系 blocked with its stiffening shield
+      // skill for twelve rounds without ever attacking (1v1-0135, lost on 坚持回合). Same price as the active head.
+      SELF_FOLLOWUP_POOL_GAIN: ACTIVE_CAUSAL_LINEAR.coefficients.SELF_FOLLOWUP_POOL_GAIN,
+      SELF_FOLLOWUP_MECHANICAL_GAIN: ACTIVE_CAUSAL_LINEAR.coefficients.SELF_FOLLOWUP_MECHANICAL_GAIN,
       // Spending resources in an immediate response can remove the actor's
       // remaining skill routes just as an active action can. The causal
       // feature already measures that loss; ignoring it made costly counters
@@ -6519,6 +6531,7 @@
 
   // Settlement compresses power above 100 per damage effect. Scoring must use
   // the same effective domain before effects are aggregated.
+  const SETTLEMENT_NULLIFIED_CODES = Object.freeze(['DAMAGE_POWER', 'DAMAGE_SEGMENTS', 'DAMAGE_PENETRATION', 'DAMAGE_TYPE', 'SUCCESS_PROBABILITY']);
   function effectiveDamagePower(value) {
     const power = Math.max(0, Number(value) || 0);
     return power <= 100 ? power : 100 * Math.pow(power / 100, 0.25);
@@ -6663,6 +6676,11 @@
     }
     if (cell.status === 'KNOWN') {
       if (ENUM_CODES.has(code)) return 0;
+      // W9 (2026-11-09): the success probability was trained on 0.695 ± 0.094 (almost all 0.5–0.9). Far outside that
+      // the linear term only extrapolates — a 5% attack scored -5.9 here, below doing nothing (2v2-1623-o2: a 1.9%-HP
+      // enemy left alone for nine rounds of defending) — while the causal head already prices the miss in its expected
+      // outcome. It is held to the trained range (±2 standard deviations).
+      if (code === 'SUCCESS_PROBABILITY') return Math.max(-2, Math.min(2, (cell.value - mean) / scale));
       return (cell.value - mean) / scale;
     }
     if (cell.status === 'NOT_APPLICABLE') {
@@ -6720,15 +6738,20 @@
     return (cell.value - CAUSAL_NORMALIZATION.means[code]) / CAUSAL_NORMALIZATION.scales[code];
   }
 
-  function causalLinearForRole(role) {
-    return ['REACTION', 'COUNTER'].includes(String(role || '').trim().toUpperCase())
+  // Analytics only (paired win-rate tests of the causal scale): __LWCS_CAUSAL_COEFFICIENT_OVERRIDE__ = { sides, active }
+  // replaces active-head coefficients for the listed sides. It is never set in the game.
+  function causalLinearForRole(role, side = '') {
+    const linear = ['REACTION', 'COUNTER'].includes(String(role || '').trim().toUpperCase())
       ? REACTION_CAUSAL_LINEAR
       : ACTIVE_CAUSAL_LINEAR;
+    const override = globalThis.__LWCS_CAUSAL_COEFFICIENT_OVERRIDE__;
+    if (linear !== ACTIVE_CAUSAL_LINEAR || !override?.active || !Array.isArray(override.sides) || !override.sides.includes(side)) return linear;
+    return { intercept: linear.intercept, coefficients: { ...linear.coefficients, ...override.active } };
   }
 
-  function causalContributionOf(cells, code, role) {
+  function causalContributionOf(cells, code, role, side = '') {
     const cell = cells[code];
-    const linear = causalLinearForRole(role);
+    const linear = causalLinearForRole(role, side);
     const z = causalZOf(cells, code);
     return {
       code,
@@ -6756,8 +6779,8 @@
     return score;
   }
 
-  function causalScoreOf(cells, role) {
-    const linear = causalLinearForRole(role);
+  function causalScoreOf(cells, role, side = '') {
+    const linear = causalLinearForRole(role, side);
     let score = linear.intercept;
     for (const code of CAUSAL_CODES) score += linear.coefficients[code] * causalZOf(cells, code);
     return score;
@@ -6885,6 +6908,7 @@
     metrics.selectCalls += 1;
     const request = input && input.request ? input.request : {};
     const actionRole = String(request?.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase();
+    const scoringSide = String(request?.actorSide || '').trim();
     const featureInputs = input && input.featureInputs;
     const frozenCandidates = Array.isArray(request.frozenCandidates) ? request.frozenCandidates : [];
     if (!frozenCandidates.length) fail('NO_LEGAL_CANDIDATES', 'frozenCandidates empty');
@@ -6918,6 +6942,13 @@
         cells[code] = scalarizeCode(doc, code, AGGREGATION, rowsByScope);
         work.scalarizeCalls += 1;
       }
+      // B5: the decision's preview found this damage lands nothing on any enemy; its declared damage carries no
+      // information, so these cells read as unknown (train mean, zero contribution) rather than a full hit.
+      if (doc && doc.document && doc.document.settlement && doc.document.settlement.damageNullified === true) {
+        for (const code of SETTLEMENT_NULLIFIED_CODES) {
+          if (cells[code]) cells[code] = { status: 'UNKNOWN', value: null, reasonCode: 'SETTLEMENT_DAMAGE_NULLIFIED', rowCount: 0, kind: 'NONE' };
+        }
+      }
       const exclusion = readExclusion(doc);
       const hardExcluded = exclusion.hard;
       const baseWeight = activeBaseWeight(
@@ -6944,7 +6975,7 @@
         row.rawBaseScore = baseScoreOf(cells);
         row.baseScore = row.rawBaseScore * baseWeight;
         row.extensionScore = reactionScoreOf(cells);
-        row.causalScore = causalScoreOf(cells, actionRole);
+        row.causalScore = causalScoreOf(cells, actionRole, scoringSide);
         row.score = row.baseScore + row.extensionScore + row.causalScore;
         if (!Number.isFinite(row.score)) fail('NON_FINITE_SCORE');
       }
@@ -7023,7 +7054,7 @@
       for (const code of SCOREABLE_INVENTORY) {
         let factor =
           CAUSAL_CODES.indexOf(code) >= 0
-            ? causalContributionOf(row.cells, code, actionRole)
+            ? causalContributionOf(row.cells, code, actionRole, scoringSide)
             : REACTION_CODES.indexOf(code) >= 0
               ? reactionContributionOf(row.cells, code)
               : contributionOf(row.cells, code);

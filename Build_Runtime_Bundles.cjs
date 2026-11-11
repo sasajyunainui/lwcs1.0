@@ -54,6 +54,15 @@ const 打包定义 = Object.freeze({
     'mvu_logic_bridge.js',
     ...座舱脚本列表,
   ],
+  // R11 战斗线程包：在 Web Worker 里加载的第二份战斗引擎（并行估值候选），不含任何界面模块；顺序即加载顺序
+  'LWCS_Battle_Worker_Bundle.js': [
+    'MVU_Skill_Runtime.js',
+    'MVU_Schema_Runtime.js',
+    'BattlePreview_Module.js',
+    'BehaviorDecisionPipeline_Module.js',
+    'BattleDecision_Module.js',
+    'BattleRuntime_Module.js',
+  ],
   'LWCS_UI_Gameplay_Bundle.js': [
     'TradeUI_Module.js',
     'ProfessionUI_Module.js',

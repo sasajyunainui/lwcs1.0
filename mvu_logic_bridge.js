@@ -26874,7 +26874,9 @@ ${播报文本}
     };
   }
 
-  function 构建战斗提交包(input = {}) {
+  // 战斗估值可分给后台线程并行（BattleRuntime executeBattleDraftParallel 等，结果与同步版逐项相同；线程包读不到、
+  // 设备不适合或 window.__LWCS_BATTLE_PARALLEL_DISABLED__ 为真时自动走同步），所以这里是异步的。
+  async function 构建战斗提交包(input = {}) {
     const runtime = window.__LWCS_BATTLE_RUNTIME__;
     const report = window.__LWCS_BATTLE_REPORT__;
     if (
@@ -26890,12 +26892,12 @@ ${播报文本}
     const source = cloneJsonValue(input, {});
     delete source.visibilityMode;
     const executionMode = 规范化战斗提交模式(source.executionMode);
+    const lockedInput = { ...source, actionDeclaration: source.actionDeclaration || source.selectedAction };
     const draft = executionMode === 'auto'
-      ? runtime.executeBattleDraft(source)
-      : runtime.executePlayerLockedBattleSettlement({
-          ...source,
-          actionDeclaration: source.actionDeclaration || source.selectedAction,
-        });
+      ? await (typeof runtime.executeBattleDraftParallel === 'function'
+        ? runtime.executeBattleDraftParallel(source) : runtime.executeBattleDraft(source))
+      : await (typeof runtime.executePlayerLockedBattleSettlementParallel === 'function'
+        ? runtime.executePlayerLockedBattleSettlementParallel(lockedInput) : runtime.executePlayerLockedBattleSettlement(lockedInput));
     const reportDto = report.build({ draft, visibilityMode: 'PLAYER' });
     const reportAudit = report.auditProjection(reportDto);
     const sealedPackage = runtime.sealBattleResult({ draft, reportAudit });
@@ -27153,7 +27155,7 @@ ${播报文本}
     if (shouldCommit) 正式战斗事务执行中 = true;
     try {
       const transactionInput = 构建战斗事务输入(cloneJsonValue(combatData, {}), { ...options, executionMode });
-      const sealedPackage = 构建战斗提交包(transactionInput);
+      const sealedPackage = await 构建战斗提交包(transactionInput);
       if (!shouldCommit) {
         return {
           ...sealedPackage,

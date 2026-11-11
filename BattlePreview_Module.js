@@ -33,6 +33,8 @@
   const MAX_PREVIEW_NODES = 64;
   // Joint outcome graphs up to this static size are always enumerated in full.
   const OPERATION_GRAPH_SMALL_JOINT_LIMIT = 512;
+  // R08: a battle runs at most 40 rounds; the same limit is the default when a caller names none.
+  const BATTLE_ROUND_LIMIT = 40;
   const MAX_RECURSION_DEPTH = 4;
   const effectHashCache = new WeakMap();
   const effectArrayHashCache = new WeakMap();
@@ -57,6 +59,7 @@
   const stableHashImmutableCache = new WeakMap();
   let collectedEffectsCache = new WeakMap();
   let passiveSkillCollectionCache = new WeakMap();
+  let equipmentPassivePackageCache = new WeakMap();
   let normalizedObjectivesCache = new WeakMap();
   const SKILL_COST_RESOURCE_KEYS = Object.freeze(['魂力', '精神力', '体力']);
   const SKILL_COST_RESOURCE_SET = new Set(SKILL_COST_RESOURCE_KEYS);
@@ -1025,6 +1028,125 @@
     return next;
   }
 
+  // Content fingerprints: cache keys for decision-time reuse only (never written into ids or records). Each value gets two
+  // independent 53-bit hashes; an object's fingerprint is built from its own keys in order (order is meaningful here: the
+  // first of same-name states wins) and its children's fingerprints, including non-enumerable data properties. Objects
+  // are memoized until clearFingerprints(), which the decision engine calls at every outermost decision: a world is not
+  // changed while one decision reads it, but the live battle world changes in place between decisions. With
+  // __LWCS_DECISION_DEBUG__.verifyCaches every memoized fingerprint is recomputed on use and a mismatch throws.
+  let fingerprintMemo = new WeakMap();
+  const fingerprintFunctionIds = new WeakMap();
+  let fingerprintFunctionSequence = 0;
+
+  function fingerprintHash(text, seed) {
+    let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+    for (let index = 0; index < text.length; index += 1) {
+      const code = text.charCodeAt(index);
+      h1 = Math.imul(h1 ^ code, 2654435761);
+      h2 = Math.imul(h2 ^ code, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+  }
+
+  function computeFingerprint(value, active, memoize) {
+    if (value === null) return 'n';
+    const type = typeof value;
+    if (type === 'string') return value.length < 24 ? 's' + JSON.stringify(value) : 'S' + fingerprintHash(value, 1) + fingerprintHash(value, 2);
+    if (type === 'number') return 'd' + (Object.is(value, -0) ? '-0' : String(value));
+    if (type === 'boolean') return value ? 't' : 'f';
+    if (type === 'undefined') return 'u';
+    if (type === 'bigint') return 'b' + String(value);
+    if (type === 'function' || type === 'symbol') {
+      if (type === 'symbol') return 'y' + String(value.description || '');
+      if (!fingerprintFunctionIds.has(value)) fingerprintFunctionIds.set(value, ++fingerprintFunctionSequence);
+      return 'F' + fingerprintFunctionIds.get(value);
+    }
+    if (memoize) {
+      const cached = fingerprintMemo.get(value);
+      if (cached) return cached;
+    }
+    if (active.has(value)) return 'c';
+    active.add(value);
+    const parts = [Array.isArray(value) ? 'A' : 'O'];
+    for (const key of Object.getOwnPropertyNames(value)) {
+      if (Array.isArray(value) && key === 'length') continue;
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (!Object.hasOwn(descriptor, 'value')) { parts.push(key, 'g'); continue; }
+      parts.push(key, (descriptor.enumerable ? '' : '~') + computeFingerprint(descriptor.value, active, memoize));
+    }
+    active.delete(value);
+    const text = parts.join('\u0001');
+    const fingerprint = 'o' + fingerprintHash(text, 3) + '.' + fingerprintHash(text, 4);
+    if (memoize) fingerprintMemo.set(value, fingerprint);
+    return fingerprint;
+  }
+
+  function contentFingerprint(value) {
+    const fingerprint = computeFingerprint(value, new Set(), true);
+    if (value && typeof value === 'object' && root.__LWCS_DECISION_DEBUG__?.verifyCaches === true) {
+      const fresh = computeFingerprint(value, new Set(), false);
+      if (fresh !== fingerprint) throw new Error('battle_preview_fingerprint_stale:object_changed_after_fingerprint');
+    }
+    return fingerprint;
+  }
+
+  // Environment fingerprints: what a projection may read from units it does not act on or target. Bystanders' HP,
+  // resources, shields and stamina-adjusted final stats are left out; whether they can act or are alive, their states,
+  // passives, equipment and everything else stay in (guards, taunts, auras and ally-damaged passives key on those).
+  const ENVIRONMENT_VOLATILE_UNIT_KEYS = new Set(['hp', 'HP', 'sp', 'men', 'vit', 'sta', 'shield', '护盾', '护盾值', 'final']);
+  const ENVIRONMENT_VOLATILE_ATTRIBUTE_KEYS = new Set(['HP', '生命', '魂力', '精神力', '体力']);
+  let environmentFingerprintMemo = new WeakMap();
+
+  function fingerprintOwnProperties(value, skipKey, mapValue = null) {
+    const parts = [];
+    for (const key of Object.getOwnPropertyNames(value)) {
+      if (skipKey(key)) continue;
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (!Object.hasOwn(descriptor, 'value')) { parts.push(key, 'g'); continue; }
+      parts.push(key, (descriptor.enumerable ? '' : '~') + (mapValue?.(key, descriptor.value) ?? contentFingerprint(descriptor.value)));
+    }
+    const text = parts.join('\u0001');
+    return fingerprintHash(text, 5) + '.' + fingerprintHash(text, 6);
+  }
+
+  function computeUnitEnvironmentFingerprint(unit) {
+    const attributeFingerprint = attribute => attribute && typeof attribute === 'object' && !Array.isArray(attribute)
+      ? 'a' + fingerprintOwnProperties(attribute, key => ENVIRONMENT_VOLATILE_ATTRIBUTE_KEYS.has(key)) : null;
+    return 'E' + (isBattleCapable(unit) ? '1' : '0') + (isPhysicallyAlive(unit) ? '1' : '0') +
+      fingerprintOwnProperties(unit, key => ENVIRONMENT_VOLATILE_UNIT_KEYS.has(key), (key, value) => key === '属性' ? attributeFingerprint(value) : null);
+  }
+
+  function unitEnvironmentFingerprint(unit) {
+    if (!unit || typeof unit !== 'object') return contentFingerprint(unit);
+    let fingerprint = environmentFingerprintMemo.get(unit);
+    if (!fingerprint) environmentFingerprintMemo.set(unit, fingerprint = computeUnitEnvironmentFingerprint(unit));
+    else if (root.__LWCS_DECISION_DEBUG__?.verifyCaches === true && computeUnitEnvironmentFingerprint(unit) !== fingerprint) {
+      throw new Error('battle_preview_fingerprint_stale:unit_environment_changed');
+    }
+    return fingerprint;
+  }
+
+  // The world around the involved units: its own fields except the rosters, then every unit in visit order, involved
+  // units by id only (callers key them by their full content fingerprint).
+  function worldEnvironmentFingerprint(worldSnapshot = {}, involvedIds = new Set()) {
+    const shell = worldSnapshot && typeof worldSnapshot === 'object'
+      ? fingerprintOwnProperties(worldSnapshot, key => key === '参战者' || key === '召唤单位表') : contentFingerprint(worldSnapshot);
+    const parts = [shell];
+    for (const { unit, side } of listUnits(worldSnapshot)) {
+      const id = unitId(unit);
+      parts.push(side, involvedIds.has(id) ? 'I' + id : unitEnvironmentFingerprint(unit));
+    }
+    const text = parts.join('\u0001');
+    return 'w' + fingerprintHash(text, 7) + '.' + fingerprintHash(text, 8);
+  }
+
+  function clearFingerprints() {
+    fingerprintMemo = new WeakMap();
+    environmentFingerprintMemo = new WeakMap();
+  }
+
   function stableHash(value) {
     if (value && typeof value === 'object') {
       const immutableCached = stableHashImmutableCache.get(value);
@@ -1222,11 +1344,46 @@
     };
   }
 
-  function readHpMax(unit = {}) {
+  // Panel modifiers of one resource maximum add up (D1 "统一相加"): base × max(0.1, 1 + Σ(ratio − 1)) + Σ fixed.
+  // A frozen state map whose states are frozen too keeps its panel modifiers (read on every HP and resource maximum).
+  const panelModifierMemo = new WeakMap();
+  function panelModifiersOf(states, panelKey) {
+    let ratio = 0, fixed = 0, changed = false, frozen = !!states && Object.isFrozen(states);
+    for (const stateKey in states) {
+      const state = states[stateKey];
+      if (frozen && state && typeof state === 'object' && !Object.isFrozen(state)) frozen = false;
+      if (state?.面板修改比例?.[panelKey] === undefined && state?.面板固定修正?.[panelKey] === undefined) continue;
+      changed = true;
+      ratio += toNumber(state?.面板修改比例?.[panelKey] ?? 1) - 1;
+      fixed += toNumber(state?.面板固定修正?.[panelKey] || 0);
+    }
+    return { ratio, fixed, changed, frozen };
+  }
+  function addPanelModifiers(unit = {}, base = 0, panelKey = '') {
+    const states = unit?.状态效果;
+    const byKey = states && typeof states === 'object' ? panelModifierMemo.get(states) : null;
+    let modifiers = byKey?.get(panelKey);
+    if (!modifiers) {
+      modifiers = panelModifiersOf(states, panelKey);
+      if (modifiers.frozen) {
+        if (byKey) byKey.set(panelKey, modifiers);
+        else panelModifierMemo.set(states, new Map([[panelKey, modifiers]]));
+      }
+    }
+    const { ratio, fixed, changed } = modifiers;
+    return changed ? maxNumber(1, roundNumber(base * Math.max(0.1, 1 + ratio) + fixed)) : base;
+  }
+
+  function readBaseHpMax(unit = {}) {
     const direct = toNumber(unit?.hp_max);
-    const value = isFiniteNumber(direct)
+    return isFiniteNumber(direct)
       ? maxNumber(1, direct)
       : maxNumber(1, readNumber(unit, ['hp_max', 'HP上限', '生命上限', 'vit_max', '体力上限'], 1));
+  }
+
+  function readHpMax(unit = {}) {
+    // D3（用户 2026-11-09）：属性修正·生命上限作用在生命上限自己这一项，不再写到体力上限上。
+    const value = addPanelModifiers(unit, readBaseHpMax(unit), 'hp_max');
     if (activePreviewDependencyCapture) {
       recordPreviewDependency(`unit:${unitId(unit)}:baseMaxHp`, value);
     }
@@ -1403,20 +1560,40 @@
     // Resource capacity includes active panel modifiers, but not the stamina
     // penalty used for combat capability. Base fields remain unchanged on expiry.
     const panelKey = key === 'hp' ? null : key + '_max';
-    if (panelKey) {
-      let panelChanged = false;
-      for (const stateKey in unit.状态效果) {
-        const state = unit.状态效果[stateKey];
-        if (state?.面板修改比例?.[panelKey] === undefined && state?.面板固定修正?.[panelKey] === undefined) continue;
-        panelChanged = true;
-        value = value * toNumber(state?.面板修改比例?.[panelKey] ?? 1) + toNumber(state?.面板固定修正?.[panelKey] || 0);
-      }
-      if (panelChanged) value = maxNumber(1, roundNumber(value));
-    }
+    if (panelKey) value = addPanelModifiers(unit, value, panelKey);
     if (activePreviewDependencyCapture) {
       recordPreviewDependency(`unit:${unitId(unit)}:resourceMax:${resource}`, value);
     }
     return value;
+  }
+
+  // 用户 2026-11-08: raising 体力上限 raises current 体力 by the same amount, so a stamina-maximum buff never reads as
+  // fatigue; when the bonus ends, current stamina is only capped at the lower maximum (readResource clamps it).
+  // __体力上限加成 is the part of the maximum already credited to current stamina; credit:false records it without
+  // crediting (a unit entering battle already carries its buffed stamina).
+  function syncLifeMaxGain(unit = null, { credit = true } = {}) {
+    if (!unit || typeof unit !== 'object' || Object.isFrozen(unit)) return 0;
+    const bonus = Math.max(0, readHpMax(unit) - readBaseHpMax(unit));
+    const credited = Math.max(0, Number(unit.__生命上限加成 || 0));
+    if (bonus === credited) return 0;
+    if (credit && bonus > credited) setHp(unit, readHp(unit) + bonus - credited);
+    if (bonus > 0) unit.__生命上限加成 = bonus;
+    else delete unit.__生命上限加成;
+    return bonus - credited;
+  }
+
+  function syncStaminaMaxGain(unit = null, { credit = true } = {}) {
+    if (!unit || typeof unit !== 'object' || Object.isFrozen(unit)) return 0;
+    syncLifeMaxGain(unit, { credit });
+    const direct = toNumber(unit?.vit_max);
+    const base = maxNumber(1, isFiniteNumber(direct) ? direct : readNumber(unit, ['vit_max', 'sta_max', '体力上限'], 1));
+    const bonus = Math.max(0, readResourceMax(unit, '体力') - base);
+    const credited = Math.max(0, Number(unit.__体力上限加成 || 0));
+    if (bonus === credited) return 0;
+    if (credit && bonus > credited) setResource(unit, '体力', readResource(unit, '体力') + bonus - credited);
+    if (bonus > 0) unit.__体力上限加成 = bonus;
+    else delete unit.__体力上限加成;
+    return bonus - credited;
   }
 
   function readResource(unit = {}, resource = '') {
@@ -1469,7 +1646,18 @@
     return { hp: '生命', vit: '体力', sp: '魂力', men: '精神力' }[resourceKey] || '魂力';
   }
 
+  // A decision may hold every unit's stamina panel scale at its decision-world value (BattleDecision runProvider with
+  // searchBounds.frozenStaminaPanel): id → scale; a unit not listed (a summon created in the look-ahead) reads its own.
+  let frozenStaminaScales = null;
+  function freezeStaminaScales(scales = null) {
+    frozenStaminaScales = scales instanceof Map && scales.size ? scales : null;
+  }
+
   function staminaScaleForUnit(unit = {}) {
+    if (frozenStaminaScales) {
+      const frozen = frozenStaminaScales.get(unitId(unit));
+      if (frozen !== undefined) return frozen;
+    }
     const sources = [
       unit,
       unit?.属性 && typeof unit.属性 === 'object' ? unit.属性 : {},
@@ -1486,6 +1674,131 @@
     if (ratio >= 0.3) return 0.9 + (ratio - 0.3) * 0.5;
     if (ratio >= 0.15) return 0.75 + (ratio - 0.15);
     return 0.5 + ratio * (5 / 3);
+  }
+
+  // R07 / R17: every action costs stamina — an absolute amount, a share of the stamina benchmark of the actor's level:
+  // the base table's stamina maximum, the same for everyone of that level whatever their talent, training, rings or buffs
+  // (用户 2026-11-09: 用基准数值的 2.5% 作为绝对值消耗，而不是用自身的 2.5%；基准只看等级基础表). An attack or a released
+  // skill costs a fixed amount; only a basic response is scaled by the opponent's strength, by a ratio of at most
+  // ACTION_STAMINA_RATIO_CAP and no lower bound ("攻击方的体力消耗是固定的，闪避和防御才会受对方实力影响"；"最多 ×4，最低不限"):
+  //   attack  2.5%;  defend 1.5% × attacker strength ÷ own defence;  evade 2.0% × attacker agility ÷ own agility.
+  // A skill or item costs its nature's rate (damage → attack, evasion/displacement → 2.0%, protection → 1.5%, anything
+  // else 1.5%) at ratio 1. The ratio uses battle-start panel stats when the runtime recorded them (__battleRuntime.panelStats),
+  // so in-battle buffs and stamina decay do not change the price.
+  const ACTION_STAMINA_RATES = Object.freeze({ ATTACK: 0.025, DEFEND: 0.015, EVADE: 0.02, SKILL_DEFEND: 0.015, SKILL_EVADE: 0.02, OTHER: 0.015 });
+  const ACTION_STAMINA_RATIO_CAP = 4;
+  // On unless a world opts out with 战斗规则.行动体力消耗 === false, or the host's default battle rules do
+  // (root.__LWCS_DEFAULT_BATTLE_RULES__, set by isolation fixtures that measure other resources).
+  function actionStaminaEnabled(world = {}) {
+    return (world?.战斗规则?.行动体力消耗 ?? root.__LWCS_DEFAULT_BATTLE_RULES__?.行动体力消耗) !== false;
+  }
+
+  function battlePanelStat(unit = {}, key = '') {
+    const recorded = Number(unit?.__battleRuntime?.panelStats?.[key]);
+    return Number.isFinite(recorded) && recorded > 0 ? recorded : Math.max(1, readCombatStat(unit, key));
+  }
+
+  function actionStaminaNature(declaration = {}) {
+    const kind = String(declaration?.actionKind || '').trim().toUpperCase();
+    if (kind === 'BASIC_ATTACK') return 'ATTACK';
+    if (kind === 'EVADE') return 'EVADE';
+    if (kind === 'DEFEND' || kind === 'GUARD') return 'DEFEND';
+    if (kind !== 'RELEASE_SKILL' && kind !== 'USE_ITEM') return '';
+    const effects = Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组 : [];
+    const prototypes = new Set(effects.map(effect => String(effect?.原型 || '').trim()));
+    if (prototypes.has('伤害结算')) return 'ATTACK';
+    if (prototypes.has('位移执行') || effects.some(effect => effect?.原型 === '判定修正' && /闪避/.test(String(effect?.判定 || '')))) return 'SKILL_EVADE';
+    if (['护盾变化', '规则防御'].some(prototype => prototypes.has(prototype)) ||
+      effects.some(effect => (effect?.原型 === '结算修正' && /受到伤害|伤害分摊|伤害转移|伤害吸收/.test(String(effect?.结算 || ''))) ||
+        (effect?.原型 === '状态施加' && String(effect?.状态 || '').trim() === '护卫'))) return 'SKILL_DEFEND';
+    return 'OTHER';
+  }
+
+  // 攻击破绽（用户 2026-11-10："说起来接战链底层应该有主动进攻方更容易被对方打中的逻辑来着？"；"接战链部分，增加一个攻击破绽
+  // 设定"；"攻击破绽不是只对反击生效，如果是多人团战，A进攻B，C也可以进攻A啊"）：对敌方出手（普攻，或目标是敌方的魂技）的单位
+  // 露出破绽，从出手到它下一次行动前，任何人打它都更容易得手——攻击未命中的机会少四分之一、它闪避反应的成功率乘 0.75、防御反应
+  // 的减伤打八折；普攻是半份破绽。破绽是本场战斗的姿态（__battleRuntime.attackOpening，同防守姿态），被打一次不会消失；它的
+  // 下一次正式行动先清掉旧破绽，进攻再留下新的。
+  const ATTACK_OPENING_MISS_CUT = 0.25, ATTACK_OPENING_DODGE_CUT = 0.25, ATTACK_OPENING_DEFENSE_CUT = 0.2;
+  function attackOpeningOf(unit = {}) {
+    return clamp(Number(unit?.__battleRuntime?.attackOpening?.strength || 0), 0, 1);
+  }
+  function attackOpeningStrength(worldSnapshot = {}, actor = {}, declaration = {}, readUnit = id => findUnit(worldSnapshot, id)) {
+    const kind = String(declaration?.actionKind || '').trim().toUpperCase();
+    if (kind !== 'BASIC_ATTACK' && kind !== 'RELEASE_SKILL') return 0;
+    const actorSide = sideOf(worldSnapshot, actor);
+    const hostileTarget = (Array.isArray(declaration?.targetIds) ? declaration.targetIds : []).some(id => {
+      const target = readUnit(String(id || '').trim());
+      return target && sideOf(worldSnapshot, target) && sideOf(worldSnapshot, target) !== actorSide;
+    });
+    return hostileTarget ? kind === 'BASIC_ATTACK' ? 0.5 : 1 : 0;
+  }
+  // Sets the opening a formal action leaves (0 clears the old one) on a unit the caller owns: an overlay clone in preview,
+  // the live unit in the runtime.
+  function setAttackOpening(unit = {}, strength = 0, sourceActionId = '') {
+    if (!unit || typeof unit !== 'object') return unit;
+    if (!(strength > 0)) {
+      if (unit.__battleRuntime && typeof unit.__battleRuntime === 'object') delete unit.__battleRuntime.attackOpening;
+      return unit;
+    }
+    if (!unit.__battleRuntime || typeof unit.__battleRuntime !== 'object') unit.__battleRuntime = {};
+    unit.__battleRuntime.attackOpening = { strength, ...(sourceActionId ? { sourceActionId: String(sourceActionId) } : {}) };
+    return unit;
+  }
+  function hitAgainstAttackOpening(probability = 0, opening = 0) {
+    return opening > 0 ? 1 - (1 - probability) * (1 - ATTACK_OPENING_MISS_CUT * opening) : probability;
+  }
+
+  // The stamina benchmark of the actor's level (the base table's stamina maximum). A host without the base table falls
+  // back to the battle-start stamina maximum.
+  function staminaBenchmark(actor = {}) {
+    const level = Number(actor?.属性?.等级 ?? actor?.等级 ?? actor?.level ?? actor?.final?.等级 ?? 0);
+    const base = typeof root.__LWCS_GET_BASE_STATS__ === 'function' && level > 0 ? Number(root.__LWCS_GET_BASE_STATS__(level)?.vit_max) : NaN;
+    if (Number.isFinite(base) && base > 0) return base;
+    const recordedMaximum = Number(actor?.__battleRuntime?.panelStats?.vit_max);
+    return Number.isFinite(recordedMaximum) && recordedMaximum > 0 ? recordedMaximum : readResourceMax(actor, '体力');
+  }
+
+  // Windups (用户 2026-11-09: 使用物品定为 15 前摇；普攻 20；一回合内多个行动累计前摇低于 40 时记为一次连续行动，前摇用总和计算).
+  // A released skill carries its own 前摇 after its settlement modifiers; a basic attack's 20 takes the actor's windup
+  // modifiers as well (attack speed, "降低包括普攻在内的自身全攻击技能前摇") but none of its effect or cost modifiers; an item
+  // takes 15; defending, evading and passing end a turn and take none.
+  const BASIC_ATTACK_WINDUP = 20, ITEM_USE_WINDUP = 15, CONTINUOUS_ACTION_BUDGET = 40;
+  function basicAttackWindup(actor = {}) {
+    const probe = { 前摇: BASIC_ATTACK_WINDUP, _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 }] };
+    return Math.max(0, Number(applySkillSettlementModifiers(actor, probe).skill.前摇 ?? BASIC_ATTACK_WINDUP));
+  }
+  function actionWindup(actor = {}, declaration = {}) {
+    const kind = String(declaration?.actionKind || '').trim().toUpperCase();
+    if (kind === 'USE_ITEM') return ITEM_USE_WINDUP;
+    if (kind === 'BASIC_ATTACK') return basicAttackWindup(actor);
+    if (kind === 'RELEASE_SKILL') return Math.max(0, Number(declaration?.skill?.前摇 ?? declaration?.skill?.cast_time ?? 0));
+    return 0;
+  }
+
+  function actionStaminaCost(actor = {}, nature = '', opponent = null) {
+    const rate = ACTION_STAMINA_RATES[nature];
+    if (!rate) return 0;
+    const maximum = staminaBenchmark(actor);
+    if (!(maximum > 0)) return 0;
+    const ratioKey = { DEFEND: ['str', 'def'], EVADE: ['agi', 'agi'] }[nature];
+    const ratio = opponent && ratioKey
+      ? Math.min(ACTION_STAMINA_RATIO_CAP, battlePanelStat(opponent, ratioKey[0]) / battlePanelStat(actor, ratioKey[1])) : 1;
+    return Math.max(0, maximum * rate * ratio);
+  }
+
+  // The stamina a formal action would pay in preview (same price as the runtime's payActionStamina), with the first
+  // enemy target as the opponent; null when the action costs none.
+  function projectedActionStamina(worldSnapshot = {}, actor = {}, declaration = {}, readUnit = id => findUnit(worldSnapshot, id)) {
+    if (!actionStaminaEnabled(worldSnapshot)) return null;
+    const nature = actionStaminaNature(declaration);
+    if (!nature) return null;
+    const actorSide = sideOf(worldSnapshot, actor);
+    const opponent = (Array.isArray(declaration?.targetIds) ? declaration.targetIds : [])
+      .map(id => readUnit(String(id || '').trim()))
+      .find(unit => unit && sideOf(worldSnapshot, unit) && sideOf(worldSnapshot, unit) !== actorSide) || null;
+    const amount = actionStaminaCost(actor, nature, opponent);
+    return amount > 0 ? { nature, amount } : null;
   }
 
   function refreshStaminaAdjustedFinal(unit = {}) {
@@ -1552,15 +1865,22 @@
         });
     };
     const copiedSnapshots = [];
+    // D1（用户 2026-11-09 "统一相加"）：各状态对同一属性的比例加成相加，不再逐个相乘（两个 +20% 得 +40%，原先 +44%）。
+    // 下限 10%，与延迟属性修正一致，避免几层减益叠成 0。
+    const ratioSum = {}, deltaSum = {};
     Object.values(stateEffects).forEach(condition => {
       const ratios = condition?.面板修改比例 || {};
       const deltas = condition?.面板固定修正 || {};
-      ['str', 'def', 'agi'].forEach(key => { final[key] = Number(final[key] || 0) * Number(ratios[key] ?? 1) + Number(deltas[key] || 0); });
-      ['sp_max', 'vit_max', 'men_max'].forEach(key => {
-        if (final[key] !== undefined) final[key] = Number(final[key] || 0) * Number(ratios[key] ?? 1) + Number(deltas[key] || 0);
+      ['str', 'def', 'agi', 'sp_max', 'vit_max', 'men_max', 'hp_max'].forEach(key => {
+        ratioSum[key] = (ratioSum[key] || 0) + (Number(ratios[key] ?? 1) - 1);
+        deltaSum[key] = (deltaSum[key] || 0) + Number(deltas[key] || 0);
       });
       if (condition?.属性快照) copiedSnapshots.push(condition.属性快照);
     });
+    const additivePanel = (key, base) => Number(base || 0) * Math.max(0.1, 1 + (ratioSum[key] || 0)) + (deltaSum[key] || 0);
+    ['str', 'def', 'agi'].forEach(key => { final[key] = additivePanel(key, final[key]); });
+    ['sp_max', 'vit_max', 'men_max'].forEach(key => { if (final[key] !== undefined) final[key] = additivePanel(key, final[key]); });
+    if (final.hp_max !== undefined) final.hp_max = Math.max(1, Math.round(additivePanel('hp_max', final.hp_max)));
     copiedSnapshots.forEach(applyCopiedStats);
     Object.values(unit?.复制效果 || {}).forEach(record => {
       if (!record || typeof record !== 'object') return;
@@ -1569,6 +1889,7 @@
     });
     if (final.sp_max !== undefined && final.sp !== undefined) final.sp = Math.min(final.sp, final.sp_max);
     if (final.vit_max !== undefined && final.vit !== undefined) final.vit = Math.min(final.vit, final.vit_max);
+    if (final.hp_max !== undefined && final.hp !== undefined) final.hp = Math.min(final.hp, final.hp_max);
     if (final.men_max !== undefined && final.men !== undefined) final.men = Math.min(final.men, final.men_max);
     const staminaScale = staminaScaleForUnit(unit);
     if (staminaScale < 1) {
@@ -1858,6 +2179,7 @@
       outgoingHitAdjustment,
       outgoingArmorPenRatio,
       incomingAvoidanceAdjustment,
+      incomingAttackOpening: attackOpeningOf(unit),
     });
   }
 
@@ -1893,6 +2215,7 @@
       Object.is(left.outgoingHitAdjustment, right.outgoingHitAdjustment) &&
       Object.is(left.outgoingArmorPenRatio, right.outgoingArmorPenRatio) &&
       Object.is(left.incomingAvoidanceAdjustment, right.incomingAvoidanceAdjustment) &&
+      Object.is(left.incomingAttackOpening, right.incomingAttackOpening) &&
       outgoingDamageLimitedEqual &&
       incomingDamageLimitedEqual;
   }
@@ -2346,6 +2669,11 @@
       我方全员失能: 'TEAM_INCAPACITATED',
       全员失能: 'TEAM_INCAPACITATED',
       生命阈值: 'HP_RATIO_AT_OR_BELOW',
+      // R18: drive the opponent's 魂力 / 体力 / 精神力 to or below a share of its maximum.
+      资源阈值: 'RESOURCE_RATIO_AT_OR_BELOW',
+      魂力阈值: 'RESOURCE_RATIO_AT_OR_BELOW',
+      体力阈值: 'RESOURCE_RATIO_AT_OR_BELOW',
+      精神力阈值: 'RESOURCE_RATIO_AT_OR_BELOW',
       坚持回合: 'ROUND_REACHED',
       指定单位受伤: 'UNIT_DAMAGED',
       指定单位失能: 'UNIT_INCAPACITATED',
@@ -2357,7 +2685,12 @@
     };
     const rawType = String(condition.type || condition.类型 || '').trim();
     const type = String(typeAliases[rawType] || rawType).trim().toUpperCase();
-    if (!['TEAM_INCAPACITATED', 'TEAM_DEAD', 'HP_RATIO_AT_OR_BELOW', 'ROUND_REACHED', 'UNIT_DAMAGED', 'UNIT_INCAPACITATED', 'UNIT_DEAD', 'WITHDRAW_SUCCESS'].includes(type)) return null;
+    if (!['TEAM_INCAPACITATED', 'TEAM_DEAD', 'HP_RATIO_AT_OR_BELOW', 'RESOURCE_RATIO_AT_OR_BELOW', 'ROUND_REACHED', 'UNIT_DAMAGED', 'UNIT_INCAPACITATED', 'UNIT_DEAD', 'WITHDRAW_SUCCESS'].includes(type)) return null;
+    const resourceAlias = { 魂力阈值: '魂力', 体力阈值: '体力', 精神力阈值: '精神力' }[rawType];
+    const resource = type === 'RESOURCE_RATIO_AT_OR_BELOW'
+      ? String(condition.resource || condition.资源 || resourceAlias || '').trim()
+      : '';
+    if (type === 'RESOURCE_RATIO_AT_OR_BELOW' && !['魂力', '体力', '精神力'].includes(resource)) return null;
     const inferredSide = rawType.startsWith('我方') ? 'PLAYER' : rawType.startsWith('敌方') ? 'ENEMY' : '';
     const side = normalizeObjectiveSide(condition.side || condition.阵营 || inferredSide);
     const targetSource = condition.targetIds || condition.目标 || condition.targets || [];
@@ -2379,6 +2712,7 @@
       targetIds: Object.freeze(targetIds),
       scope: /^(ALL|全部|全体)$/i.test(String(condition.scope || condition.判定 || (['TEAM_INCAPACITATED', 'TEAM_DEAD'].includes(type) ? 'ALL' : 'ANY')).trim()) ? 'ALL' : 'ANY',
       threshold,
+      ...(resource ? { resource } : {}),
       round,
       requireActive: condition.requireActive !== false && condition.存活要求 !== false,
       baselineHp: Object.freeze(baselineHp),
@@ -2445,7 +2779,7 @@
       version: 1,
       explicit,
       startRound: Math.max(0, Math.floor(Number(source.startRound ?? source.起始回合 ?? currentRound))),
-      maxRounds: Math.max(1, Math.min(20, Math.floor(Number(source.maxRounds ?? source.回合上限 ?? 20) || 20))),
+      maxRounds: Math.max(1, Math.min(BATTLE_ROUND_LIMIT, Math.floor(Number(source.maxRounds ?? source.回合上限 ?? BATTLE_ROUND_LIMIT) || BATTLE_ROUND_LIMIT))),
       resolutionPriority: /^(DRAW_ON_CONFLICT|平局)$/i.test(String(source.resolutionPriority || source.冲突处理 || 'DEFEAT_FIRST').trim()) ? 'DRAW_ON_CONFLICT' : 'DEFEAT_FIRST',
       victory,
       defeat,
@@ -2702,6 +3036,12 @@
           ? 'HP_THRESHOLD_REACHED'
           : '';
       }
+      if (condition.type === 'RESOURCE_RATIO_AT_OR_BELOW') {
+        return readResource(unit, condition.resource) / Math.max(1, readResourceMax(unit, condition.resource)) <=
+          condition.threshold + 1e-9
+          ? 'RESOURCE_THRESHOLD_REACHED'
+          : '';
+      }
       if (condition.type === 'UNIT_DAMAGED') {
         const baseline = Number(condition.baselineHp?.[unitId(unit)] ?? condition.baselineHp?.[unitName(unit)] ?? readHpMax(unit));
         return state.hp < Math.max(0, baseline) - 1e-9
@@ -2789,11 +3129,11 @@
     };
     const victory = evaluateGroup(objectives.victory);
     const defeat = evaluateGroup(objectives.defeat);
-    const playerExhausted = includeDetails &&
-      unitIndex.playerUnits.length > 0 &&
+    // A side with nobody left able to fight has lost, whatever the declared objectives (an endure or drain objective
+    // does not keep a battle running against a fallen opponent); both sides down together is a draw.
+    const playerExhausted = unitIndex.playerUnits.length > 0 &&
       unitIndex.playerUnits.every(unit => !objectiveUnitState(unit, options).capable);
-    const enemyExhausted = includeDetails &&
-      unitIndex.enemyUnits.length > 0 &&
+    const enemyExhausted = unitIndex.enemyUnits.length > 0 &&
       unitIndex.enemyUnits.every(unit => !objectiveUnitState(unit, options).capable);
     const exhaustionDetail = (side, matched) => Object.freeze({
       condition: Object.freeze({
@@ -2815,12 +3155,14 @@
     const implicitDefeat = includeDetails
       ? exhaustionDetail('PLAYER', playerExhausted)
       : null;
-    const effectiveVictoryMatched = victory.matched;
-    const effectiveDefeatMatched = defeat.matched;
+    const effectiveVictoryMatched = victory.matched || enemyExhausted;
+    const effectiveDefeatMatched = defeat.matched || playerExhausted;
     const victoryObjectiveMatched = victory.matched;
     const defeatObjectiveMatched = defeat.matched;
+    // Both sides down at the same moment (all incapacitated, e.g. exhausted together) is a draw, whatever the priority.
+    const bothSidesDown = playerExhausted && enemyExhausted;
     let status = 'ONGOING';
-    if (effectiveVictoryMatched && effectiveDefeatMatched) status = objectives.resolutionPriority === 'DRAW_ON_CONFLICT' ? 'DRAW' : 'ENEMY_WIN';
+    if (effectiveVictoryMatched && effectiveDefeatMatched) status = bothSidesDown || objectives.resolutionPriority === 'DRAW_ON_CONFLICT' ? 'DRAW' : 'ENEMY_WIN';
     else if (effectiveVictoryMatched) status = 'PLAYER_WIN';
     else if (effectiveDefeatMatched) status = 'ENEMY_WIN';
     else if (timeLimitReached) status = 'DRAW';
@@ -2850,7 +3192,8 @@
           ? 'OBJECTIVE_VICTORY'
           : defeatObjectiveMatched
             ? 'OBJECTIVE_DEFEAT'
-            : timeLimitReached ? 'ROUND_LIMIT_REACHED' : '',
+            : effectiveVictoryMatched || effectiveDefeatMatched ? 'BATTLEFIELD_EXHAUSTION'
+              : timeLimitReached ? 'ROUND_LIMIT_REACHED' : '',
       exhaustionResolution,
       objectives,
     };
@@ -2873,6 +3216,50 @@
       options,
       true,
     );
+  }
+
+  // 用户 2026-11-08: a battle is won by many kinds of condition — endure N rounds, drive the opponent's resource below
+  // a share, fell one of them, keep an ally standing — and every skill should be released with them in view. This is
+  // a continuous distance to each condition: 0 untouched … 1 met. A group takes its best member (ANY) or the mean
+  // (ALL). ROUND_REACHED moves with the clock only and WITHDRAW_SUCCESS by its own route, so no action changes them.
+  function objectiveConditionCloseness(worldSnapshot = {}, condition = {}, unitIndex = null) {
+    const listed = objectiveUnits(worldSnapshot, condition, unitIndex);
+    const roles = listed.filter(unit => !isSummonUnit(unit));
+    const members = roles.length ? roles : listed;
+    if (!members.length) return 0;
+    const hpRatio = unit => clamp(readHp(unit) / Math.max(1, readHpMax(unit)), 0, 1);
+    const toward = (ratio, threshold) => clamp((1 - ratio) / Math.max(1e-9, 1 - Number(threshold || 0)), 0, 1);
+    const closeness = unit => {
+      const state = objectiveUnitState(unit, {});
+      if (condition.type === 'TEAM_INCAPACITATED' || condition.type === 'UNIT_INCAPACITATED') return state.capable ? 1 - hpRatio(unit) : 1;
+      if (condition.type === 'TEAM_DEAD' || condition.type === 'UNIT_DEAD') return !state.alive || state.hp <= 0 ? 1 : 1 - hpRatio(unit);
+      if (condition.type === 'HP_RATIO_AT_OR_BELOW') return toward(hpRatio(unit), condition.threshold);
+      if (condition.type === 'RESOURCE_RATIO_AT_OR_BELOW') return toward(clamp(readResource(unit, condition.resource) /
+        Math.max(1, readResourceMax(unit, condition.resource)), 0, 1), condition.threshold);
+      if (condition.type === 'UNIT_DAMAGED') {
+        const baseline = Number(condition.baselineHp?.[unitId(unit)] ?? condition.baselineHp?.[unitName(unit)] ?? readHpMax(unit));
+        return state.hp < Math.max(0, baseline) - 1e-9 ? 1 : 0;
+      }
+      return 0;
+    };
+    const values = members.map(closeness);
+    return condition.scope === 'ALL' ? values.reduce((sum, value) => sum + value, 0) / values.length : Math.max(...values);
+  }
+
+  // How far a side stands toward winning: its victory closeness minus its defeat closeness, in [-1, 1].
+  function battleObjectiveProgress(worldSnapshot = {}, rawObjectives = {}, side = 'team_player') {
+    const objectives = normalizeBattleObjectives(rawObjectives, worldSnapshot);
+    const unitIndex = buildObjectiveUnitIndex(worldSnapshot);
+    // Felling a whole team is what the damage features already value; counting it here again doubled the weight of
+    // every hit and crowded out setups (sample C1). Only the other kinds of condition add their own distance.
+    const counted = condition => !(['TEAM_INCAPACITATED', 'TEAM_DEAD'].includes(condition.type) && condition.scope === 'ALL');
+    const group = entry => {
+      const values = (entry?.conditions || []).filter(counted).map(condition => objectiveConditionCloseness(worldSnapshot, condition, unitIndex));
+      if (!values.length) return 0;
+      return entry.logic === 'ALL' ? values.reduce((sum, value) => sum + value, 0) / values.length : Math.max(...values);
+    };
+    const playerView = group(objectives.victory) - group(objectives.defeat);
+    return clamp(String(side || '').trim() === 'team_enemy' ? -playerView : playerView, -1, 1);
   }
 
   function evaluateBattleObjectivesCompact(worldSnapshot = {}, rawObjectives = {}, options = {}) {
@@ -4132,6 +4519,12 @@
   }
 
   function findPassiveReviveCandidate(unit = {}) {
+    if (unit && typeof unit === 'object' && frozenReviveCandidates.has(unit)) return frozenReviveCandidates.get(unit);
+    const found = findPassiveReviveCandidateUncached(unit);
+    if (unitFieldsFrozen(unit)) frozenReviveCandidates.set(unit, found);
+    return found;
+  }
+  function findPassiveReviveCandidateUncached(unit = {}) {
     const roots = Object.entries(unit || {})
       .filter(([key, value]) => /^(?:第\d+)?武魂|血脉之力|魂骨|装备|自创魂技|技能/.test(key) && value && typeof value === 'object')
       .map(([, value]) => value);
@@ -4450,7 +4843,7 @@
         const limitedIncomingWithout = productWithout(targetStates, target, source.sourceKey, state =>
           (Array.isArray(state?.战斗效果?.damage_reduction_limited) ? state.战斗效果.damage_reduction_limited : []).reduce((multiplier, entry) =>
             skillMatchesLimitedElements(effect, entry?.限定元素)
-              ? multiplier * Math.max(0, 1 - clamp(Number(entry?.数值 || 0), 0, 1))
+              ? multiplier * Math.max(0, 1 - clamp(Number(entry?.数值 || 0), -1, 1))
               : multiplier,
           1),
         );
@@ -4590,9 +4983,10 @@
         : multiplier,
       1,
     );
+    // 元素限定的承伤条目可以是负数（承伤增加，例如"受到伤害 +20%"限定火元素、灼烧）。原先限制在 [0, 1]，增伤一律被吞掉。
     const limitedIncomingMultiplier = limitedIncoming.reduce((multiplier, entry) =>
       skillMatchesLimitedElements(effect, entry?.限定元素)
-        ? multiplier * Math.max(0, 1 - clamp(Number(entry?.数值 || 0), 0, 1))
+        ? multiplier * Math.max(0, 1 - clamp(Number(entry?.数值 || 0), -1, 1))
         : multiplier,
       1,
     );
@@ -5250,7 +5644,7 @@
               Number(stateEffect?.dodge_penalty || 0),
               Number(stateEffect?.lock_level || 0),
             ), 0);
-    return settleHitProbability(
+    const probability = settleHitProbability(
       explicitValue,
       attackAgility,
       targetAgility,
@@ -5258,6 +5652,8 @@
       targetAvoidanceAdjustment,
       environmentContext,
     );
+    if (String(explicitValue ?? '').trim() !== '') return probability;
+    return hitAgainstAttackOpening(probability, targetProfile ? Number(targetProfile.incomingAttackOpening || 0) : attackOpeningOf(target));
   }
 
   function estimateHitProbabilityAttribution(
@@ -5329,7 +5725,7 @@
           Number(combatEffect?.lock_level || 0),
         );
       }, 0);
-      const probabilityWithout = settleHitProbability(
+      const settledWithout = settleHitProbability(
         effect?.命中概率 ?? effect?.触发概率,
         attackAgilityWithout,
         targetAgilityWithout,
@@ -5337,6 +5733,8 @@
         avoidanceWithout,
         environmentContext,
       );
+      const probabilityWithout = String(effect?.命中概率 ?? effect?.触发概率 ?? '').trim() !== ''
+        ? settledWithout : hitAgainstAttackOpening(settledWithout, attackOpeningOf(target));
       return Object.freeze({
         applicationId: source.applicationId,
         sourceActionId: source.sourceActionId,
@@ -5408,14 +5806,58 @@
       .find(consumer => consumer && typeof consumer.编译角色装备被动消费者_V1 === 'function') || null;
   }
 
+  // What the item consumer's 编译角色装备被动消费者_V1 reads: the equipment objects, and the identity fields its
+  // equipment requirements (装备要求满足_V1) compare. Overlay copies share the equipment objects by reference.
+  const EQUIPMENT_PASSIVE_UNIT_FIELDS = Object.freeze(['装备', '已装备', '装备栏', '魂骨', '血脉之力', 'id', 'name', '名称', '类型',
+    '单位类型', '种族', '阵营', '系别', '武魂', '武魂类型', '血脉', '天赋', '天赋梯队', '描述', '摘要']);
+  const EQUIPMENT_PASSIVE_ATTRIBUTE_FIELDS = Object.freeze(['武魂', '武魂类型', '血脉', '天赋', '天赋梯队', '类型', '单位类型', '种族', '阵营', '系别']);
+
+  function equipmentPassiveSignature(unit = {}) {
+    const attribute = unit?.属性 && typeof unit.属性 === 'object' && !Array.isArray(unit.属性) ? unit.属性 : null;
+    return [
+      ...EQUIPMENT_PASSIVE_UNIT_FIELDS.map(field => unit?.[field]),
+      unit?.血脉之力?.血脉, unit?.血脉?.血脉, !!attribute,
+      ...EQUIPMENT_PASSIVE_ATTRIBUTE_FIELDS.map(field => attribute?.[field]),
+    ];
+  }
+
+  // The compiled package (and the skills it lists) per projection origin, reused while every input above is the same
+  // value or object; equipment that changes is a new object, so a changed loadout compiles again.
+  function equipmentPassiveSkillPackage(unit = {}) {
+    const consumer = itemPassiveConsumer();
+    if (!consumer) return null;
+    const origin = overlayOriginUnit(unit) || unit;
+    const signature = equipmentPassiveSignature(unit);
+    const cached = equipmentPassivePackageCache.get(origin);
+    if (cached && cached.signature.every((value, index) => Object.is(value, signature[index]))) return cached.value;
+    const equipmentPackage = consumer.编译角色装备被动消费者_V1(unit);
+    const value = {
+      package: equipmentPackage,
+      skills: Array.isArray(equipmentPackage?.技能条目)
+        ? equipmentPackage.技能条目.map(entry => entry?.技能).filter(skill => skill && typeof skill === 'object')
+        : [],
+    };
+    equipmentPassivePackageCache.set(origin, { signature, value });
+    return value;
+  }
+
+  // A unit frozen with its own fields cannot change: its passive collection (and revival passive) stands for every later
+  // call — most calls read a frozen unit of the decision world again.
+  const unitFieldsFrozen = unit => !!unit && typeof unit === 'object' && Object.isFrozen(unit) &&
+    Object.values(unit).every(value => !value || typeof value !== 'object' || Object.isFrozen(value));
+  const frozenPassiveSkills = new WeakMap(), frozenReviveCandidates = new WeakMap();
   function collectPassiveSkills(unit = {}) {
-    const equipmentPackage = itemPassiveConsumer()?.编译角色装备被动消费者_V1(unit);
+    const hit = unit && typeof unit === 'object' ? frozenPassiveSkills.get(unit) : undefined;
+    if (hit) return hit;
+    const output = collectPassiveSkillsUncached(unit);
+    if (unitFieldsFrozen(unit)) frozenPassiveSkills.set(unit, output);
+    return output;
+  }
+  function collectPassiveSkillsUncached(unit = {}) {
     const runtimeSkills = Array.isArray(unit?.__battleRuntime?.itemPassiveTriggeredSkills)
       ? unit.__battleRuntime.itemPassiveTriggeredSkills
       : [];
-    const equipmentSkills = Array.isArray(equipmentPackage?.技能条目)
-      ? equipmentPackage.技能条目.map(entry => entry?.技能).filter(skill => skill && typeof skill === 'object')
-      : [];
+    const equipmentSkills = equipmentPassiveSkillPackage(unit)?.skills || [];
     const roots = [
       ...(Array.isArray(unit?.技能列表) ? [unit.技能列表] : []),
       ...(runtimeSkills.length ? [runtimeSkills] : []),
@@ -5427,7 +5869,8 @@
         )
         .map(([, value]) => value),
     ];
-    const cacheKey = !runtimeSkills.length && !equipmentSkills.length
+    // The equipment skills array is the cached package's own, so its identity and length stand for its content.
+    const cacheKey = !runtimeSkills.length
       ? overlayOriginUnit(unit) || unit
       : null;
     const rootSignature = cacheKey
@@ -5767,6 +6210,9 @@
           options?.triggerEventId,
         );
         const applicationKey = `passive:${stableHash(applicationIdentity)}`;
+        // One activation of the skill = every payload of the same trigger (R01 compares casts, not effects).
+        const { effectId: _effectId, effectIndex: _effectIndex, effectHash: _effectHash, ...activationIdentity } = applicationIdentity;
+        const activationKey = `passive-activation:${stableHash(activationIdentity)}`;
         const marker = passiveApplicationMap(unit)[applicationKey];
         const markerCount = Math.max(0, Number(marker?.count || 0));
         const limitReady = profile.limit
@@ -5799,6 +6245,7 @@
           currentRound,
           applicationKey,
           applicationIdentity,
+          activationKey,
           targetIds: Object.freeze(targetIds),
           ready: sourceReady && (profile.supported || Boolean(implicitTriggerPhase && profile.unsupportedReason === 'TRIGGER_MISSING')) && phaseReady && eventReady && conditionReady && limitReady && targetIds.length > 0,
           sourceReady,
@@ -7053,6 +7500,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
 
   function effectTargetsAllies(effect = {}) {
     const prototype = String(effect?.原型 || '').trim();
+    // A food's second-portion backlash hurts the eater, an ally or itself; its negative value is not a hostile effect.
+    if (effect?.__造物反噬 === true) return true;
     if (prototype === '资源转移') {
       const mode = String(effect?.资源转移方式 || '').trim();
       if (mode === '吞噬') return false;
@@ -7091,12 +7540,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     if (prototype === '状态移除') return /负面|减益|控制|异常/.test(String(effect?.状态 || effect?.状态名称 || ''));
     if (prototype === '状态施加') {
-      const type = String(effect?.类型 || '').trim().toLowerCase();
-      if (type === 'buff') return true;
-      if (type === 'debuff') return false;
-      const state = String(effect?.状态 || effect?.状态名称 || '').trim();
-      if (/迟缓|僵直|眩晕|昏迷|中毒|灼烧|虚弱|禁锢|束缚|沉默|缴械|致盲|标记|减速|索敌干扰|禁疗|治疗反转/.test(state)) return false;
-      if (/护盾|恢复|治疗|增幅|强化|免疫|无视异常|霸体|加速/.test(state)) return true;
+      // The side follows the one polarity table (statePolarity → the skill library's 状态施加分类); a value's sign
+      // is a magnitude, not a direction, so it only decides states that table does not know.
+      const polarity = statePolarity(effect);
+      if (polarity !== 0) return polarity > 0;
       const combatEffect = deriveStateCombatEffect(effect);
       if (combatEffect.skip_turn === true || combatEffect.cannot_act === true ||
         Number(combatEffect.dodge_penalty || 0) > 0 || Number(combatEffect.reaction_penalty || 0) > 0 ||
@@ -7288,8 +7735,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return effectEntries.length > 0;
   }
 
+  // 受伤同步扣体力（用户 2026-11-09："受伤同步扣体力"）：生命每少掉上限的一个比例，体力就扣掉同样比例的体力上限；
+  // 两个上限仍各自独立（D3），回血不回体力。生命只剩一点的人，体力也所剩无几，进攻和闪避都付不起。
+  // The runtime's writeCombatResource applies the same rule; each writer prices the loss against the unit's current
+  // life, so a loss already written by one is not charged again by the other.
   function setHp(unit, hp) {
-    const next = clamp(hp, 0, readHpMax(unit));
+    const before = readHp(unit), maximum = readHpMax(unit);
+    const next = clamp(hp, 0, maximum);
+    if (next < before && readResourceMax(unit, '体力') > 0)
+      setResource(unit, '体力', readResource(unit, '体力') - (before - next) / Math.max(1, maximum) * readResourceMax(unit, '体力'));
     if ('hp' in unit || !('HP' in unit)) unit.hp = next;
     if ('HP' in unit) unit.HP = next;
     if (unit.属性 && typeof unit.属性 === 'object') {
@@ -7301,13 +7755,28 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (next <= 0) clearC2FoodMaintenanceRuntime(unit);
   }
 
+  // 资源低位砍体力（用户 2026-11-10）：一场战斗里魂力、精神力各自第一次从上限 10% 以上跌到 10% 以下时，当前剩余体力减半；
+  // 两种都跌破就各砍一次，原因不论（消耗、抽取、燃烧），之后回升再跌不再触发。标记在 __battleRuntime.lowResourceStaminaCut，
+  // 运行时 writeCombatResource 用同一标记与口径。
+  const LOW_RESOURCE_STAMINA_RATIO = 0.1;
+  function applyLowResourceStaminaCut(unit, label, before, after, maximum) {
+    if (!(maximum > 0) || !(before >= maximum * LOW_RESOURCE_STAMINA_RATIO) || !(after < maximum * LOW_RESOURCE_STAMINA_RATIO)) return;
+    const runtime = unit.__battleRuntime && typeof unit.__battleRuntime === 'object' ? unit.__battleRuntime : {};
+    if (runtime.lowResourceStaminaCut?.[label] === true) return;
+    unit.__battleRuntime = { ...runtime, lowResourceStaminaCut: { ...(runtime.lowResourceStaminaCut || {}), [label]: true } };
+    setResource(unit, '体力', readResource(unit, '体力') * 0.5);
+  }
+
   function setResource(unit, resource, value) {
     const next = clamp(value, 0, readResourceMax(unit, resource));
     const mapping = /精神/.test(resource) ? ['men', '精神力'] : /体力/.test(resource) ? ['vit', '体力'] : ['sp', '魂力'];
+    const fuel = mapping[0] !== 'vit';
+    const before = fuel ? readResource(unit, mapping[1]) : 0;
     if (mapping[0] in unit || !(mapping[1] in unit)) unit[mapping[0]] = next;
     if (/体力/.test(resource) && 'sta' in unit) unit.sta = next;
     if (unit.属性 && typeof unit.属性 === 'object') unit.属性[mapping[1]] = next;
     if (/体力/.test(resource)) refreshStaminaAdjustedFinal(unit);
+    if (fuel) applyLowResourceStaminaCut(unit, mapping[1], before, next, readResourceMax(unit, mapping[1]));
   }
 
   function setResourceValue(unit, resource, value, preserveSurvivalFlag = false) {
@@ -7344,7 +7813,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const signedValue = ['判定修正', '结算修正'].includes(prototype) && String(effect?.数值 ?? '').includes('%')
       ? parsedValue : clamp(parsedValue, -1, 1);
     const magnitude = Math.abs(signedValue);
-    const secondaryMagnitude = Math.abs(parseSignedValue(effect?.副数值, 0));
+    // 副数值按基数 1 解析：原先基数 0 让"-8%"这类百分比副数值一律读成 0（迟缓的反应惩罚因此只能退回主数值）。
+    const secondaryMagnitude = Math.abs(parseSignedValue(effect?.副数值, 1));
     const limitedElements = normalizedElementTokens(effect?.限定元素);
     const limitedResource = String(effect?.限定资源 || effect?.资源 || '').trim();
     if (prototype === '判定修正' && magnitude > 0) {
@@ -7455,6 +7925,25 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     if (/中毒|流血|灼烧|冻伤|持续创伤/.test(state)) {
       combatEffect.dot_damage_ratio = Math.max(Number(combatEffect.dot_damage_ratio || 0), magnitude);
+      // C1（用户 2026-11-09 "先分化效果再放进生成"）：五种持续伤害的副效果按技能描述（转译状态施加数值说明_V1）落地，
+      // 原先只结算每回合掉血，副数值一律不读，五种效果完全相同。
+      //   中毒 命中率 −5%｜流血 受到伤害 +5%｜灼烧 火元素承伤 +20%｜冻伤 冰元素承伤 +20%｜持续创伤 反应 −5%
+      const dotSecondary = (fallback) => secondaryMagnitude || fallback;
+      if (/中毒/.test(state)) combatEffect.hit_penalty = Math.max(Number(combatEffect.hit_penalty || 0), dotSecondary(0.05));
+      else if (/流血/.test(state)) combatEffect.received_damage_mult = Math.max(0, Number(combatEffect.received_damage_mult || 1) * (1 + dotSecondary(0.05)));
+      else if (/灼烧|冻伤/.test(state)) {
+        combatEffect.damage_reduction_limited = [
+          ...(Array.isArray(combatEffect.damage_reduction_limited) ? combatEffect.damage_reduction_limited : []),
+          { 限定元素: /灼烧/.test(state) ? ['火'] : ['冰'], 数值: -dotSecondary(0.2) },
+        ];
+      } else if (/持续创伤/.test(state)) combatEffect.reaction_penalty = Math.max(Number(combatEffect.reaction_penalty || 0), dotSecondary(0.05));
+    }
+    // 资源燃烧：技能描述"每回合燃烧魂力{数值}，技能消耗{副数值}"（生成侧固定燃烧魂力）。原先只有暗冰侵蚀接了每回合资源结算，
+    // 资源燃烧落地后什么都不做（第一轮样本 3 次施加、0 次燃烧）。
+    if (/资源燃烧/.test(state)) {
+      combatEffect.resource_tick_resource = '魂力';
+      combatEffect.resource_tick_ratio = -magnitude;
+      combatEffect.cost_delta_ratio = Math.max(Number(combatEffect.cost_delta_ratio || 0), secondaryMagnitude || 0.05);
     }
     if (/暗冰侵蚀/.test(state)) {
       const resource = Array.isArray(effect?.资源) ? effect.资源[0] : effect?.资源;
@@ -7531,6 +8020,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       combatEffect.blind = true;
       // 致盲是无可填强度的固定状态；设计台正式说明为攻击命中下降35%。
       combatEffect.hit_penalty = Math.max(Number(combatEffect.hit_penalty || 0), 0.35);
+    }
+    // 混乱、精神紊乱由状态施加打出时原先没有任何战斗效果（只有副作用形态有），在战斗里什么也不做（2026-11-09 复跑查出）。
+    // 按技能描述（转译状态施加数值说明_V1）落地：数值 = 偏转目标概率；混乱副数值 = 命中下降，精神紊乱副数值 = 反应下降。
+    if (/混乱/.test(state)) {
+      combatEffect.random_target_rate = Math.max(Number(combatEffect.random_target_rate || 0), magnitude || 0.4);
+      combatEffect.hit_penalty = Math.max(Number(combatEffect.hit_penalty || 0), secondaryMagnitude || 0.1);
+    }
+    if (/精神紊乱/.test(state)) {
+      combatEffect.random_target_rate = Math.max(Number(combatEffect.random_target_rate || 0), magnitude || 0.25);
+      combatEffect.reaction_penalty = Math.max(Number(combatEffect.reaction_penalty || 0), secondaryMagnitude || 0.08);
     }
     return combatEffect;
   }
@@ -8262,19 +8761,78 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ? `本人辅助:${JSON.stringify([source.actorId, source.actionId, source.effectId])}` : '';
   }
 
-  function findStateEntry(unit = {}, effect = {}, source = {}) {
+  // D1 (用户 2026-11-09 "各自独立，数值相加"): same-name states from different sources are separate instances, each with
+  // its own timer, and their values add. A source is the caster and the skill that applied the state (side effects: the
+  // skill whose backlash it is). A held state or an application that names no source still merges by name.
+  function stateApplicationSourceNames(actor = {}, declaration = {}, effect = {}) {
+    const skill = declaration?.skill || {};
+    // R01 compares the cast that applied a state, as the runtime does.
+    return { 来源角色: unitName(actor || {}), 来源技能: String(effect?.__来源技能 || skill.魂技名 || skill.name || skill.技能名 || '').trim() };
+  }
+
+  function incomingStateSource(effect = {}, source = {}) {
+    return { actorId: String(source?.actorId || '').trim(), actor: String(effect?.来源角色 || '').trim(), skill: String(effect?.来源技能 || '').trim() };
+  }
+
+  function stateSourceRelation(state = {}, incoming = {}) {
+    const heldActorId = String(state?.sourceActorId || '').trim();
+    if (heldActorId && incoming.actorId && heldActorId !== incoming.actorId) return 'OTHER';
+    if (state?.副作用实例 === true) return 'OTHER';
+    const actor = String(state?.来源角色 || '').trim(), skill = String(state?.来源技能 || '').trim();
+    if (!actor || !skill || !incoming.actor || !incoming.skill) return '';
+    return actor === incoming.actor && skill === incoming.skill ? 'SAME' : 'OTHER';
+  }
+
+  // The D1 instance identity of one source's application of a state; also its committed storage key.
+  function stateInstanceId(effect = {}, incoming = {}) {
+    return `来源实例:${JSON.stringify([effectStateName(effect), incoming.actorId || incoming.actor, incoming.skill])}`;
+  }
+
+  function sameNameStateEntries(unit = {}, effect = {}, source = {}) {
     const wanted = effectStateName(effect);
     const wantedUnit = settlementModifierUnit(effect);
-    const ownIdentity = ownAttributeStateIdentity(unit, effect, source);
-    return stateEntries(unit).find(([, state]) => {
-      if (ownIdentity) return state.状态ID === ownIdentity;
-      if (source.foreignStateId) return state.状态ID === source.foreignStateId;
+    return stateEntries(unit).filter(([, state]) => {
       if (stateName(state) !== wanted) return false;
       if (effect.原型 === '属性修正' && statePolarity(effect) > 0 && source.actorId &&
           state.状态ID && state.sourceActorId === unitId(unit)) return false;
       const existingUnit = wantedUnit && settlementModifierUnit(state);
       return !existingUnit || existingUnit === wantedUnit;
-    }) || null;
+    });
+  }
+
+  function findStateEntry(unit = {}, effect = {}, source = {}) {
+    const ownIdentity = ownAttributeStateIdentity(unit, effect, source);
+    if (ownIdentity) return stateEntries(unit).find(([, state]) => state.状态ID === ownIdentity) || null;
+    if (source.foreignStateId) return stateEntries(unit).find(([, state]) => state.状态ID === source.foreignStateId) || null;
+    const incoming = incomingStateSource(effect, source), candidates = sameNameStateEntries(unit, effect, source);
+    // Instance carriers (a 状态ID, a side effect) are reached only by their own source; a 来源实例 key names its source.
+    const instanceId = incoming.skill && (incoming.actorId || incoming.actor) ? stateInstanceId(effect, incoming) : '';
+    return (instanceId && candidates.find(([, state]) => state.状态ID === instanceId)) ||
+      candidates.find(([, state]) => stateSourceRelation(state, incoming) === 'SAME') ||
+      candidates.find(([, state]) => !state.状态ID && stateSourceRelation(state, incoming) === '') || null;
+  }
+
+  // D1: where a state application lands: its own source's instance, else its own 来源实例 key beside another source,
+  // else the plain name. Refused (R02) returns no key.
+  function sourcedStateKey(unit = {}, effect = {}, source = {}) {
+    const existing = findStateEntry(unit, effect, source);
+    if (existing) return { key: existing[0], existing, stateId: '', refused: false };
+    const slot = newStateInstanceSlot(unit, effect, source);
+    return { key: slot.refused ? '' : slot.stateId || effectStateName(effect), existing: null, stateId: slot.stateId, refused: slot.refused };
+  }
+
+  // D1: a new application whose source holds no instance yet. Beside another source's instance it gets its own 状态ID,
+  // which is also its committed storage key; R02 refuses a fourth other-caster source of one state.
+  function newStateInstanceSlot(unit = {}, effect = {}, source = {}) {
+    const incoming = incomingStateSource(effect, source), others = sameNameStateEntries(unit, effect, source);
+    if (!others.length || !incoming.skill || !(incoming.actorId || incoming.actor)) return { stateId: '', refused: false };
+    const fromOther = state => String(state?.sourceActorId || '').trim()
+      ? String(state.sourceActorId).trim() !== unitId(unit) : String(state?.来源角色 || '').trim() && String(state.来源角色).trim() !== unitName(unit);
+    const incomingOther = incoming.actorId ? incoming.actorId !== unitId(unit) : incoming.actor !== unitName(unit);
+    const otherSources = new Set(others.filter(([, state]) => state?.副作用实例 !== true && fromOther(state) &&
+      Number(state.duration ?? state.持续回合 ?? 0) > 0).map(([, state]) => JSON.stringify([state.sourceActorId || state.来源角色, state.来源技能])));
+    return { stateId: stateInstanceId(effect, incoming),
+      refused: incomingOther && otherSources.size >= 3 };
   }
 
   function delayedStateRegistration(effect = {}, context = {}) {
@@ -8303,6 +8861,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         state?.延迟效果 === true && state.sourceEffectId === event.effectInstanceId));
   }
 
+  // R01: the same caster's same skill, still active on the target, is not applied again by a later cast — no refresh,
+  // no stack (effects of one cast still merge).
+  function sameSkillStillActive(existing = {}, effect = {}) {
+    const sourceSkill = String(effect?.来源技能 || '').trim(), sourceActor = String(effect?.来源角色 || '').trim();
+    return Boolean(sourceSkill && sourceActor && String(existing?.来源技能 || '').trim() === sourceSkill &&
+      String(existing?.来源角色 || '').trim() === sourceActor &&
+      castIdentity(existing?.来源动作ID) !== castIdentity(effect?.来源动作ID) &&
+      Number(existing?.duration ?? existing?.持续回合 ?? 0) > 0);
+  }
+
   function addState(unit, effect, effectId, onReplace = null, sourceActionId = '', source = {}) {
     const stateName = effectStateName(effect);
     const polarity = statePolarity(effect);
@@ -8316,6 +8884,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const stackable = effect?.可叠加 === true || /叠加|层数/.test(String(effect?.叠加规则 || effect?.层数规则 || ''));
     const requestedDuration = Math.max(1, Number(effect?.持续回合 || 1));
     const lockRules = resourceLockRules(effect);
+    const sourceSkill = String(effect?.来源技能 || '').trim();
+    if (existingEntry && sameSkillStillActive(existingEntry[1], effect)) return false;
     if (existingEntry && !stackable && String(effect?.原型 || '').trim() !== '状态施加') {
       const [key, existing] = existingEntry;
       const existingDuration = Math.max(0, Number(existing?.duration ?? existing?.持续回合 ?? 0));
@@ -8329,6 +8899,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         ...existing,
         duration: Math.max(existingDuration, requestedDuration),
         来源角色: String(effect?.来源角色 || existing?.来源角色 || '').trim(),
+        ...(sourceSkill ? { 来源技能: sourceSkill, 来源动作ID: String(effect?.来源动作ID || '').trim() } : {}),
         数值: effect?.数值 ?? existing?.数值,
         强度: effect?.强度 ?? existing?.强度,
         ...(effect?.对应等级 !== undefined ? { 对应等级: Number(effect.对应等级) } : {}),
@@ -8345,16 +8916,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       };
       return true;
     }
+    const slot = existingEntry || ownIdentity || source.foreignStateId ? { stateId: '', refused: false } : newStateInstanceSlot(unit, effect, source);
+    if (slot.refused) return false;
+    const instanceId = ownIdentity || source.foreignStateId || slot.stateId;
     const nextState = {
       状态: stateName,
       状态名称: stateName,
-      ...(ownIdentity || source.foreignStateId ? { 状态ID: ownIdentity || source.foreignStateId } : {}),
+      ...(instanceId ? { 状态ID: instanceId } : {}),
       ...(effect.原型 === '属性修正' && source.actorId ? { sourceActorId: source.actorId } : {}),
       ...((ownIdentity || source.foreignStateId) && source.skillId ? { sourceSkillId: source.skillId } : {}),
       类型: polarity < 0 ? 'debuff' : polarity > 0 ? 'buff' : '',
       原型: String(effect?.原型 || '').trim(),
       ...(String(effect?.原型 || '').trim() === '状态施加' ? { 层数: 1 } : {}),
       来源角色: String(effect?.来源角色 || '').trim(),
+      ...(sourceSkill ? { 来源技能: sourceSkill, 来源动作ID: String(effect?.来源动作ID || '').trim() } : {}),
       判定: String(effect?.判定 || '').trim(),
       结算: String(effect?.结算 || '').trim(),
       限定元素: cloneValue(effect?.限定元素 ?? ''),
@@ -8736,7 +9311,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const name = stateName(state);
     const semantics = root.__LWCS_SKILL_COST_HELPERS_V1__;
     if (semantics.读取状态施加分类_V1(name)) return semantics.状态施加是否负面语义_V1(name) ? -1 : 1;
-    if (/中毒|流血|灼烧|冻伤|暗冰侵蚀|眩晕|麻痹|僵直|定身|冻结|星光停滞|沉默|封技|禁疗|迟缓|减速|致盲|混乱|嘲讽|精神紊乱|标记|束缚|禁锢|缴械|虚弱/.test(name)) return -1;
+    if (/中毒|流血|灼烧|冻伤|暗冰侵蚀|眩晕|昏迷|麻痹|僵直|定身|冻结|星光停滞|沉默|封技|禁疗|治疗反转|迟缓|减速|致盲|混乱|嘲讽|精神紊乱|标记|束缚|禁锢|缴械|虚弱|索敌干扰/.test(name)) return -1;
     if (/护盾|恢复|治疗|增幅|强化|免疫|无视异常|霸体|加速|隐匿|隐身/.test(name)) return 1;
     return 0;
   }
@@ -8791,7 +9366,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (!removed.length) return removed;
     const keys = new Set(removed.map(([key]) => key));
     replaceStates(unit, stateEntries(unit).filter(([key]) => !keys.has(key)));
-    unit.final = { ...unit.final, ...buildNumericCombatStats(unit, worldTick) };
+    unit.final = { ...unit.final, ...buildNumericCombatStats(unit, worldTick) }; syncStaminaMaxGain(unit);
     return removed;
   }
 
@@ -9090,6 +9665,21 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
   }
 
+  // R01: a skill's state that is still active on the target cannot be applied again (no refresh, no extra charges).
+  // R02: different skills of the same kind stack — up to 3 from other casters, without limit from the target itself.
+  // A state remembers which caster's skill applied it as 来源技能键 = "<actorId>|<skill name>".
+  // One cast settles each effect under "<cast id>:effect:<index>…"; R01 compares casts, so the effect suffix is dropped.
+  function castIdentity(actionId = '') {
+    return String(actionId || '').split(':effect:')[0].trim();
+  }
+
+  function stateSourceKey(context = {}, effect = {}) {
+    const actorId = unitId(context?.actor || {});
+    const skill = context?.declaration?.skill || {};
+    const skillName = String(effect?.__来源技能 || skill?.魂技名 || skill?.技能名 || skill?.name || '').trim();
+    return actorId && skillName ? `${actorId}|${skillName}` : '';
+  }
+
   function rulePrototypeState(effect = {}, prototype = '', context = {}) {
     const duration = Math.max(1, Number(effect?.持续回合 || 1));
     const rule = String(effect?.规则 || effect?.防御对象 || '').trim();
@@ -9118,6 +9708,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       duration,
       来源原型摘要: prototype,
       来源动作ID: String(context?.rootActionId || '').trim(),
+      ...(stateSourceKey(context, effect) ? { 来源技能键: stateSourceKey(context, effect) } : {}),
       规则: rule,
       防御对象: String(effect?.防御对象 || '').trim(),
       战斗效果: combatEffect,
@@ -9133,16 +9724,32 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   function applyProjectedRuleState(unit, effect, prototype, context) {
     const state = rulePrototypeState(effect, prototype, context);
     unit.状态效果 ||= {};
-    const existingEntry = stateEntries(unit).find(([, existing]) => stateName(existing) === stateName(state));
+    const sourceKey = String(state.来源技能键 || '').trim();
+    const sourcesOf = existing => Array.isArray(existing.来源技能键列表) ? existing.来源技能键列表 : existing.来源技能键 ? [existing.来源技能键] : [];
+    const sameName = stateEntries(unit).filter(([, existing]) => stateName(existing) === stateName(state));
+    // D1: a rule state belongs to its source (施放者 + 技能). The same source's instance takes the same cast's further
+    // effects, and refuses another cast while active (R01); another source gets its own instance with its own timer —
+    // block and death-save counts are read across instances, so they add — and a fourth other-caster source is refused (R02).
+    const existingEntry = sameName.find(([, existing]) => sourceKey ? sourcesOf(existing).includes(sourceKey) : !sourcesOf(existing).length) ||
+      (!sourceKey && sameName[0]) || null;
     if (!existingEntry) {
+      if (sameName.length && sourceKey) {
+        const otherCasters = new Set(sameName.flatMap(([, existing]) => sourcesOf(existing)).filter(key => key.split('|')[0] !== unitId(unit)));
+        if (sourceKey.split('|')[0] !== unitId(unit) && otherCasters.size >= 3) return '';
+        const split = sourceKey.indexOf('|');
+        state.状态ID = `来源实例:${JSON.stringify([stateName(state), sourceKey.slice(0, split), sourceKey.slice(split + 1)])}`;
+      }
       state.__本回合新附加 = true;
       unit.状态效果[`preview:${context.effectInstanceId}:${prototype}`] = state;
       return stateName(state);
     }
     const [stateKey, existing] = existingEntry;
+    const sources = sourcesOf(existing);
+    if (sourceKey && sources.includes(sourceKey) && castIdentity(existing.来源动作ID) !== castIdentity(state.来源动作ID)) return '';
     const previousEffects = existing.战斗效果 || {}, nextEffects = state.战斗效果 || {};
     unit.状态效果[stateKey] = {
       ...existing, ...state,
+      来源技能键列表: [...sources, sourceKey].filter(Boolean),
       duration: Math.max(Number(existing.duration ?? existing.持续回合 ?? 0), Number(state.duration ?? state.持续回合 ?? 1)),
       战斗效果: {
         ...previousEffects, ...nextEffects,
@@ -9156,6 +9763,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const target = eligibleTargets[0];
     if (!target) return 0;
     const transaction = overlay.fork(), moves = [];
+    // An equipment / soul-bone passive belongs to its item: the passive sync re-adds it to the owner and removes any copy
+    // elsewhere every round, so moving it does nothing — and its permanent duration (1,000,000) overflowed the source
+    // window when it was moved (2026-11-10, 2v2 敏攻系65 mirror: 空明魔豹左腿骨 · 空明疾行).
+    const movable = ([, state]) => state?.__equipmentPassiveState !== true;
     if (effect.原型 === '状态转移') {
       const selectedIds = eligibleTargets.map(unitId);
       const failedIds = new Set(targets.map(unitId).filter(id => !selectedIds.includes(id)));
@@ -9172,15 +9783,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       for (const sourceId of sources) {
         const destinationId = destinations.find(id => id !== sourceId);
         if (!destinationId) continue;
-        for (const [key, state] of matchingStates(overlay.readUnit(sourceId), effect.状态 || '任意状态').filter(([key]) => key !== context.persistentStateKey).slice(0, Math.max(0, limit - moves.length))) {
+        for (const [key, state] of matchingStates(overlay.readUnit(sourceId), effect.状态 || '任意状态').filter(([key]) => key !== context.persistentStateKey).filter(movable).slice(0, Math.max(0, limit - moves.length))) {
           moves.push({ sourceId, destinationId, key, state });
         }
         if (moves.length >= limit) break;
       }
     } else {
       if (unitId(actor) === unitId(target)) return 0;
-      const negative = matchingStates(overlay.readUnit(unitId(actor)), effect.状态 || '任意负面').filter(([, state]) => statePolarity(state) < 0);
-      const positive = matchingStates(overlay.readUnit(unitId(target)), '任意增益');
+      const negative = matchingStates(overlay.readUnit(unitId(actor)), effect.状态 || '任意负面').filter(([, state]) => statePolarity(state) < 0).filter(movable);
+      const positive = matchingStates(overlay.readUnit(unitId(target)), '任意增益').filter(movable);
       if (negative.length && positive.length) moves.push({ sourceId: unitId(actor), destinationId: unitId(target), key: negative[0][0], state: negative[0][1] },
         { sourceId: unitId(target), destinationId: unitId(actor), key: positive[0][0], state: positive[0][1] });
     }
@@ -9202,7 +9813,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     for (const id of new Set([...removedByUnit.keys(), ...addedByUnit.keys()])) transaction.changeUnit(id, unit => {
       replaceStates(unit, [...stateEntries(unit).filter(([key]) => !removedByUnit.get(id)?.has(key)), ...(addedByUnit.get(id) || [])]);
-      unit.final = { ...unit.final, ...buildNumericCombatStats(unit, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0)) };
+      unit.final = { ...unit.final, ...buildNumericCombatStats(unit, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0)) }; syncStaminaMaxGain(unit);
     });
     if (persistent) transaction.changeUnit(unitId(actor), unit => {
       unit.状态效果 = { ...(unit.状态效果 || {}), [persistent.key]: persistent.state };
@@ -9251,7 +9862,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       魂力上限: ['sp_max', '魂力上限'],
       精神力上限: ['men_max', '精神力上限'],
       体力上限: ['vit_max', '体力上限'],
-      生命上限: ['vit_max', '体力上限'],
+      生命上限: ['hp_max', '生命上限'],
   });
 
   function applyForeignAttributeModifier(unit, effect, source, currentTick = 0) {
@@ -9271,7 +9882,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const foreignStateId = existing?.[1]?.状态ID || `外来辅助:${JSON.stringify([source.skillId, axis])}`;
       const axisSource = { ...source, foreignStateId }, axisEffect = { ...effect, 属性: attribute };
       const skills = new Set(candidates.map(([, state]) => state.sourceSkillId));
-      if (!existing && !skills.has(source.skillId) && skills.size >= 2) { blockedAttributes.push(attribute); continue; }
+      if (existing) { blockedAttributes.push(attribute); continue; }
+      if (!skills.has(source.skillId) && skills.size >= 3) { blockedAttributes.push(attribute); continue; }
       const oldDuration = Math.max(0, Number(existing?.[1]?.duration ?? existing?.[1]?.持续回合 ?? 0));
       const applied = addState(unit, axisEffect, source.effectId, null, '', axisSource);
       if (!applied) continue;
@@ -9298,6 +9910,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       .filter(Boolean);
     const valueOf = attribute => {
       const keys = aliases[attribute] || [attribute];
+      if (keys[0] === 'hp_max') return readHpMax(unit);
       if (['sp_max', 'men_max', 'vit_max'].includes(keys[0])) {
         const resource = { sp_max: '魂力', men_max: '精神力', vit_max: '体力' }[keys[0]];
         return readResourceMax(unit, resource);
@@ -9322,7 +9935,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // Native keeps the modifier in its state and rebuilds all axes together.
     // Mutating base stats bypassed old layers/copied snapshots in later effects
     // and left the increase behind when that state was removed or expired.
-    unit.final = { ...unit.final, ...buildNumericCombatStats(unit, currentTick) };
+    unit.final = { ...unit.final, ...buildNumericCombatStats(unit, currentTick) }; syncStaminaMaxGain(unit);
     const changes = attributes.map((attribute, index) => {
       const current = before[index], next = valueOf(attribute);
       return { attribute, current, next, delta: next - current };
@@ -11446,7 +12059,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           let evidence;
           const sourceSkill = context.declaration?.skill || {};
           const attributeSource = { actorId: unitId(context.actor), actionId: context.rootActionId, effectId: context.effectInstanceId,
-            skillId: String(sourceSkill.id || sourceSkill.技能ID || sourceSkill.魂技ID || sourceSkill.name || sourceSkill.魂技名 || sourceSkill.技能名称 || '').trim() };
+            skillId: String(scaledEffect.__来源技能ID || sourceSkill.id || sourceSkill.技能ID || sourceSkill.魂技ID || sourceSkill.name || sourceSkill.魂技名 || sourceSkill.技能名称 || '').trim() };
           overlay.changeUnit(unitId(target), unit => {
             const foreign = applyForeignAttributeModifier(unit, scaledEffect, attributeSource, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0));
             if (foreign) {
@@ -11455,12 +12068,26 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 ...outcomeDependencyEvidence(context, unitId(target)), projectedEffect: cloneValue(effect) };
               return;
             }
-            const existing = findStateEntry(unit, scaledEffect, attributeSource);
+            // R01 compares casts, not effects: other effects of the same cast (appended branches) still apply.
+            const ownCastOf = state => { try { return castIdentity(JSON.parse(String(state.状态ID || '').slice('本人辅助:'.length))[1]); } catch { return ''; } };
+            if (scaledEffect.原型 === '属性修正' && attributeSource.skillId && unitId(unit) === attributeSource.actorId &&
+              stateEntries(unit).some(([, state]) => state.原型 === '属性修正' && state.sourceActorId === attributeSource.actorId &&
+                state.sourceSkillId === attributeSource.skillId && ownCastOf(state) !== castIdentity(attributeSource.actionId) &&
+                Number(state.duration ?? state.持续回合 ?? 0) > 0)) {
+              evidence = { ...buildEffectEvidence(scaledEffect, prototype, deriveStateCombatEffect(scaledEffect)), reason: 'SAME_SKILL_ACTIVE', marginal: false, changes: [],
+                applicationProbability, ownApplicationProbability: probabilityProfile.ownApplicationProbability, ...outcomeDependencyEvidence(context, unitId(target)), projectedEffect: cloneValue(effect) };
+              return;
+            }
+            const sourcedAttribute = ownAttributeStateIdentity(unit, scaledEffect, attributeSource) ? scaledEffect : { ...scaledEffect,
+              ...stateApplicationSourceNames(context.actor, context.declaration, scaledEffect), 来源动作ID: castIdentity(context?.declaration?.__castIdentity || context.rootActionId) };
+            const stateSourceNames = sourcedAttribute === scaledEffect ? null
+              : { 来源角色: sourcedAttribute.来源角色, 来源技能: sourcedAttribute.来源技能, 来源动作ID: sourcedAttribute.来源动作ID };
+            const existing = findStateEntry(unit, sourcedAttribute, attributeSource);
             const previousDuration = existing
               ? Math.max(0, Number(existing[1]?.duration ?? existing[1]?.持续回合 ?? 0))
               : 0;
             const requestedDuration = Math.max(1, Number(scaledEffect?.持续回合 || 1));
-            const marginal = addState(unit, scaledEffect, context.effectInstanceId, null, '', attributeSource);
+            const marginal = addState(unit, sourcedAttribute, context.effectInstanceId, null, '', attributeSource);
             evidence = existing
               ? {
                   ...buildEffectEvidence(scaledEffect, prototype, deriveStateCombatEffect(scaledEffect), {
@@ -11480,6 +12107,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                       : 0,
                     changes: [],
                   }),
+                  ...(stateSourceNames ? { stateSourceNames } : {}),
                 }
               : {
                   ...buildEffectEvidence(
@@ -11487,7 +12115,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                     prototype,
                     deriveStateCombatEffect(scaledEffect),
                   ),
-                  ...applyStatModifier(unit, scaledEffect, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0), attributeSource),
+                  ...applyStatModifier(unit, sourcedAttribute, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0), attributeSource),
+                  ...(stateSourceNames ? { stateSourceNames } : {}),
                   applicationProbability,
                   ownApplicationProbability:
                     probabilityProfile.ownApplicationProbability,
@@ -11707,15 +12336,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             return;
           }
           const currentTarget = overlay.readUnit(unitId(target));
-          const existingStateEntry = findStateEntry(currentTarget, effect);
+          const sourcedEffect = {
+            ...effect,
+            ...stateApplicationSourceNames(context?.actor, context?.declaration, effect),
+            // A passive's payloads of one trigger settle as separate declarations sharing one activation (__castIdentity).
+            来源动作ID: castIdentity(context?.declaration?.__castIdentity || context.rootActionId),
+          };
+          const existingStateEntry = findStateEntry(currentTarget, sourcedEffect);
           const existingState = existingStateEntry?.[1] || null;
           let marginal = false;
           let stateApplied = false;
           const replacedStates = [];
           overlay.changeUnit(unitId(target), unit => {
             marginal = addState(unit, {
-              ...effect,
-              来源角色: unitName(context?.actor || {}),
+              ...sourcedEffect,
               __previewApplicationProbability: effectiveApplicationProbability,
             }, context.effectInstanceId, (key, state) => replacedStates.push([key, state]), context.rootActionId);
             // Match the canonical before/after comparison used by Native facts;
@@ -11736,6 +12370,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               lockedRatio: clamp(Math.abs(parseSignedValue(effect?.数值, 1)), 0, 1),
             } : {}),
             ...(['位移执行', '判定修正', '结算修正', '状态施加', '决策干扰'].includes(prototype) ? { projectedEffect: cloneValue(effect) } : {}),
+            // D1: the operation graph replays the state with the same source the full preview used.
+            ...(sourcedEffect.来源技能 ? { stateSourceNames: { 来源角色: sourcedEffect.来源角色, 来源技能: sourcedEffect.来源技能, 来源动作ID: sourcedEffect.来源动作ID } } : {}),
             ...(prototype === '决策干扰' ? { interference: effect?.干扰 || '' } : {}),
             applicationProbability: effectiveApplicationProbability,
             ...(stateImmune ? { reason: 'TARGET_IMMUNE' } : {}),
@@ -11760,7 +12396,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             evidence: effectEvidence,
           });
           if (prototype === '状态施加') {
-            const possible = findStateEntry(target, effect);
+            const possible = findStateEntry(target, sourcedEffect);
             projectStateEndRisks(target, replacedStates, possible ? [possible] : [], overlay, ledger, context, effectiveApplicationProbability);
           }
           if (prototype === '决策干扰' && marginal && effectiveApplicationProbability > 0) overlay.schedule({
@@ -12094,7 +12730,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 `preview:${context.effectInstanceId}:机制抹消`,
               );
               suppressionAdded = suppression.suppressionAdded;
-              if (removedKeys.length) unit.final = { ...unit.final, ...buildNumericCombatStats(unit, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0)) };
+              if (removedKeys.length) { unit.final = { ...unit.final, ...buildNumericCombatStats(unit, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0)) }; syncStaminaMaxGain(unit); }
             } else {
               appliedStateName = applyProjectedRuleState(unit, effect, prototype, context) || '';
             }
@@ -13334,8 +13970,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       return false;
     }
     const existingEntry = findStateEntry(target, effect);
-    if (!existingEntry) return true;
+    if (!existingEntry) return !newStateInstanceSlot(target, effect).refused;
     const existing = existingEntry[1] || {};
+    if (sameSkillStillActive(existing, effect)) return false;
     if (String(effect?.原型 || '').trim() === '状态施加') {
       return root.__LWCS_BATTLE_RUNTIME__.mergeRuntimeCondition(existing, { duration: Math.max(1, Number(effect?.持续回合 || 1)) }, effect).applied;
     }
@@ -13450,6 +14087,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           evidence: Object.freeze({ resource, before, next, delta: next - before }),
         });
       });
+      const stamina = projectedActionStamina(worldSnapshot, actor, basis.declaration);
+      if (stamina) {
+        const before = readProjectedResource(actor, '体力');
+        const next = roundNumber(clamp(before - stamina.amount, 0, readResourceMax(actor, '体力')));
+        if (next < before) {
+          writeProjectedResource(actor, '体力', next);
+          changedUnitIds.add(unitId(actor));
+          addContribution(`${rootActionId}:stamina`, { targetId: unitId(actor), outcomeKind: 'RESOURCE_OPTION_CHANGED', windowId: 'ACTION_COST', expectedDelta: next - before,
+            evidence: Object.freeze({ resource: '体力', before, next, delta: next - before, source: 'ACTION_STAMINA', staminaNature: stamina.nature }) });
+        }
+      }
     }
     if (basis.actionKind === 'WITHDRAW') {
       const contest = buildWithdrawalContest(worldSnapshot, actor);
@@ -13733,6 +14381,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             );
           const projectedEffect = {
             ...effect,
+            // D1: the same source the full preview uses, so a different source's instance is not read as this one.
+            ...stateApplicationSourceNames(actor, basis.declaration, effect),
+            来源动作ID: castIdentity(basis.declaration?.__castIdentity || rootActionId),
             __previewApplicationProbability:
               applicationProbability,
           };
@@ -13751,7 +14402,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             1,
             Number(effect?.持续回合 || 1),
           );
-          const existingStateEntry = findStateEntry(target, effect);
+          const existingStateEntry = findStateEntry(target, projectedEffect);
           const existingState = existingStateEntry?.[1] || null;
           const applicationGroupKey = [
             basis.identity,
@@ -14163,6 +14814,28 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           evidence: { resource, before, next, delta: next - before, payerIndex, fusionKey: basis.declaration?.fusionKey || '' },
         });
       });
+      const staminaPayer = overlay.readUnit(actorId) || projectionContext?.unitById?.get(actorId) || findUnit(worldSnapshot, actorId);
+      const stamina = staminaPayer ? projectedActionStamina(worldSnapshot, staminaPayer, basis.declaration, id => overlay.readUnit(id) || findUnit(worldSnapshot, id)) : null;
+      if (stamina) {
+        const before = readResource(staminaPayer, '体力');
+        const next = roundNumber(clamp(before - stamina.amount, 0, readResourceMax(staminaPayer, '体力')));
+        if (next < before) {
+          overlay.setResource(actorId, '体力', next);
+          changedUnitIds.add(actorId);
+          ledger.addOutcome({ rootActionId, sourceActionId: rootActionId, actor: staminaPayer, declaration: basis.declaration, effectInstanceId: `${rootActionId}:stamina`,
+            targetId: actorId, outcomeKind: 'RESOURCE_OPTION_CHANGED', windowId: 'ACTION_COST', threatValue: 0,
+            evidence: { resource: '体力', before, next, delta: next - before, source: 'ACTION_STAMINA', staminaNature: stamina.nature } });
+        }
+      }
+      // A reaction (dodge, defense) is not the unit's next action: it neither clears nor leaves an opening.
+      const openingRole = String(input.actionRole || input.actionOpportunity?.role || basis.declaration?.actionRole || 'ACTIVE').trim().toUpperCase();
+      const openingActor = openingRole === 'REACTION' ? null : overlay.readUnit(actorId) || findUnit(worldSnapshot, actorId);
+      const opening = openingActor ? attackOpeningStrength(worldSnapshot, openingActor, basis.declaration,
+        id => overlay.readUnit(id) || findUnit(worldSnapshot, id)) : 0;
+      if (openingActor && (opening > 0 || attackOpeningOf(openingActor) > 0)) {
+        overlay.changeUnit(actorId, unit => setAttackOpening(unit, opening, rootActionId));
+        changedUnitIds.add(actorId);
+      }
     }
     const primarySuccessProbability = new Map();
     const primaryOutcomeKeyByTarget = new Map();
@@ -14532,7 +15205,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         String(input.actionRole || input.actionOpportunity?.role || basis.declaration.actionRole || '').trim().toUpperCase() !== 'STATE_TICK') {
       applyImmediateSideEffects(basis.declaration, basis.effects, actor, overlay, ledger, rootActionId, input);
     }
-    settleImmediateCooperativeSummons({
+    // input.skipCooperativeSummons: a caller that reads only the actor's own next options (the decision's runway
+    // successors) leaves its cooperative summons' immediate actions out.
+    if (input.skipCooperativeSummons !== true) settleImmediateCooperativeSummons({
       overlay,
       ledger,
       rootActionId,
@@ -14922,8 +15597,70 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
 
   // Resolve before inventory debit: the selected physical batch, not the
   // declaration snapshot or the batch that will become first after consumption.
+  // R03 (用户 2026-11-08): a created food (one with a maker) eaten while its first portion still acts on the eater is a
+  // second portion — half of every effect, under its own skill identity so R01 does not drop it (R02 limits still
+  // apply), plus a backlash on the eater: what a recovery skill of the food's COST would restore, in 精神力 for mental
+  // effects, 魂力 for soul-power effects and 生命 for the rest, and the same COST again in 体力.
+  // Only with the actual recipient known (preview and runtime), not while candidates are enumerated.
+  const SECOND_PORTION_SUFFIX = '·第二份';
+  function halveEffectValue(value) {
+    if (typeof value === 'number') return Math.round(value * 50) / 100;
+    if (typeof value !== 'string') return value;
+    return value.replace(/\d+(?:\.\d+)?/g, number => String(Math.round(Number(number) * 50) / 100));
+  }
+  function creationBacklashResource(effect = {}) {
+    const text = [effect.资源, effect.属性, effect.吸收资源].map(value => String(value || '')).join('|');
+    return /精神/.test(text) ? '精神力' : /魂力/.test(text) ? '魂力' : '生命';
+  }
+  function recoveryShareForCost(cost, resource, level) {
+    const helpers = root.__LWCS_SKILL_COST_HELPERS_V1__;
+    if (typeof helpers?.计算技能效果累计COST_V1 !== 'function' || !(cost > 0)) return 0;
+    const unit = Number(helpers.计算技能效果累计COST_V1({ _效果数组: [{ 原型: '资源变化', 目标: '自身', 资源: resource, 数值: '+1%', 生效方式: '独立生效' }] },
+      { 等级: level, 角色: { 属性: { 等级: level } } })?.总COST);
+    return unit > 0 ? cost / unit : 0;
+  }
+  function creationSecondPortionEffects(actor, declaration, worldSnapshot, effects) {
+    const item = findInventoryEntry(actor, declaration);
+    if (!item?.制作者ID || !Array.isArray(effects) || !effects.length) return effects;
+    if (effects.some(effect => effect?.__第二份 || effect?.__造物反噬)) return effects;
+    const targetIds = Array.isArray(declaration?.targetIds) ? declaration.targetIds : [];
+    if (!targetIds.length) return effects;
+    const eater = findUnit(worldSnapshot, targetIds[0]) || actor;
+    const itemId = String(declaration?.skill?.id || item.id || '').trim();
+    const itemName = String(declaration?.skill?.name || declaration?.skill?.魂技名 || item.name || item.名称 || item.物品名 || '').trim();
+    const firstActive = Object.values(eater?.状态效果 || {}).some(state => Number(state?.duration ?? state?.持续回合 ?? 0) > 0 && (
+      (itemId && String(state?.sourceSkillId || '') === itemId) || (itemName && String(state?.来源技能 || '') === itemName) ||
+      (itemName && String(state?.来源技能键 || '').endsWith('|' + itemName))));
+    if (!firstActive) return effects;
+    const helpers = root.__LWCS_SKILL_COST_HELPERS_V1__;
+    const level = Number(eater?.level ?? eater?.等级 ?? eater?.属性?.等级 ?? 1) || 1;
+    const costByResource = {};
+    let totalCost = 0;
+    for (const effect of effects) {
+      const cost = Number(helpers?.计算技能效果累计COST_V1?.({ _效果数组: [effect] }, { 等级: level, 角色: { 属性: { 等级: level } } })?.总COST || 0);
+      if (!(cost > 0)) continue;
+      const resource = creationBacklashResource(effect);
+      costByResource[resource] = (costByResource[resource] || 0) + cost;
+      totalCost += cost;
+    }
+    const identity = { __第二份: true, __来源技能: itemName + SECOND_PORTION_SUFFIX, __来源技能ID: itemId + SECOND_PORTION_SUFFIX };
+    const halved = effects.map(effect => ({ ...cloneValue(effect), ...identity,
+      ...(effect?.数值 !== undefined ? { 数值: halveEffectValue(effect.数值) } : {}),
+      ...(effect?.威力倍率 !== undefined ? { 威力倍率: halveEffectValue(effect.威力倍率) } : {}) }));
+    const target = String(effects[0]?.目标 || '自身').trim() === '自身' ? '自身' : '单体';
+    const backlash = (resource, cost) => {
+      const share = recoveryShareForCost(cost, resource, level);
+      return share > 0 ? [{ 原型: '资源变化', 目标: target, 资源: resource, 数值: '-' + (Math.round(share * 100) / 100) + '%', 生效方式: '独立生效', __造物反噬: true, ...identity }] : [];
+    };
+    return [...halved, ...Object.entries(costByResource).flatMap(([resource, cost]) => backlash(resource, cost)), ...backlash('体力', totalCost)];
+  }
+
   function inventoryUseEffects(actor, declaration, worldSnapshot, effects) {
     if (String(declaration?.actionKind || '').trim().toUpperCase() !== 'USE_ITEM' || declaration.__skipInventoryConsume === true) return effects;
+    return creationSecondPortionEffects(actor, declaration, worldSnapshot, inventoryQualityEffects(actor, declaration, worldSnapshot, effects));
+  }
+
+  function inventoryQualityEffects(actor, declaration, worldSnapshot, effects) {
     const item = findInventoryEntry(actor, declaration);
     const category = String(item?.物品分类 || item?.分类 || '').trim();
     if (!['丹药', '天然灵物', '近战武器', '远程武器', '战术装备', '功能道具', '一次性道具'].includes(category)) return effects;
@@ -15327,6 +16064,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           }
           availableResources.set(resource, before - Number(payment.payments[0]?.amount || 0));
         }
+        const stamina = projectedActionStamina(branchWorld, branchActor, basis.declaration, id => branchContext.unitById?.get(id) || findUnit(branchWorld, id));
+        if (stamina && !resourceInvalid) {
+          const before = availableResources.has('体力') ? availableResources.get('体力') : readResource(branchActor, '体力');
+          availableResources.set('体力', Math.max(0, before - stamina.amount));
+        }
       }
       if (resourceInvalid) {
         output.push(Object.freeze({
@@ -15666,6 +16408,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       input.buildOperationGraph === false ? 'no-operation-graph' : '',
       input.settleStateEndRisks === false ? 'external-state-end-risks' : '',
       input.captureDependencies === false ? 'no-dependencies' : '',
+      input.skipCooperativeSummons === true ? 'skip-cooperative-summons' : '',
       stableHash(input.battleIntent || {}),
       String(input.actionRole || input.actionOpportunity?.role || input.declaration?.actionRole || 'ACTIVE').trim().toUpperCase(),
       ...(input.__preparedDecisionWorld === true ? ['prepared-decision-world'] : []),
@@ -15686,25 +16429,37 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return Number.isFinite(value) ? clamp(value, 0, 1) : null;
   }
 
+  // D1 (用户 "副作用状态也算一个来源"): side effects are one source. A side effect replaces an earlier side-effect instance or an
+  // unsourced state of the name; another source's same-name state stays as a separate instance beside it.
+  function sideEffectStateReplaces(key = '', previous = {}, name = '') {
+    if (key !== name && !(/^(visible:|preview:|transferred:|副作用:)/.test(key) && (previous?.状态 || previous?.状态名称) === name)) return false;
+    return previous?.副作用实例 === true ||
+      !previous?.状态ID && !(String(previous?.来源角色 || '').trim() && String(previous?.来源技能 || '').trim());
+  }
+
   function replaceProjectedSideEffectState(unit, name, state, tick = 0, onReplace = null) {
     const entries = [];
     let endedStates;
     let replaced = false;
     let panelChanged = ['面板修改比例', '面板固定修正', '属性快照'].some(field => Object.keys(state?.[field] || {}).length);
+    const held = unit.状态效果?.[name];
+    const stateKey = held && !sideEffectStateReplaces(name, held, name) ? `副作用:${name}` : name;
+    state = { ...state, 副作用实例: true };
     Object.entries(unit.状态效果 || {}).forEach(([key, previous]) => {
-      if (key !== name && !(/^(visible:|preview:|transferred:)/.test(key) && (previous.状态 || previous.状态名称) === name)) {
+      if (!sideEffectStateReplaces(key, previous, name)) {
         entries.push([key, previous]);
         return;
       }
       panelChanged ||= ['面板修改比例', '面板固定修正', '属性快照'].some(field => Object.keys(previous?.[field] || {}).length);
       if (onReplace) (endedStates ||= []).push([key, previous]);
-      if (!replaced) entries.push([name, cloneValue(state)]);
+      if (!replaced) entries.push([stateKey, cloneValue(state)]);
       replaced = true;
     });
-    if (!replaced) entries.push([name, cloneValue(state)]);
+    if (!replaced) entries.push([stateKey, cloneValue(state)]);
     unit.状态效果 = Object.fromEntries(entries);
-    if (panelChanged) unit.final = { ...unit.final, ...buildNumericCombatStats(unit, tick) };
+    if (panelChanged) { unit.final = { ...unit.final, ...buildNumericCombatStats(unit, tick) }; syncStaminaMaxGain(unit); }
     if (endedStates) for (const [key, previous] of endedStates) onReplace(key, previous);
+    return stateKey;
   }
 
   function sideEffectProtectionApplies(unit, stateName, certainOnly = false) {
@@ -16050,7 +16805,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           outcomeKind:'STATE_SCHEDULED', threatValue:0,
           evidence:{sideEffectIndex, deferredStartRoundOffset, deferredTiming:sideEffect.触发时机, ...(deferredControlStateKey ? { deferredControlStateKey } : {}), applicationProbability, ...riskDependency,
             lethalSettlement:true, marginal:true,
-            stateEntry:{类型:'debuff',状态:stateName,状态名称:stateName,duration:1,战斗效果:cloneValue(combatEffects)}},
+            stateEntry:{类型:'debuff',状态:stateName,状态名称:stateName,副作用实例:true,duration:1,战斗效果:cloneValue(combatEffects)}},
         });
         return;
       }
@@ -16075,7 +16830,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         return;
       }
       const stateEntry = {
-        类型: 'debuff', 状态: stateName, 状态名称: stateName, __本回合新附加: true,
+        类型: 'debuff', 状态: stateName, 状态名称: stateName, __本回合新附加: true, 副作用实例: true,
         层数: 1, 描述: `由[${declaration?.skill?.name || declaration?.skill?.魂技名 || '技能'}]触发`,
         duration: Math.max(1, Number(sideEffect?.持续回合 || 1)),
         面板修改比例: cloneValue(payload.statRatios), 面板固定修正: {}, 战斗效果: cloneValue(combatEffects),
@@ -16272,7 +17027,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // without treating a new duration, state or flag as an averaged quantity.
   function normalizeProjectedAttributeUnit(actor, baselineActor, entries, tick) {
     const nextActor = { ...actor, 属性: actor.属性 ? { ...actor.属性 } : actor.属性, 状态效果: { ...actor.状态效果 } };
-    const aliases = { 力量: 'str', 防御: 'def', 敏捷: 'agi', 魂力上限: 'sp_max', 精神力上限: 'men_max', 体力上限: 'vit_max', 生命上限: 'vit_max' };
+    const aliases = { 力量: 'str', 防御: 'def', 敏捷: 'agi', 魂力上限: 'sp_max', 精神力上限: 'men_max', 体力上限: 'vit_max', 生命上限: 'hp_max' };
     for (const entry of entries) {
       const stateKey = Object.keys(nextActor.状态效果).find(key => key.startsWith(`preview:${entry.effectInstanceId}:`) &&
         !Object.hasOwn(baselineActor?.状态效果 || {}, key));
@@ -16293,7 +17048,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       }
       nextActor.状态效果[stateKey] = state;
     }
-    nextActor.final = { ...actor.final, ...buildNumericCombatStats(nextActor, tick) };
+    nextActor.final = { ...actor.final, ...buildNumericCombatStats(nextActor, tick) }; syncStaminaMaxGain(nextActor);
     inheritOverlayOrigin(nextActor, actor);
     return nextActor;
   }
@@ -16366,6 +17121,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         actor.sp = remaining;
         if (actor.属性 && typeof actor.属性 === 'object') actor.属性.魂力 = remaining;
       }
+    });
+    payment.payments.forEach(row => {
+      if (row.key !== 'sp' && row.key !== 'men' || projectedResourceDistribution(actor, row.resource)?.support) return;
+      const label = row.key === 'sp' ? '魂力' : '精神力';
+      applyLowResourceStaminaCut(actor, label, row.before, readResource(actor, label), readResourceMax(actor, label));
     });
     return actor;
   }
@@ -16848,7 +17608,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           }
           const costs = readPassiveTriggerCosts(row.effect);
           const declaration = { actorId: id, actionId, actionRole: 'STATE_TICK', actionKind: 'RELEASE_SKILL', targetIds: [...row.targetIds], resourceCosts: {},
-            skill: { ...cloneValue(row.skill), 消耗: '无', 前摇: 0, _效果数组: [cloneValue(row.effect)] } };
+            skill: { ...cloneValue(row.skill), 消耗: '无', 前摇: 0, _效果数组: [cloneValue(row.effect)] },
+            // As in the runtime consumer: the payloads of one trigger are one cast for R01.
+            ...(row.activationKey ? { __castIdentity: row.activationKey } : {}) };
           // Native checks event eligibility against the root target, then
           // rechecks the passive effect against its own execution recipient.
           const { primaryTarget: ignoredPrimary, conditionTarget: ignoredCondition, ...conditionContext } = options.conditionContext || {};
@@ -17084,6 +17846,26 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return Object.freeze(combined);
   }
 
+  function mechanismGrantStateUsable(state = {}) {
+    return String(state?.授予触发条件 || state?.触发条件 || '').trim() === '主动触发' &&
+      Array.isArray(state?.授予效果) && Number(state?.可用次数 ?? 0) > 0;
+  }
+
+  // A temporary granted skill names the state it came from by key, but one grant applied in two projections of the
+  // same action carries two keys (preview:B0…:r4gghl and preview:preview:11x268s…:1okpfwz, 2026-11-10 1v1 辅助系75 mirror:
+  // a summon's assist chose the skill in one projection and was projected in the other). When the key is not on the
+  // actor, the one usable state granting the same skill with the same effects is that grant.
+  function resolveMechanismGrantStateKey(actor = {}, skill = {}) {
+    const key = String(skill?.__mechanismGrantStateKey || '').trim();
+    const states = actor?.状态效果 && typeof actor.状态效果 === 'object' ? actor.状态效果 : {};
+    if (states[key] && mechanismGrantStateUsable(states[key])) return key;
+    const name = String(skill?.魂技名 || skill?.name || '').trim(), effects = stableHash(skill?._效果数组 || []);
+    const matches = Object.entries(states).filter(([, state]) => mechanismGrantStateUsable(state) &&
+      String(state?.授予技能名 || `${String(state?.来源技能 || '机制授予').trim()}·授予技`).trim() === name &&
+      stableHash(state.授予效果) === effects);
+    return matches.length === 1 ? matches[0][0] : key;
+  }
+
   function projectConditionedAction(input = {}) {
     const worldSnapshot = input?.worldSnapshot;
     const rawDeclaration = input?.declaration;
@@ -17112,10 +17894,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     try {
     const actor = findUnit(worldSnapshot, input?.actorId || declaration?.actorId);
     if (!actor) throw new Error('battle_preview_actor_missing');
+    let grantStateKey = '';
     if (declaration.skill?.__mechanismGrantTemporarySkill === true) {
-      const key = String(declaration.skill.__mechanismGrantStateKey || '').trim(), state = actor.状态效果?.[key];
-      if (!state || String(state.授予触发条件 || state.触发条件 || '').trim() !== '主动触发' ||
-          !Array.isArray(state.授予效果) || !(Number(state.可用次数 ?? 0) > 0)) {
+      const key = String(declaration.skill.__mechanismGrantStateKey || '').trim();
+      grantStateKey = resolveMechanismGrantStateKey(actor, declaration.skill);
+      const state = actor.状态效果?.[grantStateKey];
+      if (!state || !mechanismGrantStateUsable(state)) {
         throw new Error(`battle_mechanism_grant_state_unavailable:${key || 'missing'}`);
       }
     }
@@ -17694,7 +18478,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // A structured per-effect commit is not another use of its source skill.
     // Its formal Native declaration owns the single consume and ledger receipt.
     if (!continuedSettlement && declaration.skill?.__mechanismGrantTemporarySkill === true && declaration.skill.__mechanismGrantStateKey) {
-      consumedGrantKeys.push(String(declaration.skill.__mechanismGrantStateKey));
+      consumedGrantKeys.push(grantStateKey || String(declaration.skill.__mechanismGrantStateKey));
     }
     if (consumedGrantKeys.length) {
       let consumed = [];
@@ -17744,7 +18528,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       basisView,
       snapshotRevision,
     });
-    settleImmediateCooperativeSummons({
+    if (input.skipCooperativeSummons !== true) settleImmediateCooperativeSummons({
       overlay,
       ledger,
       rootActionId,
@@ -18518,7 +19302,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           conditionalOn: Object.keys(applicationConditions).length
             ? applicationConditions
             : null,
-          payload: { ...(evidence.sourceSkillId ? { sourceSkillId: evidence.sourceSkillId } : {}), ...(endRiskProfiles ? { endRiskProfiles } : {}), ...(evidence.persistentRiskBinding ? { persistentRiskBinding: cloneValue(evidence.persistentRiskBinding) }
+          payload: { ...(evidence.sourceSkillId ? { sourceSkillId: evidence.sourceSkillId } : {}), ...(evidence.stateSourceNames ? { stateSourceNames: cloneValue(evidence.stateSourceNames) } : {}), ...(endRiskProfiles ? { endRiskProfiles } : {}), ...(evidence.persistentRiskBinding ? { persistentRiskBinding: cloneValue(evidence.persistentRiskBinding) }
             : evidence.rewindSnapshot ? { rewindSnapshot: cloneValue(evidence.rewindSnapshot) } : evidence.stateEntries ? {
             stateEntries: cloneValue(evidence.stateEntries), ...(evidence.poolFlowMembershipKey ? { poolFlowMembershipKey: evidence.poolFlowMembershipKey } : {}),
             ...(evidence.poolStrengthSupport ? { poolStrengthSupport: evidence.poolStrengthSupport } : {}),
@@ -19320,7 +20104,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           if (prototype === '机制抹消') {
             const priorStates = stateEntries(unit);
             const suppression = applyMechanismSuppression(unit, payload.effect.抹消对象, payload.effect.持续回合, `preview:${event.effectInstanceId}:机制抹消`);
-            if (suppression.removedKeys.length) unit.final = { ...unit.final, ...buildNumericCombatStats(unit, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0)) };
+            if (suppression.removedKeys.length) { unit.final = { ...unit.final, ...buildNumericCombatStats(unit, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0)) }; syncStaminaMaxGain(unit); }
             applyProjectedEndRiskOutcomes(unit, priorStates.filter(([key]) => suppression.removedKeys.includes(key)), payload.endRiskProfiles, assignments, overlay);
             return;
           }
@@ -19333,9 +20117,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           ) {
             const attributeSource = { actorId: event.sourceActorId, actionId: event.rootActionId, effectId: String(event.effectInstanceId || event.eventId || ''), skillId: String(payload.sourceSkillId || '') };
             if (applyForeignAttributeModifier(unit, payload.effect, attributeSource, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0))) return;
-            const existing = findStateEntry(unit, payload.effect, attributeSource);
-            addState(unit, payload.effect, attributeSource.effectId, null, '', attributeSource);
-            if (!existing) applyStatModifier(unit, payload.effect, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0), attributeSource);
+            const sourcedAttribute = payload.stateSourceNames ? { ...payload.effect, ...payload.stateSourceNames } : payload.effect;
+            const existing = findStateEntry(unit, sourcedAttribute, attributeSource);
+            addState(unit, sourcedAttribute, attributeSource.effectId, null, '', attributeSource);
+            if (!existing) applyStatModifier(unit, sourcedAttribute, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0), attributeSource);
             return;
           }
           const replacedStates = [];
@@ -19346,6 +20131,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               来源角色: unitName(
                 overlay.readUnit(String(event?.sourceActorId || '').trim()) || {},
               ) || String(payload.effect?.来源角色 || '').trim(),
+              ...(payload.stateSourceNames || {}),
               __previewApplicationProbability: 1,
             },
             String(event?.effectInstanceId || event?.eventId || '').trim(),
@@ -19373,7 +20159,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         });
         Object.assign(nextStates, addedStates);
         unit.状态效果 = nextStates;
-        if (panelChanged) unit.final = { ...unit.final, ...buildNumericCombatStats(unit, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0)) };
+        if (panelChanged) { unit.final = { ...unit.final, ...buildNumericCombatStats(unit, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0)) }; syncStaminaMaxGain(unit); }
       });
       return true;
     }
@@ -20769,12 +21555,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       0.45,
       0.82,
     );
-    return prepared ? Math.max(0.35, ordinary * 0.8) : ordinary;
+    const multiplier = prepared ? Math.max(0.35, ordinary * 0.8) : ordinary;
+    const opening = attackOpeningOf(reactor);
+    return opening > 0 ? 1 - (1 - multiplier) * (1 - ATTACK_OPENING_DEFENSE_CUT * opening) : multiplier;
   }
 
   function calculateDodgeProbability(reactor = {}, sourceActor = {}, prepared = false) {
     const ordinary = calculateReactionContest(reactor, sourceActor).probability;
-    return prepared ? clamp(ordinary + (1 - ordinary) * 0.25, 0.03, 0.92) : ordinary;
+    const dodge = prepared ? clamp(ordinary + (1 - ordinary) * 0.25, 0.03, 0.92) : ordinary;
+    return dodge * (1 - ATTACK_OPENING_DODGE_CUT * attackOpeningOf(reactor));
   }
 
   function clearCache() {
@@ -20783,6 +21572,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     validatedDamageBasisCache = new WeakSet();
     normalizedObjectivesCache = new WeakMap();
     passiveSkillCollectionCache = new WeakMap();
+    equipmentPassivePackageCache = new WeakMap();
     collectedEffectsCache = new WeakMap();
     metrics.cacheClears += 1;
   }
@@ -20803,6 +21593,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     PreviewOverlay,
     transferProjectedStates,
     replaceProjectedSideEffectState,
+    sideEffectStateReplaces,
+    findStateEntry,
+    newStateInstanceSlot,
+    sourcedStateKey,
     settlePreviewLethalSideEffect,
     stateEndRisks,
     operationGraphRequiredKeys,
@@ -20850,6 +21644,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     absorbPreviewShield,
     readResource,
     readResourceMax,
+    syncStaminaMaxGain,
+    battleObjectiveProgress,
     setResourceValue,
     skillCostResourceKey,
     normalizeSkillCostPhase,
@@ -20877,6 +21673,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     formatSkillCostPhase,
     formatSkillCostStages,
     staminaScaleForUnit,
+    freezeStaminaScales,
+    battlePanelStat,
+    actionStaminaEnabled,
+    actionStaminaNature,
+    attackOpeningOf,
+    attackOpeningStrength,
+    setAttackOpening,
+    actionStaminaCost,
+    actionWindup,
+    basicAttackWindup,
+    CONTINUOUS_ACTION_BUDGET,
     refreshStaminaAdjustedFinal,
     readCombatStat,
     readCombatStatBreakdown,
@@ -20926,6 +21733,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     compileMechanicalBasis,
     compileMechanicalProjectionContext,
     recursionDepthLimit: MAX_RECURSION_DEPTH,
+    battleRoundLimit: BATTLE_ROUND_LIMIT,
     deriveMechanicalProjectionContext,
     mechanicalProjectionProfile,
     evaluateMechanicalBasis,
@@ -20951,6 +21759,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     clearC2FoodMaintenanceRuntime,
     isPassiveSkill,
     collectPassiveSkills,
+    equipmentPassiveSkillPackage,
+    contentFingerprint,
+    unitEnvironmentFingerprint,
+    worldEnvironmentFingerprint,
+    clearFingerprints,
     passiveTriggerProfile,
     reactiveControlState,
     specialPassiveTriggerEvents,

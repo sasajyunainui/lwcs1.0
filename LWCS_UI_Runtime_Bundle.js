@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:ab5a4b5798801d4e947fbda37220391791e46db0b26fa6219b084f23183a999f|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:3c1d98eaaf18f362be0cd98cdb62dea5371c4fdce0dbdd772d2a560a8649db5f|cockpit/pages-role.js:ea00d94e994576a533ab9cfb560cdd432adb466805f0d67c984d2ad891f5bedc|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:31b84a896b0ecfd57ec9274ce575c48b55e1b1fc779106dc6eb734c699584cc8|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:33c325aab13aef52d2811e81492f147b2a533790487da1419353c482c7e6c33b|cockpit/pages-world.js:6851fc81ee4d831a1af87aa85b490557d452ef5b31ea776d50f871cb97f5574e|cockpit/pages-terminal.js:c73e78b78d6a7a80f96d774bcf3a88bfa17642c7ad81a5d5b89ff863e053125e|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:09cb149f2882b7d0ce6c066835a645bc8dd51bc92bb12efc7a5cccad635e0165|BehaviorDecisionPipeline_Module.js:3927faa3a400a9fddfbe2e4aa74d8c5d831b2b05dff7305db7c8e250efcf3819|BattleDecision_Module.js:42821a89d00861c5b781e9f095ae78485d3e68f7bd8cbb99c121e20089c2566c|BattleRuntime_Module.js:1d69ece95512b606c564859bfd15289baba77cee0b3d03f70e6f2646d2a12e2d|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:1d3091d67e7dacfc78d2c9b3dc3f7acd28c068f5cdc653495ff56bc36c19a29d|Database_Module.js:942e2e2c63f9d140eaac5f8c17530c56a58fa8609700cc2d6e0b0bad8f5c91a3 */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:9b917ccc2f2a58d507c67d5a36c0e72abeda8de5648bca16d57e66085ae87eee|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:3c1d98eaaf18f362be0cd98cdb62dea5371c4fdce0dbdd772d2a560a8649db5f|cockpit/pages-role.js:ea00d94e994576a533ab9cfb560cdd432adb466805f0d67c984d2ad891f5bedc|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:31b84a896b0ecfd57ec9274ce575c48b55e1b1fc779106dc6eb734c699584cc8|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:33c325aab13aef52d2811e81492f147b2a533790487da1419353c482c7e6c33b|cockpit/pages-world.js:6851fc81ee4d831a1af87aa85b490557d452ef5b31ea776d50f871cb97f5574e|cockpit/pages-terminal.js:c73e78b78d6a7a80f96d774bcf3a88bfa17642c7ad81a5d5b89ff863e053125e|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:680e7964aac65bb51bbe381dda6937a38ae1ae9c4c797e0358afaee0caefbcfa|BehaviorDecisionPipeline_Module.js:81eceda18d6a015890368b2f8ad167dbdfc4503b0a20d5806194fb5ec9f4b725|BattleDecision_Module.js:d943e417ed7df959fc4921b5be36ae44d31a87e6f4c5e4d494d799ba5e66d799|BattleRuntime_Module.js:f4f41294d99470260e0c7e73e03e47d4a2023757a7612dafcb09517f49f92f5e|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:1d3091d67e7dacfc78d2c9b3dc3f7acd28c068f5cdc653495ff56bc36c19a29d|Database_Module.js:942e2e2c63f9d140eaac5f8c17530c56a58fa8609700cc2d6e0b0bad8f5c91a3 */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -28488,7 +28488,9 @@ ${播报文本}
     };
   }
 
-  function 构建战斗提交包(input = {}) {
+  // 战斗估值可分给后台线程并行（BattleRuntime executeBattleDraftParallel 等，结果与同步版逐项相同；线程包读不到、
+  // 设备不适合或 window.__LWCS_BATTLE_PARALLEL_DISABLED__ 为真时自动走同步），所以这里是异步的。
+  async function 构建战斗提交包(input = {}) {
     const runtime = window.__LWCS_BATTLE_RUNTIME__;
     const report = window.__LWCS_BATTLE_REPORT__;
     if (
@@ -28504,12 +28506,12 @@ ${播报文本}
     const source = cloneJsonValue(input, {});
     delete source.visibilityMode;
     const executionMode = 规范化战斗提交模式(source.executionMode);
+    const lockedInput = { ...source, actionDeclaration: source.actionDeclaration || source.selectedAction };
     const draft = executionMode === 'auto'
-      ? runtime.executeBattleDraft(source)
-      : runtime.executePlayerLockedBattleSettlement({
-          ...source,
-          actionDeclaration: source.actionDeclaration || source.selectedAction,
-        });
+      ? await (typeof runtime.executeBattleDraftParallel === 'function'
+        ? runtime.executeBattleDraftParallel(source) : runtime.executeBattleDraft(source))
+      : await (typeof runtime.executePlayerLockedBattleSettlementParallel === 'function'
+        ? runtime.executePlayerLockedBattleSettlementParallel(lockedInput) : runtime.executePlayerLockedBattleSettlement(lockedInput));
     const reportDto = report.build({ draft, visibilityMode: 'PLAYER' });
     const reportAudit = report.auditProjection(reportDto);
     const sealedPackage = runtime.sealBattleResult({ draft, reportAudit });
@@ -28767,7 +28769,7 @@ ${播报文本}
     if (shouldCommit) 正式战斗事务执行中 = true;
     try {
       const transactionInput = 构建战斗事务输入(cloneJsonValue(combatData, {}), { ...options, executionMode });
-      const sealedPackage = 构建战斗提交包(transactionInput);
+      const sealedPackage = await 构建战斗提交包(transactionInput);
       if (!shouldCommit) {
         return {
           ...sealedPackage,
@@ -59355,6 +59357,8 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
   const MAX_PREVIEW_NODES = 64;
   // Joint outcome graphs up to this static size are always enumerated in full.
   const OPERATION_GRAPH_SMALL_JOINT_LIMIT = 512;
+  // R08: a battle runs at most 40 rounds; the same limit is the default when a caller names none.
+  const BATTLE_ROUND_LIMIT = 40;
   const MAX_RECURSION_DEPTH = 4;
   const effectHashCache = new WeakMap();
   const effectArrayHashCache = new WeakMap();
@@ -59379,6 +59383,7 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
   const stableHashImmutableCache = new WeakMap();
   let collectedEffectsCache = new WeakMap();
   let passiveSkillCollectionCache = new WeakMap();
+  let equipmentPassivePackageCache = new WeakMap();
   let normalizedObjectivesCache = new WeakMap();
   const SKILL_COST_RESOURCE_KEYS = Object.freeze(['魂力', '精神力', '体力']);
   const SKILL_COST_RESOURCE_SET = new Set(SKILL_COST_RESOURCE_KEYS);
@@ -60347,6 +60352,125 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     return next;
   }
 
+  // Content fingerprints: cache keys for decision-time reuse only (never written into ids or records). Each value gets two
+  // independent 53-bit hashes; an object's fingerprint is built from its own keys in order (order is meaningful here: the
+  // first of same-name states wins) and its children's fingerprints, including non-enumerable data properties. Objects
+  // are memoized until clearFingerprints(), which the decision engine calls at every outermost decision: a world is not
+  // changed while one decision reads it, but the live battle world changes in place between decisions. With
+  // __LWCS_DECISION_DEBUG__.verifyCaches every memoized fingerprint is recomputed on use and a mismatch throws.
+  let fingerprintMemo = new WeakMap();
+  const fingerprintFunctionIds = new WeakMap();
+  let fingerprintFunctionSequence = 0;
+
+  function fingerprintHash(text, seed) {
+    let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+    for (let index = 0; index < text.length; index += 1) {
+      const code = text.charCodeAt(index);
+      h1 = Math.imul(h1 ^ code, 2654435761);
+      h2 = Math.imul(h2 ^ code, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+  }
+
+  function computeFingerprint(value, active, memoize) {
+    if (value === null) return 'n';
+    const type = typeof value;
+    if (type === 'string') return value.length < 24 ? 's' + JSON.stringify(value) : 'S' + fingerprintHash(value, 1) + fingerprintHash(value, 2);
+    if (type === 'number') return 'd' + (Object.is(value, -0) ? '-0' : String(value));
+    if (type === 'boolean') return value ? 't' : 'f';
+    if (type === 'undefined') return 'u';
+    if (type === 'bigint') return 'b' + String(value);
+    if (type === 'function' || type === 'symbol') {
+      if (type === 'symbol') return 'y' + String(value.description || '');
+      if (!fingerprintFunctionIds.has(value)) fingerprintFunctionIds.set(value, ++fingerprintFunctionSequence);
+      return 'F' + fingerprintFunctionIds.get(value);
+    }
+    if (memoize) {
+      const cached = fingerprintMemo.get(value);
+      if (cached) return cached;
+    }
+    if (active.has(value)) return 'c';
+    active.add(value);
+    const parts = [Array.isArray(value) ? 'A' : 'O'];
+    for (const key of Object.getOwnPropertyNames(value)) {
+      if (Array.isArray(value) && key === 'length') continue;
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (!Object.hasOwn(descriptor, 'value')) { parts.push(key, 'g'); continue; }
+      parts.push(key, (descriptor.enumerable ? '' : '~') + computeFingerprint(descriptor.value, active, memoize));
+    }
+    active.delete(value);
+    const text = parts.join('\u0001');
+    const fingerprint = 'o' + fingerprintHash(text, 3) + '.' + fingerprintHash(text, 4);
+    if (memoize) fingerprintMemo.set(value, fingerprint);
+    return fingerprint;
+  }
+
+  function contentFingerprint(value) {
+    const fingerprint = computeFingerprint(value, new Set(), true);
+    if (value && typeof value === 'object' && root.__LWCS_DECISION_DEBUG__?.verifyCaches === true) {
+      const fresh = computeFingerprint(value, new Set(), false);
+      if (fresh !== fingerprint) throw new Error('battle_preview_fingerprint_stale:object_changed_after_fingerprint');
+    }
+    return fingerprint;
+  }
+
+  // Environment fingerprints: what a projection may read from units it does not act on or target. Bystanders' HP,
+  // resources, shields and stamina-adjusted final stats are left out; whether they can act or are alive, their states,
+  // passives, equipment and everything else stay in (guards, taunts, auras and ally-damaged passives key on those).
+  const ENVIRONMENT_VOLATILE_UNIT_KEYS = new Set(['hp', 'HP', 'sp', 'men', 'vit', 'sta', 'shield', '护盾', '护盾值', 'final']);
+  const ENVIRONMENT_VOLATILE_ATTRIBUTE_KEYS = new Set(['HP', '生命', '魂力', '精神力', '体力']);
+  let environmentFingerprintMemo = new WeakMap();
+
+  function fingerprintOwnProperties(value, skipKey, mapValue = null) {
+    const parts = [];
+    for (const key of Object.getOwnPropertyNames(value)) {
+      if (skipKey(key)) continue;
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (!Object.hasOwn(descriptor, 'value')) { parts.push(key, 'g'); continue; }
+      parts.push(key, (descriptor.enumerable ? '' : '~') + (mapValue?.(key, descriptor.value) ?? contentFingerprint(descriptor.value)));
+    }
+    const text = parts.join('\u0001');
+    return fingerprintHash(text, 5) + '.' + fingerprintHash(text, 6);
+  }
+
+  function computeUnitEnvironmentFingerprint(unit) {
+    const attributeFingerprint = attribute => attribute && typeof attribute === 'object' && !Array.isArray(attribute)
+      ? 'a' + fingerprintOwnProperties(attribute, key => ENVIRONMENT_VOLATILE_ATTRIBUTE_KEYS.has(key)) : null;
+    return 'E' + (isBattleCapable(unit) ? '1' : '0') + (isPhysicallyAlive(unit) ? '1' : '0') +
+      fingerprintOwnProperties(unit, key => ENVIRONMENT_VOLATILE_UNIT_KEYS.has(key), (key, value) => key === '属性' ? attributeFingerprint(value) : null);
+  }
+
+  function unitEnvironmentFingerprint(unit) {
+    if (!unit || typeof unit !== 'object') return contentFingerprint(unit);
+    let fingerprint = environmentFingerprintMemo.get(unit);
+    if (!fingerprint) environmentFingerprintMemo.set(unit, fingerprint = computeUnitEnvironmentFingerprint(unit));
+    else if (root.__LWCS_DECISION_DEBUG__?.verifyCaches === true && computeUnitEnvironmentFingerprint(unit) !== fingerprint) {
+      throw new Error('battle_preview_fingerprint_stale:unit_environment_changed');
+    }
+    return fingerprint;
+  }
+
+  // The world around the involved units: its own fields except the rosters, then every unit in visit order, involved
+  // units by id only (callers key them by their full content fingerprint).
+  function worldEnvironmentFingerprint(worldSnapshot = {}, involvedIds = new Set()) {
+    const shell = worldSnapshot && typeof worldSnapshot === 'object'
+      ? fingerprintOwnProperties(worldSnapshot, key => key === '参战者' || key === '召唤单位表') : contentFingerprint(worldSnapshot);
+    const parts = [shell];
+    for (const { unit, side } of listUnits(worldSnapshot)) {
+      const id = unitId(unit);
+      parts.push(side, involvedIds.has(id) ? 'I' + id : unitEnvironmentFingerprint(unit));
+    }
+    const text = parts.join('\u0001');
+    return 'w' + fingerprintHash(text, 7) + '.' + fingerprintHash(text, 8);
+  }
+
+  function clearFingerprints() {
+    fingerprintMemo = new WeakMap();
+    environmentFingerprintMemo = new WeakMap();
+  }
+
   function stableHash(value) {
     if (value && typeof value === 'object') {
       const immutableCached = stableHashImmutableCache.get(value);
@@ -60544,11 +60668,46 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     };
   }
 
-  function readHpMax(unit = {}) {
+  // Panel modifiers of one resource maximum add up (D1 "统一相加"): base × max(0.1, 1 + Σ(ratio − 1)) + Σ fixed.
+  // A frozen state map whose states are frozen too keeps its panel modifiers (read on every HP and resource maximum).
+  const panelModifierMemo = new WeakMap();
+  function panelModifiersOf(states, panelKey) {
+    let ratio = 0, fixed = 0, changed = false, frozen = !!states && Object.isFrozen(states);
+    for (const stateKey in states) {
+      const state = states[stateKey];
+      if (frozen && state && typeof state === 'object' && !Object.isFrozen(state)) frozen = false;
+      if (state?.面板修改比例?.[panelKey] === undefined && state?.面板固定修正?.[panelKey] === undefined) continue;
+      changed = true;
+      ratio += toNumber(state?.面板修改比例?.[panelKey] ?? 1) - 1;
+      fixed += toNumber(state?.面板固定修正?.[panelKey] || 0);
+    }
+    return { ratio, fixed, changed, frozen };
+  }
+  function addPanelModifiers(unit = {}, base = 0, panelKey = '') {
+    const states = unit?.状态效果;
+    const byKey = states && typeof states === 'object' ? panelModifierMemo.get(states) : null;
+    let modifiers = byKey?.get(panelKey);
+    if (!modifiers) {
+      modifiers = panelModifiersOf(states, panelKey);
+      if (modifiers.frozen) {
+        if (byKey) byKey.set(panelKey, modifiers);
+        else panelModifierMemo.set(states, new Map([[panelKey, modifiers]]));
+      }
+    }
+    const { ratio, fixed, changed } = modifiers;
+    return changed ? maxNumber(1, roundNumber(base * Math.max(0.1, 1 + ratio) + fixed)) : base;
+  }
+
+  function readBaseHpMax(unit = {}) {
     const direct = toNumber(unit?.hp_max);
-    const value = isFiniteNumber(direct)
+    return isFiniteNumber(direct)
       ? maxNumber(1, direct)
       : maxNumber(1, readNumber(unit, ['hp_max', 'HP上限', '生命上限', 'vit_max', '体力上限'], 1));
+  }
+
+  function readHpMax(unit = {}) {
+    // D3（用户 2026-11-09）：属性修正·生命上限作用在生命上限自己这一项，不再写到体力上限上。
+    const value = addPanelModifiers(unit, readBaseHpMax(unit), 'hp_max');
     if (activePreviewDependencyCapture) {
       recordPreviewDependency(`unit:${unitId(unit)}:baseMaxHp`, value);
     }
@@ -60725,20 +60884,40 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     // Resource capacity includes active panel modifiers, but not the stamina
     // penalty used for combat capability. Base fields remain unchanged on expiry.
     const panelKey = key === 'hp' ? null : key + '_max';
-    if (panelKey) {
-      let panelChanged = false;
-      for (const stateKey in unit.状态效果) {
-        const state = unit.状态效果[stateKey];
-        if (state?.面板修改比例?.[panelKey] === undefined && state?.面板固定修正?.[panelKey] === undefined) continue;
-        panelChanged = true;
-        value = value * toNumber(state?.面板修改比例?.[panelKey] ?? 1) + toNumber(state?.面板固定修正?.[panelKey] || 0);
-      }
-      if (panelChanged) value = maxNumber(1, roundNumber(value));
-    }
+    if (panelKey) value = addPanelModifiers(unit, value, panelKey);
     if (activePreviewDependencyCapture) {
       recordPreviewDependency(`unit:${unitId(unit)}:resourceMax:${resource}`, value);
     }
     return value;
+  }
+
+  // 用户 2026-11-08: raising 体力上限 raises current 体力 by the same amount, so a stamina-maximum buff never reads as
+  // fatigue; when the bonus ends, current stamina is only capped at the lower maximum (readResource clamps it).
+  // __体力上限加成 is the part of the maximum already credited to current stamina; credit:false records it without
+  // crediting (a unit entering battle already carries its buffed stamina).
+  function syncLifeMaxGain(unit = null, { credit = true } = {}) {
+    if (!unit || typeof unit !== 'object' || Object.isFrozen(unit)) return 0;
+    const bonus = Math.max(0, readHpMax(unit) - readBaseHpMax(unit));
+    const credited = Math.max(0, Number(unit.__生命上限加成 || 0));
+    if (bonus === credited) return 0;
+    if (credit && bonus > credited) setHp(unit, readHp(unit) + bonus - credited);
+    if (bonus > 0) unit.__生命上限加成 = bonus;
+    else delete unit.__生命上限加成;
+    return bonus - credited;
+  }
+
+  function syncStaminaMaxGain(unit = null, { credit = true } = {}) {
+    if (!unit || typeof unit !== 'object' || Object.isFrozen(unit)) return 0;
+    syncLifeMaxGain(unit, { credit });
+    const direct = toNumber(unit?.vit_max);
+    const base = maxNumber(1, isFiniteNumber(direct) ? direct : readNumber(unit, ['vit_max', 'sta_max', '体力上限'], 1));
+    const bonus = Math.max(0, readResourceMax(unit, '体力') - base);
+    const credited = Math.max(0, Number(unit.__体力上限加成 || 0));
+    if (bonus === credited) return 0;
+    if (credit && bonus > credited) setResource(unit, '体力', readResource(unit, '体力') + bonus - credited);
+    if (bonus > 0) unit.__体力上限加成 = bonus;
+    else delete unit.__体力上限加成;
+    return bonus - credited;
   }
 
   function readResource(unit = {}, resource = '') {
@@ -60791,7 +60970,18 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     return { hp: '生命', vit: '体力', sp: '魂力', men: '精神力' }[resourceKey] || '魂力';
   }
 
+  // A decision may hold every unit's stamina panel scale at its decision-world value (BattleDecision runProvider with
+  // searchBounds.frozenStaminaPanel): id → scale; a unit not listed (a summon created in the look-ahead) reads its own.
+  let frozenStaminaScales = null;
+  function freezeStaminaScales(scales = null) {
+    frozenStaminaScales = scales instanceof Map && scales.size ? scales : null;
+  }
+
   function staminaScaleForUnit(unit = {}) {
+    if (frozenStaminaScales) {
+      const frozen = frozenStaminaScales.get(unitId(unit));
+      if (frozen !== undefined) return frozen;
+    }
     const sources = [
       unit,
       unit?.属性 && typeof unit.属性 === 'object' ? unit.属性 : {},
@@ -60808,6 +60998,131 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     if (ratio >= 0.3) return 0.9 + (ratio - 0.3) * 0.5;
     if (ratio >= 0.15) return 0.75 + (ratio - 0.15);
     return 0.5 + ratio * (5 / 3);
+  }
+
+  // R07 / R17: every action costs stamina — an absolute amount, a share of the stamina benchmark of the actor's level:
+  // the base table's stamina maximum, the same for everyone of that level whatever their talent, training, rings or buffs
+  // (用户 2026-11-09: 用基准数值的 2.5% 作为绝对值消耗，而不是用自身的 2.5%；基准只看等级基础表). An attack or a released
+  // skill costs a fixed amount; only a basic response is scaled by the opponent's strength, by a ratio of at most
+  // ACTION_STAMINA_RATIO_CAP and no lower bound ("攻击方的体力消耗是固定的，闪避和防御才会受对方实力影响"；"最多 ×4，最低不限"):
+  //   attack  2.5%;  defend 1.5% × attacker strength ÷ own defence;  evade 2.0% × attacker agility ÷ own agility.
+  // A skill or item costs its nature's rate (damage → attack, evasion/displacement → 2.0%, protection → 1.5%, anything
+  // else 1.5%) at ratio 1. The ratio uses battle-start panel stats when the runtime recorded them (__battleRuntime.panelStats),
+  // so in-battle buffs and stamina decay do not change the price.
+  const ACTION_STAMINA_RATES = Object.freeze({ ATTACK: 0.025, DEFEND: 0.015, EVADE: 0.02, SKILL_DEFEND: 0.015, SKILL_EVADE: 0.02, OTHER: 0.015 });
+  const ACTION_STAMINA_RATIO_CAP = 4;
+  // On unless a world opts out with 战斗规则.行动体力消耗 === false, or the host's default battle rules do
+  // (root.__LWCS_DEFAULT_BATTLE_RULES__, set by isolation fixtures that measure other resources).
+  function actionStaminaEnabled(world = {}) {
+    return (world?.战斗规则?.行动体力消耗 ?? root.__LWCS_DEFAULT_BATTLE_RULES__?.行动体力消耗) !== false;
+  }
+
+  function battlePanelStat(unit = {}, key = '') {
+    const recorded = Number(unit?.__battleRuntime?.panelStats?.[key]);
+    return Number.isFinite(recorded) && recorded > 0 ? recorded : Math.max(1, readCombatStat(unit, key));
+  }
+
+  function actionStaminaNature(declaration = {}) {
+    const kind = String(declaration?.actionKind || '').trim().toUpperCase();
+    if (kind === 'BASIC_ATTACK') return 'ATTACK';
+    if (kind === 'EVADE') return 'EVADE';
+    if (kind === 'DEFEND' || kind === 'GUARD') return 'DEFEND';
+    if (kind !== 'RELEASE_SKILL' && kind !== 'USE_ITEM') return '';
+    const effects = Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组 : [];
+    const prototypes = new Set(effects.map(effect => String(effect?.原型 || '').trim()));
+    if (prototypes.has('伤害结算')) return 'ATTACK';
+    if (prototypes.has('位移执行') || effects.some(effect => effect?.原型 === '判定修正' && /闪避/.test(String(effect?.判定 || '')))) return 'SKILL_EVADE';
+    if (['护盾变化', '规则防御'].some(prototype => prototypes.has(prototype)) ||
+      effects.some(effect => (effect?.原型 === '结算修正' && /受到伤害|伤害分摊|伤害转移|伤害吸收/.test(String(effect?.结算 || ''))) ||
+        (effect?.原型 === '状态施加' && String(effect?.状态 || '').trim() === '护卫'))) return 'SKILL_DEFEND';
+    return 'OTHER';
+  }
+
+  // 攻击破绽（用户 2026-11-10："说起来接战链底层应该有主动进攻方更容易被对方打中的逻辑来着？"；"接战链部分，增加一个攻击破绽
+  // 设定"；"攻击破绽不是只对反击生效，如果是多人团战，A进攻B，C也可以进攻A啊"）：对敌方出手（普攻，或目标是敌方的魂技）的单位
+  // 露出破绽，从出手到它下一次行动前，任何人打它都更容易得手——攻击未命中的机会少四分之一、它闪避反应的成功率乘 0.75、防御反应
+  // 的减伤打八折；普攻是半份破绽。破绽是本场战斗的姿态（__battleRuntime.attackOpening，同防守姿态），被打一次不会消失；它的
+  // 下一次正式行动先清掉旧破绽，进攻再留下新的。
+  const ATTACK_OPENING_MISS_CUT = 0.25, ATTACK_OPENING_DODGE_CUT = 0.25, ATTACK_OPENING_DEFENSE_CUT = 0.2;
+  function attackOpeningOf(unit = {}) {
+    return clamp(Number(unit?.__battleRuntime?.attackOpening?.strength || 0), 0, 1);
+  }
+  function attackOpeningStrength(worldSnapshot = {}, actor = {}, declaration = {}, readUnit = id => findUnit(worldSnapshot, id)) {
+    const kind = String(declaration?.actionKind || '').trim().toUpperCase();
+    if (kind !== 'BASIC_ATTACK' && kind !== 'RELEASE_SKILL') return 0;
+    const actorSide = sideOf(worldSnapshot, actor);
+    const hostileTarget = (Array.isArray(declaration?.targetIds) ? declaration.targetIds : []).some(id => {
+      const target = readUnit(String(id || '').trim());
+      return target && sideOf(worldSnapshot, target) && sideOf(worldSnapshot, target) !== actorSide;
+    });
+    return hostileTarget ? kind === 'BASIC_ATTACK' ? 0.5 : 1 : 0;
+  }
+  // Sets the opening a formal action leaves (0 clears the old one) on a unit the caller owns: an overlay clone in preview,
+  // the live unit in the runtime.
+  function setAttackOpening(unit = {}, strength = 0, sourceActionId = '') {
+    if (!unit || typeof unit !== 'object') return unit;
+    if (!(strength > 0)) {
+      if (unit.__battleRuntime && typeof unit.__battleRuntime === 'object') delete unit.__battleRuntime.attackOpening;
+      return unit;
+    }
+    if (!unit.__battleRuntime || typeof unit.__battleRuntime !== 'object') unit.__battleRuntime = {};
+    unit.__battleRuntime.attackOpening = { strength, ...(sourceActionId ? { sourceActionId: String(sourceActionId) } : {}) };
+    return unit;
+  }
+  function hitAgainstAttackOpening(probability = 0, opening = 0) {
+    return opening > 0 ? 1 - (1 - probability) * (1 - ATTACK_OPENING_MISS_CUT * opening) : probability;
+  }
+
+  // The stamina benchmark of the actor's level (the base table's stamina maximum). A host without the base table falls
+  // back to the battle-start stamina maximum.
+  function staminaBenchmark(actor = {}) {
+    const level = Number(actor?.属性?.等级 ?? actor?.等级 ?? actor?.level ?? actor?.final?.等级 ?? 0);
+    const base = typeof root.__LWCS_GET_BASE_STATS__ === 'function' && level > 0 ? Number(root.__LWCS_GET_BASE_STATS__(level)?.vit_max) : NaN;
+    if (Number.isFinite(base) && base > 0) return base;
+    const recordedMaximum = Number(actor?.__battleRuntime?.panelStats?.vit_max);
+    return Number.isFinite(recordedMaximum) && recordedMaximum > 0 ? recordedMaximum : readResourceMax(actor, '体力');
+  }
+
+  // Windups (用户 2026-11-09: 使用物品定为 15 前摇；普攻 20；一回合内多个行动累计前摇低于 40 时记为一次连续行动，前摇用总和计算).
+  // A released skill carries its own 前摇 after its settlement modifiers; a basic attack's 20 takes the actor's windup
+  // modifiers as well (attack speed, "降低包括普攻在内的自身全攻击技能前摇") but none of its effect or cost modifiers; an item
+  // takes 15; defending, evading and passing end a turn and take none.
+  const BASIC_ATTACK_WINDUP = 20, ITEM_USE_WINDUP = 15, CONTINUOUS_ACTION_BUDGET = 40;
+  function basicAttackWindup(actor = {}) {
+    const probe = { 前摇: BASIC_ATTACK_WINDUP, _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 }] };
+    return Math.max(0, Number(applySkillSettlementModifiers(actor, probe).skill.前摇 ?? BASIC_ATTACK_WINDUP));
+  }
+  function actionWindup(actor = {}, declaration = {}) {
+    const kind = String(declaration?.actionKind || '').trim().toUpperCase();
+    if (kind === 'USE_ITEM') return ITEM_USE_WINDUP;
+    if (kind === 'BASIC_ATTACK') return basicAttackWindup(actor);
+    if (kind === 'RELEASE_SKILL') return Math.max(0, Number(declaration?.skill?.前摇 ?? declaration?.skill?.cast_time ?? 0));
+    return 0;
+  }
+
+  function actionStaminaCost(actor = {}, nature = '', opponent = null) {
+    const rate = ACTION_STAMINA_RATES[nature];
+    if (!rate) return 0;
+    const maximum = staminaBenchmark(actor);
+    if (!(maximum > 0)) return 0;
+    const ratioKey = { DEFEND: ['str', 'def'], EVADE: ['agi', 'agi'] }[nature];
+    const ratio = opponent && ratioKey
+      ? Math.min(ACTION_STAMINA_RATIO_CAP, battlePanelStat(opponent, ratioKey[0]) / battlePanelStat(actor, ratioKey[1])) : 1;
+    return Math.max(0, maximum * rate * ratio);
+  }
+
+  // The stamina a formal action would pay in preview (same price as the runtime's payActionStamina), with the first
+  // enemy target as the opponent; null when the action costs none.
+  function projectedActionStamina(worldSnapshot = {}, actor = {}, declaration = {}, readUnit = id => findUnit(worldSnapshot, id)) {
+    if (!actionStaminaEnabled(worldSnapshot)) return null;
+    const nature = actionStaminaNature(declaration);
+    if (!nature) return null;
+    const actorSide = sideOf(worldSnapshot, actor);
+    const opponent = (Array.isArray(declaration?.targetIds) ? declaration.targetIds : [])
+      .map(id => readUnit(String(id || '').trim()))
+      .find(unit => unit && sideOf(worldSnapshot, unit) && sideOf(worldSnapshot, unit) !== actorSide) || null;
+    const amount = actionStaminaCost(actor, nature, opponent);
+    return amount > 0 ? { nature, amount } : null;
   }
 
   function refreshStaminaAdjustedFinal(unit = {}) {
@@ -60874,15 +61189,22 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
         });
     };
     const copiedSnapshots = [];
+    // D1（用户 2026-11-09 "统一相加"）：各状态对同一属性的比例加成相加，不再逐个相乘（两个 +20% 得 +40%，原先 +44%）。
+    // 下限 10%，与延迟属性修正一致，避免几层减益叠成 0。
+    const ratioSum = {}, deltaSum = {};
     Object.values(stateEffects).forEach(condition => {
       const ratios = condition?.面板修改比例 || {};
       const deltas = condition?.面板固定修正 || {};
-      ['str', 'def', 'agi'].forEach(key => { final[key] = Number(final[key] || 0) * Number(ratios[key] ?? 1) + Number(deltas[key] || 0); });
-      ['sp_max', 'vit_max', 'men_max'].forEach(key => {
-        if (final[key] !== undefined) final[key] = Number(final[key] || 0) * Number(ratios[key] ?? 1) + Number(deltas[key] || 0);
+      ['str', 'def', 'agi', 'sp_max', 'vit_max', 'men_max', 'hp_max'].forEach(key => {
+        ratioSum[key] = (ratioSum[key] || 0) + (Number(ratios[key] ?? 1) - 1);
+        deltaSum[key] = (deltaSum[key] || 0) + Number(deltas[key] || 0);
       });
       if (condition?.属性快照) copiedSnapshots.push(condition.属性快照);
     });
+    const additivePanel = (key, base) => Number(base || 0) * Math.max(0.1, 1 + (ratioSum[key] || 0)) + (deltaSum[key] || 0);
+    ['str', 'def', 'agi'].forEach(key => { final[key] = additivePanel(key, final[key]); });
+    ['sp_max', 'vit_max', 'men_max'].forEach(key => { if (final[key] !== undefined) final[key] = additivePanel(key, final[key]); });
+    if (final.hp_max !== undefined) final.hp_max = Math.max(1, Math.round(additivePanel('hp_max', final.hp_max)));
     copiedSnapshots.forEach(applyCopiedStats);
     Object.values(unit?.复制效果 || {}).forEach(record => {
       if (!record || typeof record !== 'object') return;
@@ -60891,6 +61213,7 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     });
     if (final.sp_max !== undefined && final.sp !== undefined) final.sp = Math.min(final.sp, final.sp_max);
     if (final.vit_max !== undefined && final.vit !== undefined) final.vit = Math.min(final.vit, final.vit_max);
+    if (final.hp_max !== undefined && final.hp !== undefined) final.hp = Math.min(final.hp, final.hp_max);
     if (final.men_max !== undefined && final.men !== undefined) final.men = Math.min(final.men, final.men_max);
     const staminaScale = staminaScaleForUnit(unit);
     if (staminaScale < 1) {
@@ -61180,6 +61503,7 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
       outgoingHitAdjustment,
       outgoingArmorPenRatio,
       incomingAvoidanceAdjustment,
+      incomingAttackOpening: attackOpeningOf(unit),
     });
   }
 
@@ -61215,6 +61539,7 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
       Object.is(left.outgoingHitAdjustment, right.outgoingHitAdjustment) &&
       Object.is(left.outgoingArmorPenRatio, right.outgoingArmorPenRatio) &&
       Object.is(left.incomingAvoidanceAdjustment, right.incomingAvoidanceAdjustment) &&
+      Object.is(left.incomingAttackOpening, right.incomingAttackOpening) &&
       outgoingDamageLimitedEqual &&
       incomingDamageLimitedEqual;
   }
@@ -61668,6 +61993,11 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
       我方全员失能: 'TEAM_INCAPACITATED',
       全员失能: 'TEAM_INCAPACITATED',
       生命阈值: 'HP_RATIO_AT_OR_BELOW',
+      // R18: drive the opponent's 魂力 / 体力 / 精神力 to or below a share of its maximum.
+      资源阈值: 'RESOURCE_RATIO_AT_OR_BELOW',
+      魂力阈值: 'RESOURCE_RATIO_AT_OR_BELOW',
+      体力阈值: 'RESOURCE_RATIO_AT_OR_BELOW',
+      精神力阈值: 'RESOURCE_RATIO_AT_OR_BELOW',
       坚持回合: 'ROUND_REACHED',
       指定单位受伤: 'UNIT_DAMAGED',
       指定单位失能: 'UNIT_INCAPACITATED',
@@ -61679,7 +62009,12 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     };
     const rawType = String(condition.type || condition.类型 || '').trim();
     const type = String(typeAliases[rawType] || rawType).trim().toUpperCase();
-    if (!['TEAM_INCAPACITATED', 'TEAM_DEAD', 'HP_RATIO_AT_OR_BELOW', 'ROUND_REACHED', 'UNIT_DAMAGED', 'UNIT_INCAPACITATED', 'UNIT_DEAD', 'WITHDRAW_SUCCESS'].includes(type)) return null;
+    if (!['TEAM_INCAPACITATED', 'TEAM_DEAD', 'HP_RATIO_AT_OR_BELOW', 'RESOURCE_RATIO_AT_OR_BELOW', 'ROUND_REACHED', 'UNIT_DAMAGED', 'UNIT_INCAPACITATED', 'UNIT_DEAD', 'WITHDRAW_SUCCESS'].includes(type)) return null;
+    const resourceAlias = { 魂力阈值: '魂力', 体力阈值: '体力', 精神力阈值: '精神力' }[rawType];
+    const resource = type === 'RESOURCE_RATIO_AT_OR_BELOW'
+      ? String(condition.resource || condition.资源 || resourceAlias || '').trim()
+      : '';
+    if (type === 'RESOURCE_RATIO_AT_OR_BELOW' && !['魂力', '体力', '精神力'].includes(resource)) return null;
     const inferredSide = rawType.startsWith('我方') ? 'PLAYER' : rawType.startsWith('敌方') ? 'ENEMY' : '';
     const side = normalizeObjectiveSide(condition.side || condition.阵营 || inferredSide);
     const targetSource = condition.targetIds || condition.目标 || condition.targets || [];
@@ -61701,6 +62036,7 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
       targetIds: Object.freeze(targetIds),
       scope: /^(ALL|全部|全体)$/i.test(String(condition.scope || condition.判定 || (['TEAM_INCAPACITATED', 'TEAM_DEAD'].includes(type) ? 'ALL' : 'ANY')).trim()) ? 'ALL' : 'ANY',
       threshold,
+      ...(resource ? { resource } : {}),
       round,
       requireActive: condition.requireActive !== false && condition.存活要求 !== false,
       baselineHp: Object.freeze(baselineHp),
@@ -61767,7 +62103,7 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
       version: 1,
       explicit,
       startRound: Math.max(0, Math.floor(Number(source.startRound ?? source.起始回合 ?? currentRound))),
-      maxRounds: Math.max(1, Math.min(20, Math.floor(Number(source.maxRounds ?? source.回合上限 ?? 20) || 20))),
+      maxRounds: Math.max(1, Math.min(BATTLE_ROUND_LIMIT, Math.floor(Number(source.maxRounds ?? source.回合上限 ?? BATTLE_ROUND_LIMIT) || BATTLE_ROUND_LIMIT))),
       resolutionPriority: /^(DRAW_ON_CONFLICT|平局)$/i.test(String(source.resolutionPriority || source.冲突处理 || 'DEFEAT_FIRST').trim()) ? 'DRAW_ON_CONFLICT' : 'DEFEAT_FIRST',
       victory,
       defeat,
@@ -62024,6 +62360,12 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
           ? 'HP_THRESHOLD_REACHED'
           : '';
       }
+      if (condition.type === 'RESOURCE_RATIO_AT_OR_BELOW') {
+        return readResource(unit, condition.resource) / Math.max(1, readResourceMax(unit, condition.resource)) <=
+          condition.threshold + 1e-9
+          ? 'RESOURCE_THRESHOLD_REACHED'
+          : '';
+      }
       if (condition.type === 'UNIT_DAMAGED') {
         const baseline = Number(condition.baselineHp?.[unitId(unit)] ?? condition.baselineHp?.[unitName(unit)] ?? readHpMax(unit));
         return state.hp < Math.max(0, baseline) - 1e-9
@@ -62111,11 +62453,11 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     };
     const victory = evaluateGroup(objectives.victory);
     const defeat = evaluateGroup(objectives.defeat);
-    const playerExhausted = includeDetails &&
-      unitIndex.playerUnits.length > 0 &&
+    // A side with nobody left able to fight has lost, whatever the declared objectives (an endure or drain objective
+    // does not keep a battle running against a fallen opponent); both sides down together is a draw.
+    const playerExhausted = unitIndex.playerUnits.length > 0 &&
       unitIndex.playerUnits.every(unit => !objectiveUnitState(unit, options).capable);
-    const enemyExhausted = includeDetails &&
-      unitIndex.enemyUnits.length > 0 &&
+    const enemyExhausted = unitIndex.enemyUnits.length > 0 &&
       unitIndex.enemyUnits.every(unit => !objectiveUnitState(unit, options).capable);
     const exhaustionDetail = (side, matched) => Object.freeze({
       condition: Object.freeze({
@@ -62137,12 +62479,14 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     const implicitDefeat = includeDetails
       ? exhaustionDetail('PLAYER', playerExhausted)
       : null;
-    const effectiveVictoryMatched = victory.matched;
-    const effectiveDefeatMatched = defeat.matched;
+    const effectiveVictoryMatched = victory.matched || enemyExhausted;
+    const effectiveDefeatMatched = defeat.matched || playerExhausted;
     const victoryObjectiveMatched = victory.matched;
     const defeatObjectiveMatched = defeat.matched;
+    // Both sides down at the same moment (all incapacitated, e.g. exhausted together) is a draw, whatever the priority.
+    const bothSidesDown = playerExhausted && enemyExhausted;
     let status = 'ONGOING';
-    if (effectiveVictoryMatched && effectiveDefeatMatched) status = objectives.resolutionPriority === 'DRAW_ON_CONFLICT' ? 'DRAW' : 'ENEMY_WIN';
+    if (effectiveVictoryMatched && effectiveDefeatMatched) status = bothSidesDown || objectives.resolutionPriority === 'DRAW_ON_CONFLICT' ? 'DRAW' : 'ENEMY_WIN';
     else if (effectiveVictoryMatched) status = 'PLAYER_WIN';
     else if (effectiveDefeatMatched) status = 'ENEMY_WIN';
     else if (timeLimitReached) status = 'DRAW';
@@ -62172,7 +62516,8 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
           ? 'OBJECTIVE_VICTORY'
           : defeatObjectiveMatched
             ? 'OBJECTIVE_DEFEAT'
-            : timeLimitReached ? 'ROUND_LIMIT_REACHED' : '',
+            : effectiveVictoryMatched || effectiveDefeatMatched ? 'BATTLEFIELD_EXHAUSTION'
+              : timeLimitReached ? 'ROUND_LIMIT_REACHED' : '',
       exhaustionResolution,
       objectives,
     };
@@ -62195,6 +62540,50 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
       options,
       true,
     );
+  }
+
+  // 用户 2026-11-08: a battle is won by many kinds of condition — endure N rounds, drive the opponent's resource below
+  // a share, fell one of them, keep an ally standing — and every skill should be released with them in view. This is
+  // a continuous distance to each condition: 0 untouched … 1 met. A group takes its best member (ANY) or the mean
+  // (ALL). ROUND_REACHED moves with the clock only and WITHDRAW_SUCCESS by its own route, so no action changes them.
+  function objectiveConditionCloseness(worldSnapshot = {}, condition = {}, unitIndex = null) {
+    const listed = objectiveUnits(worldSnapshot, condition, unitIndex);
+    const roles = listed.filter(unit => !isSummonUnit(unit));
+    const members = roles.length ? roles : listed;
+    if (!members.length) return 0;
+    const hpRatio = unit => clamp(readHp(unit) / Math.max(1, readHpMax(unit)), 0, 1);
+    const toward = (ratio, threshold) => clamp((1 - ratio) / Math.max(1e-9, 1 - Number(threshold || 0)), 0, 1);
+    const closeness = unit => {
+      const state = objectiveUnitState(unit, {});
+      if (condition.type === 'TEAM_INCAPACITATED' || condition.type === 'UNIT_INCAPACITATED') return state.capable ? 1 - hpRatio(unit) : 1;
+      if (condition.type === 'TEAM_DEAD' || condition.type === 'UNIT_DEAD') return !state.alive || state.hp <= 0 ? 1 : 1 - hpRatio(unit);
+      if (condition.type === 'HP_RATIO_AT_OR_BELOW') return toward(hpRatio(unit), condition.threshold);
+      if (condition.type === 'RESOURCE_RATIO_AT_OR_BELOW') return toward(clamp(readResource(unit, condition.resource) /
+        Math.max(1, readResourceMax(unit, condition.resource)), 0, 1), condition.threshold);
+      if (condition.type === 'UNIT_DAMAGED') {
+        const baseline = Number(condition.baselineHp?.[unitId(unit)] ?? condition.baselineHp?.[unitName(unit)] ?? readHpMax(unit));
+        return state.hp < Math.max(0, baseline) - 1e-9 ? 1 : 0;
+      }
+      return 0;
+    };
+    const values = members.map(closeness);
+    return condition.scope === 'ALL' ? values.reduce((sum, value) => sum + value, 0) / values.length : Math.max(...values);
+  }
+
+  // How far a side stands toward winning: its victory closeness minus its defeat closeness, in [-1, 1].
+  function battleObjectiveProgress(worldSnapshot = {}, rawObjectives = {}, side = 'team_player') {
+    const objectives = normalizeBattleObjectives(rawObjectives, worldSnapshot);
+    const unitIndex = buildObjectiveUnitIndex(worldSnapshot);
+    // Felling a whole team is what the damage features already value; counting it here again doubled the weight of
+    // every hit and crowded out setups (sample C1). Only the other kinds of condition add their own distance.
+    const counted = condition => !(['TEAM_INCAPACITATED', 'TEAM_DEAD'].includes(condition.type) && condition.scope === 'ALL');
+    const group = entry => {
+      const values = (entry?.conditions || []).filter(counted).map(condition => objectiveConditionCloseness(worldSnapshot, condition, unitIndex));
+      if (!values.length) return 0;
+      return entry.logic === 'ALL' ? values.reduce((sum, value) => sum + value, 0) / values.length : Math.max(...values);
+    };
+    const playerView = group(objectives.victory) - group(objectives.defeat);
+    return clamp(String(side || '').trim() === 'team_enemy' ? -playerView : playerView, -1, 1);
   }
 
   function evaluateBattleObjectivesCompact(worldSnapshot = {}, rawObjectives = {}, options = {}) {
@@ -63454,6 +63843,12 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
   }
 
   function findPassiveReviveCandidate(unit = {}) {
+    if (unit && typeof unit === 'object' && frozenReviveCandidates.has(unit)) return frozenReviveCandidates.get(unit);
+    const found = findPassiveReviveCandidateUncached(unit);
+    if (unitFieldsFrozen(unit)) frozenReviveCandidates.set(unit, found);
+    return found;
+  }
+  function findPassiveReviveCandidateUncached(unit = {}) {
     const roots = Object.entries(unit || {})
       .filter(([key, value]) => /^(?:第\d+)?武魂|血脉之力|魂骨|装备|自创魂技|技能/.test(key) && value && typeof value === 'object')
       .map(([, value]) => value);
@@ -63772,7 +64167,7 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
         const limitedIncomingWithout = productWithout(targetStates, target, source.sourceKey, state =>
           (Array.isArray(state?.战斗效果?.damage_reduction_limited) ? state.战斗效果.damage_reduction_limited : []).reduce((multiplier, entry) =>
             skillMatchesLimitedElements(effect, entry?.限定元素)
-              ? multiplier * Math.max(0, 1 - clamp(Number(entry?.数值 || 0), 0, 1))
+              ? multiplier * Math.max(0, 1 - clamp(Number(entry?.数值 || 0), -1, 1))
               : multiplier,
           1),
         );
@@ -63912,9 +64307,10 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
         : multiplier,
       1,
     );
+    // 元素限定的承伤条目可以是负数（承伤增加，例如"受到伤害 +20%"限定火元素、灼烧）。原先限制在 [0, 1]，增伤一律被吞掉。
     const limitedIncomingMultiplier = limitedIncoming.reduce((multiplier, entry) =>
       skillMatchesLimitedElements(effect, entry?.限定元素)
-        ? multiplier * Math.max(0, 1 - clamp(Number(entry?.数值 || 0), 0, 1))
+        ? multiplier * Math.max(0, 1 - clamp(Number(entry?.数值 || 0), -1, 1))
         : multiplier,
       1,
     );
@@ -64572,7 +64968,7 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
               Number(stateEffect?.dodge_penalty || 0),
               Number(stateEffect?.lock_level || 0),
             ), 0);
-    return settleHitProbability(
+    const probability = settleHitProbability(
       explicitValue,
       attackAgility,
       targetAgility,
@@ -64580,6 +64976,8 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
       targetAvoidanceAdjustment,
       environmentContext,
     );
+    if (String(explicitValue ?? '').trim() !== '') return probability;
+    return hitAgainstAttackOpening(probability, targetProfile ? Number(targetProfile.incomingAttackOpening || 0) : attackOpeningOf(target));
   }
 
   function estimateHitProbabilityAttribution(
@@ -64651,7 +65049,7 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
           Number(combatEffect?.lock_level || 0),
         );
       }, 0);
-      const probabilityWithout = settleHitProbability(
+      const settledWithout = settleHitProbability(
         effect?.命中概率 ?? effect?.触发概率,
         attackAgilityWithout,
         targetAgilityWithout,
@@ -64659,6 +65057,8 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
         avoidanceWithout,
         environmentContext,
       );
+      const probabilityWithout = String(effect?.命中概率 ?? effect?.触发概率 ?? '').trim() !== ''
+        ? settledWithout : hitAgainstAttackOpening(settledWithout, attackOpeningOf(target));
       return Object.freeze({
         applicationId: source.applicationId,
         sourceActionId: source.sourceActionId,
@@ -64730,14 +65130,58 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
       .find(consumer => consumer && typeof consumer.编译角色装备被动消费者_V1 === 'function') || null;
   }
 
+  // What the item consumer's 编译角色装备被动消费者_V1 reads: the equipment objects, and the identity fields its
+  // equipment requirements (装备要求满足_V1) compare. Overlay copies share the equipment objects by reference.
+  const EQUIPMENT_PASSIVE_UNIT_FIELDS = Object.freeze(['装备', '已装备', '装备栏', '魂骨', '血脉之力', 'id', 'name', '名称', '类型',
+    '单位类型', '种族', '阵营', '系别', '武魂', '武魂类型', '血脉', '天赋', '天赋梯队', '描述', '摘要']);
+  const EQUIPMENT_PASSIVE_ATTRIBUTE_FIELDS = Object.freeze(['武魂', '武魂类型', '血脉', '天赋', '天赋梯队', '类型', '单位类型', '种族', '阵营', '系别']);
+
+  function equipmentPassiveSignature(unit = {}) {
+    const attribute = unit?.属性 && typeof unit.属性 === 'object' && !Array.isArray(unit.属性) ? unit.属性 : null;
+    return [
+      ...EQUIPMENT_PASSIVE_UNIT_FIELDS.map(field => unit?.[field]),
+      unit?.血脉之力?.血脉, unit?.血脉?.血脉, !!attribute,
+      ...EQUIPMENT_PASSIVE_ATTRIBUTE_FIELDS.map(field => attribute?.[field]),
+    ];
+  }
+
+  // The compiled package (and the skills it lists) per projection origin, reused while every input above is the same
+  // value or object; equipment that changes is a new object, so a changed loadout compiles again.
+  function equipmentPassiveSkillPackage(unit = {}) {
+    const consumer = itemPassiveConsumer();
+    if (!consumer) return null;
+    const origin = overlayOriginUnit(unit) || unit;
+    const signature = equipmentPassiveSignature(unit);
+    const cached = equipmentPassivePackageCache.get(origin);
+    if (cached && cached.signature.every((value, index) => Object.is(value, signature[index]))) return cached.value;
+    const equipmentPackage = consumer.编译角色装备被动消费者_V1(unit);
+    const value = {
+      package: equipmentPackage,
+      skills: Array.isArray(equipmentPackage?.技能条目)
+        ? equipmentPackage.技能条目.map(entry => entry?.技能).filter(skill => skill && typeof skill === 'object')
+        : [],
+    };
+    equipmentPassivePackageCache.set(origin, { signature, value });
+    return value;
+  }
+
+  // A unit frozen with its own fields cannot change: its passive collection (and revival passive) stands for every later
+  // call — most calls read a frozen unit of the decision world again.
+  const unitFieldsFrozen = unit => !!unit && typeof unit === 'object' && Object.isFrozen(unit) &&
+    Object.values(unit).every(value => !value || typeof value !== 'object' || Object.isFrozen(value));
+  const frozenPassiveSkills = new WeakMap(), frozenReviveCandidates = new WeakMap();
   function collectPassiveSkills(unit = {}) {
-    const equipmentPackage = itemPassiveConsumer()?.编译角色装备被动消费者_V1(unit);
+    const hit = unit && typeof unit === 'object' ? frozenPassiveSkills.get(unit) : undefined;
+    if (hit) return hit;
+    const output = collectPassiveSkillsUncached(unit);
+    if (unitFieldsFrozen(unit)) frozenPassiveSkills.set(unit, output);
+    return output;
+  }
+  function collectPassiveSkillsUncached(unit = {}) {
     const runtimeSkills = Array.isArray(unit?.__battleRuntime?.itemPassiveTriggeredSkills)
       ? unit.__battleRuntime.itemPassiveTriggeredSkills
       : [];
-    const equipmentSkills = Array.isArray(equipmentPackage?.技能条目)
-      ? equipmentPackage.技能条目.map(entry => entry?.技能).filter(skill => skill && typeof skill === 'object')
-      : [];
+    const equipmentSkills = equipmentPassiveSkillPackage(unit)?.skills || [];
     const roots = [
       ...(Array.isArray(unit?.技能列表) ? [unit.技能列表] : []),
       ...(runtimeSkills.length ? [runtimeSkills] : []),
@@ -64749,7 +65193,8 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
         )
         .map(([, value]) => value),
     ];
-    const cacheKey = !runtimeSkills.length && !equipmentSkills.length
+    // The equipment skills array is the cached package's own, so its identity and length stand for its content.
+    const cacheKey = !runtimeSkills.length
       ? overlayOriginUnit(unit) || unit
       : null;
     const rootSignature = cacheKey
@@ -65089,6 +65534,9 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
           options?.triggerEventId,
         );
         const applicationKey = `passive:${stableHash(applicationIdentity)}`;
+        // One activation of the skill = every payload of the same trigger (R01 compares casts, not effects).
+        const { effectId: _effectId, effectIndex: _effectIndex, effectHash: _effectHash, ...activationIdentity } = applicationIdentity;
+        const activationKey = `passive-activation:${stableHash(activationIdentity)}`;
         const marker = passiveApplicationMap(unit)[applicationKey];
         const markerCount = Math.max(0, Number(marker?.count || 0));
         const limitReady = profile.limit
@@ -65121,6 +65569,7 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
           currentRound,
           applicationKey,
           applicationIdentity,
+          activationKey,
           targetIds: Object.freeze(targetIds),
           ready: sourceReady && (profile.supported || Boolean(implicitTriggerPhase && profile.unsupportedReason === 'TRIGGER_MISSING')) && phaseReady && eventReady && conditionReady && limitReady && targetIds.length > 0,
           sourceReady,
@@ -66375,6 +66824,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
 
   function effectTargetsAllies(effect = {}) {
     const prototype = String(effect?.原型 || '').trim();
+    // A food's second-portion backlash hurts the eater, an ally or itself; its negative value is not a hostile effect.
+    if (effect?.__造物反噬 === true) return true;
     if (prototype === '资源转移') {
       const mode = String(effect?.资源转移方式 || '').trim();
       if (mode === '吞噬') return false;
@@ -66413,12 +66864,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     if (prototype === '状态移除') return /负面|减益|控制|异常/.test(String(effect?.状态 || effect?.状态名称 || ''));
     if (prototype === '状态施加') {
-      const type = String(effect?.类型 || '').trim().toLowerCase();
-      if (type === 'buff') return true;
-      if (type === 'debuff') return false;
-      const state = String(effect?.状态 || effect?.状态名称 || '').trim();
-      if (/迟缓|僵直|眩晕|昏迷|中毒|灼烧|虚弱|禁锢|束缚|沉默|缴械|致盲|标记|减速|索敌干扰|禁疗|治疗反转/.test(state)) return false;
-      if (/护盾|恢复|治疗|增幅|强化|免疫|无视异常|霸体|加速/.test(state)) return true;
+      // The side follows the one polarity table (statePolarity → the skill library's 状态施加分类); a value's sign
+      // is a magnitude, not a direction, so it only decides states that table does not know.
+      const polarity = statePolarity(effect);
+      if (polarity !== 0) return polarity > 0;
       const combatEffect = deriveStateCombatEffect(effect);
       if (combatEffect.skip_turn === true || combatEffect.cannot_act === true ||
         Number(combatEffect.dodge_penalty || 0) > 0 || Number(combatEffect.reaction_penalty || 0) > 0 ||
@@ -66610,8 +67059,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return effectEntries.length > 0;
   }
 
+  // 受伤同步扣体力（用户 2026-11-09："受伤同步扣体力"）：生命每少掉上限的一个比例，体力就扣掉同样比例的体力上限；
+  // 两个上限仍各自独立（D3），回血不回体力。生命只剩一点的人，体力也所剩无几，进攻和闪避都付不起。
+  // The runtime's writeCombatResource applies the same rule; each writer prices the loss against the unit's current
+  // life, so a loss already written by one is not charged again by the other.
   function setHp(unit, hp) {
-    const next = clamp(hp, 0, readHpMax(unit));
+    const before = readHp(unit), maximum = readHpMax(unit);
+    const next = clamp(hp, 0, maximum);
+    if (next < before && readResourceMax(unit, '体力') > 0)
+      setResource(unit, '体力', readResource(unit, '体力') - (before - next) / Math.max(1, maximum) * readResourceMax(unit, '体力'));
     if ('hp' in unit || !('HP' in unit)) unit.hp = next;
     if ('HP' in unit) unit.HP = next;
     if (unit.属性 && typeof unit.属性 === 'object') {
@@ -66623,13 +67079,28 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (next <= 0) clearC2FoodMaintenanceRuntime(unit);
   }
 
+  // 资源低位砍体力（用户 2026-11-10）：一场战斗里魂力、精神力各自第一次从上限 10% 以上跌到 10% 以下时，当前剩余体力减半；
+  // 两种都跌破就各砍一次，原因不论（消耗、抽取、燃烧），之后回升再跌不再触发。标记在 __battleRuntime.lowResourceStaminaCut，
+  // 运行时 writeCombatResource 用同一标记与口径。
+  const LOW_RESOURCE_STAMINA_RATIO = 0.1;
+  function applyLowResourceStaminaCut(unit, label, before, after, maximum) {
+    if (!(maximum > 0) || !(before >= maximum * LOW_RESOURCE_STAMINA_RATIO) || !(after < maximum * LOW_RESOURCE_STAMINA_RATIO)) return;
+    const runtime = unit.__battleRuntime && typeof unit.__battleRuntime === 'object' ? unit.__battleRuntime : {};
+    if (runtime.lowResourceStaminaCut?.[label] === true) return;
+    unit.__battleRuntime = { ...runtime, lowResourceStaminaCut: { ...(runtime.lowResourceStaminaCut || {}), [label]: true } };
+    setResource(unit, '体力', readResource(unit, '体力') * 0.5);
+  }
+
   function setResource(unit, resource, value) {
     const next = clamp(value, 0, readResourceMax(unit, resource));
     const mapping = /精神/.test(resource) ? ['men', '精神力'] : /体力/.test(resource) ? ['vit', '体力'] : ['sp', '魂力'];
+    const fuel = mapping[0] !== 'vit';
+    const before = fuel ? readResource(unit, mapping[1]) : 0;
     if (mapping[0] in unit || !(mapping[1] in unit)) unit[mapping[0]] = next;
     if (/体力/.test(resource) && 'sta' in unit) unit.sta = next;
     if (unit.属性 && typeof unit.属性 === 'object') unit.属性[mapping[1]] = next;
     if (/体力/.test(resource)) refreshStaminaAdjustedFinal(unit);
+    if (fuel) applyLowResourceStaminaCut(unit, mapping[1], before, next, readResourceMax(unit, mapping[1]));
   }
 
   function setResourceValue(unit, resource, value, preserveSurvivalFlag = false) {
@@ -66666,7 +67137,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const signedValue = ['判定修正', '结算修正'].includes(prototype) && String(effect?.数值 ?? '').includes('%')
       ? parsedValue : clamp(parsedValue, -1, 1);
     const magnitude = Math.abs(signedValue);
-    const secondaryMagnitude = Math.abs(parseSignedValue(effect?.副数值, 0));
+    // 副数值按基数 1 解析：原先基数 0 让"-8%"这类百分比副数值一律读成 0（迟缓的反应惩罚因此只能退回主数值）。
+    const secondaryMagnitude = Math.abs(parseSignedValue(effect?.副数值, 1));
     const limitedElements = normalizedElementTokens(effect?.限定元素);
     const limitedResource = String(effect?.限定资源 || effect?.资源 || '').trim();
     if (prototype === '判定修正' && magnitude > 0) {
@@ -66777,6 +67249,25 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     if (/中毒|流血|灼烧|冻伤|持续创伤/.test(state)) {
       combatEffect.dot_damage_ratio = Math.max(Number(combatEffect.dot_damage_ratio || 0), magnitude);
+      // C1（用户 2026-11-09 "先分化效果再放进生成"）：五种持续伤害的副效果按技能描述（转译状态施加数值说明_V1）落地，
+      // 原先只结算每回合掉血，副数值一律不读，五种效果完全相同。
+      //   中毒 命中率 −5%｜流血 受到伤害 +5%｜灼烧 火元素承伤 +20%｜冻伤 冰元素承伤 +20%｜持续创伤 反应 −5%
+      const dotSecondary = (fallback) => secondaryMagnitude || fallback;
+      if (/中毒/.test(state)) combatEffect.hit_penalty = Math.max(Number(combatEffect.hit_penalty || 0), dotSecondary(0.05));
+      else if (/流血/.test(state)) combatEffect.received_damage_mult = Math.max(0, Number(combatEffect.received_damage_mult || 1) * (1 + dotSecondary(0.05)));
+      else if (/灼烧|冻伤/.test(state)) {
+        combatEffect.damage_reduction_limited = [
+          ...(Array.isArray(combatEffect.damage_reduction_limited) ? combatEffect.damage_reduction_limited : []),
+          { 限定元素: /灼烧/.test(state) ? ['火'] : ['冰'], 数值: -dotSecondary(0.2) },
+        ];
+      } else if (/持续创伤/.test(state)) combatEffect.reaction_penalty = Math.max(Number(combatEffect.reaction_penalty || 0), dotSecondary(0.05));
+    }
+    // 资源燃烧：技能描述"每回合燃烧魂力{数值}，技能消耗{副数值}"（生成侧固定燃烧魂力）。原先只有暗冰侵蚀接了每回合资源结算，
+    // 资源燃烧落地后什么都不做（第一轮样本 3 次施加、0 次燃烧）。
+    if (/资源燃烧/.test(state)) {
+      combatEffect.resource_tick_resource = '魂力';
+      combatEffect.resource_tick_ratio = -magnitude;
+      combatEffect.cost_delta_ratio = Math.max(Number(combatEffect.cost_delta_ratio || 0), secondaryMagnitude || 0.05);
     }
     if (/暗冰侵蚀/.test(state)) {
       const resource = Array.isArray(effect?.资源) ? effect.资源[0] : effect?.资源;
@@ -66853,6 +67344,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       combatEffect.blind = true;
       // 致盲是无可填强度的固定状态；设计台正式说明为攻击命中下降35%。
       combatEffect.hit_penalty = Math.max(Number(combatEffect.hit_penalty || 0), 0.35);
+    }
+    // 混乱、精神紊乱由状态施加打出时原先没有任何战斗效果（只有副作用形态有），在战斗里什么也不做（2026-11-09 复跑查出）。
+    // 按技能描述（转译状态施加数值说明_V1）落地：数值 = 偏转目标概率；混乱副数值 = 命中下降，精神紊乱副数值 = 反应下降。
+    if (/混乱/.test(state)) {
+      combatEffect.random_target_rate = Math.max(Number(combatEffect.random_target_rate || 0), magnitude || 0.4);
+      combatEffect.hit_penalty = Math.max(Number(combatEffect.hit_penalty || 0), secondaryMagnitude || 0.1);
+    }
+    if (/精神紊乱/.test(state)) {
+      combatEffect.random_target_rate = Math.max(Number(combatEffect.random_target_rate || 0), magnitude || 0.25);
+      combatEffect.reaction_penalty = Math.max(Number(combatEffect.reaction_penalty || 0), secondaryMagnitude || 0.08);
     }
     return combatEffect;
   }
@@ -67584,19 +68085,78 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ? `本人辅助:${JSON.stringify([source.actorId, source.actionId, source.effectId])}` : '';
   }
 
-  function findStateEntry(unit = {}, effect = {}, source = {}) {
+  // D1 (用户 2026-11-09 "各自独立，数值相加"): same-name states from different sources are separate instances, each with
+  // its own timer, and their values add. A source is the caster and the skill that applied the state (side effects: the
+  // skill whose backlash it is). A held state or an application that names no source still merges by name.
+  function stateApplicationSourceNames(actor = {}, declaration = {}, effect = {}) {
+    const skill = declaration?.skill || {};
+    // R01 compares the cast that applied a state, as the runtime does.
+    return { 来源角色: unitName(actor || {}), 来源技能: String(effect?.__来源技能 || skill.魂技名 || skill.name || skill.技能名 || '').trim() };
+  }
+
+  function incomingStateSource(effect = {}, source = {}) {
+    return { actorId: String(source?.actorId || '').trim(), actor: String(effect?.来源角色 || '').trim(), skill: String(effect?.来源技能 || '').trim() };
+  }
+
+  function stateSourceRelation(state = {}, incoming = {}) {
+    const heldActorId = String(state?.sourceActorId || '').trim();
+    if (heldActorId && incoming.actorId && heldActorId !== incoming.actorId) return 'OTHER';
+    if (state?.副作用实例 === true) return 'OTHER';
+    const actor = String(state?.来源角色 || '').trim(), skill = String(state?.来源技能 || '').trim();
+    if (!actor || !skill || !incoming.actor || !incoming.skill) return '';
+    return actor === incoming.actor && skill === incoming.skill ? 'SAME' : 'OTHER';
+  }
+
+  // The D1 instance identity of one source's application of a state; also its committed storage key.
+  function stateInstanceId(effect = {}, incoming = {}) {
+    return `来源实例:${JSON.stringify([effectStateName(effect), incoming.actorId || incoming.actor, incoming.skill])}`;
+  }
+
+  function sameNameStateEntries(unit = {}, effect = {}, source = {}) {
     const wanted = effectStateName(effect);
     const wantedUnit = settlementModifierUnit(effect);
-    const ownIdentity = ownAttributeStateIdentity(unit, effect, source);
-    return stateEntries(unit).find(([, state]) => {
-      if (ownIdentity) return state.状态ID === ownIdentity;
-      if (source.foreignStateId) return state.状态ID === source.foreignStateId;
+    return stateEntries(unit).filter(([, state]) => {
       if (stateName(state) !== wanted) return false;
       if (effect.原型 === '属性修正' && statePolarity(effect) > 0 && source.actorId &&
           state.状态ID && state.sourceActorId === unitId(unit)) return false;
       const existingUnit = wantedUnit && settlementModifierUnit(state);
       return !existingUnit || existingUnit === wantedUnit;
-    }) || null;
+    });
+  }
+
+  function findStateEntry(unit = {}, effect = {}, source = {}) {
+    const ownIdentity = ownAttributeStateIdentity(unit, effect, source);
+    if (ownIdentity) return stateEntries(unit).find(([, state]) => state.状态ID === ownIdentity) || null;
+    if (source.foreignStateId) return stateEntries(unit).find(([, state]) => state.状态ID === source.foreignStateId) || null;
+    const incoming = incomingStateSource(effect, source), candidates = sameNameStateEntries(unit, effect, source);
+    // Instance carriers (a 状态ID, a side effect) are reached only by their own source; a 来源实例 key names its source.
+    const instanceId = incoming.skill && (incoming.actorId || incoming.actor) ? stateInstanceId(effect, incoming) : '';
+    return (instanceId && candidates.find(([, state]) => state.状态ID === instanceId)) ||
+      candidates.find(([, state]) => stateSourceRelation(state, incoming) === 'SAME') ||
+      candidates.find(([, state]) => !state.状态ID && stateSourceRelation(state, incoming) === '') || null;
+  }
+
+  // D1: where a state application lands: its own source's instance, else its own 来源实例 key beside another source,
+  // else the plain name. Refused (R02) returns no key.
+  function sourcedStateKey(unit = {}, effect = {}, source = {}) {
+    const existing = findStateEntry(unit, effect, source);
+    if (existing) return { key: existing[0], existing, stateId: '', refused: false };
+    const slot = newStateInstanceSlot(unit, effect, source);
+    return { key: slot.refused ? '' : slot.stateId || effectStateName(effect), existing: null, stateId: slot.stateId, refused: slot.refused };
+  }
+
+  // D1: a new application whose source holds no instance yet. Beside another source's instance it gets its own 状态ID,
+  // which is also its committed storage key; R02 refuses a fourth other-caster source of one state.
+  function newStateInstanceSlot(unit = {}, effect = {}, source = {}) {
+    const incoming = incomingStateSource(effect, source), others = sameNameStateEntries(unit, effect, source);
+    if (!others.length || !incoming.skill || !(incoming.actorId || incoming.actor)) return { stateId: '', refused: false };
+    const fromOther = state => String(state?.sourceActorId || '').trim()
+      ? String(state.sourceActorId).trim() !== unitId(unit) : String(state?.来源角色 || '').trim() && String(state.来源角色).trim() !== unitName(unit);
+    const incomingOther = incoming.actorId ? incoming.actorId !== unitId(unit) : incoming.actor !== unitName(unit);
+    const otherSources = new Set(others.filter(([, state]) => state?.副作用实例 !== true && fromOther(state) &&
+      Number(state.duration ?? state.持续回合 ?? 0) > 0).map(([, state]) => JSON.stringify([state.sourceActorId || state.来源角色, state.来源技能])));
+    return { stateId: stateInstanceId(effect, incoming),
+      refused: incomingOther && otherSources.size >= 3 };
   }
 
   function delayedStateRegistration(effect = {}, context = {}) {
@@ -67625,6 +68185,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         state?.延迟效果 === true && state.sourceEffectId === event.effectInstanceId));
   }
 
+  // R01: the same caster's same skill, still active on the target, is not applied again by a later cast — no refresh,
+  // no stack (effects of one cast still merge).
+  function sameSkillStillActive(existing = {}, effect = {}) {
+    const sourceSkill = String(effect?.来源技能 || '').trim(), sourceActor = String(effect?.来源角色 || '').trim();
+    return Boolean(sourceSkill && sourceActor && String(existing?.来源技能 || '').trim() === sourceSkill &&
+      String(existing?.来源角色 || '').trim() === sourceActor &&
+      castIdentity(existing?.来源动作ID) !== castIdentity(effect?.来源动作ID) &&
+      Number(existing?.duration ?? existing?.持续回合 ?? 0) > 0);
+  }
+
   function addState(unit, effect, effectId, onReplace = null, sourceActionId = '', source = {}) {
     const stateName = effectStateName(effect);
     const polarity = statePolarity(effect);
@@ -67638,6 +68208,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const stackable = effect?.可叠加 === true || /叠加|层数/.test(String(effect?.叠加规则 || effect?.层数规则 || ''));
     const requestedDuration = Math.max(1, Number(effect?.持续回合 || 1));
     const lockRules = resourceLockRules(effect);
+    const sourceSkill = String(effect?.来源技能 || '').trim();
+    if (existingEntry && sameSkillStillActive(existingEntry[1], effect)) return false;
     if (existingEntry && !stackable && String(effect?.原型 || '').trim() !== '状态施加') {
       const [key, existing] = existingEntry;
       const existingDuration = Math.max(0, Number(existing?.duration ?? existing?.持续回合 ?? 0));
@@ -67651,6 +68223,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         ...existing,
         duration: Math.max(existingDuration, requestedDuration),
         来源角色: String(effect?.来源角色 || existing?.来源角色 || '').trim(),
+        ...(sourceSkill ? { 来源技能: sourceSkill, 来源动作ID: String(effect?.来源动作ID || '').trim() } : {}),
         数值: effect?.数值 ?? existing?.数值,
         强度: effect?.强度 ?? existing?.强度,
         ...(effect?.对应等级 !== undefined ? { 对应等级: Number(effect.对应等级) } : {}),
@@ -67667,16 +68240,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       };
       return true;
     }
+    const slot = existingEntry || ownIdentity || source.foreignStateId ? { stateId: '', refused: false } : newStateInstanceSlot(unit, effect, source);
+    if (slot.refused) return false;
+    const instanceId = ownIdentity || source.foreignStateId || slot.stateId;
     const nextState = {
       状态: stateName,
       状态名称: stateName,
-      ...(ownIdentity || source.foreignStateId ? { 状态ID: ownIdentity || source.foreignStateId } : {}),
+      ...(instanceId ? { 状态ID: instanceId } : {}),
       ...(effect.原型 === '属性修正' && source.actorId ? { sourceActorId: source.actorId } : {}),
       ...((ownIdentity || source.foreignStateId) && source.skillId ? { sourceSkillId: source.skillId } : {}),
       类型: polarity < 0 ? 'debuff' : polarity > 0 ? 'buff' : '',
       原型: String(effect?.原型 || '').trim(),
       ...(String(effect?.原型 || '').trim() === '状态施加' ? { 层数: 1 } : {}),
       来源角色: String(effect?.来源角色 || '').trim(),
+      ...(sourceSkill ? { 来源技能: sourceSkill, 来源动作ID: String(effect?.来源动作ID || '').trim() } : {}),
       判定: String(effect?.判定 || '').trim(),
       结算: String(effect?.结算 || '').trim(),
       限定元素: cloneValue(effect?.限定元素 ?? ''),
@@ -68058,7 +68635,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const name = stateName(state);
     const semantics = root.__LWCS_SKILL_COST_HELPERS_V1__;
     if (semantics.读取状态施加分类_V1(name)) return semantics.状态施加是否负面语义_V1(name) ? -1 : 1;
-    if (/中毒|流血|灼烧|冻伤|暗冰侵蚀|眩晕|麻痹|僵直|定身|冻结|星光停滞|沉默|封技|禁疗|迟缓|减速|致盲|混乱|嘲讽|精神紊乱|标记|束缚|禁锢|缴械|虚弱/.test(name)) return -1;
+    if (/中毒|流血|灼烧|冻伤|暗冰侵蚀|眩晕|昏迷|麻痹|僵直|定身|冻结|星光停滞|沉默|封技|禁疗|治疗反转|迟缓|减速|致盲|混乱|嘲讽|精神紊乱|标记|束缚|禁锢|缴械|虚弱|索敌干扰/.test(name)) return -1;
     if (/护盾|恢复|治疗|增幅|强化|免疫|无视异常|霸体|加速|隐匿|隐身/.test(name)) return 1;
     return 0;
   }
@@ -68113,7 +68690,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (!removed.length) return removed;
     const keys = new Set(removed.map(([key]) => key));
     replaceStates(unit, stateEntries(unit).filter(([key]) => !keys.has(key)));
-    unit.final = { ...unit.final, ...buildNumericCombatStats(unit, worldTick) };
+    unit.final = { ...unit.final, ...buildNumericCombatStats(unit, worldTick) }; syncStaminaMaxGain(unit);
     return removed;
   }
 
@@ -68412,6 +68989,21 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
   }
 
+  // R01: a skill's state that is still active on the target cannot be applied again (no refresh, no extra charges).
+  // R02: different skills of the same kind stack — up to 3 from other casters, without limit from the target itself.
+  // A state remembers which caster's skill applied it as 来源技能键 = "<actorId>|<skill name>".
+  // One cast settles each effect under "<cast id>:effect:<index>…"; R01 compares casts, so the effect suffix is dropped.
+  function castIdentity(actionId = '') {
+    return String(actionId || '').split(':effect:')[0].trim();
+  }
+
+  function stateSourceKey(context = {}, effect = {}) {
+    const actorId = unitId(context?.actor || {});
+    const skill = context?.declaration?.skill || {};
+    const skillName = String(effect?.__来源技能 || skill?.魂技名 || skill?.技能名 || skill?.name || '').trim();
+    return actorId && skillName ? `${actorId}|${skillName}` : '';
+  }
+
   function rulePrototypeState(effect = {}, prototype = '', context = {}) {
     const duration = Math.max(1, Number(effect?.持续回合 || 1));
     const rule = String(effect?.规则 || effect?.防御对象 || '').trim();
@@ -68440,6 +69032,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       duration,
       来源原型摘要: prototype,
       来源动作ID: String(context?.rootActionId || '').trim(),
+      ...(stateSourceKey(context, effect) ? { 来源技能键: stateSourceKey(context, effect) } : {}),
       规则: rule,
       防御对象: String(effect?.防御对象 || '').trim(),
       战斗效果: combatEffect,
@@ -68455,16 +69048,32 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   function applyProjectedRuleState(unit, effect, prototype, context) {
     const state = rulePrototypeState(effect, prototype, context);
     unit.状态效果 ||= {};
-    const existingEntry = stateEntries(unit).find(([, existing]) => stateName(existing) === stateName(state));
+    const sourceKey = String(state.来源技能键 || '').trim();
+    const sourcesOf = existing => Array.isArray(existing.来源技能键列表) ? existing.来源技能键列表 : existing.来源技能键 ? [existing.来源技能键] : [];
+    const sameName = stateEntries(unit).filter(([, existing]) => stateName(existing) === stateName(state));
+    // D1: a rule state belongs to its source (施放者 + 技能). The same source's instance takes the same cast's further
+    // effects, and refuses another cast while active (R01); another source gets its own instance with its own timer —
+    // block and death-save counts are read across instances, so they add — and a fourth other-caster source is refused (R02).
+    const existingEntry = sameName.find(([, existing]) => sourceKey ? sourcesOf(existing).includes(sourceKey) : !sourcesOf(existing).length) ||
+      (!sourceKey && sameName[0]) || null;
     if (!existingEntry) {
+      if (sameName.length && sourceKey) {
+        const otherCasters = new Set(sameName.flatMap(([, existing]) => sourcesOf(existing)).filter(key => key.split('|')[0] !== unitId(unit)));
+        if (sourceKey.split('|')[0] !== unitId(unit) && otherCasters.size >= 3) return '';
+        const split = sourceKey.indexOf('|');
+        state.状态ID = `来源实例:${JSON.stringify([stateName(state), sourceKey.slice(0, split), sourceKey.slice(split + 1)])}`;
+      }
       state.__本回合新附加 = true;
       unit.状态效果[`preview:${context.effectInstanceId}:${prototype}`] = state;
       return stateName(state);
     }
     const [stateKey, existing] = existingEntry;
+    const sources = sourcesOf(existing);
+    if (sourceKey && sources.includes(sourceKey) && castIdentity(existing.来源动作ID) !== castIdentity(state.来源动作ID)) return '';
     const previousEffects = existing.战斗效果 || {}, nextEffects = state.战斗效果 || {};
     unit.状态效果[stateKey] = {
       ...existing, ...state,
+      来源技能键列表: [...sources, sourceKey].filter(Boolean),
       duration: Math.max(Number(existing.duration ?? existing.持续回合 ?? 0), Number(state.duration ?? state.持续回合 ?? 1)),
       战斗效果: {
         ...previousEffects, ...nextEffects,
@@ -68478,6 +69087,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const target = eligibleTargets[0];
     if (!target) return 0;
     const transaction = overlay.fork(), moves = [];
+    // An equipment / soul-bone passive belongs to its item: the passive sync re-adds it to the owner and removes any copy
+    // elsewhere every round, so moving it does nothing — and its permanent duration (1,000,000) overflowed the source
+    // window when it was moved (2026-11-10, 2v2 敏攻系65 mirror: 空明魔豹左腿骨 · 空明疾行).
+    const movable = ([, state]) => state?.__equipmentPassiveState !== true;
     if (effect.原型 === '状态转移') {
       const selectedIds = eligibleTargets.map(unitId);
       const failedIds = new Set(targets.map(unitId).filter(id => !selectedIds.includes(id)));
@@ -68494,15 +69107,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       for (const sourceId of sources) {
         const destinationId = destinations.find(id => id !== sourceId);
         if (!destinationId) continue;
-        for (const [key, state] of matchingStates(overlay.readUnit(sourceId), effect.状态 || '任意状态').filter(([key]) => key !== context.persistentStateKey).slice(0, Math.max(0, limit - moves.length))) {
+        for (const [key, state] of matchingStates(overlay.readUnit(sourceId), effect.状态 || '任意状态').filter(([key]) => key !== context.persistentStateKey).filter(movable).slice(0, Math.max(0, limit - moves.length))) {
           moves.push({ sourceId, destinationId, key, state });
         }
         if (moves.length >= limit) break;
       }
     } else {
       if (unitId(actor) === unitId(target)) return 0;
-      const negative = matchingStates(overlay.readUnit(unitId(actor)), effect.状态 || '任意负面').filter(([, state]) => statePolarity(state) < 0);
-      const positive = matchingStates(overlay.readUnit(unitId(target)), '任意增益');
+      const negative = matchingStates(overlay.readUnit(unitId(actor)), effect.状态 || '任意负面').filter(([, state]) => statePolarity(state) < 0).filter(movable);
+      const positive = matchingStates(overlay.readUnit(unitId(target)), '任意增益').filter(movable);
       if (negative.length && positive.length) moves.push({ sourceId: unitId(actor), destinationId: unitId(target), key: negative[0][0], state: negative[0][1] },
         { sourceId: unitId(target), destinationId: unitId(actor), key: positive[0][0], state: positive[0][1] });
     }
@@ -68524,7 +69137,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     for (const id of new Set([...removedByUnit.keys(), ...addedByUnit.keys()])) transaction.changeUnit(id, unit => {
       replaceStates(unit, [...stateEntries(unit).filter(([key]) => !removedByUnit.get(id)?.has(key)), ...(addedByUnit.get(id) || [])]);
-      unit.final = { ...unit.final, ...buildNumericCombatStats(unit, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0)) };
+      unit.final = { ...unit.final, ...buildNumericCombatStats(unit, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0)) }; syncStaminaMaxGain(unit);
     });
     if (persistent) transaction.changeUnit(unitId(actor), unit => {
       unit.状态效果 = { ...(unit.状态效果 || {}), [persistent.key]: persistent.state };
@@ -68573,7 +69186,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       魂力上限: ['sp_max', '魂力上限'],
       精神力上限: ['men_max', '精神力上限'],
       体力上限: ['vit_max', '体力上限'],
-      生命上限: ['vit_max', '体力上限'],
+      生命上限: ['hp_max', '生命上限'],
   });
 
   function applyForeignAttributeModifier(unit, effect, source, currentTick = 0) {
@@ -68593,7 +69206,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const foreignStateId = existing?.[1]?.状态ID || `外来辅助:${JSON.stringify([source.skillId, axis])}`;
       const axisSource = { ...source, foreignStateId }, axisEffect = { ...effect, 属性: attribute };
       const skills = new Set(candidates.map(([, state]) => state.sourceSkillId));
-      if (!existing && !skills.has(source.skillId) && skills.size >= 2) { blockedAttributes.push(attribute); continue; }
+      if (existing) { blockedAttributes.push(attribute); continue; }
+      if (!skills.has(source.skillId) && skills.size >= 3) { blockedAttributes.push(attribute); continue; }
       const oldDuration = Math.max(0, Number(existing?.[1]?.duration ?? existing?.[1]?.持续回合 ?? 0));
       const applied = addState(unit, axisEffect, source.effectId, null, '', axisSource);
       if (!applied) continue;
@@ -68620,6 +69234,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       .filter(Boolean);
     const valueOf = attribute => {
       const keys = aliases[attribute] || [attribute];
+      if (keys[0] === 'hp_max') return readHpMax(unit);
       if (['sp_max', 'men_max', 'vit_max'].includes(keys[0])) {
         const resource = { sp_max: '魂力', men_max: '精神力', vit_max: '体力' }[keys[0]];
         return readResourceMax(unit, resource);
@@ -68644,7 +69259,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // Native keeps the modifier in its state and rebuilds all axes together.
     // Mutating base stats bypassed old layers/copied snapshots in later effects
     // and left the increase behind when that state was removed or expired.
-    unit.final = { ...unit.final, ...buildNumericCombatStats(unit, currentTick) };
+    unit.final = { ...unit.final, ...buildNumericCombatStats(unit, currentTick) }; syncStaminaMaxGain(unit);
     const changes = attributes.map((attribute, index) => {
       const current = before[index], next = valueOf(attribute);
       return { attribute, current, next, delta: next - current };
@@ -70768,7 +71383,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           let evidence;
           const sourceSkill = context.declaration?.skill || {};
           const attributeSource = { actorId: unitId(context.actor), actionId: context.rootActionId, effectId: context.effectInstanceId,
-            skillId: String(sourceSkill.id || sourceSkill.技能ID || sourceSkill.魂技ID || sourceSkill.name || sourceSkill.魂技名 || sourceSkill.技能名称 || '').trim() };
+            skillId: String(scaledEffect.__来源技能ID || sourceSkill.id || sourceSkill.技能ID || sourceSkill.魂技ID || sourceSkill.name || sourceSkill.魂技名 || sourceSkill.技能名称 || '').trim() };
           overlay.changeUnit(unitId(target), unit => {
             const foreign = applyForeignAttributeModifier(unit, scaledEffect, attributeSource, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0));
             if (foreign) {
@@ -70777,12 +71392,26 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 ...outcomeDependencyEvidence(context, unitId(target)), projectedEffect: cloneValue(effect) };
               return;
             }
-            const existing = findStateEntry(unit, scaledEffect, attributeSource);
+            // R01 compares casts, not effects: other effects of the same cast (appended branches) still apply.
+            const ownCastOf = state => { try { return castIdentity(JSON.parse(String(state.状态ID || '').slice('本人辅助:'.length))[1]); } catch { return ''; } };
+            if (scaledEffect.原型 === '属性修正' && attributeSource.skillId && unitId(unit) === attributeSource.actorId &&
+              stateEntries(unit).some(([, state]) => state.原型 === '属性修正' && state.sourceActorId === attributeSource.actorId &&
+                state.sourceSkillId === attributeSource.skillId && ownCastOf(state) !== castIdentity(attributeSource.actionId) &&
+                Number(state.duration ?? state.持续回合 ?? 0) > 0)) {
+              evidence = { ...buildEffectEvidence(scaledEffect, prototype, deriveStateCombatEffect(scaledEffect)), reason: 'SAME_SKILL_ACTIVE', marginal: false, changes: [],
+                applicationProbability, ownApplicationProbability: probabilityProfile.ownApplicationProbability, ...outcomeDependencyEvidence(context, unitId(target)), projectedEffect: cloneValue(effect) };
+              return;
+            }
+            const sourcedAttribute = ownAttributeStateIdentity(unit, scaledEffect, attributeSource) ? scaledEffect : { ...scaledEffect,
+              ...stateApplicationSourceNames(context.actor, context.declaration, scaledEffect), 来源动作ID: castIdentity(context?.declaration?.__castIdentity || context.rootActionId) };
+            const stateSourceNames = sourcedAttribute === scaledEffect ? null
+              : { 来源角色: sourcedAttribute.来源角色, 来源技能: sourcedAttribute.来源技能, 来源动作ID: sourcedAttribute.来源动作ID };
+            const existing = findStateEntry(unit, sourcedAttribute, attributeSource);
             const previousDuration = existing
               ? Math.max(0, Number(existing[1]?.duration ?? existing[1]?.持续回合 ?? 0))
               : 0;
             const requestedDuration = Math.max(1, Number(scaledEffect?.持续回合 || 1));
-            const marginal = addState(unit, scaledEffect, context.effectInstanceId, null, '', attributeSource);
+            const marginal = addState(unit, sourcedAttribute, context.effectInstanceId, null, '', attributeSource);
             evidence = existing
               ? {
                   ...buildEffectEvidence(scaledEffect, prototype, deriveStateCombatEffect(scaledEffect), {
@@ -70802,6 +71431,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                       : 0,
                     changes: [],
                   }),
+                  ...(stateSourceNames ? { stateSourceNames } : {}),
                 }
               : {
                   ...buildEffectEvidence(
@@ -70809,7 +71439,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                     prototype,
                     deriveStateCombatEffect(scaledEffect),
                   ),
-                  ...applyStatModifier(unit, scaledEffect, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0), attributeSource),
+                  ...applyStatModifier(unit, sourcedAttribute, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0), attributeSource),
+                  ...(stateSourceNames ? { stateSourceNames } : {}),
                   applicationProbability,
                   ownApplicationProbability:
                     probabilityProfile.ownApplicationProbability,
@@ -71029,15 +71660,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             return;
           }
           const currentTarget = overlay.readUnit(unitId(target));
-          const existingStateEntry = findStateEntry(currentTarget, effect);
+          const sourcedEffect = {
+            ...effect,
+            ...stateApplicationSourceNames(context?.actor, context?.declaration, effect),
+            // A passive's payloads of one trigger settle as separate declarations sharing one activation (__castIdentity).
+            来源动作ID: castIdentity(context?.declaration?.__castIdentity || context.rootActionId),
+          };
+          const existingStateEntry = findStateEntry(currentTarget, sourcedEffect);
           const existingState = existingStateEntry?.[1] || null;
           let marginal = false;
           let stateApplied = false;
           const replacedStates = [];
           overlay.changeUnit(unitId(target), unit => {
             marginal = addState(unit, {
-              ...effect,
-              来源角色: unitName(context?.actor || {}),
+              ...sourcedEffect,
               __previewApplicationProbability: effectiveApplicationProbability,
             }, context.effectInstanceId, (key, state) => replacedStates.push([key, state]), context.rootActionId);
             // Match the canonical before/after comparison used by Native facts;
@@ -71058,6 +71694,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               lockedRatio: clamp(Math.abs(parseSignedValue(effect?.数值, 1)), 0, 1),
             } : {}),
             ...(['位移执行', '判定修正', '结算修正', '状态施加', '决策干扰'].includes(prototype) ? { projectedEffect: cloneValue(effect) } : {}),
+            // D1: the operation graph replays the state with the same source the full preview used.
+            ...(sourcedEffect.来源技能 ? { stateSourceNames: { 来源角色: sourcedEffect.来源角色, 来源技能: sourcedEffect.来源技能, 来源动作ID: sourcedEffect.来源动作ID } } : {}),
             ...(prototype === '决策干扰' ? { interference: effect?.干扰 || '' } : {}),
             applicationProbability: effectiveApplicationProbability,
             ...(stateImmune ? { reason: 'TARGET_IMMUNE' } : {}),
@@ -71082,7 +71720,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             evidence: effectEvidence,
           });
           if (prototype === '状态施加') {
-            const possible = findStateEntry(target, effect);
+            const possible = findStateEntry(target, sourcedEffect);
             projectStateEndRisks(target, replacedStates, possible ? [possible] : [], overlay, ledger, context, effectiveApplicationProbability);
           }
           if (prototype === '决策干扰' && marginal && effectiveApplicationProbability > 0) overlay.schedule({
@@ -71416,7 +72054,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 `preview:${context.effectInstanceId}:机制抹消`,
               );
               suppressionAdded = suppression.suppressionAdded;
-              if (removedKeys.length) unit.final = { ...unit.final, ...buildNumericCombatStats(unit, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0)) };
+              if (removedKeys.length) { unit.final = { ...unit.final, ...buildNumericCombatStats(unit, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0)) }; syncStaminaMaxGain(unit); }
             } else {
               appliedStateName = applyProjectedRuleState(unit, effect, prototype, context) || '';
             }
@@ -72656,8 +73294,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       return false;
     }
     const existingEntry = findStateEntry(target, effect);
-    if (!existingEntry) return true;
+    if (!existingEntry) return !newStateInstanceSlot(target, effect).refused;
     const existing = existingEntry[1] || {};
+    if (sameSkillStillActive(existing, effect)) return false;
     if (String(effect?.原型 || '').trim() === '状态施加') {
       return root.__LWCS_BATTLE_RUNTIME__.mergeRuntimeCondition(existing, { duration: Math.max(1, Number(effect?.持续回合 || 1)) }, effect).applied;
     }
@@ -72772,6 +73411,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           evidence: Object.freeze({ resource, before, next, delta: next - before }),
         });
       });
+      const stamina = projectedActionStamina(worldSnapshot, actor, basis.declaration);
+      if (stamina) {
+        const before = readProjectedResource(actor, '体力');
+        const next = roundNumber(clamp(before - stamina.amount, 0, readResourceMax(actor, '体力')));
+        if (next < before) {
+          writeProjectedResource(actor, '体力', next);
+          changedUnitIds.add(unitId(actor));
+          addContribution(`${rootActionId}:stamina`, { targetId: unitId(actor), outcomeKind: 'RESOURCE_OPTION_CHANGED', windowId: 'ACTION_COST', expectedDelta: next - before,
+            evidence: Object.freeze({ resource: '体力', before, next, delta: next - before, source: 'ACTION_STAMINA', staminaNature: stamina.nature }) });
+        }
+      }
     }
     if (basis.actionKind === 'WITHDRAW') {
       const contest = buildWithdrawalContest(worldSnapshot, actor);
@@ -73055,6 +73705,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             );
           const projectedEffect = {
             ...effect,
+            // D1: the same source the full preview uses, so a different source's instance is not read as this one.
+            ...stateApplicationSourceNames(actor, basis.declaration, effect),
+            来源动作ID: castIdentity(basis.declaration?.__castIdentity || rootActionId),
             __previewApplicationProbability:
               applicationProbability,
           };
@@ -73073,7 +73726,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             1,
             Number(effect?.持续回合 || 1),
           );
-          const existingStateEntry = findStateEntry(target, effect);
+          const existingStateEntry = findStateEntry(target, projectedEffect);
           const existingState = existingStateEntry?.[1] || null;
           const applicationGroupKey = [
             basis.identity,
@@ -73485,6 +74138,28 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           evidence: { resource, before, next, delta: next - before, payerIndex, fusionKey: basis.declaration?.fusionKey || '' },
         });
       });
+      const staminaPayer = overlay.readUnit(actorId) || projectionContext?.unitById?.get(actorId) || findUnit(worldSnapshot, actorId);
+      const stamina = staminaPayer ? projectedActionStamina(worldSnapshot, staminaPayer, basis.declaration, id => overlay.readUnit(id) || findUnit(worldSnapshot, id)) : null;
+      if (stamina) {
+        const before = readResource(staminaPayer, '体力');
+        const next = roundNumber(clamp(before - stamina.amount, 0, readResourceMax(staminaPayer, '体力')));
+        if (next < before) {
+          overlay.setResource(actorId, '体力', next);
+          changedUnitIds.add(actorId);
+          ledger.addOutcome({ rootActionId, sourceActionId: rootActionId, actor: staminaPayer, declaration: basis.declaration, effectInstanceId: `${rootActionId}:stamina`,
+            targetId: actorId, outcomeKind: 'RESOURCE_OPTION_CHANGED', windowId: 'ACTION_COST', threatValue: 0,
+            evidence: { resource: '体力', before, next, delta: next - before, source: 'ACTION_STAMINA', staminaNature: stamina.nature } });
+        }
+      }
+      // A reaction (dodge, defense) is not the unit's next action: it neither clears nor leaves an opening.
+      const openingRole = String(input.actionRole || input.actionOpportunity?.role || basis.declaration?.actionRole || 'ACTIVE').trim().toUpperCase();
+      const openingActor = openingRole === 'REACTION' ? null : overlay.readUnit(actorId) || findUnit(worldSnapshot, actorId);
+      const opening = openingActor ? attackOpeningStrength(worldSnapshot, openingActor, basis.declaration,
+        id => overlay.readUnit(id) || findUnit(worldSnapshot, id)) : 0;
+      if (openingActor && (opening > 0 || attackOpeningOf(openingActor) > 0)) {
+        overlay.changeUnit(actorId, unit => setAttackOpening(unit, opening, rootActionId));
+        changedUnitIds.add(actorId);
+      }
     }
     const primarySuccessProbability = new Map();
     const primaryOutcomeKeyByTarget = new Map();
@@ -73854,7 +74529,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         String(input.actionRole || input.actionOpportunity?.role || basis.declaration.actionRole || '').trim().toUpperCase() !== 'STATE_TICK') {
       applyImmediateSideEffects(basis.declaration, basis.effects, actor, overlay, ledger, rootActionId, input);
     }
-    settleImmediateCooperativeSummons({
+    // input.skipCooperativeSummons: a caller that reads only the actor's own next options (the decision's runway
+    // successors) leaves its cooperative summons' immediate actions out.
+    if (input.skipCooperativeSummons !== true) settleImmediateCooperativeSummons({
       overlay,
       ledger,
       rootActionId,
@@ -74244,8 +74921,70 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
 
   // Resolve before inventory debit: the selected physical batch, not the
   // declaration snapshot or the batch that will become first after consumption.
+  // R03 (用户 2026-11-08): a created food (one with a maker) eaten while its first portion still acts on the eater is a
+  // second portion — half of every effect, under its own skill identity so R01 does not drop it (R02 limits still
+  // apply), plus a backlash on the eater: what a recovery skill of the food's COST would restore, in 精神力 for mental
+  // effects, 魂力 for soul-power effects and 生命 for the rest, and the same COST again in 体力.
+  // Only with the actual recipient known (preview and runtime), not while candidates are enumerated.
+  const SECOND_PORTION_SUFFIX = '·第二份';
+  function halveEffectValue(value) {
+    if (typeof value === 'number') return Math.round(value * 50) / 100;
+    if (typeof value !== 'string') return value;
+    return value.replace(/\d+(?:\.\d+)?/g, number => String(Math.round(Number(number) * 50) / 100));
+  }
+  function creationBacklashResource(effect = {}) {
+    const text = [effect.资源, effect.属性, effect.吸收资源].map(value => String(value || '')).join('|');
+    return /精神/.test(text) ? '精神力' : /魂力/.test(text) ? '魂力' : '生命';
+  }
+  function recoveryShareForCost(cost, resource, level) {
+    const helpers = root.__LWCS_SKILL_COST_HELPERS_V1__;
+    if (typeof helpers?.计算技能效果累计COST_V1 !== 'function' || !(cost > 0)) return 0;
+    const unit = Number(helpers.计算技能效果累计COST_V1({ _效果数组: [{ 原型: '资源变化', 目标: '自身', 资源: resource, 数值: '+1%', 生效方式: '独立生效' }] },
+      { 等级: level, 角色: { 属性: { 等级: level } } })?.总COST);
+    return unit > 0 ? cost / unit : 0;
+  }
+  function creationSecondPortionEffects(actor, declaration, worldSnapshot, effects) {
+    const item = findInventoryEntry(actor, declaration);
+    if (!item?.制作者ID || !Array.isArray(effects) || !effects.length) return effects;
+    if (effects.some(effect => effect?.__第二份 || effect?.__造物反噬)) return effects;
+    const targetIds = Array.isArray(declaration?.targetIds) ? declaration.targetIds : [];
+    if (!targetIds.length) return effects;
+    const eater = findUnit(worldSnapshot, targetIds[0]) || actor;
+    const itemId = String(declaration?.skill?.id || item.id || '').trim();
+    const itemName = String(declaration?.skill?.name || declaration?.skill?.魂技名 || item.name || item.名称 || item.物品名 || '').trim();
+    const firstActive = Object.values(eater?.状态效果 || {}).some(state => Number(state?.duration ?? state?.持续回合 ?? 0) > 0 && (
+      (itemId && String(state?.sourceSkillId || '') === itemId) || (itemName && String(state?.来源技能 || '') === itemName) ||
+      (itemName && String(state?.来源技能键 || '').endsWith('|' + itemName))));
+    if (!firstActive) return effects;
+    const helpers = root.__LWCS_SKILL_COST_HELPERS_V1__;
+    const level = Number(eater?.level ?? eater?.等级 ?? eater?.属性?.等级 ?? 1) || 1;
+    const costByResource = {};
+    let totalCost = 0;
+    for (const effect of effects) {
+      const cost = Number(helpers?.计算技能效果累计COST_V1?.({ _效果数组: [effect] }, { 等级: level, 角色: { 属性: { 等级: level } } })?.总COST || 0);
+      if (!(cost > 0)) continue;
+      const resource = creationBacklashResource(effect);
+      costByResource[resource] = (costByResource[resource] || 0) + cost;
+      totalCost += cost;
+    }
+    const identity = { __第二份: true, __来源技能: itemName + SECOND_PORTION_SUFFIX, __来源技能ID: itemId + SECOND_PORTION_SUFFIX };
+    const halved = effects.map(effect => ({ ...cloneValue(effect), ...identity,
+      ...(effect?.数值 !== undefined ? { 数值: halveEffectValue(effect.数值) } : {}),
+      ...(effect?.威力倍率 !== undefined ? { 威力倍率: halveEffectValue(effect.威力倍率) } : {}) }));
+    const target = String(effects[0]?.目标 || '自身').trim() === '自身' ? '自身' : '单体';
+    const backlash = (resource, cost) => {
+      const share = recoveryShareForCost(cost, resource, level);
+      return share > 0 ? [{ 原型: '资源变化', 目标: target, 资源: resource, 数值: '-' + (Math.round(share * 100) / 100) + '%', 生效方式: '独立生效', __造物反噬: true, ...identity }] : [];
+    };
+    return [...halved, ...Object.entries(costByResource).flatMap(([resource, cost]) => backlash(resource, cost)), ...backlash('体力', totalCost)];
+  }
+
   function inventoryUseEffects(actor, declaration, worldSnapshot, effects) {
     if (String(declaration?.actionKind || '').trim().toUpperCase() !== 'USE_ITEM' || declaration.__skipInventoryConsume === true) return effects;
+    return creationSecondPortionEffects(actor, declaration, worldSnapshot, inventoryQualityEffects(actor, declaration, worldSnapshot, effects));
+  }
+
+  function inventoryQualityEffects(actor, declaration, worldSnapshot, effects) {
     const item = findInventoryEntry(actor, declaration);
     const category = String(item?.物品分类 || item?.分类 || '').trim();
     if (!['丹药', '天然灵物', '近战武器', '远程武器', '战术装备', '功能道具', '一次性道具'].includes(category)) return effects;
@@ -74649,6 +75388,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           }
           availableResources.set(resource, before - Number(payment.payments[0]?.amount || 0));
         }
+        const stamina = projectedActionStamina(branchWorld, branchActor, basis.declaration, id => branchContext.unitById?.get(id) || findUnit(branchWorld, id));
+        if (stamina && !resourceInvalid) {
+          const before = availableResources.has('体力') ? availableResources.get('体力') : readResource(branchActor, '体力');
+          availableResources.set('体力', Math.max(0, before - stamina.amount));
+        }
       }
       if (resourceInvalid) {
         output.push(Object.freeze({
@@ -74988,6 +75732,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       input.buildOperationGraph === false ? 'no-operation-graph' : '',
       input.settleStateEndRisks === false ? 'external-state-end-risks' : '',
       input.captureDependencies === false ? 'no-dependencies' : '',
+      input.skipCooperativeSummons === true ? 'skip-cooperative-summons' : '',
       stableHash(input.battleIntent || {}),
       String(input.actionRole || input.actionOpportunity?.role || input.declaration?.actionRole || 'ACTIVE').trim().toUpperCase(),
       ...(input.__preparedDecisionWorld === true ? ['prepared-decision-world'] : []),
@@ -75008,25 +75753,37 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return Number.isFinite(value) ? clamp(value, 0, 1) : null;
   }
 
+  // D1 (用户 "副作用状态也算一个来源"): side effects are one source. A side effect replaces an earlier side-effect instance or an
+  // unsourced state of the name; another source's same-name state stays as a separate instance beside it.
+  function sideEffectStateReplaces(key = '', previous = {}, name = '') {
+    if (key !== name && !(/^(visible:|preview:|transferred:|副作用:)/.test(key) && (previous?.状态 || previous?.状态名称) === name)) return false;
+    return previous?.副作用实例 === true ||
+      !previous?.状态ID && !(String(previous?.来源角色 || '').trim() && String(previous?.来源技能 || '').trim());
+  }
+
   function replaceProjectedSideEffectState(unit, name, state, tick = 0, onReplace = null) {
     const entries = [];
     let endedStates;
     let replaced = false;
     let panelChanged = ['面板修改比例', '面板固定修正', '属性快照'].some(field => Object.keys(state?.[field] || {}).length);
+    const held = unit.状态效果?.[name];
+    const stateKey = held && !sideEffectStateReplaces(name, held, name) ? `副作用:${name}` : name;
+    state = { ...state, 副作用实例: true };
     Object.entries(unit.状态效果 || {}).forEach(([key, previous]) => {
-      if (key !== name && !(/^(visible:|preview:|transferred:)/.test(key) && (previous.状态 || previous.状态名称) === name)) {
+      if (!sideEffectStateReplaces(key, previous, name)) {
         entries.push([key, previous]);
         return;
       }
       panelChanged ||= ['面板修改比例', '面板固定修正', '属性快照'].some(field => Object.keys(previous?.[field] || {}).length);
       if (onReplace) (endedStates ||= []).push([key, previous]);
-      if (!replaced) entries.push([name, cloneValue(state)]);
+      if (!replaced) entries.push([stateKey, cloneValue(state)]);
       replaced = true;
     });
-    if (!replaced) entries.push([name, cloneValue(state)]);
+    if (!replaced) entries.push([stateKey, cloneValue(state)]);
     unit.状态效果 = Object.fromEntries(entries);
-    if (panelChanged) unit.final = { ...unit.final, ...buildNumericCombatStats(unit, tick) };
+    if (panelChanged) { unit.final = { ...unit.final, ...buildNumericCombatStats(unit, tick) }; syncStaminaMaxGain(unit); }
     if (endedStates) for (const [key, previous] of endedStates) onReplace(key, previous);
+    return stateKey;
   }
 
   function sideEffectProtectionApplies(unit, stateName, certainOnly = false) {
@@ -75372,7 +76129,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           outcomeKind:'STATE_SCHEDULED', threatValue:0,
           evidence:{sideEffectIndex, deferredStartRoundOffset, deferredTiming:sideEffect.触发时机, ...(deferredControlStateKey ? { deferredControlStateKey } : {}), applicationProbability, ...riskDependency,
             lethalSettlement:true, marginal:true,
-            stateEntry:{类型:'debuff',状态:stateName,状态名称:stateName,duration:1,战斗效果:cloneValue(combatEffects)}},
+            stateEntry:{类型:'debuff',状态:stateName,状态名称:stateName,副作用实例:true,duration:1,战斗效果:cloneValue(combatEffects)}},
         });
         return;
       }
@@ -75397,7 +76154,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         return;
       }
       const stateEntry = {
-        类型: 'debuff', 状态: stateName, 状态名称: stateName, __本回合新附加: true,
+        类型: 'debuff', 状态: stateName, 状态名称: stateName, __本回合新附加: true, 副作用实例: true,
         层数: 1, 描述: `由[${declaration?.skill?.name || declaration?.skill?.魂技名 || '技能'}]触发`,
         duration: Math.max(1, Number(sideEffect?.持续回合 || 1)),
         面板修改比例: cloneValue(payload.statRatios), 面板固定修正: {}, 战斗效果: cloneValue(combatEffects),
@@ -75594,7 +76351,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // without treating a new duration, state or flag as an averaged quantity.
   function normalizeProjectedAttributeUnit(actor, baselineActor, entries, tick) {
     const nextActor = { ...actor, 属性: actor.属性 ? { ...actor.属性 } : actor.属性, 状态效果: { ...actor.状态效果 } };
-    const aliases = { 力量: 'str', 防御: 'def', 敏捷: 'agi', 魂力上限: 'sp_max', 精神力上限: 'men_max', 体力上限: 'vit_max', 生命上限: 'vit_max' };
+    const aliases = { 力量: 'str', 防御: 'def', 敏捷: 'agi', 魂力上限: 'sp_max', 精神力上限: 'men_max', 体力上限: 'vit_max', 生命上限: 'hp_max' };
     for (const entry of entries) {
       const stateKey = Object.keys(nextActor.状态效果).find(key => key.startsWith(`preview:${entry.effectInstanceId}:`) &&
         !Object.hasOwn(baselineActor?.状态效果 || {}, key));
@@ -75615,7 +76372,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       }
       nextActor.状态效果[stateKey] = state;
     }
-    nextActor.final = { ...actor.final, ...buildNumericCombatStats(nextActor, tick) };
+    nextActor.final = { ...actor.final, ...buildNumericCombatStats(nextActor, tick) }; syncStaminaMaxGain(nextActor);
     inheritOverlayOrigin(nextActor, actor);
     return nextActor;
   }
@@ -75688,6 +76445,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         actor.sp = remaining;
         if (actor.属性 && typeof actor.属性 === 'object') actor.属性.魂力 = remaining;
       }
+    });
+    payment.payments.forEach(row => {
+      if (row.key !== 'sp' && row.key !== 'men' || projectedResourceDistribution(actor, row.resource)?.support) return;
+      const label = row.key === 'sp' ? '魂力' : '精神力';
+      applyLowResourceStaminaCut(actor, label, row.before, readResource(actor, label), readResourceMax(actor, label));
     });
     return actor;
   }
@@ -76170,7 +76932,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           }
           const costs = readPassiveTriggerCosts(row.effect);
           const declaration = { actorId: id, actionId, actionRole: 'STATE_TICK', actionKind: 'RELEASE_SKILL', targetIds: [...row.targetIds], resourceCosts: {},
-            skill: { ...cloneValue(row.skill), 消耗: '无', 前摇: 0, _效果数组: [cloneValue(row.effect)] } };
+            skill: { ...cloneValue(row.skill), 消耗: '无', 前摇: 0, _效果数组: [cloneValue(row.effect)] },
+            // As in the runtime consumer: the payloads of one trigger are one cast for R01.
+            ...(row.activationKey ? { __castIdentity: row.activationKey } : {}) };
           // Native checks event eligibility against the root target, then
           // rechecks the passive effect against its own execution recipient.
           const { primaryTarget: ignoredPrimary, conditionTarget: ignoredCondition, ...conditionContext } = options.conditionContext || {};
@@ -76406,6 +77170,26 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return Object.freeze(combined);
   }
 
+  function mechanismGrantStateUsable(state = {}) {
+    return String(state?.授予触发条件 || state?.触发条件 || '').trim() === '主动触发' &&
+      Array.isArray(state?.授予效果) && Number(state?.可用次数 ?? 0) > 0;
+  }
+
+  // A temporary granted skill names the state it came from by key, but one grant applied in two projections of the
+  // same action carries two keys (preview:B0…:r4gghl and preview:preview:11x268s…:1okpfwz, 2026-11-10 1v1 辅助系75 mirror:
+  // a summon's assist chose the skill in one projection and was projected in the other). When the key is not on the
+  // actor, the one usable state granting the same skill with the same effects is that grant.
+  function resolveMechanismGrantStateKey(actor = {}, skill = {}) {
+    const key = String(skill?.__mechanismGrantStateKey || '').trim();
+    const states = actor?.状态效果 && typeof actor.状态效果 === 'object' ? actor.状态效果 : {};
+    if (states[key] && mechanismGrantStateUsable(states[key])) return key;
+    const name = String(skill?.魂技名 || skill?.name || '').trim(), effects = stableHash(skill?._效果数组 || []);
+    const matches = Object.entries(states).filter(([, state]) => mechanismGrantStateUsable(state) &&
+      String(state?.授予技能名 || `${String(state?.来源技能 || '机制授予').trim()}·授予技`).trim() === name &&
+      stableHash(state.授予效果) === effects);
+    return matches.length === 1 ? matches[0][0] : key;
+  }
+
   function projectConditionedAction(input = {}) {
     const worldSnapshot = input?.worldSnapshot;
     const rawDeclaration = input?.declaration;
@@ -76434,10 +77218,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     try {
     const actor = findUnit(worldSnapshot, input?.actorId || declaration?.actorId);
     if (!actor) throw new Error('battle_preview_actor_missing');
+    let grantStateKey = '';
     if (declaration.skill?.__mechanismGrantTemporarySkill === true) {
-      const key = String(declaration.skill.__mechanismGrantStateKey || '').trim(), state = actor.状态效果?.[key];
-      if (!state || String(state.授予触发条件 || state.触发条件 || '').trim() !== '主动触发' ||
-          !Array.isArray(state.授予效果) || !(Number(state.可用次数 ?? 0) > 0)) {
+      const key = String(declaration.skill.__mechanismGrantStateKey || '').trim();
+      grantStateKey = resolveMechanismGrantStateKey(actor, declaration.skill);
+      const state = actor.状态效果?.[grantStateKey];
+      if (!state || !mechanismGrantStateUsable(state)) {
         throw new Error(`battle_mechanism_grant_state_unavailable:${key || 'missing'}`);
       }
     }
@@ -77016,7 +77802,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // A structured per-effect commit is not another use of its source skill.
     // Its formal Native declaration owns the single consume and ledger receipt.
     if (!continuedSettlement && declaration.skill?.__mechanismGrantTemporarySkill === true && declaration.skill.__mechanismGrantStateKey) {
-      consumedGrantKeys.push(String(declaration.skill.__mechanismGrantStateKey));
+      consumedGrantKeys.push(grantStateKey || String(declaration.skill.__mechanismGrantStateKey));
     }
     if (consumedGrantKeys.length) {
       let consumed = [];
@@ -77066,7 +77852,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       basisView,
       snapshotRevision,
     });
-    settleImmediateCooperativeSummons({
+    if (input.skipCooperativeSummons !== true) settleImmediateCooperativeSummons({
       overlay,
       ledger,
       rootActionId,
@@ -77840,7 +78626,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           conditionalOn: Object.keys(applicationConditions).length
             ? applicationConditions
             : null,
-          payload: { ...(evidence.sourceSkillId ? { sourceSkillId: evidence.sourceSkillId } : {}), ...(endRiskProfiles ? { endRiskProfiles } : {}), ...(evidence.persistentRiskBinding ? { persistentRiskBinding: cloneValue(evidence.persistentRiskBinding) }
+          payload: { ...(evidence.sourceSkillId ? { sourceSkillId: evidence.sourceSkillId } : {}), ...(evidence.stateSourceNames ? { stateSourceNames: cloneValue(evidence.stateSourceNames) } : {}), ...(endRiskProfiles ? { endRiskProfiles } : {}), ...(evidence.persistentRiskBinding ? { persistentRiskBinding: cloneValue(evidence.persistentRiskBinding) }
             : evidence.rewindSnapshot ? { rewindSnapshot: cloneValue(evidence.rewindSnapshot) } : evidence.stateEntries ? {
             stateEntries: cloneValue(evidence.stateEntries), ...(evidence.poolFlowMembershipKey ? { poolFlowMembershipKey: evidence.poolFlowMembershipKey } : {}),
             ...(evidence.poolStrengthSupport ? { poolStrengthSupport: evidence.poolStrengthSupport } : {}),
@@ -78642,7 +79428,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           if (prototype === '机制抹消') {
             const priorStates = stateEntries(unit);
             const suppression = applyMechanismSuppression(unit, payload.effect.抹消对象, payload.effect.持续回合, `preview:${event.effectInstanceId}:机制抹消`);
-            if (suppression.removedKeys.length) unit.final = { ...unit.final, ...buildNumericCombatStats(unit, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0)) };
+            if (suppression.removedKeys.length) { unit.final = { ...unit.final, ...buildNumericCombatStats(unit, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0)) }; syncStaminaMaxGain(unit); }
             applyProjectedEndRiskOutcomes(unit, priorStates.filter(([key]) => suppression.removedKeys.includes(key)), payload.endRiskProfiles, assignments, overlay);
             return;
           }
@@ -78655,9 +79441,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           ) {
             const attributeSource = { actorId: event.sourceActorId, actionId: event.rootActionId, effectId: String(event.effectInstanceId || event.eventId || ''), skillId: String(payload.sourceSkillId || '') };
             if (applyForeignAttributeModifier(unit, payload.effect, attributeSource, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0))) return;
-            const existing = findStateEntry(unit, payload.effect, attributeSource);
-            addState(unit, payload.effect, attributeSource.effectId, null, '', attributeSource);
-            if (!existing) applyStatModifier(unit, payload.effect, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0), attributeSource);
+            const sourcedAttribute = payload.stateSourceNames ? { ...payload.effect, ...payload.stateSourceNames } : payload.effect;
+            const existing = findStateEntry(unit, sourcedAttribute, attributeSource);
+            addState(unit, sourcedAttribute, attributeSource.effectId, null, '', attributeSource);
+            if (!existing) applyStatModifier(unit, sourcedAttribute, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0), attributeSource);
             return;
           }
           const replacedStates = [];
@@ -78668,6 +79455,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               来源角色: unitName(
                 overlay.readUnit(String(event?.sourceActorId || '').trim()) || {},
               ) || String(payload.effect?.来源角色 || '').trim(),
+              ...(payload.stateSourceNames || {}),
               __previewApplicationProbability: 1,
             },
             String(event?.effectInstanceId || event?.eventId || '').trim(),
@@ -78695,7 +79483,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         });
         Object.assign(nextStates, addedStates);
         unit.状态效果 = nextStates;
-        if (panelChanged) unit.final = { ...unit.final, ...buildNumericCombatStats(unit, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0)) };
+        if (panelChanged) { unit.final = { ...unit.final, ...buildNumericCombatStats(unit, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0)) }; syncStaminaMaxGain(unit); }
       });
       return true;
     }
@@ -80091,12 +80879,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       0.45,
       0.82,
     );
-    return prepared ? Math.max(0.35, ordinary * 0.8) : ordinary;
+    const multiplier = prepared ? Math.max(0.35, ordinary * 0.8) : ordinary;
+    const opening = attackOpeningOf(reactor);
+    return opening > 0 ? 1 - (1 - multiplier) * (1 - ATTACK_OPENING_DEFENSE_CUT * opening) : multiplier;
   }
 
   function calculateDodgeProbability(reactor = {}, sourceActor = {}, prepared = false) {
     const ordinary = calculateReactionContest(reactor, sourceActor).probability;
-    return prepared ? clamp(ordinary + (1 - ordinary) * 0.25, 0.03, 0.92) : ordinary;
+    const dodge = prepared ? clamp(ordinary + (1 - ordinary) * 0.25, 0.03, 0.92) : ordinary;
+    return dodge * (1 - ATTACK_OPENING_DODGE_CUT * attackOpeningOf(reactor));
   }
 
   function clearCache() {
@@ -80105,6 +80896,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     validatedDamageBasisCache = new WeakSet();
     normalizedObjectivesCache = new WeakMap();
     passiveSkillCollectionCache = new WeakMap();
+    equipmentPassivePackageCache = new WeakMap();
     collectedEffectsCache = new WeakMap();
     metrics.cacheClears += 1;
   }
@@ -80125,6 +80917,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     PreviewOverlay,
     transferProjectedStates,
     replaceProjectedSideEffectState,
+    sideEffectStateReplaces,
+    findStateEntry,
+    newStateInstanceSlot,
+    sourcedStateKey,
     settlePreviewLethalSideEffect,
     stateEndRisks,
     operationGraphRequiredKeys,
@@ -80172,6 +80968,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     absorbPreviewShield,
     readResource,
     readResourceMax,
+    syncStaminaMaxGain,
+    battleObjectiveProgress,
     setResourceValue,
     skillCostResourceKey,
     normalizeSkillCostPhase,
@@ -80199,6 +80997,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     formatSkillCostPhase,
     formatSkillCostStages,
     staminaScaleForUnit,
+    freezeStaminaScales,
+    battlePanelStat,
+    actionStaminaEnabled,
+    actionStaminaNature,
+    attackOpeningOf,
+    attackOpeningStrength,
+    setAttackOpening,
+    actionStaminaCost,
+    actionWindup,
+    basicAttackWindup,
+    CONTINUOUS_ACTION_BUDGET,
     refreshStaminaAdjustedFinal,
     readCombatStat,
     readCombatStatBreakdown,
@@ -80248,6 +81057,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     compileMechanicalBasis,
     compileMechanicalProjectionContext,
     recursionDepthLimit: MAX_RECURSION_DEPTH,
+    battleRoundLimit: BATTLE_ROUND_LIMIT,
     deriveMechanicalProjectionContext,
     mechanicalProjectionProfile,
     evaluateMechanicalBasis,
@@ -80273,6 +81083,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     clearC2FoodMaintenanceRuntime,
     isPassiveSkill,
     collectPassiveSkills,
+    equipmentPassiveSkillPackage,
+    contentFingerprint,
+    unitEnvironmentFingerprint,
+    worldEnvironmentFingerprint,
+    clearFingerprints,
     passiveTriggerProfile,
     reactiveControlState,
     specialPassiveTriggerEvents,
@@ -84545,8 +85360,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return known('PUBLIC_HP_RATIO', 'RATIO_0_1', sum / targets.length);
   }
 
+  // Read over hostile targets only. The learned weight prefers enemies whose resources run low; on the actor itself or an
+  // ally the same reading charged every self-buff and food for the user's full resources (about −1.5 a candidate). A
+  // friendly-target action has no hostile fact to read: unknown, the training mean, no contribution (its resource value to
+  // allies is ALLY_RESOURCE_RUNWAY_GAIN's).
   function resourceRatioRec(input) {
-    var targets = input.candidate.targetSet;
+    var sides = input.publicSnapshot.sides || {};
+    var targets = input.candidate.targetSet.filter(function (t) { return t !== input.candidate.actorId && hasOwn(sides, t) && sides[t] !== input.candidate.actorSide; });
     if (targets.length === 0) return unk('PUBLIC_RESOURCE_RATIO', 'RATIO_0_1', 'MISSING_SOURCE_FACT');
     var units = input.publicSnapshot.units;
     var sum = 0;
@@ -86742,7 +87562,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       SELF_FOLLOWUP_POOL_GAIN: 10.302556723848836,
       SELF_FOLLOWUP_MECHANICAL_GAIN: 8.201659516257939,
       RESOURCE_RUNWAY_GAIN: 14.848683457044219,
-      ENEMY_RESPONSE_OPTION_DENIAL: 1.4789589148898896,
+      // W6 (2026-11-09): the feature is now the enemy damage it denies, as a share of the actor's HP maximum, which
+      // is what OBJECTIVE_PROGRESS counts for the actor's own damage, so it takes that coefficient. Before, it was a
+      // capability share averaged over enemies, fitted to 1.48 in d6c028b (hand-set 4 beside OBJECTIVE_PROGRESS 8),
+      // which priced a full-round stun at under a third of one basic attack.
+      ENEMY_RESPONSE_OPTION_DENIAL: 33.38215225116526,
       OPPONENT_RESPONSE_PRESSURE: 11.747833245997066,
       REACTION_FOLLOWUP_GAIN: 0,
       SETUP_INTERRUPT_RISK: 0,
@@ -86757,8 +87581,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     intercept: 0,
     coefficients: Object.freeze({
       OBJECTIVE_PROGRESS: 0,
-      SELF_FOLLOWUP_POOL_GAIN: 0.25,
-      SELF_FOLLOWUP_MECHANICAL_GAIN: 0.25,
+      // A response that costs the actor its own later actions (a self 僵直 side effect cancels its natural action) loses
+      // them just as an active action would; at 0.25 that loss was free, and a 防御系 blocked with its stiffening shield
+      // skill for twelve rounds without ever attacking (1v1-0135, lost on 坚持回合). Same price as the active head.
+      SELF_FOLLOWUP_POOL_GAIN: ACTIVE_CAUSAL_LINEAR.coefficients.SELF_FOLLOWUP_POOL_GAIN,
+      SELF_FOLLOWUP_MECHANICAL_GAIN: ACTIVE_CAUSAL_LINEAR.coefficients.SELF_FOLLOWUP_MECHANICAL_GAIN,
       // Spending resources in an immediate response can remove the actor's
       // remaining skill routes just as an active action can. The causal
       // feature already measures that loss; ignoring it made costly counters
@@ -86860,6 +87687,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
 
   // Settlement compresses power above 100 per damage effect. Scoring must use
   // the same effective domain before effects are aggregated.
+  const SETTLEMENT_NULLIFIED_CODES = Object.freeze(['DAMAGE_POWER', 'DAMAGE_SEGMENTS', 'DAMAGE_PENETRATION', 'DAMAGE_TYPE', 'SUCCESS_PROBABILITY']);
   function effectiveDamagePower(value) {
     const power = Math.max(0, Number(value) || 0);
     return power <= 100 ? power : 100 * Math.pow(power / 100, 0.25);
@@ -87004,6 +87832,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     if (cell.status === 'KNOWN') {
       if (ENUM_CODES.has(code)) return 0;
+      // W9 (2026-11-09): the success probability was trained on 0.695 ± 0.094 (almost all 0.5–0.9). Far outside that
+      // the linear term only extrapolates — a 5% attack scored -5.9 here, below doing nothing (2v2-1623-o2: a 1.9%-HP
+      // enemy left alone for nine rounds of defending) — while the causal head already prices the miss in its expected
+      // outcome. It is held to the trained range (±2 standard deviations).
+      if (code === 'SUCCESS_PROBABILITY') return Math.max(-2, Math.min(2, (cell.value - mean) / scale));
       return (cell.value - mean) / scale;
     }
     if (cell.status === 'NOT_APPLICABLE') {
@@ -87061,15 +87894,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return (cell.value - CAUSAL_NORMALIZATION.means[code]) / CAUSAL_NORMALIZATION.scales[code];
   }
 
-  function causalLinearForRole(role) {
-    return ['REACTION', 'COUNTER'].includes(String(role || '').trim().toUpperCase())
+  // Analytics only (paired win-rate tests of the causal scale): __LWCS_CAUSAL_COEFFICIENT_OVERRIDE__ = { sides, active }
+  // replaces active-head coefficients for the listed sides. It is never set in the game.
+  function causalLinearForRole(role, side = '') {
+    const linear = ['REACTION', 'COUNTER'].includes(String(role || '').trim().toUpperCase())
       ? REACTION_CAUSAL_LINEAR
       : ACTIVE_CAUSAL_LINEAR;
+    const override = globalThis.__LWCS_CAUSAL_COEFFICIENT_OVERRIDE__;
+    if (linear !== ACTIVE_CAUSAL_LINEAR || !override?.active || !Array.isArray(override.sides) || !override.sides.includes(side)) return linear;
+    return { intercept: linear.intercept, coefficients: { ...linear.coefficients, ...override.active } };
   }
 
-  function causalContributionOf(cells, code, role) {
+  function causalContributionOf(cells, code, role, side = '') {
     const cell = cells[code];
-    const linear = causalLinearForRole(role);
+    const linear = causalLinearForRole(role, side);
     const z = causalZOf(cells, code);
     return {
       code,
@@ -87097,8 +87935,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return score;
   }
 
-  function causalScoreOf(cells, role) {
-    const linear = causalLinearForRole(role);
+  function causalScoreOf(cells, role, side = '') {
+    const linear = causalLinearForRole(role, side);
     let score = linear.intercept;
     for (const code of CAUSAL_CODES) score += linear.coefficients[code] * causalZOf(cells, code);
     return score;
@@ -87226,6 +88064,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     metrics.selectCalls += 1;
     const request = input && input.request ? input.request : {};
     const actionRole = String(request?.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase();
+    const scoringSide = String(request?.actorSide || '').trim();
     const featureInputs = input && input.featureInputs;
     const frozenCandidates = Array.isArray(request.frozenCandidates) ? request.frozenCandidates : [];
     if (!frozenCandidates.length) fail('NO_LEGAL_CANDIDATES', 'frozenCandidates empty');
@@ -87259,6 +88098,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         cells[code] = scalarizeCode(doc, code, AGGREGATION, rowsByScope);
         work.scalarizeCalls += 1;
       }
+      // B5: the decision's preview found this damage lands nothing on any enemy; its declared damage carries no
+      // information, so these cells read as unknown (train mean, zero contribution) rather than a full hit.
+      if (doc && doc.document && doc.document.settlement && doc.document.settlement.damageNullified === true) {
+        for (const code of SETTLEMENT_NULLIFIED_CODES) {
+          if (cells[code]) cells[code] = { status: 'UNKNOWN', value: null, reasonCode: 'SETTLEMENT_DAMAGE_NULLIFIED', rowCount: 0, kind: 'NONE' };
+        }
+      }
       const exclusion = readExclusion(doc);
       const hardExcluded = exclusion.hard;
       const baseWeight = activeBaseWeight(
@@ -87285,7 +88131,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         row.rawBaseScore = baseScoreOf(cells);
         row.baseScore = row.rawBaseScore * baseWeight;
         row.extensionScore = reactionScoreOf(cells);
-        row.causalScore = causalScoreOf(cells, actionRole);
+        row.causalScore = causalScoreOf(cells, actionRole, scoringSide);
         row.score = row.baseScore + row.extensionScore + row.causalScore;
         if (!Number.isFinite(row.score)) fail('NON_FINITE_SCORE');
       }
@@ -87364,7 +88210,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       for (const code of SCOREABLE_INVENTORY) {
         let factor =
           CAUSAL_CODES.indexOf(code) >= 0
-            ? causalContributionOf(row.cells, code, actionRole)
+            ? causalContributionOf(row.cells, code, actionRole, scoringSide)
             : REACTION_CODES.indexOf(code) >= 0
               ? reactionContributionOf(row.cells, code)
               : contributionOf(row.cells, code);
@@ -89051,6 +89897,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   let affordablePreparedSkillCache = new WeakMap();
   let affordablePreparedSkillStateCache = new WeakMap();
   let equipmentPassivePreviewEffectsCache = new WeakMap();
+  let equipmentPassivePreviewEffectsByPackage = new WeakMap();
   let equipmentPassiveEffectFingerprintCache = new WeakMap();
   let stateEntriesCache = new WeakMap();
   let activeSettlementModifierSignatureCache = new WeakMap();
@@ -89114,8 +89961,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   const resourceThreatProfileKeyCache = new WeakMap();
   // Experimental search bounds (off unless the host sets __LWCS_SEARCH_BOUNDS__).
   // Absent bounds keep every exact projection unchanged.
-  const searchBounds = (() => {
-    const raw = root.__LWCS_SEARCH_BOUNDS__;
+  function normalizeSearchBounds(raw) {
     if (!raw || typeof raw !== 'object') return null;
     const bound = key => Number.isSafeInteger(raw[key]) && raw[key] >= 0 ? raw[key] : null;
     const bounds = { creationPlanWindows: bound('creationPlanWindows'), creationPlanNodeBudget: bound('creationPlanNodeBudget'),
@@ -89123,10 +89969,72 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       coarseCapacityCache: raw.coarseCapacityCache === true ? true : null,
       protectionMemo: raw.protectionMemo === true ? true : null,
       riskUndated: raw.riskUndated === true ? true : null,
-      conditionalBranches: Number.isSafeInteger(raw.conditionalBranches) && raw.conditionalBranches >= 1 ? raw.conditionalBranches : null };
+      sequenceFastPath: raw.sequenceFastPath === true ? true : null,
+      settledCapacityBase: raw.settledCapacityBase === true ? true : null,
+      creationPlanActions: Number.isSafeInteger(raw.creationPlanActions) && raw.creationPlanActions >= 1 ? raw.creationPlanActions : null,
+      cooperativeBasic: raw.cooperativeBasic === true ? true : null,
+      reserveClosedForm: raw.reserveClosedForm === true ? true : null,
+      sequenceSelfFuelOnly: raw.sequenceSelfFuelOnly === true ? true : null,
+      sequenceTargetSets: Number.isSafeInteger(raw.sequenceTargetSets) && raw.sequenceTargetSets >= 1 ? raw.sequenceTargetSets : null,
+      conditionalBranches: Number.isSafeInteger(raw.conditionalBranches) && raw.conditionalBranches >= 1 ? raw.conditionalBranches : null,
+      // Development (R6 formula reform): the replaced projection of pool/conditional action capacity, kept selectable
+      // so decision-agreement can measure the formula's decisions against it until the formula is accepted.
+      projectedCapacity: raw.projectedCapacity === true ? true : null,
+      projectedReserve: raw.projectedReserve === true ? true : null,
+      projectedSequence: raw.projectedSequence === true ? true : null,
+      projectedProtection: raw.projectedProtection === true ? true : null,
+      projectedCreationAlternatives: raw.projectedCreationAlternatives === true ? true : null,
+      projectedReserveSearch: raw.projectedReserveSearch === true ? true : null,
+      exactOutcomeBranches: raw.exactOutcomeBranches === true ? true : null,
+      twoStageCandidates: raw.twoStageCandidates === true ? true : null,
+      actualRunwayWorld: raw.actualRunwayWorld === true ? true : null,
+      enumeratedCreationAlternatives: raw.enumeratedCreationAlternatives === true ? true : null,
+      fullSequenceSettlement: raw.fullSequenceSettlement === true ? true : null,
+      cooperativeSuccessors: raw.cooperativeSuccessors === true ? true : null,
+      runwayAfterStates: raw.runwayAfterStates === true ? true : null,
+      legacyProtection: raw.legacyProtection === true ? true : null,
+      protectionLedgerPropensity: raw.protectionLedgerPropensity === true ? true : null,
+      legacyRunway: raw.legacyRunway === true ? true : null,
+      runwaySelfDebuffs: raw.runwaySelfDebuffs === true ? true : null,
+      runwayOtherDebuffs: raw.runwayOtherDebuffs === true ? true : null,
+      protectionPathViews: raw.protectionPathViews === true ? true : null,
+      nestedCooperativeForecasts: raw.nestedCooperativeForecasts === true ? true : null,
+      legacyBranches: raw.legacyBranches === true ? true : null,
+      defendedBranches: raw.defendedBranches === true ? true : null,
+      targetReactions: raw.targetReactions === true ? true : null,
+      semanticCapacityKeys: raw.semanticCapacityKeys === true ? true : null,
+      capacityPerWorld: raw.capacityPerWorld === true ? true : null,
+      frozenStaminaPanel: raw.frozenStaminaPanel === true ? true : null,
+      projectedSummonFollowups: raw.projectedSummonFollowups === true ? true : null,
+      twoStageFullCheap: raw.twoStageFullCheap === true ? true : null,
+      runwayPaidRebuild: raw.runwayPaidRebuild === true ? true : null,
+      fullRoutineBranchCopies: raw.fullRoutineBranchCopies === true ? true : null,
+      firstOrderBranchLimit: bound('firstOrderBranchLimit') };
     return Object.values(bounds).some(value => value !== null) ? Object.freeze(bounds) : null;
-  })();
+  }
+  const configuredSearchBounds = normalizeSearchBounds(root.__LWCS_SEARCH_BOUNDS__);
+  // __LWCS_SEARCH_BOUNDS__.sides (paired experiments): the bounds apply only to decisions of those sides
+  // (runProvider sets them per outermost decision); everything else stays exact.
+  const searchBoundSides = configuredSearchBounds && Array.isArray(root.__LWCS_SEARCH_BOUNDS__.sides) &&
+    root.__LWCS_SEARCH_BOUNDS__.sides.length ? Object.freeze(root.__LWCS_SEARCH_BOUNDS__.sides.map(String)) : null;
+  let searchBounds = searchBoundSides ? null : configuredSearchBounds;
   const searchBudget = { creationPlanNodes: 0, capacityByCoarseKey: new Map(), shortCircuit: false };
+  // A created product's use plan branches over every action, target and outcome of each later window, so its cost
+  // grows exponentially with the windows it looks ahead and with the combatants on the field. Measured on food builds:
+  // a lv110 1v1 took 400+ s a battle on the full horizon, 32 s at three windows and 13 s at two; a lv89 2v2 did not
+  // finish its first round at three windows, ran ~5 s a decision at two and finished the battle in 32 s at one. The AI
+  // plans a product's use this many windows ahead (every branch to the same depth): two in a duel, one with more
+  // combatants. __LWCS_SEARCH_BOUNDS__.creationPlanWindows overrides it (exact fixtures pass a large one).
+  const CREATION_PLAN_WINDOW_LIMIT = Object.freeze({ duel: 2, team: 1 });
+  const RESERVE_USE_LIMIT = 4;
+  // States one repeated-resource reserve search may build, over all the depths it tries (r9v2LinearRepeatedResourceReserve).
+  const RESERVE_STATE_BUDGET = 60;
+  // A candidate's outcome trials branch in full up to this many combined paths, first order beyond (r9v2LinearCausalFeatureRows).
+  const FIRST_ORDER_BRANCH_LIMIT = 16;
+  // Two-stage evaluation (buildOnlineLinearFeatureInputs): how many of the cheaply ranked candidates take the full
+  // look-ahead, and the bounds of the cheap one.
+  const TWO_STAGE_FULL = 6;
+  const TWO_STAGE_CHEAP_BOUNDS = Object.freeze({ riskUndated: true, reserveUses: 1, creationPlanWindows: 1, conditionalBranches: 1 });
   // While a surrogate owns a decision's projection-heavy codes, the projections
   // feeding only those codes return neutral results instead of running.
   const R9V2_NEUTRAL_SEQUENCE_CAPACITY = Object.freeze({ sequence: 0, reserve: 0, finitePaidCapacity: null,
@@ -89140,6 +90048,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       unit.蓄力技能 ? skillId(unit.蓄力技能.skill || unit.蓄力技能) : ''];
   }
   const decisionMetrics = {
+    r9v2TwoStageDecisions: 0,
+    r10UnitCopies: 0,
+    r10ProjectorFrames: 0,
+    r9v2TwoStageLateFull: 0,
     baseActionValueCacheHits: 0,
     stateSummaryPairBuilds: 0,
     stateSummaryPairHits: 0,
@@ -89148,6 +90060,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     mechanicalBaseActionValueCacheBuilds: 0,
     mechanicalBaseActionValueSemanticHits: 0,
     cooperativeBasicAssistFastPathHits: 0,
+    cooperativeForecastMemoHits: 0,
     r9v2BestActionCapacitySemanticHits: 0,
     basicAttackSkillCacheHits: 0,
     basicAttackSkillBuilds: 0,
@@ -90568,6 +91481,77 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return preview.inheritProjectedResourceSupports(preview.inheritProjectedStateSourceWindows(copy, value), value);
   }
 
+  // The parts of a unit a routine-pressure branch writes: HP and resources (属性, top-level fields), the survival flag,
+  // stamina-adjusted final stats, shields and states, food-maintenance runtime, revival and skill-limit counters.
+  // A branch copies these and shares the rest (skills, equipment, inventory) instead of cloning the whole unit.
+  const ROUTINE_BRANCH_OWNED_FIELDS = Object.freeze(['属性', '状态', 'final', '状态效果', '持续效果', '__battleRuntime', '__技能限制运行态']);
+  function cloneRoutineBranchUnit(unit) {
+    decisionMetrics.r10UnitCopies += 1;
+    const copy = { ...unit };
+    for (const key of ROUTINE_BRANCH_OWNED_FIELDS) {
+      if (copy[key] && typeof copy[key] === 'object') copy[key] = typeof root.structuredClone === 'function'
+        ? root.structuredClone(copy[key]) : JSON.parse(JSON.stringify(copy[key]));
+    }
+    return preview.inheritProjectedResourceSupports(preview.inheritProjectedStateSourceWindows(copy, unit), unit);
+  }
+
+  // A copy for one hit inside r9v2LinearRoutineIncapacityRisk. A hit and the expiry stress between its waves write only
+  // HP, stamina, the unit-level shield, the state map itself, and the states holding a shield or a defensive charge
+  // (absorbPreviewShield, consume*Charges, applyDamageRevivalOutcomes, setHp at zero), so 状态效果 copies those states
+  // and shares the rest; the other owned fields copy as in cloneRoutineBranchUnit. Never handed to a round settlement,
+  // which writes durations (the projector copies branch worlds itself). searchBounds.fullRoutineBranchCopies
+  // (development) copies every state, to time this against.
+  const ROUTINE_HIT_CHARGES = Object.freeze(['block_count', 'death_save_count', 'revive_count']);
+  function cloneRoutineHitUnit(unit) {
+    if (searchBounds?.fullRoutineBranchCopies === true) return cloneRoutineBranchUnit(unit);
+    decisionMetrics.r10UnitCopies += 1;
+    const clone = value => typeof root.structuredClone === 'function' ? root.structuredClone(value) : JSON.parse(JSON.stringify(value));
+    const copy = { ...unit };
+    for (const key of ROUTINE_BRANCH_OWNED_FIELDS) {
+      const value = copy[key];
+      if (!value || typeof value !== 'object') continue;
+      copy[key] = key !== '状态效果' || Array.isArray(value) ? clone(value)
+        : Object.fromEntries(Object.entries(value).map(([name, state]) => [name, state && typeof state === 'object' &&
+            (Number(state.shield_value) > 0 || ROUTINE_HIT_CHARGES.some(charge => state.战斗效果 && Object.hasOwn(state.战斗效果, charge)))
+            ? clone(state) : state]));
+    }
+    return preview.inheritProjectedResourceSupports(preview.inheritProjectedStateSourceWindows(copy, unit), unit);
+  }
+
+  // Round-end settlement (r9v2LinearPassiveCapacityWorld) writes inside many fields of the unit it settles — summon
+  // mirrors, a life fire ending, the inventory — so its copy shares only what a round cannot change: the wuhun (skills,
+  // rings), equipment, soul bones, self-made skills and profile fields. The rest is copied in one clone, keeping any
+  // references between those fields as cloneValue would.
+  const SETTLEMENT_SHARED_FIELD = /^(?:第[0-9一二三四五六七八九十]+武魂|装备|魂骨|自创魂技|外貌|社交|财富|穿搭|魂灵塔记录|性格)$/;
+  function cloneSettlementUnit(unit) {
+    decisionMetrics.r10UnitCopies += 1;
+    const shared = new Set(Object.keys(unit).filter(key => SETTLEMENT_SHARED_FIELD.test(key) && unit[key] && typeof unit[key] === 'object'));
+    const owned = Object.fromEntries(Object.keys(unit).filter(key => !shared.has(key)).map(key => [key, unit[key]]));
+    const copied = typeof root.structuredClone === 'function' ? root.structuredClone(owned) : JSON.parse(JSON.stringify(owned));
+    const copy = Object.fromEntries(Object.keys(unit).map(key => [key, shared.has(key) ? unit[key] : copied[key]]));
+    return preview.inheritProjectedResourceSupports(preview.inheritProjectedStateSourceWindows(copy, unit), unit);
+  }
+
+  // A joint-flow frame's own copy of a world: what cloneValue gives (own enumerable fields, every unit its own copy),
+  // except that each unit copies only what a round writes in place (cloneRoutineBranchUnit; the settlement copies
+  // anything else before it writes) and shares the rest — skills, equipment, soul bones — with the world it came from.
+  function cloneProjectorWorld(world) {
+    const copies = new Map();
+    const copyUnit = unit => {
+      if (!unit || typeof unit !== 'object') return unit;
+      if (!copies.has(unit)) copies.set(unit, cloneRoutineBranchUnit(unit));
+      return copies.get(unit);
+    };
+    const copyRoster = roster => !roster || typeof roster !== 'object' ? roster : Array.isArray(roster) ? roster.map(copyUnit)
+      : Object.fromEntries(Object.entries(roster).map(([key, unit]) => [key, copyUnit(unit)]));
+    const shell = Object.fromEntries(Object.keys(world).map(key => [key, key === '参战者' || key === '召唤单位表' ? null : world[key]]));
+    const copy = typeof root.structuredClone === 'function' ? root.structuredClone(shell) : JSON.parse(JSON.stringify(shell));
+    if (Object.hasOwn(copy, '参战者')) copy.参战者 = world.参战者 && typeof world.参战者 === 'object'
+      ? Object.fromEntries(Object.entries(world.参战者).map(([side, roster]) => [side, copyRoster(roster)])) : world.参战者;
+    if (Object.hasOwn(copy, '召唤单位表')) copy.召唤单位表 = copyRoster(world.召唤单位表);
+    return preview.inheritProjectedResourceSupports(preview.inheritProjectedStateSourceWindows(copy, world), world);
+  }
+
   // True iff JSON.stringify(left) === JSON.stringify(right) for unmutated data.
   // Shared references short-circuit and the walk stops at the first difference;
   // anything JSON treats specially compares its serialized text instead.
@@ -90678,6 +91662,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             state?.类型 || state?.正负面 || '',
           ).trim(),
           combatEffect: cloneValue(state?.战斗效果 || {}),
+          // B5: a visible rule defense is public by its name. Without its rule the preview read the 免伤 charges in
+          // 战斗效果 as zero and predicted full damage into a block (100+ samples: 26% of active skills blocked).
+          ...(String(state?.原型 || '').trim() ? { prototype: String(state.原型).trim() } : {}),
+          ...(String(state?.规则 || '').trim() ? { rule: String(state.规则).trim() } : {}),
+          ...(String(state?.防御对象 || '').trim() ? { defenseTarget: String(state.防御对象).trim() } : {}),
           applicationProbability: clamp(
             Number(
               state?.__previewApplicationProbability ?? 1,
@@ -90741,7 +91730,21 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return worldSnapshot;
   }
 
+  // A fresh belief (no existing one) is a pure function of the world and the actor: built once per world object
+  // (capacity rows ask for one per world, unit and skill, and its revision hash was 3% of a high-level battle's CPU).
+  const freshBeliefs = new WeakMap();
   function buildInitialBelief(worldSnapshot = {}, actorId = '', existing = {}) {
+    const fresh = existing && typeof existing === 'object' && !Array.isArray(existing) && !Object.keys(existing).length &&
+      worldSnapshot && typeof worldSnapshot === 'object';
+    if (fresh) {
+      let byActor = freshBeliefs.get(worldSnapshot);
+      if (!byActor) freshBeliefs.set(worldSnapshot, byActor = new Map());
+      if (!byActor.has(actorId)) byActor.set(actorId, buildFreshBelief(worldSnapshot, actorId, existing));
+      return byActor.get(actorId);
+    }
+    return buildFreshBelief(worldSnapshot, actorId, existing);
+  }
+  function buildFreshBelief(worldSnapshot = {}, actorId = '', existing = {}) {
     const actor = findUnitInWorld(worldSnapshot, actorId);
     if (!actor) throw new Error('battle_decision_belief_actor_missing');
     const actorSide = sideOf(worldSnapshot, actor);
@@ -90821,13 +91824,123 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     ]);
   }
 
+  // What a typical character of a level has over the base table (talent tier, base variation, training), as the median
+  // real ÷ (base × system shape) of characters from the game's own generator — tools/battle-analytics/belief-stat-calibration.mjs,
+  // rerun when generation changes. Without it an unseen enemy was pictured with the bare base table: at level 98 a tenth
+  // of its real spirit maximum and half its strength, so every reaction contest read as a likely dodge.
+  const TYPICAL_STAT_RATIO_BY_LEVEL = Object.freeze([
+    [5, {str: 1.02, def: 0.93, agi: 0.55, men_max: 1.25, sp_max: 1.02, hp_max: 0.76, vit_max: 0.76}],
+    [10, {str: 1.13, def: 0.95, agi: 0.54, men_max: 1.19, sp_max: 1.02, hp_max: 0.84, vit_max: 0.84}],
+    [20, {str: 1.19, def: 1.01, agi: 0.56, men_max: 1.23, sp_max: 1.02, hp_max: 0.87, vit_max: 0.87}],
+    [29, {str: 1.07, def: 1.03, agi: 0.59, men_max: 1.42, sp_max: 1.02, hp_max: 0.81, vit_max: 0.81}],
+    [30, {str: 1.25, def: 1.05, agi: 0.6, men_max: 1.28, sp_max: 1.02, hp_max: 0.9, vit_max: 0.9}],
+    [40, {str: 1.25, def: 1.1, agi: 0.62, men_max: 1.34, sp_max: 1.02, hp_max: 0.95, vit_max: 0.95}],
+    [50, {str: 1.34, def: 1.19, agi: 0.64, men_max: 1.7, sp_max: 1.02, hp_max: 0.95, vit_max: 0.95}],
+    [60, {str: 1.35, def: 1.2, agi: 0.72, men_max: 1.65, sp_max: 1.02, hp_max: 1.01, vit_max: 1.01}],
+    [69, {str: 1.36, def: 1.26, agi: 0.73, men_max: 2.2, sp_max: 1.02, hp_max: 1.03, vit_max: 1.03}],
+    [70, {str: 1.52, def: 1.27, agi: 0.79, men_max: 2.29, sp_max: 1.02, hp_max: 1.11, vit_max: 1.11}],
+    [80, {str: 1.63, def: 1.41, agi: 0.79, men_max: 2.85, sp_max: 1.02, hp_max: 1.17, vit_max: 1.17}],
+    [89, {str: 1.49, def: 1.47, agi: 0.83, men_max: 3.71, sp_max: 1.02, hp_max: 1.16, vit_max: 1.16}],
+    [90, {str: 1.72, def: 1.65, agi: 0.91, men_max: 3.84, sp_max: 1.02, hp_max: 1.34, vit_max: 1.34}],
+    [94, {str: 1.76, def: 1.52, agi: 0.89, men_max: 4.56, sp_max: 1.02, hp_max: 1.24, vit_max: 1.24}],
+    [95, {str: 1.69, def: 1.68, agi: 0.93, men_max: 6.26, sp_max: 1.02, hp_max: 1.33, vit_max: 1.33}],
+    [96, {str: 1.89, def: 1.73, agi: 0.94, men_max: 6.25, sp_max: 1.02, hp_max: 1.32, vit_max: 1.32}],
+    [97, {str: 1.95, def: 1.75, agi: 0.96, men_max: 5.92, sp_max: 1.02, hp_max: 1.41, vit_max: 1.41}],
+    [98, {str: 1.77, def: 1.77, agi: 1.04, men_max: 6.95, sp_max: 1.02, hp_max: 1.39, vit_max: 1.39}],
+    [99, {str: 1.86, def: 1.78, agi: 0.99, men_max: 7.37, sp_max: 1.02, hp_max: 1.44, vit_max: 1.44}],
+    [100, {str: 2.03, def: 1.85, agi: 1.03, men_max: 7.77, sp_max: 1.02, hp_max: 1.45, vit_max: 1.45}],
+    [105, {str: 1.85, def: 1.82, agi: 1.02, men_max: 8.02, sp_max: 1.02, hp_max: 1.44, vit_max: 1.44}],
+    [110, {str: 2.24, def: 1.96, agi: 1.11, men_max: 8.27, sp_max: 1.02, hp_max: 1.52, vit_max: 1.52}],
+  ]);
+
+  function typicalStatRatio(level = 1) {
+    const rows = TYPICAL_STAT_RATIO_BY_LEVEL, index = rows.findIndex(([at]) => at >= level);
+    if (index <= 0) return rows[index < 0 ? rows.length - 1 : 0][1];
+    const [lowLevel, low] = rows[index - 1], [highLevel, high] = rows[index], t = (level - lowLevel) / (highLevel - lowLevel);
+    return Object.fromEntries(Object.keys(low).map(key => [key, low[key] + (high[key] - low[key]) * t]));
+  }
+
+  // 常规攻击（用户 2026-11-09："按同等级典型魂技估"）。常规压力模型（生死线、护盾与守护的承压、状态摘要）原先只按公开普攻
+  // （威力 50）估每个来源的出手；决策又看不到敌人的魂技（信念单位的技能列表为空），残血时的生死线因此画得太乐观，小增益
+  // 被估成保命（第一轮里受益者一回合内仍倒下 39–54%）。现在每个来源按它的常规攻击出手：不蓄力（前摇 ≤ 40）、主动释放、
+  // 非造物的魂技里根效果对敌伤害的期望值最大者，与普攻取大，以对普攻的倍率记在单位的 routine_attack_ratio 上。看不见的敌人
+  // 取同等级、同系别典型角色的均值（游戏自己的生成器，tools/battle-analytics/typical-attack-calibration.mjs，生成规则或伤害
+  // 公式变了就重跑；看不出系别用「全部」，召唤物按普攻）；己方单位按自己的魂技同口径计（knownRoutineAttackRatio），
+  // 两边在同一尺度上。9 级以下没有魂环。
+  const TYPICAL_ATTACK_RATIO_BY_LEVEL = Object.freeze([
+    [9, {全部: 1}],
+    [10, {全部: 1.08, 强攻系: 1.22, 敏攻系: 1.21, 防御系: 1.19, 控制系: 1.08, 元素系: 1.14, 精神系: 1, 辅助系: 1, 治疗系: 1, 召唤系: 1, 食物系: 1}],
+    [20, {全部: 1.23, 强攻系: 1.74, 敏攻系: 1.55, 防御系: 1.17, 控制系: 1.09, 元素系: 1.58, 精神系: 1, 辅助系: 1, 治疗系: 1.15, 召唤系: 1.04, 食物系: 1}],
+    [30, {全部: 1.33, 强攻系: 2.17, 敏攻系: 1.97, 防御系: 1.49, 控制系: 1.14, 元素系: 1.44, 精神系: 1, 辅助系: 1, 治疗系: 1, 召唤系: 1.08, 食物系: 1}],
+    [40, {全部: 1.5, 强攻系: 2.58, 敏攻系: 2.17, 防御系: 1.77, 控制系: 1.49, 元素系: 1.59, 精神系: 1.26, 辅助系: 1.11, 治疗系: 1.05, 召唤系: 1, 食物系: 1}],
+    [50, {全部: 1.62, 强攻系: 2.59, 敏攻系: 2.68, 防御系: 1.91, 控制系: 1.53, 元素系: 1.84, 精神系: 1.28, 辅助系: 1.05, 治疗系: 1.29, 召唤系: 1.05, 食物系: 1}],
+    [60, {全部: 1.89, 强攻系: 3.17, 敏攻系: 3, 防御系: 2.73, 控制系: 1.76, 元素系: 2.77, 精神系: 1.26, 辅助系: 1, 治疗系: 1.24, 召唤系: 1, 食物系: 1}],
+    [70, {全部: 1.81, 强攻系: 3.03, 敏攻系: 2.73, 防御系: 2.43, 控制系: 1.53, 元素系: 3.11, 精神系: 1.14, 辅助系: 1, 治疗系: 1.1, 召唤系: 1.08, 食物系: 1}],
+    [80, {全部: 2.02, 强攻系: 3.79, 敏攻系: 3.13, 防御系: 2.68, 控制系: 1.59, 元素系: 3.2, 精神系: 1.21, 辅助系: 1.09, 治疗系: 1.44, 召唤系: 1.09, 食物系: 1}],
+    [90, {全部: 2.24, 强攻系: 4.15, 敏攻系: 3.76, 防御系: 2.74, 控制系: 1.93, 元素系: 3.03, 精神系: 2.57, 辅助系: 1, 治疗系: 1.19, 召唤系: 1, 食物系: 1}],
+    [95, {全部: 2.27, 强攻系: 3.67, 敏攻系: 4.01, 防御系: 2.84, 控制系: 1.87, 元素系: 2.87, 精神系: 2.63, 辅助系: 1, 治疗系: 1.59, 召唤系: 1.21, 食物系: 1}],
+    [98, {全部: 2.24, 强攻系: 3.89, 敏攻系: 3.33, 防御系: 1.99, 控制系: 1.84, 元素系: 3.93, 精神系: 2.51, 辅助系: 1.28, 治疗系: 1.42, 召唤系: 1.22, 食物系: 1}],
+    [100, {全部: 2.61, 强攻系: 4.65, 敏攻系: 4.29, 防御系: 2.32, 控制系: 2.1, 元素系: 3.98, 精神系: 2.79, 辅助系: 1, 治疗系: 2.25, 召唤系: 1.7, 食物系: 1}],
+    [110, {全部: 2.67, 强攻系: 4.82, 敏攻系: 4.25, 防御系: 3.48, 控制系: 1.54, 元素系: 4.81, 精神系: 2.43, 辅助系: 1.13, 治疗系: 2.04, 召唤系: 1.22, 食物系: 1}],
+  ]);
+  const TYPICAL_ATTACK_SYSTEMS = Object.freeze(['强攻', '敏攻', '防御', '控制', '元素', '精神', '辅助', '治疗', '召唤', '食物']);
+
+  function typicalAttackRatio(level = 1, system = '') {
+    const name = TYPICAL_ATTACK_SYSTEMS.find(type => String(system || '').includes(type));
+    const column = ratios => Number(ratios[name ? `${name}系` : '全部'] ?? ratios.全部 ?? 1);
+    const rows = TYPICAL_ATTACK_RATIO_BY_LEVEL, index = rows.findIndex(([at]) => at >= level);
+    if (index <= 0) return index < 0 ? column(rows[rows.length - 1][1]) : 1;
+    const [lowLevel, low] = rows[index - 1], [highLevel, high] = rows[index], t = (level - lowLevel) / (highLevel - lowLevel);
+    return Math.max(1, column(low) + (column(high) - column(low)) * t);
+  }
+
+  const ROUTINE_BASIC_ATTACK = Object.freeze({ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 });
+  const ROUTINE_ATTACK_WINDUP = 40;
+
+  // A known unit's strongest routine attack over its basic attack, expected damage against itself (same level, so a
+  // skill's resource drive is about 1 and the ratio is its power over the basic attack's), at least 1.
+  function knownRoutineAttackRatio(unit = {}) {
+    const expected = (effect, resourceDriveEnabled) => preview.calculateBaseDamage(effect, unit, unit, null, { resourceDriveEnabled, targetCount: 1 }) *
+      preview.estimateHitProbability(unit, unit, effect);
+    const basic = expected(ROUTINE_BASIC_ATTACK, false);
+    if (!(basic > 0)) return 1;
+    let best = basic;
+    for (const skill of collectSkills(unit)) {
+      const trigger = String(skill?.触发方式 || '').trim();
+      if (trigger && !['主动', '主动释放'].includes(trigger) || String(skill?.承载方式 || '').trim() === '造物承载' ||
+        Number(skill?.前摇 ?? 0) > ROUTINE_ATTACK_WINDUP) continue;
+      best = Math.max(best, (Array.isArray(skill?._效果数组) ? skill._效果数组 : [])
+        .filter(effect => String(effect?.原型 || '').trim() === '伤害结算' && !['自身', '友方'].includes(String(effect?.目标 || '').trim()) &&
+          preview.effectConditionEnabled(effect, {}, unit, unit, {}))
+        .reduce((sum, effect) => sum + expected(effect, true), 0));
+    }
+    return best / basic;
+  }
+
+  // The routine attack as an attack of the basic attack's shape whose expected damage is routine_attack_ratio times the
+  // basic attack's: calculateDamageFormula scales by power / 100 up to 100 and by (power / 100)^0.25 beyond, and the
+  // basic attack's 50 is 0.5. Without a ratio (units outside a decision world) it is the basic attack.
+  const routineAttackEffects = new Map();
+  function routineAttackEffect(source = {}) {
+    const ratio = Math.round(Number(source?.routine_attack_ratio) * 100) / 100;
+    if (!(ratio > 1)) return ROUTINE_BASIC_ATTACK;
+    let effect = routineAttackEffects.get(ratio);
+    if (!effect) {
+      const powerRatio = 0.5 * ratio;
+      routineAttackEffects.set(ratio, effect = Object.freeze({ ...ROUTINE_BASIC_ATTACK, 威力倍率: powerRatio <= 1 ? 100 * powerRatio : 100 * powerRatio ** 4 }));
+    }
+    return effect;
+  }
+
   function buildDecisionWorldOutcomes(worldSnapshot = {}, actorId = '', beliefState = {}, alreadyPublic = false) {
     const sourceActor = findUnitInWorld(worldSnapshot, actorId);
     if (!sourceActor) throw new Error('battle_decision_projection_actor_missing');
     const actorSide = sideOf(worldSnapshot, sourceActor);
     const projectUnit = (sourceUnit, publicSide = '') => {
       if (alreadyPublic === true || sideOf(worldSnapshot, sourceUnit) === actorSide) {
-        return preview.inheritProjectedStateSourceWindows(cloneValue(sourceUnit), sourceUnit, worldSnapshot);
+        const unit = preview.inheritProjectedStateSourceWindows(cloneValue(sourceUnit), sourceUnit, worldSnapshot);
+        if (sideOf(worldSnapshot, sourceUnit) === actorSide && !Number.isFinite(Number(unit?.routine_attack_ratio))) unit.routine_attack_ratio = knownRoutineAttackRatio(unit);
+        return unit;
       }
       const id = preview.unitId(sourceUnit);
       const beliefUnit = beliefState?.units?.[id] || {};
@@ -90854,17 +91967,21 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           : /辅助|治疗|食物/.test(system)
             ? { str: 0.78, def: 0.9, agi: 0.95 }
             : { str: 1.08, def: 1, agi: 0.96 };
-      const hpMax = baseStats.vit_max;
+      const typical = typicalStatRatio(perceivedLevel);
+      const hpMax = baseStats.vit_max * typical.hp_max;
       const hp = hpMax * clamp(beliefUnit.hpRatio ?? 1, 0, 1);
       const resourceRatios = beliefUnit.resources || {};
-      const soulMax = baseStats.sp_max;
-      const spiritMax = baseStats.men_max;
-      const staminaMax = baseStats.vit_max;
+      const soulMax = baseStats.sp_max * typical.sp_max;
+      const spiritMax = baseStats.men_max * typical.men_max;
+      const staminaMax = baseStats.vit_max * typical.vit_max;
       const states = Object.fromEntries((beliefUnit.visibleStates || []).map((state, index) => [`visible:${id}:${index}`, {
         状态: String(state?.name || '').trim(),
         duration: Math.max(0, Number(state?.duration || 0)),
         类型: String(state?.type || '').trim(),
         战斗效果: cloneValue(state?.combatEffect || {}),
+        ...(state?.prototype ? { 原型: state.prototype } : {}),
+        ...(state?.rule ? { 规则: state.rule } : {}),
+        ...(state?.defenseTarget ? { 防御对象: state.defenseTarget } : {}),
         __previewApplicationProbability: clamp(Number(state?.applicationProbability ?? 1), 0, 1),
         ...(Number(state?.shieldRatio || 0) > 1e-12
           ? {
@@ -90892,13 +92009,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         men_max: spiritMax,
         vit: staminaMax * clamp(resourceRatios.stamina ?? 0.5, 0, 1),
         vit_max: staminaMax,
-        str: Math.max(1, combatBase * systemScale.str),
-        def: Math.max(1, combatBase * systemScale.def),
-        agi: Math.max(1, combatBase * systemScale.agi),
+        str: Math.max(1, combatBase * systemScale.str * typical.str),
+        def: Math.max(1, combatBase * systemScale.def * typical.def),
+        agi: Math.max(1, combatBase * systemScale.agi * typical.agi),
         状态: { 存活: beliefUnit.alive !== false },
         __战斗失能原因: String(sourceUnit?.__战斗失能原因 || '').trim(),
         状态效果: states,
         技能列表: [],
+        routine_attack_ratio: publicUnitRole === 'SUMMON' ? 1 : typicalAttackRatio(perceivedLevel, system),
       };
       const observedResponses = (Array.isArray(beliefUnit?.knownResponses)
         ? beliefUnit.knownResponses
@@ -90953,6 +92071,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           } };
         }
       }
+      // The battle-start panel prices every action's stamina (R07); keep it so the decision pays what the runtime charges.
+      const panelStats = sourceUnit?.__battleRuntime?.panelStats;
+      if (panelStats && typeof panelStats === 'object') projected.__battleRuntime = { ...projected.__battleRuntime, panelStats: { ...panelStats } };
       return projected;
     };
     const participants = worldSnapshot?.参战者 || {};
@@ -91867,7 +92988,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (cached) return cached;
     const consumer = root.__LWCS_ITEM_PASSIVE_CONSUMER_V1__;
     if (!consumer || typeof consumer.编译角色装备被动消费者_V1 !== 'function') return Object.freeze([]);
-    const packageValue = consumer.编译角色装备被动消费者_V1(unit);
+    // The preview keeps one compiled package per projection origin and loadout (same consumer: it looks on root first).
+    const shared = typeof preview.equipmentPassiveSkillPackage === 'function' ? preview.equipmentPassiveSkillPackage(unit) : null;
+    const sharedEffects = shared && equipmentPassivePreviewEffectsByPackage.get(shared.package);
+    if (sharedEffects) {
+      equipmentPassivePreviewEffectsCache.set(unit, sharedEffects);
+      return sharedEffects;
+    }
+    const packageValue = shared ? shared.package : consumer.编译角色装备被动消费者_V1(unit);
     const effects = Object.freeze((Array.isArray(packageValue?.动作效果) ? packageValue.动作效果 : [])
       .filter(entry => !['战斗开始', '回合开始', '受击前', '受击后', '濒死时', '被控制时', '命中后']
         .includes(String(entry?.触发方式 || entry?.效果?.触发方式 || '').trim()))
@@ -91882,6 +93010,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       })
       .map(entry => entry?.效果)
       .filter(effect => effect && typeof effect === 'object' && !Array.isArray(effect)));
+    if (shared) equipmentPassivePreviewEffectsByPackage.set(shared.package, effects);
     equipmentPassivePreviewEffectsCache.set(unit, effects);
     return effects;
   }
@@ -91934,7 +93063,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       魂技名: '普通攻击',
       承载方式: '直接生效',
       消耗: '无',
-      前摇: 0,
+      前摇: preview.basicAttackWindup(unit),
       _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 }],
     });
     basicAttackSkillCache.set(unit, skill);
@@ -93349,7 +94478,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           // calculateBaseActionValue uses its fixed basicAttackEffect for this
           // action kind. Hashing a per-unit skill clone adds no dependency.
           mechanicalActionKey = isBasicAttack ? 'BASIC_ATTACK' : effectiveSkill;
-          if (isBasicAttack && isSimpleBasicDamageActor(actor)) {
+          // As for the capacity's semantic key (r9v2LinearBestActionCapacity): off unless searchBounds.semanticCapacityKeys.
+          if (isBasicAttack && searchBounds?.semanticCapacityKeys === true && isSimpleBasicDamageActor(actor)) {
             try {
               semanticMechanicalKey = JSON.stringify([
                 { ...actorProfile, id: '' }, targetProfile, mechanicalActionKey,
@@ -94692,16 +95822,21 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         0,
       ),
     );
-    const derivedFinalRound = objectiveRoundCount > 0
-      ? objectiveStartRound + objectiveRoundCount
-      : 0;
-    const finalRound = Math.max(
-      0,
-      Number(explicit.finalRound ?? explicit.roundLimit ?? derivedFinalRound),
-    );
-    const remainingRounds = finalRound > 0
-      ? Math.max(0, finalRound - currentRound)
-      : Number.POSITIVE_INFINITY;
+    // A 坚持回合 condition (ROUND_REACHED), for either side, ends the battle at its round, so it caps the horizon too: an
+    // endure battle used to be planned over the 40-round limit though it is over at round 12.
+    const objectives = worldSnapshot?.胜负条件 && typeof worldSnapshot.胜负条件 === 'object'
+      ? preview.normalizeBattleObjectives(worldSnapshot.胜负条件, worldSnapshot) : null;
+    const roundConditions = [...(objectives?.victory?.conditions || []), ...(objectives?.defeat?.conditions || [])]
+      .filter(condition => condition?.type === 'ROUND_REACHED' && Number(condition.round) > 0)
+      .map(condition => objectiveStartRound + Number(condition.round));
+    const limitRound = Math.max(0, Number(explicit.finalRound ?? explicit.roundLimit ??
+      (objectiveRoundCount > 0 ? objectiveStartRound + objectiveRoundCount : 0)));
+    const finalRound = Math.min(...[limitRound, ...roundConditions].filter(value => Number.isFinite(value) && value > 0), Infinity);
+    if (!Number.isFinite(finalRound)) return battleHorizonResult(currentRound, 0, Number.POSITIVE_INFINITY, input, explicit);
+    return battleHorizonResult(currentRound, finalRound, Math.max(0, finalRound - currentRound), input, explicit);
+  }
+
+  function battleHorizonResult(currentRound, finalRound, remainingRounds, input, explicit) {
     const naturalActionBudget = Math.max(
       1,
       Number(explicit.naturalActionBudget ?? input?.actionOpportunity?.naturalActionBudget ?? 40),
@@ -94727,7 +95862,109 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       Math.max(0, Number(actor.剩余窗口 ?? actor.__battleRuntime?.summonWindow?.remainingWindows ?? 0))) : horizon.remainingNaturalActionBudget);
   }
 
+  // R07 stamina (用户 2026-11-08 选"1 和 3"：会被累死，同时会避免自己累死): stamina at 0 incapacitates, and an
+  // actor never chooses an action whose stamina price would take it to 0 or below. Such candidates are rejected
+  // before enumeration (STAMINA_UNAFFORDABLE); an action with no stamina price (PASS) always remains. A reaction or
+  // counter is priced against the incoming attacker, any other action against its first hostile target.
+  // An attack, skill or item that resolved to no target at all (e.g. a group skill against a side that has fallen)
+  // is not an action; the decision bridge cannot score it.
+  const TARGETED_ACTION_KINDS = new Set(['BASIC_ATTACK', 'RELEASE_SKILL', 'USE_ITEM']);
+  function withoutTargetlessCandidates(candidates = [], rejectionCollector = null) {
+    const kept = candidates.filter(candidate => !TARGETED_ACTION_KINDS.has(String(candidate?.declaration?.actionKind || '').trim()) ||
+      (Array.isArray(candidate.declaration.targetIds) && candidate.declaration.targetIds.length > 0));
+    if (kept.length === candidates.length || !kept.length) return candidates;
+    for (const candidate of candidates) if (!kept.includes(candidate)) rejectionCollector?.({
+      actionKind: String(candidate.declaration.actionKind || '').trim(),
+      sourceActionId: String(candidate.declaration.actionId || candidate.candidateId || '').trim(),
+      targetIds: [], rejectionCode: 'TARGET_SET_EMPTY', rejectionStage: 'TARGETING',
+    });
+    return kept;
+  }
+
+  // The skills an actor is sustaining: a carrier with a sustain fee in its 持续效果 whose maintained state is still on the
+  // field. Such a skill is not released again — R01 gives the repeat no effect while its full cost is paid again (a 防御系
+  // true body re-cast within one round paid twice and stacked its shields).
+  function sustainedSkillNames(worldSnapshot = {}, actor = null) {
+    const carriers = Object.values(actor?.持续效果 || {}).filter(effect =>
+      effect && typeof effect === 'object' && effect.维持消耗 && Object.keys(effect.维持消耗).length);
+    if (!carriers.length) return null;
+    const live = new Set(worldEntries(worldSnapshot).flatMap(({ unit }) =>
+      Object.entries(unit?.状态效果 || {}).map(([key, state]) => String(state?.状态ID || key))));
+    const names = new Set(carriers.filter(effect => !effect.related_condition || live.has(String(effect.related_condition)))
+      .map(effect => String(effect.来源技能 || effect.name || '').trim()).filter(Boolean));
+    return names.size ? names : null;
+  }
+
   function enumerateCandidates(input = {}) {
+    const worldSnapshot = input?.worldSnapshot || {};
+    let candidates = withoutTargetlessCandidates(enumerateCandidatesUnchecked(input),
+      typeof input?.rejectionCollector === 'function' ? input.rejectionCollector : null);
+    if (Array.isArray(candidates) && input?.actionOpportunity?.enforceImmediateBudget === true) {
+      const budget = Math.max(0, Number(input.actionOpportunity.immediateBudget ?? 0)), budgetActor = findUnitInWorld(worldSnapshot, input?.actorId);
+      const fits = candidate => !['BASIC_ATTACK', 'USE_ITEM'].includes(candidate?.declaration?.actionKind) ||
+        preview.actionWindup(budgetActor, candidate.declaration) <= budget;
+      for (const candidate of candidates.filter(candidate => !fits(candidate))) input?.rejectionCollector?.({
+        actionKind: candidate.declaration.actionKind, sourceActionId: String(candidate.declaration.actionId || candidate.candidateId || '').trim(),
+        targetIds: Array.isArray(candidate.declaration.targetIds) ? candidate.declaration.targetIds.map(String) : [],
+        rejectionCode: 'CAST_EXCEEDS_IMMEDIATE_BUDGET', rejectionStage: 'OPPORTUNITY',
+      });
+      candidates = candidates.filter(fits);
+    }
+    const sustained = Array.isArray(candidates) ? sustainedSkillNames(worldSnapshot, findUnitInWorld(worldSnapshot, input?.actorId)) : null;
+    if (sustained) {
+      const repeat = candidate => candidate?.declaration?.actionKind === 'RELEASE_SKILL' &&
+        sustained.has(String(candidate.declaration.skill?.魂技名 || candidate.declaration.skill?.name || '').trim());
+      const kept = candidates.filter(candidate => !repeat(candidate));
+      if (kept.length && kept.length < candidates.length) {
+        for (const candidate of candidates.filter(repeat)) input?.rejectionCollector?.({
+          actionKind: 'RELEASE_SKILL', sourceActionId: String(candidate.declaration.actionId || candidate.candidateId || '').trim(),
+          targetIds: Array.isArray(candidate.declaration.targetIds) ? candidate.declaration.targetIds.map(String) : [],
+          rejectionCode: 'SKILL_SUSTAIN_ACTIVE', rejectionStage: 'OPPORTUNITY',
+        });
+        candidates = kept;
+      }
+    }
+    if (!Array.isArray(candidates) || !preview.actionStaminaEnabled(worldSnapshot)) return candidates;
+    const actor = findUnitInWorld(worldSnapshot, input?.actorId);
+    if (!actor) return candidates;
+    const stamina = preview.readResource(actor, '体力');
+    const role = String(input?.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase();
+    const incomingId = ['REACTION', 'COUNTER'].includes(role) ? String(input?.actionOpportunity?.sourceActorId || '').trim() : '';
+    const actorSide = preview.sideOf(worldSnapshot, actor);
+    const rejectionCollector = typeof input?.rejectionCollector === 'function' ? input.rejectionCollector : null;
+    const rejected = [];
+    const kept = candidates.filter(candidate => {
+      const declaration = candidate?.declaration;
+      // Declining a counter stands down; it is not a defensive action of its own.
+      if (String(candidate?.candidateId || '').endsWith(':COUNTER_DECLINE')) return true;
+      const nature = declaration ? preview.actionStaminaNature(declaration) : '';
+      if (!nature) return true;
+      const opponent = (incomingId ? findUnitInWorld(worldSnapshot, incomingId) : null) ||
+        (Array.isArray(declaration.targetIds) ? declaration.targetIds : [])
+          .map(id => findUnitInWorld(worldSnapshot, id))
+          .find(unit => unit && preview.sideOf(worldSnapshot, unit) && preview.sideOf(worldSnapshot, unit) !== actorSide) || null;
+      const price = preview.actionStaminaCost(actor, nature, opponent);
+      // A skill's own declared 体力 fee is paid first; the action's stamina comes on top of it.
+      const declaredRaw = declaration?.resourceCosts?.体力;
+      const declaredPlan = declaredRaw === undefined ? null : preview.assessResourcePayment([actor], { 体力: declaredRaw });
+      const declared = declaredPlan?.valid ? Number(declaredPlan.payments?.[0]?.amount || 0) : 0;
+      if (!(price > 0) || stamina - declared - price > 1e-9) return true;
+      rejected.push({
+        actionKind: String(declaration.actionKind || '').trim(),
+        sourceActionId: String(declaration.actionId || candidate.candidateId || '').trim(),
+        targetIds: Array.isArray(declaration.targetIds) ? declaration.targetIds.map(String) : [],
+        rejectionCode: 'STAMINA_UNAFFORDABLE',
+        rejectionStage: 'AFFORDABILITY',
+      });
+      return false;
+    });
+    // With nothing left to choose (no PASS in this opportunity), the actor still has to act and may exhaust itself.
+    if (!kept.length) return candidates;
+    for (const entry of rejected) rejectionCollector?.(entry);
+    return kept;
+  }
+
+  function enumerateCandidatesUnchecked(input = {}) {
     if (providerExecutionDepth > 0) throw new Error('PROVIDER_REENUMERATED_CANDIDATES');
     const rejectionCollector = typeof input?.rejectionCollector === 'function'
       ? input.rejectionCollector
@@ -94812,9 +96049,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       typeof actor.__battleRuntime.naturalOpportunity === 'object'
       ? actor.__battleRuntime.naturalOpportunity
       : null;
-    const counterNaturalOpportunityAvailable = counterOnly &&
-      Number(counterNaturalOpportunity?.round || 0) === Number(worldSnapshot?.回合 || 0) &&
-      String(counterNaturalOpportunity?.status || '').trim() === 'PENDING';
+    // R15: a round is one cavalry pass — striking back after a defence or an evasion is part of the engagement and
+    // does not spend the counter-attacker's own action of the round, so a counter never needs (or consumes) it.
+    const counterNaturalOpportunityAvailable = counterOnly;
+    void counterNaturalOpportunity;
     const opportunityValidTargetIds = new Set(
       (Array.isArray(input.actionOpportunity?.validTargetIds)
         ? input.actionOpportunity.validTargetIds
@@ -94944,7 +96182,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           actionKind: 'BASIC_ATTACK',
           targetIds: [targetId],
           skill: basicAttackSkill(actor),
-          ...(counterOnly ? { counterConsumesNaturalOpportunity: true } : {}),
+          ...(counterOnly ? { counterConsumesNaturalOpportunity: false } : {}),
         },
       };
     });
@@ -95160,7 +96398,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const creation = creationProfile(counterSkill, actor, worldSnapshot, null, {
         ...input,
         actorId,
-        declaration: { counterConsumesNaturalOpportunity: immediateOffensiveCounterEligible },
+        declaration: { counterConsumesNaturalOpportunity: false },
       });
       if (creation && input.excludeCreationCandidates === true) return;
       // The product's future use is not a second immediate target of a pure
@@ -95270,7 +96508,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           skill: counterSkill,
           resourceCosts: declarationCosts,
           ...(counterOnly ? {
-            counterConsumesNaturalOpportunity: immediateOffensiveCounterEligible,
+            counterConsumesNaturalOpportunity: false,
           } : {}),
         };
         if (creation) declaration.creationRecipientId = creationRecipientId;
@@ -103214,6 +104452,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     affordablePreparedSkillCache = new WeakMap();
     affordablePreparedSkillStateCache = new WeakMap();
     equipmentPassivePreviewEffectsCache = new WeakMap();
+    equipmentPassivePreviewEffectsByPackage = new WeakMap();
     equipmentPassiveEffectFingerprintCache = new WeakMap();
     stateEntriesCache = new WeakMap();
     activeSettlementModifierSignatureCache = new WeakMap();
@@ -108806,6 +110045,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         delete projected.__battleRuntime;
       } else if (runtimeMode === 'WITHOUT_NATURAL_OPPORTUNITY') {
         delete projected.__battleRuntime.naturalOpportunity;
+        // The battle-start stamina price record is constant for the battle, not behaviour identity.
+        delete projected.__battleRuntime.panelStats;
         if (!Object.keys(projected.__battleRuntime).length) {
           delete projected.__battleRuntime;
         }
@@ -124430,7 +125671,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return request;
   }
 
+  // Development hook (absent in play): __LWCS_DECISION_DEBUG__.onDecisionInput(input) sees the raw input of every
+  // outermost decision before it is prepared (metamorphic behavior tests re-decide perturbed copies of it). The hook's
+  // own prepare/provider calls are not observed again.
+  let observingDecisionInput = false;
   function prepareDecisionRequest(input = {}) {
+    const inputObserver = root.__LWCS_DECISION_DEBUG__?.onDecisionInput;
+    if (typeof inputObserver === 'function' && !providerDepth && !observingDecisionInput) {
+      observingDecisionInput = true;
+      try { inputObserver(input); } finally { observingDecisionInput = false; }
+    }
     const prepareClockNow = () =>
       typeof globalThis?.performance?.now === 'function'
         ? globalThis.performance.now()
@@ -125368,6 +126618,23 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         skill: basicAttackSkill(actor),
       };
     }
+    // Experimental (searchBounds.cooperativeBasic): any free summon is forecast to assist with a basic attack on the
+    // preferred target, else on the lowest-HP-ratio legal target, instead of a nested decision.
+    if (searchBounds?.cooperativeBasic === true && input.__preparedDecisionWorld === true && actor && !charge &&
+        preview.isBattleCapable(actor) && !hasActionCancellation(actor) && !hasStateFlag(actor, 'disarm') && assistTargets.length) {
+      const preferred = (Array.isArray(input.preferredTargetIds) ? input.preferredTargetIds : []).map(String)
+        .find(id => assistTargets.some(entry => preview.unitId(entry.unit) === id));
+      const hpRatio = unit => preview.readHp(unit) / Math.max(1, preview.readHpMax(unit));
+      const targetId = preferred || preview.unitId(assistTargets.slice().sort((left, right) =>
+        hpRatio(left.unit) - hpRatio(right.unit))[0].unit);
+      return {
+        actionId: `${actorId}:basic:${targetId}`,
+        actorId,
+        actionKind: 'BASIC_ATTACK',
+        targetIds: [targetId],
+        skill: basicAttackSkill(actor),
+      };
+    }
     const assistOpportunity = {
       role: 'ASSIST',
       projectionPurpose: 'COOPERATIVE_FORECAST',
@@ -125392,6 +126659,33 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (!forced.length) return null;
       if (forced.length === 1 && forced[0].declaration.actionKind === 'RELEASE_SKILL') return forced[0].declaration;
     }
+    // One decision forecasts the same summon (same definition and legal targets) in many hypothetical frames — every
+    // reserve use and capacity probe creates it again under a new id — and each forecast is a nested decision, ~0.5 s for
+    // a summon with skills (a 2v2 summoner ran past 240 s in its first round). Within one decision the first forecast of
+    // a definition stands for the rest, with the new summon as its actor.
+    const memoKey = actor && !charge && preview.isSummonUnit(actor) ? JSON.stringify([
+      String(actor.召唤键 || ''), String(actor.宿主名 || actor.宿主ID || ''), Number(actor.等级 ?? actor.level ?? 0),
+      (Array.isArray(actor.技能列表) ? actor.技能列表 : []).map((skill, index) => skillId(skill, index)),
+      [...allowedTargetIds].sort(), (Array.isArray(input.preferredTargetIds) ? input.preferredTargetIds : []).map(String).sort(),
+      input.__preparedDecisionWorld === true, hasUnforcedObservationChoice]) : '';
+    const remembered = memoKey ? cooperativeForecasts.get(memoKey) : null;
+    if (remembered) {
+      decisionMetrics.cooperativeForecastMemoHits += 1;
+      return remembered.declaration && JSON.parse(JSON.stringify(remembered.declaration).split(JSON.stringify(remembered.actorId).slice(1, -1))
+        .join(JSON.stringify(actorId).slice(1, -1)));
+    }
+    const remember = declaration => {
+      if (memoKey) cooperativeForecasts.set(memoKey, { actorId, declaration: declaration ? cloneValue(declaration) : null });
+      return declaration;
+    };
+    // R10 step 5 (plan: 他人行动预测取表上最好动作; user, 2026-11-11: target C): a decision's forecast of a free summon's
+    // assist is its best action by formula receipt (r10CooperativeForecast) instead of a nested decision — preparing a
+    // summon's candidate pool and scoring it was 9% of a high-level 3v3's CPU. A charging summon and an unforced
+    // observation choice keep the nested decision; searchBounds.nestedCooperativeForecasts (development) restores it.
+    if (input.__preparedDecisionWorld === true && actor && !charge && !hasUnforcedObservationChoice &&
+        searchBounds?.nestedCooperativeForecasts !== true) {
+      return remember(r10CooperativeForecast(worldSnapshot, actor, assistTargets.map(entry => entry.unit), input));
+    }
     let request;
     try {
       request = prepareDecisionRequest({
@@ -125406,7 +126700,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         actionOpportunity: assistOpportunity,
       });
     } catch (error) {
-      if (error?.code === 'BATTLE_DECISION_CANDIDATE_POOL_EMPTY' && error.actorId === input.actorId && error.actionRole === 'ASSIST') return null;
+      if (error?.code === 'BATTLE_DECISION_CANDIDATE_POOL_EMPTY' && error.actorId === input.actorId && error.actionRole === 'ASSIST') return remember(null);
       throw error;
     }
     // Legality and the complete target/skill set have already been prepared.
@@ -125416,9 +126710,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (request.frozenCandidates.length === 1 &&
         (request.frozenCandidates[0].declaration.actionKind === 'BASIC_ATTACK' ||
           charge && request.frozenCandidates[0].declaration.actionKind === 'RELEASE_SKILL')) {
-      return request.frozenCandidates[0].declaration;
+      return remember(request.frozenCandidates[0].declaration);
     }
-    return runProvider({ providerId: 'r9v2', request }).selectedDeclaration;
+    return remember(runProvider({ providerId: 'r9v2', request }).selectedDeclaration);
   }
 
   function isPreparedDecisionRequest(request) {
@@ -145526,11 +146820,37 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return '';
   }
 
+  // H4: the target of one's own attack reacts as one's own side does to an incoming one (83%–89% of sampled attacks
+  // were defended or evaded): with the better of the defend multiplier and 1 − dodge, as the incoming-risk model
+  // reads it. Without it every attack is valued as if never defended, about 1.4–1.6 times what lands.
+  // 2026-11-11 (主线 9.6; 用户："有必要的你就改吧"): off by default. It only ever reached the candidate's own settlement;
+  // an attack with an uncertain outcome is valued on its branches, which settle undefended, and so are the action
+  // capacities that value buffs, controls and denial — so a sure hit was valued at the defended 0.6 of a dodgeable one's
+  // undefended whole. Defended everywhere would need the feature weights calibrated anew (buff gains are relative, the
+  // damage terms absolute: H4 in branches alone turned a 3v3 of buffers from 4 rounds into 14). One basis now, undefended.
+  // searchBounds.targetReactions (development) restores H4 in the own settlement, searchBounds.defendedBranches in the
+  // branches.
+  function r9v2LinearTargetReactions(world, declaration, actor) {
+    const skill = String(declaration?.actionKind || '').trim().toUpperCase() === 'BASIC_ATTACK' ? basicAttackSkill(actor) : declaration?.skill || {};
+    if (!actor || !preview.collectEffects(skill).some(effect => String(effect?.原型 || '').trim() === '伤害结算')) return null;
+    const damageMultiplierByTarget = {}, evadeProbabilityByTarget = {}, actorSide = sideOf(world, actor);
+    for (const targetId of declaration?.targetIds || []) {
+      const target = findUnitInWorld(world, targetId);
+      if (!target || sideOf(world, target) === actorSide || !preview.isBattleCapable(target)) continue;
+      const defense = preview.calculateDefenseDamageMultiplier(target, actor, false), dodge = preview.calculateDodgeProbability(target, actor, false);
+      if (1 - dodge < defense) evadeProbabilityByTarget[targetId] = dodge;
+      else damageMultiplierByTarget[targetId] = defense;
+    }
+    return Object.keys(damageMultiplierByTarget).length + Object.keys(evadeProbabilityByTarget).length
+      ? { damageMultiplierByTarget, evadeProbabilityByTarget } : null;
+  }
+
   function r9v2LinearPublicCost(declaration, actor) {
     const result = [];
     for (const [resource, amount] of Object.entries((declaration && declaration.resourceCosts) || {})) {
       const value = amount && typeof amount === 'object' ? preview.resolveSkillResourceCost(actor, resource, amount) : Number(amount);
-      if (['魂力', '精神力', '体力', '生命'].indexOf(resource) >= 0 && Number.isFinite(value)) {
+      // A share of a spent resource can come to 0 (a percent of 0 current stamina): no cost, not an invalid one.
+      if (['魂力', '精神力', '体力', '生命'].indexOf(resource) >= 0 && Number.isFinite(value) && value > 0) {
         result.push({ resource, amount: value });
       }
     }
@@ -146304,7 +147624,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const riskEventIds = new Set(result.contributions.filter(entry => riskIds.has(entry.effectInstanceId) ||
       riskIds.has(entry.evidence?.persistentRiskBinding?.risk?.sourceEffectId)).map(entry => entry.effectInstanceId));
     const damageOutcomeEntries = result.contributions.filter(entry => entry.outcomeKind === 'HP_DELTA' && Number.isFinite(entry.evidence?.rawDamage) && entry.evidence.outcomeDistribution?.length);
-    const graph = damageOutcomeEntries.length ? preview.buildActionOperationGraph({ previewResult: result, worldSnapshot: baseWorld, damageOutcomeEntries }) : result.operationGraph;
+    // A use preview built without its operation graph (no damage outcome to expand) left this null and threw on
+    // graphHash (2026-11-10, 1v1-0137-o1 / 1v1-0399-o1: a 110-level 食物系's prestocked food); build the graph then too.
+    const graph = damageOutcomeEntries.length || !result.operationGraph
+      ? preview.buildActionOperationGraph({ previewResult: result, worldSnapshot: baseWorld, damageOutcomeEntries }) : result.operationGraph;
     const neutralGraph = { ...graph, graphHash: `${graph.graphHash}:without-passive-risk`,
       deterministicEvents: graph.deterministicEvents.filter(event => !riskEventIds.has(event.effectInstanceId)),
       conditionalEvents: graph.conditionalEvents.filter(event => !riskEventIds.has(event.effectInstanceId)),
@@ -147437,7 +148760,6 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (searchBudget.shortCircuit) return 0;
     if (!(preview.readShield(unit) > 0 || preview.readShield(next) > 0)) return 0;
     const maximumHp = Math.max(1, preview.readHpMax(unit));
-    const basic = { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 };
     const pressureWorld = options.worldSnapshot || world;
     const pressureTarget = (options.worldSnapshot && findUnitInWorld(pressureWorld, preview.unitId(next))) || next;
     const pressureOptions = options.pressureOptionsForWorld?.(pressureWorld) || {};
@@ -147453,6 +148775,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         ? findUnitInWorld(frame, preview.unitId(source)) : source)
         .filter(source => source && preview.isBattleCapable(source) && !hasActionCancellation(source))
         .sort(preview.compareNaturalActionOrder).map(source => {
+          const basic = routineAttackEffect(source);
           let damage = preview.calculateBaseDamage(basic, source, target, null, { resourceDriveEnabled: false });
           let probability = preview.estimateHitProbability(source, target, basic) *
             r9v2LinearRecentAttackPropensity(pressureOptions.pressureObservationWorld?.(window) || frame, source, sourceSide, recentAttackLedgerIndex);
@@ -147574,8 +148897,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const totalWindows = Math.max(0, clock.opportunities - clock.productionWindow + 1);
     const tailWindows = Math.min(3, Math.max(0, totalWindows - clock.windows));
     const exactPlannedWindows = Math.min(totalWindows, clock.windows + tailWindows);
-    const plannedWindows = searchBounds?.creationPlanWindows != null
-      ? Math.min(exactPlannedWindows, searchBounds.creationPlanWindows) : exactPlannedWindows;
+    const windowLimit = searchBounds?.creationPlanWindows ?? (aliveEntries(worldSnapshot).length > 2 ? CREATION_PLAN_WINDOW_LIMIT.team : CREATION_PLAN_WINDOW_LIMIT.duel);
+    const plannedWindows = Math.min(exactPlannedWindows, windowLimit);
+    const planNodeStart = searchBudget.creationPlanNodes;
     const prefixWindows = Math.min(clock.windows, plannedWindows);
     let resourceReferenceDomainCompatible = true;
     const cache = new Map();
@@ -147815,10 +149139,26 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       return boundedDeliverySurvivalProbability(clock.unsettledThreats(threatProjection.postUseBranches, world), 1,
         (preview.readHp(unit) + preview.readShield(unit)) / Math.max(1, preview.readHpMax(unit)) * 100);
     };
+    // B4: the window limit (CREATION_PLAN_WINDOW_LIMIT) cut the later windows of the plan to 0. A shield or a life
+    // saved is worth nothing within one step (its value is the recipient still acting afterwards), so a protective
+    // food for a dying ally never beat a basic attack in team battles. Where the exact plan would look further, the
+    // cut tail is valued as the recipient's per-window action capacity weighted by its compounding survival, without
+    // branching deeper.
+    const truncatedTailValue = (world, index) => {
+      const unit = findUnitInWorld(world, recipientId);
+      if (!unit || !preview.isBattleCapable(unit)) return 0;
+      const remaining = Math.max(0, exactPlannedWindows - index - 1);
+      if (!remaining) return 0;
+      const perWindow = clamp(r9v2LinearBestActionCapacity(world, unit, hostileSide, actionCapacityCache) / 100, 0, 1);
+      const survival = clamp(postUseSurvival(world), 0, 1);
+      let alive = 1, total = 0;
+      for (let window = 0; window < remaining; window += 1) { alive *= survival; total += alive * perWindow; }
+      return total;
+    };
     const advance = (before, after, pending, index, firstId, stock, opportunityConsumed, sustains = {}) => {
-      if (index + 1 >= plannedWindows) return 0;
+      if (index + 1 >= plannedWindows) return index + 1 < exactPlannedWindows ? truncatedTailValue(after, index) : 0;
       if (searchBounds?.creationPlanNodeBudget != null &&
-        ++searchBudget.creationPlanNodes > searchBounds.creationPlanNodeBudget) return 0;
+        ++searchBudget.creationPlanNodes - planNodeStart > searchBounds.creationPlanNodeBudget) return 0;
       const continued = clock.scheduleKnownNatural({ world: after, pending, sustains, probability: 1 }, false).flatMap(current => {
         const settled = clock.settleBoundary(current.world, before, current.pending || [], recipientId, opportunityConsumed, current.sustains);
         return settled.branches.flatMap(branch => clock.scheduleKnownNatural({ ...branch, pending: branch.pending || settled.remaining, sustains: current.sustains,
@@ -147968,6 +149308,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             !consumesCreatedStock && Number(stock.added[itemId] || 0) > 0)) return null;
         return { action, actionKind, itemId, isCreatedProduct, isBatchUse, consumesCreatedStock };
       }).filter(Boolean);
+      // Experimental (searchBounds.creationPlanActions = K): besides the products, the plan weighs only the K other actions
+      // with the highest base action value against the recipient's current targets.
+      const alternativeLimit = searchBounds?.creationPlanActions ?? null;
+      if (alternativeLimit !== null && actionRows.filter(row => !row.isCreatedProduct).length > alternativeLimit) {
+        const baseValue = row => (row.action.declaration.targetIds || []).reduce((sum, id) => {
+          const target = findUnitInWorld(world, id);
+          return target ? sum + Math.max(0, cachedBaseActionValue(unit, target, row.actionKind, row.action.declaration.skill || null, null, world)) : sum;
+        }, 0);
+        const kept = new Set(actionRows.filter(row => !row.isCreatedProduct).map(row => ({ row, value: baseValue(row) }))
+          .sort((left, right) => right.value - left.value).slice(0, alternativeLimit).map(entry => entry.row));
+        for (let index = actionRows.length - 1; index >= 0; index -= 1) {
+          if (!actionRows[index].isCreatedProduct && !kept.has(actionRows[index])) actionRows.splice(index, 1);
+        }
+      }
       const evaluateAction = (row, explicitAlternative = 0) => {
         const { action, actionKind, itemId, isCreatedProduct, isBatchUse, consumesCreatedStock } = row;
         const castTime = Math.max(0, Number(action.declaration.skill?.前摇 ?? action.declaration.skill?.cast_time ?? 0));
@@ -148101,7 +149455,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               finiteHostileActionAlternative: 0 });
           }
         }
-        return probabilistic
+        // R9 (formula reform, creation; user-approved order: creation planner first): an ordinary alternative — an
+        // attack or skill weighed against using the product — takes its receipt and next windows once, from its
+        // expected projection (as the reserve search's projected successors do), instead of re-planning each of its
+        // outcomes (hit or miss, damage, resource ranges) separately; those alternatives were over 90% of the
+        // planner's time. Created products keep their outcome branches. searchBounds.
+        // projectedCreationAlternatives (development) restores the branches for alternatives to compare against.
+        const branchOutcomes = probabilistic && (isCreatedProduct || searchBounds?.projectedCreationAlternatives === true);
+        return branchOutcomes
           ? r9v2LinearExpectedCreatedPreview(actionInput, continueAction, deferredOutcomeIds,
             { allowEquivalentCooperativeDamage: true })
           : continueAction(prepared);
@@ -148110,7 +149471,22 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         index, firstId, stock, false, sustains));
       const ordinaryActions = actionRows.filter(row => !row.isBatchUse);
       let explicitAlternative = 0;
-      for (const row of ordinaryActions) {
+      // R9 (formula reform, creation; user-approved "可近似"): with one planned window (team battles), what else the
+      // recipient could do this window is its best action capacity by formula (r9v2LinearBestActionCapacity, the same
+      // per-window value the truncated tail already uses) plus the same tail, instead of a full projection and receipt
+      // of every one of its actions — dozens at high level, 40% of a food battle's CPU. Created products are still
+      // planned in full against it. searchBounds.enumeratedCreationAlternatives (development) restores the projections.
+      const formulaAlternatives = !charge && plannedWindows === 1 && ordinaryActions.length > 0 &&
+        ordinaryActions.every(row => !row.isCreatedProduct) && searchBounds?.enumeratedCreationAlternatives !== true;
+      if (formulaAlternatives) {
+        const tail = index + 1 < exactPlannedWindows ? truncatedTailValue(clearedChargeWorld, index) : 0;
+        const actionValue = r9v2LinearBestActionCapacity(clearedChargeWorld, unit, hostileSide, actionCapacityCache) / 100 + tail;
+        const hostileValue = r9v2LinearBestActionCapacity(clearedChargeWorld, unit, hostileSide, actionCapacityCache, true) / 100 + tail;
+        explicitAlternative = Math.max(0, actionValue - waitValue);
+        if (hostileValue > waitValue) publishPlanEvidence({ resourceRemovalCompanionUseContexts: 0,
+          resourceRemovalCompanionsRemainInert: true, finiteHostileActionAlternative: hostileValue - waitValue });
+        best = Math.max(best, actionValue);
+      } else for (const row of ordinaryActions) {
         const actionValue = evaluateAction(row, 0);
         explicitAlternative = Math.max(explicitAlternative, actionValue - waitValue, 0);
         const targetsHostile = (row.action?.declaration?.targetIds || []).some(targetId => {
@@ -148640,8 +150016,42 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       [...Object.keys(state.面板修改比例 || {}), ...Object.keys(state.面板固定修正 || {})].every(key => ['str', 'def', 'agi'].includes(key));
   }
 
+  // R8 (2026-11-10; 施法僵直的储备，用户："随你的来"): a repeated-use reserve without a dated clock does not advance time,
+  // so a skill whose cast staggers its own caster (施法僵直 → 僵直) counted as never castable again — reserve 0. A stagger
+  // only costs turns: the reserve waits each own-turn control out (one more 0.85 for every round it lasts), and the closed
+  // form discounts each further use by the rounds the cast's own side effects are expected to cost.
+  function r9v2LinearBlocksOwnTurn(state) {
+    const name = String(state?.状态 || state?.状态名称 || '').trim();
+    return root.__LWCS_BATTLE_RUNTIME__.structuredControlConsumesActiveOpportunity(state) || state?.战斗效果?.silence === true || /沉默|封技/.test(name);
+  }
+
+  // The world once the unit's own-turn controls have run out, and the rounds that takes; null when one never ends.
+  function r9v2LinearWaitOutOwnControl(worldSnapshot, unit) {
+    const blocking = Object.entries(unit?.状态效果 || {}).filter(([, state]) => r9v2LinearBlocksOwnTurn(state));
+    const rounds = blocking.map(([, state]) => Number(state?.duration ?? state?.持续回合));
+    if (!blocking.length || !rounds.every(value => Number.isFinite(value) && value > 0)) return null;
+    const keys = new Set(blocking.map(([key]) => key));
+    const next = { ...unit, 状态效果: Object.fromEntries(Object.entries(unit.状态效果).filter(([key]) => !keys.has(key))) };
+    preview.inheritOverlayOrigin(next, unit);
+    return { world: replaceWorldUnit(worldSnapshot, preview.unitId(unit), next), rounds: Math.max(...rounds.map(Math.ceil)) };
+  }
+
+  // The rounds a cast's own side effects are expected to keep its caster from acting.
+  function r9v2LinearSelfStaggerRounds(skill) {
+    return (Array.isArray(skill?.副作用列表) ? skill.副作用列表 : []).reduce((sum, entry) => {
+      if (!/释放者|自身/.test(String(entry?.生效对象 || ''))) return sum;
+      const name = String(entry?.副作用状态 || '').trim();
+      const state = { 状态: name, 状态名称: name, 战斗效果: preview.deriveStateCombatEffect({ 原型: '状态施加', 状态: name, 数值: entry.数值, 持续回合: entry.持续回合 }) };
+      return r9v2LinearBlocksOwnTurn(state)
+        ? sum + preview.normalizeEffectProbability(entry.触发概率, 1) * Math.max(1, Math.ceil(Number(entry.持续回合) || 1)) : sum;
+    }, 0);
+  }
+
   function r9v2LinearRepeatedResourceReserve(worldSnapshot, unit, action, uses, decisionRequest, naturalClock = null, delivery = null, cache = new Map(), readImmediate = null) {
-    if (searchBounds?.reserveUses != null) uses = Math.min(uses, searchBounds.reserveUses);
+    // The reserve search branches over every action and outcome of each further use, so it grows exponentially with
+    // the uses it looks ahead (a lv40 support/healer 1v1 ran past 150 s on the full horizon, 5 s at 3 uses). The AI
+    // looks at most RESERVE_USE_LIMIT uses ahead; __LWCS_SEARCH_BOUNDS__.reserveUses overrides it.
+    uses = Math.min(uses, searchBounds?.reserveUses ?? RESERVE_USE_LIMIT);
     const actorId = preview.unitId(unit), sourceSkillId = skillId(action.skill);
     const empty = Object.freeze({ value: 0, reserveValue: 0, tailUses: 0, productiveUses: 0 });
     // This channel repeats only this one action; it does not choose a funded
@@ -148740,12 +150150,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       descriptors.状态效果 = { ...descriptor, value: Object.create(Object.getPrototypeOf(states), stateDescriptors) };
       return [side, Object.create(Object.getPrototypeOf(current), descriptors), addedShield];
     });
+    // Iterative deepening under RESERVE_STATE_BUDGET: each depth is searched completely, and a depth the budget cannot
+    // finish falls back to the deepest one it did, so every target branch is seen to the same depth. A summoner's field
+    // (≈30 branches a use) made one 1v1 decision run past 200 s at four uses; ordinary searches stay far under it.
+    let built = 0, aborted = false;
     const solve = (frame, remaining, pending = [], sustains = {}) => {
-      if (!(remaining > 0)) return empty;
+      if (!(remaining > 0) || aborted) return empty;
       const input = frameInput(frame);
       const resourceState = naturalClock ? preview.projectedResourceWorldState(frame) : null;
+      // Buckets by content fingerprint (frames reuse their units' fingerprints) instead of serializing the whole frame on
+      // every call; equal frames always share a bucket and the row check below stays the exact test.
       let key;
-      try { key = JSON.stringify([remaining, input, ...(naturalClock ? [resourceState, pending, sustains] : [])]); }
+      try { key = remaining + '|' + preview.contentFingerprint(naturalClock ? [input, resourceState, pending, sustains] : input); }
       catch { return evaluate(frame, remaining, pending, sustains); }
       const bucket = cache.get(key), cached = bucket?.find(row =>
         r9v2SameProjectionFrame(row.input, input) && (!naturalClock ||
@@ -148756,11 +150172,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         return cached.value;
       }
       const value = evaluate(frame, remaining, pending, sustains);
+      if (aborted) return empty;
       if (bucket) bucket.push({ input, resourceState, pending, sustains, value });
       else cache.set(key, [{ input, resourceState, pending, sustains, value }]);
       return value;
     };
     const evaluate = (frame, remaining, pending, sustains) => {
+      if (aborted || ++built > RESERVE_STATE_BUDGET) { aborted = true; return empty; }
       decisionMetrics.r9v2ResourceSequenceReserveStateBuilds += 1;
       const current = findUnitInWorld(frame, actorId), side = current && sideOf(frame, current);
       if (!side || !preview.isBattleCapable(current) || !aliveEntries(frame).some(entry => entry.side !== side)) return empty;
@@ -148779,6 +150197,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         startupCosts: parseSkillCostStages(chargedSkill, skillCostParserContext(current, chargedSkill)).启动, fusionMetadata: null }
         : affordablePreparedSkills(current).find(row => skillId(row.sourceSkill) === sourceSkillId);
       if (!prepared || hasActionCancellation(current) || !charge && hasStateFlag(current, 'silence')) {
+        const waited = !naturalClock && prepared && !charge ? r9v2LinearWaitOutOwnControl(frame, current) : null;
+        if (waited) {
+          const next = solve(waited.world, remaining), factor = .85 ** waited.rounds;
+          return { value: factor * next.value, reserveValue: factor * next.value, tailUses: next.productiveUses, productiveUses: next.productiveUses };
+        }
         const cleared = charge ? r9v2LinearNaturalChargeFrame(frame, current, naturalClock.naturalBudget).world : null;
         const next = continueAfter(null, cleared ? { afterSnapshot: cleared, contributions: [] } : null);
         return { value: .85 * next.value, reserveValue: .85 * next.value,
@@ -148791,6 +150214,41 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (fusion && !fusion.valid) return empty;
       const profile = targetProfile(skill), targetSets = charge ? [charge.targetIds || []] : expandMixedScopePrimaryTargetSets(skill, profile,
         enumerateTargetSets(frame, current, profile, decisionRequest?.beliefState || {}, skill), frame, current);
+      // R6: without a dated clock, a custom receipt, a fusion or a consumable grant, each use is the formula receipt and
+      // its expected successor (r9v2LinearFormulaCast) instead of a full projection: the same search, depths,
+      // budget and 0.85 discount. searchBounds.projectedReserve (development) restores the projection to compare against.
+      const formulaUse = !naturalClock && !readImmediate && !fusion?.required && !skill.__mechanismGrantTemporarySkill &&
+        !preview.pendingGrantedEffects(current, 'RELEASE_SKILL').length && searchBounds?.projectedReserve !== true;
+      if (formulaUse && searchBounds?.projectedReserveSearch !== true) {
+        // R9 step 12 (formula reform, runway; plan: "剩余资源够放几次、每次值多少，按折扣累加"): each further use takes the
+        // target with the best formula receipt and the next use follows from that cast's successor — one chain of uses
+        // instead of a tree over every target of every use (targets^uses states, which the state budget cut at the third
+        // use in team battles). Same receipt, successor and 0.85 discount; no use is worth taking at a loss.
+        // searchBounds.projectedReserveSearch (development) restores the tree to compare against.
+        let chosen = null;
+        for (const targetIds of targetSets) {
+          decisionMetrics.r9v2ResourceSequenceReserveBranchEvaluations += 1;
+          const cast = r9v2LinearFormulaCast(frame, current, skill, targetIds, 'RELEASE_SKILL', decisionRequest);
+          if (!chosen || cast.overall > chosen.overall) chosen = cast;
+        }
+        if (!chosen) return empty;
+        const immediate = chosen.overall, next = remaining > 1 ? solve(chosen.successor(), remaining - 1) : empty;
+        const value = immediate + .85 * next.value;
+        return value > 0 ? { value, reserveValue: .85 * next.value, tailUses: next.productiveUses,
+          productiveUses: Number(immediate > 1e-9) + next.productiveUses } : empty;
+      }
+      if (formulaUse) {
+        let best = empty;
+        for (const targetIds of targetSets) {
+          decisionMetrics.r9v2ResourceSequenceReserveBranchEvaluations += 1;
+          const cast = r9v2LinearFormulaCast(frame, current, skill, targetIds, 'RELEASE_SKILL', decisionRequest), immediate = cast.overall;
+          const next = remaining > 1 ? solve(cast.successor(), remaining - 1) : empty;
+          const value = immediate + .85 * next.value;
+          if (value > best.value) best = { value, reserveValue: .85 * next.value, tailUses: next.productiveUses,
+            productiveUses: Number(immediate > 1e-9) + next.productiveUses };
+        }
+        return best;
+      }
       const worldRevision = r9v2ProjectionObjectRevision(revisions, frame);
       let best = empty;
       for (const targetIds of targetSets) {
@@ -148820,7 +150278,21 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       }
       return best;
     };
-    return solve(worldSnapshot, uses, delivery?.pending, delivery?.sustains);
+    // A depth the budget cannot finish is built and then discarded (the deepest finished depth stands). Each depth repeats
+    // the last one a level further down, so its growth over the depth before predicts the next: when that prediction
+    // already exceeds the remaining budget, stop instead of building states only to throw them away (5v5-0004 measured
+    // 62% of all reserve states in discarded depths: 1, 20, then 40 of a needed ~400 against 39 left).
+    let result = empty, lastStates = 0, previousStates = 0;
+    for (let depth = 1; depth <= uses; depth += 1) {
+      if (previousStates > 0 && lastStates * lastStates / previousStates > RESERVE_STATE_BUDGET - built) break;
+      const builtBefore = built;
+      const attempt = solve(worldSnapshot, depth, delivery?.pending, delivery?.sustains);
+      if (aborted) break;
+      result = attempt;
+      previousStates = lastStates;
+      lastStates = built - builtBefore;
+    }
+    return result;
   }
 
   function r9v2LinearResourceWindowCount(request, unit, naturalWindows) {
@@ -149162,7 +150634,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         Math.floor((resources[resource] + 1e-9) / amount))));
       const realized = uses > 1 ? readReserve?.(action, uses) : null;
       const tailUses = realized?.tailUses ?? Math.max(0, uses - 1);
-      const discount = 0.85;
+      const discount = 0.85 ** (1 + r9v2LinearSelfStaggerRounds(action.skill));
       const reserveValue = realized?.reserveValue ?? Number(action.potential || 0) * discount *
         (1 - discount ** tailUses) / (1 - discount);
       const finitePaidValue = !naturalWindows || uses <= 1 ? 0
@@ -149193,6 +150665,71 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
   }
 
+  // Runway worlds (r9v2LinearCausalFeatureRows runwayWorld): a decision world with one unit replaced — the decision
+  // world and that unit's id per runway world, and an id per decision world for content keys.
+  const runwayWorldOrigins = new WeakMap(), runwayWorldOriginIds = new WeakMap();
+  let runwayWorldOriginSequence = 0;
+  function runwayWorldOriginId(world) {
+    if (!runwayWorldOriginIds.has(world)) runwayWorldOriginIds.set(world, ++runwayWorldOriginSequence);
+    return runwayWorldOriginIds.get(world);
+  }
+
+  // A state the resource runway keeps from the candidate: one that bears on what actions cost or on the resources a unit
+  // has, regains or may spend (a cost modifier, a resource tick, a lock, a sustain, a resource maximum). Another unit's
+  // runway also keeps every state that is not a buff (debuffs, side effects, marks and untyped states keep their old
+  // runway pricing); the actor's own runway does not (resourceOnly, below).
+  const RUNWAY_RESOURCE_STATE_KEY = /cost|resource|_gain_ratio|lock|sp_|men_|vit_|消耗|魂力|精神力|体力|维持|资源/i;
+  function r9v2LinearRunwayResourceState(state, resourceOnly = false) {
+    if (!state || typeof state !== 'object') return false;
+    if (!resourceOnly && String(state.类型 || '').trim() !== 'buff') return true;
+    const prototype = String(state.原型 || state.持续原型效果?.原型 || '').trim();
+    if (['资源变化', '资源转移', '资源锁定'].includes(prototype) || String(state.结算 || '').trim() === '消耗' ||
+      /魂力|精神力|体力|消耗|资源|维持/.test(String(state.状态 || state.状态名称 || ''))) return true;
+    return [state.战斗效果, state.计算层效果, state.面板修改比例, state.面板固定修正].some(fields => fields && typeof fields === 'object' &&
+      Object.keys(fields).some(key => RUNWAY_RESOURCE_STATE_KEY.test(key)));
+  }
+
+  // R9 (user-approved "续航只看资源变化：自身增益不再抵消资源损失", 2026-11-10): the runway prices what the candidate's
+  // resource changes do to a unit's next actions. A buff it gives that unit is priced by its own channel
+  // (SELF_FOLLOWUP_MECHANICAL_GAIN compares the unit's capacity in both worlds), and in the runway it used to offset the
+  // resource it cost. The runway unit is the unit after the candidate with its new or changed buffs as before, except
+  // buffs that bear on resources (r9v2LinearRunwayResourceState); everything else — resources, cooldowns and
+  // opportunity records, a charge, the inventory, debuffs and side-effect states — is the after unit's.
+  // R10 (user, 2026-11-11: 自伤副作用重复扣分 "要修"): the actor's own runway (resourceOnly) also leaves out the
+  // debuffs and side effects its candidate lays on it — a 施法僵直 stagger, a slower windup, a decision interference —
+  // which SELF_FOLLOWUP_MECHANICAL_GAIN already prices on the actor's next actions; in both they were charged twice.
+  // searchBounds.runwaySelfDebuffs (development) keeps them in the actor's runway again.
+  // 2026-11-11 (用户："有必要的你就改吧"): so do everyone else's runways — an enemy's, whose runway denial took the debuffs
+  // the candidate lays on it on top of the enemy denial that prices them (threat, control, state), and an ally's.
+  // searchBounds.runwayOtherDebuffs (development) keeps them there again.
+  const runwayUnits = new WeakMap();
+  function r9v2LinearRunwayUnit(unitBefore, unitAfter, resourceOnly = false) {
+    if (!unitBefore || !unitAfter || unitBefore === unitAfter || unitBefore.状态效果 === unitAfter.状态效果) return unitAfter;
+    const memo = runwayUnits.get(unitAfter);
+    if (memo?.before === unitBefore && memo.resourceOnly === resourceOnly) return memo.unit;
+    const prior = unitBefore.状态效果 || {}, next = unitAfter.状态效果 || {}, states = {};
+    let dropped = false;
+    for (const [key, state] of Object.entries(prior)) {
+      if (!Object.hasOwn(next, key)) {
+        if (r9v2LinearRunwayResourceState(state, resourceOnly)) continue;
+        dropped = true;
+      } else if (next[key] !== state && (r9v2LinearRunwayResourceState(next[key], resourceOnly) || r9v2LinearRunwayResourceState(state, resourceOnly))) {
+        states[key] = next[key];
+        continue;
+      } else if (next[key] !== state) dropped = true;
+      states[key] = state;
+    }
+    for (const [key, state] of Object.entries(next)) {
+      if (Object.hasOwn(prior, key)) continue;
+      if (r9v2LinearRunwayResourceState(state, resourceOnly)) states[key] = state;
+      else dropped = true;
+    }
+    // The states are the before and after units' own objects, which carry their source records already.
+    const unit = dropped ? preview.inheritOverlayOrigin({ ...unitAfter, 状态效果: states }, unitAfter) : unitAfter;
+    runwayUnits.set(unitAfter, { before: unitBefore, unit, resourceOnly });
+    return unit;
+  }
+
   function r9v2LinearResourceSequenceCapacity(
     worldSnapshot = {},
     unit = {},
@@ -149213,6 +150750,23 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (capacitiesByWindow?.has(cacheKey)) {
       decisionMetrics.r9v2ResourceSequenceCapacityCacheHits += 1;
       return capacitiesByWindow.get(cacheKey);
+    }
+    // Equal worlds and units give equal capacities: candidates that leave a unit alike (one skill aimed at different
+    // targets) reach the same runway world (r9v2LinearCausalFeatureRows: the decision world with only that unit
+    // changed), so they share one build.
+    // A runway world is its decision world with this one unit replaced (runwayWorldOrigins), so that world's identity
+    // and the unit's content stand for the whole content without fingerprinting every unit again.
+    const byContent = resourceSequenceCapacityCache && !naturalClock ? (resourceSequenceCapacityCache.byContent ||= new Map()) : null;
+    const runway = runwayWorldOrigins.get(worldSnapshot), runwayOrigin = runway?.unitId === preview.unitId(unit) ? runway.origin : null;
+    const contentKey = byContent ? `${runwayOrigin ? 'runway:' + runwayWorldOriginId(runwayOrigin) : preview.contentFingerprint(worldSnapshot)}|${
+      preview.contentFingerprint(unit)}|${hostileSide}|${windowCount}` : '';
+    if (byContent?.has(contentKey)) {
+      decisionMetrics.r9v2ResourceSequenceCapacityCacheHits += 1;
+      const shared = byContent.get(contentKey);
+      if (!capacitiesByUnit) resourceSequenceCapacityCache.set(worldSnapshot, capacitiesByUnit = new WeakMap());
+      if (!capacitiesByWindow) capacitiesByUnit.set(unit, capacitiesByWindow = new Map());
+      capacitiesByWindow.set(cacheKey, shared);
+      return shared;
     }
     decisionMetrics.r9v2ResourceSequenceCapacityBuilds += 1;
     const startedAt = typeof globalThis?.performance?.now === 'function'
@@ -149297,9 +150851,22 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const consumedGrantKey = first.skill?.__mechanismGrantTemporarySkill === true
         ? String(first.skill.__mechanismGrantStateKey || '').trim() : '';
       const settlement = skillActionCapacitySettlementProfile(first.skill);
-      const hasSettledActions = hasConditionalActions || settlement?.recipientPools || first.fusionRequired;
-      const resourceSettlement = settlement?.resourceTransition === true;
-      const poolContinuation = !hasSettledActions && !resourceSettlement && !consumedGrantKey && poolSkills.length > 0;
+      // Another skill's condition or a shield-pool continuation no longer sends every first action through a full
+      // projection; they take the paid-payment model. A first action that is itself a pool, a fusion, a resource
+      // transition or a consumed grant keeps its projection. R9 (2026-11-10, user-approved "可近似"): the default, once
+      // the experimental sequenceFastPath — high-level 3v3 ×1.27 CPU, 537 decisions unchanged; searchBounds.
+      // fullSequenceSettlement (development) restores the full projection of every first action.
+      const fastSequence = searchBounds?.fullSequenceSettlement !== true;
+      const hasSettledActions = (hasConditionalActions && !fastSequence) ||
+        (settlement?.recipientPools && searchBounds?.settledCapacityBase !== true) || first.fusionRequired;
+      // Experimental (searchBounds.sequenceSelfFuelOnly): a resource change takes the full projection only when it can
+      // refill the actor's own fuel (a 资源转移, or a 资源变化 on itself of 魂力/精神力/体力); healing and drains on
+      // others take the paid-payment model.
+      const resourceSettlement = settlement?.resourceTransition === true && (searchBounds?.sequenceSelfFuelOnly !== true ||
+        preview.collectEffects(first.skill || {}).some(effect => effect?.原型 === '资源转移' || effect?.原型 === '资源变化' &&
+          String(effect.目标 || '').trim() === '自身' && (Array.isArray(effect.资源) ? effect.资源 : [effect.资源])
+            .some(resource => /魂力|精神力|体力/.test(String(resource || '')))));
+      const poolContinuation = !fastSequence && !hasSettledActions && !resourceSettlement && !consumedGrantKey && poolSkills.length > 0;
       if (!hasSettledActions && !resourceSettlement && !consumedGrantKey && !poolContinuation) {
         return Math.max(best, Number(first.potential || 0) + .5 * paidSecond(first));
       }
@@ -149317,7 +150884,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         return best;
       }
       decisionMetrics.r9v2ResourceSequenceFallbackSecondSteps += 1;
-      if (!revisions) {
+      // R6: the first action is the formula cast and the second step reads its expected successor (r9v2LinearFormulaCast)
+      // instead of a full projection. A fusion or a consumed grant keeps the projection; searchBounds.projectedSequence
+      // (development) restores it to compare against.
+      const formulaFirst = !first.fusionRequired && !consumedGrantKey && searchBounds?.projectedSequence !== true;
+      if (!formulaFirst && !revisions) {
         revisions = { projectionObjectRevisions: new WeakMap() };
         worldRevision = r9v2ProjectionObjectRevision(revisions, worldSnapshot);
       }
@@ -149327,12 +150898,31 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const fusion = first.fusionRequired ? preview.resolveFusionAction(worldSnapshot, unit, first.skill, {
         resourceCosts: first.costs, requirePendingOpportunity: true,
       }) : null;
-      const targetSets = expandMixedScopePrimaryTargetSets(first.skill || {}, profile,
+      let targetSets = expandMixedScopePrimaryTargetSets(first.skill || {}, profile,
         enumerateTargetSets(worldSnapshot, unit, profile, decisionRequest?.beliefState || {}, first.skill || {}), worldSnapshot, unit);
+      // Experimental (searchBounds.sequenceTargetSets = K): project only the K target sets with the highest base action value.
+      const targetSetLimit = searchBounds?.sequenceTargetSets ?? null;
+      if (targetSetLimit !== null && targetSets.length > targetSetLimit) {
+        const setValue = targetIds => targetIds.reduce((sum, id) => {
+          const target = findUnitInWorld(worldSnapshot, id);
+          return target ? sum + Math.max(0, cachedBaseActionValue(unit, target, actionKind, first.skill, projectionContext, worldSnapshot)) : sum;
+        }, 0);
+        targetSets = targetSets.map(targetIds => ({ targetIds, value: setValue(targetIds) }))
+          .sort((left, right) => right.value - left.value).slice(0, targetSetLimit).map(entry => entry.targetIds);
+      }
       return targetSets.reduce((targetBest, targetIds) => {
         const potentials = hasSettledActions ? [] : targetIds.map(id =>
           cachedBaseActionValue(unit, findUnitInWorld(worldSnapshot, id), actionKind, first.skill, projectionContext, worldSnapshot));
         const potential = profile.endsWith('GROUP') ? potentials.reduce((sum, value) => sum + value, 0) : Math.max(0, ...potentials);
+        if (formulaFirst) {
+          decisionMetrics.r9v2ResourceSequenceSecondStepEvaluations += 1;
+          const cast = r9v2LinearFormulaCast(worldSnapshot, unit, first.skill || basicAttackSkill(unit), targetIds, actionKind, decisionRequest);
+          const after = cast.successor(), projectedUnit = findUnitInWorld(after, actorId);
+          const second = poolContinuation
+            ? Math.max(legacySecond, r9v2LinearBestRecipientPoolCapacity(after, projectedUnit, hostileSide, actionCapacityCache))
+            : r9v2LinearBestActionCapacity(after, projectedUnit, hostileSide, actionCapacityCache);
+          return Math.max(targetBest, (hasSettledActions ? cast.overall : potential) + .5 * second);
+        }
         const declaration = { actorId, actionKind, skill: first.skill, targetIds, resourceCosts: first.costs,
           ...(fusion?.required ? { fusionKey: fusion.fusionKey, fusionParticipantIds: [...fusion.participantIds],
             fusionPartnerIds: [...fusion.partnerIds], fusionUsageMode: fusion.usageMode } : {}) };
@@ -149357,13 +150947,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const hasConsumableGrants = preview.pendingGrantedEffects(unit, 'RELEASE_SKILL').length > 0;
     const capacity = naturalClock ? r9v2LinearNaturalResourceSequenceCapacity(worldSnapshot, preview.unitId(unit), hostileSide,
       windowCount, decisionRequest, naturalClock, actionCapacityCache) : r9v2LinearResourceCapacityRecord(unit, actions, sequence, windowCount, (action, uses) =>
-      skillActionCapacitySettlementProfile(action.skill)?.needed || skillActionCapacitySettlementProfile(action.skill)?.resourceTransition ||
-        hasConsumableGrants || action.fusionRequired
+      // Experimental (searchBounds.reserveClosedForm): these actions' repeated-use reserve takes the same discounted
+      // closed form as every other action instead of a searched projection of each further use.
+      searchBounds?.reserveClosedForm !== true && (skillActionCapacitySettlementProfile(action.skill)?.needed ||
+        skillActionCapacitySettlementProfile(action.skill)?.resourceTransition || hasConsumableGrants || action.fusionRequired)
         ? r9v2LinearRepeatedResourceReserve(worldSnapshot, unit, action, uses, decisionRequest) : null);
     if (resourceSequenceCapacityCache) {
       if (!capacitiesByUnit) resourceSequenceCapacityCache.set(worldSnapshot, capacitiesByUnit = new WeakMap());
       if (!capacitiesByWindow) capacitiesByUnit.set(unit, capacitiesByWindow = new Map());
       capacitiesByWindow.set(cacheKey, capacity);
+      byContent?.set(contentKey, capacity);
     }
     const elapsedMs = (typeof globalThis?.performance?.now === 'function'
       ? globalThis.performance.now()
@@ -149583,6 +151176,327 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }, 0);
   }
 
+  // R6 formula reform (2026-11-10; 用户："优化完行为演算，性能马上就炸，改性能就把行为演算又改回去。所以必须改革计算公式"):
+  // a pool or conditional skill's action capacity was the settled receipt of a full projection of every target set,
+  // re-run for every unit of every world a decision looks at (23% of the benchmark's CPU, most of it on worlds where
+  // nobody had a shield to cut). It is now that receipt by formula: each effect on its own recipients after the engine's
+  // conditional plan, priced by the engine's kernels — the segmented damage expectation, healing up to missing HP, the
+  // shield soft cap, a cut up to the shield present — times its application chance; a 跟随主原型 effect also needs the
+  // main effect to land on it. Scale and signs are r9v2LinearSettledDirectCapacity's: HP% of each recipient, positive for
+  // a loss on a hostile or a gain on a friend; `hostile` keeps hostile recipients only. Passives the cast would trigger,
+  // damage revival and reflection are not modeled, as in every other skill's action row.
+  //
+  // What one effect does to one recipient in expectation, each amount already times the effect's application chance:
+  // damage absorbed by shields and taken as HP (with the rule blocks and death saves it spends), HP gained or lost, the
+  // recipient's shield change, a shield the caster steals, and fuel ([resource, delta]) the recipient gains or loses.
+  // Damage is the engine's own segmented expectation (expectedSegmentedDamageOutcome): each segment rolls its hit, and
+  // shields, 免伤 charges, 免死 and the HP left (above a nonlethal floor) cap what it can take.
+  function r9v2LinearFormulaEffectAmounts(worldSnapshot, effect, actor, recipient, targetCount, resourceDriveEnabled = true) {
+    const prototype = String(effect?.原型 || '').trim();
+    const maximum = Math.max(1, preview.readHpMax(recipient)), hp = preview.readHp(recipient), shield = preview.readShield(recipient);
+    const chance = preview.normalizeEffectProbability(effect.成功率 ?? effect.触发概率, 1);
+    const amounts = { damage: 0, hpDamage: 0, shieldAbsorb: 0, ruleBlocks: 0, deathSaves: 0, hp: 0, shield: 0, actorShield: 0, fuel: [] };
+    if (prototype === '伤害结算') {
+      const segments = Math.max(1, Math.floor(Number(effect.攻击段数 ?? effect.段数 ?? 1)) || 1);
+      const floor = /点到为止|切磋|训练|非致命/.test(String(worldSnapshot?.战斗意图 || ''))
+        ? preview.calculateNonlethalHpFloor(worldSnapshot, recipient, {}) : 0;
+      const outcome = preview.expectedSegmentedDamageOutcome({ segments, applicationProbability: 1,
+        perSegmentDamage: preview.calculateSettledSegmentDamage(preview.calculateBaseDamage(effect, actor, recipient, null,
+          { targetCount, resourceDriveEnabled }), segments, 1),
+        hitProbability: preview.estimateHitProbability(actor, recipient, effect, null),
+        ...preview.incomingShieldProfile(recipient, effect, actor), hpDamageLimit: Math.max(0, hp - floor),
+        deathSaveCount: floor > 0 ? 0 : preview.deathSaveCount(recipient), ruleBlockCount: preview.ruleBlockCount(recipient) });
+      amounts.hpDamage = Math.max(0, Number(outcome.expectedHpDamage || 0));
+      amounts.shieldAbsorb = Math.max(0, Number(outcome.expectedShieldAbsorb || 0));
+      amounts.ruleBlocks = Math.max(0, Number(outcome.expectedRuleBlockConsumed || 0));
+      amounts.deathSaves = Math.max(0, Number(outcome.expectedDeathSaveConsumed || 0));
+      amounts.damage = amounts.hpDamage + amounts.shieldAbsorb;
+    } else if (prototype === '资源变化') {
+      for (const resource of Array.isArray(effect.资源) ? effect.资源 : [effect.资源]) {
+        if (/生命|HP/i.test(String(resource || ''))) {
+          const amount = preview.parseSignedValue(effect.数值, maximum);
+          const request = amount >= 0 ? amount * preview.healingMultiplierForUnit(recipient, '生命') : 0;
+          amounts.hp += chance * (amount >= 0 ? Math.min(maximum - hp, request) : -Math.min(hp, -amount));
+          // The unclipped request: a repeated cast heals up to what the earlier ones left missing (r10CastReceipt).
+          if (amount >= 0) (amounts.requests ||= []).push({ kind: 'hp', chance, request });
+        } else if (['魂力', '精神力', '体力'].includes(String(resource || '').trim())) {
+          const name = String(resource).trim(), current = preview.readResource(recipient, name), ceiling = preview.readResourceMax(recipient, name);
+          const amount = preview.parseSignedValue(effect.数值, ceiling);
+          amounts.fuel.push([name, chance * (amount >= 0 ? Math.min(ceiling - current, amount) : -Math.min(current, -amount))]);
+          (amounts.requests ||= []).push({ kind: 'fuel', name, chance, request: amount });
+        }
+      }
+    } else if (prototype === '护盾变化') {
+      const mode = String(effect.护盾模式 || '正向护盾').trim();
+      if (mode === '正向护盾') {
+        const request = Math.abs(preview.parseSignedValue(effect.数值, maximum));
+        amounts.shield = chance * preview.calculateShieldGain(recipient, request);
+        (amounts.requests ||= []).push({ kind: 'shield', chance, request });
+      } else {
+        const cut = Math.min(shield, Math.floor(Math.abs(preview.parseSignedValue(effect.数值, shield))));
+        amounts.shield = -chance * cut;
+        if (mode === '窃盾' && preview.unitId(recipient) !== preview.unitId(actor)) amounts.actorShield = chance * preview.calculateShieldGain(actor, cut);
+      }
+    } else if (prototype === '状态施加' && /护盾|屏障|结界/.test(String(effect.状态 || ''))) {
+      const request = Math.max(0, preview.parseSignedValue(effect.数值, maximum));
+      amounts.shield = chance * preview.calculateShieldGain(recipient, request);
+      (amounts.requests ||= []).push({ kind: 'shield', chance, request });
+    }
+    return amounts;
+  }
+
+  // One cast settled by formula, effect by effect as the engine settles it: the caster pays its startup costs first,
+  // then each effect resolves its recipients and conditional plan on the world the earlier effects left (a target the
+  // main damage incapacitates — its HP, or the stamina injury drains — is no longer a recipient), and its expected
+  // amounts land on the live recipient: damage on its shield first (absorbPreviewShield), its 免伤/免死 charges, then
+  // HP; healing, shield gains and cuts, a stolen shield, fuel. The engine's primary success (recordPrimaryResolution)
+  // gates a 跟随主原型 effect: it applies only on a recipient the main effect resolved on, with the chance the main
+  // landed there — a damage hitting in any of its segments, a resource or shield change that changes something
+  // (restoring a full pool is no success), otherwise the main's own chance. Because it applies only when the main
+  // landed, a following effect is resolved and priced on the world where the main landed (`landedWorld`: the main's
+  // amounts over its chance), not on the expected one — a main hit that incapacitates its target leaves the follow-up
+  // nobody, as in the projection's hit branch. Returns the receipt (`overall`, `hostile`) and the expected successor:
+  // one mean path instead of the projection's hit/miss branches; states and passives the cast would add are not applied.
+  // Whether a cast changes only what the formula carries into its successor: damage, HP and fuel changes, shields and
+  // shield states, with no side effect (a 施法僵直 stagger, a backlash) and no lasting resource tick. Any other effect —
+  // a state, a modifier, a removal, a timing change, a summon — changes what the next action can do (a setup's buff, a
+  // stagger that costs the next turn), so such a cast's successor is one expected projection of it instead.
+  const formulaStatelessCastCache = new WeakMap();
+  function r9v2LinearFormulaCastStateless(skill) {
+    if (!skill || typeof skill !== 'object') return false;
+    if (formulaStatelessCastCache.has(skill)) return formulaStatelessCastCache.get(skill);
+    const stateless = effect => {
+      const prototype = String(effect?.原型 || '').trim();
+      const shieldState = prototype === '状态施加' && /护盾|屏障|结界/.test(String(effect.状态 || '')) &&
+        Object.entries(preview.deriveStateCombatEffect(effect) || {}).every(([key, value]) => ['shield_value', 'duration'].includes(key) || !value);
+      const carried = prototype === '伤害结算' || prototype === '护盾变化' || shieldState ||
+        prototype === '资源变化' && !(Number(effect.持续回合) > 1);
+      return carried && !effect.副作用列表?.length && (effect.条件分支 || []).every(branch =>
+        [...(branch.追加效果 || []), ...(branch.替换效果 || [])].every(stateless));
+    };
+    const value = !skill.副作用列表?.length && !skill.__mechanismGrantTemporarySkill &&
+      (Array.isArray(skill._效果数组) ? skill._效果数组 : []).every(stateless);
+    formulaStatelessCastCache.set(skill, value);
+    return value;
+  }
+
+  // The caster as it settles a cast's effects: startup costs paid, then the stamina every formal action pays by its
+  // nature (BattlePreview projectedActionStamina), before any effect. A pure function of the unit, the skill and the
+  // stamina owed, so one paid caster serves every target set and world holding this unit.
+  const formulaPaidCasterCache = new WeakMap();
+
+  // A stateful cast's projected successor, kept for the outermost decision (runProvider resets it): reserve and
+  // sequence searches reach the same cast on the same state by different routes (≈36% of these projections). Keyed by
+  // the decision request and the content of everything the projection reads.
+  let formulaSuccessorCache = new WeakMap();
+  const formulaSuccessorWithoutRequest = {};
+  function r9v2LinearFormulaPaidCaster(worldSnapshot, unit, skill, declaration) {
+    let bySkill = formulaPaidCasterCache.get(unit);
+    if (!bySkill) formulaPaidCasterCache.set(unit, bySkill = new WeakMap());
+    let entry = bySkill.get(skill);
+    if (!entry) bySkill.set(skill, entry = { stamina: new Map(), paid: declaration.actionKind === 'BASIC_ATTACK' ? unit
+      : preview.unitAfterResourceCosts(unit, parseSkillCosts(skill, skillCostParserContext(unit, skill))) });
+    if (!preview.actionStaminaEnabled(worldSnapshot)) return entry.paid;
+    const nature = preview.actionStaminaNature(declaration), actorSide = sideOf(worldSnapshot, unit);
+    const opponent = (declaration.targetIds || []).map(id => findUnitInWorld(worldSnapshot, id))
+      .find(target => target && sideOf(worldSnapshot, target) && sideOf(worldSnapshot, target) !== actorSide) || null;
+    const amount = nature ? preview.actionStaminaCost(entry.paid, nature, opponent) : 0;
+    if (!(amount > 0)) return entry.paid;
+    if (!entry.stamina.has(amount)) {
+      const paid = entry.paid, payer = { ...paid, 属性: paid.属性 && typeof paid.属性 === 'object' ? { ...paid.属性 } : paid.属性,
+        final: paid.final && typeof paid.final === 'object' ? { ...paid.final } : paid.final };
+      preview.inheritOverlayOrigin(payer, paid);
+      preview.setResourceValue(payer, '体力', Math.max(0, preview.readResource(paid, '体力') - amount));
+      entry.stamina.set(amount, payer);
+    }
+    return entry.stamina.get(amount);
+  }
+
+  function r9v2LinearFormulaCast(worldSnapshot, unit, skill, targetIds, actionKind = 'RELEASE_SKILL', decisionRequest = null, withSuccessor = true, parts = null) {
+    const actorId = preview.unitId(unit), actorSide = sideOf(worldSnapshot, unit), basic = actionKind === 'BASIC_ATTACK';
+    const declaration = { actorId, actionKind, skill, targetIds };
+    const effects = (Array.isArray(skill?._效果数组) ? skill._效果数组 : []).filter(effect => effect && typeof effect === 'object');
+    const paidWorld = replaceWorldUnit(worldSnapshot, actorId, r9v2LinearFormulaPaidCaster(worldSnapshot, unit, skill, declaration));
+    const label = `r6-formula-cast:${actorId}:${skillId(skill)}`;
+    const expectedWorld = new preview.PreviewOverlay(paidWorld, label), landedWorld = new preview.PreviewOverlay(paidWorld, label + ':landed');
+    // Amounts land only where something later reads them: the expected world for a later effect or a formula
+    // successor, the landed world for a later 跟随主原型 effect.
+    const formulaSuccessor = withSuccessor && r9v2LinearFormulaCastStateless(skill);
+    const lastFollow = effects.reduce((last, effect, index) => index > 0 && effect.生效方式 === '跟随主原型' ? index : last, -1);
+    // Shields land as the engine lands them: a 护盾变化 gain (and a stolen shield) on the cast's named carrier
+    // (BattleRuntime commitRuntimeShieldGain, as BattlePreview applyProjectedShieldDelta does), a shield state as its own
+    // state entry (applyPreviewShield).
+    const sourceName = root.__LWCS_BATTLE_RUNTIME__.normalizeActionDisplayName(skill?.name || skill?.魂技名 || skill?.技能名称 || actionKind);
+    const addShield = (next, amount, effect, key) => {
+      if (effect?.原型 === '状态施加') {
+        const stateName = String(effect.状态 || '护盾').trim() || '护盾';
+        next.状态效果 = { ...(next.状态效果 || {}), [`preview:${key}:${stateName}`]: { 类型: 'buff', 状态: stateName, 状态名称: stateName,
+          duration: Math.max(1, Number(effect.持续回合 || 1)), 数值: effect.数值, shield_value: amount, 战斗效果: {} } };
+        return;
+      }
+      root.__LWCS_BATTLE_RUNTIME__.commitRuntimeShieldGain(next, amount,
+        Number(effect?.持续回合) > 0 ? Math.max(1, Number(effect.持续回合)) : null, sourceName, effect);
+    };
+    const land = (overlay, id, effect, amounts, scale, key) => {
+      if (!(scale > 0)) return;
+      overlay.changeUnit(id, next => {
+        if (amounts.damage > 0) {
+          preview.absorbPreviewShield(next, scale * amounts.shieldAbsorb, effect, unit);
+          if (amounts.ruleBlocks > 0) preview.consumeRuleBlockCharges(next, scale * amounts.ruleBlocks);
+          if (amounts.deathSaves > 0) preview.consumeDeathSaveCharges(next, scale * amounts.deathSaves);
+          preview.setResourceValue(next, '生命', preview.readHp(next) - scale * amounts.hpDamage);
+        }
+        if (amounts.hp) preview.setResourceValue(next, '生命', preview.readHp(next) + scale * amounts.hp);
+        if (amounts.shield > 0) addShield(next, scale * amounts.shield, effect, key);
+        else if (amounts.shield < 0) preview.absorbPreviewShield(next, -scale * amounts.shield, effect, unit);
+        for (const [name, delta] of amounts.fuel) preview.setResourceValue(next, name, preview.readResource(next, name) + scale * delta);
+      });
+      if (amounts.actorShield > 0) overlay.changeUnit(actorId, next => addShield(next, scale * amounts.actorShield, effect, key + ':stolen'));
+    };
+    const mainSuccess = (main, world, actor, recipient) => {
+      if (!preview.effectConditionEnabled(main, world, actor, recipient, { declaration })) return 0;
+      const prototype = String(main.原型 || '').trim(), chance = preview.normalizeEffectProbability(main.成功率 ?? main.触发概率, 1);
+      if (prototype === '伤害结算') {
+        const segments = Math.max(1, Math.floor(Number(main.攻击段数 || main.段数 || 1)) || 1);
+        return 1 - (1 - preview.estimateHitProbability(actor, recipient, main, null)) ** segments;
+      }
+      if (prototype === '资源变化') {
+        const changes = (Array.isArray(main.资源) ? main.资源 : [main.资源]).some(resource => {
+          const name = /生命|HP/i.test(String(resource || '')) ? '生命' : String(resource || '').trim();
+          const current = name === '生命' ? preview.readHp(recipient) : preview.readResource(recipient, name);
+          const maximum = name === '生命' ? preview.readHpMax(recipient) : preview.readResourceMax(recipient, name);
+          const amount = preview.parseSignedValue(main.数值, maximum);
+          return amount > 0 ? current < maximum : amount < 0 && current > 0;
+        });
+        return changes ? chance : 0;
+      }
+      if (prototype === '护盾变化') return (String(main.护盾模式 || '正向护盾').trim() === '正向护盾'
+        ? preview.calculateShieldGain(recipient, Math.abs(preview.parseSignedValue(main.数值, preview.readHpMax(recipient)))) > 0
+        : preview.readShield(recipient) > 0) ? chance : 0;
+      return chance;
+    };
+    const landed = new Map();
+    let overall = 0, hostile = 0;
+    effects.forEach((effect, index) => {
+      if (preview.actorSuppressesEffect(unit, effect)) return;
+      const follows = index > 0 && effect.生效方式 === '跟随主原型';
+      const view = follows ? landedWorld : expectedWorld;
+      const world = view.snapshot(), actor = view.readUnit(actorId);
+      for (const target of preview.resolveTargets(world, actor, declaration, effect)) {
+        const id = preview.unitId(target);
+        r12CastRecipients?.add(id);
+        if (index === 0) landed.set(id, mainSuccess(effect, world, actor, view.readUnit(id) || target));
+        const gate = follows ? Number(landed.get(id) || 0) : 1;
+        if (!(gate > 0)) continue;
+        const friendly = sideOf(worldSnapshot, target) === actorSide;
+        for (const { effect: resolved } of preview.resolveConditionalEffectPlan(effect, world, actor, view.readUnit(id) || target, { declaration })) {
+          const recipient = view.readUnit(id) || target;
+          const amounts = r9v2LinearFormulaEffectAmounts(worldSnapshot, resolved, actor, recipient, targetIds.length, !basic);
+          const value = ((friendly ? -1 : 1) * amounts.damage + (friendly ? 1 : -1) * (amounts.hp + amounts.shield)) /
+            Math.max(1, preview.readHpMax(recipient)) * 100;
+          overall += gate * (value + amounts.actorShield / Math.max(1, preview.readHpMax(unit)) * 100);
+          if (!friendly) hostile += gate * value;
+          // A recipient's share of the receipt with what it was priced on (r10CastReceipt re-prices repeated casts).
+          if (parts) parts.push({ id, friendly, gate, value, amounts, hpMax: Math.max(1, preview.readHpMax(recipient)), hp: preview.readHp(recipient),
+            shield: preview.readShield(recipient), spMax: preview.readResourceMax(recipient, '魂力'), actorHpMax: Math.max(1, preview.readHpMax(unit)) });
+          const key = `r6-formula:${actorId}:${index}:${id}`;
+          // The main lands in full on the landed world; a follow-up lands there in full and on the expected world at its
+          // chance; any other effect lands the same on both.
+          if (formulaSuccessor || index < effects.length - 1) land(expectedWorld, id, resolved, amounts, follows ? gate : 1, key);
+          const mainChance = Number(landed.get(id) || 0);
+          if (index < lastFollow) land(landedWorld, id, resolved, amounts, index > 0 ? 1 : mainChance > 0 ? 1 / mainChance : 0, key);
+        }
+      }
+    });
+    const projectedSuccessor = () => {
+      const requestKey = decisionRequest || formulaSuccessorWithoutRequest;
+      let byContent = formulaSuccessorCache.get(requestKey);
+      if (!byContent) formulaSuccessorCache.set(requestKey, byContent = new Map());
+      const key = [worldSnapshot, unit, skill].map(preview.contentFingerprint).join('|') + '|' + actionKind + '|' + JSON.stringify(targetIds);
+      if (byContent.has(key)) return byContent.get(key);
+      const revisions = { projectionObjectRevisions: new WeakMap() }, worldRevision = r9v2ProjectionObjectRevision(revisions, worldSnapshot);
+      const projected = { ...declaration, actionId: `${actorId}:r6-successor:${skillId(skill)}`,
+        resourceCosts: basic ? {} : parseSkillCosts(skill, skillCostParserContext(unit, skill)) };
+      const after = preview.projectConditionedAction({ worldSnapshot, actorId, worldRevision, snapshotRevision: worldRevision,
+        actionFingerprint: r9v2ProjectionObjectRevision(revisions, projected), __preparedDecisionWorld: decisionRequest !== null,
+        beliefState: decisionRequest?.beliefState, battleIntent: decisionRequest?.battleIntent, actionOpportunity: { role: 'ACTIVE' },
+        // R9 (user-approved "可近似"): the successor feeds only the caster's own next options, so its cooperative
+        // summons' immediate actions — a nested decision per summon, 11% of high-level CPU — are left out.
+        // searchBounds.cooperativeSuccessors (development) settles them again.
+        ...(searchBounds?.cooperativeSuccessors === true ? {} : { skipCooperativeSummons: true }),
+        declaration: projected, buildOperationGraph: false, captureDependencies: false }).afterSnapshot;
+      byContent.set(key, after);
+      return after;
+    };
+    return { overall, hostile, successor: () => {
+      if (!withSuccessor) throw new Error('R9V2_FORMULA_CAST_WITHOUT_SUCCESSOR');
+      return formulaSuccessor ? expectedWorld.snapshot() : projectedSuccessor();
+    } };
+  }
+
+  // R12 (主线, delta-driven valuation): a formula cast's settled capacity per caster, skill and target set, kept with
+  // what it read — the caster and its declared targets (the objects themselves), the field its conditions and stamina
+  // price read (intent, time, environment, site, rules; by value, as projected frames copy them), and who is on which
+  // side, alive and able to act (a recipient that falls out resolves to the first one left) — and reused on any world
+  // where all of that is the same: a candidate's or a branch's world values again only the sets that read a unit it
+  // changed. A cast whose recipients go beyond its caster and declared targets (a group, a fallback, a partner), under a
+  // 点到为止 intent (its HP floor reads the objectives' units) or with a condition on a creator is kept for its own world
+  // only. searchBounds.capacityPerWorld (development) values every world apart again.
+  const R12_CAST_FRAME_FIELDS = ['战斗意图', '时间段', '时间', '环境', '战斗环境', '场地', '战斗规则'];
+  let r12CastRecipients = null;
+  const r12CastRosters = new WeakMap();
+  function r12CastRoster(world) {
+    let roster = r12CastRosters.get(world);
+    if (roster === undefined) {
+      roster = worldEntries(world).map(({ unit, side }) =>
+        `${preview.unitId(unit)}:${side}:${Number(preview.isPhysicallyAlive(unit))}${Number(preview.isBattleCapable(unit))}`).join('|');
+      r12CastRosters.set(world, roster);
+    }
+    return roster;
+  }
+  const r12CreatorConditions = new WeakMap();
+  const r12CreatorConditioned = skill => {
+    if (!r12CreatorConditions.has(skill)) r12CreatorConditions.set(skill, JSON.stringify(skill?._效果数组 || []).includes('制作者'));
+    return r12CreatorConditions.get(skill);
+  };
+  const r12FormulaCasts = new WeakMap();
+  function r12FormulaSettledCapacity(world, unit, skill, targetIds) {
+    if (searchBounds?.capacityPerWorld === true) return r9v2LinearFormulaSettledCapacity(world, unit, skill, targetIds);
+    let bySkill = r12FormulaCasts.get(unit);
+    if (!bySkill) r12FormulaCasts.set(unit, bySkill = new WeakMap());
+    let byTargets = bySkill.get(skill);
+    if (!byTargets) bySkill.set(skill, byTargets = new Map());
+    const key = targetIds.join('\u0001'), entries = byTargets.get(key), roster = r12CastRoster(world);
+    const hit = entries?.find(entry => entry.roster === roster &&
+      R12_CAST_FRAME_FIELDS.every((field, index) => r10SameValue(world[field], entry.frame[index])) &&
+      entry.targets.every((target, index) => findUnitInWorld(world, targetIds[index]) === target));
+    if (hit) {
+      r10Work.castReuses += 1;
+      return hit.value;
+    }
+    const outer = r12CastRecipients, recipients = r12CastRecipients = new Set();
+    let value;
+    try {
+      value = r9v2LinearFormulaSettledCapacity(world, unit, skill, targetIds);
+    } finally {
+      r12CastRecipients = outer;
+    }
+    const read = new Set([preview.unitId(unit), ...targetIds.map(String)]);
+    if ([...recipients].every(id => read.has(id)) && !/点到为止|切磋|训练|非致命/.test(String(world.战斗意图 || '')) &&
+      !r12CreatorConditioned(skill)) {
+      const list = entries || [];
+      if (!entries) byTargets.set(key, list);
+      if (list.length < 8) list.push({ roster, frame: R12_CAST_FRAME_FIELDS.map(field => world[field]),
+        targets: targetIds.map(id => findUnitInWorld(world, id)), value });
+    }
+    return value;
+  }
+
+  function r9v2LinearFormulaSettledCapacity(worldSnapshot, unit, skill, targetIds) {
+    const { overall, hostile } = r9v2LinearFormulaCast(worldSnapshot, unit, skill, targetIds, 'RELEASE_SKILL', null, false);
+    return { overall, hostile };
+  }
+
   function r9v2LinearConditionalActionCapacity(worldSnapshot, unit, skill, profile, hostileOnly, bestSoFar = 0) {
     let byUnit = conditionalActionCapacityCache.get(worldSnapshot);
     if (!byUnit) conditionalActionCapacityCache.set(worldSnapshot, byUnit = new WeakMap());
@@ -149614,9 +151528,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (upperBound <= bestSoFar) return upperBound;
       }
     }
-    const beliefState = scalarShield ? {} : buildInitialBelief(worldSnapshot, actorId);
+    // Target sets read only whether the caster may be misdirected (enumerateTargetSets); the full belief is built only for
+    // the projected fusion settlement below.
+    const targetBelief = scalarShield ? {} : { targetInterferencePossible: visibleTargetInterferenceRate(unit) > 1e-12 };
     const targetSets = expandMixedScopePrimaryTargetSets(skill, profile,
-      enumerateTargetSets(worldSnapshot, unit, profile, beliefState, skill), worldSnapshot, unit);
+      enumerateTargetSets(worldSnapshot, unit, profile, targetBelief, skill), worldSnapshot, unit);
     const capacities = { overall: 0, hostile: 0 };
     if (scalarShield) {
       // This single independent gain shares the formal kernel's rounded soft
@@ -149633,9 +151549,21 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       bySkill.set(skill, capacities);
       return capacities[key];
     }
+    // R6: the formula receipt (above). The projection below remains for a fusion, whose partners settle with it, and
+    // under searchBounds.projectedCapacity, the development switch that measures decisions against the old projection.
+    const fusionSkill = preview.fusionSkillMetadata(unit, skill);
+    if (!fusionSkill && searchBounds?.projectedCapacity !== true) {
+      for (const targetIds of targetSets) {
+        const { overall, hostile } = r12FormulaSettledCapacity(worldSnapshot, unit, skill, targetIds);
+        capacities.overall = Math.max(capacities.overall, overall);
+        capacities.hostile = Math.max(capacities.hostile, hostile);
+      }
+      bySkill.set(skill, capacities);
+      return capacities[key];
+    }
     const revisions = { projectionObjectRevisions: new WeakMap() };
     const worldRevision = r9v2ProjectionObjectRevision(revisions, worldSnapshot);
-    const fusion = preview.fusionSkillMetadata(unit, skill) ? preview.resolveFusionAction(worldSnapshot, unit, skill, {
+    const fusion = fusionSkill ? preview.resolveFusionAction(worldSnapshot, unit, skill, {
       resourceCosts: parseSkillCosts(skill, skillCostParserContext(unit, skill)), requirePendingOpportunity: true,
     }) : null;
     if (fusion && !fusion.valid) { bySkill.set(skill, capacities); return capacities[key]; }
@@ -149647,7 +151575,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const overall = r9v2LinearExpectedCreatedPreview({ worldSnapshot, actorId, declaration,
         worldRevision, snapshotRevision: worldRevision,
         actionFingerprint: r9v2ProjectionObjectRevision(revisions, declaration),
-        __preparedDecisionWorld: true, beliefState, buildOperationGraph: false, captureDependencies: false,
+        __preparedDecisionWorld: true, beliefState: buildInitialBelief(worldSnapshot, actorId), buildOperationGraph: false, captureDependencies: false,
       }, (projection, probability) => {
         hostile += probability * r9v2LinearSettledDirectCapacity(worldSnapshot, unit, projection, true);
         return r9v2LinearSettledDirectCapacity(worldSnapshot, unit, projection);
@@ -149672,7 +151600,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     worldSnapshot = {},
     bestSoFar = 0,
   ) {
-    if (skillActionCapacitySettlementProfile(skill)?.needed) {
+    // Experimental (searchBounds.settledCapacityBase): pool and conditional skills are valued like any other skill, by
+    // their per-target base action value, instead of settling a full projection of every target set.
+    if (skillActionCapacitySettlementProfile(skill)?.needed && searchBounds?.settledCapacityBase !== true) {
       return r9v2LinearConditionalActionCapacity(worldSnapshot, unit, skill, profile, hostileOnly, bestSoFar);
     }
     if (!skillHasBaseActionValue(skill)) return 0;
@@ -149734,6 +151664,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const unitId = preview.unitId(unit);
     const alliedTargets = unitSide ? r9v2LinearSideUnits(worldSnapshot, unitSide, sideUnitsByWorld) : [];
     const rows = [];
+    // B2: every formal action also pays stamina by its nature (BattlePreview actionStaminaCost). The runway counts that
+    // price beside the declared fees, so an actor whose stamina runs short sees its later actions disappear instead of
+    // planning an endless string of attacks.
+    const staminaPriced = preview.actionStaminaEnabled(worldSnapshot);
+    const withActionStamina = (vector, nature, opponent) => {
+      const price = staminaPriced && nature ? preview.actionStaminaCost(unit, nature, opponent) : 0;
+      return price > 0 ? Object.freeze({ ...vector, vit: vector.vit + price }) : vector;
+    };
     if (
       unitSide &&
       preview.isBattleCapable(unit) &&
@@ -149741,22 +151679,22 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       hostileTargets.length
     ) {
       if (!hasStateFlag(unit, 'disarm')) {
+        const basicValues = hostileTargets.map(target => cachedBaseActionValue(
+          unit,
+          target,
+          'BASIC_ATTACK',
+          null,
+          projectionContext,
+          worldSnapshot,
+        ));
+        const basicPotential = Math.max(...basicValues, 0);
         rows.push({
           actionKey: `${unitId}:basic`,
           mechanicKey: 'HOSTILE_SINGLE|伤害结算',
-          potential: Math.max(
-            ...hostileTargets.map(target => cachedBaseActionValue(
-              unit,
-              target,
-              'BASIC_ATTACK',
-              null,
-              projectionContext,
-              worldSnapshot,
-            )),
-            0,
-          ),
+          potential: basicPotential,
           costs: {},
-          capacityCosts: Object.freeze({ sp: 0, men: 0, vit: 0, valid: true }),
+          capacityCosts: withActionStamina(Object.freeze({ sp: 0, men: 0, vit: 0, valid: true }), 'ATTACK',
+            hostileTargets[Math.max(0, basicValues.indexOf(basicPotential))]),
           skill: null,
           fusionRequired: false,
           currentResourceStable: true,
@@ -149791,7 +151729,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             mechanicKey,
             potential: Math.max(0, value),
             costs: startupCosts,
-            capacityCosts: r9v2LinearCapacityCostVector(unit, startupCosts),
+            capacityCosts: withActionStamina(r9v2LinearCapacityCostVector(unit, startupCosts),
+              preview.actionStaminaNature({ actionKind: 'RELEASE_SKILL', skill }), hostileTargets[0]),
             skill,
             fusionRequired: fusion?.required === true,
             currentResourceStable: !measurableActionValue ||
@@ -149914,6 +151853,28 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const projectionRevisions = { projectionObjectRevisions: new WeakMap() };
     const initial = r9v2LinearNormalizeActionFrame(before, result);
     const records = addSummons([], result, 0, actorId);
+    // R10 step 5 (plan: 他人行动预测取表上最好动作; user, 2026-11-11: 目标单场 5s 以内): each new summon's follow-up is one
+    // window's settled direct capacity on the candidate's world (r9v2LinearSummonActionCapacity) for every window it has
+    // left in the horizon, at the chance it was created — instead of projecting every later round with each summon's
+    // action settled and branching on each risk (7% of a high-level 3v3's CPU). Summons a summon creates, controls laid
+    // later, charges across rounds and targets the earlier windows bring down are not followed.
+    // searchBounds.projectedSummonFollowups (development) restores the round-by-round projection.
+    if (searchBounds?.projectedSummonFollowups !== true) {
+      // The next round's start, where the formal round refreshes each summon's support (r9v2LinearSummonSupportWorld).
+      const world = r9v2LinearSummonSupportWorld({ ...(result.afterSnapshot || before), 回合: Number(before.回合 || 0) + 1 });
+      const chance = new Map(rootEntries.map(entry => [entry.targetId, preview.contributionProbability(entry)]));
+      let total = 0;
+      for (const record of records) {
+        const summon = findUnitInWorld(world, record.id), host = findUnitInWorld(world, record.hostId);
+        const windows = Math.max(0, Math.min(record.remaining, horizon - record.firstOffset + 1));
+        if (!summon || !host || !windows || !preview.isBattleCapable(summon) || !preview.isBattleCapable(host)) continue;
+        // One window's settled direct capacity (r9v2LinearSummonActionCapacity: its legal actions, each settled once — an
+        // assist's damage is the engine's, not the formula's), for every window it has left.
+        const perWindow = r9v2LinearSummonActionCapacity(world, summon, request, 1);
+        total += Math.max(0, perWindow) * windows * clamp(Number(chance.get(record.id) ?? 1), 0, 1);
+      }
+      return clamp(total / 100, 0, 1);
+    }
     const continueRound = (offset, previous, roster, contributions, sustains, riskTrial = null) => {
       if (offset > horizon || !roster.some(row => row.remaining > 0)) return 0;
       // Condition only risks reached during this round's settlement; future
@@ -150056,6 +152017,71 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return clamp(continueRound(1, null, records, result.contributions || [], request.evaluationContext?.continuedSustains || {}) / 100, 0, 1);
   }
 
+  // R12 (主线, delta-driven valuation; user 2026-11-11: "次数降不下去的话，7v7只会呈指数增长"): a unit's best action
+  // capacity on a candidate's or a branch's world is the one on the world it was derived from (__decisionCapacityParent,
+  // and on along that chain) when nothing it reads differs — the same units on the same sides, the unit itself alike as
+  // a caster (r12CapacityReadsAlike), and every changed one alike as a target of its actions: the same projection
+  // profile (stats, damage and hit modifiers, attack opening, alive and capable: what the damage and hit formulas read),
+  // the same panel states (healing and shield modifiers), and the same HP and shield wherever one of its skills reads
+  // them. Many candidates only take HP off enemies and spend the actor's own resources, so every other unit's capacity was
+  // rebuilt per candidate over every skill and target (7v7: 362 base values per candidate; a target whose stamina
+  // is below half reads at a reduced panel after a hit, which is a real change). A unit with a skill whose capacity settles
+  // a projection, fuses, or branches on conditions (effectConditionEnabled) is valued per world; nothing else in it reads
+  // the world's own fields (round, intent, rules), and a natural horizon (completesWithinHorizon) is not aliased.
+  // searchBounds.capacityPerWorld (development) values every world apart again.
+  const r12CapacityReadProfiles = new WeakMap();
+  function r12CapacityReadProfile(unit) {
+    if (r12CapacityReadProfiles.has(unit)) return r12CapacityReadProfiles.get(unit);
+    const prepared = affordablePreparedSkills(unit);
+    const skills = [basicAttackSkill(unit), ...prepared.map(row => row.skill)].filter(Boolean);
+    const conditioned = effect => effect?.条件分支?.length > 0;
+    const profile = prepared.some(row => row.fusionMetadata) || skills.some(skill => skillActionCapacitySettlementProfile(skill)?.needed ||
+      preview.collectEffects(skill).some(conditioned)) ? null
+      : { hostilePools: skills.some(skill => r10HpSensitiveSkill(skill, true)), friendlyPools: skills.some(skill => r10HpSensitiveSkill(skill, false)) };
+    r12CapacityReadProfiles.set(unit, profile);
+    return profile;
+  }
+  // The world and unit a unit's capacity on `world` is read from: null when it is valued there.
+  const r12CapacityOrigins = new WeakMap();
+  function r12CapacityOrigin(world, unit, decisionCache) {
+    if (searchBounds?.capacityPerWorld === true || !world || typeof world !== 'object') return null;
+    let byUnit = r12CapacityOrigins.get(world);
+    if (!byUnit) r12CapacityOrigins.set(world, byUnit = new WeakMap());
+    if (byUnit.has(unit)) return byUnit.get(unit);
+    const parent = Object.getOwnPropertyDescriptor(world, '__decisionCapacityParent')?.value;
+    const base = parent && parent !== world && typeof parent === 'object' ? r12CapacityReadsAlike(world, parent, unit, decisionCache) : null;
+    const origin = base ? r12CapacityOrigin(parent, base, decisionCache) || { world: parent, unit: base } : null;
+    byUnit.set(unit, origin);
+    return origin;
+  }
+  // The parent's own unit when `unit`'s capacity reads alike on both worlds, else null. The unit itself may differ only
+  // where it does not read: the same panel as caster and as target, the same projection profile, the same prepared skill
+  // list (affordablePreparedSkills shares one list among units of the same skills and affordability), and the same HP
+  // and shield when one of its skills reads its own side's.
+  function r12CapacityReadsAlike(world, parent, unit, decisionCache) {
+    const reads = r12CapacityReadProfile(unit);
+    if (!reads) return null;
+    const id = preview.unitId(unit);
+    const entries = worldEntries(world), prior = new Map(worldEntries(parent).map(entry => [preview.unitId(entry.unit), entry]));
+    if (entries.length !== prior.size) return null;
+    const self = prior.get(id), side = self?.side;
+    if (!side) return null;
+    let contexts = null;
+    for (const entry of entries) {
+      const otherId = preview.unitId(entry.unit), base = prior.get(otherId);
+      if (!base || base.side !== entry.side) return null;
+      if (otherId === id && entry.unit !== unit) return null;
+      if (base.unit === entry.unit) continue;
+      if (!r10SamePanel(entry.unit, base.unit, 'target') ||
+        (entry.side === side ? reads.friendlyPools : reads.hostilePools) && !r10SamePools(entry.unit, base.unit)) return null;
+      if (otherId === id && (!r10SamePanel(unit, base.unit, 'self') || affordablePreparedSkills(unit) !== affordablePreparedSkills(base.unit))) return null;
+      contexts ??= [r9v2LinearCapacityProjectionContext(world, decisionCache), r9v2LinearCapacityProjectionContext(parent, decisionCache)];
+      const profile = preview.mechanicalProjectionProfile(contexts[0], entry.unit);
+      if (!profile || profile !== preview.mechanicalProjectionProfile(contexts[1], base.unit)) return null;
+    }
+    return self.unit;
+  }
+
   function r9v2LinearBestActionCapacity(
     worldSnapshot = {},
     unit = {},
@@ -150083,6 +152109,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       decisionMetrics.r9v2BestActionCapacityCacheHits += 1;
       return valuesByHostileSide.get(capacityKey);
     }
+    const origin = naturalHorizon ? null : r12CapacityOrigin(worldSnapshot, unit, decisionCache);
+    if (origin) {
+      r10Work.capacityAliases += 1;
+      const value = r9v2LinearBestActionCapacity(origin.world, origin.unit, hostileSide, decisionCache, hostileOnly);
+      valuesByHostileSide?.set(capacityKey, value);
+      return value;
+    }
     const sideUnitsByWorld = decisionCache?.sideUnitsByWorld;
     const unitSide = sideOf(worldSnapshot, unit);
     const hostileTargets = r9v2LinearSideUnits(worldSnapshot, hostileSide, sideUnitsByWorld);
@@ -150103,8 +152136,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         actorId: preview.unitId(unit), actionOpportunity: { role: 'ACTIVE', battleHorizon: naturalHorizon },
       }, worldSnapshot);
     };
+    // The semantic cache below keys a simple attacker's capacity by the JSON of its own and every target's projection
+    // profile and states; building that key on every miss cost more than the builds it saved (2026-11-11 A/B: 6 high-level
+    // 3v3 ×1.058 without it, the same choices). searchBounds.semanticCapacityKeys (development) builds it again.
     let semanticCapacityKey = '';
     if (
+      searchBounds?.semanticCapacityKeys === true &&
       unitSide &&
       preview.isBattleCapable(unit) &&
       !hasActionCancellation(unit) &&
@@ -150327,6 +152364,36 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       fractional(state?.副作用列表) || state?.延迟效果 === true && Array.isArray(state.结算效果) && state.结算效果.some(effect => fractional(effect?.副作用列表))));
   }
 
+  // Two projected units alike beyond their fields: the same resource supports, the same hidden fields, and per state the
+  // same pool strength support, hidden fields (source windows) and source records (BattlePreview's side tables).
+  const R12_PROJECTED_RESOURCES = ['生命', '魂力', '精神力', '体力'];
+  const r12SameHidden = (left, right) => {
+    const hidden = value => Object.getOwnPropertyNames(value).filter(key => !Object.getOwnPropertyDescriptor(value, key).enumerable);
+    const keys = new Set([...hidden(left), ...hidden(right)]);
+    for (const key of keys) {
+      const a = Object.getOwnPropertyDescriptor(left, key), b = Object.getOwnPropertyDescriptor(right, key);
+      if (!a || !b || a.enumerable !== b.enumerable || !r10SameValue(a.value, b.value)) return false;
+    }
+    return true;
+  };
+  function r12SameProjectedUnit(left, right) {
+    if (!r12SameHidden(left, right)) return false;
+    for (const resource of R12_PROJECTED_RESOURCES) {
+      if (!r10SameValue(preview.projectedResourceDistribution(left, resource) ?? null, preview.projectedResourceDistribution(right, resource) ?? null)) return false;
+    }
+    const a = left.状态效果 || {}, b = right.状态效果 || {};
+    for (const key of Object.keys(a)) {
+      const x = a[key], y = b[key];
+      if (x === y || !x || !y || typeof x !== 'object' || typeof y !== 'object') continue;
+      if (!r12SameHidden(x, y) ||
+        !r10SameValue(preview.projectedPoolStrengthSupport(x) ?? null, preview.projectedPoolStrengthSupport(y) ?? null)) return false;
+      for (const id of new Set([...(x.__状态来源窗口 || []), ...(y.__状态来源窗口 || [])])) {
+        if (!r10SameValue(preview.projectedStateSourceRecord(x, id) ?? null, preview.projectedStateSourceRecord(y, id) ?? null)) return false;
+      }
+    }
+    return true;
+  }
+
   function r9v2JointFlowProjector(baselineWorld, sourceActorId, sourceSustainProfile = null, riskOffsetBase = 0, inheritedSustains = null) {
     const cache = new WeakMap(), emptyContributions = [], emptySustains = {};
     const pendingNaturalActorIds = Array.isArray(sourceSustainProfile?.pendingNaturalActorIds) ? new Set(sourceSustainProfile.pendingNaturalActorIds) : null;
@@ -150351,9 +152418,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const materializeContinued = (frame, sustains) => {
       for (const [id, profiles] of Object.entries(sustains || {})) for (const profile of profiles) materializeTargets(frame, id, profile);
     };
-    const initializeFrame = (world, contributions, continuedSustains) => {
-      let initial = cloneValue(world);
-      const ids = preview.listUnits(initial).map(({ unit }) => {
+    // onlyUnitId (shared-frame survival curves): initialize and settle that one unit; the caller settles every other unit
+    // once in a shared frame. The per-unit work is the same code as the whole-frame path. The unit copies what a round
+    // writes in place (cloneRoutineBranchUnit; the settlement copies anything else before it writes) and shares the
+    // rest, so branches that converge compare by reference past their skills and equipment.
+    const ownedUnitFrame = (world, unitId) => {
+      const unit = findUnitInWorld(world, unitId);
+      if (!unit) return world;
+      const copy = cloneRoutineBranchUnit(unit);
+      preview.inheritOverlayOrigin(copy, unit);
+      return replaceWorldUnit(world, unitId, copy);
+    };
+    const initializeFrame = (world, contributions, continuedSustains, onlyUnitId = null) => {
+      let initial = onlyUnitId ? ownedUnitFrame(world, onlyUnitId) : cloneProjectorWorld(world);
+      const ids = onlyUnitId ? [onlyUnitId] : preview.listUnits(initial).map(({ unit }) => {
         preview.inheritOverlayOrigin(unit, findUnitInWorld(world, preview.unitId(unit)));
         return preview.unitId(unit);
       });
@@ -150373,8 +152451,29 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       materializeContinued(initial, continuedSustains);
       return initial;
     };
-    const project = (world, _actor, roundOffset, _baselineActor, contributions = [], _sustainProfile = null, previousFrame = null, continuedSustains = inheritedSustains, riskResolver = null) => {
-      if (!(roundOffset > 0)) return world;
+    // R12 (主线, delta-driven valuation): a projector given another one's frames (internFrom: r9v2LinearCausalFeatureRows
+    // gives a candidate's projector the decision's) takes that projector's unit wherever its own frame holds one alike —
+    // the same fields and the same projected side data (resource supports, pool strengths, state source windows and
+    // their records, every hidden field) — so the units a candidate leaves alone are the decision's own objects in its
+    // frames too, and their capacities there are valued once per decision. searchBounds.capacityPerWorld (development)
+    // keeps every frame's own copies.
+    let internSource = null;
+    const internFrame = (frame, index) => {
+      if (!internSource || searchBounds?.capacityPerWorld === true || !frame || typeof frame !== 'object') return frame;
+      const twins = internSource.project.frameAt(internSource.world, index);
+      if (!twins || twins === frame) return frame;
+      let out = frame;
+      for (const { unit } of preview.listUnits(frame)) {
+        const id = preview.unitId(unit), twin = findUnitInWorld(twins, id);
+        if (!twin || twin === unit || !r10SameValue(unit, twin) || !r12SameProjectedUnit(unit, twin)) continue;
+        out = replaceWorldUnit(out, id, twin);
+        r10Work.internedUnits += 1;
+      }
+      if (out === frame) return frame;
+      const parent = Object.getOwnPropertyDescriptor(frame, '__decisionCapacityParent')?.value;
+      return parent ? markCapacityDeltaSnapshot(out, parent, frame.__decisionCapacityChangedUnitIds || []) : out;
+    };
+    const stateFor = (world, contributions, continuedSustains) => {
       let byContributions = cache.get(world);
       if (!byContributions) cache.set(world, byContributions = new WeakMap());
       const contributionKey = contributions.length ? contributions : emptyContributions;
@@ -150383,7 +152482,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const sustainKey = continuedSustains || emptySustains;
       let state = bySustains.get(sustainKey);
       if (!state) {
-        const initial = initializeFrame(world, contributions, continuedSustains);
+        const initial = internFrame(initializeFrame(world, contributions, continuedSustains), 0);
         // Bound risks already travel inside the live state. Its actual holder
         // and ending event own settlement, not the original expiry estimate.
         const boundRisks = new Set(contributions.filter(entry => entry.evidence?.persistentRiskBinding).map(entry =>
@@ -150394,10 +152493,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         state = { frames: [initial], scheduled };
         bySustains.set(sustainKey, state);
       }
+      return state;
+    };
+    const project = (world, _actor, roundOffset, _baselineActor, contributions = [], _sustainProfile = null, previousFrame = null, continuedSustains = inheritedSustains, riskResolver = null, onlyUnitId = null) => {
+      if (!(roundOffset > 0)) return world;
+      const state = stateFor(world, contributions, continuedSustains);
       if (!riskResolver && !previousFrame && state.frames.length > roundOffset) return state.frames[roundOffset];
       const advanceFrame = (previous, step) => {
-        let next = cloneValue(previous);
-        for (const { unit } of preview.listUnits(next)) preview.inheritOverlayOrigin(unit, findUnitInWorld(previous, preview.unitId(unit)));
+        decisionMetrics.r10ProjectorFrames += 1;
+        let next = onlyUnitId ? ownedUnitFrame(previous, onlyUnitId) : cloneProjectorWorld(previous);
+        if (!onlyUnitId) for (const { unit } of preview.listUnits(next)) preview.inheritOverlayOrigin(unit, findUnitInWorld(previous, preview.unitId(unit)));
         // A later ally/summon/cooperation action may add a maintained target
         // after frame zero. Bind that real branch before the next unit clock.
         materializeContinued(next, continuedSustains);
@@ -150410,6 +152515,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         // frame. Only the current registry owns the holders settled this round.
         for (const { unit: holder } of preview.listUnits(next)) {
           const id = preview.unitId(holder);
+          if (onlyUnitId && id !== onlyUnitId) continue;
           const unit = findUnitInWorld(next, id);
           if (!unit || preview.readHp(unit) <= 0) continue;
           const initialUnit = baselineUnits.get(id) || unit;
@@ -150434,7 +152540,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           const advanced = findUnitInWorld(next, id);
           Object.values(advanced.状态效果 || {}).forEach(condition => { delete condition.__本回合新附加; });
         }
-        return markCapacityDeltaSnapshot(next, previous, preview.listUnits(next).map(({ unit }) => preview.unitId(unit)));
+        return markCapacityDeltaSnapshot(next, previous, onlyUnitId ? [onlyUnitId] : preview.listUnits(next).map(({ unit }) => preview.unitId(unit)));
       };
       // Incoming damage branches advance from their own remaining resources;
       // do not replace them with the undamaged cached passive frame.
@@ -150445,11 +152551,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         for (let step = previousFrame ? roundOffset : 1; step <= roundOffset; step++) next = advanceFrame(next, step);
         return next;
       }
-      if (previousFrame) return advanceFrame(roundOffset === 1 ? initializeFrame(previousFrame, contributions, continuedSustains) : previousFrame, roundOffset);
+      if (previousFrame) return advanceFrame(roundOffset === 1 ? initializeFrame(previousFrame, contributions, continuedSustains, onlyUnitId) : previousFrame, roundOffset);
       while (state.frames.length <= roundOffset) {
-        state.frames.push(advanceFrame(state.frames.at(-1), state.frames.length));
+        state.frames.push(internFrame(advanceFrame(state.frames.at(-1), state.frames.length), state.frames.length));
       }
       return state.frames[roundOffset];
+    };
+    // Frame `index` of world's own chain (no contributions, the inherited sustains): 0 is its initialized frame.
+    project.frameAt = (world, index) => index > 0 ? project(world, null, index, null, [], null, null)
+      : stateFor(world, [], inheritedSustains).frames[0];
+    project.internFrom = (source, world) => {
+      internSource = source && source !== project ? { project: source, world } : null;
+      return project;
     };
     const pairedCache = new WeakMap(), riskWorlds = new WeakMap(), splitToken = {};
     const hasRiskLaw = world => {
@@ -150490,10 +152603,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       }
       return Object.freeze(outcomes);
     };
-    project.pairedOutcomes = (priorWorld, nextWorld, offset, priorContributions = [], nextContributions = [], { priorFrame = null, nextFrame = null } = {}) => {
+    // priorProject: a projector whose frames of priorWorld are this one's (r9v2LinearCausalFeatureRows shares one per
+    // decision); used where the prior frame is projected on its own.
+    project.pairedOutcomes = (priorWorld, nextWorld, offset, priorContributions = [], nextContributions = [], { priorFrame = null, nextFrame = null, priorProject = null } = {}) => {
       if (!(offset > 0)) return [{ probability: 1, priorWorld: priorFrame || priorWorld, nextWorld: nextFrame || nextWorld }];
       if (!hasRiskLaw(priorFrame || priorWorld) && !hasRiskLaw(nextFrame || nextWorld)) return [{ probability: 1,
-        priorWorld: project(priorWorld, null, offset, null, priorContributions, null, priorFrame),
+        priorWorld: (priorProject || project)(priorWorld, null, offset, null, priorContributions, null, priorFrame),
         nextWorld: project(nextWorld, null, offset, null, nextContributions, null, nextFrame) }];
       const priorKey = priorContributions.length ? priorContributions : emptyContributions;
       const nextKey = nextContributions.length ? nextContributions : emptyContributions;
@@ -150573,7 +152688,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         Number(left.evidence.sideEffectIndex || 0) - Number(right.evidence.sideEffectIndex || 0));
     if (sustainProfiles.length || deferred.length || deferredLethal.length ||
       Object.values(actor.状态效果 || {}).some(state => state?.延迟效果 === true || state?.持续原型效果?.原型 === '状态移除' || state?.原型 === '资源变化' || state?.副作用列表?.length)) {
-      const nextActor = cloneValue(actor);
+      const nextActor = cloneSettlementUnit(actor);
       preview.inheritOverlayOrigin(nextActor, actor);
       const conditionProjectedResource = (distribution, threshold, resource, source, roundOffset) => {
         if (!riskResolver || !distribution?.support) return distribution;
@@ -150666,7 +152781,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         state.结算效果.every(effect => ['伤害结算','资源变化','护盾变化','属性修正','状态施加'].includes(effect?.原型));
       const settleDelayedState = (key, state, offset, roundEnd = false) => state.结算效果.forEach(effect => {
         const affectedKey = effect.原型 === '属性修正' ? `延迟属性:${effect.属性}`
-          : effect.原型 === '状态施加' ? String(effect.状态 || '').trim()
+          : effect.原型 === '状态施加' ? preview.sourcedStateKey(nextActor, { ...effect, 状态: String(effect.状态 || '').trim(),
+            来源角色: String(state.来源角色 || effect.来源角色 || '').trim(), 来源技能: String(state.来源技能 || effect.来源技能 || key || '延迟效果').trim() }).key
             : effect.原型 === '护盾变化' ? '延迟护盾' : '';
         const previous = nextActor.状态效果[affectedKey];
         const duration = previous?.duration, fresh = previous?.__本回合新附加, shield = previous?.shield_value;
@@ -150963,7 +153079,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           else delete finalStats[key];
         }
       }
-      nextActor.final = { ...nextActor.final, ...finalStats };
+      nextActor.final = { ...nextActor.final, ...finalStats }; preview.syncStaminaMaxGain(nextActor);
       world = replaceWorldUnit(world, preview.unitId(actor), nextActor);
       actor = nextActor;
     }
@@ -150980,7 +153096,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const remaining = Number(entry.evidence.stateEntry.duration) - (roundOffset - entry.evidence.deferredStartRoundOffset);
       if (remaining <= 0) {
         Object.entries(nextActor.状态效果).forEach(([key,previous]) => {
-          if (key !== name && !(/^(visible:|preview:)/.test(key) && (previous.状态 || previous.状态名称) === name)) return;
+          // D1: only what the side effect replaced; another source's same-name instance stays.
+          if (!preview.sideEffectStateReplaces(key, previous, name)) return;
           removedPanelState ||= ['面板修改比例','面板固定修正','属性快照'].some(field => Object.keys(previous?.[field] || {}).length);
           delete nextActor.状态效果[key];
         });
@@ -150993,6 +153110,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
     if (removedPanelState) {
       nextActor.final = { ...actor.final, ...preview.buildNumericCombatStats(nextActor, Number(world.当前世界tick ?? world.当前tick ?? 0)) };
+      preview.syncStaminaMaxGain(nextActor);
     }
     return replaceWorldUnit(world, preview.unitId(actor), nextActor);
   }
@@ -151030,6 +153148,21 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return clamp(retention, 0, 1);
   }
 
+  // W7 (2026-11-09): enemy states the control measure below does not see, so a skill carrying them was worth nothing.
+  // A share of each healer-type action is healing (R-domain action mix of the first sample: 治疗系 about 45%, 辅助系 and
+  // 食物系 about 10%, others about 5%); a starting value to be tuned by win rate.
+  const ENEMY_HEAL_ACTION_SHARE = Object.freeze({ 治疗系: 0.45, 辅助系: 0.1, 食物系: 0.1 });
+  function r9v2LinearStateEffectMax(unit = {}, fields = []) {
+    return Object.values(unit?.状态效果 || {}).reduce((maximum, state) => {
+      const effect = state?.战斗效果 || state?.计算层效果 || {};
+      return Math.max(maximum, ...fields.map(field => Number(effect[field] || 0)));
+    }, 0);
+  }
+  function r9v2LinearTaunted(unit = {}) {
+    return Object.entries(unit?.状态效果 || {}).some(([key, state]) => /嘲讽/.test(String(state?.状态 || state?.状态名称 || key)) ||
+      (state?.战斗效果 || {}).taunt === true);
+  }
+
   function r9v2LinearControlSuppression(unit = {}) {
     const states = unit?.状态效果 && typeof unit.状态效果 === 'object'
       ? Object.values(unit.状态效果)
@@ -151053,6 +153186,48 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (/^(enemy|敌方|对方|team_enemy)$/.test(normalized)) return 'team_enemy';
     if (/^(player|玩家|我方|team_player)$/.test(normalized)) return 'team_player';
     return '';
+  }
+
+  // Who an enemy is likely to attack (用户 2026-11-10 定：一个单位的危险按它预计会挨的攻击算，不再假设每个敌人都打它).
+  // Each source spreads one action over the opposing capable units in proportion to how fast its routine attack brings
+  // each down (expected damage ÷ remaining HP and shield); units the objectives name for the source's side to bring down
+  // weigh ×3. A lone unit keeps the whole action (1v1 unchanged). Per world, cleared at every outermost decision.
+  let enemyTargetShareCache = new WeakMap();
+  function r9v2LinearObjectiveNamedTargets(worldSnapshot = {}, sourceSide = '') {
+    let objectives = null;
+    try { objectives = preview.normalizeBattleObjectives(worldSnapshot?.胜负条件 || {}, worldSnapshot); } catch { objectives = null; }
+    // Objectives are written for the player side: its victory names enemies to bring down, its defeat names players.
+    const group = sourceSide === 'team_player' ? objectives?.victory : objectives?.defeat;
+    return new Set((group?.conditions || []).filter(condition => ['UNIT_INCAPACITATED', 'UNIT_DEAD', 'HP_RATIO_AT_OR_BELOW'].includes(condition.type))
+      .flatMap(condition => condition.targetIds || []).map(String));
+  }
+
+  function r9v2LinearEnemyTargetShare(worldSnapshot = {}, source = {}, target = {}) {
+    const sourceSide = sideOf(worldSnapshot, source), targetSide = sideOf(worldSnapshot, target);
+    if (!sourceSide || !targetSide || sourceSide === targetSide) return 1;
+    let bySource = enemyTargetShareCache.get(worldSnapshot);
+    if (!bySource) enemyTargetShareCache.set(worldSnapshot, bySource = new Map());
+    const sourceId = preview.unitId(source);
+    let shares = bySource.get(sourceId);
+    if (!shares) {
+      const named = r9v2LinearObjectiveNamedTargets(worldSnapshot, sourceSide);
+      const effect = routineAttackEffect(source);
+      // The AI hits the main bodies, not their summons (sample finding "打本体为主"); a summon only draws this share once
+      // no main body on that side can still act — otherwise a fragile summon would look like a decoy it is not.
+      const capable = worldEntries(worldSnapshot).filter(entry => entry.side === targetSide && preview.isBattleCapable(entry.unit));
+      const bodies = capable.filter(entry => !preview.isSummonUnit(entry.unit));
+      const weights = (bodies.length ? bodies : capable).map(({ unit }) => {
+        const damage = preview.calculateBaseDamage(effect, source, unit, null, { resourceDriveEnabled: false }) *
+          preview.estimateHitProbability(source, unit, effect);
+        const remaining = Math.max(1, preview.readHp(unit) + preview.readShield(unit));
+        return [preview.unitId(unit), Math.max(0, damage) / remaining * (named.has(preview.unitId(unit)) ? 3 : 1)];
+      });
+      const total = weights.reduce((sum, [, weight]) => sum + weight, 0);
+      shares = new Map(weights.map(([id, weight]) => [id, total > 0 ? weight / total : 1 / weights.length]));
+      bySource.set(sourceId, shares);
+    }
+    const id = preview.unitId(target);
+    return shares.has(id) ? shares.get(id) : 1;
   }
 
   function r9v2LinearRecentAttackPropensity(
@@ -151138,7 +153313,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     sourceSide = '',
     recentAttackLedgerIndex = null,
   ) {
-    const basicEffect = { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 };
+    const basicEffect = routineAttackEffect(source);
     const routineResponseMultiplier = Math.min(
       preview.calculateDefenseDamageMultiplier(target, source, false),
       1 - preview.calculateDodgeProbability(target, source, false),
@@ -151524,8 +153699,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               (assist && currentAvailability?.get(ownerId) !== true ? 1 - actionCancellationProbability(owner) : 1), 0, 1);
             retain(state.remaining, state.world, state.probability * (1 - targetProbability));
             if (!(targetProbability > 0)) continue;
-            const raw = preview.calculateBaseDamage(basic, attacker, target, null, { resourceDriveEnabled: false });
-            const hitProbability = preview.estimateHitProbability(attacker, target, basic);
+            const routine = routineAttackEffect(attacker);
+            const raw = preview.calculateBaseDamage(routine, attacker, target, null, { resourceDriveEnabled: false });
+            const hitProbability = preview.estimateHitProbability(attacker, target, routine);
             const hpFloor = preview.calculateNonlethalHpFloor(state.world, target, battleIntent);
             const settle = (remaining, probability, multiplier, evade = 0) => {
               if (!(probability > 0)) return;
@@ -151590,7 +153766,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               const outcomes = preview.expectedSegmentedDamageOutcome({ segments: 1,
                 perSegmentDamage: preview.calculateSettledSegmentDamage(raw, 1, multiplier),
                 hitProbability: clamp(hitProbability * (1 - evade), 0, 1),
-                hpDamageLimit: Math.max(0, preview.readHp(current) - hpFloor), ...preview.incomingShieldProfile(current, basic, attacker),
+                hpDamageLimit: Math.max(0, preview.readHp(current) - hpFloor), ...preview.incomingShieldProfile(current, routine, attacker),
                 deathSaveCount: defenseStates.reduce((sum, condition) => sum + Math.max(0, Number(condition.战斗效果?.death_save_count || 0)), 0),
                 ruleBlockCount: defenseStates.reduce((sum, condition) => sum +
                   (String(condition.规则 || condition.防御对象 || '').trim() === '免伤' ? Math.max(0, Number(condition.战斗效果?.block_count || 0)) : 0), 0),
@@ -151598,7 +153774,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               }).outcomeDistribution;
               for (const outcome of outcomes) {
                 const unit = cloneValue(outcome.targetState);
-                preview.absorbPreviewShield(unit, outcome.shieldAbsorb, basic, attacker);
+                preview.absorbPreviewShield(unit, outcome.shieldAbsorb, routine, attacker);
                 if (outcome.revival) preview.applyDamageRevivalOutcomes(unit, [{ probability: 1, revival: outcome.revival }]);
                 if (!outcome.revival && preview.shouldTriggerTraumaUnconscious(outcome.hpDamage, preview.readHp(unit), preview.readHpMax(unit))) unit.__战斗失能原因 = 'UNCONSCIOUS';
                 if (hpFloor > 0 && hpFloor <= 1 && outcome.hpDamage > 0 && preview.readHp(unit) <= hpFloor) unit.__战斗失能原因 = 'INCAPACITATED';
@@ -151705,7 +153881,6 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (options.advanceWorld) decisionMetrics.datedRoutineRiskCalls += 1;
     if (!(remainingCapacity > 0)) return options.returnProfile ? { pressure: 0, incapacityCurve: waves.map(() => 1), ...(options.quantizeShield ? { shieldAbsorption: 0 } : {}) }
       : options.returnCurve ? waves.map(() => 1) : 1;
-    const basicEffect = { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 };
     const targetHpMax = Math.max(1, preview.readHpMax(target));
     const compileAttack = (source, target, world = worldSnapshot, observationWorld = world) => {
       if (!preview.isBattleCapable(source) || options.sourceEligibility?.(source) === false) return [];
@@ -151718,26 +153893,28 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         );
         return threat > 0
           ? [{
-              probability: options?.certainActionOpportunity === true
+              probability: (options?.certainActionOpportunity === true
                 ? 1
                 : r9v2LinearRecentAttackPropensity(
                     observationWorld,
                     source,
                     sourceSide,
                     recentAttackLedgerIndex,
-                  ),
+                  )) * r9v2LinearEnemyTargetShare(world, source, target),
               threat,
               source,
             }]
           : [];
       }
+      const basicEffect = routineAttackEffect(source);
       let damage = preview.calculateBaseDamage(basicEffect, source, target, null, {
         resourceDriveEnabled: false,
       });
       let attackProbability = preview.estimateHitProbability(source, target, basicEffect) *
         (options?.certainActionOpportunity === true
           ? 1
-          : r9v2LinearRecentAttackPropensity(observationWorld, source, sourceSide, recentAttackLedgerIndex));
+          : r9v2LinearRecentAttackPropensity(observationWorld, source, sourceSide, recentAttackLedgerIndex)) *
+        r9v2LinearEnemyTargetShare(world, source, target);
       if (options.routineResponse === true) {
         const defense = preview.calculateDefenseDamageMultiplier(target, source, false);
         const dodge = preview.calculateDodgeProbability(target, source, false);
@@ -151756,23 +153933,38 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const branches = attackWaves.flat();
     const requiresPoolSettlement = Object.entries(target.状态效果 || {}).some(([key, state]) => Number(state?.shield_value) > 0 &&
       (Number(state.对应等级 ?? state.equivalentLevel) > 0 && branches.some(attack => attack.probability > 0 &&
-        !root.__LWCS_BATTLE_RUNTIME__.shieldGateAllowsIncoming(state, basicEffect, attack.source)) || waves.length > 1 &&
+        !root.__LWCS_BATTLE_RUNTIME__.shieldGateAllowsIncoming(state, routineAttackEffect(attack.source), attack.source)) || waves.length > 1 &&
         r9v2LinearPassiveStateExpires(key, state, waves.length - 1, target, true, null, true, 0, true)));
     if (options.advanceWorld || options.returnProfile || options.returnCurve || requiresPoolSettlement || preview.ruleBlockCount(target) > 0 || preview.deathSaveCount(target) > 0 || preview.hasDamageRevival(target, true)) {
       const hpFloor = preview.calculateNonlethalHpFloor(worldSnapshot, target);
       const worstIncoming = branches.reduce((sum, attack) => sum + Math.max(0, Math.round(attack.threat * targetHpMax / 100)), 0);
       const minimumHp = Math.max(hpFloor, preview.readHp(target) - Math.max(0, worstIncoming - preview.readShield(target)));
-      if (!options.advanceWorld && !options.returnProfile && !requiresPoolSettlement && worstIncoming < remainingCapacity - hpFloor - 1e-9 && !branches.some(attack =>
+      // An injury drains stamina in proportion to the HP it takes (BattlePreview setHp), and running out of stamina
+      // incapacitates like HP reaching zero (W14). Surviving the worst HP loss is no proof when it would empty stamina.
+      const staminaMax = preview.readResourceMax(target, '体力');
+      const staminaSurvives = options.excludeStaminaIncapacity === true || !(staminaMax > 0) ||
+        preview.readResource(target, '体力') - (preview.readHp(target) - minimumHp) / targetHpMax * staminaMax > 1e-9;
+      if (!options.advanceWorld && !options.returnProfile && !requiresPoolSettlement && worstIncoming < remainingCapacity - hpFloor - 1e-9 && staminaSurvives && !branches.some(attack =>
         preview.shouldTriggerTraumaUnconscious(Math.round(attack.threat * targetHpMax / 100), minimumHp, targetHpMax))) return options.returnCurve ? waves.map(() => 0) : 0;
       // Keep the existing public routine-pressure model, but settle finite
       // protective resources across its ordered incoming actions rather than
       // treating each hit as if it had the original charge and HP budget.
-      let states = [{ probability: 1, unit: cloneValue(target), world: worldSnapshot }];
+      let states = [{ probability: 1, unit: cloneRoutineBranchUnit(target), world: worldSnapshot }];
       const riskCurve = [];
       let pressure = 0;
       let shieldAbsorption = 0;
       for (let waveIndex = 0; waveIndex < attackWaves.length; waveIndex++) {
-      if (waveIndex > 0 && options.advanceWorld && options.advanceWorldOutcomes) {
+      if (waveIndex > 0 && options.advanceWorld && options.sharedFrame) {
+        // Branches differ only in this target. Every other unit settles the window once in the shared frame; each
+        // branch's own target settles alone with the same clock (r9v2JointFlowProjector onlyUnitId).
+        const shared = options.sharedFrame(waveIndex), targetId = preview.unitId(target);
+        states = states.map(branch => {
+          decisionMetrics.datedRoutineRiskBoundariesAdvanced += 1;
+          const advanced = findUnitInWorld(options.advanceTarget(branch.world, targetId, waveIndex), targetId);
+          return { probability: branch.probability, unit: advanced || branch.unit,
+            world: advanced ? replaceWorldUnit(shared, targetId, advanced) : shared };
+        });
+      } else if (waveIndex > 0 && options.advanceWorld && options.advanceWorldOutcomes) {
         states = states.flatMap(branch => {
           const outcomes = options.advanceWorldOutcomes(branch.world, waveIndex);
           decisionMetrics.datedRoutineRiskBoundariesAdvanced += 1;
@@ -151808,22 +154000,44 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       for (const source of group.sources) {
         const merged = new Map();
         // Dated worlds still merge only on equal full-world JSON. Equal worlds
-        // imply an equal target JSON, so bucket by it first: distinct outcomes
-        // skip serializing every other unit, and ties compare JSON text lazily.
+        // imply an equal target, so bucket by the target's compact defence key
+        // first; ties compare JSON text lazily (shared parts short-circuit).
         // Retained worlds are never mutated afterwards (later frames clone).
         const datedBuckets = options.advanceWorld ? new Map() : null;
+        // Shared frames (options.sharedFrame): every branch world is the same frame with its own target, so two worlds
+        // are equal exactly when the target and its resource laws are. Bucket by the target's compact defence key and
+        // compare only the target (its shared nested parts short-circuit) instead of serializing every unit.
+        const targetId = preview.unitId(target), targetPrefix = targetId + '\u0000';
+        const compactTargetKey = held => held ? JSON.stringify([preview.readHp(held), preview.readShield(held), preview.isBattleCapable(held),
+          preview.readResource(held, '体力'), Object.keys(held.状态效果 || {})]) : 'none';
         const retain = (unit, probability, world) => {
-          if (datedBuckets) {
-            const resources = preview.projectedResourceWorldState(world);
-            const bucketKey = JSON.stringify([findUnitInWorld(world, preview.unitId(target)) ?? null, resources]);
+          if (datedBuckets && options.sharedFrame) {
+            const held = findUnitInWorld(world, targetId) ?? null;
+            const resources = preview.projectedResourceWorldState(world).filter(([key]) => key.startsWith(targetPrefix));
+            const bucketKey = compactTargetKey(held);
             const bucket = datedBuckets.get(bucketKey);
-            const match = bucket?.find(row => sameJsonText([row.entry.world, row.resources], [world, resources]));
+            const match = bucket?.find(row => sameJsonText([row.held, row.resources], [held, resources]));
             if (match) match.entry.probability += probability;
             else {
               const entry = { probability, unit, world };
               merged.set(entry, entry);
-              if (bucket) bucket.push({ entry, resources });
-              else datedBuckets.set(bucketKey, [{ entry, resources }]);
+              if (bucket) bucket.push({ entry, held, resources });
+              else datedBuckets.set(bucketKey, [{ entry, held, resources }]);
+            }
+          } else if (datedBuckets) {
+            // The same compact bucket instead of serializing the whole target on every branch; the target is compared
+            // first (a different one fails fast), then the whole world — still the exact test.
+            const held = findUnitInWorld(world, targetId) ?? null;
+            const resources = preview.projectedResourceWorldState(world);
+            const bucketKey = compactTargetKey(held);
+            const bucket = datedBuckets.get(bucketKey);
+            const match = bucket?.find(row => sameJsonText(row.held, held) && sameJsonText([row.entry.world, row.resources], [world, resources]));
+            if (match) match.entry.probability += probability;
+            else {
+              const entry = { probability, unit, world };
+              merged.set(entry, entry);
+              if (bucket) bucket.push({ entry, held, resources });
+              else datedBuckets.set(bucketKey, [{ entry, held, resources }]);
             }
           } else {
           const key = JSON.stringify([preview.readHp(unit), preview.readShield(unit), preview.isBattleCapable(unit),
@@ -151851,19 +154065,19 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           const attack = options.advanceWorld ? attacker && compileAttack(attacker, branch.unit, branch.world,
             options.pressureObservationWorld?.(waveIndex) || branch.world)[0] : source;
           if (!attack) { retain(branch.unit, branch.probability, branch.world); continue; }
-          const current = cloneValue(branch.unit); delete current.__本阶段已触发复活;
+          const current = cloneRoutineHitUnit(branch.unit); delete current.__本阶段已触发复活;
           const damageFloor = options.advanceWorld ? preview.calculateNonlethalHpFloor(branch.world, current) : hpFloor;
           const currentHpMax = options.advanceWorld ? Math.max(1, preview.readHpMax(current)) : targetHpMax;
           const outcome = preview.expectedSegmentedDamageOutcome({ segments: 1,
             perSegmentDamage: Math.max(0, Math.round(attack.threat * targetHpMax / 100)), hitProbability: attack.probability,
-            hpDamageLimit: Math.max(0, preview.readHp(current) - damageFloor), ...preview.incomingShieldProfile(current, basicEffect, attack.source),
+            hpDamageLimit: Math.max(0, preview.readHp(current) - damageFloor), ...preview.incomingShieldProfile(current, routineAttackEffect(attack.source), attack.source),
             deathSaveCount: damageFloor > 0 ? 0 : preview.deathSaveCount(current), ruleBlockCount: preview.ruleBlockCount(current),
             reviveTarget: damageFloor > 0 ? null : current,
           });
           for (const result of outcome.outcomeDistribution) {
             if (options.returnProfile) pressure += branch.probability * result.probability * result.hpDamage / targetHpMax;
-            const next = cloneValue(current), beforeHp = preview.readHp(current);
-            preview.absorbPreviewShield(next, result.shieldAbsorb, basicEffect, attack.source);
+            const next = cloneRoutineHitUnit(current), beforeHp = preview.readHp(current);
+            preview.absorbPreviewShield(next, result.shieldAbsorb, routineAttackEffect(attack.source), attack.source);
             if (options.quantizeShield) shieldAbsorption += branch.probability * result.probability * options.quantizeShield(current, next) / targetHpMax;
             if (result.deathSaveConsumed > 0) preview.consumeDeathSaveCharges(next, result.deathSaveConsumed);
             if (result.ruleBlockConsumed > 0) preview.consumeRuleBlockCharges(next, result.ruleBlockConsumed);
@@ -151893,6 +154107,1030 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       remainingCapacity / targetHpMax * 100,
     );
     return clamp(1 - survivalProbability, 0, 1);
+  }
+
+  // =====================================================================================================================
+  // R10 decision table (数值表增量估值; user, 2026-11-10: "我不想之后每优化一个行为演算，性能就加重一层……那就做吧").
+  // The look-ahead re-derived each channel from world objects in every candidate's own after-world — a high-level 3v3
+  // decision ran 87 projections, ~2700 unit copies, 53 projected frames and 1170 base values inside its look-ahead — so
+  // every behavior rule added one more layer of candidates × units × worlds. The table keeps, per decision request, the
+  // numbers the channels read, each built once from the engine's own functions and read by every candidate:
+  //   - a unit's view in a future window (r10WindowView): its states past their round-end lifetime gone. Panels are read
+  //     from 状态效果, so the view's panel is that window's; the view is a shallow copy sharing the states, never written;
+  //   - the routine attack packet of one view on another (r10AttackPacket: the compileAttack of
+  //     r9v2LinearRoutineIncapacityRisk, chance and HP damage);
+  //   - a view's HP and stamina change at a round end from its periodic states (r10RoundEndDelta: the runtime's own settlement,
+  //     read without writing).
+  // A candidate's changed units are new objects, so only their cells are built. Channels run numeric formulas over the
+  // cells (r10IncomingRisk). Rule: the valuation does not project, advance worlds or deep-copy units; a new behavior adds
+  // a table cell (built once per decision) or a delta term (per candidate, changed units only). The work.* counters of
+  // the performance breakdown show what was built.
+  // =====================================================================================================================
+  const r10Tables = new WeakMap(), r10TableWithoutRequest = {};
+  const r10Work = { views: 0, packets: 0, ticks: 0, riskStates: 0, legacyCurves: 0, runways: 0, casts: 0, legacyRunways: 0, runwayDated: 0, runwayFormulaFirsts: 0, runwayChains: 0, runwayPaidRows: 0, sharedBranches: 0, amountOnlyCandidates: 0, capacityAliases: 0, castReuses: 0, internedUnits: 0, deltas: 0, deltaFallbacks: 0 };
+  function r10DecisionTable(request) {
+    const key = request && typeof request === 'object' ? request : r10TableWithoutRequest;
+    let table = r10Tables.get(key);
+    if (!table) r10Tables.set(key, table = { request, views: new WeakMap(), cores: new WeakMap(), weights: new WeakMap(), pathViews: new WeakMap(), ticks: new WeakMap(),
+      casts: new WeakMap(), targetSets: new WeakMap(), runways: new WeakMap(), paidSeconds: new WeakMap() });
+    return table;
+  }
+
+  // Round ends a state outlives (BattlePreview projectedStateRoundEndLifetime: a state laid this round or by this
+  // candidate outlives one more); a control that consumes active opportunities lasts that many opportunities instead,
+  // counting the current one while it is still pending. null: the state does not expire on a round clock.
+  function r10StateLifetime(world, unit, key, state, baseline) {
+    if (typeof state?.duration !== 'number') return null;
+    if (root.__LWCS_BATTLE_RUNTIME__.structuredControlConsumesActiveOpportunity(state)) {
+      const natural = unit?.__battleRuntime?.naturalOpportunity;
+      const pending = natural?.status === 'PENDING' && Number(natural.round) === Number(world?.回合 || 0);
+      return state.duration + Number(!pending);
+    }
+    return preview.projectedStateRoundEndLifetime(key, state, baseline || unit);
+  }
+
+  // A view whose states changed: its panel (final, which combat stats are read from) rebuilt by the engine as the round
+  // settlement does when a panel state goes (r9v2LinearPassiveCapacityWorld). The view owns its 属性 and final.
+  const R10_PANEL_FIELDS = Object.freeze(['面板修改比例', '面板固定修正', '属性快照']);
+  function r10RefreshPanel(table, view) {
+    view.final = { ...(view.final && typeof view.final === 'object' ? view.final : {}),
+      ...preview.buildNumericCombatStats(view, Number(table.request?.visibleWorld?.当前世界tick ?? table.request?.visibleWorld?.当前tick ?? 0)) };
+    preview.syncStaminaMaxGain(view);
+    return view;
+  }
+
+  // A unit as it stands in window `window` (0 = the rest of this round). `baseline` is the same unit in the decision
+  // world (which states are new this round). Each window's view is the previous one after its round end, as the round
+  // settlement leaves a unit (r9v2LinearPassiveCapacityWorld): that view's HP and stamina changes (r10RoundEndDelta:
+  // ticks and the natural recovery) written by the runtime's own writer (rounded, a lost HP share drained from stamina),
+  // the states whose lifetime has run out gone, and its panel rebuilt.
+  function r10WindowView(table, world, unit, window, baseline = null) {
+    if (!(window > 0) || !unit || typeof unit !== 'object') return unit;
+    let byWindow = table.views.get(unit);
+    if (!byWindow) table.views.set(unit, byWindow = new Map());
+    if (byWindow.has(window)) return byWindow.get(window);
+    const previous = r10WindowView(table, world, unit, window - 1, baseline);
+    const delta = preview.readHp(previous) > 0 ? r10RoundEndDelta(table, previous) : { hp: 0, stamina: 0, sp: 0, men: 0 };
+    let states = null, panel = false;
+    for (const [key, state] of Object.entries(previous.状态效果 || {})) {
+      const lifetime = r10StateLifetime(world, unit, key, state, baseline);
+      if (lifetime === null || lifetime > window) continue;
+      if (!states) states = { ...previous.状态效果 };
+      delete states[key];
+      panel ||= R10_PANEL_FIELDS.some(field => Object.keys(state?.[field] || {}).length);
+    }
+    const copy = value => value && typeof value === 'object' && !Array.isArray(value) ? { ...value } : value;
+    const view = preview.inheritOverlayOrigin({ ...previous, 属性: copy(previous.属性), 状态: copy(previous.状态), final: copy(previous.final),
+      持续效果: copy(previous.持续效果), 状态效果: states || copy(previous.状态效果) }, unit);
+    // A summon's resource writes mirror into its source state (syncSummonMirror): the view takes its own mirror.
+    const origin = view.召唤键 ? view.__来源状态 : null;
+    if (origin?.召唤物 && typeof origin.召唤物 === 'object') {
+      const descriptor = Object.getOwnPropertyDescriptor(view, '__来源状态') || Object.getOwnPropertyDescriptor(previous, '__来源状态');
+      Object.defineProperty(view, '__来源状态', { value: { ...origin, 召唤物: { ...origin.召唤物 } }, writable: true, configurable: true,
+        enumerable: descriptor?.enumerable !== false });
+    }
+    const runtime = root.__LWCS_BATTLE_RUNTIME__;
+    if (delta.hp) runtime.writeCombatResource(view, 'hp', preview.readHp(view) + delta.hp);
+    if (delta.stamina && preview.readResourceMax(view, '体力') > 0 && preview.readResource(view, '体力') < preview.readResourceMax(view, '体力')) {
+      runtime.writeCombatResource(view, 'vit', preview.readResource(view, '体力') + delta.stamina);
+    }
+    for (const [key, resource] of [['sp', '魂力'], ['men', '精神力']]) {
+      if (delta[key] && preview.readResourceMax(view, resource) > 0) runtime.writeCombatResource(view, key, preview.readResource(view, resource) + delta[key]);
+    }
+    r10RefreshPanel(table, view);
+    r10Work.views += 1;
+    byWindow.set(window, view);
+    return view;
+  }
+
+  // The response-adjusted core of one routine attack of `source` on `target` (both views): its HP damage and the chance
+  // it lands — hit, then the ordinary response (a dodge as a chance, a defense as a damage factor, whichever the target
+  // takes) — and the damage × hit weight r9v2LinearEnemyTargetShare spreads attention by. compileAttack's formula.
+  function r10AttackCore(table, source, target) {
+    let byTarget = table.cores.get(source);
+    if (!byTarget) table.cores.set(source, byTarget = new WeakMap());
+    if (byTarget.has(target)) return byTarget.get(target);
+    r10Work.packets += 1;
+    const effect = routineAttackEffect(source);
+    const raw = preview.calculateBaseDamage(effect, source, target, null, { resourceDriveEnabled: false });
+    const hit = preview.estimateHitProbability(source, target, effect);
+    const defense = preview.calculateDefenseDamageMultiplier(target, source, false);
+    const dodge = preview.calculateDodgeProbability(target, source, false);
+    const dodged = 1 - dodge < defense;
+    const core = Object.freeze({ effect, source, damage: Math.max(0, Math.round(Math.max(0, dodged ? raw : raw * defense))),
+      response: dodged ? hit * (1 - dodge) : hit, attention: Math.max(0, raw * hit) });
+    byTarget.set(target, core);
+    return core;
+  }
+
+  // r9v2LinearEnemyTargetShare's attention weights of `source` in `world`: each eligible target's damage × hit over its
+  // remaining HP and shield (×3 for a named objective), main bodies first; so a target's share can be redone at another
+  // remaining (a hurt unit draws more attacks) without building another world.
+  function r10TargetWeights(table, world, source) {
+    let bySource = table.weights.get(world);
+    if (!bySource) table.weights.set(world, bySource = new Map());
+    const sourceId = preview.unitId(source);
+    if (bySource.has(sourceId)) return bySource.get(sourceId);
+    const worldSource = findUnitInWorld(world, sourceId) || source;
+    const sourceSide = sideOf(world, worldSource);
+    const targetSide = sourceSide === 'team_player' ? 'team_enemy' : sourceSide === 'team_enemy' ? 'team_player' : '';
+    const named = sourceSide ? r9v2LinearObjectiveNamedTargets(world, sourceSide) : new Set();
+    const effect = routineAttackEffect(worldSource);
+    const capable = targetSide ? worldEntries(world).filter(entry => entry.side === targetSide && preview.isBattleCapable(entry.unit)) : [];
+    const bodies = capable.filter(entry => !preview.isSummonUnit(entry.unit));
+    const weights = new Map((bodies.length ? bodies : capable).map(({ unit }) => [preview.unitId(unit),
+      Math.max(0, preview.calculateBaseDamage(effect, worldSource, unit, null, { resourceDriveEnabled: false }) *
+        preview.estimateHitProbability(worldSource, unit, effect)) / Math.max(1, preview.readHp(unit) + preview.readShield(unit)) *
+        (named.has(preview.unitId(unit)) ? 3 : 1)]));
+    const total = [...weights.values()].reduce((sum, weight) => sum + weight, 0);
+    const row = { weights, total, named, active: !!sourceSide };
+    bySource.set(sourceId, row);
+    return row;
+  }
+
+  // One routine attack packet of `source` on `target` in `world` (r10IncomingRisk): its HP damage and chance — the
+  // response-adjusted hit, the recent attack propensity, the source's share of attention on this target. Same formula as
+  // compileAttack, with the propensity at 1 ("will attack"). The projected curves read the battle ledger from worlds that
+  // mostly did not carry it (a non-enumerable field projected and advanced worlds drop), so they priced protection as if
+  // every enemy attacks — and the fixed-pressure curves read the real propensity before the action and 1 after it. The
+  // table keeps that effective law on both sides; whether protection should discount enemies by their recent actions
+  // (whose model counts a self-buff as not attacking) is a behavior question of its own. searchBounds.
+  // protectionLedgerPropensity (development) reads the decision world's ledger instead.
+  // `remaining`, when given, is the target's HP and shield in a settled path: its share is redone at that remaining;
+  // 'targeted' reads the packet given that this target is the one attacked (share 1: the caller prices being targeted).
+  function r10AttackPacket(table, world, source, target, sourceSide, recentAttackLedgerIndex, remaining = null) {
+    const core = r10AttackCore(table, source, target);
+    const propensity = searchBounds?.protectionLedgerPropensity !== true ? 1
+      : r9v2LinearRecentAttackPropensity(table.request?.visibleWorld || world, source, sourceSide, recentAttackLedgerIndex);
+    let share;
+    if (remaining === 'targeted') share = 1;
+    else if (remaining === null) {
+      share = r9v2LinearEnemyTargetShare(world, findUnitInWorld(world, preview.unitId(source)) || source,
+        findUnitInWorld(world, preview.unitId(target)) || target);
+    } else {
+      const row = r10TargetWeights(table, world, source), id = preview.unitId(target);
+      if (!row.active || !row.weights.has(id)) share = 1;
+      else {
+        const weight = core.attention / Math.max(1, remaining) * (row.named.has(id) ? 3 : 1);
+        const total = row.total - row.weights.get(id) + weight;
+        share = total > 0 ? weight / total : 1 / row.weights.size;
+      }
+    }
+    return { probability: clamp(core.response * propensity * share, 0, 1), damage: core.damage, effect: core.effect, source };
+  }
+
+  // A view at a settled path's own HP and stamina, written by the engine's own setters on shallow copies of the unit, its
+  // 属性, 状态 and final, without the shield states the path has emptied (BattlePreview absorbPreviewShield deletes an
+  // emptied shield state, and the panel modifiers it carried go with it): a hit drains stamina in proportion to the HP it
+  // takes (W8), below half its stamina a unit defends, dodges and strikes at a reduced panel (staminaScaleForUnit), and the
+  // response a hit meets (dodge or defense, whichever is smaller) can turn on a small change, so the numbers are exact.
+  // Only for a path still able to fight (HP above zero).
+  function r10PathView(table, unit, hp, stamina, emptied = []) {
+    if (hp === preview.readHp(unit) && Math.abs(stamina - preview.readResource(unit, '体力')) < 1e-9 && !emptied.length) return unit;
+    let byPath = table.pathViews.get(unit);
+    if (!byPath) table.pathViews.set(unit, byPath = new Map());
+    const key = hp + '|' + stamina + '|' + emptied.join('');
+    if (byPath.has(key)) return byPath.get(key);
+    const copy = value => value && typeof value === 'object' && !Array.isArray(value) ? { ...value } : value;
+    const states = emptied.some(name => Object.hasOwn(unit.状态效果 || {}, name)) ? { ...unit.状态效果 } : unit.状态效果;
+    if (states !== unit.状态效果) for (const name of emptied) delete states[name];
+    const view = preview.inheritOverlayOrigin({ ...unit, 属性: copy(unit.属性), 状态: copy(unit.状态), final: copy(unit.final), 状态效果: states }, unit);
+    if (states !== unit.状态效果) r10RefreshPanel(table, view);
+    preview.setResourceValue(view, '生命', Math.max(1, hp));
+    if (preview.readResourceMax(unit, '体力') > 0) preview.setResourceValue(view, '体力', stamina);
+    r10Work.views += 1;
+    byPath.set(key, view);
+    return view;
+  }
+
+  // A view's HP, stamina, soul and spirit change at the round end that closes its window: the runtime's periodic settlement of each of
+  // its states (dot, hot and their inversion, a timed 资源变化, stamina gains, drains and ticks), its requested deltas
+  // captured without writing the unit, and the natural round-end recovery (BattleRuntime naturalRecoveryAtRoundEndProfile:
+  // stamina 0.5% of its maximum, less any recovery lock), which a stamina-exhausting second hit can hinge on.
+  function r10RoundEndDelta(table, unit) {
+    if (table.ticks.has(unit)) return table.ticks.get(unit);
+    r10Work.ticks += 1;
+    const runtime = root.__LWCS_BATTLE_RUNTIME__;
+    const delta = { hp: 0, stamina: 0, sp: 0, men: 0 };
+    const capture = ({ resourceKey, requestedDelta }) => () => {
+      if (resourceKey === 'hp') delta.hp += Number(requestedDelta) || 0;
+      else if (resourceKey === 'vit') delta.stamina += Number(requestedDelta) || 0;
+      else if (resourceKey === 'sp' || resourceKey === 'men') delta[resourceKey] += Number(requestedDelta) || 0;
+    };
+    for (const [key, state] of Object.entries(unit?.状态效果 || {})) {
+      if (!state || typeof state !== 'object') continue;
+      runtime.settlePeriodicHpValues?.(unit, state, String(state.状态 || state.状态名称 || key), null, capture);
+      runtime.settleExplicitResourceValues?.(unit, state, null, capture);
+      runtime.settlePeriodicResourceValues?.(unit, state.战斗效果 || {}, null, capture);
+    }
+    for (const row of runtime.naturalRecoveryAtRoundEndProfile?.(unit) || []) {
+      if (row.current >= row.max) continue;
+      if (row.key === 'vit') delta.stamina += Number(row.recovery) || 0;
+      else if (row.key === 'sp' || row.key === 'men') delta[row.key] += Number(row.recovery) || 0;
+    }
+    table.ticks.set(unit, Object.freeze(delta));
+    return table.ticks.get(unit);
+  }
+
+  // The numbers r10IncomingRisk settles hits on, read from one unit: HP, stamina, its shield pools in absorption order
+  // (BattlePreview absorbPreviewShield) with their round-end lifetimes, its rule-block and death-save charges, the
+  // non-lethal floor. `reserveHolder` lends the pools and charges of another unit instead (a reserve counterfactual).
+  function r10Defender(world, unit, baseline = null, reserveHolder = unit) {
+    const pools = Object.entries(reserveHolder.状态效果 || {}).filter(([, state]) => Number(state?.shield_value) > 0)
+      .map(([key, state]) => ({ key, state, value: Number(state.shield_value),
+        duration: Math.max(0, Number(state?.duration ?? state?.持续回合 ?? 0)),
+        lifetime: r10StateLifetime(world, reserveHolder, key, state, baseline), gated: Number(state.对应等级 ?? state.equivalentLevel) > 0 }))
+      .sort((left, right) => left.duration - right.duration || (left.key < right.key ? -1 : left.key > right.key ? 1 : 0));
+    const charges = field => Object.entries(reserveHolder.状态效果 || {}).filter(([, state]) => Number(state?.战斗效果?.[field]) > 0 &&
+        (field !== 'block_count' || String(state?.规则 || state?.防御对象 || '').trim() === '免伤'))
+      .map(([key, state]) => ({ key, count: Number(state.战斗效果[field]), lifetime: r10StateLifetime(world, reserveHolder, key, state, baseline) }));
+    return {
+      hp: preview.readHp(unit), hpMax: Math.max(1, preview.readHpMax(unit)),
+      stamina: preview.readResource(unit, '体力'), staminaMax: preview.readResourceMax(unit, '体力'),
+      floor: preview.calculateNonlethalHpFloor(world, unit), capable: preview.isBattleCapable(unit),
+      scalar: Math.max(0, Number(reserveHolder.shield ?? reserveHolder.护盾 ?? reserveHolder.护盾值 ?? 0)),
+      pools, gatedPools: pools.some(pool => pool.gated),
+      blocks: preview.ruleBlockCount(reserveHolder) > 0 ? charges('block_count') : [],
+      saves: preview.deathSaveCount(reserveHolder) > 0 ? charges('death_save_count') : [],
+      revival: preview.hasDamageRevival(unit, true),
+    };
+  }
+
+  // Incapacity risk and pressure of `defender` under routine attacks, numbers only. windows[w] = { packets, packetAt?,
+  // roundEnd? }: the packets land in order within window w (each a hit chance and an HP damage, settled by the engine's
+  // expectedSegmentedDamageOutcome against the shields its source may hit, the remaining HP above the floor and the
+  // charges); packetAt(index, path, shield), when given, reads a packet for a path's own HP, stamina and shield (a hurt,
+  // tired defender is hit and targeted as it now stands); at the round end closing window w the periodic HP and stamina
+  // changes apply; pools and charges past their lifetime are gone in the next window. Paths with equal numbers merge.
+  // Returns the expected HP lost and shield absorbed (each a share of maximum HP) and, per window, the chance of being
+  // incapable after its hits (r9v2LinearRoutineIncapacityRisk's curve; stamina exhaustion counts unless
+  // excludeStaminaIncapacity).
+  // One routine hit's outcome distribution (BattlePreview expectedSegmentedDamageOutcome, one segment), a pure function of
+  // its numbers: the same hit on the same HP, shield and charges recurs across paths, windows and candidates.
+  const r10SegmentOutcomes = new Map();
+  function r10SegmentOutcome(damage, probability, hpLimit, shieldBefore, shieldClosed, deathSaves, ruleBlocks) {
+    const key = damage + '|' + probability + '|' + hpLimit + '|' + shieldBefore + '|' + (shieldClosed ? 1 : 0) + '|' + deathSaves + '|' + ruleBlocks;
+    let outcome = r10SegmentOutcomes.get(key);
+    if (!outcome) {
+      if (r10SegmentOutcomes.size >= 200000) r10SegmentOutcomes.clear();
+      outcome = preview.expectedSegmentedDamageOutcome({ segments: 1, perSegmentDamage: damage, hitProbability: probability,
+        hpDamageLimit: hpLimit, shieldBefore, ...(shieldClosed ? { shieldIncomingCap: 0 } : {}),
+        deathSaveCount: deathSaves, ruleBlockCount: ruleBlocks, reviveTarget: null });
+      r10SegmentOutcomes.set(key, outcome);
+    }
+    return outcome;
+  }
+
+  // Equal numbers settle alike: a defender and windows with equal numbers (r10IncomingWindows signatures) recur across
+  // candidates that leave them alike — one skill at different targets leaves its caster's curve unchanged.
+  const r10RiskMemo = new Map();
+  function r10IncomingRisk(defender, windows, options = {}) {
+    const memoKey = !defender.gatedPools && windows.every(row => row.signature !== undefined) &&
+      searchBounds?.protectionLedgerPropensity !== true && searchBounds?.protectionPathViews !== true ? [
+      defender.hp, defender.hpMax, defender.stamina, defender.staminaMax, defender.floor, defender.capable ? 1 : 0, defender.scalar,
+      defender.pools.map(pool => pool.value + '@' + pool.lifetime).join(','), defender.blocks.map(row => row.count + '@' + row.lifetime).join(','),
+      defender.saves.map(row => row.count + '@' + row.lifetime).join(','), options.excludeStaminaIncapacity === true ? 1 : 0,
+      ...windows.map(row => row.signature)].join('|') : '';
+    if (memoKey && r10RiskMemo.has(memoKey)) return r10RiskMemo.get(memoKey);
+    const settled = r10SettleIncomingRisk(defender, windows, options);
+    if (memoKey) {
+      if (r10RiskMemo.size >= 50000) r10RiskMemo.clear();
+      r10RiskMemo.set(memoKey, settled);
+    }
+    return settled;
+  }
+  function r10SettleIncomingRisk(defender, windows, options = {}) {
+    const { hpMax, floor, staminaMax } = defender;
+    if (!(defender.hp + (defender.pools.reduce((sum, pool) => sum + pool.value, 0) || defender.scalar) > 0)) {
+      return { pressure: 0, shieldAbsorption: 0, incapacityCurve: windows.map(() => 1) };
+    }
+    const runtime = root.__LWCS_BATTLE_RUNTIME__;
+    let states = [{ probability: 1, hp: defender.hp, stamina: defender.stamina, pools: defender.pools.map(pool => pool.value),
+      scalar: defender.scalar, blocks: defender.blocks.map(row => row.count), saves: defender.saves.map(row => row.count),
+      out: !defender.capable, stamina0: false }];
+    let pressure = 0, shieldAbsorption = 0;
+    const curve = [];
+    const keyOf = state => [state.out ? 1 : 0, state.stamina0 ? 1 : 0, state.hp, Math.round(state.stamina * 1e6), state.scalar,
+      ...state.pools, '|', ...state.blocks, '|', ...state.saves].join(',');
+    const merge = list => {
+      const merged = new Map();
+      for (const state of list) {
+        const key = keyOf(state), found = merged.get(key);
+        if (found) found.probability += state.probability;
+        else merged.set(key, state);
+      }
+      return [...merged.values()];
+    };
+    const drain = (state, loss) => {
+      if (loss > 0 && staminaMax > 0) state.stamina = clamp(state.stamina - loss / hpMax * staminaMax, 0, staminaMax);
+      if (staminaMax > 0 && state.stamina <= 0) { state.out = true; state.stamina0 = true; }
+    };
+    const expired = (row, window) => row.lifetime !== null && row.lifetime <= window;
+    for (let window = 0; window < windows.length; window++) {
+      if (window > 0) {
+        const hpTick = Number(windows[window - 1].roundEnd?.hp || 0), staminaTick = Number(windows[window - 1].roundEnd?.stamina || 0);
+        states = merge(states.map(state => {
+          const next = { ...state,
+            pools: state.pools.map((value, index) => expired(defender.pools[index], window) ? 0 : value),
+            blocks: state.blocks.map((count, index) => expired(defender.blocks[index], window) ? 0 : count),
+            saves: state.saves.map((count, index) => expired(defender.saves[index], window) ? 0 : count) };
+          if (!next.out && hpTick) {
+            const hp = Math.round(clamp(next.hp + hpTick, 0, hpMax));
+            drain(next, Math.max(0, next.hp - hp));
+            next.hp = hp;
+            if (hp <= 0) next.out = true;
+          }
+          if (!next.out && staminaTick && staminaMax > 0 && next.stamina < staminaMax) {
+            next.stamina = Math.round(clamp(next.stamina + staminaTick, 0, staminaMax));
+            drain(next, 0);
+          }
+          return next;
+        }));
+      }
+      const row = windows[window];
+      for (let index = 0; index < row.packets.length; index++) {
+        const base = row.packets[index];
+        const gates = defender.gatedPools ? defender.pools.map(pool => !pool.gated ||
+          runtime.shieldGateAllowsIncoming(pool.state, base.effect, base.source)) : null;
+        const settled = [];
+        for (const state of states) {
+          if (state.out) { settled.push(state); continue; }
+          const poolTotal = state.pools.reduce((sum, value) => sum + value, 0);
+          const packet = row.packetAt ? row.packetAt(index, state, poolTotal > 0 ? poolTotal : state.scalar,
+            defender.pools.flatMap((pool, poolIndex) => pool.value > 0 && !(state.pools[poolIndex] > 0) ? [pool.key] : [])) : base;
+          if (!(packet.probability > 0)) { settled.push(state); continue; }
+          r10Work.riskStates += 1;
+          const eligible = gates ? state.pools.reduce((sum, value, index) => sum + (gates[index] ? value : 0), 0) : poolTotal;
+          const shieldBefore = gates ? eligible || state.scalar : poolTotal > 0 ? poolTotal : state.scalar;
+          const outcome = r10SegmentOutcome(packet.damage, packet.probability, Math.max(0, state.hp - floor), shieldBefore,
+            gates && eligible <= 0 && state.scalar > 0, floor > 0 ? 0 : state.saves.reduce((sum, count) => sum + count, 0),
+            state.blocks.reduce((sum, count) => sum + count, 0));
+          for (const result of outcome.outcomeDistribution) {
+            const probability = state.probability * result.probability;
+            pressure += probability * result.hpDamage / hpMax;
+            shieldAbsorption += probability * Number(result.shieldAbsorb || 0) / hpMax;
+            const next = { ...state, probability, pools: state.pools.slice(), blocks: state.blocks.slice(), saves: state.saves.slice() };
+            let absorb = Number(result.shieldAbsorb || 0);
+            if (absorb > 0 && (gates ? eligible > 0 : poolTotal > 0)) {
+              for (let index = 0; index < next.pools.length && absorb > 0; index++) {
+                if (gates && !gates[index]) continue;
+                const amount = Math.min(next.pools[index], absorb);
+                next.pools[index] -= amount; absorb -= amount;
+              }
+            } else if (absorb > 0) next.scalar = Math.max(0, next.scalar - absorb);
+            for (const [field, consumed] of [['blocks', result.ruleBlockConsumed], ['saves', result.deathSaveConsumed]]) {
+              let left = Number(consumed || 0);
+              for (let index = 0; index < next[field].length && left > 0; index++) {
+                const amount = Math.min(next[field][index], left);
+                next[field][index] -= amount; left -= amount;
+              }
+            }
+            const hp = clamp(state.hp - result.hpDamage, 0, hpMax);
+            drain(next, Math.max(0, state.hp - hp));
+            next.hp = hp;
+            if (hp <= 0 || preview.shouldTriggerTraumaUnconscious(result.hpDamage, hp, hpMax) ||
+              floor > 0 && floor <= 1 && result.hpDamage > 0 && hp <= floor) next.out = true;
+            settled.push(next);
+          }
+        }
+        states = merge(settled);
+      }
+      curve.push(clamp(states.reduce((sum, state) => sum + (state.out && !(options.excludeStaminaIncapacity === true && state.stamina0 && state.hp > 0)
+        ? state.probability : 0), 0), 0, 1));
+    }
+    return { pressure, shieldAbsorption, incapacityCurve: curve };
+  }
+
+  // The windows r10IncomingRisk settles for `target` in `world`: in window 0 the attackers still to act this round
+  // (`pending`), later every one; each window's attackers are the capable, uncontrolled window views of `sources` in
+  // their natural order, and the target's own window view takes the hits. `baselineWorld` names which states are new.
+  // A path reads its packets at its own HP and stamina (r10PathView) and remaining HP and shield (the source's share redone),
+  // as the projected curves recompiled every attack on each branch's unit; a path still at the window's starting
+  // numbers reads the window's packets.
+  // fixed: every window reads the units as they are, one packet per attacker, without round-end changes (the old
+  // fixed-pressure law; kernel checks).
+  // targeted: each packet given that this target is attacked (share 1), read once per window (the vector law of the old
+  // shield protection, priced by exposure outside).
+  function r10IncomingWindows(table, world, target, sources, sourceSide, recentAttackLedgerIndex, windowCount, pending, baselineWorld, fixed = false, targeted = false) {
+    const baseline = unit => findUnitInWorld(baselineWorld, preview.unitId(unit)) || unit;
+    return Array.from({ length: windowCount }, (_, window) => {
+      const targetView = fixed ? target : r10WindowView(table, world, target, window, baseline(target));
+      const attackers = sources.map(source => fixed ? source : r10WindowView(table, world, source, window, baseline(source)))
+        .filter(source => preview.isBattleCapable(source) && !hasActionCancellation(source) && (window > 0 || pending.has(preview.unitId(source))))
+        .sort(preview.compareNaturalActionOrder);
+      const packets = attackers.map(source => r10AttackPacket(table, world, source, targetView, sourceSide, recentAttackLedgerIndex, targeted ? 'targeted' : null));
+      if (fixed) return { packets };
+      if (targeted) return { packets, roundEnd: r10RoundEndDelta(table, targetView) };
+      const startHp = preview.readHp(targetView), startStamina = preview.readResource(targetView, '体力'), startShield = preview.readShield(targetView);
+      const roundEnd = r10RoundEndDelta(table, targetView), targetId = preview.unitId(targetView);
+      // What a path's packets read (r10AttackPacket at a remaining): each packet's numbers and the attacker's attention on
+      // this target against everyone else it could hit — r10IncomingRisk's memo key.
+      const signature = packets.map((packet, index) => {
+        const core = r10AttackCore(table, attackers[index], targetView), row = r10TargetWeights(table, world, attackers[index]);
+        return [packet.damage, packet.probability, core.response, core.attention, row.active ? 1 : 0,
+          row.weights.has(targetId) ? row.total - row.weights.get(targetId) : -1, row.named.has(targetId) ? 3 : 1, row.weights.size].join(':');
+      }).join(';') + '#' + roundEnd.hp + ':' + roundEnd.stamina;
+      return { packets, roundEnd, signature,
+        // R10 A (plan: 只做生命算术; user, 2026-11-11: "每回合 2s 太慢了"): a settled path keeps the window's packet — its
+        // damage and response as the window's view takes them — and redoes only the attacker's share at the path's remaining
+        // HP and shield, arithmetic on the window's attention weights. Stamina and incapacity still follow each hit in
+        // r10IncomingRisk; the dodge and panel a hurt or tired target would meet next are the window's.
+        // searchBounds.protectionPathViews (development) settles each path on its own view again.
+        packetAt: (index, path, shield, emptied) => path.hp === startHp && Math.abs(path.stamina - startStamina) < 1e-9 && shield === startShield && !emptied.length
+          ? packets[index] : r10AttackPacket(table, world, attackers[index], searchBounds?.protectionPathViews === true
+            ? r10PathView(table, targetView, path.hp, path.stamina, emptied) : targetView,
+            sourceSide, recentAttackLedgerIndex, path.hp + shield) };
+    });
+  }
+
+  // ---------------------------------------------------------------------------------------------------------------------
+  // R10 M1 (主线 9.6; user, 2026-11-11: "我要的是最终依然可以自由调整行为演算的逻辑"): a candidate as deltas. What its
+  // own settlement changed on each unit is read from its settled after-world against the decision world — no projection:
+  // HP, shield and resources, the states it added, removed or changed (a state's chance rides on it as
+  // __previewApplicationProbability), its stamina band — and what a unit diff does not show from the contributions:
+  // periodic HP it scheduled, deferred states, summons it created, actions it cancelled, rules it changed, items it spent
+  // for good, and the
+  // outcome distribution of each hit (the branches, M4). Contribution kinds no delta field carries are counted by kind
+  // (r10DeltaFallbacks) so the channels that still need them are visible.
+  // ---------------------------------------------------------------------------------------------------------------------
+  const R10_DELTA_KINDS = new Set(['HP_DELTA', 'SHIELD_DELTA', 'STATE_CHANGED', 'STATE_SCHEDULED', 'SCHEDULED_HP_DELTA',
+    'RESOURCE_OPTION_CHANGED', 'NEXT_ACTION_QUALITY_CHANGED', 'SUMMON_WINDOW', 'ACTION_CANCELLED', 'RULE_CHANGED', 'IRREVERSIBLE_ASSET_LOST']);
+  const r10Deltas = new WeakMap(), r10DeltaFallbacks = {};
+  function r10CandidateDelta(request, result) {
+    if (!result || typeof result !== 'object') return null;
+    if (r10Deltas.has(result)) return r10Deltas.get(result);
+    r10Work.deltas += 1;
+    const before = request.visibleWorld, after = result.afterSnapshot || before;
+    const contributions = result.contributions || [];
+    const ids = new Set([...(result.changedUnitIds || []).map(String), ...contributions.map(entry => String(entry.targetId || '')).filter(Boolean)]);
+    const units = new Map();
+    for (const id of ids) {
+      const prior = findUnitInWorld(before, id), next = findUnitInWorld(after, id);
+      if (!prior && !next) continue;
+      const priorStates = prior?.状态效果 || {}, nextStates = next?.状态效果 || {};
+      const added = Object.keys(nextStates).filter(key => !Object.hasOwn(priorStates, key));
+      const removed = Object.keys(priorStates).filter(key => !Object.hasOwn(nextStates, key));
+      const changed = Object.keys(nextStates).filter(key => Object.hasOwn(priorStates, key) && !r10SameValue(nextStates[key], priorStates[key]));
+      const resource = (unit, name) => unit ? preview.readResource(unit, name) : 0;
+      units.set(id, Object.freeze({ id, prior, next, created: !prior, gone: !next,
+        hp: (next ? preview.readHp(next) : 0) - (prior ? preview.readHp(prior) : 0),
+        shield: (next ? preview.readShield(next) : 0) - (prior ? preview.readShield(prior) : 0),
+        sp: resource(next, '魂力') - resource(prior, '魂力'), men: resource(next, '精神力') - resource(prior, '精神力'),
+        vit: resource(next, '体力') - resource(prior, '体力'),
+        staminaBand: prior && next ? preview.staminaScaleForUnit(next) - preview.staminaScaleForUnit(prior) : 0,
+        statesAdded: Object.freeze(added), statesRemoved: Object.freeze(removed), statesChanged: Object.freeze(changed),
+        capable: prior && next ? Number(preview.isBattleCapable(next)) - Number(preview.isBattleCapable(prior)) : 0 }));
+    }
+    const of = kind => contributions.filter(entry => entry.outcomeKind === kind);
+    const fallbacks = [...new Set(contributions.map(entry => entry.outcomeKind).filter(kind => !R10_DELTA_KINDS.has(kind)))];
+    for (const kind of fallbacks) r10DeltaFallbacks[kind] = (r10DeltaFallbacks[kind] || 0) + 1;
+    if (fallbacks.length) r10Work.deltaFallbacks += 1;
+    const delta = Object.freeze({ units, rules: Object.freeze(of('RULE_CHANGED')), scheduledHp: Object.freeze(of('SCHEDULED_HP_DELTA')),
+      deferredStates: Object.freeze(of('STATE_SCHEDULED')), summons: Object.freeze(of('SUMMON_WINDOW')),
+      cancellations: Object.freeze(of('ACTION_CANCELLED')), assetsLost: Object.freeze(of('IRREVERSIBLE_ASSET_LOST')),
+      hits: Object.freeze(of('HP_DELTA').filter(entry => entry.evidence?.outcomeDistribution?.length)), fallbacks: Object.freeze(fallbacks) });
+    r10Deltas.set(result, delta);
+    return delta;
+  }
+
+  // ---------------------------------------------------------------------------------------------------------------------
+  // R10 step 3: the resource runway on the table (plan: "剩余资源够放几次、每次值多少，按折扣累加"). A unit's sequence
+  // capacity — its best paid first action plus half its best paid second, and each terminal skill's discounted repeated
+  // uses (r9v2LinearResourceCapacityRecord) — is read from its action rows (r9v2LinearActionCapacityRows, built once per
+  // unit and world) by arithmetic on its resources: a cast pays its capacity costs and adds the fuel it lands on its
+  // caster; a dated clock (r9v2LinearResourceNaturalClock) adds each round end's resource change of the unit's window
+  // views (r10RoundEndDelta: ticks and the natural recovery); a heal or shield cast again prices only what the earlier
+  // casts of the same plan left missing (r10CastReceipt). No cast is projected and no successor world is built: a second
+  // action and each further use see every other unit as the decision world has it, as the fast path always did. A dated
+  // clock with sustains or charges keeps the projected solver (r10RunwayEligible).
+  // ---------------------------------------------------------------------------------------------------------------------
+  // A cast's receipt and its parts per recipient (r9v2LinearFormulaCast without a successor), once per world, caster,
+  // skill and target set.
+  function r10CastParts(table, world, unit, skill, targetIds, actionKind) {
+    let byUnit = table.casts.get(world);
+    if (!byUnit) table.casts.set(world, byUnit = new WeakMap());
+    let bySkill = byUnit.get(unit);
+    if (!bySkill) byUnit.set(unit, bySkill = new Map());
+    const source = skill || basicAttackSkill(unit);
+    let byTargets = bySkill.get(source);
+    if (!byTargets) bySkill.set(source, byTargets = new Map());
+    const key = targetIds.join('\u0001');
+    if (byTargets.has(key)) return byTargets.get(key);
+    r10Work.casts += 1;
+    const parts = [];
+    const { overall } = r9v2LinearFormulaCast(world, unit, source, targetIds, actionKind, table.request, false, parts);
+    const cast = Object.freeze({ overall, parts, casterId: preview.unitId(unit) });
+    byTargets.set(key, cast);
+    return cast;
+  }
+
+  // A cast's receipt once earlier casts of one plan have landed `landed` (recipient id → { hp, shield }): its healing up
+  // to the HP still missing and its shield gains under the soft cap of the shield already there (BattlePreview
+  // calculateShieldGain); damage and every other part as priced on the decision world.
+  function r10CastReceipt(cast, landed = null) {
+    if (!landed?.size) return cast.overall;
+    let overall = 0;
+    for (const part of cast.parts) {
+      let value = part.value;
+      const prior = part.amounts.requests && landed.get(part.id);
+      if (prior) {
+        let delta = 0;
+        for (const row of part.amounts.requests) {
+          if (row.kind === 'hp' && prior.hp > 0) delta += row.chance * (Math.min(Math.max(0, part.hpMax - part.hp - prior.hp), row.request) -
+            Math.min(Math.max(0, part.hpMax - part.hp), row.request));
+          else if (row.kind === 'shield' && prior.shield > 0) delta += row.chance * (preview.calculateShieldGain({ hp_max: part.hpMax,
+            sp_max: part.spMax, shield: part.shield + prior.shield }, row.request) - preview.calculateShieldGain({ hp_max: part.hpMax,
+            sp_max: part.spMax, shield: part.shield }, row.request));
+        }
+        value += (part.friendly ? 1 : -1) * delta / part.hpMax * 100;
+      }
+      overall += part.gate * (value + part.amounts.actorShield / part.actorHpMax * 100);
+    }
+    return overall;
+  }
+
+  // Lands a cast's healing and shield gains on `landed`, after what is already there (as the formula successor did).
+  function r10LandCast(landed, cast) {
+    for (const part of cast.parts) {
+      if (!part.amounts.requests?.length) continue;
+      const prior = landed.get(part.id) || { hp: 0, shield: 0 };
+      let hp = 0, shield = 0;
+      for (const row of part.amounts.requests) {
+        if (row.kind === 'hp') hp += row.chance * Math.min(Math.max(0, part.hpMax - part.hp - prior.hp), row.request);
+        else if (row.kind === 'shield') shield += row.chance * preview.calculateShieldGain({ hp_max: part.hpMax, sp_max: part.spMax,
+          shield: part.shield + prior.shield }, row.request);
+      }
+      if (hp > 0 || shield > 0) landed.set(part.id, { hp: prior.hp + part.gate * hp, shield: prior.shield + part.gate * shield });
+    }
+    return landed;
+  }
+
+  // The fuel a cast lands on its own caster (a 资源变化 of 魂力/精神力/体力 on itself), on the caster's resources.
+  function r10CastFuel(cast, resources, maxima) {
+    let next = resources;
+    for (const part of cast.parts) {
+      if (part.id !== cast.casterId) continue;
+      for (const row of part.amounts.requests || []) {
+        const key = row.kind === 'fuel' ? { 魂力: 'sp', 精神力: 'men', 体力: 'vit' }[row.name] : null;
+        if (!key) continue;
+        if (next === resources) next = { ...resources };
+        const current = next[key];
+        next[key] = current + part.gate * row.chance * (row.request >= 0 ? Math.min(Math.max(0, maxima[key] - current), row.request) : -Math.min(current, -row.request));
+      }
+    }
+    return next;
+  }
+
+  function r10TargetSets(table, world, unit, skill) {
+    let byUnit = table.targetSets.get(world);
+    if (!byUnit) table.targetSets.set(world, byUnit = new WeakMap());
+    let bySkill = byUnit.get(unit);
+    if (!bySkill) byUnit.set(unit, bySkill = new Map());
+    const source = skill || null;
+    if (!bySkill.has(source)) {
+      const profile = skill ? targetProfile(skill) : 'HOSTILE_SINGLE';
+      bySkill.set(source, expandMixedScopePrimaryTargetSets(skill || {}, profile,
+        enumerateTargetSets(world, unit, profile, table.request?.beliefState || {}, skill || {}), world, unit));
+    }
+    return bySkill.get(source);
+  }
+
+  // The best target set of a row's cast after `landed`, by its formula receipt.
+  function r10BestCast(table, world, unit, action, landed) {
+    let best = null;
+    for (const targetIds of r10TargetSets(table, world, unit, action.skill)) {
+      const cast = r10CastParts(table, world, unit, action.skill, targetIds, action.skill ? 'RELEASE_SKILL' : 'BASIC_ATTACK');
+      const receipt = r10CastReceipt(cast, landed);
+      if (!best || receipt > best.receipt) best = { cast, receipt, targetIds };
+    }
+    return best;
+  }
+
+  const r10ResourceAfter = (resources, costs) => ({ sp: Math.max(0, resources.sp - Number(costs?.sp || 0)),
+    men: Math.max(0, resources.men - Number(costs?.men || 0)), vit: Math.max(0, resources.vit - Number(costs?.vit || 0)) });
+  const r10ResourceAffordable = (costs, resources) => costs?.valid === true && resources.sp + 1e-9 >= Number(costs.sp || 0) &&
+    resources.men + 1e-9 >= Number(costs.men || 0) && resources.vit + 1e-9 >= Number(costs.vit || 0);
+
+  // Whether the table carries these units' runways under `clock`: a dated clock only without sustains or charges (the
+  // projected clock settles those between turns). A fusion row is one more row: its own value, the caster's share of the
+  // payment (its partners' resources are not part of this unit's runway).
+  function r10RunwayEligible(request, worlds, units, clock, sustained) {
+    if (!clock) return true;
+    if (sustained || Object.keys(request?.evaluationContext?.continuedSustains || {}).length) return false;
+    return !worlds.some(world => worldEntries(world).some(({ unit: holder }) => holder.蓄力技能));
+  }
+
+  // r9v2LinearResourceSequenceCapacity on the table: the same record (sequence, reserve, options, reserve routes and, on a
+  // dated clock, the finite paid capacity).
+  function r10RunwayCapacity(table, world, unit, hostileSide, cache, actionWindowCount = Infinity, clock = null) {
+    if (searchBudget.shortCircuit) return R9V2_NEUTRAL_SEQUENCE_CAPACITY;
+    const windows = Number.isFinite(actionWindowCount) ? Math.max(0, Math.floor(actionWindowCount)) : Infinity;
+    if (clock && clock.windows !== windows) throw new Error('R9V2_RESOURCE_NATURAL_CLOCK_WINDOW_MISMATCH');
+    let byUnit = table.runways.get(world);
+    if (!byUnit) table.runways.set(world, byUnit = new WeakMap());
+    let byKey = byUnit.get(unit);
+    if (!byKey) byUnit.set(unit, byKey = new Map());
+    const key = [hostileSide, windows, ...(clock ? [clock.firstRound, clock.lastRound, clock.timedNaturalActions, clock.naturalBudget] : [])].join('|');
+    if (byKey.has(key)) return byKey.get(key);
+    const actorId = preview.unitId(unit), dated = !!clock;
+    // A runway world is the decision world with this one unit replaced (runwayWorldOrigins): candidates that leave the
+    // unit alike (one skill at different targets) share one capacity by the unit's content.
+    const runway = runwayWorldOrigins.get(world), origin = runway?.unitId === actorId ? runway.origin : null;
+    const contentKey = origin ? `${runwayWorldOriginId(origin)}|${preview.contentFingerprint(unit)}|${key}` : '';
+    const byContent = table.runwayContents ||= new Map();
+    if (contentKey && byContent.has(contentKey)) {
+      byKey.set(key, byContent.get(contentKey));
+      return byKey.get(key);
+    }
+    r10Work.runways += 1;
+    if (dated) r10Work.runwayDated += 1;
+    const rows = windows > 0 && preview.isBattleCapable(unit) ? r9v2LinearActionCapacityRows(world, unit, hostileSide, cache) : [];
+    const windup = action => Math.max(0, Number(action.skill?.前摇 ?? action.skill?.cast_time ?? 0));
+    // A dated clock: an action whose windup outlasts the remaining turns is out, one longer than a turn yields nothing now.
+    const actions = dated && clock.timedNaturalActions ? rows
+      .filter(action => windup(action) <= Math.max(0, clock.lastRound - clock.firstRound + 1) * clock.naturalBudget)
+      .map(action => windup(action) > clock.naturalBudget ? { ...action, potential: 0 } : action) : rows;
+    const resources = r9v2LinearCapacityResources(unit);
+    const maxima = { sp: preview.readResourceMax(unit, '魂力'), men: preview.readResourceMax(unit, '精神力'), vit: preview.readResourceMax(unit, '体力') };
+    const baseline = findUnitInWorld(table.request?.visibleWorld, actorId) || unit;
+    // The round ends between this unit's turns: window w's view settles at the end of round (current + w).
+    const settle = (current, from, to) => {
+      for (let window = from; window < to; window += 1) {
+        const tick = r10RoundEndDelta(table, r10WindowView(table, world, unit, window, baseline));
+        current = { sp: clamp(current.sp + tick.sp, 0, maxima.sp), men: clamp(current.men + tick.men, 0, maxima.men),
+          vit: clamp(current.vit + tick.stamina, 0, maxima.vit) };
+      }
+      return current;
+    };
+    const offset = dated ? Math.max(0, clock.firstRound - Number(world.回合 || 0)) : 0;
+    const start = dated ? settle(resources, 0, offset) : resources;
+    const nextTurn = (current, use) => dated ? settle(current, offset + use, offset + use + 1) : current;
+    const profileOf = action => skillActionCapacitySettlementProfile(action.skill) || {};
+    const settledFirst = action => profileOf(action).recipientPools && searchBounds?.settledCapacityBase !== true;
+    const formulaFirst = action => !!action.skill && (settledFirst(action) || profileOf(action).resourceTransition ||
+      action.skill.__mechanismGrantTemporarySkill === true);
+    const allStable = actions.every(action => action.currentResourceStable === true && action.fusionRequired !== true);
+    const projectionContext = r9v2LinearCapacityProjectionContext(world, cache);
+    // The best affordable second action with what the first left: a heal or shield row re-priced after the first landed.
+    const second = (paid, landed, excluded = null) => actions.reduce((best, action) => {
+      if (action === excluded || !r10ResourceAffordable(action.capacityCosts, paid)) return best;
+      const value = landed?.size && profileOf(action).needed ? r10BestCast(table, world, unit, action, landed).receipt : Number(action.potential || 0);
+      return Math.max(best, value);
+    }, 0);
+    // A payment that moves the caster's own panel (stamina below half, a resource-scaled skill) reads the paid caster's
+    // rows instead, once per first action — the changed unit's own row, as r9v2LinearResourceSequenceCapacity did.
+    const paidSecond = (first, paid) => {
+      if (allStable && r9v2LinearCapacityPaymentStable(unit, resources, first.capacityCosts || {})) return second(paid, null);
+      let byFirst = table.paidSeconds.get(unit);
+      if (!byFirst) table.paidSeconds.set(unit, byFirst = new Map());
+      const firstKey = `${first.actionKey}|${hostileSide}`;
+      if (!byFirst.has(firstKey)) {
+        const paidUnit = r9v2LinearPaymentCapacityProjection(unit, first.costs || {}).paidUnit;
+        // The rows read the payment only through the caster's stamina band (its panel) and a resource-scaled value:
+        // with neither moved, they are the unit's own rows at the paid balance. searchBounds.runwayPaidRebuild
+        // (development) rebuilds the paid caster's rows every time.
+        const samePanel = searchBounds?.runwayPaidRebuild !== true && preview.staminaScaleForUnit(paidUnit) === preview.staminaScaleForUnit(unit) &&
+          !actions.some(action => action.skill && skillHasBaseActionValue(action.skill) && !skillActionCapacityStableAcrossCurrentResource(action.skill));
+        if (samePanel) byFirst.set(firstKey, second(paid, null));
+        else {
+          r10Work.runwayPaidRows += 1;
+          byFirst.set(firstKey, r9v2LinearBestActionCapacity(replaceWorldUnit(world, actorId, paidUnit), paidUnit, hostileSide, cache));
+        }
+      }
+      return byFirst.get(firstKey);
+    };
+    let sequence = 0;
+    if (windows <= 1) sequence = actions.reduce((best, action) => Math.max(best, Number(action.potential || 0)), 0);
+    else {
+      // Waiting for the next proven natural turn is a real option on a dated clock.
+      if (dated) sequence = .5 * second(nextTurn(start, 0), null);
+      for (const first of actions) {
+        if (!formulaFirst(first)) {
+          sequence = Math.max(sequence, Number(first.potential || 0) + .5 * paidSecond(first, nextTurn(r10ResourceAfter(start, first.capacityCosts), 0)));
+          continue;
+        }
+        r10Work.runwayFormulaFirsts += 1;
+        const consumed = first.skill.__mechanismGrantTemporarySkill === true, group = targetProfile(first.skill).endsWith('GROUP');
+        for (const targetIds of r10TargetSets(table, world, unit, first.skill)) {
+          const cast = r10CastParts(table, world, unit, first.skill, targetIds, 'RELEASE_SKILL');
+          const potentials = settledFirst(first) ? [] : targetIds.map(id => cachedBaseActionValue(unit, findUnitInWorld(world, id),
+            'RELEASE_SKILL', first.skill, projectionContext, world));
+          const value = settledFirst(first) ? cast.overall : group ? potentials.reduce((sum, item) => sum + item, 0) : Math.max(0, ...potentials);
+          const paid = nextTurn(r10CastFuel(cast, r10ResourceAfter(start, first.capacityCosts), maxima), 0);
+          sequence = Math.max(sequence, value + .5 * second(paid, r10LandCast(new Map(), cast), consumed ? first : null));
+        }
+      }
+    }
+    // Each further use of a terminal skill while the resources last, at 0.85 a use (r9v2LinearRepeatedResourceReserve's
+    // chain): a heal or shield re-priced on what the earlier uses landed; on a dated clock an unpaid turn waits.
+    const hasConsumableGrants = preview.pendingGrantedEffects(unit, 'RELEASE_SKILL').length > 0;
+    const chained = action => dated || searchBounds?.reserveClosedForm !== true && (profileOf(action).needed ||
+      profileOf(action).resourceTransition || hasConsumableGrants || action.fusionRequired);
+    const hostileTargets = r9v2LinearSideUnits(world, hostileSide, cache?.sideUnitsByWorld);
+    const alliedTargets = r9v2LinearSideUnits(world, sideOf(world, unit), cache?.sideUnitsByWorld);
+    const chain = (action, uses) => {
+      uses = Math.min(uses, searchBounds?.reserveUses ?? RESERVE_USE_LIMIT, action.skill?.__mechanismGrantTemporarySkill ? 1 : Infinity);
+      const casts = !!action.skill && (profileOf(action).needed || profileOf(action).resourceTransition);
+      const potential = action.reserveOnly && !casts ? Math.max(0, r9v2LinearSkillActionCapacity(unit, action.skill, targetProfile(action.skill),
+        hostileTargets, alliedTargets, false, projectionContext, world)) : Number(action.potential || 0);
+      const landed = casts ? new Map() : null;
+      if (casts) r10Work.runwayChains += 1;
+      let current = start, value = 0, factor = 1, first = 0, productive = 0;
+      for (let use = 0; use < uses; use += 1) {
+        if (use > 0) current = nextTurn(current, use - 1);
+        if (!r10ResourceAffordable(action.capacityCosts, current)) {
+          if (!dated) break;
+          factor *= .85;
+          continue;
+        }
+        const best = casts ? r10BestCast(table, world, unit, action, landed) : null;
+        const receipt = best ? best.receipt : potential;
+        if (use === 0) first = receipt;
+        value += factor * receipt;
+        if (receipt > 1e-9) productive += 1;
+        current = r10ResourceAfter(current, action.capacityCosts);
+        if (best) { current = r10CastFuel(best.cast, current, maxima); r10LandCast(landed, best.cast); }
+        factor *= .85;
+      }
+      return value > 0 ? { value, reserveValue: value - first, tailUses: productive - Number(first > 1e-9), productiveUses: productive }
+        : { value: 0, reserveValue: 0, tailUses: 0, productiveUses: 0 };
+    };
+    // A dated clock also prices the skills not payable now, whose turn may come once the resources recover.
+    const recordActions = actions.slice();
+    if (dated) {
+      const available = new Set(actions.map(action => action.actionKey));
+      for (const { sourceSkill, skill, costStages } of windows > 0 ? preparedSkillProfiles(unit) : []) {
+        const actionKey = `${actorId}:skill:${skillId(sourceSkill)}`;
+        if (available.has(actionKey) || costStages.非法项?.length) continue;
+        const capacityCosts = r9v2LinearCapacityCostVector(unit, costStages.启动);
+        if (!capacityCosts.valid || !['sp', 'men', 'vit'].some(resource => capacityCosts[resource] > 0)) continue;
+        recordActions.push({ actionKey, mechanicKey: `${targetProfile(skill)}|${[...new Set(preview.collectEffects(skill)
+          .map(effect => String(effect?.原型 || '').trim()).filter(Boolean))].sort(compareUtf16).join('+')}`,
+          skill, costs: costStages.启动, capacityCosts, potential: 0, fusionRequired: false, reserveOnly: true });
+      }
+    }
+    const record = r9v2LinearResourceCapacityRecord(unit, recordActions, sequence, windows,
+      (action, uses) => chained(action) ? chain(action, uses) : null, dated);
+    const capacity = dated ? Object.freeze({ ...record, options: Object.freeze(actions.map(action => Object.freeze({
+      actionKey: String(action.actionKey || '').trim(), mechanicKey: String(action.mechanicKey || '').trim(),
+      potential: Math.max(0, Number(action.potential || 0)) }))) }) : record;
+    byKey.set(key, capacity);
+    if (contentKey) byContent.set(contentKey, capacity);
+    return capacity;
+  }
+
+  // R10 (exact): when two variants of a unit read alike for a best action capacity (r9v2LinearBestActionCapacity) — the
+  // equalities the outcome-branch groups (r10SameFriendlyOutcome) are built on. Capacity rows price damage in capacity mode — against
+  // the target's maximum HP, not its current HP — so a target that only lost HP or shield (as most hits leave it) prices
+  // the same; a unit's own HP and resources matter only through which skills it can pay, its balances (resource-driven
+  // damage) and its stamina band (BattlePreview staminaScaleForUnit). Healing and shields read the recipients' HP and
+  // shield, conditions and settled pool/conditional receipts read the targets' current state.
+  // Equal values: the same enumerable fields holding equal values. Unlike r9v2SameProjectionFrame this ignores property
+  // descriptors — the decision world is frozen and a candidate's copies are not.
+  function r10SameValue(left, right) {
+    if (Object.is(left, right)) return true;
+    if (!left || !right || typeof left !== 'object' || typeof right !== 'object' || Array.isArray(left) !== Array.isArray(right)) return false;
+    const leftKeys = Object.keys(left), rightKeys = Object.keys(right);
+    return leftKeys.length === rightKeys.length && leftKeys.every(key => Object.hasOwn(right, key) && r10SameValue(left[key], right[key]));
+  }
+  const r10SameStateMaps = (left, right) => left === right || r10SameValue(left || {}, right || {});
+  // A panel reads which states a unit holds and what they modify — not how much shield or how many block, save and
+  // revival charges they have left, how long they last, or where they came from (those only settle real hits).
+  const R10_PANEL_IGNORED_STATE_FIELDS = new Set(['shield_value', 'duration', '剩余回合', '__本回合新附加', 'sourceActionId', 'sourceEffectId',
+    'sourceEventId', '来源动作ID', '来源技能', '来源角色', '描述']);
+  // Combat fields a capacity does not read, by the unit's role in it: its own output reads its hit and damage, not how it
+  // dodges, reacts, casts or moves; a target's intake reads its dodge, defense and damage taken, not how it hits (the hit
+  // chance reads the actor's hit_bonus/hit_penalty and the target's dodge_penalty/lock_level only). Charges settle hits.
+  const R10_IGNORED_BY_ROLE = {
+    self: new Set(['block_count', 'death_save_count', 'revive_count', 'dodge_penalty', 'reaction_penalty', 'cast_speed_penalty',
+      'windup_ratio', 'misfortune_backlash_ratio', 'position_type', 'position_object', 'position_distance', 'damage_reduction']),
+    target: new Set(['block_count', 'death_save_count', 'revive_count', 'hit_penalty', 'hit_bonus', 'blind', 'reaction_penalty',
+      'cast_speed_penalty', 'windup_ratio', 'misfortune_backlash_ratio', 'random_target_rate', 'position_type', 'position_object',
+      'position_distance']),
+  };
+  const R10_PANEL_STATE_FIELDS = ['面板修改比例', '面板固定修正', '属性快照', '计算层效果', '持续原型效果', '授予效果', '结算效果', '副作用列表'];
+  // A state a capacity cannot see in this role: only ignored combat fields, nothing on the panel.
+  const r10StateInvisible = (state, ignored) => !!state && typeof state === 'object' &&
+    R10_PANEL_STATE_FIELDS.every(field => !state[field] || typeof state[field] === 'object' && !Object.keys(state[field]).length) &&
+    Object.keys(state.战斗效果 || {}).every(name => ignored.has(name));
+  function r10SamePanelStates(left, right, role = 'self') {
+    if (left === right) return true;
+    const ignored = R10_IGNORED_BY_ROLE[role === 'self' ? 'self' : 'target'];
+    const a = left || {}, b = right || {};
+    for (const key of Object.keys(a)) if (!Object.hasOwn(b, key) && !r10StateInvisible(a[key], ignored)) return false;
+    for (const key of Object.keys(b)) if (!Object.hasOwn(a, key) && !r10StateInvisible(b[key], ignored)) return false;
+    for (const key of Object.keys(a)) {
+      if (!Object.hasOwn(b, key)) continue;
+      const x = a[key], y = b[key];
+      if (x === y) continue;
+      if (!x || !y || typeof x !== 'object' || typeof y !== 'object') { if (!r10SameValue(x, y)) return false; continue; }
+      for (const field of new Set([...Object.keys(x), ...Object.keys(y)])) {
+        if (R10_PANEL_IGNORED_STATE_FIELDS.has(field)) continue;
+        if (field === '战斗效果') {
+          const p = x[field] || {}, q = y[field] || {};
+          for (const name of new Set([...Object.keys(p), ...Object.keys(q)])) {
+            if (!ignored.has(name) && !r10SameValue(p[name], q[name])) return false;
+          }
+          continue;
+        }
+        if (!r10SameValue(x[field], y[field])) return false;
+      }
+    }
+    return true;
+  }
+  // Units are not written once a world holds them: a comparison holds for the pair.
+  const r10PanelComparisons = new WeakMap();
+  function r10SamePanel(unit, base, role = 'self') {
+    if (unit === base) return true;
+    let byBase = r10PanelComparisons.get(unit);
+    if (!byBase) r10PanelComparisons.set(unit, byBase = new WeakMap());
+    let byRole = byBase.get(base);
+    if (!byRole) byBase.set(base, byRole = {});
+    return byRole[role] ??= r10ComparePanel(unit, base, role);
+  }
+  function r10ComparePanel(unit, base, role) {
+    return preview.isBattleCapable(unit) === preview.isBattleCapable(base) && unit.蓄力技能 === base.蓄力技能 &&
+      hasActionCancellation(unit) === hasActionCancellation(base) && ['disarm', 'silence'].every(flag => hasStateFlag(unit, flag) === hasStateFlag(base, flag)) &&
+      // A summoner's mental upkeep and a summon's support are unit fields (r9v2LinearSummonSupportWorld), not states.
+      ['__禁用召唤技能', '__精神维持率', '__精神压缩', '精神负载', '已消散'].every(field => unit[field] === base[field]) &&
+      preview.isSummonSkillDisabled(unit) === preview.isSummonSkillDisabled(base) &&
+      visibleTargetInterferenceRate(unit) === visibleTargetInterferenceRate(base) &&
+      ['str', 'def', 'agi', 'men'].every(stat => preview.readCombatStat(unit, stat) === preview.readCombatStat(base, stat)) &&
+      preview.staminaScaleForUnit(unit) === preview.staminaScaleForUnit(base) &&
+      preview.readHpMax(unit) === preview.readHpMax(base) &&
+      ['魂力', '精神力', '体力'].every(resource => preview.readResourceMax(unit, resource) === preview.readResourceMax(base, resource)) &&
+      r10SamePanelStates(unit.状态效果, base.状态效果, role) && r10SameStateMaps(unit.持续效果, base.持续效果);
+  }
+  const r10SamePools = (unit, base) => unit === base || preview.readHp(unit) === preview.readHp(base) &&
+    preview.readShield(unit) === preview.readShield(base) && preview.ruleBlockCount(unit) === preview.ruleBlockCount(base) &&
+    preview.deathSaveCount(unit) === preview.deathSaveCount(base);
+  // Which recipients' HP and shield a skill's capacity reads: a condition or a settled pool/conditional receipt reads its
+  // targets on the side its profile aims at; healing and shields read their (friendly) recipients.
+  const r10HpSensitiveSkill = (skill, hostileSide) => {
+    const profile = targetProfile(skill), effects = preview.collectEffects(skill);
+    const aims = hostileSide ? profile.startsWith('HOSTILE') || profile === 'ANY_SINGLE' : profile === 'SELF' || profile.startsWith('FRIENDLY') || profile === 'ANY_SINGLE';
+    if (aims && (skillActionCapacitySettlementProfile(skill)?.needed || effects.some(effect => effect?.条件分支?.length || effect?.条件 || effect?.触发条件))) return true;
+    return !hostileSide && effects.some(effect => String(effect?.原型 || '').trim() === '资源变化' || effect?.原型 === '护盾变化' ||
+      /护盾|屏障|结界/.test(String(effect?.状态 || '')));
+  };
+  // R10 M4 (主线 9.6): a candidate whose only open outcome trials are hits on enemies that differ in amounts alone — how
+  // much HP, shield and stamina a hit takes, never whether it kills, exhausts or knocks out (all of a target's hits at
+  // their largest together, against its HP and its stamina, which a hit drains too), revives, reflects, spends a block or
+  // a save, nor whether the battle's conditions end it (checked on every target at its worst together) — is valued on its
+  // expected settlement: every channel
+  // reads such amounts in proportion, so their branches only re-added that expectation. A trial that decides a kill or
+  // another discrete outcome, an uncertain hit on the actor's own side (its survival is not proportional to HP), a hit
+  // a continuation needs, and every other kind of trial still branch.
+  const r10OpenProbability = value => value > 1e-12 && value < 1 - 1e-12;
+  function r10AmountOnlyTrials(world, entries, actorSide, objectives) {
+    const worst = new Map();
+    let open = false;
+    for (const entry of entries) {
+      const evidence = entry.evidence || {};
+      const opens = r10OpenProbability(preview.contributionProbability(entry)) ||
+        r10OpenProbability(Number(evidence.persistentRiskBinding?.risk?.触发概率)) ||
+        !!evidence.rangeTransition || !!evidence.resourcePoolTransition?.strengthSupport ||
+        evidence.resourceStrengthOutcomes?.some(outcome => r10OpenProbability(outcome.probability) || outcome.roundedResourceSupport) ||
+        entry.outcomeKind === 'HP_DELTA' && (evidence.outcomeDistribution || []).some(outcome => r10OpenProbability(Number(outcome.probability)));
+      if (entry.outcomeKind === 'HP_DELTA' && (evidence.outcomeDistribution || []).length) {
+        const target = findUnitInWorld(world, entry.targetId);
+        if (!target) return false;
+        if (opens && sideOf(world, target) === actorSide) return false;
+        let largest = 0;
+        for (const outcome of evidence.outcomeDistribution) {
+          if (outcome.revival || outcome.reflection || outcome.targetState || Number(outcome.deathSaveConsumed) > 0 ||
+            Number(outcome.ruleBlockConsumed) > 0) return false;
+          largest = Math.max(largest, Number(outcome.hpDamage || 0));
+        }
+        worst.set(entry.targetId, (worst.get(entry.targetId) || 0) + largest);
+      }
+      if (!opens) continue;
+      if (entry.outcomeKind !== 'HP_DELTA' || evidence.lethalSettlement || !(evidence.outcomeDistribution || []).length ||
+        evidence.rangeTransition || evidence.resourcePoolTransition?.strengthSupport || evidence.resourceStrengthOutcomes?.length ||
+        r10OpenProbability(Number(evidence.persistentRiskBinding?.risk?.触发概率))) return false;
+      open = true;
+    }
+    if (!open) return false;
+    let worstWorld = world;
+    for (const [targetId, damage] of worst) {
+      const target = findUnitInWorld(world, targetId), hp = preview.readHp(target), stamina = preview.readResource(target, '体力');
+      // A non-lethal floor stops a hit at 1 HP and incapacitates the target there. (A unit's combat scale follows its
+      // stamina below half — BattlePreview staminaScaleForUnit, continuous lines down to 30%, 15% and 0 — so an outcome
+      // spread across a bend of it is valued at the expected stamina: a small approximation, measured in the plan.)
+      if (damage >= hp - 1 - 1e-9 || damage >= stamina - 1e-9 ||
+        preview.shouldTriggerTraumaUnconscious(damage, hp - damage, preview.readHpMax(target))) return false;
+      if (!(damage > 0)) continue;
+      const copy = value => value && typeof value === 'object' && !Array.isArray(value) ? { ...value } : value;
+      const view = preview.inheritOverlayOrigin({ ...target, 属性: copy(target.属性), 状态: copy(target.状态), final: copy(target.final) }, target);
+      root.__LWCS_BATTLE_RUNTIME__.writeCombatResource(view, 'hp', hp - damage);
+      if (preview.readResourceMax(target, '体力') > 0) root.__LWCS_BATTLE_RUNTIME__.writeCombatResource(view, 'vit', stamina - damage);
+      worstWorld = replaceWorldUnit(worstWorld, targetId, view);
+    }
+    return worstWorld === world || !!preview.evaluateBattleObjectivesCompact(worstWorld, objectives).terminal ===
+      !!preview.evaluateBattleObjectivesCompact(world, objectives).terminal;
+  }
+  // R10 M4 (主线 9.6): the outcome branches of one candidate that leave the actor's side alike share its friendly
+  // channels — the own follow-up, the allies' options, the runway's own payments, the friendly holders' protection. Alike:
+  // the same field (round, intent, rules, who is present and alive), every friendly unit equal, the same contributions on
+  // friendly units and the same unit-less or deferred ones, and every hostile difference invisible to an action capacity
+  // and an attack packet (r10SamePanel as caster and as target, the same balances; HP and shield only where no friendly
+  // skill reads them). What a branch does to the enemies — pressure, denial, focus, objective, redundancy, the runway's
+  // continuation demand — is always its own.
+  const R10_BRANCH_IGNORED_FIELDS = new Set(['eventId', 'windowId', 'windowKey']);
+  const r10HostilePoolReaders = new WeakMap();
+  const r10ReadsHostilePools = unit => {
+    if (!r10HostilePoolReaders.has(unit)) r10HostilePoolReaders.set(unit, collectSkills(unit).some(skill => r10HpSensitiveSkill(skill, true)));
+    return r10HostilePoolReaders.get(unit);
+  };
+  const r10FriendlyContributionLists = new WeakMap();
+  function r10FriendlyContributions(world, contributions, actorSide) {
+    let byWorld = r10FriendlyContributionLists.get(contributions);
+    if (!byWorld) r10FriendlyContributionLists.set(contributions, byWorld = new WeakMap());
+    if (byWorld.has(world)) return byWorld.get(world);
+    const list = contributions.filter(entry => {
+      const targetId = String(entry?.targetId || '').trim();
+      if (!targetId || Number(entry.evidence?.deferredStartRoundOffset || 0) > 0 || ['STATE_SCHEDULED', 'SCHEDULED_HP_DELTA'].includes(entry.outcomeKind)) return true;
+      const target = findUnitInWorld(world, targetId);
+      return !target || sideOf(world, target) === actorSide;
+    });
+    byWorld.set(world, list);
+    return list;
+  }
+  const r10SameContribution = (left, right) => left === right || !!left && !!right && typeof left === 'object' && typeof right === 'object' &&
+    [...new Set([...Object.keys(left), ...Object.keys(right)])].every(key => R10_BRANCH_IGNORED_FIELDS.has(key) || r10SameValue(left[key], right[key]));
+  // 0 when the friendly outcomes differ; else 1, plus 2 when every hostile also keeps the same HP and shield (what a
+  // summon's settled assist reads), plus 4 when every hostile also reads alike as a caster with the same balances (what
+  // its attack packets read: the friendly holders' protection).
+  function r10SameFriendlyOutcome(group, after, contributions, actorSide) {
+    let match = 7;
+    if (group.after !== after) {
+      if (group.after.回合 !== after.回合 || group.after.战斗意图 !== after.战斗意图 ||
+        !r10SameValue(group.after.__规则改写运行态 ?? null, after.__规则改写运行态 ?? null)) return 0;
+      const entries = worldEntries(after), other = new Map(worldEntries(group.after).map(entry => [preview.unitId(entry.unit), entry]));
+      if (entries.length !== other.size) return 0;
+      let hostilePools = null;
+      for (const entry of entries) {
+        const base = other.get(preview.unitId(entry.unit));
+        if (!base || base.side !== entry.side || preview.isPhysicallyAlive(base.unit) !== preview.isPhysicallyAlive(entry.unit)) return 0;
+        if (base.unit === entry.unit) continue;
+        if (entry.side === actorSide) {
+          if (!r10SameValue(entry.unit, base.unit)) return 0;
+          continue;
+        }
+        if (!r10SamePanel(entry.unit, base.unit, 'target')) return 0;
+        if (match & 4 && (!r10SamePanel(entry.unit, base.unit, 'self') ||
+          ['魂力', '精神力', '体力'].some(resource => preview.readResource(entry.unit, resource) !== preview.readResource(base.unit, resource)))) match &= ~4;
+        if (r10SamePools(entry.unit, base.unit)) continue;
+        hostilePools ??= entries.some(row => row.side === actorSide && r10ReadsHostilePools(row.unit));
+        if (hostilePools) return 0;
+        match &= ~2;
+      }
+    }
+    const left = r10FriendlyContributions(group.after, group.contributions, actorSide), right = r10FriendlyContributions(after, contributions, actorSide);
+    return left.length === right.length && left.every((entry, index) => r10SameContribution(entry, right[index])) ? match : 0;
+  }
+  // R10 step 5: a free summon's assist forecast as its best action by formula receipt (r9v2LinearFormulaCast without a
+  // successor) — its basic attack and each payable skill that completes within the assist window, over legal target sets
+  // (a hostile among the assist's valid targets), preferring at an equal receipt a target the host just hit. null when it
+  // has nothing to do (the nested decision's empty pool). A fusion needs partners the assist does not have.
+  function r10CooperativeForecast(world, actor, assistTargets, input) {
+    const best = r10BestFormulaAction(world, actor, assistTargets, input.preferredTargetIds, input.beliefState);
+    if (!best) return null;
+    const actorId = preview.unitId(actor);
+    return { actionId: `${actorId}:${best.actionKind === 'BASIC_ATTACK' ? 'basic' : 'skill:' + skillId(best.skill)}:${best.targetIds.join(',')}`,
+      actorId, actionKind: best.actionKind, targetIds: best.targetIds, skill: best.skill,
+      ...(best.resourceCosts ? { resourceCosts: best.resourceCosts } : {}) };
+  }
+
+  // A unit's best action by formula receipt among its basic attack and payable skills that complete within a window, over
+  // legal target sets (hostile members among `targets`), preferring at an equal receipt one aimed at `preferredTargetIds`.
+  function r10BestFormulaAction(world, actor, targets, preferredTargetIds = [], beliefState = {}) {
+    if (!preview.isBattleCapable(actor) || hasActionCancellation(actor) || !targets.length) return null;
+    const actorSide = sideOf(world, actor), allowed = new Set(targets.map(preview.unitId));
+    const preferred = new Set((Array.isArray(preferredTargetIds) ? preferredTargetIds : []).map(String));
+    const hostileIds = new Set(worldEntries(world).filter(entry => entry.side !== actorSide).map(entry => preview.unitId(entry.unit)));
+    const options = [];
+    if (!hasStateFlag(actor, 'disarm')) {
+      for (const target of targets) options.push({ actionKind: 'BASIC_ATTACK', skill: basicAttackSkill(actor), targetIds: [preview.unitId(target)] });
+    }
+    if (!hasStateFlag(actor, 'silence') && !preview.isSummonSkillDisabled(actor)) {
+      for (const { skill, startupCosts, fusionMetadata } of affordablePreparedSkills(actor)) {
+        if (fusionMetadata || Number(skill.前摇 ?? skill.cast_time ?? 0) > 40) continue;
+        const profile = targetProfile(skill);
+        for (const targetIds of expandMixedScopePrimaryTargetSets(skill, profile,
+          enumerateTargetSets(world, actor, profile, beliefState || {}, skill), world, actor)) {
+          const legal = targetIds.filter(id => !hostileIds.has(id) || allowed.has(id));
+          if (legal.length) options.push({ actionKind: 'RELEASE_SKILL', skill, targetIds: legal, resourceCosts: startupCosts });
+        }
+      }
+    }
+    let best = null;
+    for (const option of options) {
+      const receipt = r9v2LinearFormulaCast(world, actor, option.skill, option.targetIds, option.actionKind, null, false).overall;
+      const focus = Number(option.targetIds.some(id => preferred.has(id)));
+      if (!best || receipt > best.receipt + 1e-9 || Math.abs(receipt - best.receipt) <= 1e-9 && focus > best.focus) best = { ...option, receipt, focus };
+    }
+    return best;
   }
 
   function r9v2LinearOrdinaryRuleProtection(request, world, unit, next, sources, sourceSide, recentAttackLedgerIndex, pressureOptionsForWorld, withShieldPortfolio = false) {
@@ -152134,9 +155372,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         (Array.isArray(effect.属性) ? effect.属性 : [effect.属性]).every(key => ['力量', '防御', '敏捷', 'str', 'def', 'agi'].includes(key)) &&
         /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)%?$/.test(String(effect.数值 ?? ''));
     };
-    const pureState = state => state && keysWithin(state, ['状态', '状态名称', '状态ID', 'sourceActorId', 'sourceSkillId', 'sustainSourceActionId', '类型', '原型', '来源角色', '判定', '结算', '限定元素',
+    // 来源技能 / 来源动作ID record the applying cast for R01; like the other source ids they are identity, not effect.
+    const pureState = state => state && keysWithin(state, ['状态', '状态名称', '状态ID', 'sourceActorId', 'sourceSkillId', 'sustainSourceActionId', '类型', '原型', '来源角色', '来源技能', '来源动作ID', '判定', '结算', '限定元素',
       'duration', '持续回合', '数值', '强度', '__previewApplicationProbability', '__本回合新附加', '战斗效果', '面板修改比例', '面板固定修正', 'shield_value', '资源锁定规则']) &&
-      ['状态ID', 'sourceActorId', 'sourceSkillId', 'sustainSourceActionId'].every(key => state[key] === undefined || typeof state[key] === 'string') &&
+      ['状态ID', 'sourceActorId', 'sourceSkillId', 'sustainSourceActionId', '来源技能', '来源动作ID'].every(key => state[key] === undefined || typeof state[key] === 'string') &&
       Number(state.__previewApplicationProbability ?? 1) === 1 && neutralCombat(state.战斗效果) &&
       [...Object.keys(state.面板修改比例 || {}), ...Object.keys(state.面板固定修正 || {})].every(key => ['str', 'def', 'agi'].includes(key)) &&
       Array.isArray(state.资源锁定规则 || []) && (state.资源锁定规则 || []).every(rule => rule && keysWithin(rule, ['资源', '锁定类型', '比例']) && rule.锁定类型 === '回复锁定' &&
@@ -152173,7 +155412,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       (unit.final?.__体力衰减系数 === undefined || typeof unit.final.__体力衰减系数 === 'number' &&
         Number.isFinite(unit.final.__体力衰减系数) && unit.final.__体力衰减系数 >= 0 && unit.final.__体力衰减系数 <= 1) &&
       Object.values(unit.状态效果 || {}).every(pureState) &&
-      keysWithin(unit.__battleRuntime, ['__itemPassiveSignature', 'itemPassivePackage', 'itemPassiveTriggeredSkills', 'itemPassiveRoutes', 'naturalOpportunity']) &&
+      // panelStats is the battle-start stamina price record (R07): constant for the battle, so it is bookkeeping here.
+      keysWithin(unit.__battleRuntime, ['__itemPassiveSignature', 'itemPassivePackage', 'itemPassiveTriggeredSkills', 'itemPassiveRoutes', 'naturalOpportunity', 'panelStats']) &&
       !unit.__battleRuntime?.itemPassivePackage?.有效 &&
       ['itemPassiveTriggeredSkills', 'itemPassiveRoutes'].every(key => empty(unit.__battleRuntime?.[key])) &&
       !preparedSkillProfiles(unit).some(profile => profile.fusionMetadata) && collectSkills(unit).every(skill => skill && pureSkill(unit, skill));
@@ -152635,6 +155875,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     conditioned = false,
     settlementResult = result,
     setupCastTime = null,
+    branchGroups = null,
   ) {
     if (!conditioned) {
       const key = 'cache:deferred-root:' + candidate.candidateId;
@@ -152787,7 +156028,39 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         }
       }
     }
-    if (!conditioned && (knownRootReaction || existingRisks.length || triggerContributions.some(entry => {
+    // R10 M4: amount-only trials are valued on the expected settlement (r10AmountOnlyTrials) — settled as the branches it
+    // replaces settle (undefended unless searchBounds.defendedBranches), and checked again on that settlement.
+    // searchBounds.legacyBranches (development) branches them as before.
+    const trialObjectives = request?.objectiveContract || request?.battleIntent?.objectives || request.visibleWorld?.胜负条件 || {};
+    let amountOnlyTrials = !conditioned && !knownRootReaction && !existingRisks.length && searchBounds?.legacyBranches !== true &&
+      !(continuationGrant && (continuationGrant.requiresHit || continuationGrant.requiresControl)) &&
+      r10AmountOnlyTrials(request.visibleWorld, triggerContributions, request.actorSide, trialObjectives);
+    // The own settlement serves when it settles hits as the branches would; under the development switches that set
+    // them apart, the branches' basis is settled once more.
+    if (amountOnlyTrials && (searchBounds?.targetReactions === true) !== (searchBounds?.defendedBranches === true)) {
+      const expectedActionId = r9v2LinearCanonicalActionId(candidate);
+      const expectedDeclaration = { ...candidate.declaration, actionId: expectedActionId };
+      const realized = preview.projectConditionedAction({
+        worldSnapshot: request.visibleWorld, __preparedDecisionWorld: true, beliefState: request.beliefState, actorId: request.actorId,
+        actionRole: request.actionOpportunity?.role || 'ACTIVE', actionOpportunity: request.actionOpportunity, declaration: expectedDeclaration,
+        worldRevision: 'r9v2-linear:' + request.requestHash, snapshotRevision: 'expected-causal:' + request.requestHash + ':' + expectedActionId,
+        actionFingerprint: candidate.declarationFingerprint ? candidate.declarationFingerprint + '|actionId:' + JSON.stringify(expectedActionId)
+          : declarationFingerprint(expectedDeclaration),
+        battleIntent: request.battleIntent, buildOperationGraph: false, captureDependencies: false, cacheResult: false,
+      });
+      const declaration = candidate.declaration;
+      const audit = temporalAuditForCandidate(preview.collectEffects(declaration?.skill || {}), declaration?.targetIds || [], request, request.visibleWorld,
+        request.actorSide, realized.contributions || [], declaration);
+      const scoring = Object.freeze({ ...realized, afterSnapshot: removeUnrealizableTemporalEffects(realized.afterSnapshot, request.visibleWorld, audit),
+        contributions: Object.freeze((realized.contributions || []).filter(entry => !audit.invalidContributionSet.has(entry))) });
+      amountOnlyTrials = r10AmountOnlyTrials(request.visibleWorld, scoring.contributions, request.actorSide, trialObjectives);
+      if (amountOnlyTrials) {
+        r10Work.amountOnlyCandidates += 1;
+        if (!Object.keys(realized.changedRules || {}).length && !(realized.scheduledEvents || []).some(event => ['SUMMON_CREATE', 'summon_create'].includes(String(event.type || event.eventKind || '')))) markCapacityDeltaSnapshot(scoring.afterSnapshot, request.visibleWorld, realized?.changedUnitIds || []);
+        return r9v2LinearCausalFeatureRows(request, candidate, scoring, decisionCache, performanceBreakdown, true, realized, setupCastTime);
+      }
+    } else if (amountOnlyTrials) r10Work.amountOnlyCandidates += 1;
+    if (!conditioned && !amountOnlyTrials && (knownRootReaction || existingRisks.length || triggerContributions.some(entry => {
       const probability = preview.contributionProbability(entry);
       const boundProbability = Number(entry.evidence?.persistentRiskBinding?.risk?.触发概率);
       return (probability > 1e-12 && probability < 1 - 1e-12) ||
@@ -152805,6 +156078,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         ? candidate.declarationFingerprint + '|actionId:' + JSON.stringify(conditionalActionId)
         : declarationFingerprint(conditionalDeclaration);
       let weighted = null;
+      const branchGroups = [];
       const eventIds = new Set();
       let branchCount = 0;
       let conditionalProjectionMs = 0;
@@ -152813,6 +156087,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       // stop after a fixed count, renormalizing by the evaluated mass.
       const branchLimit = searchBounds?.conditionalBranches ?? null;
       let evaluatedMass = 0;
+      // R9 step 27 (approximation, user-approved "可近似"): the candidate's outcome trials — each target's hit, each
+      // effect's application, damage segments, resource ranges, existing-state risks — branched as every combination,
+      // one full look-ahead each: a group skill with a chance state on three enemies is 2^6 = 64 look-aheads (up to 1024
+      // seen); 3% of the candidates took 39–49% of all look-ahead in high-level team battles. The first path takes every
+      // trial's likeliest outcome. When its trials would combine into more than FIRST_ORDER_BRANCH_LIMIT paths, the
+      // enumeration takes first order instead: that path plus one per trial outcome flipped alone (trials a flipped path
+      // newly meets keep their likeliest outcome), weighted 1 − Σq and q (q = the flipped outcome's chance) — the exact
+      // expectation whenever the trials' effects add up. Smaller trees still branch in full.
+      // searchBounds.exactOutcomeBranches (development) restores every combination.
+      const firstOrderAllowed = branchLimit === null && searchBounds?.exactOutcomeBranches !== true;
+      let firstOrder = false;
+      // A branch settles the candidate's hits undefended, as the own settlement does (see r9v2LinearTargetReactions).
+      const branchTargetReactions = searchBounds?.defendedBranches === true
+        ? r9v2LinearTargetReactions(request.visibleWorld, candidate.declaration, findUnitInWorld(request.visibleWorld, request.actorId)) : null;
       while (stack.length) {
         if (branchLimit !== null) {
           if (branchCount >= branchLimit) break;
@@ -152825,7 +156113,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           if (outcomes.length === 1) return 0;
           const key = JSON.stringify([kind, effectInstanceId, targetId]);
           if (choices.has(key)) return choices.get(key);
-          const selected = branchLimit === null ? 0
+          const selected = branchLimit === null && !firstOrderAllowed ? 0
             : outcomes.reduce((best, outcome, index) => Number(outcome.probability) > Number(outcomes[best].probability) ? index : best, 0);
           choices.set(key, selected);
           discovered.push({ key, outcomes, selected });
@@ -152889,6 +156177,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           actionFingerprint: conditionalFingerprint,
           battleIntent: request.battleIntent,
           buildOperationGraph: false, captureDependencies: false, cacheResult: false,
+          ...(branchTargetReactions || {}),
           applicationProbabilityResolver: ({ effectInstanceId, targetId, baseApplicationProbability }) => {
             if (baseApplicationProbability <= 1e-12 || baseApplicationProbability >= 1 - 1e-12) return baseApplicationProbability;
             return choose('application', effectInstanceId, targetId, [
@@ -152918,7 +156207,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (performanceBreakdown) conditionalProjectionMs += causalClockNow() - projectionStartedAt;
         let probability = path.probability;
         const prefix = new Map(path.choices);
-        for (const row of discovered) {
+        if (branchCount === 1 && firstOrderAllowed) firstOrder = discovered.reduce((product, row) =>
+          product * row.outcomes.filter(outcome => outcome.probability > 0).length, 1) > (searchBounds?.firstOrderBranchLimit ?? FIRST_ORDER_BRANCH_LIMIT);
+        if (firstOrder) {
+          // First order: the likeliest path weighs 1 − Σq; each outcome it did not take is one path of its own, flipped
+          // alone and weighing its chance q. Flipped paths branch no further.
+          if (branchCount === 1) {
+            probability = 1;
+            for (const row of discovered) row.outcomes.forEach((outcome, index) => {
+              if (index === row.selected || !(outcome.probability > 0)) return;
+              probability -= outcome.probability;
+              stack.push({ probability: outcome.probability, choices: new Map([...choices, [row.key, index]]) });
+            });
+          }
+        } else for (const row of discovered) {
           row.outcomes.forEach((outcome, index) => {
             if (index !== row.selected && outcome.probability > 0) stack.push({ probability: probability * outcome.probability, choices: new Map([...prefix, [row.key, index]]) });
           });
@@ -152943,7 +156245,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           });
           if (!Object.keys(realized.changedRules || {}).length && !(realized.scheduledEvents || []).some(event => ['SUMMON_CREATE', 'summon_create'].includes(String(event.type || event.eventKind || '')))) markCapacityDeltaSnapshot(temporalSnapshot, branchRequest.visibleWorld, realized.changedUnitIds || []);
           if (performanceBreakdown) conditionalNormalizationMs += causalClockNow() - normalizationStartedAt;
-          const rows = r9v2LinearCausalFeatureRows(branchRequest, candidate, scoring, branchCache, performanceBreakdown, true, realized, setupCastTime);
+          const rows = r9v2LinearCausalFeatureRows(branchRequest, candidate, scoring, branchCache, performanceBreakdown, true, realized, setupCastTime, branchGroups);
           if (!weighted) weighted = rows.map(row => ({ ...row, value: 0 }));
           rows.forEach((row, index) => { weighted[index].value += probability * reaction.probability * row.value; row.sourceEventIds.forEach(id => eventIds.add(id)); });
         }
@@ -152957,6 +156259,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       return Object.freeze(weighted.map(row => Object.freeze({ ...row, sourceEventIds: Object.freeze([...eventIds].sort()) })));
     }
     let causalStageStartedAt = performanceBreakdown ? causalClockNow() : 0;
+    // Each stage also owns the look-ahead work done in it ("<stage>.<counter>", analysis only): which channel still
+    // projects, copies units or advances frames.
+    let causalStageWork = performanceBreakdown ? r10LookaheadWork() : null;
     const markCausalStage = stage => {
       if (!performanceBreakdown) return;
       const finishedAt = causalClockNow();
@@ -152965,6 +156270,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         finishedAt - causalStageStartedAt
       ).toFixed(3));
       causalStageStartedAt = finishedAt;
+      const work = r10LookaheadWork();
+      for (const key of ['projections', 'unitCopies', 'overlayUnitCopies', 'projectorFrames', 'capacityBuilds', 'baseValues', 'runwayBuilds', 'reserveStates', 'legacyCurves', 'tableRunways', 'tableCasts', 'legacyRunways', 'runwayDated', 'runwayFormulaFirsts', 'runwayChains', 'runwayPaidRows', 'sharedBranches', 'amountOnlyCandidates', 'capacityAliases', 'castReuses', 'internedUnits']) {
+        const delta = work[key] - causalStageWork[key];
+        if (delta) performanceBreakdown[`${stage}.${key}`] = Number(performanceBreakdown[`${stage}.${key}`] || 0) + delta;
+      }
+      causalStageWork = work;
     };
     const memoBefore = (key, build) => {
       if (decisionCache.has(key)) return decisionCache.get(key);
@@ -153026,6 +156337,32 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const hostileSide = actorSide === 'team_player' ? 'team_enemy' : 'team_player';
     const actorBefore = findUnitInWorld(before, actorId);
     const actorAfter = findUnitInWorld(after, actorId) || actorBefore;
+    // R10 M4: a branch whose friendly outcome an earlier branch of this candidate already had (r10SameFriendlyOutcome)
+    // takes that branch's friendly channels (shared); the first of each such outcome records them (branchRecord).
+    // searchBounds.legacyBranches (development) values every branch in full.
+    const branchesShared = !!branchGroups && searchBounds?.legacyBranches !== true;
+    let branchMatch = 0;
+    const shared = branchesShared ? branchGroups.find(group => branchMatch = r10SameFriendlyOutcome(group, after, result.contributions || [], actorSide))?.outputs || null : null;
+    const branchRecord = branchesShared && !shared ? { after, contributions: result.contributions || [], outputs: {} } : null;
+    if (branchRecord) branchGroups.push(branchRecord);
+    if (shared) r10Work.sharedBranches += 1;
+    // R9 (formula reform, runway; user-approved "可近似"): a unit's resource runway after the candidate is its own next
+    // actions with what the candidate left it — resources paid, supplied or drained, its own states — on the decision
+    // world, everyone else as they were. The channel prices what spending or supplying resources does to those actions;
+    // what the candidate does to the others (a target's lower HP capping the next hit, a kill) is not a resource effect
+    // and used to show up here as a resource loss. Equal after-states (one skill at different
+    // targets) then share one runway build. A dated natural clock carries the candidate's whole result and keeps the
+    // actual after-world. searchBounds.actualRunwayWorld (development) restores the actual after-world everywhere.
+    // The runway unit keeps only the candidate's resource-bearing states (r9v2LinearRunwayUnit);
+    // searchBounds.runwayAfterStates (development) restores all of them.
+    const runwayPair = (unitBefore, unitAfter, clock, own = false) => {
+      if (clock || !unitAfter || searchBounds?.actualRunwayWorld === true) return { world: after, unit: unitAfter };
+      const unit = searchBounds?.runwayAfterStates === true ? unitAfter
+        : r9v2LinearRunwayUnit(unitBefore, unitAfter, own ? searchBounds?.runwaySelfDebuffs !== true : searchBounds?.runwayOtherDebuffs !== true);
+      const world = replaceWorldUnit(before, preview.unitId(unit), unit);
+      runwayWorldOrigins.set(world, { origin: before, unitId: preview.unitId(unit) });
+      return { world, unit };
+    };
     const declaration = candidate.declaration || {};
     const effects = Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组 : [];
     const rootSustainProfile = r9v2LinearActionSustainProfile(before, after, declaration, result);
@@ -153041,6 +156378,19 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       (result.contributions || []).some(entry => entry.evidence?.persistentTransfer || entry.evidence?.persistentStateOperation ||
         Object.values(entry.evidence?.stateEntries || {}).some(state => state?.延迟效果 === true));
     const followupWindows = hasJointFlows ? 3 : r9v2LinearFollowupWindows(effects, request, before);
+    // R10 step 3: a pair of runway capacities on the decision table (r10RunwayCapacity), one law for both sides; a pair the
+    // table cannot carry (r10RunwayEligible) keeps the projected solver. searchBounds.legacyRunway (development) restores
+    // the projected solver everywhere.
+    const runwayTable = r10DecisionTable(request);
+    const runwayLaw = (units, clock) => {
+      const onTable = searchBounds?.legacyRunway !== true && r10RunwayEligible(request, [before, after], units, clock,
+        hasJointFlows || !!rootSustainProfile.stateKeys?.length);
+      if (!onTable) r10Work.legacyRunways += 1;
+      return onTable;
+    };
+    const sequenceCapacity = (onTable, world, unit, side, windows = Infinity, clock = null) => onTable
+      ? r10RunwayCapacity(runwayTable, world, unit, side, actionCapacityCache, windows, clock)
+      : r9v2LinearResourceSequenceCapacity(world, unit, side, actionCapacityCache, resourceSequenceCapacityCache, request, windows, clock);
     // A state-only or shield-only release also spends its current action.
     // Its immediate benefit has a separate owner; a zero or suppressed future
     // resource receipt cannot turn that known current opportunity into a gift.
@@ -153057,11 +156407,45 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (hasJointFlows || Object.keys(inheritedSustains || {}).length) {
       projectPassiveWorld = r9v2JointFlowProjector(before, actorId, { ...rootSustainProfile, currentOpportunityPending: jointRootPending }, 0, inheritedSustains);
     }
+    // R12 (主线, delta-driven valuation): the decision world's passive frames are the same for every candidate — a frame
+    // of the projector's own baseline reads the source's current opportunity, the pending actors and the inherited
+    // sustains, never the candidate's sustain profile (bound on the candidate's worlds only) — so one projector per
+    // decision projects them, and every unit's capacity on them is valued once instead of once per candidate.
+    // searchBounds.capacityPerWorld (development) projects them per candidate again.
+    const priorProject = projectPassiveWorld.pairedOutcomes && searchBounds?.capacityPerWorld !== true && !rootSustainProfile.observePeriodicHp
+      ? memoBefore(`cache:passive-prior-projector:${JSON.stringify([jointRootPending, rootSustainProfile.pendingNaturalActorIds || null])}`, () =>
+          r9v2JointFlowProjector(before, actorId, { costs: {}, stateKeys: [], currentOpportunityPending: jointRootPending,
+            ...(rootSustainProfile.pendingNaturalActorIds ? { pendingNaturalActorIds: rootSustainProfile.pendingNaturalActorIds } : {}) }, 0, inheritedSustains))
+      : null;
+    if (priorProject) projectPassiveWorld.internFrom(priorProject, before);
     const passiveWorldPairs = (unit, next, offset, profile = null) => {
-      if (projectPassiveWorld.pairedOutcomes) return projectPassiveWorld.pairedOutcomes(before, after, offset, [], result.contributions || []);
+      if (projectPassiveWorld.pairedOutcomes) return projectPassiveWorld.pairedOutcomes(before, after, offset, [], result.contributions || [], { priorProject });
       const priorWorld = memoBefore(`passive-before:${JSON.stringify([preview.unitId(unit), offset, true, profile?.currentOpportunityPending])}`, () =>
         projectPassiveWorld(before, unit, offset, unit, [], { costs: {}, stateKeys: [], currentOpportunityPending: profile?.currentOpportunityPending }));
-      return [{ probability: 1, priorWorld, nextWorld: projectPassiveWorld(after, next, offset, unit, result.contributions, profile) }];
+      return [{ probability: 1, priorWorld, nextWorld: passiveReuse(unit, next, priorWorld, profile) ||
+        projectPassiveWorld(after, next, offset, unit, result.contributions, profile) }];
+    };
+    // R12 (主线, delta-driven valuation): an ally the candidate leaves alone — the same unit, nothing landing on it, the
+    // same round and tick, no sustain of its own (whose upkeep reads other units) — projects as it does on the decision
+    // world, since r9v2LinearPassiveCapacityWorld reads nothing else: its projected unit is reused on the candidate's
+    // world, which is derived from the decision world's projection (markCapacityDeltaSnapshot), so its capacity there
+    // values again only what reads a unit the candidate changed. searchBounds.capacityPerWorld (development) projects
+    // every world apart again.
+    const passiveReuse = (unit, next, priorWorld, profile) => {
+      const id = preview.unitId(unit);
+      if (searchBounds?.capacityPerWorld === true || projectPassiveWorld !== r9v2LinearPassiveCapacityWorld || next !== unit ||
+        after.回合 !== before.回合 || (after.当前世界tick ?? after.当前tick) !== (before.当前世界tick ?? before.当前tick) ||
+        (profile && (Object.keys(profile.costs || {}).length || profile.stateKeys?.length ||
+          Object.keys(profile).some(key => !['costs', 'stateKeys', 'currentOpportunityPending'].includes(key)))) ||
+        Object.values(unit.持续效果 || {}).some(effect => ['condition', 'domain', 'life_fire', 'c2_food_maintain'].includes(effect?.effect_type) &&
+          !effect.维持释放效果列表?.length) ||
+        (result.contributions || []).some(entry => entry.targetId === id)) return null;
+      const projected = findUnitInWorld(priorWorld, id);
+      if (!projected) return null;
+      if (projected === unit) return after;
+      const parent = Object.getOwnPropertyDescriptor(after, '__decisionCapacityParent')?.value;
+      const nextWorld = replaceWorldUnit(after, id, projected);
+      return parent === before ? markCapacityDeltaSnapshot(nextWorld, priorWorld, after.__decisionCapacityChangedUnitIds || []) : nextWorld;
     };
     const actorNaturalWindows = availableNaturalOpportunityCount(before, actorBefore || {}, {
       currentOpportunityConsumedFor: consumedNaturalActors(request, declaration, actorId),
@@ -153074,13 +156458,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         Math.min(followupWindows, actorNaturalWindows) + (actionGrantedForActor ? 1 : 0),
       ),
     );
-    const timedActionCapacity = setupAction && actorBefore && actorAfter
+    const timedActionCapacity = shared ? shared.timedActionCapacity : setupAction && actorBefore && actorAfter
       ? r9v2LinearSettlementSetupCapacity(request, candidate, result, actorBefore, actorAfter, hostileSide, actionCapacityCache) : null;
+    // How far the own-setup valuation gets (a true body counted apart): only a COMPLETE pair values the later rounds.
+    if (setupAction && actorBefore && actorAfter) {
+      const key = `ownSetupCapacity|${/武魂真身/.test(String(declaration?.skill?.魂技名 || '')) ? '真身' : '其他'}|${timedActionCapacity ? `${timedActionCapacity.status || '?'}|${timedActionCapacity.reason || '-'}` : 'NOT_ENTERED'}`;
+      decisionMetrics[key] = (decisionMetrics[key] || 0) + 1;
+    }
     // A complete pair already owns the dated own-action portfolio and debit;
     // avoid computing legacy estimates that would be discarded below. Keep
     // every original fallback when either calendar or exact search is open.
     const settlementCapacityComplete = timedActionCapacity?.status === 'COMPLETE';
-    const summonActionPoolGain = r9v2LinearSummonFollowupCapacity(request, candidate, result, jointRootPending);
+    const summonActionPoolGain = shared && branchMatch & 2 ? shared.summonActionPoolGain : r9v2LinearSummonFollowupCapacity(request, candidate, result, jointRootPending);
     const reactiveRole = ['REACTION', 'COUNTER'].includes(role);
     const incomingSettlementPending = role === 'REACTION';
     let skillPoolCannotIncrease = false;
@@ -153108,9 +156497,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     let poolScale;
     if (needsPool) {
       beforePool = skillPoolFor(actorBefore || {});
-      afterPool = skillPoolFor(actorAfter || {});
+      afterPool = shared ? shared.afterPool : skillPoolFor(actorAfter || {});
       poolScale = Math.max(1, beforePool.value, afterPool.value);
     }
+    if (branchRecord) Object.assign(branchRecord.outputs, { timedActionCapacity, summonActionPoolGain, afterPool });
     markCausalStage('setupAndPoolMs');
     let creationSelfPoolGain = 0;
     const directPoolValueGain = candidate?.creation || skillPoolCannotIncrease
@@ -153127,7 +156517,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     let beforeMechanical = 0;
     let afterMechanical = 0;
     let mechanicalScale = 1;
-    if (!candidate?.creation && actorFollowupWindows > 0 && !settlementCapacityComplete) {
+    if (!shared && !candidate?.creation && actorFollowupWindows > 0 && !settlementCapacityComplete) {
       beforeMechanical = memoBefore('actor:mechanical-coverage', () =>
         r9v2LinearMechanicalCoverage(before, actorId, hostileSide, sideUnitsByWorld));
       afterMechanical = r9v2LinearMechanicalCoverage(after, actorId, hostileSide, sideUnitsByWorld);
@@ -153137,7 +156527,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     let selfCapacityGain = 0;
     let periodicResourceCapacity;
     let periodicResourceSequencePair;
-    if (!candidate?.creation && (actorFollowupWindows > 0 || consumesSetupOpportunity && !actionGrantedForActor) && !settlementCapacityComplete) {
+    if (!shared && !candidate?.creation && (actorFollowupWindows > 0 || consumesSetupOpportunity && !actionGrantedForActor) && !settlementCapacityComplete) {
       const beforeSelfCapacity = memoBefore('actor:best-capacity', () =>
         r9v2LinearBestActionCapacity(before, actorBefore || {}, hostileSide, actionCapacityCache));
       const afterSelfCapacity = r9v2LinearBestActionCapacity(after, actorAfter || {}, hostileSide, actionCapacityCache);
@@ -153150,15 +156540,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         actionCapacityCache,
         true,
       );
-      const followupCapacityGain = (prior, next) => {
-        // A pure setup occupies the current active opportunity. Its future
-        // gains and losses must repay the skipped action in signed capacity;
-        // no future window does not make that known current debit disappear.
-        // A COMPLETE paired portfolio above already owns it; an explicit
-        // extra action or a non-consuming counter does not displace a slot.
-        const displacedCapacity = consumesSetupOpportunity && !actionGrantedForActor ? prior : 0;
-        return ((next - prior) * actorFollowupWindows - displacedCapacity) / Math.max(1, prior, next);
-      };
+      // A setup is valued by what it changes later. It used to be charged the action it displaces from the current
+      // slot as well, but that action is itself a candidate scored on its own immediate value, so the charge counted
+      // it twice — and PASS, which displaces it too, was never charged. Every non-damage skill scored below PASS
+      // (2026-11-08 tier-2 M: −6.4…−7.3 from this factor alone); A/B without it raised skill use and its outcomes.
+      const followupCapacityGain = (prior, next) => ((next - prior) * actorFollowupWindows) / Math.max(1, prior, next);
       const overallCapacityGain = followupCapacityGain(beforeSelfCapacity, afterSelfCapacity);
       const hostileCapacityGain = followupCapacityGain(beforeHostileCapacity, afterHostileCapacity);
       selfCapacityGain = Math.max(0, overallCapacityGain, hostileCapacityGain) + Math.min(0, overallCapacityGain, hostileCapacityGain);
@@ -153205,10 +156591,6 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             }
           }
         }
-        if (consumesSetupOpportunity && !actionGrantedForActor) {
-          overallGain -= beforeSelfCapacity / Math.max(1, beforeSelfCapacity, afterSelfCapacity);
-          hostileGain -= beforeHostileCapacity / Math.max(1, beforeHostileCapacity, afterHostileCapacity);
-        }
         selfCapacityGain = Math.max(overallGain, hostileGain) + Math.min(overallLoss, hostileLoss);
       }
       const sourcePeriodicResource = (result.contributions || []).some(entry => {
@@ -153231,17 +156613,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           const priorClock = r9v2LinearResourceNaturalClock(request, candidate, before, actorBefore, windows, null, actionCapacityCache);
           const nextClock = r9v2LinearResourceNaturalClock(request, candidate, before, actorBefore, windows, result, actionCapacityCache);
           if (priorClock && nextClock) {
-            const prior = r9v2LinearResourceSequenceCapacity(before, actorBefore, hostileSide, actionCapacityCache,
-              resourceSequenceCapacityCache, request, windows, priorClock);
-            const next = r9v2LinearResourceSequenceCapacity(after, actorAfter, hostileSide, actionCapacityCache,
-              resourceSequenceCapacityCache, request, windows, nextClock);
+            const onTable = runwayLaw([actorBefore, actorAfter], nextClock);
+            const prior = sequenceCapacity(onTable, before, actorBefore, hostileSide, windows, priorClock);
+            const next = sequenceCapacity(onTable, after, actorAfter, hostileSide, windows, nextClock);
             const displaced = (role === 'ACTIVE' || declaration.counterConsumesNaturalOpportunity === true) && !actionGrantedForActor ? beforeSelfCapacity : 0;
             if ([prior.sequence, next.sequence, prior.reserve, next.reserve, prior.finitePaidCapacity, next.finitePaidCapacity, displaced].every(Number.isFinite)) {
               // A full repeated route already contains its first paid action.
               // Compare one capacity per world; do not charge lost early and
               // late views, or credit gross gain and drain, independently.
               const scale = Math.max(1, prior.finitePaidCapacity, next.finitePaidCapacity, displaced);
-              const net = next.finitePaidCapacity - prior.finitePaidCapacity - displaced;
+              // The displaced current action is a candidate of its own (see followupCapacityGain).
+              const net = next.finitePaidCapacity - prior.finitePaidCapacity;
               const gain = Math.max(0, net) / scale;
               const loss = Math.max(0, -net) / scale;
               selfCapacityGain = gain - loss;
@@ -153257,6 +156639,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         else if (Number.isFinite(windows) && windows > 12) periodicResourceCapacity.reason = 'MODEL_WINDOW_LIMIT';
       }
     }
+    if (shared) ({ beforeMechanical, afterMechanical, mechanicalScale, selfCapacityGain, periodicResourceCapacity, periodicResourceSequencePair } = shared.self);
+    else if (branchRecord) branchRecord.outputs.self = { beforeMechanical, afterMechanical, mechanicalScale, selfCapacityGain, periodicResourceCapacity, periodicResourceSequencePair };
     markCausalStage('selfFollowupMs');
     const beforeAllies = memoBefore('side:allies', () =>
       r9v2LinearSideUnits(before, actorSide, sideUnitsByWorld).filter(unit => preview.unitId(unit) !== actorId));
@@ -153274,7 +156658,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     let creationAllyOptionGain = 0;
     let allyResourceRunwayGain = 0;
     const allyTemporalCapacity = [];
-    const fixedAllyCalendar = !!projectPassiveWorld.pairedOutcomes &&
+    const fixedAllyCalendar = !shared && !!projectPassiveWorld.pairedOutcomes &&
       !(request.evaluationContext?.scheduledEvents || []).some(event => event.eventType !== 'FUTURE_NATURAL_ACTION') &&
       [before, after].every(world => {
         if (world.__规则改写运行态?.length || preview.projectedResourceWorldState(world).some(([, row]) =>
@@ -153323,7 +156707,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       });
       return rows ? { ...pool, rows, value: Math.max(0, value) } : pool;
     };
-    if (!candidate?.creation) {
+    if (!shared && !candidate?.creation) {
       const afterAllies = new Map(r9v2LinearSideUnits(after, actorSide, sideUnitsByWorld).map(unit => [preview.unitId(unit), unit]));
       const hostileRosterUnchanged = enemiesBefore.every(unit =>
         enemiesAfter.get(preview.unitId(unit)) === unit);
@@ -153459,26 +156843,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 r8UnitHasFutureOpportunity(request, unitId))) {
               const resourceWindowCount = resourceResponsePending
                 ? Infinity : r9v2LinearResourceWindowCount(request, unit, availableWindows);
-              const beforeSequenceCapacity = r9v2LinearResourceSequenceCapacity(
-                before,
-                unit,
-                hostileSide,
-                actionCapacityCache,
-                resourceSequenceCapacityCache,
-                request,
-                resourceWindowCount,
-                r9v2LinearResourceNaturalClock(request, candidate, before, unit, resourceWindowCount, null, actionCapacityCache),
-              );
-              const afterSequenceCapacity = r9v2LinearResourceSequenceCapacity(
-                after,
-                next,
-                hostileSide,
-                actionCapacityCache,
-                resourceSequenceCapacityCache,
-                request,
-                resourceWindowCount,
-                r9v2LinearResourceNaturalClock(request, candidate, before, unit, resourceWindowCount, result, actionCapacityCache),
-              );
+              const afterRunwayClock = r9v2LinearResourceNaturalClock(request, candidate, before, unit, resourceWindowCount, result, actionCapacityCache);
+              const allyRunway = runwayPair(unit, next, afterRunwayClock);
+              const onTable = runwayLaw([unit, allyRunway.unit], afterRunwayClock);
+              const beforeSequenceCapacity = sequenceCapacity(onTable, before, unit, hostileSide, resourceWindowCount,
+                r9v2LinearResourceNaturalClock(request, candidate, before, unit, resourceWindowCount, null, actionCapacityCache));
+              const afterSequenceCapacity = sequenceCapacity(onTable, allyRunway.world, allyRunway.unit, hostileSide, resourceWindowCount,
+                afterRunwayClock);
               const directSequenceGain = Math.max(0, afterSequenceCapacity.sequence - beforeSequenceCapacity.sequence) /
                 Math.max(1, beforeSequenceCapacity.sequence, afterSequenceCapacity.sequence);
               const reserveTailGain = Math.max(0, afterSequenceCapacity.reserve - beforeSequenceCapacity.reserve) /
@@ -153495,6 +156866,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         }
       });
     }
+    if (shared) {
+      ({ allyOptionGain, allyResourceRunwayGain } = shared.ally);
+      allyTemporalCapacity.push(...shared.ally.temporal);
+    } else if (branchRecord) branchRecord.outputs.ally = { allyOptionGain, allyResourceRunwayGain, temporal: allyTemporalCapacity.slice() };
     markCausalStage('allyOptionMs');
     const creationProjection = r9v2LinearCreationFutureProjection({
       request,
@@ -153557,6 +156932,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const deferredRisks = (result.contributions || []).filter(entry => entry.targetId === preview.unitId(unit) &&
         Number(entry.evidence?.deferredStartRoundOffset || 0) > 0 && entry.evidence?.stateEntry);
       if (next === unit && actorAfter === actorBefore && !deferredRisks.length && !hasJointFlows) return;
+      // What one of this enemy's actions is worth to it: its routine attack's expected damage on the actor, as a share of
+      // the actor's HP maximum (the basic attack scaled by routine_attack_ratio). Denying a share of its capability
+      // denies that share of this damage, the same quantity the actor's own damage counts in OBJECTIVE_PROGRESS — so
+      // keeping an enemy from acting for a round is worth about what that enemy's round would have taken (W6). Without
+      // it a full-round stun was capped at 1.48 points against about 5 for one basic attack.
+      const deniedActionValue = actorBefore
+        ? cachedBaseActionValue(unit, actorBefore, 'BASIC_ATTACK') / 100 * Math.max(1, Number(unit?.routine_attack_ratio) || 1)
+        : 0;
       const beforeCapacity = preview.readHp(unit) + preview.readShield(unit);
       const afterCapacity = next ? preview.readHp(next) + preview.readShield(next) : 0;
       const capacityLoss = Math.max(0, beforeCapacity - afterCapacity) / Math.max(1, preview.readHpMax(unit));
@@ -153601,7 +156984,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             }
             if (offset === firstOffset) suppression = Math.max(suppression,
               Number(observedHostileMechanismDenialByUnit.get(unitId) || 0));
-            deferredEnemyDenial += probability * (suppression + benefit);
+            deferredEnemyDenial += deniedActionValue * probability * (suppression + benefit);
           }
         }
         return;
@@ -153633,7 +157016,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               findUnitInWorld(nextWorld, preview.unitId(unit)), knownResponses);
             suppression = Math.max(suppression, observed.ratioDenial);
           }
-          deferredEnemyDenial += suppression + benefit;
+          deferredEnemyDenial += deniedActionValue * (suppression + benefit);
         }
       }
       const enemyUnitChanged = next !== unit;
@@ -153653,6 +157036,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const nextThreat = next && actorAfter
         ? cachedBaseActionValue(next, actorAfter, 'BASIC_ATTACK') / 100
         : 0;
+      // W16 (2026-11-09): the threat above is the enemy's basic attack; a debuff that weakens its skills (soul power maximum
+      // down: probe 61-level 控制系 best action 17.7 → 15.1, basic attack unchanged) left no trace. When the enemy's state
+      // set changes, its best action against the actor's side before and after counts as well, in the same max below —
+      // a control that stops it acting is already counted there in full.
+      let capacityThreatDenial = 0;
+      if (next && next !== unit && preview.isBattleCapable(unit) &&
+          Object.keys(unit.状态效果 || {}).join('|') !== Object.keys(next.状态效果 || {}).join('|')) {
+        const priorCapacity = r9v2LinearBestActionCapacity(before, unit, actorSide, actionCapacityCache, true);
+        const nextCapacity = preview.isBattleCapable(next) ? r9v2LinearBestActionCapacity(after, next, actorSide, actionCapacityCache, true) : 0;
+        capacityThreatDenial = priorCapacity > 0 ? Math.max(0, priorCapacity - nextCapacity) / priorCapacity : 0;
+      }
       let orderDenial = 0;
       if (enemyUnitChanged) {
         const priorOrder = cachedUnitMetric(unitMetrics.actionOrder, unit, () =>
@@ -153677,22 +157071,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         observedHostileMechanismDenialByUnit.get(preview.unitId(unit)) || 0,
       );
       if (hostileResourceReduced) {
-        const beforeResourceCapacity = r9v2LinearResourceSequenceCapacity(
-          before,
-          unit,
-          actorSide,
-          actionCapacityCache,
-          resourceSequenceCapacityCache,
-          request,
-        );
-        const afterResourceCapacity = r9v2LinearResourceSequenceCapacity(
-          after,
-          next,
-          actorSide,
-          actionCapacityCache,
-          resourceSequenceCapacityCache,
-          request,
-        );
+        const hostileRunway = runwayPair(unit, next, null);
+        const onTable = runwayLaw([unit, hostileRunway.unit], null);
+        const beforeResourceCapacity = sequenceCapacity(onTable, before, unit, actorSide);
+        const afterResourceCapacity = sequenceCapacity(onTable, hostileRunway.world, hostileRunway.unit, actorSide);
         const sequenceDenial = Math.max(
           0,
           Number(beforeResourceCapacity.sequence || 0) - Number(afterResourceCapacity.sequence || 0),
@@ -153736,34 +157118,81 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const nextControl = cachedUnitMetric(unitMetrics.controlSuppression, next || unit, () => r9v2LinearControlSuppression(next || {}));
         controlDenial = Math.max(0, nextControl - priorControl);
       }
+      // W7: 混乱/目标错乱/精神紊乱 send a share of the enemy's single-target actions to a random battle-capable unit — its own
+      // side's (itself included) as often as that side is of the field, and those actions are lost; 禁疗 cuts the healing
+      // that is part of its actions; 嘲讽 pulls its attack off the actor's teammates onto the taunter, counted at half
+      // because the taunter takes it, and worth nothing in a duel.
+      let stateDenial = 0;
+      if (enemyUnitChanged && next) {
+        const capable = side => r9v2LinearSideUnits(after, side).filter(entry => preview.isBattleCapable(entry)).length;
+        const ownSide = capable(hostileSide), allies = capable(actorSide), field = Math.max(1, ownSide + allies);
+        const misdirection = Math.max(0, r9v2LinearStateEffectMax(next, ['random_target_rate']) - r9v2LinearStateEffectMax(unit, ['random_target_rate']));
+        const healCut = Math.max(0, r9v2LinearStateEffectMax(next, ['heal_reduction', 'heal_block_ratio']) -
+          r9v2LinearStateEffectMax(unit, ['heal_reduction', 'heal_block_ratio']));
+        const system = String(next.系别 || next.type || '').trim();
+        const taunt = allies > 1 && r9v2LinearTaunted(next) && !r9v2LinearTaunted(unit) ? (allies - 1) / allies * 0.5 : 0;
+        stateDenial = Math.max(misdirection * ownSide / field, healCut * (ENEMY_HEAL_ACTION_SHARE[system] ?? 0.05), taunt);
+      }
       if (hostileResourceReduced || observedMechanismRouteDenial > 0) {
-        persistentEnemyDenial += Math.max(
+        persistentEnemyDenial += deniedActionValue * Math.max(
           poolDenial,
           resourceRouteDenial,
           observedResourceRouteDenial,
           observedMechanismRouteDenial,
         );
       }
-      enemyDenial += Math.max(
+      enemyDenial += deniedActionValue * Math.max(
         hostileResourceReduced ? 0 : poolDenial,
         Math.max(0, priorThreat - nextThreat) / Math.max(1e-9, priorThreat),
         orderDenial,
         reactionDenial,
         controlDenial,
+        stateDenial,
+        capacityThreatDenial,
       );
     });
-    enemyDenial = clamp(
-      (enemyDenial * followupWindows + persistentEnemyDenial + deferredEnemyDenial) /
-        Math.max(1, enemiesBefore.length),
-      -1,
-      1,
-    );
-    hostilePressure = clamp(hostilePressure / Math.max(1, enemiesBefore.length), 0, 1);
+    enemyDenial = clamp(enemyDenial * followupWindows + persistentEnemyDenial + deferredEnemyDenial, -1, 1);
+    // W12 (2026-11-09): what a buff on the actor's side brings is the extra damage its recipients deal while it lasts. No
+    // owner priced that: the own-setup valuation (r9v2LinearSettlementSetupCapacity) takes only panel and cost/windup
+    // modifiers and never completed in six probe battles (its exits: not entered, mixed root, projection budget, open
+    // clock), mechanical coverage counts enabled branches, and the skill pool cannot grow from a panel change — so a true
+    // body scored 3.9 against 30 for a damage skill. Each recipient's best action value after the release over before,
+    // times the actions it still has while the buff lasts (the actor's own follow-up windows, a teammate's buff windows,
+    // at most 3), discounted to 0.75 for the battle ending or the recipient falling first, counts here as the damage
+    // pressure an attack would bring now — one scale for attacking now and amplifying later.
+    // W15 (2026-11-09): a debuff on an enemy (defense down, damage taken up) leaves the teammates' own state as it was, yet
+    // their best action against that enemy rises (probe: 61-level 强攻 27.3 → 30.8 / 32.8 against -25% defense / +20% damage
+    // taken). Skipping every unchanged unit left this unpriced; an unchanged teammate now counts in the after world. The
+    // actor itself is skipped when unchanged: SELF_FOLLOWUP_MECHANICAL_GAIN already compares its capacity in both worlds.
+    if (!candidate?.creation && !effects.some(effect => String(effect?.原型 || '').trim() === '伤害结算')) {
+      for (const unit of r9v2LinearSideUnits(before, actorSide)) {
+        const id = preview.unitId(unit), next = findUnitInWorld(after, id);
+        if (!next || (next === unit && id === actorId) || !preview.isBattleCapable(next)) continue;
+        const prior = r9v2LinearBestActionCapacity(before, unit, hostileSide, actionCapacityCache, true);
+        const boosted = r9v2LinearBestActionCapacity(after, next, hostileSide, actionCapacityCache, true);
+        const windows = id === actorId ? actorFollowupWindows : Math.min(3, followupWindows);
+        if (boosted > prior && windows > 0) {
+          hostilePressure += (boosted - prior) / 100 * windows * 0.75;
+          const key = /武魂真身/.test(String(declaration?.skill?.魂技名 || '')) ? 'w12AmplificationTrueBody' : 'w12AmplificationOther';
+          decisionMetrics[key] = (decisionMetrics[key] || 0) + 1;
+        }
+      }
+    }
+    // W17 (2026-11-10): the damage pressure is summed over enemies. Averaged, damage spread over two enemies (an area
+    // attack, a team's damage) counted at half — a 89-level 控制系's area skill dealing 3–5× its basic attack lost to it.
+    // Mirror A/B (identical builds both sides, sides swapped): summing won 2v2 in two disjoint sets, 25/37 (with the
+    // coefficient raised too) and 47/78 (coefficient unchanged); raising the coefficient alone changed nothing in 1v1.
+    hostilePressure = clamp(hostilePressure, 0, 1);
     const objectives = request?.objectiveContract || request?.battleIntent?.objectives || before?.胜负条件 || {};
     const beforeObjective = memoBefore('battle:objective', () =>
       preview.evaluateBattleObjectivesCompact(before, objectives));
     const afterObjective = preview.evaluateBattleObjectivesCompact(after, objectives);
-    const terminalProgress = r9v2LinearTerminalValue(afterObjective, actorSide) - r9v2LinearTerminalValue(beforeObjective, actorSide);
+    // Besides ending the battle, an action moves each side toward or away from its declared conditions (enemy HP or
+    // resource toward a threshold, the protected ally's HP, the own team's standing); that continuous change counts
+    // toward the same objective feature, so non-default objectives steer the choice.
+    const objectiveDistance = memoBefore('battle:objective-progress', () => preview.battleObjectiveProgress(before, objectives, actorSide));
+    const terminalProgress = r9v2LinearTerminalValue(afterObjective, actorSide) - r9v2LinearTerminalValue(beforeObjective, actorSide) +
+      (preview.battleObjectiveProgress(after, objectives, actorSide) - objectiveDistance);
     const heldSetup = actorBefore?.蓄力技能;
     const readySetupTime = request.actionOpportunity?.forcedChargeRelease === true && role === 'ACTIVE' &&
       heldSetup && skillId(heldSetup.skill || heldSetup) === skillId(declaration.skill || {}) &&
@@ -153922,36 +157351,137 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const datedOptions = (world, contributions = [], profile = null, force = false) => {
         const sourceEligibility = source => !hasActionCancellation(source);
         if (!dated && !periodicHp && !sourceControl && !force && !hasJointFlows) return { sourceEligibility };
-        const project = r9v2JointFlowProjector(before, actorId, { ...(profile ||
-          { costs: {}, stateKeys: [], currentOpportunityPending: false }), pendingNaturalActorIds: [...pending] }, 0, inheritedSustains);
-        return { sourceEligibility, ...(!dated ? { pressureObservationWorld: () => world } : {}), advanceWorld: (previous, offset) => ({
-          ...project(world, null, offset, null, contributions, null, previous), 回合: Number(world.回合 || 0) + offset,
-        }), advanceWorldOutcomes: (previous, offset) => project.outcomes(world, offset, contributions, previous).map(row => ({
-          probability: row.probability, world: { ...row.world, 回合: Number(world.回合 || 0) + offset },
-        })) };
+        const exactOptions = () => {
+          const project = r9v2JointFlowProjector(before, actorId, { ...(profile ||
+            { costs: {}, stateKeys: [], currentOpportunityPending: false }), pendingNaturalActorIds: [...pending] }, 0, inheritedSustains);
+          return { sourceEligibility, ...(!dated ? { pressureObservationWorld: () => world } : {}), project, advanceWorld: (previous, offset) => ({
+            ...project(world, null, offset, null, contributions, null, previous), 回合: Number(world.回合 || 0) + offset,
+          }), advanceWorldOutcomes: (previous, offset) => project.outcomes(world, offset, contributions, previous).map(row => ({
+            probability: row.probability, world: { ...row.world, 回合: Number(world.回合 || 0) + offset },
+          })) };
+        };
+        // R6 (protection): when all the clock would change is states expiring — buffs, debuffs, modifiers on the target or
+        // its attackers (58% of these curves) — the exact clock settled the whole world again on every damage branch
+        // (~15 a window), though branches differ only in the protected unit. Here the curve settles the undamaged world
+        // once per window (sharedFrame) and each branch's own target alone (advanceTarget), both with this same clock.
+        // Ticks, controls ending, sustains, joint flows, scheduled effects and fractional state risks keep the exact
+        // per-branch clock; searchBounds.projectedProtection (development) restores it everywhere to compare against.
+        const sustained = [profile?.stateKeys, profile?.stateTargets, profile?.additionalSustains].some(list => Array.isArray(list) && list.length);
+        const continued = Object.values(inheritedSustains || {}).some(list => Array.isArray(list) && list.length);
+        if (dated && !periodicHp && !sourceControl && !force && !hasJointFlows && !sustained && !continued && searchBounds?.projectedProtection !== true &&
+            !contributions.some(entry => entry.outcomeKind === 'STATE_SCHEDULED' || entry.evidence?.persistentRiskBinding) &&
+            !r9v2HasFractionalStateRisks(world)) {
+          const options = exactOptions(), project = options.project, shared = new Map();
+          return { ...options, sharedFrame: offset => {
+            if (!shared.has(offset)) shared.set(offset, { ...project(world, null, offset, null, contributions), 回合: Number(world.回合 || 0) + offset });
+            return shared.get(offset);
+          }, advanceTarget: (previous, unitId, offset) => project(world, null, offset, null, contributions, null, previous, inheritedSustains, null, unitId) };
+        }
+        return exactOptions();
       };
       return { waves, dated, periodicHp, sourceControl, datedOptions };
     };
+    // R10 (decision table, step 2: protection): the curves of this channel — survival, mitigation, rule and shield
+    // reserves, movement — are r10IncomingRisk over table cells (each window's views of the recipient and its attackers,
+    // their routine packets, the recipient's round-end HP change) instead of projected frames and copied units. A unit
+    // that can revive and new guard summons keep the projected curves (work.legacyCurves counts them).
+    // searchBounds.legacyProtection (development) restores the projected curves everywhere.
+    const tableProtection = searchBounds?.legacyProtection !== true;
+    const decisionTable = r10DecisionTable(request);
+    const protectionWindowCount = Math.min(3, battleHorizonProfile(request, before).remainingRounds + 1);
+    const protectionPending = tableProtection ? r9v2LinearCurrentNaturalIds(request, before) : null;
+    const onTable = (...units) => tableProtection && units.every(unit => unit && !preview.hasDamageRevival(unit, true));
+    // The defender read from `target`; reserves.shields / reserves.charges lend another unit's shield pools or rule
+    // charges (a reserve counterfactual), reserves.hp / reserves.stamina set those numbers.
+    const tableDefender = (world, target, reserves = {}) => {
+      const baseline = findUnitInWorld(before, preview.unitId(target));
+      const own = r10Defender(world, target, baseline);
+      const lend = holder => !holder || holder === target ? own : r10Defender(world, target, baseline, holder);
+      const shields = lend(reserves.shields), charges = lend(reserves.charges);
+      return { ...own, pools: shields.pools, gatedPools: shields.gatedPools, scalar: shields.scalar, blocks: charges.blocks, saves: charges.saves,
+        ...(reserves.hp !== undefined ? { hp: reserves.hp } : {}), ...(reserves.stamina !== undefined ? { stamina: reserves.stamina } : {}) };
+    };
+    const tableRisk = (world, target, sources, reserves) => r10IncomingRisk(tableDefender(world, target, reserves),
+      r10IncomingWindows(decisionTable, world, target, sources, hostileSide, recentAttackLedgerIndex, protectionWindowCount, protectionPending, before));
+    // Reserve changes on table curves (r9v2LinearOrdinaryRuleProtection / r9v2LinearOrdinaryShieldProtection read the
+    // same way): the actual post-action reserves against the old ones lent back — the rule charges together with the
+    // shields they share HP loss with, or the shields alone — under the new panel and the attackers after the action.
+    // The rule portfolio is null when the rule charges did not change.
+    const tableRulePortfolio = (unit, next) => {
+      const reserves = target => Object.entries(target.状态效果 || {}).filter(([, state]) =>
+        (String(state?.规则 || state?.防御对象 || '').trim() === '免伤' && Number(state.战斗效果?.block_count) > 0) ||
+        Number(state?.战斗效果?.death_save_count) > 0);
+      const prior = reserves(unit), current = reserves(next);
+      if (!prior.length && !current.length || !preview.isBattleCapable(next)) return null;
+      const signature = entries => JSON.stringify(entries.map(([key, state]) => [key, state.战斗效果.block_count,
+        state.战斗效果.death_save_count, state.duration, state.__本回合新附加 === true]));
+      if (signature(prior) === signature(current)) return null;
+      const sources = [...enemiesAfter.values()];
+      return tableRisk(after, next, sources, { shields: unit, charges: unit }).pressure - tableRisk(after, next, sources).pressure;
+    };
+    // A world whose passive boundaries make a simple HP bound uncertain (sustains, delayed or persistent effects, timed
+    // resource changes, risks, HP or resource ticks): the old laws took their settled curves there.
+    const protectionComplexWorld = world => preview.listUnits(world).some(({ unit: holder }) => Object.keys(holder.持续效果 || {}).length ||
+      Object.values(holder.状态效果 || {}).some(state => state.延迟效果 || state.持续原型效果 || state.原型 === '资源变化' || state.副作用列表?.length ||
+        state.dot_damage || state.dot_damage_ratio || state.计算层效果?.dot_damage_ratio ||
+        ['dot_damage', 'dot_damage_ratio', 'hot_heal_ratio', 'resource_tick_resource', 'vit_gain_ratio', 'sp_gain_ratio', 'men_gain_ratio'].some(field => state.战斗效果?.[field])));
+    // The old law's two regimes: given that this unit is attacked (exposure prices being targeted), what its shields absorb
+    // under the routine packets; where incapacity is reachable or a boundary makes the HP bound uncertain, what they absorb
+    // on the settled curve (target shares included).
+    const tableShieldProtection = (unit, next) => {
+      if (!(preview.readShield(unit) > 0 || preview.readShield(next) > 0)) return 0;
+      const sources = [...enemiesAfter.values()];
+      const targeted = r10IncomingWindows(decisionTable, after, next, sources, hostileSide, recentAttackLedgerIndex, protectionWindowCount,
+        protectionPending, before, false, true);
+      const worst = targeted.reduce((sum, row) => sum + row.packets.reduce((total, packet) => total + packet.damage, 0), 0);
+      const minimumHp = preview.readHp(next) - worst;
+      const complex = preview.ruleBlockCount(next) > 0 || preview.deathSaveCount(next) > 0 || preview.hasDamageRevival(next, true) || protectionComplexWorld(after);
+      if (!complex && preview.isBattleCapable(next) && minimumHp > preview.calculateNonlethalHpFloor(after, next) &&
+          !targeted.some(row => row.packets.some(packet => preview.shouldTriggerTraumaUnconscious(packet.damage, minimumHp, preview.readHpMax(next))))) {
+        decisionMetrics.ordinaryShieldSafeBounds += 1;
+        return r10IncomingRisk(tableDefender(after, next), targeted).shieldAbsorption -
+          r10IncomingRisk(tableDefender(after, next, { shields: unit }), targeted).shieldAbsorption;
+      }
+      return tableRisk(after, next, sources).shieldAbsorption - tableRisk(after, next, sources, { shields: unit }).shieldAbsorption;
+    };
     const survivalProtectionByUnit = new Map();
     const survivalLossByUnit = new Map();
-    // Pure stamina availability remains owned by resource/action capacity.
+    // W14 (2026-11-09): stamina exhaustion counts as incapacity here. Since W8 a hit drains stamina in proportion to the HP
+    // it takes and healing does not refund it, so collapse from incoming damage is a way to fall like HP reaching zero.
+    // Excluded (the rule when stamina was spent only by the unit's own actions, owned by resource/action capacity), a heal
+    // was credited with saving a unit whose stamina would give out anyway (1v1-0224-o2: HP healed back every round,
+    // stamina 8987 → 452, collapsed in round 9 at 72% HP). The stamina the actor pays for this action stays owned by
+    // resource/action capacity, as before: its own payment is added back for the projection, so only drain from hits
+    // counts — otherwise a non-damage skill (the only kind this protection prices) would carry a survival cost for the
+    // stamina an attack spends just the same.
     const ordinarySurvival = (unit, next, clock = ordinaryProtectionClock(unit, next)) => {
       const id = preview.unitId(unit);
       if (survivalProtectionByUnit.has(id)) return;
+      if (id === actorId && next && preview.readResource(next, '体力') < preview.readResource(unit, '体力')) {
+        next = { ...next, 属性: next.属性 && typeof next.属性 === 'object' ? { ...next.属性 } : next.属性 };
+        preview.setResourceValue(next, '体力', preview.readResource(unit, '体力'));
+      }
+      let priorCurve, nextCurve;
+      if (onTable(unit, next)) {
+        priorCurve = memoBefore(`table:${id}:routine-incapacity-curve`, () => tableRisk(before, unit, enemiesBefore).incapacityCurve);
+        nextCurve = tableRisk(after, next, [...enemiesAfter.values()]).incapacityCurve;
+      } else {
+      r10Work.legacyCurves += 1;
       const { waves, dated, periodicHp, sourceControl, datedOptions } = clock;
-      const priorCurve = memoBefore(`unit:${id}:routine-incapacity-curve:response:life:${dated ? 'dated' : periodicHp ? 'periodic-hp' : sourceControl ? 'source-control' : 'fixed'}`, () =>
+      priorCurve = memoBefore(`unit:${id}:routine-incapacity-curve:response:life:${dated ? 'dated' : periodicHp ? 'periodic-hp' : sourceControl ? 'source-control' : 'fixed'}`, () =>
         r9v2LinearRoutineIncapacityRisk(before, enemiesBefore, unit, hostileSide, recentAttackLedgerIndex,
-          { sourceWaves: waves(enemiesBefore), returnCurve: true, routineResponse: true, excludeStaminaIncapacity: true, ...datedOptions(before) }));
+          { sourceWaves: waves(enemiesBefore), returnCurve: true, routineResponse: true, ...datedOptions(before) }));
       const projectNextCurve = () => r9v2LinearRoutineIncapacityRisk(after, [...enemiesAfter.values()], next, hostileSide, recentAttackLedgerIndex,
-        { sourceWaves: waves([...enemiesAfter.values()]), returnCurve: true, routineResponse: true, excludeStaminaIncapacity: true,
+        { sourceWaves: waves([...enemiesAfter.values()]), returnCurve: true, routineResponse: true,
           ...datedOptions(after, result.contributions || [], { ...rootSustainProfile, currentOpportunityPending: false }) });
       // Experimental: candidates that leave this unit and every hostile's
       // threat-relevant state alike share one curve; hostile HP is ignored.
-      const nextCurve = searchBounds?.protectionMemo ? memoBefore(`approx:next-curve:${JSON.stringify([id, dated, periodicHp, sourceControl,
+      nextCurve = searchBounds?.protectionMemo ? memoBefore(`approx:next-curve:${JSON.stringify([id, dated, periodicHp, sourceControl,
         coarseCapacitySignature(next), [...enemiesAfter.values()].map(enemy => coarseCapacitySignature(enemy).filter((_, index) => index !== 1 && index !== 2)),
         (result.contributions || []).filter(entry => !['HP_DELTA', 'SHIELD_DELTA'].includes(entry.outcomeKind))
           .map(entry => [entry.outcomeKind, entry.targetId, entry.effectInstanceId ? String(entry.effectInstanceId).replace(/^.*?:effect:/, '') : ''])])}`,
         projectNextCurve) : projectNextCurve();
+      }
       // Both signs compare the whole action, including healing/refunds. A
       // restored asset alone is not the action's net saved-life opportunity.
       survivalProtectionByUnit.set(id, Math.max(0, ...priorCurve.map((risk, index) => risk - nextCurve[index])));
@@ -154004,6 +157534,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           const id = preview.unitId(recipient);
           const nextRecipient = findUnitInWorld(after, id) || recipient;
           const hpGain = Math.max(0, preview.readHp(nextRecipient) - preview.readHp(recipient)) / Math.max(1, preview.readHpMax(recipient));
+          if (onTable(recipient, nextRecipient)) {
+            // R10: the recipient's old and moved views against the old and the moved attackers, on table curves.
+            const prior = memoBefore(`table:${id}:routine-incapacity-profile`, () => tableRisk(before, recipient, enemiesBefore));
+            const moved = tableRisk(after, nextRecipient, [...enemiesAfter.values()]);
+            return sum + (hpGain + Math.max(0, prior.pressure - moved.pressure) + Math.max(0, ...prior.incapacityCurve.map((risk, index) =>
+              risk - moved.incapacityCurve[index]))) * Number(exposureByUnit().get(id) || 0);
+          }
+          r10Work.legacyCurves += 1;
           const offsets = [], frames = [[], []], sourceWaves = [[], []];
           for (let offset = 0; offset <= lastOffset && offsets.length < 3; offset++) {
             const priorWorld = movementProjector(before, null, offset, null);
@@ -154019,7 +157557,6 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             sourceWaves[0].push(sources); sourceWaves[1].push(nextSources);
           }
           if (!offsets.length) return sum + hpGain * Number(exposureByUnit().get(id) || 0);
-          const basic = { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 };
           const pressures = [[], []];
           const costs = declaration.actionKind === 'RELEASE_SKILL' ? preview.readSkillCostStages(declaration.skill, { ...declaration, costActor: actorBefore }).维持 : {};
           const safe = !Object.keys(costs || {}).length && frames.every((windows, index) => {
@@ -154034,6 +157571,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                     ['dot_damage', 'dot_damage_ratio', 'hot_heal_ratio', 'resource_tick_resource', 'vit_gain_ratio', 'sp_gain_ratio', 'men_gain_ratio'].some(field => state.战斗效果?.[field])))) return false;
               let pressure = 0;
               for (const source of sourceWaves[index][window]) {
+                const basic = routineAttackEffect(source);
                 const defense = preview.calculateDefenseDamageMultiplier(target, source, false), dodge = preview.calculateDodgeProbability(target, source, false);
                 const damage = Math.max(0, Math.round(preview.calculateBaseDamage(basic, source, target, null, { resourceDriveEnabled: false }) *
                   (1 - dodge < defense ? 1 : defense)));
@@ -154057,7 +157595,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           // Keep movement's ordinary best-response law, but carry each real
           // damaged holder through the full joint sequence. Empty boundaries
           // still expire states/control budgets before the next live window.
-          const profiles = [before, after].map((world, index) => r9v2LinearRoutineIncapacityRisk(
+          // R9 (exact): the prior curve reads this decision's world, clock and pending order (the projector's own
+          // sustain profile only touches the acting world) and, from the candidate, only which windows are live; candidates
+          // with the same windows share it.
+          const profileOf = (world, index) => r9v2LinearRoutineIncapacityRisk(
             frames[index][0], sourceWaves[index][0], findUnitInWorld(frames[index][0], id), hostileSide, recentAttackLedgerIndex,
             { sourceWaves: sourceWaves[index], returnProfile: true, routineResponse: true, movementProfile: true,
               sourceEligibility: source => !hasActionCancellation(source),
@@ -154078,7 +157619,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                   })));
                 return branches;
               },
-            }));
+            });
+          const profiles = [memoBefore(`cache:movement-prior-profile:${id}:${offsets.join(',')}`, () => profileOf(before, 0)), profileOf(after, 1)];
           const attritionGain = Math.max(0, profiles[0].pressure - profiles[1].pressure);
           const survivalGain = Math.max(0, ...profiles[0].incapacityCurve.map((risk, index) => risk - profiles[1].incapacityCurve[index]));
           return sum + (hpGain + attritionGain + survivalGain) * Number(exposureByUnit().get(id) || 0);
@@ -154117,7 +157659,49 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             // An unchanged current panel can still gain a later window by
             // extending an existing modifier. Reuse the actual passive clock,
             // not the unexecuted parent's duration or a repeated current panel.
-            if (friendlyThreat(unit) > nextThreat || preview.stableHash(unit.状态效果 || {}) !== preview.stableHash(next.状态效果 || {})) {
+            const panelChanged = friendlyThreat(unit) > nextThreat || preview.stableHash(unit.状态效果 || {}) !== preview.stableHash(next.状态效果 || {});
+            if (panelChanged && onTable(unit, next)) {
+              // R10: the same law as the projected path below, on table views. Each window's expected routine damage ratio
+              // on the old panel against the new one (no target share: exposure prices being targeted; propensity as in
+              // r10AttackPacket); when that saves
+              // something and the window could still be lethal or holds reserves, what the new panel saves in pressure
+              // instead — the old panel with the post-action HP (stamina drained as a hit drains it) against the new
+              // panel, both keeping the old shields and charges.
+              const id = preview.unitId(unit), hp = preview.readHp(next), sourcesAfter = [...enemiesAfter.values()];
+              const baselineOf = source => findUnitInWorld(before, preview.unitId(source)) || source;
+              const threatAt = (world, target, sources, window) => {
+                const view = r10WindowView(decisionTable, world, target, window, baselineOf(target));
+                return sources.reduce((sum, source) => {
+                  const attacker = r10WindowView(decisionTable, world, source, window, baselineOf(source));
+                  return sum + (!preview.isBattleCapable(attacker) || hasActionCancellation(attacker) || window === 0 && !protectionPending.has(preview.unitId(source))
+                    ? 0 : r9v2LinearExpectedBasicDamageRatio(searchBounds?.protectionLedgerPropensity === true ? before : {}, attacker, view, hostileSide, recentAttackLedgerIndex));
+                }, 0);
+              };
+              for (let window = 0; window < protectionWindowCount; window++) {
+                const prior = memoBefore(`table:${id}:mitigation-threat:${window}`, () => threatAt(before, unit, enemiesBefore, window));
+                mitigation += Math.max(0, prior - threatAt(after, next, sourcesAfter, window));
+              }
+              const costs = declaration.actionKind === 'RELEASE_SKILL' ? preview.readSkillCostStages(declaration.skill, { ...declaration, costActor: actorBefore }).维持 : {};
+              const reserves = preview.readShield(unit) > 0 || preview.ruleBlockCount(unit) > 0 || preview.deathSaveCount(unit) > 0;
+              const windows = mitigation > 0 ? r10IncomingWindows(decisionTable, after, next, sourcesAfter, hostileSide, recentAttackLedgerIndex,
+                protectionWindowCount, protectionPending, before) : null;
+              const worst = windows ? windows.reduce((sum, row) => sum + row.packets.reduce((total, packet) => total + packet.damage, 0), 0) : 0;
+              const complex = windows && [before, after].some(protectionComplexWorld);
+              const minimumHp = Math.min(hp, preview.readHp(unit)) - worst;
+              const safe = windows && !reserves && !Object.keys(costs || {}).length && !complex &&
+                minimumHp > preview.calculateNonlethalHpFloor(before, next) &&
+                !windows.some(row => row.packets.some(packet => preview.shouldTriggerTraumaUnconscious(packet.damage, minimumHp, preview.readHpMax(next))));
+              if (safe) decisionMetrics.ordinaryMitigationSafeBounds += 1;
+              else if (mitigation > 0) {
+                const staminaMax = preview.readResourceMax(unit, '体力');
+                const priorStamina = staminaMax > 0 ? clamp(preview.readResource(unit, '体力') -
+                  Math.max(0, preview.readHp(unit) - hp) / Math.max(1, preview.readHpMax(unit)) * staminaMax, 0, staminaMax) : preview.readResource(unit, '体力');
+                const prior = memoBefore(`table:${id}:mitigation-prior:${hp}`, () =>
+                  tableRisk(before, unit, enemiesBefore, { hp, stamina: priorStamina }).pressure);
+                mitigation = Math.max(0, prior - tableRisk(after, next, sourcesAfter, { shields: unit, charges: unit }).pressure);
+              }
+            } else if (panelChanged) {
+              r10Work.legacyCurves += 1;
               const pending = r9v2LinearCurrentNaturalIds(request, before);
               const windows = Math.min(3, battleHorizonProfile(request, before).remainingRounds + 1);
               if (!mitigationProjector) {
@@ -154141,7 +157725,6 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 }
               }
               if (mitigation > 0) {
-                const basic = { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 };
                 const costs = declaration.actionKind === 'RELEASE_SKILL' ? preview.readSkillCostStages(declaration.skill, { ...declaration, costActor: actorBefore }).维持 : {};
                 const safe = !(preview.readShield(unit) > 0 || preview.ruleBlockCount(unit) > 0 || preview.deathSaveCount(unit) > 0 || preview.hasDamageRevival(unit, true)) &&
                   !Object.keys(costs || {}).length && pressureFrames.every(frames => {
@@ -154156,7 +157739,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                       for (const enemy of r9v2LinearSideUnits(frame, hostileSide)) {
                         if (hasActionCancellation(enemy) || offset === 0 && !pending.has(preview.unitId(enemy))) continue;
                         const defense = preview.calculateDefenseDamageMultiplier(target, enemy, false), dodge = preview.calculateDodgeProbability(target, enemy, false);
-                        packets.push(Math.max(0, Math.round(preview.calculateBaseDamage(basic, enemy, target, null, { resourceDriveEnabled: false }) *
+                        packets.push(Math.max(0, Math.round(preview.calculateBaseDamage(routineAttackEffect(enemy), enemy, target, null, { resourceDriveEnabled: false }) *
                           (1 - dodge < defense ? 1 : defense))));
                       }
                     }
@@ -154190,7 +157773,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 const scalar = Math.max(0, Number(unit.shield ?? unit.护盾 ?? unit.护盾值 ?? 0));
                 current.shield = scalar; current.护盾 = scalar;
                 if (Object.hasOwn(current, '护盾值')) current.护盾值 = scalar;
-                const pressure = [replaceWorldUnit(before, id, prior), replaceWorldUnit(after, id, current)].map((world, index) => {
+                // R9 (exact): the prior curve reads this decision's world, clock and pending order and, from the candidate,
+                // only the holder's post-action HP; candidates that leave it the same share one curve.
+                const pressureOf = (world, index) => {
                   const sources = [...r9v2LinearSideUnits(world, hostileSide)].sort(preview.compareNaturalActionOrder);
                   const sourceWaves = Array.from({ length: windows }, (_, offset) => offset === 0
                     ? sources.filter(source => pending.has(preview.unitId(source))) : sources);
@@ -154205,7 +157790,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                         index === 0 ? [] : result.contributions || [], previous).map(row => ({ probability: row.probability,
                         world: { ...row.world, 回合: Number(world.回合 || 0) + offset } })),
                     }).pressure;
-                });
+                };
+                const pressure = [memoBefore(`cache:ordinary-mitigation-prior-pressure:${id}:${preview.readHp(next)}`,
+                  () => pressureOf(replaceWorldUnit(before, id, prior), 0)), pressureOf(replaceWorldUnit(after, id, current), 1)];
                 mitigation = Math.max(0, pressure[0] - pressure[1]);
                 }
               }
@@ -154222,12 +157809,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             // actual numeric clock, but keep their own damaged resources and
             // jointly restored old rule reserves. The original pre-action
             // baseline owns freshness in both worlds, not either counterfactual.
+            if (onTable(unit, next)) {
+              ruleProtectionByUnit.set(preview.unitId(unit), tableRulePortfolio(unit, next));
+              shieldProtectionByUnit.set(preview.unitId(unit), tableShieldProtection(unit, next));
+            } else {
+            r10Work.legacyCurves += 1;
             ruleProtectionByUnit.set(preview.unitId(unit), r9v2LinearOrdinaryRuleProtection(
               request, after, unit, next, nextSources, hostileSide, recentAttackLedgerIndex,
               world => datedOptions(world, result.contributions || [], { ...rootSustainProfile, currentOpportunityPending: false }), true));
             shieldProtectionByUnit.set(preview.unitId(unit), r9v2LinearOrdinaryShieldProtection(
               request, before, unit, next, nextSources, hostileSide, recentAttackLedgerIndex, { worldSnapshot: after,
                 pressureOptionsForWorld: (world, force) => datedOptions(world, result.contributions || [], { ...rootSustainProfile, currentOpportunityPending: false }, force) }));
+            }
           }
           const rulePortfolio = ruleProtectionByUnit.get(preview.unitId(unit));
           const usableShield = role === 'ACTIVE' ? (rulePortfolio === null ? Math.max(0, shieldProtectionByUnit.get(preview.unitId(unit))) : 0) : shieldGain;
@@ -154530,26 +158123,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     let resourceContinuationDemand = null;
     const periodicCapacityComplete = periodicResourceCapacity?.status === 'COMPLETE' && periodicResourceCapacity.windows === resourceWindowCount;
     if (!settlementCapacityComplete && resourceRunwayHasContinuation && (directResourceRunwayGain < 0 || periodicCapacityComplete && periodicResourceCapacity.loss > 0)) {
-      const beforeSequenceCapacity = periodicCapacityComplete ? periodicResourceSequencePair.before : r9v2LinearResourceSequenceCapacity(
-        before,
-        actorBefore || {},
-        hostileSide,
-        actionCapacityCache,
-        resourceSequenceCapacityCache,
-        request,
-        resourceWindowCount,
-        r9v2LinearResourceNaturalClock(request, candidate, before, actorBefore || {}, resourceWindowCount, null, actionCapacityCache),
-      );
-      const afterSequenceCapacity = periodicCapacityComplete ? periodicResourceSequencePair.after : r9v2LinearResourceSequenceCapacity(
-        after,
-        actorAfter || {},
-        hostileSide,
-        actionCapacityCache,
-        resourceSequenceCapacityCache,
-        request,
-        resourceWindowCount,
-        r9v2LinearResourceNaturalClock(request, candidate, before, actorBefore || {}, resourceWindowCount, result, actionCapacityCache),
-      );
+      const { sequenceLoss, affordableOptionLoss } = shared?.runwayLoss || (() => {
+      const afterRunwayClock = periodicCapacityComplete ? null
+        : r9v2LinearResourceNaturalClock(request, candidate, before, actorBefore || {}, resourceWindowCount, result, actionCapacityCache);
+      const ownRunway = periodicCapacityComplete ? null : runwayPair(actorBefore, actorAfter, afterRunwayClock, true);
+      const onTable = !periodicCapacityComplete && runwayLaw([actorBefore, ownRunway.unit], afterRunwayClock);
+      const beforeSequenceCapacity = periodicCapacityComplete ? periodicResourceSequencePair.before : sequenceCapacity(onTable,
+        before, actorBefore || {}, hostileSide, resourceWindowCount,
+        r9v2LinearResourceNaturalClock(request, candidate, before, actorBefore || {}, resourceWindowCount, null, actionCapacityCache));
+      const afterSequenceCapacity = periodicCapacityComplete ? periodicResourceSequencePair.after : sequenceCapacity(onTable,
+        ownRunway.world, ownRunway.unit || {}, hostileSide, resourceWindowCount, afterRunwayClock);
       const sequenceLoss = periodicCapacityComplete ? periodicResourceCapacity.loss : Math.max(
         0,
         Number(beforeSequenceCapacity.sequence || 0) -
@@ -154580,6 +158163,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ).map(option => option.mechanicKey));
       const beforeMechanics = new Set(beforeOptions.map(option => option.mechanicKey));
       const affordableOptionLoss = lostMechanics.size / Math.max(1, beforeMechanics.size);
+      return { sequenceLoss, affordableOptionLoss };
+      })();
+      if (branchRecord) branchRecord.outputs.runwayLoss = { sequenceLoss, affordableOptionLoss };
       const hostileCapacityBefore = enemiesBefore.reduce((sum, unit) =>
         sum + preview.readHp(unit) + preview.readShield(unit), 0);
       const hostileCapacityAfter = [...enemiesAfter.values()].reduce((sum, unit) =>
@@ -154607,27 +158193,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           resourceSupplyCreditCache,
         );
         resourceRunwayGain = 0;
-        if (supplyCredit > 0) {
-          const beforeSequenceCapacity = r9v2LinearResourceSequenceCapacity(
-            before,
-            actorBefore || {},
-            hostileSide,
-            actionCapacityCache,
-            resourceSequenceCapacityCache,
-            request,
-            resourceWindowCount,
-            r9v2LinearResourceNaturalClock(request, candidate, before, actorBefore || {}, resourceWindowCount, null, actionCapacityCache),
-          );
-          const afterSequenceCapacity = r9v2LinearResourceSequenceCapacity(
-            after,
-            actorAfter || {},
-            hostileSide,
-            actionCapacityCache,
-            resourceSequenceCapacityCache,
-            request,
-            resourceWindowCount,
-            r9v2LinearResourceNaturalClock(request, candidate, before, actorBefore || {}, resourceWindowCount, result, actionCapacityCache),
-          );
+        if (shared && 'runwayGain' in shared) resourceRunwayGain = shared.runwayGain;
+        else if (supplyCredit > 0) {
+          const afterRunwayClock = r9v2LinearResourceNaturalClock(request, candidate, before, actorBefore || {}, resourceWindowCount, result, actionCapacityCache);
+          const onTable = runwayLaw([actorBefore, actorAfter], afterRunwayClock);
+          const beforeSequenceCapacity = sequenceCapacity(onTable, before, actorBefore || {}, hostileSide, resourceWindowCount,
+            r9v2LinearResourceNaturalClock(request, candidate, before, actorBefore || {}, resourceWindowCount, null, actionCapacityCache));
+          const afterSequenceCapacity = sequenceCapacity(onTable, after, actorAfter || {}, hostileSide, resourceWindowCount, afterRunwayClock);
           const directSequenceGain = Math.max(0, afterSequenceCapacity.sequence - beforeSequenceCapacity.sequence) /
             Math.max(1, beforeSequenceCapacity.sequence, afterSequenceCapacity.sequence);
           const reserveTailGain = Math.max(0, afterSequenceCapacity.reserve - beforeSequenceCapacity.reserve) /
@@ -154640,6 +158212,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             reserveTailGain,
           ) * supplyCredit;
         }
+        if (branchRecord) branchRecord.outputs.runwayGain = resourceRunwayGain;
       }
     }
     // One canonical capacity owner for both signs. Only uncovered option
@@ -154733,8 +158306,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // A spent old finite defense is an asset debit, not a negative benefit to
     // discard. A changed rule portfolio owns its shields jointly; unchanged
     // rules retain the existing shield-only absorption and bucket model.
-    let friendlyFiniteDefenseCost = 0, friendlySurvivalCost = 0;
-    if (role === 'ACTIVE') {
+    let friendlyFiniteDefenseCost = 0, friendlySurvivalCost = 0, selfHolderRefund = 0, allyHolderRefund = 0;
+    const sharedHolders = branchMatch & 4 && shared?.holders?.terminal === !!afterObjective.terminal ? shared.holders : null;
+    if (sharedHolders) {
+      ({ friendlyFiniteDefenseCost, friendlySurvivalCost, selfHolderRefund, allyHolderRefund } = sharedHolders);
+      selfRevivalReserveLoss -= selfHolderRefund;
+      allyRevivalReserveLoss -= allyHolderRefund;
+    } else if (role === 'ACTIVE') {
       const holders = new Set((result.contributions || []).filter(entry =>
         ['SHIELD_DELTA', 'STATE_CHANGED', 'HP_DELTA'].includes(entry.outcomeKind) && entry.actorId === actorId &&
         entry.sourceActionId === result.actionId && entry.rootCauseId === result.actionId &&
@@ -154756,13 +158334,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (!afterObjective.terminal && ownedRevivalLoss > netSurvivalLoss && battleHorizonProfile(request, before).remainingRounds < 3 &&
             r9v2LinearRevivalReserveCounterfactual(unit, next)) {
           const refund = ownedRevivalLoss - netSurvivalLoss;
-          if (id === actorId) selfRevivalReserveLoss -= refund;
-          else allyRevivalReserveLoss -= refund;
+          if (id === actorId) selfRevivalReserveLoss -= refund, selfHolderRefund += refund;
+          else allyRevivalReserveLoss -= refund, allyHolderRefund += refund;
           ownedRevivalLoss = netSurvivalLoss;
         }
         friendlySurvivalCost += Math.max(0, netSurvivalLoss - ownedRevivalLoss) * Number(exposureByUnit().get(id) || 0);
         if (preview.stableHash(portfolio(unit)) === preview.stableHash(portfolio(next))) continue;
-        if (!ruleProtectionByUnit.has(id)) {
+        if (!ruleProtectionByUnit.has(id) && onTable(unit, next)) ruleProtectionByUnit.set(id, tableRulePortfolio(unit, next));
+        else if (!ruleProtectionByUnit.has(id)) {
+          r10Work.legacyCurves += 1;
           const { datedOptions } = ordinaryProtectionClock(unit, next);
           ruleProtectionByUnit.set(id, r9v2LinearOrdinaryRuleProtection(request, after, unit, next,
             [...enemiesAfter.values()], hostileSide, recentAttackLedgerIndex,
@@ -154773,7 +158353,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           friendlyFiniteDefenseCost += Math.max(0, -rulePortfolio) * Number(exposureByUnit().get(id) || 0);
           continue;
         }
-        if (!shieldProtectionByUnit.has(id)) {
+        if (!shieldProtectionByUnit.has(id) && onTable(unit, next)) shieldProtectionByUnit.set(id, tableShieldProtection(unit, next));
+        else if (!shieldProtectionByUnit.has(id)) {
+          r10Work.legacyCurves += 1;
           const { datedOptions } = ordinaryProtectionClock(unit, next);
           shieldProtectionByUnit.set(id, r9v2LinearOrdinaryShieldProtection(request, before, unit, next,
             [...enemiesAfter.values()], hostileSide, recentAttackLedgerIndex, { worldSnapshot: after,
@@ -154783,6 +158365,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         friendlyFiniteDefenseCost += Math.max(0, -shieldProtectionByUnit.get(id)) * Number(exposureByUnit().get(id) || 0);
       }
     }
+    if (branchRecord && !sharedHolders) branchRecord.outputs.holders = { terminal: !!afterObjective.terminal, friendlyFiniteDefenseCost, friendlySurvivalCost, selfHolderRefund, allyHolderRefund };
     if (settlementCapacityComplete) {
       selfCapacityGain = timedActionCapacity.netCapacity;
       // One paired portfolio already pays every declared startup resource and
@@ -154796,6 +158379,26 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       preview.isPhysicallyAlive(actorAfter || {}) ? 0 : Math.max(
         0, directMechanicalGain, selfCapacityGain, creationSelfMechanicalGain,
       ) + Math.min(0, directMechanicalGain, selfCapacityGain, creationSelfMechanicalGain);
+    // W11 (2026-11-09; 用户："没有规则！！本质是根据消耗决定的！高消耗技能何时释放取决于对战局的判断"): a resource has a standing
+    // price besides the later casts it pays for. The runway above only counts casts a payment would cost later, and at high
+    // level every other skill costs a sliver of the pool, so a 武魂真身 at 25% to open and 8% a round to hold was free (its
+    // runway term was 0 in 98% of first-round candidates). Every share of a pool a release spends — its startup cost plus
+    // its upkeep over the rounds still to play, at most 3 — is priced at RESOURCE_STANDING_PRICE runway units per whole
+    // pool; an expensive skill is worth opening when what it brings outweighs that, which it does when the battle needs it.
+    // A starting price, tuned by win rate.
+    const RESOURCE_STANDING_PRICE = 0.5;
+    if (String(declaration?.actionKind || '').trim().toUpperCase() === 'RELEASE_SKILL' && actorBefore && !candidate?.creation) {
+      const stages = preview.readSkillCostStages(declaration.skill || {}, { ...declaration, costActor: actorBefore });
+      const share = (resource, amount) => {
+        const text = String(amount ?? '').trim(), maximum = preview.readResourceMax(actorBefore, resource);
+        const value = /%$/.test(text) ? Number.parseFloat(text) / 100 : Number(amount) / Math.max(1, maximum);
+        return Number.isFinite(value) && value > 0 ? value : 0;
+      };
+      const upkeepRounds = Math.min(3, Math.max(0, Number(battleHorizonProfile(request, before).remainingRounds) || 0));
+      const spent = Object.entries(stages?.启动 || {}).reduce((sum, [resource, amount]) => sum + share(resource, amount), 0) +
+        Object.entries(stages?.维持 || {}).reduce((sum, [resource, amount]) => sum + share(resource, amount) * upkeepRounds, 0);
+      resourceRunwayGain -= RESOURCE_STANDING_PRICE * spent;
+    }
     const values = {
       OBJECTIVE_PROGRESS: clamp(terminalProgress, -1, 1),
       SELF_FOLLOWUP_POOL_GAIN: clamp(
@@ -155452,8 +159055,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // Simulation-free state summary from one side's perspective. Every value is a
   // direct read of unit state (at most hostile x allied pairs); nothing here
   // advances time, branches on chance or previews another action.
-  const R9V2_STATE_SUMMARY_BASIC_ATTACK = Object.freeze({ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 });
-  // Routine hit damage and chance are functions of the two snapshot units only;
+  // Routine hit damage and chance (routineAttackEffect) are functions of the two snapshot units only;
   // projections share untouched unit objects, so key by identity.
   const stateSummaryPairCache = new WeakMap();
   function r9v2StateSummaryPair(source, target) {
@@ -155462,9 +159064,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     let pair = byTarget.get(target);
     if (!pair) {
       decisionMetrics.stateSummaryPairBuilds += 1;
+      const routine = routineAttackEffect(source);
       pair = {
-        damage: preview.calculateBaseDamage(R9V2_STATE_SUMMARY_BASIC_ATTACK, source, target, null, { resourceDriveEnabled: false }),
-        hit: preview.estimateHitProbability(source, target, R9V2_STATE_SUMMARY_BASIC_ATTACK),
+        damage: preview.calculateBaseDamage(routine, source, target, null, { resourceDriveEnabled: false }),
+        hit: preview.estimateHitProbability(source, target, routine),
       };
       byTarget.set(target, pair);
     } else decisionMetrics.stateSummaryPairHits += 1;
@@ -155635,6 +159238,42 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     })));
   }
 
+  // Running totals of the look-ahead's traversal work (R10): the per-decision breakdown takes their differences.
+  function r10LookaheadWork() {
+    const previewMetrics = typeof preview.readMetrics === 'function' ? preview.readMetrics() : {};
+    const m = decisionMetrics;
+    return {
+      projections: Number(previewMetrics.previewCalls || 0),
+      overlayUnitCopies: Number(previewMetrics.overlayWrites || 0),
+      unitCopies: m.r10UnitCopies,
+      projectorFrames: m.r10ProjectorFrames,
+      capacityBuilds: m.r9v2BestActionCapacityBuilds,
+      baseValues: m.baseActionValueCacheMisses,
+      curveStates: m.datedRoutineRiskStatesEvaluated + m.ruleDefensePressureStatesEvaluated + m.ordinaryMitigationPressureStates +
+        m.ordinaryMovementPressureStates + m.ordinaryShieldReachabilityStates,
+      runwayBuilds: m.r9v2ResourceSequenceCapacityBuilds,
+      reserveStates: m.r9v2ResourceSequenceReserveStateBuilds,
+      tableViews: r10Work.views,
+      tablePackets: r10Work.packets,
+      tableTicks: r10Work.ticks,
+      tableRiskStates: r10Work.riskStates,
+      legacyCurves: r10Work.legacyCurves,
+      tableRunways: r10Work.runways,
+      tableCasts: r10Work.casts,
+      legacyRunways: r10Work.legacyRunways,
+      runwayDated: r10Work.runwayDated,
+      runwayFormulaFirsts: r10Work.runwayFormulaFirsts,
+      runwayChains: r10Work.runwayChains,
+      runwayPaidRows: r10Work.runwayPaidRows,
+      sharedBranches: r10Work.sharedBranches,
+      amountOnlyCandidates: r10Work.amountOnlyCandidates,
+      capacityAliases: r10Work.capacityAliases,
+      castReuses: r10Work.castReuses,
+      internedUnits: r10Work.internedUnits,
+      deltas: r10Work.deltas,
+      deltaFallbacks: r10Work.deltaFallbacks,
+    };
+  }
   function buildOnlineLinearFeatureInputs(request, options = {}) {
     const pipeline = root.__LWCS_BEHAVIOR_DECISION_PIPELINE__;
     const pda = pipeline?.prototypeAdapter;
@@ -155692,7 +159331,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const forecastPreviewResultsById = new Map();
     const causalDecisionCache = new Map();
     let previewCalls = 0;
+    // R11: a worker's share (r11ParallelPlan.only) settles and values only its own candidates, then leaves (below).
+    // A trained surrogate (development) keeps the whole decision in one place.
+    const parallelShare = providerDepth === 1 && r11ParallelPlan?.only && !root.__LWCS_CAUSAL_SURROGATE__ ? r11ParallelPlan.only : null;
     for (const candidate of request.frozenCandidates) {
+      if (parallelShare && !r11ParallelPlan.projectAll && !parallelShare.has(candidate.candidateId)) continue;
       const candidatePreparationStartedAt = collectPerformanceBreakdown
         ? featureClockNow()
         : 0;
@@ -155797,11 +159440,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         battleIntent: request.battleIntent,
         buildOperationGraph: false,
         captureDependencies: false,
+        ...(searchBounds?.targetReactions === true
+          ? r9v2LinearTargetReactions(request.visibleWorld, previewDeclaration, findUnitInWorld(request.visibleWorld, request.actorId)) || {} : {}),
       };
       let previewResult;
       let previewBudgetExceeded = false;
       try {
-        previewResult = preview.projectConditionedAction(previewInput);
+        // R11: within one prepared request the assembling decision takes the settlements its own share made.
+        const projections = providerDepth === 1 && r11ParallelPlan ? (r11Projections.get(request) || r11Projections.set(request, new Map()).get(request)) : null;
+        previewResult = projections?.get(candidate.candidateId) || preview.projectConditionedAction(previewInput);
+        projections?.set(candidate.candidateId, previewResult);
       } catch (error) {
         const message = String((error && error.message) || error);
         if (!message.startsWith('BATTLE_PREVIEW_PROBABILITY_BRANCH_BUDGET_EXCEEDED')) {
@@ -155928,6 +159576,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       }
       addFeatureBuildTime('bridgeInputMs', bridgeInputStartedAt);
     }
+    // R11: a worker's share ends with its candidates' causal rows; the relational features and the scoring belong to
+    // the decision that assembles every share.
+    if (parallelShare) {
+      const frozenShare = new Map(request.frozenCandidates.map(candidate => [candidate.candidateId, candidate]));
+      for (const candidateId of candidateIds) {
+        if (parallelShare.has(candidateId)) r11ParallelPlan.rows.set(candidateId, r9v2LinearCausalFeatureRows(request,
+          frozenShare.get(candidateId), previewResultsById[candidateId], causalDecisionCache, null, false, settlementPreviewResultsById[candidateId]));
+      }
+      throw R11_SHARE_DONE;
+    }
     const bridgeStartedAt = collectPerformanceBreakdown
       ? featureClockNow()
       : 0;
@@ -156051,6 +159709,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const frozenById = new Map(request.frozenCandidates.map(candidate => [candidate.candidateId, candidate]));
     causalDecisionCache.set('preview-results-by-id', previewResultsById);
     const causalFeatureBreakdown = collectPerformanceBreakdown ? {} : null;
+    // R10 (decision table, user-approved 2026-11-10): what the look-ahead walks, counted over this decision's causal
+    // rows — projections run inside the valuation, unit copies, projected frames, capacity and base-value builds, curve
+    // states, runway builds — so the breakdown shows the traversal work per candidate beside the time.
+    const workBefore = collectPerformanceBreakdown ? r10LookaheadWork() : null;
     const causalFeatureStartedAt = collectPerformanceBreakdown
       ? featureClockNow()
       : 0;
@@ -156084,20 +159746,108 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       return Object.freeze(rows.map((row, index) => Object.hasOwn(surrogate.reactionModels, row.featureCode)
         ? Object.freeze({ ...row, value: predicted[index].value }) : row));
     };
-    const featureInputs = candidateIds.map(candidateId => ({
+    // B5: a damage candidate whose preview lands nothing on any enemy (a visible 免伤 block, an immunity) declares damage
+    // that will not arrive. Its static damage features (power, hit chance…) are masked in the provider instead of being
+    // scored as a full hit; the attack keeps only what it really does (spending a block charge, pressure, cost).
+    const hostileSide = request.actorSide === 'team_player' ? 'team_enemy' : 'team_player';
+    const damageNullified = candidateId => {
+      const declaration = frozenById.get(candidateId)?.declaration || {};
+      const kind = String(declaration.actionKind || '').trim().toUpperCase();
+      const declaresDamage = kind === 'BASIC_ATTACK' || (['RELEASE_SKILL', 'USE_ITEM'].includes(kind) &&
+        preview.collectEffects(declaration.skill || {}).some(effect => String(effect?.原型 || '').trim() === '伤害结算'));
+      if (!declaresDamage) return false;
+      const hostileIds = new Set((Array.isArray(declaration.targetIds) ? declaration.targetIds : []).map(String).filter(id => {
+        const unit = findUnitInWorld(request.visibleWorld, id);
+        return unit && sideOf(request.visibleWorld, unit) === hostileSide;
+      }));
+      if (!hostileIds.size) return false;
+      return !(previewResultsById[candidateId]?.contributions || []).some(entry => hostileIds.has(String(entry?.targetId || '')) &&
+        ['HP_DELTA', 'SHIELD_DELTA', 'SCHEDULED_HP_DELTA'].includes(entry?.outcomeKind) && Number(entry?.expectedDelta) < 0);
+    };
+    const featureInputFor = (candidateId, features) => ({
       candidateId,
       document: {
+        ...(damageNullified(candidateId) ? { settlement: { schemaVersion: 'BehaviorSettlementMaskV1', damageNullified: true } } : {}),
         immediate: bifDocs[candidateId],
         relational: relationalByCandidate.get(candidateId),
-        causal: {
-          schemaVersion: 'BehaviorCausalFeatureV1',
-          features: useSurrogate ? r9v2SurrogateCausalRows(surrogate,
-            r9v2StateDeltaFeatures(request, frozenById.get(candidateId), previewResultsById[candidateId], surrogateBefore))
-            : useResponseSurrogate ? responseSurrogateRows(candidateId) : exactCausalRows(candidateId),
-        },
+        causal: { schemaVersion: 'BehaviorCausalFeatureV1', features },
       },
-    }));
+    });
+    const causalRowsFor = candidateId => useSurrogate ? r9v2SurrogateCausalRows(surrogate,
+      r9v2StateDeltaFeatures(request, frozenById.get(candidateId), previewResultsById[candidateId], surrogateBefore))
+      : useResponseSurrogate ? responseSurrogateRows(candidateId) : exactCausalRows(candidateId);
+    // R9 step 17 (approximation, user-approved "可近似"): two-stage evaluation. High-level team decisions weigh 28
+    // candidates on average and 60–74 at an opening, each with the full look-ahead (88% of their time), while only ~2
+    // of them score within 10% of the best. Every candidate first gets a cheap look-ahead — the same channels under
+    // TWO_STAGE_CHEAP_BOUNDS (fixed-pressure protection curves, one reserve use, one creation window, the likeliest
+    // outcome path only), on a cache of its own so nothing cheap reaches the full evaluation — and the scorer ranks
+    // them; the TWO_STAGE_FULL best take the full look-ahead. Whenever the scorer would then pick a candidate that has
+    // only its cheap look-ahead, that one takes the full look-ahead too and the scorer runs again, so the chosen action
+    // always carries the full evaluation. Measured a net loss (2026-11-10): the cheap pass cost about as much per
+    // candidate as the full one, and on a cache of its own it no longer warmed the shared look-ahead state the full
+    // evaluations reuse; so it is off unless searchBounds.twoStageCandidates (development) turns it on, until a truly
+    // cheap estimator (a trained surrogate) can rank the candidates.
+    const linearScorer = root.__LWCS_BEHAVIOR_DECISION_PIPELINE__?.linearScoreProvider;
+    const twoStage = !useSurrogate && !useResponseSurrogate && !request.playerLockedDeclaration &&
+      candidateIds.length > TWO_STAGE_FULL + 2 && typeof linearScorer?.selectPreparedRequest === 'function' &&
+      searchBounds?.twoStageCandidates === true;
+    let featureInputs;
+    // R11: the outermost decision's candidates valued apart (r11ParallelPlan): a worker values only its share and records
+    // their rows; the decision then takes every candidate's rows from the workers instead of valuing it again.
+    const parallelPlan = providerDepth === 1 ? r11ParallelPlan : null;
+    if (parallelPlan?.given && !twoStage) {
+      featureInputs = candidateIds.map(candidateId => featureInputFor(candidateId, parallelPlan.given.get(candidateId) || causalRowsFor(candidateId)));
+    } else if (!twoStage) featureInputs = candidateIds.map(candidateId => featureInputFor(candidateId, causalRowsFor(candidateId)));
+    else {
+      const cheapCache = new Map([['preview-results-by-id', previewResultsById]]);
+      const fullBounds = searchBounds, forecastsBefore = new Map(cooperativeForecasts);
+      const cheapRows = new Map();
+      searchBounds = Object.freeze({ ...(fullBounds || {}), ...TWO_STAGE_CHEAP_BOUNDS });
+      // R10 (user, 2026-11-11: 目标单场 5s 以内): the cheap pass short-circuits capacities and runways (as reaction
+      // surrogates do); searchBounds.twoStageFullCheap (development) keeps them.
+      const shortCircuit = fullBounds?.twoStageFullCheap !== true;
+      if (shortCircuit) searchBudget.shortCircuit = true;
+      try {
+        for (const candidateId of candidateIds) cheapRows.set(candidateId, r9v2LinearCausalFeatureRows(request,
+          frozenById.get(candidateId), previewResultsById[candidateId], cheapCache, causalFeatureBreakdown, false,
+          settlementPreviewResultsById[candidateId]));
+      } finally {
+        if (shortCircuit) searchBudget.shortCircuit = false;
+        searchBounds = fullBounds;
+        cooperativeForecasts.clear();
+        for (const [key, value] of forecastsBefore) cooperativeForecasts.set(key, value);
+      }
+      const scored = rowsById => linearScorer.selectPreparedRequest({ request, previewResultsById,
+        featureInputs: candidateIds.map(candidateId => featureInputFor(candidateId, rowsById.get(candidateId))) });
+      const fullRows = new Map(), ranked = scored(cheapRows)?.ranked || [], skillsSeen = new Set();
+      // The best cheap candidates, and every skill's best-ranked target: a skill whose worth is in the channels the cheap
+      // pass leaves out (a buff, a setup) still gets one full look-ahead.
+      ranked.forEach((row, index) => {
+        const candidateId = String(row?.candidateId || '');
+        const declaration = frozenById.get(candidateId)?.declaration || {};
+        const skillKey = declaration.actionKind === 'RELEASE_SKILL' ? 'skill:' + skillId(declaration.skill || {}) : String(declaration.actionKind || '');
+        const firstOfSkill = !skillsSeen.has(skillKey);
+        skillsSeen.add(skillKey);
+        if ((index < TWO_STAGE_FULL || firstOfSkill) && cheapRows.has(candidateId)) fullRows.set(candidateId, causalRowsFor(candidateId));
+      });
+      decisionMetrics.r9v2TwoStageDecisions += 1;
+      for (;;) {
+        const rows = new Map(candidateIds.map(candidateId => [candidateId, fullRows.get(candidateId) || cheapRows.get(candidateId)]));
+        const selectedId = String(scored(rows)?.selected?.candidateId || '');
+        if (!cheapRows.has(selectedId) || fullRows.has(selectedId)) {
+          featureInputs = candidateIds.map(candidateId => featureInputFor(candidateId, rows.get(candidateId)));
+          break;
+        }
+        decisionMetrics.r9v2TwoStageLateFull += 1;
+        fullRows.set(selectedId, causalRowsFor(selectedId));
+      }
+    }
     addFeatureBuildTime('causalFeatureMs', causalFeatureStartedAt);
+    if (workBefore) {
+      const workAfter = r10LookaheadWork();
+      featureBuildPerformance['work.candidates'] = candidateIds.length;
+      for (const [key, value] of Object.entries(workAfter)) featureBuildPerformance[`work.${key}`] = value - workBefore[key];
+    }
     // Offline training hook (absent in play): hand each candidate's state-delta
     // features to the host so they can be paired with the provider's scores.
     const featureCollector = root.__LWCS_FEATURE_COLLECTOR__;
@@ -156730,7 +160480,72 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     r9v2: runR9v2LinearPreparedProvider,
   });
 
+  // Provider calls nest (a summon's cooperative forecast is a decision of its own); per-decision memos live for the
+  // outermost call.
+  let providerDepth = 0;
+  // R11 (parallel valuation): the plan of the next outermost runProvider call, set through runProvider's `parallel`
+  // input — { only: candidate ids } to value just those and return their causal rows (a worker's share), or
+  // { given: Map(candidate id → causal rows) } to take them instead of valuing them (the decision that assembles).
+  let r11ParallelPlan = null;
+  const R11_SHARE_DONE = Object.freeze({ r11: 'share-done' });
+  const r11Projections = new WeakMap();
+  const cooperativeForecasts = new Map();
+  // Development hook (absent in play): root.__LWCS_DECISION_DEBUG__ = { compareSearchBounds, onCompare } decides every
+  // outermost decision twice, once under those bounds and once exact, reports both to onCompare and returns the exact
+  // result, so a battle follows the exact engine while every bounded choice is measured on the same state.
+  let comparedSearchBounds;
   function runProvider(input = {}) {
+    if (!providerDepth && input?.parallel) {
+      const plan = input.parallel.only ? { only: new Set(input.parallel.only), rows: new Map(), projectAll: input.parallel.projectAll === true }
+        : input.parallel.given ? { given: new Map(input.parallel.given) } : null;
+      const { parallel, ...rest } = input;
+      r11ParallelPlan = plan;
+      try {
+        const result = runProvider(rest);
+        return plan?.only ? Object.freeze({ parallelRows: [...plan.rows] }) : result;
+      } catch (error) {
+        if (error === R11_SHARE_DONE) return Object.freeze({ parallelRows: [...plan.rows] });
+        throw error;
+      } finally { r11ParallelPlan = null; }
+    }
+    const debug = root.__LWCS_DECISION_DEBUG__;
+    if (!providerDepth && comparedSearchBounds === undefined && debug?.compareSearchBounds) return runProviderComparison(input, debug);
+    if (!providerDepth) {
+      cooperativeForecasts.clear();
+      preview.clearFingerprints?.();
+      enemyTargetShareCache = new WeakMap();
+      formulaSuccessorCache = new WeakMap();
+      if (comparedSearchBounds !== undefined) searchBounds = comparedSearchBounds;
+      else if (searchBoundSides) searchBounds = searchBoundSides.includes(String(input?.request?.actorSide || '')) ? configuredSearchBounds : null;
+      // R13 (searchBounds.frozenStaminaPanel): the look-ahead holds every unit's stamina panel scale at the decision
+      // world's (below half its stamina a unit strikes, defends and dodges at a reduced panel, and a hit drains stamina):
+      // a candidate that only takes HP and stamina off a unit leaves its panel as it was. Exhaustion at zero still counts.
+      const world = input?.request?.visibleWorld || input?.request?.worldSnapshot;
+      preview.freezeStaminaScales?.(searchBounds?.frozenStaminaPanel === true && world && typeof world === 'object'
+        ? new Map(preview.listUnits(world).map(({ unit }) => [preview.unitId(unit), preview.staminaScaleForUnit(unit)])) : null);
+    }
+    providerDepth += 1;
+    try { return runProviderAtDepth(input); } finally {
+      providerDepth -= 1;
+      if (!providerDepth) preview.freezeStaminaScales?.(null);
+      if (!providerDepth && (searchBoundSides || comparedSearchBounds !== undefined)) searchBounds = searchBoundSides ? null : configuredSearchBounds;
+    }
+  }
+
+  function runProviderComparison(input, debug) {
+    const decide = bounds => {
+      comparedSearchBounds = bounds;
+      const startedAt = Date.now();
+      try { return { result: runProvider(input), ms: Date.now() - startedAt }; } finally { comparedSearchBounds = undefined; }
+    };
+    const bounded = decide(normalizeSearchBounds(debug.compareSearchBounds));
+    const exact = decide(null);
+    if (typeof debug.onCompare === 'function') debug.onCompare({ request: input?.request || null,
+      bounded: bounded.result, exact: exact.result, boundedMs: bounded.ms, exactMs: exact.ms });
+    return exact.result;
+  }
+
+  function runProviderAtDepth(input = {}) {
     const providerId = String(input?.providerId || '').trim();
     const request = input?.request;
     searchBudget.creationPlanNodes = 0;
@@ -156878,6 +160693,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     formalProviderState,
     actionKinds,
     collectSkills,
+    affordablePreparedSkills,
+    knownRoutineAttackRatio,
+    typicalAttackRatio,
     projectCooperativeSummonDeclaration,
     actionCompletesWithinBattleHorizon,
     collectPassiveSkills: unit => typeof preview.collectPassiveSkills === 'function' ? preview.collectPassiveSkills(unit) : Object.freeze([]),
@@ -157258,7 +161076,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       nextEffects.dot_damage_ratio = 0;
     }
     const stateEntry = {
-      类型: 'debuff', 状态: stateName, 状态名称: stateName, __本回合新附加: true,
+      类型: 'debuff', 状态: stateName, 状态名称: stateName, __本回合新附加: true, 副作用实例: true,
       层数: 1, 描述: `由[${sourceName || '技能'}]触发`, duration,
       面板修改比例: statRatios, 面板固定修正: {}, 战斗效果: nextEffects,
     };
@@ -157568,6 +161386,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (!existing || typeof existing !== 'object') {
       return { applied: true, mergeKind: 'NEW', oldDuration: 0, newDuration: Math.max(0, Number(next?.duration ?? next?.持续回合 ?? 0)), state: next };
     }
+    // R01: the same caster's same skill, still active on the target, cannot be applied again by another cast
+    // (effects of one cast still merge as before).
+    const sameSource = (left, right) => String(left || '').trim() && String(left || '').trim() === String(right || '').trim();
+    if (sameSource(existing?.来源技能, next?.来源技能) && sameSource(existing?.来源角色, next?.来源角色) &&
+      String(existing?.来源动作ID || '') !== String(next?.来源动作ID || '')) {
+      const oldDuration = Math.max(0, Number(existing?.duration ?? existing?.持续回合 ?? 0));
+      return { applied: false, mergeKind: 'SAME_SKILL_ACTIVE', oldDuration, newDuration: oldDuration, state: existing };
+    }
     const rule = String(effect?.覆盖规则 || '').trim();
     const refreshAllowed = !/(?:不可|禁止|不允许|无法|不再)\s*刷新|不刷新|维持原(?:持续|时长)/.test(rule);
     const stackingAllowed = !/(?:不可|禁止|不允许|无法)\s*(?:叠加|累加)|(?:叠加|累加)\s*(?:不可|禁止)/.test(rule) && /叠加|累加|层数/.test(rule);
@@ -157584,7 +161410,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     if (stackingAllowed && oldLayers < layerLimit) {
       const ratios = { ...(existing?.面板修改比例 || {}) };
-      Object.entries(next?.面板修改比例 || {}).forEach(([key, value]) => { ratios[key] = Number(ratios[key] ?? 1) * Number(value ?? 1); });
+      // D1：同一来源合并时比例加成也相加（与面板汇总一致）。
+      Object.entries(next?.面板修改比例 || {}).forEach(([key, value]) => { ratios[key] = Number(ratios[key] ?? 1) + (Number(value ?? 1) - 1); });
       const fixed = { ...(existing?.面板固定修正 || {}) };
       Object.entries(next?.面板固定修正 || {}).forEach(([key, value]) => { fixed[key] = Number(fixed[key] || 0) + Number(value || 0); });
       const duration = refreshAllowed ? Math.max(oldDuration, newDuration) : oldDuration;
@@ -157603,6 +161430,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return { applied: true, mergeKind: 'REFRESH_EXTENSION', oldDuration, newDuration: duration, state: {
       ...existing,
       来源技能: next?.来源技能 || existing?.来源技能 || '', 来源角色: next?.来源角色 || existing?.来源角色 || '',
+      来源动作ID: next?.来源动作ID || existing?.来源动作ID || '',
       描述: next?.描述 || existing?.描述 || '', duration,
       __本回合新附加: existing?.__本回合新附加 === true,
     } };
@@ -157853,7 +161681,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (findPrototypeSuppression(unit, prototype, '属性', attribute)) {
         return finish(`[机制抹消] ${label}对【属性修正 属性:${attribute}】存在封锁，延迟属性修正未能落地。`);
       }
-      const runtimeKey = { 力量: 'str', 防御: 'def', 敏捷: 'agi', 体力上限: 'vit_max', 魂力上限: 'sp_max', 精神力上限: 'men_max' }[attribute] || attribute;
+      const runtimeKey = { 力量: 'str', 防御: 'def', 敏捷: 'agi', 体力上限: 'vit_max', 生命上限: 'hp_max', 魂力上限: 'sp_max', 精神力上限: 'men_max' }[attribute] || attribute;
       const percentage = /%$/.test(valueText);
       const stateName = `延迟属性:${attribute || runtimeKey}`;
       const before = unit.状态效果[stateName] ? cloneValue(unit.状态效果[stateName]) : null;
@@ -157904,6 +161732,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         来源原型摘要: '状态施加',
         来源角色: sourceActorName,
         来源技能: actionName,
+        来源动作ID: sourceActionId,
         ...(effect.强度 !== undefined ? { 强度: effect.强度 } : {}),
         描述: '延迟效果状态施加',
         duration: Math.max(0, Number(effect?.持续回合 || 0)),
@@ -157913,7 +161742,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (previewRuntime.negativeEffectIsImmune(unit, state)) return finish(`[无视异常] ${label}免疫了[${stateName}]延迟状态。`);
       const removal = findPersistentStateRemoval(unit, stateName, state);
       if (removal) return finish(`[持续状态移除] ${label}的[${stateName}]被[${removal[0]}]拦截。`);
-      const originalState = unit.状态效果[stateName];
+      // D1: only this source's own instance merges; beside another source's same-name state it lands under its own key.
+      const slot = previewRuntime.sourcedStateKey(unit, { ...effect, 状态: stateName, 来源角色: state.来源角色, 来源技能: state.来源技能 });
+      if (slot.refused) return finish(`[延迟效果] ${label}的[${stateName}]已有三个他人来源，本次未生效。`);
+      const stateKey = slot.key;
+      if (slot.stateId) state.状态ID = slot.stateId;
+      const originalState = slot.existing?.[1];
       const before = originalState ? cloneValue(originalState) : null;
       const oldDuration = Math.max(0, Number(originalState?.duration ?? originalState?.持续回合 ?? 0));
       const oldWindows = Array.isArray(originalState?.__状态来源窗口)
@@ -157921,7 +161755,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         : originalState?.__状态来源键 ? Array.from({ length: oldDuration }, () => originalState.__状态来源键) : [];
       const merged = mergeRuntimeCondition(originalState, state, effect);
       if (!merged.applied) return finish(`[延迟效果] ${label}的[${stateName}]已存在，本次未形成新的刷新或叠加。`);
-      unit.状态效果[stateName] = merged.state;
+      unit.状态效果[stateKey] = merged.state;
       if (merged.mergeKind !== 'NEW' && merged.mergeKind !== 'REPLACE' && oldWindows.length) {
         Object.defineProperty(merged.state, '__状态来源窗口', { configurable: true, enumerable: false, writable: true, value: oldWindows });
       }
@@ -157943,7 +161777,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           operation: before ? 'STATE_REPLACE' : 'STATE_APPLY',
         },
       });
-      if (stateFact) bindStateSourceProvenance(formalCombatData, unit, stateName, nextRuntimeId('state-src'), stateFact);
+      if (stateFact) bindStateSourceProvenance(formalCombatData, unit, stateKey, nextRuntimeId('state-src'), stateFact);
       // Registration owns admission only. The delivered mother owns its ending
       // liability; a failed/no-effect payload must never borrow an older state.
       const ownedEndRisks = normalizeSideEffectList(effect.副作用列表 || []).filter((risk, index, rows) =>
@@ -157956,22 +161790,22 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (stateFact) stateFact.meta.after = cloneValue(merged.state);
       if (unit.蓄力技能 && structuredControlPreventsOpportunity(merged.state, 'ACTIVE')) {
         if (formalCombatData) interruptStoredChargeByControl({ combatData: formalCombatData,
-          sourceActor: findCombatUnit(formalCombatData, sourceActorId || sourceActorName) || {}, target: unit, stateName,
+          sourceActor: findCombatUnit(formalCombatData, sourceActorId || sourceActorName) || {}, target: unit, stateName: stateKey,
           actionEvent: { actionId: sourceActionId, chainNodeId: stateFact?.chainNodeId || '' }, actionRole: 'ACTIVE' });
         else unit.蓄力技能 = null;
       }
       let endLog = '';
-      if (merged.mergeKind === 'REPLACE' && previewRuntime.stateEndRisks(originalState, stateName).length) {
-        if (sourceContext.onStateEnd) sourceContext.onStateEnd(stateName, originalState);
+      if (merged.mergeKind === 'REPLACE' && previewRuntime.stateEndRisks(originalState, stateKey).length) {
+        if (sourceContext.onStateEnd) sourceContext.onStateEnd(stateKey, originalState);
         else if (formalCombatData) {
-          endLog = settleConditionSideEffects(unit, stateName, originalState, '效果结束后', label, formalCombatData, {
+          endLog = settleConditionSideEffects(unit, stateKey, originalState, '效果结束后', label, formalCombatData, {
             applicationId: String(originalState.__状态来源窗口?.[0] || originalState.__状态来源键 || ''),
             triggeringEventId: stateFact.eventId, triggeringSourceActionId: sourceActionId,
             triggeringSourceEffectId: sourceEffectId, stateEndCause: 'REPLACED',
           });
         } else {
-          endLog = previewRuntime.stateEndRisks(originalState, stateName).filter(risk => probabilitySucceeds(risk.触发概率, Math.random()))
-            .map(risk => applyRoundEndSideEffect(unit, risk, stateName)).filter(Boolean).join(' ');
+          endLog = previewRuntime.stateEndRisks(originalState, stateKey).filter(risk => probabilitySucceeds(risk.触发概率, Math.random()))
+            .map(risk => applyRoundEndSideEffect(unit, risk, stateKey)).filter(Boolean).join(' ');
         }
       }
       return finish([`[延迟效果] ${label}获得[${stateName}]。`, endLog].filter(Boolean).join(' '));
@@ -160088,6 +163922,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       unit.__battleRuntime = unit.__battleRuntime && typeof unit.__battleRuntime === 'object'
         ? unit.__battleRuntime
         : {};
+      // Panel stats at the first round set the stamina price for the whole battle (R07): the strength ratio and the
+      // stamina maximum the per-action share is taken of. A plain object, like the rest of __battleRuntime: projection
+      // frames are compared by property descriptors, so a frozen record would never equal its cloned projection.
+      if (!unit.__battleRuntime.panelStats) unit.__battleRuntime.panelStats = ({
+        str: previewRuntime.readCombatStat(unit, 'str'), def: previewRuntime.readCombatStat(unit, 'def'), agi: previewRuntime.readCombatStat(unit, 'agi'),
+        vit_max: previewRuntime.readResourceMax(unit, '体力'),
+      });
       unit.__battleRuntime.naturalOpportunity = {
         round: Number(round || 0),
         opportunityId: `natural:${Number(round || 0)}:${entry?.side || ''}:${previewRuntime.unitName(unit) || 'unit'}:${index + 1}`,
@@ -160161,6 +164002,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   }
 
   function buildCombatFinalStats(unit = {}, currentTick = 0) {
+    previewRuntime.syncStaminaMaxGain(unit);
     const final = { ...previewRuntime.buildNumericCombatStats(unit, currentTick), 战斗效果: createEmptyCombatEffectMap() };
     Object.values(unit?.状态效果 || {}).forEach(condition => {
       final.战斗效果 = mergeCombatEffectMaps(final.战斗效果, condition?.战斗效果 || {});
@@ -160196,7 +164038,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const fixed = {};
     const aliases = {
       力量: 'str', 防御: 'def', 敏捷: 'agi',
-      体力上限: 'vit_max', 生命上限: 'vit_max',
+      体力上限: 'vit_max', 生命上限: 'hp_max',
       魂力上限: 'sp_max', 精神力上限: 'men_max',
     };
     const attributes = (Array.isArray(effect?.属性) ? effect.属性 : [effect?.属性])
@@ -160505,6 +164347,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       });
       merged.存活 = merged.状态?.存活 !== false && previewRuntime.readHp(merged) > 0;
       syncEquipmentPassiveRuntime(merged, Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0), { rebuildFinal: false });
+      // A unit enters battle with its stamina already counted against any buffed maximum it carries.
+      previewRuntime.syncStaminaMaxGain(merged, { credit: false });
       merged.final = buildCombatFinalStats(merged);
       return merged;
     };
@@ -160526,11 +164370,27 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (!config) return 0;
     const maxValue = previewRuntime.readResourceMax(unit, { hp: '生命', vit: '体力', sp: '魂力', men: '精神力' }[resourceKey]);
     const nextValue = Math.round(Math.max(0, Math.min(maxValue, Number(value || 0))));
+    // 受伤同步扣体力（用户 2026-11-09）：同 BattlePreview setHp——生命少掉的比例，体力扣同样比例的体力上限。
+    const hpBefore = resourceKey === 'hp' ? previewRuntime.readHp(unit) : 0;
+    if (resourceKey === 'hp' && nextValue < hpBefore && previewRuntime.readResourceMax(unit, '体力') > 0) {
+      writeCombatResource(unit, 'vit', previewRuntime.readResource(unit, '体力') -
+        (hpBefore - nextValue) / Math.max(1, maxValue) * previewRuntime.readResourceMax(unit, '体力'));
+    }
+    const fuelBefore = resourceKey === 'sp' || resourceKey === 'men' ? previewRuntime.readResource(unit, config.statKey) : 0;
     config.runtimeKeys.forEach(key => { unit[key] = nextValue; });
     unit[config.statKey] = nextValue;
     if (stats && typeof stats === 'object') stats[config.statKey] = nextValue;
     if (resourceKey === 'vit') previewRuntime.refreshStaminaAdjustedFinal(unit);
     if (resourceKey === 'hp' && nextValue <= 0) clearC2FoodMaintenanceRuntime(unit);
+    // 资源低位砍体力（用户 2026-11-10，同 BattlePreview applyLowResourceStaminaCut）：魂力、精神力各自在一场战斗里第一次
+    // 从上限 10% 以上跌到 10% 以下时，当前剩余体力减半；标记 __battleRuntime.lowResourceStaminaCut 两模块共用。
+    if ((resourceKey === 'sp' || resourceKey === 'men') && maxValue > 0 && fuelBefore >= maxValue * 0.1 && nextValue < maxValue * 0.1) {
+      const runtime = unit.__battleRuntime && typeof unit.__battleRuntime === 'object' ? unit.__battleRuntime : {};
+      if (runtime.lowResourceStaminaCut?.[config.statKey] !== true) {
+        unit.__battleRuntime = { ...runtime, lowResourceStaminaCut: { ...(runtime.lowResourceStaminaCut || {}), [config.statKey]: true } };
+        writeCombatResource(unit, 'vit', previewRuntime.readResource(unit, '体力') * 0.5);
+      }
+    }
     if (unit.召唤键) syncSummonMirror(unit);
     return nextValue;
   }
@@ -160644,14 +164504,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     state.sourceEffectId = String(source.sourceEffectId || '').trim();
   }
 
+  const STATE_SOURCE_WINDOW_LIMIT = 100;
   function extendedStateSourceWindow(state = {}, mappingId = '') {
     const sourceWindow = Array.isArray(state?.__状态来源窗口)
       ? state.__状态来源窗口.map(value => String(value || '').trim()).filter(Boolean)
       : [];
-    const sourceDuration = Math.max(1, Math.floor(Number(state?.duration ?? state?.持续回合 ?? 1) || 1));
-    if (sourceWindow.length < sourceDuration) {
-      sourceWindow.push(...Array.from({ length: sourceDuration - sourceWindow.length }, () => mappingId));
-    }
+    // The window advances one entry per round, so entries past any battle's length are never read; a permanent state
+    // (duration 1,000,000) spread into push() overflowed the call stack (2026-11-10).
+    const sourceDuration = Math.min(STATE_SOURCE_WINDOW_LIMIT, Math.max(1, Math.floor(Number(state?.duration ?? state?.持续回合 ?? 1) || 1)));
+    while (sourceWindow.length < sourceDuration) sourceWindow.push(mappingId);
     return sourceWindow;
   }
 
@@ -160766,7 +164627,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         );
         const applicationId = String(source?.applicationId || '').trim();
         if (!applicationId) return;
-        const duration = Math.max(1, Math.floor(Number(state?.duration || 1)));
+        const duration = Math.min(STATE_SOURCE_WINDOW_LIMIT, Math.max(1, Math.floor(Number(state?.duration || 1))));
         Object.defineProperties(state, {
           __状态来源键: { configurable: true, enumerable: false, writable: true, value: applicationId },
           __状态来源窗口: { configurable: true, enumerable: false, writable: true, value: Array.from({ length: duration }, () => applicationId) },
@@ -161000,7 +164861,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       OBSERVE: '观察', GUARD: '保护队友', WITHDRAW: '撤退', PASS_OPPORTUNITY: '让过行动',
     }[actionKind] || '防御';
     const actionName = actionKind === 'BASIC_ATTACK' ? '普通攻击' : actionType;
-    const skill = { name: actionName, 目标: actionKind === 'GUARD' ? '友方单体' : actionKind === 'BASIC_ATTACK' ? '单体' : '自身', 消耗: '无', 前摇: 10 };
+    const skill = { name: actionName, 目标: actionKind === 'GUARD' ? '友方单体' : actionKind === 'BASIC_ATTACK' ? '单体' : '自身', 消耗: '无',
+      前摇: actionKind === 'BASIC_ATTACK' ? previewRuntime.basicAttackWindup(actor) : 10 };
     if (actionKind === 'BASIC_ATTACK') skill._效果数组 = [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 防御穿透: 0, 生效方式: '独立生效' }];
     return {
       id: declaration.actionId,
@@ -162791,6 +166653,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return [
       { key: 'sp', label: '魂力', ratio: soulRatio, max: previewRuntime.readResourceMax(unit, '魂力'), current: previewRuntime.readResource(unit, '魂力') },
       { key: 'men', label: '精神力', ratio: mentalRatio, max: previewRuntime.readResourceMax(unit, '精神力'), current: previewRuntime.readResource(unit, '精神力') },
+      // D2（用户 2026-11-09）：体力每回合自然恢复 0.5%。
+      { key: 'vit', label: '体力', ratio: 0.005, max: previewRuntime.readResourceMax(unit, '体力'), current: previewRuntime.readResource(unit, '体力') },
     ].flatMap(resource => {
       const lockRatio = readRecoveryLock(resource.label);
       if (!(resource.max > 0 && resource.ratio > 0 && lockRatio < 1)) return [];
@@ -163345,7 +167209,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     '蓄力技能', 'cast_time', 'cast_time_left', '蓄力剩余', '_current_cast_time', 'action_declared', 'is_controlled',
   ]);
   const summonMirrorBattleFields = Object.freeze([
-    'naturalOpportunity', 'activeDefenseStance', 'passiveApplications', 'itemPassiveTriggeredSkills',
+    'naturalOpportunity', 'activeDefenseStance', 'attackOpening', 'passiveApplications', 'itemPassiveTriggeredSkills',
     'damageAbsorptionStorageByState', 'counterCount', 'reactedCount', 'reactionFatigue', 'fusionPartnerIds', 'fusionUsageKeys',
   ]);
 
@@ -164195,6 +168059,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 _效果数组: [cloneValue(row.effect || {})],
               },
               resourceCosts: {},
+              // Each payload settles as its own declaration; R01 treats the payloads of one trigger as one cast.
+              ...(row.activationKey ? { __castIdentity: row.activationKey } : {}),
             };
             try {
               const actionContext = beginStructuredDeclaration({
@@ -165127,6 +168993,71 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         ),
       ],
     }));
+  }
+
+  // 精疲力尽 (用户 2026-11-08: 两边都没体力做任何动作应该双方精疲力尽倒下平局): a unit that can no longer pay for a
+  // single attack on any enemy still standing (without reaching 0 stamina) can no longer fight and collapses,
+  // exhausted — defending alone cannot decide a battle, and two sides that only defend would stand forever. Decided for
+  // every unit from the same start-of-round state, so units that run out together fall together, and two sides that
+  // fall together draw (evaluateBattleObjectivesCore).
+  function settleStaminaExhaustion(combatData = {}) {
+    if (!previewRuntime.actionStaminaEnabled(combatData)) return [];
+    const units = listPrimaryCombatUnits(combatData).filter(unit => previewRuntime.isBattleCapable(unit));
+    const exhausted = units.flatMap(unit => {
+      const side = inferUnitSide(combatData, unit);
+      const enemies = units.filter(other => inferUnitSide(combatData, other) !== side);
+      if (!enemies.length) return [];
+      const cheapest = Math.min(...enemies.map(enemy => previewRuntime.actionStaminaCost(unit, 'ATTACK', enemy)));
+      const stamina = persistentResourceValue(unit, 'vit');
+      return cheapest > 0 && stamina - cheapest <= 1e-9 ? [{ unit, stamina, cheapest }] : [];
+    });
+    return exhausted.map(({ unit, stamina, cheapest }) => {
+      const before = cloneValue(unit?.状态 || {});
+      unit.__战斗失能原因 = 'STAMINA_EXHAUSTED';
+      return writeLedgerEvent(combatData, {
+        eventKind: 'state_apply', round: Number(combatData?.回合 || 0),
+        actorId: previewRuntime.unitId(unit), actorName: previewRuntime.unitName(unit),
+        targetId: previewRuntime.unitId(unit), targetName: previewRuntime.unitName(unit),
+        actionName: '精疲力尽', actionType: 'incapacitation', actorControl: 'SYSTEM', actionRole: 'STATE_TICK',
+        ruleCode: 'STAMINA_EXHAUSTED', result: 'applied', resultState: 'SUCCESS', primaryOutcome: 'stamina_exhausted',
+        factType: 'STATE', operation: 'STATE_APPLY',
+        meta: { source: 'structured_runtime', stateName: '精疲力尽', stamina, cheapestActionStamina: cheapest, before, operation: 'STATE_APPLY' },
+      });
+    });
+  }
+
+  // R07 / R17: the stamina an action costs (previewRuntime.actionStaminaCost), drained to 0 at most — running out of
+  // stamina weakens the unit through staminaScaleForUnit but never forbids an action. Written as a PAY resource fact plus
+  // an action_cost event with source ACTION_STAMINA, so the ledger and analytics see it like any other cost.
+  function payActionStamina({ combatData, actor, nature, opponent = null, action, actionEvent, actionRole, actorControl = 'AI' }) {
+    if (!previewRuntime.actionStaminaEnabled(combatData)) return [];
+    const requested = previewRuntime.actionStaminaCost(actor, nature, opponent);
+    if (!(requested > 0)) return [];
+    const before = persistentResourceValue(actor, 'vit');
+    const after = writeCombatResource(actor, 'vit', before - requested);
+    const applied = Math.max(0, before - after);
+    if (!(applied > 0)) return [];
+    return [
+      writeStructuredResourceFact(combatData, actor, actor, action, actionEvent, 'vit', -applied, actionRole, 'PAY',
+        { before, after, meta: { requestedAmount: requested, source: 'ACTION_STAMINA', staminaNature: nature } }),
+      writeLedgerEvent(combatData, {
+        eventKind: 'action_cost',
+        round: Number(combatData?.回合 || 0),
+        actorName: previewRuntime.unitName(actor),
+        targetName: previewRuntime.unitName(actor),
+        actionName: action?.actionName || '',
+        actionType: action?.actionKind || '',
+        actorControl,
+        actionRole,
+        actionId: actionEvent?.actionId || '',
+        sourceActionId: actionEvent?.actionId || '',
+        parentNodeId: actionEvent?.chainNodeId || '',
+        result: 'paid',
+        resultState: 'SUCCESS',
+        primaryOutcome: 'resource_cost',
+        meta: { source: 'ACTION_STAMINA', resourceKey: 'vit', resource: '体力', amount: applied, requestedAmount: requested, staminaNature: nature, auditOnly: true },
+      }),
+    ].filter(Boolean);
   }
 
   function writeStructuredResourceFact(
@@ -166111,10 +170042,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       __宿主: target.__宿主,
       __来源状态: target.__来源状态,
     };
+    // Inventory lineage witnesses the stock objects themselves, so an item the committed action did not change keeps
+    // its object; otherwise every committed action would read as an external replacement and drop the next use's
+    // creation source.
+    const previousBag = target.背包 && typeof target.背包 === 'object' ? target.背包 : null;
     Object.keys(target).forEach(key => {
       if (!Object.prototype.hasOwnProperty.call(snapshot, key) && !Object.prototype.hasOwnProperty.call(preserved, key)) delete target[key];
     });
     Object.entries(cloneValue(snapshot)).forEach(([key, value]) => { target[key] = value; });
+    if (previousBag && target.背包 && typeof target.背包 === 'object') for (const [id, item] of Object.entries(target.背包)) {
+      const kept = previousBag[id];
+      if (kept && typeof kept === 'object' && previewRuntime.stableHash(kept) === previewRuntime.stableHash(item)) target.背包[id] = kept;
+    }
     Object.entries(preserved).forEach(([key, value]) => {
       if (value !== undefined) target[key] = value;
     });
@@ -166288,7 +170227,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (Object.prototype.hasOwnProperty.call(actual.状态效果, stateIdentity)) {
           const incomingUnit = previewRuntime.settlementModifierUnit(condition);
           const existingUnit = previewRuntime.settlementModifierUnit(actual.状态效果[stateIdentity]);
-          if (!incomingUnit || !existingUnit || incomingUnit === existingUnit) throw new Error(`battle_structured_state_identity_conflict:${stateIdentity}`);
+          if (!incomingUnit || !existingUnit || incomingUnit === existingUnit) {
+            const sourceOf = state => JSON.stringify([state?.来源角色, state?.来源技能, state?.sourceActorId, state?.副作用实例, state?.原型]);
+            throw new Error(`battle_structured_state_identity_conflict:${stateIdentity}|held=${sourceOf(actual.状态效果[stateIdentity])}|incoming=${sourceOf(condition)}`);
+          }
           stateIdentity += incomingUnit === 'PERCENT' ? ':比例' : ':绝对值';
           if (Object.prototype.hasOwnProperty.call(actual.状态效果, stateIdentity)) throw new Error(`battle_structured_state_identity_conflict:${stateIdentity}`);
         }
@@ -166307,7 +170249,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         });
         const aliases = {
           力量: ['str', '力量'], 防御: ['def', '防御'], 敏捷: ['agi', '敏捷'],
-          体力上限: ['vit_max', '体力上限'], 生命上限: ['vit_max', '体力上限'],
+          体力上限: ['vit_max', '体力上限'], 生命上限: ['hp_max', 'HP上限'],
           魂力上限: ['sp_max', '魂力上限'], 精神力上限: ['men_max', '精神力上限'],
         };
         (Array.isArray(committedEffect?.属性) ? committedEffect.属性 : [committedEffect?.属性])
@@ -166333,7 +170275,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         Object.entries(actual?.状态效果 || {}).forEach(([key, condition]) => {
           if (stateKeysBefore.has(key) || !condition || typeof condition !== 'object') return;
           if (String(condition?.结算 || '').trim() !== '受到伤害') return;
-          condition.来源技能 = sourceSkillText;
+          // The joined text only feeds the 反弹/反射 reading; 来源技能 stays the skill name, the D1 source identity.
           condition.__equipmentSkillName = sourceSkillText;
           condition.战斗效果 = {
             ...(condition?.战斗效果 || {}),
@@ -167350,6 +171292,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         }));
         if (!label) void label;
     });
+    if (actionRole !== 'STATE_TICK') {
+      const staminaNature = previewRuntime.actionStaminaNature({ ...declaration, actionKind });
+      const opponent = (Array.isArray(declaration?.targetIds) ? declaration.targetIds : [])
+        .map(targetId => listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, targetId)))
+        .find(unit => unit && inferUnitSide(combatData, unit) && inferUnitSide(combatData, unit) !== inferUnitSide(combatData, actor)) || null;
+      if (staminaNature) facts.push(...payActionStamina({ combatData, actor, nature: staminaNature, opponent, action, actionEvent, actionRole, actorControl }));
+      // 攻击破绽（BattlePreview attackOpeningOf）：正式行动先清掉旧破绽，进攻留下新的；反应（闪避、防御）不算下一次行动。
+      if (actionRole !== 'REACTION') previewRuntime.setAttackOpening(actor, previewRuntime.attackOpeningStrength(combatData, actor, { ...declaration, actionKind },
+        targetId => listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, targetId))), actionEvent.actionId);
+    }
     const pendingActionGrantedEffects = actionRole === 'STATE_TICK' || declaration?.__includeGrantedEffects === false
       ? []
       : previewRuntime.pendingGrantedEffects(actor, actionKind);
@@ -169114,7 +173066,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           }
           return;
         }
-        const originalState = target?.状态效果?.[stateName];
+        // D1: only this source's own instance merges; another source's same-name state stays beside the new instance.
+        const sourcedEffect = { ...effect, 状态: stateName, 来源角色: previewRuntime.unitName(actor), 来源技能: String(effect?.__来源技能 || actionName) };
+        const existingEntry = stateName ? previewRuntime.findStateEntry(target, sourcedEffect) : null;
+        const instanceSlot = existingEntry || !stateName ? null : previewRuntime.newStateInstanceSlot(target, sourcedEffect);
+        const stateKey = existingEntry?.[0] || instanceSlot?.stateId || stateName;
+        const originalState = existingEntry?.[1];
         const stateBefore = originalState
           ? cloneValue(originalState)
           : null;
@@ -169178,6 +173135,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           对应等级: effect?.对应等级 !== undefined ? Number(effect.对应等级) : undefined,
           触发消耗: cloneValue(effect?.触发消耗),
           __本回合新附加: true,
+          来源技能: String(effect?.__来源技能 || actionName), 来源角色: previewRuntime.unitName(actor), 来源动作ID: String(declaration?.__castIdentity || actionEvent.actionId),
           描述: `由[${actionName}]附加`, 战斗效果: { ...createEmptyCombatEffectMap(), ...previewRuntime.deriveStateCombatEffect(effect) },
           面板修改比例: { ...(effect?.面板修改比例 || {}) }, 面板固定修正: { ...(effect?.面板固定修正 || {}) },
         };
@@ -169198,8 +173156,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (previewRuntime.negativeEffectIsImmune(target, state)) result = 'immune';
         else if (!stateSample.succeeded) result = 'resisted';
         else if (!stateName) result = 'invalid';
+        else if (instanceSlot?.refused) { result = 'no_effect'; mergeKind = 'OTHER_SOURCE_LIMIT'; }
         else {
-          const existingState = target?.状态效果?.[stateName];
+          const existingState = originalState;
           const existingDuration = Math.max(0, Number(existingState?.duration ?? existingState?.持续回合 ?? 0));
           const existingSourceWindows = Array.isArray(existingState?.__状态来源窗口)
             ? existingState.__状态来源窗口.map(value => String(value || '').trim()).filter(Boolean).slice(0, existingDuration)
@@ -169234,8 +173193,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 ];
             const appliedState = {
               ...merged.state,
-              来源技能: actionName,
+              // R01 identity: the applying cast's skill as the preview records it (a derived payload keeps its __来源技能).
+              来源技能: String(merged.state?.来源技能 || actionName),
               来源角色: previewRuntime.unitName(actor),
+              ...(instanceSlot?.stateId ? { 状态ID: instanceSlot.stateId } : {}),
             };
             Object.defineProperties(appliedState, {
               __状态来源键: {
@@ -169251,7 +173212,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 value: sourceWindows,
               },
             });
-            target.状态效果[stateName] = appliedState;
+            target.状态效果[stateKey] = appliedState;
             const chargeInterrupt = result === 'applied'
               ? interruptStoredChargeByControl({
                   combatData,
@@ -169259,7 +173220,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                   target,
                   actionEvent,
                   actionRole,
-                  stateName,
+                  stateName: stateKey,
                 })
               : null;
             if (chargeInterrupt) facts.push(chargeInterrupt);
@@ -169271,7 +173232,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const stateOperation = stateReplaced ? 'STATE_REPLACE' : 'STATE_APPLY';
         const stateResult = stateReplaced ? 'replaced' : result;
         const stateAfter = result === 'applied'
-          ? cloneValue(target?.状态效果?.[stateName] || null)
+          ? cloneValue(target?.状态效果?.[stateKey] || null)
           : cloneValue(stateBefore);
         const stateResolutionReason = result === 'applied'
           ? stateReplaced ? 'REPLACED' : 'APPLIED'
@@ -169335,11 +173296,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             position: outcomePosition(stateOperation, effectIndex),
           },
         });
-        if (stateFact && result === 'applied') bindStateSourceProvenance(combatData, target, stateName, applicationId, stateFact);
+        if (stateFact && result === 'applied') bindStateSourceProvenance(combatData, target, stateKey, applicationId, stateFact);
         facts.push(stateFact);
-        if (result === 'applied' && mergeKind === 'REPLACE' && previewRuntime.stateEndRisks(originalState, stateName).length) {
+        if (result === 'applied' && mergeKind === 'REPLACE' && previewRuntime.stateEndRisks(originalState, stateKey).length) {
           const ledger = ensureLedger(combatData), start = ledger.length;
-          settleConditionSideEffects(target, stateName, originalState, '效果结束后', previewRuntime.unitName(target), combatData, {
+          settleConditionSideEffects(target, stateKey, originalState, '效果结束后', previewRuntime.unitName(target), combatData, {
             actionRole: 'PASSIVE', applicationId: String(originalState.__状态来源窗口?.[0] || originalState.__状态来源键 || ''),
             triggeringEventId: stateFact.eventId, triggeringSourceActionId: actionEvent.actionId,
             triggeringSourceEffectId: sourceEffectId, stateEndCause: 'REPLACED',
@@ -170161,6 +174122,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           preparedDefenseConsumed: !!preparedDefense,
         },
       });
+      // A prepared stance was paid for when it was taken; a reaction pays for itself (R07).
+      if (!preparedDefense) payActionStamina({ combatData, actor: reactor, nature: 'EVADE', opponent: sourceActor, action: { actionName: '闪避', actionKind }, actionEvent: event, actionRole: 'REACTION' });
       return {
         actionKind,
         event,
@@ -170181,6 +174144,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         ruleCode: 'REACTION_SUCCEEDED',
         meta: { ...reactionMeta, damageMultiplier, preparedDefenseConsumed: !!preparedDefense },
       });
+      if (!preparedDefense) payActionStamina({ combatData, actor: reactor, nature: 'DEFEND', opponent: sourceActor, action: { actionName: actionKind === 'GUARD' ? '护卫' : '防御', actionKind }, actionEvent: event, actionRole: 'REACTION' });
       return {
         actionKind,
         event,
@@ -170217,20 +174181,33 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     };
   }
 
+  // R15: a round is one cavalry pass. A successful defence or evasion always lets the defender strike back, and a
+  // counter can itself be defended or evaded and answered, so the engagement flows until someone fails to answer,
+  // declines, or lacks the stamina for the strike. ENGAGEMENT_CHAIN_LIMIT only guards against a runaway loop.
+  // COUNTER_WINDOW_MODE 'PROBABILITY' restores the old contest roll if the always-open chain proves too slow.
+  const COUNTER_WINDOW_MODE = 'ALWAYS';
+  const ENGAGEMENT_CHAIN_LIMIT = 8;
+
   function openStructuredCounterWindow(input = {}) {
     const { combatData, reactor, sourceActor, parentActionEvent, reaction, settlementFacts } = input;
+    const engagementDepth = Math.max(0, Number(input?.engagementDepth || 0));
     if (!combatData || !reactor || !sourceActor || !parentActionEvent?.actionId || !reaction?.opensCounterCheck) return null;
     if (!structuredActorCanAct(reactor, 'COUNTER') || !structuredActorPhysicallyAlive(sourceActor)) return null;
     const receivedDamage = (Array.isArray(settlementFacts) ? settlementFacts : []).reduce((sum, event) => {
       if (event?.eventKind !== 'hit_result' || !isUnitIdentityMatch(reactor, event?.targetName || event?.targetId || '')) return sum;
       return sum + Math.max(0, Number(event?.appliedDamage || event?.meta?.appliedDamage || 0));
     }, 0);
-    if (reaction.actionKind === 'DEFEND' && !(receivedDamage > 0)) return null;
     const baseProbability = reaction.evaded === true ? 0.45 : 0.24;
     const contest = structuredReactionContest(reactor, sourceActor);
-    const probability = Math.max(0.08, Math.min(0.72, baseProbability + (contest.probability - 0.25) * 0.5));
+    const contestProbability = Math.max(0.08, Math.min(0.72, baseProbability + (contest.probability - 0.25) * 0.5));
+    const strikeStamina = previewRuntime.actionStaminaEnabled(combatData) ? previewRuntime.actionStaminaCost(reactor, 'ATTACK', sourceActor) : 0;
+    // The defender will not strike back with stamina it cannot spare: a counter that would leave it at 0 is not taken.
+    const staminaExhausted = strikeStamina > 0 && persistentResourceValue(reactor, 'vit') - strikeStamina <= 1e-9;
+    const chainLimited = engagementDepth >= ENGAGEMENT_CHAIN_LIMIT;
+    const probability = COUNTER_WINDOW_MODE === 'PROBABILITY' ? contestProbability : 1;
     const roll = Math.random();
-    const opened = probabilitySucceeds(probability, roll);
+    const opened = !staminaExhausted && !chainLimited && probabilitySucceeds(probability, roll);
+    const closedReason = staminaExhausted ? 'COUNTER_WINDOW_STAMINA_EXHAUSTED' : chainLimited ? 'ENGAGEMENT_CHAIN_LIMIT' : 'COUNTER_WINDOW_MISSED';
     const counterGrantProfile = reaction?.counterGrantProfile?.granted === true
       ? cloneValue(reaction.counterGrantProfile)
       : null;
@@ -170258,6 +174235,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         probability,
         roll,
         receivedDamage,
+        engagementDepth,
+        ...(opened ? {} : { closedReason }),
+        counterWindowMode: COUNTER_WINDOW_MODE,
+        contestProbability,
+        strikeStamina,
         reactionPressure: contest.reactionPressure,
         attackPressure: contest.attackPressure,
         reactionShare: contest.share,
@@ -170987,7 +174969,35 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     };
   }
 
-  function runStructuredBattle(input = {}) {
+  // R11 (parallel valuation, 2026-11-11): the battle loop pauses at each outermost decision's provider call and hands it
+  // to its driver — runStructuredBattle settles it here as before; runStructuredBattleAsync awaits options.runProvider,
+  // which may value the candidates on workers. A provider error is thrown back at the paused call, as before.
+  function driveBattleSteps(steps) {
+    for (let step = steps.next(); ;) {
+      if (step.done) return step.value;
+      let value, error, failed = false;
+      try { value = decisionRuntime.runProvider({ providerId: step.value.providerId, request: step.value.request }); }
+      catch (caught) { failed = true; error = caught; }
+      step = failed ? steps.throw(error) : steps.next(value);
+    }
+  }
+
+  async function driveBattleStepsAsync(steps, options = {}) {
+    const decide = typeof options?.runProvider === 'function' ? options.runProvider
+      : call => decisionRuntime.runProvider({ providerId: call.providerId, request: call.request });
+    for (let step = steps.next(); ;) {
+      if (step.done) return step.value;
+      let value, error, failed = false;
+      try { value = await decide(step.value); }
+      catch (caught) { failed = true; error = caught; }
+      step = failed ? steps.throw(error) : steps.next(value);
+    }
+  }
+
+  function runStructuredBattle(input = {}) { return driveBattleSteps(runStructuredBattleSteps(input)); }
+  function runStructuredBattleAsync(input = {}, options = {}) { return driveBattleStepsAsync(runStructuredBattleSteps(input), options); }
+
+  function* runStructuredBattleSteps(input = {}) {
     const performanceTraceEnabled =
       root?.process?.env?.BATTLE_R8_PERF_TRACE === '1';
     const performanceNow = () =>
@@ -171095,7 +175105,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     rehydrateStateSourceMemory(source, combatData);
     const caseId = String(input?.caseId || 'structured-shadow').trim() || 'structured-shadow';
     const seed = Math.max(1, Math.floor(Number(input?.seed || 1)));
-    const roundLimit = Math.max(1, Math.min(20, Math.floor(Number(input?.rounds || input?.settings?.maxRounds || 1))));
+    const roundLimit = Math.max(1, Math.min(previewRuntime.battleRoundLimit, Math.floor(Number(input?.rounds || input?.settings?.maxRounds || 1))));
     const analyticsCompactEvidence = input?.settings?.analyticsCompactEvidence === true;
     performanceTrace('battle-start', {
       caseId: String(input?.caseId || '').trim(),
@@ -171516,6 +175526,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         });
         logs.push(...beginBattleRound(combatData, combatData.回合).filter(Boolean));
         invalidateRouteUnitHashes(combatData);
+        settleStaminaExhaustion(combatData);
         const queueTrace = runtime.actionQueueTrace;
         const naturalEntries = buildActionQueue(combatData);
         performanceTrace('queue-built', {
@@ -172212,7 +176223,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             });
           });
         };
-        const decideForNode = (actor, node, extras = {}) => {
+        const decideForNode = function* (actor, node, extras = {}) {
           const decisionStartedAt = performanceNow();
           let routeFactOwnershipSummary = {};
           let behaviorLayerSemanticHashes = {};
@@ -172432,10 +176443,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             const providerStartedAt = collectPerformanceBreakdown
               ? performanceNow()
               : 0;
-            const providerResult = decisionRuntime.runProvider({
-              providerId,
-              request: preparedRequest,
-            });
+            // R11: settled by the battle's driver (runStructuredBattle / runStructuredBattleAsync).
+            const providerResult = yield { providerId, request: preparedRequest, decisionInput };
             decisionResult = providerResult.decisionAudit;
             if (collectPerformanceBreakdown) {
               const providerFinishedAt = performanceNow();
@@ -173090,7 +177099,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 sourceFactIds: sourceFactIds.slice(),
                 sourceEventIds: sourceEventIds.slice(),
               };
-              const decisionResult = preparedDefense || summonGuard ? null : decideForNode(actor, node, {
+              const decisionResult = preparedDefense || summonGuard ? null : yield* decideForNode(actor, node, {
                 role: 'REACTION',
                 imminentThreat: true,
                 sourceActorId,
@@ -173374,6 +177383,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                   parentActionEvent: settlement.actionEvent,
                   reaction,
                   settlementFacts: settlement.facts,
+                  engagementDepth: Number(node?.state?.engagementDepth || 0),
                 });
                 if (!counterWindow?.opened) return;
                 queue.enqueue({
@@ -173398,9 +177408,38 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                     reactionEvent: reaction?.event || null,
                     counterWindowEvent: counterWindow.event,
                     counterGrantProfile: counterWindow.counterGrantProfile,
+                    engagementDepth: Number(node?.state?.engagementDepth || 0) + 1,
                   },
                 });
               });
+              // 连续行动: a natural action that leaves its turn's windup total under CONTINUOUS_ACTION_BUDGET lets the actor act
+              // again in the same turn, choosing among actions that still fit (or passing). Reactions and counters to it resolve
+              // first; a turn-ending action (defend, evade, pass) or a charged release ends the chain.
+              const chainKind = String(shared.declaration?.actionKind || '').trim().toUpperCase();
+              // A charged release (its 前摇 over the budget) ends the chain through chainWindup <= naturalActionBudget below.
+              const chainLink = node.actionRole === 'ACTIVE' && (node.nodeKind === 'ACTIVE' || node.grantType === 'CONTINUOUS_ACTION');
+              const chainWindup = previewRuntime.actionWindup(actor, shared.declaration);
+              const chainUsed = Number(node?.state?.windupUsed || 0) + chainWindup;
+              if (chainLink && ['BASIC_ATTACK', 'RELEASE_SKILL', 'USE_ITEM'].includes(chainKind) && chainWindup > 0 &&
+                chainWindup <= naturalActionBudget && chainUsed < previewRuntime.CONTINUOUS_ACTION_BUDGET && structuredActorPhysicallyAlive(actor) &&
+                Number(node?.state?.chainDepth || 0) < 8) {
+                queue.enqueue({
+                  actorEntry: node.actorEntry,
+                  actorControl: node.actorControl,
+                  actorTurnSequence: node.actorTurnSequence,
+                  parentActionSequence: node.parentActionSequence || node.actionSequence,
+                  phasePriority: 66,
+                  grantId: `continuous:${settlement.actionEvent.actionId}`,
+                  nodeKind: 'CONTINUATION',
+                  actionRole: 'ACTIVE',
+                  sourceActionId: settlement.actionEvent.actionId,
+                  grantType: 'CONTINUOUS_ACTION',
+                  state: { continuationDepth: 1, parentActionEvent: settlement.actionEvent, windupUsed: chainUsed,
+                    chainDepth: Number(node?.state?.chainDepth || 0) + 1,
+                    // Strictly under the budget: the next windup must keep the total below 40.
+                    immediateBudget: previewRuntime.CONTINUOUS_ACTION_BUDGET - chainUsed - 1e-6 },
+                });
+              }
               const continuationGrant = readStructuredContinuationGrant(shared.declaration);
               if (continuationGrant && structuredContinuationEligible(continuationGrant, {
                 continuationDepth: node?.state?.continuationDepth,
@@ -173546,7 +177585,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               }
               if (!isCooperativeAssist) {
                 const chargedSkill = cloneValue(storedCharge?.skill || storedCharge);
-                decisionResult = decideForNode(actor, node, {
+                decisionResult = yield* decideForNode(actor, node, {
                   role: node.actionRole,
                   forcedSkill: chargedSkill,
                   forcedTargetIds: Array.isArray(storedCharge?.targetIds) ? storedCharge.targetIds : [],
@@ -173568,7 +177607,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             if (storedCharge && !isCooperativeAssist) {
               // The stored charge owns this natural action and releases through the normal declaration path.
             } else if (useLockedDeclaration) {
-              decisionResult = decideForNode(actor, node, {
+              decisionResult = yield* decideForNode(actor, node, {
                 role: node.actionRole,
                 playerLockedDeclaration: {
                   ...cloneValue(lockedDeclaration),
@@ -173581,7 +177620,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               node.actorControl = 'PLAYER_LOCKED';
             } else if (isCooperativeAssist) {
               try {
-                decisionResult = decideForNode(actor, node, {
+                decisionResult = yield* decideForNode(actor, node, {
                   role: 'ASSIST',
                   ...cooperativeOptions,
                   ...(storedCharge ? { forcedSkill: cloneValue(storedCharge.skill || storedCharge),
@@ -173656,7 +177695,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                   continue;
                 }
               }
-              decisionResult = decideForNode(actor, node, node.nodeKind === 'COUNTER'
+              decisionResult = yield* decideForNode(actor, node, node.nodeKind === 'COUNTER'
                 ? {
                     role: 'COUNTER',
                     counterWindow: true,
@@ -173681,7 +177720,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                     } : {}),
                   }
                 : node.nodeKind === 'CONTINUATION'
-                  ? { role: 'ACTIVE', continuationGrant: true, immediateBudget: naturalActionBudget, enforceImmediateBudget: true }
+                  ? { role: 'ACTIVE', continuationGrant: true, immediateBudget: Number(node?.state?.immediateBudget ?? naturalActionBudget), enforceImmediateBudget: true }
                   : { role: node.actionRole });
               if (handleLostDecisionNode(decisionResult, node)) continue;
               declaration = cloneValue(decisionResult?.selected?.declaration || {});
@@ -173811,7 +177850,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               consumeAutonomousSummonWindow(actor, node);
               continue;
             }
-            const castTime = Math.max(0, Number(declaration?.skill?.前摇 ?? declaration?.skill?.cast_time ?? 0));
+            const castTime = previewRuntime.actionWindup(actor, declaration);
             if (!storedCharge && (node.nodeKind === 'ACTIVE' || isCooperativeAssist) && castTime > naturalActionBudget) {
               const actionName = normalizeActionDisplayName(declaration?.skill?.name || declaration?.skill?.魂技名 || declaration?.actionKind || '蓄力行动');
               const chargeActionId = nextRuntimeId('battle-action');
@@ -173917,7 +177956,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             registerPredictedEvidence(actionContext.actionEvent, decisionResult);
             const resolvedDeclaration = actionContext.declaration;
             const shared = { declaration: resolvedDeclaration, actionContext, reactionByTarget: {}, decisionResult };
-            const hostileTargets = node.nodeKind === 'COUNTER' || structuredDamageEffects(resolvedDeclaration).length === 0
+            const hostileTargets = (node.nodeKind === 'COUNTER' && Number(node?.state?.engagementDepth || 0) >= ENGAGEMENT_CHAIN_LIMIT) ||
+              structuredDamageEffects(resolvedDeclaration).length === 0
               ? []
               : resolveStructuredTargets(combatData, actor, resolvedDeclaration, structuredDamageEffects(resolvedDeclaration)[0])
                   .filter(target => inferUnitSide(combatData, target) !== inferUnitSide(combatData, actor));
@@ -173993,7 +178033,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               nodeKind: 'PRIMARY_SETTLEMENT',
               actionRole: node.actionRole,
               sourceActionId: actionContext.actionEvent.actionId,
-              state: { shared, continuationDepth: Number(node?.state?.continuationDepth || 0),
+              state: { shared, continuationDepth: Number(node?.state?.continuationDepth || 0), engagementDepth: Number(node?.state?.engagementDepth || 0),
                 ...(actor.召唤键 && String(actor.行动模式 || '').trim() === '自主行动' &&
                   (node.nodeKind === 'ACTIVE' || declaration.counterConsumesNaturalOpportunity === true)
                   ? { autonomousNaturalWindow: true } : {}) },
@@ -176319,7 +180359,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         pushHighlight(round, summarizeSustainBreakEvent(event), 4, event);
       } else if (kind === 'state_apply' && stateWasApplied(event)) {
         const stateName = readLedgerStateName(event);
-        if (stateName) pushHighlight(round, `${target || actor}陷入【${stateName}】`, /眩晕|麻痹|僵直|沉默|封技|禁锢|束缚|定身|冻结/.test(stateName) ? 7 : 4, event);
+        // Same wording as the report's state label: a buff is gained, a debuff fallen into.
+        const type = String(event?.meta?.after?.类型 || '').trim();
+        const polarity = type === 'buff' ? 1 : type === 'debuff' ? -1 : previewRuntime.statePolarity({ 原型: '状态施加', 状态: stateName });
+        const text = polarity > 0 ? `获得【${stateName}】` : polarity < 0 ? `陷入【${stateName}】` : `进入【${stateName}】状态`;
+        if (stateName) pushHighlight(round, `${target || actor}${text}`, /眩晕|麻痹|僵直|沉默|封技|禁锢|束缚|定身|冻结/.test(stateName) ? 7 : 4, event);
       } else if (kind === 'state_apply' && stateWasImmune(event)) {
         const stateName = readLedgerStateName(event);
         if (stateName) pushHighlight(round, `${target || actor}免疫【${stateName}】`, /眩晕|麻痹|僵直|沉默|封技|禁锢|束缚|定身|冻结/.test(stateName) ? 6 : 3, event);
@@ -178609,19 +182653,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return providerId;
   }
 
-  function runDecisionCase(input = {}) {
+  function runDecisionCase(input = {}) { return driveBattleSteps(runDecisionCaseSteps(input)); }
+  function* runDecisionCaseSteps(input = {}) {
     const source = input && typeof input === 'object' ? cloneValue(input) : {};
     const combatData = source?.combatData && typeof source.combatData === 'object'
       ? source.combatData
       : null;
     if (!combatData) throw new Error('battle_declaration_combat_data_missing');
     const providerId = resolveFormalProviderId(source);
-    return runStructuredBattle({
+    return yield* runStructuredBattleSteps({
       ...source,
       combatData,
       caseId: String(source.caseId || 'r9v2-formal').trim(),
       seed: Math.max(1, Math.floor(Number(source.seed || 1))),
-      rounds: Math.max(1, Math.min(20, Math.floor(Number(source.rounds || 1)))),
+      rounds: Math.max(1, Math.min(previewRuntime.battleRoundLimit, Math.floor(Number(source.rounds || 1)))),
       mode: String(source.mode || 'single_round').trim() || 'single_round',
       settings: {
         ...(source.settings || {}),
@@ -178635,13 +182680,21 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return runDecisionCase(options && typeof options === 'object' ? options : {});
   }
 
-  function executeBattleDraft(input = {}) {
+  function runBattleCaseAsync(options = {}, parallel = {}) {
+    return driveBattleStepsAsync(runDecisionCaseSteps(options && typeof options === 'object' ? options : {}), parallel);
+  }
+
+  // R11: executeBattleDraftAsync / executePlayerLockedBattleSettlementAsync run the same steps with options.runProvider
+  // (parallel valuation, createBattleParallelPool) and resolve to the same draft.
+  function executeBattleDraft(input = {}) { return driveBattleSteps(executeBattleDraftSteps(input)); }
+  function executeBattleDraftAsync(input = {}, options = {}) { return driveBattleStepsAsync(executeBattleDraftSteps(input), options); }
+  function* executeBattleDraftSteps(input = {}) {
     const source = input && typeof input === 'object' ? cloneValue(input) : {};
     const combatData = source?.combatData && typeof source.combatData === 'object'
       ? source.combatData
       : null;
     if (!combatData) throw new Error('battle_declaration_combat_data_missing');
-    const result = runDecisionCase({
+    const result = yield* runDecisionCaseSteps({
       ...source,
       combatData,
       settings: {
@@ -178682,7 +182735,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return attestBattleDraft({ ...draft, draftHash: hashBattleValue(draft) });
   }
 
-  function executePlayerLockedBattleSettlement(input = {}) {
+  function executePlayerLockedBattleSettlement(input = {}) { return driveBattleSteps(executePlayerLockedBattleSettlementSteps(input)); }
+  function executePlayerLockedBattleSettlementAsync(input = {}, options = {}) {
+    return driveBattleStepsAsync(executePlayerLockedBattleSettlementSteps(input), options);
+  }
+  function* executePlayerLockedBattleSettlementSteps(input = {}) {
     const source = input && typeof input === 'object' ? cloneValue(input) : {};
     const providerId = resolveFormalProviderId(source);
     const requestedAction = source?.actionDeclaration || source?.selectedAction;
@@ -178731,9 +182788,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
     const mode = source.mode === 'multi_round' ? 'multi_round' : 'single_round';
     const rounds = mode === 'multi_round'
-      ? Math.max(1, Math.min(20, Math.floor(Number(source.rounds || source.settings?.maxRounds || 20))))
+      ? Math.max(1, Math.min(previewRuntime.battleRoundLimit, Math.floor(Number(source.rounds || source.settings?.maxRounds || previewRuntime.battleRoundLimit))))
       : 1;
-    const result = runStructuredBattle({
+    const result = yield* runStructuredBattleSteps({
       ...source,
       combatData,
       rounds,
@@ -178914,6 +182971,268 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return cloneValue({ prototypes: rows, coveredOptionKeys: [...coveredOptionKeys], prototypeCount: rows.length, optionCount: coveredOptionKeys.size });
   }
 
+  // R11 (parallel valuation, 2026-11-11): an outermost decision's candidates valued on worker threads.
+  // A worker is a second copy of the battle engine (the battle worker bundle); each decision it receives the decision
+  // input — packed so that what structuredClone drops (own non-enumerable fields such as a world's 召唤单位表,
+  // __battleRuntime and __行动闭环诊断 or a state's __状态来源键/__状态来源窗口, frozenness) arrives too, without the
+  // event ledger (sent once and then only its new entries) and the runtime records no decision reads (resolution trace,
+  // action queue trace, opportunity graph, fact journal) — and values its share of the candidates
+  // (decisionRuntime.runProvider parallel.only). The main thread settles every candidate and values its own share
+  // meanwhile, then decides with every share's rows given (parallel.given). Candidates are valued apart exactly as
+  // together (6 high-level 3v3, 5503 candidates; 7 battles, 432 decisions on a fresh engine copy: same choices); a share
+  // that fails or times out is valued again on the main thread.
+  const R11_HIDDEN = '\u0000lwcsHidden', R11_FROZEN = '\u0000lwcsFrozen';
+  const R11_OMIT_HIDDEN = new Set(['__battleEventLedger', '__battleResolutionTrace']);
+  const R11_OMIT_RUNTIME = ['actionQueueTrace', 'opportunityGraph', 'evaluationFactJournal'];
+  function r11Pack(value, omitHidden = null) {
+    const copies = new Map();
+    const visit = item => {
+      if (!item || typeof item !== 'object') return item;
+      if (copies.has(item)) return copies.get(item);
+      // Tags, not instanceof: values may come from another realm (an iframe, a vm context).
+      const tag = Object.prototype.toString.call(item);
+      if (tag !== '[object Object]' && tag !== '[object Array]') { copies.set(item, item); return item; }
+      const copy = Array.isArray(item) ? [] : {};
+      copies.set(item, copy);
+      for (const key of Object.keys(item)) copy[key] = visit(item[key]);
+      let hidden = null;
+      for (const key of Object.getOwnPropertyNames(item)) {
+        if (Array.isArray(item) && key === 'length') continue;
+        const descriptor = Object.getOwnPropertyDescriptor(item, key);
+        if (descriptor.enumerable || !('value' in descriptor) || typeof descriptor.value === 'function' || omitHidden?.has(key)) continue;
+        (hidden ||= {})[key] = [visit(descriptor.value), descriptor.writable ? 1 : 0, descriptor.configurable ? 1 : 0];
+      }
+      if (hidden) copy[R11_HIDDEN] = hidden;
+      if (Object.isFrozen(item)) copy[R11_FROZEN] = 1;
+      return copy;
+    };
+    return visit(value);
+  }
+  function r11Unpack(value) {
+    const done = new Set();
+    const visit = item => {
+      if (!item || typeof item !== 'object' || done.has(item)) return item;
+      done.add(item);
+      const hidden = item[R11_HIDDEN], frozen = item[R11_FROZEN];
+      if (hidden) delete item[R11_HIDDEN];
+      if (frozen) delete item[R11_FROZEN];
+      for (const key of Object.keys(item)) visit(item[key]);
+      if (hidden) for (const [key, [inner, writable, configurable]] of Object.entries(hidden)) {
+        visit(inner);
+        Object.defineProperty(item, key, { value: inner, enumerable: false, writable: !!writable, configurable: !!configurable });
+      }
+      if (frozen) Object.freeze(item);
+      return item;
+    };
+    return visit(value);
+  }
+  function r11PackDecisionInput(decisionInput) {
+    const packed = r11Pack(decisionInput, R11_OMIT_HIDDEN);
+    const runtimeState = packed?.worldSnapshot?.[R11_HIDDEN]?.__battleRuntime?.[0];
+    if (runtimeState && typeof runtimeState === 'object') for (const key of R11_OMIT_RUNTIME) delete runtimeState[key];
+    return packed;
+  }
+  // The ledger a worker holds for one battle, kept by the entries it was sent.
+  function r11LedgerDelta(session, ledger) {
+    const array = Array.isArray(ledger) ? ledger : [];
+    const reset = session.array !== array || session.sent > array.length;
+    const entries = r11Pack(array.slice(reset ? 0 : session.sent));
+    session.array = array;
+    session.sent = array.length;
+    const population = array.__sideEffectEligibilityPopulation;
+    return { reset, entries, population: population && typeof population === 'object' ? { ...population } : null };
+  }
+
+  // A worker's side: `scope` is the worker's global (self) or an adapter with postMessage and an onmessage setter.
+  function installBattleWorkerHost(scope) {
+    const ledger = [];
+    scope.onmessage = event => {
+      const message = event?.data || {};
+      if (message.type === 'ping') { scope.postMessage({ type: 'ready' }); return; }
+      if (message.type !== 'share') return;
+      const started = Date.now();
+      let reply;
+      try {
+        if (message.ledger?.reset) ledger.length = 0;
+        for (const entry of r11Unpack(message.ledger?.entries || [])) ledger.push(entry);
+        const input = r11Unpack(message.packed);
+        const copy = ledger.slice();
+        if (message.ledger?.population) Object.defineProperty(copy, '__sideEffectEligibilityPopulation', { value: message.ledger.population, enumerable: false });
+        if (input?.worldSnapshot && typeof input.worldSnapshot === 'object') {
+          Object.defineProperty(input.worldSnapshot, '__battleEventLedger', { value: copy, enumerable: false, writable: true, configurable: true });
+        }
+        let rows = [];
+        if (Array.isArray(message.only) && message.only.length) {
+          const request = decisionRuntime.prepareDecisionRequest({ ...input, analysisDepth: 'CANDIDATES_ONLY', collectPerformanceBreakdown: false });
+          rows = decisionRuntime.runProvider({ providerId: message.providerId, request, parallel: { only: message.only } }).parallelRows || [];
+        }
+        reply = { type: 'rows', seq: message.seq, rows: r11Pack(rows), ms: Date.now() - started };
+      } catch (error) {
+        reply = { type: 'rows', seq: message.seq, error: String(error?.stack || error).slice(0, 2000), ms: Date.now() - started };
+      }
+      scope.postMessage(reply);
+    };
+  }
+  if (root.__LWCS_BATTLE_WORKER__ === true && typeof root.postMessage === 'function' && typeof root.importScripts === 'function') {
+    installBattleWorkerHost(root);
+  }
+
+  // The main thread's side. options: { createWorker(index) → Worker-like, size, minCandidates, timeoutMs }.
+  // Without workers (none created, all failed) runProvider decides on the main thread as before.
+  function createBattleParallelPool(options = {}) {
+    const hardware = Number(root.navigator?.hardwareConcurrency || 4);
+    const size = Math.max(0, Math.floor(Number(options.size ?? Math.min(4, Math.max(1, hardware - 1)))));
+    const minCandidates = Math.max(2, Number(options.minCandidates ?? 2 * (size + 1)));
+    const timeoutMs = Math.max(1000, Number(options.timeoutMs ?? 30000));
+    const cost = candidate => candidate?.creation ? 6 : String(candidate?.declaration?.actionKind || '') === 'RELEASE_SKILL' ? 2 : 1;
+    const workers = [];
+    for (let index = 0; index < size; index++) {
+      let worker = null;
+      try { worker = options.createWorker?.(index) || null; } catch { worker = null; }
+      if (!worker) continue;
+      const slot = { worker, alive: true, ready: false, pending: new Map(), speed: 0.6, fixedMs: 6, session: { array: null, sent: 0 } };
+      worker.onmessage = event => {
+        const data = event?.data || {};
+        if (data.type === 'ready') { slot.ready = true; return; }
+        const waiter = slot.pending.get(data.seq);
+        if (waiter) { slot.pending.delete(data.seq); waiter(data); }
+      };
+      worker.onerror = () => {
+        slot.alive = false;
+        for (const waiter of slot.pending.values()) waiter({ error: 'worker_error' });
+        slot.pending.clear();
+      };
+      try { worker.postMessage({ type: 'ping' }); } catch { slot.alive = false; }
+      workers.push(slot);
+    }
+    const main = { speed: 1.4, fixedMs: 0 };
+    let seq = 0;
+    const ask = (slot, message) => new Promise(resolve => {
+      const timer = setTimeout(() => { slot.pending.delete(message.seq); resolve({ error: 'timeout' }); }, timeoutMs);
+      slot.pending.set(message.seq, data => { clearTimeout(timer); resolve(data); });
+      try { slot.worker.postMessage(message); } catch (error) { clearTimeout(timer); slot.pending.delete(message.seq); resolve({ error: String(error) }); }
+    });
+    async function runProvider(call) {
+      const { providerId, request, decisionInput } = call || {};
+      const candidates = request?.frozenCandidates || [];
+      const ready = workers.filter(slot => slot.alive && slot.ready);
+      if (!ready.length || !decisionInput || candidates.length < minCandidates) return decisionRuntime.runProvider({ providerId, request });
+      const packed = r11PackDecisionInput(decisionInput);
+      // Deal the candidates, costliest first, to whoever would finish them soonest at its measured speed; the main
+      // thread starts loaded with settling every candidate.
+      const lanes = [...ready.map(slot => ({ slot, finish: slot.fixedMs, units: 0, ids: [] })),
+        { slot: null, finish: candidates.length * 0.6, units: 0, ids: [] }];
+      for (const candidate of [...candidates].sort((a, b) => cost(b) - cost(a))) {
+        const units = cost(candidate);
+        let best = lanes[0];
+        for (const lane of lanes) {
+          const speed = lane.slot ? lane.slot.speed : main.speed, bestSpeed = best.slot ? best.slot.speed : main.speed;
+          if (lane.finish + units / speed < best.finish + units / bestSpeed) best = lane;
+        }
+        best.ids.push(candidate.candidateId); best.units += units; best.finish += units / (best.slot ? best.slot.speed : main.speed);
+      }
+      seq += 1;
+      const replies = lanes.filter(lane => lane.slot).map(lane => ask(lane.slot, { type: 'share', seq, packed, providerId, only: lane.ids,
+        ledger: r11LedgerDelta(lane.slot.session, decisionInput?.worldSnapshot?.__battleEventLedger) }).then(reply => ({ lane, reply })));
+      const mainLane = lanes[lanes.length - 1];
+      const startedAt = Date.now();
+      const own = decisionRuntime.runProvider({ providerId, request, parallel: { only: mainLane.ids, projectAll: true } });
+      const mainMs = Date.now() - startedAt;
+      if (mainLane.units > 0) main.speed = 0.7 * main.speed + 0.3 * mainLane.units / Math.max(1, mainMs - candidates.length * 0.6);
+      const rows = [...(own.parallelRows || [])];
+      for (const { lane, reply } of await Promise.all(replies)) {
+        if (reply?.error) {
+          // A worker that failed is set aside; its share is valued again below (rows missing from `given`).
+          if (reply.error !== 'timeout') lane.slot.alive = false;
+          lane.slot.session = { array: null, sent: 0 };
+          continue;
+        }
+        if (lane.units > 0) lane.slot.speed = 0.7 * lane.slot.speed + 0.3 * lane.units / Math.max(1, Number(reply.ms || 0) - lane.slot.fixedMs);
+        rows.push(...r11Unpack(reply.rows || []));
+      }
+      return decisionRuntime.runProvider({ providerId, request, parallel: { given: rows } });
+    }
+    return Object.freeze({
+      size: workers.length,
+      runProvider,
+      get readyCount() { return workers.filter(slot => slot.alive && slot.ready).length; },
+      dispose() { for (const slot of workers) { slot.alive = false; try { slot.worker.terminate?.(); } catch {} } },
+    });
+  }
+  // A dedicated-worker factory over the battle worker bundle (LWCS_Battle_Worker_Bundle.js): `source` is { text } — the
+  // bundle read by the caller (the frames LWCS runs in have an opaque origin, where a worker's importScripts of the CDN
+  // fails while the frame's own fetch of the same file works, TT 2026-11-11) — or a URL for importScripts. One Blob
+  // serves every worker.
+  function battleWorkerFactory(source) {
+    const prelude = 'self.__LWCS_BATTLE_WORKER__ = true; self._ = self._ || { cloneDeep: value => structuredClone(value) };\n';
+    const text = source && typeof source === 'object' && typeof source.text === 'string' ? source.text : '';
+    const url = typeof source === 'string' ? source : String(source?.url || '');
+    let blobUrl = '';
+    return () => {
+      if (typeof root.Worker !== 'function' || typeof root.Blob !== 'function' || typeof root.URL?.createObjectURL !== 'function') return null;
+      if (!text && !url) return null;
+      blobUrl ||= root.URL.createObjectURL(new root.Blob([prelude + (text || `importScripts(${JSON.stringify(url)});`)], { type: 'text/javascript' }));
+      return new root.Worker(blobUrl);
+    };
+  }
+
+  // The shared pool the game's battle submissions use (executeBattleDraftParallel): workers by device — a desktop up to
+  // 4 (one core left), a phone 2 with 6+ cores and 4+ GB (else 1), none at 2 GB or less — over the battle worker bundle,
+  // read from the frame's resource base (__LWCS_资源基础地址__, then its GitHub raw mirror) once, in the background. Until it
+  // is ready, or if it cannot be read (not yet deployed, offline), or root.__LWCS_BATTLE_PARALLEL_DISABLED__ is set,
+  // battles decide on the main thread exactly as before.
+  const R11_WORKER_BUNDLE = 'LWCS_Battle_Worker_Bundle.js';
+  let sharedPool = null, sharedPoolLoading = null;
+  function defaultBattleWorkerCount() {
+    const navigatorInfo = root.navigator || {};
+    const cores = Number(navigatorInfo.hardwareConcurrency || 4), memory = Number(navigatorInfo.deviceMemory || 0);
+    const mobile = navigatorInfo.userAgentData?.mobile === true || /Android|iPhone|iPad|iPod|Mobile/i.test(String(navigatorInfo.userAgent || ''));
+    if (memory && memory <= 2) return 0;
+    if (mobile) return cores >= 6 && (!memory || memory >= 4) ? 2 : 1;
+    return Math.max(1, Math.min(4, cores - 1));
+  }
+  async function readWorkerBundleText() {
+    const base = String(root.__LWCS_资源基础地址__ || root.parent?.__LWCS_资源基础地址__ || '').trim();
+    if (!base || typeof root.fetch !== 'function') return '';
+    const normalized = base.endsWith('/') ? base : base + '/';
+    const match = /^https:\/\/[^/]+\/gh\/([^/@]+)\/([^/@]+)@([0-9a-f]{40})\/$/i.exec(normalized);
+    for (const prefix of [normalized, match ? `https://raw.githubusercontent.com/${match[1]}/${match[2]}/${match[3]}/` : '']) {
+      if (!prefix) continue;
+      try {
+        const response = await root.fetch(prefix + R11_WORKER_BUNDLE);
+        if (response.ok) {
+          const text = await response.text();
+          if (text.includes('__LWCS_BATTLE_PARALLEL__')) return text;
+        }
+      } catch {}
+    }
+    return '';
+  }
+  function ensureSharedBattlePool() {
+    if (sharedPool || sharedPoolLoading || root.__LWCS_BATTLE_PARALLEL_DISABLED__ === true) return;
+    const size = defaultBattleWorkerCount();
+    if (!size || typeof root.Worker !== 'function') return;
+    sharedPoolLoading = readWorkerBundleText().then(text => {
+      if (text) sharedPool = createBattleParallelPool({ size, createWorker: battleWorkerFactory({ text }) });
+    }).catch(() => {}).finally(() => { sharedPoolLoading = null; });
+  }
+  function sharedRunProvider() {
+    ensureSharedBattlePool();
+    return sharedPool?.readyCount && root.__LWCS_BATTLE_PARALLEL_DISABLED__ !== true ? sharedPool.runProvider : null;
+  }
+  async function executeBattleDraftParallel(input = {}) {
+    const runProvider = sharedRunProvider();
+    return runProvider ? executeBattleDraftAsync(input, { runProvider }) : executeBattleDraft(input);
+  }
+  async function executePlayerLockedBattleSettlementParallel(input = {}) {
+    const runProvider = sharedRunProvider();
+    return runProvider ? executePlayerLockedBattleSettlementAsync(input, { runProvider }) : executePlayerLockedBattleSettlement(input);
+  }
+  // A main frame starts reading the bundle as soon as the runtime loads, so the first battle can use the workers.
+  if (root.__LWCS_BATTLE_WORKER__ !== true && typeof root.document === 'object' && typeof root.setTimeout === 'function') {
+    root.setTimeout(() => { try { ensureSharedBattlePool(); } catch {} }, 3000);
+  }
+
   const api = Object.freeze({
     version: '7.3-R6.3',
     actionKinds,
@@ -178985,6 +183304,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     openStructuredCounterWindow,
     auditStructuredCommitCoverage,
     runStructuredBattle,
+    runStructuredBattleAsync,
+    runBattleCaseAsync,
+    executeBattleDraftAsync,
+    executePlayerLockedBattleSettlementAsync,
+    executeBattleDraftParallel,
+    executePlayerLockedBattleSettlementParallel,
     calculateBaseDamage,
     assertEffectList,
     assertSkillEffects,
@@ -179068,6 +183393,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   });
 
   root.__LWCS_BATTLE_RUNTIME__ = api;
+  root.__LWCS_BATTLE_PARALLEL__ = Object.freeze({ createPool: createBattleParallelPool, workerFactory: battleWorkerFactory, installWorkerHost: installBattleWorkerHost });
   root.__LWCS_BATTLE_RUNTIME_REGISTRY_SOURCE__ = 'shared';
   root.__LWCS_BATTLE_RUNTIME_REGISTRY_SIZE__ = prototypeManifest.length;
 })();

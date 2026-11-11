@@ -227,7 +227,7 @@
       nextEffects.dot_damage_ratio = 0;
     }
     const stateEntry = {
-      类型: 'debuff', 状态: stateName, 状态名称: stateName, __本回合新附加: true,
+      类型: 'debuff', 状态: stateName, 状态名称: stateName, __本回合新附加: true, 副作用实例: true,
       层数: 1, 描述: `由[${sourceName || '技能'}]触发`, duration,
       面板修改比例: statRatios, 面板固定修正: {}, 战斗效果: nextEffects,
     };
@@ -537,6 +537,14 @@
     if (!existing || typeof existing !== 'object') {
       return { applied: true, mergeKind: 'NEW', oldDuration: 0, newDuration: Math.max(0, Number(next?.duration ?? next?.持续回合 ?? 0)), state: next };
     }
+    // R01: the same caster's same skill, still active on the target, cannot be applied again by another cast
+    // (effects of one cast still merge as before).
+    const sameSource = (left, right) => String(left || '').trim() && String(left || '').trim() === String(right || '').trim();
+    if (sameSource(existing?.来源技能, next?.来源技能) && sameSource(existing?.来源角色, next?.来源角色) &&
+      String(existing?.来源动作ID || '') !== String(next?.来源动作ID || '')) {
+      const oldDuration = Math.max(0, Number(existing?.duration ?? existing?.持续回合 ?? 0));
+      return { applied: false, mergeKind: 'SAME_SKILL_ACTIVE', oldDuration, newDuration: oldDuration, state: existing };
+    }
     const rule = String(effect?.覆盖规则 || '').trim();
     const refreshAllowed = !/(?:不可|禁止|不允许|无法|不再)\s*刷新|不刷新|维持原(?:持续|时长)/.test(rule);
     const stackingAllowed = !/(?:不可|禁止|不允许|无法)\s*(?:叠加|累加)|(?:叠加|累加)\s*(?:不可|禁止)/.test(rule) && /叠加|累加|层数/.test(rule);
@@ -553,7 +561,8 @@
     }
     if (stackingAllowed && oldLayers < layerLimit) {
       const ratios = { ...(existing?.面板修改比例 || {}) };
-      Object.entries(next?.面板修改比例 || {}).forEach(([key, value]) => { ratios[key] = Number(ratios[key] ?? 1) * Number(value ?? 1); });
+      // D1：同一来源合并时比例加成也相加（与面板汇总一致）。
+      Object.entries(next?.面板修改比例 || {}).forEach(([key, value]) => { ratios[key] = Number(ratios[key] ?? 1) + (Number(value ?? 1) - 1); });
       const fixed = { ...(existing?.面板固定修正 || {}) };
       Object.entries(next?.面板固定修正 || {}).forEach(([key, value]) => { fixed[key] = Number(fixed[key] || 0) + Number(value || 0); });
       const duration = refreshAllowed ? Math.max(oldDuration, newDuration) : oldDuration;
@@ -572,6 +581,7 @@
     return { applied: true, mergeKind: 'REFRESH_EXTENSION', oldDuration, newDuration: duration, state: {
       ...existing,
       来源技能: next?.来源技能 || existing?.来源技能 || '', 来源角色: next?.来源角色 || existing?.来源角色 || '',
+      来源动作ID: next?.来源动作ID || existing?.来源动作ID || '',
       描述: next?.描述 || existing?.描述 || '', duration,
       __本回合新附加: existing?.__本回合新附加 === true,
     } };
@@ -822,7 +832,7 @@
       if (findPrototypeSuppression(unit, prototype, '属性', attribute)) {
         return finish(`[机制抹消] ${label}对【属性修正 属性:${attribute}】存在封锁，延迟属性修正未能落地。`);
       }
-      const runtimeKey = { 力量: 'str', 防御: 'def', 敏捷: 'agi', 体力上限: 'vit_max', 魂力上限: 'sp_max', 精神力上限: 'men_max' }[attribute] || attribute;
+      const runtimeKey = { 力量: 'str', 防御: 'def', 敏捷: 'agi', 体力上限: 'vit_max', 生命上限: 'hp_max', 魂力上限: 'sp_max', 精神力上限: 'men_max' }[attribute] || attribute;
       const percentage = /%$/.test(valueText);
       const stateName = `延迟属性:${attribute || runtimeKey}`;
       const before = unit.状态效果[stateName] ? cloneValue(unit.状态效果[stateName]) : null;
@@ -873,6 +883,7 @@
         来源原型摘要: '状态施加',
         来源角色: sourceActorName,
         来源技能: actionName,
+        来源动作ID: sourceActionId,
         ...(effect.强度 !== undefined ? { 强度: effect.强度 } : {}),
         描述: '延迟效果状态施加',
         duration: Math.max(0, Number(effect?.持续回合 || 0)),
@@ -882,7 +893,12 @@
       if (previewRuntime.negativeEffectIsImmune(unit, state)) return finish(`[无视异常] ${label}免疫了[${stateName}]延迟状态。`);
       const removal = findPersistentStateRemoval(unit, stateName, state);
       if (removal) return finish(`[持续状态移除] ${label}的[${stateName}]被[${removal[0]}]拦截。`);
-      const originalState = unit.状态效果[stateName];
+      // D1: only this source's own instance merges; beside another source's same-name state it lands under its own key.
+      const slot = previewRuntime.sourcedStateKey(unit, { ...effect, 状态: stateName, 来源角色: state.来源角色, 来源技能: state.来源技能 });
+      if (slot.refused) return finish(`[延迟效果] ${label}的[${stateName}]已有三个他人来源，本次未生效。`);
+      const stateKey = slot.key;
+      if (slot.stateId) state.状态ID = slot.stateId;
+      const originalState = slot.existing?.[1];
       const before = originalState ? cloneValue(originalState) : null;
       const oldDuration = Math.max(0, Number(originalState?.duration ?? originalState?.持续回合 ?? 0));
       const oldWindows = Array.isArray(originalState?.__状态来源窗口)
@@ -890,7 +906,7 @@
         : originalState?.__状态来源键 ? Array.from({ length: oldDuration }, () => originalState.__状态来源键) : [];
       const merged = mergeRuntimeCondition(originalState, state, effect);
       if (!merged.applied) return finish(`[延迟效果] ${label}的[${stateName}]已存在，本次未形成新的刷新或叠加。`);
-      unit.状态效果[stateName] = merged.state;
+      unit.状态效果[stateKey] = merged.state;
       if (merged.mergeKind !== 'NEW' && merged.mergeKind !== 'REPLACE' && oldWindows.length) {
         Object.defineProperty(merged.state, '__状态来源窗口', { configurable: true, enumerable: false, writable: true, value: oldWindows });
       }
@@ -912,7 +928,7 @@
           operation: before ? 'STATE_REPLACE' : 'STATE_APPLY',
         },
       });
-      if (stateFact) bindStateSourceProvenance(formalCombatData, unit, stateName, nextRuntimeId('state-src'), stateFact);
+      if (stateFact) bindStateSourceProvenance(formalCombatData, unit, stateKey, nextRuntimeId('state-src'), stateFact);
       // Registration owns admission only. The delivered mother owns its ending
       // liability; a failed/no-effect payload must never borrow an older state.
       const ownedEndRisks = normalizeSideEffectList(effect.副作用列表 || []).filter((risk, index, rows) =>
@@ -925,22 +941,22 @@
       if (stateFact) stateFact.meta.after = cloneValue(merged.state);
       if (unit.蓄力技能 && structuredControlPreventsOpportunity(merged.state, 'ACTIVE')) {
         if (formalCombatData) interruptStoredChargeByControl({ combatData: formalCombatData,
-          sourceActor: findCombatUnit(formalCombatData, sourceActorId || sourceActorName) || {}, target: unit, stateName,
+          sourceActor: findCombatUnit(formalCombatData, sourceActorId || sourceActorName) || {}, target: unit, stateName: stateKey,
           actionEvent: { actionId: sourceActionId, chainNodeId: stateFact?.chainNodeId || '' }, actionRole: 'ACTIVE' });
         else unit.蓄力技能 = null;
       }
       let endLog = '';
-      if (merged.mergeKind === 'REPLACE' && previewRuntime.stateEndRisks(originalState, stateName).length) {
-        if (sourceContext.onStateEnd) sourceContext.onStateEnd(stateName, originalState);
+      if (merged.mergeKind === 'REPLACE' && previewRuntime.stateEndRisks(originalState, stateKey).length) {
+        if (sourceContext.onStateEnd) sourceContext.onStateEnd(stateKey, originalState);
         else if (formalCombatData) {
-          endLog = settleConditionSideEffects(unit, stateName, originalState, '效果结束后', label, formalCombatData, {
+          endLog = settleConditionSideEffects(unit, stateKey, originalState, '效果结束后', label, formalCombatData, {
             applicationId: String(originalState.__状态来源窗口?.[0] || originalState.__状态来源键 || ''),
             triggeringEventId: stateFact.eventId, triggeringSourceActionId: sourceActionId,
             triggeringSourceEffectId: sourceEffectId, stateEndCause: 'REPLACED',
           });
         } else {
-          endLog = previewRuntime.stateEndRisks(originalState, stateName).filter(risk => probabilitySucceeds(risk.触发概率, Math.random()))
-            .map(risk => applyRoundEndSideEffect(unit, risk, stateName)).filter(Boolean).join(' ');
+          endLog = previewRuntime.stateEndRisks(originalState, stateKey).filter(risk => probabilitySucceeds(risk.触发概率, Math.random()))
+            .map(risk => applyRoundEndSideEffect(unit, risk, stateKey)).filter(Boolean).join(' ');
         }
       }
       return finish([`[延迟效果] ${label}获得[${stateName}]。`, endLog].filter(Boolean).join(' '));
@@ -3057,6 +3073,13 @@
       unit.__battleRuntime = unit.__battleRuntime && typeof unit.__battleRuntime === 'object'
         ? unit.__battleRuntime
         : {};
+      // Panel stats at the first round set the stamina price for the whole battle (R07): the strength ratio and the
+      // stamina maximum the per-action share is taken of. A plain object, like the rest of __battleRuntime: projection
+      // frames are compared by property descriptors, so a frozen record would never equal its cloned projection.
+      if (!unit.__battleRuntime.panelStats) unit.__battleRuntime.panelStats = ({
+        str: previewRuntime.readCombatStat(unit, 'str'), def: previewRuntime.readCombatStat(unit, 'def'), agi: previewRuntime.readCombatStat(unit, 'agi'),
+        vit_max: previewRuntime.readResourceMax(unit, '体力'),
+      });
       unit.__battleRuntime.naturalOpportunity = {
         round: Number(round || 0),
         opportunityId: `natural:${Number(round || 0)}:${entry?.side || ''}:${previewRuntime.unitName(unit) || 'unit'}:${index + 1}`,
@@ -3130,6 +3153,7 @@
   }
 
   function buildCombatFinalStats(unit = {}, currentTick = 0) {
+    previewRuntime.syncStaminaMaxGain(unit);
     const final = { ...previewRuntime.buildNumericCombatStats(unit, currentTick), 战斗效果: createEmptyCombatEffectMap() };
     Object.values(unit?.状态效果 || {}).forEach(condition => {
       final.战斗效果 = mergeCombatEffectMaps(final.战斗效果, condition?.战斗效果 || {});
@@ -3165,7 +3189,7 @@
     const fixed = {};
     const aliases = {
       力量: 'str', 防御: 'def', 敏捷: 'agi',
-      体力上限: 'vit_max', 生命上限: 'vit_max',
+      体力上限: 'vit_max', 生命上限: 'hp_max',
       魂力上限: 'sp_max', 精神力上限: 'men_max',
     };
     const attributes = (Array.isArray(effect?.属性) ? effect.属性 : [effect?.属性])
@@ -3474,6 +3498,8 @@
       });
       merged.存活 = merged.状态?.存活 !== false && previewRuntime.readHp(merged) > 0;
       syncEquipmentPassiveRuntime(merged, Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0), { rebuildFinal: false });
+      // A unit enters battle with its stamina already counted against any buffed maximum it carries.
+      previewRuntime.syncStaminaMaxGain(merged, { credit: false });
       merged.final = buildCombatFinalStats(merged);
       return merged;
     };
@@ -3495,11 +3521,27 @@
     if (!config) return 0;
     const maxValue = previewRuntime.readResourceMax(unit, { hp: '生命', vit: '体力', sp: '魂力', men: '精神力' }[resourceKey]);
     const nextValue = Math.round(Math.max(0, Math.min(maxValue, Number(value || 0))));
+    // 受伤同步扣体力（用户 2026-11-09）：同 BattlePreview setHp——生命少掉的比例，体力扣同样比例的体力上限。
+    const hpBefore = resourceKey === 'hp' ? previewRuntime.readHp(unit) : 0;
+    if (resourceKey === 'hp' && nextValue < hpBefore && previewRuntime.readResourceMax(unit, '体力') > 0) {
+      writeCombatResource(unit, 'vit', previewRuntime.readResource(unit, '体力') -
+        (hpBefore - nextValue) / Math.max(1, maxValue) * previewRuntime.readResourceMax(unit, '体力'));
+    }
+    const fuelBefore = resourceKey === 'sp' || resourceKey === 'men' ? previewRuntime.readResource(unit, config.statKey) : 0;
     config.runtimeKeys.forEach(key => { unit[key] = nextValue; });
     unit[config.statKey] = nextValue;
     if (stats && typeof stats === 'object') stats[config.statKey] = nextValue;
     if (resourceKey === 'vit') previewRuntime.refreshStaminaAdjustedFinal(unit);
     if (resourceKey === 'hp' && nextValue <= 0) clearC2FoodMaintenanceRuntime(unit);
+    // 资源低位砍体力（用户 2026-11-10，同 BattlePreview applyLowResourceStaminaCut）：魂力、精神力各自在一场战斗里第一次
+    // 从上限 10% 以上跌到 10% 以下时，当前剩余体力减半；标记 __battleRuntime.lowResourceStaminaCut 两模块共用。
+    if ((resourceKey === 'sp' || resourceKey === 'men') && maxValue > 0 && fuelBefore >= maxValue * 0.1 && nextValue < maxValue * 0.1) {
+      const runtime = unit.__battleRuntime && typeof unit.__battleRuntime === 'object' ? unit.__battleRuntime : {};
+      if (runtime.lowResourceStaminaCut?.[config.statKey] !== true) {
+        unit.__battleRuntime = { ...runtime, lowResourceStaminaCut: { ...(runtime.lowResourceStaminaCut || {}), [config.statKey]: true } };
+        writeCombatResource(unit, 'vit', previewRuntime.readResource(unit, '体力') * 0.5);
+      }
+    }
     if (unit.召唤键) syncSummonMirror(unit);
     return nextValue;
   }
@@ -3613,14 +3655,15 @@
     state.sourceEffectId = String(source.sourceEffectId || '').trim();
   }
 
+  const STATE_SOURCE_WINDOW_LIMIT = 100;
   function extendedStateSourceWindow(state = {}, mappingId = '') {
     const sourceWindow = Array.isArray(state?.__状态来源窗口)
       ? state.__状态来源窗口.map(value => String(value || '').trim()).filter(Boolean)
       : [];
-    const sourceDuration = Math.max(1, Math.floor(Number(state?.duration ?? state?.持续回合 ?? 1) || 1));
-    if (sourceWindow.length < sourceDuration) {
-      sourceWindow.push(...Array.from({ length: sourceDuration - sourceWindow.length }, () => mappingId));
-    }
+    // The window advances one entry per round, so entries past any battle's length are never read; a permanent state
+    // (duration 1,000,000) spread into push() overflowed the call stack (2026-11-10).
+    const sourceDuration = Math.min(STATE_SOURCE_WINDOW_LIMIT, Math.max(1, Math.floor(Number(state?.duration ?? state?.持续回合 ?? 1) || 1)));
+    while (sourceWindow.length < sourceDuration) sourceWindow.push(mappingId);
     return sourceWindow;
   }
 
@@ -3735,7 +3778,7 @@
         );
         const applicationId = String(source?.applicationId || '').trim();
         if (!applicationId) return;
-        const duration = Math.max(1, Math.floor(Number(state?.duration || 1)));
+        const duration = Math.min(STATE_SOURCE_WINDOW_LIMIT, Math.max(1, Math.floor(Number(state?.duration || 1))));
         Object.defineProperties(state, {
           __状态来源键: { configurable: true, enumerable: false, writable: true, value: applicationId },
           __状态来源窗口: { configurable: true, enumerable: false, writable: true, value: Array.from({ length: duration }, () => applicationId) },
@@ -3969,7 +4012,8 @@
       OBSERVE: '观察', GUARD: '保护队友', WITHDRAW: '撤退', PASS_OPPORTUNITY: '让过行动',
     }[actionKind] || '防御';
     const actionName = actionKind === 'BASIC_ATTACK' ? '普通攻击' : actionType;
-    const skill = { name: actionName, 目标: actionKind === 'GUARD' ? '友方单体' : actionKind === 'BASIC_ATTACK' ? '单体' : '自身', 消耗: '无', 前摇: 10 };
+    const skill = { name: actionName, 目标: actionKind === 'GUARD' ? '友方单体' : actionKind === 'BASIC_ATTACK' ? '单体' : '自身', 消耗: '无',
+      前摇: actionKind === 'BASIC_ATTACK' ? previewRuntime.basicAttackWindup(actor) : 10 };
     if (actionKind === 'BASIC_ATTACK') skill._效果数组 = [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 防御穿透: 0, 生效方式: '独立生效' }];
     return {
       id: declaration.actionId,
@@ -5760,6 +5804,8 @@
     return [
       { key: 'sp', label: '魂力', ratio: soulRatio, max: previewRuntime.readResourceMax(unit, '魂力'), current: previewRuntime.readResource(unit, '魂力') },
       { key: 'men', label: '精神力', ratio: mentalRatio, max: previewRuntime.readResourceMax(unit, '精神力'), current: previewRuntime.readResource(unit, '精神力') },
+      // D2（用户 2026-11-09）：体力每回合自然恢复 0.5%。
+      { key: 'vit', label: '体力', ratio: 0.005, max: previewRuntime.readResourceMax(unit, '体力'), current: previewRuntime.readResource(unit, '体力') },
     ].flatMap(resource => {
       const lockRatio = readRecoveryLock(resource.label);
       if (!(resource.max > 0 && resource.ratio > 0 && lockRatio < 1)) return [];
@@ -6314,7 +6360,7 @@
     '蓄力技能', 'cast_time', 'cast_time_left', '蓄力剩余', '_current_cast_time', 'action_declared', 'is_controlled',
   ]);
   const summonMirrorBattleFields = Object.freeze([
-    'naturalOpportunity', 'activeDefenseStance', 'passiveApplications', 'itemPassiveTriggeredSkills',
+    'naturalOpportunity', 'activeDefenseStance', 'attackOpening', 'passiveApplications', 'itemPassiveTriggeredSkills',
     'damageAbsorptionStorageByState', 'counterCount', 'reactedCount', 'reactionFatigue', 'fusionPartnerIds', 'fusionUsageKeys',
   ]);
 
@@ -7164,6 +7210,8 @@
                 _效果数组: [cloneValue(row.effect || {})],
               },
               resourceCosts: {},
+              // Each payload settles as its own declaration; R01 treats the payloads of one trigger as one cast.
+              ...(row.activationKey ? { __castIdentity: row.activationKey } : {}),
             };
             try {
               const actionContext = beginStructuredDeclaration({
@@ -8096,6 +8144,71 @@
         ),
       ],
     }));
+  }
+
+  // 精疲力尽 (用户 2026-11-08: 两边都没体力做任何动作应该双方精疲力尽倒下平局): a unit that can no longer pay for a
+  // single attack on any enemy still standing (without reaching 0 stamina) can no longer fight and collapses,
+  // exhausted — defending alone cannot decide a battle, and two sides that only defend would stand forever. Decided for
+  // every unit from the same start-of-round state, so units that run out together fall together, and two sides that
+  // fall together draw (evaluateBattleObjectivesCore).
+  function settleStaminaExhaustion(combatData = {}) {
+    if (!previewRuntime.actionStaminaEnabled(combatData)) return [];
+    const units = listPrimaryCombatUnits(combatData).filter(unit => previewRuntime.isBattleCapable(unit));
+    const exhausted = units.flatMap(unit => {
+      const side = inferUnitSide(combatData, unit);
+      const enemies = units.filter(other => inferUnitSide(combatData, other) !== side);
+      if (!enemies.length) return [];
+      const cheapest = Math.min(...enemies.map(enemy => previewRuntime.actionStaminaCost(unit, 'ATTACK', enemy)));
+      const stamina = persistentResourceValue(unit, 'vit');
+      return cheapest > 0 && stamina - cheapest <= 1e-9 ? [{ unit, stamina, cheapest }] : [];
+    });
+    return exhausted.map(({ unit, stamina, cheapest }) => {
+      const before = cloneValue(unit?.状态 || {});
+      unit.__战斗失能原因 = 'STAMINA_EXHAUSTED';
+      return writeLedgerEvent(combatData, {
+        eventKind: 'state_apply', round: Number(combatData?.回合 || 0),
+        actorId: previewRuntime.unitId(unit), actorName: previewRuntime.unitName(unit),
+        targetId: previewRuntime.unitId(unit), targetName: previewRuntime.unitName(unit),
+        actionName: '精疲力尽', actionType: 'incapacitation', actorControl: 'SYSTEM', actionRole: 'STATE_TICK',
+        ruleCode: 'STAMINA_EXHAUSTED', result: 'applied', resultState: 'SUCCESS', primaryOutcome: 'stamina_exhausted',
+        factType: 'STATE', operation: 'STATE_APPLY',
+        meta: { source: 'structured_runtime', stateName: '精疲力尽', stamina, cheapestActionStamina: cheapest, before, operation: 'STATE_APPLY' },
+      });
+    });
+  }
+
+  // R07 / R17: the stamina an action costs (previewRuntime.actionStaminaCost), drained to 0 at most — running out of
+  // stamina weakens the unit through staminaScaleForUnit but never forbids an action. Written as a PAY resource fact plus
+  // an action_cost event with source ACTION_STAMINA, so the ledger and analytics see it like any other cost.
+  function payActionStamina({ combatData, actor, nature, opponent = null, action, actionEvent, actionRole, actorControl = 'AI' }) {
+    if (!previewRuntime.actionStaminaEnabled(combatData)) return [];
+    const requested = previewRuntime.actionStaminaCost(actor, nature, opponent);
+    if (!(requested > 0)) return [];
+    const before = persistentResourceValue(actor, 'vit');
+    const after = writeCombatResource(actor, 'vit', before - requested);
+    const applied = Math.max(0, before - after);
+    if (!(applied > 0)) return [];
+    return [
+      writeStructuredResourceFact(combatData, actor, actor, action, actionEvent, 'vit', -applied, actionRole, 'PAY',
+        { before, after, meta: { requestedAmount: requested, source: 'ACTION_STAMINA', staminaNature: nature } }),
+      writeLedgerEvent(combatData, {
+        eventKind: 'action_cost',
+        round: Number(combatData?.回合 || 0),
+        actorName: previewRuntime.unitName(actor),
+        targetName: previewRuntime.unitName(actor),
+        actionName: action?.actionName || '',
+        actionType: action?.actionKind || '',
+        actorControl,
+        actionRole,
+        actionId: actionEvent?.actionId || '',
+        sourceActionId: actionEvent?.actionId || '',
+        parentNodeId: actionEvent?.chainNodeId || '',
+        result: 'paid',
+        resultState: 'SUCCESS',
+        primaryOutcome: 'resource_cost',
+        meta: { source: 'ACTION_STAMINA', resourceKey: 'vit', resource: '体力', amount: applied, requestedAmount: requested, staminaNature: nature, auditOnly: true },
+      }),
+    ].filter(Boolean);
   }
 
   function writeStructuredResourceFact(
@@ -9080,10 +9193,18 @@
       __宿主: target.__宿主,
       __来源状态: target.__来源状态,
     };
+    // Inventory lineage witnesses the stock objects themselves, so an item the committed action did not change keeps
+    // its object; otherwise every committed action would read as an external replacement and drop the next use's
+    // creation source.
+    const previousBag = target.背包 && typeof target.背包 === 'object' ? target.背包 : null;
     Object.keys(target).forEach(key => {
       if (!Object.prototype.hasOwnProperty.call(snapshot, key) && !Object.prototype.hasOwnProperty.call(preserved, key)) delete target[key];
     });
     Object.entries(cloneValue(snapshot)).forEach(([key, value]) => { target[key] = value; });
+    if (previousBag && target.背包 && typeof target.背包 === 'object') for (const [id, item] of Object.entries(target.背包)) {
+      const kept = previousBag[id];
+      if (kept && typeof kept === 'object' && previewRuntime.stableHash(kept) === previewRuntime.stableHash(item)) target.背包[id] = kept;
+    }
     Object.entries(preserved).forEach(([key, value]) => {
       if (value !== undefined) target[key] = value;
     });
@@ -9257,7 +9378,10 @@
         if (Object.prototype.hasOwnProperty.call(actual.状态效果, stateIdentity)) {
           const incomingUnit = previewRuntime.settlementModifierUnit(condition);
           const existingUnit = previewRuntime.settlementModifierUnit(actual.状态效果[stateIdentity]);
-          if (!incomingUnit || !existingUnit || incomingUnit === existingUnit) throw new Error(`battle_structured_state_identity_conflict:${stateIdentity}`);
+          if (!incomingUnit || !existingUnit || incomingUnit === existingUnit) {
+            const sourceOf = state => JSON.stringify([state?.来源角色, state?.来源技能, state?.sourceActorId, state?.副作用实例, state?.原型]);
+            throw new Error(`battle_structured_state_identity_conflict:${stateIdentity}|held=${sourceOf(actual.状态效果[stateIdentity])}|incoming=${sourceOf(condition)}`);
+          }
           stateIdentity += incomingUnit === 'PERCENT' ? ':比例' : ':绝对值';
           if (Object.prototype.hasOwnProperty.call(actual.状态效果, stateIdentity)) throw new Error(`battle_structured_state_identity_conflict:${stateIdentity}`);
         }
@@ -9276,7 +9400,7 @@
         });
         const aliases = {
           力量: ['str', '力量'], 防御: ['def', '防御'], 敏捷: ['agi', '敏捷'],
-          体力上限: ['vit_max', '体力上限'], 生命上限: ['vit_max', '体力上限'],
+          体力上限: ['vit_max', '体力上限'], 生命上限: ['hp_max', 'HP上限'],
           魂力上限: ['sp_max', '魂力上限'], 精神力上限: ['men_max', '精神力上限'],
         };
         (Array.isArray(committedEffect?.属性) ? committedEffect.属性 : [committedEffect?.属性])
@@ -9302,7 +9426,7 @@
         Object.entries(actual?.状态效果 || {}).forEach(([key, condition]) => {
           if (stateKeysBefore.has(key) || !condition || typeof condition !== 'object') return;
           if (String(condition?.结算 || '').trim() !== '受到伤害') return;
-          condition.来源技能 = sourceSkillText;
+          // The joined text only feeds the 反弹/反射 reading; 来源技能 stays the skill name, the D1 source identity.
           condition.__equipmentSkillName = sourceSkillText;
           condition.战斗效果 = {
             ...(condition?.战斗效果 || {}),
@@ -10319,6 +10443,16 @@
         }));
         if (!label) void label;
     });
+    if (actionRole !== 'STATE_TICK') {
+      const staminaNature = previewRuntime.actionStaminaNature({ ...declaration, actionKind });
+      const opponent = (Array.isArray(declaration?.targetIds) ? declaration.targetIds : [])
+        .map(targetId => listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, targetId)))
+        .find(unit => unit && inferUnitSide(combatData, unit) && inferUnitSide(combatData, unit) !== inferUnitSide(combatData, actor)) || null;
+      if (staminaNature) facts.push(...payActionStamina({ combatData, actor, nature: staminaNature, opponent, action, actionEvent, actionRole, actorControl }));
+      // 攻击破绽（BattlePreview attackOpeningOf）：正式行动先清掉旧破绽，进攻留下新的；反应（闪避、防御）不算下一次行动。
+      if (actionRole !== 'REACTION') previewRuntime.setAttackOpening(actor, previewRuntime.attackOpeningStrength(combatData, actor, { ...declaration, actionKind },
+        targetId => listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, targetId))), actionEvent.actionId);
+    }
     const pendingActionGrantedEffects = actionRole === 'STATE_TICK' || declaration?.__includeGrantedEffects === false
       ? []
       : previewRuntime.pendingGrantedEffects(actor, actionKind);
@@ -12083,7 +12217,12 @@
           }
           return;
         }
-        const originalState = target?.状态效果?.[stateName];
+        // D1: only this source's own instance merges; another source's same-name state stays beside the new instance.
+        const sourcedEffect = { ...effect, 状态: stateName, 来源角色: previewRuntime.unitName(actor), 来源技能: String(effect?.__来源技能 || actionName) };
+        const existingEntry = stateName ? previewRuntime.findStateEntry(target, sourcedEffect) : null;
+        const instanceSlot = existingEntry || !stateName ? null : previewRuntime.newStateInstanceSlot(target, sourcedEffect);
+        const stateKey = existingEntry?.[0] || instanceSlot?.stateId || stateName;
+        const originalState = existingEntry?.[1];
         const stateBefore = originalState
           ? cloneValue(originalState)
           : null;
@@ -12147,6 +12286,7 @@
           对应等级: effect?.对应等级 !== undefined ? Number(effect.对应等级) : undefined,
           触发消耗: cloneValue(effect?.触发消耗),
           __本回合新附加: true,
+          来源技能: String(effect?.__来源技能 || actionName), 来源角色: previewRuntime.unitName(actor), 来源动作ID: String(declaration?.__castIdentity || actionEvent.actionId),
           描述: `由[${actionName}]附加`, 战斗效果: { ...createEmptyCombatEffectMap(), ...previewRuntime.deriveStateCombatEffect(effect) },
           面板修改比例: { ...(effect?.面板修改比例 || {}) }, 面板固定修正: { ...(effect?.面板固定修正 || {}) },
         };
@@ -12167,8 +12307,9 @@
         if (previewRuntime.negativeEffectIsImmune(target, state)) result = 'immune';
         else if (!stateSample.succeeded) result = 'resisted';
         else if (!stateName) result = 'invalid';
+        else if (instanceSlot?.refused) { result = 'no_effect'; mergeKind = 'OTHER_SOURCE_LIMIT'; }
         else {
-          const existingState = target?.状态效果?.[stateName];
+          const existingState = originalState;
           const existingDuration = Math.max(0, Number(existingState?.duration ?? existingState?.持续回合 ?? 0));
           const existingSourceWindows = Array.isArray(existingState?.__状态来源窗口)
             ? existingState.__状态来源窗口.map(value => String(value || '').trim()).filter(Boolean).slice(0, existingDuration)
@@ -12203,8 +12344,10 @@
                 ];
             const appliedState = {
               ...merged.state,
-              来源技能: actionName,
+              // R01 identity: the applying cast's skill as the preview records it (a derived payload keeps its __来源技能).
+              来源技能: String(merged.state?.来源技能 || actionName),
               来源角色: previewRuntime.unitName(actor),
+              ...(instanceSlot?.stateId ? { 状态ID: instanceSlot.stateId } : {}),
             };
             Object.defineProperties(appliedState, {
               __状态来源键: {
@@ -12220,7 +12363,7 @@
                 value: sourceWindows,
               },
             });
-            target.状态效果[stateName] = appliedState;
+            target.状态效果[stateKey] = appliedState;
             const chargeInterrupt = result === 'applied'
               ? interruptStoredChargeByControl({
                   combatData,
@@ -12228,7 +12371,7 @@
                   target,
                   actionEvent,
                   actionRole,
-                  stateName,
+                  stateName: stateKey,
                 })
               : null;
             if (chargeInterrupt) facts.push(chargeInterrupt);
@@ -12240,7 +12383,7 @@
         const stateOperation = stateReplaced ? 'STATE_REPLACE' : 'STATE_APPLY';
         const stateResult = stateReplaced ? 'replaced' : result;
         const stateAfter = result === 'applied'
-          ? cloneValue(target?.状态效果?.[stateName] || null)
+          ? cloneValue(target?.状态效果?.[stateKey] || null)
           : cloneValue(stateBefore);
         const stateResolutionReason = result === 'applied'
           ? stateReplaced ? 'REPLACED' : 'APPLIED'
@@ -12304,11 +12447,11 @@
             position: outcomePosition(stateOperation, effectIndex),
           },
         });
-        if (stateFact && result === 'applied') bindStateSourceProvenance(combatData, target, stateName, applicationId, stateFact);
+        if (stateFact && result === 'applied') bindStateSourceProvenance(combatData, target, stateKey, applicationId, stateFact);
         facts.push(stateFact);
-        if (result === 'applied' && mergeKind === 'REPLACE' && previewRuntime.stateEndRisks(originalState, stateName).length) {
+        if (result === 'applied' && mergeKind === 'REPLACE' && previewRuntime.stateEndRisks(originalState, stateKey).length) {
           const ledger = ensureLedger(combatData), start = ledger.length;
-          settleConditionSideEffects(target, stateName, originalState, '效果结束后', previewRuntime.unitName(target), combatData, {
+          settleConditionSideEffects(target, stateKey, originalState, '效果结束后', previewRuntime.unitName(target), combatData, {
             actionRole: 'PASSIVE', applicationId: String(originalState.__状态来源窗口?.[0] || originalState.__状态来源键 || ''),
             triggeringEventId: stateFact.eventId, triggeringSourceActionId: actionEvent.actionId,
             triggeringSourceEffectId: sourceEffectId, stateEndCause: 'REPLACED',
@@ -13130,6 +13273,8 @@
           preparedDefenseConsumed: !!preparedDefense,
         },
       });
+      // A prepared stance was paid for when it was taken; a reaction pays for itself (R07).
+      if (!preparedDefense) payActionStamina({ combatData, actor: reactor, nature: 'EVADE', opponent: sourceActor, action: { actionName: '闪避', actionKind }, actionEvent: event, actionRole: 'REACTION' });
       return {
         actionKind,
         event,
@@ -13150,6 +13295,7 @@
         ruleCode: 'REACTION_SUCCEEDED',
         meta: { ...reactionMeta, damageMultiplier, preparedDefenseConsumed: !!preparedDefense },
       });
+      if (!preparedDefense) payActionStamina({ combatData, actor: reactor, nature: 'DEFEND', opponent: sourceActor, action: { actionName: actionKind === 'GUARD' ? '护卫' : '防御', actionKind }, actionEvent: event, actionRole: 'REACTION' });
       return {
         actionKind,
         event,
@@ -13186,20 +13332,33 @@
     };
   }
 
+  // R15: a round is one cavalry pass. A successful defence or evasion always lets the defender strike back, and a
+  // counter can itself be defended or evaded and answered, so the engagement flows until someone fails to answer,
+  // declines, or lacks the stamina for the strike. ENGAGEMENT_CHAIN_LIMIT only guards against a runaway loop.
+  // COUNTER_WINDOW_MODE 'PROBABILITY' restores the old contest roll if the always-open chain proves too slow.
+  const COUNTER_WINDOW_MODE = 'ALWAYS';
+  const ENGAGEMENT_CHAIN_LIMIT = 8;
+
   function openStructuredCounterWindow(input = {}) {
     const { combatData, reactor, sourceActor, parentActionEvent, reaction, settlementFacts } = input;
+    const engagementDepth = Math.max(0, Number(input?.engagementDepth || 0));
     if (!combatData || !reactor || !sourceActor || !parentActionEvent?.actionId || !reaction?.opensCounterCheck) return null;
     if (!structuredActorCanAct(reactor, 'COUNTER') || !structuredActorPhysicallyAlive(sourceActor)) return null;
     const receivedDamage = (Array.isArray(settlementFacts) ? settlementFacts : []).reduce((sum, event) => {
       if (event?.eventKind !== 'hit_result' || !isUnitIdentityMatch(reactor, event?.targetName || event?.targetId || '')) return sum;
       return sum + Math.max(0, Number(event?.appliedDamage || event?.meta?.appliedDamage || 0));
     }, 0);
-    if (reaction.actionKind === 'DEFEND' && !(receivedDamage > 0)) return null;
     const baseProbability = reaction.evaded === true ? 0.45 : 0.24;
     const contest = structuredReactionContest(reactor, sourceActor);
-    const probability = Math.max(0.08, Math.min(0.72, baseProbability + (contest.probability - 0.25) * 0.5));
+    const contestProbability = Math.max(0.08, Math.min(0.72, baseProbability + (contest.probability - 0.25) * 0.5));
+    const strikeStamina = previewRuntime.actionStaminaEnabled(combatData) ? previewRuntime.actionStaminaCost(reactor, 'ATTACK', sourceActor) : 0;
+    // The defender will not strike back with stamina it cannot spare: a counter that would leave it at 0 is not taken.
+    const staminaExhausted = strikeStamina > 0 && persistentResourceValue(reactor, 'vit') - strikeStamina <= 1e-9;
+    const chainLimited = engagementDepth >= ENGAGEMENT_CHAIN_LIMIT;
+    const probability = COUNTER_WINDOW_MODE === 'PROBABILITY' ? contestProbability : 1;
     const roll = Math.random();
-    const opened = probabilitySucceeds(probability, roll);
+    const opened = !staminaExhausted && !chainLimited && probabilitySucceeds(probability, roll);
+    const closedReason = staminaExhausted ? 'COUNTER_WINDOW_STAMINA_EXHAUSTED' : chainLimited ? 'ENGAGEMENT_CHAIN_LIMIT' : 'COUNTER_WINDOW_MISSED';
     const counterGrantProfile = reaction?.counterGrantProfile?.granted === true
       ? cloneValue(reaction.counterGrantProfile)
       : null;
@@ -13227,6 +13386,11 @@
         probability,
         roll,
         receivedDamage,
+        engagementDepth,
+        ...(opened ? {} : { closedReason }),
+        counterWindowMode: COUNTER_WINDOW_MODE,
+        contestProbability,
+        strikeStamina,
         reactionPressure: contest.reactionPressure,
         attackPressure: contest.attackPressure,
         reactionShare: contest.share,
@@ -13956,7 +14120,35 @@
     };
   }
 
-  function runStructuredBattle(input = {}) {
+  // R11 (parallel valuation, 2026-11-11): the battle loop pauses at each outermost decision's provider call and hands it
+  // to its driver — runStructuredBattle settles it here as before; runStructuredBattleAsync awaits options.runProvider,
+  // which may value the candidates on workers. A provider error is thrown back at the paused call, as before.
+  function driveBattleSteps(steps) {
+    for (let step = steps.next(); ;) {
+      if (step.done) return step.value;
+      let value, error, failed = false;
+      try { value = decisionRuntime.runProvider({ providerId: step.value.providerId, request: step.value.request }); }
+      catch (caught) { failed = true; error = caught; }
+      step = failed ? steps.throw(error) : steps.next(value);
+    }
+  }
+
+  async function driveBattleStepsAsync(steps, options = {}) {
+    const decide = typeof options?.runProvider === 'function' ? options.runProvider
+      : call => decisionRuntime.runProvider({ providerId: call.providerId, request: call.request });
+    for (let step = steps.next(); ;) {
+      if (step.done) return step.value;
+      let value, error, failed = false;
+      try { value = await decide(step.value); }
+      catch (caught) { failed = true; error = caught; }
+      step = failed ? steps.throw(error) : steps.next(value);
+    }
+  }
+
+  function runStructuredBattle(input = {}) { return driveBattleSteps(runStructuredBattleSteps(input)); }
+  function runStructuredBattleAsync(input = {}, options = {}) { return driveBattleStepsAsync(runStructuredBattleSteps(input), options); }
+
+  function* runStructuredBattleSteps(input = {}) {
     const performanceTraceEnabled =
       root?.process?.env?.BATTLE_R8_PERF_TRACE === '1';
     const performanceNow = () =>
@@ -14064,7 +14256,7 @@
     rehydrateStateSourceMemory(source, combatData);
     const caseId = String(input?.caseId || 'structured-shadow').trim() || 'structured-shadow';
     const seed = Math.max(1, Math.floor(Number(input?.seed || 1)));
-    const roundLimit = Math.max(1, Math.min(20, Math.floor(Number(input?.rounds || input?.settings?.maxRounds || 1))));
+    const roundLimit = Math.max(1, Math.min(previewRuntime.battleRoundLimit, Math.floor(Number(input?.rounds || input?.settings?.maxRounds || 1))));
     const analyticsCompactEvidence = input?.settings?.analyticsCompactEvidence === true;
     performanceTrace('battle-start', {
       caseId: String(input?.caseId || '').trim(),
@@ -14485,6 +14677,7 @@
         });
         logs.push(...beginBattleRound(combatData, combatData.回合).filter(Boolean));
         invalidateRouteUnitHashes(combatData);
+        settleStaminaExhaustion(combatData);
         const queueTrace = runtime.actionQueueTrace;
         const naturalEntries = buildActionQueue(combatData);
         performanceTrace('queue-built', {
@@ -15181,7 +15374,7 @@
             });
           });
         };
-        const decideForNode = (actor, node, extras = {}) => {
+        const decideForNode = function* (actor, node, extras = {}) {
           const decisionStartedAt = performanceNow();
           let routeFactOwnershipSummary = {};
           let behaviorLayerSemanticHashes = {};
@@ -15401,10 +15594,8 @@
             const providerStartedAt = collectPerformanceBreakdown
               ? performanceNow()
               : 0;
-            const providerResult = decisionRuntime.runProvider({
-              providerId,
-              request: preparedRequest,
-            });
+            // R11: settled by the battle's driver (runStructuredBattle / runStructuredBattleAsync).
+            const providerResult = yield { providerId, request: preparedRequest, decisionInput };
             decisionResult = providerResult.decisionAudit;
             if (collectPerformanceBreakdown) {
               const providerFinishedAt = performanceNow();
@@ -16059,7 +16250,7 @@
                 sourceFactIds: sourceFactIds.slice(),
                 sourceEventIds: sourceEventIds.slice(),
               };
-              const decisionResult = preparedDefense || summonGuard ? null : decideForNode(actor, node, {
+              const decisionResult = preparedDefense || summonGuard ? null : yield* decideForNode(actor, node, {
                 role: 'REACTION',
                 imminentThreat: true,
                 sourceActorId,
@@ -16343,6 +16534,7 @@
                   parentActionEvent: settlement.actionEvent,
                   reaction,
                   settlementFacts: settlement.facts,
+                  engagementDepth: Number(node?.state?.engagementDepth || 0),
                 });
                 if (!counterWindow?.opened) return;
                 queue.enqueue({
@@ -16367,9 +16559,38 @@
                     reactionEvent: reaction?.event || null,
                     counterWindowEvent: counterWindow.event,
                     counterGrantProfile: counterWindow.counterGrantProfile,
+                    engagementDepth: Number(node?.state?.engagementDepth || 0) + 1,
                   },
                 });
               });
+              // 连续行动: a natural action that leaves its turn's windup total under CONTINUOUS_ACTION_BUDGET lets the actor act
+              // again in the same turn, choosing among actions that still fit (or passing). Reactions and counters to it resolve
+              // first; a turn-ending action (defend, evade, pass) or a charged release ends the chain.
+              const chainKind = String(shared.declaration?.actionKind || '').trim().toUpperCase();
+              // A charged release (its 前摇 over the budget) ends the chain through chainWindup <= naturalActionBudget below.
+              const chainLink = node.actionRole === 'ACTIVE' && (node.nodeKind === 'ACTIVE' || node.grantType === 'CONTINUOUS_ACTION');
+              const chainWindup = previewRuntime.actionWindup(actor, shared.declaration);
+              const chainUsed = Number(node?.state?.windupUsed || 0) + chainWindup;
+              if (chainLink && ['BASIC_ATTACK', 'RELEASE_SKILL', 'USE_ITEM'].includes(chainKind) && chainWindup > 0 &&
+                chainWindup <= naturalActionBudget && chainUsed < previewRuntime.CONTINUOUS_ACTION_BUDGET && structuredActorPhysicallyAlive(actor) &&
+                Number(node?.state?.chainDepth || 0) < 8) {
+                queue.enqueue({
+                  actorEntry: node.actorEntry,
+                  actorControl: node.actorControl,
+                  actorTurnSequence: node.actorTurnSequence,
+                  parentActionSequence: node.parentActionSequence || node.actionSequence,
+                  phasePriority: 66,
+                  grantId: `continuous:${settlement.actionEvent.actionId}`,
+                  nodeKind: 'CONTINUATION',
+                  actionRole: 'ACTIVE',
+                  sourceActionId: settlement.actionEvent.actionId,
+                  grantType: 'CONTINUOUS_ACTION',
+                  state: { continuationDepth: 1, parentActionEvent: settlement.actionEvent, windupUsed: chainUsed,
+                    chainDepth: Number(node?.state?.chainDepth || 0) + 1,
+                    // Strictly under the budget: the next windup must keep the total below 40.
+                    immediateBudget: previewRuntime.CONTINUOUS_ACTION_BUDGET - chainUsed - 1e-6 },
+                });
+              }
               const continuationGrant = readStructuredContinuationGrant(shared.declaration);
               if (continuationGrant && structuredContinuationEligible(continuationGrant, {
                 continuationDepth: node?.state?.continuationDepth,
@@ -16515,7 +16736,7 @@
               }
               if (!isCooperativeAssist) {
                 const chargedSkill = cloneValue(storedCharge?.skill || storedCharge);
-                decisionResult = decideForNode(actor, node, {
+                decisionResult = yield* decideForNode(actor, node, {
                   role: node.actionRole,
                   forcedSkill: chargedSkill,
                   forcedTargetIds: Array.isArray(storedCharge?.targetIds) ? storedCharge.targetIds : [],
@@ -16537,7 +16758,7 @@
             if (storedCharge && !isCooperativeAssist) {
               // The stored charge owns this natural action and releases through the normal declaration path.
             } else if (useLockedDeclaration) {
-              decisionResult = decideForNode(actor, node, {
+              decisionResult = yield* decideForNode(actor, node, {
                 role: node.actionRole,
                 playerLockedDeclaration: {
                   ...cloneValue(lockedDeclaration),
@@ -16550,7 +16771,7 @@
               node.actorControl = 'PLAYER_LOCKED';
             } else if (isCooperativeAssist) {
               try {
-                decisionResult = decideForNode(actor, node, {
+                decisionResult = yield* decideForNode(actor, node, {
                   role: 'ASSIST',
                   ...cooperativeOptions,
                   ...(storedCharge ? { forcedSkill: cloneValue(storedCharge.skill || storedCharge),
@@ -16625,7 +16846,7 @@
                   continue;
                 }
               }
-              decisionResult = decideForNode(actor, node, node.nodeKind === 'COUNTER'
+              decisionResult = yield* decideForNode(actor, node, node.nodeKind === 'COUNTER'
                 ? {
                     role: 'COUNTER',
                     counterWindow: true,
@@ -16650,7 +16871,7 @@
                     } : {}),
                   }
                 : node.nodeKind === 'CONTINUATION'
-                  ? { role: 'ACTIVE', continuationGrant: true, immediateBudget: naturalActionBudget, enforceImmediateBudget: true }
+                  ? { role: 'ACTIVE', continuationGrant: true, immediateBudget: Number(node?.state?.immediateBudget ?? naturalActionBudget), enforceImmediateBudget: true }
                   : { role: node.actionRole });
               if (handleLostDecisionNode(decisionResult, node)) continue;
               declaration = cloneValue(decisionResult?.selected?.declaration || {});
@@ -16780,7 +17001,7 @@
               consumeAutonomousSummonWindow(actor, node);
               continue;
             }
-            const castTime = Math.max(0, Number(declaration?.skill?.前摇 ?? declaration?.skill?.cast_time ?? 0));
+            const castTime = previewRuntime.actionWindup(actor, declaration);
             if (!storedCharge && (node.nodeKind === 'ACTIVE' || isCooperativeAssist) && castTime > naturalActionBudget) {
               const actionName = normalizeActionDisplayName(declaration?.skill?.name || declaration?.skill?.魂技名 || declaration?.actionKind || '蓄力行动');
               const chargeActionId = nextRuntimeId('battle-action');
@@ -16886,7 +17107,8 @@
             registerPredictedEvidence(actionContext.actionEvent, decisionResult);
             const resolvedDeclaration = actionContext.declaration;
             const shared = { declaration: resolvedDeclaration, actionContext, reactionByTarget: {}, decisionResult };
-            const hostileTargets = node.nodeKind === 'COUNTER' || structuredDamageEffects(resolvedDeclaration).length === 0
+            const hostileTargets = (node.nodeKind === 'COUNTER' && Number(node?.state?.engagementDepth || 0) >= ENGAGEMENT_CHAIN_LIMIT) ||
+              structuredDamageEffects(resolvedDeclaration).length === 0
               ? []
               : resolveStructuredTargets(combatData, actor, resolvedDeclaration, structuredDamageEffects(resolvedDeclaration)[0])
                   .filter(target => inferUnitSide(combatData, target) !== inferUnitSide(combatData, actor));
@@ -16962,7 +17184,7 @@
               nodeKind: 'PRIMARY_SETTLEMENT',
               actionRole: node.actionRole,
               sourceActionId: actionContext.actionEvent.actionId,
-              state: { shared, continuationDepth: Number(node?.state?.continuationDepth || 0),
+              state: { shared, continuationDepth: Number(node?.state?.continuationDepth || 0), engagementDepth: Number(node?.state?.engagementDepth || 0),
                 ...(actor.召唤键 && String(actor.行动模式 || '').trim() === '自主行动' &&
                   (node.nodeKind === 'ACTIVE' || declaration.counterConsumesNaturalOpportunity === true)
                   ? { autonomousNaturalWindow: true } : {}) },
@@ -19288,7 +19510,11 @@
         pushHighlight(round, summarizeSustainBreakEvent(event), 4, event);
       } else if (kind === 'state_apply' && stateWasApplied(event)) {
         const stateName = readLedgerStateName(event);
-        if (stateName) pushHighlight(round, `${target || actor}陷入【${stateName}】`, /眩晕|麻痹|僵直|沉默|封技|禁锢|束缚|定身|冻结/.test(stateName) ? 7 : 4, event);
+        // Same wording as the report's state label: a buff is gained, a debuff fallen into.
+        const type = String(event?.meta?.after?.类型 || '').trim();
+        const polarity = type === 'buff' ? 1 : type === 'debuff' ? -1 : previewRuntime.statePolarity({ 原型: '状态施加', 状态: stateName });
+        const text = polarity > 0 ? `获得【${stateName}】` : polarity < 0 ? `陷入【${stateName}】` : `进入【${stateName}】状态`;
+        if (stateName) pushHighlight(round, `${target || actor}${text}`, /眩晕|麻痹|僵直|沉默|封技|禁锢|束缚|定身|冻结/.test(stateName) ? 7 : 4, event);
       } else if (kind === 'state_apply' && stateWasImmune(event)) {
         const stateName = readLedgerStateName(event);
         if (stateName) pushHighlight(round, `${target || actor}免疫【${stateName}】`, /眩晕|麻痹|僵直|沉默|封技|禁锢|束缚|定身|冻结/.test(stateName) ? 6 : 3, event);
@@ -21578,19 +21804,20 @@
     return providerId;
   }
 
-  function runDecisionCase(input = {}) {
+  function runDecisionCase(input = {}) { return driveBattleSteps(runDecisionCaseSteps(input)); }
+  function* runDecisionCaseSteps(input = {}) {
     const source = input && typeof input === 'object' ? cloneValue(input) : {};
     const combatData = source?.combatData && typeof source.combatData === 'object'
       ? source.combatData
       : null;
     if (!combatData) throw new Error('battle_declaration_combat_data_missing');
     const providerId = resolveFormalProviderId(source);
-    return runStructuredBattle({
+    return yield* runStructuredBattleSteps({
       ...source,
       combatData,
       caseId: String(source.caseId || 'r9v2-formal').trim(),
       seed: Math.max(1, Math.floor(Number(source.seed || 1))),
-      rounds: Math.max(1, Math.min(20, Math.floor(Number(source.rounds || 1)))),
+      rounds: Math.max(1, Math.min(previewRuntime.battleRoundLimit, Math.floor(Number(source.rounds || 1)))),
       mode: String(source.mode || 'single_round').trim() || 'single_round',
       settings: {
         ...(source.settings || {}),
@@ -21604,13 +21831,21 @@
     return runDecisionCase(options && typeof options === 'object' ? options : {});
   }
 
-  function executeBattleDraft(input = {}) {
+  function runBattleCaseAsync(options = {}, parallel = {}) {
+    return driveBattleStepsAsync(runDecisionCaseSteps(options && typeof options === 'object' ? options : {}), parallel);
+  }
+
+  // R11: executeBattleDraftAsync / executePlayerLockedBattleSettlementAsync run the same steps with options.runProvider
+  // (parallel valuation, createBattleParallelPool) and resolve to the same draft.
+  function executeBattleDraft(input = {}) { return driveBattleSteps(executeBattleDraftSteps(input)); }
+  function executeBattleDraftAsync(input = {}, options = {}) { return driveBattleStepsAsync(executeBattleDraftSteps(input), options); }
+  function* executeBattleDraftSteps(input = {}) {
     const source = input && typeof input === 'object' ? cloneValue(input) : {};
     const combatData = source?.combatData && typeof source.combatData === 'object'
       ? source.combatData
       : null;
     if (!combatData) throw new Error('battle_declaration_combat_data_missing');
-    const result = runDecisionCase({
+    const result = yield* runDecisionCaseSteps({
       ...source,
       combatData,
       settings: {
@@ -21651,7 +21886,11 @@
     return attestBattleDraft({ ...draft, draftHash: hashBattleValue(draft) });
   }
 
-  function executePlayerLockedBattleSettlement(input = {}) {
+  function executePlayerLockedBattleSettlement(input = {}) { return driveBattleSteps(executePlayerLockedBattleSettlementSteps(input)); }
+  function executePlayerLockedBattleSettlementAsync(input = {}, options = {}) {
+    return driveBattleStepsAsync(executePlayerLockedBattleSettlementSteps(input), options);
+  }
+  function* executePlayerLockedBattleSettlementSteps(input = {}) {
     const source = input && typeof input === 'object' ? cloneValue(input) : {};
     const providerId = resolveFormalProviderId(source);
     const requestedAction = source?.actionDeclaration || source?.selectedAction;
@@ -21700,9 +21939,9 @@
     });
     const mode = source.mode === 'multi_round' ? 'multi_round' : 'single_round';
     const rounds = mode === 'multi_round'
-      ? Math.max(1, Math.min(20, Math.floor(Number(source.rounds || source.settings?.maxRounds || 20))))
+      ? Math.max(1, Math.min(previewRuntime.battleRoundLimit, Math.floor(Number(source.rounds || source.settings?.maxRounds || previewRuntime.battleRoundLimit))))
       : 1;
-    const result = runStructuredBattle({
+    const result = yield* runStructuredBattleSteps({
       ...source,
       combatData,
       rounds,
@@ -21883,6 +22122,268 @@
     return cloneValue({ prototypes: rows, coveredOptionKeys: [...coveredOptionKeys], prototypeCount: rows.length, optionCount: coveredOptionKeys.size });
   }
 
+  // R11 (parallel valuation, 2026-11-11): an outermost decision's candidates valued on worker threads.
+  // A worker is a second copy of the battle engine (the battle worker bundle); each decision it receives the decision
+  // input — packed so that what structuredClone drops (own non-enumerable fields such as a world's 召唤单位表,
+  // __battleRuntime and __行动闭环诊断 or a state's __状态来源键/__状态来源窗口, frozenness) arrives too, without the
+  // event ledger (sent once and then only its new entries) and the runtime records no decision reads (resolution trace,
+  // action queue trace, opportunity graph, fact journal) — and values its share of the candidates
+  // (decisionRuntime.runProvider parallel.only). The main thread settles every candidate and values its own share
+  // meanwhile, then decides with every share's rows given (parallel.given). Candidates are valued apart exactly as
+  // together (6 high-level 3v3, 5503 candidates; 7 battles, 432 decisions on a fresh engine copy: same choices); a share
+  // that fails or times out is valued again on the main thread.
+  const R11_HIDDEN = '\u0000lwcsHidden', R11_FROZEN = '\u0000lwcsFrozen';
+  const R11_OMIT_HIDDEN = new Set(['__battleEventLedger', '__battleResolutionTrace']);
+  const R11_OMIT_RUNTIME = ['actionQueueTrace', 'opportunityGraph', 'evaluationFactJournal'];
+  function r11Pack(value, omitHidden = null) {
+    const copies = new Map();
+    const visit = item => {
+      if (!item || typeof item !== 'object') return item;
+      if (copies.has(item)) return copies.get(item);
+      // Tags, not instanceof: values may come from another realm (an iframe, a vm context).
+      const tag = Object.prototype.toString.call(item);
+      if (tag !== '[object Object]' && tag !== '[object Array]') { copies.set(item, item); return item; }
+      const copy = Array.isArray(item) ? [] : {};
+      copies.set(item, copy);
+      for (const key of Object.keys(item)) copy[key] = visit(item[key]);
+      let hidden = null;
+      for (const key of Object.getOwnPropertyNames(item)) {
+        if (Array.isArray(item) && key === 'length') continue;
+        const descriptor = Object.getOwnPropertyDescriptor(item, key);
+        if (descriptor.enumerable || !('value' in descriptor) || typeof descriptor.value === 'function' || omitHidden?.has(key)) continue;
+        (hidden ||= {})[key] = [visit(descriptor.value), descriptor.writable ? 1 : 0, descriptor.configurable ? 1 : 0];
+      }
+      if (hidden) copy[R11_HIDDEN] = hidden;
+      if (Object.isFrozen(item)) copy[R11_FROZEN] = 1;
+      return copy;
+    };
+    return visit(value);
+  }
+  function r11Unpack(value) {
+    const done = new Set();
+    const visit = item => {
+      if (!item || typeof item !== 'object' || done.has(item)) return item;
+      done.add(item);
+      const hidden = item[R11_HIDDEN], frozen = item[R11_FROZEN];
+      if (hidden) delete item[R11_HIDDEN];
+      if (frozen) delete item[R11_FROZEN];
+      for (const key of Object.keys(item)) visit(item[key]);
+      if (hidden) for (const [key, [inner, writable, configurable]] of Object.entries(hidden)) {
+        visit(inner);
+        Object.defineProperty(item, key, { value: inner, enumerable: false, writable: !!writable, configurable: !!configurable });
+      }
+      if (frozen) Object.freeze(item);
+      return item;
+    };
+    return visit(value);
+  }
+  function r11PackDecisionInput(decisionInput) {
+    const packed = r11Pack(decisionInput, R11_OMIT_HIDDEN);
+    const runtimeState = packed?.worldSnapshot?.[R11_HIDDEN]?.__battleRuntime?.[0];
+    if (runtimeState && typeof runtimeState === 'object') for (const key of R11_OMIT_RUNTIME) delete runtimeState[key];
+    return packed;
+  }
+  // The ledger a worker holds for one battle, kept by the entries it was sent.
+  function r11LedgerDelta(session, ledger) {
+    const array = Array.isArray(ledger) ? ledger : [];
+    const reset = session.array !== array || session.sent > array.length;
+    const entries = r11Pack(array.slice(reset ? 0 : session.sent));
+    session.array = array;
+    session.sent = array.length;
+    const population = array.__sideEffectEligibilityPopulation;
+    return { reset, entries, population: population && typeof population === 'object' ? { ...population } : null };
+  }
+
+  // A worker's side: `scope` is the worker's global (self) or an adapter with postMessage and an onmessage setter.
+  function installBattleWorkerHost(scope) {
+    const ledger = [];
+    scope.onmessage = event => {
+      const message = event?.data || {};
+      if (message.type === 'ping') { scope.postMessage({ type: 'ready' }); return; }
+      if (message.type !== 'share') return;
+      const started = Date.now();
+      let reply;
+      try {
+        if (message.ledger?.reset) ledger.length = 0;
+        for (const entry of r11Unpack(message.ledger?.entries || [])) ledger.push(entry);
+        const input = r11Unpack(message.packed);
+        const copy = ledger.slice();
+        if (message.ledger?.population) Object.defineProperty(copy, '__sideEffectEligibilityPopulation', { value: message.ledger.population, enumerable: false });
+        if (input?.worldSnapshot && typeof input.worldSnapshot === 'object') {
+          Object.defineProperty(input.worldSnapshot, '__battleEventLedger', { value: copy, enumerable: false, writable: true, configurable: true });
+        }
+        let rows = [];
+        if (Array.isArray(message.only) && message.only.length) {
+          const request = decisionRuntime.prepareDecisionRequest({ ...input, analysisDepth: 'CANDIDATES_ONLY', collectPerformanceBreakdown: false });
+          rows = decisionRuntime.runProvider({ providerId: message.providerId, request, parallel: { only: message.only } }).parallelRows || [];
+        }
+        reply = { type: 'rows', seq: message.seq, rows: r11Pack(rows), ms: Date.now() - started };
+      } catch (error) {
+        reply = { type: 'rows', seq: message.seq, error: String(error?.stack || error).slice(0, 2000), ms: Date.now() - started };
+      }
+      scope.postMessage(reply);
+    };
+  }
+  if (root.__LWCS_BATTLE_WORKER__ === true && typeof root.postMessage === 'function' && typeof root.importScripts === 'function') {
+    installBattleWorkerHost(root);
+  }
+
+  // The main thread's side. options: { createWorker(index) → Worker-like, size, minCandidates, timeoutMs }.
+  // Without workers (none created, all failed) runProvider decides on the main thread as before.
+  function createBattleParallelPool(options = {}) {
+    const hardware = Number(root.navigator?.hardwareConcurrency || 4);
+    const size = Math.max(0, Math.floor(Number(options.size ?? Math.min(4, Math.max(1, hardware - 1)))));
+    const minCandidates = Math.max(2, Number(options.minCandidates ?? 2 * (size + 1)));
+    const timeoutMs = Math.max(1000, Number(options.timeoutMs ?? 30000));
+    const cost = candidate => candidate?.creation ? 6 : String(candidate?.declaration?.actionKind || '') === 'RELEASE_SKILL' ? 2 : 1;
+    const workers = [];
+    for (let index = 0; index < size; index++) {
+      let worker = null;
+      try { worker = options.createWorker?.(index) || null; } catch { worker = null; }
+      if (!worker) continue;
+      const slot = { worker, alive: true, ready: false, pending: new Map(), speed: 0.6, fixedMs: 6, session: { array: null, sent: 0 } };
+      worker.onmessage = event => {
+        const data = event?.data || {};
+        if (data.type === 'ready') { slot.ready = true; return; }
+        const waiter = slot.pending.get(data.seq);
+        if (waiter) { slot.pending.delete(data.seq); waiter(data); }
+      };
+      worker.onerror = () => {
+        slot.alive = false;
+        for (const waiter of slot.pending.values()) waiter({ error: 'worker_error' });
+        slot.pending.clear();
+      };
+      try { worker.postMessage({ type: 'ping' }); } catch { slot.alive = false; }
+      workers.push(slot);
+    }
+    const main = { speed: 1.4, fixedMs: 0 };
+    let seq = 0;
+    const ask = (slot, message) => new Promise(resolve => {
+      const timer = setTimeout(() => { slot.pending.delete(message.seq); resolve({ error: 'timeout' }); }, timeoutMs);
+      slot.pending.set(message.seq, data => { clearTimeout(timer); resolve(data); });
+      try { slot.worker.postMessage(message); } catch (error) { clearTimeout(timer); slot.pending.delete(message.seq); resolve({ error: String(error) }); }
+    });
+    async function runProvider(call) {
+      const { providerId, request, decisionInput } = call || {};
+      const candidates = request?.frozenCandidates || [];
+      const ready = workers.filter(slot => slot.alive && slot.ready);
+      if (!ready.length || !decisionInput || candidates.length < minCandidates) return decisionRuntime.runProvider({ providerId, request });
+      const packed = r11PackDecisionInput(decisionInput);
+      // Deal the candidates, costliest first, to whoever would finish them soonest at its measured speed; the main
+      // thread starts loaded with settling every candidate.
+      const lanes = [...ready.map(slot => ({ slot, finish: slot.fixedMs, units: 0, ids: [] })),
+        { slot: null, finish: candidates.length * 0.6, units: 0, ids: [] }];
+      for (const candidate of [...candidates].sort((a, b) => cost(b) - cost(a))) {
+        const units = cost(candidate);
+        let best = lanes[0];
+        for (const lane of lanes) {
+          const speed = lane.slot ? lane.slot.speed : main.speed, bestSpeed = best.slot ? best.slot.speed : main.speed;
+          if (lane.finish + units / speed < best.finish + units / bestSpeed) best = lane;
+        }
+        best.ids.push(candidate.candidateId); best.units += units; best.finish += units / (best.slot ? best.slot.speed : main.speed);
+      }
+      seq += 1;
+      const replies = lanes.filter(lane => lane.slot).map(lane => ask(lane.slot, { type: 'share', seq, packed, providerId, only: lane.ids,
+        ledger: r11LedgerDelta(lane.slot.session, decisionInput?.worldSnapshot?.__battleEventLedger) }).then(reply => ({ lane, reply })));
+      const mainLane = lanes[lanes.length - 1];
+      const startedAt = Date.now();
+      const own = decisionRuntime.runProvider({ providerId, request, parallel: { only: mainLane.ids, projectAll: true } });
+      const mainMs = Date.now() - startedAt;
+      if (mainLane.units > 0) main.speed = 0.7 * main.speed + 0.3 * mainLane.units / Math.max(1, mainMs - candidates.length * 0.6);
+      const rows = [...(own.parallelRows || [])];
+      for (const { lane, reply } of await Promise.all(replies)) {
+        if (reply?.error) {
+          // A worker that failed is set aside; its share is valued again below (rows missing from `given`).
+          if (reply.error !== 'timeout') lane.slot.alive = false;
+          lane.slot.session = { array: null, sent: 0 };
+          continue;
+        }
+        if (lane.units > 0) lane.slot.speed = 0.7 * lane.slot.speed + 0.3 * lane.units / Math.max(1, Number(reply.ms || 0) - lane.slot.fixedMs);
+        rows.push(...r11Unpack(reply.rows || []));
+      }
+      return decisionRuntime.runProvider({ providerId, request, parallel: { given: rows } });
+    }
+    return Object.freeze({
+      size: workers.length,
+      runProvider,
+      get readyCount() { return workers.filter(slot => slot.alive && slot.ready).length; },
+      dispose() { for (const slot of workers) { slot.alive = false; try { slot.worker.terminate?.(); } catch {} } },
+    });
+  }
+  // A dedicated-worker factory over the battle worker bundle (LWCS_Battle_Worker_Bundle.js): `source` is { text } — the
+  // bundle read by the caller (the frames LWCS runs in have an opaque origin, where a worker's importScripts of the CDN
+  // fails while the frame's own fetch of the same file works, TT 2026-11-11) — or a URL for importScripts. One Blob
+  // serves every worker.
+  function battleWorkerFactory(source) {
+    const prelude = 'self.__LWCS_BATTLE_WORKER__ = true; self._ = self._ || { cloneDeep: value => structuredClone(value) };\n';
+    const text = source && typeof source === 'object' && typeof source.text === 'string' ? source.text : '';
+    const url = typeof source === 'string' ? source : String(source?.url || '');
+    let blobUrl = '';
+    return () => {
+      if (typeof root.Worker !== 'function' || typeof root.Blob !== 'function' || typeof root.URL?.createObjectURL !== 'function') return null;
+      if (!text && !url) return null;
+      blobUrl ||= root.URL.createObjectURL(new root.Blob([prelude + (text || `importScripts(${JSON.stringify(url)});`)], { type: 'text/javascript' }));
+      return new root.Worker(blobUrl);
+    };
+  }
+
+  // The shared pool the game's battle submissions use (executeBattleDraftParallel): workers by device — a desktop up to
+  // 4 (one core left), a phone 2 with 6+ cores and 4+ GB (else 1), none at 2 GB or less — over the battle worker bundle,
+  // read from the frame's resource base (__LWCS_资源基础地址__, then its GitHub raw mirror) once, in the background. Until it
+  // is ready, or if it cannot be read (not yet deployed, offline), or root.__LWCS_BATTLE_PARALLEL_DISABLED__ is set,
+  // battles decide on the main thread exactly as before.
+  const R11_WORKER_BUNDLE = 'LWCS_Battle_Worker_Bundle.js';
+  let sharedPool = null, sharedPoolLoading = null;
+  function defaultBattleWorkerCount() {
+    const navigatorInfo = root.navigator || {};
+    const cores = Number(navigatorInfo.hardwareConcurrency || 4), memory = Number(navigatorInfo.deviceMemory || 0);
+    const mobile = navigatorInfo.userAgentData?.mobile === true || /Android|iPhone|iPad|iPod|Mobile/i.test(String(navigatorInfo.userAgent || ''));
+    if (memory && memory <= 2) return 0;
+    if (mobile) return cores >= 6 && (!memory || memory >= 4) ? 2 : 1;
+    return Math.max(1, Math.min(4, cores - 1));
+  }
+  async function readWorkerBundleText() {
+    const base = String(root.__LWCS_资源基础地址__ || root.parent?.__LWCS_资源基础地址__ || '').trim();
+    if (!base || typeof root.fetch !== 'function') return '';
+    const normalized = base.endsWith('/') ? base : base + '/';
+    const match = /^https:\/\/[^/]+\/gh\/([^/@]+)\/([^/@]+)@([0-9a-f]{40})\/$/i.exec(normalized);
+    for (const prefix of [normalized, match ? `https://raw.githubusercontent.com/${match[1]}/${match[2]}/${match[3]}/` : '']) {
+      if (!prefix) continue;
+      try {
+        const response = await root.fetch(prefix + R11_WORKER_BUNDLE);
+        if (response.ok) {
+          const text = await response.text();
+          if (text.includes('__LWCS_BATTLE_PARALLEL__')) return text;
+        }
+      } catch {}
+    }
+    return '';
+  }
+  function ensureSharedBattlePool() {
+    if (sharedPool || sharedPoolLoading || root.__LWCS_BATTLE_PARALLEL_DISABLED__ === true) return;
+    const size = defaultBattleWorkerCount();
+    if (!size || typeof root.Worker !== 'function') return;
+    sharedPoolLoading = readWorkerBundleText().then(text => {
+      if (text) sharedPool = createBattleParallelPool({ size, createWorker: battleWorkerFactory({ text }) });
+    }).catch(() => {}).finally(() => { sharedPoolLoading = null; });
+  }
+  function sharedRunProvider() {
+    ensureSharedBattlePool();
+    return sharedPool?.readyCount && root.__LWCS_BATTLE_PARALLEL_DISABLED__ !== true ? sharedPool.runProvider : null;
+  }
+  async function executeBattleDraftParallel(input = {}) {
+    const runProvider = sharedRunProvider();
+    return runProvider ? executeBattleDraftAsync(input, { runProvider }) : executeBattleDraft(input);
+  }
+  async function executePlayerLockedBattleSettlementParallel(input = {}) {
+    const runProvider = sharedRunProvider();
+    return runProvider ? executePlayerLockedBattleSettlementAsync(input, { runProvider }) : executePlayerLockedBattleSettlement(input);
+  }
+  // A main frame starts reading the bundle as soon as the runtime loads, so the first battle can use the workers.
+  if (root.__LWCS_BATTLE_WORKER__ !== true && typeof root.document === 'object' && typeof root.setTimeout === 'function') {
+    root.setTimeout(() => { try { ensureSharedBattlePool(); } catch {} }, 3000);
+  }
+
   const api = Object.freeze({
     version: '7.3-R6.3',
     actionKinds,
@@ -21954,6 +22455,12 @@
     openStructuredCounterWindow,
     auditStructuredCommitCoverage,
     runStructuredBattle,
+    runStructuredBattleAsync,
+    runBattleCaseAsync,
+    executeBattleDraftAsync,
+    executePlayerLockedBattleSettlementAsync,
+    executeBattleDraftParallel,
+    executePlayerLockedBattleSettlementParallel,
     calculateBaseDamage,
     assertEffectList,
     assertSkillEffects,
@@ -22037,6 +22544,7 @@
   });
 
   root.__LWCS_BATTLE_RUNTIME__ = api;
+  root.__LWCS_BATTLE_PARALLEL__ = Object.freeze({ createPool: createBattleParallelPool, workerFactory: battleWorkerFactory, installWorkerHost: installBattleWorkerHost });
   root.__LWCS_BATTLE_RUNTIME_REGISTRY_SOURCE__ = 'shared';
   root.__LWCS_BATTLE_RUNTIME_REGISTRY_SIZE__ = prototypeManifest.length;
 })();

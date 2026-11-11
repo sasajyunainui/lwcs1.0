@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:ab5a4b5798801d4e947fbda37220391791e46db0b26fa6219b084f23183a999f|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:3c1d98eaaf18f362be0cd98cdb62dea5371c4fdce0dbdd772d2a560a8649db5f|cockpit/pages-role.js:ea00d94e994576a533ab9cfb560cdd432adb466805f0d67c984d2ad891f5bedc|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:31b84a896b0ecfd57ec9274ce575c48b55e1b1fc779106dc6eb734c699584cc8|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:33c325aab13aef52d2811e81492f147b2a533790487da1419353c482c7e6c33b|cockpit/pages-world.js:6851fc81ee4d831a1af87aa85b490557d452ef5b31ea776d50f871cb97f5574e|cockpit/pages-terminal.js:c73e78b78d6a7a80f96d774bcf3a88bfa17642c7ad81a5d5b89ff863e053125e */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:9b917ccc2f2a58d507c67d5a36c0e72abeda8de5648bca16d57e66085ae87eee|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:3c1d98eaaf18f362be0cd98cdb62dea5371c4fdce0dbdd772d2a560a8649db5f|cockpit/pages-role.js:ea00d94e994576a533ab9cfb560cdd432adb466805f0d67c984d2ad891f5bedc|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:31b84a896b0ecfd57ec9274ce575c48b55e1b1fc779106dc6eb734c699584cc8|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:33c325aab13aef52d2811e81492f147b2a533790487da1419353c482c7e6c33b|cockpit/pages-world.js:6851fc81ee4d831a1af87aa85b490557d452ef5b31ea776d50f871cb97f5574e|cockpit/pages-terminal.js:c73e78b78d6a7a80f96d774bcf3a88bfa17642c7ad81a5d5b89ff863e053125e */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -28488,7 +28488,9 @@ ${播报文本}
     };
   }
 
-  function 构建战斗提交包(input = {}) {
+  // 战斗估值可分给后台线程并行（BattleRuntime executeBattleDraftParallel 等，结果与同步版逐项相同；线程包读不到、
+  // 设备不适合或 window.__LWCS_BATTLE_PARALLEL_DISABLED__ 为真时自动走同步），所以这里是异步的。
+  async function 构建战斗提交包(input = {}) {
     const runtime = window.__LWCS_BATTLE_RUNTIME__;
     const report = window.__LWCS_BATTLE_REPORT__;
     if (
@@ -28504,12 +28506,12 @@ ${播报文本}
     const source = cloneJsonValue(input, {});
     delete source.visibilityMode;
     const executionMode = 规范化战斗提交模式(source.executionMode);
+    const lockedInput = { ...source, actionDeclaration: source.actionDeclaration || source.selectedAction };
     const draft = executionMode === 'auto'
-      ? runtime.executeBattleDraft(source)
-      : runtime.executePlayerLockedBattleSettlement({
-          ...source,
-          actionDeclaration: source.actionDeclaration || source.selectedAction,
-        });
+      ? await (typeof runtime.executeBattleDraftParallel === 'function'
+        ? runtime.executeBattleDraftParallel(source) : runtime.executeBattleDraft(source))
+      : await (typeof runtime.executePlayerLockedBattleSettlementParallel === 'function'
+        ? runtime.executePlayerLockedBattleSettlementParallel(lockedInput) : runtime.executePlayerLockedBattleSettlement(lockedInput));
     const reportDto = report.build({ draft, visibilityMode: 'PLAYER' });
     const reportAudit = report.auditProjection(reportDto);
     const sealedPackage = runtime.sealBattleResult({ draft, reportAudit });
@@ -28767,7 +28769,7 @@ ${播报文本}
     if (shouldCommit) 正式战斗事务执行中 = true;
     try {
       const transactionInput = 构建战斗事务输入(cloneJsonValue(combatData, {}), { ...options, executionMode });
-      const sealedPackage = 构建战斗提交包(transactionInput);
+      const sealedPackage = await 构建战斗提交包(transactionInput);
       if (!shouldCommit) {
         return {
           ...sealedPackage,
