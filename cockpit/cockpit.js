@@ -158,7 +158,7 @@
   const ctx = () => {
     if (!S.char[state.view]) state.view = S.sys.玩家名;
     const ch = S.char[state.view] || {};
-    return { rt, library, S, name: state.view, ch, st: ch.属性 || {}, isPlayer: state.view === S.sys.玩家名, player: S.sys.玩家名, souls: souls(ch), tickDate, rankTitle, yearTier, ringStage, ringMedal, ringColorClass, bar, count, sock, head, empty, kv, val, hint: hintMark, pick, esc, fmt, num, entries, blank, avatarSrc, standingSrc, miniAva, state, ed, search, P: (...p) => ['char', state.view, ...p] };
+    return { rt, library, loc: window.LWCS_COCKPIT_LOC(S, rt), S, name: state.view, ch, st: ch.属性 || {}, isPlayer: state.view === S.sys.玩家名, player: S.sys.玩家名, souls: souls(ch), tickDate, rankTitle, yearTier, ringStage, ringMedal, ringColorClass, bar, count, sock, head, empty, kv, val, hint: hintMark, pick, esc, fmt, num, entries, blank, avatarSrc, standingSrc, miniAva, state, ed, search, P: (...p) => ['char', state.view, ...p] };
   };
 
   // 写回：ops = [{ path, value }] 或 [{ path, del: true }]，path 是存档根下的键路径。

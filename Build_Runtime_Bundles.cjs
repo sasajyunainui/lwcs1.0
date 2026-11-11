@@ -8,6 +8,7 @@ const 需要构建 = 输出文件 => 指定输出.size === 0 || 指定输出.has
 // 球体座舱（新状态栏界面）：框架 → 页面 → 技能设计台（数据层 / 试算 / 界面）。顺序即加载顺序
 const 座舱脚本列表 = Object.freeze([
   'cockpit/designer-model.js',
+  'cockpit/locations.js',
   'cockpit/cockpit.js',
   'cockpit/pages-role.js',
   'cockpit/designer-sim.js',

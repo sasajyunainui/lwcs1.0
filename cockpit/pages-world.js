@@ -6,7 +6,7 @@
     return Object.entries(merged).map(([n, f]) => ({ name: n, ...f })).sort((a, b) => (b.影响力 || 0) - (a.影响力 || 0));
   };
   const deviationTier = v => v >= 80 ? '崩坏' : v >= 50 ? '剧变' : v >= 20 ? '偏移' : '平稳';
-  const cityOf = c => { const p = String(c.ch.状态?.位置 || '').split('-').filter(x => x && x !== '斗罗大陆'); return [p[0], c.S.world.地点?.[p[0]] || {}]; };
+  const cityOf = c => { const l = c.loc.city(c.ch.状态?.位置); return [l.name, l.node]; };
   const DONE = /done|handled|完成|已处理/;
   const upcoming = c => {
     const w = c.S.world, now = c.num(w.时间.tick), out = [];

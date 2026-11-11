@@ -33,9 +33,9 @@
   };
   // 事务格：数据本身就是入口——魂灵塔层数 → 试炼，副职业 → 工坊，情报条数 → 情报，本地商店 → 交易
   const affairTiles = c => {
-    const jobs = Object.entries(c.ch.副职业 || {}), p = String(c.ch.状态?.位置 || '').split('-').filter(x => x && x !== '斗罗大陆');
+    const jobs = Object.entries(c.ch.副职业 || {});
     const intelN = (c.ch.已掌握情报 || []).length + Object.values(c.S.world.机密情报 || {}).filter(s => (s.知情规则 || []).includes(c.name)).length;
-    const shops = Object.keys(c.S.world.地点?.[p[0]]?.商店 || {}).length;
+    const shops = Object.keys(c.loc.city(c.ch.状态?.位置).node.商店 || {}).length;
     return `<div class="tiles affairs">${[
       ['tower-observation', `${c.fmt(c.num(c.ch.魂灵塔记录?.最高层))} 层`, '魂灵塔', 'trial', '试炼'],
       ['hammer', jobs.length ? `${c.esc(jobs[0][0])} ${c.fmt(c.num(jobs[0][1]?.等级))} 级` : '未习', '副职业', 'workshop', '工坊'],
@@ -354,7 +354,7 @@
     tpCall(c, { op: 'open', mode: v?.kind === 'black' ? 'black' : 'npc', npc: v?.npc || '', store: v?.store || '' }, st => { ui.tpFor = want; ui.tpReq = ''; ui.tps = st && st.key ? st : null; ui.tpErr = st && !st.key ? st.reason || '交易模块未就绪' : ''; });
   };
   const tradePrivate = (c, v, venues) => {
-    const ui = c.state.ui, act = ui.tpAct === '私下卖出' ? '私下卖出' : '私下买入', city = c.S.world.地点?.[String(c.ch.状态?.位置 || '').split('-').filter(x => x && x !== '斗罗大陆')[0]] || {};
+    const ui = c.state.ui, act = ui.tpAct === '私下卖出' ? '私下卖出' : '私下买入', city = c.loc.city(c.ch.状态?.位置).node;
     tpLoad(c, v);
     const pool = act === '私下卖出' ? c.ch.背包 : v.kind === 'black' ? city.商店?.[v.store]?.库存 : c.S.char?.[v.npc]?.背包;
     const goods = Object.entries(pool || {}).map(([n, x]) => ({ id: n, name: n, stock: c.num(x?.库存 ?? x?.数量) || (x?.批次 || []).reduce((s2, b) => s2 + c.num(b.数量), 0), rate: x?.价格倍率 }));
@@ -392,8 +392,8 @@
     };
   };
   const trade = c => {
-    const ui = c.state.ui, p = String(c.ch.状态?.位置 || '').split('-').filter(x => x && x !== '斗罗大陆');
-    const city = c.S.world.地点?.[p[0]] || {}, shops = Object.entries(city.商店 || {}), auction = c.S.world.拍卖 || {}, coins = c.ch.财富 || {};
+    const ui = c.state.ui;
+    const city = c.loc.city(c.ch.状态?.位置).node, shops = Object.entries(city.商店 || {}), auction = c.S.world.拍卖 || {}, coins = c.ch.财富 || {};
     // 商店列表（含特许兑换）取自任一已挂的交易会话；同一地点只在还没有会话时挂一次基础会话（私下场所有自己的会话，别来回重挂）
     if (!/^(npc|black):/.test(String(ui.venue || '')) && (!ui.tps || JSON.parse(ui.tpFor || '[]')[1] !== c.ch.状态?.位置)) tpLoad(c, null);
     // 本城商店 + 交易模块额外加入的商店（魂灵塔特许兑换）；黑市店单列；在场人物可私下交易
@@ -420,7 +420,7 @@
       tag: 'CORE · MARKET',
       left: `<div class="pad">${c.head('scale-balanced', '交易', 'Market', 'gd')}
         <div class="venue-pick">${c.pick('venue', v?.id || '', venues.map(x => ({ value: x.id, label: x.name, group: x.group || (x.id.startsWith('shop:') ? '本城商店' : '其他') })))}</div>
-        ${goods.length ? `<div class="list q-list">${goods.map(x => `<button class="row${x === g ? ' on' : ''}" type="button" data-set="good=${c.esc(x.id)}" aria-current="${x === g}">${(q => q ? `<span class="chip">${c.esc(q)}</span>` : c.sock(v.icon))(x.grade || itemDefOf(c, x.name)[1]?.品质)}<div><strong>${c.esc(x.name)}</strong><small>${c.esc([x.cat || itemDefOf(c, x.name)[0], x.stock !== undefined ? `库存 ${c.fmt(x.stock)}` : ''].filter(Boolean).join(' · '))}</small></div><span class="end">${shortNum(c, Math.round(x.price ?? c.num(itemDefOf(c, x.name)[1]?.基础价格) * (x.rate ?? 1)))}</span></button>`).join('')}</div>` : c.empty('store', v ? '这里暂时没有货' : `${p[0] || '当地'}没有商店`)}
+        ${goods.length ? `<div class="list q-list">${goods.map(x => `<button class="row${x === g ? ' on' : ''}" type="button" data-set="good=${c.esc(x.id)}" aria-current="${x === g}">${(q => q ? `<span class="chip">${c.esc(q)}</span>` : c.sock(v.icon))(x.grade || itemDefOf(c, x.name)[1]?.品质)}<div><strong>${c.esc(x.name)}</strong><small>${c.esc([x.cat || itemDefOf(c, x.name)[0], x.stock !== undefined ? `库存 ${c.fmt(x.stock)}` : ''].filter(Boolean).join(' · '))}</small></div><span class="end">${shortNum(c, Math.round(x.price ?? c.num(itemDefOf(c, x.name)[1]?.基础价格) * (x.rate ?? 1)))}</span></button>`).join('')}</div>` : c.empty('store', v ? '这里暂时没有货' : `${c.loc.city(c.ch.状态?.位置).name || '当地'}没有商店`)}
       </div>`,
       core: g ? `<div class="pad">
         <div class="q-title">${c.sock(v.icon, 'gd')}<span class="chip">${c.esc(g.grade || def?.品质 || cat || '货品')}</span><h2>${c.esc(g.name)}</h2><span class="q-state">${c.esc(v.name)}</span></div>

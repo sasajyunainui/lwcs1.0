@@ -4,28 +4,18 @@
   // 资源基址取 lwcs 运行时给的素材目录（角色素材目录的上一级），原型页回落本地 39281
   const MAP = { w: 3174, h: 2246 };
   const assetUrl = file => (document.documentElement.dataset.lwcsCharacterAssets || 'http://127.0.0.1:39281/assets/characters/').replace(/assets\/characters\/$/, '') + encodeURI(file);
-  const profileOf = c => { try { const p = c.rt('__LWCS_ERA_RUNTIME_INTEGRATION_V1__')?.getMapProfileForTick?.(c.num(c.S?.world?.时间?.tick)); if (p?.asset) return p; } catch (e) { /* 原型页没有时代运行时 */ } return { asset: 'MAP.webp', topology: 'terrestrial' }; };
-  const stellar = c => profileOf(c).topology === 'stellar';
-  const rootName = c => stellar(c) ? '斗罗星际' : '斗罗大陆';
-  // 「当地」取所在链上第一个城镇类地点（斗一 / 斗二城市在帝国之下）；链上没有城镇时按时代默认层：陆地是顶层，斗四是「星系 / 行星 / 城市」第三层
-  const isTown = n => /城|都|镇|村|聚落/.test(String(n?.类型 || ''));
-  const cityIndex = (c, chain) => { const i = chain.findIndex(([, n]) => isTown(n)); return i >= 0 ? i : Math.min(stellar(c) ? 2 : 0, Math.max(0, chain.length - 1)); };
+  // 跳过「斗罗大陆」根、所在城市、时代地图类型都走座舱共用的地点解析（cockpit/locations.js）
+  const { roots: ROOTS, isTown } = window.LWCS_COCKPIT_LOC;
+  const profileOf = c => c.loc.profile();
+  const stellar = c => c.loc.stellar();
+  const rootName = c => c.loc.rootName();
+  const cityIndex = (c, chain) => c.loc.cityIndex(chain);
   // 斗四星系 / 行星的专属子图（同原项目）：只认完整路径，城市以下仍是全息底板
   const SUBMAPS = { '斗罗星系': 'MAP_ZJDL_DOULUO_SYSTEM.webp', '斗罗星系/斗罗星': 'MAP_ZJDL_DOULUO.webp', '斗罗星系/天斗星': 'MAP_ZJDL_TIANDOU.webp', '斗罗星系/天罗星': 'MAP_ZJDL_TIANLUO.webp', '斗罗星系/龙源星': 'MAP_ZJDL_LONGYUAN.webp', '斗罗星系/森罗星': 'MAP_ZJDL_SENLUO.webp', '斗罗星系/精灵星': 'MAP_ZJDL_JINGLING.webp', '天堂星域/天堂星': 'MAP_ZJDL_TIANTANG.webp', '龙马星系': 'MAP_ZJDL_LONGMA_SYSTEM.webp', '龙马星系/天龙星': 'MAP_ZJDL_TIANLONG.webp', '龙马星系/天马星': 'MAP_ZJDL_TIANMA.webp', '龙马星系/御空族七十六号星球': 'MAP_ZJDL_YUKONG76.webp' };
-  // 位置串与斗一 / 斗二地点库的路径以「斗罗大陆」开头，斗三库没有这一层：统一去掉根，顶层就是帝国 / 城市 / 星系
-  const ROOTS = new Set(['斗罗大陆', '斗罗星际']);
   const pathOf = c => String(c.ch.状态?.位置 || '').split('-').filter(Boolean);
-  // 存档地点树同理：斗一 / 斗二按库路径实例化，城市挂在「斗罗大陆」的子节点下；读时跳过这一层，写回时由 locPath 补回真实路径
-  const rootKey = c => { const w = c.S.world.地点 || {}; return Object.keys(w).find(k => ROOTS.has(k) && w[k]?.子节点) || ''; };
-  const savedTop = c => { const w = c.S.world.地点 || {}, r = rootKey(c); return r ? { ...Object.fromEntries(Object.entries(w).filter(([k]) => k !== r)), ...w[r].子节点 } : w; };
-  const locPath = (c, names) => { const r = rootKey(c), lead = r && (c.S.world.地点[r].子节点 || {})[names[0]] ? [r, '子节点'] : []; return ['world', '地点', ...lead, ...names.flatMap((n, i) => i ? ['子节点', n] : [n])]; };
-  const nodeOf = c => {
-    const parts = pathOf(c).filter(p => !ROOTS.has(p));
-    let node = null, chain = [];
-    let pool = savedTop(c);
-    for (const p of parts) { if (pool && pool[p]) { node = pool[p]; chain.push([p, node]); pool = node.子节点 || {}; } }
-    return { node, chain, city: chain[0] };
-  };
+  const savedTop = c => c.loc.top();
+  const locPath = (c, names) => c.loc.path(names);
+  const nodeOf = c => { const chain = c.loc.chain(c.ch.状态?.位置); return { node: chain.at(-1)?.[1] || null, chain, city: chain[0] }; };
   const locals = c => Object.entries(c.S.char).filter(([n, x]) => n !== c.name && x.状态?.位置 === c.ch.状态?.位置);
   const statusText = s => ({ intact: '完好', active: '正常', damaged: '受损', destroyed: '已毁', ruins: '废墟', restricted: '受限', 'military-zone': '军事管制', dangerous: '危险', protected: '受保护', contested: '争夺中', neutral: '中立', hostile: '敌对', sealed: '封闭', unavailable: '不可进入' }[s] || s || '未知');
   // 坐标目的地：dest 写成「@x,y」（总图坐标）

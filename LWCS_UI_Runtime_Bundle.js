@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:9b917ccc2f2a58d507c67d5a36c0e72abeda8de5648bca16d57e66085ae87eee|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/cockpit.js:3c1d98eaaf18f362be0cd98cdb62dea5371c4fdce0dbdd772d2a560a8649db5f|cockpit/pages-role.js:ea00d94e994576a533ab9cfb560cdd432adb466805f0d67c984d2ad891f5bedc|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:31b84a896b0ecfd57ec9274ce575c48b55e1b1fc779106dc6eb734c699584cc8|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:9b8292c32e589a237845ff640ea917b3dc0fcaf171f4d2ad8122d42904033ed1|cockpit/pages-world.js:6851fc81ee4d831a1af87aa85b490557d452ef5b31ea776d50f871cb97f5574e|cockpit/pages-terminal.js:c73e78b78d6a7a80f96d774bcf3a88bfa17642c7ad81a5d5b89ff863e053125e|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:680e7964aac65bb51bbe381dda6937a38ae1ae9c4c797e0358afaee0caefbcfa|BehaviorDecisionPipeline_Module.js:81eceda18d6a015890368b2f8ad167dbdfc4503b0a20d5806194fb5ec9f4b725|BattleDecision_Module.js:516a514aec5225e84ed7788c6bda4730e8d1aef516c35e252bd49b3ae2d1f3e6|BattleRuntime_Module.js:f4f41294d99470260e0c7e73e03e47d4a2023757a7612dafcb09517f49f92f5e|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:1d3091d67e7dacfc78d2c9b3dc3f7acd28c068f5cdc653495ff56bc36c19a29d|Database_Module.js:a08adc7704e9deda80e7a7eaca7c9dab74ced979fe47024b8e73c19ca2c6178e */
+/* sources-sha256: LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:9b917ccc2f2a58d507c67d5a36c0e72abeda8de5648bca16d57e66085ae87eee|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/locations.js:532f7df63767ca3868ef74d2a58375213c8651e54802bd75ab1ec19d83e66b3b|cockpit/cockpit.js:432470d08e4ffbc314d59280d8494ce7689401896380cfae89aa07067a180473|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:31b84a896b0ecfd57ec9274ce575c48b55e1b1fc779106dc6eb734c699584cc8|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:1162c9efcd013102826d4126135b2119eb20021b68b09de96aca7bdd848e898f|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:df365f3761d9abb758b82f315e775dd1231d25287297adcc2a847be1d466f3e2|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:680e7964aac65bb51bbe381dda6937a38ae1ae9c4c797e0358afaee0caefbcfa|BehaviorDecisionPipeline_Module.js:81eceda18d6a015890368b2f8ad167dbdfc4503b0a20d5806194fb5ec9f4b725|BattleDecision_Module.js:516a514aec5225e84ed7788c6bda4730e8d1aef516c35e252bd49b3ae2d1f3e6|BattleRuntime_Module.js:f4f41294d99470260e0c7e73e03e47d4a2023757a7612dafcb09517f49f92f5e|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:1d3091d67e7dacfc78d2c9b3dc3f7acd28c068f5cdc653495ff56bc36c19a29d|Database_Module.js:a08adc7704e9deda80e7a7eaca7c9dab74ced979fe47024b8e73c19ca2c6178e */
 ;
 /* source: LWCS_Message_Semantics.js */
 /* 纯消息语义：输入必须来自 canonical chat[]，不可使用丢失 role/tool_calls 的助手投影。 */
@@ -47537,6 +47537,34 @@ ${播报文本}
 })();
 
 ;
+/* source: cockpit/locations.js */
+/* 座舱地点解析：各页共用 */
+(() => {
+  // 斗一 / 斗二的地点库按完整路径实例化：位置串和存档地点树都以「斗罗大陆」为根，城市挂在根的子节点下；斗三库没有这一层；
+  // 斗四是「星系 / 行星 / 城市」三层。各页统一经这里跳过根、取所在城市
+  const ROOTS = new Set(['斗罗大陆', '斗罗星际']);
+  const isTown = n => /城|都|镇|村|聚落/.test(String(n?.类型 || ''));
+  window.LWCS_COCKPIT_LOC = (S, rt) => {
+    // 时代地图配置（斗一斗罗大陆1地图、斗二 / 斗三 MAP、斗四星际总图）；原型页没有时代运行时，按陆地处理
+    const profile = () => { try { const p = rt?.('__LWCS_ERA_RUNTIME_INTEGRATION_V1__')?.getMapProfileForTick?.(Number(S?.world?.时间?.tick)); if (p?.asset) return p; } catch (e) { /* 时间未就绪 */ } return { asset: 'MAP.webp', topology: 'terrestrial' }; };
+    const stellar = () => profile().topology === 'stellar';
+    const rootKey = () => { const w = S?.world?.地点 || {}; return Object.keys(w).find(k => ROOTS.has(k) && w[k]?.子节点) || ''; };
+    // 存档地点树的顶层（已跳过根）；写回时由 path 补回真实键路径
+    const top = () => { const w = S?.world?.地点 || {}, r = rootKey(); return r ? { ...Object.fromEntries(Object.entries(w).filter(([k]) => k !== r)), ...w[r].子节点 } : w; };
+    const path = names => { const r = rootKey(), lead = r && (S.world.地点[r].子节点 || {})[names[0]] ? [r, '子节点'] : []; return ['world', '地点', ...lead, ...names.flatMap((n, i) => i ? ['子节点', n] : [n])]; };
+    const segs = pos => String(pos || '').split('-').filter(p => p && !ROOTS.has(p));
+    // 位置串逐段落到存档地点树上；树上没有的段跳过
+    const chain = pos => { const out = []; let pool = top(); for (const p of segs(pos)) if (pool && pool[p]) { out.push([p, pool[p]]); pool = pool[p].子节点 || {}; } return out; };
+    // 所在城市：链上第一个城镇类地点；没有时陆地取顶层、斗四取第三层
+    const cityIndex = ch => { const i = ch.findIndex(([, n]) => isTown(n)); return i >= 0 ? i : Math.min(stellar() ? 2 : 0, Math.max(0, ch.length - 1)); };
+    const city = pos => { const ch = chain(pos), ci = cityIndex(ch), e = ch[ci]; return { chain: ch, ci, name: e?.[0] || '', node: e?.[1] || {}, path: e ? path(ch.slice(0, ci + 1).map(x => x[0])) : null }; };
+    return { roots: ROOTS, isTown, profile, stellar, rootName: () => stellar() ? '斗罗星际' : '斗罗大陆', top, path, segs, chain, cityIndex, city };
+  };
+  // 不依赖存档的部分也挂在工厂上，页面模块顶层可直接用
+  Object.assign(window.LWCS_COCKPIT_LOC, { roots: ROOTS, isTown });
+})();
+
+;
 /* source: cockpit/cockpit.js */
 /* 球体座舱：导航、三种模式、检视器、动效、手机转向。页面内容由 pages-*.js 注册。
    数据与写回经适配器：lwcs 里由 mvu_logic_bridge.js 提供（读当前聊天 MVU 根数据、经编辑器写回、切换查看角色）；
@@ -47698,7 +47726,7 @@ ${播报文本}
   const ctx = () => {
     if (!S.char[state.view]) state.view = S.sys.玩家名;
     const ch = S.char[state.view] || {};
-    return { rt, library, S, name: state.view, ch, st: ch.属性 || {}, isPlayer: state.view === S.sys.玩家名, player: S.sys.玩家名, souls: souls(ch), tickDate, rankTitle, yearTier, ringStage, ringMedal, ringColorClass, bar, count, sock, head, empty, kv, val, hint: hintMark, pick, esc, fmt, num, entries, blank, avatarSrc, standingSrc, miniAva, state, ed, search, P: (...p) => ['char', state.view, ...p] };
+    return { rt, library, loc: window.LWCS_COCKPIT_LOC(S, rt), S, name: state.view, ch, st: ch.属性 || {}, isPlayer: state.view === S.sys.玩家名, player: S.sys.玩家名, souls: souls(ch), tickDate, rankTitle, yearTier, ringStage, ringMedal, ringColorClass, bar, count, sock, head, empty, kv, val, hint: hintMark, pick, esc, fmt, num, entries, blank, avatarSrc, standingSrc, miniAva, state, ed, search, P: (...p) => ['char', state.view, ...p] };
   };
 
   // 写回：ops = [{ path, value }] 或 [{ path, del: true }]，path 是存档根下的键路径。
@@ -48696,9 +48724,9 @@ ${播报文本}
   const where = c => String(c.ch.状态?.位置 || '').replace(/^斗罗大陆-/, '').replace(/-/g, ' · ');
   // 位置能否识别：内置地点库（目标路径整段相等）或存档地点树里有这一层；日常行动预演依赖它
   const placeKnown = c => {
-    const p = String(c.ch.状态?.位置 || '').split('-').filter(x => x && x !== '斗罗大陆'); if (!p.length) return false;
-    const lib = Object.values(c.library('location')?.地点 || {}).some(e => { const t = Object.values(e.目标路径 || {}); return t.length === p.length && t.every((x, i) => x === p[i]); });
-    return lib || !!p.reduce((o, k, i) => o && (i ? o.子节点?.[k] : o[k]), c.S.world.地点 || {});
+    const p = c.loc.segs(c.ch.状态?.位置); if (!p.length) return false;
+    const lib = Object.values(c.library('location')?.地点 || {}).some(e => { const t = Object.values(e.目标路径 || {}).filter((x, i) => !(i === 0 && c.loc.roots.has(x))); return t.length === p.length && t.every((x, i) => x === p[i]); });
+    return lib || !!p.reduce((o, k, i) => o && (i ? o.子节点?.[k] : o[k]), c.loc.top());
   };
   // 图标块：图标 + 大字 + 小注；值为空时整块转灰
   const tile = (c, icon, label, value, tint = '', dim = false, extra = '') => `<div class="tile ${dim ? 'dim' : ''} ${extra}">${c.sock(icon, tint)}<b title="${c.esc(value)}">${c.esc(value)}</b><small>${c.esc(label)}</small></div>`;
@@ -51748,28 +51776,18 @@ ${播报文本}
   // 资源基址取 lwcs 运行时给的素材目录（角色素材目录的上一级），原型页回落本地 39281
   const MAP = { w: 3174, h: 2246 };
   const assetUrl = file => (document.documentElement.dataset.lwcsCharacterAssets || 'http://127.0.0.1:39281/assets/characters/').replace(/assets\/characters\/$/, '') + encodeURI(file);
-  const profileOf = c => { try { const p = c.rt('__LWCS_ERA_RUNTIME_INTEGRATION_V1__')?.getMapProfileForTick?.(c.num(c.S?.world?.时间?.tick)); if (p?.asset) return p; } catch (e) { /* 原型页没有时代运行时 */ } return { asset: 'MAP.webp', topology: 'terrestrial' }; };
-  const stellar = c => profileOf(c).topology === 'stellar';
-  const rootName = c => stellar(c) ? '斗罗星际' : '斗罗大陆';
-  // 「当地」取所在链上第一个城镇类地点（斗一 / 斗二城市在帝国之下）；链上没有城镇时按时代默认层：陆地是顶层，斗四是「星系 / 行星 / 城市」第三层
-  const isTown = n => /城|都|镇|村|聚落/.test(String(n?.类型 || ''));
-  const cityIndex = (c, chain) => { const i = chain.findIndex(([, n]) => isTown(n)); return i >= 0 ? i : Math.min(stellar(c) ? 2 : 0, Math.max(0, chain.length - 1)); };
+  // 跳过「斗罗大陆」根、所在城市、时代地图类型都走座舱共用的地点解析（cockpit/locations.js）
+  const { roots: ROOTS, isTown } = window.LWCS_COCKPIT_LOC;
+  const profileOf = c => c.loc.profile();
+  const stellar = c => c.loc.stellar();
+  const rootName = c => c.loc.rootName();
+  const cityIndex = (c, chain) => c.loc.cityIndex(chain);
   // 斗四星系 / 行星的专属子图（同原项目）：只认完整路径，城市以下仍是全息底板
   const SUBMAPS = { '斗罗星系': 'MAP_ZJDL_DOULUO_SYSTEM.webp', '斗罗星系/斗罗星': 'MAP_ZJDL_DOULUO.webp', '斗罗星系/天斗星': 'MAP_ZJDL_TIANDOU.webp', '斗罗星系/天罗星': 'MAP_ZJDL_TIANLUO.webp', '斗罗星系/龙源星': 'MAP_ZJDL_LONGYUAN.webp', '斗罗星系/森罗星': 'MAP_ZJDL_SENLUO.webp', '斗罗星系/精灵星': 'MAP_ZJDL_JINGLING.webp', '天堂星域/天堂星': 'MAP_ZJDL_TIANTANG.webp', '龙马星系': 'MAP_ZJDL_LONGMA_SYSTEM.webp', '龙马星系/天龙星': 'MAP_ZJDL_TIANLONG.webp', '龙马星系/天马星': 'MAP_ZJDL_TIANMA.webp', '龙马星系/御空族七十六号星球': 'MAP_ZJDL_YUKONG76.webp' };
-  // 位置串与斗一 / 斗二地点库的路径以「斗罗大陆」开头，斗三库没有这一层：统一去掉根，顶层就是帝国 / 城市 / 星系
-  const ROOTS = new Set(['斗罗大陆', '斗罗星际']);
   const pathOf = c => String(c.ch.状态?.位置 || '').split('-').filter(Boolean);
-  // 存档地点树同理：斗一 / 斗二按库路径实例化，城市挂在「斗罗大陆」的子节点下；读时跳过这一层，写回时由 locPath 补回真实路径
-  const rootKey = c => { const w = c.S.world.地点 || {}; return Object.keys(w).find(k => ROOTS.has(k) && w[k]?.子节点) || ''; };
-  const savedTop = c => { const w = c.S.world.地点 || {}, r = rootKey(c); return r ? { ...Object.fromEntries(Object.entries(w).filter(([k]) => k !== r)), ...w[r].子节点 } : w; };
-  const locPath = (c, names) => { const r = rootKey(c), lead = r && (c.S.world.地点[r].子节点 || {})[names[0]] ? [r, '子节点'] : []; return ['world', '地点', ...lead, ...names.flatMap((n, i) => i ? ['子节点', n] : [n])]; };
-  const nodeOf = c => {
-    const parts = pathOf(c).filter(p => !ROOTS.has(p));
-    let node = null, chain = [];
-    let pool = savedTop(c);
-    for (const p of parts) { if (pool && pool[p]) { node = pool[p]; chain.push([p, node]); pool = node.子节点 || {}; } }
-    return { node, chain, city: chain[0] };
-  };
+  const savedTop = c => c.loc.top();
+  const locPath = (c, names) => c.loc.path(names);
+  const nodeOf = c => { const chain = c.loc.chain(c.ch.状态?.位置); return { node: chain.at(-1)?.[1] || null, chain, city: chain[0] }; };
   const locals = c => Object.entries(c.S.char).filter(([n, x]) => n !== c.name && x.状态?.位置 === c.ch.状态?.位置);
   const statusText = s => ({ intact: '完好', active: '正常', damaged: '受损', destroyed: '已毁', ruins: '废墟', restricted: '受限', 'military-zone': '军事管制', dangerous: '危险', protected: '受保护', contested: '争夺中', neutral: '中立', hostile: '敌对', sealed: '封闭', unavailable: '不可进入' }[s] || s || '未知');
   // 坐标目的地：dest 写成「@x,y」（总图坐标）
@@ -52239,7 +52257,7 @@ ${播报文本}
     return Object.entries(merged).map(([n, f]) => ({ name: n, ...f })).sort((a, b) => (b.影响力 || 0) - (a.影响力 || 0));
   };
   const deviationTier = v => v >= 80 ? '崩坏' : v >= 50 ? '剧变' : v >= 20 ? '偏移' : '平稳';
-  const cityOf = c => { const p = String(c.ch.状态?.位置 || '').split('-').filter(x => x && x !== '斗罗大陆'); return [p[0], c.S.world.地点?.[p[0]] || {}]; };
+  const cityOf = c => { const l = c.loc.city(c.ch.状态?.位置); return [l.name, l.node]; };
   const DONE = /done|handled|完成|已处理/;
   const upcoming = c => {
     const w = c.S.world, now = c.num(w.时间.tick), out = [];
@@ -52548,9 +52566,9 @@ ${播报文本}
   };
   // 事务格：数据本身就是入口——魂灵塔层数 → 试炼，副职业 → 工坊，情报条数 → 情报，本地商店 → 交易
   const affairTiles = c => {
-    const jobs = Object.entries(c.ch.副职业 || {}), p = String(c.ch.状态?.位置 || '').split('-').filter(x => x && x !== '斗罗大陆');
+    const jobs = Object.entries(c.ch.副职业 || {});
     const intelN = (c.ch.已掌握情报 || []).length + Object.values(c.S.world.机密情报 || {}).filter(s => (s.知情规则 || []).includes(c.name)).length;
-    const shops = Object.keys(c.S.world.地点?.[p[0]]?.商店 || {}).length;
+    const shops = Object.keys(c.loc.city(c.ch.状态?.位置).node.商店 || {}).length;
     return `<div class="tiles affairs">${[
       ['tower-observation', `${c.fmt(c.num(c.ch.魂灵塔记录?.最高层))} 层`, '魂灵塔', 'trial', '试炼'],
       ['hammer', jobs.length ? `${c.esc(jobs[0][0])} ${c.fmt(c.num(jobs[0][1]?.等级))} 级` : '未习', '副职业', 'workshop', '工坊'],
@@ -52869,7 +52887,7 @@ ${播报文本}
     tpCall(c, { op: 'open', mode: v?.kind === 'black' ? 'black' : 'npc', npc: v?.npc || '', store: v?.store || '' }, st => { ui.tpFor = want; ui.tpReq = ''; ui.tps = st && st.key ? st : null; ui.tpErr = st && !st.key ? st.reason || '交易模块未就绪' : ''; });
   };
   const tradePrivate = (c, v, venues) => {
-    const ui = c.state.ui, act = ui.tpAct === '私下卖出' ? '私下卖出' : '私下买入', city = c.S.world.地点?.[String(c.ch.状态?.位置 || '').split('-').filter(x => x && x !== '斗罗大陆')[0]] || {};
+    const ui = c.state.ui, act = ui.tpAct === '私下卖出' ? '私下卖出' : '私下买入', city = c.loc.city(c.ch.状态?.位置).node;
     tpLoad(c, v);
     const pool = act === '私下卖出' ? c.ch.背包 : v.kind === 'black' ? city.商店?.[v.store]?.库存 : c.S.char?.[v.npc]?.背包;
     const goods = Object.entries(pool || {}).map(([n, x]) => ({ id: n, name: n, stock: c.num(x?.库存 ?? x?.数量) || (x?.批次 || []).reduce((s2, b) => s2 + c.num(b.数量), 0), rate: x?.价格倍率 }));
@@ -52907,8 +52925,8 @@ ${播报文本}
     };
   };
   const trade = c => {
-    const ui = c.state.ui, p = String(c.ch.状态?.位置 || '').split('-').filter(x => x && x !== '斗罗大陆');
-    const city = c.S.world.地点?.[p[0]] || {}, shops = Object.entries(city.商店 || {}), auction = c.S.world.拍卖 || {}, coins = c.ch.财富 || {};
+    const ui = c.state.ui;
+    const city = c.loc.city(c.ch.状态?.位置).node, shops = Object.entries(city.商店 || {}), auction = c.S.world.拍卖 || {}, coins = c.ch.财富 || {};
     // 商店列表（含特许兑换）取自任一已挂的交易会话；同一地点只在还没有会话时挂一次基础会话（私下场所有自己的会话，别来回重挂）
     if (!/^(npc|black):/.test(String(ui.venue || '')) && (!ui.tps || JSON.parse(ui.tpFor || '[]')[1] !== c.ch.状态?.位置)) tpLoad(c, null);
     // 本城商店 + 交易模块额外加入的商店（魂灵塔特许兑换）；黑市店单列；在场人物可私下交易
@@ -52935,7 +52953,7 @@ ${播报文本}
       tag: 'CORE · MARKET',
       left: `<div class="pad">${c.head('scale-balanced', '交易', 'Market', 'gd')}
         <div class="venue-pick">${c.pick('venue', v?.id || '', venues.map(x => ({ value: x.id, label: x.name, group: x.group || (x.id.startsWith('shop:') ? '本城商店' : '其他') })))}</div>
-        ${goods.length ? `<div class="list q-list">${goods.map(x => `<button class="row${x === g ? ' on' : ''}" type="button" data-set="good=${c.esc(x.id)}" aria-current="${x === g}">${(q => q ? `<span class="chip">${c.esc(q)}</span>` : c.sock(v.icon))(x.grade || itemDefOf(c, x.name)[1]?.品质)}<div><strong>${c.esc(x.name)}</strong><small>${c.esc([x.cat || itemDefOf(c, x.name)[0], x.stock !== undefined ? `库存 ${c.fmt(x.stock)}` : ''].filter(Boolean).join(' · '))}</small></div><span class="end">${shortNum(c, Math.round(x.price ?? c.num(itemDefOf(c, x.name)[1]?.基础价格) * (x.rate ?? 1)))}</span></button>`).join('')}</div>` : c.empty('store', v ? '这里暂时没有货' : `${p[0] || '当地'}没有商店`)}
+        ${goods.length ? `<div class="list q-list">${goods.map(x => `<button class="row${x === g ? ' on' : ''}" type="button" data-set="good=${c.esc(x.id)}" aria-current="${x === g}">${(q => q ? `<span class="chip">${c.esc(q)}</span>` : c.sock(v.icon))(x.grade || itemDefOf(c, x.name)[1]?.品质)}<div><strong>${c.esc(x.name)}</strong><small>${c.esc([x.cat || itemDefOf(c, x.name)[0], x.stock !== undefined ? `库存 ${c.fmt(x.stock)}` : ''].filter(Boolean).join(' · '))}</small></div><span class="end">${shortNum(c, Math.round(x.price ?? c.num(itemDefOf(c, x.name)[1]?.基础价格) * (x.rate ?? 1)))}</span></button>`).join('')}</div>` : c.empty('store', v ? '这里暂时没有货' : `${c.loc.city(c.ch.状态?.位置).name || '当地'}没有商店`)}
       </div>`,
       core: g ? `<div class="pad">
         <div class="q-title">${c.sock(v.icon, 'gd')}<span class="chip">${c.esc(g.grade || def?.品质 || cat || '货品')}</span><h2>${c.esc(g.name)}</h2><span class="q-state">${c.esc(v.name)}</span></div>

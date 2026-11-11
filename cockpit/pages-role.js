@@ -34,9 +34,9 @@
   const where = c => String(c.ch.状态?.位置 || '').replace(/^斗罗大陆-/, '').replace(/-/g, ' · ');
   // 位置能否识别：内置地点库（目标路径整段相等）或存档地点树里有这一层；日常行动预演依赖它
   const placeKnown = c => {
-    const p = String(c.ch.状态?.位置 || '').split('-').filter(x => x && x !== '斗罗大陆'); if (!p.length) return false;
-    const lib = Object.values(c.library('location')?.地点 || {}).some(e => { const t = Object.values(e.目标路径 || {}); return t.length === p.length && t.every((x, i) => x === p[i]); });
-    return lib || !!p.reduce((o, k, i) => o && (i ? o.子节点?.[k] : o[k]), c.S.world.地点 || {});
+    const p = c.loc.segs(c.ch.状态?.位置); if (!p.length) return false;
+    const lib = Object.values(c.library('location')?.地点 || {}).some(e => { const t = Object.values(e.目标路径 || {}).filter((x, i) => !(i === 0 && c.loc.roots.has(x))); return t.length === p.length && t.every((x, i) => x === p[i]); });
+    return lib || !!p.reduce((o, k, i) => o && (i ? o.子节点?.[k] : o[k]), c.loc.top());
   };
   // 图标块：图标 + 大字 + 小注；值为空时整块转灰
   const tile = (c, icon, label, value, tint = '', dim = false, extra = '') => `<div class="tile ${dim ? 'dim' : ''} ${extra}">${c.sock(icon, tint)}<b title="${c.esc(value)}">${c.esc(value)}</b><small>${c.esc(label)}</small></div>`;
