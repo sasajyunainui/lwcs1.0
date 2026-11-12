@@ -35,10 +35,6 @@
 .float-layer.pinned .float-link path{stroke-dasharray:none;stroke:#ffd36b;filter:drop-shadow(0 0 4px #ffb84a)}
 
 /* 悬停预览：精简卡 */
-.peek-cost{display:flex;gap:1.2em;flex-wrap:wrap;font-weight:800;font-size:.9em;color:#cfe0f7}
-.peek-cost i{color:#6cc0ff}
-.peek-hint{color:#7f96bb!important;font-size:max(10.5px,.76em);letter-spacing:.05em}
-.fcard:has(.peek-hint){width:min(320px,44%)}
 
 
 /* 第二轮：表盘放大、告警贴近行动按钮、底栏播报静态显示 */

@@ -567,8 +567,6 @@
     state.inspect = { kind, id }; pinned = mode === 'click' && hoverable(); layer.classList.toggle('pinned', pinned);
     $$('[data-inspect]').forEach(el => { const on = el.dataset.inspect === `${kind}:${id}`; el.classList.toggle('on', on); ringSlotOf(el)?.classList.toggle('mvu-hover-floating-active', on); });
     project(html, anchor, swap);
-    // 来源控件点击是跳转（不是钉住）时，卡上「点击钉住」的提示不适用
-    if (anchor?.dataset.go) $$('.peek-hint', cockpitEl).forEach(el => el.remove());
   }
   // 浮窗打开时给对应魂环挂引擎激活态（.mvu-hover-floating-active），魂环舞台随之保持塔形
   function ringSlotOf(el) { return el.matches('.mvu-soul-ring-slot') ? el : el.querySelector('.mvu-soul-ring-slot'); }
