@@ -528,6 +528,32 @@
     return Number.isFinite(amount) ? Math.max(0, amount) : NaN;
   }
 
+  // 资源池锁定 (用户 2026-11-12 "该接的接完"; 封魂手铐: 魂力 100%): the locked share of what a unit holds of a resource cannot
+  // be spent — the largest 比例 among its 资源池锁定 rules on that resource. A lock with a 对应等级 does not hold a unit above
+  // that level (the reading a level-gated shield has).
+  function resourcePoolLockRatio(unit = {}, resource = '') {
+    const key = skillCostResourceKey(resource);
+    if (!key) return 0;
+    let ratio = 0;
+    for (const state of Object.values(unit?.状态效果 || {})) {
+      const rules = Array.isArray(state?.资源锁定规则) ? state.资源锁定规则 : null;
+      if (!rules) continue;
+      const gate = Number(state.对应等级 ?? 0);
+      if (gate > 0 && Number(unit?.属性?.等级 ?? unit?.等级 ?? unit?.level ?? 0) > gate) continue;
+      for (const rule of rules) {
+        if (String(rule?.锁定类型 || '').trim() === '资源池锁定' && Array.isArray(rule.资源) && rule.资源.some(name => skillCostResourceKey(name) === key)) {
+          ratio = Math.max(ratio, Number(rule.比例) || 0);
+        }
+      }
+    }
+    return clamp(ratio, 0, 1);
+  }
+
+  function readSpendableResource(unit = {}, resource = '') {
+    const ratio = resourcePoolLockRatio(unit, resource);
+    return ratio > 0 ? readResource(unit, resource) * (1 - ratio) : readResource(unit, resource);
+  }
+
   function assessResourcePayment(payers = [], costs = {}, options = {}) {
     const normalized = normalizeSkillCostMap(costs, options?.形式 || 'absolute', options?.阶段 || '启动');
     const illegal = [...normalized.非法项];
@@ -575,13 +601,14 @@
           illegal.push(`COST_RESOURCE_VALUE_INVALID:${resource}:${identity}`);
           continue;
         }
-        payments.push(Object.freeze({ payer, payerId: identity, resource, key, rawCost, amount, maximum, before: available, after: available - amount }));
+        payments.push(Object.freeze({ payer, payerId: identity, resource, key, rawCost, amount, maximum, before: available, after: available - amount,
+          spendable: available * (1 - resourcePoolLockRatio(payer, resource)) }));
       }
     }
     if (illegal.length) {
       return Object.freeze({ valid: false, ok: false, reason: `COST_INVALID:${[...new Set(illegal)].join('|')}`, 非法项: Object.freeze([...new Set(illegal)]), payments: Object.freeze([]), costs: normalized.values });
     }
-    const insufficient = payments.find(payment => payment.before + 1e-9 < payment.amount);
+    const insufficient = payments.find(payment => payment.spendable + 1e-9 < payment.amount);
     if (insufficient) {
       return Object.freeze({
         valid: true,
@@ -1745,6 +1772,75 @@
     unit.__battleRuntime.attackOpening = { strength, ...(sourceActionId ? { sourceActionId: String(sourceActionId) } : {}) };
     return unit;
   }
+  // 破防 (用户 2026-11-11/12："被破防后当回合无法反应"；"先用攻击力比防御高2倍吧。如果原本就是防御动作，则是2.5倍。以后慢慢调。
+  // 被破防后自然是无法应对，无法反击"；"不是被击中时判定吗"；减伤照算，"破防只是为了阻止后续应对"): a hit that lands from an attack
+  // stat over GUARD_BREAK_RATIO times the target's defence (力量 against 防御, 精神力 against 精神力 for mental damage) —
+  // GUARD_BREAK_DEFENDED_RATIO times when the target took the hit defending — breaks its guard: for the rest of the round
+  // it answers no attack and strikes nothing back. The hit itself settles as it was answered.
+  const GUARD_BREAK_RATIO = 2, GUARD_BREAK_DEFENDED_RATIO = 2.5;
+  function guardBreaks(attacker = {}, effect = {}, target = {}, defended = false) {
+    const mental = classifyDamageType(effect?.伤害类型) === 'MENTAL';
+    return readCombatStat(attacker, mental ? 'men' : 'str') > Math.max(1, readCombatStat(target, mental ? 'men' : 'def')) *
+      (defended ? GUARD_BREAK_DEFENDED_RATIO : GUARD_BREAK_RATIO);
+  }
+  function guardBrokenOf(unit = {}, round = 0) {
+    const mark = unit?.__battleRuntime?.guardBroken;
+    return !!mark && Number(mark.round) === Number(round);
+  }
+  function setGuardBroken(unit = {}, round = 0, sourceActionId = '') {
+    if (!unit || typeof unit !== 'object') return unit;
+    if (!unit.__battleRuntime || typeof unit.__battleRuntime !== 'object') unit.__battleRuntime = {};
+    unit.__battleRuntime.guardBroken = { round: Number(round), ...(sourceActionId ? { sourceActionId: String(sourceActionId) } : {}) };
+    return unit;
+  }
+  // 烈度 (用户 2026-11-12："感觉还得设定一个当前战斗是否允许使用代价极大的大招。否则可能会出现明明是普通切磋结果用了会严重影响
+  // 后续发展的技能"；"烈度你自己决定吧。按副作用类型判断"): a battle is a spar (点到为止, 切磋, 训练, 非致命), a fight to the death
+  // (生死, 死战, 死斗, 拼命, 不死不休) or, unsaid, a duel. A skill whose side effects are grave — today 致死献祭; the
+  // lasting after-battle costs to come join this list — is allowed in a fight to the death only.
+  const GRAVE_SIDE_EFFECT_TYPES = Object.freeze(['致死献祭']);
+  function battleIntensity(worldSnapshot = {}, battleIntent = {}) {
+    const mode = String(battleIntent?.mode || battleIntent?.intent || (typeof battleIntent === 'string' ? battleIntent : '') || worldSnapshot?.战斗意图 || '').trim();
+    return /生死|死战|死斗|拼命|不死不休/.test(mode) ? 'DEATH' : isNonlethalBattleIntent(worldSnapshot, battleIntent) ? 'SPAR' : 'DUEL';
+  }
+  // 战后长期代价 (用户 2026-11-12): side effects that do nothing in the battle and are paid after it — 本源损耗 (a permanent
+  // share of potential), 重伤昏迷 (months unconscious). A skill carrying one is for a fight to the death, or for a duel
+  // its side is losing badly (sideDesperate); never for a spar.
+  const LONG_TERM_SIDE_EFFECT_TYPES = Object.freeze(['本源损耗', '重伤昏迷']);
+  // Losing badly: what is left of the side, as shares of its units' HP, is under half of what is left of the other.
+  function sideDesperate(worldSnapshot = {}, unit = {}) {
+    const side = sideOf(worldSnapshot, unit);
+    let own = 0, other = 0;
+    for (const entry of listUnits(worldSnapshot)) {
+      if (!isBattleCapable(entry.unit) || isSummonUnit(entry.unit)) continue;
+      const share = readHp(entry.unit) / Math.max(1, readHpMax(entry.unit));
+      if (entry.side === side) own += share; else other += share;
+    }
+    return own < 0.5 * other;
+  }
+  // What a skill costs its user after the battle, on the scale where the unit itself is 1 (the COST the generator
+  // prices these at, over the 100 of 致死献祭): 本源损耗 % × 8 up to 90, 重伤昏迷 months × 15 up to 60, each × its chance.
+  function postBattleCostShare(skill = {}) {
+    let share = 0;
+    for (const entry of Array.isArray(skill?.副作用列表) ? skill.副作用列表 : []) {
+      const type = String(entry?.副作用类型 || '').trim();
+      if (!LONG_TERM_SIDE_EFFECT_TYPES.includes(type)) continue;
+      const value = Math.abs(Number(String(entry.数值 ?? (type === '本源损耗' ? 5 : 1)).replace(/[+%-]/g, ''))) || 0;
+      share += (type === '本源损耗' ? Math.min(90, value * 8) : Math.min(60, value * 15)) / 100 * clamp(Number(entry.触发概率 ?? 1), 0, 1);
+    }
+    return share;
+  }
+  function skillPermittedAtIntensity(skill = {}, intensity = 'DUEL', desperate = false) {
+    if (intensity === 'DEATH') return true;
+    if ((Array.isArray(skill?.副作用列表) ? skill.副作用列表 : []).some(entry => GRAVE_SIDE_EFFECT_TYPES.includes(String(entry?.副作用类型 || '').trim()))) return false;
+    if ((Array.isArray(skill?.副作用列表) ? skill.副作用列表 : []).some(entry => LONG_TERM_SIDE_EFFECT_TYPES.includes(String(entry?.副作用类型 || '').trim())) &&
+      !(intensity === 'DUEL' && (typeof desperate === 'function' ? desperate() : desperate) === true)) return false;
+    // 炸环 costs its user the ring for days after the battle (BattleRuntime commitRingBurst: 炸环恢复tick): not in a spar.
+    return !(intensity === 'SPAR' && (Array.isArray(skill?._效果数组) ? skill._效果数组 : []).some(effect => String(effect?.原型 || '').trim() === '炸环'));
+  }
+  // 群攻命中补正 (用户 2026-11-11/12："群攻面对单目标提升命中率"；"消耗不用动了，加上命中补正就行"；数值为起始值): an area effect
+  // (群体, 全场) with a single unit to land on is harder to slip.
+  const AREA_SINGLE_TARGET_HIT_BONUS = 0.15;
+  const areaSingleTargetHitBonus = (effect = {}, targetCount = 0) => Number(targetCount) === 1 && /群体|全场/.test(String(effect?.目标 || '')) ? AREA_SINGLE_TARGET_HIT_BONUS : 0;
   function hitAgainstAttackOpening(probability = 0, opening = 0) {
     return opening > 0 ? 1 - (1 - probability) * (1 - ATTACK_OPENING_MISS_CUT * opening) : probability;
   }
@@ -1791,6 +1887,14 @@
       CONTINUOUS_ACTION_BUDGET,
       windup * (naturalActionOrderProfile(reactor).effectiveAgility / attackerAgility) * (1 + REACTION_DEFENDER_MARGIN),
     );
+  }
+
+  // 援护 (用户 2026-11-11："C可以代替B应对A……考察A和C的敏捷度和各自释放技能的前摇，决定C能否赶得上"): stepping in front of an
+  // ally takes INTERCEPT_WINDUP of the windup a reactor has against the attack (reactionWindupBudget); what is left is the
+  // windup its own response skill may take. Negative: it cannot get there. The number is a starting value.
+  const INTERCEPT_WINDUP = 10;
+  function interceptWindupBudget(attacker = {}, declaration = {}, interceptor = {}) {
+    return reactionWindupBudget(attacker, declaration, interceptor) - INTERCEPT_WINDUP;
   }
 
   function actionStaminaCost(actor = {}, nature = '', opponent = null) {
@@ -4396,10 +4500,11 @@
   const sideEffectStatusMap = Object.freeze({
     全属性降低: '虚弱', 自损反噬: '反噬', 精神紊乱: '精神紊乱', 魂力反噬: '魂力枯竭',
     命中下降: '精神紊乱', 动作迟缓: '迟缓', 目标错乱: '混乱', 施法僵直: '僵直',
+    本源损耗: '本源损耗', 重伤昏迷: '重伤昏迷',
   });
   const sideEffectTypeSet = new Set([
     '全属性降低', '自损反噬', '致死献祭', '精神紊乱', '魂力反噬',
-    '命中下降', '动作迟缓', '目标错乱', '施法僵直',
+    '命中下降', '动作迟缓', '目标错乱', '施法僵直', '本源损耗', '重伤昏迷',
   ]);
 
   function readSignedBattleValue(value) {
@@ -4625,6 +4730,9 @@
       ['str', 'def', 'agi', 'vit_max', 'sp_max', 'men_max'].forEach(key => { statRatios[key] = ratio; });
     }
     if (type === '自损反噬') {
+      // The skill text promises "承受相当于自身上限 N% 的反噬伤害" (MVU_Skill_Runtime 转译技能副作用列表_V1) and its COST is priced
+      // for it; the state deals it as its periodic damage, each round end it lasts (用户 2026-11-12 "该接的接完").
+      combatEffects.dot_damage_ratio = value || 0.03;
       combatEffects.misfortune_backlash_ratio = value || 0.03;
       combatEffects.hit_penalty = Math.max(0.03, (value || 0.03) * 0.5);
     }
@@ -5355,6 +5463,97 @@
     }, 0);
   }
 
+  // 伤害吸收 (equipment passives; the runtime: BattleRuntime settleDamageAbsorption), as a hit of `actor` on `target` meets
+  // it. Into HP: `soak`, the share of what the target takes that comes straight back to it (受到伤害 → 立即恢复); `drain`,
+  // the share of what the attacker deals that it gains (造成伤害). Into 魂力/精神力/体力: `gains` (the same two ways).
+  // Kept for the next hit (下次造成伤害): `store`, what the target puts by of what it takes; `release`, what the attacker
+  // holds and adds to this hit (at most 增幅上限 × the hit).
+  const ABSORBED_RESOURCES = Object.freeze(['魂力', '精神力', '体力']);
+  function damageAbsorptionRatios(actor = {}, target = {}, skill = null) {
+    let soak = 0, drain = 0;
+    const gains = { actor: {}, target: {} }, store = [], release = [];
+    const active = state => state && state.原型 === '结算修正' && state.结算 === '伤害吸收' &&
+      Math.max(0, Number(state.duration ?? state.持续回合 ?? 1)) > 0 && skillMatchesLimitedElements(skill || {}, state.限定元素);
+    const ratioOf = state => Math.max(0, Number(parseSignedValue(state.数值, 1)) || 0);
+    for (const [key, state] of Object.entries(target?.状态效果 || {})) {
+      if (!active(state) || String(state.吸收来源 || '').trim() !== '受到伤害') continue;
+      const conversion = String(state.转化效果 || '').trim(), resource = String(state.吸收资源 || '').trim(), ratio = ratioOf(state);
+      if (!(ratio > 0)) continue;
+      if (conversion === '下次造成伤害') store.push({ key, ratio });
+      else if (conversion !== '立即恢复') continue;
+      else if (resource === '生命') soak += ratio;
+      else if (ABSORBED_RESOURCES.includes(resource)) gains.target[resource] = (gains.target[resource] || 0) + ratio;
+    }
+    const held = actor?.__battleRuntime?.damageAbsorptionStorageByState || {};
+    for (const [key, state] of Object.entries(actor?.状态效果 || {})) {
+      if (!active(state)) continue;
+      const source = String(state.吸收来源 || '造成伤害').trim(), conversion = String(state.转化效果 || '').trim(), resource = String(state.吸收资源 || '').trim();
+      if (source === '受到伤害' && conversion === '下次造成伤害') {
+        const stored = Math.max(0, Number(held[key]?.amount || 0));
+        if (stored > 0) release.push({ key, stored, capRatio: state.增幅上限 === undefined ? Infinity : Math.max(0, Number(parseSignedValue(state.增幅上限, 1)) || 0) });
+      } else if (source === '造成伤害' && conversion !== '下次造成伤害') {
+        const ratio = ratioOf(state);
+        if (resource === '生命') drain += ratio;
+        else if (ABSORBED_RESOURCES.includes(resource) && ratio > 0) gains.actor[resource] = (gains.actor[resource] || 0) + ratio;
+      }
+    }
+    return { soak, drain, gains: Object.keys(gains.actor).length || Object.keys(gains.target).length ? gains : null,
+      store: store.length ? store : null, release: release.length ? release : null };
+  }
+
+  // What follows a hit on another unit beside the damage itself: the share thrown back (反伤, `ratio`) and 伤害吸收.
+  // null: nothing does.
+  function damageFollowUp(actor = {}, target = {}, skill = null) {
+    if (unitId(actor) === unitId(target)) return null;
+    const ratio = counterDamageRatio(target), absorption = damageAbsorptionRatios(actor, target, skill);
+    return ratio > 0 || absorption.soak > 0 || absorption.drain > 0 || absorption.gains || absorption.store || absorption.release
+      ? { actor, target, ratio, ...absorption } : null;
+  }
+
+  // An outcome's `absorption` laid on the world: resources gained by the attacker and the target, what the target put
+  // by, what the attacker released. `released` lists the stores an outcome emptied; `releasedShare` gives, over several
+  // outcomes, the chance each was emptied.
+  function applyDamageAbsorption(overlay, actorId, targetId, absorption, onResource = null) {
+    if (!absorption) return;
+    for (const [side, id] of [['actor', actorId], ['target', targetId]]) {
+      for (const [resource, amount] of Object.entries(absorption[side] || {})) {
+        if (!(amount > 0) || !overlay.readUnit(id)) continue;
+        onResource?.(id, resource);
+        overlay.changeUnit(id, unit => setResourceValue(unit, resource, readResource(unit, resource) + amount));
+      }
+    }
+    const storage = unit => {
+      unit.__battleRuntime = { ...(unit.__battleRuntime || {}) };
+      return unit.__battleRuntime.damageAbsorptionStorageByState = { ...(unit.__battleRuntime.damageAbsorptionStorageByState || {}) };
+    };
+    if (Object.keys(absorption.stored || {}).length && overlay.readUnit(targetId)) overlay.changeUnit(targetId, unit => {
+      const held = storage(unit);
+      for (const [key, amount] of Object.entries(absorption.stored)) held[key] = { ...(held[key] || {}), amount: Math.max(0, Number(held[key]?.amount || 0)) + amount };
+    });
+    const share = absorption.releasedShare || Object.fromEntries((absorption.released || []).map(key => [key, 1]));
+    if (Object.keys(share).length && overlay.readUnit(actorId)) overlay.changeUnit(actorId, unit => {
+      const held = storage(unit);
+      for (const [key, chance] of Object.entries(share)) {
+        const left = Math.max(0, Number(held[key]?.amount || 0)) * (1 - clamp(chance, 0, 1));
+        if (left > 1e-9) held[key] = { ...held[key], amount: left }; else delete held[key];
+      }
+    });
+  }
+
+  // The absorption of several outcomes as one, each by its chance.
+  function expectedDamageAbsorption(outcomes = []) {
+    let any = false;
+    const merged = { actor: {}, target: {}, stored: {}, releasedShare: {} };
+    for (const outcome of outcomes) {
+      const absorption = outcome?.absorption, chance = Number(outcome?.probability || 0);
+      if (!absorption || !(chance > 0)) continue;
+      any = true;
+      for (const field of ['actor', 'target', 'stored']) for (const [key, amount] of Object.entries(absorption[field] || {})) merged[field][key] = (merged[field][key] || 0) + chance * amount;
+      for (const key of absorption.released || []) merged.releasedShare[key] = (merged.releasedShare[key] || 0) + chance;
+    }
+    return any ? merged : null;
+  }
+
   function damageRevivalState(unit) {
     return { counts: Object.fromEntries(Object.entries(unit.状态效果 || {}).filter(([, state]) => state.战斗效果?.revive_count !== undefined)
       .map(([key, state]) => [key, state.战斗效果.revive_count])), skillLimits: cloneValue(unit.__技能限制运行态 || {}) };
@@ -5428,7 +5627,16 @@
         const hpFloor = Math.max(0, readHp(unit) - hpDamageLimit);
         setHp(unit, hpDamageLimit + hpFloor);
         let shield = shieldBefore, incoming = 0, damage = 0, consumed = 0, healing = 0, blocked = 0;
-        let reflectedDamage = 0, reflectedHealing = 0;
+        let reflectedDamage = 0, reflectedHealing = 0, revived = false;
+        const reflectRatio = Number(input.reflection?.ratio || 0), soak = Number(input.reflection?.soak || 0), drain = Number(input.reflection?.drain || 0);
+        const follow = input.reflection || null, pendingRelease = (follow?.release || []).slice();
+        const absorption = { actor: {}, target: {}, stored: {}, released: [] };
+        const gain = (holder, side, resource, amount) => {
+          const before = readResource(holder, resource);
+          setResourceValue(holder, resource, before + amount);
+          const got = readResource(holder, resource) - before;
+          if (got > 0) absorption[side][resource] = (absorption[side][resource] || 0) + got;
+        };
         for (let hit = 0; hit < hitCount && (readHp(unit) > hpFloor || readHp(unit) > 0 && shield > 0); hit++) {
           if (blocked < blockCount && consumeRuleBlockCharges(unit, 1).length) { blocked++; continue; }
           const hp = readHp(unit), amount = Math.min((input.shieldIncomingCap === 0 ? 0 : shield) + hp - hpFloor, perSegmentDamage), absorbed = Math.min(shield, amount);
@@ -5436,12 +5644,39 @@
           let loss = Math.min(hp - hpFloor, Math.max(0, amount - absorbed));
           if (loss >= hp && consumeDeathSaveCharges(unit, 1).length) { loss = Math.max(0, hp - 1); consumed++; }
           damage += loss; setHp(unit, hp - loss);
+          // 伤害吸收: the attacker adds what it had stored to the first segment that lands (the store is emptied even if
+          // nothing of it gets through).
+          if (pendingRelease.length && amount > 0) for (const rule of pendingRelease.splice(0)) {
+            const extra = Math.max(0, Math.min(readHp(unit) - hpFloor, rule.stored, Number.isFinite(rule.capRatio) ? loss * rule.capRatio : rule.stored));
+            if (extra > 0) { setHp(unit, readHp(unit) - extra); damage += extra; }
+            absorption.released.push(rule.key);
+          }
           if (readHp(unit) <= 0) triggerRevive(unit, '', setResourceValue, () => {
             healing += readHp(unit);
+            revived = true;
             if (unit.状态) unit.状态.存活 = true;
           });
-          if (reflectedActor && loss > 0) {
-            const reflected = Math.max(0, Math.min(readHp(reflectedActor), Math.floor(loss * input.reflection.ratio)));
+          // 伤害吸收: a target still standing gets back its share of what this segment landed (what its shield took
+          // counts when nothing reached its HP — the runtime's receivedDamage).
+          if (soak > 0 && readHp(unit) > 0) {
+            const before = readHp(unit);
+            setHp(unit, before + (loss > 0 ? loss : amount) * soak);
+            healing += readHp(unit) - before;
+          }
+          if (reflectedActor && loss > 0 && drain > 0 && readHp(reflectedActor) > 0) {
+            // …and the attacker gains its share of what it dealt: a negative reflection.
+            const before = readHp(reflectedActor);
+            setHp(reflectedActor, before + loss * drain);
+            reflectedDamage -= readHp(reflectedActor) - before;
+          }
+          // …into 魂力/精神力/体力, and what the target puts by for its own next hit.
+          if (follow?.gains) {
+            if (readHp(unit) > 0) for (const [resource, ratio] of Object.entries(follow.gains.target)) gain(unit, 'target', resource, (loss > 0 ? loss : amount) * ratio);
+            if (reflectedActor && loss > 0) for (const [resource, ratio] of Object.entries(follow.gains.actor)) gain(reflectedActor, 'actor', resource, loss * ratio);
+          }
+          if (follow?.store) for (const rule of follow.store) absorption.stored[rule.key] = (absorption.stored[rule.key] || 0) + (loss > 0 ? loss : amount) * rule.ratio;
+          if (reflectedActor && loss > 0 && reflectRatio > 0) {
+            const reflected = Math.max(0, Math.min(readHp(reflectedActor), Math.floor(loss * reflectRatio)));
             if (reflected > 0) {
               reflectedDamage += reflected; setHp(reflectedActor, readHp(reflectedActor) - reflected);
               if (readHp(reflectedActor) <= 0) triggerRevive(reflectedActor, '', setResourceValue, () => { reflectedHealing += readHp(reflectedActor); });
@@ -5451,9 +5686,12 @@
         return { incoming, shieldAbsorb: shieldBefore - shield, hpDamage: damage, deathSaveConsumed: consumed,
           ruleBlockConsumed: blocked,
           ...(input.captureTargetState ? { targetState: unit } : {}),
-          ...(healing > 0 ? { reviveHealing: healing, revival: damageRevivalState(unit) } : {}),
-          ...(reflectedDamage > 0 ? { reflection: { actorId: unitId(reflectedActor), hpDamage: reflectedDamage, reviveHealing: reflectedHealing,
-            ...(reflectedHealing > 0 ? { revival: damageRevivalState(reflectedActor) } : {}) } } : {}) };
+          // reviveHealing: every HP the target gets back inside this effect (a revival, 伤害吸收); `revival` only if it revived.
+          ...(healing > 0 ? { reviveHealing: healing, ...(revived ? { revival: damageRevivalState(unit) } : {}) } : {}),
+          ...(reflectedDamage !== 0 ? { reflection: { actorId: unitId(reflectedActor), hpDamage: reflectedDamage, reviveHealing: reflectedHealing,
+            ...(reflectedHealing > 0 ? { revival: damageRevivalState(reflectedActor) } : {}) } } : {}),
+          ...(Object.keys(absorption.actor).length || Object.keys(absorption.target).length || Object.keys(absorption.stored).length || absorption.released.length
+            ? { absorption } : {}) };
       }
       if (saveCount > 0 || input.shieldIncomingCap === 0) {
         let hp = hpDamageLimit, shield = shieldBefore, incoming = 0, consumed = 0, blocked = 0;
@@ -5503,8 +5741,9 @@
         incoming: outcome.incoming,
         shieldAbsorb: outcome.shieldAbsorb,
         hpDamage: outcome.hpDamage,
-        ...(outcome.revival ? { reviveHealing: outcome.reviveHealing, revival: outcome.revival } : {}),
+        ...(outcome.reviveHealing ? { reviveHealing: outcome.reviveHealing, ...(outcome.revival ? { revival: outcome.revival } : {}) } : {}),
         ...(outcome.reflection ? { reflection: outcome.reflection } : {}),
+        ...(outcome.absorption ? { absorption: outcome.absorption } : {}),
         ...(outcome.targetState ? { targetState: outcome.targetState } : {}),
         ...(saveCount > 0 ? { deathSaveConsumed: outcome.deathSaveConsumed } : {}),
         ...(blockCount > 0 ? { ruleBlockConsumed: outcome.ruleBlockConsumed } : {}),
@@ -5543,8 +5782,9 @@
         incoming: branch.incoming,
         shieldAbsorb: branch.shieldAbsorb,
         hpDamage: branch.hpDamage,
-        ...(branch.revival ? { reviveHealing: branch.reviveHealing, revival: branch.revival } : {}),
+        ...(branch.reviveHealing ? { reviveHealing: branch.reviveHealing, ...(branch.revival ? { revival: branch.revival } : {}) } : {}),
         ...(branch.reflection ? { reflection: branch.reflection } : {}),
+        ...(branch.absorption ? { absorption: branch.absorption } : {}),
         ...(branch.targetState ? { targetState: branch.targetState } : {}),
         ...(saveCount > 0 ? { deathSaveConsumed: branch.deathSaveConsumed } : {}),
         ...(blockCount > 0 ? { ruleBlockConsumed: branch.ruleBlockConsumed } : {}),
@@ -5626,6 +5866,7 @@
     effect = {},
     projectionContext = null,
     environmentContext = null,
+    targetCount = 0,
   ) {
     const explicitValue = effect?.命中概率 ?? effect?.触发概率;
     const actorProfile = mechanicalProjectionProfile(
@@ -5670,7 +5911,9 @@
       environmentContext,
     );
     if (String(explicitValue ?? '').trim() !== '') return probability;
-    return hitAgainstAttackOpening(probability, targetProfile ? Number(targetProfile.incomingAttackOpening || 0) : attackOpeningOf(target));
+    const opened = hitAgainstAttackOpening(probability, targetProfile ? Number(targetProfile.incomingAttackOpening || 0) : attackOpeningOf(target));
+    const areaBonus = areaSingleTargetHitBonus(effect, targetCount);
+    return areaBonus > 0 ? clamp(opened + areaBonus, 0.05, 0.99) : opened;
   }
 
   function estimateHitProbabilityAttribution(
@@ -8698,10 +8941,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (Math.max(0, Number(state?.duration ?? state?.持续回合 ?? 1)) <= 0) return 1;
     const settlement = String(state?.结算 || '').trim();
     const effects = state?.战斗效果 || {};
+    // 回复锁定 (用户 2026-11-12): the locked share of what is restored to that resource is lost, whoever restores it —
+    // the same rule the natural recovery at a round end has (BattleRuntime naturalRecoveryAtRoundEndProfile).
+    const recoveryLock = (Array.isArray(state?.资源锁定规则) ? state.资源锁定规则 : []).reduce((ratio, rule) =>
+      String(rule?.锁定类型 || '').trim() === '回复锁定' && Array.isArray(rule.资源) && rule.资源.includes(String(resource || '').trim())
+        ? Math.max(ratio, Number(rule.比例) || 0) : ratio, 0);
     const receivedHealingMultiplier = Math.max(
       0,
       1 - clamp(Number(effects.heal_reduction || 0), 0, 1),
-    );
+    ) * (1 - clamp(recoveryLock, 0, 1));
     if (settlement === '治疗') {
       return receivedHealingMultiplier * Math.max(0, Number(effects.final_heal_mult ?? 1));
     }
@@ -10629,7 +10877,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         hitProbability: input.hitProbability, applicationProbability: 1, ...shieldProfile, hpDamageLimit, preserveHitOutcome: true,
         deathSaveCount: input.nonlethalHpFloor > 0 ? 0 : deathSaveCount(target), ruleBlockCount: ruleBlockCount(target),
         reviveTarget: !input.nonlethalHpFloor && hasDamageRevival(target) ? target : null,
-        reflection: ratio > 0 ? { actor, target, ratio } : null });
+        reflection: damageFollowUp(actor, target, context.declaration?.skill) });
       const index = context.damageSegmentOutcomeResolver({ effectInstanceId: context.effectInstanceId, targetId, segment,
         outcomes: expectation.outcomeDistribution });
       if (!Number.isInteger(index) || !expectation.outcomeDistribution[index]) throw new Error('BATTLE_PREVIEW_DAMAGE_OUTCOME_INVALID');
@@ -10651,6 +10899,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           if (segmentNonlethal) unit.__战斗失能原因 = 'INCAPACITATED';
           if (segmentTrauma) unit.__战斗失能原因 = 'UNCONSCIOUS';
         });
+        applyDamageAbsorption(overlay, actorId, targetId, selected.absorption);
         if (selected.reflection) overlay.changeUnit(actorId, unit => {
           applyDamageRevivalOutcomes(unit, [{ probability: 1, revival: selected.reflection.revival }]);
           setHp(unit, readHp(unit) - selected.reflection.hpDamage + Number(selected.reflection.reviveHealing || 0));
@@ -11014,6 +11263,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             effect,
             context?.projectionContext || null,
             context?.environmentContext || null,
+            damageTargets.length,
           );
           const resolvedHitProbability = typeof context?.hitProbabilityResolver === 'function'
             ? context.hitProbabilityResolver({
@@ -11108,7 +11358,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           );
           const reviveTarget = !nonlethalHpFloor && segments * perSegmentDamage >= shieldBefore + hpDamageLimit && hasDamageRevival(currentTarget) ? currentTarget : null;
           const reflectRatio = unitId(actor) !== unitId(target) ? counterDamageRatio(currentTarget) : 0;
-          const reflection = reflectRatio > 0 ? { actor: overlay.readUnit(unitId(actor)), target: currentTarget, ratio: reflectRatio } : null;
+          const reflection = damageFollowUp(overlay.readUnit(unitId(actor)), currentTarget, context.declaration?.skill);
           const requiredOutcomeKey = String(
             context?.requiredOutcomeKeyByTarget?.get(unitId(target)) || ''
           ).trim();
@@ -11171,8 +11421,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                   ? Number(branchResolvedHit) : branchBaseHit, 0, 1),
                 hpDamageLimit: Math.max(0, hpBefore - nonlethalHpFloor), deathSaveCount: nonlethalHpFloor > 0 ? 0 : deathSaveCount(branchTarget), ruleBlockCount: ruleBlockCount(branchTarget),
                 reviveTarget: !nonlethalHpFloor && hasDamageRevival(branchTarget) ? branchTarget : null,
-                reflection: unitId(branchActor) !== unitId(branchTarget) && counterDamageRatio(branchTarget) > 0
-                  ? { actor: branchActor, target: branchTarget, ratio: counterDamageRatio(branchTarget) } : null,
+                reflection: damageFollowUp(branchActor, branchTarget, context.declaration?.skill),
                 assignments: Object.freeze({ ...branch.assignments }) };
             }) || null;
             if (hpDamageLimits) {
@@ -11361,6 +11610,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           });
           if (reactiveDamage) shieldAbsorb = expectedShieldAbsorb;
           const resolvedDamageOutcomes = typeof context.damageOutcomeResolver === 'function' ? outcomeDistribution : damageExpectation.outcomeDistribution;
+          if (!reactiveDamage) applyDamageAbsorption(overlay, unitId(actor), unitId(target), expectedDamageAbsorption(resolvedDamageOutcomes));
           if (resolvedDamageOutcomes.some(row => row.reflection)) {
             const sourceBefore = reactiveDamage ? reflectionSourceBefore : overlay.readUnit(unitId(actor));
             const reflectedDamage = resolvedDamageOutcomes.reduce((sum, row) => sum + row.probability * Number(row.reflection?.hpDamage || 0), 0);
@@ -15319,6 +15569,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           effect,
           projectionContext,
           declaration?.environmentContext || null,
+          /群体|全场/.test(String(effect?.目标 || '')) && declaration?.worldSnapshot ? listUnits(declaration.worldSnapshot).filter(entry =>
+            entry.side !== sideOf(declaration.worldSnapshot, actor) && isBattleCapable(entry.unit)).length : 0,
         );
         const availableHp = declaration?.capacityMode === true ? readHpMax(target) : readHp(target);
         return sum + Math.min(availableHp, expectedDamage) / readHpMax(target) * 100;
@@ -19040,8 +19292,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           conditionalOn: { ...segmentedOutcome.conditionalOn, [choiceKey]: 'DAMAGE_REALIZED' },
           payload: { resource: '生命', damageOutcome: { hpDamage: segment.hpDamage, shieldAbsorb: segment.shieldAbsorb,
             ...(evidence.shieldIncomingEffect ? { incomingEffect: evidence.shieldIncomingEffect } : {}),
-            ...(segment.revival ? { reviveHealing: segment.reviveHealing, revival: cloneValue(segment.revival) } : {}),
+            ...(segment.reviveHealing ? { reviveHealing: segment.reviveHealing, ...(segment.revival ? { revival: cloneValue(segment.revival) } : {}) } : {}),
             ...(segment.reflection ? { reflection: cloneValue(segment.reflection) } : {}),
+            ...(segment.absorption ? { absorption: cloneValue(segment.absorption) } : {}),
             ...(segment.ruleBlockConsumed > 0 ? { ruleBlockConsumed: segment.ruleBlockConsumed } : {}),
             ...(segment.deathSaveConsumed > 0 ? { deathSaveConsumed: segment.deathSaveConsumed } : {}) } },
         });
@@ -19064,8 +19317,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           outcomeId: outcome.outcomeId, probability: outcome.probability, conditionalOn: outcome.conditionalOn, assignments: outcome.assignments,
           damageOutcome: { hpDamage: outcome.hpDamage, shieldAbsorb: outcome.shieldAbsorb,
             ...(evidence.shieldIncomingEffect ? { incomingEffect: evidence.shieldIncomingEffect } : {}),
-            ...(outcome.revival ? { reviveHealing: outcome.reviveHealing, revival: cloneValue(outcome.revival) } : {}),
+            ...(outcome.reviveHealing ? { reviveHealing: outcome.reviveHealing, ...(outcome.revival ? { revival: cloneValue(outcome.revival) } : {}) } : {}),
             ...(outcome.reflection ? { reflection: cloneValue(outcome.reflection) } : {}),
+            ...(outcome.absorption ? { absorption: cloneValue(outcome.absorption) } : {}),
             ...(outcome.ruleBlockConsumed > 0 ? { ruleBlockConsumed: outcome.ruleBlockConsumed } : {}),
             ...(outcome.deathSaveConsumed > 0 ? { deathSaveConsumed: outcome.deathSaveConsumed } : {}) },
         })));
@@ -19092,8 +19346,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           conditionalOn: { ...outcome.conditionalOn, [choiceKey]: outcome.outcomeId },
           payload: { resource: '生命', damageOutcome: { hpDamage: outcome.hpDamage, shieldAbsorb: outcome.shieldAbsorb,
             ...(evidence.shieldIncomingEffect ? { incomingEffect: evidence.shieldIncomingEffect } : {}),
-            ...(outcome.revival ? { reviveHealing: outcome.reviveHealing, revival: cloneValue(outcome.revival) } : {}),
+            ...(outcome.reviveHealing ? { reviveHealing: outcome.reviveHealing, ...(outcome.revival ? { revival: cloneValue(outcome.revival) } : {}) } : {}),
             ...(outcome.reflection ? { reflection: cloneValue(outcome.reflection) } : {}),
+            ...(outcome.absorption ? { absorption: cloneValue(outcome.absorption) } : {}),
             ...(outcome.ruleBlockConsumed > 0 ? { ruleBlockConsumed: outcome.ruleBlockConsumed } : {}),
             ...(outcome.deathSaveConsumed > 0 ? { deathSaveConsumed: outcome.deathSaveConsumed } : {}) } },
         }));
@@ -19967,6 +20222,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           if (payload.damageOutcome.revival) applyDamageRevivalOutcomes(unit, [{ probability: 1, revival: payload.damageOutcome.revival }]);
           setResourceValue(unit, '生命', Math.max(0, readHp(unit) - Math.max(0, payload.damageOutcome.hpDamage) + Number(payload.damageOutcome.reviveHealing || 0)));
         });
+        applyDamageAbsorption(overlay, event.sourceActorId, targetId, payload.damageOutcome.absorption,
+          (id, resource) => roundedResourceSupports.delete(`${id}\u0000${resource}`));
         const reflection = payload.damageOutcome.reflection;
         if (reflection && overlay.readUnit(reflection.actorId)) overlay.changeUnit(reflection.actorId, unit => {
           if (reflection.revival) applyDamageRevivalOutcomes(unit, [{ probability: 1, revival: reflection.revival }]);
@@ -21673,6 +21930,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     readPassiveTriggerCosts,
     readSkillSustainCosts,
     assessResourcePayment,
+    resourcePoolLockRatio,
+    readSpendableResource,
     projectedResourceDistribution,
     projectedResourceWorldState,
     inheritProjectedResourceSupports,
@@ -21697,9 +21956,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     attackOpeningOf,
     attackOpeningStrength,
     setAttackOpening,
+    guardBreaks,
+    guardBrokenOf,
+    setGuardBroken,
+    battleIntensity,
+    skillPermittedAtIntensity,
+    LONG_TERM_SIDE_EFFECT_TYPES,
+    sideDesperate,
+    postBattleCostShare,
     actionStaminaCost,
     actionWindup,
     reactionWindupBudget,
+    interceptWindupBudget,
     basicAttackWindup,
     CONTINUOUS_ACTION_BUDGET,
     refreshStaminaAdjustedFinal,
@@ -21771,6 +22039,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     triggerRevive,
     passiveRevivalBudget,
     counterDamageRatio,
+    damageAbsorptionRatios,
+    damageFollowUp,
+    applyDamageAbsorption,
+    expectedDamageAbsorption,
+    stealthBlocksSingleTarget,
     hasDamageRevival,
     applyDamageRevivalOutcomes,
     refreshSustainRuntimeLoad,

@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:8f5fdcb220928298fc71f93c977150379113d9fd9d7d2089ab5666def66c079e|cockpit/designer-model.js:709a88c6d61283ec30756acaf0604fce9d1697c80b670c46fdc684325e4a957c|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:432470d08e4ffbc314d59280d8494ce7689401896380cfae89aa07067a180473|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:31b84a896b0ecfd57ec9274ce575c48b55e1b1fc779106dc6eb734c699584cc8|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:61fdd2e60fba44a44fb035b11d3c6ec09d447bef149d758053c5362d1a075d1f|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:e07a8edcaf5611f2743a88aa43ca615ccdd2792c12632b8c552a791d0501a1c4|cockpit/designer-model.js:8dc86d2da42d0e8a9eb685997bb3c524dc0aaa4c344eed4a9f7b201d8b09b590|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:432470d08e4ffbc314d59280d8494ce7689401896380cfae89aa07067a180473|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:31b84a896b0ecfd57ec9274ce575c48b55e1b1fc779106dc6eb734c699584cc8|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:61fdd2e60fba44a44fb035b11d3c6ec09d447bef149d758053c5362d1a075d1f|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -15599,6 +15599,9 @@
     '动作迟缓',
     '目标错乱',
     '施法僵直',
+    // 战后长期代价（用户 2026-11-12）：战斗内无效果，战后结算。
+    '本源损耗',
+    '重伤昏迷',
   ]);
   const 技能设计台副作用触发时机选项_V1 = Object.freeze(['效果生效后', '命中后', '回合结束时', '效果结束后']);
   const 技能设计台副作用生效对象选项_V1 = Object.freeze(['技能释放者', '效果承受者', '双方']);
@@ -15612,6 +15615,8 @@
     动作迟缓: Object.freeze({ 状态: '迟缓', 数值: '+15%', 副数值: '+10%', 持续回合: 1, 数值标签: '反应惩罚', 副数值标签: '闪避惩罚' }),
     目标错乱: Object.freeze({ 状态: '混乱', 数值: '+30%', 副数值: '', 持续回合: 1, 数值标签: '敌我错乱' }),
     施法僵直: Object.freeze({ 状态: '僵直', 数值: '+20%', 副数值: '', 持续回合: 1, 数值标签: '施法僵直' }),
+    本源损耗: Object.freeze({ 状态: '本源损耗', 数值: '+5%', 副数值: '', 持续回合: 1, 数值标签: '潜力损失' }),
+    重伤昏迷: Object.freeze({ 状态: '重伤昏迷', 数值: '1', 副数值: '', 持续回合: 1, 数值标签: '昏迷月数' }),
   });
   const 技能执行旧数组键表_V1 = Object.freeze([
     '授予效果数组',
@@ -28687,7 +28692,7 @@ ${播报文本}
     });
   }
 
-  function 构建正式战斗写回补丁(finalSnapshot = {}, createdInventoryAssets = []) {
+  function 构建正式战斗写回补丁(finalSnapshot = {}, createdInventoryAssets = [], postBattleCosts = []) {
     if (!finalSnapshot || typeof finalSnapshot !== 'object' || Array.isArray(finalSnapshot)) {
       throw new Error('battle_commit_final_snapshot_invalid');
     }
@@ -28784,6 +28789,40 @@ ${播报文本}
         addedDefinitions.add(assetId);
       });
     });
+    // 战后长期代价（用户 2026-11-12）：战斗里触发的本源损耗、重伤昏迷在这里落到角色身上。
+    // 本源损耗 N% → 等级上限永久降低 N 级（属性.等级惩罚，与「灵物反噬」「生命之火熄灭」同一个字段，高阶灵物可修复），并留一条常驻说明；
+    // 重伤昏迷 M 个月 → 状态「重伤昏迷」，时限 M × 30 天（每天 144 tick）。临时单位、刻意压制等级的参战者与上面一样不写回。
+    const 长期代价按角色 = new Map();
+    (Array.isArray(postBattleCosts) ? postBattleCosts : []).forEach(cost => {
+      const 单位ID = toText(cost?.unitId, '').trim(), 单位名 = toText(cost?.unitName, '').trim();
+      const participant = [...participants.team_player, ...participants.team_enemy].find(entry => entry && typeof entry === 'object' && (
+        单位ID && [entry.id, entry.角色ID, entry.uid].some(value => toText(value, '').trim() === 单位ID) ||
+        [单位名, 单位ID].filter(Boolean).includes(toText(entry.name || entry.名称, '').trim())));
+      if (!participant || toText(participant.来源, '').trim() === '临时单位' || participant.实力压制?.刻意压制等级 === true) return;
+      const charKey = resolveSnapshotCharKey(snapshot, toText(participant.name || participant.名称, '').trim());
+      if (!charKey) return;
+      const 数值 = Math.abs(Number(String(cost?.value ?? '').replace(/[+%-]/g, ''))) || 0;
+      const 记录 = 长期代价按角色.get(charKey) || { 等级: 0, 月数: 0 };
+      if (cost?.type === '本源损耗') 记录.等级 += Math.max(1, Math.round(数值 || 5));
+      else if (cost?.type === '重伤昏迷') 记录.月数 += Math.max(0, 数值 || 1);
+      else return;
+      长期代价按角色.set(charKey, 记录);
+    });
+    长期代价按角色.forEach((记录, charKey) => {
+      const 追加 = (pathSegments, value) => patchOps.push({ op: 'add', path: `/${pathSegments.map(escapeJsonPointerValue).join('/')}`, value });
+      if (记录.等级 > 0) {
+        const 当前惩罚 = Math.max(0, toNumber(deepGet(currentRoot, ['char', charKey, '属性', '等级惩罚'], 0), 0));
+        追加(['char', charKey, '属性', '等级惩罚'], 当前惩罚 + 记录.等级);
+        追加(['char', charKey, '属性', '状态效果', '本源损耗'], { 类型: 'debuff', 层数: 记录.等级,
+          描述: `本源受损，永久扣除${记录.等级}级等级上限（高阶灵物可修复）` });
+      }
+      if (记录.月数 > 0) {
+        const 持续tick = Math.max(1, Math.round(记录.月数 * 30 * 144));
+        const 当前tick = Number(deepGet(snapshot, 'rootData.world.时间.tick', NaN));
+        追加(['char', charKey, '属性', '状态效果', '重伤昏迷'], { 类型: 'debuff', 层数: 1, 描述: `战后重伤昏迷${记录.月数}个月`, 持续tick,
+          ...(Number.isFinite(当前tick) && 当前tick >= 0 ? { 结束tick: 当前tick + 持续tick } : {}) });
+      }
+    });
     if (addedDefinitions.size) {
       if (!currentRoot.物品) {
         追加战斗提交字段补丁(patchOps, currentRoot, ['物品'], itemDraft.物品);
@@ -28804,7 +28843,7 @@ ${播报文本}
       throw new Error('battle_runtime_package_verifier_missing');
     }
     const verifiedPackage = runtime.verifySealedBattlePackage(sealedPackage);
-    const patchOps = 构建正式战斗写回补丁(verifiedPackage.finalSnapshot, verifiedPackage.createdInventoryAssets);
+    const patchOps = 构建正式战斗写回补丁(verifiedPackage.finalSnapshot, verifiedPackage.createdInventoryAssets, verifiedPackage.postBattleCosts);
     runtime.verifySealedBattlePackage(verifiedPackage);
     await applyBattlePatchOpsByEditor(patchOps, {
       force: true,
@@ -36890,6 +36929,9 @@ ${播报文本}
     '动作迟缓',
     '目标错乱',
     '施法僵直',
+    // 战后长期代价（用户 2026-11-12）：战斗内无效果，战后结算。
+    '本源损耗',
+    '重伤昏迷',
   ]);
   // —— B:18335
   const 技能设计台副作用触发时机选项_V1 = Object.freeze(['效果生效后', '命中后', '回合结束时', '效果结束后']);
@@ -36906,6 +36948,8 @@ ${播报文本}
     动作迟缓: Object.freeze({ 状态: '迟缓', 数值: '+15%', 副数值: '+10%', 持续回合: 1, 数值标签: '反应惩罚', 副数值标签: '闪避惩罚' }),
     目标错乱: Object.freeze({ 状态: '混乱', 数值: '+30%', 副数值: '', 持续回合: 1, 数值标签: '敌我错乱' }),
     施法僵直: Object.freeze({ 状态: '僵直', 数值: '+20%', 副数值: '', 持续回合: 1, 数值标签: '施法僵直' }),
+    本源损耗: Object.freeze({ 状态: '本源损耗', 数值: '+5%', 副数值: '', 持续回合: 1, 数值标签: '潜力损失' }),
+    重伤昏迷: Object.freeze({ 状态: '重伤昏迷', 数值: '1', 副数值: '', 持续回合: 1, 数值标签: '昏迷月数' }),
   });
   // —— B:18348-18352
   const 技能执行旧数组键表_V1 = Object.freeze([
@@ -37085,8 +37129,10 @@ ${播报文本}
       动作迟缓: `反应降低${数值 || 15}%${副数值 ? `，闪避降低${副数值}%` : ''}`,
       目标错乱: `${数值 || 30}%概率错乱目标`,
       施法僵直: `施法僵直${数值 || 20}%`,
+      本源损耗: `战后永久损失${数值 || 5}%潜力（战斗内无效果）`,
+      重伤昏迷: `战后昏迷${数值 || 1}个月（战斗内无效果）`,
     })[类型] || `${类型}${数值 ? ` ${数值}%` : ''}`;
-    return `${触发}，${Math.round(概率 * 100)}%使${对象}${效果}${持续 > 0 ? `，持续${持续}回合` : ''}`;
+    return `${触发}，${Math.round(概率 * 100)}%使${对象}${效果}${持续 > 0 && !['本源损耗', '重伤昏迷'].includes(类型) ? `，持续${持续}回合` : ''}`;
   }
   // —— B:18527-18585
   function 构建技能设计台副作用行列表(副作用列表 = [], 选项 = {}) {
@@ -46535,7 +46581,8 @@ ${播报文本}
       { key: '触发概率', kind: 'text', label: '概率', hint: 技能设计台副作用字段提示.概率, value: 属性回读(格式化技能设计台概率百分比(条目['触发概率'] ?? 1)) },
     ];
     if (!是致死献祭) {
-      字段.push({ key: '持续回合', kind: 'number', label: '持续', hint: 技能设计台副作用字段提示.持续, min: '0', step: '1', value: 数字输入回读(String(条目['持续回合'] ?? 1)) });
+      // 战后长期代价没有战斗内的持续回合。
+      if (!['本源损耗', '重伤昏迷'].includes(类型)) 字段.push({ key: '持续回合', kind: 'number', label: '持续', hint: 技能设计台副作用字段提示.持续, min: '0', step: '1', value: 数字输入回读(String(条目['持续回合'] ?? 1)) });
       字段.push({ key: '数值', kind: 'text', label: 文本回读(配置.数值标签 || '强度'), hint: '', value: 属性回读(条目['数值'] || ''), placeholder: 属性回读(配置.数值 || '+10%') });
       if (配置.副数值) 字段.push({ key: '副数值', kind: 'text', label: 文本回读(配置.副数值标签 || '附加强度'), hint: '', value: 属性回读(条目['副数值'] || ''), placeholder: 属性回读(配置.副数值) });
       字段.push({ key: '关联状态', kind: 'text', label: '关联效果', hint: '', value: 属性回读(条目['关联状态'] || ''), placeholder: '食物增幅', hidden: 条目['触发时机'] !== '效果结束后' });

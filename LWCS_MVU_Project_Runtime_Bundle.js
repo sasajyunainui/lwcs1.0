@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:539fca10c2ce38767f4cfaaa053551ee2e8fe9950edc083737dd25b35a0543a6|MVU_Schema_Runtime.js:a173fbef52748f995d607be544151366fdbbde1cb9b23ef8dbea7bb3244b3152|MVU_Competition_Runtime.js:2a5d78b856d3123e857393fca07fb365d91ce9ea4877cc37dfafd86b384e8904|MVU_Runtime_View.js:f1cdb932eb407effb83cc5252749b7c093882c1328ce746565cdb1ec607791da */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:82d038c6ee1b4f7bb7dbc16bd205dc61e369fe5b5ecf980525ffd878d82d0641|MVU_Schema_Runtime.js:a173fbef52748f995d607be544151366fdbbde1cb9b23ef8dbea7bb3244b3152|MVU_Competition_Runtime.js:2a5d78b856d3123e857393fca07fb365d91ce9ea4877cc37dfafd86b384e8904|MVU_Runtime_View.js:f1cdb932eb407effb83cc5252749b7c093882c1328ce746565cdb1ec607791da */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -7693,6 +7693,9 @@ var SKILL_SIDE_EFFECT_TYPE_OPTIONS_V1 = Object.freeze([
   '动作迟缓',
   '目标错乱',
   '施法僵直',
+  // 战后长期代价（用户 2026-11-12）：战斗内无效果，战后结算；不自动生成。
+  '本源损耗',
+  '重伤昏迷',
 ]);
 var SKILL_SIDE_EFFECT_TYPE_META_V1 = Object.freeze({
   全属性降低: Object.freeze({ 状态: '虚弱', 数值: '+10%', 副数值: '', 持续回合: 2 }),
@@ -7704,6 +7707,9 @@ var SKILL_SIDE_EFFECT_TYPE_META_V1 = Object.freeze({
   动作迟缓: Object.freeze({ 状态: '迟缓', 数值: '+15%', 副数值: '+10%', 持续回合: 1 }),
   目标错乱: Object.freeze({ 状态: '混乱', 数值: '+30%', 副数值: '', 持续回合: 1 }),
   施法僵直: Object.freeze({ 状态: '僵直', 数值: '+20%', 副数值: '', 持续回合: 1 }),
+  // 数值：本源损耗为永久损失的潜力百分比；重伤昏迷为昏迷月数。
+  本源损耗: Object.freeze({ 状态: '本源损耗', 数值: '+5%', 副数值: '', 持续回合: 1 }),
+  重伤昏迷: Object.freeze({ 状态: '重伤昏迷', 数值: '1', 副数值: '', 持续回合: 1 }),
 });
 
 function normalizeSkillSideEffectEntry(value = {}) {
@@ -9681,7 +9687,7 @@ function 运转代价能量反推乘积_V1(目标代价能量 = 1) {
 
 // 11 种预定义副作用 → 强度档默认映射（来源于 lwcs/MVU.js:3639-3664 副作用列表注册）
 var SKILL_SIDE_EFFECT_TIER_V1 = Object.freeze({
-  致死献祭: '重',
+  致死献祭: '重', 本源损耗: '重', 重伤昏迷: '重',
   自损反噬: '中', 魂力反噬: '中', 精神紊乱: '中', 目标错乱: '中',
   全属性降低: '轻', 命中下降: '轻', 动作迟缓: '轻', 施法僵直: '轻',
 });
@@ -19167,6 +19173,19 @@ function 计算单项副作用COST_V1(副作用 = {}) {
       触发概率: 概率,
     };
   }
+  // 战后长期代价（用户 2026-11-12 确认）：本源损耗 = 百分比 × 8，上限 90；重伤昏迷 = 月数 × 15，上限 60；都乘触发概率。
+  // 参照：致死献祭 100，普通副作用 1～6。
+  if (类型 === '本源损耗' || 类型 === '重伤昏迷') {
+    const 长期数值 = 读取副作用数值百分数_V1(条目.数值, 读取副作用数值百分数_V1(配置.数值, 0));
+    const 长期抵扣 = 类型 === '本源损耗' ? Math.min(90, 长期数值 * 8) : Math.min(60, 长期数值 * 15);
+    return {
+      COST: Number((长期抵扣 * 概率).toFixed(2)),
+      副作用类型: 类型,
+      触发时机: 条目.触发时机 || '效果生效后',
+      生效对象: 条目.生效对象 || '技能释放者',
+      触发概率: 概率,
+    };
+  }
   const 持续 = Math.max(0, Number(条目.持续回合 ?? 配置.持续回合 ?? 1));
   const 默认持续 = Math.max(1, Number((配置.持续回合 ?? 持续) || 1));
   const 持续修正 = 持续 / 默认持续;
@@ -24321,7 +24340,7 @@ function 转译技能副作用列表_V1(副作用列表 = []) {
       const 生效对象 = 格式化技能结构转译字段_V1(条目.生效对象 || '技能释放者', '技能释放者');
       const 概率 = Math.max(0, Math.min(1, Number(条目.触发概率 ?? 1)));
       const 概率文本 = `${formatSkillPercent(概率)}使${生效对象}`;
-      const 持续 = Number(条目.持续回合 || 0) > 0 ? `，持续${formatSkillNumber(条目.持续回合)}回合` : '';
+      const 持续 = !['本源损耗', '重伤昏迷'].includes(类型) && Number(条目.持续回合 || 0) > 0 ? `，持续${formatSkillNumber(条目.持续回合)}回合` : '';
       const 关联 = 条目.关联状态 ? `，关联${格式化技能结构转译字段_V1(条目.关联状态, '')}` : '';
       const 数值 = 读取副作用数值百分数_V1(条目.数值, 0);
       const 副数值 = 读取副作用数值百分数_V1(条目.副数值, 0);
@@ -24335,6 +24354,8 @@ function 转译技能副作用列表_V1(副作用列表 = []) {
         动作迟缓: `迟缓：反应降低${formatSkillNumber(数值)}%${副数值 ? `，闪避降低${formatSkillNumber(副数值)}%` : ''}`,
         目标错乱: `混乱：${formatSkillNumber(数值)}%概率错乱目标`,
         施法僵直: `僵直：施法僵直强度${formatSkillNumber(数值)}%`,
+        本源损耗: `本源损耗：战后永久损失${formatSkillNumber(数值)}%潜力`,
+        重伤昏迷: `重伤昏迷：战后昏迷${formatSkillNumber(数值)}个月`,
       })[类型] || `${类型}${数值 ? `：强度${formatSkillNumber(数值)}%` : ''}`;
       return `${触发时机}，${概率文本}${效果文本}${持续}${关联}。`;
     })

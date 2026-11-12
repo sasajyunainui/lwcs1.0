@@ -364,6 +364,9 @@
           meta: {
             source: 'structured_runtime',
             sideEffectType: effect.副作用类型,
+            // 战后长期代价: owed after the battle (collectPostBattleCosts lists them on the result).
+            ...(probabilityPassed && !blocked && previewRuntime.LONG_TERM_SIDE_EFFECT_TYPES.includes(effect.副作用类型)
+              ? { postBattleCost: { type: effect.副作用类型, value: String(effect.数值 ?? '').trim() } } : {}),
             timing,
             stateName,
             associatedState: String(effect.关联状态 || ''),
@@ -6360,7 +6363,7 @@
     '蓄力技能', 'cast_time', 'cast_time_left', '蓄力剩余', '_current_cast_time', 'action_declared', 'is_controlled',
   ]);
   const summonMirrorBattleFields = Object.freeze([
-    'naturalOpportunity', 'activeDefenseStance', 'attackOpening', 'passiveApplications', 'itemPassiveTriggeredSkills',
+    'naturalOpportunity', 'activeDefenseStance', 'attackOpening', 'guardBroken', 'passiveApplications', 'itemPassiveTriggeredSkills',
     'damageAbsorptionStorageByState', 'counterCount', 'reactedCount', 'reactionFatigue', 'fusionPartnerIds', 'fusionUsageKeys',
   ]);
 
@@ -7345,6 +7348,11 @@
     summons.forEach(ensureSummonWindowRuntime);
     const hosts = [...new Set(summons.map(unit => unit.__宿主).filter(Boolean))];
     const summonLog = hosts.map(host => refreshSummonMentalLoad(combatData, host, adapterOptions)).filter(Boolean).join(' ');
+    // Equipment passives (魂骨、装备的常驻与阶段被动) stand from the first round whoever prepared the battle: prepareCombatData
+    // syncs them for the game; a caller that builds its own combat data used to get them only after a unit first acted.
+    listPrimaryCombatUnits(combatData).forEach(unit => {
+      if (unit && !unit.__battleRuntime?.itemPassivePackage) syncEquipmentPassiveRuntime(unit, Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0), { rebuildFinal: true });
+    });
     const passiveLogs = settlePassiveSkillConsumers(combatData, currentRound);
     return [`[团战第${currentRound}回合开始]`, summonLog, ...passiveLogs].filter(Boolean);
   }
@@ -8697,7 +8705,9 @@
       const soulPowerCap = equivalentLevel > 0 ? readSoulPowerCapForEquivalentLevel(equivalentLevel) : null;
       const capRatio = state?.增幅上限 === undefined
         ? Infinity
-        : Math.max(0, Number(previewRuntime.parseSignedValue(state?.增幅上限, 0) || 0));
+        // A cap written as a percentage is that share of the hit (read against 0 it was always 0: the store was emptied
+        // and nothing was added).
+        : Math.max(0, Number(previewRuntime.parseSignedValue(state?.增幅上限, 1) || 0));
       const releaseBeforeTargetLimit = Math.min(
         stored,
         Number.isFinite(capRatio) ? actualDamage * capRatio : stored,
@@ -8758,6 +8768,8 @@
         const resourceName = String(state?.吸收资源 || '').trim();
         const resourceKey = resourceKeyByName[resourceName];
         if (!resourceKey) return;
+        // 用户 2026-11-12 (规则接通): what a hit gives back does not stand a fallen unit up again.
+        if (resourceKey === 'hp' && !(previewRuntime.readHp(target) > 0)) return;
         const before = persistentResourceValue(target, resourceKey);
         writeCombatResource(target, resourceKey, before + receivedDamage * ratio);
         const after = persistentResourceValue(target, resourceKey);
@@ -11517,7 +11529,7 @@
           );
           const segmentDamage = totalDamage / segments;
           const segmentDamageBeforeReaction = previewRuntime.calculateSettledSegmentDamage(totalDamage, segments, 1);
-          const hitProbability = Math.max(0, Math.min(1, previewRuntime.estimateHitProbability(actor, target, effect)));
+          const hitProbability = Math.max(0, Math.min(1, previewRuntime.estimateHitProbability(actor, target, effect, null, null, resolvedTargets.length)));
           const hitModifierAttribution = typeof previewRuntime.estimateHitProbabilityAttribution === 'function'
             ? previewRuntime.estimateHitProbabilityAttribution(actor, target, effect)
             : [];
@@ -13130,6 +13142,36 @@
 
   function structuredReactionContest(reactor = {}, sourceActor = {}) {
     return previewRuntime.calculateReactionContest(reactor, sourceActor);
+  }
+
+  // 援护: who may step in front of `target` against this attack, and whether one of them does. Eligible: a unit of the
+  // target's side (not a summon) that can act, has not acted this round, is not charging or guard-broken, and gets there
+  // in time (BattlePreview interceptWindupBudget). The choice among them, or none, is the decision layer's
+  // (BattleDecision chooseInterceptor) — for a unit the player controls too.
+  function chooseStructuredInterceptor(combatData = {}, attacker = {}, declaration = {}, target = {}) {
+    if (typeof decisionRuntime?.chooseInterceptor !== 'function') return null;
+    const round = Number(combatData?.回合 || 0), side = inferUnitSide(combatData, target);
+    const candidates = listPrimaryCombatUnits(combatData).filter(unit => unit && unit !== target && !unit.召唤键 &&
+      inferUnitSide(combatData, unit) === side && previewRuntime.isBattleCapable(unit) && structuredActorCanAct(unit, 'ACTIVE') &&
+      !unit.蓄力技能 && !previewRuntime.guardBrokenOf(unit, round) &&
+      String(unit.__battleRuntime?.naturalOpportunity?.status || '').trim() === 'PENDING' &&
+      Number(unit.__battleRuntime.naturalOpportunity.round || 0) === round &&
+      previewRuntime.interceptWindupBudget(attacker, declaration, unit) >= 0);
+    if (!candidates.length) return null;
+    const chosen = String(decisionRuntime.chooseInterceptor({
+      worldSnapshot: combatData, sourceActorId: previewRuntime.unitId(attacker), targetId: previewRuntime.unitId(target), declaration,
+      candidateIds: candidates.map(unit => previewRuntime.unitId(unit)),
+    }) || '').trim();
+    return chosen ? candidates.find(unit => previewRuntime.unitId(unit) === chosen) || null : null;
+  }
+
+  // 战后长期代价 (用户 2026-11-12): who owes what after this battle — every long-term side effect that triggered, from the
+  // ledger. Nothing in the battle reads it; whoever writes the battle back into the characters applies it.
+  function collectPostBattleCosts(combatData = {}) {
+    return ensureLedger(combatLedgerRoot(combatData)).filter(event => event?.meta?.postBattleCost).map(event => ({
+      unitId: String(event.targetId || '').trim(), unitName: String(event.targetName || '').trim(), round: Number(event.round || 0),
+      type: event.meta.postBattleCost.type, value: event.meta.postBattleCost.value, sourceActionName: String(event.actionName || '').trim(),
+    }));
   }
 
   function consumeStructuredReactionOpportunity(combatData = {}, unit = {}, sourceActionId = '') {
@@ -16074,15 +16116,16 @@
           if (
             naturalOpportunity &&
             Number(naturalOpportunity?.round || 0) === Number(combatData?.回合 || 0) &&
-            ['CONSUMED_BY_FUSION', 'CONSUMED_BY_COUNTER'].includes(naturalOpportunityStatus)
+            ['CONSUMED_BY_FUSION', 'CONSUMED_BY_COUNTER', 'CONSUMED_BY_INTERCEPT'].includes(naturalOpportunityStatus)
           ) {
             const consumedByCounter = naturalOpportunityStatus === 'CONSUMED_BY_COUNTER';
+            const consumedByIntercept = naturalOpportunityStatus === 'CONSUMED_BY_INTERCEPT';
             const actionName = normalizeActionDisplayName(
-              naturalOpportunity?.actionName || (consumedByCounter ? '反击' : '武魂融合技'),
+              naturalOpportunity?.actionName || (consumedByCounter ? '反击' : consumedByIntercept ? '援护' : '武魂融合技'),
             );
             const reasonCode = consumedByCounter
               ? 'COUNTER_ACTION_CONSUMED_NATURAL_OPPORTUNITY'
-              : 'FUSION_PARTICIPATION_CONSUMED';
+              : consumedByIntercept ? 'INTERCEPT_CONSUMED_NATURAL_OPPORTUNITY' : 'FUSION_PARTICIPATION_CONSUMED';
             writeLedgerEvent(combatData, {
               eventKind: 'blocked_action',
               round: Number(combatData.回合 || 0),
@@ -16090,7 +16133,7 @@
               actorName: previewRuntime.unitName(actor),
               targetId: previewRuntime.unitId(actor) || '',
               targetName: previewRuntime.unitName(actor),
-              actionName: consumedByCounter ? '反击占用行动' : '融合协同',
+              actionName: consumedByCounter ? '反击占用行动' : consumedByIntercept ? '援护占用行动' : '融合协同',
               actionType: 'opportunity_consumed',
               actorControl: node.actorControl,
               actionRole: node.actionRole,
@@ -16104,7 +16147,7 @@
                 reasonCode,
                 reasonText: consumedByCounter
                   ? `已将本轮自然行动提前用于【${actionName}】反击`
-                  : `本轮自然行动机会已用于参与【${actionName}】`,
+                  : consumedByIntercept ? '本轮自然行动已用于援护队友' : `本轮自然行动机会已用于参与【${actionName}】`,
                 fusionKey: String(naturalOpportunity?.fusionKey || '').trim(),
                 fusionActionName: actionName,
                 counterActionName: consumedByCounter ? actionName : '',
@@ -16257,7 +16300,9 @@
                 imminentThreat: true,
                 sourceActorId,
                 // What the reactor's skill may take against this attack (BattlePreview reactionWindupBudget).
-                immediateBudget: previewRuntime.reactionWindupBudget(sourceActor, shared.declaration, actor),
+                immediateBudget: node?.state?.intercept === true
+                  ? Math.max(0, previewRuntime.interceptWindupBudget(sourceActor, shared.declaration, actor))
+                  : previewRuntime.reactionWindupBudget(sourceActor, shared.declaration, actor),
                 actionContext,
                 incomingAction,
               });
@@ -16527,9 +16572,23 @@
                 host: actor,
                 decisionResult: shared.decisionResult,
               });
+              // 破防: every enemy a hit of this action landed on has its guard broken when the attack stat outweighs its
+              // defence (BattlePreview guardBreaks; more is needed against a unit that took the hit defending).
+              const guardRound = Number(combatData?.回合 || 0), breakEffect = structuredDamageEffects(shared.declaration)[0];
+              if (breakEffect) for (const event of settlement.facts || []) {
+                if (event?.eventKind !== 'hit_result' || !(Number(event?.appliedDamage || event?.meta?.appliedDamage || 0) > 0)) continue;
+                const struck = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, event?.targetId || event?.targetName || ''));
+                if (!struck || struck === actor || inferUnitSide(combatData, struck) === inferUnitSide(combatData, actor) ||
+                  previewRuntime.guardBrokenOf(struck, guardRound)) continue;
+                const answered = String(shared.reactionByTarget[previewRuntime.unitId(struck)]?.actionKind || '').trim().toUpperCase();
+                if (!previewRuntime.guardBreaks(actor, breakEffect, struck, ['DEFEND', 'GUARD'].includes(answered))) continue;
+                previewRuntime.setGuardBroken(struck, guardRound, settlement.actionEvent?.actionId || '');
+                logs.push(`[破防] ${previewRuntime.unitName(struck)}被${previewRuntime.unitName(actor)}破防，本回合无法应对与反击。`);
+              }
               Object.entries(shared.reactionByTarget).forEach(([targetId, reaction]) => {
                 const reactor = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, targetId));
                 if (!reactor) return;
+                if (previewRuntime.guardBrokenOf(reactor, guardRound)) return;
                 const counterWindow = openStructuredCounterWindow({
                   combatData,
                   reactor,
@@ -16690,9 +16749,24 @@
               }
               cooperativeOptions = { validTargetIds: hostileTargets.map(previewRuntime.unitId).filter(Boolean), preferredTargetIds };
             }
-            const storedCharge = (node.nodeKind === 'ACTIVE' || isCooperativeAssist) && actor?.蓄力技能 && typeof actor.蓄力技能 === 'object'
+            let storedCharge = (node.nodeKind === 'ACTIVE' || isCooperativeAssist) && actor?.蓄力技能 && typeof actor.蓄力技能 === 'object'
               ? actor.蓄力技能
               : null;
+            // 沉默/封技 (用户 2026-11-12 "该接的接完"): a silenced unit releases no skill, a charged one included — the charge is
+            // lost and the unit acts otherwise this turn (the candidate rules already keep every other skill from it).
+            if (storedCharge && Object.values(actor.状态效果 || {}).some(state => state?.战斗效果?.silence === true || /沉默|封技/.test(String(state?.状态 || state?.状态名称 || '')))) {
+              actor.蓄力技能 = null;
+              writeLedgerEvent(combatData, {
+                eventKind: 'charge_interrupt', round: Number(combatData.回合 || 0), actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
+                targetName: previewRuntime.unitName(actor),
+                actionName: normalizeActionDisplayName(storedCharge?.skill?.name || storedCharge?.skill?.魂技名 || storedCharge?.actionName || '蓄力行动'),
+                actionType: 'charge_interrupt', actorControl: node.actorControl, actionRole: node.actionRole,
+                sourceActionId: String(storedCharge?.sourceActionId || '').trim(),
+                result: 'interrupted', resultState: 'ABORTED', ruleCode: 'CHARGE_INTERRUPTED_BY_SILENCE',
+                meta: { source: 'structured_runtime', grantId: node.grantId, reason: 'SILENCED', interruptedActionId: String(storedCharge?.sourceActionId || '').trim() },
+              });
+              storedCharge = null;
+            }
             if (storedCharge) {
               const remainingCastTime = Math.max(0, Number(storedCharge?.cast_time ?? storedCharge?.remainingCastTime ?? storedCharge?.skill?.前摇 ?? 0));
               if (isCooperativeAssist && !decisionRuntime.actionCompletesWithinBattleHorizon(storedCharge.skill, {
@@ -17116,6 +17190,8 @@
               : resolveStructuredTargets(combatData, actor, resolvedDeclaration, structuredDamageEffects(resolvedDeclaration)[0])
                   .filter(target => inferUnitSide(combatData, target) !== inferUnitSide(combatData, actor));
             hostileTargets.forEach(target => {
+              // 破防: no answer for the rest of the round (BattlePreview guardBreaks).
+              if (previewRuntime.guardBrokenOf(target, Number(combatData?.回合 || 0))) return;
               const guardSummon = listSummonCombatUnits(combatData)
                 .filter(unit =>
                   String(unit?.行动模式 || '').trim() === '护卫' &&
@@ -17127,17 +17203,50 @@
                   Number(right?.def || right?.final?.def || 0) - Number(left?.def || left?.final?.def || 0) ||
                   String(previewRuntime.unitId(left) || '').localeCompare(String(previewRuntime.unitId(right) || ''))
                 )[0] || null;
-              const reactor = guardSummon || target;
+              // 援护 (用户 2026-11-11/12): an ally that has not acted this round and can get there in time may take a
+              // single-target attack in the target's place — the action lands on it, it answers with its own defence,
+              // evasion or response skill, the target does not answer, and its action of the round is spent.
+              let struck = target, interceptor = null;
+              if (!guardSummon && node.nodeKind === 'ACTIVE' && hostileTargets.length === 1 &&
+                  !/群体|全场/.test(String(structuredDamageEffects(resolvedDeclaration)[0]?.目标 || '')) &&
+                  Array.isArray(resolvedDeclaration.targetIds) && resolvedDeclaration.targetIds.some(id => isUnitIdentityMatch(target, id))) {
+                interceptor = chooseStructuredInterceptor(combatData, actor, resolvedDeclaration, target);
+              }
+              if (interceptor) {
+                const interceptorId = previewRuntime.unitId(interceptor);
+                const redirected = { ...resolvedDeclaration, targetIds: resolvedDeclaration.targetIds.map(id => isUnitIdentityMatch(target, id) ? interceptorId : id) };
+                shared.declaration = redirected;
+                actionContext.declaration = redirected;
+                if (actionContext.primaryTarget === target) actionContext.primaryTarget = interceptor;
+                const opportunity = interceptor.__battleRuntime.naturalOpportunity;
+                opportunity.status = 'CONSUMED_BY_INTERCEPT';
+                opportunity.consumedByActionId = String(actionContext.actionEvent.actionId || '').trim();
+                opportunity.actionName = '援护';
+                writeLedgerEvent(combatData, {
+                  eventKind: 'runtime_trace', round: Number(combatData.回合 || 0),
+                  actorId: interceptorId, actorName: previewRuntime.unitName(interceptor),
+                  targetId: previewRuntime.unitId(target), targetName: previewRuntime.unitName(target),
+                  actionName: '援护', actionType: 'intercept', actorControl: 'AI', actionRole: 'REACTION',
+                  sourceActionId: actionContext.actionEvent.actionId, parentNodeId: actionContext.actionEvent.chainNodeId || '',
+                  sourceNodeId: actionContext.actionEvent.chainNodeId || '',
+                  result: 'intercepted', resultState: 'SUCCESS', ruleCode: 'ALLY_INTERCEPT',
+                  meta: { source: 'structured_runtime', traceType: 'ally_intercept', attackerId: previewRuntime.unitId(actor),
+                    protectedId: previewRuntime.unitId(target), interceptorId,
+                    reasonText: `${previewRuntime.unitName(interceptor)}挡在${previewRuntime.unitName(target)}身前，接下了这一击` },
+                });
+                struck = interceptor;
+              }
+              const reactor = guardSummon || struck;
               const reactionOpportunity = consumeStructuredReactionOpportunity(
                 combatData,
-                target,
+                struck,
                 actionContext.actionEvent.actionId,
               );
               if (!reactionOpportunity.ok) {
                 writeLedgerEvent(combatData, {
                   eventKind: 'reaction_window',
                   round: Number(combatData.回合 || 0),
-                  actorName: previewRuntime.unitName(target),
+                  actorName: previewRuntime.unitName(struck),
                   targetName: previewRuntime.unitName(actor),
                   actionName: '即时反应窗口',
                   actionType: 'reaction_window',
@@ -17174,7 +17283,7 @@
                 sourceActorId: previewRuntime.unitId(actor),
                 grantType: 'DEFEND_WINDOW',
                 validTargetIds: [previewRuntime.unitId(actor)].filter(Boolean),
-                state: { shared, targetId: previewRuntime.unitId(target), summonGuard: !!guardSummon },
+                state: { shared, targetId: previewRuntime.unitId(struck), summonGuard: !!guardSummon, intercept: !!interceptor },
               });
             });
             queue.enqueue({
@@ -17416,6 +17525,7 @@
           playerAlive: finalAlive.playerAlive,
           enemyAlive: finalAlive.enemyAlive,
           audit,
+          postBattleCosts: collectPostBattleCosts(combatData),
           beliefObservations,
           ...(runtimePerformanceBreakdown
             ? { performanceBreakdown: runtimePerformanceBreakdown }
@@ -17505,6 +17615,7 @@
         reportBlocks, publicReportBlocks, roundOverview, finalBattleReport: summary.finalBattleReport,
         aiSummaryInput: summary.aiSummaryInput, finalSnapshot, snapshot: finalSnapshot, combatData: cloneValue(combatData),
         logs, initialSnapshot, previewStopReason, terminal, objectiveResolution: terminal,
+        postBattleCosts: collectPostBattleCosts(combatData),
         winner,
         playerAlive: finalAlive.playerAlive,
         enemyAlive: finalAlive.enemyAlive,
@@ -22046,6 +22157,11 @@
         .filter(event => event?.eventKind === 'create' && event?.resultState === 'SUCCESS' &&
           event?.meta?.source === 'structured_runtime' && event?.targetId && event?.meta?.assetId)
         .map(event => ({ ownerId: String(event.targetId).trim(), assetId: String(event.meta.assetId).trim() }))),
+      // 战后长期代价 (用户 2026-11-12): what each unit owes after this battle — every long-term side effect that triggered.
+      postBattleCosts: freezeBattleValue((Array.isArray(draft.ledger) ? draft.ledger : [])
+        .filter(event => event?.meta?.postBattleCost?.type)
+        .map(event => ({ unitId: String(event.targetId || '').trim(), unitName: String(event.targetName || '').trim(),
+          type: String(event.meta.postBattleCost.type).trim(), value: String(event.meta.postBattleCost.value ?? '').trim() }))),
       reportDto,
     });
     sealedBattlePackageAttestations.add(sealedPackage);
@@ -22441,6 +22557,7 @@
     mergeEquipmentPassiveActionSkill,
     settleDamageAbsorption,
     prepareCombatData,
+    collectPostBattleCosts,
     evaluateBattleTerminal,
     syncSummonUnitMirror: syncSummonMirror,
     writeCombatResource,

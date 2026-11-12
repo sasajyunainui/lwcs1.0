@@ -13929,6 +13929,9 @@
     '动作迟缓',
     '目标错乱',
     '施法僵直',
+    // 战后长期代价（用户 2026-11-12）：战斗内无效果，战后结算。
+    '本源损耗',
+    '重伤昏迷',
   ]);
   const 技能设计台副作用触发时机选项_V1 = Object.freeze(['效果生效后', '命中后', '回合结束时', '效果结束后']);
   const 技能设计台副作用生效对象选项_V1 = Object.freeze(['技能释放者', '效果承受者', '双方']);
@@ -13942,6 +13945,8 @@
     动作迟缓: Object.freeze({ 状态: '迟缓', 数值: '+15%', 副数值: '+10%', 持续回合: 1, 数值标签: '反应惩罚', 副数值标签: '闪避惩罚' }),
     目标错乱: Object.freeze({ 状态: '混乱', 数值: '+30%', 副数值: '', 持续回合: 1, 数值标签: '敌我错乱' }),
     施法僵直: Object.freeze({ 状态: '僵直', 数值: '+20%', 副数值: '', 持续回合: 1, 数值标签: '施法僵直' }),
+    本源损耗: Object.freeze({ 状态: '本源损耗', 数值: '+5%', 副数值: '', 持续回合: 1, 数值标签: '潜力损失' }),
+    重伤昏迷: Object.freeze({ 状态: '重伤昏迷', 数值: '1', 副数值: '', 持续回合: 1, 数值标签: '昏迷月数' }),
   });
   const 技能执行旧数组键表_V1 = Object.freeze([
     '授予效果数组',
@@ -27017,7 +27022,7 @@ ${播报文本}
     });
   }
 
-  function 构建正式战斗写回补丁(finalSnapshot = {}, createdInventoryAssets = []) {
+  function 构建正式战斗写回补丁(finalSnapshot = {}, createdInventoryAssets = [], postBattleCosts = []) {
     if (!finalSnapshot || typeof finalSnapshot !== 'object' || Array.isArray(finalSnapshot)) {
       throw new Error('battle_commit_final_snapshot_invalid');
     }
@@ -27114,6 +27119,40 @@ ${播报文本}
         addedDefinitions.add(assetId);
       });
     });
+    // 战后长期代价（用户 2026-11-12）：战斗里触发的本源损耗、重伤昏迷在这里落到角色身上。
+    // 本源损耗 N% → 等级上限永久降低 N 级（属性.等级惩罚，与「灵物反噬」「生命之火熄灭」同一个字段，高阶灵物可修复），并留一条常驻说明；
+    // 重伤昏迷 M 个月 → 状态「重伤昏迷」，时限 M × 30 天（每天 144 tick）。临时单位、刻意压制等级的参战者与上面一样不写回。
+    const 长期代价按角色 = new Map();
+    (Array.isArray(postBattleCosts) ? postBattleCosts : []).forEach(cost => {
+      const 单位ID = toText(cost?.unitId, '').trim(), 单位名 = toText(cost?.unitName, '').trim();
+      const participant = [...participants.team_player, ...participants.team_enemy].find(entry => entry && typeof entry === 'object' && (
+        单位ID && [entry.id, entry.角色ID, entry.uid].some(value => toText(value, '').trim() === 单位ID) ||
+        [单位名, 单位ID].filter(Boolean).includes(toText(entry.name || entry.名称, '').trim())));
+      if (!participant || toText(participant.来源, '').trim() === '临时单位' || participant.实力压制?.刻意压制等级 === true) return;
+      const charKey = resolveSnapshotCharKey(snapshot, toText(participant.name || participant.名称, '').trim());
+      if (!charKey) return;
+      const 数值 = Math.abs(Number(String(cost?.value ?? '').replace(/[+%-]/g, ''))) || 0;
+      const 记录 = 长期代价按角色.get(charKey) || { 等级: 0, 月数: 0 };
+      if (cost?.type === '本源损耗') 记录.等级 += Math.max(1, Math.round(数值 || 5));
+      else if (cost?.type === '重伤昏迷') 记录.月数 += Math.max(0, 数值 || 1);
+      else return;
+      长期代价按角色.set(charKey, 记录);
+    });
+    长期代价按角色.forEach((记录, charKey) => {
+      const 追加 = (pathSegments, value) => patchOps.push({ op: 'add', path: `/${pathSegments.map(escapeJsonPointerValue).join('/')}`, value });
+      if (记录.等级 > 0) {
+        const 当前惩罚 = Math.max(0, toNumber(deepGet(currentRoot, ['char', charKey, '属性', '等级惩罚'], 0), 0));
+        追加(['char', charKey, '属性', '等级惩罚'], 当前惩罚 + 记录.等级);
+        追加(['char', charKey, '属性', '状态效果', '本源损耗'], { 类型: 'debuff', 层数: 记录.等级,
+          描述: `本源受损，永久扣除${记录.等级}级等级上限（高阶灵物可修复）` });
+      }
+      if (记录.月数 > 0) {
+        const 持续tick = Math.max(1, Math.round(记录.月数 * 30 * 144));
+        const 当前tick = Number(deepGet(snapshot, 'rootData.world.时间.tick', NaN));
+        追加(['char', charKey, '属性', '状态效果', '重伤昏迷'], { 类型: 'debuff', 层数: 1, 描述: `战后重伤昏迷${记录.月数}个月`, 持续tick,
+          ...(Number.isFinite(当前tick) && 当前tick >= 0 ? { 结束tick: 当前tick + 持续tick } : {}) });
+      }
+    });
     if (addedDefinitions.size) {
       if (!currentRoot.物品) {
         追加战斗提交字段补丁(patchOps, currentRoot, ['物品'], itemDraft.物品);
@@ -27134,7 +27173,7 @@ ${播报文本}
       throw new Error('battle_runtime_package_verifier_missing');
     }
     const verifiedPackage = runtime.verifySealedBattlePackage(sealedPackage);
-    const patchOps = 构建正式战斗写回补丁(verifiedPackage.finalSnapshot, verifiedPackage.createdInventoryAssets);
+    const patchOps = 构建正式战斗写回补丁(verifiedPackage.finalSnapshot, verifiedPackage.createdInventoryAssets, verifiedPackage.postBattleCosts);
     runtime.verifySealedBattlePackage(verifiedPackage);
     await applyBattlePatchOpsByEditor(patchOps, {
       force: true,
