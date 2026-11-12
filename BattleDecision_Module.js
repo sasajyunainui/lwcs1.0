@@ -5314,14 +5314,16 @@
     // (the target: reactionWindupBudget; one stepping in: interceptWindupBudget) — won or even, nothing lands; lost, the
     // difference, with no roll to hit (BattlePreview clashOutcome).
     const move = preview.incomingMove(declaration) ? declaration : null;
-    const clashKeep = (unit, budget) => {
-      if (!move || !(budget >= 0)) return 1;
+    // 接战链 阶段 2d: by the confidence of its timing (BattlePreview clashTiming): the share missed lands whole.
+    const clashKeep = (unit, intercept) => {
+      if (!move) return 1;
       const shares = [];
       const tryMove = (answer, skill) => {
-        if (preview.actionWindup(unit, answer) > budget + 1e-9) return;
+        const confidence = preview.clashTiming(attacker, move, unit, answer, { intercept }).confidence;
+        if (!(confidence > 0)) return;
         if (skill && !directImmediateSkillEffects(skill).some(effect => effect?.原型 === '伤害结算')) return;
         const clash = preview.clashOutcome(unit, answer, attacker, move, world);
-        if (clash) shares.push(clash.inScale);
+        if (clash) shares.push(confidence * clash.inScale + (1 - confidence));
       };
       if (!hasStateFlag(unit, 'disarm')) tryMove({ actionKind: 'BASIC_ATTACK', targetIds: [preview.unitId(attacker)] }, null);
       if (!hasStateFlag(unit, 'silence')) for (const entry of affordablePreparedSkills(unit)) {
@@ -5330,14 +5332,14 @@
       }
       return shares.length ? Math.min(...shares) : 1;
     };
-    const lands = (unit, budget) => {
+    const lands = (unit, intercept) => {
       const maximum = Math.max(1, preview.readHpMax(unit)), left = (preview.readHp(unit) + preview.readShield(unit)) / maximum;
       const base = preview.calculateBaseActionValue(attacker, unit, { actionKind: basic ? 'BASIC_ATTACK' : 'RELEASE_SKILL',
         skill: basic ? null : declaration.skill, worldSnapshot: world, targetIds: [preview.unitId(unit)] }) / 100;
       const answers = !hasActionCancellation(unit) && !hasStateFlag(unit, 'cannot_react') && !preview.guardBrokenOf(unit, round);
       // A lost clash lets through its share of the whole unanswered move; `base` already carries the chance to hit, so
       // that share is read on the whole move's weight instead.
-      const clashed = answers ? clashKeep(unit, budget) : 1;
+      const clashed = answers ? clashKeep(unit, intercept) : 1;
       const weight = move ? Number(preview.incomingHitShare(attacker, move, unit, world)) || 0 : 0;
       const keep = answers ? Math.min(preview.calculateDefenseDamageMultiplier(unit, attacker, false), 1 - preview.calculateDodgeProbability(unit, attacker, false),
         clashed < 1 && base > 0 ? clashed * weight / base : 1) : 1;
@@ -5348,13 +5350,13 @@
     const enemies = preview.listUnits(world).filter(entry => entry.side !== side && preview.isBattleCapable(entry.unit)).map(entry => entry.unit);
     const action = unit => Math.max(0, ...enemies.map(enemy => preview.calculateBaseActionValue(unit, enemy, { actionKind: 'BASIC_ATTACK', worldSnapshot: world }) / 100)) *
       Math.max(1, knownRoutineAttackRatio(unit));
-    // 接战链 阶段 2c: the clash window (BattlePreview clashWindupBudget), INTERCEPT_WINDUP less for one stepping in.
-    const spared = lands(target, preview.clashWindupBudget(attacker, declaration, target));
+    // 接战链 阶段 2c/2d: the clash window (BattlePreview clashTiming), INTERCEPT_WINDUP less for one stepping in.
+    const spared = lands(target, false);
     let best = '', bestGain = INTERCEPT_MARGIN;
     for (const id of Array.isArray(input.candidateIds) ? input.candidateIds : []) {
       const unit = findUnitInWorld(world, id);
       if (!unit || unit === target) continue;
-      const gain = spared - lands(unit, preview.clashWindupBudget(attacker, declaration, unit, { intercept: true })) - action(unit);
+      const gain = spared - lands(unit, true) - action(unit);
       if (gain > bestGain) { bestGain = gain; best = String(id); }
     }
     return best;
@@ -5893,13 +5895,15 @@
     const preemptAllowed = opportunity.intercept !== true;
     // 接战链 阶段 2c: a clash has its own, narrower window (BattlePreview clashWindupBudget: no defender's margin, × (1 +
     // CLASH_READ_MARGIN); INTERCEPT_WINDUP less for an ally that stepped in) — the runtime holds it to the same.
-    const clashBudget = preview.clashWindupBudget(source, incomingMove, actor, { intercept: opportunity.intercept === true });
+    // 接战链 阶段 2d (方案 §11.3): offered while the timing the unit sees leaves it any confidence (clashTiming), as a
+    // preemption is; the valuation weighs the confidence and the runtime holds the move to the true window.
+    const clashConfidence = declaration => preview.clashTiming(source, incomingMove, actor, declaration, { intercept: opportunity.intercept === true }).confidence;
     const out = [];
     if (clashable && !hasStateFlag(actor, 'disarm')) {
       const id = `${actorId}:clash:basic`;
       const declaration = { actionId: id, actorId, actionKind: 'BASIC_ATTACK', targetIds: [sourceId], skill: basicAttackSkill(actor),
         engagement: engagement('CLASH') };
-      if (preview.actionWindup(actor, declaration) <= clashBudget + 1e-9) out.push({ candidateId: id, declaration });
+      if (clashConfidence(declaration) > 0) out.push({ candidateId: id, declaration });
     }
     if (hasStateFlag(actor, 'silence') || preview.isSummonSkillDisabled(actor)) return out;
     const intensity = preview.battleIntensity(worldSnapshot, input.battleIntent);
@@ -5923,8 +5927,7 @@
       if (preview.resolveFusionAction(worldSnapshot, actor, skill, { resourceCosts: costs, requirePendingOpportunity: true }).required) return;
       const sourceSkillId = skillId(sourceSkill, index);
       const base = { actorId, actionKind: 'RELEASE_SKILL', targetIds: [sourceId], skill, resourceCosts: costs };
-      const windup = preview.actionWindup(actor, base);
-      if (damaging && windup <= clashBudget + 1e-9) {
+      if (damaging && clashConfidence(base) > 0) {
         const id = `${actorId}:clash:${sourceSkillId}`;
         out.push({ candidateId: id, declaration: { ...base, actionId: id, engagement: engagement('CLASH') }, skill, costs,
           resourcePotentialOnly: false, creation: null });
@@ -65601,7 +65604,24 @@
   // takes the same price, and keeps the stamina clock besides. The table's expectation of an answer (r20Meet) and the
   // answering unit's own choice price an answer by this one function.
   const R20_DEFEND_ANSWER = Object.freeze({ actionKind: 'DEFEND' }), R20_EVADE_ANSWER = Object.freeze({ actionKind: 'EVADE' });
+  // 接战链 阶段 2d (方案 §11.5): the price depends only on the answering unit, the move and the attacker, so it is kept for
+  // the decision (the units are the decision's own snapshots; a new decision has new ones): by unit, attacker and the
+  // move's skill (or its kind). A declaration carrying its own resourceCosts is priced afresh.
+  const r20AnswerPrices = new WeakMap();
   function r20AnswerPrice(unit, attacker, declaration = {}) {
+    const cacheable = unit && typeof unit === 'object' && attacker && typeof attacker === 'object' && !declaration?.resourceCosts;
+    const moveKey = declaration?.skill && typeof declaration.skill === 'object' ? declaration.skill : String(declaration?.actionKind || '').toUpperCase();
+    let byAttacker = cacheable ? r20AnswerPrices.get(unit) : null, byMove = byAttacker?.get(attacker);
+    if (byMove?.has(moveKey)) return byMove.get(moveKey);
+    const price = r20AnswerPriceUncached(unit, attacker, declaration);
+    if (cacheable) {
+      if (!byAttacker) r20AnswerPrices.set(unit, byAttacker = new WeakMap());
+      if (!byMove) byAttacker.set(attacker, byMove = new Map());
+      byMove.set(moveKey, price);
+    }
+    return price;
+  }
+  function r20AnswerPriceUncached(unit, attacker, declaration = {}) {
     const shares = { sp: 0, men: 0, vit: 0 };
     const labels = { sp: '魂力', men: '精神力', vit: '体力' };
     if (String(declaration?.actionKind || '').toUpperCase() === 'RELEASE_SKILL' && declaration.skill) {
@@ -65632,8 +65652,7 @@
     let byAttacker = incoming ? null : r20Engages.get(unit);
     if (byAttacker?.has(attacker)) return byAttacker.get(attacker);
     const move = incoming || R20_ASSUMED_MOVE, attackerId = preview.unitId(attacker);
-    // 接战链 阶段 2c: a clash fits the clash window (BattlePreview clashWindupBudget).
-    const budget = preview.clashWindupBudget(attacker, move, unit);
+
     const strikes = [], stops = [];
     const consider = (declaration, skill) => {
       let price = null;
@@ -65642,10 +65661,12 @@
         const profile = targetProfile(skill);
         if (!['HOSTILE_SINGLE', 'ANY_SINGLE', 'HOSTILE_GROUP'].includes(profile)) return;
       }
-      const windup = preview.actionWindup(unit, declaration);
-      if (windup <= budget + 1e-9 && (!skill || directImmediateSkillEffects(skill).some(effect => effect?.原型 === '伤害结算'))) {
+      // 接战链 阶段 2d: a clash by the confidence of its timing (BattlePreview clashTiming, on the agility the unit sees).
+      const clashConfidence = !skill || directImmediateSkillEffects(skill).some(effect => effect?.原型 === '伤害结算')
+        ? preview.clashTiming(attacker, move, unit, declaration).confidence : 0;
+      if (clashConfidence > 0) {
         const strike = Number(preview.incomingMoveDamage(unit, declaration, attacker, r20World)) || 0;
-        if (strike > 0) strikes.push({ strike, price: priced() });
+        if (strike > 0) strikes.push({ strike, price: priced(), confidence: clashConfidence });
       }
       // 接战链 阶段二补充: a control that stops this move's kind (a known move; else a skill or a basic attack), by the
       // confidence the timing the unit sees gives it (preemptTiming confidence).
@@ -65691,11 +65712,15 @@
     if (held) { const chosen = options.find(option => option.kind === held) || options[0]; return { ...chosen, defends: chosen.kind === 'DEFEND' }; }
     const theirs = Number(weight) > 0 ? Number(weight) * stand.hpMax : 0;
     const win = Number(preview.ENGAGEMENT_RULES?.CLASH_WIN) || 1.2, shock = Number(preview.ENGAGEMENT_RULES?.CLASH_SHOCK) || 0;
-    if (theirs > 0) for (const { strike, price } of stand.strikes || []) {
+    if (theirs > 0) for (const { strike, price, confidence = 1 } of stand.strikes || []) {
       const ratio = strike / theirs;
-      options.push(ratio >= win ? { kind: 'CLASH', keep: 0, share: 0, lands: 0, answer: stand.catch, back: (strike - theirs) / stand.attackerHpMax, price }
-        : ratio > 1 / win ? { kind: 'CLASH', keep: stand.soak * shock, share: shock, lands: 0, answer: stand.catch, back: shock * strike / stand.attackerHpMax, price }
-          : { kind: 'CLASH', keep: stand.soak * (1 - ratio), share: 1 - ratio, lands: 1, answer: 0, back: 0, price });
+      const met = ratio >= win ? { keep: 0, share: 0, lands: 0, answer: stand.catch, back: (strike - theirs) / stand.attackerHpMax }
+        : ratio > 1 / win ? { keep: stand.soak * shock, share: shock, lands: 0, answer: stand.catch, back: shock * strike / stand.attackerHpMax }
+          : { keep: stand.soak * (1 - ratio), share: 1 - ratio, lands: 1, answer: 0, back: 0 };
+      // 接战链 阶段 2d: thrown too late (1 − confidence) it comes to nothing and the hit lands whole, unguarded.
+      const late = 1 - confidence;
+      options.push({ kind: 'CLASH', keep: confidence * met.keep + late * stand.soak, share: confidence * met.share + late,
+        lands: confidence * met.lands + late, answer: confidence * met.answer, back: confidence * met.back, price });
     }
     for (const { stop, price } of stand.stops || []) {
       options.push({ kind: 'PREEMPT', keep: stand.soak * (1 - stop), share: 1 - stop, lands: 1 - stop, answer: stop * stand.catch, back: 0, price });
@@ -66418,6 +66443,16 @@
       // action it spends on the move (BattleRuntime consumeStructuredControlActiveBudget).
       const engagementMode = String(declaration?.engagement?.mode || '').toUpperCase();
       const clash = engagementMode === 'CLASH' && move ? preview.clashOutcome(table.units[actorRow], declaration, source, move, table.world) : null;
+      // 接战链 阶段 2d (方案 §11.3): the clash is in time as often as the timing the actor sees lets it be sure
+      // (clashTiming confidence; the runtime reads the true agility). Too late, the actor's move comes to nothing and
+      // the move lands whole, unguarded: what the actor's move lands on the attacker counts only when it is in time.
+      const clashConfidence = clash ? preview.clashTiming(source, move, table.units[actorRow], declaration,
+        { intercept: request.actionOpportunity?.intercept === true }).confidence : 1;
+      if (clash && clashConfidence < 1 && sourceRow !== undefined) {
+        const lost = Math.max(0, table.remaining[sourceRow] - remaining[sourceRow]);
+        remaining[sourceRow] = Math.max(0, table.remaining[sourceRow] - clashConfidence * lost);
+        alive[sourceRow] = 1 - clashConfidence * (1 - alive[sourceRow]);
+      }
       // 接战链 阶段二补充: a state that stops this move's kind holds it too (封技 a skill, 缴械 a basic attack), and only if the
       // control is in first — the confidence the timing the actor sees gives it (preemptTiming; §8.4 "看走眼就该白挨"). A
       // move whose attacker is down comes to nothing whoever was first.
@@ -66431,7 +66466,7 @@
       const priorActor = Number(request.actionOpportunity?.counterPrior || 0), priorSource = Number(request.actionOpportunity?.opponentCounterPrior || 0);
       const catches = preview.counterOpeningProbability(actorNext, source, move, { prior: priorActor });
       const strikesBack = actionKind === 'DEFEND' ? (preview.guardHolds(weight, share * r20Soak(actorNext)) ? catches : 0)
-        : actionKind === 'EVADE' ? dodge * catches : clash ? (clash.answered ? catches : 0) : engagementMode === 'PREEMPT' ? preempt * catches
+        : actionKind === 'EVADE' ? dodge * catches : clash ? (clash.answered ? clashConfidence * catches : 0) : engagementMode === 'PREEMPT' ? preempt * catches
           : preview.declarationGrantsCounter(declaration || {}) ? 1 : 0;
       const staminaMaximum = preview.readResourceMax(actorNext, '体力'), maximum = Math.max(1, preview.readHpMax(actorNext)), shield = preview.readShield(actorNext) / maximum;
       // 接战链 阶段 2c: what the answer costs, priced by the same function the table's expectation of an answer uses.
@@ -66440,7 +66475,7 @@
         ? preview.actionStaminaCost(actorNext, actionKind, source) / staminaMaximum : 0;
       // What of the move lands on the actor, a share of its HP maximum.
       // A clash: won, nothing; even, CLASH_SHOCK of the move; lost, the difference (clashOutcome inScale).
-      const taken = clash ? clash.theirs * clash.inScale / maximum * r20Soak(actorNext) : hit * share;
+      const taken = clash ? clashConfidence * clash.theirs * clash.inScale / maximum * r20Soak(actorNext) + (1 - clashConfidence) * hit : hit * share;
       const hpLeft = Math.max(0, preview.readHp(actorNext) - r20Floor(actorNext)) / maximum + shield - taken;
       remaining[actorRow] = Math.max(0, hpLeft);
       // Stamina: the hit takes its share and the answer costs its rate.

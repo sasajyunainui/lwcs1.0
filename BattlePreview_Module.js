@@ -1714,7 +1714,12 @@
   // so in-battle buffs and stamina decay do not change the price.
   // 接战链 阶段二补充 (§8.5: 体力通常是车轮战才会导致不支): every rate ×0.7 of the 2026-11-11 values (ATTACK 0.025, DEFEND 0.015,
   // EVADE 0.02, SKILL_DEFEND 0.015, SKILL_EVADE 0.02, OTHER 0.015).
-  const ACTION_STAMINA_RATES = Object.freeze({ ATTACK: 0.0175, DEFEND: 0.0105, EVADE: 0.014, SKILL_DEFEND: 0.0105, SKILL_EVADE: 0.014, OTHER: 0.0105 });
+  // 接战链 阶段 2d (方案 §11.4: 体力影响对局中的实时状态，但通常只有车轮战才会打到不支): the whole table scaled once more by
+  // ACTION_STAMINA_SCALE, the proportions between the natures kept; the target is stamina exhaustion under a tenth of
+  // the exits of single battles. A starting value.
+  const ACTION_STAMINA_SCALE = 0.6;
+  const ACTION_STAMINA_BASE_RATES = Object.freeze({ ATTACK: 0.0175, DEFEND: 0.0105, EVADE: 0.014, SKILL_DEFEND: 0.0105, SKILL_EVADE: 0.014, OTHER: 0.0105 });
+  const ACTION_STAMINA_RATES = Object.freeze(Object.fromEntries(Object.entries(ACTION_STAMINA_BASE_RATES).map(([nature, rate]) => [nature, rate * ACTION_STAMINA_SCALE])));
   const ACTION_STAMINA_RATIO_CAP = 4;
   // On unless a world opts out with 战斗规则.行动体力消耗 === false, or the host's default battle rules do
   // (root.__LWCS_DEFAULT_BATTLE_RULES__, set by isolation fixtures that measure other resources).
@@ -1906,14 +1911,29 @@
   // the initiative: a quick move is hard to meet, a slow one easy. An attack charged past the action budget still leaves
   // the whole budget. Guarding, evading and response skills keep REACTION_DEFENDER_MARGIN, a preemption its own timing
   // (preemptTiming); an ally that stepped in (援护) clashes on this window less INTERCEPT_WINDUP. Negative: no move fits.
-  // The number is a starting value.
-  const CLASH_READ_MARGIN = -0.2;
+  // The number is a starting value. 接战链 阶段 2d (方案 §11.2): −0.2 measured too narrow — clashes fell from 47% of the
+  // answers to 7% and 30 of 40 units could not meet a basic attack of their own speed with anything — so the margin is
+  // halved, same direction: × 0.9, a window of 18 against a basic attack of equal speed (a move a tenth quicker than a
+  // basic attack meets it, a basic attack does not meet a basic attack).
+  const CLASH_READ_MARGIN = -0.1;
   function clashWindupBudget(attacker = {}, declaration = {}, reactor = {}, options = {}) {
     const windup = actionWindup(attacker, declaration), intercept = options?.intercept === true ? INTERCEPT_WINDUP : 0;
     const attackerAgility = naturalActionOrderProfile(attacker).effectiveAgility;
     const span = windup > CONTINUOUS_ACTION_BUDGET || !(attackerAgility > 0) ? CONTINUOUS_ACTION_BUDGET
       : Math.min(CONTINUOUS_ACTION_BUDGET, windup * (naturalActionOrderProfile(reactor).effectiveAgility / attackerAgility) * (1 + CLASH_READ_MARGIN));
     return span - intercept;
+  }
+  // 接战链 阶段 2d (方案 §11.3: 对轰也要算"看走眼"的把握): whether `reactor`'s `declaration` fits the clash window against
+  // `attacker`'s move (`inTime`: the rule, read on whatever agility the units carry — the runtime's are true, a decision's
+  // believed), and the confidence a decision has in it: margin = the window's room over the move's own windup, (window −
+  // own) ÷ own (a move of no windup inside a window that is not shut: sure) — PREEMPT_SURE_MARGIN or more to spare counts
+  // as sure (1), none as an even chance (0.5), PREEMPT_SURE_MARGIN or more short as hopeless (0), linear between; as
+  // preemptTiming does for a preemption.
+  function clashTiming(attacker = {}, incomingDeclaration = {}, reactor = {}, declaration = {}, options = {}) {
+    const window = clashWindupBudget(attacker, incomingDeclaration, reactor, options), own = actionWindup(reactor, declaration);
+    const margin = own > 0 ? (window - own) / own : window >= 0 ? Infinity : -Infinity;
+    return Object.freeze({ window, own, margin, inTime: own <= window + 1e-9,
+      confidence: margin === Infinity ? 1 : margin === -Infinity ? 0 : clamp(0.5 + 0.5 * margin / PREEMPT_SURE_MARGIN, 0, 1) });
   }
 
   function actionStaminaCost(actor = {}, nature = '', opponent = null) {
@@ -22324,6 +22344,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     reactionWindupBudget,
     interceptWindupBudget,
     clashWindupBudget,
+    clashTiming,
     basicAttackWindup,
     CONTINUOUS_ACTION_BUDGET,
     refreshStaminaAdjustedFinal,
@@ -22350,6 +22371,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     fusionSkillMetadata,
     fusionChargeHost,
     ACTION_STAMINA_RATES,
+    ACTION_STAMINA_SCALE,
     resolveFusionAction,
     effectConditionEnabled,
     resolveConditionalEffectPlan,

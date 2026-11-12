@@ -13311,9 +13311,9 @@
     // 接战链 阶段 2c: the answering move must fit the clash window (BattlePreview clashWindupBudget, the attack read on the
     // true agility; an ally that stepped in has INTERCEPT_WINDUP less). Thrown too late (LATE) it comes to nothing and the
     // move lands on the answerer unguarded, rolling to hit as ever — a misjudged speed is paid for, as with preempting.
-    const clashWindow = mode === 'CLASH' ? previewRuntime.clashWindupBudget(sourceActor, incomingDeclaration, reactor, { intercept: input?.intercept === true }) : null;
-    const clashWindup = mode === 'CLASH' ? previewRuntime.actionWindup(reactor, declaration) : null;
-    const clashInTime = mode !== 'CLASH' || clashWindup <= clashWindow + 1e-9;
+    const clashTiming = mode === 'CLASH' ? previewRuntime.clashTiming(sourceActor, incomingDeclaration, reactor, declaration, { intercept: input?.intercept === true }) : null;
+    const clashWindow = clashTiming ? clashTiming.window : null, clashWindup = clashTiming ? clashTiming.own : null;
+    const clashInTime = mode !== 'CLASH' || clashTiming.inTime;
     const clashResult = mode === 'CLASH' ? !clashInTime ? 'LATE' : clash?.result || 'LOSE' : '';
     const timing = mode === 'PREEMPT' ? previewRuntime.preemptTiming(reactor, declaration, sourceActor, incomingDeclaration) : null;
     const couldAct = structuredActorCanAct(sourceActor, 'ACTIVE');
