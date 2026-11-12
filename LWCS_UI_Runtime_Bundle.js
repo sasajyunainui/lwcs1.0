@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:e07a8edcaf5611f2743a88aa43ca615ccdd2792c12632b8c552a791d0501a1c4|cockpit/designer-model.js:8dc86d2da42d0e8a9eb685997bb3c524dc0aaa4c344eed4a9f7b201d8b09b590|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:432470d08e4ffbc314d59280d8494ce7689401896380cfae89aa07067a180473|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:31b84a896b0ecfd57ec9274ce575c48b55e1b1fc779106dc6eb734c699584cc8|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:1e381bcd1358b71b1fa7b2c792ae60b8c081c15c945b4e1c52815e415d976fc7|BehaviorDecisionPipeline_Module.js:310cde745a4f74f297fad02f931e687b884fb150e19c7005d82894515eb5e5f6|BattleDecision_Module.js:5af209a18c84b8e8e0c473f6a1aca246076de8e8ba7423a6fa425b52f083b4c6|BattleRuntime_Module.js:e52ed69d1901a6eaf72111b1fa5eac0f419ca7419141790572772d3217a703d8|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:981503b2b0bb5bf4d804320e5cd7406d97cd63fd3080e0db1910dccfd1ce271d|Database_Module.js:a08adc7704e9deda80e7a7eaca7c9dab74ced979fe47024b8e73c19ca2c6178e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:e07a8edcaf5611f2743a88aa43ca615ccdd2792c12632b8c552a791d0501a1c4|cockpit/designer-model.js:8dc86d2da42d0e8a9eb685997bb3c524dc0aaa4c344eed4a9f7b201d8b09b590|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:432470d08e4ffbc314d59280d8494ce7689401896380cfae89aa07067a180473|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:dc59529e5c35cc468d31a2f0afaf2d6a239bfeeeecca3b556628f16d858211b3|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:1e381bcd1358b71b1fa7b2c792ae60b8c081c15c945b4e1c52815e415d976fc7|BehaviorDecisionPipeline_Module.js:310cde745a4f74f297fad02f931e687b884fb150e19c7005d82894515eb5e5f6|BattleDecision_Module.js:5af209a18c84b8e8e0c473f6a1aca246076de8e8ba7423a6fa425b52f083b4c6|BattleRuntime_Module.js:e52ed69d1901a6eaf72111b1fa5eac0f419ca7419141790572772d3217a703d8|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:981503b2b0bb5bf4d804320e5cd7406d97cd63fd3080e0db1910dccfd1ce271d|Database_Module.js:a08adc7704e9deda80e7a7eaca7c9dab74ced979fe47024b8e73c19ca2c6178e */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -51138,21 +51138,23 @@ ${播报文本}
     const k = txt(e.结算), d = SETTLE[k], el = txt(e.限定元素).replace(/^无$/, ''), pre = el ? `${el}系` : '';
     if (d) { const down = neg(e), good = d[3] ? down : !down;
       return { icon: d[0], title: pre + (down ? d[2] : d[1]), good, mag: true }; }
+    // 这些结算的数值都是正向百分比，标题已说明作用，数值只给幅度；易混的几项悬停说明区别（同设计台原型说明）
+    const to = txt(e.转移对象) || '攻击者';
     const T = {
-      反伤: ['arrow-rotate-left', '反伤'],
-      伤害转移: ['people-arrows', `伤害转给${txt(e.转移对象) || '攻击者'}`],
-      伤害吸收: ['magnet', absorbTitle(txt(e.吸收来源) || '造成伤害', txt(e.吸收资源) || '生命')],
-      伤害转治疗: ['heart-circle-plus', '伤害转为治疗'],
-      治疗转伤害: ['heart-crack', '治疗转为伤害'],
-      伤害分摊: ['users', '伤害分摊'],
-      消耗分摊: ['users', '消耗分摊'],
-      防御穿透: ['hammer', '破甲'],
-      防御剥夺: ['shield-virus', '削减防御'],
-      精神抗性剥夺: ['brain', '削减精神抗性'],
-      反击: ['hand-fist', '反击'],
-      持续伤害引爆: ['explosion', '引爆持续伤害'],
+      反伤: ['arrow-rotate-left', '反伤', '自己照常承受伤害，再按比例把伤害反弹给攻击者'],
+      伤害转移: ['people-arrows', `受伤转嫁给${to}`, `受到的伤害按比例改由${to}承担，自己少受这部分；不同于反伤（反伤自己照常承受）`],
+      伤害吸收: ['magnet', absorbTitle(txt(e.吸收来源) || '造成伤害', txt(e.吸收资源) || '生命'), '按比例把伤害量转成资源'],
+      伤害转治疗: ['heart-circle-plus', '伤害转为治疗', '受到的伤害按比例变成治疗'],
+      治疗转伤害: ['heart-crack', '治疗转为伤害', '受到的治疗按比例变成伤害'],
+      伤害分摊: ['users', '伤害分摊', '受到的伤害按比例分给队友承担'],
+      消耗分摊: ['users', '消耗分摊', '施放消耗按比例分给队友承担'],
+      防御穿透: ['hammer', '破甲', '无视目标一部分防御'],
+      防御剥夺: ['shield-virus', '削减防御', ''],
+      精神抗性剥夺: ['brain', '削减精神抗性', ''],
+      反击: ['hand-fist', '反击', '受击后按比例发动一次攻击'],
+      持续伤害引爆: ['explosion', '引爆持续伤害', '把目标身上的持续伤害提前一次性结算'],
     }[k];
-    return T ? { icon: T[0], title: pre + T[1] } : { icon: 'shield-halved', title: `${k || '结算'}修正` };
+    return T ? { icon: T[0], title: pre + T[1], mag: true, hint: T[2] } : { icon: 'shield-halved', title: `${k || '结算'}修正` };
   };
   const FX = {
     资源变化: e => ({ icon: String(e.资源 || '').includes('魂力') ? 'fire-flame-curved' : 'heart-pulse', title: `${neg(e) ? '削减' : '恢复'}${txt(e.资源) || '资源'}` }),
@@ -51175,14 +51177,24 @@ ${播报文本}
     决策干扰: e => ({ icon: 'brain', title: txt(e.干扰) || '决策干扰' }),
     修炼增益: e => ({ icon: 'seedling', title: `${txt(e.修炼属性) || txt(e.训练方式) || '修炼'}增益` }),
     召唤生成: e => ({ icon: 'ghost', title: `召唤${txt(e.召唤物名称) || txt(e.召唤单位类型) || ''}` }),
+    机制授予: () => ({ icon: 'bolt', title: '获得能力' }),
   };
   const fxOf = e => (FX[e.原型] || (() => ({ icon: 'bolt', title: e.原型 || '效果' })))(e);
   // 数值：伤害结算没有「数值」，给威力倍率（百分比口径，基准 100）与段数
   const fxVal = (c, e) => !c.blank(e.数值) ? String(e.数值).trim().replace(fxOf(e).mag ? /^[+-]\s*/ : /^$/, '') : e.原型 === '伤害结算' && e.威力倍率 != null ? `${e.威力倍率}%${Number(e.攻击段数) > 1 ? ` × ${e.攻击段数} 段` : ''}` : '';
   const fxRow = (c, e) => {
+    if (e.原型 === '机制授予') return grantRow(c, e);
     const f = fxOf(e), down = f.good === undefined ? neg(e) : !f.good;
     const meta = [e.目标, e.持续回合 ? `持续 ${c.fmt(e.持续回合)} 回合` : '', e.生效方式].filter(Boolean).map(c.esc).join(' · ');
-    return `<div class="fx"><span class="ic ${down ? 'down' : ''}"><i class="fa-solid fa-${f.icon}"></i></span><strong>${c.esc(f.title)}</strong><span class="v ${down ? 'down' : ''}">${c.esc(fxVal(c, e))}</span><small>${meta}</small></div>`;
+    return `<div class="fx"><span class="ic ${down ? 'down' : ''}"><i class="fa-solid fa-${f.icon}"></i></span><strong${f.hint ? ` data-hint="${c.esc(f.hint)}"` : ''}>${c.esc(f.title)}</strong><span class="v ${down ? 'down' : ''}">${c.esc(fxVal(c, e))}</span><small>${meta}</small></div>`;
+  };
+  // 机制授予是容器：不单列一行「机制授予」，头部写谁获得、何时生效、可用次数，下面直接列授予的效果
+  const GRANT_WHEN = { 主动触发: '主动使用时生效', 随下次行动触发: '下次行动时生效', 下次魂技成功释放: '下次魂技成功释放时生效' };
+  const GRANT_WHO = { 自身: '自身获得', 单体: '目标获得', 群体: '群体获得', 全场: '全场获得' };
+  const grantRow = (c, e) => {
+    const bits = [GRANT_WHEN[e.触发条件] || e.触发条件 || GRANT_WHEN.主动触发, e.可用次数 ? `可用 ${c.fmt(e.可用次数)} 次` : '', e.持续回合 ? `持续 ${c.fmt(e.持续回合)} 回合` : ''].filter(Boolean).map(c.esc).join(' · ');
+    const rows = (e.授予效果 || []).map(x => fxRow(c, x) + (x.条件分支 || []).map(b => branchRow(c, b)).join('')).join('');
+    return `<div class="fx-grant"><div class="fx-grant-h"><i class="fa-solid fa-bolt"></i><b>${c.esc(GRANT_WHO[e.目标] || `${e.目标 || '自身'}获得`)}</b><span>${bits}</span></div>${rows || '<small>未填写授予效果</small>'}</div>`;
   };
   const branchRow = (c, b) => {
     const cond = (b.条件 || []).map(x => `${x.类型 === '使用者' ? '食用者' : c.esc(x.类型)}是${c.esc(x.值)}`).join('且');
