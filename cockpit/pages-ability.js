@@ -74,21 +74,23 @@
     const k = txt(e.结算), d = SETTLE[k], el = txt(e.限定元素).replace(/^无$/, ''), pre = el ? `${el}系` : '';
     if (d) { const down = neg(e), good = d[3] ? down : !down;
       return { icon: d[0], title: pre + (down ? d[2] : d[1]), good, mag: true }; }
+    // 这些结算的数值都是正向百分比，标题已说明作用，数值只给幅度；易混的几项悬停说明区别（同设计台原型说明）
+    const to = txt(e.转移对象) || '攻击者';
     const T = {
-      反伤: ['arrow-rotate-left', '反伤'],
-      伤害转移: ['people-arrows', `伤害转给${txt(e.转移对象) || '攻击者'}`],
-      伤害吸收: ['magnet', absorbTitle(txt(e.吸收来源) || '造成伤害', txt(e.吸收资源) || '生命')],
-      伤害转治疗: ['heart-circle-plus', '伤害转为治疗'],
-      治疗转伤害: ['heart-crack', '治疗转为伤害'],
-      伤害分摊: ['users', '伤害分摊'],
-      消耗分摊: ['users', '消耗分摊'],
-      防御穿透: ['hammer', '破甲'],
-      防御剥夺: ['shield-virus', '削减防御'],
-      精神抗性剥夺: ['brain', '削减精神抗性'],
-      反击: ['hand-fist', '反击'],
-      持续伤害引爆: ['explosion', '引爆持续伤害'],
+      反伤: ['arrow-rotate-left', '反伤', '自己照常承受伤害，再按比例把伤害反弹给攻击者'],
+      伤害转移: ['people-arrows', `受伤转嫁给${to}`, `受到的伤害按比例改由${to}承担，自己少受这部分；不同于反伤（反伤自己照常承受）`],
+      伤害吸收: ['magnet', absorbTitle(txt(e.吸收来源) || '造成伤害', txt(e.吸收资源) || '生命'), '按比例把伤害量转成资源'],
+      伤害转治疗: ['heart-circle-plus', '伤害转为治疗', '受到的伤害按比例变成治疗'],
+      治疗转伤害: ['heart-crack', '治疗转为伤害', '受到的治疗按比例变成伤害'],
+      伤害分摊: ['users', '伤害分摊', '受到的伤害按比例分给队友承担'],
+      消耗分摊: ['users', '消耗分摊', '施放消耗按比例分给队友承担'],
+      防御穿透: ['hammer', '破甲', '无视目标一部分防御'],
+      防御剥夺: ['shield-virus', '削减防御', ''],
+      精神抗性剥夺: ['brain', '削减精神抗性', ''],
+      反击: ['hand-fist', '反击', '受击后按比例发动一次攻击'],
+      持续伤害引爆: ['explosion', '引爆持续伤害', '把目标身上的持续伤害提前一次性结算'],
     }[k];
-    return T ? { icon: T[0], title: pre + T[1] } : { icon: 'shield-halved', title: `${k || '结算'}修正` };
+    return T ? { icon: T[0], title: pre + T[1], mag: true, hint: T[2] } : { icon: 'shield-halved', title: `${k || '结算'}修正` };
   };
   const FX = {
     资源变化: e => ({ icon: String(e.资源 || '').includes('魂力') ? 'fire-flame-curved' : 'heart-pulse', title: `${neg(e) ? '削减' : '恢复'}${txt(e.资源) || '资源'}` }),
@@ -111,14 +113,24 @@
     决策干扰: e => ({ icon: 'brain', title: txt(e.干扰) || '决策干扰' }),
     修炼增益: e => ({ icon: 'seedling', title: `${txt(e.修炼属性) || txt(e.训练方式) || '修炼'}增益` }),
     召唤生成: e => ({ icon: 'ghost', title: `召唤${txt(e.召唤物名称) || txt(e.召唤单位类型) || ''}` }),
+    机制授予: () => ({ icon: 'bolt', title: '获得能力' }),
   };
   const fxOf = e => (FX[e.原型] || (() => ({ icon: 'bolt', title: e.原型 || '效果' })))(e);
   // 数值：伤害结算没有「数值」，给威力倍率（百分比口径，基准 100）与段数
   const fxVal = (c, e) => !c.blank(e.数值) ? String(e.数值).trim().replace(fxOf(e).mag ? /^[+-]\s*/ : /^$/, '') : e.原型 === '伤害结算' && e.威力倍率 != null ? `${e.威力倍率}%${Number(e.攻击段数) > 1 ? ` × ${e.攻击段数} 段` : ''}` : '';
   const fxRow = (c, e) => {
+    if (e.原型 === '机制授予') return grantRow(c, e);
     const f = fxOf(e), down = f.good === undefined ? neg(e) : !f.good;
     const meta = [e.目标, e.持续回合 ? `持续 ${c.fmt(e.持续回合)} 回合` : '', e.生效方式].filter(Boolean).map(c.esc).join(' · ');
-    return `<div class="fx"><span class="ic ${down ? 'down' : ''}"><i class="fa-solid fa-${f.icon}"></i></span><strong>${c.esc(f.title)}</strong><span class="v ${down ? 'down' : ''}">${c.esc(fxVal(c, e))}</span><small>${meta}</small></div>`;
+    return `<div class="fx"><span class="ic ${down ? 'down' : ''}"><i class="fa-solid fa-${f.icon}"></i></span><strong${f.hint ? ` data-hint="${c.esc(f.hint)}"` : ''}>${c.esc(f.title)}</strong><span class="v ${down ? 'down' : ''}">${c.esc(fxVal(c, e))}</span><small>${meta}</small></div>`;
+  };
+  // 机制授予是容器：不单列一行「机制授予」，头部写谁获得、何时生效、可用次数，下面直接列授予的效果
+  const GRANT_WHEN = { 主动触发: '主动使用时生效', 随下次行动触发: '下次行动时生效', 下次魂技成功释放: '下次魂技成功释放时生效' };
+  const GRANT_WHO = { 自身: '自身获得', 单体: '目标获得', 群体: '群体获得', 全场: '全场获得' };
+  const grantRow = (c, e) => {
+    const bits = [GRANT_WHEN[e.触发条件] || e.触发条件 || GRANT_WHEN.主动触发, e.可用次数 ? `可用 ${c.fmt(e.可用次数)} 次` : '', e.持续回合 ? `持续 ${c.fmt(e.持续回合)} 回合` : ''].filter(Boolean).map(c.esc).join(' · ');
+    const rows = (e.授予效果 || []).map(x => fxRow(c, x) + (x.条件分支 || []).map(b => branchRow(c, b)).join('')).join('');
+    return `<div class="fx-grant"><div class="fx-grant-h"><i class="fa-solid fa-bolt"></i><b>${c.esc(GRANT_WHO[e.目标] || `${e.目标 || '自身'}获得`)}</b><span>${bits}</span></div>${rows || '<small>未填写授予效果</small>'}</div>`;
   };
   const branchRow = (c, b) => {
     const cond = (b.条件 || []).map(x => `${x.类型 === '使用者' ? '食用者' : c.esc(x.类型)}是${c.esc(x.值)}`).join('且');

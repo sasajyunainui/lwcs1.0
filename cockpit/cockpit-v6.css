@@ -141,3 +141,12 @@ details.fold[open]>summary::after{content:" －"}
 .mk.dest .mk-base{left:-12px;top:-6px;width:24px;height:12px}
 .chip.s.gd{color:#ffe3a1;background:rgba(255,211,107,.12);box-shadow:inset 0 0 0 1px rgba(255,211,107,.5)}
 .chip.s.dst{color:#ffb3d6;background:rgba(255,122,182,.12);box-shadow:inset 0 0 0 1px rgba(255,122,182,.55)}
+/* 机制授予：容器分组，头部写谁获得 / 何时生效 / 可用次数，下面是授予的效果 */
+.fx-grant{display:grid;gap:.45em;padding:.5em .55em .55em .7em;background:rgba(255,214,120,.06);box-shadow:inset 2px 0 0 rgba(255,210,112,.75)}
+.fx-grant-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:.15em .6em;font-size:.86em;color:#ffe4a8}
+.fx-grant-h i{color:#ffd270}
+.fx-grant-h b{font-weight:800}
+.fx-grant-h span{opacity:.85}
+.pad .fx-grant{background:rgba(242,193,78,.12);box-shadow:inset 2px 0 0 #c8901a}
+.pad .fx-grant-h{color:#7a5208}
+.pad .fx-grant-h i{color:#c8901a}
