@@ -426,8 +426,18 @@ var 物品被动触发字段集合_V1 = new Set([
   '死亡时限', '复活代价时限', '复活后状态时限',
 ]);
 
+// 超神器被动技能的发挥比例：没有角色上下文时不压制；低于 50 级等效时返回 0（不生效）
+function 读取装备超神器发挥比例_V1(物品 = {}, 角色 = null) {
+  if (String(物品?.品质 || '').trim() !== '超神器' || !角色 || typeof 角色 !== 'object') return null;
+  const 解析 = globalThis.__LWCS_MVU_SCHEMA_RUNTIME__?.解析角色超神器发挥比例;
+  if (typeof 解析 !== 'function') throw new Error('super_artifact_runtime_missing');
+  return 解析(角色);
+}
+
 function 读取物品被动技能条目_V1(物品 = {}, 选项 = {}) {
   if (!物品 || typeof 物品 !== 'object' || Array.isArray(物品)) return [];
+  const 超神器比例 = 读取装备超神器发挥比例_V1(物品, 选项?.角色);
+  if (超神器比例 !== null && 超神器比例 <= 0) return [];
   const 条目 = [];
   const 已见 = new Set();
   ['装备技能', '附带技能', '附带魂技'].forEach(字段名 => {
@@ -445,7 +455,7 @@ function 读取物品被动技能条目_V1(物品 = {}, 选项 = {}) {
         字段: 字段名,
         技能名: String(技能名 || 技能.魂技名 || '被动技能').trim() || '被动技能',
         技能: cloneJsonValue(技能, {}),
-        效果数组: cloneJsonValue(效果数组, []),
+        效果数组: 超神器比例 !== null && 超神器比例 < 1 ? 缩放技能效果数组_V1(效果数组, 超神器比例) : cloneJsonValue(效果数组, []),
         来源物品: String(选项.来源物品 || 物品.名称 || 物品.name || 物品.物品名 || '').trim(),
         来源槽位: String(选项.来源槽位 || '').trim(),
       });
@@ -2216,6 +2226,60 @@ function getBaseStats(lv) {
 globalThis.__LWCS_GET_BASE_STATS__ = getBaseStats;
 try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_GET_BASE_STATS__ = getBaseStats; } catch (错误) {}
 try { if (globalThis.top && globalThis.top !== globalThis) globalThis.top.__LWCS_GET_BASE_STATS__ = getBaseStats; } catch (错误) {}
+
+// ---------- 超神器通用发挥比例 ----------
+// 按「不含外物」的实际属性（力量/防御/体力上限/精神力上限/魂力上限）对照绝世妖孽在各等级的参考属性，
+// 各反推一个等效等级后取平均；等效等级阶梯：<50 不可使用，50→10%，90→20%，100→50%，120→80%，150→100%。
+var 超神器发挥比例阶梯_V1 = Object.freeze([[150, 1], [120, 0.8], [100, 0.5], [90, 0.2], [50, 0.1]]);
+var 超神器发挥比例候选_V1 = Object.freeze([1, 0.8, 0.5, 0.2, 0.1, 0]);
+var 超神器等效属性键_V1 = Object.freeze(['力量', '防御', '体力上限', '精神力上限', '魂力上限']);
+var 超神器参考属性缓存_V1 = null;
+
+function 读取超神器发挥比例_V1(等效等级 = 0) {
+  const 等级 = Number(等效等级) || 0;
+  for (const [门槛, 比例] of 超神器发挥比例阶梯_V1) if (等级 >= 门槛) return 比例;
+  return 0;
+}
+
+// 绝世妖孽、不含外物的参考属性（等级基准 + 绝世妖孽训练加成，系别与底子波动取中性）
+function 计算绝世妖孽参考属性_V1(等级 = 1) {
+  const 基准 = getBaseStats(等级);
+  const 训练 = 等级 > 10 ? 0.005 * (等级 - 10) : 0;
+  return {
+    力量: Math.floor(基准.str + 基准.str * 训练 * 1.6),
+    防御: Math.floor(基准.def + 基准.def * 训练 * 1.6),
+    体力上限: Math.floor(基准.vit_max + 基准.vit_max * 训练 * 1.6),
+    精神力上限: Math.floor(基准.men_max + 基准.men_max * 训练 * 2.0),
+    魂力上限: 基准.sp_max,
+  };
+}
+
+function 计算无外物等效等级_V1(属性 = {}) {
+  if (!超神器参考属性缓存_V1) {
+    超神器参考属性缓存_V1 = [null];
+    for (let 等级 = 1; 等级 <= 180; 等级 += 1) 超神器参考属性缓存_V1.push(计算绝世妖孽参考属性_V1(等级));
+  }
+  let 总和 = 0;
+  超神器等效属性键_V1.forEach(键 => {
+    const 值 = Math.max(0, Number(属性?.[键] || 0));
+    let 等效 = 1;
+    for (let 等级 = 1; 等级 <= 180; 等级 += 1) if (超神器参考属性缓存_V1[等级][键] <= 值) 等效 = 等级;
+    总和 += 等效;
+  });
+  return 总和 / 超神器等效属性键_V1.length;
+}
+
+// 总属性已含装备时的反解：超神器自身的（已缩放）加成不能算作「本人」属性，取使「本人」达标的最大比例
+function 解析超神器发挥比例_V1(总属性 = {}, 其他装备加成 = {}, 超神器未缩放加成 = {}) {
+  for (const 比例 of 超神器发挥比例候选_V1) {
+    const 无外物 = {};
+    超神器等效属性键_V1.forEach(键 => {
+      无外物[键] = Math.max(0, Number(总属性?.[键] || 0) - Number(其他装备加成?.[键] || 0) - Math.floor(比例 * Number(超神器未缩放加成?.[键] || 0)));
+    });
+    if (读取超神器发挥比例_V1(计算无外物等效等级_V1(无外物)) >= 比例) return 比例;
+  }
+  return 0;
+}
 
 function 读取旅行能力_V1(角色 = {}) {
   const 装备 = 角色?.装备 && typeof 角色.装备 === 'object' && !Array.isArray(角色.装备) ? 角色.装备 : {};
@@ -20976,6 +21040,30 @@ function getComputedFatiguePenaltyMultiplierFromStat(stat = {}) {
   return 0.5;
 }
 
+// 龙王血脉构成：龙神 = 金龙王 + 银龙王融合体；名字同时含金银按双血脉处理
+function 读取龙王血脉构成_V1(血脉名 = '') {
+  const 名称 = String(血脉名 || '');
+  const 龙神 = 名称.includes('龙神');
+  return { 金: 龙神 || 名称.includes('金龙王'), 银: 龙神 || 名称.includes('银龙王'), 龙神 };
+}
+
+// 力量 / 体力上限的龙王血脉加成：金银各自算增量后相加，龙神再 ×2（单血脉与旧算法一致）
+function 应用龙王血脉力量体力加成_V1(基础值 = 0, 角色 = {}) {
+  const 血脉 = 角色?.血脉之力 && typeof 角色.血脉之力 === 'object' ? 角色.血脉之力 : {};
+  const 构成 = 读取龙王血脉构成_V1(血脉.血脉);
+  const 值 = Math.max(0, Math.floor(Number(基础值 || 0)));
+  if (!构成.金 && !构成.银) return 值;
+  let 增量 = 0;
+  if (构成.金) {
+    const 解封层数 = Math.max(0, Math.floor(Number(血脉.解封层数 || 0)));
+    const 倍率 = 解封层数 <= 0 ? 1.5 : 2 + 解封层数;
+    const 金最终 = 值 * 倍率 <= 100000 ? Math.floor(值 * 倍率) : 值 * 5 <= 200000 ? Math.max(100000, Math.floor(值 * 5)) : Math.max(200000, Math.floor(值 * 2));
+    增量 += 金最终 - 值;
+  }
+  if (构成.银) 增量 += Math.min(值, 20000);
+  return 值 + 增量 * (构成.龙神 ? 2 : 1);
+}
+
 var 金龙王全属性永久成长比例_V1 = Object.freeze({
   力量: 0.05,
   防御: 0.05,
@@ -21002,6 +21090,8 @@ var 金龙王层级名称表_V1 = Object.freeze({
   14: '【14层·金龙不灭真身】',
   15: '【15层·血脉反哺(四)】',
   16: '【16层·黄金瀑布】',
+  17: '【17层·血脉反哺(五)】',
+  18: '【18层·金龙灭世击】',
 });
 
 var GOLDEN_DRAGON_PERMANENT_BONUS_NODES = Object.freeze(Object.fromEntries(
@@ -21017,13 +21107,13 @@ var GOLDEN_DRAGON_PERMANENT_BONUS_NODES = Object.freeze(Object.fromEntries(
 
 var GOLDEN_DRAGON_NON_SKILL_NODE_NAMES = new Set(
   Object.entries(GOLDEN_DRAGON_PERMANENT_BONUS_NODES)
-    .filter(([seal]) => [3, 7, 13, 15].includes(Number(seal)))
+    .filter(([seal]) => [3, 7, 13, 15, 17].includes(Number(seal)))
     .map(([, node]) => node?.名称)
     .filter(Boolean),
 );
 
 function applyGoldenDragonPermanentBonusNodes(char, currentStats = {}) {
-  if (!char?.血脉之力 || !String(char.血脉之力.血脉 || '').includes('金龙王'))
+  if (!char?.血脉之力 || !读取龙王血脉构成_V1(char.血脉之力.血脉).金)
     return createExtendedStatBonusMap();
   if (!char.属性 || typeof char.属性 !== 'object') return createExtendedStatBonusMap();
   if (!char.血脉之力.永久加成 || typeof char.血脉之力.永久加成 !== 'object')
@@ -21231,9 +21321,48 @@ var GoldenDragonSkills = {
       { 原型: '属性修正', 目标: '自身', 生效方式: '独立生效', 属性: ['防御', '敏捷'], 数值: '+20%', 持续回合: 1, 条件分支: [{ 条件: [{ 类型: '自身状态', 对象: '自身', 比较: '==', 值: '蓄力中' }], 处理: '禁用' }] },
     ],
   },
+  17: null,
+  18: {
+    魂技名: '【18层·金龙灭世击】',
+    画面描述: '金龙王血脉彻底解封，万丈金龙虚影逆天而起，龙爪携灭世之威当空压落，天地同被撕裂。',
+    效果描述: '金龙王血脉的终极攻击：对敌方群体造成毁灭性的近身重击，大幅穿透防御，并追加一段无视防御的真实攻击。',
+    消耗: { 体力: 60000, 精神力: 8000 },
+    前摇: 50,
+    _效果数组: [
+      { 原型: '伤害结算', 目标: '群体', 生效方式: '独立生效', 威力倍率: 3500, 伤害类型: '近身攻击', 防御穿透: 60 },
+      { 原型: '伤害结算', 目标: '群体', 生效方式: '跟随主原型', 威力倍率: 800, 伤害类型: '真实攻击' },
+    ],
+  },
 };
 
 var 金龙王血脉被动层级集合_V1 = new Set([9, 11, 16]);
+
+// 第一魂环（解封前两层）时同时获得的群体辅助，不占层级
+var 金龙王群体辅助技能_V1 = {
+  '金龙王·气血加护': {
+    魂技名: '金龙王·气血加护',
+    画面描述: '金色龙血气浪席卷四周，同伴的筋骨在龙威之下绷紧鼓胀。',
+    效果描述: '为群体友方提升力量、防御、敏捷、体力上限；文本含龙的友方额外获得更高的提升。',
+    消耗: { 体力: 6000 },
+    前摇: 12,
+    附带属性: ['血脉'],
+    _效果数组: [
+      {
+        原型: '属性修正',
+        目标: '群体',
+        生效方式: '独立生效',
+        属性: ['力量', '防御', '敏捷', '体力上限'],
+        数值: '+15%',
+        持续回合: 3,
+        条件分支: [{
+          条件: [{ 类型: '单位文本', 对象: '目标', 比较: '包含', 值: '龙' }],
+          处理: '追加效果',
+          追加效果: [{ 原型: '属性修正', 目标: '群体', 生效方式: '独立生效', 属性: ['力量', '防御', '敏捷', '体力上限'], 数值: '+15%', 持续回合: 3 }],
+        }],
+      },
+    ],
+  },
+};
 
 Object.entries(GoldenDragonSkills).forEach(([层级文本, skill]) => {
   if (skill && Array.isArray(skill._效果数组)) {
@@ -21245,6 +21374,18 @@ var 银龙王初始可调用元素_V1 = Object.freeze(['水', '火', '风', '土
 var 银龙王九元素_V1 = Object.freeze([...银龙王初始可调用元素_V1, '创造', '毁灭']);
 
 var 银龙王血脉技能_V1 = {
+  '银龙王·元素加护': {
+    魂技名: '银龙王·元素加护',
+    画面描述: '银色龙息化作温润的元素微光洒向同伴，水火风土光暗空间的元素之力随之共鸣。',
+    效果描述: '为群体友方提升精神力上限，并增强其带元素技能的效果。',
+    消耗: '魂力:8% | 精神力:6%',
+    前摇: 10,
+    附带属性: ['元素'],
+    _效果数组: [
+      { 原型: '属性修正', 目标: '群体', 生效方式: '独立生效', 属性: '精神力上限', 数值: '+20%', 持续回合: 3 },
+      { 原型: '结算修正', 目标: '群体', 生效方式: '跟随主原型', 结算: '技能效果', 限定元素: '元素类', 数值: '+15%', 持续回合: 3 },
+    ],
+  },
   '火元素调用·火球': {
     魂技名: '火元素调用·火球',
     画面描述: '火元素在掌心凝聚成炽烈球体，沿锁定轨迹爆发。',
@@ -23223,20 +23364,35 @@ function 写入内置血脉技能模板_V1(技能表 = {}, 技能名 = '', 模�
   技能表[技能名] = 下个技能;
 }
 
-function 同步银龙王血脉技能模板_V1(血脉 = null) {
+// 龙神血脉：两套能力之和再 ×2，技能的数值与威力倍率随之 ×2（消耗与前摇不变）
+function 取血脉技能写入模板_V1(模板技能 = null, 龙神 = false) {
+  if (!模板技能 || !龙神 || !Array.isArray(模板技能._效果数组)) return 模板技能;
+  return { ...模板技能, _效果数组: 缩放技能效果数组_V1(模板技能._效果数组, 2) };
+}
+
+function 同步银龙王血脉技能模板_V1(血脉 = null, 魂环技能名集合 = null) {
   if (!血脉 || typeof 血脉 !== 'object' || Array.isArray(血脉)) return;
-  const 血脉名 = String(血脉.血脉 || '').trim();
-  if (!血脉名.includes('银龙王') || 血脉名.includes('金龙王') || 血脉名.includes('龙神')) return;
+  const 构成 = 读取龙王血脉构成_V1(血脉.血脉);
+  if (!构成.银) return;
   if (!血脉.技能 || typeof 血脉.技能 !== 'object' || Array.isArray(血脉.技能)) 血脉.技能 = {};
+  const 魂环名 = [...(魂环技能名集合 || [])];
   Object.entries(银龙王血脉技能_V1).forEach(([技能名, 模板技能]) => {
-    写入内置血脉技能模板_V1(血脉.技能, 技能名, 模板技能);
+    // 元素调用类模板：魂环魂技里已有该元素的元素掌控技能时不再重复写入
+    const 元素 = /^(.+?元素)调用/.exec(技能名)?.[1];
+    if (元素 && 魂环名.some(名称 => String(名称).includes(元素))) {
+      delete 血脉.技能[技能名];
+      return;
+    }
+    写入内置血脉技能模板_V1(血脉.技能, 技能名, 取血脉技能写入模板_V1(模板技能, 构成.龙神));
   });
   清理银龙王血脉字段_V1(血脉);
 }
 
-function 同步金龙王血脉技能模板_V1(血脉 = null) {
+function 同步金龙王血脉技能模板_V1(血脉 = null, 魂环技能名集合 = null) {
   if (!血脉 || typeof 血脉 !== 'object' || Array.isArray(血脉)) return;
-  if (!String(血脉.血脉 || '').includes('金龙王')) return;
+  const 构成 = 读取龙王血脉构成_V1(血脉.血脉);
+  if (!构成.金) return;
+  const 魂环名 = new Set([...(魂环技能名集合 || [])].map(名称 => String(名称 || '').trim()));
   const 解封层数 = Math.max(0, Math.floor(Number(血脉.解封层数 || 0)) || 0);
   if (!血脉.技能 || typeof 血脉.技能 !== 'object' || Array.isArray(血脉.技能)) 血脉.技能 = {};
   if (!血脉.被动 || typeof 血脉.被动 !== 'object' || Array.isArray(血脉.被动)) 血脉.被动 = {};
@@ -23245,6 +23401,7 @@ function 同步金龙王血脉技能模板_V1(血脉 = null) {
       .map(技能 => 技能?.魂技名 || 技能?.技能名称 || 技能?.name)
       .filter(Boolean),
     ...Array.from(GOLDEN_DRAGON_NON_SKILL_NODE_NAMES),
+    ...Object.keys(金龙王群体辅助技能_V1),
   ]);
   固定名称.forEach(名称 => {
     delete 血脉.技能[名称];
@@ -23255,15 +23412,37 @@ function 同步金龙王血脉技能模板_V1(血脉 = null) {
     if (!模板技能) continue;
     const 技能名 = String(模板技能.魂技名 || 模板技能.技能名称 || 模板技能.name || '').trim();
     if (!技能名) continue;
+    if (魂环名.has(技能名)) continue; // 已作为魂环魂技存在（如蓝轩宇金纹蓝银草），血脉不再重复
     const 技能表 = 金龙王血脉被动层级集合_V1.has(层级) ? 血脉.被动 : 血脉.技能;
-    写入内置血脉技能模板_V1(技能表, 技能名, 模板技能);
+    写入内置血脉技能模板_V1(技能表, 技能名, 取血脉技能写入模板_V1(模板技能, 构成.龙神));
   }
+  if (解封层数 >= 1) {
+    Object.entries(金龙王群体辅助技能_V1).forEach(([技能名, 模板技能]) => {
+      写入内置血脉技能模板_V1(血脉.技能, 技能名, 取血脉技能写入模板_V1(模板技能, 构成.龙神));
+    });
+  }
+}
+
+// 角色魂环魂技名集合：血脉技能同步时用来避免与魂环魂技重复
+function 读取角色魂环魂技名集合_V1(charData = null) {
+  const 名称集合 = new Set();
+  取角色武魂条目_V1(charData).forEach(([, 武魂]) => {
+    取武魂魂灵条目_V1(武魂).forEach(([, 魂灵]) => {
+      取魂灵魂环条目_V1(魂灵).forEach(([, 魂环]) => {
+        取魂环魂技条目_V1(魂环).forEach(([键, 魂技]) => {
+          名称集合.add(String(魂技?.魂技名 || 键 || '').trim());
+        });
+      });
+    });
+  });
+  return 名称集合;
 }
 
 function 同步内置血脉技能模板_V1(charData = null) {
   if (!charData || typeof charData !== 'object' || !charData.血脉之力 || typeof charData.血脉之力 !== 'object') return;
-  同步金龙王血脉技能模板_V1(charData.血脉之力);
-  同步银龙王血脉技能模板_V1(charData.血脉之力);
+  const 魂环技能名集合 = 读取角色魂环魂技名集合_V1(charData);
+  同步金龙王血脉技能模板_V1(charData.血脉之力, 魂环技能名集合);
+  同步银龙王血脉技能模板_V1(charData.血脉之力, 魂环技能名集合);
 }
 
 var LIFE_FIRE_STATE_CACHE = Object.create(null);
@@ -25913,6 +26092,9 @@ globalThis.__LWCS_C2_CONSUMER_RULES_V1__ = Object.freeze({
   计算技能掌控度完整度_V1,
   应用技能掌控度效果数组_V1,
   计算魂骨年限提升_V1,
+  读取超神器发挥比例_V1,
+  计算无外物等效等级_V1,
+  解析超神器发挥比例_V1,
 });
 globalThis.__LWCS_CALC_DIRECT_SETTLE_BUDGET__ = 计算直接结算收益预算_V1;
 globalThis.__LWCS_ASSERT_DIRECT_SETTLE_BUDGET__ = 断言直接结算收益预算_V1;

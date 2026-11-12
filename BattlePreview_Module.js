@@ -1712,7 +1712,9 @@
   // A skill or item costs its nature's rate (damage → attack, evasion/displacement → 2.0%, protection → 1.5%, anything
   // else 1.5%) at ratio 1. The ratio uses battle-start panel stats when the runtime recorded them (__battleRuntime.panelStats),
   // so in-battle buffs and stamina decay do not change the price.
-  const ACTION_STAMINA_RATES = Object.freeze({ ATTACK: 0.025, DEFEND: 0.015, EVADE: 0.02, SKILL_DEFEND: 0.015, SKILL_EVADE: 0.02, OTHER: 0.015 });
+  // 接战链 阶段二补充 (§8.5: 体力通常是车轮战才会导致不支): every rate ×0.7 of the 2026-11-11 values (ATTACK 0.025, DEFEND 0.015,
+  // EVADE 0.02, SKILL_DEFEND 0.015, SKILL_EVADE 0.02, OTHER 0.015).
+  const ACTION_STAMINA_RATES = Object.freeze({ ATTACK: 0.0175, DEFEND: 0.0105, EVADE: 0.014, SKILL_DEFEND: 0.0105, SKILL_EVADE: 0.014, OTHER: 0.0105 });
   const ACTION_STAMINA_RATIO_CAP = 4;
   // On unless a world opts out with 战斗规则.行动体力消耗 === false, or the host's default battle rules do
   // (root.__LWCS_DEFAULT_BATTLE_RULES__, set by isolation fixtures that measure other resources).
@@ -1897,6 +1899,23 @@
     return reactionWindupBudget(attacker, declaration, interceptor) - INTERCEPT_WINDUP;
   }
 
+  // 接战链 阶段 2c (方案 §9.5; the coordinator set the number with the user's leave, 2026-11-12): meeting a move with one's
+  // own (对轰) takes longer than standing to it — the answering move has to be thrown and catch the attack on its way,
+  // and the attack has to be read first — so a clash does not get the defender's margin but a narrower window: the
+  // attack's windup scaled by the two units' effective agility × (1 + CLASH_READ_MARGIN). The one who strikes first has
+  // the initiative: a quick move is hard to meet, a slow one easy. An attack charged past the action budget still leaves
+  // the whole budget. Guarding, evading and response skills keep REACTION_DEFENDER_MARGIN, a preemption its own timing
+  // (preemptTiming); an ally that stepped in (援护) clashes on this window less INTERCEPT_WINDUP. Negative: no move fits.
+  // The number is a starting value.
+  const CLASH_READ_MARGIN = -0.2;
+  function clashWindupBudget(attacker = {}, declaration = {}, reactor = {}, options = {}) {
+    const windup = actionWindup(attacker, declaration), intercept = options?.intercept === true ? INTERCEPT_WINDUP : 0;
+    const attackerAgility = naturalActionOrderProfile(attacker).effectiveAgility;
+    const span = windup > CONTINUOUS_ACTION_BUDGET || !(attackerAgility > 0) ? CONTINUOUS_ACTION_BUDGET
+      : Math.min(CONTINUOUS_ACTION_BUDGET, windup * (naturalActionOrderProfile(reactor).effectiveAgility / attackerAgility) * (1 + CLASH_READ_MARGIN));
+    return span - intercept;
+  }
+
   function actionStaminaCost(actor = {}, nature = '', opponent = null) {
     const rate = ACTION_STAMINA_RATES[nature];
     if (!rate) return 0;
@@ -1909,7 +1928,8 @@
   }
 
   // The stamina a formal action would pay in preview (same price as the runtime's payActionStamina), with the first
-  // enemy target as the opponent; null when the action costs none.
+  // enemy target as the opponent; null when the action costs none. A strike back carries its price factor on the
+  // declaration (staminaFactor: counterStaminaFactor, 接战链 阶段一).
   function projectedActionStamina(worldSnapshot = {}, actor = {}, declaration = {}, readUnit = id => findUnit(worldSnapshot, id)) {
     if (!actionStaminaEnabled(worldSnapshot)) return null;
     const nature = actionStaminaNature(declaration);
@@ -1918,7 +1938,7 @@
     const opponent = (Array.isArray(declaration?.targetIds) ? declaration.targetIds : [])
       .map(id => readUnit(String(id || '').trim()))
       .find(unit => unit && sideOf(worldSnapshot, unit) && sideOf(worldSnapshot, unit) !== actorSide) || null;
-    const amount = actionStaminaCost(actor, nature, opponent);
+    const amount = actionStaminaCost(actor, nature, opponent) * declarationStaminaFactor(declaration);
     return amount > 0 ? { nature, amount } : null;
   }
 
@@ -3040,8 +3060,28 @@
     return /点到为止|切磋|训练|非致命/.test(mode);
   }
 
+  // 生命受威胁即出局（用户 2026-11-12："比赛，切磋等通常都应该是生命受到威胁而终止或出局……救援的前提是判定这一击会导致生命
+  // 低于10%，被救的人出局"）: in a spar (the fighters hold back) or a match (a referee steps in) a hit that would take a
+  // unit under LIFE_THREAT_RATIO of its HP is held at that line, and the unit is out of the fight. A match is told by
+  // its intent (比赛, 擂台, 大赛, 考核, 斗魂, 比试, 比武) or by a referee on the field (裁判). The runtime also asks whether
+  // the referee gets there (BattleRuntime structuredRefereeRescue); projections take it that the line holds, which
+  // leaves the same units in the fight either way.
+  const LIFE_THREAT_RATIO = 0.1;
+  function isRefereedMatch(worldSnapshot = {}, battleIntent = {}) {
+    const mode = String(battleIntent?.mode || battleIntent?.intent || (typeof battleIntent === 'string' ? battleIntent : '') || worldSnapshot?.战斗意图 || '').trim();
+    return /比赛|擂台|大赛|考核|斗魂|比试|比武/.test(mode) || !!(worldSnapshot?.裁判 && typeof worldSnapshot.裁判 === 'object');
+  }
+  function isProtectedBattle(worldSnapshot = {}, battleIntent = {}) {
+    return isNonlethalBattleIntent(worldSnapshot, battleIntent) || isRefereedMatch(worldSnapshot, battleIntent);
+  }
+  // Whether reaching `floor` takes `target` out of the fight: the life-threat line does; a higher line set by a victory
+  // condition (HP_RATIO_AT_OR_BELOW) is settled by that condition instead.
+  function lifeThreatExit(floor = 0, target = {}) {
+    return floor > 0 && floor <= Math.max(1, Math.floor(readHpMax(target) * LIFE_THREAT_RATIO)) + 1e-9;
+  }
+
   function calculateNonlethalHpFloor(worldSnapshot = {}, target = {}, battleIntent = {}) {
-    if (!isNonlethalBattleIntent(worldSnapshot, battleIntent)) return 0;
+    if (!isProtectedBattle(worldSnapshot, battleIntent)) return 0;
     const objectives = normalizeBattleObjectives(
       battleIntent?.objectives ||
       battleIntent?.胜负条件 ||
@@ -3057,7 +3097,7 @@
       condition.threshold > 0 &&
       objectiveUnits(worldSnapshot, condition).some(unit => unitId(unit) === unitId(target)),
     ).map(condition => condition.threshold);
-    const threshold = thresholds.length ? Math.max(...thresholds) : 0;
+    const threshold = Math.max(LIFE_THREAT_RATIO, ...thresholds);
     return Math.max(1, Math.floor(readHpMax(target) * threshold));
   }
 
@@ -4729,9 +4769,11 @@
     const budget = passiveRevivalBudget(unit);
     if (!budget) return null;
     const { candidate, allowedCount } = budget;
-    const limitState = unit.__技能限制运行态 ||= {};
-    const skillLimit = limitState[budget.key] ||= { 已用次数: 0 };
     if (budget.remainingCount <= 0) return null;
+    // Copy on write: a preview overlay's copy of a unit (cloneUnitForOverlay) shares __技能限制运行态 and its entries with
+    // the world it was read from, which may be frozen; the count is written to a fresh table and a fresh entry.
+    const limitState = unit.__技能限制运行态 = { ...(unit.__技能限制运行态 || {}) };
+    const skillLimit = limitState[budget.key] = { 已用次数: 0, ...(limitState[budget.key] || {}) };
     if (findRuleSuppression(unit, '规则改写', '规则', '死亡转存活')) {
       return `[复活受阻] ${label}的死亡转存活规则已被机制抹消封锁，无法触发！`;
     }
@@ -5596,9 +5638,11 @@
       state.战斗效果.revive_count = outcomes.reduce((sum, row) => sum + row.probability * (row.revival?.counts[key] ?? state.战斗效果.revive_count), 0);
     }
     const limitKeys = new Set(outcomes.flatMap(row => Object.keys(row.revival?.skillLimits || {})));
+    // Copy on write (as in triggerRevive): the table may be shared with a frozen world.
+    if (limitKeys.size) unit.__技能限制运行态 = { ...(unit.__技能限制运行态 || {}) };
     for (const key of limitKeys) {
-      const previous = unit.__技能限制运行态?.[key] || {};
-      (unit.__技能限制运行态 ||= {})[key] = { ...previous, 已用次数: outcomes.reduce((sum, row) =>
+      const previous = unit.__技能限制运行态[key] || {};
+      unit.__技能限制运行态[key] = { ...previous, 已用次数: outcomes.reduce((sum, row) =>
         sum + row.probability * Number(row.revival?.skillLimits[key]?.已用次数 ?? previous.已用次数 ?? 0), 0) };
     }
     if (outcomes.reduce((sum, row) => sum + (row.revival ? row.probability : 0), 0) >= 1 - 1e-12) {
@@ -8029,11 +8073,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // 两个上限仍各自独立（D3），回血不回体力。生命只剩一点的人，体力也所剩无几，进攻和闪避都付不起。
   // The runtime's writeCombatResource applies the same rule; each writer prices the loss against the unit's current
   // life, so a loss already written by one is not charged again by the other.
+  // 2026-11-12（用户："先扣个5成吧，后续再调整"；"希望可以通过体力来影响对局中的实时状态，但不能总是通过体力耗尽来定胜负"）:
+  // an injury takes stamina by INJURY_STAMINA_SHARE of the share of life it takes — it used to take the whole share, and
+  // nearly every unit left a battle exhausted with a third to a half of its life still there.
+  // 接战链 阶段二补充 (§8.5): 0.5 → 0.35.
+  const INJURY_STAMINA_SHARE = 0.35;
   function setHp(unit, hp) {
     const before = readHp(unit), maximum = readHpMax(unit);
     const next = clamp(hp, 0, maximum);
     if (next < before && readResourceMax(unit, '体力') > 0)
-      setResource(unit, '体力', readResource(unit, '体力') - (before - next) / Math.max(1, maximum) * readResourceMax(unit, '体力'));
+      setResource(unit, '体力', readResource(unit, '体力') - INJURY_STAMINA_SHARE * (before - next) / Math.max(1, maximum) * readResourceMax(unit, '体力'));
     if ('hp' in unit || !('HP' in unit)) unit.hp = next;
     if ('HP' in unit) unit.HP = next;
     if (unit.属性 && typeof unit.属性 === 'object') {
@@ -10915,8 +10964,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const passed = selected.hitCounts.some(count => count > 0);
       const previousHp = passed ? new Map(listUnits(overlay.snapshot()).map(({ unit }) => [unitId(unit), readHp(unit)])) : null;
       const segmentTrauma = shouldTriggerTraumaUnconscious(selected.hpDamage, hpBefore - selected.hpDamage, readHpMax(target));
-      const segmentNonlethal = input.nonlethalHpFloor > 0 && input.nonlethalHpFloor <= 1 && hpBefore > 1 &&
-        selected.hpDamage >= hpBefore - 1 - 1e-9;
+      const segmentNonlethal = lifeThreatExit(input.nonlethalHpFloor, target) && hpBefore > input.nonlethalHpFloor &&
+        selected.hpDamage >= hpBefore - input.nonlethalHpFloor - 1e-9;
       if (passed) {
         sampledHits += 1;
         if (selected.incoming > 0 || selected.ruleBlockConsumed > 0) hitCount += 1;
@@ -11372,7 +11421,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             includeFormulaTrace: context?.captureDamageBasisTrace === true,
             diagnostic: context?.captureDamageBasisTrace === true,
           });
-          const nonlethalIntent = isNonlethalBattleIntent(context?.worldSnapshot, context?.battleIntent);
+          const nonlethalIntent = isProtectedBattle(context?.worldSnapshot, context?.battleIntent);
           const nonlethalHpFloor = nonlethalIntent
             ? calculateNonlethalHpFloor(overlay.snapshot(), currentTarget, context?.battleIntent || {})
             : 0;
@@ -11572,7 +11621,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               ...conditionalDamageExpectation.outcomeDistribution.map(branch => {
               const branchNonlethalIncapacitated =
                 nonlethalIntent &&
-                nonlethalHpFloor <= 1 &&
+                lifeThreatExit(nonlethalHpFloor, currentTarget) &&
                 Number(branch.hpDamageLimit ?? hpDamageLimit) > 0 &&
                 Number(branch.hpDamage || 0) >= Number(branch.hpDamageLimit ?? hpDamageLimit) - 1e-9;
               const branchTraumaUnconscious = shouldTriggerTraumaUnconscious(
@@ -11677,7 +11726,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             ? hpDamageLimits.reduce((sum, branch) => sum + branch.probability * branch.hitProbability, 0)
             : hitProbability;
           const nonlethalIncapacitated = reactiveDamage ? damageExpectation.nonlethalIncapacitated :
-            nonlethalIntent && nonlethalHpFloor <= 1 && hpDamageLimit > 0 && expectedDamage >= hpDamageLimit - 1e-9;
+            nonlethalIntent && lifeThreatExit(nonlethalHpFloor, currentTarget) && hpDamageLimit > 0 && expectedDamage >= hpDamageLimit - 1e-9;
           if (!reactiveDamage && (nonlethalIncapacitated || deterministicTrauma)) {
             overlay.changeUnit(unitId(target), unit => {
               if (nonlethalIncapacitated) unit.__战斗失能原因 = 'INCAPACITATED';
@@ -14506,7 +14555,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             segments,
             1,
           );
-          const nonlethalIntent = isNonlethalBattleIntent(worldSnapshot, battleIntent);
+          const nonlethalIntent = isProtectedBattle(worldSnapshot, battleIntent);
           const nonlethalHpFloor = nonlethalIntent
             ? calculateNonlethalHpFloor(
                 worldSnapshot,
@@ -14586,7 +14635,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           );
           const nonlethalIncapacitated =
             nonlethalIntent &&
-            nonlethalHpFloor <= 1 &&
+            lifeThreatExit(nonlethalHpFloor, target) &&
             hpDamageLimit > 0 &&
             expectedDamage >= hpDamageLimit - 1e-9;
           if (nonlethalIncapacitated) {
@@ -16321,7 +16370,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         output.push(routeScalarFallbackRow(candidateId, 'UNSUPPORTED_EFFECT'));
         continue;
       }
-      if (isNonlethalBattleIntent(branchWorld, input?.battleIntent)) {
+      if (isProtectedBattle(branchWorld, input?.battleIntent)) {
         output.push(routeScalarFallbackRow(candidateId, 'NONLETHAL_INTENT'));
         continue;
       }
@@ -16714,6 +16763,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       String(input.actionRole || input.actionOpportunity?.role || input.declaration?.actionRole || 'ACTIVE').trim().toUpperCase(),
       ...(input.__preparedDecisionWorld === true ? ['prepared-decision-world'] : []),
       ...(input.actionOpportunity ? [stableHash(input.actionOpportunity)] : []),
+      // 接战链 阶段二: an answer meeting the move, and the units a move came to nothing on.
+      ...(input.declaration?.engagement ? [`engagement:${String(input.declaration.engagement.mode || '')}:${input.__engagementVoidEffects === true ? 'void' : input.__engagementShockTargetId ? 'shock' : 'live'}`] : []),
+      ...(Array.isArray(input.nullifiedTargetIds) && input.nullifiedTargetIds.length ? [`nullified:${[...input.nullifiedTargetIds].sort().join(',')}`] : []),
       ...(poolStrengthState.length ? [`pool-strength:${stableHash(poolStrengthState)}`] : []),
     ].join('|');
   }
@@ -18168,6 +18220,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   }
 
   function projectConditionedAction(input = {}) {
+    // 接战链 阶段二: an answer that meets the move settles as the clash does (engagementPreviewInput).
+    if (input?.declaration?.engagement) input = engagementPreviewInput(input);
     const worldSnapshot = input?.worldSnapshot;
     const rawDeclaration = input?.declaration;
     const declaration = rawDeclaration === undefined ? {} : rawDeclaration;
@@ -18451,16 +18505,23 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         },
       });
     }
-    effects.forEach((effect, index) => {
+    // 接战链 阶段二: a move that came to nothing in a clash brings no effect (its costs are paid above); a unit the move
+    // came to nothing on (`nullifiedTargetIds`: it won or evened a clash against it, or a preemption held) takes none of it.
+    const nullifiedTargetIds = Array.isArray(input?.nullifiedTargetIds) && input.nullifiedTargetIds.length
+      ? new Set(input.nullifiedTargetIds.map(value => String(value || '').trim())) : null;
+    (input.__engagementVoidEffects === true ? [] : effects).forEach((effect, index) => {
       const effectWorldSnapshot = overlay.snapshot();
       const effectActor = overlay.readUnit(unitId(actor)) || actor;
       const committedTargetIds = continuedSettlement && input.releaseEffectsResolved === true && Array.isArray(input.resolvedEffectTargetIds)
         ? input.resolvedEffectTargetIds : null;
-      const targets = index === 0 && committedTargetIds
+      const resolvedTargets = index === 0 && committedTargetIds
         ? committedTargetIds.map(id => findUnit(effectWorldSnapshot, id)).filter(Boolean)
         : index === 0 && effect.原型 === '时窗修正' && input.resolvedTimeWindow
           ? input.resolvedTimeWindow.targetIds.map(id => findUnit(effectWorldSnapshot, id)).filter(Boolean)
           : resolveTargets(effectWorldSnapshot, effectActor, declaration, effect);
+      let targets = nullifiedTargetIds ? resolvedTargets.filter(target => !nullifiedTargetIds.has(unitId(target))) : resolvedTargets;
+      // 接战链 阶段二补充: an even clash's shock — the answer's damage on the attacker only.
+      if (input.__engagementShockTargetId) { if (String(effect?.原型 || '').trim() !== '伤害结算') return; targets = targets.filter(target => unitId(target) === input.__engagementShockTargetId); }
       if (!targets.length) return;
       const followsPrimary = index > 0 && String(effect?.生效方式 || '').trim() === '跟随主原型';
       const positionObject = String(effect?.原型 || '').trim() === '位移执行'
@@ -21830,14 +21891,105 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
   }
 
-  function calculateReactionContest(reactor = {}, sourceActor = {}) {
+  // 接战链 阶段一 (用户 2026-11-12："我要的不是你打我一拳我打你一拳，而是要互相博弈"；"上限不需要，但是要给反击设置难度，代价";
+  // 接战链改造方案-20261112 §1). Measured before: the struck side defended 76% of the time and let ~72% of every hit
+  // through whatever its weight, evading worked ~15% of the time between equals and nobody chose it, and every defence
+  // was followed by a strike back (44% of all attacks). Now:
+  //   evading — reads the attacker's speed against the defender's and the windup of the move coming: a slow, heavy
+  //     release is easier to slip than a snap strike, and a group or field-wide move is harder to get out of;
+  //   defending — holds a jab and not a hammer: what gets through scales with the weight of the hit (its whole damage if
+  //     it lands, unanswered, as a share of the defender's HP maximum);
+  //   striking back — only out of an answer that worked (an evasion that succeeded, or a guard that held: the hit took
+  //     under COUNTER_GUARD_HELD of the HP maximum), then only if the defender catches the opening (its speed against the
+  //     attacker's and the windup of the move it answered), at a price that rises with every strike back it already made
+  //     in the same exchange. No cap on the chain (ENGAGEMENT_CHAIN_LIMIT in the runtime only stops a runaway loop).
+  // Every number is a starting value.
+  const DODGE_BASE = 0.35, DODGE_SHARE_SLOPE = 1.1, DODGE_BASE_FLOOR = 0.05, DODGE_BASE_CAP = 0.85;
+  const DODGE_WINDUP_SWING = 0.15, DODGE_AREA_PENALTY = 0.1, DODGE_FLOOR = 0.05, DODGE_CAP = 0.9;
+  // The windup swing of a move: clamp((windup − WINDUP_PIVOT) / WINDUP_SPAN, −1, 1); a basic attack (20) is the pivot,
+  // a charged release counts as CONTINUOUS_ACTION_BUDGET (40).
+  const WINDUP_PIVOT = 20, WINDUP_SPAN = 20;
+  // The weight factor on what a guard lets through, by the hit's share w of the HP maximum: GUARD_LIGHT up to
+  // GUARD_LIGHT_SHARE, rising linearly to 1 at GUARD_EVEN_SHARE and to GUARD_HEAVY at GUARD_HEAVY_SHARE, flat after;
+  // GUARD_TYPICAL when the hit is not known (table valuations). What gets through never exceeds GUARD_CAP.
+  const GUARD_LIGHT = 0.4, GUARD_HEAVY = 1.2, GUARD_TYPICAL = 0.7, GUARD_LIGHT_SHARE = 0.05, GUARD_EVEN_SHARE = 0.2,
+    GUARD_HEAVY_SHARE = 0.35, GUARD_CAP = 0.95;
+  const COUNTER_GUARD_HELD = 0.15, COUNTER_BASE = 0.5, COUNTER_WINDUP_SWING = 0.15, COUNTER_FLOOR = 0.1, COUNTER_CAP = 0.9;
+  const COUNTER_STAMINA_FACTOR = 1.5, COUNTER_STAMINA_STEP = 0.5, COUNTER_FADE = 0.7, COUNTER_STANCE_BONUS = 0.25;
+
+  // The move coming, when the answer knows it: an attack, a skill or an item (anything else is not a move to answer).
+  function incomingMove(declaration = null) {
+    const kind = String(declaration?.actionKind || '').trim().toUpperCase();
+    return kind === 'BASIC_ATTACK' || kind === 'RELEASE_SKILL' || kind === 'USE_ITEM' ? declaration : null;
+  }
+  function incomingWindupSwing(attacker = {}, declaration = null) {
+    const move = incomingMove(declaration);
+    if (!move) return 0;
+    const windup = Math.min(CONTINUOUS_ACTION_BUDGET, actionWindup(attacker, move));
+    return clamp((windup - WINDUP_PIVOT) / WINDUP_SPAN, -1, 1);
+  }
+  function incomingDamageEffects(declaration = null) {
+    const move = incomingMove(declaration);
+    if (!move) return [];
+    if (String(move.actionKind).trim().toUpperCase() === 'BASIC_ATTACK') return [BASIC_ATTACK_EFFECT];
+    return collectEffects(move.skill || {}).filter(effect => String(effect?.原型 || '').trim() === '伤害结算');
+  }
+  function incomingIsArea(declaration = null) {
+    return incomingDamageEffects(declaration).some(effect => /群体|全场/.test(String(effect?.目标 || '')));
+  }
+  // The weight of a hit: the whole move's damage on `target` if every segment lands and nothing answers it, a share of
+  // the target's HP maximum (null: not a damaging move). The runtime's own damage formula (calculateBaseDamage) on the
+  // units as they stand when the answer is settled; a group move is split over the attacker's capable enemies on
+  // `worldSnapshot` (else over its declared targets), and a 炸环 in the skill multiplies it as in the settlement.
+  function incomingHitShare(attacker = {}, declaration = null, target = {}, worldSnapshot = null) {
+    const damage = incomingMoveDamage(attacker, declaration, target, worldSnapshot);
+    return damage === null ? null : damage / Math.max(1, readHpMax(target));
+  }
+  // The same whole move's damage on `target` as a number (null: not a damaging move) — 接战链 阶段二 compares two of them
+  // in a clash.
+  function incomingMoveDamage(attacker = {}, declaration = null, target = {}, worldSnapshot = null) {
+    const effects = incomingDamageEffects(declaration);
+    if (!effects.length || !target) return null;
+    const move = incomingMove(declaration), basic = String(move.actionKind).trim().toUpperCase() === 'BASIC_ATTACK';
+    const burst = basic ? 1 : collectEffects(move.skill || {}).filter(effect => String(effect?.原型 || '').trim() === '炸环')
+      .reduce((product, effect) => product * Math.max(0, Number(effect?.强化倍率 || 1)), 1);
+    const declared = Array.isArray(move.targetIds) ? move.targetIds.length : 0;
+    let enemies = 0;
+    if (worldSnapshot && effects.some(effect => /群体|全场/.test(String(effect?.目标 || '')))) {
+      const side = sideOf(worldSnapshot, attacker);
+      enemies = listUnits(worldSnapshot).filter(entry => entry.side && entry.side !== side && isBattleCapable(entry.unit)).length;
+    }
+    let damage = 0;
+    for (const effect of effects) {
+      const area = /群体|全场/.test(String(effect?.目标 || ''));
+      damage += calculateBaseDamage(basic ? effect : { ...effect, 技能: move.skill }, attacker, target, null, {
+        targetCount: area ? Math.max(1, enemies || declared) : 1,
+        actionDamageMultiplier: burst,
+        resourceDriveEnabled: !basic,
+      });
+    }
+    return Math.max(0, damage);
+  }
+
+  function calculateReactionContest(reactor = {}, sourceActor = {}, declaration = null) {
     const reactionDetails = calculateWithdrawalPressureDetails(reactor, sourceActor, 'WITHDRAW');
     const attackDetails = calculateWithdrawalPressureDetails(sourceActor, reactor, 'PURSUIT');
     const reactionPressure = reactionDetails.value;
     const attackPressure = attackDetails.value;
     const share = reactionPressure / Math.max(1, reactionPressure + attackPressure);
+    const baseProbability = clamp(DODGE_BASE + (share - 0.5) * DODGE_SHARE_SLOPE, DODGE_BASE_FLOOR, DODGE_BASE_CAP);
+    // Not knowing the move: no windup or reach correction.
+    const move = incomingMove(declaration);
+    const windupSwing = move ? incomingWindupSwing(sourceActor, move) : 0;
+    const area = move ? incomingIsArea(move) : false;
     return Object.freeze({
-      probability: clamp(0.18 + (share - 0.5) * 1.1, 0.03, 0.78),
+      probability: move
+        ? clamp(baseProbability + windupSwing * DODGE_WINDUP_SWING - (area ? DODGE_AREA_PENALTY : 0), DODGE_FLOOR, DODGE_CAP)
+        : baseProbability,
+      baseProbability,
+      windupSwing,
+      areaMove: area,
+      incomingKnown: !!move,
       reactionPressure,
       attackPressure,
       share,
@@ -21850,7 +22002,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
   }
 
-  function calculateDefenseDamageMultiplier(reactor = {}, sourceActor = {}, prepared = false) {
+  // What a guard lets through before the weight of the hit (the rule before 接战链 阶段一): defence against the attacker's
+  // strength and the defender's stamina, a prepared stance ×0.8, an attack opening on the defender weakening it.
+  function calculateGuardBaseMultiplier(reactor = {}, sourceActor = {}, prepared = false) {
     const defense = Math.max(1, readCombatStat(reactor, 'def'));
     const attack = Math.max(1, readCombatStat(sourceActor, 'str'));
     const staminaRatio = readResource(reactor, '体力') / Math.max(1, readResourceMax(reactor, '体力'));
@@ -21865,11 +22019,180 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const opening = attackOpeningOf(reactor);
     return opening > 0 ? 1 - (1 - multiplier) * (1 - ATTACK_OPENING_DEFENSE_CUT * opening) : multiplier;
   }
+  // The weight factor (GUARD_* above); `hitShare` null or not a number: GUARD_TYPICAL.
+  function guardWeightFactor(hitShare = null) {
+    const weight = hitShare === null || hitShare === undefined || hitShare === '' ? NaN : Number(hitShare);
+    if (!Number.isFinite(weight)) return GUARD_TYPICAL;
+    if (weight <= GUARD_LIGHT_SHARE) return GUARD_LIGHT;
+    if (weight <= GUARD_EVEN_SHARE) return GUARD_LIGHT + (1 - GUARD_LIGHT) * (weight - GUARD_LIGHT_SHARE) / (GUARD_EVEN_SHARE - GUARD_LIGHT_SHARE);
+    if (weight <= GUARD_HEAVY_SHARE) return 1 + (GUARD_HEAVY - 1) * (weight - GUARD_EVEN_SHARE) / (GUARD_HEAVY_SHARE - GUARD_EVEN_SHARE);
+    return GUARD_HEAVY;
+  }
+  function applyGuardWeight(baseMultiplier = 1, hitShare = null) {
+    return Math.min(GUARD_CAP, Math.max(0, Number(baseMultiplier) || 0) * guardWeightFactor(hitShare));
+  }
+  // `incoming`: the hit's weight (a number, its share of the defender's HP maximum), or the move coming (its weight is
+  // read off it: incomingHitShare on `worldSnapshot`), or nothing (GUARD_TYPICAL).
+  function calculateDefenseDamageMultiplier(reactor = {}, sourceActor = {}, prepared = false, incoming = null, worldSnapshot = null) {
+    const hitShare = typeof incoming === 'number' ? incoming
+      : incomingMove(incoming) ? incomingHitShare(sourceActor, incoming, reactor, worldSnapshot) : null;
+    return applyGuardWeight(calculateGuardBaseMultiplier(reactor, sourceActor, prepared), hitShare);
+  }
+  // Whether a guard held: what the hit took through it (`hitShare` × `multiplier`, or the HP it actually took as a share,
+  // `hitShare` alone with multiplier 1) stayed under COUNTER_GUARD_HELD. Not knowing the hit: it held.
+  function guardHolds(hitShare = null, multiplier = 1) {
+    const weight = hitShare === null || hitShare === undefined ? NaN : Number(hitShare);
+    return !Number.isFinite(weight) || weight * Math.max(0, Number(multiplier) || 0) < COUNTER_GUARD_HELD - 1e-12;
+  }
 
-  function calculateDodgeProbability(reactor = {}, sourceActor = {}, prepared = false) {
-    const ordinary = calculateReactionContest(reactor, sourceActor).probability;
+  function calculateDodgeProbability(reactor = {}, sourceActor = {}, prepared = false, declaration = null) {
+    const ordinary = calculateReactionContest(reactor, sourceActor, declaration).probability;
     const dodge = prepared ? clamp(ordinary + (1 - ordinary) * 0.25, 0.03, 0.92) : ordinary;
     return dodge * (1 - ATTACK_OPENING_DODGE_CUT * attackOpeningOf(reactor));
+  }
+
+  // The chance to catch the opening once an answer has worked: the two units' effective agility (agility under speed
+  // states, as in reactionWindupBudget) and the windup of the move answered (not knowing it: no correction), more out of a
+  // prepared stance, and COUNTER_FADE less for every strike back the unit already made in this exchange (`prior`).
+  function counterOpeningProbability(reactor = {}, sourceActor = {}, declaration = null, options = {}) {
+    const own = Math.max(0, Number(naturalActionOrderProfile(reactor).effectiveAgility) || 0);
+    const theirs = Math.max(0, Number(naturalActionOrderProfile(sourceActor).effectiveAgility) || 0);
+    const speed = own + theirs > 0 ? (own - theirs) / (own + theirs) : 0;
+    const base = clamp(COUNTER_BASE + speed + incomingWindupSwing(sourceActor, declaration) * COUNTER_WINDUP_SWING +
+      (options?.prepared === true ? COUNTER_STANCE_BONUS : 0), COUNTER_FLOOR, COUNTER_CAP);
+    return base * COUNTER_FADE ** Math.max(0, Math.floor(Number(options?.prior) || 0));
+  }
+  // What a strike back costs in stamina against an attack of the same nature: × COUNTER_STAMINA_FACTOR, and
+  // COUNTER_STAMINA_STEP more for every strike back the unit already made in this exchange.
+  function counterStaminaFactor(prior = 0) {
+    return COUNTER_STAMINA_FACTOR + COUNTER_STAMINA_STEP * Math.max(0, Math.floor(Number(prior) || 0));
+  }
+  // The stamina factor a declaration carries (a strike back's, stamped by the runtime and the decision's enumeration).
+  function declarationStaminaFactor(declaration = {}) {
+    const factor = Number(declaration?.staminaFactor);
+    return Number.isFinite(factor) && factor > 0 ? factor : 1;
+  }
+
+  // 接战链 阶段二 (用户 2026-11-12：四种应对"没问题，都做"——防御稳但挡不住重击，闪避看敏捷和来招的前摇，对轰看两边这一招的威力，
+  // 抢先看谁快、控不控得住; 接战链改造方案-20261112 §2). Besides guarding and evading, the struck unit may meet the move:
+  //   对轰 (CLASH) — with its own basic attack or a skill with direct damage it can release in time (the reaction windup,
+  //     reactionWindupBudget), aimed at the attacker. The two whole moves' damage (incomingMoveDamage: every segment, no
+  //     answer, each on the unit it lands on) are compared, R = the answer's ÷ the attack's: R ≥ CLASH_WIN the answer
+  //     wins — the attack comes to nothing on it and the difference lands on the attacker, which cannot answer it; R ≤
+  //     1 / CLASH_WIN the attack wins — the answer comes to nothing and the difference lands on the answerer, unguarded;
+  //     between, both come to nothing. Nothing rolls to hit and nothing evades; a move that comes to nothing brings none
+  //     of its states, a winner's difference brings its states as usual; both sides pay their costs and stamina.
+  //   抢先 (PREEMPT) — with a control that stops a unit acting (structuredControlConsumesActiveOpportunity), quicker than
+  //     the move: own windup × the attacker's effective agility ≤ the move's windup × own effective agility (a charged
+  //     release counts as CONTINUOUS_ACTION_BUDGET; no defender's margin). The control settles as ever (hit, chance,
+  //     resistance, its damage); if it holds, the whole move comes to nothing on every target (its costs stay paid), and
+  //     if it does not, the move lands on the answerer unguarded.
+  // A clash won or even and a preemption that held are answers that worked (a strike back may follow, §1.3).
+  // The numbers are starting values.
+  const CLASH_WIN = 1.2;
+  // 接战链 阶段二补充 (接战链改造方案-20261112 §7.2、§8.2: "原著里势均力敌的对轰是双方各退几步、都不好受，不是无事发生"): a clash
+  // between even moves is not nothing — each side takes CLASH_SHOCK of the other's move, its damage only (no state, no
+  // roll to hit, no guard), through the ordinary damage settlement.
+  const CLASH_SHOCK = 0.25;
+  // A clash: `reactor` meets `attacker`'s move `incomingDeclaration` (landing on the reactor) with `reactorDeclaration`
+  // (aimed at the attacker), on `worldSnapshot` as it stands when the answer is settled. null: one of the two is not a
+  // damaging move. outScale: the share of the answer's damage that lands on the attacker (won: the difference; even:
+  // CLASH_SHOCK); inScale: the share of the attack's that lands on the reactor (lost: the difference; even: CLASH_SHOCK).
+  // `shock`: an even clash, whose shares carry damage only.
+  function clashOutcome(reactor = {}, reactorDeclaration = null, attacker = {}, incomingDeclaration = null, worldSnapshot = null) {
+    const theirs = incomingMoveDamage(attacker, incomingDeclaration, reactor, worldSnapshot);
+    const mine = incomingMoveDamage(reactor, reactorDeclaration, attacker, worldSnapshot);
+    if (theirs === null || mine === null) return null;
+    const ratio = theirs > 0 ? mine / theirs : mine > 0 ? Infinity : 1;
+    const result = ratio >= CLASH_WIN - 1e-12 ? 'WIN' : ratio <= 1 / CLASH_WIN + 1e-12 ? 'LOSE' : 'EVEN';
+    return Object.freeze({
+      mine, theirs, ratio, result, threshold: CLASH_WIN, shock: result === 'EVEN',
+      outScale: result === 'WIN' && mine > 0 ? (mine - theirs) / mine : result === 'EVEN' ? CLASH_SHOCK : 0,
+      inScale: result === 'LOSE' && theirs > 0 ? (theirs - mine) / theirs : result === 'EVEN' ? CLASH_SHOCK : 0,
+      answered: result !== 'LOSE',
+    });
+  }
+  // 接战链 阶段二补充 (§7.3、§8.3): what a state stops of a move — one that stops a unit acting (the runtime's
+  // structuredControlPreventsOpportunity for an action) stops any move; 封技/沉默 (silence) a released skill; 缴械
+  // (disarm) a basic attack. `incoming` null: whether it stops a unit acting.
+  const PREEMPT_SILENCE_NAMES = /沉默|封技/, PREEMPT_DISARM_NAMES = /缴械/;
+  function stateBlocksMove(name = '', combatEffect = {}, incoming = null) {
+    if (structuredControlConsumesActiveOpportunity({ 状态: name, 战斗效果: combatEffect })) return true;
+    const kind = String(incoming?.actionKind || '').trim().toUpperCase();
+    if (kind === 'RELEASE_SKILL') return combatEffect?.silence === true || PREEMPT_SILENCE_NAMES.test(name);
+    if (kind === 'BASIC_ATTACK') return combatEffect?.disarm === true || PREEMPT_DISARM_NAMES.test(name);
+    return false;
+  }
+  // A state effect (状态施加) whose state stops `incoming` (null: stops a unit acting).
+  function effectBlocksMove(effect = {}, incoming = null) {
+    if (String(effect?.原型 || '').trim() !== '状态施加') return false;
+    return stateBlocksMove(String(effect?.状态 || effect?.状态名称 || '').trim(), deriveStateCombatEffect(effect), incoming);
+  }
+  // A state effect that stops its target acting.
+  function effectStopsAction(effect = {}) {
+    return effectBlocksMove(effect, null);
+  }
+  function skillStopsAction(skill = {}) {
+    return collectEffects(skill || {}).some(effectStopsAction);
+  }
+  // A state on a unit that stops `incoming` (null: stops it acting).
+  function unitStateBlocksMove(state = {}, incoming = null) {
+    return stateBlocksMove(String(state?.状态 || state?.状态名称 || state?.name || '').trim(),
+      { ...(state?.计算层效果 || {}), ...(state?.战斗效果 || {}) }, incoming);
+  }
+  // Whether `reactor`'s `declaration` gets in before `attacker`'s move: own windup × their effective agility ≤ their
+  // windup × own effective agility, the own move released at once (within CONTINUOUS_ACTION_BUDGET).
+  // 接战链 阶段二补充 (§7.4、§8.4: "看走眼就该白挨"): the rule stays on the true agility; a decision reads the agility it
+  // believes, so its confidence is the margin it sees — margin = 1 − own × theirs' agility ÷ (their windup × own agility):
+  // PREEMPT_SURE_MARGIN or more ahead counts as sure (1), level as an even chance (0.5), PREEMPT_SURE_MARGIN or more
+  // behind as hopeless (0), linear between.
+  const PREEMPT_SURE_MARGIN = 0.15;
+  function preemptTiming(reactor = {}, declaration = {}, attacker = {}, incomingDeclaration = {}) {
+    const own = actionWindup(reactor, declaration);
+    const theirs = Math.min(CONTINUOUS_ACTION_BUDGET, actionWindup(attacker, incomingDeclaration));
+    const ownAgility = Math.max(0, Number(naturalActionOrderProfile(reactor).effectiveAgility) || 0);
+    const theirAgility = Math.max(0, Number(naturalActionOrderProfile(attacker).effectiveAgility) || 0);
+    const ownTime = own * theirAgility, theirTime = theirs * ownAgility;
+    const margin = own > CONTINUOUS_ACTION_BUDGET ? -Infinity
+      : theirTime > 0 ? 1 - ownTime / theirTime : ownTime > 0 ? -Infinity : 0;
+    return Object.freeze({ own, theirs, ownAgility, theirAgility, margin,
+      confidence: clamp(0.5 + 0.5 * margin / PREEMPT_SURE_MARGIN, 0, 1),
+      faster: own <= CONTINUOUS_ACTION_BUDGET && ownTime <= theirTime + 1e-9 });
+  }
+  // The chance a preemption holds, read off the attacker before and after the control's own settlement as the preview
+  // leaves it: down, or carrying a new state that stops `incoming` (null: stops it acting), by that state's
+  // __previewApplicationProbability.
+  function preemptHoldProbability(attackerBefore = null, attackerAfter = null, incoming = null) {
+    if (!attackerAfter) return 0;
+    if (!isBattleCapable(attackerAfter)) return 1;
+    const priorStates = attackerBefore?.状态效果 || {};
+    let best = 0;
+    for (const [key, state] of Object.entries(attackerAfter.状态效果 || {})) {
+      if (priorStates[key] === state || !unitStateBlocksMove(state, incoming)) continue;
+      best = Math.max(best, clamp(Number(state?.__previewApplicationProbability ?? 1), 0, 1));
+    }
+    return best;
+  }
+  // The preview of an answer that meets the move (BattleDecision stamps `declaration.engagement` = { mode, sourceActorId,
+  // incoming }): a clash is settled here as the runtime settles it — won: the answer's damage on the attacker scaled to
+  // the difference; even: CLASH_SHOCK of its damage on the attacker and nothing else (no other target, no state); lost:
+  // the answer comes to nothing (its costs and stamina still paid). No roll to hit. A preemption previews as the control
+  // it is.
+  function engagementPreviewInput(input = {}) {
+    const declaration = input?.declaration, engagement = declaration?.engagement;
+    if (!engagement || String(engagement.mode || '').trim().toUpperCase() !== 'CLASH' || input.__engagementResolved === true) return input;
+    const worldSnapshot = input.worldSnapshot;
+    const reactor = findUnit(worldSnapshot, input.actorId || declaration.actorId);
+    const attacker = findUnit(worldSnapshot, engagement.sourceActorId);
+    const clash = reactor && attacker ? clashOutcome(reactor, declaration, attacker, engagement.incoming, worldSnapshot) : null;
+    if (!clash) return { ...input, __engagementResolved: true };
+    if (!(clash.outScale > 0)) return { ...input, __engagementResolved: true, __engagementVoidEffects: true };
+    const attackerId = unitId(attacker), resolver = input.hitProbabilityResolver, given = input.damageMultiplierByTarget;
+    return { ...input, __engagementResolved: true, ...(clash.shock ? { __engagementShockTargetId: attackerId } : {}),
+      damageMultiplierByTarget: typeof given?.get === 'function' ? new Map([...given, [attackerId, clash.outScale]])
+        : { ...(given || {}), [attackerId]: clash.outScale },
+      hitProbabilityResolver: request => String(request?.targetId || '') === attackerId ? 1
+        : typeof resolver === 'function' ? resolver(request) : null };
   }
 
   function clearCache() {
@@ -22000,6 +22323,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     actionWindup,
     reactionWindupBudget,
     interceptWindupBudget,
+    clashWindupBudget,
     basicAttackWindup,
     CONTINUOUS_ACTION_BUDGET,
     refreshStaminaAdjustedFinal,
@@ -22050,6 +22374,31 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     calculateReactionContest,
     calculateDefenseDamageMultiplier,
     calculateDodgeProbability,
+    // 接战链 阶段一 (2026-11-12): the weight of a hit, the guard before and after it, striking back.
+    incomingMove,
+    incomingWindupSwing,
+    incomingIsArea,
+    incomingHitShare,
+    calculateGuardBaseMultiplier,
+    guardWeightFactor,
+    applyGuardWeight,
+    guardHolds,
+    counterOpeningProbability,
+    counterStaminaFactor,
+    declarationStaminaFactor,
+    // 接战链 阶段二 (2026-11-12): clashing and preempting.
+    incomingMoveDamage,
+    clashOutcome,
+    effectStopsAction,
+    skillStopsAction,
+    effectBlocksMove,
+    unitStateBlocksMove,
+    preemptTiming,
+    preemptHoldProbability,
+    ENGAGEMENT_RULES: Object.freeze({ DODGE_BASE, DODGE_SHARE_SLOPE, DODGE_BASE_FLOOR, DODGE_BASE_CAP, DODGE_WINDUP_SWING, DODGE_AREA_PENALTY,
+      DODGE_FLOOR, DODGE_CAP, WINDUP_PIVOT, WINDUP_SPAN, GUARD_LIGHT, GUARD_HEAVY, GUARD_TYPICAL, GUARD_LIGHT_SHARE, GUARD_EVEN_SHARE,
+      GUARD_HEAVY_SHARE, GUARD_CAP, COUNTER_GUARD_HELD, COUNTER_BASE, COUNTER_WINDUP_SWING, COUNTER_FLOOR, COUNTER_CAP,
+      COUNTER_STAMINA_FACTOR, COUNTER_STAMINA_STEP, COUNTER_FADE, COUNTER_STANCE_BONUS, CLASH_WIN, CLASH_SHOCK, PREEMPT_SURE_MARGIN, CLASH_READ_MARGIN }),
     compileMechanicalBasis,
     compileMechanicalProjectionContext,
     recursionDepthLimit: MAX_RECURSION_DEPTH,
@@ -22114,6 +22463,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     evaluateBattleObjectives,
     evaluateBattleObjectivesCompact,
     calculateNonlethalHpFloor,
+    isProtectedBattle,
+    isRefereedMatch,
+    lifeThreatExit,
+    LIFE_THREAT_RATIO,
+    INJURY_STAMINA_SHARE,
+    INTERCEPT_WINDUP,
+    REACTION_DEFENDER_MARGIN,
     sampleSignedValue,
     sampleSignedValueExpression,
     assessWorldAction,

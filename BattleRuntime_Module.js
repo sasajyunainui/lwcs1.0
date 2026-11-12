@@ -3536,7 +3536,7 @@
     // 受伤同步扣体力（用户 2026-11-09）：同 BattlePreview setHp——生命少掉的比例，体力扣同样比例的体力上限。
     const hpBefore = resourceKey === 'hp' ? previewRuntime.readHp(unit) : 0;
     if (resourceKey === 'hp' && nextValue < hpBefore && previewRuntime.readResourceMax(unit, '体力') > 0) {
-      writeCombatResource(unit, 'vit', previewRuntime.readResource(unit, '体力') -
+      writeCombatResource(unit, 'vit', previewRuntime.readResource(unit, '体力') - (Number(previewRuntime.INJURY_STAMINA_SHARE) || 0.5) *
         (hpBefore - nextValue) / Math.max(1, maxValue) * previewRuntime.readResourceMax(unit, '体力'));
     }
     const fuelBefore = resourceKey === 'sp' || resourceKey === 'men' ? previewRuntime.readResource(unit, config.statKey) : 0;
@@ -8198,9 +8198,10 @@
   // R07 / R17: the stamina an action costs (previewRuntime.actionStaminaCost), drained to 0 at most — running out of
   // stamina weakens the unit through staminaScaleForUnit but never forbids an action. Written as a PAY resource fact plus
   // an action_cost event with source ACTION_STAMINA, so the ledger and analytics see it like any other cost.
-  function payActionStamina({ combatData, actor, nature, opponent = null, action, actionEvent, actionRole, actorControl = 'AI' }) {
+  // `factor`: a strike back's price factor (BattlePreview counterStaminaFactor, 接战链 阶段一); 1 for anything else.
+  function payActionStamina({ combatData, actor, nature, opponent = null, action, actionEvent, actionRole, actorControl = 'AI', factor = 1 }) {
     if (!previewRuntime.actionStaminaEnabled(combatData)) return [];
-    const requested = previewRuntime.actionStaminaCost(actor, nature, opponent);
+    const requested = previewRuntime.actionStaminaCost(actor, nature, opponent) * Math.max(0, Number(factor) || 1);
     if (!(requested > 0)) return [];
     const before = persistentResourceValue(actor, 'vit');
     const after = writeCombatResource(actor, 'vit', before - requested);
@@ -8208,7 +8209,7 @@
     if (!(applied > 0)) return [];
     return [
       writeStructuredResourceFact(combatData, actor, actor, action, actionEvent, 'vit', -applied, actionRole, 'PAY',
-        { before, after, meta: { requestedAmount: requested, source: 'ACTION_STAMINA', staminaNature: nature } }),
+        { before, after, meta: { requestedAmount: requested, source: 'ACTION_STAMINA', staminaNature: nature, ...(factor !== 1 ? { staminaFactor: factor } : {}) } }),
       writeLedgerEvent(combatData, {
         eventKind: 'action_cost',
         round: Number(combatData?.回合 || 0),
@@ -8224,7 +8225,7 @@
         result: 'paid',
         resultState: 'SUCCESS',
         primaryOutcome: 'resource_cost',
-        meta: { source: 'ACTION_STAMINA', resourceKey: 'vit', resource: '体力', amount: applied, requestedAmount: requested, staminaNature: nature, auditOnly: true },
+        meta: { source: 'ACTION_STAMINA', resourceKey: 'vit', resource: '体力', amount: applied, requestedAmount: requested, staminaNature: nature, ...(factor !== 1 ? { staminaFactor: factor } : {}), auditOnly: true },
       }),
     ].filter(Boolean);
   }
@@ -10470,7 +10471,10 @@
       const opponent = (Array.isArray(declaration?.targetIds) ? declaration.targetIds : [])
         .map(targetId => listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, targetId)))
         .find(unit => unit && inferUnitSide(combatData, unit) && inferUnitSide(combatData, unit) !== inferUnitSide(combatData, actor)) || null;
-      if (staminaNature) facts.push(...payActionStamina({ combatData, actor, nature: staminaNature, opponent, action, actionEvent, actionRole, actorControl }));
+      // A strike back pays its exchange's price factor (stamped on the declaration when it was declared).
+      const staminaFactor = actionRole === 'COUNTER' && ['BASIC_ATTACK', 'RELEASE_SKILL'].includes(String(actionKind || '').trim().toUpperCase())
+        ? previewRuntime.declarationStaminaFactor(declaration) : 1;
+      if (staminaNature) facts.push(...payActionStamina({ combatData, actor, nature: staminaNature, opponent, action, actionEvent, actionRole, actorControl, factor: staminaFactor }));
       // 攻击破绽（BattlePreview attackOpeningOf）：正式行动先清掉旧破绽，进攻留下新的；反应（闪避、防御）不算下一次行动。
       if (actionRole !== 'REACTION') previewRuntime.setAttackOpening(actor, previewRuntime.attackOpeningStrength(combatData, actor, { ...declaration, actionKind },
         targetId => listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, targetId))), actionEvent.actionId);
@@ -11591,8 +11595,9 @@
               }));
               continue;
             }
-            const roll = Math.random();
-            if (!probabilitySucceeds(hitProbability, roll)) {
+            // 接战链 阶段二: the difference a clash leaves lands without a roll to hit (reaction.forceHit).
+            const roll = reaction?.forceHit === true ? null : Math.random();
+            if (roll !== null && !probabilitySucceeds(hitProbability, roll)) {
               facts.push(writeLedgerEvent(combatData, {
                 eventKind: 'hit_result', round: Number(combatData?.回合 || 0),
                 actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
@@ -11654,16 +11659,23 @@
               actionEvent,
               actionRole,
             }));
-            const nonlethal = /点到为止|切磋|训练|非致命/.test(String(combatData?.战斗意图 || '').trim());
+            // 生命受威胁即出局（用户 2026-11-12，BattlePreview isProtectedBattle）: in a spar the fighters hold a hit at the
+            // life-threat line themselves; in a match the referee has to get there (structuredRefereeRescue), and a hit
+            // it does not reach lands whole. A unit already out is not hit under the line again.
+            const battleMode = String(combatData?.战斗意图 || '').trim();
+            const sparring = /点到为止|切磋|训练|非致命/.test(battleMode);
+            const protectedBattle = sparring || previewRuntime.isProtectedBattle(combatData, { mode: battleMode });
             const shieldBefore = currentShieldTotal(target, effect, actor);
-            const nonlethalHpFloor = nonlethal
-              ? previewRuntime.calculateNonlethalHpFloor(combatData, target, {
-                  mode: String(combatData?.战斗意图 || '').trim(),
-                  objectives: combatData?.胜负条件 || {},
-                })
+            const lifeFloor = protectedBattle
+              ? previewRuntime.calculateNonlethalHpFloor(combatData, target, { mode: battleMode, objectives: combatData?.胜负条件 || {} })
               : 0;
-            const hpDamageLimit = nonlethal ? Math.max(0, before - nonlethalHpFloor) : before;
             const settledSegmentDamage = previewRuntime.calculateSettledSegmentDamage(totalDamage, segments, reactionDamageMultiplier);
+            const alreadyOut = !!String(target?.__战斗失能原因 || '').trim();
+            const refereeRescue = protectedBattle && !sparring && !alreadyOut && settledSegmentDamage > shieldBefore + Math.max(0, before - lifeFloor) + 1e-9
+              ? structuredRefereeRescue(combatData, actor, declaration) : null;
+            const nonlethal = sparring || protectedBattle && (alreadyOut || !!refereeRescue);
+            const nonlethalHpFloor = nonlethal ? lifeFloor : 0;
+            const hpDamageLimit = nonlethal ? Math.max(0, before - nonlethalHpFloor) : before;
             const incomingDamage = Math.max(0, Math.min(
               shieldBefore + hpDamageLimit,
               settledSegmentDamage,
@@ -11708,7 +11720,10 @@
             writeCombatResource(target, 'hp', before - damage);
             const hpAfter = previewRuntime.readHp(target);
             const traumaUnconscious = previewRuntime.shouldTriggerTraumaUnconscious(damage, hpAfter, previewRuntime.readHpMax(target));
-            const nonlethalIncapacitated = nonlethal && nonlethalHpFloor <= 1 && before > 1 && damage >= before - 1 - 1e-9;
+            // Held at the line (the fighters, or the referee), or landed whole and left under it: out of the fight.
+            const heldAtLine = nonlethal && !alreadyOut && previewRuntime.lifeThreatExit(nonlethalHpFloor, target) && before > 0 && damage >= before - nonlethalHpFloor - 1e-9;
+            const leftUnderLine = protectedBattle && !nonlethal && hpAfter > 0 && previewRuntime.lifeThreatExit(lifeFloor, target) && hpAfter < lifeFloor;
+            const nonlethalIncapacitated = heldAtLine || leftUnderLine;
             const damageEvent = writeLedgerEvent(combatData, {
               eventKind: 'hit_result', round: Number(combatData?.回合 || 0),
               actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
@@ -11780,7 +11795,7 @@
                 targetId: previewRuntime.unitId(target), targetName: previewRuntime.unitName(target),
                 actionName, actionType: 'incapacitation', actorControl, actionRole, actionId: actionEvent.actionId,
                 sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
-                ruleCode: traumaUnconscious ? 'TRAUMA_UNCONSCIOUS' : 'NONLETHAL_INTENT_DISABLE',
+                ruleCode: traumaUnconscious ? 'TRAUMA_UNCONSCIOUS' : refereeRescue ? 'REFEREE_RESCUE' : leftUnderLine ? 'LIFE_THREAT_WITHDRAWN' : 'NONLETHAL_INTENT_DISABLE',
                 result: 'applied', resultState: 'SUCCESS', primaryOutcome: traumaUnconscious ? 'trauma_unconscious' : 'nonlethal_incapacitation',
                 effectPrototype: prototype, factType: 'STATE', sourceEffectId, operation: 'STATE_APPLY',
                 meta: {
@@ -11792,6 +11807,8 @@
                   singleHitRatio: damage / Math.max(1, hpMax),
                   nonlethalHpFloor,
                   nonlethalIncapacitated,
+                  ...(refereeRescue ? { refereeRescue: { ...refereeRescue }, reasonText: `${refereeRescue.name}出手拦下这一击，${previewRuntime.unitName(target)}出局` } : {}),
+                  ...(leftUnderLine ? { lifeFloor, reasonText: `${previewRuntime.unitName(target)}生命已到危险线，出局` } : {}),
                   traumaUnconscious,
                   before: beforeActionState,
                   after: cloneValue(target.状态),
@@ -12539,7 +12556,15 @@
         if (specialPreviousHp) settleSpecialPassiveBoundary(specialPreviousHp, facts.slice(specialFactStart), sourceEffectId);
       }
     };
-    effects
+    // 接战链 阶段二 (BattlePreview clashOutcome): a move that came to nothing in a clash brings no effect — its costs and
+    // stamina are paid above (input.voidEffects); a unit it came to nothing on (a clash it won or evened, its reaction
+    // marked `nullified`) takes none of its effects.
+    const nullifiedTarget = target => input?.reactionByTarget?.[previewRuntime.unitId(target)]?.nullified === true;
+    // 接战链 阶段二补充: an even clash's shock carries damage only (reaction shockOnly; input.shockOnlyTargetId: the
+    // answer itself lands on that one unit only).
+    const shockTarget = (target, prototype) => prototype !== '伤害结算' && input?.reactionByTarget?.[previewRuntime.unitId(target)]?.shockOnly === true ||
+      !!input?.shockOnlyTargetId && (prototype !== '伤害结算' || previewRuntime.unitId(target) !== input.shockOnlyTargetId);
+    (input?.voidEffects === true ? [] : effects)
       .map((effect, sourceEffectIndex) => ({ effect, sourceEffectIndex }))
       .sort((left, right) => {
         const isPreDamageSuppression = effect =>
@@ -12557,9 +12582,9 @@
       .forEach(({ effect: sourceEffect, sourceEffectIndex }) => {
       economicInventory.rootVisits++;
       const prototype = String(sourceEffect?.原型 || '').trim();
-      const rawTargets = prototype
+      const rawTargets = (prototype
         ? resolveStructuredTargets(combatData, actor, declaration, sourceEffect)
-        : [primaryTarget].filter(Boolean);
+        : [primaryTarget].filter(Boolean)).filter(target => !nullifiedTarget(target) && !shockTarget(target, prototype));
       const groups = resolveCurrentConditionalGroups(sourceEffect, rawTargets);
       groups.forEach(group => {
         group.plan.forEach((entry, planIndex) => {
@@ -13140,6 +13165,31 @@
     });
   }
 
+  // 裁判救援（用户 2026-11-12："有裁判的话，并且裁判足够应付的话可以让裁判出手阻挡（同样是计算敏捷，走守护路线。注意敏捷差距大
+  // 的话是可以一回合救多人的"）: the referee of a match (combatData.裁判: 名称, and 敏捷 or 等级) steps in front of a hit
+  // that would take a unit under the life-threat line. It gets there by the guard's reckoning (BattlePreview
+  // reactionWindupBudget against the attack, with the referee's agility; stepping in takes INTERCEPT_WINDUP of it),
+  // and each further rescue in the same round takes as much again — so a referee far quicker than the fighters saves
+  // several in a round and one no quicker than them one or two. Returns the rescue, or null when there is no referee
+  // or it cannot get there.
+  const refereeRescues = new WeakMap();
+  function structuredRefereeRescue(combatData = {}, attacker = {}, declaration = {}) {
+    const referee = combatData?.裁判;
+    if (!referee || typeof referee !== 'object') return null;
+    const level = Number(referee.等级 ?? referee.level);
+    const agility = Number(referee.敏捷 ?? referee.agi) > 0 ? Number(referee.敏捷 ?? referee.agi)
+      : level > 0 && typeof root.__LWCS_GET_BASE_STATS__ === 'function' ? Number(root.__LWCS_GET_BASE_STATS__(level)?.agi) || 0 : 0;
+    if (!(agility > 0)) return null;
+    const round = Number(combatData?.回合 || 0), budgetCap = Number(previewRuntime.CONTINUOUS_ACTION_BUDGET) || 40;
+    const tally = refereeRescues.get(combatData), done = tally && tally.round === round ? tally.count : 0;
+    const windup = previewRuntime.actionWindup(attacker, declaration), attackerAgility = previewRuntime.naturalActionOrderProfile(attacker).effectiveAgility;
+    const reach = windup > budgetCap || !(attackerAgility > 0) ? budgetCap
+      : Math.min(budgetCap, windup * (agility / attackerAgility) * (1 + (Number(previewRuntime.REACTION_DEFENDER_MARGIN) || 0.2)));
+    if (!(reach - (Number(previewRuntime.INTERCEPT_WINDUP) || 10) * (done + 1) >= 0)) return null;
+    refereeRescues.set(combatData, { round, count: done + 1 });
+    return { name: String(referee.名称 || referee.name || '裁判').trim() || '裁判', agility, reach, count: done + 1 };
+  }
+
   function structuredActorPhysicallyAlive(unit = {}) {
     return unit?.状态?.存活 !== false && previewRuntime.readHp(unit) > 0;
   }
@@ -13178,8 +13228,8 @@
         /控|晕|眠|定身|束缚|沉默|封禁|缴械|嘲讽|恐惧/.test(String(name || ''))));
   }
 
-  function structuredReactionContest(reactor = {}, sourceActor = {}) {
-    return previewRuntime.calculateReactionContest(reactor, sourceActor);
+  function structuredReactionContest(reactor = {}, sourceActor = {}, declaration = null) {
+    return previewRuntime.calculateReactionContest(reactor, sourceActor, declaration);
   }
 
   // 援护: who may step in front of `target` against this attack, and whether one of them does. Eligible: a unit of the
@@ -13230,6 +13280,125 @@
       sourceActionId: sourceId,
       grantId,
       opportunityId: grantId,
+    };
+  }
+
+  // 接战链 阶段二 (用户 2026-11-12：对轰"看两边这一招的威力"，抢先"看谁快、控不控得住"; 接战链改造方案-20261112 §2.1–2.3).
+  // The struck unit meets the move with one of its own (`declaration`, aimed at the attacker, stamped `engagement` by
+  // the decision). It settles as a REACTION: the attacker does not answer it and it leaves no attack opening; it pays its
+  // costs and its stamina as any attack.
+  //   CLASH — BattlePreview clashOutcome on the field as it stands. Won: the answer settles on the attacker scaled to the
+  //     difference (reactionByTarget damageMultiplier, no roll to hit: forceHit), its other effects as usual, and the move
+  //     comes to nothing on the answerer (`nullified`: none of its effects). Even (接战链 阶段二补充 §8.2): each side takes
+  //     CLASH_SHOCK of the other's move, its damage only — no state, no other target, no roll to hit, no guard
+  //     (shockOnly / shockOnlyTargetId). Lost: the answer comes to nothing and the move lands on the answerer scaled
+  //     to the difference, unguarded, with no roll to hit, its states as usual. The difference goes through the ordinary
+  //     damage settlement (shields, rule blocks, the life-threat line). An ally that stepped in (援护) clashes the same
+  //     way — the move has been turned on it.
+  //   PREEMPT — the control settles as ever (its hit, chance and resistance; its damage). Held — the attacker can no
+  //     longer act (stopped or down), or (接战链 阶段二补充 §8.3) a state it put on stops this kind of move: 封技/沉默 a
+  //     released skill, 缴械 a basic attack (BattlePreview unitStateBlocksMove) — the move comes to nothing on every target (the queue cancels its settlement and
+  //     spends one action of the control on it, as it does for any action a control stops); otherwise the move lands on
+  //     the answerer unguarded (no guard multiplier, no evasion).
+  // A clash won or even and a preemption that held are answers that worked: openStructuredCounterWindow may open.
+  // Ledger: an `engagement` event (eventKind clash / preempt; ruleCode ENGAGEMENT_CLASH_WON / _EVEN / _LOST,
+  // ENGAGEMENT_PREEMPT_HELD / _FAILED) with both sides' damage, the ratio and the result, or the windups, the agility and
+  // the states the control put on; the answer's own action_start carries meta.engagementMode.
+  function settleStructuredEngagement({ input, combatData, reactor, sourceActor, declaration, incomingDeclaration,
+    parentActionEvent, common, reactionMeta, mode }) {
+    const sourceId = previewRuntime.unitId(sourceActor);
+    const clash = mode === 'CLASH' ? previewRuntime.clashOutcome(reactor, declaration, sourceActor, incomingDeclaration, combatData) : null;
+    // 接战链 阶段 2c: the answering move must fit the clash window (BattlePreview clashWindupBudget, the attack read on the
+    // true agility; an ally that stepped in has INTERCEPT_WINDUP less). Thrown too late (LATE) it comes to nothing and the
+    // move lands on the answerer unguarded, rolling to hit as ever — a misjudged speed is paid for, as with preempting.
+    const clashWindow = mode === 'CLASH' ? previewRuntime.clashWindupBudget(sourceActor, incomingDeclaration, reactor, { intercept: input?.intercept === true }) : null;
+    const clashWindup = mode === 'CLASH' ? previewRuntime.actionWindup(reactor, declaration) : null;
+    const clashInTime = mode !== 'CLASH' || clashWindup <= clashWindow + 1e-9;
+    const clashResult = mode === 'CLASH' ? !clashInTime ? 'LATE' : clash?.result || 'LOSE' : '';
+    const timing = mode === 'PREEMPT' ? previewRuntime.preemptTiming(reactor, declaration, sourceActor, incomingDeclaration) : null;
+    const couldAct = structuredActorCanAct(sourceActor, 'ACTIVE');
+    const statesBefore = new Set(Object.values(sourceActor?.状态效果 || {}));
+    const actionContext = beginStructuredDeclaration({
+      combatData,
+      declaration,
+      actionRole: 'REACTION',
+      actorControl: 'AI',
+      sourceActionId: parentActionEvent.actionId,
+      opportunityId: common.opportunityId,
+      opportunitySequence: common.opportunitySequence,
+      grantId: common.grantId,
+      decisionCandidateId: reactionMeta.decisionCandidateId,
+      parentNodeId: parentActionEvent.chainNodeId || '',
+      reactionNodeId: parentActionEvent.chainNodeId || '',
+    });
+    actionContext.actionEvent.meta.engagementMode = mode;
+    const settlement = executeStructuredDeclaration({
+      combatData, declaration, actionContext,
+      // 接战链 阶段二补充: an even clash's shock is the answer's damage on the attacker only (shockOnlyTargetId).
+      ...(mode !== 'CLASH' ? {} : clashResult === 'WIN'
+        ? { reactionByTarget: { [sourceId]: { actionKind: 'CLASH', damageMultiplier: clash.outScale, forceHit: true } } }
+        : clashResult === 'EVEN' && clash?.outScale > 0
+          ? { reactionByTarget: { [sourceId]: { actionKind: 'CLASH', damageMultiplier: clash.outScale, forceHit: true, shockOnly: true } }, shockOnlyTargetId: sourceId }
+          : { voidEffects: true }),
+    });
+    // 接战链 阶段二补充 (§8.3): held — the attacker can no longer act (stopped or down), or a state the control put on it
+    // stops this move's kind (封技/沉默 a released skill, 缴械 a basic attack: BattlePreview unitStateBlocksMove).
+    const blockingStates = mode === 'PREEMPT' ? Object.entries(sourceActor?.状态效果 || {}).filter(([, state]) => !statesBefore.has(state) &&
+      previewRuntime.unitStateBlocksMove(state, incomingDeclaration)).map(([key]) => key) : [];
+    const stopped = mode === 'PREEMPT' && !structuredActorCanAct(sourceActor, 'ACTIVE');
+    const held = mode === 'PREEMPT' && couldAct && timing?.faster === true && (stopped || blockingStates.length > 0);
+    const answered = mode === 'CLASH' ? clashResult === 'WIN' || clashResult === 'EVEN' : held;
+    const appliedStates = mode === 'PREEMPT' ? settlement.facts.filter(event => ['state_apply', 'state_replace'].includes(event?.eventKind) &&
+      isUnitIdentityMatch(sourceActor, event?.targetId || event?.targetName || '') && ['SUCCESS', 'APPLIED', 'REPLACED'].includes(String(event?.resultState || '').toUpperCase()))
+      .map(event => String(event?.meta?.stateName || event?.actionName || '').trim()).filter(Boolean) : [];
+    const ruleCode = mode === 'CLASH'
+      ? `ENGAGEMENT_CLASH_${{ WIN: 'WON', EVEN: 'EVEN', LOSE: 'LOST', LATE: 'LATE' }[clashResult]}`
+      : held ? 'ENGAGEMENT_PREEMPT_HELD' : 'ENGAGEMENT_PREEMPT_FAILED';
+    const engagementEvent = writeLedgerEvent(combatData, {
+      ...common,
+      eventKind: mode === 'CLASH' ? 'clash' : 'preempt',
+      actionName: mode === 'CLASH' ? '对轰' : '抢先',
+      result: mode === 'CLASH' ? { WIN: 'won', EVEN: 'even', LOSE: 'lost', LATE: 'late' }[clashResult] : held ? 'held' : 'failed',
+      resultState: answered ? 'SUCCESS' : 'FAILURE',
+      primaryOutcome: mode === 'CLASH' ? `clash_${clashResult.toLowerCase()}` : held ? 'preempted' : 'preempt_failed',
+      ruleCode,
+      meta: {
+        ...reactionMeta,
+        engagementMode: mode,
+        moveActionId: String(actionContext.actionEvent?.actionId || '').trim(),
+        moveName: actionContext.actionName,
+        moveKind: String(declaration?.actionKind || '').trim(),
+        incomingMoveName: normalizeActionDisplayName(incomingDeclaration?.skill?.name || incomingDeclaration?.skill?.魂技名 || incomingDeclaration?.actionKind || ''),
+        incomingMoveKind: String(incomingDeclaration?.actionKind || '').trim(),
+        intercept: input?.intercept === true,
+        answered,
+        ...(clash ? { clashResult, reactorDamage: clash.mine, attackerDamage: clash.theirs, clashRatio: Number.isFinite(clash.ratio) ? clash.ratio : null,
+          clashThreshold: clash.threshold, outScale: clash.outScale, inScale: clash.inScale } : mode === 'CLASH' ? { clashResult, clashUnresolved: true } : {}),
+        ...(mode === 'CLASH' ? { clashWindow, clashWindup, clashInTime } : {}),
+        ...(timing ? { ownWindup: timing.own, incomingWindup: timing.theirs, ownAgility: timing.ownAgility, sourceAgility: timing.theirAgility,
+          faster: timing.faster, margin: Number.isFinite(timing.margin) ? timing.margin : null, attackerCouldAct: couldAct, held, appliedStates,
+          holdKind: !held ? '' : stopped ? (previewRuntime.isBattleCapable(sourceActor) ? 'STOPPED' : 'DOWN') : 'MOVE_BLOCKED', blockingStates } : {}),
+        ...(clash?.shock ? { shock: clash.outScale } : {}),
+      },
+    });
+    actionContext.actionEvent.meta.engagementEventId = String(engagementEvent?.eventId || '').trim();
+    return {
+      actionKind: mode,
+      event: settlement.actionEvent,
+      engagementEvent,
+      facts: settlement.facts,
+      evaded: false,
+      // The move comes to nothing on the answerer (a clash won), lands on it as CLASH_SHOCK of its damage only (even), or
+      // scaled to a lost clash's difference (lost) — no roll to hit; a preemption that failed leaves it unguarded.
+      nullified: mode === 'CLASH' && clashResult === 'WIN',
+      shockOnly: mode === 'CLASH' && clashResult === 'EVEN',
+      damageMultiplier: mode === 'CLASH' && clashResult !== 'WIN' && clashResult !== 'LATE' ? (clash ? clash.inScale : 1) : 1,
+      forceHit: mode === 'CLASH' && (clashResult === 'EVEN' || clashResult === 'LOSE'),
+      preempted: held,
+      answerWorked: answered,
+      opensCounterCheck: answered,
+      clash,
+      timing,
     };
   }
 
@@ -13323,9 +13492,13 @@
         opensCounterCheck: false,
       };
     }
+    // 接战链 阶段一: the move being answered (its windup and reach move the chance to evade, its weight what a guard lets
+    // through — BattlePreview calculateDodgeProbability / calculateDefenseDamageMultiplier), and the unit it lands on.
+    const incomingDeclaration = input?.incomingDeclaration && typeof input.incomingDeclaration === 'object' ? input.incomingDeclaration : null;
+    const hitTarget = input?.hitTarget && typeof input.hitTarget === 'object' ? input.hitTarget : reactor;
     if (actionKind === 'EVADE') {
-      const contest = structuredReactionContest(reactor, sourceActor);
-      const probability = previewRuntime.calculateDodgeProbability(reactor, sourceActor, !!preparedDefense);
+      const contest = structuredReactionContest(reactor, sourceActor, incomingDeclaration);
+      const probability = previewRuntime.calculateDodgeProbability(reactor, sourceActor, !!preparedDefense, incomingDeclaration);
       const roll = Math.random();
       const evaded = probabilitySucceeds(probability, roll);
       const event = writeLedgerEvent(combatData, {
@@ -13350,6 +13523,10 @@
           attackPressureBreakdown: contest.attackPressureBreakdown,
           reactionAgilityBreakdown: contest.reactionAgilityBreakdown,
           sourceAgilityBreakdown: contest.sourceAgilityBreakdown,
+          baseDodgeRate: contest.baseProbability,
+          incomingWindupSwing: contest.windupSwing,
+          incomingAreaMove: contest.areaMove,
+          incomingKnown: contest.incomingKnown,
           preparedDefenseConsumed: !!preparedDefense,
         },
       });
@@ -13366,7 +13543,10 @@
       };
     }
     if (actionKind === 'DEFEND' || actionKind === 'GUARD') {
-      const damageMultiplier = previewRuntime.calculateDefenseDamageMultiplier(reactor, sourceActor, !!preparedDefense);
+      // The weight of the hit: the whole move's damage on the unit it lands on, as a share of that unit's HP maximum.
+      const hitShare = incomingDeclaration ? previewRuntime.incomingHitShare(sourceActor, incomingDeclaration, hitTarget, combatData) : null;
+      const guardBase = previewRuntime.calculateGuardBaseMultiplier(reactor, sourceActor, !!preparedDefense);
+      const damageMultiplier = previewRuntime.calculateDefenseDamageMultiplier(reactor, sourceActor, !!preparedDefense, hitShare);
       const event = writeLedgerEvent(combatData, {
         ...common,
         eventKind: 'defend',
@@ -13375,7 +13555,8 @@
         resultState: 'SUCCESS',
         primaryOutcome: 'guarded',
         ruleCode: 'REACTION_SUCCEEDED',
-        meta: { ...reactionMeta, damageMultiplier, preparedDefenseConsumed: !!preparedDefense },
+        meta: { ...reactionMeta, damageMultiplier, guardBaseMultiplier: guardBase, hitShare,
+          guardWeightFactor: previewRuntime.guardWeightFactor(hitShare), preparedDefenseConsumed: !!preparedDefense },
       });
       if (!preparedDefense) payActionStamina({ combatData, actor: reactor, nature: 'DEFEND', opponent: sourceActor, action: { actionName: actionKind === 'GUARD' ? '护卫' : '防御', actionKind }, actionEvent: event, actionRole: 'REACTION' });
       return {
@@ -13385,6 +13566,12 @@
         damageMultiplier,
         opensCounterCheck: true,
       };
+    }
+    // 接战链 阶段二 (BattlePreview clashOutcome / preemptTiming): meeting the move with one's own.
+    const engagementMode = String(declaration?.engagement?.mode || '').trim().toUpperCase();
+    if (incomingDeclaration && (engagementMode === 'CLASH' || engagementMode === 'PREEMPT')) {
+      return settleStructuredEngagement({ input, combatData, reactor, sourceActor, declaration, incomingDeclaration,
+        parentActionEvent, common, reactionMeta, mode: engagementMode });
     }
     const actionContext = beginStructuredDeclaration({
       combatData,
@@ -13414,12 +13601,19 @@
     };
   }
 
-  // R15: a round is one cavalry pass. A successful defence or evasion always lets the defender strike back, and a
-  // counter can itself be defended or evaded and answered, so the engagement flows until someone fails to answer,
-  // declines, or lacks the stamina for the strike. ENGAGEMENT_CHAIN_LIMIT only guards against a runaway loop.
-  // COUNTER_WINDOW_MODE 'PROBABILITY' restores the old contest roll if the always-open chain proves too slow.
-  const COUNTER_WINDOW_MODE = 'ALWAYS';
+  // R15: a round is one cavalry pass. A counter can itself be defended or evaded and answered, so the engagement flows
+  // until someone fails to answer, declines, misses the opening, or lacks the stamina for the strike.
+  // 接战链 阶段一 (用户 2026-11-12："上限不需要，但是要给反击设置难度，代价"): a strike back needs an answer that worked —
+  // an evasion that succeeded, or a guard that held (the hit took under COUNTER_GUARD_HELD of the HP maximum; a heavy hit
+  // through the guard leaves no opening) — and then catching the opening (BattlePreview counterOpeningProbability: the
+  // two units' speed and the windup of the move answered, + COUNTER_STANCE_BONUS out of a prepared stance, × COUNTER_FADE
+  // for each strike back the unit already made in this exchange); it costs counterStaminaFactor × its stamina. A
+  // reaction skill that grants a counter opens it whenever it succeeds, as before. ENGAGEMENT_CHAIN_LIMIT only guards
+  // against a runaway loop. COUNTER_WINDOW_MODE 'ALWAYS' skips the roll (the answer must still have worked).
+  const COUNTER_WINDOW_MODE = 'PROBABILITY';
   const ENGAGEMENT_CHAIN_LIMIT = 8;
+  // The strike backs each unit has made in the exchange a queue node belongs to (by unit id).
+  const engagementCounterCounts = node => node?.state?.counterCounts && typeof node.state.counterCounts === 'object' ? node.state.counterCounts : {};
 
   function openStructuredCounterWindow(input = {}) {
     const { combatData, reactor, sourceActor, parentActionEvent, reaction, settlementFacts } = input;
@@ -13430,20 +13624,29 @@
       if (event?.eventKind !== 'hit_result' || !isUnitIdentityMatch(reactor, event?.targetName || event?.targetId || '')) return sum;
       return sum + Math.max(0, Number(event?.appliedDamage || event?.meta?.appliedDamage || 0));
     }, 0);
-    const baseProbability = reaction.evaded === true ? 0.45 : 0.24;
-    const contest = structuredReactionContest(reactor, sourceActor);
-    const contestProbability = Math.max(0.08, Math.min(0.72, baseProbability + (contest.probability - 0.25) * 0.5));
-    const strikeStamina = previewRuntime.actionStaminaEnabled(combatData) ? previewRuntime.actionStaminaCost(reactor, 'ATTACK', sourceActor) : 0;
-    // The defender will not strike back with stamina it cannot spare: a counter that would leave it at 0 is not taken.
-    const staminaExhausted = strikeStamina > 0 && persistentResourceValue(reactor, 'vit') - strikeStamina <= 1e-9;
-    const chainLimited = engagementDepth >= ENGAGEMENT_CHAIN_LIMIT;
-    const probability = COUNTER_WINDOW_MODE === 'PROBABILITY' ? contestProbability : 1;
-    const roll = Math.random();
-    const opened = !staminaExhausted && !chainLimited && probabilitySucceeds(probability, roll);
-    const closedReason = staminaExhausted ? 'COUNTER_WINDOW_STAMINA_EXHAUSTED' : chainLimited ? 'ENGAGEMENT_CHAIN_LIMIT' : 'COUNTER_WINDOW_MISSED';
     const counterGrantProfile = reaction?.counterGrantProfile?.granted === true
       ? cloneValue(reaction.counterGrantProfile)
       : null;
+    const incomingDeclaration = input?.incomingDeclaration && typeof input.incomingDeclaration === 'object' ? input.incomingDeclaration : null;
+    const priorCounters = Math.max(0, Number(input?.counterCounts?.[previewRuntime.unitId(reactor)] || 0));
+    const prepared = reaction?.event?.meta?.preparedDefenseConsumed === true;
+    const defended = ['DEFEND', 'GUARD'].includes(String(reaction?.actionKind || '').trim().toUpperCase());
+    const hpLostShare = receivedDamage / Math.max(1, previewRuntime.readHpMax(reactor));
+    // 接战链 阶段二: a clash won or even, or a preemption that held, worked too (reaction.answerWorked).
+    const eligible = !!counterGrantProfile || reaction.evaded === true || reaction.answerWorked === true ||
+      defended && previewRuntime.guardHolds(hpLostShare, 1);
+    const contest = structuredReactionContest(reactor, sourceActor, incomingDeclaration);
+    const contestProbability = previewRuntime.counterOpeningProbability(reactor, sourceActor, incomingDeclaration, { prepared, prior: priorCounters });
+    const staminaFactor = previewRuntime.counterStaminaFactor(priorCounters);
+    const strikeStamina = previewRuntime.actionStaminaEnabled(combatData) ? previewRuntime.actionStaminaCost(reactor, 'ATTACK', sourceActor) * staminaFactor : 0;
+    // The defender will not strike back with stamina it cannot spare: a counter that would leave it at 0 is not taken.
+    const staminaExhausted = strikeStamina > 0 && persistentResourceValue(reactor, 'vit') - strikeStamina <= 1e-9;
+    const chainLimited = engagementDepth >= ENGAGEMENT_CHAIN_LIMIT;
+    const probability = !eligible ? 0 : counterGrantProfile || COUNTER_WINDOW_MODE !== 'PROBABILITY' ? 1 : contestProbability;
+    const roll = Math.random();
+    const opened = eligible && !staminaExhausted && !chainLimited && probabilitySucceeds(probability, roll);
+    const closedReason = !eligible ? reaction.evaded === true || !defended ? 'COUNTER_WINDOW_NOT_ELIGIBLE' : 'COUNTER_WINDOW_GUARD_BROKEN_THROUGH'
+      : staminaExhausted ? 'COUNTER_WINDOW_STAMINA_EXHAUSTED' : chainLimited ? 'ENGAGEMENT_CHAIN_LIMIT' : 'COUNTER_WINDOW_MISSED';
     const event = writeLedgerEvent(combatData, {
       eventKind: 'counter_window',
       round: Number(combatData?.回合 || 0),
@@ -13468,6 +13671,12 @@
         probability,
         roll,
         receivedDamage,
+        hpLostShare,
+        eligible,
+        priorCounters,
+        staminaFactor,
+        preparedStance: prepared,
+        answerKind: String(reaction?.actionKind || '').trim().toUpperCase(),
         engagementDepth,
         ...(opened ? {} : { closedReason }),
         counterWindowMode: COUNTER_WINDOW_MODE,
@@ -13485,7 +13694,7 @@
         ...(counterGrantProfile ? { counterGrantProfile } : {}),
       },
     });
-    return { opened, event, probability, roll, counterGrantProfile };
+    return { opened, event, probability, roll, counterGrantProfile, priorCounters, staminaFactor };
   }
 
   function buildAnalyticsDecisionAudit(decision = {}) {
@@ -14368,6 +14577,7 @@
       if (input.battleIntent.mode !== undefined) combatData.战斗意图 = cloneValue(input.battleIntent.mode);
       if (input.battleIntent.objectives !== undefined) combatData.胜负条件 = cloneValue(input.battleIntent.objectives);
     }
+    if (input?.referee && typeof input.referee === 'object') combatData.裁判 = cloneValue(input.referee);
     normalizeLatestBattleRuntime(combatData);
     performanceTrace('runtime-normalized', {
       unitCount: listCombatUnits(combatData).length,
@@ -15021,6 +15231,60 @@
               shieldRatio: shieldAmount / Math.max(1, previewRuntime.readHpMax(reactor)),
               confidence: Number(next?.confidence || 0),
               sourceEventId: String(actionEvent?.eventId || '').trim(),
+            });
+          });
+        };
+        // The strike backs an action's answers may open (openStructuredCounterWindow), each a COUNTER node; after the action
+        // settled, or — 接战链 阶段二 — after a preemption stopped it (no facts: nothing landed).
+        const enqueueCounterWindows = ({ node, actor, shared, actionEvent, facts = [], guardRound = Number(combatData?.回合 || 0) }) => {
+          Object.entries(shared.reactionByTarget).forEach(([targetId, reaction]) => {
+            const reactor = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, targetId));
+            if (!reactor) return;
+            if (previewRuntime.guardBrokenOf(reactor, guardRound)) return;
+            // A strike back needs room for itself, the answers to it and its settlement: with the action's node
+            // budget nearly spent the exchange ends here instead of failing the battle.
+            if (queue.room({ actorTurnSequence: node.actorTurnSequence, parentActionSequence: node.parentActionSequence || node.actionSequence }) < 12) {
+              queue.recordTrace('CANCELLED', node, { reason: 'ENGAGEMENT_NODE_BUDGET_SPENT', reactorId: targetId });
+              return;
+            }
+            const counterWindow = openStructuredCounterWindow({
+              combatData,
+              reactor,
+              sourceActor: actor,
+              parentActionEvent: actionEvent,
+              reaction,
+              settlementFacts: facts,
+              engagementDepth: Number(node?.state?.engagementDepth || 0),
+              incomingDeclaration: shared.declaration,
+              counterCounts: engagementCounterCounts(node),
+            });
+            if (!counterWindow?.opened) return;
+            queue.enqueue({
+              actorEntry: { char: reactor, side: inferUnitSide(combatData, reactor) },
+              actorControl: 'AI',
+              actorTurnSequence: node.actorTurnSequence,
+              parentActionSequence: node.parentActionSequence || node.actionSequence,
+              phasePriority: 60,
+              grantId: `counter:${actionEvent.actionId}:${targetId}:1`,
+              nodeKind: 'COUNTER',
+              actionRole: 'COUNTER',
+              sourceActionId: actionEvent.actionId,
+              sourceActorId: previewRuntime.unitId(actor),
+              grantType: 'COUNTER_WINDOW',
+              validTargetIds: [previewRuntime.unitId(actor)].filter(Boolean),
+              state: {
+                sourceActorId: previewRuntime.unitId(actor),
+                sourceActorName: previewRuntime.unitName(actor),
+                sourceActorSide: inferUnitSide(combatData, actor),
+                incomingAction: shared.declaration,
+                parentActionEvent: actionEvent,
+                reactionEvent: reaction?.event || null,
+                counterWindowEvent: counterWindow.event,
+                counterGrantProfile: counterWindow.counterGrantProfile,
+                engagementDepth: Number(node?.state?.engagementDepth || 0) + 1,
+                // The strike backs made so far in this exchange; the counter adds its own once it is declared.
+                counterCounts: { ...engagementCounterCounts(node) },
+              },
             });
           });
         };
@@ -16225,6 +16489,31 @@
             });
             continue;
           }
+          // 接战链 阶段二 (settleStructuredEngagement): a preemption held — the move comes to nothing on every target (its
+          // costs stay paid), the answers that worked may strike back, and the control spends one action on it as on any
+          // action it stops (consumeStructuredControlActiveBudget).
+          if (node.nodeKind === 'PRIMARY_SETTLEMENT' && node?.state?.shared?.preempted && node.state.shared.actionContext?.actionEvent) {
+            const shared = node.state.shared, actionEvent = shared.actionContext.actionEvent;
+            writeLedgerEvent(combatData, {
+              eventKind: 'blocked_settlement', round: Number(combatData.回合 || 0),
+              actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
+              targetIds: Array.isArray(shared.declaration?.targetIds) ? shared.declaration.targetIds : [],
+              actionName: shared.actionContext.actionName, actionType: shared.actionContext.actionKind,
+              actorControl: node.actorControl, actionRole: node.actionRole,
+              actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '',
+              result: 'preempted', resultState: 'ABORTED', ruleCode: 'ENGAGEMENT_PREEMPTED',
+              meta: { source: 'structured_runtime', grantId: node.grantId, reasonCode: 'ENGAGEMENT_PREEMPTED',
+                preemptedById: String(shared.preempted.reactorId || ''), preemptEventId: String(shared.preempted.eventId || ''),
+                reasonText: `${previewRuntime.unitName(actor)}的【${shared.actionContext.actionName}】被抢先打断` },
+            });
+            if (actor && actorPresentInBattle && structuredActorPhysicallyAlive(actor)) {
+              enqueueCounterWindows({ node, actor, shared, actionEvent, facts: [] });
+            }
+            if (actor && String(structuredActorIncapacityReason(actor, 'ACTIVE') || '').startsWith('CONTROLLED:')) consumeStructuredControlActiveBudget(combatData, actor, node);
+            consumeAutonomousSummonWindow(actor, node);
+            queue.recordTrace('CANCELLED', node, { reason: 'ENGAGEMENT_PREEMPTED', actionId: actionEvent.actionId });
+            continue;
+          }
           if (!actor || !actorPresentInBattle || !structuredActorCanAct(actor, node.actionRole)) {
             const actorName = previewRuntime.unitName(actor) || '未知单位';
             const controlSource = structuredControlSource(combatData, actor, node.actionRole);
@@ -16330,6 +16619,11 @@
                 queue.recordTrace('CANCELLED', node, { reason: 'SOURCE_ACTOR_UNAVAILABLE' });
                 continue;
               }
+              // 接战链 阶段二: another target already stopped the move before it landed (a preemption that held).
+              if (shared.preempted) {
+                queue.recordTrace('CANCELLED', node, { reason: 'ENGAGEMENT_PREEMPTED', preemptEventId: shared.preempted.eventId });
+                continue;
+              }
               const actorId = previewRuntime.unitId(actor);
               const reactionTargetId = String(node?.state?.targetId || actorId).trim();
               const summonGuard = node?.state?.summonGuard === true && !!actor?.召唤键;
@@ -16369,6 +16663,11 @@
                   : previewRuntime.reactionWindupBudget(sourceActor, shared.declaration, actor),
                 actionContext,
                 incomingAction,
+                // 接战链 阶段一: the strike backs each side has made in this exchange (the next one costs more and is caught less).
+                counterPrior: Number(engagementCounterCounts(node)[actorId] || 0),
+                opponentCounterPrior: Number(engagementCounterCounts(node)[sourceActorId] || 0),
+                // 接战链 阶段二: an ally that stepped in may meet the move (clash), not preempt it.
+                intercept: node?.state?.intercept === true,
               });
               if (handleLostDecisionNode(decisionResult, node)) {
                 const targetId = String(node?.state?.targetId || previewRuntime.unitId(actor)).trim();
@@ -16397,6 +16696,8 @@
                 reactor: actor,
                 sourceActor,
                 declaration: reactionDeclaration,
+                incomingDeclaration: shared.declaration,
+                hitTarget: listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, reactionTargetId)) || actor,
                 parentActionEvent: shared.actionContext.actionEvent,
                 opportunityId: node.opportunityId,
                 opportunitySequence: node.opportunitySequence,
@@ -16406,6 +16707,7 @@
                 summonGuardHostName: summonGuard ? previewRuntime.unitName(actor?.__宿主) : '',
                 summonKey: summonGuard ? String(actor?.召唤键 || '').trim() : '',
                 decisionCandidateId: String(decisionResult?.selected?.candidateId || '').trim(),
+                intercept: node?.state?.intercept === true,
               });
               addPerformanceTime(
                 'reactionSettlementMs',
@@ -16439,6 +16741,10 @@
                 reaction,
               });
               shared.reactionByTarget[reactionTargetId] = reaction;
+              // 接战链 阶段二: a preemption that held stops the move on every target (PRIMARY_SETTLEMENT below).
+              if (reaction?.preempted === true) {
+                shared.preempted = { reactorId: actorId, eventId: String(reaction?.engagementEvent?.eventId || '').trim() };
+              }
               if (summonGuard) {
                 consumeSummonWindow(combatData, actor, '护卫反应窗口耗尽', node.grantId);
               } else {
@@ -16670,52 +16976,7 @@
                 previewRuntime.setGuardBroken(struck, guardRound, settlement.actionEvent?.actionId || '');
                 logs.push(`[破防] ${previewRuntime.unitName(struck)}被${previewRuntime.unitName(actor)}破防，本回合无法应对与反击。`);
               }
-              Object.entries(shared.reactionByTarget).forEach(([targetId, reaction]) => {
-                const reactor = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, targetId));
-                if (!reactor) return;
-                if (previewRuntime.guardBrokenOf(reactor, guardRound)) return;
-                // A strike back needs room for itself, the answers to it and its settlement: with the action's node
-                // budget nearly spent the exchange ends here instead of failing the battle.
-                if (queue.room({ actorTurnSequence: node.actorTurnSequence, parentActionSequence: node.parentActionSequence || node.actionSequence }) < 12) {
-                  queue.recordTrace('CANCELLED', node, { reason: 'ENGAGEMENT_NODE_BUDGET_SPENT', reactorId: targetId });
-                  return;
-                }
-                const counterWindow = openStructuredCounterWindow({
-                  combatData,
-                  reactor,
-                  sourceActor: actor,
-                  parentActionEvent: settlement.actionEvent,
-                  reaction,
-                  settlementFacts: settlement.facts,
-                  engagementDepth: Number(node?.state?.engagementDepth || 0),
-                });
-                if (!counterWindow?.opened) return;
-                queue.enqueue({
-                  actorEntry: { char: reactor, side: inferUnitSide(combatData, reactor) },
-                  actorControl: 'AI',
-                  actorTurnSequence: node.actorTurnSequence,
-                  parentActionSequence: node.parentActionSequence || node.actionSequence,
-                  phasePriority: 60,
-                  grantId: `counter:${settlement.actionEvent.actionId}:${targetId}:1`,
-                  nodeKind: 'COUNTER',
-                  actionRole: 'COUNTER',
-                  sourceActionId: settlement.actionEvent.actionId,
-                  sourceActorId: previewRuntime.unitId(actor),
-                  grantType: 'COUNTER_WINDOW',
-                  validTargetIds: [previewRuntime.unitId(actor)].filter(Boolean),
-                  state: {
-                    sourceActorId: previewRuntime.unitId(actor),
-                    sourceActorName: previewRuntime.unitName(actor),
-                    sourceActorSide: inferUnitSide(combatData, actor),
-                    incomingAction: shared.declaration,
-                    parentActionEvent: settlement.actionEvent,
-                    reactionEvent: reaction?.event || null,
-                    counterWindowEvent: counterWindow.event,
-                    counterGrantProfile: counterWindow.counterGrantProfile,
-                    engagementDepth: Number(node?.state?.engagementDepth || 0) + 1,
-                  },
-                });
-              });
+              enqueueCounterWindows({ node, actor, shared, actionEvent: settlement.actionEvent, facts: settlement.facts, guardRound });
               // 连续行动: a natural action that leaves its turn's windup total under CONTINUOUS_ACTION_BUDGET lets the actor act
               // again in the same turn, choosing among actions that still fit (or passing). Reactions and counters to it resolve
               // first; a turn-ending action (defend, evade, pass) or a charged release ends the chain.
@@ -16915,13 +17176,55 @@
               }
               if (!isCooperativeAssist) {
                 const chargedSkill = cloneValue(storedCharge?.skill || storedCharge);
-                decisionResult = yield* decideForNode(actor, node, {
+                // 接战链 阶段 2c (方案 §9.4): a target the charge was declared on may have fallen meanwhile. The release
+                // goes to the declared targets still standing; when none is left (or that set is no longer a legal one
+                // for the skill), it chooses anew among the skill's legal targets now; with none at all it fizzles (its
+                // costs stay paid). It used to demand the whole declared set and failed the battle
+                // (battle_decision_candidate_pool_empty).
+                const declaredTargetIds = Array.isArray(storedCharge?.targetIds) ? storedCharge.targetIds : [];
+                const standingTargetIds = declaredTargetIds.filter(id => {
+                  const unit = listCombatUnits(combatData).find(entry => isUnitIdentityMatch(entry, id));
+                  return unit && previewRuntime.isBattleCapable(unit);
+                });
+                const releaseWith = forcedTargetIds => decideForNode(actor, node, {
                   role: node.actionRole,
                   forcedSkill: chargedSkill,
-                  forcedTargetIds: Array.isArray(storedCharge?.targetIds) ? storedCharge.targetIds : [],
+                  forcedTargetIds,
                   forcedCreationRecipientId: storedCharge.creationRecipientId || '',
                   forcedChargeRelease: true,
                 });
+                const noLegalRelease = error => error?.code === 'BATTLE_DECISION_CANDIDATE_POOL_EMPTY' && error.actorId === previewRuntime.unitId(actor);
+                let releaseError = null;
+                decisionResult = null;
+                for (const attempt of standingTargetIds.length && standingTargetIds.length < declaredTargetIds.length
+                  ? [standingTargetIds, []] : standingTargetIds.length ? [standingTargetIds] : [[]]) {
+                  try {
+                    decisionResult = yield* releaseWith(attempt);
+                    releaseError = null;
+                    break;
+                  } catch (error) {
+                    if (!noLegalRelease(error)) throw error;
+                    releaseError = error;
+                  }
+                }
+                if (releaseError) {
+                  writeLedgerEvent(combatData, {
+                    eventKind: 'charge_interrupt', round: Number(combatData.回合 || 0),
+                    actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor), targetName: previewRuntime.unitName(actor),
+                    targetIds: declaredTargetIds,
+                    actionName: normalizeActionDisplayName(storedCharge?.skill?.name || storedCharge?.skill?.魂技名 || storedCharge?.actionName || '蓄力行动'),
+                    actionType: 'charge_interrupt', actorControl: node.actorControl, actionRole: node.actionRole,
+                    sourceActionId: String(storedCharge?.sourceActionId || '').trim(),
+                    result: 'fizzled', resultState: 'ABORTED', ruleCode: 'CHARGE_RELEASE_NO_LEGAL_TARGET',
+                    meta: { source: 'structured_runtime', grantId: node.grantId, reasonText: '蓄力完成时已没有合法目标，释放落空（消耗不退）',
+                      declaredTargetIds, standingTargetIds, interruptedActionId: String(storedCharge?.sourceActionId || '').trim() },
+                  });
+                  actor.蓄力技能 = null;
+                  if (naturalOpportunity && String(naturalOpportunity?.status || '').trim() === 'EXECUTING') naturalOpportunity.status = 'CONSUMED';
+                  consumeAutonomousSummonWindow(actor, node);
+                  queue.recordTrace('EXECUTED', node, { result: 'charge_fizzled', reason: 'CHARGE_RELEASE_NO_LEGAL_TARGET' });
+                  continue;
+                }
                 if (handleLostDecisionNode(decisionResult, node)) {
                   actor.蓄力技能 = null;
                   continue;
@@ -17045,6 +17348,12 @@
                       ).trim(),
                     },
                     immediateBudget: 40,
+                    // 接战链 阶段一: what this strike back costs (counterStaminaFactor of the strike backs the unit already
+                    // made in this exchange), and how many each side has made — the decision prices the strike and the
+                    // exchange it opens from here.
+                    counterStaminaFactor: previewRuntime.counterStaminaFactor(engagementCounterCounts(node)[previewRuntime.unitId(actor)] || 0),
+                    counterPrior: Number(engagementCounterCounts(node)[previewRuntime.unitId(actor)] || 0),
+                    opponentCounterPrior: Number(engagementCounterCounts(node)[sourceActorId] || 0),
                     ...(node?.state?.counterGrantProfile?.granted === true ? {
                       grantedCounterProfile: cloneValue(node.state.counterGrantProfile),
                     } : {}),
@@ -17054,6 +17363,8 @@
                   : { role: node.actionRole });
               if (handleLostDecisionNode(decisionResult, node)) continue;
               declaration = cloneValue(decisionResult?.selected?.declaration || {});
+              // A strike back's stamina price is the runtime's to set (接战链 阶段一), whatever the declaration carried.
+              if (node.nodeKind === 'COUNTER') declaration.staminaFactor = previewRuntime.counterStaminaFactor(engagementCounterCounts(node)[previewRuntime.unitId(actor)] || 0);
               // The authoritative counterDeclineFallback flag is assembled by
               // the R9V2_LINEAR decision wrapper from the same prepared frozen
               // candidate (fail-closed when missing); the runtime only consumes
@@ -17430,7 +17741,11 @@
                 sourceActorId: previewRuntime.unitId(actor),
                 grantType: 'DEFEND_WINDOW',
                 validTargetIds: [previewRuntime.unitId(actor)].filter(Boolean),
-                state: { shared, targetId: previewRuntime.unitId(struck), summonGuard: !!guardSummon, intercept: !!interceptor },
+                state: { shared, targetId: previewRuntime.unitId(struck), summonGuard: !!guardSummon, intercept: !!interceptor,
+                  // The strike backs of the exchange so far, this action's included (the answer prices the chain it opens).
+                  counterCounts: node.nodeKind === 'COUNTER'
+                    ? { ...engagementCounterCounts(node), [previewRuntime.unitId(actor)]: Number(engagementCounterCounts(node)[previewRuntime.unitId(actor)] || 0) + 1 }
+                    : { ...engagementCounterCounts(node) } },
               });
             });
             queue.enqueue({
@@ -17444,6 +17759,10 @@
               actionRole: node.actionRole,
               sourceActionId: actionContext.actionEvent.actionId,
               state: { shared, continuationDepth: Number(node?.state?.continuationDepth || 0), engagementDepth: Number(node?.state?.engagementDepth || 0),
+                // The strike backs of this exchange so far, this one included (接战链 阶段一: the next costs more, is caught less).
+                counterCounts: node.nodeKind === 'COUNTER'
+                  ? { ...engagementCounterCounts(node), [previewRuntime.unitId(actor)]: Number(engagementCounterCounts(node)[previewRuntime.unitId(actor)] || 0) + 1 }
+                  : { ...engagementCounterCounts(node) },
                 ...(actor.召唤键 && String(actor.行动模式 || '').trim() === '自主行动' &&
                   (node.nodeKind === 'ACTIVE' || declaration.counterConsumesNaturalOpportunity === true)
                   ? { autonomousNaturalWindow: true } : {}) },

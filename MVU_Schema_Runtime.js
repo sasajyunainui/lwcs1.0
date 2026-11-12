@@ -966,7 +966,45 @@ function 合并分类物品定义_V1(data = {}, 物品名 = '', 定义 = {}, 分
   return { 物品名: 名称, 定义: 规范定义, 分类: 目标分类 };
 }
 
+// 超神器通用发挥比例：属性流水线传入的是不含装备的属性，直接对照；其余入口传入含装备总属性，需反解
+function 解析角色超神器发挥比例_V1(角色 = {}) {
+  const 装备 = 角色?.装备 && typeof 角色.装备 === 'object' ? 角色.装备 : {};
+  const 其他 = {};
+  const 超神器 = {};
+  const 累加 = (目标, 加成) => {
+    Object.entries(加成 || {}).forEach(([键, 值]) => {
+      const 数值 = Number(值);
+      if (Number.isFinite(数值)) 目标[键] = (目标[键] || 0) + 数值;
+    });
+  };
+  [装备.武器, 装备.防具?.装备状态 === '已装备' ? 装备.防具 : null].forEach(物品 => {
+    if (!物品 || typeof 物品 !== 'object') return;
+    const 分类 = String(物品.物品分类 || 物品.分类 || '').trim();
+    const 品质 = 规范化物品经济品质_V1(物品.品质 || 物品.品阶 || 物品.类型 || '普通', 物品.名称 || '', 分类);
+    累加(品质 === '超神器' ? 超神器 : 其他, 计算装备属性加成未缩放_V1(物品, 角色));
+  });
+  if (装备.斗铠?.装备状态 === '已装备') 累加(其他, 装备.斗铠._属性加成);
+  if (装备.机甲?.装备状态 === '已装备') 累加(其他, 装备.机甲._属性加成);
+  return 解析超神器发挥比例_V1(角色?.属性 || {}, 其他, 超神器);
+}
+
 function 计算装备属性加成_V1(装备 = {}, 角色 = {}) {
+  const 结果 = 计算装备属性加成未缩放_V1(装备, 角色);
+  const 分类 = String(装备?.物品分类 || 装备?.分类 || '').trim();
+  const 品质 = 规范化物品经济品质_V1(装备?.品质 || 装备?.品阶 || 装备?.类型 || '普通', 装备?.名称 || '', 分类);
+  if (品质 !== '超神器') return 结果;
+  const 比例 = 角色?.属性基准模式 === '已含本武器加成'
+    ? 解析角色超神器发挥比例_V1(角色)
+    : 读取超神器发挥比例_V1(计算无外物等效等级_V1(角色?.属性 || {}));
+  if (比例 >= 1) return 结果;
+  const 缩放结果 = {};
+  Object.entries(结果).forEach(([键, 值]) => {
+    缩放结果[键] = Number.isFinite(Number(值)) ? Math.floor(Number(值) * 比例) : 值;
+  });
+  return 缩放结果;
+}
+
+function 计算装备属性加成未缩放_V1(装备 = {}, 角色 = {}) {
   const 结果 = {};
   const 分类 = String(装备?.物品分类 || 装备?.分类 || '').trim();
   const 品质 = 规范化物品经济品质_V1(装备?.品质 || 装备?.品阶 || 装备?.类型 || '普通', 装备?.名称 || '', 分类);
@@ -5124,15 +5162,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
         Math.floor(Number(基础属性.vit_max || 0) * Math.max(0.1, 系别倍率 || 1) * 底子波动) +
         Math.max(0, Math.floor(Number(属性.训练加成?.体力上限 || 0)));
       const 血脉名 = String(角色数据?.血脉之力?.血脉 || '').trim();
-      if (血脉名.includes('金龙王')) {
-        const 解封层数 = Math.max(0, Math.floor(Number(角色数据?.血脉之力?.解封层数 || 0)));
-        const 倍率 = 解封层数 <= 0 ? 1.5 : 2 + 解封层数;
-        if (体力上限 * 倍率 <= 100000) 体力上限 = Math.floor(体力上限 * 倍率);
-        else if (体力上限 * 5 <= 200000) 体力上限 = Math.max(100000, Math.floor(体力上限 * 5));
-        else 体力上限 = Math.max(200000, Math.floor(体力上限 * 2));
-      } else if (血脉名.includes('银龙王')) {
-        体力上限 += Math.min(体力上限, 20000);
-      }
+      体力上限 = 应用龙王血脉力量体力加成_V1(体力上限, 角色数据);
       if (角色数据.社交?.势力?.['本体宗']) 体力上限 += Math.min(体力上限 * 2, 40000);
       _(角色数据.魂骨).forEach((魂骨, 部位) => {
         if (!魂骨 || typeof 魂骨 !== 'object') return;
@@ -7984,32 +8014,37 @@ function 读取高天赋精神倍率_V1(属性 = {}) {
   return 1 + (固定倍率 - 1) * Math.max(0, Math.min(1, 解锁系数));
 }
 
-function 读取龙王血脉精神力增幅率_V1(角色 = {}) {
+function 读取银龙王精神力增幅率_V1(角色 = {}) {
   const 血脉名 = String(角色?.血脉之力?.血脉 || '').trim();
   const 等级 = Math.max(1, Number(角色?.属性?.等级 || 1) || 1);
-  if (血脉名.includes('银龙王')) {
+  {
     if (血脉名.includes('龙神') || 等级 >= 100) return 6;
     if (等级 <= 15) return Math.max(0, 2.58);
     if (等级 <= 40) return 2.58 + ((0.43 - 2.58) / 25) * (等级 - 15);
     return Math.max(0, Math.min(1.6, 0.43 + ((1.6 - 0.43) / 58) * (等级 - 40)));
   }
-  if (血脉名.includes('金龙王')) {
+}
+
+function 读取金龙王精神力增幅率_V1(角色 = {}) {
+  const 等级 = Math.max(1, Number(角色?.属性?.等级 || 1) || 1);
+  {
     const 解封层数 = Math.max(0, Math.floor(Number(角色?.血脉之力?.解封层数 || 0)));
     if (等级 <= 20) return Math.max(0, 0.56);
     if (等级 <= 40) return Math.max(0, 0.56 * (40 - 等级) / 20);
     const 后期解锁 = Math.max(0, Math.min(1, (等级 - 40) / 58)) * Math.min(2.5, 0.35 + 解封层数 * 0.25);
     return 后期解锁;
   }
-  return 0;
 }
 
 function 应用龙王血脉精神力加成_V1(精神力上限 = 0, 角色 = {}) {
   const 基础值 = Math.max(0, Math.floor(Number(精神力上限 || 0)));
   const 血脉名 = String(角色?.血脉之力?.血脉 || '').trim();
-  const 增幅率 = 读取龙王血脉精神力增幅率_V1(角色);
-  if (!(增幅率 > 0)) return 基础值;
-  const 增幅上限 = 血脉名.includes('银龙王') ? 40000 : 20000;
-  return Math.floor(基础值 + Math.min(基础值 * 增幅率, 增幅上限));
+  const 构成 = 读取龙王血脉构成_V1(血脉名);
+  let 增量 = 0;
+  if (构成.银) 增量 += Math.min(基础值 * Math.max(0, 读取银龙王精神力增幅率_V1(角色)), 40000);
+  if (构成.金) 增量 += Math.min(基础值 * Math.max(0, 读取金龙王精神力增幅率_V1(角色)), 20000);
+  if (!(增量 > 0)) return 基础值;
+  return Math.floor(基础值 + 增量 * (构成.龙神 ? 2 : 1));
 }
 
 function 规范化属性Schema_V1(data) {
@@ -8404,8 +8439,8 @@ function 规范化角色Schema_V1(char) {
     const 自然魂力上限 = Math.floor(自然魂力基准 * 双生武魂魂力系数);
     const 既有魂力上限 = Math.max(0, Math.floor(Number(char.属性?.魂力上限 || 0)));
     const 既有装备魂力上限加成 = Math.max(0, Math.floor(
-      Number(计算装备属性加成_V1(char.装备.武器, char).魂力上限 || 0)
-      + Number(char.装备.防具?.装备状态 === '已装备' ? 计算装备属性加成_V1(char.装备.防具, char).魂力上限 || 0 : 0)
+      Number(计算装备属性加成_V1(char.装备.武器, { ...char, 属性基准模式: '已含本武器加成' }).魂力上限 || 0)
+      + Number(char.装备.防具?.装备状态 === '已装备' ? 计算装备属性加成_V1(char.装备.防具, { ...char, 属性基准模式: '已含本武器加成' }).魂力上限 || 0 : 0)
       + Number(char.装备.斗铠?.装备状态 === '已装备' ? char.装备.斗铠?._属性加成?.魂力上限 || 0 : 0)
       + Number(char.装备.机甲?.装备状态 === '已装备' ? char.装备.机甲?._属性加成?.魂力上限 || 0 : 0)
     ));
@@ -8417,30 +8452,16 @@ function 规范化角色Schema_V1(char) {
     let final_sp_max = Math.max(自然魂力上限, 既有魂力上限);
     let bName = char.血脉之力?.血脉 || '无';
 
-  if (bName.includes('金龙王')) {
-      const 金龙王解封层数 = Math.max(0, Math.floor(Number(char?.血脉之力?.解封层数 || 0)));
-      const 金龙王基础倍率 = 金龙王解封层数 <= 0 ? 1.5 : 2 + 金龙王解封层数;
-      const 金龙王力量体力最终值 = 基础值 => {
-        const 数值 = Math.max(0, Math.floor(Number(基础值 || 0)));
-        if (数值 * 金龙王基础倍率 <= 100000) return Math.floor(数值 * 金龙王基础倍率);
-        if (数值 * 5 <= 200000) return Math.max(100000, Math.floor(数值 * 5));
-        return Math.max(200000, Math.floor(数值 * 2));
-      };
-      final_vit_max = 金龙王力量体力最终值(final_vit_max);
-      final_str = 金龙王力量体力最终值(final_str);
-      final_men_max = 应用龙王血脉精神力加成_V1(final_men_max, char);
-    } else if (bName.includes('银龙王')) {
-      let vitInc = final_vit_max * 1;
-      final_vit_max += Math.min(vitInc, 20000);
-      let strInc = final_str * 1;
-      final_str += Math.min(strInc, 20000);
+  if (读取龙王血脉构成_V1(bName).金 || 读取龙王血脉构成_V1(bName).银) {
+      final_vit_max = 应用龙王血脉力量体力加成_V1(final_vit_max, char);
+      final_str = 应用龙王血脉力量体力加成_V1(final_str, char);
       final_men_max = 应用龙王血脉精神力加成_V1(final_men_max, char);
     }
     if (char.社交?.势力?.['本体宗']) {
       let vitInc = final_vit_max * 2;
       final_vit_max += Math.min(vitInc, 40000);
     }
-    if (bName.includes('银龙王')) {
+    if (读取龙王血脉构成_V1(bName).银) {
       const 等级 = Math.max(1, Number(char?.属性?.等级 || 1) || 1);
       const 解锁元素 = [];
       if (等级 >= 110) 解锁元素.push('创造');
@@ -9242,6 +9263,7 @@ globalThis.__LWCS_MVU_SCHEMA_RUNTIME__ = {
   收集内置角色成长技能模板触发: 收集内置角色成长技能模板触发_V1,
   应用内置角色成长技能模板记录: 应用内置角色成长技能模板记录_V1,
   计算装备属性加成: 计算装备属性加成_V1,
+  解析角色超神器发挥比例: 解析角色超神器发挥比例_V1,
   按品质结算道具使用效果列表: 按品质结算道具使用效果列表_V1,
   应用永久属性提升: 应用永久属性提升_V1,
   读取内置势力库: 读取内置势力库_V1,
@@ -9263,6 +9285,7 @@ try {
       收集内置角色成长技能模板触发: 收集内置角色成长技能模板触发_V1,
       应用内置角色成长技能模板记录: 应用内置角色成长技能模板记录_V1,
       计算装备属性加成: 计算装备属性加成_V1,
+      解析角色超神器发挥比例: 解析角色超神器发挥比例_V1,
       按品质结算道具使用效果列表: 按品质结算道具使用效果列表_V1,
       应用永久属性提升: 应用永久属性提升_V1,
       读取内置势力库: 读取内置势力库_V1,
@@ -9286,6 +9309,7 @@ try {
       收集内置角色成长技能模板触发: 收集内置角色成长技能模板触发_V1,
       应用内置角色成长技能模板记录: 应用内置角色成长技能模板记录_V1,
       计算装备属性加成: 计算装备属性加成_V1,
+      解析角色超神器发挥比例: 解析角色超神器发挥比例_V1,
       按品质结算道具使用效果列表: 按品质结算道具使用效果列表_V1,
       应用永久属性提升: 应用永久属性提升_V1,
       读取内置势力库: 读取内置势力库_V1,
