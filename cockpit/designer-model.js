@@ -2612,7 +2612,8 @@
     if (状态名 === '僵直') return '-50%';
     if (状态名 === '麻痹') return '-50%';
     if (状态名 === '混乱') return '+40%';
-    if (状态名 === '标记') return '-100%';
+    // 标记 = 被标记者闪避下降，默认 10%（与 MVU_Skill_Runtime 读取状态施加默认数值_V1、战斗侧缺省一致）。
+    if (状态名 === '标记') return '-10%';
     if (['防御剥夺', '精神抗性剥夺'].includes(状态名)) return '+20%';
     return '-3%';
   }
@@ -2650,7 +2651,7 @@
       冻伤: `每回合生命${数值}，冰元素承伤${副数值}。`,
       持续创伤: `每回合生命${数值}，反应${副数值}。`,
       持续恢复: `每回合生命${数值}。`,
-      迟缓: `敏捷${数值}，反应${副数值}。`,
+      迟缓: `出手速度与闪避${数值}，反应${副数值}。`,
       资源燃烧: `每回合燃烧魂力${String(数值).replace(/^\+/, '')}，技能消耗${副数值}。`,
       眩晕: '跳过行动，无法反应。',
       沉默: '目标暂时无法施展魂技与主动技能。',
@@ -2714,7 +2715,7 @@
       冻伤: { 数值: '生命流失', 副数值: '冰元素承伤' },
       持续创伤: { 数值: '生命流失', 副数值: '反应修正' },
       持续恢复: { 数值: '生命恢复' },
-      迟缓: { 数值: '敏捷修正', 副数值: '反应修正' },
+      迟缓: { 数值: '出手与闪避修正', 副数值: '反应修正' },
       资源燃烧: { 数值: '魂力流失', 副数值: '消耗修正' },
       禁疗: { 数值: '治疗削弱' },
       治疗反转: { 数值: '转伤比例' },
@@ -5037,7 +5038,7 @@
     return false;
   }
   // —— B:22859
-  const 技能设计台被动触发选项 = Object.freeze(['常驻', '战斗开始', '回合开始', '受击前', '受击后', '濒死时', '被控制时', '命中后']);
+  const 技能设计台被动触发选项 = Object.freeze(['常驻', '战斗开始', '回合开始', '受击前', '致命前', '受击后', '濒死时', '被控制时', '命中后']);
   // —— B:22860
   const 技能设计台被动触发周期选项 = Object.freeze(['无限制', '每战', '每回合']);
   // —— B:22861
@@ -7825,14 +7826,15 @@
         结算倍率: '只允许 DOT 压缩时填写，范围 +50%~+300%。',
       },
       状态移除: {
-        状态: '选择要移除的状态；普通净化/驱散只填这里。',
+        状态: '选择要移除的状态；普通净化/驱散只填这里。被动在「被控制时」选「触发来源」＝只移除触发这次被动的那个控制。',
         匹配原型: '高级筛选：按状态内部效果筛选；例如只移除带持续扣生命效果的状态。',
         资源: '仅在匹配原型为资源变化时填写，用于筛 DOT、恢复等状态。',
         数值方向: '仅在匹配资源变化时填写，区分正向恢复、负向扣减或任意。',
       },
       规则防御: {
         规则: '免伤用于抵消伤害，免死用于致命结算锁血。',
-        次数: '规则壳可触发次数；触发后会扣减。',
+        次数: '规则壳可触发次数；触发后会扣减，用光即移除（可再次获得）。',
+        计次: '按段：多段攻击每挡一段扣一次（缺省）；整招：同一次出手的所有段只扣一次。',
       },
       状态转移: {
         状态: '指定状态或任意状态。',
@@ -10553,7 +10555,7 @@
   // 保存链仍按忙碌态回读（与原版流程一致），{ keepConditionBranches } 保留为兼容参数，两者结果相同。
   let 设计台回读忙碌态 = false;
   // 物品被动保持承载方式：旧设计台没有物品技能入口，这条只在数据层实现（见 api2.js 物品被动承载），默认开
-  const 设计台规则 = { 物品被动保持承载方式: true };
+  const 设计台规则 = { 物品被动保持承载方式: true, 角色被动存为被动: true };
   function 条件读值(条件, 字段名) {
     // ≙ readCondition：同名字段中第一个未有意禁用的输入（DOM 顺序：类型、对象、隐藏比较、比较下拉、值、状态）；
     // 忙碌态（设计台回读忙碌态）只禁用可禁用控件，桥接修复后照常读取，所以这里不再按忙碌态排除
@@ -11520,9 +11522,28 @@
   // 原版设计台却只有「直接生效 / 造物承载」+ 战斗被动开关，存一次物品被动就变成要手动施放的技能。
   // 规则开关打开时：设计台「被动」开关 ⇔ 承载方式「被动」。战斗技能不受影响。
   const 是物品技能范围 = previewMeta => ['equipment_skill', 'soul_bone_skill'].includes(normalizeSkillUiText(previewMeta && previewMeta.scope, ''));
+  // 被动技能修复方案 2026-11-12：角色自己的被动（非物品：血脉被动、自创魂技等）原先存成「直接生效」且不写触发时机——战斗把它
+  // 当主动技能放，当被动又永不触发（与金龙王 9/11/16 层同病）。规则开关打开时：「被动」开关 ⇔ 承载方式「被动」，并把所选
+  // 「触发时机」写进技能级与各效果（效果自带的延迟/遥控等时机不动）；含死亡转存活的走复活通道，只给其余效果写时机。
+  // 「常驻」只有物品被动认（物品消费者），角色被动选它写不出时机，战斗开局会记 PASSIVE_NEVER_TRIGGERS。
+  function 战斗被动承载与时机(skill, previewMeta, formState) {
+    if (!skill || !设计台规则.角色被动存为被动 || 是物品技能范围(previewMeta) || !技能设计台启用被动(previewMeta, formState)) return skill;
+    skill.承载方式 = '被动';
+    const 时机 = 规范化技能设计台被动触发(formState && formState.被动触发);
+    if (!时机 || 时机 === '常驻') return skill;
+    const 效果列表 = Array.isArray(skill._效果数组) ? skill._效果数组 : [];
+    const 含复活 = 效果列表.some(effect => 技能设计台效果是自身死亡转存活(effect));
+    if (!含复活) skill.触发方式 = 时机;
+    效果列表.forEach(effect => {
+      if (!effect || typeof effect !== 'object' || !normalizeSkillUiText(effect.原型, '') || 技能设计台效果是自身死亡转存活(effect)) return;
+      const 自带 = normalizeSkillUiText(effect.触发方式, '');
+      if (!自带 || 自带 === '立即触发') effect.触发方式 = 时机;
+    });
+    return skill;
+  }
   function 物品被动承载(skill, previewMeta, formState) {
     if (skill && 设计台规则.物品被动保持承载方式 && 是物品技能范围(previewMeta) && 技能设计台启用被动(previewMeta, formState)) skill.承载方式 = '被动';
-    return skill;
+    return 战斗被动承载与时机(skill, previewMeta, formState);
   }
   function 设计台准备(meta, root) {
     const previewMeta = 设计台规范元数据(meta);
@@ -11537,6 +11558,13 @@
     // 规则开关：物品技能承载方式「被动」→ 打开时「被动」开关为开（原版设计台没有被动承载，见 物品被动承载）
     if (设计台规则.物品被动保持承载方式 && 是物品技能范围(previewMeta) && normalizeSkillUiText(skillSource.承载方式, '') === '被动' && !normalizeSkillUiText(rawDesignerDraft.启用被动, ''))
       rawDesignerDraft.启用被动 = '启用';
+    // 角色被动（战斗被动承载与时机）：存成「被动」的读回来仍是被动，所选时机读技能级（或首个效果级）触发方式。
+    if (设计台规则.角色被动存为被动 && !是物品技能范围(previewMeta) && normalizeSkillUiText(skillSource.承载方式, '') === '被动') {
+      if (!normalizeSkillUiText(rawDesignerDraft.启用被动, '')) rawDesignerDraft.启用被动 = '启用';
+      const 存档时机 = 规范化技能设计台被动触发(skillSource.触发方式) ||
+        (Array.isArray(skillSource._效果数组) ? skillSource._效果数组 : []).map(effect => 规范化技能设计台被动触发(effect && effect.触发方式)).find(Boolean) || '';
+      if (存档时机) rawDesignerDraft.被动触发 = 存档时机;
+    }
     const fusionDraftSeed = getSkillDesignerFusionDraftSeed(snapshot, previewMeta, rawDesignerDraft);
     return { skillSource, rawDesignerDraft, designerDraft: buildSkillDesignerFormStateFromDraft({ ...rawDesignerDraft, ...fusionDraftSeed }, previewMeta) };
   }
@@ -11580,6 +11608,8 @@
       const nextSkill = 物品被动承载(buildSkillDesignerUpdatedSkill(skillSource, formState, previewMeta, snapshot.rootData), previewMeta, formState);
       结果.skill = nextSkill;
       const COST助手 = 读取COST助手();
+      // 设计台保存的技能按新计价（读档收敛据 计价版本 选口径）。
+      if (COST助手 && Number(COST助手.当前技能计价版本_V1) > 0 && nextSkill && typeof nextSkill === 'object') nextSkill.计价版本 = Number(COST助手.当前技能计价版本_V1);
       if (COST助手 && typeof COST助手.评估技能预算_V1 === 'function') {
         const 预算上下文 = 构建技能设计台预算上下文(previewMeta, snapshot.rootData || {}, formState || {});
         const 魂技位 = Math.max(1, Number(previewMeta?.__魂环位 || 预算上下文.魂环位 || 1) || 1);

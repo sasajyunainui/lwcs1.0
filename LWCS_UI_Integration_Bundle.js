@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:e07a8edcaf5611f2743a88aa43ca615ccdd2792c12632b8c552a791d0501a1c4|cockpit/designer-model.js:8dc86d2da42d0e8a9eb685997bb3c524dc0aaa4c344eed4a9f7b201d8b09b590|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:57272abe87757762e2bc96455a43742e321749a372452e85b7f7da146aacde00|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:7bfcb4b7bf2ab371f60beac9c1a68ed04c12d848153e90597604b11b4bd22ec4|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:7c0747060c7e0fa227da61496d4095e8251ccc1d22e7ace67c7c8dc5dd19d6fe|cockpit/designer-model.js:c677dd45272beee6c5c4e46aa3ef9d623ac6209d0db80c6c42b96a8928daaba2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:57272abe87757762e2bc96455a43742e321749a372452e85b7f7da146aacde00|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:7bfcb4b7bf2ab371f60beac9c1a68ed04c12d848153e90597604b11b4bd22ec4|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -3147,7 +3147,7 @@
   const 装备加成属性选项_桥接 = Object.freeze(['魂力上限', '精神力上限', '力量', '防御', '敏捷', '体力上限']);
   const 装备加成方向选项_桥接 = Object.freeze([...装备加成属性选项_桥接, '全属性']);
   const 装备加成属性集合_桥接 = new Set(装备加成属性选项_桥接);
-  const 正式技能字段列表_桥接 = Object.freeze(['魂技名', '画面描述', '效果描述', '产物描述', '承载方式', '消耗', '前摇', '场外冷却至tick', '附带属性', '使用条件', '技能掌控度', '触发限制', '_效果数组', '副作用列表']);
+  const 正式技能字段列表_桥接 = Object.freeze(['魂技名', '画面描述', '效果描述', '产物描述', '承载方式', '消耗', '前摇', '场外冷却至tick', '附带属性', '使用条件', '技能掌控度', '触发限制', '_效果数组', '副作用列表', '计价版本']);
   const 正式技能字段集合_桥接 = new Set(正式技能字段列表_桥接);
 
   function 断言物品正式技能_桥接(技能 = {}, 来源 = '物品技能') {
@@ -16746,7 +16746,8 @@
     if (状态名 === '僵直') return '-50%';
     if (状态名 === '麻痹') return '-50%';
     if (状态名 === '混乱') return '+40%';
-    if (状态名 === '标记') return '-100%';
+    // 标记 = 被标记者闪避下降，默认 10%（与 MVU_Skill_Runtime 读取状态施加默认数值_V1、战斗侧缺省一致）。
+    if (状态名 === '标记') return '-10%';
     if (['防御剥夺', '精神抗性剥夺'].includes(状态名)) return '+20%';
     return '-3%';
   }
@@ -19251,7 +19252,7 @@
     return false;
   }
 
-  const 技能设计台被动触发选项 = Object.freeze(['常驻', '战斗开始', '回合开始', '受击前', '受击后', '濒死时', '被控制时', '命中后']);
+  const 技能设计台被动触发选项 = Object.freeze(['常驻', '战斗开始', '回合开始', '受击前', '致命前', '受击后', '濒死时', '被控制时', '命中后']);
   const 技能设计台被动触发周期选项 = Object.freeze(['无限制', '每战', '每回合']);
   const 技能设计台使用限制周期选项 = Object.freeze(['无限制', '每战', '每日']);
 
@@ -26517,6 +26518,10 @@ ${播报文本}
                           </div>
                         </div>
                       </div>
+                      <div class="battle-terminal-row" id="ui-referee-row" hidden>
+                        <span class="battle-terminal-label">裁判</span>
+                        <span class="battle-number-field" id="ui-referee-value"><b data-referee-name>—</b><em data-referee-level></em></span>
+                      </div>
                       <div class="battle-terminal-row battle-terminal-row--wide">
                         <span class="battle-terminal-label">代理模式</span>
                         <div class="battle-holo-select battle-submit-mode-group" id="ui-battle-submit-mode-group" data-battle-select="submit">
@@ -28209,6 +28214,11 @@ ${播报文本}
     if (source.参战者 && typeof source.参战者 === 'object') {
       source.参战者 = compactBattleRosterForStorage(snapshot, source.参战者);
     }
+    if (source.裁判 !== undefined) {
+      const 裁判 = compactBattleRefereeForStorage(snapshot, source.裁判);
+      if (裁判) source.裁判 = 裁判;
+      else delete source.裁判;
+    }
     return source;
   }
 
@@ -28235,6 +28245,12 @@ ${播报文本}
     const nextTeamPlayer = nextCombat.参战者.team_player;
     const nextTeamEnemy = nextCombat.参战者.team_enemy;
     if (!nextTeamPlayer.length || !nextTeamEnemy.length) return null;
+    // 接战链 阶段三: a referee that is a role of the save comes in with its battle data, as the fighters do.
+    const expandedReferee = expandBattleRefereeForSnapshot(snapshot, nextCombat.裁判);
+    if (expandedReferee) {
+      nextCombat = nextCombat === combatData ? cloneJsonValue(combatData, {}) : nextCombat;
+      nextCombat.裁判 = expandedReferee;
+    }
     if (!nextTeamPlayer.every(isExpandedBattleParticipant) || !nextTeamEnemy.every(isExpandedBattleParticipant)) return null;
     const worldTick = deepGet(snapshot, 'rootData.world.时间.tick', undefined);
     if (worldTick !== undefined) {
@@ -28346,8 +28362,64 @@ ${播报文本}
     }
   }
 
+  // 接战链 阶段三 (用户 2026-11-12："裁判需要接入游戏吧"；"没有填裁判就是没有裁判"; 接战链改造方案-20261112 §3.7): the referee a
+  // battle request names (detail.裁判: a role's name, or { 名称, 等级 }) as the seed kept in world.战斗 — a role of the save:
+  // { 名称 } (its battle data is the save's, expanded with the fighters: expandBattleRefereeForSnapshot); otherwise a level:
+  // { 名称, 等级 } (the runtime gives it that level's base panel and no skill: BattleRuntime prepareBattleReferee). A name that
+  // is no role and comes with no level, or nothing given: no referee.
+  function 规范化开战裁判_桥接(snapshot, value) {
+    const 种子 = 解析模块路由裁判(value);
+    if (!种子) return null;
+    const 角色键 = 种子.名称 ? resolveSnapshotCharKey(snapshot, 种子.名称) : '';
+    if (角色键) return { 名称: toText(deepGet(snapshot, ['rootData', 'char', 角色键, 'name'], ''), 种子.名称).trim() || 种子.名称 };
+    if (种子.等级 > 0) return { 名称: 种子.名称 || '裁判', 等级: 种子.等级 };
+    console.warn('[LWCS] 裁判既不是存档角色也没有等级，本场按没有裁判处理。', value);
+    return null;
+  }
+
+  // The referee seed made whole for the battle: a role of the save becomes its battle participant (as a fighter's,
+  // 势力 中立), with what this battle already took from it (HP, 魂力, 精神力 and its account, kept in the seed by
+  // compactBattleRefereeForStorage). A seed that is no role (a level only) stays as it is.
+  function expandBattleRefereeForSnapshot(snapshot, seed = {}) {
+    if (!seed || typeof seed !== 'object' || Array.isArray(seed) || isExpandedBattleParticipant(seed)) return null;
+    const 名称 = toText(seed.名称 || seed.name, '').trim();
+    const 角色键 = 名称 ? resolveSnapshotCharKey(snapshot, 名称) : '';
+    if (!角色键) return null;
+    const participant = buildCombatParticipantFromSnapshotChar(snapshot, 角色键, '中立');
+    if (!participant) return null;
+    participant.名称 = 名称;
+    ['HP', '魂力', '精神力'].forEach(key => {
+      if (!Number.isFinite(Number(seed[key]))) return;
+      participant[key] = Number(seed[key]);
+      if (participant.属性 && typeof participant.属性 === 'object') participant.属性[key] = Number(seed[key]);
+    });
+    if (seed.__referee && typeof seed.__referee === 'object') participant.__referee = cloneJsonValue(seed.__referee, {});
+    return participant;
+  }
+
+  // What world.战斗 keeps of the referee: its seed, and once the battle has run, what it has left of HP, 魂力 and 精神力
+  // and its account (BattleRuntime __referee), so a battle settled over several requests carries them on.
+  function compactBattleRefereeForStorage(snapshot, referee) {
+    if (!referee || typeof referee !== 'object' || Array.isArray(referee)) return undefined;
+    const 名称 = toText(referee.名称 || referee.name, '').trim() || '裁判';
+    const 角色键 = resolveSnapshotCharKey(snapshot, 名称);
+    const 等级 = Math.floor(toNumber(referee.等级 ?? referee.属性?.等级, 0));
+    const compact = { 名称, ...(!角色键 && 等级 > 0 ? { 等级 } : {}) };
+    if (referee.__refereePrepared === true || isExpandedBattleParticipant(referee)) {
+      ['HP', '魂力', '精神力'].forEach(key => {
+        const value = Number(referee[key] ?? referee.属性?.[key]);
+        if (Number.isFinite(value)) compact[key] = value;
+      });
+    } else {
+      ['HP', '魂力', '精神力'].forEach(key => { if (Number.isFinite(Number(referee[key]))) compact[key] = Number(referee[key]); });
+    }
+    if (referee.__referee && typeof referee.__referee === 'object') compact.__referee = cloneJsonValue(referee.__referee, {});
+    return compact;
+  }
+
   function buildMapBattleCombatData(snapshot, dispatchDetail) {
     const detail = dispatchDetail || {};
+    const 裁判 = 规范化开战裁判_桥接(snapshot, detail.裁判);
     const rosterResult = buildBattleSeedRoster(snapshot, detail);
     if (!rosterResult.ok) return { ok: false, reason: rosterResult.reason };
     const arenaName = toText(detail.currentLoc, toText(detail.target, toText(snapshot.currentLoc, '未知地点')));
@@ -28375,6 +28447,7 @@ ${播报文本}
       进行中: true,
       战斗类型: toText(detail.战斗类型, '擂台切磋'),
       战斗意图: toText(detail.战斗意图, '点到为止'),
+      ...(裁判 ? { 裁判 } : {}),
       先攻: '无',
       允许撤离: detail.允许撤离 === false ? false : true,
       回合: 0,
@@ -28955,6 +29028,10 @@ ${播报文本}
       `[战斗类型]\n${toText(combatData.战斗类型, '')}`,
       `[存活统计]\n我方存活:${玩家存活}；敌方存活:${敌方存活}`,
       `[战斗意图]\n${toText(combatData.战斗意图, '点到为止')}`,
+      ...(combatData.裁判 && typeof combatData.裁判 === 'object'
+        ? [`[裁判]\n${toText(combatData.裁判.名称 || combatData.裁判.name, '裁判')}${toNumber(combatData.裁判.属性?.等级 ?? combatData.裁判.等级, 0) > 0
+          ? `（${Math.floor(toNumber(combatData.裁判.属性?.等级 ?? combatData.裁判.等级, 0))}级）` : ''}`]
+        : []),
       `[终局类型]\n${终局类型}`,
       `[命中条件]\n${终局条件.join('、') || '无'}`,
       `[失能明细]\n${失能明细.join('；') || '无'}`,
@@ -30038,6 +30115,22 @@ ${播报文本}
         return payload ? { ...payload, raw: blockText } : null;
       })
       .filter(Boolean);
+  }
+
+  // 接战链 阶段三: the referee a module intent names — a role's name, "名称|等级=60", or { 名称, 等级 } — as { 名称, 等级? };
+  // nothing given (or 无): null.
+  function 解析模块路由裁判(value) {
+    if (value === undefined || value === null) return null;
+    if (typeof value === 'object' && !Array.isArray(value)) {
+      const 名称 = toText(value.名称 || value.name, '').trim(), 等级 = Math.floor(toNumber(value.等级 ?? value.level, 0));
+      return 名称 || 等级 > 0 ? { 名称: 名称 || '裁判', ...(等级 > 0 ? { 等级 } : {}) } : null;
+    }
+    const 文本 = toText(value, '').trim();
+    if (!文本 || /^(无|没有|否|none|null)$/i.test(文本)) return null;
+    const 单位 = 解析模块路由参战者项(文本);
+    if (!单位) return null;
+    const 等级 = Math.floor(toNumber(单位.等级, 0));
+    return { 名称: toText(单位.name, '裁判').trim() || '裁判', ...(等级 > 0 ? { 等级 } : {}) };
   }
 
   function 战斗条件输入存在(value) {
@@ -31918,6 +32011,8 @@ ${播报文本}
             胜利条件关系: toText(payload.胜利条件关系, 'OR'),
             失败条件关系: toText(payload.失败条件关系, 'OR'),
             最大回合: Math.max(1, Math.min(20, Math.floor(toNumber(payload.最大回合 ?? payload.回合上限, 20)))),
+            // 接战链 阶段三: "裁判：角色名" or "裁判：名称|等级=60" (解析模块路由裁判); none given, no referee.
+            ...(解析模块路由裁判(payload.裁判) ? { 裁判: 解析模块路由裁判(payload.裁判) } : {}),
           };
         }
       }
@@ -38384,7 +38479,8 @@ ${播报文本}
     if (状态名 === '僵直') return '-50%';
     if (状态名 === '麻痹') return '-50%';
     if (状态名 === '混乱') return '+40%';
-    if (状态名 === '标记') return '-100%';
+    // 标记 = 被标记者闪避下降，默认 10%（与 MVU_Skill_Runtime 读取状态施加默认数值_V1、战斗侧缺省一致）。
+    if (状态名 === '标记') return '-10%';
     if (['防御剥夺', '精神抗性剥夺'].includes(状态名)) return '+20%';
     return '-3%';
   }
@@ -38422,7 +38518,7 @@ ${播报文本}
       冻伤: `每回合生命${数值}，冰元素承伤${副数值}。`,
       持续创伤: `每回合生命${数值}，反应${副数值}。`,
       持续恢复: `每回合生命${数值}。`,
-      迟缓: `敏捷${数值}，反应${副数值}。`,
+      迟缓: `出手速度与闪避${数值}，反应${副数值}。`,
       资源燃烧: `每回合燃烧魂力${String(数值).replace(/^\+/, '')}，技能消耗${副数值}。`,
       眩晕: '跳过行动，无法反应。',
       沉默: '目标暂时无法施展魂技与主动技能。',
@@ -38486,7 +38582,7 @@ ${播报文本}
       冻伤: { 数值: '生命流失', 副数值: '冰元素承伤' },
       持续创伤: { 数值: '生命流失', 副数值: '反应修正' },
       持续恢复: { 数值: '生命恢复' },
-      迟缓: { 数值: '敏捷修正', 副数值: '反应修正' },
+      迟缓: { 数值: '出手与闪避修正', 副数值: '反应修正' },
       资源燃烧: { 数值: '魂力流失', 副数值: '消耗修正' },
       禁疗: { 数值: '治疗削弱' },
       治疗反转: { 数值: '转伤比例' },
@@ -40809,7 +40905,7 @@ ${播报文本}
     return false;
   }
   // —— B:22859
-  const 技能设计台被动触发选项 = Object.freeze(['常驻', '战斗开始', '回合开始', '受击前', '受击后', '濒死时', '被控制时', '命中后']);
+  const 技能设计台被动触发选项 = Object.freeze(['常驻', '战斗开始', '回合开始', '受击前', '致命前', '受击后', '濒死时', '被控制时', '命中后']);
   // —— B:22860
   const 技能设计台被动触发周期选项 = Object.freeze(['无限制', '每战', '每回合']);
   // —— B:22861
@@ -43597,14 +43693,15 @@ ${播报文本}
         结算倍率: '只允许 DOT 压缩时填写，范围 +50%~+300%。',
       },
       状态移除: {
-        状态: '选择要移除的状态；普通净化/驱散只填这里。',
+        状态: '选择要移除的状态；普通净化/驱散只填这里。被动在「被控制时」选「触发来源」＝只移除触发这次被动的那个控制。',
         匹配原型: '高级筛选：按状态内部效果筛选；例如只移除带持续扣生命效果的状态。',
         资源: '仅在匹配原型为资源变化时填写，用于筛 DOT、恢复等状态。',
         数值方向: '仅在匹配资源变化时填写，区分正向恢复、负向扣减或任意。',
       },
       规则防御: {
         规则: '免伤用于抵消伤害，免死用于致命结算锁血。',
-        次数: '规则壳可触发次数；触发后会扣减。',
+        次数: '规则壳可触发次数；触发后会扣减，用光即移除（可再次获得）。',
+        计次: '按段：多段攻击每挡一段扣一次（缺省）；整招：同一次出手的所有段只扣一次。',
       },
       状态转移: {
         状态: '指定状态或任意状态。',
@@ -46325,7 +46422,7 @@ ${播报文本}
   // 保存链仍按忙碌态回读（与原版流程一致），{ keepConditionBranches } 保留为兼容参数，两者结果相同。
   let 设计台回读忙碌态 = false;
   // 物品被动保持承载方式：旧设计台没有物品技能入口，这条只在数据层实现（见 api2.js 物品被动承载），默认开
-  const 设计台规则 = { 物品被动保持承载方式: true };
+  const 设计台规则 = { 物品被动保持承载方式: true, 角色被动存为被动: true };
   function 条件读值(条件, 字段名) {
     // ≙ readCondition：同名字段中第一个未有意禁用的输入（DOM 顺序：类型、对象、隐藏比较、比较下拉、值、状态）；
     // 忙碌态（设计台回读忙碌态）只禁用可禁用控件，桥接修复后照常读取，所以这里不再按忙碌态排除
@@ -47292,9 +47389,28 @@ ${播报文本}
   // 原版设计台却只有「直接生效 / 造物承载」+ 战斗被动开关，存一次物品被动就变成要手动施放的技能。
   // 规则开关打开时：设计台「被动」开关 ⇔ 承载方式「被动」。战斗技能不受影响。
   const 是物品技能范围 = previewMeta => ['equipment_skill', 'soul_bone_skill'].includes(normalizeSkillUiText(previewMeta && previewMeta.scope, ''));
+  // 被动技能修复方案 2026-11-12：角色自己的被动（非物品：血脉被动、自创魂技等）原先存成「直接生效」且不写触发时机——战斗把它
+  // 当主动技能放，当被动又永不触发（与金龙王 9/11/16 层同病）。规则开关打开时：「被动」开关 ⇔ 承载方式「被动」，并把所选
+  // 「触发时机」写进技能级与各效果（效果自带的延迟/遥控等时机不动）；含死亡转存活的走复活通道，只给其余效果写时机。
+  // 「常驻」只有物品被动认（物品消费者），角色被动选它写不出时机，战斗开局会记 PASSIVE_NEVER_TRIGGERS。
+  function 战斗被动承载与时机(skill, previewMeta, formState) {
+    if (!skill || !设计台规则.角色被动存为被动 || 是物品技能范围(previewMeta) || !技能设计台启用被动(previewMeta, formState)) return skill;
+    skill.承载方式 = '被动';
+    const 时机 = 规范化技能设计台被动触发(formState && formState.被动触发);
+    if (!时机 || 时机 === '常驻') return skill;
+    const 效果列表 = Array.isArray(skill._效果数组) ? skill._效果数组 : [];
+    const 含复活 = 效果列表.some(effect => 技能设计台效果是自身死亡转存活(effect));
+    if (!含复活) skill.触发方式 = 时机;
+    效果列表.forEach(effect => {
+      if (!effect || typeof effect !== 'object' || !normalizeSkillUiText(effect.原型, '') || 技能设计台效果是自身死亡转存活(effect)) return;
+      const 自带 = normalizeSkillUiText(effect.触发方式, '');
+      if (!自带 || 自带 === '立即触发') effect.触发方式 = 时机;
+    });
+    return skill;
+  }
   function 物品被动承载(skill, previewMeta, formState) {
     if (skill && 设计台规则.物品被动保持承载方式 && 是物品技能范围(previewMeta) && 技能设计台启用被动(previewMeta, formState)) skill.承载方式 = '被动';
-    return skill;
+    return 战斗被动承载与时机(skill, previewMeta, formState);
   }
   function 设计台准备(meta, root) {
     const previewMeta = 设计台规范元数据(meta);
@@ -47309,6 +47425,13 @@ ${播报文本}
     // 规则开关：物品技能承载方式「被动」→ 打开时「被动」开关为开（原版设计台没有被动承载，见 物品被动承载）
     if (设计台规则.物品被动保持承载方式 && 是物品技能范围(previewMeta) && normalizeSkillUiText(skillSource.承载方式, '') === '被动' && !normalizeSkillUiText(rawDesignerDraft.启用被动, ''))
       rawDesignerDraft.启用被动 = '启用';
+    // 角色被动（战斗被动承载与时机）：存成「被动」的读回来仍是被动，所选时机读技能级（或首个效果级）触发方式。
+    if (设计台规则.角色被动存为被动 && !是物品技能范围(previewMeta) && normalizeSkillUiText(skillSource.承载方式, '') === '被动') {
+      if (!normalizeSkillUiText(rawDesignerDraft.启用被动, '')) rawDesignerDraft.启用被动 = '启用';
+      const 存档时机 = 规范化技能设计台被动触发(skillSource.触发方式) ||
+        (Array.isArray(skillSource._效果数组) ? skillSource._效果数组 : []).map(effect => 规范化技能设计台被动触发(effect && effect.触发方式)).find(Boolean) || '';
+      if (存档时机) rawDesignerDraft.被动触发 = 存档时机;
+    }
     const fusionDraftSeed = getSkillDesignerFusionDraftSeed(snapshot, previewMeta, rawDesignerDraft);
     return { skillSource, rawDesignerDraft, designerDraft: buildSkillDesignerFormStateFromDraft({ ...rawDesignerDraft, ...fusionDraftSeed }, previewMeta) };
   }
@@ -47352,6 +47475,8 @@ ${播报文本}
       const nextSkill = 物品被动承载(buildSkillDesignerUpdatedSkill(skillSource, formState, previewMeta, snapshot.rootData), previewMeta, formState);
       结果.skill = nextSkill;
       const COST助手 = 读取COST助手();
+      // 设计台保存的技能按新计价（读档收敛据 计价版本 选口径）。
+      if (COST助手 && Number(COST助手.当前技能计价版本_V1) > 0 && nextSkill && typeof nextSkill === 'object') nextSkill.计价版本 = Number(COST助手.当前技能计价版本_V1);
       if (COST助手 && typeof COST助手.评估技能预算_V1 === 'function') {
         const 预算上下文 = 构建技能设计台预算上下文(previewMeta, snapshot.rootData || {}, formState || {});
         const 魂技位 = Math.max(1, Number(previewMeta?.__魂环位 || 预算上下文.魂环位 || 1) || 1);

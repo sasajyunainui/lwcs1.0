@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:b8e6045f5b60f5af8c22cee1b6a7280bdbda5e4823676234e27d5d3c9409df61|MVU_Schema_Runtime.js:eed837517415e34e8b2de2b667ca02ab020fc785f3b4d492c439e6c2babfe0ef|MVU_Competition_Runtime.js:2a5d78b856d3123e857393fca07fb365d91ce9ea4877cc37dfafd86b384e8904|MVU_Runtime_View.js:f1cdb932eb407effb83cc5252749b7c093882c1328ce746565cdb1ec607791da */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:8666f8b284401d1b4a2e45f9143889aadedd8df74c986d452729932529a6f66b|MVU_Schema_Runtime.js:eed837517415e34e8b2de2b667ca02ab020fc785f3b4d492c439e6c2babfe0ef|MVU_Competition_Runtime.js:2a5d78b856d3123e857393fca07fb365d91ce9ea4877cc37dfafd86b384e8904|MVU_Runtime_View.js:f1cdb932eb407effb83cc5252749b7c093882c1328ce746565cdb1ec607791da */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -7610,6 +7610,8 @@ var SKILL_ARCHETYPE_POOL_V1 = {
 // （削弱类，作用于敌方）。方向跟着所在大类走；只按名字反查大类时默认取增益类，削弱义由调用方带上大类。
 // 原先（f8728de）因为同名两义被归错类，直接禁止二者作主机制，现已改为按大类区分。
 var 双向修正机制_V1 = new Set(['消耗', '前摇']);
+// 并入其他机制、随机生成不再抽取的主机制（软控 → 迟缓，规格 2）。仍留在 SKILL_ARCHETYPE_POOL_V1 里，显式写出的照常编译。
+var 随机生成不再抽取的主机制_V1 = new Set(['软控']);
 
 function 双向修正机制为削弱_V1(机制 = '', 大类 = '') {
   return 双向修正机制_V1.has(String(机制 || '').trim()) && String(大类 || '').trim() === '削弱类';
@@ -8298,7 +8300,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('disturbPower', '干扰强度', '0.12'), num('duration', '持续回合', '2', '1')],
   });
   register('标记锁定', {
-    说明: '标记目标并持续追踪，使其难以脱离。',
+    说明: '标记目标并持续追踪，被标记者更难闪避。',
     可主机制: true,
     目标语义: '敌对',
     摘要提示: { skillType: '控制', mainType: '感知/认知类', controlStrength: '软控' },
@@ -8823,7 +8825,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('slowRatio', '减速幅度', '0.3'), num('duration', '持续回合', '2', '1')],
   });
   register('迟缓', {
-    说明: '拉长目标的出手间隔。',
+    说明: '拉长目标的出手间隔，并降低其闪避与反应。',
     可主机制: true,
     可副机制: true,
     目标语义: '敌对',
@@ -9059,7 +9061,8 @@ var SKILL_MECHANISM_NAME_TO_PROTOTYPES_V1 = Object.freeze({
   多段伤害: [原型编译条目('伤害结算')],
   持续伤害: [原型编译条目('状态施加', { 状态: '持续创伤' })],
   硬控: [原型编译条目('状态施加', { 状态: '眩晕' })],
-  软控: [原型编译条目('判定修正', { 判定: '反应', 数值: '-12%' }), 原型编译条目('判定修正', { 判定: '闪避', 数值: '-10%' }), 原型编译条目('结算修正', { 结算: '前摇', 数值: '+10%' })],
+  // 软控并入迟缓（用户 2026-11-12：软控其实就是一个状态）：原先固定三条（反应 −12%、闪避 −10%、前摇 +10%），现与「迟缓」主机制同形。
+  软控: [原型编译条目('状态施加', { 状态: '迟缓' })],
   节奏打断: [原型编译条目('判定修正', { 判定: '反应', 数值: '-100%', 打断效果: true })],
   打断: [原型编译条目('判定修正', { 判定: '反应', 数值: '-100%', 打断效果: true })],
   封技: [原型编译条目('状态施加', { 状态: '封技' })],
@@ -9097,13 +9100,16 @@ var SKILL_MECHANISM_NAME_TO_PROTOTYPES_V1 = Object.freeze({
   '净化/解控': [原型编译条目('状态移除', { 状态: '任意负面' })],
   净化: [原型编译条目('状态移除', { 状态: '任意负面' })],
   解控: [原型编译条目('状态移除', { 状态: '任意负面' })],
-  感知干扰: [原型编译条目('决策干扰', { 干扰: '索敌干扰' }), 原型编译条目('判定修正', { 判定: '命中', 数值: '-12%' }), 原型编译条目('判定修正', { 判定: '反应', 数值: '-12%' }), 原型编译条目('结算修正', { 结算: '前摇', 数值: '+12%' })],
-  标记锁定: [原型编译条目('状态施加', { 状态: '标记', 数值: '-100%' }), 原型编译条目('判定修正', { 目标: '自身', 判定: '命中', 数值: '+10%' }), 原型编译条目('判定修正', { 判定: '闪避', 数值: '-10%' })],
+  // 规格 2b（用户 2026-11-12 看过多效果主机制清单后定）：以下四个套装各只留一条。索敌干扰在战斗里已折算出命中下降、反应下降与打偏目标；
+  // 标记的「被标记者闪避下降」写进状态本身（BattlePreview deriveStateCombatEffect）。
+  感知干扰: [原型编译条目('决策干扰', { 干扰: '索敌干扰' })],
+  标记锁定: [原型编译条目('状态施加', { 状态: '标记' })],
   共享视野: [原型编译条目('状态施加', { 状态: '共享视野' })],
-  幻境: [原型编译条目('状态施加', { 状态: '混乱' }), 原型编译条目('属性修正', { 属性: '敏捷', 数值: '-18%' }), 原型编译条目('判定修正', { 判定: '反应', 数值: '-16%' })],
+  幻境: [原型编译条目('状态施加', { 状态: '混乱' })],
   催眠: [原型编译条目('状态施加', { 状态: '眩晕' })],
-  认知扭曲: [原型编译条目('状态施加', { 状态: '精神紊乱' }), 原型编译条目('决策干扰', { 干扰: '索敌干扰' }), 原型编译条目('判定修正', { 判定: '命中', 数值: '-12%' }), 原型编译条目('结算修正', { 结算: '前摇', 数值: '+12%' })],
-  目标锁定: [原型编译条目('状态施加', { 状态: '标记', 数值: '-100%' }), 原型编译条目('判定修正', { 目标: '自身', 判定: '命中', 数值: '+10%' })],
+  认知扭曲: [原型编译条目('状态施加', { 状态: '精神紊乱' })],
+  // 标记原写成 −100%，只是给预算缩放的比例；标记现在有自己的战斗效果（被标记者闪避下降），改为正常幅度。条目不变。
+  目标锁定: [原型编译条目('状态施加', { 状态: '标记', 数值: '-10%' }), 原型编译条目('判定修正', { 目标: '自身', 判定: '命中', 数值: '+10%' })],
   自身位移: [原型编译条目('位移执行', { 目标: '自身', 位移类型: '瞬移', 位移对象: '自身' }), 原型编译条目('判定修正', { 目标: '自身', 判定: '闪避', 数值: '+20%' })],
   强制位移: [原型编译条目('位移执行', { 目标: '单体', 位移类型: '击退', 位移对象: '目标', 驱动属性: '魂力上限', 影响方向: '效果强度' }), 原型编译条目('判定修正', { 目标: '单体', 判定: '闪避', 数值: '-10%' })],
   位移交换: [原型编译条目('位移执行', { 目标: '单体', 位移类型: '换位', 位移对象: '自身与目标', 驱动属性: '魂力上限', 影响方向: '效果强度' })],
@@ -9173,15 +9179,56 @@ var 战斗外复活永久代价对象选项_V1 = Object.freeze(['等级上限', 
 var 技能正式资源选项_V1 = Object.freeze(['生命', '体力', '魂力', '精神力']);
 var 技能限定攻击类型选项_V1 = Object.freeze(['近身攻击', '远程攻击', '精神攻击', '真实攻击', '碾压', '冲击']);
 
+// 致命前（被动技能修复方案 2026-11-12 R1）：敌方一次伤害落到自己身上之前，按预计伤害会让自己倒下（切磋、比赛里跌破生命线出局）时触发。
 var SKILL_PASSIVE_TRIGGER_PHASE_OPTIONS_V1 = Object.freeze([
   '战斗开始',
   '回合开始',
   '受击前',
+  '致命前',
   '受击后',
   '濒死时',
   '被控制时',
   '命中后',
 ]);
+
+// R9（被动技能修复方案 2026-11-12，用户「嗯，改吧」）：自动生成的魂骨附带被动、血脉被动里，正向恢复魂力/精神力/体力/生命的
+// 「资源变化」改成回合开始、自身该资源 ≤ 被动恢复触发线_V1 时触发，每战 1 次（条件不满足不计次，战斗本就如此）；同一被动的其他
+// 效果照旧战斗开始；恢复量与 COST 不动。效果级回合开始与技能级战斗开始会判冲突，所以技能级时机只在其余效果都自带时机时去掉；
+// 有效果靠技能级时机（不收效果级时机的原型）或带嵌套效果的被动不改，照旧战斗开始。只作用于新生成的被动。
+var 被动恢复触发线_V1 = '50%';
+var 被动恢复资源条件类型_V1 = Object.freeze({ 魂力: '魂力比例', 精神力: '精神力比例', 体力: '体力比例', 生命: '生命比例' });
+function 读取生成被动恢复资源_V1(effect = {}) {
+  if (!effect || typeof effect !== 'object' || String(effect.原型 || '').trim() !== '资源变化') return '';
+  const 资源列表 = (Array.isArray(effect.资源) ? effect.资源 : [effect.资源]).map(值 => String(值 || '').trim()).filter(Boolean);
+  if (资源列表.length !== 1 || !被动恢复资源条件类型_V1[资源列表[0]]) return '';
+  // 已有条件分支只做替换/追加（如食物系的制作者自服分支）时照改；自带生效/禁用门槛的不改（再加一道生效分支会变成「或」）。
+  if (effect.条件分支 !== undefined && (!Array.isArray(effect.条件分支) ||
+    effect.条件分支.some(分支 => ['生效', '禁用'].includes(String(分支?.处理 || '').trim())))) return '';
+  const 数值 = String(effect.数值 ?? '').trim();
+  const 首值 = Number((/^[+]?(\d+(?:\.\d+)?)/.exec(数值) || [])[1]);
+  return 数值.startsWith('-') || !(首值 > 0) ? '' : 资源列表[0];
+}
+function 效果含嵌套效果_V1(effect = {}) {
+  return Object.values(effect || {}).some(值 => Array.isArray(值) && 值.some(项 => 项 && typeof 项 === 'object' && String(项.原型 || '').trim()));
+}
+function 改写生成被动资源恢复触发_V1(skill = {}) {
+  if (!skill || typeof skill !== 'object' || String(skill.承载方式 || '').trim() !== '被动') return false;
+  const 效果列表 = Array.isArray(skill._效果数组) ? skill._效果数组 : [];
+  const 恢复效果 = 效果列表.filter(effect => 读取生成被动恢复资源_V1(effect) && ['', '战斗开始'].includes(String(effect.触发方式 || '').trim()));
+  if (!恢复效果.length || 效果列表.some(效果含嵌套效果_V1)) return false;
+  const 其余效果 = 效果列表.filter(effect => !恢复效果.includes(effect));
+  if (其余效果.some(effect => !SKILL_PASSIVE_TRIGGER_PHASE_OPTIONS_V1.includes(String(effect?.触发方式 || '').trim()))) return false;
+  恢复效果.forEach(effect => {
+    effect.触发方式 = '回合开始';
+    effect.触发限制 = { 周期: '每战', 次数: 1 };
+    effect.条件分支 = [...(Array.isArray(effect.条件分支) ? effect.条件分支 : []), {
+      条件: [{ 类型: 被动恢复资源条件类型_V1[读取生成被动恢复资源_V1(effect)], 对象: '自身', 比较: '<=', 值: 被动恢复触发线_V1 }],
+      处理: '生效',
+    }];
+  });
+  delete skill.触发方式;
+  return true;
+}
 
 var SKILL_PROTOTYPE_FIELD_OPTIONS_V1 = Object.freeze({
   原型: Object.freeze([]),
@@ -9219,6 +9266,8 @@ var SKILL_PROTOTYPE_FIELD_OPTIONS_V1 = Object.freeze({
   数值方向: Object.freeze(['负向', '正向', '任意']),
   类型: Object.freeze(['负面', '增益', '控制', '隐匿', '斩盾', '窃取']),
   规则: Object.freeze(['缴械', '死亡转存活']),
+  // 规则防御的次数怎么扣（R3）：按段＝每挡一段扣一次（缺省）；整招＝同一次出手的所有段只扣一次。
+  计次: Object.freeze(['按段', '整招']),
   复活代价类型: 战斗外复活代价类型选项_V1,
   复活代价对象: Object.freeze([...战斗外可继承技能状态选项_V1, ...日常系统状态选项_V1, ...战斗外复活物品代价对象选项_V1, ...战斗外复活封印代价对象选项_V1, ...战斗外复活永久代价对象选项_V1]),
   复活后状态: Object.freeze([...战斗外可继承技能状态选项_V1, ...日常系统状态选项_V1]),
@@ -9313,6 +9362,7 @@ var SKILL_PROTOTYPE_FIELD_TYPE_V1 = Object.freeze({
   调整次数: '整数',
   单日使用次数上限: '整数',
   触发限制: '对象',
+  计次: '枚举',
   资源转移方式: '枚举',
   结算标签: '枚举',
   抗性类型: '枚举',
@@ -9562,7 +9612,9 @@ var 读取原型字段选项_V1 = (原型 = '', 字段名 = '') => {
   if (原型名 === '规则改写' && key === '规则') return Object.freeze(['缴械', '死亡转存活']);
   if (原型名 === '战斗外复活' && key === '复活代价对象') return SKILL_PROTOTYPE_FIELD_OPTIONS_V1.复活代价对象;
   if (原型名 === '状态交换' && key === '状态') return Object.freeze(['任意负面', ...技能负面状态选项_V1]);
-  if (['状态移除', '状态转移'].includes(原型名) && key === '状态') return Object.freeze(['任意状态', '任意负面', '任意增益', ...SKILL_PROTOTYPE_FIELD_OPTIONS_V1.状态]);
+  // 触发来源（R5）：被动在「被控制时」移除触发这次被动的那一个控制状态。
+  if (原型名 === '状态移除' && key === '状态') return Object.freeze(['任意状态', '任意负面', '任意增益', '触发来源', ...SKILL_PROTOTYPE_FIELD_OPTIONS_V1.状态]);
+  if (原型名 === '状态转移' && key === '状态') return Object.freeze(['任意状态', '任意负面', '任意增益', ...SKILL_PROTOTYPE_FIELD_OPTIONS_V1.状态]);
   if (原型名 === '状态移除' && key === '匹配原型') return Object.freeze(['无', '资源变化', '护盾变化']);
   if (原型名 === '状态移除' && key === '资源') return Object.freeze(['生命']);
   if (原型名 === '状态转移' && ['来源', '去向'].includes(key)) return Object.freeze(['自身', '目标', '友方', '敌方']);
@@ -9650,7 +9702,7 @@ var SKILL_PROTOTYPE_DEFINITION_LIST_V1 = Object.freeze([
   ['状态施加', '战斗结算', '上下文', ['状态', '触发方式', '触发概率', '资源', '限定探查者', '限定来源', '数值', '副数值', '持续回合', '延迟回合', '触发限制', '打断效果', '驱动属性', '影响方向', '对应等级'], ['状态'], '施加中毒、冻伤、沉默、隐匿、霸体、无视异常等概括状态，可设置延迟回合登记后施加'],
   ['时窗修正', '战斗结算', '敌对', ['调整字段', '调整方式', '调整回合', '调整tick', '调整次数', '单日使用次数上限', '结算倍率', '驱动属性', '影响方向'], ['调整字段', '调整方式'], '延长或压缩目标身上对应类型的时间与次数窗口'],
   ['状态移除', '战斗结算', '上下文', ['状态', '匹配原型', '资源', '数值方向', '数量', '持续回合', '驱动属性', '影响方向', '对应等级'], [], '按状态名或状态内部原型效果移除状态，可用持续回合表达持续净化或驱散窗口'],
-  ['规则防御', '战斗结算', '可赋予', ['规则', '次数', '限定来源', '持续回合', '触发限制'], ['规则', '次数'], '免伤、免死等防御规则'],
+  ['规则防御', '战斗结算', '可赋予', ['规则', '次数', '计次', '限定来源', '持续回合', '触发限制'], ['规则', '次数'], '免伤、免死等防御规则'],
   ['状态转移', '战斗结算', '上下文', ['状态', '来源', '去向', '数量', '持续回合'], ['状态', '来源', '去向'], '把状态从一方转移到另一方，可用持续回合表达持续转移窗口'],
   ['状态交换', '战斗结算', '上下文', ['状态', '持续回合'], ['状态'], '交出自身负面状态并夺取敌方目标增益状态，可用持续回合表达持续交换窗口'],
   ['资源锁定', '战斗结算', '敌对', ['资源', '锁定类型', '数值', '持续回合', '驱动属性', '影响方向'], ['资源', '锁定类型', '数值'], '锁定目标资源池、回复或转化通道'],
@@ -9846,6 +9898,39 @@ var SKILL_UNIT_COST_TABLE_V1 = Object.freeze({
     本命召唤兽: 50, 分身: 28, 器灵: 35, 其他召唤生物: 30, 魂师: 30, 魂兽: 30, 深渊生物: 30,
   }),
 });
+
+// 机制授予壳按内含效果比例计价（用户 2026-11-12："按比例吧 *1.2倍？"）：壳本身 = 授予效果 COST 之和 × 机制授予壳比例_V1，
+// 再乘壳原有的目标与期限系数（原先是固定 25 × 这些系数，按期限涨到 36.25 / 45 / 51.25）。上表的 机制授予: 25 只留给旧版计价。
+var 机制授予壳比例_V1 = 0.2;
+// The old shell profile spanned 25..100; keep that x4 headroom for the shell's own duration/uses in budget profiles.
+var 机制授予壳最高期限倍率_V1 = 4;
+// 食物有效期计价（用户 2026-11-12："只有 0（造完当场食用）是个坎，cost为0 。其他的1天以内就5cost，2天就6cost，3天7cost这样吧。"）
+// 1 tick = 10 分钟，144 tick = 1 天；价格 = 5 + (向上取整的天数 − 1)。
+var 造物有效期每日tick_V1 = 144;
+var 造物有效期首日COST_V1 = 5;
+var 造物有效期每增一日COST_V1 = 1;
+// 「当场食用」档：有效期 1 tick（10 分钟）即造完当场食用，COST 0。有效期 0 / 不写在运行时表示永不过期
+// （mvu_logic_bridge 构建造物背包值 写 有效期至tick = 0），所以当场食用用 1 tick 表示，预算压缩也最多压到这里。
+var 造物当场食用tick_V1 = 1;
+var 造物有效期压缩最低tick_V1 = 造物当场食用tick_V1;
+function 计算造物有效期COST_V1(有效期tick = 0) {
+  const tick = Math.max(0, Math.round(Number(有效期tick || 0)));
+  if (!(tick > 造物当场食用tick_V1)) return 0;
+  return 造物有效期首日COST_V1 + (Math.ceil(tick / 造物有效期每日tick_V1) - 1) * 造物有效期每增一日COST_V1;
+}
+function 造物有效期是当场食用_V1(有效期tick = 0) {
+  const tick = Math.max(0, Math.round(Number(有效期tick || 0)));
+  return tick > 0 && tick <= 造物当场食用tick_V1;
+}
+// 计价版本戳（gen1b）：新生成与设计台保存的技能写 计价版本 = 当前技能计价版本_V1。读档收敛时带当前戳的按新计价、只修越界；
+// 没有戳的（之前生成或写入的）按旧计价（壳固定 25、有效期不计价），行为与之前一致。
+var 当前技能计价版本_V1 = 2;
+function 技能带当前计价版本_V1(技能 = {}) {
+  return Number(技能?.计价版本) >= 当前技能计价版本_V1;
+}
+function 技能预算沿用旧版授予壳与有效期计价_V1(上下文 = {}) {
+  return 上下文?.沿用旧版授予壳与有效期计价 === true;
+}
 
 function 获取单位COST_V1(原型, 选项字段, 选项值) {
   const 表 = SKILL_UNIT_COST_TABLE_V1[原型];
@@ -10185,6 +10270,7 @@ if (typeof globalThis !== 'undefined') {
     读取状态施加分类_V1,
     状态施加是否负面语义_V1,
     食物造物效果可直接食用_V1,
+    当前技能计价版本_V1,
   });
   globalThis.__LWCS_ITEM_PASSIVE_CONSUMER_V1__ = Object.freeze({
     读取物品被动技能条目_V1,
@@ -11648,6 +11734,7 @@ function 查找合法生成主机制原型_V1(主机制大类 = '', context = {}
     const 原型池 = 大类 === '回复类' ? 读取普通回复随机原型池_V1() : (SKILL_ARCHETYPE_POOL_V1[大类] || []);
     const 合法列表 = 原型池.filter(机制 =>
       !排除原型.has(String(机制 || '').trim()) &&
+      !随机生成不再抽取的主机制_V1.has(String(机制 || '').trim()) &&
       自动生成机制满足五环恢复增益约束_V1(机制, context) &&
       机制是合法生成主机制_V1(机制, context) &&
       (context?.跳过预算范围预筛 === true || 自动生成机制满足预算范围_V1(机制, context))
@@ -11981,7 +12068,11 @@ function 读取技能机制原型条目基础预算档_V1(条目 = {}, 上下文
     return 可调(单位, Math.max(单位, 单位 * 2.5), ['数值'], ['持续回合']);
   }
   if (原型 === '机制抹消') return 可调(Number(SKILL_UNIT_COST_TABLE_V1.机制抹消 || 25), 75, ['持续回合'], []);
-  if (原型 === '机制授予') return 可调(Number(SKILL_UNIT_COST_TABLE_V1.机制授予 || 25), 100, ['可用次数'], ['持续回合']);
+  if (原型 === '机制授予') {
+    // The granted entries are added separately by 合并机制预算档案条目_V1; the shell itself is a share of them.
+    const 内含 = 合并机制预算档案条目_V1(Array.isArray(条目.授予效果) ? 条目.授予效果 : [], { ...(上下文 || {}), 目标: undefined });
+    return 可调(内含.最低COST * 机制授予壳比例_V1, 内含.最高常规COST * 机制授予壳比例_V1 * 机制授予壳最高期限倍率_V1, ['可用次数'], ['持续回合']);
+  }
   if (原型 === '复制执行') {
     const 类型 = String(条目.复制类型 || '复制技能').trim() || '复制技能';
     const 单位 = Number(SKILL_UNIT_COST_TABLE_V1.复制执行?.[类型] ?? 90);
@@ -12104,13 +12195,11 @@ var 技能机制预算档案表_V1 = (() => {
     }));
   });
   const 覆盖档案 = {
-    反制: { 最低COST: 115, 最高常规COST: 115, 固定COST: 115, 可调整: false },
+    // 反击 5%（18 × 5 = 90）加机制授予壳：原为固定壳 25，现为内含的 机制授予壳比例_V1（90 × 1.2 = 108）。
+    反制: { 最低COST: 108, 最高常规COST: 108, 固定COST: 108, 可调整: false },
     免伤: { 最低COST: 50, 最高常规COST: 90, 固定COST: 50, 可调整: false, 主调字段: [], 次调字段: [] },
     '免死/锁血': { 最低COST: 80, 最高常规COST: 120, 固定COST: null, 可调整: true, 主调字段: ['次数'], 次调字段: ['持续回合'] },
     霸体: { 最低COST: 43, 最高常规COST: 43, 固定COST: 43, 可调整: false },
-    标记锁定: { 最低COST: 35.5, 最高常规COST: 160, 固定COST: null, 可调整: true, 主调字段: ['数值'], 次调字段: ['持续回合'] },
-    幻境: { 最低COST: 45, 最高常规COST: 140, 固定COST: null, 可调整: true, 主调字段: ['数值'], 次调字段: ['持续回合'] },
-    认知扭曲: { 最低COST: 48.5, 最高常规COST: 150, 固定COST: null, 可调整: true, 主调字段: ['数值'], 次调字段: ['持续回合'] },
   };
   Object.entries(覆盖档案).forEach(([机制名, 覆盖]) => {
     const 原档案 = 表.get(机制名) || {};
@@ -12147,16 +12236,31 @@ function 抽取食物敌对形态_V1(系别 = '', 机制名 = '', 主机制大�
   return Math.random() < 食物敌对直接使用概率_V1 ? '直接' : '授予';
 }
 
+function 食物造物条目需要授予壳_V1(条目 = {}, 机制名 = '', context = {}) {
+  const 原型 = String(条目?.原型 || '').trim();
+  if (!原型 || 原型 === '机制授予') return false;
+  if (!机制授予允许授予原型集合_V1.has(原型)) return false;
+  return !食物造物效果可直接食用_V1(构建自动生成档案估算效果_V1(条目, { ...(context || {}), 机制名 }));
+}
+
 function 食物造物机制需要授予壳预算_V1(机制名 = '', context = {}) {
   if (读取技能机制目标侧_V1(机制名) === '敌对' && context?.食物敌对形态 !== '授予') return false;
   const 原型列表 = 读取机制编译原型列表_V1(机制名);
   if (!原型列表.length) return false;
-  return 原型列表.some(条目 => {
-    const 原型 = String(条目?.原型 || '').trim();
-    if (!原型 || 原型 === '机制授予') return false;
-    if (!机制授予允许授予原型集合_V1.has(原型)) return false;
-    return !食物造物效果可直接食用_V1(构建自动生成档案估算效果_V1(条目, { ...(context || {}), 机制名 }));
-  });
+  return 原型列表.some(条目 => 食物造物条目需要授予壳_V1(条目, 机制名, context));
+}
+
+function 运行条目需要授予壳_V1(条目 = {}, 机制名 = '', context = {}) {
+  const 系别 = String(context?.系别 || context?.type || '').trim();
+  const 原型 = String(条目?.原型 || '').trim();
+  if (!机制授予允许授予原型集合_V1.has(原型)) return false;
+  if (系别 === '食物系') {
+    if (['复制执行', '时光回溯'].includes(原型)) return true;
+    const 估算效果 = 构建自动生成档案估算效果_V1(条目, { ...(context || {}), 机制名 });
+    if (String(估算效果?.目标 || '').trim() === '自身') return false;
+    return shouldWrapSkillEffectAsGrant(估算效果);
+  }
+  return shouldWrapSkillEffectAsGrant(构建自动生成档案估算效果_V1(条目, { ...(context || {}), 机制名 }));
 }
 
 function 自动生成机制需要运行授予壳预算_V1(机制名 = '', context = {}) {
@@ -12165,17 +12269,7 @@ function 自动生成机制需要运行授予壳预算_V1(机制名 = '', contex
   if (!['辅助系', '食物系'].includes(系别) || 释放形态 === '造物承载') return false;
   const 原型列表 = 读取机制编译原型列表_V1(机制名);
   if (!原型列表.length) return false;
-  return 原型列表.some(条目 => {
-    const 原型 = String(条目?.原型 || '').trim();
-    if (!机制授予允许授予原型集合_V1.has(原型)) return false;
-    if (系别 === '食物系') {
-      if (['复制执行', '时光回溯'].includes(原型)) return true;
-      const 估算效果 = 构建自动生成档案估算效果_V1(条目, { ...(context || {}), 机制名 });
-      if (String(估算效果?.目标 || '').trim() === '自身') return false;
-      return shouldWrapSkillEffectAsGrant(估算效果);
-    }
-    return shouldWrapSkillEffectAsGrant(构建自动生成档案估算效果_V1(条目, { ...(context || {}), 机制名 }));
-  });
+  return 原型列表.some(条目 => 运行条目需要授予壳_V1(条目, 机制名, context));
 }
 
 function 食物造物机制可作为使用效果_V1(机制名 = '', context = {}) {
@@ -12278,10 +12372,26 @@ function 估算机制组合预算区间_V1(机制名 = '', context = {}) {
     String(context?.释放形态 || '').trim() === '造物承载' &&
     食物造物机制需要授予壳预算_V1(机制, { ...(context || {}), 目标 });
   const 需要运行授予壳 = 自动生成机制需要运行授予壳预算_V1(机制, { ...(context || {}), 目标 });
-  const 壳COST = 需要食物造物授予壳 || 需要运行授予壳 ? Number(SKILL_UNIT_COST_TABLE_V1.机制授予 || 25) : 0;
-  const 壳最高COST = 壳COST > 0 && 原型列表.some(条目 => 条目?.原型 === '位移执行')
-    ? 壳COST * 读取技能效果持续系数_V1({ 原型: '机制授予', 持续回合: 10 }) : 壳COST;
+  const 壳内条目 = 需要食物造物授予壳
+    ? 原型列表.filter(条目 => 食物造物条目需要授予壳_V1(条目, 机制, { ...(context || {}), 目标 }))
+    : 需要运行授予壳 ? 原型列表.filter(条目 => 运行条目需要授予壳_V1(条目, 机制, { ...(context || {}), 目标 })) : [];
+  const 壳内档案 = 壳内条目.length ? 合并机制预算档案条目_V1(壳内条目, { ...(context || {}), 目标, 机制名: 机制 }) : null;
+  const 壳COST = 壳内档案 ? Number((壳内档案.最低COST * 机制授予壳比例_V1).toFixed(2)) : 0;
+  const 壳最高COST = 壳内档案
+    ? Number((壳内档案.最高常规COST * 机制授予壳比例_V1 * (原型列表.some(条目 => 条目?.原型 === '位移执行')
+      ? 读取技能效果持续系数_V1({ 原型: '机制授予', 持续回合: 10 }) : 1)).toFixed(2))
+    : 0;
   const 是造物承载 = String(context?.释放形态 || '').trim() === '造物承载';
+  // 食物有效期：生成时按品质与环位定（buildTemporaryConstructDurationTicks），超预算时最多压到 造物有效期压缩最低tick_V1。
+  // 只记在主机制上：副机制与主机制共用同一份造物。
+  const 计入有效期 = 是造物承载 && context?.副机制估算 !== true;
+  const 有效期最低COST = 计入有效期 ? 计算造物有效期COST_V1(造物有效期压缩最低tick_V1) : 0;
+  const 有效期最高COST = 计入有效期
+    ? 计算造物有效期COST_V1(buildTemporaryConstructDurationTicks(
+      normalizeSkillTableGrade(context?.grade || context?.品质 || context?.gradeOverride || 'B'),
+      Math.max(1, Math.floor(Number(context?.ringIndex ?? context?.魂环位 ?? 1) || 1)),
+    ))
+    : 0;
   const 使用效果COST系数 = 是造物承载 ? 1 - 技能造物双行动抵扣率_V1 : 1;
   let 可达COST档位 = null;
   if (Array.isArray(使用档案.可达效果档位) && 使用档案.可达效果档位.length) {
@@ -12293,12 +12403,12 @@ function 估算机制组合预算区间_V1(机制名 = '', context = {}) {
     }, context);
     可达COST档位 = 期限预算?.COST档位 || null;
   }
-  const 最低可达COST = 可达COST档位 ? Math.min(...可达COST档位) : Number(((使用档案.最低COST + 壳COST) * 使用效果COST系数).toFixed(2));
-  const 补强可达COST = 可达COST档位 ? Math.max(...可达COST档位) : Number(((Math.max(使用档案.最高常规COST, 使用档案.最低COST) + 壳最高COST) * 使用效果COST系数).toFixed(2));
+  const 最低可达COST = 可达COST档位 ? Math.min(...可达COST档位) : Number(((使用档案.最低COST + 壳COST) * 使用效果COST系数 + 有效期最低COST).toFixed(2));
+  const 补强可达COST = 可达COST档位 ? Math.max(...可达COST档位) : Number(((Math.max(使用档案.最高常规COST, 使用档案.最低COST) + 壳最高COST) * 使用效果COST系数 + 有效期最高COST).toFixed(2));
   return {
     可用: true,
     默认COST: 补强可达COST,
-    固定COST: 可达COST档位 ? (可达COST档位.length === 1 ? 可达COST档位[0] : null) : 使用档案.固定COST === null ? null : Number(((使用档案.固定COST + 壳COST) * 使用效果COST系数).toFixed(2)),
+    固定COST: 可达COST档位 ? (可达COST档位.length === 1 ? 可达COST档位[0] : null) : 使用档案.固定COST === null ? null : Number(((使用档案.固定COST + 壳COST) * 使用效果COST系数 + 有效期最低COST).toFixed(2)),
     最低可达COST,
     补强可达COST,
     最高常规COST: 补强可达COST,
@@ -12337,6 +12447,7 @@ function 构建自动生成机制预算范围键_V1(机制 = '', context = {}, �
     String(context?.效果意图?.持续回合 ?? ''),
     String(context?.结算参数?.持续回合 ?? ''),
     String(context?.主副机制上下文 ?? ''),
+    String(context?.副机制估算 === true ? '副机制估算' : ''),
     String(context?.副机制 === true),
     String(context?.副机制持续倍率 ?? ''),
     String(context?.secondaryDurationScale ?? ''),
@@ -12637,31 +12748,26 @@ function rollSubModelByGrade(mainMechanic, grade, roll, context = {}) {
         { value: '持续伤害', weight: 33 },
       ],
     },
+    // 软控并入迟缓（规格 2）：软控的份额并给迟缓（C 70+10、B 45+10、A 30+10+15、S 20+20；原表 A、S 里重复的条目合并），随机生成不再抽出「软控」。
     控制类: {
       C: [
-        { value: '软控', weight: 70 },
+        { value: '迟缓', weight: 80 },
         { value: '节奏打断', weight: 20 },
-        { value: '迟缓', weight: 10 },
       ],
       B: [
-        { value: '软控', weight: 45 },
+        { value: '迟缓', weight: 55 },
         { value: '硬控', weight: 25 },
         { value: '节奏打断', weight: 20 },
-        { value: '迟缓', weight: 10 },
       ],
       A: [
-        { value: '软控', weight: 30 },
+        { value: '迟缓', weight: 55 },
         { value: '硬控', weight: 30 },
         { value: '节奏打断', weight: 15 },
-        { value: '迟缓', weight: 15 },
-        { value: '软控', weight: 10 },
       ],
       S: [
-        { value: '软控', weight: 20 },
+        { value: '迟缓', weight: 40 },
         { value: '硬控', weight: 35 },
-        { value: '节奏打断', weight: 15 },
-        { value: '迟缓', weight: 20 },
-        { value: '节奏打断', weight: 10 },
+        { value: '节奏打断', weight: 25 },
       ],
     },
     削弱类: {
@@ -12830,7 +12936,7 @@ function rollSubModelByGrade(mainMechanic, grade, roll, context = {}) {
   const 理论权重表 = [
     ...配置权重表,
     ...(SKILL_ARCHETYPE_POOL_V1[mainMechanic] || [])
-      .filter(原型 => !已配置原型.has(String(原型 || '').trim()))
+      .filter(原型 => !已配置原型.has(String(原型 || '').trim()) && !随机生成不再抽取的主机制_V1.has(String(原型 || '').trim()))
       .map(原型 => ({ value: 原型, weight: 1 })),
   ];
   const 全局品质合法表 = 过滤合法生成主机制权重表_V1(理论权重表, 机制上下文);
@@ -13170,6 +13276,74 @@ function rollAttributeDirectionByType(type, subModel, roll, context = {}) {
   return pickUniqueRandom(hints, 1);
 }
 
+// 副机制要够格才加（用户 2026-11-12 同意："全技能每一条百分比效果都能做到 10% 时才加副机制，否则不加，预算留给主效果"）。
+// 5% 的硬下限（收口正式百分比最低值_V1 等）不变；只有主机制的技能不受这条约束。
+var 有意义百分点下限_V1 = 10;
+
+// COST of a mechanism with every percent value at 有意义百分点下限_V1 for one round; non-percent parts at their minimum price.
+// Adds the share of the 机制授予 wrapper the mechanism would need and, for the main mechanism of a food, the expiry floor.
+function 估算机制有意义下限COST_V1(机制名 = '', context = {}) {
+  const 机制 = String(机制名 || '').trim();
+  if (!机制) return Infinity;
+  const 缓存 = context?.自动生成预算范围缓存 instanceof Map ? context.自动生成预算范围缓存 : null;
+  const 缓存键 = 缓存 ? `有意义下限|${构建自动生成机制预算范围键_V1(机制, context, context?.属性候选 || [])}` : '';
+  if (缓存 && 缓存.has(缓存键)) return 缓存.get(缓存键);
+  const 范围 = 估算自动生成机制预算范围_V1(机制, context);
+  let 结果 = Infinity;
+  if (范围?.可用 === true && Number.isFinite(Number(范围.最低可达COST))) {
+    const 估算上下文 = { ...(context || {}), 目标: 范围.目标 || context?.目标, 机制名: 机制 };
+    const 下限文本 = (原值, 默认值 = '') => `${String(原值 || 默认值 || '').trim().startsWith('-') ? '-' : '+'}${有意义百分点下限_V1}%`;
+    const 下限效果 = (条目, 上下文) => {
+      const 效果 = 构建自动生成档案估算效果_V1(条目, 上下文);
+      效果.持续回合 = 1;
+      if (String(效果.原型 || '').trim() === '状态施加') {
+        const 状态 = String(效果.状态 || '').trim();
+        if (状态施加允许数值字段_V1(状态)) 效果.数值 = 下限文本(效果.数值, 读取状态施加默认数值_V1(状态));
+        if (状态施加允许副数值字段_V1(状态)) 效果.副数值 = 下限文本(效果.副数值, 读取状态施加默认副数值_V1(状态));
+      } else if (/%$/.test(String(效果.数值 ?? '').trim()) && parseSkillSignedChangeNumber(效果.数值) !== 0) {
+        效果.数值 = 下限文本(效果.数值);
+      }
+      技能执行嵌套效果数组字段表_V1.forEach(字段 => {
+        if (Array.isArray(效果[字段])) 效果[字段] = 效果[字段].map(子 => 下限效果(子, { ...上下文, 目标: undefined }));
+      });
+      return 效果;
+    };
+    const 条目COST = 条目 => Math.max(
+      Number(计算技能效果累计COST_V1([下限效果(条目, 估算上下文)], 估算上下文).总COST || 0),
+      Number(合并机制预算档案条目_V1([条目], 估算上下文).最低COST || 0),
+    );
+    const 原型列表 = 读取机制编译原型列表_V1(机制);
+    const 系别 = String(context?.系别 || context?.type || '').trim();
+    const 是造物承载 = String(context?.释放形态 || '').trim() === '造物承载';
+    const 壳内条目 = 系别 === '食物系' && 是造物承载 && 食物造物机制需要授予壳预算_V1(机制, 估算上下文)
+      ? 原型列表.filter(条目 => 食物造物条目需要授予壳_V1(条目, 机制, 估算上下文))
+      : 自动生成机制需要运行授予壳预算_V1(机制, 估算上下文) ? 原型列表.filter(条目 => 运行条目需要授予壳_V1(条目, 机制, 估算上下文)) : [];
+    const 合计 = 原型列表.reduce((和, 条目) => 和 + 条目COST(条目), 0) +
+      壳内条目.reduce((和, 条目) => 和 + 条目COST(条目), 0) * 机制授予壳比例_V1 +
+      (是造物承载 && context?.副机制估算 !== true ? 计算造物有效期COST_V1(造物有效期压缩最低tick_V1) : 0);
+    结果 = Number(Math.max(合计, Number(范围.最低可达COST)).toFixed(2));
+  }
+  if (缓存) 缓存.set(缓存键, 结果);
+  return 结果;
+}
+
+// Percent effects (main value 数值) below 有意义百分点下限_V1; the 机制授予 shell and conditional-branch variants are not counted.
+function 读取技能低于有意义下限的百分比效果_V1(技能 = {}) {
+  const 结果 = [];
+  const 访问 = (列表, 路径) => (Array.isArray(列表) ? 列表 : []).forEach((效果, 序号) => {
+    if (!效果 || typeof 效果 !== 'object' || Array.isArray(效果)) return;
+    const 原型 = String(效果.原型 || '').trim();
+    const 当前路径 = `${路径}[${序号}]`;
+    if (原型 && 原型 !== '机制授予') {
+      const 百分点 = 读取技能百分比百分点_V1(效果.数值);
+      if (Number.isFinite(百分点) && 百分点 !== 0 && Math.abs(百分点) < 有意义百分点下限_V1 - 1e-9) 结果.push({ 路径: 当前路径, 原型, 数值: 效果.数值 });
+    }
+    技能执行嵌套效果数组字段表_V1.forEach(字段 => 访问(效果[字段], `${当前路径}.${字段}`));
+  });
+  访问(技能?._效果数组, '_效果数组');
+  return 结果;
+}
+
 function rollExtraMechanics(main, grade, ringIndex, preferredSecondary = [], type = '强攻系', context = {}) {
   const 排除原型 = new Set(Array.isArray(context?.排除子原型) ? context.排除子原型.map(项 => String(项 || '').trim()).filter(Boolean) : []);
   const 主机制目标侧 = 读取技能机制目标侧_V1(context?.主机制原型, context?.主机制大类);
@@ -13195,7 +13369,10 @@ function rollExtraMechanics(main, grade, ringIndex, preferredSecondary = [], typ
   const 低COST线 = Math.max(0.5, Number(预算摘要?.低COST线 || 0) || 读取预算评估最低有效COST_V1({ 运转基准: Number(预算摘要?.运转基准 || 0) }, context));
   let 剩余预算 = 当前门禁 > 0 ? Math.max(0, 当前门禁 - 主机制COST) : Infinity;
   let 组合最高COST = 主机制最高COST;
-  const 估算副机制预算范围 = 机制 => {
+  // 副机制准入（规格 1）：主机制与已选、待选副机制的每条百分比效果都取 有意义百分点下限_V1 时，合计不超过预算门禁。
+  const 有意义门禁 = Math.max(0, Number(预算摘要?.预算门禁 || 0)) || 当前门禁;
+  let 有意义已用COST = Number.isFinite(Number(context?.主机制有意义COST)) ? Number(context.主机制有意义COST) : 主机制COST;
+  const 副机制估算上下文 = 机制 => {
     const 原型 = String(机制 || '').trim();
     const 副机制目标 = 生成技能机制正式目标_V1(原型, {
       ...(context || {}),
@@ -13207,7 +13384,7 @@ function rollExtraMechanics(main, grade, ringIndex, preferredSecondary = [], typ
       主机制大类: findMainMechanicGroupByArchetype(原型),
       释放形态: context?.释放形态 || '直接生效',
     });
-    return 估算自动生成机制预算范围_V1(原型, {
+    return {
       ...(context || {}),
       type,
       系别: type,
@@ -13217,13 +13394,18 @@ function rollExtraMechanics(main, grade, ringIndex, preferredSecondary = [], typ
       释放形态: context?.释放形态 || '直接生效',
       目标: 副机制目标,
       预算门禁: Number.isFinite(剩余预算) ? 剩余预算 : context?.预算门禁,
-    });
+      副机制估算: true,
+    };
   };
+  const 估算副机制预算范围 = 机制 => 估算自动生成机制预算范围_V1(String(机制 || '').trim(), 副机制估算上下文(机制));
+  const 估算副机制有意义COST = 机制 => 估算机制有意义下限COST_V1(String(机制 || '').trim(), 副机制估算上下文(机制));
   const secondaryChance = getSecondaryGenerationChance(grade, ringIndex);
   const doubleChance = getSecondaryDoubleChance(grade, ringIndex);
   const 副机制骰 = Math.random() * 100;
   const 双副机制骰 = 副机制骰 < secondaryChance ? Math.random() * 100 : null;
-  const 目标数量 = 副机制骰 < secondaryChance ? (双副机制骰 < doubleChance ? 2 : 1) : 0;
+  // 副机制上限 comes only from the retention regeneration (规格 1); the dice are still rolled so the random stream is unchanged.
+  const 副机制上限 = Number.isFinite(Number(context?.副机制上限)) ? Math.max(0, Math.floor(Number(context.副机制上限))) : Infinity;
+  const 目标数量 = Math.min(副机制上限, 副机制骰 < secondaryChance ? (双副机制骰 < doubleChance ? 2 : 1) : 0);
   记录技能生成事件_V1(context, {
     类型: '副机制机会',
     主机制大类: main,
@@ -13266,7 +13448,7 @@ function rollExtraMechanics(main, grade, ringIndex, preferredSecondary = [], typ
     const 最低COST = Number(范围?.最低可达COST ?? Infinity);
     const 最高COST = Math.max(最低COST, Number(范围?.补强可达COST ?? 范围?.最高常规COST ?? 范围?.最低可达COST ?? 0));
     if (范围?.可用 !== true || !Number.isFinite(最低COST)) return false;
-    if (Number.isFinite(剩余预算) && 最低COST > 剩余预算 + 技能预算COST容差_V1) return false;
+    if (有意义门禁 > 0 && 有意义已用COST + 估算副机制有意义COST(item?.value) > 有意义门禁 + 技能预算COST容差_V1) return false;
     if (组合最高COST + 最高COST < 低COST线 - 技能预算超预算容差_V1 && !(剩余副槽 > 0)) return false;
     return true;
   };
@@ -13326,6 +13508,7 @@ function rollExtraMechanics(main, grade, ringIndex, preferredSecondary = [], typ
     const 选中范围 = 估算副机制预算范围(选中机制);
     const 已用最低COST = Number(选中范围?.最低可达COST ?? Infinity);
     const 已用最高COST = Math.max(Number.isFinite(已用最低COST) ? 已用最低COST : 0, Number(选中范围?.补强可达COST ?? 选中范围?.最高常规COST ?? 选中范围?.最低可达COST ?? 0));
+    有意义已用COST += Math.max(0, Number(估算副机制有意义COST(选中机制)) || 0);
     if (Number.isFinite(剩余预算)) 剩余预算 = Math.max(0, 剩余预算 - Math.max(0, 已用最低COST));
     组合最高COST += Math.max(0, 已用最高COST);
     weightedPool = weightedPool.filter(item => String(item?.value || '').trim() !== 选中机制);
@@ -13340,6 +13523,77 @@ var v9_3_最近主机制队列_V1 = [];
 function v9_3_会连续三次(main = '') {
   return v9_3_最近主机制队列_V1.length >= 2 && v9_3_最近主机制队列_V1.every(item => item === main);
 }
+// 规格 3（用户 2026-11-12："这种单一类状态的技能确实不能同一角色重复获得，因为没有任何意义"；"这类是可调数值的状态，第九魂技的中毒
+// 可以比第一魂技强很多，自然没问题，那种不能调数值的状态就没有重复的意义了"）。判据：战斗侧 BattlePreview deriveStateCombatEffect
+// 是否读这个状态的 数值。下面是读数值的状态；其余（眩晕、麻痹、沉默、封技、致盲、霸体、无视异常、嘲讽、共享视野……）不带数值。
+var 状态施加可调数值状态集合_V1 = new Set([
+  '中毒', '流血', '灼烧', '冻伤', '持续创伤', '资源燃烧', '暗冰侵蚀', '持续恢复', '护卫', '禁疗', '隐匿', '僵直',
+  '迟缓', '减速', '定身', '束缚', '禁锢', '混乱', '精神紊乱', '标记', '异常抗性',
+]);
+// 带数值的状态：同状态、同目标范围，新技能主数值不到已有最高值的这个倍数就重抽（方案自加的默认值，已告知用户，可调可撤）。
+var 同状态重复最小倍数_V1 = 1.5;
+var 状态重复最多重抽次数_V1 = 3;
+var 角色主效果状态账本上限_V1 = 400;
+
+function 状态带可调数值_V1(状态 = '') {
+  return 状态施加可调数值状态集合_V1.has(String(状态 || '').trim());
+}
+
+// Role key from the generation path (char.<角色名>.…); without one (direct sampling, previews) the rule does not apply.
+function 读取技能生成角色键_V1(context = {}) {
+  const 匹配 = String(context?.path || context?.路径 || '').trim().match(/^char\.([^.]+)\./);
+  return 匹配 ? 匹配[1] : '';
+}
+
+function 读取角色主效果状态账本_V1() {
+  if (!Array.isArray(v9_3_最近主机制队列_V1.主效果状态账本)) v9_3_最近主机制队列_V1.主效果状态账本 = [];
+  return v9_3_最近主机制队列_V1.主效果状态账本;
+}
+
+// State a mechanism's main effect applies ('' when the main effect is not a state). 持续伤害 picks its DOT state later.
+function 读取机制主效果状态_V1(机制 = '') {
+  const 首条 = 读取机制编译原型列表_V1(机制)[0];
+  return String(首条?.原型 || '').trim() === '状态施加' ? String(首条.状态 || '').trim() : '';
+}
+
+function 读取技能主效果状态_V1(技能 = {}, 主机制 = '') {
+  const 模板状态 = 读取机制主效果状态_V1(主机制);
+  if (!模板状态) return null;
+  const 持续伤害状态 = 状态施加状态分类矩阵_V1.持续伤害类;
+  const 匹配 = 状态 => 状态 === 模板状态 || (主机制 === '持续伤害' && 持续伤害状态.includes(状态));
+  let 结果 = null;
+  const 访问 = 列表 => (Array.isArray(列表) ? 列表 : []).forEach(效果 => {
+    if (结果 || !效果 || typeof 效果 !== 'object' || Array.isArray(效果)) return;
+    const 状态 = String(效果.状态 || '').trim();
+    if (String(效果.原型 || '').trim() === '状态施加' && 匹配(状态)) {
+      const 百分点 = 读取技能百分比百分点_V1(效果.数值);
+      结果 = {
+        状态,
+        范围: ['群体', '全场'].includes(String(效果.目标 || '').trim()) ? '群体' : '单体',
+        数值: Number.isFinite(百分点) ? Math.abs(百分点) : null,
+      };
+      return;
+    }
+    技能执行嵌套效果数组字段表_V1.forEach(字段 => 访问(效果[字段]));
+  });
+  访问(技能?._效果数组);
+  return 结果;
+}
+
+function 读取角色已有固定主效果状态_V1(context = {}) {
+  const 角色键 = 读取技能生成角色键_V1(context);
+  if (!角色键) return new Set();
+  return new Set(读取角色主效果状态账本_V1().filter(项 => 项.角色键 === 角色键 && !状态带可调数值_V1(项.状态)).map(项 => 项.状态));
+}
+
+function 登记角色主效果状态_V1(context = {}, 主效果 = null) {
+  const 角色键 = 读取技能生成角色键_V1(context);
+  if (!角色键 || !主效果?.状态) return;
+  const 账本 = 读取角色主效果状态账本_V1();
+  账本.push({ 角色键, 状态: 主效果.状态, 范围: 主效果.范围, 数值: 主效果.数值 });
+  while (账本.length > 角色主效果状态账本上限_V1) 账本.shift();
+}
+
 function v9_3_推入主机制(main = '') {
   if (!main) return;
   v9_3_最近主机制队列_V1.push(main);
@@ -13370,16 +13624,20 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
   });
   const mainRoll = Math.floor(Math.random() * 100) + 1;
   const 本轮排除主机制大类 = new Set(Array.isArray(options?.排除主机制大类) ? options.排除主机制大类.map(项 => String(项 || '').trim()).filter(Boolean) : []);
+  // 规格 3 的「换同大类里另一种状态」：重抽时限定主机制大类（配合排除给出重复状态的机制）。
+  const 限定主机制大类 = String(options?.限定主机制大类 || '').trim();
   let main = 是治疗系第一魂技
     ? '回复类'
-    : rollMainMechanicByGrade(type, grade, mainRoll, ringIndex, {
+    : 限定主机制大类 && !本轮排除主机制大类.has(限定主机制大类) && SKILL_ARCHETYPE_POOL_V1[限定主机制大类]
+      ? 限定主机制大类
+      : rollMainMechanicByGrade(type, grade, mainRoll, ringIndex, {
         ...options,
         抽取用途: '初抽',
         排除主机制大类: [...本轮排除主机制大类],
       });
   if (!main) throw new Error(`技能生成错误:${type || '未知系别'}没有合法主机制`);
   // v9.3：若与最近 2 次主机制大类重复，最多重 roll 3 次以避让（避免连续 3 次相同）
-  for (let 尝试 = 0; !是治疗系第一魂技 && 尝试 < 3 && v9_3_会连续三次(main); 尝试 += 1) {
+  for (let 尝试 = 0; !是治疗系第一魂技 && !限定主机制大类 && 尝试 < 3 && v9_3_会连续三次(main); 尝试 += 1) {
     const 重roll = Math.floor(Math.random() * 100) + 1;
     const 候选 = rollMainMechanicByGrade(type, grade, 重roll, ringIndex, { ...options, 抽取用途: '多样性重抽' });
     if (候选 && !v9_3_会连续三次(候选)) {
@@ -13465,6 +13723,48 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
       });
       continue;
     }
+    // 规格 3：主效果是不带数值的状态、而这个角色已有以同一状态为主效果的魂技时，重抽最多 状态重复最多重抽次数_V1 次；
+    // 仍重复就排除同大类里给出已有状态的机制再抽一次；再不行才放行并记一次。
+    const 已有固定状态 = 是治疗系第一魂技 ? new Set() : 读取角色已有固定主效果状态_V1(options);
+    const 固定状态重复 = 机制 => {
+      const 状态 = 读取机制主效果状态_V1(机制);
+      return !!状态 && !状态带可调数值_V1(状态) && 已有固定状态.has(状态);
+    };
+    if (固定状态重复(subModel)) {
+      const 重复状态 = 读取机制主效果状态_V1(subModel);
+      const 重抽子原型 = (额外排除 = []) => {
+        try {
+          const 候选 = rollSubModelByGrade(main, grade, Math.floor(Math.random() * 100) + 1, {
+            ...options,
+            type,
+            系别: type,
+            sourceName,
+            ringIndex,
+            魂环位: ringIndex,
+            age: options?.age,
+            ringAge: options?.ringAge,
+            sourceCategory: options?.sourceCategory,
+            预算门禁,
+            预算门禁优先: true,
+            排除子原型: [...本轮排除子原型, ...额外排除],
+          });
+          return 自动生成缺少上下文子原型.has(候选) ? '' : 候选;
+        } catch (错误) {
+          return '';
+        }
+      };
+      for (let 尝试 = 1; 尝试 <= 状态重复最多重抽次数_V1 && 固定状态重复(subModel); 尝试 += 1) {
+        const 候选 = 重抽子原型();
+        记录技能生成事件_V1(options, { 类型: '状态重复重抽', 状态: 重复状态, 状态类别: '不带数值', 尝试, 原机制: subModel, 新机制: 候选 || '' });
+        if (候选) subModel = 候选;
+      }
+      if (固定状态重复(subModel)) {
+        const 候选 = 重抽子原型((SKILL_ARCHETYPE_POOL_V1[main] || []).filter(固定状态重复));
+        记录技能生成事件_V1(options, { 类型: '状态重复重抽', 状态: 重复状态, 状态类别: '不带数值', 尝试: 状态重复最多重抽次数_V1 + 1, 换状态: true, 原机制: subModel, 新机制: 候选 || '' });
+        if (候选 && !固定状态重复(候选)) subModel = 候选;
+        else 记录技能生成事件_V1(options, { 类型: '状态重复放行', 状态: 重复状态, 状态类别: '不带数值', 机制: subModel });
+      }
+    }
     const attrRoll = Math.floor(Math.random() * 100) + 1;
     const attrHints = rollAttributeDirectionByType(type, subModel, attrRoll, {
       ...options,
@@ -13484,7 +13784,7 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
       释放形态: delivery,
       造物使用效果: delivery === '造物承载',
     });
-    const 主机制范围 = 估算自动生成机制预算范围_V1(subModel, {
+    const 主机制估算上下文 = {
       ...options,
       type,
       系别: type,
@@ -13500,7 +13800,8 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
       属性候选: attrHints,
       预算门禁,
       预算门禁优先: true,
-    });
+    };
+    const 主机制范围 = 估算自动生成机制预算范围_V1(subModel, 主机制估算上下文);
     const 主机制最低COST = Number(主机制范围?.最低可达COST ?? Infinity);
     if (!Number.isFinite(主机制最低COST) || (预算门禁 > 0 && 主机制最低COST > 预算门禁 + 技能预算COST容差_V1)) {
       最后子原型错误 = new Error(`技能生成错误:${subModel || '未命名机制'}最低COST超预算 ${Number(主机制最低COST || 0).toFixed(1)}/${Number(预算门禁 || 0).toFixed(1)}`);
@@ -13540,6 +13841,7 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
       排除子原型: [...本轮排除子原型],
       主机制COST: 主机制最低COST,
       主机制最高COST: Number(主机制范围?.补强可达COST ?? 主机制范围?.最高常规COST ?? 主机制最低COST),
+      主机制有意义COST: 估算机制有意义下限COST_V1(subModel, 主机制估算上下文),
     });
     const 蓝图 = {
       系别来源: type,
@@ -13714,6 +14016,8 @@ function normalizeBlueprintOverrideForAutoGenerate(blueprintOverride = {}, type 
       !(读取技能机制目标侧_V1(archetype, main) === '友方' && 读取技能机制目标侧_V1(机制, main) === '敌对'),
     ),
     释放形态: delivery,
+    ...(delivery === '造物承载' && String(blueprintOverride?.食物敌对形态 || '').trim()
+      ? { 食物敌对形态: String(blueprintOverride.食物敌对形态).trim() } : {}),
     目标: 归一化执行效果作用目标_V1(blueprintOverride?.目标 || '', ''),
     加成属性候选: attrHints,
     燃料模型: fuelModel,
@@ -13942,6 +14246,7 @@ var 技能正式根字段集合_V1 = new Set([
   '_效果数组',
   '副作用列表',
   '产物描述',
+  '计价版本',
 ]);
 var 技能机制可见键中文名映射_V1 = Object.freeze({});
 var 技能机制属性键中文名映射_V1 = Object.freeze({
@@ -14431,7 +14736,8 @@ function 读取状态施加默认数值_V1(状态 = '') {
   if (状态名 === '僵直') return '-50%';
   if (状态名 === '麻痹') return '-50%';
   if (状态名 === '混乱') return '+40%';
-  if (状态名 === '标记') return '-100%';
+  // 标记 = 被标记者闪避下降（规格 2b），默认 10%，与战斗侧缺省一致。
+  if (状态名 === '标记') return '-10%';
   if (['防御剥夺', '精神抗性剥夺'].includes(状态名)) return '+20%';
   return '-5%';
 }
@@ -14999,7 +15305,8 @@ function 构建机制编译输入覆盖列表_V1(机制名 = '', 原型列表 = 
       }
       if (机制 === '禁疗') 字段.数值 = 数值倍率(结算参数.禁疗比例, 副机制 ? 0.28 : 0.4, 1);
       if (机制 === '治疗反转') 字段.数值 = 数值倍率(结算参数.治疗反转比例, 1, 1);
-      if (机制 === '标记锁定' || 机制 === '目标锁定') 字段.数值 ??= '-100%';
+      if (机制 === '标记锁定' || 机制 === '目标锁定') 字段.数值 ??= '-10%';
+      if (机制 === '软控') 字段.数值 ??= 数值倍率(结算参数.迟缓幅度, 有意义百分点下限_V1 / 100, -1);
       if (机制 === '护卫') 字段.数值 = 数值倍率(结算参数.受到伤害降低, 0.15, 1);
       字段.驱动属性 ??= 系别 === '精神系' ? '精神力上限' : '魂力上限';
       字段.影响方向 ??= '效果强度';
@@ -15037,7 +15344,7 @@ function 构建机制编译输入覆盖列表_V1(机制名 = '', 原型列表 = 
           : [中性倍率转默认(结算参数.消耗修正倍率 > 0 && 结算参数.消耗修正倍率 < 1 ? 结算参数.消耗修正倍率 : undefined, 0.8), 0.8, 1, true],
         前摇: 双向修正机制为削弱_V1(机制, 上下文?.主机制大类)
           ? [中性倍率转默认(Number(结算参数.前摇修正倍率 || 结算参数.施放速度压制) > 1 ? 结算参数.前摇修正倍率 || 结算参数.施放速度压制 : undefined, 1.2), 1.2, 1, true]
-          : [中性倍率转默认(结算参数.前摇修正倍率 || 结算参数.施放速度压制, 机制 === '感知干扰' || 机制 === '软控' || 机制 === '认知扭曲' ? 1.12 : 0.8), 机制 === '感知干扰' || 机制 === '软控' || 机制 === '认知扭曲' ? 1.12 : 0.8, 机制 === '感知干扰' || 机制 === '软控' || 机制 === '认知扭曲' ? 1 : 1, true],
+          : [中性倍率转默认(结算参数.前摇修正倍率 || 结算参数.施放速度压制, 0.8), 0.8, 1, true],
         反伤: [结算参数.反伤比例, 0.2, 1, false],
         伤害转移: [结算参数.伤害转移比例, 0.2, 1, false],
         伤害吸收: [结算参数.伤害吸收比例, 0.2, 1, false],
@@ -17320,10 +17627,24 @@ function 限制技能自身资源恢复不覆盖消耗_V1(技能 = {}, 上下文
   (Array.isArray(技能?._效果数组) ? 技能._效果数组 : []).forEach(限制效果);
 }
 
+// 无戳技能（gen1c）：缺数值的「标记」补回原默认值 −100%（读取状态施加默认数值_V1 现为 −10%，那是给带戳技能、标记有战斗效果之后用的）。
+var 旧版标记默认数值_V1 = '-100%';
+function 补无戳技能标记旧默认数值_V1(skill = {}) {
+  if (技能带当前计价版本_V1(skill)) return;
+  const 访问 = 列表 => (Array.isArray(列表) ? 列表 : []).forEach(效果 => {
+    if (!效果 || typeof 效果 !== 'object' || Array.isArray(效果)) return;
+    if (String(效果.原型 || '').trim() === '状态施加' && String(效果.状态 || '').trim() === '标记' && 效果.数值 === undefined) 效果.数值 = 旧版标记默认数值_V1;
+    技能执行嵌套效果数组字段表_V1.forEach(字段 => 访问(效果[字段]));
+    (Array.isArray(效果.条件分支) ? 效果.条件分支 : []).forEach(分支 => 技能条件分支效果数组字段表_V1.forEach(字段 => 访问(分支?.[字段])));
+  });
+  访问(skill._效果数组);
+}
+
 function 收口技能执行结构_V1(skill = {}, options = {}) {
   if (!skill || typeof skill !== 'object') return skill;
   const path = String(options?.path || '技能').trim() || '技能';
   断言技能根层正式字段_V1(skill, path);
+  补无戳技能标记旧默认数值_V1(skill);
   const 副作用违规列表 = [];
   const 副作用列表 = 收口执行副作用列表_V1(skill.副作用列表 || [], path => {
     if (path) 副作用违规列表.push(path);
@@ -17558,15 +17879,10 @@ function buildSkillCombatProfile(blueprint, qualityCtx = {}) {
     效果意图.状态 = archetype;
     效果意图.持续回合 = 技能生成控制默认持续回合_V1[archetype] || 2;
     if (archetype === '软控') {
-      效果意图.结算参数.反应压制 = Number(
-        randomInRange({ C: [0.05, 0.08], B: [0.08, 0.12], A: [0.12, 0.18], S: [0.18, 0.25] }).toFixed(2),
-      );
-      效果意图.结算参数.施放速度压制 = Number(
-        randomInRange({ C: [0.15, 0.25], B: [0.25, 0.4], A: [0.4, 0.6], S: [0.6, 0.9] }).toFixed(2),
-      );
-      效果意图.结算参数.闪避压制 = Number(
-        randomInRange({ C: [0.03, 0.05], B: [0.05, 0.08], A: [0.08, 0.12], S: [0.12, 0.18] }).toFixed(2),
-      );
+      // 软控并入迟缓：原先的反应、闪避两个压制幅度折成迟缓的一个幅度，取较大者，不低于 有意义百分点下限_V1。
+      const 反应压制 = randomInRange({ C: [0.05, 0.08], B: [0.08, 0.12], A: [0.12, 0.18], S: [0.18, 0.25] });
+      const 闪避压制 = randomInRange({ C: [0.03, 0.05], B: [0.05, 0.08], A: [0.08, 0.12], S: [0.12, 0.18] });
+      效果意图.结算参数.迟缓幅度 = Number(Math.max(有意义百分点下限_V1 / 100, 反应压制, 闪避压制).toFixed(2));
     }
     if (archetype === '迟缓') {
       效果意图.结算参数.反应压制 = Number(
@@ -17759,26 +18075,14 @@ function buildSkillCombatProfile(blueprint, qualityCtx = {}) {
     效果意图.状态 = archetype;
     效果意图.持续回合 = 技能生成控制默认持续回合_V1.催眠;
     if (archetype === '感知干扰') {
-      效果意图.结算参数.命中压制 = Number(
+      // 只剩索敌干扰一条（规格 2b）：它的强度在战斗里同时折算命中下降（全额）、反应下降（半额）与打偏目标，沿用原命中压制的区间。
+      效果意图.结算参数.随机索敌率 = Number(
         randomInRange({ C: [0.05, 0.1], B: [0.1, 0.16], A: [0.16, 0.24], S: [0.24, 0.35] }).toFixed(2),
       );
-      效果意图.结算参数.反应压制 = Number(
-        randomInRange({ C: [0.04, 0.08], B: [0.08, 0.12], A: [0.12, 0.2], S: [0.2, 0.28] }).toFixed(2),
-      );
-      if (gradeFactor >= 3) {
-        效果意图.结算参数.施放速度压制 = Number(
-          randomInRange({ A: [0.08, 0.14], S: [0.14, 0.22] }).toFixed(2),
-        );
-      }
     }
     if (archetype === '标记锁定') {
+      // 命中提高、闪避下降两条已去掉（规格 2b），标记的幅度由预算定。
       效果意图.结算参数.锁定强度 = { C: 1, B: 1, A: 2, S: 3 }[grade] || 1;
-      效果意图.结算参数.命中加成 = Number(
-        randomInRange({ C: [0.05, 0.1], B: [0.1, 0.15], A: [0.15, 0.25], S: [0.25, 0.35] }).toFixed(2),
-      );
-      效果意图.结算参数.闪避压制 = Number(
-        randomInRange({ C: [0.05, 0.08], B: [0.08, 0.12], A: [0.12, 0.18], S: [0.18, 0.25] }).toFixed(2),
-      );
     }
     if (archetype === '共享视野') {
       效果意图.结算参数.反应加成 = Number(
@@ -17790,15 +18094,7 @@ function buildSkillCombatProfile(blueprint, qualityCtx = {}) {
       效果意图.结算参数.锁定强度 = { C: 1, B: 1, A: 2, S: 2 }[grade] || 1;
     }
     if (archetype === '幻境') {
-      const generalRatio = randomInRange({ C: [0.93, 0.97], B: [0.88, 0.94], A: [0.8, 0.9], S: [0.68, 0.85] });
-      const agiRatio = randomInRange({ C: [0.9, 0.95], B: [0.82, 0.9], A: [0.72, 0.82], S: [0.6, 0.75] });
-      效果意图.属性倍率.str = generalRatio;
-      效果意图.属性倍率.def = generalRatio;
-      效果意图.属性倍率.men_max = generalRatio;
-      效果意图.属性倍率.agi = agiRatio;
-      效果意图.结算参数.反应压制 = Number(
-        randomInRange({ C: [0.05, 0.1], B: [0.1, 0.2], A: [0.2, 0.35], S: [0.35, 0.5] }).toFixed(2),
-      );
+      // 只剩施加混乱一条（规格 2b）：原敏捷下降、反应下降两条的区间已去掉。
       if (gradeFactor >= 3) {
         效果意图.结算参数.跳过回合 = true;
         效果意图.结算参数.无法反应 = true;
@@ -17808,20 +18104,7 @@ function buildSkillCombatProfile(blueprint, qualityCtx = {}) {
       效果意图.结算参数.跳过回合 = true;
       效果意图.结算参数.无法反应 = true;
     }
-    if (archetype === '认知扭曲') {
-      效果意图.结算参数.命中压制 = Number(
-        randomInRange({ C: [0.08, 0.12], B: [0.12, 0.18], A: [0.18, 0.26], S: [0.26, 0.36] }).toFixed(2),
-      );
-      效果意图.结算参数.命中压制 = Number(
-        randomInRange({ C: [0.05, 0.08], B: [0.08, 0.12], A: [0.12, 0.18], S: [0.18, 0.26] }).toFixed(2),
-      );
-      效果意图.结算参数.施放速度压制 = Number(
-        randomInRange({ C: [0.04, 0.08], B: [0.08, 0.12], A: [0.12, 0.18], S: [0.18, 0.24] }).toFixed(2),
-      );
-      效果意图.结算参数.随机索敌率 = Number(
-        randomInRange({ C: [0.12, 0.2], B: [0.2, 0.3], A: [0.3, 0.42], S: [0.42, 0.56] }).toFixed(2),
-      );
-    }
+    // 认知扭曲只剩施加精神紊乱一条（规格 2b）：原索敌干扰、命中下降、前摇延长的区间已去掉，精神紊乱的幅度由预算定。
   } else if (main === '位移类') {
     战斗.技能分类 = '辅助';
     效果意图.状态 = archetype;
@@ -18285,6 +18568,7 @@ function formatTickDurationAsDayText(tickValue) {
 function buildConstructExpiryText(durationTick = 0, expiryTick = 0) {
   const absoluteTick = Math.max(0, Number(expiryTick || 0));
   if (absoluteTick > 0) return `有效期至${formatTickToCalendarDateText(absoluteTick)}`;
+  if (造物有效期是当场食用_V1(durationTick)) return '当场食用';
   const duration = Math.max(0, Number(durationTick || 0));
   if (duration > 0) return `约可保留${formatTickDurationAsDayText(duration)}`;
   return '';
@@ -20069,6 +20353,21 @@ function 计算单项效果COST_V1(效果 = {}, 上下文 = {}) {
       持续系数: 1,
     };
   }
+  if (原型 === '机制授予' && !技能预算沿用旧版授予壳与有效期计价_V1(上下文)) {
+    const 内含COST = Math.max(0, Number(计算技能效果累计COST_V1(Array.isArray(效果.授予效果) ? 效果.授予效果 : [], 上下文).总COST || 0));
+    const 单位COST = 内含COST * 机制授予壳比例_V1;
+    return {
+      COST: 单位COST * 目标系数 * 持续系数,
+      百分比: false,
+      数值类型: '授予壳比例',
+      内含COST: Number(内含COST.toFixed(4)),
+      单位COST: Number(单位COST.toFixed(4)),
+      数值倍率: 1,
+      目标系数: Number(目标系数.toFixed(4)),
+      目标系数原因: 目标信息.目标系数原因,
+      持续系数: Number(持续系数.toFixed(4)),
+    };
+  }
   const 关键字段 = ({
     资源变化: '资源', 资源转移: '资源转移方式', 护盾变化: '护盾模式',
     属性修正: '属性', 判定修正: '判定', 结算修正: '结算',
@@ -20233,7 +20532,14 @@ function 计算技能效果累计COST_V1(技能 = {}, 上下文 = {}) {
   const 访问 = (效果, 路径, 继承抵扣率 = 0, 分支角色 = '基础') => {
     if (!效果 || typeof 效果 !== 'object' || Array.isArray(效果)) return 新建统计();
     const 基础统计 = 新建统计();
-    const 单项 = 计算单项效果COST_V1(效果, 上下文);
+    // 造物模板（没有原型、带使用效果）：有效期按天计价，见 计算造物有效期COST_V1。
+    const 是造物模板 = !String(效果.原型 || '').trim() && Array.isArray(效果.使用效果);
+    const 单项 = 是造物模板
+      ? {
+        COST: 技能预算沿用旧版授予壳与有效期计价_V1(上下文) ? 0 : 计算造物有效期COST_V1(效果.有效期tick),
+        百分比: false, 数值类型: '造物有效期', 单位COST: 0, 数值倍率: 1, 目标系数: 1, 持续系数: 1,
+      }
+      : 计算单项效果COST_V1(效果, 上下文);
     const 原始COST = Number(单项.COST || 0);
     const 限制信息 = 读取效果限制抵扣信息_V1(效果, 继承抵扣率, {
       限制抵扣上限,
@@ -20252,12 +20558,12 @@ function 计算技能效果累计COST_V1(技能 = {}, 上下文 = {}) {
         路径,
         分支角色,
         计入COST: true,
-        原型: String(效果.原型 || '').trim(),
+        原型: 是造物模板 ? '造物有效期' : String(效果.原型 || '').trim(),
         关键字段: 关键字段.字段,
         关键值: 关键字段.值,
-        目标: String(效果.目标 || '单体').trim(),
+        目标: 是造物模板 ? '' : String(效果.目标 || '单体').trim(),
         持续回合: Number(效果.持续回合 ?? 1),
-        数值: 效果.数值 ?? '',
+        数值: 是造物模板 ? `${Math.max(0, Math.round(Number(效果.有效期tick || 0)))}tick` : (效果.数值 ?? ''),
         副数值: 效果.副数值 ?? '',
         威力倍率: 效果.威力倍率 ?? '',
         伤害类型: 效果.伤害类型 ?? '',
@@ -21354,6 +21660,19 @@ function 读取技能预算合法区间_V1(评估 = {}, 上下文 = {}, 候选�
     ? Math.min(当前实际门禁, 阶段最高门禁)
     : 当前实际门禁;
   const 最低有效COST = Math.max(0.5, Number(评估?.最低有效COST || 0) || 读取预算评估最低有效COST_V1(评估, 上下文));
+  // 只修越界（带当前计价版本戳的技能读档、生成末尾的复核）：合法区间就是 [最低有效COST, 门禁]，不再按随机风格档压缩。
+  // 原先每次读档都重抽风格档，落在保守档就把区间内的技能往下压，读一次压一点（gen1b 实测 576 个技能连读 4 次：27%/16%/12%/8%）。
+  if (上下文?.读档只修越界 === true) {
+    return {
+      下限: Number(Math.min(最低有效COST, 当前实际门禁).toFixed(2)),
+      上限: Number(当前实际门禁.toFixed(2)),
+      硬上限: Number(当前实际门禁.toFixed(2)),
+      阶段目标上限: Number(阶段目标门禁.toFixed(2)),
+      可达硬上限: Number(Math.max(0.5, 可达门禁).toFixed(2)),
+      最低有效COST: Number(最低有效COST.toFixed(2)),
+      风格: '只修越界',
+    };
+  }
   const 档案最低 = Number(候选档案?.最低可达COST ?? 候选档案?.组合最低COST ?? 0);
   const 档案最高 = Number(候选档案?.补强可达COST ?? 候选档案?.组合最高常规COST ?? 可达门禁);
   const 下限 = Math.max(最低有效COST, Number.isFinite(档案最低) && 档案最低 > 0 ? Math.min(档案最低, 可达门禁) : 0.5);
@@ -23814,12 +24133,13 @@ function 转译状态施加数值说明_V1(状态 = '', 效果 = {}) {
     冻伤: () => `每回合生命${数值 || '-2%'}，冰元素承伤${副数值 || '+20%'}`,
     持续创伤: () => `每回合生命${数值 || '-3%'}，反应${副数值 || '-5%'}`,
     持续恢复: () => `每回合生命${数值 || '+5%'}`,
-    迟缓: () => `敏捷${数值 || '-10%'}，反应${副数值 || '-8%'}`,
+    // 战斗侧 deriveStateCombatEffect：主数值 = 出手变慢与闪避下降，副数值 = 反应下降。
+    迟缓: () => `出手速度与闪避${数值 || '-10%'}，反应${副数值 || '-8%'}`,
     资源燃烧: () => `每回合燃烧魂力${去正号(数值 || '+3%')}，技能消耗${副数值 || '+5%'}`,
     禁疗: () => `治疗降低${去正号(数值 || '+40%')}`,
     治疗反转: () => `治疗按${去正号(数值 || '+100%')}转化为伤害`,
     护盾: () => `获得生命上限${去正号(数值 || '+10%')}的护盾`,
-    标记: () => `闪避率${数值 || '-100%'}`,
+    标记: () => `闪避率${数值 || '-10%'}`,
     防御剥夺: () => `防御参与伤害结算时，防御按${去正号(数值 || '+20%')}剥夺`,
     精神抗性剥夺: () => `防守精神参与精神伤害结算时，精神抗性按${去正号(数值 || '+20%')}剥夺`,
     护卫: () => `护卫者承伤降低${去正号(数值 || '+10%')}`,
@@ -23892,7 +24212,9 @@ function 转译状态移除对象_V1(效果 = {}) {
   const 资源 = 格式化技能结构转译字段_V1(效果?.资源, '');
   const 数值方向 = 格式化技能结构转译字段_V1(效果?.数值方向 || '任意', '任意');
   const 状态文本 =
-    状态 === '任意负面'
+    状态 === '触发来源'
+      ? '触发这次被动的控制状态'
+      : 状态 === '任意负面'
       ? '负面状态'
       : 状态 === '任意增益'
         ? '增益状态'
@@ -24010,8 +24332,8 @@ function 转译单条执行效果_V1(效果 = {}, 选项 = {}) {
   if (深度 > 最大深度) return '嵌套效果略';
   if (!String(效果?.原型 || '').trim() && Array.isArray(效果?.使用效果)) {
     const 数量 = Math.max(1, Number(效果.数量 || 1));
-    const 有效期文本 = 转译技能tick时长_V1(效果.有效期tick);
-    const 有效期 = 有效期文本 ? `，有效期${有效期文本}` : '';
+    const 有效期文本 = 造物有效期是当场食用_V1(效果.有效期tick) ? '' : 转译技能tick时长_V1(效果.有效期tick);
+    const 有效期 = 造物有效期是当场食用_V1(效果.有效期tick) ? '，当场食用' : 有效期文本 ? `，有效期${有效期文本}` : '';
     const 使用效果 = 编译效果数组为人类语言_V1(效果.使用效果 || [], { depth: 深度 + 1, maxDepth: 最大深度 });
     const 使用副作用 = 转译技能副作用列表_V1(效果.副作用列表 || []);
     return `生成物品×${formatSkillNumber(数量)}${有效期}${使用效果 ? `；物品使用/食用后：${使用效果}` : ''}${使用副作用 ? `；使用副作用：${使用副作用}` : ''}`;
@@ -24798,9 +25120,9 @@ function buildSingleSkillEffectSummary(effect) {
     case '精神恢复':
       return '为' + target + '恢复精神力，回复倍率' + formatSkillPercent(effect.回复倍率 || effect.数值 || 0);
     case '软控':
-      return '限制' + target + '的反应、前摇或闪避，持续' + formatSkillNumber(effect.持续回合) + '回合';
+      return '使' + target + '动作迟缓，出手变慢、闪避与反应下降，持续' + formatSkillNumber(effect.持续回合) + '回合';
     case '迟缓':
-      return '使' + target + '动作迟缓，敏捷、闪避与反应下降' + 持续文本;
+      return '使' + target + '动作迟缓，出手变慢、闪避与反应下降' + 持续文本;
     case '单属性削弱':
     case '多属性削弱':
       return '压制' + target + '的属性，持续' + formatSkillNumber(effect.持续回合 || effect.持续) + '回合';
@@ -24893,9 +25215,9 @@ function buildSingleSkillEffectSummary(effect) {
     case '资源锁定':
       return '锁定' + target + '的' + String(effect.资源 || '资源') + String(effect.锁定类型 || '通道') + '，持续' + formatSkillNumber(effect.持续回合) + '回合';
     case '感知干扰':
-      return '扰乱' + target + '的感知判断，持续' + formatSkillNumber(effect.持续回合) + '回合';
+      return '干扰' + target + '的索敌，使其容易打偏目标、命中与反应下降，持续' + formatSkillNumber(effect.持续回合) + '回合';
     case '标记锁定':
-      return '锁定' + target + '，持续' + formatSkillNumber(effect.持续回合) + '回合，并提高命中与锁定强度';
+      return '给' + target + '挂上标记，被标记者闪避下降，持续' + formatSkillNumber(effect.持续回合) + '回合';
     case '目标锁定':
       return '锁定' + target + '的行动轨迹，持续' + formatSkillNumber(effect.持续回合) + '回合，提高追踪命中';
     case '自身位移':
@@ -24915,11 +25237,11 @@ function buildSingleSkillEffectSummary(effect) {
     case '共享视野':
       return '与' + target + '共享视野，持续' + formatSkillNumber(effect.持续回合) + '回合，提高反应与命中';
     case '幻境':
-      return '对' + target + '施加幻境干扰，持续' + formatSkillNumber(effect.持续回合) + '回合';
+      return '对' + target + '施加幻境，使其陷入混乱、容易打偏目标且命中下降，持续' + formatSkillNumber(effect.持续回合) + '回合';
     case '催眠':
       return '尝试催眠' + target + '，成功后持续' + formatSkillNumber(effect.持续回合) + '回合';
     case '认知扭曲':
-      return '扭曲' + target + '的认知与判断，持续' + formatSkillNumber(effect.持续回合) + '回合';
+      return '扭曲' + target + '的认知，使其精神紊乱、容易打偏目标且反应下降，持续' + formatSkillNumber(effect.持续回合) + '回合';
     case '禁疗':
       return '对' + target + '施加禁疗，持续' + formatSkillNumber(effect.持续回合) + '回合';
     case '致盲':
@@ -25053,7 +25375,7 @@ function buildSkillProductReferenceText(packedEffects) {
     if (!effect || typeof effect !== 'object') return;
     if (!String(effect.原型 || '').trim() && Array.isArray(effect.使用效果)) {
       const ttl = Number(effect.有效期tick || 0);
-      products.push(`造物×${Math.max(1, Number(effect.数量 || 1))}${ttl > 0 ? `，有效${ttl}tick` : ''}`);
+      products.push(`造物×${Math.max(1, Number(effect.数量 || 1))}${造物有效期是当场食用_V1(ttl) ? '，当场食用' : ttl > 0 ? `，有效${ttl}tick` : ''}`);
     }
     if (String(effect.原型 || '').trim() === '召唤生成') {
       const 名称 = String(effect.召唤物名称 || '召唤物').trim() || '召唤物';
@@ -25762,11 +26084,14 @@ var GoldenDragonSkills = {
     魂技名: '【9层·气血漩涡(被动)】',
     画面描述: '胸口凝聚暗金气血漩涡，心脏如战鼓，气血生生不息。',
     效果描述: '被动提升体力上限，并强化体力恢复。',
+    // 被动技能修复方案 2026-11-12：被动层标「被动」并写明时机——体力上限 +10% 战斗开始起整场常驻；体力 +5% 每回合开始回复
+    // （原数据是持续 99 回合的一次性恢复，战斗开始时体力是满的，等于没有）。
+    承载方式: '被动',
     消耗: {},
     前摇: 0,
     _效果数组: [
-      { 原型: '属性修正', 目标: '自身', 生效方式: '独立生效', 属性: '体力上限', 数值: '+10%' },
-      { 原型: '资源变化', 目标: '自身', 生效方式: '独立生效', 资源: '体力', 数值: '+5%', 持续回合: 99 },
+      { 原型: '属性修正', 目标: '自身', 生效方式: '独立生效', 属性: '体力上限', 数值: '+10%', 持续回合: 99, 触发方式: '战斗开始', 触发限制: { 周期: '每战', 次数: 1 } },
+      { 原型: '资源变化', 目标: '自身', 生效方式: '独立生效', 资源: '体力', 数值: '+5%', 触发方式: '回合开始', 触发限制: { 周期: '每回合', 次数: 1 } },
     ],
   },
   10: {
@@ -25784,10 +26109,13 @@ var GoldenDragonSkills = {
     魂技名: '【11层·龙罡与龙威(被动)】',
     画面描述: '体表自然流转暗金龙罡，举手投足散发龙族威压。',
     效果描述: '被动提升自身防御；文本含龙的敌方目标受到龙威压制。',
+    // 被动技能修复方案 2026-11-12：防御 +20% 战斗开始起整场常驻；龙威每回合开始重挂一次（持续 1 回合，后进场的也吃得到），
+    // 只落在文本含「龙」的敌方目标上（回合开始按目标逐个判断条件，BattlePreview R6）。
+    承载方式: '被动',
     消耗: {},
     前摇: 0,
     _效果数组: [
-      { 原型: '属性修正', 目标: '自身', 生效方式: '独立生效', 属性: '防御', 数值: '+20%' },
+      { 原型: '属性修正', 目标: '自身', 生效方式: '独立生效', 属性: '防御', 数值: '+20%', 持续回合: 99, 触发方式: '战斗开始', 触发限制: { 周期: '每战', 次数: 1 } },
       {
         原型: '属性修正',
         目标: '群体',
@@ -25795,6 +26123,8 @@ var GoldenDragonSkills = {
         属性: ['力量', '防御', '敏捷', '体力上限', '精神力上限', '魂力上限'],
         数值: '-10%',
         持续回合: 1,
+        触发方式: '回合开始',
+        触发限制: { 周期: '每回合', 次数: 1 },
         条件分支: [{ 条件: [{ 类型: '单位文本', 对象: '目标', 比较: '包含', 值: '龙' }], 处理: '生效' }],
       },
     ],
@@ -25839,12 +26169,18 @@ var GoldenDragonSkills = {
     魂技名: '【16层·黄金瀑布】',
     画面描述: '第八血脉魂环化作液态黄金光辉环绕周身，拥有独立神级灵性，自动护主。',
     效果描述: '被动防御。面临致命攻击或强控时消耗最大体力的一成，抵消该次威胁并提供短期增益。',
+    // 被动技能修复方案 2026-11-12：三个时机各自每回合 1 次、各付一次代价（消耗＝每次触发付最大体力一成，付不起不触发）。
+    // 致命前：免伤 1 次按整招计（这一招所有段都挡）＋防御、敏捷 +20% 一回合；濒死时：免死 1 次；被控制时：移除触发这次的控制
+    // ＋防御、敏捷 +20% 一回合。原数据的「蓄力中禁用」不保留（被动没有蓄力）。
+    承载方式: '被动',
     消耗: { 体力: '10%' },
     前摇: 0,
     _效果数组: [
-      { 原型: '规则防御', 目标: '自身', 生效方式: '独立生效', 规则: '免伤', 次数: 1, 持续回合: 99, 触发限制: { 周期: '每回合', 次数: 1 } },
-      { 原型: '规则防御', 目标: '自身', 生效方式: '独立生效', 规则: '免死', 次数: 1, 持续回合: 99, 触发限制: { 周期: '每回合', 次数: 1 } },
-      { 原型: '属性修正', 目标: '自身', 生效方式: '独立生效', 属性: ['防御', '敏捷'], 数值: '+20%', 持续回合: 1, 条件分支: [{ 条件: [{ 类型: '自身状态', 对象: '自身', 比较: '==', 值: '蓄力中' }], 处理: '禁用' }] },
+      { 原型: '规则防御', 目标: '自身', 生效方式: '独立生效', 规则: '免伤', 次数: 1, 计次: '整招', 持续回合: 1, 触发方式: '致命前', 触发限制: { 周期: '每回合', 次数: 1 } },
+      { 原型: '属性修正', 目标: '自身', 生效方式: '独立生效', 属性: ['防御', '敏捷'], 数值: '+20%', 持续回合: 1, 触发方式: '致命前', 触发限制: { 周期: '每回合', 次数: 1 } },
+      { 原型: '规则防御', 目标: '自身', 生效方式: '独立生效', 规则: '免死', 次数: 1, 持续回合: 1, 触发方式: '濒死时', 触发限制: { 周期: '每回合', 次数: 1 } },
+      { 原型: '状态移除', 目标: '自身', 生效方式: '独立生效', 状态: '触发来源', 数量: 1, 触发方式: '被控制时', 触发限制: { 周期: '每回合', 次数: 1 } },
+      { 原型: '属性修正', 目标: '自身', 生效方式: '独立生效', 属性: ['防御', '敏捷'], 数值: '+20%', 持续回合: 1, 触发方式: '被控制时', 触发限制: { 周期: '每回合', 次数: 1 } },
     ],
   },
   17: null,
@@ -27140,6 +27476,7 @@ function autoGenerateSkill(
       主机制原型: archetype,
       副机制: Object.freeze([...secondary]),
       承载方式: blueprint.释放形态 || '直接生效',
+      食物敌对形态: String(blueprint.食物敌对形态 || '').trim(),
       目标: blueprint.目标 || '',
       加成属性候选: Object.freeze([...attrs]),
     }),
@@ -29060,6 +29397,7 @@ function cloneSkillStructData(skill = {}) {
     _效果数组: clonePackedSkillEffects(working._效果数组 || []),
   };
   if (Math.max(0, Number(working.场外冷却至tick || 0)) > 0) result.场外冷却至tick = Math.max(0, Number(working.场外冷却至tick || 0));
+  if (Number(skill?.计价版本) > 0) result.计价版本 = Number(skill.计价版本);
   if (working.使用条件 && typeof working.使用条件 === 'object' && !Array.isArray(working.使用条件)) result.使用条件 = cloneJsonValue(working.使用条件, {});
   if (String(working.触发方式 || '').trim()) result.触发方式 = String(working.触发方式).trim();
   const 收口副作用列表 = normalizeSkillSideEffectList(working.副作用列表 || []);
@@ -29145,7 +29483,8 @@ var 技能机制最低品质_V1 = Object.freeze({
   持续伤害: 'C',
   软控: 'F',
   硬控: 'C',
-  迟缓: 'D',
+  // 原为 D；软控（F）并入迟缓后，F 品质的控制类只剩迟缓可抽。
+  迟缓: 'F',
   节奏打断: 'C',
   单属性削弱: 'F',
   多属性削弱: 'F',
@@ -29641,6 +29980,7 @@ function 构建副作用条目_V1(副作用类型 = '', context = {}) {
 function 直接自动生成技能结构_V1(skill = {}, context = {}) {
   if (!skill || typeof skill !== 'object') return false;
   const 直接生成开始毫秒 = 读取性能计时毫秒_V1();
+  const 主机制队列快照 = [...v9_3_最近主机制队列_V1];
   const 恢复增益重复账本缓存 = context?.恢复增益重复账本缓存 || 创建恢复增益重复账本缓存_V1();
   const 临时决策 = skill?.[技能机制决策临时字段_V1];
   const 临时蓝图 = 临时决策 && typeof 临时决策 === 'object' ? 构建机制决策蓝图覆盖_V1(临时决策, context) : null;
@@ -29700,6 +30040,7 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
   let 临时技能 = null;
   let 接受候选序号 = 0;
   let 接受候选主机制原型 = '';
+  let 接受生成蓝图 = null;
   let 最后错误 = null;
   const 失败记录 = [];
   const 失败主机制大类 = new Set();
@@ -29911,6 +30252,7 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
       临时技能 = 最终正式技能;
       接受候选序号 = 候选序号;
       接受候选主机制原型 = 当前候选机制原型;
+      接受生成蓝图 = 生成结果?.生成蓝图 || null;
       记录技能生成事件_V1(context, {
         类型: '候选成功',
         候选序号,
@@ -29999,6 +30341,161 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
     }
     throw 错误;
   }
+  // 副机制保留（规格 1）：收敛后仍有低于 有意义百分点下限_V1 的百分比效果，去掉估算 COST 最低的副机制，按同一主机制、目标、
+  // 承载重新生成（预算交还主效果）；直到都够格或没有副机制。只管随机抽出的蓝图——显式蓝图、机制决策、武魂真身、被动不动。
+  const 副机制裁剪深度 = Math.max(0, Number(context?.副机制裁剪深度 || 0));
+  const 接受副机制 = Array.isArray(接受生成蓝图?.副机制) ? [...接受生成蓝图.副机制] : [];
+  if (接受副机制.length && (!指定蓝图 || 副机制裁剪深度 > 0) && context?.forceTrueBody !== true && context?.passiveMode !== true) {
+    const 不够格效果 = 读取技能低于有意义下限的百分比效果_V1(临时技能);
+    if (不够格效果.length) {
+      const 裁剪估算上下文 = {
+        ...基础生成选项, type: 系别, 系别, grade: 固定生成品质 || 'B', ringIndex: 魂环位, 魂环位,
+        释放形态: 接受生成蓝图.承载方式, 食物敌对形态: 接受生成蓝图.食物敌对形态, 副机制估算: true,
+      };
+      const 去掉副机制 = 接受副机制
+        .map(机制 => ({ 机制, COST: Number(估算机制有意义下限COST_V1(机制, 裁剪估算上下文)) }))
+        .sort((左, 右) => (Number.isFinite(左.COST) ? 左.COST : Infinity) - (Number.isFinite(右.COST) ? 右.COST : Infinity))[0].机制;
+      const 剩余副机制 = 接受副机制.filter((_, 序号) => 序号 !== 接受副机制.indexOf(去掉副机制));
+      记录技能生成事件_V1(context, {
+        类型: '副机制裁剪',
+        系别,
+        魂环位,
+        主机制原型: 接受生成蓝图.主机制原型,
+        副机制: 去掉副机制,
+        剩余副机制: [...剩余副机制],
+        不够格效果: 不够格效果.map(项 => `${项.原型}${项.数值}`),
+        裁剪深度: 副机制裁剪深度 + 1,
+      });
+      const 裁剪技能 = cloneJsonValue(skill, {});
+      // 治疗系第 1 魂技固定 生命恢复，显式蓝图过不了五环门禁（自动生成恢复资源集合_V1 不含生命），只能照常重抽。
+      const 治疗系第一魂技 = 系别 === '治疗系' && 魂环位 === 1 && 接受生成蓝图.主机制原型 === '生命恢复';
+      const 裁剪方式 = 治疗系第一魂技
+        ? {
+          排除子原型: [...(Array.isArray(context?.排除子原型) ? context.排除子原型 : []), 去掉副机制],
+          副机制上限: 剩余副机制.length,
+        }
+        : {
+          blueprintOverride: {
+            主机制大类: 接受生成蓝图.主机制大类,
+            主机制原型: 接受生成蓝图.主机制原型,
+            副机制: 剩余副机制,
+            释放形态: 接受生成蓝图.承载方式,
+            目标: 接受生成蓝图.目标,
+            加成属性候选: [...(接受生成蓝图.加成属性候选 || [])],
+            ...(接受生成蓝图.食物敌对形态 ? { 食物敌对形态: 接受生成蓝图.食物敌对形态 } : {}),
+          },
+        };
+      try {
+        直接自动生成技能结构_V1(裁剪技能, {
+          ...context,
+          ...裁剪方式,
+          gradeOverride: 固定生成品质 || context?.gradeOverride,
+          副机制裁剪深度: 副机制裁剪深度 + 1,
+          技能生成失败软落地: false,
+          恢复增益重复账本缓存,
+          自动生成预算范围缓存,
+          自动生成预算摘要缓存,
+        });
+        if (getMeaningfulSkillEffects(裁剪技能._效果数组 || []).length) {
+          清空恢复增益重复账本缓存_V1(恢复增益重复账本缓存);
+          Object.keys(skill).forEach(键 => delete skill[键]);
+          Object.assign(skill, 裁剪技能);
+          return skill;
+        }
+      } catch (错误) {
+        记录技能生成事件_V1(context, {
+          类型: '副机制裁剪失败',
+          系别,
+          魂环位,
+          主机制原型: 接受生成蓝图.主机制原型,
+          副机制: 去掉副机制,
+          错误信息: String(错误?.message || 错误 || ''),
+        });
+      }
+    }
+  }
+  // 食物「当场食用」档（gen1b；用户 2026-11-12："只有 0（造完当场食用）是个坎，cost为0"）：去掉副机制后仍有低于 有意义百分点下限_V1
+  // 的百分比效果、有效期又高于当场食用时，把有效期压到当场食用，省下的预算补给效果；仍低于下限的照常接受（那是预算本身小）。
+  const 造物模板 = String(临时技能?.承载方式 || '').trim() === '造物承载' && context?.passiveMode !== true
+    ? (Array.isArray(临时技能?._效果数组) ? 临时技能._效果数组 : []).find(项 => 项 && typeof 项 === 'object' && !String(项.原型 || '').trim() && Array.isArray(项.使用效果))
+    : null;
+  if (造物模板 && Number(造物模板.有效期tick || 0) > 造物当场食用tick_V1 && 读取技能低于有意义下限的百分比效果_V1(临时技能).length) {
+    const 当场食用预算上下文 = {
+      ...context, grade: 固定生成品质 || context?.grade, 系别, type: 系别, 目标: '自身', passiveMode: false,
+      启用位级硬上限: true, 恢复增益重复账本缓存,
+    };
+    const 改前技能 = cloneJsonValue(临时技能, {});
+    const 改前有效期tick = Number(造物模板.有效期tick || 0);
+    try {
+      const 原COST = Number(评估技能预算_V1(临时技能, 当场食用预算上下文).实际COST || 0);
+      造物模板.有效期tick = 造物当场食用tick_V1;
+      生成阶段收敛目标COST填充_V1(临时技能, { ...当场食用预算上下文, 目标COST: 原COST, 最低目标COST: 原COST });
+      收敛技能到预算区间_V1(临时技能, { ...当场食用预算上下文, 读档只修越界: true, 机制标签: 接受候选主机制原型 || '食物' });
+      记录技能生成事件_V1(context, { 类型: '食物改当场食用', 系别, 魂环位, 主机制原型: 接受候选主机制原型, 原有效期tick: 改前有效期tick });
+    } catch (错误) {
+      临时技能 = 改前技能;
+      记录技能生成事件_V1(context, { 类型: '食物改当场食用失败', 系别, 魂环位, 错误信息: String(错误?.message || 错误 || '').slice(0, 200) });
+    }
+  }
+  // 规格 3（带数值的状态）：同一角色、同一状态、同一目标范围，新技能主数值不到已有最高值的 同状态重复最小倍数_V1 倍就重抽
+  // （重新随机生成，最多 状态重复最多重抽次数_V1 次；仍不够就限定同一主机制大类、排除给出这个状态的机制再抽；再不行放行并记一次）。
+  const 状态重复重抽次数 = Math.max(0, Number(context?.状态重复重抽次数 || 0));
+  // 显式蓝图（机制决策、设计台）只登记、不重抽。
+  const 主效果状态 = 读取技能生成角色键_V1(context) && 接受生成蓝图 && context?.passiveMode !== true
+    ? 读取技能主效果状态_V1(临时技能, 接受生成蓝图.主机制原型)
+    : null;
+  const 参与状态重复检查 = context?.forceTrueBody !== true && (!指定蓝图 || 副机制裁剪深度 > 0 || 状态重复重抽次数 > 0);
+  if (主效果状态 && 参与状态重复检查 && 状态带可调数值_V1(主效果状态.状态)) {
+    const 角色键 = 读取技能生成角色键_V1(context);
+    const 已有最高 = 读取角色主效果状态账本_V1()
+      .filter(项 => 项.角色键 === 角色键 && 项.状态 === 主效果状态.状态 && 项.范围 === 主效果状态.范围)
+      .reduce((最高, 项) => Math.max(最高, Number(项.数值) || 0), 0);
+    if (已有最高 > 0 && !(Number(主效果状态.数值 || 0) >= 已有最高 * 同状态重复最小倍数_V1 - 1e-9)) {
+      const 下次 = 状态重复重抽次数 + 1;
+      if (下次 <= 状态重复最多重抽次数_V1 + 1) {
+        const 换状态 = 下次 > 状态重复最多重抽次数_V1;
+        const 同状态机制 = (SKILL_ARCHETYPE_POOL_V1[接受生成蓝图.主机制大类] || []).filter(机制 => {
+          const 状态 = 读取机制主效果状态_V1(机制);
+          return 状态 === 主效果状态.状态 || (机制 === '持续伤害' && 状态施加状态分类矩阵_V1.持续伤害类.includes(主效果状态.状态));
+        });
+        记录技能生成事件_V1(context, {
+          类型: '状态重复重抽', 状态: 主效果状态.状态, 状态类别: '带数值', 范围: 主效果状态.范围, 尝试: 下次, 换状态,
+          新数值: 主效果状态.数值, 已有最高, 主机制原型: 接受生成蓝图.主机制原型,
+        });
+        v9_3_最近主机制队列_V1.length = 0;
+        v9_3_最近主机制队列_V1.push(...主机制队列快照);
+        const 重抽技能 = cloneJsonValue(skill, {});
+        try {
+          直接自动生成技能结构_V1(重抽技能, {
+            ...context,
+            blueprintOverride: null,
+            副机制裁剪深度: 0,
+            状态重复重抽次数: 下次,
+            gradeOverride: 固定生成品质 || context?.gradeOverride,
+            ...(换状态 ? {
+              排除子原型: [...(Array.isArray(context?.排除子原型) ? context.排除子原型 : []), ...同状态机制],
+              限定主机制大类: 接受生成蓝图.主机制大类,
+            } : {}),
+            技能生成失败软落地: false,
+            恢复增益重复账本缓存,
+            自动生成预算范围缓存,
+            自动生成预算摘要缓存,
+          });
+          if (getMeaningfulSkillEffects(重抽技能._效果数组 || []).length) {
+            清空恢复增益重复账本缓存_V1(恢复增益重复账本缓存);
+            Object.keys(skill).forEach(键 => delete skill[键]);
+            Object.assign(skill, 重抽技能);
+            return skill;
+          }
+        } catch (错误) {
+          记录技能生成事件_V1(context, { 类型: '状态重复放行', 状态: 主效果状态.状态, 状态类别: '带数值', 原因: String(错误?.message || 错误 || '').slice(0, 200) });
+        }
+      } else {
+        记录技能生成事件_V1(context, { 类型: '状态重复放行', 状态: 主效果状态.状态, 状态类别: '带数值', 新数值: 主效果状态.数值, 已有最高 });
+      }
+    }
+  }
+  登记角色主效果状态_V1(context, 主效果状态);
   Object.keys(skill).forEach(键 => delete skill[键]);
   强制普通魂技固定启动消耗_V1(临时技能, 基础生成选项);
   const 角色资源上限 = {
@@ -30017,6 +30514,20 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
       }
     });
   }
+  // 生成末尾的强制启动消耗与资源封顶会改消耗，门禁跟着变（gen1b 查出，原先读档时才被改）：按最终消耗只修越界地再收敛一次，
+  // 让带戳技能就是读档收敛的不动点。被动走自己的预算口径，不在这里复核。
+  if (context?.passiveMode !== true) {
+    try {
+      收敛技能到预算区间_V1(临时技能, {
+        ...context, grade: 固定生成品质 || context?.grade, 系别, type: 系别,
+        目标: String(临时技能?.承载方式 || '').trim() === '造物承载' ? '自身' : '单体', passiveMode: false,
+        启用位级硬上限: true, 读档只修越界: true, 恢复增益重复账本缓存, 机制标签: 接受候选主机制原型 || '技能',
+      });
+    } catch (错误) {
+      记录技能生成事件_V1(context, { 类型: '生成末尾复核失败', 系别, 魂环位, 错误信息: String(错误?.message || 错误 || '').slice(0, 200) });
+    }
+  }
+  临时技能.计价版本 = 当前技能计价版本_V1;
   Object.assign(skill, 临时技能);
   清空恢复增益重复账本缓存_V1(恢复增益重复账本缓存);
   记录技能生成事件_V1(context, {
@@ -30065,6 +30576,10 @@ function ensureSkillStructGenerated(skill, context = {}) {
     hasPackedEffects = Array.isArray(skill._效果数组) && skill._效果数组.length > 0;
     本次已自动生成 = hasPackedEffects;
   }
+  // R9：新生成的与存档里已有的魂骨/血脉被动都过一遍（读档也走这里；只改生成器的写法，手写的库被动形状不同不受影响）。
+  if (hasPackedEffects && context?.passiveMode === true && ['魂骨技能', '血脉技能'].includes(String(context?.sourceCategory || '').trim())) {
+    改写生成被动资源恢复触发_V1(skill);
+  }
 
   if (!hasPackedEffects) {
     if (typeof skill.画面描述 !== 'string' || !skill.画面描述.trim() || isSkillTodoText(skill.画面描述))
@@ -30104,13 +30619,18 @@ function ensureSkillStructGenerated(skill, context = {}) {
   }
   try {
     syncConstructSkillMetadata(临时技能);
+    // 读档一律只修越界（gen1c）：原先每次读档重抽保守/标准/爆发风格档，落在保守档就把区间内的技能往下压，读一次压一点。
+    // 无戳的老技能仍按旧计价算门禁。
+    const 旧版计价 = 技能带当前计价版本_V1(临时技能) ? { 读档只修越界: true } : { 沿用旧版授予壳与有效期计价: true, 读档只修越界: true };
     收敛技能到预算区间_V1(临时技能, {
       ...context,
+      ...旧版计价,
       path: context?.path || '技能',
       机制标签: context?.sourceCategory || context?.来源类别 || context?.来源 || '技能',
     }, context?.候选预算档案 || null);
     断言技能预算_V1(临时技能, {
       ...context,
+      ...旧版计价,
       path: context?.path || '技能',
     }, context?.sourceCategory || context?.来源类别 || context?.来源 || '技能');
     断言直接结算收益预算_V1(临时技能, '技能', context || {});

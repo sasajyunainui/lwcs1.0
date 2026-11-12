@@ -2647,6 +2647,34 @@ class BattleUIComponent {
             .join('');
         }
 
+        // 接战链 阶段三: the 裁判 field (#ui-referee-row, in the terminal beside 战斗意图) — the referee's name and level; what
+        // a referee does, its HP and what it has done so far in the hover; hidden when the battle has none.
+        function renderUiReferee(combatData = {}) {
+          const row = byId('ui-referee-row');
+          if (!row) return;
+          const referee = combatData?.裁判;
+          const name = referee && typeof referee === 'object' ? String(referee.名称 || referee.name || '').trim()
+            : typeof referee === 'string' ? referee.trim() : '';
+          if (!name) {
+            row.hidden = true;
+            return;
+          }
+          const level = Math.floor(Number(referee?.属性?.等级 ?? referee?.等级 ?? 0)) || 0;
+          const nameNode = row.querySelector('[data-referee-name]');
+          const levelNode = row.querySelector('[data-referee-level]');
+          if (nameNode) nameNode.textContent = name;
+          if (levelNode) levelNode.textContent = level > 0 ? `${level}级` : '';
+          const hp = Number(referee?.属性?.HP ?? referee?.HP), hpMax = Number(referee?.属性?.HP上限 ?? referee?.HP上限);
+          const account = referee?.__referee || {};
+          const done = account.interventions || {};
+          const doneText = ['GUARD_SKILL', 'BLOCK', 'CARRY'].some(key => Number(done[key]) > 0)
+            ? `；本场已魂技护卫${Number(done.GUARD_SKILL) || 0}次、抵挡${Number(done.BLOCK) || 0}次、救走${Number(done.CARRY) || 0}次` : '';
+          row.title = `裁判 ${name}${level > 0 ? `（${level}级）` : ''}：中立的护卫，不参战、不能被选为目标。比赛中有人将被一击打到生命一成以下时，` +
+            `按敏捷判断赶不赶得上，依次尝试魂技护卫（人不出局）、抵挡（裁判挨这一下，人出局）、救走（这一击落空，人出局）；` +
+            `自身生命低于一半后不再抵挡。${Number.isFinite(hp) && hpMax > 0 ? `生命 ${Math.round(hp)}/${Math.round(hpMax)}` : ''}${doneText}`;
+          row.hidden = false;
+        }
+
         function 构建战斗下拉控件(配置 = {}) {
           const 控件类 = String(配置.类名 || '').trim();
           const 标签 = String(配置.标签 || '').trim();
@@ -3195,6 +3223,7 @@ class BattleUIComponent {
           const player = renderUiCombatant('player', combatData.参战者.team_player?.[0]);
           const enemy = renderUiCombatant('enemy', combatData.参战者.team_enemy?.[0]);
           renderUiChips(combatData, player, enemy);
+          renderUiReferee(combatData);
 
           const rawCharData =
             window.BattleUIBridge?.getMVU(`char.${player.name}`) ||

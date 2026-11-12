@@ -2024,6 +2024,38 @@
     [110, {str: 2.24, def: 1.96, agi: 1.11, men_max: 8.27, sp_max: 1.02, hp_max: 1.52, vit_max: 1.52}],
   ]);
 
+  // 接战链 阶段 2e (方案 §13.2、§14.1): the system shape above is one guess for five systems (强攻/控制/元素/精神/召唤 all
+  // 0.96 for agility) and the level table is fitted over mixed systems, so an unseen enemy's agility was systematically off
+  // by its (public) system — measured on same-level pairs of the test roles, believed ÷ true: 敏攻 0.85, 控制 0.90,
+  // 强攻 0.95 against 元素 1.19, 治疗 1.19 — and clashes and preemptions misjudged in time came mostly from it. This is
+  // the median real ÷ pictured agility per system and level of characters from the game's own generator (seeds of their
+  // own, the decision's battle-start panel; handoff stage2e/agility-shape-calibration.mjs, 12 seeds a cell, the
+  // generator's rejects skipped). The picture of the level itself (strengthRange, perceivedLevel) is untouched.
+  const SYSTEM_AGILITY_CORRECTION_BY_LEVEL = Object.freeze([
+    [10, { 强攻系: 1.22, 敏攻系: 1.45, 元素系: 0.97, 控制系: 1.33, 防御系: 1.04, 辅助系: 0.98, 治疗系: 0.98, 精神系: 0.97, 食物系: 0.98, 召唤系: 0.97 }],
+    [20, { 强攻系: 1.21, 敏攻系: 1.44, 元素系: 0.99, 控制系: 1.34, 防御系: 1.08, 辅助系: 0.99, 治疗系: 1.00, 精神系: 0.99, 食物系: 0.98, 召唤系: 0.99 }],
+    [30, { 强攻系: 1.19, 敏攻系: 1.42, 元素系: 0.95, 控制系: 1.32, 防御系: 1.05, 辅助系: 0.97, 治疗系: 0.98, 精神系: 0.94, 食物系: 0.98, 召唤系: 0.96 }],
+    [35, { 强攻系: 1.19, 敏攻系: 1.37, 元素系: 0.97, 控制系: 1.31, 防御系: 1.05, 辅助系: 0.98, 治疗系: 0.98, 精神系: 0.97, 食物系: 0.98, 召唤系: 0.97 }],
+    [40, { 强攻系: 1.20, 敏攻系: 1.35, 元素系: 0.97, 控制系: 1.29, 防御系: 1.05, 辅助系: 1.00, 治疗系: 0.98, 精神系: 0.97, 食物系: 0.98, 召唤系: 0.97 }],
+    [50, { 强攻系: 1.18, 敏攻系: 1.37, 元素系: 0.96, 控制系: 1.29, 防御系: 1.08, 辅助系: 0.99, 治疗系: 0.99, 精神系: 1.03, 食物系: 0.97, 召唤系: 0.96 }],
+    [55, { 强攻系: 1.13, 敏攻系: 1.30, 元素系: 0.91, 控制系: 1.23, 防御系: 1.06, 辅助系: 0.94, 治疗系: 0.95, 精神系: 0.93, 食物系: 0.93, 召唤系: 0.94 }],
+    [60, { 强攻系: 1.14, 敏攻系: 1.23, 元素系: 0.87, 控制系: 1.17, 防御系: 0.99, 辅助系: 0.90, 治疗系: 0.96, 精神系: 0.88, 食物系: 0.89, 召唤系: 0.87 }],
+    [70, { 强攻系: 1.07, 敏攻系: 1.15, 元素系: 0.88, 控制系: 1.14, 防御系: 0.99, 辅助系: 0.94, 治疗系: 0.92, 精神系: 0.90, 食物系: 0.90, 召唤系: 0.87 }],
+    [75, { 强攻系: 1.09, 敏攻系: 1.20, 元素系: 0.95, 控制系: 1.20, 防御系: 1.02, 辅助系: 0.92, 治疗系: 0.93, 精神系: 0.94, 食物系: 0.94, 召唤系: 0.93 }],
+    [80, { 强攻系: 1.12, 敏攻系: 1.21, 元素系: 0.93, 控制系: 1.19, 防御系: 1.04, 辅助系: 0.93, 治疗系: 0.94, 精神系: 0.96, 食物系: 0.94, 召唤系: 0.93 }],
+    [90, { 强攻系: 1.07, 敏攻系: 1.08, 元素系: 0.89, 控制系: 1.12, 防御系: 0.98, 辅助系: 0.87, 治疗系: 0.87, 精神系: 0.89, 食物系: 0.93, 召唤系: 0.87 }],
+    [95, { 强攻系: 1.08, 敏攻系: 1.13, 元素系: 0.96, 控制系: 1.19, 防御系: 1.12, 辅助系: 1.02, 治疗系: 0.98, 精神系: 0.96, 食物系: 0.98, 召唤系: 0.99 }],
+    [98, { 强攻系: 1.03, 敏攻系: 1.07, 元素系: 0.91, 控制系: 1.12, 防御系: 1.06, 辅助系: 0.93, 治疗系: 0.95, 精神系: 0.88, 食物系: 0.91, 召唤系: 0.93 }],
+  ]);
+  function systemAgilityCorrection(level = 1, system = '') {
+    const name = ['强攻系', '敏攻系', '元素系', '控制系', '防御系', '辅助系', '治疗系', '精神系', '食物系', '召唤系'].find(type => String(system || '').includes(type.slice(0, 2)));
+    if (!name) return 1;
+    const rows = SYSTEM_AGILITY_CORRECTION_BY_LEVEL, index = rows.findIndex(([at]) => at >= level);
+    if (index <= 0) return rows[index < 0 ? rows.length - 1 : 0][1][name];
+    const [lowLevel, low] = rows[index - 1], [highLevel, high] = rows[index], t = (level - lowLevel) / (highLevel - lowLevel);
+    return low[name] + (high[name] - low[name]) * t;
+  }
+
   function typicalStatRatio(level = 1) {
     const rows = TYPICAL_STAT_RATIO_BY_LEVEL, index = rows.findIndex(([at]) => at >= level);
     if (index <= 0) return rows[index < 0 ? rows.length - 1 : 0][1];
@@ -2167,6 +2199,9 @@
             }
           : {}),
       }]));
+      // 接战链 阶段 2e/2f: the agility pictured, and the bounds settled clashes and preemptions put on it.
+      const pictureAgility = combatBase * systemScale.agi * typical.agi * systemAgilityCorrection(perceivedLevel, system);
+      const boundLow = Number(beliefState?.agilityBounds?.[id]?.lo) || 0, boundHigh = Number(beliefState?.agilityBounds?.[id]?.hi) || Infinity;
       const projected = {
         id,
         name: preview.unitName(sourceUnit),
@@ -2187,7 +2222,14 @@
         vit_max: staminaMax,
         str: Math.max(1, combatBase * systemScale.str * typical.str),
         def: Math.max(1, combatBase * systemScale.def * typical.def),
-        agi: Math.max(1, combatBase * systemScale.agi * typical.agi),
+        // 接战链 阶段 2e: corrected by the system's measured agility (systemAgilityCorrection), then held within what this
+        // side has seen of the unit's speed in settled clashes and preemptions (beliefState.agilityBounds, BattleRuntime).
+        agi: Math.max(1, clamp(pictureAgility, boundLow, boundHigh)),
+        // 接战链 阶段 2f (方案 §15.2): the bounds settled clashes and preemptions put on the unit's base agility, for
+        // BattlePreview clashTiming / preemptTiming to read as one-sided certainty (oneSidedTimingConfidence); and which
+        // of them holds the picture, if one does.
+        ...(boundLow > 0 ? { __agilityLo: boundLow } : {}), ...(Number.isFinite(boundHigh) ? { __agilityHi: boundHigh } : {}),
+        ...(pictureAgility < boundLow ? { __agilityBound: 'LO' } : pictureAgility > boundHigh ? { __agilityBound: 'HI' } : {}),
         状态: { 存活: beliefUnit.alive !== false },
         __战斗失能原因: String(sourceUnit?.__战斗失能原因 || '').trim(),
         状态效果: states,
@@ -3180,7 +3222,7 @@
     }
     const packageValue = shared ? shared.package : consumer.编译角色装备被动消费者_V1(unit);
     const effects = Object.freeze((Array.isArray(packageValue?.动作效果) ? packageValue.动作效果 : [])
-      .filter(entry => !['战斗开始', '回合开始', '受击前', '受击后', '濒死时', '被控制时', '命中后']
+      .filter(entry => !preview.PASSIVE_TRIGGER_PHASES
         .includes(String(entry?.触发方式 || entry?.效果?.触发方式 || '').trim()))
       .filter(entry => {
         const effect = entry?.效果 || {};
@@ -4446,13 +4488,15 @@
       if (cached) return cached;
       const entries = [];
       const seenObjects = new Set();
-      const visit = value => {
+      // R8 (被动技能修复方案 2026-11-12): what a 被动 table holds is a passive whatever its 承载方式 says — never an action.
+      const visit = (value, inPassiveTable = false) => {
         if (!value || typeof value !== 'object' || seenObjects.has(value)) return;
         seenObjects.add(value);
         if (Array.isArray(value)) {
-          value.forEach(visit);
+          value.forEach(item => visit(item, inPassiveTable));
           return;
         }
+        if (inPassiveTable && Array.isArray(value._效果数组) && value._效果数组.length) return;
         if (Number(value?.炸环恢复tick || 0) > 0 || value?.__战斗禁用 === true) return;
         const requirementChecker = root.__LWCS_ITEM_PASSIVE_CONSUMER_V1__?.装备要求满足_V1;
         if (
@@ -4472,7 +4516,7 @@
         }
         Object.entries(value).forEach(([key, child]) => {
           if (/状态效果|战斗历史|历史快照|参战者|复制效果/.test(key)) return;
-          visit(child);
+          visit(child, inPassiveTable || preview.isPassiveSkillTableKey(key));
         });
       };
       visit(skillRoot);
@@ -58220,7 +58264,7 @@
       !root.__LWCS_BATTLE_RUNTIME__.readStructuredContinuationGrant({ actionKind: 'RELEASE_SKILL', skill }) &&
       preview.collectEffects(skill).every(effect => {
         const profile = preview.passiveTriggerProfile(skill, effect);
-        return profile.supported && ['战斗开始', '回合开始', '受击前', '受击后', '命中后', '濒死时', '被控制时'].includes(profile.triggerPhase) &&
+        return profile.supported && preview.PASSIVE_TRIGGER_PHASES.includes(profile.triggerPhase) &&
           !['召唤生成', '时光回溯'].includes(effect.原型);
       }));
   }

@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:b8e6045f5b60f5af8c22cee1b6a7280bdbda5e4823676234e27d5d3c9409df61|MVU_Schema_Runtime.js:eed837517415e34e8b2de2b667ca02ab020fc785f3b4d492c439e6c2babfe0ef|BattlePreview_Module.js:68b5a2cb41cdaba7c9de57489ccec5585f794ff72f9dc70881823cf84bf72b3f|BehaviorDecisionPipeline_Module.js:310cde745a4f74f297fad02f931e687b884fb150e19c7005d82894515eb5e5f6|BattleDecision_Module.js:addb455b68f7930d17dc2bee24f10f84a58bd373a319648807c83396cdb7c831|BattleRuntime_Module.js:3003d0d7c69cfe0ac7c7cc44bb16f1223a23ce5d39752b3291351a42615fbb66 */
+/* sources-sha256: MVU_Skill_Runtime.js:8666f8b284401d1b4a2e45f9143889aadedd8df74c986d452729932529a6f66b|MVU_Schema_Runtime.js:eed837517415e34e8b2de2b667ca02ab020fc785f3b4d492c439e6c2babfe0ef|BattlePreview_Module.js:97eb5bf35fa283ac62a4c9857b7e3424e978bb39614035b118746176444d7b2e|BehaviorDecisionPipeline_Module.js:310cde745a4f74f297fad02f931e687b884fb150e19c7005d82894515eb5e5f6|BattleDecision_Module.js:f24fdfab409b8379370fd626b7d731da8956dbccd51b8e4129d8f25949ff49d8|BattleRuntime_Module.js:e056dace0af774845a8e0dbd6b90ff362245c5a41cca33f556c6f65c830a0b59 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -3089,6 +3089,8 @@ var SKILL_ARCHETYPE_POOL_V1 = {
 // （削弱类，作用于敌方）。方向跟着所在大类走；只按名字反查大类时默认取增益类，削弱义由调用方带上大类。
 // 原先（f8728de）因为同名两义被归错类，直接禁止二者作主机制，现已改为按大类区分。
 var 双向修正机制_V1 = new Set(['消耗', '前摇']);
+// 并入其他机制、随机生成不再抽取的主机制（软控 → 迟缓，规格 2）。仍留在 SKILL_ARCHETYPE_POOL_V1 里，显式写出的照常编译。
+var 随机生成不再抽取的主机制_V1 = new Set(['软控']);
 
 function 双向修正机制为削弱_V1(机制 = '', 大类 = '') {
   return 双向修正机制_V1.has(String(机制 || '').trim()) && String(大类 || '').trim() === '削弱类';
@@ -3777,7 +3779,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('disturbPower', '干扰强度', '0.12'), num('duration', '持续回合', '2', '1')],
   });
   register('标记锁定', {
-    说明: '标记目标并持续追踪，使其难以脱离。',
+    说明: '标记目标并持续追踪，被标记者更难闪避。',
     可主机制: true,
     目标语义: '敌对',
     摘要提示: { skillType: '控制', mainType: '感知/认知类', controlStrength: '软控' },
@@ -4302,7 +4304,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('slowRatio', '减速幅度', '0.3'), num('duration', '持续回合', '2', '1')],
   });
   register('迟缓', {
-    说明: '拉长目标的出手间隔。',
+    说明: '拉长目标的出手间隔，并降低其闪避与反应。',
     可主机制: true,
     可副机制: true,
     目标语义: '敌对',
@@ -4538,7 +4540,8 @@ var SKILL_MECHANISM_NAME_TO_PROTOTYPES_V1 = Object.freeze({
   多段伤害: [原型编译条目('伤害结算')],
   持续伤害: [原型编译条目('状态施加', { 状态: '持续创伤' })],
   硬控: [原型编译条目('状态施加', { 状态: '眩晕' })],
-  软控: [原型编译条目('判定修正', { 判定: '反应', 数值: '-12%' }), 原型编译条目('判定修正', { 判定: '闪避', 数值: '-10%' }), 原型编译条目('结算修正', { 结算: '前摇', 数值: '+10%' })],
+  // 软控并入迟缓（用户 2026-11-12：软控其实就是一个状态）：原先固定三条（反应 −12%、闪避 −10%、前摇 +10%），现与「迟缓」主机制同形。
+  软控: [原型编译条目('状态施加', { 状态: '迟缓' })],
   节奏打断: [原型编译条目('判定修正', { 判定: '反应', 数值: '-100%', 打断效果: true })],
   打断: [原型编译条目('判定修正', { 判定: '反应', 数值: '-100%', 打断效果: true })],
   封技: [原型编译条目('状态施加', { 状态: '封技' })],
@@ -4576,13 +4579,16 @@ var SKILL_MECHANISM_NAME_TO_PROTOTYPES_V1 = Object.freeze({
   '净化/解控': [原型编译条目('状态移除', { 状态: '任意负面' })],
   净化: [原型编译条目('状态移除', { 状态: '任意负面' })],
   解控: [原型编译条目('状态移除', { 状态: '任意负面' })],
-  感知干扰: [原型编译条目('决策干扰', { 干扰: '索敌干扰' }), 原型编译条目('判定修正', { 判定: '命中', 数值: '-12%' }), 原型编译条目('判定修正', { 判定: '反应', 数值: '-12%' }), 原型编译条目('结算修正', { 结算: '前摇', 数值: '+12%' })],
-  标记锁定: [原型编译条目('状态施加', { 状态: '标记', 数值: '-100%' }), 原型编译条目('判定修正', { 目标: '自身', 判定: '命中', 数值: '+10%' }), 原型编译条目('判定修正', { 判定: '闪避', 数值: '-10%' })],
+  // 规格 2b（用户 2026-11-12 看过多效果主机制清单后定）：以下四个套装各只留一条。索敌干扰在战斗里已折算出命中下降、反应下降与打偏目标；
+  // 标记的「被标记者闪避下降」写进状态本身（BattlePreview deriveStateCombatEffect）。
+  感知干扰: [原型编译条目('决策干扰', { 干扰: '索敌干扰' })],
+  标记锁定: [原型编译条目('状态施加', { 状态: '标记' })],
   共享视野: [原型编译条目('状态施加', { 状态: '共享视野' })],
-  幻境: [原型编译条目('状态施加', { 状态: '混乱' }), 原型编译条目('属性修正', { 属性: '敏捷', 数值: '-18%' }), 原型编译条目('判定修正', { 判定: '反应', 数值: '-16%' })],
+  幻境: [原型编译条目('状态施加', { 状态: '混乱' })],
   催眠: [原型编译条目('状态施加', { 状态: '眩晕' })],
-  认知扭曲: [原型编译条目('状态施加', { 状态: '精神紊乱' }), 原型编译条目('决策干扰', { 干扰: '索敌干扰' }), 原型编译条目('判定修正', { 判定: '命中', 数值: '-12%' }), 原型编译条目('结算修正', { 结算: '前摇', 数值: '+12%' })],
-  目标锁定: [原型编译条目('状态施加', { 状态: '标记', 数值: '-100%' }), 原型编译条目('判定修正', { 目标: '自身', 判定: '命中', 数值: '+10%' })],
+  认知扭曲: [原型编译条目('状态施加', { 状态: '精神紊乱' })],
+  // 标记原写成 −100%，只是给预算缩放的比例；标记现在有自己的战斗效果（被标记者闪避下降），改为正常幅度。条目不变。
+  目标锁定: [原型编译条目('状态施加', { 状态: '标记', 数值: '-10%' }), 原型编译条目('判定修正', { 目标: '自身', 判定: '命中', 数值: '+10%' })],
   自身位移: [原型编译条目('位移执行', { 目标: '自身', 位移类型: '瞬移', 位移对象: '自身' }), 原型编译条目('判定修正', { 目标: '自身', 判定: '闪避', 数值: '+20%' })],
   强制位移: [原型编译条目('位移执行', { 目标: '单体', 位移类型: '击退', 位移对象: '目标', 驱动属性: '魂力上限', 影响方向: '效果强度' }), 原型编译条目('判定修正', { 目标: '单体', 判定: '闪避', 数值: '-10%' })],
   位移交换: [原型编译条目('位移执行', { 目标: '单体', 位移类型: '换位', 位移对象: '自身与目标', 驱动属性: '魂力上限', 影响方向: '效果强度' })],
@@ -4652,15 +4658,56 @@ var 战斗外复活永久代价对象选项_V1 = Object.freeze(['等级上限', 
 var 技能正式资源选项_V1 = Object.freeze(['生命', '体力', '魂力', '精神力']);
 var 技能限定攻击类型选项_V1 = Object.freeze(['近身攻击', '远程攻击', '精神攻击', '真实攻击', '碾压', '冲击']);
 
+// 致命前（被动技能修复方案 2026-11-12 R1）：敌方一次伤害落到自己身上之前，按预计伤害会让自己倒下（切磋、比赛里跌破生命线出局）时触发。
 var SKILL_PASSIVE_TRIGGER_PHASE_OPTIONS_V1 = Object.freeze([
   '战斗开始',
   '回合开始',
   '受击前',
+  '致命前',
   '受击后',
   '濒死时',
   '被控制时',
   '命中后',
 ]);
+
+// R9（被动技能修复方案 2026-11-12，用户「嗯，改吧」）：自动生成的魂骨附带被动、血脉被动里，正向恢复魂力/精神力/体力/生命的
+// 「资源变化」改成回合开始、自身该资源 ≤ 被动恢复触发线_V1 时触发，每战 1 次（条件不满足不计次，战斗本就如此）；同一被动的其他
+// 效果照旧战斗开始；恢复量与 COST 不动。效果级回合开始与技能级战斗开始会判冲突，所以技能级时机只在其余效果都自带时机时去掉；
+// 有效果靠技能级时机（不收效果级时机的原型）或带嵌套效果的被动不改，照旧战斗开始。只作用于新生成的被动。
+var 被动恢复触发线_V1 = '50%';
+var 被动恢复资源条件类型_V1 = Object.freeze({ 魂力: '魂力比例', 精神力: '精神力比例', 体力: '体力比例', 生命: '生命比例' });
+function 读取生成被动恢复资源_V1(effect = {}) {
+  if (!effect || typeof effect !== 'object' || String(effect.原型 || '').trim() !== '资源变化') return '';
+  const 资源列表 = (Array.isArray(effect.资源) ? effect.资源 : [effect.资源]).map(值 => String(值 || '').trim()).filter(Boolean);
+  if (资源列表.length !== 1 || !被动恢复资源条件类型_V1[资源列表[0]]) return '';
+  // 已有条件分支只做替换/追加（如食物系的制作者自服分支）时照改；自带生效/禁用门槛的不改（再加一道生效分支会变成「或」）。
+  if (effect.条件分支 !== undefined && (!Array.isArray(effect.条件分支) ||
+    effect.条件分支.some(分支 => ['生效', '禁用'].includes(String(分支?.处理 || '').trim())))) return '';
+  const 数值 = String(effect.数值 ?? '').trim();
+  const 首值 = Number((/^[+]?(\d+(?:\.\d+)?)/.exec(数值) || [])[1]);
+  return 数值.startsWith('-') || !(首值 > 0) ? '' : 资源列表[0];
+}
+function 效果含嵌套效果_V1(effect = {}) {
+  return Object.values(effect || {}).some(值 => Array.isArray(值) && 值.some(项 => 项 && typeof 项 === 'object' && String(项.原型 || '').trim()));
+}
+function 改写生成被动资源恢复触发_V1(skill = {}) {
+  if (!skill || typeof skill !== 'object' || String(skill.承载方式 || '').trim() !== '被动') return false;
+  const 效果列表 = Array.isArray(skill._效果数组) ? skill._效果数组 : [];
+  const 恢复效果 = 效果列表.filter(effect => 读取生成被动恢复资源_V1(effect) && ['', '战斗开始'].includes(String(effect.触发方式 || '').trim()));
+  if (!恢复效果.length || 效果列表.some(效果含嵌套效果_V1)) return false;
+  const 其余效果 = 效果列表.filter(effect => !恢复效果.includes(effect));
+  if (其余效果.some(effect => !SKILL_PASSIVE_TRIGGER_PHASE_OPTIONS_V1.includes(String(effect?.触发方式 || '').trim()))) return false;
+  恢复效果.forEach(effect => {
+    effect.触发方式 = '回合开始';
+    effect.触发限制 = { 周期: '每战', 次数: 1 };
+    effect.条件分支 = [...(Array.isArray(effect.条件分支) ? effect.条件分支 : []), {
+      条件: [{ 类型: 被动恢复资源条件类型_V1[读取生成被动恢复资源_V1(effect)], 对象: '自身', 比较: '<=', 值: 被动恢复触发线_V1 }],
+      处理: '生效',
+    }];
+  });
+  delete skill.触发方式;
+  return true;
+}
 
 var SKILL_PROTOTYPE_FIELD_OPTIONS_V1 = Object.freeze({
   原型: Object.freeze([]),
@@ -4698,6 +4745,8 @@ var SKILL_PROTOTYPE_FIELD_OPTIONS_V1 = Object.freeze({
   数值方向: Object.freeze(['负向', '正向', '任意']),
   类型: Object.freeze(['负面', '增益', '控制', '隐匿', '斩盾', '窃取']),
   规则: Object.freeze(['缴械', '死亡转存活']),
+  // 规则防御的次数怎么扣（R3）：按段＝每挡一段扣一次（缺省）；整招＝同一次出手的所有段只扣一次。
+  计次: Object.freeze(['按段', '整招']),
   复活代价类型: 战斗外复活代价类型选项_V1,
   复活代价对象: Object.freeze([...战斗外可继承技能状态选项_V1, ...日常系统状态选项_V1, ...战斗外复活物品代价对象选项_V1, ...战斗外复活封印代价对象选项_V1, ...战斗外复活永久代价对象选项_V1]),
   复活后状态: Object.freeze([...战斗外可继承技能状态选项_V1, ...日常系统状态选项_V1]),
@@ -4792,6 +4841,7 @@ var SKILL_PROTOTYPE_FIELD_TYPE_V1 = Object.freeze({
   调整次数: '整数',
   单日使用次数上限: '整数',
   触发限制: '对象',
+  计次: '枚举',
   资源转移方式: '枚举',
   结算标签: '枚举',
   抗性类型: '枚举',
@@ -5041,7 +5091,9 @@ var 读取原型字段选项_V1 = (原型 = '', 字段名 = '') => {
   if (原型名 === '规则改写' && key === '规则') return Object.freeze(['缴械', '死亡转存活']);
   if (原型名 === '战斗外复活' && key === '复活代价对象') return SKILL_PROTOTYPE_FIELD_OPTIONS_V1.复活代价对象;
   if (原型名 === '状态交换' && key === '状态') return Object.freeze(['任意负面', ...技能负面状态选项_V1]);
-  if (['状态移除', '状态转移'].includes(原型名) && key === '状态') return Object.freeze(['任意状态', '任意负面', '任意增益', ...SKILL_PROTOTYPE_FIELD_OPTIONS_V1.状态]);
+  // 触发来源（R5）：被动在「被控制时」移除触发这次被动的那一个控制状态。
+  if (原型名 === '状态移除' && key === '状态') return Object.freeze(['任意状态', '任意负面', '任意增益', '触发来源', ...SKILL_PROTOTYPE_FIELD_OPTIONS_V1.状态]);
+  if (原型名 === '状态转移' && key === '状态') return Object.freeze(['任意状态', '任意负面', '任意增益', ...SKILL_PROTOTYPE_FIELD_OPTIONS_V1.状态]);
   if (原型名 === '状态移除' && key === '匹配原型') return Object.freeze(['无', '资源变化', '护盾变化']);
   if (原型名 === '状态移除' && key === '资源') return Object.freeze(['生命']);
   if (原型名 === '状态转移' && ['来源', '去向'].includes(key)) return Object.freeze(['自身', '目标', '友方', '敌方']);
@@ -5129,7 +5181,7 @@ var SKILL_PROTOTYPE_DEFINITION_LIST_V1 = Object.freeze([
   ['状态施加', '战斗结算', '上下文', ['状态', '触发方式', '触发概率', '资源', '限定探查者', '限定来源', '数值', '副数值', '持续回合', '延迟回合', '触发限制', '打断效果', '驱动属性', '影响方向', '对应等级'], ['状态'], '施加中毒、冻伤、沉默、隐匿、霸体、无视异常等概括状态，可设置延迟回合登记后施加'],
   ['时窗修正', '战斗结算', '敌对', ['调整字段', '调整方式', '调整回合', '调整tick', '调整次数', '单日使用次数上限', '结算倍率', '驱动属性', '影响方向'], ['调整字段', '调整方式'], '延长或压缩目标身上对应类型的时间与次数窗口'],
   ['状态移除', '战斗结算', '上下文', ['状态', '匹配原型', '资源', '数值方向', '数量', '持续回合', '驱动属性', '影响方向', '对应等级'], [], '按状态名或状态内部原型效果移除状态，可用持续回合表达持续净化或驱散窗口'],
-  ['规则防御', '战斗结算', '可赋予', ['规则', '次数', '限定来源', '持续回合', '触发限制'], ['规则', '次数'], '免伤、免死等防御规则'],
+  ['规则防御', '战斗结算', '可赋予', ['规则', '次数', '计次', '限定来源', '持续回合', '触发限制'], ['规则', '次数'], '免伤、免死等防御规则'],
   ['状态转移', '战斗结算', '上下文', ['状态', '来源', '去向', '数量', '持续回合'], ['状态', '来源', '去向'], '把状态从一方转移到另一方，可用持续回合表达持续转移窗口'],
   ['状态交换', '战斗结算', '上下文', ['状态', '持续回合'], ['状态'], '交出自身负面状态并夺取敌方目标增益状态，可用持续回合表达持续交换窗口'],
   ['资源锁定', '战斗结算', '敌对', ['资源', '锁定类型', '数值', '持续回合', '驱动属性', '影响方向'], ['资源', '锁定类型', '数值'], '锁定目标资源池、回复或转化通道'],
@@ -5325,6 +5377,39 @@ var SKILL_UNIT_COST_TABLE_V1 = Object.freeze({
     本命召唤兽: 50, 分身: 28, 器灵: 35, 其他召唤生物: 30, 魂师: 30, 魂兽: 30, 深渊生物: 30,
   }),
 });
+
+// 机制授予壳按内含效果比例计价（用户 2026-11-12："按比例吧 *1.2倍？"）：壳本身 = 授予效果 COST 之和 × 机制授予壳比例_V1，
+// 再乘壳原有的目标与期限系数（原先是固定 25 × 这些系数，按期限涨到 36.25 / 45 / 51.25）。上表的 机制授予: 25 只留给旧版计价。
+var 机制授予壳比例_V1 = 0.2;
+// The old shell profile spanned 25..100; keep that x4 headroom for the shell's own duration/uses in budget profiles.
+var 机制授予壳最高期限倍率_V1 = 4;
+// 食物有效期计价（用户 2026-11-12："只有 0（造完当场食用）是个坎，cost为0 。其他的1天以内就5cost，2天就6cost，3天7cost这样吧。"）
+// 1 tick = 10 分钟，144 tick = 1 天；价格 = 5 + (向上取整的天数 − 1)。
+var 造物有效期每日tick_V1 = 144;
+var 造物有效期首日COST_V1 = 5;
+var 造物有效期每增一日COST_V1 = 1;
+// 「当场食用」档：有效期 1 tick（10 分钟）即造完当场食用，COST 0。有效期 0 / 不写在运行时表示永不过期
+// （mvu_logic_bridge 构建造物背包值 写 有效期至tick = 0），所以当场食用用 1 tick 表示，预算压缩也最多压到这里。
+var 造物当场食用tick_V1 = 1;
+var 造物有效期压缩最低tick_V1 = 造物当场食用tick_V1;
+function 计算造物有效期COST_V1(有效期tick = 0) {
+  const tick = Math.max(0, Math.round(Number(有效期tick || 0)));
+  if (!(tick > 造物当场食用tick_V1)) return 0;
+  return 造物有效期首日COST_V1 + (Math.ceil(tick / 造物有效期每日tick_V1) - 1) * 造物有效期每增一日COST_V1;
+}
+function 造物有效期是当场食用_V1(有效期tick = 0) {
+  const tick = Math.max(0, Math.round(Number(有效期tick || 0)));
+  return tick > 0 && tick <= 造物当场食用tick_V1;
+}
+// 计价版本戳（gen1b）：新生成与设计台保存的技能写 计价版本 = 当前技能计价版本_V1。读档收敛时带当前戳的按新计价、只修越界；
+// 没有戳的（之前生成或写入的）按旧计价（壳固定 25、有效期不计价），行为与之前一致。
+var 当前技能计价版本_V1 = 2;
+function 技能带当前计价版本_V1(技能 = {}) {
+  return Number(技能?.计价版本) >= 当前技能计价版本_V1;
+}
+function 技能预算沿用旧版授予壳与有效期计价_V1(上下文 = {}) {
+  return 上下文?.沿用旧版授予壳与有效期计价 === true;
+}
 
 function 获取单位COST_V1(原型, 选项字段, 选项值) {
   const 表 = SKILL_UNIT_COST_TABLE_V1[原型];
@@ -5664,6 +5749,7 @@ if (typeof globalThis !== 'undefined') {
     读取状态施加分类_V1,
     状态施加是否负面语义_V1,
     食物造物效果可直接食用_V1,
+    当前技能计价版本_V1,
   });
   globalThis.__LWCS_ITEM_PASSIVE_CONSUMER_V1__ = Object.freeze({
     读取物品被动技能条目_V1,
@@ -7127,6 +7213,7 @@ function 查找合法生成主机制原型_V1(主机制大类 = '', context = {}
     const 原型池 = 大类 === '回复类' ? 读取普通回复随机原型池_V1() : (SKILL_ARCHETYPE_POOL_V1[大类] || []);
     const 合法列表 = 原型池.filter(机制 =>
       !排除原型.has(String(机制 || '').trim()) &&
+      !随机生成不再抽取的主机制_V1.has(String(机制 || '').trim()) &&
       自动生成机制满足五环恢复增益约束_V1(机制, context) &&
       机制是合法生成主机制_V1(机制, context) &&
       (context?.跳过预算范围预筛 === true || 自动生成机制满足预算范围_V1(机制, context))
@@ -7460,7 +7547,11 @@ function 读取技能机制原型条目基础预算档_V1(条目 = {}, 上下文
     return 可调(单位, Math.max(单位, 单位 * 2.5), ['数值'], ['持续回合']);
   }
   if (原型 === '机制抹消') return 可调(Number(SKILL_UNIT_COST_TABLE_V1.机制抹消 || 25), 75, ['持续回合'], []);
-  if (原型 === '机制授予') return 可调(Number(SKILL_UNIT_COST_TABLE_V1.机制授予 || 25), 100, ['可用次数'], ['持续回合']);
+  if (原型 === '机制授予') {
+    // The granted entries are added separately by 合并机制预算档案条目_V1; the shell itself is a share of them.
+    const 内含 = 合并机制预算档案条目_V1(Array.isArray(条目.授予效果) ? 条目.授予效果 : [], { ...(上下文 || {}), 目标: undefined });
+    return 可调(内含.最低COST * 机制授予壳比例_V1, 内含.最高常规COST * 机制授予壳比例_V1 * 机制授予壳最高期限倍率_V1, ['可用次数'], ['持续回合']);
+  }
   if (原型 === '复制执行') {
     const 类型 = String(条目.复制类型 || '复制技能').trim() || '复制技能';
     const 单位 = Number(SKILL_UNIT_COST_TABLE_V1.复制执行?.[类型] ?? 90);
@@ -7583,13 +7674,11 @@ var 技能机制预算档案表_V1 = (() => {
     }));
   });
   const 覆盖档案 = {
-    反制: { 最低COST: 115, 最高常规COST: 115, 固定COST: 115, 可调整: false },
+    // 反击 5%（18 × 5 = 90）加机制授予壳：原为固定壳 25，现为内含的 机制授予壳比例_V1（90 × 1.2 = 108）。
+    反制: { 最低COST: 108, 最高常规COST: 108, 固定COST: 108, 可调整: false },
     免伤: { 最低COST: 50, 最高常规COST: 90, 固定COST: 50, 可调整: false, 主调字段: [], 次调字段: [] },
     '免死/锁血': { 最低COST: 80, 最高常规COST: 120, 固定COST: null, 可调整: true, 主调字段: ['次数'], 次调字段: ['持续回合'] },
     霸体: { 最低COST: 43, 最高常规COST: 43, 固定COST: 43, 可调整: false },
-    标记锁定: { 最低COST: 35.5, 最高常规COST: 160, 固定COST: null, 可调整: true, 主调字段: ['数值'], 次调字段: ['持续回合'] },
-    幻境: { 最低COST: 45, 最高常规COST: 140, 固定COST: null, 可调整: true, 主调字段: ['数值'], 次调字段: ['持续回合'] },
-    认知扭曲: { 最低COST: 48.5, 最高常规COST: 150, 固定COST: null, 可调整: true, 主调字段: ['数值'], 次调字段: ['持续回合'] },
   };
   Object.entries(覆盖档案).forEach(([机制名, 覆盖]) => {
     const 原档案 = 表.get(机制名) || {};
@@ -7626,16 +7715,31 @@ function 抽取食物敌对形态_V1(系别 = '', 机制名 = '', 主机制大�
   return Math.random() < 食物敌对直接使用概率_V1 ? '直接' : '授予';
 }
 
+function 食物造物条目需要授予壳_V1(条目 = {}, 机制名 = '', context = {}) {
+  const 原型 = String(条目?.原型 || '').trim();
+  if (!原型 || 原型 === '机制授予') return false;
+  if (!机制授予允许授予原型集合_V1.has(原型)) return false;
+  return !食物造物效果可直接食用_V1(构建自动生成档案估算效果_V1(条目, { ...(context || {}), 机制名 }));
+}
+
 function 食物造物机制需要授予壳预算_V1(机制名 = '', context = {}) {
   if (读取技能机制目标侧_V1(机制名) === '敌对' && context?.食物敌对形态 !== '授予') return false;
   const 原型列表 = 读取机制编译原型列表_V1(机制名);
   if (!原型列表.length) return false;
-  return 原型列表.some(条目 => {
-    const 原型 = String(条目?.原型 || '').trim();
-    if (!原型 || 原型 === '机制授予') return false;
-    if (!机制授予允许授予原型集合_V1.has(原型)) return false;
-    return !食物造物效果可直接食用_V1(构建自动生成档案估算效果_V1(条目, { ...(context || {}), 机制名 }));
-  });
+  return 原型列表.some(条目 => 食物造物条目需要授予壳_V1(条目, 机制名, context));
+}
+
+function 运行条目需要授予壳_V1(条目 = {}, 机制名 = '', context = {}) {
+  const 系别 = String(context?.系别 || context?.type || '').trim();
+  const 原型 = String(条目?.原型 || '').trim();
+  if (!机制授予允许授予原型集合_V1.has(原型)) return false;
+  if (系别 === '食物系') {
+    if (['复制执行', '时光回溯'].includes(原型)) return true;
+    const 估算效果 = 构建自动生成档案估算效果_V1(条目, { ...(context || {}), 机制名 });
+    if (String(估算效果?.目标 || '').trim() === '自身') return false;
+    return shouldWrapSkillEffectAsGrant(估算效果);
+  }
+  return shouldWrapSkillEffectAsGrant(构建自动生成档案估算效果_V1(条目, { ...(context || {}), 机制名 }));
 }
 
 function 自动生成机制需要运行授予壳预算_V1(机制名 = '', context = {}) {
@@ -7644,17 +7748,7 @@ function 自动生成机制需要运行授予壳预算_V1(机制名 = '', contex
   if (!['辅助系', '食物系'].includes(系别) || 释放形态 === '造物承载') return false;
   const 原型列表 = 读取机制编译原型列表_V1(机制名);
   if (!原型列表.length) return false;
-  return 原型列表.some(条目 => {
-    const 原型 = String(条目?.原型 || '').trim();
-    if (!机制授予允许授予原型集合_V1.has(原型)) return false;
-    if (系别 === '食物系') {
-      if (['复制执行', '时光回溯'].includes(原型)) return true;
-      const 估算效果 = 构建自动生成档案估算效果_V1(条目, { ...(context || {}), 机制名 });
-      if (String(估算效果?.目标 || '').trim() === '自身') return false;
-      return shouldWrapSkillEffectAsGrant(估算效果);
-    }
-    return shouldWrapSkillEffectAsGrant(构建自动生成档案估算效果_V1(条目, { ...(context || {}), 机制名 }));
-  });
+  return 原型列表.some(条目 => 运行条目需要授予壳_V1(条目, 机制名, context));
 }
 
 function 食物造物机制可作为使用效果_V1(机制名 = '', context = {}) {
@@ -7757,10 +7851,26 @@ function 估算机制组合预算区间_V1(机制名 = '', context = {}) {
     String(context?.释放形态 || '').trim() === '造物承载' &&
     食物造物机制需要授予壳预算_V1(机制, { ...(context || {}), 目标 });
   const 需要运行授予壳 = 自动生成机制需要运行授予壳预算_V1(机制, { ...(context || {}), 目标 });
-  const 壳COST = 需要食物造物授予壳 || 需要运行授予壳 ? Number(SKILL_UNIT_COST_TABLE_V1.机制授予 || 25) : 0;
-  const 壳最高COST = 壳COST > 0 && 原型列表.some(条目 => 条目?.原型 === '位移执行')
-    ? 壳COST * 读取技能效果持续系数_V1({ 原型: '机制授予', 持续回合: 10 }) : 壳COST;
+  const 壳内条目 = 需要食物造物授予壳
+    ? 原型列表.filter(条目 => 食物造物条目需要授予壳_V1(条目, 机制, { ...(context || {}), 目标 }))
+    : 需要运行授予壳 ? 原型列表.filter(条目 => 运行条目需要授予壳_V1(条目, 机制, { ...(context || {}), 目标 })) : [];
+  const 壳内档案 = 壳内条目.length ? 合并机制预算档案条目_V1(壳内条目, { ...(context || {}), 目标, 机制名: 机制 }) : null;
+  const 壳COST = 壳内档案 ? Number((壳内档案.最低COST * 机制授予壳比例_V1).toFixed(2)) : 0;
+  const 壳最高COST = 壳内档案
+    ? Number((壳内档案.最高常规COST * 机制授予壳比例_V1 * (原型列表.some(条目 => 条目?.原型 === '位移执行')
+      ? 读取技能效果持续系数_V1({ 原型: '机制授予', 持续回合: 10 }) : 1)).toFixed(2))
+    : 0;
   const 是造物承载 = String(context?.释放形态 || '').trim() === '造物承载';
+  // 食物有效期：生成时按品质与环位定（buildTemporaryConstructDurationTicks），超预算时最多压到 造物有效期压缩最低tick_V1。
+  // 只记在主机制上：副机制与主机制共用同一份造物。
+  const 计入有效期 = 是造物承载 && context?.副机制估算 !== true;
+  const 有效期最低COST = 计入有效期 ? 计算造物有效期COST_V1(造物有效期压缩最低tick_V1) : 0;
+  const 有效期最高COST = 计入有效期
+    ? 计算造物有效期COST_V1(buildTemporaryConstructDurationTicks(
+      normalizeSkillTableGrade(context?.grade || context?.品质 || context?.gradeOverride || 'B'),
+      Math.max(1, Math.floor(Number(context?.ringIndex ?? context?.魂环位 ?? 1) || 1)),
+    ))
+    : 0;
   const 使用效果COST系数 = 是造物承载 ? 1 - 技能造物双行动抵扣率_V1 : 1;
   let 可达COST档位 = null;
   if (Array.isArray(使用档案.可达效果档位) && 使用档案.可达效果档位.length) {
@@ -7772,12 +7882,12 @@ function 估算机制组合预算区间_V1(机制名 = '', context = {}) {
     }, context);
     可达COST档位 = 期限预算?.COST档位 || null;
   }
-  const 最低可达COST = 可达COST档位 ? Math.min(...可达COST档位) : Number(((使用档案.最低COST + 壳COST) * 使用效果COST系数).toFixed(2));
-  const 补强可达COST = 可达COST档位 ? Math.max(...可达COST档位) : Number(((Math.max(使用档案.最高常规COST, 使用档案.最低COST) + 壳最高COST) * 使用效果COST系数).toFixed(2));
+  const 最低可达COST = 可达COST档位 ? Math.min(...可达COST档位) : Number(((使用档案.最低COST + 壳COST) * 使用效果COST系数 + 有效期最低COST).toFixed(2));
+  const 补强可达COST = 可达COST档位 ? Math.max(...可达COST档位) : Number(((Math.max(使用档案.最高常规COST, 使用档案.最低COST) + 壳最高COST) * 使用效果COST系数 + 有效期最高COST).toFixed(2));
   return {
     可用: true,
     默认COST: 补强可达COST,
-    固定COST: 可达COST档位 ? (可达COST档位.length === 1 ? 可达COST档位[0] : null) : 使用档案.固定COST === null ? null : Number(((使用档案.固定COST + 壳COST) * 使用效果COST系数).toFixed(2)),
+    固定COST: 可达COST档位 ? (可达COST档位.length === 1 ? 可达COST档位[0] : null) : 使用档案.固定COST === null ? null : Number(((使用档案.固定COST + 壳COST) * 使用效果COST系数 + 有效期最低COST).toFixed(2)),
     最低可达COST,
     补强可达COST,
     最高常规COST: 补强可达COST,
@@ -7816,6 +7926,7 @@ function 构建自动生成机制预算范围键_V1(机制 = '', context = {}, �
     String(context?.效果意图?.持续回合 ?? ''),
     String(context?.结算参数?.持续回合 ?? ''),
     String(context?.主副机制上下文 ?? ''),
+    String(context?.副机制估算 === true ? '副机制估算' : ''),
     String(context?.副机制 === true),
     String(context?.副机制持续倍率 ?? ''),
     String(context?.secondaryDurationScale ?? ''),
@@ -8116,31 +8227,26 @@ function rollSubModelByGrade(mainMechanic, grade, roll, context = {}) {
         { value: '持续伤害', weight: 33 },
       ],
     },
+    // 软控并入迟缓（规格 2）：软控的份额并给迟缓（C 70+10、B 45+10、A 30+10+15、S 20+20；原表 A、S 里重复的条目合并），随机生成不再抽出「软控」。
     控制类: {
       C: [
-        { value: '软控', weight: 70 },
+        { value: '迟缓', weight: 80 },
         { value: '节奏打断', weight: 20 },
-        { value: '迟缓', weight: 10 },
       ],
       B: [
-        { value: '软控', weight: 45 },
+        { value: '迟缓', weight: 55 },
         { value: '硬控', weight: 25 },
         { value: '节奏打断', weight: 20 },
-        { value: '迟缓', weight: 10 },
       ],
       A: [
-        { value: '软控', weight: 30 },
+        { value: '迟缓', weight: 55 },
         { value: '硬控', weight: 30 },
         { value: '节奏打断', weight: 15 },
-        { value: '迟缓', weight: 15 },
-        { value: '软控', weight: 10 },
       ],
       S: [
-        { value: '软控', weight: 20 },
+        { value: '迟缓', weight: 40 },
         { value: '硬控', weight: 35 },
-        { value: '节奏打断', weight: 15 },
-        { value: '迟缓', weight: 20 },
-        { value: '节奏打断', weight: 10 },
+        { value: '节奏打断', weight: 25 },
       ],
     },
     削弱类: {
@@ -8309,7 +8415,7 @@ function rollSubModelByGrade(mainMechanic, grade, roll, context = {}) {
   const 理论权重表 = [
     ...配置权重表,
     ...(SKILL_ARCHETYPE_POOL_V1[mainMechanic] || [])
-      .filter(原型 => !已配置原型.has(String(原型 || '').trim()))
+      .filter(原型 => !已配置原型.has(String(原型 || '').trim()) && !随机生成不再抽取的主机制_V1.has(String(原型 || '').trim()))
       .map(原型 => ({ value: 原型, weight: 1 })),
   ];
   const 全局品质合法表 = 过滤合法生成主机制权重表_V1(理论权重表, 机制上下文);
@@ -8649,6 +8755,74 @@ function rollAttributeDirectionByType(type, subModel, roll, context = {}) {
   return pickUniqueRandom(hints, 1);
 }
 
+// 副机制要够格才加（用户 2026-11-12 同意："全技能每一条百分比效果都能做到 10% 时才加副机制，否则不加，预算留给主效果"）。
+// 5% 的硬下限（收口正式百分比最低值_V1 等）不变；只有主机制的技能不受这条约束。
+var 有意义百分点下限_V1 = 10;
+
+// COST of a mechanism with every percent value at 有意义百分点下限_V1 for one round; non-percent parts at their minimum price.
+// Adds the share of the 机制授予 wrapper the mechanism would need and, for the main mechanism of a food, the expiry floor.
+function 估算机制有意义下限COST_V1(机制名 = '', context = {}) {
+  const 机制 = String(机制名 || '').trim();
+  if (!机制) return Infinity;
+  const 缓存 = context?.自动生成预算范围缓存 instanceof Map ? context.自动生成预算范围缓存 : null;
+  const 缓存键 = 缓存 ? `有意义下限|${构建自动生成机制预算范围键_V1(机制, context, context?.属性候选 || [])}` : '';
+  if (缓存 && 缓存.has(缓存键)) return 缓存.get(缓存键);
+  const 范围 = 估算自动生成机制预算范围_V1(机制, context);
+  let 结果 = Infinity;
+  if (范围?.可用 === true && Number.isFinite(Number(范围.最低可达COST))) {
+    const 估算上下文 = { ...(context || {}), 目标: 范围.目标 || context?.目标, 机制名: 机制 };
+    const 下限文本 = (原值, 默认值 = '') => `${String(原值 || 默认值 || '').trim().startsWith('-') ? '-' : '+'}${有意义百分点下限_V1}%`;
+    const 下限效果 = (条目, 上下文) => {
+      const 效果 = 构建自动生成档案估算效果_V1(条目, 上下文);
+      效果.持续回合 = 1;
+      if (String(效果.原型 || '').trim() === '状态施加') {
+        const 状态 = String(效果.状态 || '').trim();
+        if (状态施加允许数值字段_V1(状态)) 效果.数值 = 下限文本(效果.数值, 读取状态施加默认数值_V1(状态));
+        if (状态施加允许副数值字段_V1(状态)) 效果.副数值 = 下限文本(效果.副数值, 读取状态施加默认副数值_V1(状态));
+      } else if (/%$/.test(String(效果.数值 ?? '').trim()) && parseSkillSignedChangeNumber(效果.数值) !== 0) {
+        效果.数值 = 下限文本(效果.数值);
+      }
+      技能执行嵌套效果数组字段表_V1.forEach(字段 => {
+        if (Array.isArray(效果[字段])) 效果[字段] = 效果[字段].map(子 => 下限效果(子, { ...上下文, 目标: undefined }));
+      });
+      return 效果;
+    };
+    const 条目COST = 条目 => Math.max(
+      Number(计算技能效果累计COST_V1([下限效果(条目, 估算上下文)], 估算上下文).总COST || 0),
+      Number(合并机制预算档案条目_V1([条目], 估算上下文).最低COST || 0),
+    );
+    const 原型列表 = 读取机制编译原型列表_V1(机制);
+    const 系别 = String(context?.系别 || context?.type || '').trim();
+    const 是造物承载 = String(context?.释放形态 || '').trim() === '造物承载';
+    const 壳内条目 = 系别 === '食物系' && 是造物承载 && 食物造物机制需要授予壳预算_V1(机制, 估算上下文)
+      ? 原型列表.filter(条目 => 食物造物条目需要授予壳_V1(条目, 机制, 估算上下文))
+      : 自动生成机制需要运行授予壳预算_V1(机制, 估算上下文) ? 原型列表.filter(条目 => 运行条目需要授予壳_V1(条目, 机制, 估算上下文)) : [];
+    const 合计 = 原型列表.reduce((和, 条目) => 和 + 条目COST(条目), 0) +
+      壳内条目.reduce((和, 条目) => 和 + 条目COST(条目), 0) * 机制授予壳比例_V1 +
+      (是造物承载 && context?.副机制估算 !== true ? 计算造物有效期COST_V1(造物有效期压缩最低tick_V1) : 0);
+    结果 = Number(Math.max(合计, Number(范围.最低可达COST)).toFixed(2));
+  }
+  if (缓存) 缓存.set(缓存键, 结果);
+  return 结果;
+}
+
+// Percent effects (main value 数值) below 有意义百分点下限_V1; the 机制授予 shell and conditional-branch variants are not counted.
+function 读取技能低于有意义下限的百分比效果_V1(技能 = {}) {
+  const 结果 = [];
+  const 访问 = (列表, 路径) => (Array.isArray(列表) ? 列表 : []).forEach((效果, 序号) => {
+    if (!效果 || typeof 效果 !== 'object' || Array.isArray(效果)) return;
+    const 原型 = String(效果.原型 || '').trim();
+    const 当前路径 = `${路径}[${序号}]`;
+    if (原型 && 原型 !== '机制授予') {
+      const 百分点 = 读取技能百分比百分点_V1(效果.数值);
+      if (Number.isFinite(百分点) && 百分点 !== 0 && Math.abs(百分点) < 有意义百分点下限_V1 - 1e-9) 结果.push({ 路径: 当前路径, 原型, 数值: 效果.数值 });
+    }
+    技能执行嵌套效果数组字段表_V1.forEach(字段 => 访问(效果[字段], `${当前路径}.${字段}`));
+  });
+  访问(技能?._效果数组, '_效果数组');
+  return 结果;
+}
+
 function rollExtraMechanics(main, grade, ringIndex, preferredSecondary = [], type = '强攻系', context = {}) {
   const 排除原型 = new Set(Array.isArray(context?.排除子原型) ? context.排除子原型.map(项 => String(项 || '').trim()).filter(Boolean) : []);
   const 主机制目标侧 = 读取技能机制目标侧_V1(context?.主机制原型, context?.主机制大类);
@@ -8674,7 +8848,10 @@ function rollExtraMechanics(main, grade, ringIndex, preferredSecondary = [], typ
   const 低COST线 = Math.max(0.5, Number(预算摘要?.低COST线 || 0) || 读取预算评估最低有效COST_V1({ 运转基准: Number(预算摘要?.运转基准 || 0) }, context));
   let 剩余预算 = 当前门禁 > 0 ? Math.max(0, 当前门禁 - 主机制COST) : Infinity;
   let 组合最高COST = 主机制最高COST;
-  const 估算副机制预算范围 = 机制 => {
+  // 副机制准入（规格 1）：主机制与已选、待选副机制的每条百分比效果都取 有意义百分点下限_V1 时，合计不超过预算门禁。
+  const 有意义门禁 = Math.max(0, Number(预算摘要?.预算门禁 || 0)) || 当前门禁;
+  let 有意义已用COST = Number.isFinite(Number(context?.主机制有意义COST)) ? Number(context.主机制有意义COST) : 主机制COST;
+  const 副机制估算上下文 = 机制 => {
     const 原型 = String(机制 || '').trim();
     const 副机制目标 = 生成技能机制正式目标_V1(原型, {
       ...(context || {}),
@@ -8686,7 +8863,7 @@ function rollExtraMechanics(main, grade, ringIndex, preferredSecondary = [], typ
       主机制大类: findMainMechanicGroupByArchetype(原型),
       释放形态: context?.释放形态 || '直接生效',
     });
-    return 估算自动生成机制预算范围_V1(原型, {
+    return {
       ...(context || {}),
       type,
       系别: type,
@@ -8696,13 +8873,18 @@ function rollExtraMechanics(main, grade, ringIndex, preferredSecondary = [], typ
       释放形态: context?.释放形态 || '直接生效',
       目标: 副机制目标,
       预算门禁: Number.isFinite(剩余预算) ? 剩余预算 : context?.预算门禁,
-    });
+      副机制估算: true,
+    };
   };
+  const 估算副机制预算范围 = 机制 => 估算自动生成机制预算范围_V1(String(机制 || '').trim(), 副机制估算上下文(机制));
+  const 估算副机制有意义COST = 机制 => 估算机制有意义下限COST_V1(String(机制 || '').trim(), 副机制估算上下文(机制));
   const secondaryChance = getSecondaryGenerationChance(grade, ringIndex);
   const doubleChance = getSecondaryDoubleChance(grade, ringIndex);
   const 副机制骰 = Math.random() * 100;
   const 双副机制骰 = 副机制骰 < secondaryChance ? Math.random() * 100 : null;
-  const 目标数量 = 副机制骰 < secondaryChance ? (双副机制骰 < doubleChance ? 2 : 1) : 0;
+  // 副机制上限 comes only from the retention regeneration (规格 1); the dice are still rolled so the random stream is unchanged.
+  const 副机制上限 = Number.isFinite(Number(context?.副机制上限)) ? Math.max(0, Math.floor(Number(context.副机制上限))) : Infinity;
+  const 目标数量 = Math.min(副机制上限, 副机制骰 < secondaryChance ? (双副机制骰 < doubleChance ? 2 : 1) : 0);
   记录技能生成事件_V1(context, {
     类型: '副机制机会',
     主机制大类: main,
@@ -8745,7 +8927,7 @@ function rollExtraMechanics(main, grade, ringIndex, preferredSecondary = [], typ
     const 最低COST = Number(范围?.最低可达COST ?? Infinity);
     const 最高COST = Math.max(最低COST, Number(范围?.补强可达COST ?? 范围?.最高常规COST ?? 范围?.最低可达COST ?? 0));
     if (范围?.可用 !== true || !Number.isFinite(最低COST)) return false;
-    if (Number.isFinite(剩余预算) && 最低COST > 剩余预算 + 技能预算COST容差_V1) return false;
+    if (有意义门禁 > 0 && 有意义已用COST + 估算副机制有意义COST(item?.value) > 有意义门禁 + 技能预算COST容差_V1) return false;
     if (组合最高COST + 最高COST < 低COST线 - 技能预算超预算容差_V1 && !(剩余副槽 > 0)) return false;
     return true;
   };
@@ -8805,6 +8987,7 @@ function rollExtraMechanics(main, grade, ringIndex, preferredSecondary = [], typ
     const 选中范围 = 估算副机制预算范围(选中机制);
     const 已用最低COST = Number(选中范围?.最低可达COST ?? Infinity);
     const 已用最高COST = Math.max(Number.isFinite(已用最低COST) ? 已用最低COST : 0, Number(选中范围?.补强可达COST ?? 选中范围?.最高常规COST ?? 选中范围?.最低可达COST ?? 0));
+    有意义已用COST += Math.max(0, Number(估算副机制有意义COST(选中机制)) || 0);
     if (Number.isFinite(剩余预算)) 剩余预算 = Math.max(0, 剩余预算 - Math.max(0, 已用最低COST));
     组合最高COST += Math.max(0, 已用最高COST);
     weightedPool = weightedPool.filter(item => String(item?.value || '').trim() !== 选中机制);
@@ -8819,6 +9002,77 @@ var v9_3_最近主机制队列_V1 = [];
 function v9_3_会连续三次(main = '') {
   return v9_3_最近主机制队列_V1.length >= 2 && v9_3_最近主机制队列_V1.every(item => item === main);
 }
+// 规格 3（用户 2026-11-12："这种单一类状态的技能确实不能同一角色重复获得，因为没有任何意义"；"这类是可调数值的状态，第九魂技的中毒
+// 可以比第一魂技强很多，自然没问题，那种不能调数值的状态就没有重复的意义了"）。判据：战斗侧 BattlePreview deriveStateCombatEffect
+// 是否读这个状态的 数值。下面是读数值的状态；其余（眩晕、麻痹、沉默、封技、致盲、霸体、无视异常、嘲讽、共享视野……）不带数值。
+var 状态施加可调数值状态集合_V1 = new Set([
+  '中毒', '流血', '灼烧', '冻伤', '持续创伤', '资源燃烧', '暗冰侵蚀', '持续恢复', '护卫', '禁疗', '隐匿', '僵直',
+  '迟缓', '减速', '定身', '束缚', '禁锢', '混乱', '精神紊乱', '标记', '异常抗性',
+]);
+// 带数值的状态：同状态、同目标范围，新技能主数值不到已有最高值的这个倍数就重抽（方案自加的默认值，已告知用户，可调可撤）。
+var 同状态重复最小倍数_V1 = 1.5;
+var 状态重复最多重抽次数_V1 = 3;
+var 角色主效果状态账本上限_V1 = 400;
+
+function 状态带可调数值_V1(状态 = '') {
+  return 状态施加可调数值状态集合_V1.has(String(状态 || '').trim());
+}
+
+// Role key from the generation path (char.<角色名>.…); without one (direct sampling, previews) the rule does not apply.
+function 读取技能生成角色键_V1(context = {}) {
+  const 匹配 = String(context?.path || context?.路径 || '').trim().match(/^char\.([^.]+)\./);
+  return 匹配 ? 匹配[1] : '';
+}
+
+function 读取角色主效果状态账本_V1() {
+  if (!Array.isArray(v9_3_最近主机制队列_V1.主效果状态账本)) v9_3_最近主机制队列_V1.主效果状态账本 = [];
+  return v9_3_最近主机制队列_V1.主效果状态账本;
+}
+
+// State a mechanism's main effect applies ('' when the main effect is not a state). 持续伤害 picks its DOT state later.
+function 读取机制主效果状态_V1(机制 = '') {
+  const 首条 = 读取机制编译原型列表_V1(机制)[0];
+  return String(首条?.原型 || '').trim() === '状态施加' ? String(首条.状态 || '').trim() : '';
+}
+
+function 读取技能主效果状态_V1(技能 = {}, 主机制 = '') {
+  const 模板状态 = 读取机制主效果状态_V1(主机制);
+  if (!模板状态) return null;
+  const 持续伤害状态 = 状态施加状态分类矩阵_V1.持续伤害类;
+  const 匹配 = 状态 => 状态 === 模板状态 || (主机制 === '持续伤害' && 持续伤害状态.includes(状态));
+  let 结果 = null;
+  const 访问 = 列表 => (Array.isArray(列表) ? 列表 : []).forEach(效果 => {
+    if (结果 || !效果 || typeof 效果 !== 'object' || Array.isArray(效果)) return;
+    const 状态 = String(效果.状态 || '').trim();
+    if (String(效果.原型 || '').trim() === '状态施加' && 匹配(状态)) {
+      const 百分点 = 读取技能百分比百分点_V1(效果.数值);
+      结果 = {
+        状态,
+        范围: ['群体', '全场'].includes(String(效果.目标 || '').trim()) ? '群体' : '单体',
+        数值: Number.isFinite(百分点) ? Math.abs(百分点) : null,
+      };
+      return;
+    }
+    技能执行嵌套效果数组字段表_V1.forEach(字段 => 访问(效果[字段]));
+  });
+  访问(技能?._效果数组);
+  return 结果;
+}
+
+function 读取角色已有固定主效果状态_V1(context = {}) {
+  const 角色键 = 读取技能生成角色键_V1(context);
+  if (!角色键) return new Set();
+  return new Set(读取角色主效果状态账本_V1().filter(项 => 项.角色键 === 角色键 && !状态带可调数值_V1(项.状态)).map(项 => 项.状态));
+}
+
+function 登记角色主效果状态_V1(context = {}, 主效果 = null) {
+  const 角色键 = 读取技能生成角色键_V1(context);
+  if (!角色键 || !主效果?.状态) return;
+  const 账本 = 读取角色主效果状态账本_V1();
+  账本.push({ 角色键, 状态: 主效果.状态, 范围: 主效果.范围, 数值: 主效果.数值 });
+  while (账本.length > 角色主效果状态账本上限_V1) 账本.shift();
+}
+
 function v9_3_推入主机制(main = '') {
   if (!main) return;
   v9_3_最近主机制队列_V1.push(main);
@@ -8849,16 +9103,20 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
   });
   const mainRoll = Math.floor(Math.random() * 100) + 1;
   const 本轮排除主机制大类 = new Set(Array.isArray(options?.排除主机制大类) ? options.排除主机制大类.map(项 => String(项 || '').trim()).filter(Boolean) : []);
+  // 规格 3 的「换同大类里另一种状态」：重抽时限定主机制大类（配合排除给出重复状态的机制）。
+  const 限定主机制大类 = String(options?.限定主机制大类 || '').trim();
   let main = 是治疗系第一魂技
     ? '回复类'
-    : rollMainMechanicByGrade(type, grade, mainRoll, ringIndex, {
+    : 限定主机制大类 && !本轮排除主机制大类.has(限定主机制大类) && SKILL_ARCHETYPE_POOL_V1[限定主机制大类]
+      ? 限定主机制大类
+      : rollMainMechanicByGrade(type, grade, mainRoll, ringIndex, {
         ...options,
         抽取用途: '初抽',
         排除主机制大类: [...本轮排除主机制大类],
       });
   if (!main) throw new Error(`技能生成错误:${type || '未知系别'}没有合法主机制`);
   // v9.3：若与最近 2 次主机制大类重复，最多重 roll 3 次以避让（避免连续 3 次相同）
-  for (let 尝试 = 0; !是治疗系第一魂技 && 尝试 < 3 && v9_3_会连续三次(main); 尝试 += 1) {
+  for (let 尝试 = 0; !是治疗系第一魂技 && !限定主机制大类 && 尝试 < 3 && v9_3_会连续三次(main); 尝试 += 1) {
     const 重roll = Math.floor(Math.random() * 100) + 1;
     const 候选 = rollMainMechanicByGrade(type, grade, 重roll, ringIndex, { ...options, 抽取用途: '多样性重抽' });
     if (候选 && !v9_3_会连续三次(候选)) {
@@ -8944,6 +9202,48 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
       });
       continue;
     }
+    // 规格 3：主效果是不带数值的状态、而这个角色已有以同一状态为主效果的魂技时，重抽最多 状态重复最多重抽次数_V1 次；
+    // 仍重复就排除同大类里给出已有状态的机制再抽一次；再不行才放行并记一次。
+    const 已有固定状态 = 是治疗系第一魂技 ? new Set() : 读取角色已有固定主效果状态_V1(options);
+    const 固定状态重复 = 机制 => {
+      const 状态 = 读取机制主效果状态_V1(机制);
+      return !!状态 && !状态带可调数值_V1(状态) && 已有固定状态.has(状态);
+    };
+    if (固定状态重复(subModel)) {
+      const 重复状态 = 读取机制主效果状态_V1(subModel);
+      const 重抽子原型 = (额外排除 = []) => {
+        try {
+          const 候选 = rollSubModelByGrade(main, grade, Math.floor(Math.random() * 100) + 1, {
+            ...options,
+            type,
+            系别: type,
+            sourceName,
+            ringIndex,
+            魂环位: ringIndex,
+            age: options?.age,
+            ringAge: options?.ringAge,
+            sourceCategory: options?.sourceCategory,
+            预算门禁,
+            预算门禁优先: true,
+            排除子原型: [...本轮排除子原型, ...额外排除],
+          });
+          return 自动生成缺少上下文子原型.has(候选) ? '' : 候选;
+        } catch (错误) {
+          return '';
+        }
+      };
+      for (let 尝试 = 1; 尝试 <= 状态重复最多重抽次数_V1 && 固定状态重复(subModel); 尝试 += 1) {
+        const 候选 = 重抽子原型();
+        记录技能生成事件_V1(options, { 类型: '状态重复重抽', 状态: 重复状态, 状态类别: '不带数值', 尝试, 原机制: subModel, 新机制: 候选 || '' });
+        if (候选) subModel = 候选;
+      }
+      if (固定状态重复(subModel)) {
+        const 候选 = 重抽子原型((SKILL_ARCHETYPE_POOL_V1[main] || []).filter(固定状态重复));
+        记录技能生成事件_V1(options, { 类型: '状态重复重抽', 状态: 重复状态, 状态类别: '不带数值', 尝试: 状态重复最多重抽次数_V1 + 1, 换状态: true, 原机制: subModel, 新机制: 候选 || '' });
+        if (候选 && !固定状态重复(候选)) subModel = 候选;
+        else 记录技能生成事件_V1(options, { 类型: '状态重复放行', 状态: 重复状态, 状态类别: '不带数值', 机制: subModel });
+      }
+    }
     const attrRoll = Math.floor(Math.random() * 100) + 1;
     const attrHints = rollAttributeDirectionByType(type, subModel, attrRoll, {
       ...options,
@@ -8963,7 +9263,7 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
       释放形态: delivery,
       造物使用效果: delivery === '造物承载',
     });
-    const 主机制范围 = 估算自动生成机制预算范围_V1(subModel, {
+    const 主机制估算上下文 = {
       ...options,
       type,
       系别: type,
@@ -8979,7 +9279,8 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
       属性候选: attrHints,
       预算门禁,
       预算门禁优先: true,
-    });
+    };
+    const 主机制范围 = 估算自动生成机制预算范围_V1(subModel, 主机制估算上下文);
     const 主机制最低COST = Number(主机制范围?.最低可达COST ?? Infinity);
     if (!Number.isFinite(主机制最低COST) || (预算门禁 > 0 && 主机制最低COST > 预算门禁 + 技能预算COST容差_V1)) {
       最后子原型错误 = new Error(`技能生成错误:${subModel || '未命名机制'}最低COST超预算 ${Number(主机制最低COST || 0).toFixed(1)}/${Number(预算门禁 || 0).toFixed(1)}`);
@@ -9019,6 +9320,7 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
       排除子原型: [...本轮排除子原型],
       主机制COST: 主机制最低COST,
       主机制最高COST: Number(主机制范围?.补强可达COST ?? 主机制范围?.最高常规COST ?? 主机制最低COST),
+      主机制有意义COST: 估算机制有意义下限COST_V1(subModel, 主机制估算上下文),
     });
     const 蓝图 = {
       系别来源: type,
@@ -9193,6 +9495,8 @@ function normalizeBlueprintOverrideForAutoGenerate(blueprintOverride = {}, type 
       !(读取技能机制目标侧_V1(archetype, main) === '友方' && 读取技能机制目标侧_V1(机制, main) === '敌对'),
     ),
     释放形态: delivery,
+    ...(delivery === '造物承载' && String(blueprintOverride?.食物敌对形态 || '').trim()
+      ? { 食物敌对形态: String(blueprintOverride.食物敌对形态).trim() } : {}),
     目标: 归一化执行效果作用目标_V1(blueprintOverride?.目标 || '', ''),
     加成属性候选: attrHints,
     燃料模型: fuelModel,
@@ -9421,6 +9725,7 @@ var 技能正式根字段集合_V1 = new Set([
   '_效果数组',
   '副作用列表',
   '产物描述',
+  '计价版本',
 ]);
 var 技能机制可见键中文名映射_V1 = Object.freeze({});
 var 技能机制属性键中文名映射_V1 = Object.freeze({
@@ -9910,7 +10215,8 @@ function 读取状态施加默认数值_V1(状态 = '') {
   if (状态名 === '僵直') return '-50%';
   if (状态名 === '麻痹') return '-50%';
   if (状态名 === '混乱') return '+40%';
-  if (状态名 === '标记') return '-100%';
+  // 标记 = 被标记者闪避下降（规格 2b），默认 10%，与战斗侧缺省一致。
+  if (状态名 === '标记') return '-10%';
   if (['防御剥夺', '精神抗性剥夺'].includes(状态名)) return '+20%';
   return '-5%';
 }
@@ -10478,7 +10784,8 @@ function 构建机制编译输入覆盖列表_V1(机制名 = '', 原型列表 = 
       }
       if (机制 === '禁疗') 字段.数值 = 数值倍率(结算参数.禁疗比例, 副机制 ? 0.28 : 0.4, 1);
       if (机制 === '治疗反转') 字段.数值 = 数值倍率(结算参数.治疗反转比例, 1, 1);
-      if (机制 === '标记锁定' || 机制 === '目标锁定') 字段.数值 ??= '-100%';
+      if (机制 === '标记锁定' || 机制 === '目标锁定') 字段.数值 ??= '-10%';
+      if (机制 === '软控') 字段.数值 ??= 数值倍率(结算参数.迟缓幅度, 有意义百分点下限_V1 / 100, -1);
       if (机制 === '护卫') 字段.数值 = 数值倍率(结算参数.受到伤害降低, 0.15, 1);
       字段.驱动属性 ??= 系别 === '精神系' ? '精神力上限' : '魂力上限';
       字段.影响方向 ??= '效果强度';
@@ -10516,7 +10823,7 @@ function 构建机制编译输入覆盖列表_V1(机制名 = '', 原型列表 = 
           : [中性倍率转默认(结算参数.消耗修正倍率 > 0 && 结算参数.消耗修正倍率 < 1 ? 结算参数.消耗修正倍率 : undefined, 0.8), 0.8, 1, true],
         前摇: 双向修正机制为削弱_V1(机制, 上下文?.主机制大类)
           ? [中性倍率转默认(Number(结算参数.前摇修正倍率 || 结算参数.施放速度压制) > 1 ? 结算参数.前摇修正倍率 || 结算参数.施放速度压制 : undefined, 1.2), 1.2, 1, true]
-          : [中性倍率转默认(结算参数.前摇修正倍率 || 结算参数.施放速度压制, 机制 === '感知干扰' || 机制 === '软控' || 机制 === '认知扭曲' ? 1.12 : 0.8), 机制 === '感知干扰' || 机制 === '软控' || 机制 === '认知扭曲' ? 1.12 : 0.8, 机制 === '感知干扰' || 机制 === '软控' || 机制 === '认知扭曲' ? 1 : 1, true],
+          : [中性倍率转默认(结算参数.前摇修正倍率 || 结算参数.施放速度压制, 0.8), 0.8, 1, true],
         反伤: [结算参数.反伤比例, 0.2, 1, false],
         伤害转移: [结算参数.伤害转移比例, 0.2, 1, false],
         伤害吸收: [结算参数.伤害吸收比例, 0.2, 1, false],
@@ -12799,10 +13106,24 @@ function 限制技能自身资源恢复不覆盖消耗_V1(技能 = {}, 上下文
   (Array.isArray(技能?._效果数组) ? 技能._效果数组 : []).forEach(限制效果);
 }
 
+// 无戳技能（gen1c）：缺数值的「标记」补回原默认值 −100%（读取状态施加默认数值_V1 现为 −10%，那是给带戳技能、标记有战斗效果之后用的）。
+var 旧版标记默认数值_V1 = '-100%';
+function 补无戳技能标记旧默认数值_V1(skill = {}) {
+  if (技能带当前计价版本_V1(skill)) return;
+  const 访问 = 列表 => (Array.isArray(列表) ? 列表 : []).forEach(效果 => {
+    if (!效果 || typeof 效果 !== 'object' || Array.isArray(效果)) return;
+    if (String(效果.原型 || '').trim() === '状态施加' && String(效果.状态 || '').trim() === '标记' && 效果.数值 === undefined) 效果.数值 = 旧版标记默认数值_V1;
+    技能执行嵌套效果数组字段表_V1.forEach(字段 => 访问(效果[字段]));
+    (Array.isArray(效果.条件分支) ? 效果.条件分支 : []).forEach(分支 => 技能条件分支效果数组字段表_V1.forEach(字段 => 访问(分支?.[字段])));
+  });
+  访问(skill._效果数组);
+}
+
 function 收口技能执行结构_V1(skill = {}, options = {}) {
   if (!skill || typeof skill !== 'object') return skill;
   const path = String(options?.path || '技能').trim() || '技能';
   断言技能根层正式字段_V1(skill, path);
+  补无戳技能标记旧默认数值_V1(skill);
   const 副作用违规列表 = [];
   const 副作用列表 = 收口执行副作用列表_V1(skill.副作用列表 || [], path => {
     if (path) 副作用违规列表.push(path);
@@ -13037,15 +13358,10 @@ function buildSkillCombatProfile(blueprint, qualityCtx = {}) {
     效果意图.状态 = archetype;
     效果意图.持续回合 = 技能生成控制默认持续回合_V1[archetype] || 2;
     if (archetype === '软控') {
-      效果意图.结算参数.反应压制 = Number(
-        randomInRange({ C: [0.05, 0.08], B: [0.08, 0.12], A: [0.12, 0.18], S: [0.18, 0.25] }).toFixed(2),
-      );
-      效果意图.结算参数.施放速度压制 = Number(
-        randomInRange({ C: [0.15, 0.25], B: [0.25, 0.4], A: [0.4, 0.6], S: [0.6, 0.9] }).toFixed(2),
-      );
-      效果意图.结算参数.闪避压制 = Number(
-        randomInRange({ C: [0.03, 0.05], B: [0.05, 0.08], A: [0.08, 0.12], S: [0.12, 0.18] }).toFixed(2),
-      );
+      // 软控并入迟缓：原先的反应、闪避两个压制幅度折成迟缓的一个幅度，取较大者，不低于 有意义百分点下限_V1。
+      const 反应压制 = randomInRange({ C: [0.05, 0.08], B: [0.08, 0.12], A: [0.12, 0.18], S: [0.18, 0.25] });
+      const 闪避压制 = randomInRange({ C: [0.03, 0.05], B: [0.05, 0.08], A: [0.08, 0.12], S: [0.12, 0.18] });
+      效果意图.结算参数.迟缓幅度 = Number(Math.max(有意义百分点下限_V1 / 100, 反应压制, 闪避压制).toFixed(2));
     }
     if (archetype === '迟缓') {
       效果意图.结算参数.反应压制 = Number(
@@ -13238,26 +13554,14 @@ function buildSkillCombatProfile(blueprint, qualityCtx = {}) {
     效果意图.状态 = archetype;
     效果意图.持续回合 = 技能生成控制默认持续回合_V1.催眠;
     if (archetype === '感知干扰') {
-      效果意图.结算参数.命中压制 = Number(
+      // 只剩索敌干扰一条（规格 2b）：它的强度在战斗里同时折算命中下降（全额）、反应下降（半额）与打偏目标，沿用原命中压制的区间。
+      效果意图.结算参数.随机索敌率 = Number(
         randomInRange({ C: [0.05, 0.1], B: [0.1, 0.16], A: [0.16, 0.24], S: [0.24, 0.35] }).toFixed(2),
       );
-      效果意图.结算参数.反应压制 = Number(
-        randomInRange({ C: [0.04, 0.08], B: [0.08, 0.12], A: [0.12, 0.2], S: [0.2, 0.28] }).toFixed(2),
-      );
-      if (gradeFactor >= 3) {
-        效果意图.结算参数.施放速度压制 = Number(
-          randomInRange({ A: [0.08, 0.14], S: [0.14, 0.22] }).toFixed(2),
-        );
-      }
     }
     if (archetype === '标记锁定') {
+      // 命中提高、闪避下降两条已去掉（规格 2b），标记的幅度由预算定。
       效果意图.结算参数.锁定强度 = { C: 1, B: 1, A: 2, S: 3 }[grade] || 1;
-      效果意图.结算参数.命中加成 = Number(
-        randomInRange({ C: [0.05, 0.1], B: [0.1, 0.15], A: [0.15, 0.25], S: [0.25, 0.35] }).toFixed(2),
-      );
-      效果意图.结算参数.闪避压制 = Number(
-        randomInRange({ C: [0.05, 0.08], B: [0.08, 0.12], A: [0.12, 0.18], S: [0.18, 0.25] }).toFixed(2),
-      );
     }
     if (archetype === '共享视野') {
       效果意图.结算参数.反应加成 = Number(
@@ -13269,15 +13573,7 @@ function buildSkillCombatProfile(blueprint, qualityCtx = {}) {
       效果意图.结算参数.锁定强度 = { C: 1, B: 1, A: 2, S: 2 }[grade] || 1;
     }
     if (archetype === '幻境') {
-      const generalRatio = randomInRange({ C: [0.93, 0.97], B: [0.88, 0.94], A: [0.8, 0.9], S: [0.68, 0.85] });
-      const agiRatio = randomInRange({ C: [0.9, 0.95], B: [0.82, 0.9], A: [0.72, 0.82], S: [0.6, 0.75] });
-      效果意图.属性倍率.str = generalRatio;
-      效果意图.属性倍率.def = generalRatio;
-      效果意图.属性倍率.men_max = generalRatio;
-      效果意图.属性倍率.agi = agiRatio;
-      效果意图.结算参数.反应压制 = Number(
-        randomInRange({ C: [0.05, 0.1], B: [0.1, 0.2], A: [0.2, 0.35], S: [0.35, 0.5] }).toFixed(2),
-      );
+      // 只剩施加混乱一条（规格 2b）：原敏捷下降、反应下降两条的区间已去掉。
       if (gradeFactor >= 3) {
         效果意图.结算参数.跳过回合 = true;
         效果意图.结算参数.无法反应 = true;
@@ -13287,20 +13583,7 @@ function buildSkillCombatProfile(blueprint, qualityCtx = {}) {
       效果意图.结算参数.跳过回合 = true;
       效果意图.结算参数.无法反应 = true;
     }
-    if (archetype === '认知扭曲') {
-      效果意图.结算参数.命中压制 = Number(
-        randomInRange({ C: [0.08, 0.12], B: [0.12, 0.18], A: [0.18, 0.26], S: [0.26, 0.36] }).toFixed(2),
-      );
-      效果意图.结算参数.命中压制 = Number(
-        randomInRange({ C: [0.05, 0.08], B: [0.08, 0.12], A: [0.12, 0.18], S: [0.18, 0.26] }).toFixed(2),
-      );
-      效果意图.结算参数.施放速度压制 = Number(
-        randomInRange({ C: [0.04, 0.08], B: [0.08, 0.12], A: [0.12, 0.18], S: [0.18, 0.24] }).toFixed(2),
-      );
-      效果意图.结算参数.随机索敌率 = Number(
-        randomInRange({ C: [0.12, 0.2], B: [0.2, 0.3], A: [0.3, 0.42], S: [0.42, 0.56] }).toFixed(2),
-      );
-    }
+    // 认知扭曲只剩施加精神紊乱一条（规格 2b）：原索敌干扰、命中下降、前摇延长的区间已去掉，精神紊乱的幅度由预算定。
   } else if (main === '位移类') {
     战斗.技能分类 = '辅助';
     效果意图.状态 = archetype;
@@ -13764,6 +14047,7 @@ function formatTickDurationAsDayText(tickValue) {
 function buildConstructExpiryText(durationTick = 0, expiryTick = 0) {
   const absoluteTick = Math.max(0, Number(expiryTick || 0));
   if (absoluteTick > 0) return `有效期至${formatTickToCalendarDateText(absoluteTick)}`;
+  if (造物有效期是当场食用_V1(durationTick)) return '当场食用';
   const duration = Math.max(0, Number(durationTick || 0));
   if (duration > 0) return `约可保留${formatTickDurationAsDayText(duration)}`;
   return '';
@@ -15548,6 +15832,21 @@ function 计算单项效果COST_V1(效果 = {}, 上下文 = {}) {
       持续系数: 1,
     };
   }
+  if (原型 === '机制授予' && !技能预算沿用旧版授予壳与有效期计价_V1(上下文)) {
+    const 内含COST = Math.max(0, Number(计算技能效果累计COST_V1(Array.isArray(效果.授予效果) ? 效果.授予效果 : [], 上下文).总COST || 0));
+    const 单位COST = 内含COST * 机制授予壳比例_V1;
+    return {
+      COST: 单位COST * 目标系数 * 持续系数,
+      百分比: false,
+      数值类型: '授予壳比例',
+      内含COST: Number(内含COST.toFixed(4)),
+      单位COST: Number(单位COST.toFixed(4)),
+      数值倍率: 1,
+      目标系数: Number(目标系数.toFixed(4)),
+      目标系数原因: 目标信息.目标系数原因,
+      持续系数: Number(持续系数.toFixed(4)),
+    };
+  }
   const 关键字段 = ({
     资源变化: '资源', 资源转移: '资源转移方式', 护盾变化: '护盾模式',
     属性修正: '属性', 判定修正: '判定', 结算修正: '结算',
@@ -15712,7 +16011,14 @@ function 计算技能效果累计COST_V1(技能 = {}, 上下文 = {}) {
   const 访问 = (效果, 路径, 继承抵扣率 = 0, 分支角色 = '基础') => {
     if (!效果 || typeof 效果 !== 'object' || Array.isArray(效果)) return 新建统计();
     const 基础统计 = 新建统计();
-    const 单项 = 计算单项效果COST_V1(效果, 上下文);
+    // 造物模板（没有原型、带使用效果）：有效期按天计价，见 计算造物有效期COST_V1。
+    const 是造物模板 = !String(效果.原型 || '').trim() && Array.isArray(效果.使用效果);
+    const 单项 = 是造物模板
+      ? {
+        COST: 技能预算沿用旧版授予壳与有效期计价_V1(上下文) ? 0 : 计算造物有效期COST_V1(效果.有效期tick),
+        百分比: false, 数值类型: '造物有效期', 单位COST: 0, 数值倍率: 1, 目标系数: 1, 持续系数: 1,
+      }
+      : 计算单项效果COST_V1(效果, 上下文);
     const 原始COST = Number(单项.COST || 0);
     const 限制信息 = 读取效果限制抵扣信息_V1(效果, 继承抵扣率, {
       限制抵扣上限,
@@ -15731,12 +16037,12 @@ function 计算技能效果累计COST_V1(技能 = {}, 上下文 = {}) {
         路径,
         分支角色,
         计入COST: true,
-        原型: String(效果.原型 || '').trim(),
+        原型: 是造物模板 ? '造物有效期' : String(效果.原型 || '').trim(),
         关键字段: 关键字段.字段,
         关键值: 关键字段.值,
-        目标: String(效果.目标 || '单体').trim(),
+        目标: 是造物模板 ? '' : String(效果.目标 || '单体').trim(),
         持续回合: Number(效果.持续回合 ?? 1),
-        数值: 效果.数值 ?? '',
+        数值: 是造物模板 ? `${Math.max(0, Math.round(Number(效果.有效期tick || 0)))}tick` : (效果.数值 ?? ''),
         副数值: 效果.副数值 ?? '',
         威力倍率: 效果.威力倍率 ?? '',
         伤害类型: 效果.伤害类型 ?? '',
@@ -16833,6 +17139,19 @@ function 读取技能预算合法区间_V1(评估 = {}, 上下文 = {}, 候选�
     ? Math.min(当前实际门禁, 阶段最高门禁)
     : 当前实际门禁;
   const 最低有效COST = Math.max(0.5, Number(评估?.最低有效COST || 0) || 读取预算评估最低有效COST_V1(评估, 上下文));
+  // 只修越界（带当前计价版本戳的技能读档、生成末尾的复核）：合法区间就是 [最低有效COST, 门禁]，不再按随机风格档压缩。
+  // 原先每次读档都重抽风格档，落在保守档就把区间内的技能往下压，读一次压一点（gen1b 实测 576 个技能连读 4 次：27%/16%/12%/8%）。
+  if (上下文?.读档只修越界 === true) {
+    return {
+      下限: Number(Math.min(最低有效COST, 当前实际门禁).toFixed(2)),
+      上限: Number(当前实际门禁.toFixed(2)),
+      硬上限: Number(当前实际门禁.toFixed(2)),
+      阶段目标上限: Number(阶段目标门禁.toFixed(2)),
+      可达硬上限: Number(Math.max(0.5, 可达门禁).toFixed(2)),
+      最低有效COST: Number(最低有效COST.toFixed(2)),
+      风格: '只修越界',
+    };
+  }
   const 档案最低 = Number(候选档案?.最低可达COST ?? 候选档案?.组合最低COST ?? 0);
   const 档案最高 = Number(候选档案?.补强可达COST ?? 候选档案?.组合最高常规COST ?? 可达门禁);
   const 下限 = Math.max(最低有效COST, Number.isFinite(档案最低) && 档案最低 > 0 ? Math.min(档案最低, 可达门禁) : 0.5);
@@ -19293,12 +19612,13 @@ function 转译状态施加数值说明_V1(状态 = '', 效果 = {}) {
     冻伤: () => `每回合生命${数值 || '-2%'}，冰元素承伤${副数值 || '+20%'}`,
     持续创伤: () => `每回合生命${数值 || '-3%'}，反应${副数值 || '-5%'}`,
     持续恢复: () => `每回合生命${数值 || '+5%'}`,
-    迟缓: () => `敏捷${数值 || '-10%'}，反应${副数值 || '-8%'}`,
+    // 战斗侧 deriveStateCombatEffect：主数值 = 出手变慢与闪避下降，副数值 = 反应下降。
+    迟缓: () => `出手速度与闪避${数值 || '-10%'}，反应${副数值 || '-8%'}`,
     资源燃烧: () => `每回合燃烧魂力${去正号(数值 || '+3%')}，技能消耗${副数值 || '+5%'}`,
     禁疗: () => `治疗降低${去正号(数值 || '+40%')}`,
     治疗反转: () => `治疗按${去正号(数值 || '+100%')}转化为伤害`,
     护盾: () => `获得生命上限${去正号(数值 || '+10%')}的护盾`,
-    标记: () => `闪避率${数值 || '-100%'}`,
+    标记: () => `闪避率${数值 || '-10%'}`,
     防御剥夺: () => `防御参与伤害结算时，防御按${去正号(数值 || '+20%')}剥夺`,
     精神抗性剥夺: () => `防守精神参与精神伤害结算时，精神抗性按${去正号(数值 || '+20%')}剥夺`,
     护卫: () => `护卫者承伤降低${去正号(数值 || '+10%')}`,
@@ -19371,7 +19691,9 @@ function 转译状态移除对象_V1(效果 = {}) {
   const 资源 = 格式化技能结构转译字段_V1(效果?.资源, '');
   const 数值方向 = 格式化技能结构转译字段_V1(效果?.数值方向 || '任意', '任意');
   const 状态文本 =
-    状态 === '任意负面'
+    状态 === '触发来源'
+      ? '触发这次被动的控制状态'
+      : 状态 === '任意负面'
       ? '负面状态'
       : 状态 === '任意增益'
         ? '增益状态'
@@ -19489,8 +19811,8 @@ function 转译单条执行效果_V1(效果 = {}, 选项 = {}) {
   if (深度 > 最大深度) return '嵌套效果略';
   if (!String(效果?.原型 || '').trim() && Array.isArray(效果?.使用效果)) {
     const 数量 = Math.max(1, Number(效果.数量 || 1));
-    const 有效期文本 = 转译技能tick时长_V1(效果.有效期tick);
-    const 有效期 = 有效期文本 ? `，有效期${有效期文本}` : '';
+    const 有效期文本 = 造物有效期是当场食用_V1(效果.有效期tick) ? '' : 转译技能tick时长_V1(效果.有效期tick);
+    const 有效期 = 造物有效期是当场食用_V1(效果.有效期tick) ? '，当场食用' : 有效期文本 ? `，有效期${有效期文本}` : '';
     const 使用效果 = 编译效果数组为人类语言_V1(效果.使用效果 || [], { depth: 深度 + 1, maxDepth: 最大深度 });
     const 使用副作用 = 转译技能副作用列表_V1(效果.副作用列表 || []);
     return `生成物品×${formatSkillNumber(数量)}${有效期}${使用效果 ? `；物品使用/食用后：${使用效果}` : ''}${使用副作用 ? `；使用副作用：${使用副作用}` : ''}`;
@@ -20277,9 +20599,9 @@ function buildSingleSkillEffectSummary(effect) {
     case '精神恢复':
       return '为' + target + '恢复精神力，回复倍率' + formatSkillPercent(effect.回复倍率 || effect.数值 || 0);
     case '软控':
-      return '限制' + target + '的反应、前摇或闪避，持续' + formatSkillNumber(effect.持续回合) + '回合';
+      return '使' + target + '动作迟缓，出手变慢、闪避与反应下降，持续' + formatSkillNumber(effect.持续回合) + '回合';
     case '迟缓':
-      return '使' + target + '动作迟缓，敏捷、闪避与反应下降' + 持续文本;
+      return '使' + target + '动作迟缓，出手变慢、闪避与反应下降' + 持续文本;
     case '单属性削弱':
     case '多属性削弱':
       return '压制' + target + '的属性，持续' + formatSkillNumber(effect.持续回合 || effect.持续) + '回合';
@@ -20372,9 +20694,9 @@ function buildSingleSkillEffectSummary(effect) {
     case '资源锁定':
       return '锁定' + target + '的' + String(effect.资源 || '资源') + String(effect.锁定类型 || '通道') + '，持续' + formatSkillNumber(effect.持续回合) + '回合';
     case '感知干扰':
-      return '扰乱' + target + '的感知判断，持续' + formatSkillNumber(effect.持续回合) + '回合';
+      return '干扰' + target + '的索敌，使其容易打偏目标、命中与反应下降，持续' + formatSkillNumber(effect.持续回合) + '回合';
     case '标记锁定':
-      return '锁定' + target + '，持续' + formatSkillNumber(effect.持续回合) + '回合，并提高命中与锁定强度';
+      return '给' + target + '挂上标记，被标记者闪避下降，持续' + formatSkillNumber(effect.持续回合) + '回合';
     case '目标锁定':
       return '锁定' + target + '的行动轨迹，持续' + formatSkillNumber(effect.持续回合) + '回合，提高追踪命中';
     case '自身位移':
@@ -20394,11 +20716,11 @@ function buildSingleSkillEffectSummary(effect) {
     case '共享视野':
       return '与' + target + '共享视野，持续' + formatSkillNumber(effect.持续回合) + '回合，提高反应与命中';
     case '幻境':
-      return '对' + target + '施加幻境干扰，持续' + formatSkillNumber(effect.持续回合) + '回合';
+      return '对' + target + '施加幻境，使其陷入混乱、容易打偏目标且命中下降，持续' + formatSkillNumber(effect.持续回合) + '回合';
     case '催眠':
       return '尝试催眠' + target + '，成功后持续' + formatSkillNumber(effect.持续回合) + '回合';
     case '认知扭曲':
-      return '扭曲' + target + '的认知与判断，持续' + formatSkillNumber(effect.持续回合) + '回合';
+      return '扭曲' + target + '的认知，使其精神紊乱、容易打偏目标且反应下降，持续' + formatSkillNumber(effect.持续回合) + '回合';
     case '禁疗':
       return '对' + target + '施加禁疗，持续' + formatSkillNumber(effect.持续回合) + '回合';
     case '致盲':
@@ -20532,7 +20854,7 @@ function buildSkillProductReferenceText(packedEffects) {
     if (!effect || typeof effect !== 'object') return;
     if (!String(effect.原型 || '').trim() && Array.isArray(effect.使用效果)) {
       const ttl = Number(effect.有效期tick || 0);
-      products.push(`造物×${Math.max(1, Number(effect.数量 || 1))}${ttl > 0 ? `，有效${ttl}tick` : ''}`);
+      products.push(`造物×${Math.max(1, Number(effect.数量 || 1))}${造物有效期是当场食用_V1(ttl) ? '，当场食用' : ttl > 0 ? `，有效${ttl}tick` : ''}`);
     }
     if (String(effect.原型 || '').trim() === '召唤生成') {
       const 名称 = String(effect.召唤物名称 || '召唤物').trim() || '召唤物';
@@ -21241,11 +21563,14 @@ var GoldenDragonSkills = {
     魂技名: '【9层·气血漩涡(被动)】',
     画面描述: '胸口凝聚暗金气血漩涡，心脏如战鼓，气血生生不息。',
     效果描述: '被动提升体力上限，并强化体力恢复。',
+    // 被动技能修复方案 2026-11-12：被动层标「被动」并写明时机——体力上限 +10% 战斗开始起整场常驻；体力 +5% 每回合开始回复
+    // （原数据是持续 99 回合的一次性恢复，战斗开始时体力是满的，等于没有）。
+    承载方式: '被动',
     消耗: {},
     前摇: 0,
     _效果数组: [
-      { 原型: '属性修正', 目标: '自身', 生效方式: '独立生效', 属性: '体力上限', 数值: '+10%' },
-      { 原型: '资源变化', 目标: '自身', 生效方式: '独立生效', 资源: '体力', 数值: '+5%', 持续回合: 99 },
+      { 原型: '属性修正', 目标: '自身', 生效方式: '独立生效', 属性: '体力上限', 数值: '+10%', 持续回合: 99, 触发方式: '战斗开始', 触发限制: { 周期: '每战', 次数: 1 } },
+      { 原型: '资源变化', 目标: '自身', 生效方式: '独立生效', 资源: '体力', 数值: '+5%', 触发方式: '回合开始', 触发限制: { 周期: '每回合', 次数: 1 } },
     ],
   },
   10: {
@@ -21263,10 +21588,13 @@ var GoldenDragonSkills = {
     魂技名: '【11层·龙罡与龙威(被动)】',
     画面描述: '体表自然流转暗金龙罡，举手投足散发龙族威压。',
     效果描述: '被动提升自身防御；文本含龙的敌方目标受到龙威压制。',
+    // 被动技能修复方案 2026-11-12：防御 +20% 战斗开始起整场常驻；龙威每回合开始重挂一次（持续 1 回合，后进场的也吃得到），
+    // 只落在文本含「龙」的敌方目标上（回合开始按目标逐个判断条件，BattlePreview R6）。
+    承载方式: '被动',
     消耗: {},
     前摇: 0,
     _效果数组: [
-      { 原型: '属性修正', 目标: '自身', 生效方式: '独立生效', 属性: '防御', 数值: '+20%' },
+      { 原型: '属性修正', 目标: '自身', 生效方式: '独立生效', 属性: '防御', 数值: '+20%', 持续回合: 99, 触发方式: '战斗开始', 触发限制: { 周期: '每战', 次数: 1 } },
       {
         原型: '属性修正',
         目标: '群体',
@@ -21274,6 +21602,8 @@ var GoldenDragonSkills = {
         属性: ['力量', '防御', '敏捷', '体力上限', '精神力上限', '魂力上限'],
         数值: '-10%',
         持续回合: 1,
+        触发方式: '回合开始',
+        触发限制: { 周期: '每回合', 次数: 1 },
         条件分支: [{ 条件: [{ 类型: '单位文本', 对象: '目标', 比较: '包含', 值: '龙' }], 处理: '生效' }],
       },
     ],
@@ -21318,12 +21648,18 @@ var GoldenDragonSkills = {
     魂技名: '【16层·黄金瀑布】',
     画面描述: '第八血脉魂环化作液态黄金光辉环绕周身，拥有独立神级灵性，自动护主。',
     效果描述: '被动防御。面临致命攻击或强控时消耗最大体力的一成，抵消该次威胁并提供短期增益。',
+    // 被动技能修复方案 2026-11-12：三个时机各自每回合 1 次、各付一次代价（消耗＝每次触发付最大体力一成，付不起不触发）。
+    // 致命前：免伤 1 次按整招计（这一招所有段都挡）＋防御、敏捷 +20% 一回合；濒死时：免死 1 次；被控制时：移除触发这次的控制
+    // ＋防御、敏捷 +20% 一回合。原数据的「蓄力中禁用」不保留（被动没有蓄力）。
+    承载方式: '被动',
     消耗: { 体力: '10%' },
     前摇: 0,
     _效果数组: [
-      { 原型: '规则防御', 目标: '自身', 生效方式: '独立生效', 规则: '免伤', 次数: 1, 持续回合: 99, 触发限制: { 周期: '每回合', 次数: 1 } },
-      { 原型: '规则防御', 目标: '自身', 生效方式: '独立生效', 规则: '免死', 次数: 1, 持续回合: 99, 触发限制: { 周期: '每回合', 次数: 1 } },
-      { 原型: '属性修正', 目标: '自身', 生效方式: '独立生效', 属性: ['防御', '敏捷'], 数值: '+20%', 持续回合: 1, 条件分支: [{ 条件: [{ 类型: '自身状态', 对象: '自身', 比较: '==', 值: '蓄力中' }], 处理: '禁用' }] },
+      { 原型: '规则防御', 目标: '自身', 生效方式: '独立生效', 规则: '免伤', 次数: 1, 计次: '整招', 持续回合: 1, 触发方式: '致命前', 触发限制: { 周期: '每回合', 次数: 1 } },
+      { 原型: '属性修正', 目标: '自身', 生效方式: '独立生效', 属性: ['防御', '敏捷'], 数值: '+20%', 持续回合: 1, 触发方式: '致命前', 触发限制: { 周期: '每回合', 次数: 1 } },
+      { 原型: '规则防御', 目标: '自身', 生效方式: '独立生效', 规则: '免死', 次数: 1, 持续回合: 1, 触发方式: '濒死时', 触发限制: { 周期: '每回合', 次数: 1 } },
+      { 原型: '状态移除', 目标: '自身', 生效方式: '独立生效', 状态: '触发来源', 数量: 1, 触发方式: '被控制时', 触发限制: { 周期: '每回合', 次数: 1 } },
+      { 原型: '属性修正', 目标: '自身', 生效方式: '独立生效', 属性: ['防御', '敏捷'], 数值: '+20%', 持续回合: 1, 触发方式: '被控制时', 触发限制: { 周期: '每回合', 次数: 1 } },
     ],
   },
   17: null,
@@ -22619,6 +22955,7 @@ function autoGenerateSkill(
       主机制原型: archetype,
       副机制: Object.freeze([...secondary]),
       承载方式: blueprint.释放形态 || '直接生效',
+      食物敌对形态: String(blueprint.食物敌对形态 || '').trim(),
       目标: blueprint.目标 || '',
       加成属性候选: Object.freeze([...attrs]),
     }),
@@ -24539,6 +24876,7 @@ function cloneSkillStructData(skill = {}) {
     _效果数组: clonePackedSkillEffects(working._效果数组 || []),
   };
   if (Math.max(0, Number(working.场外冷却至tick || 0)) > 0) result.场外冷却至tick = Math.max(0, Number(working.场外冷却至tick || 0));
+  if (Number(skill?.计价版本) > 0) result.计价版本 = Number(skill.计价版本);
   if (working.使用条件 && typeof working.使用条件 === 'object' && !Array.isArray(working.使用条件)) result.使用条件 = cloneJsonValue(working.使用条件, {});
   if (String(working.触发方式 || '').trim()) result.触发方式 = String(working.触发方式).trim();
   const 收口副作用列表 = normalizeSkillSideEffectList(working.副作用列表 || []);
@@ -24624,7 +24962,8 @@ var 技能机制最低品质_V1 = Object.freeze({
   持续伤害: 'C',
   软控: 'F',
   硬控: 'C',
-  迟缓: 'D',
+  // 原为 D；软控（F）并入迟缓后，F 品质的控制类只剩迟缓可抽。
+  迟缓: 'F',
   节奏打断: 'C',
   单属性削弱: 'F',
   多属性削弱: 'F',
@@ -25120,6 +25459,7 @@ function 构建副作用条目_V1(副作用类型 = '', context = {}) {
 function 直接自动生成技能结构_V1(skill = {}, context = {}) {
   if (!skill || typeof skill !== 'object') return false;
   const 直接生成开始毫秒 = 读取性能计时毫秒_V1();
+  const 主机制队列快照 = [...v9_3_最近主机制队列_V1];
   const 恢复增益重复账本缓存 = context?.恢复增益重复账本缓存 || 创建恢复增益重复账本缓存_V1();
   const 临时决策 = skill?.[技能机制决策临时字段_V1];
   const 临时蓝图 = 临时决策 && typeof 临时决策 === 'object' ? 构建机制决策蓝图覆盖_V1(临时决策, context) : null;
@@ -25179,6 +25519,7 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
   let 临时技能 = null;
   let 接受候选序号 = 0;
   let 接受候选主机制原型 = '';
+  let 接受生成蓝图 = null;
   let 最后错误 = null;
   const 失败记录 = [];
   const 失败主机制大类 = new Set();
@@ -25390,6 +25731,7 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
       临时技能 = 最终正式技能;
       接受候选序号 = 候选序号;
       接受候选主机制原型 = 当前候选机制原型;
+      接受生成蓝图 = 生成结果?.生成蓝图 || null;
       记录技能生成事件_V1(context, {
         类型: '候选成功',
         候选序号,
@@ -25478,6 +25820,161 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
     }
     throw 错误;
   }
+  // 副机制保留（规格 1）：收敛后仍有低于 有意义百分点下限_V1 的百分比效果，去掉估算 COST 最低的副机制，按同一主机制、目标、
+  // 承载重新生成（预算交还主效果）；直到都够格或没有副机制。只管随机抽出的蓝图——显式蓝图、机制决策、武魂真身、被动不动。
+  const 副机制裁剪深度 = Math.max(0, Number(context?.副机制裁剪深度 || 0));
+  const 接受副机制 = Array.isArray(接受生成蓝图?.副机制) ? [...接受生成蓝图.副机制] : [];
+  if (接受副机制.length && (!指定蓝图 || 副机制裁剪深度 > 0) && context?.forceTrueBody !== true && context?.passiveMode !== true) {
+    const 不够格效果 = 读取技能低于有意义下限的百分比效果_V1(临时技能);
+    if (不够格效果.length) {
+      const 裁剪估算上下文 = {
+        ...基础生成选项, type: 系别, 系别, grade: 固定生成品质 || 'B', ringIndex: 魂环位, 魂环位,
+        释放形态: 接受生成蓝图.承载方式, 食物敌对形态: 接受生成蓝图.食物敌对形态, 副机制估算: true,
+      };
+      const 去掉副机制 = 接受副机制
+        .map(机制 => ({ 机制, COST: Number(估算机制有意义下限COST_V1(机制, 裁剪估算上下文)) }))
+        .sort((左, 右) => (Number.isFinite(左.COST) ? 左.COST : Infinity) - (Number.isFinite(右.COST) ? 右.COST : Infinity))[0].机制;
+      const 剩余副机制 = 接受副机制.filter((_, 序号) => 序号 !== 接受副机制.indexOf(去掉副机制));
+      记录技能生成事件_V1(context, {
+        类型: '副机制裁剪',
+        系别,
+        魂环位,
+        主机制原型: 接受生成蓝图.主机制原型,
+        副机制: 去掉副机制,
+        剩余副机制: [...剩余副机制],
+        不够格效果: 不够格效果.map(项 => `${项.原型}${项.数值}`),
+        裁剪深度: 副机制裁剪深度 + 1,
+      });
+      const 裁剪技能 = cloneJsonValue(skill, {});
+      // 治疗系第 1 魂技固定 生命恢复，显式蓝图过不了五环门禁（自动生成恢复资源集合_V1 不含生命），只能照常重抽。
+      const 治疗系第一魂技 = 系别 === '治疗系' && 魂环位 === 1 && 接受生成蓝图.主机制原型 === '生命恢复';
+      const 裁剪方式 = 治疗系第一魂技
+        ? {
+          排除子原型: [...(Array.isArray(context?.排除子原型) ? context.排除子原型 : []), 去掉副机制],
+          副机制上限: 剩余副机制.length,
+        }
+        : {
+          blueprintOverride: {
+            主机制大类: 接受生成蓝图.主机制大类,
+            主机制原型: 接受生成蓝图.主机制原型,
+            副机制: 剩余副机制,
+            释放形态: 接受生成蓝图.承载方式,
+            目标: 接受生成蓝图.目标,
+            加成属性候选: [...(接受生成蓝图.加成属性候选 || [])],
+            ...(接受生成蓝图.食物敌对形态 ? { 食物敌对形态: 接受生成蓝图.食物敌对形态 } : {}),
+          },
+        };
+      try {
+        直接自动生成技能结构_V1(裁剪技能, {
+          ...context,
+          ...裁剪方式,
+          gradeOverride: 固定生成品质 || context?.gradeOverride,
+          副机制裁剪深度: 副机制裁剪深度 + 1,
+          技能生成失败软落地: false,
+          恢复增益重复账本缓存,
+          自动生成预算范围缓存,
+          自动生成预算摘要缓存,
+        });
+        if (getMeaningfulSkillEffects(裁剪技能._效果数组 || []).length) {
+          清空恢复增益重复账本缓存_V1(恢复增益重复账本缓存);
+          Object.keys(skill).forEach(键 => delete skill[键]);
+          Object.assign(skill, 裁剪技能);
+          return skill;
+        }
+      } catch (错误) {
+        记录技能生成事件_V1(context, {
+          类型: '副机制裁剪失败',
+          系别,
+          魂环位,
+          主机制原型: 接受生成蓝图.主机制原型,
+          副机制: 去掉副机制,
+          错误信息: String(错误?.message || 错误 || ''),
+        });
+      }
+    }
+  }
+  // 食物「当场食用」档（gen1b；用户 2026-11-12："只有 0（造完当场食用）是个坎，cost为0"）：去掉副机制后仍有低于 有意义百分点下限_V1
+  // 的百分比效果、有效期又高于当场食用时，把有效期压到当场食用，省下的预算补给效果；仍低于下限的照常接受（那是预算本身小）。
+  const 造物模板 = String(临时技能?.承载方式 || '').trim() === '造物承载' && context?.passiveMode !== true
+    ? (Array.isArray(临时技能?._效果数组) ? 临时技能._效果数组 : []).find(项 => 项 && typeof 项 === 'object' && !String(项.原型 || '').trim() && Array.isArray(项.使用效果))
+    : null;
+  if (造物模板 && Number(造物模板.有效期tick || 0) > 造物当场食用tick_V1 && 读取技能低于有意义下限的百分比效果_V1(临时技能).length) {
+    const 当场食用预算上下文 = {
+      ...context, grade: 固定生成品质 || context?.grade, 系别, type: 系别, 目标: '自身', passiveMode: false,
+      启用位级硬上限: true, 恢复增益重复账本缓存,
+    };
+    const 改前技能 = cloneJsonValue(临时技能, {});
+    const 改前有效期tick = Number(造物模板.有效期tick || 0);
+    try {
+      const 原COST = Number(评估技能预算_V1(临时技能, 当场食用预算上下文).实际COST || 0);
+      造物模板.有效期tick = 造物当场食用tick_V1;
+      生成阶段收敛目标COST填充_V1(临时技能, { ...当场食用预算上下文, 目标COST: 原COST, 最低目标COST: 原COST });
+      收敛技能到预算区间_V1(临时技能, { ...当场食用预算上下文, 读档只修越界: true, 机制标签: 接受候选主机制原型 || '食物' });
+      记录技能生成事件_V1(context, { 类型: '食物改当场食用', 系别, 魂环位, 主机制原型: 接受候选主机制原型, 原有效期tick: 改前有效期tick });
+    } catch (错误) {
+      临时技能 = 改前技能;
+      记录技能生成事件_V1(context, { 类型: '食物改当场食用失败', 系别, 魂环位, 错误信息: String(错误?.message || 错误 || '').slice(0, 200) });
+    }
+  }
+  // 规格 3（带数值的状态）：同一角色、同一状态、同一目标范围，新技能主数值不到已有最高值的 同状态重复最小倍数_V1 倍就重抽
+  // （重新随机生成，最多 状态重复最多重抽次数_V1 次；仍不够就限定同一主机制大类、排除给出这个状态的机制再抽；再不行放行并记一次）。
+  const 状态重复重抽次数 = Math.max(0, Number(context?.状态重复重抽次数 || 0));
+  // 显式蓝图（机制决策、设计台）只登记、不重抽。
+  const 主效果状态 = 读取技能生成角色键_V1(context) && 接受生成蓝图 && context?.passiveMode !== true
+    ? 读取技能主效果状态_V1(临时技能, 接受生成蓝图.主机制原型)
+    : null;
+  const 参与状态重复检查 = context?.forceTrueBody !== true && (!指定蓝图 || 副机制裁剪深度 > 0 || 状态重复重抽次数 > 0);
+  if (主效果状态 && 参与状态重复检查 && 状态带可调数值_V1(主效果状态.状态)) {
+    const 角色键 = 读取技能生成角色键_V1(context);
+    const 已有最高 = 读取角色主效果状态账本_V1()
+      .filter(项 => 项.角色键 === 角色键 && 项.状态 === 主效果状态.状态 && 项.范围 === 主效果状态.范围)
+      .reduce((最高, 项) => Math.max(最高, Number(项.数值) || 0), 0);
+    if (已有最高 > 0 && !(Number(主效果状态.数值 || 0) >= 已有最高 * 同状态重复最小倍数_V1 - 1e-9)) {
+      const 下次 = 状态重复重抽次数 + 1;
+      if (下次 <= 状态重复最多重抽次数_V1 + 1) {
+        const 换状态 = 下次 > 状态重复最多重抽次数_V1;
+        const 同状态机制 = (SKILL_ARCHETYPE_POOL_V1[接受生成蓝图.主机制大类] || []).filter(机制 => {
+          const 状态 = 读取机制主效果状态_V1(机制);
+          return 状态 === 主效果状态.状态 || (机制 === '持续伤害' && 状态施加状态分类矩阵_V1.持续伤害类.includes(主效果状态.状态));
+        });
+        记录技能生成事件_V1(context, {
+          类型: '状态重复重抽', 状态: 主效果状态.状态, 状态类别: '带数值', 范围: 主效果状态.范围, 尝试: 下次, 换状态,
+          新数值: 主效果状态.数值, 已有最高, 主机制原型: 接受生成蓝图.主机制原型,
+        });
+        v9_3_最近主机制队列_V1.length = 0;
+        v9_3_最近主机制队列_V1.push(...主机制队列快照);
+        const 重抽技能 = cloneJsonValue(skill, {});
+        try {
+          直接自动生成技能结构_V1(重抽技能, {
+            ...context,
+            blueprintOverride: null,
+            副机制裁剪深度: 0,
+            状态重复重抽次数: 下次,
+            gradeOverride: 固定生成品质 || context?.gradeOverride,
+            ...(换状态 ? {
+              排除子原型: [...(Array.isArray(context?.排除子原型) ? context.排除子原型 : []), ...同状态机制],
+              限定主机制大类: 接受生成蓝图.主机制大类,
+            } : {}),
+            技能生成失败软落地: false,
+            恢复增益重复账本缓存,
+            自动生成预算范围缓存,
+            自动生成预算摘要缓存,
+          });
+          if (getMeaningfulSkillEffects(重抽技能._效果数组 || []).length) {
+            清空恢复增益重复账本缓存_V1(恢复增益重复账本缓存);
+            Object.keys(skill).forEach(键 => delete skill[键]);
+            Object.assign(skill, 重抽技能);
+            return skill;
+          }
+        } catch (错误) {
+          记录技能生成事件_V1(context, { 类型: '状态重复放行', 状态: 主效果状态.状态, 状态类别: '带数值', 原因: String(错误?.message || 错误 || '').slice(0, 200) });
+        }
+      } else {
+        记录技能生成事件_V1(context, { 类型: '状态重复放行', 状态: 主效果状态.状态, 状态类别: '带数值', 新数值: 主效果状态.数值, 已有最高 });
+      }
+    }
+  }
+  登记角色主效果状态_V1(context, 主效果状态);
   Object.keys(skill).forEach(键 => delete skill[键]);
   强制普通魂技固定启动消耗_V1(临时技能, 基础生成选项);
   const 角色资源上限 = {
@@ -25496,6 +25993,20 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
       }
     });
   }
+  // 生成末尾的强制启动消耗与资源封顶会改消耗，门禁跟着变（gen1b 查出，原先读档时才被改）：按最终消耗只修越界地再收敛一次，
+  // 让带戳技能就是读档收敛的不动点。被动走自己的预算口径，不在这里复核。
+  if (context?.passiveMode !== true) {
+    try {
+      收敛技能到预算区间_V1(临时技能, {
+        ...context, grade: 固定生成品质 || context?.grade, 系别, type: 系别,
+        目标: String(临时技能?.承载方式 || '').trim() === '造物承载' ? '自身' : '单体', passiveMode: false,
+        启用位级硬上限: true, 读档只修越界: true, 恢复增益重复账本缓存, 机制标签: 接受候选主机制原型 || '技能',
+      });
+    } catch (错误) {
+      记录技能生成事件_V1(context, { 类型: '生成末尾复核失败', 系别, 魂环位, 错误信息: String(错误?.message || 错误 || '').slice(0, 200) });
+    }
+  }
+  临时技能.计价版本 = 当前技能计价版本_V1;
   Object.assign(skill, 临时技能);
   清空恢复增益重复账本缓存_V1(恢复增益重复账本缓存);
   记录技能生成事件_V1(context, {
@@ -25544,6 +26055,10 @@ function ensureSkillStructGenerated(skill, context = {}) {
     hasPackedEffects = Array.isArray(skill._效果数组) && skill._效果数组.length > 0;
     本次已自动生成 = hasPackedEffects;
   }
+  // R9：新生成的与存档里已有的魂骨/血脉被动都过一遍（读档也走这里；只改生成器的写法，手写的库被动形状不同不受影响）。
+  if (hasPackedEffects && context?.passiveMode === true && ['魂骨技能', '血脉技能'].includes(String(context?.sourceCategory || '').trim())) {
+    改写生成被动资源恢复触发_V1(skill);
+  }
 
   if (!hasPackedEffects) {
     if (typeof skill.画面描述 !== 'string' || !skill.画面描述.trim() || isSkillTodoText(skill.画面描述))
@@ -25583,13 +26098,18 @@ function ensureSkillStructGenerated(skill, context = {}) {
   }
   try {
     syncConstructSkillMetadata(临时技能);
+    // 读档一律只修越界（gen1c）：原先每次读档重抽保守/标准/爆发风格档，落在保守档就把区间内的技能往下压，读一次压一点。
+    // 无戳的老技能仍按旧计价算门禁。
+    const 旧版计价 = 技能带当前计价版本_V1(临时技能) ? { 读档只修越界: true } : { 沿用旧版授予壳与有效期计价: true, 读档只修越界: true };
     收敛技能到预算区间_V1(临时技能, {
       ...context,
+      ...旧版计价,
       path: context?.path || '技能',
       机制标签: context?.sourceCategory || context?.来源类别 || context?.来源 || '技能',
     }, context?.候选预算档案 || null);
     断言技能预算_V1(临时技能, {
       ...context,
+      ...旧版计价,
       path: context?.path || '技能',
     }, context?.sourceCategory || context?.来源类别 || context?.来源 || '技能');
     断言直接结算收益预算_V1(临时技能, '技能', context || {});
@@ -35948,6 +36468,29 @@ try {
     return normalizeSkillCostMap(costs, 'absolute', '触发');
   }
 
+  // R4 (被动技能修复方案 2026-11-12): a passive's own 消耗 is what each trigger pays — before its effects take place, once
+  // for the effects one trigger fires together (one activation: same skill, phase, event and limit window), a percentage
+  // read against the payer's maximum (用户 2026-11-12，黄金瀑布：「每次触发付 10% 最大体力，体力不够不触发」). Unpaid, the
+  // trigger does not happen and is not counted against its limit.
+  // Scope (PASSIVE_SKILL_COST_TRIGGER_SCOPE): 'PERCENT' takes only a 消耗 written as a share of the maximum. Generated
+  // 血脉 / 魂骨 passives carry an absolute, COST-priced 消耗 (84-88 of 100 血脉 passives: 2%-4% of 魂力上限 at level 95,
+  // 100% at level 35 — the generator prices a 10000-year bloodline for every level) that has never been paid; charging it
+  // per trigger would change all of them, so the plan's 'ALL' waits for a decision. 'NONE' turns the rule off.
+  const PASSIVE_SKILL_COST_TRIGGER_SCOPES = Object.freeze({ PERCENT: 'PERCENT', ALL: 'ALL', NONE: 'NONE' });
+  const PASSIVE_SKILL_COST_TRIGGER_SCOPE = PASSIVE_SKILL_COST_TRIGGER_SCOPES.PERCENT;
+  function passiveSkillTriggerCosts(skill = {}) {
+    if (PASSIVE_SKILL_COST_TRIGGER_SCOPE === PASSIVE_SKILL_COST_TRIGGER_SCOPES.NONE) return null;
+    const raw = skill?.消耗;
+    if (raw === undefined || raw === null || raw === '' || raw === '无') return null;
+    // Read as a bare cost (no source context): the percentage ban for ordinary actions does not apply to a trigger price.
+    const stages = readSkillCostStages(raw);
+    const values = stages.启动 || {};
+    if (!Object.keys(values).length) return null;
+    const percent = Object.values(values).some(value => /%\s*$/.test(String(value?.值 ?? value ?? '').trim()));
+    if (PASSIVE_SKILL_COST_TRIGGER_SCOPE === PASSIVE_SKILL_COST_TRIGGER_SCOPES.PERCENT && !percent) return null;
+    return Object.freeze({ values, 非法项: Object.freeze([...(stages.非法项 || [])]) });
+  }
+
   function readSkillSustainCosts(value = {}, context = {}) {
     const phase = value?.维持;
     const runtimeTerms = phase && typeof phase === 'object' && !Array.isArray(phase) &&
@@ -37382,8 +37925,66 @@ try {
   function clashTiming(attacker = {}, incomingDeclaration = {}, reactor = {}, declaration = {}, options = {}) {
     const window = clashWindupBudget(attacker, incomingDeclaration, reactor, options), own = actionWindup(reactor, declaration);
     const margin = own > 0 ? (window - own) / own : window >= 0 ? Infinity : -Infinity;
+    const linear = margin === Infinity ? 1 : margin === -Infinity ? 0 : clamp(0.5 + 0.5 * margin / PREEMPT_SURE_MARGIN, 0, 1);
+    // The margin with the attacker's and the answerer's effective agility scaled by `a` and `r` (the window scales with
+    // their ratio unless the move is charged past the budget).
+    const windupIn = actionWindup(attacker, incomingDeclaration), attackerAgility = naturalActionOrderProfile(attacker).effectiveAgility;
+    const room = options?.intercept === true ? INTERCEPT_WINDUP : 0;
+    const marginAt = (a = 1, r = 1) => {
+      if (windupIn > CONTINUOUS_ACTION_BUDGET || !(attackerAgility > 0) || !(own > 0)) return margin;
+      const scaled = Math.min(CONTINUOUS_ACTION_BUDGET, (window + room) * r / Math.max(1e-9, a)) - room;
+      return (scaled - own) / own;
+    };
     return Object.freeze({ window, own, margin, inTime: own <= window + 1e-9,
-      confidence: margin === Infinity ? 1 : margin === -Infinity ? 0 : clamp(0.5 + 0.5 * margin / PREEMPT_SURE_MARGIN, 0, 1) });
+      confidence: oneSidedTimingConfidence(attacker, reactor, margin, linear, marginAt) });
+  }
+  // 接战链 阶段 2f (方案 §15.2: "吃过一次亏就不再押同一招"): a believed unit held by a bound a settled clash or preemption
+  // put on it (BattleDecision buildDecisionWorldOutcomes carries them as __agilityLo / __agilityHi, base agility) is
+  // certain on one side. A move too late showed the attacker faster than its LO bound (strictly) and an answerer slower
+  // than its HI bound: a move with no margin even at that bound — the most hopeful agility the unit can still have —
+  // cannot be in time (confidence 0). A move in time showed the attacker no faster than its HI bound and an answerer no
+  // slower than its LO bound: a move with margin at that bound — the least hopeful — is sure (confidence 1). Otherwise
+  // the linear confidence stands; the runtime's units carry no bounds. `marginAt(a, r)`: the margin with the attacker's
+  // and the answerer's effective agility scaled by a and r (their speed states scale with them).
+  function oneSidedTimingConfidence(attacker = {}, reactor = {}, margin = 0, linear = 0, marginAt = () => margin) {
+    const base = unit => Math.max(1e-9, Number(naturalActionOrderProfile(unit).baseAgility) || 0);
+    const attackerLo = Number(attacker?.__agilityLo), attackerHi = Number(attacker?.__agilityHi);
+    const reactorLo = Number(reactor?.__agilityLo), reactorHi = Number(reactor?.__agilityHi);
+    if (attackerLo > 0 && marginAt(attackerLo / base(attacker), 1) <= 1e-12) return 0;
+    if (reactorHi > 0 && Number.isFinite(reactorHi) && marginAt(1, reactorHi / base(reactor)) <= 1e-12) return 0;
+    if (attackerHi > 0 && Number.isFinite(attackerHi) && marginAt(attackerHi / base(attacker), 1) >= -1e-12) return 1;
+    if (reactorLo > 0 && marginAt(1, reactorLo / base(reactor)) >= -1e-12) return 1;
+    return linear;
+  }
+
+  // 接战链 阶段 2e (方案 §14.3): what a settled clash or preemption shows both sides about each other's speed. The outcome
+  // in time / too late (a clash: clashTiming; a preemption: faster or not, preemptTiming) is public, and each side knows
+  // its own unit's agility, so it bounds the other's: a clash in time means attacker ≤ reactor × windup × (1 +
+  // CLASH_READ_MARGIN) ÷ (own windup + INTERCEPT_WINDUP if it stepped in), too late means more; a preemption first means
+  // attacker ≤ reactor × the move's windup ÷ own windup, not first means more — and the reverse bounds on the reactor.
+  // The bounds are on the base agility (readCombatStat), the public speed states (naturalActionOrderProfile) taken out.
+  // Returns { attacker: { lo?, hi? }, reactor: { lo?, hi? } }, or null when the outcome says nothing (a charged move,
+  // a move of no windup).
+  function engagementAgilityBounds({ mode = '', attacker = {}, reactor = {}, incoming = {}, declaration = {}, intercept = false, inTime = false } = {}) {
+    const attackerProfile = naturalActionOrderProfile(attacker), reactorProfile = naturalActionOrderProfile(reactor);
+    const inc = actionWindup(attacker, incoming), own = actionWindup(reactor, declaration);
+    let factor = 0; // attacker effective ≤ (in time) or > (late) reactor effective × factor
+    if (String(mode).toUpperCase() === 'CLASH') {
+      const room = own + (intercept ? INTERCEPT_WINDUP : 0);
+      if (!(inc > 0) || inc > CONTINUOUS_ACTION_BUDGET || !(room > 0)) return null;
+      factor = inc * (1 + CLASH_READ_MARGIN) / room;
+    } else if (String(mode).toUpperCase() === 'PREEMPT') {
+      const theirs = Math.min(CONTINUOUS_ACTION_BUDGET, inc);
+      if (!(own > 0) || !(theirs > 0)) return null;
+      factor = theirs / own;
+    } else return null;
+    const attackerSpeed = attackerProfile.baseAgility > 0 ? attackerProfile.effectiveAgility / attackerProfile.baseAgility : 1;
+    const reactorSpeed = reactorProfile.baseAgility > 0 ? reactorProfile.effectiveAgility / reactorProfile.baseAgility : 1;
+    const attackerLimit = reactorProfile.effectiveAgility * factor / Math.max(1e-9, attackerSpeed);
+    const reactorLimit = attackerProfile.effectiveAgility / factor / Math.max(1e-9, reactorSpeed);
+    return Object.freeze(inTime
+      ? { attacker: Object.freeze({ hi: attackerLimit }), reactor: Object.freeze({ lo: reactorLimit }) }
+      : { attacker: Object.freeze({ lo: attackerLimit }), reactor: Object.freeze({ hi: reactorLimit }) });
   }
 
   function actionStaminaCost(actor = {}, nature = '', opponent = null) {
@@ -38533,9 +39134,9 @@ try {
   // 生命受威胁即出局（用户 2026-11-12："比赛，切磋等通常都应该是生命受到威胁而终止或出局……救援的前提是判定这一击会导致生命
   // 低于10%，被救的人出局"）: in a spar (the fighters hold back) or a match (a referee steps in) a hit that would take a
   // unit under LIFE_THREAT_RATIO of its HP is held at that line, and the unit is out of the fight. A match is told by
-  // its intent (比赛, 擂台, 大赛, 考核, 斗魂, 比试, 比武) or by a referee on the field (裁判). The runtime also asks whether
-  // the referee gets there (BattleRuntime structuredRefereeRescue); projections take it that the line holds, which
-  // leaves the same units in the fight either way.
+  // its intent (比赛, 擂台, 大赛, 考核, 斗魂, 比试, 比武) or by a referee on the field (裁判). In a match the runtime asks
+  // what the referee can do (BattleRuntime structuredRefereeIntervention, the rules below: refereeTiming and after);
+  // projections take it that the line holds, which leaves the same units in the fight either way.
   const LIFE_THREAT_RATIO = 0.1;
   function isRefereedMatch(worldSnapshot = {}, battleIntent = {}) {
     const mode = String(battleIntent?.mode || battleIntent?.intent || (typeof battleIntent === 'string' ? battleIntent : '') || worldSnapshot?.战斗意图 || '').trim();
@@ -38569,6 +39170,80 @@ try {
     ).map(condition => condition.threshold);
     const threshold = Math.max(LIFE_THREAT_RATIO, ...thresholds);
     return Math.max(1, Math.floor(readHpMax(target) * threshold));
+  }
+
+  // 接战链 阶段三 — the referee (用户 2026-11-12："裁判需要接入游戏吧，而且不止是赶不赶得上，还要看实力够不够，可以说裁判就是一个中立的
+  // 负责护卫行动的角色，可以用魂技护卫，可以抵挡，也可以救走"；"没有填裁判就是没有裁判"；接战链改造方案-20261112 §3). The referee of a
+  // match (combatData.裁判, prepared by BattleRuntime prepareBattleReferee) is a whole character standing outside both
+  // sides: it takes no turn, is no one's target, no group move reaches it, no side's passive or aura works on it, and it
+  // counts for neither side. When a hit would take a fighter under the life-threat line (BattleRuntime
+  // structuredRefereeIntervention, where the rescue used to be judged) it tries what leaves the fighter best off first:
+  //   GUARD_SKILL — a defensive skill of its own (a shield, a cut to damage taken: refereeGuardEffects) put on the fighter.
+  //     It has to get there (refereeTiming: block ≥ 0), have the skill out in what is left (the skill's own windup within
+  //     block), pay the skill's cost, and the hit must then no longer take the fighter under the line (the settlement's
+  //     damage scaled by refereeGuardScale, against the shield it adds). The fighter stays in the fight.
+  //   BLOCK — it steps in front and takes the hit itself (its own defence, guarding: refereeBlock) if it gets there and is
+  //     left at REFEREE_SAFE of its HP or more; once under REFEREE_SAFE it no longer blocks. The fighter is out.
+  //   CARRY — it takes the fighter out of the way and the hit comes to nothing: it only has to be quicker, INTERCEPT_WINDUP
+  //     more (refereeTiming: carry ≥ 0), not strong enough. The fighter is out.
+  // Getting there is the guard's reckoning (援护): the reaction window it has against the move (reactionWindupBudget, on its
+  // effective agility) less INTERCEPT_WINDUP for every fighter it saves in the round, this one included — a referee far
+  // quicker than the fighters saves several in a round, one no quicker one or two; the three ways share that count.
+  // Projections and valuations take it that the line holds (方案 §3.8) and read the referee only to tell a match
+  // (isRefereedMatch). The numbers are the plan's (方案 §3).
+  const REFEREE_SAFE = 0.5;
+  // The windows the referee has against `attacker`'s move when it would save its `count`-th fighter of the round: `block`
+  // is what is left once it got there (a skill guard needs the skill's windup within it), `carry` INTERCEPT_WINDUP less.
+  function refereeTiming(attacker = {}, declaration = {}, referee = {}, count = 1) {
+    const reach = reactionWindupBudget(attacker, declaration, referee);
+    const n = Math.max(1, Math.floor(Number(count) || 1));
+    const block = reach - INTERCEPT_WINDUP * n;
+    return Object.freeze({ reach, count: n, block, carry: block - INTERCEPT_WINDUP });
+  }
+  // What an effect cuts from damage taken, as the factor it leaves (1: no cut): a 结算修正 or a state whose combat effect
+  // (deriveStateCombatEffect, as the state would carry it) lowers damage taken.
+  function refereeCutFactor(effect = {}) {
+    const prototype = String(effect?.原型 || '').trim();
+    if (prototype !== '结算修正' && prototype !== '状态施加') return 1;
+    const combat = deriveStateCombatEffect(effect) || {};
+    return Math.max(0, Number(combat.received_damage_mult ?? 1)) * Math.max(0, 1 - clamp(Number(combat.damage_reduction || 0), 0, 1));
+  }
+  // A referee's skill as a guard for a fighter: its shields (护盾变化 that adds) and its cuts to damage taken
+  // (refereeCutFactor < 1) that can be put on someone else (an effect on 自身 only cannot). A skill that deals damage is
+  // not one — the referee strikes no one. null: not a guard.
+  function refereeGuardEffects(skill = {}) {
+    if (!skill || typeof skill !== 'object' || isPassiveSkill(skill)) return null;
+    const effects = collectEffects(skill);
+    if (!effects.length || effects.some(effect => String(effect?.原型 || '').trim() === '伤害结算')) return null;
+    const onOthers = effect => !/自身/.test(String(effect?.目标 || '').trim());
+    const shields = effects.filter(effect => String(effect?.原型 || '').trim() === '护盾变化' && parseSignedValue(effect?.数值, 1) > 0 && onOthers(effect));
+    const cuts = effects.filter(effect => refereeCutFactor(effect) < 1 - 1e-9 && onOthers(effect));
+    return shields.length || cuts.length ? Object.freeze({ shields: Object.freeze(shields), cuts: Object.freeze(cuts) }) : null;
+  }
+  // What a hit settles at on `target` with `states` (state objects by key) put on it, as a share of what it settles at now:
+  // the settlement's own damage formula (calculateBaseDamage) on the target as it stands and with the states — the cut is
+  // not reckoned any other way. `options`: calculateBaseDamage's (targetCount, actionDamageMultiplier, resourceDriveEnabled).
+  function refereeGuardScale(attacker = {}, effect = {}, skill = null, target = {}, states = {}, options = {}) {
+    if (!states || !Object.keys(states).length) return 1;
+    const move = skill && typeof skill === 'object' ? { ...effect, 技能: skill } : effect;
+    const plain = calculateBaseDamage(move, attacker, target, null, options);
+    if (!(plain > 0)) return 1;
+    const guarded = { ...target, 状态效果: { ...(target?.状态效果 || {}), ...states } };
+    return clamp(calculateBaseDamage(move, attacker, guarded, null, options) / plain, 0, 1);
+  }
+  // The referee stepping in front of the rest of a hit — `share` of the effect's damage (the segments still to land) — on
+  // its own defence, guarding against the move's weight on it (calculateDefenseDamageMultiplier, as a DEFEND answer reads
+  // it): the damage it takes, and whether it is left at REFEREE_SAFE of its HP or more (already under it: never).
+  function refereeBlock(referee = {}, attacker = {}, effect = {}, skill = null, declaration = null, share = 1, options = {}, worldSnapshot = null) {
+    const move = skill && typeof skill === 'object' ? { ...effect, 技能: skill } : effect;
+    const raw = calculateBaseDamage(move, attacker, referee, null, options) * clamp(Number(share) || 0, 0, 1);
+    const weight = incomingMove(declaration) ? incomingHitShare(attacker, declaration, referee, worldSnapshot) : null;
+    const guard = calculateDefenseDamageMultiplier(referee, attacker, false, weight);
+    const damage = Math.max(0, Math.floor(raw * guard));
+    const hp = readHp(referee), hpMax = Math.max(1, readHpMax(referee));
+    return Object.freeze({ damage, guard, weight, hpBefore: hp, hpMax, hpAfter: Math.max(0, hp - damage),
+      ratioBefore: hp / hpMax, ratioAfter: Math.max(0, hp - damage) / hpMax,
+      holds: hp / hpMax >= REFEREE_SAFE - 1e-9 && (hp - damage) / hpMax >= REFEREE_SAFE - 1e-9 });
   }
 
   function readIncapacityReason(unit = {}) {
@@ -40107,48 +40782,117 @@ try {
     return null;
   }
 
-  function deathSaveCount(unit = {}) {
-    let count = 0;
-    for (const state of Object.values(unit.状态效果 || {})) count += Math.max(0, Number(state?.战斗效果?.death_save_count || 0));
+  // R2 (被动技能修复方案 2026-11-12): a counted rule defense — a 规则防御 state with 免伤/免死 charges — is gone the moment
+  // its last charge is spent instead of holding its place to expiry. While that empty shell stood, R01 refused the same
+  // source again, so 「每回合 1 次」 came every other round and 持续 99 meant once a battle. An item's passive state is the
+  // item consumer's to keep (it would not come back), so it is left as it was.
+  // R3: 计次 '整招' (RULE_DEFENSE_COUNT_MODES.WHOLE_MOVE) — one charge covers every segment one cast declares, across its
+  // effects (黄金瀑布「抵消该次威胁」); the default 按段 spends a charge per segment. The charge is spent on the cast's first
+  // covered segment and the state remembers that cast (block_cast / death_save_cast) until the cast is over: a call with
+  // the same actionId is covered again for free, a later cast finds the state spent and removes it. A call without an
+  // actionId stands for one whole cast.
+  const RULE_DEFENSE_COUNT_MODES = Object.freeze({ SEGMENT: '按段', WHOLE_MOVE: '整招' });
+  const RULE_CHARGE_FIELDS = Object.freeze({
+    block: Object.freeze({ count: 'block_count', wholeMove: 'block_whole_move', cast: 'block_cast' }),
+    deathSave: Object.freeze({ count: 'death_save_count', wholeMove: 'death_save_whole_move', cast: 'death_save_cast' }),
+  });
+  const isBlockState = state => String(state?.规则 || state?.防御对象 || '').trim() === '免伤';
+  function ruleDefenseStateRemovable(state = {}) {
+    const effects = state?.战斗效果 || {};
+    return state?.__equipmentPassiveState !== true && String(state?.来源原型摘要 || '').trim() === '规则防御' &&
+      (effects.block_count !== undefined || effects.death_save_count !== undefined);
+  }
+  function ruleDefenseSpent(state = {}, cast = '') {
+    if (!ruleDefenseStateRemovable(state)) return false;
+    const effects = state.战斗效果 || {};
+    if (Math.max(0, Number(effects.block_count || 0)) > 1e-12 || Math.max(0, Number(effects.death_save_count || 0)) > 1e-12) return false;
+    const engaged = String(effects.block_cast || effects.death_save_cast || '').trim();
+    return !engaged || !cast || engaged !== cast;
+  }
+  // Removes the spent rule defenses on a unit (a state the cast `actionId` still lands under stays). Returns their keys.
+  function purgeSpentRuleDefenses(unit = {}, actionId = '') {
+    const states = unit?.状态效果;
+    if (!states || typeof states !== 'object' || Array.isArray(states)) return [];
+    const cast = castIdentity(actionId);
+    const removed = Object.entries(states).filter(([, state]) => ruleDefenseSpent(state, cast)).map(([key]) => key);
+    removed.forEach(key => { delete states[key]; });
+    return removed;
+  }
+  function wholeMoveChargeReady(state = {}, fields, cast = '') {
+    const effects = state?.战斗效果 || {};
+    if (effects[fields.wholeMove] !== true) return false;
+    return Math.max(0, Number(effects[fields.count] || 0)) > 1e-12 || !!cast && String(effects[fields.cast] || '').trim() === cast;
+  }
+  // Charges of one kind a unit holds: per segment, plus — when options.segments is given — every segment of the cast for a
+  // whole-move charge that is ready (or already covering options.actionId). Without options.segments a whole-move charge
+  // counts as one, as it always did.
+  function ruleChargeCount(unit = {}, fields, filter, options = {}) {
+    const cast = castIdentity(options?.actionId);
+    const segments = Math.max(0, Math.floor(Number(options?.segments || 0)));
+    let perSegment = 0, wholeMove = false;
+    for (const state of Object.values(unit?.状态效果 || {})) {
+      if (!filter(state)) continue;
+      const effects = state?.战斗效果 || {};
+      if (effects[fields.wholeMove] === true) {
+        if (segments > 0 ? wholeMoveChargeReady(state, fields, cast) : false) wholeMove = true;
+        else if (!(segments > 0)) perSegment += Math.max(0, Number(effects[fields.count] || 0));
+        continue;
+      }
+      perSegment += Math.max(0, Number(effects[fields.count] || 0));
+    }
+    return wholeMove ? Math.max(perSegment, segments) : perSegment;
+  }
+  function consumeRuleCharges(unit, requested, fields, filter, options = {}) {
+    let remaining = Math.max(0, Number(requested || 0));
+    if (!remaining) return [];
+    const cast = castIdentity(options?.actionId);
+    purgeSpentRuleDefenses(unit, cast);
+    const entries = Object.entries(unit.状态效果 || {}).filter(([, state]) => filter(state));
+    // A whole-move charge first: it covers the cast, so the holder keeps its per-segment charges.
+    const whole = entries.find(([, state]) => wholeMoveChargeReady(state, fields, cast));
+    if (whole) {
+      const [stateKey, state] = whole, effects = state.战斗效果;
+      const engaged = !!cast && String(effects[fields.cast] || '').trim() === cast;
+      const count = Math.max(0, Number(effects[fields.count] || 0));
+      const amount = engaged ? 0 : Math.min(count, 1, remaining);
+      effects[fields.count] = count - amount;
+      effects[fields.cast] = cast || effects[fields.cast] || '';
+      if (!cast && effects[fields.count] <= 1e-12 && ruleDefenseStateRemovable(state)) delete unit.状态效果[stateKey];
+      return [{ stateKey, state, amount, remainingCount: effects[fields.count], wholeMove: true, covered: remaining }];
+    }
+    const consumed = [];
+    for (const [stateKey, state] of entries) {
+      const effects = state.战斗效果 || {};
+      if (effects[fields.wholeMove] === true) continue;
+      const count = Math.max(0, Number(effects[fields.count] || 0)), amount = Math.min(count, remaining);
+      if (!amount) continue;
+      effects[fields.count] = count - amount;
+      consumed.push({ stateKey, state, amount, remainingCount: count - amount });
+      if (count - amount <= 1e-12 && ruleDefenseStateRemovable(state)) delete unit.状态效果[stateKey];
+      remaining -= amount;
+      if (remaining <= 1e-12) break;
+    }
+    return consumed;
+  }
+
+  function deathSaveCount(unit = {}, options = {}) {
+    const count = ruleChargeCount(unit, RULE_CHARGE_FIELDS.deathSave, () => true, options);
     return count > 0 && findRuleSuppression(unit, '规则防御', '规则', '免死') ? 0 : count;
   }
 
-  function ruleBlockCount(unit = {}) {
+  function ruleBlockCount(unit = {}, options = {}) {
     if (findRuleSuppression(unit, '规则防御', '规则', '免伤')) return 0;
-    return Object.values(unit.状态效果 || {}).reduce((sum, state) => sum +
-      (String(state?.规则 || state?.防御对象 || '').trim() === '免伤' ? Math.max(0, Number(state.战斗效果?.block_count || 0)) : 0), 0);
+    return ruleChargeCount(unit, RULE_CHARGE_FIELDS.block, isBlockState, options);
   }
 
-  function consumeRuleBlockCharges(unit, requested = 1) {
-    let remaining = Math.max(0, Number(requested || 0));
-    if (!remaining || !ruleBlockCount(unit)) return [];
-    const consumed = [];
-    for (const [stateKey, state] of Object.entries(unit.状态效果 || {})) {
-      if (String(state?.规则 || state?.防御对象 || '').trim() !== '免伤') continue;
-      const count = Math.max(0, Number(state.战斗效果?.block_count || 0)), amount = Math.min(count, remaining);
-      if (!amount) continue;
-      state.战斗效果.block_count = count - amount;
-      consumed.push({ stateKey, state, amount, remainingCount: count - amount });
-      remaining -= amount;
-      if (remaining <= 1e-12) break;
-    }
-    return consumed;
+  function consumeRuleBlockCharges(unit, requested = 1, options = {}) {
+    if (!Math.max(0, Number(requested || 0)) || !ruleBlockCount(unit, { segments: 1, actionId: options?.actionId })) return [];
+    return consumeRuleCharges(unit, requested, RULE_CHARGE_FIELDS.block, isBlockState, options);
   }
 
-  function consumeDeathSaveCharges(unit, requested = 1) {
-    let remaining = Math.max(0, Number(requested || 0));
-    if (!remaining || !deathSaveCount(unit)) return [];
-    const consumed = [];
-    for (const [stateKey, state] of Object.entries(unit.状态效果 || {})) {
-      const count = Math.max(0, Number(state?.战斗效果?.death_save_count || 0));
-      const amount = Math.min(count, remaining);
-      if (!amount) continue;
-      state.战斗效果.death_save_count = count - amount;
-      consumed.push({ stateKey, state, amount, remainingCount: count - amount });
-      remaining -= amount;
-      if (remaining <= 1e-12) break;
-    }
-    return consumed;
+  function consumeDeathSaveCharges(unit, requested = 1, options = {}) {
+    if (!Math.max(0, Number(requested || 0)) || !deathSaveCount(unit, { segments: 1, actionId: options?.actionId })) return [];
+    return consumeRuleCharges(unit, requested, RULE_CHARGE_FIELDS.deathSave, () => true, options);
   }
 
   function triggerStateRevive(unit = {}, label = '目标', writeResource = setResourceValue) {
@@ -40193,14 +40937,14 @@ try {
     if (Array.isArray(unit?.技能列表) && unit.技能列表.length) roots.unshift(unit.技能列表);
     const seen = new Set();
     let found = null;
-    const visit = value => {
+    const visit = (value, inPassiveTable = false) => {
       if (found || !value || typeof value !== 'object' || seen.has(value)) return;
       seen.add(value);
       if (Array.isArray(value)) {
-        value.forEach(visit);
+        value.forEach(item => visit(item, inPassiveTable));
         return;
       }
-      const effect = (isPassiveSkill(value) && Array.isArray(value?._效果数组) ? value._效果数组 : []).find(entry =>
+      const effect = ((isPassiveSkill(value) || inPassiveTable) && Array.isArray(value?._效果数组) ? value._效果数组 : []).find(entry =>
         String(entry?.原型 || '').trim() === '规则改写' &&
         String(entry?.规则 || '').trim() === '死亡转存活' &&
         String(entry?.目标 || '自身').trim() === '自身'
@@ -40211,10 +40955,10 @@ try {
       }
       Object.entries(value).forEach(([key, child]) => {
         if (/状态效果|战斗历史|历史快照|参战者|复制效果|__battleRuntime|__行动闭环诊断/.test(key)) return;
-        visit(child);
+        visit(child, inPassiveTable || isPassiveSkillTableKey(key));
       });
     };
-    roots.forEach(visit);
+    roots.forEach(root => visit(root));
     return found;
   }
 
@@ -41181,12 +41925,13 @@ try {
           const got = readResource(holder, resource) - before;
           if (got > 0) absorption[side][resource] = (absorption[side][resource] || 0) + got;
         };
+        const chargeCast = { actionId: input.ruleBlockCastId || 'projected-cast' };
         for (let hit = 0; hit < hitCount && (readHp(unit) > hpFloor || readHp(unit) > 0 && shield > 0); hit++) {
-          if (blocked < blockCount && consumeRuleBlockCharges(unit, 1).length) { blocked++; continue; }
+          if (blocked < blockCount && consumeRuleBlockCharges(unit, 1, chargeCast).length) { blocked++; continue; }
           const hp = readHp(unit), amount = Math.min((input.shieldIncomingCap === 0 ? 0 : shield) + hp - hpFloor, perSegmentDamage), absorbed = Math.min(shield, amount);
           shield -= absorbed; incoming += amount;
           let loss = Math.min(hp - hpFloor, Math.max(0, amount - absorbed));
-          if (loss >= hp && consumeDeathSaveCharges(unit, 1).length) { loss = Math.max(0, hp - 1); consumed++; }
+          if (loss >= hp && consumeDeathSaveCharges(unit, 1, chargeCast).length) { loss = Math.max(0, hp - 1); consumed++; }
           damage += loss; setHp(unit, hp - loss);
           // 伤害吸收: the attacker adds what it had stored to the first segment that lands (the store is emptied even if
           // nothing of it gets through).
@@ -41601,6 +42346,14 @@ try {
     ));
   }
 
+  // R8 (被动技能修复方案 2026-11-12): a skill kept in a table named 被动 (血脉之力.被动) is a passive whatever its 承载方式
+  // says — a save written before its template said 被动 (金龙王 9/11/16 层 were 直接生效) must not be cast as an action.
+  const PASSIVE_SKILL_TABLE_KEYS = Object.freeze(['被动']);
+  const passiveSkillTableKeySet = new Set(PASSIVE_SKILL_TABLE_KEYS);
+  function isPassiveSkillTableKey(key = '') {
+    return passiveSkillTableKeySet.has(String(key || '').trim());
+  }
+
   function itemPassiveConsumer() {
     const candidates = [root];
     try { if (root.parent && root.parent !== root) candidates.push(root.parent); } catch (_error) {}
@@ -41694,14 +42447,14 @@ try {
     const output = [];
     const seenObjects = new Set();
     const seenSkills = new Set();
-    const visit = (value, path = '') => {
+    const visit = (value, path = '', inPassiveTable = false) => {
       if (!value || typeof value !== 'object' || seenObjects.has(value)) return;
       seenObjects.add(value);
       if (Array.isArray(value)) {
-        value.forEach((item, index) => visit(item, `${path}:${index}`));
+        value.forEach((item, index) => visit(item, `${path}:${index}`, inPassiveTable));
         return;
       }
-      if (Array.isArray(value?._效果数组) && value._效果数组.length && isPassiveSkill(value)) {
+      if (Array.isArray(value?._效果数组) && value._效果数组.length && (isPassiveSkill(value) || inPassiveTable)) {
         const effectFingerprint = effectArrayHash(value._效果数组);
         const skillId = passiveSkillId(value, path);
         const key = `${skillId}|${effectFingerprint}`;
@@ -41718,7 +42471,7 @@ try {
       }
       Object.entries(value).forEach(([key, child]) => {
         if (/状态效果|战斗历史|历史快照|参战者|复制效果/.test(key)) return;
-        visit(child, path ? `${path}.${key}` : key);
+        visit(child, path ? `${path}.${key}` : key, inPassiveTable || isPassiveSkillTableKey(key));
       });
     };
     roots.forEach((root, index) => visit(root, `技能根${index}`));
@@ -41758,12 +42511,44 @@ try {
     '战斗开始',
     '回合开始',
     '受击前',
+    '致命前',
     '受击后',
     '濒死时',
     '被控制时',
     '命中后',
   ]);
   const passiveTriggerEnumSet = new Set(passiveTriggerEnums);
+  // Phases set off by an event (an action's hit, a fall, a control): only the units the event names are triggered, and
+  // a limit-free payload is scoped to that event.
+  const passiveEventTriggerPhases = Object.freeze(['受击前', '致命前', '受击后', '濒死时', '被控制时', '命中后']);
+  const passiveEventTriggerPhaseSet = new Set(passiveEventTriggerPhases);
+  function unitHasPassivePhase(unit = {}, phase = '') {
+    return collectPassiveSkills(unit).some(({ skill }) => passiveEffectEntries(skill).some(({ effect }) => {
+      const profile = passiveTriggerProfile(skill, effect);
+      return profile.supported && profile.triggerPhase === phase;
+    }));
+  }
+
+  // R1 (被动技能修复方案 2026-11-12) 致命前 (PASSIVE_LETHAL_PHASE): before a hostile damage effect lands on a unit, its
+  // passive fires if that effect would take it down — HP to 0, or in a spar / match (isProtectedBattle) to the life-threat
+  // line, where it is out (用户 2026-11-12：免伤「只在这一击会致命时触发」；切磋、比赛里跌破生命线出局也算致命). The
+  // effect is judged whole (every declared segment), at its settled damage after the answer (defence / clash multiplier)
+  // and the shield that would take it — the same numbers the settlement and the referee's rescue use. Segments are taken
+  // to land (no roll yet: the upper bound of what this hit does); the charges of 免伤 it already holds come off first,
+  // so a unit already covered is not threatened. 免死 and revival are not counted: they keep a unit at 1 HP or bring it
+  // back, they do not undo the fall.
+  const PASSIVE_LETHAL_PHASE = '致命前';
+  function lethalDamageThreat({ worldSnapshot = {}, battleIntent = {}, target = {}, segments = 1, perSegmentDamage = 0,
+    shieldBefore = 0, actionId = '' } = {}) {
+    const hp = readHp(target);
+    if (!(hp > 0) || String(target?.__战斗失能原因 || '').trim()) return false;
+    const segmentCount = Math.max(1, Math.floor(Number(segments || 1)) || 1);
+    const covered = Math.min(segmentCount, ruleBlockCount(target, { segments: segmentCount, actionId }));
+    const incoming = Math.max(0, segmentCount - covered) * Math.max(0, Number(perSegmentDamage || 0));
+    const floor = isProtectedBattle(worldSnapshot, battleIntent)
+      ? calculateNonlethalHpFloor(worldSnapshot, target, battleIntent) : 0;
+    return incoming > 0 && incoming >= Math.max(0, Number(shieldBefore || 0)) + Math.max(0, hp - floor) - 1e-9;
+  }
   const passiveLimitCycles = new Set(['每战', '每回合']);
 
   function readPassiveStructuredField(skill = {}, effect = {}, field = '') {
@@ -41834,11 +42619,21 @@ try {
     );
   }
 
+  // R7 (被动技能修复方案 2026-11-12): the save format writes 立即触发 on every 状态施加 it normalizes (an active skill's
+  // default), so on a passive an effect-level 立即触发 is no trigger the author chose — the skill-level phase stands
+  // (海神威压: 战斗开始 + 眩晕 read as TRIGGER_CONFLICT and never fired). Two different phases an author wrote still conflict.
+  const PASSIVE_FORMAT_DEFAULT_TRIGGER = '立即触发';
+  function passiveAuthoredTriggerEffect(effect = {}) {
+    if (String(effect?.触发方式 ?? '').trim() !== PASSIVE_FORMAT_DEFAULT_TRIGGER) return effect;
+    const { 触发方式: _formatDefault, ...authored } = effect;
+    return authored;
+  }
+
   function passiveTriggerProfile(skill = {}, effect = {}) {
     // The skill's passive phase registers the state; its local delay controls landing.
     const triggerField = effect.原型 === '状态施加' && effect.触发方式 === '延迟触发' && Number(effect.延迟回合) > 0 &&
       passiveTriggerEnumSet.has(skill.触发方式) ? { value: skill.触发方式, conflict: false }
-      : readPassiveStructuredField(skill, effect, '触发方式');
+      : readPassiveStructuredField(skill, passiveAuthoredTriggerEffect(effect), '触发方式');
     const trigger = typeof triggerField.value === 'string'
       ? triggerField.value.trim()
       : '';
@@ -41889,7 +42684,7 @@ try {
 
   function passiveImplicitTriggerPhase(skill = {}, effect = {}) {
     const trigger = String(
-      effect?.触发方式 ?? skill?.触发方式 ?? '',
+      passiveAuthoredTriggerEffect(effect)?.触发方式 ?? skill?.触发方式 ?? '',
     ).trim();
     if (trigger) return '';
     if (
@@ -41898,6 +42693,32 @@ try {
       String(effect?.目标 || '自身').trim() === '自身'
     ) return '受击前';
     return '';
+  }
+
+  // R8: a passive the battle holds (its own tables, not the item consumer's packages) none of whose effects has a phase
+  // it can fire in, and that is no 死亡转存活 (the revival channel needs no phase) — named once at battle start instead of
+  // staying silent (PASSIVE_NEVER_TRIGGERS).
+  function passiveSkillDiagnostics(unit = {}) {
+    const external = new Set([
+      ...(Array.isArray(unit?.__battleRuntime?.itemPassiveTriggeredSkills) ? unit.__battleRuntime.itemPassiveTriggeredSkills : []),
+      ...(equipmentPassiveSkillPackage(unit)?.skills || []),
+    ]);
+    return Object.freeze(collectPassiveSkills(unit).filter(({ skill }) => !external.has(skill)).flatMap(({ skill, skillId, sourcePath }) => {
+      const entries = passiveEffectEntries(skill);
+      const revival = entries.some(({ effect }) => String(effect?.原型 || '').trim() === '规则改写' &&
+        String(effect?.规则 || '').trim() === '死亡转存活' && String(effect?.目标 || '自身').trim() === '自身');
+      const profiles = entries.map(({ effect }) => ({ effect, profile: passiveTriggerProfile(skill, effect),
+        implicit: passiveImplicitTriggerPhase(skill, effect) }));
+      if (revival || profiles.some(({ profile, implicit }) => profile.supported || implicit && profile.unsupportedReason === 'TRIGGER_MISSING')) return [];
+      return [Object.freeze({
+        skillId,
+        skillName: String(skill?.name || skill?.魂技名 || skill?.技能名称 || skill?.名称 || skillId).trim(),
+        sourcePath,
+        carrier: String(skill?.承载方式 || '').trim(),
+        reasons: Object.freeze([...new Set(profiles.map(({ profile }) => profile.unsupportedReason || 'NO_EFFECT'))]),
+        effects: Object.freeze(profiles.map(({ effect, profile }) => `${String(effect?.原型 || '').trim()}:${profile.unsupportedReason || 'OK'}`)),
+      })];
+    }));
   }
 
   function passiveApplicationIdentity(unit, skill, effect, effectIndex, triggerPhase, currentRound = 0, limit = null, triggerEventId = '') {
@@ -41915,7 +42736,7 @@ try {
       phase,
       cycle: String(limit?.cycle || '').trim(),
       round,
-      triggerEventId: eventScoped && ['受击前', '受击后', '濒死时', '被控制时', '命中后'].includes(phase)
+      triggerEventId: eventScoped && passiveEventTriggerPhaseSet.has(phase)
         ? String(triggerEventId || '').trim()
         : '',
     });
@@ -41970,6 +42791,31 @@ try {
     return nextWorld;
   }
 
+  // R5 (被动技能修复方案 2026-11-12): 状态移除 with 状态 '触发来源' removes the control state that set off this 被控制时
+  // trigger — not whatever 任意负面 finds first in the state table. The control still landed (the attacker's hit, its
+  // initiative stand); the holder only does not lose its action. options.triggerControlStates[unitId] lists what landed
+  // ({ key, name }); the row's effect names the state's key. With no such control the effect has nothing to remove.
+  const PASSIVE_TRIGGER_SOURCE_STATE = '触发来源';
+  function passiveTriggerSourceStateKey(unit = {}, sources = []) {
+    const states = unit?.状态效果 && typeof unit.状态效果 === 'object' ? unit.状态效果 : {};
+    for (const source of Array.isArray(sources) ? sources : []) {
+      const key = String(source?.key || '').trim(), name = String(source?.name || '').trim();
+      if (key && Object.hasOwn(states, key)) return key;
+      const byId = key && Object.entries(states).find(([, state]) => String(state?.状态ID || '').trim() === key);
+      if (byId) return byId[0];
+      const byName = name && Object.entries(states).find(([stateKey, state]) => stateKey === name || stateName(state) === name);
+      if (byName) return byName[0];
+    }
+    return '';
+  }
+
+  // R6: a passive with no triggering unit (战斗开始 / 回合开始) aimed at others, whose conditions read 对象 '目标' (龙威:
+  // 文本含龙的敌方目标), judges those conditions on each target it resolves, and takes the ones that meet them — before,
+  // the condition was read on the holder and such an aura never fired.
+  const PASSIVE_TARGETLESS_PHASES = Object.freeze(['战斗开始', '回合开始']);
+  const effectConditionsReadTarget = effect => (Array.isArray(effect?.条件分支) ? effect.条件分支 : []).some(branch =>
+    (Array.isArray(branch?.条件) ? branch.条件 : []).some(condition => String(condition?.对象 || '').trim() === '目标'));
+
   function buildPassiveConsumerEvidence(worldSnapshot = {}, unit = {}, options = {}) {
     const requestedPhase = String(options?.phase || '回合开始').trim();
     const currentRound = Math.max(0, Number(options?.currentRound ?? worldSnapshot?.回合 ?? 0));
@@ -41984,7 +42830,7 @@ try {
         const triggeredUnitIds = new Set((Array.isArray(options?.triggeredUnitIds) ? options.triggeredUnitIds : [])
           .map(value => String(value || '').trim()).filter(Boolean));
         const phaseReady = triggerPhase === requestedPhase;
-        const eventReady = !['受击前', '受击后', '濒死时', '被控制时', '命中后'].includes(triggerPhase) ||
+        const eventReady = !passiveEventTriggerPhaseSet.has(triggerPhase) ||
           triggeredUnitIds.has(actorId);
         const conditionContext = {
           ...(options?.conditionContext && typeof options.conditionContext === 'object' ? options.conditionContext : {}),
@@ -41995,13 +42841,34 @@ try {
           effect,
         };
         const conditionTarget = options?.conditionTarget || options?.triggerTarget || unit;
-        const conditionReady = resolveConditionalEffectPlan(
+        const contextualTargetId = unitId(
+          options?.conditionTarget || options?.primaryTarget || options?.triggerTarget,
+        );
+        const perTargetConditions = !contextualTargetId && PASSIVE_TARGETLESS_PHASES.includes(triggerPhase) && effectConditionsReadTarget(effect);
+        let targetIds = resolveTargets(
+          worldSnapshot,
+          unit,
+          { targetIds: contextualTargetId ? [contextualTargetId] : [] },
+          effect,
+        ).map(unitId).filter(Boolean);
+        if (perTargetConditions) targetIds = targetIds.filter(id => {
+          const recipient = findUnit(worldSnapshot, id);
+          return !!recipient && resolveConditionalEffectPlan(effect, worldSnapshot, unit, recipient, conditionContext).length > 0;
+        });
+        const conditionReady = perTargetConditions ? targetIds.length > 0 : resolveConditionalEffectPlan(
           effect,
           worldSnapshot,
           unit,
           conditionTarget,
           conditionContext,
         ).length > 0;
+        const triggerSourceRemoval = String(effect?.原型 || '').trim() === '状态移除' &&
+          String(effect?.状态 || '').trim() === PASSIVE_TRIGGER_SOURCE_STATE;
+        const triggerSourceKey = triggerSourceRemoval
+          ? passiveTriggerSourceStateKey(unit, options?.triggerControlStates?.[actorId]) : '';
+        const settledEffect = triggerSourceRemoval
+          ? triggerSourceKey ? Object.freeze({ ...effect, 状态: triggerSourceKey, 数量: 1 }) : null
+          : effect;
         const sourceReady = effectSourceRestrictionAllows(effect, options?.environmentContext);
         const applicationIdentity = passiveApplicationIdentity(
           unit,
@@ -42022,15 +42889,6 @@ try {
         const limitReady = profile.limit
           ? markerCount < Number(profile.limit.count || 0)
           : markerCount < 1;
-        const contextualTargetId = unitId(
-          options?.conditionTarget || options?.primaryTarget || options?.triggerTarget,
-        );
-        const targetIds = resolveTargets(
-          worldSnapshot,
-          unit,
-          { targetIds: contextualTargetId ? [contextualTargetId] : [] },
-          effect,
-        ).map(unitId).filter(Boolean);
         rows.push(Object.freeze({
           consumer: 'BattlePreview.buildPassiveConsumerEvidence',
           source: '_效果数组',
@@ -42051,14 +42909,15 @@ try {
           applicationIdentity,
           activationKey,
           targetIds: Object.freeze(targetIds),
-          ready: sourceReady && (profile.supported || Boolean(implicitTriggerPhase && profile.unsupportedReason === 'TRIGGER_MISSING')) && phaseReady && eventReady && conditionReady && limitReady && targetIds.length > 0,
+          ready: sourceReady && (profile.supported || Boolean(implicitTriggerPhase && profile.unsupportedReason === 'TRIGGER_MISSING')) && phaseReady && eventReady && conditionReady && limitReady && targetIds.length > 0 && !!settledEffect,
           sourceReady,
           sourceRestrictions: Object.freeze(Array.isArray(effect?.限定来源) ? [...effect.限定来源] : effect?.限定来源 ? [String(effect.限定来源).trim()] : []),
           blockedByMarker: markerCount >= Number(profile.limit?.count || 1),
           markerCount,
           marker: marker ? Object.freeze({ ...marker }) : null,
           skill,
-          effect,
+          effect: settledEffect || effect,
+          ...(triggerSourceRemoval ? { triggerSourceStateKey: triggerSourceKey } : {}),
         }));
       });
     });
@@ -43614,6 +44473,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }];
   }
 
+  const MARK_DODGE_MIN_PRICING_VERSION = 2;
   function deriveStateCombatEffect(effect = {}) {
     const state = String(effect?.状态 || effect?.状态名称 || '').trim();
     const prototype = String(effect?.原型 || '').trim();
@@ -43839,6 +44699,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (/精神紊乱/.test(state)) {
       combatEffect.random_target_rate = Math.max(Number(combatEffect.random_target_rate || 0), magnitude || 0.25);
       combatEffect.reaction_penalty = Math.max(Number(combatEffect.reaction_penalty || 0), secondaryMagnitude || 0.08);
+    }
+    // 标记原先在预演里没有战斗效果（运行时只把它算作非伤害状态）。用户 2026-11-12 定：被标记者更容易被打中——
+    // 数值 = 被标记者闪避下降（技能描述「闪避率{数值}」，转译状态施加数值说明_V1），缺省 10%。
+    // 只对带当前计价版本戳（MVU_Skill_Runtime 当前技能计价版本_V1 = 2）的技能施加的标记生效；老技能的标记锁定/目标锁定靠同技能里
+    // 另外两条判定修正起作用，标记本身仍无战斗效果（gen1c）。没有来源信息（技能原样估值）时按新规则读。
+    if (state === '标记' && !(effect?.来源计价版本 !== undefined && Number(effect.来源计价版本) < MARK_DODGE_MIN_PRICING_VERSION)) {
+      combatEffect.dodge_penalty = Math.max(Number(combatEffect.dodge_penalty || 0), magnitude || 0.1);
     }
     return combatEffect;
   }
@@ -44581,7 +45448,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   function stateApplicationSourceNames(actor = {}, declaration = {}, effect = {}) {
     const skill = declaration?.skill || {};
     // R01 compares the cast that applied a state, as the runtime does.
-    return { 来源角色: unitName(actor || {}), 来源技能: String(effect?.__来源技能 || skill.魂技名 || skill.name || skill.技能名 || '').trim() };
+    // 来源计价版本（gen1c）：「标记」的战斗效果只对带当前计价版本戳的技能生效，见 deriveStateCombatEffect。
+    return { 来源角色: unitName(actor || {}), 来源技能: String(effect?.__来源技能 || skill.魂技名 || skill.name || skill.技能名 || '').trim(),
+      ...(declaration?.skill && typeof declaration.skill === 'object' ? { 来源计价版本: Number(declaration.skill.计价版本) || 0 } : {}) };
   }
 
   function incomingStateSource(effect = {}, source = {}) {
@@ -44714,6 +45583,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         duration: Math.max(existingDuration, requestedDuration),
         来源角色: String(effect?.来源角色 || existing?.来源角色 || '').trim(),
         ...(sourceSkill ? { 来源技能: sourceSkill, 来源动作ID: String(effect?.来源动作ID || '').trim() } : {}),
+        ...(effect?.来源计价版本 !== undefined ? { 来源计价版本: effect.来源计价版本 } : {}),
         数值: effect?.数值 ?? existing?.数值,
         强度: effect?.强度 ?? existing?.强度,
         ...(effect?.对应等级 !== undefined ? { 对应等级: Number(effect.对应等级) } : {}),
@@ -44744,6 +45614,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ...(String(effect?.原型 || '').trim() === '状态施加' ? { 层数: 1 } : {}),
       来源角色: String(effect?.来源角色 || '').trim(),
       ...(sourceSkill ? { 来源技能: sourceSkill, 来源动作ID: String(effect?.来源动作ID || '').trim() } : {}),
+      ...(effect?.来源计价版本 !== undefined ? { 来源计价版本: effect.来源计价版本 } : {}),
       判定: String(effect?.判定 || '').trim(),
       结算: String(effect?.结算 || '').trim(),
       限定元素: cloneValue(effect?.限定元素 ?? ''),
@@ -45505,9 +46376,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     ));
     const combatEffect = {};
     if (prototype === '规则防御') {
-      if (rule === '免死') combatEffect.death_save_count = Math.max(1, Number(effect?.次数 || 1));
-      else if (rule === '免伤') combatEffect.block_count = Math.max(1, Number(effect?.次数 || 1));
-      else combatEffect.damage_reduction = clamp(magnitude || 0.5, 0, 0.95);
+      const wholeMove = String(effect?.计次 || '').trim() === RULE_DEFENSE_COUNT_MODES.WHOLE_MOVE;
+      if (rule === '免死') {
+        combatEffect.death_save_count = Math.max(1, Number(effect?.次数 || 1));
+        if (wholeMove) combatEffect.death_save_whole_move = true;
+      } else if (rule === '免伤') {
+        combatEffect.block_count = Math.max(1, Number(effect?.次数 || 1));
+        if (wholeMove) combatEffect.block_whole_move = true;
+      } else combatEffect.damage_reduction = clamp(magnitude || 0.5, 0, 0.95);
     } else if (prototype === '规则改写') {
       if (rule === '缴械') combatEffect.disarm = true;
       if (rule === '死亡转存活') {
@@ -45540,6 +46416,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     unit.状态效果 ||= {};
     const sourceKey = String(state.来源技能键 || '').trim();
     const sourcesOf = existing => Array.isArray(existing.来源技能键列表) ? existing.来源技能键列表 : existing.来源技能键 ? [existing.来源技能键] : [];
+    // R2: a spent counted rule defense is no longer there (also one a cast is still landing under: this is a new cast).
+    purgeSpentRuleDefenses(unit, '');
     const sameName = stateEntries(unit).filter(([, existing]) => stateName(existing) === stateName(state));
     // D1: a rule state belongs to its source (施放者 + 技能). The same source's instance takes the same cast's further
     // effects, and refuses another cast while active (R01); another source gets its own instance with its own timer —
@@ -46424,7 +47302,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const ratio = actorId !== targetId ? counterDamageRatio(target) : 0;
       const expectation = expectedSegmentedDamageOutcome({ segments: 1, perSegmentDamage: input.perSegmentDamage,
         hitProbability: input.hitProbability, applicationProbability: 1, ...shieldProfile, hpDamageLimit, preserveHitOutcome: true,
-        deathSaveCount: input.nonlethalHpFloor > 0 ? 0 : deathSaveCount(target), ruleBlockCount: ruleBlockCount(target),
+        deathSaveCount: input.nonlethalHpFloor > 0 ? 0 : deathSaveCount(target, { segments: 1, actionId: context.rootActionId }),
+        ruleBlockCount: ruleBlockCount(target, { segments: 1, actionId: context.rootActionId }), ruleBlockCastId: context.rootActionId,
         reviveTarget: !input.nonlethalHpFloor && hasDamageRevival(target) ? target : null,
         reflection: damageFollowUp(actor, target, context.declaration?.skill) });
       const index = context.damageSegmentOutcomeResolver({ effectInstanceId: context.effectInstanceId, targetId, segment,
@@ -46441,8 +47320,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (selected.incoming > 0 || selected.ruleBlockConsumed > 0) hitCount += 1;
         overlay.changeUnit(targetId, unit => {
           absorbPreviewShield(unit, selected.shieldAbsorb, input.effect, actor);
-          if (selected.deathSaveConsumed > 0) consumeDeathSaveCharges(unit, selected.deathSaveConsumed);
-          if (selected.ruleBlockConsumed > 0) consumeRuleBlockCharges(unit, selected.ruleBlockConsumed);
+          if (selected.deathSaveConsumed > 0) consumeDeathSaveCharges(unit, selected.deathSaveConsumed, { actionId: context.rootActionId });
+          if (selected.ruleBlockConsumed > 0) consumeRuleBlockCharges(unit, selected.ruleBlockConsumed, { actionId: context.rootActionId });
           applyDamageRevivalOutcomes(unit, [{ ...selected, probability: 1 }]);
           setHp(unit, readHp(unit) - selected.hpDamage + Number(selected.reviveHealing || 0));
           if (segmentNonlethal) unit.__战斗失能原因 = 'INCAPACITATED';
@@ -46799,8 +47678,48 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             damageContext.nodeBudget.count += Number(prelude.nodeCount || 0);
             if (damageContext.nodeBudget.count > damageContext.nodeBudget.limit) throw new Error('DECISION_PREVIEW_BUDGET_EXCEEDED');
           }
+          // R1 致命前: judged on the world after 受击前, with the numbers the hit below settles at (as the runtime does).
+          let lethalPrelude = null;
+          if (prior && unitHasPassivePhase(overlay.readUnit(unitId(target)) || target, PASSIVE_LETHAL_PHASE)) {
+            const threatActor = overlay.readUnit(unitId(damageActor)) || damageActor, threatTarget = overlay.readUnit(unitId(target)) || target;
+            const threatProjection = changed.length && damageContext.projectionContext
+              ? deriveMechanicalProjectionContext(damageContext.projectionContext, overlay.snapshot(), changed) : damageContext.projectionContext || null;
+            const threatMultiplier = clamp(Number((typeof damageContext.damageMultiplierResolver === 'function'
+              ? damageContext.damageMultiplierResolver({ targetId: unitId(target), actor: threatActor, effect, effectInstanceId: damageContext.effectInstanceId })
+              : null) ?? responseOverrideValue(damageContext.damageMultiplierByTarget, unitId(target)) ?? 1), 0, 1);
+            const threatEnvironment = clamp(Number(damageContext.environmentDamageMultiplierByTarget?.get?.(unitId(target)) ??
+              damageContext.environmentDamageMultiplierByTarget?.[unitId(target)] ?? 1), 0, 1);
+            const threatSegments = Math.max(1, Math.floor(Number(effect?.攻击段数 ?? effect?.段数 ?? 1)) || 1);
+            const threatBasis = buildDamageBasis(effect, threatActor, threatTarget, threatProjection, {
+              basisView: damageContext.basisView || 'DECISION_VISIBLE', effectInstanceId: damageContext.effectInstanceId,
+              sourceEffectId: damageContext.effectInstanceId, sourceActionId: damageContext.rootActionId,
+              snapshotRevision: damageContext.snapshotRevision, actionDamageMultiplier: damageContext.actionDamageMultiplier, targetCount,
+              reactionDamageMultiplier: threatMultiplier,
+              resourceDriveEnabled: String(damageContext.declaration?.actionKind || '').trim().toUpperCase() !== 'BASIC_ATTACK',
+            });
+            const threatEvade = clamp(Number(responseOverrideValue(damageContext?.evadeProbabilityByTarget, unitId(target)) ??
+              damageContext?.evadeProbability ?? 0), 0, 1);
+            const threatened = threatEvade < 1 - 1e-12 && lethalDamageThreat({ worldSnapshot: overlay.snapshot(), battleIntent: damageContext.battleIntent || {},
+              target: threatTarget, segments: threatSegments, actionId: damageContext.rootActionId,
+              perSegmentDamage: calculateSettledSegmentDamage(threatBasis.operands.rawDamage, threatSegments, threatMultiplier * threatEnvironment),
+              shieldBefore: incomingShieldProfile(threatTarget, effect, threatActor).shieldBefore });
+            lethalPrelude = threatened ? damageContext.damagePreludeResolver({ worldSnapshot: overlay.snapshot(), actor: threatActor,
+              target: threatTarget, targetId: unitId(target), effect, effectInstanceId: damageContext.effectInstanceId,
+              rootActionId: damageContext.rootActionId, declaration: damageContext.declaration, phase: PASSIVE_LETHAL_PHASE,
+              evadeProbability: threatEvade }) : null;
+            if (lethalPrelude) {
+              listUnits(lethalPrelude.world).forEach(({ unit }) => {
+                if (unit !== overlay.readUnit(unitId(unit))) { overlay.writeUnit(unit); if (!changed.includes(unitId(unit))) changed.push(unitId(unit)); }
+              });
+              for (const entry of lethalPrelude.pending || []) ledger.addOutcome({ ...entry, rootActionId: entry.rootCauseId });
+              for (const event of lethalPrelude.scheduledEvents || []) overlay.schedule(event);
+              for (const [key, value] of Object.entries(lethalPrelude.changedRules || {})) overlay.writeRule(key, value);
+              damageContext.nodeBudget.count += Number(lethalPrelude.nodeCount || 0);
+              if (damageContext.nodeBudget.count > damageContext.nodeBudget.limit) throw new Error('DECISION_PREVIEW_BUDGET_EXCEEDED');
+            }
+          }
           const specialBoundary = typeof damageContext.specialPassiveResolver === 'function';
-          const actor = prelude || specialBoundary ? overlay.readUnit(unitId(damageActor)) || damageActor : damageActor;
+          const actor = prelude || lethalPrelude || specialBoundary ? overlay.readUnit(unitId(damageActor)) || damageActor : damageActor;
           const context = changed.length || specialBoundary ? { ...damageContext, actor, worldSnapshot: overlay.snapshot(),
             projectionContext: damageContext.projectionContext
               ? deriveMechanicalProjectionContext(damageContext.projectionContext, overlay.snapshot(),
@@ -46838,7 +47757,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             context?.applicationProbability ??
             1
           ), 0, 1);
-          const evadeProbability = clamp(Number(
+          // R1: under a 致命前 frame the dodge is already decided (dodged: no trigger; landed: triggered).
+          const evadeProbability = lethalPrelude && typeof lethalPrelude.lethalEvaded === 'boolean'
+            ? (lethalPrelude.lethalEvaded ? 1 : 0)
+            : clamp(Number(
             responseOverrideValue(context?.evadeProbabilityByTarget, unitId(target)) ??
             context?.evadeProbability ??
             0
@@ -46896,10 +47818,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             ? calculateNonlethalHpFloor(overlay.snapshot(), currentTarget, context?.battleIntent || {})
             : 0;
           const hpDamageLimit = nonlethalIntent ? Math.max(0, readHp(currentTarget) - nonlethalHpFloor) : readHp(currentTarget);
-          const availableDeathSaves = nonlethalHpFloor > 0 ? 0 : deathSaveCount(currentTarget);
-          const availableRuleBlocks = ruleBlockCount(currentTarget);
           const shieldProfile = incomingShieldProfile(currentTarget, effect, actor), shieldBefore = shieldProfile.shieldBefore;
           const segments = Math.max(1, Math.floor(Number(effect?.攻击段数 ?? effect?.段数 ?? 1)) || 1);
+          const chargeScope = { segments, actionId: context.rootActionId };
+          const availableDeathSaves = nonlethalHpFloor > 0 ? 0 : deathSaveCount(currentTarget, chargeScope);
+          const availableRuleBlocks = ruleBlockCount(currentTarget, chargeScope);
           const perSegmentDamage = calculateSettledSegmentDamage(
             rawDamage,
             segments,
@@ -46968,7 +47891,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                   branchReactionMultiplier * environmentDamageMultiplier),
                 hitProbability: clamp(branchResolvedHit !== null && branchResolvedHit !== undefined && Number.isFinite(Number(branchResolvedHit))
                   ? Number(branchResolvedHit) : branchBaseHit, 0, 1),
-                hpDamageLimit: Math.max(0, hpBefore - nonlethalHpFloor), deathSaveCount: nonlethalHpFloor > 0 ? 0 : deathSaveCount(branchTarget), ruleBlockCount: ruleBlockCount(branchTarget),
+                hpDamageLimit: Math.max(0, hpBefore - nonlethalHpFloor), deathSaveCount: nonlethalHpFloor > 0 ? 0 : deathSaveCount(branchTarget, chargeScope), ruleBlockCount: ruleBlockCount(branchTarget, chargeScope),
                 reviveTarget: !nonlethalHpFloor && hasDamageRevival(branchTarget) ? branchTarget : null,
                 reflection: damageFollowUp(branchActor, branchTarget, context.declaration?.skill),
                 assignments: Object.freeze({ ...branch.assignments }) };
@@ -47012,6 +47935,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             reflection,
             deathSaveCount: availableDeathSaves,
             ruleBlockCount: availableRuleBlocks,
+            ruleBlockCastId: context.rootActionId,
             preserveHitOutcome,
             segments,
             perSegmentDamage,
@@ -47028,6 +47952,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             reflection,
             deathSaveCount: availableDeathSaves,
             ruleBlockCount: availableRuleBlocks,
+            ruleBlockCastId: context.rootActionId,
             preserveHitOutcome,
             segments,
             perSegmentDamage,
@@ -47151,9 +48076,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           if (!reactiveDamage) overlay.changeUnit(unitId(target), unit => {
             shieldAbsorb = absorbPreviewShield(unit, expectedShieldAbsorb, effect, actor);
             const consumed = typeof context.damageOutcomeResolver === 'function' ? Number(outcomeDistribution[0]?.deathSaveConsumed || 0) : Number(damageExpectation.expectedDeathSaveConsumed || 0);
-            if (consumed > 0) consumeDeathSaveCharges(unit, consumed);
+            if (consumed > 0) consumeDeathSaveCharges(unit, consumed, { actionId: context.rootActionId });
             const blocked = typeof context.damageOutcomeResolver === 'function' ? Number(outcomeDistribution[0]?.ruleBlockConsumed || 0) : Number(damageExpectation.expectedRuleBlockConsumed || 0);
-            if (blocked > 0) consumeRuleBlockCharges(unit, blocked);
+            if (blocked > 0) consumeRuleBlockCharges(unit, blocked, { actionId: context.rootActionId });
             applyDamageRevivalOutcomes(unit, typeof context.damageOutcomeResolver === 'function' ? outcomeDistribution : damageExpectation.outcomeDistribution);
             setHp(unit, readHp(unit) - expectedDamage + expectedReviveHealing);
           });
@@ -48968,12 +49893,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     } finally {
       context.nodeBudget.activeFingerprints.delete(activeFingerprint);
       if (specialPreviousHp) {
-        const appliedControlIds = ledger.entries.slice(specialFactStart).filter(entry =>
+        const controlEntries = ledger.entries.slice(specialFactStart).filter(entry =>
           entry.effectInstanceId === context.effectInstanceId && entry.evidence?.prototype === '状态施加' &&
           entry.evidence.marginal !== false && contributionProbability(entry) > 0 &&
-          reactiveControlState({ 状态: entry.evidence.state, 战斗效果: entry.evidence.combatEffect }))
-          .map(entry => entry.targetId);
-        settleProjectedPassiveBoundary(overlay, ledger, context, specialPreviousHp, appliedControlIds);
+          reactiveControlState({ 状态: entry.evidence.state, 战斗效果: entry.evidence.combatEffect }));
+        const appliedControlIds = controlEntries.map(entry => entry.targetId);
+        // R5: which control landed on whom (触发来源).
+        const controlStates = {};
+        controlEntries.forEach(entry => (controlStates[entry.targetId] ||= []).push({
+          key: String(entry.evidence?.projectedStateKey || '').trim(), name: String(entry.evidence?.state || '').trim() }));
+        settleProjectedPassiveBoundary(overlay, ledger, context, specialPreviousHp, appliedControlIds, null, '', controlStates);
       }
     }
   }
@@ -53028,23 +53957,27 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
   }
 
+  // Phases settled before a hostile damage effect lands on its target: 受击前 always, 致命前 when the hit threatens it.
+  const beforeDamagePassivePhases = Object.freeze(['受击前', PASSIVE_LETHAL_PHASE]);
   function hasBeforeActionPassives(result, deferredEffectIds = null) {
     const beforeTargets = new Set((result.contributions || []).filter(entry => entry.actionRole !== 'STATE_TICK' &&
       !deferredEffectIds?.has(entry.effectInstanceId) && entry.evidence?.damageBasis).map(entry => entry.targetId));
     return beforeTargets.size > 0 && listUnits(result.afterSnapshot).some(({ unit }) =>
       beforeTargets.has(unitId(unit)) && collectPassiveSkills(unit).some(({ skill }) =>
-        collectEffects(skill).some(effect => passiveTriggerProfile(skill, effect).triggerPhase === '受击前')));
+        collectEffects(skill).some(effect => beforeDamagePassivePhases.includes(passiveTriggerProfile(skill, effect).triggerPhase))));
   }
 
+  // args.phase: '受击前' (default) or 致命前 (the projection asks only when lethalDamageThreat holds).
   function beforeDamagePassiveFrames(input, args, projectionOptions = {}) {
+    const phase = args.phase === PASSIVE_LETHAL_PHASE ? PASSIVE_LETHAL_PHASE : '受击前';
     if (!collectPassiveSkills(args.target).some(({ skill }) => collectEffects(skill).some(effect =>
-      passiveTriggerProfile(skill, effect).triggerPhase === '受击前'))) return null;
+      passiveTriggerProfile(skill, effect).triggerPhase === phase))) return null;
     return passivePhaseFrames({ world: args.worldSnapshot, probability: 1, pending: [],
-      scheduledEvents: [], changedUnitIds: [], changedRules: {}, nodeCount: 0 }, input, '受击前', {
+      scheduledEvents: [], changedUnitIds: [], changedRules: {}, nodeCount: 0 }, input, phase, {
       ...projectionOptions, triggeredUnitIds: [args.targetId], triggerEventId: args.rootActionId, declaration: input.declaration,
       triggerTarget: args.target, primaryTarget: args.target, conditionTarget: args.actor,
       conditionContext: { primaryTarget: args.target, conditionTarget: args.actor }, captureResult: true,
-      resultSuffix: `:before:${args.effectInstanceId}:${args.targetId}`,
+      resultSuffix: `:${phase === PASSIVE_LETHAL_PHASE ? 'lethal' : 'before'}:${args.effectInstanceId}:${args.targetId}`,
       triggerSourceEffectId: args.effectInstanceId, triggerTargetId: args.targetId,
     });
   }
@@ -53083,6 +54016,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     let frames = [{ world: args.worldSnapshot, probability: 1, pending: [], scheduledEvents: [], changedUnitIds: [], changedRules: {}, nodeCount: 0 }];
     for (const { phase, triggeredUnitIds } of events) frames = frames.flatMap(frame => passivePhaseFrames(frame, input, phase, {
       ...projectionOptions, triggeredUnitIds, triggerEventId: args.rootActionId, declaration: input.declaration,
+      ...(phase === '被控制时' && args.controlStates ? { triggerControlStates: args.controlStates } : {}),
       triggerSourceEffectId: args.effectInstanceId, triggerSegment: args.segment,
       triggerTargetId: args.targetId || unitId(primaryTarget), primaryTarget, conditionTarget: actor,
       conditionContext: { primaryOutcome: 'HIT', primarySucceeded: true, primaryTarget, conditionTarget: actor },
@@ -53091,8 +54025,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return frames;
   }
 
-  function settleProjectedPassiveBoundary(overlay, ledger, context, previousHp, appliedControlIds = [], segment = null, targetId = '') {
-    const frame = context.specialPassiveResolver({ worldSnapshot: overlay.snapshot(), previousHp, appliedControlIds, segment, targetId,
+  function settleProjectedPassiveBoundary(overlay, ledger, context, previousHp, appliedControlIds = [], segment = null, targetId = '', controlStates = {}) {
+    const frame = context.specialPassiveResolver({ worldSnapshot: overlay.snapshot(), previousHp, appliedControlIds, controlStates, segment, targetId,
       rootActionId: context.rootActionId, effectInstanceId: context.effectInstanceId, actorId: unitId(context.actor),
       declaration: context.declaration, actionStartSnapshot: context.actionStartSnapshot });
     if (!frame) return;
@@ -53124,7 +54058,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const stateTick = String(input.actionRole || input.actionOpportunity?.role || input.declaration?.actionRole || '').toUpperCase() === 'STATE_TICK';
     const hasBeforePassives = !stateTick && listUnits(input.worldSnapshot).some(({ unit }) =>
       collectPassiveSkills(unit).some(({ skill }) => collectEffects(skill).some(effect =>
-        passiveTriggerProfile(skill, effect).triggerPhase === '受击前')));
+        beforeDamagePassivePhases.includes(passiveTriggerProfile(skill, effect).triggerPhase))));
     const hasSpecialPassives = !stateTick && input.basisView !== 'RUNTIME_ACTUAL' && !input.declaration?.__structuredSourceActionId &&
       listUnits(input.worldSnapshot).some(({ unit }) =>
       collectPassiveSkills(unit).some(({ skill }) => collectEffects(skill).some(effect =>
@@ -53206,7 +54140,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         },
         ...(hasBeforePassives ? { damagePreludeResolver: args => {
           const resources = beforeFrames ? projectedResourceWorldState(args.worldSnapshot) : null;
-          const key = beforeFrames ? JSON.stringify([args.rootActionId, args.effectInstanceId, args.targetId]) : '';
+          const key = beforeFrames ? JSON.stringify([args.rootActionId, args.effectInstanceId, args.targetId, args.phase || '受击前']) : '';
           const bucket = beforeFrames?.get(key);
           const cached = bucket?.find(row => options.beforePassiveFrameEqual(row.args, args) &&
             options.beforePassiveFrameEqual(row.resources, resources));
@@ -53217,13 +54151,19 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           } else {
             if (beforeFrames) metrics.beforePassiveFrameCacheBuilds += 1;
             frames = beforeDamagePassiveFrames(input, args, options);
+            // R1: 致命前 does not fire on a hit the target dodges — one frame per dodge outcome.
+            const evade = args.phase === PASSIVE_LETHAL_PHASE ? clamp(Number(args.evadeProbability || 0), 0, 1) : 0;
+            if (frames && evade > 1e-12) frames = [
+              { world: args.worldSnapshot, probability: evade, pending: [], scheduledEvents: [], changedUnitIds: [], changedRules: {}, nodeCount: 0, lethalEvaded: true },
+              ...frames.map(frame => ({ ...frame, probability: frame.probability * (1 - evade), lethalEvaded: false })),
+            ];
             if (beforeFrames && beforeFrameCount < 64) {
               const row = { args, resources, frames };
               if (bucket) bucket.push(row); else beforeFrames.set(key, [row]);
               beforeFrameCount += 1;
             }
           }
-          return frames ? frames[choose('damage-prelude', args.effectInstanceId, args.targetId, frames)] : null;
+          return frames ? frames[choose(args.phase === PASSIVE_LETHAL_PHASE ? 'damage-lethal-prelude' : 'damage-prelude', args.effectInstanceId, args.targetId, frames)] : null;
         } } : {}),
         ...(hasSpecialPassives ? { specialPassiveResolver: args => {
           const frames = specialPassiveBoundaryFrames(input, args, options);
@@ -53378,6 +54318,40 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return expected;
   }
 
+  // R4, as the runtime consumer settles it (BattleRuntime payPassiveTrigger): the skill's trigger price once per activation
+  // in this frame (passiveSkillTriggerCosts), then the effect's own 触发消耗. Returns the frame to continue from; ok false
+  // means the trigger does not happen (a price paid before the failing one stays paid, as in the runtime).
+  function payProjectedPassiveTrigger(current, row, id, actionId, phase, options = {}) {
+    let frame = current;
+    const fees = new ContributionLedger();
+    const pay = (costs, kind) => {
+      const payer = findUnit(frame.world, id), payment = assessResourcePayment([payer], costs.values);
+      if (costs.非法项.length || !payment.valid || !payment.ok) return false;
+      const paid = unitAfterResourceCosts(payer, costs.values);
+      if (options.captureResult) for (const resource of Object.keys(costs.values)) {
+        const before = readResource(payer, resource), next = readResource(paid, resource);
+        if (next !== before) fees.addOutcome({ rootActionId: actionId, actorId: id, actionRole: 'STATE_TICK',
+          effectInstanceId: `${actionId}:${kind}:${resource}`, targetId: id, windowId: 'ACTION_COST', resourceKey: resource,
+          outcomeKind: resource === '生命' ? 'HP_DELTA' : 'RESOURCE_OPTION_CHANGED',
+          evidence: { resource, before, next, delta: next - before, triggerPhase: phase, passiveApplicationKey: row.applicationKey } });
+      }
+      frame = { ...frame, world: replaceResolvedWorldUnit(frame.world, id, paid) };
+      return true;
+    };
+    const finish = ok => ({ ok, frame: fees.entries.length ? { ...frame, pending: [...(frame.pending || []), ...fees.entries] } : frame });
+    const skillCosts = passiveSkillTriggerCosts(row.skill);
+    if (skillCosts) {
+      const activation = String(row.activationKey || row.applicationKey || '').trim();
+      if (!(frame.paidPassiveActivations || []).includes(activation)) {
+        if (!pay(skillCosts, 'skill-trigger-cost')) return finish(false);
+        frame = { ...frame, paidPassiveActivations: [...(frame.paidPassiveActivations || []), activation] };
+      }
+    }
+    const raw = row.effect?.触发消耗;
+    if (raw !== undefined && raw !== null && raw !== '' && raw !== '无' && !pay(readPassiveTriggerCosts(row.effect), 'trigger-cost')) return finish(false);
+    return finish(true);
+  }
+
   function passivePhaseFrames(delivery, request, phase, options = {}) {
     let active = [delivery];
     for (const { unit } of listUnits(delivery.world)) {
@@ -53392,9 +54366,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           phase, currentRound: Number(options.currentRound ?? entry.world.回合) }).filter(row => row.ready);
         let frames = [entry];
         for (const row of rows) frames = frames.flatMap(current => {
-          const currentActor = findUnit(current.world, id);
-          if (!currentActor || !isPhysicallyAlive(currentActor)) return [current];
+          if (!findUnit(current.world, id) || !isPhysicallyAlive(findUnit(current.world, id))) return [current];
           const actionId = `passive-consumer:${row.applicationKey}${options.resultSuffix || ''}`;
+          // R4: the trigger is paid before anything happens; unpaid, nothing happens and nothing is counted.
+          const payment = payProjectedPassiveTrigger(current, row, id, actionId, phase, options);
+          if (!payment.ok) return [payment.frame];
+          current = payment.frame;
+          const currentActor = findUnit(current.world, id);
           const stage = actorSuppressesEffect(currentActor, row.effect)
             ? null : root.__LWCS_BATTLE_RUNTIME__.buildPassiveStageState(row, id);
           if (stage) {
@@ -53494,22 +54472,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 entry.evidence?.persistentStateOperation || entry.evidence?.suppressionAdded || Object.keys(entry.evidence?.stateEntries || {}).length ||
                 entry.evidence?.durationChanges?.some(change => Number(change.tickDelta || 0) || Number(change.settlementDelta || 0)) ||
                 entry.evidence?.outcomeDistribution?.some(outcome => outcome.probability > 0 && outcome.hitCounts?.some(count => count > 0))));
+            // The trigger's price was paid before the projection (payProjectedPassiveTrigger).
             const fees = new ContributionLedger();
-            if (applied) {
-              const payer = findUnit(world, id), payment = assessResourcePayment([payer], costs.values);
-              if (!costs.非法项.length && payment.valid && payment.ok) {
-                const paid = unitAfterResourceCosts(payer, costs.values);
-                if (options.captureResult) for (const resource of Object.keys(costs.values)) {
-                  const before = readResource(payer, resource), next = readResource(paid, resource);
-                  if (next !== before) fees.addOutcome({ rootActionId: actionId, actorId: id, actionRole: 'STATE_TICK',
-                    effectInstanceId: `${actionId}:trigger-cost:${resource}`, targetId: id, windowId: 'ACTION_COST', resourceKey: resource,
-                    outcomeKind: resource === '生命' ? 'HP_DELTA' : 'RESOURCE_OPTION_CHANGED',
-                    evidence: { resource, before, next, delta: next - before, triggerPhase: phase, passiveApplicationKey: row.applicationKey } });
-                }
-                world = replaceResolvedWorldUnit(world, id, paid);
-              }
-              world = markPassiveApplication(world, row);
-            }
+            if (applied) world = markPassiveApplication(world, row);
             if (options.metrics) options.metrics.r9v2RoundPassiveBranchesEvaluated += 1;
             branches.push({ ...current, world, probability: current.probability * probability,
               ...(options.captureApplications ? { applications: [...(current.applications || []), Object.freeze({
@@ -55780,8 +56745,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         overlay.changeUnit(targetId, unit => {
           absorbPreviewShield(unit, Math.max(0, payload.damageOutcome.shieldAbsorb), payload.damageOutcome.incomingEffect || {},
             overlay.readUnit(event.sourceActorId) || {});
-          if (payload.damageOutcome.deathSaveConsumed > 0) consumeDeathSaveCharges(unit, payload.damageOutcome.deathSaveConsumed);
-          if (payload.damageOutcome.ruleBlockConsumed > 0) consumeRuleBlockCharges(unit, payload.damageOutcome.ruleBlockConsumed);
+          const chargeCast = { actionId: event.rootActionId || event.sourceActionId || '' };
+          if (payload.damageOutcome.deathSaveConsumed > 0) consumeDeathSaveCharges(unit, payload.damageOutcome.deathSaveConsumed, chargeCast);
+          if (payload.damageOutcome.ruleBlockConsumed > 0) consumeRuleBlockCharges(unit, payload.damageOutcome.ruleBlockConsumed, chargeCast);
           if (payload.damageOutcome.revival) applyDamageRevivalOutcomes(unit, [{ probability: 1, revival: payload.damageOutcome.revival }]);
           setResourceValue(unit, '生命', Math.max(0, readHp(unit) - Math.max(0, payload.damageOutcome.hpDamage) + Number(payload.damageOutcome.reviveHealing || 0)));
         });
@@ -57626,7 +58592,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const margin = own > CONTINUOUS_ACTION_BUDGET ? -Infinity
       : theirTime > 0 ? 1 - ownTime / theirTime : ownTime > 0 ? -Infinity : 0;
     return Object.freeze({ own, theirs, ownAgility, theirAgility, margin,
-      confidence: clamp(0.5 + 0.5 * margin / PREEMPT_SURE_MARGIN, 0, 1),
+      // 接战链 阶段 2f: one-sided where an observed bound holds a believed unit (oneSidedTimingConfidence); the margin
+      // with the agility scaled: 1 − own × their agility × a ÷ (their windup × own agility × r).
+      confidence: oneSidedTimingConfidence(attacker, reactor, margin, clamp(0.5 + 0.5 * margin / PREEMPT_SURE_MARGIN, 0, 1),
+        (a = 1, r = 1) => own > CONTINUOUS_ACTION_BUDGET ? -Infinity : theirTime > 0 ? 1 - ownTime * a / (theirTime * r) : margin),
       faster: own <= CONTINUOUS_ACTION_BUDGET && ownTime <= theirTime + 1e-9 });
   }
   // The chance a preemption holds, read off the attacker before and after the control's own settlement as the preview
@@ -57795,6 +58764,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     interceptWindupBudget,
     clashWindupBudget,
     clashTiming,
+    engagementAgilityBounds,
     basicAttackWindup,
     CONTINUOUS_ACTION_BUDGET,
     refreshStaminaAdjustedFinal,
@@ -57870,7 +58840,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     ENGAGEMENT_RULES: Object.freeze({ DODGE_BASE, DODGE_SHARE_SLOPE, DODGE_BASE_FLOOR, DODGE_BASE_CAP, DODGE_WINDUP_SWING, DODGE_AREA_PENALTY,
       DODGE_FLOOR, DODGE_CAP, WINDUP_PIVOT, WINDUP_SPAN, GUARD_LIGHT, GUARD_HEAVY, GUARD_TYPICAL, GUARD_LIGHT_SHARE, GUARD_EVEN_SHARE,
       GUARD_HEAVY_SHARE, GUARD_CAP, COUNTER_GUARD_HELD, COUNTER_BASE, COUNTER_WINDUP_SWING, COUNTER_FLOOR, COUNTER_CAP,
-      COUNTER_STAMINA_FACTOR, COUNTER_STAMINA_STEP, COUNTER_FADE, COUNTER_STANCE_BONUS, CLASH_WIN, CLASH_SHOCK, PREEMPT_SURE_MARGIN, CLASH_READ_MARGIN }),
+      COUNTER_STAMINA_FACTOR, COUNTER_STAMINA_STEP, COUNTER_FADE, COUNTER_STANCE_BONUS, CLASH_WIN, CLASH_SHOCK, PREEMPT_SURE_MARGIN, CLASH_READ_MARGIN,
+      // 接战链 阶段三: the referee (INTERCEPT_WINDUP is also its step per fighter saved in a round).
+      REFEREE_SAFE, INTERCEPT_WINDUP }),
     compileMechanicalBasis,
     compileMechanicalProjectionContext,
     recursionDepthLimit: MAX_RECURSION_DEPTH,
@@ -57891,6 +58863,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     consumeDeathSaveCharges,
     ruleBlockCount,
     consumeRuleBlockCharges,
+    purgeSpentRuleDefenses,
+    RULE_DEFENSE_COUNT_MODES,
     triggerRevive,
     passiveRevivalBudget,
     counterDamageRatio,
@@ -57904,6 +58878,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     refreshSustainRuntimeLoad,
     clearC2FoodMaintenanceRuntime,
     isPassiveSkill,
+    PASSIVE_TRIGGER_PHASES: passiveTriggerEnums,
+    PASSIVE_LETHAL_PHASE,
+    unitHasPassivePhase,
+    lethalDamageThreat,
+    isPassiveSkillTableKey,
+    PASSIVE_SKILL_TABLE_KEYS,
+    passiveSkillDiagnostics,
+    passiveSkillTriggerCosts,
+    PASSIVE_SKILL_COST_TRIGGER_SCOPE,
     collectPassiveSkills,
     equipmentPassiveSkillPackage,
     contentFingerprint,
@@ -57942,6 +58925,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     INJURY_STAMINA_SHARE,
     INTERCEPT_WINDUP,
     REACTION_DEFENDER_MARGIN,
+    // 接战链 阶段三: the referee as a neutral guard.
+    REFEREE_SAFE,
+    refereeTiming,
+    refereeCutFactor,
+    refereeGuardEffects,
+    refereeGuardScale,
+    refereeBlock,
     sampleSignedValue,
     sampleSignedValueExpression,
     assessWorldAction,
@@ -68696,6 +69686,38 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     [110, {str: 2.24, def: 1.96, agi: 1.11, men_max: 8.27, sp_max: 1.02, hp_max: 1.52, vit_max: 1.52}],
   ]);
 
+  // 接战链 阶段 2e (方案 §13.2、§14.1): the system shape above is one guess for five systems (强攻/控制/元素/精神/召唤 all
+  // 0.96 for agility) and the level table is fitted over mixed systems, so an unseen enemy's agility was systematically off
+  // by its (public) system — measured on same-level pairs of the test roles, believed ÷ true: 敏攻 0.85, 控制 0.90,
+  // 强攻 0.95 against 元素 1.19, 治疗 1.19 — and clashes and preemptions misjudged in time came mostly from it. This is
+  // the median real ÷ pictured agility per system and level of characters from the game's own generator (seeds of their
+  // own, the decision's battle-start panel; handoff stage2e/agility-shape-calibration.mjs, 12 seeds a cell, the
+  // generator's rejects skipped). The picture of the level itself (strengthRange, perceivedLevel) is untouched.
+  const SYSTEM_AGILITY_CORRECTION_BY_LEVEL = Object.freeze([
+    [10, { 强攻系: 1.22, 敏攻系: 1.45, 元素系: 0.97, 控制系: 1.33, 防御系: 1.04, 辅助系: 0.98, 治疗系: 0.98, 精神系: 0.97, 食物系: 0.98, 召唤系: 0.97 }],
+    [20, { 强攻系: 1.21, 敏攻系: 1.44, 元素系: 0.99, 控制系: 1.34, 防御系: 1.08, 辅助系: 0.99, 治疗系: 1.00, 精神系: 0.99, 食物系: 0.98, 召唤系: 0.99 }],
+    [30, { 强攻系: 1.19, 敏攻系: 1.42, 元素系: 0.95, 控制系: 1.32, 防御系: 1.05, 辅助系: 0.97, 治疗系: 0.98, 精神系: 0.94, 食物系: 0.98, 召唤系: 0.96 }],
+    [35, { 强攻系: 1.19, 敏攻系: 1.37, 元素系: 0.97, 控制系: 1.31, 防御系: 1.05, 辅助系: 0.98, 治疗系: 0.98, 精神系: 0.97, 食物系: 0.98, 召唤系: 0.97 }],
+    [40, { 强攻系: 1.20, 敏攻系: 1.35, 元素系: 0.97, 控制系: 1.29, 防御系: 1.05, 辅助系: 1.00, 治疗系: 0.98, 精神系: 0.97, 食物系: 0.98, 召唤系: 0.97 }],
+    [50, { 强攻系: 1.18, 敏攻系: 1.37, 元素系: 0.96, 控制系: 1.29, 防御系: 1.08, 辅助系: 0.99, 治疗系: 0.99, 精神系: 1.03, 食物系: 0.97, 召唤系: 0.96 }],
+    [55, { 强攻系: 1.13, 敏攻系: 1.30, 元素系: 0.91, 控制系: 1.23, 防御系: 1.06, 辅助系: 0.94, 治疗系: 0.95, 精神系: 0.93, 食物系: 0.93, 召唤系: 0.94 }],
+    [60, { 强攻系: 1.14, 敏攻系: 1.23, 元素系: 0.87, 控制系: 1.17, 防御系: 0.99, 辅助系: 0.90, 治疗系: 0.96, 精神系: 0.88, 食物系: 0.89, 召唤系: 0.87 }],
+    [70, { 强攻系: 1.07, 敏攻系: 1.15, 元素系: 0.88, 控制系: 1.14, 防御系: 0.99, 辅助系: 0.94, 治疗系: 0.92, 精神系: 0.90, 食物系: 0.90, 召唤系: 0.87 }],
+    [75, { 强攻系: 1.09, 敏攻系: 1.20, 元素系: 0.95, 控制系: 1.20, 防御系: 1.02, 辅助系: 0.92, 治疗系: 0.93, 精神系: 0.94, 食物系: 0.94, 召唤系: 0.93 }],
+    [80, { 强攻系: 1.12, 敏攻系: 1.21, 元素系: 0.93, 控制系: 1.19, 防御系: 1.04, 辅助系: 0.93, 治疗系: 0.94, 精神系: 0.96, 食物系: 0.94, 召唤系: 0.93 }],
+    [90, { 强攻系: 1.07, 敏攻系: 1.08, 元素系: 0.89, 控制系: 1.12, 防御系: 0.98, 辅助系: 0.87, 治疗系: 0.87, 精神系: 0.89, 食物系: 0.93, 召唤系: 0.87 }],
+    [95, { 强攻系: 1.08, 敏攻系: 1.13, 元素系: 0.96, 控制系: 1.19, 防御系: 1.12, 辅助系: 1.02, 治疗系: 0.98, 精神系: 0.96, 食物系: 0.98, 召唤系: 0.99 }],
+    [98, { 强攻系: 1.03, 敏攻系: 1.07, 元素系: 0.91, 控制系: 1.12, 防御系: 1.06, 辅助系: 0.93, 治疗系: 0.95, 精神系: 0.88, 食物系: 0.91, 召唤系: 0.93 }],
+  ]);
+  function systemAgilityCorrection(level = 1, system = '') {
+    const name = ['强攻系', '敏攻系', '元素系', '控制系', '防御系', '辅助系', '治疗系', '精神系', '食物系', '召唤系'].find(type => String(system || '').includes(type.slice(0, 2)));
+    if (!name) return 1;
+    const rows = SYSTEM_AGILITY_CORRECTION_BY_LEVEL, index = rows.findIndex(([at]) => at >= level);
+    if (index <= 0) return rows[index < 0 ? rows.length - 1 : 0][1][name];
+    const [lowLevel, low] = rows[index - 1], [highLevel, high] = rows[index], t = (level - lowLevel) / (highLevel - lowLevel);
+    return low[name] + (high[name] - low[name]) * t;
+  }
+
   function typicalStatRatio(level = 1) {
     const rows = TYPICAL_STAT_RATIO_BY_LEVEL, index = rows.findIndex(([at]) => at >= level);
     if (index <= 0) return rows[index < 0 ? rows.length - 1 : 0][1];
@@ -68839,6 +69861,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             }
           : {}),
       }]));
+      // 接战链 阶段 2e/2f: the agility pictured, and the bounds settled clashes and preemptions put on it.
+      const pictureAgility = combatBase * systemScale.agi * typical.agi * systemAgilityCorrection(perceivedLevel, system);
+      const boundLow = Number(beliefState?.agilityBounds?.[id]?.lo) || 0, boundHigh = Number(beliefState?.agilityBounds?.[id]?.hi) || Infinity;
       const projected = {
         id,
         name: preview.unitName(sourceUnit),
@@ -68859,7 +69884,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         vit_max: staminaMax,
         str: Math.max(1, combatBase * systemScale.str * typical.str),
         def: Math.max(1, combatBase * systemScale.def * typical.def),
-        agi: Math.max(1, combatBase * systemScale.agi * typical.agi),
+        // 接战链 阶段 2e: corrected by the system's measured agility (systemAgilityCorrection), then held within what this
+        // side has seen of the unit's speed in settled clashes and preemptions (beliefState.agilityBounds, BattleRuntime).
+        agi: Math.max(1, clamp(pictureAgility, boundLow, boundHigh)),
+        // 接战链 阶段 2f (方案 §15.2): the bounds settled clashes and preemptions put on the unit's base agility, for
+        // BattlePreview clashTiming / preemptTiming to read as one-sided certainty (oneSidedTimingConfidence); and which
+        // of them holds the picture, if one does.
+        ...(boundLow > 0 ? { __agilityLo: boundLow } : {}), ...(Number.isFinite(boundHigh) ? { __agilityHi: boundHigh } : {}),
+        ...(pictureAgility < boundLow ? { __agilityBound: 'LO' } : pictureAgility > boundHigh ? { __agilityBound: 'HI' } : {}),
         状态: { 存活: beliefUnit.alive !== false },
         __战斗失能原因: String(sourceUnit?.__战斗失能原因 || '').trim(),
         状态效果: states,
@@ -69852,7 +70884,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     const packageValue = shared ? shared.package : consumer.编译角色装备被动消费者_V1(unit);
     const effects = Object.freeze((Array.isArray(packageValue?.动作效果) ? packageValue.动作效果 : [])
-      .filter(entry => !['战斗开始', '回合开始', '受击前', '受击后', '濒死时', '被控制时', '命中后']
+      .filter(entry => !preview.PASSIVE_TRIGGER_PHASES
         .includes(String(entry?.触发方式 || entry?.效果?.触发方式 || '').trim()))
       .filter(entry => {
         const effect = entry?.效果 || {};
@@ -71118,13 +72150,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (cached) return cached;
       const entries = [];
       const seenObjects = new Set();
-      const visit = value => {
+      // R8 (被动技能修复方案 2026-11-12): what a 被动 table holds is a passive whatever its 承载方式 says — never an action.
+      const visit = (value, inPassiveTable = false) => {
         if (!value || typeof value !== 'object' || seenObjects.has(value)) return;
         seenObjects.add(value);
         if (Array.isArray(value)) {
-          value.forEach(visit);
+          value.forEach(item => visit(item, inPassiveTable));
           return;
         }
+        if (inPassiveTable && Array.isArray(value._效果数组) && value._效果数组.length) return;
         if (Number(value?.炸环恢复tick || 0) > 0 || value?.__战斗禁用 === true) return;
         const requirementChecker = root.__LWCS_ITEM_PASSIVE_CONSUMER_V1__?.装备要求满足_V1;
         if (
@@ -71144,7 +72178,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         }
         Object.entries(value).forEach(([key, child]) => {
           if (/状态效果|战斗历史|历史快照|参战者|复制效果/.test(key)) return;
-          visit(child);
+          visit(child, inPassiveTable || preview.isPassiveSkillTableKey(key));
         });
       };
       visit(skillRoot);
@@ -124892,7 +125926,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       !root.__LWCS_BATTLE_RUNTIME__.readStructuredContinuationGrant({ actionKind: 'RELEASE_SKILL', skill }) &&
       preview.collectEffects(skill).every(effect => {
         const profile = preview.passiveTriggerProfile(skill, effect);
-        return profile.supported && ['战斗开始', '回合开始', '受击前', '受击后', '命中后', '濒死时', '被控制时'].includes(profile.triggerPhase) &&
+        return profile.supported && preview.PASSIVE_TRIGGER_PHASES.includes(profile.triggerPhase) &&
           !['召唤生成', '时光回溯'].includes(effect.原型);
       }));
   }
@@ -142408,6 +143442,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       team_player: readTeam('team_player'),
       team_enemy: readTeam('team_enemy'),
       summons,
+      // 接战链 阶段三: the referee (outside both sides) — its HP and resources, what it took, spent and did.
+      ...(combatData?.裁判?.__refereePrepared === true ? { referee: refereeSnapshot(combatData.裁判) } : {}),
     };
   }
 
@@ -142902,7 +143938,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const skill = entry?.技能 && typeof entry.技能 === 'object' ? cloneValue(entry.技能) : null;
         if (!skill) return [];
         const effects = Array.isArray(skill?._效果数组) ? skill._效果数组 : [];
-        const triggered = effects.filter(effect => ['战斗开始', '回合开始', '受击前', '受击后', '濒死时', '被控制时', '命中后']
+        const triggered = effects.filter(effect => previewRuntime.PASSIVE_TRIGGER_PHASES
           .includes(String(effect?.触发方式 || skill?.触发方式 || '').trim()));
         if (!triggered.length) return [];
         return [{
@@ -142954,7 +143990,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   function equipmentPassiveActionEffects(unit = {}) {
     const packageValue = unit?.__battleRuntime?.itemPassivePackage || syncEquipmentPassiveRuntime(unit, 0, { rebuildFinal: false });
     return (Array.isArray(packageValue?.动作效果) ? packageValue.动作效果 : [])
-      .filter(entry => !['战斗开始', '回合开始', '受击前', '受击后', '濒死时', '被控制时', '命中后']
+      .filter(entry => !previewRuntime.PASSIVE_TRIGGER_PHASES
         .includes(String(entry?.触发方式 || entry?.效果?.触发方式 || '').trim()))
       .filter(entry => !equipmentPassiveImplicitStagePhase(entry?.效果 || {}))
       .map(entry => entry?.效果)
@@ -143000,17 +144036,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return true;
   }
 
-  function settleEquipmentPassiveTriggerCost({
+  // Pays a trigger price { values, 非法项 } (an effect's 触发消耗, or a passive's own 消耗 — R4). Returns { paid, facts };
+  // an invalid or unaffordable price writes PASSIVE_TRIGGER_COST_INVALID / _INSUFFICIENT and pays nothing.
+  function settlePassiveTriggerPayment({
     combatData = {},
     actor = {},
+    normalized = { values: {}, 非法项: [] },
     effect = {},
     action = {},
     actionEvent = {},
     actionRole = 'ACTIVE',
+    source = 'equipment_passive_trigger',
+    raw = undefined,
+    meta = {},
   } = {}) {
-    const raw = effect?.触发消耗;
-    if (raw === undefined || raw === null || raw === '' || raw === '无') return [];
-    const normalized = previewRuntime.readPassiveTriggerCosts(effect);
     if (normalized.非法项.length) {
       writeLedgerEvent(combatData, {
         eventKind: 'action_cost',
@@ -143027,9 +144066,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         result: 'invalid',
         resultState: 'FAILURE',
         ruleCode: 'PASSIVE_TRIGGER_COST_INVALID',
-        meta: { source: 'equipment_passive_trigger', raw: cloneValue(raw), errors: [...normalized.非法项] },
+        meta: { ...meta, source, raw: cloneValue(raw), errors: [...normalized.非法项] },
       });
-      return [];
+      return { paid: false, facts: [] };
     }
     const paymentPlan = previewRuntime.assessResourcePayment([actor], normalized.values);
     if (!paymentPlan.valid || !paymentPlan.ok) {
@@ -143048,9 +144087,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         result: 'insufficient',
         resultState: 'FAILURE',
         ruleCode: 'PASSIVE_TRIGGER_COST_INSUFFICIENT',
-        meta: { source: 'equipment_passive_trigger', reason: paymentPlan.reason, costs: cloneValue(normalized.values) },
+        meta: { ...meta, source, reason: paymentPlan.reason, costs: cloneValue(normalized.values) },
       });
-      return [];
+      return { paid: false, facts: [] };
     }
     const facts = [];
     paymentPlan.payments.forEach(payment => {
@@ -143070,15 +144109,52 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         {
           before,
           after,
-          source: 'equipment_passive_trigger',
+          source,
           factType: 'RESOURCE',
           effectPrototype: String(effect?.原型 || '').trim(),
           sourceEffectId: String(effect?.effectId || effect?.效果ID || '').trim(),
-          meta: { triggerCost: true, resource: payment.resource, requestedAmount: payment.amount, amount: appliedCost },
+          meta: { ...meta, triggerCost: true, resource: payment.resource, requestedAmount: payment.amount, amount: appliedCost },
         },
       ));
     });
-    return facts.filter(Boolean);
+    return { paid: true, facts: facts.filter(Boolean) };
+  }
+
+  // An item action effect's 触发消耗, settled after the action it rode on took effect (unchanged).
+  function settleEquipmentPassiveTriggerCost({
+    combatData = {},
+    actor = {},
+    effect = {},
+    action = {},
+    actionEvent = {},
+    actionRole = 'ACTIVE',
+  } = {}) {
+    const raw = effect?.触发消耗;
+    if (raw === undefined || raw === null || raw === '' || raw === '无') return [];
+    return settlePassiveTriggerPayment({ combatData, actor, normalized: previewRuntime.readPassiveTriggerCosts(effect), effect, action,
+      actionEvent, actionRole, source: 'equipment_passive_trigger', raw }).facts;
+  }
+
+  // R4 (被动技能修复方案 2026-11-12; rule and scope in BattlePreview passiveSkillTriggerCosts): a passive trigger is paid
+  // before anything takes effect — the skill's own price once per activation (activationPayments, this consumer pass),
+  // then the effect's 触发消耗 (it used to be charged after the effect, and an unaffordable one let the effect stand).
+  // False: the trigger does not happen and is not counted.
+  function payPassiveTrigger({ combatData = {}, unit = {}, row = {}, actionId = '', activationPayments = new Map() } = {}) {
+    const action = { actionKind: 'RELEASE_SKILL', actionName: String(row.skillName || row.skillId || '被动效果').trim(), actorControl: 'SYSTEM' };
+    const actionEvent = { actionId, chainNodeId: actionId };
+    const meta = { triggerPhase: String(row.triggerPhase || '').trim(), skillName: action.actionName, passiveApplicationKey: row.applicationKey };
+    const skillCosts = previewRuntime.passiveSkillTriggerCosts(row.skill);
+    if (skillCosts) {
+      const activation = String(row.activationKey || row.applicationKey || '').trim();
+      if (!activationPayments.has(activation)) activationPayments.set(activation, settlePassiveTriggerPayment({ combatData, actor: unit,
+        normalized: skillCosts, effect: row.effect, action, actionEvent, actionRole: 'STATE_TICK', source: 'passive_skill_trigger',
+        raw: row.skill?.消耗, meta }).paid);
+      if (!activationPayments.get(activation)) return false;
+    }
+    const raw = row.effect?.触发消耗;
+    if (raw === undefined || raw === null || raw === '' || raw === '无') return true;
+    return settlePassiveTriggerPayment({ combatData, actor: unit, normalized: previewRuntime.readPassiveTriggerCosts(row.effect), effect: row.effect,
+      action, actionEvent, actionRole: 'STATE_TICK', source: 'passive_effect_trigger', raw, meta }).paid;
   }
 
   function appendEquipmentPassiveActionEffects(unit = {}, effects = []) {
@@ -143100,78 +144176,114 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return { ...skill, _效果数组: nextEffects };
   }
 
-  function prepareCombatData(combatData = {}, resolveCharacter = null) {
-    if (!combatData?.参战者 || typeof combatData.参战者 !== 'object') return combatData;
+  // A fighter's battle unit: its role from the save (resolveCharacter) under what the battle data gives, its panel, states
+  // and resources merged, its equipment passives and final stats built. 接战链 阶段三: the referee is merged the same way
+  // (prepareBattleReferee).
+  function mergeBattleParticipant(combatData = {}, participant = {}, readCharacter = () => null) {
     const statFields = ['等级', 'HP', 'HP上限', '体力', '体力上限', '魂力', '魂力上限', '精神力', '精神力上限', '力量', '防御', '敏捷', '幸运'];
     const statusFields = ['存活', '位置', '行动'];
-    const readCharacter = typeof resolveCharacter === 'function' ? resolveCharacter : () => null;
-    const mergeParticipant = participant => {
-      if (!participant || typeof participant !== 'object' || Array.isArray(participant)) return participant;
-      const name = String(participant.name || participant.名称 || '').trim();
-      const sourceCharacter = !participant.召唤键 && name ? readCharacter(name) : null;
-      const merged = sourceCharacter && typeof sourceCharacter === 'object' && !Array.isArray(sourceCharacter)
-        ? { ...cloneValue(sourceCharacter), ...cloneValue(participant) }
-        : cloneValue(participant);
-      merged.name = name || String(merged.name || merged.名称 || '').trim();
-      merged.名称 = String(merged.名称 || merged.name || '').trim();
-      const sourceStats = sourceCharacter?.属性 && typeof sourceCharacter.属性 === 'object' ? sourceCharacter.属性 : {};
-      const participantStats = participant?.属性 && typeof participant.属性 === 'object' ? participant.属性 : {};
-      merged.属性 = { ...cloneValue(sourceStats), ...cloneValue(participantStats) };
-      statFields.forEach(field => {
-        if (participant[field] !== undefined) merged.属性[field] = cloneValue(participant[field]);
-      });
-      const sourceStatus = sourceCharacter?.状态 && typeof sourceCharacter.状态 === 'object' ? sourceCharacter.状态 : {};
-      const participantStatus = participant?.状态 && typeof participant.状态 === 'object' ? participant.状态 : {};
-      merged.状态 = { ...cloneValue(sourceStatus), ...cloneValue(participantStatus) };
-      statusFields.forEach(field => {
-        if (participant[field] !== undefined) merged.状态[field] = cloneValue(participant[field]);
-      });
-      const sourceAttributeStates = sourceCharacter?.属性?.状态效果 && typeof sourceCharacter.属性.状态效果 === 'object' && !Array.isArray(sourceCharacter.属性.状态效果)
-        ? sourceCharacter.属性.状态效果
-        : {};
-      const participantAttributeStates = participant?.属性?.状态效果 && typeof participant.属性.状态效果 === 'object' && !Array.isArray(participant.属性.状态效果)
-        ? participant.属性.状态效果
-        : {};
-      const participantDirectStates = participant?.状态效果 && typeof participant.状态效果 === 'object' && !Array.isArray(participant.状态效果)
-        ? participant.状态效果
-        : {};
-      const sourceDirectStates = sourceCharacter?.状态效果 && typeof sourceCharacter.状态效果 === 'object' && !Array.isArray(sourceCharacter.状态效果)
-        ? sourceCharacter.状态效果
-        : {};
-      merged.状态效果 = {
-        ...cloneValue(sourceAttributeStates),
-        ...cloneValue(sourceDirectStates),
-        ...cloneValue(participantAttributeStates),
-        ...cloneValue(participantDirectStates),
-      };
-      if (participant.持续效果 && typeof participant.持续效果 === 'object' && !Array.isArray(participant.持续效果)) {
-        merged.持续效果 = cloneValue(participant.持续效果);
-      } else if (!merged.持续效果 || typeof merged.持续效果 !== 'object') {
-        merged.持续效果 = {};
-      }
-      syncC2FoodMaintenanceRuntime(merged, merged.持续效果?.['c2:坚挺金苍蝇:武魂真身维持']?.技能快照 || {});
-      [
-        ['hp', 'HP', 'HP'], ['hp_max', 'HP上限', 'HP上限'],
-        ['vit', '体力', '体力'], ['vit_max', '体力上限', '体力上限'],
-        ['sta', '体力', '体力'], ['sta_max', '体力上限', '体力上限'],
-        ['sp', '魂力', '魂力'], ['sp_max', '魂力上限', '魂力上限'],
-        ['men', '精神力', '精神力'], ['men_max', '精神力上限', '精神力上限'],
-        ['str', '力量', '力量'], ['def', '防御', '防御'], ['agi', '敏捷', '敏捷'],
-      ].forEach(([alias, flatField, statField]) => {
-        const value = participant[alias] ?? participant[flatField] ?? merged.属性?.[statField];
-        if (value !== undefined) merged[alias] = Number(value);
-      });
-      merged.存活 = merged.状态?.存活 !== false && previewRuntime.readHp(merged) > 0;
-      syncEquipmentPassiveRuntime(merged, Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0), { rebuildFinal: false });
-      // A unit enters battle with its stamina already counted against any buffed maximum it carries.
-      previewRuntime.syncStaminaMaxGain(merged, { credit: false });
-      merged.final = buildCombatFinalStats(merged);
-      return merged;
+    if (!participant || typeof participant !== 'object' || Array.isArray(participant)) return participant;
+    const name = String(participant.name || participant.名称 || '').trim();
+    const sourceCharacter = !participant.召唤键 && name ? readCharacter(name) : null;
+    const merged = sourceCharacter && typeof sourceCharacter === 'object' && !Array.isArray(sourceCharacter)
+      ? { ...cloneValue(sourceCharacter), ...cloneValue(participant) }
+      : cloneValue(participant);
+    merged.name = name || String(merged.name || merged.名称 || '').trim();
+    merged.名称 = String(merged.名称 || merged.name || '').trim();
+    const sourceStats = sourceCharacter?.属性 && typeof sourceCharacter.属性 === 'object' ? sourceCharacter.属性 : {};
+    const participantStats = participant?.属性 && typeof participant.属性 === 'object' ? participant.属性 : {};
+    merged.属性 = { ...cloneValue(sourceStats), ...cloneValue(participantStats) };
+    statFields.forEach(field => {
+      if (participant[field] !== undefined) merged.属性[field] = cloneValue(participant[field]);
+    });
+    const sourceStatus = sourceCharacter?.状态 && typeof sourceCharacter.状态 === 'object' ? sourceCharacter.状态 : {};
+    const participantStatus = participant?.状态 && typeof participant.状态 === 'object' ? participant.状态 : {};
+    merged.状态 = { ...cloneValue(sourceStatus), ...cloneValue(participantStatus) };
+    statusFields.forEach(field => {
+      if (participant[field] !== undefined) merged.状态[field] = cloneValue(participant[field]);
+    });
+    const sourceAttributeStates = sourceCharacter?.属性?.状态效果 && typeof sourceCharacter.属性.状态效果 === 'object' && !Array.isArray(sourceCharacter.属性.状态效果)
+      ? sourceCharacter.属性.状态效果
+      : {};
+    const participantAttributeStates = participant?.属性?.状态效果 && typeof participant.属性.状态效果 === 'object' && !Array.isArray(participant.属性.状态效果)
+      ? participant.属性.状态效果
+      : {};
+    const participantDirectStates = participant?.状态效果 && typeof participant.状态效果 === 'object' && !Array.isArray(participant.状态效果)
+      ? participant.状态效果
+      : {};
+    const sourceDirectStates = sourceCharacter?.状态效果 && typeof sourceCharacter.状态效果 === 'object' && !Array.isArray(sourceCharacter.状态效果)
+      ? sourceCharacter.状态效果
+      : {};
+    merged.状态效果 = {
+      ...cloneValue(sourceAttributeStates),
+      ...cloneValue(sourceDirectStates),
+      ...cloneValue(participantAttributeStates),
+      ...cloneValue(participantDirectStates),
     };
+    if (participant.持续效果 && typeof participant.持续效果 === 'object' && !Array.isArray(participant.持续效果)) {
+      merged.持续效果 = cloneValue(participant.持续效果);
+    } else if (!merged.持续效果 || typeof merged.持续效果 !== 'object') {
+      merged.持续效果 = {};
+    }
+    syncC2FoodMaintenanceRuntime(merged, merged.持续效果?.['c2:坚挺金苍蝇:武魂真身维持']?.技能快照 || {});
+    [
+      ['hp', 'HP', 'HP'], ['hp_max', 'HP上限', 'HP上限'],
+      ['vit', '体力', '体力'], ['vit_max', '体力上限', '体力上限'],
+      ['sta', '体力', '体力'], ['sta_max', '体力上限', '体力上限'],
+      ['sp', '魂力', '魂力'], ['sp_max', '魂力上限', '魂力上限'],
+      ['men', '精神力', '精神力'], ['men_max', '精神力上限', '精神力上限'],
+      ['str', '力量', '力量'], ['def', '防御', '防御'], ['agi', '敏捷', '敏捷'],
+    ].forEach(([alias, flatField, statField]) => {
+      const value = participant[alias] ?? participant[flatField] ?? merged.属性?.[statField];
+      if (value !== undefined) merged[alias] = Number(value);
+    });
+    merged.存活 = merged.状态?.存活 !== false && previewRuntime.readHp(merged) > 0;
+    syncEquipmentPassiveRuntime(merged, Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0), { rebuildFinal: false });
+    // A unit enters battle with its stamina already counted against any buffed maximum it carries.
+    previewRuntime.syncStaminaMaxGain(merged, { credit: false });
+    merged.final = buildCombatFinalStats(merged);
+    return merged;
+  }
+
+  function prepareCombatData(combatData = {}, resolveCharacter = null) {
+    if (!combatData?.参战者 || typeof combatData.参战者 !== 'object') return combatData;
+    const readCharacter = typeof resolveCharacter === 'function' ? resolveCharacter : () => null;
+    const mergeParticipant = participant => mergeBattleParticipant(combatData, participant, readCharacter);
     combatData.参战者.team_player = (Array.isArray(combatData.参战者.team_player) ? combatData.参战者.team_player : []).map(mergeParticipant);
     combatData.参战者.team_enemy = (Array.isArray(combatData.参战者.team_enemy) ? combatData.参战者.team_enemy : []).map(mergeParticipant);
     hydrateRuntimeSummons(combatData);
+    // 接战链 阶段三: the referee, from the save when it is a role (prepareBattleReferee).
+    prepareBattleReferee(combatData, readCharacter);
     return combatData;
+  }
+
+  // 接战链 阶段 2e (方案 §13.4、§14.4): stamina taken by writeCombatResource itself — the injury share and the halving
+  // when 魂力 / 精神力 first fall under a tenth — had no ledger event, so where stamina went could only be inferred. Each is
+  // queued here and written as a resource_change (meta.source INJURY_STAMINA / LOW_RESOURCE_STAMINA_CUT, auditOnly) at the
+  // next ledger write of the battle the unit is in (writeLedgerEvent). The values and the rules are unchanged.
+  const pendingStaminaDeductions = [];
+  let flushingStaminaDeductions = false;
+  function flushStaminaDeductions(combatData = {}) {
+    if (!pendingStaminaDeductions.length || flushingStaminaDeductions) return;
+    flushingStaminaDeductions = true;
+    try {
+      const entries = pendingStaminaDeductions.splice(0, pendingStaminaDeductions.length);
+      const members = new Set(listCombatUnits(combatData));
+      for (const entry of entries) {
+        if (!members.has(entry.unit) || !(entry.before - entry.after > 1e-9)) continue;
+        writeLedgerEvent(combatData, {
+          eventKind: 'resource_change', round: Number(combatData?.回合 || 0),
+          actorId: previewRuntime.unitId(entry.unit), actorName: previewRuntime.unitName(entry.unit),
+          targetId: previewRuntime.unitId(entry.unit), targetName: previewRuntime.unitName(entry.unit),
+          actionName: entry.source === 'INJURY_STAMINA' ? '受伤扣体力' : '资源跌破一成体力减半', actionType: 'stamina_deduction',
+          actorControl: 'SYSTEM', actionRole: 'STATE_TICK',
+          result: 'loss', resultState: 'LOSS', primaryOutcome: 'resource_reduced', operation: 'REDUCE', ruleCode: entry.source,
+          meta: { source: entry.source, resource: '体力', resourceKey: 'vit', delta: entry.after - entry.before, amount: entry.before - entry.after,
+            operation: 'REDUCE', before: entry.before, after: entry.after, auditOnly: true, ...(entry.trigger ? { triggerResource: entry.trigger } : {}),
+            ...(entry.source === 'INJURY_STAMINA' ? { hpLost: entry.hpLost, injuryShare: Number(previewRuntime.INJURY_STAMINA_SHARE) } : {}) },
+        });
+      }
+    } finally { flushingStaminaDeductions = false; }
   }
 
   function writeCombatResource(unit = {}, resourceKey = 'sp', value = 0) {
@@ -143189,8 +144301,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 受伤同步扣体力（用户 2026-11-09）：同 BattlePreview setHp——生命少掉的比例，体力扣同样比例的体力上限。
     const hpBefore = resourceKey === 'hp' ? previewRuntime.readHp(unit) : 0;
     if (resourceKey === 'hp' && nextValue < hpBefore && previewRuntime.readResourceMax(unit, '体力') > 0) {
-      writeCombatResource(unit, 'vit', previewRuntime.readResource(unit, '体力') - (Number(previewRuntime.INJURY_STAMINA_SHARE) || 0.5) *
+      const staminaBefore = previewRuntime.readResource(unit, '体力');
+      writeCombatResource(unit, 'vit', staminaBefore - (Number(previewRuntime.INJURY_STAMINA_SHARE) || 0.5) *
         (hpBefore - nextValue) / Math.max(1, maxValue) * previewRuntime.readResourceMax(unit, '体力'));
+      pendingStaminaDeductions.push({ unit, source: 'INJURY_STAMINA', before: staminaBefore, after: previewRuntime.readResource(unit, '体力'), hpLost: hpBefore - nextValue });
     }
     const fuelBefore = resourceKey === 'sp' || resourceKey === 'men' ? previewRuntime.readResource(unit, config.statKey) : 0;
     config.runtimeKeys.forEach(key => { unit[key] = nextValue; });
@@ -143204,7 +144318,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const runtime = unit.__battleRuntime && typeof unit.__battleRuntime === 'object' ? unit.__battleRuntime : {};
       if (runtime.lowResourceStaminaCut?.[config.statKey] !== true) {
         unit.__battleRuntime = { ...runtime, lowResourceStaminaCut: { ...(runtime.lowResourceStaminaCut || {}), [config.statKey]: true } };
-        writeCombatResource(unit, 'vit', previewRuntime.readResource(unit, '体力') * 0.5);
+        const staminaBefore = previewRuntime.readResource(unit, '体力');
+        writeCombatResource(unit, 'vit', staminaBefore * 0.5);
+        pendingStaminaDeductions.push({ unit, source: 'LOW_RESOURCE_STAMINA_CUT', before: staminaBefore, after: previewRuntime.readResource(unit, '体力'), trigger: config.statKey });
       }
     }
     if (unit.召唤键) syncSummonMirror(unit);
@@ -145017,6 +146133,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   }
 
   function writeLedgerEvent(combatData = {}, payload = {}, inventoryBefore = null) {
+    // 接战链 阶段 2e: stamina deductions queued by writeCombatResource go in first.
+    if (pendingStaminaDeductions.length && !flushingStaminaDeductions) flushStaminaDeductions(combatLedgerRoot(combatData));
     const rootData = combatLedgerRoot(combatData);
     const ledger = ensureLedger(rootData);
     const runtimeState = ensureCombatRuntime(rootData);
@@ -146797,6 +147915,30 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }).filter(Boolean);
   }
 
+  // R8 (被动技能修复方案 2026-11-12): one PASSIVE_NEVER_TRIGGERS row per held passive that can never fire (no phase and
+  // limit it can settle in), written when the battle starts.
+  function writePassiveNeverTriggersDiagnostics(combatData = {}, round = 0) {
+    if (typeof previewRuntime.passiveSkillDiagnostics !== 'function') return;
+    listCombatUnits(combatData).forEach(unit => {
+      if (!unit || typeof unit !== 'object') return;
+      previewRuntime.passiveSkillDiagnostics(unit).forEach(row => writeLedgerEvent(combatData, {
+        eventKind: 'runtime_trace',
+        round,
+        actorId: previewRuntime.unitId(unit),
+        actorName: previewRuntime.unitName(unit),
+        actionName: row.skillName,
+        actionType: 'RELEASE_SKILL',
+        actorControl: 'SYSTEM',
+        actionRole: 'STATE_TICK',
+        result: 'passive_never_triggers',
+        resultState: 'NO_EFFECT',
+        ruleCode: 'PASSIVE_NEVER_TRIGGERS',
+        meta: { skillId: row.skillId, skillName: row.skillName, sourcePath: row.sourcePath, carrier: row.carrier,
+          reasons: [...row.reasons], effects: [...row.effects] },
+      }));
+    });
+  }
+
   function settlePassiveSkillConsumers(combatData = {}, currentRound = 0, options = {}) {
     if (typeof previewRuntime.buildPassiveConsumerEvidence !== 'function') return [];
     const runtime = ensureCombatRuntime(combatData);
@@ -146807,9 +147949,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ? [...new Set(options.phases.map(value => String(value || '').trim()).filter(Boolean))]
       : round <= 1 ? ['战斗开始', '回合开始'] : ['回合开始'];
     if (phases.includes('战斗开始')) runtime.itemPassiveBattleStarted = true;
+    if (phases.includes('战斗开始') && !runtime.passiveDiagnosticsWritten) {
+      runtime.passiveDiagnosticsWritten = true;
+      writePassiveNeverTriggersDiagnostics(combatData, round);
+    }
     const triggeredUnitIds = [...new Set((Array.isArray(options?.triggeredUnitIds) ? options.triggeredUnitIds : [])
       .map(value => String(value || '').trim()).filter(Boolean))];
     const logs = [];
+    const activationPayments = new Map();
     try {
       phases.forEach(phase => {
         listCombatUnits(combatData).forEach(unit => {
@@ -146825,10 +147972,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             conditionTarget: options?.conditionTarget,
             primaryTarget: options?.primaryTarget,
             conditionContext: options?.conditionContext,
+            triggerControlStates: options?.triggerControlStates,
           });
           evidenceRows.filter(row => row?.ready === true).forEach(row => {
             if (!structuredActorPhysicallyAlive(unit)) return;
             const actionId = `passive-consumer:${String(row.applicationKey || '').trim()}`;
+            if (!payPassiveTrigger({ combatData, unit, row, actionId, activationPayments })) return;
             const previousMarker = passiveRuntimeMarker(unit, row, 'PENDING');
             const stageFacts = settlePassiveStageEffect({
               combatData,
@@ -146908,16 +148057,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 String(fact?.effectPrototype || '').trim() === String(row.effectPrototype || '').trim() &&
                 !['FAILURE', 'NO_EFFECT'].includes(String(fact?.resultState || '').trim())
               );
-              if (passiveEffectTriggered) {
-                settleEquipmentPassiveTriggerCost({
-                  combatData,
-                  actor: unit,
-                  effect: row.effect,
-                  action: { actionKind: 'RELEASE_SKILL', actionName: String(row.skillName || row.skillId || '被动效果').trim(), actorControl: 'SYSTEM' },
-                  actionEvent: settlementResult?.actionEvent || actionContext?.actionEvent,
-                  actionRole: 'STATE_TICK',
-                });
-              } else {
+              // The trigger's price was paid before the declaration (payPassiveTrigger).
+              if (!passiveEffectTriggered) {
                 removePassiveRuntimeMarker(unit, row, previousMarker);
                 return;
               }
@@ -146996,6 +148137,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         delete unit.__battleRuntime.counterCount;
         delete unit.__battleRuntime.reactionFatigue;
       }
+      previewRuntime.purgeSpentRuleDefenses(unit, '');
       delete unit.__本回合闪避成功次数;
       delete unit.__本回合反应预算;
       delete unit.__本回合对轰次数;
@@ -148200,7 +149342,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const action = input?.action || {};
     const actionEvent = input?.actionEvent || {};
     const actionRole = String(input?.actionRole || 'ACTIVE').trim() || 'ACTIVE';
-    const entry = previewRuntime.consumeRuleBlockCharges(target, 1)[0];
+    // R3: the action's id scopes a whole-move (整招) charge to this cast's segments.
+    const entry = previewRuntime.consumeRuleBlockCharges(target, 1, { actionId: actionEvent.actionId })[0];
     if (!entry) return null;
     const { stateKey, state, remainingCount: remaining } = entry;
     const stateApplicationId = String(state.__状态来源窗口?.[0] || state.__状态来源键 || '').trim();
@@ -148234,8 +149377,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         source: 'structured_runtime',
         rule: '免伤',
         stateKey,
-        consumed: 1,
+        consumed: entry.amount,
         remaining,
+        ...(entry.wholeMove ? { countMode: previewRuntime.RULE_DEFENSE_COUNT_MODES.WHOLE_MOVE } : {}),
         noRefreshWithinBattle: true,
         effectIndex: input.effectIndex,
         segment: input.segment,
@@ -150609,12 +151753,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ? null : new Map(listCombatUnits(combatData).map(unit => [previewRuntime.unitId(unit), previewRuntime.readHp(unit)]));
     const settleSpecialPassiveBoundary = (previousHp, effectFacts, sourceEffectId, segment = null, triggerTargetId = '') => {
       if (!previousHp) return;
-      const appliedControlIds = effectFacts.filter(fact => ['state_apply', 'state_replace'].includes(fact?.eventKind) &&
+      const controlFacts = effectFacts.filter(fact => ['state_apply', 'state_replace'].includes(fact?.eventKind) &&
         fact.actionRole !== 'STATE_TICK' && ['SUCCESS', 'APPLIED', 'REPLACED'].includes(String(fact.resultState || '').toUpperCase()) &&
-        fact.meta?.after && previewRuntime.reactiveControlState(fact.meta.after)).map(fact => fact.targetId);
+        fact.meta?.after && previewRuntime.reactiveControlState(fact.meta.after));
+      const appliedControlIds = controlFacts.map(fact => fact.targetId);
+      // R5: which control landed on whom (BattlePreview passiveTriggerSourceStateKey).
+      const triggerControlStates = {};
+      controlFacts.forEach(fact => (triggerControlStates[fact.targetId] ||= []).push({
+        key: String(fact.meta?.after?.状态ID || '').trim(), name: String(fact.meta?.stateName || fact.meta?.after?.状态 || '').trim() }));
       for (const { phase, triggeredUnitIds } of previewRuntime.specialPassiveTriggerEvents(previousHp, combatData, appliedControlIds)) {
         const start = ensureLedger(combatData).length;
         settlePassiveSkillConsumers(combatData, Number(combatData.回合 || 0), { phases: [phase], triggeredUnitIds,
+          ...(phase === '被控制时' ? { triggerControlStates } : {}),
           triggerEventId: actionEvent.actionId, triggerSourceEffectId: sourceEffectId, triggerSegment: segment, triggerTargetId,
           declaration, primaryTarget, conditionTarget: actor,
           conditionContext: { primaryOutcome: 'HIT', primarySucceeded: true, primaryTarget, conditionTarget: actor } });
@@ -150656,6 +151806,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       });
       return groups;
     };
+    // 接战链 阶段三: a unit the referee blocked for or carried away takes nothing more of this action; a guard skill's
+    // shield and states come off when the action is settled (clearRefereeGuards).
+    const refereeTakenTargetIds = new Set(), refereeGuards = [];
     const executeResolvedEffect = (
       effect,
       sourceEffectIndex,
@@ -150845,11 +151998,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           })
         : targets;
       if (!triggeredTargets.length) return;
-      const resolvedTargets = conditionalMeta?.mode && conditionalMeta.mode !== 'ORIGINAL'
+      const conditionedTargets = conditionalMeta?.mode && conditionalMeta.mode !== 'ORIGINAL'
         ? resolveStructuredTargets(combatData, actor, {
             ...declaration, targetIds: triggeredTargets.map(previewRuntime.unitId),
           }, effect)
         : triggeredTargets;
+      const resolvedTargets = refereeTakenTargetIds.size
+        ? conditionedTargets.filter(target => !refereeTakenTargetIds.has(previewRuntime.unitId(target))) : conditionedTargets;
       if (effect?.条件分支?.length) {
         const conditionalDepth = Number(conditionalMeta.conditionalDepth || 0), limit = previewRuntime.recursionDepthLimit;
         if (!(Number.isFinite(limit) && limit > 0)) throw new Error('battle_preview_recursion_limit_contract_missing');
@@ -151142,6 +152297,38 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 conditionTarget: actor,
               },
             });
+            // R1 致命前 (BattlePreview lethalDamageThreat): after 受击前, before the segments land, judged at the damage this
+            // effect settles at — the projection asks the same question at the same point.
+            if (reaction?.evaded !== true && previewRuntime.unitHasPassivePhase(target, previewRuntime.PASSIVE_LETHAL_PHASE)) {
+              const threatMultiplier = Math.max(0, Math.min(1, Number(reaction?.damageMultiplier ?? 1)));
+              const threatSegments = Math.max(1, Math.floor(Number(effect?.攻击段数 || effect?.段数 || 1)) || 1);
+              const threatBasis = previewRuntime.buildDamageBasis(
+                declaration?.skill && typeof declaration.skill === 'object' ? { ...effect, 技能: declaration.skill } : effect,
+                actor, target, null, {
+                  basisView: 'RUNTIME_ACTUAL', effectInstanceId: sourceEffectId, sourceEffectId, sourceActionId: actionEvent.actionId,
+                  snapshotRevision: `runtime-threat:${String(actionEvent?.actionId || '').trim()}`, actionDamageMultiplier,
+                  targetCount: resolvedTargets.length, reactionDamageMultiplier: threatMultiplier,
+                  resourceDriveEnabled: String(declaration?.actionKind || '').trim().toUpperCase() !== 'BASIC_ATTACK',
+                });
+              const threatMode = String(combatData?.战斗意图 || '').trim();
+              if (previewRuntime.lethalDamageThreat({ worldSnapshot: combatData, battleIntent: { mode: threatMode, objectives: combatData?.胜负条件 || {} },
+                target, segments: threatSegments, actionId: actionEvent.actionId,
+                perSegmentDamage: previewRuntime.calculateSettledSegmentDamage(Math.max(0, Number(threatBasis.operands.rawDamage || 0)), threatSegments, threatMultiplier),
+                shieldBefore: currentShieldTotal(target, effect, actor) })) {
+                settlePassiveSkillConsumers(combatData, Number(combatData?.回合 || 0), {
+                  phases: [previewRuntime.PASSIVE_LETHAL_PHASE],
+                  triggeredUnitIds: [previewRuntime.unitId(target)],
+                  triggerEventId: actionEvent.actionId,
+                  triggerSourceEffectId: String(effect?.effectId || effect?.效果ID || `${actionEvent.actionId}:effect:${effectIndex}`).trim(),
+                  triggerTargetId: previewRuntime.unitId(target),
+                  declaration,
+                  triggerTarget: target,
+                  conditionTarget: actor,
+                  primaryTarget: target,
+                  conditionContext: { primaryTarget: target, conditionTarget: actor },
+                });
+              }
+            }
           }
           const segments = Math.max(1, Math.floor(Number(effect?.攻击段数 || effect?.段数 || 1)) || 1);
           const reactionDamageMultiplier = Math.max(
@@ -151201,6 +152388,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             ? previewRuntime.estimateHitProbabilityAttribution(actor, target, effect)
             : [];
           let anySegmentHit = false;
+          // 接战链 阶段三: what a referee's guard skill leaves of this effect's damage on this unit (structuredRefereeIntervention).
+          let refereeHitScale = 1;
           for (let segment = 0; segment < segments; segment += 1) {
             const damageBasisForFact = segment === 0
               ? actualDamageBasisMetadata
@@ -151313,20 +152502,79 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               actionRole,
             }));
             // 生命受威胁即出局（用户 2026-11-12，BattlePreview isProtectedBattle）: in a spar the fighters hold a hit at the
-            // life-threat line themselves; in a match the referee has to get there (structuredRefereeRescue), and a hit
-            // it does not reach lands whole. A unit already out is not hit under the line again.
+            // life-threat line themselves; in a match the referee has to deal with it (structuredRefereeIntervention, below),
+            // and a hit it cannot take on lands whole. A unit already out is not hit under the line again.
             const battleMode = String(combatData?.战斗意图 || '').trim();
             const sparring = /点到为止|切磋|训练|非致命/.test(battleMode);
             const protectedBattle = sparring || previewRuntime.isProtectedBattle(combatData, { mode: battleMode });
-            const shieldBefore = currentShieldTotal(target, effect, actor);
+            const threatShield = currentShieldTotal(target, effect, actor);
             const lifeFloor = protectedBattle
               ? previewRuntime.calculateNonlethalHpFloor(combatData, target, { mode: battleMode, objectives: combatData?.胜负条件 || {} })
               : 0;
-            const settledSegmentDamage = previewRuntime.calculateSettledSegmentDamage(totalDamage, segments, reactionDamageMultiplier);
+            const plainSegmentDamage = previewRuntime.calculateSettledSegmentDamage(totalDamage, segments, reactionDamageMultiplier);
+            const threatDamage = refereeHitScale === 1 ? plainSegmentDamage : Math.floor(plainSegmentDamage * refereeHitScale);
             const alreadyOut = !!String(target?.__战斗失能原因 || '').trim();
-            const refereeRescue = protectedBattle && !sparring && !alreadyOut && settledSegmentDamage > shieldBefore + Math.max(0, before - lifeFloor) + 1e-9
-              ? structuredRefereeRescue(combatData, actor, declaration) : null;
-            const nonlethal = sparring || protectedBattle && (alreadyOut || !!refereeRescue);
+            // 接战链 阶段三 (structuredRefereeIntervention): in a match a hit that would take the unit under the line brings the
+            // referee in. A guard skill keeps the unit in, the rest of this effect's hit scaled down against the shield it put
+            // up; a block or a carry takes the unit out and the hit no further; neither, the hit lands whole.
+            const refereeAct = protectedBattle && !sparring && !alreadyOut && threatDamage > threatShield + Math.max(0, before - lifeFloor) + 1e-9
+              ? structuredRefereeIntervention({ combatData, attacker: actor, declaration, target, effect, segmentDamage: threatDamage, segments, segment,
+                shieldBefore: threatShield, before, lifeFloor, actionEvent, actionRole,
+                damageOptions: { targetCount: resolvedTargets.length, actionDamageMultiplier,
+                  resourceDriveEnabled: String(declaration?.actionKind || '').trim().toUpperCase() !== 'BASIC_ATTACK' } })
+              : null;
+            if (refereeAct) facts.push(...refereeAct.facts);
+            if (refereeAct?.guard) refereeGuards.push(refereeAct.guard);
+            if (refereeAct?.mode === 'GUARD_SKILL') refereeHitScale *= refereeAct.scale;
+            const shieldBefore = refereeAct?.mode === 'GUARD_SKILL' ? currentShieldTotal(target, effect, actor) : threatShield;
+            const settledSegmentDamage = refereeHitScale === 1 ? plainSegmentDamage : Math.floor(plainSegmentDamage * refereeHitScale);
+            const refereeRescue = refereeAct?.mode === 'BLOCK' || refereeAct?.mode === 'CARRY' ? refereeAct : null;
+            if (refereeRescue) {
+              // Blocked or carried away: nothing of this hit reaches the unit, and it is out of the fight (ruleCode
+              // REFEREE_RESCUE, as the rescue before; meta.refereeMode tells which).
+              const hpMax = previewRuntime.readHpMax(target);
+              const beforeActionState = cloneValue(target?.状态 || {});
+              facts.push(writeLedgerEvent(combatData, {
+                eventKind: 'hit_result', round: Number(combatData?.回合 || 0),
+                actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
+                targetId: previewRuntime.unitId(target), targetName: previewRuntime.unitName(target),
+                actionName, actionType: actionKind, actorControl, actionRole, actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
+                parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
+                reactionNodeId: String(reaction?.event?.chainNodeId || '').trim(),
+                result: 'miss', resultState: 'FAILURE', primaryOutcome: refereeRescue.mode === 'BLOCK' ? 'referee_blocked' : 'referee_carried',
+                ruleCode: `REFEREE_${refereeRescue.mode}`, effectPrototype: prototype, factType: 'DAMAGE', sourceEffectId, operation: 'DAMAGE',
+                meta: {
+                  source: 'structured_runtime', effectIndex, windowId: effectWindowId, segment: segment + 1, segments, hitProbability, roll,
+                  rawDamage: segmentDamage, rawDamageTotal: totalDamage, damageType: effect?.伤害类型 || '', appliedDamage: 0,
+                  basisHash: actualDamageBasis.basisHash, damageBasis: damageBasisForFact, reactionEventId: String(reaction?.event?.eventId || '').trim(),
+                  refereeMode: refereeRescue.mode, refereeEventId: String(refereeRescue.event?.eventId || ''),
+                  refereeDamage: refereeRescue.mode === 'BLOCK' ? refereeRescue.block?.damage || 0 : 0,
+                  before, after: before, operation: 'DAMAGE',
+                },
+              }));
+              target.__战斗失能原因 = 'INCAPACITATED';
+              facts.push(writeLedgerEvent(combatData, {
+                eventKind: 'state_apply', round: Number(combatData?.回合 || 0),
+                actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
+                targetId: previewRuntime.unitId(target), targetName: previewRuntime.unitName(target),
+                actionName, actionType: 'incapacitation', actorControl, actionRole, actionId: actionEvent.actionId,
+                sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
+                ruleCode: 'REFEREE_RESCUE', result: 'applied', resultState: 'SUCCESS', primaryOutcome: 'nonlethal_incapacitation',
+                effectPrototype: prototype, factType: 'STATE', sourceEffectId, operation: 'STATE_APPLY',
+                meta: {
+                  source: 'structured_runtime', stateName: '失去战斗力', hpAfter: before, hpRatioAfter: before / Math.max(1, hpMax),
+                  triggerDamage: 0, singleHitRatio: 0, nonlethalHpFloor: lifeFloor, nonlethalIncapacitated: true,
+                  refereeMode: refereeRescue.mode, refereeRescue: { name: refereeRescue.refereeName, mode: refereeRescue.mode, count: refereeRescue.count,
+                    reach: refereeRescue.timing.reach, eventId: String(refereeRescue.event?.eventId || '') },
+                  reasonText: refereeRescue.reasonText, traumaUnconscious: false,
+                  before: beforeActionState, after: cloneValue(target.状态), operation: 'STATE_APPLY',
+                },
+              }));
+              refereeTakenTargetIds.add(previewRuntime.unitId(target));
+              settleSpecialPassiveBoundary(specialSegmentHp, facts.slice(specialSegmentFactStart), sourceEffectId, segment + 1, previewRuntime.unitId(target));
+              break;
+            }
+            const nonlethal = sparring || protectedBattle && alreadyOut;
             const nonlethalHpFloor = nonlethal ? lifeFloor : 0;
             const hpDamageLimit = nonlethal ? Math.max(0, before - nonlethalHpFloor) : before;
             const incomingDamage = Math.max(0, Math.min(
@@ -151335,7 +152583,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             ));
             const shieldResult = absorbRuntimeShield(target, incomingDamage, effect, actor);
             let damage = Math.max(0, Math.min(hpDamageLimit, shieldResult.remainingDamage));
-            const deathSave = before > 0 && damage >= before ? previewRuntime.consumeDeathSaveCharges(target, 1)[0] : null;
+            const deathSave = before > 0 && damage >= before ? previewRuntime.consumeDeathSaveCharges(target, 1, { actionId: actionEvent.actionId })[0] : null;
             const deathSavePreventedDamage = deathSave ? damage - Math.max(0, before - 1) : 0;
             if (deathSave) damage = Math.max(0, before - 1);
             if (incomingDamage > 0) anySegmentHit = true;
@@ -151961,9 +153209,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (!target.状态效果 || typeof target.状态效果 !== 'object') target.状态效果 = {};
         const duration = Math.max(1, Number(effect?.持续回合 || 1));
         const polarity = previewRuntime.statePolarity(effect);
+        // 来源技能的计价版本（gen1c）：「标记」的战斗效果只对带当前计价版本戳的技能生效（BattlePreview deriveStateCombatEffect）。
+        const sourcePricing = declaration?.skill && typeof declaration.skill === 'object' ? { 来源计价版本: Number(declaration.skill.计价版本) || 0 } : {};
         const state = {
           类型: polarity < 0 ? 'debuff' : polarity > 0 ? 'buff' : '',
           状态: stateName, 状态名称: stateName, 层数: 1, duration,
+          ...sourcePricing,
           原型: prototype,
           ...(effect.强度 !== undefined ? { 强度: effect.强度 } : {}),
           判定: String(effect?.判定 || '').trim(),
@@ -151979,7 +153230,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           触发消耗: cloneValue(effect?.触发消耗),
           __本回合新附加: true,
           来源技能: String(effect?.__来源技能 || actionName), 来源角色: previewRuntime.unitName(actor), 来源动作ID: String(declaration?.__castIdentity || actionEvent.actionId),
-          描述: `由[${actionName}]附加`, 战斗效果: { ...createEmptyCombatEffectMap(), ...previewRuntime.deriveStateCombatEffect(effect) },
+          描述: `由[${actionName}]附加`, 战斗效果: { ...createEmptyCombatEffectMap(), ...previewRuntime.deriveStateCombatEffect({ ...effect, ...sourcePricing }) },
           面板修改比例: { ...(effect?.面板修改比例 || {}) }, 面板固定修正: { ...(effect?.面板固定修正 || {}) },
         };
         const applicationId = nextRuntimeId('state-src');
@@ -152212,7 +153463,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 接战链 阶段二 (BattlePreview clashOutcome): a move that came to nothing in a clash brings no effect — its costs and
     // stamina are paid above (input.voidEffects); a unit it came to nothing on (a clash it won or evened, its reaction
     // marked `nullified`) takes none of its effects.
-    const nullifiedTarget = target => input?.reactionByTarget?.[previewRuntime.unitId(target)]?.nullified === true;
+    // 接战链 阶段三: so does a unit the referee blocked for or carried away (refereeTakenTargetIds).
+    const nullifiedTarget = target => input?.reactionByTarget?.[previewRuntime.unitId(target)]?.nullified === true ||
+      refereeTakenTargetIds.has(previewRuntime.unitId(target));
     // 接战链 阶段二补充: an even clash's shock carries damage only (reaction shockOnly; input.shockOnlyTargetId: the
     // answer itself lands on that one unit only).
     const shockTarget = (target, prototype) => prototype !== '伤害结算' && input?.reactionByTarget?.[previewRuntime.unitId(target)]?.shockOnly === true ||
@@ -152536,6 +153789,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         },
       });
     }
+    // 接战链 阶段三: a referee's guard covered this action's hit only.
+    if (refereeGuards.length) facts.push(...clearRefereeGuards(combatData, refereeGuards));
     return finishStructuredDeclaration(context, facts, 'RESOLVED');
   }
 
@@ -152818,29 +154073,276 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
   }
 
-  // 裁判救援（用户 2026-11-12："有裁判的话，并且裁判足够应付的话可以让裁判出手阻挡（同样是计算敏捷，走守护路线。注意敏捷差距大
-  // 的话是可以一回合救多人的"）: the referee of a match (combatData.裁判: 名称, and 敏捷 or 等级) steps in front of a hit
-  // that would take a unit under the life-threat line. It gets there by the guard's reckoning (BattlePreview
-  // reactionWindupBudget against the attack, with the referee's agility; stepping in takes INTERCEPT_WINDUP of it),
-  // and each further rescue in the same round takes as much again — so a referee far quicker than the fighters saves
-  // several in a round and one no quicker than them one or two. Returns the rescue, or null when there is no referee
-  // or it cannot get there.
-  const refereeRescues = new WeakMap();
-  function structuredRefereeRescue(combatData = {}, attacker = {}, declaration = {}) {
-    const referee = combatData?.裁判;
-    if (!referee || typeof referee !== 'object') return null;
-    const level = Number(referee.等级 ?? referee.level);
-    const agility = Number(referee.敏捷 ?? referee.agi) > 0 ? Number(referee.敏捷 ?? referee.agi)
-      : level > 0 && typeof root.__LWCS_GET_BASE_STATS__ === 'function' ? Number(root.__LWCS_GET_BASE_STATS__(level)?.agi) || 0 : 0;
-    if (!(agility > 0)) return null;
-    const round = Number(combatData?.回合 || 0), budgetCap = Number(previewRuntime.CONTINUOUS_ACTION_BUDGET) || 40;
-    const tally = refereeRescues.get(combatData), done = tally && tally.round === round ? tally.count : 0;
-    const windup = previewRuntime.actionWindup(attacker, declaration), attackerAgility = previewRuntime.naturalActionOrderProfile(attacker).effectiveAgility;
-    const reach = windup > budgetCap || !(attackerAgility > 0) ? budgetCap
-      : Math.min(budgetCap, windup * (agility / attackerAgility) * (1 + (Number(previewRuntime.REACTION_DEFENDER_MARGIN) || 0.2)));
-    if (!(reach - (Number(previewRuntime.INTERCEPT_WINDUP) || 10) * (done + 1) >= 0)) return null;
-    refereeRescues.set(combatData, { round, count: done + 1 });
-    return { name: String(referee.名称 || referee.name || '裁判').trim() || '裁判', agility, reach, count: done + 1 };
+  // 裁判（用户 2026-11-12："有裁判的话，并且裁判足够应付的话可以让裁判出手阻挡（同样是计算敏捷，走守护路线。注意敏捷差距大
+  // 的话是可以一回合救多人的，救援的前提是判定这一击会导致生命低于10%，被救的人出局"；"裁判需要接入游戏吧，而且不止是赶不赶得上，
+  // 还要看实力够不够，可以说裁判就是一个中立的负责护卫行动的角色，可以用魂技护卫，可以抵挡，也可以救走"；"没有填裁判就是没有裁判";
+  // 接战链改造方案-20261112 §3; the rules are BattlePreview's, refereeTiming and after).
+  //
+  // prepareBattleReferee: combatData.裁判 as a whole character — a role (the save's character by its name through
+  // `resolveCharacter`, or a unit given whole), merged as a fighter is (mergeBattleParticipant); or only a level ({ 名称,
+  // 等级 }): the base panel of that level (__LWCS_GET_BASE_STATS__, HP at the 体力 maximum as a generated role has it) and no
+  // skill. HP, 魂力 and 精神力 given beside it (what an earlier part of the battle left) stand. It stays on combatData.裁判,
+  // in no side's list — so it takes no turn, is no one's target, no group move reaches it, no side's passive or aura works
+  // on it, and it counts for neither side — and keeps its account in __referee (the battle snapshot shows it). Nothing
+  // given: no referee. A name that resolves to no one and no level: nothing it can do (the match stands, nobody steps in).
+  function prepareBattleReferee(combatData = {}, resolveCharacter = null) {
+    const raw = combatData?.裁判;
+    if (raw === undefined || raw === null || raw === '') return null;
+    const source = typeof raw === 'string' ? { 名称: raw.trim() } : raw;
+    if (!source || typeof source !== 'object' || Array.isArray(source)) return null;
+    if (source.__refereePrepared === true) return source;
+    const name = String(source.名称 || source.name || '').trim() || '裁判';
+    const readCharacter = typeof resolveCharacter === 'function' ? resolveCharacter : () => null;
+    const level = Number(source.等级 ?? source.level ?? source.属性?.等级);
+    const hasPanel = !!(source.属性 && typeof source.属性 === 'object' && Number(source.属性.HP上限 ?? source.HP上限 ?? source.hp_max) > 0);
+    const character = hasPanel ? null : readCharacter(name);
+    let seed = null;
+    if (hasPanel || character && typeof character === 'object' && !Array.isArray(character)) {
+      seed = cloneValue(source);
+    } else if (level > 0 && typeof root.__LWCS_GET_BASE_STATS__ === 'function') {
+      const base = root.__LWCS_GET_BASE_STATS__(level) || {};
+      const hp = Math.max(1, Math.floor(Number(base.vit_max) || 1));
+      seed = { 属性: { 等级: level, HP: hp, HP上限: hp, 体力: hp, 体力上限: hp, 魂力: Number(base.sp_max) || 0, 魂力上限: Number(base.sp_max) || 0,
+        精神力: Number(base.men_max) || 0, 精神力上限: Number(base.men_max) || 0, 力量: Number(base.str) || 0, 防御: Number(base.def) || 0,
+        敏捷: Number(base.agi) || 0 }, 状态: { 存活: true } };
+      ['HP', '魂力', '精神力'].forEach(key => { if (Number.isFinite(Number(source[key]))) seed[key] = Number(source[key]); });
+    }
+    if (!seed) return null;
+    seed.name = name;
+    seed.名称 = name;
+    seed.id = String(source.id || '').trim() || `裁判:${name}`;
+    const referee = mergeBattleParticipant(combatData, seed, character ? () => character : () => null);
+    referee.势力 = '中立';
+    referee.__refereePrepared = true;
+    const account = source.__referee && typeof source.__referee === 'object' ? cloneValue(source.__referee) : {};
+    referee.__referee = { interventions: { GUARD_SKILL: 0, BLOCK: 0, CARRY: 0, NONE: 0, ...(account.interventions || {}) },
+      reasons: { ...(account.reasons || {}) }, damageTaken: Number(account.damageTaken) || 0, spent: { ...(account.spent || {}) } };
+    combatData.裁判 = referee;
+    return referee;
+  }
+  // The referee's HP and resources: set as written, none of a fighter's stamina rules (it does not drop out of a battle
+  // for stamina, and a skill's stamina is paid like any resource).
+  function writeRefereeResource(referee = {}, key = 'hp', value = 0) {
+    const spec = { hp: ['生命', ['hp', 'HP'], 'HP'], sp: ['魂力', ['sp', '魂力'], '魂力'], men: ['精神力', ['men', '精神力'], '精神力'],
+      vit: ['体力', ['sta', 'vit', '体力'], '体力'] }[key];
+    if (!spec) return 0;
+    const next = Math.round(Math.max(0, Math.min(previewRuntime.readResourceMax(referee, spec[0]), Number(value) || 0)));
+    spec[1].forEach(field => { referee[field] = next; });
+    if (referee.属性 && typeof referee.属性 === 'object') referee.属性[spec[2]] = next;
+    return next;
+  }
+  function refereeSnapshot(referee = {}) {
+    const account = referee.__referee || {};
+    return {
+      id: previewRuntime.unitId(referee), name: previewRuntime.unitName(referee),
+      lv: Math.max(1, Number(referee?.等级 ?? referee?.属性?.等级 ?? 1)),
+      hp: previewRuntime.readHp(referee), hp_max: previewRuntime.readHpMax(referee),
+      sp: previewRuntime.readResource(referee, '魂力'), sp_max: previewRuntime.readResourceMax(referee, '魂力'),
+      men: previewRuntime.readResource(referee, '精神力'), men_max: previewRuntime.readResourceMax(referee, '精神力'),
+      interventions: { ...(account.interventions || {}) }, reasons: { ...(account.reasons || {}) },
+      damageTaken: Number(account.damageTaken) || 0, spent: { ...(account.spent || {}) },
+    };
+  }
+
+  // structuredRefereeIntervention: a hit (one segment of a damage effect, `segmentDamage` as it settles, `segments` −
+  // `segment` of them still to land) would take `target` under the life-threat line in a match. The referee tries what
+  // leaves the fighter best off first, and the n-th fighter it saves this round (the three ways together) takes n ×
+  // INTERCEPT_WINDUP of its window (BattlePreview refereeTiming):
+  //   GUARD_SKILL — one of its skills that guards (BattlePreview refereeGuardEffects), out within the window left, paid in
+  //     full, after which the rest of the hit (scaled by refereeGuardScale, against the shield it adds) no longer takes the
+  //     fighter under the line; of those the cheapest (its cost as shares of the referee's maxima). The shield and the cut
+  //     cover this hit only: they go when the action is settled (clearRefereeGuards) — the referee does not arm a fighter.
+  //   BLOCK — it takes the rest of the hit (BattlePreview refereeBlock) and is left at REFEREE_SAFE of its HP or more.
+  //   CARRY — quick enough to take the fighter away (one more INTERCEPT_WINDUP): the hit comes to nothing.
+  // Neither: REFEREE_TOO_SLOW (it could not get there) or REFEREE_TOO_WEAK (it got there, could not take the hit, and was
+  // not quick enough to carry), and the hit lands whole. Returns null when there is no referee; else { mode, reason,
+  // scale (GUARD_SKILL), block, facts, guard (what clearRefereeGuards takes off) } — the facts are the caller's to keep.
+  // Ledger: a `referee` event (ruleCode REFEREE_GUARD_SKILL / REFEREE_BLOCK / REFEREE_CARRY / REFEREE_TOO_SLOW /
+  // REFEREE_TOO_WEAK) with the windows, the count, what the referee took or put on, and why each of its guard skills was
+  // passed over; a guard's shield and states as shield_create / state_apply (ruleCode REFEREE_GUARD_SKILL) on the fighter.
+  const refereeSaves = new WeakMap();
+  function structuredRefereeIntervention(input = {}) {
+    const { combatData, attacker, declaration, target, effect, segmentDamage = 0, segments = 1, segment = 0, shieldBefore = 0,
+      before = 0, lifeFloor = 0, damageOptions = {}, actionEvent = {}, actionRole = 'ACTIVE' } = input;
+    const rootData = combatLedgerRoot(combatData);
+    const published = rootData?.裁判?.__refereePrepared === true ? rootData.裁判 : prepareBattleReferee(rootData);
+    if (!published) return null;
+    // The decisions' worlds share combatData.裁判 and freeze it with them: the referee is worked on as a copy, published
+    // back to combatData.裁判 when it is done (below).
+    const referee = cloneValue(published);
+    const round = Number(rootData?.回合 || combatData?.回合 || 0);
+    const tally = refereeSaves.get(rootData), count = (tally && tally.round === round ? tally.count : 0) + 1;
+    const timing = previewRuntime.refereeTiming(attacker, declaration, referee, count);
+    const refereeName = previewRuntime.unitName(referee), targetName = previewRuntime.unitName(target);
+    const remaining = Math.max(1, Math.floor(Number(segments) || 1) - Math.max(0, Math.floor(Number(segment) || 0)));
+    const room = Math.max(0, before - lifeFloor);
+    const passedOver = [];
+    let chosen = null, block = null;
+    // 1. A guard skill.
+    if (timing.block >= -1e-9) {
+      const hpMax = previewRuntime.readHpMax(target);
+      const candidates = [];
+      for (const skill of decisionRuntime.collectSkills(referee)) {
+        const guard = previewRuntime.refereeGuardEffects(skill);
+        if (!guard) continue;
+        const skillName = normalizeActionDisplayName(skill?.name || skill?.魂技名 || skill?.技能名称 || skill?.技能名 || '魂技');
+        const windup = previewRuntime.actionWindup(referee, { actionKind: 'RELEASE_SKILL', skill });
+        if (windup > timing.block + 1e-9) { passedOver.push({ skill: skillName, reason: 'LATE', windup }); continue; }
+        const stages = previewRuntime.readSkillCostStages(skill, { 来源模块: 'BattleRuntime_Module', costActor: referee });
+        const costs = previewRuntime.normalizeSkillCostMap(stages.启动, stages.形式 === 'percentage' ? 'percentage' : 'absolute');
+        const plan = stages.非法项?.length || costs.非法项.length ? null : previewRuntime.assessResourcePayment([referee], costs.values);
+        if (!plan?.ok) { passedOver.push({ skill: skillName, reason: 'COST', windup, detail: String(plan?.reason || 'COST_INVALID') }); continue; }
+        // The shields as the settlement samples them (a share of the fighter's HP maximum, or a number) and their gain
+        // under the shield cap; the cuts as the states they put on.
+        const shieldAmounts = guard.shields.map(row => Math.max(0, Number(previewRuntime.sampleSignedValue(row?.数值, hpMax, Math.random)) || 0));
+        const shieldGain = shieldAmounts.reduce((total, amount) => total + previewRuntime.calculateShieldGain(target, amount), 0);
+        const states = {};
+        guard.cuts.forEach((row, index) => {
+          const stateName = String(row?.状态 || row?.状态名称 || '').trim() || skillName;
+          states[`裁判·${stateName}${index ? `·${index + 1}` : ''}`] = {
+            类型: 'buff', 状态: stateName, 状态名称: stateName, 层数: 1, 来源原型摘要: String(row?.原型 || '').trim(),
+            来源角色: refereeName, 来源技能: skillName, 来源动作ID: String(actionEvent?.actionId || ''),
+            描述: `裁判${refereeName}以[${skillName}]护住这一击`, duration: 1, __本回合新附加: true, 面板修改比例: {},
+            战斗效果: { ...createEmptyCombatEffectMap(), ...(previewRuntime.deriveStateCombatEffect(row) || {}) },
+            ...(String(row?.原型 || '').trim() === '结算修正' ? { 结算: String(row?.结算 || '').trim() } : {}),
+          };
+        });
+        const scale = previewRuntime.refereeGuardScale(attacker, effect, declaration?.skill, target, states, damageOptions);
+        const guardedHit = Math.floor(segmentDamage * scale) * remaining;
+        if (!(guardedHit <= shieldBefore + shieldGain + room + 1e-9)) {
+          passedOver.push({ skill: skillName, reason: 'NOT_ENOUGH', windup, scale, shieldGain, guardedHit });
+          continue;
+        }
+        const price = plan.payments.reduce((total, payment) => total + payment.amount / Math.max(1, Number(payment.maximum) || 1), 0);
+        candidates.push({ skill, skillName, windup, plan, guard, shieldAmounts, shieldGain, states, scale, guardedHit, price });
+      }
+      candidates.sort((left, right) => left.price - right.price || left.windup - right.windup);
+      if (candidates.length) chosen = { mode: 'GUARD_SKILL', ...candidates[0] };
+    }
+    // 2. Block — 3. carry.
+    if (!chosen && timing.block >= -1e-9) {
+      block = previewRuntime.refereeBlock(referee, attacker, effect, declaration?.skill, declaration, remaining / Math.max(1, segments), damageOptions, combatData);
+      if (block.holds) chosen = { mode: 'BLOCK' };
+    }
+    if (!chosen && timing.carry >= -1e-9) chosen = { mode: 'CARRY' };
+    const mode = chosen?.mode || 'NONE';
+    const reason = mode !== 'NONE' ? '' : timing.block < -1e-9 ? 'TOO_SLOW' : 'TOO_WEAK';
+    if (mode !== 'NONE') refereeSaves.set(rootData, { round, count });
+    const account = referee.__referee;
+    account.interventions[mode] = (Number(account.interventions[mode]) || 0) + 1;
+    if (reason) account.reasons[reason] = (Number(account.reasons[reason]) || 0) + 1;
+    const facts = [];
+    const actionBase = {
+      round, actorId: previewRuntime.unitId(referee), actorName: refereeName, targetId: previewRuntime.unitId(target), targetName,
+      actorControl: 'SYSTEM', actionRole, actionId: String(actionEvent?.actionId || ''), sourceActionId: String(actionEvent?.actionId || ''),
+      parentNodeId: actionEvent?.chainNodeId || '', sourceNodeId: actionEvent?.chainNodeId || '',
+    };
+    const spent = {};
+    let shieldAdded = 0, guard = null;
+    if (mode === 'GUARD_SKILL') {
+      chosen.plan.payments.forEach(payment => {
+        const label = { hp: '生命', sp: '魂力', men: '精神力', vit: '体力' }[payment.key] || payment.resource;
+        const current = payment.key === 'hp' ? previewRuntime.readHp(referee) : previewRuntime.readResource(referee, label);
+        const after = writeRefereeResource(referee, payment.key, current - payment.amount);
+        spent[label] = (spent[label] || 0) + Math.max(0, current - after);
+        account.spent[label] = (Number(account.spent[label]) || 0) + Math.max(0, current - after);
+      });
+      const action = { actionKind: 'RELEASE_SKILL', actionName: chosen.skillName, actorControl: 'SYSTEM' };
+      const shieldStateName = runtimeShieldStateName(`裁判·${chosen.skillName}`);
+      if (chosen.shieldAmounts.some(amount => amount > 0)) {
+        const shieldBeforeGuard = currentShieldTotal(target);
+        chosen.shieldAmounts.forEach((amount, index) => {
+          if (amount > 0) applyRuntimeShield(target, amount, 1, shieldStateName, chosen.guard.shields[index]);
+        });
+        shieldAdded = currentShieldTotal(target) - shieldBeforeGuard;
+        const shieldFact = writeStructuredResourceFact(combatData, referee, target, action, actionEvent, 'shield', shieldAdded, actionRole, 'CREATE', {
+          before: shieldBeforeGuard, after: currentShieldTotal(target), effectPrototype: '护盾变化', factType: 'SHIELD',
+          meta: { refereeGuard: true, stateName: shieldStateName },
+        });
+        if (shieldFact) { shieldFact.ruleCode = 'REFEREE_GUARD_SKILL'; facts.push(shieldFact); }
+      }
+      if (!target.状态效果 || typeof target.状态效果 !== 'object') target.状态效果 = {};
+      Object.entries(chosen.states).forEach(([stateKey, state]) => {
+        const previous = target.状态效果[stateKey] ? cloneValue(target.状态效果[stateKey]) : null;
+        target.状态效果[stateKey] = state;
+        facts.push(writeLedgerEvent(combatData, {
+          ...actionBase, eventKind: previous ? 'state_replace' : 'state_apply', actionName: chosen.skillName, actionType: 'RELEASE_SKILL',
+          result: previous ? 'replaced' : 'applied', resultState: 'SUCCESS', primaryOutcome: previous ? 'state_replace' : 'state_apply',
+          ruleCode: 'REFEREE_GUARD_SKILL', factType: 'STATE', operation: previous ? 'STATE_REPLACE' : 'STATE_APPLY', duration: 1,
+          meta: { source: 'structured_runtime', refereeGuard: true, stateName: stateKey, before: previous, after: cloneValue(state) },
+        }));
+      });
+      guard = { referee, target, shieldStateName: chosen.shieldAmounts.some(amount => amount > 0) ? shieldStateName : '',
+        stateKeys: Object.keys(chosen.states), skillName: chosen.skillName, actionEvent, actionRole };
+    } else if (mode === 'BLOCK') {
+      const current = previewRuntime.readHp(referee);
+      const after = writeRefereeResource(referee, 'hp', current - block.damage);
+      account.damageTaken = (Number(account.damageTaken) || 0) + Math.max(0, current - after);
+    }
+    const reasonText = {
+      GUARD_SKILL: `裁判${refereeName}以[${chosen?.skillName || ''}]护住${targetName}，这一击没有危及性命`,
+      BLOCK: `裁判${refereeName}挡下这一击，${targetName}出局`,
+      CARRY: `裁判${refereeName}把${targetName}带离，这一击落空，${targetName}出局`,
+      NONE: reason === 'TOO_SLOW' ? `裁判${refereeName}来不及出手` : `裁判${refereeName}赶到了却接不下这一击，也来不及把人带走`,
+    }[mode];
+    const event = writeLedgerEvent(combatData, {
+      ...actionBase, eventKind: 'referee',
+      actionName: mode === 'GUARD_SKILL' ? chosen.skillName : { BLOCK: '裁判抵挡', CARRY: '裁判救走', NONE: '裁判出手' }[mode],
+      actionType: 'referee', result: mode === 'NONE' ? 'failed' : mode.toLowerCase(), resultState: mode === 'NONE' ? 'FAILURE' : 'SUCCESS',
+      primaryOutcome: `referee_${mode.toLowerCase()}`, ruleCode: mode === 'NONE' ? `REFEREE_${reason}` : `REFEREE_${mode}`,
+      meta: {
+        source: 'structured_runtime', refereeMode: mode, reason, count, reach: timing.reach, blockWindow: timing.block, carryWindow: timing.carry,
+        inTime: timing.block >= -1e-9, carryInTime: timing.carry >= -1e-9, interceptWindup: Number(previewRuntime.INTERCEPT_WINDUP) || 0,
+        incomingWindup: previewRuntime.actionWindup(attacker, declaration),
+        attackerAgility: previewRuntime.naturalActionOrderProfile(attacker).effectiveAgility,
+        refereeAgility: previewRuntime.naturalActionOrderProfile(referee).effectiveAgility,
+        threat: { hpBefore: before, lifeFloor, shieldBefore, segmentDamage, remainingSegments: remaining, hitTotal: segmentDamage * remaining },
+        ...(mode === 'GUARD_SKILL' ? { guardSkill: chosen.skillName, guardWindup: chosen.windup, guardCost: spent, guardScale: chosen.scale,
+          shieldAdded, guardedHit: chosen.guardedHit, guardStates: Object.keys(chosen.states) } : {}),
+        ...(block ? { refereeDamage: block.damage, refereeGuardMultiplier: block.guard, refereeHitWeight: block.weight,
+          refereeHpBefore: block.hpBefore, refereeHpAfterBlock: block.hpAfter, refereeHpRatioAfterBlock: block.ratioAfter, blockHolds: block.holds } : {}),
+        refereeSafe: Number(previewRuntime.REFEREE_SAFE) || 0.5,
+        refereeAfter: { HP: previewRuntime.readHp(referee), 魂力: previewRuntime.readResource(referee, '魂力'), 精神力: previewRuntime.readResource(referee, '精神力') },
+        guardSkillsPassedOver: passedOver, reasonText,
+      },
+    });
+    facts.push(event);
+    rootData.裁判 = referee;
+    return { mode, reason, count, timing, referee, refereeName, event, facts, block,
+      scale: mode === 'GUARD_SKILL' ? chosen.scale : 1, guard, reasonText };
+  }
+  // A guard skill covers the hit it was put up for: what is left of its shield and its states come off the fighter once the
+  // action is settled (shield_break / state_remove, ruleCode REFEREE_GUARD_EXPIRED).
+  function clearRefereeGuards(combatData = {}, guards = []) {
+    const facts = [];
+    guards.forEach(({ referee, target, shieldStateName, stateKeys, skillName, actionEvent, actionRole }) => {
+      const states = target?.状态效果;
+      if (!states || typeof states !== 'object') return;
+      const action = { actionKind: 'RELEASE_SKILL', actionName: skillName, actorControl: 'SYSTEM' };
+      if (shieldStateName && states[shieldStateName]) {
+        const before = currentShieldTotal(target), left = Math.max(0, Number(states[shieldStateName]?.shield_value || 0));
+        delete states[shieldStateName];
+        const fact = left > 0 ? writeStructuredResourceFact(combatData, referee, target, action, actionEvent, 'shield', -left, actionRole, 'REDUCE', {
+          before, after: currentShieldTotal(target), effectPrototype: '护盾变化', factType: 'SHIELD', meta: { refereeGuard: true, stateName: shieldStateName, expired: true },
+        }) : null;
+        if (fact) { fact.ruleCode = 'REFEREE_GUARD_EXPIRED'; facts.push(fact); }
+      }
+      (stateKeys || []).forEach(stateKey => {
+        if (!states[stateKey]) return;
+        const previous = cloneValue(states[stateKey]);
+        delete states[stateKey];
+        facts.push(writeLedgerEvent(combatData, {
+          eventKind: 'state_remove', round: Number(combatData?.回合 || 0),
+          actorId: previewRuntime.unitId(referee), actorName: previewRuntime.unitName(referee),
+          targetId: previewRuntime.unitId(target), targetName: previewRuntime.unitName(target),
+          actionName: skillName, actionType: 'RELEASE_SKILL', actorControl: 'SYSTEM', actionRole,
+          actionId: String(actionEvent?.actionId || ''), sourceActionId: String(actionEvent?.actionId || ''),
+          result: 'expired', resultState: 'SUCCESS', primaryOutcome: 'state_remove', ruleCode: 'REFEREE_GUARD_EXPIRED',
+          factType: 'STATE', operation: 'STATE_REMOVE', meta: { source: 'structured_runtime', refereeGuard: true, stateName: stateKey, before: previous, after: null },
+        }));
+      });
+    });
+    return facts;
   }
 
   function structuredActorPhysicallyAlive(unit = {}) {
@@ -152971,6 +154473,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const timing = mode === 'PREEMPT' ? previewRuntime.preemptTiming(reactor, declaration, sourceActor, incomingDeclaration) : null;
     const couldAct = structuredActorCanAct(sourceActor, 'ACTIVE');
     const statesBefore = new Set(Object.values(sourceActor?.状态效果 || {}));
+    // 接战链 阶段 2e: what the outcome (in time or not) shows each side about the other's speed, read before the move
+    // settles (BattlePreview engagementAgilityBounds); the queue hands it to both sides' beliefs.
+    const agilityBounds = previewRuntime.engagementAgilityBounds({ mode, attacker: sourceActor, reactor, incoming: incomingDeclaration, declaration,
+      intercept: input?.intercept === true, inTime: mode === 'CLASH' ? clashInTime : timing?.faster === true });
     const actionContext = beginStructuredDeclaration({
       combatData,
       declaration,
@@ -153048,6 +154554,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       damageMultiplier: mode === 'CLASH' && clashResult !== 'WIN' && clashResult !== 'LATE' ? (clash ? clash.inScale : 1) : 1,
       forceHit: mode === 'CLASH' && (clashResult === 'EVEN' || clashResult === 'LOSE'),
       preempted: held,
+      agilityBounds,
       answerWorked: answered,
       opensCounterCheck: answered,
       clash,
@@ -154232,6 +155739,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     if (input?.referee && typeof input.referee === 'object') combatData.裁判 = cloneValue(input.referee);
     normalizeLatestBattleRuntime(combatData);
+    // 接战链 阶段三: the referee as a whole character outside both sides (a role given whole, or a level).
+    prepareBattleReferee(combatData);
     performanceTrace('runtime-normalized', {
       unitCount: listCombatUnits(combatData).length,
     });
@@ -154803,6 +156312,33 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               .map(event => String(event?.eventId || '').trim())
               .filter(Boolean),
           };
+        };
+        // 接战链 阶段 2e (方案 §14.3): a clash or preemption settled in time or too late is public; each side learns a bound
+        // on the other unit's base agility (BattlePreview engagementAgilityBounds, from its own unit's agility), kept in the
+        // beliefs of every unit of that side (shared by the team) as agilityBounds[unitId] = { lo, hi }. A bound that
+        // contradicts the ones held (speed changed since) replaces them.
+        const recordAgilityBounds = (bounds, reactor, attacker) => {
+          if (!bounds || !reactor || !attacker) return;
+          const reactorSide = inferUnitSide(combatData, reactor), attackerSide = inferUnitSide(combatData, attacker);
+          const learn = (side, unit, bound) => {
+            if (!side || !bound) return;
+            const unitId = previewRuntime.unitId(unit);
+            listPrimaryCombatUnits(combatData).forEach(observer => {
+              if (inferUnitSide(combatData, observer) !== side) return;
+              const observerId = previewRuntime.unitId(observer);
+              const previous = beliefByActor.get(observerId) || initialBeliefFor(observerId);
+              const held = previous?.agilityBounds?.[unitId] || {};
+              let lo = Math.max(Number(held.lo) || 0, Number(bound.lo) || 0);
+              let hi = Math.min(Number.isFinite(Number(held.hi)) ? Number(held.hi) : Infinity, Number.isFinite(Number(bound.hi)) ? Number(bound.hi) : Infinity);
+              if (lo > hi) ({ lo = 0, hi = Infinity } = bound);
+              const merged = { ...(lo > 0 ? { lo } : {}), ...(Number.isFinite(hi) ? { hi } : {}) };
+              const agilityBounds = { ...(previous?.agilityBounds || {}), [unitId]: merged };
+              setVisibleBelief(observerId, { ...previous, agilityBounds,
+                revision: previewRuntime.stableHash([String(previous?.revision || ''), 'agility-bounds', unitId, merged]) });
+            });
+          };
+          learn(reactorSide, attacker, bounds.attacker);
+          learn(attackerSide, reactor, bounds.reactor);
         };
         const recordPublicReactionObservation = ({
           reactor,
@@ -156387,6 +157923,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                   settlementObservationStartedAt,
                 );
               }
+              if (reaction?.agilityBounds) recordAgilityBounds(reaction.agilityBounds, actor, sourceActor);
               recordPublicReactionObservation({
                 reactor: actor,
                 incomingSource: sourceActor,

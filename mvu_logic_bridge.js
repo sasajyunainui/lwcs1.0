@@ -1477,7 +1477,7 @@
   const 装备加成属性选项_桥接 = Object.freeze(['魂力上限', '精神力上限', '力量', '防御', '敏捷', '体力上限']);
   const 装备加成方向选项_桥接 = Object.freeze([...装备加成属性选项_桥接, '全属性']);
   const 装备加成属性集合_桥接 = new Set(装备加成属性选项_桥接);
-  const 正式技能字段列表_桥接 = Object.freeze(['魂技名', '画面描述', '效果描述', '产物描述', '承载方式', '消耗', '前摇', '场外冷却至tick', '附带属性', '使用条件', '技能掌控度', '触发限制', '_效果数组', '副作用列表']);
+  const 正式技能字段列表_桥接 = Object.freeze(['魂技名', '画面描述', '效果描述', '产物描述', '承载方式', '消耗', '前摇', '场外冷却至tick', '附带属性', '使用条件', '技能掌控度', '触发限制', '_效果数组', '副作用列表', '计价版本']);
   const 正式技能字段集合_桥接 = new Set(正式技能字段列表_桥接);
 
   function 断言物品正式技能_桥接(技能 = {}, 来源 = '物品技能') {
@@ -15076,7 +15076,8 @@
     if (状态名 === '僵直') return '-50%';
     if (状态名 === '麻痹') return '-50%';
     if (状态名 === '混乱') return '+40%';
-    if (状态名 === '标记') return '-100%';
+    // 标记 = 被标记者闪避下降，默认 10%（与 MVU_Skill_Runtime 读取状态施加默认数值_V1、战斗侧缺省一致）。
+    if (状态名 === '标记') return '-10%';
     if (['防御剥夺', '精神抗性剥夺'].includes(状态名)) return '+20%';
     return '-3%';
   }
@@ -17581,7 +17582,7 @@
     return false;
   }
 
-  const 技能设计台被动触发选项 = Object.freeze(['常驻', '战斗开始', '回合开始', '受击前', '受击后', '濒死时', '被控制时', '命中后']);
+  const 技能设计台被动触发选项 = Object.freeze(['常驻', '战斗开始', '回合开始', '受击前', '致命前', '受击后', '濒死时', '被控制时', '命中后']);
   const 技能设计台被动触发周期选项 = Object.freeze(['无限制', '每战', '每回合']);
   const 技能设计台使用限制周期选项 = Object.freeze(['无限制', '每战', '每日']);
 
@@ -24847,6 +24848,10 @@ ${播报文本}
                           </div>
                         </div>
                       </div>
+                      <div class="battle-terminal-row" id="ui-referee-row" hidden>
+                        <span class="battle-terminal-label">裁判</span>
+                        <span class="battle-number-field" id="ui-referee-value"><b data-referee-name>—</b><em data-referee-level></em></span>
+                      </div>
                       <div class="battle-terminal-row battle-terminal-row--wide">
                         <span class="battle-terminal-label">代理模式</span>
                         <div class="battle-holo-select battle-submit-mode-group" id="ui-battle-submit-mode-group" data-battle-select="submit">
@@ -26539,6 +26544,11 @@ ${播报文本}
     if (source.参战者 && typeof source.参战者 === 'object') {
       source.参战者 = compactBattleRosterForStorage(snapshot, source.参战者);
     }
+    if (source.裁判 !== undefined) {
+      const 裁判 = compactBattleRefereeForStorage(snapshot, source.裁判);
+      if (裁判) source.裁判 = 裁判;
+      else delete source.裁判;
+    }
     return source;
   }
 
@@ -26565,6 +26575,12 @@ ${播报文本}
     const nextTeamPlayer = nextCombat.参战者.team_player;
     const nextTeamEnemy = nextCombat.参战者.team_enemy;
     if (!nextTeamPlayer.length || !nextTeamEnemy.length) return null;
+    // 接战链 阶段三: a referee that is a role of the save comes in with its battle data, as the fighters do.
+    const expandedReferee = expandBattleRefereeForSnapshot(snapshot, nextCombat.裁判);
+    if (expandedReferee) {
+      nextCombat = nextCombat === combatData ? cloneJsonValue(combatData, {}) : nextCombat;
+      nextCombat.裁判 = expandedReferee;
+    }
     if (!nextTeamPlayer.every(isExpandedBattleParticipant) || !nextTeamEnemy.every(isExpandedBattleParticipant)) return null;
     const worldTick = deepGet(snapshot, 'rootData.world.时间.tick', undefined);
     if (worldTick !== undefined) {
@@ -26676,8 +26692,64 @@ ${播报文本}
     }
   }
 
+  // 接战链 阶段三 (用户 2026-11-12："裁判需要接入游戏吧"；"没有填裁判就是没有裁判"; 接战链改造方案-20261112 §3.7): the referee a
+  // battle request names (detail.裁判: a role's name, or { 名称, 等级 }) as the seed kept in world.战斗 — a role of the save:
+  // { 名称 } (its battle data is the save's, expanded with the fighters: expandBattleRefereeForSnapshot); otherwise a level:
+  // { 名称, 等级 } (the runtime gives it that level's base panel and no skill: BattleRuntime prepareBattleReferee). A name that
+  // is no role and comes with no level, or nothing given: no referee.
+  function 规范化开战裁判_桥接(snapshot, value) {
+    const 种子 = 解析模块路由裁判(value);
+    if (!种子) return null;
+    const 角色键 = 种子.名称 ? resolveSnapshotCharKey(snapshot, 种子.名称) : '';
+    if (角色键) return { 名称: toText(deepGet(snapshot, ['rootData', 'char', 角色键, 'name'], ''), 种子.名称).trim() || 种子.名称 };
+    if (种子.等级 > 0) return { 名称: 种子.名称 || '裁判', 等级: 种子.等级 };
+    console.warn('[LWCS] 裁判既不是存档角色也没有等级，本场按没有裁判处理。', value);
+    return null;
+  }
+
+  // The referee seed made whole for the battle: a role of the save becomes its battle participant (as a fighter's,
+  // 势力 中立), with what this battle already took from it (HP, 魂力, 精神力 and its account, kept in the seed by
+  // compactBattleRefereeForStorage). A seed that is no role (a level only) stays as it is.
+  function expandBattleRefereeForSnapshot(snapshot, seed = {}) {
+    if (!seed || typeof seed !== 'object' || Array.isArray(seed) || isExpandedBattleParticipant(seed)) return null;
+    const 名称 = toText(seed.名称 || seed.name, '').trim();
+    const 角色键 = 名称 ? resolveSnapshotCharKey(snapshot, 名称) : '';
+    if (!角色键) return null;
+    const participant = buildCombatParticipantFromSnapshotChar(snapshot, 角色键, '中立');
+    if (!participant) return null;
+    participant.名称 = 名称;
+    ['HP', '魂力', '精神力'].forEach(key => {
+      if (!Number.isFinite(Number(seed[key]))) return;
+      participant[key] = Number(seed[key]);
+      if (participant.属性 && typeof participant.属性 === 'object') participant.属性[key] = Number(seed[key]);
+    });
+    if (seed.__referee && typeof seed.__referee === 'object') participant.__referee = cloneJsonValue(seed.__referee, {});
+    return participant;
+  }
+
+  // What world.战斗 keeps of the referee: its seed, and once the battle has run, what it has left of HP, 魂力 and 精神力
+  // and its account (BattleRuntime __referee), so a battle settled over several requests carries them on.
+  function compactBattleRefereeForStorage(snapshot, referee) {
+    if (!referee || typeof referee !== 'object' || Array.isArray(referee)) return undefined;
+    const 名称 = toText(referee.名称 || referee.name, '').trim() || '裁判';
+    const 角色键 = resolveSnapshotCharKey(snapshot, 名称);
+    const 等级 = Math.floor(toNumber(referee.等级 ?? referee.属性?.等级, 0));
+    const compact = { 名称, ...(!角色键 && 等级 > 0 ? { 等级 } : {}) };
+    if (referee.__refereePrepared === true || isExpandedBattleParticipant(referee)) {
+      ['HP', '魂力', '精神力'].forEach(key => {
+        const value = Number(referee[key] ?? referee.属性?.[key]);
+        if (Number.isFinite(value)) compact[key] = value;
+      });
+    } else {
+      ['HP', '魂力', '精神力'].forEach(key => { if (Number.isFinite(Number(referee[key]))) compact[key] = Number(referee[key]); });
+    }
+    if (referee.__referee && typeof referee.__referee === 'object') compact.__referee = cloneJsonValue(referee.__referee, {});
+    return compact;
+  }
+
   function buildMapBattleCombatData(snapshot, dispatchDetail) {
     const detail = dispatchDetail || {};
+    const 裁判 = 规范化开战裁判_桥接(snapshot, detail.裁判);
     const rosterResult = buildBattleSeedRoster(snapshot, detail);
     if (!rosterResult.ok) return { ok: false, reason: rosterResult.reason };
     const arenaName = toText(detail.currentLoc, toText(detail.target, toText(snapshot.currentLoc, '未知地点')));
@@ -26705,6 +26777,7 @@ ${播报文本}
       进行中: true,
       战斗类型: toText(detail.战斗类型, '擂台切磋'),
       战斗意图: toText(detail.战斗意图, '点到为止'),
+      ...(裁判 ? { 裁判 } : {}),
       先攻: '无',
       允许撤离: detail.允许撤离 === false ? false : true,
       回合: 0,
@@ -27285,6 +27358,10 @@ ${播报文本}
       `[战斗类型]\n${toText(combatData.战斗类型, '')}`,
       `[存活统计]\n我方存活:${玩家存活}；敌方存活:${敌方存活}`,
       `[战斗意图]\n${toText(combatData.战斗意图, '点到为止')}`,
+      ...(combatData.裁判 && typeof combatData.裁判 === 'object'
+        ? [`[裁判]\n${toText(combatData.裁判.名称 || combatData.裁判.name, '裁判')}${toNumber(combatData.裁判.属性?.等级 ?? combatData.裁判.等级, 0) > 0
+          ? `（${Math.floor(toNumber(combatData.裁判.属性?.等级 ?? combatData.裁判.等级, 0))}级）` : ''}`]
+        : []),
       `[终局类型]\n${终局类型}`,
       `[命中条件]\n${终局条件.join('、') || '无'}`,
       `[失能明细]\n${失能明细.join('；') || '无'}`,
@@ -28368,6 +28445,22 @@ ${播报文本}
         return payload ? { ...payload, raw: blockText } : null;
       })
       .filter(Boolean);
+  }
+
+  // 接战链 阶段三: the referee a module intent names — a role's name, "名称|等级=60", or { 名称, 等级 } — as { 名称, 等级? };
+  // nothing given (or 无): null.
+  function 解析模块路由裁判(value) {
+    if (value === undefined || value === null) return null;
+    if (typeof value === 'object' && !Array.isArray(value)) {
+      const 名称 = toText(value.名称 || value.name, '').trim(), 等级 = Math.floor(toNumber(value.等级 ?? value.level, 0));
+      return 名称 || 等级 > 0 ? { 名称: 名称 || '裁判', ...(等级 > 0 ? { 等级 } : {}) } : null;
+    }
+    const 文本 = toText(value, '').trim();
+    if (!文本 || /^(无|没有|否|none|null)$/i.test(文本)) return null;
+    const 单位 = 解析模块路由参战者项(文本);
+    if (!单位) return null;
+    const 等级 = Math.floor(toNumber(单位.等级, 0));
+    return { 名称: toText(单位.name, '裁判').trim() || '裁判', ...(等级 > 0 ? { 等级 } : {}) };
   }
 
   function 战斗条件输入存在(value) {
@@ -30248,6 +30341,8 @@ ${播报文本}
             胜利条件关系: toText(payload.胜利条件关系, 'OR'),
             失败条件关系: toText(payload.失败条件关系, 'OR'),
             最大回合: Math.max(1, Math.min(20, Math.floor(toNumber(payload.最大回合 ?? payload.回合上限, 20)))),
+            // 接战链 阶段三: "裁判：角色名" or "裁判：名称|等级=60" (解析模块路由裁判); none given, no referee.
+            ...(解析模块路由裁判(payload.裁判) ? { 裁判: 解析模块路由裁判(payload.裁判) } : {}),
           };
         }
       }

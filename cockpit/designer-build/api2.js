@@ -453,9 +453,28 @@
   // 原版设计台却只有「直接生效 / 造物承载」+ 战斗被动开关，存一次物品被动就变成要手动施放的技能。
   // 规则开关打开时：设计台「被动」开关 ⇔ 承载方式「被动」。战斗技能不受影响。
   const 是物品技能范围 = previewMeta => ['equipment_skill', 'soul_bone_skill'].includes(normalizeSkillUiText(previewMeta && previewMeta.scope, ''));
+  // 被动技能修复方案 2026-11-12：角色自己的被动（非物品：血脉被动、自创魂技等）原先存成「直接生效」且不写触发时机——战斗把它
+  // 当主动技能放，当被动又永不触发（与金龙王 9/11/16 层同病）。规则开关打开时：「被动」开关 ⇔ 承载方式「被动」，并把所选
+  // 「触发时机」写进技能级与各效果（效果自带的延迟/遥控等时机不动）；含死亡转存活的走复活通道，只给其余效果写时机。
+  // 「常驻」只有物品被动认（物品消费者），角色被动选它写不出时机，战斗开局会记 PASSIVE_NEVER_TRIGGERS。
+  function 战斗被动承载与时机(skill, previewMeta, formState) {
+    if (!skill || !设计台规则.角色被动存为被动 || 是物品技能范围(previewMeta) || !技能设计台启用被动(previewMeta, formState)) return skill;
+    skill.承载方式 = '被动';
+    const 时机 = 规范化技能设计台被动触发(formState && formState.被动触发);
+    if (!时机 || 时机 === '常驻') return skill;
+    const 效果列表 = Array.isArray(skill._效果数组) ? skill._效果数组 : [];
+    const 含复活 = 效果列表.some(effect => 技能设计台效果是自身死亡转存活(effect));
+    if (!含复活) skill.触发方式 = 时机;
+    效果列表.forEach(effect => {
+      if (!effect || typeof effect !== 'object' || !normalizeSkillUiText(effect.原型, '') || 技能设计台效果是自身死亡转存活(effect)) return;
+      const 自带 = normalizeSkillUiText(effect.触发方式, '');
+      if (!自带 || 自带 === '立即触发') effect.触发方式 = 时机;
+    });
+    return skill;
+  }
   function 物品被动承载(skill, previewMeta, formState) {
     if (skill && 设计台规则.物品被动保持承载方式 && 是物品技能范围(previewMeta) && 技能设计台启用被动(previewMeta, formState)) skill.承载方式 = '被动';
-    return skill;
+    return 战斗被动承载与时机(skill, previewMeta, formState);
   }
   function 设计台准备(meta, root) {
     const previewMeta = 设计台规范元数据(meta);
@@ -470,6 +489,13 @@
     // 规则开关：物品技能承载方式「被动」→ 打开时「被动」开关为开（原版设计台没有被动承载，见 物品被动承载）
     if (设计台规则.物品被动保持承载方式 && 是物品技能范围(previewMeta) && normalizeSkillUiText(skillSource.承载方式, '') === '被动' && !normalizeSkillUiText(rawDesignerDraft.启用被动, ''))
       rawDesignerDraft.启用被动 = '启用';
+    // 角色被动（战斗被动承载与时机）：存成「被动」的读回来仍是被动，所选时机读技能级（或首个效果级）触发方式。
+    if (设计台规则.角色被动存为被动 && !是物品技能范围(previewMeta) && normalizeSkillUiText(skillSource.承载方式, '') === '被动') {
+      if (!normalizeSkillUiText(rawDesignerDraft.启用被动, '')) rawDesignerDraft.启用被动 = '启用';
+      const 存档时机 = 规范化技能设计台被动触发(skillSource.触发方式) ||
+        (Array.isArray(skillSource._效果数组) ? skillSource._效果数组 : []).map(effect => 规范化技能设计台被动触发(effect && effect.触发方式)).find(Boolean) || '';
+      if (存档时机) rawDesignerDraft.被动触发 = 存档时机;
+    }
     const fusionDraftSeed = getSkillDesignerFusionDraftSeed(snapshot, previewMeta, rawDesignerDraft);
     return { skillSource, rawDesignerDraft, designerDraft: buildSkillDesignerFormStateFromDraft({ ...rawDesignerDraft, ...fusionDraftSeed }, previewMeta) };
   }

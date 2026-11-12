@@ -230,6 +230,7 @@ const SkillStructSchema = z
     消耗: z.any().prefault('无'),
     前摇: z.coerce.number().prefault(0),
     场外冷却至tick: z.coerce.number().optional(),
+    计价版本: z.coerce.number().optional().describe('技能预算计价版本；新生成与设计台保存的技能写入，读档收敛据此选计价口径'),
     附带属性: z.array(z.string()).prefault([]),
     使用条件: z
       .object({
@@ -239,7 +240,7 @@ const SkillStructSchema = z
       })
       .optional(),
     触发方式: z
-      .enum(['战斗开始', '回合开始', '受击前', '受击后', '濒死时', '被控制时', '命中后'])
+      .enum(['战斗开始', '回合开始', '受击前', '致命前', '受击后', '濒死时', '被控制时', '命中后'])
       .optional(),
     技能掌控度: z
       .object({
