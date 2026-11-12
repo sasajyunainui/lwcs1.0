@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:e07a8edcaf5611f2743a88aa43ca615ccdd2792c12632b8c552a791d0501a1c4|cockpit/designer-model.js:8dc86d2da42d0e8a9eb685997bb3c524dc0aaa4c344eed4a9f7b201d8b09b590|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:432470d08e4ffbc314d59280d8494ce7689401896380cfae89aa07067a180473|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:31b84a896b0ecfd57ec9274ce575c48b55e1b1fc779106dc6eb734c699584cc8|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:61fdd2e60fba44a44fb035b11d3c6ec09d447bef149d758053c5362d1a075d1f|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:529578ad29adf669c373e66f14ba400a98ce82514aa06f5554484c1dc670329a|BehaviorDecisionPipeline_Module.js:310cde745a4f74f297fad02f931e687b884fb150e19c7005d82894515eb5e5f6|BattleDecision_Module.js:e17b0c27f638af1b23e5f84f47b773857d4102c6a680b51d27d9081e3b2f3a06|BattleRuntime_Module.js:e2211bbd26cf28446f7468fed5794fc715b426ef649d8f221af6980bd845b8ba|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:981503b2b0bb5bf4d804320e5cd7406d97cd63fd3080e0db1910dccfd1ce271d|Database_Module.js:a08adc7704e9deda80e7a7eaca7c9dab74ced979fe47024b8e73c19ca2c6178e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:e07a8edcaf5611f2743a88aa43ca615ccdd2792c12632b8c552a791d0501a1c4|cockpit/designer-model.js:8dc86d2da42d0e8a9eb685997bb3c524dc0aaa4c344eed4a9f7b201d8b09b590|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:432470d08e4ffbc314d59280d8494ce7689401896380cfae89aa07067a180473|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:31b84a896b0ecfd57ec9274ce575c48b55e1b1fc779106dc6eb734c699584cc8|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:61fdd2e60fba44a44fb035b11d3c6ec09d447bef149d758053c5362d1a075d1f|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:529578ad29adf669c373e66f14ba400a98ce82514aa06f5554484c1dc670329a|BehaviorDecisionPipeline_Module.js:310cde745a4f74f297fad02f931e687b884fb150e19c7005d82894515eb5e5f6|BattleDecision_Module.js:e17b0c27f638af1b23e5f84f47b773857d4102c6a680b51d27d9081e3b2f3a06|BattleRuntime_Module.js:0c667803baa40efe7b5562b882939be8288bd6b0b31910976b129d5298f7b6a7|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:981503b2b0bb5bf4d804320e5cd7406d97cd63fd3080e0db1910dccfd1ce271d|Database_Module.js:a08adc7704e9deda80e7a7eaca7c9dab74ced979fe47024b8e73c19ca2c6178e */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -165727,6 +165727,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
     return {
       enqueue,
+      // How many more nodes the action group of `input` may still queue (enqueue fails the battle past its limit).
+      room(input = {}) {
+        const actorTurnSequence = Math.max(0, Number(input.actorTurnSequence || 0));
+        const actionGroupId = String(input.actionGroupId || `${round}:${actorTurnSequence || Math.max(1, Number(input.parentActionSequence || 0))}`).trim();
+        return 64 - Math.max(0, Number(actionGroupNodeCounts.get(actionGroupId) || 0));
+      },
       dequeue() {
         pending.sort(compareNodes);
         return pending.shift() || null;
@@ -179169,12 +179175,33 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               const actionSettlementStartedAt = collectPerformanceBreakdown
                 ? performanceNow()
                 : 0;
-              const settlement = executeStructuredDeclaration({
-                combatData,
-                declaration: shared.declaration,
-                actionContext: shared.actionContext,
-                reactionByTarget: shared.reactionByTarget,
-              });
+              let settlement;
+              try {
+                settlement = executeStructuredDeclaration({
+                  combatData,
+                  declaration: shared.declaration,
+                  actionContext: shared.actionContext,
+                  reactionByTarget: shared.reactionByTarget,
+                });
+              } catch (error) {
+                // The cost is paid when the action settles; what was there when it was declared may be gone by then (two
+                // strikes back declared before either is paid, a drain in between). The action fizzles.
+                if (!/^battle_structured_resource_insufficient:/.test(String(error?.message || ''))) throw error;
+                writeLedgerEvent(combatData, {
+                  eventKind: 'blocked_settlement', round: Number(combatData.回合 || 0),
+                  actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
+                  actionName: shared.actionContext.actionName, actionType: shared.actionContext.actionKind,
+                  actorControl: node.actorControl, actionRole: node.actionRole,
+                  actionId: shared.actionContext.actionEvent.actionId, sourceActionId: shared.actionContext.actionEvent.actionId,
+                  parentNodeId: shared.actionContext.actionEvent.chainNodeId || '',
+                  result: 'resource_insufficient', resultState: 'ABORTED', ruleCode: 'RESOURCE_INSUFFICIENT_AT_SETTLEMENT',
+                  meta: { source: 'structured_runtime', grantId: node.grantId, reasonCode: 'RESOURCE_INSUFFICIENT_AT_SETTLEMENT',
+                    reasonText: '结算时资源已不足，动作中止', detail: String(error.message).slice(0, 160) },
+                });
+                queue.recordTrace('CANCELLED', node, { reason: 'RESOURCE_INSUFFICIENT_AT_SETTLEMENT', actionId: shared.actionContext.actionEvent.actionId });
+                consumeAutonomousSummonWindow(actor, node);
+                continue;
+              }
               addPerformanceTime(
                 'actionSettlementMs',
                 actionSettlementStartedAt,
@@ -179297,6 +179324,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 const reactor = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, targetId));
                 if (!reactor) return;
                 if (previewRuntime.guardBrokenOf(reactor, guardRound)) return;
+                // A strike back needs room for itself, the answers to it and its settlement: with the action's node
+                // budget nearly spent the exchange ends here instead of failing the battle.
+                if (queue.room({ actorTurnSequence: node.actorTurnSequence, parentActionSequence: node.parentActionSequence || node.actionSequence }) < 12) {
+                  queue.recordTrace('CANCELLED', node, { reason: 'ENGAGEMENT_NODE_BUDGET_SPENT', reactorId: targetId });
+                  return;
+                }
                 const counterWindow = openStructuredCounterWindow({
                   combatData,
                   reactor,

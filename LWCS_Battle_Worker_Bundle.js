@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:82d038c6ee1b4f7bb7dbc16bd205dc61e369fe5b5ecf980525ffd878d82d0641|MVU_Schema_Runtime.js:a173fbef52748f995d607be544151366fdbbde1cb9b23ef8dbea7bb3244b3152|BattlePreview_Module.js:529578ad29adf669c373e66f14ba400a98ce82514aa06f5554484c1dc670329a|BehaviorDecisionPipeline_Module.js:310cde745a4f74f297fad02f931e687b884fb150e19c7005d82894515eb5e5f6|BattleDecision_Module.js:e17b0c27f638af1b23e5f84f47b773857d4102c6a680b51d27d9081e3b2f3a06|BattleRuntime_Module.js:e2211bbd26cf28446f7468fed5794fc715b426ef649d8f221af6980bd845b8ba */
+/* sources-sha256: MVU_Skill_Runtime.js:82d038c6ee1b4f7bb7dbc16bd205dc61e369fe5b5ecf980525ffd878d82d0641|MVU_Schema_Runtime.js:a173fbef52748f995d607be544151366fdbbde1cb9b23ef8dbea7bb3244b3152|BattlePreview_Module.js:529578ad29adf669c373e66f14ba400a98ce82514aa06f5554484c1dc670329a|BehaviorDecisionPipeline_Module.js:310cde745a4f74f297fad02f931e687b884fb150e19c7005d82894515eb5e5f6|BattleDecision_Module.js:e17b0c27f638af1b23e5f84f47b773857d4102c6a680b51d27d9081e3b2f3a06|BattleRuntime_Module.js:0c667803baa40efe7b5562b882939be8288bd6b0b31910976b129d5298f7b6a7 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -141477,6 +141477,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
     return {
       enqueue,
+      // How many more nodes the action group of `input` may still queue (enqueue fails the battle past its limit).
+      room(input = {}) {
+        const actorTurnSequence = Math.max(0, Number(input.actorTurnSequence || 0));
+        const actionGroupId = String(input.actionGroupId || `${round}:${actorTurnSequence || Math.max(1, Number(input.parentActionSequence || 0))}`).trim();
+        return 64 - Math.max(0, Number(actionGroupNodeCounts.get(actionGroupId) || 0));
+      },
       dequeue() {
         pending.sort(compareNodes);
         return pending.shift() || null;
@@ -154919,12 +154925,33 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               const actionSettlementStartedAt = collectPerformanceBreakdown
                 ? performanceNow()
                 : 0;
-              const settlement = executeStructuredDeclaration({
-                combatData,
-                declaration: shared.declaration,
-                actionContext: shared.actionContext,
-                reactionByTarget: shared.reactionByTarget,
-              });
+              let settlement;
+              try {
+                settlement = executeStructuredDeclaration({
+                  combatData,
+                  declaration: shared.declaration,
+                  actionContext: shared.actionContext,
+                  reactionByTarget: shared.reactionByTarget,
+                });
+              } catch (error) {
+                // The cost is paid when the action settles; what was there when it was declared may be gone by then (two
+                // strikes back declared before either is paid, a drain in between). The action fizzles.
+                if (!/^battle_structured_resource_insufficient:/.test(String(error?.message || ''))) throw error;
+                writeLedgerEvent(combatData, {
+                  eventKind: 'blocked_settlement', round: Number(combatData.回合 || 0),
+                  actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
+                  actionName: shared.actionContext.actionName, actionType: shared.actionContext.actionKind,
+                  actorControl: node.actorControl, actionRole: node.actionRole,
+                  actionId: shared.actionContext.actionEvent.actionId, sourceActionId: shared.actionContext.actionEvent.actionId,
+                  parentNodeId: shared.actionContext.actionEvent.chainNodeId || '',
+                  result: 'resource_insufficient', resultState: 'ABORTED', ruleCode: 'RESOURCE_INSUFFICIENT_AT_SETTLEMENT',
+                  meta: { source: 'structured_runtime', grantId: node.grantId, reasonCode: 'RESOURCE_INSUFFICIENT_AT_SETTLEMENT',
+                    reasonText: '结算时资源已不足，动作中止', detail: String(error.message).slice(0, 160) },
+                });
+                queue.recordTrace('CANCELLED', node, { reason: 'RESOURCE_INSUFFICIENT_AT_SETTLEMENT', actionId: shared.actionContext.actionEvent.actionId });
+                consumeAutonomousSummonWindow(actor, node);
+                continue;
+              }
               addPerformanceTime(
                 'actionSettlementMs',
                 actionSettlementStartedAt,
@@ -155047,6 +155074,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 const reactor = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, targetId));
                 if (!reactor) return;
                 if (previewRuntime.guardBrokenOf(reactor, guardRound)) return;
+                // A strike back needs room for itself, the answers to it and its settlement: with the action's node
+                // budget nearly spent the exchange ends here instead of failing the battle.
+                if (queue.room({ actorTurnSequence: node.actorTurnSequence, parentActionSequence: node.parentActionSequence || node.actionSequence }) < 12) {
+                  queue.recordTrace('CANCELLED', node, { reason: 'ENGAGEMENT_NODE_BUDGET_SPENT', reactorId: targetId });
+                  return;
+                }
                 const counterWindow = openStructuredCounterWindow({
                   combatData,
                   reactor,

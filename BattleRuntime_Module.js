@@ -3019,6 +3019,12 @@
     });
     return {
       enqueue,
+      // How many more nodes the action group of `input` may still queue (enqueue fails the battle past its limit).
+      room(input = {}) {
+        const actorTurnSequence = Math.max(0, Number(input.actorTurnSequence || 0));
+        const actionGroupId = String(input.actionGroupId || `${round}:${actorTurnSequence || Math.max(1, Number(input.parentActionSequence || 0))}`).trim();
+        return 64 - Math.max(0, Number(actionGroupNodeCounts.get(actionGroupId) || 0));
+      },
       dequeue() {
         pending.sort(compareNodes);
         return pending.shift() || null;
@@ -16461,12 +16467,33 @@
               const actionSettlementStartedAt = collectPerformanceBreakdown
                 ? performanceNow()
                 : 0;
-              const settlement = executeStructuredDeclaration({
-                combatData,
-                declaration: shared.declaration,
-                actionContext: shared.actionContext,
-                reactionByTarget: shared.reactionByTarget,
-              });
+              let settlement;
+              try {
+                settlement = executeStructuredDeclaration({
+                  combatData,
+                  declaration: shared.declaration,
+                  actionContext: shared.actionContext,
+                  reactionByTarget: shared.reactionByTarget,
+                });
+              } catch (error) {
+                // The cost is paid when the action settles; what was there when it was declared may be gone by then (two
+                // strikes back declared before either is paid, a drain in between). The action fizzles.
+                if (!/^battle_structured_resource_insufficient:/.test(String(error?.message || ''))) throw error;
+                writeLedgerEvent(combatData, {
+                  eventKind: 'blocked_settlement', round: Number(combatData.回合 || 0),
+                  actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
+                  actionName: shared.actionContext.actionName, actionType: shared.actionContext.actionKind,
+                  actorControl: node.actorControl, actionRole: node.actionRole,
+                  actionId: shared.actionContext.actionEvent.actionId, sourceActionId: shared.actionContext.actionEvent.actionId,
+                  parentNodeId: shared.actionContext.actionEvent.chainNodeId || '',
+                  result: 'resource_insufficient', resultState: 'ABORTED', ruleCode: 'RESOURCE_INSUFFICIENT_AT_SETTLEMENT',
+                  meta: { source: 'structured_runtime', grantId: node.grantId, reasonCode: 'RESOURCE_INSUFFICIENT_AT_SETTLEMENT',
+                    reasonText: '结算时资源已不足，动作中止', detail: String(error.message).slice(0, 160) },
+                });
+                queue.recordTrace('CANCELLED', node, { reason: 'RESOURCE_INSUFFICIENT_AT_SETTLEMENT', actionId: shared.actionContext.actionEvent.actionId });
+                consumeAutonomousSummonWindow(actor, node);
+                continue;
+              }
               addPerformanceTime(
                 'actionSettlementMs',
                 actionSettlementStartedAt,
@@ -16589,6 +16616,12 @@
                 const reactor = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, targetId));
                 if (!reactor) return;
                 if (previewRuntime.guardBrokenOf(reactor, guardRound)) return;
+                // A strike back needs room for itself, the answers to it and its settlement: with the action's node
+                // budget nearly spent the exchange ends here instead of failing the battle.
+                if (queue.room({ actorTurnSequence: node.actorTurnSequence, parentActionSequence: node.parentActionSequence || node.actionSequence }) < 12) {
+                  queue.recordTrace('CANCELLED', node, { reason: 'ENGAGEMENT_NODE_BUDGET_SPENT', reactorId: targetId });
+                  return;
+                }
                 const counterWindow = openStructuredCounterWindow({
                   combatData,
                   reactor,
