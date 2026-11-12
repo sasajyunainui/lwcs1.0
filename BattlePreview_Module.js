@@ -2541,12 +2541,15 @@
     if (!index.entries.length) return null;
     const wantedName = String(skill?.name || skill?.魂技名 || skill?.技能名称 || skill?.名称 || '').trim();
     if (!wantedName) return null;
-    let wantedEffects;
-    return index.entries.find(entry => {
-      if (entry.name !== wantedName) return false;
-      wantedEffects ??= effectArrayHash(skill?._效果数组);
-      return !wantedEffects || !entry.effects || wantedEffects === entry.effects;
-    })?.metadata || null;
+    const named = index.entries.filter(entry => entry.name === wantedName);
+    if (!named.length) return null;
+    const wantedEffects = effectArrayHash(skill?._效果数组);
+    // A skill as it is declared may carry more than the stored one does (equipment passives merged in, settlement
+    // modifiers), so its effects need not match: the name decides unless two stored fusion skills share it. The
+    // decision used to miss the fusion on such a skill, offer it with the partner's turn already spent, and the
+    // runtime, which finds the stored skill, stopped the battle (H43).
+    return (named.find(entry => !wantedEffects || !entry.effects || wantedEffects === entry.effects) ||
+      (named.length === 1 ? named[0] : null))?.metadata || null;
   }
 
   function fusionParticipantIdentifiers(participant = {}) {
@@ -2558,6 +2561,16 @@
       participant?.name,
       participant?.名称,
     ].map(value => String(value || '').trim()).filter(Boolean);
+  }
+
+  // 融合蓄力（用户 2026-11-12）: a charged fusion skill is charged by its partners too — from the turn it starts to the
+  // turn it is released each partner's natural turn goes to it. The unit charging a fusion skill that `unit` is a
+  // partner of (its 蓄力技能 lists the partners), or null; a host that is down holds nobody.
+  function fusionChargeHost(worldSnapshot = {}, unit = {}) {
+    const id = unitId(unit);
+    if (!id) return null;
+    return listUnits(worldSnapshot).find(entry => entry.unit !== unit && Array.isArray(entry.unit?.蓄力技能?.fusionPartnerIds) &&
+      entry.unit.蓄力技能.fusionPartnerIds.includes(id) && isBattleCapable(entry.unit))?.unit || null;
   }
 
   function resolveFusionAction(worldSnapshot = {}, actor = {}, skill = {}, options = {}) {
@@ -2646,6 +2659,21 @@
       }
       if (!partners.some(existing => unitId(existing) === unitId(partner))) partners.push(partner);
     }
+    // A partner charging a skill of its own, or charging a fusion with someone else, has no turn to give.
+    const chargingWith = partner => { const host = fusionChargeHost(worldSnapshot, partner); return host ? unitId(host) : ''; };
+    if (partners.some(partner => partner?.蓄力技能 || !['', unitId(actor)].includes(chargingWith(partner)))) {
+      return Object.freeze({
+        required: true,
+        valid: false,
+        reason: 'FUSION_PARTNER_BUSY',
+        fusionKey: '',
+        participantIds: Object.freeze([unitId(actor)].filter(Boolean)),
+        partnerIds: Object.freeze(partners.map(unitId)),
+        participants: Object.freeze([actor, ...partners]),
+        partners: Object.freeze(partners),
+        usageMode: metadata.usageMode,
+      });
+    }
     const participantIds = [...new Set([unitId(actor), ...partners.map(unitId)].filter(Boolean))];
     const fusionKey = `${metadata.name || 'fusion'}:${[...participantIds].sort().join('+')}`;
     const oneUse = /一次|single|once/i.test(metadata.usageMode);
@@ -2670,6 +2698,8 @@
     if (options?.requirePendingOpportunity !== false) {
       const round = Math.max(0, Number(worldSnapshot?.回合 || 0));
       const unavailable = partners.find(partner => {
+        // A partner that has been charging this skill with the actor has given its turns to it already.
+        if (chargingWith(partner) === unitId(actor)) return false;
         const opportunity = partner?.__battleRuntime?.naturalOpportunity;
         return !opportunity ||
           Number(opportunity?.round || 0) !== round ||
@@ -14946,6 +14976,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (!isBattleCapable(partner)) {
           throw new Error('battle_preview_fusion_partner_unavailable');
         }
+        // 融合蓄力: a partner that has been charging this skill with the actor has given its turns to it already.
+        if (unitId(fusionChargeHost(worldSnapshot, partner) || {}) === unitId(actor)) continue;
         const opportunity = partner?.__battleRuntime?.naturalOpportunity;
         if (
           !opportunity ||
@@ -21992,6 +22024,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     declarationCounterGrantProfile,
     declarationGrantsCounter,
     fusionSkillMetadata,
+    fusionChargeHost,
+    ACTION_STAMINA_RATES,
     resolveFusionAction,
     effectConditionEnabled,
     resolveConditionalEffectPlan,

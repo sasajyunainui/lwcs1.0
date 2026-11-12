@@ -948,6 +948,9 @@
           actionEvent: { actionId: sourceActionId, chainNodeId: stateFact?.chainNodeId || '' }, actionRole: 'ACTIVE' });
         else unit.蓄力技能 = null;
       }
+      if (formalCombatData && structuredControlPreventsOpportunity(merged.state, 'ACTIVE')) {
+        interruptFusionChargeByPartner({ combatData: formalCombatData, partner: unit, reasonCode: 'PARTNER_CONTROLLED', stateName: stateKey, sourceActionId });
+      }
       let endLog = '';
       if (merged.mergeKind === 'REPLACE' && previewRuntime.stateEndRisks(originalState, stateKey).length) {
         if (sourceContext.onStateEnd) sourceContext.onStateEnd(stateKey, originalState);
@@ -3917,7 +3920,7 @@
     return { ...declaration, skill: resolvedSkill };
   }
 
-  function prepareStructuredFusion(combatData = {}, actor = {}, declaration = {}) {
+  function prepareStructuredFusion(combatData = {}, actor = {}, declaration = {}, storedCharge = null) {
     if (String(declaration?.actionKind || '').trim() !== 'RELEASE_SKILL') return null;
     const resourceCosts = Object.prototype.hasOwnProperty.call(declaration, 'resourceCosts')
       ? declaration.resourceCosts || {}
@@ -3929,7 +3932,8 @@
       : costStages.启动;
     const fusion = previewRuntime.resolveFusionAction(combatData, actor, declaration?.skill || {}, {
       resourceCosts: resolvedResourceCosts,
-      requirePendingOpportunity: true,
+      // 融合蓄力: the partners of a charged fusion gave their turns while it charged.
+      requirePendingOpportunity: !(Array.isArray(storedCharge?.fusionPartnerIds) && storedCharge.fusionPartnerIds.length),
     });
     if (!fusion.required) return null;
     if (!fusion.valid) throw new Error(`battle_structured_${String(fusion.reason || 'fusion_invalid').toLowerCase()}`);
@@ -12392,6 +12396,9 @@
                   stateName: stateKey,
                 })
               : null;
+            if (result === 'applied' && structuredControlPreventsOpportunity(target?.状态效果?.[stateKey] || {}, actionRole)) {
+              interruptFusionChargeByPartner({ combatData, partner: target, reasonCode: 'PARTNER_CONTROLLED', stateName: stateKey, sourceActionId: actionEvent?.actionId });
+            }
             if (chargeInterrupt) facts.push(chargeInterrupt);
           }
           else result = 'no_effect';
@@ -13108,6 +13115,31 @@
     });
   }
 
+  // 融合蓄力（用户 2026-11-12）: a charged fusion skill is charged by its partners too, and breaks when one of them is
+  // stopped or down. `host` defaults to whoever is charging a fusion skill with `partner`.
+  function interruptFusionChargeByPartner({ combatData = {}, partner = null, host = null, reasonCode = 'PARTNER_UNAVAILABLE', stateName = '', sourceActionId = '' } = {}) {
+    const holder = host || (partner ? previewRuntime.fusionChargeHost(combatData, partner) : null);
+    const interruptedCharge = holder?.蓄力技能;
+    if (!interruptedCharge || !Array.isArray(interruptedCharge.fusionPartnerIds) || !interruptedCharge.fusionPartnerIds.length) return null;
+    holder.蓄力技能 = null;
+    const partnerName = previewRuntime.unitName(partner) || '搭档';
+    return writeLedgerEvent(combatData, {
+      eventKind: 'charge_interrupt', round: Number(combatData?.回合 || 0),
+      actorId: previewRuntime.unitId(holder), actorName: previewRuntime.unitName(holder),
+      targetId: previewRuntime.unitId(holder), targetName: previewRuntime.unitName(holder),
+      actionName: normalizeActionDisplayName(interruptedCharge?.skill?.name || interruptedCharge?.skill?.魂技名 || interruptedCharge?.actionName || '武魂融合技'),
+      actionType: 'charge_interrupt', actorControl: 'SYSTEM', actionRole: 'ACTIVE',
+      actionId: String(interruptedCharge?.sourceActionId || '').trim(), sourceActionId: String(sourceActionId || interruptedCharge?.sourceActionId || '').trim(),
+      result: 'interrupted', resultState: 'ABORTED', ruleCode: 'CHARGE_INTERRUPTED_BY_PARTNER',
+      meta: {
+        source: 'structured_runtime', interruptedActionId: String(interruptedCharge?.sourceActionId || '').trim(),
+        fusionKey: String(interruptedCharge?.fusionKey || '').trim(), partnerId: partner ? previewRuntime.unitId(partner) : '', partnerName,
+        stateName: String(stateName || '').trim(), reasonCode,
+        reasonText: stateName ? `搭档${partnerName}受【${String(stateName).trim()}】影响，融合蓄力中断` : `搭档${partnerName}无法继续配合，融合蓄力中断`,
+      },
+    });
+  }
+
   function structuredActorPhysicallyAlive(unit = {}) {
     return unit?.状态?.存活 !== false && previewRuntime.readHp(unit) > 0;
   }
@@ -13159,7 +13191,7 @@
     const round = Number(combatData?.回合 || 0), side = inferUnitSide(combatData, target);
     const candidates = listPrimaryCombatUnits(combatData).filter(unit => unit && unit !== target && !unit.召唤键 &&
       inferUnitSide(combatData, unit) === side && previewRuntime.isBattleCapable(unit) && structuredActorCanAct(unit, 'ACTIVE') &&
-      !unit.蓄力技能 && !previewRuntime.guardBrokenOf(unit, round) &&
+      !unit.蓄力技能 && !previewRuntime.fusionChargeHost(combatData, unit) && !previewRuntime.guardBrokenOf(unit, round) &&
       String(unit.__battleRuntime?.naturalOpportunity?.status || '').trim() === 'PENDING' &&
       Number(unit.__battleRuntime.naturalOpportunity.round || 0) === round &&
       previewRuntime.interceptWindupBudget(attacker, declaration, unit) >= 0);
@@ -16119,6 +16151,32 @@
             ? actor?.__battleRuntime?.naturalOpportunity
             : null;
           const naturalOpportunityStatus = String(naturalOpportunity?.status || '').trim();
+          // 融合蓄力（用户 2026-11-12）: a partner's turn goes to the fusion skill its host is charging; a partner that
+          // cannot take its turn (stopped or down) breaks the charge and is handled as any unit that cannot act.
+          const fusionChargeHolder = node.nodeKind === 'ACTIVE' && actor ? previewRuntime.fusionChargeHost(combatData, actor) : null;
+          if (fusionChargeHolder && (!actorPresentInBattle || !structuredActorCanAct(actor, node.actionRole))) {
+            interruptFusionChargeByPartner({ combatData, partner: actor, host: fusionChargeHolder, reasonCode: 'PARTNER_UNAVAILABLE' });
+          } else if (fusionChargeHolder && !['CONSUMED_BY_FUSION', 'CONSUMED_BY_COUNTER', 'CONSUMED_BY_INTERCEPT'].includes(naturalOpportunityStatus)) {
+            const heldCharge = fusionChargeHolder.蓄力技能;
+            const fusionActionName = normalizeActionDisplayName(heldCharge?.skill?.name || heldCharge?.skill?.魂技名 || heldCharge?.actionName || '武魂融合技');
+            writeLedgerEvent(combatData, {
+              eventKind: 'blocked_action', round: Number(combatData.回合 || 0),
+              actorId: previewRuntime.unitId(actor) || '', actorName: previewRuntime.unitName(actor),
+              targetId: previewRuntime.unitId(fusionChargeHolder) || '', targetName: previewRuntime.unitName(fusionChargeHolder),
+              actionName: '融合蓄力', actionType: 'opportunity_consumed', actorControl: node.actorControl, actionRole: node.actionRole,
+              sourceActionId: String(heldCharge?.sourceActionId || '').trim(),
+              result: 'consumed', resultState: 'COMPLETED', ruleCode: 'FUSION_CHARGE_PARTICIPATION',
+              meta: {
+                source: 'structured_runtime', grantId: node.grantId, reasonCode: 'FUSION_CHARGE_PARTICIPATION',
+                reasonText: `本轮自然行动用于配合【${fusionActionName}】蓄力`,
+                fusionKey: String(heldCharge?.fusionKey || '').trim(), fusionActionName,
+              },
+            });
+            if (naturalOpportunity) naturalOpportunity.status = 'CONSUMED';
+            consumeAutonomousSummonWindow(actor, node);
+            queue.recordTrace('EXECUTED', node, { reason: 'FUSION_CHARGE_PARTICIPATION', sourceActionId: String(heldCharge?.sourceActionId || '').trim() });
+            continue;
+          }
           if (
             naturalOpportunity &&
             Number(naturalOpportunity?.round || 0) === Number(combatData?.回合 || 0) &&
@@ -16800,6 +16858,17 @@
               });
               storedCharge = null;
             }
+            // 融合蓄力: the partners charge along; one that is stopped or down by the host's turn has broken the charge, and
+            // the host acts otherwise this turn.
+            if (storedCharge && Array.isArray(storedCharge.fusionPartnerIds) && storedCharge.fusionPartnerIds.length) {
+              const lostPartner = storedCharge.fusionPartnerIds
+                .map(id => listCombatUnits(combatData).find(unit => previewRuntime.unitId(unit) === id) || null)
+                .find(partner => !partner || !previewRuntime.isBattleCapable(partner) || !structuredActorCanAct(partner, 'ACTIVE'));
+              if (lostPartner !== undefined) {
+                interruptFusionChargeByPartner({ combatData, partner: lostPartner, host: actor, reasonCode: 'PARTNER_UNAVAILABLE' });
+                storedCharge = null;
+              }
+            }
             if (storedCharge) {
               const remainingCastTime = Math.max(0, Number(storedCharge?.cast_time ?? storedCharge?.remainingCastTime ?? storedCharge?.skill?.前摇 ?? 0));
               if (isCooperativeAssist && !decisionRuntime.actionCompletesWithinBattleHorizon(storedCharge.skill, {
@@ -17047,6 +17116,24 @@
               }
             }
             const declarationTargetIds = Array.isArray(declaration?.targetIds) ? declaration.targetIds : [];
+            // A fusion skill whose partner cannot take part when its charge starts or when it is released fizzles in place.
+            const fizzleFusion = (reasonCode, reasonText, detail = '') => {
+              const blockedActionEvent = writeLedgerEvent(combatData, {
+                eventKind: 'blocked_action', round: Number(combatData.回合 || 0), actionId: nextRuntimeId('battle-blocked-action'),
+                actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor), targetIds: declarationTargetIds,
+                actionName: normalizeActionDisplayName(declaration?.skill?.name || declaration?.skill?.魂技名 || '武魂融合技'),
+                actionType: String(declaration?.actionKind || '').trim(), actorControl: node.actorControl, actionRole: node.actionRole,
+                allowImplicitActionSource: false, sourceActionId: String(storedCharge?.sourceActionId || '').trim(),
+                parentNodeId: String(storedCharge?.sourceNodeId || '').trim(),
+                opportunityId: String(node.opportunityId || node.grantId || '').trim(), opportunitySequence: Math.max(0, Number(node.opportunitySequence || 0)),
+                grantId: String(node.grantId || '').trim(),
+                result: 'fusion_partner_unavailable', resultState: 'ABORTED', ruleCode: reasonCode,
+                meta: { source: 'structured_shadow', decisionCandidateId: String(decisionResult?.selected?.candidateId || '').trim(),
+                  declaredTargetIds: declarationTargetIds, resolvedTargetIds: [], reasonCode, reasonText, detail: String(detail).slice(0, 160) },
+              });
+              queue.recordTrace('CANCELLED', node, { reason: reasonCode, actionId: blockedActionEvent.actionId });
+              consumeAutonomousSummonWindow(actor, node);
+            };
             const hostilePrimaryEffect = structuredDamageEffects(declaration)[0] || null;
             const resolvedHostileTargets = hostilePrimaryEffect
               ? resolveStructuredTargets(combatData, actor, declaration, hostilePrimaryEffect)
@@ -17113,6 +17200,14 @@
             }
             const castTime = previewRuntime.actionWindup(actor, declaration);
             if (!storedCharge && (node.nodeKind === 'ACTIVE' || isCooperativeAssist) && castTime > naturalActionBudget) {
+              // 融合蓄力: the partners must have this round's turn to give; they give it now and every turn until the release.
+              const chargeFusion = node.nodeKind === 'ACTIVE' && String(declaration?.actionKind || '').trim() === 'RELEASE_SKILL'
+                ? previewRuntime.resolveFusionAction(combatData, actor, declaration?.skill || {}, { requirePendingOpportunity: true, ignoreResourceAvailability: true })
+                : null;
+              if (chargeFusion?.required && !chargeFusion.valid) {
+                fizzleFusion('FUSION_PARTNER_UNAVAILABLE_AT_CHARGE', '融合技开始蓄力时搭档无法配合，行动中止', chargeFusion.reason);
+                continue;
+              }
               const actionName = normalizeActionDisplayName(declaration?.skill?.name || declaration?.skill?.魂技名 || declaration?.actionKind || '蓄力行动');
               const chargeActionId = nextRuntimeId('battle-action');
               const remainingOpportunityCount = Math.ceil(
@@ -17166,6 +17261,17 @@
                 sourceActionId: chargeStart.actionId || chargeStart.eventId || '',
                 sourceNodeId: chargeStart.chainNodeId || '',
               };
+              if (chargeFusion?.required) {
+                actor.蓄力技能.fusionKey = chargeFusion.fusionKey;
+                actor.蓄力技能.fusionPartnerIds = [...chargeFusion.partnerIds];
+                chargeFusion.partners.forEach(partner => {
+                  partner.__battleRuntime = partner.__battleRuntime && typeof partner.__battleRuntime === 'object' ? partner.__battleRuntime : {};
+                  const opportunity = partner.__battleRuntime.naturalOpportunity && typeof partner.__battleRuntime.naturalOpportunity === 'object'
+                    ? partner.__battleRuntime.naturalOpportunity : {};
+                  partner.__battleRuntime.naturalOpportunity = { ...opportunity, status: 'CONSUMED_BY_FUSION', fusionKey: chargeFusion.fusionKey,
+                    consumedByActionId: String(chargeStart?.actionId || chargeStart?.eventId || '').trim(), actionName };
+                });
+              }
               if (isCooperativeAssist) consumeSummonWindow(combatData, actor, '协同蓄力开始', node.grantId);
               consumeAutonomousSummonWindow(actor, node);
               queue.recordTrace('EXECUTED', node, {
@@ -17175,9 +17281,17 @@
               });
               continue;
             }
-            const fusion = node.nodeKind === 'ACTIVE' || node.nodeKind === 'CONTINUATION'
-              ? prepareStructuredFusion(combatData, actor, declaration)
-              : null;
+            let fusion = null;
+            if (node.nodeKind === 'ACTIVE' || node.nodeKind === 'CONTINUATION') {
+              try {
+                fusion = prepareStructuredFusion(combatData, actor, declaration, storedCharge);
+              } catch (error) {
+                // A charged fusion skill is released turns after it was declared; a partner may be unable to take part by then.
+                if (!storedCharge || !/^battle_structured_fusion_/.test(String(error?.message || ''))) throw error;
+                fizzleFusion('FUSION_PARTNER_UNAVAILABLE_AT_RELEASE', '融合技释放时搭档已无法配合，释放中止', error.message);
+                continue;
+              }
+            }
             const parentActionEvent = node?.state?.parentActionEvent || null;
             const actionContext = beginStructuredDeclaration({
               combatData,

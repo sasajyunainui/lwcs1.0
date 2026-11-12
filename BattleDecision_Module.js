@@ -2142,6 +2142,11 @@
       const hpMax = baseStats.vit_max * typical.hp_max;
       const hp = hpMax * clamp(beliefUnit.hpRatio ?? 1, 0, 1);
       const resourceRatios = beliefUnit.resources || {};
+      // An enemy's resources are not public. Trial (debug switch ownRatioPriorSides, 2026-11-12): taken as the deciding
+      // unit's own share of each instead of a flat half — a flat half made every enemy look drained from the first turn
+      // (a twin's evasion read 56% where the settlement rolled 15%).
+      const likeOwn = Array.isArray(root.__LWCS_DECISION_DEBUG__?.ownRatioPriorSides) && root.__LWCS_DECISION_DEBUG__.ownRatioPriorSides.includes(actorSide);
+      const unknownShare = resource => { const own = likeOwn ? ratio(sourceActor, resource) : 0.5; return Number.isFinite(own) ? own : 0.5; };
       const soulMax = baseStats.sp_max * typical.sp_max;
       const spiritMax = baseStats.men_max * typical.men_max;
       const staminaMax = baseStats.vit_max * typical.vit_max;
@@ -2174,11 +2179,11 @@
         hp,
         HP: hp,
         hp_max: hpMax,
-        sp: soulMax * clamp(resourceRatios.soul ?? 0.5, 0, 1),
+        sp: soulMax * clamp(resourceRatios.soul ?? unknownShare('sp'), 0, 1),
         sp_max: soulMax,
-        men: spiritMax * clamp(resourceRatios.spirit ?? 0.5, 0, 1),
+        men: spiritMax * clamp(resourceRatios.spirit ?? unknownShare('men'), 0, 1),
         men_max: spiritMax,
-        vit: staminaMax * clamp(resourceRatios.stamina ?? 0.5, 0, 1),
+        vit: staminaMax * clamp(resourceRatios.stamina ?? unknownShare('vit'), 0, 1),
         vit_max: staminaMax,
         str: Math.max(1, combatBase * systemScale.str * typical.str),
         def: Math.max(1, combatBase * systemScale.def * typical.def),
@@ -65206,7 +65211,7 @@
   // them). The cells are the settlement layer's to build; they sit here until they move there.
   // ---------------------------------------------------------------------------------------------------------------------
   const R20_ROUNDS_CAP = 99, R20_ROUNDS_FLOOR = 0.25, R20_HORIZON = 6, R20_RESOURCE_PRICE = 0.15, R20_ROUND_DISCOUNT = 0.85, R20_SHADOW_SCALE = 30,
-    R20_UPKEEP_ROUNDS = 3, R20_COUNTER_SHARE = 0.5, R20_COUNTER_START = 0.2, R20_COUNTER_CONTINUE = 0.5, R20_CHAIN_LIMIT = 8, R20_WIN_SLOPE = 2,
+    R20_UPKEEP_ROUNDS = 3, R20_CHAIN_LIMIT = 8, R20_WIN_SLOPE = 2,
     R20_OBJECTIVE_WEIGHT = 2, R20_OBSERVE_VALUE = 0.02, R20_ITEM_EFFECT_VALUE = 0.1, R20_ITEM_USE_SHARE = 0.375,
     R20_LATE_ROUNDS = 2, R20_CHARGE_BREAK = 0.5, R20_ASSET_DEFAULT = 0.2, R20_REVIVE_DEFAULT = 0.25;
   const r20Tables = new WeakMap();
@@ -65367,14 +65372,12 @@
     const hostId = String(unit.宿主ID || (unit.__宿主 ? preview.unitId(unit.__宿主) : '') || '').trim(), hostName = String(unit.宿主名 || '').trim();
     return ids.findIndex((id, other) => other !== row && sides[other] === sides[row] && (hostId ? id === hostId : !!hostName && preview.unitName(units[other]) === hostName));
   };
-  // What is left of a unit, a share of its HP maximum: HP and shield, or its stamina if that is the smaller share — a hit
-  // drains stamina by the HP share it takes and an exhausted unit is out (W8, W14). Only for a unit whose stamina the
-  // decision knows (`known`: the actor's own side); an enemy as believed carries none to trust.
-  const r20Left = (unit, known, foes = null) => {
-    const maximum = Math.max(1, preview.readHpMax(unit)), shield = r20Shield(unit, foes) / maximum, staminaMaximum = preview.readResourceMax(unit, '体力');
-    const left = preview.readHp(unit) / maximum + shield;
-    return known && staminaMaximum > 0 ? Math.min(left, preview.readResource(unit, '体力') / staminaMaximum + shield) : left;
-  };
+  // What is left of a unit, a share of its HP maximum: HP and the shield that holds against the enemies it faces.
+  const r20Left = (unit, known, foes = null) => (preview.readHp(unit) + r20Shield(unit, foes)) / Math.max(1, preview.readHpMax(unit));
+  // A unit's stamina, a share of its maximum (null: it has none to run out of). A hit drains it by the HP share it takes,
+  // healing gives none back, and an exhausted unit is out (W8, W14) — so it runs beside the HP in the race. Only for the
+  // deciding side's own units: an enemy as believed carries none to trust.
+  const r20Stamina = unit => { const maximum = preview.readResourceMax(unit, '体力'); return maximum > 0 ? preview.readResource(unit, '体力') / maximum : null; };
   const r20Keep = (unit, attacker) => r20Soak(unit) * (hasStateFlag(unit, 'cannot_react') || preview.guardBrokenOf(unit, r20Round) ? 1 : Math.min(preview.calculateDefenseDamageMultiplier(unit, attacker, false),
     1 - preview.calculateDodgeProbability(unit, attacker, false)));
   // Whether a unit's answer to a hit keeps the exchange going: it strikes back after defending, and after evading only if
@@ -65385,22 +65388,35 @@
     const dodge = preview.calculateDodgeProbability(unit, attacker, false);
     return preview.calculateDefenseDamageMultiplier(unit, attacker, false) <= 1 - dodge ? 1 : dodge;
   };
-  // The exchange one attack opens (the engagement chain, at most R20_CHAIN_LIMIT strikes back — the runtime's
-  // ENGAGEMENT_CHAIN_LIMIT): the target answers and strikes back, the attacker answers that and strikes again, each
-  // link as likely as the answers before it, a strike back worth R20_COUNTER_SHARE of the unit's best action. Returns
-  // what the attacker lands beyond its first hit and what it takes, shares of the HP maxima.
-  // Measured (chain-census.mjs, 20 mirror battles under the causal valuation): an answered attack drew 0.42–0.53 strikes
-  // back on average — none in about 83%, one in about 10%, the full eight in 2–3% (防御系 duels) — nearly all basic
-  // attacks. So a chain starts with R20_COUNTER_START and each further link holds with R20_COUNTER_CONTINUE, on top of
-  // the answers; the first version (every defended hit struck back, eight deep) overstated it and lost ground.
+  // The exchange one attack opens (the engagement chain, R15: after a defence, or an evasion that succeeds, the unit may
+  // strike back without spending its turn, with its basic attack or any immediate skill; that strike can be answered and
+  // struck back in turn, at most R20_CHAIN_LIMIT links — the runtime's ENGAGEMENT_CHAIN_LIMIT). Every link is its
+  // striker's choice: it strikes when what it lands is worth more than the stamina the strike costs (the ATTACK rate)
+  // and what the other side would then strike back, worked backwards from the last link. So a unit that hits harder
+  // keeps the exchange going and one that hits softer lets it end — and does not open one it would lose.
+  // `answerTarget` / `answerAttacker`: how often each gets to strike back after being struck (1 after a defence, the
+  // chance to evade otherwise); `hitAttacker` / `hitTarget`: what each lands on the other, shares of the HP maxima.
+  // Returns what the attacker lands beyond its first hit and what it takes.
+  // (Until 2026-11-12 the odds were constants measured on the old valuation's play — a chain started 0.2 of the time
+  // and went on 0.5 of the time, each strike worth half the best action; under this valuation about 85% of defences
+  // were followed by a strike back, and weak units traded blows with strong ones until they were exhausted.)
+  const r20StrikeCost = Number(preview.ACTION_STAMINA_RATES?.ATTACK) || 0.025;
+  const r20ChainStrikes = new Array(R20_CHAIN_LIMIT + 1).fill(false);
   function r20Exchange(answerTarget, answerAttacker, hitAttacker, hitTarget) {
+    // From the last link back: what its striker gains from there on by its best choice (nothing if it lets it end).
+    let ahead = 0;
+    for (let depth = R20_CHAIN_LIMIT; depth >= 1; depth -= 1) {
+      const value = depth % 2 ? hitTarget - r20StrikeCost - answerAttacker * ahead : hitAttacker - r20StrikeCost - answerTarget * ahead;
+      r20ChainStrikes[depth] = value > 0;
+      ahead = value > 0 ? value : 0;
+    }
     let chance = 1, more = 0, taken = 0;
     for (let depth = 1; depth <= R20_CHAIN_LIMIT; depth += 1) {
-      chance *= (depth % 2 ? answerTarget : answerAttacker) * (depth === 1 ? R20_COUNTER_START : R20_COUNTER_CONTINUE);
-      if (!(chance > 1e-3)) break;
+      chance *= depth % 2 ? answerTarget : answerAttacker;
+      if (!r20ChainStrikes[depth] || !(chance > 1e-3)) break;
       if (depth % 2) taken += chance * hitTarget; else more += chance * hitAttacker;
     }
-    return { more: R20_COUNTER_SHARE * more, taken: R20_COUNTER_SHARE * taken };
+    return { more, taken };
   }
   // What of a unit's hits goes where it aims: 混乱/目标错乱 send a share to a random unit, its own side's as often as that
   // side is of the field (BattleDecision W7).
@@ -65450,6 +65466,10 @@
     r20Work.races += 1;
     const { sides, remaining, alive } = facts, count = sides.length;
     const left = remaining.map((value, index) => value * alive[index]), charges = facts.guard.slice();
+    // Stamina beside HP (own units; Infinity where it is not known or there is none): it loses what the unit takes and is
+    // not mended.
+    const stam = facts.stamina ? facts.stamina.map(value => typeof value === 'number' ? value : Infinity) : null;
+    const hpFalls = new Array(count);
     const denied = plan?.denied || null, until = plan?.until || null, base = plan?.base || facts;
     const leaves = plan?.leaves || null, held = plan?.baseCount ?? count, changed = plan?.changed || null;
     // busy[u]: rounds u spends charging; strikes: what a charge lands when it is released ({ from, to, at, delta }, by
@@ -65513,11 +65533,24 @@
           if (value > strike) { strike = value; target = other; }
         }
         const help = cells(unit, ally).support[unit][ally];
-        if (help > strike) { mended[ally] += help; aimed[unit] = ally; landed[unit] = -help; }
-        else if (strike > 0) {
-          const view = cells(unit, target), answers = acting(target);
-          const exchange = r20Exchange(answers ? view.answer[target][unit] : 0, view.answer[unit][target], strike,
-            answers ? view.out[target][unit] * view.keep[unit][target] : 0);
+        // The exchange its strike opens; a unit that would take more than it lands aims at the enemy it does best
+        // against instead, and failing that helps or holds.
+        const open = (aim, hit) => { const view = cells(unit, aim), answers = acting(aim);
+          return r20Exchange(answers ? view.answer[aim][unit] : 0, view.answer[unit][aim], hit, answers ? view.out[aim][unit] * view.keep[unit][aim] : 0); };
+        let exchange = strike > 0 && !(help > strike) ? open(target, strike) : null;
+        if (exchange && !(strike + exchange.more > exchange.taken)) {
+          let best = 0;
+          exchange = null;
+          for (let other = 0; other < count; other += 1) {
+            if (other === target || sides[other] === sides[unit] || !(left[other] > 1e-9)) continue;
+            const hit = cells(unit, other).out[unit][other] * cells(unit, other).keep[other][unit];
+            if (!(hit > 0)) continue;
+            const trial = open(other, hit), net = hit + trial.more - trial.taken;
+            if (net > best) { best = net; exchange = trial; strike = hit; target = other; }
+          }
+        }
+        if (!exchange) { if (help > 0) { mended[ally] += help; aimed[unit] = ally; landed[unit] = -help; } }
+        else {
           dealt[target] += strike + exchange.more; hits[target] += 1;
           aimed[unit] = target; landed[unit] = strike + exchange.more;
           // What it lands gives it HP back (伤害吸收), in its own HP maximum.
@@ -65529,9 +65562,11 @@
       let stepTime = nextChange - time;
       const falls = new Array(count).fill(Infinity);
       for (let unit = 0; unit < count; unit += 1) {
+        hpFalls[unit] = Infinity;
+        if (!(left[unit] > 1e-9)) continue;
         const net = dealt[unit] - mended[unit];
-        if (!(left[unit] > 1e-9) || !(net > 1e-9)) continue;
-        falls[unit] = charges[unit] / Math.max(1, hits[unit]) + left[unit] / net;
+        if (net > 1e-9) hpFalls[unit] = falls[unit] = charges[unit] / Math.max(1, hits[unit]) + left[unit] / net;
+        if (stam && Number.isFinite(stam[unit]) && dealt[unit] > 1e-9) falls[unit] = Math.min(falls[unit], stam[unit] / dealt[unit]);
         stepTime = Math.min(stepTime, falls[unit]);
       }
       if (!(stepTime > 0) || !Number.isFinite(stepTime)) break;
@@ -65541,9 +65576,13 @@
         if (net > 1e-9) {
           const shielded = Math.min(stepTime, charges[unit] / Math.max(1, hits[unit]));
           charges[unit] = Math.max(0, charges[unit] - shielded * Math.max(1, hits[unit]));
-          left[unit] = falls[unit] <= stepTime + 1e-9 ? 0 : Math.max(0, left[unit] - (stepTime - shielded) * net);
+          left[unit] = hpFalls[unit] <= stepTime + 1e-9 ? 0 : Math.max(0, left[unit] - (stepTime - shielded) * net);
           if (!(left[unit] > 1e-9) && revive && revive[unit] > 0) { left[unit] = revive[unit]; revive[unit] = 0; }
         } else if (net < -1e-9) left[unit] = Math.min(Math.max(left[unit], remaining[unit]), left[unit] - net * stepTime);
+        if (stam && Number.isFinite(stam[unit])) {
+          stam[unit] = Math.max(0, stam[unit] - stepTime * dealt[unit]);
+          if (!(stam[unit] > 1e-9)) left[unit] = 0;
+        }
       }
       // Who goes first: the flow gives a unit that falls about half of its last round; in turns it acts that round if
       // it goes before those who bring it down, and not at all if after them. The difference goes to whom it aimed at.
@@ -65569,7 +65608,8 @@
     for (let unit = 0; unit < count; unit += 1) {
       if (!(left[unit] > 1e-9)) continue;
       standing.add(sides[unit]);
-      score += sides[unit] === own ? left[unit] : -left[unit];
+      const whole = stam ? Math.min(left[unit], stam[unit]) : left[unit];
+      score += sides[unit] === own ? whole : -whole;
     }
     // The margin, and winning itself: smooth in the margin (a level fight tips either way on a hair, and a hard ±1 made
     // every candidate of a mirror match worth the whole battle or nothing), worth more the sooner it is decided.
@@ -65636,6 +65676,7 @@
     const waiting = Array.isArray(request.actionOpportunity?.pendingNaturalActorIds) ? new Set(request.actionOpportunity.pendingNaturalActorIds.map(String)) : null;
     const table = { request, world, contexts, units, ids, index: new Map(ids.map((id, row) => [id, row])), sides, acts, bound, out, support, stop, keep, answer, turn, late, against,
       remaining: units.map((unit, row) => r20Left(unit, sides[row] === request.actorSide, against[sides[row]])),
+      stamina: units.map((unit, row) => sides[row] === request.actorSide ? r20Stamina(unit) : null),
       alive: new Array(count).fill(1), guard: units.map(unit => r20Guard(unit)), revive: units.map(unit => r20Revive(unit)),
       drain: units.map(unit => r20Absorb(unit).dealt), host: units.map((unit, row) => r20HostRow(unit, units, ids, sides, row)), skippedSkills: skipped.count,
       tick: units.map(unit => r20Tick(request, unit)),
@@ -65654,6 +65695,11 @@
       const budget = Number(preview.CONTINUOUS_ACTION_BUDGET) || 40;
       const turns = Math.max(1, Math.ceil(Math.max(0, Number(charge.cast_time ?? charge.remainingCastTime) || 0) / budget));
       (table.busy ||= new Array(count).fill(0))[row] = turns;
+      // 融合蓄力（用户 2026-11-12）: the partners of a charged fusion skill charge with it, busy as long.
+      for (const id of Array.isArray(charge.fusionPartnerIds) ? charge.fusionPartnerIds : []) {
+        const partner = table.index.get(String(id));
+        if (partner !== undefined) table.busy[partner] = Math.max(table.busy[partner], turns);
+      }
       for (const id of Array.isArray(charge.targetIds) ? charge.targetIds : []) {
         const target = table.index.get(String(id));
         if (target === undefined) continue;
@@ -65698,6 +65744,7 @@
     for (const entry of result.contributions || []) if (entry.targetId) touched.add(String(entry.targetId));
     const remaining = table.remaining.slice(), alive = table.alive.slice(), guard = table.guard.slice(), denied = new Array(count).fill(0);
     const revive = table.revive.slice(), drain = table.drain.slice(), strikes = table.strikes ? table.strikes.map(strike => ({ ...strike })) : [];
+    const stamina = table.stamina.slice();
     let busy = table.busy ? table.busy.slice() : null;
     const until = new Array(count).fill(Infinity), tick = table.tick.slice(), reflect = table.reflect.slice(), hpMax = table.hpMax.slice();
     const rebuilt = [], hushed = {};
@@ -65714,6 +65761,7 @@
       if (!next || !preview.isBattleCapable(next)) { remaining[row] = 0; alive[row] = 0; seen += 1; continue; }
       if (next === prior) continue;
       remaining[row] = r20Left(next, table.sides[row] === request.actorSide, table.against[table.sides[row]]);
+      if (typeof stamina[row] === 'number') { const now = r20Stamina(next); if (now !== null) stamina[row] = now; }
       guard[row] = r20Guard(next); revive[row] = r20Revive(next); drain[row] = r20Absorb(next).dealt;
       tick[row] = r20Tick(request, next);
       reflect[row] = preview.counterDamageRatio(next);
@@ -65855,6 +65903,7 @@
         const created = (result.contributions || []).find(entry => entry.outcomeKind === 'SUMMON_WINDOW' && String(entry.targetId) === id);
         remaining.push(r20Left(unit, sidesNow[row] === request.actorSide, table.against[sidesNow[row]])); alive.push(created ? clamp(preview.contributionProbability(created), 0, 1) : 1);
         guard.push(r20Guard(unit)); tick.push(0); denied.push(0); until.push(Infinity); revive.push(r20Revive(unit)); drain.push(r20Absorb(unit).dealt);
+        stamina.push(sidesNow[row] === request.actorSide ? r20Stamina(unit) : null);
         if (busy) busy.push(0);
         reflect.push(preview.counterDamageRatio(unit)); hpMax.push(Math.max(1, preview.readHpMax(unit)));
         const windows = Number(unit.剩余窗口 ?? unit.remainingWindows);
@@ -65874,6 +65923,8 @@
       }
     }
     mark('addedMs');
+    // What each unit has left before the adjustments below: what they take off its HP goes off its stamina too.
+    const hpMark = remaining.slice();
     // An attack opens an exchange (r20Exchange): a target that can still act answers and strikes back, the actor answers
     // that and strikes again (战斗决策原理 例二: 打高反击目标等于白送对方出手). What the actor takes and what more it lands.
     let counter = 0, struckAny = false;
@@ -65934,16 +65985,25 @@
       const share = actionKind === 'DEFEND' ? preview.calculateDefenseDamageMultiplier(actorNext, source, false) : actionKind === 'EVADE' ? 1 - dodge : 1;
       const strikesBack = actionKind === 'DEFEND' ? 1 : actionKind === 'EVADE' ? dodge : preview.declarationGrantsCounter(declaration || {}) ? 1 : 0;
       const staminaMaximum = preview.readResourceMax(actorNext, '体力'), maximum = Math.max(1, preview.readHpMax(actorNext)), shield = preview.readShield(actorNext) / maximum;
-      const stamina = ['DEFEND', 'EVADE'].includes(actionKind) && staminaMaximum > 0 && preview.actionStaminaEnabled(table.world)
+      const answerCost = ['DEFEND', 'EVADE'].includes(actionKind) && staminaMaximum > 0 && preview.actionStaminaEnabled(table.world)
         ? preview.actionStaminaCost(actorNext, actionKind, source) / staminaMaximum : 0;
       const hpLeft = preview.readHp(actorNext) / maximum + shield - hit * share;
-      remaining[actorRow] = Math.max(0, staminaMaximum > 0 ? Math.min(hpLeft, preview.readResource(actorNext, '体力') / staminaMaximum + shield - hit * share - stamina) : hpLeft);
-      remaining[sourceRow] = Math.max(0, remaining[sourceRow] - strikesBack * R20_COUNTER_SHARE * out[actorRow][sourceRow] * keep[sourceRow][actorRow]);
+      remaining[actorRow] = Math.max(0, hpLeft);
+      // Stamina: the hit takes its share and the answer costs its rate.
+      if (staminaMaximum > 0 && typeof stamina[actorRow] === 'number') {
+        stamina[actorRow] = Math.max(0, preview.readResource(actorNext, '体力') / staminaMaximum - hit * share - answerCost);
+      }
+      hpMark[actorRow] = remaining[actorRow];
+      // The strike back the answer opens and what follows it: the chain from the link the actor would strike at (it
+      // strikes only when that is worth it).
+      const chain = r20Exchange(strikesBack, answer[sourceRow][actorRow], out[sourceRow][actorRow] * keep[actorRow][sourceRow], out[actorRow][sourceRow] * keep[sourceRow][actorRow]);
+      remaining[sourceRow] = Math.max(0, remaining[sourceRow] - chain.taken);
+      remaining[actorRow] = Math.max(0, remaining[actorRow] - chain.more);
     }
     // Taking a stance instead of acting (ACTIVE DEFEND / EVADE; 用户 2026-11-12: 敏攻"选择闪避，等对方攻击露出破绽，也就是所谓的
     // 闪避反击"): against each enemy still to act this round, who may turn on the actor as on any of its side, the prepared
-    // answer keeps more off than the ordinary one would, and it strikes back for certain after defending or evading, where
-    // an ordinary answer does only now and then (R20_COUNTER_START).
+    // answer keeps more off than the ordinary one would, and it gets to strike back more often than the ordinary one
+    // (always after defending; after evading as often as the prepared evasion succeeds).
     if (roleName === 'ACTIVE' && ['DEFEND', 'EVADE'].includes(actionKind) && actorRow !== undefined && alive[actorRow] > 0) {
       const actor = table.units[actorRow];
       const standing = table.sides.reduce((sum, side, row) => sum + Number(side === own && alive[row] > 0 && remaining[row] > 0), 0);
@@ -65954,8 +66014,11 @@
         const held = actionKind === 'DEFEND' ? preview.calculateDefenseDamageMultiplier(actor, table.units[row], true) : 1 - dodge;
         const turned = alive[row] / Math.max(1, standing);
         remaining[actorRow] += turned * out[row][actorRow] * Math.max(0, keep[actorRow][row] - held);
-        const strikes = Math.max(0, (actionKind === 'DEFEND' ? 1 : dodge) - R20_COUNTER_START * answer[actorRow][row]);
-        remaining[row] = Math.max(0, remaining[row] - turned * strikes * R20_COUNTER_SHARE * out[actorRow][row] * keep[row][actorRow]);
+        const strikeBack = out[actorRow][row] * keep[row][actorRow], strikeAgain = out[row][actorRow] * keep[actorRow][row];
+        const prepared = r20Exchange(actionKind === 'DEFEND' ? 1 : dodge, answer[row][actorRow], strikeAgain, strikeBack);
+        const ordinary = r20Exchange(answer[actorRow][row], answer[row][actorRow], strikeAgain, strikeBack);
+        remaining[row] = Math.max(0, remaining[row] - turned * Math.max(0, prepared.taken - ordinary.taken));
+        remaining[actorRow] = Math.max(0, remaining[actorRow] - turned * Math.max(0, prepared.more - ordinary.more));
       }
     }
     // A charged skill (前摇 over a turn's budget): nothing lands now. Its release lands what the skill's own cell says
@@ -65968,8 +66031,16 @@
       if (windup > budget && request.actionOpportunity?.forcedChargeRelease !== true) {
         // A charge is broken when its caster is stopped (CHARGE_INTERRUPTED_BY_CONTROL): each turn as likely as the best
         // control an enemy has on it lands, as often as an enemy spends its turn on that (R20_CHARGE_BREAK).
+        // 融合蓄力: the partners of a fusion skill charge with it — busy as long, and stopping any of them breaks it.
+        const chargers = [actorRow];
+        for (const id of Array.isArray(declaration.fusionPartnerIds) ? declaration.fusionPartnerIds : []) {
+          const row = table.index.get(String(id));
+          if (row !== undefined && row !== actorRow) chargers.push(row);
+        }
         let stopped = 0;
-        for (let row = 0; row < count; row += 1) if (table.sides[row] !== own && acts[row] && alive[row] > 0) stopped = Math.max(stopped, Math.min(1, stop[row][actorRow]));
+        for (let row = 0; row < count; row += 1) if (table.sides[row] !== own && acts[row] && alive[row] > 0) {
+          for (const charger of chargers) stopped = Math.max(stopped, Math.min(1, stop[row][charger]));
+        }
         const turns = Math.ceil((windup - budget) / budget), holds = (1 - R20_CHARGE_BREAK * stopped) ** turns;
         const context = r9v2LinearCapacityProjectionContext(table.world, table.contexts);
         for (const id of Array.isArray(declaration.targetIds) ? declaration.targetIds : []) {
@@ -65978,7 +66049,8 @@
           const lands = cachedBaseActionValue(actor, table.units[row], 'RELEASE_SKILL', declaration.skill, context, table.world) / 100 * holds;
           strikes.push({ from: actorRow, to: row, at: turns, delta: table.sides[row] === own ? lands : -lands * keep[row][actorRow] });
         }
-        (busy ||= new Array(count).fill(0))[actorRow] = turns;
+        busy ||= new Array(count).fill(0);
+        for (const charger of chargers) busy[charger] = Math.max(busy[charger], turns);
         seen += 1;
       }
       // A fusion spends its partners' turns too: each partner still to act this round gives its action up.
@@ -66009,7 +66081,8 @@
         remaining[actorRow] = Math.max(0, remaining[actorRow] - alive[row] * out[row][actorRow] * Math.max(0, r20Keep(actorNext, table.units[row]) - keep[actorRow][row]) / Math.max(1, standing));
       }
     }
-    const facts = { sides: sidesNow, out, support, stop, keep, answer, turn, host, remaining, alive, guard, revive, drain, tick, reflect, hpMax, horizon: table.horizon };
+    for (let row = 0; row < remaining.length; row += 1) if (typeof stamina[row] === 'number') stamina[row] = Math.max(0, stamina[row] - Math.max(0, hpMark[row] - remaining[row]));
+    const facts = { sides: sidesNow, out, support, stop, keep, answer, turn, host, remaining, stamina, alive, guard, revive, drain, tick, reflect, hpMax, horizon: table.horizon };
     const changed = new Array(count).fill(false);
     for (const [row] of rebuilt) changed[row] = true;
     strikes.sort((left, right) => left.at - right.at);

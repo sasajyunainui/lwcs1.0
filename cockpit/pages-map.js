@@ -10,8 +10,8 @@
   const stellar = c => c.loc.stellar();
   const rootName = c => c.loc.rootName();
   const cityIndex = (c, chain) => c.loc.cityIndex(chain);
-  // 斗四星系 / 行星的专属子图（同原项目）：只认完整路径，城市以下仍是全息底板
-  const SUBMAPS = { '斗罗星系': 'MAP_ZJDL_DOULUO_SYSTEM.webp', '斗罗星系/斗罗星': 'MAP_ZJDL_DOULUO.webp', '斗罗星系/天斗星': 'MAP_ZJDL_TIANDOU.webp', '斗罗星系/天罗星': 'MAP_ZJDL_TIANLUO.webp', '斗罗星系/龙源星': 'MAP_ZJDL_LONGYUAN.webp', '斗罗星系/森罗星': 'MAP_ZJDL_SENLUO.webp', '斗罗星系/精灵星': 'MAP_ZJDL_JINGLING.webp', '天堂星域/天堂星': 'MAP_ZJDL_TIANTANG.webp', '龙马星系': 'MAP_ZJDL_LONGMA_SYSTEM.webp', '龙马星系/天龙星': 'MAP_ZJDL_TIANLONG.webp', '龙马星系/天马星': 'MAP_ZJDL_TIANMA.webp', '龙马星系/御空族七十六号星球': 'MAP_ZJDL_YUKONG76.webp' };
+  // 斗四行星地表的专属子图：只认完整路径，城市以下仍是全息底板；星际总图与星系图按数据绘制（见 starMap）
+  const SUBMAPS = { '斗罗星系/斗罗星': 'MAP_ZJDL_DOULUO.webp', '斗罗星系/天斗星': 'MAP_ZJDL_TIANDOU.webp', '斗罗星系/天罗星': 'MAP_ZJDL_TIANLUO.webp', '斗罗星系/龙源星': 'MAP_ZJDL_LONGYUAN.webp', '斗罗星系/森罗星': 'MAP_ZJDL_SENLUO.webp', '斗罗星系/精灵星': 'MAP_ZJDL_JINGLING.webp', '天堂星域/天堂星': 'MAP_ZJDL_TIANTANG.webp', '龙马星系/天龙星': 'MAP_ZJDL_TIANLONG.webp', '龙马星系/天马星': 'MAP_ZJDL_TIANMA.webp', '龙马星系/御空族七十六号星球': 'MAP_ZJDL_YUKONG76.webp' };
   const pathOf = c => String(c.ch.状态?.位置 || '').split('-').filter(Boolean);
   const savedTop = c => c.loc.top();
   const locPath = (c, names) => c.loc.path(names);
@@ -36,11 +36,13 @@
   const libRows = () => Object.values(window.COCKPIT.library('location')?.地点 || {}).map(e => ({ path: Object.values(e.目标路径 || {}).filter((t, i) => !(i === 0 && ROOTS.has(t))), n: e.节点 || {}, rules: e.世界规则 })).filter(r => r.path.length);
   const herePath = c => pathOf(c).filter(p => !ROOTS.has(p));
   const under = (rows, prefix, depth) => rows.filter(r => r.path.length === depth && prefix.every((t, i) => r.path[i] === t));
+  // 库里有坐标的固定地点以库坐标为准：存档里的同名节点是实例化时抄下的，库坐标校准后老存档也跟着对齐
+  const withLibXY = (lib, merged) => lib && Number.isFinite(lib.x) && Number.isFinite(lib.y) ? { ...merged, x: lib.x, y: lib.y } : merged;
   const worldNodes = c => {
     const out = {}, rows = libRows();
     for (const r of under(rows, [], 1)) if (Number.isFinite(r.n.x) && Number.isFinite(r.n.y)) out[r.path[0]] = { name: r.path[0], ...r.n, rules: r.rules, kids: [] };
     for (const r of under(rows, [], 2)) if (out[r.path[0]]) out[r.path[0]].kids.push(r.path[1]);
-    for (const [n, v] of Object.entries(savedTop(c))) if (Number.isFinite(v?.x)) out[n] = { ...(out[n] || {}), name: n, ...v, kids: [...new Set([...(out[n]?.kids || []), ...Object.keys(v.子节点 || {})])], rules: out[n]?.rules };
+    for (const [n, v] of Object.entries(savedTop(c))) if (Number.isFinite(v?.x)) out[n] = withLibXY(out[n], { ...(out[n] || {}), name: n, ...v, kids: [...new Set([...(out[n]?.kids || []), ...Object.keys(v.子节点 || {})])], rules: out[n]?.rules });
     for (const [n, v] of Object.entries(c.S.world.动态地点 || {})) if (v && !out[n] && Number.isFinite(v.x) && Number.isFinite(v.y) && (!v.归属父节点 || ROOTS.has(v.归属父节点))) out[n] = { name: n, ...v, dyn: true, kids: [] };
     return Object.values(out);
   };
@@ -50,7 +52,7 @@
     const base = trail.length ? (() => {
       const out = {};
       for (const r of under(rows, trail, trail.length + 1)) out[r.path.at(-1)] = { name: r.path.at(-1), ...r.n, rules: r.rules };
-      for (const [k, v] of Object.entries(savedAt(c, trail) || {})) out[k] = { ...(out[k] || {}), name: k, ...v };
+      for (const [k, v] of Object.entries(savedAt(c, trail) || {})) out[k] = withLibXY(out[k], { ...(out[k] || {}), name: k, ...v });
       return Object.values(out).filter(n => Number.isFinite(n.x) && Number.isFinite(n.y));
     })() : worldNodes(c);
     return base.map(n => { const kids = kidsOf([...trail, n.name]); return { ...n, kids, enterable: kids.length > 0 }; });
@@ -67,6 +69,58 @@
     const dest = path.length === 1 || path[0] === hp[0] ? path.at(-1) : path[0];
     return { go: 'page-map/star', dest, label: dest === path.at(-1) ? '设为目的地' : `前往${dest}` };
   };
+  // ---------- 星际层按数据绘制 ----------
+  // 斗四的星际总图与星系图不用画好的底图：星云、星体、航线按地点数据现画（坐标、类型改了图就跟着变），避免底图与数据对不上
+  const STAR_LAYER = /星系|星域|恒星|星际/;
+  const isStarLayer = (c, trail) => stellar(c) && (!trail.length || (trail.length === 1 && STAR_LAYER.test(String(worldNodes(c).find(n => n.name === trail[0])?.类型 || ''))));
+  // 总图上的虫洞航线（原著：斗罗联邦与龙马星系由虫洞通道相连，天堂星所在星系只能经虫洞进入）
+  const STAR_ROUTES = [['斗罗星系', '龙马星系'], ['斗罗星系', '天堂星域']];
+  const seeded = seed => { let a = [...String(seed)].reduce((h, ch) => Math.imul(h ^ ch.charCodeAt(0), 16777619), 2166136261) >>> 0; return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; };
+  // 星云配色：已知星系固定，其余按名称取色
+  const NEBULA = ['#4f8cff', '#f2b14a', '#b07cff', '#3fd0c9', '#ff6f91'], NEBULA_OF = { 斗罗星系: '#4f8cff', 龙马星系: '#f2b14a', 天堂星域: '#b07cff' };
+  // 星体外观按类型：颜色、半径（图上单位）；先判更具体的类型
+  const BODY = [[/种族母星/, '#9fb4ff', 58], [/母星/, '#3fb6ff', 80], [/首都星/, '#f1c75b', 74], [/魂兽/, '#4fd38a', 56], [/生命星/, '#6fe0b0', 66], [/罪恶/, '#d0446a', 84], [/行政星/, '#5b8dff', 56], [/死亡/, '#c0504d', 46], [/资源|卫星/, '#e0a35a', 30], [/交易|站|基地/, '#ff7a8a', 22], [/虚拟|试炼|位面/, '#c08bff', 40]];
+  const bodyOf = t => BODY.find(([re]) => re.test(String(t || ''))) || [null, '#9fb3c8', 44];
+  const starMap = (c, trail, nodes) => {
+    const R = seeded(trail.join('/') || '星际'), id = 'sm' + Math.floor(R() * 1e9).toString(36), ks = kindsOf(c), defs = [], body = [];
+    // 背景星点：位置随层级固定，重绘不跳
+    for (let i = 0; i < 280; i++) { const r = R() < .06 ? 2.4 + R() * 2 : .8 + R() * 1.6; body.push(`<circle cx="${(R() * MAP.w).toFixed(0)}" cy="${(R() * MAP.h).toFixed(0)}" r="${r.toFixed(1)}" fill="#cfe2ff" opacity="${(.25 + R() * .6).toFixed(2)}"/>`); }
+    const at = name => nodes.find(n => n.name === name);
+    const line = (a, b, dash) => { const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2 - Math.hypot(b.x - a.x, b.y - a.y) * .12; return `<path d="M${a.x} ${a.y} Q${mx.toFixed(0)} ${my.toFixed(0)} ${b.x} ${b.y}" fill="none" stroke="#8fc0ff" stroke-opacity=".45" stroke-width="5"${dash ? ' stroke-dasharray="26 18"' : ''}/>`; };
+    if (!trail.length) {
+      for (const [a, b] of STAR_ROUTES) if (at(a) && at(b)) body.push(line(at(a), at(b), true));
+      nodes.forEach((n, i) => {
+        const [, col, kind] = kindOf(n.类型, ks);
+        if (/位面/.test(kind)) {
+          // 位面：裂隙环
+          defs.push(`<radialGradient id="${id}r${i}"><stop offset="0" stop-color="${col}" stop-opacity=".55"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></radialGradient>`);
+          body.push(`<ellipse cx="${n.x}" cy="${n.y}" rx="260" ry="190" fill="url(#${id}r${i})"/><ellipse cx="${n.x}" cy="${n.y}" rx="150" ry="110" fill="none" stroke="${col}" stroke-opacity=".7" stroke-width="5" stroke-dasharray="40 22"/><ellipse cx="${n.x}" cy="${n.y}" rx="70" ry="50" fill="none" stroke="${col}" stroke-opacity=".5" stroke-width="3"/>`);
+          return;
+        }
+        // 星系 / 星域：几团星云叠出一片区域，中心一颗亮星；颜色按名称固定
+        const nc = NEBULA_OF[n.name] || NEBULA[[...n.name].reduce((h, ch) => h + ch.charCodeAt(0), 0) % NEBULA.length], rr = seeded(n.name);
+        defs.push(`<radialGradient id="${id}n${i}"><stop offset="0" stop-color="${nc}" stop-opacity=".42"/><stop offset=".55" stop-color="${nc}" stop-opacity=".12"/><stop offset="1" stop-color="${nc}" stop-opacity="0"/></radialGradient><radialGradient id="${id}c${i}"><stop offset="0" stop-color="#ffffff"/><stop offset=".25" stop-color="${nc}" stop-opacity=".9"/><stop offset="1" stop-color="${nc}" stop-opacity="0"/></radialGradient>`);
+        for (let k = 0; k < 4; k++) body.push(`<ellipse cx="${(n.x + (rr() - .5) * 360).toFixed(0)}" cy="${(n.y + (rr() - .5) * 260).toFixed(0)}" rx="${(380 + rr() * 260).toFixed(0)}" ry="${(260 + rr() * 180).toFixed(0)}" fill="url(#${id}n${i})"/>`);
+        for (let k = 0; k < 26; k++) { const a = rr() * Math.PI * 2, d = 60 + rr() * 420; body.push(`<circle cx="${(n.x + Math.cos(a) * d * 1.3).toFixed(0)}" cy="${(n.y + Math.sin(a) * d).toFixed(0)}" r="${(2 + rr() * 5).toFixed(1)}" fill="${nc}" opacity="${(.4 + rr() * .5).toFixed(2)}"/>`); }
+        body.push(`<circle cx="${n.x}" cy="${n.y}" r="110" fill="url(#${id}c${i})"/>`);
+      });
+    } else {
+      // 星系图：中枢星（母星 / 中央生命星，没有就取最靠中心的）为根，每颗星连向比它更靠近中枢的星里离它最近的一颗（远星不再穿过近星直连中枢），外加淡轨道圈
+      const hub = nodes.find(n => /母星|生命星/.test(n.类型) && !/种族/.test(n.类型)) || [...nodes].sort((a, b) => Math.hypot(a.x - MAP.w / 2, a.y - MAP.h / 2) - Math.hypot(b.x - MAP.w / 2, b.y - MAP.h / 2))[0];
+      if (hub) {
+        [...new Set(nodes.filter(n => n !== hub).map(n => Math.round(Math.hypot(n.x - hub.x, n.y - hub.y) / 120) * 120))].forEach(r => body.push(`<ellipse cx="${hub.x}" cy="${hub.y}" rx="${r}" ry="${(r * .78).toFixed(0)}" fill="none" stroke="#6fa8ff" stroke-opacity=".12" stroke-width="3"/>`));
+        const dh = n => Math.hypot(n.x - hub.x, n.y - hub.y);
+        nodes.filter(n => n !== hub).forEach(n => { const up = nodes.filter(m => m !== n && dh(m) < dh(n)).sort((a, b) => Math.hypot(a.x - n.x, a.y - n.y) - Math.hypot(b.x - n.x, b.y - n.y))[0] || hub; body.push(line(up, n, /资源|卫星|虚拟|死亡/.test(n.类型))); });
+      }
+      nodes.forEach((n, i) => {
+        const [, col, r] = bodyOf(n.类型);
+        if (/虚拟|试炼/.test(n.类型)) { body.push(`<polygon points="${[0, 1, 2, 3, 4, 5].map(k => `${(n.x + Math.cos(k * Math.PI / 3) * r).toFixed(0)},${(n.y + Math.sin(k * Math.PI / 3) * r).toFixed(0)}`).join(' ')}" fill="${col}" fill-opacity=".18" stroke="${col}" stroke-width="4"/>`); return; }
+        defs.push(`<radialGradient id="${id}p${i}" cx=".35" cy=".32" r=".75"><stop offset="0" stop-color="#ffffff" stop-opacity=".95"/><stop offset=".22" stop-color="${col}"/><stop offset="1" stop-color="#0a1430"/></radialGradient><radialGradient id="${id}g${i}"><stop offset=".55" stop-color="${col}" stop-opacity=".45"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></radialGradient>`);
+        body.push(`<circle cx="${n.x}" cy="${n.y}" r="${(r * 1.7).toFixed(0)}" fill="url(#${id}g${i})"/><circle cx="${n.x}" cy="${n.y}" r="${r}" fill="url(#${id}p${i})"/>`);
+      });
+    }
+    return `<svg class="starmap" viewBox="0 0 ${MAP.w} ${MAP.h}" preserveAspectRatio="none" aria-hidden="true"><defs><radialGradient id="${id}bg" cx=".5" cy=".45" r=".8"><stop offset="0" stop-color="#0d1b3d"/><stop offset="1" stop-color="#040915"/></radialGradient>${defs.join('')}</defs><rect width="${MAP.w}" height="${MAP.h}" fill="url(#${id}bg)"/>${body.join('')}</svg>`;
+  };
   const sandTable = (c, trail) => {
     const hp = herePath(c), onPath = trail.every((t, i) => hp[i] === t), hereName = onPath ? hp[trail.length] : null, sub = trail.length > 0;
     const nodes = levelNodes(c, trail), f = nodes.find(n => n.name === hereName);
@@ -75,10 +129,10 @@
     const ks = kindsOf(c), rank = n => n === f ? 0 : near.has(n.name) ? 1 : !sub && kindOf(n.类型, ks)[2] === '地域' ? 3 : 2;
     const key = n => [...trail, n.name].join('/');
     const pt = !sub && ptOf(c.state.ui.dest), pin = pt ? { x: pt.x, y: pt.y } : null;
-    const submap = sub && stellar(c) && SUBMAPS[trail.join('/')], root = rootName(c);
-    const holo = sub && !submap ? `<div class="holo-base" style="background-image:${[...nodes.map(n => `radial-gradient(circle at ${pct(n.x, MAP.w)}% ${pct(n.y, MAP.h)}%,${rgba(kindOf(n.类型, ks)[1], .3)} 0,transparent 8%)`), 'radial-gradient(ellipse at 50% 50%,rgba(70,150,255,.22),transparent 68%)'].join(',')}"><b>${c.esc(trail.at(-1))}</b></div>` : '';
+    const starLayer = isStarLayer(c, trail), submap = sub && !starLayer && stellar(c) && SUBMAPS[trail.join('/')], root = rootName(c);
+    const holo = sub && !submap && !starLayer ? `<div class="holo-base" style="background-image:${[...nodes.map(n => `radial-gradient(circle at ${pct(n.x, MAP.w)}% ${pct(n.y, MAP.h)}%,${rgba(kindOf(n.类型, ks)[1], .3)} 0,transparent 8%)`), 'radial-gradient(ellipse at 50% 50%,rgba(70,150,255,.22),transparent 68%)'].join(',')}"><b>${c.esc(trail.at(-1))}</b></div>` : '';
     return `<div class="table${sub ? ' sub' : ''}" data-table data-no-tilt data-trail="${c.esc(trail.join('/'))}">
-      <div class="plane">${submap ? `<img src="${assetUrl(submap)}" alt="${c.esc(trail.at(-1))}子图" draggable="false">` : sub ? holo : `<img src="${assetUrl(profileOf(c).asset)}" alt="${root}总图" draggable="false">`}<div class="grid"></div>${nodes.map(n => `<i class="anc" style="left:${pct(n.x, MAP.w)}%;top:${pct(n.y, MAP.h)}%"></i>`).join('')}${pin ? `<i class="anc" style="left:${pct(pin.x, MAP.w)}%;top:${pct(pin.y, MAP.h)}%"></i>` : ''}<i class="anc cn" style="left:0;top:0"></i><i class="anc cn" style="left:100%;top:0"></i><i class="anc cn" style="left:100%;top:100%"></i><i class="anc cn" style="left:0;top:100%"></i></div>
+      <div class="plane">${starLayer ? starMap(c, trail, nodes) : submap ? `<img src="${assetUrl(submap)}" alt="${c.esc(trail.at(-1))}子图" draggable="false">` : sub ? holo : `<img src="${assetUrl(profileOf(c).asset)}" alt="${root}总图" draggable="false">`}<div class="grid"></div>${nodes.map(n => `<i class="anc" style="left:${pct(n.x, MAP.w)}%;top:${pct(n.y, MAP.h)}%"></i>`).join('')}${pin ? `<i class="anc" style="left:${pct(pin.x, MAP.w)}%;top:${pct(pin.y, MAP.h)}%"></i>` : ''}<i class="anc cn" style="left:0;top:0"></i><i class="anc cn" style="left:100%;top:0"></i><i class="anc cn" style="left:100%;top:100%"></i><i class="anc cn" style="left:0;top:100%"></i></div>
       <div class="marks">${nodes.map(n => { const r = rank(n), color = r === 0 ? '#ffd36b' : kindOf(n.类型, ks)[1], g = markGo(c, [...trail, n.name]), isDest = !!g.dest && g.dest === n.name && c.state.ui.dest === g.dest; return `<button class="mk r${r}${r === 0 ? ' here' : ''}${isDest ? ' dest' : ''}" type="button" style="--pc:${isDest ? '#ff7ab6' : color};--bh:${BEAM[r]}px" data-rank="${r}" data-inspect="node:${c.esc(key(n))}" data-hover-delay="320" ${g.dest ? `data-set="dest=${c.esc(g.dest)}"` : `data-go="${g.go}"`}${n.enterable ? ` data-map-enter="${c.esc(key(n))}"` : ''} aria-label="${c.esc(`${n.name}：${g.label}`)}"><i class="mk-lead"></i><i class="mk-beam"></i><i class="mk-base"></i><span class="mk-tag">${c.esc(n.name)}${n.enterable ? '<i class="fa-solid fa-layer-group"></i>' : ''}</span></button>`; }).join('')}${pin ? `<span class="mk r0 fpin" style="--pc:#ff7ab6;--bh:${BEAM[0]}px" data-rank="0" aria-hidden="true"><i class="mk-lead"></i><i class="mk-beam"></i><i class="mk-base"></i><span class="mk-tag"><i class="fa-solid fa-location-crosshairs"></i> ${Math.round(pin.x)}, ${Math.round(pin.y)}</span></span>` : ''}</div>
       ${sub ? `<div class="table-crumb"><button class="key-s" type="button" data-map-up aria-label="返回上级"><i class="fa-solid fa-chevron-left"></i></button><span>${[root, ...trail].map((t, i) => i === trail.length ? `<b aria-current="location">${c.esc(t)}</b>` : `<button type="button" data-map-to="${c.esc(trail.slice(0, i).join('/'))}">${c.esc(t)}</button>`).join('<i class="fa-solid fa-angle-right"></i>')}</span>${onPath ? '' : `<span class="chip s" data-hint="${c.esc(`这里只能查看；要在「${trail[0]}」里行动，先前往那里。`)}">远端预览</span>`}</div>` : ''}
       <div class="table-ui"><button class="key-s" type="button" data-zoom="1.25" aria-label="放大">＋</button><button class="key-s" type="button" data-zoom="0.8" aria-label="缩小">－</button><button class="key-s" type="button" data-zoom="home" aria-label="${f ? '回到当前位置' : '回到中心'}"><i class="fa-solid fa-crosshairs"></i></button></div>

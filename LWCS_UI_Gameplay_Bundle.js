@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:529578ad29adf669c373e66f14ba400a98ce82514aa06f5554484c1dc670329a|BehaviorDecisionPipeline_Module.js:310cde745a4f74f297fad02f931e687b884fb150e19c7005d82894515eb5e5f6|BattleDecision_Module.js:e17b0c27f638af1b23e5f84f47b773857d4102c6a680b51d27d9081e3b2f3a06|BattleRuntime_Module.js:0c667803baa40efe7b5562b882939be8288bd6b0b31910976b129d5298f7b6a7|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:981503b2b0bb5bf4d804320e5cd7406d97cd63fd3080e0db1910dccfd1ce271d */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:1e381bcd1358b71b1fa7b2c792ae60b8c081c15c945b4e1c52815e415d976fc7|BehaviorDecisionPipeline_Module.js:310cde745a4f74f297fad02f931e687b884fb150e19c7005d82894515eb5e5f6|BattleDecision_Module.js:5af209a18c84b8e8e0c473f6a1aca246076de8e8ba7423a6fa425b52f083b4c6|BattleRuntime_Module.js:e52ed69d1901a6eaf72111b1fa5eac0f419ca7419141790572772d3217a703d8|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:981503b2b0bb5bf4d804320e5cd7406d97cd63fd3080e0db1910dccfd1ce271d */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -8904,12 +8904,15 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     if (!index.entries.length) return null;
     const wantedName = String(skill?.name || skill?.魂技名 || skill?.技能名称 || skill?.名称 || '').trim();
     if (!wantedName) return null;
-    let wantedEffects;
-    return index.entries.find(entry => {
-      if (entry.name !== wantedName) return false;
-      wantedEffects ??= effectArrayHash(skill?._效果数组);
-      return !wantedEffects || !entry.effects || wantedEffects === entry.effects;
-    })?.metadata || null;
+    const named = index.entries.filter(entry => entry.name === wantedName);
+    if (!named.length) return null;
+    const wantedEffects = effectArrayHash(skill?._效果数组);
+    // A skill as it is declared may carry more than the stored one does (equipment passives merged in, settlement
+    // modifiers), so its effects need not match: the name decides unless two stored fusion skills share it. The
+    // decision used to miss the fusion on such a skill, offer it with the partner's turn already spent, and the
+    // runtime, which finds the stored skill, stopped the battle (H43).
+    return (named.find(entry => !wantedEffects || !entry.effects || wantedEffects === entry.effects) ||
+      (named.length === 1 ? named[0] : null))?.metadata || null;
   }
 
   function fusionParticipantIdentifiers(participant = {}) {
@@ -8921,6 +8924,16 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
       participant?.name,
       participant?.名称,
     ].map(value => String(value || '').trim()).filter(Boolean);
+  }
+
+  // 融合蓄力（用户 2026-11-12）: a charged fusion skill is charged by its partners too — from the turn it starts to the
+  // turn it is released each partner's natural turn goes to it. The unit charging a fusion skill that `unit` is a
+  // partner of (its 蓄力技能 lists the partners), or null; a host that is down holds nobody.
+  function fusionChargeHost(worldSnapshot = {}, unit = {}) {
+    const id = unitId(unit);
+    if (!id) return null;
+    return listUnits(worldSnapshot).find(entry => entry.unit !== unit && Array.isArray(entry.unit?.蓄力技能?.fusionPartnerIds) &&
+      entry.unit.蓄力技能.fusionPartnerIds.includes(id) && isBattleCapable(entry.unit))?.unit || null;
   }
 
   function resolveFusionAction(worldSnapshot = {}, actor = {}, skill = {}, options = {}) {
@@ -9009,6 +9022,21 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
       }
       if (!partners.some(existing => unitId(existing) === unitId(partner))) partners.push(partner);
     }
+    // A partner charging a skill of its own, or charging a fusion with someone else, has no turn to give.
+    const chargingWith = partner => { const host = fusionChargeHost(worldSnapshot, partner); return host ? unitId(host) : ''; };
+    if (partners.some(partner => partner?.蓄力技能 || !['', unitId(actor)].includes(chargingWith(partner)))) {
+      return Object.freeze({
+        required: true,
+        valid: false,
+        reason: 'FUSION_PARTNER_BUSY',
+        fusionKey: '',
+        participantIds: Object.freeze([unitId(actor)].filter(Boolean)),
+        partnerIds: Object.freeze(partners.map(unitId)),
+        participants: Object.freeze([actor, ...partners]),
+        partners: Object.freeze(partners),
+        usageMode: metadata.usageMode,
+      });
+    }
     const participantIds = [...new Set([unitId(actor), ...partners.map(unitId)].filter(Boolean))];
     const fusionKey = `${metadata.name || 'fusion'}:${[...participantIds].sort().join('+')}`;
     const oneUse = /一次|single|once/i.test(metadata.usageMode);
@@ -9033,6 +9061,8 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     if (options?.requirePendingOpportunity !== false) {
       const round = Math.max(0, Number(worldSnapshot?.回合 || 0));
       const unavailable = partners.find(partner => {
+        // A partner that has been charging this skill with the actor has given its turns to it already.
+        if (chargingWith(partner) === unitId(actor)) return false;
         const opportunity = partner?.__battleRuntime?.naturalOpportunity;
         return !opportunity ||
           Number(opportunity?.round || 0) !== round ||
@@ -21309,6 +21339,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (!isBattleCapable(partner)) {
           throw new Error('battle_preview_fusion_partner_unavailable');
         }
+        // 融合蓄力: a partner that has been charging this skill with the actor has given its turns to it already.
+        if (unitId(fusionChargeHost(worldSnapshot, partner) || {}) === unitId(actor)) continue;
         const opportunity = partner?.__battleRuntime?.naturalOpportunity;
         if (
           !opportunity ||
@@ -28355,6 +28387,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     declarationCounterGrantProfile,
     declarationGrantsCounter,
     fusionSkillMetadata,
+    fusionChargeHost,
+    ACTION_STAMINA_RATES,
     resolveFusionAction,
     effectConditionEnabled,
     resolveConditionalEffectPlan,
@@ -39315,6 +39349,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const hpMax = baseStats.vit_max * typical.hp_max;
       const hp = hpMax * clamp(beliefUnit.hpRatio ?? 1, 0, 1);
       const resourceRatios = beliefUnit.resources || {};
+      // An enemy's resources are not public. Trial (debug switch ownRatioPriorSides, 2026-11-12): taken as the deciding
+      // unit's own share of each instead of a flat half — a flat half made every enemy look drained from the first turn
+      // (a twin's evasion read 56% where the settlement rolled 15%).
+      const likeOwn = Array.isArray(root.__LWCS_DECISION_DEBUG__?.ownRatioPriorSides) && root.__LWCS_DECISION_DEBUG__.ownRatioPriorSides.includes(actorSide);
+      const unknownShare = resource => { const own = likeOwn ? ratio(sourceActor, resource) : 0.5; return Number.isFinite(own) ? own : 0.5; };
       const soulMax = baseStats.sp_max * typical.sp_max;
       const spiritMax = baseStats.men_max * typical.men_max;
       const staminaMax = baseStats.vit_max * typical.vit_max;
@@ -39347,11 +39386,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         hp,
         HP: hp,
         hp_max: hpMax,
-        sp: soulMax * clamp(resourceRatios.soul ?? 0.5, 0, 1),
+        sp: soulMax * clamp(resourceRatios.soul ?? unknownShare('sp'), 0, 1),
         sp_max: soulMax,
-        men: spiritMax * clamp(resourceRatios.spirit ?? 0.5, 0, 1),
+        men: spiritMax * clamp(resourceRatios.spirit ?? unknownShare('men'), 0, 1),
         men_max: spiritMax,
-        vit: staminaMax * clamp(resourceRatios.stamina ?? 0.5, 0, 1),
+        vit: staminaMax * clamp(resourceRatios.stamina ?? unknownShare('vit'), 0, 1),
         vit_max: staminaMax,
         str: Math.max(1, combatBase * systemScale.str * typical.str),
         def: Math.max(1, combatBase * systemScale.def * typical.def),
@@ -102379,7 +102418,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // them). The cells are the settlement layer's to build; they sit here until they move there.
   // ---------------------------------------------------------------------------------------------------------------------
   const R20_ROUNDS_CAP = 99, R20_ROUNDS_FLOOR = 0.25, R20_HORIZON = 6, R20_RESOURCE_PRICE = 0.15, R20_ROUND_DISCOUNT = 0.85, R20_SHADOW_SCALE = 30,
-    R20_UPKEEP_ROUNDS = 3, R20_COUNTER_SHARE = 0.5, R20_COUNTER_START = 0.2, R20_COUNTER_CONTINUE = 0.5, R20_CHAIN_LIMIT = 8, R20_WIN_SLOPE = 2,
+    R20_UPKEEP_ROUNDS = 3, R20_CHAIN_LIMIT = 8, R20_WIN_SLOPE = 2,
     R20_OBJECTIVE_WEIGHT = 2, R20_OBSERVE_VALUE = 0.02, R20_ITEM_EFFECT_VALUE = 0.1, R20_ITEM_USE_SHARE = 0.375,
     R20_LATE_ROUNDS = 2, R20_CHARGE_BREAK = 0.5, R20_ASSET_DEFAULT = 0.2, R20_REVIVE_DEFAULT = 0.25;
   const r20Tables = new WeakMap();
@@ -102540,14 +102579,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const hostId = String(unit.宿主ID || (unit.__宿主 ? preview.unitId(unit.__宿主) : '') || '').trim(), hostName = String(unit.宿主名 || '').trim();
     return ids.findIndex((id, other) => other !== row && sides[other] === sides[row] && (hostId ? id === hostId : !!hostName && preview.unitName(units[other]) === hostName));
   };
-  // What is left of a unit, a share of its HP maximum: HP and shield, or its stamina if that is the smaller share — a hit
-  // drains stamina by the HP share it takes and an exhausted unit is out (W8, W14). Only for a unit whose stamina the
-  // decision knows (`known`: the actor's own side); an enemy as believed carries none to trust.
-  const r20Left = (unit, known, foes = null) => {
-    const maximum = Math.max(1, preview.readHpMax(unit)), shield = r20Shield(unit, foes) / maximum, staminaMaximum = preview.readResourceMax(unit, '体力');
-    const left = preview.readHp(unit) / maximum + shield;
-    return known && staminaMaximum > 0 ? Math.min(left, preview.readResource(unit, '体力') / staminaMaximum + shield) : left;
-  };
+  // What is left of a unit, a share of its HP maximum: HP and the shield that holds against the enemies it faces.
+  const r20Left = (unit, known, foes = null) => (preview.readHp(unit) + r20Shield(unit, foes)) / Math.max(1, preview.readHpMax(unit));
+  // A unit's stamina, a share of its maximum (null: it has none to run out of). A hit drains it by the HP share it takes,
+  // healing gives none back, and an exhausted unit is out (W8, W14) — so it runs beside the HP in the race. Only for the
+  // deciding side's own units: an enemy as believed carries none to trust.
+  const r20Stamina = unit => { const maximum = preview.readResourceMax(unit, '体力'); return maximum > 0 ? preview.readResource(unit, '体力') / maximum : null; };
   const r20Keep = (unit, attacker) => r20Soak(unit) * (hasStateFlag(unit, 'cannot_react') || preview.guardBrokenOf(unit, r20Round) ? 1 : Math.min(preview.calculateDefenseDamageMultiplier(unit, attacker, false),
     1 - preview.calculateDodgeProbability(unit, attacker, false)));
   // Whether a unit's answer to a hit keeps the exchange going: it strikes back after defending, and after evading only if
@@ -102558,22 +102595,35 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const dodge = preview.calculateDodgeProbability(unit, attacker, false);
     return preview.calculateDefenseDamageMultiplier(unit, attacker, false) <= 1 - dodge ? 1 : dodge;
   };
-  // The exchange one attack opens (the engagement chain, at most R20_CHAIN_LIMIT strikes back — the runtime's
-  // ENGAGEMENT_CHAIN_LIMIT): the target answers and strikes back, the attacker answers that and strikes again, each
-  // link as likely as the answers before it, a strike back worth R20_COUNTER_SHARE of the unit's best action. Returns
-  // what the attacker lands beyond its first hit and what it takes, shares of the HP maxima.
-  // Measured (chain-census.mjs, 20 mirror battles under the causal valuation): an answered attack drew 0.42–0.53 strikes
-  // back on average — none in about 83%, one in about 10%, the full eight in 2–3% (防御系 duels) — nearly all basic
-  // attacks. So a chain starts with R20_COUNTER_START and each further link holds with R20_COUNTER_CONTINUE, on top of
-  // the answers; the first version (every defended hit struck back, eight deep) overstated it and lost ground.
+  // The exchange one attack opens (the engagement chain, R15: after a defence, or an evasion that succeeds, the unit may
+  // strike back without spending its turn, with its basic attack or any immediate skill; that strike can be answered and
+  // struck back in turn, at most R20_CHAIN_LIMIT links — the runtime's ENGAGEMENT_CHAIN_LIMIT). Every link is its
+  // striker's choice: it strikes when what it lands is worth more than the stamina the strike costs (the ATTACK rate)
+  // and what the other side would then strike back, worked backwards from the last link. So a unit that hits harder
+  // keeps the exchange going and one that hits softer lets it end — and does not open one it would lose.
+  // `answerTarget` / `answerAttacker`: how often each gets to strike back after being struck (1 after a defence, the
+  // chance to evade otherwise); `hitAttacker` / `hitTarget`: what each lands on the other, shares of the HP maxima.
+  // Returns what the attacker lands beyond its first hit and what it takes.
+  // (Until 2026-11-12 the odds were constants measured on the old valuation's play — a chain started 0.2 of the time
+  // and went on 0.5 of the time, each strike worth half the best action; under this valuation about 85% of defences
+  // were followed by a strike back, and weak units traded blows with strong ones until they were exhausted.)
+  const r20StrikeCost = Number(preview.ACTION_STAMINA_RATES?.ATTACK) || 0.025;
+  const r20ChainStrikes = new Array(R20_CHAIN_LIMIT + 1).fill(false);
   function r20Exchange(answerTarget, answerAttacker, hitAttacker, hitTarget) {
+    // From the last link back: what its striker gains from there on by its best choice (nothing if it lets it end).
+    let ahead = 0;
+    for (let depth = R20_CHAIN_LIMIT; depth >= 1; depth -= 1) {
+      const value = depth % 2 ? hitTarget - r20StrikeCost - answerAttacker * ahead : hitAttacker - r20StrikeCost - answerTarget * ahead;
+      r20ChainStrikes[depth] = value > 0;
+      ahead = value > 0 ? value : 0;
+    }
     let chance = 1, more = 0, taken = 0;
     for (let depth = 1; depth <= R20_CHAIN_LIMIT; depth += 1) {
-      chance *= (depth % 2 ? answerTarget : answerAttacker) * (depth === 1 ? R20_COUNTER_START : R20_COUNTER_CONTINUE);
-      if (!(chance > 1e-3)) break;
+      chance *= depth % 2 ? answerTarget : answerAttacker;
+      if (!r20ChainStrikes[depth] || !(chance > 1e-3)) break;
       if (depth % 2) taken += chance * hitTarget; else more += chance * hitAttacker;
     }
-    return { more: R20_COUNTER_SHARE * more, taken: R20_COUNTER_SHARE * taken };
+    return { more, taken };
   }
   // What of a unit's hits goes where it aims: 混乱/目标错乱 send a share to a random unit, its own side's as often as that
   // side is of the field (BattleDecision W7).
@@ -102623,6 +102673,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     r20Work.races += 1;
     const { sides, remaining, alive } = facts, count = sides.length;
     const left = remaining.map((value, index) => value * alive[index]), charges = facts.guard.slice();
+    // Stamina beside HP (own units; Infinity where it is not known or there is none): it loses what the unit takes and is
+    // not mended.
+    const stam = facts.stamina ? facts.stamina.map(value => typeof value === 'number' ? value : Infinity) : null;
+    const hpFalls = new Array(count);
     const denied = plan?.denied || null, until = plan?.until || null, base = plan?.base || facts;
     const leaves = plan?.leaves || null, held = plan?.baseCount ?? count, changed = plan?.changed || null;
     // busy[u]: rounds u spends charging; strikes: what a charge lands when it is released ({ from, to, at, delta }, by
@@ -102686,11 +102740,24 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           if (value > strike) { strike = value; target = other; }
         }
         const help = cells(unit, ally).support[unit][ally];
-        if (help > strike) { mended[ally] += help; aimed[unit] = ally; landed[unit] = -help; }
-        else if (strike > 0) {
-          const view = cells(unit, target), answers = acting(target);
-          const exchange = r20Exchange(answers ? view.answer[target][unit] : 0, view.answer[unit][target], strike,
-            answers ? view.out[target][unit] * view.keep[unit][target] : 0);
+        // The exchange its strike opens; a unit that would take more than it lands aims at the enemy it does best
+        // against instead, and failing that helps or holds.
+        const open = (aim, hit) => { const view = cells(unit, aim), answers = acting(aim);
+          return r20Exchange(answers ? view.answer[aim][unit] : 0, view.answer[unit][aim], hit, answers ? view.out[aim][unit] * view.keep[unit][aim] : 0); };
+        let exchange = strike > 0 && !(help > strike) ? open(target, strike) : null;
+        if (exchange && !(strike + exchange.more > exchange.taken)) {
+          let best = 0;
+          exchange = null;
+          for (let other = 0; other < count; other += 1) {
+            if (other === target || sides[other] === sides[unit] || !(left[other] > 1e-9)) continue;
+            const hit = cells(unit, other).out[unit][other] * cells(unit, other).keep[other][unit];
+            if (!(hit > 0)) continue;
+            const trial = open(other, hit), net = hit + trial.more - trial.taken;
+            if (net > best) { best = net; exchange = trial; strike = hit; target = other; }
+          }
+        }
+        if (!exchange) { if (help > 0) { mended[ally] += help; aimed[unit] = ally; landed[unit] = -help; } }
+        else {
           dealt[target] += strike + exchange.more; hits[target] += 1;
           aimed[unit] = target; landed[unit] = strike + exchange.more;
           // What it lands gives it HP back (伤害吸收), in its own HP maximum.
@@ -102702,9 +102769,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       let stepTime = nextChange - time;
       const falls = new Array(count).fill(Infinity);
       for (let unit = 0; unit < count; unit += 1) {
+        hpFalls[unit] = Infinity;
+        if (!(left[unit] > 1e-9)) continue;
         const net = dealt[unit] - mended[unit];
-        if (!(left[unit] > 1e-9) || !(net > 1e-9)) continue;
-        falls[unit] = charges[unit] / Math.max(1, hits[unit]) + left[unit] / net;
+        if (net > 1e-9) hpFalls[unit] = falls[unit] = charges[unit] / Math.max(1, hits[unit]) + left[unit] / net;
+        if (stam && Number.isFinite(stam[unit]) && dealt[unit] > 1e-9) falls[unit] = Math.min(falls[unit], stam[unit] / dealt[unit]);
         stepTime = Math.min(stepTime, falls[unit]);
       }
       if (!(stepTime > 0) || !Number.isFinite(stepTime)) break;
@@ -102714,9 +102783,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (net > 1e-9) {
           const shielded = Math.min(stepTime, charges[unit] / Math.max(1, hits[unit]));
           charges[unit] = Math.max(0, charges[unit] - shielded * Math.max(1, hits[unit]));
-          left[unit] = falls[unit] <= stepTime + 1e-9 ? 0 : Math.max(0, left[unit] - (stepTime - shielded) * net);
+          left[unit] = hpFalls[unit] <= stepTime + 1e-9 ? 0 : Math.max(0, left[unit] - (stepTime - shielded) * net);
           if (!(left[unit] > 1e-9) && revive && revive[unit] > 0) { left[unit] = revive[unit]; revive[unit] = 0; }
         } else if (net < -1e-9) left[unit] = Math.min(Math.max(left[unit], remaining[unit]), left[unit] - net * stepTime);
+        if (stam && Number.isFinite(stam[unit])) {
+          stam[unit] = Math.max(0, stam[unit] - stepTime * dealt[unit]);
+          if (!(stam[unit] > 1e-9)) left[unit] = 0;
+        }
       }
       // Who goes first: the flow gives a unit that falls about half of its last round; in turns it acts that round if
       // it goes before those who bring it down, and not at all if after them. The difference goes to whom it aimed at.
@@ -102742,7 +102815,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     for (let unit = 0; unit < count; unit += 1) {
       if (!(left[unit] > 1e-9)) continue;
       standing.add(sides[unit]);
-      score += sides[unit] === own ? left[unit] : -left[unit];
+      const whole = stam ? Math.min(left[unit], stam[unit]) : left[unit];
+      score += sides[unit] === own ? whole : -whole;
     }
     // The margin, and winning itself: smooth in the margin (a level fight tips either way on a hair, and a hard ±1 made
     // every candidate of a mirror match worth the whole battle or nothing), worth more the sooner it is decided.
@@ -102809,6 +102883,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const waiting = Array.isArray(request.actionOpportunity?.pendingNaturalActorIds) ? new Set(request.actionOpportunity.pendingNaturalActorIds.map(String)) : null;
     const table = { request, world, contexts, units, ids, index: new Map(ids.map((id, row) => [id, row])), sides, acts, bound, out, support, stop, keep, answer, turn, late, against,
       remaining: units.map((unit, row) => r20Left(unit, sides[row] === request.actorSide, against[sides[row]])),
+      stamina: units.map((unit, row) => sides[row] === request.actorSide ? r20Stamina(unit) : null),
       alive: new Array(count).fill(1), guard: units.map(unit => r20Guard(unit)), revive: units.map(unit => r20Revive(unit)),
       drain: units.map(unit => r20Absorb(unit).dealt), host: units.map((unit, row) => r20HostRow(unit, units, ids, sides, row)), skippedSkills: skipped.count,
       tick: units.map(unit => r20Tick(request, unit)),
@@ -102827,6 +102902,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const budget = Number(preview.CONTINUOUS_ACTION_BUDGET) || 40;
       const turns = Math.max(1, Math.ceil(Math.max(0, Number(charge.cast_time ?? charge.remainingCastTime) || 0) / budget));
       (table.busy ||= new Array(count).fill(0))[row] = turns;
+      // 融合蓄力（用户 2026-11-12）: the partners of a charged fusion skill charge with it, busy as long.
+      for (const id of Array.isArray(charge.fusionPartnerIds) ? charge.fusionPartnerIds : []) {
+        const partner = table.index.get(String(id));
+        if (partner !== undefined) table.busy[partner] = Math.max(table.busy[partner], turns);
+      }
       for (const id of Array.isArray(charge.targetIds) ? charge.targetIds : []) {
         const target = table.index.get(String(id));
         if (target === undefined) continue;
@@ -102871,6 +102951,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     for (const entry of result.contributions || []) if (entry.targetId) touched.add(String(entry.targetId));
     const remaining = table.remaining.slice(), alive = table.alive.slice(), guard = table.guard.slice(), denied = new Array(count).fill(0);
     const revive = table.revive.slice(), drain = table.drain.slice(), strikes = table.strikes ? table.strikes.map(strike => ({ ...strike })) : [];
+    const stamina = table.stamina.slice();
     let busy = table.busy ? table.busy.slice() : null;
     const until = new Array(count).fill(Infinity), tick = table.tick.slice(), reflect = table.reflect.slice(), hpMax = table.hpMax.slice();
     const rebuilt = [], hushed = {};
@@ -102887,6 +102968,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (!next || !preview.isBattleCapable(next)) { remaining[row] = 0; alive[row] = 0; seen += 1; continue; }
       if (next === prior) continue;
       remaining[row] = r20Left(next, table.sides[row] === request.actorSide, table.against[table.sides[row]]);
+      if (typeof stamina[row] === 'number') { const now = r20Stamina(next); if (now !== null) stamina[row] = now; }
       guard[row] = r20Guard(next); revive[row] = r20Revive(next); drain[row] = r20Absorb(next).dealt;
       tick[row] = r20Tick(request, next);
       reflect[row] = preview.counterDamageRatio(next);
@@ -103028,6 +103110,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const created = (result.contributions || []).find(entry => entry.outcomeKind === 'SUMMON_WINDOW' && String(entry.targetId) === id);
         remaining.push(r20Left(unit, sidesNow[row] === request.actorSide, table.against[sidesNow[row]])); alive.push(created ? clamp(preview.contributionProbability(created), 0, 1) : 1);
         guard.push(r20Guard(unit)); tick.push(0); denied.push(0); until.push(Infinity); revive.push(r20Revive(unit)); drain.push(r20Absorb(unit).dealt);
+        stamina.push(sidesNow[row] === request.actorSide ? r20Stamina(unit) : null);
         if (busy) busy.push(0);
         reflect.push(preview.counterDamageRatio(unit)); hpMax.push(Math.max(1, preview.readHpMax(unit)));
         const windows = Number(unit.剩余窗口 ?? unit.remainingWindows);
@@ -103047,6 +103130,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       }
     }
     mark('addedMs');
+    // What each unit has left before the adjustments below: what they take off its HP goes off its stamina too.
+    const hpMark = remaining.slice();
     // An attack opens an exchange (r20Exchange): a target that can still act answers and strikes back, the actor answers
     // that and strikes again (战斗决策原理 例二: 打高反击目标等于白送对方出手). What the actor takes and what more it lands.
     let counter = 0, struckAny = false;
@@ -103107,16 +103192,25 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const share = actionKind === 'DEFEND' ? preview.calculateDefenseDamageMultiplier(actorNext, source, false) : actionKind === 'EVADE' ? 1 - dodge : 1;
       const strikesBack = actionKind === 'DEFEND' ? 1 : actionKind === 'EVADE' ? dodge : preview.declarationGrantsCounter(declaration || {}) ? 1 : 0;
       const staminaMaximum = preview.readResourceMax(actorNext, '体力'), maximum = Math.max(1, preview.readHpMax(actorNext)), shield = preview.readShield(actorNext) / maximum;
-      const stamina = ['DEFEND', 'EVADE'].includes(actionKind) && staminaMaximum > 0 && preview.actionStaminaEnabled(table.world)
+      const answerCost = ['DEFEND', 'EVADE'].includes(actionKind) && staminaMaximum > 0 && preview.actionStaminaEnabled(table.world)
         ? preview.actionStaminaCost(actorNext, actionKind, source) / staminaMaximum : 0;
       const hpLeft = preview.readHp(actorNext) / maximum + shield - hit * share;
-      remaining[actorRow] = Math.max(0, staminaMaximum > 0 ? Math.min(hpLeft, preview.readResource(actorNext, '体力') / staminaMaximum + shield - hit * share - stamina) : hpLeft);
-      remaining[sourceRow] = Math.max(0, remaining[sourceRow] - strikesBack * R20_COUNTER_SHARE * out[actorRow][sourceRow] * keep[sourceRow][actorRow]);
+      remaining[actorRow] = Math.max(0, hpLeft);
+      // Stamina: the hit takes its share and the answer costs its rate.
+      if (staminaMaximum > 0 && typeof stamina[actorRow] === 'number') {
+        stamina[actorRow] = Math.max(0, preview.readResource(actorNext, '体力') / staminaMaximum - hit * share - answerCost);
+      }
+      hpMark[actorRow] = remaining[actorRow];
+      // The strike back the answer opens and what follows it: the chain from the link the actor would strike at (it
+      // strikes only when that is worth it).
+      const chain = r20Exchange(strikesBack, answer[sourceRow][actorRow], out[sourceRow][actorRow] * keep[actorRow][sourceRow], out[actorRow][sourceRow] * keep[sourceRow][actorRow]);
+      remaining[sourceRow] = Math.max(0, remaining[sourceRow] - chain.taken);
+      remaining[actorRow] = Math.max(0, remaining[actorRow] - chain.more);
     }
     // Taking a stance instead of acting (ACTIVE DEFEND / EVADE; 用户 2026-11-12: 敏攻"选择闪避，等对方攻击露出破绽，也就是所谓的
     // 闪避反击"): against each enemy still to act this round, who may turn on the actor as on any of its side, the prepared
-    // answer keeps more off than the ordinary one would, and it strikes back for certain after defending or evading, where
-    // an ordinary answer does only now and then (R20_COUNTER_START).
+    // answer keeps more off than the ordinary one would, and it gets to strike back more often than the ordinary one
+    // (always after defending; after evading as often as the prepared evasion succeeds).
     if (roleName === 'ACTIVE' && ['DEFEND', 'EVADE'].includes(actionKind) && actorRow !== undefined && alive[actorRow] > 0) {
       const actor = table.units[actorRow];
       const standing = table.sides.reduce((sum, side, row) => sum + Number(side === own && alive[row] > 0 && remaining[row] > 0), 0);
@@ -103127,8 +103221,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const held = actionKind === 'DEFEND' ? preview.calculateDefenseDamageMultiplier(actor, table.units[row], true) : 1 - dodge;
         const turned = alive[row] / Math.max(1, standing);
         remaining[actorRow] += turned * out[row][actorRow] * Math.max(0, keep[actorRow][row] - held);
-        const strikes = Math.max(0, (actionKind === 'DEFEND' ? 1 : dodge) - R20_COUNTER_START * answer[actorRow][row]);
-        remaining[row] = Math.max(0, remaining[row] - turned * strikes * R20_COUNTER_SHARE * out[actorRow][row] * keep[row][actorRow]);
+        const strikeBack = out[actorRow][row] * keep[row][actorRow], strikeAgain = out[row][actorRow] * keep[actorRow][row];
+        const prepared = r20Exchange(actionKind === 'DEFEND' ? 1 : dodge, answer[row][actorRow], strikeAgain, strikeBack);
+        const ordinary = r20Exchange(answer[actorRow][row], answer[row][actorRow], strikeAgain, strikeBack);
+        remaining[row] = Math.max(0, remaining[row] - turned * Math.max(0, prepared.taken - ordinary.taken));
+        remaining[actorRow] = Math.max(0, remaining[actorRow] - turned * Math.max(0, prepared.more - ordinary.more));
       }
     }
     // A charged skill (前摇 over a turn's budget): nothing lands now. Its release lands what the skill's own cell says
@@ -103141,8 +103238,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (windup > budget && request.actionOpportunity?.forcedChargeRelease !== true) {
         // A charge is broken when its caster is stopped (CHARGE_INTERRUPTED_BY_CONTROL): each turn as likely as the best
         // control an enemy has on it lands, as often as an enemy spends its turn on that (R20_CHARGE_BREAK).
+        // 融合蓄力: the partners of a fusion skill charge with it — busy as long, and stopping any of them breaks it.
+        const chargers = [actorRow];
+        for (const id of Array.isArray(declaration.fusionPartnerIds) ? declaration.fusionPartnerIds : []) {
+          const row = table.index.get(String(id));
+          if (row !== undefined && row !== actorRow) chargers.push(row);
+        }
         let stopped = 0;
-        for (let row = 0; row < count; row += 1) if (table.sides[row] !== own && acts[row] && alive[row] > 0) stopped = Math.max(stopped, Math.min(1, stop[row][actorRow]));
+        for (let row = 0; row < count; row += 1) if (table.sides[row] !== own && acts[row] && alive[row] > 0) {
+          for (const charger of chargers) stopped = Math.max(stopped, Math.min(1, stop[row][charger]));
+        }
         const turns = Math.ceil((windup - budget) / budget), holds = (1 - R20_CHARGE_BREAK * stopped) ** turns;
         const context = r9v2LinearCapacityProjectionContext(table.world, table.contexts);
         for (const id of Array.isArray(declaration.targetIds) ? declaration.targetIds : []) {
@@ -103151,7 +103256,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           const lands = cachedBaseActionValue(actor, table.units[row], 'RELEASE_SKILL', declaration.skill, context, table.world) / 100 * holds;
           strikes.push({ from: actorRow, to: row, at: turns, delta: table.sides[row] === own ? lands : -lands * keep[row][actorRow] });
         }
-        (busy ||= new Array(count).fill(0))[actorRow] = turns;
+        busy ||= new Array(count).fill(0);
+        for (const charger of chargers) busy[charger] = Math.max(busy[charger], turns);
         seen += 1;
       }
       // A fusion spends its partners' turns too: each partner still to act this round gives its action up.
@@ -103182,7 +103288,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         remaining[actorRow] = Math.max(0, remaining[actorRow] - alive[row] * out[row][actorRow] * Math.max(0, r20Keep(actorNext, table.units[row]) - keep[actorRow][row]) / Math.max(1, standing));
       }
     }
-    const facts = { sides: sidesNow, out, support, stop, keep, answer, turn, host, remaining, alive, guard, revive, drain, tick, reflect, hpMax, horizon: table.horizon };
+    for (let row = 0; row < remaining.length; row += 1) if (typeof stamina[row] === 'number') stamina[row] = Math.max(0, stamina[row] - Math.max(0, hpMark[row] - remaining[row]));
+    const facts = { sides: sidesNow, out, support, stop, keep, answer, turn, host, remaining, stamina, alive, guard, revive, drain, tick, reflect, hpMax, horizon: table.horizon };
     const changed = new Array(count).fill(false);
     for (const [row] of rebuilt) changed[row] = true;
     strikes.sort((left, right) => left.at - right.at);
@@ -110525,6 +110632,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           actionEvent: { actionId: sourceActionId, chainNodeId: stateFact?.chainNodeId || '' }, actionRole: 'ACTIVE' });
         else unit.蓄力技能 = null;
       }
+      if (formalCombatData && structuredControlPreventsOpportunity(merged.state, 'ACTIVE')) {
+        interruptFusionChargeByPartner({ combatData: formalCombatData, partner: unit, reasonCode: 'PARTNER_CONTROLLED', stateName: stateKey, sourceActionId });
+      }
       let endLog = '';
       if (merged.mergeKind === 'REPLACE' && previewRuntime.stateEndRisks(originalState, stateKey).length) {
         if (sourceContext.onStateEnd) sourceContext.onStateEnd(stateKey, originalState);
@@ -113494,7 +113604,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return { ...declaration, skill: resolvedSkill };
   }
 
-  function prepareStructuredFusion(combatData = {}, actor = {}, declaration = {}) {
+  function prepareStructuredFusion(combatData = {}, actor = {}, declaration = {}, storedCharge = null) {
     if (String(declaration?.actionKind || '').trim() !== 'RELEASE_SKILL') return null;
     const resourceCosts = Object.prototype.hasOwnProperty.call(declaration, 'resourceCosts')
       ? declaration.resourceCosts || {}
@@ -113506,7 +113616,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       : costStages.启动;
     const fusion = previewRuntime.resolveFusionAction(combatData, actor, declaration?.skill || {}, {
       resourceCosts: resolvedResourceCosts,
-      requirePendingOpportunity: true,
+      // 融合蓄力: the partners of a charged fusion gave their turns while it charged.
+      requirePendingOpportunity: !(Array.isArray(storedCharge?.fusionPartnerIds) && storedCharge.fusionPartnerIds.length),
     });
     if (!fusion.required) return null;
     if (!fusion.valid) throw new Error(`battle_structured_${String(fusion.reason || 'fusion_invalid').toLowerCase()}`);
@@ -121969,6 +122080,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                   stateName: stateKey,
                 })
               : null;
+            if (result === 'applied' && structuredControlPreventsOpportunity(target?.状态效果?.[stateKey] || {}, actionRole)) {
+              interruptFusionChargeByPartner({ combatData, partner: target, reasonCode: 'PARTNER_CONTROLLED', stateName: stateKey, sourceActionId: actionEvent?.actionId });
+            }
             if (chargeInterrupt) facts.push(chargeInterrupt);
           }
           else result = 'no_effect';
@@ -122685,6 +122799,31 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
   }
 
+  // 融合蓄力（用户 2026-11-12）: a charged fusion skill is charged by its partners too, and breaks when one of them is
+  // stopped or down. `host` defaults to whoever is charging a fusion skill with `partner`.
+  function interruptFusionChargeByPartner({ combatData = {}, partner = null, host = null, reasonCode = 'PARTNER_UNAVAILABLE', stateName = '', sourceActionId = '' } = {}) {
+    const holder = host || (partner ? previewRuntime.fusionChargeHost(combatData, partner) : null);
+    const interruptedCharge = holder?.蓄力技能;
+    if (!interruptedCharge || !Array.isArray(interruptedCharge.fusionPartnerIds) || !interruptedCharge.fusionPartnerIds.length) return null;
+    holder.蓄力技能 = null;
+    const partnerName = previewRuntime.unitName(partner) || '搭档';
+    return writeLedgerEvent(combatData, {
+      eventKind: 'charge_interrupt', round: Number(combatData?.回合 || 0),
+      actorId: previewRuntime.unitId(holder), actorName: previewRuntime.unitName(holder),
+      targetId: previewRuntime.unitId(holder), targetName: previewRuntime.unitName(holder),
+      actionName: normalizeActionDisplayName(interruptedCharge?.skill?.name || interruptedCharge?.skill?.魂技名 || interruptedCharge?.actionName || '武魂融合技'),
+      actionType: 'charge_interrupt', actorControl: 'SYSTEM', actionRole: 'ACTIVE',
+      actionId: String(interruptedCharge?.sourceActionId || '').trim(), sourceActionId: String(sourceActionId || interruptedCharge?.sourceActionId || '').trim(),
+      result: 'interrupted', resultState: 'ABORTED', ruleCode: 'CHARGE_INTERRUPTED_BY_PARTNER',
+      meta: {
+        source: 'structured_runtime', interruptedActionId: String(interruptedCharge?.sourceActionId || '').trim(),
+        fusionKey: String(interruptedCharge?.fusionKey || '').trim(), partnerId: partner ? previewRuntime.unitId(partner) : '', partnerName,
+        stateName: String(stateName || '').trim(), reasonCode,
+        reasonText: stateName ? `搭档${partnerName}受【${String(stateName).trim()}】影响，融合蓄力中断` : `搭档${partnerName}无法继续配合，融合蓄力中断`,
+      },
+    });
+  }
+
   function structuredActorPhysicallyAlive(unit = {}) {
     return unit?.状态?.存活 !== false && previewRuntime.readHp(unit) > 0;
   }
@@ -122736,7 +122875,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const round = Number(combatData?.回合 || 0), side = inferUnitSide(combatData, target);
     const candidates = listPrimaryCombatUnits(combatData).filter(unit => unit && unit !== target && !unit.召唤键 &&
       inferUnitSide(combatData, unit) === side && previewRuntime.isBattleCapable(unit) && structuredActorCanAct(unit, 'ACTIVE') &&
-      !unit.蓄力技能 && !previewRuntime.guardBrokenOf(unit, round) &&
+      !unit.蓄力技能 && !previewRuntime.fusionChargeHost(combatData, unit) && !previewRuntime.guardBrokenOf(unit, round) &&
       String(unit.__battleRuntime?.naturalOpportunity?.status || '').trim() === 'PENDING' &&
       Number(unit.__battleRuntime.naturalOpportunity.round || 0) === round &&
       previewRuntime.interceptWindupBudget(attacker, declaration, unit) >= 0);
@@ -125696,6 +125835,32 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             ? actor?.__battleRuntime?.naturalOpportunity
             : null;
           const naturalOpportunityStatus = String(naturalOpportunity?.status || '').trim();
+          // 融合蓄力（用户 2026-11-12）: a partner's turn goes to the fusion skill its host is charging; a partner that
+          // cannot take its turn (stopped or down) breaks the charge and is handled as any unit that cannot act.
+          const fusionChargeHolder = node.nodeKind === 'ACTIVE' && actor ? previewRuntime.fusionChargeHost(combatData, actor) : null;
+          if (fusionChargeHolder && (!actorPresentInBattle || !structuredActorCanAct(actor, node.actionRole))) {
+            interruptFusionChargeByPartner({ combatData, partner: actor, host: fusionChargeHolder, reasonCode: 'PARTNER_UNAVAILABLE' });
+          } else if (fusionChargeHolder && !['CONSUMED_BY_FUSION', 'CONSUMED_BY_COUNTER', 'CONSUMED_BY_INTERCEPT'].includes(naturalOpportunityStatus)) {
+            const heldCharge = fusionChargeHolder.蓄力技能;
+            const fusionActionName = normalizeActionDisplayName(heldCharge?.skill?.name || heldCharge?.skill?.魂技名 || heldCharge?.actionName || '武魂融合技');
+            writeLedgerEvent(combatData, {
+              eventKind: 'blocked_action', round: Number(combatData.回合 || 0),
+              actorId: previewRuntime.unitId(actor) || '', actorName: previewRuntime.unitName(actor),
+              targetId: previewRuntime.unitId(fusionChargeHolder) || '', targetName: previewRuntime.unitName(fusionChargeHolder),
+              actionName: '融合蓄力', actionType: 'opportunity_consumed', actorControl: node.actorControl, actionRole: node.actionRole,
+              sourceActionId: String(heldCharge?.sourceActionId || '').trim(),
+              result: 'consumed', resultState: 'COMPLETED', ruleCode: 'FUSION_CHARGE_PARTICIPATION',
+              meta: {
+                source: 'structured_runtime', grantId: node.grantId, reasonCode: 'FUSION_CHARGE_PARTICIPATION',
+                reasonText: `本轮自然行动用于配合【${fusionActionName}】蓄力`,
+                fusionKey: String(heldCharge?.fusionKey || '').trim(), fusionActionName,
+              },
+            });
+            if (naturalOpportunity) naturalOpportunity.status = 'CONSUMED';
+            consumeAutonomousSummonWindow(actor, node);
+            queue.recordTrace('EXECUTED', node, { reason: 'FUSION_CHARGE_PARTICIPATION', sourceActionId: String(heldCharge?.sourceActionId || '').trim() });
+            continue;
+          }
           if (
             naturalOpportunity &&
             Number(naturalOpportunity?.round || 0) === Number(combatData?.回合 || 0) &&
@@ -126377,6 +126542,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               });
               storedCharge = null;
             }
+            // 融合蓄力: the partners charge along; one that is stopped or down by the host's turn has broken the charge, and
+            // the host acts otherwise this turn.
+            if (storedCharge && Array.isArray(storedCharge.fusionPartnerIds) && storedCharge.fusionPartnerIds.length) {
+              const lostPartner = storedCharge.fusionPartnerIds
+                .map(id => listCombatUnits(combatData).find(unit => previewRuntime.unitId(unit) === id) || null)
+                .find(partner => !partner || !previewRuntime.isBattleCapable(partner) || !structuredActorCanAct(partner, 'ACTIVE'));
+              if (lostPartner !== undefined) {
+                interruptFusionChargeByPartner({ combatData, partner: lostPartner, host: actor, reasonCode: 'PARTNER_UNAVAILABLE' });
+                storedCharge = null;
+              }
+            }
             if (storedCharge) {
               const remainingCastTime = Math.max(0, Number(storedCharge?.cast_time ?? storedCharge?.remainingCastTime ?? storedCharge?.skill?.前摇 ?? 0));
               if (isCooperativeAssist && !decisionRuntime.actionCompletesWithinBattleHorizon(storedCharge.skill, {
@@ -126624,6 +126800,24 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               }
             }
             const declarationTargetIds = Array.isArray(declaration?.targetIds) ? declaration.targetIds : [];
+            // A fusion skill whose partner cannot take part when its charge starts or when it is released fizzles in place.
+            const fizzleFusion = (reasonCode, reasonText, detail = '') => {
+              const blockedActionEvent = writeLedgerEvent(combatData, {
+                eventKind: 'blocked_action', round: Number(combatData.回合 || 0), actionId: nextRuntimeId('battle-blocked-action'),
+                actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor), targetIds: declarationTargetIds,
+                actionName: normalizeActionDisplayName(declaration?.skill?.name || declaration?.skill?.魂技名 || '武魂融合技'),
+                actionType: String(declaration?.actionKind || '').trim(), actorControl: node.actorControl, actionRole: node.actionRole,
+                allowImplicitActionSource: false, sourceActionId: String(storedCharge?.sourceActionId || '').trim(),
+                parentNodeId: String(storedCharge?.sourceNodeId || '').trim(),
+                opportunityId: String(node.opportunityId || node.grantId || '').trim(), opportunitySequence: Math.max(0, Number(node.opportunitySequence || 0)),
+                grantId: String(node.grantId || '').trim(),
+                result: 'fusion_partner_unavailable', resultState: 'ABORTED', ruleCode: reasonCode,
+                meta: { source: 'structured_shadow', decisionCandidateId: String(decisionResult?.selected?.candidateId || '').trim(),
+                  declaredTargetIds: declarationTargetIds, resolvedTargetIds: [], reasonCode, reasonText, detail: String(detail).slice(0, 160) },
+              });
+              queue.recordTrace('CANCELLED', node, { reason: reasonCode, actionId: blockedActionEvent.actionId });
+              consumeAutonomousSummonWindow(actor, node);
+            };
             const hostilePrimaryEffect = structuredDamageEffects(declaration)[0] || null;
             const resolvedHostileTargets = hostilePrimaryEffect
               ? resolveStructuredTargets(combatData, actor, declaration, hostilePrimaryEffect)
@@ -126690,6 +126884,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             }
             const castTime = previewRuntime.actionWindup(actor, declaration);
             if (!storedCharge && (node.nodeKind === 'ACTIVE' || isCooperativeAssist) && castTime > naturalActionBudget) {
+              // 融合蓄力: the partners must have this round's turn to give; they give it now and every turn until the release.
+              const chargeFusion = node.nodeKind === 'ACTIVE' && String(declaration?.actionKind || '').trim() === 'RELEASE_SKILL'
+                ? previewRuntime.resolveFusionAction(combatData, actor, declaration?.skill || {}, { requirePendingOpportunity: true, ignoreResourceAvailability: true })
+                : null;
+              if (chargeFusion?.required && !chargeFusion.valid) {
+                fizzleFusion('FUSION_PARTNER_UNAVAILABLE_AT_CHARGE', '融合技开始蓄力时搭档无法配合，行动中止', chargeFusion.reason);
+                continue;
+              }
               const actionName = normalizeActionDisplayName(declaration?.skill?.name || declaration?.skill?.魂技名 || declaration?.actionKind || '蓄力行动');
               const chargeActionId = nextRuntimeId('battle-action');
               const remainingOpportunityCount = Math.ceil(
@@ -126743,6 +126945,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 sourceActionId: chargeStart.actionId || chargeStart.eventId || '',
                 sourceNodeId: chargeStart.chainNodeId || '',
               };
+              if (chargeFusion?.required) {
+                actor.蓄力技能.fusionKey = chargeFusion.fusionKey;
+                actor.蓄力技能.fusionPartnerIds = [...chargeFusion.partnerIds];
+                chargeFusion.partners.forEach(partner => {
+                  partner.__battleRuntime = partner.__battleRuntime && typeof partner.__battleRuntime === 'object' ? partner.__battleRuntime : {};
+                  const opportunity = partner.__battleRuntime.naturalOpportunity && typeof partner.__battleRuntime.naturalOpportunity === 'object'
+                    ? partner.__battleRuntime.naturalOpportunity : {};
+                  partner.__battleRuntime.naturalOpportunity = { ...opportunity, status: 'CONSUMED_BY_FUSION', fusionKey: chargeFusion.fusionKey,
+                    consumedByActionId: String(chargeStart?.actionId || chargeStart?.eventId || '').trim(), actionName };
+                });
+              }
               if (isCooperativeAssist) consumeSummonWindow(combatData, actor, '协同蓄力开始', node.grantId);
               consumeAutonomousSummonWindow(actor, node);
               queue.recordTrace('EXECUTED', node, {
@@ -126752,9 +126965,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               });
               continue;
             }
-            const fusion = node.nodeKind === 'ACTIVE' || node.nodeKind === 'CONTINUATION'
-              ? prepareStructuredFusion(combatData, actor, declaration)
-              : null;
+            let fusion = null;
+            if (node.nodeKind === 'ACTIVE' || node.nodeKind === 'CONTINUATION') {
+              try {
+                fusion = prepareStructuredFusion(combatData, actor, declaration, storedCharge);
+              } catch (error) {
+                // A charged fusion skill is released turns after it was declared; a partner may be unable to take part by then.
+                if (!storedCharge || !/^battle_structured_fusion_/.test(String(error?.message || ''))) throw error;
+                fizzleFusion('FUSION_PARTNER_UNAVAILABLE_AT_RELEASE', '融合技释放时搭档已无法配合，释放中止', error.message);
+                continue;
+              }
+            }
             const parentActionEvent = node?.state?.parentActionEvent || null;
             const actionContext = beginStructuredDeclaration({
               combatData,

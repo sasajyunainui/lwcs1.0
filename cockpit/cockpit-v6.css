@@ -70,6 +70,7 @@ details.fold[open]>summary::after{content:" －"}
   background:radial-gradient(70% 55% at 50% 60%,rgba(80,150,255,.28),transparent 70%),linear-gradient(180deg,#0d1830,#16284a);clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px);box-shadow:inset 0 0 0 1px rgba(110,180,255,.4)}
 .table.grabbing{cursor:grabbing}
 .table .plane{position:absolute;left:50%;top:56%;width:var(--pw,1000px);aspect-ratio:3174/2246;transform-style:preserve-3d;transform:translate(-50%,-50%) rotateX(50deg) scale(var(--z,1)) translate(var(--tx,0px),var(--ty,0px))}
+.table .plane>svg.starmap{position:absolute;inset:0;width:100%;height:100%;box-shadow:0 0 0 2px rgba(120,190,255,.5),0 0 60px rgba(60,140,255,.35)}
 .table .plane>img{position:absolute;inset:0;width:100%;height:100%;opacity:.9;filter:saturate(.75) brightness(.92) contrast(1.05);box-shadow:0 0 0 2px rgba(120,190,255,.5),0 0 60px rgba(60,140,255,.35)}
 .table .grid{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(140,200,255,.14) 0 1px,transparent 1px 4%),repeating-linear-gradient(90deg,rgba(140,200,255,.14) 0 1px,transparent 1px 4%)}
 /* 地标：画在倾斜平面外的 2D 层（.marks），按平面里 0 尺寸锚点（.anc）的屏幕位置摆放；大小与文字不随缩放 / 透视变形 */
