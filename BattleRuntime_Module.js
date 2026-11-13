@@ -894,7 +894,7 @@
         ...(effect.强度 !== undefined ? { 强度: effect.强度 } : {}),
         描述: '延迟效果状态施加',
         duration: Math.max(0, Number(effect?.持续回合 || 0)),
-        面板修改比例: { ...(effect?.面板修改比例 || {}) },
+        面板修改比例: previewRuntime.deriveStatePanelRatios(effect),
         战斗效果: { ...createEmptyCombatEffectMap(), ...(effect?.计算层效果 || {}) },
       };
       if (previewRuntime.negativeEffectIsImmune(unit, state)) return finish(`[无视异常] ${label}免疫了[${stateName}]延迟状态。`);
@@ -3139,7 +3139,7 @@
       伤害吸收增幅上限: 0, damage_share_ratio: 0, damage_share_count: 0, cost_share_ratio: 0,
       cost_share_count: 0, damage_to_heal_ratio: 0, heal_to_damage_ratio: 0, heal_inversion_ratio: 0,
       invincible_tier_threshold: 0, 每日触发次数上限: 0, bonus_true_damage_ratio: 0, element_seal_ratio: 0,
-      misfortune_check_rate: 0, misfortune_backlash_ratio: 0, silence: false, disarm: false, blind: false,
+      misfortune_check_rate: 0, misfortune_backlash_ratio: 0, weaken_ratio: 0, cast_backlash_ratio: 0, silence: false, disarm: false, blind: false,
       counter_attack_ratio: 0, damage_reduction: 0, damage_bonus_limited: [], damage_reduction_limited: [], block_count: 0, super_armor: false, action_lock_rounds: 0,
       interrupt_window: 0, multi_hit_count: 0, segment_damage_ratio: 0,
       resource_tick_resource: '', resource_tick_ratio: 0, resource_tick_amount: 0,
@@ -3162,7 +3162,7 @@
         result[key] = Math.max(Number(result[key] || 0), Math.min(1, Math.max(0, Number(value || 0))));
       } else if (['final_damage_mult', 'received_damage_mult', 'final_heal_mult', 'shield_gain_mult', 'skill_effect_mult', 'cost_ratio', 'windup_ratio'].includes(key)) {
         result[key] = Number(result[key] ?? 1) * Number(value ?? 1);
-      } else if (['defense_strip', 'spirit_resist_strip', 'cost_delta_ratio'].includes(key)) {
+      } else if (['defense_strip', 'spirit_resist_strip', 'cost_delta_ratio', 'weaken_ratio', 'cast_backlash_ratio'].includes(key)) {
         result[key] = Math.max(Number(result[key] ?? 0), Number(value ?? 0));
       } else if (['damage_transfer_target', '吸收来源', '吸收资源', '吸收转化效果', 'resource_tick_resource'].includes(key)) {
         result[key] = String(value || result[key] || '').trim();
@@ -3237,7 +3237,7 @@
     const packageValue = options.packageValue && typeof options.packageValue === 'object'
       ? options.packageValue
       : consumer
-        ? consumer.编译角色装备被动消费者_V1(unit)
+        ? consumer.编译角色装备被动消费者_V1(previewRuntime.unitWithoutSealedEquipment(unit))
       : { 版本: 'item-passive-consumer-v1', 有效: false, 来源物品列表: [], 技能条目: [], 常驻效果: [], 动作效果: [], 非战斗路由: [], 未支持路由: [] };
     const signature = previewRuntime.stableHash({
       来源物品列表: packageValue.来源物品列表 || [],
@@ -3254,6 +3254,7 @@
       return unit.__battleRuntime.itemPassivePackage;
     }
     unit.__battleRuntime.__itemPassiveSignature = signature;
+    unit.__battleRuntime.__itemPassiveSealKey = [...previewRuntime.sealedEquipmentSlots(unit)].join('|');
     unit.__battleRuntime.itemPassivePackage = packageValue;
     unit.__battleRuntime.itemPassiveTriggeredSkills = (Array.isArray(packageValue.技能条目) ? packageValue.技能条目 : [])
       .flatMap(entry => {
@@ -3309,8 +3310,15 @@
     return packageValue;
   }
 
+  // The unit's compiled equipment passives, compiled again when what is sealed of its equipment has changed (封禁装备).
+  function currentItemPassivePackage(unit = {}) {
+    const held = unit?.__battleRuntime?.itemPassivePackage;
+    const sealKey = [...previewRuntime.sealedEquipmentSlots(unit)].join('|');
+    return held && String(unit.__battleRuntime.__itemPassiveSealKey || '') === sealKey ? held : syncEquipmentPassiveRuntime(unit, 0, { rebuildFinal: false });
+  }
+
   function equipmentPassiveActionEffects(unit = {}) {
-    const packageValue = unit?.__battleRuntime?.itemPassivePackage || syncEquipmentPassiveRuntime(unit, 0, { rebuildFinal: false });
+    const packageValue = currentItemPassivePackage(unit);
     return (Array.isArray(packageValue?.动作效果) ? packageValue.动作效果 : [])
       .filter(entry => !previewRuntime.PASSIVE_TRIGGER_PHASES
         .includes(String(entry?.触发方式 || entry?.效果?.触发方式 || '').trim()))
@@ -8794,6 +8802,8 @@
         consumed: entry.amount,
         remaining,
         ...(entry.wholeMove ? { countMode: previewRuntime.RULE_DEFENSE_COUNT_MODES.WHOLE_MOVE } : {}),
+        // 时光回溯: the holder went back to its HP and resources at the round's start (BattlePreview consumeRuleBlockCharges).
+        ...(entry.rewound ? { rewound: entry.rewound, stateName: '时光回溯' } : {}),
         noRefreshWithinBattle: true,
         effectIndex: input.effectIndex,
         segment: input.segment,
@@ -9687,6 +9697,9 @@
           if (stateKeysBefore.has(key) || !condition || typeof condition !== 'object') return;
           condition.__equipmentState = true;
           condition.__equipmentName = String(action?.actionName || declaration?.skill?.name || declaration?.skill?.魂技名 || '装备').trim();
+          // 换装: the slot and the change it came with, so a later change of that slot takes it off again.
+          condition.__equipmentSlot = previewRuntime.equipmentSlotOf(declaration?.skill || {});
+          condition.__equipmentActionId = String(actionEvent?.actionId || '').trim();
         });
       }
     });
@@ -10573,6 +10586,18 @@
       if (!previewRuntime.inventoryItemAvailable(inventoryItem, combatData, actor)) {
         throw new Error(`battle_structured_item_unavailable:${String(declaration?.irreversibleAsset?.assetId || actionName || 'unknown_item').trim()}`);
       }
+    }
+    // 复制执行 (用户 2026-11-14「复制目标上一次放的技能」): the skill a unit last released is public and stays on it for the
+    // battle (BattlePreview copySourceSkill reads it); the 反噬 cost added to a cast is not the skill's own.
+    if (actionKind === 'RELEASE_SKILL' && declaration?.skill && typeof declaration.skill === 'object' && Array.isArray(declaration.skill._效果数组)) {
+      actor.__battleRuntime = actor.__battleRuntime && typeof actor.__battleRuntime === 'object' ? actor.__battleRuntime : {};
+      actor.__battleRuntime.lastReleasedSkill = {
+        魂技名: String(declaration.skill.魂技名 || declaration.skill.name || '').trim(),
+        id: String(declaration.skill.id || declaration.skill.技能ID || '').trim(),
+        消耗: cloneValue(declaration.skill.消耗 ?? '无'),
+        _效果数组: cloneValue(declaration.skill._效果数组.filter(effect => effect?.__施技反噬 !== true)),
+        round: Number(combatData?.回合 || 0),
+      };
     }
     const useEffects = previewRuntime.inventoryUseEffects(actor, declaration, combatData, declaration?.skill?._效果数组);
     const explicitEffects = previewRuntime.releaseSkillEffects(actor, declaration,
@@ -11647,6 +11672,53 @@
         }
         return;
       }
+      // 群体撤离 in a battle (BattlePreview groupWithdrawalContest; 用户 2026-11-14「战斗中可用，带全队撤离」): the user pays
+      // the effect's 消耗 whatever comes of it, then one draw takes the user and every teammate able to fight off the field
+      // together (WITHDRAWN, or SURRENDERED where leaving is a concession), or no one.
+      if (prototype === '群体撤离') {
+        const contest = previewRuntime.groupWithdrawalContest(combatData, actor, effect);
+        const cost = previewRuntime.groupWithdrawalCost(effect);
+        const base = { round: Number(combatData?.回合 || 0), actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
+          targetId: previewRuntime.unitId(actor), targetName: previewRuntime.unitName(actor), actionName, actionType: actionKind, actorControl,
+          actionRole, actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '',
+          sourceNodeId: actionEvent.chainNodeId || '', effectPrototype: prototype, sourceEffectId };
+        const short = contest && Object.entries(cost).find(([resource, amount]) => previewRuntime.readResource(actor, resource) < amount);
+        if (!contest || short) {
+          facts.push(writeLedgerEvent(combatData, { ...base, eventKind: 'blocked_settlement', result: contest ? 'insufficient' : 'not_allowed',
+            resultState: 'NO_EFFECT', ruleCode: contest ? 'GROUP_WITHDRAWAL_COST_INSUFFICIENT' : 'GROUP_WITHDRAWAL_NOT_ALLOWED',
+            meta: { source: 'structured_runtime', effectIndex, ...(short ? { resource: short[0], cost: cost[short[0]] } : {}) } }));
+          return;
+        }
+        Object.entries(cost).forEach(([resource, amount]) => {
+          if (amount > 0) writeCombatResource(actor, { 魂力: 'sp', 精神力: 'men', 体力: 'vit' }[resource], previewRuntime.readResource(actor, resource) - amount);
+        });
+        const roll = contest.concede ? 0 : Math.random();
+        const success = roll < contest.successProbability;
+        facts.push(writeLedgerEvent(combatData, { ...base, eventKind: 'pass', result: success ? (contest.concede ? 'surrendered' : 'withdrawn') : 'failed',
+          resultState: success ? 'SUCCESS' : 'FAILED', primaryOutcome: success ? (contest.concede ? 'surrendered' : 'withdrawal_success') : 'withdrawal_failed',
+          probabilityGroupKey: contest.probabilityGroupKey, roll,
+          meta: { source: 'structured_runtime', groupWithdrawal: true, participantIds: [...contest.participantIds], successProbability: contest.successProbability, cost } }));
+        if (success) {
+          const reason = contest.concede ? previewRuntime.LEFT_BATTLE_REASONS.CONCEDE : previewRuntime.LEFT_BATTLE_REASONS.WITHDRAW;
+          const actorSide = previewRuntime.sideOf(combatData, actor);
+          if (!contest.concede) {
+            const runtime = ensureCombatRuntime(combatData);
+            runtime.withdrawalSuccess = true;
+            runtime.withdrawalSuccessSides = Array.from(new Set([...(Array.isArray(runtime.withdrawalSuccessSides) ? runtime.withdrawalSuccessSides : []), actorSide].filter(Boolean)));
+          }
+          contest.participantIds.forEach(id => {
+            const unit = listCombatUnits(combatData).find(candidate => isUnitIdentityMatch(candidate, id));
+            if (!unit) return;
+            unit.__战斗失能原因 = reason;
+            facts.push(writeLedgerEvent(combatData, { ...base, eventKind: 'state_apply', targetId: previewRuntime.unitId(unit), targetName: previewRuntime.unitName(unit),
+              actionType: 'incapacitation', actorControl: 'SYSTEM', actionRole: 'REACTION', ruleCode: reason, result: 'applied', resultState: 'SUCCESS',
+              primaryOutcome: contest.concede ? 'surrendered' : 'withdrawn', factType: 'STATE', operation: 'STATE_APPLY',
+              meta: { source: 'structured_runtime', stateName: contest.concede ? '认输' : '撤离', groupWithdrawal: true, leftBattle: true,
+                hpAfter: previewRuntime.readHp(unit), reasonText: `${previewRuntime.unitName(unit)}${contest.concede ? '认输，退出了战斗' : '随群体撤离离开了战场'}` } }));
+          });
+        }
+        return;
+      }
       if (prototype === '召唤生成') {
         const summonSample = sampleEffectOutcome({
           effect,
@@ -12708,7 +12780,7 @@
           __本回合新附加: true,
           来源技能: String(effect?.__来源技能 || actionName), 来源角色: previewRuntime.unitName(actor), 来源动作ID: String(declaration?.__castIdentity || actionEvent.actionId),
           描述: `由[${actionName}]附加`, 战斗效果: { ...createEmptyCombatEffectMap(), ...previewRuntime.deriveStateCombatEffect({ ...effect, ...sourcePricing }) },
-          面板修改比例: { ...(effect?.面板修改比例 || {}) }, 面板固定修正: { ...(effect?.面板固定修正 || {}) },
+          面板修改比例: previewRuntime.deriveStatePanelRatios(effect), 面板固定修正: { ...(effect?.面板固定修正 || {}) },
         };
         const applicationId = nextRuntimeId('state-src');
         const successProbability = previewRuntime.normalizeEffectProbability(
@@ -12784,6 +12856,8 @@
               },
             });
             target.状态效果[stateKey] = appliedState;
+            // A state that moves the panel (封禁装备's 面板固定修正) takes effect at once.
+            if (previewRuntime.statePanelChanges(appliedState)) target.final = buildCombatFinalStats(target, Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0));
             const chargeInterrupt = result === 'applied'
               ? interruptStoredChargeByControl({
                   combatData,
@@ -13004,20 +13078,34 @@
       }));
     });
     if (actionKind === 'EQUIP') {
-      const consumer = itemPassiveConsumer();
-      const equippedPackage = consumer && declaration?.skill && typeof declaration.skill === 'object'
-        ? consumer.编译物品被动消费者_V1(declaration.skill, {
-            来源物品: String(declaration.skill?.名称 || declaration.skill?.name || actionName).trim(),
-            来源槽位: String(declaration.skill?.装备槽位 || '').trim(),
-          })
-        : null;
-      if (equippedPackage) {
-        syncEquipmentPassiveRuntime(actor, Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0), {
-          packageValue: equippedPackage,
-          rebuildFinal: true,
-        });
-      }
       actor.__battleRuntime = actor.__battleRuntime && typeof actor.__battleRuntime === 'object' ? actor.__battleRuntime : {};
+      // 换装 (用户 2026-11-14「只在本场战斗生效」): the item takes its slot for this battle (BattlePreview battleEquipment): what
+      // the unit came in with there gives nothing more — its share of the 属性 it carries is taken off by a state for the
+      // battle, its passives and skills are gone — and what an earlier change put in that slot comes off with its bonus.
+      // The other slots stay as they are; nothing is written back after the battle.
+      const item = declaration?.skill && typeof declaration.skill === 'object' ? declaration.skill : null;
+      const slot = item ? previewRuntime.equipmentSlotOf(item) : '';
+      if (slot) {
+        actor.状态效果 = actor.状态效果 && typeof actor.状态效果 === 'object' ? actor.状态效果 : {};
+        Object.entries(actor.状态效果).forEach(([key, state]) => {
+          if (state?.__equipmentState === true && state.__equipmentSlot === slot && !state.__换下槽位 &&
+            state.__equipmentActionId !== String(actionEvent?.actionId || '').trim()) delete actor.状态效果[key];
+        });
+        const swapOutKey = `__equipment_swap_out__${slot}`;
+        const panel = previewRuntime.wornEquipmentPanelBonus(actor, slot);
+        if (!actor.状态效果[swapOutKey] && Object.keys(panel).length) {
+          actor.状态效果[swapOutKey] = { 状态: `换下·${slot}`, 状态名称: `换下·${slot}`, 类型: '', duration: 1000000, 持续回合: 1000000,
+            描述: `${slot}换下，原装备的加成不再计入`, 战斗效果: createEmptyCombatEffectMap(), 面板修改比例: {},
+            面板固定修正: Object.fromEntries(Object.entries(panel).map(([key, value]) => [key, -value])),
+            __equipmentState: true, __换下槽位: slot };
+        }
+        // The item as it is in the bag — the declaration's copy carries the decision's own effect list (_效果数组), which would
+        // read as a skill of it.
+        const worn = previewRuntime.findInventoryEntry(actor, declaration);
+        const wornItem = worn && typeof worn === 'object' ? cloneValue(worn) : (({ _效果数组, ...rest }) => cloneValue(rest))(item);
+        actor.__battleRuntime.battleEquipment = { ...(actor.__battleRuntime.battleEquipment || {}), [slot]: wornItem };
+        syncEquipmentPassiveRuntime(actor, Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0), { rebuildFinal: true });
+      }
       const equipmentId = String(declaration?.skill?.id || declaration?.skill?.物品ID || declaration?.skill?.名称 || declaration?.skill?.name || actionName).trim();
       const signature = String(declaration?.equipmentSignature || '').trim();
       actor.__battleRuntime.equippedDecisionItem = { id: equipmentId, name: actionName, signature };
@@ -13857,7 +13945,7 @@
     return !!grant && !(outcome.continuationDepth > 0) && outcome.actorAlive === true &&
       (!grant.requiresHit || outcome.effectiveHit === true) &&
       (!grant.requiresControl || (outcome.appliedStateNames || []).some(name =>
-        /控|晕|眠|定身|束缚|沉默|封禁|缴械|嘲讽|恐惧/.test(String(name || ''))));
+        /控|晕|眠|定身|束缚|沉默|封禁|缴械|封甲|束手|嘲讽|恐惧/.test(String(name || ''))));
   }
 
   function structuredReactionContest(reactor = {}, sourceActor = {}, declaration = null) {
@@ -15223,7 +15311,12 @@
     });
     combatData.胜负条件 = cloneValue(previewRuntime.normalizeBattleObjectives(combatData?.胜负条件 || {}, combatData));
     const sourceRound = Math.max(0, Number(source?.回合 || 0));
-    const battleFinalRound = sourceRound + roundLimit;
+    // The battle ends at its objectives' last round, not at the last round of this request: the game settles one round
+    // per request (单回合, and every player lock) or up to 20 (连续), and a horizon that ended with the request made every
+    // effect that only works in later rounds worthless (主线检验 11-14: 25 of 69 状态施加/结算修正/属性修正 options cut).
+    const objectiveFinalRound = Number(combatData.胜负条件?.startRound) + Number(combatData.胜负条件?.maxRounds);
+    const battleFinalRound = Number.isFinite(objectiveFinalRound) && objectiveFinalRound > sourceRound
+      ? objectiveFinalRound : sourceRound + roundLimit;
     fillObjectiveDamageBaselines(combatData);
     const runtime = ensureCombatRuntime(combatData);
     runtime.actionQueueTrace = [];
@@ -16405,7 +16498,7 @@
             .filter(unit => inferUnitSide(combatData, unit) !== actorSide)
             .map(previewRuntime.unitId)
             .filter(Boolean))];
-          const futureHostileResponseAllowed = roundOffset < roundLimit || queue.hasPending(pendingNode => {
+          const futureHostileResponseAllowed = Number(combatData.回合 || 0) < battleFinalRound || queue.hasPending(pendingNode => {
             if (String(pendingNode?.nodeKind || 'ACTIVE').trim() !== 'ACTIVE') return false;
             const pendingActor = pendingNode?.actorEntry?.char;
             if (!pendingActor || !structuredActorCanAct(pendingActor, pendingNode.actionRole)) return false;

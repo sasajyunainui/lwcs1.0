@@ -1044,7 +1044,7 @@
   const SKILL_DESIGNER_PARAM_TRIGGER_RESULT_OPTIONS = Object.freeze(['爆发', '刷新', '召唤']);
   // —— B:18245-18248
   const SKILL_DESIGNER_PARAM_RULE_REWRITE_OPTIONS = Object.freeze([
-    '缴械',
+    '束手',
     { value: '死亡转存活', label: '复活' },
   ]);
   // —— B:18249
@@ -2348,7 +2348,7 @@
     } else if (原型 === '规则改写') {
       字段['规则'] = 技能设计台规则改写选项值.includes(normalizeSkillUiText(字段['规则'] || source['规则'], ''))
         ? normalizeSkillUiText(字段['规则'] || source['规则'], '')
-        : '缴械';
+        : '束手';
       if (字段['规则'] === '死亡转存活') {
         字段['目标'] = '自身';
         if (字段['数值'] === undefined) 字段['数值'] = 格式化技能设计台原型比例变化(pick(['数值', 'rewriteValue']) ?? 0.25, 0.25, true);
@@ -3194,7 +3194,7 @@
     const 原型 = normalizeSkillUiText(effect && effect['原型'], '');
     if (['伤害结算', '资源变化', '资源转移', '护盾变化', '属性修正', '判定修正', '状态施加', '时窗修正', '状态移除', '资源锁定', '决策干扰'].includes(原型)) return true;
     if (原型 === '结算修正') return ['造成伤害', '受到伤害', '治疗', '消耗', '前摇', '技能效果', '防御剥夺', '精神抗性剥夺', '伤害转治疗', '治疗转伤害'].includes(normalizeSkillUiText(effect['结算'], ''));
-    if (原型 === '规则改写') return normalizeSkillUiText(effect['规则'], '') === '缴械';
+    if (原型 === '规则改写') return ['束手', '缴械'].includes(normalizeSkillUiText(effect['规则'], ''));
     if (原型 === '机制抹消') return true;
     return false;
   }
@@ -3377,7 +3377,7 @@
       }
     }
     if (原型 === '规则改写') {
-      字段['规则'] = 技能设计台规则改写选项值.includes(normalizeSkillUiText(字段['规则'], '')) ? normalizeSkillUiText(字段['规则'], '') : '缴械';
+      字段['规则'] = 技能设计台规则改写选项值.includes(normalizeSkillUiText(字段['规则'], '')) ? normalizeSkillUiText(字段['规则'], '') : '束手';
       if (字段['规则'] === '死亡转存活') {
         字段['目标'] = '自身';
         字段['数值'] = normalizeSkillUiText(字段['数值'], '+25%');
@@ -7465,7 +7465,7 @@
     const 允许字段 = key => key && !技能设计台原型字段隐藏集合.has(key) && (key !== '对应等级' || !!(context && context.允许对应等级));
     if (原型名 === '炸环' && !字段.includes('强化倍率')) return ['目标', '原型', '生效方式', '强化倍率', '条件分支'];
     if (原型名 === '规则改写') {
-      const 规则 = normalizeSkillUiText(effect && effect['规则'], '缴械');
+      const 规则 = normalizeSkillUiText(effect && effect['规则'], '束手');
       const 固定顺序 = 规则 === '死亡转存活'
         ? ['规则', '数值', '生效方式', '条件分支']
         : ['规则', '目标', '持续回合', '生效方式', '条件分支'];
@@ -8106,7 +8106,7 @@
     if (prototype === '规则改写') {
       const 规则 = 技能设计台规则改写选项值.includes(normalizeSkillUiText(source['规则'], ''))
         ? normalizeSkillUiText(source['规则'], '')
-        : normalizeSkillUiText(next['规则'], '缴械');
+        : normalizeSkillUiText(next['规则'], '束手');
       next['规则'] = 规则;
       if (规则 === '死亡转存活') {
         next['目标'] = '自身';

@@ -681,7 +681,7 @@
     '伤害结算', '资源变化', '资源转移', '护盾变化', '属性修正', '判定修正', '结算修正',
     '炸环', '状态施加', '时窗修正', '状态移除', '规则防御', '状态转移', '状态交换',
     '资源锁定', '规则改写', '机制抹消', '机制授予', '复制执行', '时光回溯', '位移执行',
-    '决策干扰', '召唤生成',
+    '决策干扰', '召唤生成', '群体撤离',
   ]);
   const nonBattlePrototypes = new Set(['修炼增益', '战斗外复活']);
   const BASIC_ATTACK_EFFECT = Object.freeze({
@@ -2373,6 +2373,11 @@
       0,
       1,
     );
+    // 防御剥夺 / 精神抗性剥夺 (deriveStateCombatEffect): the share of the holder's defense that does not count.
+    const incomingStripRatio = key => clamp(states.reduce((sum, [, state]) =>
+      sum + Math.max(0, Number(state?.战斗效果?.[key] || 0)), 0), 0, 1);
+    const incomingDefenseStripRatio = incomingStripRatio('defense_strip');
+    const incomingSpiritStripRatio = incomingStripRatio('spirit_resist_strip');
     const incomingAvoidanceAdjustment = states.reduce((sum, [, state]) => {
       const combatEffect = state?.战斗效果 || {};
       return sum +
@@ -2427,6 +2432,8 @@
       incomingDamageLimited: Object.freeze(incomingDamageLimited),
       outgoingHitAdjustment,
       outgoingArmorPenRatio,
+      incomingDefenseStripRatio,
+      incomingSpiritStripRatio,
       incomingAvoidanceAdjustment,
       incomingAttackOpening: attackOpeningOf(unit),
     });
@@ -2463,6 +2470,8 @@
       Object.is(left.incomingDamageMultiplier, right.incomingDamageMultiplier) &&
       Object.is(left.outgoingHitAdjustment, right.outgoingHitAdjustment) &&
       Object.is(left.outgoingArmorPenRatio, right.outgoingArmorPenRatio) &&
+      Object.is(left.incomingDefenseStripRatio, right.incomingDefenseStripRatio) &&
+      Object.is(left.incomingSpiritStripRatio, right.incomingSpiritStripRatio) &&
       Object.is(left.incomingAvoidanceAdjustment, right.incomingAvoidanceAdjustment) &&
       Object.is(left.incomingAttackOpening, right.incomingAttackOpening) &&
       outgoingDamageLimitedEqual &&
@@ -3433,7 +3442,8 @@
     if (!rules.exit || !actor || typeof actor !== 'object') return null;
     const side = sideOf(worldSnapshot, actor), id = unitId(actor);
     const fate = exitFate(worldSnapshot, battleIntent);
-    const others = listUnits(worldSnapshot).filter(entry => entry.side === side && unitId(entry.unit) !== id &&
+    // 群体撤离 (groupWithdrawalContest): the whole side leaves together, so no one is left to fight on.
+    const others = contest?.groupWithdrawal === true ? 0 : listUnits(worldSnapshot).filter(entry => entry.side === side && unitId(entry.unit) !== id &&
       isBattleCapable(entry.unit) && !isSummonUnit(entry.unit)).length;
     const outlook = battleStandingOutlook(worldSnapshot, side);
     const without = others ? battleStandingOutlook(worldSnapshot, side, id) : Object.freeze({ win: 0, lose: 1, draw: 0 });
@@ -5245,7 +5255,22 @@
 
   function consumeRuleBlockCharges(unit, requested = 1, options = {}) {
     if (!Math.max(0, Number(requested || 0)) || !ruleBlockCount(unit, { segments: 1, actionId: options?.actionId })) return [];
-    return consumeRuleCharges(unit, requested, RULE_CHARGE_FIELDS.block, isBlockState, options);
+    const consumed = consumeRuleCharges(unit, requested, RULE_CHARGE_FIELDS.block, isBlockState, options);
+    // 时光回溯: the charge it spends takes its holder back to its HP and resources at the round's start (the runtime keeps
+    // them in __时光回溯回合快照; a unit without one, as a decision pictures an enemy, keeps what it has).
+    const snapshot = unit?.__时光回溯回合快照;
+    consumed.filter(entry => entry.amount > 0 && entry.state?.战斗效果?.rewind_restore === true).forEach(entry => {
+      if (!snapshot || typeof snapshot !== 'object') return;
+      entry.rewound = {};
+      [['hp', 'HP'], ['体力', '体力'], ['魂力', '魂力'], ['精神力', '精神力']].forEach(([resource, field]) => {
+        const value = Number(snapshot[field]);
+        if (!Number.isFinite(value)) return;
+        const before = resource === 'hp' ? readHp(unit) : readResource(unit, resource);
+        setResourceValue(unit, resource, value);
+        entry.rewound[field] = { before, after: resource === 'hp' ? readHp(unit) : readResource(unit, resource) };
+      });
+    });
+    return consumed;
   }
 
   function consumeDeathSaveCharges(unit, requested = 1, options = {}) {
@@ -5564,6 +5589,7 @@
         axes.push(`DEFENSE_STAT:${defenseKey}`);
       }
       if (Math.abs(damageMultiplier - 1) > 1e-9) axes.push('INCOMING_DAMAGE');
+      if (Math.max(0, Number(combatEffect?.[defenseKey === 'men' ? 'spirit_resist_strip' : 'defense_strip'] || 0)) > 1e-9) axes.push('DEFENSE_STRIP');
       if ((Array.isArray(combatEffect?.damage_reduction_limited) ? combatEffect.damage_reduction_limited : []).some(entry =>
         skillMatchesLimitedElements(effect, entry?.限定元素) && Math.abs(Number(entry?.数值 || 0)) > 1e-9
       )) axes.push('INCOMING_DAMAGE_LIMITED');
@@ -5621,11 +5647,18 @@
             ? sum
             : sum + Math.max(0, Number(state?.战斗效果?.armor_pen || 0)),
         0), 0, 1);
+        const stripKey = damageClass === 'MENTAL' ? 'spirit_resist_strip' : 'defense_strip';
+        const defenseStripWithout = clamp(targetStates.reduce((sum, [stateKey, state]) =>
+          sourceKeyFor(target, stateKey, state) === source.sourceKey
+            ? sum
+            : sum + Math.max(0, Number(state?.战斗效果?.[stripKey] || 0)),
+        0), 0, 1);
         const defenseWithout = Math.max(
           1,
           rawDefenseWithout -
             Number(penetration?.flatPenetrationValue || 0) -
-            rawDefenseWithout * armorPenRatioWithout,
+            rawDefenseWithout * armorPenRatioWithout -
+            rawDefenseWithout * defenseStripWithout,
         );
         const baseWithout = damageClass === 'TRUE'
           ? attackWithout * powerRatio * 0.4
@@ -5661,6 +5694,19 @@
         });
       }),
     );
+  }
+
+  // 治疗打敌 (任务卡⑦; 用户 2026-11-13："按攻击结算。因为神圣系的治疗技能对邪恶系天生就带反转，比如雅莉的治疗对邪魂师来说就是攻击技能"):
+  // a heal that lands on an enemy as an attack — under 治疗反转 (healStrikeEffect), or a holy heal against 邪魂师 / 深渊生物
+  // (the generator's 神圣逆邪分支: a 伤害结算 replacement that keeps the heal's 资源 生命, its 威力倍率 the heal's percent)
+  // — is as strong as the heal: that share of the target's HP maximum (生命比例伤害), settled as a hit is (hit, answer,
+  // the outgoing and incoming damage modifiers, the lines). 0 for any other effect.
+  function healStrikeDamageShare(effect = {}) {
+    if (String(effect?.原型 || '').trim() !== '伤害结算') return 0;
+    const explicit = Number(effect?.生命比例伤害);
+    if (explicit > 0) return explicit;
+    const resources = Array.isArray(effect?.资源) ? effect.资源 : [effect?.资源];
+    return resources.some(value => String(value || '').trim() === '生命') ? Math.max(0, Number(effect?.威力倍率 || 0)) / 100 : 0;
   }
 
   function calculateDamageFormula(
@@ -5699,9 +5745,13 @@
       rawDefense,
       projectionContext,
     );
+    const stripKey = damageClass === 'MENTAL' ? 'spirit_resist_strip' : 'defense_strip';
+    const defenseStripRatio = clamp(targetProfile
+      ? Number(targetProfile[damageClass === 'MENTAL' ? 'incomingSpiritStripRatio' : 'incomingDefenseStripRatio'] || 0)
+      : stateEntries(target, 'INCOMING_DAMAGE').reduce((sum, [, state]) => sum + Math.max(0, Number(state?.战斗效果?.[stripKey] || 0)), 0), 0, 1);
     const defense = Math.max(
       1,
-      rawDefense - penetration.penetrationValue,
+      rawDefense - penetration.penetrationValue - rawDefense * defenseStripRatio,
     );
     const segments = Math.max(1, Math.floor(Number(effect?.攻击段数 ?? effect?.段数 ?? 1)));
     const powerRatio = power <= 100 ? power / 100 : Math.pow(power / 100, 0.25);
@@ -5720,7 +5770,11 @@
       ? clamp(Math.pow(resourceRatio, 0.45), 0.35, 1.85)
       : 1;
     let total = 0;
-    if (damageClass === 'TRUE') {
+    const healStrikeShare = healStrikeDamageShare(effect);
+    if (healStrikeShare > 0) {
+      // 治疗打敌 (healStrikeDamageShare): the heal's own measure, a share of the target's HP maximum, not 力量 against 防御.
+      total = readHpMax(target) * healStrikeShare;
+    } else if (damageClass === 'TRUE') {
       total = attack * powerRatio * 0.4;
     } else {
       const mitigation = attack / Math.max(1, attack + defense);
@@ -6728,9 +6782,24 @@
     '单位类型', '种族', '阵营', '系别', '武魂', '武魂类型', '血脉', '天赋', '天赋梯队', '描述', '摘要']);
   const EQUIPMENT_PASSIVE_ATTRIBUTE_FIELDS = Object.freeze(['武魂', '武魂类型', '血脉', '天赋', '天赋梯队', '类型', '单位类型', '种族', '阵营', '系别']);
 
+  // 封禁装备: `unit` as the item consumer is to read it while some of its equipment is sealed (sealedEquipmentSlots) —
+  // the sealed slots taken off; `unit` itself when nothing is.
+  function unitWithoutSealedEquipment(unit = {}) {
+    const sealed = sealedEquipmentSlots(unit);
+    // 换装: what was put on in the battle is worn over what the unit came in with (battleEquipment).
+    const equipment = battleEquipment(unit);
+    if (!equipment) return unit;
+    if (![...sealed].some(slot => slot in equipment)) return equipment === unit.装备 ? unit : { ...unit, 装备: equipment };
+    const kept = { ...equipment };
+    sealed.forEach(slot => { delete kept[slot]; });
+    return { ...unit, 装备: kept };
+  }
+
   function equipmentPassiveSignature(unit = {}) {
     const attribute = unit?.属性 && typeof unit.属性 === 'object' && !Array.isArray(unit.属性) ? unit.属性 : null;
     return [
+      [...sealedEquipmentSlots(unit)].join('|'),
+      unit?.__battleRuntime?.battleEquipment,
       ...EQUIPMENT_PASSIVE_UNIT_FIELDS.map(field => unit?.[field]),
       unit?.血脉之力?.血脉, unit?.血脉?.血脉, !!attribute,
       ...EQUIPMENT_PASSIVE_ATTRIBUTE_FIELDS.map(field => attribute?.[field]),
@@ -6746,7 +6815,7 @@
     const signature = equipmentPassiveSignature(unit);
     const cached = equipmentPassivePackageCache.get(origin);
     if (cached && cached.signature.every((value, index) => Object.is(value, signature[index]))) return cached.value;
-    const equipmentPackage = consumer.编译角色装备被动消费者_V1(unit);
+    const equipmentPackage = consumer.编译角色装备被动消费者_V1(unitWithoutSealedEquipment(unit));
     const value = {
       package: equipmentPackage,
       skills: Array.isArray(equipmentPackage?.技能条目)
@@ -6770,7 +6839,11 @@
     return output;
   }
   function collectPassiveSkillsUncached(unit = {}) {
-    const runtimeSkills = Array.isArray(unit?.__battleRuntime?.itemPassiveTriggeredSkills)
+    // 封禁装备: with something sealed the runtime's compiled equipment passives may predate the seal — the preview's own,
+    // compiled without the sealed slots, stand; a sealed 器武魂's own skills are out.
+    const sealed = sealedEquipmentSlots(unit);
+    const sealedSpirits = sealed.has('器武魂') ? new Set(toolSpiritKeys(unit)) : null;
+    const runtimeSkills = !sealed.size && Array.isArray(unit?.__battleRuntime?.itemPassiveTriggeredSkills)
       ? unit.__battleRuntime.itemPassiveTriggeredSkills
       : [];
     const equipmentSkills = equipmentPassiveSkillPackage(unit)?.skills || [];
@@ -6781,7 +6854,7 @@
       ...Object.entries(unit || {})
         .filter(([key, value]) =>
           /^(?:第\d+)?武魂|血脉之力|自创魂技|技能/.test(key) &&
-          value && typeof value === 'object'
+          value && typeof value === 'object' && !sealedSpirits?.has(key)
         )
         .map(([, value]) => value),
     ];
@@ -7616,6 +7689,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       unit?.武魂类型,
       unit?.描述,
       unit?.摘要,
+      // 邪魂师 / 深渊生物 as the battle's units carry them (任务卡⑦: the generator's 神圣逆邪分支 asks for them, and no unit
+      // said so): a role's 属性.邪魂师, a temporary unit's 身份 and 单位性质.
+      unit?.身份,
+      unit?.单位性质,
+      unit?.邪魂师 === true || unit?.属性?.邪魂师 === true ? '邪魂师' : '',
+      String(unit?.单位性质 || '').trim() === '深渊' || unit?.社交?.势力?.深渊生物 ? '深渊生物' : '',
     ].map(value => String(value || '').trim()).filter(Boolean).join('|');
   }
 
@@ -8063,6 +8142,152 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     ).length > 0;
   }
 
+  // 封禁装备 (用户 2026-11-13："可以封禁装备的技能组（前提是属性差一定范围内，不包含武器，单指的斗铠 机甲）"；"成功率用魂力
+  // 判定"；"魂力相当于封禁率10成"；"下限定为1.5倍"；神器附带的缴械"可以无条件封武器（超神器除外）"、"也能封器武魂……前提也是
+  // 100级以下"): 缴械 seals the target's weapon, 封甲 its 斗铠 and 机甲 — for the state's rounds each counts as taken off: what
+  // it adds to 力量 / 防御 / 敏捷 / 精神力上限 is taken off the panel (面板固定修正; the HP, 魂力 and 体力 maxima are left as
+  // they are), its passives and skills are out (sealedEquipmentSlots). A super-artifact weapon is not sealed. A skill's
+  // seal lands by the two units' 魂力上限: certain at an equal or greater, falling evenly to none where the target's is
+  // EQUIPMENT_SEAL_SOUL_LIMIT times the caster's; an artifact's (无条件封禁) lands as it is, and its 缴械 also seals a 器武魂
+  // of a unit under level 100 (no basic attack, none of that spirit's skills). Nothing to seal: the effect is nothing.
+  const EQUIPMENT_SEAL_SLOTS = Object.freeze({ 缴械: Object.freeze(['武器']), 封甲: Object.freeze(['斗铠', '机甲']) });
+  const EQUIPMENT_SEAL_STATS = Object.freeze([['力量', 'str'], ['防御', 'def'], ['敏捷', 'agi'], ['精神力上限', 'men_max']]);
+  const EQUIPMENT_SEAL_SOUL_LIMIT = 1.5;
+  const EQUIPMENT_SEAL_NONE = Object.freeze({ none: true });
+  function equipmentSealChance(actor = {}, target = {}) {
+    const ratio = readResourceMax(actor, '魂力') / Math.max(1, readResourceMax(target, '魂力'));
+    const floor = 1 / EQUIPMENT_SEAL_SOUL_LIMIT;
+    return ratio >= 1 ? 1 : clamp((ratio - floor) / (1 - floor), 0, 1);
+  }
+  // Whether `unit` wields a 器武魂, and the keys (the character records carry no type of their own): its 武魂 says it is
+  // one, or (用户 2026-11-14："器武魂按武器字体匹配吧，枪剑啥的") its name holds a weapon's word — unless it says it is a 兽武魂.
+  const TOOL_SPIRIT_WEAPON_WORDS = /剑|刀|枪|戟|锤|棍|棒|刃|矛|鞭|斧|弓|弩|匕首|钩|叉|镰|锏|槊/;
+  function toolSpiritKeys(unit = {}) {
+    return Object.keys(unit || {}).filter(key => {
+      if (!/^第\d+武魂$/.test(key)) return false;
+      const spirit = unit[key] || {}, text = String(spirit.描述 || spirit.类型 || '');
+      if (/器武魂/.test(text)) return true;
+      return !/兽武魂/.test(text) && TOOL_SPIRIT_WEAPON_WORDS.test(String(spirit.表象名称 || spirit.名称 || spirit.name || ''));
+    });
+  }
+  function sealableWeapon(item) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return false;
+    const name = String(item.名称 || item.name || '').trim();
+    return !!name && name !== '无' && String(item.品质 || item.品阶 || '').trim() !== '超神器';
+  }
+  // 换装 (用户 2026-11-14「只在本场战斗生效」): what a unit puts on in a battle (BattleRuntime EQUIP) takes its slot for that
+  // battle only — __battleRuntime.battleEquipment, never written back — over what it came in with. `unit`'s equipment as
+  // the battle has it (its own 装备 object while nothing was put on).
+  const battleEquipmentViews = new WeakMap();
+  function battleEquipment(unit = {}) {
+    const worn = unit?.装备 && typeof unit.装备 === 'object' && !Array.isArray(unit.装备) ? unit.装备 : null;
+    const swapped = unit?.__battleRuntime?.battleEquipment;
+    if (!swapped || typeof swapped !== 'object' || !Object.keys(swapped).length) return worn;
+    const cached = battleEquipmentViews.get(swapped);
+    if (cached && cached.worn === worn) return cached.view;
+    const view = { ...(worn || {}), ...swapped };
+    battleEquipmentViews.set(swapped, { worn, view });
+    return view;
+  }
+  // The slot an item is worn in: its 装备槽位, else what its class says (武器 / 斗铠 / 机甲); '' for none.
+  function equipmentSlotOf(item = {}) {
+    const declared = String(item?.装备槽位 || item?.槽位 || '').trim();
+    if (declared) return declared;
+    const kind = `${item?.物品分类 || ''} ${item?.分类 || ''} ${item?.类型 || ''}`;
+    return /武器/.test(kind) ? '武器' : /斗铠/.test(kind) ? '斗铠' : /机甲/.test(kind) ? '机甲' : '';
+  }
+  // What the item `unit` came into the battle wearing in `slot` adds to its panel ({ str, def, agi, men_max }, the
+  // 属性 it carries already holding it): taken off when that slot is changed (换装), as a seal takes it (封禁装备).
+  function wornEquipmentPanelBonus(unit = {}, slot = '') {
+    const item = unit?.装备?.[slot];
+    if (!item || typeof item !== 'object' || Array.isArray(item) || ['', '无'].includes(String(item.名称 || item.name || '').trim())) return {};
+    const schema = root.__LWCS_MVU_SCHEMA_RUNTIME__;
+    const bonus = slot === '武器'
+      ? typeof schema?.计算装备属性加成 === 'function' ? schema.计算装备属性加成(item, { ...unit, 属性基准模式: '已含本武器加成' }) || {} : {}
+      : String(item.装备状态 || '已装备').trim() === '已装备' ? item._属性加成 || {} : {};
+    const panel = {};
+    for (const [label, key] of EQUIPMENT_SEAL_STATS) {
+      const value = Number(bonus?.[label]);
+      if (value > 0) panel[key] = value;
+    }
+    return panel;
+  }
+  // What of `unit`'s equipment a seal can take: { 武器 / 斗铠 / 机甲: its 属性加成, 器武魂: true } — read off the unit,
+  // or, on an enemy as a decision pictures it, off __可封装备 (public: worn equipment and a tool spirit are seen; their
+  // passives are not).
+  function sealableEquipment(unit = {}) {
+    if (unit?.__可封装备 && typeof unit.__可封装备 === 'object') return unit.__可封装备;
+    const equipment = battleEquipment(unit) || {};
+    const schema = root.__LWCS_MVU_SCHEMA_RUNTIME__;
+    const result = {};
+    if (sealableWeapon(equipment.武器)) {
+      result.武器 = typeof schema?.计算装备属性加成 === 'function' ? schema.计算装备属性加成(equipment.武器, { ...unit, 属性基准模式: '已含本武器加成' }) || {} : {};
+    }
+    for (const slot of ['斗铠', '机甲']) {
+      const item = equipment[slot];
+      if (item && typeof item === 'object' && String(item.装备状态 || '').trim() === '已装备') result[slot] = { ...(item._属性加成 || {}) };
+    }
+    if (toolSpiritKeys(unit).length) result.器武魂 = true;
+    return result;
+  }
+
+  function equipmentSealEffect(effect = {}, worldSnapshot = {}, actor = {}, target = {}) {
+    if (String(effect?.原型 || '').trim() !== '状态施加' || !target) return null;
+    const slots = EQUIPMENT_SEAL_SLOTS[String(effect?.状态 || '').trim()];
+    if (!slots) return null;
+    const sealable = sealableEquipment(target);
+    const sealed = [], fixed = {};
+    for (const slot of slots) {
+      const bonus = sealable[slot];
+      if (!bonus) continue;
+      sealed.push(slot);
+      for (const [label, key] of EQUIPMENT_SEAL_STATS) {
+        const value = Number(bonus?.[label]);
+        if (value > 0) fixed[key] = (fixed[key] || 0) - value;
+      }
+    }
+    const unconditional = effect?.无条件封禁 === true;
+    if (unconditional && slots.includes('武器') && Number(target?.属性?.等级 ?? target?.等级 ?? target?.level ?? 0) < 100 && sealable.器武魂) sealed.push('器武魂');
+    if (!sealed.length) return EQUIPMENT_SEAL_NONE;
+    const base = normalizeEffectProbability(effect?.成功率 ?? effect?.触发概率, 1);
+    const chance = unconditional ? 1 : equipmentSealChance(actor, target);
+    const panel = { ...(effect?.面板固定修正 || {}) };
+    for (const [key, value] of Object.entries(fixed)) panel[key] = Number(panel[key] || 0) + value;
+    return Object.freeze({ ...effect, 封禁部位: Object.freeze(sealed), 面板固定修正: panel, 成功率: base * chance });
+  }
+  // The equipment slots (and 器武魂) sealed on `unit` now: from its states of 缴械 / 封甲 in force.
+  function sealedEquipmentSlots(unit = {}) {
+    const sealed = new Set();
+    for (const [, state] of stateEntries(unit, 'COLLECTION')) {
+      if (Math.max(0, Number(state?.duration ?? state?.持续回合 ?? 1)) <= 0) continue;
+      const slots = EQUIPMENT_SEAL_SLOTS[stateName(state)];
+      if (slots) slots.forEach(slot => { if (slot !== '武器' || sealableWeapon(battleEquipment(unit)?.武器) || unit?.__可封装备?.武器) sealed.add(slot); });
+      if (state?.战斗效果?.spirit_tool_seal === true) sealed.add('器武魂');
+    }
+    return sealed;
+  }
+
+  // 治疗打敌 under 治疗反转: a restoration of HP alone that an enemy under 治疗反转 receives is an attack on it — a
+  // 伤害结算 (远程攻击) of the heal's share of its HP maximum times the ratio (healStrikeDamageShare); null otherwise. An
+  // ally under it is healed into a loss instead (healInversionEffect).
+  function healStrikeEffect(effect = {}, worldSnapshot = {}, actor = {}, target = {}) {
+    if (String(effect?.原型 || '').trim() !== '资源变化' || !actor || !target) return null;
+    const keys = normalizedResourceKeys(effect?.资源 || '魂力');
+    if (keys.length !== 1 || keys[0] !== 'hp') return null;
+    const actorSide = sideOf(worldSnapshot, actor), targetSide = sideOf(worldSnapshot, target);
+    if (!actorSide || !targetSide || actorSide === targetSide) return null;
+    const inversion = healInversionOf(target);
+    if (!inversion) return null;
+    const maximum = Math.max(1, readHpMax(target));
+    const range = parseSignedRange(effect?.数值);
+    const amount = range ? (signedRangeValue(range, maximum, 0) + signedRangeValue(range, maximum, 1)) / 2 : parseSignedValue(effect?.数值, maximum);
+    if (!(amount > 0)) return null;
+    const share = amount / maximum * inversion.ratio;
+    const strike = { ...effect, 原型: '伤害结算', 伤害类型: '远程攻击', 生命比例伤害: share, 威力倍率: Math.max(1, Math.round(share * 100)) };
+    delete strike.条件分支; delete strike.数值; delete strike.持续回合;
+    return Object.freeze(strike);
+  }
+
   function resolveConditionalEffectPlan(
     effect = {},
     worldSnapshot = {},
@@ -8070,7 +8295,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     target = {},
     context = {},
   ) {
+    // 封禁装备: the seal as it lands on this target (equipmentSealEffect), or nothing to seal.
+    const seal = equipmentSealEffect(effect, worldSnapshot, actor, target);
+    if (seal === EQUIPMENT_SEAL_NONE) return Object.freeze([]);
+    if (seal) effect = seal;
     const branches = Array.isArray(effect?.条件分支) ? effect.条件分支 : [];
+    // 治疗打敌: as a replacement past the effect's own branches.
+    const strike = healStrikeEffect(effect, worldSnapshot, actor, target);
+    if (strike) return Object.freeze([Object.freeze({ effect: strike, mode: 'REPLACE', branchIndex: branches.length, nestedIndex: 0 })]);
     if (!branches.length) {
       return Object.freeze([Object.freeze({
         effect,
@@ -8534,6 +8766,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (/敌方|对方/.test(targetText)) return false;
     if (prototype === '伤害结算' || prototype === '机制抹消') return false;
     if (prototype === '召唤生成' || prototype === '机制授予' || prototype === '规则防御') return true;
+    // 时光回溯: 被动 guards its target (an ally), 主动 presses it (an enemy); 复制执行 copies an enemy unless it is 复刻友方.
+    if (prototype === '时光回溯') return String(effect?.发动方式 || '被动').trim() !== '主动';
+    if (prototype === '复制执行') return String(effect?.复制模式 || '').trim() === '复刻友方';
     if (prototype === '护盾变化') {
       return !/负向|削减|移除|破盾/.test(String(effect?.护盾模式 || '')) &&
         parseSignedValue(effect?.数值, 1) >= 0;
@@ -8702,6 +8937,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           projectionContext,
           target,
         )?.side || sideOf(worldSnapshot, target);
+        // 治疗打敌: a heal declared on an enemy it lands on as an attack (resolveConditionalEffectPlan: healStrikeEffect,
+        // the 神圣逆邪 branch) is aimed at that enemy.
+        if (requiresFriendly && !explicitFriendly && targetSide !== actorSide && targetsAllies &&
+          resolveConditionalEffectPlan(effect, worldSnapshot, actor, target, {}).some(entry => healStrikeDamageShare(entry.effect) > 0)) return true;
         if (requiresFriendly) return targetSide === actorSide;
         if (requiresHostile) return targetSide !== actorSide;
         return true;
@@ -9049,7 +9288,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       combatEffect.dodge_penalty = Math.max(Number(combatEffect.dodge_penalty || 0), magnitude || 0.2);
     }
     if (/沉默|封技/.test(state)) combatEffect.silence = true;
-    if (/缴械/.test(state)) combatEffect.disarm = true;
+    // 封禁装备 (equipmentSealEffect): a sealed 器武魂 neither strikes nor carries its skills; a sealed weapon, armour or
+    // mecha only loses what it gives (面板固定修正, its passives and skills).
+    if (/束手/.test(state)) combatEffect.disarm = true;
+    // A seal's own mark: what it does is in the panel it moves (面板固定修正) and the equipment it takes, so the state is
+    // not an empty one (BattleDecision temporalEffectWindowProfile reads a state with no combat effect as unrealizable).
+    if (EQUIPMENT_SEAL_SLOTS[state]) combatEffect.equipment_seal = true;
+    if ((Array.isArray(effect?.封禁部位) ? effect.封禁部位 : []).includes('器武魂')) { combatEffect.disarm = true; combatEffect.spirit_tool_seal = true; }
     if (/致盲/.test(state)) {
       combatEffect.blind = true;
       // 致盲是无可填强度的固定状态；设计台正式说明为攻击命中下降35%。
@@ -9079,7 +9324,39 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (state === '标记' && !(effect?.来源计价版本 !== undefined && Number(effect.来源计价版本) < MARK_DODGE_MIN_PRICING_VERSION)) {
       combatEffect.dodge_penalty = Math.max(Number(combatEffect.dodge_penalty || 0), magnitude || 0.1);
     }
+    // 主线检验 11-14（用户「补上」）: six states laid by 状态施加 did nothing in a battle though their skill text
+    // (转译状态施加数值说明_V1) promises an effect and COST prices it. Each now does what its text says:
+    //   防御剥夺 — the holder's 防御 counts at (1 − 数值) against physical damage (defense_strip);
+    //   精神抗性剥夺 — its 精神 counts at (1 − 数值) against mental damage (spirit_resist_strip);
+    //   虚弱 — 力量、防御、敏捷 each −数值 (deriveStatePanelRatios; weaken_ratio marks it);
+    //   失控 — 数值 the chance its target is turned, 副数值 its hit (as 混乱);
+    //   反噬 — each skill its holder releases takes 数值 of its HP maximum (cast_backlash_ratio, applySkillSettlementModifiers);
+    //   魂力枯竭 — 数值 of its 魂力 lost each round, its skills cost 副数值 more (as 资源燃烧).
+    if (state === '防御剥夺') combatEffect.defense_strip = Math.max(Number(combatEffect.defense_strip || 0), magnitude || 0.2);
+    if (state === '精神抗性剥夺') combatEffect.spirit_resist_strip = Math.max(Number(combatEffect.spirit_resist_strip || 0), magnitude || 0.2);
+    if (state === '虚弱') combatEffect.weaken_ratio = Math.max(Number(combatEffect.weaken_ratio || 0), magnitude || 0.08);
+    if (state === '失控') {
+      combatEffect.random_target_rate = Math.max(Number(combatEffect.random_target_rate || 0), magnitude || 0.35);
+      combatEffect.hit_penalty = Math.max(Number(combatEffect.hit_penalty || 0), secondaryMagnitude || 0.1);
+    }
+    if (state === '反噬') combatEffect.cast_backlash_ratio = Math.max(Number(combatEffect.cast_backlash_ratio || 0), magnitude || 0.03);
+    if (state === '魂力枯竭') {
+      combatEffect.resource_tick_resource = '魂力';
+      combatEffect.resource_tick_ratio = -(magnitude || 0.05);
+      combatEffect.cost_delta_ratio = Math.max(Number(combatEffect.cost_delta_ratio || 0), secondaryMagnitude || 0.05);
+    }
     return combatEffect;
+  }
+
+  // The panel a state moves by its own name (虚弱, deriveStateCombatEffect), merged under the effect's own 面板修改比例.
+  function deriveStatePanelRatios(effect = {}) {
+    const state = String(effect?.状态 || effect?.状态名称 || '').trim();
+    const ratios = {};
+    if (state === '虚弱') {
+      const ratio = 1 - clamp(Math.abs(parseSignedValue(effect?.数值, 1)) || 0.08, 0, 0.95);
+      ['str', 'def', 'agi'].forEach(key => { ratios[key] = ratio; });
+    }
+    return { ...ratios, ...(effect?.面板修改比例 && typeof effect.面板修改比例 === 'object' ? cloneValue(effect.面板修改比例) : {}) };
   }
 
   function negativeEffectIsImmune(unit = {}, effect = {}) {
@@ -9567,9 +9844,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         state &&
         typeof state === 'object' &&
         Math.max(0, Number(state?.duration ?? state?.持续回合 ?? 1)) > 0 &&
-        (String(state?.原型 || '').trim() === '结算修正' || Number(state?.战斗效果?.cost_delta_ratio || 0) > 0) &&
+        (String(state?.原型 || '').trim() === '结算修正' || Number(state?.战斗效果?.cost_delta_ratio || 0) > 0 ||
+          Number(state?.战斗效果?.cast_backlash_ratio || 0) > 0) &&
         skillMatchesLimitedElements(skill, state?.限定元素)
       );
+    // 反噬 (deriveStateCombatEffect cast_backlash_ratio): a skill its holder releases takes that share of the holder's HP
+    // maximum, an effect on the caster added after the skill's own; states from different sources add up.
+    const castBacklash = clamp(modifiers.reduce((sum, [, state]) =>
+      sum + Math.max(0, Number(state?.战斗效果?.cast_backlash_ratio || 0)), 0), 0, 1);
     let skillEffectMultiplier = 1;
     let costMultiplier = 1;
     let costSurcharge = 0;
@@ -9652,7 +9934,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (
       Math.abs(skillEffectMultiplier - 1) <= 1e-12 &&
       Math.abs(costMultiplier - 1) <= 1e-12 &&
-      Math.abs(windupMultiplier - 1) <= 1e-12 && costDelta === 0 && windupDelta === 0
+      Math.abs(windupMultiplier - 1) <= 1e-12 && costDelta === 0 && windupDelta === 0 && !(castBacklash > 0)
     ) {
       return Object.freeze({
         skill,
@@ -9713,6 +9995,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         );
       }
     });
+    if (castBacklash > 0 && Array.isArray(effectiveSkill?._效果数组) &&
+      !effectiveSkill._效果数组.some(effect => effect?.__施技反噬 === true)) {
+      effectiveSkill._效果数组 = [...effectiveSkill._效果数组, { 原型: '资源变化', 目标: '自身', 资源: '生命',
+        数值: `-${Number((castBacklash * 100).toFixed(4))}%`, 持续回合: 0, __施技反噬: true }];
+    }
     return Object.freeze({
       skill: effectiveSkill,
       skillEffectMultiplier,
@@ -9972,6 +10259,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       Number(existing?.duration ?? existing?.持续回合 ?? 0) > 0);
   }
 
+  // Whether a state effect moves the panel (面板修改比例 / 面板固定修正), so the unit's final stats are built again.
+  function statePanelChanges(effect = {}) {
+    return [effect?.面板修改比例, effect?.面板固定修正].some(map => map && typeof map === 'object' && Object.keys(map).length > 0);
+  }
+
   function addState(unit, effect, effectId, onReplace = null, sourceActionId = '', source = {}) {
     const stateName = effectStateName(effect);
     const polarity = statePolarity(effect);
@@ -10052,7 +10344,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ...(effect?.触发消耗 !== undefined ? { 触发消耗: cloneValue(effect.触发消耗) } : {}),
       __previewApplicationProbability: clamp(Number(effect?.__previewApplicationProbability ?? 1), 0, 1),
       战斗效果: deriveStateCombatEffect(effect),
-      面板修改比例: cloneValue(effect?.面板修改比例 || {}),
+      ...(effect?.属性快照 && typeof effect.属性快照 === 'object' ? { 属性快照: cloneValue(effect.属性快照) } : {}),
+      面板修改比例: deriveStatePanelRatios(effect),
       面板固定修正: cloneValue(effect?.面板固定修正 || {}),
     };
     if (existingEntry && String(effect?.原型 || '').trim() === '状态施加') {
@@ -10134,6 +10427,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         'received_damage_mult',
         'damage_taken_mult',
         'damage_reduction',
+        'defense_strip',
+        'spirit_resist_strip',
         'death_save_count',
         'revive_count',
         'revive_heal_ratio',
@@ -10338,7 +10633,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const runtime = root.__LWCS_BATTLE_RUNTIME__;
     const next = { 状态: String(effect?.状态 || '').trim(), 层数: 1,
       duration: Math.max(1, Number(effect?.持续回合 || 1)), __本回合新附加: true,
-      战斗效果: combatEffect, 面板修改比例: effect?.面板修改比例 || {}, 面板固定修正: effect?.面板固定修正 || {} };
+      战斗效果: combatEffect, 面板修改比例: deriveStatePanelRatios(effect), 面板固定修正: effect?.面板固定修正 || {} };
     const merged = runtime.mergeRuntimeCondition(existing, next, effect);
     if (!merged.applied) return null;
     const states = [existing, merged.state].map(state => state ? cloneValue(state) : null);
@@ -10420,7 +10715,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const name = stateName(state);
     const semantics = root.__LWCS_SKILL_COST_HELPERS_V1__;
     if (semantics.读取状态施加分类_V1(name)) return semantics.状态施加是否负面语义_V1(name) ? -1 : 1;
-    if (/中毒|流血|灼烧|冻伤|暗冰侵蚀|眩晕|昏迷|麻痹|僵直|定身|冻结|星光停滞|沉默|封技|禁疗|治疗反转|迟缓|减速|致盲|混乱|嘲讽|精神紊乱|标记|束缚|禁锢|缴械|虚弱|索敌干扰/.test(name)) return -1;
+    if (/中毒|流血|灼烧|冻伤|暗冰侵蚀|眩晕|昏迷|麻痹|僵直|定身|冻结|星光停滞|沉默|封技|禁疗|治疗反转|迟缓|减速|致盲|混乱|嘲讽|精神紊乱|标记|束缚|禁锢|缴械|封甲|束手|虚弱|索敌干扰/.test(name)) return -1;
     if (/护盾|恢复|治疗|增幅|强化|免疫|无视异常|霸体|加速|隐匿|隐身/.test(name)) return 1;
     return 0;
   }
@@ -10792,7 +11087,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   function rulePrototypeState(effect = {}, prototype = '', context = {}) {
     const duration = Math.max(1, Number(effect?.持续回合 || 1));
     const rule = String(effect?.规则 || effect?.防御对象 || '').trim();
-    const name = ruleStateName(effect, prototype);
+    const name = effect?.__时光回溯 === true ? '时光回溯' : ruleStateName(effect, prototype);
     const rawValue = effect?.数值 ?? effect?.强度;
     const magnitude = Math.abs(parseSignedValue(
       rawValue === undefined || rawValue === '' ? (prototype === '规则防御' ? '50%' : '25%') : rawValue,
@@ -10807,9 +11102,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       } else if (rule === '免伤') {
         combatEffect.block_count = Math.max(1, Number(effect?.次数 || 1));
         if (wholeMove) combatEffect.block_whole_move = true;
+        if (effect?.__时光回溯 === true) combatEffect.rewind_restore = true;
       } else combatEffect.damage_reduction = clamp(magnitude || 0.5, 0, 0.95);
     } else if (prototype === '规则改写') {
-      if (rule === '缴械') combatEffect.disarm = true;
+      // 束手 (用户 2026-11-13：原名缴械，改名；缴械 现为封武器): no basic attack. An old skill's 缴械 rule is 束手.
+      if (rule === '束手' || rule === '缴械') combatEffect.disarm = true;
       if (rule === '死亡转存活') {
         combatEffect.revive_count = 1;
         combatEffect.revive_heal_ratio = clamp(magnitude || 0.25, 0.05, 1);
@@ -10833,6 +11130,33 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
 
   function nestedEffects(effect = {}) {
     return effectArrayFields.flatMap(field => Array.isArray(effect?.[field]) ? effect[field] : []);
+  }
+
+  // 复制执行: the skill a copy of `unit` takes — the one it released last in this battle (BattleRuntime
+  // executeStructuredDeclaration keeps it, public), else its active skill of the highest 魂力 cost that it shows; null for
+  // none (an enemy pictured by a decision shows none of its own).
+  function copySourceSkill(unit = {}) {
+    const last = unit?.__battleRuntime?.lastReleasedSkill;
+    if (last && Array.isArray(last._效果数组) && last._效果数组.length) return last;
+    let best = null, bestCost = -1;
+    const seen = new Set();
+    const visit = (value, passiveTable = false) => {
+      if (!value || typeof value !== 'object' || seen.has(value)) return;
+      seen.add(value);
+      if (Array.isArray(value)) { value.forEach(item => visit(item, passiveTable)); return; }
+      if (Array.isArray(value._效果数组) && value._效果数组.length) {
+        if (passiveTable || isPassiveSkill(value) || value.__战斗禁用 === true) return;
+        const cost = Number(value.消耗?.魂力 ?? value.魂力消耗 ?? 0);
+        if ((Number.isFinite(cost) ? cost : 0) > bestCost) { best = value; bestCost = Number.isFinite(cost) ? cost : 0; }
+        return;
+      }
+      Object.entries(value).forEach(([key, child]) => {
+        if (/状态效果|战斗历史|历史快照|参战者|复制效果|__battleRuntime|背包/.test(key)) return;
+        visit(child, passiveTable || isPassiveSkillTableKey(key));
+      });
+    };
+    Object.entries(unit || {}).filter(([key]) => /^(?:第\d+)?武魂|血脉之力|魂骨|自创魂技|技能列表/.test(key)).forEach(([, value]) => visit(value));
+    return best;
   }
 
   function applyProjectedRuleState(unit, effect, prototype, context) {
@@ -11510,6 +11834,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         // HP zero would irreversibly clear survival/maintenance before replay
         // discovers the real surviving mass.
         overlay.setResource(unitId(target), resource, next, true);
+        // 间接生命损失的线: a certain loss brought to the line takes the unit out, as the settlement's settleKnockdownExit
+        // does (任务卡⑦: a heal turned by 治疗反转 onto a unit near the line; before, the projection kept it in the fight).
+        if (isHp && resourceHpFloor > 0 && delta < 0 && applicationProbability >= 1 - 1e-12 && !range && !jointStrengthOutcomes &&
+          next <= resourceHpFloor + 1e-9 && lifeThreatExit(resourceHpFloor, currentTarget)) {
+          const lineRules = battleRules(context?.worldSnapshot || overlay.snapshot(), context?.battleIntent || {});
+          overlay.changeUnit(unitId(target), unit => {
+            if (!String(unit.__战斗失能原因 || '').trim()) unit.__战斗失能原因 = lineRules.spar || lineRules.match ? 'INCAPACITATED' : 'SUBDUED';
+          });
+        }
       }
       if (branches?.length === 1 && typeof context.resourceOutcomeResolver === 'function') {
         rememberProjectedResourceSupport(overlay.readUnit(unitId(target)), resource,
@@ -11790,12 +12123,21 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       outcomeDistribution: Object.freeze([outcome]), traumaUnconscious, nonlethalIncapacitated });
   }
 
+  // An effect resolveConditionalEffectPlan may turn per target though it has no branch of its own: a seal of equipment
+  // (equipmentSealEffect) and a restoration of HP alone (healStrikeEffect) — resolved as the settlement resolves them.
+  function effectResolvesPerTarget(effect = {}) {
+    const prototype = String(effect?.原型 || '').trim();
+    if (prototype === '状态施加') return !!EQUIPMENT_SEAL_SLOTS[String(effect?.状态 || '').trim()];
+    if (prototype !== '资源变化') return false;
+    const keys = normalizedResourceKeys(effect?.资源 || '魂力');
+    return keys.length === 1 && keys[0] === 'hp';
+  }
+
   function applyEffect(effect, targets, overlay, ledger, context, depth) {
     if (depth > MAX_RECURSION_DEPTH) throw new Error('battle_preview_recursion_depth_exceeded');
     if (
       context?.conditionalPlanResolved !== true &&
-      Array.isArray(effect?.条件分支) &&
-      effect.条件分支.length
+      (Array.isArray(effect?.条件分支) && effect.条件分支.length || effectResolvesPerTarget(effect))
     ) {
       const actor = overlay.readUnit(unitId(context.actor)) || context.actor;
       const worldSnapshot = overlay.snapshot();
@@ -11819,13 +12161,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       targets.forEach(target => {
         const targetId = unitId(target);
         const primaryOutcomes = context?.primaryOutcomeDistributionByTarget?.get?.(targetId) || [];
-        const hasOutcomeCondition = effect.条件分支.some(branch =>
+        const hasOutcomeCondition = (effect.条件分支 || []).some(branch =>
           (Array.isArray(branch?.条件) ? branch.条件 : []).some(condition =>
             ['命中', '被闪避'].includes(String(condition?.类型 || '').trim())
           )
         );
         const followsOnlyOnHit = effect.生效方式 === '跟随主原型' && context.requiredOutcomeKeyByTarget?.has(targetId) &&
-          !effect.条件分支.some(branch => ['替换效果', '追加效果'].includes(String(branch.处理 || '').trim()));
+          !(effect.条件分支 || []).some(branch => ['替换效果', '追加效果'].includes(String(branch.处理 || '').trim()));
         if (hasOutcomeCondition && primaryOutcomes.length > 1 && !followsOnlyOnHit) {
           const outcomeKey = String(
             context?.primaryOutcomeKeyByTarget?.get?.(targetId) || ''
@@ -13529,6 +13871,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               ...sourcedEffect,
               __previewApplicationProbability: effectiveApplicationProbability,
             }, context.effectInstanceId, (key, state) => replacedStates.push([key, state]), context.rootActionId);
+            // A state that moves the panel (封禁装备's 面板固定修正) takes effect at once, as a 属性修正 does.
+            if (marginal && statePanelChanges(sourcedEffect)) {
+              unit.final = { ...unit.final, ...buildNumericCombatStats(unit, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0)) };
+              syncStaminaMaxGain(unit);
+            }
             // Match the canonical before/after comparison used by Native facts;
             // a permitted merge alone is not proof that a state actually changed.
             stateApplied = marginal && (!existingStateEntry ||
@@ -14088,7 +14435,63 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       }
       if (prototype === '复制执行') {
         const copied = nestedEffects(effect);
-        if (!copied.length) throw new Error('battle_preview_copy_source_missing');
+        if (!copied.length) {
+          // 复制执行 (用户 2026-11-14 定): 复制技能 copies the skill the target released last in this battle (its strongest,
+          // by 魂力 cost, when it has released none) as a skill of the caster's own — a 机制授予 (主动触发) of its effects,
+          // 可用次数 uses within 保留回合; 复制属性 takes the target's 力量、防御、敏捷 at (1 − 削减比例) for 保留回合, a stat
+          // where that is below the caster's own staying as it is (属性快照, applyCopiedStats); 复制全部 does both. 复刻友方
+          // copies an ally the same way.
+          const copyType = String(effect?.复制类型 || '复制技能').trim();
+          const keepRounds = Math.max(1, Math.floor(Number(effect?.保留回合 ?? effect?.持续回合 ?? 2) || 2));
+          targets.forEach((target, targetIndex) => {
+            const source = overlay.readUnit(unitId(target)) || target;
+            if (unitId(source) === unitId(actor)) return;
+            const nestedContext = suffix => ({ ...context, effectInstanceId: `${context.effectInstanceId}:copy:${targetIndex}:${suffix}`,
+              depth: depth + 1, effectPath: effectContext.effectPath });
+            if (/技能|全部/.test(copyType)) {
+              const skill = copySourceSkill(source);
+              if (skill) {
+                const name = String(skill.魂技名 || skill.name || '技能').trim();
+                const grant = { 原型: '机制授予', 目标: '自身', 触发条件: '主动触发', 授予效果: cloneValue(skill._效果数组),
+                  可用次数: Math.max(1, Math.floor(Number(effect?.可用次数 || 1))), 持续回合: keepRounds,
+                  ...(effect?.成功率 !== undefined ? { 成功率: effect.成功率 } : {}) };
+                const grantContext = nestedContext('skill');
+                grantContext.declaration = { ...context.declaration, skill: { ...(context.declaration?.skill || {}), 魂技名: `复制·${name}` } };
+                applyEffect(grant, [actor], overlay, ledger, grantContext, depth + 1);
+              }
+            }
+            if (/属性|全部/.test(copyType)) {
+              const ratio = 1 - clamp(Math.abs(parseSignedValue(effect?.削减比例 ?? 0, 1)) || 0, 0, 0.95);
+              const self = overlay.readUnit(unitId(actor)) || actor;
+              const snapshot = {};
+              [['力量', 'str'], ['防御', 'def'], ['敏捷', 'agi']].forEach(([label, key]) => {
+                const value = Math.round(readCombatStat(source, key) * ratio);
+                if (value > readCombatStat(self, key)) snapshot[label] = value;
+              });
+              const actorId = unitId(actor);
+              const probabilityProfile = effectProbabilityProfile(context, actorId, effect);
+              if (Object.keys(snapshot).length && probabilityProfile.applicationProbability > 1e-12) {
+                const statsContext = nestedContext('stats');
+                const stateKey = `preview:${statsContext.effectInstanceId}:复制属性`;
+                const record = { 状态: '复制属性', 状态名称: '复制属性', 类型: 'buff', 原型: prototype, 来源原型摘要: prototype,
+                  来源角色: unitName(actor), 来源技能: String(context.declaration?.skill?.魂技名 || context.declaration?.skill?.name || '复制执行').trim(),
+                  来源动作ID: String(context.declaration?.__structuredSourceActionId || context.rootActionId || '').trim(),
+                  duration: keepRounds, 持续回合: keepRounds, 属性快照: snapshot, 战斗效果: {}, 面板修改比例: {}, 面板固定修正: {},
+                  ...(probabilityProfile.applicationProbability < 1 ? { __previewApplicationProbability: probabilityProfile.applicationProbability } : {}) };
+                overlay.changeUnit(actorId, unit => {
+                  unit.状态效果 = { ...(unit.状态效果 || {}), [stateKey]: record };
+                  unit.final = { ...(unit.final || {}), ...buildNumericCombatStats(unit, Number(context.worldSnapshot?.当前世界tick ?? 0)) };
+                });
+                ledger.addOutcome({ ...statsContext, targetId: actorId, outcomeKind: 'STATE_CHANGED', threatValue: 0,
+                  evidence: { prototype, state: '复制属性', copiedStats: snapshot, duration: keepRounds, marginal: true,
+                    stateEntries: { [stateKey]: cloneValue(record) },
+                    applicationProbability: probabilityProfile.applicationProbability, ownApplicationProbability: probabilityProfile.ownApplicationProbability,
+                    ...outcomeDependencyEvidence(context, actorId) } });
+              }
+            }
+          });
+          return;
+        }
         copied.forEach((nested, index) => {
           const nestedContext = {
             ...context,
@@ -14097,6 +14500,25 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             effectPath: effectContext.effectPath,
           };
           applyEffect(nested, resolveTargets(overlay.snapshot(), actor, context.declaration, nested), overlay, ledger, nestedContext, depth + 1);
+        });
+        return;
+      }
+      // 时光回溯 (用户 2026-11-14 定): 被动 lays on each target a one-time rewind until the end of the next round — the first
+      // hostile cast to land on it is blocked whole (a 规则防御 免伤 整招 charge) and the holder goes back to its HP and
+      // resources at the start of that round (consumeRuleCharges, the runtime's __时光回溯回合快照); 主动 lowers the
+      // targets' reaction by 30% times the caster's 精神力上限 over the target's (at most 1) for a round. A declaration that
+      // brings its own history (a counter's historySnapshot) rewinds the targets to it at once, as before.
+      if (prototype === '时光回溯' && !context.declaration?.historySnapshot) {
+        const active = String(effect?.发动方式 || '被动').trim() === '主动';
+        const odds = effect?.成功率 !== undefined ? { 成功率: effect.成功率 } : {};
+        targets.forEach((target, targetIndex) => {
+          const nestedContext = { ...context, effectInstanceId: `${context.effectInstanceId}:rewind:${targetIndex}`, depth: depth + 1,
+            effectPath: effectContext.effectPath };
+          const ratio = clamp(readResourceMax(actor, '精神力') / Math.max(1, readResourceMax(target, '精神力')), 0, 1);
+          applyEffect(active
+            ? { 原型: '判定修正', 目标: effect.目标, 判定: '反应', 数值: `-${Number((30 * ratio).toFixed(2))}%`, 持续回合: 1, ...odds }
+            : { 原型: '规则防御', 目标: effect.目标, 规则: '免伤', 次数: 1, 计次: RULE_DEFENSE_COUNT_MODES.WHOLE_MOVE, 持续回合: 2,
+              __时光回溯: true, ...odds }, [target], overlay, ledger, nestedContext, depth + 1);
         });
         return;
       }
@@ -14154,6 +14576,19 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             evidence: { rewind: true, rewindSnapshot: cloneValue(historicUnit), ...probabilityEvidence },
           });
         });
+        return;
+      }
+      if (prototype === '群体撤离') {
+        const world = overlay.snapshot(), user = overlay.readUnit(unitId(actor)) || actor;
+        const contest = groupWithdrawalContest(world, user, effect);
+        const cost = groupWithdrawalCost(effect);
+        if (!contest || Object.entries(cost).some(([resource, amount]) => readResource(user, resource) < amount)) return;
+        Object.entries(cost).forEach(([resource, amount]) => { if (amount > 0) overlay.setResource(unitId(actor), resource, readResource(user, resource) - amount); });
+        ledger.addOutcome({ ...context, targetId: unitId(actor), effectInstanceId: `${context.effectInstanceId}:group-withdrawal`,
+          outcomeKind: 'WITHDRAWAL_CONTEST', threatValue: 0, evidence: { ...contest, delta: 0 } });
+        if (contest.successProbability >= 1 - 1e-12) contest.participantIds.forEach(id => overlay.changeUnit(id, unit => {
+          unit.__战斗失能原因 = contest.concede ? LEFT_BATTLE_REASONS.CONCEDE : LEFT_BATTLE_REASONS.WITHDRAW;
+        }));
         return;
       }
       if (prototype === '召唤生成') {
@@ -22653,6 +23088,41 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
   }
 
+  // 群体撤离 in a battle (用户 2026-11-14「战斗中可用，带全队撤离」): the user and every teammate still able to fight leave
+  // together — one draw for all, 基础成功率 × 每增加一人成功率倍率^(人数−1), no pursuit; in a spar or a match (battleRules
+  // concede) leaving is a certain concession, as a single unit's is. Null where the battle allows no leaving. The effect's
+  // own 消耗 (`魂力:14030 | 精神力:240`) is paid by the user, success or not (groupWithdrawalCost).
+  function groupWithdrawalContest(worldSnapshot = {}, actor = {}, effect = {}) {
+    const rules = battleRules(worldSnapshot);
+    if (!rules.exit) return null;
+    const actorId = unitId(actor), side = sideOf(worldSnapshot, actor);
+    const participantIds = [actorId, ...listUnits(worldSnapshot)
+      .filter(entry => entry.side === side && unitId(entry.unit) !== actorId && isBattleCapable(entry.unit) && !isSummonUnit(entry.unit))
+      .map(entry => unitId(entry.unit))];
+    const base = clamp(Number(effect?.基础成功率 ?? 1), 0, 1);
+    const multiplier = Math.max(0, Number(effect?.每增加一人成功率倍率 ?? 0.9));
+    const success = rules.concede ? 1 : clamp(base * Math.pow(multiplier, participantIds.length - 1), 0, 1);
+    const probabilityGroupKey = `group-withdrawal:${stableHash({ actorId, participantIds })}`;
+    const branch = (outcome, probability) => Object.freeze({ branchKey: outcome, outcome, probability, withdrawalSuccess: outcome === 'SUCCESS' && !rules.concede,
+      ...(rules.concede ? { conceded: true } : {}), pursuitDamage: 0, delta: 0, hpDamage: 0,
+      conditionalOn: Object.freeze({ [probabilityGroupKey]: outcome }), assignments: Object.freeze({ [probabilityGroupKey]: outcome }) });
+    return Object.freeze({
+      groupWithdrawal: true, concede: rules.concede, participantIds: Object.freeze(participantIds),
+      pursuerId: '', visiblePursuerIds: Object.freeze([]), probabilityGroupKey, withdrawalScore: 0, pursuitScore: 0, ratio: Number.POSITIVE_INFINITY,
+      successProbability: success, partialProbability: 0, failureProbability: 1 - success,
+      partialPursuitDamage: 0, failurePursuitDamage: 0, expectedPursuitDamage: 0,
+      outcomeDistribution: Object.freeze([branch('SUCCESS', success), ...(success < 1 ? [branch('FAILURE', 1 - success)] : [])]),
+    });
+  }
+  function groupWithdrawalCost(effect = {}) {
+    const cost = { 魂力: 0, 精神力: 0, 体力: 0 };
+    String(effect?.消耗 || '').split(/\s*\|\s*/).forEach(entry => {
+      const match = /^(魂力|精神力|体力):(\d+(?:\.\d+)?)$/.exec(String(entry || '').trim());
+      if (match) cost[match[1]] = Number(match[2]);
+    });
+    return cost;
+  }
+
   function buildWithdrawalContest(worldSnapshot = {}, actor = {}) {
     const actorId = unitId(actor);
     const actorSide = sideOf(worldSnapshot, actor);
@@ -23035,7 +23505,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // 接战链 阶段二补充 (§7.3、§8.3): what a state stops of a move — one that stops a unit acting (the runtime's
   // structuredControlPreventsOpportunity for an action) stops any move; 封技/沉默 (silence) a released skill; 缴械
   // (disarm) a basic attack. `incoming` null: whether it stops a unit acting.
-  const PREEMPT_SILENCE_NAMES = /沉默|封技/, PREEMPT_DISARM_NAMES = /缴械/;
+  const PREEMPT_SILENCE_NAMES = /沉默|封技/, PREEMPT_DISARM_NAMES = /束手/;
   function stateBlocksMove(name = '', combatEffect = {}, incoming = null) {
     if (structuredControlConsumesActiveOpportunity({ 状态: name, 战斗效果: combatEffect })) return true;
     const kind = String(incoming?.actionKind || '').trim().toUpperCase();
@@ -23298,6 +23768,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     calculateWithdrawalPressureDetails,
     estimateWithdrawal,
     buildWithdrawalContest,
+    groupWithdrawalContest,
+    groupWithdrawalCost,
     calculateReactionContest,
     calculateDefenseDamageMultiplier,
     calculateDodgeProbability,
@@ -23337,6 +23809,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     evaluateMechanicalBasis,
     evaluateMechanicalBasisRouteScalarColumns,
     deriveStateCombatEffect,
+    deriveStatePanelRatios,
     statePolarity,
     negativeEffectIsImmune,
     conditionMatchesFilter,
@@ -23393,6 +23866,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     healingMultiplierForUnit,
     healInversionOf,
     healInversionEffect,
+    healStrikeEffect,
+    equipmentSealEffect,
+    equipmentSealChance,
+    sealedEquipmentSlots,
+    battleEquipment,
+    equipmentSlotOf,
+    wornEquipmentPanelBonus,
+    unitWithoutSealedEquipment,
+    statePanelChanges,
+    toolSpiritKeys,
+    sealableEquipment,
+    healStrikeDamageShare,
     healingMultiplierDetails,
     unitIsLiving,
     effectMatchesMechanismMatcher,

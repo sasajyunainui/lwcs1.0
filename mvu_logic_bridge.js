@@ -13843,7 +13843,7 @@
   const SKILL_DESIGNER_PARAM_COUNTER_TARGET_OPTIONS = Object.freeze(['远程', '控制', '召唤', '近战']);
   const SKILL_DESIGNER_PARAM_TRIGGER_RESULT_OPTIONS = Object.freeze(['爆发', '刷新', '召唤']);
   const SKILL_DESIGNER_PARAM_RULE_REWRITE_OPTIONS = Object.freeze([
-    '缴械',
+    '束手',
     { value: '死亡转存活', label: '复活' },
   ]);
   const 技能设计台规则改写选项值 = Object.freeze(normalizeSkillDesignerOptionList(SKILL_DESIGNER_PARAM_RULE_REWRITE_OPTIONS).map(item => item.value));
@@ -14817,7 +14817,7 @@
     } else if (原型 === '规则改写') {
       字段['规则'] = 技能设计台规则改写选项值.includes(normalizeSkillUiText(字段['规则'] || source['规则'], ''))
         ? normalizeSkillUiText(字段['规则'] || source['规则'], '')
-        : '缴械';
+        : '束手';
       if (字段['规则'] === '死亡转存活') {
         字段['目标'] = '自身';
         if (字段['数值'] === undefined) 字段['数值'] = 格式化技能设计台原型比例变化(pick(['数值', 'rewriteValue']) ?? 0.25, 0.25, true);
@@ -15692,7 +15692,7 @@
       }
     }
     if (原型 === '规则改写') {
-      字段['规则'] = 技能设计台规则改写选项值.includes(normalizeSkillUiText(字段['规则'], '')) ? normalizeSkillUiText(字段['规则'], '') : '缴械';
+      字段['规则'] = 技能设计台规则改写选项值.includes(normalizeSkillUiText(字段['规则'], '')) ? normalizeSkillUiText(字段['规则'], '') : '束手';
       if (字段['规则'] === '死亡转存活') {
         字段['目标'] = '自身';
         字段['数值'] = normalizeSkillUiText(字段['数值'], '+25%');
@@ -19110,7 +19110,7 @@
     const 允许字段 = key => key && !技能设计台原型字段隐藏集合.has(key) && (key !== '对应等级' || !!(context && context.允许对应等级));
     if (原型名 === '炸环' && !字段.includes('强化倍率')) return ['目标', '原型', '生效方式', '强化倍率', '条件分支'];
     if (原型名 === '规则改写') {
-      const 规则 = normalizeSkillUiText(effect && effect['规则'], '缴械');
+      const 规则 = normalizeSkillUiText(effect && effect['规则'], '束手');
       const 固定顺序 = 规则 === '死亡转存活'
         ? ['规则', '数值', '生效方式', '条件分支']
         : ['规则', '目标', '持续回合', '生效方式', '条件分支'];
@@ -19536,7 +19536,7 @@
     if (prototype === '规则改写') {
       const 规则 = 技能设计台规则改写选项值.includes(normalizeSkillUiText(source['规则'], ''))
         ? normalizeSkillUiText(source['规则'], '')
-        : normalizeSkillUiText(next['规则'], '缴械');
+        : normalizeSkillUiText(next['规则'], '束手');
       next['规则'] = 规则;
       if (规则 === '死亡转存活') {
         next['目标'] = '自身';
@@ -27150,6 +27150,8 @@ ${播报文本}
     return Object.fromEntries(
       Object.entries(conditionMap)
         .filter(([name, condition]) => name && condition && typeof condition === 'object')
+        // 换装只在本场战斗生效（用户 2026-11-14）：换上装备的加成、换下装备的扣除都不带出战斗。
+        .filter(([, condition]) => !condition.__换下槽位 && !(condition.__equipmentState === true && condition.__equipmentActionId))
         .map(([name, condition]) => [name, 构建战斗状态落盘值(condition)]),
     );
   }

@@ -2135,10 +2135,41 @@
     return effect;
   }
 
+  // 交手看清对手 (用户 2026-11-13："对手的实力按理来说经过几次交手后会逐渐清晰啊？最起码不会偏离太多"): what a side has seen
+  // of an enemy is every hit settled between them in the battle so far, either way, landed or not; n of them draw the
+  // enemy's pictured level, panel and resources toward the true ones by n / (n + BELIEF_EXCHANGE_PRIOR) — half after two
+  // exchanges, three quarters after six. A starting value, set by its reading. Counted per ledger while it grows.
+  const BELIEF_EXCHANGE_PRIOR = 2;
+  const beliefExchangeCache = new WeakMap();
+  function beliefExchangeCounts(worldSnapshot = {}, side = '') {
+    const ledger = Array.isArray(worldSnapshot?.__battleEventLedger) ? worldSnapshot.__battleEventLedger : null;
+    if (!ledger || !ledger.length || !side) return new Map();
+    let cached = beliefExchangeCache.get(ledger);
+    if (!cached || cached.length !== ledger.length) {
+      const sides = new Map(worldEntries(worldSnapshot).map(entry => [preview.unitId(entry.unit), entry.side]));
+      const bySide = new Map();
+      for (const event of ledger) {
+        if (event?.eventKind !== 'hit_result') continue;
+        const actor = String(event.actorId || '').trim(), target = String(event.targetId || '').trim();
+        const actorSide = sides.get(actor), targetSide = sides.get(target);
+        if (!actorSide || !targetSide || actorSide === targetSide) continue;
+        for (const [observer, enemy] of [[actorSide, target], [targetSide, actor]]) {
+          const counts = bySide.get(observer) || new Map();
+          counts.set(enemy, (counts.get(enemy) || 0) + 1);
+          bySide.set(observer, counts);
+        }
+      }
+      cached = { length: ledger.length, bySide };
+      beliefExchangeCache.set(ledger, cached);
+    }
+    return cached.bySide.get(side) || new Map();
+  }
+
   function buildDecisionWorldOutcomes(worldSnapshot = {}, actorId = '', beliefState = {}, alreadyPublic = false) {
     const sourceActor = findUnitInWorld(worldSnapshot, actorId);
     if (!sourceActor) throw new Error('battle_decision_projection_actor_missing');
     const actorSide = sideOf(worldSnapshot, sourceActor);
+    const exchanges = alreadyPublic === true ? new Map() : beliefExchangeCounts(worldSnapshot, actorSide);
     const projectUnit = (sourceUnit, publicSide = '') => {
       if (alreadyPublic === true || sideOf(worldSnapshot, sourceUnit) === actorSide) {
         const unit = preview.inheritProjectedStateSourceWindows(cloneValue(sourceUnit), sourceUnit, worldSnapshot);
@@ -2154,7 +2185,11 @@
       const lower = Math.max(1, strengthRange[0]);
       const upper = Math.max(lower, Number(strengthRange[1] || lower));
       const confidence = clamp(beliefState?.confidence ?? 0.5, 0, 1);
-      const perceivedLevel = lower + (upper - lower) * (0.75 - 0.25 * confidence);
+      // 交手看清对手 (beliefExchangeCounts): each value pictured is drawn toward the unit's own by what has been seen of it.
+      const seen = Number(exchanges.get(id) || 0), clarity = seen / (seen + BELIEF_EXCHANGE_PRIOR);
+      const toward = (estimate, truth) => Number.isFinite(Number(truth)) ? estimate + (Number(truth) - estimate) * clarity : estimate;
+      const truePanel = key => preview.readCombatStatBreakdown(sourceUnit, key).base;
+      const perceivedLevel = toward(lower + (upper - lower) * (0.75 - 0.25 * confidence), unitLevel(sourceUnit));
       if (typeof root.__LWCS_GET_BASE_STATS__ !== 'function') throw new Error('battle_decision_base_stats_unavailable');
       const baseStats = root.__LWCS_GET_BASE_STATS__(perceivedLevel);
       if (!baseStats || !['sp_max', 'men_max', 'vit_max', 'str', 'def', 'agi'].every(key => Number.isFinite(baseStats[key]) && baseStats[key] > 0)) {
@@ -2171,17 +2206,18 @@
             ? { str: 0.78, def: 0.9, agi: 0.95 }
             : { str: 1.08, def: 1, agi: 0.96 };
       const typical = typicalStatRatio(perceivedLevel);
-      const hpMax = baseStats.vit_max * typical.hp_max;
+      const hpMax = toward(baseStats.vit_max * typical.hp_max, preview.readHpMax(sourceUnit));
       const hp = hpMax * clamp(beliefUnit.hpRatio ?? 1, 0, 1);
       const resourceRatios = beliefUnit.resources || {};
       // An enemy's resources are not public: each is taken as the deciding unit's own share of it (both sides start a
       // battle full and spend as it goes on). It used to be a flat half, which made every enemy look drained from the
       // first turn — a twin's evasion read 56% where the settlement rolled 15%, and the old valuation evaded in more
       // than half of its answers (2026-11-12).
-      const unknownShare = resource => { const own = ratio(sourceActor, resource); return Number.isFinite(own) ? own : 0.5; };
-      const soulMax = baseStats.sp_max * typical.sp_max;
-      const spiritMax = baseStats.men_max * typical.men_max;
-      const staminaMax = baseStats.vit_max * typical.vit_max;
+      // Seen in exchanges (beliefExchangeCounts), it is drawn toward the unit's own share.
+      const unknownShare = resource => { const own = ratio(sourceActor, resource); return toward(Number.isFinite(own) ? own : 0.5, ratio(sourceUnit, resource)); };
+      const soulMax = toward(baseStats.sp_max * typical.sp_max, preview.readResourceMax(sourceUnit, '魂力'));
+      const spiritMax = toward(baseStats.men_max * typical.men_max, preview.readResourceMax(sourceUnit, '精神力'));
+      const staminaMax = toward(baseStats.vit_max * typical.vit_max, preview.readResourceMax(sourceUnit, '体力'));
       const states = Object.fromEntries((beliefUnit.visibleStates || []).map((state, index) => [`visible:${id}:${index}`, {
         状态: String(state?.name || '').trim(),
         duration: Math.max(0, Number(state?.duration || 0)),
@@ -2200,7 +2236,7 @@
           : {}),
       }]));
       // 接战链 阶段 2e/2f: the agility pictured, and the bounds settled clashes and preemptions put on it.
-      const pictureAgility = combatBase * systemScale.agi * typical.agi * systemAgilityCorrection(perceivedLevel, system);
+      const pictureAgility = toward(combatBase * systemScale.agi * typical.agi * systemAgilityCorrection(perceivedLevel, system), truePanel('agi'));
       const boundLow = Number(beliefState?.agilityBounds?.[id]?.lo) || 0, boundHigh = Number(beliefState?.agilityBounds?.[id]?.hi) || Infinity;
       const projected = {
         id,
@@ -2220,8 +2256,8 @@
         men_max: spiritMax,
         vit: staminaMax * clamp(resourceRatios.stamina ?? unknownShare('vit'), 0, 1),
         vit_max: staminaMax,
-        str: Math.max(1, combatBase * systemScale.str * typical.str),
-        def: Math.max(1, combatBase * systemScale.def * typical.def),
+        str: Math.max(1, toward(combatBase * systemScale.str * typical.str, truePanel('str'))),
+        def: Math.max(1, toward(combatBase * systemScale.def * typical.def, truePanel('def'))),
         // 接战链 阶段 2e: corrected by the system's measured agility (systemAgilityCorrection), then held within what this
         // side has seen of the unit's speed in settled clashes and preemptions (beliefState.agilityBounds, BattleRuntime).
         agi: Math.max(1, clamp(pictureAgility, boundLow, boundHigh)),
@@ -2232,8 +2268,18 @@
         ...(pictureAgility < boundLow ? { __agilityBound: 'LO' } : pictureAgility > boundHigh ? { __agilityBound: 'HI' } : {}),
         状态: { 存活: beliefUnit.alive !== false },
         __战斗失能原因: String(sourceUnit?.__战斗失能原因 || '').trim(),
+        // What the unit is is public — an evil soul master is known for one, an abyss creature for one (治疗打敌: a holy
+        // heal strikes them, BattlePreview unitConditionText).
+        ...(sourceUnit?.邪魂师 === true || sourceUnit?.属性?.邪魂师 === true ? { 邪魂师: true } : {}),
+        ...(sourceUnit?.单位性质 ? { 单位性质: String(sourceUnit.单位性质) } : {}),
+        ...(sourceUnit?.身份 ? { 身份: String(sourceUnit.身份) } : {}),
+        // Its worn equipment and a tool spirit are seen — what a seal could take of them (BattlePreview sealableEquipment);
+        // the equipment itself (its passives) stays unknown.
+        ...(() => { const sealable = preview.sealableEquipment(sourceUnit); return Object.keys(sealable).length ? { __可封装备: sealable } : {}; })(),
         状态效果: states,
         技能列表: [],
+        // The skill it released last was seen by everyone (复制执行 copies it: BattlePreview copySourceSkill).
+        ...(sourceUnit?.__battleRuntime?.lastReleasedSkill ? { __battleRuntime: { lastReleasedSkill: cloneValue(sourceUnit.__battleRuntime.lastReleasedSkill) } } : {}),
         routine_attack_ratio: publicUnitRole === 'SUMMON' ? 1 : typicalAttackRatio(perceivedLevel, system),
       };
       const observedResponses = (Array.isArray(beliefUnit?.knownResponses)
@@ -4473,9 +4519,29 @@
     }));
   }
 
+  // The equipment object without its sealed slots, one per equipment object and seal (collectSkills caches by root).
+  const sealedEquipmentViews = new WeakMap();
+  function sealedEquipmentView(equipment = {}, sealed = new Set()) {
+    const key = [...sealed].join('|');
+    let byKey = sealedEquipmentViews.get(equipment);
+    if (!byKey) sealedEquipmentViews.set(equipment, byKey = new Map());
+    if (!byKey.has(key)) {
+      const kept = { ...equipment };
+      sealed.forEach(slot => { delete kept[slot]; });
+      byKey.set(key, kept);
+    }
+    return byKey.get(key);
+  }
+
   function collectSkills(unit = {}) {
     const activeGrantedSkills = collectActiveGrantedSkills(unit);
-    const cachedUnitSkills = unitSkillCache.get(unit);
+    // 封禁装备 (BattlePreview sealedEquipmentSlots): a sealed weapon, armour or mecha carries no skill, nor a sealed 器武魂.
+    const sealed = preview.sealedEquipmentSlots(unit);
+    // 换装 (BattlePreview battleEquipment): what was put on in the battle carries its skills, what it replaced does not.
+    const equipment = preview.battleEquipment(unit);
+    const sealKey = [...sealed].join('|');
+    const cachedEntry = unitSkillCache.get(unit);
+    const cachedUnitSkills = cachedEntry && cachedEntry.sealKey === sealKey && cachedEntry.equipment === equipment ? cachedEntry.skills : null;
     if (cachedUnitSkills) {
       return activeGrantedSkills.length
         ? Object.freeze([...cachedUnitSkills, ...activeGrantedSkills])
@@ -4483,7 +4549,9 @@
     }
     const roots = [
       ...(Array.isArray(unit?.技能列表) && unit.技能列表.length ? [unit.技能列表] : []),
-      ...Object.entries(unit).filter(([key, value]) => /^(?:第\d+)?武魂|血脉之力|魂骨|装备|自创魂技|技能/.test(key) && value && typeof value === 'object').map(([, value]) => value),
+      ...Object.entries(unit).filter(([key, value]) => /^(?:第\d+)?武魂|血脉之力|魂骨|装备|自创魂技|技能/.test(key) && value && typeof value === 'object')
+        .filter(([key]) => !(sealed.has('器武魂') && preview.toolSpiritKeys(unit).includes(key)))
+        .map(([key, value]) => key !== '装备' ? value : sealed.size ? sealedEquipmentView(equipment || value, sealed) : equipment || value),
     ];
     const collectRoot = skillRoot => {
       const cached = skillRootCache.get(skillRoot);
@@ -4538,7 +4606,7 @@
       });
     });
     const result = Object.freeze(output);
-    unitSkillCache.set(unit, result);
+    unitSkillCache.set(unit, { sealKey, equipment, skills: result });
     return activeGrantedSkills.length
       ? Object.freeze([...result, ...activeGrantedSkills])
       : result;
@@ -4559,10 +4627,13 @@
     return status;
   }
 
+  // 复制执行 and 时光回溯 stay deferred paths of the frozen prototype contract (BehaviorDecisionPipeline), liftable with a
+  // caller projection: the preview projects them (用户 2026-11-14「补上」), so they are cast like any other prototype.
+  const PREVIEW_PROJECTED_DEFERRED_PROTOTYPES = new Set(['复制执行', '时光回溯']);
   function nonExecutableBattlePrototype(skill = {}) {
     return preview.collectEffects(skill)
       .map(effect => String(effect?.原型 || '').trim())
-      .find(prototype => ['DEFERRED_EXPLICIT', 'OUT_OF_BATTLE_SCOPE'].includes(
+      .find(prototype => !PREVIEW_PROJECTED_DEFERRED_PROTOTYPES.has(prototype) && ['DEFERRED_EXPLICIT', 'OUT_OF_BATTLE_SCOPE'].includes(
         battlePrototypeStatus(prototype),
       )) || '';
   }
@@ -5183,7 +5254,8 @@
       state &&
       typeof state === 'object' &&
       Math.max(0, Number(state?.duration ?? state?.持续回合 ?? 1)) > 0 &&
-      (String(state?.原型 || '').trim() === '结算修正' || Number(state?.战斗效果?.cost_delta_ratio || 0) > 0)
+      (String(state?.原型 || '').trim() === '结算修正' || Number(state?.战斗效果?.cost_delta_ratio || 0) > 0 ||
+        Number(state?.战斗效果?.cast_backlash_ratio || 0) > 0)
     );
   }
 
@@ -5195,7 +5267,8 @@
       state &&
       typeof state === 'object' &&
       Math.max(0, Number(state?.duration ?? state?.持续回合 ?? 1)) > 0 &&
-      (String(state?.原型 || '').trim() === '结算修正' || Number(state?.战斗效果?.cost_delta_ratio || 0) > 0)
+      (String(state?.原型 || '').trim() === '结算修正' || Number(state?.战斗效果?.cost_delta_ratio || 0) > 0 ||
+        Number(state?.战斗效果?.cast_backlash_ratio || 0) > 0)
     ).map(state => [
       Number(state?.duration ?? state?.持续回合 ?? 1),
       state?.限定元素 ?? null,
@@ -5207,6 +5280,7 @@
       state?.战斗效果?.cost_delta_ratio ?? null,
       state?.战斗效果?.windup_ratio ?? null,
       state?.战斗效果?.windup_delta ?? null,
+      state?.战斗效果?.cast_backlash_ratio ?? null,
     ]));
     activeSettlementModifierSignatureCache.set(unit, signature);
     return signature;
@@ -5735,6 +5809,7 @@
       if (prototype === '状态施加') return !preview.effectTargetsAllies(effect);
       if (prototype === '状态移除') return !preview.effectTargetsAllies(effect);
       if (prototype === '属性修正') return Number.parseFloat(String(effect?.数值 || '-1')) < 0;
+      if (prototype === '时光回溯') return !preview.effectTargetsAllies(effect);
       return false;
     });
     const friendly = targetableEffects.some(effect => {
@@ -5752,6 +5827,7 @@
       if (prototype === '判定修正') return 增益语义.判定修正是否增益语义_V1(effect) && !hostile;
       if (prototype === '状态施加') return preview.effectTargetsAllies(effect) && !hostile;
       if (prototype === '属性修正') return Number.parseFloat(String(effect?.数值 || '0')) > 0 && !hostile;
+      if (prototype === '时光回溯' || prototype === '复制执行') return preview.effectTargetsAllies(effect) && !hostile;
       return false;
     });
     const profile = targets.some(target => /全场|群体/.test(target))
@@ -6086,6 +6162,21 @@
     );
   }
 
+  // Whether `skill`, a heal, lands on the enemy `unit` as an attack only: every effect it aims (not at its caster) is
+  // an attack on it as resolved for it (BattlePreview resolveConditionalEffectPlan: 治疗反转 on it, or the 神圣逆邪 branch
+  // against 邪魂师 / 深渊生物), at least one of them a heal turned — so no gift reaches the enemy.
+  function healStrikesUnit(worldSnapshot = {}, actor = {}, skill = {}, unit = {}) {
+    const aimed = (Array.isArray(skill?._效果数组) ? skill._效果数组 : []).filter(effect => String(effect?.目标 || '').trim() !== '自身');
+    if (!aimed.length || !aimed.some(effect => String(effect?.原型 || '').trim() === '资源变化')) return false;
+    let struck = false;
+    for (const effect of aimed) {
+      const plan = preview.resolveConditionalEffectPlan(effect, worldSnapshot, actor, unit, {});
+      if (plan.some(entry => String(entry.effect?.原型 || '').trim() !== '伤害结算')) return false;
+      if (plan.some(entry => preview.healStrikeDamageShare(entry.effect) > 0)) struck = true;
+    }
+    return struck;
+  }
+
   function enumerateTargetSets(worldSnapshot, actor, profile, beliefState = {}, skill = {}) {
     const actorSide = sideOf(worldSnapshot, actor);
     const targetableEffects = (Array.isArray(skill?._效果数组) ? skill._效果数组 : [])
@@ -6100,7 +6191,9 @@
     if (profile === 'SELF') return [[preview.unitId(actor)]];
     if (profile === 'FRIENDLY_GROUP') return [friendly.map(preview.unitId)];
     if (profile === 'HOSTILE_GROUP') return [hostile.map(preview.unitId)];
-    if (profile === 'FRIENDLY_SINGLE') return friendly.map(unit => [preview.unitId(unit)]);
+    // 治疗打敌: a heal may single out an enemy it lands on as an attack (BattlePreview healStrikeEffect, the 神圣逆邪 branch).
+    if (profile === 'FRIENDLY_SINGLE') return [...friendly, ...hostile.filter(unit => healStrikesUnit(worldSnapshot, actor, skill, unit))]
+      .map(unit => [preview.unitId(unit)]);
     if (profile === 'ANY_SINGLE') return entries.map(entry => [preview.unitId(entry.unit)]);
     const interferencePossible = beliefState?.targetInterferencePossible === true || beliefState?.confused === true;
     const targets = interferencePossible ? entries.map(entry => entry.unit) : hostile;
@@ -6117,6 +6210,9 @@
     const singleTargetDirections = nestedSkillEffects(skill).flatMap(effect => {
       const target = String(effect?.目标 || '').trim();
       if (!target || /自身|融合伙伴|全场|群体/.test(target)) return [];
+      // A heal's strike on an enemy (the 神圣逆邪 replacement) stands in for the heal, no second target of its own: the
+      // enemies it may single out are healStrikesUnit's.
+      if (preview.healStrikeDamageShare(effect) > 0) return [];
       return [targetProfile({ _效果数组: [effect] }) === 'FRIENDLY_SINGLE'];
     });
     if (['FRIENDLY_SINGLE', 'HOSTILE_SINGLE'].includes(profile)) {
@@ -7135,7 +7231,7 @@
     return stateEntries(unit).some(state => {
       const name = String(state?.状态 || state?.状态名称 || '').trim();
       const effects = state?.战斗效果 || {};
-      return effects?.[flag] === true || (flag === 'silence' && /沉默|封技/.test(name)) || (flag === 'disarm' && /缴械/.test(name));
+      return effects?.[flag] === true || (flag === 'silence' && /沉默|封技/.test(name)) || (flag === 'disarm' && /束手/.test(name));
     });
   }
 
@@ -10827,6 +10923,10 @@
       'counter_attack_ratio',
       'lock_level',
       'locked_ratio',
+      'defense_strip',
+      'spirit_resist_strip',
+      'weaken_ratio',
+      'cast_backlash_ratio',
     ];
     if (additiveKeys.some(key => Math.abs(Number(combatEffect?.[key] || 0)) > 0.0001)) return true;
     return ['received_damage_mult', 'damage_taken_mult'].some(key => {
@@ -10953,7 +11053,10 @@
     const hasDotTick =
       Math.max(0, Number(combatEffect?.dot_damage || 0)) > 0 ||
       Math.max(0, Number(combatEffect?.dot_damage_ratio || 0)) > 0;
-    const hasQualityEffect = prototype !== '状态施加' || Object.keys(combatEffect || {}).length > 0;
+    // A shield state (状态施加·护盾) carries its pool in the state's shield_value, not in a combat effect; it used to read
+    // as an empty state here, its SHIELD_DELTA was cut and the skill never chosen (主线检验 11-14).
+    const shieldState = prototype === '状态施加' && /护盾|屏障|结界/.test(stateName);
+    const hasQualityEffect = prototype !== '状态施加' || shieldState || Object.keys(combatEffect || {}).length > 0;
     const pendingNaturalUnits = [...pendingNaturalActorIds]
       .map(targetId => findUnitInWorld(worldSnapshot, targetId))
       .filter(target => target && preview.isBattleCapable(target));
@@ -11057,6 +11160,7 @@
     }
     if (hasDotTick) normalizedTargetIds.forEach(targetId => addTargetReason(targetId, 'SAME_ROUND_TICK'));
     const protectsFriendlyTarget = pendingHostileActorIds.size > 0 && (
+      shieldState ||
       combatEffect?.invincible === true ||
       combatEffect?.super_armor === true ||
       Number(combatEffect?.dodge_bonus || 0) > 0 ||
@@ -23274,8 +23378,13 @@
       'resource_lock',
       'cast_speed_penalty',
       'random_target_rate',
+      'weaken_ratio',
+      'cast_backlash_ratio',
     ]);
     const incomingPoolKeys = new Set([
+      'defense_strip',
+      'spirit_resist_strip',
+      'weaken_ratio',
       'dodge_bonus',
       'dodge_penalty',
       'damage_reduction',
@@ -66202,7 +66311,7 @@
     // withdrawal's odds and pursuit — on the race's scale of the stake (R20_WIN_VALUE a battle won). The race is not run
     // for it: what the actor would have done is in the outlook it no longer adds to. (Before: worth what staying stood to
     // lose, read at a chance of 1 whatever the contest's.)
-    if (String(candidate?.declaration?.actionKind || '').trim().toUpperCase() === 'WITHDRAW') {
+    if (exitCandidate(candidate, result)) {
       const exit = r9v2LinearExitValuation(request, result, 'r20');
       if (exit) {
         const leave = R20_WIN_VALUE * exit.delta;
@@ -67534,7 +67643,7 @@
         Number.isFinite(unit.final.__体力衰减系数) && unit.final.__体力衰减系数 >= 0 && unit.final.__体力衰减系数 <= 1) &&
       Object.values(unit.状态效果 || {}).every(pureState) &&
       // panelStats is the battle-start stamina price record (R07): constant for the battle, so it is bookkeeping here.
-      keysWithin(unit.__battleRuntime, ['__itemPassiveSignature', 'itemPassivePackage', 'itemPassiveTriggeredSkills', 'itemPassiveRoutes', 'naturalOpportunity', 'panelStats']) &&
+      keysWithin(unit.__battleRuntime, ['__itemPassiveSignature', 'itemPassivePackage', 'itemPassiveTriggeredSkills', 'itemPassiveRoutes', 'naturalOpportunity', 'panelStats', 'lastReleasedSkill']) &&
       !unit.__battleRuntime?.itemPassivePackage?.有效 &&
       ['itemPassiveTriggeredSkills', 'itemPassiveRoutes'].every(key => empty(unit.__battleRuntime?.[key])) &&
       !preparedSkillProfiles(unit).some(profile => profile.fusionMetadata) && collectSkills(unit).every(skill => skill && pureSkill(unit, skill));
@@ -68002,7 +68111,7 @@
     // exitValuation: the side's chance to win with and without the actor, the fates losing brings, a withdrawal's odds
     // and pursuit), carried by OBJECTIVE_PROGRESS on its scale (a battle won +1, lost −1), every other row 0: the actor is
     // gone, and what it would have done is in the chance it no longer adds. No look-ahead and no threshold.
-    if (!conditioned && String(candidate?.declaration?.actionKind || '').trim().toUpperCase() === 'WITHDRAW') {
+    if (!conditioned && exitCandidate(candidate, result)) {
       const exit = r9v2LinearExitValuation(request, result);
       if (exit) return Object.freeze(r9v2LinearZeroCausalFeatureRows.map(row => row.featureCode !== 'OBJECTIVE_PROGRESS' ? row
         : Object.freeze({ ...row, value: clamp(exit.delta, -1, 1) })));
@@ -71367,6 +71476,12 @@
   const R9V2_SURROGATE_UNIT_RANGE_CODES = new Set(['OPPONENT_RESPONSE_PRESSURE', 'FOCUS_TARGET_MARGINAL_GAIN', 'TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL']);
   // The exit valuation of the actor leaving (BattlePreview exitValuation) on the decision's world, with the contest its
   // settlement carries. Development hook (absent in play): __LWCS_DECISION_DEBUG__.onExit sees each one.
+  // A candidate valued as leaving: a withdrawal, or a 群体撤离 the settlement found possible (its contest is there:
+  // BattlePreview groupWithdrawalContest) — the whole side leaving together.
+  function exitCandidate(candidate = {}, result = {}) {
+    if (String(candidate?.declaration?.actionKind || '').trim().toUpperCase() === 'WITHDRAW') return true;
+    return (result?.contributions || []).some(entry => entry?.outcomeKind === 'WITHDRAWAL_CONTEST' && entry?.evidence?.groupWithdrawal === true);
+  }
   function r9v2LinearExitValuation(request = {}, result = {}, valuation = 'r9v2') {
     const world = request.visibleWorld || request.worldSnapshot || {};
     const actor = findUnitInWorld(world, request.actorId);
@@ -71554,6 +71669,10 @@
       const hasIllegalSameSideTarget =
         ['HOSTILE_SINGLE', 'HOSTILE_GROUP'].includes(legalityTargetProfile) &&
         candidateTargetIds.some(targetId => publicSnapshot.sides[String(targetId)] === actorSide);
+      // The player's lock is settled as declared even when it changes nothing (主线检验 11-14: locking an action the R17
+      // rules exclude failed the whole settlement with R9V2_LINEAR_SELECTED_MISSING).
+      const playerLockedCandidate = !!request.playerLockedDeclaration &&
+        matchesPlayerLockedDeclaration(candidate, request.playerLockedDeclaration, request.visibleWorld);
       const rawPdaProjections = [];
       const rawSourceProjections = {};
       for (let index = 0; index < effects.length; index += 1) {
@@ -71622,7 +71741,7 @@
       // happened" settlement instead (7v7: 842 of 2360 candidates). searchBounds.excludedPreviews (development) settles it.
       const unsettledPreview = () => Object.freeze({ contributions: Object.freeze([]), afterSnapshot: { ...request.visibleWorld },
         changedUnitIds: Object.freeze([]), scheduledEvents: Object.freeze([]), changedRules: Object.freeze({}) });
-      const worldExclusionCode = hasIllegalSameSideTarget ? null : r17NoEffectCode(request, declaration);
+      const worldExclusionCode = hasIllegalSameSideTarget || playerLockedCandidate ? null : r17NoEffectCode(request, declaration);
       const settlementSkipped = (hasIllegalSameSideTarget || worldExclusionCode) && searchBounds?.excludedPreviews !== true;
       let previewResult;
       let previewBudgetExceeded = false;
@@ -71753,7 +71872,7 @@
         bridgeInput.legalityFlags = ['ILLEGAL_TARGET'];
         illegalTargetCandidateIds.add(candidate.candidateId);
       }
-      const noEffectCode = hasIllegalSameSideTarget ? null : worldExclusionCode || r17NoEffectCode(request, declaration, scoringPreviewResult);
+      const noEffectCode = hasIllegalSameSideTarget || playerLockedCandidate ? null : worldExclusionCode || r17NoEffectCode(request, declaration, scoringPreviewResult);
       if (noEffectCode) {
         bridgeInput.legalityFlags = [...(bridgeInput.legalityFlags || []), noEffectCode];
         illegalTargetCandidateIds.add(candidate.candidateId);
@@ -72512,6 +72631,12 @@
     // Development hook (absent in play): __LWCS_DECISION_DEBUG__.onRanked sees every outermost decision's ranked rows.
     if (providerDepth === 1 && typeof root.__LWCS_DECISION_DEBUG__?.onRanked === 'function') root.__LWCS_DECISION_DEBUG__.onRanked({ request, candidateAudit });
     const selected = candidateAudit.find(row => row.candidateId === selectedId);
+    if (!selected && lockedChoice) {
+      // A lock the hard rules still exclude (a hostile skill at an ally) is refused with a reason, not a crash.
+      const error = new Error('battle_player_locked_declaration_mechanically_illegal');
+      error.reasonCode = 'PLAYER_LOCKED_CANDIDATE_EXCLUDED';
+      throw error;
+    }
     if (!selected) throw new Error('R9V2_LINEAR_SELECTED_MISSING');
     const selectedDeclaration = selected.declaration || {};
     const selectedCandidate = frozenById.get(selectedId) || selected;

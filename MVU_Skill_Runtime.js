@@ -3147,12 +3147,12 @@ function pickRandom(list = []) {
 
 var SKILL_SECONDARY_BY_MAIN_V1 = {
   伤害类: ['穿透', '伤害吸收', '斩杀补伤', '流血DOT', '打断', '反击', '追击', '引爆持续伤害', '斩盾', '吞噬', '延长持续伤害', '压缩持续伤害'],
-  控制类: ['打断', '沉默', '减速', '致盲', '迟缓', '禁疗', '嘲讽', '破隐', '封技'],
+  控制类: ['打断', '减速', '致盲', '迟缓', '禁疗', '嘲讽', '破隐', '封技', '缴械', '封甲'],
   削弱类: ['禁疗', '减速', '迟缓', '标记弱点', '驱散增益', '破隐', '治疗反转', '封技', '元素封禁', '斩盾', '吞噬', '机制抹消', '速度压制', '资源燃烧', '资源锁定'],
   增益类: ['小护盾', '净化', '解控', '共享视野', '隐身', '护卫', '威力增幅', '技能效果增幅', '无敌金身', '能力共享', '修炼增益'],
   防御类: ['小护盾', '反击', '净化', '解控', '护卫', '嘲讽', '无敌金身', '伤害反射', '伤害转移', '伤害分摊', '消耗分摊', '生命链接'],
   回复类: ['净化', '解控', '小护盾', '魂力恢复', '精神恢复', '驱散增益', '护卫', '能力共享', '修炼增益'],
-  '感知/认知类': ['标记弱点', '共享视野', '目标锁定', '打断', '沉默', '驱散增益', '窃取增益', '破隐'],
+  '感知/认知类': ['标记弱点', '共享视野', '目标锁定', '打断', '封技', '驱散增益', '窃取增益', '破隐'],
   位移类: ['打断', '反击', '标记弱点', '隐身', '破隐'],
   特殊规则类: ['共享视野', '标记弱点', '净化', '驱散增益', '窃取增益', '隐身', '护卫', '状态转移', '引爆持续伤害', '斩盾', '吞噬', '能力共享', '机制抹消', '炸环', '时光回溯', '气运干涉', '规则改写', '治疗反转', '封技', '无敌金身', '伤害反射', '伤害转移', '伤害分摊', '消耗分摊', '生命链接', '资源燃烧', '资源锁定'],
 };
@@ -3170,8 +3170,8 @@ var SKILL_SECONDARY_TYPE_BIAS_V1 = {
   强攻系: ['斩盾', '引爆持续伤害', '无敌金身', '伤害反射', '反击', '追击'],
   防御系: ['伤害反射', '护卫'],
   敏攻系: ['隐身', '追击', '破隐', '无敌金身', '斩盾'],
-  控制系: ['封技', '治疗反转', '目标锁定', '驱散增益', '嘲讽', '伤害分摊', '吞噬', '机制抹消'],
-  精神系: ['状态转移', '封技', '治疗反转', '窃取增益', '目标锁定', '隐身', '吞噬', '能力共享', '机制抹消'],
+  控制系: ['封技', '缴械', '封甲', '治疗反转', '目标锁定', '驱散增益', '嘲讽', '伤害分摊', '吞噬', '机制抹消'],
+  精神系: ['状态转移', '封技', '缴械', '封甲', '治疗反转', '窃取增益', '目标锁定', '隐身', '吞噬', '能力共享', '机制抹消'],
   元素系: ['引爆持续伤害', '斩盾', '封技', '治疗反转', '驱散增益', '破隐', '吞噬', '机制抹消'],
   辅助系: ['护卫', '共享视野', '驱散增益', '无敌金身', '伤害分摊', '消耗分摊', '能力共享'],
   治疗系: ['护卫', '驱散增益', '共享视野', '无敌金身', '伤害分摊', '消耗分摊', '能力共享'],
@@ -3403,6 +3403,28 @@ var SKILL_MECHANISM_META_V1 = (() => {
     designerSubHint: '封技',
     designerSecondaryHint: '封技',
     设计台参数定义: [num('duration', '持续回合', '2', '1'), select('muteScope', '限制范围', 'MUTE_SCOPE')],
+  });
+  // 封禁装备 (用户 2026-11-13；战斗侧 BattlePreview equipmentSealEffect): 缴械 seals the target's weapon, 封甲 its 斗铠 and 机甲,
+  // by the two units' 魂力上限 (certain at an equal or greater, none at a third less and below).
+  register('缴械', {
+    说明: '封住目标的武器，持续期内武器加成、武器被动与武器技能失效（魂力判定，超神器不受影响）。',
+    可副机制: true,
+    目标语义: '敌对',
+    摘要提示: { skillType: '控制', mainType: '控制类', controlStrength: '软控' },
+    designerMainHint: '控制类',
+    designerSubHint: '缴械',
+    designerSecondaryHint: '缴械',
+    设计台参数定义: [num('duration', '持续回合', '2', '1')],
+  });
+  register('封甲', {
+    说明: '封住目标的斗铠与机甲，持续期内其属性加成、被动与技能失效（魂力判定）。',
+    可副机制: true,
+    目标语义: '敌对',
+    摘要提示: { skillType: '控制', mainType: '控制类', controlStrength: '软控' },
+    designerMainHint: '控制类',
+    designerSubHint: '封甲',
+    designerSecondaryHint: '封甲',
+    设计台参数定义: [num('duration', '持续回合', '2', '1')],
   });
   register('单属性削弱', {
     说明: '按倍率压低目标的某一项属性。',
@@ -4057,7 +4079,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     可副机制: true,
     目标语义: '上下文',
     摘要提示: { skillType: '控制', mainType: '特殊规则类', effectMode: '规则' },
-    说明: '临时改写指定战斗规则，支持缴械或死亡转存活。',
+    说明: '临时改写指定战斗规则，支持束手（无法普通攻击）或死亡转存活。',
     designerMainHint: '特殊规则类',
     designerSubHint: '规则改写',
     designerSecondaryHint: '规则改写',
@@ -4540,6 +4562,8 @@ var SKILL_MECHANISM_NAME_TO_PROTOTYPES_V1 = Object.freeze({
   节奏打断: [原型编译条目('判定修正', { 判定: '反应', 数值: '-100%', 打断效果: true })],
   打断: [原型编译条目('判定修正', { 判定: '反应', 数值: '-100%', 打断效果: true })],
   封技: [原型编译条目('状态施加', { 状态: '封技' })],
+  缴械: [原型编译条目('状态施加', { 状态: '缴械' })],
+  封甲: [原型编译条目('状态施加', { 状态: '封甲' })],
   单属性削弱: [原型编译条目('属性修正')],
   多属性削弱: [原型编译条目('属性修正')],
   禁疗: [原型编译条目('状态施加', { 状态: '禁疗', 数值: '+40%' })],
@@ -4600,7 +4624,7 @@ var SKILL_MECHANISM_NAME_TO_PROTOTYPES_V1 = Object.freeze({
   状态交换: [原型编译条目('状态交换')],
   状态转移: [原型编译条目('状态转移')],
   '强制绑定/锁定': [原型编译条目('状态施加', { 状态: '迟缓', 数值: '-15%', 副数值: '-10%' })],
-  规则改写: [原型编译条目('规则改写', { 规则: '缴械' })],
+  规则改写: [原型编译条目('规则改写', { 规则: '束手' })],
   威力增幅: [原型编译条目('结算修正', { 结算: '造成伤害', 数值: '+20%' })],
   技能效果增幅: [原型编译条目('结算修正', { 结算: '技能效果', 数值: '+20%' })],
   元素封禁: [原型编译条目('状态施加', { 状态: '封技' })],
@@ -4641,8 +4665,8 @@ var SKILL_MECHANISM_NAME_TO_PROTOTYPES_V1 = Object.freeze({
   群体撤离: [原型编译条目('群体撤离')],
 });
 
-var 技能状态选项_V1 = Object.freeze(['中毒', '流血', '灼烧', '冻伤', '持续创伤', '持续恢复', '迟缓', '资源燃烧', '眩晕', '沉默', '致盲', '禁疗', '治疗反转', '隐匿', '探查屏蔽', '共享视野', '护盾', '无视异常', '霸体', '标记', '封技', '护卫', '嘲讽', '防御剥夺', '精神抗性剥夺', '虚弱', '失控', '反噬', '精神紊乱', '魂力枯竭', '僵直', '麻痹', '混乱', '坚挺金苍蝇·武魂真身维持']);
-var 技能负面状态选项_V1 = Object.freeze(['中毒', '流血', '灼烧', '冻伤', '持续创伤', '迟缓', '资源燃烧', '眩晕', '沉默', '致盲', '禁疗', '治疗反转', '标记', '封技', '嘲讽', '防御剥夺', '精神抗性剥夺', '虚弱', '失控', '反噬', '精神紊乱', '魂力枯竭', '僵直', '麻痹', '混乱']);
+var 技能状态选项_V1 = Object.freeze(['中毒', '流血', '灼烧', '冻伤', '持续创伤', '持续恢复', '迟缓', '资源燃烧', '眩晕', '沉默', '缴械', '封甲', '致盲', '禁疗', '治疗反转', '隐匿', '探查屏蔽', '共享视野', '护盾', '无视异常', '霸体', '标记', '封技', '护卫', '嘲讽', '防御剥夺', '精神抗性剥夺', '虚弱', '失控', '反噬', '精神紊乱', '魂力枯竭', '僵直', '麻痹', '混乱', '坚挺金苍蝇·武魂真身维持']);
+var 技能负面状态选项_V1 = Object.freeze(['中毒', '流血', '灼烧', '冻伤', '持续创伤', '迟缓', '资源燃烧', '眩晕', '沉默', '缴械', '封甲', '致盲', '禁疗', '治疗反转', '标记', '封技', '嘲讽', '防御剥夺', '精神抗性剥夺', '虚弱', '失控', '反噬', '精神紊乱', '魂力枯竭', '僵直', '麻痹', '混乱']);
 var 战斗外可继承技能状态选项_V1 = Object.freeze(['中毒', '灼烧', '冻伤', '虚弱', '反噬', '精神紊乱', '魂力枯竭']);
 var 日常系统状态选项_V1 = Object.freeze(['饥饿']);
 var 战斗内限定技能状态选项_V1 = Object.freeze(技能状态选项_V1.filter(状态 => !战斗外可继承技能状态选项_V1.includes(状态)));
@@ -4739,7 +4763,8 @@ var SKILL_PROTOTYPE_FIELD_OPTIONS_V1 = Object.freeze({
   匹配原型: Object.freeze(['无', '资源变化', '护盾变化']),
   数值方向: Object.freeze(['负向', '正向', '任意']),
   类型: Object.freeze(['负面', '增益', '控制', '隐匿', '斩盾', '窃取']),
-  规则: Object.freeze(['缴械', '死亡转存活']),
+  // 束手 (用户 2026-11-13：原名缴械；缴械 现为封武器的状态): 缴械 stays valid for skills generated before.
+  规则: Object.freeze(['束手', '死亡转存活', '缴械']),
   // 规则防御的次数怎么扣（R3）：按段＝每挡一段扣一次（缺省）；整招＝同一次出手的所有段只扣一次。
   计次: Object.freeze(['按段', '整招']),
   复活代价类型: 战斗外复活代价类型选项_V1,
@@ -4915,7 +4940,7 @@ var SKILL_PROTOTYPE_FIELD_DEFAULT_V1 = Object.freeze({
   匹配原型: '资源变化',
   数值方向: '任意',
   类型: '负面',
-  规则: '缴械',
+  规则: '束手',
   复活代价类型: '状态代价',
   复活代价对象: '虚弱',
   复活代价值: '+1',
@@ -5083,7 +5108,7 @@ var 读取原型字段选项_V1 = (原型 = '', 字段名 = '') => {
   }
   if (原型名 === '规则防御' && key === '规则') return Object.freeze(['免伤', '免死']);
   if (原型名 === '护盾变化' && key === '护盾模式') return Object.freeze(['正向护盾', '斩盾', '窃盾']);
-  if (原型名 === '规则改写' && key === '规则') return Object.freeze(['缴械', '死亡转存活']);
+  if (原型名 === '规则改写' && key === '规则') return Object.freeze(['束手', '死亡转存活']);
   if (原型名 === '战斗外复活' && key === '复活代价对象') return SKILL_PROTOTYPE_FIELD_OPTIONS_V1.复活代价对象;
   if (原型名 === '状态交换' && key === '状态') return Object.freeze(['任意负面', ...技能负面状态选项_V1]);
   // 触发来源（R5）：被动在「被控制时」移除触发这次被动的那一个控制状态。
@@ -5120,7 +5145,7 @@ var 读取原型字段默认值_V1 = (原型 = '', 字段名 = '') => {
   const key = String(字段名 || '').trim();
   if (原型名 === '规则防御' && key === '规则') return '免伤';
   if (原型名 === '护盾变化' && key === '护盾模式') return '正向护盾';
-  if (原型名 === '规则改写' && key === '规则') return '缴械';
+  if (原型名 === '规则改写' && key === '规则') return '束手';
   if (原型名 === '规则改写' && key === '数值') return '+25%';
   if (原型名 === '战斗外复活' && key === '数值') return '+25%';
   if (原型名 === '战斗外复活' && key === '死亡时限tick') return 144;
@@ -5341,6 +5366,10 @@ var SKILL_UNIT_COST_TABLE_V1 = Object.freeze({
     封技: Object.freeze({ 固定COST: 50 }),
     护卫: Object.freeze({ 数值: 0.9, 固定COST: 8 }),
     嘲讽: Object.freeze({ 数值: 1.0, 固定COST: 10 }),
+    // 封禁装备: 封甲 ≈ the 力量/防御/敏捷/精神力上限 an armour and mecha give (−15%～−40% of the panel at 0.76～1.14 a
+    // point) and their passives, discounted for no armour and a weaker 魂力 — 100 (用户 估 100 左右); 缴械 a weapon, about half.
+    缴械: Object.freeze({ 固定COST: 50 }),
+    封甲: Object.freeze({ 固定COST: 100 }),
     防御剥夺: Object.freeze({ 数值: 1.1, 固定COST: 12 }),
     精神抗性剥夺: Object.freeze({ 数值: 1.2, 固定COST: 12 }),
     虚弱: Object.freeze({ 数值: 0.8, 固定COST: 8 }),
@@ -5359,7 +5388,7 @@ var SKILL_UNIT_COST_TABLE_V1 = Object.freeze({
   状态转移: 10,
   状态交换: 12,
   资源锁定: Object.freeze({ 回复锁定: 1.2, 转化锁定: 1.0, 资源池锁定: 1.0 }),
-  规则改写: Object.freeze({ 缴械: 18, 死亡转存活: 50 }),
+  规则改写: Object.freeze({ 束手: 18, 缴械: 18, 死亡转存活: 50 }),
   修炼增益: Object.freeze({ 属性修炼速度: 0.8, 训练方式收益: 0.7 }),
   战斗外复活: 250,
   机制抹消: 25,
@@ -5620,7 +5649,7 @@ var SKILL_MECHANISM_TEMPLATE_COMPILER_TABLE_V1 = Object.freeze(
 var 状态施加状态分类矩阵_V1 = Object.freeze({
   持续伤害类: Object.freeze(['中毒', '流血', '灼烧', '冻伤', '持续创伤']),
   恢复资源类: Object.freeze(['持续恢复']),
-  硬控封禁类: Object.freeze(['眩晕', '沉默', '致盲', '封技', '麻痹', '混乱', '僵直', '失控', '精神紊乱']),
+  硬控封禁类: Object.freeze(['眩晕', '沉默', '致盲', '封技', '缴械', '封甲', '麻痹', '混乱', '僵直', '失控', '精神紊乱']),
   防御布尔类: Object.freeze(['霸体', '无视异常']),
   防御数值类: Object.freeze(['护盾', '护卫']),
   增益类: Object.freeze(['隐匿', '探查屏蔽', '共享视野']),
@@ -7537,7 +7566,7 @@ function 读取技能机制原型条目基础预算档_V1(条目 = {}, 上下文
     return 可调(单位 * 5, 单位 * 70, ['数值'], ['持续回合']);
   }
   if (原型 === '规则改写') {
-    const 规则 = String(条目.规则 || '缴械').trim() || '缴械';
+    const 规则 = String(条目.规则 || '束手').trim() || '束手';
     const 单位 = Number(SKILL_UNIT_COST_TABLE_V1.规则改写?.[规则] ?? 18);
     return 可调(单位, Math.max(单位, 单位 * 2.5), ['数值'], ['持续回合']);
   }
@@ -10741,7 +10770,7 @@ function 构建机制编译输入覆盖列表_V1(机制名 = '', 原型列表 = 
       : 系别 === '元素系'
         ? '护盾'
         : '防御机制';
-    if (目标机制 === '控制机制') return 构建技能机制抹消对象_V1('状态施加', { 状态: '沉默' });
+    if (目标机制 === '控制机制') return 构建技能机制抹消对象_V1('状态施加', { 状态: '封技' });
     if (目标机制 === '护盾') return 构建技能机制抹消对象_V1('护盾变化');
     return 构建技能机制抹消对象_V1('规则防御');
   };
@@ -10868,7 +10897,7 @@ function 构建机制编译输入覆盖列表_V1(机制名 = '', 原型列表 = 
     } else if (原型 === '规则防御') {
       字段.次数 ??= Math.max(1, Math.round(Number(结算参数.免死次数 || (品质 === 'S' || 品质 === 'S+' ? 2 : 1))));
     } else if (原型 === '规则改写') {
-      字段.规则 ??= '缴械';
+      字段.规则 ??= '束手';
       if (字段.规则 === '死亡转存活') 字段.数值 ??= 数值倍率(品质范围({ C: [0.12, 0.18], B: [0.18, 0.28], A: [0.24, 0.38], S: [0.28, 0.42], 'S+': [0.42, 0.6] }, 0.24), 0.24, 1);
       else delete 字段.数值;
     } else if (原型 === '机制抹消') {
@@ -11304,7 +11333,7 @@ function 补足机制模板原型数值_V1(原型 = '', 字段 = {}, source = {}
   } else if (原型 === '规则改写') {
     const 规则 = SKILL_PROTOTYPE_FIELD_OPTIONS_V1.规则.includes(String(字段.规则 || source.规则 || '').trim())
       ? String(字段.规则 || source.规则 || '').trim()
-      : '缴械';
+      : '束手';
     字段.规则 = 规则;
     if (规则 === '死亡转存活') {
       字段.目标 = '自身';
@@ -11663,7 +11692,7 @@ function 清理执行效果原型语义_V1(原型 = '', 字段 = {}, 上下文 =
     }
   }
   if (原型 === '规则改写') {
-    字段.规则 = SKILL_PROTOTYPE_FIELD_OPTIONS_V1.规则.includes(String(字段.规则 || '').trim()) ? String(字段.规则 || '').trim() : '缴械';
+    字段.规则 = SKILL_PROTOTYPE_FIELD_OPTIONS_V1.规则.includes(String(字段.规则 || '').trim()) ? String(字段.规则 || '').trim() : '束手';
     if (字段.规则 === '死亡转存活') {
       字段.目标 = '自身';
       delete 字段.持续回合;
@@ -13940,6 +13969,11 @@ function buildSkillCombatProfile(blueprint, qualityCtx = {}) {
     效果意图.持续回合 = Math.max(效果意图.持续回合, invertDuration);
     效果意图.结算参数.治疗反转比例 = Math.max(Number(效果意图.结算参数.治疗反转比例 || 0), invertRatio);
   }
+  for (const 封禁 of ['缴械', '封甲']) {
+    if (!secondary.includes(封禁)) continue;
+    const 封禁回合 = Math.max(1, Math.round(({ C: 1, B: 1, A: 2, S: 2 }[grade] || 1) * secondaryDurationScale));
+    效果意图.持续回合 = Math.max(效果意图.持续回合, 封禁回合);
+  }
   if (secondary.includes('封技')) {
     const sealDuration = Math.max(1, Math.round(({ C: 1, B: 1, A: 2, S: 2 }[grade] || 1) * secondaryDurationScale));
     效果意图.状态 = 效果意图.状态 === '无' ? '封技' : 效果意图.状态;
@@ -15890,7 +15924,7 @@ function 计算单项效果COST_V1(效果 = {}, 上下文 = {}) {
   const 附加规则COST = 原型 === '判定修正' && 效果?.打断效果 === true
     ? Number(SKILL_UNIT_COST_TABLE_V1.判定修正?.打断效果 || 0)
     : 0;
-  if (原型 === '规则改写' && 选项值 === '缴械') {
+  if (原型 === '规则改写' && ['束手', '缴械'].includes(选项值)) {
     return {
       COST: 单位COST * 目标系数 * 持续系数,
       百分比: false,
@@ -19655,6 +19689,8 @@ var 技能状态施加转译语义_V1 = Object.freeze({
   无视异常: 目标 => `使${目标}进入无视异常状态，免疫负面状态与削减类效果`,
   霸体: 目标 => `使${目标}进入霸体状态`,
   封技: 目标 => `使${目标}进入封技状态`,
+  缴械: 目标 => `封住${目标}的武器（魂力判定，超神器不受影响）`,
+  封甲: 目标 => `封住${目标}的斗铠与机甲（魂力判定）`,
   护卫: (目标, 效果) => `护卫${目标}，替其拦截攻击，${转译状态施加数值说明_V1('护卫', 效果)}`,
   嘲讽: (目标, 效果) => `使${目标}嘲讽，${转译状态施加数值说明_V1('嘲讽', 效果)}`,
   虚弱: (目标, 效果) => `使${目标}虚弱，${转译状态施加数值说明_V1('虚弱', 效果)}`,
@@ -20657,7 +20693,8 @@ function buildSingleSkillEffectSummary(effect) {
       return '强制绑定' + target + '，持续' + formatSkillNumber(effect.持续回合) + '回合，限制位移与反应';
     case '规则改写':
       if (String(effect.规则 || '').trim() === '死亡转存活') return '战斗内被动复活：致命结算时使' + target + '转为存活，恢复' + String(effect.数值 || '+25%') + '生命';
-      return '在' + formatSkillNumber(Math.max(1, Number(effect.持续回合 || 1))) + '回合内改写' + target + '的' + String(effect.规则 || '缴械');
+      if (['束手', '缴械'].includes(String(effect.规则 || '束手').trim())) return '在' + formatSkillNumber(Math.max(1, Number(effect.持续回合 || 1))) + '回合内束住' + target + '的手脚，使其无法普通攻击';
+      return '在' + formatSkillNumber(Math.max(1, Number(effect.持续回合 || 1))) + '回合内改写' + target + '的' + String(effect.规则 || '束手');
     case '威力增幅':
       return '使' + target + '后续威力提升至 x' + formatSkillNumber(effect.威力倍率 || 1.2, 2);
     case '元素封禁':
@@ -20748,6 +20785,10 @@ function buildSingleSkillEffectSummary(effect) {
       return '使' + target + '受到的治疗在持续期间反转为伤害';
     case '封技':
       return '封锁' + target + '的技能回路，持续' + formatSkillNumber(effect.持续回合) + '回合';
+    case '缴械':
+      return '封住' + target + '的武器，持续' + formatSkillNumber(effect.持续回合) + '回合（魂力判定）';
+    case '封甲':
+      return '封住' + target + '的斗铠与机甲，持续' + formatSkillNumber(effect.持续回合) + '回合（魂力判定）';
     case '硬控':
       return '强行控制' + target + '，持续' + formatSkillNumber(effect.持续回合) + '回合';
     case '打断':
@@ -22638,6 +22679,8 @@ function autoGenerateSkill(
         if (!(Number(replacement.威力倍率 || 0) > 0)) {
           const 基准数值 = Math.abs(parseSkillSignedChangeNumber(规范化执行效果数值_V1(effect.数值, effect.动作)));
           replacement.威力倍率 = Math.max(1, Math.round((Number.isFinite(基准数值) ? 基准数值 : 1) * 100));
+          // 治疗打敌 (BattlePreview healStrikeDamageShare): the strike is as strong as the heal, a share of the target's HP maximum.
+          if (Number.isFinite(基准数值) && 基准数值 > 0) replacement.生命比例伤害 = 基准数值;
         }
         delete replacement.数值;
         delete next.转为伤害;
