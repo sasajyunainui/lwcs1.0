@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:7c0747060c7e0fa227da61496d4095e8251ccc1d22e7ace67c7c8dc5dd19d6fe|cockpit/designer-model.js:c677dd45272beee6c5c4e46aa3ef9d623ac6209d0db80c6c42b96a8928daaba2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:57272abe87757762e2bc96455a43742e321749a372452e85b7f7da146aacde00|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:7bfcb4b7bf2ab371f60beac9c1a68ed04c12d848153e90597604b11b4bd22ec4|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:97eb5bf35fa283ac62a4c9857b7e3424e978bb39614035b118746176444d7b2e|BehaviorDecisionPipeline_Module.js:310cde745a4f74f297fad02f931e687b884fb150e19c7005d82894515eb5e5f6|BattleDecision_Module.js:f24fdfab409b8379370fd626b7d731da8956dbccd51b8e4129d8f25949ff49d8|BattleRuntime_Module.js:e056dace0af774845a8e0dbd6b90ff362245c5a41cca33f556c6f65c830a0b59|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:1345c9b3244906b0f3bbc41bf0dd1182771c4dc426bf1503311e4a411135ca2c|Database_Module.js:a08adc7704e9deda80e7a7eaca7c9dab74ced979fe47024b8e73c19ca2c6178e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:7c0747060c7e0fa227da61496d4095e8251ccc1d22e7ace67c7c8dc5dd19d6fe|cockpit/designer-model.js:a4e0603f2d10d987b0afddc19e149c42c300fa305dcbfdbf5d1f1c4eb0f26ca9|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:bbbae9686d5c127938d3dcfc97f2758141c1a9bc73a066c1f5a2facf51db5ee7|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:97eb5bf35fa283ac62a4c9857b7e3424e978bb39614035b118746176444d7b2e|BehaviorDecisionPipeline_Module.js:310cde745a4f74f297fad02f931e687b884fb150e19c7005d82894515eb5e5f6|BattleDecision_Module.js:f24fdfab409b8379370fd626b7d731da8956dbccd51b8e4129d8f25949ff49d8|BattleRuntime_Module.js:e056dace0af774845a8e0dbd6b90ff362245c5a41cca33f556c6f65c830a0b59|BattleReport_Module.js:574eea49c82a821d1ac35e2f658e6de30ada4a74d28cbae00d871b645da3663d|BattleUI_Module.js:1345c9b3244906b0f3bbc41bf0dd1182771c4dc426bf1503311e4a411135ca2c|Database_Module.js:a08adc7704e9deda80e7a7eaca7c9dab74ced979fe47024b8e73c19ca2c6178e */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -38568,7 +38568,7 @@ ${播报文本}
   }
   // —— B:19870-19872
   function 技能设计台状态施加使用正向强度数值(状态 = '') {
-    return ['资源燃烧', '魂力枯竭', '防御剥夺', '精神抗性剥夺'].includes(normalizeSkillUiText(状态, ''));
+    return ['资源燃烧', '魂力枯竭', '防御剥夺', '精神抗性剥夺', '持续恢复', '护盾', '禁疗', '治疗反转'].includes(normalizeSkillUiText(状态, ''));
   }
   // —— B:19874-19903
   function 技能设计台状态施加字段显示名(状态 = '', 字段 = '') {
@@ -48758,7 +48758,8 @@ ${播报文本}
       return;
     }
     // 不需要确认的动作（打开原项目工坊、魂环待选、返回战斗）直接执行
-    if (t.dataset.act) { let spec = null; try { spec = JSON.parse(t.dataset.act); } catch (err) {} if (spec) runAct(spec, null, t); return; }
+    // 设计台控件也用 data-act，但那是设计台自己的动作（只有 type、没有 name），由设计台处理
+    if (t.dataset.act) { let spec = null; try { spec = JSON.parse(t.dataset.act); } catch (err) {} if (spec?.name) runAct(spec, null, t); return; }
     // 危险操作原地二次确认：第一次点亮为「再点一次确认删除」，3 秒内再点才执行
     if (t.dataset.delPath) {
       if (!t.classList.contains('armed')) {
@@ -51279,6 +51280,8 @@ ${播报文本}
     }[k];
     return T ? { icon: T[0], title: pre + T[1], mag: true, hint: T[2] } : { icon: 'shield-halved', title: `${k || '结算'}修正` };
   };
+  // 持续类状态的「数值」是每回合按最大生命结算的比例（战斗运行时 hot_heal_ratio / dot_damage_ratio）
+  const STATE_TICK = { 持续恢复: ['heart-pulse', '每回合恢复最大生命'], ...Object.fromEntries(['中毒', '流血', '灼烧', '冻伤', '持续创伤'].map(s => [s, ['droplet', '每回合流失最大生命']])) };
   const FX = {
     资源变化: e => ({ icon: String(e.资源 || '').includes('魂力') ? 'fire-flame-curved' : 'heart-pulse', title: `${neg(e) ? '削减' : '恢复'}${txt(e.资源) || '资源'}` }),
     资源转移: e => ({ icon: 'right-left', title: `${txt(e.资源转移方式) || '转移'}${txt(e.资源) || '资源'}` }),
@@ -51289,7 +51292,7 @@ ${播报文本}
     结算修正: e => settleFx(e),
     护盾变化: e => ({ icon: 'shield', title: txt(e.护盾模式) === '正向护盾' || !txt(e.护盾模式) ? '护盾' : txt(e.护盾模式) }),
     伤害结算: e => ({ icon: 'burst', title: txt(e.伤害类型) || '伤害' }),
-    状态施加: e => ({ icon: 'circle-radiation', title: `施加${txt(e.状态) || '状态'}` }),
+    状态施加: e => { const s = txt(e.状态), tick = STATE_TICK[s]; return tick ? { icon: tick[0], title: s, lead: tick[1] } : { icon: 'circle-radiation', title: `施加${s || '状态'}` }; },
     状态移除: e => ({ icon: 'broom', title: `移除${txt(e.状态) || txt(e.匹配原型) || '状态'}` }),
     状态转移: e => ({ icon: 'arrows-turn-to-dots', title: `转移${txt(e.状态) || '状态'}` }),
     状态交换: e => ({ icon: 'arrows-rotate', title: `交换${txt(e.状态) || '状态'}` }),
@@ -51309,7 +51312,7 @@ ${播报文本}
   const fxRow = (c, e, granted = false) => {
     if (e.原型 === '机制授予') return grantRow(c, e);
     const f = fxOf(e), down = f.good === undefined ? neg(e) : !f.good;
-    const meta = [granted && e.目标 ? `对${e.目标}` : e.目标, e.持续回合 ? `持续 ${c.fmt(e.持续回合)} 回合` : '', e.生效方式].filter(Boolean).map(c.esc).join(' · ');
+    const meta = [f.lead, granted && e.目标 ? `对${e.目标}` : e.目标, e.持续回合 ? `持续 ${c.fmt(e.持续回合)} 回合` : '', e.生效方式].filter(Boolean).map(c.esc).join(' · ');
     return `<div class="fx"><span class="ic ${down ? 'down' : ''}"><i class="fa-solid fa-${f.icon}"></i></span><strong${f.hint ? ` data-hint="${c.esc(f.hint)}"` : ''}>${c.esc(f.title)}</strong><span class="v ${down ? 'down' : ''}">${c.esc(fxVal(c, e))}</span><small>${meta}</small></div>`;
   };
   // 机制授予是容器：持有者获得一个能力（何时生效、几回合内可用几次），用出去时下面这些效果作用在各自目标上
