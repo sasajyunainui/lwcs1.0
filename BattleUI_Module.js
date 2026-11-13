@@ -2007,6 +2007,17 @@ class BattleUIComponent {
             USE_ITEM: { type: 'item', actionType: '使用物品', name: '使用物品', category: '物品' },
             EQUIP: { type: 'equip', actionType: '穿戴装备', name: '穿戴装备', category: '装备' },
           };
+          // 认输与撤离 (认输与撤离方案-20261113 第 5 条): leaving is offered as the decision enumerates it (no way out, not
+          // offered), named by the battle's rules — 认输 in a spar or a match, 撤离 in a real fight (BattlePreview
+          // battleExitLabel); what it does is told in the hover only (说明只走悬停), a withdrawal's with its estimated chance.
+          const exitLabel = BATTLE_PREVIEW.battleExitLabel(combatData) || '撤离';
+          actionKindMeta.WITHDRAW = { type: 'tactical', actionType: exitLabel, name: exitLabel, category: '特殊动作' };
+          const exitHint = () => {
+            if (exitLabel === '认输') return '立即退出本场，保留当前生命与状态，此后不再受到攻击；队友可继续作战，本方全员出局即判负。';
+            const contest = BATTLE_PREVIEW.buildWithdrawalContest(combatData, actor);
+            const chance = Math.round(Math.max(0, Math.min(1, Number(contest?.successProbability ?? 0))) * 100);
+            return `按双方敏捷、精神力与体力判定能否脱身（预计成功${chance}%）；成功即离场，保留当前生命与状态；部分成功或失败会遭追击受伤并留在场上；本方全员离场或倒下时本场结束。`;
+          };
           const grouped = new Map();
           const unitNameById = targetId => {
             const unit = BATTLE_PREVIEW.findUnit(combatData, targetId);
@@ -2017,7 +2028,9 @@ class BattleUIComponent {
             const actionKind = String(declaration.actionKind || '').trim();
             const meta = actionKindMeta[actionKind];
             if (!meta) return;
-            const skill = declaration.skill && typeof declaration.skill === 'object' ? declaration.skill : {};
+            const skill = actionKind === 'WITHDRAW'
+              ? { 效果描述: exitHint() }
+              : declaration.skill && typeof declaration.skill === 'object' ? declaration.skill : {};
             const baseDisplayName = String(skill?.魂技名 || skill?.name || skill?.技能名称 || meta.name).trim() || meta.name;
             const displayName = declaration.ringLabel ? `${baseDisplayName}·${declaration.ringLabel}` : baseDisplayName;
             const sourceContext = actionKind === 'RELEASE_SKILL' ? 读取战斗来源类别上下文(skill, meta.category) : { 来源类别: meta.category, 来源明细: meta.category };
@@ -2633,12 +2646,22 @@ class BattleUIComponent {
           return cloneBattleValue(_options.combatData || {});
         }
 
+        // 战斗类型简化 (战斗类型简化与比赛判定方案-20261113): the battle's type (BattlePreview battleTypeLabel: 切磋, 比赛 or
+        // 实战; a battle with a referee is a match — battleRules); the system's own as they are. How hard it is fought is
+        // the intent's field.
+        function battleUiTypeLabel(combatData = {}) {
+          const written = String(combatData?.战斗类型 || '').trim();
+          if (typeof BATTLE_PREVIEW.battleRules !== 'function' || BATTLE_PREVIEW.resolveBattleType(written).system) return written || '战斗';
+          const rules = BATTLE_PREVIEW.battleRules(combatData, { mode: String(combatData?.战斗意图 || '').trim() });
+          return rules.match ? '比赛' : rules.deathMatch ? '比赛（生死斗）' : BATTLE_PREVIEW.battleTypeLabel(written);
+        }
+
         function renderUiChips(combatData, player, enemy) {
           const node = byId('ui-combat-chips');
           if (!node) return;
           const chips = [
             ['回合', Number(combatData.回合 || 0)],
-            ['战斗', combatData.战斗类型 || '战斗'],
+            ['战斗', battleUiTypeLabel(combatData)],
             ['阶段', combatData.阶段 || 战斗阶段枚举_V1.宣告],
             ['指向', `${player.name || '玩家'} -> ${enemy.name || '对手'}`],
           ];
@@ -2821,7 +2844,7 @@ class BattleUIComponent {
           const 动作类型 = String(动作.action_type || '').trim();
           const 目标文本 = 动作类型 === '撤离'
               ? '撤离'
-              : ['防御', '闪避', '穿戴装备', '收回召唤'].includes(动作类型)
+              : ['防御', '闪避', '穿戴装备', '收回召唤', '认输'].includes(动作类型)
                 ? '自身'
                 : String(技能?.目标 || (Array.isArray(动作?.target_names) && 动作.target_names.length > 1 ? '可选单体' : 动作.target_name || '未指定')).trim();
           const 描述行 = 读取动作技能描述文本(动作);
@@ -2951,7 +2974,7 @@ class BattleUIComponent {
               .map(entry => entry.unit)
               .filter(unit => candidateNames.has(String(BATTLE_PREVIEW.unitName(unit) || '').trim()));
           }
-          if (['防御', '闪避', '撤离', '穿戴装备', '收回召唤'].includes(String(action?.action_type || ''))) return [];
+          if (['防御', '闪避', '撤离', '认输', '穿戴装备', '收回召唤'].includes(String(action?.action_type || ''))) return [];
           const targetText = String(skill?.目标 || '').trim();
           if (/自身/.test(targetText)) return playerTeam.slice(0, 1);
           if (/友方|己方/.test(targetText) && !/群体|全体|全场/.test(targetText)) return playerTeam;
@@ -3339,7 +3362,7 @@ class BattleUIComponent {
             (/防御|格挡|守势/.test(type) ? 'DEFEND'
               : /闪避|躲避/.test(type) ? 'EVADE'
                 : /反击|防反|闪反/.test(type) ? 'COUNTER'
-                  : /撤退|撤离/.test(type) ? 'WITHDRAW'
+                  : /撤退|撤离|认输/.test(type) ? 'WITHDRAW'
                     : /观察|试探/.test(type) ? 'OBSERVE'
                       : /保护|护卫/.test(type) ? 'GUARD'
                         : /物品|道具/.test(type) ? 'USE_ITEM'

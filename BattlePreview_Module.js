@@ -1824,17 +1824,22 @@
     return unit;
   }
   // 烈度 (用户 2026-11-12："感觉还得设定一个当前战斗是否允许使用代价极大的大招。否则可能会出现明明是普通切磋结果用了会严重影响
-  // 后续发展的技能"；"烈度你自己决定吧。按副作用类型判断"): a battle is a spar (点到为止, 切磋, 训练, 非致命), a fight to the death
-  // (生死, 死战, 死斗, 拼命, 不死不休) or, unsaid, a duel. A skill whose side effects are grave — today 致死献祭; the
-  // lasting after-battle costs to come join this list — is allowed in a fight to the death only.
+  // 后续发展的技能"；"烈度你自己决定吧。按副作用类型判断"; 2026-11-13："实战和死战感觉区分度不够高？"，战斗类型简化与比赛判定方案-20261113
+  // 修订): no type of its own says a battle is to the death. What the battle allows of skills with heavy costs is read off
+  // its rules (battleRules) as one of four, and the rest off the moment (sideDesperate, in skillPermittedAtIntensity):
+  //   SPAR  — a spar: none of them, nor 炸环;
+  //   MATCH — a match: the lasting after-battle costs, once the side is losing badly (用户 2026-11-13："比赛是可以用本源损耗，
+  //           重伤昏迷类的。因为比赛和实战区别也不是特别大了"); no grave side effect;
+  //   DUEL  — a real fight one may still withdraw from: as a match;
+  //   DEATH — a real fight with no way out (允许撤离 否, the old 死战, or an intent of 生死, 死战, 死斗, 拼命, 不死不休):
+  //           those, and a grave side effect (today 致死献祭) once the side is losing badly — 退得了就该退，退无可退才拼命.
   const GRAVE_SIDE_EFFECT_TYPES = Object.freeze(['致死献祭']);
   function battleIntensity(worldSnapshot = {}, battleIntent = {}) {
-    const mode = String(battleIntent?.mode || battleIntent?.intent || (typeof battleIntent === 'string' ? battleIntent : '') || worldSnapshot?.战斗意图 || '').trim();
-    return /生死|死战|死斗|拼命|不死不休/.test(mode) ? 'DEATH' : isNonlethalBattleIntent(worldSnapshot, battleIntent) ? 'SPAR' : 'DUEL';
+    return battleRules(worldSnapshot, battleIntent).intensity;
   }
   // 战后长期代价 (用户 2026-11-12): side effects that do nothing in the battle and are paid after it — 本源损耗 (a permanent
-  // share of potential), 重伤昏迷 (months unconscious). A skill carrying one is for a fight to the death, or for a duel
-  // its side is losing badly (sideDesperate); never for a spar.
+  // share of potential), 重伤昏迷 (months unconscious). A skill carrying one is for a match or a real fight its side is
+  // losing badly (sideDesperate); never for a spar.
   const LONG_TERM_SIDE_EFFECT_TYPES = Object.freeze(['本源损耗', '重伤昏迷']);
   // Losing badly: what is left of the side, as shares of its units' HP, is under half of what is left of the other.
   function sideDesperate(worldSnapshot = {}, unit = {}) {
@@ -1860,10 +1865,12 @@
     return share;
   }
   function skillPermittedAtIntensity(skill = {}, intensity = 'DUEL', desperate = false) {
-    if (intensity === 'DEATH') return true;
-    if ((Array.isArray(skill?.副作用列表) ? skill.副作用列表 : []).some(entry => GRAVE_SIDE_EFFECT_TYPES.includes(String(entry?.副作用类型 || '').trim()))) return false;
-    if ((Array.isArray(skill?.副作用列表) ? skill.副作用列表 : []).some(entry => LONG_TERM_SIDE_EFFECT_TYPES.includes(String(entry?.副作用类型 || '').trim())) &&
-      !(intensity === 'DUEL' && (typeof desperate === 'function' ? desperate() : desperate) === true)) return false;
+    const sideEffects = Array.isArray(skill?.副作用列表) ? skill.副作用列表 : [];
+    const carries = types => sideEffects.some(entry => types.includes(String(entry?.副作用类型 || '').trim()));
+    let losing;
+    const losingBadly = () => (losing ??= (typeof desperate === 'function' ? desperate() : desperate) === true);
+    if (carries(GRAVE_SIDE_EFFECT_TYPES) && !(intensity === 'DEATH' && losingBadly())) return false;
+    if (carries(LONG_TERM_SIDE_EFFECT_TYPES) && !(intensity !== 'SPAR' && losingBadly())) return false;
     // 炸环 costs its user the ring for days after the battle (BattleRuntime commitRingBurst: 炸环恢复tick): not in a spar.
     return !(intensity === 'SPAR' && (Array.isArray(skill?._效果数组) ? skill._效果数组 : []).some(effect => String(effect?.原型 || '').trim() === '炸环'));
   }
@@ -3150,30 +3157,325 @@
     return { hp, alive, capable };
   }
 
+  // 战斗类型 (用户 2026-11-13："擂台战算比赛 另外现在战斗类型有点多和重复，简化一下吧。其他的按你说的来就行"；"实战和死战感觉区分度
+  // 不够高？ 其他问题不大"；战斗类型简化与比赛判定方案-20261113 及其修订): a battle is one of three types, and its type — with
+  // its intent (the player may change it in the battle terminal), a referee standing by, and whether one may withdraw —
+  // decides how it is fought (battleRules; every other module reads the rules from here):
+  //   切磋 — both hold back: a hit is held at the life-threat line and the one hit is out;
+  //   比赛 — full force under rules: a hit that would take a fighter under the line brings the referee in (BattleRuntime
+  //          structuredRefereeIntervention); one the referee cannot take on, or with no referee, lands whole;
+  //   实战 — a real fight, no holding back: injury and death. With no way out (允许撤离 否) it is to the death
+  //          (battleIntensity DEATH).
+  // A battle with a referee is a match, whatever its type or intent says. The old names stay aliases for good (old saves,
+  // the AI's old wording): 擂台战, 挑战 (a public challenge for a win) and 试炼战斗 (a trial watched over) are matches;
+  // 突发遭遇, 伏击, 追杀 and 死战 real fights — 死战 one with no way out (BATTLE_TYPE_NO_WITHDRAWAL; the game's way in sets
+  // 允许撤离 否). The system's own 升灵台虚拟战斗 and 魂灵塔冲塔 keep their own flows and are no type here.
+  const BATTLE_TYPES = Object.freeze(['切磋', '比赛', '实战']);
+  const BATTLE_TYPE_ALIASES = Object.freeze({
+    切磋: '切磋', 比赛: '比赛', 擂台战: '比赛', 挑战: '比赛', 试炼战斗: '比赛',
+    实战: '实战', 突发遭遇: '实战', 伏击: '实战', 追杀: '实战', 死战: '实战',
+  });
+  const BATTLE_TYPE_NO_WITHDRAWAL = Object.freeze(['死战']);
+  const SYSTEM_BATTLE_TYPES = Object.freeze(['升灵台虚拟战斗', '魂灵塔冲塔']);
+  // No type written: a real fight (as the old default, 突发遭遇).
+  const BATTLE_TYPE_DEFAULT = '实战';
+  // The intent a battle opens with when none is given, by its type; the player may change it in the battle terminal.
+  // 实战 opens with 重伤压制 since 重伤压制 knocks a unit down and does not kill it (击倒线, type1b; it was held at 点到为止
+  // until then). A battle whose conditions name a death opens with 必杀 instead (battleTypeDefaultIntent).
+  const BATTLE_TYPE_DEFAULT_INTENT = Object.freeze({ 切磋: '点到为止', 比赛: '重伤压制', 实战: '重伤压制' });
+  const SPAR_INTENT = /点到为止|切磋|训练|非致命/;
+  const MATCH_INTENT = /比赛|擂台|大赛|考核|斗魂|比试|比武/;
+  const NO_WITHDRAWAL_INTENT = /生死|死战|死斗|拼命|不死不休/;
+  // A written type: `type` one of BATTLE_TYPES — the name or alias itself, else the one type every alias it contains
+  // points to ('伏击战' → 实战; '擂台切磋' → 切磋, 擂台 alone being no alias); '' when nothing is written, the name is
+  // unknown or its aliases disagree (the rules then read the intent alone, as before). `system`: one of the system's own;
+  // `noWithdrawal`: the old 死战.
+  const resolvedBattleTypes = new Map();
+  function resolveBattleType(value = '') {
+    const raw = String(value ?? '').trim();
+    let resolved = resolvedBattleTypes.get(raw);
+    if (resolved) return resolved;
+    const system = SYSTEM_BATTLE_TYPES.includes(raw);
+    let type = system ? '' : BATTLE_TYPE_ALIASES[raw] || '';
+    let named = type ? [raw] : [];
+    if (!type && raw && !system) {
+      named = Object.keys(BATTLE_TYPE_ALIASES).filter(name => raw.includes(name));
+      const types = new Set(named.map(name => BATTLE_TYPE_ALIASES[name]));
+      type = types.size === 1 ? [...types][0] : '';
+      if (!type) named = [];
+    }
+    resolved = Object.freeze({ raw, type, system, noWithdrawal: named.some(name => BATTLE_TYPE_NO_WITHDRAWAL.includes(name)) });
+    if (resolvedBattleTypes.size < 256) resolvedBattleTypes.set(raw, resolved);
+    return resolved;
+  }
+  function normalizeBattleType(value = '') {
+    return resolveBattleType(value).type;
+  }
+  // The name a battle's type is stored and shown as: its type; one of the system's own as it is; nothing written,
+  // BATTLE_TYPE_DEFAULT; an unknown name as written.
+  function battleTypeLabel(value = '') {
+    const resolved = resolveBattleType(value);
+    return resolved.type || resolved.raw || BATTLE_TYPE_DEFAULT;
+  }
+  // The intent a battle of this type opens with (BATTLE_TYPE_DEFAULT_INTENT); the system's own and unknown names 点到为止.
+  // A battle whose victory or defeat conditions (`objectives`, as written or normalized) name a death — 指定单位死亡,
+  // 全员死亡 — opens with 必杀, whatever its type: such a goal (a soul beast hunted for its ring) is not met otherwise.
+  const DEATH_OBJECTIVE_TYPES = Object.freeze(['UNIT_DEAD', 'TEAM_DEAD']);
+  function objectivesNameDeath(objectives = null) {
+    if (!objectives || typeof objectives !== 'object') return false;
+    return [objectives.victory, objectives.defeat, objectives.胜利, objectives.失败].some(group =>
+      (Array.isArray(group?.conditions) ? group.conditions : Array.isArray(group?.条件) ? group.条件 : []).some(condition =>
+        DEATH_OBJECTIVE_TYPES.includes(String(condition?.type || '').trim().toUpperCase()) || /死亡/.test(String(condition?.类型 || condition?.type || ''))));
+  }
+  // `situation` { noWithdrawal, refereed }: a 生死斗 (比赛, no way out, no referee: battleRules deathMatch) opens with 必杀.
+  function battleTypeDefaultIntent(value = '', objectives = null, situation = {}) {
+    if (objectivesNameDeath(objectives)) return '必杀';
+    if (resolveBattleType(value).type === '比赛' && situation?.noWithdrawal === true && situation?.refereed !== true) return '必杀';
+    return BATTLE_TYPE_DEFAULT_INTENT[resolveBattleType(value).type] || '点到为止';
+  }
+  // How a battle is fought, from its type (battleIntent.type or worldSnapshot.战斗类型), its intent (battleIntent.mode,
+  // else worldSnapshot.战斗意图), a referee on the field (worldSnapshot.裁判) and worldSnapshot.允许撤离, in this order:
+  //   match — a referee, the type 比赛, or an intent naming a match (比赛, 擂台, 大赛, 考核, 斗魂, 比试, 比武);
+  //   spar  — else an intent of holding back (点到为止, 切磋, 训练, 非致命), or the type 切磋 with no intent given (an
+  //           intent the player picked stands);
+  //   else a real fight. noWithdrawal: 允许撤离 否, the old 死战, or an intent of 生死, 死战, 死斗, 拼命, 不死不休 (such an
+  //   intent is a real fight with no way out).
+  // `type` is the type the battle is fought as (a refereed battle is 比赛), `written` the one written;
+  // `intensity` battleIntensity's.
+  // 击倒线 (用户 2026-11-13："比赛的致死率不会高"；type1b): outside a spar a battle is lethal or not by its intent, shared by
+  // both sides. 必杀 (or an intent of 生死, 死战, 死斗, 拼命, 不死不休) is lethal: HP may reach 0, and 0 is death. 尽量生擒
+  // and 重伤压制 are not: no hit takes a unit under KNOCKDOWN_HP_FLOOR, and a unit brought to it is out of the fight,
+  // subdued (SUBDUED, 制服) — not dead; 重伤昏迷 is judged as before. A match is not lethal unless its intent says so
+  // (its default intent is 重伤压制; the referee and the life-threat line stay as they are); a real fight with no intent
+  // or one the rules do not know stays lethal, as before. `protected`: a spar, a match or a knockdown battle — a hit is
+  // held at a line (calculateNonlethalHpFloor) and the unit is out there.
+  const KNOCKDOWN_INTENT = /生擒|压制/;
+  const LETHAL_INTENT = /必杀|生死|死战|死斗|拼命|不死不休/;
+  const KNOCKDOWN_HP_FLOOR = 1;
+  function battleRules(worldSnapshot = {}, battleIntent = {}) {
+    const mode = String(battleIntent?.mode || battleIntent?.intent || (typeof battleIntent === 'string' ? battleIntent : '') || worldSnapshot?.战斗意图 || '').trim();
+    const resolved = resolveBattleType(battleIntent?.type || worldSnapshot?.战斗类型 || '');
+    const refereed = !!(worldSnapshot?.裁判 && typeof worldSnapshot.裁判 === 'object');
+    // 生死斗 (用户 2026-11-13：「实战中的比赛」——生死擂台这类，形式是比赛、不许认输、下死手): the type 比赛 with no way out
+    // (允许撤离 否) and no referee is fought as a real fight with no way out; it shows as 比赛 (deathMatch). With a referee
+    // it is a protected match, whatever 允许撤离 says.
+    const deathMatchForm = resolved.type === '比赛' && worldSnapshot?.允许撤离 === false && !refereed;
+    const match = refereed || (!deathMatchForm && (resolved.type === '比赛' || MATCH_INTENT.test(mode)));
+    const spar = !match && (SPAR_INTENT.test(mode) || (resolved.type === '切磋' && !mode));
+    const deathMatch = deathMatchForm && !spar;
+    const noWithdrawal = worldSnapshot?.允许撤离 === false || resolved.noWithdrawal || NO_WITHDRAWAL_INTENT.test(mode);
+    const lethal = !spar && (LETHAL_INTENT.test(mode) || (!match && !KNOCKDOWN_INTENT.test(mode)));
+    const knockdown = !spar && !lethal;
+    // 认输与撤离 (认输与撤离方案-20261113 第 1 条; 用户："比赛的逃跑就是认输，唯一的区别就是比赛可能有裁判，同时比赛的致死率不会高"):
+    // 允许撤离 is the switch. With no way out (noWithdrawal: 允许撤离 否 — 生死斗, 不死不休 — the old 死战, an intent of
+    // 生死…) no one may concede or withdraw. Otherwise a spar or a match may be conceded (concede: leaving is certain and
+    // unpursued, buildWithdrawalContest) and a real fight withdrawn from (withdraw: the withdrawal contest,
+    // estimateWithdrawal) — a success condition 成功撤离 is no longer needed for that. The system's own battle types keep
+    // their own flows: neither. `exit`: 'CONCEDE', 'WITHDRAW' or ''.
+    const exitOpen = !noWithdrawal && !resolved.system;
+    const concede = exitOpen && (match || spar), withdraw = exitOpen && !match && !spar;
+    return {
+      type: match || deathMatch ? '比赛' : spar ? '切磋' : '实战', written: resolved.type, mode, refereed, match, deathMatch, spar, lethal, knockdown,
+      knockdownFloor: knockdown ? KNOCKDOWN_HP_FLOOR : 0, protected: match || spar || knockdown, noWithdrawal,
+      concede, withdraw, exit: concede ? 'CONCEDE' : withdraw ? 'WITHDRAW' : '',
+      intensity: match ? 'MATCH' : spar ? 'SPAR' : noWithdrawal ? 'DEATH' : 'DUEL',
+    };
+  }
+  // Holding back (battleRules spar).
   function isNonlethalBattleIntent(worldSnapshot = {}, battleIntent = {}) {
-    const mode = String(
-      battleIntent?.mode ||
-      battleIntent?.intent ||
-      (typeof battleIntent === 'string' ? battleIntent : '') ||
-      worldSnapshot?.战斗意图 ||
-      '',
-    ).trim();
-    return /点到为止|切磋|训练|非致命/.test(mode);
+    return battleRules(worldSnapshot, battleIntent).spar;
+  }
+
+  // 认输与撤离 (方案第 2、3 条): leaving is per unit. A unit that conceded (SURRENDERED, 认输) or got away (WITHDRAWN, 撤离)
+  // has left the battle: out of it as any unit out of the fight (readIncapacityReason — it counts toward its side having
+  // no one left, and a side with no one left has lost unless it got away: evaluateBattleObjectivesCore), and beyond that
+  // no one's target, friend or foe (resolveTargets), and no round end settles anything on it (BattleRuntime
+  // settleBattleRoundEnd): it keeps the HP and states it left with, and the save gets them as they are.
+  const LEFT_BATTLE_REASONS = Object.freeze({ CONCEDE: 'SURRENDERED', WITHDRAW: 'WITHDRAWN' });
+  function hasLeftBattle(unit = {}) {
+    const reason = String(unit?.__战斗失能原因 || '').trim();
+    return reason === LEFT_BATTLE_REASONS.CONCEDE || reason === LEFT_BATTLE_REASONS.WITHDRAW;
+  }
+  // What leaving is called in this battle (the battle terminal's action, the ledger's action name): 认输, 撤离, or '' when
+  // there is no way out.
+  function battleExitLabel(worldSnapshot = {}, battleIntent = {}) {
+    const rules = battleRules(worldSnapshot, battleIntent);
+    return rules.concede ? '认输' : rules.withdraw ? '撤离' : '';
+  }
+
+  // 认输与撤离的估值 (方案第 4 条; 用户 2026-11-09："决策的唯一核心是胜率"；"撤退 = 胜率严重不足"): leaving is weighed against
+  // staying, with no threshold of its own, on the scale of the battle's stake (winning +1, losing −1). Staying is worth
+  // the side's chance to win, less — by the chance it loses — what losing does to each of its units still on the field
+  // (EXIT_FATE, by the battle's rules: brought to a spar's line; rescued at the line, or knocked out, in a match; subdued,
+  // or killed, in a real fight). Leaving is worth "以现在的状态离场、这一场算输": the unit itself has lost (−1, its fate
+  // escaped, the state it has kept), and its teammates fight on without it (the side's chance without it, the fates of
+  // those who stay); the value is the mean over the side's units on the field, each a share of the battle's result. A
+  // withdrawal succeeds only by its chance and its pursuit costs what it takes off the unit (a share of its HP maximum).
+  // So a unit leaves when its side's chance is severely short and losing is grave — its own plight alone does not make it
+  // (团战里不因为一个人处境差就认输), and its leaving taking from its teammates' chance holds it back the more; a fight still
+  // open is not left. A fight is fled for a graver fate than a match is conceded for, but fleeing may fail. A unit
+  // getting away from a side out to get away (成功撤离) has reached its goal (+1).
+  // The values are starting values, set by their reading: a fate is a share of the battle's stake (its two points
+  // between winning and losing) — being held at a spar's line (HP at a tenth, out) costs little; a match more (rescued
+  // at the line, or a knockout blow to 1 HP without a referee); being subdued by an enemy in a real fight (captured) a
+  // quarter of the stake; dying half of it. That puts the chance under which a lone unit leaves (2p < (1 − p)·fate) at
+  // about 7% in a spar, 9–13% in a match, 20% subdued and 33% to the death — 胜率严重不足, the graver the fate the
+  // sooner; a withdrawal besides by its chance of success and less its pursuit.
+  const EXIT_FATE = Object.freeze({ SPAR: 0.15, REFEREED_MATCH: 0.2, MATCH: 0.3, SUBDUED: 0.5, DEATH: 1 });
+  // The outlook (battleStandingOutlook) is read off the field: who brings the other side down first, and whether before
+  // the battle's rounds run out (胜负条件 maxRounds). A side's time to bring the other down is the other's HP shares (units
+  // still standing) over the rate it has been taking HP off the other side less the rate the other has been putting HP
+  // back on its own (the ledger's HP changes per unit, a summon's to its host), each unit's rate drawn toward the field's mean by
+  // EXIT_FORECAST_PRIOR_ROUNDS rounds of parity — before blows have been traded every unit counts alike, so no fight is
+  // given up before it has shown its course, and a side doing next to nothing brings no one down in time. Each time is
+  // uncertain by EXIT_FORECAST_SPREAD in log time, widened while few rounds have been seen (× √(1 + prior ÷ rounds)):
+  // a side twice as fast is first about three times in four once the fight has shown itself. (Rounds seen: from the
+  // ledger's first round, the current one counted as half.) win: the own side first and
+  // in time; lose: the other side first and in time; else the rounds run out (a draw, 0 on the stake).
+  const EXIT_FORECAST_PRIOR_ROUNDS = 3;
+  const EXIT_FORECAST_SPREAD = 0.6;
+  function exitFate(worldSnapshot = {}, battleIntent = {}) {
+    const rules = battleRules(worldSnapshot, battleIntent);
+    if (rules.spar) return EXIT_FATE.SPAR;
+    if (rules.match) return rules.refereed ? EXIT_FATE.REFEREED_MATCH : rules.lethal ? EXIT_FATE.DEATH : EXIT_FATE.MATCH;
+    return rules.lethal ? EXIT_FATE.DEATH : EXIT_FATE.SUBDUED;
+  }
+  // What each unit has done so far, as shares of HP maxima: HP taken off the other side's units (dealt) and put back on
+  // its own side's (mended) — hits, HP resource changes; a summon's to its host. Kept per ledger while it grows.
+  const exitObservedShareCache = new WeakMap();
+  function exitObservedShares(worldSnapshot = {}) {
+    const ledger = Array.isArray(worldSnapshot?.__battleEventLedger) ? worldSnapshot.__battleEventLedger : null;
+    if (!ledger || !ledger.length) return { dealt: new Map(), mended: new Map() };
+    const cached = exitObservedShareCache.get(ledger);
+    if (cached && cached.length === ledger.length) return cached.shares;
+    const shares = { dealt: new Map(), mended: new Map() }, sides = new Map(), units = new Map();
+    for (const entry of listUnits(worldSnapshot)) {
+      const id = unitId(entry.unit);
+      if (id && entry.side) { sides.set(id, entry.side); units.set(id, entry.unit); }
+    }
+    const credited = id => {
+      const unit = units.get(id), host = unit && isSummonUnit(unit) ? String(unit.宿主ID || '').trim() : '';
+      return host && units.has(host) ? host : id;
+    };
+    for (const event of ledger) {
+      const kind = event?.eventKind;
+      if (kind !== 'hit_result' && kind !== 'resource_change') continue;
+      const meta = event.meta || {};
+      if (kind === 'resource_change' && !/^(hp|HP|生命)$/.test(String(meta.resourceKey || meta.resource || ''))) continue;
+      const before = Number(meta.before), after = Number(meta.after);
+      if (!Number.isFinite(before) || !Number.isFinite(after) || Math.abs(after - before) < 1e-9) continue;
+      const actorId = String(event.actorId || '').trim(), targetId = String(event.targetId || '').trim();
+      const actorSide = sides.get(actorId), targetSide = sides.get(targetId);
+      if (!actorSide || !targetSide) continue;
+      if (actorSide !== targetSide ? after >= before : after <= before) continue;
+      const id = credited(actorId), book = actorSide !== targetSide ? shares.dealt : shares.mended;
+      book.set(id, (book.get(id) || 0) + Math.abs(after - before) / Math.max(1, readHpMax(units.get(targetId))));
+    }
+    exitObservedShareCache.set(ledger, { length: ledger.length, shares });
+    return shares;
+  }
+  function standardNormalCdf(value = 0) {
+    if (value === Number.POSITIVE_INFINITY) return 1;
+    if (value === Number.NEGATIVE_INFINITY) return 0;
+    if (!Number.isFinite(value)) return 0.5;
+    const x = Math.abs(value) / Math.SQRT2, t = 1 / (1 + 0.3275911 * x);
+    const erf = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
+    return value >= 0 ? (1 + erf) / 2 : (1 - erf) / 2;
+  }
+  // `side`'s outlook (a side key as sideOf gives it), with the unit `withoutId` taken off the field if given:
+  // { win, lose, draw } and the two times.
+  function battleStandingOutlook(worldSnapshot = {}, side = '', withoutId = '') {
+    const standing = listUnits(worldSnapshot).filter(entry => entry.side && isBattleCapable(entry.unit) && !isSummonUnit(entry.unit));
+    const shares = exitObservedShares(worldSnapshot);
+    const round = Math.max(1, Number(worldSnapshot?.回合 || 0));
+    const ledger = Array.isArray(worldSnapshot?.__battleEventLedger) ? worldSnapshot.__battleEventLedger : [];
+    const firstRound = ledger.reduce((low, event) => Number(event?.round) > 0 ? Math.min(low, Number(event.round)) : low, round);
+    const rounds = Math.max(1, round - firstRound + 0.5);
+    const objectives = normalizeBattleObjectives(worldSnapshot?.胜负条件 || {}, worldSnapshot);
+    const remaining = Math.max(1, objectives.maxRounds - Math.max(0, round - objectives.startRound) + 1);
+    // A side brings the other down at what it deals less what the other mends (each rate drawn toward the field's mean).
+    const rateOf = book => {
+      const mean = standing.length ? standing.reduce((sum, entry) => sum + (book.get(unitId(entry.unit)) || 0), 0) / (standing.length * rounds) : 0;
+      return id => ((book.get(id) || 0) + EXIT_FORECAST_PRIOR_ROUNDS * mean) / (rounds + EXIT_FORECAST_PRIOR_ROUNDS);
+    };
+    const dealt = rateOf(shares.dealt), mended = rateOf(shares.mended);
+    let ownHp = 0, ownDealt = 0, ownMended = 0, otherHp = 0, otherDealt = 0, otherMended = 0;
+    for (const entry of standing) {
+      const id = unitId(entry.unit);
+      if (withoutId && id === withoutId) continue;
+      const hp = clamp(readHp(entry.unit) / Math.max(1, readHpMax(entry.unit)), 0, 1);
+      if (entry.side === side) { ownHp += hp; ownDealt += dealt(id); ownMended += mended(id); }
+      else { otherHp += hp; otherDealt += dealt(id); otherMended += mended(id); }
+    }
+    const ownRate = ownDealt - otherMended, otherRate = otherDealt - ownMended;
+    if (!(ownHp > 0)) return Object.freeze({ win: 0, lose: 1, draw: 0, ownTime: Number.POSITIVE_INFINITY, otherTime: 0, remaining });
+    if (!(otherHp > 0)) return Object.freeze({ win: 1, lose: 0, draw: 0, ownTime: 0, otherTime: Number.POSITIVE_INFINITY, remaining });
+    const ownTime = ownRate > 1e-12 ? otherHp / ownRate : Number.POSITIVE_INFINITY;
+    const otherTime = otherRate > 1e-12 ? ownHp / otherRate : Number.POSITIVE_INFINITY;
+    const spread = EXIT_FORECAST_SPREAD * Math.sqrt(1 + EXIT_FORECAST_PRIOR_ROUNDS / rounds);
+    const first = standardNormalCdf((Math.log(otherTime) - Math.log(ownTime)) / (spread * Math.SQRT2));
+    const win = first * standardNormalCdf((Math.log(remaining) - Math.log(ownTime)) / spread);
+    const lose = (1 - first) * standardNormalCdf((Math.log(remaining) - Math.log(otherTime)) / spread);
+    return Object.freeze({ win, lose, draw: Math.max(0, 1 - win - lose), ownTime, otherTime, remaining });
+  }
+  // Whether `side` (a side key) is out to get away: a success condition of its own is 成功撤离 (a victory condition for
+  // the player, a defeat condition for the enemy, unless the condition names its side).
+  function sideWithdrawalGoal(worldSnapshot = {}, side = '', battleIntent = {}) {
+    const objectives = normalizeBattleObjectives(battleIntent?.objectives || battleIntent?.胜负条件 || worldSnapshot?.胜负条件 || {}, worldSnapshot);
+    const key = side === 'team_enemy' ? 'ENEMY' : 'PLAYER';
+    return (key === 'PLAYER' ? objectives.victory : objectives.defeat).conditions
+      .some(condition => condition.type === 'WITHDRAW_SUCCESS' && (!condition.side || condition.side === key));
+  }
+  // The exit valuation of `actor` leaving now (null when it may not): `contest` is buildWithdrawalContest's. `delta` is
+  // leaving less staying on the stake's scale; `win` / `without` the side's chance with and without it.
+  function exitValuation(worldSnapshot = {}, battleIntent = {}, actor = {}, contest = null) {
+    const rules = battleRules(worldSnapshot, battleIntent);
+    if (!rules.exit || !actor || typeof actor !== 'object') return null;
+    const side = sideOf(worldSnapshot, actor), id = unitId(actor);
+    const fate = exitFate(worldSnapshot, battleIntent);
+    const others = listUnits(worldSnapshot).filter(entry => entry.side === side && unitId(entry.unit) !== id &&
+      isBattleCapable(entry.unit) && !isSummonUnit(entry.unit)).length;
+    const outlook = battleStandingOutlook(worldSnapshot, side);
+    const without = others ? battleStandingOutlook(worldSnapshot, side, id) : Object.freeze({ win: 0, lose: 1, draw: 0 });
+    // What the battle's result is worth to each unit on the field: won +1, lost −1 and its fate; run out, 0.
+    const worth = view => view.win - view.lose - view.lose * fate;
+    const stay = worth(outlook);
+    // A unit getting away from a side out to get away (WITHDRAW_SUCCESS) has its goal met; else it has lost.
+    const escapes = rules.withdraw && sideWithdrawalGoal(worldSnapshot, side, battleIntent);
+    const left = ((escapes ? 1 : -1) + others * worth(without)) / (others + 1);
+    const success = rules.concede ? 1 : clamp(Number(contest?.successProbability ?? 1), 0, 1);
+    const pursuit = rules.concede ? 0 : Math.max(0, Number(contest?.expectedPursuitDamage || 0)) / Math.max(1, readHpMax(actor));
+    return Object.freeze({ kind: rules.exit, fate, win: outlook.win, lose: outlook.lose, withoutWin: without.win, withoutLose: without.lose,
+      others, stay, left, escapes, success, pursuit, delta: success * (left - stay) - pursuit });
+  }
+  // WITHDRAW_SUCCESS (方案第 3 条): a side that got someone away (__battleRuntime.withdrawalSuccessSides) with no one left
+  // on the field. `sideKey` PLAYER / ENEMY (or a side key); '' any side.
+  function withdrawalSucceeded(worldSnapshot = {}, sideKey = '', options = {}) {
+    const recorded = worldSnapshot?.__battleRuntime?.withdrawalSuccessSides;
+    const sides = new Set((Array.isArray(recorded) ? recorded : [])
+      .map(value => normalizeObjectiveSide(String(value || '').trim().replace(/^team_/i, ''))).filter(Boolean));
+    if (!sides.size) return false;
+    const index = options?.unitIndex || buildObjectiveUnitIndex(worldSnapshot);
+    const allOut = key => {
+      const units = key === 'PLAYER' ? index.playerUnits : index.enemyUnits;
+      return units.length > 0 && units.every(unit => !objectiveUnitState(unit, options).capable);
+    };
+    const wanted = normalizeObjectiveSide(String(sideKey || '').trim().replace(/^team_/i, ''));
+    return wanted ? sides.has(wanted) && allOut(wanted) : [...sides].some(allOut);
   }
 
   // 生命受威胁即出局（用户 2026-11-12："比赛，切磋等通常都应该是生命受到威胁而终止或出局……救援的前提是判定这一击会导致生命
   // 低于10%，被救的人出局"）: in a spar (the fighters hold back) or a match (a referee steps in) a hit that would take a
-  // unit under LIFE_THREAT_RATIO of its HP is held at that line, and the unit is out of the fight. A match is told by
-  // its intent (比赛, 擂台, 大赛, 考核, 斗魂, 比试, 比武) or by a referee on the field (裁判). In a match the runtime asks
-  // what the referee can do (BattleRuntime structuredRefereeIntervention, the rules below: refereeTiming and after);
-  // projections take it that the line holds, which leaves the same units in the fight either way.
+  // unit under LIFE_THREAT_RATIO of its HP is held at that line, and the unit is out of the fight. Which battle is which is
+  // battleRules'. In a match the runtime asks what the referee can do (BattleRuntime structuredRefereeIntervention, the
+  // rules below: refereeTiming and after); projections take it that the line holds, which leaves the same units in the
+  // fight either way.
   const LIFE_THREAT_RATIO = 0.1;
   function isRefereedMatch(worldSnapshot = {}, battleIntent = {}) {
-    const mode = String(battleIntent?.mode || battleIntent?.intent || (typeof battleIntent === 'string' ? battleIntent : '') || worldSnapshot?.战斗意图 || '').trim();
-    return /比赛|擂台|大赛|考核|斗魂|比试|比武/.test(mode) || !!(worldSnapshot?.裁判 && typeof worldSnapshot.裁判 === 'object');
+    return battleRules(worldSnapshot, battleIntent).match;
   }
   function isProtectedBattle(worldSnapshot = {}, battleIntent = {}) {
-    return isNonlethalBattleIntent(worldSnapshot, battleIntent) || isRefereedMatch(worldSnapshot, battleIntent);
+    return battleRules(worldSnapshot, battleIntent).protected;
   }
   // Whether reaching `floor` takes `target` out of the fight: the life-threat line does; a higher line set by a victory
   // condition (HP_RATIO_AT_OR_BELOW) is settled by that condition instead.
@@ -3181,8 +3483,25 @@
     return floor > 0 && floor <= Math.max(1, Math.floor(readHpMax(target) * LIFE_THREAT_RATIO)) + 1e-9;
   }
 
+  // The line a hit is held at (0: none): in a spar or a match the life-threat line (or a higher HP_RATIO_AT_OR_BELOW
+  // condition's); otherwise the knockdown line of a battle that is not lethal (battleRules knockdownFloor). Reaching either
+  // takes the unit out (lifeThreatExit).
+  // 间接生命损失的线 (type1c): the line an indirect loss of HP `target` takes from `sourceId` is held at — its
+  // calculateNonlethalHpFloor when the source is an opponent or unknown; none for the unit's own doing or an ally's (the
+  // settlement, BattleRuntime knockdownFloorOf, holds an unknown source only once the ledger names it: these projections
+  // hold it, so they never count an opponent's loss to 0 the settlement would stop).
+  function indirectHpFloor(worldSnapshot = {}, battleIntent = {}, target = {}, sourceId = '') {
+    const source = String(sourceId || '').trim();
+    if (source) {
+      if (source === unitId(target)) return 0;
+      const sourceUnit = findUnit(worldSnapshot, source);
+      if (sourceUnit && sideOf(worldSnapshot, sourceUnit) === sideOf(worldSnapshot, target)) return 0;
+    }
+    return calculateNonlethalHpFloor(worldSnapshot, target, battleIntent);
+  }
   function calculateNonlethalHpFloor(worldSnapshot = {}, target = {}, battleIntent = {}) {
-    if (!isProtectedBattle(worldSnapshot, battleIntent)) return 0;
+    const rules = battleRules(worldSnapshot, battleIntent);
+    if (!rules.spar && !rules.match) return rules.knockdownFloor;
     const objectives = normalizeBattleObjectives(
       battleIntent?.objectives ||
       battleIntent?.胜负条件 ||
@@ -3298,15 +3617,11 @@
     includeDetails = false,
   ) {
     if (condition.type === 'WITHDRAW_SUCCESS') {
-      const successfulSides = new Set(
-        Array.isArray(worldSnapshot?.__battleRuntime?.withdrawalSuccessSides)
-          ? worldSnapshot.__battleRuntime.withdrawalSuccessSides.map(value => String(value || '').trim().toUpperCase()).filter(Boolean)
-          : [],
-      );
-      const conditionSide = String(condition.side || '').trim().toUpperCase();
-      const matched = conditionSide
-        ? successfulSides.has(conditionSide)
-        : worldSnapshot?.__battleRuntime?.withdrawalSuccess === true;
+      // 认输与撤离 (方案第 3 条): units withdraw one by one (WITHDRAWN); the condition holds once a side that got someone away
+      // has no one left on the field (withdrawalSucceeded) — the condition's side, else its group's
+      // (options.objectiveGroupSide: a victory condition the player's, a defeat condition the enemy's). Before, any
+      // withdrawal met it at once (and a side read as team_player never matched a condition's PLAYER).
+      const matched = withdrawalSucceeded(worldSnapshot, condition.side || options.objectiveGroupSide || '', options);
       return includeDetails
         ? Object.freeze({
             condition,
@@ -3463,11 +3778,12 @@
       ? rawObjectives
       : normalizeBattleObjectives(rawObjectives, worldSnapshot);
     const unitIndex = options?.unitIndex || buildObjectiveUnitIndex(worldSnapshot);
-    const evaluateGroup = group => {
+    const evaluateGroup = (group, groupSide = '') => {
       const conditionOptions = {
         ...options,
         startRound: objectives.startRound,
         unitIndex,
+        objectiveGroupSide: groupSide,
       };
       const details = includeDetails
         ? group.conditions.map(condition =>
@@ -3493,13 +3809,25 @@
         details,
       };
     };
-    const victory = evaluateGroup(objectives.victory);
-    const defeat = evaluateGroup(objectives.defeat);
+    let victory = evaluateGroup(objectives.victory, 'PLAYER');
+    let defeat = evaluateGroup(objectives.defeat, 'ENEMY');
+    // 认输与撤离 (方案第 3 条): a side that got away (its WITHDRAW_SUCCESS met: someone withdrew and no one of it is left on
+    // the field) has reached that goal; its being all off the field is then no defeat of its own — not its side's
+    // TEAM_INCAPACITATED, not the battlefield exhaustion below. Every other defeat condition stands.
+    const escapedBy = (group, evaluated) => group.conditions.some((condition, index) => condition.type === 'WITHDRAW_SUCCESS' && evaluated.matches[index]);
+    const discountEscape = (group, evaluated, side) => {
+      const matches = group.conditions.map((condition, index) => evaluated.matches[index] &&
+        !(condition.type === 'TEAM_INCAPACITATED' && String(condition.side || '') === side));
+      return { ...evaluated, matches, matched: matches.length > 0 && (group.logic === 'ALL' ? matches.every(Boolean) : matches.some(Boolean)) };
+    };
+    const playerEscaped = escapedBy(objectives.victory, victory), enemyEscaped = escapedBy(objectives.defeat, defeat);
+    if (playerEscaped) defeat = discountEscape(objectives.defeat, defeat, 'PLAYER');
+    if (enemyEscaped) victory = discountEscape(objectives.victory, victory, 'ENEMY');
     // A side with nobody left able to fight has lost, whatever the declared objectives (an endure or drain objective
     // does not keep a battle running against a fallen opponent); both sides down together is a draw.
-    const playerExhausted = unitIndex.playerUnits.length > 0 &&
+    const playerExhausted = !playerEscaped && unitIndex.playerUnits.length > 0 &&
       unitIndex.playerUnits.every(unit => !objectiveUnitState(unit, options).capable);
-    const enemyExhausted = unitIndex.enemyUnits.length > 0 &&
+    const enemyExhausted = !enemyEscaped && unitIndex.enemyUnits.length > 0 &&
       unitIndex.enemyUnits.every(unit => !objectiveUnitState(unit, options).capable);
     const exhaustionDetail = (side, matched) => Object.freeze({
       condition: Object.freeze({
@@ -5819,11 +6147,12 @@
 
   // What follows a hit on another unit beside the damage itself: the share thrown back (反伤, `ratio`) and 伤害吸收.
   // null: nothing does.
-  function damageFollowUp(actor = {}, target = {}, skill = null) {
+  // `floor`: the line 反伤 on `actor` is held at (indirectHpFloor, type1c).
+  function damageFollowUp(actor = {}, target = {}, skill = null, floor = 0) {
     if (unitId(actor) === unitId(target)) return null;
     const ratio = counterDamageRatio(target), absorption = damageAbsorptionRatios(actor, target, skill);
     return ratio > 0 || absorption.soak > 0 || absorption.drain > 0 || absorption.gains || absorption.store || absorption.release
-      ? { actor, target, ratio, ...absorption } : null;
+      ? { actor, target, ratio, floor: Math.max(0, Number(floor) || 0), ...absorption } : null;
   }
 
   // An outcome's `absorption` laid on the world: resources gained by the attacker and the target, what the target put
@@ -5995,7 +6324,7 @@
           }
           if (follow?.store) for (const rule of follow.store) absorption.stored[rule.key] = (absorption.stored[rule.key] || 0) + (loss > 0 ? loss : amount) * rule.ratio;
           if (reflectedActor && loss > 0 && reflectRatio > 0) {
-            const reflected = Math.max(0, Math.min(readHp(reflectedActor), Math.floor(loss * reflectRatio)));
+            const reflected = Math.max(0, Math.min(readHp(reflectedActor) - Number(follow?.floor || 0), Math.floor(loss * reflectRatio)));
             if (reflected > 0) {
               reflectedDamage += reflected; setHp(reflectedActor, readHp(reflectedActor) - reflected);
               if (readHp(reflectedActor) <= 0) triggerRevive(reflectedActor, '', setResourceValue, () => { reflectedHealing += readHp(reflectedActor); });
@@ -8290,10 +8619,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         projectionContext,
         target,
       );
+      // 认输与撤离: a unit that left the battle is no one's target, an ally's heal or buff included (hasLeftBattle).
       const eligible = effectTargetsAllies(effect)
-        ? profile
+        ? (profile
           ? profile.physicallyAlive
-          : isPhysicallyAlive(target)
+          : isPhysicallyAlive(target)) && !hasLeftBattle(target)
         : profile
           ? profile.battleCapable
           : isBattleCapable(target);
@@ -8666,6 +8996,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (/禁疗/.test(state)) {
       combatEffect.heal_reduction = Math.max(Number(combatEffect.heal_reduction || 0), magnitude);
     }
+    // 治疗反转 (任务卡⑦; 用户 2026-11-13 定): the HP its holder is healed by is dealt to it instead, times the ratio (数值,
+    // the generator's +100%) — healInversionOf / healInversionEffect. It used to do nothing in a battle.
+    if (/治疗反转/.test(state)) {
+      combatEffect.heal_inversion_ratio = Math.max(Number(combatEffect.heal_inversion_ratio || 0), magnitude || 1);
+    }
     if (/异常抗性/.test(state) || effect?.异常抗性 !== undefined) {
       combatEffect.abnormal_resistance = Math.max(
         Number(combatEffect.abnormal_resistance || 0),
@@ -8719,6 +9054,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       combatEffect.blind = true;
       // 致盲是无可填强度的固定状态；设计台正式说明为攻击命中下降35%。
       combatEffect.hit_penalty = Math.max(Number(combatEffect.hit_penalty || 0), 0.35);
+    }
+    // 共享视野 (任务卡⑦; 用户 2026-11-13："共享视野应该是直接增加己方命中率和闪避率"): its holders (the allies the skill
+    // gives it to) hit and evade the better — 数值 the hit, 副数值 the evasion (the generator gives each +10%; COST
+    // prices them at half of 致盲's hit). It used to do nothing in a battle.
+    if (/共享视野/.test(state)) {
+      combatEffect.hit_bonus = Math.max(Number(combatEffect.hit_bonus || 0), magnitude || 0.1);
+      combatEffect.dodge_bonus = Math.max(Number(combatEffect.dodge_bonus || 0), secondaryMagnitude || 0.1);
     }
     // 混乱、精神紊乱由状态施加打出时原先没有任何战斗效果（只有副作用形态有），在战斗里什么也不做（2026-11-09 复跑查出）。
     // 按技能描述（转译状态施加数值说明_V1）落地：数值 = 偏转目标概率；混乱副数值 = 命中下降，精神紊乱副数值 = 反应下降。
@@ -9392,6 +9734,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const recoveryLock = (Array.isArray(state?.资源锁定规则) ? state.资源锁定规则 : []).reduce((ratio, rule) =>
       String(rule?.锁定类型 || '').trim() === '回复锁定' && Array.isArray(rule.资源) && rule.资源.includes(String(resource || '').trim())
         ? Math.max(ratio, Number(rule.比例) || 0) : ratio, 0);
+    // 治疗反转: no HP heal reaches its holder as a heal — a single HP restoration is turned into damage before it is
+    // settled (healInversionEffect, the periodic heals likewise); what is left (HP among other resources, or under 禁疗
+    // as well, 禁疗 first) restores nothing.
+    if (String(resource || '').trim() === '生命' && Number(effects.heal_inversion_ratio || 0) > 0) return 0;
     const receivedHealingMultiplier = Math.max(
       0,
       1 - clamp(Number(effects.heal_reduction || 0), 0, 1),
@@ -9406,6 +9752,48 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         .reduce((value, entry) => value * Math.max(0, 1 + Number(entry?.数值 || 0)), 1);
     }
     return receivedHealingMultiplier;
+  }
+
+  // 治疗反转 on `unit` (任务卡⑦): { ratio, sourceId } of the strongest in force — the HP heals it receives are dealt to it
+  // at ratio times, held at the lines an opponent's damage is held at (they come of the inverting unit, sourceId);
+  // null when it has none, or when 禁疗 is on it too (禁疗 first: the heal is nothing, and nothing is turned).
+  function healInversionOf(unit = {}) {
+    let found = null;
+    for (const [, state] of stateEntries(unit, 'COLLECTION')) {
+      if (Math.max(0, Number(state?.duration ?? state?.持续回合 ?? 1)) <= 0) continue;
+      const effects = state?.战斗效果 || {};
+      if (Number(effects.heal_reduction || 0) > 0) return null;
+      const ratio = Number(effects.heal_inversion_ratio || 0);
+      if (ratio > 0 && (!found || ratio > found.ratio)) found = { ratio, sourceId: String(state?.sourceActorId || state?.来源角色 || '').trim() };
+    }
+    return found;
+  }
+
+  // A 资源变化 restoring HP alone, as it lands on `target` under 治疗反转: the same change taking ratio times that HP,
+  // marked with the inverting unit (__healInversionSourceId) for the lines it is held at; null when it is not one.
+  function healInversionEffect(effect = {}, target = {}) {
+    if (String(effect?.原型 || '').trim() !== '资源变化') return null;
+    const keys = normalizedResourceKeys(effect?.资源 || '魂力');
+    if (keys.length !== 1 || keys[0] !== 'hp') return null;
+    const inversion = healInversionOf(target);
+    if (!inversion) return null;
+    const scaled = value => roundNumber(value * inversion.ratio * 1e4) / 1e4;
+    const raw = effect?.数值;
+    const range = parseSignedRange(raw);
+    let value;
+    if (range) {
+      if (!(range.lower > 0)) return null;
+      const unit = range.isPercent ? '%' : '';
+      value = `-${scaled(range.upper)}${unit}~-${scaled(range.lower)}${unit}`;
+    } else if (typeof raw === 'number') {
+      if (!(raw > 0)) return null;
+      value = -scaled(raw);
+    } else {
+      const text = String(raw ?? '').trim(), numeric = Number.parseFloat(text.replace('%', ''));
+      if (!(numeric > 0)) return null;
+      value = `-${scaled(numeric)}${text.includes('%') ? '%' : ''}`;
+    }
+    return { ...effect, 数值: value, __healInversionSourceId: inversion.sourceId };
   }
 
   function healingMultiplierForUnit(unit = {}, resource = '生命') {
@@ -9943,7 +10331,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
   }
 
-  function periodicStateMarginal(unit, existing, effect, combatEffect) {
+  // `hpFloor`: the line the state's damage is held at (indirectHpFloor, type1c), as BattleRuntime settles it.
+  function periodicStateMarginal(unit, existing, effect, combatEffect, hpFloor = 0) {
     const periodic = effects => Number(effects?.dot_damage) > 0 || Number(effects?.dot_damage_ratio) > 0 || Number(effects?.hot_heal_ratio) > 0;
     if (!periodic(existing?.战斗效果) && !periodic(combatEffect)) return null;
     const runtime = root.__LWCS_BATTLE_RUNTIME__;
@@ -9967,7 +10356,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           if (blocked) return;
           if (kind === 'hot') total.healing += Number(actual || 0);
           else total.damage += Number(actual || 0);
-        });
+        }, null, hpFloor);
         state.duration = Number(state.duration ?? state.持续回合) - 1;
         return total;
       });
@@ -9982,7 +10371,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       mergeKind: merged.mergeKind };
   }
 
-  function stateScheduledHpDelta(unit = {}, state = {}, durationOverride = null) {
+  // `hpFloor`: the line the state's damage is held at (indirectHpFloor, type1c).
+  function stateScheduledHpDelta(unit = {}, state = {}, durationOverride = null, hpFloor = 0) {
     const combatEffect = state?.战斗效果 || state?.计算层效果 || {};
     const duration = durationOverride === null
       ? Math.max(0, Number(state?.duration ?? state?.持续回合 ?? 0))
@@ -10003,8 +10393,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 而本函数的结果直通 SCHEDULED_HP_DELTA 与 healthTrajectoryByTarget 主路径，
     // 是预演伤害相对运行时严重高估的来源。
     const currentHp = readHp(unit);
-    const totalDamage = Math.min(currentHp, damagePerTick * duration);
-    const totalHealing = Math.min(
+    // 治疗反转: the periodic heal is dealt instead (healInversionOf), held at the floor given (the state's own source's);
+    // the settlement (BattleRuntime settlePeriodicHpValues) holds it at the inverting unit's.
+    const inversion = healingPerTick > 0 ? healInversionOf(unit) : null;
+    const totalDamage = Math.min(Math.max(0, currentHp - Math.max(0, Number(hpFloor) || 0)),
+      damagePerTick * duration + (inversion ? healingPerTick * inversion.ratio * duration : 0));
+    const totalHealing = inversion ? 0 : Math.min(
       Math.max(0, readHpMax(unit) - currentHp),
       healingPerTick * duration,
     );
@@ -10977,10 +11371,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const healingMultiplier = requestedDelta > 0 || range?.upper > 0
         ? Math.max(0, Number(healingMultiplierForUnit(currentTarget, resource) ?? 1))
         : 1;
-      const settledNext = clamp(current + requestedDelta * healingMultiplier, 0, maximum);
-      const realizedNext = jointStrengthOutcomes && resourceKeys[0] === 'hp'
+      // 间接生命损失的线 (type1c): an opponent's 资源变化 taking HP is held at the target's line (indirectHpFloor). The
+      // expected value is held; the strength rows of a range keep their own balances.
+      const resourceHpFloor = isHp ? Math.min(current, indirectHpFloor(context?.worldSnapshot || overlay.snapshot(), context?.battleIntent || {},
+        currentTarget, effect?.__healInversionSourceId !== undefined ? effect.__healInversionSourceId : unitId(context.actor))) : 0;
+      const settledNext = clamp(current + requestedDelta * healingMultiplier, resourceHpFloor, maximum);
+      const realizedNext = Math.max(resourceHpFloor, jointStrengthOutcomes && resourceKeys[0] === 'hp'
         ? jointStrengthOutcomes.reduce((sum, row) => sum + row.probability * row.resources[resourceKey].balance, 0)
-        : range ? meanResourceRangeBalance(current, maximum, range, healingMultiplier) : roundNumber(settledNext);
+        : range ? meanResourceRangeBalance(current, maximum, range, healingMultiplier) : roundNumber(settledNext));
       const resourceStrengthOutcomes = jointStrengthOutcomes
         ? jointStrengthOutcomes.map(row => ({ outcomeId: row.outcomeId, probability: row.probability, balance: row.resources[resourceKey].balance,
           ...(row.resources[resourceKey].current !== current ? { current: row.resources[resourceKey].current } : {}),
@@ -11335,7 +11733,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         deathSaveCount: input.nonlethalHpFloor > 0 ? 0 : deathSaveCount(target, { segments: 1, actionId: context.rootActionId }),
         ruleBlockCount: ruleBlockCount(target, { segments: 1, actionId: context.rootActionId }), ruleBlockCastId: context.rootActionId,
         reviveTarget: !input.nonlethalHpFloor && hasDamageRevival(target) ? target : null,
-        reflection: damageFollowUp(actor, target, context.declaration?.skill) });
+        reflection: damageFollowUp(actor, target, context.declaration?.skill,
+          indirectHpFloor(context?.worldSnapshot || {}, context?.battleIntent || {}, actor, unitId(target))) });
       const index = context.damageSegmentOutcomeResolver({ effectInstanceId: context.effectInstanceId, targetId, segment,
         outcomes: expectation.outcomeDistribution });
       if (!Number.isInteger(index) || !expectation.outcomeDistribution[index]) throw new Error('BATTLE_PREVIEW_DAMAGE_OUTCOME_INVALID');
@@ -11860,7 +12259,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           );
           const reviveTarget = !nonlethalHpFloor && segments * perSegmentDamage >= shieldBefore + hpDamageLimit && hasDamageRevival(currentTarget) ? currentTarget : null;
           const reflectRatio = unitId(actor) !== unitId(target) ? counterDamageRatio(currentTarget) : 0;
-          const reflection = damageFollowUp(overlay.readUnit(unitId(actor)), currentTarget, context.declaration?.skill);
+          const reflection = damageFollowUp(overlay.readUnit(unitId(actor)), currentTarget, context.declaration?.skill,
+            indirectHpFloor(context?.worldSnapshot || {}, context?.battleIntent || {}, actor, unitId(currentTarget)));
           const requiredOutcomeKey = String(
             context?.requiredOutcomeKeyByTarget?.get(unitId(target)) || ''
           ).trim();
@@ -11923,7 +12323,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                   ? Number(branchResolvedHit) : branchBaseHit, 0, 1),
                 hpDamageLimit: Math.max(0, hpBefore - nonlethalHpFloor), deathSaveCount: nonlethalHpFloor > 0 ? 0 : deathSaveCount(branchTarget, chargeScope), ruleBlockCount: ruleBlockCount(branchTarget, chargeScope),
                 reviveTarget: !nonlethalHpFloor && hasDamageRevival(branchTarget) ? branchTarget : null,
-                reflection: damageFollowUp(branchActor, branchTarget, context.declaration?.skill),
+                reflection: damageFollowUp(branchActor, branchTarget, context.declaration?.skill,
+                  indirectHpFloor(context?.worldSnapshot || {}, context?.battleIntent || {}, branchActor, unitId(branchTarget))),
                 assignments: Object.freeze({ ...branch.assignments }) };
             }) || null;
             if (hpDamageLimits) {
@@ -12268,7 +12669,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         return;
       }
       if (prototype === '资源变化') {
-        targets.forEach(target => resourceOutcome(effect, target, overlay, ledger, context));
+        // 治疗反转: a heal landing on a unit under it is settled as the damage it turns into (healInversionEffect).
+        targets.forEach(target => resourceOutcome(healInversionEffect(effect, overlay.readUnit(unitId(target)) || target) || effect, target, overlay, ledger, context));
         return;
       }
       if (prototype === '资源转移') {
@@ -12527,10 +12929,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           const currentTarget = overlay.readUnit(targetId);
           if (!currentActor || !currentTarget) return;
           const applicationProbability = probabilityProfile.applicationProbability;
-          const requestedAmount = Math.abs(parseSignedValue(
+          const requestedTransfer = Math.abs(parseSignedValue(
             effect?.数值,
             readResourceMax(currentTarget, resource),
           ));
+          // 间接生命损失的线 (type1c): devoured HP stops at the target's line when the devourer is its opponent.
+          const devourFloor = mode === '吞噬' && resource === '生命'
+            ? indirectHpFloor(context?.worldSnapshot || overlay.snapshot(), context?.battleIntent || {}, currentTarget, unitId(currentActor)) : 0;
+          const requestedAmount = devourFloor > 0 ? Math.min(requestedTransfer, Math.max(0, readHp(currentTarget) - devourFloor)) : requestedTransfer;
           let source = mode === '吞噬' ? currentTarget : currentActor;
           const receiver = mode === '吞噬' ? currentActor : currentTarget;
           let resourceTransferSupport = null;
@@ -13176,7 +13582,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             applicationProbability: effectiveApplicationProbability,
           });
           const periodic = prototype === '状态施加' && marginal && effectiveApplicationProbability > 0
-            ? periodicStateMarginal(currentTarget, existingState, effect, combatEffect) : null;
+            ? periodicStateMarginal(currentTarget, existingState, effect, combatEffect,
+              indirectHpFloor(context?.worldSnapshot || overlay.snapshot(), context?.battleIntent || {}, currentTarget, unitId(context.actor))) : null;
           // A zero isolated net is still a scheduled component. Another state
           // can reopen healing capacity before this state ticks in the shared
           // future clock; dropping it here loses that source permanently.
@@ -13303,8 +13710,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 targetId,
                 stateKey,
               ].join(':');
-              const beforeScheduledHealthDelta = stateScheduledHpDelta(currentTarget, state, current);
-              const afterScheduledHealthDelta = stateScheduledHpDelta(currentTarget, state, duration);
+              const stateFloor = indirectHpFloor(context?.worldSnapshot || overlay.snapshot(), context?.battleIntent || {}, currentTarget,
+                String(state?.sourceActorId || state?.来源角色 || ''));
+              const beforeScheduledHealthDelta = stateScheduledHpDelta(currentTarget, state, current, stateFloor);
+              const afterScheduledHealthDelta = stateScheduledHpDelta(currentTarget, state, duration, stateFloor);
               const scheduledHealthDelta = afterScheduledHealthDelta - beforeScheduledHealthDelta;
               const settlementDelta = settlementRatio > 0 && beforeScheduledHealthDelta < -1e-9 && scheduledHealthDelta > 1e-9
                 ? (beforeScheduledHealthDelta - afterScheduledHealthDelta) * settlementRatio
@@ -13334,7 +13743,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             replaceStates(unit, entries);
             if (Math.abs(requestedSettlementDelta) > 1e-9) {
               const before = readHp(unit);
-              appliedSettlementDelta = clamp(before + requestedSettlementDelta, 0, readHpMax(unit)) - before;
+              // 间接生命损失的线 (type1b/1c, indirectHpFloor): an opponent settling these states at once is held at the unit's line.
+              const settlementFloor = Math.min(before, indirectHpFloor(context?.worldSnapshot || overlay.snapshot(), context?.battleIntent || {}, unit, unitId(context.actor)));
+              appliedSettlementDelta = clamp(before + requestedSettlementDelta, settlementFloor, readHpMax(unit)) - before;
               setHp(unit, before + appliedSettlementDelta * applicationProbability);
             }
           });
@@ -13417,7 +13828,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           });
           const removedKeys = removed.map(([key]) => key);
           const removedScheduledDelta = removed
-            .reduce((sum, [, state]) => sum + stateScheduledHpDelta(currentTarget, state), 0);
+            .reduce((sum, [, state]) => sum + stateScheduledHpDelta(currentTarget, state, null, indirectHpFloor(context?.worldSnapshot || overlay.snapshot(),
+              context?.battleIntent || {}, currentTarget, String(state?.sourceActorId || state?.来源角色 || ''))), 0);
           const probabilityEvidence = { applicationProbability, ownApplicationProbability: probabilityProfile.ownApplicationProbability,
             ...outcomeDependencyEvidence(context, unitId(target)) };
           ledger.addOutcome({ ...context, targetId: unitId(target), outcomeKind: 'STATE_CHANGED', threatValue: 0, evidence: {
@@ -13479,7 +13891,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               removedStates = stateEntries(unit).filter(([, state]) => effectMatchesMechanismMatcher(state, matcher));
               removedKeys = removedStates.map(([key]) => key);
               removedScheduledDelta = removedStates
-                .reduce((sum, [, state]) => sum + stateScheduledHpDelta(currentTarget, state), 0);
+                .reduce((sum, [, state]) => sum + stateScheduledHpDelta(currentTarget, state, null, indirectHpFloor(context?.worldSnapshot || overlay.snapshot(),
+                  context?.battleIntent || {}, currentTarget, String(state?.sourceActorId || state?.来源角色 || ''))), 0);
               removedTickCount = Math.max(
                 0,
                 ...stateEntries(unit)
@@ -15208,7 +15621,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             }),
           });
           const periodic = marginal && applicationProbability > 1e-12
-            ? periodicStateMarginal(target, existingState, effect, combatEffect) : null;
+            ? periodicStateMarginal(target, existingState, effect, combatEffect, indirectHpFloor(worldSnapshot, battleIntent, target, unitId(actor))) : null;
           if (periodic) {
             const { damagePerTick, healingPerTick, tickCount, tickDeltas, realizedDamage, realizedHealing } = periodic;
             if (tickCount > 0) {
@@ -18969,6 +19382,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           delta: -contest.expectedPursuitDamage,
         },
       });
+      // 认输与撤离: leaving that is certain (a concession, or no one left able to pursue) takes the actor off the field as
+      // the settlement does (BattleRuntime: SURRENDERED / WITHDRAWN); an uncertain withdrawal stays a contest the
+      // valuations weigh by its chance.
+      if (Number(contest.successProbability) >= 1 - 1e-12) {
+        overlay.changeUnit(unitId(actor), unit => { unit.__战斗失能原因 = contest.concede ? LEFT_BATTLE_REASONS.CONCEDE : LEFT_BATTLE_REASONS.WITHDRAW; });
+      }
     }
     // 接战链 阶段二: a move that came to nothing in a clash brings no effect (its costs are paid above); a unit the move
     // came to nothing on (`nullifiedTargetIds`: it won or evened a clash against it, or a preemption held) takes none of it.
@@ -20824,9 +21243,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         let delta = payload.resourcePayment ? -payload.resourcePayment.amount : payload.resourceChange
           ? parseSignedValue(payload.resourceChange.value, maximum)
           : Number(payload?.delta || 0);
-        if (payload.resourceChange && delta > 0) delta *= Math.max(0, Number(healingMultiplierForUnit(unit, resource) ?? 1));
+        // 治疗反转: a heal of HP landing under it is that HP taken, times the ratio, held at the lines (healInversionOf).
+        const inversion = payload.resourceChange && delta > 0 && resource === 生命 ? healInversionOf(unit) : null;
+        if (inversion) {
+          const rangeChange = parseSignedRange(payload.resourceChange.value);
+          const requested = rangeChange ? (signedRangeValue(rangeChange, maximum, 0) + signedRangeValue(rangeChange, maximum, 1)) / 2 : delta;
+          const floor = Math.min(current, indirectHpFloor(overlay.snapshot(), {}, unit, inversion.sourceId));
+          delta = -Math.min(Math.max(0, current - floor), Math.max(0, requested) * inversion.ratio);
+        } else if (payload.resourceChange && delta > 0) delta *= Math.max(0, Number(healingMultiplierForUnit(unit, resource) ?? 1));
         const next = clamp(current + delta, 0, maximum);
-        const range = payload.resourceChange ? parseSignedRange(payload.resourceChange.value) : null;
+        const range = payload.resourceChange && !inversion ? parseSignedRange(payload.resourceChange.value) : null;
         const support = roundedResourceSupports.get(supportKey);
         if ((payload.resourceChange || payload.resourcePayment) && !range && support?.segments) {
           let distribution = shiftRoundedResourceSegments(support, delta, maximum);
@@ -22183,11 +22609,22 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return calculateWithdrawalPressureDetails(unit, opponent, stance).value;
   }
 
+  // 撤离成功率 (任务卡④, 2026-11-13): a getaway is a race of the two pressures (mostly agility, then spirit), and its odds
+  // run smoothly with their ratio: two units alike (the ratio the pursuer's stance leaves, WITHDRAWAL_PARITY_RATIO) get
+  // away one time in two, one 30% the faster about 85% of the time, one 30% the slower about 15%
+  // (WITHDRAWAL_ODDS_STEEPNESS: 1 / (1 + (parity ÷ ratio)^k)); a unit that cannot react (hard control: its pressure 0) does
+  // not get away; any other at least WITHDRAWAL_MIN_SUCCESS. A level gap counts through agility alone (ten levels are
+  // about twice the agility, so the slower one stays near the floor). (Before: (ratio − 0.72) × 0.55 with a floor of 3%
+  // and certain at 1.18 — two units alike 11%, and 21% → certain between 1.1 and 1.2.)
+  const WITHDRAWAL_PARITY_RATIO = 1 / 1.08;
+  const WITHDRAWAL_ODDS_STEEPNESS = 6.6;
+  const WITHDRAWAL_MIN_SUCCESS = 0.03;
   function estimateWithdrawal(actor = {}, pursuer = {}) {
     const withdrawalScore = calculateWithdrawalPressure(actor, pursuer, 'WITHDRAW');
     const pursuitScore = calculateWithdrawalPressure(pursuer, actor, 'PURSUIT');
     const ratio = withdrawalScore / Math.max(1, pursuitScore);
-    const successProbability = ratio >= 1.18 ? 1 : clamp((ratio - 0.72) * 0.55, 0.03, 0.92);
+    const successProbability = !(ratio > 0) ? 0
+      : Math.max(WITHDRAWAL_MIN_SUCCESS, 1 / (1 + Math.pow(WITHDRAWAL_PARITY_RATIO / ratio, WITHDRAWAL_ODDS_STEEPNESS)));
     const partialThreshold = ratio >= 0.9 ? 1 : Math.max(successProbability, Math.min(0.96, successProbability + 0.24));
     const partialProbability = Math.max(0, partialThreshold - successProbability);
     const failureProbability = Math.max(0, 1 - successProbability - partialProbability);
@@ -22219,6 +22656,23 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   function buildWithdrawalContest(worldSnapshot = {}, actor = {}) {
     const actorId = unitId(actor);
     const actorSide = sideOf(worldSnapshot, actor);
+    // 认输 (battleRules concede: a spar or a match; 用户："比赛的逃跑就是认输"): leaving is certain and unpursued, and it is no
+    // escape (withdrawalSuccess false: no 成功撤离 is met by it).
+    if (battleRules(worldSnapshot).concede) {
+      const probabilityGroupKey = `withdrawal:${stableHash({ actorId, concede: true })}`;
+      return Object.freeze({
+        concede: true, pursuerId: '', visiblePursuerIds: Object.freeze([]), probabilityGroupKey,
+        withdrawalScore: 0, pursuitScore: 0, ratio: Number.POSITIVE_INFINITY,
+        successProbability: 1, partialProbability: 0, failureProbability: 0,
+        partialPursuitDamage: 0, failurePursuitDamage: 0, expectedPursuitDamage: 0,
+        outcomeDistribution: Object.freeze([Object.freeze({
+          branchKey: 'SUCCESS', outcome: 'SUCCESS', probability: 1, withdrawalSuccess: false, conceded: true,
+          pursuitDamage: 0, delta: 0, hpDamage: 0,
+          conditionalOn: Object.freeze({ [probabilityGroupKey]: 'SUCCESS' }),
+          assignments: Object.freeze({ [probabilityGroupKey]: 'SUCCESS' }),
+        })]),
+      });
+    }
     const visiblePursuers = listUnits(worldSnapshot)
       .filter(entry =>
         entry?.unit &&
@@ -22785,6 +23239,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     setGuardBroken,
     battleIntensity,
     skillPermittedAtIntensity,
+    GRAVE_SIDE_EFFECT_TYPES,
     LONG_TERM_SIDE_EFFECT_TYPES,
     sideDesperate,
     postBattleCostShare,
@@ -22936,6 +23391,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     applySkillSettlementModifiers,
     settlementModifierUnit,
     healingMultiplierForUnit,
+    healInversionOf,
+    healInversionEffect,
     healingMultiplierDetails,
     unitIsLiving,
     effectMatchesMechanismMatcher,
@@ -22950,6 +23407,32 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     calculateNonlethalHpFloor,
     isProtectedBattle,
     isRefereedMatch,
+    isNonlethalBattleIntent,
+    indirectHpFloor,
+    battleRules,
+    KNOCKDOWN_HP_FLOOR,
+    // 认输与撤离.
+    LEFT_BATTLE_REASONS,
+    hasLeftBattle,
+    battleExitLabel,
+    EXIT_FATE,
+    EXIT_FORECAST_PRIOR_ROUNDS,
+    EXIT_FORECAST_SPREAD,
+    exitFate,
+    battleStandingOutlook,
+    sideWithdrawalGoal,
+    exitValuation,
+    withdrawalSucceeded,
+    resolveBattleType,
+    normalizeBattleType,
+    battleTypeLabel,
+    battleTypeDefaultIntent,
+    BATTLE_TYPES,
+    BATTLE_TYPE_ALIASES,
+    BATTLE_TYPE_NO_WITHDRAWAL,
+    SYSTEM_BATTLE_TYPES,
+    BATTLE_TYPE_DEFAULT,
+    BATTLE_TYPE_DEFAULT_INTENT,
     lifeThreatExit,
     LIFE_THREAT_RATIO,
     INJURY_STAMINA_SHARE,

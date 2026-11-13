@@ -2328,7 +2328,9 @@
         configurable: true,
         enumerable: true,
         writable: true,
-        value: Object.fromEntries(Object.entries(summons).map(([key, unit]) => [key, projectUnit(unit, r9v2PublicSideOf(unit))])),
+        // A summon gone (已消散) is no unit of the battle (BattlePreview visitWorldUnits skips it): no side, no belief —
+        // it is kept as it is. (任务卡⑧: projected as an enemy for want of a side, it threw belief_strength_range_missing.)
+        value: Object.fromEntries(Object.entries(summons).map(([key, unit]) => [key, alreadyPublic !== true && unit?.已消散 === true ? cloneValue(unit) : projectUnit(unit, r9v2PublicSideOf(unit))])),
       });
     }
     const passiveProjection = alreadyPublic !== true && typeof preview.materializePassiveEffects === 'function'
@@ -6591,7 +6593,10 @@
     if (!forcedSkill && !reactionOnly && !counterOnly && input.beliefState?.observationGranted === true && Number(input.beliefState?.confidence || 0) < 1) {
       candidates.push({ candidateId: `${actorId}:OBSERVE`, declaration: defensiveDeclaration(actorId, 'OBSERVE') });
     }
-    if (!forcedSkill && !reactionOnly && !counterOnly && withdrawalAllowed(worldSnapshot, actor, input.battleIntent)) {
+    // 认输与撤离: leaving (认输 in a spar or a match, 撤离 in a real fight: one declaration, settled by the battle's rules) is
+    // one's own action — not an answer, a strike back or an assist — with someone still there to leave.
+    if (!forcedSkill && !reactionOnly && !counterOnly && !assistOnly && (!opportunityRole || opportunityRole === 'ACTIVE') &&
+      hostile.length > 0 && withdrawalAllowed(worldSnapshot, actor, input.battleIntent)) {
       candidates.push({ candidateId: `${actorId}:WITHDRAW`, declaration: defensiveDeclaration(actorId, 'WITHDRAW') });
     }
     const sourceSkills = forcedSkill
@@ -6653,8 +6658,9 @@
       }
       const isPlayerLockedSkill = playerLockedSkillId &&
         skillId(sourceSkill, index) === playerLockedSkillId;
-      // 烈度 (BattlePreview battleIntensity / skillPermittedAtIntensity): a skill with a grave side effect is not offered
-      // outside a fight to the death; a declaration the player locked is the player's to make.
+      // 烈度 (BattlePreview battleIntensity / skillPermittedAtIntensity): a skill with a heavy cost after the battle is
+      // offered only in a match or a real fight the side is losing badly, one with a grave side effect only in a real fight
+      // with no way out either; a declaration the player locked is the player's to make.
       if (!isPlayerLockedSkill && !preview.skillPermittedAtIntensity(skill, preview.battleIntensity(worldSnapshot, input.battleIntent),
         () => preview.sideDesperate(worldSnapshot, actor))) {
         recordRejected({
@@ -7105,19 +7111,24 @@
         preview.unitName(entry.unit) === sourceIdentity
       );
       if (!sourceEntry) return;
+      // A taunter the actor cannot single out (hidden from it) taunts it no more.
+      if (preview.stealthBlocksSingleTarget(actor, sourceEntry.unit, { 目标: '单体' }, {})) return;
       const sourceId = preview.unitId(sourceEntry.unit);
       const applicationProbability = clamp(Number(state?.__previewApplicationProbability ?? 1), 0, 1);
       const existing = bySourceId.get(sourceId);
-      if (!existing || applicationProbability > existing.applicationProbability) {
-        bySourceId.set(sourceId, Object.freeze({
-          sourceId,
-          source: sourceEntry.unit,
-          state,
-          applicationProbability,
-        }));
-      }
+      bySourceId.delete(sourceId);
+      bySourceId.set(sourceId, !existing || applicationProbability > existing.applicationProbability ? Object.freeze({
+        sourceId,
+        source: sourceEntry.unit,
+        state,
+        applicationProbability,
+      }) : existing);
     });
-    return Object.freeze([...bySourceId.values()]);
+    // 嘲讽 (任务卡⑦, 用户 2026-11-13 定): taunted by several, a unit answers the last — the state set keeps the order the
+    // states came on in, a taunter's own renewal keeping its place. (Before: every single-target hostile action was
+    // refused as AMBIGUOUS_TAUNT_TARGET.)
+    const sources = [...bySourceId.values()];
+    return Object.freeze(sources.slice(-1));
   }
 
   function hasStateFlag(unit = {}, flag = '') {
@@ -13114,7 +13125,7 @@
         controlCapacityOptions,
       );
       const actionKind = String(candidate?.declaration?.actionKind || '').trim();
-      const withdrawalProfile = actionKind === 'WITHDRAW'
+      const withdrawalProfile = actionKind === 'WITHDRAW' && !preview.battleRules(decisionWorld).concede
         ? aliveEntries(decisionWorld)
             .filter(entry => entry.side !== actorSide)
             .map(entry => ({
@@ -15953,12 +15964,14 @@
     return String(intent?.mode || intent?.intent || intent?.name || '').trim();
   }
 
+  // 认输与撤离 (认输与撤离方案-20261113 第 1 条): whether `actor` may leave — concede a spar or a match, withdraw from a real
+  // fight — is the battle's rule as the settlement reads it (BattlePreview battleRules exit, on the world: 允许撤离 is the
+  // switch); a summon does not leave on its own. A success condition 成功撤离 no longer decides it, nor an intent of
+  // 求生…; they only say what getting away is worth (BattlePreview exitValuation). `battleIntent` is kept for the callers.
   function withdrawalAllowed(worldSnapshot = {}, actor = {}, battleIntent = {}) {
-    const objectiveContext = objectiveActorContext(worldSnapshot, sideOf(worldSnapshot, actor), battleIntent || {});
-    if (objectiveContext.objectives.explicit) {
-      return objectiveContext.successConditions.some(condition => condition.type === 'WITHDRAW_SUCCESS');
-    }
-    return battleIntent?.withdrawAllowed === true || /求生|撤退|脱离|逃生/.test(battleIntentMode({ battleIntent }));
+    void battleIntent;
+    if (!actor || typeof actor !== 'object' || preview.isSummonUnit(actor)) return false;
+    return !!preview.battleRules(worldSnapshot).exit;
   }
 
   function actorBattleIntent(worldSnapshot = {}, actorSide = '', inputIntent = null) {
@@ -15977,7 +15990,8 @@
 
   function intentTerminalUtility(beforeSnapshot, afterSnapshot, actorSide, context = {}) {
     const objectives = preview.normalizeBattleObjectives(context?.battleIntent?.objectives || context?.battleIntent?.胜负条件 || afterSnapshot?.胜负条件 || {}, afterSnapshot);
-    if (!objectives.explicit && !/点到为止|切磋|训练|非致命/.test(battleIntentMode(context))) return 0;
+    // A spar (BattlePreview battleRules: the intent as the context gives it; the type and a referee as the battle has them).
+    if (!objectives.explicit && !preview.battleRules({ 战斗类型: afterSnapshot?.战斗类型, 裁判: afterSnapshot?.裁判 }, battleIntentMode(context)).spar) return 0;
     const evaluate = snapshot => {
       let byObjectives = objectiveEvaluationCache.get(snapshot);
       if (!byObjectives) {
@@ -16414,7 +16428,7 @@
     const after = result ? stateUtility(capacitySnapshot, actorSide, context.beliefState) : before;
     const resourceSupportOnly = candidateEffects.length > 0 &&
       candidateEffects.every(isPositiveResourceSupportEffect);
-    const withdrawalProfile = candidate.declaration.actionKind === 'WITHDRAW'
+    const withdrawalProfile = candidate.declaration.actionKind === 'WITHDRAW' && !preview.battleRules(context.worldSnapshot).concede
       ? aliveEntries(context.worldSnapshot)
           .filter(entry => entry.side !== actorSide)
           .map(entry => ({ targetId: preview.unitId(entry.unit), estimate: preview.estimateWithdrawal(actor, entry.unit) }))
@@ -36700,7 +36714,8 @@
     const mechanicObservationsByCandidate = candidatesOnly
       ? {}
       : Object.fromEntries(frozenCandidates.map(candidate => {
-          const withdrawalProfile = String(candidate?.declaration?.actionKind || '').trim().toUpperCase() === 'WITHDRAW'
+          const withdrawalProfile = String(candidate?.declaration?.actionKind || '').trim().toUpperCase() === 'WITHDRAW' &&
+            !preview.battleRules(visibleWorld).concede
             ? aliveEntries(visibleWorld)
                 .filter(entry => entry.side !== actorSide)
                 .map(entry => ({
@@ -38760,7 +38775,7 @@
       declaration?.actionKind || '',
     ).trim().toUpperCase();
     const withdrawalProfile =
-      actor && actionKind === 'WITHDRAW'
+      actor && actionKind === 'WITHDRAW' && !preview.battleRules(worldSnapshot).concede
         ? aliveEntries(worldSnapshot)
             .filter(entry => entry.side !== actorSide)
             .map(entry => ({
@@ -43714,9 +43729,10 @@
         probability,
         delta,
         withdrawalOutcome,
+        // 认输与撤离: a concession's certain outcome says withdrawalSuccess false (it meets no 成功撤离).
         withdrawalSuccess:
           outcome?.withdrawalSuccess === true ||
-          withdrawalOutcome === 'SUCCESS',
+          outcome?.withdrawalSuccess !== false && withdrawalOutcome === 'SUCCESS',
         pursuitDamage,
         probabilityGroupKey,
       });
@@ -44297,19 +44313,8 @@
     condition = {},
   ) {
     if (condition?.type === 'WITHDRAW_SUCCESS') {
-      const sides = new Set(
-        Array.isArray(
-          worldSnapshot?.__battleRuntime?.withdrawalSuccessSides,
-        )
-          ? worldSnapshot.__battleRuntime.withdrawalSuccessSides.map(
-              value => String(value || '').trim().toUpperCase(),
-            )
-          : [],
-      );
-      const side = String(condition?.side || '').trim().toUpperCase();
-      return side
-        ? sides.has(side)
-        : worldSnapshot?.__battleRuntime?.withdrawalSuccess === true;
+      // 认输与撤离: as the settlement reads it (BattlePreview withdrawalSucceeded).
+      return preview.withdrawalSucceeded(worldSnapshot, String(condition?.side || '').trim());
     }
     if (condition?.type === 'ROUND_REACHED') return false;
     return null;
@@ -61653,8 +61658,10 @@
     const amounts = { damage: 0, hpDamage: 0, shieldAbsorb: 0, ruleBlocks: 0, deathSaves: 0, hp: 0, shield: 0, actorShield: 0, fuel: [] };
     if (prototype === '伤害结算') {
       const segments = Math.max(1, Math.floor(Number(effect.攻击段数 ?? effect.段数 ?? 1)) || 1);
-      const floor = /点到为止|切磋|训练|非致命/.test(String(worldSnapshot?.战斗意图 || ''))
-        ? preview.calculateNonlethalHpFloor(worldSnapshot, recipient, {}) : 0;
+      // The spar's floor (BattlePreview battleRules spar), as before: a match's life-threat line is the referee's to hold;
+      // a battle that is not lethal holds every hit at the knockdown line (knockdownFloor, type1b).
+      const floorRules = preview.battleRules(worldSnapshot, {});
+      const floor = floorRules.spar ? preview.calculateNonlethalHpFloor(worldSnapshot, recipient, {}) : floorRules.knockdownFloor;
       const outcome = preview.expectedSegmentedDamageOutcome({ segments, applicationProbability: 1,
         perSegmentDamage: preview.calculateSettledSegmentDamage(preview.calculateBaseDamage(effect, actor, recipient, null,
           { targetCount, resourceDriveEnabled }), segments, 1),
@@ -61669,9 +61676,13 @@
     } else if (prototype === '资源变化') {
       for (const resource of Array.isArray(effect.资源) ? effect.资源 : [effect.资源]) {
         if (/生命|HP/i.test(String(resource || ''))) {
-          const amount = preview.parseSignedValue(effect.数值, maximum);
+          // 治疗反转 (BattlePreview healInversionEffect): a heal landing on a unit under it takes the HP instead, held at
+          // the line an opponent's loss is held at.
+          const turned = preview.healInversionEffect(effect, recipient);
+          const amount = preview.parseSignedValue((turned || effect).数值, maximum);
           const request = amount >= 0 ? amount * preview.healingMultiplierForUnit(recipient, '生命') : 0;
-          amounts.hp += chance * (amount >= 0 ? Math.min(maximum - hp, request) : -Math.min(hp, -amount));
+          const lossFloor = turned ? Math.min(hp, preview.calculateNonlethalHpFloor(worldSnapshot, recipient, {})) : 0;
+          amounts.hp += chance * (amount >= 0 ? Math.min(maximum - hp, request) : -Math.min(Math.max(0, hp - lossFloor), -amount));
           // The unclipped request: a repeated cast heals up to what the earlier ones left missing (r10CastReceipt).
           if (amount >= 0) (amounts.requests ||= []).push({ kind: 'hp', chance, request });
         } else if (['魂力', '精神力', '体力'].includes(String(resource || '').trim())) {
@@ -63520,7 +63531,7 @@
             combat.dot_damage || combat.dot_damage_ratio || combat.hot_heal_ratio) {
             const hpBefore = sustainProfile?.observePeriodicHp ? preview.readHp(nextActor) : null;
             const tick = root.__LWCS_BATTLE_RUNTIME__.settlePeriodicHpValues(nextActor, state, state.状态名称 || state.状态 || key, null,
-              args => settleProjectedResource({ ...args, sourceKey: state.sourceEffectId || key, roundOffset: offset }));
+              args => settleProjectedResource({ ...args, sourceKey: state.sourceEffectId || key, roundOffset: offset }), 0, projectedHealTurn(nextActor, world));
             if (hpBefore !== null) sustainProfile.observePeriodicHp(preview.unitId(nextActor), key, preview.readHp(nextActor) - hpBefore);
             if (tick.stopCondition) {
               if (typeof state.duration === 'number') state.duration += 1;
@@ -63530,7 +63541,7 @@
           root.__LWCS_BATTLE_RUNTIME__.settlePeriodicResourceValues(nextActor, combat, null,
             args => settleProjectedResource({ ...args, sourceKey: state.sourceEffectId || key, roundOffset: offset }));
           if (state.原型 === '资源变化') root.__LWCS_BATTLE_RUNTIME__.settleExplicitResourceValues(nextActor, state, null,
-            args => settleProjectedResource({ ...args, sourceKey: state.sourceEffectId || key, roundOffset: offset }));
+            args => settleProjectedResource({ ...args, sourceKey: state.sourceEffectId || key, roundOffset: offset }), projectedHealTurn(nextActor, world));
           if (preview.readHp(nextActor) <= 0) root.__LWCS_BATTLE_RUNTIME__.triggerRevive(nextActor, '');
           const risks = r9v2ExistingStateRisks(key, state, offset, compiledRiskIds, riskOffsetBase);
           if (risks?.length && risks.every(effect => (riskResolver || Number(effect.触发概率) === 1) &&
@@ -65110,6 +65121,12 @@
     if (!table.ticks.has(unit)) table.ticks.set(unit, r10SettleRoundEndDelta(unit, null));
     return table.ticks.get(unit);
   }
+  // 治疗反转 in a projected round end (BattleRuntime settlePeriodicHpValues / settleExplicitResourceValues take it as the
+  // settlement does): the heal dealt at its ratio, held at the unit's line on `world` (0 without one).
+  function projectedHealTurn(unit, world) {
+    const inversion = preview.healInversionOf(unit);
+    return inversion ? { ratio: inversion.ratio, floor: world ? Number(preview.calculateNonlethalHpFloor(world, unit, {})) || 0 : 0 } : null;
+  }
   function r10SettleRoundEndDelta(unit, fresh) {
     r10Work.ticks += 1;
     const runtime = root.__LWCS_BATTLE_RUNTIME__;
@@ -65121,8 +65138,8 @@
     };
     for (const [key, state] of Object.entries(unit?.状态效果 || {})) {
       if (!state || typeof state !== 'object' || fresh?.has(key)) continue;
-      runtime.settlePeriodicHpValues?.(unit, state, String(state.状态 || state.状态名称 || key), null, capture);
-      runtime.settleExplicitResourceValues?.(unit, state, null, capture);
+      runtime.settlePeriodicHpValues?.(unit, state, String(state.状态 || state.状态名称 || key), null, capture, 0, projectedHealTurn(unit, null));
+      runtime.settleExplicitResourceValues?.(unit, state, null, capture, projectedHealTurn(unit, null));
       runtime.settlePeriodicResourceValues?.(unit, state.战斗效果 || {}, null, capture);
     }
     for (const row of runtime.naturalRecoveryAtRoundEndProfile?.(unit) || []) {
@@ -66180,6 +66197,18 @@
   // the settlement already carries. Shadow only (root.__LWCS_DECISION_DEBUG__.onShadow); the choice is not read from it.
   function r20Shadow(request, result, candidate = null) {
     if (!result || typeof result !== 'object') return null;
+    // 认输与撤离 (方案第 4 条; 用户："决策的唯一核心是胜率"，"撤退 = 胜率严重不足"): leaving is valued as in the live valuation,
+    // by BattlePreview exitValuation — the side's outlook with and without the actor, the fates losing brings, a
+    // withdrawal's odds and pursuit — on the race's scale of the stake (R20_WIN_VALUE a battle won). The race is not run
+    // for it: what the actor would have done is in the outlook it no longer adds to. (Before: worth what staying stood to
+    // lose, read at a chance of 1 whatever the contest's.)
+    if (String(candidate?.declaration?.actionKind || '').trim().toUpperCase() === 'WITHDRAW') {
+      const exit = r9v2LinearExitValuation(request, result, 'r20');
+      if (exit) {
+        const leave = R20_WIN_VALUE * exit.delta;
+        return { value: leave, race: 0, tempo: 0, granted: 0, objective: 0, leave, stock: 0, cost: 0, fusionCost: 0, asset: 0, counter: 0, rebuilt: 0, added: 0, outside: 0, seen: 1 };
+      }
+    }
     const table = r20Facts(request);
     r20Round = Number(table.world?.回合 || 0);
     r20World = table.world; r20Intent = request.battleIntent || null;
@@ -66678,12 +66707,9 @@
         if (stock > 0) seen += 1;
       }
     }
-    // Withdrawing ends the fight unbeaten: worth what staying stands to lose, by its chance. Observing is worth a little.
+    // Leaving is valued apart (认输与撤离, at the top). Observing is worth a little.
     let leave = 0;
-    if (actionKind === 'WITHDRAW') {
-      const contest = (result.contributions || []).find(entry => entry.outcomeKind === 'WITHDRAWAL_CONTEST');
-      leave = (contest ? preview.contributionProbability(contest) : 1) * Math.max(0, -Number(table.score[own] || 0));
-    } else if (actionKind === 'OBSERVE') leave = R20_OBSERVE_VALUE;
+    if (actionKind === 'OBSERVE') leave = R20_OBSERVE_VALUE;
     return { value: race + tempo + granted + objective + leave + stock - cost - fusionCost - asset, race, tempo, granted, objective, leave, stock, cost, fusionCost, asset, counter, rebuilt: rebuilt.length, added: added.length, outside,
       seen: seen + added.length + Number(granted !== 0) + Number(objective !== 0) + Number(leave !== 0) };
   }
@@ -67972,6 +67998,15 @@
     setupCastTime = null,
     branchGroups = null,
   ) {
+    // 认输与撤离 (方案第 4 条): leaving is valued by what it changes in the battle's outcome against staying (BattlePreview
+    // exitValuation: the side's chance to win with and without the actor, the fates losing brings, a withdrawal's odds
+    // and pursuit), carried by OBJECTIVE_PROGRESS on its scale (a battle won +1, lost −1), every other row 0: the actor is
+    // gone, and what it would have done is in the chance it no longer adds. No look-ahead and no threshold.
+    if (!conditioned && String(candidate?.declaration?.actionKind || '').trim().toUpperCase() === 'WITHDRAW') {
+      const exit = r9v2LinearExitValuation(request, result);
+      if (exit) return Object.freeze(r9v2LinearZeroCausalFeatureRows.map(row => row.featureCode !== 'OBJECTIVE_PROGRESS' ? row
+        : Object.freeze({ ...row, value: clamp(exit.delta, -1, 1) })));
+    }
     if (!conditioned) {
       const key = 'cache:deferred-root:' + candidate.candidateId;
       let frames = decisionCache.get(key);
@@ -71330,6 +71365,20 @@
   // projections. Objective progress is read exactly from the projection's own
   // damage distributions; every other code is its fitted linear contribution.
   const R9V2_SURROGATE_UNIT_RANGE_CODES = new Set(['OPPONENT_RESPONSE_PRESSURE', 'FOCUS_TARGET_MARGINAL_GAIN', 'TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL']);
+  // The exit valuation of the actor leaving (BattlePreview exitValuation) on the decision's world, with the contest its
+  // settlement carries. Development hook (absent in play): __LWCS_DECISION_DEBUG__.onExit sees each one.
+  function r9v2LinearExitValuation(request = {}, result = {}, valuation = 'r9v2') {
+    const world = request.visibleWorld || request.worldSnapshot || {};
+    const actor = findUnitInWorld(world, request.actorId);
+    if (!actor) return null;
+    const contest = (result?.contributions || []).find(entry => entry?.outcomeKind === 'WITHDRAWAL_CONTEST')?.evidence || null;
+    const exit = preview.exitValuation(world, { objectives: request.objectiveContract || request.battleIntent?.objectives || world.胜负条件 || {} }, actor, contest);
+    if (exit && providerDepth === 1 && typeof root.__LWCS_DECISION_DEBUG__?.onExit === 'function') {
+      root.__LWCS_DECISION_DEBUG__.onExit({ valuation, request, exit });
+    }
+    return exit;
+  }
+
   function r9v2SurrogateCausalRows(model, features) {
     const values = {};
     for (const [code, component] of Object.entries(model.models || {})) {
@@ -71895,8 +71944,25 @@
     // decide alone (__LWCS_CAUSAL_COEFFICIENT_OVERRIDE__).
     const shadowChooses = providerDepth === 1 && ['ACTIVE', 'ASSIST', 'REACTION', 'COUNTER'].includes(surrogateRole) &&
       Array.isArray(root.__LWCS_DECISION_DEBUG__?.shadowSides) && root.__LWCS_DECISION_DEBUG__.shadowSides.includes(request.actorSide);
+    // 认输与撤离: R20 values every candidate as a change of its race against the decision's table, and some moments cost
+    // every candidate alike (the round goes on whatever is done); leaving is valued apart (r20Shadow, BattlePreview
+    // exitValuation: against fighting on), so it starts from what letting this action go by is worth to the race (the
+    // PASS_OPPORTUNITY candidate's R20 value, when there is one) — the same footing as in the live valuation, where letting
+    // an action go by is worth nothing.
+    let r20PassValue;
+    const r20PassBaseline = () => {
+      if (r20PassValue !== undefined) return r20PassValue;
+      const passId = [...frozenById.keys()].find(id => String(frozenById.get(id)?.declaration?.actionKind || '').trim().toUpperCase() === 'PASS_OPPORTUNITY' &&
+        !illegalTargetCandidateIds.has(id));
+      const pass = passId ? r20Shadow(request, previewResultsById[passId], frozenById.get(passId)) : null;
+      return (r20PassValue = Number(pass?.value || 0));
+    };
     const shadowCausalRows = candidateId => {
-      const shadow = illegalTargetCandidateIds.has(candidateId) ? null : r20Shadow(request, previewResultsById[candidateId], frozenById.get(candidateId));
+      let shadow = illegalTargetCandidateIds.has(candidateId) ? null : r20Shadow(request, previewResultsById[candidateId], frozenById.get(candidateId));
+      if (shadow && String(frozenById.get(candidateId)?.declaration?.actionKind || '').trim().toUpperCase() === 'WITHDRAW') {
+        const base = r20PassBaseline();
+        shadow = { ...shadow, value: shadow.value + base, passBaseline: base };
+      }
       const rows = !shadow ? neutralCausalRows : Object.freeze(neutralCausalRows.map(row => !['OBJECTIVE_PROGRESS', 'OPPONENT_RESPONSE_PRESSURE'].includes(row.featureCode) ? row
         : Object.freeze({ ...row, value: clamp(shadow.value / R20_SHADOW_SCALE, -1, 1) })));
       if (shadowHook) shadowHook({ request, candidate: frozenById.get(candidateId), rows, shadow, causalMs: 0, shadowMs: 0, chooser: true });
@@ -72443,6 +72509,8 @@
       });
     };
     const candidateAudit = ranked.map((row, index) => auditRow(row.candidateId, index));
+    // Development hook (absent in play): __LWCS_DECISION_DEBUG__.onRanked sees every outermost decision's ranked rows.
+    if (providerDepth === 1 && typeof root.__LWCS_DECISION_DEBUG__?.onRanked === 'function') root.__LWCS_DECISION_DEBUG__.onRanked({ request, candidateAudit });
     const selected = candidateAudit.find(row => row.candidateId === selectedId);
     if (!selected) throw new Error('R9V2_LINEAR_SELECTED_MISSING');
     const selectedDeclaration = selected.declaration || {};
@@ -72450,7 +72518,8 @@
     const selectedActor = findUnitInWorld(request.visibleWorld, request.actorId);
     const selectedActorSide = selectedActor ? sideOf(request.visibleWorld, selectedActor) : '';
     const selectedWithdrawalProfile = selectedActor &&
-      String(selectedDeclaration?.actionKind || '').trim().toUpperCase() === 'WITHDRAW'
+      String(selectedDeclaration?.actionKind || '').trim().toUpperCase() === 'WITHDRAW' &&
+      !preview.battleRules(request.visibleWorld).concede
       ? aliveEntries(request.visibleWorld)
           .filter(entry => entry.side !== selectedActorSide)
           .map(entry => ({

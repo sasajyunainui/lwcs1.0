@@ -823,6 +823,8 @@
       INCAPACITATED: '失去战斗力',
       DEAD: '死亡',
       SUBDUED: '被制服',
+      SURRENDERED: '认输',
+      WITHDRAWN: '已撤离',
       CONTROLLED: '受控制',
       UNAVAILABLE: '暂时无法行动',
     };
@@ -1160,7 +1162,7 @@
           : `${actor}主动让过这次行动机会`;
       }
       if (kind === 'pass') return `${actor}主动让过这次行动机会`;
-      if (actionType === 'WITHDRAW') return `${actor}尝试撤离战场`;
+      if (actionType === 'WITHDRAW') return `${actor}选择离场（认输或撤离）`;
       if (target === actor && ['DEFEND', 'EVADE', 'OBSERVE'].includes(actionType)) return `${actor}采取【${action}】`;
       if (targets.length > 1) {
         const targetEntries = targets.map(name => entityEntry(directory, name)).filter(Boolean);
@@ -1312,6 +1314,8 @@
     if (event?.ruleCode === 'MECHANISM_GRANT_EXPIRED') {
       return runtime.describeGrantedStateExpiry(event, target || actor, action || namedState || '授予效果').summary;
     }
+    // 认输与撤离: leaving the battle reads as its own sentence.
+    if (kind === 'state_apply' && meta?.leftBattle === true && text(meta?.reasonText)) return playerSafeText(meta.reasonText, directory);
     if (kind === 'state_apply' || kind === 'state_replace') {
       const outcome = resultLabel(event);
       const receiver = target || actor;
@@ -1358,6 +1362,7 @@
     }
     if (kind === 'pass' && text(event?.actionType).toUpperCase() === 'WITHDRAW') {
       const result = text(event?.result).toLowerCase();
+      if (result === 'surrendered') return `${actor}认输，退出了战斗`;
       return result === 'withdrawn'
         ? `${actor}成功撤离战场`
         : result === 'partial'
@@ -3223,7 +3228,7 @@
 
   function candidateDisplayLabel(candidate = {}) {
     const actionKind = text(candidate?.actionKind).toUpperCase();
-    const action = actionKind === 'WITHDRAW' ? '撤离' : text(candidate?.actionName || '行动');
+    const action = actionKind === 'WITHDRAW' ? (text(candidate?.actionName) === '认输' ? '认输' : '撤离') : text(candidate?.actionName || '行动');
     const targets = unique(candidate?.targetNames || []);
     const omitSelfTarget = ['DEFEND', 'EVADE', 'OBSERVE', 'WITHDRAW'].includes(actionKind);
     return targets.length && !omitSelfTarget ? `【${action}】（目标：${targets.join('、')}）` : `【${action}】`;
@@ -3945,7 +3950,7 @@
           ? `${actor}没有采取额外应对`
           : `${actor}主动让过这次行动机会`;
       }
-      if (actionType === 'WITHDRAW') return `${actor}想要脱身`;
+      if (actionType === 'WITHDRAW') return `${actor}想要离场`;
       if (['DEFEND', 'EVADE', 'OBSERVE'].includes(actionType) || !target || target === actor) {
         return `${actor}摆开【${action}】的架势`;
       }
@@ -3961,6 +3966,7 @@
     if (rawEvent?.ruleCode === 'MECHANISM_GRANT_EXPIRED') {
       return runtime.describeGrantedStateExpiry(rawEvent, target || actor, action || '授予效果').summary;
     }
+    if (kind === 'state_apply' && meta?.leftBattle === true && text(meta?.reasonText)) return text(meta.reasonText);
     if (kind === 'state_apply' || kind === 'state_replace') {
       const outcome = resultLabel(rawEvent);
       const receiver = target || actor;
@@ -4611,7 +4617,7 @@
     const rawActionState = text(
       unit?.__战斗失能原因 || unit?.actionState || unit?.行动状态,
     );
-    const explicitIncapacity = /(?:DEAD|UNCONSCIOUS|INCAPACITATED|STAMINA_EXHAUSTED|SUBDUED|CONTROLLED|UNAVAILABLE|死亡|昏迷|失去战斗力|体力耗尽|被制服|受控制|暂时无法行动)/iu.test(rawActionState);
+    const explicitIncapacity = /(?:DEAD|UNCONSCIOUS|INCAPACITATED|STAMINA_EXHAUSTED|SUBDUED|SURRENDERED|WITHDRAWN|CONTROLLED|UNAVAILABLE|死亡|昏迷|失去战斗力|体力耗尽|被制服|认输|撤离|受控制|暂时无法行动)/iu.test(rawActionState);
     const actionState = hp <= 0 && !explicitIncapacity
       ? 'INCAPACITATED'
       : stamina <= 0 && !explicitIncapacity
@@ -5333,7 +5339,7 @@
     DEFEND: '防御能在命中时减轻承伤',
     EVADE: '闪避成功时能完全避开来袭',
     PASS_OPPORTUNITY: '让过行动不建立动作效果',
-    WITHDRAW: '撤离以脱离战斗为目标',
+    WITHDRAW: '认输或撤离，离开这一场战斗',
     OBSERVE: '观察以获取可见信息为主',
     COUNTER_DECLINE: '放弃反击会保留当前状态但不造成回应效果',
     RELEASE_SKILL: '技能按其公开效果改变当前局面',

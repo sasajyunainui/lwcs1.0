@@ -695,7 +695,10 @@
         ? Math.max(1, Math.floor(previewRuntime.readHpMax(unit) * Math.min(1, multiplier / 1000)))
         : Math.max(1, Math.floor(previewRuntime.readHpMax(unit) * Math.min(1, multiplier / 1800)));
       const before = previewRuntime.readHp(unit);
-      writeCombatResource(unit, 'hp', before - requestedDamage);
+      // 击倒线: another unit's delayed hit is held at the line (knockdownHeldLoss).
+      const delayedSource = formalCombatData && sourceActorId ? findCombatUnit(formalCombatData.__父级战斗数据 || formalCombatData, sourceActorId) : null;
+      const delayedFloor = delayedSource && hostileSource(formalCombatData, delayedSource, unit) ? knockdownFloorOf(formalCombatData, unit) : 0;
+      writeCombatResource(unit, 'hp', before - knockdownHeldLoss(unit, requestedDamage, delayedFloor));
       const after = previewRuntime.readHp(unit);
       const appliedDamage = Math.max(0, before - after);
       if (appliedDamage > 0) {
@@ -721,6 +724,7 @@
           },
         });
       }
+      if (delayedFloor > 0) settleKnockdownExit(formalCombatData, unit, delayedFloor, { actorId: sourceActorId, actionName, source: 'delayed_effect_settlement' });
       return finish(appliedDamage > 0 ? `[延迟效果] ${label}受到${appliedDamage}点${damageType}。` : '');
     }
     if (prototype === '资源变化') {
@@ -1142,7 +1146,12 @@
           amount = Math.min(sourceBefore, requestedAmount);
           if (!(amount > 0)) { writeTransfer(0); return; }
         }
+        // 间接生命损失的线 (type1c): an opponent devouring HP holds it at the unit's line.
+        const devourFloor = key === 'hp' && hostileSource(combatData, caster, unit) ? knockdownFloorOf(combatData, unit) : 0;
+        if (devourFloor > 0) amount = knockdownHeldLoss(unit, amount, devourFloor);
         writeCombatResource(unit, key, persistentResourceValue(unit, key) - amount);
+        if (devourFloor > 0 && options.recordEvidence !== false) settleKnockdownExit(combatData, unit, devourFloor, { actorId: previewRuntime.unitId(caster),
+          actorName: previewRuntime.unitName(caster), actionName: String(condition.来源技能 || '持续资源转移'), source: 'persistent_resource_transfer' });
         logs.push(`${label}损失${amount}点${persistentResourceLabel(key)}`);
         if (mode === '吞噬' && caster) {
           const recovered = Math.max(0, Math.floor(amount * conversion));
@@ -2747,7 +2756,7 @@
     const summons = Object.values(combatData?.召唤单位表 || {}).filter(unit => !/分身/.test(String(unit?.类型 || unit?.召唤单位类型 || ''))).map(buildUnit).filter(Boolean);
     return {
       round: Number(combatData?.回合 || 0),
-      战斗类型: String(combatData?.战斗类型 || '突发遭遇').trim(),
+      战斗类型: previewRuntime.battleTypeLabel(combatData?.战斗类型),
       floor: Number(combatData?.floor || 0),
       大关卡: Number(combatData?.大关卡 || 0),
       大关标签: String(combatData?.大关标签 || '').trim(),
@@ -3599,6 +3608,58 @@
     } finally { flushingStaminaDeductions = false; }
   }
 
+  // 间接生命损失的线 (type1b 击倒线; type1c 切磋、比赛的生命线也管): a loss of HP another unit causes outside a hit's own
+  // settlement — a damage-over-time state it put on (and a heal it inverted), 反伤, a delayed hit, released absorbed damage,
+  // a withdrawal's pursuit, its 资源变化 or 资源转移 (吞噬) taking HP, its effect settled through a projection — is held at
+  // `unit`'s line as a hit is (BattlePreview calculateNonlethalHpFloor: a spar's or a match's life-threat line, the knockdown
+  // line of a battle that is not lethal; 0 in a lethal one), and a unit brought to the line is out (settleKnockdownExit).
+  // It brings no referee in: the referee answers a hit. A unit's own costs (自损, 献祭, its own states) and what its allies
+  // do are not held.
+  function knockdownFloorOf(combatData = {}, unit = {}) {
+    const root = combatData?.__父级战斗数据 || combatData;
+    return Number(previewRuntime.calculateNonlethalHpFloor(root, unit, { mode: String(root?.战斗意图 || '').trim(), objectives: root?.胜负条件 || {} })) || 0;
+  }
+  // Whether `source` is one of `unit`'s opponents (not itself, not an ally).
+  function hostileSource(combatData = {}, source = {}, unit = {}) {
+    const root = combatData?.__父级战斗数据 || combatData;
+    if (!source || !unit || isUnitIdentityMatch(source, previewRuntime.unitId(unit))) return false;
+    const sourceSide = previewRuntime.sideOf(root, source), unitSide = previewRuntime.sideOf(root, unit);
+    return !!sourceSide && !!unitSide && sourceSide !== unitSide;
+  }
+  // The loss `unit` takes of `loss` with the line held at `floor`.
+  function knockdownHeldLoss(unit = {}, loss = 0, floor = 0) {
+    if (!(floor > 0)) return loss;
+    return Math.max(0, Math.min(loss, previewRuntime.readHp(unit) - floor));
+  }
+  // A unit left at its line by such a loss, not yet out: out with the line's own reason, as a hit held there takes it out
+  // — a spar's NONLETHAL_INTENT_DISABLE, a match's LIFE_THREAT_WITHDRAWN, the knockdown line's KNOCKDOWN_SUBDUED (SUBDUED).
+  // A line set higher by an HP_RATIO_AT_OR_BELOW condition is that condition's to settle (lifeThreatExit).
+  function settleKnockdownExit(combatData = {}, unit = {}, floor = 0, info = {}) {
+    const hp = previewRuntime.readHp(unit);
+    if (!(floor > 0) || !(hp > 0) || hp > floor + 1e-9 || String(unit?.__战斗失能原因 || '').trim() || !previewRuntime.lifeThreatExit(floor, unit)) return null;
+    const beforeActionState = cloneValue(unit?.状态 || {});
+    const root = combatData?.__父级战斗数据 || combatData;
+    const lineRules = previewRuntime.battleRules(root, { mode: String(root?.战斗意图 || '').trim() });
+    const lineCode = lineRules.spar ? 'NONLETHAL_INTENT_DISABLE' : lineRules.match ? 'LIFE_THREAT_WITHDRAWN' : 'KNOCKDOWN_SUBDUED';
+    unit.__战斗失能原因 = lineCode === 'KNOCKDOWN_SUBDUED' ? 'SUBDUED' : 'INCAPACITATED';
+    return writeLedgerEvent(root, {
+      eventKind: 'state_apply', round: Number(root?.回合 || 0),
+      actorId: String(info.actorId || ''), actorName: String(info.actorName || ''),
+      targetId: previewRuntime.unitId(unit), targetName: previewRuntime.unitName(unit),
+      actionName: String(info.actionName || ''), actionType: 'incapacitation', actorControl: 'SYSTEM', actionRole: 'REACTION',
+      actionId: String(info.actionId || ''), sourceActionId: String(info.actionId || ''),
+      ruleCode: lineCode, result: 'applied', resultState: 'SUCCESS', primaryOutcome: 'nonlethal_incapacitation',
+      factType: 'STATE', operation: 'STATE_APPLY',
+      meta: { source: String(info.source || 'indirect_hp_line'), stateName: '失去战斗力', hpAfter: hp,
+        hpRatioAfter: hp / Math.max(1, previewRuntime.readHpMax(unit)), nonlethalHpFloor: floor, nonlethalIncapacitated: true,
+        ...(lineCode === 'KNOCKDOWN_SUBDUED' ? { knockdownFloor: floor } : { lifeFloor: floor }),
+        reasonText: lineCode === 'KNOCKDOWN_SUBDUED' ? `${previewRuntime.unitName(unit)}被制服，失去战斗力`
+          : lineCode === 'LIFE_THREAT_WITHDRAWN' ? `${previewRuntime.unitName(unit)}生命已到危险线，出局` : `${previewRuntime.unitName(unit)}到了切磋的生命线，出局`,
+        traumaUnconscious: false,
+        before: beforeActionState, after: cloneValue(unit.状态), operation: 'STATE_APPLY' },
+    });
+  }
+
   function writeCombatResource(unit = {}, resourceKey = 'sp', value = 0) {
     if (!unit || typeof unit !== 'object') return 0;
     const stats = unit.属性 && typeof unit.属性 === 'object' ? unit.属性 : unit;
@@ -4104,7 +4165,7 @@
     }
     const actionType = {
       BASIC_ATTACK: '常规攻击', DEFEND: '防御', EVADE: '闪避', COUNTER: '反击',
-      OBSERVE: '观察', GUARD: '保护队友', WITHDRAW: '撤退', PASS_OPPORTUNITY: '让过行动',
+      OBSERVE: '观察', GUARD: '保护队友', WITHDRAW: previewRuntime.battleExitLabel(combatData) || '撤退', PASS_OPPORTUNITY: '让过行动',
     }[actionKind] || '防御';
     const actionName = actionKind === 'BASIC_ATTACK' ? '普通攻击' : actionType;
     const skill = { name: actionName, 目标: actionKind === 'GUARD' ? '友方单体' : actionKind === 'BASIC_ATTACK' ? '单体' : '自身', 消耗: '无',
@@ -6114,7 +6175,9 @@
     }
   }
 
-  function settlePeriodicHpValues(unit, condition = {}, stateName = '', onSettlement = null, resourceTransition = null) {
+  // `hpFloor`: the knockdown line a loss is held at when another unit put the state on (settleConditionResourceTick).
+  // `healTurn`: { ratio, floor } of a 治疗反转 on the unit — the heal is dealt at ratio, held at floor.
+  function settlePeriodicHpValues(unit, condition = {}, stateName = '', onSettlement = null, resourceTransition = null, hpFloor = 0, healTurn = null) {
     const effects = condition.战斗效果 || {};
     let totalDot = 0;
     const fixedDot = Math.max(0, Number(effects?.dot_damage || condition?.dot_damage || 0));
@@ -6127,7 +6190,7 @@
         const transition = resourceTransition?.({ resource: '生命', resourceKey: 'hp',
           maximum: previewRuntime.readHpMax(unit), requestedDelta: -dot });
         if (transition) transition();
-        const after = transition ? previewRuntime.readHp(unit) : writeCombatResource(unit, 'hp', before - dot);
+        const after = transition ? previewRuntime.readHp(unit) : writeCombatResource(unit, 'hp', before - knockdownHeldLoss(unit, dot, hpFloor));
         const actual = Math.max(0, before - after);
         totalDot += actual;
         onSettlement?.({ kind: 'dot', actual });
@@ -6137,14 +6200,14 @@
     if (hotRatio > 0) {
       const maxHp = previewRuntime.readHpMax(unit);
       const hot = Math.floor(maxHp * hotRatio);
-      const inversion = Math.max(0, Number(effects.heal_inversion_ratio || 0));
+      const inversion = Math.max(0, Number(effects.heal_inversion_ratio || 0), Number(healTurn?.ratio || 0));
       if (inversion > 0) {
         const damage = Math.max(1, Math.floor(hot * Math.max(1, inversion)));
         const before = previewRuntime.readHp(unit);
         const transition = resourceTransition?.({ resource: '生命', resourceKey: 'hp',
           maximum: maxHp, requestedDelta: -damage });
         if (transition) transition();
-        const after = transition ? previewRuntime.readHp(unit) : writeCombatResource(unit, 'hp', before - damage);
+        const after = transition ? previewRuntime.readHp(unit) : writeCombatResource(unit, 'hp', before - knockdownHeldLoss(unit, damage, healTurn ? Math.max(hpFloor, healTurn.floor) : hpFloor));
         const actual = Math.max(0, before - after);
         onSettlement?.({ kind: 'inversion', actual });
       } else {
@@ -6164,7 +6227,8 @@
     return { totalDot, stopCondition: false };
   }
 
-  function settleExplicitResourceValues(unit, condition, onSettlement = null, resourceTransition = null) {
+  // `healTurn` (治疗反转 on the unit, as settlePeriodicHpValues takes it): a restoration of HP is dealt at its ratio, held at its floor.
+  function settleExplicitResourceValues(unit, condition, onSettlement = null, resourceTransition = null, healTurn = null) {
     if (condition?.原型 !== '资源变化' || !(Number(condition.持续回合 || condition.duration || 0) > 0)) return;
     const resources = Array.isArray(condition.资源) ? condition.资源 : [condition.资源];
     const signedValue = readSignedBattleValue(condition.数值);
@@ -6177,13 +6241,15 @@
       const amount = String(condition.数值 ?? '').trim().endsWith('%') ? Math.floor(maximum * Math.abs(signedValue)) : Math.floor(Math.abs(signedValue));
       if (!(amount > 0)) continue;
       const before = resourceKey === 'hp' ? previewRuntime.readHp(unit) : previewRuntime.readResource(unit, resource);
-      const requestedDelta = signedValue > 0 ? amount : -amount;
+      const turned = !!healTurn && resourceKey === 'hp' && signedValue > 0;
+      const requestedDelta = turned ? -Math.max(0, Math.min(before - healTurn.floor, Math.floor(amount * healTurn.ratio)))
+        : signedValue > 0 ? amount : -amount;
       const transition = resourceTransition?.({ resource, resourceKey, maximum, requestedDelta });
       if (transition) { transition(); continue; }
       const after = Math.max(0, Math.min(maximum, before + requestedDelta));
       writeCombatResource(unit, resourceKey, after);
       const delta = after - before;
-      if (signedValue * delta > 0) onSettlement?.({ resource, resourceKey, before, after, delta, requestedDelta, blocked: false });
+      if (signedValue * delta > 0 || turned && delta < 0) onSettlement?.({ resource, resourceKey, before, after, delta, requestedDelta, blocked: false, turned });
     }
   }
 
@@ -6269,7 +6335,18 @@
     } : null;
     const logs = [];
     let lethalEvent = null;
+    // 击倒线: a state another unit put on is held at the line (knockdownFloorOf); the unit's own is not.
+    const tickSourceId = String(condition?.sourceActorId || source?.sourceActorId || '').trim() ||
+      String(ensureLedger(combatLedgerRoot(combatData)).find(event => source?.sourceActionId && event?.actorId &&
+        (event.actionId === source.sourceActionId || event.sourceActionId === source.sourceActionId))?.actorId || '').trim();
+    const tickSource = tickSourceId ? findCombatUnit(combatLedgerRoot(combatData), tickSourceId) : null;
+    const tickFloor = tickSource && hostileSource(combatData, tickSource, unit) ? knockdownFloorOf(combatData, unit) : 0;
+    // 治疗反转 on the unit (BattlePreview healInversionOf): its periodic heal is dealt to it, held at the line an opponent's loss is.
+    const healInversion = typeof previewRuntime.healInversionOf === 'function' ? previewRuntime.healInversionOf(unit) : null;
+    const healTurn = healInversion ? { ratio: healInversion.ratio, floor: knockdownFloorOf(combatData, unit) } : null;
+    let invertedLoss = 0;
     const hpTick = settlePeriodicHpValues(unit, condition, stateName, ({ kind, blocked, actual }) => {
+      if (kind === 'inversion' && !blocked) invertedLoss += Math.max(0, Number(actual) || 0);
       if (blocked) {
         logs.push(kind === 'dot'
           ? `[机制抹消] ${label}的生命变化被封锁，[${stateName}]未能造成持续损失。`
@@ -6281,8 +6358,12 @@
       if (actual > 0) logs.push(kind === 'inversion'
         ? `[状态结算] ${label}的[${stateName}]治疗被反转，反而损失 ${actual} 点HP${sourceText}`
         : `[状态结算] ${label}受[${stateName}]影响，额外${kind === 'hot' ? '恢复' : '损失'} ${actual} 点HP${sourceText}`);
-    });
+    }, null, tickFloor, healTurn);
     const totalDot = hpTick.totalDot;
+    if (tickFloor > 0 && totalDot > 0) settleKnockdownExit(combatData, unit, tickFloor, { actorId: tickSourceId,
+      actorName: String(source?.sourceActorName || ''), actionName: stateName, actionId: resourceMeta.sourceActionId, source: 'state_tick' });
+    if (healTurn && healTurn.floor > 0 && invertedLoss > 0) settleKnockdownExit(combatData, unit, healTurn.floor, { actorId: healInversion.sourceId,
+      actorName: '', actionName: stateName, actionId: resourceMeta.sourceActionId, source: 'heal_inversion' });
     if (hpTick.stopCondition) { observe?.(); return { log: logs.join(' '), totalDot, stopCondition: true }; }
     settlePeriodicResourceValues(unit, effects, settlement => {
       const { resource, resourceKey, delta, blocked, explicitTick } = settlement;
@@ -6294,15 +6375,19 @@
         explicitTick ? { ...resourceMeta, stateName, operation: 'STATE_RESOURCE_TICK', resourceName: resource } : resourceMeta);
       logs.push(`[状态结算] ${label}受[${stateName}]影响，${delta > 0 ? '恢复' : '流失'} ${Math.abs(delta)} 点${resource}${sourceText}`);
     });
-    settleExplicitResourceValues(unit, condition, ({ resource, resourceKey, before, after, delta, requestedDelta, blocked }) => {
+    settleExplicitResourceValues(unit, condition, ({ resource, resourceKey, before, after, delta, requestedDelta, blocked, turned }) => {
       if (blocked) { logs.push(`[机制抹消] ${label}的${resource}变化被封锁，[${stateName}]未能结算。`); return; }
+      if (turned) invertedLoss += Math.max(0, -delta);
       const event = writeRoundEndResourceEvent(combatData, unit, label, resourceKey, delta, {
         ...resourceMeta, operation: delta > 0 ? 'RESTORE' : 'REDUCE', reasonCode: 'STATE_RESOURCE_CHANGE',
         resourceName: resource, before, after, requestedDelta,
       });
       if (event && resourceKey === 'hp' && delta < 0 && after <= 0) lethalEvent = event;
-      logs.push(`[状态结算] ${label}受[${stateName}]影响，${delta > 0 ? '恢复' : '流失'} ${Math.abs(delta)} 点${resource}${sourceText}`);
-    });
+      logs.push(turned ? `[状态结算] ${label}的[${stateName}]治疗被反转，反而损失 ${Math.abs(delta)} 点HP${sourceText}`
+        : `[状态结算] ${label}受[${stateName}]影响，${delta > 0 ? '恢复' : '流失'} ${Math.abs(delta)} 点${resource}${sourceText}`);
+    }, null, healTurn);
+    if (healTurn && healTurn.floor > 0 && invertedLoss > 0) settleKnockdownExit(combatData, unit, healTurn.floor, { actorId: healInversion.sourceId,
+      actorName: '', actionName: stateName, actionId: resourceMeta.sourceActionId, source: 'heal_inversion' });
     observe?.();
     return { log: logs.join(' '), totalDot, stopCondition: false, lethalEvent };
   }
@@ -6593,6 +6678,11 @@
     delete runtime.actionQueueFatal;
     delete runtime.withdrawalSuccess;
     delete runtime.withdrawalSuccessSides;
+    // 认输与撤离: units that got away earlier in this battle (carried over from an earlier request) still count.
+    const withdrawnSides = [...new Set(listCombatUnits(combatData)
+      .filter(unit => String(unit?.__战斗失能原因 || '').trim() === previewRuntime.LEFT_BATTLE_REASONS.WITHDRAW)
+      .map(unit => previewRuntime.sideOf(combatData, unit)).filter(Boolean))];
+    if (withdrawnSides.length) { runtime.withdrawalSuccess = true; runtime.withdrawalSuccessSides = withdrawnSides; }
   }
 
   function evaluateBattleTerminal(context = {}, adapterOptions = {}) {
@@ -8019,6 +8109,13 @@
         clearC2FoodMaintenanceRuntime(unit);
         return;
       }
+      // 认输与撤离: a unit that left the battle keeps the HP and states it left with — no upkeep, no tick, no recovery.
+      if (previewRuntime.hasLeftBattle(unit)) {
+        for (const [key, condition] of Object.entries(unit.状态效果 || {})) {
+          if (condition && typeof condition === 'object') observeSkippedPeriodicState(unit, key, condition, previewRuntime.unitName(unit), combatData, 'LEFT_BATTLE_SKIP');
+        }
+        return;
+      }
       const name = previewRuntime.unitName(unit);
       observation.upkeepPayerId = previewRuntime.unitId(unit);
       const sustainResult = settleSustainAtRoundEnd(unit, name, combatData, adapterOptions) || {};
@@ -8593,7 +8690,9 @@
     if (Number(runtime.counterDamageDepth || 0) > 0) return [];
     const ratio = previewRuntime.counterDamageRatio(target);
     if (!(ratio > 0)) return [];
-    const reflected = Math.max(0, Math.min(previewRuntime.readHp(actor), Math.floor(actualDamage * ratio)));
+    // 击倒线: 反伤 is the target's doing, held at the line.
+    const reflectFloor = hostileSource(combatData, target, actor) ? knockdownFloorOf(combatData, actor) : 0;
+    const reflected = knockdownHeldLoss(actor, Math.max(0, Math.min(previewRuntime.readHp(actor), Math.floor(actualDamage * ratio))), reflectFloor);
     if (!(reflected > 0)) return [];
     runtime.counterDamageDepth = Number(runtime.counterDamageDepth || 0) + 1;
     try {
@@ -8642,7 +8741,9 @@
           preventRecursiveCounter: true,
         },
       });
-      return [reflectedEvent, ...settleDamageRevival(combatData, actor, reflectedEvent)].filter(Boolean);
+      return [reflectedEvent, ...settleDamageRevival(combatData, actor, reflectedEvent),
+        settleKnockdownExit(combatData, actor, reflectFloor, { actorId: previewRuntime.unitId(target), actorName: previewRuntime.unitName(target),
+          actionName: action.actionName, actionId: actionEvent.actionId, source: 'counter_damage' })].filter(Boolean);
     } finally {
       runtime.counterDamageDepth = Math.max(0, Number(runtime.counterDamageDepth || 1) - 1);
     }
@@ -8834,7 +8935,9 @@
         Number.isFinite(capRatio) ? actualDamage * capRatio : stored,
       );
       const targetBefore = Math.max(0, Number(previewRuntime.readHp(target) || 0));
-      const releaseAmount = Math.max(0, Math.min(targetBefore, releaseBeforeTargetLimit));
+      // 击倒线: released damage is the actor's doing, held at the line.
+      const releaseFloor = hostileSource(combatData, actor, target) ? knockdownFloorOf(combatData, target) : 0;
+      const releaseAmount = knockdownHeldLoss(target, Math.max(0, Math.min(targetBefore, releaseBeforeTargetLimit)), releaseFloor);
       delete actorStorage[stateKey];
       const settlementFact = writeDamageAbsorptionSettlementFact({
         combatData,
@@ -8875,6 +8978,9 @@
         targetAfter,
       });
       if (damageFact) facts.push(damageFact, ...settleDamageRevival(combatData, target, damageFact));
+      const releaseExit = settleKnockdownExit(combatData, target, releaseFloor, { actorId: previewRuntime.unitId(actor),
+        actorName: previewRuntime.unitName(actor), actionName: action?.actionName || '', actionId: actionEvent?.actionId || '', source: 'damage_absorption_release' });
+      if (releaseExit) facts.push(releaseExit);
     });
 
     targetStates.forEach(([stateKey, state]) => {
@@ -9614,6 +9720,12 @@
         bindStateSourceProvenance(combatData, target, stateName, nextRuntimeId('state-src'), stateFact);
       });
       facts.push(...unitFacts);
+      // 击倒线 (type1b): another unit's effect that took this unit down to the knockdown line subdues it.
+      if (!isUnitIdentityMatch(actor, unitId) && previewRuntime.readHp(target) < previewRuntime.readHp(beforeUnit)) {
+        const exit = !hostileSource(combatData, actor, target) ? null : settleKnockdownExit(combatData, target, knockdownFloorOf(combatData, target), { actorId: previewRuntime.unitId(actor),
+          actorName: previewRuntime.unitName(actor), actionName: action?.actionName || '', actionId: actionEvent?.actionId || '', source: 'structured_preview_commit' });
+        if (exit) facts.push(exit);
+      }
     });
     for (const { unitId, key, state } of endedStates) {
       const target = previewRuntime.findUnit(combatData, unitId);
@@ -10125,6 +10237,9 @@
     if (actionRole === 'ACTIVE' && !structuredActorCanAct(actor, actionRole)) {
       throw new Error('battle_structured_actor_controlled');
     }
+    // 认输与撤离: leaving keeps the action name 撤退 here — the decision trace names its choice so (normalizeActionDisplayName)
+    // and the report anchors each decision on the action of that name; what it came to (认输 / 撤离) is the leaving's own
+    // result and its state_apply (SURRENDERED / WITHDRAWN).
     const actionName = normalizeActionDisplayName(
       declaration?.skill?.name || declaration?.skill?.魂技名 || declaration?.skill?.技能名称 || actionKind,
     );
@@ -10624,7 +10739,8 @@
           combatData,
           actor,
         );
-        const roll = Math.random();
+        // 认输 (BattlePreview battleRules concede): no judgment — the contest is a certain success, and no chance is drawn.
+        const roll = contest.concede === true ? 0 : Math.random();
         const successBoundary = Number(contest.successProbability || 0);
         const partialBoundary =
           successBoundary +
@@ -10637,13 +10753,13 @@
               : 'FAILURE';
         const result =
           outcome === 'SUCCESS'
-            ? 'withdrawn'
+            ? contest.concede === true ? 'surrendered' : 'withdrawn'
             : outcome === 'PARTIAL'
               ? 'partial'
               : 'failed';
         const primaryOutcome =
           outcome === 'SUCCESS'
-            ? 'withdrawal_success'
+            ? contest.concede === true ? 'surrendered' : 'withdrawal_success'
             : outcome === 'PARTIAL'
               ? 'withdrawal_partial'
               : 'withdrawal_failed';
@@ -10659,10 +10775,12 @@
               ? Number(contest.failurePursuitDamage || 0)
               : 0;
         const beforeHp = previewRuntime.readHp(actor);
+        // 击倒线: the pursuer's blow is held at the line.
+        const pursuitFloor = pursuer ? knockdownFloorOf(combatData, actor) : 0;
         const afterHp = writeCombatResource(
           actor,
           'hp',
-          beforeHp - pursuitDamage,
+          beforeHp - knockdownHeldLoss(actor, pursuitDamage, pursuitFloor),
         );
         const appliedDamage = Math.max(0, beforeHp - afterHp);
         const childEventIds = [];
@@ -10707,6 +10825,7 @@
             probabilityGroupKey: contest.probabilityGroupKey,
             outcomeDistribution: contest.outcomeDistribution,
             withdrawalOutcome: outcome,
+            conceded: contest.concede === true,
             roll,
             successBoundary,
             partialBoundary,
@@ -10773,15 +10892,40 @@
           probabilityGroupKey: contest.probabilityGroupKey,
           roll,
         });
-        if (outcome === 'SUCCESS') {
-          const runtime = ensureCombatRuntime(combatData);
-          runtime.withdrawalSuccess = true;
-          runtime.withdrawalSuccessSides = Array.from(new Set([
-            ...(Array.isArray(runtime.withdrawalSuccessSides) ? runtime.withdrawalSuccessSides : []),
-            actorSide,
-          ].filter(Boolean)));
-        }
         facts.push(withdrawalEvent);
+        // 认输与撤离 (认输与撤离方案-20261113 第 2、3 条): leaving is per unit. The unit that conceded (SURRENDERED, 认输) or got
+        // away (WITHDRAWN, 撤离) is off the field with the HP and states it has (BattlePreview hasLeftBattle: no one's
+        // target, nothing settled on it at round ends); its teammates fight on, and a side with no one left has lost
+        // unless it got away (BattlePreview withdrawalSucceeded). Only a withdrawal counts toward 成功撤离.
+        if (outcome === 'SUCCESS') {
+          const beforeActionState = cloneValue(actor?.状态 || {});
+          actor.__战斗失能原因 = contest.concede === true ? previewRuntime.LEFT_BATTLE_REASONS.CONCEDE : previewRuntime.LEFT_BATTLE_REASONS.WITHDRAW;
+          if (contest.concede !== true) {
+            const runtime = ensureCombatRuntime(combatData);
+            runtime.withdrawalSuccess = true;
+            runtime.withdrawalSuccessSides = Array.from(new Set([
+              ...(Array.isArray(runtime.withdrawalSuccessSides) ? runtime.withdrawalSuccessSides : []),
+              actorSide,
+            ].filter(Boolean)));
+          }
+          const leftName = contest.concede === true ? '认输' : '撤离';
+          facts.push(writeLedgerEvent(combatData, {
+            eventKind: 'state_apply', round: Number(combatData?.回合 || 0),
+            actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
+            targetId: previewRuntime.unitId(actor), targetName: previewRuntime.unitName(actor),
+            actionName, actionType: 'incapacitation', actorControl: 'SYSTEM', actionRole: 'REACTION',
+            actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
+            ruleCode: actor.__战斗失能原因, result: 'applied', resultState: 'SUCCESS',
+            primaryOutcome: contest.concede === true ? 'surrendered' : 'withdrawn', factType: 'STATE', operation: 'STATE_APPLY',
+            meta: { source: 'structured_runtime', stateName: leftName, hpAfter: previewRuntime.readHp(actor),
+              hpRatioAfter: previewRuntime.readHp(actor) / Math.max(1, previewRuntime.readHpMax(actor)), leftBattle: true,
+              reasonText: `${previewRuntime.unitName(actor)}${contest.concede === true ? '认输，退出了战斗' : '撤离了战场'}`,
+              before: beforeActionState, after: cloneValue(actor.状态 || {}), operation: 'STATE_APPLY' },
+          }));
+        }
+        const pursuitExit = settleKnockdownExit(combatData, actor, pursuitFloor, { actorId: pursuer ? previewRuntime.unitId(pursuer) : '',
+          actorName: pursuer ? previewRuntime.unitName(pursuer) : '', actionName: '撤离追击', actionId: actionEvent.actionId, source: 'withdrawal_pursuit' });
+        if (pursuitExit) facts.push(pursuitExit);
         if (childEventIds.length) {
           facts.push(
             ...ensureLedger(combatData).filter(event =>
@@ -11814,12 +11958,17 @@
               actionEvent,
               actionRole,
             }));
-            // 生命受威胁即出局（用户 2026-11-12，BattlePreview isProtectedBattle）: in a spar the fighters hold a hit at the
+            // 生命受威胁即出局（用户 2026-11-12，BattlePreview battleRules）: in a spar the fighters hold a hit at the
             // life-threat line themselves; in a match the referee has to deal with it (structuredRefereeIntervention, below),
-            // and a hit it cannot take on lands whole. A unit already out is not hit under the line again.
+            // and a hit it cannot take on lands whole. A unit already out is not hit under the line again. A battle with a
+            // referee is a match whatever its intent (战斗类型简化与比赛判定方案-20261113).
             const battleMode = String(combatData?.战斗意图 || '').trim();
-            const sparring = /点到为止|切磋|训练|非致命/.test(battleMode);
-            const protectedBattle = sparring || previewRuntime.isProtectedBattle(combatData, { mode: battleMode });
+            // 击倒线 (type1b, BattlePreview battleRules): a battle that is not lethal holds every hit at knockdownFloor and
+            // takes the unit brought to it out, subdued; in a match that comes under the life-threat line's handling.
+            const battleRule = previewRuntime.battleRules(combatData, { mode: battleMode });
+            const sparring = battleRule.spar;
+            const protectedBattle = battleRule.spar || battleRule.match;
+            const knockdownFloor = battleRule.knockdownFloor;
             const threatShield = currentShieldTotal(target, effect, actor);
             const lifeFloor = protectedBattle
               ? previewRuntime.calculateNonlethalHpFloor(combatData, target, { mode: battleMode, objectives: combatData?.胜负条件 || {} })
@@ -11889,7 +12038,8 @@
             }
             const nonlethal = sparring || protectedBattle && alreadyOut;
             const nonlethalHpFloor = nonlethal ? lifeFloor : 0;
-            const hpDamageLimit = nonlethal ? Math.max(0, before - nonlethalHpFloor) : before;
+            const hitHpFloor = Math.max(nonlethalHpFloor, knockdownFloor);
+            const hpDamageLimit = hitHpFloor > 0 ? Math.max(0, before - hitHpFloor) : before;
             const incomingDamage = Math.max(0, Math.min(
               shieldBefore + hpDamageLimit,
               settledSegmentDamage,
@@ -11937,7 +12087,10 @@
             // Held at the line (the fighters, or the referee), or landed whole and left under it: out of the fight.
             const heldAtLine = nonlethal && !alreadyOut && previewRuntime.lifeThreatExit(nonlethalHpFloor, target) && before > 0 && damage >= before - nonlethalHpFloor - 1e-9;
             const leftUnderLine = protectedBattle && !nonlethal && hpAfter > 0 && previewRuntime.lifeThreatExit(lifeFloor, target) && hpAfter < lifeFloor;
-            const nonlethalIncapacitated = heldAtLine || leftUnderLine;
+            // Held at the knockdown line: subdued, out of the fight (BattlePreview battleRules knockdown).
+            const knockedDown = knockdownFloor > 0 && !nonlethal && !alreadyOut && before > 0 && (before > knockdownFloor
+              ? damage >= before - knockdownFloor - 1e-9 : settledSegmentDamage > shieldBefore + 1e-9);
+            const nonlethalIncapacitated = heldAtLine || leftUnderLine || knockedDown;
             const damageEvent = writeLedgerEvent(combatData, {
               eventKind: 'hit_result', round: Number(combatData?.回合 || 0),
               actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
@@ -11968,7 +12121,7 @@
                 basisHash: actualDamageBasis.basisHash,
                 damageBasis: damageBasisForFact,
                 formulaTrace: actualDamageBasis.formulaTrace,
-                intentLethalPrevented: nonlethal && before > 0 && settledSegmentDamage >= shieldBefore + before,
+                intentLethalPrevented: (nonlethal || knockdownFloor > 0) && before > 0 && settledSegmentDamage >= shieldBefore + before,
                 reactionEventId: String(reaction?.event?.eventId || '').trim(),
                 before,
                 after: hpAfter,
@@ -12002,14 +12155,15 @@
               const actionState = traumaUnconscious ? '昏迷' : '失去战斗力';
               const hpMax = previewRuntime.readHpMax(target);
               const beforeActionState = cloneValue(target?.状态 || {});
-              target.__战斗失能原因 = traumaUnconscious ? 'UNCONSCIOUS' : 'INCAPACITATED';
+              target.__战斗失能原因 = traumaUnconscious ? 'UNCONSCIOUS' : knockedDown ? 'SUBDUED' : 'INCAPACITATED';
               facts.push(writeLedgerEvent(combatData, {
                 eventKind: 'state_apply', round: Number(combatData?.回合 || 0),
                 actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
                 targetId: previewRuntime.unitId(target), targetName: previewRuntime.unitName(target),
                 actionName, actionType: 'incapacitation', actorControl, actionRole, actionId: actionEvent.actionId,
                 sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
-                ruleCode: traumaUnconscious ? 'TRAUMA_UNCONSCIOUS' : refereeRescue ? 'REFEREE_RESCUE' : leftUnderLine ? 'LIFE_THREAT_WITHDRAWN' : 'NONLETHAL_INTENT_DISABLE',
+                ruleCode: traumaUnconscious ? 'TRAUMA_UNCONSCIOUS' : refereeRescue ? 'REFEREE_RESCUE' : knockedDown ? 'KNOCKDOWN_SUBDUED'
+                  : leftUnderLine ? 'LIFE_THREAT_WITHDRAWN' : 'NONLETHAL_INTENT_DISABLE',
                 result: 'applied', resultState: 'SUCCESS', primaryOutcome: traumaUnconscious ? 'trauma_unconscious' : 'nonlethal_incapacitation',
                 effectPrototype: prototype, factType: 'STATE', sourceEffectId, operation: 'STATE_APPLY',
                 meta: {
@@ -12022,7 +12176,8 @@
                   nonlethalHpFloor,
                   nonlethalIncapacitated,
                   ...(refereeRescue ? { refereeRescue: { ...refereeRescue }, reasonText: `${refereeRescue.name}出手拦下这一击，${previewRuntime.unitName(target)}出局` } : {}),
-                  ...(leftUnderLine ? { lifeFloor, reasonText: `${previewRuntime.unitName(target)}生命已到危险线，出局` } : {}),
+                  ...(knockedDown ? { knockdownFloor, reasonText: `${previewRuntime.unitName(target)}被制服，失去战斗力` }
+                    : leftUnderLine ? { lifeFloor, reasonText: `${previewRuntime.unitName(target)}生命已到危险线，出局` } : {}),
                   traumaUnconscious,
                   before: beforeActionState,
                   after: cloneValue(target.状态),
@@ -12049,11 +12204,15 @@
             ? effect.资源.map(value => String(value || '').trim()).filter(Boolean).join('、')
             : String(effect?.资源 || '魂力').trim();
           const resourceKeys = persistentResourceKeys(effect?.资源 || '魂力');
+          // 治疗反转 (BattlePreview healInversionEffect): a heal of HP alone landing on a unit under it takes that HP
+          // instead, held at the line an opponent's loss is held at, and the inverting unit is the one who took it.
+          const healTurned = typeof previewRuntime.healInversionEffect === 'function' ? previewRuntime.healInversionEffect(effect, target) : null;
+          const healTurnedBy = healTurned ? listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, healTurned.__healInversionSourceId)) || null : null;
           let primaryResolved = false;
           resourceKeys.forEach(key => {
             const before = persistentResourceValue(target, key);
             let delta = previewRuntime.sampleSignedValue(
-              effect?.数值,
+              (healTurned || effect)?.数值,
               persistentResourceMax(target, key),
               Math.random,
             );
@@ -12076,7 +12235,12 @@
               targetId: previewRuntime.unitId(target),
               operation,
             });
-            if (resourceSample.succeeded) writeCombatResource(target, key, before + delta);
+            // 间接生命损失的线 (type1c): an opponent's 资源变化 taking HP is held at the target's line.
+            const resourceLossFloor = key === 'hp' && delta < 0 && (healTurned || hostileSource(combatData, actor, target)) ? knockdownFloorOf(combatData, target) : 0;
+            if (resourceSample.succeeded) writeCombatResource(target, key, resourceLossFloor > 0 ? before - knockdownHeldLoss(target, -delta, resourceLossFloor) : before + delta);
+            const lossActor = healTurned && healTurnedBy ? healTurnedBy : actor;
+            if (resourceSample.succeeded && resourceLossFloor > 0) settleKnockdownExit(combatData, target, resourceLossFloor, { actorId: previewRuntime.unitId(lossActor),
+              actorName: previewRuntime.unitName(lossActor), actionName: action?.actionName || '', actionId: actionEvent?.actionId || '', source: healTurned ? 'heal_inversion' : 'resource_change' });
             const actual = persistentResourceValue(target, key) - before;
             const resourceFact = writeStructuredResourceFact(
               combatData,
@@ -17063,6 +17227,7 @@
                   STAMINA_EXHAUSTED: '体力已经耗尽',
                   UNCONSCIOUS: '处于昏迷状态',
                   SURRENDERED: '已经认输',
+                  WITHDRAWN: '已经撤离',
                   SUBDUED: '已经被制服',
                   INCAPACITATED: '已经失去战斗力',
                 })[incapacityReason] || '当前状态无法行动';
@@ -19452,7 +19617,9 @@
       else if (kind === 'defend') content = `${prefix}${actor}完成防御结算（${result || '已防御'}）。`;
       else if (kind === 'pass' && String(event?.actionType || '').trim().toUpperCase() === 'WITHDRAW') {
         const outcome = String(event?.primaryOutcome || '').trim();
-        content = outcome === 'withdrawal_success'
+        content = outcome === 'surrendered'
+          ? `${prefix}${actor}认输，退出了战斗。`
+          : outcome === 'withdrawal_success'
           ? `${prefix}${actor}成功撤离战场。`
           : outcome === 'withdrawal_partial'
             ? `${prefix}${actor}未能完全撤离，并在追击中受伤。`
@@ -20060,10 +20227,12 @@
           return;
         }
         if (fact.eventKind === 'pass' && (
-          String(fact.actionName || '').trim() === '撤退' ||
-          /^withdrawal_/.test(String(fact.outcomeKind || '').trim())
+          ['撤退', '撤离', '认输'].includes(String(fact.actionName || '').trim()) ||
+          /^withdrawal_|^surrendered$/.test(String(fact.outcomeKind || '').trim())
         )) {
-          if (String(fact.outcomeKind || '').trim() === 'withdrawal_success' || /withdrawn|success/i.test(String(fact.resultState || '').trim())) {
+          if (String(fact.outcomeKind || '').trim() === 'surrendered' || String(fact.actionName || '').trim() === '认输') {
+            push(`${actor}认输，退出了战斗`);
+          } else if (String(fact.outcomeKind || '').trim() === 'withdrawal_success' || /withdrawn|success/i.test(String(fact.resultState || '').trim())) {
             push(`${actor}成功撤离战场`);
           } else if (
             String(fact.outcomeKind || '').trim() === 'withdrawal_partial' ||
@@ -20687,7 +20856,7 @@
       const totalHpMax = units.reduce((sum, unit) => sum + unit.hpMax, 0);
       const resourceCurrent = units.reduce((sum, unit) => sum + unit.sp + unit.vit + unit.men, 0);
       const resourceMax = units.reduce((sum, unit) => sum + unit.spMax + unit.vitMax + unit.menMax, 0);
-      const alive = units.filter(unit => unit.hp > 0 && !/失去战斗力|昏迷|投降|制服|撤离/.test(unit.actionState)).length;
+      const alive = units.filter(unit => unit.hp > 0 && !/失去战斗力|昏迷|投降|制服|撤离|认输|SURRENDERED|WITHDRAWN/.test(unit.actionState)).length;
       const controlBurden = units.reduce((sum, unit) => sum + unit.states.filter(state => state.skipTurn).length, 0);
       const hpRatio = totalHp / Math.max(1, totalHpMax);
       const resourceRatio = resourceCurrent / Math.max(1, resourceMax);
@@ -20759,7 +20928,7 @@
     [...playerSummary, ...enemySummary].forEach(unit => {
       const hpRatio = unit.hp / Math.max(1, unit.hpMax);
       const resourceRatio = (unit.sp + unit.vit + unit.men) / Math.max(1, unit.spMax + unit.vitMax + unit.menMax);
-      const canAct = unit.hp > 0 && !/失去战斗力|昏迷|投降|制服|撤离/.test(unit.actionState);
+      const canAct = unit.hp > 0 && !/失去战斗力|昏迷|投降|制服|撤离|认输|SURRENDERED|WITHDRAWN/.test(unit.actionState);
       if (canAct && hpRatio <= 0.25) tacticalWindows.push(`${unit.name}生命低于25%，进入斩杀窗口`);
       if (canAct && resourceRatio <= 0.2) risks.push(`${unit.name}可用资源接近枯竭`);
       unit.states.forEach(state => {

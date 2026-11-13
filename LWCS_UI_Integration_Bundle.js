@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:7c0747060c7e0fa227da61496d4095e8251ccc1d22e7ace67c7c8dc5dd19d6fe|cockpit/designer-model.js:a4e0603f2d10d987b0afddc19e149c42c300fa305dcbfdbf5d1f1c4eb0f26ca9|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:bbbae9686d5c127938d3dcfc97f2758141c1a9bc73a066c1f5a2facf51db5ee7|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:fd02ab35ffcdced0b6a5ab56509c72e05ec83cd9d7a024e3d0580638504c3f29|mvu_logic_bridge.js:f1172d856a76dd89f27954aa3a9269c0ac20309e98870cf4db2152e9997c8935|cockpit/designer-model.js:a4e0603f2d10d987b0afddc19e149c42c300fa305dcbfdbf5d1f1c4eb0f26ca9|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:bbbae9686d5c127938d3dcfc97f2758141c1a9bc73a066c1f5a2facf51db5ee7|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -692,7 +692,7 @@
       '  "模块结算": {',
       '    "是否结束": false',
       '  },',
-      '  "正文承接": "自然语言承接战斗过程与当前战局。必须写清关键攻防、普通攻击/防御/闪避/撤离/魂技选择及战局结果"',
+      '  "正文承接": "自然语言承接战斗过程与当前战局。必须写清关键攻防、普通攻击/防御/闪避/认输/撤离/魂技选择及战局结果"',
       '}',
       '</battle_adjudication>',
       '',
@@ -707,11 +707,11 @@
       '    "终局类型": "incapacitated",',
       '    "终局原因": "STAMINA_EXHAUSTED"',
       '  },',
-      '  "正文承接": "自然语言承接战斗过程与当前战局。必须写清关键攻防、普通攻击/防御/闪避/撤离/魂技选择及战局结果"',
+      '  "正文承接": "自然语言承接战斗过程与当前战局。必须写清关键攻防、普通攻击/防御/闪避/认输/撤离/魂技选择及战局结果"',
       '}',
       '</battle_adjudication>',
       '',
-      '模块结算规则：终局类型只能填 death、incapacitated、hp_threshold、survived、withdrawal、time_limit；终局原因必须复制战斗结算卷宗中的结构化原因。death 时败方剩余HP比例必须为0；incapacitated 时必须大于0，且只表示失去战斗能力，不得写成死亡；time_limit 表示平局，胜方和败方都填“无”，HP比例填100；其余类型的胜方和败方必须是当前参战者名称且不能相同。',
+      '模块结算规则：终局类型只能填 death、incapacitated、hp_threshold、survived、withdrawal、time_limit；终局原因必须复制战斗结算卷宗中的结构化原因。death 时败方剩余HP比例必须为0；incapacitated 时必须大于0，且只表示失去战斗能力，不得写成死亡；time_limit 表示平局，胜方和败方都填“无”，HP比例填100；其余类型的胜方和败方必须是当前参战者名称且不能相同。失能明细中的 SURRENDERED 表示认输出局、WITHDRAWN 表示撤离离场，都不是伤亡：认输写 incapacitated，撤离照卷宗写 withdrawal，败方剩余HP比例照实写，大于 0。',
     ].join('\n');
   }
 
@@ -9918,8 +9918,8 @@
     }
     if (terminalType === 'death' && hpRatio !== 0)
       return { ok: false, reason: 'battle_adjudication_death_hp_invalid' };
-    if (terminalType === 'incapacitated' && hpRatio <= 0)
-      return { ok: false, reason: 'battle_adjudication_incapacitated_hp_invalid' };
+    // An incapacitated loser may be written at 0%: one subdued at the knockdown line has 1 HP, which rounds to 0 of its
+    // HP上限. Only a death settles at HP 0, so applyBattleAdjudicationFromText keeps it at 1 HP and alive.
     return { ok: true, settlement: { 是否结束: true, 胜方: winnerName, 败方: loserName, 败方剩余HP比例: hpRatio, 终局类型: terminalType, 终局原因: terminalReason } };
   }
 
@@ -10016,7 +10016,9 @@
         1,
       ),
     );
-    const finalHp = Math.max(0, Math.round((hpMax * Number(settlement.败方剩余HP比例)) / 100));
+    // Only a death settles at HP 0 (type1b 击倒线): a loser subdued, out of the fight or under a threshold keeps at least 1,
+    // whatever share the AI rounded its HP to.
+    const finalHp = Math.max(settlement.终局类型 === 'death' ? 0 : 1, Math.round((hpMax * Number(settlement.败方剩余HP比例)) / 100));
     const 是虚拟战 = /虚拟|升灵台|魂灵塔|模拟/.test(toText(combatData.战斗类型, ''));
     const 虚拟死亡 = 是虚拟战 && finalHp <= 0;
     const alive = 虚拟死亡 ? true : finalHp > 0;
@@ -27930,16 +27932,22 @@ ${播报文本}
       team_player: [],
       team_enemy: [],
     };
+    // A stored unit that was out of the battle comes back out of it, for the same reason (compactBattleParticipantForStorage).
+    const 保留离场 = (units, seed) => {
+      const 原因 = toText(seed?.__战斗失能原因, '').trim();
+      if (原因) units.forEach(unit => { if (unit && typeof unit === 'object') unit.__战斗失能原因 = 原因; });
+      return units;
+    };
     const teamPlayerSeeds = Array.isArray(participants.team_player) ? participants.team_player : [];
     teamPlayerSeeds.forEach((participant, index) => {
       nextParticipants.team_player.push(
-        ...explodeBattleSeedParticipant(snapshot, participant, `team_player_${index + 1}`),
+        ...保留离场(explodeBattleSeedParticipant(snapshot, participant, `team_player_${index + 1}`), participant),
       );
     });
     const teamEnemySeeds = Array.isArray(participants.team_enemy) ? participants.team_enemy : [];
     teamEnemySeeds.forEach((participant, index) => {
       nextParticipants.team_enemy.push(
-        ...explodeBattleSeedParticipant(snapshot, participant, `team_enemy_${index + 1}`),
+        ...保留离场(explodeBattleSeedParticipant(snapshot, participant, `team_enemy_${index + 1}`), participant),
       );
     });
 
@@ -28163,8 +28171,12 @@ ${播报文本}
     const source = cloneJsonValue(participant, {});
     const participantName = toText(source.name, '');
     const resolvedKey = participantName ? resolveSnapshotCharKey(snapshot, participantName) : '';
+    // A unit out of the battle stays out when the battle is carried on to the next request, whatever got it out
+    // (SUBDUED, INCAPACITATED, UNCONSCIOUS, STAMINA_EXHAUSTED, SURRENDERED, WITHDRAWN …); expandBattleRosterForSnapshot puts it back.
+    const 离场原因 = toText(source.__战斗失能原因, '').trim();
     if (resolvedKey) {
       const compact = { name: participantName || resolvedKey };
+      if (离场原因) compact.__战斗失能原因 = 离场原因;
       if (source.势力 !== undefined) compact.势力 = toText(source.势力, '');
       const aliveCandidate =
         source.存活 !== undefined
@@ -28180,11 +28192,32 @@ ${播报文本}
     if (participantName) {
       compact.name = participantName;
     }
+    if (离场原因) compact.__战斗失能原因 = 离场原因;
     ['来源', '单位性质', '身份', '数量', '等级', '年限', '品质', '标准物种', '具体物种', '物种品质', '级别', '标准种族', '势力'].forEach(
       key => {
         if (source[key] !== undefined) compact[key] = cloneJsonValue(source[key], source[key]);
       },
     );
+    // A temporary unit that has fought has no save of its own: its live state is kept here, the fields a role gets
+    // written back (构建正式战斗写回补丁) plus what it was built with, so the next request takes it up as it is
+    // (buildExpandedBattleSeedParticipant takes an expanded entry as it is) instead of building it anew from the seed.
+    if (isExpandedBattleParticipant(source)) {
+      const attributeSource = source.属性;
+      compact.属性 = {};
+      战斗提交属性字段.forEach(key => {
+        const value = key === '状态效果'
+          ? 构建战斗状态集合落盘值(source.状态效果 && typeof source.状态效果 === 'object' ? source.状态效果 : attributeSource.状态效果)
+          : attributeSource[key];
+        if (value !== undefined) compact.属性[key] = cloneJsonValue(value, value);
+      });
+      compact.状态 = {};
+      战斗提交状态字段.forEach(key => {
+        if (source.状态[key] !== undefined) compact.状态[key] = cloneJsonValue(source.状态[key], source.状态[key]);
+      });
+      ['系别', '自创魂技', '社交', ...战斗提交角色字段].forEach(key => {
+        if (source[key] !== undefined) compact[key] = cloneJsonValue(source[key], source[key]);
+      });
+    }
     const aliveCandidate =
       source.存活 !== undefined
         ? source.存活
@@ -28417,9 +28450,41 @@ ${播报文本}
     return compact;
   }
 
+  // 战斗类型简化（用户 2026-11-13："擂台战算比赛 另外现在战斗类型有点多和重复，简化一下吧"；"实战和死战感觉区分度不够高？"；
+  // 战斗类型简化与比赛判定方案-20261113 及其修订）: a battle request's type as BattlePreview reads it (resolveBattleType: 切磋,
+  // 比赛 or 实战, the old names as aliases, the system's own as they are; nothing written, 实战), whether it was the old
+  // 死战 (no way out), and the intent that type opens with. Before the battle module is loaded the name stays as written
+  // (类型已读 false); buildMapBattleCombatData reads it again once it is.
+  function 读取开战战斗类型_桥接(value) {
+    const 原文 = toText(value, '').trim();
+    const preview = window.__LWCS_BATTLE_PREVIEW__;
+    if (!preview || typeof preview.resolveBattleType !== 'function') return { 原文, 类型: 原文, 类型已读: false, 系统: false, 不许撤离: false };
+    const resolved = preview.resolveBattleType(原文);
+    return { 原文, 类型: preview.battleTypeLabel(原文), 类型已读: true, 系统: resolved.system === true, 不许撤离: resolved.noWithdrawal === true };
+  }
+
+  // `胜负条件`: a battle whose conditions name a death opens with 必杀; so does a 生死斗 (比赛 with 允许撤离 否 and no
+  // referee) — BattlePreview battleTypeDefaultIntent.
+  function 开战缺省战斗意图_桥接(类型, 胜负条件 = null, 允许撤离 = true, 裁判 = null) {
+    const preview = window.__LWCS_BATTLE_PREVIEW__;
+    return typeof preview?.battleTypeDefaultIntent === 'function'
+      ? preview.battleTypeDefaultIntent(类型, 胜负条件, { noWithdrawal: 允许撤离 === false, refereed: !!(裁判 && typeof 裁判 === 'object') })
+      : '点到为止';
+  }
+
   function buildMapBattleCombatData(snapshot, dispatchDetail) {
     const detail = dispatchDetail || {};
     const 裁判 = 规范化开战裁判_桥接(snapshot, detail.裁判);
+    // 战斗类型简化: the type as written (kept in 战斗类型原文 when it reads otherwise), read as one of three. A battle with a
+    // referee is a match, and so is a competition's own bout (发起赛事对局请求_桥接 left its 赛事上下文 in world.战斗); the
+    // old 死战 is a real fight with no way out (允许撤离 否). With no intent given, the type's own (the player may change
+    // it in the battle terminal).
+    const 类型读法 = 读取开战战斗类型_桥接(detail.战斗类型原文 ?? detail.战斗类型);
+    const 赛事对局 = !deepGet(snapshot, 'rootData.world.战斗.进行中', false) &&
+      !!deepGet(snapshot, 'rootData.world.战斗.赛事上下文', null);
+    const 战斗类型 = !类型读法.系统 && (裁判 || 赛事对局) ? '比赛' : 类型读法.类型 || '实战';
+    const 写明战斗意图 = toText(detail.战斗意图, '').trim();
+    const 允许撤离 = detail.允许撤离 === false || 类型读法.不许撤离 ? false : true;
     const rosterResult = buildBattleSeedRoster(snapshot, detail);
     if (!rosterResult.ok) return { ok: false, reason: rosterResult.reason };
     const arenaName = toText(detail.currentLoc, toText(detail.target, toText(snapshot.currentLoc, '未知地点')));
@@ -28445,11 +28510,12 @@ ${播报文本}
         : contextRuleIds;
     return {
       进行中: true,
-      战斗类型: toText(detail.战斗类型, '擂台切磋'),
-      战斗意图: toText(detail.战斗意图, '点到为止'),
+      战斗类型,
+      ...(类型读法.原文 && 类型读法.原文 !== 战斗类型 ? { 战斗类型原文: 类型读法.原文 } : {}),
+      战斗意图: 写明战斗意图 || 开战缺省战斗意图_桥接(战斗类型, 胜负条件, 允许撤离, 裁判),
       ...(裁判 ? { 裁判 } : {}),
       先攻: '无',
-      允许撤离: detail.允许撤离 === false ? false : true,
+      允许撤离,
       回合: 0,
       环境: {
         地点: arenaName,
@@ -28463,6 +28529,9 @@ ${播报文本}
       参战者: rosterResult.participants,
       胜负条件,
       source: toText(detail.source, 'map_action'),
+      // 赛事对局 (任务卡⑥): the bout's 赛事上下文 goes on with the battle — world.战斗 is replaced at the opening, and
+      // 结算赛事战斗_桥接 reads the context from it when the battle is settled.
+      ...(赛事对局 ? { 赛事上下文: cloneJsonValue(deepGet(snapshot, 'rootData.world.战斗.赛事上下文', null), null) } : {}),
       ...(soulTowerCombat
         ? {
             floor: soulTowerFloor,
@@ -28549,7 +28618,8 @@ ${播报文本}
       {
         op: 'replace',
         path: '/sys/系统播报',
-        value: `[战斗模块] ${playerName} 向 ${enemyName} 发起${combatData.战斗类型 === '魂灵塔冲塔' ? `魂灵塔挑战${soulTowerText}` : '切磋'}，战斗模块已接管。`,
+        value: `[战斗模块] ${playerName} 向 ${enemyName} 发起${combatData.战斗类型 === '魂灵塔冲塔' ? `魂灵塔挑战${soulTowerText}`
+          : combatData.战斗类型 === '切磋' ? '切磋' : `战斗（${toText(combatData.战斗类型, '实战')}）`}，战斗模块已接管。`,
       },
     ]);
     await refreshLiveSnapshot({ force: true, reopenBattle: options.skipUi === true ? false : true });
@@ -28989,6 +29059,14 @@ ${播报文本}
     },
   });
 
+  function 战斗类型卷宗文本_桥接(combatData = {}) {
+    const preview = window.__LWCS_BATTLE_PREVIEW__;
+    const 写的 = toText(combatData.战斗类型, '').trim();
+    if (typeof preview?.battleRules !== 'function' || preview.resolveBattleType(写的).system) return 写的;
+    const 规则 = preview.battleRules(combatData, { mode: toText(combatData.战斗意图, '').trim() });
+    return 规则.match ? '比赛' : 规则.deathMatch ? '比赛（生死斗）' : preview.battleTypeLabel(写的);
+  }
+
   function 构建自动战斗裁断卷宗(combatData = {}, 执行结果 = {}) {
     const 玩家存活 = Math.max(0, toNumber(执行结果.playerAlive, 0));
     const 敌方存活 = Math.max(0, toNumber(执行结果.enemyAlive, 0));
@@ -29002,12 +29080,27 @@ ${播报文本}
             : 'unfinished';
     const 终局明细 = Array.isArray(执行结果?.objectiveResolution?.matchedDetails) ? 执行结果.objectiveResolution.matchedDetails : [];
     const 终局条件 = [...new Set(终局明细.map(item => toText(item?.condition?.type, '')).filter(Boolean))];
-    const 失能明细 = 终局明细.flatMap(item => Array.isArray(item?.unitResults) ? item.unitResults : [])
+    const 失能单位 = 终局明细.flatMap(item => Array.isArray(item?.unitResults) ? item.unitResults : [])
       .filter(item => item?.matched === true && toText(item?.reason, ''))
-      .map(item => `${toText(item.unitName || item.unitId, '未知单位')}:${toText(item.reason, '')}`);
+      .map(item => ({ 名称: toText(item.unitName || item.unitId, '未知单位'), 原因: toText(item.reason, '') }));
+    // 认输与撤离: a battle ended by the battlefield alone (a side with no one left, no condition met — e.g. all of a side
+    // withdrew from a fight whose goal was a death) lists the losing side's units out of the fight, as a met condition would.
+    const 败方队伍 = 执行结果.winner === 'player' ? 'team_enemy' : 执行结果.winner === 'enemy' ? 'team_player' : '';
+    if (!失能单位.length && 败方队伍) {
+      (Array.isArray(combatData?.参战者?.[败方队伍]) ? combatData.参战者[败方队伍] : []).forEach(unit => {
+        const 原因 = toText(unit?.__战斗失能原因, '').trim();
+        if (原因 && !unit?.召唤键) 失能单位.push({ 名称: toText(unit.name || unit.名称, '未知单位'), 原因 });
+      });
+    }
+    const 失能明细 = 失能单位.map(item => `${item.名称}:${item.原因}`);
+    // 认输与撤离: a side that left the field by withdrawing (every unit that counts WITHDRAWN) ends as a withdrawal; a
+    // concession (SURRENDERED) is out of the fight alive, as incapacitated, its reason in 失能明细.
+    const 全员撤离 = 失能单位.length > 0 && 失能单位.every(item => item.原因 === 'WITHDRAWN');
     const 终局类型 = 终局条件.some(type => ['UNIT_DEAD', 'TEAM_DEAD'].includes(type))
       ? 'death'
-      : 终局条件.some(type => ['UNIT_INCAPACITATED', 'TEAM_INCAPACITATED'].includes(type))
+      : 全员撤离
+        ? 'withdrawal'
+      : 终局条件.some(type => ['UNIT_INCAPACITATED', 'TEAM_INCAPACITATED'].includes(type)) || (!终局条件.length && 失能单位.length)
         ? 'incapacitated'
         : 终局条件.includes('HP_RATIO_AT_OR_BELOW')
           ? 'hp_threshold'
@@ -29025,9 +29118,11 @@ ${播报文本}
     return [
       `[前端战果类型]\n${战果类型}`,
       `[前端战果说明]\n${战果说明}`,
-      `[战斗类型]\n${toText(combatData.战斗类型, '')}`,
+      // 战斗类型简化: the battle's type (BattlePreview battleTypeLabel; a battle with a referee is a match — battleRules);
+      // the system's own types as they are. How hard it was fought is the intent's line.
+      `[战斗类型]\n${战斗类型卷宗文本_桥接(combatData)}`,
       `[存活统计]\n我方存活:${玩家存活}；敌方存活:${敌方存活}`,
-      `[战斗意图]\n${toText(combatData.战斗意图, '点到为止')}`,
+      `[战斗意图]\n${toText(combatData.战斗意图, '').trim() || 开战缺省战斗意图_桥接(combatData.战斗类型, combatData.胜负条件, combatData.允许撤离, combatData.裁判)}`,
       ...(combatData.裁判 && typeof combatData.裁判 === 'object'
         ? [`[裁判]\n${toText(combatData.裁判.名称 || combatData.裁判.name, '裁判')}${toNumber(combatData.裁判.属性?.等级 ?? combatData.裁判.等级, 0) > 0
           ? `（${Math.floor(toNumber(combatData.裁判.属性?.等级 ?? combatData.裁判.等级, 0))}级）` : ''}`]
@@ -31997,12 +32092,14 @@ ${播报文本}
               findBracketLocationToken(snapshot, text),
             ),
             currentLoc: toText(payload.currentLoc || payload.location, toText(snapshot && snapshot.currentLoc, '')),
-            战斗类型: toText(
-              payload.战斗类型 || payload.combatType,
-              /死战|生死|击杀|袭击|伏击/.test(text) ? '突发遭遇' : '擂台切磋',
-            ),
+            // 战斗类型简化: as written (战斗类型原文), read as one of three when the battle module is already loaded
+            // (buildMapBattleCombatData reads it again); nothing written, 实战 there. The old 死战: no way out.
+            战斗类型: 读取开战战斗类型_桥接(payload.战斗类型 || payload.combatType).类型,
+            ...(toText(payload.战斗类型 || payload.combatType, '').trim()
+              ? { 战斗类型原文: toText(payload.战斗类型 || payload.combatType, '').trim() } : {}),
             source: toText(payload.source, 'module_intent_router'),
-            允许撤离: typeof 允许撤离值 === 'boolean' ? 允许撤离值 : true,
+            允许撤离: 读取开战战斗类型_桥接(payload.战斗类型 || payload.combatType).不许撤离 ? false
+              : typeof 允许撤离值 === 'boolean' ? 允许撤离值 : true,
             自动模式: typeof 自动模式值 === 'boolean' ? 自动模式值 : undefined,
             参战者: explicitParticipants,
             ...(胜负条件已结构化 ? { 胜负条件: cloneJsonValue(payload.胜负条件, {}) } : {}),
