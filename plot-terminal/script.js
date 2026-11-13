@@ -225,13 +225,12 @@ function renderOverview(){const g=state.game,root=h("div","pt-scroll pt-ov");roo
  if(g.landing.next)route.append(nextCallout(g));
  const m=g.characters,cast=plate("pt-cast",plateHead("users","在场人物","CAST",chip(String(g.people.length),"blue")));const list=h("div","pt-cast-list");for(const p of g.people)list.append(castTile(p));if(!g.people.length)list.append(h("p","pt-empty-inline","本轮没有人物演出资料"));cast.append(list);
  if(m.away.length){cast.append(lbl("person-walking-arrow-right","离场 "+m.away.length),h("div","pt-cast-list",m.away.map(p=>castTile(p))));cast.lastChild.previousSibling.classList.add("pt-cast-sep")}
- root.append(h("div","pt-ov-grid",route,cast));
  // 模块 + 情报
  const mod=plate("pt-mod",plateHead("puzzle-piece","触发模块","MODULE"));
  if(g.moduleHits.length)mod.append(h("div","pt-mod-cards",g.moduleHits.map(moduleCard)));else{const reason=clean(g.modules[0]?.map?.get("理由"));mod.append(h("div","pt-mod-none",hexIcon("circle-minus",30),h("span","",reason?"本轮未触发特殊模块。"+firstSentence(reason):"本轮未触发特殊模块")))}
  const changes=parseList(g.butterfly["本轮已成立的变化"]).length,am=recordCodes(g.recall.recall,"AM").length,dv=recordCodes(g.recall.deviation_ledger_recall,"DV").length;
  const intel=plate("pt-intel",plateHead("book-open","本轮情报","INTEL"),h("div","pt-stats",statBtn("timeline","原著线索",g.timeline.length,"intel:clue"),statBtn("scroll","事件纪要",am,"intel:am"),statBtn("code-branch","偏差档案",dv,"intel:dv"),statBtn("wind","蝴蝶效应",changes,"ruling:butterfly")));
- root.append(h("div","pt-ov-foot",mod,intel));
+ root.append(h("div","pt-ov-grid",h("div","pt-ov-col",route,mod),h("div","pt-ov-col",cast,intel)));
  const diags=[...(state.snapshot?.diagnostics||[]),...(m.diagnostics||[])];for(const d of diags)root.append(h("div","pt-diagnostic",d));
  return root}
 
@@ -388,9 +387,19 @@ function renderButterfly(){const b=state.game.butterfly,list=[],ol=items=>h("ol"
 function ladderWidget(lad,opt={}){const unit=opt.unit||"级",off=opt.offset??.5,markText=opt.markText||(mk=>mk.level+unit),span=lad.hi-lad.lo,pos=v=>((v-lad.lo)/span*100).toFixed(2)+"%";const bar=h("div","pt-ladder-bar");
  // 区间互相重叠（年龄的「规则边界」包着「通常」）时，后一段的标签往下错开一行
  let stacked=false,prevEnd=-Infinity;for(const t of lad.tiers){const seg=h("div","pt-ladder-seg",h("span","",t.label+" ",h("i","",t.range[0]===t.range[1]?t.range[0]+unit:t.range[0]+"–"+t.range[1]+(unit==="级"?"":unit))));seg.dataset.tier=t.id;seg.style.left=pos(t.range[0]);seg.style.width=((t.range[1]+1-t.range[0])/span*100).toFixed(2)+"%";if(t.range[0]<=prevEnd){seg.dataset.stack="1";stacked=true}prevEnd=Math.max(prevEnd,t.range[1]);bar.append(seg)}
- // 代表人物按等级钉在尺上；靠得太近的错开高度
- const rows=[];const marks=[...lad.marks].sort((x,y)=>x.level-y.level);for(const mk of marks){const x=(mk.level+off-lad.lo)/span;let row=0;while(rows[row]!==undefined&& x-rows[row]<.14)row++;rows[row]=x;const pin=h("div","pt-ladder-pin",h("b","",mk.name,h("i","",markText(mk))));pin.style.left=(x*100).toFixed(2)+"%";pin.style.setProperty("--stem",(8+row*24)+"px");if(isPlayer(mk.name))pin.dataset.kind="player";bar.append(pin)}
- const box=h("div","pt-ladder",bar);box.style.setProperty("--pin-pad",(34+Math.max(0,rows.length-1)*24)+"px");if(stacked)box.dataset.stacked="true";return box}
+ // 代表人物按等级钉在尺上；挂进页面后由 layoutLadders 按名牌实际宽度排高度
+ const box=h("div","pt-ladder",bar);box._marks=[...lad.marks].sort((x,y)=>x.level-y.level).map(mk=>({name:mk.name,text:markText(mk),x:(mk.level+off-lad.lo)/span,player:isPlayer(mk.name)}));box.style.setProperty("--pin-pad",(34+Math.max(0,box._marks.length-1)*10)+"px");if(stacked)box.dataset.stacked="true";return box}
+// 名牌排布：位置几乎重合的人共用一根竖线、名牌叠成一列；其余从低往高找第一个「不压别人名牌、自己竖线不穿别人名牌、别人竖线不穿自己名牌」的高度，
+// 都找不到时放到最上层（名牌盖在竖线上面，字不会被挡）。名牌靠边时整体内收，竖线仍钉在原位
+function layoutLadders(root){for(const box of root.querySelectorAll(".pt-ladder")){const bar=box.querySelector(".pt-ladder-bar"),W=bar?.clientWidth||0,marks=box._marks||[];if(!W||box._laidW===W)continue;box._laidW=W;bar.querySelectorAll(".pt-ladder-pin").forEach(p=>p.remove());
+ const groups=[];for(const mk of marks){const g=groups[groups.length-1];if(g&& (mk.x-g.x0)*W<16)g.list.push(mk);else groups.push({x0:mk.x,list:[mk]})}
+ const placed=[];let top=0;
+ for(const g of groups){const x=g.list.reduce((a,m)=>a+m.x,0)/g.list.length*W,pin=h("div","pt-ladder-pin"),tag=h("div","pt-ladder-tag");for(const mk of [...g.list].reverse()){const b=h("b","",mk.name,h("i","",mk.text));if(mk.player)b.dataset.kind="player";tag.append(b)}if(g.list.some(m=>m.player))pin.dataset.kind="player";pin.append(tag);pin.style.left=x.toFixed(1)+"px";bar.append(pin);
+  const w=tag.offsetWidth,hh=tag.offsetHeight,l=Math.min(Math.max(0,x-w/2),Math.max(0,W-w)),r=l+w;
+  const fits=L=>!placed.some(p=>(l<p.r+6&& r>p.l-6&& L<p.t+4&& L+hh>p.b-4)||(x>p.l-4&& x<p.r+4&& p.b<L)||(p.x>l-4&& p.x<r+4&& p.b>L));
+  const tries=[8,...placed.map(p=>p.t+4)].sort((a,b)=>a-b),L=tries.find(fits)??Math.max(8,...placed.map(p=>p.t+4));
+  placed.push({x,l,r,b:L,t:L+hh});top=Math.max(top,L+hh);tag.style.left=(l-x).toFixed(1)+"px";pin.style.setProperty("--stem",L+"px")}
+ box.style.setProperty("--pin-pad",(top+8)+"px")}}
 function renderAuditDetail(){const a=state.game.audit,list=[];
  // 分项格式：区间在【环境实力坐标】的表行里，各栏按字段渲染
  if(!clean(a["常见区间"])&& /[｜|]/.test(a["环境实力坐标"]||"")){const lad=parseLadder(a,playerLevelMark(a));list.push(plate("",plateHead("people-group","参照群体","GROUP"),auditGroup(a)));list.push(plate("",plateHead("chart-simple","环境实力坐标","SCALE"),lad?ladderWidget(lad):null,lad?h("details","pt-fold",h("summary","",icon("align-left"),"区间明细"),h("div","pt-fold-body",renderBlock(parseBlock(a["环境实力坐标"])))):renderBlock(parseBlock(a["环境实力坐标"]))));if(!ptBlank(a["观察NPC眼界"]))list.push(plate("",plateHead("binoculars","NPC 观察眼界","VIEW"),lensCards(a["观察NPC眼界"])));if(!ptBlank(a["表象实力与相对评价"]))list.push(plate("",plateHead("star","表象实力与相对评价","VERDICT"),verdictPanel(a["表象实力与相对评价"])));const og=blockPlate("dna","新登场原创角色核对","ORIGIN",a["新登场原创角色核对"]);if(og)list.push(og);if(clean(a.__unparsed))list.push(plate("",plateHead("circle-question","未归类内容",""),prose(a.__unparsed)));return frag(detailHead("ruler-combined","场景参照","AUDIT"),h("div","pt-stack",list))}const grp=!ptBlank(a["场景参照群体"]),age=!ptBlank(a["参照年龄区间"]);
@@ -425,7 +434,7 @@ function rulingDetail(section){const g=state.game;if(section==="knowledge")retur
 const WIDE_SELECTOR=".pt-stagecard,.pt-intel-cards,.pt-rels,.pt-lenses,.pt-verdict,.pt-ladder,.pt-steps,.pt-know,.pt-tl,.pt-ev,.pt-quotes";
 function boardPage(items,render,key){const strip=h("nav","pt-jump");strip.setAttribute("aria-label","跳到");for(const it of items){const b=btn("pt-jump-btn",{jump:key+"-"+it.id},icon(it.icon),h("span","",it.label));if(it.count)b.append(h("em","",String(it.count)));strip.append(b)}
  const main=h("section","pt-board pt-scroll");main.dataset.scroll=key+"-board";
- for(const it of items){const ch=h("section","pt-chapter");ch.id=key+"-"+it.id;ch.append(render(it.id));for(const p of ch.querySelectorAll(".pt-stack>.pt-plate"))if(p.querySelector(WIDE_SELECTOR))p.classList.add("pt-wide");main.append(ch)}
+ for(const it of items){const ch=h("section","pt-chapter");ch.id=key+"-"+it.id;ch.append(render(it.id));const dc=ch.querySelector(".pt-dh .pt-code")?.textContent;if(dc)ch.querySelectorAll(".pt-plate-h .pt-code").forEach(x=>{if(x.textContent===dc)x.remove()});for(const p of ch.querySelectorAll(".pt-stack>.pt-plate"))if(p.querySelector(WIDE_SELECTOR))p.classList.add("pt-wide");main.append(ch)}
  // 跳转条跟着滚动标出当前章节
  const mark=()=>{let cur=items[0]?.id;for(const it of items){const el=main.querySelector("#"+key+"-"+it.id);if(el&& el.offsetTop-main.scrollTop<=40)cur=it.id}for(const b of strip.children)b.setAttribute("aria-current",b.dataset.jump===key+"-"+cur?"true":"false")};
  let raf=0;main.addEventListener("scroll",()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(mark)},{passive:true});queueMicrotask(mark);
@@ -476,7 +485,7 @@ function saveScroll(){for(const el of queryAll("[data-scroll]"))state.scroll[el.
 function restoreScroll(){for(const el of queryAll("[data-scroll]"))el.scrollTop=state.scroll[el.dataset.scroll]||0}
 function renderPage(animate=true){const content=$("[data-role=content]");saveScroll();let view;
  if(state.page==="overview")view=renderOverview();else if(state.page==="people")view=renderPeople();else if(state.page==="ruling")view=renderRuling();else if(state.page==="intel")view=renderIntel();else view=renderRaw();
- app.dataset.page=state.page;content.replaceChildren(view);if(animate){content.classList.remove("pt-enter");void content.offsetWidth;content.classList.add("pt-enter")}renderTabs();restoreScroll();if(state.jumpTo){const id=state.jumpTo;state.jumpTo="";jumpTo(id)}savePrefs()}
+ app.dataset.page=state.page;content.replaceChildren(view);layoutLadders(content);if(animate){content.classList.remove("pt-enter");void content.offsetWidth;content.classList.add("pt-enter")}renderTabs();restoreScroll();if(state.jumpTo){const id=state.jumpTo;state.jumpTo="";jumpTo(id)}savePrefs()}
 function openPage(id,patch){if(!PAGES[id])return;saveScroll();state.page=id;if(MAIN.includes(id))state.lastMain=id;Object.assign(state,patch||{});closeSettings();if(app.dataset.collapsed==="true")setCollapsed(false);renderPage(true)}
 function closeSettings(){const box=$("[data-role=settings]");if(box?.dataset.open==="true"){box.dataset.open="false";box.querySelector("[data-action=settings]")?.setAttribute("aria-expanded","false")}}
 function applyPrefs(){app.dataset.density=state.prefs.density;app.style.setProperty("--pt-font",String(state.prefs.font))}
@@ -500,7 +509,7 @@ const handleClick=e=>{const t=e.target;
  if(name==="collapse-records"){collapseRecords(action.dataset.prefix);for(const a of queryAll(".pt-record-arrow"))a.replaceChildren(icon("chevron-down"));return}};
 const handleKeydown=e=>{if(e.key==="Escape"){closeSettings();return}if(e.target.matches("[data-collapse-surface]")&&["Enter"," "].includes(e.key)){e.preventDefault();setCollapsed(app.dataset.collapsed!=="true")}};
 app.addEventListener("click",handleClick);app.addEventListener("keydown",handleKeydown);
-let resizeTimer=0;const onResize=()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(detectLayout,80)};
+let resizeTimer=0;const onResize=()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{detectLayout();layoutLadders(app)},80)};
 const ptResizeObserver=typeof ResizeObserver==="function"?new ResizeObserver(onResize):null;ptResizeObserver?.observe(app);
 
 /* ===== 读取轮询：任务陆续写回时自动刷新，2 分钟后停 ===== */
