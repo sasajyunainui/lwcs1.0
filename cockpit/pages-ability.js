@@ -92,6 +92,8 @@
     }[k];
     return T ? { icon: T[0], title: pre + T[1], mag: true, hint: T[2] } : { icon: 'shield-halved', title: `${k || '结算'}修正` };
   };
+  // 持续类状态的「数值」是每回合按最大生命结算的比例（战斗运行时 hot_heal_ratio / dot_damage_ratio）
+  const STATE_TICK = { 持续恢复: ['heart-pulse', '每回合恢复最大生命'], ...Object.fromEntries(['中毒', '流血', '灼烧', '冻伤', '持续创伤'].map(s => [s, ['droplet', '每回合流失最大生命']])) };
   const FX = {
     资源变化: e => ({ icon: String(e.资源 || '').includes('魂力') ? 'fire-flame-curved' : 'heart-pulse', title: `${neg(e) ? '削减' : '恢复'}${txt(e.资源) || '资源'}` }),
     资源转移: e => ({ icon: 'right-left', title: `${txt(e.资源转移方式) || '转移'}${txt(e.资源) || '资源'}` }),
@@ -102,7 +104,7 @@
     结算修正: e => settleFx(e),
     护盾变化: e => ({ icon: 'shield', title: txt(e.护盾模式) === '正向护盾' || !txt(e.护盾模式) ? '护盾' : txt(e.护盾模式) }),
     伤害结算: e => ({ icon: 'burst', title: txt(e.伤害类型) || '伤害' }),
-    状态施加: e => ({ icon: 'circle-radiation', title: `施加${txt(e.状态) || '状态'}` }),
+    状态施加: e => { const s = txt(e.状态), tick = STATE_TICK[s]; return tick ? { icon: tick[0], title: s, lead: tick[1] } : { icon: 'circle-radiation', title: `施加${s || '状态'}` }; },
     状态移除: e => ({ icon: 'broom', title: `移除${txt(e.状态) || txt(e.匹配原型) || '状态'}` }),
     状态转移: e => ({ icon: 'arrows-turn-to-dots', title: `转移${txt(e.状态) || '状态'}` }),
     状态交换: e => ({ icon: 'arrows-rotate', title: `交换${txt(e.状态) || '状态'}` }),
@@ -122,7 +124,7 @@
   const fxRow = (c, e, granted = false) => {
     if (e.原型 === '机制授予') return grantRow(c, e);
     const f = fxOf(e), down = f.good === undefined ? neg(e) : !f.good;
-    const meta = [granted && e.目标 ? `对${e.目标}` : e.目标, e.持续回合 ? `持续 ${c.fmt(e.持续回合)} 回合` : '', e.生效方式].filter(Boolean).map(c.esc).join(' · ');
+    const meta = [f.lead, granted && e.目标 ? `对${e.目标}` : e.目标, e.持续回合 ? `持续 ${c.fmt(e.持续回合)} 回合` : '', e.生效方式].filter(Boolean).map(c.esc).join(' · ');
     return `<div class="fx"><span class="ic ${down ? 'down' : ''}"><i class="fa-solid fa-${f.icon}"></i></span><strong${f.hint ? ` data-hint="${c.esc(f.hint)}"` : ''}>${c.esc(f.title)}</strong><span class="v ${down ? 'down' : ''}">${c.esc(fxVal(c, e))}</span><small>${meta}</small></div>`;
   };
   // 机制授予是容器：持有者获得一个能力（何时生效、几回合内可用几次），用出去时下面这些效果作用在各自目标上

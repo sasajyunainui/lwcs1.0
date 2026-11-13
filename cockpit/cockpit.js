@@ -953,7 +953,8 @@
       return;
     }
     // 不需要确认的动作（打开原项目工坊、魂环待选、返回战斗）直接执行
-    if (t.dataset.act) { let spec = null; try { spec = JSON.parse(t.dataset.act); } catch (err) {} if (spec) runAct(spec, null, t); return; }
+    // 设计台控件也用 data-act，但那是设计台自己的动作（只有 type、没有 name），由设计台处理
+    if (t.dataset.act) { let spec = null; try { spec = JSON.parse(t.dataset.act); } catch (err) {} if (spec?.name) runAct(spec, null, t); return; }
     // 危险操作原地二次确认：第一次点亮为「再点一次确认删除」，3 秒内再点才执行
     if (t.dataset.delPath) {
       if (!t.classList.contains('armed')) {
