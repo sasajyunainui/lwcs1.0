@@ -1398,7 +1398,7 @@ index 2f7a0bf..7ece86b 100644
 -    await handleVariablesInMessage(message_id);
 +    return handleVariablesInMessage(message_id, is_current, refresh_current);
 diff --git a/src/function/update_variables.ts b/src/function/update_variables.ts
-index e144b79..8d85f00 100644
+index e144b79..03156a8 100644
 --- a/src/function/update_variables.ts
 +++ b/src/function/update_variables.ts
 @@ -6,0 +7 @@ import {
@@ -1427,7 +1427,7 @@ index e144b79..8d85f00 100644
 +        if (!is_current()) {
 +            return false;
 +        }
-@@ -1548,2 +1559,51 @@ export async function handleVariablesInMessage(message_id: number) {
+@@ -1548,2 +1559,53 @@ export async function handleVariablesInMessage(message_id: number) {
 -    if (has_variable_modified && settings.兼容性.更新到聊天变量) {
 -        await updateVariablesWith(updater, { type: 'chat' });
 +    const is_tt_host = isTtMvuHost();
@@ -1452,7 +1452,9 @@ index e144b79..8d85f00 100644
 +                },
 +            ],
 +            {
-+                refresh: 'none',
++                // 额外模型解析是在正文渲染之后才把 <UpdateVariable> 追加进来的，这里不重绘的话，
++                // 依赖它的美化正则要等用户编辑一次消息才显示（非 TT 路径同样用 affected）
++                refresh: 'affected',
 +            }
 +        );
 +        refresh_current();
@@ -1481,15 +1483,15 @@ index e144b79..8d85f00 100644
 +        if (!(await updateVariablesWith(updater, { type: 'message', message_id: message_id }, is_current))) {
 +            return false;
 +        }
-@@ -1551 +1610,0 @@ export async function handleVariablesInMessage(message_id: number) {
+@@ -1551 +1612,0 @@ export async function handleVariablesInMessage(message_id: number) {
 -    await updateVariablesWith(updater, { type: 'message', message_id: message_id });
-@@ -1553 +1612,4 @@ export async function handleVariablesInMessage(message_id: number) {
+@@ -1553 +1614,4 @@ export async function handleVariablesInMessage(message_id: number) {
 -    if (chat_message.role !== 'user') {
 +    if (!is_tt_host && chat_message.role !== 'user') {
 +        if (!is_current()) {
 +            return false;
 +        }
-@@ -1574,0 +1637 @@ export async function handleVariablesInMessage(message_id: number) {
+@@ -1574,0 +1639 @@ export async function handleVariablesInMessage(message_id: number) {
 +    return has_variable_modified;
 diff --git a/src/main.ts b/src/main.ts
 index 364eb10..2780a21 100644
