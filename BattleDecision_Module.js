@@ -2141,6 +2141,8 @@
   // enemy's pictured level, panel and resources toward the true ones by n / (n + BELIEF_EXCHANGE_PRIOR) — half after two
   // exchanges, three quarters after six. A starting value, set by its reading. Counted per ledger while it grows.
   const BELIEF_EXCHANGE_PRIOR = 2;
+  // The share of a hit an unseen 控制系 keeps off by a control thrown first (S84: 16% of hits × the 42% they kept off).
+  const BELIEF_ROUTINE_PREEMPT_SHARE = 0.16 * 0.42;
   const beliefExchangeCache = new WeakMap();
   function beliefExchangeCounts(worldSnapshot = {}, side = '') {
     const ledger = Array.isArray(worldSnapshot?.__battleEventLedger) ? worldSnapshot.__battleEventLedger : null;
@@ -2297,6 +2299,10 @@
         routine_attack_ratio: publicUnitRole === 'SUMMON' ? 1 : clarity > 0
           ? Math.max(1, toward(typicalAttackRatio(perceivedLevel, system), knownRoutineAttackRatio(sourceUnit)))
           : typicalAttackRatio(perceivedLevel, system),
+        // S84 (11-14 推演—实际对账): an unseen 控制系 meets 16% of hits with a skill (38 of 242) — mostly a control thrown first —
+        // and those took 12% → 7% of its HP; the table, seeing no skills, gave it 4%. Its own controls take over as they are
+        // shown (r20Shown), so the expectation fades with the exchanges seen.
+        ...(publicUnitRole !== 'SUMMON' && /控制/.test(system) ? { routine_preempt_share: BELIEF_ROUTINE_PREEMPT_SHARE * (1 - clarity) } : {}),
       };
       const observedResponses = (Array.isArray(beliefUnit?.knownResponses)
         ? beliefUnit.knownResponses
@@ -5863,6 +5869,8 @@
       if (prototype === '状态施加') return preview.effectTargetsAllies(effect) && !hostile;
       if (prototype === '属性修正') return Number.parseFloat(String(effect?.数值 || '0')) > 0 && !hostile;
       if (prototype === '时光回溯' || prototype === '复制执行') return preview.effectTargetsAllies(effect) && !hostile;
+      // 位移重做（S81）: a 瞬移 / 脱离 given to another (位移对象 目标) is for an ally — on an enemy it does nothing.
+      if (prototype === '位移执行') return preview.effectTargetsAllies(effect) && !hostile;
       return false;
     });
     const profile = targets.some(target => /全场|群体/.test(target))
@@ -65750,8 +65758,11 @@
     if (declaration?.actionKind !== 'RELEASE_SKILL' || !actor) return null;
     let share = 0, payments = Infinity;
     for (const [resource, amount] of Object.entries(preview.readSkillCostStages(declaration.skill || {}, { ...declaration, costActor: actor })?.维持 || {})) {
-      const text = String(amount ?? '').trim(), maximum = Math.max(1, preview.readResourceMax(actor, resource));
-      const part = /%$/.test(text) ? Number.parseFloat(text) / 100 : Number(amount) / maximum;
+      // The settlement's own reading of a cost term (BattlePreview resolveSkillResourceCost): a share, an amount, or 固定+百分比
+      // ({ 值, 绝对修正 }). 11-14: the 固定+百分比 upkeep of a 武魂真身 read as nothing, so the race took it for the 1 round
+      // its states are written for.
+      const maximum = Math.max(1, preview.readResourceMax(actor, resource));
+      const part = Number(preview.resolveSkillResourceCost(actor, resource, amount)) / maximum;
       if (!(Number.isFinite(part) && part > 0)) continue;
       share += part;
       payments = Math.min(payments, Math.floor(preview.readResource(actor, resource) / maximum / part + 1e-9));
@@ -65877,6 +65888,8 @@
   // the attacker's move when it is known (its windup and reach move both chances), `prepared` a stance.
   const r20Stand = (unit, attacker, incoming = null, prepared = false) => ({
     blocked: hasStateFlag(unit, 'cannot_react') || preview.guardBrokenOf(unit, r20Round),
+    // An unseen 控制系's routine preemption (routine_preempt_share); not out of a stance.
+    preempt: prepared ? 0 : clamp(Number(unit?.routine_preempt_share) || 0, 0, 1),
     soak: r20Soak(unit),
     guard: preview.calculateGuardBaseMultiplier(unit, attacker, prepared),
     dodge: preview.calculateDodgeProbability(unit, attacker, prepared, incoming),
@@ -66090,6 +66103,8 @@
     const loss = option => option.keep * scale - option.back * ratioHp + (option.price || 0);
     let best = options[0];
     for (const option of options) if (loss(option) < loss(best) - 1e-12 || Math.abs(loss(option) - loss(best)) <= 1e-12 && option.answer > best.answer) best = option;
+    // S84: an unseen 控制系 keeps off a share of the hit by a control thrown first, whatever else it would have done.
+    if (stand.preempt > 0) { const left = 1 - stand.preempt; return { ...best, keep: best.keep * left, share: best.share * left, lands: best.lands * left, defends: best.kind === 'DEFEND' }; }
     return { ...best, defends: best.kind === 'DEFEND' };
   };
   // 接战链 阶段 2c (方案 §9.3、§10.2: 姿态的价值按"对方此时确实会来打我"的可能折算): the chance `unit` turns its action of the
