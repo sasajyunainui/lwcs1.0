@@ -66867,6 +66867,20 @@
         // The controls the move lays come with a hit that lands; those already on it (table.held) stay as they are.
         if (meet.lands < 1 - 1e-12) { const held = table.held?.[row] || 0; denied[row] = held + Math.max(0, denied[row] - held) * meet.lands; }
         if (meet.back > 0) counter += alivePreHit[row] * meet.back;
+        // 设局/佯装 (11-14): a hit on a target holding a stance uses it up (BattleRuntime preparedDefense), so the actor's side
+        // still to act this round meets it without one — what of their hits it keeps then over what the stance would have kept
+        // counts here, as often as each turns on it. A light hit to draw the stance before a heavy one is worth that much.
+        if (stance && alive[row] > 0) {
+          let opened = 0;
+          for (let ally = 0; ally < count; ally += 1) {
+            if (ally === actorRow || table.sides[ally] !== table.sides[actorRow] || !table.pending[ally] || !acts[ally] || !(alive[ally] > 0)) continue;
+            const hit = out[ally][row];
+            if (!(hit > 0)) continue;
+            const braced = r20Meet(r20Stand(table.units[row], table.units[ally], null, true), r20Weight(hit), stance).keep;
+            opened += alive[ally] * r20TurnsOn(table, ally, row) * hit * Math.max(0, keep[row][ally] - braced);
+          }
+          if (opened > 0) { remaining[row] = Math.max(0, remaining[row] - opened); seen += 1; }
+        }
         if (!acts[row] || denied[row] > 0 || !(alive[row] > 0)) continue;
         // 破防: a hit that breaks the target's guard draws no strike back, and the actor's side, those still to act this
         // round, land on it what it would have kept off — as often as they turn on it rather than on another enemy.
