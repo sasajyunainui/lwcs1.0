@@ -3703,7 +3703,10 @@
     // 从上限 10% 以上跌到 10% 以下时，当前剩余体力减半；标记 __battleRuntime.lowResourceStaminaCut 两模块共用。
     if ((resourceKey === 'sp' || resourceKey === 'men') && maxValue > 0 && fuelBefore >= maxValue * 0.1 && nextValue < maxValue * 0.1) {
       const runtime = unit.__battleRuntime && typeof unit.__battleRuntime === 'object' ? unit.__battleRuntime : {};
-      if (runtime.lowResourceStaminaCut?.[config.statKey] !== true) {
+      // 维持类真身、融合技发动与维持期间只记待砍，维持结束时砍（BattlePreview staminaCutDeferred / settleDeferredStaminaCut）。
+      if (!runtime.lowResourceStaminaCut?.[config.statKey] && previewRuntime.staminaCutDeferred(unit)) {
+        unit.__battleRuntime = { ...runtime, lowResourceStaminaCut: { ...(runtime.lowResourceStaminaCut || {}), [config.statKey]: previewRuntime.DEFERRED_STAMINA_CUT } };
+      } else if (!runtime.lowResourceStaminaCut?.[config.statKey]) {
         unit.__battleRuntime = { ...runtime, lowResourceStaminaCut: { ...(runtime.lowResourceStaminaCut || {}), [config.statKey]: true } };
         const staminaBefore = previewRuntime.readResource(unit, '体力');
         writeCombatResource(unit, 'vit', staminaBefore * 0.5);
@@ -7842,6 +7845,8 @@
     }
     const [representativeKey, representative] = candidates[0];
     representative.维持消耗 = cloneValue(costs);
+    // 维持类真身、融合技：维持期间资源低位砍体力推迟到维持结束（BattlePreview staminaCutDeferred）。
+    if (actor?.__battleRuntime?.__维持类发动中 === true) candidates.forEach(([, effect]) => { effect.真身维持 = true; });
     writeLedgerEvent(combatData, {
       eventKind: 'state_tick',
       round: Number(combatData?.回合 || 0),
@@ -7867,7 +7872,18 @@
     return { attached: true, diagnostic: false, representativeEffect: representativeKey };
   }
 
+  // 维持类真身、融合技的发动结束（维持条目已挂上，或这次没挂上）：撤掉发动中标记，没有维持条目留下就补砍推迟的体力。
+  function endSustainedAvatarRelease(combatData = {}) {
+    for (const unit of listCombatUnits(combatData)) {
+      if (unit?.__battleRuntime?.__维持类发动中 !== true) continue;
+      const { __维持类发动中: releasing, ...rest } = unit.__battleRuntime;
+      unit.__battleRuntime = rest;
+      previewRuntime.settleDeferredStaminaCut(unit);
+    }
+  }
+
   function settleSustainAtRoundEnd(unit = {}, label = '', combatData = {}, adapterOptions = {}) {
+    if (unit?.__battleRuntime?.__维持类发动中 === true) endSustainedAvatarRelease(combatData);
     const logs = [];
     const broken = [];
     const chargedSustainSources = new Set();
@@ -10680,6 +10696,10 @@
       persistentResourceValue(payment.payer, payment.key) + 1e-9 < payment.amount,
     );
     if (runtimeInsufficient) throw new Error(`battle_structured_resource_insufficient:${runtimeInsufficient.resource}:${runtimeInsufficient.payerId}`);
+    // 维持类真身、融合技发动：启动消耗打到一成以下也先不砍体力（endSustainedAvatarRelease 撤标记）。
+    if (actionKind === 'RELEASE_SKILL' && previewRuntime.sustainedAvatarRelease(declaration.skill || {}, { 来源模块: 'BattleRuntime_Module', ...declaration, costActor: actor })) {
+      costPayers.forEach(unit => { unit.__battleRuntime = { ...(unit.__battleRuntime || {}), __维持类发动中: true }; });
+    }
     paymentPlan.payments.forEach(payment => {
         const costPayer = payment.payer;
         const key = payment.key;
@@ -13189,6 +13209,7 @@
         actionEvent,
       );
     }
+    endSustainedAvatarRelease(combatData);
     const conditionalRiskEffects = effects.some(effect => effect?.条件分支?.length)
       ? facts.filter(event => event && event.actionId === actionEvent.actionId && ['state_apply', 'state_replace'].includes(event.eventKind) &&
           event.resultState === 'SUCCESS' && event.meta?.evidence?.projectedEffect?.副作用列表?.length)

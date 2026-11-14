@@ -58522,7 +58522,7 @@
     const sourceId = String(result?.actionId || action.actionId || '').trim();
     const stateKeys = preview.projectedSustainStateKeys(previous, next, sourceId);
     const owners = result ? preview.projectedSustainStateOwners({ ...result, actorId: id, afterSnapshot: world }, prior) : [];
-    return { costs, stateKeys, ...(sourceId ? { sourceId } : {}),
+    return { costs, stateKeys, ...(sourceId ? { sourceId } : {}), avatar: preview.sustainedAvatarRelease(action.skill, action),
       ...(owners.some(owner => owner.targetId !== id) ? {
         stateTargets: owners.map(({ targetId, key }) => ({ targetId, key })),
         actionName: action.skill?.name || action.skill?.魂技名 || '',
@@ -63609,6 +63609,19 @@
         }
         applyDeferredStates(offset, 'CONTROL_END');
         const charged = new Set();
+        // 维持类真身、融合技（BattlePreview staminaCutDeferred）: while one is kept, paying anything down past the line puts
+        // the stamina cut off — a pending profile has no carrier to say so, so its source says it (or a percentage fee, which
+        // only they may carry); the cut is taken once none is kept (after the fees).
+        const liveKeys = profile => profile.stateKeys.filter(key => {
+          const state = nextActor.状态效果?.[key];
+          return state && (profile.sourceEffect || !state.sourceActionId || !profile.sourceId || state.sourceActionId === profile.sourceId) &&
+            Number(state.duration || 0) + Number(state.__本回合新附加 === true || !Object.hasOwn(baselineActor?.状态效果 || {}, key)) >= offset;
+        });
+        const avatarProfile = profile => !profile.sourceEffect && (profile.avatar === true ||
+          profile.avatar === undefined && Object.values(profile.costs || {}).some(value => /%/.test(String(value))));
+        const avatarHeld = sustainProfiles.some(profile => avatarProfile(profile) && liveKeys(profile).length);
+        if (avatarHeld) nextActor.__battleRuntime = { ...(nextActor.__battleRuntime || {}), __维持类发动中: true };
+        let avatarKept = false;
         for (const profile of sustainProfiles) {
           if (profile.sourceEffect) {
             if (!nextActor.持续效果?.[profile.sustainKey]) continue;
@@ -63618,11 +63631,7 @@
               continue;
             }
           }
-          const activeKeys = profile.stateKeys.filter(key => {
-            const state = nextActor.状态效果?.[key];
-            return state && (profile.sourceEffect || !state.sourceActionId || !profile.sourceId || state.sourceActionId === profile.sourceId) &&
-              Number(state.duration || 0) + Number(state.__本回合新附加 === true || !Object.hasOwn(baselineActor?.状态效果 || {}, key)) >= offset;
-          });
+          const activeKeys = liveKeys(profile);
           if (profile.sourceEffect || activeKeys.length) {
             const parsed = profile.sourceEffect ? root.__LWCS_BATTLE_RUNTIME__.readSustainCosts(nextActor,
               profile.sourceEffect.维持消耗 ?? profile.sourceEffect.sustain_cost ?? '无', profile.sourceEffect) : null;
@@ -63636,7 +63645,8 @@
             }
             // Native cost validation precedes source deduplication. A second
             // valid member shares payment; an invalid member must still break.
-            if (payment.valid && profile.sourceId && charged.has(profile.sourceId)) continue;
+            if (payment.valid && profile.sourceId && charged.has(profile.sourceId)) { if (avatarProfile(profile)) avatarKept = true; continue; }
+            const avatar = avatarProfile(profile);
             if (payment.valid && riskResolver) {
               let conditioned = false;
               for (const row of payment.payments) {
@@ -63675,9 +63685,12 @@
                 else preview.setResourceValue(nextActor, row.resource, row.after);
               });
               if (profile.sourceId) charged.add(profile.sourceId);
+              if (avatar) avatarKept = true;
             }
           }
         }
+        if (avatarHeld) { const { __维持类发动中: paying, ...rest } = nextActor.__battleRuntime; nextActor.__battleRuntime = rest; }
+        if (!avatarKept) preview.settleDeferredStaminaCut(nextActor);
         for (const [key, state] of Object.entries(nextActor.状态效果 || {})) {
           if (nextActor.状态效果[key] !== state || controlStartedStates?.has(key) || state?.召唤物 || (offset === 1 && (state.__本回合新附加 === true ||
             (key.startsWith('preview:') && !Object.hasOwn(baselineActor?.状态效果 || {}, key))))) continue;
@@ -65723,6 +65736,22 @@
     r20Struck = struck / 100;
     return best / 100;
   }
+  // A release's upkeep (维持) on `actor` as the release leaves it: the shares of its pools one round end takes, summed, and
+  // the round ends what it has left pays (the fewest over its resources) — the runtime lifts the state at the first it
+  // cannot (settleSustainAtRoundEnd). 11-14: 武魂真身 released on 31% 魂力 (25% to start, 8% a round) was valued at 1.15
+  // as if its +94% lasted the race, and lifted at the next round end.
+  function r20Upkeep(declaration, actor) {
+    if (declaration?.actionKind !== 'RELEASE_SKILL' || !actor) return null;
+    let share = 0, payments = Infinity;
+    for (const [resource, amount] of Object.entries(preview.readSkillCostStages(declaration.skill || {}, { ...declaration, costActor: actor })?.维持 || {})) {
+      const text = String(amount ?? '').trim(), maximum = Math.max(1, preview.readResourceMax(actor, resource));
+      const part = /%$/.test(text) ? Number.parseFloat(text) / 100 : Number(amount) / maximum;
+      if (!(Number.isFinite(part) && part > 0)) continue;
+      share += part;
+      payments = Math.min(payments, Math.floor(preview.readResource(actor, resource) / maximum / part + 1e-9));
+    }
+    return share > 0 ? { share, payments } : null;
+  }
   // The rounds a unit's controls already on it still keep it from acting (11-14: a hard control holds to the end of the round
   // it took an action in — BattleRuntime __回合末解除 — so one that has taken that action keeps nothing more), each by its chance.
   // Until 11-14 a unit under any control was read as unable to act for the whole race (acts false), so a one-round stun on an
@@ -65905,7 +65934,7 @@
       const ratio = Number(preview.LOW_RESOURCE_STAMINA_RATIO) || 0.1, done = unit?.__battleRuntime?.lowResourceStaminaCut || {};
       for (const key of ['sp', 'men']) {
         const label = labels[key], maximum = preview.readResourceMax(unit, label), now = preview.readResource(unit, label);
-        if (shares[key] > 0 && maximum > 0 && done[label] !== true && now >= maximum * ratio && now - shares[key] * maximum < maximum * ratio) stamina *= 0.5;
+        if (shares[key] > 0 && maximum > 0 && !done[label] && !preview.staminaCutDeferred(unit) && now >= maximum * ratio && now - shares[key] * maximum < maximum * ratio) stamina *= 0.5;
       }
       cut = Math.max(0, before - Math.min(hp, stamina));
     }
@@ -66200,6 +66229,8 @@
     const hpFalls = new Array(count);
     const denied = plan?.denied || facts.held || null, until = plan?.until || null, base = plan?.base || facts;
     const leaves = plan?.leaves || null, held = plan?.baseCount ?? count, changed = plan?.changed || null;
+    // expired: the cells once a paid release lapses; cuts: stamina cuts put off until then ({ row, at, factor }).
+    const expired = plan?.expired || null, cuts = plan?.cuts || null, cutDone = cuts ? cuts.map(() => false) : null;
     // busy[u]: rounds u spends charging; strikes: what a charge lands when it is released ({ from, to, at, delta }, by
     // `at`); host[u]: the row of a summon's host; revive[u]: what a revival gives back; drain[u]: 伤害吸收 of what u lands.
     const busy = plan?.busy || facts.busy || null, strikes = plan?.strikes || facts.strikes || null, host = facts.host || null;
@@ -66215,8 +66246,10 @@
       const settled = base.late && time >= R20_LATE_ROUNDS - 1e-9 ? base.late : base;
       // A change with no clock goes on to the candidate's own late cells (r20Shadow rebuildCells) when there are any.
       const lasting = facts.late && time >= R20_LATE_ROUNDS - 1e-9 ? facts.late : facts;
+      // A paid release that has lapsed goes on to its cells after it (plan.expired), not back to the table's.
+      const lapsed = (unit, other) => expired && (expired.rows.has(unit) || expired.rows.has(other)) ? expired : settled;
       const cells = (unit, other) => unit >= held || other >= held ? facts
-        : changed && (changed[unit] || changed[other]) ? (time < until[unit] && time < until[other] ? lasting : settled) : settled;
+        : changed && (changed[unit] || changed[other]) ? (time < until[unit] && time < until[other] ? lasting : lapsed(unit, other)) : settled;
       const acting = unit => left[unit] > 1e-9 && !(denied && time < denied[unit]) && !(busy && time < busy[unit]);
       // What of an attacker's hit a unit takes: its answer's share while it can answer; held (controlled — the hard control
       // lasts to the end of the round it took an action in, BattleRuntime consumeStructuredControlActiveBudget) or busy, it
@@ -66334,6 +66367,11 @@
         if (total > 0) left[aimed[unit]] = Math.max(0, left[aimed[unit]] - (before / total - 0.5) * landed[unit]);
       }
       time += stepTime;
+      if (cuts && stam) cuts.forEach((cut, index) => {
+        if (cutDone[index] || cut.at > time + 1e-9) return;
+        cutDone[index] = true;
+        if (Number.isFinite(stam[cut.row]) && left[cut.row] > 1e-9) stam[cut.row] *= cut.factor;
+      });
       // A charge released: it lands if its caster still stands.
       if (strikes) for (; released < strikes.length && strikes[released].at <= time + 1e-9; released += 1) {
         const strike = strikes[released];
@@ -66508,7 +66546,7 @@
     const stamina = table.stamina.slice();
     let busy = table.busy ? table.busy.slice() : null;
     const until = new Array(count).fill(Infinity), tick = table.tick.slice(), tickRounds = table.tickRounds.slice(), reflect = table.reflect.slice(), hpMax = table.hpMax.slice();
-    const rebuilt = [], hushed = {};
+    const rebuilt = [], hushed = {}, expiring = [], cuts = [];
     let added = [];
     let spent = 0, outside = 0, seen = 0;
     for (const id of touched) {
@@ -66552,10 +66590,34 @@
           seen += 1;
         } else changed = true;
       }
+      // A release with an upkeep lasts only as long as what is left pays for it (BattleRuntime settleSustainAtRoundEnd).
+      // Its states are cut to that too, so the late cells (a 体力 band moved for good by the payment, 11-14: 武魂真身 at
+      // 31% 魂力 cut the stamina below the 10% line and its +111% read as lasting the race) lose them when it is lifted.
+      let view = next;
+      if (id === request.actorId && changed) {
+        const upkeep = r20Upkeep(candidate?.declaration, next), rounds = upkeep ? 1 + upkeep.payments : Infinity;
+        if (rounds < Infinity) {
+          lasting = Math.min(lasting > 0 ? lasting : Infinity, rounds);
+          const states = { ...nextStates };
+          for (const [key, state] of Object.entries(nextStates)) {
+            if (priorStates[key] === state || !(state && typeof state === 'object') || !(Number(state.duration ?? Infinity) > rounds)) continue;
+            states[key] = { ...state, duration: rounds, 持续回合: rounds };
+          }
+          view = preview.inheritOverlayOrigin({ ...next, 状态效果: states }, next);
+        }
+      }
       if (changed || preview.staminaScaleForUnit(next) !== preview.staminaScaleForUnit(prior)) {
-        rebuilt.push([row, next, false]);
+        rebuilt.push([row, view, false]);
         if (changed) seen += 1;
         until[row] = preview.staminaScaleForUnit(next) !== preview.staminaScaleForUnit(prior) || !(lasting > 0) ? Infinity : lasting;
+        // 估值甲（11-14，用户「也得考虑开完后无法战斗的代价」）: a paid release that lapses leaves its actor as it is then — its
+        // states gone, what it spent still spent (the table's cells the race went back to had it paid nothing), and the stamina
+        // cut a 维持类真身/融合技 put off (BattlePreview staminaCutDeferred) taken when it ends.
+        if (row === actorRow && until[row] < R20_RACE_ROUNDS && ['魂力', '精神力'].some(resource => preview.readResource(next, resource) < preview.readResource(prior, resource))) {
+          expiring.push([row, view, until[row]]);
+          const putOff = Object.values(next.__battleRuntime?.lowResourceStaminaCut || {}).filter(mark => mark === preview.DEFERRED_STAMINA_CUT).length;
+          if (putOff) cuts.push({ row, at: until[row], factor: 0.5 ** putOff });
+        }
       } else if (['魂力', '精神力', '体力'].some(resource => preview.readResource(next, resource) !== preview.readResource(prior, resource))) {
         // Only what it can pay for changed: its own cells, for good.
         rebuilt.push([row, next, true]);
@@ -66634,8 +66696,11 @@
     // with no clock kept the pair on the candidate's cells of now for the whole race, so an attacker whose resources
     // run down on the table hit at full strength to the end; a 防御系's shield raised to meet a hit was valued below
     // letting it land).
-    const rebuildCells = (base, baseUnits, entries) => {
-      const context = r9v2LinearCapacityProjectionContext(after, table.contexts);
+    // `late`: cells on the window views, read off the views themselves as the table's late cells are (no projection
+    // context — it holds the candidate's world as it is now, so a buff past its time still counted: 11-14, 武魂真身 at 31%
+    // 魂力 lifted at the next round end and its +111% read as lasting the race).
+    const rebuildCells = (base, baseUnits, entries, late = false) => {
+      const context = late ? null : r9v2LinearCapacityProjectionContext(after, table.contexts);
       const units = baseUnits.slice();
       const out = base.out.map(row => row.slice()), support = base.support.map(row => row.slice()), stop = base.stop.map(row => row.slice()), keep = base.keep.map(row => row.slice());
       const answer = base.answer.map(row => row.slice()), back = base.back.map(row => row.slice());
@@ -66684,8 +66749,16 @@
       if (table.late?.units && rebuilt.some(([row]) => until[row] === Infinity && !unchangedRows.has(row))) {
         const decisionTable = r10DecisionTable(request);
         lateCells = rebuildCells(table.late, table.late.units, rebuilt.map(([row, next, ownCellsOnly]) =>
-          [row, r10WindowView(decisionTable, after, next, R20_LATE_ROUNDS, next), ownCellsOnly]));
+          [row, r10WindowView(decisionTable, after, next, R20_LATE_ROUNDS, next), ownCellsOnly]), true);
       }
+    }
+    // The cells once a paid release has lapsed (`expiring`): its actor's window view at that round, on the table's late cells.
+    let expiredCells = null;
+    if (expiring.length) {
+      const decisionTable = r10DecisionTable(request), base = table.late?.units ? table.late : table;
+      expiredCells = rebuildCells(base, base.units, expiring.map(([row, view, rounds]) =>
+        [row, r10WindowView(decisionTable, after, view, Math.max(1, Math.ceil(rounds)), view), false]), true);
+      expiredCells.rows = new Set(expiring.map(([row]) => row));
     }
     mark('rebuildMs');
     // Units the candidate brings onto the field (a summon): rows and columns of their own, built against everyone, by the
@@ -66794,16 +66867,11 @@
       remaining[actorRow] = Math.max(0, remaining[actorRow] - counter);
       struckAny = struck.size > 0;
     }
-    // What the release keeps costing: its upkeep over the rounds still to play, as shares of the pools (W11).
+    // What the release keeps costing: its upkeep over the rounds still to play, as shares of the pools (W11) — only the
+    // round ends what is left pays for.
     const declaration = candidate?.declaration;
-    if (declaration?.actionKind === 'RELEASE_SKILL' && actorRow !== undefined) {
-      const actor = table.units[actorRow];
-      for (const [resource, amount] of Object.entries(preview.readSkillCostStages(declaration.skill || {}, { ...declaration, costActor: actor })?.维持 || {})) {
-        const text = String(amount ?? '').trim();
-        const share = /%$/.test(text) ? Number.parseFloat(text) / 100 : Number(amount) / Math.max(1, preview.readResourceMax(actor, resource));
-        if (Number.isFinite(share) && share > 0) spent += share * R20_UPKEEP_ROUNDS;
-      }
-    }
+    const upkeep = actorRow !== undefined ? r20Upkeep(declaration, findUnitInWorld(after, request.actorId) || table.units[actorRow]) : null;
+    if (upkeep) spent += upkeep.share * Math.min(R20_UPKEEP_ROUNDS, upkeep.payments);
     const own = request.actorSide, foe = table.sides.find(side => side !== own) || '';
     const roleName = String(request.actionOpportunity?.role || 'ACTIVE').toUpperCase(), actionKind = String(declaration?.actionKind || '').toUpperCase();
     const sourceRow = table.index.get(String(request.actionOpportunity?.sourceActorId || ''));
@@ -66989,7 +67057,7 @@
     const changed = new Array(count).fill(false);
     for (const [row] of rebuilt) if (!unchangedRows.has(row)) changed[row] = true;
     strikes.sort((left, right) => left.at - right.at);
-    const plan = { denied, until, base: table, leaves, baseCount: count, changed, busy, strikes: strikes.length ? strikes : null };
+    const plan = { denied, until, base: table, leaves, baseCount: count, changed, busy, strikes: strikes.length ? strikes : null, expired: expiredCells, cuts: cuts.length ? cuts : null };
     // A unit that may or may not be down is valued both ways (the settlement is not run again): the race with it gone
     // and with what is left of it if it stands, by the chance of each — only the most open such unit; the others keep
     // their chance as a weight.

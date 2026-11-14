@@ -1745,6 +1745,7 @@
   // A decision may hold every unit's stamina panel scale at its decision-world value (BattleDecision runProvider with
   // searchBounds.frozenStaminaPanel): id → scale; a unit not listed (a summon created in the look-ahead) reads its own.
   let frozenStaminaScales = null;
+  const STAMINA_DECAY_LINE = 0.3;
   function freezeStaminaScales(scales = null) {
     frozenStaminaScales = scales instanceof Map && scales.size ? scales : null;
   }
@@ -1765,7 +1766,9 @@
       )
     );
     if (!hasStaminaField) return 1;
-    const ratio = clamp(readResource(unit, '体力') / Math.max(1, readResourceMax(unit, '体力')), 0, 1);
+    // 低于 STAMINA_DECAY_LINE 才降属性（用户 2026-11-14「改成低于3成开始降属性吧」；原先 5 成）：原曲线整段压进 [0, 3 成]，
+    // 3 成 1、1.8 成 0.9、0.9 成 0.75、0 时 0.5。
+    const ratio = clamp(readResource(unit, '体力') / Math.max(1, readResourceMax(unit, '体力')) * 0.5 / STAMINA_DECAY_LINE, 0, 1);
     if (ratio >= 0.5) return 1;
     if (ratio >= 0.3) return 0.9 + (ratio - 0.3) * 0.5;
     if (ratio >= 0.15) return 0.75 + (ratio - 0.15);
@@ -9077,6 +9080,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       delete unit.__维持反应惩罚;
       delete unit.__维持前摇系数;
     }
+    settleDeferredStaminaCut(unit);
     return totalLoad;
   }
 
@@ -9128,9 +9132,35 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   function applyLowResourceStaminaCut(unit, label, before, after, maximum) {
     if (!(maximum > 0) || !(before >= maximum * LOW_RESOURCE_STAMINA_RATIO) || !(after < maximum * LOW_RESOURCE_STAMINA_RATIO)) return;
     const runtime = unit.__battleRuntime && typeof unit.__battleRuntime === 'object' ? unit.__battleRuntime : {};
-    if (runtime.lowResourceStaminaCut?.[label] === true) return;
-    unit.__battleRuntime = { ...runtime, lowResourceStaminaCut: { ...(runtime.lowResourceStaminaCut || {}), [label]: true } };
-    setResource(unit, '体力', readResource(unit, '体力') * 0.5);
+    if (runtime.lowResourceStaminaCut?.[label]) return;
+    const deferred = staminaCutDeferred(unit);
+    unit.__battleRuntime = { ...runtime, lowResourceStaminaCut: { ...(runtime.lowResourceStaminaCut || {}), [label]: deferred ? DEFERRED_STAMINA_CUT : true } };
+    if (!deferred) setResource(unit, '体力', readResource(unit, '体力') * 0.5);
+  }
+  // 维持类武魂真身、武魂融合技（用户 2026-11-14「所有维持类的真身和武魂融合技，维持期间魂力低于一半时，体力不减半。维持结束后
+  // 按结束时的体力再减半」——口径是上面这条一成线）：发动（__维持类发动中，运行时扣启动消耗时挂上）与维持（持续效果条目带
+  // 真身维持）期间跌破只记作待砍（DEFERRED_STAMINA_CUT），最后一个这类维持条目没了时（refreshSustainRuntimeLoad，删维持条目的
+  // 各条路径都经过它）按当时的体力各砍一次。
+  const DEFERRED_STAMINA_CUT = 'DEFERRED';
+  // A release that defers the cut: a 武魂真身 or 武魂融合技 (the skill runtime's 判定技能消耗来源_V1) with an upkeep.
+  function sustainedAvatarRelease(skill = {}, context = {}) {
+    if (!skill || typeof skill !== 'object' || !Object.keys(readSkillCostStages(skill, context)?.维持 || {}).length) return false;
+    const judge = root.__LWCS_SKILL_COST_HELPERS_V1__?.判定技能消耗来源_V1;
+    const source = typeof judge === 'function' ? judge(skill, context) : null;
+    return !!(source?.武魂真身 || source?.武魂融合技);
+  }
+  function staminaCutDeferred(unit = {}) {
+    return unit?.__battleRuntime?.__维持类发动中 === true ||
+      Object.values(unit?.持续效果 || {}).some(effect => effect && effect.真身维持 === true);
+  }
+  function settleDeferredStaminaCut(unit = {}) {
+    const cuts = unit?.__battleRuntime?.lowResourceStaminaCut;
+    if (!cuts || staminaCutDeferred(unit)) return 0;
+    const due = Object.keys(cuts).filter(label => cuts[label] === DEFERRED_STAMINA_CUT);
+    if (!due.length) return 0;
+    unit.__battleRuntime = { ...unit.__battleRuntime, lowResourceStaminaCut: { ...cuts, ...Object.fromEntries(due.map(label => [label, true])) } };
+    setResource(unit, '体力', readResource(unit, '体力') * 0.5 ** due.length);
+    return due.length;
   }
 
   function setResource(unit, resource, value) {
@@ -24154,6 +24184,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     LIFE_THREAT_RATIO,
     INJURY_STAMINA_SHARE,
     LOW_RESOURCE_STAMINA_RATIO,
+    DEFERRED_STAMINA_CUT,
+    staminaCutDeferred,
+    sustainedAvatarRelease,
+    settleDeferredStaminaCut,
     INTERCEPT_WINDUP,
     REACTION_DEFENDER_MARGIN,
     // 接战链 阶段三: the referee as a neutral guard.
