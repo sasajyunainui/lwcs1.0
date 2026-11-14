@@ -5554,7 +5554,21 @@
     )
       ? Number(targetProfile.resourceMax[resource])
       : readResourceMax(target, resource);
-    return clamp(Math.pow(Math.max(0.01, actorMax / Math.max(1, targetMax)), 0.45), 0.35, 1.85);
+    return clamp(Math.pow(Math.max(0.01, actorMax / Math.max(1, targetMax)), 0.45), 0.35, RESOURCE_DRIVE_CAP);
+  }
+  // 跨等级（用户 2026-11-14「97 8对99不会是被99随手秒的那种」「不能去掉魂力驱动，这属于核心设定」「那就乙试一下吧」）：
+  // 只压缩等级差：两边等级标准面板之比 L 在攻击里按 L^DAMAGE_GAP_EXPONENT 计（攻 × L^(γ-1)），其余照旧 攻 × 攻/(攻+防)。
+  // 同级 L=1 原样；魂骨、系别带来的面板差不压缩，防御越高受伤越少（曾锚在防守方防御上，防御 +91% 的魂骨反而多挨 43%）。
+  // 魂力驱动保留、上限 1.85 → 1.5（95 级后魂力每级翻倍，两级就顶格）。
+  const DAMAGE_GAP_EXPONENT = 0.3, RESOURCE_DRIVE_CAP = 1.5;
+  function levelScaleRatio(actor = {}, target = {}, damageClass = '') {
+    if (typeof root.__LWCS_GET_BASE_STATS__ !== 'function') return 1;
+    const levelOf = unit => Number(unit?.属性?.等级 ?? unit?.等级 ?? unit?.level ?? 0);
+    const own = levelOf(actor), their = levelOf(target);
+    if (!(own > 0) || !(their > 0) || own === their) return 1;
+    const key = damageClass === 'MENTAL' ? 'men_max' : 'str';
+    const mine = Number(root.__LWCS_GET_BASE_STATS__(own)?.[key]), theirs = Number(root.__LWCS_GET_BASE_STATS__(their)?.[key]);
+    return mine > 0 && theirs > 0 ? mine / theirs : 1;
   }
 
   function calculateDamageTargetCoverage(effect = {}, targetCount = 1) {
@@ -5825,7 +5839,7 @@
     // 魂技仍保留资源驱动，只让无消耗的基础攻击回到纯攻防公式。
     const resourceDriveApplied = resourceDriveEnabled !== false;
     const resourceDrive = resourceDriveApplied
-      ? clamp(Math.pow(resourceRatio, 0.45), 0.35, 1.85)
+      ? clamp(Math.pow(resourceRatio, 0.45), 0.35, RESOURCE_DRIVE_CAP)
       : 1;
     let total = 0;
     const healStrikeShare = healStrikeDamageShare(effect);
@@ -5835,8 +5849,10 @@
     } else if (damageClass === 'TRUE') {
       total = attack * powerRatio * 0.4;
     } else {
-      const mitigation = attack / Math.max(1, attack + defense);
-      total = attack * powerRatio * mitigation * 0.4 * resourceDrive;
+      const effectiveAttack = attack * Math.pow(levelScaleRatio(actor, target, damageClass), DAMAGE_GAP_EXPONENT - 1);
+      const gap = effectiveAttack / Math.max(1, defense);
+      const mitigation = gap / (gap + 1);
+      total = effectiveAttack * powerRatio * mitigation * 0.4 * resourceDrive;
     }
     const actorMultiplier = actorProfile
       ? actorProfile.outgoingDamageMultiplier
