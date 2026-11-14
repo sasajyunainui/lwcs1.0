@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:315d6fe331193fd97827be3ba31312f241f0f6e4f1a7785e8e9897b011595a6b|MVU_Schema_Runtime.js:874a5c7f5cadc5cf4cc04560a20cb0af6c6421c40ad3091770715e54b99cac72|BattlePreview_Module.js:e515d11fb65d5272434ba756c81457fa2cbf0c4039c73f202ee1cc37b4769659|BehaviorDecisionPipeline_Module.js:af9b205935ae8ad04f9ad8e4613807b188302a948658c8bf869573ca06712cc2|BattleDecision_Module.js:640aa5f26e9e6fc7fa1e0b04f375349bc23f30e3df3cc4bccea775a3baa7035e|BattleRuntime_Module.js:9f90e8fbbf9c59f80a8ce2c3093f84723a08590dc21b868f276aa153c2a6f42f */
+/* sources-sha256: MVU_Skill_Runtime.js:9223931c4ba6eb49db6b7a2079b7626647540a05c34e1a3e58a7d4e777ef523f|MVU_Schema_Runtime.js:454e4a242dce5e02d69c3def2993d350ac50f39dcb667f2fc6f09488f34461dd|BattlePreview_Module.js:a4ee8cc5d00077a6318d8310f5cbbf3216c64f3ed84cd6cfe0777bba934d2039|BehaviorDecisionPipeline_Module.js:af9b205935ae8ad04f9ad8e4613807b188302a948658c8bf869573ca06712cc2|BattleDecision_Module.js:4f1e6c4abf5051c418555e265c273bcdb1a2b0bcf07645bd98a9d5e0a140eae2|BattleRuntime_Module.js:5824d9d823c20ba6f8a3315c16f7733c5410e488cd786b9ffe779a2665f676f9 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -5291,6 +5291,28 @@ function 获取运转标准消耗_V1(魂技位 = 1) {
   return 获取标准消耗_V1(魂技位);
 }
 function 获取武魂真身运转标准消耗比例_V1() { return SKILL_AVATAR_STANDARD_COST_RATIO_V1; }
+
+// 维持型技能（武魂真身、维持型武魂融合技）的魂力消耗 = 固定魂力 + 上限百分比，启动与维持两段都是。
+// 固定值锚定「解锁/形成等级的基础魂力」：启动 = base×6/11，维持 = base×12/55（70 级 base=55000 → 30000 / 12000）。
+// 百分比段由原先的整段百分比换算：启动 ÷2.5、维持 ÷2（25%/8% ↔ 10%/4%）。
+// 预算口径：固定段不计，百分比段按 ×2.5（启动）还原成原比例再计价，改格式前后 COST 与强度不变。
+var 武魂真身固定魂力锚定等级_V1 = 70;
+var 维持型启动固定魂力系数_V1 = 6 / 11;
+var 维持型维持固定魂力系数_V1 = 12 / 55;
+var 维持型启动百分比换算除数_V1 = 2.5;
+var 维持型维持百分比换算除数_V1 = 2;
+function 计算维持型固定魂力_V1(锚定等级 = 武魂真身固定魂力锚定等级_V1) {
+  const 等级 = Math.max(1, Math.min(180, Number(锚定等级) || 武魂真身固定魂力锚定等级_V1));
+  const 基础魂力 = Math.max(1, Number(getBaseStats(等级)?.sp_max) || 1);
+  return {
+    启动: Math.max(1, Math.round(基础魂力 * 维持型启动固定魂力系数_V1)),
+    维持: Math.max(1, Math.round(基础魂力 * 维持型维持固定魂力系数_V1)),
+  };
+}
+// 百分点保留 2 位（p/2.5 = 0.4p，p 为整数时恰好 1 位，p/2 恰好 0.5 的倍数），整数原比例可逆还原。
+function 格式化维持型百分点_V1(百分点 = 0) {
+  return String(Math.round(Number(百分点) * 100) / 100);
+}
 var 武魂真身标志大类_V1 = Object.freeze({ 控制系: '控制类', 防御系: '防御类' });
 
 function 读取武魂真身燃料模型_V1(系别 = '强攻系') {
@@ -5763,6 +5785,8 @@ if (typeof globalThis !== 'undefined') {
     获取标准消耗_V1,
     获取运转标准消耗_V1,
     获取武魂真身运转标准消耗比例_V1,
+    计算维持型固定魂力_V1,
+    迁移维持型消耗为固定加百分比_V1,
     构建武魂真身默认承载消耗_V1,
     获取标准前摇_V1,
     获取基础预算_V1,
@@ -6152,8 +6176,8 @@ function 构建魂技消耗文本_V1(燃料模型 = '纯耗魂力', 消耗基准
 function 缩放消耗文本数值_V1(消耗文本 = '', 倍率 = 1) {
   const 系数 = Number(倍率);
   if (!Number.isFinite(系数) || Math.abs(系数 - 1) <= 0.0001) return 消耗文本;
-  return String(消耗文本 || '无').replace(/(魂力|体力|精神力)([:：])(\d+)(%?)/g, (原文, 名称, 分隔, 数字, 百分号) => {
-    if (百分号) return 原文;
+  return String(消耗文本 || '无').replace(/(魂力|体力|精神力)([:：])(\d+)(\+\d+(?:\.\d+)?)?(%?)/g, (原文, 名称, 分隔, 数字, 复合百分段, 百分号) => {
+    if (百分号 || 复合百分段) return 原文;
     const 新值 = Math.max(0, Math.round(Number(数字 || 0) * 系数));
     return `${名称}${分隔}${新值}`;
   });
@@ -6516,7 +6540,11 @@ function rollMainMechanicByGrade(type, grade, roll, ringIndex = 1, options = {})
   const 排除大类 = new Set(Array.isArray(options?.排除主机制大类) ? options.排除主机制大类.map(项 => String(项 || '').trim()).filter(Boolean) : []);
   const 理论分布 = SKILL_MAIN_MECHANIC_DISTRIBUTION_V1[type] || SKILL_MAIN_MECHANIC_DISTRIBUTION_V1['强攻系'];
   const 全局品质合法分布 = 过滤合法生成主机制大类权重表_V1(理论分布, context);
-  const table = 全局品质合法分布.filter(item => !排除大类.has(String(item?.main || '').trim()));
+  const 排除后分布 = 全局品质合法分布.filter(item => !排除大类.has(String(item?.main || '').trim()));
+  // 代表魂技要求：只在本系代表大类里抽（按系别原权重）；代表大类全被排除或品质门挡住时退回正常抽取。
+  const 限定代表大类 = Array.isArray(options?.代表主机制大类集合) ? options.代表主机制大类集合 : [];
+  const 限定后分布 = 限定代表大类.length ? 排除后分布.filter(item => 限定代表大类.includes(String(item?.main || '').trim())) : [];
+  const table = 限定后分布.length ? 限定后分布 : 排除后分布;
   const effectiveRoll = Math.min(100, Math.max(1, Number(roll) || 1));
   if (!table.length) return '';
   const 权重表 = table.map(item => ({
@@ -7281,7 +7309,9 @@ function 查找合法生成主机制原型_V1(主机制大类 = '', context = {}
   }
   for (const 大类 of 大类列表) {
     if (!String(大类 || '').trim()) continue;
-    const 原型池 = 大类 === '回复类' ? 读取普通回复随机原型池_V1() : (SKILL_ARCHETYPE_POOL_V1[大类] || []);
+    // 代表魂技要求带子原型限定（召唤系的召唤、治疗系的回血）时，候选池只留限定的原型。
+    const 代表限定池 = Array.isArray(context?.代表主机制大类集合) && context.代表主机制大类集合.includes(大类) ? context?.代表限定子原型?.[大类] : null;
+    const 原型池 = Array.isArray(代表限定池) && 代表限定池.length ? 代表限定池 : (大类 === '回复类' ? 读取普通回复随机原型池_V1() : (SKILL_ARCHETYPE_POOL_V1[大类] || []));
     const 合法列表 = 原型池.filter(机制 =>
       !排除原型.has(String(机制 || '').trim()) &&
       !随机生成不再抽取的主机制_V1.has(String(机制 || '').trim()) &&
@@ -7386,14 +7416,14 @@ function 估算自动生成预算摘要_V1(context = {}) {
         (来源 === '魂技' ? 读取魂技品质运转系数_V1(获取技能机制品质等级_V1(context)) : 1),
   );
   const 初始倍率 = 读取自动生成初始消耗前摇倍率_V1({}, { ...(context || {}), 预算评估摘要: { 运转基准 } });
-  const 代价能量 = 计算运转代价能量_V1(初始倍率.消耗倍率, 初始倍率.前摇倍率);
+  // 魂骨技能门禁对标魂环位的标准 COST（消耗/前摇倍数按 1），被动魂骨技能没有消耗，不能让 0.05 倍消耗把门禁压到 0.5。
+  const 代价能量 = 来源 === '魂骨技能' ? 1 : 计算运转代价能量_V1(初始倍率.消耗倍率, 初始倍率.前摇倍率);
   const 位级倍率上限 = 读取魂技位COST倍率上限_V1(虚拟魂技位);
-  const 位级硬上限 = context?.forceTrueBody === true || 来源 === '武魂融合技' || 来源 === '魂骨技能'
+  const 位级硬上限 = context?.forceTrueBody === true || 来源 === '武魂融合技'
     ? Infinity
     : (Number.isFinite(位级倍率上限) ? Math.max(0.5, 运转基准 * 位级倍率上限) : Infinity);
-  const 预算门禁 = 来源 === '魂骨技能'
-    ? 计算魂骨技能预算门禁_V1(读取魂骨技能年限_V1(context))
-    : Math.min(Math.max(0.5, 运转基准 * 代价能量),位级硬上限);
+  // 魂骨技能与魂环魂技走同一套门禁（按虚拟魂技位），不再用年限线性公式。
+  const 预算门禁 = Math.min(Math.max(0.5, 运转基准 * 代价能量),位级硬上限);
   const 摘要 = {
     预算门禁: Math.max(0, Number(预算门禁 || 0)),
     运转基准: Math.max(0, Number(运转基准 || 0)),
@@ -8828,6 +8858,7 @@ function rollAttributeDirectionByType(type, subModel, roll, context = {}) {
     if (机制 === '多属性增益') return Array.from(new Set([...强攻候选, ...hints])).slice(0, 2);
     return (强攻候选.length ? 强攻候选 : hints).slice(0, 1);
   }
+  if (type === '敏攻系' && 机制 === '多属性增益' && ['力量', '敏捷'].every(属性 => hints.includes(属性))) return ['力量', '敏捷'];
   if (机制 === '魂力恢复') return ['魂力'];
   if (机制 === '精神恢复') return ['精神力'];
   if (['体力恢复', '持续恢复', '净化/解控'].includes(机制)) return ['体力'];
@@ -9153,6 +9184,113 @@ function 登记角色主效果状态_V1(context = {}, 主效果 = null) {
   while (账本.length > 角色主效果状态账本上限_V1) 账本.shift();
 }
 
+// 用户 2026-11-14「全系列魂师，每三个魂技都必须有一个该系别的代表魂技，尤其是第一魂技和第九魂技」。
+// 代表魂技 = 主机制大类落在本系代表大类里的魂技（第 7 魂技是武魂真身，不计）。魂环位 1～3、4～6、7～9 各成一组；
+// 第 1 与最后一个魂技（满 9 环即第 9 魂技）必为代表；其余组在组内最后一个魂技时若前面没有代表就补一个。
+var 系别代表主机制大类_V1 = {
+  强攻系: ['伤害类'],
+  敏攻系: ['增益类'], // 用户：「敏攻就是攻速同提」：强制抽取增益类里的多属性增益（力量+敏捷）；识别见 技能是敏攻攻速增益_V1，单纯伤害技不算
+  元素系: ['伤害类'],
+  控制系: ['控制类'],
+  防御系: ['防御类'],
+  辅助系: ['增益类'],
+  治疗系: ['回复类'], // 强制抽取：回复类且子原型限定为 生命恢复/持续恢复（回血）；识别见 技能含生命恢复_V1
+  食物系: [], // 用户：「食物的核心其实就是造物，所以无所谓具体效果」：食物系技能一律是造物承载，每个都是代表，不强制抽取
+  精神系: ['感知/认知类', '控制类'],
+  召唤系: ['特殊规则类'],
+};
+
+// 子原型级限定：召唤系只有「召唤」算代表（分身、复制、反制等特殊规则不算）。
+// 治疗系（用户：「治疗系的代表魂技只算回血！可以是回血+其他，但必须要有回血」）：强制抽取只用 生命恢复 / 持续恢复（持续恢复恢复的是生命）。
+var 系别代表限定子原型_V1 = { 敏攻系: { 增益类: ['多属性增益'] }, 召唤系: { 特殊规则类: ['召唤'] }, 治疗系: { 回复类: ['生命恢复', '持续恢复'] } };
+
+// 治疗系代表判定：技能效果里含回血（生命的资源变化为正，或持续恢复状态）；魂力/体力/精神恢复、净化/解控单独出现不算。
+function 技能含生命恢复_V1(效果数组 = []) {
+  let 有回血 = false;
+  const 访问 = 节点 => {
+    if (有回血 || !节点 || typeof 节点 !== 'object') return;
+    if (Array.isArray(节点)) { 节点.forEach(访问); return; }
+    const 原型 = String(节点.原型 || '').trim();
+    if (原型 === '资源变化' && String(节点.资源 || '').trim() === '生命' && String(节点.动作 || '加值').trim() !== '减值' && !String(节点.数值 ?? '').trim().startsWith('-')) 有回血 = true;
+    if (原型 === '状态施加' && String(节点.状态 || '').trim() === '持续恢复') 有回血 = true;
+    Object.values(节点).forEach(访问);
+  };
+  访问(效果数组);
+  return 有回血;
+}
+
+// 敏攻代表之二（用户：「敏攻的代表类型是攻击+速度，通常都是同时提升的」）：同一技能的增益效果里既有速度（敏捷上升、前摇缩短）
+// 又有攻击（力量上升、造成伤害增幅）。
+function 技能是敏攻攻速增益_V1(效果数组 = []) {
+  let 有攻击 = false;
+  let 有速度 = false;
+  const 为正 = 值 => (typeof 值 === 'number' ? 值 > 0 : String(值 ?? '').trim().startsWith('+'));
+  const 为负 = 值 => (typeof 值 === 'number' ? 值 < 0 : String(值 ?? '').trim().startsWith('-'));
+  const 访问 = 节点 => {
+    if (!节点 || typeof 节点 !== 'object') return;
+    if (Array.isArray(节点)) { 节点.forEach(访问); return; }
+    const 原型 = String(节点.原型 || '').trim();
+    if (原型 === '属性修正' && 为正(节点.数值)) {
+      const 属性 = (Array.isArray(节点.属性) ? 节点.属性 : [节点.属性]).map(项 => String(项 || '').trim());
+      if (属性.includes('力量')) 有攻击 = true;
+      if (属性.includes('敏捷')) 有速度 = true;
+    }
+    if (原型 === '结算修正') {
+      const 结算 = String(节点.结算 || '').trim();
+      if (结算 === '造成伤害' && 为正(节点.数值)) 有攻击 = true;
+      if (结算 === '前摇' && 为负(节点.数值)) 有速度 = true;
+    }
+    Object.values(节点).forEach(访问);
+  };
+  访问(效果数组);
+  return 有攻击 && 有速度;
+}
+
+function 魂技是系别代表_V1(type = '', 主机制大类 = '', 主机制原型 = '', 效果数组 = []) {
+  const 系别 = String(type || '').trim();
+  if (系别 === '治疗系') return 技能含生命恢复_V1(效果数组);
+  if (系别 === '敏攻系') return 技能是敏攻攻速增益_V1(效果数组);
+  if (系别 === '食物系') return true;
+  const 限定 = 系别代表限定子原型_V1[系别]?.[主机制大类];
+  if (限定) return 限定.includes(String(主机制原型 || '').trim());
+  if ((系别代表主机制大类_V1[系别] || []).includes(主机制大类)) return true;
+  return false;
+}
+
+function 读取角色代表魂技账本_V1() {
+  if (!Array.isArray(v9_3_最近主机制队列_V1.代表魂技账本)) v9_3_最近主机制队列_V1.代表魂技账本 = [];
+  return v9_3_最近主机制队列_V1.代表魂技账本;
+}
+
+function 登记角色代表魂技_V1(context = {}, 主机制大类 = '', 主机制原型 = '', 效果数组 = []) {
+  const 角色键 = 读取技能生成角色键_V1(context);
+  const 魂环位 = Math.floor(Number(context?.ringIndex ?? context?.魂环位 ?? 0));
+  if (!角色键 || !(魂环位 >= 1) || !主机制大类) return;
+  if (String(context?.sourceCategory || '魂技').trim() !== '魂技' || context?.passiveMode === true || context?.forceTrueBody === true) return;
+  const 账本 = 读取角色代表魂技账本_V1();
+  const 旧序号 = 账本.findIndex(项 => 项.角色键 === 角色键 && 项.魂环位 === 魂环位);
+  if (旧序号 >= 0) 账本.splice(旧序号, 1);
+  账本.push({ 角色键, 魂环位, 主机制大类, 主机制原型, 代表: 魂技是系别代表_V1(context?.type || context?.系别 || '', 主机制大类, 主机制原型, 效果数组) });
+}
+
+// 返回本魂技必须落入的代表大类列表；不必强制（非自动生成魂技、真身、组内已有代表）时返回 null。
+function 读取代表魂技要求_V1(type = '', ringIndex = 1, options = {}) {
+  const 代表大类 = 系别代表主机制大类_V1[String(type || '').trim()];
+  if (!代表大类 || !代表大类.length) return null;
+  const 魂环位 = Math.floor(Number(ringIndex) || 0);
+  if (魂环位 < 1 || 魂环位 === 7) return null;
+  if (String(options?.sourceCategory || '魂技').trim() !== '魂技' || options?.passiveMode === true || options?.forceTrueBody === true) return null;
+  const 总环数 = Math.max(0, Math.floor(Number(options?.当前魂环数量 || options?.ringCount || 0)));
+  const 组末 = 魂环位 === 1 || 魂环位 % 3 === 0 || (总环数 >= 魂环位 && 魂环位 === 总环数) || 魂环位 >= 9;
+  if (!组末) return null;
+  if (魂环位 === 1 || 魂环位 >= 9) return 代表大类;
+  const 角色键 = 读取技能生成角色键_V1(options);
+  if (!角色键) return null;
+  const 组起 = Math.floor((魂环位 - 1) / 3) * 3 + 1;
+  const 已有代表 = 读取角色代表魂技账本_V1().some(项 => 项.角色键 === 角色键 && 项.代表 && 项.魂环位 >= 组起 && 项.魂环位 < 魂环位);
+  return 已有代表 ? null : 代表大类;
+}
+
 function v9_3_推入主机制(main = '') {
   if (!main) return;
   v9_3_最近主机制队列_V1.push(main);
@@ -9182,6 +9320,9 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
     候选筛选最大消耗前摇倍率: 2,
   });
   const mainRoll = Math.floor(Math.random() * 100) + 1;
+  const 代表魂技要求 = 是治疗系第一魂技 ? null : 读取代表魂技要求_V1(type, ringIndex, options);
+  // 用户：「代表技能不受」五环恢复/增益去重限制：强制抽代表时整条链忽略五环占用。
+  if (代表魂技要求) options = { ...options, 忽略五环占用: true };
   const 本轮排除主机制大类 = new Set(Array.isArray(options?.排除主机制大类) ? options.排除主机制大类.map(项 => String(项 || '').trim()).filter(Boolean) : []);
   // 规格 3 的「换同大类里另一种状态」：重抽时限定主机制大类（配合排除给出重复状态的机制）。
   const 限定主机制大类 = String(options?.限定主机制大类 || '').trim();
@@ -9191,12 +9332,14 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
       ? 限定主机制大类
       : rollMainMechanicByGrade(type, grade, mainRoll, ringIndex, {
         ...options,
+        代表主机制大类集合: 代表魂技要求 || [],
+        代表限定子原型: 系别代表限定子原型_V1[String(type || '').trim()] || {},
         抽取用途: '初抽',
         排除主机制大类: [...本轮排除主机制大类],
       });
   if (!main) throw new Error(`技能生成错误:${type || '未知系别'}没有合法主机制`);
   // v9.3：若与最近 2 次主机制大类重复，最多重 roll 3 次以避让（避免连续 3 次相同）
-  for (let 尝试 = 0; !是治疗系第一魂技 && !限定主机制大类 && 尝试 < 3 && v9_3_会连续三次(main); 尝试 += 1) {
+  for (let 尝试 = 0; !是治疗系第一魂技 && !代表魂技要求 && !限定主机制大类 && 尝试 < 3 && v9_3_会连续三次(main); 尝试 += 1) {
     const 重roll = Math.floor(Math.random() * 100) + 1;
     const 候选 = rollMainMechanicByGrade(type, grade, 重roll, ringIndex, { ...options, 抽取用途: '多样性重抽' });
     if (候选 && !v9_3_会连续三次(候选)) {
@@ -9222,8 +9365,14 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
     let subModel = 是治疗系第一魂技 ? '生命恢复' : '';
     const subRoll = Math.floor(Math.random() * 100) + 1;
     try {
-      if (!是治疗系第一魂技) {
-        subModel = rollSubModelByGrade(main, grade, subRoll, {
+      const 限定代表子原型 = 代表魂技要求 ? (系别代表限定子原型_V1[String(type || '').trim()]?.[main] || []) : [];
+      if (限定代表子原型.length) {
+        const 子原型上下文 = { ...options, type, 系别: type, sourceName, ringIndex, 魂环位: ringIndex, age: options?.age, ringAge: options?.ringAge, sourceCategory: options?.sourceCategory, 预算门禁, 预算门禁优先: true, grade: normalizeSkillTableGrade(grade), 主机制大类: main };
+        const 合法限定 = 限定代表子原型.filter(机制 => !本轮排除子原型.has(机制) && 机制是合法生成主机制_V1(机制, 子原型上下文) && 自动生成机制满足五环恢复增益约束_V1(机制, 子原型上下文) && 自动生成机制满足预算范围_V1(机制, 子原型上下文));
+        subModel = 合法限定.length ? 合法限定[Math.min(合法限定.length - 1, Math.floor(((subRoll - 1) / 100) * 合法限定.length))] : '';
+      }
+      if (!是治疗系第一魂技 && !subModel) {
+        const 子原型抽取 = () => rollSubModelByGrade(main, grade, subRoll, {
           ...options,
           type,
           系别: type,
@@ -9237,6 +9386,7 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
           预算门禁优先: true,
           排除子原型: [...本轮排除子原型],
         });
+        subModel = 子原型抽取();
       }
     } catch (错误) {
       最后子原型错误 = 错误;
@@ -9256,6 +9406,8 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
       const 新主机制 = rollMainMechanicByGrade(type, grade, Math.floor(Math.random() * 100) + 1, ringIndex, {
         ...options,
         抽取用途: '子原型失败后重选',
+        代表主机制大类集合: 代表魂技要求 || [],
+        代表限定子原型: 系别代表限定子原型_V1[String(type || '').trim()] || {},
         排除主机制大类: [...本轮排除主机制大类],
       });
       if (新主机制 && 新主机制 !== main) {
@@ -9416,6 +9568,7 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
       _主机制骰: mainRoll,
       _子模型骰: subRoll,
       _属性方向骰: attrRoll,
+      ...(代表魂技要求 ? { 代表魂技强制: true } : {}),
     };
     记录技能生成事件_V1(options, {
       类型: '蓝图成功',
@@ -9424,6 +9577,7 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
       魂环位: ringIndex,
       主机制大类: main,
       主机制原型: subModel,
+      代表魂技强制: !!代表魂技要求,
       副机制: [...蓝图.副机制],
       承载方式: delivery,
       承载来源: type === '食物系' ? '食物系固定造物' : (指定释放形态 ? '显式结构' : '系别默认'),
@@ -9452,6 +9606,8 @@ function findMainMechanicGroupByArchetype(主机制原型 = '') {
 }
 
 function normalizeBlueprintOverrideForAutoGenerate(blueprintOverride = {}, type = '强攻系', grade = 'B', ringIndex = 1, preferredSecondary = [], options = {}) {
+  // 代表魂技不受五环恢复/增益去重限制（用户 2026-11-14）。
+  if (blueprintOverride?.代表魂技强制 === true) options = { ...options, 忽略五环占用: true };
   const sourceName =
     String(options?.sourceName || options?.spiritName || options?.textContext?.spiritName || options?.speciesName || options?.martialSoulName || '')
       .trim();
@@ -9584,6 +9740,7 @@ function normalizeBlueprintOverrideForAutoGenerate(blueprintOverride = {}, type 
     _主机制骰: Number(blueprintOverride?._主机制骰 ?? -1),
     _子模型骰: Number(blueprintOverride?._子模型骰 ?? -1),
     _属性方向骰: Number(blueprintOverride?._属性方向骰 ?? -1),
+    ...(blueprintOverride?.代表魂技强制 === true ? { 代表魂技强制: true } : {}),
   };
   记录技能生成事件_V1(options, {
     类型: '蓝图成功',
@@ -10051,6 +10208,16 @@ function 解析技能阶段消耗_V1(value, context = {}) {
       return;
     }
     const 文本 = String(原始值 ?? '').trim();
+    // 固定 + 百分比复合写法「30000+10%」：支付时 = 固定值 + 百分比×支付者上限（维持型真身/融合技的魂力消耗）。
+    const 复合匹配 = /^(\d+(?:\.\d+)?)\s*\+\s*(\d+(?:\.\d+)?)%$/.exec(文本);
+    if (复合匹配) {
+      const 固定 = Number(复合匹配[1]);
+      const 百分点 = Number(复合匹配[2]);
+      if (!Number.isFinite(固定) || !Number.isFinite(百分点)) addInvalid(阶段, 原始值, 'non-finite', 资源名);
+      else if (百分点 > 100) addInvalid(阶段, 原始值, 'percent-out-of-range', 资源名);
+      else result[阶段].push({ 资源: 资源名, 数值: 百分点, 百分比: true, 固定 });
+      return;
+    }
     const 匹配 = /^([+-]?\d+(?:\.\d+)?)(%)?$/.exec(文本);
     if (!匹配) {
       addInvalid(阶段, 原始值, 'invalid-value', 资源名);
@@ -10079,7 +10246,7 @@ function 解析技能阶段消耗_V1(value, context = {}) {
   const parseTextPart = (阶段, text) => {
     const 片段 = String(text ?? '').trim();
     if (!片段) return;
-    const pattern = /([^\s|｜+，,;；:：]+)\s*[:：]\s*([+-]?\d+(?:\.\d+)?%?)/g;
+    const pattern = /([^\s|｜+，,;；:：]+)\s*[:：]\s*(\d+(?:\.\d+)?\s*\+\s*\d+(?:\.\d+)?%|[+-]?\d+(?:\.\d+)?%?)/g;
     const matches = [...片段.matchAll(pattern)];
     matches.forEach(match => addEntry(阶段, match[1], match[2]));
     const 残余 = 片段.replace(pattern, '').replace(/[\s|｜+，,;；]/g, '').trim();
@@ -13069,6 +13236,13 @@ function 读取技能同资源消耗绝对值表_V1(消耗 = '无', 上下文 = 
     if (!Object.prototype.hasOwnProperty.call(结果, 资源名)) return;
     const 文本 = String(原始值 ?? '').trim();
     if (!文本 || 文本 === '无') return;
+    // 固定+百分比复合写法：此表只给生成期折算用，口径与预算一致——固定段不计，百分比段还原成原整段比例。
+    const 复合 = /^\d+(?:\.\d+)?\s*\+\s*(\d+(?:\.\d+)?)%$/.exec(文本);
+    if (复合) {
+      const 百分点 = Number(复合[1]) * 维持型启动百分比换算除数_V1;
+      if (Number.isFinite(百分点) && 百分点 > 0) 结果[资源名] += 读取直接结算预算资源上限_V1(资源名, 上下文) * 百分点 / 100;
+      return;
+    }
     if (/%$/.test(文本)) {
       const 百分比 = Number(文本.replace('%', '').replace(/^\+/, ''));
       if (Number.isFinite(百分比) && 百分比 > 0) 结果[资源名] += 读取直接结算预算资源上限_V1(资源名, 上下文) * 百分比 / 100;
@@ -13087,7 +13261,7 @@ function 读取技能同资源消耗绝对值表_V1(消耗 = '无', 上下文 = 
     .filter(Boolean)
     .forEach(片段 => {
       if (/^维持[:：]/.test(片段)) return;
-      const 匹配 = 片段.replace(/^启动[:：]/, '').match(/^(体力|魂力|精神力)[:：]([+-]?\d+(?:\.\d+)?%?)$/);
+      const 匹配 = 片段.replace(/^启动[:：]/, '').match(/^(体力|魂力|精神力)[:：](\d+(?:\.\d+)?\s*\+\s*\d+(?:\.\d+)?%|[+-]?\d+(?:\.\d+)?%?)$/);
       if (匹配) 写入(匹配[1], 匹配[2]);
     });
   return 结果;
@@ -14619,6 +14793,8 @@ function 读取直接结算预算消耗比例_V1(消耗 = '无', 上下文 = {})
   const 解析结果 = 解析技能阶段消耗_V1(消耗, 上下文);
   return 解析结果.启动.reduce((总和, 项) => {
     const 资源上限 = 读取直接结算预算资源上限_V1(项.资源, 上下文);
+    // 固定 + 百分比复合项：预算口径固定段不计，百分比段按启动换算除数还原成原整段比例，COST 与强度不变。
+    if (项.百分比 && Number.isFinite(项.固定)) return 总和 + 项.数值 * 维持型启动百分比换算除数_V1 / 100;
     return 总和 + (项.百分比 ? 项.数值 / 100 : 项.数值 / 资源上限);
   }, 0);
 }
@@ -14840,6 +15016,52 @@ function 解析技能来源_V1(skill = {}, 上下文 = {}) {
   return 判定技能消耗来源_V1(skill, 上下文);
 }
 
+// 读档规范化：旧存档里纯百分比的维持型消耗（武魂真身、有维持段的武魂融合技）换算成「固定魂力 + 上限百分比」。
+// 真身锚定解锁等级 70；融合技锚定形成时角色等级（旧档无记录，用角色当前等级近似，拿不到时按魂环数×10）。
+// 只换算魂力项，精神力/体力保持不变；已是复合写法的项跳过，所以重复读档幂等。单发型融合技（无维持段）不动。
+function 迁移维持型消耗为固定加百分比_V1(skill = {}, 上下文 = {}) {
+  if (!skill || typeof skill !== 'object' || 技能消耗字段缺失_V1(skill)) return false;
+  const 原消耗 = skill.消耗;
+  if (typeof 原消耗 !== 'string' && !(原消耗 && typeof 原消耗 === 'object' && !Array.isArray(原消耗))) return false;
+  if (!/%/.test(typeof 原消耗 === 'string' ? 原消耗 : JSON.stringify(原消耗))) return false;
+  const 技能上下文 = { ...上下文, 技能: skill };
+  const 来源判定 = 判定技能消耗来源_V1(skill, 技能上下文);
+  if (!来源判定.武魂真身 && !来源判定.武魂融合技) return false;
+  const 解析 = 解析技能阶段消耗_V1(原消耗, 技能上下文);
+  if (解析.非法项.length) return false;
+  if (来源判定.武魂融合技 && !解析.维持.length) return false;
+  const 需要换算 = 项 => 项.资源 === '魂力' && 项.百分比 && !Number.isFinite(项.固定);
+  if (![...解析.启动, ...解析.维持].some(需要换算)) return false;
+  const 读取等级 = () => {
+    const 候选 = [上下文?.等级, 上下文?.角色等级, 上下文?.角色?.属性?.等级, 上下文?.施术者?.属性?.等级];
+    const 等级 = 候选.map(Number).find(值 => Number.isFinite(值) && 值 > 0);
+    if (等级) return 等级;
+    const 魂环 = Number(上下文?.获得阶段魂环数 ?? 上下文?.ringIndex ?? 上下文?.魂环位);
+    return Number.isFinite(魂环) && 魂环 > 0 ? 魂环 * 10 : 武魂真身固定魂力锚定等级_V1;
+  };
+  const 固定魂力 = 计算维持型固定魂力_V1(来源判定.武魂真身 ? 武魂真身固定魂力锚定等级_V1 : 读取等级());
+  const 换算 = (项, 阶段) => {
+    if (!需要换算(项)) return 项;
+    const 除数 = 阶段 === '维持' ? 维持型维持百分比换算除数_V1 : 维持型启动百分比换算除数_V1;
+    return { ...项, 数值: Number(格式化维持型百分点_V1(项.数值 / 除数)), 固定: 阶段 === '维持' ? 固定魂力.维持 : 固定魂力.启动 };
+  };
+  const 启动 = 解析.启动.map(项 => 换算(项, '启动'));
+  const 维持 = 解析.维持.map(项 => 换算(项, '维持'));
+  const 项文本 = 项 => `${项.资源}:${项.百分比 ? (Number.isFinite(项.固定) ? `${项.固定}+` : '') + 项.数值 + '%' : 项.数值}`;
+  const 项值 = 项 => 项.百分比 ? (Number.isFinite(项.固定) ? `${项.固定}+${项.数值}%` : `${项.数值}%`) : 项.数值;
+  if (typeof 原消耗 === 'string') {
+    skill.消耗 = [启动.map(项文本).join(' | ') || '', 维持.length ? `维持:${维持.map(项文本).join(' | ')}` : ''].filter(Boolean).join(' ') || '无';
+  } else {
+    const 转表 = 条目 => 条目.reduce((表, 项) => { 表[项.资源] = 项值(项); return 表; }, {});
+    const 有分阶段键 = ['启动', 'upfront'].some(键 => Object.prototype.hasOwnProperty.call(原消耗, 键));
+    // 保持原写法：{启动:{..},维持:{..}} 仍是分阶段对象；{魂力:'25%', 维持:'魂力:8%'} 仍是平铺资源键加维持文本。
+    skill.消耗 = 有分阶段键
+      ? (维持.length ? { 启动: 转表(启动), 维持: 转表(维持) } : 转表(启动))
+      : (维持.length ? { ...转表(启动), 维持: 维持.map(项文本).join(' | ') } : 转表(启动));
+  }
+  return true;
+}
+
 function 技能消耗包含百分比_V1(消耗 = '无', 上下文 = {}) {
   const 解析结果 = 解析技能阶段消耗_V1(消耗, 上下文);
   return [...解析结果.启动, ...解析结果.维持].some(项 => 项.百分比)
@@ -14910,7 +15132,7 @@ function 解析消耗为绝对值_V1(消耗字段 = '无', 上下文 = {}) {
   const 解析结果 = 解析技能阶段消耗_V1(消耗字段, 上下文);
   return 解析结果.启动.reduce((总和, 项) => {
     const 资源上限 = 读取直接结算预算资源上限_V1(项.资源, 上下文);
-    return 总和 + (项.百分比 ? 资源上限 * 项.数值 / 100 : 项.数值);
+    return 总和 + (项.百分比 ? 资源上限 * 项.数值 / 100 + (Number.isFinite(项.固定) ? 项.固定 : 0) : 项.数值);
   }, 0);
 }
 
@@ -14922,7 +15144,7 @@ function 解析消耗为魂力当量_V1(消耗字段 = '无', 上下文 = {}) {
   const 魂力上限 = 读取直接结算预算资源上限_V1('魂力', 上下文);
   return 解析结果.启动.reduce((总和, 项) => {
     const 资源上限 = 读取直接结算预算资源上限_V1(项.资源, 上下文);
-    const 绝对值 = 项.百分比 ? 资源上限 * 项.数值 / 100 : 项.数值;
+    const 绝对值 = 项.百分比 ? 资源上限 * 项.数值 / 100 + (Number.isFinite(项.固定) ? 项.固定 : 0) : 项.数值;
     return 总和 + (String(项.资源 || '').trim() === '魂力' ? 绝对值 : 绝对值 / 资源上限 * 魂力上限);
   }, 0);
 }
@@ -16471,9 +16693,10 @@ function 推断虚拟魂技位_V1(来源 = '魂技', 上下文 = {}) {
     return 5;
   }
   if (来源 === '魂骨技能') {
-    const 年限 = Number(魂骨年限 ?? 0);
-    if (年限 >= 1000000) return 9;
-    if (年限 >= 100000) return 7;
+    // 年限可能只以 age / ringAge 给出（收敛与读档上下文），统一走 读取魂骨技能年限_V1。
+    const 年限 = Number(魂骨年限 ?? 0) > 0 ? Number(魂骨年限) : 读取魂骨技能年限_V1(上下文 || {});
+    // 魂骨技能 COST 对标「能吸收同年限魂环的魂环位」（用户 2026-11-14：千年魂骨对标第 3 环，十万年魂骨对标第 9 环）。
+    if (年限 >= 100000) return 9;
     if (年限 >= 10000) return 5;
     if (年限 >= 1000) return 3;
     return 1;
@@ -16703,7 +16926,7 @@ function 评估技能预算_V1(技能 = {}, 上下文或魂技位 = {}, 旧上�
   const 触发档 = 评估触发限制档_V1(技能);
   const 副作用档 = 评估副作用预算档_V1(技能);
 
-  const 代价能量 = 计算运转代价能量_V1(消耗倍数, 前摇倍数);
+  const 代价能量 = 来源 === '魂骨技能' ? 1 : 计算运转代价能量_V1(消耗倍数, 前摇倍数);
   const 特殊预算 = 武魂真身百分比消耗
     ? 计算武魂真身预算基准_V1(角色, 实际魂环位, 上下文)
     : 来源 === '武魂融合技'
@@ -16722,15 +16945,12 @@ function 评估技能预算_V1(技能 = {}, 上下文或魂技位 = {}, 旧上�
 
   const 魂技位倍率上限 = 读取魂技位COST倍率上限_V1(魂技位);
   const 魂骨技能年限 = 来源 === '魂骨技能' ? 读取魂骨技能年限_V1(上下文) : 0;
-  const 魂骨技能门禁 = 来源 === '魂骨技能' ? 计算魂骨技能预算门禁_V1(魂骨技能年限) : null;
   const 位级硬上限 = 武魂真身百分比消耗 || 来源 === '武魂融合技'
     ? Infinity
-    : (来源 === '魂骨技能'
-      ? Infinity
-      : (Number.isFinite(魂技位倍率上限) ? Math.max(0.5, 运转基准 * 魂技位倍率上限) : Infinity));
-  const 实际门禁 = 来源 === '魂骨技能'
-    ? Math.max(0.5, Number(魂骨技能门禁 || 0))
-    : Math.min(允许上限, 位级硬上限);
+    : (Number.isFinite(魂技位倍率上限) ? Math.max(0.5, 运转基准 * 魂技位倍率上限) : Infinity);
+  // 魂骨技能门禁按虚拟魂技位与魂环魂技同算（旧年限线性公式 计算魂骨技能预算门禁_V1 不再参与）。
+  const 实际门禁 = Math.min(允许上限, 位级硬上限);
+  const 魂骨技能门禁 = 来源 === '魂骨技能' ? 实际门禁 : null;
   const 最低有效COST = 读取预算评估最低有效COST_V1({ 运转基准, 实际门禁 }, 上下文);
   // 副作用按原始 COST 抵扣，只限制不超过效果本身。原先上限是"净 COST − 最低有效 COST"：抵扣永远不会让净 COST 低于下限，
   // 收敛也就不会补强效果，副作用放得再大也只是被吸收（实测抵扣仅门槛的 5%–12%，带副作用的总强度只高约 5%）。
@@ -22232,17 +22452,23 @@ function 构建武魂真身消耗文本_V1(type = '强攻系', grade = 'B', ring
     纯耗魂力: { 魂力: 1 },
   };
   const 燃料模型 = 读取武魂真身燃料模型_V1(系别);
-  const 构建比例消耗 = 消耗基准 => {
+  const 固定魂力 = 计算维持型固定魂力_V1(武魂真身固定魂力锚定等级_V1);
+  const 构建比例消耗 = (消耗基准, 阶段) => {
     const 基准 = Math.max(1, Number(消耗基准 || 0));
     return Object.entries(分摊表[燃料模型] || 分摊表.纯耗魂力)
       .map(([资源名, 分摊比例]) => {
         const 百分比 = Math.max(1, Math.round(基准 * Math.max(0, Number(分摊比例 || 0))));
+        // 魂力：固定魂力 + 上限百分比（百分比段 = 原整段百分比 ÷ 换算除数）；精神力/体力保持纯百分比。
+        if (资源名 === '魂力') {
+          const 新百分点 = 百分比 / (阶段 === '维持' ? 维持型维持百分比换算除数_V1 : 维持型启动百分比换算除数_V1);
+          return `${资源名}:${阶段 === '维持' ? 固定魂力.维持 : 固定魂力.启动}+${格式化维持型百分点_V1(新百分点)}%`;
+        }
         return `${资源名}:${百分比}%`;
       })
       .join(' | ') || '无';
   };
-  const 释放消耗 = 构建比例消耗(Math.max(6, Math.round(品质基准 * 释放倍率 * 工具倍率)));
-  const 维持消耗 = 构建比例消耗(Math.max(2, Math.round(品质基准 * 维持倍率 * 工具倍率)));
+  const 释放消耗 = 构建比例消耗(Math.max(6, Math.round(品质基准 * 释放倍率 * 工具倍率)), '启动');
+  const 维持消耗 = 构建比例消耗(Math.max(2, Math.round(品质基准 * 维持倍率 * 工具倍率)), '维持');
   return `${释放消耗} 维持:${维持消耗}`;
 }
 
@@ -23078,6 +23304,7 @@ function autoGenerateSkill(
     目标: blueprint.释放形态 === '造物承载' ? '自身' : '单体',
     passiveMode,
     // 武魂真身的本系专属增幅为自身施加，同属性不限数量（R02），不做五环去重。
+    ...(blueprint?.代表魂技强制 === true ? { 忽略五环占用: true } : {}),
     ...(String(options?.来源 || options?.sourceCategory || '').trim() === '真身生成' &&
       (武魂真身专属增幅机制_V1[type] || []).includes(String(archetype || '').trim()) ? { 忽略五环占用: true } : {}),
   };
@@ -23120,6 +23347,7 @@ function autoGenerateSkill(
       食物敌对形态: String(blueprint.食物敌对形态 || '').trim(),
       目标: blueprint.目标 || '',
       加成属性候选: Object.freeze([...attrs]),
+      ...(blueprint.代表魂技强制 === true ? { 代表魂技强制: true } : {}),
     }),
     enumerable: false,
     configurable: true,
@@ -25092,7 +25320,9 @@ function ensureFusionSkillMentalCost(skill, currentRatio = 0.5) {
   if (!Array.isArray(skill._效果数组)) skill._效果数组 = [];
   const parsed = 解析技能阶段消耗_V1(skill.消耗, { 来源: '武魂融合技', sourceCategory: '武魂融合技', path: '武魂融合技.技能数据', 技能: skill });
   const toCostMap = entries => (Array.isArray(entries) ? entries : []).reduce((result, item) => {
-    const value = item.百分比 ? `${item.数值}%` : item.数值;
+    const value = item.百分比
+      ? (Number.isFinite(item.固定) ? `${item.固定}+${item.数值}%` : `${item.数值}%`)
+      : item.数值;
     result[item.资源] = result[item.资源] === undefined ? value : value;
     return result;
   }, {});
@@ -25798,7 +26028,7 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
         恢复增益重复账本缓存,
       };
       // 武魂真身的本系专属增幅为自身施加，同属性不限数量（R02），不做五环去重与属性替换。
-      const 真身专属占用豁免 = 是武魂真身候选 && (武魂真身专属增幅机制_V1[系别] || []).includes(String(生成结果?.机制原型 || '').trim());
+      const 真身专属占用豁免 = (是武魂真身候选 && (武魂真身专属增幅机制_V1[系别] || []).includes(String(生成结果?.机制原型 || '').trim())) || 生成结果?.生成蓝图?.代表魂技强制 === true;
       替换技能重复增益属性_V1(候选技能, {
         ...(context || {}),
         目标: String(候选技能.承载方式 || '').trim() === '造物承载' ? '自身' : '单体',
@@ -26138,6 +26368,7 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
     }
   }
   登记角色主效果状态_V1(context, 主效果状态);
+  登记角色代表魂技_V1(context, 接受生成蓝图?.主机制大类, 接受生成蓝图?.主机制原型, 临时技能?._效果数组 || []);
   Object.keys(skill).forEach(键 => delete skill[键]);
   强制普通魂技固定启动消耗_V1(临时技能, 基础生成选项);
   const 角色资源上限 = {
@@ -26218,6 +26449,8 @@ function ensureSkillStructGenerated(skill, context = {}) {
     hasPackedEffects = Array.isArray(skill._效果数组) && skill._效果数组.length > 0;
     本次已自动生成 = hasPackedEffects;
   }
+  // 读档规范化：旧存档里纯百分比的维持型消耗（武魂真身 / 有维持段的武魂融合技）换算成「固定魂力 + 上限百分比」。
+  迁移维持型消耗为固定加百分比_V1(skill, context);
   // R9：新生成的与存档里已有的魂骨/血脉被动都过一遍（读档也走这里；只改生成器的写法，手写的库被动形状不同不受影响）。
   if (hasPackedEffects && context?.passiveMode === true && ['魂骨技能', '血脉技能'].includes(String(context?.sourceCategory || '').trim())) {
     改写生成被动资源恢复触发_V1(skill);
@@ -33677,6 +33910,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
           const fusionElementProfile = buildElementProfileFromAttributeState(fusionAttributeState);
           ensureSkillStructGenerated(fusionData?.技能数据, {
             type: 主武魂系别,
+            角色等级: charData.属性?.等级,
             talentTier: charData.属性?.天赋梯队 || '正常',
             age: Math.max(10000, genericSkillAge),
             ringIndex: Math.max(1, Math.ceil(Number(charData.属性?.等级 || 1) / 10)),
@@ -36386,10 +36620,25 @@ try {
         value = entry.值 ?? entry.数值 ?? entry.value ?? entry.amount ?? entry.消耗;
         metadata = { ...metadata, ...entry };
       }
-      const text = String(value ?? '').trim();
+      let text = String(value ?? '').trim();
       if (!text || text === '无') {
         illegal.push(`COST_VALUE_MISSING:${resourceName}:${phaseName}`);
         return;
+      }
+      // 固定 + 百分比复合写法（维持型真身/融合技的魂力消耗）："30000+10%" 或解析器给出的 {数值, 百分比, 固定}。
+      // 固定段并入运行时的绝对修正项，支付时 = 固定 + 百分比 × 支付者上限；纯百分比/纯绝对值写法不受影响。
+      let fixedPart = 0;
+      const compositeMatch = /^(\d+(?:\.\d+)?)\s*\+\s*(\d+(?:\.\d+)?%)$/.exec(text);
+      if (compositeMatch) {
+        fixedPart = Number(compositeMatch[1]);
+        text = compositeMatch[2];
+      }
+      if (metadata.固定 !== undefined) {
+        if (typeof metadata.固定 !== 'number' || !Number.isFinite(metadata.固定) || metadata.固定 < 0) {
+          illegal.push(`COST_FIXED_INVALID:${resourceName}:${phaseName}`);
+          return;
+        }
+        fixedPart += metadata.固定;
       }
       const metadataForm = metadata.形式 ?? metadata.form ?? metadata.单位 ?? metadata.unit;
       if (metadata.百分比 === true || metadata.percentage === true || metadata.isPercentage === true || /百分|percent|percentage|ratio|比例/.test(String(metadataForm || '').toLowerCase())) {
@@ -36403,7 +36652,8 @@ try {
         illegal.push(`COST_VALUE_INVALID:${resourceName}:${text}:${phaseName}`);
         return;
       }
-      const delta = metadata.绝对修正 === undefined ? 0 : metadata.绝对修正;
+      const modifier = metadata.绝对修正 === undefined ? 0 : metadata.绝对修正;
+      const delta = typeof modifier === 'number' ? modifier + fixedPart : modifier;
       if (typeof delta !== 'number' || !Number.isFinite(delta)) {
         illegal.push(`COST_ABSOLUTE_DELTA_INVALID:${resourceName}:${phaseName}`);
         return;
@@ -36784,7 +37034,10 @@ try {
     return Object.entries(costs || {})
       .filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== '' && String(value).trim() !== '0')
       .map(([resource, value]) => `${resource}:${value && typeof value === 'object'
-        ? `${value.值}（绝对修正${value.绝对修正 >= 0 ? '+' : ''}${value.绝对修正}）`
+        // 百分比 + 正的固定段（含维持型真身/融合技的固定魂力）写成「固定+百分比」，与技能存档里的消耗写法一致。
+        ? /%$/.test(String(value.值 ?? '').trim()) && Number(value.绝对修正) > 0
+          ? `${Math.round(value.绝对修正 * 100) / 100}+${String(value.值).trim()}`
+          : `${value.值}（绝对修正${value.绝对修正 >= 0 ? '+' : ''}${value.绝对修正}）`
         : typeof value === 'number' ? Math.round(value * 100) / 100 : String(value).trim()}`)
       .join('；');
   }
@@ -135059,7 +135312,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       }
       if (stop > 0) stops.push({ stop: clamp(stop, 0, 1), price: priced() });
     };
-    if (!hasStateFlag(unit, 'disarm')) consider({ actionKind: 'BASIC_ATTACK', targetIds: [attackerId] }, null);
+    // The unit's own basic attack, as the candidates offer it (engagementCandidates): its windup decides whether a clash is in
+    // time. 11-14: without it a 精神系 whose basic attack is too slow to clash was taken to clash every basic attack back for
+    // 4.4% (it was never offered one), and a 强攻系 out of 魂力 kept to its stance for 40 rounds.
+    if (!hasStateFlag(unit, 'disarm')) consider({ actionKind: 'BASIC_ATTACK', targetIds: [attackerId], skill: basicAttackSkill(unit) }, null);
     const guards = [];
     if (!hasStateFlag(unit, 'silence') && !preview.isSummonSkillDisabled(unit)) {
       const own = affordablePreparedSkills(unit), budget = preview.reactionWindupBudget(attacker, move, unit);
@@ -150358,7 +150614,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       维持态: true,
       制造速度倍率: Number(marker.制造速度倍率 || 1.3),
       产物效果倍率: Number(marker.产物效果倍率 || 1.3),
-      维持消耗: marker.维持消耗 || '魂力:8%',
+      维持消耗: marker.维持消耗 || '魂力:12000+4%',
       维持存在效果列表: [],
       维持释放效果列表: [],
     };
@@ -155788,7 +156044,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         维持态: true,
         制造速度倍率: 1.3,
         产物效果倍率: 1.3,
-        维持消耗: '魂力:8%',
+        维持消耗: '魂力:12000+4%',
       };
       ['duration', '持续回合', '剩余回合', '剩余tick', '持续tick', '结束tick', '有效期至tick', '剩余窗口'].forEach(field => delete maintenanceState[field]);
       actor.状态效果['坚挺金苍蝇·武魂真身维持'] = maintenanceState;

@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:fd02ab35ffcdced0b6a5ab56509c72e05ec83cd9d7a024e3d0580638504c3f29|mvu_logic_bridge.js:50b5bb206de01be17351b2c3b87fd3da4f49dc71b3c5dcfa48c36e202f757c2a|cockpit/designer-model.js:fbef98e9d498dd806861ccc585ccb66ef9fcfe47660b45f22081b856fabe483b|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:bbbae9686d5c127938d3dcfc97f2758141c1a9bc73a066c1f5a2facf51db5ee7|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:fd02ab35ffcdced0b6a5ab56509c72e05ec83cd9d7a024e3d0580638504c3f29|mvu_logic_bridge.js:1aab6b8df40d2d8623c326c629d68060fecce46a6e0e71b6191ce6df76693e36|cockpit/designer-model.js:9e32bfa817caa9c980c4cf92834dde5df98a11f18bc7cb63d626c3f82cf72617|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:1f018c2f083673031b98f7bde8035b4db8be87d961d12671bbd54cac9e144afd|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:bbbae9686d5c127938d3dcfc97f2758141c1a9bc73a066c1f5a2facf51db5ee7|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -19927,6 +19927,8 @@
   function parseSkillDesignerCostAmount(value = '') {
     const text = normalizeSkillUiText(value, '');
     if (!text || text === '无') return '';
+    // 固定 + 百分比复合写法（维持型真身/融合技的魂力消耗），整串按文本保留。
+    if (/^\d+(?:\.\d+)?\s*[+＋]\s*\d+(?:\.\d+)?%$/.test(text)) return text.replace(/\s+/g, '').replace('＋', '+');
     if (!/^\d+(?:\.\d+)?%?$/.test(text)) return null;
     return /%$/.test(text) ? text : Number(text);
   }
@@ -19977,7 +19979,7 @@
     const 启动文本 = normalizeSkillUiText(文本分段[0], '');
     结果.sustainText = normalizeSkillUiText(文本分段.slice(1).join('维持:'), '');
     const 匹配结果 = 启动文本.matchAll(
-      /(魂力|体力|精神力)\s*[:：]\s*([^|+＋]+?)(?=\s*(?:魂力|体力|精神力)\s*[:：]|[|+＋]|$)/g,
+      /(魂力|体力|精神力)\s*[:：]\s*(\d+(?:\.\d+)?\s*[+＋]\s*\d+(?:\.\d+)?%|[^|+＋]+?)(?=\s*(?:魂力|体力|精神力)\s*[:：]|[|+＋]|$)/g,
     );
     const 数值表 = {};
     Array.from(匹配结果).forEach(匹配 => {
@@ -20066,7 +20068,7 @@
       const converted = {};
       safeEntries(normalizeSkillDesignerCostValues(values)).forEach(([resource, value]) => {
         const text = normalizeSkillUiText(value, '');
-        if (/%$/.test(text)) {
+        if (/%$/.test(text) && !/[+＋]/.test(text)) {
           const ratio = Math.max(0, Number(text.replace('%', '')) || 0) / 100;
           converted[resource] = Math.max(0, Math.floor((maxByResource[resource] || 1) * ratio));
         } else {
@@ -35043,7 +35045,7 @@ ${播报文本}
           维持态: true,
           制造速度倍率: Number(usableEffect.value?.制造速度倍率 || 1.3),
           产物效果倍率: Number(usableEffect.value?.产物效果倍率 || 1.3),
-          维持消耗: '魂力:8%',
+          维持消耗: '魂力:12000+4%',
         };
         logs.push('进入坚挺金苍蝇武魂真身维持态：香肠制造速度×1.3、产物效果×1.3');
         return true;
@@ -35522,7 +35524,7 @@ ${播报文本}
       const result = { reqSp: 0, reqVit: 0, reqMen: 0, canCast: true, text: mode.upfront || '无' };
       if (!mode.upfront || mode.upfront === '无') return result;
       const matches = String(mode.upfront).matchAll(
-        /(魂力|体力|精神力)\s*[:：]\s*([^|+＋]+?)(?=\s*(?:魂力|体力|精神力)\s*[:：]|[|+＋]|$)/g,
+        /(魂力|体力|精神力)\s*[:：]\s*(\d+(?:\.\d+)?\s*[+＋]\s*\d+(?:\.\d+)?%|[^|+＋]+?)(?=\s*(?:魂力|体力|精神力)\s*[:：]|[|+＋]|$)/g,
       );
       Array.from(matches).forEach(match => {
         const label = match[1];
@@ -42552,6 +42554,8 @@ ${播报文本}
   function parseSkillDesignerCostAmount(value = '') {
     const text = normalizeSkillUiText(value, '');
     if (!text || text === '无') return '';
+    // 固定 + 百分比复合写法（维持型真身/融合技的魂力消耗），整串按文本保留。
+    if (/^\d+(?:\.\d+)?\s*[+＋]\s*\d+(?:\.\d+)?%$/.test(text)) return text.replace(/\s+/g, '').replace('＋', '+');
     if (!/^\d+(?:\.\d+)?%?$/.test(text)) return null;
     return /%$/.test(text) ? text : Number(text);
   }
@@ -42602,7 +42606,7 @@ ${播报文本}
     const 启动文本 = normalizeSkillUiText(文本分段[0], '');
     结果.sustainText = normalizeSkillUiText(文本分段.slice(1).join('维持:'), '');
     const 匹配结果 = 启动文本.matchAll(
-      /(魂力|体力|精神力)\s*[:：]\s*([^|+＋]+?)(?=\s*(?:魂力|体力|精神力)\s*[:：]|[|+＋]|$)/g,
+      /(魂力|体力|精神力)\s*[:：]\s*(\d+(?:\.\d+)?\s*[+＋]\s*\d+(?:\.\d+)?%|[^|+＋]+?)(?=\s*(?:魂力|体力|精神力)\s*[:：]|[|+＋]|$)/g,
     );
     const 数值表 = {};
     Array.from(匹配结果).forEach(匹配 => {
@@ -42691,7 +42695,7 @@ ${播报文本}
       const converted = {};
       safeEntries(normalizeSkillDesignerCostValues(values)).forEach(([resource, value]) => {
         const text = normalizeSkillUiText(value, '');
-        if (/%$/.test(text)) {
+        if (/%$/.test(text) && !/[+＋]/.test(text)) {
           const ratio = Math.max(0, Number(text.replace('%', '')) || 0) / 100;
           converted[resource] = Math.max(0, Math.floor((maxByResource[resource] || 1) * ratio));
         } else {
@@ -49911,6 +49915,8 @@ ${播报文本}
   function parseSkillDesignerCostAmount(value = '') {
     const text = normalizeSkillUiText(value, '');
     if (!text || text === '无') return '';
+    // 固定 + 百分比复合写法（维持型真身/融合技的魂力消耗），整串按文本保留。
+    if (/^\d+(?:\.\d+)?\s*[+＋]\s*\d+(?:\.\d+)?%$/.test(text)) return text.replace(/\s+/g, '').replace('＋', '+');
     if (!/^\d+(?:\.\d+)?%?$/.test(text)) return null;
     return /%$/.test(text) ? text : Number(text);
   }
@@ -49970,7 +49976,7 @@ ${播报文本}
     const 启动文本 = normalizeSkillUiText(文本分段[0], '');
     结果.sustainText = normalizeSkillUiText(文本分段.slice(1).join('维持:'), '');
     const 匹配结果 = 启动文本.matchAll(
-      /(魂力|体力|精神力)\s*[:：]\s*([^|+＋]+?)(?=\s*(?:魂力|体力|精神力)\s*[:：]|[|+＋]|$)/g,
+      /(魂力|体力|精神力)\s*[:：]\s*(\d+(?:\.\d+)?\s*[+＋]\s*\d+(?:\.\d+)?%|[^|+＋]+?)(?=\s*(?:魂力|体力|精神力)\s*[:：]|[|+＋]|$)/g,
     );
     const 数值表 = {};
     Array.from(匹配结果).forEach(匹配 => {

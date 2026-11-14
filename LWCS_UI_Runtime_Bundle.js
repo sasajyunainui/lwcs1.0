@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:fd02ab35ffcdced0b6a5ab56509c72e05ec83cd9d7a024e3d0580638504c3f29|mvu_logic_bridge.js:50b5bb206de01be17351b2c3b87fd3da4f49dc71b3c5dcfa48c36e202f757c2a|cockpit/designer-model.js:fbef98e9d498dd806861ccc585ccb66ef9fcfe47660b45f22081b856fabe483b|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:bbbae9686d5c127938d3dcfc97f2758141c1a9bc73a066c1f5a2facf51db5ee7|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:e515d11fb65d5272434ba756c81457fa2cbf0c4039c73f202ee1cc37b4769659|BehaviorDecisionPipeline_Module.js:af9b205935ae8ad04f9ad8e4613807b188302a948658c8bf869573ca06712cc2|BattleDecision_Module.js:640aa5f26e9e6fc7fa1e0b04f375349bc23f30e3df3cc4bccea775a3baa7035e|BattleRuntime_Module.js:9f90e8fbbf9c59f80a8ce2c3093f84723a08590dc21b868f276aa153c2a6f42f|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:fd02ab35ffcdced0b6a5ab56509c72e05ec83cd9d7a024e3d0580638504c3f29|mvu_logic_bridge.js:1aab6b8df40d2d8623c326c629d68060fecce46a6e0e71b6191ce6df76693e36|cockpit/designer-model.js:9e32bfa817caa9c980c4cf92834dde5df98a11f18bc7cb63d626c3f82cf72617|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:1f018c2f083673031b98f7bde8035b4db8be87d961d12671bbd54cac9e144afd|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:bbbae9686d5c127938d3dcfc97f2758141c1a9bc73a066c1f5a2facf51db5ee7|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:a4ee8cc5d00077a6318d8310f5cbbf3216c64f3ed84cd6cfe0777bba934d2039|BehaviorDecisionPipeline_Module.js:af9b205935ae8ad04f9ad8e4613807b188302a948658c8bf869573ca06712cc2|BattleDecision_Module.js:4f1e6c4abf5051c418555e265c273bcdb1a2b0bcf07645bd98a9d5e0a140eae2|BattleRuntime_Module.js:5824d9d823c20ba6f8a3315c16f7733c5410e488cd786b9ffe779a2665f676f9|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -19927,6 +19927,8 @@
   function parseSkillDesignerCostAmount(value = '') {
     const text = normalizeSkillUiText(value, '');
     if (!text || text === '无') return '';
+    // 固定 + 百分比复合写法（维持型真身/融合技的魂力消耗），整串按文本保留。
+    if (/^\d+(?:\.\d+)?\s*[+＋]\s*\d+(?:\.\d+)?%$/.test(text)) return text.replace(/\s+/g, '').replace('＋', '+');
     if (!/^\d+(?:\.\d+)?%?$/.test(text)) return null;
     return /%$/.test(text) ? text : Number(text);
   }
@@ -19977,7 +19979,7 @@
     const 启动文本 = normalizeSkillUiText(文本分段[0], '');
     结果.sustainText = normalizeSkillUiText(文本分段.slice(1).join('维持:'), '');
     const 匹配结果 = 启动文本.matchAll(
-      /(魂力|体力|精神力)\s*[:：]\s*([^|+＋]+?)(?=\s*(?:魂力|体力|精神力)\s*[:：]|[|+＋]|$)/g,
+      /(魂力|体力|精神力)\s*[:：]\s*(\d+(?:\.\d+)?\s*[+＋]\s*\d+(?:\.\d+)?%|[^|+＋]+?)(?=\s*(?:魂力|体力|精神力)\s*[:：]|[|+＋]|$)/g,
     );
     const 数值表 = {};
     Array.from(匹配结果).forEach(匹配 => {
@@ -20066,7 +20068,7 @@
       const converted = {};
       safeEntries(normalizeSkillDesignerCostValues(values)).forEach(([resource, value]) => {
         const text = normalizeSkillUiText(value, '');
-        if (/%$/.test(text)) {
+        if (/%$/.test(text) && !/[+＋]/.test(text)) {
           const ratio = Math.max(0, Number(text.replace('%', '')) || 0) / 100;
           converted[resource] = Math.max(0, Math.floor((maxByResource[resource] || 1) * ratio));
         } else {
@@ -35043,7 +35045,7 @@ ${播报文本}
           维持态: true,
           制造速度倍率: Number(usableEffect.value?.制造速度倍率 || 1.3),
           产物效果倍率: Number(usableEffect.value?.产物效果倍率 || 1.3),
-          维持消耗: '魂力:8%',
+          维持消耗: '魂力:12000+4%',
         };
         logs.push('进入坚挺金苍蝇武魂真身维持态：香肠制造速度×1.3、产物效果×1.3');
         return true;
@@ -35522,7 +35524,7 @@ ${播报文本}
       const result = { reqSp: 0, reqVit: 0, reqMen: 0, canCast: true, text: mode.upfront || '无' };
       if (!mode.upfront || mode.upfront === '无') return result;
       const matches = String(mode.upfront).matchAll(
-        /(魂力|体力|精神力)\s*[:：]\s*([^|+＋]+?)(?=\s*(?:魂力|体力|精神力)\s*[:：]|[|+＋]|$)/g,
+        /(魂力|体力|精神力)\s*[:：]\s*(\d+(?:\.\d+)?\s*[+＋]\s*\d+(?:\.\d+)?%|[^|+＋]+?)(?=\s*(?:魂力|体力|精神力)\s*[:：]|[|+＋]|$)/g,
       );
       Array.from(matches).forEach(match => {
         const label = match[1];
@@ -42552,6 +42554,8 @@ ${播报文本}
   function parseSkillDesignerCostAmount(value = '') {
     const text = normalizeSkillUiText(value, '');
     if (!text || text === '无') return '';
+    // 固定 + 百分比复合写法（维持型真身/融合技的魂力消耗），整串按文本保留。
+    if (/^\d+(?:\.\d+)?\s*[+＋]\s*\d+(?:\.\d+)?%$/.test(text)) return text.replace(/\s+/g, '').replace('＋', '+');
     if (!/^\d+(?:\.\d+)?%?$/.test(text)) return null;
     return /%$/.test(text) ? text : Number(text);
   }
@@ -42602,7 +42606,7 @@ ${播报文本}
     const 启动文本 = normalizeSkillUiText(文本分段[0], '');
     结果.sustainText = normalizeSkillUiText(文本分段.slice(1).join('维持:'), '');
     const 匹配结果 = 启动文本.matchAll(
-      /(魂力|体力|精神力)\s*[:：]\s*([^|+＋]+?)(?=\s*(?:魂力|体力|精神力)\s*[:：]|[|+＋]|$)/g,
+      /(魂力|体力|精神力)\s*[:：]\s*(\d+(?:\.\d+)?\s*[+＋]\s*\d+(?:\.\d+)?%|[^|+＋]+?)(?=\s*(?:魂力|体力|精神力)\s*[:：]|[|+＋]|$)/g,
     );
     const 数值表 = {};
     Array.from(匹配结果).forEach(匹配 => {
@@ -42691,7 +42695,7 @@ ${播报文本}
       const converted = {};
       safeEntries(normalizeSkillDesignerCostValues(values)).forEach(([resource, value]) => {
         const text = normalizeSkillUiText(value, '');
-        if (/%$/.test(text)) {
+        if (/%$/.test(text) && !/[+＋]/.test(text)) {
           const ratio = Math.max(0, Number(text.replace('%', '')) || 0) / 100;
           converted[resource] = Math.max(0, Math.floor((maxByResource[resource] || 1) * ratio));
         } else {
@@ -49911,6 +49915,8 @@ ${播报文本}
   function parseSkillDesignerCostAmount(value = '') {
     const text = normalizeSkillUiText(value, '');
     if (!text || text === '无') return '';
+    // 固定 + 百分比复合写法（维持型真身/融合技的魂力消耗），整串按文本保留。
+    if (/^\d+(?:\.\d+)?\s*[+＋]\s*\d+(?:\.\d+)?%$/.test(text)) return text.replace(/\s+/g, '').replace('＋', '+');
     if (!/^\d+(?:\.\d+)?%?$/.test(text)) return null;
     return /%$/.test(text) ? text : Number(text);
   }
@@ -49970,7 +49976,7 @@ ${播报文本}
     const 启动文本 = normalizeSkillUiText(文本分段[0], '');
     结果.sustainText = normalizeSkillUiText(文本分段.slice(1).join('维持:'), '');
     const 匹配结果 = 启动文本.matchAll(
-      /(魂力|体力|精神力)\s*[:：]\s*([^|+＋]+?)(?=\s*(?:魂力|体力|精神力)\s*[:：]|[|+＋]|$)/g,
+      /(魂力|体力|精神力)\s*[:：]\s*(\d+(?:\.\d+)?\s*[+＋]\s*\d+(?:\.\d+)?%|[^|+＋]+?)(?=\s*(?:魂力|体力|精神力)\s*[:：]|[|+＋]|$)/g,
     );
     const 数值表 = {};
     Array.from(匹配结果).forEach(匹配 => {
@@ -60070,10 +60076,25 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
         value = entry.值 ?? entry.数值 ?? entry.value ?? entry.amount ?? entry.消耗;
         metadata = { ...metadata, ...entry };
       }
-      const text = String(value ?? '').trim();
+      let text = String(value ?? '').trim();
       if (!text || text === '无') {
         illegal.push(`COST_VALUE_MISSING:${resourceName}:${phaseName}`);
         return;
+      }
+      // 固定 + 百分比复合写法（维持型真身/融合技的魂力消耗）："30000+10%" 或解析器给出的 {数值, 百分比, 固定}。
+      // 固定段并入运行时的绝对修正项，支付时 = 固定 + 百分比 × 支付者上限；纯百分比/纯绝对值写法不受影响。
+      let fixedPart = 0;
+      const compositeMatch = /^(\d+(?:\.\d+)?)\s*\+\s*(\d+(?:\.\d+)?%)$/.exec(text);
+      if (compositeMatch) {
+        fixedPart = Number(compositeMatch[1]);
+        text = compositeMatch[2];
+      }
+      if (metadata.固定 !== undefined) {
+        if (typeof metadata.固定 !== 'number' || !Number.isFinite(metadata.固定) || metadata.固定 < 0) {
+          illegal.push(`COST_FIXED_INVALID:${resourceName}:${phaseName}`);
+          return;
+        }
+        fixedPart += metadata.固定;
       }
       const metadataForm = metadata.形式 ?? metadata.form ?? metadata.单位 ?? metadata.unit;
       if (metadata.百分比 === true || metadata.percentage === true || metadata.isPercentage === true || /百分|percent|percentage|ratio|比例/.test(String(metadataForm || '').toLowerCase())) {
@@ -60087,7 +60108,8 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
         illegal.push(`COST_VALUE_INVALID:${resourceName}:${text}:${phaseName}`);
         return;
       }
-      const delta = metadata.绝对修正 === undefined ? 0 : metadata.绝对修正;
+      const modifier = metadata.绝对修正 === undefined ? 0 : metadata.绝对修正;
+      const delta = typeof modifier === 'number' ? modifier + fixedPart : modifier;
       if (typeof delta !== 'number' || !Number.isFinite(delta)) {
         illegal.push(`COST_ABSOLUTE_DELTA_INVALID:${resourceName}:${phaseName}`);
         return;
@@ -60468,7 +60490,10 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     return Object.entries(costs || {})
       .filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== '' && String(value).trim() !== '0')
       .map(([resource, value]) => `${resource}:${value && typeof value === 'object'
-        ? `${value.值}（绝对修正${value.绝对修正 >= 0 ? '+' : ''}${value.绝对修正}）`
+        // 百分比 + 正的固定段（含维持型真身/融合技的固定魂力）写成「固定+百分比」，与技能存档里的消耗写法一致。
+        ? /%$/.test(String(value.值 ?? '').trim()) && Number(value.绝对修正) > 0
+          ? `${Math.round(value.绝对修正 * 100) / 100}+${String(value.值).trim()}`
+          : `${value.值}（绝对修正${value.绝对修正 >= 0 ? '+' : ''}${value.绝对修正}）`
         : typeof value === 'number' ? Math.round(value * 100) / 100 : String(value).trim()}`)
       .join('；');
   }
@@ -158743,7 +158768,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       }
       if (stop > 0) stops.push({ stop: clamp(stop, 0, 1), price: priced() });
     };
-    if (!hasStateFlag(unit, 'disarm')) consider({ actionKind: 'BASIC_ATTACK', targetIds: [attackerId] }, null);
+    // The unit's own basic attack, as the candidates offer it (engagementCandidates): its windup decides whether a clash is in
+    // time. 11-14: without it a 精神系 whose basic attack is too slow to clash was taken to clash every basic attack back for
+    // 4.4% (it was never offered one), and a 强攻系 out of 魂力 kept to its stance for 40 rounds.
+    if (!hasStateFlag(unit, 'disarm')) consider({ actionKind: 'BASIC_ATTACK', targetIds: [attackerId], skill: basicAttackSkill(unit) }, null);
     const guards = [];
     if (!hasStateFlag(unit, 'silence') && !preview.isSummonSkillDisabled(unit)) {
       const own = affordablePreparedSkills(unit), budget = preview.reactionWindupBudget(attacker, move, unit);
@@ -174042,7 +174070,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       维持态: true,
       制造速度倍率: Number(marker.制造速度倍率 || 1.3),
       产物效果倍率: Number(marker.产物效果倍率 || 1.3),
-      维持消耗: marker.维持消耗 || '魂力:8%',
+      维持消耗: marker.维持消耗 || '魂力:12000+4%',
       维持存在效果列表: [],
       维持释放效果列表: [],
     };
@@ -179472,7 +179500,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         维持态: true,
         制造速度倍率: 1.3,
         产物效果倍率: 1.3,
-        维持消耗: '魂力:8%',
+        维持消耗: '魂力:12000+4%',
       };
       ['duration', '持续回合', '剩余回合', '剩余tick', '持续tick', '结束tick', '有效期至tick', '剩余窗口'].forEach(field => delete maintenanceState[field]);
       actor.状态效果['坚挺金苍蝇·武魂真身维持'] = maintenanceState;

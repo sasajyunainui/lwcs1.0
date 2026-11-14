@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:e515d11fb65d5272434ba756c81457fa2cbf0c4039c73f202ee1cc37b4769659|BehaviorDecisionPipeline_Module.js:af9b205935ae8ad04f9ad8e4613807b188302a948658c8bf869573ca06712cc2|BattleDecision_Module.js:640aa5f26e9e6fc7fa1e0b04f375349bc23f30e3df3cc4bccea775a3baa7035e|BattleRuntime_Module.js:9f90e8fbbf9c59f80a8ce2c3093f84723a08590dc21b868f276aa153c2a6f42f|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:a4ee8cc5d00077a6318d8310f5cbbf3216c64f3ed84cd6cfe0777bba934d2039|BehaviorDecisionPipeline_Module.js:af9b205935ae8ad04f9ad8e4613807b188302a948658c8bf869573ca06712cc2|BattleDecision_Module.js:4f1e6c4abf5051c418555e265c273bcdb1a2b0bcf07645bd98a9d5e0a140eae2|BattleRuntime_Module.js:5824d9d823c20ba6f8a3315c16f7733c5410e488cd786b9ffe779a2665f676f9|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -6615,10 +6615,25 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
         value = entry.值 ?? entry.数值 ?? entry.value ?? entry.amount ?? entry.消耗;
         metadata = { ...metadata, ...entry };
       }
-      const text = String(value ?? '').trim();
+      let text = String(value ?? '').trim();
       if (!text || text === '无') {
         illegal.push(`COST_VALUE_MISSING:${resourceName}:${phaseName}`);
         return;
+      }
+      // 固定 + 百分比复合写法（维持型真身/融合技的魂力消耗）："30000+10%" 或解析器给出的 {数值, 百分比, 固定}。
+      // 固定段并入运行时的绝对修正项，支付时 = 固定 + 百分比 × 支付者上限；纯百分比/纯绝对值写法不受影响。
+      let fixedPart = 0;
+      const compositeMatch = /^(\d+(?:\.\d+)?)\s*\+\s*(\d+(?:\.\d+)?%)$/.exec(text);
+      if (compositeMatch) {
+        fixedPart = Number(compositeMatch[1]);
+        text = compositeMatch[2];
+      }
+      if (metadata.固定 !== undefined) {
+        if (typeof metadata.固定 !== 'number' || !Number.isFinite(metadata.固定) || metadata.固定 < 0) {
+          illegal.push(`COST_FIXED_INVALID:${resourceName}:${phaseName}`);
+          return;
+        }
+        fixedPart += metadata.固定;
       }
       const metadataForm = metadata.形式 ?? metadata.form ?? metadata.单位 ?? metadata.unit;
       if (metadata.百分比 === true || metadata.percentage === true || metadata.isPercentage === true || /百分|percent|percentage|ratio|比例/.test(String(metadataForm || '').toLowerCase())) {
@@ -6632,7 +6647,8 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
         illegal.push(`COST_VALUE_INVALID:${resourceName}:${text}:${phaseName}`);
         return;
       }
-      const delta = metadata.绝对修正 === undefined ? 0 : metadata.绝对修正;
+      const modifier = metadata.绝对修正 === undefined ? 0 : metadata.绝对修正;
+      const delta = typeof modifier === 'number' ? modifier + fixedPart : modifier;
       if (typeof delta !== 'number' || !Number.isFinite(delta)) {
         illegal.push(`COST_ABSOLUTE_DELTA_INVALID:${resourceName}:${phaseName}`);
         return;
@@ -7013,7 +7029,10 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     return Object.entries(costs || {})
       .filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== '' && String(value).trim() !== '0')
       .map(([resource, value]) => `${resource}:${value && typeof value === 'object'
-        ? `${value.值}（绝对修正${value.绝对修正 >= 0 ? '+' : ''}${value.绝对修正}）`
+        // 百分比 + 正的固定段（含维持型真身/融合技的固定魂力）写成「固定+百分比」，与技能存档里的消耗写法一致。
+        ? /%$/.test(String(value.值 ?? '').trim()) && Number(value.绝对修正) > 0
+          ? `${Math.round(value.绝对修正 * 100) / 100}+${String(value.值).trim()}`
+          : `${value.值}（绝对修正${value.绝对修正 >= 0 ? '+' : ''}${value.绝对修正}）`
         : typeof value === 'number' ? Math.round(value * 100) / 100 : String(value).trim()}`)
       .join('；');
   }
@@ -105288,7 +105307,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       }
       if (stop > 0) stops.push({ stop: clamp(stop, 0, 1), price: priced() });
     };
-    if (!hasStateFlag(unit, 'disarm')) consider({ actionKind: 'BASIC_ATTACK', targetIds: [attackerId] }, null);
+    // The unit's own basic attack, as the candidates offer it (engagementCandidates): its windup decides whether a clash is in
+    // time. 11-14: without it a 精神系 whose basic attack is too slow to clash was taken to clash every basic attack back for
+    // 4.4% (it was never offered one), and a 强攻系 out of 魂力 kept to its stance for 40 rounds.
+    if (!hasStateFlag(unit, 'disarm')) consider({ actionKind: 'BASIC_ATTACK', targetIds: [attackerId], skill: basicAttackSkill(unit) }, null);
     const guards = [];
     if (!hasStateFlag(unit, 'silence') && !preview.isSummonSkillDisabled(unit)) {
       const own = affordablePreparedSkills(unit), budget = preview.reactionWindupBudget(attacker, move, unit);
@@ -120587,7 +120609,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       维持态: true,
       制造速度倍率: Number(marker.制造速度倍率 || 1.3),
       产物效果倍率: Number(marker.产物效果倍率 || 1.3),
-      维持消耗: marker.维持消耗 || '魂力:8%',
+      维持消耗: marker.维持消耗 || '魂力:12000+4%',
       维持存在效果列表: [],
       维持释放效果列表: [],
     };
@@ -126017,7 +126039,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         维持态: true,
         制造速度倍率: 1.3,
         产物效果倍率: 1.3,
-        维持消耗: '魂力:8%',
+        维持消耗: '魂力:12000+4%',
       };
       ['duration', '持续回合', '剩余回合', '剩余tick', '持续tick', '结束tick', '有效期至tick', '剩余窗口'].forEach(field => delete maintenanceState[field]);
       actor.状态效果['坚挺金苍蝇·武魂真身维持'] = maintenanceState;
