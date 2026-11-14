@@ -165,9 +165,11 @@ var TypeMultipliers = {
   防御系: { sp_max: 1.0, men_max: 1.0, str: 0.9, def: 1.5, agi: 0.7, vit_max: 1.0 },
   敏攻系: { sp_max: 1.0, men_max: 1.0, str: 0.8, def: 0.7, agi: 1.6, vit_max: 0.8 },
   控制系: { sp_max: 1.0, men_max: 1.2, str: 0.9, def: 0.8, agi: 1.1, vit_max: 0.9 },
-  辅助系: { sp_max: 1.0, men_max: 1.2, str: 0.7, def: 0.6, agi: 0.8, vit_max: 0.7 },
-  食物系: { sp_max: 1.0, men_max: 1.2, str: 0.7, def: 0.6, agi: 0.8, vit_max: 0.7 },
-  治疗系: { sp_max: 1.0, men_max: 1.2, str: 0.7, def: 0.6, agi: 0.8, vit_max: 0.7 },
+  // 辅助、食物、治疗系 敏捷 0.8 → 0.6、防御 0.6 → 0.45（用户 2026-11-14「辅助系，食物系，治疗系的敏捷和防御需要调低才行」）：
+  // 训练加成按基础属性算、不乘系别倍率，原先 75 级时这三系最终敏捷仍有强攻系的 87%、防御 71%；现在约 70%、59%（按平均天赋）。
+  辅助系: { sp_max: 1.0, men_max: 1.2, str: 0.7, def: 0.45, agi: 0.6, vit_max: 0.7 },
+  食物系: { sp_max: 1.0, men_max: 1.2, str: 0.7, def: 0.45, agi: 0.6, vit_max: 0.7 },
+  治疗系: { sp_max: 1.0, men_max: 1.2, str: 0.7, def: 0.45, agi: 0.6, vit_max: 0.7 },
   精神系: { sp_max: 1.0, men_max: 1.7, str: 0.7, def: 0.6, agi: 0.8, vit_max: 0.7 },
   元素系: { sp_max: 1.0, men_max: 1.5, str: 0.8, def: 0.6, agi: 0.8, vit_max: 0.7 },
   召唤系: { sp_max: 1.0, men_max: 1.35, str: 0.8, def: 0.8, agi: 0.8, vit_max: 0.8 },
