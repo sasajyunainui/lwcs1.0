@@ -6868,6 +6868,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
           const fusionElementProfile = buildElementProfileFromAttributeState(fusionAttributeState);
           ensureSkillStructGenerated(fusionData?.技能数据, {
             type: 主武魂系别,
+            角色等级: charData.属性?.等级,
             talentTier: charData.属性?.天赋梯队 || '正常',
             age: Math.max(10000, genericSkillAge),
             ringIndex: Math.max(1, Math.ceil(Number(charData.属性?.等级 || 1) / 10)),

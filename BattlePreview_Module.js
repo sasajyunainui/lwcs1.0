@@ -252,10 +252,25 @@
         value = entry.值 ?? entry.数值 ?? entry.value ?? entry.amount ?? entry.消耗;
         metadata = { ...metadata, ...entry };
       }
-      const text = String(value ?? '').trim();
+      let text = String(value ?? '').trim();
       if (!text || text === '无') {
         illegal.push(`COST_VALUE_MISSING:${resourceName}:${phaseName}`);
         return;
+      }
+      // 固定 + 百分比复合写法（维持型真身/融合技的魂力消耗）："30000+10%" 或解析器给出的 {数值, 百分比, 固定}。
+      // 固定段并入运行时的绝对修正项，支付时 = 固定 + 百分比 × 支付者上限；纯百分比/纯绝对值写法不受影响。
+      let fixedPart = 0;
+      const compositeMatch = /^(\d+(?:\.\d+)?)\s*\+\s*(\d+(?:\.\d+)?%)$/.exec(text);
+      if (compositeMatch) {
+        fixedPart = Number(compositeMatch[1]);
+        text = compositeMatch[2];
+      }
+      if (metadata.固定 !== undefined) {
+        if (typeof metadata.固定 !== 'number' || !Number.isFinite(metadata.固定) || metadata.固定 < 0) {
+          illegal.push(`COST_FIXED_INVALID:${resourceName}:${phaseName}`);
+          return;
+        }
+        fixedPart += metadata.固定;
       }
       const metadataForm = metadata.形式 ?? metadata.form ?? metadata.单位 ?? metadata.unit;
       if (metadata.百分比 === true || metadata.percentage === true || metadata.isPercentage === true || /百分|percent|percentage|ratio|比例/.test(String(metadataForm || '').toLowerCase())) {
@@ -269,7 +284,8 @@
         illegal.push(`COST_VALUE_INVALID:${resourceName}:${text}:${phaseName}`);
         return;
       }
-      const delta = metadata.绝对修正 === undefined ? 0 : metadata.绝对修正;
+      const modifier = metadata.绝对修正 === undefined ? 0 : metadata.绝对修正;
+      const delta = typeof modifier === 'number' ? modifier + fixedPart : modifier;
       if (typeof delta !== 'number' || !Number.isFinite(delta)) {
         illegal.push(`COST_ABSOLUTE_DELTA_INVALID:${resourceName}:${phaseName}`);
         return;
@@ -650,7 +666,10 @@
     return Object.entries(costs || {})
       .filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== '' && String(value).trim() !== '0')
       .map(([resource, value]) => `${resource}:${value && typeof value === 'object'
-        ? `${value.值}（绝对修正${value.绝对修正 >= 0 ? '+' : ''}${value.绝对修正}）`
+        // 百分比 + 正的固定段（含维持型真身/融合技的固定魂力）写成「固定+百分比」，与技能存档里的消耗写法一致。
+        ? /%$/.test(String(value.值 ?? '').trim()) && Number(value.绝对修正) > 0
+          ? `${Math.round(value.绝对修正 * 100) / 100}+${String(value.值).trim()}`
+          : `${value.值}（绝对修正${value.绝对修正 >= 0 ? '+' : ''}${value.绝对修正}）`
         : typeof value === 'number' ? Math.round(value * 100) / 100 : String(value).trim()}`)
       .join('；');
   }

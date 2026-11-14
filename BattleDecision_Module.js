@@ -65992,7 +65992,10 @@
       }
       if (stop > 0) stops.push({ stop: clamp(stop, 0, 1), price: priced() });
     };
-    if (!hasStateFlag(unit, 'disarm')) consider({ actionKind: 'BASIC_ATTACK', targetIds: [attackerId] }, null);
+    // The unit's own basic attack, as the candidates offer it (engagementCandidates): its windup decides whether a clash is in
+    // time. 11-14: without it a 精神系 whose basic attack is too slow to clash was taken to clash every basic attack back for
+    // 4.4% (it was never offered one), and a 强攻系 out of 魂力 kept to its stance for 40 rounds.
+    if (!hasStateFlag(unit, 'disarm')) consider({ actionKind: 'BASIC_ATTACK', targetIds: [attackerId], skill: basicAttackSkill(unit) }, null);
     const guards = [];
     if (!hasStateFlag(unit, 'silence') && !preview.isSummonSkillDisabled(unit)) {
       const own = affordablePreparedSkills(unit), budget = preview.reactionWindupBudget(attacker, move, unit);

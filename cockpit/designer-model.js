@@ -6552,6 +6552,8 @@
   function parseSkillDesignerCostAmount(value = '') {
     const text = normalizeSkillUiText(value, '');
     if (!text || text === '无') return '';
+    // 固定 + 百分比复合写法（维持型真身/融合技的魂力消耗），整串按文本保留。
+    if (/^\d+(?:\.\d+)?\s*[+＋]\s*\d+(?:\.\d+)?%$/.test(text)) return text.replace(/\s+/g, '').replace('＋', '+');
     if (!/^\d+(?:\.\d+)?%?$/.test(text)) return null;
     return /%$/.test(text) ? text : Number(text);
   }
@@ -6602,7 +6604,7 @@
     const 启动文本 = normalizeSkillUiText(文本分段[0], '');
     结果.sustainText = normalizeSkillUiText(文本分段.slice(1).join('维持:'), '');
     const 匹配结果 = 启动文本.matchAll(
-      /(魂力|体力|精神力)\s*[:：]\s*([^|+＋]+?)(?=\s*(?:魂力|体力|精神力)\s*[:：]|[|+＋]|$)/g,
+      /(魂力|体力|精神力)\s*[:：]\s*(\d+(?:\.\d+)?\s*[+＋]\s*\d+(?:\.\d+)?%|[^|+＋]+?)(?=\s*(?:魂力|体力|精神力)\s*[:：]|[|+＋]|$)/g,
     );
     const 数值表 = {};
     Array.from(匹配结果).forEach(匹配 => {
@@ -6691,7 +6693,7 @@
       const converted = {};
       safeEntries(normalizeSkillDesignerCostValues(values)).forEach(([resource, value]) => {
         const text = normalizeSkillUiText(value, '');
-        if (/%$/.test(text)) {
+        if (/%$/.test(text) && !/[+＋]/.test(text)) {
           const ratio = Math.max(0, Number(text.replace('%', '')) || 0) / 100;
           converted[resource] = Math.max(0, Math.floor((maxByResource[resource] || 1) * ratio));
         } else {
