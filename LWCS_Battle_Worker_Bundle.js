@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:245189efee522fea0a19ac41c90853d80cc04bbf70df312e770aab7d47e50839|MVU_Schema_Runtime.js:454e4a242dce5e02d69c3def2993d350ac50f39dcb667f2fc6f09488f34461dd|BattlePreview_Module.js:a4ee8cc5d00077a6318d8310f5cbbf3216c64f3ed84cd6cfe0777bba934d2039|BehaviorDecisionPipeline_Module.js:af9b205935ae8ad04f9ad8e4613807b188302a948658c8bf869573ca06712cc2|BattleDecision_Module.js:8bab39524a334608ea3781bb174a9d65a0cba3bad67f59b5dd43c5e789a69dae|BattleRuntime_Module.js:5824d9d823c20ba6f8a3315c16f7733c5410e488cd786b9ffe779a2665f676f9 */
+/* sources-sha256: MVU_Skill_Runtime.js:e287e386469604c6970d00bf4eeab21e71f9fad0ec665feec9b69063126d714f|MVU_Schema_Runtime.js:454e4a242dce5e02d69c3def2993d350ac50f39dcb667f2fc6f09488f34461dd|BattlePreview_Module.js:2ecb5eaba436269e9f9c96076972415034ae833e4e3a184a6d5e77fd4c0f7429|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:536deaa8a981c91c4c3212ceb3d5c35df9157130b1218992094f4be9728be15f|BattleRuntime_Module.js:69a52cc80291e0ec74d2a28e8a0e4d81e2b0d1136567cdb43179f50865174868 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -4640,11 +4640,12 @@ var SKILL_MECHANISM_NAME_TO_PROTOTYPES_V1 = Object.freeze({
   认知扭曲: [原型编译条目('状态施加', { 状态: '精神紊乱' })],
   // 标记原写成 −100%，只是给预算缩放的比例；标记现在有自己的战斗效果（被标记者闪避下降），改为正常幅度。条目不变。
   目标锁定: [原型编译条目('状态施加', { 状态: '标记', 数值: '-10%' }), 原型编译条目('判定修正', { 目标: '自身', 判定: '命中', 数值: '+10%' })],
-  自身位移: [原型编译条目('位移执行', { 目标: '自身', 位移类型: '瞬移', 位移对象: '自身' }), 原型编译条目('判定修正', { 目标: '自身', 判定: '闪避', 数值: '+20%' })],
+  自身位移: [原型编译条目('位移执行', { 目标: '自身', 位移类型: '瞬移', 位移对象: '自身' })],
   强制位移: [原型编译条目('位移执行', { 目标: '单体', 位移类型: '击退', 位移对象: '目标', 驱动属性: '魂力上限', 影响方向: '效果强度' }), 原型编译条目('判定修正', { 目标: '单体', 判定: '闪避', 数值: '-10%' })],
   位移交换: [原型编译条目('位移执行', { 目标: '单体', 位移类型: '换位', 位移对象: '自身与目标', 驱动属性: '魂力上限', 影响方向: '效果强度' })],
-  追击位移: [原型编译条目('位移执行', { 目标: '单体', 位移类型: '拉近', 位移对象: '自身' }), 原型编译条目('判定修正', { 目标: '自身', 判定: '命中', 数值: '+10%' })],
-  脱离位移: [原型编译条目('位移执行', { 目标: '自身', 位移类型: '脱离', 位移对象: '自身' }), 原型编译条目('判定修正', { 目标: '自身', 判定: '闪避', 数值: '+20%' }), 原型编译条目('结算修正', { 目标: '自身', 结算: '前摇', 数值: '-20%' })],
+  // 位移重做：拉近已含自身下一击命中 +20%、目标闪避 −50%，不再额外带命中 +10%（同轴重复）。
+  追击位移: [原型编译条目('位移执行', { 目标: '单体', 位移类型: '拉近', 位移对象: '自身' })],
+  脱离位移: [原型编译条目('位移执行', { 目标: '自身', 位移类型: '脱离', 位移对象: '自身' }), 原型编译条目('结算修正', { 目标: '自身', 结算: '前摇', 数值: '-20%' })],
   追击: [原型编译条目('判定修正', { 目标: '自身', 判定: '命中', 数值: '+10%' }), 原型编译条目('结算修正', { 目标: '单体', 结算: '受到伤害', 数值: '+20%' })],
   分身: [原型编译条目('召唤生成', { 召唤物名称: '分身' }), 原型编译条目('判定修正', { 判定: '闪避', 数值: '+20%' }), 原型编译条目('结算修正', { 结算: '受到伤害', 数值: '-20%' })],
   复制: [原型编译条目('复制执行')],
@@ -4898,6 +4899,7 @@ var SKILL_PROTOTYPE_FIELD_TYPE_V1 = Object.freeze({
   结算标签: '枚举',
   抗性类型: '枚举',
   打断效果: '布尔',
+  必定成立: '布尔',
   位移类型: '枚举',
   位移对象: '枚举',
   距离: '数字',
@@ -5242,7 +5244,7 @@ var SKILL_PROTOTYPE_DEFINITION_LIST_V1 = Object.freeze([
   ['机制授予', '战斗结算', '可赋予', ['授予效果', '触发条件', '触发限制', '可用次数', '持续回合', '驱动属性', '影响方向'], ['授予效果', '触发条件'], '临时授予技能、状态或效果'],
   ['复制执行', '战斗结算', '上下文', ['复制类型', '复制模式', '保存上限', '削减比例', '可用次数', '保留回合', '保留时长tick', '驱动属性', '影响方向'], ['复制类型', '复制模式'], '复制技能、属性或全部'],
   ['时光回溯', '战斗结算', '可赋予', ['发动方式', '驱动属性', '影响方向'], [], '主动释放时压低目标反应；被动在目标结算前回到本回合开始战斗态并阻断落地'],
-  ['位移执行', '行为推导', '上下文', ['位移类型', '位移对象', '距离', '数值', '持续回合', '驱动属性', '影响方向'], ['位移类型', '位移对象'], '拉近、击退、换位、瞬移或脱离，并按位移幅度折算战斗收益或压制'],
+  ['位移执行', '行为推导', '上下文', ['位移类型', '位移对象', '距离', '数值', '持续回合', '必定成立', '驱动属性', '影响方向'], ['位移类型', '位移对象'], '拉近、击退、换位、瞬移或脱离：一次性战斗效果（下一次来袭的躲避、下一次出手的命中与对手反应、打断蓄力、本回合援护与反击窗口）；瞬移与换位无前摇；瞬移、脱离可给单体友方，换位可对友方（替挡）或敌方；必定成立只用于换位（对敌方不判修为压制）'],
   ['决策干扰', '行为推导', '上下文', ['干扰', '数值', '持续回合', '驱动属性', '影响方向'], ['干扰', '数值'], '干扰行动判断或索敌判断的候选权重池'],
   ['修炼增益', '战斗外', '可赋予', ['收益类型', '修炼属性', '训练方式', '数值', '有效期tick', '对应等级'], ['收益类型', '数值'], '修正指定属性修炼速度或指定训练方式收益'],
   ['天赋提升', '战斗外', '可赋予', ['上限梯队', '提升档数', '对应等级'], [], '提升角色天赋梯队，默认提升一级；上限梯队限制提升后不得超过的档位'],
@@ -5474,15 +5476,30 @@ var SKILL_UNIT_COST_TABLE_V1 = Object.freeze({
   机制授予: 25,
   复制执行: Object.freeze({ 复制属性: 70, 复制技能: 90, 复制全部: 130 }),
   时光回溯: 200,
-  // 位移按战斗里实际落下的效果定价（用户 2026-11-14「位置用效果仿真」「这个你来调整就行」）：BattlePreview 把位移折成
-  // 命中/闪避/反应 ±（距离÷100，5%～25%），最低一档约等于判定修正 5% 的价（3～3.5）。原先瞬移 50，同样只给闪避 +5%，
-  // 「自身位移」模板（瞬移 + 闪避 +20%）因此 53.5 COST，闪避被压到 +5%。换位两边都动，略贵。
-  位移执行: Object.freeze({ 换位: 8, 脱离: 5, 拉近: 5, 击退: 5, 瞬移: 5 }),
+  // 位移重做（S81，用户 2026-11-14 批准）：位移改成一次性、效果到位（BattlePreview deriveStateCombatEffect 位移执行），单价按「一次性
+  // 等效」从本表折算——一次性效果只管一次来袭或一次出手，而 1 回合的判定修正管整回合的全部受击与出手，折算系数 0.5。上午按旧的弱实现
+  // （距离÷100，5%～25%）压到 8/5/5/5/5，现在回调：
+  //   瞬移  下一次来袭 95% 躲开（闪避 0.7×95 = 66.5）＋ 自己下一击命中 +10%（命中 0.6×10 = 6）＋ 目标反应 −30%（反应 0.95×30 = 28.5）
+  //         = 101 × 0.5 = 50.5 → 50（用户：回到 50 量级）。
+  //   脱离  下一次来袭闪避 +50%（0.7×50 = 35）＋ 本回合敌方反击窗口关闭（≈ 反击强度 7%，反击 3×7 = 21）= 56 × 0.5 = 28。
+  //   拉近  下一击目标闪避 −50%（0.7×50 = 35）＋ 自己命中 +20%（0.6×20 = 12）= 47 × 0.5 = 23.5 → 24。
+  //   击退  目标下一击命中 −30%（0.6×30 = 18）＋ 反应 −15%（0.95×15 = 14.25）＋ 打断蓄力（判定修正.打断效果 18）= 50.25 × 0.5 = 25。
+  //   换位  同一个技能的目标决定对谁：对友方 = 一次必躲 66.5 × 0.5 = 33；对敌方 = (反应 −30% 28.5 ＋ 打断 18) × 修为压制成功率约五成 × 0.5
+  //         ≈ 23。一个技能一个价，取较高的友方档 33。
+  位移执行: Object.freeze({ 换位: 33, 脱离: 28, 拉近: 24, 击退: 25, 瞬移: 50 }),
   决策干扰: Object.freeze({ 判断干扰: 0.6, 索敌干扰: 0.75 }),
   召唤生成: Object.freeze({
     本命召唤兽: 50, 分身: 28, 器灵: 35, 其他召唤生物: 30, 魂师: 30, 魂兽: 30, 深渊生物: 30,
   }),
 });
+
+// 位移重做：「必定成立」的换位（玄武召唤，第 551 章：对手在百米内就无法抵挡）去掉了修为压制判定与护盾失败。单价表的换位 33 按「友方一次必躲」档取值，
+// 敌方档（反应 −30% 28.5 + 打断 18 = 46.5 ×0.5 折算 ≈ 23）本来要乘修为压制成功率才成立；必定成立后敌方档不再打折，并附带本回合援护盖不到它
+// （无法折算的战术收益），整体按「确定能落地的强制拉近 + 打断」≈ 瞬移的 50 量级计：33 × 1.6 = 52.8。起始值，COST 复核时可调。
+var 位移必定成立加价倍率_V1 = 1.6;
+// 位移友方目标生成：仅这几个系别的自身位移 / 脱离位移，按此概率改成帮单体友方位移（起始值）。
+var 位移友方目标生成系别_V1 = Object.freeze(['辅助系', '防御系', '控制系', '精神系']);
+var 位移友方目标生成概率_V1 = 0.15;
 
 // 机制授予壳按内含效果比例计价（用户 2026-11-12："按比例吧 *1.2倍？"）：壳本身 = 授予效果 COST 之和 × 机制授予壳比例_V1，
 // 再乘壳原有的目标与期限系数（原先是固定 25 × 这些系数，按期限涨到 36.25 / 45 / 51.25）。上表的 机制授予: 25 只留给旧版计价。
@@ -7686,7 +7703,7 @@ function 读取技能机制原型条目基础预算档_V1(条目 = {}, 上下文
   if (原型 === '时光回溯') return 固定(Number(SKILL_UNIT_COST_TABLE_V1.时光回溯 || 200));
   if (原型 === '位移执行') {
     const 类型 = String(条目.位移类型 || '击退').trim() || '击退';
-    const 单位 = Number(SKILL_UNIT_COST_TABLE_V1.位移执行?.[类型] ?? 8);
+    const 单位 = Number(SKILL_UNIT_COST_TABLE_V1.位移执行?.[类型] ?? 8) * (类型 === '换位' && 条目.必定成立 === true ? 位移必定成立加价倍率_V1 : 1);
     const 有覆写 = 技能原型字段值是百分比修正_V1(条目.数值);
     const 原强度 = 有覆写 ? Math.abs(parseSkillSignedChangeNumber(条目.数值)) * 100 : 1;
     if (有覆写 && 原强度 === 0) return 固定(0);
@@ -9214,13 +9231,15 @@ function 登记角色主效果状态_V1(context = {}, 主效果 = null) {
 var 系别代表主机制大类_V1 = {
   强攻系: ['伤害类'],
   敏攻系: ['增益类'], // 用户：「敏攻就是攻速同提」：强制抽取增益类里的多属性增益（力量+敏捷）；识别见 技能是敏攻攻速增益_V1，单纯伤害技不算
-  元素系: ['伤害类'],
+  // 精神系、元素系的代表看形态不看定位（用户 2026-11-14：「精神系可以走控制，可以走强攻，可以走辅助……元素也一样」）。
+  元素系: [], // 生成的元素系魂技一律带武魂元素（附带属性），每个都体现形态，不强制抽取
   控制系: ['控制类'],
   防御系: ['防御类'],
   辅助系: ['增益类'],
   治疗系: ['回复类'], // 强制抽取：回复类且子原型限定为 生命恢复/持续恢复（回血）；识别见 技能含生命恢复_V1
   食物系: [], // 用户：「食物的核心其实就是造物，所以无所谓具体效果」：食物系技能一律是造物承载，每个都是代表，不强制抽取
-  精神系: ['感知/认知类', '控制类'],
+  // 强制抽取的大类生成后都走精神力（伤害为精神攻击、状态/判定类驱动换成精神力上限）；识别见 技能体现精神形态_V1
+  精神系: ['伤害类', '控制类', '削弱类', '感知/认知类'],
   召唤系: ['特殊规则类'],
 };
 
@@ -9270,15 +9289,40 @@ function 技能是敏攻攻速增益_V1(效果数组 = []) {
   return 有攻击 && 有速度;
 }
 
+// 精神系代表：打精神伤害，或有效果以精神力上限驱动（增益、恢复等任何方向都算）。
+function 技能体现精神形态_V1(效果数组 = []) {
+  let 有 = false;
+  const 访问 = 节点 => {
+    if (有 || !节点 || typeof 节点 !== 'object') return;
+    if (Array.isArray(节点)) { 节点.forEach(访问); return; }
+    if (String(节点.伤害类型 || '').trim() === '精神攻击' || String(节点.驱动属性 || '').trim() === '精神力上限') 有 = true;
+    Object.values(节点).forEach(访问);
+  };
+  访问(效果数组);
+  return 有;
+}
+
 function 魂技是系别代表_V1(type = '', 主机制大类 = '', 主机制原型 = '', 效果数组 = []) {
   const 系别 = String(type || '').trim();
   if (系别 === '治疗系') return 技能含生命恢复_V1(效果数组);
   if (系别 === '敏攻系') return 技能是敏攻攻速增益_V1(效果数组);
-  if (系别 === '食物系') return true;
+  if (系别 === '食物系' || 系别 === '元素系') return true;
+  if (系别 === '精神系' && 技能体现精神形态_V1(效果数组)) return true;
   const 限定 = 系别代表限定子原型_V1[系别]?.[主机制大类];
   if (限定) return 限定.includes(String(主机制原型 || '').trim());
   if ((系别代表主机制大类_V1[系别] || []).includes(主机制大类)) return true;
   return false;
+}
+
+// 双生武魂（用户 2026-11-14「双生武魂不需要两个武魂都遵守代表魂技要求」）：武魂键取自 path 的第二段（第1武魂/第2武魂）。
+function 读取技能生成武魂键_V1(context = {}) {
+  const 匹配 = String(context?.path || context?.路径 || '').trim().match(/^char.[^.]+.([^.]+)./);
+  return 匹配 ? 匹配[1] : '';
+}
+
+function 角色是双生武魂_V1(context = {}) {
+  const 第二 = context?.角色?.第2武魂;
+  return !!第二 && typeof 第二 === 'object' && !Array.isArray(第二);
 }
 
 function 读取角色代表魂技账本_V1() {
@@ -9292,9 +9336,10 @@ function 登记角色代表魂技_V1(context = {}, 主机制大类 = '', 主机�
   if (!角色键 || !(魂环位 >= 1) || !主机制大类) return;
   if (String(context?.sourceCategory || '魂技').trim() !== '魂技' || context?.passiveMode === true || context?.forceTrueBody === true) return;
   const 账本 = 读取角色代表魂技账本_V1();
-  const 旧序号 = 账本.findIndex(项 => 项.角色键 === 角色键 && 项.魂环位 === 魂环位);
+  const 武魂键 = 读取技能生成武魂键_V1(context);
+  const 旧序号 = 账本.findIndex(项 => 项.角色键 === 角色键 && 项.魂环位 === 魂环位 && (!角色是双生武魂_V1(context) || (项.武魂键 || '') === 武魂键));
   if (旧序号 >= 0) 账本.splice(旧序号, 1);
-  账本.push({ 角色键, 魂环位, 主机制大类, 主机制原型, 代表: 魂技是系别代表_V1(context?.type || context?.系别 || '', 主机制大类, 主机制原型, 效果数组) });
+  账本.push({ 角色键, 武魂键, 魂环位, 主机制大类, 主机制原型, 代表: 魂技是系别代表_V1(context?.type || context?.系别 || '', 主机制大类, 主机制原型, 效果数组) });
 }
 
 // 返回本魂技必须落入的代表大类列表；不必强制（非自动生成魂技、真身、组内已有代表）时返回 null。
@@ -9307,11 +9352,21 @@ function 读取代表魂技要求_V1(type = '', ringIndex = 1, options = {}) {
   const 总环数 = Math.max(0, Math.floor(Number(options?.当前魂环数量 || options?.ringCount || 0)));
   const 组末 = 魂环位 === 1 || 魂环位 % 3 === 0 || (总环数 >= 魂环位 && 魂环位 === 总环数) || 魂环位 >= 9;
   if (!组末) return null;
-  if (魂环位 === 1 || 魂环位 >= 9) return 代表大类;
-  const 角色键 = 读取技能生成角色键_V1(options);
+  const 双生 = 角色是双生武魂_V1(options);
+  const 本武魂键 = 读取技能生成武魂键_V1(options);
+  const 角色键0 = 读取技能生成角色键_V1(options);
+  if (魂环位 === 1 || 魂环位 >= 9) {
+    // 双生武魂：第一与最后的要求，另一个武魂同魂环位已有代表就算满足。
+    if (双生 && 角色键0 && 本武魂键 && 读取角色代表魂技账本_V1().some(项 => 项.角色键 === 角色键0 && 项.代表 && 项.魂环位 === 魂环位 && (项.武魂键 || '') !== 本武魂键)) return null;
+    return 代表大类;
+  }
+  const 角色键 = 角色键0;
   if (!角色键) return null;
   const 组起 = Math.floor((魂环位 - 1) / 3) * 3 + 1;
-  const 已有代表 = 读取角色代表魂技账本_V1().some(项 => 项.角色键 === 角色键 && 项.代表 && 项.魂环位 >= 组起 && 项.魂环位 < 魂环位);
+  // 双生武魂：同一组的魂技两个武魂合起来判定（另一个武魂的同组魂技全部算入）。
+  const 已有代表 = 读取角色代表魂技账本_V1().some(项 => 项.角色键 === 角色键 && 项.代表 &&
+    (双生 && (项.武魂键 || '') !== 本武魂键 ? 项.魂环位 >= 组起 && 项.魂环位 < 组起 + 3
+      : (!双生 || (项.武魂键 || '') === 本武魂键) && 项.魂环位 >= 组起 && 项.魂环位 < 魂环位));
   return 已有代表 ? null : 代表大类;
 }
 
@@ -11210,6 +11265,15 @@ function 构建机制编译输入覆盖列表_V1(机制名 = '', 原型列表 = 
       字段.训练方式 ??= '冥想';
       字段.数值 ??= 数值倍率(品质范围({ C: [1.08, 1.12], B: [1.15, 1.22], A: [1.24, 1.34], S: [1.36, 1.5], 'S+': [1.5, 1.65] }, 1.15), 1.15, 1, true);
       字段.有效期tick ??= Math.max(6, 持续回合 * 6);
+    } else if (原型 === '位移执行') {
+      // 给他人位移（用户 2026-11-14「无论是自己瞬移，还是帮别人瞬移都是如此」，古月娜的空间掌控、玄冥置换）: 辅助/防御/控制/精神系的自身位移、脱离位移
+      // 小概率改成帮单体友方位移（瞬移/脱离落在友方，友方得到一次躲避）；换位的友方/敌方由声明的目标定，不在这里改。主机制才改，副机制保持自身。
+      if (!副机制 && ['自身位移', '脱离位移'].includes(机制) && 位移友方目标生成系别_V1.includes(系别) && 位移友方目标生成概率_V1 > 0 && Math.random() < 位移友方目标生成概率_V1) {
+        字段.目标 = '单体';
+        字段.位移对象 = '目标';
+        字段.驱动属性 ??= '魂力上限';
+        字段.影响方向 ??= '效果强度';
+      }
     }
     return 字段;
   };
@@ -12020,6 +12084,8 @@ function 清理执行效果原型语义_V1(原型 = '', 字段 = {}, 上下文 =
     if (String(字段.目标 || '').trim() === '自身' && String(字段.位移类型 || '').trim() === '换位') 字段.位移类型 = '瞬移';
     字段.位移对象 = 推断位移执行对象_V1(字段);
     if (String(字段.目标 || '').trim() === '自身') 字段.位移对象 = '自身';
+    // 必定成立（玄武召唤，第 551 章）只对换位有意义：其余位移或写 false 的一律不落盘。
+    if (字段.必定成立 !== true || String(字段.位移类型 || '').trim() !== '换位') delete 字段.必定成立;
     if (位移执行目标需要判定_V1(字段)) {
       if (!String(字段.驱动属性 || '').trim()) 字段.驱动属性 = '魂力上限';
       if (!String(字段.影响方向 || '').trim()) 字段.影响方向 = '效果强度';
@@ -12990,7 +13056,11 @@ function 断言技能执行效果原型契约_V1(effectArray = [], path = '_效�
       if ((位移类型 === '换位' || 位移对象 === '自身与目标') && (!目标 || 目标 === '自身')) throw new Error(`技能执行结构错误:${path}[${index}]换位必须提供自身以外目标`);
       if (位移类型 === '换位' && 位移对象 !== '自身与目标') throw new Error(`技能执行结构错误:${path}[${index}]换位必须声明自身与目标双参与者`);
       if (位移类型 !== '换位' && 位移对象 === '自身与目标') throw new Error(`技能执行结构错误:${path}[${index}]非换位不能使用自身与目标双参与者`);
-      if (['瞬移', '脱离'].includes(位移类型) && 位移对象 !== '自身') throw new Error(`技能执行结构错误:${path}[${index}]${位移类型}只能移动自身`);
+      // 位移重做（用户 2026-11-14「无论是自己瞬移，还是帮别人瞬移都是如此」）: 瞬移/脱离可以给单体友方（位移对象=目标，目标=单体；落在敌方的由战斗侧忽略）。
+      if (['瞬移', '脱离'].includes(位移类型) && 位移对象 === '自身与目标') throw new Error(`技能执行结构错误:${path}[${index}]${位移类型}不能使用自身与目标双参与者`);
+      if (['瞬移', '脱离'].includes(位移类型) && 位移对象 === '目标' && 目标 !== '单体') throw new Error(`技能执行结构错误:${path}[${index}]${位移类型}给他人只允许单体目标`);
+      if (effect.必定成立 !== undefined && typeof effect.必定成立 !== 'boolean') throw new Error(`技能执行结构错误:${path}[${index}]必定成立必须是布尔值`);
+      if (effect.必定成立 !== undefined && 位移类型 !== '换位') throw new Error(`技能执行结构错误:${path}[${index}]必定成立只允许用于换位`);
       if (effect.数量 !== undefined) throw new Error(`技能执行结构错误:${path}[${index}]位移执行不允许触发次数或数量`);
       if (Number(effect.距离 || 0) <= 0) throw new Error(`技能执行结构错误:${path}[${index}]位移幅度必须大于0`);
       if (Number(effect.距离 || 0) > 30) throw new Error(`技能执行结构错误:${path}[${index}]位移幅度不能超过30`);
@@ -20398,11 +20468,10 @@ function 转译单条执行效果_V1(效果 = {}, 选项 = {}) {
       const 位移类型 = 格式化技能结构转译字段_V1(效果.位移类型, '位移');
       const 距离 = Math.max(1, Number(效果.距离 || 1));
       const 位移对象 = String(效果.位移对象 || '').trim();
-      if (位移对象 === '自身与目标') return `按位移幅度扰乱自身与${目标}的战斗节奏，折算为双方反应与闪避变化${附加}`;
-      if (位移对象 === '自身') {
-        return `自身以${目标}为参照执行${位移类型}，按位移幅度转化为自身闪避与命中窗口${附加}`;
-      }
-      return `以${位移类型}扰乱${目标}行动，按位移幅度折算为反应、闪避与命中压制${附加}`;
+      // 位移重做（S81）：一次性效果，具体数值见 BattlePreview deriveStateCombatEffect 位移执行。
+      const 位移说明 = 读取位移执行效果说明_V1(String(效果.位移类型 || '').trim(), 目标, 效果);
+      if (位移说明) return `${位移说明}${附加}`;
+      return `以${位移类型}改变${目标}的战斗节奏${附加}`;
     }
     case '决策干扰':
       return `${格式化技能结构转译字段_V1(效果.干扰, '判断干扰') === '索敌干扰' ? '干扰' + 目标 + '索敌判断' : '干扰' + 目标 + '行动判断'}${数值 ? `，干扰强度${数值}` : ''}${附加}`;
@@ -20718,6 +20787,19 @@ function 推断技能结构分类_V1(技能 = {}) {
   return '辅助';
 }
 
+// 位移重做（S81，用户 2026-11-14）：位移是一次性效果，说明按战斗里落下的语义写（数值同 BattlePreview deriveStateCombatEffect 位移执行）。
+function 读取位移执行效果说明_V1(位移类型 = '', 目标 = '目标', 效果 = {}) {
+  const 给他人 = String(效果?.位移对象 || '').trim() === '目标';
+  if (位移类型 === '瞬移' && 给他人) return '瞬间送' + 目标 + '移动（无前摇）：其下一次来袭的攻击有95%被躲开；之后其下一次攻击命中+10%，目标应对这一击的反应-30%';
+  if (位移类型 === '脱离' && 给他人) return '助' + 目标 + '脱离接触：其下一次来袭闪避+50%，本回合敌方不能对其反击追击';
+  if (位移类型 === '瞬移') return '瞬间移动（无前摇）：下一次来袭的攻击有95%被躲开；之后自身下一次攻击命中+10%，目标应对这一击的反应-30%';
+  if (位移类型 === '脱离') return '脱离接触：下一次来袭闪避+50%，本回合敌方不能对自身反击追击';
+  if (位移类型 === '拉近') return '拉近距离：自身下一次攻击，' + 目标 + '闪避-50%、自身命中+20%';
+  if (位移类型 === '击退') return '击退' + 目标 + '：打断其蓄力，其下一次攻击命中-30%、下一次应对的反应-15%';
+  if (位移类型 === '换位') return '瞬间换位（无前摇）：与友方换位时，友方下一次来袭改由自身承受（无人可替则躲开）；与敌方换位时' + (效果?.必定成立 === true ? '必定成立（不判修为压制，护盾也挡不住）' : '按修为压制判定（护盾中的目标无效）') + '，打断' + 目标 + '的蓄力、本回合援护与护卫盖不到它、其下一次反应-30%';
+  return '';
+}
+
 function 编译技能结构为人类语言_V1(技能或效果数组 = {}, 选项 = {}) {
   const 技能 = Array.isArray(技能或效果数组) ? { _效果数组: 技能或效果数组 } : (技能或效果数组 && typeof 技能或效果数组 === 'object' ? 技能或效果数组 : {});
   const 显示预算诊断 = 选项.显示预算诊断 === true;
@@ -20874,9 +20956,9 @@ function buildSingleSkillEffectSummary(effect) {
       const 距离 = Math.max(1, Number(effect.距离 || 1));
       const 位移类型 = String(effect.位移类型 || '位移');
       const 位移对象 = String(effect.位移对象 || '').trim();
-      if (位移对象 === '自身与目标' || 位移类型 === '换位') return '扰乱自身与' + target + '的战斗节奏，位移幅度' + formatSkillNumber(距离) + 持续文本;
-      if (位移对象 === '自身') return '自身以' + target + '为参照执行' + 位移类型 + '，位移幅度' + formatSkillNumber(距离) + 持续文本;
-      return '以' + 位移类型 + '扰乱' + target + '行动，位移幅度' + formatSkillNumber(距离) + 持续文本;
+      const 位移说明 = 读取位移执行效果说明_V1(位移类型, target, effect);
+      if (位移说明) return 位移说明 + 持续文本;
+      return '以' + 位移类型 + '改变' + target + '的战斗节奏，位移幅度' + formatSkillNumber(距离) + 持续文本;
     }
     case '决策干扰':
       return (String(effect.干扰 || '').trim() === '索敌干扰' ? '干扰' + target + '索敌判断' : '干扰' + target + '行动判断') + '，干扰强度' + String(effect.数值 || '') + 持续文本;
@@ -21115,15 +21197,15 @@ function buildSingleSkillEffectSummary(effect) {
     case '目标锁定':
       return '锁定' + target + '的行动轨迹，持续' + formatSkillNumber(effect.持续回合) + '回合，提高追踪命中';
     case '自身位移':
-      return '使' + target + '获得短时闪避与命中窗口';
+      return '使' + target + '瞬移：下一次来袭有95%被躲开，下一次出手命中+10%';
     case '强制位移':
-      return '压制' + target + '的反应与闪避';
+      return '击退' + target + '：打断蓄力，其下一次攻击命中与反应下降';
     case '位移交换':
-      return '扰乱与' + target + '的战斗节奏并制造锁定窗口';
+      return '与' + target + '换位：友方替躲一击，敌方被打断蓄力并拉出援护';
     case '追击位移':
-      return '追击' + target + '并提高后续命中与伤害';
+      return '拉近' + target + '：下一次攻击目标难以闪避、命中提高';
     case '脱离位移':
-      return '使' + target + '获得脱离收益并提高反应';
+      return '使' + target + '脱离接触：下一次来袭闪避+50%，本回合免于被反击';
     case '隐身':
       return '使' + target + '进入隐身状态，持续' + formatSkillNumber(effect.持续回合) + '回合';
     case '破隐':
@@ -45291,6 +45373,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (/敌方|对方/.test(targetText)) return false;
     if (prototype === '伤害结算' || prototype === '机制抹消') return false;
     if (prototype === '召唤生成' || prototype === '机制授予' || prototype === '规则防御') return true;
+    // 位移重做: 瞬移/脱离的位移对象是「目标」时，是帮单体友方位移（受益者是友方）；换位两边都可以，默认按敌方拉人，对友方由声明的目标决定。
+    if (prototype === '位移执行') return /瞬移|脱离/.test(String(effect?.位移类型 || '')) && String(effect?.位移对象 || '').trim() === '目标';
     // 时光回溯: 被动 guards its target (an ally), 主动 presses it (an enemy); 复制执行 copies an enemy unless it is 复刻友方.
     if (prototype === '时光回溯') return String(effect?.发动方式 || '被动').trim() !== '主动';
     if (prototype === '复制执行') return String(effect?.复制模式 || '').trim() === '复刻友方';
@@ -45454,8 +45538,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const explicitFriendly = /友方|己方/.test(targetText);
       const explicitHostile = /敌方|对方/.test(targetText);
       const targetsAllies = effectTargetsAllies(effect);
-      const requiresFriendly = explicitFriendly || (!explicitHostile && targetsAllies);
-      const requiresHostile = explicitHostile || (!explicitFriendly && !targetsAllies);
+      // 位移重做: 换位两边都行（对友方是替挡/换到身边，对敌方是拉进阵中），由声明的目标决定。
+      const swapEitherSide = effectPrototype === '位移执行' && /换位/.test(String(effect?.位移类型 || '')) && !explicitFriendly && !explicitHostile;
+      const requiresFriendly = !swapEitherSide && (explicitFriendly || (!explicitHostile && targetsAllies));
+      const requiresHostile = !swapEitherSide && (explicitHostile || (!explicitFriendly && !targetsAllies));
       const sideMatched = declaredTargets.filter(target => {
         if (excludesActorEndpoint && unitId(target) === unitId(actor)) return false;
         const targetSide = mechanicalProjectionProfile(
@@ -45624,6 +45710,19 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }];
   }
 
+  // 位移重做: which side of the cast a recipient of a position effect stands on (self / ally / enemy), and the round it was cast in.
+  function positionRecipientFields(world = {}, actor = {}, target = {}) {
+    const same = unitId(actor) === unitId(target);
+    const role = same ? 'self' : sideOf(world, actor) && sideOf(world, actor) === sideOf(world, target) ? 'ally' : 'enemy';
+    const round = Number(world?.回合);
+    return { __位移接收者: role, ...(Number.isFinite(round) ? { __当前回合: round } : {}) };
+  }
+  // 位移重做（S81，用户 2026-11-14）的起始值。单价见 MVU_Skill_Runtime SKILL_UNIT_COST_TABLE_V1.位移执行（一次性等效折算）。
+  const POSITION_BLINK_EVADE = 0.95, POSITION_BLINK_HIT = 0.10, POSITION_BLINK_TARGET_REACTION = 0.30;
+  const POSITION_DISENGAGE_DODGE = 0.5;
+  const POSITION_PULL_HIT = 0.2, POSITION_PULL_AVOID_CUT = 0.5;
+  const POSITION_KNOCKBACK_HIT = 0.3, POSITION_KNOCKBACK_REACTION = 0.15;
+  const POSITION_SWAP_ENEMY_REACTION = 0.3;
   const MARK_DODGE_MIN_PRICING_VERSION = 2;
   function deriveStateCombatEffect(effect = {}) {
     const state = String(effect?.状态 || effect?.状态名称 || '').trim();
@@ -45715,17 +45814,65 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       combatEffect.position_type = positionType;
       combatEffect.position_object = String(effect?.位移对象 || '').trim();
       combatEffect.position_distance = Math.max(0, Number(effect?.距离 || 0));
-      combatEffect.position_projection = '命中、闪避、索敌、反应和姿态窗口';
-      if (/拉近|突进|追击/.test(positionType)) {
-        combatEffect.hit_bonus = Math.max(Number(combatEffect.hit_bonus || 0), distanceFactor);
-        combatEffect.reaction_bonus = Math.max(Number(combatEffect.reaction_bonus || 0), distanceFactor * 0.5);
+      combatEffect.position_projection = '一次性：下一次来袭的闪避、下一次出手的命中与对手反应、打断蓄力、本回合援护与反击窗口';
+      // 位移重做（S81，用户 2026-11-14「几乎相当于100%闪避了，同时有10%命中加成」「瞬移后降低敌方反应」）: 位移不再给持续期间的
+      // 命中/闪避/反应小加成（距离÷100，5%～25%），而是一次性、效果到位——每一项记在 position_once 里，对应的那一次发生后
+      // 即被取走（consumePositionOnce：来袭攻击结算后取走 dodge，自己出手后取走 hit 与 target_reaction，自己应对后取走
+      // reaction），都取走后状态移除。接收者按 __位移接收者（self / ally / enemy，由调用方写入）区分：换位对两边各给各的。
+      //   瞬移  self  下一次来袭攻击 95% 躲开（命中被压到 5%）；之后自己下一次出手命中 +10%，目标对这一击的反应较量 −30%。
+      //   脱离  self  下一次来袭闪避 +50%；本回合敌方对自己的反击窗口关闭（counter_closed_round）。
+      //   拉近  self  下一次出手：目标闪避 −50% 与自己命中 +20%，在命中概率里同口径相加（命中 +70%）。
+      //   击退  enemy 打断蓄力；其下一次出手命中 −30%、下一次应对的反应 −15%。
+      //   换位  ally 同瞬移的躲避（这一击落空于队友）；enemy 打断蓄力、本回合援护/护卫盖不到它（no_cover_round）、下一次应对反应 −30%。
+      // 瞬移、换位瞬间发动，前摇按 0（normalizeInstantPositionWindup，在入战时处理技能的 前摇 字段）。
+      const role = String(effect?.__位移接收者 || 'self').trim();
+      const round = Number.isFinite(Number(effect?.__当前回合)) ? Number(effect.__当前回合) : null;
+      const once = {};
+      const blink = () => {
+        combatEffect.dodge_bonus = POSITION_BLINK_EVADE; once.dodge = true;
+        combatEffect.incoming_only = true;
+      };
+      // 给他人位移（用户 2026-11-14「无论是自己瞬移，还是帮别人瞬移都是如此」）: 瞬移/脱离落在友方，友方得到这一次躲避（瞬移对友方只给躲避，命中与目标反应
+      // 的突袭窗口是出手一方自己的）；落在敌方（接收者 enemy）什么都不给，免得「帮」敌人躲一击。
+      if (/瞬移/.test(positionType)) {
+        if (role !== 'enemy') {
+          blink();
+          if (role === 'self') {
+            combatEffect.hit_bonus = POSITION_BLINK_HIT; once.hit = true;
+            combatEffect.target_reaction_penalty = POSITION_BLINK_TARGET_REACTION; once.target_reaction = true;
+          }
+        }
+      } else if (/脱离/.test(positionType)) {
+        if (role !== 'enemy') {
+          combatEffect.dodge_bonus = POSITION_DISENGAGE_DODGE; once.dodge = true;
+          combatEffect.counter_window_closed = true;
+          if (round !== null) combatEffect.counter_closed_round = round;
+        }
+      } else if (/拉近|突进|追击/.test(positionType)) {
+        combatEffect.hit_bonus = POSITION_PULL_HIT + POSITION_PULL_AVOID_CUT; once.hit = true;
+        combatEffect.position_pull_detail = { hit: POSITION_PULL_HIT, targetAvoidCut: POSITION_PULL_AVOID_CUT };
       } else if (/击退|击飞/.test(positionType)) {
-        combatEffect.hit_penalty = Math.max(Number(combatEffect.hit_penalty || 0), distanceFactor);
-        combatEffect.reaction_penalty = Math.max(Number(combatEffect.reaction_penalty || 0), distanceFactor * 0.5);
-      } else if (/脱离|瞬移|换位/.test(positionType)) {
-        combatEffect.dodge_bonus = Math.max(Number(combatEffect.dodge_bonus || 0), distanceFactor);
-        combatEffect.reaction_bonus = Math.max(Number(combatEffect.reaction_bonus || 0), distanceFactor * 0.5);
+        if (role !== 'self') {
+          combatEffect.hit_penalty = POSITION_KNOCKBACK_HIT; once.hit = true;
+          combatEffect.reaction_mult_penalty = POSITION_KNOCKBACK_REACTION; once.reaction = true;
+          combatEffect.interrupt_charge = true;
+        }
+      } else if (/换位/.test(positionType)) {
+        combatEffect.instant_windup = true;
+        if (role === 'ally') {
+          // 友方换位（第 86/110 章替队友挡致命一击，第 324 章把友方换到身边配合）: 友方这一击改由施法者承受（BattleRuntime chooseSwapCover，
+          // 来招落到施法者身上，友方这次躲避随之取走）；施法者接不住时（倒下、被控）友方照常 95% 躲开。
+          blink();
+          const coverName = String(effect?.来源角色 || '').trim();
+          if (coverName) combatEffect.swap_cover_source = coverName;
+        } else if (role === 'enemy') {
+          combatEffect.reaction_mult_penalty = POSITION_SWAP_ENEMY_REACTION; once.reaction = true;
+          combatEffect.interrupt_charge = true;
+          combatEffect.no_cover = true;
+          if (round !== null) combatEffect.no_cover_round = round;
+        }
       }
+      if (Object.keys(once).length) combatEffect.position_once = once;
     }
     if (prototype === '决策干扰') {
       const interference = String(effect?.干扰 || '').trim();
@@ -46839,7 +46986,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       Number(effect?.__previewApplicationProbability ?? 1) <= 1e-12
     ) return false;
     unit.状态效果 = unit.状态效果 && typeof unit.状态效果 === 'object' ? unit.状态效果 : {};
-    const existingEntry = findStateEntry(unit, effect, source);
+    // 位移重做: a recipient the position leaves nothing on (the caster of a swap, say) gets no state at all.
+    if (String(effect?.原型 || '').trim() === '位移执行') {
+      const derived = deriveStateCombatEffect(effect);
+      if (!derived.position_once && derived.counter_window_closed !== true && derived.no_cover !== true) return false;
+    }
+    let existingEntry = findStateEntry(unit, effect, source);
+    // 位移重做: a position state is one-shot and may be half spent; casting it again re-arms it whole.
+    if (existingEntry && String(effect?.原型 || '').trim() === '位移执行') {
+      delete unit.状态效果[existingEntry[0]];
+      existingEntry = null;
+    }
     const ownIdentity = ownAttributeStateIdentity(unit, effect, source);
     const stackable = effect?.可叠加 === true || /叠加|层数/.test(String(effect?.叠加规则 || effect?.层数规则 || ''));
     const requestedDuration = Math.max(1, Number(effect?.持续回合 || 1));
@@ -47014,6 +47171,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         'dodge_penalty',
         'reaction_bonus',
         'reaction_penalty',
+        'reaction_mult_penalty',
+        'target_reaction_penalty',
+        'incoming_only',
         'cannot_react',
         'skip_turn',
       ],
@@ -47969,7 +48129,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       projection: String(combatEffect?.position_projection || '命中、闪避、索敌、反应和姿态窗口'),
       modelApplied: true,
       combatEffect: cloneValue(combatEffect),
-      modelReason: '位移幅度已转换为命中、闪避与反应行为池差量',
+      modelReason: '位移按一次性效果落地：下一次来袭的躲避、下一次出手的命中与对手反应、打断蓄力、本回合援护与反击窗口',
     };
   }
 
@@ -50305,7 +50465,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 effect?.成功率 ?? effect?.触发概率,
                 1,
               )
-            : 1) * stateApplicationProbabilityMultiplier(currentStateTarget, effect);
+            : 1) * stateApplicationProbabilityMultiplier(currentStateTarget, effect) *
+            (prototype === '位移执行' && unitId(actor) !== unitId(currentStateTarget)
+              ? positionSwapSuccessMultiplier(actor, currentStateTarget, effect, { hostile: sideOf(context.worldSnapshot, actor) !== sideOf(context.worldSnapshot, currentStateTarget) })
+              : 1);
           const resolvedApplicationProbability =
             typeof context?.applicationProbabilityResolver === 'function'
             ? context.applicationProbabilityResolver({
@@ -50427,6 +50590,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           const currentTarget = overlay.readUnit(unitId(target));
           const sourcedEffect = {
             ...effect,
+            ...(prototype === '位移执行' ? positionRecipientFields(context.worldSnapshot, context?.actor, target) : {}),
             ...stateApplicationSourceNames(context?.actor, context?.declaration, effect),
             // A passive's payloads of one trigger settle as separate declarations sharing one activation (__castIdentity).
             来源动作ID: castIdentity(context?.declaration?.__castIdentity || context.rootActionId),
@@ -55291,7 +55455,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     for (const entry of result.contributions || []) if (!deferredIds.has(entry.effectInstanceId) &&
       entry.evidence?.marginal !== false && contributionProbability(entry) > 1e-12 &&
       ['ACTION_CANCELLED', 'STATE_CHANGED', 'NEXT_ACTION_QUALITY_CHANGED'].includes(entry.outcomeKind) &&
-      structuredControlConsumesActiveOpportunity({ 状态: entry.evidence?.state, 战斗效果: entry.evidence?.combatEffect })) interrupted.add(entry.targetId);
+      (entry.evidence?.combatEffect?.interrupt_charge === true ||
+        structuredControlConsumesActiveOpportunity({ 状态: entry.evidence?.state, 战斗效果: entry.evidence?.combatEffect }))) interrupted.add(entry.targetId);
     if (interrupted.size) {
       const overlay = new PreviewOverlay(world, 'resolved-charge-interruptions:' + (result.actionId || ''));
       let changed = false;
@@ -59581,8 +59746,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       effect: state?.战斗效果 || {},
     }));
     const effectContributions = [];
+    // 位移重做: a one-shot incoming-only dodge (瞬移's 95%, an ally swapped out) counts in the hit roll alone, not in the reaction contest.
     const dodgeModifier = stateEffects.reduce((sum, entry) => {
-      const value = Number(entry.effect?.dodge_bonus || 0) * 100 - Number(entry.effect?.dodge_penalty || 0) * 100;
+      const value = (entry.effect?.incoming_only === true ? 0 : Number(entry.effect?.dodge_bonus || 0) * 100) - Number(entry.effect?.dodge_penalty || 0) * 100;
       if (value) effectContributions.push({ kind: 'add', value, source: `${entry.source}·闪避修正` });
       return sum + value;
     }, 0);
@@ -59603,9 +59769,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       1.65,
     );
     const stanceMultiplier = stance === 'PURSUIT' ? 1.08 : 1;
-    const value = Math.max(0, base * conditionFactor * resourcePressure * stanceMultiplier + dodgeModifier + reactionModifier - hardControlPenalty);
+    // 位移重做: 击退 / 换位 leave the unit's next reaction cut by a share (reaction_mult_penalty, one-shot), multiplicative on the base.
+    const reactionScale = clamp(stateEffects.reduce((scale, entry) => scale * (1 - clamp(Number(entry.effect?.reaction_mult_penalty || 0), 0, 0.9)), 1), 0.1, 1);
+    const value = Math.max(0, base * conditionFactor * resourcePressure * stanceMultiplier * reactionScale + dodgeModifier + reactionModifier - hardControlPenalty);
     return Object.freeze({
       value,
+      reactionScale,
       stance,
       agility: agilityBreakdown,
       spirit,
@@ -59947,7 +60116,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   function calculateReactionContest(reactor = {}, sourceActor = {}, declaration = null) {
     const reactionDetails = calculateWithdrawalPressureDetails(reactor, sourceActor, 'WITHDRAW');
     const attackDetails = calculateWithdrawalPressureDetails(sourceActor, reactor, 'PURSUIT');
-    const reactionPressure = reactionDetails.value;
+    // 位移重做: the source's one-shot "target reaction −X%" (瞬移's突袭 −30%) cuts the reactor's pressure in this contest.
+    const surpriseCut = clamp(stateEntries(sourceActor, 'WITHDRAWAL').reduce((sum, [, state]) => sum + Math.max(0, Number(state?.战斗效果?.target_reaction_penalty || 0)), 0), 0, 0.9);
+    const reactionPressure = reactionDetails.value * (1 - surpriseCut);
     const attackPressure = attackDetails.value;
     const share = reactionPressure / Math.max(1, reactionPressure + attackPressure);
     // 战斗经验：双方经验差 × EXPERIENCE_DODGE_SLOPE（差 0.3 约 ±9%）。
@@ -59975,6 +60146,106 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       reactionAgilityBreakdown: reactionDetails.agility,
       sourceAgilityBreakdown: attackDetails.agility,
     });
+  }
+
+  // 位移重做（S81）: the one-shot effects a position state leaves (deriveStateCombatEffect position_once), taken once the thing they
+  // are for has happened. Axes: dodge — an incoming attack was rolled against the holder; hit — the holder made an attack;
+  // target_reaction — likewise, the holder's attack met its targets' reaction cut; reaction — the holder made a reaction.
+  // A state with nothing left that lasts (no counter-window closing, no cover denial) is removed. `exceptSourceActionId`: states
+  // the same action laid are not spent by that action itself. Returns what was spent, [{ key, state, axes }].
+  const POSITION_ONCE_FIELDS = Object.freeze({
+    dodge: Object.freeze(['dodge_bonus', 'incoming_only']),
+    hit: Object.freeze(['hit_bonus', 'hit_penalty']),
+    target_reaction: Object.freeze(['target_reaction_penalty']),
+    reaction: Object.freeze(['reaction_mult_penalty']),
+  });
+  function consumePositionOnce(unit = {}, axes = [], options = {}) {
+    const spent = [];
+    const states = unit?.状态效果;
+    if (!states || typeof states !== 'object' || Array.isArray(states)) return spent;
+    const wanted = (Array.isArray(axes) ? axes : [axes]).filter(axis => POSITION_ONCE_FIELDS[axis]);
+    if (!wanted.length) return spent;
+    const sourceActionId = String(options?.exceptSourceActionId || '').trim();
+    for (const [key, state] of Object.entries(states)) {
+      const effects = state?.战斗效果;
+      const once = effects?.position_once;
+      if (!once || typeof once !== 'object') continue;
+      if (sourceActionId && String(state?.来源动作ID || '').trim() === sourceActionId) continue;
+      const taken = [];
+      for (const axis of wanted) {
+        if (!once[axis]) continue;
+        POSITION_ONCE_FIELDS[axis].forEach(field => { if (field in effects) effects[field] = field === 'incoming_only' ? false : 0; });
+        delete once[axis];
+        taken.push(axis);
+      }
+      if (!taken.length) continue;
+      spent.push({ key, state: stateName(state), axes: taken });
+      if (!Object.keys(once).length) {
+        delete effects.position_once;
+        if (effects.counter_window_closed !== true && effects.no_cover !== true) delete states[key];
+      }
+    }
+    return spent;
+  }
+  // 本回合敌方对 `unit` 的反击窗口是否关了（脱离）/ 它是否被换位拉出了援护与护卫的覆盖（换位）。
+  function positionStateActiveInRound(unit = {}, flag = '', roundField = '', round = 0) {
+    return collectStateEntries(unit).some(([, state]) => state?.战斗效果?.[flag] === true &&
+      (state.战斗效果[roundField] === undefined || Number(state.战斗效果[roundField]) === Number(round)));
+  }
+  // 友方换位替挡（用户 2026-11-14）: `unit` 身上还没用掉的「换位」躲避，记着是谁换的——来袭落在 unit 身上之前，由那个施法者去承受。
+  function positionSwapCoverSources(unit = {}) {
+    return collectStateEntries(unit).filter(([, state]) => state?.战斗效果?.position_once?.dodge === true && String(state.战斗效果.swap_cover_source || '').trim())
+      .map(([, state]) => String(state.战斗效果.swap_cover_source).trim());
+  }
+  const positionClosesCounterWindow = (unit, round) => positionStateActiveInRound(unit, 'counter_window_closed', 'counter_closed_round', round);
+  const positionDeniesCover = (unit, round) => positionStateActiveInRound(unit, 'no_cover', 'no_cover_round', round);
+  // 换位对敌方的成功率（用户 2026-11-14，依斗二玄冥置换/玄武置换原文）: 按修为压制判定——施法者等级高于目标时高，越级时低（差 −10 级约
+  // 30%，原文里升级后换封号斗罗约三成）；对处在护盾/护罩中的目标失败（第 116/321 章）；技能写了 必定成立 的（玄武召唤，第 551 章）
+  // 不判。只对换位、只对敌方；其余原样 1。起始值。
+  function positionSwapSuccessMultiplier(actor = {}, target = {}, effect = {}, options = {}) {
+    if (String(effect?.原型 || '').trim() !== '位移执行' || !/换位/.test(String(effect?.位移类型 || ''))) return 1;
+    if (!/目标/.test(String(effect?.位移对象 || '')) || options?.hostile !== true || effect?.必定成立 === true) return 1;
+    if (!target || unitId(actor) === unitId(target)) return 1;
+    if (readShield(target) > 0) return 0;
+    return clamp(0.5 + 0.02 * (unitLevelOf(actor) - unitLevelOf(target)), 0.05, 0.95);
+  }
+  // 位移重做: 瞬移 / 换位瞬间发动，前摇按 0。统一在入战时改技能的 前摇 字段（战斗侧、决策侧都直接读 skill.前摇）：只改只含位移、
+  // 没有伤害结算的技能——带伤害的技能前摇照旧，免得一个顺带的瞬移把整招变成零前摇。原地改（调用方传入的是入战的克隆）。
+  function isInstantPositionSkill(skill = {}) {
+    let instant = false, damage = false;
+    const walk = (value, depth) => {
+      if (!value || typeof value !== 'object' || depth > 6) return;
+      if (Array.isArray(value)) { value.forEach(item => walk(item, depth + 1)); return; }
+      const prototype = String(value?.原型 || '').trim();
+      if (prototype === '伤害结算') damage = true;
+      else if (prototype === '位移执行' && /瞬移|换位/.test(String(value?.位移类型 || ''))) instant = true;
+      ['_效果数组', '使用效果', '授予效果', '结算效果', '替换效果', '追加效果'].forEach(key => { if (value[key]) walk(value[key], depth + 1); });
+    };
+    walk(skill?._效果数组, 0);
+    return instant && !damage;
+  }
+  function normalizeInstantPositionWindup(unit = {}) {
+    const seen = new WeakSet();
+    let changed = 0;
+    const visit = (value, depth) => {
+      if (!value || typeof value !== 'object' || depth > 7 || seen.has(value)) return;
+      seen.add(value);
+      if (Array.isArray(value)) { value.forEach(item => visit(item, depth + 1)); return; }
+      if (Array.isArray(value._效果数组) && value._效果数组.length) {
+        if (isInstantPositionSkill(value)) {
+          ['前摇', 'cast_time'].forEach(key => {
+            if (value[key] !== undefined && Number(value[key]) !== 0) { value[key] = 0; changed += 1; }
+          });
+        }
+        return;
+      }
+      Object.entries(value).forEach(([key, child]) => {
+        if (/状态效果|战斗历史|历史快照|参战者|复制效果|__battleRuntime|^final$/.test(key)) return;
+        visit(child, depth + 1);
+      });
+    };
+    visit(unit, 0);
+    return changed;
   }
 
   // What a guard lets through before the weight of the hit (the rule before 接战链 阶段一): defence against the attacker's
@@ -60451,6 +60722,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     groupWithdrawalContest,
     groupWithdrawalCost,
     calculateReactionContest,
+    consumePositionOnce,
+    positionRecipientFields,
+    positionClosesCounterWindow,
+    positionDeniesCover,
+    positionSwapCoverSources,
+    positionSwapSuccessMultiplier,
+    isInstantPositionSkill,
+    normalizeInstantPositionWindup,
     calculateDefenseDamageMultiplier,
     calculateDodgeProbability,
     // 接战链 阶段一 (2026-11-12): the weight of a hit, the guard before and after it, striking back.
@@ -61324,7 +61603,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     '规则改写': { allowed: ['原型', '目标', '生效方式', '规则', '数值', '持续回合', '驱动属性', '影响方向'], required: ['规则'], enums: { '目标': TARGET5, '生效方式': EFFECT_MODE2, '规则': ['缴械', '死亡转存活'], '驱动属性': DRIVER7, '影响方向': DIRECTION3 }, types: { '数值': '带符号数值', '持续回合': '整数' } },
     '机制抹消': { allowed: ['原型', '目标', '生效方式', '抹消对象', '持续回合', '驱动属性', '影响方向'], required: ['抹消对象'], enums: { '目标': TARGET5, '生效方式': EFFECT_MODE2, '驱动属性': DRIVER7, '影响方向': DIRECTION3 }, types: { '抹消对象': '对象', '持续回合': '整数' } },
     '机制授予': { allowed: ['原型', '目标', '生效方式', '授予效果', '触发条件', '跟进行动键', '触发限制', '可用次数', '持续回合', '驱动属性', '影响方向'], required: ['授予效果', '触发条件'], enums: { '目标': TARGET5, '生效方式': EFFECT_MODE2, '触发条件': TRIGGER_OPTIONS, '驱动属性': DRIVER7, '影响方向': DIRECTION5 }, types: { '授予效果': '原型列表', '触发限制': '对象', '可用次数': '整数', '持续回合': '整数' } },
-    '位移执行': { allowed: ['原型', '目标', '生效方式', '位移类型', '位移对象', '距离', '数值', '持续回合', '驱动属性', '影响方向'], required: ['位移类型', '位移对象'], enums: { '目标': TARGET5, '生效方式': EFFECT_MODE2, '位移类型': ['拉近', '击退', '换位', '瞬移', '脱离'], '位移对象': ['自身', '目标', '自身与目标'], '驱动属性': DRIVER7, '影响方向': DIRECTION4 }, types: { '距离': '数字', '数值': '带符号数值', '持续回合': '整数' } },
+    '位移执行': { allowed: ['原型', '目标', '生效方式', '位移类型', '位移对象', '距离', '数值', '持续回合', '必定成立', '驱动属性', '影响方向'], required: ['位移类型', '位移对象'], enums: { '目标': TARGET5, '生效方式': EFFECT_MODE2, '位移类型': ['拉近', '击退', '换位', '瞬移', '脱离'], '位移对象': ['自身', '目标', '自身与目标'], '驱动属性': DRIVER7, '影响方向': DIRECTION4 }, types: { '距离': '数字', '数值': '带符号数值', '持续回合': '整数', '必定成立': '布尔' } },
     '决策干扰': { allowed: ['原型', '目标', '生效方式', '干扰', '数值', '持续回合', '驱动属性', '影响方向'], required: ['干扰', '数值'], enums: { '目标': TARGET5, '生效方式': EFFECT_MODE2, '干扰': ['判断干扰', '索敌干扰'], '驱动属性': DRIVER7, '影响方向': DIRECTION_INTERFERENCE }, types: { '数值': '带符号数值', '持续回合': '整数' } }
   };
   function pending13ValueForm(value, form) {
@@ -71497,6 +71776,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // enemy's pictured level, panel and resources toward the true ones by n / (n + BELIEF_EXCHANGE_PRIOR) — half after two
   // exchanges, three quarters after six. A starting value, set by its reading. Counted per ledger while it grows.
   const BELIEF_EXCHANGE_PRIOR = 2;
+  // The share of a hit an unseen 控制系 keeps off by a control thrown first (S84: 16% of hits × the 42% they kept off).
+  const BELIEF_ROUTINE_PREEMPT_SHARE = 0.16 * 0.42;
   const beliefExchangeCache = new WeakMap();
   function beliefExchangeCounts(worldSnapshot = {}, side = '') {
     const ledger = Array.isArray(worldSnapshot?.__battleEventLedger) ? worldSnapshot.__battleEventLedger : null;
@@ -71653,6 +71934,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         routine_attack_ratio: publicUnitRole === 'SUMMON' ? 1 : clarity > 0
           ? Math.max(1, toward(typicalAttackRatio(perceivedLevel, system), knownRoutineAttackRatio(sourceUnit)))
           : typicalAttackRatio(perceivedLevel, system),
+        // S84 (11-14 推演—实际对账): an unseen 控制系 meets 16% of hits with a skill (38 of 242) — mostly a control thrown first —
+        // and those took 12% → 7% of its HP; the table, seeing no skills, gave it 4%. Its own controls take over as they are
+        // shown (r20Shown), so the expectation fades with the exchanges seen.
+        ...(publicUnitRole !== 'SUMMON' && /控制/.test(system) ? { routine_preempt_share: BELIEF_ROUTINE_PREEMPT_SHARE * (1 - clarity) } : {}),
       };
       const observedResponses = (Array.isArray(beliefUnit?.knownResponses)
         ? beliefUnit.knownResponses
@@ -75219,6 +75504,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (prototype === '状态施加') return preview.effectTargetsAllies(effect) && !hostile;
       if (prototype === '属性修正') return Number.parseFloat(String(effect?.数值 || '0')) > 0 && !hostile;
       if (prototype === '时光回溯' || prototype === '复制执行') return preview.effectTargetsAllies(effect) && !hostile;
+      // 位移重做（S81）: a 瞬移 / 脱离 given to another (位移对象 目标) is for an ally — on an enemy it does nothing.
+      if (prototype === '位移执行') return preview.effectTargetsAllies(effect) && !hostile;
       return false;
     });
     const profile = targets.some(target => /全场|群体/.test(target))
@@ -135106,8 +135393,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (declaration?.actionKind !== 'RELEASE_SKILL' || !actor) return null;
     let share = 0, payments = Infinity;
     for (const [resource, amount] of Object.entries(preview.readSkillCostStages(declaration.skill || {}, { ...declaration, costActor: actor })?.维持 || {})) {
-      const text = String(amount ?? '').trim(), maximum = Math.max(1, preview.readResourceMax(actor, resource));
-      const part = /%$/.test(text) ? Number.parseFloat(text) / 100 : Number(amount) / maximum;
+      // The settlement's own reading of a cost term (BattlePreview resolveSkillResourceCost): a share, an amount, or 固定+百分比
+      // ({ 值, 绝对修正 }). 11-14: the 固定+百分比 upkeep of a 武魂真身 read as nothing, so the race took it for the 1 round
+      // its states are written for.
+      const maximum = Math.max(1, preview.readResourceMax(actor, resource));
+      const part = Number(preview.resolveSkillResourceCost(actor, resource, amount)) / maximum;
       if (!(Number.isFinite(part) && part > 0)) continue;
       share += part;
       payments = Math.min(payments, Math.floor(preview.readResource(actor, resource) / maximum / part + 1e-9));
@@ -135233,6 +135523,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // the attacker's move when it is known (its windup and reach move both chances), `prepared` a stance.
   const r20Stand = (unit, attacker, incoming = null, prepared = false) => ({
     blocked: hasStateFlag(unit, 'cannot_react') || preview.guardBrokenOf(unit, r20Round),
+    // An unseen 控制系's routine preemption (routine_preempt_share); not out of a stance.
+    preempt: prepared ? 0 : clamp(Number(unit?.routine_preempt_share) || 0, 0, 1),
     soak: r20Soak(unit),
     guard: preview.calculateGuardBaseMultiplier(unit, attacker, prepared),
     dodge: preview.calculateDodgeProbability(unit, attacker, prepared, incoming),
@@ -135446,6 +135738,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const loss = option => option.keep * scale - option.back * ratioHp + (option.price || 0);
     let best = options[0];
     for (const option of options) if (loss(option) < loss(best) - 1e-12 || Math.abs(loss(option) - loss(best)) <= 1e-12 && option.answer > best.answer) best = option;
+    // S84: an unseen 控制系 keeps off a share of the hit by a control thrown first, whatever else it would have done.
+    if (stand.preempt > 0) { const left = 1 - stand.preempt; return { ...best, keep: best.keep * left, share: best.share * left, lands: best.lands * left, defends: best.kind === 'DEFEND' }; }
     return { ...best, defends: best.kind === 'DEFEND' };
   };
   // 接战链 阶段 2c (方案 §9.3、§10.2: 姿态的价值按"对方此时确实会来打我"的可能折算): the chance `unit` turns its action of the
@@ -135942,12 +136236,24 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       // Its controls as the candidate leaves them: lifted (a cleanse), laid (a stun) or as they were.
       denied[row] = r20Held(next);
       let changed = Object.keys(priorStates).some(key => !Object.hasOwn(nextStates, key)), lasting = 0;
+      const onceDodges = [];
       for (const [key, state] of Object.entries(nextStates)) {
         // A state the settlement only copied (the projection clones units) is no change: compared by what it holds, or
         // an equipment passive's 999941 rounds were read as how long a one-round debuff lasts (11-14: a 控制系 valued a
         // one-round 敏捷 debuff at half a battle won, and a 治疗系 its cleanse likewise, round after round).
         if (priorStates[key] === state || priorStates[key] && preview.stableHash(priorStates[key]) === preview.stableHash(state)) continue;
-        lasting = Math.max(lasting, typeof state?.duration === 'number' ? Math.max(1, state.duration) : Infinity);
+        let stateLasts = typeof state?.duration === 'number' ? Math.max(1, state.duration) : Infinity;
+        // 位移重做（S81）: a position state is one-shot (BattlePreview consumePositionOnce) — its dodge goes with the first attack
+        // that comes at it (in a round where all its enemies turn on it, the first of them), the rest with its next action or
+        // the round's end (counter window, cover). Read for its duration, a 瞬移 dodged every hit of the race's window.
+        const once = state?.战斗效果?.position_once;
+        if (once && typeof once === 'object' || state?.战斗效果?.counter_window_closed === true || state?.战斗效果?.no_cover === true) {
+          const attackers = table.units.reduce((sum, unit, other) => sum + (table.sides[other] !== table.sides[row] && table.alive[other] > 0 ? 1 : 0), 0);
+          // One window per row: with a dodge in it, the dodge's (a 瞬移's hit +10% after it is the smaller part, cut with it).
+          stateLasts = Math.min(stateLasts, once?.dodge ? 1 / Math.max(1, attackers) : 1);
+          if (once?.dodge) onceDodges.push([key, stateLasts]);
+        }
+        lasting = Math.max(lasting, stateLasts);
         // A side effect that kills when it comes due (致死献祭 at the round end or when the state ends).
         if (!Object.hasOwn(priorStates, key)) for (const risk of Array.isArray(state?.副作用列表) ? state.副作用列表 : []) {
           if (risk?.副作用类型 === '致死献祭') { alive[row] *= 1 - clamp(Number(risk.触发概率 ?? 1), 0, 1) * clamp(Number(state.__previewApplicationProbability ?? 1), 0, 1); seen += 1; }
@@ -135976,6 +136282,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           }
           view = preview.inheritOverlayOrigin({ ...next, 状态效果: states }, next);
         }
+      }
+      // A one-shot dodge beside states that outlast it (瞬移 with a buff): the row has one window, so it goes without the dodge
+      // (one hit under-read) rather than dodging every hit of the buff's rounds.
+      if (onceDodges.some(([, window]) => lasting > window + 1e-9)) {
+        const states = { ...(view.状态效果 || {}) };
+        for (const [key] of onceDodges) if (states[key]) states[key] = { ...states[key], 战斗效果: { ...states[key].战斗效果, dodge_bonus: 0, incoming_only: false } };
+        view = preview.inheritOverlayOrigin({ ...view, 状态效果: states }, next);
       }
       if (changed || preview.staminaScaleForUnit(next) !== preview.staminaScaleForUnit(prior)) {
         rebuilt.push([row, view, false]);
@@ -136223,6 +136536,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         // The controls the move lays come with a hit that lands; those already on it (table.held) stay as they are.
         if (meet.lands < 1 - 1e-12) { const held = table.held?.[row] || 0; denied[row] = held + Math.max(0, denied[row] - held) * meet.lands; }
         if (meet.back > 0) counter += alivePreHit[row] * meet.back;
+        // 设局/佯装 (11-14): a hit on a target holding a stance uses it up (BattleRuntime preparedDefense), so the actor's side
+        // still to act this round meets it without one — what of their hits it keeps then over what the stance would have kept
+        // counts here, as often as each turns on it. A light hit to draw the stance before a heavy one is worth that much.
+        if (stance && alive[row] > 0) {
+          let opened = 0;
+          for (let ally = 0; ally < count; ally += 1) {
+            if (ally === actorRow || table.sides[ally] !== table.sides[actorRow] || !table.pending[ally] || !acts[ally] || !(alive[ally] > 0)) continue;
+            const hit = out[ally][row];
+            if (!(hit > 0)) continue;
+            const braced = r20Meet(r20Stand(table.units[row], table.units[ally], null, true), r20Weight(hit), stance).keep;
+            opened += alive[ally] * r20TurnsOn(table, ally, row) * hit * Math.max(0, keep[row][ally] - braced);
+          }
+          if (opened > 0) { remaining[row] = Math.max(0, remaining[row] - opened); seen += 1; }
+        }
         if (!acts[row] || denied[row] > 0 || !(alive[row] > 0)) continue;
         // 破防: a hit that breaks the target's guard draws no strike back, and the actor's side, those still to act this
         // round, land on it what it would have kept off — as often as they turn on it rather than on another enemy.
@@ -136235,6 +136562,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           seen += 1;
           continue;
         }
+        // 脱离 (位移重做 S81): the enemy's strike-back window on the actor is closed for the round (BattleRuntime
+        // openStructuredCounterWindow reads positionClosesCounterWindow), so no exchange follows the move.
+        if (preview.positionClosesCounterWindow(actorNow, r20Round)) continue;
         const exchange = r20Exchange(answer[row][actorRow], answer[actorRow][row], back[actorRow][row] * keepBack[row][actorRow], back[row][actorRow] * keepBack[actorRow][row],
           meet.answer, priorTarget, priorActor);
         counter += alive[row] * exchange.taken;
@@ -146468,6 +146798,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // A unit enters battle with its stamina already counted against any buffed maximum it carries.
     previewRuntime.syncStaminaMaxGain(merged, { credit: false });
     merged.final = buildCombatFinalStats(merged);
+    // 位移重做: 瞬移 / 换位瞬间发动，只含位移的技能前摇按 0（BattlePreview isInstantPositionSkill）。
+    previewRuntime.normalizeInstantPositionWindup(merged);
     return merged;
   }
 
@@ -152415,6 +152747,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     };
   }
 
+  // The display name of a committed state (its key, 'preview:…' stripped to the state name) for the charge-interrupt reason.
+  function positionStateDisplayName(unit = {}, key = '') {
+    const state = unit?.状态效果?.[key] || Object.values(unit?.状态效果 || {}).find(candidate => candidate?.战斗效果?.interrupt_charge === true);
+    return String(state?.状态 || state?.状态名称 || key || '位移').trim();
+  }
+
   function commitStructuredPreviewPrototype(
     combatData = {},
     actor = {},
@@ -152521,6 +152859,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const prototype = String(effect?.原型 || '').trim();
     const beforeUnitsById = new Map();
     const endedStates = [];
+    const positionInterrupts = [];
     preview.changedUnitIds.forEach(unitId => {
       const actual = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, unitId));
       const snapshot = previewRuntime.findUnit(preview.afterSnapshot, unitId);
@@ -152532,6 +152871,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const stateKeysBefore = new Set(Object.keys(actual?.状态效果 || {}));
       const committedStateNames = [];
       applyPreviewUnitSnapshot(actual, snapshot);
+      // 位移重做: a position state that disrupts a charge (击退, 换位 on an enemy: combat effect interrupt_charge) breaks the
+      // unit's stored charge once it is committed (below, after the facts).
+      Object.entries(actual?.状态效果 || {}).forEach(([key, condition]) => {
+        if (!stateKeysBefore.has(key) && condition?.战斗效果?.interrupt_charge === true) positionInterrupts.push({ unitId, key });
+      });
       Object.entries(actual?.状态效果 || {}).forEach(([key, condition]) => {
         if (stateKeysBefore.has(key) || !String(key).startsWith('preview:') || !condition || typeof condition !== 'object') return;
         let stateIdentity = structuredStateStorageIdentity(key, condition);
@@ -152651,6 +152995,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           actorName: previewRuntime.unitName(actor), actionName: action?.actionName || '', actionId: actionEvent?.actionId || '', source: 'structured_preview_commit' });
         if (exit) facts.push(exit);
       }
+    });
+    positionInterrupts.forEach(({ unitId, key }) => {
+      const target = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, unitId));
+      const interrupt = target ? interruptStoredChargeByControl({ combatData, sourceActor: actor, target, actionEvent, actionRole,
+        stateName: String(positionStateDisplayName(target, key)), force: true }) : null;
+      if (interrupt) facts.push(interrupt);
     });
     for (const { unitId, key, state } of endedStates) {
       const target = previewRuntime.findUnit(combatData, unitId);
@@ -153495,6 +153845,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       allowPreparedDefense,
     } = context;
     if (!combatData || !declaration || !actor || !actionEvent) throw new TypeError('battle_structured_action_context_invalid');
+    // 位移重做（S81）: the units an attack of this action rolled to hit, and whether it attacked at all — the one-shot position
+    // effects they were waiting for are spent once the action's effects have settled (spendPositionOnce, below).
+    const positionOnceRolledTargets = new Set();
+    let positionOnceAttacked = false;
     if (actionKind === 'USE_ITEM') {
       const inventoryItem = previewRuntime.findInventoryEntry(actor, declaration);
       if (!previewRuntime.inventoryItemAvailable(inventoryItem, combatData, actor)) {
@@ -154025,9 +154379,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const sampledTarget = listCombatUnits(combatData).find(unit =>
         previewRuntime.unitId(unit) === String(targetId || '').trim()
       );
-      const resistanceMultiplier = typeof previewRuntime.stateApplicationProbabilityMultiplier === 'function'
-        ? previewRuntime.stateApplicationProbabilityMultiplier(sampledTarget || {}, effect)
+      // 位移重做: 换位拉敌方按修为压制判定，护盾中的目标失败（BattlePreview positionSwapSuccessMultiplier）。
+      const swapMultiplier = String(effect?.原型 || '').trim() === '位移执行' && sampledTarget
+        ? previewRuntime.positionSwapSuccessMultiplier(actor, sampledTarget, effect, { hostile: inferUnitSide(combatData, sampledTarget) !== inferUnitSide(combatData, actor) })
         : 1;
+      const resistanceMultiplier = (typeof previewRuntime.stateApplicationProbabilityMultiplier === 'function'
+        ? previewRuntime.stateApplicationProbabilityMultiplier(sampledTarget || {}, effect)
+        : 1) * swapMultiplier;
       const probability = Math.max(0, Math.min(1,
         baseProbability * resistanceMultiplier,
       ));
@@ -154481,7 +154839,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const hasOwnProbability =
           effect?.成功率 !== undefined ||
           effect?.触发概率 !== undefined;
-        const previewCommitSamples = hasOwnProbability
+        // 位移重做: 换位拉敌方要按修为压制判定成功（sampleEffectOutcome 里的 positionSwapSuccessMultiplier），写没写 成功率 都要抽。
+        const previewCommitSamples = hasOwnProbability || (prototype === '位移执行' && /换位/.test(String(effect?.位移类型 || '')))
           ? (prototype === '资源转移' && effect.资源转移方式 === '均分'
               ? previewTargets.slice(0, 1) : previewTargets).map(target => sampleEffectOutcome({
               effect,
@@ -154842,6 +155201,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           const hitModifierAttribution = typeof previewRuntime.estimateHitProbabilityAttribution === 'function'
             ? previewRuntime.estimateHitProbabilityAttribution(actor, target, effect)
             : [];
+          positionOnceAttacked = true;
+          if (reaction?.evaded !== true) positionOnceRolledTargets.add(target);
           let anySegmentHit = false;
           // 接战链 阶段三: what a referee's guard skill leaves of this effect's damage on this unit (structuredRefereeIntervention).
           let refereeHitScale = 1;
@@ -155980,6 +156341,26 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         });
       });
     });
+    // 位移重做: what the attack was waiting for has happened — the units it rolled against lose their one-shot dodge (瞬移's 95%,
+    // 脱离's +50%), the attacker its one-shot hit bonus and the reaction cut it laid on its targets. A state laid by this very
+    // action is not spent by it.
+    {
+      const castIdentity = String(declaration?.__castIdentity || actionEvent.actionId || '').trim();
+      const spendPositionOnce = (unit, axes) => previewRuntime.consumePositionOnce(unit, axes, { exceptSourceActionId: castIdentity }).forEach(spent => {
+        facts.push(writeLedgerEvent(combatData, {
+          eventKind: 'runtime_trace', round: Number(combatData?.回合 || 0),
+          actorId: previewRuntime.unitId(unit), actorName: previewRuntime.unitName(unit),
+          targetId: previewRuntime.unitId(unit), targetName: previewRuntime.unitName(unit),
+          actionName: spent.state || '位移', actionType: 'position_once', actorControl: 'SYSTEM', actionRole: 'STATE_TICK',
+          sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
+          result: 'consumed', resultState: 'COMPLETED', ruleCode: 'POSITION_ONCE_SPENT',
+          meta: { source: 'structured_runtime', traceType: 'position_once', axes: spent.axes, stateKey: spent.key,
+            reasonText: `${previewRuntime.unitName(unit)}的【${spent.state || '位移'}】一次性效果用掉了（${spent.axes.join('、')}）` },
+        }));
+      });
+      positionOnceRolledTargets.forEach(unit => spendPositionOnce(unit, ['dodge']));
+      if (positionOnceAttacked) spendPositionOnce(actor, ['hit', 'target_reaction']);
+    }
     const committedEquipmentPassiveTriggers = new Set();
     equipmentPassiveTriggerRows.forEach(row => {
       const rowKey = `${equipmentPassiveEffectKey(row.effect)}|${String(row.sourceEffectId || '').trim()}`;
@@ -156547,10 +156928,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     actionEvent = {},
     actionRole = 'ACTIVE',
     stateName = '',
+    force = false,
   } = {}) {
+    // 位移重做: 击退 / 换位拉敌方打断蓄力（force，状态 战斗效果.interrupt_charge）——不要求状态本身是控制。
     if (
       !target?.蓄力技能 ||
-      !structuredControlPreventsOpportunity(target?.状态效果?.[stateName] || {}, actionRole)
+      (force !== true && !structuredControlPreventsOpportunity(target?.状态效果?.[stateName] || {}, actionRole))
     ) return null;
     const interruptedCharge = target.蓄力技能;
     target.蓄力技能 = null;
@@ -156576,7 +156959,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       sourceNodeId: String(actionEvent?.chainNodeId || '').trim(),
       result: 'interrupted',
       resultState: 'ABORTED',
-      ruleCode: 'CHARGE_INTERRUPTED_BY_CONTROL',
+      ruleCode: force === true ? 'CHARGE_INTERRUPTED_BY_POSITION' : 'CHARGE_INTERRUPTED_BY_CONTROL',
       meta: {
         source: 'structured_runtime',
         stateName: String(stateName || '').trim(),
@@ -156584,8 +156967,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         controlSourceActionId: String(actionEvent?.actionId || '').trim(),
         sourceActorId: previewRuntime.unitId(sourceActor),
         sourceActorName: previewRuntime.unitName(sourceActor),
-        reasonCode: 'CONTROL_APPLIED',
-        reasonText: `受【${String(stateName || '控制状态').trim()}】影响`,
+        reasonCode: force === true ? 'POSITION_DISRUPTED' : 'CONTROL_APPLIED',
+        reasonText: force === true ? `被【${String(stateName || '位移').trim()}】打乱了蓄力` : `受【${String(stateName || '控制状态').trim()}】影响`,
       },
     });
   }
@@ -156933,9 +157316,25 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // target's side (not a summon) that can act, has not acted this round, is not charging or guard-broken, and gets there
   // in time (BattlePreview interceptWindupBudget). The choice among them, or none, is the decision layer's
   // (BattleDecision chooseInterceptor) — for a unit the player controls too.
+  // 位移重做（用户 2026-11-14「无论是自己瞬移，还是帮别人瞬移都是如此」，第 86/110 章替队友挡致命一击）: 友方身上有一道没用掉的换位躲避，
+  // 记着换位的施法者；来袭单体攻击落在友方之前，由该施法者（同阵营、还能行动、不是攻击者）承受——施法者与友方对调了位置。
+  // 与援护不冲突：换位是已经施放出去的状态，不占援护者的当回合机会，先于援护判定；施法者接不住时回落到友方的 95% 躲避与援护判定。
+  function chooseSwapCover(combatData = {}, attacker = {}, target = {}) {
+    const round = Number(combatData?.回合 || 0);
+    if (previewRuntime.positionDeniesCover(target, round)) return null;
+    const names = previewRuntime.positionSwapCoverSources(target);
+    if (!names.length) return null;
+    const side = inferUnitSide(combatData, target);
+    return listPrimaryCombatUnits(combatData).find(unit => unit && unit !== target && unit !== attacker && !unit.召唤键 &&
+      names.includes(previewRuntime.unitName(unit)) && inferUnitSide(combatData, unit) === side &&
+      previewRuntime.isBattleCapable(unit) && structuredActorCanAct(unit, 'ACTIVE') && !unit.蓄力技能) || null;
+  }
+
   function chooseStructuredInterceptor(combatData = {}, attacker = {}, declaration = {}, target = {}) {
     if (typeof decisionRuntime?.chooseInterceptor !== 'function') return null;
     const round = Number(combatData?.回合 || 0), side = inferUnitSide(combatData, target);
+    // 位移重做: 换位拉进己方阵中的敌人，本回合援护盖不到它。
+    if (previewRuntime.positionDeniesCover(target, round)) return null;
     const candidates = listPrimaryCombatUnits(combatData).filter(unit => unit && unit !== target && !unit.召唤键 &&
       inferUnitSide(combatData, unit) === side && previewRuntime.isBattleCapable(unit) && structuredActorCanAct(unit, 'ACTIVE') &&
       !unit.蓄力技能 && !previewRuntime.fusionChargeHost(combatData, unit) && !previewRuntime.guardBrokenOf(unit, round) &&
@@ -157319,6 +157718,46 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     };
   }
 
+  // 位移重做: the redirect a successful 换位 reaction makes of the move it answers. The swapped-in unit is the answer's target on the
+  // attacker's side; the swap counts when its position state was committed (a hostile swap is rolled first: 修为压制, shields).
+  function applySwapRedirect({ combatData, shared, reaction, reactionDeclaration, reactor, sourceActor, reactionTargetId } = {}) {
+    const skillEffects = Array.isArray(reactionDeclaration?.skill?._效果数组) ? reactionDeclaration.skill._效果数组 : [];
+    if (String(reactionDeclaration?.actionKind || '').trim().toUpperCase() !== 'RELEASE_SKILL' ||
+        !skillEffects.some(effect => String(effect?.原型 || '').trim() === '位移执行' && /换位/.test(String(effect?.位移类型 || '')))) return false;
+    const swappedId = (Array.isArray(reactionDeclaration?.targetIds) ? reactionDeclaration.targetIds : []).map(id => String(id || '').trim()).find(Boolean) || '';
+    const swapped = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, swappedId));
+    if (!swapped || !hostileSource(combatData, swapped, reactor)) return false;
+    const landed = (Array.isArray(reaction?.facts) ? reaction.facts : []).some(event => event?.effectPrototype === '位移执行' &&
+      ['state_apply', 'state_replace'].includes(event?.eventKind) && String(event?.resultState || '').trim() === 'SUCCESS' &&
+      String(event?.targetId || '').trim() === previewRuntime.unitId(swapped));
+    if (!landed) return false;
+    const struckByAttacker = isUnitIdentityMatch(swapped, previewRuntime.unitId(sourceActor));
+    const target = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, reactionTargetId)) || reactor;
+    reaction.nullified = true;
+    reaction.swapRedirect = { swappedId: previewRuntime.unitId(swapped), whiff: struckByAttacker || !previewRuntime.isBattleCapable(swapped) };
+    if (!reaction.swapRedirect.whiff && Array.isArray(shared?.declaration?.targetIds)) {
+      const redirected = { ...shared.declaration, targetIds: shared.declaration.targetIds.map(id => isUnitIdentityMatch(target, id) ? previewRuntime.unitId(swapped) : id) };
+      shared.declaration = redirected;
+      if (shared.actionContext) {
+        shared.actionContext.declaration = redirected;
+        if (shared.actionContext.primaryTarget === target) shared.actionContext.primaryTarget = swapped;
+      }
+    }
+    writeLedgerEvent(combatData, {
+      eventKind: 'runtime_trace', round: Number(combatData?.回合 || 0),
+      actorId: previewRuntime.unitId(reactor), actorName: previewRuntime.unitName(reactor),
+      targetId: previewRuntime.unitId(swapped), targetName: previewRuntime.unitName(swapped),
+      actionName: '换位', actionType: 'position_swap', actorControl: 'AI', actionRole: 'REACTION',
+      sourceActionId: shared?.actionContext?.actionEvent?.actionId || '', parentNodeId: shared?.actionContext?.actionEvent?.chainNodeId || '',
+      sourceNodeId: shared?.actionContext?.actionEvent?.chainNodeId || '',
+      result: reaction.swapRedirect.whiff ? 'whiffed' : 'redirected', resultState: 'SUCCESS', ruleCode: 'POSITION_SWAP_REDIRECT',
+      meta: { source: 'structured_runtime', traceType: 'position_swap', attackerId: previewRuntime.unitId(sourceActor), swappedId: reaction.swapRedirect.swappedId,
+        whiff: reaction.swapRedirect.whiff,
+        reasonText: reaction.swapRedirect.whiff ? `${previewRuntime.unitName(reactor)}换位拉来了${previewRuntime.unitName(swapped)}，来招落了空` : `${previewRuntime.unitName(reactor)}换位拉来了${previewRuntime.unitName(swapped)}，来招落在它身上` },
+    });
+    return true;
+  }
+
   // R15: a round is one cavalry pass. A counter can itself be defended or evaded and answered, so the engagement flows
   // until someone fails to answer, declines, misses the opening, or lacks the stamina for the strike.
   // 接战链 阶段一 (用户 2026-11-12："上限不需要，但是要给反击设置难度，代价"): a strike back needs an answer that worked —
@@ -157338,6 +157777,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const engagementDepth = Math.max(0, Number(input?.engagementDepth || 0));
     if (!combatData || !reactor || !sourceActor || !parentActionEvent?.actionId || !reaction?.opensCounterCheck) return null;
     if (!structuredActorCanAct(reactor, 'COUNTER') || !structuredActorPhysicallyAlive(sourceActor)) return null;
+    // 位移重做: 脱离 closes the enemy's strike-back window against its user for the round (BattlePreview positionClosesCounterWindow).
+    if (previewRuntime.positionClosesCounterWindow(sourceActor, Number(combatData?.回合 || 0))) return null;
     const receivedDamage = (Array.isArray(settlementFacts) ? settlementFacts : []).reduce((sum, event) => {
       if (event?.eventKind !== 'hit_result' || !isUnitIdentityMatch(reactor, event?.targetName || event?.targetId || '')) return sum;
       return sum + Math.max(0, Number(event?.appliedDamage || event?.meta?.appliedDamage || 0));
@@ -160516,6 +160957,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 reaction,
               });
               shared.reactionByTarget[reactionTargetId] = reaction;
+              // 位移重做: the reaction the unit was cut on (击退 / 换位's one-shot reaction penalty) has been made.
+              previewRuntime.consumePositionOnce(actor, ['reaction'], { exceptSourceActionId: String(reaction?.event?.actionId || '').trim() });
+              // 位移重做（依斗二玄冥置换/玄武置换原文，第 89/286 章）: a 换位 answer that took on an enemy turns the incoming move — it lands on the
+              // enemy swapped in, or comes to nothing when that is the attacker itself (or no one that can be struck).
+              applySwapRedirect({ combatData, shared, reaction, reactionDeclaration, reactor: actor, sourceActor, reactionTargetId });
               // 接战链 阶段二: a preemption that held stops the move on every target (PRIMARY_SETTLEMENT below).
               if (reaction?.preempted === true) {
                 shared.preempted = { reactorId: actorId, eventId: String(reaction?.engagementEvent?.eventId || '').trim() };
@@ -161457,7 +161903,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             hostileTargets.forEach(target => {
               // 破防: no answer for the rest of the round (BattlePreview guardBreaks).
               if (previewRuntime.guardBrokenOf(target, Number(combatData?.回合 || 0))) return;
-              const guardSummon = listSummonCombatUnits(combatData)
+              const guardSummon = previewRuntime.positionDeniesCover(target, Number(combatData?.回合 || 0)) ? null : listSummonCombatUnits(combatData)
                 .filter(unit =>
                   String(unit?.行动模式 || '').trim() === '护卫' &&
                   previewRuntime.isBattleCapable(unit) &&
@@ -161471,11 +161917,34 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               // 援护 (用户 2026-11-11/12): an ally that has not acted this round and can get there in time may take a
               // single-target attack in the target's place — the action lands on it, it answers with its own defence,
               // evasion or response skill, the target does not answer, and its action of the round is spent.
-              let struck = target, interceptor = null;
+              let struck = target, interceptor = null, swapCover = null;
               if (!guardSummon && node.nodeKind === 'ACTIVE' && hostileTargets.length === 1 &&
                   !/群体|全场/.test(String(structuredDamageEffects(resolvedDeclaration)[0]?.目标 || '')) &&
                   Array.isArray(resolvedDeclaration.targetIds) && resolvedDeclaration.targetIds.some(id => isUnitIdentityMatch(target, id))) {
-                interceptor = chooseStructuredInterceptor(combatData, actor, resolvedDeclaration, target);
+                swapCover = chooseSwapCover(combatData, actor, target);
+                if (!swapCover) interceptor = chooseStructuredInterceptor(combatData, actor, resolvedDeclaration, target);
+              }
+              if (swapCover) {
+                const coverId = previewRuntime.unitId(swapCover);
+                const redirected = { ...resolvedDeclaration, targetIds: resolvedDeclaration.targetIds.map(id => isUnitIdentityMatch(target, id) ? coverId : id) };
+                shared.declaration = redirected;
+                actionContext.declaration = redirected;
+                if (actionContext.primaryTarget === target) actionContext.primaryTarget = swapCover;
+                // 友方这次躲避已经换成了施法者的承受，取走（别留到下一击白给友方一次必躲）。
+                previewRuntime.consumePositionOnce(target, ['dodge']);
+                writeLedgerEvent(combatData, {
+                  eventKind: 'runtime_trace', round: Number(combatData.回合 || 0),
+                  actorId: coverId, actorName: previewRuntime.unitName(swapCover),
+                  targetId: previewRuntime.unitId(target), targetName: previewRuntime.unitName(target),
+                  actionName: '换位', actionType: 'position_swap', actorControl: 'AI', actionRole: 'REACTION',
+                  sourceActionId: actionContext.actionEvent.actionId, parentNodeId: actionContext.actionEvent.chainNodeId || '',
+                  sourceNodeId: actionContext.actionEvent.chainNodeId || '',
+                  result: 'redirected', resultState: 'SUCCESS', ruleCode: 'POSITION_SWAP_COVER',
+                  meta: { source: 'structured_runtime', traceType: 'position_swap_cover', attackerId: previewRuntime.unitId(actor),
+                    protectedId: previewRuntime.unitId(target), coverId,
+                    reasonText: `${previewRuntime.unitName(swapCover)}与${previewRuntime.unitName(target)}换了位，接下了这一击` },
+                });
+                struck = swapCover;
               }
               if (interceptor) {
                 const interceptorId = previewRuntime.unitId(interceptor);

@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:a5945f61c877481d0c6175cf9ba6d0cf5c9a6e4f7f29c831c330bff65ea447dd|cockpit/designer-model.js:9e32bfa817caa9c980c4cf92834dde5df98a11f18bc7cb63d626c3f82cf72617|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:1f018c2f083673031b98f7bde8035b4db8be87d961d12671bbd54cac9e144afd|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:bbbae9686d5c127938d3dcfc97f2758141c1a9bc73a066c1f5a2facf51db5ee7|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:4c21da487b44a272fa8b1dff5d64d3b0f3b58e1574a0bf97b0a0a543028f3c6c|cockpit/designer-model.js:bc30b23774bd7fe4ffa5747f5e0aa0e0f264ac49405c381bcf295f65ce9d01c3|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:1f018c2f083673031b98f7bde8035b4db8be87d961d12671bbd54cac9e144afd|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:bbbae9686d5c127938d3dcfc97f2758141c1a9bc73a066c1f5a2facf51db5ee7|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -17004,6 +17004,7 @@
       else delete 字段['数值'];
     }
     字段['位移对象'] = 推断技能设计台位移对象(字段);
+    if (字段['必定成立'] !== true || normalizeSkillUiText(字段['位移类型'], '') !== '换位') delete 字段['必定成立'];
     if (技能设计台位移目标需要判定(字段)) {
       if (!normalizeSkillUiText(字段['驱动属性'], '')) 字段['驱动属性'] = '魂力上限';
       if (!normalizeSkillUiText(字段['影响方向'], '')) 字段['影响方向'] = '效果强度';
@@ -18257,8 +18258,15 @@
           throw new Error(`技能执行结构错误:${path}[${index}]换位必须声明自身与目标双参与者`);
         if (位移类型 !== '换位' && 位移对象 === '自身与目标')
           throw new Error(`技能执行结构错误:${path}[${index}]非换位不能使用自身与目标双参与者`);
-        if (['瞬移', '脱离'].includes(位移类型) && 位移对象 !== '自身')
-          throw new Error(`技能执行结构错误:${path}[${index}]${位移类型}只能移动自身`);
+        // 位移重做（用户 2026-11-14「无论是自己瞬移，还是帮别人瞬移都是如此」）: 瞬移/脱离可以给单体友方（位移对象=目标，目标=单体）。
+        if (['瞬移', '脱离'].includes(位移类型) && 位移对象 === '自身与目标')
+          throw new Error(`技能执行结构错误:${path}[${index}]${位移类型}不能使用自身与目标双参与者`);
+        if (['瞬移', '脱离'].includes(位移类型) && 位移对象 === '目标' && 目标 !== '单体')
+          throw new Error(`技能执行结构错误:${path}[${index}]${位移类型}给他人只允许单体目标`);
+        if (effect['必定成立'] !== undefined && typeof effect['必定成立'] !== 'boolean')
+          throw new Error(`技能执行结构错误:${path}[${index}]必定成立必须是布尔值`);
+        if (effect['必定成立'] !== undefined && 位移类型 !== '换位')
+          throw new Error(`技能执行结构错误:${path}[${index}]必定成立只允许用于换位`);
         if (effect['数量'] !== undefined) throw new Error(`技能执行结构错误:${path}[${index}]位移执行不允许触发次数或数量`);
         if (toNumber(effect['距离'], 0) <= 0) throw new Error(`技能执行结构错误:${path}[${index}]位移幅度必须大于0`);
         if (toNumber(effect['距离'], 0) > 30) throw new Error(`技能执行结构错误:${path}[${index}]位移幅度不能超过30`);
@@ -20781,6 +20789,7 @@
       if (['防御继承比例', '敏捷继承比例', '体力继承比例', '魂力继承比例', '精神继承比例'].includes(key)) return false;
     }
     if (prototype === '位移执行' && key === '方位') return false;
+    if (prototype === '位移执行' && key === '必定成立') return valueOf('位移类型') === '换位';
     if (prototype === '炸环') return ['目标', '原型', '生效方式', '条件分支', '强化倍率'].includes(key);
     if (prototype === '结算修正') {
       const 结算 = valueOf('结算');
@@ -38742,14 +38751,14 @@ ${播报文本}
     const 位移类型 = normalizeSkillUiText(effect && effect['位移类型'], '瞬移');
     const 位移对象 = normalizeSkillUiText(effect && effect['位移对象'], 推断技能设计台位移对象(effect));
     const 距离 = Math.max(1, Math.min(30, toNumber(effect && effect['距离'], 1)));
-    const 强度文本 = normalizeSkillUiText(effect && effect['数值'], '') || `约+${Math.round(Math.min(45, 距离 * 4))}%`;
-    if (位移对象 === '自身与目标' || 位移类型 === '换位') return `双方节奏扰动：反应/闪避变化${强度文本}。`;
-    if (位移对象 === '自身' || ['瞬移', '脱离'].includes(位移类型)) {
-      return `${位移类型}收益：自身闪避/反应${强度文本}${位移类型 === '脱离' ? '，降低被锁定' : ''}。`;
-    }
-    if (位移类型 === '拉近') return `压迫目标：命中/锁定提高，目标反应${强度文本}。`;
-    if (位移类型 === '击退') return `压制目标：反应/闪避/命中${强度文本}。`;
-    return `战斗折算：反应与闪避${强度文本}。`;
+    // 位移重做（S81）：一次性效果，数值固定（BattlePreview deriveStateCombatEffect 位移执行），不再按位移幅度折算。
+    const 给他人 = 位移对象 === '目标';
+    if (位移类型 === '瞬移') return 给他人 ? '瞬间发动、无前摇：单体友方下一次来袭95%躲开；之后其下一击命中+10%，目标反应-30%。' : '瞬间发动、无前摇：下一次来袭95%躲开；之后自身下一击命中+10%，目标反应-30%。';
+    if (位移类型 === '脱离') return 给他人 ? '单体友方下一次来袭闪避+50%；本回合敌方不能对其反击追击。' : '下一次来袭闪避+50%；本回合敌方不能对自身反击追击。';
+    if (位移类型 === '拉近') return '自身下一击：目标闪避-50%、自身命中+20%。';
+    if (位移类型 === '击退') return '打断目标蓄力；其下一次攻击命中-30%、下一次应对反应-15%。';
+    if (位移类型 === '换位' || 位移对象 === '自身与目标') return effect && effect['必定成立'] === true ? '瞬间发动、无前摇：友方的来袭改由自身承受；敌方必定被换来（不判修为压制），被打断蓄力、拉出援护、反应-30%。' : '瞬间发动、无前摇：友方的来袭改由自身承受；敌方按修为压制判定（护盾中无效），被打断蓄力、拉出援护、反应-30%。';
+    return '一次性战斗效果。';
   }
   // —— B:19866-19868
   function 技能设计台状态一句话说明(状态 = '') {
@@ -38964,6 +38973,7 @@ ${播报文本}
       else delete 字段['数值'];
     }
     字段['位移对象'] = 推断技能设计台位移对象(字段);
+    if (字段['必定成立'] !== true || normalizeSkillUiText(字段['位移类型'], '') !== '换位') delete 字段['必定成立'];
     if (技能设计台位移目标需要判定(字段)) {
       if (!normalizeSkillUiText(字段['驱动属性'], '')) 字段['驱动属性'] = '魂力上限';
       if (!normalizeSkillUiText(字段['影响方向'], '')) 字段['影响方向'] = '效果强度';
@@ -40273,8 +40283,15 @@ ${播报文本}
           throw new Error(`技能执行结构错误:${path}[${index}]换位必须声明自身与目标双参与者`);
         if (位移类型 !== '换位' && 位移对象 === '自身与目标')
           throw new Error(`技能执行结构错误:${path}[${index}]非换位不能使用自身与目标双参与者`);
-        if (['瞬移', '脱离'].includes(位移类型) && 位移对象 !== '自身')
-          throw new Error(`技能执行结构错误:${path}[${index}]${位移类型}只能移动自身`);
+        // 位移重做（用户 2026-11-14「无论是自己瞬移，还是帮别人瞬移都是如此」）: 瞬移/脱离可以给单体友方（位移对象=目标，目标=单体）。
+        if (['瞬移', '脱离'].includes(位移类型) && 位移对象 === '自身与目标')
+          throw new Error(`技能执行结构错误:${path}[${index}]${位移类型}不能使用自身与目标双参与者`);
+        if (['瞬移', '脱离'].includes(位移类型) && 位移对象 === '目标' && 目标 !== '单体')
+          throw new Error(`技能执行结构错误:${path}[${index}]${位移类型}给他人只允许单体目标`);
+        if (effect['必定成立'] !== undefined && typeof effect['必定成立'] !== 'boolean')
+          throw new Error(`技能执行结构错误:${path}[${index}]必定成立必须是布尔值`);
+        if (effect['必定成立'] !== undefined && 位移类型 !== '换位')
+          throw new Error(`技能执行结构错误:${path}[${index}]必定成立只允许用于换位`);
         if (effect['数量'] !== undefined) throw new Error(`技能执行结构错误:${path}[${index}]位移执行不允许触发次数或数量`);
         if (toNumber(effect['距离'], 0) <= 0) throw new Error(`技能执行结构错误:${path}[${index}]位移幅度必须大于0`);
         if (toNumber(effect['距离'], 0) > 30) throw new Error(`技能执行结构错误:${path}[${index}]位移幅度不能超过30`);
@@ -43469,6 +43486,7 @@ ${播报文本}
       if (['防御继承比例', '敏捷继承比例', '体力继承比例', '魂力继承比例', '精神继承比例'].includes(key)) return false;
     }
     if (prototype === '位移执行' && key === '方位') return false;
+    if (prototype === '位移执行' && key === '必定成立') return valueOf('位移类型') === '换位';
     if (prototype === '炸环') return ['目标', '原型', '生效方式', '条件分支', '强化倍率'].includes(key);
     if (prototype === '结算修正') {
       const 结算 = valueOf('结算');
@@ -43937,10 +43955,11 @@ ${播报文本}
       },
       位移执行: {
         位移类型: '拉近、击退、换位、瞬移或脱离。',
-        位移对象: '选择战斗收益或压制落在自身、目标还是双方。',
-        距离: '位移幅度；越大对行动、反应与命中压制影响越强。',
-        数值: '可选强度覆写；只填百分比，不填时按位移幅度自动折算。',
-        持续回合: '战斗收益或压制持续多久，默认1回合。',
+        位移对象: '选择战斗收益或压制落在自身、目标还是双方。瞬移、脱离选「目标」并把目标设为单体，就是帮单体友方位移；换位对友方时由自身替其承受这一击。',
+        必定成立: '只用于换位：勾选后对敌方不判修为压制、护盾也挡不住（玄武召唤）；COST 按 1.6 倍计。',
+        距离: '位移幅度，只影响叙述；位移的战斗效果是一次性的、数值固定（瞬移95%躲开、脱离闪避+50%、拉近目标闪避-50%、击退打断蓄力）。',
+        数值: '可选强度覆写；只填百分比。位移重做后战斗里不再读它。',
+        持续回合: '一次性效果等待下一次来袭或出手的有效期，默认1回合；用掉即结束。',
       },
       决策干扰: {
         干扰: '选择判断干扰或索敌干扰。',
