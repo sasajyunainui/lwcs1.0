@@ -8887,6 +8887,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (/敌方|对方/.test(targetText)) return false;
     if (prototype === '伤害结算' || prototype === '机制抹消') return false;
     if (prototype === '召唤生成' || prototype === '机制授予' || prototype === '规则防御') return true;
+    // 位移重做: 瞬移/脱离的位移对象是「目标」时，是帮单体友方位移（受益者是友方）；换位两边都可以，默认按敌方拉人，对友方由声明的目标决定。
+    if (prototype === '位移执行') return /瞬移|脱离/.test(String(effect?.位移类型 || '')) && String(effect?.位移对象 || '').trim() === '目标';
     // 时光回溯: 被动 guards its target (an ally), 主动 presses it (an enemy); 复制执行 copies an enemy unless it is 复刻友方.
     if (prototype === '时光回溯') return String(effect?.发动方式 || '被动').trim() !== '主动';
     if (prototype === '复制执行') return String(effect?.复制模式 || '').trim() === '复刻友方';
@@ -9050,8 +9052,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const explicitFriendly = /友方|己方/.test(targetText);
       const explicitHostile = /敌方|对方/.test(targetText);
       const targetsAllies = effectTargetsAllies(effect);
-      const requiresFriendly = explicitFriendly || (!explicitHostile && targetsAllies);
-      const requiresHostile = explicitHostile || (!explicitFriendly && !targetsAllies);
+      // 位移重做: 换位两边都行（对友方是替挡/换到身边，对敌方是拉进阵中），由声明的目标决定。
+      const swapEitherSide = effectPrototype === '位移执行' && /换位/.test(String(effect?.位移类型 || '')) && !explicitFriendly && !explicitHostile;
+      const requiresFriendly = !swapEitherSide && (explicitFriendly || (!explicitHostile && targetsAllies));
+      const requiresHostile = !swapEitherSide && (explicitHostile || (!explicitFriendly && !targetsAllies));
       const sideMatched = declaredTargets.filter(target => {
         if (excludesActorEndpoint && unitId(target) === unitId(actor)) return false;
         const targetSide = mechanicalProjectionProfile(
@@ -9342,14 +9346,22 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         combatEffect.dodge_bonus = POSITION_BLINK_EVADE; once.dodge = true;
         combatEffect.incoming_only = true;
       };
+      // 给他人位移（用户 2026-11-14「无论是自己瞬移，还是帮别人瞬移都是如此」）: 瞬移/脱离落在友方，友方得到这一次躲避（瞬移对友方只给躲避，命中与目标反应
+      // 的突袭窗口是出手一方自己的）；落在敌方（接收者 enemy）什么都不给，免得「帮」敌人躲一击。
       if (/瞬移/.test(positionType)) {
-        blink();
-        combatEffect.hit_bonus = POSITION_BLINK_HIT; once.hit = true;
-        combatEffect.target_reaction_penalty = POSITION_BLINK_TARGET_REACTION; once.target_reaction = true;
+        if (role !== 'enemy') {
+          blink();
+          if (role === 'self') {
+            combatEffect.hit_bonus = POSITION_BLINK_HIT; once.hit = true;
+            combatEffect.target_reaction_penalty = POSITION_BLINK_TARGET_REACTION; once.target_reaction = true;
+          }
+        }
       } else if (/脱离/.test(positionType)) {
-        combatEffect.dodge_bonus = POSITION_DISENGAGE_DODGE; once.dodge = true;
-        combatEffect.counter_window_closed = true;
-        if (round !== null) combatEffect.counter_closed_round = round;
+        if (role !== 'enemy') {
+          combatEffect.dodge_bonus = POSITION_DISENGAGE_DODGE; once.dodge = true;
+          combatEffect.counter_window_closed = true;
+          if (round !== null) combatEffect.counter_closed_round = round;
+        }
       } else if (/拉近|突进|追击/.test(positionType)) {
         combatEffect.hit_bonus = POSITION_PULL_HIT + POSITION_PULL_AVOID_CUT; once.hit = true;
         combatEffect.position_pull_detail = { hit: POSITION_PULL_HIT, targetAvoidCut: POSITION_PULL_AVOID_CUT };
@@ -9361,8 +9373,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         }
       } else if (/换位/.test(positionType)) {
         combatEffect.instant_windup = true;
-        if (role === 'ally') blink();
-        else if (role === 'enemy') {
+        if (role === 'ally') {
+          // 友方换位（第 86/110 章替队友挡致命一击，第 324 章把友方换到身边配合）: 友方这一击改由施法者承受（BattleRuntime chooseSwapCover，
+          // 来招落到施法者身上，友方这次躲避随之取走）；施法者接不住时（倒下、被控）友方照常 95% 躲开。
+          blink();
+          const coverName = String(effect?.来源角色 || '').trim();
+          if (coverName) combatEffect.swap_cover_source = coverName;
+        } else if (role === 'enemy') {
           combatEffect.reaction_mult_penalty = POSITION_SWAP_ENEMY_REACTION; once.reaction = true;
           combatEffect.interrupt_charge = true;
           combatEffect.no_cover = true;
@@ -23689,6 +23706,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return collectStateEntries(unit).some(([, state]) => state?.战斗效果?.[flag] === true &&
       (state.战斗效果[roundField] === undefined || Number(state.战斗效果[roundField]) === Number(round)));
   }
+  // 友方换位替挡（用户 2026-11-14）: `unit` 身上还没用掉的「换位」躲避，记着是谁换的——来袭落在 unit 身上之前，由那个施法者去承受。
+  function positionSwapCoverSources(unit = {}) {
+    return collectStateEntries(unit).filter(([, state]) => state?.战斗效果?.position_once?.dodge === true && String(state.战斗效果.swap_cover_source || '').trim())
+      .map(([, state]) => String(state.战斗效果.swap_cover_source).trim());
+  }
   const positionClosesCounterWindow = (unit, round) => positionStateActiveInRound(unit, 'counter_window_closed', 'counter_closed_round', round);
   const positionDeniesCover = (unit, round) => positionStateActiveInRound(unit, 'no_cover', 'no_cover_round', round);
   // 换位对敌方的成功率（用户 2026-11-14，依斗二玄冥置换/玄武置换原文）: 按修为压制判定——施法者等级高于目标时高，越级时低（差 −10 级约
@@ -24218,6 +24240,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     positionRecipientFields,
     positionClosesCounterWindow,
     positionDeniesCover,
+    positionSwapCoverSources,
     positionSwapSuccessMultiplier,
     isInstantPositionSkill,
     normalizeInstantPositionWindup,

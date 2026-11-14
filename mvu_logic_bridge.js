@@ -15282,6 +15282,7 @@
       else delete 字段['数值'];
     }
     字段['位移对象'] = 推断技能设计台位移对象(字段);
+    if (字段['必定成立'] !== true || normalizeSkillUiText(字段['位移类型'], '') !== '换位') delete 字段['必定成立'];
     if (技能设计台位移目标需要判定(字段)) {
       if (!normalizeSkillUiText(字段['驱动属性'], '')) 字段['驱动属性'] = '魂力上限';
       if (!normalizeSkillUiText(字段['影响方向'], '')) 字段['影响方向'] = '效果强度';
@@ -16535,8 +16536,15 @@
           throw new Error(`技能执行结构错误:${path}[${index}]换位必须声明自身与目标双参与者`);
         if (位移类型 !== '换位' && 位移对象 === '自身与目标')
           throw new Error(`技能执行结构错误:${path}[${index}]非换位不能使用自身与目标双参与者`);
-        if (['瞬移', '脱离'].includes(位移类型) && 位移对象 !== '自身')
-          throw new Error(`技能执行结构错误:${path}[${index}]${位移类型}只能移动自身`);
+        // 位移重做（用户 2026-11-14「无论是自己瞬移，还是帮别人瞬移都是如此」）: 瞬移/脱离可以给单体友方（位移对象=目标，目标=单体）。
+        if (['瞬移', '脱离'].includes(位移类型) && 位移对象 === '自身与目标')
+          throw new Error(`技能执行结构错误:${path}[${index}]${位移类型}不能使用自身与目标双参与者`);
+        if (['瞬移', '脱离'].includes(位移类型) && 位移对象 === '目标' && 目标 !== '单体')
+          throw new Error(`技能执行结构错误:${path}[${index}]${位移类型}给他人只允许单体目标`);
+        if (effect['必定成立'] !== undefined && typeof effect['必定成立'] !== 'boolean')
+          throw new Error(`技能执行结构错误:${path}[${index}]必定成立必须是布尔值`);
+        if (effect['必定成立'] !== undefined && 位移类型 !== '换位')
+          throw new Error(`技能执行结构错误:${path}[${index}]必定成立只允许用于换位`);
         if (effect['数量'] !== undefined) throw new Error(`技能执行结构错误:${path}[${index}]位移执行不允许触发次数或数量`);
         if (toNumber(effect['距离'], 0) <= 0) throw new Error(`技能执行结构错误:${path}[${index}]位移幅度必须大于0`);
         if (toNumber(effect['距离'], 0) > 30) throw new Error(`技能执行结构错误:${path}[${index}]位移幅度不能超过30`);
@@ -19059,6 +19067,7 @@
       if (['防御继承比例', '敏捷继承比例', '体力继承比例', '魂力继承比例', '精神继承比例'].includes(key)) return false;
     }
     if (prototype === '位移执行' && key === '方位') return false;
+    if (prototype === '位移执行' && key === '必定成立') return valueOf('位移类型') === '换位';
     if (prototype === '炸环') return ['目标', '原型', '生效方式', '条件分支', '强化倍率'].includes(key);
     if (prototype === '结算修正') {
       const 结算 = valueOf('结算');

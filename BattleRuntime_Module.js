@@ -14095,6 +14095,20 @@
   // target's side (not a summon) that can act, has not acted this round, is not charging or guard-broken, and gets there
   // in time (BattlePreview interceptWindupBudget). The choice among them, or none, is the decision layer's
   // (BattleDecision chooseInterceptor) — for a unit the player controls too.
+  // 位移重做（用户 2026-11-14「无论是自己瞬移，还是帮别人瞬移都是如此」，第 86/110 章替队友挡致命一击）: 友方身上有一道没用掉的换位躲避，
+  // 记着换位的施法者；来袭单体攻击落在友方之前，由该施法者（同阵营、还能行动、不是攻击者）承受——施法者与友方对调了位置。
+  // 与援护不冲突：换位是已经施放出去的状态，不占援护者的当回合机会，先于援护判定；施法者接不住时回落到友方的 95% 躲避与援护判定。
+  function chooseSwapCover(combatData = {}, attacker = {}, target = {}) {
+    const round = Number(combatData?.回合 || 0);
+    if (previewRuntime.positionDeniesCover(target, round)) return null;
+    const names = previewRuntime.positionSwapCoverSources(target);
+    if (!names.length) return null;
+    const side = inferUnitSide(combatData, target);
+    return listPrimaryCombatUnits(combatData).find(unit => unit && unit !== target && unit !== attacker && !unit.召唤键 &&
+      names.includes(previewRuntime.unitName(unit)) && inferUnitSide(combatData, unit) === side &&
+      previewRuntime.isBattleCapable(unit) && structuredActorCanAct(unit, 'ACTIVE') && !unit.蓄力技能) || null;
+  }
+
   function chooseStructuredInterceptor(combatData = {}, attacker = {}, declaration = {}, target = {}) {
     if (typeof decisionRuntime?.chooseInterceptor !== 'function') return null;
     const round = Number(combatData?.回合 || 0), side = inferUnitSide(combatData, target);
@@ -18682,11 +18696,34 @@
               // 援护 (用户 2026-11-11/12): an ally that has not acted this round and can get there in time may take a
               // single-target attack in the target's place — the action lands on it, it answers with its own defence,
               // evasion or response skill, the target does not answer, and its action of the round is spent.
-              let struck = target, interceptor = null;
+              let struck = target, interceptor = null, swapCover = null;
               if (!guardSummon && node.nodeKind === 'ACTIVE' && hostileTargets.length === 1 &&
                   !/群体|全场/.test(String(structuredDamageEffects(resolvedDeclaration)[0]?.目标 || '')) &&
                   Array.isArray(resolvedDeclaration.targetIds) && resolvedDeclaration.targetIds.some(id => isUnitIdentityMatch(target, id))) {
-                interceptor = chooseStructuredInterceptor(combatData, actor, resolvedDeclaration, target);
+                swapCover = chooseSwapCover(combatData, actor, target);
+                if (!swapCover) interceptor = chooseStructuredInterceptor(combatData, actor, resolvedDeclaration, target);
+              }
+              if (swapCover) {
+                const coverId = previewRuntime.unitId(swapCover);
+                const redirected = { ...resolvedDeclaration, targetIds: resolvedDeclaration.targetIds.map(id => isUnitIdentityMatch(target, id) ? coverId : id) };
+                shared.declaration = redirected;
+                actionContext.declaration = redirected;
+                if (actionContext.primaryTarget === target) actionContext.primaryTarget = swapCover;
+                // 友方这次躲避已经换成了施法者的承受，取走（别留到下一击白给友方一次必躲）。
+                previewRuntime.consumePositionOnce(target, ['dodge']);
+                writeLedgerEvent(combatData, {
+                  eventKind: 'runtime_trace', round: Number(combatData.回合 || 0),
+                  actorId: coverId, actorName: previewRuntime.unitName(swapCover),
+                  targetId: previewRuntime.unitId(target), targetName: previewRuntime.unitName(target),
+                  actionName: '换位', actionType: 'position_swap', actorControl: 'AI', actionRole: 'REACTION',
+                  sourceActionId: actionContext.actionEvent.actionId, parentNodeId: actionContext.actionEvent.chainNodeId || '',
+                  sourceNodeId: actionContext.actionEvent.chainNodeId || '',
+                  result: 'redirected', resultState: 'SUCCESS', ruleCode: 'POSITION_SWAP_COVER',
+                  meta: { source: 'structured_runtime', traceType: 'position_swap_cover', attackerId: previewRuntime.unitId(actor),
+                    protectedId: previewRuntime.unitId(target), coverId,
+                    reasonText: `${previewRuntime.unitName(swapCover)}与${previewRuntime.unitName(target)}换了位，接下了这一击` },
+                });
+                struck = swapCover;
               }
               if (interceptor) {
                 const interceptorId = previewRuntime.unitId(interceptor);
