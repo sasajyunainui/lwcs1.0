@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:315d6fe331193fd97827be3ba31312f241f0f6e4f1a7785e8e9897b011595a6b|MVU_Schema_Runtime.js:874a5c7f5cadc5cf4cc04560a20cb0af6c6421c40ad3091770715e54b99cac72|BattlePreview_Module.js:e515d11fb65d5272434ba756c81457fa2cbf0c4039c73f202ee1cc37b4769659|BehaviorDecisionPipeline_Module.js:af9b205935ae8ad04f9ad8e4613807b188302a948658c8bf869573ca06712cc2|BattleDecision_Module.js:2ead7463e0fde013eed11a4e82b4913d78ad25b4777e17b0b95896fd62fb5c3f|BattleRuntime_Module.js:9f90e8fbbf9c59f80a8ce2c3093f84723a08590dc21b868f276aa153c2a6f42f */
+/* sources-sha256: MVU_Skill_Runtime.js:315d6fe331193fd97827be3ba31312f241f0f6e4f1a7785e8e9897b011595a6b|MVU_Schema_Runtime.js:874a5c7f5cadc5cf4cc04560a20cb0af6c6421c40ad3091770715e54b99cac72|BattlePreview_Module.js:e515d11fb65d5272434ba756c81457fa2cbf0c4039c73f202ee1cc37b4769659|BehaviorDecisionPipeline_Module.js:af9b205935ae8ad04f9ad8e4613807b188302a948658c8bf869573ca06712cc2|BattleDecision_Module.js:640aa5f26e9e6fc7fa1e0b04f375349bc23f30e3df3cc4bccea775a3baa7035e|BattleRuntime_Module.js:9f90e8fbbf9c59f80a8ce2c3093f84723a08590dc21b868f276aa153c2a6f42f */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -71351,7 +71351,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         // The skill it released last was seen by everyone (复制执行 copies it: BattlePreview copySourceSkill).
         // How long it has kept to stances is seen too (久守必失: BattlePreview passiveStreakFactor).
         // So is whether its 体力 has already been halved for running low on 魂力 / 精神力 (资源低位砍体力).
-        ...(sourceUnit?.__battleRuntime?.lastReleasedSkill || Number(sourceUnit?.__battleRuntime?.passiveStreak) > 0 || sourceUnit?.__battleRuntime?.lowResourceStaminaCut ? { __battleRuntime: {
+        // So is a stance it has taken and not yet used (it meets the next hit with it: BattleDecision r20StanceOf).
+        ...(sourceUnit?.__battleRuntime?.lastReleasedSkill || Number(sourceUnit?.__battleRuntime?.passiveStreak) > 0 || sourceUnit?.__battleRuntime?.lowResourceStaminaCut ||
+          sourceUnit?.__battleRuntime?.activeDefenseStance ? { __battleRuntime: {
+          ...(sourceUnit.__battleRuntime.activeDefenseStance ? { activeDefenseStance: cloneValue(sourceUnit.__battleRuntime.activeDefenseStance) } : {}),
           ...(sourceUnit.__battleRuntime.lastReleasedSkill ? { lastReleasedSkill: cloneValue(sourceUnit.__battleRuntime.lastReleasedSkill) } : {}),
           ...(Number(sourceUnit.__battleRuntime.passiveStreak) > 0 ? { passiveStreak: Number(sourceUnit.__battleRuntime.passiveStreak) } : {}),
           ...(sourceUnit.__battleRuntime.lowResourceStaminaCut ? { lowResourceStaminaCut: { ...sourceUnit.__battleRuntime.lowResourceStaminaCut } } : {}) } } : {}),
@@ -135109,6 +135112,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // the best for the unit is the one it loses least by — what it takes less what it lands back (each a share of its
   // own HP maximum) plus (接战链 阶段 2c) what the answer costs it (r20AnswerPrice), then the strike back. `held`
   // forces the answer (DEFEND / EVADE) instead of the best one. Returns the chosen option's `price` too.
+  // The stance a unit holds and has not used yet ('DEFEND' / 'EVADE'; '' if none).
+  const r20StanceOf = unit => {
+    const stance = unit?.__battleRuntime?.activeDefenseStance;
+    const kind = String(stance?.type || stance?.actionKind || '').trim().toUpperCase();
+    return stance?.consumed !== true && ['DEFEND', 'EVADE'].includes(kind) ? kind : '';
+  };
   const r20Meet = (stand, weight, held = '') => {
     if (stand.blocked) return { kind: 'NONE', keep: stand.soak, share: 1, lands: 1, defends: false, answer: 0, back: 0 };
     const guard = preview.applyGuardWeight(stand.guard, weight);
@@ -135903,7 +135912,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         // The target answers as it stood before the move (a control the move brings has not landed yet).
         if (!table.acts[row] || !(alivePreHit[row] > 0)) continue;
         const weight = move ? preview.incomingHitShare(table.units[actorRow], move, table.units[row], table.world) : r20Weight(out[actorRow][row]);
-        const meet = r20Meet(r20Stand(table.units[row], table.units[actorRow], move), weight);
+        // A target holding a stance it took (activeDefenseStance, not yet used) meets the move with it — the runtime gives it
+        // no answer to choose (BattleRuntime preparedDefense) — so it cannot clash or preempt. 11-14: a 防御系 kept to its own
+        // stance 60 rounds against a 控制系 that stood in one too, every basic attack read as met by a skill clashing it back
+        // for 10% (the 控制系 had one such answer in 60 rounds).
+        const stance = r20StanceOf(table.units[row]);
+        const meet = r20Meet(r20Stand(table.units[row], table.units[actorRow], move, !!stance), weight, stance);
         if (meet.share < 1 - 1e-12) {
           const lost = Math.max(0, table.remaining[row] - remaining[row]);
           remaining[row] = Math.max(0, table.remaining[row] - lost * meet.share);
