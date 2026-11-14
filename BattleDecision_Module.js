@@ -65660,6 +65660,11 @@
   // release at once on one enemy (BattleRuntime COUNTER: 前摇 within the action budget, a direct damage effect, a single
   // hostile target) — a group skill or a charged one is no strike back.
   let r20Struck = 0;
+  // How often an unseen enemy strikes back with a skill rather than its basic attack (11-14, 20 1v1 matches: a damaging
+  // single-target skill released at once and paid for was there in 27 of 140 strike backs and used in 25). The table took
+  // the routine skill for every strike back — 43% of enemy cells, a strike back of 16% HP against 2.5% (basic) and 5.7%
+  // (skill) landed — so every attack looked to invite a heavy blow back and a unit stood guard instead.
+  const R20_ROUTINE_COUNTER_SHARE = 0.2;
   const r20StrikesBack = skill => Math.max(0, Number(skill?.前摇 ?? skill?.cast_time ?? 0)) <= (Number(preview.CONTINUOUS_ACTION_BUDGET) || 40) &&
     ['HOSTILE_SINGLE', 'ANY_SINGLE'].includes(targetProfile(skill)) && preview.collectEffects(skill).some(effect => effect?.原型 === '伤害结算');
   function r20Cell(unit, other, friendly, self, context, world, skipped) {
@@ -65710,8 +65715,9 @@
       const routine = Math.min(maximum, preview.calculateBaseDamage(effect, unit, other, null, { resourceDriveEnabled: false }) *
         preview.estimateHitProbability(unit, other, effect)) / maximum * 100;
       best = Math.max(best, routine);
-      // The routine attack is a skill released at once (routineAttackEffect: no charge), so it strikes back too.
-      struck = Math.max(struck, routine);
+      // The routine attack is a skill released at once (routineAttackEffect: no charge), so it may strike back too — as
+      // often as a unit has a counter skill ready (R20_ROUTINE_COUNTER_SHARE); else its basic attack.
+      struck = Math.max(struck, basic + (routine - basic) * R20_ROUTINE_COUNTER_SHARE);
     }
     r20Struck = struck / 100;
     return best / 100;
