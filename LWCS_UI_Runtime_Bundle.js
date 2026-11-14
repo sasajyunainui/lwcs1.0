@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:fd02ab35ffcdced0b6a5ab56509c72e05ec83cd9d7a024e3d0580638504c3f29|mvu_logic_bridge.js:1aab6b8df40d2d8623c326c629d68060fecce46a6e0e71b6191ce6df76693e36|cockpit/designer-model.js:9e32bfa817caa9c980c4cf92834dde5df98a11f18bc7cb63d626c3f82cf72617|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:1f018c2f083673031b98f7bde8035b4db8be87d961d12671bbd54cac9e144afd|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:bbbae9686d5c127938d3dcfc97f2758141c1a9bc73a066c1f5a2facf51db5ee7|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:a4ee8cc5d00077a6318d8310f5cbbf3216c64f3ed84cd6cfe0777bba934d2039|BehaviorDecisionPipeline_Module.js:af9b205935ae8ad04f9ad8e4613807b188302a948658c8bf869573ca06712cc2|BattleDecision_Module.js:4f1e6c4abf5051c418555e265c273bcdb1a2b0bcf07645bd98a9d5e0a140eae2|BattleRuntime_Module.js:5824d9d823c20ba6f8a3315c16f7733c5410e488cd786b9ffe779a2665f676f9|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:fd02ab35ffcdced0b6a5ab56509c72e05ec83cd9d7a024e3d0580638504c3f29|mvu_logic_bridge.js:a5945f61c877481d0c6175cf9ba6d0cf5c9a6e4f7f29c831c330bff65ea447dd|cockpit/designer-model.js:9e32bfa817caa9c980c4cf92834dde5df98a11f18bc7cb63d626c3f82cf72617|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:1f018c2f083673031b98f7bde8035b4db8be87d961d12671bbd54cac9e144afd|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:bbbae9686d5c127938d3dcfc97f2758141c1a9bc73a066c1f5a2facf51db5ee7|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:a4ee8cc5d00077a6318d8310f5cbbf3216c64f3ed84cd6cfe0777bba934d2039|BehaviorDecisionPipeline_Module.js:af9b205935ae8ad04f9ad8e4613807b188302a948658c8bf869573ca06712cc2|BattleDecision_Module.js:8bab39524a334608ea3781bb174a9d65a0cba3bad67f59b5dd43c5e789a69dae|BattleRuntime_Module.js:5824d9d823c20ba6f8a3315c16f7733c5410e488cd786b9ffe779a2665f676f9|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -16677,6 +16677,7 @@
     反噬: '精神力上限',
     霸体: '体力上限',
     护卫: '体力上限',
+    异常抗性: '精神力上限',
   });
   function 技能设计台判定修正允许打断效果(字段 = {}) {
     if (parseSkillDesignerIntegerInputValue(字段 && 字段['持续回合'], 0, 0) > 0) return false;
@@ -16736,6 +16737,7 @@
     if (状态名 === '禁疗') return '+40%';
     if (状态名 === '治疗反转') return '+100%';
     if (状态名 === '护卫') return '+10%';
+    if (状态名 === '异常抗性') return '+25%';
     if (状态名 === '嘲讽') return '+100%';
     if (状态名 === '共享视野') return '+10%';
     if (['资源燃烧', '魂力枯竭'].includes(状态名)) return '+3%';
@@ -16773,7 +16775,7 @@
 
 
   function 技能设计台状态施加使用正向强度数值(状态 = '') {
-    return ['资源燃烧', '魂力枯竭', '防御剥夺', '精神抗性剥夺'].includes(normalizeSkillUiText(状态, ''));
+    return ['资源燃烧', '魂力枯竭', '防御剥夺', '精神抗性剥夺', '异常抗性'].includes(normalizeSkillUiText(状态, ''));
   }
 
 
@@ -16798,7 +16800,7 @@
       return formatSkillDesignerSignedValue(Math.max(0.05, Math.abs(数值)), true);
     if (字段 === '数值' && ['资源燃烧', '魂力枯竭'].includes(状态名))
       return formatSkillDesignerSignedValue(Math.max(0.01, Math.abs(数值)), true);
-    if (字段 === '数值' && ['护盾', '禁疗', '治疗反转', '防御剥夺', '精神抗性剥夺'].includes(状态名))
+    if (字段 === '数值' && ['护盾', '禁疗', '治疗反转', '防御剥夺', '精神抗性剥夺', '异常抗性'].includes(状态名))
       return formatSkillDesignerSignedValue(Math.max(0.05, Math.abs(数值)), true);
     return value;
   }
@@ -19160,7 +19162,7 @@
         .filter(effect => normalizeSkillUiText(effect['原型'], '') === '状态施加')
         .map(effect => normalizeSkillUiText(effect['状态'], '')),
     );
-    const 防御状态 = ['护盾', '无视异常', '霸体'];
+    const 防御状态 = ['护盾', '无视异常', '霸体', '异常抗性'];
     const 负面状态 = [
       '中毒',
       '流血',
@@ -21165,7 +21167,7 @@
       if (结算 === '受到伤害') return 数值 < 0;
       return ['伤害分摊', '消耗分摊', '伤害吸收'].includes(结算);
     }
-    if (原型名 === '状态施加') return ['持续恢复', '护盾', '隐匿', '共享视野', '无视异常', '霸体', '护卫'].includes(normalizeSkillUiText(effect && effect['状态'], ''));
+    if (原型名 === '状态施加') return ['持续恢复', '护盾', '隐匿', '共享视野', '无视异常', '霸体', '异常抗性', '护卫'].includes(normalizeSkillUiText(effect && effect['状态'], ''));
     return false;
   }
 
@@ -158497,7 +158499,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       }
       const kept = basic + (value - basic) * Math.max(1, uses) / R20_HORIZON;
       best = Math.max(best, kept);
-      if (!friendly && r20StrikesBack(skill)) struck = Math.max(struck, kept);
+      // A strike back is one release, at what it lands now (the skill is affordable now): not the per-round average the
+      // cell keeps for its output. 11-14 (推演—实际对账, 72 battles): a strike back was read at 2.7% a time against 5.0%
+      // landed, on a 强攻系 6.1% against 21.5%.
+      if (!friendly && r20StrikesBack(skill)) struck = Math.max(struck, value);
     }
     // A unit whose skills the decision cannot see (an enemy as believed: no skill list) hits by its routine attack — the
     // typical skill of its level and type over its basic attack (routine_attack_ratio, routineAttackEffect). Without it

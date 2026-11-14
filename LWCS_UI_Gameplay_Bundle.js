@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:a4ee8cc5d00077a6318d8310f5cbbf3216c64f3ed84cd6cfe0777bba934d2039|BehaviorDecisionPipeline_Module.js:af9b205935ae8ad04f9ad8e4613807b188302a948658c8bf869573ca06712cc2|BattleDecision_Module.js:4f1e6c4abf5051c418555e265c273bcdb1a2b0bcf07645bd98a9d5e0a140eae2|BattleRuntime_Module.js:5824d9d823c20ba6f8a3315c16f7733c5410e488cd786b9ffe779a2665f676f9|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:a4ee8cc5d00077a6318d8310f5cbbf3216c64f3ed84cd6cfe0777bba934d2039|BehaviorDecisionPipeline_Module.js:af9b205935ae8ad04f9ad8e4613807b188302a948658c8bf869573ca06712cc2|BattleDecision_Module.js:8bab39524a334608ea3781bb174a9d65a0cba3bad67f59b5dd43c5e789a69dae|BattleRuntime_Module.js:5824d9d823c20ba6f8a3315c16f7733c5410e488cd786b9ffe779a2665f676f9|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -105036,7 +105036,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       }
       const kept = basic + (value - basic) * Math.max(1, uses) / R20_HORIZON;
       best = Math.max(best, kept);
-      if (!friendly && r20StrikesBack(skill)) struck = Math.max(struck, kept);
+      // A strike back is one release, at what it lands now (the skill is affordable now): not the per-round average the
+      // cell keeps for its output. 11-14 (推演—实际对账, 72 battles): a strike back was read at 2.7% a time against 5.0%
+      // landed, on a 强攻系 6.1% against 21.5%.
+      if (!friendly && r20StrikesBack(skill)) struck = Math.max(struck, value);
     }
     // A unit whose skills the decision cannot see (an enemy as believed: no skill list) hits by its routine attack — the
     // typical skill of its level and type over its basic attack (routine_attack_ratio, routineAttackEffect). Without it
