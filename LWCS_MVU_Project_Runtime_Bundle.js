@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:e713abbf992a9b6e9e1d4a279110839c0ebb9254529b749913aea8a5209c8807|MVU_Schema_Runtime.js:874a5c7f5cadc5cf4cc04560a20cb0af6c6421c40ad3091770715e54b99cac72|MVU_Competition_Runtime.js:2a5d78b856d3123e857393fca07fb365d91ce9ea4877cc37dfafd86b384e8904|MVU_Runtime_View.js:33244f9f67a95f87a863a19b87f81efff9f35a707fd6b591c6502c84cb1f486c */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:315d6fe331193fd97827be3ba31312f241f0f6e4f1a7785e8e9897b011595a6b|MVU_Schema_Runtime.js:874a5c7f5cadc5cf4cc04560a20cb0af6c6421c40ad3091770715e54b99cac72|MVU_Competition_Runtime.js:2a5d78b856d3123e857393fca07fb365d91ce9ea4877cc37dfafd86b384e8904|MVU_Runtime_View.js:33244f9f67a95f87a863a19b87f81efff9f35a707fd6b591c6502c84cb1f486c */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -4691,9 +4691,11 @@ var TypeMultipliers = {
   防御系: { sp_max: 1.0, men_max: 1.0, str: 0.9, def: 1.5, agi: 0.7, vit_max: 1.0 },
   敏攻系: { sp_max: 1.0, men_max: 1.0, str: 0.8, def: 0.7, agi: 1.6, vit_max: 0.8 },
   控制系: { sp_max: 1.0, men_max: 1.2, str: 0.9, def: 0.8, agi: 1.1, vit_max: 0.9 },
-  辅助系: { sp_max: 1.0, men_max: 1.2, str: 0.7, def: 0.6, agi: 0.8, vit_max: 0.7 },
-  食物系: { sp_max: 1.0, men_max: 1.2, str: 0.7, def: 0.6, agi: 0.8, vit_max: 0.7 },
-  治疗系: { sp_max: 1.0, men_max: 1.2, str: 0.7, def: 0.6, agi: 0.8, vit_max: 0.7 },
+  // 辅助、食物、治疗系 敏捷 0.8 → 0.6、防御 0.6 → 0.45（用户 2026-11-14「辅助系，食物系，治疗系的敏捷和防御需要调低才行」）：
+  // 训练加成按基础属性算、不乘系别倍率，原先 75 级时这三系最终敏捷仍有强攻系的 87%、防御 71%；现在约 70%、59%（按平均天赋）。
+  辅助系: { sp_max: 1.0, men_max: 1.2, str: 0.7, def: 0.45, agi: 0.6, vit_max: 0.7 },
+  食物系: { sp_max: 1.0, men_max: 1.2, str: 0.7, def: 0.45, agi: 0.6, vit_max: 0.7 },
+  治疗系: { sp_max: 1.0, men_max: 1.2, str: 0.7, def: 0.45, agi: 0.6, vit_max: 0.7 },
   精神系: { sp_max: 1.0, men_max: 1.7, str: 0.7, def: 0.6, agi: 0.8, vit_max: 0.7 },
   元素系: { sp_max: 1.0, men_max: 1.5, str: 0.8, def: 0.6, agi: 0.8, vit_max: 0.7 },
   召唤系: { sp_max: 1.0, men_max: 1.35, str: 0.8, def: 0.8, agi: 0.8, vit_max: 0.8 },
@@ -9892,7 +9894,9 @@ var SKILL_UNIT_COST_TABLE_V1 = Object.freeze({
     造成伤害: 1.5, 受到伤害: 1.4, 治疗: 0.95, 消耗: 0.85, 前摇: 1.7,
     反伤: 1.15, 伤害转移: 2.5, 伤害吸收: 2, 伤害转治疗: 1.8, 治疗转伤害: 1.8,
     伤害分摊: 1.1, 消耗分摊: 0.9, 防御穿透: 1.3, 防御剥夺: 1.8, 精神抗性剥夺: 2.3,
-    技能效果: 2.0, 反击: 18, 持续伤害引爆: 20,
+    // 反击 18 → 3（用户 2026-11-14「这个你来调整就行」）：这条结算修正授予反击并加反击强度 +X%（BattlePreview
+    // declarationCounterGrantProfile），按每 1% 收 18 时「反制」模板 +20% 要 360、生成器只能压到 +5%（90）。
+    技能效果: 2.0, 反击: 3, 持续伤害引爆: 20,
   }),
   状态施加: Object.freeze({
     中毒: Object.freeze({ 数值: 1.05, 副数值: 0.6 }),
@@ -9946,7 +9950,10 @@ var SKILL_UNIT_COST_TABLE_V1 = Object.freeze({
   机制授予: 25,
   复制执行: Object.freeze({ 复制属性: 70, 复制技能: 90, 复制全部: 130 }),
   时光回溯: 200,
-  位移执行: Object.freeze({ 换位: 14, 脱离: 10, 拉近: 8, 击退: 8, 瞬移: 50 }),
+  // 位移按战斗里实际落下的效果定价（用户 2026-11-14「位置用效果仿真」「这个你来调整就行」）：BattlePreview 把位移折成
+  // 命中/闪避/反应 ±（距离÷100，5%～25%），最低一档约等于判定修正 5% 的价（3～3.5）。原先瞬移 50，同样只给闪避 +5%，
+  // 「自身位移」模板（瞬移 + 闪避 +20%）因此 53.5 COST，闪避被压到 +5%。换位两边都动，略贵。
+  位移执行: Object.freeze({ 换位: 8, 脱离: 5, 拉近: 5, 击退: 5, 瞬移: 5 }),
   决策干扰: Object.freeze({ 判断干扰: 0.6, 索敌干扰: 0.75 }),
   召唤生成: Object.freeze({
     本命召唤兽: 50, 分身: 28, 器灵: 35, 其他召唤生物: 30, 魂师: 30, 魂兽: 30, 深渊生物: 30,
@@ -11989,9 +11996,9 @@ function 构建自动生成档案估算效果_V1(条目 = {}, 上下文 = {}) {
   const 效果 = { ...(条目 || {}), 原型, 目标 };
   const 负向机制 = /削弱|压制|减速|迟缓|禁疗|治疗反转|封技|硬控|软控|打断|干扰|燃烧|锁定|抹消|剥夺|斩盾|吞噬/.test(机制);
   if (!String(效果.数值 ?? '').trim()) {
-    if (原型 === '结算修正' && String(效果.结算 || '').trim() === '受到伤害') 效果.数值 = '-5%';
-    else if (原型 === '护盾变化') 效果.数值 = String(效果.护盾模式 || '').trim() === '斩盾' ? '-5%' : '+5%';
-    else if (['资源变化', '资源转移', '属性修正', '判定修正', '结算修正', '决策干扰', '资源锁定'].includes(原型)) 效果.数值 = 负向机制 ? '-5%' : '+5%';
+    if (原型 === '结算修正' && String(效果.结算 || '').trim() === '受到伤害') 效果.数值 = '-10%';
+    else if (原型 === '护盾变化') 效果.数值 = String(效果.护盾模式 || '').trim() === '斩盾' ? '-10%' : '+10%';
+    else if (['资源变化', '资源转移', '属性修正', '判定修正', '结算修正', '决策干扰', '资源锁定'].includes(原型)) 效果.数值 = 负向机制 ? '-10%' : '+10%';
   }
   return 效果;
 }
@@ -12992,9 +12999,9 @@ function rollSubModelByGrade(mainMechanic, grade, roll, context = {}) {
   };
   const 配置权重汇总 = new Map();
   // 控制系自己的控制类子表（用户 2026-11-14，同上）：通用表 C 档没有硬控、B 档硬控 25，控制系从 C 档起就能抽到硬控
-  // （硬控品质门 C 照旧，F、D 仍只出软控）；A、S 档用通用表。
+  // （硬控品质门 C 照旧，F、D 仍只出软控）；A、S 档用通用表。C 档硬控 15 → 25、迟缓 65 → 55（用户 2026-11-14「丙吧，硬控提到25试试」）。
   const 本系控制表 = 系别 === '控制系' ? {
-    C: [{ value: '迟缓', weight: 65 }, { value: '硬控', weight: 15 }, { value: '节奏打断', weight: 20 }],
+    C: [{ value: '迟缓', weight: 55 }, { value: '硬控', weight: 25 }, { value: '节奏打断', weight: 20 }],
     B: [{ value: '迟缓', weight: 45 }, { value: '硬控', weight: 35 }, { value: '节奏打断', weight: 20 }],
   } : null;
   (mainMechanic === '控制类' && 本系控制表?.[tableGrade] ? 本系控制表[tableGrade]
@@ -21432,6 +21439,32 @@ function 让技能符合预算_V1(技能 = {}, 魂技位 = 1, 上下文 = {}) {
   }
 }
 
+// 生成的百分比效果不低于 10%（用户 2026-11-14「要改，或者说早就应该改了」）：原先压缩与补强的下限是 5%，预算被不缩的
+// 部分（如自身位移）吃掉时，闪避、反击这类数值被压成蚊子腿。守住 10% 后仍超预算的，由实际 COST 推高消耗承担。副作用另有下限。
+var 生成百分比效果最低数值_V1 = 10;
+// 生成收尾：模板默认值、按品质折算、按预算精确反推等路径还会留下 7%～9% 的数值，统一抬到下限。每回合结算的持续伤害、持续恢复
+// （按回合累计，5% 一回合不算蚊子腿）与副作用（另有下限）不在此列。
+var 生成百分比下限豁免状态_V1 = /中毒|流血|灼烧|冻伤|持续创伤|持续恢复|资源燃烧|暗冰侵蚀/;
+function 抬升生成百分比效果到下限_V1(技能 = {}) {
+  let 改动数 = 0;
+  const 访问 = 效果 => {
+    if (!效果 || typeof 效果 !== 'object' || Array.isArray(效果)) return;
+    const 文本 = String(效果.数值 ?? '').trim();
+    if (/%$/.test(文本) && !(String(效果.原型 || '').trim() === '状态施加' && 生成百分比下限豁免状态_V1.test(String(效果.状态 || '')))) {
+      const 数 = Math.abs(Number(文本.replace(/[+%-]/g, '')));
+      if (Number.isFinite(数) && 数 > 0 && 数 < 生成百分比效果最低数值_V1 - 1e-9) {
+        效果.数值 = `${文本.startsWith('-') ? '-' : '+'}${生成百分比效果最低数值_V1}%`;
+        改动数 += 1;
+      }
+    }
+    技能执行嵌套效果数组字段表_V1.forEach(字段 => { (Array.isArray(效果?.[字段]) ? 效果[字段] : []).forEach(访问); });
+    (Array.isArray(效果.条件分支) ? 效果.条件分支 : []).forEach(分支 => {
+      技能条件分支效果数组字段表_V1.forEach(字段 => { (Array.isArray(分支?.[字段]) ? 分支[字段] : []).forEach(访问); });
+    });
+  };
+  (Array.isArray(技能?._效果数组) ? 技能._效果数组 : []).forEach(访问);
+  return 改动数;
+}
 function 缩减技能效果数值份额_V1(效果数组 = [], 份额 = 0, 评估 = {}, 目标COST = null) {
   if (!Array.isArray(效果数组)) return 0;
   const 实际COST = Math.max(1, Number(评估?.实际COST || 1));
@@ -21450,7 +21483,7 @@ function 缩减技能效果数值份额_V1(效果数组 = [], 份额 = 0, 评估
       const 符号 = 文本.startsWith('+') ? '+' : (文本.startsWith('-') ? '-' : '');
       const 数 = Number(文本.replace(/[+%-]/g, ''));
       if (!Number.isFinite(数)) return;
-      const 下限 = 是百分比 ? 5 : 读取效果正式最低绝对值_V1(效果, 键);
+      const 下限 = 是百分比 ? 生成百分比效果最低数值_V1 : 读取效果正式最低绝对值_V1(效果, 键);
       const 新绝对值 = Number(Math.max(下限, Math.abs(数) * 缩放).toFixed(2));
       if (新绝对值 >= Math.abs(数) - 0.001) return;
       效果[键] = 是百分比 ? `${符号}${新绝对值}%` : (符号 === '-' ? -新绝对值 : 新绝对值);
@@ -23205,7 +23238,7 @@ function 生成阶段按目标COST填充效果强度_V1(技能 = {}, 上下文 =
     const 百分比上限 = 效果 => String(效果?.原型 || '').trim() === '结算修正' &&
       ['反伤', '伤害转移', '伤害吸收', '伤害转治疗', '治疗转伤害', '伤害分摊', '消耗分摊', '防御穿透', '防御剥夺', '精神抗性剥夺', '反击', '持续伤害引爆']
         .includes(String(效果?.结算 || '').trim()) ? 读取生成补强数值上限_V1(效果, '数值') : Infinity;
-    const 新值 = Number(Math.max(5, Math.min(是百分比 ? 百分比上限(项.效果) : Infinity, Math.abs(原值) * 倍率)).toFixed(2));
+    const 新值 = Number(Math.max(是百分比 ? 生成百分比效果最低数值_V1 : 5, Math.min(是百分比 ? 百分比上限(项.效果) : Infinity, Math.abs(原值) * 倍率)).toFixed(2));
     项.效果.数值 = 是百分比 ? `${符号 || '+'}${新值}%` : (符号 === '-' ? -新值 : 新值);
     (Array.isArray(项.关联效果) ? 项.关联效果 : []).forEach(关联效果 => {
       const 关联文本 = String(关联效果?.数值 ?? '').trim();
@@ -23213,7 +23246,7 @@ function 生成阶段按目标COST填充效果强度_V1(技能 = {}, 上下文 =
       if (!Number.isFinite(关联原值)) return;
       const 关联百分比 = /%$/.test(关联文本);
       const 关联符号 = 关联文本.startsWith('-') ? '-' : (关联文本.startsWith('+') ? '+' : '');
-      const 关联新值 = Number(Math.max(5, Math.min(关联百分比 ? 百分比上限(关联效果) : Infinity, Math.abs(关联原值) * 倍率)).toFixed(2));
+      const 关联新值 = Number(Math.max(关联百分比 ? 生成百分比效果最低数值_V1 : 5, Math.min(关联百分比 ? 百分比上限(关联效果) : Infinity, Math.abs(关联原值) * 倍率)).toFixed(2));
       关联效果.数值 = 关联百分比 ? `${关联符号 || '+'}${关联新值}%` : (关联符号 === '-' ? -关联新值 : 关联新值);
     });
   });
@@ -30320,6 +30353,7 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
         正式效果数: getMeaningfulSkillEffects(最终正式技能?._效果数组 || []).length,
       });
       收敛技能到预算区间_V1(最终正式技能, { ...候选预算上下文, 候选序号, 机制标签: 候选机制标签 }, 候选预算档案);
+      抬升生成百分比效果到下限_V1(最终正式技能);
       const 副作用前评估 = 评估技能预算_V1(最终正式技能, 候选预算上下文);
       const 自动副作用数 = 尝试生成阶段固有副作用_V1(最终正式技能, {
         ...(候选预算上下文 || {}),

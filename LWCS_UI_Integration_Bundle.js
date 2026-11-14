@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:fd02ab35ffcdced0b6a5ab56509c72e05ec83cd9d7a024e3d0580638504c3f29|mvu_logic_bridge.js:50b5bb206de01be17351b2c3b87fd3da4f49dc71b3c5dcfa48c36e202f757c2a|cockpit/designer-model.js:98b0eb787297c7079eca9a849a19d54df48b80ba441987e5c4319d10d548b4ce|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:bbbae9686d5c127938d3dcfc97f2758141c1a9bc73a066c1f5a2facf51db5ee7|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:fd02ab35ffcdced0b6a5ab56509c72e05ec83cd9d7a024e3d0580638504c3f29|mvu_logic_bridge.js:50b5bb206de01be17351b2c3b87fd3da4f49dc71b3c5dcfa48c36e202f757c2a|cockpit/designer-model.js:fbef98e9d498dd806861ccc585ccb66ef9fcfe47660b45f22081b856fabe483b|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:bbbae9686d5c127938d3dcfc97f2758141c1a9bc73a066c1f5a2facf51db5ee7|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -41618,9 +41618,10 @@ ${播报文本}
       防御系: { sp_max: 1, men_max: 1, str: 0.9, def: 1.5, agi: 0.7, vit_max: 1 },
       敏攻系: { sp_max: 1, men_max: 1, str: 0.8, def: 0.7, agi: 1.6, vit_max: 0.8 },
       控制系: { sp_max: 1, men_max: 1.2, str: 0.9, def: 0.8, agi: 1.1, vit_max: 0.9 },
-      辅助系: { sp_max: 1, men_max: 1.2, str: 0.7, def: 0.6, agi: 0.8, vit_max: 0.7 },
-      治疗系: { sp_max: 1, men_max: 1.2, str: 0.7, def: 0.6, agi: 0.8, vit_max: 0.7 },
-      食物系: { sp_max: 1, men_max: 1.2, str: 0.7, def: 0.6, agi: 0.8, vit_max: 0.7 },
+      // 与 MVU_Skill_Runtime TypeMultipliers 同步（11-14 辅助、治疗、食物系 敏捷 0.6、防御 0.45）。
+      辅助系: { sp_max: 1, men_max: 1.2, str: 0.7, def: 0.45, agi: 0.6, vit_max: 0.7 },
+      治疗系: { sp_max: 1, men_max: 1.2, str: 0.7, def: 0.45, agi: 0.6, vit_max: 0.7 },
+      食物系: { sp_max: 1, men_max: 1.2, str: 0.7, def: 0.45, agi: 0.6, vit_max: 0.7 },
       精神系: { sp_max: 1, men_max: 1.7, str: 0.7, def: 0.6, agi: 0.8, vit_max: 0.7 },
       元素系: { sp_max: 1, men_max: 1.5, str: 0.8, def: 0.6, agi: 0.8, vit_max: 0.7 },
       召唤系: { sp_max: 1, men_max: 1.35, str: 0.8, def: 0.8, agi: 0.8, vit_max: 0.8 },

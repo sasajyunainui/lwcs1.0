@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:fd02ab35ffcdced0b6a5ab56509c72e05ec83cd9d7a024e3d0580638504c3f29|mvu_logic_bridge.js:50b5bb206de01be17351b2c3b87fd3da4f49dc71b3c5dcfa48c36e202f757c2a|cockpit/designer-model.js:fbef98e9d498dd806861ccc585ccb66ef9fcfe47660b45f22081b856fabe483b|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:bbbae9686d5c127938d3dcfc97f2758141c1a9bc73a066c1f5a2facf51db5ee7|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:795463d9d4a1ef93589778a1e5a1c58ca366378541dcf53c0f84ea703f4afee2|BehaviorDecisionPipeline_Module.js:af9b205935ae8ad04f9ad8e4613807b188302a948658c8bf869573ca06712cc2|BattleDecision_Module.js:798189d511741d122ff15c8d955360933f4329303b76d8d428b087cf4fcf54d8|BattleRuntime_Module.js:b727111e9b45bbda1fb1ac06489463002892205948508a321855c82a5217628c|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:fd02ab35ffcdced0b6a5ab56509c72e05ec83cd9d7a024e3d0580638504c3f29|mvu_logic_bridge.js:50b5bb206de01be17351b2c3b87fd3da4f49dc71b3c5dcfa48c36e202f757c2a|cockpit/designer-model.js:fbef98e9d498dd806861ccc585ccb66ef9fcfe47660b45f22081b856fabe483b|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:bbbae9686d5c127938d3dcfc97f2758141c1a9bc73a066c1f5a2facf51db5ee7|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:e515d11fb65d5272434ba756c81457fa2cbf0c4039c73f202ee1cc37b4769659|BehaviorDecisionPipeline_Module.js:af9b205935ae8ad04f9ad8e4613807b188302a948658c8bf869573ca06712cc2|BattleDecision_Module.js:2ead7463e0fde013eed11a4e82b4913d78ad25b4777e17b0b95896fd62fb5c3f|BattleRuntime_Module.js:9f90e8fbbf9c59f80a8ce2c3093f84723a08590dc21b868f276aa153c2a6f42f|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -61563,6 +61563,7 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
   // A decision may hold every unit's stamina panel scale at its decision-world value (BattleDecision runProvider with
   // searchBounds.frozenStaminaPanel): id → scale; a unit not listed (a summon created in the look-ahead) reads its own.
   let frozenStaminaScales = null;
+  const STAMINA_DECAY_LINE = 0.3;
   function freezeStaminaScales(scales = null) {
     frozenStaminaScales = scales instanceof Map && scales.size ? scales : null;
   }
@@ -61583,7 +61584,9 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
       )
     );
     if (!hasStaminaField) return 1;
-    const ratio = clamp(readResource(unit, '体力') / Math.max(1, readResourceMax(unit, '体力')), 0, 1);
+    // 低于 STAMINA_DECAY_LINE 才降属性（用户 2026-11-14「改成低于3成开始降属性吧」；原先 5 成）：原曲线整段压进 [0, 3 成]，
+    // 3 成 1、1.8 成 0.9、0.9 成 0.75、0 时 0.5。
+    const ratio = clamp(readResource(unit, '体力') / Math.max(1, readResourceMax(unit, '体力')) * 0.5 / STAMINA_DECAY_LINE, 0, 1);
     if (ratio >= 0.5) return 1;
     if (ratio >= 0.3) return 0.9 + (ratio - 0.3) * 0.5;
     if (ratio >= 0.15) return 0.75 + (ratio - 0.15);
@@ -68895,6 +68898,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       delete unit.__维持反应惩罚;
       delete unit.__维持前摇系数;
     }
+    settleDeferredStaminaCut(unit);
     return totalLoad;
   }
 
@@ -68946,9 +68950,35 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   function applyLowResourceStaminaCut(unit, label, before, after, maximum) {
     if (!(maximum > 0) || !(before >= maximum * LOW_RESOURCE_STAMINA_RATIO) || !(after < maximum * LOW_RESOURCE_STAMINA_RATIO)) return;
     const runtime = unit.__battleRuntime && typeof unit.__battleRuntime === 'object' ? unit.__battleRuntime : {};
-    if (runtime.lowResourceStaminaCut?.[label] === true) return;
-    unit.__battleRuntime = { ...runtime, lowResourceStaminaCut: { ...(runtime.lowResourceStaminaCut || {}), [label]: true } };
-    setResource(unit, '体力', readResource(unit, '体力') * 0.5);
+    if (runtime.lowResourceStaminaCut?.[label]) return;
+    const deferred = staminaCutDeferred(unit);
+    unit.__battleRuntime = { ...runtime, lowResourceStaminaCut: { ...(runtime.lowResourceStaminaCut || {}), [label]: deferred ? DEFERRED_STAMINA_CUT : true } };
+    if (!deferred) setResource(unit, '体力', readResource(unit, '体力') * 0.5);
+  }
+  // 维持类武魂真身、武魂融合技（用户 2026-11-14「所有维持类的真身和武魂融合技，维持期间魂力低于一半时，体力不减半。维持结束后
+  // 按结束时的体力再减半」——口径是上面这条一成线）：发动（__维持类发动中，运行时扣启动消耗时挂上）与维持（持续效果条目带
+  // 真身维持）期间跌破只记作待砍（DEFERRED_STAMINA_CUT），最后一个这类维持条目没了时（refreshSustainRuntimeLoad，删维持条目的
+  // 各条路径都经过它）按当时的体力各砍一次。
+  const DEFERRED_STAMINA_CUT = 'DEFERRED';
+  // A release that defers the cut: a 武魂真身 or 武魂融合技 (the skill runtime's 判定技能消耗来源_V1) with an upkeep.
+  function sustainedAvatarRelease(skill = {}, context = {}) {
+    if (!skill || typeof skill !== 'object' || !Object.keys(readSkillCostStages(skill, context)?.维持 || {}).length) return false;
+    const judge = root.__LWCS_SKILL_COST_HELPERS_V1__?.判定技能消耗来源_V1;
+    const source = typeof judge === 'function' ? judge(skill, context) : null;
+    return !!(source?.武魂真身 || source?.武魂融合技);
+  }
+  function staminaCutDeferred(unit = {}) {
+    return unit?.__battleRuntime?.__维持类发动中 === true ||
+      Object.values(unit?.持续效果 || {}).some(effect => effect && effect.真身维持 === true);
+  }
+  function settleDeferredStaminaCut(unit = {}) {
+    const cuts = unit?.__battleRuntime?.lowResourceStaminaCut;
+    if (!cuts || staminaCutDeferred(unit)) return 0;
+    const due = Object.keys(cuts).filter(label => cuts[label] === DEFERRED_STAMINA_CUT);
+    if (!due.length) return 0;
+    unit.__battleRuntime = { ...unit.__battleRuntime, lowResourceStaminaCut: { ...cuts, ...Object.fromEntries(due.map(label => [label, true])) } };
+    setResource(unit, '体力', readResource(unit, '体力') * 0.5 ** due.length);
+    return due.length;
   }
 
   function setResource(unit, resource, value) {
@@ -83972,6 +84002,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     LIFE_THREAT_RATIO,
     INJURY_STAMINA_SHARE,
     LOW_RESOURCE_STAMINA_RATIO,
+    DEFERRED_STAMINA_CUT,
+    staminaCutDeferred,
+    sustainedAvatarRelease,
+    settleDeferredStaminaCut,
     INTERCEPT_WINDUP,
     REACTION_DEFENDER_MARGIN,
     // 接战链 阶段三: the referee as a neutral guard.
@@ -151239,7 +151273,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const sourceId = String(result?.actionId || action.actionId || '').trim();
     const stateKeys = preview.projectedSustainStateKeys(previous, next, sourceId);
     const owners = result ? preview.projectedSustainStateOwners({ ...result, actorId: id, afterSnapshot: world }, prior) : [];
-    return { costs, stateKeys, ...(sourceId ? { sourceId } : {}),
+    return { costs, stateKeys, ...(sourceId ? { sourceId } : {}), avatar: preview.sustainedAvatarRelease(action.skill, action),
       ...(owners.some(owner => owner.targetId !== id) ? {
         stateTargets: owners.map(({ targetId, key }) => ({ targetId, key })),
         actionName: action.skill?.name || action.skill?.魂技名 || '',
@@ -156326,6 +156360,19 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         }
         applyDeferredStates(offset, 'CONTROL_END');
         const charged = new Set();
+        // 维持类真身、融合技（BattlePreview staminaCutDeferred）: while one is kept, paying anything down past the line puts
+        // the stamina cut off — a pending profile has no carrier to say so, so its source says it (or a percentage fee, which
+        // only they may carry); the cut is taken once none is kept (after the fees).
+        const liveKeys = profile => profile.stateKeys.filter(key => {
+          const state = nextActor.状态效果?.[key];
+          return state && (profile.sourceEffect || !state.sourceActionId || !profile.sourceId || state.sourceActionId === profile.sourceId) &&
+            Number(state.duration || 0) + Number(state.__本回合新附加 === true || !Object.hasOwn(baselineActor?.状态效果 || {}, key)) >= offset;
+        });
+        const avatarProfile = profile => !profile.sourceEffect && (profile.avatar === true ||
+          profile.avatar === undefined && Object.values(profile.costs || {}).some(value => /%/.test(String(value))));
+        const avatarHeld = sustainProfiles.some(profile => avatarProfile(profile) && liveKeys(profile).length);
+        if (avatarHeld) nextActor.__battleRuntime = { ...(nextActor.__battleRuntime || {}), __维持类发动中: true };
+        let avatarKept = false;
         for (const profile of sustainProfiles) {
           if (profile.sourceEffect) {
             if (!nextActor.持续效果?.[profile.sustainKey]) continue;
@@ -156335,11 +156382,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               continue;
             }
           }
-          const activeKeys = profile.stateKeys.filter(key => {
-            const state = nextActor.状态效果?.[key];
-            return state && (profile.sourceEffect || !state.sourceActionId || !profile.sourceId || state.sourceActionId === profile.sourceId) &&
-              Number(state.duration || 0) + Number(state.__本回合新附加 === true || !Object.hasOwn(baselineActor?.状态效果 || {}, key)) >= offset;
-          });
+          const activeKeys = liveKeys(profile);
           if (profile.sourceEffect || activeKeys.length) {
             const parsed = profile.sourceEffect ? root.__LWCS_BATTLE_RUNTIME__.readSustainCosts(nextActor,
               profile.sourceEffect.维持消耗 ?? profile.sourceEffect.sustain_cost ?? '无', profile.sourceEffect) : null;
@@ -156353,7 +156396,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             }
             // Native cost validation precedes source deduplication. A second
             // valid member shares payment; an invalid member must still break.
-            if (payment.valid && profile.sourceId && charged.has(profile.sourceId)) continue;
+            if (payment.valid && profile.sourceId && charged.has(profile.sourceId)) { if (avatarProfile(profile)) avatarKept = true; continue; }
+            const avatar = avatarProfile(profile);
             if (payment.valid && riskResolver) {
               let conditioned = false;
               for (const row of payment.payments) {
@@ -156392,9 +156436,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 else preview.setResourceValue(nextActor, row.resource, row.after);
               });
               if (profile.sourceId) charged.add(profile.sourceId);
+              if (avatar) avatarKept = true;
             }
           }
         }
+        if (avatarHeld) { const { __维持类发动中: paying, ...rest } = nextActor.__battleRuntime; nextActor.__battleRuntime = rest; }
+        if (!avatarKept) preview.settleDeferredStaminaCut(nextActor);
         for (const [key, state] of Object.entries(nextActor.状态效果 || {})) {
           if (nextActor.状态效果[key] !== state || controlStartedStates?.has(key) || state?.召唤物 || (offset === 1 && (state.__本回合新附加 === true ||
             (key.startsWith('preview:') && !Object.hasOwn(baselineActor?.状态效果 || {}, key))))) continue;
@@ -158638,7 +158685,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const ratio = Number(preview.LOW_RESOURCE_STAMINA_RATIO) || 0.1, done = unit?.__battleRuntime?.lowResourceStaminaCut || {};
       for (const key of ['sp', 'men']) {
         const label = labels[key], maximum = preview.readResourceMax(unit, label), now = preview.readResource(unit, label);
-        if (shares[key] > 0 && maximum > 0 && done[label] !== true && now >= maximum * ratio && now - shares[key] * maximum < maximum * ratio) stamina *= 0.5;
+        if (shares[key] > 0 && maximum > 0 && !done[label] && !preview.staminaCutDeferred(unit) && now >= maximum * ratio && now - shares[key] * maximum < maximum * ratio) stamina *= 0.5;
       }
       cut = Math.max(0, before - Math.min(hp, stamina));
     }
@@ -158933,6 +158980,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const hpFalls = new Array(count);
     const denied = plan?.denied || facts.held || null, until = plan?.until || null, base = plan?.base || facts;
     const leaves = plan?.leaves || null, held = plan?.baseCount ?? count, changed = plan?.changed || null;
+    // expired: the cells once a paid release lapses; cuts: stamina cuts put off until then ({ row, at, factor }).
+    const expired = plan?.expired || null, cuts = plan?.cuts || null, cutDone = cuts ? cuts.map(() => false) : null;
     // busy[u]: rounds u spends charging; strikes: what a charge lands when it is released ({ from, to, at, delta }, by
     // `at`); host[u]: the row of a summon's host; revive[u]: what a revival gives back; drain[u]: 伤害吸收 of what u lands.
     const busy = plan?.busy || facts.busy || null, strikes = plan?.strikes || facts.strikes || null, host = facts.host || null;
@@ -158948,8 +158997,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const settled = base.late && time >= R20_LATE_ROUNDS - 1e-9 ? base.late : base;
       // A change with no clock goes on to the candidate's own late cells (r20Shadow rebuildCells) when there are any.
       const lasting = facts.late && time >= R20_LATE_ROUNDS - 1e-9 ? facts.late : facts;
+      // A paid release that has lapsed goes on to its cells after it (plan.expired), not back to the table's.
+      const lapsed = (unit, other) => expired && (expired.rows.has(unit) || expired.rows.has(other)) ? expired : settled;
       const cells = (unit, other) => unit >= held || other >= held ? facts
-        : changed && (changed[unit] || changed[other]) ? (time < until[unit] && time < until[other] ? lasting : settled) : settled;
+        : changed && (changed[unit] || changed[other]) ? (time < until[unit] && time < until[other] ? lasting : lapsed(unit, other)) : settled;
       const acting = unit => left[unit] > 1e-9 && !(denied && time < denied[unit]) && !(busy && time < busy[unit]);
       // What of an attacker's hit a unit takes: its answer's share while it can answer; held (controlled — the hard control
       // lasts to the end of the round it took an action in, BattleRuntime consumeStructuredControlActiveBudget) or busy, it
@@ -159067,6 +159118,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (total > 0) left[aimed[unit]] = Math.max(0, left[aimed[unit]] - (before / total - 0.5) * landed[unit]);
       }
       time += stepTime;
+      if (cuts && stam) cuts.forEach((cut, index) => {
+        if (cutDone[index] || cut.at > time + 1e-9) return;
+        cutDone[index] = true;
+        if (Number.isFinite(stam[cut.row]) && left[cut.row] > 1e-9) stam[cut.row] *= cut.factor;
+      });
       // A charge released: it lands if its caster still stands.
       if (strikes) for (; released < strikes.length && strikes[released].at <= time + 1e-9; released += 1) {
         const strike = strikes[released];
@@ -159241,7 +159297,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const stamina = table.stamina.slice();
     let busy = table.busy ? table.busy.slice() : null;
     const until = new Array(count).fill(Infinity), tick = table.tick.slice(), tickRounds = table.tickRounds.slice(), reflect = table.reflect.slice(), hpMax = table.hpMax.slice();
-    const rebuilt = [], hushed = {};
+    const rebuilt = [], hushed = {}, expiring = [], cuts = [];
     let added = [];
     let spent = 0, outside = 0, seen = 0;
     for (const id of touched) {
@@ -159305,6 +159361,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         rebuilt.push([row, view, false]);
         if (changed) seen += 1;
         until[row] = preview.staminaScaleForUnit(next) !== preview.staminaScaleForUnit(prior) || !(lasting > 0) ? Infinity : lasting;
+        // 估值甲（11-14，用户「也得考虑开完后无法战斗的代价」）: a paid release that lapses leaves its actor as it is then — its
+        // states gone, what it spent still spent (the table's cells the race went back to had it paid nothing), and the stamina
+        // cut a 维持类真身/融合技 put off (BattlePreview staminaCutDeferred) taken when it ends.
+        if (row === actorRow && until[row] < R20_RACE_ROUNDS && ['魂力', '精神力'].some(resource => preview.readResource(next, resource) < preview.readResource(prior, resource))) {
+          expiring.push([row, view, until[row]]);
+          const putOff = Object.values(next.__battleRuntime?.lowResourceStaminaCut || {}).filter(mark => mark === preview.DEFERRED_STAMINA_CUT).length;
+          if (putOff) cuts.push({ row, at: until[row], factor: 0.5 ** putOff });
+        }
       } else if (['魂力', '精神力', '体力'].some(resource => preview.readResource(next, resource) !== preview.readResource(prior, resource))) {
         // Only what it can pay for changed: its own cells, for good.
         rebuilt.push([row, next, true]);
@@ -159438,6 +159502,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         lateCells = rebuildCells(table.late, table.late.units, rebuilt.map(([row, next, ownCellsOnly]) =>
           [row, r10WindowView(decisionTable, after, next, R20_LATE_ROUNDS, next), ownCellsOnly]), true);
       }
+    }
+    // The cells once a paid release has lapsed (`expiring`): its actor's window view at that round, on the table's late cells.
+    let expiredCells = null;
+    if (expiring.length) {
+      const decisionTable = r10DecisionTable(request), base = table.late?.units ? table.late : table;
+      expiredCells = rebuildCells(base, base.units, expiring.map(([row, view, rounds]) =>
+        [row, r10WindowView(decisionTable, after, view, Math.max(1, Math.ceil(rounds)), view), false]), true);
+      expiredCells.rows = new Set(expiring.map(([row]) => row));
     }
     mark('rebuildMs');
     // Units the candidate brings onto the field (a summon): rows and columns of their own, built against everyone, by the
@@ -159736,7 +159808,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const changed = new Array(count).fill(false);
     for (const [row] of rebuilt) if (!unchangedRows.has(row)) changed[row] = true;
     strikes.sort((left, right) => left.at - right.at);
-    const plan = { denied, until, base: table, leaves, baseCount: count, changed, busy, strikes: strikes.length ? strikes : null };
+    const plan = { denied, until, base: table, leaves, baseCount: count, changed, busy, strikes: strikes.length ? strikes : null, expired: expiredCells, cuts: cuts.length ? cuts : null };
     // A unit that may or may not be down is valued both ways (the settlement is not run again): the race with it gone
     // and with what is left of it if it stands, by the chance of each — only the most open such unit; the others keep
     // their chance as a weight.
@@ -159755,8 +159827,6 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     mark('raceMs');
     const race = raced - Number(table.score[own] || 0);
-    if (root.__LWCS_DECISION_DEBUG__?.onTerms) root.__LWCS_DECISION_DEBUG__.onTerms({ name: candidate?.declaration?.skill?.魂技名 || candidate?.declaration?.actionKind, raced, base: table.score[own], remaining, tableRemaining: table.remaining, alive, until, changed, denied, open, rebuilt: rebuilt.map(([row]) => row),
-      out: out.map(row => row.map(value => +value.toFixed(3))), tableOut: table.out.map(row => row.map(value => +value.toFixed(3))), keep: keep.map(row => row.map(value => +value.toFixed(3))), tableKeep: table.keep.map(row => row.map(value => +value.toFixed(3))), late: !!(lateCells || table.late), lateOut: lateCells?.out, lateKeep: lateCells?.keep, tLateOut: table.late?.out, tLateKeep: table.late?.keep, stam: stamina, tStam: table.stamina });
     for (let row = 0; row < count; row += 1) if (table.sides[row] === foe && table.pending[row]) tempo += table.worth[row] * (1 - alive[row]);
     const cost = R20_RESOURCE_PRICE * spent;
     // What the action uses up for good (IRREVERSIBLE_ASSET_LOST): a ring blown (炸环: priced by its age and skills,
@@ -169899,7 +169969,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 从上限 10% 以上跌到 10% 以下时，当前剩余体力减半；标记 __battleRuntime.lowResourceStaminaCut 两模块共用。
     if ((resourceKey === 'sp' || resourceKey === 'men') && maxValue > 0 && fuelBefore >= maxValue * 0.1 && nextValue < maxValue * 0.1) {
       const runtime = unit.__battleRuntime && typeof unit.__battleRuntime === 'object' ? unit.__battleRuntime : {};
-      if (runtime.lowResourceStaminaCut?.[config.statKey] !== true) {
+      // 维持类真身、融合技发动与维持期间只记待砍，维持结束时砍（BattlePreview staminaCutDeferred / settleDeferredStaminaCut）。
+      if (!runtime.lowResourceStaminaCut?.[config.statKey] && previewRuntime.staminaCutDeferred(unit)) {
+        unit.__battleRuntime = { ...runtime, lowResourceStaminaCut: { ...(runtime.lowResourceStaminaCut || {}), [config.statKey]: previewRuntime.DEFERRED_STAMINA_CUT } };
+      } else if (!runtime.lowResourceStaminaCut?.[config.statKey]) {
         unit.__battleRuntime = { ...runtime, lowResourceStaminaCut: { ...(runtime.lowResourceStaminaCut || {}), [config.statKey]: true } };
         const staminaBefore = previewRuntime.readResource(unit, '体力');
         writeCombatResource(unit, 'vit', staminaBefore * 0.5);
@@ -174038,6 +174111,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     const [representativeKey, representative] = candidates[0];
     representative.维持消耗 = cloneValue(costs);
+    // 维持类真身、融合技：维持期间资源低位砍体力推迟到维持结束（BattlePreview staminaCutDeferred）。
+    if (actor?.__battleRuntime?.__维持类发动中 === true) candidates.forEach(([, effect]) => { effect.真身维持 = true; });
     writeLedgerEvent(combatData, {
       eventKind: 'state_tick',
       round: Number(combatData?.回合 || 0),
@@ -174063,7 +174138,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return { attached: true, diagnostic: false, representativeEffect: representativeKey };
   }
 
+  // 维持类真身、融合技的发动结束（维持条目已挂上，或这次没挂上）：撤掉发动中标记，没有维持条目留下就补砍推迟的体力。
+  function endSustainedAvatarRelease(combatData = {}) {
+    for (const unit of listCombatUnits(combatData)) {
+      if (unit?.__battleRuntime?.__维持类发动中 !== true) continue;
+      const { __维持类发动中: releasing, ...rest } = unit.__battleRuntime;
+      unit.__battleRuntime = rest;
+      previewRuntime.settleDeferredStaminaCut(unit);
+    }
+  }
+
   function settleSustainAtRoundEnd(unit = {}, label = '', combatData = {}, adapterOptions = {}) {
+    if (unit?.__battleRuntime?.__维持类发动中 === true) endSustainedAvatarRelease(combatData);
     const logs = [];
     const broken = [];
     const chargedSustainSources = new Set();
@@ -176876,6 +176962,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       persistentResourceValue(payment.payer, payment.key) + 1e-9 < payment.amount,
     );
     if (runtimeInsufficient) throw new Error(`battle_structured_resource_insufficient:${runtimeInsufficient.resource}:${runtimeInsufficient.payerId}`);
+    // 维持类真身、融合技发动：启动消耗打到一成以下也先不砍体力（endSustainedAvatarRelease 撤标记）。
+    if (actionKind === 'RELEASE_SKILL' && previewRuntime.sustainedAvatarRelease(declaration.skill || {}, { 来源模块: 'BattleRuntime_Module', ...declaration, costActor: actor })) {
+      costPayers.forEach(unit => { unit.__battleRuntime = { ...(unit.__battleRuntime || {}), __维持类发动中: true }; });
+    }
     paymentPlan.payments.forEach(payment => {
         const costPayer = payment.payer;
         const key = payment.key;
@@ -179385,6 +179475,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         actionEvent,
       );
     }
+    endSustainedAvatarRelease(combatData);
     const conditionalRiskEffects = effects.some(effect => effect?.条件分支?.length)
       ? facts.filter(event => event && event.actionId === actionEvent.actionId && ['state_apply', 'state_replace'].includes(event.eventKind) &&
           event.resultState === 'SUCCESS' && event.meta?.evidence?.projectedEffect?.副作用列表?.length)

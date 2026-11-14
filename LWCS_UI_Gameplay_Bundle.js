@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:bd115b0762848df7d5dfc7b8015fd847e8e80542df44a76005d8f0b40c37fe3f|BehaviorDecisionPipeline_Module.js:af9b205935ae8ad04f9ad8e4613807b188302a948658c8bf869573ca06712cc2|BattleDecision_Module.js:0dc9299e8645e9235b31b6826d0ac887e4aa384e529853bc0988476c6cca9f2d|BattleRuntime_Module.js:3eaf0650e6d54f76cea085ebe41fcbe98fe83e7c2dce33d36898e6d8da78172f|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:e515d11fb65d5272434ba756c81457fa2cbf0c4039c73f202ee1cc37b4769659|BehaviorDecisionPipeline_Module.js:af9b205935ae8ad04f9ad8e4613807b188302a948658c8bf869573ca06712cc2|BattleDecision_Module.js:2ead7463e0fde013eed11a4e82b4913d78ad25b4777e17b0b95896fd62fb5c3f|BattleRuntime_Module.js:9f90e8fbbf9c59f80a8ce2c3093f84723a08590dc21b868f276aa153c2a6f42f|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -8108,6 +8108,7 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
   // A decision may hold every unit's stamina panel scale at its decision-world value (BattleDecision runProvider with
   // searchBounds.frozenStaminaPanel): id → scale; a unit not listed (a summon created in the look-ahead) reads its own.
   let frozenStaminaScales = null;
+  const STAMINA_DECAY_LINE = 0.3;
   function freezeStaminaScales(scales = null) {
     frozenStaminaScales = scales instanceof Map && scales.size ? scales : null;
   }
@@ -8128,7 +8129,9 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
       )
     );
     if (!hasStaminaField) return 1;
-    const ratio = clamp(readResource(unit, '体力') / Math.max(1, readResourceMax(unit, '体力')), 0, 1);
+    // 低于 STAMINA_DECAY_LINE 才降属性（用户 2026-11-14「改成低于3成开始降属性吧」；原先 5 成）：原曲线整段压进 [0, 3 成]，
+    // 3 成 1、1.8 成 0.9、0.9 成 0.75、0 时 0.5。
+    const ratio = clamp(readResource(unit, '体力') / Math.max(1, readResourceMax(unit, '体力')) * 0.5 / STAMINA_DECAY_LINE, 0, 1);
     if (ratio >= 0.5) return 1;
     if (ratio >= 0.3) return 0.9 + (ratio - 0.3) * 0.5;
     if (ratio >= 0.15) return 0.75 + (ratio - 0.15);
@@ -11917,7 +11920,21 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     )
       ? Number(targetProfile.resourceMax[resource])
       : readResourceMax(target, resource);
-    return clamp(Math.pow(Math.max(0.01, actorMax / Math.max(1, targetMax)), 0.45), 0.35, 1.85);
+    return clamp(Math.pow(Math.max(0.01, actorMax / Math.max(1, targetMax)), 0.45), 0.35, RESOURCE_DRIVE_CAP);
+  }
+  // 跨等级（用户 2026-11-14「97 8对99不会是被99随手秒的那种」「不能去掉魂力驱动，这属于核心设定」「那就乙试一下吧」）：
+  // 只压缩等级差：两边等级标准面板之比 L 在攻击里按 L^DAMAGE_GAP_EXPONENT 计（攻 × L^(γ-1)），其余照旧 攻 × 攻/(攻+防)。
+  // 同级 L=1 原样；魂骨、系别带来的面板差不压缩，防御越高受伤越少（曾锚在防守方防御上，防御 +91% 的魂骨反而多挨 43%）。
+  // 魂力驱动保留、上限 1.85 → 1.5（95 级后魂力每级翻倍，两级就顶格）。
+  const DAMAGE_GAP_EXPONENT = 0.3, RESOURCE_DRIVE_CAP = 1.5;
+  function levelScaleRatio(actor = {}, target = {}, damageClass = '') {
+    if (typeof root.__LWCS_GET_BASE_STATS__ !== 'function') return 1;
+    const levelOf = unit => Number(unit?.属性?.等级 ?? unit?.等级 ?? unit?.level ?? 0);
+    const own = levelOf(actor), their = levelOf(target);
+    if (!(own > 0) || !(their > 0) || own === their) return 1;
+    const key = damageClass === 'MENTAL' ? 'men_max' : 'str';
+    const mine = Number(root.__LWCS_GET_BASE_STATS__(own)?.[key]), theirs = Number(root.__LWCS_GET_BASE_STATS__(their)?.[key]);
+    return mine > 0 && theirs > 0 ? mine / theirs : 1;
   }
 
   function calculateDamageTargetCoverage(effect = {}, targetCount = 1) {
@@ -12188,7 +12205,7 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     // 魂技仍保留资源驱动，只让无消耗的基础攻击回到纯攻防公式。
     const resourceDriveApplied = resourceDriveEnabled !== false;
     const resourceDrive = resourceDriveApplied
-      ? clamp(Math.pow(resourceRatio, 0.45), 0.35, 1.85)
+      ? clamp(Math.pow(resourceRatio, 0.45), 0.35, RESOURCE_DRIVE_CAP)
       : 1;
     let total = 0;
     const healStrikeShare = healStrikeDamageShare(effect);
@@ -12198,8 +12215,10 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     } else if (damageClass === 'TRUE') {
       total = attack * powerRatio * 0.4;
     } else {
-      const mitigation = attack / Math.max(1, attack + defense);
-      total = attack * powerRatio * mitigation * 0.4 * resourceDrive;
+      const effectiveAttack = attack * Math.pow(levelScaleRatio(actor, target, damageClass), DAMAGE_GAP_EXPONENT - 1);
+      const gap = effectiveAttack / Math.max(1, defense);
+      const mitigation = gap / (gap + 1);
+      total = effectiveAttack * powerRatio * mitigation * 0.4 * resourceDrive;
     }
     const actorMultiplier = actorProfile
       ? actorProfile.outgoingDamageMultiplier
@@ -15424,6 +15443,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       delete unit.__维持反应惩罚;
       delete unit.__维持前摇系数;
     }
+    settleDeferredStaminaCut(unit);
     return totalLoad;
   }
 
@@ -15475,9 +15495,35 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   function applyLowResourceStaminaCut(unit, label, before, after, maximum) {
     if (!(maximum > 0) || !(before >= maximum * LOW_RESOURCE_STAMINA_RATIO) || !(after < maximum * LOW_RESOURCE_STAMINA_RATIO)) return;
     const runtime = unit.__battleRuntime && typeof unit.__battleRuntime === 'object' ? unit.__battleRuntime : {};
-    if (runtime.lowResourceStaminaCut?.[label] === true) return;
-    unit.__battleRuntime = { ...runtime, lowResourceStaminaCut: { ...(runtime.lowResourceStaminaCut || {}), [label]: true } };
-    setResource(unit, '体力', readResource(unit, '体力') * 0.5);
+    if (runtime.lowResourceStaminaCut?.[label]) return;
+    const deferred = staminaCutDeferred(unit);
+    unit.__battleRuntime = { ...runtime, lowResourceStaminaCut: { ...(runtime.lowResourceStaminaCut || {}), [label]: deferred ? DEFERRED_STAMINA_CUT : true } };
+    if (!deferred) setResource(unit, '体力', readResource(unit, '体力') * 0.5);
+  }
+  // 维持类武魂真身、武魂融合技（用户 2026-11-14「所有维持类的真身和武魂融合技，维持期间魂力低于一半时，体力不减半。维持结束后
+  // 按结束时的体力再减半」——口径是上面这条一成线）：发动（__维持类发动中，运行时扣启动消耗时挂上）与维持（持续效果条目带
+  // 真身维持）期间跌破只记作待砍（DEFERRED_STAMINA_CUT），最后一个这类维持条目没了时（refreshSustainRuntimeLoad，删维持条目的
+  // 各条路径都经过它）按当时的体力各砍一次。
+  const DEFERRED_STAMINA_CUT = 'DEFERRED';
+  // A release that defers the cut: a 武魂真身 or 武魂融合技 (the skill runtime's 判定技能消耗来源_V1) with an upkeep.
+  function sustainedAvatarRelease(skill = {}, context = {}) {
+    if (!skill || typeof skill !== 'object' || !Object.keys(readSkillCostStages(skill, context)?.维持 || {}).length) return false;
+    const judge = root.__LWCS_SKILL_COST_HELPERS_V1__?.判定技能消耗来源_V1;
+    const source = typeof judge === 'function' ? judge(skill, context) : null;
+    return !!(source?.武魂真身 || source?.武魂融合技);
+  }
+  function staminaCutDeferred(unit = {}) {
+    return unit?.__battleRuntime?.__维持类发动中 === true ||
+      Object.values(unit?.持续效果 || {}).some(effect => effect && effect.真身维持 === true);
+  }
+  function settleDeferredStaminaCut(unit = {}) {
+    const cuts = unit?.__battleRuntime?.lowResourceStaminaCut;
+    if (!cuts || staminaCutDeferred(unit)) return 0;
+    const due = Object.keys(cuts).filter(label => cuts[label] === DEFERRED_STAMINA_CUT);
+    if (!due.length) return 0;
+    unit.__battleRuntime = { ...unit.__battleRuntime, lowResourceStaminaCut: { ...cuts, ...Object.fromEntries(due.map(label => [label, true])) } };
+    setResource(unit, '体力', readResource(unit, '体力') * 0.5 ** due.length);
+    return due.length;
   }
 
   function setResource(unit, resource, value) {
@@ -29844,7 +29890,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const reactionPressure = reactionDetails.value;
     const attackPressure = attackDetails.value;
     const share = reactionPressure / Math.max(1, reactionPressure + attackPressure);
-    const baseProbability = clamp(DODGE_BASE + (share - 0.5) * DODGE_SHARE_SLOPE, DODGE_BASE_FLOOR, DODGE_BASE_CAP);
+    // 战斗经验：双方经验差 × EXPERIENCE_DODGE_SLOPE（差 0.3 约 ±9%）。
+    const seasoned = (battleExperience(reactor) - battleExperience(sourceActor)) * EXPERIENCE_DODGE_SLOPE;
+    const baseProbability = clamp(DODGE_BASE + (share - 0.5) * DODGE_SHARE_SLOPE + seasoned, DODGE_BASE_FLOOR, DODGE_BASE_CAP);
     // Not knowing the move: no windup or reach correction.
     const move = incomingMove(declaration);
     const windupSwing = move ? incomingWindupSwing(sourceActor, move) : 0;
@@ -29893,8 +29941,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       0.82,
     );
     const multiplier = prepared ? ordinary - (ordinary - Math.max(0.35, ordinary * 0.8)) * passiveStreakFactor(reactor) : ordinary;
-    const opening = attackOpeningOf(reactor);
-    return opening > 0 ? 1 - (1 - multiplier) * (1 - ATTACK_OPENING_DEFENSE_CUT * opening) : multiplier;
+    const opening = attackOpeningOf(reactor), slow = slowGuardCut(reactor);
+    const opened = opening > 0 ? 1 - (1 - multiplier) * (1 - ATTACK_OPENING_DEFENSE_CUT * opening) : multiplier;
+    return slow > 0 ? 1 - (1 - opened) * (1 - slow) : opened;
+  }
+  // 迟缓削弱防御（用户 2026-11-14「丙吧」：硬控提到 25，迟缓也削弱防御）: a slowed unit guards late — what its guard keeps off
+  // is cut by the slow's strength (迟缓/减速 states: their reaction_penalty, the 数值 they were laid with; the strongest).
+  function slowGuardCut(unit = {}) {
+    let cut = 0;
+    for (const state of Object.values(unit?.状态效果 || {})) {
+      if (!state || !/迟缓|减速/.test(String(state.状态 || state.状态名称 || ''))) continue;
+      const effect = state.战斗效果 || {};
+      cut = Math.max(cut, Number(effect.reaction_penalty ?? effect.dodge_penalty ?? 0) || 0);
+    }
+    return clamp(cut, 0, 0.9);
   }
   // The weight factor (GUARD_* above); `hitShare` null or not a number: GUARD_TYPICAL.
   function guardWeightFactor(hitShare = null) {
@@ -29937,7 +29997,39 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const speed = own + theirs > 0 ? (own - theirs) / (own + theirs) : 0;
     const base = clamp(COUNTER_BASE + speed + incomingWindupSwing(sourceActor, declaration) * COUNTER_WINDUP_SWING +
       (options?.prepared === true ? COUNTER_STANCE_BONUS : 0), COUNTER_FLOOR, COUNTER_CAP);
-    return base * passiveStreakFactor(reactor) * COUNTER_FADE ** Math.max(0, Math.floor(Number(options?.prior) || 0));
+    // 战斗经验抓空当：× (1 + (经验 − 0.5) × EXPERIENCE_COUNTER_SLOPE)。
+    const seasoned = 1 + (battleExperience(reactor) - 0.5) * EXPERIENCE_COUNTER_SLOPE;
+    return clamp(base * seasoned, 0, COUNTER_CAP) * passiveStreakFactor(reactor) * COUNTER_FADE ** Math.max(0, Math.floor(Number(options?.prior) || 0));
+  }
+  // 战斗经验（用户 2026-11-14「不另加战斗经验，就用年龄+天赋推算战斗经验，也就是说只是个中间结果」「绝世妖孽就用3试试」
+  // 「能达到封顶的只应该是天赋最高的」）: 0.2 + (该天赋的上限 − 0.2) × (1 − e^(−(年龄 − 6) × 倍率 ÷ 30))——六岁觉醒后逐年
+  // 累积、越往后越慢，天赋决定累积的快慢与上限。单位写了 战斗经验（0～1 或 0～100）就用写的。用在：判断对手（BattleDecision
+  // experienceOf）、闪避的较量（calculateReactionContest：双方经验差 × EXPERIENCE_DODGE_SLOPE）、抓反击空当。
+  const EXPERIENCE_TALENT = Object.freeze({
+    绝世妖孽: Object.freeze({ rate: 3.0, cap: 0.9 }), 顶级天才: Object.freeze({ rate: 1.6, cap: 0.82 }), 天才: Object.freeze({ rate: 1.3, cap: 0.76 }),
+    优秀: Object.freeze({ rate: 1.1, cap: 0.7 }), 正常: Object.freeze({ rate: 1.0, cap: 0.64 }), 劣等: Object.freeze({ rate: 0.8, cap: 0.55 }),
+    天赋极差: Object.freeze({ rate: 0.6, cap: 0.2 }),
+  });
+  const EXPERIENCE_FLOOR = 0.2, EXPERIENCE_YEARS = 30, EXPERIENCE_DODGE_SLOPE = 0.3, EXPERIENCE_COUNTER_SLOPE = 0.5;
+  const battleExperienceCache = new WeakMap();
+  function battleExperience(unit = {}) {
+    if (!unit || typeof unit !== 'object') return 0.5;
+    if (battleExperienceCache.has(unit)) return battleExperienceCache.get(unit);
+    const explicit = Number(unit?.战斗经验 ?? unit?.属性?.战斗经验 ?? unit?.battleExperience);
+    let value;
+    if (Number.isFinite(explicit)) value = clamp(explicit > 1 ? explicit / 100 : explicit, 0, 1);
+    else {
+      const talent = EXPERIENCE_TALENT[String(unit?.天赋梯队 ?? unit?.属性?.天赋梯队 ?? '').trim()] || EXPERIENCE_TALENT.正常;
+      const age = Number(unit?.年龄 ?? unit?.属性?.年龄);
+      const years = Number.isFinite(age) ? Math.max(0, age - 6) : Math.max(0, unitLevelOf(unit) / 3);
+      value = EXPERIENCE_FLOOR + (talent.cap - EXPERIENCE_FLOOR) * (1 - Math.exp(-years * talent.rate / EXPERIENCE_YEARS));
+    }
+    battleExperienceCache.set(unit, value);
+    return value;
+  }
+  function unitLevelOf(unit = {}) {
+    const level = [unit?.等级, unit?.level, unit?.属性?.等级].map(Number).find(Number.isFinite);
+    return Math.max(1, level || 1);
   }
   // What a strike back costs in stamina against an attack of the same nature: × COUNTER_STAMINA_FACTOR, and
   // COUNTER_STAMINA_STEP more for every strike back the unit already made in this exchange.
@@ -30311,6 +30403,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     applyGuardWeight,
     guardHolds,
     counterOpeningProbability,
+    battleExperience,
     counterStaminaFactor,
     declarationStaminaFactor,
     // 接战链 阶段二 (2026-11-12): clashing and preempting.
@@ -30454,6 +30547,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     LIFE_THREAT_RATIO,
     INJURY_STAMINA_SHARE,
     LOW_RESOURCE_STAMINA_RATIO,
+    DEFERRED_STAMINA_CUT,
+    staminaCutDeferred,
+    sustainedAvatarRelease,
+    settleDeferredStaminaCut,
     INTERCEPT_WINDUP,
     REACTION_DEFENDER_MARGIN,
     // 接战链 阶段三: the referee as a neutral guard.
@@ -41000,10 +41097,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
 
   function experienceOf(unit = {}) {
     if (experienceCache.has(unit)) return experienceCache.get(unit);
-    const explicit = Number(unit?.战斗经验 ?? unit?.battleExperience ?? unit?.经验稳定度);
+    // 战斗经验由年龄 + 天赋推算（BattlePreview battleExperience，用户 2026-11-14）；原先按等级估（0.25 + 等级 ÷ 120 × 0.7）。
+    const explicit = Number(unit?.经验稳定度);
     const result = Number.isFinite(explicit)
       ? clamp(explicit > 1 ? explicit / 100 : explicit, 0, 1)
-      : clamp(0.25 + unitLevel(unit) / 120 * 0.7, 0.2, 0.90);
+      : preview.battleExperience(unit);
     experienceCache.set(unit, result);
     return result;
   }
@@ -97720,7 +97818,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const sourceId = String(result?.actionId || action.actionId || '').trim();
     const stateKeys = preview.projectedSustainStateKeys(previous, next, sourceId);
     const owners = result ? preview.projectedSustainStateOwners({ ...result, actorId: id, afterSnapshot: world }, prior) : [];
-    return { costs, stateKeys, ...(sourceId ? { sourceId } : {}),
+    return { costs, stateKeys, ...(sourceId ? { sourceId } : {}), avatar: preview.sustainedAvatarRelease(action.skill, action),
       ...(owners.some(owner => owner.targetId !== id) ? {
         stateTargets: owners.map(({ targetId, key }) => ({ targetId, key })),
         actionName: action.skill?.name || action.skill?.魂技名 || '',
@@ -102807,6 +102905,19 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         }
         applyDeferredStates(offset, 'CONTROL_END');
         const charged = new Set();
+        // 维持类真身、融合技（BattlePreview staminaCutDeferred）: while one is kept, paying anything down past the line puts
+        // the stamina cut off — a pending profile has no carrier to say so, so its source says it (or a percentage fee, which
+        // only they may carry); the cut is taken once none is kept (after the fees).
+        const liveKeys = profile => profile.stateKeys.filter(key => {
+          const state = nextActor.状态效果?.[key];
+          return state && (profile.sourceEffect || !state.sourceActionId || !profile.sourceId || state.sourceActionId === profile.sourceId) &&
+            Number(state.duration || 0) + Number(state.__本回合新附加 === true || !Object.hasOwn(baselineActor?.状态效果 || {}, key)) >= offset;
+        });
+        const avatarProfile = profile => !profile.sourceEffect && (profile.avatar === true ||
+          profile.avatar === undefined && Object.values(profile.costs || {}).some(value => /%/.test(String(value))));
+        const avatarHeld = sustainProfiles.some(profile => avatarProfile(profile) && liveKeys(profile).length);
+        if (avatarHeld) nextActor.__battleRuntime = { ...(nextActor.__battleRuntime || {}), __维持类发动中: true };
+        let avatarKept = false;
         for (const profile of sustainProfiles) {
           if (profile.sourceEffect) {
             if (!nextActor.持续效果?.[profile.sustainKey]) continue;
@@ -102816,11 +102927,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               continue;
             }
           }
-          const activeKeys = profile.stateKeys.filter(key => {
-            const state = nextActor.状态效果?.[key];
-            return state && (profile.sourceEffect || !state.sourceActionId || !profile.sourceId || state.sourceActionId === profile.sourceId) &&
-              Number(state.duration || 0) + Number(state.__本回合新附加 === true || !Object.hasOwn(baselineActor?.状态效果 || {}, key)) >= offset;
-          });
+          const activeKeys = liveKeys(profile);
           if (profile.sourceEffect || activeKeys.length) {
             const parsed = profile.sourceEffect ? root.__LWCS_BATTLE_RUNTIME__.readSustainCosts(nextActor,
               profile.sourceEffect.维持消耗 ?? profile.sourceEffect.sustain_cost ?? '无', profile.sourceEffect) : null;
@@ -102834,7 +102941,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             }
             // Native cost validation precedes source deduplication. A second
             // valid member shares payment; an invalid member must still break.
-            if (payment.valid && profile.sourceId && charged.has(profile.sourceId)) continue;
+            if (payment.valid && profile.sourceId && charged.has(profile.sourceId)) { if (avatarProfile(profile)) avatarKept = true; continue; }
+            const avatar = avatarProfile(profile);
             if (payment.valid && riskResolver) {
               let conditioned = false;
               for (const row of payment.payments) {
@@ -102873,9 +102981,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 else preview.setResourceValue(nextActor, row.resource, row.after);
               });
               if (profile.sourceId) charged.add(profile.sourceId);
+              if (avatar) avatarKept = true;
             }
           }
         }
+        if (avatarHeld) { const { __维持类发动中: paying, ...rest } = nextActor.__battleRuntime; nextActor.__battleRuntime = rest; }
+        if (!avatarKept) preview.settleDeferredStaminaCut(nextActor);
         for (const [key, state] of Object.entries(nextActor.状态效果 || {})) {
           if (nextActor.状态效果[key] !== state || controlStartedStates?.has(key) || state?.召唤物 || (offset === 1 && (state.__本回合新附加 === true ||
             (key.startsWith('preview:') && !Object.hasOwn(baselineActor?.状态效果 || {}, key))))) continue;
@@ -104921,6 +105032,22 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     r20Struck = struck / 100;
     return best / 100;
   }
+  // A release's upkeep (维持) on `actor` as the release leaves it: the shares of its pools one round end takes, summed, and
+  // the round ends what it has left pays (the fewest over its resources) — the runtime lifts the state at the first it
+  // cannot (settleSustainAtRoundEnd). 11-14: 武魂真身 released on 31% 魂力 (25% to start, 8% a round) was valued at 1.15
+  // as if its +94% lasted the race, and lifted at the next round end.
+  function r20Upkeep(declaration, actor) {
+    if (declaration?.actionKind !== 'RELEASE_SKILL' || !actor) return null;
+    let share = 0, payments = Infinity;
+    for (const [resource, amount] of Object.entries(preview.readSkillCostStages(declaration.skill || {}, { ...declaration, costActor: actor })?.维持 || {})) {
+      const text = String(amount ?? '').trim(), maximum = Math.max(1, preview.readResourceMax(actor, resource));
+      const part = /%$/.test(text) ? Number.parseFloat(text) / 100 : Number(amount) / maximum;
+      if (!(Number.isFinite(part) && part > 0)) continue;
+      share += part;
+      payments = Math.min(payments, Math.floor(preview.readResource(actor, resource) / maximum / part + 1e-9));
+    }
+    return share > 0 ? { share, payments } : null;
+  }
   // The rounds a unit's controls already on it still keep it from acting (11-14: a hard control holds to the end of the round
   // it took an action in — BattleRuntime __回合末解除 — so one that has taken that action keeps nothing more), each by its chance.
   // Until 11-14 a unit under any control was read as unable to act for the whole race (acts false), so a one-round stun on an
@@ -105103,7 +105230,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const ratio = Number(preview.LOW_RESOURCE_STAMINA_RATIO) || 0.1, done = unit?.__battleRuntime?.lowResourceStaminaCut || {};
       for (const key of ['sp', 'men']) {
         const label = labels[key], maximum = preview.readResourceMax(unit, label), now = preview.readResource(unit, label);
-        if (shares[key] > 0 && maximum > 0 && done[label] !== true && now >= maximum * ratio && now - shares[key] * maximum < maximum * ratio) stamina *= 0.5;
+        if (shares[key] > 0 && maximum > 0 && !done[label] && !preview.staminaCutDeferred(unit) && now >= maximum * ratio && now - shares[key] * maximum < maximum * ratio) stamina *= 0.5;
       }
       cut = Math.max(0, before - Math.min(hp, stamina));
     }
@@ -105398,6 +105525,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const hpFalls = new Array(count);
     const denied = plan?.denied || facts.held || null, until = plan?.until || null, base = plan?.base || facts;
     const leaves = plan?.leaves || null, held = plan?.baseCount ?? count, changed = plan?.changed || null;
+    // expired: the cells once a paid release lapses; cuts: stamina cuts put off until then ({ row, at, factor }).
+    const expired = plan?.expired || null, cuts = plan?.cuts || null, cutDone = cuts ? cuts.map(() => false) : null;
     // busy[u]: rounds u spends charging; strikes: what a charge lands when it is released ({ from, to, at, delta }, by
     // `at`); host[u]: the row of a summon's host; revive[u]: what a revival gives back; drain[u]: 伤害吸收 of what u lands.
     const busy = plan?.busy || facts.busy || null, strikes = plan?.strikes || facts.strikes || null, host = facts.host || null;
@@ -105413,8 +105542,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const settled = base.late && time >= R20_LATE_ROUNDS - 1e-9 ? base.late : base;
       // A change with no clock goes on to the candidate's own late cells (r20Shadow rebuildCells) when there are any.
       const lasting = facts.late && time >= R20_LATE_ROUNDS - 1e-9 ? facts.late : facts;
+      // A paid release that has lapsed goes on to its cells after it (plan.expired), not back to the table's.
+      const lapsed = (unit, other) => expired && (expired.rows.has(unit) || expired.rows.has(other)) ? expired : settled;
       const cells = (unit, other) => unit >= held || other >= held ? facts
-        : changed && (changed[unit] || changed[other]) ? (time < until[unit] && time < until[other] ? lasting : settled) : settled;
+        : changed && (changed[unit] || changed[other]) ? (time < until[unit] && time < until[other] ? lasting : lapsed(unit, other)) : settled;
       const acting = unit => left[unit] > 1e-9 && !(denied && time < denied[unit]) && !(busy && time < busy[unit]);
       // What of an attacker's hit a unit takes: its answer's share while it can answer; held (controlled — the hard control
       // lasts to the end of the round it took an action in, BattleRuntime consumeStructuredControlActiveBudget) or busy, it
@@ -105532,6 +105663,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (total > 0) left[aimed[unit]] = Math.max(0, left[aimed[unit]] - (before / total - 0.5) * landed[unit]);
       }
       time += stepTime;
+      if (cuts && stam) cuts.forEach((cut, index) => {
+        if (cutDone[index] || cut.at > time + 1e-9) return;
+        cutDone[index] = true;
+        if (Number.isFinite(stam[cut.row]) && left[cut.row] > 1e-9) stam[cut.row] *= cut.factor;
+      });
       // A charge released: it lands if its caster still stands.
       if (strikes) for (; released < strikes.length && strikes[released].at <= time + 1e-9; released += 1) {
         const strike = strikes[released];
@@ -105706,7 +105842,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const stamina = table.stamina.slice();
     let busy = table.busy ? table.busy.slice() : null;
     const until = new Array(count).fill(Infinity), tick = table.tick.slice(), tickRounds = table.tickRounds.slice(), reflect = table.reflect.slice(), hpMax = table.hpMax.slice();
-    const rebuilt = [], hushed = {};
+    const rebuilt = [], hushed = {}, expiring = [], cuts = [];
     let added = [];
     let spent = 0, outside = 0, seen = 0;
     for (const id of touched) {
@@ -105750,10 +105886,34 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           seen += 1;
         } else changed = true;
       }
+      // A release with an upkeep lasts only as long as what is left pays for it (BattleRuntime settleSustainAtRoundEnd).
+      // Its states are cut to that too, so the late cells (a 体力 band moved for good by the payment, 11-14: 武魂真身 at
+      // 31% 魂力 cut the stamina below the 10% line and its +111% read as lasting the race) lose them when it is lifted.
+      let view = next;
+      if (id === request.actorId && changed) {
+        const upkeep = r20Upkeep(candidate?.declaration, next), rounds = upkeep ? 1 + upkeep.payments : Infinity;
+        if (rounds < Infinity) {
+          lasting = Math.min(lasting > 0 ? lasting : Infinity, rounds);
+          const states = { ...nextStates };
+          for (const [key, state] of Object.entries(nextStates)) {
+            if (priorStates[key] === state || !(state && typeof state === 'object') || !(Number(state.duration ?? Infinity) > rounds)) continue;
+            states[key] = { ...state, duration: rounds, 持续回合: rounds };
+          }
+          view = preview.inheritOverlayOrigin({ ...next, 状态效果: states }, next);
+        }
+      }
       if (changed || preview.staminaScaleForUnit(next) !== preview.staminaScaleForUnit(prior)) {
-        rebuilt.push([row, next, false]);
+        rebuilt.push([row, view, false]);
         if (changed) seen += 1;
         until[row] = preview.staminaScaleForUnit(next) !== preview.staminaScaleForUnit(prior) || !(lasting > 0) ? Infinity : lasting;
+        // 估值甲（11-14，用户「也得考虑开完后无法战斗的代价」）: a paid release that lapses leaves its actor as it is then — its
+        // states gone, what it spent still spent (the table's cells the race went back to had it paid nothing), and the stamina
+        // cut a 维持类真身/融合技 put off (BattlePreview staminaCutDeferred) taken when it ends.
+        if (row === actorRow && until[row] < R20_RACE_ROUNDS && ['魂力', '精神力'].some(resource => preview.readResource(next, resource) < preview.readResource(prior, resource))) {
+          expiring.push([row, view, until[row]]);
+          const putOff = Object.values(next.__battleRuntime?.lowResourceStaminaCut || {}).filter(mark => mark === preview.DEFERRED_STAMINA_CUT).length;
+          if (putOff) cuts.push({ row, at: until[row], factor: 0.5 ** putOff });
+        }
       } else if (['魂力', '精神力', '体力'].some(resource => preview.readResource(next, resource) !== preview.readResource(prior, resource))) {
         // Only what it can pay for changed: its own cells, for good.
         rebuilt.push([row, next, true]);
@@ -105832,8 +105992,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // with no clock kept the pair on the candidate's cells of now for the whole race, so an attacker whose resources
     // run down on the table hit at full strength to the end; a 防御系's shield raised to meet a hit was valued below
     // letting it land).
-    const rebuildCells = (base, baseUnits, entries) => {
-      const context = r9v2LinearCapacityProjectionContext(after, table.contexts);
+    // `late`: cells on the window views, read off the views themselves as the table's late cells are (no projection
+    // context — it holds the candidate's world as it is now, so a buff past its time still counted: 11-14, 武魂真身 at 31%
+    // 魂力 lifted at the next round end and its +111% read as lasting the race).
+    const rebuildCells = (base, baseUnits, entries, late = false) => {
+      const context = late ? null : r9v2LinearCapacityProjectionContext(after, table.contexts);
       const units = baseUnits.slice();
       const out = base.out.map(row => row.slice()), support = base.support.map(row => row.slice()), stop = base.stop.map(row => row.slice()), keep = base.keep.map(row => row.slice());
       const answer = base.answer.map(row => row.slice()), back = base.back.map(row => row.slice());
@@ -105882,8 +106045,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (table.late?.units && rebuilt.some(([row]) => until[row] === Infinity && !unchangedRows.has(row))) {
         const decisionTable = r10DecisionTable(request);
         lateCells = rebuildCells(table.late, table.late.units, rebuilt.map(([row, next, ownCellsOnly]) =>
-          [row, r10WindowView(decisionTable, after, next, R20_LATE_ROUNDS, next), ownCellsOnly]));
+          [row, r10WindowView(decisionTable, after, next, R20_LATE_ROUNDS, next), ownCellsOnly]), true);
       }
+    }
+    // The cells once a paid release has lapsed (`expiring`): its actor's window view at that round, on the table's late cells.
+    let expiredCells = null;
+    if (expiring.length) {
+      const decisionTable = r10DecisionTable(request), base = table.late?.units ? table.late : table;
+      expiredCells = rebuildCells(base, base.units, expiring.map(([row, view, rounds]) =>
+        [row, r10WindowView(decisionTable, after, view, Math.max(1, Math.ceil(rounds)), view), false]), true);
+      expiredCells.rows = new Set(expiring.map(([row]) => row));
     }
     mark('rebuildMs');
     // Units the candidate brings onto the field (a summon): rows and columns of their own, built against everyone, by the
@@ -105992,16 +106163,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       remaining[actorRow] = Math.max(0, remaining[actorRow] - counter);
       struckAny = struck.size > 0;
     }
-    // What the release keeps costing: its upkeep over the rounds still to play, as shares of the pools (W11).
+    // What the release keeps costing: its upkeep over the rounds still to play, as shares of the pools (W11) — only the
+    // round ends what is left pays for.
     const declaration = candidate?.declaration;
-    if (declaration?.actionKind === 'RELEASE_SKILL' && actorRow !== undefined) {
-      const actor = table.units[actorRow];
-      for (const [resource, amount] of Object.entries(preview.readSkillCostStages(declaration.skill || {}, { ...declaration, costActor: actor })?.维持 || {})) {
-        const text = String(amount ?? '').trim();
-        const share = /%$/.test(text) ? Number.parseFloat(text) / 100 : Number(amount) / Math.max(1, preview.readResourceMax(actor, resource));
-        if (Number.isFinite(share) && share > 0) spent += share * R20_UPKEEP_ROUNDS;
-      }
-    }
+    const upkeep = actorRow !== undefined ? r20Upkeep(declaration, findUnitInWorld(after, request.actorId) || table.units[actorRow]) : null;
+    if (upkeep) spent += upkeep.share * Math.min(R20_UPKEEP_ROUNDS, upkeep.payments);
     const own = request.actorSide, foe = table.sides.find(side => side !== own) || '';
     const roleName = String(request.actionOpportunity?.role || 'ACTIVE').toUpperCase(), actionKind = String(declaration?.actionKind || '').toUpperCase();
     const sourceRow = table.index.get(String(request.actionOpportunity?.sourceActorId || ''));
@@ -106187,7 +106353,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const changed = new Array(count).fill(false);
     for (const [row] of rebuilt) if (!unchangedRows.has(row)) changed[row] = true;
     strikes.sort((left, right) => left.at - right.at);
-    const plan = { denied, until, base: table, leaves, baseCount: count, changed, busy, strikes: strikes.length ? strikes : null };
+    const plan = { denied, until, base: table, leaves, baseCount: count, changed, busy, strikes: strikes.length ? strikes : null, expired: expiredCells, cuts: cuts.length ? cuts : null };
     // A unit that may or may not be down is valued both ways (the settlement is not run again): the race with it gone
     // and with what is left of it if it stands, by the chance of each — only the most open such unit; the others keep
     // their chance as a weight.
@@ -116348,7 +116514,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 从上限 10% 以上跌到 10% 以下时，当前剩余体力减半；标记 __battleRuntime.lowResourceStaminaCut 两模块共用。
     if ((resourceKey === 'sp' || resourceKey === 'men') && maxValue > 0 && fuelBefore >= maxValue * 0.1 && nextValue < maxValue * 0.1) {
       const runtime = unit.__battleRuntime && typeof unit.__battleRuntime === 'object' ? unit.__battleRuntime : {};
-      if (runtime.lowResourceStaminaCut?.[config.statKey] !== true) {
+      // 维持类真身、融合技发动与维持期间只记待砍，维持结束时砍（BattlePreview staminaCutDeferred / settleDeferredStaminaCut）。
+      if (!runtime.lowResourceStaminaCut?.[config.statKey] && previewRuntime.staminaCutDeferred(unit)) {
+        unit.__battleRuntime = { ...runtime, lowResourceStaminaCut: { ...(runtime.lowResourceStaminaCut || {}), [config.statKey]: previewRuntime.DEFERRED_STAMINA_CUT } };
+      } else if (!runtime.lowResourceStaminaCut?.[config.statKey]) {
         unit.__battleRuntime = { ...runtime, lowResourceStaminaCut: { ...(runtime.lowResourceStaminaCut || {}), [config.statKey]: true } };
         const staminaBefore = previewRuntime.readResource(unit, '体力');
         writeCombatResource(unit, 'vit', staminaBefore * 0.5);
@@ -120487,6 +120656,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     const [representativeKey, representative] = candidates[0];
     representative.维持消耗 = cloneValue(costs);
+    // 维持类真身、融合技：维持期间资源低位砍体力推迟到维持结束（BattlePreview staminaCutDeferred）。
+    if (actor?.__battleRuntime?.__维持类发动中 === true) candidates.forEach(([, effect]) => { effect.真身维持 = true; });
     writeLedgerEvent(combatData, {
       eventKind: 'state_tick',
       round: Number(combatData?.回合 || 0),
@@ -120512,7 +120683,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return { attached: true, diagnostic: false, representativeEffect: representativeKey };
   }
 
+  // 维持类真身、融合技的发动结束（维持条目已挂上，或这次没挂上）：撤掉发动中标记，没有维持条目留下就补砍推迟的体力。
+  function endSustainedAvatarRelease(combatData = {}) {
+    for (const unit of listCombatUnits(combatData)) {
+      if (unit?.__battleRuntime?.__维持类发动中 !== true) continue;
+      const { __维持类发动中: releasing, ...rest } = unit.__battleRuntime;
+      unit.__battleRuntime = rest;
+      previewRuntime.settleDeferredStaminaCut(unit);
+    }
+  }
+
   function settleSustainAtRoundEnd(unit = {}, label = '', combatData = {}, adapterOptions = {}) {
+    if (unit?.__battleRuntime?.__维持类发动中 === true) endSustainedAvatarRelease(combatData);
     const logs = [];
     const broken = [];
     const chargedSustainSources = new Set();
@@ -123325,6 +123507,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       persistentResourceValue(payment.payer, payment.key) + 1e-9 < payment.amount,
     );
     if (runtimeInsufficient) throw new Error(`battle_structured_resource_insufficient:${runtimeInsufficient.resource}:${runtimeInsufficient.payerId}`);
+    // 维持类真身、融合技发动：启动消耗打到一成以下也先不砍体力（endSustainedAvatarRelease 撤标记）。
+    if (actionKind === 'RELEASE_SKILL' && previewRuntime.sustainedAvatarRelease(declaration.skill || {}, { 来源模块: 'BattleRuntime_Module', ...declaration, costActor: actor })) {
+      costPayers.forEach(unit => { unit.__battleRuntime = { ...(unit.__battleRuntime || {}), __维持类发动中: true }; });
+    }
     paymentPlan.payments.forEach(payment => {
         const costPayer = payment.payer;
         const key = payment.key;
@@ -125834,6 +126020,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         actionEvent,
       );
     }
+    endSustainedAvatarRelease(combatData);
     const conditionalRiskEffects = effects.some(effect => effect?.条件分支?.length)
       ? facts.filter(event => event && event.actionId === actionEvent.actionId && ['state_apply', 'state_replace'].includes(event.eventKind) &&
           event.resultState === 'SUCCESS' && event.meta?.evidence?.projectedEffect?.副作用列表?.length)
@@ -130492,10 +130679,19 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               // A charged release (its 前摇 over the budget) ends the chain through chainWindup <= naturalActionBudget below.
               const chainLink = node.actionRole === 'ACTIVE' && (node.nodeKind === 'ACTIVE' || node.grantType === 'CONTINUOUS_ACTION' ||
                 node.nodeKind === 'PRIMARY_SETTLEMENT' && node?.state?.chainLink === true);
-              const chainWindup = previewRuntime.actionWindup(actor, shared.declaration);
+              // 控制后追击（用户 2026-11-14「被硬控后可以不看前摇直接追击普攻」「硬控+普攻（前摇为0）+技能」）: the strike that
+              // follows a hard control takes no windup of the turn, so what the control left of the budget still carries a skill.
+              const freeWindup = node?.state?.freeWindup === true;
+              const chainWindup = freeWindup ? 0 : previewRuntime.actionWindup(actor, shared.declaration);
               const chainUsed = Number(node?.state?.windupUsed || 0) + chainWindup;
+              const hardControlled = node?.state?.freeWindup !== true && settlement.facts.some(event => {
+                if (event?.eventKind !== 'state_apply' || event?.result !== 'applied') return false;
+                if (!previewRuntime.structuredControlConsumesActiveOpportunity({ 状态: String(event?.meta?.stateName || '').trim() })) return false;
+                const struck = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, event?.targetId || event?.targetName || ''));
+                return !!struck && struck !== actor && inferUnitSide(combatData, struck) !== inferUnitSide(combatData, actor);
+              });
               let chained = false;
-              if (chainLink && ['BASIC_ATTACK', 'RELEASE_SKILL', 'USE_ITEM'].includes(chainKind) && chainWindup > 0 &&
+              if (chainLink && !hardControlled && ['BASIC_ATTACK', 'RELEASE_SKILL', 'USE_ITEM'].includes(chainKind) && (chainWindup > 0 || freeWindup) &&
                 chainWindup <= naturalActionBudget && chainUsed < previewRuntime.CONTINUOUS_ACTION_BUDGET && structuredActorPhysicallyAlive(actor) &&
                 Number(node?.state?.chainDepth || 0) < 8) {
                 chained = true;
@@ -130537,14 +130733,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                   grantType: 'FOLLOW_UP',
                   state: { continuationDepth: 1, parentActionEvent: settlement.actionEvent },
                 });
-              } else if (!chained && chainLink && structuredActorPhysicallyAlive(actor) && settlement.facts.some(event => {
-                // 控制后接一次普攻（用户 2026-11-14「做吧」）：主动出手给敌人上了硬控（跳过回合类），本回合连续行动又接不上
-                // （前摇合计到 40）时，施控者照样接一次普攻——只能普攻（basicAttackOnly），不再往下连。
-                if (event?.eventKind !== 'state_apply' || event?.result !== 'applied') return false;
-                if (!previewRuntime.structuredControlConsumesActiveOpportunity({ 状态: String(event?.meta?.stateName || '').trim() })) return false;
-                const struck = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, event?.targetId || event?.targetName || ''));
-                return !!struck && struck !== actor && inferUnitSide(combatData, struck) !== inferUnitSide(combatData, actor);
-              })) {
+              } else if (!chained && chainLink && hardControlled && structuredActorPhysicallyAlive(actor)) {
+                // 控制后追击：主动出手给敌人上了硬控（跳过回合类），施控者先接一次普攻（basicAttackOnly，不占前摇），这一下之后
+                // 本回合前摇还有余量的，照常连续行动（可接技能）。原先（11-14 dec4be8）只在前摇接不上时才追普攻，接得上时走普通
+                // 连续行动——20 次硬控里 11 次接的是防御姿态。
                 queue.enqueue({
                   actorEntry: node.actorEntry,
                   actorControl: node.actorControl,
@@ -130556,7 +130748,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                   actionRole: 'ACTIVE',
                   sourceActionId: settlement.actionEvent.actionId,
                   grantType: 'FOLLOW_UP',
-                  state: { continuationDepth: 1, parentActionEvent: settlement.actionEvent, basicAttackOnly: true },
+                  state: { continuationDepth: 1, parentActionEvent: settlement.actionEvent, basicAttackOnly: true, controlFollowUp: true,
+                    windupUsed: chainUsed, chainDepth: Number(node?.state?.chainDepth || 0) + 1 },
                 });
               }
               if (node.actionRole === 'ASSIST' && actor.召唤键) consumeSummonWindow(combatData, actor, '协同行动窗口耗尽', node.grantId);
@@ -131299,7 +131492,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 // was ever offered.
                 windupUsed: Number(node?.state?.windupUsed || 0), chainDepth: Number(node?.state?.chainDepth || 0),
                 ...(node?.state?.breakoutOnly === true ? { breakout: true } : {}),
-                chainLink: node.actionRole === 'ACTIVE' && (node.nodeKind === 'ACTIVE' || node.grantType === 'CONTINUOUS_ACTION'),
+                chainLink: node.actionRole === 'ACTIVE' && (node.nodeKind === 'ACTIVE' || node.grantType === 'CONTINUOUS_ACTION' || node?.state?.controlFollowUp === true),
+                ...(node?.state?.controlFollowUp === true ? { freeWindup: true } : {}),
                 // The strike backs of this exchange so far, this one included (接战链 阶段一: the next costs more, is caught less).
                 counterCounts: node.nodeKind === 'COUNTER'
                   ? { ...engagementCounterCounts(node), [previewRuntime.unitId(actor)]: Number(engagementCounterCounts(node)[previewRuntime.unitId(actor)] || 0) + 1 }
