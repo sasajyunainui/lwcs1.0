@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:cb15a063a6f0f383ed74bec29f93b19c4828be5ae3f7a49fb8ed04b63da82c02|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:dad6954198cdcefe3c117e12ac180886b960401c14ac216b6541312cf8970f9f|BattleRuntime_Module.js:a1b0b4bb8a35027933da047c3597c5d783e8a76bd0005da1841558e7a6dc4b53|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:20fa47eb98c686d3bfad5976dfdc8e9e13843984e052c3cab9f0a42a789a9e8b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:cce81e3ddda8ab027f987008b28a7883845819bdac34d0af3060edd3ee9d50c5|BattleRuntime_Module.js:83e7d9f80955ae31fbf921df96c5c73d5cfb23f06dcb247121c4ad7432ddb295|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -23829,6 +23829,37 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return selected;
   }
 
+  // 魂技消耗成长（用户 2026-11-15）：普通魂环魂技的消耗是「固定段 + N% × 资源上限」，技能带 _锚定消耗（获得时的总消耗）。
+  // 效果数值 × ∛(实际消耗 ÷ 锚定消耗)，封顶 ∛16；实际消耗按施法者当前资源上限算，不含结算修正对消耗的增减。
+  // 结果由（消耗写法、锚定、施法者三项资源上限）完全决定，按这几项缓存；资源上限每次都读（保持预演的依赖记录），缓存只省解析与折算。
+  const soulSkillGrowthCache = new Map();
+  const SOUL_SKILL_GROWTH_CACHE_LIMIT = 4096;
+  function soulSkillGrowthMultiplier(actor, skill) {
+    if (!skill || typeof skill !== 'object') return 1;
+    const anchor = skill._锚定消耗;
+    if (!anchor || typeof anchor !== 'object' || Array.isArray(anchor)) return 1;
+    const rules = root.__LWCS_C2_CONSUMER_RULES_V1__;
+    if (typeof rules?.计算魂技消耗成长倍数_V1 !== 'function') return 1;
+    const maxima = { 魂力: readResourceMax(actor, '魂力') };
+    for (const resource of ['精神力', '体力']) if (Number(anchor[resource]) > 0) maxima[resource] = readResourceMax(actor, resource);
+    const cacheKey = `${JSON.stringify(skill.消耗)}|${JSON.stringify(anchor)}|${maxima.魂力}|${maxima.精神力 ?? ''}|${maxima.体力 ?? ''}`;
+    const cached = soulSkillGrowthCache.get(cacheKey);
+    if (cached !== undefined) return cached;
+    const stages = readSkillCostStages(skill, {});
+    let growth = 1;
+    if (!stages.非法项?.length) {
+      const actual = {};
+      for (const [resource, term] of Object.entries(stages.启动 || {})) {
+        const amount = resolveSkillResourceCost(actor, resource, term);
+        if (Number.isFinite(amount)) actual[resource] = amount;
+      }
+      growth = rules.计算魂技消耗成长倍数_V1(skill, actual, maxima);
+    }
+    if (soulSkillGrowthCache.size >= SOUL_SKILL_GROWTH_CACHE_LIMIT) soulSkillGrowthCache.clear();
+    soulSkillGrowthCache.set(cacheKey, growth);
+    return growth;
+  }
+
   // Resolve quantitative release strength once. Stored item recipes and ticks
   // already carry their released strength; independent grants are not this skill.
   function releaseSkillEffects(actor, declaration, effects, actionRole) {
@@ -23839,6 +23870,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (typeof rules?.计算技能掌控度完整度_V1 !== 'function' || typeof rules?.应用技能掌控度效果数组_V1 !== 'function') throw new Error('skill_mastery_runtime_missing');
       effects = rules.应用技能掌控度效果数组_V1(effects, rules.计算技能掌控度完整度_V1(declaration.skill, actor));
     }
+    const growth = soulSkillGrowthMultiplier(actor, declaration?.skill);
+    if (growth > 1 + 1e-9 && typeof rules?.放大魂技消耗成长效果数组_V1 === 'function') effects = rules.放大魂技消耗成长效果数组_V1(effects, growth);
     if (String(declaration?.skill?.魂技名 || declaration?.skill?.name || '').trim() === '坚挺金苍蝇' ||
         !/食物属性|香肠/.test([...(Array.isArray(declaration?.skill?.附带属性) ? declaration.skill.附带属性 : []),
           declaration?.skill?.效果描述, declaration?.skill?.画面描述].map(value => String(value || '')).join('|'))) return effects;
@@ -30470,6 +30503,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     inventoryItemAvailable,
     inventoryUseEffects,
     releaseSkillEffects,
+    soulSkillGrowthMultiplier,
     settleInventoryItemUse,
     creationInventoryStock,
     creationProductIdentity,
@@ -41718,7 +41752,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const actorSide = sideOf(worldSnapshot, sourceActor);
     const exchanges = alreadyPublic === true ? new Map() : beliefExchangeCounts(worldSnapshot, actorSide);
     const projectUnit = (sourceUnit, publicSide = '') => {
-      if (alreadyPublic === true || sideOf(worldSnapshot, sourceUnit) === actorSide) {
+      // 熟人知根知底（用户 2026-11-15「原本就很熟悉的两人，或者近期对战过的，就没必要试探了」）: an enemy the actor has fought or
+      // is close to is pictured as it is — its skills and panel — like the actor's own side.
+      if (alreadyPublic === true || sideOf(worldSnapshot, sourceUnit) === actorSide || beliefFamiliarExchanges(sourceActor, sourceUnit) >= BELIEF_FAMILIAR_BATTLE) {
         const unit = preview.inheritProjectedStateSourceWindows(cloneValue(sourceUnit), sourceUnit, worldSnapshot);
         if (sideOf(worldSnapshot, sourceUnit) === actorSide && !Number.isFinite(Number(unit?.routine_attack_ratio))) unit.routine_attack_ratio = knownRoutineAttackRatio(unit);
         return unit;
@@ -123925,6 +123961,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         魂技名: String(declaration.skill.魂技名 || declaration.skill.name || '').trim(),
         id: String(declaration.skill.id || declaration.skill.技能ID || '').trim(),
         消耗: cloneValue(declaration.skill.消耗 ?? '无'),
+        // 魂技消耗成长：被复制的魂技带着锚定，复制者按自己的资源上限放大（付的是「固定+N%」，放大要跟着）。
+        ...(declaration.skill._锚定消耗 && typeof declaration.skill._锚定消耗 === 'object' ? { _锚定消耗: cloneValue(declaration.skill._锚定消耗) } : {}),
         _效果数组: cloneValue(declaration.skill._效果数组.filter(effect => effect?.__施技反噬 !== true)),
         round: Number(combatData?.回合 || 0),
       };

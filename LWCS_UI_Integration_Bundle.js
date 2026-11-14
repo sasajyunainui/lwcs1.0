@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:4c21da487b44a272fa8b1dff5d64d3b0f3b58e1574a0bf97b0a0a543028f3c6c|cockpit/designer-model.js:bc30b23774bd7fe4ffa5747f5e0aa0e0f264ac49405c381bcf295f65ce9d01c3|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:1f018c2f083673031b98f7bde8035b4db8be87d961d12671bbd54cac9e144afd|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:bbbae9686d5c127938d3dcfc97f2758141c1a9bc73a066c1f5a2facf51db5ee7|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:a4fd8204d04aa9e6e8cbec4154bb00b5b4fd593fc70ab1d15a528dfe2e6d733b|cockpit/designer-model.js:3af6b921800a777fe67adf256f84125349e354db53a6856b190f9f039db556b6|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:3474ced3c93288f1eb7f4fea4ab961df89f18319d3c7a388066ea50741681f27|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -3199,7 +3199,7 @@
   const 装备加成属性选项_桥接 = Object.freeze(['魂力上限', '精神力上限', '力量', '防御', '敏捷', '体力上限']);
   const 装备加成方向选项_桥接 = Object.freeze([...装备加成属性选项_桥接, '全属性']);
   const 装备加成属性集合_桥接 = new Set(装备加成属性选项_桥接);
-  const 正式技能字段列表_桥接 = Object.freeze(['魂技名', '画面描述', '效果描述', '产物描述', '承载方式', '消耗', '前摇', '场外冷却至tick', '附带属性', '使用条件', '技能掌控度', '触发限制', '_效果数组', '副作用列表', '计价版本']);
+  const 正式技能字段列表_桥接 = Object.freeze(['魂技名', '画面描述', '效果描述', '产物描述', '承载方式', '消耗', '前摇', '场外冷却至tick', '附带属性', '使用条件', '技能掌控度', '触发限制', '_效果数组', '副作用列表', '计价版本', '_锚定消耗']);
   const 正式技能字段集合_桥接 = new Set(正式技能字段列表_桥接);
 
   function 断言物品正式技能_桥接(技能 = {}, 来源 = '物品技能') {
@@ -19450,7 +19450,7 @@
     );
     const mergedMechanicParams = {};
     const costConfig = parseSkillDesignerCostConfig(
-      designDraft['消耗'] || safeSkill['消耗'],
+      designDraft['消耗'] || 读取技能设计台口径消耗(safeSkill),
       designDraft['消耗资源'],
       designDraft['消耗值'],
     );
@@ -19986,6 +19986,11 @@
     });
   }
 
+  // 魂技消耗成长（2026-11-15）：设计台按锚定消耗（现行 COST 口径的绝对值）显示与编辑；保存时由运行时换算回「固定+N%」并写 _锚定消耗。
+  function 读取技能设计台口径消耗(skill = {}) {
+    const 助手 = typeof globalThis !== 'undefined' ? globalThis.__LWCS_SKILL_COST_HELPERS_V1__ : null;
+    return typeof 助手?.取预算口径消耗_V1 === 'function' ? 助手.取预算口径消耗_V1(skill) : skill['消耗'];
+  }
   function parseSkillDesignerCostAmount(value = '') {
     const text = normalizeSkillUiText(value, '');
     if (!text || text === '无') return '';
@@ -41255,7 +41260,7 @@ ${播报文本}
     );
     const mergedMechanicParams = {};
     const costConfig = parseSkillDesignerCostConfig(
-      designDraft['消耗'] || safeSkill['消耗'],
+      designDraft['消耗'] || 读取技能设计台口径消耗(safeSkill),
       designDraft['消耗资源'],
       designDraft['消耗值'],
     );
@@ -42622,6 +42627,11 @@ ${播报文本}
     });
   }
   // —— B:24929-24934
+  // 魂技消耗成长（2026-11-15）：设计台按锚定消耗（现行 COST 口径的绝对值）显示与编辑；保存时由运行时换算回「固定+N%」并写 _锚定消耗。
+  function 读取技能设计台口径消耗(skill = {}) {
+    const 助手 = typeof globalThis !== 'undefined' ? globalThis.__LWCS_SKILL_COST_HELPERS_V1__ : null;
+    return typeof 助手?.取预算口径消耗_V1 === 'function' ? 助手.取预算口径消耗_V1(skill) : skill['消耗'];
+  }
   function parseSkillDesignerCostAmount(value = '') {
     const text = normalizeSkillUiText(value, '');
     if (!text || text === '无') return '';
@@ -47698,6 +47708,14 @@ ${播报文本}
           if (路径.includes('自创魂技')) return '自创魂技';
           return '魂技';
         })();
+        // 魂技消耗成长：表单里手写成「固定+N%」又没有锚定的消耗，先按「固定 + N% × 10N 级资源上限」还原成绝对值，预算与断言按现行 COST 口径算。
+        const 成长上下文 = (() => {
+          const 角色键 = Array.isArray(previewMeta.path) ? previewMeta.path[1] : '';
+          return { sourceCategory: 来源标识, ringIndex: 魂技位, 魂环位: 魂技位, 角色: deepGet(snapshot.rootData, ['char', 角色键], {}) || {} };
+        })();
+        if (typeof COST助手.展开魂技成长消耗为锚定口径_V1 === 'function' && ['魂技', '自创魂技'].includes(来源标识)) {
+          try { COST助手.展开魂技成长消耗为锚定口径_V1(nextSkill, 成长上下文); } catch (错误) { /* 还原失败按表单原值走预算 */ }
+        }
         if (typeof COST助手.按原型数上限截断_V1 === 'function') {
           const 截断结果 = COST助手.按原型数上限截断_V1(nextSkill, 魂技位, 来源标识);
           if (截断结果?.截断记录) {
@@ -47722,6 +47740,10 @@ ${播报文本}
             来源: 预算上下文.来源类别,
             启用位级硬上限: true,
           }, normalizeSkillUiText(previewMeta.label || formState.name || '技能设计', '技能设计'));
+          // 魂技消耗成长：预算按锚定（绝对值）消耗通过后，换算成「固定+N%」并写 _锚定消耗（普通魂环魂技/自创魂技；其余来源不动）。
+          if (typeof COST助手.规范化魂技成长消耗_V1 === 'function' && ['魂技', '自创魂技'].includes(来源标识)) {
+            COST助手.规范化魂技成长消耗_V1(nextSkill, 成长上下文);
+          }
         }
       }
       if (选项.跳过预算断言 !== true) 结果.updates = buildSkillDesignerWriteUpdates(previewMeta, nextSkill, snapshot.rootData);
@@ -50327,7 +50349,9 @@ ${播报文本}
         ) || null;
       原始效果 = constructTemplate ? constructTemplate['使用效果'] : effectArray;
       deliveryForm = normalizeSkillUiText(safe['承载方式'] || safe['释放形式'], '');
-      const costConfig = 解析技能设计台消耗文本配置(safe['消耗']);
+      // 魂技消耗成长：已存的魂技消耗是「固定+N%」，试算与设计台一样按锚定消耗（现行 COST 口径的绝对值）算。
+      const 成长助手 = typeof globalThis !== 'undefined' ? globalThis.__LWCS_SKILL_COST_HELPERS_V1__ : null;
+      const costConfig = 解析技能设计台消耗文本配置(typeof 成长助手?.取预算口径消耗_V1 === 'function' ? 成长助手.取预算口径消耗_V1(safe) : safe['消耗']);
       cost = buildSkillDesignerCostObject(costConfig.resourceType, costConfig.resourceValues);
       levelControl = normalizeSkillDesignerLevelControl(safe['技能掌控度']);
       启用掌控 = !!levelControl;
@@ -51410,6 +51434,13 @@ ${播报文本}
     if (typeof cost === 'object') return c.entries(cost).map(([k, v]) => `${c.esc(k)} ${c.fmt(v)}`).join(' · ');
     return c.esc(cost);
   };
+  // 魂技消耗成长：普通魂技的魂力消耗写成「固定+N%」（如 "4765+5%"），按角色当前魂力上限折成实际数值；纯数字写法与分阶段（启动）写法照旧。
+  const spCost = (c, sk) => {
+    const raw = sk && sk.消耗, term = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw.启动 && typeof raw.启动 === 'object' ? raw.启动.魂力 : raw.魂力) : undefined;
+    if (term === undefined || term === null) return 0;
+    const text = String(term), mix = /^\s*(\d+(?:\.\d+)?)\s*\+\s*(\d+(?:\.\d+)?)%\s*$/.exec(text), pct = /^\s*(\d+(?:\.\d+)?)%\s*$/.exec(text), cap = c.num(c.st.魂力上限);
+    return mix ? Math.floor(Number(mix[1]) + Number(mix[2]) / 100 * cap) : pct ? Math.floor(Number(pct[1]) / 100 * cap) : c.num(term);
+  };
   const allSkills = c => {
     const out = [];
     for (const s of c.souls) for (const sp of s.spirits) for (const r of sp.rings) for (const sk of r.skills) out.push({ key: `${s.slot}/${sp.slot}/${r.slot}/${sk.slot}`, group: '魂环魂技', from: `${s.表象名称} · ${r.slot}`, ring: r, ...sk });
@@ -51549,7 +51580,7 @@ ${播报文本}
     const cond = sk.使用条件 || {}, lim = sk.触发限制, mast = sk.技能掌控度;
     // _效果数组 两种形态：造物承载是「包」列表（数量 / 有效期 / 使用效果），其余承载直接是效果列表——后者包成一个包
     const list = Array.isArray(sk._效果数组) ? sk._效果数组.filter(Boolean) : [], pkgs = list.some(p => Array.isArray(p.使用效果)) ? list : list.length ? [{ 使用效果: list }] : [];
-    const sp = typeof sk.消耗 === 'object' ? c.num(sk.消耗?.魂力) : 0, pool = c.num(c.st.魂力), casts = sp ? Math.floor(pool / sp) : 0;
+    const sp = spCost(c, sk), pool = c.num(c.st.魂力), casts = sp ? Math.floor(pool / sp) : 0;
     return `<div class="insp-head">${sk.ring ? c.ringMedal(sk.ring, String(sk.ring.slot || '').replace(/\D/g, '')) : c.sock('book', 'gd')}<div><strong style="font-size:1.15em">${c.esc(sk.魂技名)}</strong><br><small>${c.esc(sk.group)} · ${c.esc(sk.from)}</small></div>${page ? '' : '<button class="x" type="button" data-close-inspector aria-label="关闭">×</button>'}</div>
       <div style="display:flex;gap:.35em;flex-wrap:wrap">${sk.ring ? `<span class="chip">${c.yearTier(sk.ring.年限)} · ${c.fmt(sk.ring.年限)} 年</span>` : ''}${!c.blank(sk.承载方式) ? `<span class="chip s">${c.esc(sk.承载方式)}</span>` : ''}${sk.触发方式 ? `<span class="chip s">触发：${c.esc(sk.触发方式)}</span>` : ''}${(sk.附带属性 || []).map(a => `<span class="chip s">${c.esc(a)}</span>`).join('')}</div>
       ${pkgs.length ? `<section class="sec"><h3>效果</h3>${pkgs.map(p => `${(p.使用效果 || []).map(e => fxRow(c, e) + (e.条件分支 || []).map(b => branchRow(c, b)).join('')).join('')}${p.有效期tick || p.数量 ? `<small style="padding-left:.2em">产出 ${c.fmt(p.数量 || 1)} 份${p.有效期tick ? ` · 有效期 ${Math.floor(p.有效期tick / 6)} 小时` : ''}</small>` : ''}`).join('')}</section>` : ''}
@@ -51595,7 +51626,7 @@ ${播报文本}
       return `<button class="cta" type="button"${extra} data-confirm="${c.esc(`${label}「${sk.魂技名}」`)}" data-act="${c.esc(JSON.stringify({ name: 'skill', path }))}"><i class="fa-solid fa-hand-sparkles"></i>${label}</button>`;
     }
     if (window.COCKPIT.rt('__LWCS_ERA_RUNTIME_INTEGRATION_V1__') && !path) return lock('日常施展', '这个技能来自物品定义，装备后在角色身上施展');
-    const sp = typeof sk.消耗 === 'object' ? c.num(sk.消耗?.魂力) : 0, short = sp > 0 && c.num(c.st.魂力) < sp;
+    const sp = spCost(c, sk), short = sp > 0 && c.num(c.st.魂力) < sp;
     const btn = `<button class="cta" type="button"${extra}${short ? ' disabled' : ` data-confirm="${c.esc(`日常施展「${sk.魂技名}」${sp ? `，消耗魂力 ${c.fmt(sp)}` : ''}`)}"`}><i class="fa-solid fa-hand-sparkles"></i>日常施展</button>`;
     return short ? `<span class="cta-wrap" data-hint="魂力不足：需要 ${c.fmt(sp)}">${btn}</span>` : btn;
   };
@@ -51675,7 +51706,7 @@ ${播报文本}
       right: `<div class="pad">
         ${c.head('fire-flame-curved', '施放次数', 'Casts', 'sp')}
         <div class="need"><span>当前魂力</span><b>${c.fmt(pool)} / ${c.fmt(c.st.魂力上限)}</b></div>
-        ${skills.length ? `<div class="casts">${skills.map(x => { const cost = typeof x.sk.消耗 === 'object' ? c.num(x.sk.消耗?.魂力) : 0; return `<button class="cast" type="button" data-inspect="sk:${skKey(x)}" data-go="page-ability/codex" data-go-set="skg=全部;sksel=${skKey(x)}"><div><strong>${c.esc(x.sk.魂技名)}</strong><small>${cost ? `每次 ${c.fmt(cost)} 魂力` : '无魂力消耗'}</small></div><b>×${cost ? Math.floor(pool / cost) : '∞'}</b></button>`; }).join('')}</div>` : '<span class="lbl">尚无可施放的魂技</span>'}
+        ${skills.length ? `<div class="casts">${skills.map(x => { const cost = spCost(c, x.sk); return `<button class="cast" type="button" data-inspect="sk:${skKey(x)}" data-go="page-ability/codex" data-go-set="skg=全部;sksel=${skKey(x)}"><div><strong>${c.esc(x.sk.魂技名)}</strong><small>${cost ? `每次 ${c.fmt(cost)} 魂力` : '无魂力消耗'}</small></div><b>×${cost ? Math.floor(pool / cost) : '∞'}</b></button>`; }).join('')}</div>` : '<span class="lbl">尚无可施放的魂技</span>'}
         ${blOn ? `<div class="groove"></div>${c.head('droplet', bl.血脉, 'Bloodline', 'hp')}${c.kv([['血脉', c.ed(bl.血脉, c.P('血脉之力', '血脉'))], ['解封层数', c.ed(c.fmt(bl.解封层数 || 0), c.P('血脉之力', '解封层数'), { kind: 'number', integer: true, min: 0, raw: c.num(bl.解封层数) })], ['气血魂核', c.ed(bl.核心 || '未凝聚', c.P('血脉之力', '核心'), { raw: bl.核心 || '' })], ['生命之火', bl.生命之火 ? '已点燃' : '未点燃']])}${allSkills(c).filter(s => BLOOD_CHIP[s.group]).map(s => `<button class="row" type="button" data-inspect="sk:${c.esc(s.key)}"><span class="chip s">${BLOOD_CHIP[s.group]}</span><div><strong>${c.esc(s.魂技名)}</strong></div><i class="fa-solid fa-chevron-right"></i></button>`).join('')}` : ''}
         ${(n => `<button class="tile door self-made" type="button" data-go="page-ability/design" data-hint="设计台">${c.sock('pen-ruler', 'gd')}<b>${n} 项</b><small>${window.COCKPIT.pending()?.skillDesign ? '有待确认的设计' : '自创魂技'}</small></button>`)(c.entries(c.ch.自创魂技).length)}
       </div>`,

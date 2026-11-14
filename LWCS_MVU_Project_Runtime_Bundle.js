@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:e287e386469604c6970d00bf4eeab21e71f9fad0ec665feec9b69063126d714f|MVU_Schema_Runtime.js:454e4a242dce5e02d69c3def2993d350ac50f39dcb667f2fc6f09488f34461dd|MVU_Competition_Runtime.js:2a5d78b856d3123e857393fca07fb365d91ce9ea4877cc37dfafd86b384e8904|MVU_Runtime_View.js:562bed83eb582a4609d557981e56dafc62dda66c5cb67330619198754eab4021 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:8b116bc8b29b0a7ad8ad25f20021486175632eac71b56781596dc456e0bacb2d|MVU_Schema_Runtime.js:454e4a242dce5e02d69c3def2993d350ac50f39dcb667f2fc6f09488f34461dd|MVU_Competition_Runtime.js:2a5d78b856d3123e857393fca07fb365d91ce9ea4877cc37dfafd86b384e8904|MVU_Runtime_View.js:126fa8da28200e2164f40355f0d91fb6ba478a32c5f2eef35a9887b0203aa4f9 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -6077,7 +6077,7 @@ function 应用技能掌控度效果数组_V1(effects = [], rate = 1) {
   return (Array.isArray(effects) ? effects : []).map(visit);
 }
 
-function 缩放技能效果数组_V1(effects = [], multiplier = 1) {
+function 缩放技能效果数组_V1(effects = [], multiplier = 1, 原型过滤 = null) {
   const scale = Number(multiplier);
   if (!Number.isFinite(scale) || scale <= 0) return Array.isArray(effects) ? effects.map(effect => JSON.parse(JSON.stringify(effect))) : [];
   const scaleValue = value => {
@@ -6099,8 +6099,12 @@ function 缩放技能效果数组_V1(effects = [], multiplier = 1) {
   const visit = effect => {
     if (!effect || typeof effect !== 'object' || Array.isArray(effect)) return effect;
     const next = JSON.parse(JSON.stringify(effect));
+    // 带原型过滤（魂技消耗成长）：只放大名单内原型自己的数值；状态施加只放大带百分号的强度，计数型数值（如昏迷 1）不动。
+    const 本层放大 = !原型过滤 || 原型过滤.has(String(next.原型 || '').trim());
     ['数值', '副数值', '威力倍率'].forEach(key => {
-      if (next[key] !== undefined) next[key] = scaleValue(next[key]);
+      if (!本层放大 || next[key] === undefined) return;
+      if (原型过滤 && String(next.原型 || '').trim() === '状态施加' && !/%/.test(String(next[key]))) return;
+      next[key] = scaleValue(next[key]);
     });
     ['使用效果', '授予效果', '结算效果', '替换效果', '追加效果'].forEach(key => {
       if (Array.isArray(next[key])) next[key] = next[key].map(visit);
@@ -10349,6 +10353,11 @@ if (typeof globalThis !== 'undefined') {
     计算维持型固定魂力_V1,
     计算维持型分摊固定_V1,
     迁移维持型消耗为固定加百分比_V1,
+    规范化魂技成长消耗_V1,
+    展开魂技成长消耗为锚定口径_V1,
+    取预算口径消耗_V1,
+    读取魂技消耗锚定_V1,
+    计算魂技消耗成长倍数_V1,
     构建武魂真身默认承载消耗_V1,
     获取标准前摇_V1,
     获取基础预算_V1,
@@ -14563,6 +14572,7 @@ var 技能正式根字段集合_V1 = new Set([
   '副作用列表',
   '产物描述',
   '计价版本',
+  '_锚定消耗',
 ]);
 var 技能机制可见键中文名映射_V1 = Object.freeze({});
 var 技能机制属性键中文名映射_V1 = Object.freeze({
@@ -14887,8 +14897,10 @@ function 解析技能阶段消耗_V1(value, context = {}) {
   if (hasSourceContext) {
     const 来源判定 = 判定技能消耗来源_V1(skill, context);
     if (来源判定.成本类型 === 'ordinary') {
+      // 魂技消耗成长：普通魂技的消耗写成「固定+N%」（固定段是数值、带百分比的复合写法），纯百分比仍禁止。
+      // 解析只认复合写法本身，不依赖 _锚定消耗（克隆/缓存丢字段也不会让魂技付不起）。
       [...result.启动, ...result.维持]
-        .filter(项 => 项.百分比)
+        .filter(项 => 项.百分比 && !Number.isFinite(项.固定))
         .forEach(项 => addInvalid(项.阶段 || (result.启动.includes(项) ? '启动' : '维持'), `${项.数值}%`, 'source-percent-forbidden', 项.资源));
     }
   }
@@ -19690,6 +19702,166 @@ function 迁移维持型消耗为固定加百分比_V1(skill = {}, 上下文 = {
   return true;
 }
 
+// ============ 魂技消耗成长（用户 2026-11-15） ============
+// 「魂技消耗是固定值+小额百分比，后期的魂技威力可以通过消耗来提升」：普通魂环魂技（第 N 魂技，N=1～9，第七魂技/武魂真身除外）
+// 的魂力/精神力消耗 = 固定段 + N% × 当前资源上限（体力不成长）。获得该魂技时的总消耗 = 现行生成口径消耗，记在技能上的
+// `_锚定消耗` {魂力, 精神力, 体力}：COST 预算与设计台校验一律按锚定消耗算，口径不变；结算时效果 × ∛(实际消耗 ÷ 锚定消耗)，封顶 ∛16。
+// 存量魂技（没有 `_锚定消耗`）读档时按「第 N 魂技在 10N 级获得」反推锚定：固定段 = 锚定 − N% × 获得时资源上限。
+var 魂技消耗成长倍数封顶_V1 = Math.cbrt(16);
+var 魂技消耗成长锚定字段_V1 = '_锚定消耗';
+
+function 读取魂技消耗锚定_V1(skill = {}) {
+  const 锚 = skill && typeof skill === 'object' ? skill[魂技消耗成长锚定字段_V1] : null;
+  if (!锚 || typeof 锚 !== 'object' || Array.isArray(锚)) return null;
+  const 表 = {};
+  ['魂力', '精神力', '体力'].forEach(资源 => {
+    const 值 = Number(锚[资源]);
+    if (Number.isFinite(值) && 值 > 0) 表[资源] = 值;
+  });
+  return Object.keys(表).length ? 表 : null;
+}
+
+// 预算/校验口径的消耗：带锚定且当前消耗是固定+百分比写法时取锚定（绝对值），否则取消耗字段原值。
+function 取预算口径消耗_V1(skill = {}) {
+  const 锚 = 读取魂技消耗锚定_V1(skill);
+  if (锚 && /%/.test(typeof skill.消耗 === 'string' ? skill.消耗 : JSON.stringify(skill.消耗 ?? ''))) return { ...锚 };
+  return skill?.消耗;
+}
+
+// 这件魂技是否适用魂技消耗成长：返回第 N 魂技（1～9，第七魂技/武魂真身/融合技/魂骨/血脉等不适用返回 0）。
+// 自创魂技按虚拟魂技位（推断虚拟魂技位_V1，与生成口径同一套）。
+function 读取魂技成长魂技位_V1(skill = {}, 上下文 = {}) {
+  if (!skill || typeof skill !== 'object') return 0;
+  const 类别 = String(上下文?.sourceCategory || 上下文?.来源类别 || 上下文?.来源 || '').trim();
+  if (!['魂技', '自创魂技'].includes(类别)) return 0;
+  // 被动魂技（承载方式含「被动」）走被动自己的预算与触发付费口径，不成长。
+  if (上下文?.passiveMode === true || /被动/.test(String(skill.承载方式 || skill.类型 || skill.技能类型 || ''))) return 0;
+  const 来源判定 = 判定技能消耗来源_V1(skill, { ...上下文, 技能: skill });
+  if (来源判定.成本类型 !== 'ordinary') return 0;
+  const 魂技位 = Math.floor(Number(推断虚拟魂技位_V1(类别, { ...上下文, 魂环位: 上下文?.魂环位 ?? 上下文?.ringIndex })));
+  return 魂技位 >= 1 && 魂技位 <= 9 && 魂技位 !== 7 ? 魂技位 : 0;
+}
+
+// 「第 N 魂技在 10N 级获得」时的资源上限：魂力走时代魂力需求（含双武魂/底子波动），精神力/体力走基础面板。
+function 读取魂技获得时资源上限_V1(角色 = {}, 资源 = '魂力', 魂技位 = 1) {
+  const 获得等级 = Math.max(1, Math.min(9, Math.floor(Number(魂技位) || 1))) * 10;
+  if (资源 === '魂力') return Math.max(1, Number(getCharacterBaseSoulPowerRequirementAtLevel(角色, 获得等级)) || 1);
+  if (资源 === '精神力') return Math.max(1, Number(getBaseStats(获得等级)?.men_max) || 1);
+  return Math.max(1, Number(getBaseStats(获得等级)?.vit_max) || 1);
+}
+
+// 读档/生成收尾：把普通魂环魂技的绝对值消耗改写成「固定+N%」并记锚定。幂等：已是固定+百分比写法的不动；消耗被改回绝对值的（设计台/编辑器）重新锚定。
+// 魂力/精神力 = 固定段 + N% × 资源上限（N=魂技位）；固定段 = 锚定消耗 − N% × 获得时资源上限（获得时总消耗 = 现行生成口径消耗）。
+// 体力不成长：写成「固定+0%」，保证同一技能内单位一致（百分比与绝对值混写会被消耗解析判混合单位）。
+function 规范化魂技成长消耗_V1(skill = {}, 上下文 = {}) {
+  if (!skill || typeof skill !== 'object' || 技能消耗字段缺失_V1(skill)) return false;
+  const 魂技位 = 读取魂技成长魂技位_V1(skill, 上下文);
+  if (!魂技位) return false;
+  const 原消耗 = skill.消耗;
+  const 嵌套启动 = 原消耗 && typeof 原消耗 === 'object' && !Array.isArray(原消耗)
+    && ['启动', 'upfront'].find(键 => Object.prototype.hasOwnProperty.call(原消耗, 键));
+  if (typeof 原消耗 !== 'string' && !(原消耗 && typeof 原消耗 === 'object' && !Array.isArray(原消耗))) return false;
+  // 只按启动段的纯绝对值消耗换算；有维持段、纯百分比、已是固定+百分比的都不动。
+  const 解析 = 解析技能阶段消耗_V1(原消耗, {});
+  if (解析.非法项.length || 解析.维持.length || !解析.启动.length) return false;
+  if (解析.启动.some(项 => 项.百分比)) return false;
+  const 累计 = {};
+  解析.启动.forEach(项 => { 累计[项.资源] = (累计[项.资源] || 0) + 项.数值; });
+  // 固定资源顺序，重复读档不抖动键序。
+  const 锚 = {};
+  ['魂力', '精神力', '体力'].forEach(资源 => { if (累计[资源] !== undefined) 锚[资源] = 累计[资源]; });
+  if (!['魂力', '精神力'].some(资源 => 锚[资源] > 0)) return false;
+  const 角色 = 上下文?.角色 || 上下文?.施术者 || {};
+  const 写法 = {};
+  Object.entries(锚).forEach(([资源, 总消耗]) => {
+    if (!(总消耗 > 0) || !['魂力', '精神力'].includes(资源)) {
+      写法[资源] = `${总消耗}+0%`;
+      return;
+    }
+    const 池 = 读取魂技获得时资源上限_V1(角色, 资源, 魂技位);
+    // 锚定消耗不足 N% 池时压低百分点，保证获得时的实际消耗仍等于锚定（固定段不为负）。
+    const 百分点 = Math.floor(Math.min(魂技位, 总消耗 / 池 * 100) * 100) / 100;
+    const 固定 = Math.max(0, Math.round(总消耗 - 百分点 / 100 * 池));
+    写法[资源] = `${固定}+${百分点}%`;
+  });
+  if (typeof 原消耗 === 'string') {
+    skill.消耗 = Object.entries(写法).map(([资源, 文本]) => `${资源}:${文本}`).join(' | ');
+  } else if (嵌套启动) {
+    skill.消耗 = { ...原消耗, [嵌套启动]: { ...写法 } };
+  } else {
+    skill.消耗 = { ...写法 };
+  }
+  skill[魂技消耗成长锚定字段_V1] = 锚;
+  return true;
+}
+
+// 进入生成/收敛流程前把「固定+N%」写法的魂技还原成锚定的绝对值消耗（流程内的预算、校验、收敛全部按现行口径算），收尾再换算回去。
+// 有 _锚定消耗：直接取锚定；没有（克隆/旧 Zod 包丢了字段）但消耗是复合写法：按「固定 + N% × 10N 级资源上限」反推——正是规范化的逆运算。
+// 还原后的消耗保持原有写法形状（字符串仍是字符串、对象仍是对象），重复读档不抖动。
+function 展开魂技成长消耗为锚定口径_V1(skill = {}, 上下文 = {}) {
+  if (!skill || typeof skill !== 'object') return false;
+  const 有锚字段 = Object.prototype.hasOwnProperty.call(skill, 魂技消耗成长锚定字段_V1);
+  const 锚 = 读取魂技消耗锚定_V1(skill);
+  const 原消耗 = skill.消耗;
+  const 含百分比 = /%/.test(typeof 原消耗 === 'string' ? 原消耗 : JSON.stringify(原消耗 ?? ''));
+  let 绝对消耗 = null;
+  if (含百分比 && 锚) {
+    绝对消耗 = { ...锚 };
+  } else if (含百分比 && !锚) {
+    const 魂技位 = 读取魂技成长魂技位_V1(skill, 上下文);
+    const 解析 = 魂技位 ? 解析技能阶段消耗_V1(原消耗, {}) : null;
+    if (解析 && !解析.非法项.length && !解析.维持.length && 解析.启动.length
+      && 解析.启动.every(项 => !项.百分比 || Number.isFinite(项.固定))) {
+      const 角色 = 上下文?.角色 || 上下文?.施术者 || {};
+      const 累计 = {};
+      解析.启动.forEach(项 => {
+        const 值 = 项.百分比
+          ? 项.固定 + 项.数值 / 100 * 读取魂技获得时资源上限_V1(角色, 项.资源, 魂技位)
+          : 项.数值;
+        累计[项.资源] = (累计[项.资源] || 0) + 值;
+      });
+      绝对消耗 = {};
+      ['魂力', '精神力', '体力'].forEach(资源 => { if (累计[资源] !== undefined) 绝对消耗[资源] = Math.round(累计[资源]); });
+    }
+  }
+  if (有锚字段) delete skill[魂技消耗成长锚定字段_V1];
+  if (!绝对消耗 || !Object.keys(绝对消耗).length) return false;
+  if (typeof 原消耗 === 'string') {
+    skill.消耗 = Object.entries(绝对消耗).map(([资源, 数值]) => `${资源}:${数值}`).join(' | ');
+  } else {
+    const 嵌套启动 = 原消耗 && typeof 原消耗 === 'object' && !Array.isArray(原消耗)
+      && ['启动', 'upfront'].find(键 => Object.prototype.hasOwnProperty.call(原消耗, 键));
+    skill.消耗 = 嵌套启动 ? { ...原消耗, [嵌套启动]: { ...绝对消耗 } } : { ...绝对消耗 };
+  }
+  return true;
+}
+
+// 结算用：魂技消耗成长倍数 = ∛(实际消耗 ÷ 锚定消耗)，封顶 ∛16。实际/锚定各资源按「折成魂力当量」加权（权重 = 魂力上限 ÷ 该资源上限）。
+// 实际消耗由调用方按施法者当前资源上限给出（actualByResource），不含结算修正对消耗的增减。低于锚定时不削弱（取 1）。
+function 计算魂技消耗成长倍数_V1(skill = {}, 实际消耗表 = {}, 资源上限表 = {}) {
+  const 锚 = 读取魂技消耗锚定_V1(skill);
+  if (!锚) return 1;
+  const 魂力上限 = Math.max(1, Number(资源上限表?.魂力) || 1);
+  let 实际和 = 0;
+  let 锚和 = 0;
+  Object.entries(锚).forEach(([资源, 锚值]) => {
+    const 上限 = Math.max(1, Number(资源上限表?.[资源]) || 魂力上限);
+    const 权重 = 魂力上限 / 上限;
+    锚和 += 锚值 * 权重;
+    实际和 += Math.max(0, Number(实际消耗表?.[资源]) || 0) * 权重;
+  });
+  if (!(锚和 > 0) || !(实际和 > 0)) return 1;
+  return Math.max(1, Math.min(魂技消耗成长倍数封顶_V1, Math.cbrt(实际和 / 锚和)));
+}
+
+// 把倍数乘到效果数组的威力倍率/数值/副数值上（只动战斗结算类原型；持续回合、触发概率、攻击段数、次数不动）。
+var 魂技消耗成长放大原型_V1 = new Set(['伤害结算', '资源变化', '资源转移', '护盾变化', '属性修正', '判定修正', '结算修正', '状态施加']);
+function 放大魂技消耗成长效果数组_V1(effects = [], multiplier = 1) {
+  const 倍数 = Number(multiplier);
+  if (!Number.isFinite(倍数) || 倍数 <= 1 + 1e-9) return effects;
+  return 缩放技能效果数组_V1(effects, 倍数, 魂技消耗成长放大原型_V1);
+}
+
 function 技能消耗包含百分比_V1(消耗 = '无', 上下文 = {}) {
   const 解析结果 = 解析技能阶段消耗_V1(消耗, 上下文);
   return [...解析结果.启动, ...解析结果.维持].some(项 => 项.百分比)
@@ -19708,8 +19880,10 @@ function 普通魂技禁止百分比启动消耗_V1(skill = {}, 上下文 = {}) 
   if (!['魂技', '自创魂技'].includes(来源)) return false;
   if (来源判定.武魂融合技 || 来源判定.武魂真身) return false;
   const 解析结果 = 解析技能阶段消耗_V1(skill?.消耗, { ...上下文, 技能: skill });
-  return 解析结果.启动.some(项 => 项.百分比)
-    || 解析结果.维持.some(项 => 项.百分比)
+  // 魂技消耗成长：「固定+N%」复合写法是普通魂技的正式写法，只有纯百分比违规。
+  const 违规百分比 = 项 => 项.百分比 && !Number.isFinite(项.固定);
+  return 解析结果.启动.some(违规百分比)
+    || 解析结果.维持.some(违规百分比)
     || 解析结果.非法项.some(项 => /%/.test(String(项.原始值 ?? '')));
 }
 
@@ -19787,12 +19961,12 @@ function 技能消耗字段缺失_V1(skill = {}) {
 
 function 读取技能实际消耗_V1(skill = {}, 上下文 = {}, 标准消耗 = 0) {
   if (技能消耗字段缺失_V1(skill)) return 标准消耗;
-  const 实际 = 解析消耗为魂力当量_V1(skill.消耗, 上下文);
+  const 实际 = 解析消耗为魂力当量_V1(取预算口径消耗_V1(skill), 上下文);
   return Number.isFinite(实际) ? Math.max(0, 实际) : 标准消耗;
 }
 
 function 读取技能承载消耗比例_V1(skill = {}, 上下文 = {}) {
-  return Math.max(0, 读取直接结算预算消耗比例_V1(skill?.消耗, 上下文));
+  return Math.max(0, 读取直接结算预算消耗比例_V1(取预算口径消耗_V1(skill), 上下文));
 }
 
 function 读取技能实际前摇_V1(skill = {}, 上下文 = {}) {
@@ -23943,7 +24117,7 @@ function 计算直接结算收益预算_V1(技能 = {}, 上下文 = {}) {
       提示: 预算系数 >= 0.995 ? '' : `收益承载不足，直接效果按${Math.round(预算系数 * 100)}%生效`,
     };
   }
-  const 消耗比例 = Math.max(0, 读取直接结算预算消耗比例_V1(技能对象.消耗, 上下文));
+  const 消耗比例 = Math.max(0, 读取直接结算预算消耗比例_V1(取预算口径消耗_V1(技能对象), 上下文));
   const 前摇 = Math.max(0, Number(技能对象.前摇 ?? 0));
   const 消耗承载 = Math.max(
     直接结算收益预算系数_V1.承载下限,
@@ -29906,6 +30080,7 @@ function cloneSkillStructData(skill = {}) {
   };
   if (Math.max(0, Number(working.场外冷却至tick || 0)) > 0) result.场外冷却至tick = Math.max(0, Number(working.场外冷却至tick || 0));
   if (Number(skill?.计价版本) > 0) result.计价版本 = Number(skill.计价版本);
+  if (读取魂技消耗锚定_V1(skill)) result[魂技消耗成长锚定字段_V1] = { ...读取魂技消耗锚定_V1(skill) };
   if (working.使用条件 && typeof working.使用条件 === 'object' && !Array.isArray(working.使用条件)) result.使用条件 = cloneJsonValue(working.使用条件, {});
   if (String(working.触发方式 || '').trim()) result.触发方式 = String(working.触发方式).trim();
   const 收口副作用列表 = normalizeSkillSideEffectList(working.副作用列表 || []);
@@ -31060,7 +31235,20 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
   return skill;
 }
 
+// 魂技消耗成长：进入前把「固定+N%」魂技还原成锚定绝对值消耗，流程内一切预算/校验/收敛按现行口径；收尾换算回固定+N% 并记锚定。
 function ensureSkillStructGenerated(skill, context = {}) {
+  if (!skill || typeof skill !== 'object') return skill;
+  const 位 = Math.max(1, Math.floor(Number(context?.获得阶段魂环数 ?? context?.ringIndex ?? context?.魂环位 ?? 读取技能结构魂环位_V1(skill) ?? 1)) || 1);
+  const 成长上下文 = { ...(context || {}), ringIndex: 位, 魂环位: 位 };
+  try { 展开魂技成长消耗为锚定口径_V1(skill, 成长上下文); } catch (错误) { /* 还原失败时按现有消耗走现行流程 */ }
+  try {
+    return ensureSkillStructGeneratedCore_V1(skill, context);
+  } finally {
+    try { 规范化魂技成长消耗_V1(skill, 成长上下文); } catch (错误) { /* 换算失败时保持绝对值消耗，不影响读档 */ }
+  }
+}
+
+function ensureSkillStructGeneratedCore_V1(skill, context = {}) {
   if (!skill || typeof skill !== 'object') return skill;
   const 魂技位 = Math.max(1, Math.floor(Number(context?.获得阶段魂环数 ?? context?.ringIndex ?? context?.魂环位 ?? 读取技能结构魂环位_V1(skill) ?? 1)) || 1);
   context = {
@@ -31649,6 +31837,9 @@ globalThis.__LWCS_C2_CONSUMER_RULES_V1__ = Object.freeze({
   消费坚挺金苍蝇成功魂技_V1,
   读取坚挺金苍蝇自用倍率_V1,
   缩放技能效果数组_V1,
+  放大魂技消耗成长效果数组_V1,
+  计算魂技消耗成长倍数_V1,
+  读取魂技消耗锚定_V1,
   计算技能掌控度完整度_V1,
   应用技能掌控度效果数组_V1,
   计算魂骨年限提升_V1,
@@ -46786,7 +46977,7 @@ function 删除正文视图机制字段_V1(节点 = null, 当前tick = 0) {
     return;
   }
   写入运行时场外冷却文本_V1(节点, 当前tick);
-  ['_效果数组', '使用效果', '属性加成', '属性倍率', '装备技能', '副职业参数', '消耗', '前摇'].forEach(键 => {
+  ['_效果数组', '_锚定消耗', '使用效果', '属性加成', '属性倍率', '装备技能', '副职业参数', '消耗', '前摇'].forEach(键 => {
     if (Object.prototype.hasOwnProperty.call(节点, 键)) delete 节点[键];
   });
   if (节点.战力面板 && typeof 节点.战力面板 === 'object' && !Array.isArray(节点.战力面板)) {
