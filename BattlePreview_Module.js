@@ -1967,7 +1967,8 @@
   // A released skill carries its own 前摇 after its settlement modifiers; a basic attack's 20 takes the actor's windup
   // modifiers as well (attack speed, "降低包括普攻在内的自身全攻击技能前摇") but none of its effect or cost modifiers; an item
   // takes 15; defending, evading and passing end a turn and take none.
-  const BASIC_ATTACK_WINDUP = 20, ITEM_USE_WINDUP = 15, CONTINUOUS_ACTION_BUDGET = 40;
+  // 普攻前摇 20 → 10（用户 2026-11-14：原作普攻快、魂技要准备；检验题里原作开场普攻 25%、AI 7%）。
+  const BASIC_ATTACK_WINDUP = 10, ITEM_USE_WINDUP = 15, CONTINUOUS_ACTION_BUDGET = 40;
   function basicAttackWindup(actor = {}) {
     const probe = { 前摇: BASIC_ATTACK_WINDUP, _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 }] };
     return Math.max(0, Number(applySkillSettlementModifiers(actor, probe).skill.前摇 ?? BASIC_ATTACK_WINDUP));
@@ -18764,6 +18765,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   function projectedStateRoundEndLifetime(key, state, baselineUnit) {
     if (typeof state?.duration !== 'number' || state.召唤物 ||
       root.__LWCS_BATTLE_RUNTIME__.structuredControlConsumesActiveOpportunity(state)) return null;
+    // 被维持费绑着的状态（已有载体 / 别人付费维持 / 本次释放待挂载体的临时标记 __被维持）寿命不按 duration 算，
+    // 只在某回合付不起维持费时结束（运行时 settleConditionsAtRoundEnd 同口径）。
+    if (state.__被维持 === true || state.sustainSourceActionId ||
+      root.__LWCS_BATTLE_RUNTIME__.isSustainBoundCondition(baselineUnit || {}, key, state, null)) return null;
     const fresh = state.__本回合新附加 === true ||
       (key.startsWith('preview:') && !Object.hasOwn(baselineUnit?.状态效果 || {}, key));
     return state.duration + Number(fresh);

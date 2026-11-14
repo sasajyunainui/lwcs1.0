@@ -2303,6 +2303,8 @@
         // and those took 12% → 7% of its HP; the table, seeing no skills, gave it 4%. Its own controls take over as they are
         // shown (r20Shown), so the expectation fades with the exchanges seen.
         ...(publicUnitRole !== 'SUMMON' && /控制/.test(system) ? { routine_preempt_share: BELIEF_ROUTINE_PREEMPT_SHARE * (1 - clarity) } : {}),
+        // How well the deciding unit has seen it (exchanges ÷ (exchanges + prior)): the price of spending against it (R20_PROBE_PREMIUM).
+        __clarity: publicUnitRole === 'SUMMON' ? 1 : clarity,
       };
       const observedResponses = (Array.isArray(beliefUnit?.knownResponses)
         ? beliefUnit.knownResponses
@@ -3642,7 +3644,8 @@
               rootQuantile = Object.fromEntries(Object.entries(path.rootQuantile).map(([resource,range])=>[resource,[...range]]));
               const frame = advance(), payments = { ...observed }, ticks = [...observedTicks];
               if (Object.values(payments).some(value => !Number.isSafeInteger(value))) { failure = 'COST_OVERFLOW'; throw stop; }
-              if (stateTargets && offset > windows && Object.values(payments).some(value => value > 0)) { failure = 'TARGET_LIFESPAN_EXCEEDS_BOUND'; throw stop; }
+              // 被维持的目标状态不按 duration 到期：窗口之后施放者只要付得起仍在付费，预测只覆盖名义窗口，窗口外的付费不计入（与自身状态同口径）。
+              if (stateTargets && offset > windows) for (const resource of Object.keys(payments)) payments[resource] = 0;
               const closed = stateTargets ? stateTargets.every(ref => !findUnitInWorld(frame, ref.targetId)?.状态效果?.[ref.key])
                 : keys.every(key => !findUnitInWorld(frame, result.actorId)?.状态效果?.[key]);
               return { world: frame, payments, ticks, rootQuantile,
@@ -3654,7 +3657,7 @@
                 stateClosedAtRound: row.stateClosedAtRound ?? (next.stateClosures[index] && offset <= periodicRows[index].ticks.length ? start + offset - 1 : null) })) }));
           });
         }
-        if (stateTargets && paths.some(path => stateTargets.some(ref => findUnitInWorld(path.frame, ref.targetId)?.状态效果?.[ref.key]))) {
+        if (stateTargets && paths.some(path => stateTargets.some(ref => liveUnsustainedState(findUnitInWorld(path.frame, ref.targetId), ref.key)))) {
           failure = 'TARGET_LIFESPAN_UNVERIFIED'; throw stop;
         }
         if(maintenanceClass&&!retained&&paths.length===1&&paths[0].probability===rootProbability&&
@@ -3897,6 +3900,13 @@
       resourceLawProjection: law, ...(declarationJointProjection ? { declarationJointProjection } : {}) })) };
   }
 
+  // 目标状态在名义窗口结束后仍在：被维持的（带 __被维持 / sustainSourceActionId）本来就不按 duration 到期，不算寿命未核实；
+  // 但持有者已倒下/退场时它的状态时钟停了，仍算未核实。
+  const liveUnsustainedState = (holder, key) => {
+    const state = holder?.状态效果?.[key];
+    return !!state && (state.__被维持 !== true && !state.sustainSourceActionId || !preview.isBattleCapable(holder));
+  };
+
   function knownPassiveOutcomeForecasts(result, world, declaration, resourceLawContext = false, conditioned = false) {
     const nominal = result.sustainCostForecast || [];
     const fallback = { sustain: nominal, periodic: new Map() };
@@ -4031,7 +4041,7 @@
       previous = project(result.afterSnapshot, null, offset, null, result.contributions, null, previous);
       projectedWindows++;
       if (!valid) return unknown('INVALID_PROJECTED_PAYMENT');
-      if (targeted && offset > windows && [...amounts.values()].some(amount => amount > 0)) return unknown('TARGET_LIFESPAN_EXCEEDS_BOUND');
+      if (targeted && offset > windows) for (const resource of amounts.keys()) amounts.set(resource, 0);
       const round = start + offset - 1;
       if (offset <= windows) for (const [resource, amount] of amounts) append(resource, round, round, amount);
       for (const row of periodic.values()) if (row.stateClosedAtRound === null && offset <= row.ticks.length &&
@@ -4044,7 +4054,7 @@
         break;
       }
     }
-    if (targeted && stateTargets.some(ref => findUnitInWorld(previous, ref.targetId)?.状态效果?.[ref.key])) return unknown('TARGET_LIFESPAN_UNVERIFIED');
+    if (targeted && stateTargets.some(ref => liveUnsustainedState(findUnitInWorld(previous, ref.targetId), ref.key))) return unknown('TARGET_LIFESPAN_UNVERIFIED');
     const sustain = nominal.map(row => {
       const segments = schedules.get(row.resource), expectedCost = segments.reduce((sum, segment) => sum + segment.amount * (segment.throughRound - segment.startRound + 1), 0);
       if (!Number.isSafeInteger(expectedCost)) return { ...row, passiveProjection: Object.freeze({ version: 1, status: 'UNMODELED', reason: 'COST_OVERFLOW' }) };
@@ -63592,6 +63602,16 @@
           if (roundEnd === 'CONTROL_END') (controlStartedStates ||= new Set()).add(state.状态 || state.状态名称);
         }
       };
+      // 被维持的状态（已有载体指向的，以及本次释放待挂载体的 pending 档案里的）打临时标记 __被维持：
+      // 寿命不按 duration 算（BattlePreview.projectedStateRoundEndLifetime 对其返回 null），只在下面某回合付不起维持费时结束。
+      // 已有载体的由下面按载体归属（isSustainBoundCondition，与运行时同一判断）打标；这里只处理还没挂载体、带真实维持费的 pending 档案。
+      for (const profile of sustainProfiles) if (!profile.sourceEffect && Object.keys(profile.costs || {}).length) for (const key of profile.stateKeys) {
+        const state = nextActor.状态效果?.[key];
+        if (state && typeof state === 'object' && (!state.sourceActionId || !profile.sourceId || state.sourceActionId === profile.sourceId)) state.__被维持 = true;
+      }
+      for (const [key, state] of Object.entries(nextActor.状态效果 || {})) {
+        if (state && typeof state === 'object' && !state.__被维持 && root.__LWCS_BATTLE_RUNTIME__.isSustainBoundCondition(nextActor, key, state, null)) state.__被维持 = true;
+      }
       for (let offset = 1; offset <= roundOffset; offset++) {
         delete nextActor.__本阶段已触发复活;
         controlStartedStates = null;
@@ -63626,7 +63646,7 @@
         const liveKeys = profile => profile.stateKeys.filter(key => {
           const state = nextActor.状态效果?.[key];
           return state && (profile.sourceEffect || !state.sourceActionId || !profile.sourceId || state.sourceActionId === profile.sourceId) &&
-            Number(state.duration || 0) + Number(state.__本回合新附加 === true || !Object.hasOwn(baselineActor?.状态效果 || {}, key)) >= offset;
+            (state.__被维持 === true || Number(state.duration || 0) + Number(state.__本回合新附加 === true || !Object.hasOwn(baselineActor?.状态效果 || {}, key)) >= offset);
         });
         const avatarProfile = profile => !profile.sourceEffect && (profile.avatar === true ||
           profile.avatar === undefined && Object.values(profile.costs || {}).some(value => /%/.test(String(value))));
@@ -63779,7 +63799,7 @@
             }
           }
           const current = nextActor.状态效果[key];
-          if (current && typeof current.duration === 'number' && preview.projectedStateSourceRecord(current, current.__状态来源窗口?.[0]) &&
+          if (current && typeof current.duration === 'number' && current.__被维持 !== true && preview.projectedStateSourceRecord(current, current.__状态来源窗口?.[0]) &&
               !root.__LWCS_BATTLE_RUNTIME__.structuredControlConsumesActiveOpportunity(current)) {
             root.__LWCS_BATTLE_RUNTIME__.advanceStateSourceWindow(current, {}, id => preview.projectedStateSourceRecord(current, id));
           }
@@ -63836,6 +63856,8 @@
       }
       if (jointFlowStep) for (const [key, state] of Object.entries(nextActor.状态效果 || {})) {
         if (jointLateTransferKeys?.has(key)) continue;
+        // 被维持的状态不倒数 duration（运行时同口径），只清掉新附加标记。
+        if (state?.__被维持 === true) { delete state.__本回合新附加; continue; }
         const timedCarrier = supportsDelayedState(state) && typeof state.duration === 'number' &&
           !root.__LWCS_BATTLE_RUNTIME__.structuredControlConsumesActiveOpportunity(state);
         if (!timedCarrier && !r9v2LinearPassiveStateExpires(key, state, Infinity, baselineActor, true, compiledRiskIds, true, riskOffsetBase, !!riskResolver)) continue;
@@ -65633,7 +65655,9 @@
   const R20_ROUNDS_CAP = 99, R20_ROUNDS_FLOOR = 0.25, R20_HORIZON = 6, R20_RESOURCE_PRICE = 0.15, R20_ROUND_DISCOUNT = 0.85, R20_SHADOW_SCALE = 30,
     R20_UPKEEP_ROUNDS = 3, R20_CHAIN_LIMIT = 8, R20_WIN_SLOPE = 2,
     R20_OBJECTIVE_WEIGHT = 2, R20_OBSERVE_VALUE = 0.02, R20_ITEM_EFFECT_VALUE = 0.1, R20_ITEM_USE_SHARE = 0.375,
-    R20_LATE_ROUNDS = 2, R20_CHARGE_BREAK = 0.5, R20_ASSET_DEFAULT = 0.2, R20_REVIVE_DEFAULT = 0.25;
+    R20_LATE_ROUNDS = 2, R20_CHARGE_BREAK = 0.5, R20_ASSET_DEFAULT = 0.2, R20_REVIVE_DEFAULT = 0.25,
+    // 试探与留手（用户 2026-11-15）: the premium on spending against unseen enemies, the spar price, and the spar injury line and penalty.
+    R20_PROBE_PREMIUM = 1.5, R20_SPAR_PRICE = 1.5, R20_SPAR_INJURY_LINE = 0.2, R20_SPAR_INJURY_PENALTY = 0.5, R20_SPAR_INTENT = /点到为止|切磋|训练|非致命/;
   const r20Tables = new WeakMap();
   // The round of the decision being valued (a broken guard lasts the round), and what its actor has seen.
   let r20Round = 0, r20Belief = null;
@@ -67148,7 +67172,22 @@
     mark('raceMs');
     const race = raced - Number(table.score[own] || 0);
     for (let row = 0; row < count; row += 1) if (table.sides[row] === foe && table.pending[row]) tempo += table.worth[row] * (1 - alive[row]);
-    const cost = R20_RESOURCE_PRICE * spent;
+    // 试探与留手（用户 2026-11-15，原作检验题：原作开场普攻 25%、AI 7%）: what is spent against enemies not yet seen costs more —
+    // ×(1 + R20_PROBE_PREMIUM × how unseen they are, belief __clarity) — so an opening probes before it commits; and in a spar
+    // (点到为止) nothing calls for going all out (×R20_SPAR_PRICE).
+    const foes = table.units.map((unit, row) => [unit, row]).filter(([, row]) => table.sides[row] !== table.sides[actorRow] && table.alive[row] > 0);
+    const unseen = foes.length ? foes.reduce((sum, [unit]) => sum + (1 - clamp(Number(unit?.__clarity ?? 1), 0, 1)), 0) / foes.length : 0;
+    const spar = R20_SPAR_INTENT.test(String(r20Intent?.mode || table.world?.战斗意图 || ''));
+    const cost = R20_RESOURCE_PRICE * spent * (1 + R20_PROBE_PREMIUM * unseen) * (spar ? R20_SPAR_PRICE : 1);
+    // 留手: in a spar, what of a hit lands below the 重伤 line (R20_SPAR_INJURY_LINE of the target's HP) is held against it.
+    let restraint = 0;
+    if (spar && actorRow !== undefined) for (const [unit, row] of foes) {
+      const now = findUnitInWorld(after, preview.unitId(unit));
+      if (!now) continue;
+      const maximum = Math.max(1, preview.readHpMax(unit)), line = R20_SPAR_INJURY_LINE * maximum;
+      const below = Math.max(0, line - preview.readHp(now)) - Math.max(0, line - preview.readHp(unit));
+      if (below > 0) restraint += R20_SPAR_INJURY_PENALTY * below / maximum;
+    }
     // What the action uses up for good (IRREVERSIBLE_ASSET_LOST): a ring blown (炸环: priced by its age and skills,
     // collectAvailableRings), an item consumed (R20_ASSET_DEFAULT unless priced) — on the scale of 100 the prices are in.
     let asset = 0;
@@ -67186,7 +67225,7 @@
     // Leaving is valued apart (认输与撤离, at the top). Observing is worth a little.
     let leave = 0;
     if (actionKind === 'OBSERVE') leave = R20_OBSERVE_VALUE;
-    return { value: race + tempo + granted + objective + leave + stock - cost - fusionCost - asset, race, tempo, granted, objective, leave, stock, cost, fusionCost, asset, counter, rebuilt: rebuilt.length, added: added.length, outside,
+    return { value: race + tempo + granted + objective + leave + stock - cost - fusionCost - asset - restraint, race, tempo, granted, objective, leave, stock, cost, fusionCost, asset, restraint, counter, rebuilt: rebuilt.length, added: added.length, outside,
       seen: seen + added.length + Number(granted !== 0) + Number(objective !== 0) + Number(leave !== 0) };
   }
 

@@ -1279,6 +1279,21 @@
     throw new Error(`battle_persistent_prototype_unsupported:${prototype || 'missing'}`);
   }
 
+  // 状态被维持费绑着：自己身上有 condition 载体指向它，或它带 sustainSourceActionId 且付费者仍在场。
+  // 寿命只由维持费决定（付不起才断），不再按 duration 倒数；推演侧 BattlePreview.projectedStateRoundEndLifetime 同口径。
+  function isSustainBoundCondition(unit = {}, key = '', condition = {}, combatData = null) {
+    if (!condition || typeof condition !== 'object') return false;
+    const identity = condition.状态ID;
+    const carried = holder => Object.values(holder?.持续效果 || {}).some(effect => effect?.effect_type === 'condition' && effect.related_condition &&
+      (effect.related_condition === key || effect.related_condition === identity) &&
+      (!effect.sourceActionId || (condition.sustainSourceActionId || condition.sourceActionId) === effect.sourceActionId));
+    if (carried(unit)) return true;
+    const owner = String(condition.sustainSourceActionId || '').trim();
+    if (!owner) return false;
+    return listCombatUnits(combatData || {}).some(holder => holder !== unit && previewRuntime.readHp(holder) > 0 && !previewRuntime.hasLeftBattle(holder) &&
+      Object.values(holder.持续效果 || {}).some(effect => effect?.effect_type === 'condition' && effect.sourceActionId === owner));
+  }
+
   function settleConditionsAtRoundEnd(unit = {}, label = '', combatData = {}) {
     if (!unit) return { log: '', totalDot: 0, expired: [] };
     delete unit.__本阶段已触发复活;
@@ -1321,6 +1336,9 @@
       if (!condition) return;
       if (typeof condition.duration === 'number') {
         if (structuredControlConsumesActiveOpportunity(condition)) return;
+        // 维持类状态（有维持费载体绑着，或别人付费维持的增益）：付得起就一直在，不按 duration 到期；
+        // 付不起由 settleSustainAtRoundEnd 撤掉（breakSustainEffect）。
+        if (isSustainBoundCondition(unit, key, condition, combatData)) return;
         const sourceApplicationId = String(
           condition?.__状态来源窗口?.[0] || condition?.__状态来源键 || '',
         ).trim();
@@ -24059,6 +24077,7 @@
     settleDelayedEffect,
     settlePersistentPrototype,
     settleConditionsAtRoundEnd,
+    isSustainBoundCondition,
     advanceStateSourceWindow,
     extendedStateSourceWindow,
     structuredControlConsumesActiveOpportunity,
