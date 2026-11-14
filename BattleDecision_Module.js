@@ -65721,7 +65721,10 @@
       }
       const kept = basic + (value - basic) * Math.max(1, uses) / R20_HORIZON;
       best = Math.max(best, kept);
-      if (!friendly && r20StrikesBack(skill)) struck = Math.max(struck, kept);
+      // A strike back is one release, at what it lands now (the skill is affordable now): not the per-round average the
+      // cell keeps for its output. 11-14 (推演—实际对账, 72 battles): a strike back was read at 2.7% a time against 5.0%
+      // landed, on a 强攻系 6.1% against 21.5%.
+      if (!friendly && r20StrikesBack(skill)) struck = Math.max(struck, value);
     }
     // A unit whose skills the decision cannot see (an enemy as believed: no skill list) hits by its routine attack — the
     // typical skill of its level and type over its basic attack (routine_attack_ratio, routineAttackEffect). Without it
