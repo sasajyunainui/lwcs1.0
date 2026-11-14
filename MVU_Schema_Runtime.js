@@ -5571,7 +5571,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       const 武魂条目 = 取角色武魂条目_V1(角色数据);
       if (武魂条目.length > 0) {
         武魂条目.forEach(([, 武魂]) => {
-          const 倍率 = TypeMultipliers[武魂?.系别] || TypeMultipliers['强攻系'];
+          const 倍率 = 应用武魂属性倾向_V1(TypeMultipliers[武魂?.系别] || TypeMultipliers['强攻系'], 武魂);
           系别倍率 = Math.max(系别倍率, Number(倍率?.men_max || 1));
         });
       } else {
@@ -7099,6 +7099,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
           ensureDisplayText(spiritData, '表象名称', isSecondarySpirit ? '未展露' : AI_TODO_SPIRIT_NAME);
           ensureDisplayText(spiritData, '描述', isSecondarySpirit ? '无' : AI_TODO_SPIRIT_DESC);
           ensureDisplayText(spiritData, '系别', 武魂系别待补全文案_V1);
+          ensureDisplayText(spiritData, '属性倾向', 武魂属性倾向待补全文案_V1);
           ensureDisplayText(spiritData, '属性体系', AI_TODO_ATTRIBUTE_SYSTEM);
           if (Array.isArray(spiritData.可调用元素)) {
             const hasCallableElements = spiritData.可调用元素.some(item => String(item ?? '').trim());
@@ -8421,7 +8422,7 @@ function 规范化角色Schema_V1(char) {
     const spiritEntriesForType = 取角色武魂条目_V1(char);
     if (spiritEntriesForType.length > 0) {
       spiritEntriesForType.forEach(([, spiritData]) => {
-        let tm = TypeMultipliers[spiritData.系别] || TypeMultipliers['强攻系'];
+        let tm = 应用武魂属性倾向_V1(TypeMultipliers[spiritData.系别] || TypeMultipliers['强攻系'], spiritData);
         maxTypeMult.sp_max = Math.max(maxTypeMult.sp_max, tm.sp_max);
         maxTypeMult.men_max = Math.max(maxTypeMult.men_max, tm.men_max);
         maxTypeMult.str = Math.max(maxTypeMult.str, tm.str);

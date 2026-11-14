@@ -356,6 +356,7 @@ const MartialSoulSchema = z
     表象名称: z.string().prefault(AI_TODO_SPIRIT_NAME).describe('武魂名'),
     描述: z.string().prefault(AI_TODO_SPIRIT_DESC).describe('武魂的具体形态与能力描述'),
     系别: z.string().prefault(武魂系别待补全文案_V1),
+    属性倾向: z.string().prefault(武魂属性倾向待补全文案_V1).describe('武魂属性倾向：均衡/偏攻击/偏防御/偏速度/偏精神/偏控制'),
     属性体系: z.string().prefault(AI_TODO_ATTRIBUTE_SYSTEM).describe('武魂属性体系：无/元素/五行'),
     可调用元素: z.array(z.string()).prefault([AI_TODO_CALLABLE_ELEMENTS]).describe('武魂当前可调用的元素列表'),
   })

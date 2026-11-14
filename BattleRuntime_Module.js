@@ -1291,6 +1291,11 @@
     Object.keys(conditions).forEach(key => {
       let condition = unit.状态效果?.[key];
       if (!condition) return;
+      // 抵掉了行动的硬控在这一回合末解除（consumeStructuredControlActiveBudget），先于「本回合新附加」的跳过。
+      if (condition.__回合末解除 === true) {
+        expired.push({ key, condition, sourceApplicationId: String(condition?.__状态来源窗口?.[0] || condition?.__状态来源键 || '').trim() });
+        return;
+      }
       if (condition.__本回合新附加 === true) {
         observeSkippedPeriodicState(unit, key, condition, label, combatData, 'FRESH_STATE_SKIP');
         delete condition.__本回合新附加;
@@ -10599,6 +10604,13 @@
         round: Number(combatData?.回合 || 0),
       };
     }
+    // 久守必失 (用户 2026-11-14; BattlePreview passiveStreakFactor): a unit's own actions in a row that only took a stance or
+    // let the turn go by; one that attacks or uses something starts the count again.
+    if (actionRole === 'ACTIVE') {
+      actor.__battleRuntime = actor.__battleRuntime && typeof actor.__battleRuntime === 'object' ? actor.__battleRuntime : {};
+      if (['DEFEND', 'EVADE', 'PASS_OPPORTUNITY'].includes(actionKind)) actor.__battleRuntime.passiveStreak = Math.max(0, Number(actor.__battleRuntime.passiveStreak || 0)) + 1;
+      else if (['BASIC_ATTACK', 'RELEASE_SKILL', 'USE_ITEM'].includes(actionKind)) actor.__battleRuntime.passiveStreak = 0;
+    }
     const useEffects = previewRuntime.inventoryUseEffects(actor, declaration, combatData, declaration?.skill?._效果数组);
     const explicitEffects = previewRuntime.releaseSkillEffects(actor, declaration,
       Array.isArray(useEffects) ? useEffects.filter(effect => effect && typeof effect === 'object') : [], actionRole);
@@ -11912,7 +11924,8 @@
           );
           const segmentDamage = totalDamage / segments;
           const segmentDamageBeforeReaction = previewRuntime.calculateSettledSegmentDamage(totalDamage, segments, 1);
-          const hitProbability = Math.max(0, Math.min(1, previewRuntime.estimateHitProbability(actor, target, effect, null, null, resolvedTargets.length)));
+          const hitProbability = Math.max(0, Math.min(1, previewRuntime.estimateHitProbability(actor, target, effect, null, null, resolvedTargets.length,
+            { initiative: actionRole === 'ACTIVE' })));
           const hitModifierAttribution = typeof previewRuntime.estimateHitProbabilityAttribution === 'function'
             ? previewRuntime.estimateHitProbabilityAttribution(actor, target, effect)
             : [];
@@ -13429,6 +13442,7 @@
     Object.entries(states).forEach(([stateKey, state]) => {
       if (
         states[stateKey] !== state ||
+        state?.__回合末解除 === true ||
         !structuredControlConsumesActiveOpportunity(state) ||
         !Number.isFinite(Number(state?.duration)) ||
         Number(state.duration) <= 0
@@ -13457,10 +13471,16 @@
       }
       const source = findStateSource(combatData, { applicationId: activeSourceId });
       const consumedApplicationId = String(activeSourceId || source?.applicationId || '').trim();
+      // 硬控按回合计（用户 2026-11-14：「一回合硬控的话，打断了对方行动就算一回合，如果是对方行动后再被控那就控制到下一回合」）：
+      // 抵掉最后一次行动时不当场解除，留到这一回合结束（__回合末解除，settleConditionsAtRoundEnd）——这一回合余下的时间里目标
+      // 仍不能行动、防御、闪避、反击。控在目标本回合行动之前：打断本回合的行动，回合末解除；控在它行动之后：下一回合被抵掉，
+      // 下一回合末解除。
       const nextDuration = Math.max(0, previousDuration - 1);
-      state.duration = nextDuration;
+      const heldToRoundEnd = nextDuration <= 0;
+      state.duration = heldToRoundEnd ? previousDuration : nextDuration;
+      if (heldToRoundEnd) state.__回合末解除 = true;
       advanceStateSourceWindow(state, combatData);
-      const expired = nextDuration <= 0;
+      const expired = false;
       const sourceActionId = String(source?.sourceActionId || '').trim();
       const sourceEventId = String(source?.sourceEventId || '').trim();
       const provenanceClass = String(source?.provenanceClass || '').trim();
@@ -13496,6 +13516,7 @@
           stateName,
           previousDuration,
           nextDuration,
+          ...(heldToRoundEnd ? { heldToRoundEnd: true } : {}),
           opportunityId: String(node?.opportunityId || node?.grantId || '').trim(),
           operation: expired ? 'STATE_EXPIRE' : 'CONTROL_WINDOW_CONSUME',
           sourceActionId,
@@ -14071,20 +14092,33 @@
       previewRuntime.unitStateBlocksMove(state, incomingDeclaration)).map(([key]) => key) : [];
     const stopped = mode === 'PREEMPT' && !structuredActorCanAct(sourceActor, 'ACTIVE');
     const held = mode === 'PREEMPT' && couldAct && timing?.faster === true && (stopped || blockingStates.length > 0);
-    const answered = mode === 'CLASH' ? clashResult === 'WIN' || clashResult === 'EVEN' : held;
+    // 软控抢先 (用户 2026-11-14; BattlePreview unitStateDisruption): in time but not held, a state the control laid that only
+    // gets in the move's way — slowed (迟缓), the answerer braces for it (its guard as out of a stance); turned (混乱、精神
+    // 紊乱、失控、索敌干扰), the move goes astray by the state's random-target rate; 致盲's hit penalty is in the move's roll.
+    const disruptions = mode === 'PREEMPT' && couldAct && timing?.faster === true && !held
+      ? Object.values(sourceActor?.状态效果 || {}).filter(state => !statesBefore.has(state))
+        .map(state => previewRuntime.unitStateDisruption(state, incomingDeclaration)).filter(Boolean) : [];
+    const disrupted = disruptions.length > 0;
+    const slowed = disruptions.some(entry => entry.slow);
+    const deflectRate = disruptions.reduce((rate, entry) => Math.max(rate, entry.deflect), 0);
+    const deflectRoll = deflectRate > 0 ? Math.random() : null;
+    const deflected = deflectRate > 0 && deflectRoll < deflectRate;
+    const braceMultiplier = slowed && !deflected
+      ? previewRuntime.calculateDefenseDamageMultiplier(reactor, sourceActor, true, previewRuntime.incomingHitShare(sourceActor, incomingDeclaration, reactor, combatData)) : 1;
+    const answered = mode === 'CLASH' ? clashResult === 'WIN' || clashResult === 'EVEN' : held || deflected;
     const appliedStates = mode === 'PREEMPT' ? settlement.facts.filter(event => ['state_apply', 'state_replace'].includes(event?.eventKind) &&
       isUnitIdentityMatch(sourceActor, event?.targetId || event?.targetName || '') && ['SUCCESS', 'APPLIED', 'REPLACED'].includes(String(event?.resultState || '').toUpperCase()))
       .map(event => String(event?.meta?.stateName || event?.actionName || '').trim()).filter(Boolean) : [];
     const ruleCode = mode === 'CLASH'
       ? `ENGAGEMENT_CLASH_${{ WIN: 'WON', EVEN: 'EVEN', LOSE: 'LOST', LATE: 'LATE' }[clashResult]}`
-      : held ? 'ENGAGEMENT_PREEMPT_HELD' : 'ENGAGEMENT_PREEMPT_FAILED';
+      : held ? 'ENGAGEMENT_PREEMPT_HELD' : disrupted ? 'ENGAGEMENT_PREEMPT_DISRUPTED' : 'ENGAGEMENT_PREEMPT_FAILED';
     const engagementEvent = writeLedgerEvent(combatData, {
       ...common,
       eventKind: mode === 'CLASH' ? 'clash' : 'preempt',
       actionName: mode === 'CLASH' ? '对轰' : '抢先',
-      result: mode === 'CLASH' ? { WIN: 'won', EVEN: 'even', LOSE: 'lost', LATE: 'late' }[clashResult] : held ? 'held' : 'failed',
-      resultState: answered ? 'SUCCESS' : 'FAILURE',
-      primaryOutcome: mode === 'CLASH' ? `clash_${clashResult.toLowerCase()}` : held ? 'preempted' : 'preempt_failed',
+      result: mode === 'CLASH' ? { WIN: 'won', EVEN: 'even', LOSE: 'lost', LATE: 'late' }[clashResult] : held ? 'held' : disrupted ? 'disrupted' : 'failed',
+      resultState: answered || disrupted ? 'SUCCESS' : 'FAILURE',
+      primaryOutcome: mode === 'CLASH' ? `clash_${clashResult.toLowerCase()}` : held ? 'preempted' : disrupted ? 'preempt_disrupted' : 'preempt_failed',
       ruleCode,
       meta: {
         ...reactionMeta,
@@ -14101,7 +14135,8 @@
         ...(mode === 'CLASH' ? { clashWindow, clashWindup, clashInTime } : {}),
         ...(timing ? { ownWindup: timing.own, incomingWindup: timing.theirs, ownAgility: timing.ownAgility, sourceAgility: timing.theirAgility,
           faster: timing.faster, margin: Number.isFinite(timing.margin) ? timing.margin : null, attackerCouldAct: couldAct, held, appliedStates,
-          holdKind: !held ? '' : stopped ? (previewRuntime.isBattleCapable(sourceActor) ? 'STOPPED' : 'DOWN') : 'MOVE_BLOCKED', blockingStates } : {}),
+          holdKind: !held ? '' : stopped ? (previewRuntime.isBattleCapable(sourceActor) ? 'STOPPED' : 'DOWN') : 'MOVE_BLOCKED', blockingStates,
+          ...(disrupted ? { disrupted, slowed, deflectRate, deflectRoll, deflected, braceMultiplier } : {}) } : {}),
         ...(clash?.shock ? { shock: clash.outScale } : {}),
       },
     });
@@ -14111,12 +14146,14 @@
       event: settlement.actionEvent,
       engagementEvent,
       facts: settlement.facts,
-      evaded: false,
+      // A soft preemption that turned the move away is an evasion of it.
+      evaded: deflected,
       // The move comes to nothing on the answerer (a clash won), lands on it as CLASH_SHOCK of its damage only (even), or
-      // scaled to a lost clash's difference (lost) — no roll to hit; a preemption that failed leaves it unguarded.
+      // scaled to a lost clash's difference (lost) — no roll to hit; a preemption that failed leaves it unguarded, one that
+      // slowed it lets the answerer brace.
       nullified: mode === 'CLASH' && clashResult === 'WIN',
       shockOnly: mode === 'CLASH' && clashResult === 'EVEN',
-      damageMultiplier: mode === 'CLASH' && clashResult !== 'WIN' && clashResult !== 'LATE' ? (clash ? clash.inScale : 1) : 1,
+      damageMultiplier: mode === 'CLASH' && clashResult !== 'WIN' && clashResult !== 'LATE' ? (clash ? clash.inScale : 1) : braceMultiplier,
       forceHit: mode === 'CLASH' && (clashResult === 'EVEN' || clashResult === 'LOSE'),
       preempted: held,
       agilityBounds,
@@ -15272,7 +15309,7 @@
     rehydrateStateSourceMemory(source, combatData);
     const caseId = String(input?.caseId || 'structured-shadow').trim() || 'structured-shadow';
     const seed = Math.max(1, Math.floor(Number(input?.seed || 1)));
-    const roundLimit = Math.max(1, Math.min(previewRuntime.battleRoundLimit, Math.floor(Number(input?.rounds || input?.settings?.maxRounds || 1))));
+    const roundLimit = Math.max(1, Math.floor(Number(input?.rounds || input?.settings?.maxRounds || 1)));
     const analyticsCompactEvidence = input?.settings?.analyticsCompactEvidence === true;
     performanceTrace('battle-start', {
       caseId: String(input?.caseId || '').trim(),
@@ -15804,6 +15841,22 @@
         };
         let opportunitySequence = 0;
         const initialBeliefFor = actorId => input?.initialBelief?.[actorId] || input?.initialBelief || {};
+        // What a skill shown took of its caster's 魂力 and 精神力, shares of their maxima: the cost itself stays hidden
+        // (projectPublicResponseDeclaration), but the enemy sees the drop — BattleDecision r20Shown counts the skill only
+        // while what the caster has left covers it (11-14: a 强攻系 with 4% 魂力 was still taken to clash with skills of
+        // 5% and 9%, so no one attacked it for a hundred rounds).
+        const publicCostShares = (unit, declaration) => {
+          const skill = declaration?.skill;
+          if (!unit || !skill || typeof skill !== 'object') return null;
+          const stages = previewRuntime.readSkillCostStages(skill, { 来源模块: 'BattleRuntime_Module', ...declaration, costActor: unit });
+          const shares = {};
+          for (const resource of ['魂力', '精神力']) {
+            if (stages?.启动?.[resource] === undefined) continue;
+            const amount = Number(previewRuntime.resolveSkillResourceCost(unit, resource, stages.启动[resource]));
+            if (Number.isFinite(amount) && amount > 0) shares[resource] = amount / Math.max(1, previewRuntime.readResourceMax(unit, resource));
+          }
+          return Object.keys(shares).length ? shares : null;
+        };
         const publicSettlementOutcomeSemantics = (facts = [], sourceSide = '') => {
           const rows = Array.isArray(facts) ? facts.filter(Boolean) : [];
           const targetFor = event => listCombatUnits(combatData).find(unit =>
@@ -15960,6 +16013,7 @@
               actionName,
               declaration:
                 decisionRuntime.projectPublicResponseDeclaration(declaration),
+              costShares: publicCostShares(reactor, declaration),
               baseActionValue: 0,
               damageMultiplier,
               dodgeProbability,
@@ -16452,6 +16506,7 @@
               responseRole: settledActionRole,
               actionName: settledActionName,
               declaration: publicDeclaration,
+              costShares: publicCostShares(sourceActor, decisionResult?.selected?.declaration),
               baseActionValue,
               hpDamageValue,
               lethal: publicOutcomes.lethal,
@@ -17743,7 +17798,8 @@
               // first; a turn-ending action (defend, evade, pass) or a charged release ends the chain.
               const chainKind = String(shared.declaration?.actionKind || '').trim().toUpperCase();
               // A charged release (its 前摇 over the budget) ends the chain through chainWindup <= naturalActionBudget below.
-              const chainLink = node.actionRole === 'ACTIVE' && (node.nodeKind === 'ACTIVE' || node.grantType === 'CONTINUOUS_ACTION');
+              const chainLink = node.actionRole === 'ACTIVE' && (node.nodeKind === 'ACTIVE' || node.grantType === 'CONTINUOUS_ACTION' ||
+                node.nodeKind === 'PRIMARY_SETTLEMENT' && node?.state?.chainLink === true);
               const chainWindup = previewRuntime.actionWindup(actor, shared.declaration);
               const chainUsed = Number(node?.state?.windupUsed || 0) + chainWindup;
               if (chainLink && ['BASIC_ATTACK', 'RELEASE_SKILL', 'USE_ITEM'].includes(chainKind) && chainWindup > 0 &&
@@ -18520,6 +18576,12 @@
               actionRole: node.actionRole,
               sourceActionId: actionContext.actionEvent.actionId,
               state: { shared, continuationDepth: Number(node?.state?.continuationDepth || 0), engagementDepth: Number(node?.state?.engagementDepth || 0),
+                // 连续行动 (below, chainLink): the settlement is where the chain is judged — it carries the windup the turn has used
+                // before this action, the links so far and whether this action is a link at all (a natural action or a link of one).
+                // Until 11-14 it carried none of them and the judge asked for nodeKind ACTIVE, which a settlement never is: no chain
+                // was ever offered.
+                windupUsed: Number(node?.state?.windupUsed || 0), chainDepth: Number(node?.state?.chainDepth || 0),
+                chainLink: node.actionRole === 'ACTIVE' && (node.nodeKind === 'ACTIVE' || node.grantType === 'CONTINUOUS_ACTION'),
                 // The strike backs of this exchange so far, this one included (接战链 阶段一: the next costs more, is caught less).
                 counterCounts: node.nodeKind === 'COUNTER'
                   ? { ...engagementCounterCounts(node), [previewRuntime.unitId(actor)]: Number(engagementCounterCounts(node)[previewRuntime.unitId(actor)] || 0) + 1 }
@@ -23162,7 +23224,7 @@
       combatData,
       caseId: String(source.caseId || 'r9v2-formal').trim(),
       seed: Math.max(1, Math.floor(Number(source.seed || 1))),
-      rounds: Math.max(1, Math.min(previewRuntime.battleRoundLimit, Math.floor(Number(source.rounds || 1)))),
+      rounds: Math.max(1, Math.floor(Number(source.rounds || 1))),
       mode: String(source.mode || 'single_round').trim() || 'single_round',
       settings: {
         ...(source.settings || {}),
@@ -23284,7 +23346,7 @@
     });
     const mode = source.mode === 'multi_round' ? 'multi_round' : 'single_round';
     const rounds = mode === 'multi_round'
-      ? Math.max(1, Math.min(previewRuntime.battleRoundLimit, Math.floor(Number(source.rounds || source.settings?.maxRounds || previewRuntime.battleRoundLimit))))
+      ? Math.max(1, Math.floor(Number(source.rounds || source.settings?.maxRounds || previewRuntime.battleRoundLimit)))
       : 1;
     const result = yield* runStructuredBattleSteps({
       ...source,

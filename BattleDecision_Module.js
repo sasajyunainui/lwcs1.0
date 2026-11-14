@@ -2149,7 +2149,9 @@
       const sides = new Map(worldEntries(worldSnapshot).map(entry => [preview.unitId(entry.unit), entry.side]));
       const bySide = new Map();
       for (const event of ledger) {
-        if (event?.eventKind !== 'hit_result') continue;
+        // A state one laid on the other (a control, a debuff) is an exchange too (11-14: a 控制系 whose skills deal no
+        // damage was never seen at all in a 300-round battle of controls and cleanses).
+        if (event?.eventKind !== 'hit_result' && event?.eventKind !== 'state_apply') continue;
         const actor = String(event.actorId || '').trim(), target = String(event.targetId || '').trim();
         const actorSide = sides.get(actor), targetSide = sides.get(target);
         if (!actorSide || !targetSide || actorSide === targetSide) continue;
@@ -2279,8 +2281,18 @@
         状态效果: states,
         技能列表: [],
         // The skill it released last was seen by everyone (复制执行 copies it: BattlePreview copySourceSkill).
-        ...(sourceUnit?.__battleRuntime?.lastReleasedSkill ? { __battleRuntime: { lastReleasedSkill: cloneValue(sourceUnit.__battleRuntime.lastReleasedSkill) } } : {}),
-        routine_attack_ratio: publicUnitRole === 'SUMMON' ? 1 : typicalAttackRatio(perceivedLevel, system),
+        // How long it has kept to stances is seen too (久守必失: BattlePreview passiveStreakFactor).
+        // So is whether its 体力 has already been halved for running low on 魂力 / 精神力 (资源低位砍体力).
+        ...(sourceUnit?.__battleRuntime?.lastReleasedSkill || Number(sourceUnit?.__battleRuntime?.passiveStreak) > 0 || sourceUnit?.__battleRuntime?.lowResourceStaminaCut ? { __battleRuntime: {
+          ...(sourceUnit.__battleRuntime.lastReleasedSkill ? { lastReleasedSkill: cloneValue(sourceUnit.__battleRuntime.lastReleasedSkill) } : {}),
+          ...(Number(sourceUnit.__battleRuntime.passiveStreak) > 0 ? { passiveStreak: Number(sourceUnit.__battleRuntime.passiveStreak) } : {}),
+          ...(sourceUnit.__battleRuntime.lowResourceStaminaCut ? { lowResourceStaminaCut: { ...sourceUnit.__battleRuntime.lowResourceStaminaCut } } : {}) } } : {}),
+        // 交手看清对手 for its attacks too (11-14: a 控制系 with no damaging skill was pictured with its level's typical
+        // skill for 300 rounds, and a 治疗系 kept cleansing a one-round debuff against a threat that never came): drawn
+        // toward the unit's own routine attack (knownRoutineAttackRatio) by what has been seen of it.
+        routine_attack_ratio: publicUnitRole === 'SUMMON' ? 1 : clarity > 0
+          ? Math.max(1, toward(typicalAttackRatio(perceivedLevel, system), knownRoutineAttackRatio(sourceUnit)))
+          : typicalAttackRatio(perceivedLevel, system),
       };
       const observedResponses = (Array.isArray(beliefUnit?.knownResponses)
         ? beliefUnit.knownResponses
@@ -2846,6 +2858,8 @@
       declaration: observation?.declaration && typeof observation.declaration === 'object'
         ? projectPublicResponseDeclaration(observation.declaration)
         : existing?.declaration,
+      // What the skill was seen to take of the caster's 魂力 / 精神力 (shares of the maxima; BattleRuntime publicCostShares).
+      costShares: observation?.costShares && typeof observation.costShares === 'object' ? { ...observation.costShares } : existing?.costShares,
       utility: Math.max(Number(existing?.utility || 0), observedValue),
       baseActionValue: Math.max(Number(existing?.baseActionValue || 0), observedValue),
       hpDamageValue: Math.max(Number(existing?.hpDamageValue || 0), observedHpDamageValue),
@@ -5420,11 +5434,8 @@
 
   // 援护 (用户 2026-11-11/12): whether one of `candidateIds` steps in front of the target of a single-target attack, and
   // which. Read on the field as it stands, by the settlement layer's own formulas: what the declared action lands on
-  // a unit after its best plain answer (defending or evading), a share of its HP maximum, and INTERCEPT_FALL_VALUE more
-  // if that brings it down. Stepping in is worth what the target is spared, less what the one stepping in takes, less
-  // the action it gives up (its routine attack on the enemy it hits hardest); the best gain over INTERCEPT_MARGIN
-  // steps in, otherwise nobody. Returns the unit's id or ''. The numbers are starting values.
-  const INTERCEPT_FALL_VALUE = 1, INTERCEPT_MARGIN = 0.05;
+  // a unit after its best plain answer (defending, evading or meeting it), a share of its HP maximum — then weighed by
+  // the race (below). Returns the unit's id or ''.
   function chooseInterceptor(input = {}) {
     const world = input.worldSnapshot || {}, attacker = findUnitInWorld(world, input.sourceActorId), target = findUnitInWorld(world, input.targetId);
     if (!attacker || !target) return '';
@@ -5463,24 +5474,44 @@
       const weight = move ? Number(preview.incomingHitShare(attacker, move, unit, world)) || 0 : 0;
       const keep = answers ? Math.min(preview.calculateDefenseDamageMultiplier(unit, attacker, false), 1 - preview.calculateDodgeProbability(unit, attacker, false),
         clashed < 1 && base > 0 ? clashed * weight / base : 1) : 1;
-      const hit = Math.min(left, base * keep);
-      return hit + (hit >= left - 1e-9 ? INTERCEPT_FALL_VALUE : 0);
+      return Math.min(left, base * keep);
     };
+    // 用户 2026-11-14 (原作：戴沐白退到宁荣荣身前挡下第八魂技): who steps in is weighed by the race R20 values every action
+    // with (r20Race), not by HP shares alone — the old count (what the target is spared, less what the one stepping in
+    // takes, less its routine attack) treated a support's HP as a fighter's and charged the whole action given up, so in
+    // 262 chances over 24 2v2 battles nobody ever stepped in. The race knows what each unit brings (a support's buffs and
+    // heals too), how long each lasts and what a unit that loses its turn this round no longer does. Stepping in is worth
+    // the race with the one stepping in hit and denied its turn, against the race with the target hit; the best over
+    // INTERCEPT_RACE_MARGIN steps in.
     const side = sideOf(world, target);
-    const enemies = preview.listUnits(world).filter(entry => entry.side !== side && preview.isBattleCapable(entry.unit)).map(entry => entry.unit);
-    const action = unit => Math.max(0, ...enemies.map(enemy => preview.calculateBaseActionValue(unit, enemy, { actionKind: 'BASIC_ATTACK', worldSnapshot: world }) / 100)) *
-      Math.max(1, knownRoutineAttackRatio(unit));
+    const table = r20Facts({ visibleWorld: world, actorId: preview.unitId(target), actorSide: side,
+      battleIntent: { mode: world.战斗意图, objectives: world.胜负条件 || {} }, actionOpportunity: { role: 'REACTION' } });
+    const count = table.units.length;
+    const race = (row, hit, deny) => {
+      if (row === undefined) return null;
+      const remaining = table.remaining.slice();
+      remaining[row] = Math.max(0, remaining[row] - hit);
+      const denied = new Array(count).fill(0);
+      if (deny) denied[row] = 1;
+      const plan = { denied, until: new Array(count).fill(0), base: table, leaves: null, baseCount: count, changed: new Array(count).fill(false),
+        busy: table.busy || null, strikes: table.strikes || null };
+      return r20Race({ ...table, remaining, alive: table.alive.slice(), stamina: table.stamina.slice() }, side, plan);
+    };
     // 接战链 阶段 2c/2d: the clash window (BattlePreview clashTiming), INTERCEPT_WINDUP less for one stepping in.
-    const spared = lands(target, false);
-    let best = '', bestGain = INTERCEPT_MARGIN;
+    const unprotected = race(table.index.get(preview.unitId(target)), lands(target, false), false);
+    if (unprotected === null) return '';
+    let best = '', bestGain = INTERCEPT_RACE_MARGIN;
     for (const id of Array.isArray(input.candidateIds) ? input.candidateIds : []) {
       const unit = findUnitInWorld(world, id);
       if (!unit || unit === target) continue;
-      const gain = spared - lands(unit, true) - action(unit);
+      const stepped = race(table.index.get(preview.unitId(unit)), lands(unit, true), true);
+      if (stepped === null) continue;
+      const gain = stepped - unprotected;
       if (gain > bestGain) { bestGain = gain; best = String(id); }
     }
     return best;
   }
+  const INTERCEPT_RACE_MARGIN = 0.01;
 
   function r9v2LinearCapacityCostVector(unit = {}, costs = {}) {
     const vector = { sp: 0, men: 0, vit: 0, valid: true };
@@ -6039,7 +6070,8 @@
       const damaging = clashable && directImmediateSkillEffects(skill).some(effect => String(effect?.原型 || '').trim() === '伤害结算');
       // 接战链 阶段二补充 (§8.3): a state that stops this move's kind — one that stops a unit acting stops any, 封技/沉默 a
       // released skill, 缴械 a basic attack (BattlePreview effectBlocksMove); a kind it cannot stop is not offered.
-      const stopping = preemptAllowed && effects.some(effect => preview.effectBlocksMove(effect, incomingMove) &&
+      // 软控抢先 (用户 2026-11-14): a state that only gets in the move's way (BattlePreview effectDisruptsMove) preempts too.
+      const stopping = preemptAllowed && effects.some(effect => (preview.effectBlocksMove(effect, incomingMove) || preview.effectDisruptsMove(effect, incomingMove)) &&
         !/自身|己方|友方/.test(String(effect?.目标 || '')) && !preview.negativeEffectIsImmune(source, effect));
       if (!damaging && !stopping) return;
       if (!preview.skillPermittedAtIntensity(skill, intensity, () => preview.sideDesperate(worldSnapshot, actor))) return;
@@ -6712,10 +6744,17 @@
     (!summonSkillDisabled && (skillReleaseAllowed || forcedSkill && !assistOnly) ? sourceSkills : []).forEach((sourceSkill, index) => {
       const sourceSkillId = skillId(sourceSkill, index);
       const sourceSkillName = skillName(sourceSkill, index);
-      const skill = preview.applySkillSettlementModifiers(
+      const settledSkill = preview.applySkillSettlementModifiers(
         actor,
         applyEquipmentPassivesToSkill(actor, sourceSkill),
       ).skill;
+      // 防御应对分档 (BattlePreview lateDefenseSkill): a defensive answer past the window is raised late, at window ÷ its windup.
+      const settledCast = Math.max(0, Number(settledSkill?.前摇 ?? settledSkill?.cast_time ?? 10));
+      const lateCoverage = reactionOnly && !counterOnly && immediateBudget > 0 && settledCast > immediateBudget &&
+        !isImmediateReactionSkill(settledSkill, immediateBudget) &&
+        isImmediateReactionSkill({ ...settledSkill, 前摇: immediateBudget, cast_time: immediateBudget }, immediateBudget)
+        ? immediateBudget / settledCast : 1;
+      const skill = lateCoverage < 1 ? preview.lateDefenseSkill(settledSkill, lateCoverage, immediateBudget) : settledSkill;
       if (!Array.isArray(skill?._效果数组) || !skill._效果数组.length) {
         recordRejected({
           actionKind: 'RELEASE_SKILL',
@@ -65574,15 +65613,37 @@
   const r20Injury = Number(preview.INJURY_STAMINA_SHARE) || 1;
   // The skills a unit has shown in this battle, as the deciding unit knows them (the belief's public record of its
   // actions): for a unit whose own skill list the decision cannot see.
+  // What a shown skill was seen to take (costShares), by the skill as the public record holds it.
+  const r20ShownCosts = new WeakMap();
+  // A shown skill's cost as seen, in the unit's own amounts (resourceCosts of a declaration; nothing if not seen).
+  const r20ShownCost = (unit, skill) => {
+    const shares = r20ShownCosts.get(skill);
+    if (!shares) return null;
+    return Object.fromEntries(Object.entries(shares).map(([resource, share]) => [resource, share * Math.max(1, preview.readResourceMax(unit, resource))]));
+  };
   const r20Shown = unit => {
     const shown = r20Belief?.publicResponses?.[preview.unitId(unit)];
     if (!Array.isArray(shown) || !shown.length) return [];
     const skills = [];
     for (const entry of shown) {
       const skill = entry?.declaration?.skill;
-      if (skill && typeof skill === 'object' && Array.isArray(skill._效果数组) && !skills.includes(skill)) skills.push(skill);
+      // Not while what it has left (as the unit sees it) is less than the skill was seen to take.
+      if (Object.entries(entry?.costShares || {}).some(([resource, share]) =>
+        preview.readResource(unit, resource) / Math.max(1, preview.readResourceMax(unit, resource)) + 1e-9 < share)) continue;
+      if (skill && typeof skill === 'object' && Array.isArray(skill._效果数组) && !skills.includes(skill)) {
+        skills.push(skill);
+        if (entry?.costShares) r20ShownCosts.set(skill, entry.costShares);
+      }
     }
     return skills;
+  };
+  // A unit seen paying for its skills (costShares) that has less left than every one of them took: its routine attack
+  // (a typical skill of its level) is out of reach too.
+  const r20Drained = unit => {
+    const shown = r20Belief?.publicResponses?.[preview.unitId(unit)];
+    const priced = Array.isArray(shown) ? shown.filter(entry => entry?.costShares && Object.keys(entry.costShares).length) : [];
+    return priced.length > 0 && priced.every(entry => Object.entries(entry.costShares).some(([resource, share]) =>
+      preview.readResource(unit, resource) / Math.max(1, preview.readResourceMax(unit, resource)) + 1e-9 < share));
   };
   // What the valuation did and what it took (milliseconds), by stage: every behaviour added to it must show here.
   // root.__LWCS_DECISION_DEBUG__.r20Work reads it.
@@ -65638,7 +65699,7 @@
     // typical skill of its level and type over its basic attack (routine_attack_ratio, routineAttackEffect). Without it
     // every unseen enemy was worth one basic attack, and the first mirror match's shadow side buffed itself for three
     // rounds against an enemy it took for harmless.
-    if (!friendly && Number(unit?.routine_attack_ratio) > 1 && !hidden({ 目标: '单体' })) {
+    if (!friendly && Number(unit?.routine_attack_ratio) > 1 && !hidden({ 目标: '单体' }) && !r20Drained(unit)) {
       const effect = routineAttackEffect(unit), maximum = Math.max(1, preview.readHpMax(other));
       const routine = Math.min(maximum, preview.calculateBaseDamage(effect, unit, other, null, { resourceDriveEnabled: false }) *
         preview.estimateHitProbability(unit, other, effect)) / maximum * 100;
@@ -65807,7 +65868,21 @@
     if (nature && staminaMaximum > 0 && (!r20World || preview.actionStaminaEnabled(r20World))) {
       shares.vit += Math.max(0, Number(preview.actionStaminaCost(unit, nature, attacker)) || 0) / staminaMaximum;
     }
-    return { ...shares, price: R20_RESOURCE_PRICE * (shares.sp + shares.men + shares.vit) };
+    // 资源低位砍体力 (BattlePreview applyLowResourceStaminaCut): paying it down past the line halves what 体力 is left, once a
+    // battle for each — taken as the race takes 体力, off what the unit has left (the lesser of HP and 体力), in full. A
+    // shadowed move pays it in its race; an answer is only priced, and at the resource price a 强攻系 at 14% 魂力 was taken
+    // to clash a basic attack with a skill of 9% — then 12% — so a mirror match stood guarding for 300 rounds (11-14).
+    let stamina = r20Stamina(unit), cut = 0;
+    if (stamina !== null) {
+      const hp = preview.readHp(unit) / Math.max(1, preview.readHpMax(unit)), before = Math.min(hp, stamina);
+      const ratio = Number(preview.LOW_RESOURCE_STAMINA_RATIO) || 0.1, done = unit?.__battleRuntime?.lowResourceStaminaCut || {};
+      for (const key of ['sp', 'men']) {
+        const label = labels[key], maximum = preview.readResourceMax(unit, label), now = preview.readResource(unit, label);
+        if (shares[key] > 0 && maximum > 0 && done[label] !== true && now >= maximum * ratio && now - shares[key] * maximum < maximum * ratio) stamina *= 0.5;
+      }
+      cut = Math.max(0, before - Math.min(hp, stamina));
+    }
+    return { ...shares, cut, price: R20_RESOURCE_PRICE * (shares.sp + shares.men + shares.vit) + cut };
   }
   // 接战链 阶段二 (BattlePreview clashOutcome / preemptTiming; BattleDecision engagementCandidates): what `unit` could
   // meet `attacker`'s hit with — `strike`, the whole damage on the attacker of its strongest move it can release within
@@ -65847,14 +65922,23 @@
           !(incoming ? preview.effectBlocksMove(effect, incoming) : preview.effectBlocksMove(effect, R20_SKILL_MOVE) || preview.effectBlocksMove(effect, R20_ASSUMED_MOVE))) continue;
         stop = Math.max(stop, confidence * preview.normalizeEffectProbability(effect.触发概率, 1) * preview.stateApplicationProbabilityMultiplier(attacker, effect));
       }
+      // 软控抢先: a state that only gets in the move's way counts by what it keeps off — the move turned away (deflect /
+      // blind) or met braced (slow: the guard out of a stance) — as a share of a stop.
+      if (confidence > 0) for (const effect of preview.collectEffects(skill)) {
+        if (/自身|己方|友方/.test(String(effect?.目标 || '')) || preview.negativeEffectIsImmune(attacker, effect)) continue;
+        const soft = preview.effectDisruptsMove(effect, incoming || null);
+        if (!soft) continue;
+        const kept = 1 - (1 - Math.max(soft.deflect, soft.blind)) * (soft.slow ? preview.calculateGuardBaseMultiplier(unit, attacker, true) : 1);
+        stop = Math.max(stop, confidence * kept * preview.normalizeEffectProbability(effect.触发概率, 1) * preview.stateApplicationProbabilityMultiplier(attacker, effect));
+      }
       if (stop > 0) stops.push({ stop: clamp(stop, 0, 1), price: priced() });
     };
     if (!hasStateFlag(unit, 'disarm')) consider({ actionKind: 'BASIC_ATTACK', targetIds: [attackerId] }, null);
     if (!hasStateFlag(unit, 'silence') && !preview.isSummonSkillDisabled(unit)) {
       const own = affordablePreparedSkills(unit);
-      for (const entry of own.length ? own : r20Shown(unit).map(skill => ({ skill }))) {
+      for (const entry of own.length ? own : r20Shown(unit).map(skill => ({ skill, seenCost: r20ShownCost(unit, skill) }))) {
         if (entry.fusionMetadata || preview.collectEffects(entry.skill).some(effect => effect?.原型 === '炸环')) continue;
-        consider({ actionKind: 'RELEASE_SKILL', targetIds: [attackerId], skill: entry.skill }, entry.skill);
+        consider({ actionKind: 'RELEASE_SKILL', targetIds: [attackerId], skill: entry.skill, ...(entry.seenCost ? { resourceCosts: entry.seenCost } : {}) }, entry.skill);
       }
     }
     const engage = { strikes, stops };
@@ -66051,6 +66135,10 @@
       const cells = (unit, other) => unit >= held || other >= held ? facts
         : changed && (changed[unit] || changed[other]) ? (time < until[unit] && time < until[other] ? facts : settled) : settled;
       const acting = unit => left[unit] > 1e-9 && !(denied && time < denied[unit]) && !(busy && time < busy[unit]);
+      // What of an attacker's hit a unit takes: its answer's share while it can answer; held (controlled — the hard control
+      // lasts to the end of the round it took an action in, BattleRuntime consumeStructuredControlActiveBudget) or busy, it
+      // takes the whole hit, as a unit that cannot act does in the table (r20FillPair).
+      const takes = (view, unit, attacker) => acting(unit) ? view.keep[unit][attacker] : 1;
       let nextChange = base.late && time < R20_LATE_ROUNDS - 1e-9 ? Math.min(horizon, R20_LATE_ROUNDS) : horizon;
       if (leaves) for (let unit = 0; unit < count; unit += 1) {
         if (leaves[unit] <= time + 1e-9) left[unit] = 0; else nextChange = Math.min(nextChange, leaves[unit]);
@@ -66070,7 +66158,7 @@
           if (!(left[other] > 1e-9)) continue;
           if (sides[other] === sides[unit]) { if (acting(unit)) worth[unit] = Math.max(worth[unit], cells(unit, other).support[unit][other]); continue; }
           if (acting(unit)) worth[unit] = Math.max(worth[unit], cells(unit, other).out[unit][other]);
-          if (acting(other)) pressed[unit] += cells(other, unit).out[other][unit] * cells(other, unit).keep[unit][other];
+          if (acting(other)) pressed[unit] += cells(other, unit).out[other][unit] * takes(cells(other, unit), unit, other);
         }
       }
       const focus = {};
@@ -66089,10 +66177,10 @@
       for (let unit = 0; unit < count; unit += 1) {
         if (!acting(unit)) continue;
         const foe = sideNames.find(side => side !== sides[unit]), ally = focus[sides[unit]].unit;
-        let target = focus[foe].unit, strike = cells(unit, target).out[unit][target] * cells(unit, target).keep[target][unit];
+        let target = focus[foe].unit, strike = cells(unit, target).out[unit][target] * takes(cells(unit, target), target, unit);
         if (!(strike > 0)) for (let other = 0; other < count; other += 1) {
           if (sides[other] === sides[unit] || !(left[other] > 1e-9)) continue;
-          const value = cells(unit, other).out[unit][other] * cells(unit, other).keep[other][unit];
+          const value = cells(unit, other).out[unit][other] * takes(cells(unit, other), other, unit);
           if (value > strike) { strike = value; target = other; }
         }
         const help = cells(unit, ally).support[unit][ally];
@@ -66107,7 +66195,7 @@
           exchange = null;
           for (let other = 0; other < count; other += 1) {
             if (other === target || sides[other] === sides[unit] || !(left[other] > 1e-9)) continue;
-            const hit = cells(unit, other).out[unit][other] * cells(unit, other).keep[other][unit];
+            const hit = cells(unit, other).out[unit][other] * takes(cells(unit, other), other, unit);
             if (!(hit > 0)) continue;
             const trial = open(other), net = hit + trial.more - trial.taken;
             if (net > best) { best = net; exchange = trial; strike = hit; target = other; }
@@ -66358,7 +66446,10 @@
       const priorStates = prior.状态效果 || {}, nextStates = next.状态效果 || {};
       let changed = Object.keys(priorStates).some(key => !Object.hasOwn(nextStates, key)), lasting = 0;
       for (const [key, state] of Object.entries(nextStates)) {
-        if (priorStates[key] === state) continue;
+        // A state the settlement only copied (the projection clones units) is no change: compared by what it holds, or
+        // an equipment passive's 999941 rounds were read as how long a one-round debuff lasts (11-14: a 控制系 valued a
+        // one-round 敏捷 debuff at half a battle won, and a 治疗系 its cleanse likewise, round after round).
+        if (priorStates[key] === state || priorStates[key] && preview.stableHash(priorStates[key]) === preview.stableHash(state)) continue;
         lasting = Math.max(lasting, typeof state?.duration === 'number' ? Math.max(1, state.duration) : Infinity);
         // A side effect that kills when it comes due (致死献祭 at the round end or when the state ends).
         if (!Object.hasOwn(priorStates, key)) for (const risk of Array.isArray(state?.副作用列表) ? state.副作用列表 : []) {
@@ -66643,12 +66734,17 @@
       const preempt = engagementMode === 'PREEMPT'
         ? 1 - (1 - preview.preemptHoldProbability(source, sourceNext, move) * confidence) * clamp(alive[sourceRow], 0, 1) : 0;
       if (engagementMode === 'PREEMPT') denied[sourceRow] = Math.max(0, denied[sourceRow] - preview.preemptHoldProbability(source, sourceNext, null) * confidence);
+      // 软控抢先 (BattleRuntime settleStructuredEngagement): in time and not held, what the control left in the move's way —
+      // turned away by the deflection, slowed so the actor braces (its guard as out of a stance), its roll under the blindness.
+      const soft = engagementMode === 'PREEMPT' ? preview.preemptDisruption(source, sourceNext, move) : null;
+      const softDeflect = soft ? confidence * Math.max(soft.deflect, soft.blind) : 0;
+      const softBrace = soft ? 1 - confidence * soft.slow * (1 - preview.calculateDefenseDamageMultiplier(actorNext, source, true, weight)) : 1;
       const share = actionKind === 'DEFEND' ? preview.calculateDefenseDamageMultiplier(actorNext, source, false, weight) : actionKind === 'EVADE' ? 1 - dodge
-        : engagementMode === 'PREEMPT' ? 1 - preempt : 1;
+        : engagementMode === 'PREEMPT' ? (1 - preempt) * (1 - softDeflect) * softBrace : 1;
       const priorActor = Number(request.actionOpportunity?.counterPrior || 0), priorSource = Number(request.actionOpportunity?.opponentCounterPrior || 0);
       const catches = preview.counterOpeningProbability(actorNext, source, move, { prior: priorActor });
       const strikesBack = actionKind === 'DEFEND' ? (preview.guardHolds(weight, share * r20Soak(actorNext)) ? catches : 0)
-        : actionKind === 'EVADE' ? dodge * catches : clash ? (clash.answered ? clashConfidence * catches : 0) : engagementMode === 'PREEMPT' ? preempt * catches
+        : actionKind === 'EVADE' ? dodge * catches : clash ? (clash.answered ? clashConfidence * catches : 0) : engagementMode === 'PREEMPT' ? (preempt + (1 - preempt) * softDeflect) * catches
           : preview.declarationGrantsCounter(declaration || {}) ? 1 : 0;
       const staminaMaximum = preview.readResourceMax(actorNext, '体力'), maximum = Math.max(1, preview.readHpMax(actorNext)), shield = preview.readShield(actorNext) / maximum;
       // 接战链 阶段 2c: what the answer costs, priced by the same function the table's expectation of an answer uses.
@@ -66678,20 +66774,36 @@
     // (接战链 阶段一: out of a guard that holds or an evasion that succeeds, with COUNTER_STANCE_BONUS on catching the opening).
     if (roleName === 'ACTIVE' && ['DEFEND', 'EVADE'].includes(actionKind) && actorRow !== undefined && alive[actorRow] > 0) {
       const actor = table.units[actorRow];
+      const stanceActor = { ...actor, __battleRuntime: { ...(actor.__battleRuntime || {}),
+        passiveStreak: Math.max(0, Number(actor.__battleRuntime?.passiveStreak) || 0) + 1 } };
       const standing = table.sides.reduce((sum, side, row) => sum + Number(side === own && alive[row] > 0 && remaining[row] > 0), 0);
       for (let row = 0; row < count; row += 1) {
         if (table.sides[row] === own || !table.pending[row] || !acts[row] || !(alive[row] > 0) || denied[row] > 0) continue;
         seen += 1;
         // The prepared answer to the enemy's best hit on the actor (its weight: the enemy's cell), with the stance's
         // better odds of catching the opening (COUNTER_STANCE_BONUS); the answers after it are ordinary ones.
-        const stance = r20Meet(r20Stand(actor, table.units[row], null, true), r20Weight(out[row][actorRow]), actionKind);
+        // 久守必失 (BattlePreview passiveStreakFactor): the stance this action takes is one more in its run of stances.
+        const stance = r20Meet(r20Stand(stanceActor, table.units[row], null, true), r20Weight(out[row][actorRow]), actionKind);
         // 接战链 阶段 2c (方案 §9.3、§10.2): only as often as the enemy turns on the actor this round — its best action on the
         // table (r20TurnsOn); one that will strike the actor counts in full.
         const turned = alive[row] * r20TurnsOn(table, row, actorRow);
-        remaining[actorRow] += turned * out[row][actorRow] * Math.max(0, keep[actorRow][row] - stance.keep);
         const strikeBack = back[actorRow][row] * keepBack[row][actorRow], strikeAgain = back[row][actorRow] * keepBack[actorRow][row];
         const prepared = r20Exchange(answer[actorRow][row], answer[row][actorRow], strikeAgain, strikeBack, stance.answer);
         const ordinary = r20Exchange(answer[actorRow][row], answer[row][actorRow], strikeAgain, strikeBack, answerOpen[actorRow][row]);
+        // 用户 2026-11-14「姿态价值按对方真会不会来攻算」: a stance is worth what it does to an attack that comes. Whether the
+        // enemy comes is the race's own test (r20Race: a unit that would take more than it lands holds) — against the actor
+        // as it would stand without the stance and with it. Comes either way: the stance keeps more off and strikes back
+        // more, as before. Comes only at the actor unprepared: the stance turns the attack away — the actor keeps what it
+        // would have taken, and there is no strike back to count. Comes neither way: the stance changes nothing (a stand-off
+        // where each side waits for the other to strike was worth a stance to both, and nobody struck).
+        const comesUnprepared = out[row][actorRow] * keep[actorRow][row] + ordinary.more > ordinary.taken;
+        const comesPrepared = out[row][actorRow] * stance.keep + prepared.more > prepared.taken;
+        if (comesUnprepared && !comesPrepared) {
+          remaining[actorRow] += turned * (out[row][actorRow] * keep[actorRow][row] + ordinary.more);
+          continue;
+        }
+        if (!comesPrepared) continue;
+        remaining[actorRow] += turned * out[row][actorRow] * Math.max(0, keep[actorRow][row] - stance.keep);
         remaining[row] = Math.max(0, remaining[row] - turned * Math.max(0, prepared.taken - ordinary.taken));
         remaining[actorRow] = Math.max(0, remaining[actorRow] - turned * Math.max(0, prepared.more - ordinary.more));
       }
@@ -67643,7 +67755,7 @@
         Number.isFinite(unit.final.__体力衰减系数) && unit.final.__体力衰减系数 >= 0 && unit.final.__体力衰减系数 <= 1) &&
       Object.values(unit.状态效果 || {}).every(pureState) &&
       // panelStats is the battle-start stamina price record (R07): constant for the battle, so it is bookkeeping here.
-      keysWithin(unit.__battleRuntime, ['__itemPassiveSignature', 'itemPassivePackage', 'itemPassiveTriggeredSkills', 'itemPassiveRoutes', 'naturalOpportunity', 'panelStats', 'lastReleasedSkill']) &&
+      keysWithin(unit.__battleRuntime, ['__itemPassiveSignature', 'itemPassivePackage', 'itemPassiveTriggeredSkills', 'itemPassiveRoutes', 'naturalOpportunity', 'panelStats', 'lastReleasedSkill', 'passiveStreak']) &&
       !unit.__battleRuntime?.itemPassivePackage?.有效 &&
       ['itemPassiveTriggeredSkills', 'itemPassiveRoutes'].every(key => empty(unit.__battleRuntime?.[key])) &&
       !preparedSkillProfiles(unit).some(profile => profile.fusionMetadata) && collectSkills(unit).every(skill => skill && pureSkill(unit, skill));

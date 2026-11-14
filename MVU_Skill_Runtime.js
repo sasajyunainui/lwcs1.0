@@ -175,6 +175,27 @@ var TypeMultipliers = {
 
 globalThis.__LWCS_SKILL_TYPE_REGISTRY__ = Object.freeze(Object.keys(TypeMultipliers));
 
+// 武魂属性倾向（用户 2026-11-14：「武魂的属性系数是肯定要做的，这样才有差别化」「直接作为MVU参数，让AI生成就行（和其他待生成属性一样）
+// 而且生成的时候不是让AI挨个填属性，而是你自己内置一套组合……让AI选一套就行」）：每个武魂一套倾向，乘在系别倍率上算面板。
+// 总量不变：一项 +20%、另两项各 −10%；偏控制 = 敏捷、精神力各 +10%（控制的命中与抢先按敏捷，精神类攻防按精神力）。
+// 没填、待补全或不认识的按均衡。体力、魂力上限不动。
+var 武魂属性倾向系数表_V1 = Object.freeze({
+  均衡: Object.freeze({}),
+  偏攻击: Object.freeze({ str: 1.2, def: 0.9, agi: 0.9 }),
+  偏防御: Object.freeze({ def: 1.2, str: 0.9, agi: 0.9 }),
+  偏速度: Object.freeze({ agi: 1.2, str: 0.9, def: 0.9 }),
+  偏精神: Object.freeze({ men_max: 1.2, str: 0.9, def: 0.9 }),
+  偏控制: Object.freeze({ agi: 1.1, men_max: 1.1, str: 0.9, def: 0.9 }),
+});
+var 武魂属性倾向待补全文案_V1 = '待补全(按武魂的形态与战斗特点选一套：均衡/偏攻击/偏防御/偏速度/偏精神/偏控制)';
+function 读取武魂属性倾向系数_V1(武魂 = {}) {
+  return 武魂属性倾向系数表_V1[String(武魂?.属性倾向 || '').trim()] || 武魂属性倾向系数表_V1.均衡;
+}
+function 应用武魂属性倾向_V1(倍率 = {}, 武魂 = {}) {
+  const 系数 = 读取武魂属性倾向系数_V1(武魂);
+  return Object.fromEntries(Object.entries(倍率 || {}).map(([键, 值]) => [键, Number(值) * Number(系数[键] ?? 1)]));
+}
+
 var 魂力获取速度系数表 = Object.freeze({
   强攻系: 1.0,
   控制系: 0.95,
@@ -2968,13 +2989,16 @@ var SKILL_MAIN_MECHANIC_DISTRIBUTION_V1 = {
     { min: 99, max: 99, main: '感知/认知类' },
     { min: 100, max: 100, main: '特殊规则类' },
   ],
+  // 用户 2026-11-14「那确实得提高一下控制比例…控制系技能可以参考一下多情斗罗vs黑暗凤凰」：原作控制系几乎每招都落在对手身上，
+  // 控制 32 → 40；感知不动（幻境、认知扭曲、催眠这类硬控在感知里，减了感知硬控反而变少，实测抵消）；位移 10 → 8（位移里约一半是
+  // 对敌的强制位移：击退＋闪避 −10%，本身也是控制，用户 2026-11-14「位移类不也是降低闪避等控制吗」）；削弱 26 → 24，伤害 7 → 5，防御 6 → 4。
   控制系: [
-    { min: 1, max: 32, main: '控制类' },
-    { min: 33, max: 58, main: '削弱类' },
-    { min: 59, max: 74, main: '感知/认知类' },
-    { min: 75, max: 84, main: '位移类' },
-    { min: 85, max: 91, main: '伤害类' },
-    { min: 92, max: 97, main: '防御类' },
+    { min: 1, max: 40, main: '控制类' },
+    { min: 41, max: 64, main: '削弱类' },
+    { min: 65, max: 80, main: '感知/认知类' },
+    { min: 81, max: 88, main: '位移类' },
+    { min: 89, max: 93, main: '伤害类' },
+    { min: 94, max: 97, main: '防御类' },
     { min: 98, max: 98, main: '增益类' },
     { min: 99, max: 99, main: '回复类' },
     { min: 100, max: 100, main: '特殊规则类' },
@@ -5405,6 +5429,16 @@ var SKILL_UNIT_COST_TABLE_V1 = Object.freeze({
 // 机制授予壳按内含效果比例计价（用户 2026-11-12："按比例吧 *1.2倍？"）：壳本身 = 授予效果 COST 之和 × 机制授予壳比例_V1，
 // 再乘壳原有的目标与期限系数（原先是固定 25 × 这些系数，按期限涨到 36.25 / 45 / 51.25）。上表的 机制授予: 25 只留给旧版计价。
 var 机制授予壳比例_V1 = 0.2;
+// 复制执行的削减比例计价（用户 2026-11-14：「复制属性给的有点高，改成复制系别，等级按自身等级计算，削减比例要进COST，针对技能效果削减和属性削减」）：
+// 削减比例对三种复制都生效——复制技能的数值（威力倍率、数值等）、复制属性（复制对方系别）的增益都只拿 (1 − 削减比例)。
+// 单价表 复制执行 的单价对应字段默认 0.2（不填按 0.2 结算，BattlePreview COPY_DEFAULT_REDUCTION），COST = 单价 × (1 − 削减比例) ÷ 0.8：
+// 0.2 → 单价不变，0 → ×1.25，0.5 → ×0.625。
+var 复制执行基准削减比例_V1 = 0.2;
+function 计算复制削减COST倍率_V1(效果 = {}) {
+  const 原值 = Math.abs(读取技能比例值_V1(String(效果?.削减比例 ?? 复制执行基准削减比例_V1)));
+  const 削减 = Math.max(0, Math.min(0.95, Number.isFinite(原值) ? 原值 : 复制执行基准削减比例_V1));
+  return (1 - 削减) / (1 - 复制执行基准削减比例_V1);
+}
 // The old shell profile spanned 25..100; keep that x4 headroom for the shell's own duration/uses in budget profiles.
 var 机制授予壳最高期限倍率_V1 = 4;
 // 食物有效期计价（用户 2026-11-12："只有 0（造完当场食用）是个坎，cost为0 。其他的1天以内就5cost，2天就6cost，3天7cost这样吧。"）
@@ -7579,7 +7613,8 @@ function 读取技能机制原型条目基础预算档_V1(条目 = {}, 上下文
   if (原型 === '复制执行') {
     const 类型 = String(条目.复制类型 || '复制技能').trim() || '复制技能';
     const 单位 = Number(SKILL_UNIT_COST_TABLE_V1.复制执行?.[类型] ?? 90);
-    return 可调(单位, Math.max(单位, 单位 * 1.6), ['保存上限', '可用次数'], ['削减比例']);
+    const 削减倍率 = 计算复制削减COST倍率_V1(条目);
+    return 可调(单位 * 削减倍率, Math.max(单位, 单位 * 1.6) * 削减倍率, ['保存上限', '可用次数'], ['削减比例']);
   }
   if (原型 === '时光回溯') return 固定(Number(SKILL_UNIT_COST_TABLE_V1.时光回溯 || 200));
   if (原型 === '位移执行') {
@@ -8429,7 +8464,15 @@ function rollSubModelByGrade(mainMechanic, grade, roll, context = {}) {
     },
   };
   const 配置权重汇总 = new Map();
-  (tables[mainMechanic]?.[tableGrade] || tables[mainMechanic]?.C || []).forEach(item => {
+  // 控制系自己的控制类子表（用户 2026-11-14，同上）：通用表 C 档没有硬控、B 档硬控 25，控制系从 C 档起就能抽到硬控
+  // （硬控品质门 C 照旧，F、D 仍只出软控）；A、S 档用通用表。
+  const 本系控制表 = 系别 === '控制系' ? {
+    C: [{ value: '迟缓', weight: 65 }, { value: '硬控', weight: 15 }, { value: '节奏打断', weight: 20 }],
+    B: [{ value: '迟缓', weight: 45 }, { value: '硬控', weight: 35 }, { value: '节奏打断', weight: 20 }],
+  } : null;
+  (mainMechanic === '控制类' && 本系控制表?.[tableGrade] ? 本系控制表[tableGrade]
+    : mainMechanic === '控制类' && 本系控制表 && !tables[mainMechanic]?.[tableGrade] ? 本系控制表.C
+    : tables[mainMechanic]?.[tableGrade] || tables[mainMechanic]?.C || []).forEach(item => {
     const 原型 = String(item?.value || '').trim();
     if (!原型) return;
     配置权重汇总.set(原型, Number(配置权重汇总.get(原型) || 0) + Math.max(0, Number(item?.weight || 0)));
@@ -11411,7 +11454,6 @@ function 补足机制模板原型数值_V1(原型 = '', 字段 = {}, source = {}
     字段.复制类型 = SKILL_PROTOTYPE_FIELD_OPTIONS_V1.复制类型.includes(复制类型) ? 复制类型 : '复制技能';
     const 复制模式 = String(字段.复制模式 || source.复制模式 || '').trim();
     字段.复制模式 = SKILL_PROTOTYPE_FIELD_OPTIONS_V1.复制模式.includes(复制模式) ? 复制模式 : '即时镜像';
-    if (!/属性|全部/.test(String(字段.复制类型 || ''))) delete 字段.削减比例;
     if (!['复制技能', '复制全部'].includes(String(字段.复制类型 || ''))) {
       delete 字段.保存上限;
       delete 字段.可用次数;
@@ -12546,8 +12588,8 @@ function 断言技能执行效果原型契约_V1(effectArray = [], path = '_效�
       Object.keys(effect).forEach(字段名 => {
         if (!允许字段.has(字段名)) throw new Error(`技能执行结构错误:${path}[${index}]复制执行包含不支持字段`);
       });
-      if (effect.削减比例 !== undefined && !/属性|全部/.test(String(复制类型)))
-        throw new Error(`技能执行结构错误:${path}[${index}]复制削减比例只允许属性或全部复制使用`);
+      if (effect.削减比例 !== undefined && !(Math.abs(读取技能比例值_V1(String(effect.削减比例))) >= 0 && Math.abs(读取技能比例值_V1(String(effect.削减比例))) <= 0.95))
+        throw new Error(`技能执行结构错误:${path}[${index}]复制削减比例取 0～0.95`);
       ['保存上限', '可用次数'].forEach(字段名 => {
         if (effect[字段名] !== undefined && !['复制技能', '复制全部'].includes(String(复制类型)))
           throw new Error(`技能执行结构错误:${path}[${index}]复制${字段名}只允许复制技能或复制全部使用`);
@@ -15924,6 +15966,20 @@ function 计算单项效果COST_V1(效果 = {}, 上下文 = {}) {
   const 附加规则COST = 原型 === '判定修正' && 效果?.打断效果 === true
     ? Number(SKILL_UNIT_COST_TABLE_V1.判定修正?.打断效果 || 0)
     : 0;
+  // 复制执行：没有数值字段，单价按削减比例折算（计算复制削减COST倍率_V1）。
+  if (原型 === '复制执行') {
+    const 削减倍率 = 计算复制削减COST倍率_V1(效果);
+    return {
+      COST: 单位COST * 削减倍率 * 目标系数 * 持续系数,
+      百分比: false,
+      数值类型: '削减比例',
+      单位COST: Number(单位COST.toFixed(4)),
+      数值倍率: Number(削减倍率.toFixed(4)),
+      目标系数: Number(目标系数.toFixed(4)),
+      目标系数原因: 目标信息.目标系数原因,
+      持续系数: Number(持续系数.toFixed(4)),
+    };
+  }
   if (原型 === '规则改写' && ['束手', '缴械'].includes(选项值)) {
     return {
       COST: 单位COST * 目标系数 * 持续系数,
@@ -20005,7 +20061,7 @@ function 转译单条执行效果_V1(效果 = {}, 选项 = {}) {
     case '复制执行': {
       const 复制类型 = String(效果.复制类型 || '复制技能').trim();
       const 复制显示 = 复制类型.replace(/^复制/, '') || '技能';
-      return `复制${目标}${复制显示}${效果.复制模式 ? `，模式${格式化技能结构转译字段_V1(效果.复制模式)}` : ''}${['复制技能', '复制全部'].includes(复制类型) && 效果.保存上限 ? `，保存上限${formatSkillNumber(效果.保存上限)}` : ''}${['复制技能', '复制全部'].includes(复制类型) && 效果.可用次数 ? `，可用${formatSkillNumber(效果.可用次数)}次` : ''}${/属性|全部/.test(复制类型) && 效果.削减比例 ? `，属性削减${格式化技能结构转译字段_V1(效果.削减比例)}` : ''}${效果.保留回合 ? `，维持${formatSkillNumber(效果.保留回合)}回合` : ''}${效果.保留时长tick ? `，保留${formatSkillNumber(效果.保留时长tick)}tick` : ''}${附加}`;
+      return `复制${目标}${复制显示}${效果.复制模式 ? `，模式${格式化技能结构转译字段_V1(效果.复制模式)}` : ''}${['复制技能', '复制全部'].includes(复制类型) && 效果.保存上限 ? `，保存上限${formatSkillNumber(效果.保存上限)}` : ''}${['复制技能', '复制全部'].includes(复制类型) && 效果.可用次数 ? `，可用${formatSkillNumber(效果.可用次数)}次` : ''}${效果.削减比例 !== undefined ? `，削减${格式化技能结构转译字段_V1(效果.削减比例)}` : ''}${效果.保留回合 ? `，维持${formatSkillNumber(效果.保留回合)}回合` : ''}${效果.保留时长tick ? `，保留${formatSkillNumber(效果.保留时长tick)}tick` : ''}${附加}`;
     }
     case '时光回溯':
       return String(效果.发动方式 || '被动').trim() === '主动'
@@ -20481,7 +20537,7 @@ function buildSingleSkillEffectSummary(effect) {
     case '复制执行': {
       const 复制类型 = String(effect.复制类型 || '复制技能').trim();
       const 复制显示 = 复制类型.replace(/^复制/, '') || '技能';
-      return '复制' + target + '的' + 复制显示 + '，模式' + String(effect.复制模式 || '即时镜像') + (['复制技能', '复制全部'].includes(复制类型) ? '，保存上限' + formatSkillNumber(effect.保存上限 || 1) + '，可用' + formatSkillNumber(effect.可用次数 || 1) + '次' : '') + (/属性|全部/.test(复制类型) && effect.削减比例 ? '，属性削减' + 格式化技能结构转译字段_V1(effect.削减比例) : '') + (effect.保留时长tick ? '，保留' + formatSkillNumber(effect.保留时长tick) + 'tick' : '');
+      return '复制' + target + '的' + 复制显示 + '，模式' + String(effect.复制模式 || '即时镜像') + (['复制技能', '复制全部'].includes(复制类型) ? '，保存上限' + formatSkillNumber(effect.保存上限 || 1) + '，可用' + formatSkillNumber(effect.可用次数 || 1) + '次' : '') + (effect.削减比例 !== undefined ? '，削减' + 格式化技能结构转译字段_V1(effect.削减比例) : '') + (effect.保留时长tick ? '，保留' + formatSkillNumber(effect.保留时长tick) + 'tick' : '');
     }
     case '时光回溯':
       return String(effect.发动方式 || '被动').trim() === '主动'

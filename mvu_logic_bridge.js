@@ -26266,6 +26266,18 @@ ${播报文本}
     const 保留离场 = (units, seed) => {
       const 原因 = toText(seed?.__战斗失能原因, '').trim();
       if (原因) units.forEach(unit => { if (unit && typeof unit === 'object') unit.__战斗失能原因 = 原因; });
+      // 续打运行态（读取战斗续打运行态_桥接）：只在本场战斗里有意义的东西，跟着单位回到下一次请求。
+      const 运行态 = seed?.__战斗运行态 && typeof seed.__战斗运行态 === 'object' ? seed.__战斗运行态 : null;
+      if (运行态) units.forEach(unit => {
+        if (!unit || typeof unit !== 'object') return;
+        const { 换装状态, ...fields } = 运行态;
+        unit.__battleRuntime = { ...(unit.__battleRuntime && typeof unit.__battleRuntime === 'object' ? unit.__battleRuntime : {}), ...cloneJsonValue(fields, {}) };
+        if (换装状态 && typeof 换装状态 === 'object') {
+          const holder = unit.状态效果 && typeof unit.状态效果 === 'object' ? unit
+            : unit.属性?.状态效果 && typeof unit.属性.状态效果 === 'object' ? unit.属性 : unit;
+          holder.状态效果 = { ...(holder.状态效果 && typeof holder.状态效果 === 'object' ? holder.状态效果 : {}), ...cloneJsonValue(换装状态, {}) };
+        }
+      });
       return units;
     };
     const teamPlayerSeeds = Array.isArray(participants.team_player) ? participants.team_player : [];
@@ -26492,6 +26504,24 @@ ${播报文本}
     );
   }
 
+  // 续打运行态：单位身上只在本场战斗里有意义、要带到下一次请求的东西（单回合模式每回合都是一次新请求）——最近放的魂技
+  // （复制执行复制它）、连续摆姿态或让过的回合数（久守必失）、战斗内换上的装备及其加成与扣除（换装只在本场生效，
+  // 这些状态不写回角色存档，见 构建战斗状态集合落盘值）。没有则 null。
+  const 战斗续打运行态字段 = Object.freeze(['lastReleasedSkill', 'passiveStreak', 'battleEquipment']);
+  function 读取战斗续打运行态_桥接(source = {}) {
+    const runtime = source?.__battleRuntime && typeof source.__battleRuntime === 'object' ? source.__battleRuntime : {};
+    const result = {};
+    战斗续打运行态字段.forEach(key => {
+      if (runtime[key] !== undefined && runtime[key] !== null) result[key] = cloneJsonValue(runtime[key], runtime[key]);
+    });
+    const states = source?.状态效果 && typeof source.状态效果 === 'object' ? source.状态效果 : source?.属性?.状态效果;
+    const 换装状态 = Object.fromEntries(Object.entries(states && typeof states === 'object' ? states : {})
+      .filter(([, state]) => state && typeof state === 'object' && (state.__换下槽位 || (state.__equipmentState === true && state.__equipmentActionId)))
+      .map(([key, state]) => [key, cloneJsonValue(state, {})]));
+    if (Object.keys(换装状态).length) result.换装状态 = 换装状态;
+    return Object.keys(result).length ? result : null;
+  }
+
   function compactBattleParticipantForStorage(snapshot, participant) {
     if (participant === null || participant === undefined) return undefined;
     if (typeof participant === 'string' || typeof participant === 'number') {
@@ -26507,6 +26537,8 @@ ${播报文本}
     if (resolvedKey) {
       const compact = { name: participantName || resolvedKey };
       if (离场原因) compact.__战斗失能原因 = 离场原因;
+      const 运行态 = 读取战斗续打运行态_桥接(source);
+      if (运行态) compact.__战斗运行态 = 运行态;
       if (source.势力 !== undefined) compact.势力 = toText(source.势力, '');
       const aliveCandidate =
         source.存活 !== undefined
@@ -26523,6 +26555,8 @@ ${播报文本}
       compact.name = participantName;
     }
     if (离场原因) compact.__战斗失能原因 = 离场原因;
+    const 续打运行态 = 读取战斗续打运行态_桥接(source);
+    if (续打运行态) compact.__战斗运行态 = 续打运行态;
     ['来源', '单位性质', '身份', '数量', '等级', '年限', '品质', '标准物种', '具体物种', '物种品质', '级别', '标准种族', '势力'].forEach(
       key => {
         if (source[key] !== undefined) compact[key] = cloneJsonValue(source[key], source[key]);
@@ -26994,7 +27028,7 @@ ${播报文本}
     }
     const runtimeState = runtime.ensureCombatRuntime(combatData);
     const maxRounds = battleMode === 'multi_round'
-      ? Math.max(1, Math.min(20, Math.floor(toNumber(options.rounds || combatData?.胜负条件?.maxRounds, 20))))
+      ? Math.max(1, Math.floor(toNumber(options.rounds || combatData?.胜负条件?.maxRounds, 20)))
       : 1;
     const autoContinueSource = options.autoContinueConfig && typeof options.autoContinueConfig === 'object'
       ? options.autoContinueConfig
@@ -27518,10 +27552,11 @@ ${播报文本}
       const 请求续推配置 = request?.autoContinueConfig && typeof request.autoContinueConfig === 'object'
         ? request.autoContinueConfig
         : {};
-      const 回合上限 = Math.max(1, Math.min(20, Math.floor(toNumber(
+      // 用户 2026-11-14："胜负条件的上限不删，固定上限如果有的话删掉"：20 只是没给时的默认，不再夹紧。
+      const 回合上限 = Math.max(1, Math.floor(toNumber(
         请求续推配置.maxRounds,
         toNumber(战斗数据?.胜负条件?.maxRounds, 20),
-      ))));
+      )));
       const 停推阈值百分比 = Math.max(0, Math.min(100, toNumber(
         请求续推配置.stopDamagePercent,
         Number.isFinite(Number(请求续推配置.stopDamageRatio))
@@ -28318,7 +28353,7 @@ ${播报文本}
         }).filter(([id]) => id));
       return normalized;
     };
-    const maxRounds = Math.max(1, Math.min(20, Math.floor(toNumber(existing?.maxRounds ?? existing?.回合上限 ?? detail?.最大回合 ?? detail?.回合上限, 20))));
+    const maxRounds = Math.max(1, Math.floor(toNumber(existing?.maxRounds ?? existing?.回合上限 ?? detail?.最大回合 ?? detail?.回合上限, 20)));
     if ([...safeVictory, ...safeDefeat].some(condition => condition?.type === 'ROUND_REACHED' && Number(condition?.round || 0) > maxRounds)) return null;
     const victoryLogicInput = existing?.victory?.logic || existing?.胜利?.逻辑 || detail?.胜利条件关系;
     const defeatLogicInput = existing?.defeat?.logic || existing?.失败?.逻辑 || detail?.失败条件关系;
@@ -30368,13 +30403,12 @@ ${播报文本}
         (payload.胜负条件?.victory?.conditions || payload.胜负条件?.胜利?.条件).length > 0 &&
         Array.isArray(payload.胜负条件?.defeat?.conditions || payload.胜负条件?.失败?.条件) &&
         (payload.胜负条件?.defeat?.conditions || payload.胜负条件?.失败?.条件).length > 0 &&
-        Number(payload.胜负条件?.maxRounds ?? payload.胜负条件?.回合上限) > 0 &&
-        Number(payload.胜负条件?.maxRounds ?? payload.胜负条件?.回合上限) <= 20
+        Number(payload.胜负条件?.maxRounds ?? payload.胜负条件?.回合上限) > 0
       );
       const 胜负条件字段完整 = 胜负条件已结构化 || (
         战斗条件输入存在(payload.胜利条件) &&
         战斗条件输入存在(payload.失败条件) &&
-        读取模块路由最大回合(payload) > 0 && 读取模块路由最大回合(payload) <= 20
+        读取模块路由最大回合(payload) > 0
       );
       if (deepGet(snapshot, 'rootData.world.战斗.进行中', false)) {
         request = {};
@@ -30439,7 +30473,7 @@ ${播报文本}
             失败条件: 克隆战斗条件输入(payload.失败条件),
             胜利条件关系: toText(payload.胜利条件关系, 'OR'),
             失败条件关系: toText(payload.失败条件关系, 'OR'),
-            最大回合: Math.max(1, Math.min(20, Math.floor(toNumber(payload.最大回合 ?? payload.回合上限, 20)))),
+            最大回合: Math.max(1, Math.floor(toNumber(payload.最大回合 ?? payload.回合上限, 20))),
             // 接战链 阶段三: "裁判：角色名" or "裁判：名称|等级=60" (解析模块路由裁判); none given, no referee.
             ...(解析模块路由裁判(payload.裁判) ? { 裁判: 解析模块路由裁判(payload.裁判) } : {}),
           };

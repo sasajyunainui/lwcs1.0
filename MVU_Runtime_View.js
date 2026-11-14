@@ -5342,7 +5342,7 @@ function 裁剪更新视图魂灵默认字段_V1(魂灵 = {}) {
 function 裁剪更新视图武魂默认字段_V1(武魂 = {}, 武魂槽位 = '') {
   if (!武魂 || typeof 武魂 !== 'object' || Array.isArray(武魂)) return false;
   const 是第二武魂 = String(武魂槽位 || '').trim() === '第2武魂';
-  const 武魂主体字段 = ['表象名称', '描述', '系别', '属性体系', '可调用元素'];
+  const 武魂主体字段 = ['表象名称', '描述', '系别', '属性倾向', '属性体系', '可调用元素'];
   const 武魂参考字段 = {};
   武魂主体字段.forEach(字段 => {
     if (Object.prototype.hasOwnProperty.call(武魂, 字段)) 武魂参考字段[字段] = cloneJsonValue(武魂[字段], 武魂[字段]);
@@ -5351,6 +5351,7 @@ function 裁剪更新视图武魂默认字段_V1(武魂 = {}, 武魂槽位 = '')
     if (字段 === '表象名称') return 是第二武魂 ? '未展露' : AI_TODO_SPIRIT_NAME;
     if (字段 === '描述') return 是第二武魂 ? '无' : AI_TODO_SPIRIT_DESC;
     if (字段 === '系别') return 武魂系别待补全文案_V1;
+    if (字段 === '属性倾向') return 武魂属性倾向待补全文案_V1;
     if (字段 === '属性体系') return AI_TODO_ATTRIBUTE_SYSTEM;
     if (字段 === '可调用元素') return [AI_TODO_CALLABLE_ELEMENTS];
     return '';
@@ -5375,6 +5376,7 @@ function 裁剪更新视图武魂默认字段_V1(武魂 = {}, 武魂槽位 = '')
   更新视图待补字段_V1(武魂, '表象名称', 是第二武魂 ? '未展露' : AI_TODO_SPIRIT_NAME);
   更新视图待补字段_V1(武魂, '描述', 是第二武魂 ? '无' : AI_TODO_SPIRIT_DESC);
   更新视图待补字段_V1(武魂, '系别', 武魂系别待补全文案_V1);
+  更新视图待补字段_V1(武魂, '属性倾向', 武魂属性倾向待补全文案_V1);
   更新视图待补字段_V1(武魂, '属性体系', AI_TODO_ATTRIBUTE_SYSTEM);
   if (!更新视图值等于默认值_V1(武魂.可调用元素, [AI_TODO_CALLABLE_ELEMENTS]) && !更新视图值包含待补文本_V1(武魂.可调用元素)) delete 武魂.可调用元素;
   取武魂魂灵条目_V1(武魂).forEach(([魂灵键, 魂灵]) => {
@@ -8294,6 +8296,7 @@ function injectRuntimeCharacterTodoDefaults_V1(charData = {}, charName = '', sou
     else 注入运行时限流文本默认值_V1(spiritData, '表象名称', AI_TODO_SPIRIT_NAME, '武魂名', 取提示);
     注入运行时限流文本默认值_V1(spiritData, '描述', isSecondarySpirit ? '无' : AI_TODO_SPIRIT_DESC, '武魂描述', isSecondarySpirit ? null : 取提示);
     注入运行时限流文本默认值_V1(spiritData, '系别', 武魂系别待补全文案_V1, '武魂系别', 取提示);
+    注入运行时限流文本默认值_V1(spiritData, '属性倾向', 武魂属性倾向待补全文案_V1, '武魂属性倾向', 取提示);
     注入运行时限流文本默认值_V1(spiritData, '属性体系', AI_TODO_ATTRIBUTE_SYSTEM, '武魂属性体系', 取提示);
     注入运行时限流数组默认值_V1(spiritData, '可调用元素', [AI_TODO_CALLABLE_ELEMENTS], '武魂可调用元素', 取提示);
     取武魂魂灵条目_V1(spiritData).forEach(([soulSpiritKey, soulSpirit]) => {
