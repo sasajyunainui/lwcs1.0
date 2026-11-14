@@ -10254,7 +10254,7 @@
     }
     // 被控时的解控出手（structuredBreakoutAllowed）goes through with the skill that clears the control.
     if (actionRole === 'ACTIVE' && !structuredActorCanAct(actor, actionRole) &&
-      !(declaration?.__breakout === true && actionKind === 'RELEASE_SKILL' && previewRuntime.isBreakoutSkill(declaration.skill))) {
+      !(declaration?.__breakout === true && (actionKind === 'PASS_OPPORTUNITY' || actionKind === 'RELEASE_SKILL' && previewRuntime.isBreakoutSkill(declaration.skill)))) {
       throw new Error('battle_structured_actor_controlled');
     }
     // 认输与撤离: leaving keeps the action name 撤退 here — the decision trace names its choice so (normalizeActionDisplayName)

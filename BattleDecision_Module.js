@@ -65716,6 +65716,18 @@
     r20Struck = struck / 100;
     return best / 100;
   }
+  // The rounds a unit's controls already on it still keep it from acting (11-14: a hard control holds to the end of the round
+  // it took an action in — BattleRuntime __回合末解除 — so one that has taken that action keeps nothing more), each by its chance.
+  // Until 11-14 a unit under any control was read as unable to act for the whole race (acts false), so a one-round stun on an
+  // ally was worth the ally's whole battle to the cleanse that lifted it (a 治疗系 valued one at 109).
+  function r20Held(unit) {
+    let held = 0;
+    for (const state of stateEntries(unit)) {
+      if (!root.__LWCS_BATTLE_RUNTIME__.structuredControlConsumesActiveOpportunity(state) || state?.__回合末解除 === true) continue;
+      held = Math.max(held, clamp(Number(state.__previewApplicationProbability ?? 1), 0, 1) * Math.max(1, Number(state.duration ?? state.持续回合) || 1));
+    }
+    return held;
+  }
   // The rounds of `other`'s actions the best control of `unit` takes: chance × duration of a state that stops it acting.
   function r20Stop(unit, other) {
     if (hasStateFlag(unit, 'silence') || preview.isSummonSkillDisabled(unit)) return 0;
@@ -66125,7 +66137,7 @@
     // not mended.
     const stam = facts.stamina ? facts.stamina.map(value => typeof value === 'number' ? value : Infinity) : null;
     const hpFalls = new Array(count);
-    const denied = plan?.denied || null, until = plan?.until || null, base = plan?.base || facts;
+    const denied = plan?.denied || facts.held || null, until = plan?.until || null, base = plan?.base || facts;
     const leaves = plan?.leaves || null, held = plan?.baseCount ?? count, changed = plan?.changed || null;
     // busy[u]: rounds u spends charging; strikes: what a charge lands when it is released ({ from, to, at, delta }, by
     // `at`); host[u]: the row of a summon's host; revive[u]: what a revival gives back; drain[u]: 伤害吸收 of what u lands.
@@ -66279,7 +66291,8 @@
   // keeps off and answers the other.
   function r20Cells(units, sides, ids, world, context, skipped) {
     const count = units.length;
-    const acts = units.map(unit => !hasActionCancellation(unit)), bound = units.map(unit => r20Bound(world, unit));
+    // A controlled unit still acts in the table; the race holds it for the rounds its controls have left (r20Held).
+    const acts = units.map(() => true), bound = units.map(unit => r20Bound(world, unit));
     const ownShare = side => sides.filter(other => other === side).length / Math.max(1, count);
     const aim = units.map((unit, row) => r20Aim(unit, ownShare(sides[row]))), turn = units.map(unit => r20Turn(unit));
     const out = [], support = [], stop = [], keep = [], keepBack = [], answer = [], answerOpen = [], back = [];
@@ -66345,6 +66358,7 @@
     const round = Number(world?.回合 || 0);
     const waiting = Array.isArray(request.actionOpportunity?.pendingNaturalActorIds) ? new Set(request.actionOpportunity.pendingNaturalActorIds.map(String)) : null;
     const table = { request, world, contexts, units, ids, index: new Map(ids.map((id, row) => [id, row])), sides, acts, bound, out, support, stop, keep, keepBack, answer, answerOpen, back, turn, late, against,
+      held: units.map(unit => r20Held(unit)),
       remaining: units.map((unit, row) => r20Left(unit, sides[row] === request.actorSide, against[sides[row]])),
       stamina: units.map((unit, row) => sides[row] === request.actorSide ? r20Stamina(unit) : null),
       alive: new Array(count).fill(1), guard: units.map(unit => r20Guard(unit)), revive: units.map(unit => r20Revive(unit)),
@@ -66425,7 +66439,7 @@
     const actorRow = table.index.get(request.actorId);
     const touched = new Set((result.changedUnitIds || []).map(String));
     for (const entry of result.contributions || []) if (entry.targetId) touched.add(String(entry.targetId));
-    const remaining = table.remaining.slice(), alive = table.alive.slice(), guard = table.guard.slice(), denied = new Array(count).fill(0);
+    const remaining = table.remaining.slice(), alive = table.alive.slice(), guard = table.guard.slice(), denied = (table.held || new Array(count).fill(0)).slice();
     const revive = table.revive.slice(), drain = table.drain.slice(), strikes = table.strikes ? table.strikes.map(strike => ({ ...strike })) : [];
     const stamina = table.stamina.slice();
     let busy = table.busy ? table.busy.slice() : null;
@@ -66452,6 +66466,8 @@
       if (guard[row] !== table.guard[row] || revive[row] !== table.revive[row] || Math.abs(tick[row] - table.tick[row]) > 1e-9 ||
         Math.abs(preview.readHp(next) + preview.readShield(next) - preview.readHp(prior) - preview.readShield(prior)) > 1e-9) seen += 1;
       const priorStates = prior.状态效果 || {}, nextStates = next.状态效果 || {};
+      // Its controls as the candidate leaves them: lifted (a cleanse), laid (a stun) or as they were.
+      denied[row] = r20Held(next);
       let changed = Object.keys(priorStates).some(key => !Object.hasOwn(nextStates, key)), lasting = 0;
       for (const [key, state] of Object.entries(nextStates)) {
         // A state the settlement only copied (the projection clones units) is no change: compared by what it holds, or
@@ -66469,7 +66485,6 @@
           hushed[row] = Math.max(hushed[row] || 0, clamp(Number(state.__previewApplicationProbability ?? 1), 0, 1));
         }
         if (!Object.hasOwn(priorStates, key) && (effect.cannot_act === true || effect.skip_turn === true)) {
-          denied[row] += clamp(Number(state.__previewApplicationProbability ?? 1), 0, 1) * Math.max(1, Number(state.duration ?? state.持续回合) || 1);
           seen += 1;
         } else changed = true;
       }
@@ -66504,7 +66519,8 @@
     }
     // A charge under way is lost when its caster is stopped or silenced (the race takes a fallen caster's strike out itself).
     if (table.strikes) {
-      const lost = row => Math.min(1, denied[row] + (hushed[row] || 0));
+      // Only what the candidate lays: the controls already on a unit (table.held) are in the table's own race too.
+      const lost = row => Math.min(1, Math.max(0, denied[row] - (table.held?.[row] || 0)) + (hushed[row] || 0));
       for (const strike of strikes) strike.delta *= 1 - lost(strike.from);
       for (let row = 0; row < count; row += 1) if (busy && busy[row] > 0 && lost(row) > 0) { busy[row] *= 1 - lost(row); seen += 1; }
     }
@@ -66558,7 +66574,7 @@
       keepBack = keepBack.map(row => row.slice()); answerOpen = answerOpen.map(row => row.slice());
       acts = acts.slice(); turn = turn.slice();
       const cells = { out, back, keep, keepBack, answer, answerOpen };
-      for (const [row, next] of rebuilt) { units[row] = next; acts[row] = !hasActionCancellation(next); turn[row] = r20Turn(next); }
+      for (const [row, next] of rebuilt) { units[row] = next; acts[row] = true; turn[row] = r20Turn(next); }
       for (const [row, next, ownCellsOnly] of rebuilt) {
         const bound = r20Bound(after, next);
         for (let other = 0; other < count; other += 1) {
@@ -66595,7 +66611,7 @@
       out = grow(out, 0); support = grow(support, 0); stop = grow(stop, 0); keep = grow(keep, 1); answer = grow(answer, 0); back = grow(back, 0);
       keepBack = grow(keepBack, 1); answerOpen = grow(answerOpen, 0);
       const cells = { out, back, keep, keepBack, answer, answerOpen };
-      acts = acts.concat(added.map(unit => !hasActionCancellation(unit))); turn = turn.concat(added.map(unit => r20Turn(unit)));
+      acts = acts.concat(added.map(() => true)); turn = turn.concat(added.map(unit => r20Turn(unit)));
       const allIds = table.ids.concat(added.map(unit => preview.unitId(unit)));
       host = host.concat(added.map((unit, extra) => r20HostRow(unit, all, allIds, sidesNow, count + extra)));
       leaves = new Array(count).fill(Infinity);
@@ -66666,7 +66682,8 @@
           for (const outcomes of hitOutcomes.get(row) || []) alive[row] *= 1 - downedBy(row, outcomes, meet.share);
           seen += 1;
         }
-        if (meet.lands < 1 - 1e-12) denied[row] *= meet.lands;
+        // The controls the move lays come with a hit that lands; those already on it (table.held) stay as they are.
+        if (meet.lands < 1 - 1e-12) { const held = table.held?.[row] || 0; denied[row] = held + Math.max(0, denied[row] - held) * meet.lands; }
         if (meet.back > 0) counter += alivePreHit[row] * meet.back;
         if (!acts[row] || denied[row] > 0 || !(alive[row] > 0)) continue;
         // 破防: a hit that breaks the target's guard draws no strike back, and the actor's side, those still to act this

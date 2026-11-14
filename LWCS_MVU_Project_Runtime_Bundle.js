@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:db94dfc46d11315f073aeea56cb6afdf97ec758cf5dbd46ac2fe6807da20ec1a|MVU_Schema_Runtime.js:eed837517415e34e8b2de2b667ca02ab020fc785f3b4d492c439e6c2babfe0ef|MVU_Competition_Runtime.js:2a5d78b856d3123e857393fca07fb365d91ce9ea4877cc37dfafd86b384e8904|MVU_Runtime_View.js:f1cdb932eb407effb83cc5252749b7c093882c1328ce746565cdb1ec607791da */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:836de81efcb2d6124b0011d2a323c71b14b8bacc48dd31e7bd7ecb0407d08e20|MVU_Schema_Runtime.js:874a5c7f5cadc5cf4cc04560a20cb0af6c6421c40ad3091770715e54b99cac72|MVU_Competition_Runtime.js:2a5d78b856d3123e857393fca07fb365d91ce9ea4877cc37dfafd86b384e8904|MVU_Runtime_View.js:33244f9f67a95f87a863a19b87f81efff9f35a707fd6b591c6502c84cb1f486c */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -4701,6 +4701,27 @@ var TypeMultipliers = {
 
 globalThis.__LWCS_SKILL_TYPE_REGISTRY__ = Object.freeze(Object.keys(TypeMultipliers));
 
+// 武魂属性倾向（用户 2026-11-14：「武魂的属性系数是肯定要做的，这样才有差别化」「直接作为MVU参数，让AI生成就行（和其他待生成属性一样）
+// 而且生成的时候不是让AI挨个填属性，而是你自己内置一套组合……让AI选一套就行」）：每个武魂一套倾向，乘在系别倍率上算面板。
+// 总量不变：一项 +20%、另两项各 −10%；偏控制 = 敏捷、精神力各 +10%（控制的命中与抢先按敏捷，精神类攻防按精神力）。
+// 没填、待补全或不认识的按均衡。体力、魂力上限不动。
+var 武魂属性倾向系数表_V1 = Object.freeze({
+  均衡: Object.freeze({}),
+  偏攻击: Object.freeze({ str: 1.2, def: 0.9, agi: 0.9 }),
+  偏防御: Object.freeze({ def: 1.2, str: 0.9, agi: 0.9 }),
+  偏速度: Object.freeze({ agi: 1.2, str: 0.9, def: 0.9 }),
+  偏精神: Object.freeze({ men_max: 1.2, str: 0.9, def: 0.9 }),
+  偏控制: Object.freeze({ agi: 1.1, men_max: 1.1, str: 0.9, def: 0.9 }),
+});
+var 武魂属性倾向待补全文案_V1 = '待补全(按武魂的形态与战斗特点选一套：均衡/偏攻击/偏防御/偏速度/偏精神/偏控制)';
+function 读取武魂属性倾向系数_V1(武魂 = {}) {
+  return 武魂属性倾向系数表_V1[String(武魂?.属性倾向 || '').trim()] || 武魂属性倾向系数表_V1.均衡;
+}
+function 应用武魂属性倾向_V1(倍率 = {}, 武魂 = {}) {
+  const 系数 = 读取武魂属性倾向系数_V1(武魂);
+  return Object.fromEntries(Object.entries(倍率 || {}).map(([键, 值]) => [键, Number(值) * Number(系数[键] ?? 1)]));
+}
+
 var 魂力获取速度系数表 = Object.freeze({
   强攻系: 1.0,
   控制系: 0.95,
@@ -7494,13 +7515,16 @@ var SKILL_MAIN_MECHANIC_DISTRIBUTION_V1 = {
     { min: 99, max: 99, main: '感知/认知类' },
     { min: 100, max: 100, main: '特殊规则类' },
   ],
+  // 用户 2026-11-14「那确实得提高一下控制比例…控制系技能可以参考一下多情斗罗vs黑暗凤凰」：原作控制系几乎每招都落在对手身上，
+  // 控制 32 → 40；感知不动（幻境、认知扭曲、催眠这类硬控在感知里，减了感知硬控反而变少，实测抵消）；位移 10 → 8（位移里约一半是
+  // 对敌的强制位移：击退＋闪避 −10%，本身也是控制，用户 2026-11-14「位移类不也是降低闪避等控制吗」）；削弱 26 → 24，伤害 7 → 5，防御 6 → 4。
   控制系: [
-    { min: 1, max: 32, main: '控制类' },
-    { min: 33, max: 58, main: '削弱类' },
-    { min: 59, max: 74, main: '感知/认知类' },
-    { min: 75, max: 84, main: '位移类' },
-    { min: 85, max: 91, main: '伤害类' },
-    { min: 92, max: 97, main: '防御类' },
+    { min: 1, max: 40, main: '控制类' },
+    { min: 41, max: 64, main: '削弱类' },
+    { min: 65, max: 80, main: '感知/认知类' },
+    { min: 81, max: 88, main: '位移类' },
+    { min: 89, max: 93, main: '伤害类' },
+    { min: 94, max: 97, main: '防御类' },
     { min: 98, max: 98, main: '增益类' },
     { min: 99, max: 99, main: '回复类' },
     { min: 100, max: 100, main: '特殊规则类' },
@@ -7673,12 +7697,12 @@ function pickRandom(list = []) {
 
 var SKILL_SECONDARY_BY_MAIN_V1 = {
   伤害类: ['穿透', '伤害吸收', '斩杀补伤', '流血DOT', '打断', '反击', '追击', '引爆持续伤害', '斩盾', '吞噬', '延长持续伤害', '压缩持续伤害'],
-  控制类: ['打断', '沉默', '减速', '致盲', '迟缓', '禁疗', '嘲讽', '破隐', '封技'],
+  控制类: ['打断', '减速', '致盲', '迟缓', '禁疗', '嘲讽', '破隐', '封技', '缴械', '封甲'],
   削弱类: ['禁疗', '减速', '迟缓', '标记弱点', '驱散增益', '破隐', '治疗反转', '封技', '元素封禁', '斩盾', '吞噬', '机制抹消', '速度压制', '资源燃烧', '资源锁定'],
   增益类: ['小护盾', '净化', '解控', '共享视野', '隐身', '护卫', '威力增幅', '技能效果增幅', '无敌金身', '能力共享', '修炼增益'],
   防御类: ['小护盾', '反击', '净化', '解控', '护卫', '嘲讽', '无敌金身', '伤害反射', '伤害转移', '伤害分摊', '消耗分摊', '生命链接'],
   回复类: ['净化', '解控', '小护盾', '魂力恢复', '精神恢复', '驱散增益', '护卫', '能力共享', '修炼增益'],
-  '感知/认知类': ['标记弱点', '共享视野', '目标锁定', '打断', '沉默', '驱散增益', '窃取增益', '破隐'],
+  '感知/认知类': ['标记弱点', '共享视野', '目标锁定', '打断', '封技', '驱散增益', '窃取增益', '破隐'],
   位移类: ['打断', '反击', '标记弱点', '隐身', '破隐'],
   特殊规则类: ['共享视野', '标记弱点', '净化', '驱散增益', '窃取增益', '隐身', '护卫', '状态转移', '引爆持续伤害', '斩盾', '吞噬', '能力共享', '机制抹消', '炸环', '时光回溯', '气运干涉', '规则改写', '治疗反转', '封技', '无敌金身', '伤害反射', '伤害转移', '伤害分摊', '消耗分摊', '生命链接', '资源燃烧', '资源锁定'],
 };
@@ -7696,8 +7720,8 @@ var SKILL_SECONDARY_TYPE_BIAS_V1 = {
   强攻系: ['斩盾', '引爆持续伤害', '无敌金身', '伤害反射', '反击', '追击'],
   防御系: ['伤害反射', '护卫'],
   敏攻系: ['隐身', '追击', '破隐', '无敌金身', '斩盾'],
-  控制系: ['封技', '治疗反转', '目标锁定', '驱散增益', '嘲讽', '伤害分摊', '吞噬', '机制抹消'],
-  精神系: ['状态转移', '封技', '治疗反转', '窃取增益', '目标锁定', '隐身', '吞噬', '能力共享', '机制抹消'],
+  控制系: ['封技', '缴械', '封甲', '治疗反转', '目标锁定', '驱散增益', '嘲讽', '伤害分摊', '吞噬', '机制抹消'],
+  精神系: ['状态转移', '封技', '缴械', '封甲', '治疗反转', '窃取增益', '目标锁定', '隐身', '吞噬', '能力共享', '机制抹消'],
   元素系: ['引爆持续伤害', '斩盾', '封技', '治疗反转', '驱散增益', '破隐', '吞噬', '机制抹消'],
   辅助系: ['护卫', '共享视野', '驱散增益', '无敌金身', '伤害分摊', '消耗分摊', '能力共享'],
   治疗系: ['护卫', '驱散增益', '共享视野', '无敌金身', '伤害分摊', '消耗分摊', '能力共享'],
@@ -7929,6 +7953,28 @@ var SKILL_MECHANISM_META_V1 = (() => {
     designerSubHint: '封技',
     designerSecondaryHint: '封技',
     设计台参数定义: [num('duration', '持续回合', '2', '1'), select('muteScope', '限制范围', 'MUTE_SCOPE')],
+  });
+  // 封禁装备 (用户 2026-11-13；战斗侧 BattlePreview equipmentSealEffect): 缴械 seals the target's weapon, 封甲 its 斗铠 and 机甲,
+  // by the two units' 魂力上限 (certain at an equal or greater, none at a third less and below).
+  register('缴械', {
+    说明: '封住目标的武器，持续期内武器加成、武器被动与武器技能失效（魂力判定，超神器不受影响）。',
+    可副机制: true,
+    目标语义: '敌对',
+    摘要提示: { skillType: '控制', mainType: '控制类', controlStrength: '软控' },
+    designerMainHint: '控制类',
+    designerSubHint: '缴械',
+    designerSecondaryHint: '缴械',
+    设计台参数定义: [num('duration', '持续回合', '2', '1')],
+  });
+  register('封甲', {
+    说明: '封住目标的斗铠与机甲，持续期内其属性加成、被动与技能失效（魂力判定）。',
+    可副机制: true,
+    目标语义: '敌对',
+    摘要提示: { skillType: '控制', mainType: '控制类', controlStrength: '软控' },
+    designerMainHint: '控制类',
+    designerSubHint: '封甲',
+    designerSecondaryHint: '封甲',
+    设计台参数定义: [num('duration', '持续回合', '2', '1')],
   });
   register('单属性削弱', {
     说明: '按倍率压低目标的某一项属性。',
@@ -8583,7 +8629,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     可副机制: true,
     目标语义: '上下文',
     摘要提示: { skillType: '控制', mainType: '特殊规则类', effectMode: '规则' },
-    说明: '临时改写指定战斗规则，支持缴械或死亡转存活。',
+    说明: '临时改写指定战斗规则，支持束手（无法普通攻击）或死亡转存活。',
     designerMainHint: '特殊规则类',
     designerSubHint: '规则改写',
     designerSecondaryHint: '规则改写',
@@ -9066,6 +9112,8 @@ var SKILL_MECHANISM_NAME_TO_PROTOTYPES_V1 = Object.freeze({
   节奏打断: [原型编译条目('判定修正', { 判定: '反应', 数值: '-100%', 打断效果: true })],
   打断: [原型编译条目('判定修正', { 判定: '反应', 数值: '-100%', 打断效果: true })],
   封技: [原型编译条目('状态施加', { 状态: '封技' })],
+  缴械: [原型编译条目('状态施加', { 状态: '缴械' })],
+  封甲: [原型编译条目('状态施加', { 状态: '封甲' })],
   单属性削弱: [原型编译条目('属性修正')],
   多属性削弱: [原型编译条目('属性修正')],
   禁疗: [原型编译条目('状态施加', { 状态: '禁疗', 数值: '+40%' })],
@@ -9126,7 +9174,7 @@ var SKILL_MECHANISM_NAME_TO_PROTOTYPES_V1 = Object.freeze({
   状态交换: [原型编译条目('状态交换')],
   状态转移: [原型编译条目('状态转移')],
   '强制绑定/锁定': [原型编译条目('状态施加', { 状态: '迟缓', 数值: '-15%', 副数值: '-10%' })],
-  规则改写: [原型编译条目('规则改写', { 规则: '缴械' })],
+  规则改写: [原型编译条目('规则改写', { 规则: '束手' })],
   威力增幅: [原型编译条目('结算修正', { 结算: '造成伤害', 数值: '+20%' })],
   技能效果增幅: [原型编译条目('结算修正', { 结算: '技能效果', 数值: '+20%' })],
   元素封禁: [原型编译条目('状态施加', { 状态: '封技' })],
@@ -9167,8 +9215,8 @@ var SKILL_MECHANISM_NAME_TO_PROTOTYPES_V1 = Object.freeze({
   群体撤离: [原型编译条目('群体撤离')],
 });
 
-var 技能状态选项_V1 = Object.freeze(['中毒', '流血', '灼烧', '冻伤', '持续创伤', '持续恢复', '迟缓', '资源燃烧', '眩晕', '沉默', '致盲', '禁疗', '治疗反转', '隐匿', '探查屏蔽', '共享视野', '护盾', '无视异常', '霸体', '标记', '封技', '护卫', '嘲讽', '防御剥夺', '精神抗性剥夺', '虚弱', '失控', '反噬', '精神紊乱', '魂力枯竭', '僵直', '麻痹', '混乱', '坚挺金苍蝇·武魂真身维持']);
-var 技能负面状态选项_V1 = Object.freeze(['中毒', '流血', '灼烧', '冻伤', '持续创伤', '迟缓', '资源燃烧', '眩晕', '沉默', '致盲', '禁疗', '治疗反转', '标记', '封技', '嘲讽', '防御剥夺', '精神抗性剥夺', '虚弱', '失控', '反噬', '精神紊乱', '魂力枯竭', '僵直', '麻痹', '混乱']);
+var 技能状态选项_V1 = Object.freeze(['中毒', '流血', '灼烧', '冻伤', '持续创伤', '持续恢复', '迟缓', '资源燃烧', '眩晕', '沉默', '缴械', '封甲', '致盲', '禁疗', '治疗反转', '隐匿', '探查屏蔽', '共享视野', '护盾', '无视异常', '霸体', '标记', '封技', '护卫', '嘲讽', '防御剥夺', '精神抗性剥夺', '虚弱', '失控', '反噬', '精神紊乱', '魂力枯竭', '僵直', '麻痹', '混乱', '坚挺金苍蝇·武魂真身维持']);
+var 技能负面状态选项_V1 = Object.freeze(['中毒', '流血', '灼烧', '冻伤', '持续创伤', '迟缓', '资源燃烧', '眩晕', '沉默', '缴械', '封甲', '致盲', '禁疗', '治疗反转', '标记', '封技', '嘲讽', '防御剥夺', '精神抗性剥夺', '虚弱', '失控', '反噬', '精神紊乱', '魂力枯竭', '僵直', '麻痹', '混乱']);
 var 战斗外可继承技能状态选项_V1 = Object.freeze(['中毒', '灼烧', '冻伤', '虚弱', '反噬', '精神紊乱', '魂力枯竭']);
 var 日常系统状态选项_V1 = Object.freeze(['饥饿']);
 var 战斗内限定技能状态选项_V1 = Object.freeze(技能状态选项_V1.filter(状态 => !战斗外可继承技能状态选项_V1.includes(状态)));
@@ -9265,7 +9313,8 @@ var SKILL_PROTOTYPE_FIELD_OPTIONS_V1 = Object.freeze({
   匹配原型: Object.freeze(['无', '资源变化', '护盾变化']),
   数值方向: Object.freeze(['负向', '正向', '任意']),
   类型: Object.freeze(['负面', '增益', '控制', '隐匿', '斩盾', '窃取']),
-  规则: Object.freeze(['缴械', '死亡转存活']),
+  // 束手 (用户 2026-11-13：原名缴械；缴械 现为封武器的状态): 缴械 stays valid for skills generated before.
+  规则: Object.freeze(['束手', '死亡转存活', '缴械']),
   // 规则防御的次数怎么扣（R3）：按段＝每挡一段扣一次（缺省）；整招＝同一次出手的所有段只扣一次。
   计次: Object.freeze(['按段', '整招']),
   复活代价类型: 战斗外复活代价类型选项_V1,
@@ -9441,7 +9490,7 @@ var SKILL_PROTOTYPE_FIELD_DEFAULT_V1 = Object.freeze({
   匹配原型: '资源变化',
   数值方向: '任意',
   类型: '负面',
-  规则: '缴械',
+  规则: '束手',
   复活代价类型: '状态代价',
   复活代价对象: '虚弱',
   复活代价值: '+1',
@@ -9609,7 +9658,7 @@ var 读取原型字段选项_V1 = (原型 = '', 字段名 = '') => {
   }
   if (原型名 === '规则防御' && key === '规则') return Object.freeze(['免伤', '免死']);
   if (原型名 === '护盾变化' && key === '护盾模式') return Object.freeze(['正向护盾', '斩盾', '窃盾']);
-  if (原型名 === '规则改写' && key === '规则') return Object.freeze(['缴械', '死亡转存活']);
+  if (原型名 === '规则改写' && key === '规则') return Object.freeze(['束手', '死亡转存活']);
   if (原型名 === '战斗外复活' && key === '复活代价对象') return SKILL_PROTOTYPE_FIELD_OPTIONS_V1.复活代价对象;
   if (原型名 === '状态交换' && key === '状态') return Object.freeze(['任意负面', ...技能负面状态选项_V1]);
   // 触发来源（R5）：被动在「被控制时」移除触发这次被动的那一个控制状态。
@@ -9646,7 +9695,7 @@ var 读取原型字段默认值_V1 = (原型 = '', 字段名 = '') => {
   const key = String(字段名 || '').trim();
   if (原型名 === '规则防御' && key === '规则') return '免伤';
   if (原型名 === '护盾变化' && key === '护盾模式') return '正向护盾';
-  if (原型名 === '规则改写' && key === '规则') return '缴械';
+  if (原型名 === '规则改写' && key === '规则') return '束手';
   if (原型名 === '规则改写' && key === '数值') return '+25%';
   if (原型名 === '战斗外复活' && key === '数值') return '+25%';
   if (原型名 === '战斗外复活' && key === '死亡时限tick') return 144;
@@ -9867,6 +9916,10 @@ var SKILL_UNIT_COST_TABLE_V1 = Object.freeze({
     封技: Object.freeze({ 固定COST: 50 }),
     护卫: Object.freeze({ 数值: 0.9, 固定COST: 8 }),
     嘲讽: Object.freeze({ 数值: 1.0, 固定COST: 10 }),
+    // 封禁装备: 封甲 ≈ the 力量/防御/敏捷/精神力上限 an armour and mecha give (−15%～−40% of the panel at 0.76～1.14 a
+    // point) and their passives, discounted for no armour and a weaker 魂力 — 100 (用户 估 100 左右); 缴械 a weapon, about half.
+    缴械: Object.freeze({ 固定COST: 50 }),
+    封甲: Object.freeze({ 固定COST: 100 }),
     防御剥夺: Object.freeze({ 数值: 1.1, 固定COST: 12 }),
     精神抗性剥夺: Object.freeze({ 数值: 1.2, 固定COST: 12 }),
     虚弱: Object.freeze({ 数值: 0.8, 固定COST: 8 }),
@@ -9885,7 +9938,7 @@ var SKILL_UNIT_COST_TABLE_V1 = Object.freeze({
   状态转移: 10,
   状态交换: 12,
   资源锁定: Object.freeze({ 回复锁定: 1.2, 转化锁定: 1.0, 资源池锁定: 1.0 }),
-  规则改写: Object.freeze({ 缴械: 18, 死亡转存活: 50 }),
+  规则改写: Object.freeze({ 束手: 18, 缴械: 18, 死亡转存活: 50 }),
   修炼增益: Object.freeze({ 属性修炼速度: 0.8, 训练方式收益: 0.7 }),
   战斗外复活: 250,
   机制抹消: 25,
@@ -9902,6 +9955,16 @@ var SKILL_UNIT_COST_TABLE_V1 = Object.freeze({
 // 机制授予壳按内含效果比例计价（用户 2026-11-12："按比例吧 *1.2倍？"）：壳本身 = 授予效果 COST 之和 × 机制授予壳比例_V1，
 // 再乘壳原有的目标与期限系数（原先是固定 25 × 这些系数，按期限涨到 36.25 / 45 / 51.25）。上表的 机制授予: 25 只留给旧版计价。
 var 机制授予壳比例_V1 = 0.2;
+// 复制执行的削减比例计价（用户 2026-11-14：「复制属性给的有点高，改成复制系别，等级按自身等级计算，削减比例要进COST，针对技能效果削减和属性削减」）：
+// 削减比例对三种复制都生效——复制技能的数值（威力倍率、数值等）、复制属性（复制对方系别）的增益都只拿 (1 − 削减比例)。
+// 单价表 复制执行 的单价对应字段默认 0.2（不填按 0.2 结算，BattlePreview COPY_DEFAULT_REDUCTION），COST = 单价 × (1 − 削减比例) ÷ 0.8：
+// 0.2 → 单价不变，0 → ×1.25，0.5 → ×0.625。
+var 复制执行基准削减比例_V1 = 0.2;
+function 计算复制削减COST倍率_V1(效果 = {}) {
+  const 原值 = Math.abs(读取技能比例值_V1(String(效果?.削减比例 ?? 复制执行基准削减比例_V1)));
+  const 削减 = Math.max(0, Math.min(0.95, Number.isFinite(原值) ? 原值 : 复制执行基准削减比例_V1));
+  return (1 - 削减) / (1 - 复制执行基准削减比例_V1);
+}
 // The old shell profile spanned 25..100; keep that x4 headroom for the shell's own duration/uses in budget profiles.
 var 机制授予壳最高期限倍率_V1 = 4;
 // 食物有效期计价（用户 2026-11-12："只有 0（造完当场食用）是个坎，cost为0 。其他的1天以内就5cost，2天就6cost，3天7cost这样吧。"）
@@ -10146,7 +10209,7 @@ var SKILL_MECHANISM_TEMPLATE_COMPILER_TABLE_V1 = Object.freeze(
 var 状态施加状态分类矩阵_V1 = Object.freeze({
   持续伤害类: Object.freeze(['中毒', '流血', '灼烧', '冻伤', '持续创伤']),
   恢复资源类: Object.freeze(['持续恢复']),
-  硬控封禁类: Object.freeze(['眩晕', '沉默', '致盲', '封技', '麻痹', '混乱', '僵直', '失控', '精神紊乱']),
+  硬控封禁类: Object.freeze(['眩晕', '沉默', '致盲', '封技', '缴械', '封甲', '麻痹', '混乱', '僵直', '失控', '精神紊乱']),
   防御布尔类: Object.freeze(['霸体', '无视异常']),
   防御数值类: Object.freeze(['护盾', '护卫']),
   增益类: Object.freeze(['隐匿', '探查屏蔽', '共享视野']),
@@ -12063,7 +12126,7 @@ function 读取技能机制原型条目基础预算档_V1(条目 = {}, 上下文
     return 可调(单位 * 5, 单位 * 70, ['数值'], ['持续回合']);
   }
   if (原型 === '规则改写') {
-    const 规则 = String(条目.规则 || '缴械').trim() || '缴械';
+    const 规则 = String(条目.规则 || '束手').trim() || '束手';
     const 单位 = Number(SKILL_UNIT_COST_TABLE_V1.规则改写?.[规则] ?? 18);
     return 可调(单位, Math.max(单位, 单位 * 2.5), ['数值'], ['持续回合']);
   }
@@ -12076,7 +12139,8 @@ function 读取技能机制原型条目基础预算档_V1(条目 = {}, 上下文
   if (原型 === '复制执行') {
     const 类型 = String(条目.复制类型 || '复制技能').trim() || '复制技能';
     const 单位 = Number(SKILL_UNIT_COST_TABLE_V1.复制执行?.[类型] ?? 90);
-    return 可调(单位, Math.max(单位, 单位 * 1.6), ['保存上限', '可用次数'], ['削减比例']);
+    const 削减倍率 = 计算复制削减COST倍率_V1(条目);
+    return 可调(单位 * 削减倍率, Math.max(单位, 单位 * 1.6) * 削减倍率, ['保存上限', '可用次数'], ['削减比例']);
   }
   if (原型 === '时光回溯') return 固定(Number(SKILL_UNIT_COST_TABLE_V1.时光回溯 || 200));
   if (原型 === '位移执行') {
@@ -12926,7 +12990,15 @@ function rollSubModelByGrade(mainMechanic, grade, roll, context = {}) {
     },
   };
   const 配置权重汇总 = new Map();
-  (tables[mainMechanic]?.[tableGrade] || tables[mainMechanic]?.C || []).forEach(item => {
+  // 控制系自己的控制类子表（用户 2026-11-14，同上）：通用表 C 档没有硬控、B 档硬控 25，控制系从 C 档起就能抽到硬控
+  // （硬控品质门 C 照旧，F、D 仍只出软控）；A、S 档用通用表。
+  const 本系控制表 = 系别 === '控制系' ? {
+    C: [{ value: '迟缓', weight: 65 }, { value: '硬控', weight: 15 }, { value: '节奏打断', weight: 20 }],
+    B: [{ value: '迟缓', weight: 45 }, { value: '硬控', weight: 35 }, { value: '节奏打断', weight: 20 }],
+  } : null;
+  (mainMechanic === '控制类' && 本系控制表?.[tableGrade] ? 本系控制表[tableGrade]
+    : mainMechanic === '控制类' && 本系控制表 && !tables[mainMechanic]?.[tableGrade] ? 本系控制表.C
+    : tables[mainMechanic]?.[tableGrade] || tables[mainMechanic]?.C || []).forEach(item => {
     const 原型 = String(item?.value || '').trim();
     if (!原型) return;
     配置权重汇总.set(原型, Number(配置权重汇总.get(原型) || 0) + Math.max(0, Number(item?.weight || 0)));
@@ -15267,7 +15339,7 @@ function 构建机制编译输入覆盖列表_V1(机制名 = '', 原型列表 = 
       : 系别 === '元素系'
         ? '护盾'
         : '防御机制';
-    if (目标机制 === '控制机制') return 构建技能机制抹消对象_V1('状态施加', { 状态: '沉默' });
+    if (目标机制 === '控制机制') return 构建技能机制抹消对象_V1('状态施加', { 状态: '封技' });
     if (目标机制 === '护盾') return 构建技能机制抹消对象_V1('护盾变化');
     return 构建技能机制抹消对象_V1('规则防御');
   };
@@ -15394,7 +15466,7 @@ function 构建机制编译输入覆盖列表_V1(机制名 = '', 原型列表 = 
     } else if (原型 === '规则防御') {
       字段.次数 ??= Math.max(1, Math.round(Number(结算参数.免死次数 || (品质 === 'S' || 品质 === 'S+' ? 2 : 1))));
     } else if (原型 === '规则改写') {
-      字段.规则 ??= '缴械';
+      字段.规则 ??= '束手';
       if (字段.规则 === '死亡转存活') 字段.数值 ??= 数值倍率(品质范围({ C: [0.12, 0.18], B: [0.18, 0.28], A: [0.24, 0.38], S: [0.28, 0.42], 'S+': [0.42, 0.6] }, 0.24), 0.24, 1);
       else delete 字段.数值;
     } else if (原型 === '机制抹消') {
@@ -15830,7 +15902,7 @@ function 补足机制模板原型数值_V1(原型 = '', 字段 = {}, source = {}
   } else if (原型 === '规则改写') {
     const 规则 = SKILL_PROTOTYPE_FIELD_OPTIONS_V1.规则.includes(String(字段.规则 || source.规则 || '').trim())
       ? String(字段.规则 || source.规则 || '').trim()
-      : '缴械';
+      : '束手';
     字段.规则 = 规则;
     if (规则 === '死亡转存活') {
       字段.目标 = '自身';
@@ -15908,7 +15980,6 @@ function 补足机制模板原型数值_V1(原型 = '', 字段 = {}, source = {}
     字段.复制类型 = SKILL_PROTOTYPE_FIELD_OPTIONS_V1.复制类型.includes(复制类型) ? 复制类型 : '复制技能';
     const 复制模式 = String(字段.复制模式 || source.复制模式 || '').trim();
     字段.复制模式 = SKILL_PROTOTYPE_FIELD_OPTIONS_V1.复制模式.includes(复制模式) ? 复制模式 : '即时镜像';
-    if (!/属性|全部/.test(String(字段.复制类型 || ''))) delete 字段.削减比例;
     if (!['复制技能', '复制全部'].includes(String(字段.复制类型 || ''))) {
       delete 字段.保存上限;
       delete 字段.可用次数;
@@ -16189,7 +16260,7 @@ function 清理执行效果原型语义_V1(原型 = '', 字段 = {}, 上下文 =
     }
   }
   if (原型 === '规则改写') {
-    字段.规则 = SKILL_PROTOTYPE_FIELD_OPTIONS_V1.规则.includes(String(字段.规则 || '').trim()) ? String(字段.规则 || '').trim() : '缴械';
+    字段.规则 = SKILL_PROTOTYPE_FIELD_OPTIONS_V1.规则.includes(String(字段.规则 || '').trim()) ? String(字段.规则 || '').trim() : '束手';
     if (字段.规则 === '死亡转存活') {
       字段.目标 = '自身';
       delete 字段.持续回合;
@@ -17043,8 +17114,8 @@ function 断言技能执行效果原型契约_V1(effectArray = [], path = '_效�
       Object.keys(effect).forEach(字段名 => {
         if (!允许字段.has(字段名)) throw new Error(`技能执行结构错误:${path}[${index}]复制执行包含不支持字段`);
       });
-      if (effect.削减比例 !== undefined && !/属性|全部/.test(String(复制类型)))
-        throw new Error(`技能执行结构错误:${path}[${index}]复制削减比例只允许属性或全部复制使用`);
+      if (effect.削减比例 !== undefined && !(Math.abs(读取技能比例值_V1(String(effect.削减比例))) >= 0 && Math.abs(读取技能比例值_V1(String(effect.削减比例))) <= 0.95))
+        throw new Error(`技能执行结构错误:${path}[${index}]复制削减比例取 0～0.95`);
       ['保存上限', '可用次数'].forEach(字段名 => {
         if (effect[字段名] !== undefined && !['复制技能', '复制全部'].includes(String(复制类型)))
           throw new Error(`技能执行结构错误:${path}[${index}]复制${字段名}只允许复制技能或复制全部使用`);
@@ -18465,6 +18536,11 @@ function buildSkillCombatProfile(blueprint, qualityCtx = {}) {
     效果意图.状态 = 效果意图.状态 === '无' ? '治疗反转' : 效果意图.状态;
     效果意图.持续回合 = Math.max(效果意图.持续回合, invertDuration);
     效果意图.结算参数.治疗反转比例 = Math.max(Number(效果意图.结算参数.治疗反转比例 || 0), invertRatio);
+  }
+  for (const 封禁 of ['缴械', '封甲']) {
+    if (!secondary.includes(封禁)) continue;
+    const 封禁回合 = Math.max(1, Math.round(({ C: 1, B: 1, A: 2, S: 2 }[grade] || 1) * secondaryDurationScale));
+    效果意图.持续回合 = Math.max(效果意图.持续回合, 封禁回合);
   }
   if (secondary.includes('封技')) {
     const sealDuration = Math.max(1, Math.round(({ C: 1, B: 1, A: 2, S: 2 }[grade] || 1) * secondaryDurationScale));
@@ -20416,7 +20492,21 @@ function 计算单项效果COST_V1(效果 = {}, 上下文 = {}) {
   const 附加规则COST = 原型 === '判定修正' && 效果?.打断效果 === true
     ? Number(SKILL_UNIT_COST_TABLE_V1.判定修正?.打断效果 || 0)
     : 0;
-  if (原型 === '规则改写' && 选项值 === '缴械') {
+  // 复制执行：没有数值字段，单价按削减比例折算（计算复制削减COST倍率_V1）。
+  if (原型 === '复制执行') {
+    const 削减倍率 = 计算复制削减COST倍率_V1(效果);
+    return {
+      COST: 单位COST * 削减倍率 * 目标系数 * 持续系数,
+      百分比: false,
+      数值类型: '削减比例',
+      单位COST: Number(单位COST.toFixed(4)),
+      数值倍率: Number(削减倍率.toFixed(4)),
+      目标系数: Number(目标系数.toFixed(4)),
+      目标系数原因: 目标信息.目标系数原因,
+      持续系数: Number(持续系数.toFixed(4)),
+    };
+  }
+  if (原型 === '规则改写' && ['束手', '缴械'].includes(选项值)) {
     return {
       COST: 单位COST * 目标系数 * 持续系数,
       百分比: false,
@@ -24181,6 +24271,8 @@ var 技能状态施加转译语义_V1 = Object.freeze({
   无视异常: 目标 => `使${目标}进入无视异常状态，免疫负面状态与削减类效果`,
   霸体: 目标 => `使${目标}进入霸体状态`,
   封技: 目标 => `使${目标}进入封技状态`,
+  缴械: 目标 => `封住${目标}的武器（魂力判定，超神器不受影响）`,
+  封甲: 目标 => `封住${目标}的斗铠与机甲（魂力判定）`,
   护卫: (目标, 效果) => `护卫${目标}，替其拦截攻击，${转译状态施加数值说明_V1('护卫', 效果)}`,
   嘲讽: (目标, 效果) => `使${目标}嘲讽，${转译状态施加数值说明_V1('嘲讽', 效果)}`,
   虚弱: (目标, 效果) => `使${目标}虚弱，${转译状态施加数值说明_V1('虚弱', 效果)}`,
@@ -24495,7 +24587,7 @@ function 转译单条执行效果_V1(效果 = {}, 选项 = {}) {
     case '复制执行': {
       const 复制类型 = String(效果.复制类型 || '复制技能').trim();
       const 复制显示 = 复制类型.replace(/^复制/, '') || '技能';
-      return `复制${目标}${复制显示}${效果.复制模式 ? `，模式${格式化技能结构转译字段_V1(效果.复制模式)}` : ''}${['复制技能', '复制全部'].includes(复制类型) && 效果.保存上限 ? `，保存上限${formatSkillNumber(效果.保存上限)}` : ''}${['复制技能', '复制全部'].includes(复制类型) && 效果.可用次数 ? `，可用${formatSkillNumber(效果.可用次数)}次` : ''}${/属性|全部/.test(复制类型) && 效果.削减比例 ? `，属性削减${格式化技能结构转译字段_V1(效果.削减比例)}` : ''}${效果.保留回合 ? `，维持${formatSkillNumber(效果.保留回合)}回合` : ''}${效果.保留时长tick ? `，保留${formatSkillNumber(效果.保留时长tick)}tick` : ''}${附加}`;
+      return `复制${目标}${复制显示}${效果.复制模式 ? `，模式${格式化技能结构转译字段_V1(效果.复制模式)}` : ''}${['复制技能', '复制全部'].includes(复制类型) && 效果.保存上限 ? `，保存上限${formatSkillNumber(效果.保存上限)}` : ''}${['复制技能', '复制全部'].includes(复制类型) && 效果.可用次数 ? `，可用${formatSkillNumber(效果.可用次数)}次` : ''}${效果.削减比例 !== undefined ? `，削减${格式化技能结构转译字段_V1(效果.削减比例)}` : ''}${效果.保留回合 ? `，维持${formatSkillNumber(效果.保留回合)}回合` : ''}${效果.保留时长tick ? `，保留${formatSkillNumber(效果.保留时长tick)}tick` : ''}${附加}`;
     }
     case '时光回溯':
       return String(效果.发动方式 || '被动').trim() === '主动'
@@ -24971,7 +25063,7 @@ function buildSingleSkillEffectSummary(effect) {
     case '复制执行': {
       const 复制类型 = String(effect.复制类型 || '复制技能').trim();
       const 复制显示 = 复制类型.replace(/^复制/, '') || '技能';
-      return '复制' + target + '的' + 复制显示 + '，模式' + String(effect.复制模式 || '即时镜像') + (['复制技能', '复制全部'].includes(复制类型) ? '，保存上限' + formatSkillNumber(effect.保存上限 || 1) + '，可用' + formatSkillNumber(effect.可用次数 || 1) + '次' : '') + (/属性|全部/.test(复制类型) && effect.削减比例 ? '，属性削减' + 格式化技能结构转译字段_V1(effect.削减比例) : '') + (effect.保留时长tick ? '，保留' + formatSkillNumber(effect.保留时长tick) + 'tick' : '');
+      return '复制' + target + '的' + 复制显示 + '，模式' + String(effect.复制模式 || '即时镜像') + (['复制技能', '复制全部'].includes(复制类型) ? '，保存上限' + formatSkillNumber(effect.保存上限 || 1) + '，可用' + formatSkillNumber(effect.可用次数 || 1) + '次' : '') + (effect.削减比例 !== undefined ? '，削减' + 格式化技能结构转译字段_V1(effect.削减比例) : '') + (effect.保留时长tick ? '，保留' + formatSkillNumber(effect.保留时长tick) + 'tick' : '');
     }
     case '时光回溯':
       return String(effect.发动方式 || '被动').trim() === '主动'
@@ -25183,7 +25275,8 @@ function buildSingleSkillEffectSummary(effect) {
       return '强制绑定' + target + '，持续' + formatSkillNumber(effect.持续回合) + '回合，限制位移与反应';
     case '规则改写':
       if (String(effect.规则 || '').trim() === '死亡转存活') return '战斗内被动复活：致命结算时使' + target + '转为存活，恢复' + String(effect.数值 || '+25%') + '生命';
-      return '在' + formatSkillNumber(Math.max(1, Number(effect.持续回合 || 1))) + '回合内改写' + target + '的' + String(effect.规则 || '缴械');
+      if (['束手', '缴械'].includes(String(effect.规则 || '束手').trim())) return '在' + formatSkillNumber(Math.max(1, Number(effect.持续回合 || 1))) + '回合内束住' + target + '的手脚，使其无法普通攻击';
+      return '在' + formatSkillNumber(Math.max(1, Number(effect.持续回合 || 1))) + '回合内改写' + target + '的' + String(effect.规则 || '束手');
     case '威力增幅':
       return '使' + target + '后续威力提升至 x' + formatSkillNumber(effect.威力倍率 || 1.2, 2);
     case '元素封禁':
@@ -25274,6 +25367,10 @@ function buildSingleSkillEffectSummary(effect) {
       return '使' + target + '受到的治疗在持续期间反转为伤害';
     case '封技':
       return '封锁' + target + '的技能回路，持续' + formatSkillNumber(effect.持续回合) + '回合';
+    case '缴械':
+      return '封住' + target + '的武器，持续' + formatSkillNumber(effect.持续回合) + '回合（魂力判定）';
+    case '封甲':
+      return '封住' + target + '的斗铠与机甲，持续' + formatSkillNumber(effect.持续回合) + '回合（魂力判定）';
     case '硬控':
       return '强行控制' + target + '，持续' + formatSkillNumber(effect.持续回合) + '回合';
     case '打断':
@@ -27164,6 +27261,8 @@ function autoGenerateSkill(
         if (!(Number(replacement.威力倍率 || 0) > 0)) {
           const 基准数值 = Math.abs(parseSkillSignedChangeNumber(规范化执行效果数值_V1(effect.数值, effect.动作)));
           replacement.威力倍率 = Math.max(1, Math.round((Number.isFinite(基准数值) ? 基准数值 : 1) * 100));
+          // 治疗打敌 (BattlePreview healStrikeDamageShare): the strike is as strong as the heal, a share of the target's HP maximum.
+          if (Number.isFinite(基准数值) && 基准数值 > 0) replacement.生命比例伤害 = 基准数值;
         }
         delete replacement.数值;
         delete next.转为伤害;
@@ -36738,7 +36837,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       const 武魂条目 = 取角色武魂条目_V1(角色数据);
       if (武魂条目.length > 0) {
         武魂条目.forEach(([, 武魂]) => {
-          const 倍率 = TypeMultipliers[武魂?.系别] || TypeMultipliers['强攻系'];
+          const 倍率 = 应用武魂属性倾向_V1(TypeMultipliers[武魂?.系别] || TypeMultipliers['强攻系'], 武魂);
           系别倍率 = Math.max(系别倍率, Number(倍率?.men_max || 1));
         });
       } else {
@@ -38266,6 +38365,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
           ensureDisplayText(spiritData, '表象名称', isSecondarySpirit ? '未展露' : AI_TODO_SPIRIT_NAME);
           ensureDisplayText(spiritData, '描述', isSecondarySpirit ? '无' : AI_TODO_SPIRIT_DESC);
           ensureDisplayText(spiritData, '系别', 武魂系别待补全文案_V1);
+          ensureDisplayText(spiritData, '属性倾向', 武魂属性倾向待补全文案_V1);
           ensureDisplayText(spiritData, '属性体系', AI_TODO_ATTRIBUTE_SYSTEM);
           if (Array.isArray(spiritData.可调用元素)) {
             const hasCallableElements = spiritData.可调用元素.some(item => String(item ?? '').trim());
@@ -39588,7 +39688,7 @@ function 规范化角色Schema_V1(char) {
     const spiritEntriesForType = 取角色武魂条目_V1(char);
     if (spiritEntriesForType.length > 0) {
       spiritEntriesForType.forEach(([, spiritData]) => {
-        let tm = TypeMultipliers[spiritData.系别] || TypeMultipliers['强攻系'];
+        let tm = 应用武魂属性倾向_V1(TypeMultipliers[spiritData.系别] || TypeMultipliers['强攻系'], spiritData);
         maxTypeMult.sp_max = Math.max(maxTypeMult.sp_max, tm.sp_max);
         maxTypeMult.men_max = Math.max(maxTypeMult.men_max, tm.men_max);
         maxTypeMult.str = Math.max(maxTypeMult.str, tm.str);
@@ -46407,7 +46507,7 @@ function 裁剪更新视图魂灵默认字段_V1(魂灵 = {}) {
 function 裁剪更新视图武魂默认字段_V1(武魂 = {}, 武魂槽位 = '') {
   if (!武魂 || typeof 武魂 !== 'object' || Array.isArray(武魂)) return false;
   const 是第二武魂 = String(武魂槽位 || '').trim() === '第2武魂';
-  const 武魂主体字段 = ['表象名称', '描述', '系别', '属性体系', '可调用元素'];
+  const 武魂主体字段 = ['表象名称', '描述', '系别', '属性倾向', '属性体系', '可调用元素'];
   const 武魂参考字段 = {};
   武魂主体字段.forEach(字段 => {
     if (Object.prototype.hasOwnProperty.call(武魂, 字段)) 武魂参考字段[字段] = cloneJsonValue(武魂[字段], 武魂[字段]);
@@ -46416,6 +46516,7 @@ function 裁剪更新视图武魂默认字段_V1(武魂 = {}, 武魂槽位 = '')
     if (字段 === '表象名称') return 是第二武魂 ? '未展露' : AI_TODO_SPIRIT_NAME;
     if (字段 === '描述') return 是第二武魂 ? '无' : AI_TODO_SPIRIT_DESC;
     if (字段 === '系别') return 武魂系别待补全文案_V1;
+    if (字段 === '属性倾向') return 武魂属性倾向待补全文案_V1;
     if (字段 === '属性体系') return AI_TODO_ATTRIBUTE_SYSTEM;
     if (字段 === '可调用元素') return [AI_TODO_CALLABLE_ELEMENTS];
     return '';
@@ -46440,6 +46541,7 @@ function 裁剪更新视图武魂默认字段_V1(武魂 = {}, 武魂槽位 = '')
   更新视图待补字段_V1(武魂, '表象名称', 是第二武魂 ? '未展露' : AI_TODO_SPIRIT_NAME);
   更新视图待补字段_V1(武魂, '描述', 是第二武魂 ? '无' : AI_TODO_SPIRIT_DESC);
   更新视图待补字段_V1(武魂, '系别', 武魂系别待补全文案_V1);
+  更新视图待补字段_V1(武魂, '属性倾向', 武魂属性倾向待补全文案_V1);
   更新视图待补字段_V1(武魂, '属性体系', AI_TODO_ATTRIBUTE_SYSTEM);
   if (!更新视图值等于默认值_V1(武魂.可调用元素, [AI_TODO_CALLABLE_ELEMENTS]) && !更新视图值包含待补文本_V1(武魂.可调用元素)) delete 武魂.可调用元素;
   取武魂魂灵条目_V1(武魂).forEach(([魂灵键, 魂灵]) => {
@@ -49359,6 +49461,7 @@ function injectRuntimeCharacterTodoDefaults_V1(charData = {}, charName = '', sou
     else 注入运行时限流文本默认值_V1(spiritData, '表象名称', AI_TODO_SPIRIT_NAME, '武魂名', 取提示);
     注入运行时限流文本默认值_V1(spiritData, '描述', isSecondarySpirit ? '无' : AI_TODO_SPIRIT_DESC, '武魂描述', isSecondarySpirit ? null : 取提示);
     注入运行时限流文本默认值_V1(spiritData, '系别', 武魂系别待补全文案_V1, '武魂系别', 取提示);
+    注入运行时限流文本默认值_V1(spiritData, '属性倾向', 武魂属性倾向待补全文案_V1, '武魂属性倾向', 取提示);
     注入运行时限流文本默认值_V1(spiritData, '属性体系', AI_TODO_ATTRIBUTE_SYSTEM, '武魂属性体系', 取提示);
     注入运行时限流数组默认值_V1(spiritData, '可调用元素', [AI_TODO_CALLABLE_ELEMENTS], '武魂可调用元素', 取提示);
     取武魂魂灵条目_V1(spiritData).forEach(([soulSpiritKey, soulSpirit]) => {

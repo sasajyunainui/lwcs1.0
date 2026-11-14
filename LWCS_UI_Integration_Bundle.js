@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:fd02ab35ffcdced0b6a5ab56509c72e05ec83cd9d7a024e3d0580638504c3f29|mvu_logic_bridge.js:f1172d856a76dd89f27954aa3a9269c0ac20309e98870cf4db2152e9997c8935|cockpit/designer-model.js:a4e0603f2d10d987b0afddc19e149c42c300fa305dcbfdbf5d1f1c4eb0f26ca9|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:bbbae9686d5c127938d3dcfc97f2758141c1a9bc73a066c1f5a2facf51db5ee7|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:fd02ab35ffcdced0b6a5ab56509c72e05ec83cd9d7a024e3d0580638504c3f29|mvu_logic_bridge.js:50b5bb206de01be17351b2c3b87fd3da4f49dc71b3c5dcfa48c36e202f757c2a|cockpit/designer-model.js:98b0eb787297c7079eca9a849a19d54df48b80ba441987e5c4319d10d548b4ce|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:cfaeb7178898a0313e1814654dc1b122d55a0b6434c00fd7b6e4ae313bcf2036|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:bbbae9686d5c127938d3dcfc97f2758141c1a9bc73a066c1f5a2facf51db5ee7|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -15513,7 +15513,7 @@
   const SKILL_DESIGNER_PARAM_COUNTER_TARGET_OPTIONS = Object.freeze(['远程', '控制', '召唤', '近战']);
   const SKILL_DESIGNER_PARAM_TRIGGER_RESULT_OPTIONS = Object.freeze(['爆发', '刷新', '召唤']);
   const SKILL_DESIGNER_PARAM_RULE_REWRITE_OPTIONS = Object.freeze([
-    '缴械',
+    '束手',
     { value: '死亡转存活', label: '复活' },
   ]);
   const 技能设计台规则改写选项值 = Object.freeze(normalizeSkillDesignerOptionList(SKILL_DESIGNER_PARAM_RULE_REWRITE_OPTIONS).map(item => item.value));
@@ -16487,7 +16487,7 @@
     } else if (原型 === '规则改写') {
       字段['规则'] = 技能设计台规则改写选项值.includes(normalizeSkillUiText(字段['规则'] || source['规则'], ''))
         ? normalizeSkillUiText(字段['规则'] || source['规则'], '')
-        : '缴械';
+        : '束手';
       if (字段['规则'] === '死亡转存活') {
         字段['目标'] = '自身';
         if (字段['数值'] === undefined) 字段['数值'] = 格式化技能设计台原型比例变化(pick(['数值', 'rewriteValue']) ?? 0.25, 0.25, true);
@@ -17362,7 +17362,7 @@
       }
     }
     if (原型 === '规则改写') {
-      字段['规则'] = 技能设计台规则改写选项值.includes(normalizeSkillUiText(字段['规则'], '')) ? normalizeSkillUiText(字段['规则'], '') : '缴械';
+      字段['规则'] = 技能设计台规则改写选项值.includes(normalizeSkillUiText(字段['规则'], '')) ? normalizeSkillUiText(字段['规则'], '') : '束手';
       if (字段['规则'] === '死亡转存活') {
         字段['目标'] = '自身';
         字段['数值'] = normalizeSkillUiText(字段['数值'], '+25%');
@@ -20780,7 +20780,7 @@
     const 允许字段 = key => key && !技能设计台原型字段隐藏集合.has(key) && (key !== '对应等级' || !!(context && context.允许对应等级));
     if (原型名 === '炸环' && !字段.includes('强化倍率')) return ['目标', '原型', '生效方式', '强化倍率', '条件分支'];
     if (原型名 === '规则改写') {
-      const 规则 = normalizeSkillUiText(effect && effect['规则'], '缴械');
+      const 规则 = normalizeSkillUiText(effect && effect['规则'], '束手');
       const 固定顺序 = 规则 === '死亡转存活'
         ? ['规则', '数值', '生效方式', '条件分支']
         : ['规则', '目标', '持续回合', '生效方式', '条件分支'];
@@ -21206,7 +21206,7 @@
     if (prototype === '规则改写') {
       const 规则 = 技能设计台规则改写选项值.includes(normalizeSkillUiText(source['规则'], ''))
         ? normalizeSkillUiText(source['规则'], '')
-        : normalizeSkillUiText(next['规则'], '缴械');
+        : normalizeSkillUiText(next['规则'], '束手');
       next['规则'] = 规则;
       if (规则 === '死亡转存活') {
         next['目标'] = '自身';
@@ -27936,6 +27936,18 @@ ${播报文本}
     const 保留离场 = (units, seed) => {
       const 原因 = toText(seed?.__战斗失能原因, '').trim();
       if (原因) units.forEach(unit => { if (unit && typeof unit === 'object') unit.__战斗失能原因 = 原因; });
+      // 续打运行态（读取战斗续打运行态_桥接）：只在本场战斗里有意义的东西，跟着单位回到下一次请求。
+      const 运行态 = seed?.__战斗运行态 && typeof seed.__战斗运行态 === 'object' ? seed.__战斗运行态 : null;
+      if (运行态) units.forEach(unit => {
+        if (!unit || typeof unit !== 'object') return;
+        const { 换装状态, ...fields } = 运行态;
+        unit.__battleRuntime = { ...(unit.__battleRuntime && typeof unit.__battleRuntime === 'object' ? unit.__battleRuntime : {}), ...cloneJsonValue(fields, {}) };
+        if (换装状态 && typeof 换装状态 === 'object') {
+          const holder = unit.状态效果 && typeof unit.状态效果 === 'object' ? unit
+            : unit.属性?.状态效果 && typeof unit.属性.状态效果 === 'object' ? unit.属性 : unit;
+          holder.状态效果 = { ...(holder.状态效果 && typeof holder.状态效果 === 'object' ? holder.状态效果 : {}), ...cloneJsonValue(换装状态, {}) };
+        }
+      });
       return units;
     };
     const teamPlayerSeeds = Array.isArray(participants.team_player) ? participants.team_player : [];
@@ -28162,6 +28174,24 @@ ${播报文本}
     );
   }
 
+  // 续打运行态：单位身上只在本场战斗里有意义、要带到下一次请求的东西（单回合模式每回合都是一次新请求）——最近放的魂技
+  // （复制执行复制它）、连续摆姿态或让过的回合数（久守必失）、战斗内换上的装备及其加成与扣除（换装只在本场生效，
+  // 这些状态不写回角色存档，见 构建战斗状态集合落盘值）。没有则 null。
+  const 战斗续打运行态字段 = Object.freeze(['lastReleasedSkill', 'passiveStreak', 'battleEquipment']);
+  function 读取战斗续打运行态_桥接(source = {}) {
+    const runtime = source?.__battleRuntime && typeof source.__battleRuntime === 'object' ? source.__battleRuntime : {};
+    const result = {};
+    战斗续打运行态字段.forEach(key => {
+      if (runtime[key] !== undefined && runtime[key] !== null) result[key] = cloneJsonValue(runtime[key], runtime[key]);
+    });
+    const states = source?.状态效果 && typeof source.状态效果 === 'object' ? source.状态效果 : source?.属性?.状态效果;
+    const 换装状态 = Object.fromEntries(Object.entries(states && typeof states === 'object' ? states : {})
+      .filter(([, state]) => state && typeof state === 'object' && (state.__换下槽位 || (state.__equipmentState === true && state.__equipmentActionId)))
+      .map(([key, state]) => [key, cloneJsonValue(state, {})]));
+    if (Object.keys(换装状态).length) result.换装状态 = 换装状态;
+    return Object.keys(result).length ? result : null;
+  }
+
   function compactBattleParticipantForStorage(snapshot, participant) {
     if (participant === null || participant === undefined) return undefined;
     if (typeof participant === 'string' || typeof participant === 'number') {
@@ -28177,6 +28207,8 @@ ${播报文本}
     if (resolvedKey) {
       const compact = { name: participantName || resolvedKey };
       if (离场原因) compact.__战斗失能原因 = 离场原因;
+      const 运行态 = 读取战斗续打运行态_桥接(source);
+      if (运行态) compact.__战斗运行态 = 运行态;
       if (source.势力 !== undefined) compact.势力 = toText(source.势力, '');
       const aliveCandidate =
         source.存活 !== undefined
@@ -28193,6 +28225,8 @@ ${播报文本}
       compact.name = participantName;
     }
     if (离场原因) compact.__战斗失能原因 = 离场原因;
+    const 续打运行态 = 读取战斗续打运行态_桥接(source);
+    if (续打运行态) compact.__战斗运行态 = 续打运行态;
     ['来源', '单位性质', '身份', '数量', '等级', '年限', '品质', '标准物种', '具体物种', '物种品质', '级别', '标准种族', '势力'].forEach(
       key => {
         if (source[key] !== undefined) compact[key] = cloneJsonValue(source[key], source[key]);
@@ -28664,7 +28698,7 @@ ${播报文本}
     }
     const runtimeState = runtime.ensureCombatRuntime(combatData);
     const maxRounds = battleMode === 'multi_round'
-      ? Math.max(1, Math.min(20, Math.floor(toNumber(options.rounds || combatData?.胜负条件?.maxRounds, 20))))
+      ? Math.max(1, Math.floor(toNumber(options.rounds || combatData?.胜负条件?.maxRounds, 20)))
       : 1;
     const autoContinueSource = options.autoContinueConfig && typeof options.autoContinueConfig === 'object'
       ? options.autoContinueConfig
@@ -28820,6 +28854,8 @@ ${播报文本}
     return Object.fromEntries(
       Object.entries(conditionMap)
         .filter(([name, condition]) => name && condition && typeof condition === 'object')
+        // 换装只在本场战斗生效（用户 2026-11-14）：换上装备的加成、换下装备的扣除都不带出战斗。
+        .filter(([, condition]) => !condition.__换下槽位 && !(condition.__equipmentState === true && condition.__equipmentActionId))
         .map(([name, condition]) => [name, 构建战斗状态落盘值(condition)]),
     );
   }
@@ -29186,10 +29222,11 @@ ${播报文本}
       const 请求续推配置 = request?.autoContinueConfig && typeof request.autoContinueConfig === 'object'
         ? request.autoContinueConfig
         : {};
-      const 回合上限 = Math.max(1, Math.min(20, Math.floor(toNumber(
+      // 用户 2026-11-14："胜负条件的上限不删，固定上限如果有的话删掉"：20 只是没给时的默认，不再夹紧。
+      const 回合上限 = Math.max(1, Math.floor(toNumber(
         请求续推配置.maxRounds,
         toNumber(战斗数据?.胜负条件?.maxRounds, 20),
-      ))));
+      )));
       const 停推阈值百分比 = Math.max(0, Math.min(100, toNumber(
         请求续推配置.stopDamagePercent,
         Number.isFinite(Number(请求续推配置.stopDamageRatio))
@@ -29986,7 +30023,7 @@ ${播报文本}
         }).filter(([id]) => id));
       return normalized;
     };
-    const maxRounds = Math.max(1, Math.min(20, Math.floor(toNumber(existing?.maxRounds ?? existing?.回合上限 ?? detail?.最大回合 ?? detail?.回合上限, 20))));
+    const maxRounds = Math.max(1, Math.floor(toNumber(existing?.maxRounds ?? existing?.回合上限 ?? detail?.最大回合 ?? detail?.回合上限, 20)));
     if ([...safeVictory, ...safeDefeat].some(condition => condition?.type === 'ROUND_REACHED' && Number(condition?.round || 0) > maxRounds)) return null;
     const victoryLogicInput = existing?.victory?.logic || existing?.胜利?.逻辑 || detail?.胜利条件关系;
     const defeatLogicInput = existing?.defeat?.logic || existing?.失败?.逻辑 || detail?.失败条件关系;
@@ -32036,13 +32073,12 @@ ${播报文本}
         (payload.胜负条件?.victory?.conditions || payload.胜负条件?.胜利?.条件).length > 0 &&
         Array.isArray(payload.胜负条件?.defeat?.conditions || payload.胜负条件?.失败?.条件) &&
         (payload.胜负条件?.defeat?.conditions || payload.胜负条件?.失败?.条件).length > 0 &&
-        Number(payload.胜负条件?.maxRounds ?? payload.胜负条件?.回合上限) > 0 &&
-        Number(payload.胜负条件?.maxRounds ?? payload.胜负条件?.回合上限) <= 20
+        Number(payload.胜负条件?.maxRounds ?? payload.胜负条件?.回合上限) > 0
       );
       const 胜负条件字段完整 = 胜负条件已结构化 || (
         战斗条件输入存在(payload.胜利条件) &&
         战斗条件输入存在(payload.失败条件) &&
-        读取模块路由最大回合(payload) > 0 && 读取模块路由最大回合(payload) <= 20
+        读取模块路由最大回合(payload) > 0
       );
       if (deepGet(snapshot, 'rootData.world.战斗.进行中', false)) {
         request = {};
@@ -32107,7 +32143,7 @@ ${播报文本}
             失败条件: 克隆战斗条件输入(payload.失败条件),
             胜利条件关系: toText(payload.胜利条件关系, 'OR'),
             失败条件关系: toText(payload.失败条件关系, 'OR'),
-            最大回合: Math.max(1, Math.min(20, Math.floor(toNumber(payload.最大回合 ?? payload.回合上限, 20)))),
+            最大回合: Math.max(1, Math.floor(toNumber(payload.最大回合 ?? payload.回合上限, 20))),
             // 接战链 阶段三: "裁判：角色名" or "裁判：名称|等级=60" (解析模块路由裁判); none given, no referee.
             ...(解析模块路由裁判(payload.裁判) ? { 裁判: 解析模块路由裁判(payload.裁判) } : {}),
           };
@@ -37008,7 +37044,7 @@ ${播报文本}
   const SKILL_DESIGNER_PARAM_TRIGGER_RESULT_OPTIONS = Object.freeze(['爆发', '刷新', '召唤']);
   // —— B:18245-18248
   const SKILL_DESIGNER_PARAM_RULE_REWRITE_OPTIONS = Object.freeze([
-    '缴械',
+    '束手',
     { value: '死亡转存活', label: '复活' },
   ]);
   // —— B:18249
@@ -38312,7 +38348,7 @@ ${播报文本}
     } else if (原型 === '规则改写') {
       字段['规则'] = 技能设计台规则改写选项值.includes(normalizeSkillUiText(字段['规则'] || source['规则'], ''))
         ? normalizeSkillUiText(字段['规则'] || source['规则'], '')
-        : '缴械';
+        : '束手';
       if (字段['规则'] === '死亡转存活') {
         字段['目标'] = '自身';
         if (字段['数值'] === undefined) 字段['数值'] = 格式化技能设计台原型比例变化(pick(['数值', 'rewriteValue']) ?? 0.25, 0.25, true);
@@ -39158,7 +39194,7 @@ ${播报文本}
     const 原型 = normalizeSkillUiText(effect && effect['原型'], '');
     if (['伤害结算', '资源变化', '资源转移', '护盾变化', '属性修正', '判定修正', '状态施加', '时窗修正', '状态移除', '资源锁定', '决策干扰'].includes(原型)) return true;
     if (原型 === '结算修正') return ['造成伤害', '受到伤害', '治疗', '消耗', '前摇', '技能效果', '防御剥夺', '精神抗性剥夺', '伤害转治疗', '治疗转伤害'].includes(normalizeSkillUiText(effect['结算'], ''));
-    if (原型 === '规则改写') return normalizeSkillUiText(effect['规则'], '') === '缴械';
+    if (原型 === '规则改写') return ['束手', '缴械'].includes(normalizeSkillUiText(effect['规则'], ''));
     if (原型 === '机制抹消') return true;
     return false;
   }
@@ -39341,7 +39377,7 @@ ${播报文本}
       }
     }
     if (原型 === '规则改写') {
-      字段['规则'] = 技能设计台规则改写选项值.includes(normalizeSkillUiText(字段['规则'], '')) ? normalizeSkillUiText(字段['规则'], '') : '缴械';
+      字段['规则'] = 技能设计台规则改写选项值.includes(normalizeSkillUiText(字段['规则'], '')) ? normalizeSkillUiText(字段['规则'], '') : '束手';
       if (字段['规则'] === '死亡转存活') {
         字段['目标'] = '自身';
         字段['数值'] = normalizeSkillUiText(字段['数值'], '+25%');
@@ -43429,7 +43465,7 @@ ${播报文本}
     const 允许字段 = key => key && !技能设计台原型字段隐藏集合.has(key) && (key !== '对应等级' || !!(context && context.允许对应等级));
     if (原型名 === '炸环' && !字段.includes('强化倍率')) return ['目标', '原型', '生效方式', '强化倍率', '条件分支'];
     if (原型名 === '规则改写') {
-      const 规则 = normalizeSkillUiText(effect && effect['规则'], '缴械');
+      const 规则 = normalizeSkillUiText(effect && effect['规则'], '束手');
       const 固定顺序 = 规则 === '死亡转存活'
         ? ['规则', '数值', '生效方式', '条件分支']
         : ['规则', '目标', '持续回合', '生效方式', '条件分支'];
@@ -44070,7 +44106,7 @@ ${播报文本}
     if (prototype === '规则改写') {
       const 规则 = 技能设计台规则改写选项值.includes(normalizeSkillUiText(source['规则'], ''))
         ? normalizeSkillUiText(source['规则'], '')
-        : normalizeSkillUiText(next['规则'], '缴械');
+        : normalizeSkillUiText(next['规则'], '束手');
       next['规则'] = 规则;
       if (规则 === '死亡转存活') {
         next['目标'] = '自身';

@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: CharacterLibrary.js:c77225d2aefe501bdf48fdd324bb83943b819fec6363c274ed69ac5e1ed0f1b8|ItemLibrary.js:ba1a2e7d12b8a06621af0936ca7a78a3992bec3accd95dbbe7c8fc9242ce72c2|FactionLibrary.js:255b37b457bfca7deb43134747c9165b31dded4ad76838ba20c369eaee318200|LocationLibrary.js:f2e07a35c4839d094b7a6e9bdd6635afc703cf0542222bf5241f045b7d65fefc|timeline.js:26b59eba2d288d6ce89b4e1fa60d9ea3c39ffec882d6deaccf2c8b20316ac35d */
+/* sources-sha256: CharacterLibrary.js:c77225d2aefe501bdf48fdd324bb83943b819fec6363c274ed69ac5e1ed0f1b8|ItemLibrary.js:045a1574ebf292da6c752a1073cbb50cb235dce2992afadc72ba25cf7e8bb694|FactionLibrary.js:255b37b457bfca7deb43134747c9165b31dded4ad76838ba20c369eaee318200|LocationLibrary.js:f2e07a35c4839d094b7a6e9bdd6635afc703cf0542222bf5241f045b7d65fefc|timeline.js:26b59eba2d288d6ce89b4e1fa60d9ea3c39ffec882d6deaccf2c8b20316ac35d */
 ;
 /* source: CharacterLibrary.js */
 !(function () {
@@ -38343,9 +38343,10 @@
               "触发方式": "立即触发"
             },
             {
-              "原型": "规则改写",
+              "原型": "状态施加",
               "目标": "单体",
-              "规则": "缴械",
+              "状态": "缴械",
+              "无条件封禁": true,
               "持续回合": 1
             },
             {
