@@ -320,7 +320,7 @@ function ripplePanel(text){const m=blockMap(text);if(!m.has("实际变化")&& !m
  const changes=fieldLines(m,"实际变化");box.append(h("div","pt-ripple-core",h("p","pt-lbl",icon("bullseye"),"现场变化"),changes.length?h("ul","pt-deltas",changes.map(x=>h("li","",icon("caret-right"),x))):noneLine()));
  const keep=fieldLines(m,"维持原状");box.append(h("p","pt-ripple-keep",icon("lock"),h("b","","维持原状"),keep.join("；")||"无"));
  const spread=fieldLines(m,"传播"),sig=h("div","pt-signals",h("p","pt-lbl",icon("tower-broadcast"),"传播"));
- if(!spread.length)sig.append(noneLine());for(const line of spread){const c=line.split(/\s*[｜|]\s*/).map(clean);if(c.length<2){sig.append(h("p","pt-lane-extra",line));continue}const [info,media,range,recv]=c,tone=RECV_TONE.find(([k])=>(recv||"").includes(k))?.[1]||"";sig.append(h("div","pt-signal",hexIcon((MEDIA_ICON.find(([re])=>re.test(media||""))||[0,"tower-broadcast"])[1],30),h("div","",h("b","",info),h("small","",[media,range].filter(Boolean).join(" · "))),recv?chip(recv,tone):null))}
+ if(!spread.length)sig.append(noneLine());for(const line of spread){const c=line.split(/\s*[｜|]\s*/).map(clean);if(c.length<2){sig.append(h("p","pt-lane-extra",line));continue}const [info,media,range,recv]=c,tone=RECV_TONE.find(([k])=>(recv||"").includes(k))?.[1]||"";sig.append(h("div","pt-signal",hexIcon((MEDIA_ICON.find(([re])=>re.test(media||""))||[0,"tower-broadcast"])[1],30),h("div","",h("b","",info),h("small","",[media,range].filter(Boolean).join(" · ")),recv?chip(recv,tone):null)))}
  box.append(sig,...extraLines(m,["实际变化","维持原状","传播"]));return box}
 // 世界进程：泳道，和玩家路线的关系分交汇 / 联系 / 分流
 // 关系词只认格子开头：「走独立特优生路线，直接跳过……」里的「直接」不是关系
