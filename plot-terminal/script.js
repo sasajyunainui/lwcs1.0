@@ -307,7 +307,8 @@ function intelCards(text){const b=parseBlock(text),groups=b.filter(e=>e.type==="
   for(const e of g.entries)if(e.type!=="kv"||!INTEL_LANES.some(l=>l[0]===e.key))card.append(h("p","pt-lane-extra",entryText(e)));return card}),b.filter(e=>e.type!=="group").map(e=>h("p","pt-lane-extra",entryText(e))))}
 // 行动检定：结果印章 + 条件清单
 function checkPanel(text){const m=blockMap(text);if(!m.has("行动")&& !m.has("完成程度"))return renderBlock(parseBlock(text));const done=fieldText(m,"完成程度"),tone=/失败/.test(done)?"fail":/受阻/.test(done)?"blocked":/部分/.test(done)?"partial":"ok";
- const head=done.split(/[，,；;（(]/)[0],why=clean(done.slice(head.length).replace(/^[，,；;]\s*/,"")),panel=h("div","pt-check");panel.dataset.tone=tone;
+ // 印章只放短结论；模型把整句写进完成程度时，结论取档位词，整句挪到下方说明
+ const first=done.split(/[，,；;（(。！!？?\s]/)[0],stampOk=first.length<=6,head=stampOk?first:{ok:"达成",partial:"部分达成",blocked:"受阻",fail:"失败"}[tone],why=clean((stampOk?done.slice(first.length):done).replace(/^[，,；;。！!？?\s]+/,"")),panel=h("div","pt-check");panel.dataset.tone=tone;
  panel.append(h("div","pt-check-head",h("div","",h("p","pt-lbl",icon("person-running"),"行动"),h("p","pt-check-act",fieldText(m,"行动")||"—")),h("div","pt-stamp",icon(tone==="ok"?"circle-check":tone==="fail"?"circle-xmark":"circle-half-stroke"),h("b","",head||"—"))));
  if(why)panel.append(h("p","pt-check-why",why));
  const req=splitList(fieldText(m,"能力与条件"));if(req.length)panel.append(h("ul","pt-check-req",req.map(x=>h("li","",icon("check"),x))));

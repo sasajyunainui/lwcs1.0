@@ -349,7 +349,7 @@ button{font:inherit;color:inherit}
 .pt-check{display:grid;gap:10px}
 .pt-check-head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:14px}
 .pt-check-act{margin:0;font:750 .98em/1.7 var(--ui-font)}
-.pt-stamp{display:grid;justify-items:center;gap:2px;min-width:86px;padding:8px 10px;color:var(--st,#0d8a58);border:2px solid currentColor;border-radius:50%;aspect-ratio:1;align-content:center;transform:rotate(-8deg);background:rgba(255,255,255,.6)}
+.pt-stamp{display:grid;justify-items:center;gap:2px;min-width:86px;max-width:110px;padding:8px 10px;color:var(--st,#0d8a58);border:2px solid currentColor;border-radius:50%;aspect-ratio:1;align-content:center;transform:rotate(-8deg);background:rgba(255,255,255,.6)}
 .pt-stamp .fa-solid{font-size:1.2em}
 .pt-stamp b{font:900 .82em/1.2 var(--ui-font);letter-spacing:.06em;text-align:center}
 .pt-check[data-tone="partial"]{--st:#a8700e}
