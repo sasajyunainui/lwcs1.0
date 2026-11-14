@@ -66126,6 +66126,25 @@
   // A unit's HP change at a round end from its periodic states, a share of its HP maximum (the runtime's own settlement,
   // read without writing: r10RoundEndDelta).
   const r20Tick = (request, unit) => Number(r10RoundEndDelta(r10DecisionTable(request), unit, null).hp || 0) / Math.max(1, preview.readHpMax(unit));
+  // How many round ends that change goes on for: each state's part by the rounds it has left, weighted by what it moves
+  // (a state with no rounds: for good). Until 11-14 the race took it for its whole horizon — a one-round 反噬 of 22%
+  // twelve times over, so a 敏攻系 valued a skill that traded 21% of the enemy for 22% of its own once at −1.05, and a
+  // two-round poison was worth six.
+  const r20TickRounds = unit => {
+    const runtime = root.__LWCS_BATTLE_RUNTIME__;
+    let weight = 0, weighted = 0;
+    for (const [key, state] of Object.entries(unit?.状态效果 || {})) {
+      if (!state || typeof state !== 'object') continue;
+      let hp = 0;
+      const capture = ({ resourceKey, requestedDelta }) => () => { if (resourceKey === 'hp') hp += Number(requestedDelta) || 0; };
+      runtime.settlePeriodicHpValues?.(unit, state, String(state.状态 || state.状态名称 || key), null, capture, 0, projectedHealTurn(unit, null));
+      runtime.settleExplicitResourceValues?.(unit, state, null, capture, projectedHealTurn(unit, null));
+      if (!hp) continue;
+      if (typeof state.duration !== 'number') return Infinity;
+      weight += Math.abs(hp); weighted += Math.abs(hp) * Math.max(1, state.duration);
+    }
+    return weight > 0 ? weighted / weight : Infinity;
+  };
   // A taunted unit's hits go to its taunters only (null: free to choose).
   const r20Bound = (world, unit) => {
     const sources = visibleTauntSources(world, unit).map(row => row.sourceId);
@@ -66180,7 +66199,7 @@
     const revive = facts.revive ? facts.revive.slice() : null, drain = facts.drain || null;
     const aimed = new Array(count), landed = new Array(count);
     let released = 0;
-    const horizon = Math.max(1, Math.min(R20_RACE_ROUNDS, Number(facts.horizon) || R20_RACE_ROUNDS)), tick = facts.tick || null;
+    const horizon = Math.max(1, Math.min(R20_RACE_ROUNDS, Number(facts.horizon) || R20_RACE_ROUNDS)), tick = facts.tick || null, tickRounds = facts.tickRounds || null;
     const dealt = new Array(count), mended = new Array(count), hits = new Array(count), worth = new Array(count), pressed = new Array(count);
     let time = 0;
     for (let step = 0; step < 64 && time < horizon - 1e-9; step += 1) {
@@ -66203,6 +66222,7 @@
       if (denied) for (let unit = 0; unit < count; unit += 1) if (denied[unit] > time + 1e-9) nextChange = Math.min(nextChange, denied[unit]);
       if (until) for (let unit = 0; unit < count; unit += 1) if (until[unit] > time + 1e-9) nextChange = Math.min(nextChange, until[unit]);
       if (busy) for (let unit = 0; unit < count; unit += 1) if (busy[unit] > time + 1e-9) nextChange = Math.min(nextChange, busy[unit]);
+      if (tickRounds) for (let unit = 0; unit < count; unit += 1) if (tickRounds[unit] > time + 1e-9) nextChange = Math.min(nextChange, tickRounds[unit]);
       if (strikes && released < strikes.length) nextChange = Math.min(nextChange, Math.max(strikes[released].at, time + 1e-6));
       // A summon leaves with its host (BattleRuntime refreshSummonMentalLoad).
       if (host) for (let unit = 0; unit < count; unit += 1) if (host[unit] >= 0 && !(left[host[unit]] > 1e-9)) left[unit] = 0;
@@ -66210,7 +66230,7 @@
       for (let unit = 0; unit < count; unit += 1) {
         worth[unit] = 0; pressed[unit] = 0; dealt[unit] = 0; mended[unit] = 0; hits[unit] = 0; aimed[unit] = -1; landed[unit] = 0;
         if (!(left[unit] > 1e-9)) continue;
-        if (tick && tick[unit]) { if (tick[unit] < 0) dealt[unit] -= tick[unit]; else mended[unit] += tick[unit]; }
+        if (tick && tick[unit] && !(tickRounds && time >= tickRounds[unit] - 1e-9)) { if (tick[unit] < 0) dealt[unit] -= tick[unit]; else mended[unit] += tick[unit]; }
         for (let other = 0; other < count; other += 1) {
           if (!(left[other] > 1e-9)) continue;
           if (sides[other] === sides[unit]) { if (acting(unit)) worth[unit] = Math.max(worth[unit], cells(unit, other).support[unit][other]); continue; }
@@ -66400,7 +66420,7 @@
       stamina: units.map((unit, row) => sides[row] === request.actorSide ? r20Stamina(unit) : null),
       alive: new Array(count).fill(1), guard: units.map(unit => r20Guard(unit)), revive: units.map(unit => r20Revive(unit)),
       drain: units.map(unit => r20Absorb(unit).dealt), host: units.map((unit, row) => r20HostRow(unit, units, ids, sides, row)), skippedSkills: skipped.count,
-      tick: units.map(unit => r20Tick(request, unit)),
+      tick: units.map(unit => r20Tick(request, unit)), tickRounds: units.map(unit => r20TickRounds(unit)),
       reflect: units.map(unit => preview.counterDamageRatio(unit)), hpMax: units.map(unit => Math.max(1, preview.readHpMax(unit))),
       horizon: Number.isFinite(Number(request.actionOpportunity?.battleHorizon?.remainingRounds)) ? Number(request.actionOpportunity.battleHorizon.remainingRounds) + 1 : R20_RACE_ROUNDS,
       // Who is still to act this round: the runtime's list on the opportunity (an enemy as believed carries no runtime
@@ -66480,7 +66500,7 @@
     const revive = table.revive.slice(), drain = table.drain.slice(), strikes = table.strikes ? table.strikes.map(strike => ({ ...strike })) : [];
     const stamina = table.stamina.slice();
     let busy = table.busy ? table.busy.slice() : null;
-    const until = new Array(count).fill(Infinity), tick = table.tick.slice(), reflect = table.reflect.slice(), hpMax = table.hpMax.slice();
+    const until = new Array(count).fill(Infinity), tick = table.tick.slice(), tickRounds = table.tickRounds.slice(), reflect = table.reflect.slice(), hpMax = table.hpMax.slice();
     const rebuilt = [], hushed = {};
     let added = [];
     let spent = 0, outside = 0, seen = 0;
@@ -66497,7 +66517,7 @@
       remaining[row] = r20Left(next, table.sides[row] === request.actorSide, table.against[table.sides[row]]);
       if (typeof stamina[row] === 'number') { const now = r20Stamina(next); if (now !== null) stamina[row] = now; }
       guard[row] = r20Guard(next); revive[row] = r20Revive(next); drain[row] = r20Absorb(next).dealt;
-      tick[row] = r20Tick(request, next);
+      tick[row] = r20Tick(request, next); tickRounds[row] = r20TickRounds(next);
       reflect[row] = preview.counterDamageRatio(next);
       // What was read of the candidate besides the actor paying for it (`seen`, for the blind census).
       if (guard[row] !== table.guard[row] || revive[row] !== table.revive[row] || Math.abs(tick[row] - table.tick[row]) > 1e-9 ||
@@ -66640,12 +66660,21 @@
       }
       return { units, out, support, stop, keep, keepBack, answer, answerOpen, back, acts, turn };
     };
-    let lateCells = null;
+    let lateCells = null, unchangedRows = new Set();
     if (rebuilt.length) {
       r20Work.rebuiltUnits += rebuilt.length;
       r20Work.ownCellRebuilds += rebuilt.filter(entry => entry[2]).length;
       ({ units: unitsNow, out, support, stop, keep, keepBack, answer, answerOpen, back, acts, turn } = rebuildCells(table, table.units, rebuilt));
-      if (table.late?.units && rebuilt.some(([row]) => until[row] === Infinity)) {
+      // A row rebuilt to the very cells it had (its stamina band moved by a hit, nothing it can do changed) is no change:
+      // the race keeps the table's cells for it, late ones too (11-14: a basic attack that left both units as they were
+      // but for the HP it took put the target on cells rebuilt from another starting world for the whole race, and a
+      // 1.1% exchange was valued at −0.165 instead of −0.032).
+      const sameRow = row => [[out, table.out], [support, table.support], [stop, table.stop], [keep, table.keep], [keepBack, table.keepBack],
+        [answer, table.answer], [answerOpen, table.answerOpen], [back, table.back]].every(([now, was]) =>
+        now[row].every((value, other) => Math.abs(value - was[row][other]) <= 1e-12 && Math.abs(now[other][row] - was[other][row]) <= 1e-12)) &&
+        acts[row] === table.acts[row] && turn[row] === table.turn[row];
+      unchangedRows = new Set(rebuilt.filter(([row]) => sameRow(row)).map(([row]) => row));
+      if (table.late?.units && rebuilt.some(([row]) => until[row] === Infinity && !unchangedRows.has(row))) {
         const decisionTable = r10DecisionTable(request);
         lateCells = rebuildCells(table.late, table.late.units, rebuilt.map(([row, next, ownCellsOnly]) =>
           [row, r10WindowView(decisionTable, after, next, R20_LATE_ROUNDS, next), ownCellsOnly]));
@@ -66949,9 +66978,9 @@
       }
     }
     for (let row = 0; row < remaining.length; row += 1) if (typeof stamina[row] === 'number') stamina[row] = Math.max(0, stamina[row] - r20Injury * Math.max(0, hpMark[row] - remaining[row]));
-    const facts = { sides: sidesNow, out, support, stop, keep, keepBack, answer, answerOpen, back, turn, host, remaining, stamina, alive, guard, revive, drain, tick, reflect, hpMax, horizon: table.horizon, late: lateCells };
+    const facts = { sides: sidesNow, out, support, stop, keep, keepBack, answer, answerOpen, back, turn, host, remaining, stamina, alive, guard, revive, drain, tick, tickRounds, reflect, hpMax, horizon: table.horizon, late: lateCells };
     const changed = new Array(count).fill(false);
-    for (const [row] of rebuilt) changed[row] = true;
+    for (const [row] of rebuilt) if (!unchangedRows.has(row)) changed[row] = true;
     strikes.sort((left, right) => left.at - right.at);
     const plan = { denied, until, base: table, leaves, baseCount: count, changed, busy, strikes: strikes.length ? strikes : null };
     // A unit that may or may not be down is valued both ways (the settlement is not run again): the race with it gone
