@@ -66586,12 +66586,24 @@
       // Its controls as the candidate leaves them: lifted (a cleanse), laid (a stun) or as they were.
       denied[row] = r20Held(next);
       let changed = Object.keys(priorStates).some(key => !Object.hasOwn(nextStates, key)), lasting = 0;
+      const onceDodges = [];
       for (const [key, state] of Object.entries(nextStates)) {
         // A state the settlement only copied (the projection clones units) is no change: compared by what it holds, or
         // an equipment passive's 999941 rounds were read as how long a one-round debuff lasts (11-14: a 控制系 valued a
         // one-round 敏捷 debuff at half a battle won, and a 治疗系 its cleanse likewise, round after round).
         if (priorStates[key] === state || priorStates[key] && preview.stableHash(priorStates[key]) === preview.stableHash(state)) continue;
-        lasting = Math.max(lasting, typeof state?.duration === 'number' ? Math.max(1, state.duration) : Infinity);
+        let stateLasts = typeof state?.duration === 'number' ? Math.max(1, state.duration) : Infinity;
+        // 位移重做（S81）: a position state is one-shot (BattlePreview consumePositionOnce) — its dodge goes with the first attack
+        // that comes at it (in a round where all its enemies turn on it, the first of them), the rest with its next action or
+        // the round's end (counter window, cover). Read for its duration, a 瞬移 dodged every hit of the race's window.
+        const once = state?.战斗效果?.position_once;
+        if (once && typeof once === 'object' || state?.战斗效果?.counter_window_closed === true || state?.战斗效果?.no_cover === true) {
+          const attackers = table.units.reduce((sum, unit, other) => sum + (table.sides[other] !== table.sides[row] && table.alive[other] > 0 ? 1 : 0), 0);
+          // One window per row: with a dodge in it, the dodge's (a 瞬移's hit +10% after it is the smaller part, cut with it).
+          stateLasts = Math.min(stateLasts, once?.dodge ? 1 / Math.max(1, attackers) : 1);
+          if (once?.dodge) onceDodges.push([key, stateLasts]);
+        }
+        lasting = Math.max(lasting, stateLasts);
         // A side effect that kills when it comes due (致死献祭 at the round end or when the state ends).
         if (!Object.hasOwn(priorStates, key)) for (const risk of Array.isArray(state?.副作用列表) ? state.副作用列表 : []) {
           if (risk?.副作用类型 === '致死献祭') { alive[row] *= 1 - clamp(Number(risk.触发概率 ?? 1), 0, 1) * clamp(Number(state.__previewApplicationProbability ?? 1), 0, 1); seen += 1; }
@@ -66620,6 +66632,13 @@
           }
           view = preview.inheritOverlayOrigin({ ...next, 状态效果: states }, next);
         }
+      }
+      // A one-shot dodge beside states that outlast it (瞬移 with a buff): the row has one window, so it goes without the dodge
+      // (one hit under-read) rather than dodging every hit of the buff's rounds.
+      if (onceDodges.some(([, window]) => lasting > window + 1e-9)) {
+        const states = { ...(view.状态效果 || {}) };
+        for (const [key] of onceDodges) if (states[key]) states[key] = { ...states[key], 战斗效果: { ...states[key].战斗效果, dodge_bonus: 0, incoming_only: false } };
+        view = preview.inheritOverlayOrigin({ ...view, 状态效果: states }, next);
       }
       if (changed || preview.staminaScaleForUnit(next) !== preview.staminaScaleForUnit(prior)) {
         rebuilt.push([row, view, false]);
@@ -66893,6 +66912,9 @@
           seen += 1;
           continue;
         }
+        // 脱离 (位移重做 S81): the enemy's strike-back window on the actor is closed for the round (BattleRuntime
+        // openStructuredCounterWindow reads positionClosesCounterWindow), so no exchange follows the move.
+        if (preview.positionClosesCounterWindow(actorNow, r20Round)) continue;
         const exchange = r20Exchange(answer[row][actorRow], answer[actorRow][row], back[actorRow][row] * keepBack[row][actorRow], back[row][actorRow] * keepBack[actorRow][row],
           meet.answer, priorTarget, priorActor);
         counter += alive[row] * exchange.taken;
