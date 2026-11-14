@@ -5131,9 +5131,18 @@
   const sideEffectTargetSet = new Set(['技能释放者', '效果承受者', '双方']);
   const sideEffectStatusMap = Object.freeze({
     全属性降低: '虚弱', 自损反噬: '反噬', 精神紊乱: '精神紊乱', 魂力反噬: '魂力枯竭',
-    命中下降: '精神紊乱', 动作迟缓: '迟缓', 目标错乱: '混乱', 施法僵直: '僵直',
+    命中下降: '精神紊乱', 动作迟缓: '迟缓', 目标错乱: '混乱', 施法僵直: '施法迟滞',
     本源损耗: '本源损耗', 重伤昏迷: '重伤昏迷',
   });
+  // The state a side effect puts on. 施法僵直's is 施法迟滞 (casting slower: buildSideEffectPayload's cast_speed_penalty);
+  // until 11-14 it was 僵直 — a hard control by its name (structuredControlConsumesActiveOpportunity), so the caster lost
+  // its next action although the side effect is priced and described as slower casting. A skill generated before keeps
+  // 副作用状态 僵直: read as 施法迟滞.
+  const sideEffectStateName = (effect = {}, fallback = '') => {
+    const type = String(effect?.副作用类型 || '').trim();
+    const name = String(effect?.副作用状态 || sideEffectStatusMap[type] || type || fallback).trim();
+    return type === '施法僵直' && name === '僵直' ? sideEffectStatusMap.施法僵直 : name;
+  };
   const sideEffectTypeSet = new Set([
     '全属性降低', '自损反噬', '致死献祭', '精神紊乱', '魂力反噬',
     '命中下降', '动作迟缓', '目标错乱', '施法僵直', '本源损耗', '重伤昏迷',
@@ -5164,7 +5173,7 @@
     const normalized = { 副作用类型: type, 触发时机: trigger, 生效对象: target, 触发概率: chance };
     if (type !== '致死献祭') {
       normalized.持续回合 = duration || 1;
-      normalized.副作用状态 = String(value.副作用状态 || sideEffectStatusMap[type] || type).trim();
+      normalized.副作用状态 = sideEffectStateName({ ...value, 副作用类型: type });
       if (String(value.数值 ?? '').trim()) normalized.数值 = String(value.数值 ?? '').trim();
       if (String(value.副数值 ?? '').trim()) normalized.副数值 = String(value.副数值 ?? '').trim();
     }
@@ -18433,7 +18442,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ) return;
       const payload = buildSideEffectPayload(sideEffect);
       const lethal = payload?.combatEffects?.致死 === true;
-      const stateName = String(sideEffect?.副作用状态 || sideEffectStatusMap[type] || type).trim();
+      const stateName = sideEffectStateName(sideEffect);
       const combatEffects = payload?.combatEffects || {};
       if (!stateName || (!Object.keys(combatEffects).length && !Object.keys(payload.statRatios).length)) return;
       const effectInstanceId = `${rootActionId}:side-effect:${sideEffectIndex}`;
@@ -23883,6 +23892,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     dependencyValueForKey,
     parseSignedValue,
     sideEffectStatusMap,
+    sideEffectStateName,
     normalizeSideEffectList,
     stateSideEffectTargetId,
     buildSideEffectPayload,

@@ -3270,7 +3270,8 @@ var SKILL_SIDE_EFFECT_TYPE_META_V1 = Object.freeze({
   命中下降: Object.freeze({ 状态: '精神紊乱', 数值: '+10%', 副数值: '', 持续回合: 2 }),
   动作迟缓: Object.freeze({ 状态: '迟缓', 数值: '+15%', 副数值: '+10%', 持续回合: 1 }),
   目标错乱: Object.freeze({ 状态: '混乱', 数值: '+30%', 副数值: '', 持续回合: 1 }),
-  施法僵直: Object.freeze({ 状态: '僵直', 数值: '+20%', 副数值: '', 持续回合: 1 }),
+  // 状态是「施法迟滞」（施法变慢），不是硬控「僵直」（11-14 前同名，战斗里被当成跳过回合）。
+  施法僵直: Object.freeze({ 状态: '施法迟滞', 数值: '+20%', 副数值: '', 持续回合: 1 }),
   // 数值：本源损耗为永久损失的潜力百分比；重伤昏迷为昏迷月数。
   本源损耗: Object.freeze({ 状态: '本源损耗', 数值: '+5%', 副数值: '', 持续回合: 1 }),
   重伤昏迷: Object.freeze({ 状态: '重伤昏迷', 数值: '1', 副数值: '', 持续回合: 1 }),
@@ -10596,7 +10597,9 @@ function 收口执行副作用条目_V1(value = {}, recordViolation = () => {}) 
   if (副作用类型 !== '致死献祭') {
     const 正式状态 = String(SKILL_SIDE_EFFECT_TYPE_META_V1[副作用类型]?.状态 || 副作用类型).trim();
     const 输入状态 = String(value.副作用状态 || 正式状态).trim();
-    if (输入状态 && 输入状态 !== 正式状态) recordViolation('副作用列表.副作用状态');
+    // 施法僵直 在 11-14 前的状态名是「僵直」，旧存档里的照收（战斗按「施法迟滞」结算）。
+    const 旧名 = 副作用类型 === '施法僵直' && 输入状态 === '僵直';
+    if (输入状态 && 输入状态 !== 正式状态 && !旧名) recordViolation('副作用列表.副作用状态');
   }
   const 持续源 = value.持续回合;
   if (副作用类型 !== '致死献祭' && 持续源 !== undefined) {
@@ -20305,7 +20308,7 @@ function 转译技能副作用列表_V1(副作用列表 = []) {
         命中下降: `精神紊乱：命中率降低${formatSkillNumber(数值)}%`,
         动作迟缓: `迟缓：反应降低${formatSkillNumber(数值)}%${副数值 ? `，闪避降低${formatSkillNumber(副数值)}%` : ''}`,
         目标错乱: `混乱：${formatSkillNumber(数值)}%概率错乱目标`,
-        施法僵直: `僵直：施法僵直强度${formatSkillNumber(数值)}%`,
+        施法僵直: `施法迟滞：施法变慢${formatSkillNumber(数值)}%`,
         本源损耗: `本源损耗：战后永久损失${formatSkillNumber(数值)}%潜力`,
         重伤昏迷: `重伤昏迷：战后昏迷${formatSkillNumber(数值)}个月`,
       })[类型] || `${类型}${数值 ? `：强度${formatSkillNumber(数值)}%` : ''}`;

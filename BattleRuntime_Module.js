@@ -219,7 +219,7 @@
       ].filter(Boolean).join(' ');
     }
     const duration = Math.max(1, Number(effect?.持续回合 || 0));
-    const stateName = String(effect?.副作用状态 || sideEffectStatusMap[type] || type || '反噬').trim();
+    const stateName = previewRuntime.sideEffectStateName(effect, '反噬');
     if (!unit.状态效果) unit.状态效果 = {};
     const nextEffects = mergeCombatEffectMaps(createEmptyCombatEffectMap(), combatEffects);
     if (nonDamageConditionNames.has(stateName)) {
@@ -327,7 +327,7 @@
         const afterHp = previewRuntime.readHp(unit);
         const hpDelta = afterHp - beforeHp;
         const blocked = /无视异常|持续状态移除/.test(log);
-        const stateName = String(effect?.副作用状态 || sideEffectStatusMap[effect?.副作用类型] || effect?.副作用类型 || '反噬').trim();
+        const stateName = previewRuntime.sideEffectStateName(effect, '反噬');
         const { inheritedSource, ownSourceEventId, sourceEventId, sourceEvent, sourceActionId, sourceEffectId, sourceActorName } = provenance(source);
         const fact = writeLedgerEvent(combatData, {
           eventKind: !probabilityPassed ? 'effect_resolved' : lethal || hpDelta ? 'resource_change' : 'state_apply',
