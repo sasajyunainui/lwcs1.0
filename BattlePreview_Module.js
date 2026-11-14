@@ -23481,7 +23481,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const reactionPressure = reactionDetails.value;
     const attackPressure = attackDetails.value;
     const share = reactionPressure / Math.max(1, reactionPressure + attackPressure);
-    const baseProbability = clamp(DODGE_BASE + (share - 0.5) * DODGE_SHARE_SLOPE, DODGE_BASE_FLOOR, DODGE_BASE_CAP);
+    // 战斗经验：双方经验差 × EXPERIENCE_DODGE_SLOPE（差 0.3 约 ±9%）。
+    const seasoned = (battleExperience(reactor) - battleExperience(sourceActor)) * EXPERIENCE_DODGE_SLOPE;
+    const baseProbability = clamp(DODGE_BASE + (share - 0.5) * DODGE_SHARE_SLOPE + seasoned, DODGE_BASE_FLOOR, DODGE_BASE_CAP);
     // Not knowing the move: no windup or reach correction.
     const move = incomingMove(declaration);
     const windupSwing = move ? incomingWindupSwing(sourceActor, move) : 0;
@@ -23586,7 +23588,39 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const speed = own + theirs > 0 ? (own - theirs) / (own + theirs) : 0;
     const base = clamp(COUNTER_BASE + speed + incomingWindupSwing(sourceActor, declaration) * COUNTER_WINDUP_SWING +
       (options?.prepared === true ? COUNTER_STANCE_BONUS : 0), COUNTER_FLOOR, COUNTER_CAP);
-    return base * passiveStreakFactor(reactor) * COUNTER_FADE ** Math.max(0, Math.floor(Number(options?.prior) || 0));
+    // 战斗经验抓空当：× (1 + (经验 − 0.5) × EXPERIENCE_COUNTER_SLOPE)。
+    const seasoned = 1 + (battleExperience(reactor) - 0.5) * EXPERIENCE_COUNTER_SLOPE;
+    return clamp(base * seasoned, 0, COUNTER_CAP) * passiveStreakFactor(reactor) * COUNTER_FADE ** Math.max(0, Math.floor(Number(options?.prior) || 0));
+  }
+  // 战斗经验（用户 2026-11-14「不另加战斗经验，就用年龄+天赋推算战斗经验，也就是说只是个中间结果」「绝世妖孽就用3试试」
+  // 「能达到封顶的只应该是天赋最高的」）: 0.2 + (该天赋的上限 − 0.2) × (1 − e^(−(年龄 − 6) × 倍率 ÷ 30))——六岁觉醒后逐年
+  // 累积、越往后越慢，天赋决定累积的快慢与上限。单位写了 战斗经验（0～1 或 0～100）就用写的。用在：判断对手（BattleDecision
+  // experienceOf）、闪避的较量（calculateReactionContest：双方经验差 × EXPERIENCE_DODGE_SLOPE）、抓反击空当。
+  const EXPERIENCE_TALENT = Object.freeze({
+    绝世妖孽: Object.freeze({ rate: 3.0, cap: 0.9 }), 顶级天才: Object.freeze({ rate: 1.6, cap: 0.82 }), 天才: Object.freeze({ rate: 1.3, cap: 0.76 }),
+    优秀: Object.freeze({ rate: 1.1, cap: 0.7 }), 正常: Object.freeze({ rate: 1.0, cap: 0.64 }), 劣等: Object.freeze({ rate: 0.8, cap: 0.55 }),
+    天赋极差: Object.freeze({ rate: 0.6, cap: 0.2 }),
+  });
+  const EXPERIENCE_FLOOR = 0.2, EXPERIENCE_YEARS = 30, EXPERIENCE_DODGE_SLOPE = 0.3, EXPERIENCE_COUNTER_SLOPE = 0.5;
+  const battleExperienceCache = new WeakMap();
+  function battleExperience(unit = {}) {
+    if (!unit || typeof unit !== 'object') return 0.5;
+    if (battleExperienceCache.has(unit)) return battleExperienceCache.get(unit);
+    const explicit = Number(unit?.战斗经验 ?? unit?.属性?.战斗经验 ?? unit?.battleExperience);
+    let value;
+    if (Number.isFinite(explicit)) value = clamp(explicit > 1 ? explicit / 100 : explicit, 0, 1);
+    else {
+      const talent = EXPERIENCE_TALENT[String(unit?.天赋梯队 ?? unit?.属性?.天赋梯队 ?? '').trim()] || EXPERIENCE_TALENT.正常;
+      const age = Number(unit?.年龄 ?? unit?.属性?.年龄);
+      const years = Number.isFinite(age) ? Math.max(0, age - 6) : Math.max(0, unitLevelOf(unit) / 3);
+      value = EXPERIENCE_FLOOR + (talent.cap - EXPERIENCE_FLOOR) * (1 - Math.exp(-years * talent.rate / EXPERIENCE_YEARS));
+    }
+    battleExperienceCache.set(unit, value);
+    return value;
+  }
+  function unitLevelOf(unit = {}) {
+    const level = [unit?.等级, unit?.level, unit?.属性?.等级].map(Number).find(Number.isFinite);
+    return Math.max(1, level || 1);
   }
   // What a strike back costs in stamina against an attack of the same nature: × COUNTER_STAMINA_FACTOR, and
   // COUNTER_STAMINA_STEP more for every strike back the unit already made in this exchange.
@@ -23960,6 +23994,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     applyGuardWeight,
     guardHolds,
     counterOpeningProbability,
+    battleExperience,
     counterStaminaFactor,
     declarationStaminaFactor,
     // 接战链 阶段二 (2026-11-12): clashing and preempting.

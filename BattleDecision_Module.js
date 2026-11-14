@@ -1801,10 +1801,11 @@
 
   function experienceOf(unit = {}) {
     if (experienceCache.has(unit)) return experienceCache.get(unit);
-    const explicit = Number(unit?.战斗经验 ?? unit?.battleExperience ?? unit?.经验稳定度);
+    // 战斗经验由年龄 + 天赋推算（BattlePreview battleExperience，用户 2026-11-14）；原先按等级估（0.25 + 等级 ÷ 120 × 0.7）。
+    const explicit = Number(unit?.经验稳定度);
     const result = Number.isFinite(explicit)
       ? clamp(explicit > 1 ? explicit / 100 : explicit, 0, 1)
-      : clamp(0.25 + unitLevel(unit) / 120 * 0.7, 0.2, 0.90);
+      : preview.battleExperience(unit);
     experienceCache.set(unit, result);
     return result;
   }
