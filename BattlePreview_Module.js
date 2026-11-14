@@ -21784,7 +21784,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           ? parseSignedValue(payload.resourceChange.value, maximum)
           : Number(payload?.delta || 0);
         // 治疗反转: a heal of HP landing under it is that HP taken, times the ratio, held at the lines (healInversionOf).
-        const inversion = payload.resourceChange && delta > 0 && resource === 生命 ? healInversionOf(unit) : null;
+        const inversion = payload.resourceChange && delta > 0 && resource === '生命' ? healInversionOf(unit) : null;
         if (inversion) {
           const rangeChange = parseSignedRange(payload.resourceChange.value);
           const requested = rangeChange ? (signedRangeValue(rangeChange, maximum, 0) + signedRangeValue(rangeChange, maximum, 1)) / 2 : delta;
