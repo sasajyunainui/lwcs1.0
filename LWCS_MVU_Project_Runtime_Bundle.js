@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:836de81efcb2d6124b0011d2a323c71b14b8bacc48dd31e7bd7ecb0407d08e20|MVU_Schema_Runtime.js:874a5c7f5cadc5cf4cc04560a20cb0af6c6421c40ad3091770715e54b99cac72|MVU_Competition_Runtime.js:2a5d78b856d3123e857393fca07fb365d91ce9ea4877cc37dfafd86b384e8904|MVU_Runtime_View.js:33244f9f67a95f87a863a19b87f81efff9f35a707fd6b591c6502c84cb1f486c */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:e713abbf992a9b6e9e1d4a279110839c0ebb9254529b749913aea8a5209c8807|MVU_Schema_Runtime.js:874a5c7f5cadc5cf4cc04560a20cb0af6c6421c40ad3091770715e54b99cac72|MVU_Competition_Runtime.js:2a5d78b856d3123e857393fca07fb365d91ce9ea4877cc37dfafd86b384e8904|MVU_Runtime_View.js:33244f9f67a95f87a863a19b87f81efff9f35a707fd6b591c6502c84cb1f486c */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -7796,7 +7796,8 @@ var SKILL_SIDE_EFFECT_TYPE_META_V1 = Object.freeze({
   命中下降: Object.freeze({ 状态: '精神紊乱', 数值: '+10%', 副数值: '', 持续回合: 2 }),
   动作迟缓: Object.freeze({ 状态: '迟缓', 数值: '+15%', 副数值: '+10%', 持续回合: 1 }),
   目标错乱: Object.freeze({ 状态: '混乱', 数值: '+30%', 副数值: '', 持续回合: 1 }),
-  施法僵直: Object.freeze({ 状态: '僵直', 数值: '+20%', 副数值: '', 持续回合: 1 }),
+  // 状态是「施法迟滞」（施法变慢），不是硬控「僵直」（11-14 前同名，战斗里被当成跳过回合）。
+  施法僵直: Object.freeze({ 状态: '施法迟滞', 数值: '+20%', 副数值: '', 持续回合: 1 }),
   // 数值：本源损耗为永久损失的潜力百分比；重伤昏迷为昏迷月数。
   本源损耗: Object.freeze({ 状态: '本源损耗', 数值: '+5%', 副数值: '', 持续回合: 1 }),
   重伤昏迷: Object.freeze({ 状态: '重伤昏迷', 数值: '1', 副数值: '', 持续回合: 1 }),
@@ -15122,7 +15123,9 @@ function 收口执行副作用条目_V1(value = {}, recordViolation = () => {}) 
   if (副作用类型 !== '致死献祭') {
     const 正式状态 = String(SKILL_SIDE_EFFECT_TYPE_META_V1[副作用类型]?.状态 || 副作用类型).trim();
     const 输入状态 = String(value.副作用状态 || 正式状态).trim();
-    if (输入状态 && 输入状态 !== 正式状态) recordViolation('副作用列表.副作用状态');
+    // 施法僵直 在 11-14 前的状态名是「僵直」，旧存档里的照收（战斗按「施法迟滞」结算）。
+    const 旧名 = 副作用类型 === '施法僵直' && 输入状态 === '僵直';
+    if (输入状态 && 输入状态 !== 正式状态 && !旧名) recordViolation('副作用列表.副作用状态');
   }
   const 持续源 = value.持续回合;
   if (副作用类型 !== '致死献祭' && 持续源 !== undefined) {
@@ -19582,6 +19585,28 @@ function 读取副作用数值百分数_V1(输入值, 回退值 = 0) {
   return Number.isFinite(数字) ? Math.abs(数字) : 回退值;
 }
 
+// 方案甲（用户 2026-11-14「甲吧」）：战斗内副作用按「同样的效果施加给一个敌人」的 COST（计算单项效果COST_V1，与上下文
+// 无关）的一半计价——作用在自己或队友身上、可以预知。镜像按副作用实际落下的战斗效果写（BattlePreview
+// buildSideEffectPayload）。原先是 数值÷5 之类的固定式，约为镜像的 1/4～1/26（混乱 50% 一回合 10 对 75，全属性 −50% 三回合
+// 15 对 389），按抵扣目标放大时数值普遍顶到 +50%，副作用比它抵掉的预算重得多。
+var 副作用镜像计价比例_V1 = 0.5;
+var 副作用全属性镜像_V1 = Object.freeze(['力量', '防御', '敏捷', '体力上限', '魂力上限', '精神力上限']);
+function 构建副作用镜像效果_V1(类型 = '', 数值 = 0, 副数值 = 0, 持续回合 = 1) {
+  const 降 = 值 => `-${Number(值) || 0}%`, 施 = 值 => `+${Number(值) || 0}%`, 判定 = (项, 值) => ({ 原型: '判定修正', 目标: '单体', 判定: 项, 数值: 降(值), 持续回合 });
+  const 状态 = (名, 值) => ({ 原型: '状态施加', 目标: '单体', 状态: 名, 数值: 施(值), 持续回合 });
+  const 列表 = ({
+    全属性降低: [{ 原型: '属性修正', 目标: '单体', 属性: [...副作用全属性镜像_V1], 数值: 降(数值), 持续回合, 生效方式: '独立生效' }],
+    自损反噬: [{ 原型: '资源变化', 目标: '单体', 资源: '生命', 数值: 降(数值), 持续回合 }],
+    精神紊乱: [状态('混乱', 数值), ...(副数值 > 0 ? [判定('反应', 副数值)] : [])],
+    魂力反噬: [{ 原型: '资源变化', 目标: '单体', 资源: '魂力', 数值: 降(数值), 持续回合 }],
+    命中下降: [判定('命中', 数值)],
+    动作迟缓: [判定('反应', 数值), ...(副数值 > 0 ? [判定('闪避', 副数值)] : [])],
+    目标错乱: [状态('混乱', 数值)],
+    // 施法变慢：出手更晚、应对的时间更少；判定修正里最接近的是反应。
+    施法僵直: [判定('反应', 数值)],
+  })[类型] || [];
+  return 数值 > 0 ? 列表 : [];
+}
 function 计算单项副作用COST_V1(副作用 = {}) {
   const 条目 = normalizeSkillSideEffectEntry(副作用);
   if (!条目) return { COST: 0 };
@@ -19611,22 +19636,12 @@ function 计算单项副作用COST_V1(副作用 = {}) {
     };
   }
   const 持续 = Math.max(0, Number(条目.持续回合 ?? 配置.持续回合 ?? 1));
-  const 默认持续 = Math.max(1, Number((配置.持续回合 ?? 持续) || 1));
-  const 持续修正 = 持续 / 默认持续;
   const 数值 = 读取副作用数值百分数_V1(条目.数值, 读取副作用数值百分数_V1(配置.数值, 0));
   const 副数值 = 读取副作用数值百分数_V1(条目.副数值, 读取副作用数值百分数_V1(配置.副数值, 0));
-  const 基准 = ({
-    全属性降低: 数值 / 5,
-    自损反噬: 数值 / 2,
-    精神紊乱: 数值 / 5 + 副数值 / 10,
-    魂力反噬: 数值 / 2.5,
-    命中下降: 数值 / 5,
-    动作迟缓: 数值 / 6 + 副数值 / 8,
-    目标错乱: 数值 / 5,
-    施法僵直: 数值 / 5,
-  })[类型] || 0;
+  const 镜像COST = 构建副作用镜像效果_V1(类型, 数值, 副数值, Math.max(1, 持续))
+    .reduce((和, 效果) => 和 + Math.max(0, Number(计算单项效果COST_V1(效果, {})?.COST || 0)), 0);
   return {
-    COST: Number(Math.max(0, 基准 * 持续修正 * 概率).toFixed(2)),
+    COST: Number(Math.max(0, 副作用镜像计价比例_V1 * 镜像COST * 概率).toFixed(2)),
     副作用类型: 类型,
     触发时机: 条目.触发时机 || '效果生效后',
     生效对象: 条目.生效对象 || '技能释放者',
@@ -22124,15 +22139,30 @@ function 按品质调整副作用风险_V1(档案 = {}, 上下文 = {}, 技能 =
 }
 
 // 副作用的轻重按抵扣目标定：约为预算门槛的 25%，这样"强力魂技 + 副作用"的总强度与高一档相当（B + 副作用 ≈ S）。
-// 原先参数写死（施法僵直 +20% 1 回合只抵 4 COST，约门槛的 5%–12%）。先放大数值（最多 50%），到顶再延长回合
-// （最多 3 回合）；只放大、不缩小。
+// 原先参数写死（施法僵直 +20% 1 回合只抵 4 COST，约门槛的 5%–12%）。偏轻：先放大数值（最多 50%），到顶再延长回合
+// （最多 3 回合）。偏重（2026-11-14 副作用改按镜像效果计价后，默认参数常常超过目标）：先缩回合（不少于 1），再按
+// 数值线性缩小（镜像 COST 对数值是线性的；不低于 3%）。
 var 生成阶段副作用目标抵扣比例_V1 = 0.25;
+var 生成阶段副作用最低数值_V1 = 3;
 function 按抵扣目标缩放生成阶段副作用_V1(条目 = null, 技能 = {}, 上下文 = {}) {
   if (!条目 || 条目.副作用类型 === '致死献祭') return 条目;
   const 门禁 = Number(评估技能预算_V1(技能, 上下文)?.实际门禁 || 0);
   const 当前 = Number(计算单项副作用COST_V1(条目).COST || 0);
   const 目标 = 门禁 * 生成阶段副作用目标抵扣比例_V1;
-  if (!(当前 > 0) || !(目标 > 当前)) return 条目;
+  if (!(当前 > 0) || !(目标 > 0)) return 条目;
+  if (当前 > 目标 * 1.05) {
+    const 结果 = { ...条目 };
+    for (let 回合 = Math.max(1, Number(结果.持续回合 || 1)); 回合 > 1 && Number(计算单项副作用COST_V1(结果).COST || 0) > 目标; 回合 -= 1) 结果.持续回合 = 回合 - 1;
+    const 现价 = Number(计算单项副作用COST_V1(结果).COST || 0);
+    if (现价 > 目标) {
+      const 缩 = 目标 / 现价, 最低 = 生成阶段副作用最低数值_V1;
+      const 数值 = 读取副作用数值百分数_V1(结果.数值, 0), 副数值 = 读取副作用数值百分数_V1(结果.副数值, 0);
+      if (数值 > 0) 结果.数值 = `+${Math.max(最低, Math.round(数值 * 缩))}%`;
+      if (副数值 > 0) 结果.副数值 = `+${Math.max(最低, Math.round(副数值 * 缩))}%`;
+    }
+    return normalizeSkillSideEffectEntry(结果);
+  }
+  if (!(目标 > 当前)) return 条目;
   let 倍率 = 目标 / 当前;
   const 结果 = { ...条目 };
   const 数值 = 读取副作用数值百分数_V1(结果.数值, 0);
@@ -24831,7 +24861,7 @@ function 转译技能副作用列表_V1(副作用列表 = []) {
         命中下降: `精神紊乱：命中率降低${formatSkillNumber(数值)}%`,
         动作迟缓: `迟缓：反应降低${formatSkillNumber(数值)}%${副数值 ? `，闪避降低${formatSkillNumber(副数值)}%` : ''}`,
         目标错乱: `混乱：${formatSkillNumber(数值)}%概率错乱目标`,
-        施法僵直: `僵直：施法僵直强度${formatSkillNumber(数值)}%`,
+        施法僵直: `施法迟滞：施法变慢${formatSkillNumber(数值)}%`,
         本源损耗: `本源损耗：战后永久损失${formatSkillNumber(数值)}%潜力`,
         重伤昏迷: `重伤昏迷：战后昏迷${formatSkillNumber(数值)}个月`,
       })[类型] || `${类型}${数值 ? `：强度${formatSkillNumber(数值)}%` : ''}`;
