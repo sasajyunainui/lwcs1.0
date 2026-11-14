@@ -10252,7 +10252,9 @@
     if (actionRole !== 'STATE_TICK' && !combatRuntime.itemPassiveBattleStarted) {
       settlePassiveSkillConsumers(combatData, Number(combatData?.回合 || 0), { phases: ['战斗开始'] });
     }
-    if (actionRole === 'ACTIVE' && !structuredActorCanAct(actor, actionRole)) {
+    // 被控时的解控出手（structuredBreakoutAllowed）goes through with the skill that clears the control.
+    if (actionRole === 'ACTIVE' && !structuredActorCanAct(actor, actionRole) &&
+      !(declaration?.__breakout === true && actionKind === 'RELEASE_SKILL' && previewRuntime.isBreakoutSkill(declaration.skill))) {
       throw new Error('battle_structured_actor_controlled');
     }
     // 认输与撤离: leaving keeps the action name 撤退 here — the decision trace names its choice so (normalizeActionDisplayName)
@@ -13429,6 +13431,48 @@
     return structuredControlConsumesActiveOpportunity(state) ||
       (normalizeActionRole(actionRole) !== 'ACTIVE' && (state?.cannot_react === true ||
         (effects?.cannot_react ?? state?.计算层效果?.cannot_react) === true));
+  }
+
+  // 挣脱（解控四项之二，BattlePreview struggleChance）: when a unit's own turn comes under a 拘束 control another laid, it
+  // tries to break it first; broken, the control ends and the turn goes on.
+  function attemptStructuredStruggle(combatData = {}, unit = {}) {
+    const states = unit?.状态效果 && typeof unit.状态效果 === 'object' ? unit.状态效果 : {};
+    const holderName = previewRuntime.unitName(unit) || '未知单位';
+    for (const [stateKey, state] of Object.entries(states)) {
+      if (states[stateKey] !== state || !structuredControlConsumesActiveOpportunity(state)) continue;
+      const casterName = String(state?.来源角色 || '').trim();
+      const caster = casterName && casterName !== holderName ? listCombatUnits(combatData).find(other => previewRuntime.unitName(other) === casterName) : null;
+      const chance = previewRuntime.struggleChance(unit, caster, state);
+      if (!(chance > 0)) continue;
+      const roll = Math.random();
+      const freed = roll < chance;
+      const stateName = String(state?.状态名称 || state?.状态 || stateKey).trim();
+      const event = writeLedgerEvent(combatData, {
+        eventKind: freed ? 'state_expire' : 'state_replace', round: Number(combatData?.回合 || 0),
+        actorId: previewRuntime.unitId(unit), actorName: holderName, targetId: previewRuntime.unitId(unit), targetName: holderName,
+        actionName: stateName, actionType: 'control_opportunity', actorControl: 'SYSTEM', actionRole: 'STATE_TICK',
+        result: freed ? 'expired' : 'held', resultState: freed ? 'EXPIRED' : 'SUCCESS', factType: 'STATE_CHANGE', ruleCode: freed ? 'CONTROL_STRUGGLE_FREE' : 'CONTROL_STRUGGLE_HELD',
+        probability: chance, roll,
+        meta: { source: 'structured_runtime', stateKey, stateName, struggle: true, chance, roll, caster: casterName },
+      });
+      if (!freed) continue;
+      const receipt = { event };
+      settleExpiredConditionBase(unit, stateKey, state, holderName, combatData, String(state?.__状态来源窗口?.[0] || state?.__状态来源键 || '').trim(), receipt);
+    }
+  }
+
+  // 被控时可放的解控技（解控四项之三，BattlePreview isBreakoutSkill）: a unit whose own turn a control would cancel, holding a
+  // skill that clears it and the resources for it, still gets the turn to cast that skill (or pass) — and the settlement of that
+  // cast goes through. Death, incapacity and the rest still stop it.
+  function structuredBreakoutAllowed(combatData = {}, unit = {}, node = {}) {
+    if (!unit || normalizeActionRole(node?.actionRole) !== 'ACTIVE') return false;
+    if (node.nodeKind === 'PRIMARY_SETTLEMENT') return node?.state?.breakout === true;
+    if (node.nodeKind !== 'ACTIVE' || previewRuntime.readIncapacityReason(unit)) return false;
+    const blocking = Object.values(unit?.状态效果 || {}).filter(state => structuredControlPreventsOpportunity(state, 'ACTIVE'));
+    if (!blocking.length || !blocking.every(state => structuredControlConsumesActiveOpportunity(state))) return false;
+    const skills = typeof decisionRuntime?.collectSkills === 'function' ? decisionRuntime.collectSkills(unit) : [];
+    return skills.some(skill => previewRuntime.isBreakoutSkill(skill) &&
+      (typeof previewRuntime.canPaySkillCost !== 'function' || previewRuntime.canPaySkillCost(unit, skill) !== false));
   }
 
   function consumeStructuredControlActiveBudget(combatData = {}, unit = {}, node = {}) {
@@ -17328,7 +17372,10 @@
             queue.recordTrace('CANCELLED', node, { reason: 'ENGAGEMENT_PREEMPTED', actionId: actionEvent.actionId });
             continue;
           }
-          if (!actor || !actorPresentInBattle || !structuredActorCanAct(actor, node.actionRole)) {
+          if (actor && actorPresentInBattle && node.nodeKind === 'ACTIVE' && normalizeActionRole(node.actionRole) === 'ACTIVE') attemptStructuredStruggle(combatData, actor);
+          const breakout = !!actor && actorPresentInBattle && !structuredActorCanAct(actor, node.actionRole) && structuredBreakoutAllowed(combatData, actor, node);
+          if (breakout && node.nodeKind === 'ACTIVE') node.state = { ...(node.state || {}), breakoutOnly: true };
+          if (!actor || !actorPresentInBattle || !structuredActorCanAct(actor, node.actionRole) && !breakout) {
             const actorName = previewRuntime.unitName(actor) || '未知单位';
             const controlSource = structuredControlSource(combatData, actor, node.actionRole);
             if ((node.nodeKind === 'ACTIVE' || node.actionRole === 'ASSIST' && actor?.召唤键) && actor?.蓄力技能) {
@@ -17802,9 +17849,11 @@
                 node.nodeKind === 'PRIMARY_SETTLEMENT' && node?.state?.chainLink === true);
               const chainWindup = previewRuntime.actionWindup(actor, shared.declaration);
               const chainUsed = Number(node?.state?.windupUsed || 0) + chainWindup;
+              let chained = false;
               if (chainLink && ['BASIC_ATTACK', 'RELEASE_SKILL', 'USE_ITEM'].includes(chainKind) && chainWindup > 0 &&
                 chainWindup <= naturalActionBudget && chainUsed < previewRuntime.CONTINUOUS_ACTION_BUDGET && structuredActorPhysicallyAlive(actor) &&
                 Number(node?.state?.chainDepth || 0) < 8) {
+                chained = true;
                 queue.enqueue({
                   actorEntry: node.actorEntry,
                   actorControl: node.actorControl,
@@ -17842,6 +17891,27 @@
                   sourceActionId: settlement.actionEvent.actionId,
                   grantType: 'FOLLOW_UP',
                   state: { continuationDepth: 1, parentActionEvent: settlement.actionEvent },
+                });
+              } else if (!chained && chainLink && structuredActorPhysicallyAlive(actor) && settlement.facts.some(event => {
+                // 控制后接一次普攻（用户 2026-11-14「做吧」）：主动出手给敌人上了硬控（跳过回合类），本回合连续行动又接不上
+                // （前摇合计到 40）时，施控者照样接一次普攻——只能普攻（basicAttackOnly），不再往下连。
+                if (event?.eventKind !== 'state_apply' || event?.result !== 'applied') return false;
+                if (!previewRuntime.structuredControlConsumesActiveOpportunity({ 状态: String(event?.meta?.stateName || '').trim() })) return false;
+                const struck = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, event?.targetId || event?.targetName || ''));
+                return !!struck && struck !== actor && inferUnitSide(combatData, struck) !== inferUnitSide(combatData, actor);
+              })) {
+                queue.enqueue({
+                  actorEntry: node.actorEntry,
+                  actorControl: node.actorControl,
+                  actorTurnSequence: node.actorTurnSequence,
+                  parentActionSequence: node.parentActionSequence || node.actionSequence,
+                  phasePriority: 65,
+                  grantId: `control_follow_up:${settlement.actionEvent.actionId}:1`,
+                  nodeKind: 'CONTINUATION',
+                  actionRole: 'ACTIVE',
+                  sourceActionId: settlement.actionEvent.actionId,
+                  grantType: 'FOLLOW_UP',
+                  state: { continuationDepth: 1, parentActionEvent: settlement.actionEvent, basicAttackOnly: true },
                 });
               }
               if (node.actionRole === 'ASSIST' && actor.召唤键) consumeSummonWindow(combatData, actor, '协同行动窗口耗尽', node.grantId);
@@ -18176,10 +18246,12 @@
                     } : {}),
                   }
                 : node.nodeKind === 'CONTINUATION'
-                  ? { role: 'ACTIVE', continuationGrant: true, immediateBudget: Number(node?.state?.immediateBudget ?? naturalActionBudget), enforceImmediateBudget: true }
-                  : { role: node.actionRole });
+                  ? { role: 'ACTIVE', continuationGrant: true, immediateBudget: Number(node?.state?.immediateBudget ?? naturalActionBudget), enforceImmediateBudget: true,
+                      ...(node?.state?.basicAttackOnly === true ? { basicAttackOnly: true } : {}) }
+                  : { role: node.actionRole, ...(node?.state?.breakoutOnly === true ? { breakoutOnly: true } : {}) });
               if (handleLostDecisionNode(decisionResult, node)) continue;
               declaration = cloneValue(decisionResult?.selected?.declaration || {});
+              if (node?.state?.breakoutOnly === true) declaration.__breakout = true;
               // A strike back's stamina price is the runtime's to set (接战链 阶段一), whatever the declaration carried.
               if (node.nodeKind === 'COUNTER') declaration.staminaFactor = previewRuntime.counterStaminaFactor(engagementCounterCounts(node)[previewRuntime.unitId(actor)] || 0);
               // The authoritative counterDeclineFallback flag is assembled by
@@ -18581,6 +18653,7 @@
                 // Until 11-14 it carried none of them and the judge asked for nodeKind ACTIVE, which a settlement never is: no chain
                 // was ever offered.
                 windupUsed: Number(node?.state?.windupUsed || 0), chainDepth: Number(node?.state?.chainDepth || 0),
+                ...(node?.state?.breakoutOnly === true ? { breakout: true } : {}),
                 chainLink: node.actionRole === 'ACTIVE' && (node.nodeKind === 'ACTIVE' || node.grantType === 'CONTINUOUS_ACTION'),
                 // The strike backs of this exchange so far, this one included (接战链 阶段一: the next costs more, is caught less).
                 counterCounts: node.nodeKind === 'COUNTER'

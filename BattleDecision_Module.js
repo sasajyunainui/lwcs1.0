@@ -6516,7 +6516,8 @@
       recordRejected({ actionKind: 'OPPORTUNITY', rejectionCode: 'ACTOR_INCAPACITATED' });
       return [];
     }
-    if (hasActionCancellation(actor)) {
+    // A controlled unit's turn is cancelled — unless the runtime lets it cast a skill that clears its control (breakoutOnly).
+    if (hasActionCancellation(actor) && input.actionOpportunity?.breakoutOnly !== true) {
       recordRejected({ actionKind: 'OPPORTUNITY', rejectionCode: 'ACTION_CANCELLED_BY_STATE' });
       return [];
     }
@@ -6628,7 +6629,8 @@
       : null;
     const basicAttackAllowed = !hasStateFlag(actor, 'disarm');
     const summonSkillDisabled = preview.isSummonSkillDisabled(actor);
-    const skillReleaseAllowed = !hasStateFlag(actor, 'silence') && !summonSkillDisabled;
+    // 控制后接的那一次（BattleRuntime control_follow_up）只能普攻。
+    const skillReleaseAllowed = !hasStateFlag(actor, 'silence') && !summonSkillDisabled && input.actionOpportunity?.basicAttackOnly !== true;
     const hostile = aliveEntries(worldSnapshot).filter(entry => entry.side !== sideOf(worldSnapshot, actor)).map(entry => entry.unit);
     const counterSourceId = String(input.actionOpportunity?.sourceActorId || '').trim();
     const directHostile = counterOnly && counterSourceId
@@ -7078,6 +7080,10 @@
       });
     });
     if (forcedSkill) return candidates;
+    // 被控时的解控出手（BattleRuntime breakout）: only the skills that clear the control, or passing.
+    if (input.actionOpportunity?.breakoutOnly === true) return candidates.filter(candidate => candidate.voluntaryOpportunityPass === true ||
+      candidate.declaration?.actionKind === 'RELEASE_SKILL' && preview.isBreakoutSkill(candidate.declaration?.skill) &&
+      (!(candidate.declaration?.targetIds || []).length || candidate.declaration.targetIds.map(String).includes(actorId)));
     // 接战链 阶段二: meeting the move (对轰 / 抢先) beside guarding, evading and the response skills.
     if (reactionOnly) candidates.push(...engagementCandidates(input, actor, worldSnapshot, immediateBudget));
     if (reactionOnly || counterOnly || assistOnly) {
@@ -65724,8 +65730,10 @@
         if (effect?.原型 !== '状态施加' || preview.negativeEffectIsImmune(other, effect)) continue;
         const stops = preview.deriveStateCombatEffect(effect);
         if (stops?.cannot_act !== true && stops?.skip_turn !== true) continue;
+        // 挣脱（BattlePreview struggleChance）: a 拘束 control holds by what its holder fails to break.
         best = Math.max(best, preview.normalizeEffectProbability(effect.触发概率, 1) *
-          preview.stateApplicationProbabilityMultiplier(other, effect) * Math.max(1, Number(effect.持续回合) || 1));
+          preview.stateApplicationProbabilityMultiplier(other, effect) * Math.max(1, Number(effect.持续回合) || 1) *
+          (1 - preview.struggleChance(other, unit, effect)));
       }
     }
     return best;

@@ -1552,6 +1552,51 @@
     return amount;
   }
 
+  // 受击解除（用户 2026-11-14 定「解控四项都做」之一）: a 心神 control — 催眠、幻境、混乱、沉睡、魅惑 — ends when its holder takes a hit
+  // to its HP (a shield that takes it all wakes no one). `share`: the chance the hit took HP — 1 for a settled hit (the runtime's
+  // resolver), below 1 for a projected one, which leaves the state on by what is left (__previewApplicationProbability).
+  const WAKE_ON_HIT_STATES = /催眠|幻境|混乱|沉睡|睡眠|魅惑/;
+  // 挣脱（解控四项之二）: a 拘束 control — 束缚、禁锢、定身、强制绑定 — may be broken when its holder's turn comes: chance =
+  // STRUGGLE_RATE × the holder's 力量 over the caster's 精神力上限 in 力量 terms (× the base table's 力量 ÷ 精神力上限 at the
+  // caster's level, so a balanced pair of one level is 1) × the control's 控制强度, up to STRUGGLE_CAP. 眩晕 is broken by the mind
+  // (用户 2026-11-14「眩晕看精神力」): the holder's 精神力上限 over the caster's. 冻结、麻痹 hold. Starting values. A caster not on
+  // the field, or a host without the base table: none.
+  const STRUGGLE_STATES = /束缚|禁锢|定身|强制绑定/, STRUGGLE_MIND_STATES = /眩晕/, STRUGGLE_RATE = 0.3, STRUGGLE_CAP = 0.9;
+  // 解控技（解控四项之三）: a skill that can clear its own caster's control — nothing hostile in it, one of them a 状态移除 whose
+  // selector reaches a control (任意负面 / 任意状态 / 控制 / 异常 or a control's name). A controlled unit may still cast one
+  // on its turn (BattleRuntime breakout). 霸体 and 无视异常 keep new controls off but end none, so they do not count.
+  const BREAKOUT_SELECTORS = /任意负面|任意状态|控制|异常|眩晕|束缚|定身|禁锢|冻结|麻痹|昏迷/;
+  function isBreakoutSkill(skill = {}) {
+    const effects = collectEffects(skill || {});
+    // No hostile part (no damage, nothing aimed at 敌方): a cleanse for an ally (单体 / 群体) counts, cast on oneself.
+    if (!effects.length || effects.some(effect => String(effect?.原型 || '').trim() === '伤害结算' || /敌/.test(String(effect?.目标 || '')))) return false;
+    return effects.some(effect => String(effect?.原型 || '').trim() === '状态移除' && !/敌/.test(String(effect?.目标 || '')) &&
+      BREAKOUT_SELECTORS.test(String(effect?.状态 ?? '任意负面')));
+  }
+  function struggleChance(holder = {}, caster = null, state = {}) {
+    const name = String(state?.状态 || state?.状态名称 || '');
+    if (!caster) return 0;
+    const power = Math.max(0.1, Number(state?.控制强度 ?? state?.战斗效果?.control_power ?? 1) || 1);
+    if (STRUGGLE_MIND_STATES.test(name)) {
+      const own = Number(readResourceMax(holder, '精神力')) || 0, theirs = Number(readResourceMax(caster, '精神力')) || 0;
+      return own > 0 && theirs > 0 ? clamp(STRUGGLE_RATE * own / (theirs * power), 0, STRUGGLE_CAP) : 0;
+    }
+    if (!STRUGGLE_STATES.test(name)) return 0;
+    const level = Number(caster?.属性?.等级 ?? caster?.等级 ?? caster?.level ?? 0);
+    const base = typeof root.__LWCS_GET_BASE_STATS__ === 'function' && level > 0 ? root.__LWCS_GET_BASE_STATS__(level) : null;
+    const strength = Number(readCombatStat(holder, 'str')) || 0, mind = Number(readResourceMax(caster, '精神力')) || 0;
+    if (!base || !(strength > 0) || !(mind > 0)) return 0;
+    return clamp(STRUGGLE_RATE * strength / (mind * Number(base.str || 1) / Math.max(1, Number(base.men_max || 1)) * power), 0, STRUGGLE_CAP);
+  }
+  function wakeOnHit(unit = {}, share = 0) {
+    const chance = clamp(Number(share) || 0, 0, 1);
+    if (!(chance > 1e-12) || !unit?.状态效果 || typeof unit.状态效果 !== 'object') return;
+    for (const [key, state] of Object.entries(unit.状态效果)) {
+      if (!WAKE_ON_HIT_STATES.test(String(state?.状态 || state?.状态名称 || key))) continue;
+      if (chance >= 1 - 1e-12) delete unit.状态效果[key];
+      else unit.状态效果[key] = { ...state, __previewApplicationProbability: clamp(Number(state?.__previewApplicationProbability ?? 1), 0, 1) * (1 - chance) };
+    }
+  }
   function absorbPreviewShield(unit = {}, incomingDamage = 0, incomingEffect = {}, sourceActor = {}) {
     let remaining = Math.max(0, Number(incomingDamage || 0));
     if (!(remaining > 0)) return 0;
@@ -12899,6 +12944,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             if (blocked > 0) consumeRuleBlockCharges(unit, blocked, { actionId: context.rootActionId });
             applyDamageRevivalOutcomes(unit, typeof context.damageOutcomeResolver === 'function' ? outcomeDistribution : damageExpectation.outcomeDistribution);
             setHp(unit, readHp(unit) - expectedDamage + expectedReviveHealing);
+            wakeOnHit(unit, (typeof context.damageOutcomeResolver === 'function' ? outcomeDistribution : damageExpectation.outcomeDistribution || [])
+              .reduce((sum, row) => sum + (Number(row?.hpDamage || 0) > 0 ? Number(row?.probability ?? 1) : 0), 0));
           });
           if (reactiveDamage) shieldAbsorb = expectedShieldAbsorb;
           const resolvedDamageOutcomes = typeof context.damageOutcomeResolver === 'function' ? outcomeDistribution : damageExpectation.outcomeDistribution;
@@ -24050,6 +24097,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     clearWorldActionContext,
     previewAction,
     lateDefenseSkill,
+    struggleChance,
+    isBreakoutSkill,
     projectConditionedAction,
     delayedStateRegistration,
     visitActionOutcomes,
