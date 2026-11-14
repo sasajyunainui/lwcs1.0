@@ -17847,10 +17847,19 @@
               // A charged release (its 前摇 over the budget) ends the chain through chainWindup <= naturalActionBudget below.
               const chainLink = node.actionRole === 'ACTIVE' && (node.nodeKind === 'ACTIVE' || node.grantType === 'CONTINUOUS_ACTION' ||
                 node.nodeKind === 'PRIMARY_SETTLEMENT' && node?.state?.chainLink === true);
-              const chainWindup = previewRuntime.actionWindup(actor, shared.declaration);
+              // 控制后追击（用户 2026-11-14「被硬控后可以不看前摇直接追击普攻」「硬控+普攻（前摇为0）+技能」）: the strike that
+              // follows a hard control takes no windup of the turn, so what the control left of the budget still carries a skill.
+              const freeWindup = node?.state?.freeWindup === true;
+              const chainWindup = freeWindup ? 0 : previewRuntime.actionWindup(actor, shared.declaration);
               const chainUsed = Number(node?.state?.windupUsed || 0) + chainWindup;
+              const hardControlled = node?.state?.freeWindup !== true && settlement.facts.some(event => {
+                if (event?.eventKind !== 'state_apply' || event?.result !== 'applied') return false;
+                if (!previewRuntime.structuredControlConsumesActiveOpportunity({ 状态: String(event?.meta?.stateName || '').trim() })) return false;
+                const struck = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, event?.targetId || event?.targetName || ''));
+                return !!struck && struck !== actor && inferUnitSide(combatData, struck) !== inferUnitSide(combatData, actor);
+              });
               let chained = false;
-              if (chainLink && ['BASIC_ATTACK', 'RELEASE_SKILL', 'USE_ITEM'].includes(chainKind) && chainWindup > 0 &&
+              if (chainLink && !hardControlled && ['BASIC_ATTACK', 'RELEASE_SKILL', 'USE_ITEM'].includes(chainKind) && (chainWindup > 0 || freeWindup) &&
                 chainWindup <= naturalActionBudget && chainUsed < previewRuntime.CONTINUOUS_ACTION_BUDGET && structuredActorPhysicallyAlive(actor) &&
                 Number(node?.state?.chainDepth || 0) < 8) {
                 chained = true;
@@ -17892,14 +17901,10 @@
                   grantType: 'FOLLOW_UP',
                   state: { continuationDepth: 1, parentActionEvent: settlement.actionEvent },
                 });
-              } else if (!chained && chainLink && structuredActorPhysicallyAlive(actor) && settlement.facts.some(event => {
-                // 控制后接一次普攻（用户 2026-11-14「做吧」）：主动出手给敌人上了硬控（跳过回合类），本回合连续行动又接不上
-                // （前摇合计到 40）时，施控者照样接一次普攻——只能普攻（basicAttackOnly），不再往下连。
-                if (event?.eventKind !== 'state_apply' || event?.result !== 'applied') return false;
-                if (!previewRuntime.structuredControlConsumesActiveOpportunity({ 状态: String(event?.meta?.stateName || '').trim() })) return false;
-                const struck = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, event?.targetId || event?.targetName || ''));
-                return !!struck && struck !== actor && inferUnitSide(combatData, struck) !== inferUnitSide(combatData, actor);
-              })) {
+              } else if (!chained && chainLink && hardControlled && structuredActorPhysicallyAlive(actor)) {
+                // 控制后追击：主动出手给敌人上了硬控（跳过回合类），施控者先接一次普攻（basicAttackOnly，不占前摇），这一下之后
+                // 本回合前摇还有余量的，照常连续行动（可接技能）。原先（11-14 dec4be8）只在前摇接不上时才追普攻，接得上时走普通
+                // 连续行动——20 次硬控里 11 次接的是防御姿态。
                 queue.enqueue({
                   actorEntry: node.actorEntry,
                   actorControl: node.actorControl,
@@ -17911,7 +17916,8 @@
                   actionRole: 'ACTIVE',
                   sourceActionId: settlement.actionEvent.actionId,
                   grantType: 'FOLLOW_UP',
-                  state: { continuationDepth: 1, parentActionEvent: settlement.actionEvent, basicAttackOnly: true },
+                  state: { continuationDepth: 1, parentActionEvent: settlement.actionEvent, basicAttackOnly: true, controlFollowUp: true,
+                    windupUsed: chainUsed, chainDepth: Number(node?.state?.chainDepth || 0) + 1 },
                 });
               }
               if (node.actionRole === 'ASSIST' && actor.召唤键) consumeSummonWindow(combatData, actor, '协同行动窗口耗尽', node.grantId);
@@ -18654,7 +18660,8 @@
                 // was ever offered.
                 windupUsed: Number(node?.state?.windupUsed || 0), chainDepth: Number(node?.state?.chainDepth || 0),
                 ...(node?.state?.breakoutOnly === true ? { breakout: true } : {}),
-                chainLink: node.actionRole === 'ACTIVE' && (node.nodeKind === 'ACTIVE' || node.grantType === 'CONTINUOUS_ACTION'),
+                chainLink: node.actionRole === 'ACTIVE' && (node.nodeKind === 'ACTIVE' || node.grantType === 'CONTINUOUS_ACTION' || node?.state?.controlFollowUp === true),
+                ...(node?.state?.controlFollowUp === true ? { freeWindup: true } : {}),
                 // The strike backs of this exchange so far, this one included (接战链 阶段一: the next costs more, is caught less).
                 counterCounts: node.nodeKind === 'COUNTER'
                   ? { ...engagementCounterCounts(node), [previewRuntime.unitId(actor)]: Number(engagementCounterCounts(node)[previewRuntime.unitId(actor)] || 0) + 1 }

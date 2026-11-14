@@ -23530,8 +23530,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       0.82,
     );
     const multiplier = prepared ? ordinary - (ordinary - Math.max(0.35, ordinary * 0.8)) * passiveStreakFactor(reactor) : ordinary;
-    const opening = attackOpeningOf(reactor);
-    return opening > 0 ? 1 - (1 - multiplier) * (1 - ATTACK_OPENING_DEFENSE_CUT * opening) : multiplier;
+    const opening = attackOpeningOf(reactor), slow = slowGuardCut(reactor);
+    const opened = opening > 0 ? 1 - (1 - multiplier) * (1 - ATTACK_OPENING_DEFENSE_CUT * opening) : multiplier;
+    return slow > 0 ? 1 - (1 - opened) * (1 - slow) : opened;
+  }
+  // 迟缓削弱防御（用户 2026-11-14「丙吧」：硬控提到 25，迟缓也削弱防御）: a slowed unit guards late — what its guard keeps off
+  // is cut by the slow's strength (迟缓/减速 states: their reaction_penalty, the 数值 they were laid with; the strongest).
+  function slowGuardCut(unit = {}) {
+    let cut = 0;
+    for (const state of Object.values(unit?.状态效果 || {})) {
+      if (!state || !/迟缓|减速/.test(String(state.状态 || state.状态名称 || ''))) continue;
+      const effect = state.战斗效果 || {};
+      cut = Math.max(cut, Number(effect.reaction_penalty ?? effect.dodge_penalty ?? 0) || 0);
+    }
+    return clamp(cut, 0, 0.9);
   }
   // The weight factor (GUARD_* above); `hitShare` null or not a number: GUARD_TYPICAL.
   function guardWeightFactor(hitShare = null) {

@@ -8466,9 +8466,9 @@ function rollSubModelByGrade(mainMechanic, grade, roll, context = {}) {
   };
   const 配置权重汇总 = new Map();
   // 控制系自己的控制类子表（用户 2026-11-14，同上）：通用表 C 档没有硬控、B 档硬控 25，控制系从 C 档起就能抽到硬控
-  // （硬控品质门 C 照旧，F、D 仍只出软控）；A、S 档用通用表。
+  // （硬控品质门 C 照旧，F、D 仍只出软控）；A、S 档用通用表。C 档硬控 15 → 25、迟缓 65 → 55（用户 2026-11-14「丙吧，硬控提到25试试」）。
   const 本系控制表 = 系别 === '控制系' ? {
-    C: [{ value: '迟缓', weight: 65 }, { value: '硬控', weight: 15 }, { value: '节奏打断', weight: 20 }],
+    C: [{ value: '迟缓', weight: 55 }, { value: '硬控', weight: 25 }, { value: '节奏打断', weight: 20 }],
     B: [{ value: '迟缓', weight: 45 }, { value: '硬控', weight: 35 }, { value: '节奏打断', weight: 20 }],
   } : null;
   (mainMechanic === '控制类' && 本系控制表?.[tableGrade] ? 本系控制表[tableGrade]
