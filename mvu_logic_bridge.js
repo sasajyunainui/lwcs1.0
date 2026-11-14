@@ -15007,6 +15007,7 @@
     反噬: '精神力上限',
     霸体: '体力上限',
     护卫: '体力上限',
+    异常抗性: '精神力上限',
   });
   function 技能设计台判定修正允许打断效果(字段 = {}) {
     if (parseSkillDesignerIntegerInputValue(字段 && 字段['持续回合'], 0, 0) > 0) return false;
@@ -15066,6 +15067,7 @@
     if (状态名 === '禁疗') return '+40%';
     if (状态名 === '治疗反转') return '+100%';
     if (状态名 === '护卫') return '+10%';
+    if (状态名 === '异常抗性') return '+25%';
     if (状态名 === '嘲讽') return '+100%';
     if (状态名 === '共享视野') return '+10%';
     if (['资源燃烧', '魂力枯竭'].includes(状态名)) return '+3%';
@@ -15103,7 +15105,7 @@
 
 
   function 技能设计台状态施加使用正向强度数值(状态 = '') {
-    return ['资源燃烧', '魂力枯竭', '防御剥夺', '精神抗性剥夺'].includes(normalizeSkillUiText(状态, ''));
+    return ['资源燃烧', '魂力枯竭', '防御剥夺', '精神抗性剥夺', '异常抗性'].includes(normalizeSkillUiText(状态, ''));
   }
 
 
@@ -15128,7 +15130,7 @@
       return formatSkillDesignerSignedValue(Math.max(0.05, Math.abs(数值)), true);
     if (字段 === '数值' && ['资源燃烧', '魂力枯竭'].includes(状态名))
       return formatSkillDesignerSignedValue(Math.max(0.01, Math.abs(数值)), true);
-    if (字段 === '数值' && ['护盾', '禁疗', '治疗反转', '防御剥夺', '精神抗性剥夺'].includes(状态名))
+    if (字段 === '数值' && ['护盾', '禁疗', '治疗反转', '防御剥夺', '精神抗性剥夺', '异常抗性'].includes(状态名))
       return formatSkillDesignerSignedValue(Math.max(0.05, Math.abs(数值)), true);
     return value;
   }
@@ -17490,7 +17492,7 @@
         .filter(effect => normalizeSkillUiText(effect['原型'], '') === '状态施加')
         .map(effect => normalizeSkillUiText(effect['状态'], '')),
     );
-    const 防御状态 = ['护盾', '无视异常', '霸体'];
+    const 防御状态 = ['护盾', '无视异常', '霸体', '异常抗性'];
     const 负面状态 = [
       '中毒',
       '流血',
@@ -19495,7 +19497,7 @@
       if (结算 === '受到伤害') return 数值 < 0;
       return ['伤害分摊', '消耗分摊', '伤害吸收'].includes(结算);
     }
-    if (原型名 === '状态施加') return ['持续恢复', '护盾', '隐匿', '共享视野', '无视异常', '霸体', '护卫'].includes(normalizeSkillUiText(effect && effect['状态'], ''));
+    if (原型名 === '状态施加') return ['持续恢复', '护盾', '隐匿', '共享视野', '无视异常', '霸体', '异常抗性', '护卫'].includes(normalizeSkillUiText(effect && effect['状态'], ''));
     return false;
   }
 
