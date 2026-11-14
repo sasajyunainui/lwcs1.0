@@ -10682,6 +10682,8 @@
         魂技名: String(declaration.skill.魂技名 || declaration.skill.name || '').trim(),
         id: String(declaration.skill.id || declaration.skill.技能ID || '').trim(),
         消耗: cloneValue(declaration.skill.消耗 ?? '无'),
+        // 魂技消耗成长：被复制的魂技带着锚定，复制者按自己的资源上限放大（付的是「固定+N%」，放大要跟着）。
+        ...(declaration.skill._锚定消耗 && typeof declaration.skill._锚定消耗 === 'object' ? { _锚定消耗: cloneValue(declaration.skill._锚定消耗) } : {}),
         _效果数组: cloneValue(declaration.skill._效果数组.filter(effect => effect?.__施技反噬 !== true)),
         round: Number(combatData?.回合 || 0),
       };

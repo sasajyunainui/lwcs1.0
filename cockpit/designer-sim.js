@@ -706,7 +706,9 @@
         ) || null;
       原始效果 = constructTemplate ? constructTemplate['使用效果'] : effectArray;
       deliveryForm = normalizeSkillUiText(safe['承载方式'] || safe['释放形式'], '');
-      const costConfig = 解析技能设计台消耗文本配置(safe['消耗']);
+      // 魂技消耗成长：已存的魂技消耗是「固定+N%」，试算与设计台一样按锚定消耗（现行 COST 口径的绝对值）算。
+      const 成长助手 = typeof globalThis !== 'undefined' ? globalThis.__LWCS_SKILL_COST_HELPERS_V1__ : null;
+      const costConfig = 解析技能设计台消耗文本配置(typeof 成长助手?.取预算口径消耗_V1 === 'function' ? 成长助手.取预算口径消耗_V1(safe) : safe['消耗']);
       cost = buildSkillDesignerCostObject(costConfig.resourceType, costConfig.resourceValues);
       levelControl = normalizeSkillDesignerLevelControl(safe['技能掌控度']);
       启用掌控 = !!levelControl;

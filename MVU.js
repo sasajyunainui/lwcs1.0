@@ -231,6 +231,7 @@ const SkillStructSchema = z
     前摇: z.coerce.number().prefault(0),
     场外冷却至tick: z.coerce.number().optional(),
     计价版本: z.coerce.number().optional().describe('技能预算计价版本；新生成与设计台保存的技能写入，读档收敛据此选计价口径'),
+    _锚定消耗: z.any().optional().describe('魂技消耗成长：获得该魂技时的总消耗 {魂力, 精神力, 体力}；COST 预算与设计台校验按它算，结算时效果随实际消耗放大'),
     附带属性: z.array(z.string()).prefault([]),
     使用条件: z
       .object({

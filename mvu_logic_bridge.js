@@ -1477,7 +1477,7 @@
   const 装备加成属性选项_桥接 = Object.freeze(['魂力上限', '精神力上限', '力量', '防御', '敏捷', '体力上限']);
   const 装备加成方向选项_桥接 = Object.freeze([...装备加成属性选项_桥接, '全属性']);
   const 装备加成属性集合_桥接 = new Set(装备加成属性选项_桥接);
-  const 正式技能字段列表_桥接 = Object.freeze(['魂技名', '画面描述', '效果描述', '产物描述', '承载方式', '消耗', '前摇', '场外冷却至tick', '附带属性', '使用条件', '技能掌控度', '触发限制', '_效果数组', '副作用列表', '计价版本']);
+  const 正式技能字段列表_桥接 = Object.freeze(['魂技名', '画面描述', '效果描述', '产物描述', '承载方式', '消耗', '前摇', '场外冷却至tick', '附带属性', '使用条件', '技能掌控度', '触发限制', '_效果数组', '副作用列表', '计价版本', '_锚定消耗']);
   const 正式技能字段集合_桥接 = new Set(正式技能字段列表_桥接);
 
   function 断言物品正式技能_桥接(技能 = {}, 来源 = '物品技能') {
@@ -17728,7 +17728,7 @@
     );
     const mergedMechanicParams = {};
     const costConfig = parseSkillDesignerCostConfig(
-      designDraft['消耗'] || safeSkill['消耗'],
+      designDraft['消耗'] || 读取技能设计台口径消耗(safeSkill),
       designDraft['消耗资源'],
       designDraft['消耗值'],
     );
@@ -18264,6 +18264,11 @@
     });
   }
 
+  // 魂技消耗成长（2026-11-15）：设计台按锚定消耗（现行 COST 口径的绝对值）显示与编辑；保存时由运行时换算回「固定+N%」并写 _锚定消耗。
+  function 读取技能设计台口径消耗(skill = {}) {
+    const 助手 = typeof globalThis !== 'undefined' ? globalThis.__LWCS_SKILL_COST_HELPERS_V1__ : null;
+    return typeof 助手?.取预算口径消耗_V1 === 'function' ? 助手.取预算口径消耗_V1(skill) : skill['消耗'];
+  }
   function parseSkillDesignerCostAmount(value = '') {
     const text = normalizeSkillUiText(value, '');
     if (!text || text === '无') return '';

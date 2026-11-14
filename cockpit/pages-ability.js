@@ -9,6 +9,13 @@
     if (typeof cost === 'object') return c.entries(cost).map(([k, v]) => `${c.esc(k)} ${c.fmt(v)}`).join(' · ');
     return c.esc(cost);
   };
+  // 魂技消耗成长：普通魂技的魂力消耗写成「固定+N%」（如 "4765+5%"），按角色当前魂力上限折成实际数值；纯数字写法与分阶段（启动）写法照旧。
+  const spCost = (c, sk) => {
+    const raw = sk && sk.消耗, term = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw.启动 && typeof raw.启动 === 'object' ? raw.启动.魂力 : raw.魂力) : undefined;
+    if (term === undefined || term === null) return 0;
+    const text = String(term), mix = /^\s*(\d+(?:\.\d+)?)\s*\+\s*(\d+(?:\.\d+)?)%\s*$/.exec(text), pct = /^\s*(\d+(?:\.\d+)?)%\s*$/.exec(text), cap = c.num(c.st.魂力上限);
+    return mix ? Math.floor(Number(mix[1]) + Number(mix[2]) / 100 * cap) : pct ? Math.floor(Number(pct[1]) / 100 * cap) : c.num(term);
+  };
   const allSkills = c => {
     const out = [];
     for (const s of c.souls) for (const sp of s.spirits) for (const r of sp.rings) for (const sk of r.skills) out.push({ key: `${s.slot}/${sp.slot}/${r.slot}/${sk.slot}`, group: '魂环魂技', from: `${s.表象名称} · ${r.slot}`, ring: r, ...sk });
@@ -148,7 +155,7 @@
     const cond = sk.使用条件 || {}, lim = sk.触发限制, mast = sk.技能掌控度;
     // _效果数组 两种形态：造物承载是「包」列表（数量 / 有效期 / 使用效果），其余承载直接是效果列表——后者包成一个包
     const list = Array.isArray(sk._效果数组) ? sk._效果数组.filter(Boolean) : [], pkgs = list.some(p => Array.isArray(p.使用效果)) ? list : list.length ? [{ 使用效果: list }] : [];
-    const sp = typeof sk.消耗 === 'object' ? c.num(sk.消耗?.魂力) : 0, pool = c.num(c.st.魂力), casts = sp ? Math.floor(pool / sp) : 0;
+    const sp = spCost(c, sk), pool = c.num(c.st.魂力), casts = sp ? Math.floor(pool / sp) : 0;
     return `<div class="insp-head">${sk.ring ? c.ringMedal(sk.ring, String(sk.ring.slot || '').replace(/\D/g, '')) : c.sock('book', 'gd')}<div><strong style="font-size:1.15em">${c.esc(sk.魂技名)}</strong><br><small>${c.esc(sk.group)} · ${c.esc(sk.from)}</small></div>${page ? '' : '<button class="x" type="button" data-close-inspector aria-label="关闭">×</button>'}</div>
       <div style="display:flex;gap:.35em;flex-wrap:wrap">${sk.ring ? `<span class="chip">${c.yearTier(sk.ring.年限)} · ${c.fmt(sk.ring.年限)} 年</span>` : ''}${!c.blank(sk.承载方式) ? `<span class="chip s">${c.esc(sk.承载方式)}</span>` : ''}${sk.触发方式 ? `<span class="chip s">触发：${c.esc(sk.触发方式)}</span>` : ''}${(sk.附带属性 || []).map(a => `<span class="chip s">${c.esc(a)}</span>`).join('')}</div>
       ${pkgs.length ? `<section class="sec"><h3>效果</h3>${pkgs.map(p => `${(p.使用效果 || []).map(e => fxRow(c, e) + (e.条件分支 || []).map(b => branchRow(c, b)).join('')).join('')}${p.有效期tick || p.数量 ? `<small style="padding-left:.2em">产出 ${c.fmt(p.数量 || 1)} 份${p.有效期tick ? ` · 有效期 ${Math.floor(p.有效期tick / 6)} 小时` : ''}</small>` : ''}`).join('')}</section>` : ''}
@@ -194,7 +201,7 @@
       return `<button class="cta" type="button"${extra} data-confirm="${c.esc(`${label}「${sk.魂技名}」`)}" data-act="${c.esc(JSON.stringify({ name: 'skill', path }))}"><i class="fa-solid fa-hand-sparkles"></i>${label}</button>`;
     }
     if (window.COCKPIT.rt('__LWCS_ERA_RUNTIME_INTEGRATION_V1__') && !path) return lock('日常施展', '这个技能来自物品定义，装备后在角色身上施展');
-    const sp = typeof sk.消耗 === 'object' ? c.num(sk.消耗?.魂力) : 0, short = sp > 0 && c.num(c.st.魂力) < sp;
+    const sp = spCost(c, sk), short = sp > 0 && c.num(c.st.魂力) < sp;
     const btn = `<button class="cta" type="button"${extra}${short ? ' disabled' : ` data-confirm="${c.esc(`日常施展「${sk.魂技名}」${sp ? `，消耗魂力 ${c.fmt(sp)}` : ''}`)}"`}><i class="fa-solid fa-hand-sparkles"></i>日常施展</button>`;
     return short ? `<span class="cta-wrap" data-hint="魂力不足：需要 ${c.fmt(sp)}">${btn}</span>` : btn;
   };
@@ -274,7 +281,7 @@
       right: `<div class="pad">
         ${c.head('fire-flame-curved', '施放次数', 'Casts', 'sp')}
         <div class="need"><span>当前魂力</span><b>${c.fmt(pool)} / ${c.fmt(c.st.魂力上限)}</b></div>
-        ${skills.length ? `<div class="casts">${skills.map(x => { const cost = typeof x.sk.消耗 === 'object' ? c.num(x.sk.消耗?.魂力) : 0; return `<button class="cast" type="button" data-inspect="sk:${skKey(x)}" data-go="page-ability/codex" data-go-set="skg=全部;sksel=${skKey(x)}"><div><strong>${c.esc(x.sk.魂技名)}</strong><small>${cost ? `每次 ${c.fmt(cost)} 魂力` : '无魂力消耗'}</small></div><b>×${cost ? Math.floor(pool / cost) : '∞'}</b></button>`; }).join('')}</div>` : '<span class="lbl">尚无可施放的魂技</span>'}
+        ${skills.length ? `<div class="casts">${skills.map(x => { const cost = spCost(c, x.sk); return `<button class="cast" type="button" data-inspect="sk:${skKey(x)}" data-go="page-ability/codex" data-go-set="skg=全部;sksel=${skKey(x)}"><div><strong>${c.esc(x.sk.魂技名)}</strong><small>${cost ? `每次 ${c.fmt(cost)} 魂力` : '无魂力消耗'}</small></div><b>×${cost ? Math.floor(pool / cost) : '∞'}</b></button>`; }).join('')}</div>` : '<span class="lbl">尚无可施放的魂技</span>'}
         ${blOn ? `<div class="groove"></div>${c.head('droplet', bl.血脉, 'Bloodline', 'hp')}${c.kv([['血脉', c.ed(bl.血脉, c.P('血脉之力', '血脉'))], ['解封层数', c.ed(c.fmt(bl.解封层数 || 0), c.P('血脉之力', '解封层数'), { kind: 'number', integer: true, min: 0, raw: c.num(bl.解封层数) })], ['气血魂核', c.ed(bl.核心 || '未凝聚', c.P('血脉之力', '核心'), { raw: bl.核心 || '' })], ['生命之火', bl.生命之火 ? '已点燃' : '未点燃']])}${allSkills(c).filter(s => BLOOD_CHIP[s.group]).map(s => `<button class="row" type="button" data-inspect="sk:${c.esc(s.key)}"><span class="chip s">${BLOOD_CHIP[s.group]}</span><div><strong>${c.esc(s.魂技名)}</strong></div><i class="fa-solid fa-chevron-right"></i></button>`).join('')}` : ''}
         ${(n => `<button class="tile door self-made" type="button" data-go="page-ability/design" data-hint="设计台">${c.sock('pen-ruler', 'gd')}<b>${n} 项</b><small>${window.COCKPIT.pending()?.skillDesign ? '有待确认的设计' : '自创魂技'}</small></button>`)(c.entries(c.ch.自创魂技).length)}
       </div>`,

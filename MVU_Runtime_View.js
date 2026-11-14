@@ -5205,7 +5205,7 @@ function 删除正文视图机制字段_V1(节点 = null, 当前tick = 0) {
     return;
   }
   写入运行时场外冷却文本_V1(节点, 当前tick);
-  ['_效果数组', '使用效果', '属性加成', '属性倍率', '装备技能', '副职业参数', '消耗', '前摇'].forEach(键 => {
+  ['_效果数组', '_锚定消耗', '使用效果', '属性加成', '属性倍率', '装备技能', '副职业参数', '消耗', '前摇'].forEach(键 => {
     if (Object.prototype.hasOwnProperty.call(节点, 键)) delete 节点[键];
   });
   if (节点.战力面板 && typeof 节点.战力面板 === 'object' && !Array.isArray(节点.战力面板)) {

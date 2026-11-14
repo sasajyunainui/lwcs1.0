@@ -5190,7 +5190,7 @@
     );
     const mergedMechanicParams = {};
     const costConfig = parseSkillDesignerCostConfig(
-      designDraft['消耗'] || safeSkill['消耗'],
+      designDraft['消耗'] || 读取技能设计台口径消耗(safeSkill),
       designDraft['消耗资源'],
       designDraft['消耗值'],
     );
@@ -6557,6 +6557,11 @@
     });
   }
   // —— B:24929-24934
+  // 魂技消耗成长（2026-11-15）：设计台按锚定消耗（现行 COST 口径的绝对值）显示与编辑；保存时由运行时换算回「固定+N%」并写 _锚定消耗。
+  function 读取技能设计台口径消耗(skill = {}) {
+    const 助手 = typeof globalThis !== 'undefined' ? globalThis.__LWCS_SKILL_COST_HELPERS_V1__ : null;
+    return typeof 助手?.取预算口径消耗_V1 === 'function' ? 助手.取预算口径消耗_V1(skill) : skill['消耗'];
+  }
   function parseSkillDesignerCostAmount(value = '') {
     const text = normalizeSkillUiText(value, '');
     if (!text || text === '无') return '';
@@ -11633,6 +11638,14 @@
           if (路径.includes('自创魂技')) return '自创魂技';
           return '魂技';
         })();
+        // 魂技消耗成长：表单里手写成「固定+N%」又没有锚定的消耗，先按「固定 + N% × 10N 级资源上限」还原成绝对值，预算与断言按现行 COST 口径算。
+        const 成长上下文 = (() => {
+          const 角色键 = Array.isArray(previewMeta.path) ? previewMeta.path[1] : '';
+          return { sourceCategory: 来源标识, ringIndex: 魂技位, 魂环位: 魂技位, 角色: deepGet(snapshot.rootData, ['char', 角色键], {}) || {} };
+        })();
+        if (typeof COST助手.展开魂技成长消耗为锚定口径_V1 === 'function' && ['魂技', '自创魂技'].includes(来源标识)) {
+          try { COST助手.展开魂技成长消耗为锚定口径_V1(nextSkill, 成长上下文); } catch (错误) { /* 还原失败按表单原值走预算 */ }
+        }
         if (typeof COST助手.按原型数上限截断_V1 === 'function') {
           const 截断结果 = COST助手.按原型数上限截断_V1(nextSkill, 魂技位, 来源标识);
           if (截断结果?.截断记录) {
@@ -11657,6 +11670,10 @@
             来源: 预算上下文.来源类别,
             启用位级硬上限: true,
           }, normalizeSkillUiText(previewMeta.label || formState.name || '技能设计', '技能设计'));
+          // 魂技消耗成长：预算按锚定（绝对值）消耗通过后，换算成「固定+N%」并写 _锚定消耗（普通魂环魂技/自创魂技；其余来源不动）。
+          if (typeof COST助手.规范化魂技成长消耗_V1 === 'function' && ['魂技', '自创魂技'].includes(来源标识)) {
+            COST助手.规范化魂技成长消耗_V1(nextSkill, 成长上下文);
+          }
         }
       }
       if (选项.跳过预算断言 !== true) 结果.updates = buildSkillDesignerWriteUpdates(previewMeta, nextSkill, snapshot.rootData);

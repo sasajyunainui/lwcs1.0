@@ -17466,6 +17466,37 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return selected;
   }
 
+  // 魂技消耗成长（用户 2026-11-15）：普通魂环魂技的消耗是「固定段 + N% × 资源上限」，技能带 _锚定消耗（获得时的总消耗）。
+  // 效果数值 × ∛(实际消耗 ÷ 锚定消耗)，封顶 ∛16；实际消耗按施法者当前资源上限算，不含结算修正对消耗的增减。
+  // 结果由（消耗写法、锚定、施法者三项资源上限）完全决定，按这几项缓存；资源上限每次都读（保持预演的依赖记录），缓存只省解析与折算。
+  const soulSkillGrowthCache = new Map();
+  const SOUL_SKILL_GROWTH_CACHE_LIMIT = 4096;
+  function soulSkillGrowthMultiplier(actor, skill) {
+    if (!skill || typeof skill !== 'object') return 1;
+    const anchor = skill._锚定消耗;
+    if (!anchor || typeof anchor !== 'object' || Array.isArray(anchor)) return 1;
+    const rules = root.__LWCS_C2_CONSUMER_RULES_V1__;
+    if (typeof rules?.计算魂技消耗成长倍数_V1 !== 'function') return 1;
+    const maxima = { 魂力: readResourceMax(actor, '魂力') };
+    for (const resource of ['精神力', '体力']) if (Number(anchor[resource]) > 0) maxima[resource] = readResourceMax(actor, resource);
+    const cacheKey = `${JSON.stringify(skill.消耗)}|${JSON.stringify(anchor)}|${maxima.魂力}|${maxima.精神力 ?? ''}|${maxima.体力 ?? ''}`;
+    const cached = soulSkillGrowthCache.get(cacheKey);
+    if (cached !== undefined) return cached;
+    const stages = readSkillCostStages(skill, {});
+    let growth = 1;
+    if (!stages.非法项?.length) {
+      const actual = {};
+      for (const [resource, term] of Object.entries(stages.启动 || {})) {
+        const amount = resolveSkillResourceCost(actor, resource, term);
+        if (Number.isFinite(amount)) actual[resource] = amount;
+      }
+      growth = rules.计算魂技消耗成长倍数_V1(skill, actual, maxima);
+    }
+    if (soulSkillGrowthCache.size >= SOUL_SKILL_GROWTH_CACHE_LIMIT) soulSkillGrowthCache.clear();
+    soulSkillGrowthCache.set(cacheKey, growth);
+    return growth;
+  }
+
   // Resolve quantitative release strength once. Stored item recipes and ticks
   // already carry their released strength; independent grants are not this skill.
   function releaseSkillEffects(actor, declaration, effects, actionRole) {
@@ -17476,6 +17507,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (typeof rules?.计算技能掌控度完整度_V1 !== 'function' || typeof rules?.应用技能掌控度效果数组_V1 !== 'function') throw new Error('skill_mastery_runtime_missing');
       effects = rules.应用技能掌控度效果数组_V1(effects, rules.计算技能掌控度完整度_V1(declaration.skill, actor));
     }
+    const growth = soulSkillGrowthMultiplier(actor, declaration?.skill);
+    if (growth > 1 + 1e-9 && typeof rules?.放大魂技消耗成长效果数组_V1 === 'function') effects = rules.放大魂技消耗成长效果数组_V1(effects, growth);
     if (String(declaration?.skill?.魂技名 || declaration?.skill?.name || '').trim() === '坚挺金苍蝇' ||
         !/食物属性|香肠/.test([...(Array.isArray(declaration?.skill?.附带属性) ? declaration.skill.附带属性 : []),
           declaration?.skill?.效果描述, declaration?.skill?.画面描述].map(value => String(value || '')).join('|'))) return effects;
@@ -24107,6 +24140,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     inventoryItemAvailable,
     inventoryUseEffects,
     releaseSkillEffects,
+    soulSkillGrowthMultiplier,
     settleInventoryItemUse,
     creationInventoryStock,
     creationProductIdentity,
