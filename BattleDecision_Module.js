@@ -2141,6 +2141,29 @@
   // enemy's pictured level, panel and resources toward the true ones by n / (n + BELIEF_EXCHANGE_PRIOR) — half after two
   // exchanges, three quarters after six. A starting value, set by its reading. Counted per ledger while it grows.
   const BELIEF_EXCHANGE_PRIOR = 2;
+  // Exchanges an actor's acquaintance with an enemy is worth: a battle fought with it, and a relation (a close one — kin, friend,
+  // teammate, master, rival — more); at most BELIEF_FAMILIAR_CAP (clarity 0.8).
+  const BELIEF_FAMILIAR_BATTLE = 4, BELIEF_FAMILIAR_RELATION = 2, BELIEF_FAMILIAR_CLOSE = 4, BELIEF_FAMILIAR_CAP = 8,
+    BELIEF_SENSE_FLOOR = 1000, BELIEF_SENSE_EXCHANGES = 2,
+    // How much an enemy that has not seen the actor holds its routine skill back for a probe (the R20 reveal base).
+    BELIEF_PROBE_SHARE = 0.7;
+  const BELIEF_CLOSE_RELATION = /挚友|好友|朋友|恋|伴侣|夫|妻|兄|弟|姐|妹|父|母|儿|女|师|徒|队友|同伴|伙伴|搭档|宿敌|对手|亲密|同门|同学|同事/;
+  function beliefFamiliarExchanges(observer = {}, target = {}) {
+    const names = [preview.unitName(target), preview.unitId(target)].map(name => String(name || '').trim()).filter(Boolean);
+    const recordOf = table => names.map(name => table?.[name]).find(Boolean);
+    const battles = Number(recordOf(observer?.战斗历史 || observer?.属性?.战斗历史)?.次数 || 0);
+    const relation = String(recordOf(observer?.社交?.关系)?.关系 || '').trim();
+    let prior = battles > 0 ? BELIEF_FAMILIAR_BATTLE : 0;
+    if (relation && relation !== '陌生') prior += BELIEF_CLOSE_RELATION.test(relation) ? BELIEF_FAMILIAR_CLOSE : BELIEF_FAMILIAR_RELATION;
+    return Math.min(BELIEF_FAMILIAR_CAP, prior);
+  }
+  // 精神力感知（用户 2026-11-15「精神力不如对方时，开局无法看出对方实力。精神力高于对方，且精神力高于1000时，能一定程度估摸个
+  // 大概」「精神力比对方高只能看到魂力波动，也不知道对方是什么系别，有什么能力」）: a sense that outreaches the enemy's gauges
+  // its strength (level, pools, panel) before any exchange — not its abilities.
+  function beliefSenses(observer = {}, target = {}) {
+    const sense = Number(preview.readResourceMax(observer, '精神力')) || 0, theirs = Number(preview.readResourceMax(target, '精神力')) || 0;
+    return sense > BELIEF_SENSE_FLOOR && sense > theirs;
+  }
   // The share of a hit an unseen 控制系 keeps off by a control thrown first (S84: 16% of hits × the 42% they kept off).
   const BELIEF_ROUTINE_PREEMPT_SHARE = 0.16 * 0.42;
   const beliefExchangeCache = new WeakMap();
@@ -2191,8 +2214,13 @@
       const upper = Math.max(lower, Number(strengthRange[1] || lower));
       const confidence = clamp(beliefState?.confidence ?? 0.5, 0, 1);
       // 交手看清对手 (beliefExchangeCounts): each value pictured is drawn toward the unit's own by what has been seen of it.
-      const seen = Number(exchanges.get(id) || 0), clarity = seen / (seen + BELIEF_EXCHANGE_PRIOR);
-      const toward = (estimate, truth) => Number.isFinite(Number(truth)) ? estimate + (Number(truth) - estimate) * clarity : estimate;
+      // 熟人不用试探（用户 2026-11-15「原本就很熟悉的两人，或者近期对战过的，就没必要试探了」）: what the actor already knows of
+      // the unit — a battle fought with it (战斗历史) and a relation (社交.关系) — counts as exchanges seen before this one.
+      // Its abilities are known by the exchanges and the acquaintance (clarity); its strength by those and by a sense that
+      // outreaches it (strengthClarity, beliefSenses).
+      const seen = Number(exchanges.get(id) || 0) + beliefFamiliarExchanges(sourceActor, sourceUnit), clarity = seen / (seen + BELIEF_EXCHANGE_PRIOR);
+      const gauged = seen + (beliefSenses(sourceActor, sourceUnit) ? BELIEF_SENSE_EXCHANGES : 0), strengthClarity = gauged / (gauged + BELIEF_EXCHANGE_PRIOR);
+      const toward = (estimate, truth) => Number.isFinite(Number(truth)) ? estimate + (Number(truth) - estimate) * strengthClarity : estimate;
       const truePanel = key => preview.readCombatStatBreakdown(sourceUnit, key).base;
       const perceivedLevel = toward(lower + (upper - lower) * (0.75 - 0.25 * confidence), unitLevel(sourceUnit));
       if (typeof root.__LWCS_GET_BASE_STATS__ !== 'function') throw new Error('battle_decision_base_stats_unavailable');
@@ -2296,15 +2324,19 @@
         // 交手看清对手 for its attacks too (11-14: a 控制系 with no damaging skill was pictured with its level's typical
         // skill for 300 rounds, and a 治疗系 kept cleansing a one-round debuff against a threat that never came): drawn
         // toward the unit's own routine attack (knownRoutineAttackRatio) by what has been seen of it.
-        routine_attack_ratio: publicUnitRole === 'SUMMON' ? 1 : clarity > 0
-          ? Math.max(1, toward(typicalAttackRatio(perceivedLevel, system), knownRoutineAttackRatio(sourceUnit)))
-          : typicalAttackRatio(perceivedLevel, system),
+        // 对方也会试探（R20 底牌，同日）: an enemy that has not seen the actor either opens with a probe more than with its routine
+        // skill — the routine attack is drawn toward the basic attack by the same reveal share, fading with the exchanges.
+        routine_attack_ratio: publicUnitRole === 'SUMMON' ? 1 : 1 + (Math.max(1, clarity > 0
+          ? toward(typicalAttackRatio(perceivedLevel, system), knownRoutineAttackRatio(sourceUnit))
+          : typicalAttackRatio(perceivedLevel, system)) - 1) * (1 - BELIEF_PROBE_SHARE * (1 - clarity) ** 2),
         // S84 (11-14 推演—实际对账): an unseen 控制系 meets 16% of hits with a skill (38 of 242) — mostly a control thrown first —
         // and those took 12% → 7% of its HP; the table, seeing no skills, gave it 4%. Its own controls take over as they are
         // shown (r20Shown), so the expectation fades with the exchanges seen.
         ...(publicUnitRole !== 'SUMMON' && /控制/.test(system) ? { routine_preempt_share: BELIEF_ROUTINE_PREEMPT_SHARE * (1 - clarity) } : {}),
         // How well the deciding unit has seen it (exchanges ÷ (exchanges + prior)): the price of spending against it (R20_PROBE_PREMIUM).
         __clarity: publicUnitRole === 'SUMMON' ? 1 : clarity,
+        // Its strength as pictured (谨慎: an enemy gauged as strong as the actor or stronger calls for more care, R20_CAUTION_SLOPE).
+        __perceivedLevel: perceivedLevel,
       };
       const observedResponses = (Array.isArray(beliefUnit?.knownResponses)
         ? beliefUnit.knownResponses
@@ -65657,7 +65689,8 @@
     R20_OBJECTIVE_WEIGHT = 2, R20_OBSERVE_VALUE = 0.02, R20_ITEM_EFFECT_VALUE = 0.1, R20_ITEM_USE_SHARE = 0.375,
     R20_LATE_ROUNDS = 2, R20_CHARGE_BREAK = 0.5, R20_ASSET_DEFAULT = 0.2, R20_REVIVE_DEFAULT = 0.25,
     // 试探与留手（用户 2026-11-15）: the premium on spending against unseen enemies, the spar price, and the spar injury line and penalty.
-    R20_PROBE_PREMIUM = 1.5, R20_SPAR_PRICE = 1.5, R20_SPAR_INJURY_LINE = 0.2, R20_SPAR_INJURY_PENALTY = 0.5, R20_SPAR_INTENT = /点到为止|切磋|训练|非致命/;
+    R20_PROBE_PREMIUM = 1.5, R20_SPAR_PRICE = 1.5, R20_SPAR_INJURY_LINE = 0.2, R20_SPAR_INJURY_PENALTY = 0.5, R20_SPAR_INTENT = /点到为止|切磋|训练|非致命/,
+    R20_REVEAL_BASE = Number(root.__LWCS_TUNE__?.REVEAL_BASE ?? 0.7), R20_REVEAL_SHARE = 0.35, R20_REVEAL_CAP = 0.95, R20_TRUMP_SPENT = 0.3, R20_UNSEEN_COUNTER = 1, R20_CAUTION_SLOPE = 0.5, R20_CAUTION_PEAK = 5, R20_CAUTION_TOP = 1.5, R20_CAUTION_FALL = 0.1, R20_CAUTION_FLOOR = 0.2;
   const r20Tables = new WeakMap();
   // The round of the decision being valued (a broken guard lasts the round), and what its actor has seen.
   let r20Round = 0, r20Belief = null;
@@ -66570,6 +66603,40 @@
   // to the hit that is coming.
   // Outcome branches are not settled again: a hit's chance of downing its target comes from the outcome distribution
   // the settlement already carries. Shadow only (root.__LWCS_DECISION_DEBUG__.onShadow); the choice is not read from it.
+  // 主动中止维持（用户 2026-11-14「应该支持主动中止，根据战局情况而定」）: before a round end takes a unit's upkeep, its side's
+  // outlook (r20Race on the table) with the upkeep paid and the sustained states kept, against with them lifted now, the fee
+  // kept and the stamina cut it put off taken (BattleRuntime refreshSustainRuntimeLoad). Released when that stands better by
+  // R20_RELEASE_MARGIN. The unit's own side is read as it is (its own release); the enemy as the world has it.
+  const R20_RELEASE_MARGIN = 0.02;
+  function sustainReleaseChoice(worldSnapshot = {}, unitId = '') {
+    const runtime = root.__LWCS_BATTLE_RUNTIME__;
+    const unit = findUnitInWorld(worldSnapshot, unitId);
+    if (!unit || !runtime?.breakSustainEffect || !runtime?.readSustainCosts) return null;
+    const carriers = Object.entries(unit.持续效果 || {}).filter(([, effect]) => effect?.effect_type === 'condition' &&
+      String(effect.维持消耗 ?? effect.sustain_cost ?? '无').trim() !== '无');
+    if (!carriers.length) return null;
+    const side = sideOf(worldSnapshot, unit);
+    // With no enemy standing there is nothing to weigh (the battle ends).
+    if (!preview.listUnits(worldSnapshot).some(entry => entry.side !== side && preview.isBattleCapable(entry.unit))) return null;
+    const score = world => {
+      const request = { visibleWorld: world, actorId: String(unitId), actionOpportunity: { role: 'ACTIVE' },
+        battleIntent: { mode: String(world?.战斗意图 || '').trim() }, beliefState: null };
+      return Number(r20Facts(request).score?.[side] || 0);
+    };
+    // Only the units are copied (a battle's ledger is not read by the table).
+    const copy = () => ({ ...worldSnapshot, 参战者: cloneValue(worldSnapshot.参战者), ...(worldSnapshot.召唤单位表 ? { 召唤单位表: cloneValue(worldSnapshot.召唤单位表) } : {}) });
+    const kept = copy(), keeper = findUnitInWorld(kept, unitId);
+    for (const [, effect] of carriers) {
+      const fee = runtime.readSustainCosts(keeper, effect.维持消耗 ?? effect.sustain_cost ?? '无', { ...effect, 技能: effect.技能快照 || effect.技能 || {} });
+      if (fee?.invalid) return null;
+      for (const cost of fee?.costs || []) if (cost.amount > 0) preview.setResourceValue(keeper, cost.resource || cost.key, preview.readResource(keeper, cost.resource || cost.key) - cost.amount);
+    }
+    const lifted = copy(), lifter = findUnitInWorld(lifted, unitId);
+    for (const [key, effect] of carriers) runtime.breakSustainEffect(lifter, key, effect, null, lifted);
+    const keep = score(kept), release = score(lifted);
+    return { keep, release, end: release > keep + R20_RELEASE_MARGIN, carriers: carriers.map(([key]) => key) };
+  }
+
   function r20Shadow(request, result, candidate = null) {
     if (!result || typeof result !== 'object') return null;
     // 认输与撤离 (方案第 4 条; 用户："决策的唯一核心是胜率"，"撤退 = 胜率严重不足"): leaving is valued as in the live valuation,
@@ -66956,7 +67023,12 @@
         if (preview.positionClosesCounterWindow(actorNow, r20Round)) continue;
         const exchange = r20Exchange(answer[row][actorRow], answer[actorRow][row], back[actorRow][row] * keepBack[row][actorRow], back[row][actorRow] * keepBack[actorRow][row],
           meet.answer, priorTarget, priorActor);
-        counter += alive[row] * exchange.taken;
+        // 收招破绽看对手（用户 2026-11-15「尤其是敌人未知时，收招破绽应该看得更重」）: what an enemy not yet seen strikes back with
+        // is not known — the table's routine reading of it is weighed up by how unseen it is (×(1 + R20_UNSEEN_COUNTER × unseen)).
+        const unseenRow = 1 - clamp(Number(table.units[row]?.__clarity ?? 1), 0, 1);
+        // …by how much the move leaves open (its windup past a basic attack's): a probe with the basic attack takes none of it.
+        const exposed = move ? clamp((Number(preview.actionWindup(table.units[actorRow], move)) - 10) / 10, 0, 1) : 1;
+        counter += alive[row] * exchange.taken * (1 + R20_UNSEEN_COUNTER * unseenRow * exposed);
         remaining[row] = Math.max(0, remaining[row] - exchange.more);
       }
       remaining[actorRow] = Math.max(0, remaining[actorRow] - counter);
@@ -67177,8 +67249,34 @@
     // (点到为止) nothing calls for going all out (×R20_SPAR_PRICE).
     const foes = table.units.map((unit, row) => [unit, row]).filter(([, row]) => table.sides[row] !== table.sides[actorRow] && table.alive[row] > 0);
     const unseen = foes.length ? foes.reduce((sum, [unit]) => sum + (1 - clamp(Number(unit?.__clarity ?? 1), 0, 1)), 0) / foes.length : 0;
+    // 谨慎（用户 2026-11-15「观测出对方魂力和自己相当甚至可能高于自己的话，更要谨慎应对」）: what is unseen of each enemy weighs
+    // by how strong it is pictured against the actor — ×(1 + R20_CAUTION_SLOPE × level gap ÷ 10), within [0.5, 1.5].
+    const ownLevel = actorRow !== undefined ? Number(unitLevel(table.units[actorRow])) || 0 : 0;
+    // 抢先手（同日「对方过强的话那反而必须抢先手，压制对方不能反击。谨慎必输……这也得是战斗经验高的才能打出来」）: past a gap of
+    // R20_CAUTION_PEAK levels the care falls again, the faster the more seasoned the actor (BattlePreview battleExperience).
+    const seasoned = actorRow !== undefined && typeof preview.battleExperience === 'function' ? clamp(Number(preview.battleExperience(table.units[actorRow])) || 0.5, 0, 1) : 0.5;
+    // 压得住才抢（同日「主要看有没有硬控类技能，或者把对面打僵直的能力，不然先手也压不住」；原作 唐舞麟对血九、蓝轩宇四人对
+    // 刘宝川「控制致死」）: the fall goes with the best hold the actor's side has on that enemy (stop: rounds its controls take).
+    // Only where the actor may run (允许撤离) does a missing hold keep it careful — there the exit valuation weighs fleeing; with
+    // no way out (a match, a spar) there is nothing to wait for (「谨慎必输」).
+    const mayRun = table.world?.允许撤离 === true;
+    const hold = row => { if (!mayRun) return 1; let best = 0; for (let ally = 0; ally < table.units.length; ally += 1) if (table.sides[ally] === table.sides[actorRow]) best = Math.max(best, Number(stop?.[ally]?.[row]) || 0); return clamp(best, 0, 1); };
+    const caution = (gap, row) => gap < 0 ? Math.max(0.5, 1 + R20_CAUTION_SLOPE * gap / 10)
+      : gap <= R20_CAUTION_PEAK ? 1 + (R20_CAUTION_TOP - 1) * gap / R20_CAUTION_PEAK
+        : Math.max(R20_CAUTION_FLOOR, R20_CAUTION_TOP - (gap - R20_CAUTION_PEAK) * R20_CAUTION_FALL * 2 * seasoned * hold(row));
+    // Probing is for the first exchanges: what is unseen weighs squared (one exchange leaves 44%, two 25%).
+    const wary = foes.length ? foes.reduce((sum, [unit, row]) => sum + (1 - clamp(Number(unit?.__clarity ?? 1), 0, 1)) ** 2 *
+      caution((Number(unit?.__perceivedLevel ?? unitLevel(unit)) || ownLevel) - ownLevel, row), 0) / foes.length : 0;
     const spar = R20_SPAR_INTENT.test(String(r20Intent?.mode || table.world?.战斗意图 || ''));
     const cost = R20_RESOURCE_PRICE * spent * (1 + R20_PROBE_PREMIUM * unseen) * (spar ? R20_SPAR_PRICE : 1);
+    // 亮魂环（同上）: any 魂技 lights the rings — the enemy sees how many and how old, and what the spirit does — so against one
+    // not yet seen it costs a base share (R20_REVEAL_BASE) of what it stands to gain, more for a bigger card, at most R20_REVEAL_CAP.
+    // 试探（用户 2026-11-15「在不清楚对方能力前，最重要的就是试探」「不能过多提高战局中普攻占比」）: a big card (the share of
+    // its pools a skill takes, full at R20_TRUMP_SPENT) shown to enemies not yet seen loses part of what it stands to gain
+    // (R20_REVEAL_SHARE × how big × how unseen) — they may meet it with what the table cannot see, and they learn it. It
+    // fades as the exchanges show them (belief __clarity), so it shapes the opening, not the battle.
+    const reveal = declaration?.actionKind === 'RELEASE_SKILL' && unseen > 0 && race + tempo > 0
+      ? Math.min(R20_REVEAL_CAP, (R20_REVEAL_BASE + R20_REVEAL_SHARE * clamp(spent / R20_TRUMP_SPENT, 0, 1)) * wary) * (race + tempo) : 0;
     // 留手: in a spar, what of a hit lands below the 重伤 line (R20_SPAR_INJURY_LINE of the target's HP) is held against it.
     let restraint = 0;
     if (spar && actorRow !== undefined) for (const [unit, row] of foes) {
@@ -67225,7 +67323,7 @@
     // Leaving is valued apart (认输与撤离, at the top). Observing is worth a little.
     let leave = 0;
     if (actionKind === 'OBSERVE') leave = R20_OBSERVE_VALUE;
-    return { value: race + tempo + granted + objective + leave + stock - cost - fusionCost - asset - restraint, race, tempo, granted, objective, leave, stock, cost, fusionCost, asset, restraint, counter, rebuilt: rebuilt.length, added: added.length, outside,
+    return { value: race + tempo + granted + objective + leave + stock - cost - fusionCost - asset - restraint - reveal, race, tempo, granted, objective, leave, stock, cost, fusionCost, asset, restraint, reveal, counter, rebuilt: rebuilt.length, added: added.length, outside,
       seen: seen + added.length + Number(granted !== 0) + Number(objective !== 0) + Number(leave !== 0) };
   }
 
@@ -73465,6 +73563,7 @@
 
   root.__LWCS_BATTLE_DECISION__ = Object.freeze({
     version: VERSION,
+    sustainReleaseChoice,
     formalProviderState,
     actionKinds,
     collectSkills,

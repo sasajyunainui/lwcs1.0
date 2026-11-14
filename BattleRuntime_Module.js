@@ -8166,6 +8166,28 @@
         return;
       }
       const name = previewRuntime.unitName(unit);
+      // 主动中止维持（用户 2026-11-14「应该支持主动中止，根据战局情况而定」）: before the upkeep is taken, the unit lifts what it
+      // keeps when its side stands better without it (BattleDecision sustainReleaseChoice: the fee paid and kept against the
+      // states lifted, the fee kept and the put-off stamina cut taken).
+      const releaseChoice = adapterOptions?.voluntarySustainRelease === true && typeof decisionRuntime?.sustainReleaseChoice === 'function'
+        ? decisionRuntime.sustainReleaseChoice(combatData, previewRuntime.unitId(unit)) : null;
+      if (releaseChoice?.end) {
+        for (const key of releaseChoice.carriers) {
+          const effect = unit.持续效果?.[key];
+          if (!effect) continue;
+          breakSustainEffect(unit, key, effect, null, combatData);
+          writeLedgerEvent(combatData, {
+            eventKind: 'state_tick', round: Number(combatData?.回合 || 0), actorName: name, targetName: name,
+            actionName: String(effect.name || key).trim(), actionType: 'sustain_release', actorControl: 'AI', actionRole: 'STATE_TICK',
+            result: 'released', resultState: 'SUCCESS', ruleCode: 'SUSTAIN_RELEASED_BY_CHOICE',
+            actorId: previewRuntime.unitId(unit), targetId: previewRuntime.unitId(unit), sourceActionId: String(effect.sourceActionId || '').trim(),
+            allowImplicitActionSource: false,
+            meta: { source: 'structured_runtime', stateName: String(effect.name || key).trim(), keep: releaseChoice.keep, release: releaseChoice.release,
+              windowId: `round:${Number(combatData?.回合 || 0)}:sustain` },
+          });
+          logs.push(`[维持解除] ${name}主动解除了[${effect.name || key}]`);
+        }
+      }
       observation.upkeepPayerId = previewRuntime.unitId(unit);
       const sustainResult = settleSustainAtRoundEnd(unit, name, combatData, adapterOptions) || {};
       observation.upkeepPayerId = '';
@@ -18013,8 +18035,21 @@
                 const struck = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, event?.targetId || event?.targetName || ''));
                 return !!struck && struck !== actor && inferUnitSide(combatData, struck) !== inferUnitSide(combatData, actor);
               });
+              // 连续行动只对自己人或应对不了的敌人（用户 2026-11-15「总和不到 40 应该是目标是自身的可以连续，目标是对方的，除非对方
+              // 无法应对，比如被控，才可以连续」）: an action that struck or aimed at an enemy still able to answer (REACTION) ends the
+              // chain. Before, a basic attack of windup 10 struck four times a turn into an enemy free to answer each.
+              const actorSide = inferUnitSide(combatData, actor);
+              const enemyTargetIds = new Set([
+                ...(Array.isArray(shared.declaration?.targetIds) ? shared.declaration.targetIds : []),
+                ...settlement.facts.filter(event => ['hit_result', 'state_apply', 'clash'].includes(event?.eventKind)).map(event => event?.targetId || event?.targetName),
+              ].map(value => String(value || '').trim()).filter(Boolean));
+              const enemyAnswers = [...enemyTargetIds].some(id => {
+                const target = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, id));
+                return !!target && target !== actor && inferUnitSide(combatData, target) !== actorSide &&
+                  structuredActorPhysicallyAlive(target) && structuredActorCanAct(target, 'REACTION');
+              });
               let chained = false;
-              if (chainLink && !hardControlled && ['BASIC_ATTACK', 'RELEASE_SKILL', 'USE_ITEM'].includes(chainKind) && (chainWindup > 0 || freeWindup) &&
+              if (chainLink && !hardControlled && !enemyAnswers && ['BASIC_ATTACK', 'RELEASE_SKILL', 'USE_ITEM'].includes(chainKind) && (chainWindup > 0 || freeWindup) &&
                 chainWindup <= naturalActionBudget && chainUsed < previewRuntime.CONTINUOUS_ACTION_BUDGET && structuredActorPhysicallyAlive(actor) &&
                 Number(node?.state?.chainDepth || 0) < 8) {
                 chained = true;
@@ -18929,6 +18964,8 @@
         if (terminal?.terminal !== true) {
           settleBattleRoundEnd(combatData, logs, {
             worldActionContext: input?.worldActionContext,
+            // A battle the units decide in may see them lift an upkeep (主动中止维持); a bare round-end settlement does not.
+            voluntarySustainRelease: true,
           });
         }
         terminal = evaluateBattleTerminal({ combatData, currentRound: combatData.回合, rounds: roundOffset, roundCompleted: true }, {});

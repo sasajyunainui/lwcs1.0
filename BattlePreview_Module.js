@@ -1844,9 +1844,9 @@
   // 露出破绽，从出手到它下一次行动前，任何人打它都更容易得手——攻击未命中的机会少四分之一、它闪避反应的成功率乘 0.75、防御反应
   // 的减伤打八折；普攻是半份破绽。破绽是本场战斗的姿态（__battleRuntime.attackOpening，同防守姿态），被打一次不会消失；它的
   // 下一次正式行动先清掉旧破绽，进攻再留下新的。
-  const ATTACK_OPENING_MISS_CUT = 0.25, ATTACK_OPENING_DODGE_CUT = 0.25, ATTACK_OPENING_DEFENSE_CUT = 0.2;
+  const ATTACK_OPENING_MISS_CUT = 0.25, ATTACK_OPENING_DODGE_CUT = 0.25, ATTACK_OPENING_DEFENSE_CUT = 0.2, ATTACK_OPENING_FULL_WINDUP = 20, ATTACK_OPENING_MAX = 1.5;
   function attackOpeningOf(unit = {}) {
-    return clamp(Number(unit?.__battleRuntime?.attackOpening?.strength || 0), 0, 1);
+    return clamp(Number(unit?.__battleRuntime?.attackOpening?.strength || 0), 0, ATTACK_OPENING_MAX);
   }
   function attackOpeningStrength(worldSnapshot = {}, actor = {}, declaration = {}, readUnit = id => findUnit(worldSnapshot, id)) {
     const kind = String(declaration?.actionKind || '').trim().toUpperCase();
@@ -1856,7 +1856,9 @@
       const target = readUnit(String(id || '').trim());
       return target && sideOf(worldSnapshot, target) && sideOf(worldSnapshot, target) !== actorSide;
     });
-    return hostileTarget ? kind === 'BASIC_ATTACK' ? 0.5 : 1 : 0;
+    // 收招破绽（用户 2026-11-15「使用普攻容易应对反击」「尤其是敌人未知时，收招破绽应该看得更重」）: the opening goes with the
+    // windup the move took — a basic attack of 10 half an opening, a skill of 20 a whole one, up to ATTACK_OPENING_MAX.
+    return hostileTarget ? clamp(actionWindup(actor, declaration) / ATTACK_OPENING_FULL_WINDUP, 0.5, ATTACK_OPENING_MAX) : 0;
   }
   // Sets the opening a formal action leaves (0 clears the old one) on a unit the caller owns: an overlay clone in preview,
   // the live unit in the runtime.
@@ -23575,7 +23577,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // GUARD_TYPICAL when the hit is not known (table valuations). What gets through never exceeds GUARD_CAP.
   const GUARD_LIGHT = 0.4, GUARD_HEAVY = 1.2, GUARD_TYPICAL = 0.7, GUARD_LIGHT_SHARE = 0.05, GUARD_EVEN_SHARE = 0.2,
     GUARD_HEAVY_SHARE = 0.35, GUARD_CAP = 0.95;
-  const COUNTER_GUARD_HELD = 0.15, COUNTER_BASE = 0.5, COUNTER_WINDUP_SWING = 0.15, COUNTER_FLOOR = 0.1, COUNTER_CAP = 0.9;
+  const COUNTER_GUARD_HELD = 0.15, COUNTER_BASE = 0.5, COUNTER_WINDUP_SWING = 0.3, COUNTER_FLOOR = 0.1, COUNTER_CAP = 0.9;
   const COUNTER_STAMINA_FACTOR = 1.5, COUNTER_STAMINA_STEP = 0.5, COUNTER_FADE = 0.7, COUNTER_STANCE_BONUS = 0.25;
 
   // The move coming, when the answer knows it: an attack, a skill or an item (anything else is not a move to answer).
