@@ -3577,6 +3577,8 @@
     // A unit enters battle with its stamina already counted against any buffed maximum it carries.
     previewRuntime.syncStaminaMaxGain(merged, { credit: false });
     merged.final = buildCombatFinalStats(merged);
+    // 位移重做: 瞬移 / 换位瞬间发动，只含位移的技能前摇按 0（BattlePreview isInstantPositionSkill）。
+    previewRuntime.normalizeInstantPositionWindup(merged);
     return merged;
   }
 
@@ -9524,6 +9526,12 @@
     };
   }
 
+  // The display name of a committed state (its key, 'preview:…' stripped to the state name) for the charge-interrupt reason.
+  function positionStateDisplayName(unit = {}, key = '') {
+    const state = unit?.状态效果?.[key] || Object.values(unit?.状态效果 || {}).find(candidate => candidate?.战斗效果?.interrupt_charge === true);
+    return String(state?.状态 || state?.状态名称 || key || '位移').trim();
+  }
+
   function commitStructuredPreviewPrototype(
     combatData = {},
     actor = {},
@@ -9630,6 +9638,7 @@
     const prototype = String(effect?.原型 || '').trim();
     const beforeUnitsById = new Map();
     const endedStates = [];
+    const positionInterrupts = [];
     preview.changedUnitIds.forEach(unitId => {
       const actual = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, unitId));
       const snapshot = previewRuntime.findUnit(preview.afterSnapshot, unitId);
@@ -9641,6 +9650,11 @@
       const stateKeysBefore = new Set(Object.keys(actual?.状态效果 || {}));
       const committedStateNames = [];
       applyPreviewUnitSnapshot(actual, snapshot);
+      // 位移重做: a position state that disrupts a charge (击退, 换位 on an enemy: combat effect interrupt_charge) breaks the
+      // unit's stored charge once it is committed (below, after the facts).
+      Object.entries(actual?.状态效果 || {}).forEach(([key, condition]) => {
+        if (!stateKeysBefore.has(key) && condition?.战斗效果?.interrupt_charge === true) positionInterrupts.push({ unitId, key });
+      });
       Object.entries(actual?.状态效果 || {}).forEach(([key, condition]) => {
         if (stateKeysBefore.has(key) || !String(key).startsWith('preview:') || !condition || typeof condition !== 'object') return;
         let stateIdentity = structuredStateStorageIdentity(key, condition);
@@ -9760,6 +9774,12 @@
           actorName: previewRuntime.unitName(actor), actionName: action?.actionName || '', actionId: actionEvent?.actionId || '', source: 'structured_preview_commit' });
         if (exit) facts.push(exit);
       }
+    });
+    positionInterrupts.forEach(({ unitId, key }) => {
+      const target = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, unitId));
+      const interrupt = target ? interruptStoredChargeByControl({ combatData, sourceActor: actor, target, actionEvent, actionRole,
+        stateName: String(positionStateDisplayName(target, key)), force: true }) : null;
+      if (interrupt) facts.push(interrupt);
     });
     for (const { unitId, key, state } of endedStates) {
       const target = previewRuntime.findUnit(combatData, unitId);
@@ -10604,6 +10624,10 @@
       allowPreparedDefense,
     } = context;
     if (!combatData || !declaration || !actor || !actionEvent) throw new TypeError('battle_structured_action_context_invalid');
+    // 位移重做（S81）: the units an attack of this action rolled to hit, and whether it attacked at all — the one-shot position
+    // effects they were waiting for are spent once the action's effects have settled (spendPositionOnce, below).
+    const positionOnceRolledTargets = new Set();
+    let positionOnceAttacked = false;
     if (actionKind === 'USE_ITEM') {
       const inventoryItem = previewRuntime.findInventoryEntry(actor, declaration);
       if (!previewRuntime.inventoryItemAvailable(inventoryItem, combatData, actor)) {
@@ -11134,9 +11158,13 @@
       const sampledTarget = listCombatUnits(combatData).find(unit =>
         previewRuntime.unitId(unit) === String(targetId || '').trim()
       );
-      const resistanceMultiplier = typeof previewRuntime.stateApplicationProbabilityMultiplier === 'function'
-        ? previewRuntime.stateApplicationProbabilityMultiplier(sampledTarget || {}, effect)
+      // 位移重做: 换位拉敌方按修为压制判定，护盾中的目标失败（BattlePreview positionSwapSuccessMultiplier）。
+      const swapMultiplier = String(effect?.原型 || '').trim() === '位移执行' && sampledTarget
+        ? previewRuntime.positionSwapSuccessMultiplier(actor, sampledTarget, effect, { hostile: inferUnitSide(combatData, sampledTarget) !== inferUnitSide(combatData, actor) })
         : 1;
+      const resistanceMultiplier = (typeof previewRuntime.stateApplicationProbabilityMultiplier === 'function'
+        ? previewRuntime.stateApplicationProbabilityMultiplier(sampledTarget || {}, effect)
+        : 1) * swapMultiplier;
       const probability = Math.max(0, Math.min(1,
         baseProbability * resistanceMultiplier,
       ));
@@ -11590,7 +11618,8 @@
         const hasOwnProbability =
           effect?.成功率 !== undefined ||
           effect?.触发概率 !== undefined;
-        const previewCommitSamples = hasOwnProbability
+        // 位移重做: 换位拉敌方要按修为压制判定成功（sampleEffectOutcome 里的 positionSwapSuccessMultiplier），写没写 成功率 都要抽。
+        const previewCommitSamples = hasOwnProbability || (prototype === '位移执行' && /换位/.test(String(effect?.位移类型 || '')))
           ? (prototype === '资源转移' && effect.资源转移方式 === '均分'
               ? previewTargets.slice(0, 1) : previewTargets).map(target => sampleEffectOutcome({
               effect,
@@ -11951,6 +11980,8 @@
           const hitModifierAttribution = typeof previewRuntime.estimateHitProbabilityAttribution === 'function'
             ? previewRuntime.estimateHitProbabilityAttribution(actor, target, effect)
             : [];
+          positionOnceAttacked = true;
+          if (reaction?.evaded !== true) positionOnceRolledTargets.add(target);
           let anySegmentHit = false;
           // 接战链 阶段三: what a referee's guard skill leaves of this effect's damage on this unit (structuredRefereeIntervention).
           let refereeHitScale = 1;
@@ -13089,6 +13120,26 @@
         });
       });
     });
+    // 位移重做: what the attack was waiting for has happened — the units it rolled against lose their one-shot dodge (瞬移's 95%,
+    // 脱离's +50%), the attacker its one-shot hit bonus and the reaction cut it laid on its targets. A state laid by this very
+    // action is not spent by it.
+    {
+      const castIdentity = String(declaration?.__castIdentity || actionEvent.actionId || '').trim();
+      const spendPositionOnce = (unit, axes) => previewRuntime.consumePositionOnce(unit, axes, { exceptSourceActionId: castIdentity }).forEach(spent => {
+        facts.push(writeLedgerEvent(combatData, {
+          eventKind: 'runtime_trace', round: Number(combatData?.回合 || 0),
+          actorId: previewRuntime.unitId(unit), actorName: previewRuntime.unitName(unit),
+          targetId: previewRuntime.unitId(unit), targetName: previewRuntime.unitName(unit),
+          actionName: spent.state || '位移', actionType: 'position_once', actorControl: 'SYSTEM', actionRole: 'STATE_TICK',
+          sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
+          result: 'consumed', resultState: 'COMPLETED', ruleCode: 'POSITION_ONCE_SPENT',
+          meta: { source: 'structured_runtime', traceType: 'position_once', axes: spent.axes, stateKey: spent.key,
+            reasonText: `${previewRuntime.unitName(unit)}的【${spent.state || '位移'}】一次性效果用掉了（${spent.axes.join('、')}）` },
+        }));
+      });
+      positionOnceRolledTargets.forEach(unit => spendPositionOnce(unit, ['dodge']));
+      if (positionOnceAttacked) spendPositionOnce(actor, ['hit', 'target_reaction']);
+    }
     const committedEquipmentPassiveTriggers = new Set();
     equipmentPassiveTriggerRows.forEach(row => {
       const rowKey = `${equipmentPassiveEffectKey(row.effect)}|${String(row.sourceEffectId || '').trim()}`;
@@ -13656,10 +13707,12 @@
     actionEvent = {},
     actionRole = 'ACTIVE',
     stateName = '',
+    force = false,
   } = {}) {
+    // 位移重做: 击退 / 换位拉敌方打断蓄力（force，状态 战斗效果.interrupt_charge）——不要求状态本身是控制。
     if (
       !target?.蓄力技能 ||
-      !structuredControlPreventsOpportunity(target?.状态效果?.[stateName] || {}, actionRole)
+      (force !== true && !structuredControlPreventsOpportunity(target?.状态效果?.[stateName] || {}, actionRole))
     ) return null;
     const interruptedCharge = target.蓄力技能;
     target.蓄力技能 = null;
@@ -13685,7 +13738,7 @@
       sourceNodeId: String(actionEvent?.chainNodeId || '').trim(),
       result: 'interrupted',
       resultState: 'ABORTED',
-      ruleCode: 'CHARGE_INTERRUPTED_BY_CONTROL',
+      ruleCode: force === true ? 'CHARGE_INTERRUPTED_BY_POSITION' : 'CHARGE_INTERRUPTED_BY_CONTROL',
       meta: {
         source: 'structured_runtime',
         stateName: String(stateName || '').trim(),
@@ -13693,8 +13746,8 @@
         controlSourceActionId: String(actionEvent?.actionId || '').trim(),
         sourceActorId: previewRuntime.unitId(sourceActor),
         sourceActorName: previewRuntime.unitName(sourceActor),
-        reasonCode: 'CONTROL_APPLIED',
-        reasonText: `受【${String(stateName || '控制状态').trim()}】影响`,
+        reasonCode: force === true ? 'POSITION_DISRUPTED' : 'CONTROL_APPLIED',
+        reasonText: force === true ? `被【${String(stateName || '位移').trim()}】打乱了蓄力` : `受【${String(stateName || '控制状态').trim()}】影响`,
       },
     });
   }
@@ -14045,6 +14098,8 @@
   function chooseStructuredInterceptor(combatData = {}, attacker = {}, declaration = {}, target = {}) {
     if (typeof decisionRuntime?.chooseInterceptor !== 'function') return null;
     const round = Number(combatData?.回合 || 0), side = inferUnitSide(combatData, target);
+    // 位移重做: 换位拉进己方阵中的敌人，本回合援护盖不到它。
+    if (previewRuntime.positionDeniesCover(target, round)) return null;
     const candidates = listPrimaryCombatUnits(combatData).filter(unit => unit && unit !== target && !unit.召唤键 &&
       inferUnitSide(combatData, unit) === side && previewRuntime.isBattleCapable(unit) && structuredActorCanAct(unit, 'ACTIVE') &&
       !unit.蓄力技能 && !previewRuntime.fusionChargeHost(combatData, unit) && !previewRuntime.guardBrokenOf(unit, round) &&
@@ -14428,6 +14483,46 @@
     };
   }
 
+  // 位移重做: the redirect a successful 换位 reaction makes of the move it answers. The swapped-in unit is the answer's target on the
+  // attacker's side; the swap counts when its position state was committed (a hostile swap is rolled first: 修为压制, shields).
+  function applySwapRedirect({ combatData, shared, reaction, reactionDeclaration, reactor, sourceActor, reactionTargetId } = {}) {
+    const skillEffects = Array.isArray(reactionDeclaration?.skill?._效果数组) ? reactionDeclaration.skill._效果数组 : [];
+    if (String(reactionDeclaration?.actionKind || '').trim().toUpperCase() !== 'RELEASE_SKILL' ||
+        !skillEffects.some(effect => String(effect?.原型 || '').trim() === '位移执行' && /换位/.test(String(effect?.位移类型 || '')))) return false;
+    const swappedId = (Array.isArray(reactionDeclaration?.targetIds) ? reactionDeclaration.targetIds : []).map(id => String(id || '').trim()).find(Boolean) || '';
+    const swapped = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, swappedId));
+    if (!swapped || !hostileSource(combatData, swapped, reactor)) return false;
+    const landed = (Array.isArray(reaction?.facts) ? reaction.facts : []).some(event => event?.effectPrototype === '位移执行' &&
+      ['state_apply', 'state_replace'].includes(event?.eventKind) && String(event?.resultState || '').trim() === 'SUCCESS' &&
+      String(event?.targetId || '').trim() === previewRuntime.unitId(swapped));
+    if (!landed) return false;
+    const struckByAttacker = isUnitIdentityMatch(swapped, previewRuntime.unitId(sourceActor));
+    const target = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, reactionTargetId)) || reactor;
+    reaction.nullified = true;
+    reaction.swapRedirect = { swappedId: previewRuntime.unitId(swapped), whiff: struckByAttacker || !previewRuntime.isBattleCapable(swapped) };
+    if (!reaction.swapRedirect.whiff && Array.isArray(shared?.declaration?.targetIds)) {
+      const redirected = { ...shared.declaration, targetIds: shared.declaration.targetIds.map(id => isUnitIdentityMatch(target, id) ? previewRuntime.unitId(swapped) : id) };
+      shared.declaration = redirected;
+      if (shared.actionContext) {
+        shared.actionContext.declaration = redirected;
+        if (shared.actionContext.primaryTarget === target) shared.actionContext.primaryTarget = swapped;
+      }
+    }
+    writeLedgerEvent(combatData, {
+      eventKind: 'runtime_trace', round: Number(combatData?.回合 || 0),
+      actorId: previewRuntime.unitId(reactor), actorName: previewRuntime.unitName(reactor),
+      targetId: previewRuntime.unitId(swapped), targetName: previewRuntime.unitName(swapped),
+      actionName: '换位', actionType: 'position_swap', actorControl: 'AI', actionRole: 'REACTION',
+      sourceActionId: shared?.actionContext?.actionEvent?.actionId || '', parentNodeId: shared?.actionContext?.actionEvent?.chainNodeId || '',
+      sourceNodeId: shared?.actionContext?.actionEvent?.chainNodeId || '',
+      result: reaction.swapRedirect.whiff ? 'whiffed' : 'redirected', resultState: 'SUCCESS', ruleCode: 'POSITION_SWAP_REDIRECT',
+      meta: { source: 'structured_runtime', traceType: 'position_swap', attackerId: previewRuntime.unitId(sourceActor), swappedId: reaction.swapRedirect.swappedId,
+        whiff: reaction.swapRedirect.whiff,
+        reasonText: reaction.swapRedirect.whiff ? `${previewRuntime.unitName(reactor)}换位拉来了${previewRuntime.unitName(swapped)}，来招落了空` : `${previewRuntime.unitName(reactor)}换位拉来了${previewRuntime.unitName(swapped)}，来招落在它身上` },
+    });
+    return true;
+  }
+
   // R15: a round is one cavalry pass. A counter can itself be defended or evaded and answered, so the engagement flows
   // until someone fails to answer, declines, misses the opening, or lacks the stamina for the strike.
   // 接战链 阶段一 (用户 2026-11-12："上限不需要，但是要给反击设置难度，代价"): a strike back needs an answer that worked —
@@ -14447,6 +14542,8 @@
     const engagementDepth = Math.max(0, Number(input?.engagementDepth || 0));
     if (!combatData || !reactor || !sourceActor || !parentActionEvent?.actionId || !reaction?.opensCounterCheck) return null;
     if (!structuredActorCanAct(reactor, 'COUNTER') || !structuredActorPhysicallyAlive(sourceActor)) return null;
+    // 位移重做: 脱离 closes the enemy's strike-back window against its user for the round (BattlePreview positionClosesCounterWindow).
+    if (previewRuntime.positionClosesCounterWindow(sourceActor, Number(combatData?.回合 || 0))) return null;
     const receivedDamage = (Array.isArray(settlementFacts) ? settlementFacts : []).reduce((sum, event) => {
       if (event?.eventKind !== 'hit_result' || !isUnitIdentityMatch(reactor, event?.targetName || event?.targetId || '')) return sum;
       return sum + Math.max(0, Number(event?.appliedDamage || event?.meta?.appliedDamage || 0));
@@ -17625,6 +17722,11 @@
                 reaction,
               });
               shared.reactionByTarget[reactionTargetId] = reaction;
+              // 位移重做: the reaction the unit was cut on (击退 / 换位's one-shot reaction penalty) has been made.
+              previewRuntime.consumePositionOnce(actor, ['reaction'], { exceptSourceActionId: String(reaction?.event?.actionId || '').trim() });
+              // 位移重做（依斗二玄冥置换/玄武置换原文，第 89/286 章）: a 换位 answer that took on an enemy turns the incoming move — it lands on the
+              // enemy swapped in, or comes to nothing when that is the attacker itself (or no one that can be struck).
+              applySwapRedirect({ combatData, shared, reaction, reactionDeclaration, reactor: actor, sourceActor, reactionTargetId });
               // 接战链 阶段二: a preemption that held stops the move on every target (PRIMARY_SETTLEMENT below).
               if (reaction?.preempted === true) {
                 shared.preempted = { reactorId: actorId, eventId: String(reaction?.engagementEvent?.eventId || '').trim() };
@@ -18566,7 +18668,7 @@
             hostileTargets.forEach(target => {
               // 破防: no answer for the rest of the round (BattlePreview guardBreaks).
               if (previewRuntime.guardBrokenOf(target, Number(combatData?.回合 || 0))) return;
-              const guardSummon = listSummonCombatUnits(combatData)
+              const guardSummon = previewRuntime.positionDeniesCover(target, Number(combatData?.回合 || 0)) ? null : listSummonCombatUnits(combatData)
                 .filter(unit =>
                   String(unit?.行动模式 || '').trim() === '护卫' &&
                   previewRuntime.isBattleCapable(unit) &&
