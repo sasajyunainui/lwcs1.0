@@ -2199,7 +2199,9 @@
     const actorSide = sideOf(worldSnapshot, sourceActor);
     const exchanges = alreadyPublic === true ? new Map() : beliefExchangeCounts(worldSnapshot, actorSide);
     const projectUnit = (sourceUnit, publicSide = '') => {
-      if (alreadyPublic === true || sideOf(worldSnapshot, sourceUnit) === actorSide) {
+      // 熟人知根知底（用户 2026-11-15「原本就很熟悉的两人，或者近期对战过的，就没必要试探了」）: an enemy the actor has fought or
+      // is close to is pictured as it is — its skills and panel — like the actor's own side.
+      if (alreadyPublic === true || sideOf(worldSnapshot, sourceUnit) === actorSide || beliefFamiliarExchanges(sourceActor, sourceUnit) >= BELIEF_FAMILIAR_BATTLE) {
         const unit = preview.inheritProjectedStateSourceWindows(cloneValue(sourceUnit), sourceUnit, worldSnapshot);
         if (sideOf(worldSnapshot, sourceUnit) === actorSide && !Number.isFinite(Number(unit?.routine_attack_ratio))) unit.routine_attack_ratio = knownRoutineAttackRatio(unit);
         return unit;
