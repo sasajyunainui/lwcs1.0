@@ -10,6 +10,10 @@
   const MVU相互可见性视图占位符 = '{{MVU_MUTUAL_VISIBILITY_VIEW}}';
   const 时间线预览占位符 = '{{剧情钩子._引导.时间线预览}}';
   const 远端原著时间线候选占位符 = '{{剧情钩子._引导.远端原著时间线候选}}';
+  const 原著事件候选占位符 = '{{原著事件候选}}';
+  // 第一阶段输出的 <timeline_recall> 由数据库按 {{timeline_recall}} 带进后续阶段；落在这个区块里的标识展开成原著全文
+  const 原著事件召回区块正则 = /(<原著事件召回>[\s\S]*?)<timeline_recall>([\s\S]*?)<\/timeline_recall>([\s\S]*?<\/原著事件召回>)/g;
+  const 原著事件召回标题 = '【原著事件召回】';
   const 角色基础六维对标占位符 = '{{角色基础六维对标}}';
   const 剧情当前地点占位符 = '{{剧情当前地点}}';
   const 剧情当前主身份占位符 = '{{剧情当前主身份}}';
@@ -766,6 +770,28 @@
     }
   }
 
+  function 读取原著事件候选(userInput = '', statData = null, 近场文本 = '') {
+    const 接口 = 读取MVU运行时视图接口();
+    if (!接口 || typeof 接口.生成原著事件候选 !== 'function') return '无已经发生的原著事件。';
+    try {
+      return String(接口.生成原著事件候选(取StatData(statData, userInput) || null, 近场文本 || userInput) || '').trim() || '无已经发生的原著事件。';
+    } catch (错误) {
+      console.warn('[LWCS适配器] 原著事件候选读取失败:', 错误);
+      return '无已经发生的原著事件。';
+    }
+  }
+
+  function 读取原著事件召回(标识文本 = '', statData = null, userInput = '') {
+    const 接口 = 读取MVU运行时视图接口();
+    if (!接口 || typeof 接口.生成原著事件召回 !== 'function') return String(标识文本 || '').trim() || '无';
+    try {
+      return String(接口.生成原著事件召回(标识文本, 取StatData(statData, userInput) || null) || '').trim() || '无';
+    } catch (错误) {
+      console.warn('[LWCS适配器] 原著事件召回展开失败:', 错误);
+      return String(标识文本 || '').trim() || '无';
+    }
+  }
+
   function 读取角色基础六维对标(userInput = '', statData = null, 近场文本 = '') {
     const 接口 = 读取MVU运行时视图接口();
     if (!接口 || typeof 接口.生成角色基础六维对标摘要 !== 'function') return '无';
@@ -781,6 +807,8 @@
     const 文本 = String(content || '');
     if (!文本.includes(时间线预览占位符)
       && !文本.includes(远端原著时间线候选占位符)
+      && !文本.includes(原著事件候选占位符)
+      && !文本.includes('</原著事件召回>')
       && !文本.includes(角色基础六维对标占位符)
       && !文本.includes(剧情当前地点占位符)
       && !文本.includes(剧情当前主身份占位符)) return 文本;
@@ -806,6 +834,12 @@
     }
     if (结果.includes(远端原著时间线候选占位符) && 视图接口可用) {
       结果 = 结果.replaceAll(远端原著时间线候选占位符, 读取远端原著时间线候选(userInput, statData, 近场文本, context.时间推进上下文 || null) || '无远端原著时间线候选。');
+    }
+    if (结果.includes(原著事件候选占位符)) {
+      结果 = 结果.replaceAll(原著事件候选占位符, 读取原著事件候选(userInput, statData, 近场文本));
+    }
+    if (结果.includes('</原著事件召回>')) {
+      结果 = 结果.replace(原著事件召回区块正则, (_, 前段, 标识文本, 后段) => `${前段}${读取原著事件召回(标识文本, statData, userInput)}${后段}`);
     }
     if (结果.includes(角色基础六维对标占位符) && 视图接口可用) {
       结果 = 结果.replaceAll(角色基础六维对标占位符, 读取角色基础六维对标(userInput, statData, 近场文本));
@@ -894,17 +928,32 @@
     ].join('\n');
   }
 
+  // 和纪要、偏差召回一样随规划终稿进正文：终稿里带着第一阶段的 <timeline_recall>，这里展开成原著全文
+  function 构建正文原著事件召回(规划终稿 = '', userInput = '', statData = null) {
+    const 匹配 = String(规划终稿 || '').match(/<timeline_recall>([\s\S]*?)<\/timeline_recall>/i);
+    if (!匹配) return '';
+    const 召回 = 读取原著事件召回(匹配[1], statData, userInput);
+    if (!召回 || 召回 === '无') return '';
+    return [
+      原著事件召回标题,
+      '以下原著事件在本档世界线中已经发生，默认按原著经过与结果处理；与偏差账本冲突时，以偏差后的结果为准。',
+      召回,
+    ].join('\n');
+  }
+
   function 追加正文注入(options, context = {}) {
     if (!options || typeof options !== 'object') return false;
     const userInput = String(context.userInput || '');
     const statData = context.statData && typeof context.statData === 'object' ? context.statData : null;
-    const 注入片段 = [构建正文时间线预览(userInput, statData)].filter(Boolean);
+    const 注入片段 = [
+      ['【正文时间线预览】', 构建正文时间线预览(userInput, statData)],
+      [原著事件召回标题, 构建正文原著事件召回(options.prompt, userInput, statData)],
+    ].filter(([, 文本]) => 文本);
     if (!注入片段.length) return false;
     const 注入列表 = Array.isArray(options.injects) ? options.injects : [];
     options.injects = 注入列表;
     let 是否追加 = false;
-    for (const 文本 of 注入片段) {
-      const 标题 = '【正文时间线预览】';
+    for (const [标题, 文本] of 注入片段) {
       if (注入列表.some(item => String(item?.content || '').includes(标题))) continue;
       注入列表.push({ position: 'in_chat', depth: 0, role: 'system', content: 文本, should_scan: false, _qrf_scope: 'story' });
       是否追加 = true;
@@ -1134,6 +1183,7 @@
       'MVU_MUTUAL_VISIBILITY_VIEW',
       '剧情钩子._引导.时间线预览',
       '剧情钩子._引导.远端原著时间线候选',
+      '原著事件候选',
       '角色基础六维对标',
       '剧情当前地点',
       '剧情当前主身份',
@@ -1154,6 +1204,8 @@
       || 文本.includes(MVU相互可见性视图占位符)
       || 文本.includes(时间线预览占位符)
       || 文本.includes(远端原著时间线候选占位符)
+      || 文本.includes(原著事件候选占位符)
+      || 文本.includes('</原著事件召回>')
       || 文本.includes(角色基础六维对标占位符)
       || 文本.includes(剧情当前地点占位符)
       || 文本.includes(剧情当前主身份占位符)

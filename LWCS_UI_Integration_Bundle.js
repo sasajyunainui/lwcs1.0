@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:fd02ab35ffcdced0b6a5ab56509c72e05ec83cd9d7a024e3d0580638504c3f29|mvu_logic_bridge.js:a5945f61c877481d0c6175cf9ba6d0cf5c9a6e4f7f29c831c330bff65ea447dd|cockpit/designer-model.js:9e32bfa817caa9c980c4cf92834dde5df98a11f18bc7cb63d626c3f82cf72617|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:1f018c2f083673031b98f7bde8035b4db8be87d961d12671bbd54cac9e144afd|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:bbbae9686d5c127938d3dcfc97f2758141c1a9bc73a066c1f5a2facf51db5ee7|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:a5945f61c877481d0c6175cf9ba6d0cf5c9a6e4f7f29c831c330bff65ea447dd|cockpit/designer-model.js:9e32bfa817caa9c980c4cf92834dde5df98a11f18bc7cb63d626c3f82cf72617|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:1f018c2f083673031b98f7bde8035b4db8be87d961d12671bbd54cac9e144afd|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:bbbae9686d5c127938d3dcfc97f2758141c1a9bc73a066c1f5a2facf51db5ee7|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -462,6 +462,10 @@
   const MVU相互可见性视图占位符 = '{{MVU_MUTUAL_VISIBILITY_VIEW}}';
   const 时间线预览占位符 = '{{剧情钩子._引导.时间线预览}}';
   const 远端原著时间线候选占位符 = '{{剧情钩子._引导.远端原著时间线候选}}';
+  const 原著事件候选占位符 = '{{原著事件候选}}';
+  // 第一阶段输出的 <timeline_recall> 由数据库按 {{timeline_recall}} 带进后续阶段；落在这个区块里的标识展开成原著全文
+  const 原著事件召回区块正则 = /(<原著事件召回>[\s\S]*?)<timeline_recall>([\s\S]*?)<\/timeline_recall>([\s\S]*?<\/原著事件召回>)/g;
+  const 原著事件召回标题 = '【原著事件召回】';
   const 角色基础六维对标占位符 = '{{角色基础六维对标}}';
   const 剧情当前地点占位符 = '{{剧情当前地点}}';
   const 剧情当前主身份占位符 = '{{剧情当前主身份}}';
@@ -1218,6 +1222,28 @@
     }
   }
 
+  function 读取原著事件候选(userInput = '', statData = null, 近场文本 = '') {
+    const 接口 = 读取MVU运行时视图接口();
+    if (!接口 || typeof 接口.生成原著事件候选 !== 'function') return '无已经发生的原著事件。';
+    try {
+      return String(接口.生成原著事件候选(取StatData(statData, userInput) || null, 近场文本 || userInput) || '').trim() || '无已经发生的原著事件。';
+    } catch (错误) {
+      console.warn('[LWCS适配器] 原著事件候选读取失败:', 错误);
+      return '无已经发生的原著事件。';
+    }
+  }
+
+  function 读取原著事件召回(标识文本 = '', statData = null, userInput = '') {
+    const 接口 = 读取MVU运行时视图接口();
+    if (!接口 || typeof 接口.生成原著事件召回 !== 'function') return String(标识文本 || '').trim() || '无';
+    try {
+      return String(接口.生成原著事件召回(标识文本, 取StatData(statData, userInput) || null) || '').trim() || '无';
+    } catch (错误) {
+      console.warn('[LWCS适配器] 原著事件召回展开失败:', 错误);
+      return String(标识文本 || '').trim() || '无';
+    }
+  }
+
   function 读取角色基础六维对标(userInput = '', statData = null, 近场文本 = '') {
     const 接口 = 读取MVU运行时视图接口();
     if (!接口 || typeof 接口.生成角色基础六维对标摘要 !== 'function') return '无';
@@ -1233,6 +1259,8 @@
     const 文本 = String(content || '');
     if (!文本.includes(时间线预览占位符)
       && !文本.includes(远端原著时间线候选占位符)
+      && !文本.includes(原著事件候选占位符)
+      && !文本.includes('</原著事件召回>')
       && !文本.includes(角色基础六维对标占位符)
       && !文本.includes(剧情当前地点占位符)
       && !文本.includes(剧情当前主身份占位符)) return 文本;
@@ -1258,6 +1286,12 @@
     }
     if (结果.includes(远端原著时间线候选占位符) && 视图接口可用) {
       结果 = 结果.replaceAll(远端原著时间线候选占位符, 读取远端原著时间线候选(userInput, statData, 近场文本, context.时间推进上下文 || null) || '无远端原著时间线候选。');
+    }
+    if (结果.includes(原著事件候选占位符)) {
+      结果 = 结果.replaceAll(原著事件候选占位符, 读取原著事件候选(userInput, statData, 近场文本));
+    }
+    if (结果.includes('</原著事件召回>')) {
+      结果 = 结果.replace(原著事件召回区块正则, (_, 前段, 标识文本, 后段) => `${前段}${读取原著事件召回(标识文本, statData, userInput)}${后段}`);
     }
     if (结果.includes(角色基础六维对标占位符) && 视图接口可用) {
       结果 = 结果.replaceAll(角色基础六维对标占位符, 读取角色基础六维对标(userInput, statData, 近场文本));
@@ -1346,17 +1380,32 @@
     ].join('\n');
   }
 
+  // 和纪要、偏差召回一样随规划终稿进正文：终稿里带着第一阶段的 <timeline_recall>，这里展开成原著全文
+  function 构建正文原著事件召回(规划终稿 = '', userInput = '', statData = null) {
+    const 匹配 = String(规划终稿 || '').match(/<timeline_recall>([\s\S]*?)<\/timeline_recall>/i);
+    if (!匹配) return '';
+    const 召回 = 读取原著事件召回(匹配[1], statData, userInput);
+    if (!召回 || 召回 === '无') return '';
+    return [
+      原著事件召回标题,
+      '以下原著事件在本档世界线中已经发生，默认按原著经过与结果处理；与偏差账本冲突时，以偏差后的结果为准。',
+      召回,
+    ].join('\n');
+  }
+
   function 追加正文注入(options, context = {}) {
     if (!options || typeof options !== 'object') return false;
     const userInput = String(context.userInput || '');
     const statData = context.statData && typeof context.statData === 'object' ? context.statData : null;
-    const 注入片段 = [构建正文时间线预览(userInput, statData)].filter(Boolean);
+    const 注入片段 = [
+      ['【正文时间线预览】', 构建正文时间线预览(userInput, statData)],
+      [原著事件召回标题, 构建正文原著事件召回(options.prompt, userInput, statData)],
+    ].filter(([, 文本]) => 文本);
     if (!注入片段.length) return false;
     const 注入列表 = Array.isArray(options.injects) ? options.injects : [];
     options.injects = 注入列表;
     let 是否追加 = false;
-    for (const 文本 of 注入片段) {
-      const 标题 = '【正文时间线预览】';
+    for (const [标题, 文本] of 注入片段) {
       if (注入列表.some(item => String(item?.content || '').includes(标题))) continue;
       注入列表.push({ position: 'in_chat', depth: 0, role: 'system', content: 文本, should_scan: false, _qrf_scope: 'story' });
       是否追加 = true;
@@ -1586,6 +1635,7 @@
       'MVU_MUTUAL_VISIBILITY_VIEW',
       '剧情钩子._引导.时间线预览',
       '剧情钩子._引导.远端原著时间线候选',
+      '原著事件候选',
       '角色基础六维对标',
       '剧情当前地点',
       '剧情当前主身份',
@@ -1606,6 +1656,8 @@
       || 文本.includes(MVU相互可见性视图占位符)
       || 文本.includes(时间线预览占位符)
       || 文本.includes(远端原著时间线候选占位符)
+      || 文本.includes(原著事件候选占位符)
+      || 文本.includes('</原著事件召回>')
       || 文本.includes(角色基础六维对标占位符)
       || 文本.includes(剧情当前地点占位符)
       || 文本.includes(剧情当前主身份占位符)
