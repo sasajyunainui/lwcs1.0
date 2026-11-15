@@ -1294,6 +1294,28 @@
       Object.values(holder.持续效果 || {}).some(effect => effect?.effect_type === 'condition' && effect.sourceActionId === owner));
   }
 
+  // 先攻（MVU 战斗.先攻：「掌握先手权的角色名。若为"无"则代表公平开局；若有名字则代表突发偷袭，防守方首回合反应率减半」）: at the
+  // first round the named units (one or more, 、-separated) hold 先手 — they act before everyone (BattlePreview
+  // compareNaturalActionOrder) — and every unit of the sides they fall on is 措手不及, its window to answer a hit halved
+  // (BattlePreview reactionWindupBudget). Both last the round (__回合末解除). Until 11-15 先攻 was written and shown, never read.
+  function applyBattleInitiative(combatData = {}) {
+    const text = String(combatData?.先攻 || '').trim();
+    if (!text || text === '无') return;
+    const names = new Set(text.split(/[、,，;；\s]+/).map(name => name.trim()).filter(Boolean));
+    const teams = ['team_player', 'team_enemy'].map(side => (Array.isArray(combatData?.参战者?.[side]) ? combatData.参战者[side] : []).filter(Boolean));
+    const holds = unit => names.has(String(previewRuntime.unitName(unit) || '').trim()) || names.has(String(previewRuntime.unitId(unit) || '').trim());
+    const ambushing = teams.map(team => team.some(holds));
+    if (!ambushing.some(Boolean)) return;
+    const mark = (unit, key, state, effect) => {
+      unit.状态效果 = unit.状态效果 && typeof unit.状态效果 === 'object' ? unit.状态效果 : {};
+      unit.状态效果[key] = { 状态: state, 状态名称: state, 类型: effect.initiative_first ? 'buff' : 'debuff', duration: 1, 持续回合: 1, 战斗效果: effect, __回合末解除: true };
+    };
+    teams.forEach((team, index) => team.forEach(unit => {
+      if (holds(unit)) mark(unit, '__先攻·先手', '先手', { initiative_first: true });
+      else if (ambushing[1 - index] && !ambushing[index] && isUnitAbleToFight(unit)) mark(unit, '__先攻·措手不及', '措手不及', { reaction_window_mult: 0.5 });
+    }));
+  }
+
   function settleConditionsAtRoundEnd(unit = {}, label = '', combatData = {}) {
     if (!unit) return { log: '', totalDot: 0, expired: [] };
     delete unit.__本阶段已触发复活;
@@ -15955,6 +15977,7 @@
           roundOffset,
         });
         logs.push(...beginBattleRound(combatData, combatData.回合).filter(Boolean));
+        if (Number(combatData.回合) === 1) applyBattleInitiative(combatData);
         invalidateRouteUnitHashes(combatData);
         settleStaminaExhaustion(combatData);
         const queueTrace = runtime.actionQueueTrace;
@@ -16115,7 +16138,7 @@
               event?.ruleCode,
               event?.meta?.stateName,
             ].map(value => String(value || '').trim()).join('|');
-            return /incapacitat|cannot_act|skip_turn|失能|昏迷|眩晕|麻痹|冻结|束缚|禁锢/i.test(
+            return /incapacitat|cannot_act|skip_turn|失能|昏迷|眩晕|冻结|束缚|禁锢/i.test(
                 outcome,
               );
           });

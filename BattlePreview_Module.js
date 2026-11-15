@@ -1989,12 +1989,21 @@
   // windup exceeds that budget (a charged release) leaves the whole budget. Defending and evading take no windup and stay
   // open, and skills marked as reactions (即时反应, 受击触发, …) are not held to it (BattleDecision isImmediateReactionSkill).
   const REACTION_DEFENDER_MARGIN = 0.2;
+  // 措手不及（先攻：防守方首回合反应率减半）: a state's 战斗效果.reaction_window_mult scales the window the unit has to answer in.
+  function reactionWindowMultiplier(unit = {}) {
+    let multiplier = 1;
+    for (const state of Object.values(unit?.状态效果 || {})) {
+      const value = Number(state?.战斗效果?.reaction_window_mult);
+      if (Number.isFinite(value) && value >= 0) multiplier = Math.min(multiplier, value);
+    }
+    return multiplier;
+  }
   function reactionWindupBudget(attacker = {}, declaration = {}, reactor = {}) {
-    const windup = actionWindup(attacker, declaration);
-    if (windup > CONTINUOUS_ACTION_BUDGET) return CONTINUOUS_ACTION_BUDGET;
+    const windup = actionWindup(attacker, declaration), multiplier = reactionWindowMultiplier(reactor);
+    if (windup > CONTINUOUS_ACTION_BUDGET) return CONTINUOUS_ACTION_BUDGET * multiplier;
     const attackerAgility = naturalActionOrderProfile(attacker).effectiveAgility;
-    if (!(attackerAgility > 0)) return CONTINUOUS_ACTION_BUDGET;
-    return Math.min(
+    if (!(attackerAgility > 0)) return CONTINUOUS_ACTION_BUDGET * multiplier;
+    return multiplier * Math.min(
       CONTINUOUS_ACTION_BUDGET,
       windup * (naturalActionOrderProfile(reactor).effectiveAgility / attackerAgility) * (1 + REACTION_DEFENDER_MARGIN),
     );
@@ -2996,6 +3005,9 @@
     }, 0);
     return Object.freeze({
       type,
+      // 先攻（偷袭）: a unit holding the battle's initiative (state 战斗效果.initiative_first, BattleRuntime applyBattleInitiative)
+      // acts before everyone else in the round it holds it.
+      first: Object.values(unit?.状态效果 || {}).some(state => state?.战斗效果?.initiative_first === true),
       typePriority: Number(typePriority[type] || 4),
       baseAgility,
       speedModifier,
@@ -3006,6 +3018,7 @@
   function compareNaturalActionOrder(left = {}, right = {}) {
     const leftProfile = naturalActionOrderProfile(left);
     const rightProfile = naturalActionOrderProfile(right);
+    if (leftProfile.first !== rightProfile.first) return leftProfile.first ? -1 : 1;
     const priorityDelta = leftProfile.typePriority - rightProfile.typePriority;
     if (priorityDelta) return priorityDelta;
     const agilityDelta = rightProfile.effectiveAgility - leftProfile.effectiveAgility;
@@ -9472,15 +9485,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (prototype === '规则防御' && String(effect?.规则 || effect?.防御对象 || '').trim() === '免伤') {
       combatEffect.block_count = Math.max(1, Number(effect?.次数 || 1));
     }
-    if (['眩晕', '麻痹', '僵直', '束缚', '禁锢', '定身', '冻结', '冻结束缚', '星光停滞'].includes(state)) {
+    // 控制分档（用户 2026-11-15「要有点区分度，麻痹才是行动变慢，反应变差。僵直改成有反应窗口判定时固定判为无法应对，但是之后可以
+    // 行动」）: 眩晕 and the binds stop the unit whole; 麻痹 slows its moves and its answers; 僵直 leaves it no answer to a hit
+    // while it lasts, and it acts as usual. Until 11-15 麻痹 and 僵直 stopped it whole, as 眩晕 does, at a fifth of its price.
+    if (['眩晕', '束缚', '禁锢', '定身', '冻结', '冻结束缚', '星光停滞'].includes(state)) {
       combatEffect.skip_turn = true;
       combatEffect.cannot_act = true;
       combatEffect.cannot_react = true;
     }
+    if (state === '麻痹') {
+      combatEffect.cast_speed_penalty = Math.max(Number(combatEffect.cast_speed_penalty || 0), magnitude || 0.25);
+      combatEffect.reaction_penalty = Math.max(Number(combatEffect.reaction_penalty || 0), magnitude || 0.25);
+    }
     if (/僵直/.test(state)) {
       combatEffect.cannot_react = true;
-      combatEffect.reaction_penalty = Math.max(Number(combatEffect.reaction_penalty || 0), magnitude || 0.25);
-      combatEffect.cast_speed_penalty = Math.max(Number(combatEffect.cast_speed_penalty || 0), 0.35);
     }
     if (/迟缓|减速/.test(state)) {
       delete combatEffect.skip_turn;
@@ -15184,7 +15202,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const effects = state?.战斗效果;
     const calculation = state?.计算层效果;
     const stateName = String(state?.状态 || state?.状态名称 || state?.name || '').trim();
-    const hardControl = ['眩晕', '麻痹', '僵直', '束缚', '禁锢', '定身', '冻结', '冻结束缚', '星光停滞'].includes(stateName);
+    const hardControl = ['眩晕', '束缚', '禁锢', '定身', '冻结', '冻结束缚', '星光停滞'].includes(stateName);
     return hardControl || state?.skip_turn === true || state?.cannot_act === true ||
       (effects?.skip_turn ?? calculation?.skip_turn) === true || (effects?.cannot_act ?? calculation?.cannot_act) === true;
   }
@@ -22186,7 +22204,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         return effects?.skip_turn === true ||
           effects?.cannot_act === true ||
           [
-            '眩晕', '麻痹', '僵直', '束缚', '禁锢',
+            '眩晕', '束缚', '禁锢',
             '定身', '冻结', '冻结束缚', '星光停滞',
           ].includes(name);
       });

@@ -6084,10 +6084,10 @@
     });
   }
 
+  // The strike back after an answer that worked (反击窗口): any skill whose windup fits it (行动窗口, 用户 2026-11-15：多情斗罗
+  // 「追溯加曾经」——追溯成功后下一刻接的是控制魂技曾经). Until 11-15 only a skill with direct damage.
   function isImmediateOffensiveCounterSkill(skill = {}, immediateBudget = 0) {
-    const castTime = Math.max(0, Number(skill?.前摇 ?? skill?.cast_time ?? 10));
-    return castTime <= immediateBudget && directImmediateSkillEffects(skill)
-      .some(effect => String(effect?.原型 || '').trim() === '伤害结算');
+    return isWithinReactionWindow(skill, immediateBudget);
   }
 
   // 接战链 阶段二 (用户 2026-11-12：四种应对"没问题，都做"; BattlePreview clashOutcome / preemptTiming, BattleRuntime
@@ -7270,7 +7270,7 @@
   }
 
   function isHardControlStateName(name = '') {
-    return ['眩晕', '麻痹', '僵直', '束缚', '禁锢', '定身', '冻结', '冻结束缚', '星光停滞'].includes(String(name || '').trim());
+    return ['眩晕', '束缚', '禁锢', '定身', '冻结', '冻结束缚', '星光停滞'].includes(String(name || '').trim());
   }
 
   function hasActionCancellation(unit = {}) {
@@ -73140,26 +73140,27 @@
     return built;
   }
 
-  // 决策随机（用户 2026-11-15「将高权重重新分配随机，这样就能保持多样性」「保证决策随机，但是不能随机过头，不然权重完全失去了
-  // 意义」）: the deciding unit's own choice (the outermost decision; what it pictures others choosing stays the best) is drawn among
-  // the candidates near the top — within DECISION_DIVERSITY_BAND of the way from the median score to the best (the median, so one
-  // very poor candidate does not widen it) — each by how far it stands above that band's floor, so the best is always the likeliest
-  // and a lone best is chosen as before. Contextually dominated candidates take no part. The battle's seeded Math.random draws it,
-  // so a case run with a fixed seed is reproduced.
-  const DECISION_DIVERSITY_BAND = Number(root.__LWCS_TUNE__?.DIVERSITY_BAND ?? 0.1);
+  // 决策随机（用户 2026-11-15「将高权重重新分配随机，这样就能保持多样性」「不能随机过头，不然权重完全失去了意义」「权重类似于
+  // 选择期望」）: the deciding unit's own choice (the outermost decision; what it pictures others choosing stays the best) is drawn
+  // with each candidate's chance by its score — e^((score − best) / T), T = DECISION_DIVERSITY_TEMPERATURE of the way from the median
+  // score to the best (the median, so one very poor candidate does not widen it): 0.1 of that way below the best weighs 0.37 of it,
+  // 0.3 below 0.05, 0.5 below 0.007. Contextually dominated candidates take no part. The battle's seeded Math.random draws it, so
+  // a case run with a fixed seed is reproduced.
+  const DECISION_DIVERSITY_TEMPERATURE = Number(root.__LWCS_TUNE__?.DIVERSITY_TEMPERATURE ?? 0.1);
   function diversifiedChoice(ranked = [], bestId = '', request = {}) {
-    if (providerDepth !== 1 || !(DECISION_DIVERSITY_BAND > 0) || request?.playerLockedDeclaration) return bestId;
+    // Only the unit's own action of its turn (ACTIVE): answers, strikes back and steps in stay the best — a drawn one could open
+    // a chain that never closed (11-15: a 35 级 强攻 vs 召唤 run hit ACTION_QUEUE_NODE_LIMIT_EXCEEDED).
+    if (providerDepth !== 1 || !(DECISION_DIVERSITY_TEMPERATURE > 0) || request?.playerLockedDeclaration ||
+      String(request?.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase() !== 'ACTIVE') return bestId;
     const rows = ranked.filter(row => row && row.contextuallyDominated !== true && Number.isFinite(Number(row.score)));
     if (rows.length < 2) return bestId;
     const scores = rows.map(row => Number(row.score)).sort((a, b) => b - a);
-    const best = scores[0], median = scores[Math.floor(scores.length / 2)];
-    const floor = best - DECISION_DIVERSITY_BAND * Math.max(0, best - median);
-    const band = rows.filter(row => Number(row.score) >= floor);
-    if (band.length < 2) return bestId;
-    const weights = band.map(row => Number(row.score) - floor + 1e-9), total = weights.reduce((sum, weight) => sum + weight, 0);
+    const best = scores[0], temperature = DECISION_DIVERSITY_TEMPERATURE * Math.max(0, best - scores[Math.floor(scores.length / 2)]);
+    if (!(temperature > 1e-12)) return bestId;
+    const weights = rows.map(row => Math.exp((Number(row.score) - best) / temperature)), total = weights.reduce((sum, weight) => sum + weight, 0);
     let roll = Math.random() * total;
-    for (let index = 0; index < band.length; index += 1) { roll -= weights[index]; if (roll <= 0) return String(band[index].candidateId || bestId); }
-    return String(band[band.length - 1].candidateId || bestId);
+    for (let index = 0; index < rows.length; index += 1) { roll -= weights[index]; if (roll <= 0) return String(rows[index].candidateId || bestId); }
+    return String(rows[rows.length - 1].candidateId || bestId);
   }
 
   function runR9v2LinearPreparedProvider(request = {}, featurePreparation) {
