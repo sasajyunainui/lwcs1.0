@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:7f561133be484aba9b48fc6b49b51b71c3e3e4cbbf6743c9e6b0a62cf26be637|cockpit/designer-model.js:3af6b921800a777fe67adf256f84125349e354db53a6856b190f9f039db556b6|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:3474ced3c93288f1eb7f4fea4ab961df89f18319d3c7a388066ea50741681f27|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:53e779d05475baf04653a807269448fb936624cfca90e6477ce6963b1f2f702b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:97029871b086807cfe780d47bc9bbd0597c225fc01cb5e4cb8c143c8b7cfc02e|BattleRuntime_Module.js:3ec3b7d302ba3d3fc682ba02cbd1388478ba802e454969e8af8ae635042bd25c|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:7f561133be484aba9b48fc6b49b51b71c3e3e4cbbf6743c9e6b0a62cf26be637|cockpit/designer-model.js:06c896d560159a409af9d339b991474901ad7a4a25784b178d2ed8bfabb4da95|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:3474ced3c93288f1eb7f4fea4ab961df89f18319d3c7a388066ea50741681f27|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:53e779d05475baf04653a807269448fb936624cfca90e6477ce6963b1f2f702b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:97029871b086807cfe780d47bc9bbd0597c225fc01cb5e4cb8c143c8b7cfc02e|BattleRuntime_Module.js:3ec3b7d302ba3d3fc682ba02cbd1388478ba802e454969e8af8ae635042bd25c|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -43855,7 +43855,7 @@ ${播报文本}
       影响方向: '说明驱动属性影响什么：成功率、效果强度、持续时间、消耗或前摇。',
       概率: '只在效果本身不是必定发生时填写；确定生效不要用概率占位。',
       数量: '限制本次处理的目标、状态、链式对象或机制数量；不限制时按原型默认。',
-      打断效果: '只在负向判定修正会打断释放、蓄力、引导时勾选；普通命中加成不要勾。',
+      打断效果: '勾上：这一下除了降低对方判定，还打断对方正在蓄力或引导的魂技。只有「降低对方、不持续」的判定修正能勾，COST 另加 18。',
       强化倍率: '基础属性增幅比例，运行时会再乘以炸掉魂环的年限系数，只影响下一次魂技释放时的自身属性。',
     };
     const 原型提示表 = {
@@ -43899,12 +43899,16 @@ ${播报文本}
         吸收来源: '选伤害吸收时才填：吸收「造成伤害」按你打出的量转化，吸收「受到伤害」按你挨打的量转化。',
         吸收资源: '吸收得到的量补进哪种资源；运行时按该资源结算，不填按生命处理。',
         限定元素: '限定当前行动技能元素；未命中元素不计收益。',
+        限定来源: '受到伤害的减免只对指定来源的环境危害生效（填环境来源标识）；留空＝所有来源都减免。',
         结算倍率: '持续伤害压缩或引爆用倍率；普通时长调整不要填。',
       },
       状态施加: {
         状态: '选择要施加的正式状态；正式状态会直接写入战斗效果。',
         数值: '状态主效果强度；例如每回合掉血、治疗削弱、护盾量、反应下降。',
         副数值: '状态附加效果强度；例如命中下降、承伤提高、技能消耗提高、闪避下降。',
+        资源: '暗冰侵蚀每回合侵蚀对方哪种资源。',
+        限定探查者: '只对这类对象隐匿：填「深渊生物」＝只有深渊生物看不见你，其他人照常能锁定你；留空＝对所有人隐匿。',
+        限定来源: '这层防护只挡指定来源的环境危害（填环境来源标识，例如深渊通道的魂力压制）；留空＝所有环境危害都挡。',
       },
       时窗修正: {
         调整字段: '选择要调整的窗口对象。',
@@ -43925,6 +43929,7 @@ ${播报文本}
         规则: '免伤用于抵消伤害，免死用于致命结算锁血。',
         次数: '规则壳可触发次数；触发后会扣减，用光即移除（可再次获得）。',
         计次: '按段：多段攻击每挡一段扣一次（缺省）；整招：同一次出手的所有段只扣一次。',
+        限定来源: '免伤只挡指定来源的环境危害（填环境来源标识）；留空＝所有来源都挡。',
       },
       状态转移: {
         状态: '指定状态或任意状态。',
@@ -45028,6 +45033,7 @@ ${播报文本}
     const 内部筛选字段 = prototype === '状态移除' ? new Set(['匹配原型', '资源', '数值方向']) : new Set();
     const 字段内容 = 字段列表
       .filter(key => !['驱动属性', '影响方向', '条件分支'].includes(key) && !内部筛选字段.has(key))
+      .filter(key => 技能设计台字段在当前效果下起作用(prototype, key, 当前效果))
       .map(key => {
         const rawValue = 当前效果 && 当前效果[key];
         const value = Array.isArray(rawValue) ? rawValue : 格式化技能设计台原型字段值(rawValue);
@@ -46328,6 +46334,23 @@ ${播报文本}
     })();
     return { kind: 'group', label: '内部效果筛选', summary: 摘要, open: !!已启用, controls: 内部字段 };
   }
+  // 原型字段表是按原型给的全集；下面几项只有特定状态/规则时战斗里才读，其余场景显示出来只会让人困惑
+  // （例：给眩晕选「资源」「限定探查者」毫无作用；状态施加的「打断效果」保存时就被清掉）
+  function 技能设计台字段在当前效果下起作用(原型 = '', 字段 = '', effect = {}) {
+    const 状态 = normalizeSkillUiText(effect && effect['状态'], '');
+    if (原型 === '状态施加') {
+      if (字段 === '资源') return 状态 === '暗冰侵蚀';
+      if (字段 === '限定探查者') return ['隐匿', '探查屏蔽'].includes(状态);
+      if (字段 === '限定来源') return 状态 === '无视异常';
+      if (字段 === '打断效果') return false;
+    }
+    if (字段 === '限定来源') {
+      if (原型 === '规则防御') return normalizeSkillUiText(effect && effect['规则'], '') === '免伤';
+      if (原型 === '结算修正') return normalizeSkillUiText(effect && effect['结算'], '') === '受到伤害';
+      if (['判定修正', '属性修正', '护盾变化'].includes(原型)) return false;
+    }
+    return true;
+  }
   function 描述原型字段编辑器(effect = {}, options = {}) {
     // ≙ 构建技能设计台原型字段编辑器（字段顺序、驱动/条件分支放末尾、时窗修正固定顺序全部照搬）
     const prototype = normalizeSkillUiText(effect && effect['原型'], 读取技能设计台原型名称列表()[0] || '伤害结算');
@@ -46358,6 +46381,7 @@ ${播报文本}
     const 内部筛选字段 = prototype === '状态移除' ? new Set(['匹配原型', '资源', '数值方向']) : new Set();
     const 字段内容 = 字段列表
       .filter(key => !['驱动属性', '影响方向', '条件分支'].includes(key) && !内部筛选字段.has(key))
+      .filter(key => 技能设计台字段在当前效果下起作用(prototype, key, 当前效果))
       .map(key => {
         const rawValue = 当前效果 && 当前效果[key];
         const value = Array.isArray(rawValue) ? rawValue : 格式化技能设计台原型字段值(rawValue);
