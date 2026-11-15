@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:7f561133be484aba9b48fc6b49b51b71c3e3e4cbbf6743c9e6b0a62cf26be637|cockpit/designer-model.js:1f4c30610ce2f35303952c05e4bb7848bee22f105d9121a1fe74dc5d82d9b447|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:3474ced3c93288f1eb7f4fea4ab961df89f18319d3c7a388066ea50741681f27|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:53e779d05475baf04653a807269448fb936624cfca90e6477ce6963b1f2f702b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:97029871b086807cfe780d47bc9bbd0597c225fc01cb5e4cb8c143c8b7cfc02e|BattleRuntime_Module.js:3ec3b7d302ba3d3fc682ba02cbd1388478ba802e454969e8af8ae635042bd25c|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:7f561133be484aba9b48fc6b49b51b71c3e3e4cbbf6743c9e6b0a62cf26be637|cockpit/designer-model.js:1f4c30610ce2f35303952c05e4bb7848bee22f105d9121a1fe74dc5d82d9b447|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:3474ced3c93288f1eb7f4fea4ab961df89f18319d3c7a388066ea50741681f27|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:5f0def70bf96a8ae09561ddb1c5fbfa75ea9363ef2b7c5c2a1dd3e8c0b1bb2db|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:97029871b086807cfe780d47bc9bbd0597c225fc01cb5e4cb8c143c8b7cfc02e|BattleRuntime_Module.js:c83f68cb205159c4dd0af3a8401cd956271e2aaf112314a567a3db73c2dbd879|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -80281,12 +80281,22 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const ownApplicationProbabilityByTarget = new Map(
         targets.map(target => {
           const targetId = unitId(target);
+          // 主效果判命中（BattleRuntime executeResolvedEffect, 用户 2026-11-15）: a primary effect on an enemy that is not damage lands
+          // only on a hit — the roll damage takes (estimateHitProbability, without the effect's own application chance) — and not
+          // on one that evades it (evadeProbabilityByTarget); the effects that follow it inherit this.
+          const primaryHostileRoll = index === 0 && prototype !== '伤害结算' && targetId !== unitId(effectActor) &&
+            sideOf(effectWorldSnapshot, overlay.readUnit(targetId) || target) !== sideOf(effectWorldSnapshot, effectActor);
+          const primaryHit = primaryHostileRoll
+            ? clamp(estimateHitProbability(effectActor, overlay.readUnit(targetId) || target, { ...effect, 触发概率: undefined, 成功率: undefined },
+              context.projectionContext, environmentContext, targets.length, { initiative: context.initiative }), 0, 1) *
+              (1 - clamp(Number(input?.evadeProbabilityByTarget?.[targetId] || 0), 0, 1))
+            : 1;
           const baseApplicationProbability = (hasOwnApplicationProbability
             ? normalizeEffectProbability(
                 effect?.成功率 ?? effect?.触发概率,
                 1,
               )
-            : 1) * stateApplicationProbabilityMultiplier(overlay.readUnit(targetId), effect);
+            : 1) * stateApplicationProbabilityMultiplier(overlay.readUnit(targetId), effect) * primaryHit;
           const resolvedApplicationProbability =
             typeof input?.applicationProbabilityResolver === 'function'
               ? input.applicationProbabilityResolver({
@@ -178680,8 +178690,36 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             ...declaration, targetIds: triggeredTargets.map(previewRuntime.unitId),
           }, effect)
         : triggeredTargets;
-      const resolvedTargets = refereeTakenTargetIds.size
+      const unrolledTargets = refereeTakenTargetIds.size
         ? conditionedTargets.filter(target => !refereeTakenTargetIds.has(previewRuntime.unitId(target))) : conditionedTargets;
+      // 主效果判命中（用户 2026-11-15「魂技设计是分为主效果，副效果的，副效果可以不看命中率，但主效果应该和伤害魂技一样计算命中率」）:
+      // a skill's primary effect on an enemy that is not damage — a state, a 判定/属性 debuff, a 位移 — rolls to hit as damage does
+      // (BattlePreview estimateHitProbability) and misses an enemy that evaded it; the effects that follow it (跟随主原型) go with it.
+      // Effects of their own (独立生效) beyond the primary do not roll. Until 11-15 a control skill landed on an enemy that dodged.
+      const resolvedTargets = isPrimaryEffect && prototype !== '伤害结算' && !effect?.条件分支?.length
+        ? unrolledTargets.filter(target => {
+            const targetId = previewRuntime.unitId(target);
+            if (targetId === previewRuntime.unitId(actor) || inferUnitSide(combatData, target) === inferUnitSide(combatData, actor)) return true;
+            const reaction = input?.reactionByTarget?.[targetId] || null;
+            const hitProbability = reaction?.forceHit === true ? 1 : Math.max(0, Math.min(1, previewRuntime.estimateHitProbability(actor, target, { ...effect, 触发概率: undefined, 成功率: undefined },
+              null, null, unrolledTargets.length, { initiative: actionRole === 'ACTIVE' })));
+            const evaded = reaction?.evaded === true;
+            const roll = evaded || hitProbability >= 1 - 1e-12 ? null : Math.random();
+            if (!evaded && (roll === null || probabilitySucceeds(hitProbability, roll))) return true;
+            facts.push(writeLedgerEvent(combatData, {
+              eventKind: 'hit_result', round: Number(combatData?.回合 || 0),
+              actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor), targetId, targetName: previewRuntime.unitName(target),
+              actionName, actionType: actionKind, actorControl, actionRole, actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
+              parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
+              result: 'miss', resultState: 'FAILURE', primaryOutcome: evaded ? 'dodged' : 'missed', effectPrototype: prototype, sourceEffectId,
+              meta: { source: 'structured_runtime', effectIndex, prototype, hitProbability, roll, evaded, primaryEffectHitRoll: true },
+            }));
+            primaryResolutionByTarget.set(targetId, false);
+            primaryOutcomeByTarget.set(targetId, evaded ? 'EVADED' : 'MISS');
+            return false;
+          })
+        : unrolledTargets;
+      if (!resolvedTargets.length) return;
       if (effect?.条件分支?.length) {
         const conditionalDepth = Number(conditionalMeta.conditionalDepth || 0), limit = previewRuntime.recursionDepthLimit;
         if (!(Number.isFinite(limit) && limit > 0)) throw new Error('battle_preview_recursion_limit_contract_missing');

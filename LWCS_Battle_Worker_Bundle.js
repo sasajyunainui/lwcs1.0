@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:f3770f5be6df5484c35909c3b8d9d50784b02e64a63bbf90d59b162a22cfd314|MVU_Schema_Runtime.js:454e4a242dce5e02d69c3def2993d350ac50f39dcb667f2fc6f09488f34461dd|BattlePreview_Module.js:53e779d05475baf04653a807269448fb936624cfca90e6477ce6963b1f2f702b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:97029871b086807cfe780d47bc9bbd0597c225fc01cb5e4cb8c143c8b7cfc02e|BattleRuntime_Module.js:3ec3b7d302ba3d3fc682ba02cbd1388478ba802e454969e8af8ae635042bd25c */
+/* sources-sha256: MVU_Skill_Runtime.js:f3770f5be6df5484c35909c3b8d9d50784b02e64a63bbf90d59b162a22cfd314|MVU_Schema_Runtime.js:454e4a242dce5e02d69c3def2993d350ac50f39dcb667f2fc6f09488f34461dd|BattlePreview_Module.js:5f0def70bf96a8ae09561ddb1c5fbfa75ea9363ef2b7c5c2a1dd3e8c0b1bb2db|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:97029871b086807cfe780d47bc9bbd0597c225fc01cb5e4cb8c143c8b7cfc02e|BattleRuntime_Module.js:c83f68cb205159c4dd0af3a8401cd956271e2aaf112314a567a3db73c2dbd879 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -56942,12 +56942,22 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const ownApplicationProbabilityByTarget = new Map(
         targets.map(target => {
           const targetId = unitId(target);
+          // 主效果判命中（BattleRuntime executeResolvedEffect, 用户 2026-11-15）: a primary effect on an enemy that is not damage lands
+          // only on a hit — the roll damage takes (estimateHitProbability, without the effect's own application chance) — and not
+          // on one that evades it (evadeProbabilityByTarget); the effects that follow it inherit this.
+          const primaryHostileRoll = index === 0 && prototype !== '伤害结算' && targetId !== unitId(effectActor) &&
+            sideOf(effectWorldSnapshot, overlay.readUnit(targetId) || target) !== sideOf(effectWorldSnapshot, effectActor);
+          const primaryHit = primaryHostileRoll
+            ? clamp(estimateHitProbability(effectActor, overlay.readUnit(targetId) || target, { ...effect, 触发概率: undefined, 成功率: undefined },
+              context.projectionContext, environmentContext, targets.length, { initiative: context.initiative }), 0, 1) *
+              (1 - clamp(Number(input?.evadeProbabilityByTarget?.[targetId] || 0), 0, 1))
+            : 1;
           const baseApplicationProbability = (hasOwnApplicationProbability
             ? normalizeEffectProbability(
                 effect?.成功率 ?? effect?.触发概率,
                 1,
               )
-            : 1) * stateApplicationProbabilityMultiplier(overlay.readUnit(targetId), effect);
+            : 1) * stateApplicationProbabilityMultiplier(overlay.readUnit(targetId), effect) * primaryHit;
           const resolvedApplicationProbability =
             typeof input?.applicationProbabilityResolver === 'function'
               ? input.applicationProbabilityResolver({
@@ -155341,8 +155351,36 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             ...declaration, targetIds: triggeredTargets.map(previewRuntime.unitId),
           }, effect)
         : triggeredTargets;
-      const resolvedTargets = refereeTakenTargetIds.size
+      const unrolledTargets = refereeTakenTargetIds.size
         ? conditionedTargets.filter(target => !refereeTakenTargetIds.has(previewRuntime.unitId(target))) : conditionedTargets;
+      // 主效果判命中（用户 2026-11-15「魂技设计是分为主效果，副效果的，副效果可以不看命中率，但主效果应该和伤害魂技一样计算命中率」）:
+      // a skill's primary effect on an enemy that is not damage — a state, a 判定/属性 debuff, a 位移 — rolls to hit as damage does
+      // (BattlePreview estimateHitProbability) and misses an enemy that evaded it; the effects that follow it (跟随主原型) go with it.
+      // Effects of their own (独立生效) beyond the primary do not roll. Until 11-15 a control skill landed on an enemy that dodged.
+      const resolvedTargets = isPrimaryEffect && prototype !== '伤害结算' && !effect?.条件分支?.length
+        ? unrolledTargets.filter(target => {
+            const targetId = previewRuntime.unitId(target);
+            if (targetId === previewRuntime.unitId(actor) || inferUnitSide(combatData, target) === inferUnitSide(combatData, actor)) return true;
+            const reaction = input?.reactionByTarget?.[targetId] || null;
+            const hitProbability = reaction?.forceHit === true ? 1 : Math.max(0, Math.min(1, previewRuntime.estimateHitProbability(actor, target, { ...effect, 触发概率: undefined, 成功率: undefined },
+              null, null, unrolledTargets.length, { initiative: actionRole === 'ACTIVE' })));
+            const evaded = reaction?.evaded === true;
+            const roll = evaded || hitProbability >= 1 - 1e-12 ? null : Math.random();
+            if (!evaded && (roll === null || probabilitySucceeds(hitProbability, roll))) return true;
+            facts.push(writeLedgerEvent(combatData, {
+              eventKind: 'hit_result', round: Number(combatData?.回合 || 0),
+              actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor), targetId, targetName: previewRuntime.unitName(target),
+              actionName, actionType: actionKind, actorControl, actionRole, actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
+              parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
+              result: 'miss', resultState: 'FAILURE', primaryOutcome: evaded ? 'dodged' : 'missed', effectPrototype: prototype, sourceEffectId,
+              meta: { source: 'structured_runtime', effectIndex, prototype, hitProbability, roll, evaded, primaryEffectHitRoll: true },
+            }));
+            primaryResolutionByTarget.set(targetId, false);
+            primaryOutcomeByTarget.set(targetId, evaded ? 'EVADED' : 'MISS');
+            return false;
+          })
+        : unrolledTargets;
+      if (!resolvedTargets.length) return;
       if (effect?.条件分支?.length) {
         const conditionalDepth = Number(conditionalMeta.conditionalDepth || 0), limit = previewRuntime.recursionDepthLimit;
         if (!(Number.isFinite(limit) && limit > 0)) throw new Error('battle_preview_recursion_limit_contract_missing');
