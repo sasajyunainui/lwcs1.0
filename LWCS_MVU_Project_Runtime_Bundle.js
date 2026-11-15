@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:d2eab9a667510575469428bef43b9a4dbbba36ff0a8fe5813a6ec13691682391|MVU_Schema_Runtime.js:24aed5e223712a53c09c5b745a3e4891a729d4e20843aa1ddf7aa5ca96328d1f|MVU_Competition_Runtime.js:bd9359dab1643d4529fa41ccf397f6de17e9158f86c30484851741120a56caa9|MVU_Runtime_View.js:f35e09d9914e59236bd409895b7bc7ee8e300d20034d4b3f2c5c16e13ccee85c */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:d2eab9a667510575469428bef43b9a4dbbba36ff0a8fe5813a6ec13691682391|MVU_Schema_Runtime.js:24aed5e223712a53c09c5b745a3e4891a729d4e20843aa1ddf7aa5ca96328d1f|MVU_Competition_Runtime.js:bdd84470321c41c035433423da99c6cf1daea36e11290192498d50362aea94e4|MVU_Runtime_View.js:1f7a519a850bc170c3da108bfe22614d098b593bc573d8b38a5c0a7bec81aba5 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -42091,45 +42091,80 @@ try {
   }
 
   function 读取每队上场人数(项目 = {}) {
-    return 整数(项目?.每队上场人数 ?? 7, 1, 12);
+    return 整数(项目?.每队上场人数 ?? 7, 1, 7);
   }
 
-  // 脚本随机排阵（用户「脚本随机先排」）：成员 [{名称, 等级, 系别, 攻击魂技数, 魂技数}]。上场名单取等级最高的若干人（等级未知按 0，同级随机），
-  // 其余为替补。等级最高的战魂师排在第一场或最后一场的概率合计 50%（各 25%），其余 50% 均分给中间各场；队里没有已知等级的
-  // 战魂师就全随机。
+  // 脚本随机排阵（用户「脚本随机先排」）：成员 [{名称, 等级, 系别, 攻击魂技数, 魂技数}]，等级未知按 0、同级随机。每段各自挑人
+  // （用户「团体战上限7人，但是前面出场的不一定是团体战出场的」「要考虑系别平衡，比如7个强攻要弱于6强攻1辅助要弱于5强攻1控制1辅助。
+  // 擂台肯定不能把辅助啥的非战魂师抽上去，除非没人」）：
+  //   团战（上场人数，最多 7）：带上等级最高的一名辅助类（辅助、治疗、食物系）和一名控制系，其余按等级取战魂师，不够再按等级补。
+  //   擂台（同样人数）：按等级取战魂师；不够才用其他人补，补上的排在出场顺序最后。
+  //   单双团分场：三场一对一只上战魂师；两场二对二各配一名辅助类或控制系搭档，没有就两名战魂师。
+  // 等级最高的战魂师落在第一场或最后一场的概率合计 50%（各 25%），其余 50% 均分给中间各场（只在战魂师能上的场次里算）。
+  // 哪一段都没选上的是替补。
   function 生成随机排阵(成员 = [], 赛制 = '团战', 上场人数 = 7, 种子 = '') {
     const 随机 = 种子随机(种子);
+    const 人数 = Math.max(1, Math.min(7, 整数(上场人数, 1, 7)));
     const 名单 = 洗牌((Array.isArray(成员) ? 成员 : []).map(记录 => (对象(记录) ? 记录 : { 名称: 记录 }))
       .map(记录 => ({ 名称: 文本(记录.名称), 等级: 数值(记录.等级, 0), 系别: 文本(记录.系别),
         战魂师: 是战魂师系别(记录.系别, 记录.攻击魂技数, 记录.魂技数) })).filter(记录 => 记录.名称), 随机)
-      .sort((a, b) => b.等级 - a.等级);
-    const 上场 = 名单.slice(0, Math.max(1, 上场人数));
-    const 替补 = 名单.slice(上场.length).map(记录 => 记录.名称);
-    const 结果 = { 上场: 上场.map(记录 => 记录.名称), 替补 };
-    if (赛制 === '团战') return 结果;
-    const 席位数 = 赛制 === '单双团积分' ? 单双团席位.reduce((和, 值) => 和 + 值, 0) : 上场.length;
-    const 席位 = Array(席位数).fill('');
-    const 主将 = 上场.filter(记录 => 记录.等级 > 0 && 记录.战魂师).sort((a, b) => b.等级 - a.等级)[0];
-    if (主将 && 席位数 > 1) {
-      // 按「场」分概率：每场是一组席位（单双团的二对二占两个席位，擂台每位一场），落到某场再在场内随机挑席位。
-      const 场次 = [];
-      if (赛制 === '单双团积分') { let 游标 = 0; 单双团席位.forEach(人数 => { 场次.push(Array.from({ length: 人数 }, (_, index) => 游标 + index)); 游标 += 人数; }); }
-      else for (let index = 0; index < 席位数; index += 1) 场次.push([index]);
+      .sort((x, y) => y.等级 - x.等级);
+    const 辅助类 = 记录 => ['辅助系', '治疗系', '食物系'].includes(记录.系别);
+    const 控制位 = 记录 => 记录.系别 === '控制系';
+    const 战魂师 = 名单.filter(记录 => 记录.战魂师);
+    const 主将 = 战魂师.find(记录 => 记录.等级 > 0);
+    // 按「场」分概率放主将：场次是若干组席位，落到某场再在场内随机挑席位；能放的场次由调用方给。
+    const 放主将 = (场次 = [], 席位 = []) => {
+      if (!主将 || !场次.length) return false;
       const 中间 = 场次.slice(1, -1);
       const 骰 = 随机();
-      const 落场 = 骰 < 0.25 || (!中间.length && 骰 < 0.5) ? 场次[0]
-        : 骰 < 0.5 || !中间.length ? 场次[场次.length - 1]
-          : 中间[Math.floor(随机() * 中间.length)];
+      const 落场 = 场次.length === 1 ? 场次[0] : 骰 < 0.25 || (!中间.length && 骰 < 0.5) ? 场次[0]
+        : 骰 < 0.5 || !中间.length ? 场次[场次.length - 1] : 中间[Math.floor(随机() * 中间.length)];
       席位[落场[Math.floor(随机() * 落场.length)]] = 主将.名称;
+      return true;
+    };
+
+    // 团战阵容
+    const 团战 = [];
+    const 取 = 记录 => { if (记录 && !团战.includes(记录) && 团战.length < 人数) 团战.push(记录); };
+    if (人数 >= 3) { 取(名单.find(辅助类)); 取(名单.find(控制位)); }
+    战魂师.forEach(取);
+    名单.forEach(取);
+    const 结果 = { 上场: 团战.map(记录 => 记录.名称) };
+    const 用到 = new Set(结果.上场);
+
+    if (赛制 === '擂台' || 赛制 === '擂台团战积分') {
+      const 选 = [...战魂师.slice(0, 人数)];
+      名单.filter(记录 => !记录.战魂师).forEach(记录 => { if (选.length < 人数) 选.push(记录); });
+      const 战段 = 选.filter(记录 => 记录.战魂师), 补段 = 洗牌(选.filter(记录 => !记录.战魂师), 随机);
+      const 席位 = Array(战段.length).fill('');
+      const 已放 = 战段.includes(主将) && 放主将(席位.map((_, index) => [index]), 席位);
+      const 待排 = 洗牌(战段.filter(记录 => !已放 || 记录 !== 主将), 随机);
+      for (let index = 0; index < 席位.length; index += 1) if (!席位[index]) 席位[index] = 待排.shift().名称;
+      结果.顺序 = [...席位, ...补段.map(记录 => 记录.名称)];
+      结果.顺序.forEach(名称 => 用到.add(名称));
     }
-    const 待排 = 洗牌(上场.map(记录 => 记录.名称).filter(名称 => 名称 !== 主将?.名称 || !席位.includes(名称)), 随机);
-    for (let index = 0; index < 席位.length && 待排.length; index += 1) if (!席位[index]) 席位[index] = 待排.shift();
+
     if (赛制 === '单双团积分') {
+      // 三场一对一 + 两组二对二的战魂师；搭档优先辅助类，其次控制系。
+      const 搭档池 = [...名单.filter(辅助类), ...名单.filter(记录 => 控制位(记录) && !辅助类(记录))].filter(记录 => !记录.战魂师);
+      const 搭档 = 搭档池.slice(0, 2);
+      const 战位数 = 3 + (2 - 搭档.length) + 2;
+      const 战选 = [...战魂师.slice(0, 战位数)];
+      名单.filter(记录 => !战选.includes(记录) && !搭档.includes(记录)).forEach(记录 => { if (战选.length < 战位数) 战选.push(记录); });
+      // 席位：0-2 一对一，3-4 第一组二对二，5-6 第二组；每组二对二的第二个席位留给搭档。
+      const 席位 = Array(7).fill('');
+      搭档.forEach((记录, 序) => { 席位[序 === 0 ? 4 : 6] = 记录.名称; });
+      const 战席 = [0, 1, 2, 3, 5, ...(搭档.length < 2 ? [6] : []), ...(搭档.length < 1 ? [4] : [])];
+      const 场次 = [[0], [1], [2], 战席.filter(位 => 位 === 3 || 位 === 4), 战席.filter(位 => 位 === 5 || 位 === 6)].filter(组 => 组.length);
+      const 已放 = 战选.includes(主将) && 放主将(场次, 席位);
+      const 待排 = 洗牌(战选.filter(记录 => !已放 || 记录 !== 主将), 随机);
+      战席.forEach(位 => { if (!席位[位] && 待排.length) 席位[位] = 待排.shift().名称; });
       let 游标 = 0;
-      结果.分场 = 单双团席位.map(人数 => { const 组 = 席位.slice(游标, 游标 + 人数).filter(Boolean); 游标 += 人数; return 组; });
-    } else {
-      结果.顺序 = 席位.filter(Boolean);
+      结果.分场 = 单双团席位.map(数 => { const 组 = 席位.slice(游标, 游标 + 数).filter(Boolean); 游标 += 数; return 组; });
+      结果.分场.flat().forEach(名称 => 用到.add(名称));
     }
+    结果.替补 = 名单.map(记录 => 记录.名称).filter(名称 => !用到.has(名称));
     return 结果;
   }
 
@@ -45053,7 +45088,7 @@ function 规范化AI赛事项目_V1(输入 = {}, 根 = {}, UID分配器, 运行�
     })() } : {}),
     ...(项目名 === '团体赛' && 输入.每队上场人数 !== undefined ? { 每队上场人数: (() => {
       const 值 = Math.floor(Number(输入.每队上场人数));
-      if (!Number.isFinite(值) || 值 < 1 || 值 > 12) throw new Error('团体赛每队上场人数应为 1～12');
+      if (!Number.isFinite(值) || 值 < 1 || 值 > 7) throw new Error('团体赛每队上场人数应为 1～7（团战上限 7 人）');
       return 值;
     })() } : {}),
   };
@@ -48003,7 +48038,7 @@ function 构建赛事权限正文薄片_V1(数据根 = {}, 文本 = '') {
       const 排阵摘要 = 赛程 ? Object.fromEntries((下一场[1].参赛者 || []).map((ID, 方) => {
         const 阵 = 赛程.排阵?.[方] || {};
         return [显示名(ID), {
-          上场: 阵.上场 || [],
+          团战上场: 阵.上场 || [],
           ...(阵.替补?.length ? { 替补: 阵.替补 } : {}),
           ...(阵.顺序 ? { 擂台顺序: 阵.顺序 } : {}),
           ...(阵.分场 ? { 分场: 阵.分场.map((组, 序) => `第${序 + 1}场${组.length > 1 ? '二对二' : '一对一'}：${组.join('、') || '缺人'}`) } : {}),
