@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:4a5f853d1bae1a50e2ff802374960a68428aa6a001a1d0305aa4afdc96b73282|MVU_Schema_Runtime.js:454e4a242dce5e02d69c3def2993d350ac50f39dcb667f2fc6f09488f34461dd|BattlePreview_Module.js:2a325e494f9ca48dfedbefba1bedbdf9fe9383772bb8821b407e1e0722bb9dd1|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:72f673cb3f6e03ddbe51a3e0b90017128c0a1f601cbb1b39392f7e61d320ea59|BattleRuntime_Module.js:7343b8915c3961fdd5dbdd88853bd202633b1376b0d4885e14157c96395ee55c */
+/* sources-sha256: MVU_Skill_Runtime.js:6e227a77b9305db9b6c5048bfb55493ffce939a81cdf3536163ed6b148387967|MVU_Schema_Runtime.js:454e4a242dce5e02d69c3def2993d350ac50f39dcb667f2fc6f09488f34461dd|BattlePreview_Module.js:6cbbc624b3908df0ffda3b0158d9f0c1d8ed4e3b11470cc90fc7d7e14f6003b5|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:72f673cb3f6e03ddbe51a3e0b90017128c0a1f601cbb1b39392f7e61d320ea59|BattleRuntime_Module.js:1c583d9750c9301b021672e80249690ad6b2dec3a05e412f1effda6e5bf775e8 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -3429,7 +3429,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('slowRatio', '控制幅度', '0.3'), num('duration', '持续回合', '2', '1')],
   });
   register(['节奏打断', '打断'], {
-    说明: '打断目标正在进行的动作，并追加一段僵直。',
+    说明: '打断目标正在进行的动作：应对时比来招快就让整招落空，落在蓄力中的目标上会打断蓄力。',
     可主机制: true,
     可副机制: true,
     目标语义: '敌对',
@@ -3661,7 +3661,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('霸体', {
-    说明: '在持续期内免疫指定级别以下的控制。',
+    说明: '持续期内免疫眩晕、冻结、沉睡、束缚、麻痹、僵直等控制和敌方位移；伤害照常承受。',
     可主机制: true,
     目标语义: '可赋予',
     摘要提示: { skillType: '防御', mainType: '防御类', defenseNature: '霸体', effectMode: '持续' },
@@ -3687,7 +3687,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('无敌金身', {
-    说明: '在持续期内完全免疫伤害。',
+    说明: '抵消下一次伤害（按次数计），并在持续期内无视异常。',
     可主机制: true,
     可副机制: true,
     目标语义: '可赋予',
@@ -3883,7 +3883,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('催眠', {
-    说明: '使目标进入睡眠，直到满足唤醒条件。',
+    说明: '使目标沉睡：跳过行动、无法应对，受击即醒。',
     可主机制: true,
     目标语义: '敌对',
     摘要提示: { skillType: '控制', mainType: '感知/认知类', controlStrength: '硬控' },
@@ -4108,7 +4108,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('强制绑定/锁定', {
-    说明: '把目标与自己强制绑定，直到满足解除条件。',
+    说明: '束缚目标：不能移动、普攻、近身魂技和闪避，可用力量挣脱。',
     可主机制: true,
     目标语义: '敌对',
     摘要提示: { skillType: '控制', mainType: '特殊规则类', controlStrength: '软控' },
@@ -5257,7 +5257,7 @@ var SKILL_PROTOTYPE_DEFINITION_LIST_V1 = Object.freeze([
   ['状态施加', '战斗结算', '上下文', ['状态', '触发方式', '触发概率', '资源', '限定探查者', '限定来源', '数值', '副数值', '持续回合', '延迟回合', '触发限制', '打断效果', '驱动属性', '影响方向', '对应等级'], ['状态'], '施加中毒、冻伤、沉默、隐匿、霸体、无视异常等概括状态，可设置延迟回合登记后施加'],
   ['时窗修正', '战斗结算', '敌对', ['调整字段', '调整方式', '调整回合', '调整tick', '调整次数', '单日使用次数上限', '结算倍率', '驱动属性', '影响方向'], ['调整字段', '调整方式'], '延长或压缩目标身上对应类型的时间与次数窗口'],
   ['状态移除', '战斗结算', '上下文', ['状态', '匹配原型', '资源', '数值方向', '数量', '持续回合', '驱动属性', '影响方向', '对应等级'], [], '按状态名或状态内部原型效果移除状态，可用持续回合表达持续净化或驱散窗口'],
-  ['规则防御', '战斗结算', '可赋予', ['规则', '次数', '计次', '限定来源', '持续回合', '触发限制'], ['规则', '次数'], '免伤、免死等防御规则'],
+  ['规则防御', '战斗结算', '可赋予', ['规则', '次数', '计次', '限定来源', '限定攻击类型', '限定元素', '持续回合', '触发限制'], ['规则', '次数'], '免伤、免死等防御规则'],
   ['状态转移', '战斗结算', '上下文', ['状态', '来源', '去向', '数量', '持续回合'], ['状态', '来源', '去向'], '把状态从一方转移到另一方，可用持续回合表达持续转移窗口'],
   ['状态交换', '战斗结算', '上下文', ['状态', '持续回合'], ['状态'], '交出自身负面状态并夺取敌方目标增益状态，可用持续回合表达持续交换窗口'],
   ['资源锁定', '战斗结算', '敌对', ['资源', '锁定类型', '数值', '持续回合', '驱动属性', '影响方向'], ['资源', '锁定类型', '数值'], '锁定目标资源池、回复或转化通道'],
@@ -5481,7 +5481,8 @@ var SKILL_UNIT_COST_TABLE_V1 = Object.freeze({
     封技: Object.freeze({ 固定COST: 50 }),
     // 沉默与封技运行时同效（不能放魂技，BattlePreview silence），同价（11-15 设计侧与运行时排查：沉默此前无价）。
     沉默: Object.freeze({ 固定COST: 50 }),
-    护卫: Object.freeze({ 数值: 0.9, 固定COST: 8 }),
+    // 护卫 = 替被护卫者拦截单体敌对效果，不读数值（11-15）：改收固定价，原为 数值 0.9/百分点 + 8。
+    护卫: Object.freeze({ 固定COST: 25 }),
     嘲讽: Object.freeze({ 数值: 1.0, 固定COST: 10 }),
     // 封禁装备: 封甲 ≈ the 力量/防御/敏捷/精神力上限 an armour and mecha give (−15%～−40% of the panel at 0.76～1.14 a
     // point) and their passives, discounted for no armour and a weaker 魂力 — 100 (用户 估 100 左右); 缴械 a weapon, about half.
@@ -5605,13 +5606,15 @@ var 技能位移收益强度百分比上限_V1 = 45;
 // 位移的每一项一次性效果（脱离的闪避、拉近的命中、击退的命中与反应压制）乘这个倍率，单价也乘它。瞬移、换位是瞬间到位，
 // 距离与数值都不影响，倍率固定 1。缺省距离 10 米。战斗侧同式：BattlePreview positionEffectScale。
 var 技能位移缺省距离_V1 = 10;
-function 计算位移效果倍率_V1(效果 = {}) {
+function 计算位移效果倍率_V1(效果 = {}, 计价封顶 = true) {
   const 类型 = String(效果?.位移类型 || '').trim();
   if (['瞬移', '换位'].includes(类型)) return 1;
   const 距离 = Math.max(1, Math.min(30, Number(效果?.距离 || 10) || 10));
   const 强度 = 技能原型字段值是百分比修正_V1(效果?.数值)
     ? Math.max(-0.45, Math.min(0.45, parseSkillSignedChangeNumber(效果.数值))) : 0;
-  return (0.75 + 距离 / 40) * (1 + 强度);
+  // 价格按封顶后的实际效果（11-15）：各项效果在战斗里有上限（脱离闪避 ≤90% 即基数 1.8 倍，拉近 1.5 倍，击退 2 倍），超出不收钱。
+  const 封顶 = { 脱离: 1.8, 拉近: 1.5, 击退: 2 }[类型] ?? Infinity;
+  return Math.min(计价封顶 ? 封顶 : Infinity, (0.75 + 距离 / 40) * (1 + 强度));
 }
 
 var SKILL_PROTOTYPE_COMMON_FIELDS_V1 = Object.freeze([
@@ -10570,6 +10573,8 @@ function 读取状态施加分类_V1(状态 = '') {
 
 function 状态施加允许数值字段_V1(状态 = '') {
   const 状态名 = String(状态 || '').trim();
+  // 护卫是拦截，不读数值（11-15）。
+  if (状态名 === '护卫') return false;
   return ['持续伤害类', '恢复资源类', '防御数值类'].includes(读取状态施加分类_V1(状态)) ||
     ['禁疗', '治疗反转', '标记', '嘲讽', '防御剥夺', '精神抗性剥夺', '虚弱', '迟缓', '资源燃烧', '失控', '反噬', '精神紊乱', '麻痹', '混乱', '魂力枯竭', '冻结'].includes(状态名);
 }
@@ -12022,6 +12027,8 @@ function 是造物承载效果数组_V1(effectArray = []) {
 function 清理执行效果原型语义_V1(原型 = '', 字段 = {}, 上下文 = {}) {
   if (!字段 || typeof 字段 !== 'object') return;
   清理单位来源限定_V1(原型, 字段);
+  // 限定攻击类型 / 限定元素只对免伤按每一击判定（11-15）；免死不读，不落盘、不抵扣。
+  if (原型 === '规则防御' && String(字段.规则 || '免伤').trim() !== '免伤') { delete 字段.限定攻击类型; delete 字段.限定元素; }
   delete 字段.事件优先级;
   delete 字段.快照规则;
   const 枚举默认即删除 = (字段名, 默认值 = '无') => {
@@ -12369,7 +12376,8 @@ function 清理执行效果原型语义_V1(原型 = '', 字段 = {}, 上下文 =
       技能原型字段值是百分比修正_V1(字段.数值),
     );
   }
-  delete 字段.打断效果;
+  // 打断效果（11-15）：写了 true 的保留，战斗侧会打断目标当前的动作与蓄力；其余不落盘。
+  if (字段.打断效果 !== true) delete 字段.打断效果;
   if (!状态施加允许数值字段_V1(正式状态名)) delete 字段.数值;
   if (!状态施加允许副数值字段_V1(正式状态名)) delete 字段.副数值;
   if (字段.数值 !== undefined) 字段.数值 = 格式化状态施加比例字段_V1(字段.数值, 读取状态施加默认数值_V1(正式状态名));
@@ -13238,7 +13246,7 @@ function 断言技能执行效果原型契约_V1(effectArray = [], path = '_效�
       if (effect.限定探查者 !== undefined && (typeof effect.限定探查者 !== 'string' || !effect.限定探查者.trim())) {
         throw new Error(`技能执行结构错误:${path}[${index}]状态施加限定探查者必须是非空字符串`);
       }
-      if (effect.打断效果 !== undefined) throw new Error(`技能执行结构错误:${path}[${index}]该状态不允许打断效果`);
+      if (effect.打断效果 !== undefined && effect.打断效果 !== true) throw new Error(`技能执行结构错误:${path}[${index}]状态施加的打断效果只能为true`);
       if (effect.触发限制 !== undefined && !状态施加允许触发限制_V1(状态, effect.目标)) {
         throw new Error(`技能执行结构错误:${path}[${index}]该状态不允许触发限制`);
       }
@@ -16187,8 +16195,8 @@ function 解析次数限制抵扣率_V1(输入值 = null) {
     }
   }
   if (!Number.isFinite(次数) || 次数 <= 0) return 0;
-  if (周期 === '每日') return 次数 <= 1 ? 0.70 : 次数 <= 3 ? 0.50 : 0.30;
-  if (周期 === '每战') return 次数 <= 1 ? 0.40 : 次数 <= 3 ? 0.25 : 0.12;
+  // 每日与每战同价（11-15 用户「这几个你来调就行」）：战斗里两者都按一场战斗计次，此前每日折扣更大。
+  if (周期 === '每日' || 周期 === '每战') return 次数 <= 1 ? 0.40 : 次数 <= 3 ? 0.25 : 0.12;
   if (周期 === '每回合') return 次数 <= 1 ? 0.10 : 次数 <= 3 ? 0.06 : 0.03;
   return 0;
 }
@@ -16261,6 +16269,10 @@ function 读取效果限制抵扣信息_V1(效果 = {}, 继承抵扣率 = 0, 上
   // 限定单位来源：魂兽/深渊生物/邪魂师/召唤物 是少数对手，同单元素抵扣 30%；含人类则几乎不限，抵扣 10%。
   const 单位来源 = 读取单位来源限定_V1(效果);
   if (单位来源.length) 应用(单位来源.includes('人类') ? 0.10 : 0.30, `限定来源${单位来源.join('、')}`);
+  // 限定攻击类型（用户 2026-11-15 点头）：限 1 种抵扣 30%，2 种 20%，3 种以上 10%；与限定元素取大不叠加。此前不抵扣。
+  const 攻击类型 = Array.from(new Set((Array.isArray(效果?.限定攻击类型) ? 效果.限定攻击类型 : [效果?.限定攻击类型])
+    .map(项 => String(项 ?? '').trim()).filter(Boolean)));
+  if (攻击类型.length) 应用(攻击类型.length === 1 ? 0.30 : 攻击类型.length === 2 ? 0.20 : 0.10, `限定${攻击类型.join('、')}`);
   const 抵扣上限 = Math.max(0, Math.min(0.80, Number(上下文?.限制抵扣上限 ?? 0.80)));
   return {
     抵扣率: Math.min(抵扣上限, 抵扣率),
@@ -16466,7 +16478,9 @@ function 计算状态施加COST_V1(效果 = {}, 状态配置 = {}, 目标系数 
   const 触发方式COST = Number(SKILL_UNIT_COST_TABLE_V1.状态施加?.触发方式?.[触发方式] || 0);
   const 延迟回合 = Math.max(0, Number(效果?.延迟回合 || 0));
   const 延迟回合COST = 触发方式 === '延迟触发' ? 延迟回合 * 0.5 : 0;
-  const 基础COST = 百分比数值COST + 固定COST + 触发方式COST + 延迟回合COST;
+  // 打断效果：与判定修正同价（11-15 起状态施加带打断效果在战斗侧也会打断）。
+  const 打断COST = 效果?.打断效果 === true ? Number(SKILL_UNIT_COST_TABLE_V1.判定修正?.打断效果 || 0) : 0;
+  const 基础COST = 百分比数值COST + 固定COST + 触发方式COST + 延迟回合COST + 打断COST;
   const 触发概率 = 解析技能触发概率_V1(效果?.触发概率) ?? 1;
   const 主单位 = Number.isFinite(数值单位COST) ? 数值单位COST : 固定COST;
   return {
@@ -20398,15 +20412,15 @@ function 转译状态施加数值说明_V1(状态 = '', 效果 = {}) {
     标记: () => `闪避率${数值 || '-10%'}`,
     防御剥夺: () => `防御参与伤害结算时，防御按${去正号(数值 || '+20%')}剥夺`,
     精神抗性剥夺: () => `防守精神参与精神伤害结算时，精神抗性按${去正号(数值 || '+20%')}剥夺`,
-    护卫: () => `护卫者承伤降低${去正号(数值 || '+10%')}`,
+    护卫: () => `替其挡下来袭的单体敌对效果（群体效果不拦），护卫者能行动时才生效`,
     嘲讽: () => `强制吸引目标攻击施术者`,
     虚弱: () => `力量、防御、敏捷各${数值 || '-8%'}`,
     失控: () => `${去正号(数值 || '+35%')}概率偏转目标，命中率${副数值 || '-10%'}`,
     反噬: () => `主动施技后受到自身生命上限${去正号(数值 || '+3%')}伤害`,
     精神紊乱: () => `${去正号(数值 || '+25%')}概率偏转目标，反应${副数值 || '-8%'}`,
     魂力枯竭: () => `每回合流失魂力${去正号(数值 || '+3%')}，技能消耗${副数值 || '+5%'}`,
-    僵直: () => `反应${数值 || '-50%'}，闪避率${副数值 || '-20%'}`,
-    麻痹: () => `反应${数值 || '-50%'}，闪避率${副数值 || '-20%'}`,
+    僵直: () => `受到攻击时无法应对，之后可正常行动`,
+    麻痹: () => `施法变慢、反应下降${String(数值 || '-50%').replace(/^-/, '')}，闪避${副数值 || '-20%'}，仍可行动`,
     混乱: () => `${去正号(数值 || '+40%')}概率偏转目标，命中率${副数值 || '-10%'}`,
     共享视野: () => `命中率${数值 || '+10%'}，闪避${副数值 || '+10%'}`,
   };
@@ -20425,7 +20439,15 @@ var 技能状态施加转译语义_V1 = Object.freeze({
   持续恢复: (目标, 效果) => `使${目标}持续恢复，${转译状态施加数值说明_V1('持续恢复', 效果)}`,
   迟缓: (目标, 效果) => `使${目标}迟缓，${转译状态施加数值说明_V1('迟缓', 效果)}`,
   资源燃烧: (目标, 效果) => `使${目标}资源燃烧，${转译状态施加数值说明_V1('资源燃烧', 效果)}`,
-  眩晕: 目标 => `使${目标}进入眩晕状态`,
+  眩晕: 目标 => `使${目标}进入眩晕状态（跳过行动、无法应对，可用精神力挣脱）`,
+  束缚: 目标 => `束缚${目标}（不能移动、普攻、近身魂技和闪避，仍可放不需肢体的魂技，可用力量挣脱）`,
+  沉睡: 目标 => `使${目标}沉睡（跳过行动、无法应对，受击即醒）`,
+  冻结: (目标, 效果) => {
+    const 程度 = Math.round(Math.abs(parseSkillSignedChangeNumber(效果?.数值 ?? '+100%') || 1) * 100);
+    return 程度 >= 100
+      ? `全身冻结${目标}（跳过行动、无法应对、挣脱不了，受伤即碎；火属性攻击必碎）`
+      : `冻住${目标}${程度}%（按束缚处理，施法变慢${程度}%，可用力量挣脱，受击${程度}%概率碎冰；火属性攻击必碎）`;
+  },
   沉默: 目标 => `使${目标}进入沉默状态`,
   致盲: 目标 => `使${目标}进入致盲状态`,
   禁疗: (目标, 效果) => `使${目标}禁疗，${转译状态施加数值说明_V1('禁疗', 效果)}`,
@@ -20435,19 +20457,19 @@ var 技能状态施加转译语义_V1 = Object.freeze({
   共享视野: (目标, 效果) => `使${目标}共享视野，${转译状态施加数值说明_V1('共享视野', 效果)}`,
   护盾: (目标, 效果) => `使${目标}获得护盾，${转译状态施加数值说明_V1('护盾', 效果)}`,
   无视异常: 目标 => `使${目标}进入无视异常状态，免疫负面状态与削减类效果`,
-  霸体: 目标 => `使${目标}进入霸体状态`,
+  霸体: 目标 => `使${目标}进入霸体状态（免疫眩晕、冻结、沉睡、束缚、麻痹、僵直等控制和敌方位移，伤害照常承受）`,
   异常抗性: (目标, 效果) => `使${目标}获得异常抗性，${转译状态施加数值说明_V1('异常抗性', 效果)}`,
   封技: 目标 => `使${目标}进入封技状态`,
   缴械: 目标 => `封住${目标}的武器（魂力判定，超神器不受影响）`,
   封甲: 目标 => `封住${目标}的斗铠与机甲（魂力判定）`,
-  护卫: (目标, 效果) => `护卫${目标}，替其拦截攻击，${转译状态施加数值说明_V1('护卫', 效果)}`,
+  护卫: 目标 => `护卫${目标}，替其挡下来袭的单体敌对效果（群体效果不拦），护卫者能行动时才生效`,
   嘲讽: (目标, 效果) => `使${目标}嘲讽，${转译状态施加数值说明_V1('嘲讽', 效果)}`,
   虚弱: (目标, 效果) => `使${目标}虚弱，${转译状态施加数值说明_V1('虚弱', 效果)}`,
   失控: (目标, 效果) => `使${目标}失控，${转译状态施加数值说明_V1('失控', 效果)}`,
   反噬: (目标, 效果) => `使${目标}反噬，${转译状态施加数值说明_V1('反噬', 效果)}`,
   精神紊乱: (目标, 效果) => `使${目标}精神紊乱，${转译状态施加数值说明_V1('精神紊乱', 效果)}`,
   魂力枯竭: (目标, 效果) => `使${目标}魂力枯竭，${转译状态施加数值说明_V1('魂力枯竭', 效果)}`,
-  僵直: (目标, 效果) => `使${目标}僵直，${转译状态施加数值说明_V1('僵直', 效果)}`,
+  僵直: 目标 => `使${目标}僵直（受到攻击时无法应对，之后可正常行动）`,
   麻痹: (目标, 效果) => `使${目标}麻痹，${转译状态施加数值说明_V1('麻痹', 效果)}`,
   混乱: (目标, 效果) => `使${目标}混乱，${转译状态施加数值说明_V1('混乱', 效果)}`,
 });
@@ -20459,8 +20481,9 @@ function 转译技能状态施加描述_V1(效果 = {}, 目标 = '目标') {
   const 触发前缀 = 触发方式 === '延迟触发' && Number(效果?.延迟回合 || 0) > 0
     ? `延迟${formatSkillNumber(效果.延迟回合)}回合后，`
     : '';
-  if (typeof 转译 === 'function') return `${触发前缀}${转译(目标, 效果)}`;
-  return `${触发前缀}使${目标}进入【${状态}】状态`;
+  const 打断文本 = 效果?.打断效果 === true ? '，并打断其当前动作（应对比来招快时整招落空）与蓄力' : '';
+  if (typeof 转译 === 'function') return `${触发前缀}${转译(目标, 效果)}${打断文本}`;
+  return `${触发前缀}使${目标}进入【${状态}】状态${打断文本}`;
 }
 
 function 转译状态移除对象_V1(效果 = {}) {
@@ -20657,8 +20680,9 @@ function 转译单条执行效果_V1(效果 = {}, 选项 = {}) {
       const 限定资源 = 格式化技能结构转译字段_V1(效果.限定资源, '');
       const 限定文本 = [
         限定元素 ? `限定${限定元素}元素` : '',
-        限定攻击类型 ? `限定${限定攻击类型}攻击` : '',
+        限定攻击类型 ? `限定${限定攻击类型}` : '',
         限定资源 ? `限定${限定资源}` : '',
+        格式化技能结构转译字段_V1(效果.限定来源, '') ? `限定来源${格式化技能结构转译字段_V1(效果.限定来源, '')}` : '',
       ].filter(Boolean).map(文本 => `，${文本}`).join('');
       const 结算 = String(效果.结算 || '').trim();
       const 正数值 = String(数值 || '').replace(/^[+-]/, '');
@@ -20680,8 +20704,8 @@ function 转译单条执行效果_V1(效果 = {}, 选项 = {}) {
         const 资源 = 格式化技能结构转译字段_V1(效果.资源 || 效果.限定资源, '资源');
         return `使${目标}恢复${资源}${正数值 || '0%'}${预算附加}${附加}`;
       }
-      if (结算 === '伤害转治疗') return `将伤害结算转为治疗，比例${正数值 || '0%'}${预算附加}${附加}`;
-      if (结算 === '治疗转伤害') return `将治疗结算转为伤害，比例${正数值 || '0%'}${预算附加}${附加}`;
+      if (结算 === '伤害转治疗') return `使${目标}所受伤害的${正数值 || '0%'}改为给自身治疗${预算附加}${附加}`;
+      if (结算 === '治疗转伤害') return `使${目标}受到的治疗按${正数值 || '0%'}转为伤害（治疗×(1−2×比例)）${预算附加}${附加}`;
       const 是负向 = /^-/.test(String(数值 || ''));
       const 变化 = (正向, 负向) => `${是负向 ? 负向 : 正向}${正数值}`;
       if (结算 === '造成伤害') return `使${目标}造成伤害${变化('提高', '降低')}${限定文本}${预算附加}${附加}`;
@@ -20696,9 +20720,9 @@ function 转译单条执行效果_V1(效果 = {}, 选项 = {}) {
       if (结算 === '反击') return `使${目标}反击强度${变化('提高', '降低')}${预算附加}${附加}`;
       if (结算 === '反伤') return `使${目标}反伤${变化('提高', '降低')}${预算附加}${附加}`;
       if (结算 === '伤害转移') return `将${目标}承受伤害的${正数值}转移给${格式化技能结构转译字段_V1(效果.转移对象, '攻击者')}${预算附加}${附加}`;
-      if (结算 === '持续伤害引爆') return `引爆${目标}持续伤害，倍率${正数值}${预算附加}${附加}`;
-      if (结算 === '伤害分摊') return `使${目标}伤害分摊比例${变化('提高', '降低')}${预算附加}${附加}`;
-      if (结算 === '消耗分摊') return `使${目标}消耗分摊比例${变化('提高', '降低')}${预算附加}${附加}`;
+      if (结算 === '持续伤害引爆') return `把${目标}身上剩余的持续伤害×${正数值}一次结算，并移除这些状态${预算附加}${附加}`;
+      if (结算 === '伤害分摊') return `把${目标}所受伤害的${正数值}分给同一招挂上分摊的伙伴（没有则由施术者）承担${预算附加}${附加}`;
+      if (结算 === '消耗分摊') return `把${目标}魂技启动消耗的${正数值}分给同一招挂上分摊的伙伴（没有则由施术者）${预算附加}${附加}`;
       const 句子 = `调整${目标}${格式化技能结构转译字段_V1(效果.结算, '结算')}${数值 || ''}${限定文本}${预算附加}${附加}`;
       return 句子;
     }
@@ -20729,7 +20753,11 @@ function 转译单条执行效果_V1(效果 = {}, 选项 = {}) {
       const 规则 = String(效果.规则 || '').trim();
       const 次数文本 = 效果.次数 ? formatSkillNumber(效果.次数) : '1';
       if (规则 === '免死') return `使${目标}在致命结算时锁血，最多${次数文本}次${附加}`;
-      if (规则 === '免伤') return `使${目标}抵消伤害，最多${次数文本}次${附加}`;
+      if (规则 === '免伤') {
+        const 限定 = [格式化技能结构转译字段_V1(效果.限定攻击类型, ''), 格式化技能结构转译字段_V1(效果.限定元素, '') ? `${格式化技能结构转译字段_V1(效果.限定元素, '')}元素` : '',
+          格式化技能结构转译字段_V1(效果.限定来源, '') ? `来自${格式化技能结构转译字段_V1(效果.限定来源, '')}` : ''].filter(Boolean).join('、');
+        return `使${目标}抵消${限定 ? `${限定}的` : ''}伤害，最多${次数文本}次${附加}`;
+      }
       return `使${目标}获得规则防御【${格式化技能结构转译字段_V1(效果.规则, '规则')}】×${次数文本}${附加}`;
     }
     case '状态转移':
@@ -20994,7 +21022,7 @@ function 转译技能副作用列表_V1(副作用列表 = []) {
         精神紊乱: `精神紊乱：${formatSkillNumber(数值)}%概率偏转目标${副数值 ? `，反应降低${formatSkillNumber(副数值)}%` : ''}`,
         魂力反噬: `魂力枯竭：魂力流失${formatSkillNumber(数值)}%`,
         命中下降: `精神紊乱：命中率降低${formatSkillNumber(数值)}%`,
-        动作迟缓: `迟缓：反应降低${formatSkillNumber(数值)}%${副数值 ? `，闪避降低${formatSkillNumber(副数值)}%` : ''}`,
+        动作迟缓: `迟缓：反应降低、出手变慢${formatSkillNumber(数值)}%${副数值 ? `，闪避降低${formatSkillNumber(副数值)}%` : ''}`,
         目标错乱: `混乱：${formatSkillNumber(数值)}%概率错乱目标`,
         施法僵直: `施法迟滞：施法变慢${formatSkillNumber(数值)}%`,
         本源损耗: `本源损耗：战后永久损失${formatSkillNumber(数值)}%潜力`,
@@ -21085,7 +21113,7 @@ function 推断技能结构分类_V1(技能 = {}) {
 // 位移重做（S81，用户 2026-11-14）：位移是一次性效果，说明按战斗里落下的语义写（数值同 BattlePreview deriveStateCombatEffect 位移执行）。
 function 读取位移执行效果说明_V1(位移类型 = '', 目标 = '目标', 效果 = {}) {
   const 给他人 = String(效果?.位移对象 || '').trim() === '目标';
-  const 倍 = 计算位移效果倍率_V1({ ...效果, 位移类型 });
+  const 倍 = 计算位移效果倍率_V1({ ...效果, 位移类型 }, false);
   const 百 = (基数, 上限) => Math.round(Math.min(上限, 基数 * 倍) * 100);
   if (位移类型 === '瞬移' && 给他人) return '瞬间送' + 目标 + '移动（无前摇）：其下一次来袭的攻击有95%被躲开；之后其下一次攻击命中+10%，目标应对这一击的反应-30%';
   if (位移类型 === '脱离' && 给他人) return '助' + 目标 + '脱离接触：其下一次来袭闪避+' + 百(0.5, 0.9) + '%，本回合敌方不能对其反击追击';
@@ -21196,7 +21224,8 @@ function buildSingleSkillEffectSummary(effect) {
       const 结算 = String(effect.结算 || '结算').trim();
       const 限定攻击类型 = 格式化技能结构转译字段_V1(effect.限定攻击类型, '');
       const 限定资源 = 格式化技能结构转译字段_V1(effect.限定资源, '');
-      const 限定文本 = `${限定攻击类型 ? '，限定' + 限定攻击类型 + '攻击' : ''}${限定资源 ? '，限定' + 限定资源 : ''}`;
+      const 限定元素 = 格式化技能结构转译字段_V1(effect.限定元素, ''), 限定来源 = 格式化技能结构转译字段_V1(effect.限定来源, '');
+      const 限定文本 = `${限定元素 ? '，限定' + 限定元素 + '元素' : ''}${限定攻击类型 ? '，限定' + 限定攻击类型 : ''}${限定资源 ? '，限定' + 限定资源 : ''}${限定来源 ? '，限定来源' + 限定来源 : ''}`;
       if (结算 === '伤害吸收') {
         const 吸收来源 = SKILL_PROTOTYPE_FIELD_OPTIONS_V1.吸收来源.includes(String(effect.吸收来源 || '').trim()) ? String(effect.吸收来源 || '').trim() : '造成伤害';
         const 吸收资源 = SKILL_PROTOTYPE_FIELD_OPTIONS_V1.吸收资源.includes(String(effect.吸收资源 || '').trim()) ? String(effect.吸收资源 || '').trim() : '生命';
@@ -21205,16 +21234,19 @@ function buildSingleSkillEffectSummary(effect) {
         return 吸收来源 + '时，将伤害量' + String(effect.数值 || '+0%') + '转化为' + 吸收资源 + 持续文本;
       }
       if (结算 === '资源恢复') return '使' + target + '恢复' + String(effect.资源 || effect.限定资源 || '资源') + String(effect.数值 || '+0%') + 限定文本 + 持续文本;
-      if (结算 === '伤害转治疗') return '伤害结算转为治疗，比例' + String(effect.数值 || '+0%') + 持续文本;
-      if (结算 === '治疗转伤害') return '治疗结算转为伤害，比例' + String(effect.数值 || '+0%') + 持续文本;
+      if (结算 === '伤害转治疗') return '使' + target + '所受伤害的' + String(effect.数值 || '+0%').replace(/^\+/, '') + '改为给自身治疗' + 持续文本;
+      if (结算 === '治疗转伤害') return '使' + target + '受到的治疗按' + String(effect.数值 || '+0%').replace(/^\+/, '') + '转为伤害' + 持续文本;
       return '修正' + target + '的' + 结算 + String(effect.数值 || '') + 限定文本 + 持续文本;
     }
     case '状态施加':
       return 转译技能状态施加描述_V1(effect, target) + 持续文本;
     case '状态移除':
       return '若' + target + '存在' + 转译状态移除对象_V1(effect) + '，则移除' + 转译状态移除对象_V1(effect) + (effect.数量 ? '，数量' + formatSkillNumber(effect.数量) : '') + 持续文本 + 转译状态移除附加语义_V1(effect);
-    case '规则防御':
-      return '使' + target + '获得' + String(effect.规则 || '防御规则') + (effect.次数 !== undefined ? '×' + formatSkillNumber(effect.次数) : '') + 持续文本;
+    case '规则防御': {
+      const 限定 = String(effect.规则 || '').trim() === '免伤' ? [格式化技能结构转译字段_V1(effect.限定攻击类型, ''), 格式化技能结构转译字段_V1(effect.限定元素, ''),
+        格式化技能结构转译字段_V1(effect.限定来源, '')].filter(Boolean).join('、') : '';
+      return '使' + target + '获得' + String(effect.规则 || '防御规则') + (限定 ? '（限' + 限定 + '）' : '') + (effect.次数 !== undefined ? '×' + formatSkillNumber(effect.次数) : '') + 持续文本;
+    }
     case '状态转移':
       return 转译状态转移描述_V1(effect, 持续文本);
     case '状态交换': {
@@ -21347,8 +21379,8 @@ function buildSingleSkillEffectSummary(effect) {
         const 吸收资源 = SKILL_PROTOTYPE_FIELD_OPTIONS_V1.吸收资源.includes(String(effect?.吸收资源 || '').trim()) ? String(effect.吸收资源 || '').trim() : '生命';
         return 吸收来源 + '时，将伤害量' + String(effect?.数值 || '+0%') + '转化为' + 吸收资源 + 持续文本;
       }
-      if (结算 === '伤害转治疗') return '伤害结算转为治疗，比例' + String(effect?.数值 || '+0%') + 持续文本;
-      if (结算 === '治疗转伤害') return '治疗结算转为伤害，比例' + String(effect?.数值 || '+0%') + 持续文本;
+      if (结算 === '伤害转治疗') return '使' + target + '所受伤害的' + String(effect?.数值 || '+0%').replace(/^\+/, '') + '改为给自身治疗' + 持续文本;
+      if (结算 === '治疗转伤害') return '使' + target + '受到的治疗按' + String(effect?.数值 || '+0%').replace(/^\+/, '') + '转为伤害' + 持续文本;
       if (!['消耗', '前摇'].includes(结算)) break;
       const value = Number(effect?.数值 || 0);
       const duration = getSkillEffectDuration(effect);
@@ -38654,7 +38686,12 @@ try {
   // the exits of single battles. A starting value.
   const ACTION_STAMINA_SCALE = 0.6;
   const ACTION_STAMINA_BASE_RATES = Object.freeze({ ATTACK: 0.0175, DEFEND: 0.0105, EVADE: 0.014, SKILL_DEFEND: 0.0105, SKILL_EVADE: 0.014, OTHER: 0.0105 });
-  const ACTION_STAMINA_RATES = Object.freeze(Object.fromEntries(Object.entries(ACTION_STAMINA_BASE_RATES).map(([nature, rate]) => [nature, rate * ACTION_STAMINA_SCALE])));
+  // 近身与远程（用户 2026-11-15，起始值）: ATTACK is a melee strike (×1.5), ATTACK_RANGED a ranged one (×0.5; its 精神力 is paid
+  // apart, rangedActionMentalCost). The other melee/ranged rules sit by classifyDamageType.
+  const ACTION_STAMINA_RATES = Object.freeze(Object.fromEntries([
+    ...Object.entries(ACTION_STAMINA_BASE_RATES).map(([nature, rate]) => [nature, rate * ACTION_STAMINA_SCALE * (nature === 'ATTACK' ? 1.5 : 1)]),
+    ['ATTACK_RANGED', ACTION_STAMINA_BASE_RATES.ATTACK * ACTION_STAMINA_SCALE * 0.5],
+  ]));
   const ACTION_STAMINA_RATIO_CAP = 4;
   // On unless a world opts out with 战斗规则.行动体力消耗 === false, or the host's default battle rules do
   // (root.__LWCS_DEFAULT_BATTLE_RULES__, set by isolation fixtures that measure other resources).
@@ -38669,13 +38706,13 @@ try {
 
   function actionStaminaNature(declaration = {}) {
     const kind = String(declaration?.actionKind || '').trim().toUpperCase();
-    if (kind === 'BASIC_ATTACK') return 'ATTACK';
+    if (kind === 'BASIC_ATTACK') return declarationIsRanged(declaration) ? 'ATTACK_RANGED' : 'ATTACK';
     if (kind === 'EVADE') return 'EVADE';
     if (kind === 'DEFEND' || kind === 'GUARD') return 'DEFEND';
     if (kind !== 'RELEASE_SKILL' && kind !== 'USE_ITEM') return '';
     const effects = Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组 : [];
     const prototypes = new Set(effects.map(effect => String(effect?.原型 || '').trim()));
-    if (prototypes.has('伤害结算')) return 'ATTACK';
+    if (prototypes.has('伤害结算')) return declarationIsRanged(declaration) ? 'ATTACK_RANGED' : 'ATTACK';
     if (prototypes.has('位移执行') || effects.some(effect => effect?.原型 === '判定修正' && /闪避/.test(String(effect?.判定 || '')))) return 'SKILL_EVADE';
     if (['护盾变化', '规则防御'].some(prototype => prototypes.has(prototype)) ||
       effects.some(effect => (effect?.原型 === '结算修正' && /受到伤害|伤害分摊|伤害转移|伤害吸收/.test(String(effect?.结算 || ''))) ||
@@ -38849,7 +38886,8 @@ try {
     if (!(attackerAgility > 0)) return CONTINUOUS_ACTION_BUDGET * multiplier;
     return multiplier * Math.min(
       CONTINUOUS_ACTION_BUDGET,
-      windup * (naturalActionOrderProfile(reactor).effectiveAgility / attackerAgility) * (1 + REACTION_DEFENDER_MARGIN),
+      windup * (naturalActionOrderProfile(reactor).effectiveAgility / attackerAgility) * (1 + REACTION_DEFENDER_MARGIN) *
+        (declarationIsRanged(declaration) ? RANGED_REACTION_WINDOW_MULT : 1),
     );
   }
 
@@ -42190,16 +42228,19 @@ try {
     return count > 0 && findRuleSuppression(unit, '规则防御', '规则', '免死') ? 0 : count;
   }
 
-  // options.attacker: a 免伤 limited to a kind of attacker (限定来源) covers that attacker's hits only.
-  const blockStateAgainst = attacker => state => isBlockState(state) && (attacker === undefined || unitSourceRestrictionMatches(state, attacker));
+  // options.attacker / options.incomingEffect: a 免伤 limited to a kind of attacker (限定来源), an attack type (限定攻击类型,
+  // 用户 2026-11-15「追溯只是限定能量攻击免伤」) or an element (限定元素) covers matching hits only, and only those spend it.
+  const blockStateAgainst = (attacker, incomingEffect) => state => isBlockState(state) &&
+    (attacker === undefined || unitSourceRestrictionMatches(state, attacker)) &&
+    (incomingEffect === undefined || limitedEntryMatches(incomingEffect, { 限定元素: state?.限定元素, 限定攻击类型: state?.限定攻击类型 }, attacker));
   function ruleBlockCount(unit = {}, options = {}) {
     if (findRuleSuppression(unit, '规则防御', '规则', '免伤')) return 0;
-    return ruleChargeCount(unit, RULE_CHARGE_FIELDS.block, blockStateAgainst(options?.attacker), options);
+    return ruleChargeCount(unit, RULE_CHARGE_FIELDS.block, blockStateAgainst(options?.attacker, options?.incomingEffect), options);
   }
 
   function consumeRuleBlockCharges(unit, requested = 1, options = {}) {
     if (!Math.max(0, Number(requested || 0)) || !ruleBlockCount(unit, { segments: 1, actionId: options?.actionId })) return [];
-    const consumed = consumeRuleCharges(unit, requested, RULE_CHARGE_FIELDS.block, blockStateAgainst(options?.attacker), options);
+    const consumed = consumeRuleCharges(unit, requested, RULE_CHARGE_FIELDS.block, blockStateAgainst(options?.attacker, options?.incomingEffect), options);
     // 时光回溯: the charge it spends takes its holder back to its HP and resources at the round's start (the runtime keeps
     // them in __时光回溯回合快照; a unit without one, as a decision pictures an enemy, keeps what it has).
     const snapshot = unit?.__时光回溯回合快照;
@@ -42414,6 +42455,45 @@ try {
     if (/精神/.test(text)) return 'MENTAL';
     if (/远程/.test(text)) return 'RANGED';
     return 'MELEE';
+  }
+  // 近身与远程（用户 2026-11-15「近身的反应，闪避率，反击都应该和远程区别开。近身伤害靠力量+魂力，远程应该主要靠魂力」「远程会
+  // 增加精神力消耗，近身会增加体力消耗」「先这样吧，起码把框架做起来，后面再调整平衡」）. Starting values:
+  //   伤害  远程的攻 = RANGED_STRENGTH_SHARE × 力量 + (1 − it) × 魂力折算（魂力上限 × 本级标准力量 ÷ 本级标准魂力上限）; 近身照旧力量;
+  //         两者都乘魂力驱动、都对防御。
+  //   应对  远程来招：闪避 × RANGED_DODGE_MULT（被动闪避与主动闪避）、反应窗口 × RANGED_REACTION_WINDOW_MULT、反击空当 × RANGED_COUNTER_MULT.
+  //   消耗  每次攻击的体力：近身 ×1.5，远程 ×0.5（ACTION_STAMINA_RATES 的 ATTACK / ATTACK_RANGED），远程另付 RANGED_MENTAL_RATE × 本级标准精神力上限.
+  // Until 11-15 the two were one formula, one dodge, one window, one price.
+  const RANGED_STRENGTH_SHARE = 0.3, RANGED_DODGE_MULT = 1.15, RANGED_REACTION_WINDOW_MULT = 1.2, RANGED_COUNTER_MULT = 0.5;
+  const RANGED_MENTAL_RATE = 0.01;
+  // 精神攻击（用户 2026-11-15「精神伤害也很难被反击，同时命中很高，但是对方也用精神对轰的话，输方受到的伤害会加倍」）, starting
+  // values: its miss chance — passive and active dodge — × MENTAL_DODGE_MULT; the opening to strike back after it × MENTAL_COUNTER_MULT;
+  // a clash of two mental moves deals the loser its share × MENTAL_CLASH_LOSS_MULT.
+  // 同日「打平也受到50%」: an even mental clash deals each side MENTAL_CLASH_SHOCK of the other's move (CLASH_SHOCK otherwise).
+  const MENTAL_DODGE_MULT = 0.5, MENTAL_COUNTER_MULT = 0.4, MENTAL_CLASH_LOSS_MULT = 2, MENTAL_CLASH_SHOCK = 0.5;
+  // The class of a move's strike: its first 伤害结算's (a basic attack carries its own, melee by default); null: no strike.
+  function declarationDamageClass(declaration = {}) {
+    const effects = collectEffects(declaration?.skill || {});
+    const strike = effects.find(effect => String(effect?.原型 || '').trim() === '伤害结算');
+    if (strike) return classifyDamageType(strike?.伤害类型);
+    return String(declaration?.actionKind || '').trim().toUpperCase() === 'BASIC_ATTACK' ? 'MELEE' : null;
+  }
+  function declarationIsRanged(declaration = null) {
+    return !!declaration && declarationDamageClass(declaration) === 'RANGED';
+  }
+  // 魂力 put on the 力量 scale of the unit's level (the level table's 力量 ÷ 魂力上限).
+  function rangedAttackStat(actor = {}, strength = 0, soulMax = 0) {
+    const level = unitLevelOf(actor);
+    const base = typeof root.__LWCS_GET_BASE_STATS__ === 'function' ? root.__LWCS_GET_BASE_STATS__(level) : null;
+    const scale = Number(base?.str) > 0 && Number(base?.sp_max) > 0 ? Number(base.str) / Number(base.sp_max) : 0;
+    if (!(scale > 0) || !(soulMax > 0)) return strength;
+    return RANGED_STRENGTH_SHARE * strength + (1 - RANGED_STRENGTH_SHARE) * soulMax * scale;
+  }
+  // The 精神力 a ranged strike costs besides its stamina (the level table's 精神力上限 × RANGED_MENTAL_RATE).
+  function rangedActionMentalCost(actor = {}) {
+    const level = unitLevelOf(actor);
+    const base = typeof root.__LWCS_GET_BASE_STATS__ === 'function' ? Number(root.__LWCS_GET_BASE_STATS__(level)?.men_max) : NaN;
+    const benchmark = Number.isFinite(base) && base > 0 ? base : readResourceMax(actor, '精神力');
+    return Math.max(0, benchmark * RANGED_MENTAL_RATE);
   }
 
   function resourceDriveScale(
@@ -42688,9 +42768,12 @@ try {
     );
     const attackKey = damageClass === 'MENTAL' ? 'men' : 'str';
     const defenseKey = damageClass === 'MENTAL' ? 'men' : 'def';
-    const attack = Number.isFinite(Number(actorProfile?.stats?.[attackKey]))
+    const panelAttack = Number.isFinite(Number(actorProfile?.stats?.[attackKey]))
       ? Number(actorProfile.stats[attackKey])
       : readCombatStat(actor, attackKey);
+    const attack = damageClass === 'RANGED'
+      ? rangedAttackStat(actor, panelAttack, Number.isFinite(Number(actorProfile?.resourceMax?.魂力)) ? Number(actorProfile.resourceMax.魂力) : readResourceMax(actor, '魂力'))
+      : panelAttack;
     const rawDefense = Math.max(
       1,
       Number.isFinite(Number(targetProfile?.stats?.[defenseKey]))
@@ -43577,7 +43660,10 @@ try {
       environmentContext,
     );
     if (String(explicitValue ?? '').trim() !== '') return probability;
-    const opened = hitAgainstAttackOpening(probability, targetProfile ? Number(targetProfile.incomingAttackOpening || 0) : attackOpeningOf(target));
+    const strikeClass = String(effect?.原型 || '').trim() === '伤害结算' ? classifyDamageType(effect?.伤害类型) : '';
+    const rangedProbability = strikeClass === 'RANGED' ? clamp(1 - (1 - probability) * RANGED_DODGE_MULT, 0.05, 0.99)
+      : strikeClass === 'MENTAL' ? clamp(1 - (1 - probability) * MENTAL_DODGE_MULT, 0.05, 0.99) : probability;
+    const opened = hitAgainstAttackOpening(rangedProbability, targetProfile ? Number(targetProfile.incomingAttackOpening || 0) : attackOpeningOf(target));
     const bonus = areaSingleTargetHitBonus(effect, targetCount) + (options?.initiative === true ? INITIATIVE_HIT_BONUS : 0);
     return bonus > 0 ? clamp(opened + bonus, 0.05, 0.99) : opened;
   }
@@ -46175,7 +46261,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 这次制作（计算一下时效窗口）」）: a 判定修正 with 打断效果 breaks what its target is doing — a move it is making on the
     // answerer, when the answer gets in first (the preemption timing: stateBlocksMove), and a charge (a 蓄力 release, a dish
     // still being made: interrupt_charge). Until 11-15 打断效果 was priced (+18) and read nowhere.
-    if (prototype === '判定修正' && effect?.打断效果 === true) {
+    if ((prototype === '判定修正' || (prototype === '状态施加' && statePolarity(effect) < 0)) && effect?.打断效果 === true) {
       combatEffect.interrupt_action = true;
       combatEffect.interrupt_charge = true;
     }
@@ -47961,7 +48047,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         });
         const after = readHp(overlay.readUnit(receiverId));
         ledger.addOutcome({ ...context, actor: holderNow, targetId: receiverId,
-          effectInstanceId: `${context.effectInstanceId}:redirect:${unitId(holderNow)}:${index}:${receiverId}`,
+          // Short: unit ids are long, and an event id is capped at 512 (BehaviorDecisionPipeline validateIdString).
+          effectInstanceId: `${context.effectInstanceId}:redirect:${stableHash([unitId(holderNow), receiverId])}:${index}`,
           outcomeKind: 'HP_DELTA', threatValue: Math.abs(after - before) / Math.max(1, readHpMax(receiver)) * 100,
           evidence: { prototype: '结算修正', redirect: entry.kind, redirectedFrom: unitId(holderNow), sourceDamageEffectId: context.effectInstanceId,
             current: before, next: after, delta: after - before, expectedDamage: entry.kind === 'heal' ? 0 : before - after, marginal: false } });
@@ -48547,6 +48634,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ...(stateSourceKey(context, effect) ? { 来源技能键: stateSourceKey(context, effect) } : {}),
       规则: rule,
       防御对象: String(effect?.防御对象 || '').trim(),
+      // 免伤 limited to a kind of attacker, attack type or element covers matching hits only (blockStateAgainst).
+      ...(effect?.限定来源 !== undefined ? { 限定来源: cloneValue(effect.限定来源) } : {}),
+      ...(effect?.限定攻击类型 !== undefined ? { 限定攻击类型: cloneValue(effect.限定攻击类型) } : {}),
+      ...(effect?.限定元素 !== undefined ? { 限定元素: cloneValue(effect.限定元素) } : {}),
       战斗效果: combatEffect,
       面板修改比例: {},
       面板固定修正: {},
@@ -49489,7 +49580,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const expectation = expectedSegmentedDamageOutcome({ segments: 1, perSegmentDamage: input.perSegmentDamage,
         hitProbability: input.hitProbability, applicationProbability: 1, ...shieldProfile, hpDamageLimit, preserveHitOutcome: true,
         deathSaveCount: input.nonlethalHpFloor > 0 ? 0 : deathSaveCount(target, { segments: 1, actionId: context.rootActionId }),
-        ruleBlockCount: ruleBlockCount(target, { segments: 1, actionId: context.rootActionId, attacker: actor }), ruleBlockCastId: context.rootActionId,
+        ruleBlockCount: ruleBlockCount(target, { segments: 1, actionId: context.rootActionId, attacker: actor, incomingEffect: effect }), ruleBlockCastId: context.rootActionId,
         reviveTarget: !input.nonlethalHpFloor && hasDamageRevival(target) ? target : null,
         reflection: damageFollowUp(actor, target, context.declaration?.skill,
           indirectHpFloor(context?.worldSnapshot || {}, context?.battleIntent || {}, actor, unitId(target))) });
@@ -50043,7 +50134,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           const hpDamageLimit = nonlethalIntent ? Math.max(0, readHp(currentTarget) - nonlethalHpFloor) : readHp(currentTarget);
           const shieldProfile = incomingShieldProfile(currentTarget, effect, actor), shieldBefore = shieldProfile.shieldBefore;
           const segments = Math.max(1, Math.floor(Number(effect?.攻击段数 ?? effect?.段数 ?? 1)) || 1);
-          const chargeScope = { segments, actionId: context.rootActionId, attacker: actor };
+          const chargeScope = { segments, actionId: context.rootActionId, attacker: actor, incomingEffect: effect };
           const availableDeathSaves = nonlethalHpFloor > 0 ? 0 : deathSaveCount(currentTarget, chargeScope);
           const availableRuleBlocks = ruleBlockCount(currentTarget, chargeScope);
           const perSegmentDamage = calculateSettledSegmentDamage(
@@ -50303,7 +50394,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             const consumed = typeof context.damageOutcomeResolver === 'function' ? Number(outcomeDistribution[0]?.deathSaveConsumed || 0) : Number(damageExpectation.expectedDeathSaveConsumed || 0);
             if (consumed > 0) consumeDeathSaveCharges(unit, consumed, { actionId: context.rootActionId });
             const blocked = typeof context.damageOutcomeResolver === 'function' ? Number(outcomeDistribution[0]?.ruleBlockConsumed || 0) : Number(damageExpectation.expectedRuleBlockConsumed || 0);
-            if (blocked > 0) consumeRuleBlockCharges(unit, blocked, { actionId: context.rootActionId, attacker: actor });
+            if (blocked > 0) consumeRuleBlockCharges(unit, blocked, { actionId: context.rootActionId, attacker: actor, incomingEffect: effect });
             applyDamageRevivalOutcomes(unit, typeof context.damageOutcomeResolver === 'function' ? outcomeDistribution : damageExpectation.outcomeDistribution);
             setHp(unit, readHp(unit) - expectedDamage + expectedReviveHealing);
             const landedShare = (typeof context.damageOutcomeResolver === 'function' ? outcomeDistribution : damageExpectation.outcomeDistribution || [])
@@ -61106,7 +61197,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   function calculateDodgeProbability(reactor = {}, sourceActor = {}, prepared = false, declaration = null) {
     const ordinary = calculateReactionContest(reactor, sourceActor, declaration).probability;
     const dodge = prepared ? clamp(ordinary + (1 - ordinary) * 0.25 * passiveStreakFactor(reactor), 0.03, 0.92) : ordinary;
-    return dodge * (1 - ATTACK_OPENING_DODGE_CUT * attackOpeningOf(reactor));
+    const strikeClass = declaration ? declarationDamageClass(declaration) : null;
+    const ranged = strikeClass === 'RANGED' ? clamp(dodge * RANGED_DODGE_MULT, 0, 0.95) : strikeClass === 'MENTAL' ? dodge * MENTAL_DODGE_MULT : dodge;
+    return ranged * (1 - ATTACK_OPENING_DODGE_CUT * attackOpeningOf(reactor));
   }
 
   // The chance to catch the opening once an answer has worked: the two units' effective agility (agility under speed
@@ -61120,7 +61213,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       (options?.prepared === true ? COUNTER_STANCE_BONUS : 0), COUNTER_FLOOR, COUNTER_CAP);
     // 战斗经验抓空当：× (1 + (经验 − 0.5) × EXPERIENCE_COUNTER_SLOPE)。
     const seasoned = 1 + (battleExperience(reactor) - 0.5) * EXPERIENCE_COUNTER_SLOPE;
-    return clamp(base * seasoned, 0, COUNTER_CAP) * passiveStreakFactor(reactor) * COUNTER_FADE ** Math.max(0, Math.floor(Number(options?.prior) || 0));
+    return clamp(base * seasoned, 0, COUNTER_CAP) * passiveStreakFactor(reactor) * COUNTER_FADE ** Math.max(0, Math.floor(Number(options?.prior) || 0)) *
+      (!declaration ? 1 : declarationDamageClass(declaration) === 'RANGED' ? RANGED_COUNTER_MULT
+        : declarationDamageClass(declaration) === 'MENTAL' ? MENTAL_COUNTER_MULT : 1);
   }
   // 战斗经验（用户 2026-11-14「不另加战斗经验，就用年龄+天赋推算战斗经验，也就是说只是个中间结果」「绝世妖孽就用3试试」
   // 「能达到封顶的只应该是天赋最高的」）: 0.2 + (该天赋的上限 − 0.2) × (1 − e^(−(年龄 − 6) × 倍率 ÷ 30))——六岁觉醒后逐年
@@ -61195,10 +61290,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (theirs === null || mine === null) return null;
     const ratio = theirs > 0 ? mine / theirs : mine > 0 ? Infinity : 1;
     const result = ratio >= CLASH_WIN - 1e-12 ? 'WIN' : ratio <= 1 / CLASH_WIN + 1e-12 ? 'LOSE' : 'EVEN';
+    const mentalClash = declarationDamageClass(reactorDeclaration || {}) === 'MENTAL' && declarationDamageClass(incomingDeclaration || {}) === 'MENTAL';
+    const loss = mentalClash ? MENTAL_CLASH_LOSS_MULT : 1, shock = mentalClash ? MENTAL_CLASH_SHOCK : CLASH_SHOCK;
     return Object.freeze({
-      mine, theirs, ratio, result, threshold: CLASH_WIN, shock: result === 'EVEN',
-      outScale: result === 'WIN' && mine > 0 ? (mine - theirs) / mine : result === 'EVEN' ? CLASH_SHOCK : 0,
-      inScale: result === 'LOSE' && theirs > 0 ? (theirs - mine) / theirs : result === 'EVEN' ? CLASH_SHOCK : 0,
+      mine, theirs, ratio, result, threshold: CLASH_WIN, shock: result === 'EVEN', mentalClash,
+      outScale: result === 'WIN' && mine > 0 ? (mine - theirs) / mine * loss : result === 'EVEN' ? shock : 0,
+      inScale: result === 'LOSE' && theirs > 0 ? (theirs - mine) / theirs * loss : result === 'EVEN' ? shock : 0,
       answered: result !== 'LOSE',
     });
   }
@@ -61216,7 +61313,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   }
   // A state effect (状态施加) whose state stops `incoming` (null: stops a unit acting).
   function effectBlocksMove(effect = {}, incoming = null) {
-    if (String(effect?.原型 || '').trim() === '判定修正' && effect?.打断效果 === true) return true;
+    if (effect?.打断效果 === true && (String(effect?.原型 || '').trim() === '判定修正' ||
+      (String(effect?.原型 || '').trim() === '状态施加' && statePolarity(effect) < 0))) return true;
     if (String(effect?.原型 || '').trim() !== '状态施加') return false;
     return stateBlocksMove(String(effect?.状态 || effect?.状态名称 || '').trim(), deriveStateCombatEffect(effect), incoming);
   }
@@ -61464,6 +61562,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     actionStaminaCost,
     actionWindup,
     reactionWindupBudget,
+    rangedActionMentalCost,
+    declarationDamageClass,
     interceptWindupBudget,
     clashWindupBudget,
     clashTiming,
@@ -152844,12 +152944,23 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   function payActionStamina({ combatData, actor, nature, opponent = null, action, actionEvent, actionRole, actorControl = 'AI', factor = 1 }) {
     if (!previewRuntime.actionStaminaEnabled(combatData)) return [];
     const requested = previewRuntime.actionStaminaCost(actor, nature, opponent) * Math.max(0, Number(factor) || 1);
-    if (!(requested > 0)) return [];
+    // 近身与远程: a ranged strike also pays 精神力 (BattlePreview rangedActionMentalCost), as far as the unit has it.
+    const mentalFacts = [];
+    if (nature === 'ATTACK_RANGED' && typeof previewRuntime.rangedActionMentalCost === 'function') {
+      const mentalRequested = previewRuntime.rangedActionMentalCost(actor) * Math.max(0, Number(factor) || 1);
+      const mentalBefore = persistentResourceValue(actor, 'men');
+      const mentalAfter = mentalRequested > 0 ? writeCombatResource(actor, 'men', mentalBefore - mentalRequested) : mentalBefore;
+      const mentalApplied = Math.max(0, mentalBefore - mentalAfter);
+      if (mentalApplied > 0) mentalFacts.push(writeStructuredResourceFact(combatData, actor, actor, action, actionEvent, 'men', -mentalApplied, actionRole, 'PAY',
+        { before: mentalBefore, after: mentalAfter, meta: { requestedAmount: mentalRequested, source: 'ACTION_RANGED_MENTAL', staminaNature: nature } }));
+    }
+    if (!(requested > 0)) return mentalFacts;
     const before = persistentResourceValue(actor, 'vit');
     const after = writeCombatResource(actor, 'vit', before - requested);
     const applied = Math.max(0, before - after);
-    if (!(applied > 0)) return [];
+    if (!(applied > 0)) return mentalFacts;
     return [
+      ...mentalFacts,
       writeStructuredResourceFact(combatData, actor, actor, action, actionEvent, 'vit', -applied, actionRole, 'PAY',
         { before, after, meta: { requestedAmount: requested, source: 'ACTION_STAMINA', staminaNature: nature, ...(factor !== 1 ? { staminaFactor: factor } : {}) } }),
       writeLedgerEvent(combatData, {

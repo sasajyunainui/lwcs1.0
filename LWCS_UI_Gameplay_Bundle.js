@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:2a325e494f9ca48dfedbefba1bedbdf9fe9383772bb8821b407e1e0722bb9dd1|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:72f673cb3f6e03ddbe51a3e0b90017128c0a1f601cbb1b39392f7e61d320ea59|BattleRuntime_Module.js:7343b8915c3961fdd5dbdd88853bd202633b1376b0d4885e14157c96395ee55c|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:6cbbc624b3908df0ffda3b0158d9f0c1d8ed4e3b11470cc90fc7d7e14f6003b5|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:72f673cb3f6e03ddbe51a3e0b90017128c0a1f601cbb1b39392f7e61d320ea59|BattleRuntime_Module.js:1c583d9750c9301b021672e80249690ad6b2dec3a05e412f1effda6e5bf775e8|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -8216,7 +8216,12 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
   // the exits of single battles. A starting value.
   const ACTION_STAMINA_SCALE = 0.6;
   const ACTION_STAMINA_BASE_RATES = Object.freeze({ ATTACK: 0.0175, DEFEND: 0.0105, EVADE: 0.014, SKILL_DEFEND: 0.0105, SKILL_EVADE: 0.014, OTHER: 0.0105 });
-  const ACTION_STAMINA_RATES = Object.freeze(Object.fromEntries(Object.entries(ACTION_STAMINA_BASE_RATES).map(([nature, rate]) => [nature, rate * ACTION_STAMINA_SCALE])));
+  // 近身与远程（用户 2026-11-15，起始值）: ATTACK is a melee strike (×1.5), ATTACK_RANGED a ranged one (×0.5; its 精神力 is paid
+  // apart, rangedActionMentalCost). The other melee/ranged rules sit by classifyDamageType.
+  const ACTION_STAMINA_RATES = Object.freeze(Object.fromEntries([
+    ...Object.entries(ACTION_STAMINA_BASE_RATES).map(([nature, rate]) => [nature, rate * ACTION_STAMINA_SCALE * (nature === 'ATTACK' ? 1.5 : 1)]),
+    ['ATTACK_RANGED', ACTION_STAMINA_BASE_RATES.ATTACK * ACTION_STAMINA_SCALE * 0.5],
+  ]));
   const ACTION_STAMINA_RATIO_CAP = 4;
   // On unless a world opts out with 战斗规则.行动体力消耗 === false, or the host's default battle rules do
   // (root.__LWCS_DEFAULT_BATTLE_RULES__, set by isolation fixtures that measure other resources).
@@ -8231,13 +8236,13 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
 
   function actionStaminaNature(declaration = {}) {
     const kind = String(declaration?.actionKind || '').trim().toUpperCase();
-    if (kind === 'BASIC_ATTACK') return 'ATTACK';
+    if (kind === 'BASIC_ATTACK') return declarationIsRanged(declaration) ? 'ATTACK_RANGED' : 'ATTACK';
     if (kind === 'EVADE') return 'EVADE';
     if (kind === 'DEFEND' || kind === 'GUARD') return 'DEFEND';
     if (kind !== 'RELEASE_SKILL' && kind !== 'USE_ITEM') return '';
     const effects = Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组 : [];
     const prototypes = new Set(effects.map(effect => String(effect?.原型 || '').trim()));
-    if (prototypes.has('伤害结算')) return 'ATTACK';
+    if (prototypes.has('伤害结算')) return declarationIsRanged(declaration) ? 'ATTACK_RANGED' : 'ATTACK';
     if (prototypes.has('位移执行') || effects.some(effect => effect?.原型 === '判定修正' && /闪避/.test(String(effect?.判定 || '')))) return 'SKILL_EVADE';
     if (['护盾变化', '规则防御'].some(prototype => prototypes.has(prototype)) ||
       effects.some(effect => (effect?.原型 === '结算修正' && /受到伤害|伤害分摊|伤害转移|伤害吸收/.test(String(effect?.结算 || ''))) ||
@@ -8411,7 +8416,8 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     if (!(attackerAgility > 0)) return CONTINUOUS_ACTION_BUDGET * multiplier;
     return multiplier * Math.min(
       CONTINUOUS_ACTION_BUDGET,
-      windup * (naturalActionOrderProfile(reactor).effectiveAgility / attackerAgility) * (1 + REACTION_DEFENDER_MARGIN),
+      windup * (naturalActionOrderProfile(reactor).effectiveAgility / attackerAgility) * (1 + REACTION_DEFENDER_MARGIN) *
+        (declarationIsRanged(declaration) ? RANGED_REACTION_WINDOW_MULT : 1),
     );
   }
 
@@ -11752,16 +11758,19 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     return count > 0 && findRuleSuppression(unit, '规则防御', '规则', '免死') ? 0 : count;
   }
 
-  // options.attacker: a 免伤 limited to a kind of attacker (限定来源) covers that attacker's hits only.
-  const blockStateAgainst = attacker => state => isBlockState(state) && (attacker === undefined || unitSourceRestrictionMatches(state, attacker));
+  // options.attacker / options.incomingEffect: a 免伤 limited to a kind of attacker (限定来源), an attack type (限定攻击类型,
+  // 用户 2026-11-15「追溯只是限定能量攻击免伤」) or an element (限定元素) covers matching hits only, and only those spend it.
+  const blockStateAgainst = (attacker, incomingEffect) => state => isBlockState(state) &&
+    (attacker === undefined || unitSourceRestrictionMatches(state, attacker)) &&
+    (incomingEffect === undefined || limitedEntryMatches(incomingEffect, { 限定元素: state?.限定元素, 限定攻击类型: state?.限定攻击类型 }, attacker));
   function ruleBlockCount(unit = {}, options = {}) {
     if (findRuleSuppression(unit, '规则防御', '规则', '免伤')) return 0;
-    return ruleChargeCount(unit, RULE_CHARGE_FIELDS.block, blockStateAgainst(options?.attacker), options);
+    return ruleChargeCount(unit, RULE_CHARGE_FIELDS.block, blockStateAgainst(options?.attacker, options?.incomingEffect), options);
   }
 
   function consumeRuleBlockCharges(unit, requested = 1, options = {}) {
     if (!Math.max(0, Number(requested || 0)) || !ruleBlockCount(unit, { segments: 1, actionId: options?.actionId })) return [];
-    const consumed = consumeRuleCharges(unit, requested, RULE_CHARGE_FIELDS.block, blockStateAgainst(options?.attacker), options);
+    const consumed = consumeRuleCharges(unit, requested, RULE_CHARGE_FIELDS.block, blockStateAgainst(options?.attacker, options?.incomingEffect), options);
     // 时光回溯: the charge it spends takes its holder back to its HP and resources at the round's start (the runtime keeps
     // them in __时光回溯回合快照; a unit without one, as a decision pictures an enemy, keeps what it has).
     const snapshot = unit?.__时光回溯回合快照;
@@ -11976,6 +11985,45 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     if (/精神/.test(text)) return 'MENTAL';
     if (/远程/.test(text)) return 'RANGED';
     return 'MELEE';
+  }
+  // 近身与远程（用户 2026-11-15「近身的反应，闪避率，反击都应该和远程区别开。近身伤害靠力量+魂力，远程应该主要靠魂力」「远程会
+  // 增加精神力消耗，近身会增加体力消耗」「先这样吧，起码把框架做起来，后面再调整平衡」）. Starting values:
+  //   伤害  远程的攻 = RANGED_STRENGTH_SHARE × 力量 + (1 − it) × 魂力折算（魂力上限 × 本级标准力量 ÷ 本级标准魂力上限）; 近身照旧力量;
+  //         两者都乘魂力驱动、都对防御。
+  //   应对  远程来招：闪避 × RANGED_DODGE_MULT（被动闪避与主动闪避）、反应窗口 × RANGED_REACTION_WINDOW_MULT、反击空当 × RANGED_COUNTER_MULT.
+  //   消耗  每次攻击的体力：近身 ×1.5，远程 ×0.5（ACTION_STAMINA_RATES 的 ATTACK / ATTACK_RANGED），远程另付 RANGED_MENTAL_RATE × 本级标准精神力上限.
+  // Until 11-15 the two were one formula, one dodge, one window, one price.
+  const RANGED_STRENGTH_SHARE = 0.3, RANGED_DODGE_MULT = 1.15, RANGED_REACTION_WINDOW_MULT = 1.2, RANGED_COUNTER_MULT = 0.5;
+  const RANGED_MENTAL_RATE = 0.01;
+  // 精神攻击（用户 2026-11-15「精神伤害也很难被反击，同时命中很高，但是对方也用精神对轰的话，输方受到的伤害会加倍」）, starting
+  // values: its miss chance — passive and active dodge — × MENTAL_DODGE_MULT; the opening to strike back after it × MENTAL_COUNTER_MULT;
+  // a clash of two mental moves deals the loser its share × MENTAL_CLASH_LOSS_MULT.
+  // 同日「打平也受到50%」: an even mental clash deals each side MENTAL_CLASH_SHOCK of the other's move (CLASH_SHOCK otherwise).
+  const MENTAL_DODGE_MULT = 0.5, MENTAL_COUNTER_MULT = 0.4, MENTAL_CLASH_LOSS_MULT = 2, MENTAL_CLASH_SHOCK = 0.5;
+  // The class of a move's strike: its first 伤害结算's (a basic attack carries its own, melee by default); null: no strike.
+  function declarationDamageClass(declaration = {}) {
+    const effects = collectEffects(declaration?.skill || {});
+    const strike = effects.find(effect => String(effect?.原型 || '').trim() === '伤害结算');
+    if (strike) return classifyDamageType(strike?.伤害类型);
+    return String(declaration?.actionKind || '').trim().toUpperCase() === 'BASIC_ATTACK' ? 'MELEE' : null;
+  }
+  function declarationIsRanged(declaration = null) {
+    return !!declaration && declarationDamageClass(declaration) === 'RANGED';
+  }
+  // 魂力 put on the 力量 scale of the unit's level (the level table's 力量 ÷ 魂力上限).
+  function rangedAttackStat(actor = {}, strength = 0, soulMax = 0) {
+    const level = unitLevelOf(actor);
+    const base = typeof root.__LWCS_GET_BASE_STATS__ === 'function' ? root.__LWCS_GET_BASE_STATS__(level) : null;
+    const scale = Number(base?.str) > 0 && Number(base?.sp_max) > 0 ? Number(base.str) / Number(base.sp_max) : 0;
+    if (!(scale > 0) || !(soulMax > 0)) return strength;
+    return RANGED_STRENGTH_SHARE * strength + (1 - RANGED_STRENGTH_SHARE) * soulMax * scale;
+  }
+  // The 精神力 a ranged strike costs besides its stamina (the level table's 精神力上限 × RANGED_MENTAL_RATE).
+  function rangedActionMentalCost(actor = {}) {
+    const level = unitLevelOf(actor);
+    const base = typeof root.__LWCS_GET_BASE_STATS__ === 'function' ? Number(root.__LWCS_GET_BASE_STATS__(level)?.men_max) : NaN;
+    const benchmark = Number.isFinite(base) && base > 0 ? base : readResourceMax(actor, '精神力');
+    return Math.max(0, benchmark * RANGED_MENTAL_RATE);
   }
 
   function resourceDriveScale(
@@ -12250,9 +12298,12 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     );
     const attackKey = damageClass === 'MENTAL' ? 'men' : 'str';
     const defenseKey = damageClass === 'MENTAL' ? 'men' : 'def';
-    const attack = Number.isFinite(Number(actorProfile?.stats?.[attackKey]))
+    const panelAttack = Number.isFinite(Number(actorProfile?.stats?.[attackKey]))
       ? Number(actorProfile.stats[attackKey])
       : readCombatStat(actor, attackKey);
+    const attack = damageClass === 'RANGED'
+      ? rangedAttackStat(actor, panelAttack, Number.isFinite(Number(actorProfile?.resourceMax?.魂力)) ? Number(actorProfile.resourceMax.魂力) : readResourceMax(actor, '魂力'))
+      : panelAttack;
     const rawDefense = Math.max(
       1,
       Number.isFinite(Number(targetProfile?.stats?.[defenseKey]))
@@ -13139,7 +13190,10 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
       environmentContext,
     );
     if (String(explicitValue ?? '').trim() !== '') return probability;
-    const opened = hitAgainstAttackOpening(probability, targetProfile ? Number(targetProfile.incomingAttackOpening || 0) : attackOpeningOf(target));
+    const strikeClass = String(effect?.原型 || '').trim() === '伤害结算' ? classifyDamageType(effect?.伤害类型) : '';
+    const rangedProbability = strikeClass === 'RANGED' ? clamp(1 - (1 - probability) * RANGED_DODGE_MULT, 0.05, 0.99)
+      : strikeClass === 'MENTAL' ? clamp(1 - (1 - probability) * MENTAL_DODGE_MULT, 0.05, 0.99) : probability;
+    const opened = hitAgainstAttackOpening(rangedProbability, targetProfile ? Number(targetProfile.incomingAttackOpening || 0) : attackOpeningOf(target));
     const bonus = areaSingleTargetHitBonus(effect, targetCount) + (options?.initiative === true ? INITIATIVE_HIT_BONUS : 0);
     return bonus > 0 ? clamp(opened + bonus, 0.05, 0.99) : opened;
   }
@@ -15737,7 +15791,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 这次制作（计算一下时效窗口）」）: a 判定修正 with 打断效果 breaks what its target is doing — a move it is making on the
     // answerer, when the answer gets in first (the preemption timing: stateBlocksMove), and a charge (a 蓄力 release, a dish
     // still being made: interrupt_charge). Until 11-15 打断效果 was priced (+18) and read nowhere.
-    if (prototype === '判定修正' && effect?.打断效果 === true) {
+    if ((prototype === '判定修正' || (prototype === '状态施加' && statePolarity(effect) < 0)) && effect?.打断效果 === true) {
       combatEffect.interrupt_action = true;
       combatEffect.interrupt_charge = true;
     }
@@ -17523,7 +17577,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         });
         const after = readHp(overlay.readUnit(receiverId));
         ledger.addOutcome({ ...context, actor: holderNow, targetId: receiverId,
-          effectInstanceId: `${context.effectInstanceId}:redirect:${unitId(holderNow)}:${index}:${receiverId}`,
+          // Short: unit ids are long, and an event id is capped at 512 (BehaviorDecisionPipeline validateIdString).
+          effectInstanceId: `${context.effectInstanceId}:redirect:${stableHash([unitId(holderNow), receiverId])}:${index}`,
           outcomeKind: 'HP_DELTA', threatValue: Math.abs(after - before) / Math.max(1, readHpMax(receiver)) * 100,
           evidence: { prototype: '结算修正', redirect: entry.kind, redirectedFrom: unitId(holderNow), sourceDamageEffectId: context.effectInstanceId,
             current: before, next: after, delta: after - before, expectedDamage: entry.kind === 'heal' ? 0 : before - after, marginal: false } });
@@ -18109,6 +18164,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ...(stateSourceKey(context, effect) ? { 来源技能键: stateSourceKey(context, effect) } : {}),
       规则: rule,
       防御对象: String(effect?.防御对象 || '').trim(),
+      // 免伤 limited to a kind of attacker, attack type or element covers matching hits only (blockStateAgainst).
+      ...(effect?.限定来源 !== undefined ? { 限定来源: cloneValue(effect.限定来源) } : {}),
+      ...(effect?.限定攻击类型 !== undefined ? { 限定攻击类型: cloneValue(effect.限定攻击类型) } : {}),
+      ...(effect?.限定元素 !== undefined ? { 限定元素: cloneValue(effect.限定元素) } : {}),
       战斗效果: combatEffect,
       面板修改比例: {},
       面板固定修正: {},
@@ -19051,7 +19110,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const expectation = expectedSegmentedDamageOutcome({ segments: 1, perSegmentDamage: input.perSegmentDamage,
         hitProbability: input.hitProbability, applicationProbability: 1, ...shieldProfile, hpDamageLimit, preserveHitOutcome: true,
         deathSaveCount: input.nonlethalHpFloor > 0 ? 0 : deathSaveCount(target, { segments: 1, actionId: context.rootActionId }),
-        ruleBlockCount: ruleBlockCount(target, { segments: 1, actionId: context.rootActionId, attacker: actor }), ruleBlockCastId: context.rootActionId,
+        ruleBlockCount: ruleBlockCount(target, { segments: 1, actionId: context.rootActionId, attacker: actor, incomingEffect: effect }), ruleBlockCastId: context.rootActionId,
         reviveTarget: !input.nonlethalHpFloor && hasDamageRevival(target) ? target : null,
         reflection: damageFollowUp(actor, target, context.declaration?.skill,
           indirectHpFloor(context?.worldSnapshot || {}, context?.battleIntent || {}, actor, unitId(target))) });
@@ -19605,7 +19664,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           const hpDamageLimit = nonlethalIntent ? Math.max(0, readHp(currentTarget) - nonlethalHpFloor) : readHp(currentTarget);
           const shieldProfile = incomingShieldProfile(currentTarget, effect, actor), shieldBefore = shieldProfile.shieldBefore;
           const segments = Math.max(1, Math.floor(Number(effect?.攻击段数 ?? effect?.段数 ?? 1)) || 1);
-          const chargeScope = { segments, actionId: context.rootActionId, attacker: actor };
+          const chargeScope = { segments, actionId: context.rootActionId, attacker: actor, incomingEffect: effect };
           const availableDeathSaves = nonlethalHpFloor > 0 ? 0 : deathSaveCount(currentTarget, chargeScope);
           const availableRuleBlocks = ruleBlockCount(currentTarget, chargeScope);
           const perSegmentDamage = calculateSettledSegmentDamage(
@@ -19865,7 +19924,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             const consumed = typeof context.damageOutcomeResolver === 'function' ? Number(outcomeDistribution[0]?.deathSaveConsumed || 0) : Number(damageExpectation.expectedDeathSaveConsumed || 0);
             if (consumed > 0) consumeDeathSaveCharges(unit, consumed, { actionId: context.rootActionId });
             const blocked = typeof context.damageOutcomeResolver === 'function' ? Number(outcomeDistribution[0]?.ruleBlockConsumed || 0) : Number(damageExpectation.expectedRuleBlockConsumed || 0);
-            if (blocked > 0) consumeRuleBlockCharges(unit, blocked, { actionId: context.rootActionId, attacker: actor });
+            if (blocked > 0) consumeRuleBlockCharges(unit, blocked, { actionId: context.rootActionId, attacker: actor, incomingEffect: effect });
             applyDamageRevivalOutcomes(unit, typeof context.damageOutcomeResolver === 'function' ? outcomeDistribution : damageExpectation.outcomeDistribution);
             setHp(unit, readHp(unit) - expectedDamage + expectedReviveHealing);
             const landedShare = (typeof context.damageOutcomeResolver === 'function' ? outcomeDistribution : damageExpectation.outcomeDistribution || [])
@@ -30668,7 +30727,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   function calculateDodgeProbability(reactor = {}, sourceActor = {}, prepared = false, declaration = null) {
     const ordinary = calculateReactionContest(reactor, sourceActor, declaration).probability;
     const dodge = prepared ? clamp(ordinary + (1 - ordinary) * 0.25 * passiveStreakFactor(reactor), 0.03, 0.92) : ordinary;
-    return dodge * (1 - ATTACK_OPENING_DODGE_CUT * attackOpeningOf(reactor));
+    const strikeClass = declaration ? declarationDamageClass(declaration) : null;
+    const ranged = strikeClass === 'RANGED' ? clamp(dodge * RANGED_DODGE_MULT, 0, 0.95) : strikeClass === 'MENTAL' ? dodge * MENTAL_DODGE_MULT : dodge;
+    return ranged * (1 - ATTACK_OPENING_DODGE_CUT * attackOpeningOf(reactor));
   }
 
   // The chance to catch the opening once an answer has worked: the two units' effective agility (agility under speed
@@ -30682,7 +30743,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       (options?.prepared === true ? COUNTER_STANCE_BONUS : 0), COUNTER_FLOOR, COUNTER_CAP);
     // 战斗经验抓空当：× (1 + (经验 − 0.5) × EXPERIENCE_COUNTER_SLOPE)。
     const seasoned = 1 + (battleExperience(reactor) - 0.5) * EXPERIENCE_COUNTER_SLOPE;
-    return clamp(base * seasoned, 0, COUNTER_CAP) * passiveStreakFactor(reactor) * COUNTER_FADE ** Math.max(0, Math.floor(Number(options?.prior) || 0));
+    return clamp(base * seasoned, 0, COUNTER_CAP) * passiveStreakFactor(reactor) * COUNTER_FADE ** Math.max(0, Math.floor(Number(options?.prior) || 0)) *
+      (!declaration ? 1 : declarationDamageClass(declaration) === 'RANGED' ? RANGED_COUNTER_MULT
+        : declarationDamageClass(declaration) === 'MENTAL' ? MENTAL_COUNTER_MULT : 1);
   }
   // 战斗经验（用户 2026-11-14「不另加战斗经验，就用年龄+天赋推算战斗经验，也就是说只是个中间结果」「绝世妖孽就用3试试」
   // 「能达到封顶的只应该是天赋最高的」）: 0.2 + (该天赋的上限 − 0.2) × (1 − e^(−(年龄 − 6) × 倍率 ÷ 30))——六岁觉醒后逐年
@@ -30757,10 +30820,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (theirs === null || mine === null) return null;
     const ratio = theirs > 0 ? mine / theirs : mine > 0 ? Infinity : 1;
     const result = ratio >= CLASH_WIN - 1e-12 ? 'WIN' : ratio <= 1 / CLASH_WIN + 1e-12 ? 'LOSE' : 'EVEN';
+    const mentalClash = declarationDamageClass(reactorDeclaration || {}) === 'MENTAL' && declarationDamageClass(incomingDeclaration || {}) === 'MENTAL';
+    const loss = mentalClash ? MENTAL_CLASH_LOSS_MULT : 1, shock = mentalClash ? MENTAL_CLASH_SHOCK : CLASH_SHOCK;
     return Object.freeze({
-      mine, theirs, ratio, result, threshold: CLASH_WIN, shock: result === 'EVEN',
-      outScale: result === 'WIN' && mine > 0 ? (mine - theirs) / mine : result === 'EVEN' ? CLASH_SHOCK : 0,
-      inScale: result === 'LOSE' && theirs > 0 ? (theirs - mine) / theirs : result === 'EVEN' ? CLASH_SHOCK : 0,
+      mine, theirs, ratio, result, threshold: CLASH_WIN, shock: result === 'EVEN', mentalClash,
+      outScale: result === 'WIN' && mine > 0 ? (mine - theirs) / mine * loss : result === 'EVEN' ? shock : 0,
+      inScale: result === 'LOSE' && theirs > 0 ? (theirs - mine) / theirs * loss : result === 'EVEN' ? shock : 0,
       answered: result !== 'LOSE',
     });
   }
@@ -30778,7 +30843,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   }
   // A state effect (状态施加) whose state stops `incoming` (null: stops a unit acting).
   function effectBlocksMove(effect = {}, incoming = null) {
-    if (String(effect?.原型 || '').trim() === '判定修正' && effect?.打断效果 === true) return true;
+    if (effect?.打断效果 === true && (String(effect?.原型 || '').trim() === '判定修正' ||
+      (String(effect?.原型 || '').trim() === '状态施加' && statePolarity(effect) < 0))) return true;
     if (String(effect?.原型 || '').trim() !== '状态施加') return false;
     return stateBlocksMove(String(effect?.状态 || effect?.状态名称 || '').trim(), deriveStateCombatEffect(effect), incoming);
   }
@@ -31026,6 +31092,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     actionStaminaCost,
     actionWindup,
     reactionWindupBudget,
+    rangedActionMentalCost,
+    declarationDamageClass,
     interceptWindupBudget,
     clashWindupBudget,
     clashTiming,
@@ -122406,12 +122474,23 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   function payActionStamina({ combatData, actor, nature, opponent = null, action, actionEvent, actionRole, actorControl = 'AI', factor = 1 }) {
     if (!previewRuntime.actionStaminaEnabled(combatData)) return [];
     const requested = previewRuntime.actionStaminaCost(actor, nature, opponent) * Math.max(0, Number(factor) || 1);
-    if (!(requested > 0)) return [];
+    // 近身与远程: a ranged strike also pays 精神力 (BattlePreview rangedActionMentalCost), as far as the unit has it.
+    const mentalFacts = [];
+    if (nature === 'ATTACK_RANGED' && typeof previewRuntime.rangedActionMentalCost === 'function') {
+      const mentalRequested = previewRuntime.rangedActionMentalCost(actor) * Math.max(0, Number(factor) || 1);
+      const mentalBefore = persistentResourceValue(actor, 'men');
+      const mentalAfter = mentalRequested > 0 ? writeCombatResource(actor, 'men', mentalBefore - mentalRequested) : mentalBefore;
+      const mentalApplied = Math.max(0, mentalBefore - mentalAfter);
+      if (mentalApplied > 0) mentalFacts.push(writeStructuredResourceFact(combatData, actor, actor, action, actionEvent, 'men', -mentalApplied, actionRole, 'PAY',
+        { before: mentalBefore, after: mentalAfter, meta: { requestedAmount: mentalRequested, source: 'ACTION_RANGED_MENTAL', staminaNature: nature } }));
+    }
+    if (!(requested > 0)) return mentalFacts;
     const before = persistentResourceValue(actor, 'vit');
     const after = writeCombatResource(actor, 'vit', before - requested);
     const applied = Math.max(0, before - after);
-    if (!(applied > 0)) return [];
+    if (!(applied > 0)) return mentalFacts;
     return [
+      ...mentalFacts,
       writeStructuredResourceFact(combatData, actor, actor, action, actionEvent, 'vit', -applied, actionRole, 'PAY',
         { before, after, meta: { requestedAmount: requested, source: 'ACTION_STAMINA', staminaNature: nature, ...(factor !== 1 ? { staminaFactor: factor } : {}) } }),
       writeLedgerEvent(combatData, {
