@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:8b116bc8b29b0a7ad8ad25f20021486175632eac71b56781596dc456e0bacb2d|MVU_Schema_Runtime.js:454e4a242dce5e02d69c3def2993d350ac50f39dcb667f2fc6f09488f34461dd|BattlePreview_Module.js:20fa47eb98c686d3bfad5976dfdc8e9e13843984e052c3cab9f0a42a789a9e8b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:2f7250ec19621f05336e5302c33087f169633268100e8263df787eea51341c6b|BattleRuntime_Module.js:83e7d9f80955ae31fbf921df96c5c73d5cfb23f06dcb247121c4ad7432ddb295 */
+/* sources-sha256: MVU_Skill_Runtime.js:f97d8925a09865373c376e6a32966f6d2aeb2092d932288394a0504f918e4116|MVU_Schema_Runtime.js:454e4a242dce5e02d69c3def2993d350ac50f39dcb667f2fc6f09488f34461dd|BattlePreview_Module.js:20fa47eb98c686d3bfad5976dfdc8e9e13843984e052c3cab9f0a42a789a9e8b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:2f7250ec19621f05336e5302c33087f169633268100e8263df787eea51341c6b|BattleRuntime_Module.js:83e7d9f80955ae31fbf921df96c5c73d5cfb23f06dcb247121c4ad7432ddb295 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -194,7 +194,7 @@ var 武魂属性倾向系数表_V1 = Object.freeze({
   偏精神: Object.freeze({ men_max: 1.2, str: 0.9, def: 0.9 }),
   偏控制: Object.freeze({ agi: 1.1, men_max: 1.1, str: 0.9, def: 0.9 }),
 });
-var 武魂属性倾向待补全文案_V1 = '待补全(按武魂的形态与战斗特点选一套：均衡/偏攻击/偏防御/偏速度/偏精神/偏控制)';
+var 武魂属性倾向待补全文案_V1 = '待补全(按武魂的形态与战斗特点选一套：均衡/偏攻击/偏防御/偏速度/偏精神/偏控制。例：剑、刀、锤等兵器偏攻击；盾、龟甲偏防御；猎豹、鹰、风偏速度；眼睛、精神类武魂偏精神；藤蔓、蛛网、锁链偏控制；兼具多种或难判断选均衡)';
 function 读取武魂属性倾向系数_V1(武魂 = {}) {
   return 武魂属性倾向系数表_V1[String(武魂?.属性倾向 || '').trim()] || 武魂属性倾向系数表_V1.均衡;
 }
