@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:f97d8925a09865373c376e6a32966f6d2aeb2092d932288394a0504f918e4116|MVU_Schema_Runtime.js:454e4a242dce5e02d69c3def2993d350ac50f39dcb667f2fc6f09488f34461dd|BattlePreview_Module.js:20fa47eb98c686d3bfad5976dfdc8e9e13843984e052c3cab9f0a42a789a9e8b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:2f7250ec19621f05336e5302c33087f169633268100e8263df787eea51341c6b|BattleRuntime_Module.js:83e7d9f80955ae31fbf921df96c5c73d5cfb23f06dcb247121c4ad7432ddb295 */
+/* sources-sha256: MVU_Skill_Runtime.js:8efa03bb5ee05e2333abb3df02d00663c8bf15305ef61d004f60c526edb1b229|MVU_Schema_Runtime.js:454e4a242dce5e02d69c3def2993d350ac50f39dcb667f2fc6f09488f34461dd|BattlePreview_Module.js:20fa47eb98c686d3bfad5976dfdc8e9e13843984e052c3cab9f0a42a789a9e8b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:2f7250ec19621f05336e5302c33087f169633268100e8263df787eea51341c6b|BattleRuntime_Module.js:83e7d9f80955ae31fbf921df96c5c73d5cfb23f06dcb247121c4ad7432ddb295 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -5043,8 +5043,10 @@ function 召唤生成允许继承属性比例_V1(效果 = {}) {
   return ['本命召唤兽', '分身'].includes(String(效果?.召唤单位类型 || '').trim());
 }
 
+// 批量召唤（用户 2026-11-15「批量召唤为啥不允许？这个必须得允许」，原作钱磊比蒙军团）: 除本命召唤兽（唯一）外都可以一次召唤多只，
+// COST 按数量计（可调字段「数量」）。此前只有其他召唤生物（与分身）可以。
 function 召唤生成允许普通批量_V1(效果 = {}) {
-  return String(效果?.召唤单位类型 || '').trim() === '其他召唤生物';
+  return String(效果?.召唤单位类型 || '魂兽').trim() !== '本命召唤兽';
 }
 
 function 读取召唤生成继承比例表_V1(效果 = {}) {
@@ -5484,13 +5486,14 @@ var SKILL_UNIT_COST_TABLE_V1 = Object.freeze({
   // 等效」从本表折算——一次性效果只管一次来袭或一次出手，而 1 回合的判定修正管整回合的全部受击与出手，折算系数 0.5。上午按旧的弱实现
   // （距离÷100，5%～25%）压到 8/5/5/5/5，现在回调：
   //   瞬移  下一次来袭 95% 躲开（闪避 0.7×95 = 66.5）＋ 自己下一击命中 +10%（命中 0.6×10 = 6）＋ 目标反应 −30%（反应 0.95×30 = 28.5）
-  //         = 101 × 0.5 = 50.5 → 50（用户：回到 50 量级）。
+  //         = 101 × 0.5 = 50.5 → 50（用户：回到 50 量级）。11-15 改 25（用户：「瞬移的COST降低吧，原作确实太多2 3环有这个技能的了。
+  //         属于是极品技能，但是COST消耗不高」——原作小舞、江楠楠等 2～3 环就有瞬移，50 在低环怎么收敛都进不了预算；与击退同价）。
   //   脱离  下一次来袭闪避 +50%（0.7×50 = 35）＋ 本回合敌方反击窗口关闭（≈ 反击强度 7%，反击 3×7 = 21）= 56 × 0.5 = 28。
   //   拉近  下一击目标闪避 −50%（0.7×50 = 35）＋ 自己命中 +20%（0.6×20 = 12）= 47 × 0.5 = 23.5 → 24。
   //   击退  目标下一击命中 −30%（0.6×30 = 18）＋ 反应 −15%（0.95×15 = 14.25）＋ 打断蓄力（判定修正.打断效果 18）= 50.25 × 0.5 = 25。
   //   换位  同一个技能的目标决定对谁：对友方 = 一次必躲 66.5 × 0.5 = 33；对敌方 = (反应 −30% 28.5 ＋ 打断 18) × 修为压制成功率约五成 × 0.5
   //         ≈ 23。一个技能一个价，取较高的友方档 33。
-  位移执行: Object.freeze({ 换位: 33, 脱离: 28, 拉近: 24, 击退: 25, 瞬移: 50 }),
+  位移执行: Object.freeze({ 换位: 33, 脱离: 28, 拉近: 24, 击退: 25, 瞬移: 25 }),
   决策干扰: Object.freeze({ 判断干扰: 0.6, 索敌干扰: 0.75 }),
   召唤生成: Object.freeze({
     本命召唤兽: 50, 分身: 28, 器灵: 35, 其他召唤生物: 30, 魂师: 30, 魂兽: 30, 深渊生物: 30,
