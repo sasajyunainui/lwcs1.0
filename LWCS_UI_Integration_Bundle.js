@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:106a8eb4def1fb937871c1c49485e3038dfb61f6445d9eaf0d24d100e97a0fcf|cockpit/designer-model.js:76779b81a0a8053dab9a7f9ee227be5ce11514b32eb89eb3357ac03ecd359237|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:3a7ab2b86114d7997e52efa71f2ebd4abfbfe0588597e12628cc11524a69319e|cockpit/designer-model.js:43e9907dc6a213586bc290bdf3e507a8178bd80879f0f020231ac30ffa7c4f99|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -28906,6 +28906,11 @@ ${播报文本}
       // 赛事对局 (任务卡⑥): the bout's 赛事上下文 goes on with the battle — world.战斗 is replaced at the opening, and
       // 结算赛事战斗_桥接 reads the context from it when the battle is settled.
       ...(赛事对局 ? { 赛事上下文: { ...cloneJsonValue(赛事上下文原值, {}), ...(rosterResult.代号绑定 ? { 代号绑定: cloneJsonValue(rosterResult.代号绑定, {}) } : {}),
+        // 比赛规则禁止装备（S80-A）：斗铠 / 机甲 在禁用之列就不能释放（BattlePreview armourReleaseOptions）。
+        ...((() => {
+          const 禁止 = deepGet(snapshot, ['rootData', 'world', '赛事', toText(赛事上下文原值?.赛事ID, ''), '项目', toText(赛事上下文原值?.项目, ''), '参赛限制', '禁止装备'], []);
+          return Array.isArray(禁止) && 禁止.length ? { 禁止装备: 禁止.map(值 => toText(值, '').trim()).filter(Boolean) } : {};
+        })()),
         ...(rosterResult.后续 ? { 后续: cloneJsonValue(rosterResult.后续, {}) } : {}) } } : {}),
       ...(soulTowerCombat
         ? {
@@ -29200,6 +29205,8 @@ ${播报文本}
         .filter(([name, condition]) => name && condition && typeof condition === 'object')
         // 换装只在本场战斗生效（用户 2026-11-14）：换上装备的加成、换下装备的扣除都不带出战斗。
         .filter(([, condition]) => !condition.__换下槽位 && !(condition.__equipmentState === true && condition.__equipmentActionId))
+        // 斗铠 / 机甲 未释放（S80-A）只在战斗里：每回合开始补上，不进存档。
+        .filter(([, condition]) => !condition.__装备未释放)
         .map(([name, condition]) => [name, 构建战斗状态落盘值(condition)]),
     );
   }
@@ -42174,6 +42181,12 @@ ${播报文本}
       callableElements: 武魂元素上下文.可调用元素,
       魂环位,
       魂环数据,
+      // 魂导器（S80-B）：装配槽里的魂导器技能按魂导等级对标第 N 环的预算（MVU 推断虚拟魂技位_V1）。
+      ...((() => {
+        const 装配索引 = 路径.findIndex(片段 => normalizeSkillUiText(片段, '') === '装配');
+        const 魂导等级 = 路径.includes('魂导器') && 装配索引 >= 0 ? Number(deepGet(根数据, 路径.slice(0, 装配索引 + 2), {})?.魂导等级) : 0;
+        return 魂导等级 > 0 ? { 魂导等级 } : {};
+      })()),
       ringAge: 魂环数据?.年限,
       ringColor: 魂环数据?.颜色,
       ...(来源品质 ? { sourceQuality: 来源品质 } : {}),

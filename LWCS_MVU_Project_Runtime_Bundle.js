@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:d2eab9a667510575469428bef43b9a4dbbba36ff0a8fe5813a6ec13691682391|MVU_Schema_Runtime.js:24aed5e223712a53c09c5b745a3e4891a729d4e20843aa1ddf7aa5ca96328d1f|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:1f7a519a850bc170c3da108bfe22614d098b593bc573d8b38a5c0a7bec81aba5 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:2a32ed08ac77df6a5c0d137b0cf5bff4e0f478322e6b6e831a6441eab9820c6a|MVU_Schema_Runtime.js:24aed5e223712a53c09c5b745a3e4891a729d4e20843aa1ddf7aa5ca96328d1f|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:1f7a519a850bc170c3da108bfe22614d098b593bc573d8b38a5c0a7bec81aba5 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -10400,6 +10400,7 @@ if (typeof globalThis !== 'undefined') {
   globalThis.__LWCS_SKILL_MECHANISM_REGISTRY__ = SKILL_MECHANISM_REGISTRY_V1;
   // v3 阶段 2-7：暴露 COST 真值表与评估函数给 mvu_logic_bridge / 检查器 / 生成器调用
   globalThis.__LWCS_SKILL_COST_HELPERS_V1__ = Object.freeze({
+    构建魂技消耗文本_V1,
     SKILL_UNIT_COST_TABLE_V1,
     SKILL_STANDARD_COST_BY_TIER_V1,
     SKILL_STANDARD_CAST_TIME_V1,
@@ -21665,6 +21666,8 @@ function 推断虚拟魂技位_V1(来源 = '魂技', 上下文 = {}) {
     if (年限 >= 1000) return 3;
     return 1;
   }
+  // 魂导器（接入方案 S80-B）：魂导等级 N 对标第 N 环（9 级以上按第 9 环），与魂骨对标魂环位同一做法。
+  if (来源 === '装备技能' && Number(上下文?.魂导等级) > 0) return Math.max(1, Math.min(9, Math.floor(Number(上下文.魂导等级))));
   // 血脉/气血/精神领域/装备/物品 等：用角色等级映射，否则中位
   if (角色等级 > 0) return Math.max(1, Math.min(9, Math.floor(角色等级 / 10)));
   return 5;
