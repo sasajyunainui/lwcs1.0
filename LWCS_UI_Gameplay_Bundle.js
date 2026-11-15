@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:20fa47eb98c686d3bfad5976dfdc8e9e13843984e052c3cab9f0a42a789a9e8b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:06c8130b02cc0bf87be87eacd0306eed3a877a0af902948d3b23926924c169e2|BattleRuntime_Module.js:83e7d9f80955ae31fbf921df96c5c73d5cfb23f06dcb247121c4ad7432ddb295|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:20fa47eb98c686d3bfad5976dfdc8e9e13843984e052c3cab9f0a42a789a9e8b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:5badd697b42bf2940f457ec529b7f2082137a7fdd531bffe6e074eb38e6b1abc|BattleRuntime_Module.js:83e7d9f80955ae31fbf921df96c5c73d5cfb23f06dcb247121c4ad7432ddb295|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -112693,6 +112693,28 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return built;
   }
 
+  // 决策随机（用户 2026-11-15「将高权重重新分配随机，这样就能保持多样性」「保证决策随机，但是不能随机过头，不然权重完全失去了
+  // 意义」）: the deciding unit's own choice (the outermost decision; what it pictures others choosing stays the best) is drawn among
+  // the candidates near the top — within DECISION_DIVERSITY_BAND of the way from the median score to the best (the median, so one
+  // very poor candidate does not widen it) — each by how far it stands above that band's floor, so the best is always the likeliest
+  // and a lone best is chosen as before. Contextually dominated candidates take no part. The battle's seeded Math.random draws it,
+  // so a case run with a fixed seed is reproduced.
+  const DECISION_DIVERSITY_BAND = Number(root.__LWCS_TUNE__?.DIVERSITY_BAND ?? 0.1);
+  function diversifiedChoice(ranked = [], bestId = '', request = {}) {
+    if (providerDepth !== 1 || !(DECISION_DIVERSITY_BAND > 0) || request?.playerLockedDeclaration) return bestId;
+    const rows = ranked.filter(row => row && row.contextuallyDominated !== true && Number.isFinite(Number(row.score)));
+    if (rows.length < 2) return bestId;
+    const scores = rows.map(row => Number(row.score)).sort((a, b) => b - a);
+    const best = scores[0], median = scores[Math.floor(scores.length / 2)];
+    const floor = best - DECISION_DIVERSITY_BAND * Math.max(0, best - median);
+    const band = rows.filter(row => Number(row.score) >= floor);
+    if (band.length < 2) return bestId;
+    const weights = band.map(row => Number(row.score) - floor + 1e-9), total = weights.reduce((sum, weight) => sum + weight, 0);
+    let roll = Math.random() * total;
+    for (let index = 0; index < band.length; index += 1) { roll -= weights[index]; if (roll <= 0) return String(band[index].candidateId || bestId); }
+    return String(band[band.length - 1].candidateId || bestId);
+  }
+
   function runR9v2LinearPreparedProvider(request = {}, featurePreparation) {
     const provider = root.__LWCS_BEHAVIOR_DECISION_PIPELINE__?.linearScoreProvider;
     if (!provider || typeof provider.selectPreparedRequest !== 'function') {
@@ -112729,7 +112751,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       : 0;
     const ranked = Array.isArray(result?.ranked) ? result.ranked : [];
     if (!ranked.length) throw new Error('R9V2_LINEAR_NO_RANKED_ROWS');
-    const providerSelectedId = String(result?.selected?.candidateId || '').trim();
+    const providerSelectedId = diversifiedChoice(ranked, String(result?.selected?.candidateId || '').trim(), request);
     const frozenById = new Map(
       request.frozenCandidates.map(candidate => [candidate.candidateId, candidate]),
     );

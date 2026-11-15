@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:ec3add2af2b73843ebc0299448b0b9dab5cbd6bec3159387b7fc515af429436e|MVU_Schema_Runtime.js:454e4a242dce5e02d69c3def2993d350ac50f39dcb667f2fc6f09488f34461dd|BattlePreview_Module.js:20fa47eb98c686d3bfad5976dfdc8e9e13843984e052c3cab9f0a42a789a9e8b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:06c8130b02cc0bf87be87eacd0306eed3a877a0af902948d3b23926924c169e2|BattleRuntime_Module.js:83e7d9f80955ae31fbf921df96c5c73d5cfb23f06dcb247121c4ad7432ddb295 */
+/* sources-sha256: MVU_Skill_Runtime.js:ec3add2af2b73843ebc0299448b0b9dab5cbd6bec3159387b7fc515af429436e|MVU_Schema_Runtime.js:454e4a242dce5e02d69c3def2993d350ac50f39dcb667f2fc6f09488f34461dd|BattlePreview_Module.js:20fa47eb98c686d3bfad5976dfdc8e9e13843984e052c3cab9f0a42a789a9e8b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:5badd697b42bf2940f457ec529b7f2082137a7fdd531bffe6e074eb38e6b1abc|BattleRuntime_Module.js:83e7d9f80955ae31fbf921df96c5c73d5cfb23f06dcb247121c4ad7432ddb295 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -143020,6 +143020,28 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return built;
   }
 
+  // 决策随机（用户 2026-11-15「将高权重重新分配随机，这样就能保持多样性」「保证决策随机，但是不能随机过头，不然权重完全失去了
+  // 意义」）: the deciding unit's own choice (the outermost decision; what it pictures others choosing stays the best) is drawn among
+  // the candidates near the top — within DECISION_DIVERSITY_BAND of the way from the median score to the best (the median, so one
+  // very poor candidate does not widen it) — each by how far it stands above that band's floor, so the best is always the likeliest
+  // and a lone best is chosen as before. Contextually dominated candidates take no part. The battle's seeded Math.random draws it,
+  // so a case run with a fixed seed is reproduced.
+  const DECISION_DIVERSITY_BAND = Number(root.__LWCS_TUNE__?.DIVERSITY_BAND ?? 0.1);
+  function diversifiedChoice(ranked = [], bestId = '', request = {}) {
+    if (providerDepth !== 1 || !(DECISION_DIVERSITY_BAND > 0) || request?.playerLockedDeclaration) return bestId;
+    const rows = ranked.filter(row => row && row.contextuallyDominated !== true && Number.isFinite(Number(row.score)));
+    if (rows.length < 2) return bestId;
+    const scores = rows.map(row => Number(row.score)).sort((a, b) => b - a);
+    const best = scores[0], median = scores[Math.floor(scores.length / 2)];
+    const floor = best - DECISION_DIVERSITY_BAND * Math.max(0, best - median);
+    const band = rows.filter(row => Number(row.score) >= floor);
+    if (band.length < 2) return bestId;
+    const weights = band.map(row => Number(row.score) - floor + 1e-9), total = weights.reduce((sum, weight) => sum + weight, 0);
+    let roll = Math.random() * total;
+    for (let index = 0; index < band.length; index += 1) { roll -= weights[index]; if (roll <= 0) return String(band[index].candidateId || bestId); }
+    return String(band[band.length - 1].candidateId || bestId);
+  }
+
   function runR9v2LinearPreparedProvider(request = {}, featurePreparation) {
     const provider = root.__LWCS_BEHAVIOR_DECISION_PIPELINE__?.linearScoreProvider;
     if (!provider || typeof provider.selectPreparedRequest !== 'function') {
@@ -143056,7 +143078,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       : 0;
     const ranked = Array.isArray(result?.ranked) ? result.ranked : [];
     if (!ranked.length) throw new Error('R9V2_LINEAR_NO_RANKED_ROWS');
-    const providerSelectedId = String(result?.selected?.candidateId || '').trim();
+    const providerSelectedId = diversifiedChoice(ranked, String(result?.selected?.candidateId || '').trim(), request);
     const frozenById = new Map(
       request.frozenCandidates.map(candidate => [candidate.candidateId, candidate]),
     );
