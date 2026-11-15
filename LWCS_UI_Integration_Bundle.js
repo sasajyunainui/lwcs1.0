@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:e7b8f6264e4321908cc814a6889852c8b2bcf958485c1f16d2864c3148c5506e|cockpit/designer-model.js:76779b81a0a8053dab9a7f9ee227be5ce11514b32eb89eb3357ac03ecd359237|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:106a8eb4def1fb937871c1c49485e3038dfb61f6445d9eaf0d24d100e97a0fcf|cockpit/designer-model.js:76779b81a0a8053dab9a7f9ee227be5ce11514b32eb89eb3357ac03ecd359237|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -9199,7 +9199,13 @@
       代号绑定[名称] = toText(选用.normalized?.name, 候选名);
     });
     if (!team_player.length || !team_enemy.length) return null;
-    return { ok: true, participants: { team_player, team_enemy }, ...(Object.keys(代号绑定).length ? { 代号绑定 } : {}) };
+    // 后续出场（BattlePreview matchFollowUp）：擂台里这一方之后还有几人接着打、之后还有没有团战（小分全拿会跳过，按会打算）。
+    const 赛程 = 对局.赛程;
+    const 接续 = 方 => 赛程.阶段 === '擂台' ? Math.max(0, (赛程.排阵?.[方]?.顺序 || []).length - toNumber(赛程.擂台位?.[方], 0) - 1) : 0;
+    const 团战 = 赛程.阶段 !== '团战' && ['擂台团战积分', '单双团积分'].includes(赛程.赛制);
+    const 后续 = { PLAYER: { 接续: 接续(玩家方), 团战 }, ENEMY: { 接续: 接续(1 - 玩家方), 团战 } };
+    return { ok: true, participants: { team_player, team_enemy }, ...(Object.keys(代号绑定).length ? { 代号绑定 } : {}),
+      ...(团战 || 后续.PLAYER.接续 || 后续.ENEMY.接续 ? { 后续 } : {}) };
   }
 
   function 确保赛事参赛者实体_桥接(数据根 = {}, 赛事ID = '', 项目名 = '', 参赛者ID = '') {
@@ -28899,7 +28905,8 @@ ${播报文本}
       source: toText(detail.source, 'map_action'),
       // 赛事对局 (任务卡⑥): the bout's 赛事上下文 goes on with the battle — world.战斗 is replaced at the opening, and
       // 结算赛事战斗_桥接 reads the context from it when the battle is settled.
-      ...(赛事对局 ? { 赛事上下文: { ...cloneJsonValue(赛事上下文原值, {}), ...(rosterResult.代号绑定 ? { 代号绑定: cloneJsonValue(rosterResult.代号绑定, {}) } : {}) } } : {}),
+      ...(赛事对局 ? { 赛事上下文: { ...cloneJsonValue(赛事上下文原值, {}), ...(rosterResult.代号绑定 ? { 代号绑定: cloneJsonValue(rosterResult.代号绑定, {}) } : {}),
+        ...(rosterResult.后续 ? { 后续: cloneJsonValue(rosterResult.后续, {}) } : {}) } } : {}),
       ...(soulTowerCombat
         ? {
             floor: soulTowerFloor,

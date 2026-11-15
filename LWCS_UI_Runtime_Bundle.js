@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:e7b8f6264e4321908cc814a6889852c8b2bcf958485c1f16d2864c3148c5506e|cockpit/designer-model.js:76779b81a0a8053dab9a7f9ee227be5ce11514b32eb89eb3357ac03ecd359237|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:201a842171ca34c80e7e7056c90d43dfee7f5e87ce16246ae29d06b2bdee8ad0|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:ef6a9225a66e35ad5c29b831b672438d9c08fcb2a8e03262713b5eb869837f1a|BattleRuntime_Module.js:178148439a6aba2d4127dc8b96192eb9942dbb70f9978b67ffc48b4bcf6db441|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:106a8eb4def1fb937871c1c49485e3038dfb61f6445d9eaf0d24d100e97a0fcf|cockpit/designer-model.js:76779b81a0a8053dab9a7f9ee227be5ce11514b32eb89eb3357ac03ecd359237|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:55776efc40826c161ead7d9ba6dafd9ea674424a65a6c65b8df3420223319808|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:ccaf41d9b1ef378d3477597d89a20d9d1b52671a347610d2deeb988e946b7c7e|BattleRuntime_Module.js:178148439a6aba2d4127dc8b96192eb9942dbb70f9978b67ffc48b4bcf6db441|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -9199,7 +9199,13 @@
       代号绑定[名称] = toText(选用.normalized?.name, 候选名);
     });
     if (!team_player.length || !team_enemy.length) return null;
-    return { ok: true, participants: { team_player, team_enemy }, ...(Object.keys(代号绑定).length ? { 代号绑定 } : {}) };
+    // 后续出场（BattlePreview matchFollowUp）：擂台里这一方之后还有几人接着打、之后还有没有团战（小分全拿会跳过，按会打算）。
+    const 赛程 = 对局.赛程;
+    const 接续 = 方 => 赛程.阶段 === '擂台' ? Math.max(0, (赛程.排阵?.[方]?.顺序 || []).length - toNumber(赛程.擂台位?.[方], 0) - 1) : 0;
+    const 团战 = 赛程.阶段 !== '团战' && ['擂台团战积分', '单双团积分'].includes(赛程.赛制);
+    const 后续 = { PLAYER: { 接续: 接续(玩家方), 团战 }, ENEMY: { 接续: 接续(1 - 玩家方), 团战 } };
+    return { ok: true, participants: { team_player, team_enemy }, ...(Object.keys(代号绑定).length ? { 代号绑定 } : {}),
+      ...(团战 || 后续.PLAYER.接续 || 后续.ENEMY.接续 ? { 后续 } : {}) };
   }
 
   function 确保赛事参赛者实体_桥接(数据根 = {}, 赛事ID = '', 项目名 = '', 参赛者ID = '') {
@@ -28899,7 +28905,8 @@ ${播报文本}
       source: toText(detail.source, 'map_action'),
       // 赛事对局 (任务卡⑥): the bout's 赛事上下文 goes on with the battle — world.战斗 is replaced at the opening, and
       // 结算赛事战斗_桥接 reads the context from it when the battle is settled.
-      ...(赛事对局 ? { 赛事上下文: { ...cloneJsonValue(赛事上下文原值, {}), ...(rosterResult.代号绑定 ? { 代号绑定: cloneJsonValue(rosterResult.代号绑定, {}) } : {}) } } : {}),
+      ...(赛事对局 ? { 赛事上下文: { ...cloneJsonValue(赛事上下文原值, {}), ...(rosterResult.代号绑定 ? { 代号绑定: cloneJsonValue(rosterResult.代号绑定, {}) } : {}),
+        ...(rosterResult.后续 ? { 后续: cloneJsonValue(rosterResult.后续, {}) } : {}) } } : {}),
       ...(soulTowerCombat
         ? {
             floor: soulTowerFloor,
@@ -63853,6 +63860,19 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
   // about 7% in a spar, 9–13% in a match, 20% subdued and 33% to the death — 胜率严重不足, the graver the fate the
   // sooner; a withdrawal besides by its chance of success and less its pursuit.
   const EXIT_FATE = Object.freeze({ SPAR: 0.15, REFEREED_MATCH: 0.2, MATCH: 0.3, SUBDUED: 0.5, DEATH: 1 });
+  // 后续出场（团体赛子场，11-15 用户「后续出场…结合比赛」；原作 萧萧对薛兵「至少也极大程度的消耗了薛兵的实力」）：桥接层按赛程把
+  // 双方的后续写进 赛事上下文.后续 { PLAYER|ENEMY: { 接续: 擂台里这一方之后还有几人接着打, 团战: 之后还有团战 } }。
+  //   接着打的队友会遇上同一个对手、团战里对方也带着这场的伤：留下来多打掉的对手生命有价值（消耗，FOLLOW_DRAIN）——
+  //   估计为对手剩余生命 × 我倒下前能打掉的那部分（两只钟之比）× 我还剩的魂力（精神力），只在输的那部分里算；
+  //   接着打的队友记满，只有团战在后记一半。
+  //   之后还有团战：自己的生命也带进团战（保留，FOLLOW_KEEP）——认输保住此刻的生命，留下来赢了保住、输了剩一成。
+  const FOLLOW_DRAIN = 0.6, FOLLOW_KEEP = 0.6;
+  function matchFollowUp(worldSnapshot = {}, side = '') {
+    const record = worldSnapshot?.赛事上下文?.后续?.[side === 'team_enemy' ? 'ENEMY' : 'PLAYER'];
+    if (!record || typeof record !== 'object') return null;
+    const carry = Number(record.接续) > 0 ? 1 : record.团战 === true ? 0.5 : 0, keep = record.团战 === true ? 1 : 0;
+    return carry || keep ? { carry, keep } : null;
+  }
   // The outlook (battleStandingOutlook) is read off the field: who brings the other side down first, and whether before
   // the battle's rounds run out (胜负条件 maxRounds). A side's time to bring the other down is the other's HP shares (units
   // still standing) over the rate it has been taking HP off the other side less the rate the other has been putting HP
@@ -63971,14 +63991,27 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     const without = others ? battleStandingOutlook(worldSnapshot, side, id) : Object.freeze({ win: 0, lose: 1, draw: 0 });
     // What the battle's result is worth to each unit on the field: won +1, lost −1 and its fate; run out, 0.
     const worth = view => view.win - view.lose - view.lose * fate;
-    const stay = worth(outlook);
+    let stay = worth(outlook);
+    const follow = matchFollowUp(worldSnapshot, side);
+    let followStay = 0, followLeft = 0;
+    if (follow) {
+      const share = unit => clamp(readHp(unit) / Math.max(1, readHpMax(unit)), 0, 1);
+      const fuel = Math.max(0, ...['魂力', '精神力'].map(resource => readResourceMax(actor, resource) > 0 ? clamp(readResource(actor, resource) / readResourceMax(actor, resource), 0, 1) : 0));
+      const foeHp = listUnits(worldSnapshot).filter(entry => entry.side && entry.side !== side && isBattleCapable(entry.unit) && !isSummonUnit(entry.unit))
+        .reduce((sum, entry) => sum + share(entry.unit), 0);
+      const reach = !(outlook.ownTime < Number.POSITIVE_INFINITY) ? 0 : outlook.ownTime <= 0 ? 1 : Math.min(1, outlook.otherTime / outlook.ownTime);
+      followStay = FOLLOW_DRAIN * follow.carry * foeHp * reach * fuel * (1 - outlook.win) +
+        FOLLOW_KEEP * follow.keep * ((outlook.win + 0.5 * outlook.draw) * share(actor) + outlook.lose * LIFE_THREAT_RATIO);
+      followLeft = FOLLOW_KEEP * follow.keep * share(actor);
+      stay += followStay;
+    }
     // A unit getting away from a side out to get away (WITHDRAW_SUCCESS) has its goal met; else it has lost.
     const escapes = rules.withdraw && sideWithdrawalGoal(worldSnapshot, side, battleIntent);
-    const left = ((escapes ? 1 : -1) + others * worth(without)) / (others + 1);
+    const left = ((escapes ? 1 : -1) + others * worth(without)) / (others + 1) + followLeft;
     const success = rules.concede ? 1 : clamp(Number(contest?.successProbability ?? 1), 0, 1);
     const pursuit = rules.concede ? 0 : Math.max(0, Number(contest?.expectedPursuitDamage || 0)) / Math.max(1, readHpMax(actor));
     return Object.freeze({ kind: rules.exit, fate, win: outlook.win, lose: outlook.lose, withoutWin: without.win, withoutLose: without.lose,
-      others, stay, left, escapes, success, pursuit, delta: success * (left - stay) - pursuit });
+      others, stay, left, escapes, success, pursuit, ...(follow ? { followStay, followLeft } : {}), delta: success * (left - stay) - pursuit });
   }
   // WITHDRAW_SUCCESS (方案第 3 条): a side that got someone away (__battleRuntime.withdrawalSuccessSides) with no one left
   // on the field. `sideKey` PLAYER / ENEMY (or a side key); '' any side.
@@ -85388,6 +85421,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     battleStandingOutlook,
     sideWithdrawalGoal,
     exitValuation,
+    matchFollowUp,
     withdrawalSucceeded,
     resolveBattleType,
     normalizeBattleType,
@@ -161524,7 +161558,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const wary = foes.length ? foes.reduce((sum, [unit, row]) => sum + (1 - clamp(Number(unit?.__clarity ?? 1), 0, 1)) ** 2 *
       caution((Number(unit?.__perceivedLevel ?? unitLevel(unit)) || ownLevel) - ownLevel, row), 0) / foes.length : 0;
     const spar = R20_SPAR_INTENT.test(String(r20Intent?.mode || table.world?.战斗意图 || ''));
-    const cost = R20_RESOURCE_PRICE * spent * (1 + R20_PROBE_PREMIUM * unseen) * (spar ? R20_SPAR_PRICE : 1);
+    // 后续出场（BattlePreview matchFollowUp）：擂台里我方之后还有人接着打这个对手时不必试探——逼他出手、亮牌、耗他的资源本身就是
+    // 给队友铺路（原作 萧萧对薛兵），试探溢价不计。
+    const followCarry = Number(preview.matchFollowUp?.(table.world, request.actorSide)?.carry || 0) >= 1;
+    const cost = R20_RESOURCE_PRICE * spent * (1 + (followCarry ? 0 : R20_PROBE_PREMIUM * unseen)) * (spar ? R20_SPAR_PRICE : 1);
     // 亮魂环（同上）: any 魂技 lights the rings — the enemy sees how many and how old, and what the spirit does — so against one
     // not yet seen it costs a base share (R20_REVEAL_BASE) of what it stands to gain, more for a bigger card, at most R20_REVEAL_CAP.
     // 试探（用户 2026-11-15「在不清楚对方能力前，最重要的就是试探」「不能过多提高战局中普攻占比」）: a big card (the share of
