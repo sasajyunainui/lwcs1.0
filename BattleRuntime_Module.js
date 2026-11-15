@@ -11611,8 +11611,36 @@
             ...declaration, targetIds: triggeredTargets.map(previewRuntime.unitId),
           }, effect)
         : triggeredTargets;
-      const resolvedTargets = refereeTakenTargetIds.size
+      const unrolledTargets = refereeTakenTargetIds.size
         ? conditionedTargets.filter(target => !refereeTakenTargetIds.has(previewRuntime.unitId(target))) : conditionedTargets;
+      // 主效果判命中（用户 2026-11-15「魂技设计是分为主效果，副效果的，副效果可以不看命中率，但主效果应该和伤害魂技一样计算命中率」）:
+      // a skill's primary effect on an enemy that is not damage — a state, a 判定/属性 debuff, a 位移 — rolls to hit as damage does
+      // (BattlePreview estimateHitProbability) and misses an enemy that evaded it; the effects that follow it (跟随主原型) go with it.
+      // Effects of their own (独立生效) beyond the primary do not roll. Until 11-15 a control skill landed on an enemy that dodged.
+      const resolvedTargets = isPrimaryEffect && prototype !== '伤害结算' && !effect?.条件分支?.length
+        ? unrolledTargets.filter(target => {
+            const targetId = previewRuntime.unitId(target);
+            if (targetId === previewRuntime.unitId(actor) || inferUnitSide(combatData, target) === inferUnitSide(combatData, actor)) return true;
+            const reaction = input?.reactionByTarget?.[targetId] || null;
+            const hitProbability = reaction?.forceHit === true ? 1 : Math.max(0, Math.min(1, previewRuntime.estimateHitProbability(actor, target, { ...effect, 触发概率: undefined, 成功率: undefined },
+              null, null, unrolledTargets.length, { initiative: actionRole === 'ACTIVE' })));
+            const evaded = reaction?.evaded === true;
+            const roll = evaded || hitProbability >= 1 - 1e-12 ? null : Math.random();
+            if (!evaded && (roll === null || probabilitySucceeds(hitProbability, roll))) return true;
+            facts.push(writeLedgerEvent(combatData, {
+              eventKind: 'hit_result', round: Number(combatData?.回合 || 0),
+              actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor), targetId, targetName: previewRuntime.unitName(target),
+              actionName, actionType: actionKind, actorControl, actionRole, actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
+              parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
+              result: 'miss', resultState: 'FAILURE', primaryOutcome: evaded ? 'dodged' : 'missed', effectPrototype: prototype, sourceEffectId,
+              meta: { source: 'structured_runtime', effectIndex, prototype, hitProbability, roll, evaded, primaryEffectHitRoll: true },
+            }));
+            primaryResolutionByTarget.set(targetId, false);
+            primaryOutcomeByTarget.set(targetId, evaded ? 'EVADED' : 'MISS');
+            return false;
+          })
+        : unrolledTargets;
+      if (!resolvedTargets.length) return;
       if (effect?.条件分支?.length) {
         const conditionalDepth = Number(conditionalMeta.conditionalDepth || 0), limit = previewRuntime.recursionDepthLimit;
         if (!(Number.isFinite(limit) && limit > 0)) throw new Error('battle_preview_recursion_limit_contract_missing');

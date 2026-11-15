@@ -20251,12 +20251,22 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const ownApplicationProbabilityByTarget = new Map(
         targets.map(target => {
           const targetId = unitId(target);
+          // 主效果判命中（BattleRuntime executeResolvedEffect, 用户 2026-11-15）: a primary effect on an enemy that is not damage lands
+          // only on a hit — the roll damage takes (estimateHitProbability, without the effect's own application chance) — and not
+          // on one that evades it (evadeProbabilityByTarget); the effects that follow it inherit this.
+          const primaryHostileRoll = index === 0 && prototype !== '伤害结算' && targetId !== unitId(effectActor) &&
+            sideOf(effectWorldSnapshot, overlay.readUnit(targetId) || target) !== sideOf(effectWorldSnapshot, effectActor);
+          const primaryHit = primaryHostileRoll
+            ? clamp(estimateHitProbability(effectActor, overlay.readUnit(targetId) || target, { ...effect, 触发概率: undefined, 成功率: undefined },
+              context.projectionContext, environmentContext, targets.length, { initiative: context.initiative }), 0, 1) *
+              (1 - clamp(Number(input?.evadeProbabilityByTarget?.[targetId] || 0), 0, 1))
+            : 1;
           const baseApplicationProbability = (hasOwnApplicationProbability
             ? normalizeEffectProbability(
                 effect?.成功率 ?? effect?.触发概率,
                 1,
               )
-            : 1) * stateApplicationProbabilityMultiplier(overlay.readUnit(targetId), effect);
+            : 1) * stateApplicationProbabilityMultiplier(overlay.readUnit(targetId), effect) * primaryHit;
           const resolvedApplicationProbability =
             typeof input?.applicationProbabilityResolver === 'function'
               ? input.applicationProbabilityResolver({
