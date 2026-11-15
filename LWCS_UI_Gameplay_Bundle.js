@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:5873f07fa209adeff3b3ab3205f3f1e13f42f7d48082a2970c50204898a5cb94|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:97029871b086807cfe780d47bc9bbd0597c225fc01cb5e4cb8c143c8b7cfc02e|BattleRuntime_Module.js:c83f68cb205159c4dd0af3a8401cd956271e2aaf112314a567a3db73c2dbd879|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:153f5efaadfe1351657427b6bf91f5dcc8812bb7f63732be52ca6a2263177743|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:97029871b086807cfe780d47bc9bbd0597c225fc01cb5e4cb8c143c8b7cfc02e|BattleRuntime_Module.js:c83f68cb205159c4dd0af3a8401cd956271e2aaf112314a567a3db73c2dbd879|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -15872,6 +15872,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (state === '麻痹') {
       combatEffect.cast_speed_penalty = Math.max(Number(combatEffect.cast_speed_penalty || 0), magnitude || 0.25);
       combatEffect.reaction_penalty = Math.max(Number(combatEffect.reaction_penalty || 0), magnitude || 0.25);
+      // 副数值 = 闪避下降（11-15 设计侧与运行时排查：副数值计价却不读）。
+      if (secondaryMagnitude > 0) combatEffect.dodge_penalty = Math.max(Number(combatEffect.dodge_penalty || 0), secondaryMagnitude);
     }
     if (/僵直/.test(state)) {
       combatEffect.cannot_react = true;
@@ -16336,16 +16338,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   }
 
   // 限定攻击类型（11-15 设计侧与运行时排查：写了「限定近身攻击」却对所有攻击生效）: a limited 结算修正 entry counts only for a hit
-  // whose 伤害类型 is one it names; its 限定元素 as before. 碾压 / 冲击 name no 伤害类型 a hit can have — such an entry is read as unlimited
-  // by type until they are given a meaning.
-  const LIMITABLE_ATTACK_TYPES = new Set(['近身攻击', '远程攻击', '精神攻击', '真实攻击']);
+  // whose 伤害类型 is one it names (近身/远程/精神/真实攻击), or — 碾压 / 冲击（用户 11-15「那就按你的来」）— that carries that tag among
+  // its attached attributes (附带属性, matched as 限定元素 is); its 限定元素 as before.
+  const LIMITABLE_ATTACK_TYPES = new Set(['近身攻击', '远程攻击', '精神攻击', '真实攻击']), LIMITABLE_ATTACK_TAGS = new Set(['碾压', '冲击']);
   function limitedAttackTypes(value) {
-    return (Array.isArray(value) ? value : String(value || '').split(/[、,，/|]+/)).map(item => String(item || '').trim()).filter(item => LIMITABLE_ATTACK_TYPES.has(item));
+    return (Array.isArray(value) ? value : String(value || '').split(/[、,，/|]+/)).map(item => String(item || '').trim()).filter(item => LIMITABLE_ATTACK_TYPES.has(item) || LIMITABLE_ATTACK_TAGS.has(item));
   }
   function limitedEntryMatches(effect = {}, entry = {}) {
     if (!skillMatchesLimitedElements(effect, entry?.限定元素)) return false;
     const types = limitedAttackTypes(entry?.限定攻击类型);
-    return !types.length || types.includes(String(effect?.伤害类型 || '').trim());
+    if (!types.length) return true;
+    return types.includes(String(effect?.伤害类型 || '').trim()) ||
+      types.some(type => LIMITABLE_ATTACK_TAGS.has(type) && skillMatchesLimitedElements(effect, [type]));
   }
   function skillMatchesLimitedElements(skill = {}, limitation = '') {
     const required = normalizedElementTokens(limitation);

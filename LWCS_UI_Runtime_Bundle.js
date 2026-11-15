@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:7f561133be484aba9b48fc6b49b51b71c3e3e4cbbf6743c9e6b0a62cf26be637|cockpit/designer-model.js:1f4c30610ce2f35303952c05e4bb7848bee22f105d9121a1fe74dc5d82d9b447|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:3474ced3c93288f1eb7f4fea4ab961df89f18319d3c7a388066ea50741681f27|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:5873f07fa209adeff3b3ab3205f3f1e13f42f7d48082a2970c50204898a5cb94|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:97029871b086807cfe780d47bc9bbd0597c225fc01cb5e4cb8c143c8b7cfc02e|BattleRuntime_Module.js:c83f68cb205159c4dd0af3a8401cd956271e2aaf112314a567a3db73c2dbd879|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:07690fd56f782833305f7174e75ab934ded88f2a3c21ba72b8e12e6de162938f|cockpit/designer-model.js:1f4c30610ce2f35303952c05e4bb7848bee22f105d9121a1fe74dc5d82d9b447|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:3474ced3c93288f1eb7f4fea4ab961df89f18319d3c7a388066ea50741681f27|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:153f5efaadfe1351657427b6bf91f5dcc8812bb7f63732be52ca6a2263177743|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:97029871b086807cfe780d47bc9bbd0597c225fc01cb5e4cb8c143c8b7cfc02e|BattleRuntime_Module.js:c83f68cb205159c4dd0af3a8401cd956271e2aaf112314a567a3db73c2dbd879|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -16909,7 +16909,7 @@
     if (normalizeSkillUiText(原型, '') !== '状态施加' || !字段 || typeof 字段 !== 'object') return;
     const 状态名 = normalizeSkillUiText(字段['状态'], '');
     const 触发方式 = normalizeSkillUiText(字段['触发方式'], '立即触发');
-    字段['触发方式'] = ['立即触发', '延迟触发', '遥控触发'].includes(触发方式)
+    字段['触发方式'] = ['立即触发', '延迟触发'].includes(触发方式)
       ? 触发方式
       : 字段['延迟回合'] !== undefined
         ? '延迟触发'
@@ -18319,10 +18319,11 @@
         throw new Error(`技能执行结构错误:${path}[${index}]嵌套效果必须独立生效`);
       if (原型 === '状态施加') {
         const 状态名 = normalizeSkillUiText(effect['状态'], '');
-        const 触发方式 = normalizeSkillUiText(effect['触发方式'], '立即触发');
+        // 遥控触发 11-15 撤下（运行时从未实现）：旧数据读作立即触发。
+        const 触发方式 = normalizeSkillUiText(effect['触发方式'], '立即触发') === '遥控触发' ? '立即触发' : normalizeSkillUiText(effect['触发方式'], '立即触发');
         if (状态名 === '护卫' && normalizeSkillUiText(effect['目标'], '') === '自身')
           throw new Error(`技能执行结构错误:${path}[${index}]护卫目标不能是自身`);
-        if (!['立即触发', '延迟触发', '遥控触发'].includes(触发方式))
+        if (!['立即触发', '延迟触发'].includes(触发方式))
           throw new Error(`技能执行结构错误:${path}[${index}]状态触发方式无效`);
         if (触发方式 === '延迟触发' && !(toNumber(effect['延迟回合'], 0) > 0))
           throw new Error(`技能执行结构错误:${path}[${index}]延迟触发必须提供延迟回合`);
@@ -21369,7 +21370,7 @@
       next['状态'] = 状态名;
       next['目标'] = 约束技能设计台原型正式目标(prototype, next['目标'], fallbackTarget, next);
       const 触发方式 = normalizeSkillUiText(next['触发方式'], '立即触发');
-      next['触发方式'] = ['立即触发', '延迟触发', '遥控触发'].includes(触发方式)
+      next['触发方式'] = ['立即触发', '延迟触发'].includes(触发方式)
         ? 触发方式
         : next['延迟回合'] !== undefined
           ? '延迟触发'
@@ -69539,6 +69540,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (state === '麻痹') {
       combatEffect.cast_speed_penalty = Math.max(Number(combatEffect.cast_speed_penalty || 0), magnitude || 0.25);
       combatEffect.reaction_penalty = Math.max(Number(combatEffect.reaction_penalty || 0), magnitude || 0.25);
+      // 副数值 = 闪避下降（11-15 设计侧与运行时排查：副数值计价却不读）。
+      if (secondaryMagnitude > 0) combatEffect.dodge_penalty = Math.max(Number(combatEffect.dodge_penalty || 0), secondaryMagnitude);
     }
     if (/僵直/.test(state)) {
       combatEffect.cannot_react = true;
@@ -70003,16 +70006,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   }
 
   // 限定攻击类型（11-15 设计侧与运行时排查：写了「限定近身攻击」却对所有攻击生效）: a limited 结算修正 entry counts only for a hit
-  // whose 伤害类型 is one it names; its 限定元素 as before. 碾压 / 冲击 name no 伤害类型 a hit can have — such an entry is read as unlimited
-  // by type until they are given a meaning.
-  const LIMITABLE_ATTACK_TYPES = new Set(['近身攻击', '远程攻击', '精神攻击', '真实攻击']);
+  // whose 伤害类型 is one it names (近身/远程/精神/真实攻击), or — 碾压 / 冲击（用户 11-15「那就按你的来」）— that carries that tag among
+  // its attached attributes (附带属性, matched as 限定元素 is); its 限定元素 as before.
+  const LIMITABLE_ATTACK_TYPES = new Set(['近身攻击', '远程攻击', '精神攻击', '真实攻击']), LIMITABLE_ATTACK_TAGS = new Set(['碾压', '冲击']);
   function limitedAttackTypes(value) {
-    return (Array.isArray(value) ? value : String(value || '').split(/[、,，/|]+/)).map(item => String(item || '').trim()).filter(item => LIMITABLE_ATTACK_TYPES.has(item));
+    return (Array.isArray(value) ? value : String(value || '').split(/[、,，/|]+/)).map(item => String(item || '').trim()).filter(item => LIMITABLE_ATTACK_TYPES.has(item) || LIMITABLE_ATTACK_TAGS.has(item));
   }
   function limitedEntryMatches(effect = {}, entry = {}) {
     if (!skillMatchesLimitedElements(effect, entry?.限定元素)) return false;
     const types = limitedAttackTypes(entry?.限定攻击类型);
-    return !types.length || types.includes(String(effect?.伤害类型 || '').trim());
+    if (!types.length) return true;
+    return types.includes(String(effect?.伤害类型 || '').trim()) ||
+      types.some(type => LIMITABLE_ATTACK_TAGS.has(type) && skillMatchesLimitedElements(effect, [type]));
   }
   function skillMatchesLimitedElements(skill = {}, limitation = '') {
     const required = normalizedElementTokens(limitation);

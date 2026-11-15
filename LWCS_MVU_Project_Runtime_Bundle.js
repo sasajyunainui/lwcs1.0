@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:51d2fcd5f694e18ab0581fb4957f7bc0a859a3b5014afd87a6f2346777116cc4|MVU_Schema_Runtime.js:454e4a242dce5e02d69c3def2993d350ac50f39dcb667f2fc6f09488f34461dd|MVU_Competition_Runtime.js:2a5d78b856d3123e857393fca07fb365d91ce9ea4877cc37dfafd86b384e8904|MVU_Runtime_View.js:126fa8da28200e2164f40355f0d91fb6ba478a32c5f2eef35a9887b0203aa4f9 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:10945d43175e339d759f9878cc3548a2fc727d8ac32af9ab5c1e657c27d6ce0c|MVU_Schema_Runtime.js:454e4a242dce5e02d69c3def2993d350ac50f39dcb667f2fc6f09488f34461dd|MVU_Competition_Runtime.js:2a5d78b856d3123e857393fca07fb365d91ce9ea4877cc37dfafd86b384e8904|MVU_Runtime_View.js:126fa8da28200e2164f40355f0d91fb6ba478a32c5f2eef35a9887b0203aa4f9 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -9300,7 +9300,8 @@ var SKILL_PROTOTYPE_FIELD_OPTIONS_V1 = Object.freeze({
   原型: Object.freeze([]),
   目标: Object.freeze(['自身', '单体', '群体', '全场', '召唤物']),
   生效方式: Object.freeze(['独立生效', '跟随主原型']),
-  触发方式: Object.freeze(['立即触发', '延迟触发', '遥控触发', ...SKILL_PASSIVE_TRIGGER_PHASE_OPTIONS_V1]),
+  // 遥控触发 11-15 撤下（用户「那就撤下吧，把延时触发做好就行」；运行时从未实现，却计价 +8）：旧数据在收口处读作立即触发。
+  触发方式: Object.freeze(['立即触发', '延迟触发', ...SKILL_PASSIVE_TRIGGER_PHASE_OPTIONS_V1]),
   发动方式: Object.freeze(['主动', '被动']),
   触发条件: Object.freeze(['计时结束', '主动触发', '随下次行动触发', '下次魂技成功释放']),
   提升方式: Object.freeze(['下一合法等级']),
@@ -9954,6 +9955,8 @@ var SKILL_UNIT_COST_TABLE_V1 = Object.freeze({
     造成伤害: 1.5, 受到伤害: 1.4, 治疗: 0.95, 消耗: 0.85, 前摇: 1.7,
     反伤: 1.15, 伤害转移: 2.5, 伤害吸收: 2, 伤害转治疗: 1.8, 治疗转伤害: 1.8,
     伤害分摊: 1.1, 消耗分摊: 0.9, 防御穿透: 1.3, 防御剥夺: 1.8, 精神抗性剥夺: 2.3,
+    // 资源恢复（只放大资源类回复）与治疗同价（11-15 排查：此前无价）。
+    资源恢复: 0.95,
     // 反击 18 → 3（用户 2026-11-14「这个你来调整就行」）：这条结算修正授予反击并加反击强度 +X%（BattlePreview
     // declarationCounterGrantProfile），按每 1% 收 18 时「反制」模板 +20% 要 360、生成器只能压到 +5%（90）。
     技能效果: 2.0, 反击: 3, 持续伤害引爆: 20,
@@ -15063,11 +15066,11 @@ function 读取状态施加分类_V1(状态 = '') {
 function 状态施加允许数值字段_V1(状态 = '') {
   const 状态名 = String(状态 || '').trim();
   return ['持续伤害类', '恢复资源类', '防御数值类'].includes(读取状态施加分类_V1(状态)) ||
-    ['禁疗', '治疗反转', '标记', '嘲讽', '防御剥夺', '精神抗性剥夺', '虚弱', '迟缓', '资源燃烧', '失控', '反噬', '精神紊乱', '僵直', '麻痹', '混乱', '魂力枯竭'].includes(状态名);
+    ['禁疗', '治疗反转', '标记', '嘲讽', '防御剥夺', '精神抗性剥夺', '虚弱', '迟缓', '资源燃烧', '失控', '反噬', '精神紊乱', '麻痹', '混乱', '魂力枯竭'].includes(状态名);
 }
 
 function 状态施加允许副数值字段_V1(状态 = '') {
-  return ['中毒', '流血', '灼烧', '冻伤', '持续创伤', '资源燃烧', '迟缓', '失控', '精神紊乱', '魂力枯竭', '僵直', '麻痹', '混乱'].includes(String(状态 || '').trim());
+  return ['中毒', '流血', '灼烧', '冻伤', '持续创伤', '资源燃烧', '迟缓', '失控', '精神紊乱', '魂力枯竭', '麻痹', '混乱'].includes(String(状态 || '').trim());
 }
 
 function 读取状态施加默认数值_V1(状态 = '') {
@@ -17687,6 +17690,7 @@ function 断言技能执行效果原型契约_V1(effectArray = [], path = '_效�
       if (日常系统状态选项_V1.includes(状态)) throw new Error(`技能执行结构错误:${path}[${index}]${状态}是日常系统状态，不能通过状态施加赋予`);
       if (!SKILL_PROTOTYPE_FIELD_OPTIONS_V1.状态.includes(状态)) throw new Error(`技能执行结构错误:${path}[${index}]状态施加状态无效`);
       if (状态 === '护卫' && String(effect.目标 || '').trim() === '自身') throw new Error(`技能执行结构错误:${path}[${index}]护卫目标不能是自身`);
+      if (String(effect.触发方式 || '').trim() === '遥控触发') effect.触发方式 = '立即触发';
       const 触发方式 = String(effect.触发方式 || '立即触发').trim();
       const 数值 = parseSkillSignedChangeNumber(effect.数值);
       if (!SKILL_PROTOTYPE_FIELD_OPTIONS_V1.触发方式.includes(触发方式)) throw new Error(`技能执行结构错误:${path}[${index}]状态触发方式无效`);
@@ -20985,6 +20989,21 @@ function 计算单项效果COST_V1(效果 = {}, 上下文 = {}) {
       持续系数: Number(持续系数.toFixed(4)),
     };
   }
+  // 时窗修正（11-15 设计侧与运行时排查：整类价 0）: 按调整的回合数计价，单价 回合型（运行时只读持续回合的调整）。
+  if (原型 === '时窗修正') {
+    const 单位COST = Number(SKILL_UNIT_COST_TABLE_V1.时窗修正?.回合型 || 5);
+    const 调整量 = Math.max(1, Math.abs(Number(效果.调整回合 ?? 效果.调整次数 ?? 1)) || 1);
+    return {
+      COST: 单位COST * 调整量 * 目标系数,
+      百分比: false,
+      数值类型: '调整回合',
+      单位COST: Number(单位COST.toFixed(4)),
+      数值倍率: 调整量,
+      目标系数: Number(目标系数.toFixed(4)),
+      目标系数原因: 目标信息.目标系数原因,
+      持续系数: 1,
+    };
+  }
   const 关键字段 = ({
     资源变化: '资源', 资源转移: '资源转移方式', 护盾变化: '护盾模式',
     属性修正: '属性', 判定修正: '判定', 结算修正: '结算',
@@ -21002,6 +21021,11 @@ function 计算单项效果COST_V1(效果 = {}, 上下文 = {}) {
     ? 选项原值.map(项 => String(项 || '').trim()).filter(Boolean)
     : (选项值 ? [选项值] : []);
   let 单位COST = 获取单位COST_V1(原型, 关键字段, 选项值);
+  // 状态移除指定具体状态（11-15 排查：价 0，比任意负面还便宜）: 负面状态按「任意负面」，增益按「任意增益」，其余按「任意状态」。
+  if (原型 === '状态移除' && 单位COST === undefined && 选项值) {
+    const 移除表 = SKILL_UNIT_COST_TABLE_V1.状态移除 || {};
+    单位COST = 技能负面状态选项_V1.includes(选项值) ? 移除表.任意负面 : 技能状态选项_V1.includes(选项值) ? 移除表.任意增益 : 移除表.任意状态;
+  }
   // v5：处理"两层结构"（属性修正/资源变化/资源转移/判定修正/资源锁定 等按 选项→正/负向 分）
   if (typeof 单位COST !== 'number' && 选项值) {
     const 候选 = (单位COST && typeof 单位COST === 'object')
@@ -21099,7 +21123,9 @@ function 计算单项效果COST_V1(效果 = {}, 上下文 = {}) {
         ? '绝对值'
         : '固定值';
   // 规则防御的次数（免伤 N 次挡 N 下）按次数计价（11-15 设计侧与运行时排查：免伤 1 次与 5 次同价 50）。
-  const 规则次数系数 = 原型 === '规则防御' ? Math.max(1, Math.floor(Number(效果?.次数) || 1)) : 1;
+  const 规则次数系数 = 原型 === '规则防御' ? Math.max(1, Math.floor(Number(效果?.次数) || 1))
+    // 资源转移的转化比例（运行时夹在 0～2）按比例进价（11-15 排查：0.5 与 1.5 同价）。
+    : 原型 === '资源转移' && 效果?.转化比例 !== undefined ? Math.max(0, Math.min(2, Number(效果.转化比例) || 0)) : 1;
   return {
     COST: (实际单位COST * 数值倍率 * 属性数量系数 * 规则次数系数 + 附加规则COST) * 目标系数 * 持续系数,
     百分比,
@@ -24876,9 +24902,7 @@ function 转译技能状态施加描述_V1(效果 = {}, 目标 = '目标') {
   const 触发方式 = String(效果?.触发方式 || '立即触发').trim();
   const 触发前缀 = 触发方式 === '延迟触发' && Number(效果?.延迟回合 || 0) > 0
     ? `延迟${formatSkillNumber(效果.延迟回合)}回合后，`
-    : 触发方式 === '遥控触发'
-      ? '遥控触发时，'
-      : '';
+    : '';
   if (typeof 转译 === 'function') return `${触发前缀}${转译(目标, 效果)}`;
   return `${触发前缀}使${目标}进入【${状态}】状态`;
 }
