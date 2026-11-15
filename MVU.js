@@ -230,6 +230,8 @@ const SkillStructSchema = z
     消耗: z.any().prefault('无'),
     前摇: z.coerce.number().prefault(0),
     场外冷却至tick: z.coerce.number().optional(),
+    剩余次数: z.coerce.number().optional().describe('只有带每日次数上限的技能才写（技能「使用限制：每日 N 次」、时窗修正「单日使用次数上限」）：战斗外还能放几次'),
+    次数恢复至tick: z.coerce.number().optional().describe('剩余次数恢复满的时间（第一次用掉后一天）；到时补满，与物品的使用次数恢复同一做法'),
     计价版本: z.coerce.number().optional().describe('技能预算计价版本；新生成与设计台保存的技能写入，读档收敛据此选计价口径'),
     _锚定消耗: z.any().optional().describe('魂技消耗成长：获得该魂技时的总消耗 {魂力, 精神力, 体力}；COST 预算与设计台校验按它算，结算时效果随实际消耗放大'),
     附带属性: z.array(z.string()).prefault([]),

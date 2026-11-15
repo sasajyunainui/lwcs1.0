@@ -7973,6 +7973,31 @@
     return { attached: true, diagnostic: false, representativeEffect: representativeKey };
   }
 
+  // 打断维持（11-15）：目标身上带维持消耗的效果（持续效果、状态效果）所属的那几次释放（来源动作ID）整体撤掉，再结算推迟的体力。
+  function interruptSustainedRelease(combatData = {}, actor = {}, target = {}, actionEvent = {}, actionRole = 'ACTIVE') {
+    const tables = [target?.持续效果, target?.状态效果].filter(table => table && typeof table === 'object' && !Array.isArray(table));
+    const releases = new Set();
+    tables.forEach(table => Object.values(table).forEach(effect => {
+      if (effect && typeof effect === 'object' && effect.维持消耗 && String(effect.来源动作ID || '').trim()) releases.add(String(effect.来源动作ID).trim());
+    }));
+    if (!releases.size) return null;
+    const removed = [];
+    tables.forEach(table => Object.entries(table).forEach(([key, effect]) => {
+      if (effect && typeof effect === 'object' && releases.has(String(effect.来源动作ID || '').trim())) { delete table[key]; removed.push(key); }
+    }));
+    if (!removed.length) return null;
+    previewRuntime.settleDeferredStaminaCut(target);
+    return writeLedgerEvent(combatData, {
+      eventKind: 'state_remove', round: Number(combatData?.回合 || 0),
+      actorName: previewRuntime.unitName(actor), targetName: previewRuntime.unitName(target),
+      actionName: '打断维持', actionType: 'interrupt', actorControl: 'SYSTEM', actionRole,
+      actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
+      result: 'interrupted', resultState: 'ABORTED', ruleCode: 'SUSTAIN_INTERRUPTED',
+      actorId: previewRuntime.unitId(actor), targetId: previewRuntime.unitId(target),
+      meta: { source: 'structured_runtime', removedKeys: removed, releases: [...releases] },
+    });
+  }
+
   // 维持类真身、融合技的发动结束（维持条目已挂上，或这次没挂上）：撤掉发动中标记，没有维持条目留下就补砍推迟的体力。
   function endSustainedAvatarRelease(combatData = {}) {
     for (const unit of listCombatUnits(combatData)) {
@@ -9785,7 +9810,7 @@
       // 位移重做: a position state that disrupts a charge (击退, 换位 on an enemy: combat effect interrupt_charge) breaks the
       // unit's stored charge once it is committed (below, after the facts).
       Object.entries(actual?.状态效果 || {}).forEach(([key, condition]) => {
-        if (!stateKeysBefore.has(key) && condition?.战斗效果?.interrupt_charge === true) positionInterrupts.push({ unitId, key });
+        if (!stateKeysBefore.has(key) && condition?.战斗效果?.interrupt_charge === true) positionInterrupts.push({ unitId, key, action: condition?.战斗效果?.interrupt_action === true });
       });
       Object.entries(actual?.状态效果 || {}).forEach(([key, condition]) => {
         if (stateKeysBefore.has(key) || !String(key).startsWith('preview:') || !condition || typeof condition !== 'object') return;
@@ -9907,11 +9932,14 @@
         if (exit) facts.push(exit);
       }
     });
-    positionInterrupts.forEach(({ unitId, key }) => {
+    positionInterrupts.forEach(({ unitId, key, action }) => {
       const target = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, unitId));
       const interrupt = target ? interruptStoredChargeByControl({ combatData, sourceActor: actor, target, actionEvent, actionRole,
         stateName: String(positionStateDisplayName(target, key)), force: true }) : null;
       if (interrupt) facts.push(interrupt);
+      // 打断效果（11-15「打断对方最后一个释放的魂技」）也打断对方正在维持的魂技：撤掉同一次释放挂上的维持效果。
+      const sustain = action && target ? interruptSustainedRelease(combatData, actor, target, actionEvent, actionRole) : null;
+      if (sustain) facts.push(sustain);
     });
     for (const { unitId, key, state } of endedStates) {
       const target = previewRuntime.findUnit(combatData, unitId);
@@ -17439,10 +17467,13 @@
           const hostCanGrantExistingWindow = !!host &&
             node?.actionRole === 'ACTIVE' &&
             !host?.召唤键;
+          // A summon made by this action assists at once only when the action is the host's own (ACTIVE): one made in a
+          // strike back or an answer waits for the host's next turn (11-15: 反击里放分身、新分身立刻协同、再引出反击，一次
+          // 行动堆出 64 个节点以上——ACTION_QUEUE_NODE_LIMIT_EXCEEDED).
           const candidates = listSummonCombatUnits(combatData).filter(summon => {
             if (String(summon?.行动模式 || '').trim() !== '协同攻击') return false;
             const summonId = String(summon?.召唤键 || '').trim();
-            return createdSummonIds.has(summonId) ||
+            return (createdSummonIds.has(summonId) && node?.actionRole === 'ACTIVE') ||
               (hostCanGrantExistingWindow && isUnitIdentityMatch(summon?.__宿主, host));
           });
           const preferredTargetIds = facts

@@ -1477,7 +1477,7 @@
   const 装备加成属性选项_桥接 = Object.freeze(['魂力上限', '精神力上限', '力量', '防御', '敏捷', '体力上限']);
   const 装备加成方向选项_桥接 = Object.freeze([...装备加成属性选项_桥接, '全属性']);
   const 装备加成属性集合_桥接 = new Set(装备加成属性选项_桥接);
-  const 正式技能字段列表_桥接 = Object.freeze(['魂技名', '画面描述', '效果描述', '产物描述', '承载方式', '消耗', '前摇', '场外冷却至tick', '附带属性', '使用条件', '技能掌控度', '触发限制', '_效果数组', '副作用列表', '计价版本', '_锚定消耗']);
+  const 正式技能字段列表_桥接 = Object.freeze(['魂技名', '画面描述', '效果描述', '产物描述', '承载方式', '消耗', '前摇', '场外冷却至tick', '剩余次数', '次数恢复至tick', '附带属性', '使用条件', '技能掌控度', '触发限制', '_效果数组', '副作用列表', '计价版本', '_锚定消耗']);
   const 正式技能字段集合_桥接 = new Set(正式技能字段列表_桥接);
 
   function 断言物品正式技能_桥接(技能 = {}, 来源 = '物品技能') {
@@ -20216,6 +20216,40 @@
     return 冷却状态;
   }
 
+  // 技能每日使用次数（11-15 用户「只为有次数限制的存」「按物品的写法」）：技能「使用限制：每日 N 次」在战斗外执行，时窗修正的「单日
+  // 使用次数上限」读同一份计数（当天前 N 次才附带调整）。与物品同一做法：剩余次数 + 次数恢复至tick（第一次用掉后一天恢复满）；
+  // 只有带这两种上限的技能才写。每战限制在战斗数据里计（单位的技能限制运行态），不进存档。
+  function 读取技能每日上限(skill = {}) {
+    const 限制 = skill?.触发限制 && typeof skill.触发限制 === 'object' ? skill.触发限制 : null;
+    const 技能上限 = 限制 && toText(限制.周期, '') === '每日' ? Math.max(1, Math.floor(toNumber(限制.次数, 1))) : 0;
+    const 调整上限 = (Array.isArray(skill?._效果数组) ? skill._效果数组 : [])
+      .filter(项 => toText(项?.原型, '') === '时窗修正' && toNumber(项?.单日使用次数上限, 0) > 0)
+      .reduce((最小, 项) => Math.min(最小, Math.floor(toNumber(项.单日使用次数上限, 1))), Infinity);
+    return { 技能上限, 调整上限: Number.isFinite(调整上限) ? 调整上限 : 0 };
+  }
+  function 读取技能今日已用(skill = {}, 当前tick = 0) {
+    const { 技能上限, 调整上限 } = 读取技能每日上限(skill);
+    const 上限 = 技能上限 > 0 ? 技能上限 : 调整上限;
+    if (!(上限 > 0)) return 0;
+    const 恢复tick = toNumber(skill?.次数恢复至tick, 0);
+    if (!(恢复tick > 0) || toNumber(当前tick, 0) >= 恢复tick || skill?.剩余次数 === undefined) return 0;
+    return Math.max(0, 上限 - Math.max(0, Math.floor(toNumber(skill.剩余次数, 上限))));
+  }
+  function 校验技能每日次数(skill = {}, 当前tick = 0, 技能名 = '技能') {
+    const { 技能上限 } = 读取技能每日上限(skill);
+    if (技能上限 > 0 && 读取技能今日已用(skill, 当前tick) >= 技能上限) throw new Error(`【${技能名}】今天已用完 ${技能上限} 次。`);
+  }
+  function 记录技能每日次数(skill = {}, 当前tick = 0) {
+    if (!skill || typeof skill !== 'object' || Array.isArray(skill)) return;
+    const { 技能上限, 调整上限 } = 读取技能每日上限(skill);
+    if (!(技能上限 > 0) && !(调整上限 > 0)) { delete skill.剩余次数; delete skill.次数恢复至tick; return; }
+    const 上限 = 技能上限 > 0 ? 技能上限 : 调整上限;
+    const 当前 = Math.max(0, toNumber(当前tick, 0));
+    const 已用 = 读取技能今日已用(skill, 当前);
+    if (已用 === 0) skill.次数恢复至tick = 当前 + 144;
+    skill.剩余次数 = Math.max(0, 上限 - 已用 - 1);
+  }
+
   function 写入场外魂技冷却(skill = {}, 当前tick = 0, 冷却倍率 = 1) {
     if (!skill || typeof skill !== 'object' || Array.isArray(skill)) return null;
     const 冷却状态 = 读取场外魂技冷却状态(skill, 当前tick);
@@ -33903,7 +33937,15 @@ ${播报文本}
 
     构建造物背包值(技能 = {}, 效果 = {}, 当前tick = 0, 持有者名 = '', 数据根 = {}) {
       const 物品名 = toText(技能?.魂技名 || 技能?.name, '临时造物');
-      const 相对有效期tick = Math.max(0, toNumber(效果?.有效期tick, 0));
+      // 时窗修正·有效期tick（11-15 第 18 条）：同一招里调整「本次技能生成造物有效期」的时窗修正，按延长/压缩改这批造物的有效期
+      // （至少 1 tick；原本永不过期的不动）。此前只校验与显示，做造物时不读。
+      const 今日已用 = 读取技能今日已用(技能, 当前tick);
+      const 有效期调整 = (Array.isArray(技能?._效果数组) ? 技能._效果数组 : [])
+        .filter(项 => toText(项?.原型, '') === '时窗修正' && toText(项?.调整字段, '') === '有效期tick')
+        .filter(项 => !(toNumber(项?.单日使用次数上限, 0) > 0) || 今日已用 < Math.floor(toNumber(项.单日使用次数上限, 1)))
+        .reduce((和, 项) => 和 + (toText(项?.调整方式, '延长') === '压缩' ? -1 : 1) * Math.max(0, Math.round(toNumber(项?.调整tick, 0))), 0);
+      const 原有效期tick = Math.max(0, toNumber(效果?.有效期tick, 0));
+      const 相对有效期tick = 原有效期tick > 0 ? Math.max(1, 原有效期tick + 有效期调整) : 0;
       const 钱包 = 读取当前时代钱包配置_桥接(数据根);
       const 显式货币 = toText(效果?.默认货币, '');
       const 货币结果 = 显式货币
@@ -34081,6 +34123,7 @@ ${播报文本}
             if (!造物模板列表.length) throw new Error('当前技能不是可日常施展的造物类技能。');
             const 当前tick = Math.max(0, toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
             校验场外魂技冷却(skill, 当前tick, skillName);
+            校验技能每日次数(skill, 当前tick, skillName);
             if (!charData.属性 || typeof charData.属性 !== 'object') charData.属性 = {};
             if (!charData.背包 || typeof charData.背包 !== 'object' || Array.isArray(charData.背包)) charData.背包 = {};
             const systemBase = this.getSkillSystemBase(skill);
@@ -34128,6 +34171,7 @@ ${播报文本}
             ].map(value => toText(value, '')).join('|'));
             const 自用倍率 = 食物技能 ? this.读取坚挺金苍蝇自用倍率(charData) : { 制造速度倍率: 1 };
             写入场外魂技冷却(skill, 当前tick, 自用倍率.制造速度倍率 > 1 ? 自用倍率.制造速度倍率 : 1);
+            记录技能每日次数(skill, 当前tick);
             this.结算战斗外副作用列表(charData, scaledSkill.副作用列表, `${skillName}施展副作用`, []);
           },
           { force: true },
@@ -34158,6 +34202,7 @@ ${播报文本}
         const 当前技能名 = toText(当前技能['魂技名'] || 当前技能.name || safePath[safePath.length - 1], '魂技');
         const 当前tick = Math.max(0, toNumber(deepGet(当前数据, 'world.时间.tick', 0), 0));
         校验场外魂技冷却(当前技能, 当前tick, 当前技能名);
+        校验技能每日次数(当前技能, 当前tick, 当前技能名);
         const 当前缩放技能 = this.isEquipmentSkillPath(safePath) ? 当前技能 : this.applyDailySkillMastery(当前技能, 当前角色);
         const 当前效果列表 = (Array.isArray(当前缩放技能?._效果数组) ? 当前缩放技能._效果数组 : []).flatMap(effect =>
           this.expandInventoryEffectBranches(当前角色, effect),
@@ -34170,7 +34215,10 @@ ${播报文本}
           await this.处理复刻友方效果(当前数据, charKey, 复刻友方效果, 当前技能名, 当前tick);
           await mutateStatDataByEditor(statData => {
             const 技能 = deepGet(statData, safePath, null);
-            if (技能 && typeof 技能 === 'object') 写入场外魂技冷却(技能, Math.max(0, toNumber(deepGet(statData, 'world.时间.tick', 0), 0)));
+            if (技能 && typeof 技能 === 'object') {
+              写入场外魂技冷却(技能, Math.max(0, toNumber(deepGet(statData, 'world.时间.tick', 0), 0)));
+              记录技能每日次数(技能, Math.max(0, toNumber(deepGet(statData, 'world.时间.tick', 0), 0)));
+            }
           }, { force: true });
           return;
         }
@@ -34214,6 +34262,7 @@ ${播报文本}
             const levelUpEffect = effectList.find(effect => toText(effect?.原型, '').trim() === '等级提升');
             const 当前tick = Math.max(0, toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
             校验场外魂技冷却(skill, 当前tick, skillName);
+            校验技能每日次数(skill, 当前tick, skillName);
             if (!charData.属性 || typeof charData.属性 !== 'object') charData.属性 = {};
             const systemBase = this.getSkillSystemBase(skill);
             costText = toText(systemBase['消耗'], '无');
@@ -34238,6 +34287,7 @@ ${播报文本}
             } else {
               写入场外魂技冷却(skill, 当前tick, 食物制造冷却倍率);
             }
+            记录技能每日次数(skill, 当前tick);
             summaryText = logs.join('；') || '已触发技能效果';
           },
           { force: true },

@@ -2179,7 +2179,9 @@
       .map(id => readUnit(String(id || '').trim()))
       .find(unit => unit && sideOf(worldSnapshot, unit) && sideOf(worldSnapshot, unit) !== actorSide) || null;
     const amount = actionStaminaCost(actor, nature, opponent) * declarationStaminaFactor(declaration);
-    return amount > 0 ? { nature, amount } : null;
+    // 近身与远程（11-15）：远程另付精神力（BattleRuntime payActionStamina 同价），推演与估值一并扣。
+    const mental = nature === 'ATTACK_RANGED' ? rangedActionMentalCost(actor) * declarationStaminaFactor(declaration) : 0;
+    return amount > 0 || mental > 0 ? { nature, amount, mental } : null;
   }
 
   function refreshStaminaAdjustedFinal(unit = {}) {
@@ -16455,6 +16457,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         });
       });
       const stamina = projectedActionStamina(worldSnapshot, actor, basis.declaration);
+      if (stamina?.mental > 0) {
+        const mentalBefore = readProjectedResource(actor, '精神力');
+        const mentalNext = roundNumber(clamp(mentalBefore - stamina.mental, 0, readResourceMax(actor, '精神力')));
+        if (mentalNext < mentalBefore) {
+          writeProjectedResource(actor, '精神力', mentalNext);
+          changedUnitIds.add(unitId(actor));
+          addContribution(`${rootActionId}:ranged-mental`, { targetId: unitId(actor), outcomeKind: 'RESOURCE_OPTION_CHANGED', windowId: 'ACTION_COST', expectedDelta: mentalNext - mentalBefore,
+            evidence: Object.freeze({ resource: '精神力', before: mentalBefore, next: mentalNext, delta: mentalNext - mentalBefore, source: 'ACTION_RANGED_MENTAL', staminaNature: stamina.nature }) });
+        }
+      }
       if (stamina) {
         const before = readProjectedResource(actor, '体力');
         const next = roundNumber(clamp(before - stamina.amount, 0, readResourceMax(actor, '体力')));
@@ -17187,6 +17199,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       });
       const staminaPayer = overlay.readUnit(actorId) || projectionContext?.unitById?.get(actorId) || findUnit(worldSnapshot, actorId);
       const stamina = staminaPayer ? projectedActionStamina(worldSnapshot, staminaPayer, basis.declaration, id => overlay.readUnit(id) || findUnit(worldSnapshot, id)) : null;
+      if (stamina?.mental > 0) {
+        const mentalBefore = readResource(staminaPayer, '精神力');
+        const mentalNext = roundNumber(clamp(mentalBefore - stamina.mental, 0, readResourceMax(staminaPayer, '精神力')));
+        if (mentalNext < mentalBefore) {
+          overlay.setResource(actorId, '精神力', mentalNext);
+          changedUnitIds.add(actorId);
+          ledger.addOutcome({ rootActionId, sourceActionId: rootActionId, actor: staminaPayer, declaration: basis.declaration, effectInstanceId: `${rootActionId}:ranged-mental`,
+            targetId: actorId, outcomeKind: 'RESOURCE_OPTION_CHANGED', windowId: 'ACTION_COST', threatValue: 0,
+            evidence: { resource: '精神力', before: mentalBefore, next: mentalNext, delta: mentalNext - mentalBefore, source: 'ACTION_RANGED_MENTAL', staminaNature: stamina.nature } });
+        }
+      }
       if (stamina) {
         const before = readResource(staminaPayer, '体力');
         const next = roundNumber(clamp(before - stamina.amount, 0, readResourceMax(staminaPayer, '体力')));
@@ -18474,6 +18497,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (stamina && !resourceInvalid) {
           const before = availableResources.has('体力') ? availableResources.get('体力') : readResource(branchActor, '体力');
           availableResources.set('体力', Math.max(0, before - stamina.amount));
+          if (stamina.mental > 0) {
+            const mentalBefore = availableResources.has('精神力') ? availableResources.get('精神力') : readResource(branchActor, '精神力');
+            availableResources.set('精神力', Math.max(0, mentalBefore - stamina.mental));
+          }
         }
       }
       if (resourceInvalid) {
@@ -19517,7 +19544,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (normalized.非法项.length) return actor;
     const payment = assessResourcePayment([actor], normalized.values);
     if (!payment.valid) return actor;
-    payment.payments.forEach(row => {
+    // 消耗分摊（11-15）：自己只付 (1 − 比例)，其余由同一招挂上分摊的伙伴付（BattleRuntime costSharePayments）；估值这里按自己那份算。
+    const ownShare = 1 - clamp(stateEntries(unit, 'CONDITION').reduce((highest, [, state]) => Math.max(highest, Number(state?.战斗效果?.cost_share_ratio || 0)), 0), 0, 0.9);
+    const rows = ownShare < 1 ? payment.payments.map(row => ({ ...row, amount: row.amount * ownShare })) : payment.payments;
+    rows.forEach(row => {
       if (projectedResourceDistribution(actor, row.resource)?.support) {
         shiftProjectedResourceValue(actor, row.resource, -row.amount);
         return;
@@ -19536,7 +19566,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (actor.属性 && typeof actor.属性 === 'object') actor.属性.魂力 = remaining;
       }
     });
-    payment.payments.forEach(row => {
+    rows.forEach(row => {
       if (row.key !== 'sp' && row.key !== 'men' || projectedResourceDistribution(actor, row.resource)?.support) return;
       const label = row.key === 'sp' ? '魂力' : '精神力';
       applyLowResourceStaminaCut(actor, label, row.before, readResource(actor, label), readResourceMax(actor, label));
@@ -24381,7 +24411,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 战斗经验抓空当：× (1 + (经验 − 0.5) × EXPERIENCE_COUNTER_SLOPE)。
     const seasoned = 1 + (battleExperience(reactor) - 0.5) * EXPERIENCE_COUNTER_SLOPE;
     return clamp(base * seasoned, 0, COUNTER_CAP) * passiveStreakFactor(reactor) * COUNTER_FADE ** Math.max(0, Math.floor(Number(options?.prior) || 0)) *
-      (!declaration ? 1 : declarationDamageClass(declaration) === 'RANGED' ? RANGED_COUNTER_MULT
+      // 远程来招打折，但还手本身不靠近身的（元素系还手按远程、精神系按精神攻击，同 BattleRuntime 行为防反）不打折（11-15）。
+      (!declaration ? 1 : declarationDamageClass(declaration) === 'RANGED' && !/元素系|精神系/.test(String(reactor?.type || reactor?.系别 || '')) ? RANGED_COUNTER_MULT
         : declarationDamageClass(declaration) === 'MENTAL' ? MENTAL_COUNTER_MULT : 1);
   }
   // 战斗经验（用户 2026-11-14「不另加战斗经验，就用年龄+天赋推算战斗经验，也就是说只是个中间结果」「绝世妖孽就用3试试」

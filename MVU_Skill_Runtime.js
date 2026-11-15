@@ -10101,6 +10101,8 @@ var 技能正式根字段集合_V1 = new Set([
   '触发限制',
   '装备要求',
   '场外冷却至tick',
+  '剩余次数',
+  '次数恢复至tick',
   '技能掌控度',
   '_效果数组',
   '副作用列表',
@@ -16698,8 +16700,12 @@ function 计算单项效果COST_V1(效果 = {}, 上下文 = {}) {
   const 规则次数系数 = 原型 === '规则防御' ? Math.max(1, Math.floor(Number(效果?.次数) || 1))
     // 资源转移的转化比例（运行时夹在 0～2）按比例进价（11-15 排查：0.5 与 1.5 同价）。
     : 原型 === '资源转移' && 效果?.转化比例 !== undefined ? Math.max(0, Math.min(2, Number(效果.转化比例) || 0)) : 1;
+  // 死亡反噬折扣（11-15 用户点头）：分身倒下宿主反噬一种资源 30%（9 折），本命召唤兽反噬生命与精神力（8.5 折）。
+  const 召唤反噬折扣 = 原型 !== '召唤生成' ? 1
+    : String(效果?.召唤单位类型 || '').trim() === '本命召唤兽' ? 0.85
+      : String(效果?.召唤单位类型 || '').trim() === '分身' ? 0.9 : 1;
   return {
-    COST: (实际单位COST * 数值倍率 * 属性数量系数 * 规则次数系数 + 附加规则COST) * 目标系数 * 持续系数,
+    COST: (实际单位COST * 数值倍率 * 属性数量系数 * 规则次数系数 + 附加规则COST) * 目标系数 * 持续系数 * 召唤反噬折扣,
     百分比,
     数值类型,
     ...(规则次数系数 > 1 ? { 次数系数: 规则次数系数 } : {}),
@@ -24620,7 +24626,7 @@ function 写入内置血脉技能模板_V1(技能表 = {}, 技能名 = '', 模�
     const 模板文本 = String(模板技能?.[字段名] || '').trim();
     if (模板文本) 下个技能[字段名] = 模板文本;
   });
-  ['状态', '场外冷却至tick', '技能掌控度'].forEach(字段名 => {
+  ['状态', '场外冷却至tick', '剩余次数', '次数恢复至tick', '技能掌控度'].forEach(字段名 => {
     if (原技能[字段名] !== undefined) 下个技能[字段名] = cloneJsonValue(原技能[字段名]);
   });
   技能表[技能名] = 下个技能;
@@ -25780,6 +25786,7 @@ function cloneSkillStructData(skill = {}) {
   };
   const 场外冷却至tick = Math.max(0, Number(skill?.场外冷却至tick || 0));
   if (场外冷却至tick > 0) working.场外冷却至tick = 场外冷却至tick;
+  ['剩余次数', '次数恢复至tick'].forEach(字段名 => { if (Number.isFinite(Number(skill?.[字段名])) && skill?.[字段名] !== '') working[字段名] = Number(skill[字段名]); });
   if (副作用列表.length) working.副作用列表 = 副作用列表;
   if (是造物承载技能) working.产物描述 = String(skill?.产物描述 || '无');
   applySkillElementInheritance(working, {});
@@ -25796,6 +25803,7 @@ function cloneSkillStructData(skill = {}) {
     _效果数组: clonePackedSkillEffects(working._效果数组 || []),
   };
   if (Math.max(0, Number(working.场外冷却至tick || 0)) > 0) result.场外冷却至tick = Math.max(0, Number(working.场外冷却至tick || 0));
+  ['剩余次数', '次数恢复至tick'].forEach(字段名 => { if (working[字段名] !== undefined) result[字段名] = working[字段名]; });
   if (Number(skill?.计价版本) > 0) result.计价版本 = Number(skill.计价版本);
   if (读取魂技消耗锚定_V1(skill)) result[魂技消耗成长锚定字段_V1] = { ...读取魂技消耗锚定_V1(skill) };
   if (working.使用条件 && typeof working.使用条件 === 'object' && !Array.isArray(working.使用条件)) result.使用条件 = cloneJsonValue(working.使用条件, {});
