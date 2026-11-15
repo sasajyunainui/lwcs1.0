@@ -10426,6 +10426,29 @@
     });
     return 条目;
   }
+  // 条件类型一句话说明（按战斗里实际的判断逻辑写）
+  const 技能设计台条件类型说明 = Object.freeze({
+    当前行动: '这次出手是哪一种行动：常规攻击、释放魂技、使用物品、防御、闪避等。',
+    命中: '这次主效果有没有打中。选「是」：打中才成立。',
+    被闪避: '这次主效果有没有被对方躲开。选「是」：被躲开才成立。',
+    状态存在: '检查对象身上有没有指定状态。',
+    护盾: '检查对象身上有没有护盾。',
+    生命比例: '对象当前生命占上限的比例，例如「低于 30%」。',
+    体力比例: '对象当前体力占上限的比例，例如「低于 30%」。',
+    魂力比例: '对象当前魂力占上限的比例，例如「低于 30%」。',
+    精神力比例: '对象当前精神力占上限的比例，例如「低于 30%」。',
+    生命数值: '对象当前生命的具体数值，不看占比。',
+    体力数值: '对象当前体力的具体数值，不看占比。',
+    魂力数值: '对象当前魂力的具体数值，不看占比。',
+    精神力数值: '对象当前精神力的具体数值，不看占比。',
+    目标: '目标和你是什么关系：自身、己方、敌方、他人、全场、召唤物。',
+    使用者: '判断是谁在使用这个造物。选「制作者」：只有制作它的人自己使用才成立。',
+    环境满足: '战场环境是否带有指定地形，例如冰面、水域、阴影、高空。',
+    时间: '战斗发生在一天中的哪个时段，例如白天、黑夜、黄昏。',
+    装备状态: '对象身上是否装备了指定类型：主武器、防具、斗铠、机甲。',
+    自身状态: '对象是否正处于指定状态，例如蓄力中、隐匿中。',
+    连携前提: '武魂融合技专用：这次连携用到的融合对象，是否包含这里填的内容。',
+  });
   function 条件类型下拉(当前值 = '') {
     // ≙ 构建技能设计台条件类型分组选项
     const 选中值 = SKILL_DESIGNER_CONDITION_BRANCH_TYPE_OPTIONS.includes(toText(当前值, '').trim())
@@ -10434,7 +10457,7 @@
     const options = [];
     SKILL_DESIGNER_CONDITION_BRANCH_TYPE_GROUPS.forEach(分组 => {
       分组.options.filter(选项 => SKILL_DESIGNER_CONDITION_BRANCH_TYPE_OPTIONS.includes(选项)).forEach(选项 => {
-        options.push({ value: 选项, label: 选项, group: 分组.label, __selected: 选项 === 选中值 });
+        options.push({ value: 选项, label: 选项, group: 分组.label, ...(技能设计台条件类型说明[选项] ? { hint: 技能设计台条件类型说明[选项] } : {}), __selected: 选项 === 选中值 });
       });
     });
     return 下拉收口({ options });
@@ -11233,7 +11256,28 @@
     // 各分区内字段（值取挂载后的虚拟控件）。原版顶层字段没有逐项说明徽标，只有分区标题说明
     const T = vf.top;
     const L = vf.scopeLabels;
-    const 字段 = (key, label, 控件, 附加 = {}) => (控件 ? { ...导出控件({ ...控件, key, label, hint: '' }), ...附加, key, label } : null);
+    // 顶层字段的悬停说明（原项目只有分区标题有说明；这里按实际逻辑补全）
+    const 顶层字段说明 = {
+      deliveryForm: '直接生效：释放后直接结算效果。造物承载：先做出一件造物，之后再使用这件造物来触发效果（食物系、辅助系可选）。',
+      使用限制周期: '这个技能多久内能用几次：每战或每日。不限制就选「无限制」。',
+      使用限制次数: '在上面选的周期内，最多能用几次。',
+      启用被动: '开启后这是被动技能：不用主动释放，到了「触发时机」就自动触发。',
+      被动触发: '被动在什么时候自动触发：常驻、战斗开始、回合开始、受击前、致命前、受击后、濒死时、被控制时、命中后。',
+      被动触发周期: '被动触发次数怎么限制：每战或每回合各自限次，或者不限制。',
+      被动触发次数: '在上面选的周期内，最多触发几次。',
+      用法模式: '一次性释放：融合后打出一次技能。融合增幅：融合带来持续的增幅或共享效果。',
+      fusionMode: '双人/多人融合：和别人的武魂融合。自体融合：用自己的多个武魂融合。',
+      costType: '释放时扣哪种资源。选「混合」可以同时扣魂力、精神力、体力。',
+      前摇: '出手前的准备时间。数值越大出手越慢，对方有更多时间做出反应。',
+      启用技能掌控度: '开启后，技能威力会随使用者的等级逐步发挥：等级低时发挥不全，等级够了才完全发挥。普通魂技不需要。',
+      技能掌控度中心等级: '使用者达到这个等级时，技能发挥一半威力。',
+      技能掌控度圆满等级: '使用者达到这个等级后，技能完全发挥。',
+      constructItemCount: '这次一共做出几件造物。',
+      visualDesc: '写给玩家看的画面描述，不影响战斗结算。',
+      effectDesc: '写给玩家看的效果说明，不影响战斗结算。',
+    };
+    const 顶层说明 = key => 顶层字段说明[key] || (/^cost./.test(key) ? '释放时扣的数量：「点」是具体数值，「%」是占该资源上限的比例。' : /^sustain./.test(key) ? '技能持续期间，每回合额外要扣的数量。' : '');
+    const 字段 = (key, label, 控件, 附加 = {}) => (控件 ? { ...导出控件({ ...控件, key, label, hint: 顶层说明(key) }), ...附加, key, label } : null);
     const 启用被动 = 技能设计台启用被动(previewMeta, form);
     const 被动周期 = normalizeSkillUiText(T.被动触发周期.value, '无限制');
     const 使用周期 = normalizeSkillUiText(T.使用限制周期.value, '无限制');
@@ -11265,7 +11309,7 @@
       artProgress: T.artStage ? [字段('artStage', '境界', T.artStage), 字段('artLevel', '等级', T.artLevel)] : [],
       construct: [
         字段('constructItemCount', '数量', T.constructItemCount),
-        { ...导出控件(T.constructDurationTick), key: 'constructDurationTick', label: '有效期' },
+        { ...导出控件(T.constructDurationTick), key: 'constructDurationTick', label: '有效期', hint: '造物能保留多久。' },
         字段('constructDescription', '物品描述', T.constructDescription),
       ],
       energy: [
@@ -11279,7 +11323,7 @@
         字段('技能掌控度中心等级', '中心等级', T.技能掌控度中心等级, { visible: 掌控显示 }),
         字段('技能掌控度圆满等级', '圆满等级', T.技能掌控度圆满等级, { visible: 掌控显示 }),
       ],
-      attributes: [{ key: 'attachedAttributes', kind: 'multi', multiple: true, label: '附带属性', hint: '', visible: true, options: 导出选项(T.attachedAttributes.options), selected: T.attachedAttributes.selected.slice() }],
+      attributes: [{ key: 'attachedAttributes', kind: 'multi', multiple: true, label: '附带属性', hint: '这个技能带有的元素或概念属性。限定元素的效果按它判断。', visible: true, options: 导出选项(T.attachedAttributes.options), selected: T.attachedAttributes.selected.slice() }],
       terminal: [字段('visualDesc', L.visualLabel, T.visualDesc), 字段('effectDesc', L.effectLabel, T.effectDesc)],
     };
   }
@@ -11940,7 +11984,7 @@
         return 读取技能设计台目标候选(原型, { 嵌套字段: ctx.nestedKind || '', 当前效果 }).map(v => ({ value: v, label: v }));
       },
       condition: {
-        typeGroups: SKILL_DESIGNER_CONDITION_BRANCH_TYPE_GROUPS.map(组 => ({ label: 组.label, options: 组.options.filter(o => SKILL_DESIGNER_CONDITION_BRANCH_TYPE_OPTIONS.includes(o)).map(o => ({ value: o, label: o, group: 组.label })) })),
+        typeGroups: SKILL_DESIGNER_CONDITION_BRANCH_TYPE_GROUPS.map(组 => ({ label: 组.label, options: 组.options.filter(o => SKILL_DESIGNER_CONDITION_BRANCH_TYPE_OPTIONS.includes(o)).map(o => ({ value: o, label: o, group: 组.label, ...(技能设计台条件类型说明[o] ? { hint: 技能设计台条件类型说明[o] } : {}) })) })),
         objects: 构建技能设计台条件分支对象选项(),
         compare: type => 条件比较下拉(type, '').options.map(({ value, label }) => ({ value, label })),
         valueControl: (type, compare) => {

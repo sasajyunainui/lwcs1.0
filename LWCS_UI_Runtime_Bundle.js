@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:7f561133be484aba9b48fc6b49b51b71c3e3e4cbbf6743c9e6b0a62cf26be637|cockpit/designer-model.js:17a17c83a64d37d25d62234601fa9014cb21872adc3ebfe0b4aee6f3f31b5e62|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:3474ced3c93288f1eb7f4fea4ab961df89f18319d3c7a388066ea50741681f27|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:53e779d05475baf04653a807269448fb936624cfca90e6477ce6963b1f2f702b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:97029871b086807cfe780d47bc9bbd0597c225fc01cb5e4cb8c143c8b7cfc02e|BattleRuntime_Module.js:3ec3b7d302ba3d3fc682ba02cbd1388478ba802e454969e8af8ae635042bd25c|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:7f561133be484aba9b48fc6b49b51b71c3e3e4cbbf6743c9e6b0a62cf26be637|cockpit/designer-model.js:1f4c30610ce2f35303952c05e4bb7848bee22f105d9121a1fe74dc5d82d9b447|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:3474ced3c93288f1eb7f4fea4ab961df89f18319d3c7a388066ea50741681f27|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:53e779d05475baf04653a807269448fb936624cfca90e6477ce6963b1f2f702b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:97029871b086807cfe780d47bc9bbd0597c225fc01cb5e4cb8c143c8b7cfc02e|BattleRuntime_Module.js:3ec3b7d302ba3d3fc682ba02cbd1388478ba802e454969e8af8ae635042bd25c|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -46499,6 +46499,29 @@ ${播报文本}
     });
     return 条目;
   }
+  // 条件类型一句话说明（按战斗里实际的判断逻辑写）
+  const 技能设计台条件类型说明 = Object.freeze({
+    当前行动: '这次出手是哪一种行动：常规攻击、释放魂技、使用物品、防御、闪避等。',
+    命中: '这次主效果有没有打中。选「是」：打中才成立。',
+    被闪避: '这次主效果有没有被对方躲开。选「是」：被躲开才成立。',
+    状态存在: '检查对象身上有没有指定状态。',
+    护盾: '检查对象身上有没有护盾。',
+    生命比例: '对象当前生命占上限的比例，例如「低于 30%」。',
+    体力比例: '对象当前体力占上限的比例，例如「低于 30%」。',
+    魂力比例: '对象当前魂力占上限的比例，例如「低于 30%」。',
+    精神力比例: '对象当前精神力占上限的比例，例如「低于 30%」。',
+    生命数值: '对象当前生命的具体数值，不看占比。',
+    体力数值: '对象当前体力的具体数值，不看占比。',
+    魂力数值: '对象当前魂力的具体数值，不看占比。',
+    精神力数值: '对象当前精神力的具体数值，不看占比。',
+    目标: '目标和你是什么关系：自身、己方、敌方、他人、全场、召唤物。',
+    使用者: '判断是谁在使用这个造物。选「制作者」：只有制作它的人自己使用才成立。',
+    环境满足: '战场环境是否带有指定地形，例如冰面、水域、阴影、高空。',
+    时间: '战斗发生在一天中的哪个时段，例如白天、黑夜、黄昏。',
+    装备状态: '对象身上是否装备了指定类型：主武器、防具、斗铠、机甲。',
+    自身状态: '对象是否正处于指定状态，例如蓄力中、隐匿中。',
+    连携前提: '武魂融合技专用：这次连携用到的融合对象，是否包含这里填的内容。',
+  });
   function 条件类型下拉(当前值 = '') {
     // ≙ 构建技能设计台条件类型分组选项
     const 选中值 = SKILL_DESIGNER_CONDITION_BRANCH_TYPE_OPTIONS.includes(toText(当前值, '').trim())
@@ -46507,7 +46530,7 @@ ${播报文本}
     const options = [];
     SKILL_DESIGNER_CONDITION_BRANCH_TYPE_GROUPS.forEach(分组 => {
       分组.options.filter(选项 => SKILL_DESIGNER_CONDITION_BRANCH_TYPE_OPTIONS.includes(选项)).forEach(选项 => {
-        options.push({ value: 选项, label: 选项, group: 分组.label, __selected: 选项 === 选中值 });
+        options.push({ value: 选项, label: 选项, group: 分组.label, ...(技能设计台条件类型说明[选项] ? { hint: 技能设计台条件类型说明[选项] } : {}), __selected: 选项 === 选中值 });
       });
     });
     return 下拉收口({ options });
@@ -47306,7 +47329,28 @@ ${播报文本}
     // 各分区内字段（值取挂载后的虚拟控件）。原版顶层字段没有逐项说明徽标，只有分区标题说明
     const T = vf.top;
     const L = vf.scopeLabels;
-    const 字段 = (key, label, 控件, 附加 = {}) => (控件 ? { ...导出控件({ ...控件, key, label, hint: '' }), ...附加, key, label } : null);
+    // 顶层字段的悬停说明（原项目只有分区标题有说明；这里按实际逻辑补全）
+    const 顶层字段说明 = {
+      deliveryForm: '直接生效：释放后直接结算效果。造物承载：先做出一件造物，之后再使用这件造物来触发效果（食物系、辅助系可选）。',
+      使用限制周期: '这个技能多久内能用几次：每战或每日。不限制就选「无限制」。',
+      使用限制次数: '在上面选的周期内，最多能用几次。',
+      启用被动: '开启后这是被动技能：不用主动释放，到了「触发时机」就自动触发。',
+      被动触发: '被动在什么时候自动触发：常驻、战斗开始、回合开始、受击前、致命前、受击后、濒死时、被控制时、命中后。',
+      被动触发周期: '被动触发次数怎么限制：每战或每回合各自限次，或者不限制。',
+      被动触发次数: '在上面选的周期内，最多触发几次。',
+      用法模式: '一次性释放：融合后打出一次技能。融合增幅：融合带来持续的增幅或共享效果。',
+      fusionMode: '双人/多人融合：和别人的武魂融合。自体融合：用自己的多个武魂融合。',
+      costType: '释放时扣哪种资源。选「混合」可以同时扣魂力、精神力、体力。',
+      前摇: '出手前的准备时间。数值越大出手越慢，对方有更多时间做出反应。',
+      启用技能掌控度: '开启后，技能威力会随使用者的等级逐步发挥：等级低时发挥不全，等级够了才完全发挥。普通魂技不需要。',
+      技能掌控度中心等级: '使用者达到这个等级时，技能发挥一半威力。',
+      技能掌控度圆满等级: '使用者达到这个等级后，技能完全发挥。',
+      constructItemCount: '这次一共做出几件造物。',
+      visualDesc: '写给玩家看的画面描述，不影响战斗结算。',
+      effectDesc: '写给玩家看的效果说明，不影响战斗结算。',
+    };
+    const 顶层说明 = key => 顶层字段说明[key] || (/^cost./.test(key) ? '释放时扣的数量：「点」是具体数值，「%」是占该资源上限的比例。' : /^sustain./.test(key) ? '技能持续期间，每回合额外要扣的数量。' : '');
+    const 字段 = (key, label, 控件, 附加 = {}) => (控件 ? { ...导出控件({ ...控件, key, label, hint: 顶层说明(key) }), ...附加, key, label } : null);
     const 启用被动 = 技能设计台启用被动(previewMeta, form);
     const 被动周期 = normalizeSkillUiText(T.被动触发周期.value, '无限制');
     const 使用周期 = normalizeSkillUiText(T.使用限制周期.value, '无限制');
@@ -47338,7 +47382,7 @@ ${播报文本}
       artProgress: T.artStage ? [字段('artStage', '境界', T.artStage), 字段('artLevel', '等级', T.artLevel)] : [],
       construct: [
         字段('constructItemCount', '数量', T.constructItemCount),
-        { ...导出控件(T.constructDurationTick), key: 'constructDurationTick', label: '有效期' },
+        { ...导出控件(T.constructDurationTick), key: 'constructDurationTick', label: '有效期', hint: '造物能保留多久。' },
         字段('constructDescription', '物品描述', T.constructDescription),
       ],
       energy: [
@@ -47352,7 +47396,7 @@ ${播报文本}
         字段('技能掌控度中心等级', '中心等级', T.技能掌控度中心等级, { visible: 掌控显示 }),
         字段('技能掌控度圆满等级', '圆满等级', T.技能掌控度圆满等级, { visible: 掌控显示 }),
       ],
-      attributes: [{ key: 'attachedAttributes', kind: 'multi', multiple: true, label: '附带属性', hint: '', visible: true, options: 导出选项(T.attachedAttributes.options), selected: T.attachedAttributes.selected.slice() }],
+      attributes: [{ key: 'attachedAttributes', kind: 'multi', multiple: true, label: '附带属性', hint: '这个技能带有的元素或概念属性。限定元素的效果按它判断。', visible: true, options: 导出选项(T.attachedAttributes.options), selected: T.attachedAttributes.selected.slice() }],
       terminal: [字段('visualDesc', L.visualLabel, T.visualDesc), 字段('effectDesc', L.effectLabel, T.effectDesc)],
     };
   }
@@ -48013,7 +48057,7 @@ ${播报文本}
         return 读取技能设计台目标候选(原型, { 嵌套字段: ctx.nestedKind || '', 当前效果 }).map(v => ({ value: v, label: v }));
       },
       condition: {
-        typeGroups: SKILL_DESIGNER_CONDITION_BRANCH_TYPE_GROUPS.map(组 => ({ label: 组.label, options: 组.options.filter(o => SKILL_DESIGNER_CONDITION_BRANCH_TYPE_OPTIONS.includes(o)).map(o => ({ value: o, label: o, group: 组.label })) })),
+        typeGroups: SKILL_DESIGNER_CONDITION_BRANCH_TYPE_GROUPS.map(组 => ({ label: 组.label, options: 组.options.filter(o => SKILL_DESIGNER_CONDITION_BRANCH_TYPE_OPTIONS.includes(o)).map(o => ({ value: o, label: o, group: 组.label, ...(技能设计台条件类型说明[o] ? { hint: 技能设计台条件类型说明[o] } : {}) })) })),
         objects: 构建技能设计台条件分支对象选项(),
         compare: type => 条件比较下拉(type, '').options.map(({ value, label }) => ({ value, label })),
         valueControl: (type, compare) => {
