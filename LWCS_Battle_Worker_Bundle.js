@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:8efa03bb5ee05e2333abb3df02d00663c8bf15305ef61d004f60c526edb1b229|MVU_Schema_Runtime.js:454e4a242dce5e02d69c3def2993d350ac50f39dcb667f2fc6f09488f34461dd|BattlePreview_Module.js:20fa47eb98c686d3bfad5976dfdc8e9e13843984e052c3cab9f0a42a789a9e8b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:06c8130b02cc0bf87be87eacd0306eed3a877a0af902948d3b23926924c169e2|BattleRuntime_Module.js:83e7d9f80955ae31fbf921df96c5c73d5cfb23f06dcb247121c4ad7432ddb295 */
+/* sources-sha256: MVU_Skill_Runtime.js:ec3add2af2b73843ebc0299448b0b9dab5cbd6bec3159387b7fc515af429436e|MVU_Schema_Runtime.js:454e4a242dce5e02d69c3def2993d350ac50f39dcb667f2fc6f09488f34461dd|BattlePreview_Module.js:20fa47eb98c686d3bfad5976dfdc8e9e13843984e052c3cab9f0a42a789a9e8b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:06c8130b02cc0bf87be87eacd0306eed3a877a0af902948d3b23926924c169e2|BattleRuntime_Module.js:83e7d9f80955ae31fbf921df96c5c73d5cfb23f06dcb247121c4ad7432ddb295 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -2205,7 +2205,17 @@ var FactionDistribution = {
   },
 };
 
+// 等级基准只取决于等级（锚点表是常量），算一次记住；战斗里算伤害的等级缩放每次都查它（11-15 7v7 剖析：占整场 14%）。
+// 返回浅拷贝，调用方改了也不会改到缓存。缓存用到时才建：本文件加载时（斗铠等效属性包）就会调用它，那时 var 还没赋值。
+var 等级基准缓存_V1;
 function getBaseStats(lv) {
+  const 键 = Math.max(1, Math.min(180, Number(lv) || 1));
+  等级基准缓存_V1 ||= new Map();
+  let 已算 = 等级基准缓存_V1.get(键);
+  if (!已算) { 已算 = 计算等级基准_V1(键); 等级基准缓存_V1.set(键, 已算); }
+  return { ...已算 };
+}
+function 计算等级基准_V1(lv) {
   const 等级值 = Math.max(1, Math.min(180, Number(lv) || 1));
   const 百级后 = 百级基值 => 百级基值 * Math.pow(10, (等级值 - 100) / 10);
 
