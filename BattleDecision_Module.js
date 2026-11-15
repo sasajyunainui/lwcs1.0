@@ -65719,8 +65719,9 @@
   //   guard[t]       the whole hits t's charges take first (rule blocks, death saves, a revival), counted into rounds;
   //   stop[u][t]     the rounds of t's actions u's best control takes (chance × duration); worth counts it at t's worth.
   // A taunted unit's cells hold only its taunters. Read by nothing in play (root.__LWCS_DECISION_DEBUG__.onFacts shows
-  // it). Not in it yet: summons' assists and guard summons, fusions, skills with condition branches (skippedSkills counts
-  // them). The cells are the settlement layer's to build; they sit here until they move there.
+  // it). Not in it yet: summons' assists and guard summons, fusions (skills with condition branches are in since 11-15:
+  // their value is read on the world as it stands; skippedSkills stays 0). The cells are the settlement layer's to build;
+  // they sit here until they move there.
   // ---------------------------------------------------------------------------------------------------------------------
   const R20_ROUNDS_CAP = 99, R20_ROUNDS_FLOOR = 0.25, R20_HORIZON = 6, R20_RESOURCE_PRICE = 0.15, R20_ROUND_DISCOUNT = 0.85, R20_SHADOW_SCALE = 30,
     R20_UPKEEP_ROUNDS = 3, R20_CHAIN_LIMIT = 8, R20_WIN_SLOPE = 2,
@@ -65819,7 +65820,9 @@
       const profile = targetProfile(skill);
       if (friendly ? !(profile.startsWith('FRIENDLY_') || profile === 'ANY_SINGLE' || profile === 'SELF' && self)
         : !(profile.startsWith('HOSTILE_') || profile === 'ANY_SINGLE')) continue;
-      if (skillActionCapacitySettlementProfile(skill)?.conditional) { if (skipped) skipped.count += 1; continue; }
+      // 条件技能（替换/追加分支，或跟随主原型的伤害/回复）也进格子（11-15）：单招估值按当下世界缓存（cachedBaseActionValue 对
+      // 带条件分支的技能以世界快照为键），条件成立与否已在其中——目标冻住时冰爆的格子就是冰爆的值。此前整条跳过，对手的条件
+      // 技能不进压力，自己的也不进后劲。
       if (hidden(preview.collectEffects(skill)[0])) continue;
       const value = cachedBaseActionValue(unit, other, 'RELEASE_SKILL', skill, context, world);
       if (!(value > basic)) continue;
