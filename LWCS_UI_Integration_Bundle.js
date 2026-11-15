@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:3c656db247e050c7e609cf9acbb4d4ffe5358e3c9499dc704f82229d0399a5a0|cockpit/designer-model.js:76779b81a0a8053dab9a7f9ee227be5ce11514b32eb89eb3357ac03ecd359237|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:e7b8f6264e4321908cc814a6889852c8b2bcf958485c1f16d2864c3148c5506e|cockpit/designer-model.js:76779b81a0a8053dab9a7f9ee227be5ce11514b32eb89eb3357ac03ecd359237|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -9073,15 +9073,15 @@
     if (!角色 || typeof 角色 !== 'object') return { 名称 };
     let 系别 = toText(角色?.属性?.系别, '').trim(), 魂技数 = 0, 攻击魂技数 = 0;
     const 子项 = (对象, 规则) => Object.entries(对象 || {}).filter(([键, 值]) => 规则.test(键) && 值 && typeof 值 === 'object').map(([, 值]) => 值);
+    const 记一项 = 效果 => { 魂技数 += 1; if (JSON.stringify(效果 || []).includes('"原型":"伤害结算"')) 攻击魂技数 += 1; };
     子项(角色, /^第\d+武魂$/).forEach(武魂 => {
       if (!系别) 系别 = toText(武魂.系别, '').trim();
       子项(武魂, /^第\d+魂灵$/).forEach(魂灵 => 子项(魂灵, /^第\d+魂环$/).forEach(魂环 => 子项(魂环, /^第\d+魂技$/)
-        .filter(魂技 => Array.isArray(魂技._效果数组)).forEach(魂技 => {
-          魂技数 += 1;
-          if (JSON.stringify(魂技._效果数组).includes('"原型":"伤害结算"')) 攻击魂技数 += 1;
-        })));
+        .filter(魂技 => Array.isArray(魂技._效果数组)).forEach(魂技 => 记一项(魂技._效果数组))));
     });
-    return { 名称, 等级: toNumber(角色?.属性?.等级, 0), 系别, 魂技数, 攻击魂技数 };
+    // 魂导师职业（副职业里有魂导师）一律算战魂师（用户「首先看是不是魂导师职业就行」）。
+    const 魂导师 = !!(角色?.副职业 && typeof 角色.副职业 === 'object' && 角色.副职业.魂导师);
+    return { 名称, 等级: toNumber(角色?.属性?.等级, 0), 系别, 魂技数, 攻击魂技数, 魂导师 };
   }
 
   // 团体赛对局第一次开打时排阵并写入 对局.赛程（之后每个子场都读它）；不是团体赛返回 null。

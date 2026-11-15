@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:d2eab9a667510575469428bef43b9a4dbbba36ff0a8fe5813a6ec13691682391|MVU_Schema_Runtime.js:24aed5e223712a53c09c5b745a3e4891a729d4e20843aa1ddf7aa5ca96328d1f|MVU_Competition_Runtime.js:bdd84470321c41c035433423da99c6cf1daea36e11290192498d50362aea94e4|MVU_Runtime_View.js:1f7a519a850bc170c3da108bfe22614d098b593bc573d8b38a5c0a7bec81aba5 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:d2eab9a667510575469428bef43b9a4dbbba36ff0a8fe5813a6ec13691682391|MVU_Schema_Runtime.js:24aed5e223712a53c09c5b745a3e4891a729d4e20843aa1ddf7aa5ca96328d1f|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:1f7a519a850bc170c3da108bfe22614d098b593bc573d8b38a5c0a7bec81aba5 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -42056,12 +42056,12 @@ try {
   const 战魂师系别 = Object.freeze(['强攻系', '敏攻系', '防御系', '召唤系']);
   const 看魂技系别 = Object.freeze(['控制系', '精神系', '元素系']);
 
-  // 战魂师（用户「纯控魂师，辅助型精神系，元素系也不算战魂师」）：强攻、敏攻、防御、召唤系算；辅助、治疗、食物系不算；
-  // 控制、精神、元素系看魂技组——攻击型魂技（含伤害结算）至少占三分之一才算。攻击型魂技数由调用方数好传入
-  // （成员.攻击魂技数 / 成员.魂技数），没传的这三系按不算。
-  function 是战魂师系别(系别 = '', 攻击魂技数 = 0, 魂技数 = 0) {
+  // 战魂师（用户「纯控魂师，辅助型精神系，元素系也不算战魂师」「和菜头虽然是辅助，但人家是魂导师…首先看是不是魂导师职业就行」）：
+  // 有魂导师职业的一律算；强攻、敏攻、防御、召唤系算；辅助、治疗、食物系不算；控制、精神、元素系看魂技组——攻击型魂技
+  // （含伤害结算）至少占三分之一才算。魂技数由调用方数好传入（成员.攻击魂技数 / 成员.魂技数），没传的这三系按不算。
+  function 是战魂师系别(系别 = '', 攻击魂技数 = 0, 魂技数 = 0, 魂导师 = false) {
     const 值 = 文本(系别);
-    if (战魂师系别.includes(值)) return true;
+    if (魂导师 === true || 战魂师系别.includes(值)) return true;
     if (!看魂技系别.includes(值)) return false;
     return 数值(魂技数) > 0 && 数值(攻击魂技数) * 3 >= 数值(魂技数);
   }
@@ -42094,7 +42094,7 @@ try {
     return 整数(项目?.每队上场人数 ?? 7, 1, 7);
   }
 
-  // 脚本随机排阵（用户「脚本随机先排」）：成员 [{名称, 等级, 系别, 攻击魂技数, 魂技数}]，等级未知按 0、同级随机。每段各自挑人
+  // 脚本随机排阵（用户「脚本随机先排」）：成员 [{名称, 等级, 系别, 攻击魂技数, 魂技数, 魂导师}]，等级未知按 0、同级随机。每段各自挑人
   // （用户「团体战上限7人，但是前面出场的不一定是团体战出场的」「要考虑系别平衡，比如7个强攻要弱于6强攻1辅助要弱于5强攻1控制1辅助。
   // 擂台肯定不能把辅助啥的非战魂师抽上去，除非没人」）：
   //   团战（上场人数，最多 7）：带上等级最高的一名辅助类（辅助、治疗、食物系）和一名控制系，其余按等级取战魂师，不够再按等级补。
@@ -42107,7 +42107,7 @@ try {
     const 人数 = Math.max(1, Math.min(7, 整数(上场人数, 1, 7)));
     const 名单 = 洗牌((Array.isArray(成员) ? 成员 : []).map(记录 => (对象(记录) ? 记录 : { 名称: 记录 }))
       .map(记录 => ({ 名称: 文本(记录.名称), 等级: 数值(记录.等级, 0), 系别: 文本(记录.系别),
-        战魂师: 是战魂师系别(记录.系别, 记录.攻击魂技数, 记录.魂技数) })).filter(记录 => 记录.名称), 随机)
+        战魂师: 是战魂师系别(记录.系别, 记录.攻击魂技数, 记录.魂技数, 记录.魂导师 === true) })).filter(记录 => 记录.名称), 随机)
       .sort((x, y) => y.等级 - x.等级);
     const 辅助类 = 记录 => ['辅助系', '治疗系', '食物系'].includes(记录.系别);
     const 控制位 = 记录 => 记录.系别 === '控制系';
