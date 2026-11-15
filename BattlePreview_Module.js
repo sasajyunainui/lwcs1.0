@@ -3475,12 +3475,15 @@
   //   估计为对手剩余生命 × 我倒下前能打掉的那部分（两只钟之比）× 我还剩的魂力（精神力），只在输的那部分里算；
   //   接着打的队友记满，只有团战在后记一半。
   //   之后还有团战：自己的生命也带进团战（保留，FOLLOW_KEEP）——认输保住此刻的生命，留下来赢了保住、输了剩一成。
-  const FOLLOW_DRAIN = 0.6, FOLLOW_KEEP = 0.6;
+  const FOLLOW_DRAIN = 0.6, FOLLOW_KEEP = 0.6, FOLLOW_RESOURCE_SHARE = 0.5;
+  // foeFollow: the other side has someone after this one in the 擂台 — winning, the actor fights on with what it has left.
   function matchFollowUp(worldSnapshot = {}, side = '') {
-    const record = worldSnapshot?.赛事上下文?.后续?.[side === 'team_enemy' ? 'ENEMY' : 'PLAYER'];
+    const records = worldSnapshot?.赛事上下文?.后续;
+    const record = records?.[side === 'team_enemy' ? 'ENEMY' : 'PLAYER'];
     if (!record || typeof record !== 'object') return null;
     const carry = Number(record.接续) > 0 ? 1 : record.团战 === true ? 0.5 : 0, keep = record.团战 === true ? 1 : 0;
-    return carry || keep ? { carry, keep } : null;
+    const foeFollow = Number(records?.[side === 'team_enemy' ? 'PLAYER' : 'ENEMY']?.接续) > 0;
+    return carry || keep || foeFollow ? { carry, keep, foeFollow } : null;
   }
   // The outlook (battleStandingOutlook) is read off the field: who brings the other side down first, and whether before
   // the battle's rounds run out (胜负条件 maxRounds). A side's time to bring the other down is the other's HP shares (units
@@ -3596,7 +3599,10 @@
     // 群体撤离 (groupWithdrawalContest): the whole side leaves together, so no one is left to fight on.
     const others = contest?.groupWithdrawal === true ? 0 : listUnits(worldSnapshot).filter(entry => entry.side === side && unitId(entry.unit) !== id &&
       isBattleCapable(entry.unit) && !isSummonUnit(entry.unit)).length;
-    const outlook = battleStandingOutlook(worldSnapshot, side);
+    // contest.outlook（R20 认输估值，BattleDecision r20ExitOutlook）：对局推演给的胜算，留下来打掉的对手份额（drained）与自己
+    // 最后剩的生命份额（actorKept）；没有就按场上已打出的速率粗估（battleStandingOutlook）。
+    const raced = contest?.outlook && typeof contest.outlook === 'object' ? contest.outlook : null;
+    const outlook = raced ? { ...battleStandingOutlook(worldSnapshot, side), ...raced } : battleStandingOutlook(worldSnapshot, side);
     const without = others ? battleStandingOutlook(worldSnapshot, side, id) : Object.freeze({ win: 0, lose: 1, draw: 0 });
     // What the battle's result is worth to each unit on the field: won +1, lost −1 and its fate; run out, 0.
     const worth = view => view.win - view.lose - view.lose * fate;
@@ -3609,10 +3615,29 @@
       const foeHp = listUnits(worldSnapshot).filter(entry => entry.side && entry.side !== side && isBattleCapable(entry.unit) && !isSummonUnit(entry.unit))
         .reduce((sum, entry) => sum + share(entry.unit), 0);
       const reach = !(outlook.ownTime < Number.POSITIVE_INFINITY) ? 0 : outlook.ownTime <= 0 ? 1 : Math.min(1, outlook.otherTime / outlook.ownTime);
-      followStay = FOLLOW_DRAIN * follow.carry * foeHp * reach * fuel * (1 - outlook.win) +
-        FOLLOW_KEEP * follow.keep * ((outlook.win + 0.5 * outlook.draw) * share(actor) + outlook.lose * LIFE_THREAT_RATIO);
-      followLeft = FOLLOW_KEEP * follow.keep * share(actor);
-      stay += followStay;
+      // 推演给了终局：留下来打掉的就是对手此刻与推演结束时之差，自己剩的就是推演结束时的（比赛里倒下也剩一成）。
+      const racedNumber = key => (raced && Number.isFinite(Number(raced[key])) ? Number(raced[key]) : null);
+      const ownRes = racedNumber('actorRes');
+      followLeft = FOLLOW_KEEP * follow.keep * (share(actor) + (ownRes !== null ? FOLLOW_RESOURCE_SHARE * ownRes : 0));
+      if (racedNumber('time') !== null) {
+        // 推演给了终局（R20）：比的是「现在认输」与「再打一回合再定」（萧萧：先耗、耗不动了再认）。再打一回合，赢的那部分照赢；
+        // 输的那部分不吃输掉的代价（下回合认输），收益是这一回合打掉的对手生命与逼他花的资源（一份资源按半份生命，按身价
+        // 折算），代价是这一回合自己掉的生命与花的资源——推演里撑不到一回合就倒下，代价就是倒下前的全部（出局线以上）。
+        const rounds = Math.max(1, racedNumber('time')), worthRatio = racedNumber('worthRatio') ?? 1;
+        const drainRound = (Math.max(0, racedNumber('drained') ?? 0) + FOLLOW_RESOURCE_SHARE * Math.max(0, racedNumber('drainedRes') ?? 0)) / rounds * worthRatio;
+        const hpLossRound = Math.max(0, share(actor) - Math.max(LIFE_THREAT_RATIO, Math.min(share(actor), racedNumber('actorKept') ?? 0))) / rounds;
+        const resLossRound = Math.max(0, racedNumber('actorSpend') ?? 0) / rounds;
+        const winWorth = 1 + FOLLOW_KEEP * follow.keep * Math.max(LIFE_THREAT_RATIO, Math.min(share(actor), racedNumber('actorKept') ?? share(actor)));
+        const loseWorth = -1 + followLeft - FOLLOW_KEEP * follow.keep * (hpLossRound + FOLLOW_RESOURCE_SHARE * resLossRound) + FOLLOW_DRAIN * follow.carry * drainRound;
+        const oneMore = outlook.win * winWorth + (1 - outlook.win) * loseWorth;
+        followStay = oneMore - stay;
+        stay = oneMore;
+      } else {
+        const drained = foeHp * reach * fuel;
+        const kept = (outlook.win + 0.5 * outlook.draw) * share(actor) + outlook.lose * LIFE_THREAT_RATIO;
+        followStay = FOLLOW_DRAIN * follow.carry * drained * (1 - outlook.win) + FOLLOW_KEEP * follow.keep * kept;
+        stay += followStay;
+      }
     }
     // A unit getting away from a side out to get away (WITHDRAW_SUCCESS) has its goal met; else it has lost.
     const escapes = rules.withdraw && sideWithdrawalGoal(worldSnapshot, side, battleIntent);

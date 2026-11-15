@@ -66566,6 +66566,8 @@
       const whole = stam ? Math.min(left[unit], stam[unit]) : left[unit];
       score += sides[unit] === own ? whole : -whole;
     }
+    // plan.report（r20ExitOutlook）：推演结束时各单位还剩的与分差。
+    if (plan?.report) { plan.report.left = left.map((value, unit) => (stam ? Math.min(value, stam[unit]) : value)); plan.report.margin = score; plan.report.time = time; }
     // The margin, and winning itself: smooth in the margin (a level fight tips either way on a hair, and a hard ±1 made
     // every candidate of a mirror match worth the whole battle or nothing), worth more the sooner it is decided.
     return score + R20_WIN_VALUE * Math.tanh(R20_WIN_SLOPE * score) * R20_ROUND_DISCOUNT ** (standing.size === 1 ? time : horizon);
@@ -67374,8 +67376,11 @@
     const spar = R20_SPAR_INTENT.test(String(r20Intent?.mode || table.world?.战斗意图 || ''));
     // 后续出场（BattlePreview matchFollowUp）：擂台里我方之后还有人接着打这个对手时不必试探——逼他出手、亮牌、耗他的资源本身就是
     // 给队友铺路（原作 萧萧对薛兵），试探溢价不计。
-    const followCarry = Number(preview.matchFollowUp?.(table.world, request.actorSide)?.carry || 0) >= 1;
-    const cost = R20_RESOURCE_PRICE * spent * (1 + (followCarry ? 0 : R20_PROBE_PREMIUM * unseen)) * (spar ? R20_SPAR_PRICE : 1);
+    const follow = preview.matchFollowUp?.(table.world, request.actorSide) || null;
+    const followCarry = Number(follow?.carry || 0) >= 1;
+    // 赢家省资源（同上）：对方后面还有人时，赢下这场要带着剩下的资源接着打——花出去的按胜算加价；之后还有团战时至少加一半。
+    const followKeep = follow ? Math.max(follow.keep ? 0.5 : 0, follow.foeFollow ? r20ExitOutlook(request, table.units[actorRow] || {}).win : 0) : 0;
+    const cost = R20_RESOURCE_PRICE * spent * (1 + (followCarry ? 0 : R20_PROBE_PREMIUM * unseen)) * (spar ? R20_SPAR_PRICE : 1) * (1 + followKeep);
     // 亮魂环（同上）: any 魂技 lights the rings — the enemy sees how many and how old, and what the spirit does — so against one
     // not yet seen it costs a base share (R20_REVEAL_BASE) of what it stands to gain, more for a bigger card, at most R20_REVEAL_CAP.
     // 试探（用户 2026-11-15「在不清楚对方能力前，最重要的就是试探」「不能过多提高战局中普攻占比」）: a big card (the share of
@@ -72097,12 +72102,67 @@
     if (String(candidate?.declaration?.actionKind || '').trim().toUpperCase() === 'WITHDRAW') return true;
     return (result?.contributions || []).some(entry => entry?.outcomeKind === 'WITHDRAWAL_CONTEST' && entry?.evidence?.groupWithdrawal === true);
   }
+  // 认输估值的胜算（11-15 用户「现在就换胜算」）：R20 下按桌面原样推演一遍（r20Race）——胜算取胜负项的 tanh(R20_WIN_SLOPE × 分差)
+  // 换到 0～1，推演结束时对手还剩的（我倒下前打不掉的）与自己还剩的给后续出场的消耗与保留（BattlePreview exitValuation）。
+  // 此前按场上已打出的伤害速率粗估：开局还没出手时，弱方能打掉对手多少估成 0，胜算也偏高。每张桌面每方算一次。
+  const r20ExitOutlooks = new WeakMap(), R20_EXIT_SPEND_PRIOR = 0.1;
+  function r20ExitOutlook(request = {}, actor = {}) {
+    const table = r20Facts(request);
+    const own = request.actorSide;
+    let bySide = r20ExitOutlooks.get(table);
+    if (!bySide) r20ExitOutlooks.set(table, bySide = new Map());
+    let raced = bySide.get(own);
+    if (!raced) {
+      const report = {};
+      r20Race(table, own, { report });
+      raced = report;
+      bySide.set(own, raced);
+    }
+    // 推演里的剩余是出局线以上的生命加护盾（r20Left）：打掉的取对手推演前后之差；自己剩的把出局线加回去，按生命份额给。
+    // 资源（用户「把逼对手花的资源也算进消耗」，原作 萧萧逼出薛兵的武魂真身）：推演不走资源，按各自这场已花的速率（两回合、
+    // 每回合 R20_EXIT_SPEND_PRIOR 的先验）乘推演打了多少回合估计——对手被逼花掉的、自己留下来要花的，都不超过眼下还剩的。
+    // 身价（worth：一次行动带给本方的）：强者的生命与资源在之后更值钱，对手的按对手身价 ÷ 自己身价折算（0.5～3）。
+    const fuel = unit => Math.max(0, ...['魂力', '精神力'].map(resource => preview.readResourceMax(unit, resource) > 0
+      ? clamp(preview.readResource(unit, resource) / preview.readResourceMax(unit, resource), 0, 1) : 0));
+    const elapsed = Math.max(0, Number(table.world?.回合 || 1) - 1) + 0.5;
+    const rate = unit => ((1 - fuel(unit)) + 2 * R20_EXIT_SPEND_PRIOR) / (elapsed + 2);
+    const time = Math.max(0, Number(raced.time) || 0);
+    let drained = 0, drainedRes = 0, actorKept = 0, actorRow = -1, foeWorth = 0, foes = 0;
+    table.units.forEach((unit, row) => {
+      const end = Math.max(0, Number(raced.left?.[row]) || 0);
+      if (table.sides[row] !== own) {
+        drained += Math.max(0, (Number(table.remaining[row]) || 0) * (Number(table.alive[row]) || 0) - end);
+        drainedRes += Math.min(fuel(unit), rate(unit) * time);
+        foeWorth += Number(table.worth[row]) || 0; foes += 1;
+      } else if (preview.unitId(unit) === preview.unitId(actor)) {
+        actorKept = end + r20Floor(unit) / Math.max(1, preview.readHpMax(unit));
+        actorRow = row;
+      }
+    });
+    const actorUnit = actorRow >= 0 ? table.units[actorRow] : actor;
+    const ownWorth = actorRow >= 0 ? Number(table.worth[actorRow]) || 0 : 0;
+    const worthRatio = foes && ownWorth > 1e-9 ? clamp(foeWorth / foes / ownWorth, 0.5, 3) : 1;
+    const win = clamp(0.5 + 0.5 * Math.tanh(R20_WIN_SLOPE * (Number(raced.margin) || 0)), 0, 1);
+    return { win, lose: 1 - win, draw: 0, drained, drainedRes, actorKept, actorRes: fuel(actorUnit), actorSpend: Math.min(fuel(actorUnit), rate(actorUnit) * time), worthRatio, time };
+  }
+  function r20ExitMargin(request = {}) {
+    r20ExitOutlook(request, {});
+    return Number(r20ExitOutlooks.get(r20Facts(request))?.get(request.actorSide)?.margin) || 0;
+  }
+
   function r9v2LinearExitValuation(request = {}, result = {}, valuation = 'r9v2') {
     const world = request.visibleWorld || request.worldSnapshot || {};
     const actor = findUnitInWorld(world, request.actorId);
     if (!actor) return null;
     const contest = (result?.contributions || []).find(entry => entry?.outcomeKind === 'WITHDRAWAL_CONTEST')?.evidence || null;
-    const exit = preview.exitValuation(world, { objectives: request.objectiveContract || request.battleIntent?.objectives || world.胜负条件 || {} }, actor, contest);
+    // 只在团体赛子场（有后续出场）时换成推演胜算：其余战斗的认输照旧，免得动到别处的行为。
+    const raced = valuation === 'r20' && preview.matchFollowUp?.(world, request.actorSide) ? r20ExitOutlook(request, actor) : null;
+    const exit = preview.exitValuation(world, { objectives: request.objectiveContract || request.battleIntent?.objectives || world.胜负条件 || {} }, actor,
+      raced ? { ...(contest || {}), outlook: raced } : contest);
+    // 调试：认输胜算的校准取样（推演分差与实际胜负），不参与估值。
+    if (valuation === 'r20' && providerDepth === 1 && typeof root.__LWCS_DECISION_DEBUG__?.onExitOutlook === 'function') {
+      root.__LWCS_DECISION_DEBUG__.onExitOutlook({ request, raced: raced || r20ExitOutlook(request, actor), margin: r20ExitMargin(request) });
+    }
     if (exit && providerDepth === 1 && typeof root.__LWCS_DECISION_DEBUG__?.onExit === 'function') {
       root.__LWCS_DECISION_DEBUG__.onExit({ valuation, request, exit });
     }
