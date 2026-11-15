@@ -5457,6 +5457,8 @@ var SKILL_UNIT_COST_TABLE_V1 = Object.freeze({
     异常抗性: Object.freeze({ 数值: 0.6 }),
     标记: Object.freeze({ 数值: 0.8, 固定COST: 30 }),
     封技: Object.freeze({ 固定COST: 50 }),
+    // 沉默与封技运行时同效（不能放魂技，BattlePreview silence），同价（11-15 设计侧与运行时排查：沉默此前无价）。
+    沉默: Object.freeze({ 固定COST: 50 }),
     护卫: Object.freeze({ 数值: 0.9, 固定COST: 8 }),
     嘲讽: Object.freeze({ 数值: 1.0, 固定COST: 10 }),
     // 封禁装备: 封甲 ≈ the 力量/防御/敏捷/精神力上限 an armour and mecha give (−15%～−40% of the panel at 0.76～1.14 a
@@ -16570,10 +16572,13 @@ function 计算单项效果COST_V1(效果 = {}, 上下文 = {}) {
       : Number.isFinite(绝对值)
         ? '绝对值'
         : '固定值';
+  // 规则防御的次数（免伤 N 次挡 N 下）按次数计价（11-15 设计侧与运行时排查：免伤 1 次与 5 次同价 50）。
+  const 规则次数系数 = 原型 === '规则防御' ? Math.max(1, Math.floor(Number(效果?.次数) || 1)) : 1;
   return {
-    COST: (实际单位COST * 数值倍率 * 属性数量系数 + 附加规则COST) * 目标系数 * 持续系数,
+    COST: (实际单位COST * 数值倍率 * 属性数量系数 * 规则次数系数 + 附加规则COST) * 目标系数 * 持续系数,
     百分比,
     数值类型,
+    ...(规则次数系数 > 1 ? { 次数系数: 规则次数系数 } : {}),
     百分点: Number.isFinite(百分点) ? Number(百分点.toFixed(4)) : null,
     绝对值: Number.isFinite(绝对值) ? Number(绝对值.toFixed(4)) : null,
     绝对值折算百分点: null,
