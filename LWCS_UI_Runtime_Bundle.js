@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:7f561133be484aba9b48fc6b49b51b71c3e3e4cbbf6743c9e6b0a62cf26be637|cockpit/designer-model.js:3af6b921800a777fe67adf256f84125349e354db53a6856b190f9f039db556b6|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:3474ced3c93288f1eb7f4fea4ab961df89f18319d3c7a388066ea50741681f27|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:20fa47eb98c686d3bfad5976dfdc8e9e13843984e052c3cab9f0a42a789a9e8b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:5badd697b42bf2940f457ec529b7f2082137a7fdd531bffe6e074eb38e6b1abc|BattleRuntime_Module.js:83e7d9f80955ae31fbf921df96c5c73d5cfb23f06dcb247121c4ad7432ddb295|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:7f561133be484aba9b48fc6b49b51b71c3e3e4cbbf6743c9e6b0a62cf26be637|cockpit/designer-model.js:3af6b921800a777fe67adf256f84125349e354db53a6856b190f9f039db556b6|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:3474ced3c93288f1eb7f4fea4ab961df89f18319d3c7a388066ea50741681f27|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:749a66fc9190fff2b068ff6e1f23f1401170e3d02477c51ca4a36d2cd938f27a|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:97029871b086807cfe780d47bc9bbd0597c225fc01cb5e4cb8c143c8b7cfc02e|BattleRuntime_Module.js:3ec3b7d302ba3d3fc682ba02cbd1388478ba802e454969e8af8ae635042bd25c|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -61920,12 +61920,21 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
   // windup exceeds that budget (a charged release) leaves the whole budget. Defending and evading take no windup and stay
   // open, and skills marked as reactions (即时反应, 受击触发, …) are not held to it (BattleDecision isImmediateReactionSkill).
   const REACTION_DEFENDER_MARGIN = 0.2;
+  // 措手不及（先攻：防守方首回合反应率减半）: a state's 战斗效果.reaction_window_mult scales the window the unit has to answer in.
+  function reactionWindowMultiplier(unit = {}) {
+    let multiplier = 1;
+    for (const state of Object.values(unit?.状态效果 || {})) {
+      const value = Number(state?.战斗效果?.reaction_window_mult);
+      if (Number.isFinite(value) && value >= 0) multiplier = Math.min(multiplier, value);
+    }
+    return multiplier;
+  }
   function reactionWindupBudget(attacker = {}, declaration = {}, reactor = {}) {
-    const windup = actionWindup(attacker, declaration);
-    if (windup > CONTINUOUS_ACTION_BUDGET) return CONTINUOUS_ACTION_BUDGET;
+    const windup = actionWindup(attacker, declaration), multiplier = reactionWindowMultiplier(reactor);
+    if (windup > CONTINUOUS_ACTION_BUDGET) return CONTINUOUS_ACTION_BUDGET * multiplier;
     const attackerAgility = naturalActionOrderProfile(attacker).effectiveAgility;
-    if (!(attackerAgility > 0)) return CONTINUOUS_ACTION_BUDGET;
-    return Math.min(
+    if (!(attackerAgility > 0)) return CONTINUOUS_ACTION_BUDGET * multiplier;
+    return multiplier * Math.min(
       CONTINUOUS_ACTION_BUDGET,
       windup * (naturalActionOrderProfile(reactor).effectiveAgility / attackerAgility) * (1 + REACTION_DEFENDER_MARGIN),
     );
@@ -62927,6 +62936,9 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     }, 0);
     return Object.freeze({
       type,
+      // 先攻（偷袭）: a unit holding the battle's initiative (state 战斗效果.initiative_first, BattleRuntime applyBattleInitiative)
+      // acts before everyone else in the round it holds it.
+      first: Object.values(unit?.状态效果 || {}).some(state => state?.战斗效果?.initiative_first === true),
       typePriority: Number(typePriority[type] || 4),
       baseAgility,
       speedModifier,
@@ -62937,6 +62949,7 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
   function compareNaturalActionOrder(left = {}, right = {}) {
     const leftProfile = naturalActionOrderProfile(left);
     const rightProfile = naturalActionOrderProfile(right);
+    if (leftProfile.first !== rightProfile.first) return leftProfile.first ? -1 : 1;
     const priorityDelta = leftProfile.typePriority - rightProfile.typePriority;
     if (priorityDelta) return priorityDelta;
     const agilityDelta = rightProfile.effectiveAgility - leftProfile.effectiveAgility;
@@ -69403,15 +69416,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (prototype === '规则防御' && String(effect?.规则 || effect?.防御对象 || '').trim() === '免伤') {
       combatEffect.block_count = Math.max(1, Number(effect?.次数 || 1));
     }
-    if (['眩晕', '麻痹', '僵直', '束缚', '禁锢', '定身', '冻结', '冻结束缚', '星光停滞'].includes(state)) {
+    // 控制分档（用户 2026-11-15「要有点区分度，麻痹才是行动变慢，反应变差。僵直改成有反应窗口判定时固定判为无法应对，但是之后可以
+    // 行动」）: 眩晕 and the binds stop the unit whole; 麻痹 slows its moves and its answers; 僵直 leaves it no answer to a hit
+    // while it lasts, and it acts as usual. Until 11-15 麻痹 and 僵直 stopped it whole, as 眩晕 does, at a fifth of its price.
+    if (['眩晕', '束缚', '禁锢', '定身', '冻结', '冻结束缚', '星光停滞'].includes(state)) {
       combatEffect.skip_turn = true;
       combatEffect.cannot_act = true;
       combatEffect.cannot_react = true;
     }
+    if (state === '麻痹') {
+      combatEffect.cast_speed_penalty = Math.max(Number(combatEffect.cast_speed_penalty || 0), magnitude || 0.25);
+      combatEffect.reaction_penalty = Math.max(Number(combatEffect.reaction_penalty || 0), magnitude || 0.25);
+    }
     if (/僵直/.test(state)) {
       combatEffect.cannot_react = true;
-      combatEffect.reaction_penalty = Math.max(Number(combatEffect.reaction_penalty || 0), magnitude || 0.25);
-      combatEffect.cast_speed_penalty = Math.max(Number(combatEffect.cast_speed_penalty || 0), 0.35);
     }
     if (/迟缓|减速/.test(state)) {
       delete combatEffect.skip_turn;
@@ -75115,7 +75133,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const effects = state?.战斗效果;
     const calculation = state?.计算层效果;
     const stateName = String(state?.状态 || state?.状态名称 || state?.name || '').trim();
-    const hardControl = ['眩晕', '麻痹', '僵直', '束缚', '禁锢', '定身', '冻结', '冻结束缚', '星光停滞'].includes(stateName);
+    const hardControl = ['眩晕', '束缚', '禁锢', '定身', '冻结', '冻结束缚', '星光停滞'].includes(stateName);
     return hardControl || state?.skip_turn === true || state?.cannot_act === true ||
       (effects?.skip_turn ?? calculation?.skip_turn) === true || (effects?.cannot_act ?? calculation?.cannot_act) === true;
   }
@@ -82117,7 +82135,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         return effects?.skip_turn === true ||
           effects?.cannot_act === true ||
           [
-            '眩晕', '麻痹', '僵直', '束缚', '禁锢',
+            '眩晕', '束缚', '禁锢',
             '定身', '冻结', '冻结束缚', '星光停滞',
           ].includes(name);
       });
@@ -99205,10 +99223,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
   }
 
+  // The strike back after an answer that worked (反击窗口): any skill whose windup fits it (行动窗口, 用户 2026-11-15：多情斗罗
+  // 「追溯加曾经」——追溯成功后下一刻接的是控制魂技曾经). Until 11-15 only a skill with direct damage.
   function isImmediateOffensiveCounterSkill(skill = {}, immediateBudget = 0) {
-    const castTime = Math.max(0, Number(skill?.前摇 ?? skill?.cast_time ?? 10));
-    return castTime <= immediateBudget && directImmediateSkillEffects(skill)
-      .some(effect => String(effect?.原型 || '').trim() === '伤害结算');
+    return isWithinReactionWindow(skill, immediateBudget);
   }
 
   // 接战链 阶段二 (用户 2026-11-12：四种应对"没问题，都做"; BattlePreview clashOutcome / preemptTiming, BattleRuntime
@@ -100391,7 +100409,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   }
 
   function isHardControlStateName(name = '') {
-    return ['眩晕', '麻痹', '僵直', '束缚', '禁锢', '定身', '冻结', '冻结束缚', '星光停滞'].includes(String(name || '').trim());
+    return ['眩晕', '束缚', '禁锢', '定身', '冻结', '冻结束缚', '星光停滞'].includes(String(name || '').trim());
   }
 
   function hasActionCancellation(unit = {}) {
@@ -166261,26 +166279,27 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return built;
   }
 
-  // 决策随机（用户 2026-11-15「将高权重重新分配随机，这样就能保持多样性」「保证决策随机，但是不能随机过头，不然权重完全失去了
-  // 意义」）: the deciding unit's own choice (the outermost decision; what it pictures others choosing stays the best) is drawn among
-  // the candidates near the top — within DECISION_DIVERSITY_BAND of the way from the median score to the best (the median, so one
-  // very poor candidate does not widen it) — each by how far it stands above that band's floor, so the best is always the likeliest
-  // and a lone best is chosen as before. Contextually dominated candidates take no part. The battle's seeded Math.random draws it,
-  // so a case run with a fixed seed is reproduced.
-  const DECISION_DIVERSITY_BAND = Number(root.__LWCS_TUNE__?.DIVERSITY_BAND ?? 0.1);
+  // 决策随机（用户 2026-11-15「将高权重重新分配随机，这样就能保持多样性」「不能随机过头，不然权重完全失去了意义」「权重类似于
+  // 选择期望」）: the deciding unit's own choice (the outermost decision; what it pictures others choosing stays the best) is drawn
+  // with each candidate's chance by its score — e^((score − best) / T), T = DECISION_DIVERSITY_TEMPERATURE of the way from the median
+  // score to the best (the median, so one very poor candidate does not widen it): 0.1 of that way below the best weighs 0.37 of it,
+  // 0.3 below 0.05, 0.5 below 0.007. Contextually dominated candidates take no part. The battle's seeded Math.random draws it, so
+  // a case run with a fixed seed is reproduced.
+  const DECISION_DIVERSITY_TEMPERATURE = Number(root.__LWCS_TUNE__?.DIVERSITY_TEMPERATURE ?? 0.1);
   function diversifiedChoice(ranked = [], bestId = '', request = {}) {
-    if (providerDepth !== 1 || !(DECISION_DIVERSITY_BAND > 0) || request?.playerLockedDeclaration) return bestId;
+    // Only the unit's own action of its turn (ACTIVE): answers, strikes back and steps in stay the best — a drawn one could open
+    // a chain that never closed (11-15: a 35 级 强攻 vs 召唤 run hit ACTION_QUEUE_NODE_LIMIT_EXCEEDED).
+    if (providerDepth !== 1 || !(DECISION_DIVERSITY_TEMPERATURE > 0) || request?.playerLockedDeclaration ||
+      String(request?.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase() !== 'ACTIVE') return bestId;
     const rows = ranked.filter(row => row && row.contextuallyDominated !== true && Number.isFinite(Number(row.score)));
     if (rows.length < 2) return bestId;
     const scores = rows.map(row => Number(row.score)).sort((a, b) => b - a);
-    const best = scores[0], median = scores[Math.floor(scores.length / 2)];
-    const floor = best - DECISION_DIVERSITY_BAND * Math.max(0, best - median);
-    const band = rows.filter(row => Number(row.score) >= floor);
-    if (band.length < 2) return bestId;
-    const weights = band.map(row => Number(row.score) - floor + 1e-9), total = weights.reduce((sum, weight) => sum + weight, 0);
+    const best = scores[0], temperature = DECISION_DIVERSITY_TEMPERATURE * Math.max(0, best - scores[Math.floor(scores.length / 2)]);
+    if (!(temperature > 1e-12)) return bestId;
+    const weights = rows.map(row => Math.exp((Number(row.score) - best) / temperature)), total = weights.reduce((sum, weight) => sum + weight, 0);
     let roll = Math.random() * total;
-    for (let index = 0; index < band.length; index += 1) { roll -= weights[index]; if (roll <= 0) return String(band[index].candidateId || bestId); }
-    return String(band[band.length - 1].candidateId || bestId);
+    for (let index = 0; index < rows.length; index += 1) { roll -= weights[index]; if (roll <= 0) return String(rows[index].candidateId || bestId); }
+    return String(rows[rows.length - 1].candidateId || bestId);
   }
 
   function runR9v2LinearPreparedProvider(request = {}, featurePreparation) {
@@ -168241,6 +168260,28 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (!owner) return false;
     return listCombatUnits(combatData || {}).some(holder => holder !== unit && previewRuntime.readHp(holder) > 0 && !previewRuntime.hasLeftBattle(holder) &&
       Object.values(holder.持续效果 || {}).some(effect => effect?.effect_type === 'condition' && effect.sourceActionId === owner));
+  }
+
+  // 先攻（MVU 战斗.先攻：「掌握先手权的角色名。若为"无"则代表公平开局；若有名字则代表突发偷袭，防守方首回合反应率减半」）: at the
+  // first round the named units (one or more, 、-separated) hold 先手 — they act before everyone (BattlePreview
+  // compareNaturalActionOrder) — and every unit of the sides they fall on is 措手不及, its window to answer a hit halved
+  // (BattlePreview reactionWindupBudget). Both last the round (__回合末解除). Until 11-15 先攻 was written and shown, never read.
+  function applyBattleInitiative(combatData = {}) {
+    const text = String(combatData?.先攻 || '').trim();
+    if (!text || text === '无') return;
+    const names = new Set(text.split(/[、,，;；\s]+/).map(name => name.trim()).filter(Boolean));
+    const teams = ['team_player', 'team_enemy'].map(side => (Array.isArray(combatData?.参战者?.[side]) ? combatData.参战者[side] : []).filter(Boolean));
+    const holds = unit => names.has(String(previewRuntime.unitName(unit) || '').trim()) || names.has(String(previewRuntime.unitId(unit) || '').trim());
+    const ambushing = teams.map(team => team.some(holds));
+    if (!ambushing.some(Boolean)) return;
+    const mark = (unit, key, state, effect) => {
+      unit.状态效果 = unit.状态效果 && typeof unit.状态效果 === 'object' ? unit.状态效果 : {};
+      unit.状态效果[key] = { 状态: state, 状态名称: state, 类型: effect.initiative_first ? 'buff' : 'debuff', duration: 1, 持续回合: 1, 战斗效果: effect, __回合末解除: true };
+    };
+    teams.forEach((team, index) => team.forEach(unit => {
+      if (holds(unit)) mark(unit, '__先攻·先手', '先手', { initiative_first: true });
+      else if (ambushing[1 - index] && !ambushing[index] && isUnitAbleToFight(unit)) mark(unit, '__先攻·措手不及', '措手不及', { reaction_window_mult: 0.5 });
+    }));
   }
 
   function settleConditionsAtRoundEnd(unit = {}, label = '', combatData = {}) {
@@ -182904,6 +182945,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           roundOffset,
         });
         logs.push(...beginBattleRound(combatData, combatData.回合).filter(Boolean));
+        if (Number(combatData.回合) === 1) applyBattleInitiative(combatData);
         invalidateRouteUnitHashes(combatData);
         settleStaminaExhaustion(combatData);
         const queueTrace = runtime.actionQueueTrace;
@@ -183064,7 +183106,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               event?.ruleCode,
               event?.meta?.stateName,
             ].map(value => String(value || '').trim()).join('|');
-            return /incapacitat|cannot_act|skip_turn|失能|昏迷|眩晕|麻痹|冻结|束缚|禁锢/i.test(
+            return /incapacitat|cannot_act|skip_turn|失能|昏迷|眩晕|冻结|束缚|禁锢/i.test(
                 outcome,
               );
           });
