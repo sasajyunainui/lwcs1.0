@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:c945cb1718557498f6ac6e94b7acf2b0ef1cc4ec1189d4a4bac3efc54b55b929|MVU_Schema_Runtime.js:24aed5e223712a53c09c5b745a3e4891a729d4e20843aa1ddf7aa5ca96328d1f|MVU_Competition_Runtime.js:2a5d78b856d3123e857393fca07fb365d91ce9ea4877cc37dfafd86b384e8904|MVU_Runtime_View.js:126fa8da28200e2164f40355f0d91fb6ba478a32c5f2eef35a9887b0203aa4f9 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:d2eab9a667510575469428bef43b9a4dbbba36ff0a8fe5813a6ec13691682391|MVU_Schema_Runtime.js:24aed5e223712a53c09c5b745a3e4891a729d4e20843aa1ddf7aa5ca96328d1f|MVU_Competition_Runtime.js:2a5d78b856d3123e857393fca07fb365d91ce9ea4877cc37dfafd86b384e8904|MVU_Runtime_View.js:126fa8da28200e2164f40355f0d91fb6ba478a32c5f2eef35a9887b0203aa4f9 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -18671,10 +18671,11 @@ function buildSkillCombatProfile(blueprint, qualityCtx = {}) {
         召唤数量,
         强度: 召唤强度,
         行动模式: type === '防御系' ? '护卫' : '协同攻击',
-        承伤规则: type === '防御系' ? '可承伤' : '不替主承伤',
+        // 防御系护卫召唤替宿主整下挡（11-15 用户「改成护卫承伤」）；召唤物自身的受伤降低保留。
+        承伤规则: type === '防御系' ? '护卫承伤' : '不替主承伤',
       };
       效果意图.结算参数.伤害倍率系数 = Number(Math.min(1.45, 1 + 召唤强度 * 0.12 + 召唤数量 * 0.03).toFixed(2));
-      if (效果意图.召唤元数据.承伤规则 === '可承伤') 效果意图.结算参数.受到伤害降低 = Number(Math.min(0.28, 召唤强度 * 0.08).toFixed(2));
+      if (效果意图.召唤元数据.承伤规则 === '护卫承伤') 效果意图.结算参数.受到伤害降低 = Number(Math.min(0.28, 召唤强度 * 0.08).toFixed(2));
     }
     if (archetype === '分身') {
       战斗.技能分类 = '辅助';
@@ -21153,9 +21154,14 @@ function 计算单项效果COST_V1(效果 = {}, 上下文 = {}) {
   }
   if (typeof 单位COST !== 'number' || !Number.isFinite(单位COST)) return { COST: 0, 百分比 };
   const 数值文本 = String(效果?.数值 ?? '').trim();
+  // 护卫召唤的承伤规则（11-15 用户定「对齐护卫状态」）：护卫承伤替宿主整下挡单体敌对效果，与状态「护卫」同价；分摊承伤分走单体
+  // 伤害的一半，半价；可承伤不拦截，不加价。整个召唤效果计一次，不乘召唤数量；没有计价版本戳的旧技能照旧不计。
+  const 护卫承伤COST = 原型 === '召唤生成' && String(效果?.行动模式 || '').trim() === '护卫' && !技能预算沿用旧版授予壳与有效期计价_V1(上下文)
+    ? Number(SKILL_UNIT_COST_TABLE_V1.状态施加?.护卫?.固定COST || 0) * ({ 护卫承伤: 1, 分摊承伤: 0.5 }[String(效果?.承伤规则 || '护卫承伤').trim()] || 0)
+    : 0;
   const 附加规则COST = 原型 === '判定修正' && 效果?.打断效果 === true
     ? Number(SKILL_UNIT_COST_TABLE_V1.判定修正?.打断效果 || 0)
-    : 0;
+    : 护卫承伤COST;
   // 复制执行：没有数值字段，单价按削减比例折算（计算复制削减COST倍率_V1）。
   if (原型 === '复制执行') {
     const 削减倍率 = 计算复制削减COST倍率_V1(效果);
@@ -21212,7 +21218,10 @@ function 计算单项效果COST_V1(效果 = {}, 上下文 = {}) {
         ? Math.abs(绝对值)
         : 1;
   // 位移执行的数值是强度系数（±45%），不是百分点：按 计算位移效果倍率_V1 进价（11-15 排查：拉近 +30% 曾算成 24×30=720）。
-  const 数值倍率 = 原型 === '位移执行' ? 计算位移效果倍率_V1(效果) : 基础数值倍率;
+  // 受到伤害 / 造成伤害 的负值按效果封顶计价，最多 100 个百分点（与生成补强上限同口径）。
+  const 伤害减免封顶 = 原型 === '结算修正' && ['受到伤害', '造成伤害'].includes(String(效果?.结算 || '').trim()) &&
+    Number.isFinite(百分点) && 百分点 < 0;
+  const 数值倍率 = 原型 === '位移执行' ? 计算位移效果倍率_V1(效果) : 伤害减免封顶 ? Math.min(100, 基础数值倍率) : 基础数值倍率;
   const 数值类型 = 原型 === '位移执行' ? '位移效果倍率' : 资源绝对值
     ? '绝对值点数'
     : 召唤数值倍率 !== null
@@ -22217,6 +22226,9 @@ function 读取生成补强数值上限_V1(效果 = {}, 字段名 = '数值') {
   // 不能沿用通用300%上限，否则高等级魂技会被拉到100%以上再被校验整槽拒绝。
   if (字段名 === '数值' && 原型 === '结算修正' && ['反伤', '伤害转移', '伤害吸收', '伤害转治疗', '治疗转伤害', '伤害分摊', '消耗分摊',
     '防御穿透', '防御剥夺', '精神抗性剥夺', '反击', '持续伤害引爆'].includes(String(效果.结算 || '').trim())) return 100;
+  // 受到伤害 / 造成伤害 的负值到 −100% 就是完全免伤 / 打不出伤害，再往下没有效果（11-15 用户「生成和计价都封 100」）。
+  if (字段名 === '数值' && 原型 === '结算修正' && ['受到伤害', '造成伤害'].includes(String(效果.结算 || '').trim()) &&
+    /^-/.test(String(效果.数值 ?? '').trim())) return 100;
   if (原型 === '状态施加') {
     const 状态 = String(效果?.状态 || '').trim();
     if (['眩晕', '封技', '无视异常'].includes(状态)) return 0;
@@ -24965,7 +24977,7 @@ function 转译状态施加数值说明_V1(状态 = '', 效果 = {}) {
     持续恢复: () => `每回合生命${数值 || '+5%'}`,
     // 战斗侧 deriveStateCombatEffect：主数值 = 出手变慢与闪避下降，副数值 = 反应下降。
     迟缓: () => `出手速度与闪避${数值 || '-10%'}，反应${副数值 || '-8%'}`,
-    资源燃烧: () => `每回合燃烧魂力${去正号(数值 || '+3%')}，技能消耗${副数值 || '+5%'}`,
+    资源燃烧: () => `每回合燃烧${['魂力', '精神力', '体力'].includes(String(效果?.资源 || '').trim()) ? String(效果.资源).trim() : '魂力'}${去正号(数值 || '+3%')}，技能消耗${副数值 || '+5%'}`,
     禁疗: () => `治疗降低${去正号(数值 || '+40%')}`,
     治疗反转: () => `治疗按${去正号(数值 || '+100%')}转化为伤害`,
     护盾: () => `获得生命上限${去正号(数值 || '+10%')}的护盾`,
@@ -25133,6 +25145,11 @@ function 转译技能结构附加语义_V1(效果 = {}, 深度 = 0) {
   if (关联资源) 片段.push(`关联资源:${关联资源}`);
   if (限定探查者) 片段.push(`限定探查者:${限定探查者}`);
   if (触发消耗) 片段.push(`触发消耗:${触发消耗}`);
+  // 驱动属性 × 影响方向（11-15 战斗侧已生效）：写进描述，例如「按魂力上限强弱影响效果强度」。
+  if (驱动属性 && 驱动属性 !== '无' && 影响方向) 片段.push(`按${驱动属性}强弱影响${影响方向}`);
+  // 护盾的限定来源（单位来源或环境来源）：只挡这类攻击者。
+  const 护盾限定来源 = 原型 === '护盾变化' ? 格式化技能结构转译字段_V1(效果?.限定来源, '') : '';
+  if (护盾限定来源) 片段.push(`只挡来自${护盾限定来源}的攻击`);
   if (副作用文本) 片段.push(`副作用:${副作用文本}`);
   const 条件文本 = (Array.isArray(效果?.条件分支) ? 效果.条件分支 : [])
     .map(分支 => 转译技能结构条件分支_V1({ ...分支, __父效果: 效果 }, 深度))
@@ -25378,7 +25395,9 @@ function 转译单条执行效果_V1(效果 = {}, 选项 = {}) {
       const 使用继承属性 = 召唤生成使用继承属性比例_V1(效果);
       const 强度文本 = !使用继承属性 && 效果.强度 ? `，模板强度约${formatSkillNumber(效果.强度)}` : '';
       const 继承文本 = 使用继承属性 ? `，平均继承施术者约${转译技能比例描述_V1(读取召唤生成平均继承比例_V1(效果))}属性` : '';
-      return `召唤${召唤单位类型}【${名称}】×${formatSkillNumber(效果.数量 || 1)}${效果.行动模式 ? `，${效果.行动模式}` : ''}${强度文本}${继承文本}${附加}`;
+      const 承伤文本 = String(效果.行动模式 || '').trim() === '护卫'
+        ? ({ 护卫承伤: '（替宿主挡下单体攻击）', 分摊承伤: '（与宿主分摊单体攻击伤害各一半）', 可承伤: '（不替宿主挡攻击）' }[String(效果.承伤规则 || '护卫承伤').trim()] || '') : '';
+      return `召唤${召唤单位类型}【${名称}】×${formatSkillNumber(效果.数量 || 1)}${效果.行动模式 ? `，${效果.行动模式}${承伤文本}` : ''}${强度文本}${继承文本}${附加}`;
     }
     default: {
       const 注册原型 = SKILL_PROTOTYPE_REGISTRY_V1[原型];
@@ -27847,7 +27866,10 @@ function buildSeventhRingTrueBodySkill(
   if (保护副机制 && 真身目标 !== '自身') (skill._效果数组 || []).forEach(效果 => {
     if (是武魂真身保护副效果_V1(效果, 保护副机制)) 强制武魂真身效果目标_V1([效果], '自身');
   });
-  return 收口技能执行结构_V1(skill, { 目标: 真身目标 });
+  // 新生成的真身同样写计价版本戳（此前只有 直接自动生成技能结构_V1 写，真身读档时按旧计价收敛，与生成时口径不一）。
+  const 真身技能 = 收口技能执行结构_V1(skill, { 目标: 真身目标 });
+  if (真身技能 && typeof 真身技能 === 'object') 真身技能.计价版本 = 当前技能计价版本_V1;
+  return 真身技能;
 }
 
 function autoGenerateSkill(

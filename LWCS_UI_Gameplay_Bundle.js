@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:e6bd6954bf037cfd6ab15c2dde12cc89a598e1aed7a8bdd154f228fcac7769e4|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:ef6a9225a66e35ad5c29b831b672438d9c08fcb2a8e03262713b5eb869837f1a|BattleRuntime_Module.js:a3adf3725814669865202038cf5a79f30a42c90ccfd2f9e067c0f1fa290893c1|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:201a842171ca34c80e7e7056c90d43dfee7f5e87ce16246ae29d06b2bdee8ad0|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:ef6a9225a66e35ad5c29b831b672438d9c08fcb2a8e03262713b5eb869837f1a|BattleRuntime_Module.js:178148439a6aba2d4127dc8b96192eb9942dbb70f9978b67ffc48b4bcf6db441|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -15462,7 +15462,31 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (stateEntries(guard).some(([, entry]) => entry?.战斗效果?.skip_turn === true || entry?.战斗效果?.cannot_act === true)) continue;
       return [guard];
     }
-    return targets;
+    const guardSummon = guardSummonFor(worldSnapshot, target, actor, '护卫承伤');
+    if (guardSummon) return [guardSummon];
+    const sharer = String(effect?.原型 || '').trim() === '伤害结算' ? guardSummonFor(worldSnapshot, target, actor, '分摊承伤') : null;
+    return sharer ? [target, sharer] : targets;
+  }
+  // 护卫召唤的承伤规则（11-15 用户定）: a summon of 行动模式 护卫 standing for its host — 护卫承伤 takes a single-target hostile
+  // effect aimed at the host in its place (as the 护卫 state); 分摊承伤 takes half of a single-target hit with the host, each at
+  // its own defence (guardShareFactor); 可承伤 does not step in — it can only be chosen as a target. Group effects are not taken,
+  // nor anything while the summon cannot act; damage beyond its HP does not pass on to the host.
+  function guardSummonFor(worldSnapshot = {}, host = {}, actor = {}, rule = '') {
+    const hostId = unitId(host), side = sideOf(worldSnapshot, host);
+    if (!hostId || !side) return null;
+    return listUnits(worldSnapshot).map(entry => entry.unit).filter(unit => isSummonUnit(unit) && unit.已消散 !== true &&
+      String(unit?.行动模式 || '').trim() === '护卫' && String(unit?.承伤规则 || '').trim() === rule &&
+      String(unit?.宿主ID || '').trim() === hostId && unitId(unit) !== unitId(actor) && sideOf(worldSnapshot, unit) === side &&
+      readHp(unit) > 0 && isBattleCapable(unit) &&
+      !stateEntries(unit).some(([, entry]) => entry?.战斗效果?.skip_turn === true || entry?.战斗效果?.cannot_act === true))
+      .sort((left, right) => readHp(right) - readHp(left) || (unitId(left) < unitId(right) ? -1 : 1))[0] || null;
+  }
+  // A single-target hit resolveTargets split between a host and its 分摊承伤 summon: each takes half, at its own defence.
+  function guardShareFactor(effect = {}, targets = []) {
+    if (targets.length !== 2 || /群体|全场/.test(String(effect?.目标 || ''))) return null;
+    const [host, summon] = targets;
+    return isSummonUnit(summon) && String(summon?.承伤规则 || '').trim() === '分摊承伤' &&
+      String(summon?.宿主ID || '').trim() === unitId(host) ? 0.5 : null;
   }
   function resolveTargetsUnguarded(
     worldSnapshot = {},
@@ -16000,8 +16024,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     // 资源燃烧：技能描述"每回合燃烧魂力{数值}，技能消耗{副数值}"（生成侧固定燃烧魂力）。原先只有暗冰侵蚀接了每回合资源结算，
     // 资源燃烧落地后什么都不做（第一轮样本 3 次施加、0 次燃烧）。
+    // 燃烧哪种资源读「资源」（魂力/精神力/体力，11-15），不填仍烧魂力。
     if (/资源燃烧/.test(state)) {
-      combatEffect.resource_tick_resource = '魂力';
+      const burnText = String((Array.isArray(effect?.资源) ? effect.资源[0] : effect?.资源) || '').trim();
+      combatEffect.resource_tick_resource = ['魂力', '精神力', '体力'].includes(burnText) ? burnText : '魂力';
       combatEffect.resource_tick_ratio = -magnitude;
       combatEffect.cost_delta_ratio = Math.max(Number(combatEffect.cost_delta_ratio || 0), secondaryMagnitude || 0.05);
     }
@@ -19503,6 +19529,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           }
         }
         const targetCount = primaryTargetCounts?.length === 1 ? primaryTargetCounts[0].targetCount : targets.length;
+        const shareFactor = guardShareFactor(effect, targets) ?? 1;
         const damageContext = context, damageActor = actor;
         const damageTargets = typeof context.damagePreludeResolver === 'function' || typeof context.specialPassiveResolver === 'function'
           ? [...targets].sort((left, right) => unitId(left) < unitId(right) ? -1 : unitId(left) > unitId(right) ? 1 : 0) : targets;
@@ -19533,7 +19560,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               ? damageContext.damageMultiplierResolver({ targetId: unitId(target), actor: threatActor, effect, effectInstanceId: damageContext.effectInstanceId })
               : null) ?? responseOverrideValue(damageContext.damageMultiplierByTarget, unitId(target)) ?? 1), 0, 1);
             const threatEnvironment = clamp(Number(damageContext.environmentDamageMultiplierByTarget?.get?.(unitId(target)) ??
-              damageContext.environmentDamageMultiplierByTarget?.[unitId(target)] ?? 1), 0, 1);
+              damageContext.environmentDamageMultiplierByTarget?.[unitId(target)] ?? 1), 0, 1) * shareFactor;
             const threatSegments = Math.max(1, Math.floor(Number(effect?.攻击段数 ?? effect?.段数 ?? 1)) || 1);
             const threatBasis = buildDamageBasis(effect, threatActor, threatTarget, threatProjection, {
               basisView: damageContext.basisView || 'DECISION_VISIBLE', effectInstanceId: damageContext.effectInstanceId,
@@ -19628,7 +19655,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             context?.environmentDamageMultiplierByTarget?.get?.(unitId(target)) ??
             context?.environmentDamageMultiplierByTarget?.[unitId(target)] ??
             1
-          ), 0, 1);
+          ), 0, 1) * shareFactor;
           const damageBasis = buildDamageBasis(
             effect,
             actor,
@@ -21459,7 +21486,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           const probabilityProfile = effectProbabilityProfile(context, targetId, effect);
           if (probabilityProfile.applicationProbability <= 1e-12) return;
           grantedTargetIds.push(targetId);
-          let grantedStateEntries;
+          let grantedStateEntries, grantedEvictedKeys = [];
           overlay.changeUnit(targetId, unit => {
             unit.状态效果 ||= {};
             const sourceActionId = String(
@@ -21490,6 +21517,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               来源动作ID: sourceActionId,
               来源效果ID: sourceEffectId,
               授予技能名: `${sourceSkillName}·授予技`,
+              ...(effect?.__复制技能 === true ? { __复制技能: true } : {}),
               授予触发条件: trigger,
               触发条件: trigger,
               授予效果: cloneValue(granted),
@@ -21505,6 +21533,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               record.duration = Math.max(1, Math.floor(Number(effect?.持续回合 || 1)));
               record.持续回合 = record.duration;
             }
+            const evicted = (Array.isArray(effect?.__顶替状态键) ? effect.__顶替状态键 : []).filter(key => unit.状态效果[key]);
+            evicted.forEach(key => { delete unit.状态效果[key]; });
+            if (evicted.length) grantedEvictedKeys = evicted;
             unit.状态效果[`preview:${context.effectInstanceId}:${stateId}`] = record;
             grantedStateEntries = { [`preview:${context.effectInstanceId}:${stateId}`]: cloneValue(record) };
           });
@@ -21514,7 +21545,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             outcomeKind: 'STATE_CHANGED',
             threatValue: 0,
             evidence: { prototype, trigger, grantTrigger: trigger, count: granted.length, marginal: true,
-              stateEntries: grantedStateEntries,
+              stateEntries: grantedStateEntries, ...(grantedEvictedKeys.length ? { removedKeys: grantedEvictedKeys } : {}),
               applicationProbability: probabilityProfile.applicationProbability,
               ownApplicationProbability: probabilityProfile.ownApplicationProbability,
               ...outcomeDependencyEvidence(context, targetId) },
@@ -21553,7 +21584,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               const skill = copySourceSkill(source);
               if (skill) {
                 const name = String(skill.魂技名 || skill.name || '技能').trim();
+                // 保存上限: the caster holds at most that many copied skills; a new copy beyond it pushes out the oldest still usable.
+                const saveLimit = Math.max(1, Math.floor(Number(effect?.保存上限 || 1)));
+                const held = Object.entries((overlay.readUnit(unitId(actor)) || actor)?.状态效果 || {})
+                  .filter(([, state]) => state?.__复制技能 === true && mechanismGrantStateUsable(state)).map(([key]) => key);
                 const grant = { 原型: '机制授予', 目标: '自身', 触发条件: '主动触发', 授予效果: scaleSkillEffectTree(cloneValue(skill._效果数组), copyKeep),
+                  __复制技能: true, ...(held.length >= saveLimit ? { __顶替状态键: held.slice(0, held.length - saveLimit + 1) } : {}),
                   可用次数: Math.max(1, Math.floor(Number(effect?.可用次数 || 1))), 持续回合: keepRounds,
                   ...(effect?.成功率 !== undefined ? { 成功率: effect.成功率 } : {}) };
                 const grantContext = nestedContext('skill');
@@ -21774,6 +21810,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             level: summonLevel,
             等级: summonLevel,
             行动模式: actionMode,
+            ...(actionMode === '护卫' ? { 承伤规则: String(effect?.承伤规则 || '护卫承伤').trim() || '护卫承伤' } : {}),
             精神负载: Math.max(0, Number(effect?.精神负载 || 0)),
             宿主名: unitName(actor),
             宿主ID: unitId(actor),
@@ -124157,6 +124194,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const summon = {
         id: key, name: displayName, 名称: displayName, 召唤键: key, 预演召唤键: previewSummonKey,
         类型: summonType, 召唤单位类型: summonType, 单位性质: '召唤物', 行动模式: mode,
+        ...(mode === '护卫' ? { 承伤规则: String(effect?.承伤规则 || '护卫承伤').trim() || '护卫承伤' } : {}),
         level: summonLevel, 等级: summonLevel,
         宿主名: previewRuntime.unitName(actor), 宿主ID: previewRuntime.unitId(actor), __宿主: actor, __来源状态: sourceState, 来源状态键: stateKey,
         阵营: inferUnitSide(combatData, actor) === 'enemy' ? '敌方' : '玩家',

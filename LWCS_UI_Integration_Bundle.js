@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:4e44ee2617bb2b68e4b823d620ea443ec65b87ee258fdf39e60a02b337b0535d|cockpit/designer-model.js:d8784c8d54aa387bf9350cb731bbe697a087fd18855d7f6fc2a5ebbdb22014a8|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:f10fc9465bb23d28f62e463c09b8a30f3eca25e4c04820f9ecfeb4628f80d3bb|cockpit/designer-model.js:76779b81a0a8053dab9a7f9ee227be5ce11514b32eb89eb3357ac03ecd359237|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -15335,7 +15335,7 @@
     魂力继承比例: '继承召唤者多少魂力',
     精神继承比例: '继承召唤者多少精神力',
     行动模式: '决定协同、护卫或自主行动',
-    承伤规则: '召唤物怎么承伤',
+    承伤规则: '护卫召唤物怎么替宿主承伤：护卫承伤整下挡、分摊承伤各担一半、可承伤不挡',
     复制类型: '复制什么',
     复制模式: '怎样复制',
     保存上限: '最多保存几个复刻技能',
@@ -28663,7 +28663,7 @@ ${播报文本}
       ...(类型读法.原文 && 类型读法.原文 !== 战斗类型 ? { 战斗类型原文: 类型读法.原文 } : {}),
       战斗意图: 写明战斗意图 || 开战缺省战斗意图_桥接(战斗类型, 胜负条件, 允许撤离, 裁判),
       ...(裁判 ? { 裁判 } : {}),
-      先攻: '无',
+      先攻: toText(detail.先攻, '').trim() || '无',
       允许撤离,
       回合: 0,
       环境: {
@@ -32264,6 +32264,8 @@ ${播报文本}
             最大回合: Math.max(1, Math.floor(toNumber(payload.最大回合 ?? payload.回合上限, 20))),
             // 接战链 阶段三: "裁判：角色名" or "裁判：名称|等级=60" (解析模块路由裁判); none given, no referee.
             ...(解析模块路由裁判(payload.裁判) ? { 裁判: 解析模块路由裁判(payload.裁判) } : {}),
+            // 先攻（11-15 用户定的推进预设行）: the ambushers' names, 、-separated; left out, a fair start.
+            ...(toText(payload.先攻, '').trim() && toText(payload.先攻, '').trim() !== '无' ? { 先攻: toText(payload.先攻, '').trim() } : {}),
           };
         }
       }
@@ -37044,7 +37046,7 @@ ${播报文本}
     魂力继承比例: '继承召唤者多少魂力',
     精神继承比例: '继承召唤者多少精神力',
     行动模式: '决定协同、护卫或自主行动',
-    承伤规则: '召唤物怎么承伤',
+    承伤规则: '护卫召唤物怎么替宿主承伤：护卫承伤整下挡、分摊承伤各担一半、可承伤不挡',
     复制类型: '复制什么',
     复制模式: '怎样复制',
     保存上限: '最多保存几个复刻技能',
@@ -44051,7 +44053,7 @@ ${播报文本}
         状态: '要施加哪种状态。选了状态，战斗里就按这个状态的规则生效。',
         数值: '状态的主要强度，具体含义看左边的名称，比如每回合掉多少血、治疗被削弱多少、护盾有多厚。',
         副数值: '状态的次要效果，比如命中下降、多受伤害、技能消耗增加、闪避下降。',
-        资源: '暗冰侵蚀每回合侵蚀对方哪种资源。',
+        资源: '暗冰侵蚀每回合侵蚀哪种资源；资源燃烧每回合烧哪种资源（魂力、精神力或体力，不填烧魂力）。',
         限定探查者: '只对这类对象隐匿：填「深渊生物」＝只有深渊生物看不见你，其他人照常能锁定你；留空＝对所有人隐匿。',
         限定来源: '这层防护只挡指定来源的环境危害（填环境来源标识，例如深渊通道的魂力压制）；留空＝所有环境危害都挡。',
       },
@@ -46190,6 +46192,7 @@ ${播报文本}
     控件.options.forEach(项 => {
       const 分隔 = String(项.label || '').indexOf('｜');
       if (分隔 > 0) 项.hint = 项.label.slice(分隔 + 1);
+      if (字段 === '承伤规则' && 项.value) 项.hint = ({ 护卫承伤: '替宿主整下挡住单体攻击，群体攻击不挡', 分摊承伤: '和宿主各分一半单体攻击的伤害，各按自己防御算', 可承伤: '不替宿主挡，只是敌人可以选它当目标' })[项.value] || 项.hint;
       if (字段 === '状态' && ['状态施加', '状态移除', '状态转移', '状态交换', '__条件'].includes(原型) && 项.value) {
         const 说明 = 技能设计台状态一句话说明(项.value);
         if (说明) 项.hint = 说明;
@@ -46486,7 +46489,8 @@ ${播报文本}
   function 技能设计台字段在当前效果下起作用(原型 = '', 字段 = '', effect = {}) {
     const 状态 = normalizeSkillUiText(effect && effect['状态'], '');
     if (原型 === '状态施加') {
-      if (字段 === '资源') return 状态 === '暗冰侵蚀';
+      // 资源：暗冰侵蚀侵蚀哪种资源、资源燃烧烧哪种资源（11-15 起资源燃烧也读，不填烧魂力）。
+      if (字段 === '资源') return ['暗冰侵蚀', '资源燃烧'].includes(状态);
       if (字段 === '限定探查者') return ['隐匿', '探查屏蔽'].includes(状态);
       if (字段 === '限定来源') return 状态 === '无视异常';
       // 打断效果（11-15）：负面状态落在目标身上时打断其当前动作与蓄力。
