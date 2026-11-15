@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:3a7ab2b86114d7997e52efa71f2ebd4abfbfe0588597e12628cc11524a69319e|cockpit/designer-model.js:43e9907dc6a213586bc290bdf3e507a8178bd80879f0f020231ac30ffa7c4f99|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:3abc99bcc746541cab43d893715079a7dcc3a483da493ed796a4b5c99b13bf6e|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:84b6740153f75db62bd4bc852fc907b30f148c5a4abc6c1230245c9988d663f9|BattleRuntime_Module.js:34143db65a3a325210de4537479330896cca69eeb116c03d8e65a1db28ac5058|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:3a7ab2b86114d7997e52efa71f2ebd4abfbfe0588597e12628cc11524a69319e|cockpit/designer-model.js:43e9907dc6a213586bc290bdf3e507a8178bd80879f0f020231ac30ffa7c4f99|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:3abc99bcc746541cab43d893715079a7dcc3a483da493ed796a4b5c99b13bf6e|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:5936e4878d2d6e4e51dad82686489bf7ceaf8820fa450dc78e761ed1b26be104|BattleRuntime_Module.js:34143db65a3a325210de4537479330896cca69eeb116c03d8e65a1db28ac5058|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -96485,7 +96485,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   const BELIEF_FAMILIAR_BATTLE = 4, BELIEF_FAMILIAR_RELATION = 2, BELIEF_FAMILIAR_CLOSE = 4, BELIEF_FAMILIAR_CAP = 8,
     BELIEF_SENSE_FLOOR = 1000, BELIEF_SENSE_EXCHANGES = 2,
     // How much an enemy that has not seen the actor holds its routine skill back for a probe (the R20 reveal base).
-    BELIEF_PROBE_SHARE = 0.7;
+    BELIEF_PROBE_SHARE = Number(root.__LWCS_TUNE__?.BELIEF_PROBE_SHARE ?? 0.7);
   const BELIEF_CLOSE_RELATION = /挚友|好友|朋友|恋|伴侣|夫|妻|兄|弟|姐|妹|父|母|儿|女|师|徒|队友|同伴|伙伴|搭档|宿敌|对手|亲密|同门|同学|同事/;
   function beliefFamiliarExchanges(observer = {}, target = {}) {
     const names = [preview.unitName(target), preview.unitId(target)].map(name => String(name || '').trim()).filter(Boolean);
@@ -96673,6 +96673,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         routine_attack_ratio: publicUnitRole === 'SUMMON' ? 1 : 1 + (Math.max(1, clarity > 0
           ? toward(typicalAttackRatio(perceivedLevel, system), knownRoutineAttackRatio(sourceUnit))
           : typicalAttackRatio(perceivedLevel, system)) - 1) * (1 - BELIEF_PROBE_SHARE * (1 - clarity) ** 2),
+        // 不打试探折扣的常规攻击：R20 推演的格子用它（r20FullStrength）——试探只是开头几次交手的样子。
+        __routine_full_ratio: publicUnitRole === 'SUMMON' ? 1 : Math.max(1, clarity > 0
+          ? toward(typicalAttackRatio(perceivedLevel, system), knownRoutineAttackRatio(sourceUnit))
+          : typicalAttackRatio(perceivedLevel, system)),
         // S84 (11-14 推演—实际对账): an unseen 控制系 meets 16% of hits with a skill (38 of 242) — mostly a control thrown first —
         // and those took 12% → 7% of its HP; the table, seeing no skills, gave it 4%. Its own controls take over as they are
         // shown (r20Shown), so the expectation fades with the exchanges seen.
@@ -160994,6 +160998,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     return { acts, bound, out, support, stop, keep, keepBack, answer, answerOpen, back, turn };
   }
+  // R20 推演按对手的常规攻击全力算（11-16 行为检查目录第 46 题与 3v3 推演校准）：没看清的对手画像按「开局多半先试探」把常规
+  // 魂技打了折（BELIEF_PROBE_SHARE 0.7，开局实测对得上：同级开局对敌魂技 18%），那是开头几次交手的样子；推演拿它一直算到底，
+  // 而己方按自己的魂技全力算——口径不对称，决策者偏乐观（3v3 推演「五五开」时实际约 15%：σ(−1.74 + 1.52·分差)）。
+  // 格子用对手的全力视图算，候选重建同样套用；表里的单位本身不变（比对是否改动、读状态都照旧）；试探折扣只留给推演以外的
+  // 即时判断（生死线、承压）。
+  const r20FullStrength = unit => (Number(unit?.__routine_full_ratio) > Number(unit?.routine_attack_ratio) + 1e-9
+    ? { ...unit, routine_attack_ratio: unit.__routine_full_ratio } : unit);
   function r20Facts(request) {
     if (r20Tables.has(request)) return r20Tables.get(request);
     r20Work.tables += 1;
@@ -161010,7 +161021,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     for (let index = 0; index < units.length; index += 1) units[index] = units[index].unit;
     const count = units.length, ids = units.map(unit => preview.unitId(unit));
     const skipped = { count: 0 };
-    const { acts, bound, out, support, stop, keep, keepBack, answer, answerOpen, back, turn } = r20Cells(units, sides, ids, world, context, skipped);
+    const cellUnits = units.map(r20FullStrength);
+    const { acts, bound, out, support, stop, keep, keepBack, answer, answerOpen, back, turn } = r20Cells(cellUnits, sides, ids, world, context, skipped);
     const against = Object.fromEntries([...new Set(sides)].map(side => [side, units.filter((unit, row) => sides[row] !== side)]));
     // The field R20_LATE_ROUNDS round ends on, when anything on it runs on a clock (a state with rounds left, a sustain,
     // a periodic change): every unit as the engine's own window view leaves it (r10WindowView: states past their time
@@ -161018,12 +161030,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // sustain broken). The race reads these cells from then on, so a buff about to lapse is not counted as lasting.
     let late = null;
     if (units.some(unit => Object.keys(unit.持续效果 || {}).length || Object.values(unit.状态效果 || {}).some(state => typeof state?.duration === 'number'))) {
-      const views = units.map(unit => r10WindowView(r10DecisionTable(request), world, unit, R20_LATE_ROUNDS, unit));
+      const views = units.map(unit => r20FullStrength(r10WindowView(r10DecisionTable(request), world, unit, R20_LATE_ROUNDS, unit)));
       late = { ...r20Cells(views, sides, ids, world, null, null), units: views };
     }
     const round = Number(world?.回合 || 0);
     const waiting = Array.isArray(request.actionOpportunity?.pendingNaturalActorIds) ? new Set(request.actionOpportunity.pendingNaturalActorIds.map(String)) : null;
-    const table = { request, world, contexts, units, ids, index: new Map(ids.map((id, row) => [id, row])), sides, acts, bound, out, support, stop, keep, keepBack, answer, answerOpen, back, turn, late, against,
+    const table = { request, world, contexts, units, cellUnits, ids, index: new Map(ids.map((id, row) => [id, row])), sides, acts, bound, out, support, stop, keep, keepBack, answer, answerOpen, back, turn, late, against,
       held: units.map(unit => r20Held(unit)),
       remaining: units.map((unit, row) => r20Left(unit, sides[row] === request.actorSide, against[sides[row]])),
       stamina: units.map((unit, row) => sides[row] === request.actorSide ? r20Stamina(unit) : null),
@@ -161306,7 +161318,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (dropped.size) added = added.filter(unit => !dropped.has(unit));
     }
     mark('readMs');
-    let { out, support, stop, keep, keepBack, answer, answerOpen, back, acts, turn, host } = table, unitsNow = table.units, sidesNow = table.sides, leaves = null;
+    let { out, support, stop, keep, keepBack, answer, answerOpen, back, acts, turn, host } = table, unitsNow = table.cellUnits || table.units, sidesNow = table.sides, leaves = null;
     // The rebuilt rows' cells (each unit as the candidate leaves it, against the rest) on copies of `base`'s, the units
     // `baseUnits` it was read on: the table's cells, and — for a change with no clock (until Infinity) on a field with
     // late cells — the late ones, with the units as the window view leaves them R20_LATE_ROUNDS on (11-14: a change
@@ -161353,7 +161365,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (rebuilt.length) {
       r20Work.rebuiltUnits += rebuilt.length;
       r20Work.ownCellRebuilds += rebuilt.filter(entry => entry[2]).length;
-      ({ units: unitsNow, out, support, stop, keep, keepBack, answer, answerOpen, back, acts, turn } = rebuildCells(table, table.units, rebuilt));
+      ({ units: unitsNow, out, support, stop, keep, keepBack, answer, answerOpen, back, acts, turn } = rebuildCells(table, table.cellUnits || table.units,
+        rebuilt.map(([row, next, ownCellsOnly]) => [row, r20FullStrength(next), ownCellsOnly])));
       // A row rebuilt to the very cells it had (its stamina band moved by a hit, nothing it can do changed) is no change:
       // the race keeps the table's cells for it, late ones too (11-14: a basic attack that left both units as they were
       // but for the HP it took put the target on cells rebuilt from another starting world for the whole race, and a
@@ -161366,15 +161379,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (table.late?.units && rebuilt.some(([row]) => until[row] === Infinity && !unchangedRows.has(row))) {
         const decisionTable = r10DecisionTable(request);
         lateCells = rebuildCells(table.late, table.late.units, rebuilt.map(([row, next, ownCellsOnly]) =>
-          [row, r10WindowView(decisionTable, after, next, R20_LATE_ROUNDS, next), ownCellsOnly]), true);
+          [row, r20FullStrength(r10WindowView(decisionTable, after, next, R20_LATE_ROUNDS, next)), ownCellsOnly]), true);
       }
     }
     // The cells once a paid release has lapsed (`expiring`): its actor's window view at that round, on the table's late cells.
     let expiredCells = null;
     if (expiring.length) {
       const decisionTable = r10DecisionTable(request), base = table.late?.units ? table.late : table;
-      expiredCells = rebuildCells(base, base.units, expiring.map(([row, view, rounds]) =>
-        [row, r10WindowView(decisionTable, after, view, Math.max(1, Math.ceil(rounds)), view), false]), true);
+      expiredCells = rebuildCells(base, base === table ? table.cellUnits || table.units : base.units, expiring.map(([row, view, rounds]) =>
+        [row, r20FullStrength(r10WindowView(decisionTable, after, view, Math.max(1, Math.ceil(rounds)), view)), false]), true);
       expiredCells.rows = new Set(expiring.map(([row]) => row));
     }
     mark('rebuildMs');
@@ -161771,7 +161784,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // A 武魂真身 (the skill runtime's 判定技能消耗来源_V1) shows the spirit whole (×R20_REVEAL_AVATAR); a skill on oneself or
     // one's side only shows the rings (×R20_REVEAL_SELF).
     const revealScale = () => root.__LWCS_SKILL_COST_HELPERS_V1__?.判定技能消耗来源_V1?.(declaration.skill || {}, {})?.武魂真身 || /武魂真身/.test(String(declaration.skill?.魂技名 || '')) ? R20_REVEAL_AVATAR
-        : preview.collectEffects(declaration.skill || {}).every(effect => /自身|己方|友方/.test(String(effect?.目标 || ''))) ? R20_REVEAL_SELF : 1;
+        : preview.collectEffects(declaration.skill || {}).every(effect => /自身|己方|友方/.test(String(effect?.目标 || ''))) ? R20_REVEAL_SELF
+        // 效果目标写「单体」、声明时点的是己方单位（辅助给队友上增益）：也只亮自己的魂环（11-16 行为检查目录第 46 题：此前按攻击魂技全额扣）。
+        : (declaration.targetIds || []).length && (declaration.targetIds || []).every(id => { const row = table.index.get(String(id)); return row !== undefined && table.sides[row] === request.actorSide; }) ? R20_REVEAL_SELF : 1;
     const reveal = declaration?.actionKind === 'RELEASE_SKILL' && unseen > 0 && race + tempo > 0
       ? revealScale() * Math.min(R20_REVEAL_CAP, (R20_REVEAL_BASE + R20_REVEAL_SHARE * clamp(spent / R20_TRUMP_SPENT, 0, 1)) * wary) * (race + tempo) : 0;
     // 留手: in a spar, what of a hit lands below the 重伤 line (R20_SPAR_INJURY_LINE of the target's HP) is held against it.
@@ -166486,7 +166501,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // 认输估值的胜算（11-15 用户「现在就换胜算」）：R20 下按桌面原样推演一遍（r20Race）——胜算取胜负项的 tanh(R20_WIN_SLOPE × 分差)
   // 换到 0～1，推演结束时对手还剩的（我倒下前打不掉的）与自己还剩的给后续出场的消耗与保留（BattlePreview exitValuation）。
   // 此前按场上已打出的伤害速率粗估：开局还没出手时，弱方能打掉对手多少估成 0，胜算也偏高。每张桌面每方算一次。
-  const r20ExitOutlooks = new WeakMap(), R20_EXIT_SPEND_PRIOR = 0.1;
+  const r20ExitOutlooks = new WeakMap(), R20_EXIT_SPEND_PRIOR = 0.1, R20_EXIT_ODDS = Object.freeze({ solo: Object.freeze([-0.02, 1.62]), team: Object.freeze([-0.25, 0.94]) });
   function r20ExitOutlook(request = {}, actor = {}) {
     const table = r20Facts(request);
     const own = request.actorSide;
@@ -166523,7 +166538,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const actorUnit = actorRow >= 0 ? table.units[actorRow] : actor;
     const ownWorth = actorRow >= 0 ? Number(table.worth[actorRow]) || 0 : 0;
     const worthRatio = foes && ownWorth > 1e-9 ? clamp(foeWorth / foes / ownWorth, 0.5, 3) : 1;
-    const win = clamp(0.5 + 0.5 * Math.tanh(R20_WIN_SLOPE * (Number(raced.margin) || 0)), 0, 1);
+    // 推演分差 → 胜算（11-16 校准，推演按对手全力算之后）：1v1 σ(−0.02 + 1.62·分差)、3v3 σ(−0.25 + 0.94·分差)（全部样本拟合；
+    // 原先 σ(4·分差) 两种都太陡、团战偏乐观）；两人按中间插，三人及以上按团战。
+    const sideSize = Math.max(1, ...[...new Set(table.sides)].map(side => table.sides.filter(other => other === side).length));
+    const teamShare = clamp((sideSize - 1) / 2, 0, 1);
+    const [oddsBase, oddsSlope] = [R20_EXIT_ODDS.solo[0] + (R20_EXIT_ODDS.team[0] - R20_EXIT_ODDS.solo[0]) * teamShare, R20_EXIT_ODDS.solo[1] + (R20_EXIT_ODDS.team[1] - R20_EXIT_ODDS.solo[1]) * teamShare];
+    const win = clamp(1 / (1 + Math.exp(-(oddsBase + oddsSlope * (Number(raced.margin) || 0)))), 0, 1);
     return { win, lose: 1 - win, draw: 0, drained, drainedRes, actorKept, actorRes: fuel(actorUnit), actorSpend: Math.min(fuel(actorUnit), rate(actorUnit) * time), worthRatio, time };
   }
   function r20ExitMargin(request = {}) {
