@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:3abc99bcc746541cab43d893715079a7dcc3a483da493ed796a4b5c99b13bf6e|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:b3099d149c66316952e94ceb839170abab4f77a5e30c2085194ebdc77e0756cf|BattleRuntime_Module.js:34143db65a3a325210de4537479330896cca69eeb116c03d8e65a1db28ac5058|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:3abc99bcc746541cab43d893715079a7dcc3a483da493ed796a4b5c99b13bf6e|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:84b6740153f75db62bd4bc852fc907b30f148c5a4abc6c1230245c9988d663f9|BattleRuntime_Module.js:34143db65a3a325210de4537479330896cca69eeb116c03d8e65a1db28ac5058|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -112495,8 +112495,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const actor = findUnitInWorld(world, request.actorId);
     if (!actor) return null;
     const contest = (result?.contributions || []).find(entry => entry?.outcomeKind === 'WITHDRAWAL_CONTEST')?.evidence || null;
-    // 只在团体赛子场（有后续出场）时换成推演胜算：其余战斗的认输照旧，免得动到别处的行为。
-    const raced = valuation === 'r20' && preview.matchFollowUp?.(world, request.actorSide) ? r20ExitOutlook(request, actor) : null;
+    // R20 的认输与撤离一律用推演胜算（11-16 行为检查目录第 37 题：开局双方还没打出伤害时，按已打出速率的粗估给「胜 0 负 0」、
+    // 全算平局，留下值 0、走值 −1，一打二只剩四成血也从不撤）。推演胜算已校准（562 个样本，σ(4.19·分差) 与现行几乎一致）。
+    const raced = valuation === 'r20' ? r20ExitOutlook(request, actor) : null;
     const exit = preview.exitValuation(world, { objectives: request.objectiveContract || request.battleIntent?.objectives || world.胜负条件 || {} }, actor,
       raced ? { ...(contest || {}), outlook: raced } : contest);
     // 调试：认输胜算的校准取样（推演分差与实际胜负），不参与估值。
