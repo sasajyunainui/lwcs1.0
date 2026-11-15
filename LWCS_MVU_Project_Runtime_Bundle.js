@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:068d4c89d21c4cd4b8f3c6d74e9a3f292e676e62cf556e52356bcb7246ee1ffd|MVU_Schema_Runtime.js:454e4a242dce5e02d69c3def2993d350ac50f39dcb667f2fc6f09488f34461dd|MVU_Competition_Runtime.js:2a5d78b856d3123e857393fca07fb365d91ce9ea4877cc37dfafd86b384e8904|MVU_Runtime_View.js:126fa8da28200e2164f40355f0d91fb6ba478a32c5f2eef35a9887b0203aa4f9 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:ff63bcb8924255f6bbbfe355936f85f30e1c3bae5843fefd8c7f077daedea6d3|MVU_Schema_Runtime.js:454e4a242dce5e02d69c3def2993d350ac50f39dcb667f2fc6f09488f34461dd|MVU_Competition_Runtime.js:2a5d78b856d3123e857393fca07fb365d91ce9ea4877cc37dfafd86b384e8904|MVU_Runtime_View.js:126fa8da28200e2164f40355f0d91fb6ba478a32c5f2eef35a9887b0203aa4f9 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -21351,9 +21351,13 @@ function 计算技能效果累计COST_V1(技能 = {}, 上下文 = {}) {
         净COST,
       });
     }
+    // 造物数量（11-15 用户「造物数量要进价格」）：一次做 N 份，每份吃下都触发一次使用效果，使用效果的 COST ×N（与直接结算预算、
+    // 伤害×攻击段数同口径）。旧计价（没有计价版本戳）的技能照旧不乘，免得读档压缩存量食物。
+    const 造物份数 = 是造物模板 && !技能预算沿用旧版授予壳与有效期计价_V1(上下文) ? Math.max(1, Math.floor(Number(效果.数量 || 1)) || 1) : 1;
     技能执行嵌套效果数组字段表_V1.forEach(字段名 => {
       (Array.isArray(效果?.[字段名]) ? 效果[字段名] : []).forEach((子效果, 序号) => {
-        合并统计(基础统计, 访问(子效果, `${路径}.${字段名}[${序号}]`, 抵扣率, 分支角色));
+        const 子统计 = 访问(子效果, `${路径}.${字段名}[${序号}]`, 抵扣率, 分支角色);
+        合并统计(基础统计, 字段名 === '使用效果' && 造物份数 > 1 ? 按份数放大统计_V1(子统计, 造物份数) : 子统计);
       });
     });
     const 候选统计列表 = [标记明细(基础统计, 分支角色, true)];
@@ -24145,6 +24149,24 @@ function 缩减效果数值百分比_V1(效果数组 = [], 缩放 = 1) {
     });
   });
   return 改动数;
+}
+
+// 造物份数放大一份效果统计（累计与明细的 COST 都 ×份数，明细记下份数）。
+function 按份数放大统计_V1(统计 = {}, 份数 = 1) {
+  const k = Math.max(1, Number(份数) || 1);
+  return {
+    ...统计,
+    百分比累计: Number(统计.百分比累计 || 0) * k,
+    绝对值累计: Number(统计.绝对值累计 || 0) * k,
+    限制累计: Number(统计.限制累计 || 0) * k,
+    明细: (Array.isArray(统计.明细) ? 统计.明细 : []).map(项 => ({
+      ...项,
+      造物份数: k,
+      原始COST: Number((Number(项.原始COST || 0) * k).toFixed(2)),
+      限制抵扣: Number((Number(项.限制抵扣 || 0) * k).toFixed(2)),
+      净COST: Number((Number(项.净COST || 0) * k).toFixed(2)),
+    })),
+  };
 }
 
 function 遍历直接结算预算效果_V1(效果数组 = [], 回调 = () => {}, 结算倍率 = 1) {
