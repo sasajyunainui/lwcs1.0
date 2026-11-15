@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:ec3add2af2b73843ebc0299448b0b9dab5cbd6bec3159387b7fc515af429436e|MVU_Schema_Runtime.js:454e4a242dce5e02d69c3def2993d350ac50f39dcb667f2fc6f09488f34461dd|BattlePreview_Module.js:749a66fc9190fff2b068ff6e1f23f1401170e3d02477c51ca4a36d2cd938f27a|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:97029871b086807cfe780d47bc9bbd0597c225fc01cb5e4cb8c143c8b7cfc02e|BattleRuntime_Module.js:3ec3b7d302ba3d3fc682ba02cbd1388478ba802e454969e8af8ae635042bd25c */
+/* sources-sha256: MVU_Skill_Runtime.js:81a1b598ab2767b467c70f3d3947a97fc9b263275719c77ce08eec25b428b6b0|MVU_Schema_Runtime.js:454e4a242dce5e02d69c3def2993d350ac50f39dcb667f2fc6f09488f34461dd|BattlePreview_Module.js:749a66fc9190fff2b068ff6e1f23f1401170e3d02477c51ca4a36d2cd938f27a|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:97029871b086807cfe780d47bc9bbd0597c225fc01cb5e4cb8c143c8b7cfc02e|BattleRuntime_Module.js:3ec3b7d302ba3d3fc682ba02cbd1388478ba802e454969e8af8ae635042bd25c */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -5446,7 +5446,8 @@ var SKILL_UNIT_COST_TABLE_V1 = Object.freeze({
     持续恢复: Object.freeze({ 数值: 0.95 }),
     迟缓: Object.freeze({ 数值: 0.75, 副数值: 0.7 }),
     资源燃烧: Object.freeze({ 数值: 0.95, 副数值: 0.85 }),
-    眩晕: Object.freeze({ 固定COST: 60 }),
+    // 眩晕 60 → 50（用户 2026-11-15「把眩晕COST调低吧」）：与封技、缴械同档；原著低环硬控（多情斗罗第一魂技曾经）此前放不进。
+    眩晕: Object.freeze({ 固定COST: 50 }),
     致盲: Object.freeze({ 数值: 1.2, 固定COST: 11 }),
     禁疗: Object.freeze({ 数值: 1.3, 固定COST: 12 }),
     治疗反转: Object.freeze({ 数值: 1.6, 固定COST: 16 }),
