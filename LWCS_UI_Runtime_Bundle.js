@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:3a7ab2b86114d7997e52efa71f2ebd4abfbfe0588597e12628cc11524a69319e|cockpit/designer-model.js:43e9907dc6a213586bc290bdf3e507a8178bd80879f0f020231ac30ffa7c4f99|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:dbcba639761a34e9720ea58ce14470766acd221bdb924cfb2b6e6b88411a7d57|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:c3a16621e181d3d1d221d2f4d58e809316b76ba29f480cf0549ed1a5c643165f|BattleRuntime_Module.js:34143db65a3a325210de4537479330896cca69eeb116c03d8e65a1db28ac5058|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:3a7ab2b86114d7997e52efa71f2ebd4abfbfe0588597e12628cc11524a69319e|cockpit/designer-model.js:43e9907dc6a213586bc290bdf3e507a8178bd80879f0f020231ac30ffa7c4f99|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:dbcba639761a34e9720ea58ce14470766acd221bdb924cfb2b6e6b88411a7d57|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:d025f441180518c38dd7ff3ed002ab4f08b9d142e91972df535b04af6fe2fed8|BattleRuntime_Module.js:34143db65a3a325210de4537479330896cca69eeb116c03d8e65a1db28ac5058|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -160286,13 +160286,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // what of each action goes astray: random_target_rate, and of the rest hit_penalty); pace, the share of `unit`'s own
   // actions keeping it up takes (one in its duration); hard, the share of `other`'s answers it takes too (a held unit does not
   // defend or evade; a confused one still does). The control kept is the one that keeps the most rounds off. stop stays
-  // the hard controls' (a soft one breaks no charge).
+  // the hard controls' (a soft one breaks no charge). expose / exposePace: the 破防 it keeps up instead (迟缓, 判定修正, 标记:
+  // reaction_penalty, dodge_penalty — what of a hit `other` would have kept off it no longer does, chance × the larger), and
+  // the share of `unit`'s actions that takes; the one that keeps the most off for the most rounds.
   function r20Stop(unit, other) {
     return r20Control(unit, other).stop;
   }
   function r20Control(unit, other) {
     if (hasStateFlag(unit, 'silence') || preview.isSummonSkillDisabled(unit)) return R20_NO_CONTROL;
-    let best = 0, kept = null, keptRounds = 0;
+    let best = 0, kept = null, keptRounds = 0, expose = 0, exposePace = 0, exposeRounds = 0;
     // An enemy as believed lists no skills: the controls it has shown count.
     const own = affordablePreparedSkills(unit), shown = own.length ? null : r20Shown(unit);
     for (const entry of shown || own) {
@@ -160300,11 +160302,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const skill = shown ? entry : entry.skill, profile = targetProfile(skill);
       if (!(profile.startsWith('HOSTILE_') || profile === 'ANY_SINGLE')) continue;
       for (const effect of preview.collectEffects(skill)) {
-        if (!['状态施加', '决策干扰'].includes(effect?.原型) || preview.negativeEffectIsImmune(other, effect)) continue;
+        if (!['状态施加', '决策干扰', '判定修正'].includes(effect?.原型) || /自身|友方|己方/.test(String(effect?.目标 || '')) ||
+          preview.negativeEffectIsImmune(other, effect)) continue;
         const stops = preview.deriveStateCombatEffect(effect) || {};
         const hard = effect.原型 === '状态施加' && (stops.cannot_act === true || stops.skip_turn === true);
         const astray = clamp(Number(stops.random_target_rate) || 0, 0, 1), miss = clamp(Number(stops.hit_penalty) || 0, 0, 1);
         const share = hard ? 1 : astray + (1 - astray) * miss;
+        const open = hard ? 0 : clamp(Math.max(Number(stops.reaction_penalty) || 0, Number(stops.dodge_penalty) || 0), 0, 1);
+        if (open > 0) {
+          const chance = clamp(preview.normalizeEffectProbability(effect.触发概率, 1) * preview.stateApplicationProbabilityMultiplier(other, effect), 0, 1);
+          const duration = Math.max(1, Number(effect.持续回合) || 1);
+          if (chance * open * duration > exposeRounds) { exposeRounds = chance * open * duration; expose = chance * open; exposePace = 1 / duration; }
+        }
         if (!(share > 0)) continue;
         // 挣脱（BattlePreview struggleChance）: a 拘束 control holds by what its holder fails to break.
         const chance = clamp(preview.normalizeEffectProbability(effect.触发概率, 1) *
@@ -160314,9 +160323,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (chance * share * duration > keptRounds) { keptRounds = chance * share * duration; kept = { lock: chance * share, pace: 1 / duration, hard: hard ? chance : 0 }; }
       }
     }
-    return best > 0 || kept ? { stop: best, control: kept ? Object.freeze(kept) : R20_NO_CONTROL.control } : R20_NO_CONTROL;
+    if (!(best > 0) && !kept && !(expose > 0)) return R20_NO_CONTROL;
+    return { stop: best, control: Object.freeze({ ...(kept || R20_NO_CONTROL.control), expose, exposePace }) };
   }
-  const R20_NO_CONTROL = Object.freeze({ stop: 0, control: Object.freeze({ lock: 0, pace: 0, hard: 0 }) });
+  const R20_NO_CONTROL = Object.freeze({ stop: 0, control: Object.freeze({ lock: 0, pace: 0, hard: 0, expose: 0, exposePace: 0 }) });
   // The whole hits a unit's charges take before its HP counts: rule blocks and death saves.
   const r20Guard = unit => preview.ruleBlockCount(unit) + preview.deathSaveCount(unit);
   // What a revival gives back when its unit falls, a share of its HP maximum (BattlePreview triggerRevive: the state's
@@ -160830,7 +160840,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const aimed = new Array(count), landed = new Array(count);
     // heldShare[u]: the share of u's actions the enemies' controls keep off this step, heldHard[u] the share of its answers;
     // pace[u]: the share of u's own actions it spends keeping a control up (r20Control).
-    const heldShare = new Array(count).fill(0), heldHard = new Array(count).fill(0), pace = new Array(count).fill(0);
+    // exposed[u]: the share of what u would keep off a hit that the enemies' 破防 takes away this step.
+    const heldShare = new Array(count).fill(0), heldHard = new Array(count).fill(0), exposed = new Array(count).fill(0), pace = new Array(count).fill(0);
     let released = 0;
     const horizon = Math.max(1, Math.min(R20_RACE_ROUNDS, Number(facts.horizon) || R20_RACE_ROUNDS)), tick = facts.tick || null, tickRounds = facts.tickRounds || null;
     const dealt = new Array(count), mended = new Array(count), hits = new Array(count), worth = new Array(count), pressed = new Array(count);
@@ -160852,7 +160863,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       // What of an attacker's hit a unit takes: its answer's share while it can answer; held (controlled — the hard control
       // lasts to the end of the round it took an action in, BattleRuntime consumeStructuredControlActiveBudget) or busy, it
       // takes the whole hit, as a unit that cannot act does in the table (r20FillPair).
-      const takes = (view, unit, attacker) => acting(unit) ? view.keep[unit][attacker] + (1 - view.keep[unit][attacker]) * heldHard[unit] : 1;
+      const takes = (view, unit, attacker) => acting(unit) ? view.keep[unit][attacker] + (1 - view.keep[unit][attacker]) * (1 - (1 - heldHard[unit]) * (1 - exposed[unit])) : 1;
       let nextChange = base.late && time < R20_LATE_ROUNDS - 1e-9 ? Math.min(horizon, R20_LATE_ROUNDS) : horizon;
       if (leaves) for (let unit = 0; unit < count; unit += 1) {
         if (leaves[unit] <= time + 1e-9) left[unit] = 0; else nextChange = Math.min(nextChange, leaves[unit]);
@@ -160882,7 +160893,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       // share of its own actions it takes (lock ÷ stop of them × its own worth) — on the enemy it pays most against; held
       // shares from several controllers compound. A held unit acts and answers that much less (free, takes). The
       // controller's worth counts the control, so the race also turns on it first.
-      heldShare.fill(0); heldHard.fill(0); pace.fill(0);
+      heldShare.fill(0); heldHard.fill(0); exposed.fill(0); pace.fill(0);
       const ctlWorth = worth.slice();
       for (let unit = 0; unit < count; unit += 1) {
         if (!striking(unit)) continue;
@@ -160915,6 +160926,25 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (host) for (let unit = 0; unit < count; unit += 1) aimed[unit] = -1;
       const sideNames = Object.keys(focus);
       if (sideNames.length < 2) break;
+      // 破防（11-16 第 58 题：生成的控制系多是迟缓、判定修正、标记）: a unit not keeping a control up may keep a 破防 on the
+      // enemy its side turns on, when what its allies then land past that enemy's guard (expose × their hits × what the
+      // enemy keeps off them) is more than the share of its own actions that takes.
+      for (let unit = 0; unit < count; unit += 1) {
+        if (!striking(unit) || pace[unit] > 0) continue;
+        const foe = sideNames.find(side => side !== sides[unit]), target = focus[foe].unit;
+        const kept = cells(unit, target).control?.[unit]?.[target];
+        if (!(kept?.expose > 0) || !(kept.exposePace > 0) || !acting(target)) continue;
+        let past = 0;
+        for (let ally = 0; ally < count; ally += 1) {
+          if (ally === unit || sides[ally] !== sides[unit] || !striking(ally)) continue;
+          const view = cells(ally, target);
+          past += view.out[ally][target] * (1 - view.keep[target][ally]) * free(ally);
+        }
+        if (kept.expose * past > kept.exposePace * worth[unit]) {
+          pace[unit] = kept.exposePace;
+          exposed[target] = 1 - (1 - exposed[target]) * (1 - kept.expose);
+        }
+      }
       for (let unit = 0; unit < count; unit += 1) {
         if (!striking(unit)) continue;
         const foe = sideNames.find(side => side !== sides[unit]), ally = focus[sides[unit]].unit;
@@ -161432,7 +161462,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       // the race keeps the table's cells for it, late ones too (11-14: a basic attack that left both units as they were
       // but for the HP it took put the target on cells rebuilt from another starting world for the whole race, and a
       // 1.1% exchange was valued at −0.165 instead of −0.032).
-      const sameControl = (a, b) => a === b || ['lock', 'pace', 'hard'].every(key => Math.abs(a[key] - b[key]) <= 1e-12);
+      const sameControl = (a, b) => a === b || ['lock', 'pace', 'hard', 'expose', 'exposePace'].every(key => Math.abs(a[key] - b[key]) <= 1e-12);
       const sameRow = row => [[out, table.out], [support, table.support], [stop, table.stop], [keep, table.keep], [keepBack, table.keepBack],
         [answer, table.answer], [answerOpen, table.answerOpen], [back, table.back]].every(([now, was]) =>
         now[row].every((value, other) => Math.abs(value - was[row][other]) <= 1e-12 && Math.abs(now[other][row] - was[other][row]) <= 1e-12)) &&
