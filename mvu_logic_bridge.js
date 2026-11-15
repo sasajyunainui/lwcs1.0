@@ -34206,7 +34206,11 @@ ${播报文本}
             const pendingGrant = typeof c2Rules?.读取坚挺金苍蝇成功授予_V1 === 'function'
               ? c2Rules.读取坚挺金苍蝇成功授予_V1(charData)
               : null;
-            if (pendingGrant && typeof c2Rules?.缩放技能效果数组_V1 === 'function') effectList = c2Rules.缩放技能效果数组_V1(effectList, 1.5);
+            // 一次性授予的倍率与制作速度按授予内容读（他人吃下 +50%，奥斯卡自己吃下 ×1.3、速度 +30%；11-15）。
+            const grantRatio = pendingGrant && typeof c2Rules?.读取一次性授予倍率_V1 === 'function'
+              ? c2Rules.读取一次性授予倍率_V1(pendingGrant.state) : { 产物效果倍率: 1.5, 制造速度倍率: 1 };
+            if (pendingGrant && typeof c2Rules?.缩放技能效果数组_V1 === 'function') effectList = c2Rules.缩放技能效果数组_V1(effectList, grantRatio.产物效果倍率);
+            if (pendingGrant && foodSkill) 食物制造冷却倍率 = Math.max(食物制造冷却倍率, Number(grantRatio.制造速度倍率) || 1);
             const levelUpEffect = effectList.find(effect => toText(effect?.原型, '').trim() === '等级提升');
             const 当前tick = Math.max(0, toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
             校验场外魂技冷却(skill, 当前tick, skillName);
@@ -34227,7 +34231,7 @@ ${播报文本}
             charData.属性.精神力 = Math.max(0, toNumber(charData.属性.精神力, 0) - parsedCost.reqMen);
             if (pendingGrant && typeof c2Rules?.消费坚挺金苍蝇成功魂技_V1 === 'function') {
               const consumed = c2Rules.消费坚挺金苍蝇成功魂技_V1(charData, 'RELEASE_SKILL', true);
-              if (consumed.consumed) logs.push('坚挺金苍蝇效果×1.5已在本次成功魂技结算后消费');
+              if (consumed.consumed) logs.push(`坚挺金苍蝇效果×${Math.round((Number(consumed.multiplier) || 1) * 100) / 100}已在本次成功魂技结算后消费`);
             }
             if (levelUpEffect && Number.isFinite(Number(levelUpEffect?.冷却年数))) {
               skill['场外冷却至tick'] = 当前tick + Math.max(0, Number(levelUpEffect.冷却年数)) * 51840;
