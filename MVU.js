@@ -491,6 +491,9 @@ const 赛事参赛限制Schema_V1 = z
 const 赛事项目Schema_V1 = z
   .object({
     流程: 赛事项目流程Schema_V1,
+    // 团体赛一个对局怎么打（不写为团战）：团战／擂台（一对一车轮）／擂台团战积分（先擂台再团战）／单双团积分（三场一对一、两场二对二再团战）
+    对局赛制: z.enum(['团战', '擂台', '擂台团战积分', '单双团积分']).optional(),
+    每队上场人数: 赛事权限正整数Schema_V1().optional(),
     参赛总数: 赛事权限正整数Schema_V1(),
     参赛者: z.record(z.string(), 赛事参赛者Schema_V1).prefault({}),
     参赛限制: 赛事参赛限制Schema_V1.optional(),
@@ -509,6 +512,8 @@ const 赛事私有项目进度Schema_V1 = z
     下一场tick: 赛事权限非负整数Schema_V1().optional(),
     生成种子: 赛事权限文本Schema_V1(),
     模拟数量: 赛事权限非负整数Schema_V1().prefault(0),
+    // 启动赛事时补位的模拟参赛者与未知成员的登记参赛者（确保赛事参赛者实体_桥接 读它）；此前未登记，strict 校验整份失败。
+    模拟参赛者: z.record(z.string(), z.any()).optional(),
     实体: z.record(z.string(), z.any()).prefault({}),
     实体代号: z.record(z.string(), 赛事权限文本Schema_V1()).prefault({}),
     代号映射: z.record(z.string(), 赛事权限文本Schema_V1()).prefault({}),
@@ -543,6 +548,9 @@ const 赛事战斗上下文Schema_V1 = z
     项目: z.enum(['个人赛', '团体赛']),
     对局ID: 赛事权限文本Schema_V1(),
     结算ID: 赛事权限文本Schema_V1(),
+    子场序号: 赛事权限非负整数Schema_V1().optional(),
+    准备tick: 赛事权限非负整数Schema_V1().optional(),
+    代号绑定: z.record(z.string(), 赛事权限文本Schema_V1()).optional(),
   })
   .strict();
 
