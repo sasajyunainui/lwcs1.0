@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:f3770f5be6df5484c35909c3b8d9d50784b02e64a63bbf90d59b162a22cfd314|MVU_Schema_Runtime.js:454e4a242dce5e02d69c3def2993d350ac50f39dcb667f2fc6f09488f34461dd|MVU_Competition_Runtime.js:2a5d78b856d3123e857393fca07fb365d91ce9ea4877cc37dfafd86b384e8904|MVU_Runtime_View.js:126fa8da28200e2164f40355f0d91fb6ba478a32c5f2eef35a9887b0203aa4f9 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:51d2fcd5f694e18ab0581fb4957f7bc0a859a3b5014afd87a6f2346777116cc4|MVU_Schema_Runtime.js:454e4a242dce5e02d69c3def2993d350ac50f39dcb667f2fc6f09488f34461dd|MVU_Competition_Runtime.js:2a5d78b856d3123e857393fca07fb365d91ce9ea4877cc37dfafd86b384e8904|MVU_Runtime_View.js:126fa8da28200e2164f40355f0d91fb6ba478a32c5f2eef35a9887b0203aa4f9 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -9983,6 +9983,8 @@ var SKILL_UNIT_COST_TABLE_V1 = Object.freeze({
     异常抗性: Object.freeze({ 数值: 0.6 }),
     标记: Object.freeze({ 数值: 0.8, 固定COST: 30 }),
     封技: Object.freeze({ 固定COST: 50 }),
+    // 沉默与封技运行时同效（不能放魂技，BattlePreview silence），同价（11-15 设计侧与运行时排查：沉默此前无价）。
+    沉默: Object.freeze({ 固定COST: 50 }),
     护卫: Object.freeze({ 数值: 0.9, 固定COST: 8 }),
     嘲讽: Object.freeze({ 数值: 1.0, 固定COST: 10 }),
     // 封禁装备: 封甲 ≈ the 力量/防御/敏捷/精神力上限 an armour and mecha give (−15%～−40% of the panel at 0.76～1.14 a
@@ -21096,10 +21098,13 @@ function 计算单项效果COST_V1(效果 = {}, 上下文 = {}) {
       : Number.isFinite(绝对值)
         ? '绝对值'
         : '固定值';
+  // 规则防御的次数（免伤 N 次挡 N 下）按次数计价（11-15 设计侧与运行时排查：免伤 1 次与 5 次同价 50）。
+  const 规则次数系数 = 原型 === '规则防御' ? Math.max(1, Math.floor(Number(效果?.次数) || 1)) : 1;
   return {
-    COST: (实际单位COST * 数值倍率 * 属性数量系数 + 附加规则COST) * 目标系数 * 持续系数,
+    COST: (实际单位COST * 数值倍率 * 属性数量系数 * 规则次数系数 + 附加规则COST) * 目标系数 * 持续系数,
     百分比,
     数值类型,
+    ...(规则次数系数 > 1 ? { 次数系数: 规则次数系数 } : {}),
     百分点: Number.isFinite(百分点) ? Number(百分点.toFixed(4)) : null,
     绝对值: Number.isFinite(绝对值) ? Number(绝对值.toFixed(4)) : null,
     绝对值折算百分点: null,

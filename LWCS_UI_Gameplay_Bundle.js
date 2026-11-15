@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:5f0def70bf96a8ae09561ddb1c5fbfa75ea9363ef2b7c5c2a1dd3e8c0b1bb2db|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:97029871b086807cfe780d47bc9bbd0597c225fc01cb5e4cb8c143c8b7cfc02e|BattleRuntime_Module.js:c83f68cb205159c4dd0af3a8401cd956271e2aaf112314a567a3db73c2dbd879|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:5873f07fa209adeff3b3ab3205f3f1e13f42f7d48082a2970c50204898a5cb94|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:97029871b086807cfe780d47bc9bbd0597c225fc01cb5e4cb8c143c8b7cfc02e|BattleRuntime_Module.js:c83f68cb205159c4dd0af3a8401cd956271e2aaf112314a567a3db73c2dbd879|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -12048,7 +12048,7 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
       if (Math.abs(damageMultiplier - 1) > 1e-9) axes.push('OUTGOING_DAMAGE');
       if (Math.max(0, Number(combatEffect?.armor_pen || 0)) > 1e-9) axes.push('ARMOR_PENETRATION');
       if ((Array.isArray(combatEffect?.damage_bonus_limited) ? combatEffect.damage_bonus_limited : []).some(entry =>
-        skillMatchesLimitedElements(effect, entry?.限定元素) && Math.abs(Number(entry?.数值 || 0)) > 1e-9
+        limitedEntryMatches(effect, entry) && Math.abs(Number(entry?.数值 || 0)) > 1e-9
       )) axes.push('OUTGOING_DAMAGE_LIMITED');
       register(actor, stateKey, state, 'ACTOR', axes);
     });
@@ -12066,7 +12066,7 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
       if (Math.abs(damageMultiplier - 1) > 1e-9) axes.push('INCOMING_DAMAGE');
       if (Math.max(0, Number(combatEffect?.[defenseKey === 'men' ? 'spirit_resist_strip' : 'defense_strip'] || 0)) > 1e-9) axes.push('DEFENSE_STRIP');
       if ((Array.isArray(combatEffect?.damage_reduction_limited) ? combatEffect.damage_reduction_limited : []).some(entry =>
-        skillMatchesLimitedElements(effect, entry?.限定元素) && Math.abs(Number(entry?.数值 || 0)) > 1e-9
+        limitedEntryMatches(effect, entry) && Math.abs(Number(entry?.数值 || 0)) > 1e-9
       )) axes.push('INCOMING_DAMAGE_LIMITED');
       register(target, stateKey, state, 'TARGET', axes);
     });
@@ -12105,14 +12105,14 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
         });
         const limitedOutgoingWithout = productWithout(actorStates, actor, source.sourceKey, state =>
           (Array.isArray(state?.战斗效果?.damage_bonus_limited) ? state.战斗效果.damage_bonus_limited : []).reduce((multiplier, entry) =>
-            skillMatchesLimitedElements(effect, entry?.限定元素)
+            limitedEntryMatches(effect, entry)
               ? multiplier * Math.max(0, 1 + Number(entry?.数值 || 0))
               : multiplier,
           1),
         );
         const limitedIncomingWithout = productWithout(targetStates, target, source.sourceKey, state =>
           (Array.isArray(state?.战斗效果?.damage_reduction_limited) ? state.战斗效果.damage_reduction_limited : []).reduce((multiplier, entry) =>
-            skillMatchesLimitedElements(effect, entry?.限定元素)
+            limitedEntryMatches(effect, entry)
               ? multiplier * Math.max(0, 1 - clamp(Number(entry?.数值 || 0), -1, 1))
               : multiplier,
           1),
@@ -12278,14 +12278,14 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     const limitedIncoming = targetProfile?.incomingDamageLimited || stateEntries(target, 'INCOMING_DAMAGE')
       .flatMap(([, state]) => state?.战斗效果?.damage_reduction_limited || []);
     const limitedOutgoingMultiplier = limitedOutgoing.reduce((multiplier, entry) =>
-      skillMatchesLimitedElements(effect, entry?.限定元素)
+      limitedEntryMatches(effect, entry)
         ? multiplier * Math.max(0, 1 + Number(entry?.数值 || 0))
         : multiplier,
       1,
     );
     // 元素限定的承伤条目可以是负数（承伤增加，例如"受到伤害 +20%"限定火元素、灼烧）。原先限制在 [0, 1]，增伤一律被吞掉。
     const limitedIncomingMultiplier = limitedIncoming.reduce((multiplier, entry) =>
-      skillMatchesLimitedElements(effect, entry?.限定元素)
+      limitedEntryMatches(effect, entry)
         ? multiplier * Math.max(0, 1 - clamp(Number(entry?.数值 || 0), -1, 1))
         : multiplier,
       1,
@@ -15647,11 +15647,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     if (prototype === '结算修正' && magnitude > 0) {
       const settlement = String(effect?.结算 || '').trim();
+      const attackTypes = limitedAttackTypes(effect?.限定攻击类型);
       if (settlement === '造成伤害') {
-        if (limitedElements.length) {
+        if (limitedElements.length || attackTypes.length) {
           combatEffect.damage_bonus_limited = [
             ...(Array.isArray(combatEffect.damage_bonus_limited) ? combatEffect.damage_bonus_limited : []),
-            { 限定元素: cloneValue(limitedElements), 数值: signedValue },
+            { 限定元素: cloneValue(limitedElements), ...(attackTypes.length ? { 限定攻击类型: attackTypes } : {}), 数值: signedValue },
           ];
         } else if (signedValue >= 0) {
           combatEffect.damage_bonus = Math.max(Number(combatEffect.damage_bonus || 0), magnitude);
@@ -15659,16 +15660,26 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           combatEffect.final_damage_mult = Math.max(0, Number(combatEffect.final_damage_mult || 1) * (1 - magnitude));
         }
       } else if (settlement === '受到伤害') {
-        if (limitedElements.length) {
+        if (limitedElements.length || attackTypes.length) {
           combatEffect.damage_reduction_limited = [
             ...(Array.isArray(combatEffect.damage_reduction_limited) ? combatEffect.damage_reduction_limited : []),
-            { 限定元素: cloneValue(limitedElements), 数值: -signedValue },
+            { 限定元素: cloneValue(limitedElements), ...(attackTypes.length ? { 限定攻击类型: attackTypes } : {}), 数值: -signedValue },
           ];
         } else {
           combatEffect.received_damage_mult = Math.max(0, Number(combatEffect.received_damage_mult || 1) * (1 + signedValue));
         }
-      } else if (settlement === '防御剥夺' || settlement === '防御穿透') {
+      } else if (settlement === '防御穿透') {
+        // 防御穿透（用户 2026-11-15）: the holder's own hits pass that share of the target's 防御 — only its own.
         if (signedValue >= 0) combatEffect.armor_pen = Math.max(Number(combatEffect.armor_pen || 0), magnitude);
+      } else if (settlement === '防御剥夺') {
+        // 防御剥夺（同日「降低对方防御，队友打对方也一样享受」）: the holder's own 防御 counts that much less against every hit,
+        // whoever strikes — as the 防御剥夺 state does (defense_strip). Until 11-15 it was read as the holder's 穿透 (armor_pen),
+        // so laid on an enemy it made the enemy pierce.
+        if (signedValue >= 0) combatEffect.defense_strip = Math.max(Number(combatEffect.defense_strip || 0), magnitude);
+      } else if (settlement === '精神抗性剥夺') {
+        // Its mental twin (标记弱点 lays both): the holder's 精神力 counts that much less against mental hits (spirit_resist_strip,
+        // as the state 精神抗性剥夺). Until 11-15 the settlement form made no combat effect at all.
+        if (signedValue >= 0) combatEffect.spirit_resist_strip = Math.max(Number(combatEffect.spirit_resist_strip || 0), magnitude);
       } else if (settlement === '治疗') {
         if (signedValue >= 0) combatEffect.final_heal_mult = Math.max(Number(combatEffect.final_heal_mult || 1), 1 + magnitude);
         else combatEffect.final_heal_mult = Math.min(Number(combatEffect.final_heal_mult || 1), Math.max(0, 1 - magnitude));
@@ -16324,6 +16335,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
   }
 
+  // 限定攻击类型（11-15 设计侧与运行时排查：写了「限定近身攻击」却对所有攻击生效）: a limited 结算修正 entry counts only for a hit
+  // whose 伤害类型 is one it names; its 限定元素 as before. 碾压 / 冲击 name no 伤害类型 a hit can have — such an entry is read as unlimited
+  // by type until they are given a meaning.
+  const LIMITABLE_ATTACK_TYPES = new Set(['近身攻击', '远程攻击', '精神攻击', '真实攻击']);
+  function limitedAttackTypes(value) {
+    return (Array.isArray(value) ? value : String(value || '').split(/[、,，/|]+/)).map(item => String(item || '').trim()).filter(item => LIMITABLE_ATTACK_TYPES.has(item));
+  }
+  function limitedEntryMatches(effect = {}, entry = {}) {
+    if (!skillMatchesLimitedElements(effect, entry?.限定元素)) return false;
+    const types = limitedAttackTypes(entry?.限定攻击类型);
+    return !types.length || types.includes(String(effect?.伤害类型 || '').trim());
+  }
   function skillMatchesLimitedElements(skill = {}, limitation = '') {
     const required = normalizedElementTokens(limitation);
     if (!required.length) return true;
