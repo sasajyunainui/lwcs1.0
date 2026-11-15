@@ -72197,8 +72197,9 @@
     const actor = findUnitInWorld(world, request.actorId);
     if (!actor) return null;
     const contest = (result?.contributions || []).find(entry => entry?.outcomeKind === 'WITHDRAWAL_CONTEST')?.evidence || null;
-    // 只在团体赛子场（有后续出场）时换成推演胜算：其余战斗的认输照旧，免得动到别处的行为。
-    const raced = valuation === 'r20' && preview.matchFollowUp?.(world, request.actorSide) ? r20ExitOutlook(request, actor) : null;
+    // R20 的认输与撤离一律用推演胜算（11-16 行为检查目录第 37 题：开局双方还没打出伤害时，按已打出速率的粗估给「胜 0 负 0」、
+    // 全算平局，留下值 0、走值 −1，一打二只剩四成血也从不撤）。推演胜算已校准（562 个样本，σ(4.19·分差) 与现行几乎一致）。
+    const raced = valuation === 'r20' ? r20ExitOutlook(request, actor) : null;
     const exit = preview.exitValuation(world, { objectives: request.objectiveContract || request.battleIntent?.objectives || world.胜负条件 || {} }, actor,
       raced ? { ...(contest || {}), outlook: raced } : contest);
     // 调试：认输胜算的校准取样（推演分差与实际胜负），不参与估值。
