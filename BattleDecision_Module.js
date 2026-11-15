@@ -2146,7 +2146,7 @@
   const BELIEF_FAMILIAR_BATTLE = 4, BELIEF_FAMILIAR_RELATION = 2, BELIEF_FAMILIAR_CLOSE = 4, BELIEF_FAMILIAR_CAP = 8,
     BELIEF_SENSE_FLOOR = 1000, BELIEF_SENSE_EXCHANGES = 2,
     // How much an enemy that has not seen the actor holds its routine skill back for a probe (the R20 reveal base).
-    BELIEF_PROBE_SHARE = 0.7;
+    BELIEF_PROBE_SHARE = Number(root.__LWCS_TUNE__?.BELIEF_PROBE_SHARE ?? 0.7);
   const BELIEF_CLOSE_RELATION = /挚友|好友|朋友|恋|伴侣|夫|妻|兄|弟|姐|妹|父|母|儿|女|师|徒|队友|同伴|伙伴|搭档|宿敌|对手|亲密|同门|同学|同事/;
   function beliefFamiliarExchanges(observer = {}, target = {}) {
     const names = [preview.unitName(target), preview.unitId(target)].map(name => String(name || '').trim()).filter(Boolean);
