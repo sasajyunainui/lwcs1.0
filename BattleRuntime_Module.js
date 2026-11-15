@@ -8559,12 +8559,23 @@
   function payActionStamina({ combatData, actor, nature, opponent = null, action, actionEvent, actionRole, actorControl = 'AI', factor = 1 }) {
     if (!previewRuntime.actionStaminaEnabled(combatData)) return [];
     const requested = previewRuntime.actionStaminaCost(actor, nature, opponent) * Math.max(0, Number(factor) || 1);
-    if (!(requested > 0)) return [];
+    // 近身与远程: a ranged strike also pays 精神力 (BattlePreview rangedActionMentalCost), as far as the unit has it.
+    const mentalFacts = [];
+    if (nature === 'ATTACK_RANGED' && typeof previewRuntime.rangedActionMentalCost === 'function') {
+      const mentalRequested = previewRuntime.rangedActionMentalCost(actor) * Math.max(0, Number(factor) || 1);
+      const mentalBefore = persistentResourceValue(actor, 'men');
+      const mentalAfter = mentalRequested > 0 ? writeCombatResource(actor, 'men', mentalBefore - mentalRequested) : mentalBefore;
+      const mentalApplied = Math.max(0, mentalBefore - mentalAfter);
+      if (mentalApplied > 0) mentalFacts.push(writeStructuredResourceFact(combatData, actor, actor, action, actionEvent, 'men', -mentalApplied, actionRole, 'PAY',
+        { before: mentalBefore, after: mentalAfter, meta: { requestedAmount: mentalRequested, source: 'ACTION_RANGED_MENTAL', staminaNature: nature } }));
+    }
+    if (!(requested > 0)) return mentalFacts;
     const before = persistentResourceValue(actor, 'vit');
     const after = writeCombatResource(actor, 'vit', before - requested);
     const applied = Math.max(0, before - after);
-    if (!(applied > 0)) return [];
+    if (!(applied > 0)) return mentalFacts;
     return [
+      ...mentalFacts,
       writeStructuredResourceFact(combatData, actor, actor, action, actionEvent, 'vit', -applied, actionRole, 'PAY',
         { before, after, meta: { requestedAmount: requested, source: 'ACTION_STAMINA', staminaNature: nature, ...(factor !== 1 ? { staminaFactor: factor } : {}) } }),
       writeLedgerEvent(combatData, {

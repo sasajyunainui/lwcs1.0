@@ -15050,12 +15050,14 @@
 
   function 技能设计台状态施加允许数值字段(状态 = '') {
     const 状态名 = normalizeSkillUiText(状态, '');
+    // 护卫是拦截，不读数值（11-15，与 MVU_Skill_Runtime 状态施加允许数值字段_V1 一致）。
+    if (状态名 === '护卫') return false;
     return ['持续伤害类', '恢复资源类', '防御数值类'].includes(读取技能设计台状态施加分类(状态名)) ||
-      ['禁疗', '治疗反转', '标记', '嘲讽', '共享视野', '防御剥夺', '精神抗性剥夺', '虚弱', '迟缓', '资源燃烧', '失控', '反噬', '精神紊乱', '僵直', '麻痹', '混乱', '魂力枯竭'].includes(状态名);
+      ['禁疗', '治疗反转', '标记', '嘲讽', '共享视野', '防御剥夺', '精神抗性剥夺', '虚弱', '迟缓', '资源燃烧', '失控', '反噬', '精神紊乱', '麻痹', '混乱', '魂力枯竭', '冻结'].includes(状态名);
   }
 
   function 技能设计台状态施加允许副数值字段(状态 = '') {
-    return ['中毒', '流血', '灼烧', '冻伤', '持续创伤', '资源燃烧', '迟缓', '失控', '精神紊乱', '魂力枯竭', '僵直', '麻痹', '混乱', '共享视野'].includes(normalizeSkillUiText(状态, ''));
+    return ['中毒', '流血', '灼烧', '冻伤', '持续创伤', '资源燃烧', '迟缓', '失控', '精神紊乱', '魂力枯竭', '麻痹', '混乱', '共享视野'].includes(normalizeSkillUiText(状态, ''));
   }
 
   function 技能设计台状态施加默认数值(状态 = '') {
@@ -15080,6 +15082,8 @@
     if (状态名 === '僵直') return '-50%';
     if (状态名 === '麻痹') return '-50%';
     if (状态名 === '混乱') return '+40%';
+    // 冻结程度：100% 全身冻结（缺省），低于 100% 部分冻结（与 MVU_Skill_Runtime 读取状态施加默认数值_V1 一致）。
+    if (状态名 === '冻结') return '+100%';
     // 标记 = 被标记者闪避下降，默认 10%（与 MVU_Skill_Runtime 读取状态施加默认数值_V1、战斗侧缺省一致）。
     if (状态名 === '标记') return '-10%';
     if (['防御剥夺', '精神抗性剥夺'].includes(状态名)) return '+20%';
@@ -15105,7 +15109,7 @@
 
 
   function 技能设计台状态施加使用正向强度数值(状态 = '') {
-    return ['资源燃烧', '魂力枯竭', '防御剥夺', '精神抗性剥夺', '异常抗性'].includes(normalizeSkillUiText(状态, ''));
+    return ['资源燃烧', '魂力枯竭', '防御剥夺', '精神抗性剥夺', '异常抗性', '冻结'].includes(normalizeSkillUiText(状态, ''));
   }
 
 
@@ -15132,6 +15136,8 @@
       return formatSkillDesignerSignedValue(Math.max(0.01, Math.abs(数值)), true);
     if (字段 === '数值' && ['护盾', '禁疗', '治疗反转', '防御剥夺', '精神抗性剥夺', '异常抗性'].includes(状态名))
       return formatSkillDesignerSignedValue(Math.max(0.05, Math.abs(数值)), true);
+    if (字段 === '数值' && 状态名 === '冻结')
+      return formatSkillDesignerSignedValue(Math.min(1, Math.max(0.05, Math.abs(数值))), true);
     return value;
   }
 
@@ -15218,7 +15224,8 @@
       if (!normalizeSkillUiText(字段['影响方向'], '')) 字段['影响方向'] = '效果强度';
     }
     delete 字段['概率'];
-    delete 字段['打断效果'];
+    // 打断效果（11-15）：负面状态写了 true 的保留（战斗里打断目标当前动作与蓄力），其余不落盘。
+    if (字段['打断效果'] !== true || !技能设计台状态施加是负面语义(状态名)) delete 字段['打断效果'];
   }
 
   function 清理技能设计台打断效果字段(原型 = '', 字段 = {}) {
@@ -15242,7 +15249,7 @@
       return;
     }
     if (normalizeSkillUiText(原型, '') === '状态施加') {
-      delete 字段['打断效果'];
+      if (字段['打断效果'] !== true || !技能设计台状态施加是负面语义(normalizeSkillUiText(字段['状态'], ''))) delete 字段['打断效果'];
       return;
     }
     delete 字段['打断效果'];
@@ -15274,13 +15281,16 @@
     if (normalizeSkillUiText(原型, '') !== '位移执行' || !字段 || typeof 字段 !== 'object') return;
     delete 字段['方位'];
     delete 字段['数量'];
-    字段['距离'] = Math.max(1, Math.min(30, toNumber(字段['距离'], 1)));
+    字段['距离'] = Math.max(1, Math.min(30, toNumber(字段['距离'], 10)));
     字段['持续回合'] = Math.max(1, Math.min(10, parseSkillDesignerIntegerInputValue(字段['持续回合'], 1, 1)));
     if (字段['数值'] !== undefined) {
       const 数值文本 = normalizeSkillUiText(字段['数值'], '');
-      if (技能设计台字段值是百分比修正(数值文本)) 字段['数值'] = formatSkillDesignerSignedValue(解析技能设计台正负数值(数值文本), true);
+      // 解析成小数再格式化（11-15：原先按百分点解析、按小数格式化，+30% 存成 +3000%）；限 ±45%。
+      if (技能设计台字段值是百分比修正(数值文本)) 字段['数值'] = formatSkillDesignerSignedValue(Math.max(-0.45, Math.min(0.45, parseSkillDesignerSignedValue(数值文本))), true);
       else delete 字段['数值'];
     }
+    // 瞬移、换位瞬间到位，强度数值不起作用。
+    if (['瞬移', '换位'].includes(normalizeSkillUiText(字段['位移类型'], ''))) delete 字段['数值'];
     字段['位移对象'] = 推断技能设计台位移对象(字段);
     if (字段['必定成立'] !== true || normalizeSkillUiText(字段['位移类型'], '') !== '换位') delete 字段['必定成立'];
     if (技能设计台位移目标需要判定(字段)) {
@@ -15406,8 +15416,8 @@
   }
 
   const 技能设计台结算修正支持字段矩阵 = Object.freeze({
-    造成伤害: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合', '限定元素', '驱动属性', '影响方向']),
-    受到伤害: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合', '限定元素', '驱动属性', '影响方向']),
+    造成伤害: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合', '限定元素', '限定来源', '驱动属性', '影响方向']),
+    受到伤害: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合', '限定元素', '限定攻击类型', '限定来源', '驱动属性', '影响方向']),
     治疗: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合', '驱动属性', '影响方向']),
     消耗: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合', '限定元素', '驱动属性', '影响方向']),
     前摇: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合', '限定元素', '驱动属性', '影响方向']),
@@ -16550,7 +16560,7 @@
         if (toNumber(effect['距离'], 0) > 30) throw new Error(`技能执行结构错误:${path}[${index}]位移幅度不能超过30`);
         if (effect['数值'] !== undefined && !技能设计台字段值是百分比修正(effect['数值']))
           throw new Error(`技能执行结构错误:${path}[${index}]位移收益强度覆写必须是百分比`);
-        if (effect['数值'] !== undefined && Math.abs(解析技能设计台正负数值(effect['数值'])) > 0.45)
+        if (effect['数值'] !== undefined && Math.abs(解析技能设计台正负数值(effect['数值'])) > 45)
           throw new Error(`技能执行结构错误:${path}[${index}]位移收益强度覆写不能超过45%`);
         if (effect['持续回合'] !== undefined && (!Number.isFinite(Number(effect['持续回合'])) || Number(effect['持续回合']) < 1 || Number(effect['持续回合']) > 10))
           throw new Error(`技能执行结构错误:${path}[${index}]位移持续回合必须为1到10`);
@@ -16628,8 +16638,8 @@
           throw new Error(`技能执行结构错误:${path}[${index}]${状态名}不应携带驱动属性或影响方向`);
         if (effect['概率'] !== undefined)
           throw new Error(`技能执行结构错误:${path}[${index}]状态施加不允许概率`);
-        if (effect['打断效果'] !== undefined)
-          throw new Error(`技能执行结构错误:${path}[${index}]该状态不允许打断效果`);
+        if (effect['打断效果'] !== undefined && effect['打断效果'] !== true)
+          throw new Error(`技能执行结构错误:${path}[${index}]状态施加的打断效果只能为true`);
         if (effect['触发限制'] !== undefined && !技能设计台状态施加允许触发限制(状态名, effect['目标']))
           throw new Error(`技能执行结构错误:${path}[${index}]该状态不允许触发限制`);
       }

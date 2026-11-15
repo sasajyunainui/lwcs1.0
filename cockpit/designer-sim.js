@@ -1011,6 +1011,15 @@
     return Math.max(0, (承载比例 + 固定比例) / 承载比例);
   }
 
+  // 远程攻（11-15，与 BattlePreview rangedAttackStat 同式）：0.3×力量 + 0.7×魂力折算（魂力上限 × 本级标准力量 ÷ 本级标准魂力上限）。
+  function 计算技能设计台远程攻势(attacker = {}) {
+    const 力量 = Number(attacker.str || 1), 魂力 = Number(attacker.sp_max || 1);
+    const 等级 = Math.max(1, Number(attacker.lv ?? attacker.等级 ?? attacker.level ?? 1) || 1);
+    const 标准 = typeof globalThis !== 'undefined' && typeof globalThis.__LWCS_GET_BASE_STATS__ === 'function' ? globalThis.__LWCS_GET_BASE_STATS__(等级) : null;
+    const 折算 = Number(标准?.str) > 0 && Number(标准?.sp_max) > 0 ? Number(标准.str) / Number(标准.sp_max) : 0;
+    return 折算 > 0 ? 0.3 * 力量 + 0.7 * 魂力 * 折算 : 力量;
+  }
+
   function 计算技能设计台单段伤害(effect = {}, attacker = {}, defender = {}, finalDamageMult = 1, finalDamageBonus = 0, draft = {}) {
     const rawPower = Math.max(0, Number(effect['威力倍率'] || 0) || parseSkillDesignerFactorInputValue(effect['数值'], 0));
     const power = rawPower;
@@ -1029,7 +1038,7 @@
       : mentalDamage
         ? Math.max(Number(attacker.men_max || 1), Number(attacker.sp_max || 1) * 0.7)
         : rangedDamage
-          ? Math.max(Number(attacker.sp_max || 1), Number(attacker.str || 1) * 0.75)
+          ? 计算技能设计台远程攻势(attacker)
           : Number(attacker.str || 1);
     const costScale = 计算技能设计台消耗加成系数(draft, attacker);
     const defenseScale = trueDamage ? Math.max(1, Math.sqrt(attackValue)) * 0.12 : attackValue / defense;
@@ -1081,7 +1090,7 @@
         if (normalizeSkillUiText(effect['规则'], '') === '免死') deathSave += 次数;
         else blockCount += 次数;
       }
-      if (prototype === '状态施加' && ['霸体', '无视异常'].includes(normalizeSkillUiText(effect['状态'], ''))) blockCount += 1;
+      // 霸体、无视异常只挡控制和负面状态，不挡伤害（11-15）；无敌金身的免伤走上面的规则防御。
     });
     if (blockCount > 0) incoming = 0;
     incoming = Math.max(0, incoming * (1 - Math.min(0.95, reduction)) - shield);
