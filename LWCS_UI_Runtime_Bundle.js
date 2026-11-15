@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:f10fc9465bb23d28f62e463c09b8a30f3eca25e4c04820f9ecfeb4628f80d3bb|cockpit/designer-model.js:76779b81a0a8053dab9a7f9ee227be5ce11514b32eb89eb3357ac03ecd359237|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:201a842171ca34c80e7e7056c90d43dfee7f5e87ce16246ae29d06b2bdee8ad0|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:ef6a9225a66e35ad5c29b831b672438d9c08fcb2a8e03262713b5eb869837f1a|BattleRuntime_Module.js:178148439a6aba2d4127dc8b96192eb9942dbb70f9978b67ffc48b4bcf6db441|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:7bdfcb1237bf44beb6735ebb18cac82e2566b1b2361bab4b6a40648fab8b26a4|cockpit/designer-model.js:76779b81a0a8053dab9a7f9ee227be5ce11514b32eb89eb3357ac03ecd359237|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:201a842171ca34c80e7e7056c90d43dfee7f5e87ce16246ae29d06b2bdee8ad0|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:ef6a9225a66e35ad5c29b831b672438d9c08fcb2a8e03262713b5eb869837f1a|BattleRuntime_Module.js:178148439a6aba2d4127dc8b96192eb9942dbb70f9978b67ffc48b4bcf6db441|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -9048,6 +9048,8 @@
       Object.values(赛事?._进度 || {}).forEach(进度 => {
         Object.values(进度?.实体代号 || {}).forEach(代号 => 已用.add(toText(代号, '').trim()));
         Object.keys(进度?.实体绑定 || {}).forEach(代号 => 已用.add(toText(代号, '').trim()));
+        // 队员代号只登记在代号映射里：此前不扫它，一支队伍的队员全分到同一个代号。
+        Object.keys(进度?.代号映射 || {}).forEach(代号 => 已用.add(toText(代号, '').trim()));
       });
     });
     let 序号 = 0;
@@ -9063,6 +9065,142 @@
     return UID;
   }
 
+
+  // 团体赛排兵布阵（11-15 用户定，MVU_Competition_Runtime 生成随机排阵）：成员的等级、系别与攻击型魂技数（判战魂师）。
+  // 赛事代号（还没实体化的对手成员）没有档案，只给名字——排阵对它们纯随机。
+  function 读取赛事排阵成员_桥接(数据根 = {}, 名称 = '') {
+    const 角色 = 数据根?.char?.[名称];
+    if (!角色 || typeof 角色 !== 'object') return { 名称 };
+    let 系别 = toText(角色?.属性?.系别, '').trim(), 魂技数 = 0, 攻击魂技数 = 0;
+    const 子项 = (对象, 规则) => Object.entries(对象 || {}).filter(([键, 值]) => 规则.test(键) && 值 && typeof 值 === 'object').map(([, 值]) => 值);
+    子项(角色, /^第\d+武魂$/).forEach(武魂 => {
+      if (!系别) 系别 = toText(武魂.系别, '').trim();
+      子项(武魂, /^第\d+魂灵$/).forEach(魂灵 => 子项(魂灵, /^第\d+魂环$/).forEach(魂环 => 子项(魂环, /^第\d+魂技$/)
+        .filter(魂技 => Array.isArray(魂技._效果数组)).forEach(魂技 => {
+          魂技数 += 1;
+          if (JSON.stringify(魂技._效果数组).includes('"原型":"伤害结算"')) 攻击魂技数 += 1;
+        })));
+    });
+    return { 名称, 等级: toNumber(角色?.属性?.等级, 0), 系别, 魂技数, 攻击魂技数 };
+  }
+
+  // 团体赛对局第一次开打时排阵并写入 对局.赛程（之后每个子场都读它）；不是团体赛返回 null。
+  function 确保团体赛对局赛程_桥接(数据根 = {}, 赛事ID = '', 项目名 = '', 对局ID = '') {
+    const 运行时 = 读取赛事权限运行时_桥接();
+    const 赛事 = 数据根?.world?.赛事?.[赛事ID];
+    const 项目 = 赛事?.项目?.[项目名];
+    const 对局 = 赛事?._进度?.[项目名]?.对局?.[对局ID];
+    if (项目名 !== '团体赛' || !项目 || !对局 || typeof 运行时?.初始化对局赛程 !== 'function') return null;
+    if (对局.赛程 && typeof 对局.赛程 === 'object') return 对局.赛程;
+    const 赛制 = 运行时.读取项目对局赛制(项目);
+    const 上场人数 = 运行时.读取每队上场人数(项目);
+    const 排阵 = (对局.参赛者 || []).map(参赛者ID => {
+      const 实体 = 确保赛事参赛者实体_桥接(数据根, 赛事ID, 项目名, 参赛者ID);
+      const 成员 = (实体?.成员 || []).map(名称 => 读取赛事排阵成员_桥接(数据根, toText(名称, '').trim()));
+      return 运行时.生成随机排阵(成员, 赛制, 上场人数, `${赛事ID}:${项目名}:${对局ID}:${参赛者ID}`);
+    });
+    if (排阵.length !== 2) return null;
+    return 运行时.初始化对局赛程(对局, 项目, 排阵[0], 排阵[1]);
+  }
+
+  // 玩家所在的一方（对局.参赛者 的下标，0 左 1 右）；都不含玩家按左方。
+  function 读取赛事玩家方_桥接(数据根 = {}, 赛事ID = '', 项目名 = '', 对局 = {}) {
+    const 玩家名 = toText(数据根?.sys?.玩家名, '').trim();
+    const 进度 = 数据根?.world?.赛事?.[赛事ID]?._进度?.[项目名];
+    const 下标 = (对局?.参赛者 || []).findIndex(ID =>
+      (进度?.实体?.[ID]?.成员 || 数据根?.world?.赛事?.[赛事ID]?.项目?.[项目名]?.参赛者?.[ID]?.成员 || []).includes(玩家名));
+    return 下标 >= 0 ? 下标 : 0;
+  }
+
+  // 战斗胜方（单位名）在哪一方：按这场战斗的阵营（team_player 是玩家方）换成 对局.参赛者 的下标；判不出返回 -1。
+  // 对手队员常是模型起的名字、和登记成员对不上，按阵营判比按名字找参赛者稳（此前对不上名字时整次结算抛错、上下文残留）。
+  function 按阵营读取赛事胜方下标_桥接(数据根 = {}, 上下文 = {}, 对局 = {}, 胜方 = '') {
+    const 名称 = toText(胜方, '').trim();
+    const 参战者 = 数据根?.world?.战斗?.参战者 || {};
+    const 含 = 列表 => (Array.isArray(列表) ? 列表 : []).some(单位 => toText(单位?.name ?? 单位, '').trim() === 名称);
+    const 在我方 = 含(参战者.team_player), 在敌方 = 含(参战者.team_enemy);
+    if (!名称 || 在我方 === 在敌方) return -1;
+    const 玩家方 = 读取赛事玩家方_桥接(数据根, 上下文.赛事ID, 上下文.项目, 对局);
+    return 在我方 ? 玩家方 : 1 - 玩家方;
+  }
+
+  // 子场里对手代号换成模型起的名字（构建赛事子场名单_桥接 记在 赛事上下文.代号绑定）：成员、实体绑定、排阵与已赛记录一起换。
+  function 应用赛事代号绑定_桥接(数据根 = {}, 上下文 = {}, 对局 = {}) {
+    const 进度 = 数据根?.world?.赛事?.[上下文.赛事ID]?._进度?.[上下文.项目];
+    const 绑定 = 上下文?.代号绑定 && typeof 上下文.代号绑定 === 'object' ? 上下文.代号绑定 : {};
+    Object.entries(绑定).forEach(([代号原值, 名称原值]) => {
+      const 代号 = toText(代号原值, '').trim(), 名称 = toText(名称原值, '').trim();
+      if (!代号 || !名称 || 代号 === 名称 || !进度?.代号映射?.[代号]) return;
+      const 实体 = 进度.实体?.[进度.代号映射[代号]];
+      const 位置 = 实体?.成员?.indexOf(代号) ?? -1;
+      if (位置 >= 0) 实体.成员[位置] = 名称;
+      进度.实体绑定 ||= {};
+      进度.实体绑定[代号] = 名称;
+      const 换 = 列表 => (Array.isArray(列表) ? 列表.map(值 => (值 === 代号 ? 名称 : 值)) : 列表);
+      (对局?.赛程?.排阵 || []).forEach(阵 => {
+        ['上场', '替补', '顺序'].forEach(键 => { if (Array.isArray(阵?.[键])) 阵[键] = 换(阵[键]); });
+        if (Array.isArray(阵?.分场)) 阵.分场 = 阵.分场.map(换);
+      });
+      (对局?.赛程?.子场 || []).forEach(场 => { 场.左 = 换(场.左); 场.右 = 换(场.右); });
+    });
+  }
+
+  // 子场之间「休息一分钟」（用户「3 + 小幅恢复」）：这一场上过场的角色魂力、精神力、体力各回上限的 5%，生命不回。
+  // 生命、资源与未到期状态本来就随战斗写回角色存档，下一子场开战时从存档展开，自然带入。
+  function 子场休整恢复_桥接(数据根 = {}) {
+    const 参战者 = 数据根?.world?.战斗?.参战者 || {};
+    [...(参战者.team_player || []), ...(参战者.team_enemy || [])].forEach(单位 => {
+      const 属性 = 数据根?.char?.[toText(单位?.name ?? 单位, '').trim()]?.属性;
+      if (!属性 || typeof 属性 !== 'object') return;
+      [['魂力', '魂力上限'], ['精神力', '精神力上限'], ['体力', '体力上限']].forEach(([当前键, 上限键]) => {
+        const 上限 = toNumber(属性[上限键], 0);
+        if (上限 > 0) 属性[当前键] = Math.min(上限, Math.round(toNumber(属性[当前键], 0) + 上限 * 0.05));
+      });
+    });
+  }
+
+  // 子场开战名单（赛事上下文.子场序号 指向赛程的下一子场时）：按排阵定人，不用模型写的我方／敌方。玩家不在这一场就只是旁观。
+  // 对手里还没实体化的代号，按顺序取模型写的敌方里没用过的单位，并记下 代号→名字（结算时 应用赛事代号绑定_桥接）。
+  function 构建赛事子场名单_桥接(snapshot = {}, detail = {}) {
+    const 根 = snapshot?.rootData || {};
+    const 上下文 = 根?.world?.战斗?.赛事上下文;
+    if (!上下文 || 上下文.子场序号 === undefined) return null;
+    const 运行时 = 读取赛事权限运行时_桥接();
+    const 对局 = 根?.world?.赛事?.[上下文.赛事ID]?._进度?.[上下文.项目]?.对局?.[上下文.对局ID];
+    const 子场 = 对局?.赛程 && typeof 运行时?.读取下一子场 === 'function' ? 运行时.读取下一子场(对局) : null;
+    if (!子场 || 子场.序号 !== toNumber(上下文.子场序号, -1)) return null;
+    const 玩家方 = 读取赛事玩家方_桥接(根, 上下文.赛事ID, 上下文.项目, 对局);
+    const 我方名单 = 玩家方 === 0 ? 子场.左 : 子场.右;
+    const 敌方名单 = 玩家方 === 0 ? 子场.右 : 子场.左;
+    const team_player = 我方名单.map(名称 => resolveSnapshotCharKey(snapshot, 名称)).filter(Boolean).map(键 => ({ name: 键 }));
+    const 模型敌方 = (Array.isArray(detail?.参战者?.team_enemy) ? detail.参战者.team_enemy : [])
+      .map((seed, index) => validateBattleSeedParticipant(snapshot, seed, `team_enemy_${index}`))
+      .filter(检查 => 检查 && 检查.ok);
+    // 对方排阵里已经有的名字（之前子场绑定过的、登记的）不能再分给新代号，否则一队里出现两个同名人。
+    const 敌方阵 = 对局.赛程.排阵?.[玩家方 === 0 ? 1 : 0] || {};
+    const 已用 = new Set([...(敌方阵.上场 || []), ...(敌方阵.替补 || [])].map(名 => toText(名, '').trim()).filter(名 => 名 && !敌方名单.includes(名)));
+    const 代号绑定 = {}, team_enemy = [];
+    敌方名单.forEach(名称 => {
+      const 键 = resolveSnapshotCharKey(snapshot, 名称);
+      if (键) { team_enemy.push({ name: 键 }); 已用.add(键); return; }
+      const 候选 = 模型敌方.find(检查 => {
+        const 名 = toText(检查.charKey || 检查.normalized?.name, '').trim();
+        return 名 && !已用.has(名) && !敌方名单.includes(名) && !我方名单.includes(名);
+      });
+      // 有名字的对手（登记过、还没建档）：模型写了同名单位就用它，否则拿下一个没用过的单位改成这个名字，不绑定。
+      const 是代号 = !!根?.world?.赛事?.[上下文.赛事ID]?._进度?.[上下文.项目]?.代号映射?.[名称];
+      const 同名 = 是代号 ? null : 模型敌方.find(检查 => toText(检查.normalized?.name, '').trim() === 名称);
+      const 选用 = 同名 || 候选;
+      if (!选用) return;
+      const 候选名 = toText(选用.charKey || 选用.normalized?.name, '').trim();
+      已用.add(候选名);
+      if (!是代号) { 已用.add(名称); team_enemy.push({ ...cloneJsonValue(选用.normalized, {}), name: 名称 }); return; }
+      team_enemy.push(选用.kind === 'char' ? { name: 选用.normalized.name } : 选用.normalized);
+      代号绑定[名称] = toText(选用.normalized?.name, 候选名);
+    });
+    if (!team_player.length || !team_enemy.length) return null;
+    return { ok: true, participants: { team_player, team_enemy }, ...(Object.keys(代号绑定).length ? { 代号绑定 } : {}) };
+  }
 
   function 确保赛事参赛者实体_桥接(数据根 = {}, 赛事ID = '', 项目名 = '', 参赛者ID = '') {
     const 赛事 = 数据根?.world?.赛事?.[赛事ID];
@@ -9092,16 +9230,23 @@
     进度.实体代号[参赛者ID] = 主代号;
     进度.代号映射[主代号] = 参赛者ID;
     const 模拟数据 = 读取赛事权限运行时_桥接().计算模拟强度(赛事ID, 项目名, 参赛者ID, 项目);
+    // 未知队伍的人数：至少凑够每队上场人数（排阵要用），有队伍人数上限就不超过它。此前默认 3 人，补位的模拟队只有 2 人。
+    const 上场人数 = Math.max(1, toNumber(读取赛事权限运行时_桥接()?.读取每队上场人数?.(项目), 7));
     const 成员数 = 项目名 === '团体赛'
-      ? Math.max(2, Math.min(参赛者记录.成员?.length || 项目.参赛限制?.队伍人数上限 || 3, 12))
+      ? Math.max(2, Math.min(12, toNumber(项目.参赛限制?.队伍人数上限, 12), Math.max(参赛者记录.成员?.length || 0, 上场人数)))
       : 1;
+    // 登记过的参赛者（名称与成员是剧情里明确的，只是成员还没建档）保留登记的队名与成员名，空位才用代号；
+    // 只有补位的模拟参赛者（sim_*）整队用代号。此前登记的队名、成员名一律被代号顶掉。
+    const 模拟补位 = /^sim_\d+$/.test(toText(参赛者记录.名称, '').trim());
+    const 登记名单 = 模拟补位 ? [] : (参赛者记录.成员 || []).map(成员名 => toText(成员名, '').trim()).filter(Boolean);
     const 成员 = Array.from({ length: 成员数 }, (_, index) => {
+        if (index < 登记名单.length) return 登记名单[index];
         if (index === 0) return 主代号;
         const 成员代号 = 分配赛事运行时UID_桥接(数据根, '赛事实体');
         进度.代号映射[成员代号] = 参赛者ID;
         return 成员代号;
       });
-    进度.实体[参赛者ID] = { 名称: 主代号, 成员, ...模拟数据 };
+    进度.实体[参赛者ID] = { 名称: 模拟补位 ? 主代号 : toText(参赛者记录.名称, 主代号).trim() || 主代号, 成员, ...模拟数据 };
     return 进度.实体[参赛者ID];
   }
 
@@ -9143,19 +9288,61 @@
         return;
       }
       let 结果 = toText(载荷.结果, '').trim();
+      let 比分 = Array.isArray(载荷.比分) ? 载荷.比分 : null;
+      // 团体赛子场：记这一场、推进赛程；赛程没打完对局就不结算，玩家再点「进入比赛」打下一场。
+      if (对局.赛程 && typeof 对局.赛程 === 'object' && 上下文.子场序号 !== undefined && typeof 权限赛事运行时.记录子场结果 === 'function') {
+        const 下一 = 权限赛事运行时.读取下一子场(对局);
+        if (!下一 || 下一.序号 !== toNumber(上下文.子场序号, -1)) {
+          delete statData.world.战斗.赛事上下文;
+          结算结果 = { handled: true, settled: false, cleared: true, reason: 'sub_bout_mismatch' };
+          return;
+        }
+        const 胜方下标 = 载荷.平局 === true ? -1 : 按阵营读取赛事胜方下标_桥接(statData, 上下文, 对局, 载荷.胜方);
+        if (载荷.平局 !== true && 胜方下标 < 0) throw new Error('无法从战斗结果判定子场胜方');
+        应用赛事代号绑定_桥接(statData, 上下文, 对局);
+        const 推进 = 权限赛事运行时.记录子场结果(对局, 胜方下标 === 0 ? '左' : 胜方下标 === 1 ? '右' : '平局', 上下文.结算ID);
+        子场休整恢复_桥接(statData);
+        if (!推进.结束) {
+          const 下一场 = 权限赛事运行时.读取下一子场(对局);
+          const 名 = ID => toText(statData.world.赛事[上下文.赛事ID]._进度[上下文.项目].实体?.[ID]?.名称, ID);
+          const 播报 = `[赛事] 小分 ${名(对局.参赛者[0])} ${对局.赛程.小分[0]} : ${对局.赛程.小分[1]} ${名(对局.参赛者[1])}${下一场 ? `；下一场${下一场.类型}：${下一场.左.join('、')} 对 ${下一场.右.join('、')}` : ''}。`;
+          const 原播报 = toText(statData?.sys?.系统播报, '').trim();
+          deepSetMutable(statData, ['sys', '系统播报'], !原播报 || 原播报 === '初始化' ? 播报 : `${原播报} ${播报}`);
+          delete statData.world.战斗.赛事上下文;
+          结算结果 = { handled: true, settled: false, 子场结束: true, 小分: [...对局.赛程.小分] };
+          return;
+        }
+        结果 = 推进.结果 === '左' ? 对局.参赛者[0] : 推进.结果 === '右' ? 对局.参赛者[1] : '平局';
+        比分 = 推进.比分;
+      }
       if (!结果 && 载荷.官方无效 === true) 结果 = '无效';
       if (!结果 && 载荷.平局 === true) 结果 = '平局';
       if (!结果 && 载荷.胜方) 结果 = 解析赛事赛果参与者ID_桥接(赛事, 上下文.项目, 对局, 载荷.胜方);
+      if (!结果 && 载荷.胜方) {
+        const 下标 = 按阵营读取赛事胜方下标_桥接(statData, 上下文, 对局, 载荷.胜方);
+        if (下标 >= 0) 结果 = 对局.参赛者?.[下标] || '';
+      }
       if (!结果) throw new Error('无法从战斗结果解析赛事胜者');
       const 写入结果 = 权限赛事运行时.结算赛事对局(statData, 上下文, {
         结果,
-        ...(Array.isArray(载荷.比分) ? { 比分: 载荷.比分 } : {}),
+        ...(比分 ? { 比分 } : {}),
       });
-      const 推进结果 = 权限赛事运行时.推进赛事状态(
-        statData,
-        上下文.赛事ID,
-        前缀 => 分配赛事运行时UID_桥接(statData, 前缀),
-      );
+      // 淘汰赛平局记为无效、对局重打（结算赛事对局）：重排阵。
+      if (对局.赛果?.结果 === '无效') delete 对局.赛程;
+      // 推进失败（如剩余日程排不下下一轮）不能连累这场的赛果：赛果照存，失败写进播报。
+      let 推进结果 = null;
+      try {
+        推进结果 = 权限赛事运行时.推进赛事状态(
+          statData,
+          上下文.赛事ID,
+          前缀 => 分配赛事运行时UID_桥接(statData, 前缀),
+        );
+      } catch (错误) {
+        推进结果 = { changed: false, error: String(错误?.message || 错误) };
+        const 原播报 = toText(statData?.sys?.系统播报, '').trim();
+        const 播报 = `[赛事] 赛果已记录，但赛程推进失败：${推进结果.error}`;
+        deepSetMutable(statData, ['sys', '系统播报'], !原播报 || 原播报 === '初始化' ? 播报 : `${原播报} ${播报}`);
+      }
       delete statData.world.战斗.赛事上下文;
       结算结果 = { handled: true, settled: true, ...写入结果, 推进结果 };
     }, { force: true });
@@ -9181,9 +9368,29 @@
     const 双方 = Array.isArray(结果?.双方) && 结果.双方.length
       ? 结果.双方.map(参赛者 => toText(参赛者?.名称, '待实体化参赛者'))
       : (对局.参赛者 || []).map(参赛者ID => toText(进度?.实体?.[参赛者ID]?.名称, '待实体化参赛者'));
+    // 团体赛排兵布阵：AI 要知道赛制、双方排阵、打到哪、这一场谁上（只写这几人开战，其余在场下）。
+    const 赛程 = 结果?.对局?.赛程 || 对局.赛程 || null;
+    const 子场 = 结果?.子场 || null;
+    const 阵文本 = 阵 => [
+      `上场：${(阵?.上场 || []).join('、') || '无'}`,
+      阵?.替补?.length ? `替补：${阵.替补.join('、')}` : '',
+      阵?.顺序 ? `擂台出场顺序：${阵.顺序.join(' → ')}` : '',
+      阵?.分场 ? `分场：${阵.分场.map((组, 序) => `第${序 + 1}场${组.length > 1 ? '二对二' : '一对一'} ${组.join('、') || '缺人'}`).join('；')}` : '',
+    ].filter(Boolean).join('；');
+    const 排阵说明 = 赛程 && 子场 ? [
+      `对局赛制：${赛程.赛制}${赛程.团战分 ? `（擂台/分场每胜一场 1 小分，团战胜方得 ${赛程.团战分} 分；小分全拿则不打团战）` : ''}。`,
+      `当前小分：${双方[0]} ${赛程.小分?.[0] ?? 0} : ${赛程.小分?.[1] ?? 0} ${双方[1]}。`,
+      `${双方[0]}排阵——${阵文本(赛程.排阵?.[0])}。`,
+      `${双方[1]}排阵——${阵文本(赛程.排阵?.[1])}。`,
+      (赛程.子场 || []).length ? `已赛：${赛程.子场.map(场 => `${场.左.join('、')} 对 ${场.右.join('、')} ${场.结果 === '左' ? 双方[0] + '胜' : 场.结果 === '右' ? 双方[1] + '胜' : '平局'}`).join('；')}。` : '',
+      `本次是第${子场.序号 + 1}场（${子场.类型}）：${双方[0]}派${子场.左.join('、')}，${双方[1]}派${子场.右.join('、')}。开战只写这几人上场，其他队员在场下观战；上一场的伤势与消耗照旧带着。`,
+      /赛事实体_\d+/.test(JSON.stringify(赛程.排阵 || [])) ? '形如「赛事实体_数字」的是还没登场的对手队员，由你按剧情给他起名，开战时写你起的名字。' : '',
+    ].filter(Boolean).join('') : '';
     return dispatchUiAiRequest(
-      `我要参加【${toText(赛事.名称, '赛事')}】的比赛，对阵${双方.join('与')}。`,
-      `以下内容属于前端已登记的赛事对局请求。赛事ID：${赛事ID}；项目：${项目}；对局ID：${对局ID}；双方：${双方.join(' / ')}。请自然描写入场并沿用现有战斗系统建立战斗；赛事上下文与结算ID已经由脚本写入，不要重复创建或修改。`,
+      子场
+        ? `【${toText(赛事.名称, '赛事')}】${双方.join('对')}，第${子场.序号 + 1}场${子场.类型}开始。`
+        : `我要参加【${toText(赛事.名称, '赛事')}】的比赛，对阵${双方.join('与')}。`,
+      `以下内容属于前端已登记的赛事对局请求。赛事ID：${赛事ID}；项目：${项目}；对局ID：${对局ID}；双方：${双方.join(' / ')}。${排阵说明}请自然描写入场并沿用现有战斗系统建立战斗；赛事上下文与结算ID已经由脚本写入，不要重复创建或修改。`,
       { requestKind: 'competition_match' },
     );
   }
@@ -9383,13 +9590,21 @@
         const 双方 = (对局.参赛者 || []).map(参赛者ID =>
           确保赛事参赛者实体_桥接(statData, 赛事ID, 项目名, 参赛者ID),
         );
+        // 团体赛：第一次开打时排阵，之后每次进入都接着打赛程的下一子场。
+        const 赛程 = 确保团体赛对局赛程_桥接(statData, 赛事ID, 项目名, 对局ID);
+        const 子场 = 赛程 ? 运行时.读取下一子场(对局) : null;
+        if (赛程 && !子场) throw new Error('该对局各场已打完，等待结算');
         statData.world.战斗.赛事上下文 = {
           赛事ID,
           项目: 项目名,
           对局ID,
-          结算ID: `battle:${赛事ID}:${项目名}:${对局ID}:${Date.now()}`,
+          结算ID: `battle:${赛事ID}:${项目名}:${对局ID}:${子场 ? `sub${子场.序号}:` : ''}${Date.now()}`,
+          ...(子场 ? { 子场序号: 子场.序号 } : {}),
+          // 准备后一天内没开战就作废（buildMapBattleCombatData）：此前残留的上下文会让之后任意一场战斗被当成这场比赛结算。
+          准备tick: Math.max(0, Math.floor(toNumber(statData?.world?.时间?.tick, 0))),
         };
-        结果 = { ok: true, 赛事ID, 项目: 项目名, 对局ID, 对局: cloneJsonValue(对局, {}), 双方: cloneJsonValue(双方, []) };
+        结果 = { ok: true, 赛事ID, 项目: 项目名, 对局ID, 对局: cloneJsonValue(对局, {}), 双方: cloneJsonValue(双方, []),
+          ...(子场 ? { 子场: cloneJsonValue(子场, {}), 玩家方: 读取赛事玩家方_桥接(statData, 赛事ID, 项目名, 对局) } : {}) };
         return;
       }
       if (动作 === '手动结算') {
@@ -28629,12 +28844,16 @@ ${播报文本}
     // old 死战 is a real fight with no way out (允许撤离 否). With no intent given, the type's own (the player may change
     // it in the battle terminal).
     const 类型读法 = 读取开战战斗类型_桥接(detail.战斗类型原文 ?? detail.战斗类型);
-    const 赛事对局 = !deepGet(snapshot, 'rootData.world.战斗.进行中', false) &&
-      !!deepGet(snapshot, 'rootData.world.战斗.赛事上下文', null);
+    // 赛事上下文准备后一天（144 tick）内没开战就不再算这场比赛（没有准备tick的旧上下文照旧）。
+    const 赛事上下文原值 = deepGet(snapshot, 'rootData.world.战斗.赛事上下文', null);
+    const 赛事准备tick = toNumber(赛事上下文原值?.准备tick, -1);
+    const 赛事对局 = !deepGet(snapshot, 'rootData.world.战斗.进行中', false) && !!赛事上下文原值 &&
+      !(赛事准备tick >= 0 && toNumber(deepGet(snapshot, 'rootData.world.时间.tick', 0), 0) - 赛事准备tick > 144);
     const 战斗类型 = !类型读法.系统 && (裁判 || 赛事对局) ? '比赛' : 类型读法.类型 || '实战';
     const 写明战斗意图 = toText(detail.战斗意图, '').trim();
     const 允许撤离 = detail.允许撤离 === false || 类型读法.不许撤离 ? false : true;
-    const rosterResult = buildBattleSeedRoster(snapshot, detail);
+    // 团体赛子场按排阵定名单（构建赛事子场名单_桥接）；不是子场或排阵对不上就照常读模型写的我方／敌方。
+    const rosterResult = (赛事对局 && 构建赛事子场名单_桥接(snapshot, detail)) || buildBattleSeedRoster(snapshot, detail);
     if (!rosterResult.ok) return { ok: false, reason: rosterResult.reason };
     const arenaName = toText(detail.currentLoc, toText(detail.target, toText(snapshot.currentLoc, '未知地点')));
     const soulTowerCombat = isSoulTowerCombatType(detail);
@@ -28680,7 +28899,7 @@ ${播报文本}
       source: toText(detail.source, 'map_action'),
       // 赛事对局 (任务卡⑥): the bout's 赛事上下文 goes on with the battle — world.战斗 is replaced at the opening, and
       // 结算赛事战斗_桥接 reads the context from it when the battle is settled.
-      ...(赛事对局 ? { 赛事上下文: cloneJsonValue(deepGet(snapshot, 'rootData.world.战斗.赛事上下文', null), null) } : {}),
+      ...(赛事对局 ? { 赛事上下文: { ...cloneJsonValue(赛事上下文原值, {}), ...(rosterResult.代号绑定 ? { 代号绑定: cloneJsonValue(rosterResult.代号绑定, {}) } : {}) } } : {}),
       ...(soulTowerCombat
         ? {
             floor: soulTowerFloor,
