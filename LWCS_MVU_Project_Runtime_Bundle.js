@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:6e227a77b9305db9b6c5048bfb55493ffce939a81cdf3536163ed6b148387967|MVU_Schema_Runtime.js:454e4a242dce5e02d69c3def2993d350ac50f39dcb667f2fc6f09488f34461dd|MVU_Competition_Runtime.js:2a5d78b856d3123e857393fca07fb365d91ce9ea4877cc37dfafd86b384e8904|MVU_Runtime_View.js:126fa8da28200e2164f40355f0d91fb6ba478a32c5f2eef35a9887b0203aa4f9 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:068d4c89d21c4cd4b8f3c6d74e9a3f292e676e62cf556e52356bcb7246ee1ffd|MVU_Schema_Runtime.js:454e4a242dce5e02d69c3def2993d350ac50f39dcb667f2fc6f09488f34461dd|MVU_Competition_Runtime.js:2a5d78b856d3123e857393fca07fb365d91ce9ea4877cc37dfafd86b384e8904|MVU_Runtime_View.js:126fa8da28200e2164f40355f0d91fb6ba478a32c5f2eef35a9887b0203aa4f9 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -6119,6 +6119,17 @@ function 缩放技能效果数组_V1(effects = [], multiplier = 1, 原型过滤 
   return (Array.isArray(effects) ? effects : []).map(visit);
 }
 
+// 一次性授予（下次魂技成功释放）的效果倍率与制作速度（11-15）：效果 = 1 + 授予效果里「结算修正·技能效果」之和（他人吃下 +50%、
+// 奥斯卡自己吃下 +30%），制作速度 = 1 ÷ (1 + 「结算修正·前摇」之和)（−23% ≈ 速度 ×1.3）。读不到技能效果时按旧口径 1.5。
+function 读取一次性授予倍率_V1(state = {}) {
+  const 列表 = Array.isArray(state?.授予效果) ? state.授予效果 : [];
+  const 合计 = 结算 => 列表.filter(效果 => String(效果?.原型 || '').trim() === '结算修正' && String(效果?.结算 || '').trim() === 结算)
+    .reduce((和, 效果) => 和 + (parseSkillSignedChangeNumber(效果?.数值) || 0), 0);
+  const 有效果 = 列表.some(效果 => String(效果?.原型 || '').trim() === '结算修正' && String(效果?.结算 || '').trim() === '技能效果');
+  const 前摇 = Math.max(-0.9, Math.min(0, 合计('前摇')));
+  return { 产物效果倍率: 有效果 ? Math.max(0, 1 + 合计('技能效果')) : 1.5, 制造速度倍率: 1 / (1 + 前摇) };
+}
+
 function 读取坚挺金苍蝇自用倍率_V1(unit = {}) {
   for (const states of 读取状态效果表_V1(unit)) {
     for (const state of Object.values(states)) {
@@ -6159,7 +6170,8 @@ function 消费坚挺金苍蝇成功魂技_V1(unit = {}, actionKind = '', succes
       else delete states[key];
     }
   }
-  return consumed ? { consumed: true, multiplier: 1.5, stateKey, effects } : { consumed: false, multiplier: 1 };
+  const 倍率 = consumed ? 读取一次性授予倍率_V1({ 授予效果: effects }) : null;
+  return consumed ? { consumed: true, multiplier: 倍率.产物效果倍率, speed: 倍率.制造速度倍率, stateKey, effects } : { consumed: false, multiplier: 1 };
 }
 
 function 计算魂骨年限提升_V1(oldAge = 0, ratio = 0.1, cap = 10000) {
@@ -31990,6 +32002,7 @@ globalThis.__LWCS_C2_CONSUMER_RULES_V1__ = Object.freeze({
   结算群体撤离_V1,
   读取正式物品消费规则_V1,
   读取坚挺金苍蝇成功授予_V1,
+  读取一次性授予倍率_V1,
   消费坚挺金苍蝇成功魂技_V1,
   读取坚挺金苍蝇自用倍率_V1,
   缩放技能效果数组_V1,
