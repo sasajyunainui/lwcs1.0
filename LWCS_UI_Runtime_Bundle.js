@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:ba48a934d5ce377fcaff8289650c68c55deafbbb53818771830bc3500e961552|cockpit/designer-model.js:d8784c8d54aa387bf9350cb731bbe697a087fd18855d7f6fc2a5ebbdb22014a8|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:6cbbc624b3908df0ffda3b0158d9f0c1d8ed4e3b11470cc90fc7d7e14f6003b5|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:72f673cb3f6e03ddbe51a3e0b90017128c0a1f601cbb1b39392f7e61d320ea59|BattleRuntime_Module.js:1c583d9750c9301b021672e80249690ad6b2dec3a05e412f1effda6e5bf775e8|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:4e44ee2617bb2b68e4b823d620ea443ec65b87ee258fdf39e60a02b337b0535d|cockpit/designer-model.js:d8784c8d54aa387bf9350cb731bbe697a087fd18855d7f6fc2a5ebbdb22014a8|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:e6bd6954bf037cfd6ab15c2dde12cc89a598e1aed7a8bdd154f228fcac7769e4|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:ef6a9225a66e35ad5c29b831b672438d9c08fcb2a8e03262713b5eb869837f1a|BattleRuntime_Module.js:a3adf3725814669865202038cf5a79f30a42c90ccfd2f9e067c0f1fa290893c1|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -3199,7 +3199,7 @@
   const 装备加成属性选项_桥接 = Object.freeze(['魂力上限', '精神力上限', '力量', '防御', '敏捷', '体力上限']);
   const 装备加成方向选项_桥接 = Object.freeze([...装备加成属性选项_桥接, '全属性']);
   const 装备加成属性集合_桥接 = new Set(装备加成属性选项_桥接);
-  const 正式技能字段列表_桥接 = Object.freeze(['魂技名', '画面描述', '效果描述', '产物描述', '承载方式', '消耗', '前摇', '场外冷却至tick', '附带属性', '使用条件', '技能掌控度', '触发限制', '_效果数组', '副作用列表', '计价版本', '_锚定消耗']);
+  const 正式技能字段列表_桥接 = Object.freeze(['魂技名', '画面描述', '效果描述', '产物描述', '承载方式', '消耗', '前摇', '场外冷却至tick', '剩余次数', '次数恢复至tick', '附带属性', '使用条件', '技能掌控度', '触发限制', '_效果数组', '副作用列表', '计价版本', '_锚定消耗']);
   const 正式技能字段集合_桥接 = new Set(正式技能字段列表_桥接);
 
   function 断言物品正式技能_桥接(技能 = {}, 来源 = '物品技能') {
@@ -21938,6 +21938,40 @@
     return 冷却状态;
   }
 
+  // 技能每日使用次数（11-15 用户「只为有次数限制的存」「按物品的写法」）：技能「使用限制：每日 N 次」在战斗外执行，时窗修正的「单日
+  // 使用次数上限」读同一份计数（当天前 N 次才附带调整）。与物品同一做法：剩余次数 + 次数恢复至tick（第一次用掉后一天恢复满）；
+  // 只有带这两种上限的技能才写。每战限制在战斗数据里计（单位的技能限制运行态），不进存档。
+  function 读取技能每日上限(skill = {}) {
+    const 限制 = skill?.触发限制 && typeof skill.触发限制 === 'object' ? skill.触发限制 : null;
+    const 技能上限 = 限制 && toText(限制.周期, '') === '每日' ? Math.max(1, Math.floor(toNumber(限制.次数, 1))) : 0;
+    const 调整上限 = (Array.isArray(skill?._效果数组) ? skill._效果数组 : [])
+      .filter(项 => toText(项?.原型, '') === '时窗修正' && toNumber(项?.单日使用次数上限, 0) > 0)
+      .reduce((最小, 项) => Math.min(最小, Math.floor(toNumber(项.单日使用次数上限, 1))), Infinity);
+    return { 技能上限, 调整上限: Number.isFinite(调整上限) ? 调整上限 : 0 };
+  }
+  function 读取技能今日已用(skill = {}, 当前tick = 0) {
+    const { 技能上限, 调整上限 } = 读取技能每日上限(skill);
+    const 上限 = 技能上限 > 0 ? 技能上限 : 调整上限;
+    if (!(上限 > 0)) return 0;
+    const 恢复tick = toNumber(skill?.次数恢复至tick, 0);
+    if (!(恢复tick > 0) || toNumber(当前tick, 0) >= 恢复tick || skill?.剩余次数 === undefined) return 0;
+    return Math.max(0, 上限 - Math.max(0, Math.floor(toNumber(skill.剩余次数, 上限))));
+  }
+  function 校验技能每日次数(skill = {}, 当前tick = 0, 技能名 = '技能') {
+    const { 技能上限 } = 读取技能每日上限(skill);
+    if (技能上限 > 0 && 读取技能今日已用(skill, 当前tick) >= 技能上限) throw new Error(`【${技能名}】今天已用完 ${技能上限} 次。`);
+  }
+  function 记录技能每日次数(skill = {}, 当前tick = 0) {
+    if (!skill || typeof skill !== 'object' || Array.isArray(skill)) return;
+    const { 技能上限, 调整上限 } = 读取技能每日上限(skill);
+    if (!(技能上限 > 0) && !(调整上限 > 0)) { delete skill.剩余次数; delete skill.次数恢复至tick; return; }
+    const 上限 = 技能上限 > 0 ? 技能上限 : 调整上限;
+    const 当前 = Math.max(0, toNumber(当前tick, 0));
+    const 已用 = 读取技能今日已用(skill, 当前);
+    if (已用 === 0) skill.次数恢复至tick = 当前 + 144;
+    skill.剩余次数 = Math.max(0, 上限 - 已用 - 1);
+  }
+
   function 写入场外魂技冷却(skill = {}, 当前tick = 0, 冷却倍率 = 1) {
     if (!skill || typeof skill !== 'object' || Array.isArray(skill)) return null;
     const 冷却状态 = 读取场外魂技冷却状态(skill, 当前tick);
@@ -35625,7 +35659,15 @@ ${播报文本}
 
     构建造物背包值(技能 = {}, 效果 = {}, 当前tick = 0, 持有者名 = '', 数据根 = {}) {
       const 物品名 = toText(技能?.魂技名 || 技能?.name, '临时造物');
-      const 相对有效期tick = Math.max(0, toNumber(效果?.有效期tick, 0));
+      // 时窗修正·有效期tick（11-15 第 18 条）：同一招里调整「本次技能生成造物有效期」的时窗修正，按延长/压缩改这批造物的有效期
+      // （至少 1 tick；原本永不过期的不动）。此前只校验与显示，做造物时不读。
+      const 今日已用 = 读取技能今日已用(技能, 当前tick);
+      const 有效期调整 = (Array.isArray(技能?._效果数组) ? 技能._效果数组 : [])
+        .filter(项 => toText(项?.原型, '') === '时窗修正' && toText(项?.调整字段, '') === '有效期tick')
+        .filter(项 => !(toNumber(项?.单日使用次数上限, 0) > 0) || 今日已用 < Math.floor(toNumber(项.单日使用次数上限, 1)))
+        .reduce((和, 项) => 和 + (toText(项?.调整方式, '延长') === '压缩' ? -1 : 1) * Math.max(0, Math.round(toNumber(项?.调整tick, 0))), 0);
+      const 原有效期tick = Math.max(0, toNumber(效果?.有效期tick, 0));
+      const 相对有效期tick = 原有效期tick > 0 ? Math.max(1, 原有效期tick + 有效期调整) : 0;
       const 钱包 = 读取当前时代钱包配置_桥接(数据根);
       const 显式货币 = toText(效果?.默认货币, '');
       const 货币结果 = 显式货币
@@ -35803,6 +35845,7 @@ ${播报文本}
             if (!造物模板列表.length) throw new Error('当前技能不是可日常施展的造物类技能。');
             const 当前tick = Math.max(0, toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
             校验场外魂技冷却(skill, 当前tick, skillName);
+            校验技能每日次数(skill, 当前tick, skillName);
             if (!charData.属性 || typeof charData.属性 !== 'object') charData.属性 = {};
             if (!charData.背包 || typeof charData.背包 !== 'object' || Array.isArray(charData.背包)) charData.背包 = {};
             const systemBase = this.getSkillSystemBase(skill);
@@ -35850,6 +35893,7 @@ ${播报文本}
             ].map(value => toText(value, '')).join('|'));
             const 自用倍率 = 食物技能 ? this.读取坚挺金苍蝇自用倍率(charData) : { 制造速度倍率: 1 };
             写入场外魂技冷却(skill, 当前tick, 自用倍率.制造速度倍率 > 1 ? 自用倍率.制造速度倍率 : 1);
+            记录技能每日次数(skill, 当前tick);
             this.结算战斗外副作用列表(charData, scaledSkill.副作用列表, `${skillName}施展副作用`, []);
           },
           { force: true },
@@ -35880,6 +35924,7 @@ ${播报文本}
         const 当前技能名 = toText(当前技能['魂技名'] || 当前技能.name || safePath[safePath.length - 1], '魂技');
         const 当前tick = Math.max(0, toNumber(deepGet(当前数据, 'world.时间.tick', 0), 0));
         校验场外魂技冷却(当前技能, 当前tick, 当前技能名);
+        校验技能每日次数(当前技能, 当前tick, 当前技能名);
         const 当前缩放技能 = this.isEquipmentSkillPath(safePath) ? 当前技能 : this.applyDailySkillMastery(当前技能, 当前角色);
         const 当前效果列表 = (Array.isArray(当前缩放技能?._效果数组) ? 当前缩放技能._效果数组 : []).flatMap(effect =>
           this.expandInventoryEffectBranches(当前角色, effect),
@@ -35892,7 +35937,10 @@ ${播报文本}
           await this.处理复刻友方效果(当前数据, charKey, 复刻友方效果, 当前技能名, 当前tick);
           await mutateStatDataByEditor(statData => {
             const 技能 = deepGet(statData, safePath, null);
-            if (技能 && typeof 技能 === 'object') 写入场外魂技冷却(技能, Math.max(0, toNumber(deepGet(statData, 'world.时间.tick', 0), 0)));
+            if (技能 && typeof 技能 === 'object') {
+              写入场外魂技冷却(技能, Math.max(0, toNumber(deepGet(statData, 'world.时间.tick', 0), 0)));
+              记录技能每日次数(技能, Math.max(0, toNumber(deepGet(statData, 'world.时间.tick', 0), 0)));
+            }
           }, { force: true });
           return;
         }
@@ -35936,6 +35984,7 @@ ${播报文本}
             const levelUpEffect = effectList.find(effect => toText(effect?.原型, '').trim() === '等级提升');
             const 当前tick = Math.max(0, toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
             校验场外魂技冷却(skill, 当前tick, skillName);
+            校验技能每日次数(skill, 当前tick, skillName);
             if (!charData.属性 || typeof charData.属性 !== 'object') charData.属性 = {};
             const systemBase = this.getSkillSystemBase(skill);
             costText = toText(systemBase['消耗'], '无');
@@ -35960,6 +36009,7 @@ ${播报文本}
             } else {
               写入场外魂技冷却(skill, 当前tick, 食物制造冷却倍率);
             }
+            记录技能每日次数(skill, 当前tick);
             summaryText = logs.join('；') || '已触发技能效果';
           },
           { force: true },
@@ -62290,7 +62340,9 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
       .map(id => readUnit(String(id || '').trim()))
       .find(unit => unit && sideOf(worldSnapshot, unit) && sideOf(worldSnapshot, unit) !== actorSide) || null;
     const amount = actionStaminaCost(actor, nature, opponent) * declarationStaminaFactor(declaration);
-    return amount > 0 ? { nature, amount } : null;
+    // 近身与远程（11-15）：远程另付精神力（BattleRuntime payActionStamina 同价），推演与估值一并扣。
+    const mental = nature === 'ATTACK_RANGED' ? rangedActionMentalCost(actor) * declarationStaminaFactor(declaration) : 0;
+    return amount > 0 || mental > 0 ? { nature, amount, mental } : null;
   }
 
   function refreshStaminaAdjustedFinal(unit = {}) {
@@ -76566,6 +76618,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         });
       });
       const stamina = projectedActionStamina(worldSnapshot, actor, basis.declaration);
+      if (stamina?.mental > 0) {
+        const mentalBefore = readProjectedResource(actor, '精神力');
+        const mentalNext = roundNumber(clamp(mentalBefore - stamina.mental, 0, readResourceMax(actor, '精神力')));
+        if (mentalNext < mentalBefore) {
+          writeProjectedResource(actor, '精神力', mentalNext);
+          changedUnitIds.add(unitId(actor));
+          addContribution(`${rootActionId}:ranged-mental`, { targetId: unitId(actor), outcomeKind: 'RESOURCE_OPTION_CHANGED', windowId: 'ACTION_COST', expectedDelta: mentalNext - mentalBefore,
+            evidence: Object.freeze({ resource: '精神力', before: mentalBefore, next: mentalNext, delta: mentalNext - mentalBefore, source: 'ACTION_RANGED_MENTAL', staminaNature: stamina.nature }) });
+        }
+      }
       if (stamina) {
         const before = readProjectedResource(actor, '体力');
         const next = roundNumber(clamp(before - stamina.amount, 0, readResourceMax(actor, '体力')));
@@ -77298,6 +77360,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       });
       const staminaPayer = overlay.readUnit(actorId) || projectionContext?.unitById?.get(actorId) || findUnit(worldSnapshot, actorId);
       const stamina = staminaPayer ? projectedActionStamina(worldSnapshot, staminaPayer, basis.declaration, id => overlay.readUnit(id) || findUnit(worldSnapshot, id)) : null;
+      if (stamina?.mental > 0) {
+        const mentalBefore = readResource(staminaPayer, '精神力');
+        const mentalNext = roundNumber(clamp(mentalBefore - stamina.mental, 0, readResourceMax(staminaPayer, '精神力')));
+        if (mentalNext < mentalBefore) {
+          overlay.setResource(actorId, '精神力', mentalNext);
+          changedUnitIds.add(actorId);
+          ledger.addOutcome({ rootActionId, sourceActionId: rootActionId, actor: staminaPayer, declaration: basis.declaration, effectInstanceId: `${rootActionId}:ranged-mental`,
+            targetId: actorId, outcomeKind: 'RESOURCE_OPTION_CHANGED', windowId: 'ACTION_COST', threatValue: 0,
+            evidence: { resource: '精神力', before: mentalBefore, next: mentalNext, delta: mentalNext - mentalBefore, source: 'ACTION_RANGED_MENTAL', staminaNature: stamina.nature } });
+        }
+      }
       if (stamina) {
         const before = readResource(staminaPayer, '体力');
         const next = roundNumber(clamp(before - stamina.amount, 0, readResourceMax(staminaPayer, '体力')));
@@ -78585,6 +78658,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (stamina && !resourceInvalid) {
           const before = availableResources.has('体力') ? availableResources.get('体力') : readResource(branchActor, '体力');
           availableResources.set('体力', Math.max(0, before - stamina.amount));
+          if (stamina.mental > 0) {
+            const mentalBefore = availableResources.has('精神力') ? availableResources.get('精神力') : readResource(branchActor, '精神力');
+            availableResources.set('精神力', Math.max(0, mentalBefore - stamina.mental));
+          }
         }
       }
       if (resourceInvalid) {
@@ -79628,7 +79705,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (normalized.非法项.length) return actor;
     const payment = assessResourcePayment([actor], normalized.values);
     if (!payment.valid) return actor;
-    payment.payments.forEach(row => {
+    // 消耗分摊（11-15）：自己只付 (1 − 比例)，其余由同一招挂上分摊的伙伴付（BattleRuntime costSharePayments）；估值这里按自己那份算。
+    const ownShare = 1 - clamp(stateEntries(unit, 'CONDITION').reduce((highest, [, state]) => Math.max(highest, Number(state?.战斗效果?.cost_share_ratio || 0)), 0), 0, 0.9);
+    const rows = ownShare < 1 ? payment.payments.map(row => ({ ...row, amount: row.amount * ownShare })) : payment.payments;
+    rows.forEach(row => {
       if (projectedResourceDistribution(actor, row.resource)?.support) {
         shiftProjectedResourceValue(actor, row.resource, -row.amount);
         return;
@@ -79647,7 +79727,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (actor.属性 && typeof actor.属性 === 'object') actor.属性.魂力 = remaining;
       }
     });
-    payment.payments.forEach(row => {
+    rows.forEach(row => {
       if (row.key !== 'sp' && row.key !== 'men' || projectedResourceDistribution(actor, row.resource)?.support) return;
       const label = row.key === 'sp' ? '魂力' : '精神力';
       applyLowResourceStaminaCut(actor, label, row.before, readResource(actor, label), readResourceMax(actor, label));
@@ -84492,7 +84572,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 战斗经验抓空当：× (1 + (经验 − 0.5) × EXPERIENCE_COUNTER_SLOPE)。
     const seasoned = 1 + (battleExperience(reactor) - 0.5) * EXPERIENCE_COUNTER_SLOPE;
     return clamp(base * seasoned, 0, COUNTER_CAP) * passiveStreakFactor(reactor) * COUNTER_FADE ** Math.max(0, Math.floor(Number(options?.prior) || 0)) *
-      (!declaration ? 1 : declarationDamageClass(declaration) === 'RANGED' ? RANGED_COUNTER_MULT
+      // 远程来招打折，但还手本身不靠近身的（元素系还手按远程、精神系按精神攻击，同 BattleRuntime 行为防反）不打折（11-15）。
+      (!declaration ? 1 : declarationDamageClass(declaration) === 'RANGED' && !/元素系|精神系/.test(String(reactor?.type || reactor?.系别 || '')) ? RANGED_COUNTER_MULT
         : declarationDamageClass(declaration) === 'MENTAL' ? MENTAL_COUNTER_MULT : 1);
   }
   // 战斗经验（用户 2026-11-14「不另加战斗经验，就用年龄+天赋推算战斗经验，也就是说只是个中间结果」「绝世妖孽就用3试试」
@@ -159530,8 +159611,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   //   guard[t]       the whole hits t's charges take first (rule blocks, death saves, a revival), counted into rounds;
   //   stop[u][t]     the rounds of t's actions u's best control takes (chance × duration); worth counts it at t's worth.
   // A taunted unit's cells hold only its taunters. Read by nothing in play (root.__LWCS_DECISION_DEBUG__.onFacts shows
-  // it). Not in it yet: summons' assists and guard summons, fusions, skills with condition branches (skippedSkills counts
-  // them). The cells are the settlement layer's to build; they sit here until they move there.
+  // it). Not in it yet: summons' assists and guard summons, fusions (skills with condition branches are in since 11-15:
+  // their value is read on the world as it stands; skippedSkills stays 0). The cells are the settlement layer's to build;
+  // they sit here until they move there.
   // ---------------------------------------------------------------------------------------------------------------------
   const R20_ROUNDS_CAP = 99, R20_ROUNDS_FLOOR = 0.25, R20_HORIZON = 6, R20_RESOURCE_PRICE = 0.15, R20_ROUND_DISCOUNT = 0.85, R20_SHADOW_SCALE = 30,
     R20_UPKEEP_ROUNDS = 3, R20_CHAIN_LIMIT = 8, R20_WIN_SLOPE = 2,
@@ -159630,7 +159712,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const profile = targetProfile(skill);
       if (friendly ? !(profile.startsWith('FRIENDLY_') || profile === 'ANY_SINGLE' || profile === 'SELF' && self)
         : !(profile.startsWith('HOSTILE_') || profile === 'ANY_SINGLE')) continue;
-      if (skillActionCapacitySettlementProfile(skill)?.conditional) { if (skipped) skipped.count += 1; continue; }
+      // 条件技能（替换/追加分支，或跟随主原型的伤害/回复）也进格子（11-15）：单招估值按当下世界缓存（cachedBaseActionValue 对
+      // 带条件分支的技能以世界快照为键），条件成立与否已在其中——目标冻住时冰爆的格子就是冰爆的值。此前整条跳过，对手的条件
+      // 技能不进压力，自己的也不进后劲。
       if (hidden(preview.collectEffects(skill)[0])) continue;
       const value = cachedBaseActionValue(unit, other, 'RELEASE_SKILL', skill, context, world);
       if (!(value > basic)) continue;
@@ -175636,6 +175720,31 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return { attached: true, diagnostic: false, representativeEffect: representativeKey };
   }
 
+  // 打断维持（11-15）：目标身上带维持消耗的效果（持续效果、状态效果）所属的那几次释放（来源动作ID）整体撤掉，再结算推迟的体力。
+  function interruptSustainedRelease(combatData = {}, actor = {}, target = {}, actionEvent = {}, actionRole = 'ACTIVE') {
+    const tables = [target?.持续效果, target?.状态效果].filter(table => table && typeof table === 'object' && !Array.isArray(table));
+    const releases = new Set();
+    tables.forEach(table => Object.values(table).forEach(effect => {
+      if (effect && typeof effect === 'object' && effect.维持消耗 && String(effect.来源动作ID || '').trim()) releases.add(String(effect.来源动作ID).trim());
+    }));
+    if (!releases.size) return null;
+    const removed = [];
+    tables.forEach(table => Object.entries(table).forEach(([key, effect]) => {
+      if (effect && typeof effect === 'object' && releases.has(String(effect.来源动作ID || '').trim())) { delete table[key]; removed.push(key); }
+    }));
+    if (!removed.length) return null;
+    previewRuntime.settleDeferredStaminaCut(target);
+    return writeLedgerEvent(combatData, {
+      eventKind: 'state_remove', round: Number(combatData?.回合 || 0),
+      actorName: previewRuntime.unitName(actor), targetName: previewRuntime.unitName(target),
+      actionName: '打断维持', actionType: 'interrupt', actorControl: 'SYSTEM', actionRole,
+      actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
+      result: 'interrupted', resultState: 'ABORTED', ruleCode: 'SUSTAIN_INTERRUPTED',
+      actorId: previewRuntime.unitId(actor), targetId: previewRuntime.unitId(target),
+      meta: { source: 'structured_runtime', removedKeys: removed, releases: [...releases] },
+    });
+  }
+
   // 维持类真身、融合技的发动结束（维持条目已挂上，或这次没挂上）：撤掉发动中标记，没有维持条目留下就补砍推迟的体力。
   function endSustainedAvatarRelease(combatData = {}) {
     for (const unit of listCombatUnits(combatData)) {
@@ -177448,7 +177557,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       // 位移重做: a position state that disrupts a charge (击退, 换位 on an enemy: combat effect interrupt_charge) breaks the
       // unit's stored charge once it is committed (below, after the facts).
       Object.entries(actual?.状态效果 || {}).forEach(([key, condition]) => {
-        if (!stateKeysBefore.has(key) && condition?.战斗效果?.interrupt_charge === true) positionInterrupts.push({ unitId, key });
+        if (!stateKeysBefore.has(key) && condition?.战斗效果?.interrupt_charge === true) positionInterrupts.push({ unitId, key, action: condition?.战斗效果?.interrupt_action === true });
       });
       Object.entries(actual?.状态效果 || {}).forEach(([key, condition]) => {
         if (stateKeysBefore.has(key) || !String(key).startsWith('preview:') || !condition || typeof condition !== 'object') return;
@@ -177570,11 +177679,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (exit) facts.push(exit);
       }
     });
-    positionInterrupts.forEach(({ unitId, key }) => {
+    positionInterrupts.forEach(({ unitId, key, action }) => {
       const target = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, unitId));
       const interrupt = target ? interruptStoredChargeByControl({ combatData, sourceActor: actor, target, actionEvent, actionRole,
         stateName: String(positionStateDisplayName(target, key)), force: true }) : null;
       if (interrupt) facts.push(interrupt);
+      // 打断效果（11-15「打断对方最后一个释放的魂技」）也打断对方正在维持的魂技：撤掉同一次释放挂上的维持效果。
+      const sustain = action && target ? interruptSustainedRelease(combatData, actor, target, actionEvent, actionRole) : null;
+      if (sustain) facts.push(sustain);
     });
     for (const { unitId, key, state } of endedStates) {
       const target = previewRuntime.findUnit(combatData, unitId);
@@ -185102,10 +185214,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           const hostCanGrantExistingWindow = !!host &&
             node?.actionRole === 'ACTIVE' &&
             !host?.召唤键;
+          // A summon made by this action assists at once only when the action is the host's own (ACTIVE): one made in a
+          // strike back or an answer waits for the host's next turn (11-15: 反击里放分身、新分身立刻协同、再引出反击，一次
+          // 行动堆出 64 个节点以上——ACTION_QUEUE_NODE_LIMIT_EXCEEDED).
           const candidates = listSummonCombatUnits(combatData).filter(summon => {
             if (String(summon?.行动模式 || '').trim() !== '协同攻击') return false;
             const summonId = String(summon?.召唤键 || '').trim();
-            return createdSummonIds.has(summonId) ||
+            return (createdSummonIds.has(summonId) && node?.actionRole === 'ACTIVE') ||
               (hostCanGrantExistingWindow && isUnitIdentityMatch(summon?.__宿主, host));
           });
           const preferredTargetIds = facts

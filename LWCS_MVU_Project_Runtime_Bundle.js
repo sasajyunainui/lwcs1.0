@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:3ad12b9022ec8389edfb742be148dadeb8715887e8436a26988c8be1daa59688|MVU_Schema_Runtime.js:24aed5e223712a53c09c5b745a3e4891a729d4e20843aa1ddf7aa5ca96328d1f|MVU_Competition_Runtime.js:2a5d78b856d3123e857393fca07fb365d91ce9ea4877cc37dfafd86b384e8904|MVU_Runtime_View.js:126fa8da28200e2164f40355f0d91fb6ba478a32c5f2eef35a9887b0203aa4f9 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:c945cb1718557498f6ac6e94b7acf2b0ef1cc4ec1189d4a4bac3efc54b55b929|MVU_Schema_Runtime.js:24aed5e223712a53c09c5b745a3e4891a729d4e20843aa1ddf7aa5ca96328d1f|MVU_Competition_Runtime.js:2a5d78b856d3123e857393fca07fb365d91ce9ea4877cc37dfafd86b384e8904|MVU_Runtime_View.js:126fa8da28200e2164f40355f0d91fb6ba478a32c5f2eef35a9887b0203aa4f9 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -14627,6 +14627,8 @@ var 技能正式根字段集合_V1 = new Set([
   '触发限制',
   '装备要求',
   '场外冷却至tick',
+  '剩余次数',
+  '次数恢复至tick',
   '技能掌控度',
   '_效果数组',
   '副作用列表',
@@ -21224,8 +21226,12 @@ function 计算单项效果COST_V1(效果 = {}, 上下文 = {}) {
   const 规则次数系数 = 原型 === '规则防御' ? Math.max(1, Math.floor(Number(效果?.次数) || 1))
     // 资源转移的转化比例（运行时夹在 0～2）按比例进价（11-15 排查：0.5 与 1.5 同价）。
     : 原型 === '资源转移' && 效果?.转化比例 !== undefined ? Math.max(0, Math.min(2, Number(效果.转化比例) || 0)) : 1;
+  // 死亡反噬折扣（11-15 用户点头）：分身倒下宿主反噬一种资源 30%（9 折），本命召唤兽反噬生命与精神力（8.5 折）。
+  const 召唤反噬折扣 = 原型 !== '召唤生成' ? 1
+    : String(效果?.召唤单位类型 || '').trim() === '本命召唤兽' ? 0.85
+      : String(效果?.召唤单位类型 || '').trim() === '分身' ? 0.9 : 1;
   return {
-    COST: (实际单位COST * 数值倍率 * 属性数量系数 * 规则次数系数 + 附加规则COST) * 目标系数 * 持续系数,
+    COST: (实际单位COST * 数值倍率 * 属性数量系数 * 规则次数系数 + 附加规则COST) * 目标系数 * 持续系数 * 召唤反噬折扣,
     百分比,
     数值类型,
     ...(规则次数系数 > 1 ? { 次数系数: 规则次数系数 } : {}),
@@ -29146,7 +29152,7 @@ function 写入内置血脉技能模板_V1(技能表 = {}, 技能名 = '', 模�
     const 模板文本 = String(模板技能?.[字段名] || '').trim();
     if (模板文本) 下个技能[字段名] = 模板文本;
   });
-  ['状态', '场外冷却至tick', '技能掌控度'].forEach(字段名 => {
+  ['状态', '场外冷却至tick', '剩余次数', '次数恢复至tick', '技能掌控度'].forEach(字段名 => {
     if (原技能[字段名] !== undefined) 下个技能[字段名] = cloneJsonValue(原技能[字段名]);
   });
   技能表[技能名] = 下个技能;
@@ -30306,6 +30312,7 @@ function cloneSkillStructData(skill = {}) {
   };
   const 场外冷却至tick = Math.max(0, Number(skill?.场外冷却至tick || 0));
   if (场外冷却至tick > 0) working.场外冷却至tick = 场外冷却至tick;
+  ['剩余次数', '次数恢复至tick'].forEach(字段名 => { if (Number.isFinite(Number(skill?.[字段名])) && skill?.[字段名] !== '') working[字段名] = Number(skill[字段名]); });
   if (副作用列表.length) working.副作用列表 = 副作用列表;
   if (是造物承载技能) working.产物描述 = String(skill?.产物描述 || '无');
   applySkillElementInheritance(working, {});
@@ -30322,6 +30329,7 @@ function cloneSkillStructData(skill = {}) {
     _效果数组: clonePackedSkillEffects(working._效果数组 || []),
   };
   if (Math.max(0, Number(working.场外冷却至tick || 0)) > 0) result.场外冷却至tick = Math.max(0, Number(working.场外冷却至tick || 0));
+  ['剩余次数', '次数恢复至tick'].forEach(字段名 => { if (working[字段名] !== undefined) result[字段名] = working[字段名]; });
   if (Number(skill?.计价版本) > 0) result.计价版本 = Number(skill.计价版本);
   if (读取魂技消耗锚定_V1(skill)) result[魂技消耗成长锚定字段_V1] = { ...读取魂技消耗锚定_V1(skill) };
   if (working.使用条件 && typeof working.使用条件 === 'object' && !Array.isArray(working.使用条件)) result.使用条件 = cloneJsonValue(working.使用条件, {});

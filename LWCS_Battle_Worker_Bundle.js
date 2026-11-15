@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:3ad12b9022ec8389edfb742be148dadeb8715887e8436a26988c8be1daa59688|MVU_Schema_Runtime.js:24aed5e223712a53c09c5b745a3e4891a729d4e20843aa1ddf7aa5ca96328d1f|BattlePreview_Module.js:6cbbc624b3908df0ffda3b0158d9f0c1d8ed4e3b11470cc90fc7d7e14f6003b5|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:72f673cb3f6e03ddbe51a3e0b90017128c0a1f601cbb1b39392f7e61d320ea59|BattleRuntime_Module.js:1c583d9750c9301b021672e80249690ad6b2dec3a05e412f1effda6e5bf775e8 */
+/* sources-sha256: MVU_Skill_Runtime.js:c945cb1718557498f6ac6e94b7acf2b0ef1cc4ec1189d4a4bac3efc54b55b929|MVU_Schema_Runtime.js:24aed5e223712a53c09c5b745a3e4891a729d4e20843aa1ddf7aa5ca96328d1f|BattlePreview_Module.js:e6bd6954bf037cfd6ab15c2dde12cc89a598e1aed7a8bdd154f228fcac7769e4|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:ef6a9225a66e35ad5c29b831b672438d9c08fcb2a8e03262713b5eb869837f1a|BattleRuntime_Module.js:a3adf3725814669865202038cf5a79f30a42c90ccfd2f9e067c0f1fa290893c1 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -10106,6 +10106,8 @@ var 技能正式根字段集合_V1 = new Set([
   '触发限制',
   '装备要求',
   '场外冷却至tick',
+  '剩余次数',
+  '次数恢复至tick',
   '技能掌控度',
   '_效果数组',
   '副作用列表',
@@ -16703,8 +16705,12 @@ function 计算单项效果COST_V1(效果 = {}, 上下文 = {}) {
   const 规则次数系数 = 原型 === '规则防御' ? Math.max(1, Math.floor(Number(效果?.次数) || 1))
     // 资源转移的转化比例（运行时夹在 0～2）按比例进价（11-15 排查：0.5 与 1.5 同价）。
     : 原型 === '资源转移' && 效果?.转化比例 !== undefined ? Math.max(0, Math.min(2, Number(效果.转化比例) || 0)) : 1;
+  // 死亡反噬折扣（11-15 用户点头）：分身倒下宿主反噬一种资源 30%（9 折），本命召唤兽反噬生命与精神力（8.5 折）。
+  const 召唤反噬折扣 = 原型 !== '召唤生成' ? 1
+    : String(效果?.召唤单位类型 || '').trim() === '本命召唤兽' ? 0.85
+      : String(效果?.召唤单位类型 || '').trim() === '分身' ? 0.9 : 1;
   return {
-    COST: (实际单位COST * 数值倍率 * 属性数量系数 * 规则次数系数 + 附加规则COST) * 目标系数 * 持续系数,
+    COST: (实际单位COST * 数值倍率 * 属性数量系数 * 规则次数系数 + 附加规则COST) * 目标系数 * 持续系数 * 召唤反噬折扣,
     百分比,
     数值类型,
     ...(规则次数系数 > 1 ? { 次数系数: 规则次数系数 } : {}),
@@ -24625,7 +24631,7 @@ function 写入内置血脉技能模板_V1(技能表 = {}, 技能名 = '', 模�
     const 模板文本 = String(模板技能?.[字段名] || '').trim();
     if (模板文本) 下个技能[字段名] = 模板文本;
   });
-  ['状态', '场外冷却至tick', '技能掌控度'].forEach(字段名 => {
+  ['状态', '场外冷却至tick', '剩余次数', '次数恢复至tick', '技能掌控度'].forEach(字段名 => {
     if (原技能[字段名] !== undefined) 下个技能[字段名] = cloneJsonValue(原技能[字段名]);
   });
   技能表[技能名] = 下个技能;
@@ -25785,6 +25791,7 @@ function cloneSkillStructData(skill = {}) {
   };
   const 场外冷却至tick = Math.max(0, Number(skill?.场外冷却至tick || 0));
   if (场外冷却至tick > 0) working.场外冷却至tick = 场外冷却至tick;
+  ['剩余次数', '次数恢复至tick'].forEach(字段名 => { if (Number.isFinite(Number(skill?.[字段名])) && skill?.[字段名] !== '') working[字段名] = Number(skill[字段名]); });
   if (副作用列表.length) working.副作用列表 = 副作用列表;
   if (是造物承载技能) working.产物描述 = String(skill?.产物描述 || '无');
   applySkillElementInheritance(working, {});
@@ -25801,6 +25808,7 @@ function cloneSkillStructData(skill = {}) {
     _效果数组: clonePackedSkillEffects(working._效果数组 || []),
   };
   if (Math.max(0, Number(working.场外冷却至tick || 0)) > 0) result.场外冷却至tick = Math.max(0, Number(working.场外冷却至tick || 0));
+  ['剩余次数', '次数恢复至tick'].forEach(字段名 => { if (working[字段名] !== undefined) result[字段名] = working[字段名]; });
   if (Number(skill?.计价版本) > 0) result.计价版本 = Number(skill.计价版本);
   if (读取魂技消耗锚定_V1(skill)) result[魂技消耗成长锚定字段_V1] = { ...读取魂技消耗锚定_V1(skill) };
   if (working.使用条件 && typeof working.使用条件 === 'object' && !Array.isArray(working.使用条件)) result.使用条件 = cloneJsonValue(working.使用条件, {});
@@ -39110,7 +39118,9 @@ try {
       .map(id => readUnit(String(id || '').trim()))
       .find(unit => unit && sideOf(worldSnapshot, unit) && sideOf(worldSnapshot, unit) !== actorSide) || null;
     const amount = actionStaminaCost(actor, nature, opponent) * declarationStaminaFactor(declaration);
-    return amount > 0 ? { nature, amount } : null;
+    // 近身与远程（11-15）：远程另付精神力（BattleRuntime payActionStamina 同价），推演与估值一并扣。
+    const mental = nature === 'ATTACK_RANGED' ? rangedActionMentalCost(actor) * declarationStaminaFactor(declaration) : 0;
+    return amount > 0 || mental > 0 ? { nature, amount, mental } : null;
   }
 
   function refreshStaminaAdjustedFinal(unit = {}) {
@@ -53386,6 +53396,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         });
       });
       const stamina = projectedActionStamina(worldSnapshot, actor, basis.declaration);
+      if (stamina?.mental > 0) {
+        const mentalBefore = readProjectedResource(actor, '精神力');
+        const mentalNext = roundNumber(clamp(mentalBefore - stamina.mental, 0, readResourceMax(actor, '精神力')));
+        if (mentalNext < mentalBefore) {
+          writeProjectedResource(actor, '精神力', mentalNext);
+          changedUnitIds.add(unitId(actor));
+          addContribution(`${rootActionId}:ranged-mental`, { targetId: unitId(actor), outcomeKind: 'RESOURCE_OPTION_CHANGED', windowId: 'ACTION_COST', expectedDelta: mentalNext - mentalBefore,
+            evidence: Object.freeze({ resource: '精神力', before: mentalBefore, next: mentalNext, delta: mentalNext - mentalBefore, source: 'ACTION_RANGED_MENTAL', staminaNature: stamina.nature }) });
+        }
+      }
       if (stamina) {
         const before = readProjectedResource(actor, '体力');
         const next = roundNumber(clamp(before - stamina.amount, 0, readResourceMax(actor, '体力')));
@@ -54118,6 +54138,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       });
       const staminaPayer = overlay.readUnit(actorId) || projectionContext?.unitById?.get(actorId) || findUnit(worldSnapshot, actorId);
       const stamina = staminaPayer ? projectedActionStamina(worldSnapshot, staminaPayer, basis.declaration, id => overlay.readUnit(id) || findUnit(worldSnapshot, id)) : null;
+      if (stamina?.mental > 0) {
+        const mentalBefore = readResource(staminaPayer, '精神力');
+        const mentalNext = roundNumber(clamp(mentalBefore - stamina.mental, 0, readResourceMax(staminaPayer, '精神力')));
+        if (mentalNext < mentalBefore) {
+          overlay.setResource(actorId, '精神力', mentalNext);
+          changedUnitIds.add(actorId);
+          ledger.addOutcome({ rootActionId, sourceActionId: rootActionId, actor: staminaPayer, declaration: basis.declaration, effectInstanceId: `${rootActionId}:ranged-mental`,
+            targetId: actorId, outcomeKind: 'RESOURCE_OPTION_CHANGED', windowId: 'ACTION_COST', threatValue: 0,
+            evidence: { resource: '精神力', before: mentalBefore, next: mentalNext, delta: mentalNext - mentalBefore, source: 'ACTION_RANGED_MENTAL', staminaNature: stamina.nature } });
+        }
+      }
       if (stamina) {
         const before = readResource(staminaPayer, '体力');
         const next = roundNumber(clamp(before - stamina.amount, 0, readResourceMax(staminaPayer, '体力')));
@@ -55405,6 +55436,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (stamina && !resourceInvalid) {
           const before = availableResources.has('体力') ? availableResources.get('体力') : readResource(branchActor, '体力');
           availableResources.set('体力', Math.max(0, before - stamina.amount));
+          if (stamina.mental > 0) {
+            const mentalBefore = availableResources.has('精神力') ? availableResources.get('精神力') : readResource(branchActor, '精神力');
+            availableResources.set('精神力', Math.max(0, mentalBefore - stamina.mental));
+          }
         }
       }
       if (resourceInvalid) {
@@ -56448,7 +56483,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (normalized.非法项.length) return actor;
     const payment = assessResourcePayment([actor], normalized.values);
     if (!payment.valid) return actor;
-    payment.payments.forEach(row => {
+    // 消耗分摊（11-15）：自己只付 (1 − 比例)，其余由同一招挂上分摊的伙伴付（BattleRuntime costSharePayments）；估值这里按自己那份算。
+    const ownShare = 1 - clamp(stateEntries(unit, 'CONDITION').reduce((highest, [, state]) => Math.max(highest, Number(state?.战斗效果?.cost_share_ratio || 0)), 0), 0, 0.9);
+    const rows = ownShare < 1 ? payment.payments.map(row => ({ ...row, amount: row.amount * ownShare })) : payment.payments;
+    rows.forEach(row => {
       if (projectedResourceDistribution(actor, row.resource)?.support) {
         shiftProjectedResourceValue(actor, row.resource, -row.amount);
         return;
@@ -56467,7 +56505,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (actor.属性 && typeof actor.属性 === 'object') actor.属性.魂力 = remaining;
       }
     });
-    payment.payments.forEach(row => {
+    rows.forEach(row => {
       if (row.key !== 'sp' && row.key !== 'men' || projectedResourceDistribution(actor, row.resource)?.support) return;
       const label = row.key === 'sp' ? '魂力' : '精神力';
       applyLowResourceStaminaCut(actor, label, row.before, readResource(actor, label), readResourceMax(actor, label));
@@ -61312,7 +61350,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 战斗经验抓空当：× (1 + (经验 − 0.5) × EXPERIENCE_COUNTER_SLOPE)。
     const seasoned = 1 + (battleExperience(reactor) - 0.5) * EXPERIENCE_COUNTER_SLOPE;
     return clamp(base * seasoned, 0, COUNTER_CAP) * passiveStreakFactor(reactor) * COUNTER_FADE ** Math.max(0, Math.floor(Number(options?.prior) || 0)) *
-      (!declaration ? 1 : declarationDamageClass(declaration) === 'RANGED' ? RANGED_COUNTER_MULT
+      // 远程来招打折，但还手本身不靠近身的（元素系还手按远程、精神系按精神攻击，同 BattleRuntime 行为防反）不打折（11-15）。
+      (!declaration ? 1 : declarationDamageClass(declaration) === 'RANGED' && !/元素系|精神系/.test(String(reactor?.type || reactor?.系别 || '')) ? RANGED_COUNTER_MULT
         : declarationDamageClass(declaration) === 'MENTAL' ? MENTAL_COUNTER_MULT : 1);
   }
   // 战斗经验（用户 2026-11-14「不另加战斗经验，就用年龄+天赋推算战斗经验，也就是说只是个中间结果」「绝世妖孽就用3试试」
@@ -136350,8 +136389,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   //   guard[t]       the whole hits t's charges take first (rule blocks, death saves, a revival), counted into rounds;
   //   stop[u][t]     the rounds of t's actions u's best control takes (chance × duration); worth counts it at t's worth.
   // A taunted unit's cells hold only its taunters. Read by nothing in play (root.__LWCS_DECISION_DEBUG__.onFacts shows
-  // it). Not in it yet: summons' assists and guard summons, fusions, skills with condition branches (skippedSkills counts
-  // them). The cells are the settlement layer's to build; they sit here until they move there.
+  // it). Not in it yet: summons' assists and guard summons, fusions (skills with condition branches are in since 11-15:
+  // their value is read on the world as it stands; skippedSkills stays 0). The cells are the settlement layer's to build;
+  // they sit here until they move there.
   // ---------------------------------------------------------------------------------------------------------------------
   const R20_ROUNDS_CAP = 99, R20_ROUNDS_FLOOR = 0.25, R20_HORIZON = 6, R20_RESOURCE_PRICE = 0.15, R20_ROUND_DISCOUNT = 0.85, R20_SHADOW_SCALE = 30,
     R20_UPKEEP_ROUNDS = 3, R20_CHAIN_LIMIT = 8, R20_WIN_SLOPE = 2,
@@ -136450,7 +136490,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const profile = targetProfile(skill);
       if (friendly ? !(profile.startsWith('FRIENDLY_') || profile === 'ANY_SINGLE' || profile === 'SELF' && self)
         : !(profile.startsWith('HOSTILE_') || profile === 'ANY_SINGLE')) continue;
-      if (skillActionCapacitySettlementProfile(skill)?.conditional) { if (skipped) skipped.count += 1; continue; }
+      // 条件技能（替换/追加分支，或跟随主原型的伤害/回复）也进格子（11-15）：单招估值按当下世界缓存（cachedBaseActionValue 对
+      // 带条件分支的技能以世界快照为键），条件成立与否已在其中——目标冻住时冰爆的格子就是冰爆的值。此前整条跳过，对手的条件
+      // 技能不进压力，自己的也不进后劲。
       if (hidden(preview.collectEffects(skill)[0])) continue;
       const value = cachedBaseActionValue(unit, other, 'RELEASE_SKILL', skill, context, world);
       if (!(value > basic)) continue;
@@ -152456,6 +152498,31 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return { attached: true, diagnostic: false, representativeEffect: representativeKey };
   }
 
+  // 打断维持（11-15）：目标身上带维持消耗的效果（持续效果、状态效果）所属的那几次释放（来源动作ID）整体撤掉，再结算推迟的体力。
+  function interruptSustainedRelease(combatData = {}, actor = {}, target = {}, actionEvent = {}, actionRole = 'ACTIVE') {
+    const tables = [target?.持续效果, target?.状态效果].filter(table => table && typeof table === 'object' && !Array.isArray(table));
+    const releases = new Set();
+    tables.forEach(table => Object.values(table).forEach(effect => {
+      if (effect && typeof effect === 'object' && effect.维持消耗 && String(effect.来源动作ID || '').trim()) releases.add(String(effect.来源动作ID).trim());
+    }));
+    if (!releases.size) return null;
+    const removed = [];
+    tables.forEach(table => Object.entries(table).forEach(([key, effect]) => {
+      if (effect && typeof effect === 'object' && releases.has(String(effect.来源动作ID || '').trim())) { delete table[key]; removed.push(key); }
+    }));
+    if (!removed.length) return null;
+    previewRuntime.settleDeferredStaminaCut(target);
+    return writeLedgerEvent(combatData, {
+      eventKind: 'state_remove', round: Number(combatData?.回合 || 0),
+      actorName: previewRuntime.unitName(actor), targetName: previewRuntime.unitName(target),
+      actionName: '打断维持', actionType: 'interrupt', actorControl: 'SYSTEM', actionRole,
+      actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
+      result: 'interrupted', resultState: 'ABORTED', ruleCode: 'SUSTAIN_INTERRUPTED',
+      actorId: previewRuntime.unitId(actor), targetId: previewRuntime.unitId(target),
+      meta: { source: 'structured_runtime', removedKeys: removed, releases: [...releases] },
+    });
+  }
+
   // 维持类真身、融合技的发动结束（维持条目已挂上，或这次没挂上）：撤掉发动中标记，没有维持条目留下就补砍推迟的体力。
   function endSustainedAvatarRelease(combatData = {}) {
     for (const unit of listCombatUnits(combatData)) {
@@ -154268,7 +154335,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       // 位移重做: a position state that disrupts a charge (击退, 换位 on an enemy: combat effect interrupt_charge) breaks the
       // unit's stored charge once it is committed (below, after the facts).
       Object.entries(actual?.状态效果 || {}).forEach(([key, condition]) => {
-        if (!stateKeysBefore.has(key) && condition?.战斗效果?.interrupt_charge === true) positionInterrupts.push({ unitId, key });
+        if (!stateKeysBefore.has(key) && condition?.战斗效果?.interrupt_charge === true) positionInterrupts.push({ unitId, key, action: condition?.战斗效果?.interrupt_action === true });
       });
       Object.entries(actual?.状态效果 || {}).forEach(([key, condition]) => {
         if (stateKeysBefore.has(key) || !String(key).startsWith('preview:') || !condition || typeof condition !== 'object') return;
@@ -154390,11 +154457,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (exit) facts.push(exit);
       }
     });
-    positionInterrupts.forEach(({ unitId, key }) => {
+    positionInterrupts.forEach(({ unitId, key, action }) => {
       const target = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, unitId));
       const interrupt = target ? interruptStoredChargeByControl({ combatData, sourceActor: actor, target, actionEvent, actionRole,
         stateName: String(positionStateDisplayName(target, key)), force: true }) : null;
       if (interrupt) facts.push(interrupt);
+      // 打断效果（11-15「打断对方最后一个释放的魂技」）也打断对方正在维持的魂技：撤掉同一次释放挂上的维持效果。
+      const sustain = action && target ? interruptSustainedRelease(combatData, actor, target, actionEvent, actionRole) : null;
+      if (sustain) facts.push(sustain);
     });
     for (const { unitId, key, state } of endedStates) {
       const target = previewRuntime.findUnit(combatData, unitId);
@@ -161922,10 +161992,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           const hostCanGrantExistingWindow = !!host &&
             node?.actionRole === 'ACTIVE' &&
             !host?.召唤键;
+          // A summon made by this action assists at once only when the action is the host's own (ACTIVE): one made in a
+          // strike back or an answer waits for the host's next turn (11-15: 反击里放分身、新分身立刻协同、再引出反击，一次
+          // 行动堆出 64 个节点以上——ACTION_QUEUE_NODE_LIMIT_EXCEEDED).
           const candidates = listSummonCombatUnits(combatData).filter(summon => {
             if (String(summon?.行动模式 || '').trim() !== '协同攻击') return false;
             const summonId = String(summon?.召唤键 || '').trim();
-            return createdSummonIds.has(summonId) ||
+            return (createdSummonIds.has(summonId) && node?.actionRole === 'ACTIVE') ||
               (hostCanGrantExistingWindow && isUnitIdentityMatch(summon?.__宿主, host));
           });
           const preferredTargetIds = facts
