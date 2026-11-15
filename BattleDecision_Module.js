@@ -65945,13 +65945,15 @@
   // what of each action goes astray: random_target_rate, and of the rest hit_penalty); pace, the share of `unit`'s own
   // actions keeping it up takes (one in its duration); hard, the share of `other`'s answers it takes too (a held unit does not
   // defend or evade; a confused one still does). The control kept is the one that keeps the most rounds off. stop stays
-  // the hard controls' (a soft one breaks no charge).
+  // the hard controls' (a soft one breaks no charge). expose / exposePace: the 破防 it keeps up instead (迟缓, 判定修正, 标记:
+  // reaction_penalty, dodge_penalty — what of a hit `other` would have kept off it no longer does, chance × the larger), and
+  // the share of `unit`'s actions that takes; the one that keeps the most off for the most rounds.
   function r20Stop(unit, other) {
     return r20Control(unit, other).stop;
   }
   function r20Control(unit, other) {
     if (hasStateFlag(unit, 'silence') || preview.isSummonSkillDisabled(unit)) return R20_NO_CONTROL;
-    let best = 0, kept = null, keptRounds = 0;
+    let best = 0, kept = null, keptRounds = 0, expose = 0, exposePace = 0, exposeRounds = 0;
     // An enemy as believed lists no skills: the controls it has shown count.
     const own = affordablePreparedSkills(unit), shown = own.length ? null : r20Shown(unit);
     for (const entry of shown || own) {
@@ -65959,11 +65961,18 @@
       const skill = shown ? entry : entry.skill, profile = targetProfile(skill);
       if (!(profile.startsWith('HOSTILE_') || profile === 'ANY_SINGLE')) continue;
       for (const effect of preview.collectEffects(skill)) {
-        if (!['状态施加', '决策干扰'].includes(effect?.原型) || preview.negativeEffectIsImmune(other, effect)) continue;
+        if (!['状态施加', '决策干扰', '判定修正'].includes(effect?.原型) || /自身|友方|己方/.test(String(effect?.目标 || '')) ||
+          preview.negativeEffectIsImmune(other, effect)) continue;
         const stops = preview.deriveStateCombatEffect(effect) || {};
         const hard = effect.原型 === '状态施加' && (stops.cannot_act === true || stops.skip_turn === true);
         const astray = clamp(Number(stops.random_target_rate) || 0, 0, 1), miss = clamp(Number(stops.hit_penalty) || 0, 0, 1);
         const share = hard ? 1 : astray + (1 - astray) * miss;
+        const open = hard ? 0 : clamp(Math.max(Number(stops.reaction_penalty) || 0, Number(stops.dodge_penalty) || 0), 0, 1);
+        if (open > 0) {
+          const chance = clamp(preview.normalizeEffectProbability(effect.触发概率, 1) * preview.stateApplicationProbabilityMultiplier(other, effect), 0, 1);
+          const duration = Math.max(1, Number(effect.持续回合) || 1);
+          if (chance * open * duration > exposeRounds) { exposeRounds = chance * open * duration; expose = chance * open; exposePace = 1 / duration; }
+        }
         if (!(share > 0)) continue;
         // 挣脱（BattlePreview struggleChance）: a 拘束 control holds by what its holder fails to break.
         const chance = clamp(preview.normalizeEffectProbability(effect.触发概率, 1) *
@@ -65973,9 +65982,10 @@
         if (chance * share * duration > keptRounds) { keptRounds = chance * share * duration; kept = { lock: chance * share, pace: 1 / duration, hard: hard ? chance : 0 }; }
       }
     }
-    return best > 0 || kept ? { stop: best, control: kept ? Object.freeze(kept) : R20_NO_CONTROL.control } : R20_NO_CONTROL;
+    if (!(best > 0) && !kept && !(expose > 0)) return R20_NO_CONTROL;
+    return { stop: best, control: Object.freeze({ ...(kept || R20_NO_CONTROL.control), expose, exposePace }) };
   }
-  const R20_NO_CONTROL = Object.freeze({ stop: 0, control: Object.freeze({ lock: 0, pace: 0, hard: 0 }) });
+  const R20_NO_CONTROL = Object.freeze({ stop: 0, control: Object.freeze({ lock: 0, pace: 0, hard: 0, expose: 0, exposePace: 0 }) });
   // The whole hits a unit's charges take before its HP counts: rule blocks and death saves.
   const r20Guard = unit => preview.ruleBlockCount(unit) + preview.deathSaveCount(unit);
   // What a revival gives back when its unit falls, a share of its HP maximum (BattlePreview triggerRevive: the state's
@@ -66489,7 +66499,8 @@
     const aimed = new Array(count), landed = new Array(count);
     // heldShare[u]: the share of u's actions the enemies' controls keep off this step, heldHard[u] the share of its answers;
     // pace[u]: the share of u's own actions it spends keeping a control up (r20Control).
-    const heldShare = new Array(count).fill(0), heldHard = new Array(count).fill(0), pace = new Array(count).fill(0);
+    // exposed[u]: the share of what u would keep off a hit that the enemies' 破防 takes away this step.
+    const heldShare = new Array(count).fill(0), heldHard = new Array(count).fill(0), exposed = new Array(count).fill(0), pace = new Array(count).fill(0);
     let released = 0;
     const horizon = Math.max(1, Math.min(R20_RACE_ROUNDS, Number(facts.horizon) || R20_RACE_ROUNDS)), tick = facts.tick || null, tickRounds = facts.tickRounds || null;
     const dealt = new Array(count), mended = new Array(count), hits = new Array(count), worth = new Array(count), pressed = new Array(count);
@@ -66511,7 +66522,7 @@
       // What of an attacker's hit a unit takes: its answer's share while it can answer; held (controlled — the hard control
       // lasts to the end of the round it took an action in, BattleRuntime consumeStructuredControlActiveBudget) or busy, it
       // takes the whole hit, as a unit that cannot act does in the table (r20FillPair).
-      const takes = (view, unit, attacker) => acting(unit) ? view.keep[unit][attacker] + (1 - view.keep[unit][attacker]) * heldHard[unit] : 1;
+      const takes = (view, unit, attacker) => acting(unit) ? view.keep[unit][attacker] + (1 - view.keep[unit][attacker]) * (1 - (1 - heldHard[unit]) * (1 - exposed[unit])) : 1;
       let nextChange = base.late && time < R20_LATE_ROUNDS - 1e-9 ? Math.min(horizon, R20_LATE_ROUNDS) : horizon;
       if (leaves) for (let unit = 0; unit < count; unit += 1) {
         if (leaves[unit] <= time + 1e-9) left[unit] = 0; else nextChange = Math.min(nextChange, leaves[unit]);
@@ -66541,7 +66552,7 @@
       // share of its own actions it takes (lock ÷ stop of them × its own worth) — on the enemy it pays most against; held
       // shares from several controllers compound. A held unit acts and answers that much less (free, takes). The
       // controller's worth counts the control, so the race also turns on it first.
-      heldShare.fill(0); heldHard.fill(0); pace.fill(0);
+      heldShare.fill(0); heldHard.fill(0); exposed.fill(0); pace.fill(0);
       const ctlWorth = worth.slice();
       for (let unit = 0; unit < count; unit += 1) {
         if (!striking(unit)) continue;
@@ -66574,6 +66585,25 @@
       if (host) for (let unit = 0; unit < count; unit += 1) aimed[unit] = -1;
       const sideNames = Object.keys(focus);
       if (sideNames.length < 2) break;
+      // 破防（11-16 第 58 题：生成的控制系多是迟缓、判定修正、标记）: a unit not keeping a control up may keep a 破防 on the
+      // enemy its side turns on, when what its allies then land past that enemy's guard (expose × their hits × what the
+      // enemy keeps off them) is more than the share of its own actions that takes.
+      for (let unit = 0; unit < count; unit += 1) {
+        if (!striking(unit) || pace[unit] > 0) continue;
+        const foe = sideNames.find(side => side !== sides[unit]), target = focus[foe].unit;
+        const kept = cells(unit, target).control?.[unit]?.[target];
+        if (!(kept?.expose > 0) || !(kept.exposePace > 0) || !acting(target)) continue;
+        let past = 0;
+        for (let ally = 0; ally < count; ally += 1) {
+          if (ally === unit || sides[ally] !== sides[unit] || !striking(ally)) continue;
+          const view = cells(ally, target);
+          past += view.out[ally][target] * (1 - view.keep[target][ally]) * free(ally);
+        }
+        if (kept.expose * past > kept.exposePace * worth[unit]) {
+          pace[unit] = kept.exposePace;
+          exposed[target] = 1 - (1 - exposed[target]) * (1 - kept.expose);
+        }
+      }
       for (let unit = 0; unit < count; unit += 1) {
         if (!striking(unit)) continue;
         const foe = sideNames.find(side => side !== sides[unit]), ally = focus[sides[unit]].unit;
@@ -67091,7 +67121,7 @@
       // the race keeps the table's cells for it, late ones too (11-14: a basic attack that left both units as they were
       // but for the HP it took put the target on cells rebuilt from another starting world for the whole race, and a
       // 1.1% exchange was valued at −0.165 instead of −0.032).
-      const sameControl = (a, b) => a === b || ['lock', 'pace', 'hard'].every(key => Math.abs(a[key] - b[key]) <= 1e-12);
+      const sameControl = (a, b) => a === b || ['lock', 'pace', 'hard', 'expose', 'exposePace'].every(key => Math.abs(a[key] - b[key]) <= 1e-12);
       const sameRow = row => [[out, table.out], [support, table.support], [stop, table.stop], [keep, table.keep], [keepBack, table.keepBack],
         [answer, table.answer], [answerOpen, table.answerOpen], [back, table.back]].every(([now, was]) =>
         now[row].every((value, other) => Math.abs(value - was[row][other]) <= 1e-12 && Math.abs(now[other][row] - was[other][row]) <= 1e-12)) &&
