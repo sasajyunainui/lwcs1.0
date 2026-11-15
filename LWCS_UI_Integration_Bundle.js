@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:ba48a934d5ce377fcaff8289650c68c55deafbbb53818771830bc3500e961552|cockpit/designer-model.js:953e1f17f1bd91287728c4c04b498699e9c79b307cba636310511ad9fe9f53a0|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:ba48a934d5ce377fcaff8289650c68c55deafbbb53818771830bc3500e961552|cockpit/designer-model.js:d8784c8d54aa387bf9350cb731bbe697a087fd18855d7f6fc2a5ebbdb22014a8|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -41852,11 +41852,23 @@ ${播报文本}
     );
     let 来源类别 = '魂技';
     let 预算角色 = 角色属性;
+    let 来源品质 = '';
     if (['魂技', 'independent_ring_skill'].includes(范围)) {
       来源类别 = '魂技';
-      预算角色 = 构建技能设计台标准战斗属性(10 * Math.min(9, 魂环位) + 1, 角色属性.type || 草稿?.type || '强攻系', {
-        天赋梯队: 角色属性?.属性?.天赋梯队 || 角色数据?.属性?.天赋梯队 || 角色数据?.天赋梯队 || '正常',
-      });
+      // 预算按角色本人算（11-15 用户「要」：与游戏解析时收敛魂技同一口径——角色本人的等级、天赋、资源上限，加魂灵品质）；
+      // 没有角色数据（空白新技能）时才回落到本环标准角色。此前一律按本环标准角色，显示的合格区间与游戏里不一致。
+      预算角色 = 角色数据 && 角色数据.属性 && Object.keys(角色数据).length
+        ? 角色数据
+        : 构建技能设计台标准战斗属性(10 * Math.min(9, 魂环位) + 1, 角色属性.type || 草稿?.type || '强攻系', {
+          天赋梯队: 角色属性?.属性?.天赋梯队 || 角色数据?.属性?.天赋梯队 || 角色数据?.天赋梯队 || '正常',
+        });
+      const 魂灵索引 = 路径.findIndex(片段 => /^第\d+魂灵$/.test(normalizeSkillUiText(片段, '')));
+      const 魂灵数据 = 魂灵索引 >= 0 ? deepGet(根数据, 路径.slice(0, 魂灵索引 + 1), {}) : {};
+      const 品质工具 = typeof globalThis !== 'undefined' ? globalThis : {};
+      if (typeof 品质工具.normalizeSoulSpiritQuality === 'function' && typeof 品质工具.inferSoulSpiritQuality === 'function') {
+        来源品质 = 品质工具.normalizeSoulSpiritQuality(魂灵数据?.品质 || '') || 品质工具.inferSoulSpiritQuality(魂灵数据) ||
+          品质工具.normalizeSoulSpiritQuality(武魂数据?.品质 || '') || 品质工具.inferSoulSpiritQuality(武魂数据) || '';
+      }
     } else if (范围 === 'blood_ring_skill') {
       来源类别 = '气血魂技';
     } else if (范围 === 'blood_skill' || 范围 === 'blood_passive') {
@@ -41886,6 +41898,8 @@ ${播报文本}
       魂环数据,
       ringAge: 魂环数据?.年限,
       ringColor: 魂环数据?.颜色,
+      ...(来源品质 ? { sourceQuality: 来源品质 } : {}),
+      ...(['魂技', 'independent_ring_skill'].includes(范围) ? { talentTier: 预算角色?.属性?.天赋梯队, 武魂数据, forceTrueBody: 魂环位 === 7 } : {}),
       融合记录: 范围 === '武魂融合技' ? getSkillDesignerFusionRecord(根数据, previewMeta) : undefined,
     };
   }
