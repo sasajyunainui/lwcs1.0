@@ -15187,7 +15187,7 @@
     if (normalizeSkillUiText(原型, '') !== '状态施加' || !字段 || typeof 字段 !== 'object') return;
     const 状态名 = normalizeSkillUiText(字段['状态'], '');
     const 触发方式 = normalizeSkillUiText(字段['触发方式'], '立即触发');
-    字段['触发方式'] = ['立即触发', '延迟触发', '遥控触发'].includes(触发方式)
+    字段['触发方式'] = ['立即触发', '延迟触发'].includes(触发方式)
       ? 触发方式
       : 字段['延迟回合'] !== undefined
         ? '延迟触发'
@@ -16597,10 +16597,11 @@
         throw new Error(`技能执行结构错误:${path}[${index}]嵌套效果必须独立生效`);
       if (原型 === '状态施加') {
         const 状态名 = normalizeSkillUiText(effect['状态'], '');
-        const 触发方式 = normalizeSkillUiText(effect['触发方式'], '立即触发');
+        // 遥控触发 11-15 撤下（运行时从未实现）：旧数据读作立即触发。
+        const 触发方式 = normalizeSkillUiText(effect['触发方式'], '立即触发') === '遥控触发' ? '立即触发' : normalizeSkillUiText(effect['触发方式'], '立即触发');
         if (状态名 === '护卫' && normalizeSkillUiText(effect['目标'], '') === '自身')
           throw new Error(`技能执行结构错误:${path}[${index}]护卫目标不能是自身`);
-        if (!['立即触发', '延迟触发', '遥控触发'].includes(触发方式))
+        if (!['立即触发', '延迟触发'].includes(触发方式))
           throw new Error(`技能执行结构错误:${path}[${index}]状态触发方式无效`);
         if (触发方式 === '延迟触发' && !(toNumber(effect['延迟回合'], 0) > 0))
           throw new Error(`技能执行结构错误:${path}[${index}]延迟触发必须提供延迟回合`);
@@ -19647,7 +19648,7 @@
       next['状态'] = 状态名;
       next['目标'] = 约束技能设计台原型正式目标(prototype, next['目标'], fallbackTarget, next);
       const 触发方式 = normalizeSkillUiText(next['触发方式'], '立即触发');
-      next['触发方式'] = ['立即触发', '延迟触发', '遥控触发'].includes(触发方式)
+      next['触发方式'] = ['立即触发', '延迟触发'].includes(触发方式)
         ? 触发方式
         : next['延迟回合'] !== undefined
           ? '延迟触发'

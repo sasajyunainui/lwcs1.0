@@ -9509,6 +9509,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (state === '麻痹') {
       combatEffect.cast_speed_penalty = Math.max(Number(combatEffect.cast_speed_penalty || 0), magnitude || 0.25);
       combatEffect.reaction_penalty = Math.max(Number(combatEffect.reaction_penalty || 0), magnitude || 0.25);
+      // 副数值 = 闪避下降（11-15 设计侧与运行时排查：副数值计价却不读）。
+      if (secondaryMagnitude > 0) combatEffect.dodge_penalty = Math.max(Number(combatEffect.dodge_penalty || 0), secondaryMagnitude);
     }
     if (/僵直/.test(state)) {
       combatEffect.cannot_react = true;
@@ -9973,16 +9975,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   }
 
   // 限定攻击类型（11-15 设计侧与运行时排查：写了「限定近身攻击」却对所有攻击生效）: a limited 结算修正 entry counts only for a hit
-  // whose 伤害类型 is one it names; its 限定元素 as before. 碾压 / 冲击 name no 伤害类型 a hit can have — such an entry is read as unlimited
-  // by type until they are given a meaning.
-  const LIMITABLE_ATTACK_TYPES = new Set(['近身攻击', '远程攻击', '精神攻击', '真实攻击']);
+  // whose 伤害类型 is one it names (近身/远程/精神/真实攻击), or — 碾压 / 冲击（用户 11-15「那就按你的来」）— that carries that tag among
+  // its attached attributes (附带属性, matched as 限定元素 is); its 限定元素 as before.
+  const LIMITABLE_ATTACK_TYPES = new Set(['近身攻击', '远程攻击', '精神攻击', '真实攻击']), LIMITABLE_ATTACK_TAGS = new Set(['碾压', '冲击']);
   function limitedAttackTypes(value) {
-    return (Array.isArray(value) ? value : String(value || '').split(/[、,，/|]+/)).map(item => String(item || '').trim()).filter(item => LIMITABLE_ATTACK_TYPES.has(item));
+    return (Array.isArray(value) ? value : String(value || '').split(/[、,，/|]+/)).map(item => String(item || '').trim()).filter(item => LIMITABLE_ATTACK_TYPES.has(item) || LIMITABLE_ATTACK_TAGS.has(item));
   }
   function limitedEntryMatches(effect = {}, entry = {}) {
     if (!skillMatchesLimitedElements(effect, entry?.限定元素)) return false;
     const types = limitedAttackTypes(entry?.限定攻击类型);
-    return !types.length || types.includes(String(effect?.伤害类型 || '').trim());
+    if (!types.length) return true;
+    return types.includes(String(effect?.伤害类型 || '').trim()) ||
+      types.some(type => LIMITABLE_ATTACK_TAGS.has(type) && skillMatchesLimitedElements(effect, [type]));
   }
   function skillMatchesLimitedElements(skill = {}, limitation = '') {
     const required = normalizedElementTokens(limitation);
