@@ -1327,6 +1327,27 @@
   // first round the named units (one or more, 、-separated) hold 先手 — they act before everyone (BattlePreview
   // compareNaturalActionOrder) — and every unit of the sides they fall on is 措手不及, its window to answer a hit halved
   // (BattlePreview reactionWindupBudget). Both last the round (__回合末解除). Until 11-15 先攻 was written and shown, never read.
+  // 斗铠 / 机甲 未释放（BattlePreview armourUnreleasedStates，S80-A）：每回合开始补上缺的（换装状态带到下一次请求的只有释放，
+  // 未释放不落盘也不跟着走，所以每次都补；释放会抵掉它）；释放状态里的耐久同步回 装备（战后随装备写回存档），耗尽记损毁。
+  function ensureArmourUnreleased(combatData = {}) {
+    listCombatUnits(combatData).forEach(unit => {
+      const additions = previewRuntime.armourUnreleasedStates?.(unit) || [];
+      if (additions.length) {
+        unit.状态效果 = unit.状态效果 && typeof unit.状态效果 === 'object' ? unit.状态效果 : {};
+        additions.forEach(([key, state]) => { unit.状态效果[key] = { ...state, 战斗效果: createEmptyCombatEffectMap() }; });
+        unit.final = buildCombatFinalStats(unit);
+      }
+      ['斗铠', '机甲'].forEach(slot => {
+        const released = previewRuntime.armourReleaseState?.(unit, slot);
+        const item = unit?.装备?.[slot];
+        if (!released || !item || typeof item !== 'object') return;
+        item.耐久 = Math.max(0, Math.round(Number(released.__装备耐久) || 0));
+        item.耐久上限 = Math.max(1, Math.round(Number(released.__装备耐久上限) || 1));
+        if (item.耐久 <= 0) item.装备状态 = '损毁';
+      });
+    });
+  }
+
   function applyBattleInitiative(combatData = {}) {
     const text = String(combatData?.先攻 || '').trim();
     if (!text || text === '无') return;
@@ -4248,7 +4269,9 @@
     }
     if (actionKind === 'EQUIP') {
       const equipment = cloneValue(declaration.skill || {});
-      return { id: declaration.actionId, type: 'equipment', action_type: '穿戴装备', name: equipment.name || equipment.名称 || '装备', skill: equipment, target_name: targetName || actor.name || actor.名称 || '', cast_time: 10, __equipmentSignature: String(declaration?.equipmentSignature || '').trim() };
+      return { id: declaration.actionId, type: 'equipment', action_type: declaration?.releaseSlot ? '释放装备' : '穿戴装备', name: equipment.name || equipment.名称 || '装备', skill: equipment, target_name: targetName || actor.name || actor.名称 || '',
+        // 释放斗铠 / 机甲（S80-A）的前摇按字数 / 品级（BattlePreview armourReleaseOptions）；穿戴背包里的装备照旧 10。
+        cast_time: declaration?.releaseSlot ? Math.max(1, Number(equipment.前摇) || 10) : 10, __equipmentSignature: String(declaration?.equipmentSignature || '').trim() };
     }
     const actionType = {
       BASIC_ATTACK: '常规攻击', DEFEND: '防御', EVADE: '闪避', COUNTER: '反击',
@@ -8623,6 +8646,52 @@
     ].filter(Boolean);
   }
 
+  // 伤害改向的实战一侧（BattlePreview redirectDamageShares 只在预演里走；实战命中在这里结算，此前改向在实战里只减了伤、减掉的
+  // 那份哪也没去）：这一下落到生命的 dealt 之前，各状态按比例拿走的那份——结算修正 伤害转移 给转移对象、伤害分摊 分给同链伙伴、
+  // 伤害转治疗 回成生命，装备吸收（S80-A）扣斗铠 / 机甲的耐久。拿走的总量 = dealt ÷ Π(1−比例) − dealt，按各自比例分。
+  function applyRuntimeDamageRedirects({ combatData = {}, actor = {}, target = {}, dealt = 0, action = {}, actionEvent = {}, actionRole = 'ACTIVE', facts = [], sourceEffectId = '' } = {}) {
+    const redirects = Object.entries(target?.状态效果 || {}).flatMap(([key, state]) =>
+      (Array.isArray(state?.战斗效果?.damage_redirect) ? state.战斗效果.damage_redirect : []).map(entry => ({ entry, state, key })));
+    if (!redirects.length || !(dealt > 1e-9)) return;
+    const ratioOf = entry => Math.max(0, Math.min(0.9, Number(entry?.ratio || 0)));
+    const kept = redirects.reduce((product, { entry }) => product * (1 - ratioOf(entry)), 1);
+    const removed = kept > 1e-9 ? dealt / kept - dealt : 0;
+    const total = redirects.reduce((sum, { entry }) => sum + ratioOf(entry), 0);
+    if (!(removed > 1e-9) || !(total > 0)) return;
+    redirects.forEach(({ entry, state, key }) => {
+      const amount = removed * ratioOf(entry) / total;
+      if (!(amount > 1e-9)) return;
+      if (entry.kind === 'absorb') {
+        const before = Math.max(0, Number(state.__装备耐久) || 0), after = Math.max(0, before - amount);
+        target.状态效果[key] = previewRuntime.armourStateAtDurability(state, after);
+        target.final = buildCombatFinalStats(target);
+        facts.push(writeLedgerEvent(combatData, {
+          eventKind: 'resource_change', round: Number(combatData?.回合 || 0),
+          actorId: previewRuntime.unitId(target), actorName: previewRuntime.unitName(target),
+          targetId: previewRuntime.unitId(target), targetName: previewRuntime.unitName(target),
+          actionName: String(state.状态 || state.__装备释放 || '装备吸收'), actionType: 'armour_absorb', actorControl: 'SYSTEM', actionRole: 'STATE_TICK',
+          sourceActionId: String(actionEvent?.actionId || ''), result: 'loss', resultState: 'LOSS', primaryOutcome: 'resource_reduced', operation: 'REDUCE',
+          ruleCode: 'ARMOUR_ABSORB', allowImplicitActionSource: true,
+          meta: { source: 'armour_absorb', slot: state.__装备释放, stateKey: key, absorbed: amount, durabilityBefore: before, durabilityAfter: after,
+            durabilityMax: Number(state.__装备耐久上限) || 0, sourceEffectId, auditOnly: true },
+        }));
+        return;
+      }
+      const receivers = entry.kind === 'heal' ? [target]
+        : entry.kind === 'share' ? previewRuntime.settlementLinkPartners(combatData, target, state, 'share')
+          : [previewRuntime.damageTransferReceiver(combatData, target, actor, entry.to)].filter(Boolean);
+      receivers.forEach(receiver => {
+        const share = amount / receivers.length, before = previewRuntime.readHp(receiver);
+        const next = entry.kind === 'heal' ? Math.min(previewRuntime.readHpMax(receiver), before + share) : Math.max(0, before - share);
+        if (Math.abs(next - before) <= 1e-9) return;
+        writeCombatResource(receiver, 'hp', next);
+        const fact = writeStructuredResourceFact(combatData, actor, receiver, action, actionEvent, 'hp', next - before, actionRole,
+          next > before ? 'RESTORE' : 'REDUCE', { before, after: next, sourceEffectId, effectPrototype: '结算修正', factType: 'RESOURCE' });
+        if (fact) { fact.meta = { ...(fact.meta || {}), redirect: entry.kind, redirectedFrom: previewRuntime.unitId(target) }; facts.push(fact); }
+      });
+    });
+  }
+
   function writeStructuredResourceFact(
     combatData = {},
     actor = {},
@@ -11765,6 +11834,24 @@
         const spentHere = actionEvent.__triggerLimitSpent ||= new Set(), skillKey = previewRuntime.activeTriggerLimitKey(declaration.skill, '技能');
         if (!spentHere.has(skillKey)) { spentHere.add(skillKey); previewRuntime.triggerLimitAllowed(actor, declaration.skill.触发限制, skillKey, combatData?.回合, true); }
       }
+      // 魂导器弹药（S80-B）：带 __魂导器槽位 的技能（BattleDecision soulToolSkillView）放一次扣装配件一发，随装备写回存档。
+      if (actionKind === 'RELEASE_SKILL' && declaration?.skill?.__魂导器槽位 && skillEffectIndex === 0 && !conditionalMeta?.conditionalDepth) {
+        const spentHere = actionEvent.__triggerLimitSpent ||= new Set();
+        const fitted = actor?.装备?.魂导器?.装配?.[declaration.skill.__魂导器槽位];
+        if (!spentHere.has('__ammo') && fitted && typeof fitted === 'object' && Number.isFinite(Number(fitted.弹药))) {
+          spentHere.add('__ammo');
+          const ammoBefore = Math.max(0, Math.floor(Number(fitted.弹药)));
+          fitted.弹药 = Math.max(0, ammoBefore - 1);
+          writeLedgerEvent(combatData, {
+            eventKind: 'resource_change', round: Number(combatData?.回合 || 0),
+            actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor), targetId: previewRuntime.unitId(actor), targetName: previewRuntime.unitName(actor),
+            actionName: String(fitted.名称 || declaration.skill.魂技名 || '魂导器'), actionType: 'soul_tool_ammo', actorControl: 'SYSTEM', actionRole: 'STATE_TICK',
+            sourceActionId: String(actionEvent?.actionId || ''), result: 'loss', resultState: 'LOSS', primaryOutcome: 'resource_reduced', operation: 'REDUCE',
+            ruleCode: 'SOUL_TOOL_AMMO', allowImplicitActionSource: true,
+            meta: { source: 'soul_tool_ammo', slot: declaration.skill.__魂导器槽位, before: ammoBefore, after: fitted.弹药, auditOnly: true },
+          });
+        }
+      }
       if (actionKind === 'RELEASE_SKILL' && declaration?.skill && effect?.触发限制 && typeof effect.触发限制 === 'object' && !conditionalMeta?.conditionalDepth &&
         skillEffectIndex >= 0 && !equipmentPassiveEffectHashes.has(equipmentPassiveEffectKey(effect))) {
         const limitKey = previewRuntime.activeTriggerLimitKey(declaration.skill, skillEffectIndex);
@@ -12454,6 +12541,7 @@
               }
             }
             writeCombatResource(target, 'hp', before - damage);
+            if (damage > 0) applyRuntimeDamageRedirects({ combatData, actor, target, dealt: damage, action, actionEvent, actionRole, facts, sourceEffectId });
             const hpAfter = previewRuntime.readHp(target);
             const traumaUnconscious = previewRuntime.shouldTriggerTraumaUnconscious(damage, hpAfter, previewRuntime.readHpMax(target));
             // Held at the line (the fighters, or the referee), or landed whole and left under it: out of the fight.
@@ -16147,6 +16235,7 @@
           roundOffset,
         });
         logs.push(...beginBattleRound(combatData, combatData.回合).filter(Boolean));
+        ensureArmourUnreleased(combatData);
         if (Number(combatData.回合) === 1) applyBattleInitiative(combatData);
         invalidateRouteUnitHashes(combatData);
         settleStaminaExhaustion(combatData);

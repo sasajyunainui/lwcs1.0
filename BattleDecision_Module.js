@@ -4604,13 +4604,44 @@
     return byKey.get(key);
   }
 
+  // 魂导器（接入方案 S80-B）：装配的魂导器的装备技能来源类别记「魂导器」；没写消耗（或「无」）的按魂导等级对标第 N 环的标准
+  // 魂力消耗（MVU 构建魂技消耗文本_V1，9 级以上按第 9 环）——此前写成「无」的魂导炮可以白放。装备对象换成带这些技能的视图。
+  // 弹药（S80-B 一次性弹药类，定装魂导炮弹等）：装配件写了 弹药（剩余发数）的，打空了它的技能就不在候选里；每放一次
+  // BattleRuntime 扣一发（技能带 __魂导器槽位）。视图按弹药数缓存（弹药在原对象上扣）。
+  const soulToolViews = new WeakMap();
+  const soulToolAmmoKey = equipment => Object.entries(equipment?.魂导器?.装配 || {})
+    .map(([slot, item]) => (item && typeof item === 'object' && item.弹药 !== undefined ? `${slot}:${Number(item.弹药)}` : '')).filter(Boolean).join('|');
+  function soulToolSkillView(equipment = null) {
+    const fitted = equipment?.魂导器?.装配;
+    if (!fitted || typeof fitted !== 'object') return equipment;
+    const ammoKey = soulToolAmmoKey(equipment);
+    const cachedView = soulToolViews.get(equipment);
+    if (cachedView && cachedView.ammoKey === ammoKey) return cachedView.view;
+    const costText = root.__LWCS_SKILL_COST_HELPERS_V1__?.构建魂技消耗文本_V1;
+    const slots = Object.fromEntries(Object.entries(fitted).map(([slot, item]) => {
+      if (!item || typeof item !== 'object' || !item.装备技能 || typeof item.装备技能 !== 'object') return [slot, item];
+      if (item.弹药 !== undefined && !(Number(item.弹药) > 0)) return [slot, { ...item, 装备技能: {} }];
+      const tier = Math.max(1, Math.min(9, Math.floor(Number(item.魂导等级) || 1)));
+      const skills = Object.fromEntries(Object.entries(item.装备技能).map(([name, skill]) => {
+        if (!skill || typeof skill !== 'object') return [name, skill];
+        const unpaid = !skill.消耗 || String(skill.消耗).trim() === '无';
+        return [name, { ...skill, 来源类别: skill.来源类别 || '魂导器', ...(item.弹药 !== undefined ? { __魂导器槽位: slot } : {}),
+          ...(unpaid && typeof costText === 'function' ? { 消耗: costText('纯耗魂力', 50, tier) } : {}) }];
+      }));
+      return [slot, { ...item, 装备技能: skills }];
+    }));
+    const view = { ...equipment, 魂导器: { ...equipment.魂导器, 装配: slots } };
+    soulToolViews.set(equipment, { view, ammoKey });
+    return view;
+  }
+
   function collectSkills(unit = {}) {
     const activeGrantedSkills = collectActiveGrantedSkills(unit);
     // 封禁装备 (BattlePreview sealedEquipmentSlots): a sealed weapon, armour or mecha carries no skill, nor a sealed 器武魂.
     const sealed = preview.sealedEquipmentSlots(unit);
     // 换装 (BattlePreview battleEquipment): what was put on in the battle carries its skills, what it replaced does not.
     const equipment = preview.battleEquipment(unit);
-    const sealKey = [...sealed].join('|');
+    const sealKey = [...sealed].join('|') + '#' + soulToolAmmoKey(equipment || unit?.装备);
     const cachedEntry = unitSkillCache.get(unit);
     const cachedUnitSkills = cachedEntry && cachedEntry.sealKey === sealKey && cachedEntry.equipment === equipment ? cachedEntry.skills : null;
     if (cachedUnitSkills) {
@@ -4622,7 +4653,7 @@
       ...(Array.isArray(unit?.技能列表) && unit.技能列表.length ? [unit.技能列表] : []),
       ...Object.entries(unit).filter(([key, value]) => /^(?:第\d+)?武魂|血脉之力|魂骨|装备|自创魂技|技能/.test(key) && value && typeof value === 'object')
         .filter(([key]) => !(sealed.has('器武魂') && preview.toolSpiritKeys(unit).includes(key)))
-        .map(([key, value]) => key !== '装备' ? value : sealed.size ? sealedEquipmentView(equipment || value, sealed) : equipment || value),
+        .map(([key, value]) => key !== '装备' ? value : soulToolSkillView(sealed.size ? sealedEquipmentView(equipment || value, sealed) : equipment || value)),
     ];
     const collectRoot = skillRoot => {
       const cached = skillRootCache.get(skillRoot);
@@ -7184,6 +7215,17 @@
     const runtimeEquipmentId = String(actor?.__battleRuntime?.equippedDecisionItem?.id || '').trim();
     if (runtimeEquipmentId) currentEquipmentIds.add(runtimeEquipmentId);
     const equipmentHistory = new Set(Array.isArray(actor?.__battleRuntime?.equipmentDecisionSignatures) ? actor.__battleRuntime.equipmentDecisionSignatures.map(String) : []);
+    // 释放斗铠 / 机甲（接入方案 S80-A）：身穿而未释放的，用换装行动释放（BattlePreview armourReleaseOptions：前摇、吸收、耐久，
+    // 封甲与比赛禁止装备时不给）。估值走效果本身：释放状态加回加成并吸收来袭伤害。
+    (preview.armourReleaseOptions?.(actor, worldSnapshot) || []).forEach(option => {
+      const id = `${actorId}:release:${option.slot}`;
+      candidates.push({
+        candidateId: id,
+        declaration: { actionId: id, actorId, actionKind: 'EQUIP', targetIds: [actorId], releaseSlot: option.slot, equipmentSignature: `release:${option.slot}`,
+          skill: { name: option.name, 魂技名: option.name, 前摇: option.windup, 消耗: '无', _效果数组: [option.effect] } },
+        equipmentSignature: `release:${option.slot}`,
+      });
+    });
     collectInventory(actor).filter(entry => entry.quantity > 0).forEach((entry, index) => {
       const item = entry.item;
       if (isEquipment(item)) {

@@ -5874,6 +5874,7 @@ if (typeof globalThis !== 'undefined') {
   globalThis.__LWCS_SKILL_MECHANISM_REGISTRY__ = SKILL_MECHANISM_REGISTRY_V1;
   // v3 阶段 2-7：暴露 COST 真值表与评估函数给 mvu_logic_bridge / 检查器 / 生成器调用
   globalThis.__LWCS_SKILL_COST_HELPERS_V1__ = Object.freeze({
+    构建魂技消耗文本_V1,
     SKILL_UNIT_COST_TABLE_V1,
     SKILL_STANDARD_COST_BY_TIER_V1,
     SKILL_STANDARD_CAST_TIME_V1,
@@ -17139,6 +17140,8 @@ function 推断虚拟魂技位_V1(来源 = '魂技', 上下文 = {}) {
     if (年限 >= 1000) return 3;
     return 1;
   }
+  // 魂导器（接入方案 S80-B）：魂导等级 N 对标第 N 环（9 级以上按第 9 环），与魂骨对标魂环位同一做法。
+  if (来源 === '装备技能' && Number(上下文?.魂导等级) > 0) return Math.max(1, Math.min(9, Math.floor(Number(上下文.魂导等级))));
   // 血脉/气血/精神领域/装备/物品 等：用角色等级映射，否则中位
   if (角色等级 > 0) return Math.max(1, Math.min(9, Math.floor(角色等级 / 10)));
   return 5;

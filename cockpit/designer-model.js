@@ -5808,6 +5808,12 @@
       callableElements: 武魂元素上下文.可调用元素,
       魂环位,
       魂环数据,
+      // 魂导器（S80-B）：装配槽里的魂导器技能按魂导等级对标第 N 环的预算（MVU 推断虚拟魂技位_V1）。
+      ...((() => {
+        const 装配索引 = 路径.findIndex(片段 => normalizeSkillUiText(片段, '') === '装配');
+        const 魂导等级 = 路径.includes('魂导器') && 装配索引 >= 0 ? Number(deepGet(根数据, 路径.slice(0, 装配索引 + 2), {})?.魂导等级) : 0;
+        return 魂导等级 > 0 ? { 魂导等级 } : {};
+      })()),
       ringAge: 魂环数据?.年限,
       ringColor: 魂环数据?.颜色,
       ...(来源品质 ? { sourceQuality: 来源品质 } : {}),

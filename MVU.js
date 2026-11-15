@@ -147,6 +147,9 @@ const EquipmentSchema = z
     斗铠: z
       .object({
         等级: z.coerce.number().prefault(0),
+        // 耐久（接入方案 S80-A）：释放后吸收的伤害按绝对值扣；缺省 = 等效等级基础体力上限 × 字数 × 品质系数。耗尽 装备状态 记「损毁」。
+        耐久: z.coerce.number().optional(),
+        耐久上限: z.coerce.number().optional(),
         名称: z.string().prefault('无'),
         领域: z.string().prefault('无'),
         材质: z.string().prefault('无').describe('锻造金属材质'),
@@ -187,6 +190,9 @@ const EquipmentSchema = z
         装备状态: z.string().prefault('未装备'),
         武装: z.string().prefault('无'),
         品质系数: z.coerce.number().prefault(1.0).describe('0.8为劣质，1.0为标准，1.5以上为极品，最高可达2.0'),
+        // 耐久（S80-A）：缺省 = 穿戴者等级基础体力上限 × 品级系数（黄1 紫2 黑3 红4 神5）× 品质系数。
+        耐久: z.coerce.number().optional(),
+        耐久上限: z.coerce.number().optional(),
         _属性加成: z
           .object({
             魂力上限: z.coerce.number().prefault(0),
@@ -554,6 +560,8 @@ const 赛事战斗上下文Schema_V1 = z
     代号绑定: z.record(z.string(), 赛事权限文本Schema_V1()).optional(),
     // 后续出场（BattlePreview matchFollowUp）：{ PLAYER|ENEMY: { 接续, 团战 } }
     后续: z.record(z.string(), z.any()).optional(),
+    // 比赛规则禁止装备（赛事项目 参赛限制.禁止装备，S80-A）
+    禁止装备: z.array(z.string()).optional(),
   })
   .strict();
 

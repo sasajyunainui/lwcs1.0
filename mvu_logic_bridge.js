@@ -27184,6 +27184,11 @@ ${播报文本}
       // 赛事对局 (任务卡⑥): the bout's 赛事上下文 goes on with the battle — world.战斗 is replaced at the opening, and
       // 结算赛事战斗_桥接 reads the context from it when the battle is settled.
       ...(赛事对局 ? { 赛事上下文: { ...cloneJsonValue(赛事上下文原值, {}), ...(rosterResult.代号绑定 ? { 代号绑定: cloneJsonValue(rosterResult.代号绑定, {}) } : {}),
+        // 比赛规则禁止装备（S80-A）：斗铠 / 机甲 在禁用之列就不能释放（BattlePreview armourReleaseOptions）。
+        ...((() => {
+          const 禁止 = deepGet(snapshot, ['rootData', 'world', '赛事', toText(赛事上下文原值?.赛事ID, ''), '项目', toText(赛事上下文原值?.项目, ''), '参赛限制', '禁止装备'], []);
+          return Array.isArray(禁止) && 禁止.length ? { 禁止装备: 禁止.map(值 => toText(值, '').trim()).filter(Boolean) } : {};
+        })()),
         ...(rosterResult.后续 ? { 后续: cloneJsonValue(rosterResult.后续, {}) } : {}) } } : {}),
       ...(soulTowerCombat
         ? {
@@ -27478,6 +27483,8 @@ ${播报文本}
         .filter(([name, condition]) => name && condition && typeof condition === 'object')
         // 换装只在本场战斗生效（用户 2026-11-14）：换上装备的加成、换下装备的扣除都不带出战斗。
         .filter(([, condition]) => !condition.__换下槽位 && !(condition.__equipmentState === true && condition.__equipmentActionId))
+        // 斗铠 / 机甲 未释放（S80-A）只在战斗里：每回合开始补上，不进存档。
+        .filter(([, condition]) => !condition.__装备未释放)
         .map(([name, condition]) => [name, 构建战斗状态落盘值(condition)]),
     );
   }

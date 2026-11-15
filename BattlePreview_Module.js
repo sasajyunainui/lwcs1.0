@@ -8449,10 +8449,105 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // seal lands by the two units' 魂力上限: certain at an equal or greater, falling evenly to none where the target's is
   // EQUIPMENT_SEAL_SOUL_LIMIT times the caster's; an artifact's (无条件封禁) lands as it is, and its 缴械 also seals a 器武魂
   // of a unit under level 100 (no basic attack, none of that spirit's skills). Nothing to seal: the effect is nothing.
-  const EQUIPMENT_SEAL_SLOTS = Object.freeze({ 缴械: Object.freeze(['武器']), 封甲: Object.freeze(['斗铠', '机甲']) });
+  const EQUIPMENT_SEAL_SLOTS = Object.freeze({ 缴械: Object.freeze(['武器']), 封甲: Object.freeze(['斗铠', '机甲']),
+    // 未释放的斗铠 / 机甲（S80-A）也算封住；释放以后（armourReleaseState）不算。
+    斗铠未释放: Object.freeze(['斗铠']), 机甲未释放: Object.freeze(['机甲']) });
   const EQUIPMENT_SEAL_STATS = Object.freeze([['力量', 'str'], ['防御', 'def'], ['敏捷', 'agi'], ['精神力上限', 'men_max']]);
   const EQUIPMENT_SEAL_SOUL_LIMIT = 1.5;
   const EQUIPMENT_SEAL_NONE = Object.freeze({ none: true });
+  // 斗铠 / 机甲 的释放、吸收与耐久（接入方案 S80-A，用户 2026-11-14 定）：
+  //   未释放：开战时身穿（装备状态 已装备）的斗铠、机甲挂「X未释放」（__auto__ 键，任何移除都选不中，不落盘）——面板固定修正
+  //   扣掉它的加成，封禁槽位表里算封住（被动、技能不生效）。释放：换装行动「释放X」，前摇 一字斗铠 / 非神级机甲 20、二字以上 /
+  //   神级 10；效果是自身状态「X释放」：加回加成，并吸收来袭伤害（结算「装备吸收」：斗铠 字数×10%、机甲 黄10 紫20 黑30 红以上40，
+  //   至多 40%），吸收的伤害按绝对值扣耐久（absorbIntoArmour）。耐久 <50% 加成与吸收减半，0 失效（战后写回 装备状态 损毁）。
+  //   耐久上限缺省 = 等效等级（斗铠 _属性加成.等效等级，缺省穿戴者等级；机甲按穿戴者等级）的基础体力上限 × 系数（斗铠 字数、
+  //   机甲 黄1 紫2 黑3 红4 神5）× 品质系数。比赛禁止装备（赛事上下文.禁止装备 含「斗铠」「机甲」或该装备名）不给释放。
+  const ARMOUR_SLOTS = Object.freeze(['斗铠', '机甲']);
+  const ARMOUR_LASTING_ROUNDS = 1000000;
+  const armourUnreleasedKey = slot => `__auto__:装备未释放:${slot}`;
+  function wornArmour(unit = {}, slot = '') {
+    const item = unit?.装备?.[slot];
+    if (!item || typeof item !== 'object' || Array.isArray(item) || ['', '无'].includes(String(item.名称 || item.name || '').trim())) return null;
+    return String(item.装备状态 || '').trim() === '已装备' ? item : null;
+  }
+  function armourGrade(slot = '', item = {}) {
+    if (slot === '斗铠') return Math.max(1, Math.floor(Number(item?.等级) || 1));
+    const text = String(item?.等级 || '').trim();
+    return /神/.test(text) ? 5 : /红/.test(text) ? 4 : /黑/.test(text) ? 3 : /紫/.test(text) ? 2 : 1;
+  }
+  const armourAbsorbRatio = (slot, item) => Math.min(4, armourGrade(slot, item)) * 0.1;
+  const armourReleaseWindup = (slot, item) => (slot === '斗铠' ? armourGrade(slot, item) >= 2 : armourGrade(slot, item) >= 5) ? 10 : 20;
+  function armourDurabilityMax(unit = {}, slot = '', item = {}) {
+    const declared = Number(item?.耐久上限);
+    if (declared > 0) return declared;
+    const level = Math.max(1, Math.floor(Number(slot === '斗铠' ? item?._属性加成?.等效等级 : 0) || Number(unit?.属性?.等级 ?? unit?.等级 ?? unit?.level) || 1));
+    const base = Number(root.__LWCS_GET_BASE_STATS__?.(level)?.vit_max) || readResourceMax(unit, '体力') || 1;
+    const quality = Math.max(0.1, Number(item?.品质系数) || 1);
+    return Math.max(1, Math.round(base * armourGrade(slot, item) * quality));
+  }
+  function armourDurability(unit = {}, slot = '', item = {}) {
+    const max = armourDurabilityMax(unit, slot, item), value = Number(item?.耐久);
+    return Number.isFinite(value) && value >= 0 ? Math.min(max, value) : max;
+  }
+  function armourReleaseState(unit = {}, slot = '') {
+    return Object.values(unit?.状态效果 || {}).find(state => state && typeof state === 'object' && state.__装备释放 === slot) || null;
+  }
+  // The release's state at a durability: its bonus and absorption whole at half or more, halved under half, gone at 0.
+  function armourStateAtDurability(state = {}, durability = 0) {
+    const max = Math.max(1, Number(state.__装备耐久上限) || 1);
+    const factor = durability <= 0 ? 0 : durability / max < 0.5 ? 0.5 : 1;
+    const ratio = Math.max(0, Number(state.__装备吸收比例) || 0) * factor;
+    return { ...state, __装备耐久: Math.max(0, durability),
+      面板固定修正: Object.fromEntries(Object.entries(state.__装备加成 || {}).map(([key, value]) => [key, Math.round(Number(value) * factor)])),
+      战斗效果: { ...(state.战斗效果 || {}), received_damage_mult: Math.max(0, 1 - ratio), damage_redirect: ratio > 0 ? [{ kind: 'absorb', ratio }] : [] } };
+  }
+  function armourReleaseEffect(unit = {}, slot = '', item = wornArmour(unit, slot)) {
+    const max = armourDurabilityMax(unit, slot, item), durability = armourDurability(unit, slot, item);
+    const factor = durability <= 0 ? 0 : durability / max < 0.5 ? 0.5 : 1;
+    const bonus = wornEquipmentPanelBonus(unit, slot), ratio = armourAbsorbRatio(slot, item);
+    return { 原型: '结算修正', 目标: '自身', 结算: '装备吸收', 数值: `-${Math.round(ratio * factor * 100)}%`, 持续回合: ARMOUR_LASTING_ROUNDS, 生效方式: '独立生效',
+      状态: `${slot}释放`, 面板固定修正: Object.fromEntries(Object.entries(bonus).map(([key, value]) => [key, Math.round(value * factor)])),
+      __装备释放: slot, __装备耐久: durability, __装备耐久上限: max, __装备吸收比例: ratio, __装备加成: { ...bonus } };
+  }
+  // What a battle's round start puts on: the 未释放 state of each worn 斗铠 / 机甲 that lacks it (a release cancels it).
+  function armourUnreleasedStates(unit = {}) {
+    if (isSummonUnit(unit)) return [];
+    return ARMOUR_SLOTS.filter(slot => wornArmour(unit, slot) && !unit?.状态效果?.[armourUnreleasedKey(slot)]).map(slot => {
+      const bonus = wornEquipmentPanelBonus(unit, slot);
+      return [armourUnreleasedKey(slot), { 状态: `${slot}未释放`, 状态名称: `${slot}未释放`, 类型: '', duration: ARMOUR_LASTING_ROUNDS, 持续回合: ARMOUR_LASTING_ROUNDS,
+        描述: `${slot}尚未释放，加成与被动不生效`, 面板修改比例: {}, 面板固定修正: Object.fromEntries(Object.entries(bonus).map(([key, value]) => [key, -value])),
+        __装备未释放: slot }];
+    });
+  }
+  // The releases the unit may declare now (BattleDecision): a worn piece still unreleased, not under 封甲, not banned by the match.
+  function armourReleaseOptions(unit = {}, worldSnapshot = {}) {
+    const banned = new Set((Array.isArray(worldSnapshot?.赛事上下文?.禁止装备) ? worldSnapshot.赛事上下文.禁止装备 : []).map(value => String(value || '').trim()));
+    const sealed = Object.values(unit?.状态效果 || {}).some(state => stateName(state) === '封甲' && Math.max(0, Number(state?.duration ?? state?.持续回合 ?? 1)) > 0);
+    if (sealed) return [];
+    return ARMOUR_SLOTS.flatMap(slot => {
+      const item = wornArmour(unit, slot);
+      if (!item || !unit?.状态效果?.[armourUnreleasedKey(slot)] || armourReleaseState(unit, slot)) return [];
+      if (banned.has(slot) || banned.has(String(item.名称 || item.name || '').trim())) return [];
+      if (armourDurability(unit, slot, item) <= 0) return [];
+      return [{ slot, name: `释放${slot}`, windup: armourReleaseWindup(slot, item), effect: armourReleaseEffect(unit, slot, item) }];
+    });
+  }
+  // A hit's share absorbed by the release (redirectDamageShares, kind absorb) comes off its durability.
+  function absorbIntoArmour(overlay, ledger, context, holder, key, state, amount = 0, index = 0) {
+    if (!(amount > 1e-9) || !state?.__装备释放) return;
+    const before = Math.max(0, Number(state.__装备耐久) || 0), after = Math.max(0, before - amount);
+    const next = armourStateAtDurability(state, after), holderId = unitId(holder);
+    overlay.changeUnit(holderId, unit => {
+      unit.状态效果 = { ...(unit.状态效果 || {}), [key]: next };
+      unit.final = { ...(unit.final || {}), ...buildNumericCombatStats(unit, Number(context?.worldSnapshot?.当前世界tick ?? 0)) };
+    });
+    ledger.addOutcome({ ...context, actor: holder, targetId: holderId,
+      effectInstanceId: `${context.effectInstanceId}:absorb:${stableHash([holderId, key])}:${index}`,
+      outcomeKind: 'STATE_CHANGED', threatValue: 0,
+      // marginal：转成运行时事件才落到实战（marginal false 的结果不进事件，耐久就只在预演里扣）。
+      evidence: { prototype: '结算修正', redirect: 'absorb', stateEntries: { [key]: cloneValue(next) }, durabilityBefore: before, durabilityAfter: after, marginal: true } });
+  }
+
   function equipmentSealChance(actor = {}, target = {}) {
     const ratio = readResourceMax(actor, '魂力') / Math.max(1, readResourceMax(target, '魂力'));
     const floor = 1 / EQUIPMENT_SEAL_SOUL_LIMIT;
@@ -8542,7 +8637,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     for (const slot of ['斗铠', '机甲']) {
       const item = equipment[slot];
-      if (item && typeof item === 'object' && String(item.装备状态 || '').trim() === '已装备') result[slot] = { ...(item._属性加成 || {}) };
+      const unreleased = !!unit?.状态效果?.[armourUnreleasedKey(slot)] && !armourReleaseState(unit, slot);
+      if (item && typeof item === 'object' && String(item.装备状态 || '').trim() === '已装备' && !unreleased) result[slot] = { ...(item._属性加成 || {}) };
     }
     if (toolSpiritKeys(unit).length) result.器武魂 = true;
     return result;
@@ -8580,6 +8676,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const sealed = new Set();
     for (const [, state] of stateEntries(unit, 'COLLECTION')) {
       if (Math.max(0, Number(state?.duration ?? state?.持续回合 ?? 1)) <= 0) continue;
+      if (state?.__装备未释放 && armourReleaseState(unit, state.__装备未释放)) continue;
       const slots = EQUIPMENT_SEAL_SLOTS[stateName(state)];
       if (slots) slots.forEach(slot => { if (slot !== '武器' || sealableWeapon(battleEquipment(unit)?.武器) || unit?.__可封装备?.武器) sealed.add(slot); });
       if (state?.战斗效果?.spirit_tool_seal === true) sealed.add('器武魂');
@@ -8710,7 +8807,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const accepted = field === '触发方式'
           ? new Set([...fieldDefinition.选项, ...passiveTriggerEnums])
           : null;
-        if (normalized && !(accepted ? accepted.has(normalized) : fieldDefinition.选项.includes(normalized))) {
+        // 释放斗铠 / 机甲的内部结算（S80-A armourReleaseEffect）：不在技能表里，设计台与生成都用不到。
+        const internal = prototype === '结算修正' && field === '结算' && normalized === '装备吸收' && !!effect?.__装备释放;
+        if (normalized && !internal && !(accepted ? accepted.has(normalized) : fieldDefinition.选项.includes(normalized))) {
           throw new Error(`battle_preview_unknown_enum:${prototype}:${field}:${normalized}`);
         }
       });
@@ -9547,6 +9646,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           ];
         } else {
           combatEffect.received_damage_mult = Math.max(0, Number(combatEffect.received_damage_mult || 1) * (1 + signedValue));
+        }
+      } else if (settlement === '装备吸收') {
+        // 斗铠 / 机甲 释放后吸收来袭伤害（S80-A）：吸收的那份按绝对值扣耐久（redirectDamageShares → absorbIntoArmour）。
+        const ratio = clamp(magnitude, 0, 0.9);
+        if (ratio > 0) {
+          combatEffect.received_damage_mult = Math.max(0, Number(combatEffect.received_damage_mult || 1) * (1 - ratio));
+          combatEffect.damage_redirect = [...(Array.isArray(combatEffect.damage_redirect) ? combatEffect.damage_redirect : []), { kind: 'absorb', ratio }];
         }
       } else if (['伤害转移', '伤害分摊', '伤害转治疗'].includes(settlement)) {
         // 六种结算修正（用户 2026-11-15 第 1 条「六种结算都要实现」）. These three take a share of each hit off the holder
@@ -10980,6 +11086,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ...(effect?.属性快照 && typeof effect.属性快照 === 'object' ? { 属性快照: cloneValue(effect.属性快照) } : {}),
       面板修改比例: deriveStatePanelRatios(effect),
       面板固定修正: cloneValue(effect?.面板固定修正 || {}),
+      ...(effect?.__装备释放 ? { __装备释放: effect.__装备释放, __装备耐久: Number(effect.__装备耐久) || 0, __装备耐久上限: Number(effect.__装备耐久上限) || 1,
+        __装备吸收比例: Number(effect.__装备吸收比例) || 0, __装备加成: cloneValue(effect.__装备加成 || {}) } : {}),
     };
     if (existingEntry && String(effect?.原型 || '').trim() === '状态施加') {
       const merged = root.__LWCS_BATTLE_RUNTIME__.mergeRuntimeCondition(existingEntry[1], nextState, effect);
@@ -11272,16 +11380,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // dealt × 1/Π(1 − 比例) before them; what they took off is split by their 比例. Lost when no receiver stands.
   function redirectDamageShares(overlay, ledger, context, holder, attacker, dealt = 0) {
     const holderNow = overlay.readUnit(unitId(holder)) || holder;
-    const redirects = stateEntries(holderNow, 'CONDITION').flatMap(([, state]) =>
-      (Array.isArray(state?.战斗效果?.damage_redirect) ? state.战斗效果.damage_redirect : []).map(entry => ({ entry, state })));
+    const redirects = stateEntries(holderNow, 'CONDITION').flatMap(([key, state]) =>
+      (Array.isArray(state?.战斗效果?.damage_redirect) ? state.战斗效果.damage_redirect : []).map(entry => ({ entry, state, key })));
     if (!redirects.length || !(dealt > 1e-9)) return;
     const kept = redirects.reduce((product, { entry }) => product * (1 - clamp(Number(entry.ratio || 0), 0, 0.9)), 1);
     const removed = kept > 1e-9 ? dealt / kept - dealt : 0;
     const total = redirects.reduce((sum, { entry }) => sum + Number(entry.ratio || 0), 0);
     if (!(removed > 1e-9) || !(total > 0)) return;
     const world = overlay.snapshot();
-    redirects.forEach(({ entry, state }, index) => {
+    redirects.forEach(({ entry, state, key }, index) => {
       const amount = removed * Number(entry.ratio || 0) / total;
+      if (entry.kind === 'absorb') { absorbIntoArmour(overlay, ledger, context, holderNow, key, state, amount, index); return; }
       const receivers = entry.kind === 'heal' ? [holderNow]
         : entry.kind === 'share' ? settlementLinkPartners(world, holderNow, state, 'share')
           : [damageTransferReceiver(world, holderNow, overlay.readUnit(unitId(attacker)) || attacker, entry.to)].filter(Boolean);
@@ -25056,6 +25165,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     sideWithdrawalGoal,
     exitValuation,
     matchFollowUp,
+    armourReleaseOptions,
+    armourUnreleasedStates,
+    armourReleaseState,
+    armourStateAtDurability,
+    settlementLinkPartners,
+    damageTransferReceiver,
     withdrawalSucceeded,
     resolveBattleType,
     normalizeBattleType,
