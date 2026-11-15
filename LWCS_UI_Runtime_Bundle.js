@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:a4fd8204d04aa9e6e8cbec4154bb00b5b4fd593fc70ab1d15a528dfe2e6d733b|cockpit/designer-model.js:3af6b921800a777fe67adf256f84125349e354db53a6856b190f9f039db556b6|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:3474ced3c93288f1eb7f4fea4ab961df89f18319d3c7a388066ea50741681f27|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:20fa47eb98c686d3bfad5976dfdc8e9e13843984e052c3cab9f0a42a789a9e8b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:2f7250ec19621f05336e5302c33087f169633268100e8263df787eea51341c6b|BattleRuntime_Module.js:83e7d9f80955ae31fbf921df96c5c73d5cfb23f06dcb247121c4ad7432ddb295|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:a4fd8204d04aa9e6e8cbec4154bb00b5b4fd593fc70ab1d15a528dfe2e6d733b|cockpit/designer-model.js:3af6b921800a777fe67adf256f84125349e354db53a6856b190f9f039db556b6|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:3474ced3c93288f1eb7f4fea4ab961df89f18319d3c7a388066ea50741681f27|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:20fa47eb98c686d3bfad5976dfdc8e9e13843984e052c3cab9f0a42a789a9e8b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:06c8130b02cc0bf87be87eacd0306eed3a877a0af902948d3b23926924c169e2|BattleRuntime_Module.js:83e7d9f80955ae31fbf921df96c5c73d5cfb23f06dcb247121c4ad7432ddb295|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -99154,6 +99154,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return effects.length > 0 && effects.every(isImmediateDefensiveEffect);
   }
 
+  // 行动窗口（用户 2026-11-15「只要在行动窗口内，是可以任意动作的。而行动窗口是由对方决定，受对方干扰的，对方攻击你，那你的行动
+  // 窗口自然就会被压短」「团体战里你可以硬挨一下，而去攻击另一人」；原作 光神附体、黄金龙体 都是挨打时开的）: what a hit leaves the
+  // unit (BattlePreview reactionWindupBudget, by the move coming) is the window — any skill whose windup fits it may be released in it,
+  // on any target: a buff, a 武魂真身, a strike on another enemy, a heal for an ally. Before it only defensive skills (and the clash
+  // and preemption of engagementCandidates) were offered.
+  function isWithinReactionWindow(skill = {}, immediateBudget = 0) {
+    return directImmediateSkillEffects(skill).length > 0 && Math.max(0, Number(skill?.前摇 ?? skill?.cast_time ?? 10)) <= immediateBudget;
+  }
+
   function isExplicitCounterSkill(skill = {}, immediateBudget = 0) {
     const castTime = Math.max(0, Number(skill?.前摇 ?? skill?.cast_time ?? 10));
     const text = `${skillName(skill)} ${skill?.技能分类 || ''} ${skill?.触发方式 || ''} ${skill?.反应类型 || ''}`;
@@ -99984,7 +99993,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         return;
       }
       const immediateReactionEligible = reactionOnly &&
-        isImmediateReactionSkill(skill, immediateBudget);
+        (isImmediateReactionSkill(skill, immediateBudget) || isWithinReactionWindow(skill, immediateBudget));
       const explicitCounterEligible = counterOnly && isExplicitCounterSkill(skill, immediateBudget);
       const immediateOffensiveCounterShape = counterOnly &&
         !explicitCounterEligible &&
@@ -105192,7 +105201,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             const reactionActor = findUnitInWorld(planWorld, targetId);
             if (!reactionActor || !declaration.skill || !costAffordable(reactionActor, declaration.skill)) return;
             // A response seen against another attack answers this one only if its windup fits this attack's budget.
-            if (!isImmediateReactionSkill(declaration.skill, preview.reactionWindupBudget(actor, candidate?.declaration || {}, reactionActor))) return;
+            const reactionBudget = preview.reactionWindupBudget(actor, candidate?.declaration || {}, reactionActor);
+            if (!isImmediateReactionSkill(declaration.skill, reactionBudget) && !isWithinReactionWindow(declaration.skill, reactionBudget)) return;
             reactionPreview = preview.projectConditionedAction({
               worldSnapshot: planWorld,
               worldRevision: `reaction:${worldRevisionFor(planWorld)}`,

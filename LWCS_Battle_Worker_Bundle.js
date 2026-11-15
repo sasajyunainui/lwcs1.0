@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:8efa03bb5ee05e2333abb3df02d00663c8bf15305ef61d004f60c526edb1b229|MVU_Schema_Runtime.js:454e4a242dce5e02d69c3def2993d350ac50f39dcb667f2fc6f09488f34461dd|BattlePreview_Module.js:20fa47eb98c686d3bfad5976dfdc8e9e13843984e052c3cab9f0a42a789a9e8b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:2f7250ec19621f05336e5302c33087f169633268100e8263df787eea51341c6b|BattleRuntime_Module.js:83e7d9f80955ae31fbf921df96c5c73d5cfb23f06dcb247121c4ad7432ddb295 */
+/* sources-sha256: MVU_Skill_Runtime.js:8efa03bb5ee05e2333abb3df02d00663c8bf15305ef61d004f60c526edb1b229|MVU_Schema_Runtime.js:454e4a242dce5e02d69c3def2993d350ac50f39dcb667f2fc6f09488f34461dd|BattlePreview_Module.js:20fa47eb98c686d3bfad5976dfdc8e9e13843984e052c3cab9f0a42a789a9e8b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:06c8130b02cc0bf87be87eacd0306eed3a877a0af902948d3b23926924c169e2|BattleRuntime_Module.js:83e7d9f80955ae31fbf921df96c5c73d5cfb23f06dcb247121c4ad7432ddb295 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -75906,6 +75906,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return effects.length > 0 && effects.every(isImmediateDefensiveEffect);
   }
 
+  // 行动窗口（用户 2026-11-15「只要在行动窗口内，是可以任意动作的。而行动窗口是由对方决定，受对方干扰的，对方攻击你，那你的行动
+  // 窗口自然就会被压短」「团体战里你可以硬挨一下，而去攻击另一人」；原作 光神附体、黄金龙体 都是挨打时开的）: what a hit leaves the
+  // unit (BattlePreview reactionWindupBudget, by the move coming) is the window — any skill whose windup fits it may be released in it,
+  // on any target: a buff, a 武魂真身, a strike on another enemy, a heal for an ally. Before it only defensive skills (and the clash
+  // and preemption of engagementCandidates) were offered.
+  function isWithinReactionWindow(skill = {}, immediateBudget = 0) {
+    return directImmediateSkillEffects(skill).length > 0 && Math.max(0, Number(skill?.前摇 ?? skill?.cast_time ?? 10)) <= immediateBudget;
+  }
+
   function isExplicitCounterSkill(skill = {}, immediateBudget = 0) {
     const castTime = Math.max(0, Number(skill?.前摇 ?? skill?.cast_time ?? 10));
     const text = `${skillName(skill)} ${skill?.技能分类 || ''} ${skill?.触发方式 || ''} ${skill?.反应类型 || ''}`;
@@ -76736,7 +76745,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         return;
       }
       const immediateReactionEligible = reactionOnly &&
-        isImmediateReactionSkill(skill, immediateBudget);
+        (isImmediateReactionSkill(skill, immediateBudget) || isWithinReactionWindow(skill, immediateBudget));
       const explicitCounterEligible = counterOnly && isExplicitCounterSkill(skill, immediateBudget);
       const immediateOffensiveCounterShape = counterOnly &&
         !explicitCounterEligible &&
@@ -81944,7 +81953,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             const reactionActor = findUnitInWorld(planWorld, targetId);
             if (!reactionActor || !declaration.skill || !costAffordable(reactionActor, declaration.skill)) return;
             // A response seen against another attack answers this one only if its windup fits this attack's budget.
-            if (!isImmediateReactionSkill(declaration.skill, preview.reactionWindupBudget(actor, candidate?.declaration || {}, reactionActor))) return;
+            const reactionBudget = preview.reactionWindupBudget(actor, candidate?.declaration || {}, reactionActor);
+            if (!isImmediateReactionSkill(declaration.skill, reactionBudget) && !isWithinReactionWindow(declaration.skill, reactionBudget)) return;
             reactionPreview = preview.projectConditionedAction({
               worldSnapshot: planWorld,
               worldRevision: `reaction:${worldRevisionFor(planWorld)}`,
