@@ -65940,9 +65940,18 @@
     return held;
   }
   // The rounds of `other`'s actions the best control of `unit` takes: chance × duration of a state that stops it acting.
+  // r20Control also gives the control `unit` would keep up on `other` in the race (r20Race): lock, the share of `other`'s
+  // actions it keeps off (a hard control — one that stops it acting — its chance; a soft one — 混乱, 决策干扰 — its chance ×
+  // what of each action goes astray: random_target_rate, and of the rest hit_penalty); pace, the share of `unit`'s own
+  // actions keeping it up takes (one in its duration); hard, the share of `other`'s answers it takes too (a held unit does not
+  // defend or evade; a confused one still does). The control kept is the one that keeps the most rounds off. stop stays
+  // the hard controls' (a soft one breaks no charge).
   function r20Stop(unit, other) {
-    if (hasStateFlag(unit, 'silence') || preview.isSummonSkillDisabled(unit)) return 0;
-    let best = 0;
+    return r20Control(unit, other).stop;
+  }
+  function r20Control(unit, other) {
+    if (hasStateFlag(unit, 'silence') || preview.isSummonSkillDisabled(unit)) return R20_NO_CONTROL;
+    let best = 0, kept = null, keptRounds = 0;
     // An enemy as believed lists no skills: the controls it has shown count.
     const own = affordablePreparedSkills(unit), shown = own.length ? null : r20Shown(unit);
     for (const entry of shown || own) {
@@ -65950,17 +65959,23 @@
       const skill = shown ? entry : entry.skill, profile = targetProfile(skill);
       if (!(profile.startsWith('HOSTILE_') || profile === 'ANY_SINGLE')) continue;
       for (const effect of preview.collectEffects(skill)) {
-        if (effect?.原型 !== '状态施加' || preview.negativeEffectIsImmune(other, effect)) continue;
-        const stops = preview.deriveStateCombatEffect(effect);
-        if (stops?.cannot_act !== true && stops?.skip_turn !== true) continue;
+        if (!['状态施加', '决策干扰'].includes(effect?.原型) || preview.negativeEffectIsImmune(other, effect)) continue;
+        const stops = preview.deriveStateCombatEffect(effect) || {};
+        const hard = effect.原型 === '状态施加' && (stops.cannot_act === true || stops.skip_turn === true);
+        const astray = clamp(Number(stops.random_target_rate) || 0, 0, 1), miss = clamp(Number(stops.hit_penalty) || 0, 0, 1);
+        const share = hard ? 1 : astray + (1 - astray) * miss;
+        if (!(share > 0)) continue;
         // 挣脱（BattlePreview struggleChance）: a 拘束 control holds by what its holder fails to break.
-        best = Math.max(best, preview.normalizeEffectProbability(effect.触发概率, 1) *
-          preview.stateApplicationProbabilityMultiplier(other, effect) * Math.max(1, Number(effect.持续回合) || 1) *
-          (1 - preview.struggleChance(other, unit, effect)));
+        const chance = clamp(preview.normalizeEffectProbability(effect.触发概率, 1) *
+          preview.stateApplicationProbabilityMultiplier(other, effect) * (hard ? 1 - preview.struggleChance(other, unit, effect) : 1), 0, 1);
+        const duration = Math.max(1, Number(effect.持续回合) || 1);
+        if (hard) best = Math.max(best, chance * duration);
+        if (chance * share * duration > keptRounds) { keptRounds = chance * share * duration; kept = { lock: chance * share, pace: 1 / duration, hard: hard ? chance : 0 }; }
       }
     }
-    return best;
+    return best > 0 || kept ? { stop: best, control: kept ? Object.freeze(kept) : R20_NO_CONTROL.control } : R20_NO_CONTROL;
   }
+  const R20_NO_CONTROL = Object.freeze({ stop: 0, control: Object.freeze({ lock: 0, pace: 0, hard: 0 }) });
   // The whole hits a unit's charges take before its HP counts: rule blocks and death saves.
   const r20Guard = unit => preview.ruleBlockCount(unit) + preview.deathSaveCount(unit);
   // What a revival gives back when its unit falls, a share of its HP maximum (BattlePreview triggerRevive: the state's
@@ -66472,6 +66487,9 @@
     const busy = plan?.busy || facts.busy || null, strikes = plan?.strikes || facts.strikes || null, host = facts.host || null;
     const revive = facts.revive ? facts.revive.slice() : null, drain = facts.drain || null;
     const aimed = new Array(count), landed = new Array(count);
+    // heldShare[u]: the share of u's actions the enemies' controls keep off this step, heldHard[u] the share of its answers;
+    // pace[u]: the share of u's own actions it spends keeping a control up (r20Control).
+    const heldShare = new Array(count).fill(0), heldHard = new Array(count).fill(0), pace = new Array(count).fill(0);
     let released = 0;
     const horizon = Math.max(1, Math.min(R20_RACE_ROUNDS, Number(facts.horizon) || R20_RACE_ROUNDS)), tick = facts.tick || null, tickRounds = facts.tickRounds || null;
     const dealt = new Array(count), mended = new Array(count), hits = new Array(count), worth = new Array(count), pressed = new Array(count);
@@ -66488,10 +66506,12 @@
         : changed && (changed[unit] || changed[other]) ? (time < until[unit] && time < until[other] ? lasting : lapsed(unit, other)) : settled;
       const acting = unit => left[unit] > 1e-9 && !(denied && time < denied[unit]) && !(busy && time < busy[unit]);
       const striking = unit => acting(unit) && !(idle && time < idle[unit]);
+      // What a unit still does of its own actions (held by the enemies' controls, or spent keeping its own up).
+      const free = unit => (1 - heldShare[unit]) * (1 - pace[unit]);
       // What of an attacker's hit a unit takes: its answer's share while it can answer; held (controlled — the hard control
       // lasts to the end of the round it took an action in, BattleRuntime consumeStructuredControlActiveBudget) or busy, it
       // takes the whole hit, as a unit that cannot act does in the table (r20FillPair).
-      const takes = (view, unit, attacker) => acting(unit) ? view.keep[unit][attacker] : 1;
+      const takes = (view, unit, attacker) => acting(unit) ? view.keep[unit][attacker] + (1 - view.keep[unit][attacker]) * heldHard[unit] : 1;
       let nextChange = base.late && time < R20_LATE_ROUNDS - 1e-9 ? Math.min(horizon, R20_LATE_ROUNDS) : horizon;
       if (leaves) for (let unit = 0; unit < count; unit += 1) {
         if (leaves[unit] <= time + 1e-9) left[unit] = 0; else nextChange = Math.min(nextChange, leaves[unit]);
@@ -66516,6 +66536,31 @@
           if (striking(other)) pressed[unit] += cells(other, unit).out[other][unit] * takes(cells(other, unit), unit, other);
         }
       }
+      // 控制（11-16 行为检查目录第 58 题「面对控制先打控制者」：推演原先只按伤害与治疗出手，控制者只值它那点伤害）: a unit
+      // with a control on an enemy keeps it up when what it keeps off (lock × the enemy's worth, a round) is more than the
+      // share of its own actions it takes (lock ÷ stop of them × its own worth) — on the enemy it pays most against; held
+      // shares from several controllers compound. A held unit acts and answers that much less (free, takes). The
+      // controller's worth counts the control, so the race also turns on it first.
+      heldShare.fill(0); heldHard.fill(0); pace.fill(0);
+      const ctlWorth = worth.slice();
+      for (let unit = 0; unit < count; unit += 1) {
+        if (!striking(unit)) continue;
+        let bestGain = 0, bestTarget = -1, bestPace = 0;
+        for (let other = 0; other < count; other += 1) {
+          if (sides[other] === sides[unit] || !(left[other] > 1e-9) || !striking(other)) continue;
+          const kept = cells(unit, other).control?.[unit]?.[other];
+          if (!(kept?.lock > 0) || !(kept.pace > 0)) continue;
+          const gain = kept.lock * worth[other] - kept.pace * worth[unit];
+          if (gain > bestGain) { bestGain = gain; bestTarget = other; bestPace = kept.pace; }
+        }
+        if (bestTarget < 0) continue;
+        pace[unit] = bestPace;
+        const kept = cells(unit, bestTarget).control[unit][bestTarget];
+        heldShare[bestTarget] = 1 - (1 - heldShare[bestTarget]) * (1 - kept.lock);
+        heldHard[bestTarget] = 1 - (1 - heldHard[bestTarget]) * (1 - kept.hard);
+        ctlWorth[unit] = worth[unit] + bestGain;
+      }
+      for (let unit = 0; unit < count; unit += 1) worth[unit] = ctlWorth[unit];
       const focus = {};
       // A host is worth its summons too: they leave with it.
       if (host) for (let unit = 0; unit < count; unit += 1) aimed[unit] = 0;
@@ -66538,19 +66583,21 @@
           const value = cells(unit, other).out[unit][other] * takes(cells(unit, other), other, unit);
           if (value > strike) { strike = value; target = other; }
         }
-        const help = cells(unit, ally).support[unit][ally];
+        const share = free(unit);
+        strike *= share;
+        const help = cells(unit, ally).support[unit][ally] * share;
         // The exchange its strike opens; a unit that would take more than it lands aims at the enemy it does best
         // against instead, and failing that helps or holds.
-        const open = aim => { const view = cells(unit, aim), answers = acting(aim);
-          return r20Exchange(answers ? view.answer[aim][unit] : 0, view.answer[unit][aim], view.back[unit][aim] * view.keepBack[aim][unit],
-            answers ? view.back[aim][unit] * view.keepBack[unit][aim] : 0, answers ? view.answerOpen[aim][unit] : 0); };
+        const open = aim => { const view = cells(unit, aim), answers = acting(aim), still = 1 - heldHard[aim];
+          return r20Exchange(answers ? view.answer[aim][unit] * still : 0, view.answer[unit][aim], view.back[unit][aim] * view.keepBack[aim][unit],
+            answers ? view.back[aim][unit] * view.keepBack[unit][aim] * still : 0, answers ? view.answerOpen[aim][unit] * still : 0); };
         let exchange = strike > 0 && !(help > strike) ? open(target) : null;
         if (exchange && !(strike + exchange.more > exchange.taken)) {
           let best = 0;
           exchange = null;
           for (let other = 0; other < count; other += 1) {
             if (other === target || sides[other] === sides[unit] || !(left[other] > 1e-9)) continue;
-            const hit = cells(unit, other).out[unit][other] * takes(cells(unit, other), other, unit);
+            const hit = cells(unit, other).out[unit][other] * takes(cells(unit, other), other, unit) * share;
             if (!(hit > 0)) continue;
             const trial = open(other), net = hit + trial.more - trial.taken;
             if (net > best) { best = net; exchange = trial; strike = hit; target = other; }
@@ -66637,16 +66684,16 @@
     const acts = units.map(() => true), bound = units.map(unit => r20Bound(world, unit));
     const ownShare = side => sides.filter(other => other === side).length / Math.max(1, count);
     const aim = units.map((unit, row) => r20Aim(unit, ownShare(sides[row]))), turn = units.map(unit => r20Turn(unit));
-    const out = [], support = [], stop = [], keep = [], keepBack = [], answer = [], answerOpen = [], back = [];
+    const out = [], support = [], stop = [], control = [], keep = [], keepBack = [], answer = [], answerOpen = [], back = [];
     for (let index = 0; index < count; index += 1) {
-      out.push(new Array(count).fill(0)); support.push(new Array(count).fill(0)); stop.push(new Array(count).fill(0)); keep.push(new Array(count).fill(1));
+      out.push(new Array(count).fill(0)); support.push(new Array(count).fill(0)); stop.push(new Array(count).fill(0)); control.push(new Array(count).fill(R20_NO_CONTROL.control)); keep.push(new Array(count).fill(1));
       keepBack.push(new Array(count).fill(1)); answer.push(new Array(count).fill(0)); answerOpen.push(new Array(count).fill(0)); back.push(new Array(count).fill(0));
       for (let other = 0; other < count; other += 1) {
         if (sides[index] === sides[other]) { if (acts[index]) support[index][other] = r20Cell(units[index], units[other], true, index === other, context, world, skipped); continue; }
         if (!acts[index] || bound[index] && !bound[index].has(ids[other])) continue;
         out[index][other] = aim[index] * r20Cell(units[index], units[other], false, false, context, world, skipped);
         back[index][other] = aim[index] * r20Struck;
-        stop[index][other] = r20Stop(units[index], units[other]);
+        ({ stop: stop[index][other], control: control[index][other] } = r20Control(units[index], units[other]));
       }
     }
     // What each keeps off and answers of the other's hits, by their weight (接战链 阶段一: the attacker's out and back on
@@ -66668,7 +66715,7 @@
         keepBack[host][other] = Math.min(keepBack[host][other], preview.applyGuardWeight(guard, r20Weight(back[other][host])));
       }
     }
-    return { acts, bound, out, support, stop, keep, keepBack, answer, answerOpen, back, turn };
+    return { acts, bound, out, support, stop, control, keep, keepBack, answer, answerOpen, back, turn };
   }
   // R20 推演按对手的常规攻击全力算（11-16 行为检查目录第 46 题与 3v3 推演校准）：没看清的对手画像按「开局多半先试探」把常规
   // 魂技打了折（BELIEF_PROBE_SHARE 0.7，开局实测对得上：同级开局对敌魂技 18%），那是开头几次交手的样子；推演拿它一直算到底，
@@ -66694,7 +66741,7 @@
     const count = units.length, ids = units.map(unit => preview.unitId(unit));
     const skipped = { count: 0 };
     const cellUnits = units.map(r20FullStrength);
-    const { acts, bound, out, support, stop, keep, keepBack, answer, answerOpen, back, turn } = r20Cells(cellUnits, sides, ids, world, context, skipped);
+    const { acts, bound, out, support, stop, control, keep, keepBack, answer, answerOpen, back, turn } = r20Cells(cellUnits, sides, ids, world, context, skipped);
     const against = Object.fromEntries([...new Set(sides)].map(side => [side, units.filter((unit, row) => sides[row] !== side)]));
     // The field R20_LATE_ROUNDS round ends on, when anything on it runs on a clock (a state with rounds left, a sustain,
     // a periodic change): every unit as the engine's own window view leaves it (r10WindowView: states past their time
@@ -66707,7 +66754,7 @@
     }
     const round = Number(world?.回合 || 0);
     const waiting = Array.isArray(request.actionOpportunity?.pendingNaturalActorIds) ? new Set(request.actionOpportunity.pendingNaturalActorIds.map(String)) : null;
-    const table = { request, world, contexts, units, cellUnits, ids, index: new Map(ids.map((id, row) => [id, row])), sides, acts, bound, out, support, stop, keep, keepBack, answer, answerOpen, back, turn, late, against,
+    const table = { request, world, contexts, units, cellUnits, ids, index: new Map(ids.map((id, row) => [id, row])), sides, acts, bound, out, support, stop, control, keep, keepBack, answer, answerOpen, back, turn, late, against,
       held: units.map(unit => r20Held(unit)),
       remaining: units.map((unit, row) => r20Left(unit, sides[row] === request.actorSide, against[sides[row]])),
       stamina: units.map((unit, row) => sides[row] === request.actorSide ? r20Stamina(unit) : null),
@@ -66990,7 +67037,7 @@
       if (dropped.size) added = added.filter(unit => !dropped.has(unit));
     }
     mark('readMs');
-    let { out, support, stop, keep, keepBack, answer, answerOpen, back, acts, turn, host } = table, unitsNow = table.cellUnits || table.units, sidesNow = table.sides, leaves = null;
+    let { out, support, stop, control, keep, keepBack, answer, answerOpen, back, acts, turn, host } = table, unitsNow = table.cellUnits || table.units, sidesNow = table.sides, leaves = null;
     // The rebuilt rows' cells (each unit as the candidate leaves it, against the rest) on copies of `base`'s, the units
     // `baseUnits` it was read on: the table's cells, and — for a change with no clock (until Infinity) on a field with
     // late cells — the late ones, with the units as the window view leaves them R20_LATE_ROUNDS on (11-14: a change
@@ -67004,6 +67051,7 @@
       const context = late ? null : r9v2LinearCapacityProjectionContext(after, table.contexts);
       const units = baseUnits.slice();
       const out = base.out.map(row => row.slice()), support = base.support.map(row => row.slice()), stop = base.stop.map(row => row.slice()), keep = base.keep.map(row => row.slice());
+      const control = base.control.map(row => row.slice());
       const answer = base.answer.map(row => row.slice()), back = base.back.map(row => row.slice());
       const keepBack = base.keepBack.map(row => row.slice()), answerOpen = base.answerOpen.map(row => row.slice());
       const acts = base.acts.slice(), turn = base.turn.slice();
@@ -67021,31 +67069,33 @@
           const aimed = free ? r20Aim(next, table.sides.filter(side => side === table.sides[row]).length / Math.max(1, count)) : 0;
           out[row][other] = free ? aimed * r20Cell(next, units[other], false, false, context, after, null) : 0;
           back[row][other] = free ? aimed * r20Struck : 0;
-          stop[row][other] = free ? r20Stop(next, units[other]) : 0;
+          ({ stop: stop[row][other], control: control[row][other] } = free ? r20Control(next, units[other]) : R20_NO_CONTROL);
           // What the other keeps off and answers of its hits goes with their weight.
           r20FillPair(cells, units, acts, other, row);
           if (ownCellsOnly) continue;
           out[other][row] = reach ? r20Cell(units[other], next, false, false, context, after, null) : 0;
           back[other][row] = reach ? r20Struck : 0;
-          stop[other][row] = reach ? r20Stop(units[other], next) : 0;
+          ({ stop: stop[other][row], control: control[other][row] } = reach ? r20Control(units[other], next) : R20_NO_CONTROL);
           r20FillPair(cells, units, acts, row, other);
         }
       }
-      return { units, out, support, stop, keep, keepBack, answer, answerOpen, back, acts, turn };
+      return { units, out, support, stop, control, keep, keepBack, answer, answerOpen, back, acts, turn };
     };
     let lateCells = null, unchangedRows = new Set();
     if (rebuilt.length) {
       r20Work.rebuiltUnits += rebuilt.length;
       r20Work.ownCellRebuilds += rebuilt.filter(entry => entry[2]).length;
-      ({ units: unitsNow, out, support, stop, keep, keepBack, answer, answerOpen, back, acts, turn } = rebuildCells(table, table.cellUnits || table.units,
+      ({ units: unitsNow, out, support, stop, control, keep, keepBack, answer, answerOpen, back, acts, turn } = rebuildCells(table, table.cellUnits || table.units,
         rebuilt.map(([row, next, ownCellsOnly]) => [row, r20FullStrength(next), ownCellsOnly])));
       // A row rebuilt to the very cells it had (its stamina band moved by a hit, nothing it can do changed) is no change:
       // the race keeps the table's cells for it, late ones too (11-14: a basic attack that left both units as they were
       // but for the HP it took put the target on cells rebuilt from another starting world for the whole race, and a
       // 1.1% exchange was valued at −0.165 instead of −0.032).
+      const sameControl = (a, b) => a === b || ['lock', 'pace', 'hard'].every(key => Math.abs(a[key] - b[key]) <= 1e-12);
       const sameRow = row => [[out, table.out], [support, table.support], [stop, table.stop], [keep, table.keep], [keepBack, table.keepBack],
         [answer, table.answer], [answerOpen, table.answerOpen], [back, table.back]].every(([now, was]) =>
         now[row].every((value, other) => Math.abs(value - was[row][other]) <= 1e-12 && Math.abs(now[other][row] - was[other][row]) <= 1e-12)) &&
+        control[row].every((value, other) => sameControl(value, table.control[row][other]) && sameControl(control[other][row], table.control[other][row])) &&
         acts[row] === table.acts[row] && turn[row] === table.turn[row];
       unchangedRows = new Set(rebuilt.filter(([row]) => sameRow(row)).map(([row]) => row));
       if (table.late?.units && rebuilt.some(([row]) => until[row] === Infinity && !unchangedRows.has(row))) {
@@ -67072,7 +67122,7 @@
       const all = unitsNow.concat(added), size = all.length;
       sidesNow = table.sides.concat(added.map(unit => sideOf(after, unit)));
       const grow = (matrix, fill) => matrix.map(row => row.concat(new Array(added.length).fill(fill))).concat(added.map(() => new Array(size).fill(fill)));
-      out = grow(out, 0); support = grow(support, 0); stop = grow(stop, 0); keep = grow(keep, 1); answer = grow(answer, 0); back = grow(back, 0);
+      out = grow(out, 0); support = grow(support, 0); stop = grow(stop, 0); control = grow(control, R20_NO_CONTROL.control); keep = grow(keep, 1); answer = grow(answer, 0); back = grow(back, 0);
       keepBack = grow(keepBack, 1); answerOpen = grow(answerOpen, 0);
       const cells = { out, back, keep, keepBack, answer, answerOpen };
       acts = acts.concat(added.map(() => true)); turn = turn.concat(added.map(unit => r20Turn(unit)));
@@ -67392,7 +67442,7 @@
       }
     }
     for (let row = 0; row < remaining.length; row += 1) if (typeof stamina[row] === 'number') stamina[row] = Math.max(0, stamina[row] - r20Injury * Math.max(0, hpMark[row] - remaining[row]));
-    const facts = { sides: sidesNow, out, support, stop, keep, keepBack, answer, answerOpen, back, turn, host, remaining, stamina, alive, guard, revive, drain, tick, tickRounds, reflect, hpMax, horizon: table.horizon, late: lateCells };
+    const facts = { sides: sidesNow, out, support, stop, control, keep, keepBack, answer, answerOpen, back, turn, host, remaining, stamina, alive, guard, revive, drain, tick, tickRounds, reflect, hpMax, horizon: table.horizon, late: lateCells };
     const changed = new Array(count).fill(false);
     for (const [row] of rebuilt) if (!unchangedRows.has(row)) changed[row] = true;
     strikes.sort((left, right) => left.at - right.at);
