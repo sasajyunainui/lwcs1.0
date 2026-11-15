@@ -10208,6 +10208,7 @@
       const summon = {
         id: key, name: displayName, 名称: displayName, 召唤键: key, 预演召唤键: previewSummonKey,
         类型: summonType, 召唤单位类型: summonType, 单位性质: '召唤物', 行动模式: mode,
+        ...(mode === '护卫' ? { 承伤规则: String(effect?.承伤规则 || '护卫承伤').trim() || '护卫承伤' } : {}),
         level: summonLevel, 等级: summonLevel,
         宿主名: previewRuntime.unitName(actor), 宿主ID: previewRuntime.unitId(actor), __宿主: actor, __来源状态: sourceState, 来源状态键: stateKey,
         阵营: inferUnitSide(combatData, actor) === 'enemy' ? '敌方' : '玩家',
