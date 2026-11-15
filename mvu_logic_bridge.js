@@ -27061,7 +27061,10 @@ ${播报文本}
     )));
     return {
       caseId: toText(options.caseId, 'battle-bridge-formal'),
-      seed: Math.max(1, Math.floor(toNumber(runtimeState?.decisionSeed, 1))),
+      // 随机种子（用户 2026-11-15「每次重新跑同一局，过程和结果都能完全复现……实际不就是没有随机性了吗」「收在代码内部就行」）:
+      // every request draws its own (the game settles one round per request, or up to 20) — until 11-15 every request ran
+      // on seed 1, so the first roll of every round was the same number. Tests pass their own fixed seed to the runtime.
+      seed: 1 + Math.floor(Math.random() * 2147483645),
       combatData,
       ...(options.worldActionContext && typeof options.worldActionContext === 'object'
         ? { worldActionContext: options.worldActionContext }

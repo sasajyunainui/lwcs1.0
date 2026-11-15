@@ -2200,7 +2200,17 @@ var FactionDistribution = {
   },
 };
 
+// 等级基准只取决于等级（锚点表是常量），算一次记住；战斗里算伤害的等级缩放每次都查它（11-15 7v7 剖析：占整场 14%）。
+// 返回浅拷贝，调用方改了也不会改到缓存。缓存用到时才建：本文件加载时（斗铠等效属性包）就会调用它，那时 var 还没赋值。
+var 等级基准缓存_V1;
 function getBaseStats(lv) {
+  const 键 = Math.max(1, Math.min(180, Number(lv) || 1));
+  等级基准缓存_V1 ||= new Map();
+  let 已算 = 等级基准缓存_V1.get(键);
+  if (!已算) { 已算 = 计算等级基准_V1(键); 等级基准缓存_V1.set(键, 已算); }
+  return { ...已算 };
+}
+function 计算等级基准_V1(lv) {
   const 等级值 = Math.max(1, Math.min(180, Number(lv) || 1));
   const 百级后 = 百级基值 => 百级基值 * Math.pow(10, (等级值 - 100) / 10);
 
