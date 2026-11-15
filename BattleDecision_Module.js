@@ -2221,7 +2221,8 @@
       // Its abilities are known by the exchanges and the acquaintance (clarity); its strength by those and by a sense that
       // outreaches it (strengthClarity, beliefSenses).
       const seen = Number(exchanges.get(id) || 0) + beliefFamiliarExchanges(sourceActor, sourceUnit), clarity = seen / (seen + BELIEF_EXCHANGE_PRIOR);
-      const gauged = seen + (beliefSenses(sourceActor, sourceUnit) ? BELIEF_SENSE_EXCHANGES : 0), strengthClarity = gauged / (gauged + BELIEF_EXCHANGE_PRIOR);
+      const senses = beliefSenses(sourceActor, sourceUnit);
+      const gauged = seen + (senses ? BELIEF_SENSE_EXCHANGES : 0), strengthClarity = gauged / (gauged + BELIEF_EXCHANGE_PRIOR);
       const toward = (estimate, truth) => Number.isFinite(Number(truth)) ? estimate + (Number(truth) - estimate) * strengthClarity : estimate;
       const truePanel = key => preview.readCombatStatBreakdown(sourceUnit, key).base;
       const perceivedLevel = toward(lower + (upper - lower) * (0.75 - 0.25 * confidence), unitLevel(sourceUnit));
@@ -2248,8 +2249,10 @@
       // battle full and spend as it goes on). It used to be a flat half, which made every enemy look drained from the
       // first turn — a twin's evasion read 56% where the settlement rolled 15%, and the old valuation evaded in more
       // than half of its answers (2026-11-12).
-      // Seen in exchanges (beliefExchangeCounts), it is drawn toward the unit's own share.
-      const unknownShare = resource => { const own = ratio(sourceActor, resource); return toward(Number.isFinite(own) ? own : 0.5, ratio(sourceUnit, resource)); };
+      // Seen in exchanges (beliefExchangeCounts), it is drawn toward the unit's own share. 魂力波动（用户 2026-11-15 敌方资源可见：
+      // 「精神力大于对面，且精神力超过1000」）: a sense that outreaches the unit (beliefSenses) reads how much it has left as it is.
+      const unknownShare = resource => { const own = ratio(sourceActor, resource), truth = ratio(sourceUnit, resource);
+        return senses && Number.isFinite(truth) ? truth : toward(Number.isFinite(own) ? own : 0.5, truth); };
       const soulMax = toward(baseStats.sp_max * typical.sp_max, preview.readResourceMax(sourceUnit, '魂力'));
       const spiritMax = toward(baseStats.men_max * typical.men_max, preview.readResourceMax(sourceUnit, '精神力'));
       const staminaMax = toward(baseStats.vit_max * typical.vit_max, preview.readResourceMax(sourceUnit, '体力'));
@@ -65692,7 +65695,15 @@
     R20_LATE_ROUNDS = 2, R20_CHARGE_BREAK = 0.5, R20_ASSET_DEFAULT = 0.2, R20_REVIVE_DEFAULT = 0.25,
     // 试探与留手（用户 2026-11-15）: the premium on spending against unseen enemies, the spar price, and the spar injury line and penalty.
     R20_PROBE_PREMIUM = 1.5, R20_SPAR_PRICE = 1.5, R20_SPAR_INJURY_LINE = 0.2, R20_SPAR_INJURY_PENALTY = 0.5, R20_SPAR_INTENT = /点到为止|切磋|训练|非致命/,
-    R20_REVEAL_BASE = Number(root.__LWCS_TUNE__?.REVEAL_BASE ?? 0.7), R20_REVEAL_SHARE = 0.35, R20_REVEAL_CAP = 0.95, R20_TRUMP_SPENT = 0.3, R20_UNSEEN_COUNTER = 1, R20_CAUTION_SLOPE = 0.5, R20_CAUTION_PEAK = 5, R20_CAUTION_TOP = 1.5, R20_CAUTION_FALL = 0.1, R20_CAUTION_FLOOR = 0.2;
+    R20_REVEAL_BASE = Number(root.__LWCS_TUNE__?.REVEAL_BASE ?? 0.7), R20_REVEAL_SHARE = 0.35, R20_REVEAL_CAP = 0.95, R20_TRUMP_SPENT = 0.3, R20_UNSEEN_COUNTER = 1, R20_CAUTION_SLOPE = 0.5, R20_CAUTION_PEAK = 5, R20_CAUTION_TOP = 1.5, R20_CAUTION_FALL = 0.1, R20_CAUTION_FLOOR = 0.2,
+    // 只作用于自身/友方的魂技亮底牌（用户 2026-11-15「真身和普通增益不能一概而论」）: a buff, a shield on oneself shows the rings but not
+    // what can hurt the enemy — its reveal share ×R20_REVEAL_SELF; a 武魂真身 shows the spirit whole — ×R20_REVEAL_AVATAR.
+    R20_REVEAL_SELF = Number(root.__LWCS_TUNE__?.REVEAL_SELF ?? 0.3), R20_REVEAL_AVATAR = Number(root.__LWCS_TUNE__?.REVEAL_AVATAR ?? 1),
+    // 对弱敌留底牌（原作 批01-08「对弱者只用普攻、不暴露底牌」）: the care below which an enemy pictured weaker does not bring the reveal (was 0.5).
+    R20_CAUTION_WEAK = Number(root.__LWCS_TUNE__?.CAUTION_WEAK ?? 1),
+    // A stance that changes nothing this round (it lapses at the round end and adds one to 久守必失's run) is worth a hair
+    // less than letting the turn pass.
+    R20_IDLE_STANCE = 1e-3;
   const r20Tables = new WeakMap();
   // The round of the decision being valued (a broken guard lasts the round), and what its actor has seen.
   let r20Round = 0, r20Belief = null;
@@ -66045,7 +66056,7 @@
         ? preview.clashTiming(attacker, move, unit, declaration).confidence : 0;
       if (clashConfidence > 0) {
         const strike = Number(preview.incomingMoveDamage(unit, declaration, attacker, r20World)) || 0;
-        if (strike > 0) strikes.push({ strike, price: priced(), confidence: clashConfidence });
+        if (strike > 0) strikes.push({ strike, price: priced(), confidence: clashConfidence, move: declaration });
       }
       // 接战链 阶段二补充: a control that stops this move's kind (a known move; else a skill or a basic attack), by the
       // confidence the timing the unit sees gives it (preemptTiming confidence).
@@ -66122,14 +66133,15 @@
   // clashing (only when the hit's weight is known) and preempting; 阶段二补充 (§8.1: "四种应对里对对方最有利的那种"):
   // the best for the unit is the one it loses least by — what it takes less what it lands back (each a share of its
   // own HP maximum) plus (接战链 阶段 2c) what the answer costs it (r20AnswerPrice), then the strike back. `held`
-  // forces the answer (DEFEND / EVADE) instead of the best one. Returns the chosen option's `price` too.
+  // forces the answer (DEFEND / EVADE) instead of the best one. Returns the chosen option's `price` too. `follow` (an
+  // option → what more it loses after the answer itself, on the same scale; r20Follow) weighs what the answer leads to.
   // The stance a unit holds and has not used yet ('DEFEND' / 'EVADE'; '' if none).
   const r20StanceOf = unit => {
     const stance = unit?.__battleRuntime?.activeDefenseStance;
     const kind = String(stance?.type || stance?.actionKind || '').trim().toUpperCase();
     return stance?.consumed !== true && ['DEFEND', 'EVADE'].includes(kind) ? kind : '';
   };
-  const r20Meet = (stand, weight, held = '') => {
+  const r20Meet = (stand, weight, held = '', follow = null) => {
     if (stand.blocked) return { kind: 'NONE', keep: stand.soak, share: 1, lands: 1, defends: false, answer: 0, back: 0 };
     const guard = preview.applyGuardWeight(stand.guard, weight);
     const options = [
@@ -66139,7 +66151,7 @@
     if (held) { const chosen = options.find(option => option.kind === held) || options[0]; return { ...chosen, defends: chosen.kind === 'DEFEND' }; }
     const theirs = Number(weight) > 0 ? Number(weight) * stand.hpMax : 0;
     const win = Number(preview.ENGAGEMENT_RULES?.CLASH_WIN) || 1.2, shock = Number(preview.ENGAGEMENT_RULES?.CLASH_SHOCK) || 0;
-    if (theirs > 0) for (const { strike, price, confidence = 1 } of stand.strikes || []) {
+    if (theirs > 0) for (const { strike, price, confidence = 1, move } of stand.strikes || []) {
       const ratio = strike / theirs;
       const met = ratio >= win ? { keep: 0, share: 0, lands: 0, answer: stand.catch, back: (strike - theirs) / stand.attackerHpMax }
         : ratio > 1 / win ? { keep: stand.soak * shock, share: shock, lands: 0, answer: stand.catch, back: shock * strike / stand.attackerHpMax }
@@ -66147,7 +66159,7 @@
       // 接战链 阶段 2d: thrown too late (1 − confidence) it comes to nothing and the hit lands whole, unguarded.
       const late = 1 - confidence;
       options.push({ kind: 'CLASH', keep: confidence * met.keep + late * stand.soak, share: confidence * met.share + late,
-        lands: confidence * met.lands + late, answer: confidence * met.answer, back: confidence * met.back, price });
+        lands: confidence * met.lands + late, answer: confidence * met.answer, back: confidence * met.back, price, move });
     }
     for (const { stop, price } of stand.stops || []) {
       options.push({ kind: 'PREEMPT', keep: stand.soak * (1 - stop), share: 1 - stop, lands: 1 - stop, answer: stop * stand.catch, back: 0, price });
@@ -66159,7 +66171,8 @@
     }
     // 接战链 阶段 2c: what the answer costs counts against it (r20AnswerPrice, on R20's value scale).
     const scale = Number(weight) > 0 ? Number(weight) : 1, ratioHp = stand.attackerHpMax / stand.hpMax;
-    const loss = option => option.keep * scale - option.back * ratioHp + (option.price || 0);
+    const loss = follow ? option => option.loss ??= option.keep * scale - option.back * ratioHp + (option.price || 0) + follow(option)
+      : option => option.keep * scale - option.back * ratioHp + (option.price || 0);
     let best = options[0];
     for (const option of options) if (loss(option) < loss(best) - 1e-12 || Math.abs(loss(option) - loss(best)) <= 1e-12 && option.answer > best.answer) best = option;
     // S84: an unseen 控制系 keeps off a share of the hit by a control thrown first, whatever else it would have done.
@@ -66194,6 +66207,49 @@
   }
   // What of a hit of `weight` from `attacker` the unit still takes after its better basic answer.
   const r20Keep = (unit, attacker, weight = null) => r20Meet(r20Stand(unit, attacker), weight).keep;
+  // 推演替目标挑接法（11-15 推演对账：预计对轰或用防御魂技接、实际防御 147、107 条，那两组预计反击 4.9%、0%，实际 35.4%、
+  // 27.1%）: the target's own answer (r20Shadow REACTION) weighs what the answer leads to, so the move's expectation of it does
+  // too — the exchange its strike back opens (r20Exchange, as the target's valuation runs it: what the attacker lands more
+  // less what the target lands, on the target's HP scale) and, a clash being an attack, the opening it leaves to the
+  // attacker's side still to act this round (攻击破绽, as r20Shadow takes it of an attack); and its price as the target's
+  // valuation takes it — more against an attacker not yet seen (R20_PROBE_PREMIUM; the exchanges seen are the same both
+  // ways, so by how unseen the target is to the actor) and in a spar (R20_SPAR_PRICE).
+  function r20Follow(table, row, attackerRow, priorTarget = 0, priorAttacker = 0) {
+    const { out, back, keep, keepBack, answer, acts, sides } = table;
+    const ratioHp = Math.max(1, preview.readHpMax(table.units[attackerRow])) / Math.max(1, preview.readHpMax(table.units[row]));
+    const premium = (1 + R20_PROBE_PREMIUM * (1 - clamp(Number(table.units[row]?.__clarity ?? 1), 0, 1))) *
+      (R20_SPAR_INTENT.test(String(r20Intent?.mode || table.world?.战斗意图 || '')) ? R20_SPAR_PRICE : 1) - 1;
+    let standing = -1;
+    return option => {
+      let more = (option.price || 0) * premium;
+      if (option.answer > 0) {
+        const exchange = r20Exchange(answer[row][attackerRow], answer[attackerRow][row], back[attackerRow][row] * keepBack[row][attackerRow],
+          back[row][attackerRow] * keepBack[attackerRow][row], option.answer, priorTarget, priorAttacker);
+        more += exchange.more - exchange.taken * ratioHp;
+      }
+      if (option.kind === 'CLASH' && option.move) for (let ally = 0; ally < sides.length; ally += 1) {
+        if (ally === attackerRow || sides[ally] !== sides[attackerRow] || !table.pending[ally] || !acts[ally] || !(table.alive[ally] > 0) || !(out[ally][row] > 0)) continue;
+        if (standing < 0) standing = sides.reduce((sum, side, other) => sum + Number(side === sides[row] && table.alive[other] > 0 && table.remaining[other] > 0), 0);
+        more += table.alive[ally] * out[ally][row] * Math.max(0, r20OpenKeep(table, row, ally, option.move) - keep[row][ally]) / Math.max(1, standing);
+      }
+      return more;
+    };
+  }
+  // What of `ally`'s best hit the unit at `row` keeps once `move` has left it open (BattlePreview attackOpeningStrength), once
+  // a table for each pair and opening.
+  const r20OpenKeeps = new WeakMap();
+  function r20OpenKeep(table, row, ally, move) {
+    const unit = table.units[row], strength = Math.max(Number(preview.attackOpeningStrength(table.world, unit, move)) || 0, preview.attackOpeningOf(unit));
+    if (!(strength > preview.attackOpeningOf(unit))) return table.keep[row][ally];
+    let byTable = r20OpenKeeps.get(table);
+    if (!byTable) r20OpenKeeps.set(table, byTable = new Map());
+    const key = `${row}|${ally}|${strength}`;
+    if (!byTable.has(key)) {
+      const opened = { ...unit, __battleRuntime: { ...(unit.__battleRuntime || {}), attackOpening: { strength } } };
+      byTable.set(key, r20Keep(opened, table.units[ally], r20Weight(table.out[ally][row])));
+    }
+    return byTable.get(key);
+  }
   // The cells of one pair (defender `row`, attacker `other`) in `cells` (keep, keepBack, answer, answerOpen) from the
   // attacker's out and back on it: keep / answerOpen for its best hit, keepBack / answer for its strike back.
   const r20Weight = value => value > 0 ? value : null;
@@ -66983,7 +67039,7 @@
         // stance 60 rounds against a 控制系 that stood in one too, every basic attack read as met by a skill clashing it back
         // for 10% (the 控制系 had one such answer in 60 rounds).
         const stance = r20StanceOf(table.units[row]);
-        const meet = r20Meet(r20Stand(table.units[row], table.units[actorRow], move, !!stance), weight, stance);
+        const meet = r20Meet(r20Stand(table.units[row], table.units[actorRow], move, !!stance), weight, stance, stance ? null : r20Follow(table, row, actorRow, priorTarget, priorActor));
         if (meet.share < 1 - 1e-12) {
           const lost = Math.max(0, table.remaining[row] - remaining[row]);
           remaining[row] = Math.max(0, table.remaining[row] - lost * meet.share);
@@ -67125,7 +67181,9 @@
     // 闪避反击"): against each enemy still to act this round, who may turn on the actor as on any of its side, the prepared
     // answer keeps more off than the ordinary one would, and it gets to strike back more often than the ordinary one
     // (接战链 阶段一: out of a guard that holds or an evasion that succeeds, with COUNTER_STANCE_BONUS on catching the opening).
+    let idleStance = 0;
     if (roleName === 'ACTIVE' && ['DEFEND', 'EVADE'].includes(actionKind) && actorRow !== undefined && alive[actorRow] > 0) {
+      idleStance = R20_IDLE_STANCE;
       const actor = table.units[actorRow];
       const stanceActor = { ...actor, __battleRuntime: { ...(actor.__battleRuntime || {}),
         passiveStreak: Math.max(0, Number(actor.__battleRuntime?.passiveStreak) || 0) + 1 } };
@@ -67140,6 +67198,10 @@
         // 接战链 阶段 2c (方案 §9.3、§10.2): only as often as the enemy turns on the actor this round — its best action on the
         // table (r20TurnsOn); one that will strike the actor counts in full.
         const turned = alive[row] * r20TurnsOn(table, row, actorRow);
+        // Whether it comes at the actor braced is the enemy's choice against the stance it sees (its keep and the strike
+        // back it opens; 11-15: the table's turns-on without it took 0.92 where 0.32 came).
+        const braced = (matrix, value) => matrix.map((cells, unit) => unit === actorRow ? cells.map((cell, other) => other === row ? value : cell) : cells);
+        const turnedBraced = alive[row] * r20TurnsOn({ ...table, keep: braced(table.keep, stance.keep), answerOpen: braced(table.answerOpen, stance.answer) }, row, actorRow);
         const strikeBack = back[actorRow][row] * keepBack[row][actorRow], strikeAgain = back[row][actorRow] * keepBack[actorRow][row];
         const prepared = r20Exchange(answer[actorRow][row], answer[row][actorRow], strikeAgain, strikeBack, stance.answer);
         const ordinary = r20Exchange(answer[actorRow][row], answer[row][actorRow], strikeAgain, strikeBack, answerOpen[actorRow][row]);
@@ -67151,14 +67213,18 @@
         // where each side waits for the other to strike was worth a stance to both, and nobody struck).
         const comesUnprepared = out[row][actorRow] * keep[actorRow][row] + ordinary.more > ordinary.taken;
         const comesPrepared = out[row][actorRow] * stance.keep + prepared.more > prepared.taken;
+        // Turned away, an enemy with others of the actor's side standing strikes one of them instead (11-15: in 2v2/3v3
+        // 33%～38% of those still came): what the actor keeps is its share among them.
         if (comesUnprepared && !comesPrepared) {
-          remaining[actorRow] += turned * (out[row][actorRow] * keep[actorRow][row] + ordinary.more);
+          remaining[actorRow] += turned * (out[row][actorRow] * keep[actorRow][row] + ordinary.more) / Math.max(1, standing);
+          idleStance = 0;
           continue;
         }
         if (!comesPrepared) continue;
-        remaining[actorRow] += turned * out[row][actorRow] * Math.max(0, keep[actorRow][row] - stance.keep);
-        remaining[row] = Math.max(0, remaining[row] - turned * Math.max(0, prepared.taken - ordinary.taken));
-        remaining[actorRow] = Math.max(0, remaining[actorRow] - turned * Math.max(0, prepared.more - ordinary.more));
+        idleStance = 0;
+        remaining[actorRow] += turnedBraced * out[row][actorRow] * Math.max(0, keep[actorRow][row] - stance.keep);
+        remaining[row] = Math.max(0, remaining[row] - turnedBraced * Math.max(0, prepared.taken - ordinary.taken));
+        remaining[actorRow] = Math.max(0, remaining[actorRow] - turnedBraced * Math.max(0, prepared.more - ordinary.more));
       }
     }
     // A charged skill (前摇 over a turn's budget): nothing lands now. Its release lands what the skill's own cell says
@@ -67263,7 +67329,7 @@
     // no way out (a match, a spar) there is nothing to wait for (「谨慎必输」).
     const mayRun = table.world?.允许撤离 === true;
     const hold = row => { if (!mayRun) return 1; let best = 0; for (let ally = 0; ally < table.units.length; ally += 1) if (table.sides[ally] === table.sides[actorRow]) best = Math.max(best, Number(stop?.[ally]?.[row]) || 0); return clamp(best, 0, 1); };
-    const caution = (gap, row) => gap < 0 ? Math.max(0.5, 1 + R20_CAUTION_SLOPE * gap / 10)
+    const caution = (gap, row) => gap < 0 ? Math.max(R20_CAUTION_WEAK, 1 + R20_CAUTION_SLOPE * gap / 10)
       : gap <= R20_CAUTION_PEAK ? 1 + (R20_CAUTION_TOP - 1) * gap / R20_CAUTION_PEAK
         : Math.max(R20_CAUTION_FLOOR, R20_CAUTION_TOP - (gap - R20_CAUTION_PEAK) * R20_CAUTION_FALL * 2 * seasoned * hold(row));
     // Probing is for the first exchanges: what is unseen weighs squared (one exchange leaves 44%, two 25%).
@@ -67277,8 +67343,12 @@
     // its pools a skill takes, full at R20_TRUMP_SPENT) shown to enemies not yet seen loses part of what it stands to gain
     // (R20_REVEAL_SHARE × how big × how unseen) — they may meet it with what the table cannot see, and they learn it. It
     // fades as the exchanges show them (belief __clarity), so it shapes the opening, not the battle.
+    // A 武魂真身 (the skill runtime's 判定技能消耗来源_V1) shows the spirit whole (×R20_REVEAL_AVATAR); a skill on oneself or
+    // one's side only shows the rings (×R20_REVEAL_SELF).
+    const revealScale = () => root.__LWCS_SKILL_COST_HELPERS_V1__?.判定技能消耗来源_V1?.(declaration.skill || {}, {})?.武魂真身 || /武魂真身/.test(String(declaration.skill?.魂技名 || '')) ? R20_REVEAL_AVATAR
+        : preview.collectEffects(declaration.skill || {}).every(effect => /自身|己方|友方/.test(String(effect?.目标 || ''))) ? R20_REVEAL_SELF : 1;
     const reveal = declaration?.actionKind === 'RELEASE_SKILL' && unseen > 0 && race + tempo > 0
-      ? Math.min(R20_REVEAL_CAP, (R20_REVEAL_BASE + R20_REVEAL_SHARE * clamp(spent / R20_TRUMP_SPENT, 0, 1)) * wary) * (race + tempo) : 0;
+      ? revealScale() * Math.min(R20_REVEAL_CAP, (R20_REVEAL_BASE + R20_REVEAL_SHARE * clamp(spent / R20_TRUMP_SPENT, 0, 1)) * wary) * (race + tempo) : 0;
     // 留手: in a spar, what of a hit lands below the 重伤 line (R20_SPAR_INJURY_LINE of the target's HP) is held against it.
     let restraint = 0;
     if (spar && actorRow !== undefined) for (const [unit, row] of foes) {
@@ -67325,7 +67395,7 @@
     // Leaving is valued apart (认输与撤离, at the top). Observing is worth a little.
     let leave = 0;
     if (actionKind === 'OBSERVE') leave = R20_OBSERVE_VALUE;
-    return { value: race + tempo + granted + objective + leave + stock - cost - fusionCost - asset - restraint - reveal, race, tempo, granted, objective, leave, stock, cost, fusionCost, asset, restraint, reveal, counter, rebuilt: rebuilt.length, added: added.length, outside,
+    return { value: race + tempo + granted + objective + leave + stock - cost - fusionCost - asset - restraint - reveal - idleStance, idleStance, race, tempo, granted, objective, leave, stock, cost, fusionCost, asset, restraint, reveal, counter, rebuilt: rebuilt.length, added: added.length, outside,
       seen: seen + added.length + Number(granted !== 0) + Number(objective !== 0) + Number(leave !== 0) };
   }
 
