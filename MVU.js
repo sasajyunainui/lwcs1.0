@@ -552,6 +552,8 @@ const 赛事战斗上下文Schema_V1 = z
     子场序号: 赛事权限非负整数Schema_V1().optional(),
     准备tick: 赛事权限非负整数Schema_V1().optional(),
     代号绑定: z.record(z.string(), 赛事权限文本Schema_V1()).optional(),
+    // 后续出场（BattlePreview matchFollowUp）：{ PLAYER|ENEMY: { 接续, 团战 } }
+    后续: z.record(z.string(), z.any()).optional(),
   })
   .strict();
 

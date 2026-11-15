@@ -67372,7 +67372,10 @@
     const wary = foes.length ? foes.reduce((sum, [unit, row]) => sum + (1 - clamp(Number(unit?.__clarity ?? 1), 0, 1)) ** 2 *
       caution((Number(unit?.__perceivedLevel ?? unitLevel(unit)) || ownLevel) - ownLevel, row), 0) / foes.length : 0;
     const spar = R20_SPAR_INTENT.test(String(r20Intent?.mode || table.world?.战斗意图 || ''));
-    const cost = R20_RESOURCE_PRICE * spent * (1 + R20_PROBE_PREMIUM * unseen) * (spar ? R20_SPAR_PRICE : 1);
+    // 后续出场（BattlePreview matchFollowUp）：擂台里我方之后还有人接着打这个对手时不必试探——逼他出手、亮牌、耗他的资源本身就是
+    // 给队友铺路（原作 萧萧对薛兵），试探溢价不计。
+    const followCarry = Number(preview.matchFollowUp?.(table.world, request.actorSide)?.carry || 0) >= 1;
+    const cost = R20_RESOURCE_PRICE * spent * (1 + (followCarry ? 0 : R20_PROBE_PREMIUM * unseen)) * (spar ? R20_SPAR_PRICE : 1);
     // 亮魂环（同上）: any 魂技 lights the rings — the enemy sees how many and how old, and what the spirit does — so against one
     // not yet seen it costs a base share (R20_REVEAL_BASE) of what it stands to gain, more for a bigger card, at most R20_REVEAL_CAP.
     // 试探（用户 2026-11-15「在不清楚对方能力前，最重要的就是试探」「不能过多提高战局中普攻占比」）: a big card (the share of

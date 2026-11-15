@@ -3469,6 +3469,19 @@
   // about 7% in a spar, 9–13% in a match, 20% subdued and 33% to the death — 胜率严重不足, the graver the fate the
   // sooner; a withdrawal besides by its chance of success and less its pursuit.
   const EXIT_FATE = Object.freeze({ SPAR: 0.15, REFEREED_MATCH: 0.2, MATCH: 0.3, SUBDUED: 0.5, DEATH: 1 });
+  // 后续出场（团体赛子场，11-15 用户「后续出场…结合比赛」；原作 萧萧对薛兵「至少也极大程度的消耗了薛兵的实力」）：桥接层按赛程把
+  // 双方的后续写进 赛事上下文.后续 { PLAYER|ENEMY: { 接续: 擂台里这一方之后还有几人接着打, 团战: 之后还有团战 } }。
+  //   接着打的队友会遇上同一个对手、团战里对方也带着这场的伤：留下来多打掉的对手生命有价值（消耗，FOLLOW_DRAIN）——
+  //   估计为对手剩余生命 × 我倒下前能打掉的那部分（两只钟之比）× 我还剩的魂力（精神力），只在输的那部分里算；
+  //   接着打的队友记满，只有团战在后记一半。
+  //   之后还有团战：自己的生命也带进团战（保留，FOLLOW_KEEP）——认输保住此刻的生命，留下来赢了保住、输了剩一成。
+  const FOLLOW_DRAIN = 0.6, FOLLOW_KEEP = 0.6;
+  function matchFollowUp(worldSnapshot = {}, side = '') {
+    const record = worldSnapshot?.赛事上下文?.后续?.[side === 'team_enemy' ? 'ENEMY' : 'PLAYER'];
+    if (!record || typeof record !== 'object') return null;
+    const carry = Number(record.接续) > 0 ? 1 : record.团战 === true ? 0.5 : 0, keep = record.团战 === true ? 1 : 0;
+    return carry || keep ? { carry, keep } : null;
+  }
   // The outlook (battleStandingOutlook) is read off the field: who brings the other side down first, and whether before
   // the battle's rounds run out (胜负条件 maxRounds). A side's time to bring the other down is the other's HP shares (units
   // still standing) over the rate it has been taking HP off the other side less the rate the other has been putting HP
@@ -3587,14 +3600,27 @@
     const without = others ? battleStandingOutlook(worldSnapshot, side, id) : Object.freeze({ win: 0, lose: 1, draw: 0 });
     // What the battle's result is worth to each unit on the field: won +1, lost −1 and its fate; run out, 0.
     const worth = view => view.win - view.lose - view.lose * fate;
-    const stay = worth(outlook);
+    let stay = worth(outlook);
+    const follow = matchFollowUp(worldSnapshot, side);
+    let followStay = 0, followLeft = 0;
+    if (follow) {
+      const share = unit => clamp(readHp(unit) / Math.max(1, readHpMax(unit)), 0, 1);
+      const fuel = Math.max(0, ...['魂力', '精神力'].map(resource => readResourceMax(actor, resource) > 0 ? clamp(readResource(actor, resource) / readResourceMax(actor, resource), 0, 1) : 0));
+      const foeHp = listUnits(worldSnapshot).filter(entry => entry.side && entry.side !== side && isBattleCapable(entry.unit) && !isSummonUnit(entry.unit))
+        .reduce((sum, entry) => sum + share(entry.unit), 0);
+      const reach = !(outlook.ownTime < Number.POSITIVE_INFINITY) ? 0 : outlook.ownTime <= 0 ? 1 : Math.min(1, outlook.otherTime / outlook.ownTime);
+      followStay = FOLLOW_DRAIN * follow.carry * foeHp * reach * fuel * (1 - outlook.win) +
+        FOLLOW_KEEP * follow.keep * ((outlook.win + 0.5 * outlook.draw) * share(actor) + outlook.lose * LIFE_THREAT_RATIO);
+      followLeft = FOLLOW_KEEP * follow.keep * share(actor);
+      stay += followStay;
+    }
     // A unit getting away from a side out to get away (WITHDRAW_SUCCESS) has its goal met; else it has lost.
     const escapes = rules.withdraw && sideWithdrawalGoal(worldSnapshot, side, battleIntent);
-    const left = ((escapes ? 1 : -1) + others * worth(without)) / (others + 1);
+    const left = ((escapes ? 1 : -1) + others * worth(without)) / (others + 1) + followLeft;
     const success = rules.concede ? 1 : clamp(Number(contest?.successProbability ?? 1), 0, 1);
     const pursuit = rules.concede ? 0 : Math.max(0, Number(contest?.expectedPursuitDamage || 0)) / Math.max(1, readHpMax(actor));
     return Object.freeze({ kind: rules.exit, fate, win: outlook.win, lose: outlook.lose, withoutWin: without.win, withoutLose: without.lose,
-      others, stay, left, escapes, success, pursuit, delta: success * (left - stay) - pursuit });
+      others, stay, left, escapes, success, pursuit, ...(follow ? { followStay, followLeft } : {}), delta: success * (left - stay) - pursuit });
   }
   // WITHDRAW_SUCCESS (方案第 3 条): a side that got someone away (__battleRuntime.withdrawalSuccessSides) with no one left
   // on the field. `sideKey` PLAYER / ENEMY (or a side key); '' any side.
@@ -25004,6 +25030,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     battleStandingOutlook,
     sideWithdrawalGoal,
     exitValuation,
+    matchFollowUp,
     withdrawalSucceeded,
     resolveBattleType,
     normalizeBattleType,

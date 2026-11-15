@@ -7477,7 +7477,13 @@
       代号绑定[名称] = toText(选用.normalized?.name, 候选名);
     });
     if (!team_player.length || !team_enemy.length) return null;
-    return { ok: true, participants: { team_player, team_enemy }, ...(Object.keys(代号绑定).length ? { 代号绑定 } : {}) };
+    // 后续出场（BattlePreview matchFollowUp）：擂台里这一方之后还有几人接着打、之后还有没有团战（小分全拿会跳过，按会打算）。
+    const 赛程 = 对局.赛程;
+    const 接续 = 方 => 赛程.阶段 === '擂台' ? Math.max(0, (赛程.排阵?.[方]?.顺序 || []).length - toNumber(赛程.擂台位?.[方], 0) - 1) : 0;
+    const 团战 = 赛程.阶段 !== '团战' && ['擂台团战积分', '单双团积分'].includes(赛程.赛制);
+    const 后续 = { PLAYER: { 接续: 接续(玩家方), 团战 }, ENEMY: { 接续: 接续(1 - 玩家方), 团战 } };
+    return { ok: true, participants: { team_player, team_enemy }, ...(Object.keys(代号绑定).length ? { 代号绑定 } : {}),
+      ...(团战 || 后续.PLAYER.接续 || 后续.ENEMY.接续 ? { 后续 } : {}) };
   }
 
   function 确保赛事参赛者实体_桥接(数据根 = {}, 赛事ID = '', 项目名 = '', 参赛者ID = '') {
@@ -27177,7 +27183,8 @@ ${播报文本}
       source: toText(detail.source, 'map_action'),
       // 赛事对局 (任务卡⑥): the bout's 赛事上下文 goes on with the battle — world.战斗 is replaced at the opening, and
       // 结算赛事战斗_桥接 reads the context from it when the battle is settled.
-      ...(赛事对局 ? { 赛事上下文: { ...cloneJsonValue(赛事上下文原值, {}), ...(rosterResult.代号绑定 ? { 代号绑定: cloneJsonValue(rosterResult.代号绑定, {}) } : {}) } } : {}),
+      ...(赛事对局 ? { 赛事上下文: { ...cloneJsonValue(赛事上下文原值, {}), ...(rosterResult.代号绑定 ? { 代号绑定: cloneJsonValue(rosterResult.代号绑定, {}) } : {}),
+        ...(rosterResult.后续 ? { 后续: cloneJsonValue(rosterResult.后续, {}) } : {}) } } : {}),
       ...(soulTowerCombat
         ? {
             floor: soulTowerFloor,
