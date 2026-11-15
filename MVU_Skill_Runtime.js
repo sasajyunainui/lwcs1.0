@@ -5441,7 +5441,8 @@ var SKILL_UNIT_COST_TABLE_V1 = Object.freeze({
     持续恢复: Object.freeze({ 数值: 0.95 }),
     迟缓: Object.freeze({ 数值: 0.75, 副数值: 0.7 }),
     资源燃烧: Object.freeze({ 数值: 0.95, 副数值: 0.85 }),
-    眩晕: Object.freeze({ 固定COST: 60 }),
+    // 眩晕 60 → 50（用户 2026-11-15「把眩晕COST调低吧」）：与封技、缴械同档；原著低环硬控（多情斗罗第一魂技曾经）此前放不进。
+    眩晕: Object.freeze({ 固定COST: 50 }),
     致盲: Object.freeze({ 数值: 1.2, 固定COST: 11 }),
     禁疗: Object.freeze({ 数值: 1.3, 固定COST: 12 }),
     治疗反转: Object.freeze({ 数值: 1.6, 固定COST: 16 }),
