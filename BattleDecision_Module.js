@@ -6036,6 +6036,15 @@
     return effects.length > 0 && effects.every(isImmediateDefensiveEffect);
   }
 
+  // 行动窗口（用户 2026-11-15「只要在行动窗口内，是可以任意动作的。而行动窗口是由对方决定，受对方干扰的，对方攻击你，那你的行动
+  // 窗口自然就会被压短」「团体战里你可以硬挨一下，而去攻击另一人」；原作 光神附体、黄金龙体 都是挨打时开的）: what a hit leaves the
+  // unit (BattlePreview reactionWindupBudget, by the move coming) is the window — any skill whose windup fits it may be released in it,
+  // on any target: a buff, a 武魂真身, a strike on another enemy, a heal for an ally. Before it only defensive skills (and the clash
+  // and preemption of engagementCandidates) were offered.
+  function isWithinReactionWindow(skill = {}, immediateBudget = 0) {
+    return directImmediateSkillEffects(skill).length > 0 && Math.max(0, Number(skill?.前摇 ?? skill?.cast_time ?? 10)) <= immediateBudget;
+  }
+
   function isExplicitCounterSkill(skill = {}, immediateBudget = 0) {
     const castTime = Math.max(0, Number(skill?.前摇 ?? skill?.cast_time ?? 10));
     const text = `${skillName(skill)} ${skill?.技能分类 || ''} ${skill?.触发方式 || ''} ${skill?.反应类型 || ''}`;
@@ -6866,7 +6875,7 @@
         return;
       }
       const immediateReactionEligible = reactionOnly &&
-        isImmediateReactionSkill(skill, immediateBudget);
+        (isImmediateReactionSkill(skill, immediateBudget) || isWithinReactionWindow(skill, immediateBudget));
       const explicitCounterEligible = counterOnly && isExplicitCounterSkill(skill, immediateBudget);
       const immediateOffensiveCounterShape = counterOnly &&
         !explicitCounterEligible &&
@@ -12074,7 +12083,8 @@
             const reactionActor = findUnitInWorld(planWorld, targetId);
             if (!reactionActor || !declaration.skill || !costAffordable(reactionActor, declaration.skill)) return;
             // A response seen against another attack answers this one only if its windup fits this attack's budget.
-            if (!isImmediateReactionSkill(declaration.skill, preview.reactionWindupBudget(actor, candidate?.declaration || {}, reactionActor))) return;
+            const reactionBudget = preview.reactionWindupBudget(actor, candidate?.declaration || {}, reactionActor);
+            if (!isImmediateReactionSkill(declaration.skill, reactionBudget) && !isWithinReactionWindow(declaration.skill, reactionBudget)) return;
             reactionPreview = preview.projectConditionedAction({
               worldSnapshot: planWorld,
               worldRevision: `reaction:${worldRevisionFor(planWorld)}`,
