@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:81a1b598ab2767b467c70f3d3947a97fc9b263275719c77ce08eec25b428b6b0|MVU_Schema_Runtime.js:454e4a242dce5e02d69c3def2993d350ac50f39dcb667f2fc6f09488f34461dd|BattlePreview_Module.js:749a66fc9190fff2b068ff6e1f23f1401170e3d02477c51ca4a36d2cd938f27a|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:97029871b086807cfe780d47bc9bbd0597c225fc01cb5e4cb8c143c8b7cfc02e|BattleRuntime_Module.js:3ec3b7d302ba3d3fc682ba02cbd1388478ba802e454969e8af8ae635042bd25c */
+/* sources-sha256: MVU_Skill_Runtime.js:f3770f5be6df5484c35909c3b8d9d50784b02e64a63bbf90d59b162a22cfd314|MVU_Schema_Runtime.js:454e4a242dce5e02d69c3def2993d350ac50f39dcb667f2fc6f09488f34461dd|BattlePreview_Module.js:53e779d05475baf04653a807269448fb936624cfca90e6477ce6963b1f2f702b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:97029871b086807cfe780d47bc9bbd0597c225fc01cb5e4cb8c143c8b7cfc02e|BattleRuntime_Module.js:3ec3b7d302ba3d3fc682ba02cbd1388478ba802e454969e8af8ae635042bd25c */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -3288,7 +3288,7 @@ var SKILL_SIDE_EFFECT_TYPE_META_V1 = Object.freeze({
   致死献祭: Object.freeze({ 致死: true }),
   精神紊乱: Object.freeze({ 状态: '精神紊乱', 数值: '+25%', 副数值: '+8%', 持续回合: 2 }),
   魂力反噬: Object.freeze({ 状态: '魂力枯竭', 数值: '+5%', 副数值: '', 持续回合: 1 }),
-  命中下降: Object.freeze({ 状态: '精神紊乱', 数值: '+10%', 副数值: '', 持续回合: 2 }),
+  命中下降: Object.freeze({ 状态: '命中下降', 数值: '+10%', 副数值: '', 持续回合: 2 }),
   动作迟缓: Object.freeze({ 状态: '迟缓', 数值: '+15%', 副数值: '+10%', 持续回合: 1 }),
   目标错乱: Object.freeze({ 状态: '混乱', 数值: '+30%', 副数值: '', 持续回合: 1 }),
   // 状态是「施法迟滞」（施法变慢），不是硬控「僵直」（11-14 前同名，战斗里被当成跳过回合）。
@@ -41860,7 +41860,9 @@ try {
   const sideEffectTargetSet = new Set(['技能释放者', '效果承受者', '双方']);
   const sideEffectStatusMap = Object.freeze({
     全属性降低: '虚弱', 自损反噬: '反噬', 精神紊乱: '精神紊乱', 魂力反噬: '魂力枯竭',
-    命中下降: '精神紊乱', 动作迟缓: '迟缓', 目标错乱: '混乱', 施法僵直: '施法迟滞',
+    // 命中下降 puts on its own state (11-15: it was named 精神紊乱, and a skill with both side effects — 多情斗罗 曾经 — had the
+    // second replace the first, same-named, so 25% 目标错乱 and −8% 反应 were lost while both were counted in its price).
+    命中下降: '命中下降', 动作迟缓: '迟缓', 目标错乱: '混乱', 施法僵直: '施法迟滞',
     本源损耗: '本源损耗', 重伤昏迷: '重伤昏迷',
   });
   // The state a side effect puts on. 施法僵直's is 施法迟滞 (casting slower: buildSideEffectPayload's cast_speed_penalty);

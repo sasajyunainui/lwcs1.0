@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:749a66fc9190fff2b068ff6e1f23f1401170e3d02477c51ca4a36d2cd938f27a|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:97029871b086807cfe780d47bc9bbd0597c225fc01cb5e4cb8c143c8b7cfc02e|BattleRuntime_Module.js:3ec3b7d302ba3d3fc682ba02cbd1388478ba802e454969e8af8ae635042bd25c|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:53e779d05475baf04653a807269448fb936624cfca90e6477ce6963b1f2f702b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:97029871b086807cfe780d47bc9bbd0597c225fc01cb5e4cb8c143c8b7cfc02e|BattleRuntime_Module.js:3ec3b7d302ba3d3fc682ba02cbd1388478ba802e454969e8af8ae635042bd25c|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -11532,7 +11532,9 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
   const sideEffectTargetSet = new Set(['技能释放者', '效果承受者', '双方']);
   const sideEffectStatusMap = Object.freeze({
     全属性降低: '虚弱', 自损反噬: '反噬', 精神紊乱: '精神紊乱', 魂力反噬: '魂力枯竭',
-    命中下降: '精神紊乱', 动作迟缓: '迟缓', 目标错乱: '混乱', 施法僵直: '施法迟滞',
+    // 命中下降 puts on its own state (11-15: it was named 精神紊乱, and a skill with both side effects — 多情斗罗 曾经 — had the
+    // second replace the first, same-named, so 25% 目标错乱 and −8% 反应 were lost while both were counted in its price).
+    命中下降: '命中下降', 动作迟缓: '迟缓', 目标错乱: '混乱', 施法僵直: '施法迟滞',
     本源损耗: '本源损耗', 重伤昏迷: '重伤昏迷',
   });
   // The state a side effect puts on. 施法僵直's is 施法迟滞 (casting slower: buildSideEffectPayload's cast_speed_penalty);
