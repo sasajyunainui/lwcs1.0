@@ -404,6 +404,9 @@
   }
 
   function shieldGateAllowsIncoming(state = {}, incomingEffect = {}, sourceActor = {}) {
+    // A shield limited to a kind of attacker (限定来源 人类/魂兽/深渊生物/邪魂师/召唤物) takes that attacker's hits only.
+    if (typeof previewRuntime?.unitSourceRestrictionMatches === 'function' &&
+      !previewRuntime.unitSourceRestrictionMatches(state, sourceActor && Object.keys(sourceActor).length ? sourceActor : null)) return false;
     const gate = Math.max(0, Number(state?.对应等级 ?? state?.equivalentLevel ?? 0));
     if (!(gate > 0)) return true;
     const incomingLevel = Math.max(0, Number(
@@ -997,6 +1000,32 @@
 
   function persistentResourceLabel(key = '') {
     return { hp: '生命', vit: '体力', sp: '魂力', men: '精神力' }[key] || '魂力';
+  }
+
+  // 消耗分摊（用户 2026-11-15 第 1 条）: a caster under it pays (1 − 比例) of each startup cost; the others linked with it
+  // (BattlePreview settlementLinkPartners) pay the rest between them, each only what it has of that resource — what one
+  // cannot pay its caster pays. The decision still prices a cost whole.
+  function costSharePayments(combatData = {}, actor = {}, payments = []) {
+    const entries = Object.values(actor?.状态效果 || {}).filter(state => Number(state?.战斗效果?.cost_share_ratio || 0) > 0);
+    if (!entries.length || !payments.length || typeof previewRuntime.settlementLinkPartners !== 'function') return payments;
+    const state = entries.reduce((best, entry) => Number(entry.战斗效果.cost_share_ratio) > Number(best.战斗效果.cost_share_ratio) ? entry : best);
+    const ratio = Math.max(0, Math.min(0.9, Number(state.战斗效果.cost_share_ratio) || 0));
+    const partners = previewRuntime.settlementLinkPartners(combatData, actor, state, 'cost');
+    if (!(ratio > 0) || !partners.length) return payments;
+    const result = [];
+    payments.forEach(payment => {
+      let own = payment.amount;
+      const each = payment.amount * ratio / partners.length;
+      partners.forEach(partner => {
+        const available = persistentResourceValue(partner, payment.key);
+        if (!(each > 1e-9) || !(available + 1e-9 >= each)) return;
+        own -= each;
+        result.push({ ...payment, payer: partner, payerId: previewRuntime.unitId(partner) || previewRuntime.unitName(partner),
+          amount: each, before: available, after: available - each, sharedFrom: previewRuntime.unitId(actor) });
+      });
+      result.push({ ...payment, amount: Math.max(0, own), after: payment.before - Math.max(0, own) });
+    });
+    return result;
   }
 
   function persistentResourceValue(unit = {}, key = '') {
@@ -3388,11 +3417,11 @@
     const runtime = unit.__技能限制运行态 && typeof unit.__技能限制运行态 === 'object'
       ? unit.__技能限制运行态
       : (unit.__技能限制运行态 = {});
-    const battleRuntime = ensureCombatRuntime(combatData);
-    if (!battleRuntime.itemPassiveBattleId) battleRuntime.itemPassiveBattleId = nextRuntimeId('item-passive-battle');
     const currentTick = Math.max(0, Math.floor(Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0)));
+    // 每战: one mark for the battle (11-15: it was an id of the battle-wide runtime, which is not kept between requests, so the count
+    // started over every round the game settled).
     const periodKey = period === '每战'
-      ? battleRuntime.itemPassiveBattleId
+      ? '战斗'
       : period === '每日'
         ? Math.floor(currentTick / 144)
         : period === '每回合'
@@ -7023,6 +7052,36 @@
     if (unit.召唤键) syncSummonMirror(unit);
   }
 
+  // A fallen 分身 or 本命召唤兽 strikes back at its host, once: SUMMON_DEATH_BACKLASH of the host's maximum — a physical 分身
+  // its HP, a mental one (驱动属性 精神力上限) its 精神力, a 本命召唤兽 both. Settled at each declaration's boundary.
+  const SUMMON_DEATH_BACKLASH = 0.3;
+  function settleFallenSummonBacklash(combatData = {}) {
+    listSummonCombatUnits(combatData).forEach(summon => {
+      const kind = String(summon?.__死亡反噬 || '').trim();
+      if (!kind || summon.__死亡反噬已结算 === true || summon.已消散 === true || previewRuntime.readHp(summon) > 0) return;
+      summon.__死亡反噬已结算 = true;
+      const host = summon.__宿主;
+      if (!host || !(previewRuntime.readHp(host) > 0)) return;
+      const lost = {};
+      if (kind === '物理' || kind === '本命') {
+        const before = previewRuntime.readHp(host);
+        writeCombatResource(host, 'hp', before - previewRuntime.readHpMax(host) * SUMMON_DEATH_BACKLASH);
+        lost.生命 = before - previewRuntime.readHp(host);
+      }
+      if (kind === '精神' || kind === '本命') {
+        const before = persistentResourceValue(host, 'men');
+        writeCombatResource(host, 'men', before - previewRuntime.readResourceMax(host, '精神力') * SUMMON_DEATH_BACKLASH);
+        lost.精神力 = before - persistentResourceValue(host, 'men');
+      }
+      writeLedgerEvent(combatData, {
+        eventKind: 'summon_backlash', round: Number(combatData?.回合 || 0),
+        actorName: previewRuntime.unitName(summon), targetName: previewRuntime.unitName(host), actionName: '召唤物死亡反噬',
+        actionType: 'summon_end', actionRole: 'STATE_TICK', result: 'backlash', resultState: 'LOSS',
+        meta: { source: 'summon', backlashKind: kind, ratio: SUMMON_DEATH_BACKLASH, lost },
+      });
+    });
+  }
+
   function removeSummonUnit(combatData = {}, summon = {}, reason = '消散') {
     if (!summon || summon.已消散 === true) return '';
     const host = summon.__宿主;
@@ -10076,11 +10135,25 @@
         summons.push(table[key]);
         continue;
       }
+      // 召唤类型（用户 2026-11-15 第 6 条「分身继承属性，本命召唤兽则是自身属性会随着宿主的等级增加而增加」）: a 分身 (and the
+      // other kinds) takes 继承属性比例 of its host's panel; a 本命召唤兽 has its own — the level table's panel at its host's
+      // level × 继承属性比例 — and a host keeps one at a time (a second call finds it on the field).
+      const bonded = summonType === '本命召唤兽';
+      if (bonded) {
+        const standing = Object.values(table).find(unit => unit && unit.已消散 !== true && unit.召唤单位类型 === '本命召唤兽' &&
+          isUnitIdentityMatch(unit.__宿主, actor) && previewRuntime.readHp(unit) > 0);
+        if (standing) { summons.push(standing); continue; }
+      }
+      const levelPanel = bonded && typeof root.__LWCS_GET_BASE_STATS__ === 'function' ? root.__LWCS_GET_BASE_STATS__(summonLevel) || null : null;
+      const panelOf = (resource, key) => levelPanel ? Number(levelPanel[key]) || 0
+        : resource === 'hp' ? previewRuntime.readHpMax(actor) : resource === 'stat' ? previewRuntime.readCombatStat(actor, key) : previewRuntime.readResourceMax(actor, resource);
       const stateKey = `召唤:${displayName}`;
-      const hpMax = Math.max(1, Math.floor(previewRuntime.readHpMax(actor) * inheritRatio));
-      const staminaMax = Math.max(1, Math.floor(previewRuntime.readResourceMax(actor, '体力') * inheritRatio));
-      const soulMax = Math.max(1, Math.floor(previewRuntime.readResourceMax(actor, '魂力') * inheritRatio));
-      const mentalMax = Math.max(1, Math.floor(previewRuntime.readResourceMax(actor, '精神力') * inheritRatio));
+      const hpMax = Math.max(1, Math.floor(panelOf('hp', 'vit_max') * inheritRatio));
+      const staminaMax = Math.max(1, Math.floor(panelOf('体力', 'vit_max') * inheritRatio));
+      const soulMax = Math.max(1, Math.floor(panelOf('魂力', 'sp_max') * inheritRatio));
+      const mentalMax = Math.max(1, Math.floor(panelOf('精神力', 'men_max') * inheritRatio));
+      // 死亡反噬（同日「本命召唤兽和分身死亡都有反噬，精神力分身反噬精神力，物理分身反噬血量，本命召唤兽反噬血量+精神力」「30%，按驱动区分」）。
+      const backlash = bonded ? '本命' : summonType === '分身' ? (String(effect?.驱动属性 || '').trim() === '精神力上限' ? '精神' : '物理') : '';
       const sourceState = {
         类型: 'buff', 状态: stateKey, 状态名称: stateKey, duration,
         描述: `由[${action.actionName}]生成`, 来源原型摘要: '召唤生成', 来源技能: action.actionName,
@@ -10104,9 +10177,10 @@
         vit: staminaMax, vit_max: staminaMax, sta: staminaMax, sta_max: staminaMax, 体力: staminaMax, 体力上限: staminaMax,
         sp: soulMax, sp_max: soulMax, 魂力: soulMax, 魂力上限: soulMax,
         men: mentalMax, men_max: mentalMax, 精神力: mentalMax, 精神力上限: mentalMax,
-        str: Math.max(1, Math.floor(previewRuntime.readCombatStat(actor, 'str') * inheritRatio)),
-        def: Math.max(1, Math.floor(previewRuntime.readCombatStat(actor, 'def') * inheritRatio)),
-        agi: Math.max(1, Math.floor(previewRuntime.readCombatStat(actor, 'agi') * inheritRatio)),
+        str: Math.max(1, Math.floor(panelOf('stat', 'str') * inheritRatio)),
+        def: Math.max(1, Math.floor(panelOf('stat', 'def') * inheritRatio)),
+        agi: Math.max(1, Math.floor(panelOf('stat', 'agi') * inheritRatio)),
+        ...(backlash ? { __死亡反噬: backlash } : {}),
         状态: { 存活: true }, 状态效果: {}, 持续效果: {},
         __definitionHash: definitionHash,
         技能列表: Array.isArray(effect?.技能列表) && effect.技能列表.length
@@ -10659,6 +10733,7 @@
     // Some committed mutations (prepared reactions, passive limits, grants)
     // happen after the last resource/state write. Publish the completed unit
     // state to its sole persistent mirror at the declaration boundary.
+    settleFallenSummonBacklash(combatData);
     listSummonCombatUnits(combatData).forEach(syncSummonMirror);
     const end = ensureLedger(combatData).at(-1) || actionEvent;
     actionEvent.meta.declarationSettlement = {
@@ -10784,11 +10859,12 @@
       persistentResourceValue(payment.payer, payment.key) + 1e-9 < payment.amount,
     );
     if (runtimeInsufficient) throw new Error(`battle_structured_resource_insufficient:${runtimeInsufficient.resource}:${runtimeInsufficient.payerId}`);
+    const startupPayments = costPayers.length === 1 ? costSharePayments(combatData, actor, paymentPlan.payments) : paymentPlan.payments;
     // 维持类真身、融合技发动：启动消耗打到一成以下也先不砍体力（endSustainedAvatarRelease 撤标记）。
     if (actionKind === 'RELEASE_SKILL' && previewRuntime.sustainedAvatarRelease(declaration.skill || {}, { 来源模块: 'BattleRuntime_Module', ...declaration, costActor: actor })) {
       costPayers.forEach(unit => { unit.__battleRuntime = { ...(unit.__battleRuntime || {}), __维持类发动中: true }; });
     }
-    paymentPlan.payments.forEach(payment => {
+    startupPayments.forEach(payment => {
         const costPayer = payment.payer;
         const key = payment.key;
         const resource = payment.resource;
@@ -11227,7 +11303,7 @@
         ? previewRuntime.positionSwapSuccessMultiplier(actor, sampledTarget, effect, { hostile: inferUnitSide(combatData, sampledTarget) !== inferUnitSide(combatData, actor) })
         : 1;
       const resistanceMultiplier = (typeof previewRuntime.stateApplicationProbabilityMultiplier === 'function'
-        ? previewRuntime.stateApplicationProbabilityMultiplier(sampledTarget || {}, effect)
+        ? previewRuntime.stateApplicationProbabilityMultiplier(sampledTarget || {}, effect, actor)
         : 1) * swapMultiplier;
       const probability = Math.max(0, Math.min(1,
         baseProbability * resistanceMultiplier,
@@ -11641,6 +11717,32 @@
           })
         : unrolledTargets;
       if (!resolvedTargets.length) return;
+      // 主动技能效果的触发限制（11-15 设计侧与运行时排查：「每战 1 次」打四折却从不受限）: spent once an action (the effect may run
+      // once a target group); a spent one is skipped (BattlePreview triggerLimitAllowed, the count the preview reads too).
+      const skillEffectIndex = Number(effectIndex) - grantedEffects.length;
+      // 技能整体的触发限制（技能.触发限制）: spent with its first effect, once an action.
+      if (actionKind === 'RELEASE_SKILL' && declaration?.skill?.触发限制 && typeof declaration.skill.触发限制 === 'object' && skillEffectIndex === 0 && !conditionalMeta?.conditionalDepth) {
+        const spentHere = actionEvent.__triggerLimitSpent ||= new Set(), skillKey = previewRuntime.activeTriggerLimitKey(declaration.skill, '技能');
+        if (!spentHere.has(skillKey)) { spentHere.add(skillKey); previewRuntime.triggerLimitAllowed(actor, declaration.skill.触发限制, skillKey, combatData?.回合, true); }
+      }
+      if (actionKind === 'RELEASE_SKILL' && declaration?.skill && effect?.触发限制 && typeof effect.触发限制 === 'object' && !conditionalMeta?.conditionalDepth &&
+        skillEffectIndex >= 0 && !equipmentPassiveEffectHashes.has(equipmentPassiveEffectKey(effect))) {
+        const limitKey = previewRuntime.activeTriggerLimitKey(declaration.skill, skillEffectIndex);
+        const spentHere = actionEvent.__triggerLimitSpent ||= new Set();
+        if (!spentHere.has(limitKey)) {
+          if (!previewRuntime.triggerLimitAllowed(actor, effect.触发限制, limitKey, combatData?.回合, true)) {
+            facts.push(writeLedgerEvent(combatData, {
+              eventKind: 'blocked_settlement', round: Number(combatData?.回合 || 0), actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
+              actionName, actionType: actionKind, actorControl, actionRole, actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
+              parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
+              result: 'limit_exhausted', resultState: 'NO_EFFECT', primaryOutcome: 'trigger_limit_exhausted', effectPrototype: prototype, sourceEffectId,
+              meta: { source: 'structured_runtime', effectIndex, limit: effect.触发限制 },
+            }));
+            return;
+          }
+          spentHere.add(limitKey);
+        }
+      }
       if (effect?.条件分支?.length) {
         const conditionalDepth = Number(conditionalMeta.conditionalDepth || 0), limit = previewRuntime.recursionDepthLimit;
         if (!(Number.isFinite(limit) && limit > 0)) throw new Error('battle_preview_recursion_limit_contract_missing');
@@ -12879,7 +12981,7 @@
             1,
           );
           const resistanceMultiplier = typeof previewRuntime.stateApplicationProbabilityMultiplier === 'function'
-            ? previewRuntime.stateApplicationProbabilityMultiplier(target, effect)
+            ? previewRuntime.stateApplicationProbabilityMultiplier(target, effect, actor)
             : 1;
           facts.push(writeLedgerEvent(combatData, {
             eventKind: 'state_apply', round: Number(combatData?.回合 || 0), actorName: previewRuntime.unitName(actor), targetName: previewRuntime.unitName(target),
@@ -16166,7 +16268,11 @@
               event?.ruleCode,
               event?.meta?.stateName,
             ].map(value => String(value || '').trim()).join('|');
-            return /incapacitat|cannot_act|skip_turn|失能|昏迷|眩晕|冻结|束缚|禁锢/i.test(
+            // A partial 冻结 (冻结程度 below 100%) holds the body only.
+            const partialFreeze = /冻结/.test(String(event?.meta?.stateName || '')) &&
+              Object.values(target?.状态效果 || {}).some(state => /冻结/.test(String(state?.状态 || state?.状态名称 || '')) &&
+                Number(state?.战斗效果?.freeze_degree) > 0 && Number(state?.战斗效果?.freeze_degree) < 1 - 1e-9);
+            return !partialFreeze && /incapacitat|cannot_act|skip_turn|失能|昏迷|眩晕|冻结/i.test(
                 outcome,
               );
           });

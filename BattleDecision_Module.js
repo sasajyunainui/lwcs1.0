@@ -6825,6 +6825,16 @@
         isImmediateReactionSkill({ ...settledSkill, 前摇: immediateBudget, cast_time: immediateBudget }, immediateBudget)
         ? immediateBudget / settledCast : 1;
       const skill = lateCoverage < 1 ? preview.lateDefenseSkill(settledSkill, lateCoverage, immediateBudget) : settledSkill;
+      // 技能整体的触发限制（每战/每回合 N 次）: a skill whose count is spent is not offered (BattleRuntime spends it on release).
+      if (skill?.触发限制 && typeof skill.触发限制 === 'object' && !preview.triggerLimitAllowed(actor, skill.触发限制, preview.activeTriggerLimitKey(skill, '技能'), worldSnapshot?.回合, false)) {
+        recordRejected({ actionKind: 'RELEASE_SKILL', sourceActionId: `${actorId}:skill:${sourceSkillId}`, rejectionCode: 'RULE_TRIGGER_LIMIT_SPENT', skillId: sourceSkillId, skillName: sourceSkillName });
+        return;
+      }
+      // 束缚: a held body throws no melee strike and moves itself nowhere (BattlePreview deriveStateCombatEffect bound).
+      if (hasStateFlag(actor, 'bound') && skillNeedsBody(skill)) {
+        recordRejected({ actionKind: 'RELEASE_SKILL', sourceActionId: `${actorId}:skill:${sourceSkillId}`, rejectionCode: 'RULE_BOUND', skillId: sourceSkillId, skillName: sourceSkillName });
+        return;
+      }
       if (!Array.isArray(skill?._效果数组) || !skill._效果数组.length) {
         recordRejected({
           actionKind: 'RELEASE_SKILL',
@@ -7269,8 +7279,21 @@
     return candidates;
   }
 
-  function isHardControlStateName(name = '') {
-    return ['眩晕', '束缚', '禁锢', '定身', '冻结', '冻结束缚', '星光停滞'].includes(String(name || '').trim());
+  // A skill that needs the body (束缚 forbids it): a melee strike (伤害类型 近身攻击) or a move of oneself (位移执行 自身 / 自身与目标).
+  function skillNeedsBody(skill = {}) {
+    return preview.collectEffects(skill || {}).some(effect => {
+      const prototype = String(effect?.原型 || '').trim();
+      if (prototype === '伤害结算') return String(effect?.伤害类型 || '').trim() === '近身攻击';
+      if (prototype === '位移执行') return ['自身', '自身与目标'].includes(String(effect?.位移对象 || '').trim());
+      return false;
+    });
+  }
+
+  // A partial 冻结 (冻结程度 below 100%, freeze_degree on its 战斗效果) holds the body as 束缚 does and stops nothing.
+  function isHardControlStateName(name = '', combatEffect = null) {
+    const degree = Number(combatEffect?.freeze_degree);
+    if (/冻结/.test(String(name || '')) && Number.isFinite(degree) && degree > 0 && degree < 1 - 1e-9) return false;
+    return ['眩晕', '冻结', '冻结束缚', '沉睡', '星光停滞'].includes(String(name || '').trim());
   }
 
   function hasActionCancellation(unit = {}) {
@@ -7363,8 +7386,8 @@
     let multiplier = 1;
     stateEntries(unit).forEach(state => {
       const name = String(state?.状态 || state?.状态名称 || '').trim();
-      if (options.ignoreActionCancellation && isHardControlStateName(name)) return;
       const effects = state?.战斗效果 || {};
+      if (options.ignoreActionCancellation && isHardControlStateName(name, effects)) return;
       const applicationProbability = clamp(Number(state?.__previewApplicationProbability ?? 1), 0, 1);
       const reactionPenalty = clamp(Number(effects?.reaction_penalty || 0), 0, 0.9);
       const castPenalty = clamp(Number(effects?.cast_speed_penalty || 0), 0, 0.9);
@@ -16247,7 +16270,7 @@
         if (String(effect?.原型 || '').trim() !== '状态施加') return highest;
         const stateName = String(effect?.状态 || effect?.状态名称 || '').trim();
         const mechanics = preview.deriveStateCombatEffect(effect);
-        const cancelsAction = isHardControlStateName(stateName) || mechanics?.skip_turn === true || mechanics?.cannot_act === true;
+        const cancelsAction = isHardControlStateName(stateName, mechanics) || mechanics?.skip_turn === true || mechanics?.cannot_act === true;
         return cancelsAction ? Math.max(highest, probabilityValue(effect?.成功率 ?? effect?.触发概率, 0.65)) : highest;
       }, 0);
       if (!(probability > best.probability)) return best;
