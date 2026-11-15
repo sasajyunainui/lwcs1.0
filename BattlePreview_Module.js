@@ -5169,7 +5169,9 @@
   const sideEffectTargetSet = new Set(['技能释放者', '效果承受者', '双方']);
   const sideEffectStatusMap = Object.freeze({
     全属性降低: '虚弱', 自损反噬: '反噬', 精神紊乱: '精神紊乱', 魂力反噬: '魂力枯竭',
-    命中下降: '精神紊乱', 动作迟缓: '迟缓', 目标错乱: '混乱', 施法僵直: '施法迟滞',
+    // 命中下降 puts on its own state (11-15: it was named 精神紊乱, and a skill with both side effects — 多情斗罗 曾经 — had the
+    // second replace the first, same-named, so 25% 目标错乱 and −8% 反应 were lost while both were counted in its price).
+    命中下降: '命中下降', 动作迟缓: '迟缓', 目标错乱: '混乱', 施法僵直: '施法迟滞',
     本源损耗: '本源损耗', 重伤昏迷: '重伤昏迷',
   });
   // The state a side effect puts on. 施法僵直's is 施法迟滞 (casting slower: buildSideEffectPayload's cast_speed_penalty);
