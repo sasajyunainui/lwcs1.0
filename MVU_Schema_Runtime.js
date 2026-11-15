@@ -6122,6 +6122,8 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
     } else {
       autoBreakthrough(data);
     }
+    // 魂技预算复核（11-15）：新魂环的魂技在这里按当前面板生成，面板在下面才重算，变了就在重算后复核一次。
+    const 魂技预算面板快照表 = new Map(Object.entries(data.char || {}).map(([角色名, 角色数据]) => [角色名, typeof 面板预算快照_V1 === 'function' ? 面板预算快照_V1(角色数据) : '']));
     if (是否新档初始化) {
       globalThis.__LWCS_INITIALIZE_SKILL_EFFECTS__(data);
     } else {
@@ -6484,6 +6486,11 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       c.属性.敏捷 = Math.max(1, Math.floor(c.属性.敏捷 * fatiguePenaltyMult));
       同步紫极神光技能_V1(c, currentTick);
     });
+    if (typeof 复核角色魂环魂技预算_V1 === 'function') {
+      _(data.char).forEach((c, charName) => {
+        if (本轮补齐魂环角色.has(charName) || 是否新档初始化 || 面板预算快照_V1(c) !== 魂技预算面板快照表.get(charName)) 复核角色魂环魂技预算_V1(c);
+      });
+    }
 
     if (!data.world.战斗 || typeof data.world.战斗 !== 'object') data.world.战斗 = {};
 
@@ -8587,6 +8594,8 @@ function 规范化角色Schema_V1(char) {
     }
 
     补齐角色魂骨槽位_V1(char);
+    // 魂环魂技在下面按当前（旧）面板收敛；面板在后面才算完，变了就在面板写回后复核一次（复核角色魂环魂技预算_V1）。
+    const 魂技预算面板快照 = typeof 面板预算快照_V1 === 'function' ? 面板预算快照_V1(char) : '';
 
     let totalSpirits = 0;
     const genericSkillAge = Math.max(1000, Number(char.属性.等级 || 1) * 200);
@@ -9044,6 +9053,7 @@ function 规范化角色Schema_V1(char) {
       final_sp_max + (wpnBonus.魂力上限 || 0) + (防具加成.魂力上限 || 0) + (armorBonus.魂力上限 || 0) + (mechBonus.魂力上限 || 0),
     );
     normalizeStatHpFields(char.属性);
+    if (typeof 复核角色魂环魂技预算_V1 === 'function' && 面板预算快照_V1(char) !== 魂技预算面板快照) 复核角色魂环魂技预算_V1(char);
     if (本轮初始化魂师面板) {
       char.属性.魂力 = char.属性.魂力上限;
       char.属性.精神力 = char.属性.精神力上限;

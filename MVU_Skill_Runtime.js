@@ -21792,6 +21792,59 @@ function buildTemporaryConstructDescription(itemName, usageEffects, ttl, options
   return text;
 }
 
+// 魂环魂技预算复核（用户 2026-11-15「建角完成后补一次只修越界」）：解析时魂环魂技在角色面板（等级、资源上限）算完之前收敛，
+// 面板一变（建角、升级、换装、加魂骨）门禁就跟着变，约 5% 的技能要等下一次读档才回到区间。面板写回后对每个魂环魂技按当前面板
+// 再算一次门禁，只有越界（超门禁或低于最低有效 COST 超过容差）的才做一次只修越界收敛，并刷新描述。返回改动的技能数。
+function 面板预算快照_V1(char = {}) {
+  const 属性 = char?.属性 || {};
+  return ['等级', '天赋梯队', '魂力上限', '精神力上限', '体力上限'].map(键 => String(属性?.[键] ?? '')).join('|');
+}
+function 复核角色魂环魂技预算_V1(char = {}) {
+  let 改动数 = 0;
+  取角色武魂条目_V1(char).forEach(([, 武魂数据]) => {
+    if (!武魂数据 || typeof 武魂数据 !== 'object') return;
+    const 系别 = String(武魂数据?.系别 || 取角色主武魂系别_V1(char)).trim() || '强攻系';
+    取武魂魂灵条目_V1(武魂数据).forEach(([, 魂灵]) => {
+      if (!魂灵 || typeof 魂灵 !== 'object') return;
+      const 来源品质 = normalizeSoulSpiritQuality(魂灵?.品质 || '') || inferSoulSpiritQuality(魂灵) ||
+        normalizeSoulSpiritQuality(武魂数据?.品质 || '') || inferSoulSpiritQuality(武魂数据) || '';
+      取魂灵魂环条目_V1(魂灵).forEach(([魂环键, 魂环]) => {
+        const 魂环位 = Math.max(1, Math.floor(Number(String(魂环键).replace(/\D/g, '')) || 1));
+        取魂环魂技条目_V1(魂环).forEach(([, 技能]) => {
+          if (!技能 || typeof 技能 !== 'object' || !Array.isArray(技能._效果数组) || !技能._效果数组.length) return;
+          const 计价 = 技能带当前计价版本_V1(技能) ? {} : { 沿用旧版授予壳与有效期计价: true };
+          const 上下文 = 构建自动生成预算上下文_V1({
+            type: 系别, 武魂系别: 系别, 角色: char, 武魂数据, 魂环数据: 魂环, talentTier: char?.属性?.天赋梯队,
+            age: 魂环?.年限, ringAge: 魂环?.年限, ringIndex: 魂环位, sourceQuality: 来源品质, sourceCategory: '魂技',
+            forceTrueBody: 魂环位 === 7, 启用位级硬上限: true, 读档只修越界: true, ...计价,
+          });
+          // 消耗成长：先把「固定+N%」还原成获得时锚定的绝对消耗再核（与读档 ensureSkillStructGenerated 同口径），收尾换算回去。
+          const 成长上下文 = { ...上下文, ringIndex: 魂环位, 魂环位, 角色: char };
+          try {
+            const 锚定技能 = cloneJsonValue(技能, {});
+            try { 展开魂技成长消耗为锚定口径_V1(锚定技能, 成长上下文); } catch (错误) { /* 还原失败按原消耗核 */ }
+            const 评估 = 评估技能预算_V1(锚定技能, 上下文);
+            const 下限 = Math.max(0.5, Number(评估?.最低有效COST || 0) || 读取预算评估最低有效COST_V1(评估, 上下文));
+            const 越界 = 技能COST超预算_V1(评估.实际COST, 评估.实际门禁) || Number(评估.实际COST || 0) < 下限 - 技能预算超预算容差_V1;
+            if (!越界) return;
+            const 结果 = 收敛技能到预算区间_V1(锚定技能, { ...上下文, 机制标签: '魂技' }, null);
+            if (!结果?.改动) return;
+            const 新技能 = 结果.技能 || 锚定技能;
+            try { 规范化魂技成长消耗_V1(新技能, 成长上下文); } catch (错误) { /* 换算失败保持绝对值消耗 */ }
+            Object.keys(技能).forEach(键 => delete 技能[键]);
+            Object.assign(技能, 新技能);
+            hydrateSkillTextByPackedEffects(技能);
+            改动数 += 1;
+          } catch (error) {
+            // 收不进区间时保持原样（与读档一致：读档只修越界失败会软落地，不拦解析）。
+          }
+        });
+      });
+    });
+  });
+  return 改动数;
+}
+
 function hydrateSkillTextByPackedEffects(skill) {
   if (!skill || !Array.isArray(skill._效果数组) || skill._效果数组.length === 0) return skill;
   清理技能效果数组AI文本字段_V1(skill._效果数组);

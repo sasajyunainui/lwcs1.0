@@ -5764,11 +5764,23 @@
     );
     let 来源类别 = '魂技';
     let 预算角色 = 角色属性;
+    let 来源品质 = '';
     if (['魂技', 'independent_ring_skill'].includes(范围)) {
       来源类别 = '魂技';
-      预算角色 = 构建技能设计台标准战斗属性(10 * Math.min(9, 魂环位) + 1, 角色属性.type || 草稿?.type || '强攻系', {
-        天赋梯队: 角色属性?.属性?.天赋梯队 || 角色数据?.属性?.天赋梯队 || 角色数据?.天赋梯队 || '正常',
-      });
+      // 预算按角色本人算（11-15 用户「要」：与游戏解析时收敛魂技同一口径——角色本人的等级、天赋、资源上限，加魂灵品质）；
+      // 没有角色数据（空白新技能）时才回落到本环标准角色。此前一律按本环标准角色，显示的合格区间与游戏里不一致。
+      预算角色 = 角色数据 && 角色数据.属性 && Object.keys(角色数据).length
+        ? 角色数据
+        : 构建技能设计台标准战斗属性(10 * Math.min(9, 魂环位) + 1, 角色属性.type || 草稿?.type || '强攻系', {
+          天赋梯队: 角色属性?.属性?.天赋梯队 || 角色数据?.属性?.天赋梯队 || 角色数据?.天赋梯队 || '正常',
+        });
+      const 魂灵索引 = 路径.findIndex(片段 => /^第\d+魂灵$/.test(normalizeSkillUiText(片段, '')));
+      const 魂灵数据 = 魂灵索引 >= 0 ? deepGet(根数据, 路径.slice(0, 魂灵索引 + 1), {}) : {};
+      const 品质工具 = typeof globalThis !== 'undefined' ? globalThis : {};
+      if (typeof 品质工具.normalizeSoulSpiritQuality === 'function' && typeof 品质工具.inferSoulSpiritQuality === 'function') {
+        来源品质 = 品质工具.normalizeSoulSpiritQuality(魂灵数据?.品质 || '') || 品质工具.inferSoulSpiritQuality(魂灵数据) ||
+          品质工具.normalizeSoulSpiritQuality(武魂数据?.品质 || '') || 品质工具.inferSoulSpiritQuality(武魂数据) || '';
+      }
     } else if (范围 === 'blood_ring_skill') {
       来源类别 = '气血魂技';
     } else if (范围 === 'blood_skill' || 范围 === 'blood_passive') {
@@ -5798,6 +5810,8 @@
       魂环数据,
       ringAge: 魂环数据?.年限,
       ringColor: 魂环数据?.颜色,
+      ...(来源品质 ? { sourceQuality: 来源品质 } : {}),
+      ...(['魂技', 'independent_ring_skill'].includes(范围) ? { talentTier: 预算角色?.属性?.天赋梯队, 武魂数据, forceTrueBody: 魂环位 === 7 } : {}),
       融合记录: 范围 === '武魂融合技' ? getSkillDesignerFusionRecord(根数据, previewMeta) : undefined,
     };
   }
