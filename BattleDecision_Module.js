@@ -1839,6 +1839,9 @@
           ...(String(state?.原型 || '').trim() ? { prototype: String(state.原型).trim() } : {}),
           ...(String(state?.规则 || '').trim() ? { rule: String(state.规则).trim() } : {}),
           ...(String(state?.防御对象 || '').trim() ? { defenseTarget: String(state.防御对象).trim() } : {}),
+          // 护卫: who stands guard is in plain sight (the guard is in front of its charge) — r20Cover reads it (11-16 第 4 题).
+          ...(String(state?.状态 || state?.状态名称 || '').trim() === '护卫' && String(state?.来源角色 || '').trim()
+            ? { source: String(state.来源角色).trim() } : {}),
           applicationProbability: clamp(
             Number(
               state?.__previewApplicationProbability ?? 1,
@@ -2264,6 +2267,7 @@
         ...(state?.prototype ? { 原型: state.prototype } : {}),
         ...(state?.rule ? { 规则: state.rule } : {}),
         ...(state?.defenseTarget ? { 防御对象: state.defenseTarget } : {}),
+        ...(state?.source ? { 来源角色: state.source } : {}),
         __previewApplicationProbability: clamp(Number(state?.applicationProbability ?? 1), 0, 1),
         ...(Number(state?.shieldRatio || 0) > 1e-12
           ? {
@@ -65988,6 +65992,20 @@
   const R20_NO_CONTROL = Object.freeze({ stop: 0, control: Object.freeze({ lock: 0, pace: 0, hard: 0, expose: 0, exposePace: 0 }) });
   // The whole hits a unit's charges take before its HP counts: rule blocks and death saves.
   const r20Guard = unit => preview.ruleBlockCount(unit) + preview.deathSaveCount(unit);
+  // 护卫（BattlePreview resolveTargets: a single-target hostile effect on a unit under 护卫 goes to the one who guards it while
+  // that one can act): the row of the unit that covers this one, and the rounds the state has left (11-16 行为检查目录第 4 题
+  // 「保护关系被打破」：推演原先不知道护卫，只有候选那一下转给护卫者，此后照打被护者).
+  const r20Cover = (unit, units, sides, row) => {
+    for (const state of Object.values(unit?.状态效果 || {})) {
+      if (String(state?.状态 || state?.状态名称 || '').trim() !== '护卫') continue;
+      const name = String(state?.来源角色 || '').trim();
+      const guard = name ? units.findIndex((other, index) => index !== row && sides[index] === sides[row] && preview.unitName(other) === name) : -1;
+      if (guard < 0) continue;
+      const rounds = Number(state.duration ?? state.持续回合);
+      return { row: guard, until: Number.isFinite(rounds) && rounds > 0 ? rounds : Infinity };
+    }
+    return null;
+  };
   // What a revival gives back when its unit falls, a share of its HP maximum (BattlePreview triggerRevive: the state's
   // revive_heal_ratio, a quarter unless written; a passive 死亡转存活 likewise) — a second, shorter life, not a hit taken.
   const r20Revive = unit => {
@@ -66479,7 +66497,7 @@
   const R20_RACE_ROUNDS = 12, R20_WIN_VALUE = 1;
   function r20Race(facts, own, plan = null) {
     r20Work.races += 1;
-    const { sides, remaining, alive } = facts, count = sides.length;
+    const { sides, remaining, alive } = facts, count = sides.length, cover = facts.cover || null;
     const left = remaining.map((value, index) => value * alive[index]), charges = facts.guard.slice();
     // Stamina beside HP (own units; Infinity where it is not known or there is none): it loses what the unit takes and is
     // not mended.
@@ -66529,6 +66547,7 @@
       }
       if (denied) for (let unit = 0; unit < count; unit += 1) if (denied[unit] > time + 1e-9) nextChange = Math.min(nextChange, denied[unit]);
       if (idle) for (let unit = 0; unit < count; unit += 1) if (idle[unit] > time + 1e-9) nextChange = Math.min(nextChange, idle[unit]);
+      if (cover) for (let unit = 0; unit < count; unit += 1) if (cover[unit] && cover[unit].until > time + 1e-9 && Number.isFinite(cover[unit].until)) nextChange = Math.min(nextChange, cover[unit].until);
       if (until) for (let unit = 0; unit < count; unit += 1) if (until[unit] > time + 1e-9) nextChange = Math.min(nextChange, until[unit]);
       if (busy) for (let unit = 0; unit < count; unit += 1) if (busy[unit] > time + 1e-9) nextChange = Math.min(nextChange, busy[unit]);
       if (tickRounds) for (let unit = 0; unit < count; unit += 1) if (tickRounds[unit] > time + 1e-9) nextChange = Math.min(nextChange, tickRounds[unit]);
@@ -66604,13 +66623,16 @@
           exposed[target] = 1 - (1 - exposed[target]) * (1 - kept.expose);
         }
       }
+      // A hit on a unit under 护卫 lands on its guard while the guard stands, can act and the state lasts (r20Cover).
+      const struck = row => { const by = cover?.[row];
+        return by && by.row >= 0 && time < by.until - 1e-9 && left[by.row] > 1e-9 && acting(by.row) ? by.row : row; };
       for (let unit = 0; unit < count; unit += 1) {
         if (!striking(unit)) continue;
         const foe = sideNames.find(side => side !== sides[unit]), ally = focus[sides[unit]].unit;
-        let target = focus[foe].unit, strike = cells(unit, target).out[unit][target] * takes(cells(unit, target), target, unit);
-        if (!(strike > 0)) for (let other = 0; other < count; other += 1) {
-          if (sides[other] === sides[unit] || !(left[other] > 1e-9)) continue;
-          const value = cells(unit, other).out[unit][other] * takes(cells(unit, other), other, unit);
+        let target = struck(focus[foe].unit), strike = cells(unit, target).out[unit][target] * takes(cells(unit, target), target, unit);
+        if (!(strike > 0)) for (let aim = 0; aim < count; aim += 1) {
+          if (sides[aim] === sides[unit] || !(left[aim] > 1e-9)) continue;
+          const other = struck(aim), value = cells(unit, other).out[unit][other] * takes(cells(unit, other), other, unit);
           if (value > strike) { strike = value; target = other; }
         }
         const share = free(unit);
@@ -66625,8 +66647,9 @@
         if (exchange && !(strike + exchange.more > exchange.taken)) {
           let best = 0;
           exchange = null;
-          for (let other = 0; other < count; other += 1) {
-            if (other === target || sides[other] === sides[unit] || !(left[other] > 1e-9)) continue;
+          for (let aim = 0; aim < count; aim += 1) {
+            const other = struck(aim);
+            if (other === target || sides[other] === sides[unit] || !(left[aim] > 1e-9)) continue;
             const hit = cells(unit, other).out[unit][other] * takes(cells(unit, other), other, unit) * share;
             if (!(hit > 0)) continue;
             const trial = open(other), net = hit + trial.more - trial.taken;
@@ -66789,6 +66812,7 @@
       remaining: units.map((unit, row) => r20Left(unit, sides[row] === request.actorSide, against[sides[row]])),
       stamina: units.map((unit, row) => sides[row] === request.actorSide ? r20Stamina(unit) : null),
       alive: new Array(count).fill(1), guard: units.map(unit => r20Guard(unit)), revive: units.map(unit => r20Revive(unit)),
+      cover: units.map((unit, row) => r20Cover(unit, units, sides, row)),
       drain: units.map(unit => r20Absorb(unit).dealt), host: units.map((unit, row) => r20HostRow(unit, units, ids, sides, row)), skippedSkills: skipped.count,
       tick: units.map(unit => r20Tick(request, unit)), tickRounds: units.map(unit => r20TickRounds(unit)),
       reflect: units.map(unit => preview.counterDamageRatio(unit)), hpMax: units.map(unit => Math.max(1, preview.readHpMax(unit))),
@@ -67472,7 +67496,10 @@
       }
     }
     for (let row = 0; row < remaining.length; row += 1) if (typeof stamina[row] === 'number') stamina[row] = Math.max(0, stamina[row] - r20Injury * Math.max(0, hpMark[row] - remaining[row]));
-    const facts = { sides: sidesNow, out, support, stop, control, keep, keepBack, answer, answerOpen, back, turn, host, remaining, stamina, alive, guard, revive, drain, tick, tickRounds, reflect, hpMax, horizon: table.horizon, late: lateCells };
+    const cover = (table.cover || []).slice();
+    for (const [row, next] of rebuilt) cover[row] = r20Cover(next, table.units, table.sides, row);
+    while (cover.length < sidesNow.length) cover.push(null);
+    const facts = { cover, sides: sidesNow, out, support, stop, control, keep, keepBack, answer, answerOpen, back, turn, host, remaining, stamina, alive, guard, revive, drain, tick, tickRounds, reflect, hpMax, horizon: table.horizon, late: lateCells };
     const changed = new Array(count).fill(false);
     for (const [row] of rebuilt) if (!unchangedRows.has(row)) changed[row] = true;
     strikes.sort((left, right) => left.at - right.at);
