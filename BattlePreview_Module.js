@@ -3603,7 +3603,9 @@
     // 最后剩的生命份额（actorKept）；没有就按场上已打出的速率粗估（battleStandingOutlook）。
     const raced = contest?.outlook && typeof contest.outlook === 'object' ? contest.outlook : null;
     const outlook = raced ? { ...battleStandingOutlook(worldSnapshot, side), ...raced } : battleStandingOutlook(worldSnapshot, side);
-    const without = others ? battleStandingOutlook(worldSnapshot, side, id) : Object.freeze({ win: 0, lose: 1, draw: 0 });
+    // 走了之后队友的胜算：推演给了（raced.without，同一张桌面让自己离场再推一遍）就用它，两边同一口径。
+    const without = !others ? Object.freeze({ win: 0, lose: 1, draw: 0 })
+      : raced?.without && typeof raced.without === 'object' ? raced.without : battleStandingOutlook(worldSnapshot, side, id);
     // What the battle's result is worth to each unit on the field: won +1, lost −1 and its fate; run out, 0.
     const worth = view => view.win - view.lose - view.lose * fate;
     let stay = worth(outlook);

@@ -5579,13 +5579,15 @@
     const table = r20Facts({ visibleWorld: world, actorId: preview.unitId(target), actorSide: side,
       battleIntent: { mode: world.战斗意图, objectives: world.胜负条件 || {} }, actionOpportunity: { role: 'REACTION' } });
     const count = table.units.length;
-    const race = (row, hit, deny) => {
+    // The one stepping in gives up its action of the round, not its answers (idle, not denied: 11-16 行为检查目录第 35 题——
+    // 按被控住算，它这一回合对谁都不防不闪、整份吃下，A1 剩 13%、这一击就出局也判援护 −0.18，44 次机会无一援护）。
+    const race = (row, hit, stepIn) => {
       if (row === undefined) return null;
       const remaining = table.remaining.slice();
       remaining[row] = Math.max(0, remaining[row] - hit);
-      const denied = new Array(count).fill(0);
-      if (deny) denied[row] = 1;
-      const plan = { denied, until: new Array(count).fill(0), base: table, leaves: null, baseCount: count, changed: new Array(count).fill(false),
+      const idle = new Array(count).fill(0);
+      if (stepIn) idle[row] = 1;
+      const plan = { denied: table.held || null, idle, until: new Array(count).fill(0), base: table, leaves: null, baseCount: count, changed: new Array(count).fill(false),
         busy: table.busy || null, strikes: table.strikes || null };
       return r20Race({ ...table, remaining, alive: table.alive.slice(), stamina: table.stamina.slice() }, side, plan);
     };
@@ -5599,6 +5601,10 @@
       const stepped = race(table.index.get(preview.unitId(unit)), lands(unit, true), true);
       if (stepped === null) continue;
       const gain = stepped - unprotected;
+      if (typeof root.__LWCS_DECISION_DEBUG__?.onIntercept === 'function') {
+        root.__LWCS_DECISION_DEBUG__.onIntercept({ world, attackerId: input.sourceActorId, targetId: input.targetId, candidateId: id,
+          unprotected, stepped, gain, targetTakes: lands(target, false), stepperTakes: lands(unit, true) });
+      }
       if (gain > bestGain) { bestGain = gain; best = String(id); }
     }
     return best;
@@ -66455,6 +66461,9 @@
     const stam = facts.stamina ? facts.stamina.map(value => typeof value === 'number' ? value : Infinity) : null;
     const hpFalls = new Array(count);
     const denied = plan?.denied || facts.held || null, until = plan?.until || null, base = plan?.base || facts;
+    // idle[u]: rounds u gives up its own action but still answers what comes at it (援护：只用掉本回合的主动机会，
+    // BattleRuntime 的应对机会按每次来袭另给）——不同于 denied（被控住，连应对也没有、整份吃下）。
+    const idle = plan?.idle || null;
     const leaves = plan?.leaves || null, held = plan?.baseCount ?? count, changed = plan?.changed || null;
     // expired: the cells once a paid release lapses; cuts: stamina cuts put off until then ({ row, at, factor }).
     const expired = plan?.expired || null, cuts = plan?.cuts || null, cutDone = cuts ? cuts.map(() => false) : null;
@@ -66478,6 +66487,7 @@
       const cells = (unit, other) => unit >= held || other >= held ? facts
         : changed && (changed[unit] || changed[other]) ? (time < until[unit] && time < until[other] ? lasting : lapsed(unit, other)) : settled;
       const acting = unit => left[unit] > 1e-9 && !(denied && time < denied[unit]) && !(busy && time < busy[unit]);
+      const striking = unit => acting(unit) && !(idle && time < idle[unit]);
       // What of an attacker's hit a unit takes: its answer's share while it can answer; held (controlled — the hard control
       // lasts to the end of the round it took an action in, BattleRuntime consumeStructuredControlActiveBudget) or busy, it
       // takes the whole hit, as a unit that cannot act does in the table (r20FillPair).
@@ -66487,6 +66497,7 @@
         if (leaves[unit] <= time + 1e-9) left[unit] = 0; else nextChange = Math.min(nextChange, leaves[unit]);
       }
       if (denied) for (let unit = 0; unit < count; unit += 1) if (denied[unit] > time + 1e-9) nextChange = Math.min(nextChange, denied[unit]);
+      if (idle) for (let unit = 0; unit < count; unit += 1) if (idle[unit] > time + 1e-9) nextChange = Math.min(nextChange, idle[unit]);
       if (until) for (let unit = 0; unit < count; unit += 1) if (until[unit] > time + 1e-9) nextChange = Math.min(nextChange, until[unit]);
       if (busy) for (let unit = 0; unit < count; unit += 1) if (busy[unit] > time + 1e-9) nextChange = Math.min(nextChange, busy[unit]);
       if (tickRounds) for (let unit = 0; unit < count; unit += 1) if (tickRounds[unit] > time + 1e-9) nextChange = Math.min(nextChange, tickRounds[unit]);
@@ -66500,9 +66511,9 @@
         if (tick && tick[unit] && !(tickRounds && time >= tickRounds[unit] - 1e-9)) { if (tick[unit] < 0) dealt[unit] -= tick[unit]; else mended[unit] += tick[unit]; }
         for (let other = 0; other < count; other += 1) {
           if (!(left[other] > 1e-9)) continue;
-          if (sides[other] === sides[unit]) { if (acting(unit)) worth[unit] = Math.max(worth[unit], cells(unit, other).support[unit][other]); continue; }
-          if (acting(unit)) worth[unit] = Math.max(worth[unit], cells(unit, other).out[unit][other]);
-          if (acting(other)) pressed[unit] += cells(other, unit).out[other][unit] * takes(cells(other, unit), unit, other);
+          if (sides[other] === sides[unit]) { if (striking(unit)) worth[unit] = Math.max(worth[unit], cells(unit, other).support[unit][other]); continue; }
+          if (striking(unit)) worth[unit] = Math.max(worth[unit], cells(unit, other).out[unit][other]);
+          if (striking(other)) pressed[unit] += cells(other, unit).out[other][unit] * takes(cells(other, unit), unit, other);
         }
       }
       const focus = {};
@@ -66519,7 +66530,7 @@
       const sideNames = Object.keys(focus);
       if (sideNames.length < 2) break;
       for (let unit = 0; unit < count; unit += 1) {
-        if (!acting(unit)) continue;
+        if (!striking(unit)) continue;
         const foe = sideNames.find(side => side !== sides[unit]), ally = focus[sides[unit]].unit;
         let target = focus[foe].unit, strike = cells(unit, target).out[unit][target] * takes(cells(unit, target), target, unit);
         if (!(strike > 0)) for (let other = 0; other < count; other += 1) {
@@ -72204,8 +72215,24 @@
     const sideSize = Math.max(1, ...[...new Set(table.sides)].map(side => table.sides.filter(other => other === side).length));
     const teamShare = clamp((sideSize - 1) / 2, 0, 1);
     const [oddsBase, oddsSlope] = [R20_EXIT_ODDS.solo[0] + (R20_EXIT_ODDS.team[0] - R20_EXIT_ODDS.solo[0]) * teamShare, R20_EXIT_ODDS.solo[1] + (R20_EXIT_ODDS.team[1] - R20_EXIT_ODDS.solo[1]) * teamShare];
-    const win = clamp(1 / (1 + Math.exp(-(oddsBase + oddsSlope * (Number(raced.margin) || 0)))), 0, 1);
-    return { win, lose: 1 - win, draw: 0, drained, drainedRes, actorKept, actorRes: fuel(actorUnit), actorSpend: Math.min(fuel(actorUnit), rate(actorUnit) * time), worthRatio, time };
+    const odds = margin => clamp(1 / (1 + Math.exp(-(oddsBase + oddsSlope * (Number(margin) || 0)))), 0, 1);
+    const win = odds(raced.margin);
+    // 走了之后队友的胜算（11-16 行为检查目录第 5 题：3v3 近均势比赛第 1 回合认输）：同一张桌面让行动者开局即离场再推演一遍
+    // （plan.leaves），按同一映射给胜算。此前按场上已打出的速率粗估，开局还没打出伤害时给「胜 0 负 0」，走了算队友平局，
+    // 比留下（推演胜算 25%）还好。
+    let without = null;
+    if (actorRow >= 0 && table.units.some((unit, row) => row !== actorRow && table.sides[row] === own && (Number(table.alive[row]) || 0) > 0 && !preview.isSummonUnit(unit))) {
+      const key = `${own}|${preview.unitId(actorUnit)}`;
+      let alone = bySide.get(key);
+      if (!alone) {
+        alone = {};
+        r20Race(table, own, { leaves: table.units.map((unit, row) => (row === actorRow ? 0 : Infinity)), report: alone });
+        bySide.set(key, alone);
+      }
+      const withoutWin = odds(alone.margin);
+      without = { win: withoutWin, lose: 1 - withoutWin, draw: 0 };
+    }
+    return { win, lose: 1 - win, draw: 0, drained, drainedRes, actorKept, actorRes: fuel(actorUnit), actorSpend: Math.min(fuel(actorUnit), rate(actorUnit) * time), worthRatio, time, without };
   }
   function r20ExitMargin(request = {}) {
     r20ExitOutlook(request, {});
