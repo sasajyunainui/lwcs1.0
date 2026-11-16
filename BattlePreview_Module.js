@@ -24661,7 +24661,24 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const dodge = prepared ? clamp(ordinary + (1 - ordinary) * 0.25 * passiveStreakFactor(reactor), 0.03, 0.92) : ordinary;
     const strikeClass = declaration ? declarationDamageClass(declaration) : null;
     const ranged = strikeClass === 'RANGED' ? clamp(dodge * RANGED_DODGE_MULT, 0, 0.95) : strikeClass === 'MENTAL' ? dodge * MENTAL_DODGE_MULT : dodge;
-    return ranged * (1 - ATTACK_OPENING_DODGE_CUT * attackOpeningOf(reactor));
+    const opened = ranged * (1 - ATTACK_OPENING_DODGE_CUT * attackOpeningOf(reactor));
+    // 状态修正也进反应闪避（用户 2026-11-17「计入，直接加减」）：与命中判定（estimateHitProbability）同一套——
+    // 闪避方 dodge_bonus − max(dodge_penalty, lock_level)，攻击方 − (hit_bonus − hit_penalty)。没有这些状态时不变。
+    const adjustment = reactionDodgeStateAdjustment(reactor, sourceActor);
+    return adjustment ? clamp(opened + adjustment, DODGE_FLOOR, 0.95) : opened;
+  }
+
+  function reactionDodgeStateAdjustment(reactor = {}, sourceActor = {}) {
+    const avoidance = stateEntries(reactor, 'INCOMING_HIT').reduce((sum, [, state]) => {
+      const stateEffect = state?.战斗效果 || {};
+      return sum + Number(stateEffect?.dodge_bonus || 0) - Math.max(Number(stateEffect?.dodge_penalty || 0), Number(stateEffect?.lock_level || 0));
+    }, 0);
+    const hit = stateEntries(sourceActor, 'OUTGOING_HIT').reduce((sum, [, state]) => {
+      const stateEffect = state?.战斗效果 || {};
+      return sum + Number(stateEffect?.hit_bonus || 0) - Number(stateEffect?.hit_penalty || 0);
+    }, 0);
+    const total = avoidance - hit;
+    return Number.isFinite(total) && Math.abs(total) > 1e-9 ? total : 0;
   }
 
   // The chance to catch the opening once an answer has worked: the two units' effective agility (agility under speed
