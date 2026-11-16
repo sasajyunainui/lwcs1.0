@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:d53183202b524b3fd5cafbc11c91baff579041d08533adad794b3e713bc00380|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:c263dd8ca8acb30c15b8af739e14115b4cea4bb14dc4d7fa9980fdde9ddeb31e|BattleRuntime_Module.js:c80399083863c1d5519a3b5f4bded3149721880a7c9b2751f85f7faf7ec92a6c|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:187b4f6fa977d96a2c8011aadfdeaaeee99834c799ad5466562440dab262e950|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:c263dd8ca8acb30c15b8af739e14115b4cea4bb14dc4d7fa9980fdde9ddeb31e|BattleRuntime_Module.js:b7edade0b0a35af5787e662609e75d922f4fc747f666c46c41d36d0544fe6d02|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -9114,6 +9114,16 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     return capable;
   }
 
+  // 召唤面板（11-17 魂兽转化与本命召唤兽设计）: a summon effect that carries the creature's own panel (a 本命召唤兽 made of a
+  // beast, 召唤对象) builds the summon on it as it is — no level table, no 继承属性比例. null when the effect has none.
+  const SUMMON_PANEL_KEYS = Object.freeze({ hp: '生命上限', vit: '体力上限', sp: '魂力上限', men: '精神力上限', str: '力量', def: '防御', agi: '敏捷' });
+  function summonFixedPanel(effect = {}) {
+    const panel = effect?.召唤面板;
+    if (!panel || typeof panel !== 'object') return null;
+    const read = key => Math.max(1, Math.floor(Number(panel[SUMMON_PANEL_KEYS[key]]) || 0));
+    if (!(Number(panel[SUMMON_PANEL_KEYS.hp]) > 0)) return null;
+    return Object.fromEntries(Object.keys(SUMMON_PANEL_KEYS).map(key => [key, read(key)]));
+  }
   function isSummonUnit(unit = {}) {
     return String(unit?.单位性质 || unit?.类型 || '').trim() === '召唤物' ||
       Boolean(unit?.召唤键 || unit?.__battleRuntime?.summonWindow);
@@ -22007,10 +22017,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           const levelPanel = summonType === '本命召唤兽' && typeof root.__LWCS_GET_BASE_STATS__ === 'function' ? root.__LWCS_GET_BASE_STATS__(summonLevel) || null : null;
           const panelOf = (resource, key) => levelPanel ? Number(levelPanel[key]) || 0
             : resource === 'hp' ? readHpMax(actor) : resource === 'stat' ? readCombatStat(actor, key) : readResourceMax(actor, resource);
-          const hpMax = Math.max(1, Math.floor(panelOf('hp', 'vit_max') * inheritRatio));
-          const staminaMax = Math.max(1, Math.floor(panelOf('体力', 'vit_max') * inheritRatio));
-          const soulMax = Math.max(1, Math.floor(panelOf('魂力', 'sp_max') * inheritRatio));
-          const mentalMax = Math.max(1, Math.floor(panelOf('精神力', 'men_max') * inheritRatio));
+          const fixed = summonFixedPanel(effect);
+          const hpMax = fixed ? fixed.hp : Math.max(1, Math.floor(panelOf('hp', 'vit_max') * inheritRatio));
+          const staminaMax = fixed ? fixed.vit : Math.max(1, Math.floor(panelOf('体力', 'vit_max') * inheritRatio));
+          const soulMax = fixed ? fixed.sp : Math.max(1, Math.floor(panelOf('魂力', 'sp_max') * inheritRatio));
+          const mentalMax = fixed ? fixed.men : Math.max(1, Math.floor(panelOf('精神力', 'men_max') * inheritRatio));
           const summonUnit = {
             id: summonId,
             name: displayName,
@@ -22054,9 +22065,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             men_max: mentalMax,
             精神力: mentalMax,
             精神力上限: mentalMax,
-            str: Math.max(1, Math.floor(panelOf('stat', 'str') * inheritRatio)),
-            def: Math.max(1, Math.floor(panelOf('stat', 'def') * inheritRatio)),
-            agi: Math.max(1, Math.floor(panelOf('stat', 'agi') * inheritRatio)),
+            str: fixed ? fixed.str : Math.max(1, Math.floor(panelOf('stat', 'str') * inheritRatio)),
+            def: fixed ? fixed.def : Math.max(1, Math.floor(panelOf('stat', 'def') * inheritRatio)),
+            agi: fixed ? fixed.agi : Math.max(1, Math.floor(panelOf('stat', 'agi') * inheritRatio)),
             状态: { 存活: true },
             状态效果: {},
             持续效果: {},
@@ -31410,6 +31421,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     fusionSkillMetadata,
     fusionChargeHost,
     hastyChargeScale,
+    summonFixedPanel,
     chargedShare,
     chargeMeetSkill,
     isCharging,
@@ -125371,10 +125383,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const panelOf = (resource, key) => levelPanel ? Number(levelPanel[key]) || 0
         : resource === 'hp' ? previewRuntime.readHpMax(actor) : resource === 'stat' ? previewRuntime.readCombatStat(actor, key) : previewRuntime.readResourceMax(actor, resource);
       const stateKey = `召唤:${displayName}`;
-      const hpMax = Math.max(1, Math.floor(panelOf('hp', 'vit_max') * inheritRatio));
-      const staminaMax = Math.max(1, Math.floor(panelOf('体力', 'vit_max') * inheritRatio));
-      const soulMax = Math.max(1, Math.floor(panelOf('魂力', 'sp_max') * inheritRatio));
-      const mentalMax = Math.max(1, Math.floor(panelOf('精神力', 'men_max') * inheritRatio));
+      // 召唤面板（11-17）: a creature's own panel when the effect carries one (BattlePreview summonFixedPanel).
+      const fixed = previewRuntime.summonFixedPanel(effect);
+      const hpMax = fixed ? fixed.hp : Math.max(1, Math.floor(panelOf('hp', 'vit_max') * inheritRatio));
+      const staminaMax = fixed ? fixed.vit : Math.max(1, Math.floor(panelOf('体力', 'vit_max') * inheritRatio));
+      const soulMax = fixed ? fixed.sp : Math.max(1, Math.floor(panelOf('魂力', 'sp_max') * inheritRatio));
+      const mentalMax = fixed ? fixed.men : Math.max(1, Math.floor(panelOf('精神力', 'men_max') * inheritRatio));
       // 死亡反噬（同日「本命召唤兽和分身死亡都有反噬，精神力分身反噬精神力，物理分身反噬血量，本命召唤兽反噬血量+精神力」「30%，按驱动区分」）。
       const backlash = bonded ? '本命' : summonType === '分身' ? (String(effect?.驱动属性 || '').trim() === '精神力上限' ? '精神' : '物理') : '';
       const sourceState = {
@@ -125401,9 +125415,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         vit: staminaMax, vit_max: staminaMax, sta: staminaMax, sta_max: staminaMax, 体力: staminaMax, 体力上限: staminaMax,
         sp: soulMax, sp_max: soulMax, 魂力: soulMax, 魂力上限: soulMax,
         men: mentalMax, men_max: mentalMax, 精神力: mentalMax, 精神力上限: mentalMax,
-        str: Math.max(1, Math.floor(panelOf('stat', 'str') * inheritRatio)),
-        def: Math.max(1, Math.floor(panelOf('stat', 'def') * inheritRatio)),
-        agi: Math.max(1, Math.floor(panelOf('stat', 'agi') * inheritRatio)),
+        str: fixed ? fixed.str : Math.max(1, Math.floor(panelOf('stat', 'str') * inheritRatio)),
+        def: fixed ? fixed.def : Math.max(1, Math.floor(panelOf('stat', 'def') * inheritRatio)),
+        agi: fixed ? fixed.agi : Math.max(1, Math.floor(panelOf('stat', 'agi') * inheritRatio)),
         ...(backlash ? { __死亡反噬: backlash } : {}),
         状态: { 存活: true }, 状态效果: {}, 持续效果: {},
         __definitionHash: definitionHash,

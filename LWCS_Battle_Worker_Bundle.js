@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:b88c035b98d8faf84883291dba72f1b22ffb2ca5a152fbc29cd348c38ee1dc06|MVU_Schema_Runtime.js:b05fcbf90ac6e9862edc17df9a87ec4b9fedaf1898320f82dd99b32b69ef0357|BattlePreview_Module.js:d53183202b524b3fd5cafbc11c91baff579041d08533adad794b3e713bc00380|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:c263dd8ca8acb30c15b8af739e14115b4cea4bb14dc4d7fa9980fdde9ddeb31e|BattleRuntime_Module.js:c80399083863c1d5519a3b5f4bded3149721880a7c9b2751f85f7faf7ec92a6c */
+/* sources-sha256: MVU_Skill_Runtime.js:0fcde2dbf3fabcab9564dd4f5249405d6d3a175c0a3e31a6f0d08274d2809377|MVU_Schema_Runtime.js:b05fcbf90ac6e9862edc17df9a87ec4b9fedaf1898320f82dd99b32b69ef0357|BattlePreview_Module.js:187b4f6fa977d96a2c8011aadfdeaaeee99834c799ad5466562440dab262e950|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:c263dd8ca8acb30c15b8af739e14115b4cea4bb14dc4d7fa9980fdde9ddeb31e|BattleRuntime_Module.js:b7edade0b0a35af5787e662609e75d922f4fc747f666c46c41d36d0544fe6d02 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -5089,6 +5089,10 @@ var SKILL_PROTOTYPE_FIELD_TYPE_V1 = Object.freeze({
   保留回合数: '整数',
   召唤单位类型: '枚举',
   召唤物名称: '文本',
+  // 本命召唤兽由魂兽转化而来（11-17）：召唤对象＝魂兽角色键，技能列表＝它的技能，召唤面板＝它自己的面板（BattlePreview summonFixedPanel）。
+  召唤对象: '文本',
+  技能列表: '对象',
+  召唤面板: '对象',
   承伤规则: '枚举',
   行动模式: '枚举',
   值: '文本',
@@ -5412,7 +5416,7 @@ var SKILL_PROTOTYPE_DEFINITION_LIST_V1 = Object.freeze([
   ['战斗外复活', '战斗外', '可赋予', ['数值', '死亡时限tick', '复活代价类型', '复活代价对象', '复活代价值', '复活代价时限tick', '复活后状态', '复活后状态时限tick'], ['数值', '死亡时限tick', '复活代价类型', '复活代价对象', '复活后状态'], '战斗外复活意外死亡目标并写回复活代价'],
   ['等级提升', '战斗外', '可赋予', ['提升方式', '等级上限', '冷却年数'], ['提升方式', '等级上限', '冷却年数'], '将目标提升至下一合法等级，并受等级上限约束；成功后进入指定年数冷却', 'formal-non-battle'],
   ['群体撤离', '战斗外', '上下文', ['目的地', '基础成功率', '每增加一人成功率倍率', '结算方式', '失败仍消耗资源', '消耗道具', '对应等级', '消耗'], ['目的地', '基础成功率', '每增加一人成功率倍率', '结算方式', '失败仍消耗资源', '消耗道具', '对应等级', '消耗'], '按人数计算一次群体撤离成功率，成功全员同成败；失败仍消耗资源且道具本身不消耗', 'formal-non-battle'],
-  ['召唤生成', '战斗结算', '召唤物', ['召唤单位类型', '召唤物名称', '数量', '行动模式', '继承属性比例', '强度', '持续回合', '承伤规则', '触发限制'], ['召唤单位类型', '召唤物名称', '数量', '持续回合'], '生成战斗召唤单位并折算为短期战斗收益'],
+  ['召唤生成', '战斗结算', '召唤物', ['召唤单位类型', '召唤物名称', '数量', '行动模式', '继承属性比例', '强度', '持续回合', '承伤规则', '触发限制', '召唤对象', '技能列表', '召唤面板'], ['召唤单位类型', '召唤物名称', '数量', '持续回合'], '生成战斗召唤单位并折算为短期战斗收益'],
 ]);
 
 // ============ 阶段 2 v3：COST 真值表常量（魂技 COST 全链路收口） ============
@@ -12655,8 +12659,9 @@ function 收口原型效果条目_V1(value = {}, fallbackTargetKind = '单体', 
   const 有效期tick = Math.max(0, Math.round(Number(value.有效期tick ?? 0)));
   const normalized = { 原型, 目标 };
   const 原型字段 = {};
+  // 技能列表（召唤生成：本命召唤兽带着的魂兽技能，11-17）是技能的数组，原样保留，不当效果展开。
   const 字段允许数组 = key =>
-    key === '副作用列表' ||
+    key === '副作用列表' || key === '技能列表' ||
     技能执行批量字段键表_V1.includes(key) ||
     技能执行嵌套效果数组字段集合_V1.has(key) ||
     String(原型定义.字段定义?.[key]?.类型 || '').trim() === '多枚举';
@@ -40000,6 +40005,16 @@ try {
     return capable;
   }
 
+  // 召唤面板（11-17 魂兽转化与本命召唤兽设计）: a summon effect that carries the creature's own panel (a 本命召唤兽 made of a
+  // beast, 召唤对象) builds the summon on it as it is — no level table, no 继承属性比例. null when the effect has none.
+  const SUMMON_PANEL_KEYS = Object.freeze({ hp: '生命上限', vit: '体力上限', sp: '魂力上限', men: '精神力上限', str: '力量', def: '防御', agi: '敏捷' });
+  function summonFixedPanel(effect = {}) {
+    const panel = effect?.召唤面板;
+    if (!panel || typeof panel !== 'object') return null;
+    const read = key => Math.max(1, Math.floor(Number(panel[SUMMON_PANEL_KEYS[key]]) || 0));
+    if (!(Number(panel[SUMMON_PANEL_KEYS.hp]) > 0)) return null;
+    return Object.fromEntries(Object.keys(SUMMON_PANEL_KEYS).map(key => [key, read(key)]));
+  }
   function isSummonUnit(unit = {}) {
     return String(unit?.单位性质 || unit?.类型 || '').trim() === '召唤物' ||
       Boolean(unit?.召唤键 || unit?.__battleRuntime?.summonWindow);
@@ -52893,10 +52908,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           const levelPanel = summonType === '本命召唤兽' && typeof root.__LWCS_GET_BASE_STATS__ === 'function' ? root.__LWCS_GET_BASE_STATS__(summonLevel) || null : null;
           const panelOf = (resource, key) => levelPanel ? Number(levelPanel[key]) || 0
             : resource === 'hp' ? readHpMax(actor) : resource === 'stat' ? readCombatStat(actor, key) : readResourceMax(actor, resource);
-          const hpMax = Math.max(1, Math.floor(panelOf('hp', 'vit_max') * inheritRatio));
-          const staminaMax = Math.max(1, Math.floor(panelOf('体力', 'vit_max') * inheritRatio));
-          const soulMax = Math.max(1, Math.floor(panelOf('魂力', 'sp_max') * inheritRatio));
-          const mentalMax = Math.max(1, Math.floor(panelOf('精神力', 'men_max') * inheritRatio));
+          const fixed = summonFixedPanel(effect);
+          const hpMax = fixed ? fixed.hp : Math.max(1, Math.floor(panelOf('hp', 'vit_max') * inheritRatio));
+          const staminaMax = fixed ? fixed.vit : Math.max(1, Math.floor(panelOf('体力', 'vit_max') * inheritRatio));
+          const soulMax = fixed ? fixed.sp : Math.max(1, Math.floor(panelOf('魂力', 'sp_max') * inheritRatio));
+          const mentalMax = fixed ? fixed.men : Math.max(1, Math.floor(panelOf('精神力', 'men_max') * inheritRatio));
           const summonUnit = {
             id: summonId,
             name: displayName,
@@ -52940,9 +52956,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             men_max: mentalMax,
             精神力: mentalMax,
             精神力上限: mentalMax,
-            str: Math.max(1, Math.floor(panelOf('stat', 'str') * inheritRatio)),
-            def: Math.max(1, Math.floor(panelOf('stat', 'def') * inheritRatio)),
-            agi: Math.max(1, Math.floor(panelOf('stat', 'agi') * inheritRatio)),
+            str: fixed ? fixed.str : Math.max(1, Math.floor(panelOf('stat', 'str') * inheritRatio)),
+            def: fixed ? fixed.def : Math.max(1, Math.floor(panelOf('stat', 'def') * inheritRatio)),
+            agi: fixed ? fixed.agi : Math.max(1, Math.floor(panelOf('stat', 'agi') * inheritRatio)),
             状态: { 存活: true },
             状态效果: {},
             持续效果: {},
@@ -62296,6 +62312,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     fusionSkillMetadata,
     fusionChargeHost,
     hastyChargeScale,
+    summonFixedPanel,
     chargedShare,
     chargeMeetSkill,
     isCharging,
@@ -156257,10 +156274,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const panelOf = (resource, key) => levelPanel ? Number(levelPanel[key]) || 0
         : resource === 'hp' ? previewRuntime.readHpMax(actor) : resource === 'stat' ? previewRuntime.readCombatStat(actor, key) : previewRuntime.readResourceMax(actor, resource);
       const stateKey = `召唤:${displayName}`;
-      const hpMax = Math.max(1, Math.floor(panelOf('hp', 'vit_max') * inheritRatio));
-      const staminaMax = Math.max(1, Math.floor(panelOf('体力', 'vit_max') * inheritRatio));
-      const soulMax = Math.max(1, Math.floor(panelOf('魂力', 'sp_max') * inheritRatio));
-      const mentalMax = Math.max(1, Math.floor(panelOf('精神力', 'men_max') * inheritRatio));
+      // 召唤面板（11-17）: a creature's own panel when the effect carries one (BattlePreview summonFixedPanel).
+      const fixed = previewRuntime.summonFixedPanel(effect);
+      const hpMax = fixed ? fixed.hp : Math.max(1, Math.floor(panelOf('hp', 'vit_max') * inheritRatio));
+      const staminaMax = fixed ? fixed.vit : Math.max(1, Math.floor(panelOf('体力', 'vit_max') * inheritRatio));
+      const soulMax = fixed ? fixed.sp : Math.max(1, Math.floor(panelOf('魂力', 'sp_max') * inheritRatio));
+      const mentalMax = fixed ? fixed.men : Math.max(1, Math.floor(panelOf('精神力', 'men_max') * inheritRatio));
       // 死亡反噬（同日「本命召唤兽和分身死亡都有反噬，精神力分身反噬精神力，物理分身反噬血量，本命召唤兽反噬血量+精神力」「30%，按驱动区分」）。
       const backlash = bonded ? '本命' : summonType === '分身' ? (String(effect?.驱动属性 || '').trim() === '精神力上限' ? '精神' : '物理') : '';
       const sourceState = {
@@ -156287,9 +156306,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         vit: staminaMax, vit_max: staminaMax, sta: staminaMax, sta_max: staminaMax, 体力: staminaMax, 体力上限: staminaMax,
         sp: soulMax, sp_max: soulMax, 魂力: soulMax, 魂力上限: soulMax,
         men: mentalMax, men_max: mentalMax, 精神力: mentalMax, 精神力上限: mentalMax,
-        str: Math.max(1, Math.floor(panelOf('stat', 'str') * inheritRatio)),
-        def: Math.max(1, Math.floor(panelOf('stat', 'def') * inheritRatio)),
-        agi: Math.max(1, Math.floor(panelOf('stat', 'agi') * inheritRatio)),
+        str: fixed ? fixed.str : Math.max(1, Math.floor(panelOf('stat', 'str') * inheritRatio)),
+        def: fixed ? fixed.def : Math.max(1, Math.floor(panelOf('stat', 'def') * inheritRatio)),
+        agi: fixed ? fixed.agi : Math.max(1, Math.floor(panelOf('stat', 'agi') * inheritRatio)),
         ...(backlash ? { __死亡反噬: backlash } : {}),
         状态: { 存活: true }, 状态效果: {}, 持续效果: {},
         __definitionHash: definitionHash,

@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:b88c035b98d8faf84883291dba72f1b22ffb2ca5a152fbc29cd348c38ee1dc06|MVU_Schema_Runtime.js:b05fcbf90ac6e9862edc17df9a87ec4b9fedaf1898320f82dd99b32b69ef0357|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:1f7a519a850bc170c3da108bfe22614d098b593bc573d8b38a5c0a7bec81aba5 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:0fcde2dbf3fabcab9564dd4f5249405d6d3a175c0a3e31a6f0d08274d2809377|MVU_Schema_Runtime.js:b05fcbf90ac6e9862edc17df9a87ec4b9fedaf1898320f82dd99b32b69ef0357|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:1f7a519a850bc170c3da108bfe22614d098b593bc573d8b38a5c0a7bec81aba5 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -9610,6 +9610,10 @@ var SKILL_PROTOTYPE_FIELD_TYPE_V1 = Object.freeze({
   保留回合数: '整数',
   召唤单位类型: '枚举',
   召唤物名称: '文本',
+  // 本命召唤兽由魂兽转化而来（11-17）：召唤对象＝魂兽角色键，技能列表＝它的技能，召唤面板＝它自己的面板（BattlePreview summonFixedPanel）。
+  召唤对象: '文本',
+  技能列表: '对象',
+  召唤面板: '对象',
   承伤规则: '枚举',
   行动模式: '枚举',
   值: '文本',
@@ -9933,7 +9937,7 @@ var SKILL_PROTOTYPE_DEFINITION_LIST_V1 = Object.freeze([
   ['战斗外复活', '战斗外', '可赋予', ['数值', '死亡时限tick', '复活代价类型', '复活代价对象', '复活代价值', '复活代价时限tick', '复活后状态', '复活后状态时限tick'], ['数值', '死亡时限tick', '复活代价类型', '复活代价对象', '复活后状态'], '战斗外复活意外死亡目标并写回复活代价'],
   ['等级提升', '战斗外', '可赋予', ['提升方式', '等级上限', '冷却年数'], ['提升方式', '等级上限', '冷却年数'], '将目标提升至下一合法等级，并受等级上限约束；成功后进入指定年数冷却', 'formal-non-battle'],
   ['群体撤离', '战斗外', '上下文', ['目的地', '基础成功率', '每增加一人成功率倍率', '结算方式', '失败仍消耗资源', '消耗道具', '对应等级', '消耗'], ['目的地', '基础成功率', '每增加一人成功率倍率', '结算方式', '失败仍消耗资源', '消耗道具', '对应等级', '消耗'], '按人数计算一次群体撤离成功率，成功全员同成败；失败仍消耗资源且道具本身不消耗', 'formal-non-battle'],
-  ['召唤生成', '战斗结算', '召唤物', ['召唤单位类型', '召唤物名称', '数量', '行动模式', '继承属性比例', '强度', '持续回合', '承伤规则', '触发限制'], ['召唤单位类型', '召唤物名称', '数量', '持续回合'], '生成战斗召唤单位并折算为短期战斗收益'],
+  ['召唤生成', '战斗结算', '召唤物', ['召唤单位类型', '召唤物名称', '数量', '行动模式', '继承属性比例', '强度', '持续回合', '承伤规则', '触发限制', '召唤对象', '技能列表', '召唤面板'], ['召唤单位类型', '召唤物名称', '数量', '持续回合'], '生成战斗召唤单位并折算为短期战斗收益'],
 ]);
 
 // ============ 阶段 2 v3：COST 真值表常量（魂技 COST 全链路收口） ============
@@ -17176,8 +17180,9 @@ function 收口原型效果条目_V1(value = {}, fallbackTargetKind = '单体', 
   const 有效期tick = Math.max(0, Math.round(Number(value.有效期tick ?? 0)));
   const normalized = { 原型, 目标 };
   const 原型字段 = {};
+  // 技能列表（召唤生成：本命召唤兽带着的魂兽技能，11-17）是技能的数组，原样保留，不当效果展开。
   const 字段允许数组 = key =>
-    key === '副作用列表' ||
+    key === '副作用列表' || key === '技能列表' ||
     技能执行批量字段键表_V1.includes(key) ||
     技能执行嵌套效果数组字段集合_V1.has(key) ||
     String(原型定义.字段定义?.[key]?.类型 || '').trim() === '多枚举';
