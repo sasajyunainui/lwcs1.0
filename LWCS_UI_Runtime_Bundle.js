@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:3a7ab2b86114d7997e52efa71f2ebd4abfbfe0588597e12628cc11524a69319e|cockpit/designer-model.js:43e9907dc6a213586bc290bdf3e507a8178bd80879f0f020231ac30ffa7c4f99|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:add5d559c5536284c325daef48499bb9b6137d1c46b6d63cbc08d15c55610a4c|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:62c8987714cbc0f2d0138dd32a28b1bfddf62c40984f0048c0dc3001a91e9fe6|BattleRuntime_Module.js:aa01447cd152fede06c4c4480f3b34fe71c8a0fc739040b61470e319d39d4cc6|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:3a7ab2b86114d7997e52efa71f2ebd4abfbfe0588597e12628cc11524a69319e|cockpit/designer-model.js:43e9907dc6a213586bc290bdf3e507a8178bd80879f0f020231ac30ffa7c4f99|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:add5d559c5536284c325daef48499bb9b6137d1c46b6d63cbc08d15c55610a4c|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:62c8987714cbc0f2d0138dd32a28b1bfddf62c40984f0048c0dc3001a91e9fe6|BattleRuntime_Module.js:09e8b3668cc60f46364280a2393ae0869d3ccb9c39e5f0c0bf79901c03a3daa4|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -170230,6 +170230,60 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
   }
 
+  // 领域（接入方案 S80-C，用户 2026-11-16）：带 领域{等级, 范围} 的魂技展开后，这次动作在场上挂的状态都属于这个领域
+  // （__领域 {施法者, 名称, 等级}）。一人一领域：展开新领域撤掉同一施法者旧领域的状态（维持载体随之失效）。同场有敌对的领域时
+  // 强者压制弱者：强度 = 精神力上限 ×（1 + 0.25 ×（等级 − 1）），弱的一方领域状态的效果减半（不取消，只减一次）。
+  const DOMAIN_LEVEL_STEP = 0.25, DOMAIN_SUPPRESSION = 0.5;
+  function domainStrength(unit = {}, level = 1) {
+    return Math.max(0, Number(previewRuntime.readResourceMax(unit, '精神力')) || 0) * (1 + DOMAIN_LEVEL_STEP * (Math.max(1, Math.min(5, Number(level) || 1)) - 1));
+  }
+  function halveDomainState(state = {}) {
+    const ratios = Object.fromEntries(Object.entries(state.面板修改比例 || {}).map(([key, value]) => [key, 1 + (Number(value) - 1) * DOMAIN_SUPPRESSION]));
+    const fixed = Object.fromEntries(Object.entries(state.面板固定修正 || {}).map(([key, value]) => [key, Number(value) * DOMAIN_SUPPRESSION]));
+    const combat = Object.fromEntries(Object.entries(state.战斗效果 || {}).map(([key, value]) => [key, typeof value === 'number' ? value * DOMAIN_SUPPRESSION : value]));
+    return { ...state, 面板修改比例: ratios, 面板固定修正: fixed, 战斗效果: combat, __领域压制: true };
+  }
+  function applyDomainRules(combatData = {}, actor = {}, skill = {}, actionEvent = {}) {
+    const units = listCombatUnits(combatData), ownerId = previewRuntime.unitId(actor);
+    const name = String(skill.魂技名 || skill.name || '领域').trim(), level = Math.max(1, Math.min(5, Number(skill.领域?.等级) || 1));
+    // 一人一领域：同一施法者别的领域的状态撤掉。
+    units.forEach(unit => {
+      let changed = false;
+      Object.entries(unit.状态效果 || {}).forEach(([key, state]) => {
+        if (state?.__领域?.施法者 === ownerId && state.__领域.名称 !== name) { delete unit.状态效果[key]; changed = true; }
+      });
+      if (changed) unit.final = buildCombatFinalStats(unit);
+    });
+    units.forEach(unit => Object.values(unit.状态效果 || {}).forEach(state => {
+      if (state && actionEvent.actionId && (state.sourceActionId === actionEvent.actionId || state.sustainSourceActionId === actionEvent.actionId)) {
+        state.__领域 = { 施法者: ownerId, 名称: name, 等级: level };
+      }
+    }));
+    actor.当前领域 = name;
+    // 压制：场上各领域按施法者比强弱，敌对的领域里弱的一方减半。
+    const domains = new Map();
+    units.forEach(unit => Object.values(unit.状态效果 || {}).forEach(state => {
+      const tag = state?.__领域;
+      if (tag && !domains.has(tag.施法者)) domains.set(tag.施法者, tag);
+    }));
+    const ownerOf = id => units.find(unit => previewRuntime.unitId(unit) === id);
+    const sideOf = id => { const unit = ownerOf(id); return unit ? previewRuntime.sideOf(combatData, unit) : ''; };
+    const weaker = new Set();
+    for (const [left, leftTag] of domains) for (const [right, rightTag] of domains) {
+      if (left >= right || sideOf(left) === sideOf(right)) continue;
+      const a = domainStrength(ownerOf(left), leftTag.等级), b = domainStrength(ownerOf(right), rightTag.等级);
+      if (a > b) weaker.add(right); else if (b > a) weaker.add(left);
+    }
+    units.forEach(unit => {
+      let changed = false;
+      Object.entries(unit.状态效果 || {}).forEach(([key, state]) => {
+        if (!state?.__领域 || state.__领域压制 || !weaker.has(state.__领域.施法者)) return;
+        unit.状态效果[key] = halveDomainState(state); changed = true;
+      });
+      if (changed) unit.final = buildCombatFinalStats(unit);
+    });
+  }
+
   function applyBattleInitiative(combatData = {}) {
     const text = String(combatData?.先攻 || '').trim();
     if (!text || text === '无') return;
@@ -182465,6 +182519,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         sustainEffectKeysBefore,
         actionEvent,
       );
+    }
+    if (actionKind === 'RELEASE_SKILL' && releaseSucceeded && declaration.skill?.领域 && typeof declaration.skill.领域 === 'object') {
+      applyDomainRules(combatData, actor, declaration.skill, actionEvent);
     }
     endSustainedAvatarRelease(combatData);
     const conditionalRiskEffects = effects.some(effect => effect?.条件分支?.length)

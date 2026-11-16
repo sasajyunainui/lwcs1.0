@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:690bd56a279fcf957be20aa04a50bf8be6715784b8db6290628001dd35ee1d95|MVU_Schema_Runtime.js:d3ffbc45bd2b8deeace72d2ef6786a1c273cee0f29ff1d5ff8b792968c988c76|BattlePreview_Module.js:add5d559c5536284c325daef48499bb9b6137d1c46b6d63cbc08d15c55610a4c|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:62c8987714cbc0f2d0138dd32a28b1bfddf62c40984f0048c0dc3001a91e9fe6|BattleRuntime_Module.js:aa01447cd152fede06c4c4480f3b34fe71c8a0fc739040b61470e319d39d4cc6 */
+/* sources-sha256: MVU_Skill_Runtime.js:b8f0e0f67165d5264ac9d3d853652ef8344027cd713816bbecb5e3a710628f88|MVU_Schema_Runtime.js:d3ffbc45bd2b8deeace72d2ef6786a1c273cee0f29ff1d5ff8b792968c988c76|BattlePreview_Module.js:add5d559c5536284c325daef48499bb9b6137d1c46b6d63cbc08d15c55610a4c|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:62c8987714cbc0f2d0138dd32a28b1bfddf62c40984f0048c0dc3001a91e9fe6|BattleRuntime_Module.js:09e8b3668cc60f46364280a2393ae0869d3ccb9c39e5f0c0bf79901c03a3daa4 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -10117,6 +10117,8 @@ var 技能正式根字段集合_V1 = new Set([
   '产物描述',
   '计价版本',
   '_锚定消耗',
+  // 领域技（接入方案 S80-C）：{ 等级, 范围 }，BattleRuntime applyDomainRules 读。
+  '领域',
 ]);
 var 技能机制可见键中文名映射_V1 = Object.freeze({});
 var 技能机制属性键中文名映射_V1 = Object.freeze({
@@ -146915,6 +146917,60 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
   }
 
+  // 领域（接入方案 S80-C，用户 2026-11-16）：带 领域{等级, 范围} 的魂技展开后，这次动作在场上挂的状态都属于这个领域
+  // （__领域 {施法者, 名称, 等级}）。一人一领域：展开新领域撤掉同一施法者旧领域的状态（维持载体随之失效）。同场有敌对的领域时
+  // 强者压制弱者：强度 = 精神力上限 ×（1 + 0.25 ×（等级 − 1）），弱的一方领域状态的效果减半（不取消，只减一次）。
+  const DOMAIN_LEVEL_STEP = 0.25, DOMAIN_SUPPRESSION = 0.5;
+  function domainStrength(unit = {}, level = 1) {
+    return Math.max(0, Number(previewRuntime.readResourceMax(unit, '精神力')) || 0) * (1 + DOMAIN_LEVEL_STEP * (Math.max(1, Math.min(5, Number(level) || 1)) - 1));
+  }
+  function halveDomainState(state = {}) {
+    const ratios = Object.fromEntries(Object.entries(state.面板修改比例 || {}).map(([key, value]) => [key, 1 + (Number(value) - 1) * DOMAIN_SUPPRESSION]));
+    const fixed = Object.fromEntries(Object.entries(state.面板固定修正 || {}).map(([key, value]) => [key, Number(value) * DOMAIN_SUPPRESSION]));
+    const combat = Object.fromEntries(Object.entries(state.战斗效果 || {}).map(([key, value]) => [key, typeof value === 'number' ? value * DOMAIN_SUPPRESSION : value]));
+    return { ...state, 面板修改比例: ratios, 面板固定修正: fixed, 战斗效果: combat, __领域压制: true };
+  }
+  function applyDomainRules(combatData = {}, actor = {}, skill = {}, actionEvent = {}) {
+    const units = listCombatUnits(combatData), ownerId = previewRuntime.unitId(actor);
+    const name = String(skill.魂技名 || skill.name || '领域').trim(), level = Math.max(1, Math.min(5, Number(skill.领域?.等级) || 1));
+    // 一人一领域：同一施法者别的领域的状态撤掉。
+    units.forEach(unit => {
+      let changed = false;
+      Object.entries(unit.状态效果 || {}).forEach(([key, state]) => {
+        if (state?.__领域?.施法者 === ownerId && state.__领域.名称 !== name) { delete unit.状态效果[key]; changed = true; }
+      });
+      if (changed) unit.final = buildCombatFinalStats(unit);
+    });
+    units.forEach(unit => Object.values(unit.状态效果 || {}).forEach(state => {
+      if (state && actionEvent.actionId && (state.sourceActionId === actionEvent.actionId || state.sustainSourceActionId === actionEvent.actionId)) {
+        state.__领域 = { 施法者: ownerId, 名称: name, 等级: level };
+      }
+    }));
+    actor.当前领域 = name;
+    // 压制：场上各领域按施法者比强弱，敌对的领域里弱的一方减半。
+    const domains = new Map();
+    units.forEach(unit => Object.values(unit.状态效果 || {}).forEach(state => {
+      const tag = state?.__领域;
+      if (tag && !domains.has(tag.施法者)) domains.set(tag.施法者, tag);
+    }));
+    const ownerOf = id => units.find(unit => previewRuntime.unitId(unit) === id);
+    const sideOf = id => { const unit = ownerOf(id); return unit ? previewRuntime.sideOf(combatData, unit) : ''; };
+    const weaker = new Set();
+    for (const [left, leftTag] of domains) for (const [right, rightTag] of domains) {
+      if (left >= right || sideOf(left) === sideOf(right)) continue;
+      const a = domainStrength(ownerOf(left), leftTag.等级), b = domainStrength(ownerOf(right), rightTag.等级);
+      if (a > b) weaker.add(right); else if (b > a) weaker.add(left);
+    }
+    units.forEach(unit => {
+      let changed = false;
+      Object.entries(unit.状态效果 || {}).forEach(([key, state]) => {
+        if (!state?.__领域 || state.__领域压制 || !weaker.has(state.__领域.施法者)) return;
+        unit.状态效果[key] = halveDomainState(state); changed = true;
+      });
+      if (changed) unit.final = buildCombatFinalStats(unit);
+    });
+  }
+
   function applyBattleInitiative(combatData = {}) {
     const text = String(combatData?.先攻 || '').trim();
     if (!text || text === '无') return;
@@ -159150,6 +159206,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         sustainEffectKeysBefore,
         actionEvent,
       );
+    }
+    if (actionKind === 'RELEASE_SKILL' && releaseSucceeded && declaration.skill?.领域 && typeof declaration.skill.领域 === 'object') {
+      applyDomainRules(combatData, actor, declaration.skill, actionEvent);
     }
     endSustainedAvatarRelease(combatData);
     const conditionalRiskEffects = effects.some(effect => effect?.条件分支?.length)
