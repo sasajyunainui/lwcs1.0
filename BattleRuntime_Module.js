@@ -1348,6 +1348,48 @@
     });
   }
 
+  // 融合技（非武魂融合，S80-E）：参与者里谁先轮到谁起手（原作 苍晖学院七位一体、海上生明月）——存在一人身上的融合技，战斗里
+  // 给每名在场参与者各放一份（参与者自身改作「自身」）；同名同参与者的 fusionKey 相同，一次性用法照旧只放一次。不改存档里的那份。
+  function ensureSkillFusionMirrors(combatData = {}) {
+    const units = listCombatUnits(combatData);
+    const nameOf = unit => [previewRuntime.unitId(unit), previewRuntime.unitName(unit)].filter(Boolean);
+    // 合成的一招里既有打敌人的单体效果又有给己方的单体效果（贡献的魂技一攻一辅）时，给己方的改作己方群体：一个声明只有一个
+    // 单体目标阵营（BattleDecision 的目标合法性），否则整招被判目标不合法、从不出手。判法同 BattleDecision targetProfile。
+    const helpers = root.__LWCS_SKILL_COST_HELPERS_V1__ || {};
+    const friendly = effect => {
+      const prototype = String(effect?.原型 || '').trim();
+      if (['伤害结算', '资源锁定', '机制抹消'].includes(prototype)) return false;
+      if (prototype === '护盾变化') return String(effect?.护盾模式 || '').trim() === '正向护盾' || !String(effect?.护盾模式 || '').trim();
+      if (prototype === '结算修正' && typeof helpers.结算修正是否增益语义_V1 === 'function') return !!helpers.结算修正是否增益语义_V1(effect);
+      if (prototype === '判定修正' && typeof helpers.判定修正是否增益语义_V1 === 'function') return !!helpers.判定修正是否增益语义_V1(effect);
+      if (prototype === '属性修正') return !/^-/.test(String(effect?.数值 ?? '').trim());
+      return !!previewRuntime.effectTargetsAllies(effect);
+    };
+    const settleTargets = skill => {
+      const single = (Array.isArray(skill?._效果数组) ? skill._效果数组 : []).filter(effect => String(effect?.目标 || '').trim() === '单体');
+      if (!single.some(friendly) || single.every(friendly)) return;
+      single.filter(friendly).forEach(effect => { effect.目标 = '群体'; });
+    };
+    units.forEach(holder => {
+      Object.entries(holder?.融合技 || {}).forEach(([name, entry]) => {
+        if (!entry || typeof entry !== 'object' || entry.__镜像 || !Array.isArray(entry.融合参与者)) return;
+        if (entry.技能数据 && typeof entry.技能数据 === 'object') settleTargets(entry.技能数据);
+        entry.融合参与者.forEach(participant => {
+          const ids = [participant?.角色键, participant?.角色名].map(value => String(value || '').trim()).filter(Boolean);
+          const partner = units.find(unit => unit !== holder && nameOf(unit).some(id => ids.includes(id)));
+          if (!partner || partner.融合技?.[name]) return;
+          const mirror = cloneValue(entry);
+          mirror.融合参与者 = mirror.融合参与者.map(other => {
+            const own = [other?.角色键, other?.角色名].map(value => String(value || '').trim()).some(id => nameOf(partner).includes(id));
+            return { ...other, 类型: own ? '自身' : '搭档' };
+          });
+          mirror.__镜像 = true;
+          partner.融合技 = { ...(partner.融合技 || {}), [name]: mirror };
+        });
+      });
+    });
+  }
+
   function applyBattleInitiative(combatData = {}) {
     const text = String(combatData?.先攻 || '').trim();
     if (!text || text === '无') return;
@@ -16238,6 +16280,7 @@
         });
         logs.push(...beginBattleRound(combatData, combatData.回合).filter(Boolean));
         ensureArmourUnreleased(combatData);
+        ensureSkillFusionMirrors(combatData);
         if (Number(combatData.回合) === 1) applyBattleInitiative(combatData);
         invalidateRouteUnitHashes(combatData);
         settleStaminaExhaustion(combatData);

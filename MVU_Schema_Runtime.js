@@ -3004,6 +3004,72 @@ function 写入成长气血魂技_V1(角色 = {}, 模板 = {}, 变更列表 = nu
   });
 }
 
+// 融合技（非武魂融合，接入方案 S80-E，用户 2026-11-16「尽量简化」）：参与者各贡献一个自己的魂技，合成一招——效果为各贡献魂技
+// 效果之和，威力与数值 ×合力系数（1 + 0.1 ×（人数 − 1）），前摇取最长的一招；消耗为各招消耗按资源相加（固定部分相加、百分比取
+// 最大），发动时由全体参与者共同支付（BattleRuntime 融合参与者付费），参与者让出本回合行动（同武魂融合技的参与者路径）。
+// 少于两名参与者或有魂技找不到时不合成。
+function 合成魂技融合技能数据_V1(融合技 = {}, 融合技名 = '', 根数据 = {}) {
+  const 参与者列表 = Array.isArray(融合技?.融合参与者) ? 融合技.融合参与者 : [];
+  if (参与者列表.length < 2) return null;
+  const 全部角色 = 根数据?.char && typeof 根数据.char === 'object' ? 根数据.char : {};
+  const 找角色 = 参与者 => {
+    const 键 = String(参与者?.角色键 || '').trim(), 名 = String(参与者?.角色名 || '').trim();
+    if (键 && 键 !== '无' && 全部角色[键]) return [键, 全部角色[键]];
+    return Object.entries(全部角色).find(([角色键, 角色]) => [角色键, 角色?.name, 角色?.名称, 角色?.属性?.姓名].map(值 => String(值 || '').trim()).includes(名)) || null;
+  };
+  const 找魂技 = (角色, 魂技名) => {
+    let 命中 = null;
+    const 遍历 = 值 => {
+      if (命中 || !值 || typeof 值 !== 'object') return;
+      if (Array.isArray(值._效果数组) && String(值.魂技名 || '').trim() === 魂技名) { 命中 = 值; return; }
+      Object.entries(值).forEach(([键, 子]) => { if (!/状态效果|背包|物品|社交|战斗历史|融合技/.test(键)) 遍历(子); });
+    };
+    遍历(角色);
+    return 命中;
+  };
+  const 贡献 = [];
+  for (const 参与者 of 参与者列表) {
+    const 角色项 = 找角色(参与者), 魂技名 = String(参与者?.魂技名 || '').trim();
+    const 魂技 = 角色项 && 魂技名 && 魂技名 !== '无' ? 找魂技(角色项[1], 魂技名) : null;
+    if (!魂技 || !魂技._效果数组.length) return null;
+    贡献.push({ 角色键: 角色项[0], 角色名: String(参与者?.角色名 || 角色项[0]), 类型: String(参与者?.类型 || '搭档'), 魂技名, 魂技 });
+  }
+  const 合力 = 1 + 0.1 * (贡献.length - 1);
+  const 放大 = 值 => {
+    if (typeof 值 === 'number') return Number((值 * 合力).toFixed(2));
+    const 文本 = String(值 ?? '').trim(), 匹配 = 文本.match(/^([+-]?)(\d+(?:\.\d+)?)(%?)$/);
+    return 匹配 ? `${匹配[1]}${Number((Number(匹配[2]) * 合力).toFixed(2))}${匹配[3]}` : 值;
+  };
+  const 效果 = 贡献.flatMap(项 => 项.魂技._效果数组.map(原效果 => {
+    const 副本 = JSON.parse(JSON.stringify(原效果));
+    if (Number(副本.威力倍率) > 0) 副本.威力倍率 = Math.max(1, Math.round(Number(副本.威力倍率) * 合力));
+    for (const 字段 of ['数值', '副数值']) if (副本[字段] !== undefined) 副本[字段] = 放大(副本[字段]);
+    return 副本;
+  }));
+  const 消耗 = {};
+  for (const 项 of 贡献) {
+    const 原消耗 = 项.魂技.消耗;
+    if (!原消耗 || typeof 原消耗 !== 'object') continue;
+    for (const [资源, 值] of Object.entries(原消耗)) {
+      const 文本 = String(值 ?? '').trim(), 记 = (消耗[资源] ||= { 固定: 0, 百分比: 0 });
+      for (const 段 of 文本.split('+').map(片 => 片.trim()).filter(Boolean)) {
+        if (/%$/.test(段)) 记.百分比 = Math.max(记.百分比, Number.parseFloat(段) || 0);
+        else 记.固定 += Number.parseFloat(段) || 0;
+      }
+    }
+  }
+  const 合成消耗 = Object.fromEntries(Object.entries(消耗).filter(([, 记]) => 记.固定 > 0 || 记.百分比 > 0)
+    .map(([资源, 记]) => [资源, 记.固定 > 0 && 记.百分比 > 0 ? `${Math.round(记.固定)}+${记.百分比}%` : 记.固定 > 0 ? Math.round(记.固定) : `${记.百分比}%`]));
+  return {
+    魂技名: String(融合技名 || 融合技?.技能数据?.魂技名 || '融合技'),
+    承载方式: '直接生效',
+    前摇: Math.max(0, ...贡献.map(项 => Number(项.魂技.前摇) || 0)),
+    消耗: Object.keys(合成消耗).length ? 合成消耗 : '无',
+    _效果数组: 效果,
+    描述: `${贡献.map(项 => `${项.角色名}「${项.魂技名}」`).join('、')}合成的融合技（合力 ×${合力.toFixed(1)}）`,
+  };
+}
+
 function 写入成长武魂融合技_V1(角色 = {}, 模板 = {}, 变更列表 = null, 角色名 = '') {
   const 路径片段 = String(模板?.写入路径 || '').split('.').map(片段 => 片段.trim()).filter(Boolean);
   if (路径片段.length !== 2 || 路径片段[0] !== '武魂融合技' || !路径片段[1] || 路径片段[1] !== String(模板?.技能数据?.魂技名 || 模板?.魂技名 || '').trim()) return false;
@@ -6901,6 +6967,14 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
             },
           });
           ensureFusionSkillMentalCost(fusionData?.技能数据, 0.5);
+        });
+        // 融合技（非武魂融合，S80-E）：每次读档按参与者当前贡献的魂技重新合成，参与者不全或魂技找不到的保留原样。
+        _(charData.融合技 || {}).forEach((融合技, 融合技名) => {
+          if (!融合技 || typeof 融合技 !== 'object') return;
+          融合技.融合模式 = 'partner';
+          融合技.用法模式 = '一次性释放';
+          const 合成 = 合成魂技融合技能数据_V1(融合技, 融合技名, data);
+          if (合成) 融合技.技能数据 = 合成;
         });
       });
 

@@ -858,6 +858,33 @@ const CharacterSchema = z
       )
       .prefault({})
       .describe('武魂融合技列表（统一区分自体融合与普通融合）'),
+    // 融合技（非武魂融合，接入方案 S80-E，用户 2026-11-16「尽量简化」）：2～7 人各出自己的一个魂技合成一招（苍晖学院七位一体、
+    // 海上生明月），弱于武魂融合技。技能数据由读档时按各参与者贡献的魂技合成（MVU_Schema_Runtime 合成魂技融合技能数据_V1）。
+    融合技: z
+      .record(
+        z.string().describe('融合技名称'),
+        z
+          .object({
+            融合类型: z.string().prefault('魂技融合').describe('魂技融合：参与者各贡献一个魂技合成一招，不是武魂融合'),
+            融合模式: z.enum(['partner']).prefault('partner'),
+            用法模式: z.enum(['一次性释放']).prefault('一次性释放'),
+            融合参与者: z
+              .array(
+                z.object({
+                  类型: z.string().prefault('搭档').describe('自身/搭档'),
+                  角色键: z.string().prefault('无').describe('参与者在 char 表中的键名'),
+                  角色名: z.string().prefault('无').describe('参与者显示名'),
+                  魂技名: z.string().prefault('无').describe('该参与者贡献的魂技名'),
+                }),
+              )
+              .prefault([])
+              .describe('融合技参与者与各自贡献的魂技'),
+            技能数据: SkillStructSchema,
+          })
+          .prefault({}),
+      )
+      .prefault({})
+      .describe('融合技（非武魂融合）：参与者各贡献一个魂技合成一招，效果由贡献的魂技合并、按人数加成'),
     精神领域: z
       .object({
         名称: z.string().prefault('无').describe('精神领域名称，例如：时光回溯、情绪剥夺'),
