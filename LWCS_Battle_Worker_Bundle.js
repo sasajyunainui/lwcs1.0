@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:73d576c007ee6b73e8af60bf86e05cad60a465b0a03bb6018c7cccff0280a106|MVU_Schema_Runtime.js:dce6a623582f19c4f4d78df4d731af3954eac25bacbf97ee71ddcdae1c5f05a5|BattlePreview_Module.js:8dd53716466ef2089e149544f904d77396a61a81b003401e51fc1a0cb03a5323|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:608637f6d35ae34ac2ec4a777e03ca07c52818ccc60071d1602ffe082a3beef1|BattleRuntime_Module.js:b3d0239dd9e529587d5e893561ef7f96bba6e1138e1aefb109fc9a5ad318a7da */
+/* sources-sha256: MVU_Skill_Runtime.js:b88c035b98d8faf84883291dba72f1b22ffb2ca5a152fbc29cd348c38ee1dc06|MVU_Schema_Runtime.js:b05fcbf90ac6e9862edc17df9a87ec4b9fedaf1898320f82dd99b32b69ef0357|BattlePreview_Module.js:8dd53716466ef2089e149544f904d77396a61a81b003401e51fc1a0cb03a5323|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:608637f6d35ae34ac2ec4a777e03ca07c52818ccc60071d1602ffe082a3beef1|BattleRuntime_Module.js:b3d0239dd9e529587d5e893561ef7f96bba6e1138e1aefb109fc9a5ad318a7da */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -2490,6 +2490,108 @@ function 标记生成领域技_V1(技能 = {}, 品质 = '', 魂环位 = 1, 来�
     范围: 落点.some(目标 => /全场/.test(目标)) ? '全场' : 落点.every(目标 => /友方|己方/.test(目标)) ? '己方' : '敌方',
   };
   return true;
+}
+
+// 领域技按描述生成（接入方案 S80-C a，用户 2026-11-17 选 A「让 AI 写精神领域的名称和描述（加上斗铠的领域），读档时由代码按描述
+// 生成领域技」）：char.精神领域{名称, 描述} 与 斗铠.领域（库里多写成机制名：迟缓、致盲、精神紊乱）各生成一个领域技，放进
+// 自创魂技（键为领域名）。描述里认出的机制名（技能机制名表，长名先认、按出现先后）依次试作主机制，其余作副机制，目标群体；都不成
+// 就按常规随机生成（目标仍为群体；换 3 个种子，取第一个有群体/全场效果的）；描述是 AI 明写的，同代表魂技一样不受五环去重（代表魂技强制），职业禁用的主机制照常不用。品质按领域等级：1～2 A、3 S、4～5 S+；等级：精神领域按精神境界（灵海及以下 1、灵渊 2、灵域 3、神元 4、更高 5），
+// 斗铠领域按斗铠等级（夹 1～5）。范围按作主机制的那个机制的目标语义：敌对 → 敌方，可赋予 / 仅自身 → 己方，随机生成的按效果正负（伤害、负值、状态施加 → 敌方；护盾、恢复、正值 → 己方），混合或看不出 → 全场（战斗不读范围，显示用）。生成以领域名与描述为种子
+// （同一描述生成同一招，不占生成的随机数序列）；描述改了（领域.描述哈希不同）就重新生成。角色身上已有同名、不是这里生成的魂技（库角色
+// 把领域直接写成魂技，如唐舞麟「时光回溯」）不生成也不覆盖，只给它补上 领域（没有的话）。
+var 精神境界领域等级_V1 = { 灵元境: 1, 灵通境: 1, 灵海境: 1, 灵渊境: 2, 灵域境: 3, 神元境: 4 };
+var 领域描述机制片段_V1 = null;
+function 从描述识别机制_V1(描述 = '') {
+  if (!领域描述机制片段_V1) {
+    领域描述机制片段_V1 = Object.keys(SKILL_MECHANISM_NAME_TO_PROTOTYPES_V1)
+      .flatMap(名 => 名.split('/').map(片 => [片.trim(), 名]))
+      .filter(([片]) => 片.length >= 2)
+      .sort((左, 右) => 右[0].length - 左[0].length);
+  }
+  let 文本 = String(描述 || '');
+  const 命中 = [];
+  for (const [片, 名] of 领域描述机制片段_V1) {
+    const 位置 = 文本.indexOf(片);
+    if (位置 < 0) continue;
+    命中.push([位置, 名]);
+    文本 = 文本.slice(0, 位置) + '\u0000'.repeat(片.length) + 文本.slice(位置 + 片.length);
+  }
+  return [...new Set(命中.sort((左, 右) => 左[0] - 右[0]).map(([, 名]) => 名))];
+}
+function 读取角色领域来源_V1(角色 = {}) {
+  const 来源 = [];
+  const 精神 = 角色?.精神领域;
+  const 精神名 = String(精神?.名称 || '').trim();
+  if (精神名 && 精神名 !== '无') {
+    const 境界 = String(角色?.属性?.精神境界 || '').trim();
+    const 描述 = String(精神?.描述 || '').trim();
+    来源.push({ 来源: '精神领域', 名称: 精神名, 描述: 描述 === '无' ? '' : 描述, 等级: 精神境界领域等级_V1[境界] ?? (/神/.test(境界) ? 5 : 1) });
+  }
+  const 斗铠 = 角色?.斗铠;
+  const 斗铠领域 = String(斗铠?.领域 || '').trim();
+  if (斗铠领域 && 斗铠领域 !== '无') {
+    const 名称 = /(领域|之域)$/.test(斗铠领域) && 斗铠领域.length <= 10 ? 斗铠领域 : `${斗铠领域.length <= 6 ? 斗铠领域 : String(斗铠?.名称 || '斗铠').trim()}领域`;
+    来源.push({ 来源: '斗铠', 名称, 描述: 斗铠领域, 等级: Math.max(1, Math.min(5, Math.floor(Number(斗铠?.等级) || 1))) });
+  }
+  return 来源;
+}
+function 生成角色领域技_V1(角色 = {}, 基础上下文 = {}) {
+  if (!角色 || typeof 角色 !== 'object' || typeof ensureSkillStructGenerated !== 'function') return 0;
+  const 来源列表 = 读取角色领域来源_V1(角色);
+  if (!来源列表.length) return 0;
+  if (!角色.自创魂技 || typeof 角色.自创魂技 !== 'object' || Array.isArray(角色.自创魂技)) 角色.自创魂技 = {};
+  let 生成数 = 0;
+  for (const { 来源, 名称, 描述, 等级 } of 来源列表) {
+    const 描述哈希 = hashBattleSeedValue(`${来源}|${名称}|${描述}`);
+    let 同名 = null;
+    const 找 = 值 => { if (同名 || !值 || typeof 值 !== 'object') return; if (Array.isArray(值._效果数组) && String(值.魂技名 || '').trim() === 名称) { 同名 = 值; return; } Object.values(值).forEach(找); };
+    Object.entries(角色).forEach(([键, 值]) => { if (键 !== '自创魂技' && 键 !== '蓄力技能') 找(值); });
+    if (!同名 && 角色.自创魂技[名称] && !(Number(角色.自创魂技[名称]?.领域?.描述哈希) > 0)) 同名 = 角色.自创魂技[名称];
+    if (同名) {
+      if (!同名.领域 && 同名._效果数组.length) { 同名.领域 = { 等级, 范围: '全场', 来源 }; 生成数 += 1; }
+      continue;
+    }
+    const 现有 = 角色.自创魂技[名称];
+    if (现有?.领域 && Number(现有.领域.描述哈希) === 描述哈希 && Array.isArray(现有._效果数组) && 现有._效果数组.length) continue;
+    const 品质 = 等级 >= 4 ? 'S+' : 等级 >= 3 ? 'S' : 'A';
+    const 机制 = 从描述识别机制_V1(`${名称} ${描述}`);
+    const 尝试 = [...机制.map((主, 序) => ({ 主机制原型: 主, 副机制: 机制.filter((_, 其他) => 其他 !== 序).slice(0, 2), 目标: '群体', 代表魂技强制: true })),
+      ...[1, 2, 3].map(种子 => ({ 目标: '群体', 代表魂技强制: true, 种子 }))];
+    let 技能 = null, 主机制 = '', 兜底 = null;
+    for (const 蓝图 of 尝试) {
+      const 候选 = { 魂技名: 名称, ...(描述 ? { 效果描述: 描述 } : {}) };
+      try {
+        withBattleSeedRandom(`领域|${描述哈希}|${蓝图.主机制原型 || `随机${蓝图.种子}`}`, () => ensureSkillStructGenerated(候选, {
+          // 读档时自创魂技只规范化不生成（允许自动生成技能结构 默认关）；领域技要生成。
+          ...基础上下文, 允许自动生成技能结构: true, gradeOverride: 品质, grade: 品质, sourceQuality: 品质, 来源: '领域技', sourceCategory: '自创魂技',
+          blueprintOverride: { 目标: 蓝图.目标, 代表魂技强制: true, ...(蓝图.主机制原型 ? { 主机制原型: 蓝图.主机制原型, 副机制: 蓝图.副机制 } : {}) },
+          preferredSecondary: 蓝图.副机制 || 机制.slice(0, 2),
+        }));
+      } catch (错误) { continue; }
+      if (!Array.isArray(候选._效果数组) || !候选._效果数组.length) continue;
+      if (蓝图.主机制原型 || 候选._效果数组.some(效果项 => /群体|全场/.test(String(效果项?.目标 || '')))) { 技能 = 候选; 主机制 = 蓝图.主机制原型 || ''; break; }
+      兜底 ||= 候选;
+    }
+    技能 ||= 兜底;
+    if (!技能) continue;
+    const 语义 = String(SKILL_MECHANISM_META_V1?.[主机制]?.目标语义 || '').trim();
+    const 方向 = 技能._效果数组.filter(效果项 => String(效果项?.目标 || '').trim() !== '自身').map(效果项 => {
+      const 原型 = String(效果项?.原型 || '').trim(), 值 = Number(String(效果项?.数值 ?? '').replace(/%/g, ''));
+      if (原型 === '伤害结算' || 原型 === '状态施加' || 原型 === '决策干扰' || 原型 === '资源锁定') return '敌方';
+      if (原型 === '护盾变化' || 原型 === '机制授予' || 原型 === '资源变化' && !(值 < 0)) return '己方';
+      return Number.isFinite(值) ? (值 < 0 ? '敌方' : '己方') : '';
+    });
+    const 推断 = 方向.length && 方向.every(项 => 项 === '敌方') ? '敌方' : 方向.length && 方向.every(项 => 项 === '己方') ? '己方' : '全场';
+    技能.领域 = {
+      等级,
+      范围: 语义 === '敌对' ? '敌方' : 语义 === '可赋予' || 语义 === '仅自身' ? '己方' : 推断,
+      来源,
+      描述哈希,
+    };
+    角色.自创魂技[名称] = 技能;
+    生成数 += 1;
+  }
+  return 生成数;
 }
 
 function hashBattleSeedValue(seedText = '') {
@@ -36533,6 +36635,14 @@ function 规范化角色Schema_V1(char) {
 
     const customSkillAttributeState = buildCharacterCustomSkillAttributeState(char);
     const customSkillElementProfile = buildElementProfileFromAttributeState(customSkillAttributeState);
+    // 领域技按描述生成（S80-C a，用户 11-17 选 A）：精神领域 / 斗铠.领域 → 自创魂技里一个带 领域 的魂技（MVU_Skill_Runtime 生成角色领域技_V1）。
+    if (typeof 生成角色领域技_V1 === 'function') 生成角色领域技_V1(char, {
+      type: 主武魂系别, 武魂系别: 主武魂系别, 角色: char, talentTier: char.属性.天赋梯队,
+      age: Math.max(1000, genericSkillAge), ringAge: Math.max(1000, genericSkillAge),
+      ringIndex: Math.max(1, Math.ceil(Number(char.属性.等级 || 1) / 10)), compatibility: 100,
+      elementProfile: customSkillElementProfile, 可调用元素: customSkillAttributeState.可调用元素, callableElements: customSkillAttributeState.可调用元素,
+      elementTrigger: '自创', 恢复增益重复账本缓存,
+    });
     ensureSkillMapGenerated(char.自创魂技, (_, skillName) => ({
       type: 主武魂系别,
       武魂系别: 主武魂系别,
