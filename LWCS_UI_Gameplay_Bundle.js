@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:719194b05f165a828865be24e01b31257142ef85d3ce09b8ce2fc1e2becfbe2f|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:e16daf2b60dbd069cfcc6de8a08abbbda42b553bf4872c635410012f1932799e|BattleRuntime_Module.js:9f5c192f215b9a4dd90d098f254daa40f0e45577b1dcda0407ed35fac2b6bf8a|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:d53183202b524b3fd5cafbc11c91baff579041d08533adad794b3e713bc00380|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:c263dd8ca8acb30c15b8af739e14115b4cea4bb14dc4d7fa9980fdde9ddeb31e|BattleRuntime_Module.js:c80399083863c1d5519a3b5f4bded3149721880a7c9b2751f85f7faf7ec92a6c|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -27219,7 +27219,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ...grants.map(entry => ({ ...entry.effect, effectId: entry.effectId })),
       ...baseEffects,
     ];
-    if (!effects.length && !['PASS_OPPORTUNITY', 'DEFEND', 'EVADE', 'WITHDRAW', 'EQUIP', 'OBSERVE'].includes(String(declaration?.actionKind || '').trim())) {
+    if (!effects.length && !['PASS_OPPORTUNITY', 'DEFEND', 'EVADE', 'WITHDRAW', 'EQUIP', 'OBSERVE', 'GUARD'].includes(String(declaration?.actionKind || '').trim())) {
       throw new Error('battle_preview_action_effects_missing');
     }
     const nodeBudget = { count: 0, limit: budgetLimit, activeFingerprints: new Set() };
@@ -47210,7 +47210,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       candidates.push({ candidateId: `${actorId}:COUNTER`, declaration: defensiveDeclaration(actorId, 'COUNTER') });
     }
     const allies = aliveEntries(worldSnapshot).filter(entry => entry.side === sideOf(worldSnapshot, actor) && preview.unitId(entry.unit) !== actorId);
-    if (!forcedSkill && !reactionOnly && !counterOnly && allies.length && input.actionOpportunity?.interceptThreat === true) {
+    // 守护（用户 2026-11-17 选「加守护主动动作」；原作 2v2-a09 唐舞麟「把古月护在身后正面硬接」）: an action spent standing before an
+    // ally — until the guard's next action, single-target hostile effects on that ally land on the guard instead (BattleRuntime lays
+    // 护卫 on it; BattlePreview resolveTargets redirects them), whatever their windup. Offered to a primary unit on its own turn,
+    // for each ally of its side that is not a summon.
+    const guardOffered = !forcedSkill && !reactionOnly && !counterOnly && !assistOnly && !actor?.召唤键 && !preview.isSummonUnit(actor) &&
+      (!opportunityRole || opportunityRole.toUpperCase() === 'ACTIVE') && input.actionOpportunity?.continuationGrant !== true;
+    if (guardOffered) allies.filter(entry => !preview.isSummonUnit(entry.unit)).forEach(entry => candidates.push({ candidateId: `${actorId}:GUARD:${preview.unitId(entry.unit)}`,
+      declaration: { actionId: `${actorId}:GUARD:${preview.unitId(entry.unit)}`, actorId, actionKind: 'GUARD', targetIds: [preview.unitId(entry.unit)] } }));
+    else if (!forcedSkill && !reactionOnly && !counterOnly && allies.length && input.actionOpportunity?.interceptThreat === true) {
       allies.forEach(entry => candidates.push({ candidateId: `${actorId}:GUARD:${preview.unitId(entry.unit)}`, declaration: { actionId: `${actorId}:GUARD:${preview.unitId(entry.unit)}`, actorId, actionKind: 'GUARD', targetIds: [preview.unitId(entry.unit)] } }));
     }
     if (!forcedSkill && !reactionOnly && !counterOnly && input.beliefState?.observationGranted === true && Number(input.beliefState?.confidence || 0) < 1) {
@@ -108131,6 +108139,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           const ways = [{ way: 'take', loss: lostHere }, { way: 'answer', loss: lostHere * plain.share - plain.back * ratioHp + whole * (1 - hasty), meet: plain }];
           if (met) ways.push({ way: 'meet', loss: lostHere * meet.share - meet.back * ratioHp + whole, meet });
           const best = ways.reduce((low, option) => option.loss < low.loss - 1e-12 ? option : low);
+          // Development hook (absent in play): the ways a charging target weighs.
+          root.__LWCS_DECISION_DEBUG__?.onChargeWays?.({ actorId: request.actorId, row, ways: ways.map(option => ({ way: option.way, loss: option.loss, share: option.meet?.share, back: option.meet?.back, kind: option.meet?.kind })), lostHere, whole, hasty });
           if (best.way === 'take') continue;
           meet = best.meet;
           r20DropCharge(table, strikes, busy, chargeRow, best.way === 'meet' ? 0 : hasty);
@@ -108385,6 +108395,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     for (let row = 0; row < remaining.length; row += 1) if (typeof stamina[row] === 'number') stamina[row] = Math.max(0, stamina[row] - r20Injury * Math.max(0, hpMark[row] - remaining[row]));
     const cover = (table.cover || []).slice();
+    // 守护: the ally it stands before is covered by the actor until the actor's next action (r20Race cover).
+    if (String(candidate?.declaration?.actionKind || '').toUpperCase() === 'GUARD' && String(request.actionOpportunity?.role || 'ACTIVE').toUpperCase() === 'ACTIVE' && actorRow !== undefined) {
+      const ward = table.index.get(String(candidate.declaration.targetIds?.[0] || ''));
+      if (ward !== undefined && ward !== actorRow && table.sides[ward] === table.sides[actorRow]) { cover[ward] = { row: actorRow, until: 1 }; seen += 1; }
+    }
     for (const [row, next] of rebuilt) cover[row] = r20Cover(next, table.units, table.sides, row);
     while (cover.length < sidesNow.length) cover.push(null);
     const facts = { assist: table.assist, cover, sides: sidesNow, out, support, stop, control, keep, keepBack, answer, answerOpen, back, turn, host, remaining, stamina, alive, guard, revive, drain, tick, tickRounds, reflect, hpMax, horizon: table.horizon, late: lateCells };
@@ -126135,12 +126150,25 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       // 攻击破绽（BattlePreview attackOpeningOf）：正式行动先清掉旧破绽，进攻留下新的；反应（闪避、防御）不算下一次行动。
       if (actionRole !== 'REACTION') previewRuntime.setAttackOpening(actor, previewRuntime.attackOpeningStrength(combatData, actor, { ...declaration, actionKind },
         targetId => listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, targetId))), actionEvent.actionId);
+      // 守护 lasts until the guard's next action: a formal action of its own lifts what it laid.
+      if (actionRole === 'ACTIVE') liftOwnGuard(combatData, actor);
     }
     const pendingActionGrantedEffects = actionRole === 'STATE_TICK' || declaration?.__includeGrantedEffects === false
       ? []
       : previewRuntime.pendingGrantedEffects(actor, actionKind);
     if (['PASS_OPPORTUNITY', 'DEFEND', 'EVADE', 'OBSERVE', 'WITHDRAW', 'GUARD'].includes(actionKind)) {
       const eventKind = actionKind === 'DEFEND' || actionKind === 'GUARD' ? 'defend' : actionKind === 'EVADE' ? 'dodge' : 'pass';
+      // 守护（用户 2026-11-17）: an ACTIVE guard stands before the ally it names — 护卫 on that ally, its 来源角色 the guard, until the
+      // guard's next action (liftOwnGuard; two round ends at most). BattlePreview resolveTargets sends single-target hostile effects
+      // on the ally to the guard while it can act.
+      if (actionKind === 'GUARD' && actionRole === 'ACTIVE') {
+        const ward = (Array.isArray(declaration?.targetIds) ? declaration.targetIds : []).map(id => listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, id))).find(Boolean);
+        if (ward && ward !== actor && inferUnitSide(combatData, ward) === inferUnitSide(combatData, actor)) {
+          ward.状态效果 = ward.状态效果 && typeof ward.状态效果 === 'object' ? ward.状态效果 : {};
+          ward.状态效果[`守护·${previewRuntime.unitName(actor)}`] = { 状态: '护卫', 状态名称: '护卫', 类型: 'buff', 来源角色: previewRuntime.unitName(actor), 来源ID: previewRuntime.unitId(actor),
+            duration: 2, 持续回合: 2, 战斗效果: { guarded: true }, __守护: true, 描述: `${previewRuntime.unitName(actor)}守在身前，单体攻击先落到守护者身上` };
+        }
+      }
       const preparedDefense = allowPreparedDefense !== false &&
         actionRole === 'ACTIVE' &&
         ['DEFEND', 'EVADE'].includes(actionKind);
@@ -129236,6 +129264,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
   }
 
+  // 守护: the guard's own 守护 states lifted (its next formal action ends the guard it set up).
+  function liftOwnGuard(combatData = {}, guard = {}) {
+    const guardId = previewRuntime.unitId(guard);
+    for (const unit of listCombatUnits(combatData)) {
+      for (const [key, state] of Object.entries(unit?.状态效果 || {})) if (state?.__守护 === true && String(state.来源ID || '') === guardId) delete unit.状态效果[key];
+    }
+  }
+
   // 蓄满握住: what keeping a full charge one more turn takes (CHARGE_HOLD_UPKEEP of each startup cost of its skill, read as the
   // settlement reads a cost: BattlePreview resolveSkillResourceCost), and whether the holder has it.
   const CHARGE_HOLD_UPKEEP = 0.1, CHARGE_HOLD_LIMIT = 2;
@@ -129621,6 +129657,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const round = Number(combatData?.回合 || 0), side = inferUnitSide(combatData, target);
     // 位移重做: 换位拉进己方阵中的敌人，本回合援护盖不到它。
     if (previewRuntime.positionDeniesCover(target, round)) return null;
+    // Development hook (absent in play): each ally of the target and the first gate it fails (援护 is rare: 11-17 第 34 题).
+    const gateHook = globalThis.__LWCS_DECISION_DEBUG__?.onInterceptGate;
+    if (typeof gateHook === 'function') for (const unit of listPrimaryCombatUnits(combatData)) {
+      if (!unit || unit === target || unit.召唤键 || inferUnitSide(combatData, unit) !== side) continue;
+      const opportunity = unit.__battleRuntime?.naturalOpportunity;
+      gateHook({ allyId: previewRuntime.unitId(unit), targetId: previewRuntime.unitId(target), attackerId: previewRuntime.unitId(attacker),
+        gate: !previewRuntime.isBattleCapable(unit) || !structuredActorCanAct(unit, 'ACTIVE') ? 'CANNOT_ACT' : unit.蓄力技能 || previewRuntime.fusionChargeHost(combatData, unit) ? 'CHARGING'
+          : previewRuntime.guardBrokenOf(unit, round) ? 'GUARD_BROKEN' : String(opportunity?.status || '').trim() !== 'PENDING' || Number(opportunity?.round || 0) !== round ? `ACTED:${String(opportunity?.status || 'NONE')}`
+            : previewRuntime.interceptWindupBudget(attacker, declaration, unit) < 0 ? 'TOO_FAST' : 'OK',
+        windup: previewRuntime.actionWindup(attacker, declaration), budget: previewRuntime.interceptWindupBudget(attacker, declaration, unit) });
+    }
     const candidates = listPrimaryCombatUnits(combatData).filter(unit => unit && unit !== target && !unit.召唤键 &&
       inferUnitSide(combatData, unit) === side && previewRuntime.isBattleCapable(unit) && structuredActorCanAct(unit, 'ACTIVE') &&
       !unit.蓄力技能 && !previewRuntime.fusionChargeHost(combatData, unit) && !previewRuntime.guardBrokenOf(unit, round) &&
