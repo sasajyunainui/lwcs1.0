@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:3a7ab2b86114d7997e52efa71f2ebd4abfbfe0588597e12628cc11524a69319e|cockpit/designer-model.js:43e9907dc6a213586bc290bdf3e507a8178bd80879f0f020231ac30ffa7c4f99|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:57c95eeeab13ad433b470be8556aa17aaceffec1d9597bdd47aeecbdbae4d47e|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:15f0830250071783e0053ece764b09dc6ed12aa61da944e76a6ae73c1cbfadc4|BattleRuntime_Module.js:09e8b3668cc60f46364280a2393ae0869d3ccb9c39e5f0c0bf79901c03a3daa4|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:3a7ab2b86114d7997e52efa71f2ebd4abfbfe0588597e12628cc11524a69319e|cockpit/designer-model.js:43e9907dc6a213586bc290bdf3e507a8178bd80879f0f020231ac30ffa7c4f99|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:57c95eeeab13ad433b470be8556aa17aaceffec1d9597bdd47aeecbdbae4d47e|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:9ef01701abf687f190fbbc86d8139e22119f99e36379e7fa56e1dd8b92cc62e3|BattleRuntime_Module.js:09e8b3668cc60f46364280a2393ae0869d3ccb9c39e5f0c0bf79901c03a3daa4|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -161194,6 +161194,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     let released = 0;
     const horizon = Math.max(1, Math.min(R20_RACE_ROUNDS, Number(facts.horizon) || R20_RACE_ROUNDS)), tick = facts.tick || null, tickRounds = facts.tickRounds || null;
     const dealt = new Array(count), mended = new Array(count), hits = new Array(count), worth = new Array(count), pressed = new Array(count);
+    // latent[u]: what u brings once it acts again — the same cells, read whether or not it acts this step (held, charging, idle).
+    const latent = new Array(count);
     let time = 0;
     for (let step = 0; step < 64 && time < horizon - 1e-9; step += 1) {
       // Which cells a pair reads now: a unit the candidate brought, the candidate's; a unit it changed, the candidate's
@@ -161230,13 +161232,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (host) for (let unit = 0; unit < count; unit += 1) if (host[unit] >= 0 && !(left[host[unit]] > 1e-9)) left[unit] = 0;
       // What each unit brings in a round, and what its enemies could land on it together.
       for (let unit = 0; unit < count; unit += 1) {
-        worth[unit] = 0; pressed[unit] = 0; dealt[unit] = 0; mended[unit] = 0; hits[unit] = 0; aimed[unit] = -1; landed[unit] = 0;
+        worth[unit] = 0; latent[unit] = 0; pressed[unit] = 0; dealt[unit] = 0; mended[unit] = 0; hits[unit] = 0; aimed[unit] = -1; landed[unit] = 0;
         if (!(left[unit] > 1e-9)) continue;
         if (tick && tick[unit] && !(tickRounds && time >= tickRounds[unit] - 1e-9)) { if (tick[unit] < 0) dealt[unit] -= tick[unit]; else mended[unit] += tick[unit]; }
         for (let other = 0; other < count; other += 1) {
           if (!(left[other] > 1e-9)) continue;
-          if (sides[other] === sides[unit]) { if (striking(unit)) worth[unit] = Math.max(worth[unit], cells(unit, other).support[unit][other]); continue; }
-          if (striking(unit)) worth[unit] = Math.max(worth[unit], cells(unit, other).out[unit][other]);
+          if (sides[other] === sides[unit]) { latent[unit] = Math.max(latent[unit], cells(unit, other).support[unit][other]); if (striking(unit)) worth[unit] = latent[unit]; continue; }
+          latent[unit] = Math.max(latent[unit], cells(unit, other).out[unit][other]);
+          if (striking(unit)) worth[unit] = latent[unit];
           if (striking(other)) pressed[unit] += cells(other, unit).out[other][unit] * takes(cells(other, unit), unit, other);
         }
       }
@@ -161272,7 +161275,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (host) for (let unit = 0; unit < count; unit += 1) if (host[unit] >= 0 && left[unit] > 1e-9) aimed[host[unit]] += worth[unit];
         for (let unit = 0; unit < count; unit += 1) {
           if (!(left[unit] > 1e-9)) continue;
-          const rank = (worth[unit] + (host ? aimed[unit] : 0)) / Math.max(R20_ROUNDS_FLOOR, pressed[unit] > 1e-9 ? left[unit] / pressed[unit] : R20_ROUNDS_CAP);
+          // 控制后跟上（11-16 行为检查目录第 47 题）: a unit held, charging or idle this step is turned on by what it brings once it
+          // acts again (latent), not by the nothing it brings now — by that a stun on the enemy's strongest made its side turn on
+          // the next one, and the stunned one woke up whole (眩晕被灌增幅的 B0 推演 −0.27，不控反而 0).
+          const rank = ((striking(unit) ? worth[unit] : latent[unit]) + (host ? aimed[unit] : 0)) / Math.max(R20_ROUNDS_FLOOR, pressed[unit] > 1e-9 ? left[unit] / pressed[unit] : R20_ROUNDS_CAP);
           const held = focus[sides[unit]];
           if (!held || rank > held.rank) focus[sides[unit]] = { unit, rank };
         }
@@ -161280,6 +161286,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         return focus;
       };
       let focus = pickFocus();
+      // Development hook (absent in play; the optional call evaluates nothing without it): each step's standing and focus.
+      root.__LWCS_DECISION_DEBUG__?.onRaceStep?.({ time, plan, left: left.slice(), worth: worth.slice(), heldShare: heldShare.slice(), pace: pace.slice(), pressed: pressed.slice(), focus: JSON.parse(JSON.stringify(focus)), denied: denied ? denied.slice() : null });
       // 增益/减益（r20Assists）: a unit keeping no control up may keep one of its changes up, on the unit it pays most on, when
       // that moves the two clocks more than recasting it costs. Weighed as the race runs them (战斗决策原理「我方的钟先走完」):
       // what it raises of its side's hits (off − 1 of that unit's worth, over all its side brings) or slows of the hits its side
