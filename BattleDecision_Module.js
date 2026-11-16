@@ -73397,7 +73397,7 @@
       }
       const rows = !shadow ? neutralCausalRows : Object.freeze(neutralCausalRows.map(row => !['OBJECTIVE_PROGRESS', 'OPPONENT_RESPONSE_PRESSURE'].includes(row.featureCode) ? row
         : Object.freeze({ ...row, value: clamp(shadow.value / R20_SHADOW_SCALE, -1, 1) })));
-      if (shadowHook) shadowHook({ request, candidate: frozenById.get(candidateId), rows, shadow, causalMs: 0, shadowMs: 0, chooser: true });
+      if (shadowHook) shadowHook({ request, candidate: frozenById.get(candidateId), rows, shadow, result: previewResultsById[candidateId], causalMs: 0, shadowMs: 0, chooser: true });
       return rows;
     };
     const exactCausalRows = shadowChooses ? shadowCausalRows : !shadowHook ? valuedCausalRows : candidateId => {
@@ -73405,7 +73405,7 @@
       const rows = valuedCausalRows(candidateId);
       const valuedAt = performance.now();
       const shadow = illegalTargetCandidateIds.has(candidateId) ? null : r20Shadow(request, previewResultsById[candidateId], frozenById.get(candidateId));
-      shadowHook({ request, candidate: frozenById.get(candidateId), rows, shadow, causalMs: valuedAt - startedAt, shadowMs: performance.now() - valuedAt });
+      shadowHook({ request, candidate: frozenById.get(candidateId), rows, shadow, result: previewResultsById[candidateId], causalMs: valuedAt - startedAt, shadowMs: performance.now() - valuedAt });
       return rows;
     };
     const responseSurrogateRows = candidateId => {
