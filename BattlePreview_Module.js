@@ -25075,6 +25075,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     addState,
     removeProjectedStates,
     applyProjectedRuleState,
+    timeWindowStateMatches,
     statePolarity,
     negativeEffectIsImmune,
     conditionMatchesFilter,
