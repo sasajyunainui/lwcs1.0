@@ -2837,6 +2837,51 @@
   // 融合蓄力（用户 2026-11-12）: a charged fusion skill is charged by its partners too — from the turn it starts to the
   // turn it is released each partner's natural turn goes to it. The unit charging a fusion skill that `unit` is a
   // partner of (its 蓄力技能 lists the partners), or null; a host that is down holds nobody.
+  // 仓促出手（用户 2026-11-17「可中断，可仓促出手」，原作 0515 谢邂「蓄势未满」一击、0758 白秀秀对清萝）: a charge given up to
+  // answer a move still lands, at the share of it already charged × HASTY_CHARGE_FACTOR of its power — the cost was paid
+  // in full. 0 when too little is charged to land anything (under HASTY_CHARGE_FLOOR), or the charge is already cut short.
+  const HASTY_CHARGE_FACTOR = 0.6, HASTY_CHARGE_FLOOR = 0.05;
+  // The share of a charge's windup already charged (0 when it is not a charge under way).
+  function chargedShare(charge = null) {
+    if (!charge || typeof charge !== 'object' || charge.hasty === true) return 0;
+    const left = Math.max(0, Number(charge.cast_time ?? charge.remainingCastTime ?? 0) || 0);
+    const total = Math.max(left, Number(charge.total_cast_time ?? charge.skill?.前摇 ?? 0) || 0);
+    return total > 0 ? 1 - left / total : 0;
+  }
+  function hastyChargeScale(charge = null) {
+    const scale = chargedShare(charge) * HASTY_CHARGE_FACTOR;
+    return scale >= HASTY_CHARGE_FLOOR ? scale : 0;
+  }
+  // 蓄力迎击（同日用户选「3」；原作 0758 白秀秀对清萝、神界传说 88～90 章情绪之神「谁去攻击情绪之神，就要承受这一刀的威力」）:
+  // a unit charging may meet a move on it with the charge itself, thrown at the attacker at once — no windup left, nothing
+  // more to pay, its damage at the share charged (no hasty cut: it was aimed at this) — as any skill meets a move (the
+  // clash / preemption of the engagement chain); the move still comes. The skill offered for that, one per charge (kept, so
+  // its identity holds through a decision); null when nothing is charged enough, the charge is cut short, or is a fusion's.
+  const chargeMeetSkills = new WeakMap();
+  function chargeMeetSkill(unit = {}) {
+    const charge = unit?.蓄力技能;
+    if (!charge || typeof charge !== 'object' || !charge.skill || typeof charge.skill !== 'object' || charge.hasty === true ||
+      Array.isArray(charge.fusionPartnerIds) && charge.fusionPartnerIds.length) return null;
+    const share = chargedShare(charge);
+    if (!(share >= HASTY_CHARGE_FLOOR)) return null;
+    const kept = chargeMeetSkills.get(charge);
+    if (kept && kept.share === share) return kept.skill;
+    const skill = JSON.parse(JSON.stringify(charge.skill));
+    const name = String(skill.魂技名 || skill.name || charge.actionName || '蓄力').trim();
+    skill.魂技名 = `${name}（蓄力迎击）`; skill.name = skill.魂技名;
+    skill.前摇 = 0; skill.cast_time = 0; skill.消耗 = '无';
+    skill.__chargeRelease = true;
+    for (const effect of Array.isArray(skill._效果数组) ? skill._效果数组 : []) {
+      if (effect?.原型 === '伤害结算' && Number(effect.威力倍率) > 0) effect.威力倍率 = Math.max(1, Math.round(Number(effect.威力倍率) * share));
+    }
+    chargeMeetSkills.set(charge, { share, skill });
+    return skill;
+  }
+  // Whether a unit is charging (its own charge or a fusion skill's it charges along with): a charge cut short (hasty) is
+  // only waiting for its holder's next action, no longer charging.
+  function isCharging(worldSnapshot = {}, unit = {}) {
+    return !!(unit?.蓄力技能 && unit.蓄力技能.hasty !== true) || !!fusionChargeHost(worldSnapshot, unit);
+  }
   function fusionChargeHost(worldSnapshot = {}, unit = {}) {
     const id = unitId(unit);
     if (!id) return null;
@@ -24334,6 +24379,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // The weight factor on what a guard lets through, by the hit's share w of the HP maximum: GUARD_LIGHT up to
   // GUARD_LIGHT_SHARE, rising linearly to 1 at GUARD_EVEN_SHARE and to GUARD_HEAVY at GUARD_HEAVY_SHARE, flat after;
   // GUARD_TYPICAL when the hit is not known (table valuations). What gets through never exceeds GUARD_CAP.
+  const GUARD_DEFENSE_MID = 0.12, GUARD_DEFENSE_SLOPE = 1.0, GUARD_DEFENSE_CAP = 0.3;
   const GUARD_LIGHT = 0.4, GUARD_HEAVY = 1.2, GUARD_TYPICAL = 0.7, GUARD_LIGHT_SHARE = 0.05, GUARD_EVEN_SHARE = 0.2,
     GUARD_HEAVY_SHARE = 0.35, GUARD_CAP = 0.95;
   const COUNTER_GUARD_HELD = 0.15, COUNTER_BASE = 0.5, COUNTER_WINDUP_SWING = 0.3, COUNTER_FLOOR = 0.1, COUNTER_CAP = 0.9;
@@ -24544,9 +24590,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const defense = Math.max(1, readCombatStat(reactor, 'def'));
     const attack = Math.max(1, readCombatStat(sourceActor, 'str'));
     const staminaRatio = readResource(reactor, '体力') / Math.max(1, readResourceMax(reactor, '体力'));
+    // 防御值决定硬接（用户 2026-11-17 选甲，行为检查目录第 26 题）: the guard keeps GUARD_DEFENSE_MID of the hit off at an even
+    // 防御/(防御+力量), GUARD_DEFENSE_SLOPE more or less per unit of that share away from 0.5, within [0, GUARD_DEFENSE_CAP].
+    // Until 11-17 it was 0.24 × the share (at most 0.2): a 防御系 of 防御 5080 kept 0.391 of a hit, a 敏攻系 of 2543 0.419,
+    // so evasion (0.43–0.54 for a 敏攻系) never beat guarding.
     const ordinary = clamp(
       0.78 -
-      Math.min(0.2, defense / (defense + attack) * 0.24) -
+      clamp(GUARD_DEFENSE_MID + (defense / (defense + attack) - 0.5) * GUARD_DEFENSE_SLOPE, 0, GUARD_DEFENSE_CAP) -
       Math.min(0.08, staminaRatio * 0.08),
       0.45,
       0.82,
@@ -24994,6 +25044,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     declarationGrantsCounter,
     fusionSkillMetadata,
     fusionChargeHost,
+    hastyChargeScale,
+    chargedShare,
+    chargeMeetSkill,
+    isCharging,
     ACTION_STAMINA_RATES,
     ACTION_STAMINA_SCALE,
     resolveFusionAction,

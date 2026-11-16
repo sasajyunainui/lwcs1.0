@@ -14200,6 +14200,56 @@
     });
   }
 
+  // 蓄力中应对（用户 2026-11-17「蓄力可以主动中断」「可中断，可仓促出手」；原作 0515 谢邂影分身躲剑后「蓄势随之爆发」、0758
+  // 白秀秀被清萝冲近时瞬发场域）: a charging unit answers a move only by breaking its charge off. What it charged still goes
+  // out, hastily: the charge is ready at once, its damage at the share charged × 0.6 (BattlePreview hastyChargeScale), and is
+  // released on the holder's next action through the ordinary release; too little charged and it is given up. A fusion
+  // partner that answers breaks the fusion charge it shares. Null when the unit was charging nothing.
+  function abandonChargeToAnswer(combatData = {}, unit = {}, node = {}) {
+    if (!previewRuntime.isCharging(combatData, unit)) return null;
+    const charge = unit?.蓄力技能;
+    if (!charge || charge.hasty === true) return interruptFusionChargeByPartner({ combatData, partner: unit, reasonCode: 'PARTNER_ANSWERED' });
+    const scale = previewRuntime.hastyChargeScale(charge), name = previewRuntime.unitName(unit);
+    const actionName = normalizeActionDisplayName(charge?.skill?.name || charge?.skill?.魂技名 || charge?.actionName || '蓄力行动');
+    if (scale > 0) {
+      const skill = charge.skill && typeof charge.skill === 'object' ? charge.skill : null;
+      for (const effect of Array.isArray(skill?._效果数组) ? skill._效果数组 : []) {
+        if (effect?.原型 === '伤害结算' && Number(effect.威力倍率) > 0) effect.威力倍率 = Math.max(1, Math.round(Number(effect.威力倍率) * scale));
+      }
+      charge.cast_time = 0;
+      charge.hasty = true;
+      // Partners of a fusion charge are free once it is ready.
+      delete charge.fusionPartnerIds;
+    } else unit.蓄力技能 = null;
+    return writeLedgerEvent(combatData, {
+      eventKind: 'charge_interrupt', round: Number(combatData?.回合 || 0),
+      actorId: previewRuntime.unitId(unit), actorName: name, targetId: previewRuntime.unitId(unit), targetName: name,
+      actionName, actionType: 'charge_interrupt', actorControl: node?.actorControl || 'AI', actionRole: 'REACTION',
+      actionId: String(charge?.sourceActionId || '').trim(), sourceActionId: String(charge?.sourceActionId || '').trim(),
+      result: 'interrupted', resultState: scale > 0 ? 'PARTIAL' : 'ABORTED', ruleCode: scale > 0 ? 'CHARGE_CUT_SHORT_TO_ANSWER' : 'CHARGE_ABANDONED_TO_ANSWER',
+      meta: { source: 'structured_runtime', interruptedActionId: String(charge?.sourceActionId || '').trim(), hastyScale: scale,
+        reasonText: scale > 0 ? `${name}中断蓄力转为应对，【${actionName}】仓促出手（威力 ×${scale.toFixed(2)}，下一次行动放出）` : `${name}放弃蓄力，转为应对` },
+    });
+  }
+
+  // 蓄力迎击: the charge thrown at the attacker as the answer — it is spent on it.
+  function spendChargeToMeet(combatData = {}, unit = {}, node = {}) {
+    const charge = unit?.蓄力技能;
+    if (!charge) return null;
+    unit.蓄力技能 = null;
+    const name = previewRuntime.unitName(unit);
+    const actionName = normalizeActionDisplayName(charge?.skill?.name || charge?.skill?.魂技名 || charge?.actionName || '蓄力行动');
+    return writeLedgerEvent(combatData, {
+      eventKind: 'charge_interrupt', round: Number(combatData?.回合 || 0),
+      actorId: previewRuntime.unitId(unit), actorName: name, targetId: previewRuntime.unitId(unit), targetName: name,
+      actionName, actionType: 'charge_interrupt', actorControl: node?.actorControl || 'AI', actionRole: 'REACTION',
+      actionId: String(charge?.sourceActionId || '').trim(), sourceActionId: String(charge?.sourceActionId || '').trim(),
+      result: 'released', resultState: 'COMPLETED', ruleCode: 'CHARGE_THROWN_TO_MEET',
+      meta: { source: 'structured_runtime', interruptedActionId: String(charge?.sourceActionId || '').trim(), chargedShare: previewRuntime.chargedShare(charge),
+        reasonText: `${name}以蓄力中的【${actionName}】迎击来袭` },
+    });
+  }
+
   // 裁判（用户 2026-11-12："有裁判的话，并且裁判足够应付的话可以让裁判出手阻挡（同样是计算敏捷，走守护路线。注意敏捷差距大
   // 的话是可以一回合救多人的，救援的前提是判定这一击会导致生命低于10%，被救的人出局"；"裁判需要接入游戏吧，而且不止是赶不赶得上，
   // 还要看实力够不够，可以说裁判就是一个中立的负责护卫行动的角色，可以用魂技护卫，可以抵挡，也可以救走"；"没有填裁判就是没有裁判";
@@ -14979,6 +15029,8 @@
     const engagementDepth = Math.max(0, Number(input?.engagementDepth || 0));
     if (!combatData || !reactor || !sourceActor || !parentActionEvent?.actionId || !reaction?.opensCounterCheck) return null;
     if (!structuredActorCanAct(reactor, 'COUNTER') || !structuredActorPhysicallyAlive(sourceActor)) return null;
+    // 蓄力中应对（11-17）: a unit still charging let the move go by to keep the charge — it strikes back no more than it answered.
+    if (previewRuntime.isCharging(combatData, reactor)) return null;
     // 位移重做: 脱离 closes the enemy's strike-back window against its user for the round (BattlePreview positionClosesCounterWindow).
     if (previewRuntime.positionClosesCounterWindow(sourceActor, Number(combatData?.回合 || 0))) return null;
     const receivedDamage = (Array.isArray(settlementFacts) ? settlementFacts : []).reduce((sum, event) => {
@@ -16659,6 +16711,25 @@
           Object.entries(shared.reactionByTarget).forEach(([targetId, reaction]) => {
             const reactor = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, targetId));
             if (!reactor) return;
+            // 仓促出手（同日「可中断，可仓促出手」；原作 0515「叶星陌一剑落空，蓄势随之爆发」）: a charge broken off to answer this
+            // move goes out as soon as the exchange is settled, through the ordinary release (a follow-up of the holder's own,
+            // not its natural action).
+            if (reactor.蓄力技能?.hasty === true && reactor.蓄力技能.queued !== true && structuredActorPhysicallyAlive(reactor)) {
+              reactor.蓄力技能.queued = true;
+              queue.enqueue({
+                actorEntry: { char: reactor, side: inferUnitSide(combatData, reactor) },
+                actorControl: 'AI',
+                actorTurnSequence: node.actorTurnSequence,
+                parentActionSequence: node.parentActionSequence || node.actionSequence,
+                phasePriority: 60,
+                grantId: `hasty_charge:${actionEvent.actionId}:${targetId}`,
+                nodeKind: 'CONTINUATION',
+                actionRole: 'ACTIVE',
+                sourceActionId: actionEvent.actionId,
+                grantType: 'HASTY_CHARGE_RELEASE',
+                state: { continuationDepth: 1, parentActionEvent: actionEvent, hastyRelease: true },
+              });
+            }
             if (previewRuntime.guardBrokenOf(reactor, guardRound)) return;
             // A strike back needs room for itself, the answers to it and its settlement: with the action's node
             // budget nearly spent the exchange ends here instead of failing the battle.
@@ -18115,6 +18186,11 @@
                 : summonGuard
                   ? { actorId, actionKind: 'DEFEND', targetIds: [actorId] }
                   : cloneValue(decisionResult.selected.declaration);
+              // 蓄力中应对（用户 2026-11-17「蓄力可以主动中断」）: a unit charging — or charging a fusion skill with its holder —
+              // answers only by giving the charge up; letting the move go by keeps the charge and takes the whole hit.
+              // 蓄力迎击（同日「3」）: met with the charge itself (BattlePreview chargeMeetSkill), the charge is thrown now and spent.
+              if (reactionDeclaration?.skill?.__chargeRelease === true) spendChargeToMeet(combatData, actor, node);
+              else if (String(reactionDeclaration?.actionKind || '').trim().toUpperCase() !== 'PASS_OPPORTUNITY') abandonChargeToAnswer(combatData, actor, node);
               const reactionSettlementStartedAt = collectPerformanceBreakdown
                 ? performanceNow()
                 : 0;
@@ -18577,7 +18653,7 @@
               }
               cooperativeOptions = { validTargetIds: hostileTargets.map(previewRuntime.unitId).filter(Boolean), preferredTargetIds };
             }
-            let storedCharge = (node.nodeKind === 'ACTIVE' || isCooperativeAssist) && actor?.蓄力技能 && typeof actor.蓄力技能 === 'object'
+            let storedCharge = (node.nodeKind === 'ACTIVE' || isCooperativeAssist || node?.state?.hastyRelease === true) && actor?.蓄力技能 && typeof actor.蓄力技能 === 'object'
               ? actor.蓄力技能
               : null;
             // 沉默/封技 (用户 2026-11-12 "该接的接完"): a silenced unit releases no skill, a charged one included — the charge is
@@ -18605,6 +18681,11 @@
                 interruptFusionChargeByPartner({ combatData, partner: lostPartner, host: actor, reasonCode: 'PARTNER_UNAVAILABLE' });
                 storedCharge = null;
               }
+            }
+            // A hasty release whose charge is gone by now (silenced, released) is nothing more: no free action in its place.
+            if (!storedCharge && node?.state?.hastyRelease === true) {
+              queue.recordTrace('CANCELLED', node, { reason: 'HASTY_CHARGE_GONE' });
+              continue;
             }
             if (storedCharge) {
               const remainingCastTime = Math.max(0, Number(storedCharge?.cast_time ?? storedCharge?.remainingCastTime ?? storedCharge?.skill?.前摇 ?? 0));
@@ -19044,6 +19125,8 @@
               actor.蓄力技能 = {
                 skill: chargeSkillPackage,
                 cast_time: castTime - naturalActionBudget,
+                // The whole windup, for the share charged when it is cut short (BattlePreview hastyChargeScale).
+                total_cast_time: castTime,
                 targetIds: cloneValue(declaration.targetIds || []),
                 ...(declaration.creationRecipientId ? { creationRecipientId: String(declaration.creationRecipientId).trim() } : {}),
                 actionName,

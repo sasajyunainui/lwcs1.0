@@ -4673,7 +4673,9 @@
     const roots = [
       ...(Array.isArray(unit?.技能列表) && unit.技能列表.length ? [unit.技能列表] : []),
       // 融合技（非武魂融合，S80-E）: its 技能数据 is composed from the participants' skills (MVU_Schema_Runtime 合成魂技融合技能数据_V1).
-      ...Object.entries(unit).filter(([key, value]) => /^(?:第\d+)?武魂|血脉之力|魂骨|装备|自创魂技|技能|^融合技$/.test(key) && value && typeof value === 'object')
+      // 蓄力技能 (the charge under way, BattleRuntime) matches 技能 but is no skill table: its skill is one of these already,
+      // and read twice it gave a charging unit's counter two candidates of one identity (11-17).
+      ...Object.entries(unit).filter(([key, value]) => key !== '蓄力技能' && /^(?:第\d+)?武魂|血脉之力|魂骨|装备|自创魂技|技能|^融合技$/.test(key) && value && typeof value === 'object')
         .filter(([key]) => !(sealed.has('器武魂') && preview.toolSpiritKeys(unit).includes(key)))
         .map(([key, value]) => key !== '装备' ? value : soulToolSkillView(sealed.size ? sealedEquipmentView(equipment || value, sealed) : equipment || value)),
     ];
@@ -6856,10 +6858,12 @@
       hostile.length > 0 && withdrawalAllowed(worldSnapshot, actor, input.battleIntent)) {
       candidates.push({ candidateId: `${actorId}:WITHDRAW`, declaration: defensiveDeclaration(actorId, 'WITHDRAW') });
     }
+    // 蓄力迎击（11-17）: a unit charging may meet the move with the charge itself (BattlePreview chargeMeetSkill).
+    const chargeMeet = reactionOnly && !forcedSkill ? preview.chargeMeetSkill(actor) : null;
     const sourceSkills = forcedSkill
       ? [forcedSkill]
-      : grantedCounterSkill
-        ? [...collectSkills(actor), grantedCounterSkill]
+      : grantedCounterSkill || chargeMeet
+        ? [...collectSkills(actor), ...(grantedCounterSkill ? [grantedCounterSkill] : []), ...(chargeMeet ? [chargeMeet] : [])]
         : collectSkills(actor);
     if (summonSkillDisabled || (!forcedSkill || assistOnly) && !skillReleaseAllowed) {
       sourceSkills.forEach((sourceSkill, index) => recordRejected({
@@ -66531,6 +66535,10 @@
     // time. 11-14: without it a 精神系 whose basic attack is too slow to clash was taken to clash every basic attack back for
     // 4.4% (it was never offered one), and a 强攻系 out of 魂力 kept to its stance for 40 rounds.
     if (!hasStateFlag(unit, 'disarm')) consider({ actionKind: 'BASIC_ATTACK', targetIds: [attackerId], skill: basicAttackSkill(unit) }, null);
+    // 蓄力迎击（11-17）: a unit charging meets the move with the charge itself (BattlePreview chargeMeetSkill) — the threat that
+    // keeps attackers off it (神界传说 88 章「谁去攻击情绪之神，就要承受这一刀的威力」).
+    const meetCharge = !hasStateFlag(unit, 'silence') ? preview.chargeMeetSkill(unit) : null;
+    if (meetCharge) consider({ actionKind: 'RELEASE_SKILL', targetIds: [attackerId], skill: meetCharge }, meetCharge);
     const guards = [];
     if (!hasStateFlag(unit, 'silence') && !preview.isSummonSkillDisabled(unit)) {
       const own = affordablePreparedSkills(unit), budget = preview.reactionWindupBudget(attacker, move, unit);
@@ -67340,6 +67348,29 @@
     return { keep, release, end: release > keep + R20_RELEASE_MARGIN, carriers: carriers.map(([key]) => key) };
   }
 
+  // The row whose charge `row` is in while it is charging (BattlePreview isCharging) — its own, or the holder's of a fusion
+  // skill it charges with; undefined when none (a charge already cut short only waits for its holder's next action).
+  function r20ChargeRow(table, row) {
+    const unit = table.units[row];
+    if (!table.strikes || !unit || !preview.isCharging(table.world, unit)) return undefined;
+    if (unit.蓄力技能 && unit.蓄力技能.hasty !== true) return row;
+    const host = preview.fusionChargeHost(table.world, unit);
+    return host ? table.index.get(preview.unitId(host)) : undefined;
+  }
+  // What of a charge is kept when `row` answers (BattleRuntime abandonChargeToAnswer): its holder cuts it short (hastyChargeScale
+  // of its strike); a fusion partner breaks it (0).
+  const r20HastyShare = (table, row, chargeRow) => row === chargeRow ? preview.hastyChargeScale(table.units[chargeRow]?.蓄力技能) : 0;
+  // A charge broken off to answer (蓄力中应对): its strikes land `share` of themselves at the holder's next action (the damage
+  // read linearly in the power, a little under what the hasty skill lands), and its partners act again.
+  function r20DropCharge(table, strikes, busy, chargeRow, share = 0) {
+    for (const strike of strikes) if (strike.from === chargeRow) { strike.delta *= share; strike.at = Math.min(strike.at, 1); }
+    if (!busy) return;
+    const partners = new Set((table.units[chargeRow]?.蓄力技能?.fusionPartnerIds || []).map(String));
+    for (let row = 0; row < busy.length; row += 1) {
+      if (row === chargeRow) busy[row] = share > 0 ? Math.min(busy[row], 1) : 0;
+      else if (partners.has(table.ids[row])) busy[row] = 0;
+    }
+  }
   function r20Shadow(request, result, candidate = null) {
     if (!result || typeof result !== 'object') return null;
     // 认输与撤离 (方案第 4 条; 用户："决策的唯一核心是胜率"，"撤退 = 胜率严重不足"): leaving is valued as in the live valuation,
@@ -67658,6 +67689,13 @@
     // 接战链 阶段二: an answer that meets the move (a clash's difference, a preemption's damage) is not answered in turn and
     // leaves no attack opening (BattleRuntime settleStructuredEngagement settles it as a REACTION).
     const answering = String(request.actionOpportunity?.role || '').toUpperCase() === 'REACTION';
+    // 蓄力中应对（11-17）: an answer of a unit charging gives the charge up; letting the move go by keeps it.
+    if (answering && actorRow !== undefined && String(candidate?.declaration?.actionKind || '').trim().toUpperCase() !== 'PASS_OPPORTUNITY') {
+      const chargeRow = r20ChargeRow(table, actorRow);
+      // Met with the charge itself (蓄力迎击), it is spent on this answer (its blow is in the candidate's own settlement).
+      const spent = candidate?.declaration?.skill?.__chargeRelease === true;
+      if (chargeRow !== undefined) { r20DropCharge(table, strikes, busy, chargeRow, spent ? 0 : r20HastyShare(table, actorRow, chargeRow)); seen += 1; }
+    }
     if (actorRow !== undefined && alive[actorRow] > 0 && !answering) {
       const struck = new Set();
       for (const entry of result.contributions || []) {
@@ -67688,7 +67726,29 @@
         // stance 60 rounds against a 控制系 that stood in one too, every basic attack read as met by a skill clashing it back
         // for 10% (the 控制系 had one such answer in 60 rounds).
         const stance = r20StanceOf(table.units[row]);
-        const meet = r20Meet(r20Stand(table.units[row], table.units[actorRow], move, !!stance), weight, stance, stance ? null : r20Follow(table, row, actorRow, priorTarget, priorActor));
+        const stand = r20Stand(table.units[row], table.units[actorRow], move, !!stance), follow = stance ? null : r20Follow(table, row, actorRow, priorTarget, priorActor);
+        let meet = r20Meet(stand, weight, stance, follow);
+        // 蓄力中应对（11-17 用户「蓄力可以主动中断」「可中断，可仓促出手」「3」）: a target charging takes the whole move and keeps the
+        // charge; or breaks it off to answer (BattleRuntime abandonChargeToAnswer: what it charged goes out hastily, the share
+        // r20HastyShare); or meets the move with the charge itself (蓄力迎击: BattlePreview chargeMeetSkill, among its clashes,
+        // the charge spent). It takes the way it loses least by, as r20Meet weighs answers: what it takes of the move less what
+        // its answer lands back (shares of its HP maximum) plus what of the charge it gives up (its strikes, as shares of the
+        // HP of those they land on). Taking it whole, it strikes nothing back.
+        const chargeRow = r20ChargeRow(table, row);
+        if (chargeRow !== undefined) {
+          const lostHere = Math.max(0, table.remaining[row] - remaining[row]), ratioHp = stand.attackerHpMax / stand.hpMax;
+          const whole = strikes.reduce((sum, strike) => sum + (strike.from === chargeRow ? Math.abs(Number(strike.delta) || 0) : 0), 0);
+          const hasty = r20HastyShare(table, row, chargeRow);
+          const plain = r20Meet({ ...stand, strikes: (stand.strikes || []).filter(option => option.move?.skill?.__chargeRelease !== true) }, weight, stance, follow);
+          const met = meet.move?.skill?.__chargeRelease === true;
+          const ways = [{ way: 'take', loss: lostHere }, { way: 'answer', loss: lostHere * plain.share - plain.back * ratioHp + whole * (1 - hasty), meet: plain }];
+          if (met) ways.push({ way: 'meet', loss: lostHere * meet.share - meet.back * ratioHp + whole, meet });
+          const best = ways.reduce((low, option) => option.loss < low.loss - 1e-12 ? option : low);
+          if (best.way === 'take') continue;
+          meet = best.meet;
+          r20DropCharge(table, strikes, busy, chargeRow, best.way === 'meet' ? 0 : hasty);
+          seen += 1;
+        }
         if (meet.share < 1 - 1e-12) {
           const lost = Math.max(0, table.remaining[row] - remaining[row]);
           remaining[row] = Math.max(0, table.remaining[row] - lost * meet.share);
