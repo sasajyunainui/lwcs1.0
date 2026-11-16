@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:0fcde2dbf3fabcab9564dd4f5249405d6d3a175c0a3e31a6f0d08274d2809377|MVU_Schema_Runtime.js:b05fcbf90ac6e9862edc17df9a87ec4b9fedaf1898320f82dd99b32b69ef0357|BattlePreview_Module.js:187b4f6fa977d96a2c8011aadfdeaaeee99834c799ad5466562440dab262e950|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:c263dd8ca8acb30c15b8af739e14115b4cea4bb14dc4d7fa9980fdde9ddeb31e|BattleRuntime_Module.js:b7edade0b0a35af5787e662609e75d922f4fc747f666c46c41d36d0544fe6d02 */
+/* sources-sha256: MVU_Skill_Runtime.js:0fcde2dbf3fabcab9564dd4f5249405d6d3a175c0a3e31a6f0d08274d2809377|MVU_Schema_Runtime.js:2238d407288fa6b310350b791bfb3c00bb4039ce22551776b28f1c321309f631|BattlePreview_Module.js:187b4f6fa977d96a2c8011aadfdeaaeee99834c799ad5466562440dab262e950|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:c263dd8ca8acb30c15b8af739e14115b4cea4bb14dc4d7fa9980fdde9ddeb31e|BattleRuntime_Module.js:b7edade0b0a35af5787e662609e75d922f4fc747f666c46c41d36d0544fe6d02 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -30817,6 +30817,43 @@ function 写入成长气血魂技_V1(角色 = {}, 模板 = {}, 变更列表 = nu
 // 效果之和，威力与数值 ×合力系数（1 + 0.1 ×（人数 − 1）），前摇取最长的一招；消耗为各招消耗按资源相加（固定部分相加、百分比取
 // 最大），发动时由全体参与者共同支付（BattleRuntime 融合参与者付费），参与者让出本回合行动（同武魂融合技的参与者路径）。
 // 少于两名参与者或有魂技找不到时不合成。
+// 魂兽转化·本命召唤兽（魂兽转化与本命召唤兽设计，用户 2026-11-17「金胖子后面会融合为钱磊的本命召唤兽」）：宿主的转化记录
+// { 类型: '本命召唤兽', 来源 } 在宿主自创魂技里写（每次读档按魂兽当前数据刷新）一招召唤魂技——召唤生成·本命召唤兽、数量 1、
+// 自主行动；召唤物名称取魂兽名，技能列表取魂兽血脉之力的技能，召唤面板取魂兽自己的面板（BattlePreview summonFixedPanel）。
+// 魂兽找不到时保留记录、什么也不写。消耗与前摇首次写入时按宿主魂力上限的 8%、前摇 20，之后保留已有值。
+function 应用本命召唤兽转化_V1(宿主 = {}, 记录 = {}, 根数据 = {}) {
+  if (!宿主 || typeof 宿主 !== 'object' || String(记录?.类型 || '').trim() !== '本命召唤兽') return false;
+  const 全部角色 = 根数据?.char && typeof 根数据.char === 'object' ? 根数据.char : {};
+  const 来源 = String(记录?.来源 || '').trim();
+  if (!来源 || 来源 === '无') return false;
+  const 名字 = 角色 => [角色?.name, 角色?.名称, 角色?.属性?.姓名].map(值 => String(值 || '').trim()).filter(Boolean);
+  const 条目 = 全部角色[来源] ? [来源, 全部角色[来源]] : Object.entries(全部角色).find(([, 角色]) => 名字(角色).includes(来源));
+  if (!条目 || 条目[1] === 宿主) return false;
+  const [魂兽键, 魂兽] = 条目, 魂兽名 = 名字(魂兽)[0] || 魂兽键;
+  const 属性 = 魂兽?.属性 || {}, 读 = (...键) => Math.max(0, Math.floor(Number(键.map(键名 => 属性?.[键名] ?? 魂兽?.[键名]).find(值 => Number(值) > 0)) || 0));
+  const 召唤面板 = { 生命上限: 读('HP上限', 'hp_max'), 体力上限: 读('体力上限', 'vit_max'), 魂力上限: 读('魂力上限', 'sp_max'), 精神力上限: 读('精神力上限', 'men_max'),
+    力量: 读('力量', 'str'), 防御: 读('防御', 'def'), 敏捷: 读('敏捷', 'agi') };
+  const 技能列表 = Object.values(魂兽?.血脉之力?.技能 || {}).filter(技能 => 技能 && typeof 技能 === 'object' && Array.isArray(技能._效果数组) && 技能._效果数组.length)
+    .map(技能 => JSON.parse(JSON.stringify(技能)));
+  const 魂技名 = String(记录?.魂技名 || '').trim() || `召唤${魂兽名}`;
+  if (!宿主.自创魂技 || typeof 宿主.自创魂技 !== 'object' || Array.isArray(宿主.自创魂技)) 宿主.自创魂技 = {};
+  const 现有 = 宿主.自创魂技[魂技名] && typeof 宿主.自创魂技[魂技名] === 'object' ? 宿主.自创魂技[魂技名] : null;
+  const 召唤效果 = { 原型: '召唤生成', 目标: '自身', 生效方式: '独立生效', 触发方式: '立即触发', 召唤单位类型: '本命召唤兽', 召唤物名称: 魂兽名, 数量: 1,
+    持续回合: Math.max(1, Math.floor(Number(记录?.持续回合) || 5)), 行动模式: '自主行动', 继承属性比例: 1, 召唤对象: 魂兽键, 技能列表,
+    ...(召唤面板.生命上限 > 0 ? { 召唤面板 } : {}) };
+  const 宿主魂力上限 = Math.max(1, Number(宿主?.属性?.魂力上限 ?? 宿主?.魂力上限 ?? 宿主?.sp_max) || 1);
+  宿主.自创魂技[魂技名] = {
+    ...(现有 || {}),
+    魂技名,
+    承载方式: 现有?.承载方式 || '直接生效',
+    效果描述: 现有?.效果描述 && 现有.效果描述 !== '无' ? 现有.效果描述 : `召唤本命召唤兽${魂兽名}助战，它以自己的力量与技能出手；倒下时宿主反噬生命与精神力`,
+    消耗: 现有?.消耗 && 现有.消耗 !== '无' ? 现有.消耗 : { 魂力: Math.round(宿主魂力上限 * 0.08) },
+    前摇: Number.isFinite(Number(现有?.前摇)) ? Number(现有.前摇) : 20,
+    _效果数组: [召唤效果],
+  };
+  return true;
+}
+
 function 合成魂技融合技能数据_V1(融合技 = {}, 融合技名 = '', 根数据 = {}) {
   const 参与者列表 = Array.isArray(融合技?.融合参与者) ? 融合技.融合参与者 : [];
   if (参与者列表.length < 2) return null;
@@ -34801,6 +34838,8 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
           const 合成 = 合成魂技融合技能数据_V1(融合技, 融合技名, data);
           if (合成) 融合技.技能数据 = 合成;
         });
+        // 魂兽转化（11-17）：本命召唤兽按魂兽当前数据写成宿主的召唤魂技（应用本命召唤兽转化_V1）；魂灵、献祭待第二阶段后半。
+        (Array.isArray(charData.转化记录) ? charData.转化记录 : []).forEach(记录 => 应用本命召唤兽转化_V1(charData, 记录, data));
       });
 
       const visibleChars = {};
