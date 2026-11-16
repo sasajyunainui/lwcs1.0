@@ -265,6 +265,13 @@ const SkillStructSchema = z
       .optional(),
     装备要求: z.record(z.string(), z.any()).optional().describe('技能根层装备要求；效果级装备要求位于对应_效果数组条目'),
     限定来源: z.string().optional().describe('技能生效所限定的来源身份或装备来源；无值表示无来源限制'),
+    领域: z
+      .object({
+        等级: z.coerce.number().min(1).max(5).prefault(1).describe('领域等级 1～5：同场敌对领域按 精神力上限×(1+0.25×(等级−1)) 比强弱，弱者效果减半'),
+        范围: z.string().prefault('全场').describe('全场/己方/敌方：领域状态落在谁身上（效果数组的目标照此写）'),
+      })
+      .optional()
+      .describe('领域技：展开后这一招挂的状态都属于施法者的领域；一人一领域，展开新领域撤掉旧的'),
     _效果数组: z.array(z.any()).prefault([]).describe('打包后的_效果数组，供前端显示和后续战斗模块解析'),
     副作用列表: z.array(z.any()).optional(),
   })

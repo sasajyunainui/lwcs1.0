@@ -10112,6 +10112,8 @@ var 技能正式根字段集合_V1 = new Set([
   '产物描述',
   '计价版本',
   '_锚定消耗',
+  // 领域技（接入方案 S80-C）：{ 等级, 范围 }，BattleRuntime applyDomainRules 读。
+  '领域',
 ]);
 var 技能机制可见键中文名映射_V1 = Object.freeze({});
 var 技能机制属性键中文名映射_V1 = Object.freeze({
