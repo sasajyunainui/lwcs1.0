@@ -6772,9 +6772,11 @@
         input?.beliefState?.targetInterferencePossible === true ||
         input?.beliefState?.confused === true
       );
+    // 隐匿（11-17 第 56 题）：普攻是单体，主动出手时打不到隐匿者（BattlePreview stealthBlocksSingleTarget，结算记 TARGET_LOST），不列这类候选；反击照旧对着来袭者。
     let directBasicTargets = interferencePossible
       ? aliveEntries(worldSnapshot).map(entry => entry.unit)
-      : directHostile;
+      : counterOnly ? directHostile
+        : directHostile.filter(target => !preview.stealthBlocksSingleTarget(actor, target, { 目标: '单体' }, {}));
     if (!basicAttackAllowed) {
       recordRejected({
         actionKind: 'BASIC_ATTACK',

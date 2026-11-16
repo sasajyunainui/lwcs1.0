@@ -9480,7 +9480,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       entry.side === actorSide && targetIsEligible(entry.unit) &&
       (!excludesActorEndpoint || unitId(entry.unit) !== unitId(actor))
     ).map(entry => entry.unit);
-    const hostile = all.filter(entry => entry.side !== actorSide && isBattleCapable(entry.unit)).map(entry => entry.unit);
+    // 隐匿（11-17 第 56 题）：声明的单体目标因隐匿被滤掉后，退回的敌方目标同样不能是隐匿者（此前只查 isBattleCapable，单体攻击总能打到隐匿的人）。
+    const hostile = all.filter(entry => entry.side !== actorSide && targetIsEligible(entry.unit)).map(entry => entry.unit);
     if (/友方|己方/.test(targetText) ||
       (!/敌方|对方/.test(targetText) && effectTargetsAllies(effect))) {
       return friendly.slice(0, 1);
