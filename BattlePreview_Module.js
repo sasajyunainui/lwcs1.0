@@ -534,7 +534,9 @@
     const values = stages.启动 || {};
     if (!Object.keys(values).length) return null;
     const percent = Object.values(values).some(value => /%\s*$/.test(String(value?.值 ?? value ?? '').trim()));
-    if (PASSIVE_SKILL_COST_TRIGGER_SCOPE === PASSIVE_SKILL_COST_TRIGGER_SCOPES.PERCENT && !percent) return null;
+    // 被动魂导器（MVU 读取物品被动技能条目_V1 记 __魂导等级）：固定值消耗也每次触发都付（用户 2026-11-17「被动触发时扣魂力」）。
+    const soulTool = Number(skill?.__魂导等级) > 0;
+    if (PASSIVE_SKILL_COST_TRIGGER_SCOPE === PASSIVE_SKILL_COST_TRIGGER_SCOPES.PERCENT && !percent && !soulTool) return null;
     return Object.freeze({ values, 非法项: Object.freeze([...(stages.非法项 || [])]) });
   }
 
