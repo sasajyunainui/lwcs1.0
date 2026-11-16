@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:0fcde2dbf3fabcab9564dd4f5249405d6d3a175c0a3e31a6f0d08274d2809377|MVU_Schema_Runtime.js:8b834a3647f4c7f34ab30bc928b0ad93ca6c58b1be08d8922ac6f816a3872e44|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:1f7a519a850bc170c3da108bfe22614d098b593bc573d8b38a5c0a7bec81aba5 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:0fcde2dbf3fabcab9564dd4f5249405d6d3a175c0a3e31a6f0d08274d2809377|MVU_Schema_Runtime.js:de73b7b99c63672d9314d492ec2dac4baf3f83f1fb14714d8e983e7a8ffc8790|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:1f7a519a850bc170c3da108bfe22614d098b593bc573d8b38a5c0a7bec81aba5 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -35338,11 +35338,22 @@ function 写入成长气血魂技_V1(角色 = {}, 模板 = {}, 变更列表 = nu
 // 效果之和，威力与数值 ×合力系数（1 + 0.1 ×（人数 − 1）），前摇取最长的一招；消耗为各招消耗按资源相加（固定部分相加、百分比取
 // 最大），发动时由全体参与者共同支付（BattleRuntime 融合参与者付费），参与者让出本回合行动（同武魂融合技的参与者路径）。
 // 少于两名参与者或有魂技找不到时不合成。
+// 魂兽转化后，魂兽本人不再单独出场（同上设计）：状态.转化 记下类型与宿主，状态.行动 写明去向（给 AI 与界面看）；献祭的同时记死亡。
+function 标记魂兽转化_V1(魂兽 = {}, 类型 = '', 宿主 = {}, 宿主键 = '') {
+  if (!魂兽 || typeof 魂兽 !== 'object') return;
+  const 宿主名 = [宿主?.name, 宿主?.名称, 宿主?.属性?.姓名, 宿主键].map(值 => String(值 || '').trim()).find(Boolean) || '宿主';
+  const 去向 = 类型 === '本命召唤兽' ? `已融合为${宿主名}的本命召唤兽` : 类型 === '魂灵' ? `已化为${宿主名}的魂灵` : `已献祭给${宿主名}`;
+  魂兽.状态 = 魂兽.状态 && typeof 魂兽.状态 === 'object' ? 魂兽.状态 : {};
+  魂兽.状态.转化 = { 类型, 宿主: 宿主名 };
+  魂兽.状态.行动 = 去向;
+  if (类型 === '献祭' && 魂兽.状态.存活 !== false) { 魂兽.状态.存活 = false; 魂兽.状态.死亡类型 = '意外'; }
+}
+
 // 魂兽转化·本命召唤兽（魂兽转化与本命召唤兽设计，用户 2026-11-17「金胖子后面会融合为钱磊的本命召唤兽」）：宿主的转化记录
 // { 类型: '本命召唤兽', 来源 } 在宿主自创魂技里写（每次读档按魂兽当前数据刷新）一招召唤魂技——召唤生成·本命召唤兽、数量 1、
 // 自主行动；召唤物名称取魂兽名，技能列表取魂兽血脉之力的技能，召唤面板取魂兽自己的面板（BattlePreview summonFixedPanel）。
 // 魂兽找不到时保留记录、什么也不写。消耗与前摇首次写入时按宿主魂力上限的 8%、前摇 20，之后保留已有值。
-function 应用本命召唤兽转化_V1(宿主 = {}, 记录 = {}, 根数据 = {}) {
+function 应用本命召唤兽转化_V1(宿主 = {}, 记录 = {}, 根数据 = {}, 宿主键 = '') {
   if (!宿主 || typeof 宿主 !== 'object' || String(记录?.类型 || '').trim() !== '本命召唤兽') return false;
   const 全部角色 = 根数据?.char && typeof 根数据.char === 'object' ? 根数据.char : {};
   const 来源 = String(记录?.来源 || '').trim();
@@ -35372,6 +35383,7 @@ function 应用本命召唤兽转化_V1(宿主 = {}, 记录 = {}, 根数据 = {}
     前摇: Number.isFinite(Number(现有?.前摇)) ? Number(现有.前摇) : 20,
     _效果数组: [召唤效果],
   };
+  标记魂兽转化_V1(魂兽, '本命召唤兽', 宿主, 宿主键);
   return true;
 }
 
@@ -35380,7 +35392,7 @@ function 应用本命召唤兽转化_V1(宿主 = {}, 记录 = {}, 根数据 = {}
 // 其余百年），品质与魂环颜色按年限；它所给的魂环（魂环位缺省为宿主现有最大环位 + 1）放魂兽血脉之力的第一个技能，十万年的
 // 再放第二个到 _2 槽；魂兽没有技能时空着，交给生成器。献祭另给一块魂骨（记录写了部位且该位空着时），年限同魂兽。只生成一次
 // （魂灵记着 来源魂兽），之后读档不覆盖；记录记 已完成。
-function 应用魂兽化灵转化_V1(宿主 = {}, 记录 = {}, 根数据 = {}) {
+function 应用魂兽化灵转化_V1(宿主 = {}, 记录 = {}, 根数据 = {}, 宿主键 = '') {
   const 类型 = String(记录?.类型 || '').trim();
   if (!宿主 || typeof 宿主 !== 'object' || !['魂灵', '献祭'].includes(类型) || 记录.已完成 === true) return false;
   const 全部角色 = 根数据?.char && typeof 根数据.char === 'object' ? 根数据.char : {};
@@ -35428,6 +35440,7 @@ function 应用魂兽化灵转化_V1(宿主 = {}, 记录 = {}, 根数据 = {}) {
         品质: 年限 >= 100000 ? '传说' : 年限 >= 10000 ? '史诗' : '稀有', 描述: `${魂兽名}献祭后留下的魂骨`, ...(被动 ? { 附带技能: { [被动.魂技名 || '献祭遗泽']: JSON.parse(JSON.stringify(被动)) } } : {}) };
     }
   }
+  标记魂兽转化_V1(魂兽, 类型, 宿主, 宿主键);
   记录.已完成 = true;
   return true;
 }
@@ -39417,7 +39430,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
           if (合成) 融合技.技能数据 = 合成;
         });
         // 魂兽转化（11-17）：本命召唤兽按魂兽当前数据写成宿主的召唤魂技（应用本命召唤兽转化_V1）；魂灵、献祭生成一次魂灵节点（应用魂兽化灵转化_V1）。
-        (Array.isArray(charData.转化记录) ? charData.转化记录 : []).forEach(记录 => { 应用本命召唤兽转化_V1(charData, 记录, data); 应用魂兽化灵转化_V1(charData, 记录, data); });
+        (Array.isArray(charData.转化记录) ? charData.转化记录 : []).forEach(记录 => { 应用本命召唤兽转化_V1(charData, 记录, data, charName); 应用魂兽化灵转化_V1(charData, 记录, data, charName); });
       });
 
       const visibleChars = {};
