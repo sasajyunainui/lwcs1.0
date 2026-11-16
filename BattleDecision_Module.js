@@ -66845,6 +66845,8 @@
     let released = 0;
     const horizon = Math.max(1, Math.min(R20_RACE_ROUNDS, Number(facts.horizon) || R20_RACE_ROUNDS)), tick = facts.tick || null, tickRounds = facts.tickRounds || null;
     const dealt = new Array(count), mended = new Array(count), hits = new Array(count), worth = new Array(count), pressed = new Array(count);
+    // latent[u]: what u brings once it acts again — the same cells, read whether or not it acts this step (held, charging, idle).
+    const latent = new Array(count);
     let time = 0;
     for (let step = 0; step < 64 && time < horizon - 1e-9; step += 1) {
       // Which cells a pair reads now: a unit the candidate brought, the candidate's; a unit it changed, the candidate's
@@ -66881,13 +66883,14 @@
       if (host) for (let unit = 0; unit < count; unit += 1) if (host[unit] >= 0 && !(left[host[unit]] > 1e-9)) left[unit] = 0;
       // What each unit brings in a round, and what its enemies could land on it together.
       for (let unit = 0; unit < count; unit += 1) {
-        worth[unit] = 0; pressed[unit] = 0; dealt[unit] = 0; mended[unit] = 0; hits[unit] = 0; aimed[unit] = -1; landed[unit] = 0;
+        worth[unit] = 0; latent[unit] = 0; pressed[unit] = 0; dealt[unit] = 0; mended[unit] = 0; hits[unit] = 0; aimed[unit] = -1; landed[unit] = 0;
         if (!(left[unit] > 1e-9)) continue;
         if (tick && tick[unit] && !(tickRounds && time >= tickRounds[unit] - 1e-9)) { if (tick[unit] < 0) dealt[unit] -= tick[unit]; else mended[unit] += tick[unit]; }
         for (let other = 0; other < count; other += 1) {
           if (!(left[other] > 1e-9)) continue;
-          if (sides[other] === sides[unit]) { if (striking(unit)) worth[unit] = Math.max(worth[unit], cells(unit, other).support[unit][other]); continue; }
-          if (striking(unit)) worth[unit] = Math.max(worth[unit], cells(unit, other).out[unit][other]);
+          if (sides[other] === sides[unit]) { latent[unit] = Math.max(latent[unit], cells(unit, other).support[unit][other]); if (striking(unit)) worth[unit] = latent[unit]; continue; }
+          latent[unit] = Math.max(latent[unit], cells(unit, other).out[unit][other]);
+          if (striking(unit)) worth[unit] = latent[unit];
           if (striking(other)) pressed[unit] += cells(other, unit).out[other][unit] * takes(cells(other, unit), unit, other);
         }
       }
@@ -66923,7 +66926,10 @@
         if (host) for (let unit = 0; unit < count; unit += 1) if (host[unit] >= 0 && left[unit] > 1e-9) aimed[host[unit]] += worth[unit];
         for (let unit = 0; unit < count; unit += 1) {
           if (!(left[unit] > 1e-9)) continue;
-          const rank = (worth[unit] + (host ? aimed[unit] : 0)) / Math.max(R20_ROUNDS_FLOOR, pressed[unit] > 1e-9 ? left[unit] / pressed[unit] : R20_ROUNDS_CAP);
+          // 控制后跟上（11-16 行为检查目录第 47 题）: a unit held, charging or idle this step is turned on by what it brings once it
+          // acts again (latent), not by the nothing it brings now — by that a stun on the enemy's strongest made its side turn on
+          // the next one, and the stunned one woke up whole (眩晕被灌增幅的 B0 推演 −0.27，不控反而 0).
+          const rank = ((striking(unit) ? worth[unit] : latent[unit]) + (host ? aimed[unit] : 0)) / Math.max(R20_ROUNDS_FLOOR, pressed[unit] > 1e-9 ? left[unit] / pressed[unit] : R20_ROUNDS_CAP);
           const held = focus[sides[unit]];
           if (!held || rank > held.rank) focus[sides[unit]] = { unit, rank };
         }
@@ -66931,6 +66937,8 @@
         return focus;
       };
       let focus = pickFocus();
+      // Development hook (absent in play; the optional call evaluates nothing without it): each step's standing and focus.
+      root.__LWCS_DECISION_DEBUG__?.onRaceStep?.({ time, plan, left: left.slice(), worth: worth.slice(), heldShare: heldShare.slice(), pace: pace.slice(), pressed: pressed.slice(), focus: JSON.parse(JSON.stringify(focus)), denied: denied ? denied.slice() : null });
       // 增益/减益（r20Assists）: a unit keeping no control up may keep one of its changes up, on the unit it pays most on, when
       // that moves the two clocks more than recasting it costs. Weighed as the race runs them (战斗决策原理「我方的钟先走完」):
       // what it raises of its side's hits (off − 1 of that unit's worth, over all its side brings) or slows of the hits its side
