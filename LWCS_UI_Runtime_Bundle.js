@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:3a7ab2b86114d7997e52efa71f2ebd4abfbfe0588597e12628cc11524a69319e|cockpit/designer-model.js:43e9907dc6a213586bc290bdf3e507a8178bd80879f0f020231ac30ffa7c4f99|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:11ac0c3399216db1e1abac9ea8e8cb5f9a1b10d38755a31e21d47b3b7ac87c73|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:dac8edad5035930d5ce76c75590005470feb656c3d6d8d27b75aabf43771931b|BattleRuntime_Module.js:0e521bfa5e259a4f50c89d3cbbbcafc7e9f03fb910bdf68e8df0f7bc15d7c625|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:3a7ab2b86114d7997e52efa71f2ebd4abfbfe0588597e12628cc11524a69319e|cockpit/designer-model.js:43e9907dc6a213586bc290bdf3e507a8178bd80879f0f020231ac30ffa7c4f99|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:add5d559c5536284c325daef48499bb9b6137d1c46b6d63cbc08d15c55610a4c|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:75288b5c0f652db82a6e30ce5cd550f789bbe1c5b2f10ab4d2bb6d27ac76e059|BattleRuntime_Module.js:0e521bfa5e259a4f50c89d3cbbbcafc7e9f03fb910bdf68e8df0f7bc15d7c625|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -70166,7 +70166,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         }
       } else if (/拉近|突进|追击/.test(positionType)) {
         const pullHit = Math.min(0.3, POSITION_PULL_HIT * scale), avoidCut = Math.min(0.75, POSITION_PULL_AVOID_CUT * scale);
-        combatEffect.hit_bonus = pullHit + avoidCut; once.hit = true;
+        // 拉到敌人身上（接收者 enemy）：被拉过来的那个下一次被击更难躲——此前不分接收者都给持有者命中 +70%，拉近一个敌人等于
+        // 给了它下一击的命中（11-16 推演覆盖排查）。
+        if (role === 'enemy') { combatEffect.dodge_penalty = pullHit + avoidCut; once.dodge = true; }
+        else { combatEffect.hit_bonus = pullHit + avoidCut; once.hit = true; }
         combatEffect.position_pull_detail = { hit: pullHit, targetAvoidCut: avoidCut };
       } else if (/击退|击飞/.test(positionType)) {
         if (role !== 'self') {
@@ -85475,6 +85478,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 推演的增益/减益格（BattleDecision r20Imprint）：把一个效果按结算的写法挂到单位视图上、按结算的写法撤掉状态。
     addState,
     removeProjectedStates,
+    applyProjectedRuleState,
     statePolarity,
     negativeEffectIsImmune,
     conditionMatchesFilter,
@@ -160354,11 +160358,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // cells (r20Assists). The race keeps the best of these up the way it keeps a control (r20Race).
   // What r20Control already keeps of a hostile state (its control and 破防) is taken off the state written here, so it counts once.
   const R20_CONTROL_KEYS = ['cannot_act', 'skip_turn', 'cannot_react', 'random_target_rate', 'hit_penalty', 'blind', 'reaction_penalty', 'dodge_penalty'];
-  const R20_IMPRINT_STATES = new Set(['属性修正', '判定修正', '结算修正', '状态施加', '决策干扰']);
+  // The prototypes r20Control reads (the rest keep their own control-like effects: 击退's hit penalty, 拉近's dodge cut).
+  const R20_CONTROLLED_PROTOTYPES = new Set(['状态施加', '决策干扰', '判定修正']);
+  const R20_IMPRINT_STATES = new Set(['属性修正', '判定修正', '结算修正', '状态施加', '决策干扰', '资源锁定', '位移执行']);
   // The rounds a change with no clock of its own is read for (a refill, a cleanse of states with no rounds left on them).
   const R20_IMPRINT_ONCE = R20_UPKEEP_ROUNDS;
   // Writes one effect on `view` (a copy of the unit); the rounds it lasts, 0 when it writes nothing.
-  function r20ImprintEffect(view, effect, key, hostile, tick) {
+  function r20ImprintEffect(view, effect, key, hostile, tick, self = false) {
     const prototype = String(effect?.原型 || '').trim();
     if (prototype === '资源变化') {
       if (/生命|HP/i.test(String(effect.资源 || ''))) return 0;
@@ -160393,16 +160399,27 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         战斗效果: {}, 面板修改比例: {}, 面板固定修正: {} } };
       return rounds;
     }
+    // 规则防御 / 规则改写: the rule state the settlement writes (BattlePreview applyProjectedRuleState: 免伤/免死 charges, 缴械/沉默).
+    if (prototype === '规则防御' || prototype === '规则改写') {
+      if (prototype === '规则改写' && hostile && preview.negativeEffectIsImmune(view, effect)) return 0;
+      const before = view.状态效果;
+      view.状态效果 = { ...(before || {}) };
+      if (!preview.applyProjectedRuleState(view, effect, prototype, { effectInstanceId: key, rootActionId: key })) { view.状态效果 = before; return 0; }
+      return Math.max(1, Number(effect?.持续回合) || 1);
+    }
     if (!R20_IMPRINT_STATES.has(prototype) || prototype === '状态施加' && /护盾|屏障|结界/.test(String(effect?.状态 || ''))) return 0;
     if (hostile && preview.negativeEffectIsImmune(view, effect)) return 0;
     const before = view.状态效果;
     view.状态效果 = { ...(before || {}) };
-    if (!preview.addState(view, effect, key)) { view.状态效果 = before; return 0; }
+    // 位移执行: whose one-shot it is goes with the effect (BattlePreview positionRecipientFields, as the settlement passes it):
+    // the one-shot effects are derived by it (拉近 on an enemy, 击退 on one).
+    const written = prototype === '位移执行' ? { ...effect, __位移接收者: hostile ? 'enemy' : self ? 'self' : 'ally' } : effect;
+    if (!preview.addState(view, written, key)) { view.状态效果 = before; return 0; }
     let wrote = false;
     for (const [name, state] of Object.entries(view.状态效果)) {
       if (before?.[name] === state) continue;
       let next = state;
-      if (hostile && R20_CONTROL_KEYS.some(field => next?.战斗效果?.[field])) {
+      if (hostile && R20_CONTROLLED_PROTOTYPES.has(prototype) && R20_CONTROL_KEYS.some(field => next?.战斗效果?.[field])) {
         const combat = { ...next.战斗效果 };
         for (const field of R20_CONTROL_KEYS) delete combat[field];
         next = { ...next, 战斗效果: combat };
@@ -160417,15 +160434,36 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   function r20Imprint(units, sides, row, target, skill, tick) {
     const views = new Map();
     let rounds = 0, chance = 0;
-    // The skill's own effects (collectEffects would also list what a grant gives the recipient to use, as if it were on it).
-    (Array.isArray(skill?._效果数组) ? skill._效果数组 : []).forEach((effect, index) => {
-      if (!effect || typeof effect !== 'object') return;
-      const at = /自身/.test(String(effect?.目标 || '')) ? row : target, hostile = sides[at] !== sides[row];
+    const viewOf = at => {
       if (!views.has(at)) {
         const unit = units[at];
         views.set(at, { ...unit, 状态效果: { ...(unit.状态效果 || {}) }, ...(unit.属性 && typeof unit.属性 === 'object' ? { 属性: { ...unit.属性 } } : {}), final: { ...(unit.final || {}) } });
       }
-      const view = views.get(at), lasts = r20ImprintEffect(view, effect, `r20:${index}`, hostile, tick);
+      return views.get(at);
+    };
+    // The skill's own effects (collectEffects would also list what a grant gives the recipient to use, as if it were on it).
+    (Array.isArray(skill?._效果数组) ? skill._效果数组 : []).forEach((effect, index) => {
+      if (!effect || typeof effect !== 'object') return;
+      // 状态转移 / 状态交换 (来源 → 去向; 交换 both ways): the states taken off one unit are written on the other.
+      if (['状态转移', '状态交换'].includes(String(effect.原型 || '').trim())) {
+        const from = String(effect.来源 || '目标').trim() === '自身' ? row : target, to = String(effect.去向 || '自身').trim() === '自身' ? row : target;
+        if (from === to) return;
+        const removal = { selector: String(effect.状态 || '任意状态').trim(), limit: Math.max(0, Number(effect.数量 || 0)) };
+        const moved = preview.removeProjectedStates(viewOf(from), removal, tick);
+        const back = effect.原型 === '状态交换' ? preview.removeProjectedStates(viewOf(to), removal, tick) : [];
+        if (!moved.length && !back.length) return;
+        for (const [list, at] of [[moved, to], [back, from]]) {
+          const view = viewOf(at);
+          view.状态效果 = { ...view.状态效果, ...Object.fromEntries(list.map(([key, state]) => [`r20:${index}:${key}`, state])) };
+        }
+        viewOf(from).__r20Imprinted = viewOf(to).__r20Imprinted = true;
+        const lasts = Math.max(0, ...[...moved, ...back].map(([, state]) => Number(state?.duration ?? state?.持续回合)).filter(Number.isFinite));
+        rounds = Math.max(rounds, lasts > 0 ? Math.min(lasts, R20_RACE_ROUNDS) : R20_IMPRINT_ONCE);
+        chance = Math.max(chance, clamp(preview.normalizeEffectProbability(effect?.触发概率, 1), 0, 1));
+        return;
+      }
+      const at = /自身/.test(String(effect?.目标 || '')) ? row : target, hostile = sides[at] !== sides[row];
+      const view = viewOf(at), lasts = r20ImprintEffect(view, effect, `r20:${index}`, hostile, tick, at === row);
       if (!(lasts > 0)) return;
       view.__r20Imprinted = true;
       rounds = Math.max(rounds, lasts);
@@ -160439,7 +160477,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     for (const [at, view] of changed) for (const [key, state] of Object.entries(view.状态效果 || {})) {
       if (units[at].状态效果?.[key] !== state) names.add(String(state?.状态 || state?.状态名称 || '').trim());
     }
-    return { views: changed.map(([at, view]) => { delete view.__r20Imprinted;
+    // 位移（S81 一次性）: a dodge that goes with the first hit that comes (r20Shadow onceDodges reads it the same way).
+    const once = changed.some(([at, view]) => Object.entries(view.状态效果 || {}).some(([key, state]) => units[at].状态效果?.[key] !== state &&
+      state?.战斗效果?.position_once && typeof state.战斗效果.position_once === 'object'));
+    return { once, views: changed.map(([at, view]) => { delete view.__r20Imprinted;
       view.final = { ...view.final, ...preview.buildNumericCombatStats(view, tick) };
       return [at, preview.inheritOverlayOrigin(view, units[at])]; }), rounds, chance, names: [...names].filter(Boolean) };
   }
@@ -160458,7 +160499,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // context, as the late cells are: the table's context answers for a unit by its id, as the world has it, so a view's
     // changed panel read as the unit's own (an enemy's +40% buff taken off it changed nothing).
     const before = new Map();
-    const readParts = (row, views, inverse) => {
+    const readParts = (row, views, inverse, once = false) => {
       const now = units.slice();
       for (const [at, view] of views) now[at] = view;
       const parts = [];
@@ -160513,7 +160554,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           out += inverse ? -gained : gained;
         }
         const ratio = (value, before) => inverse ? (value > 1e-9 ? before / value : 1) : (before > 1e-9 ? value / before : 1);
-        const off = ratio(out, outBefore), def = ratio(taken, takenBefore);
+        let off = ratio(out, outBefore), def = ratio(taken, takenBefore);
+        // The hits that come at it a round: one from each enemy that can reach it.
+        const hitters = Math.max(1, units.reduce((sum, unit, other) => sum + (sides[other] !== sides[at] && table.remaining[other] > 0 && table.acts[other] ? 1 : 0), 0));
+        // 一次性闪避（位移）只挡来的第一下。
+        if (once && !inverse) def = 1 - (1 - def) / hitters;
+        // 规则防御（免伤 / 免死次数，r20Guard）: the charges it adds take that many of a round's hits.
+        const charges = (r20Guard(view) - r20Guard(units[at])) * (inverse ? -1 : 1);
+        if (charges > 0) def *= Math.max(0, 1 - Math.min(1, charges / hitters));
         const tickNow = (r20Tick(request, view) - table.tick[at]) * (inverse ? -1 : 1);
         if (Math.abs(off - 1) > 1e-3 || Math.abs(def - 1) > 1e-3 || Math.abs(tickNow) > 1e-4) parts.push({ self: at === row, off, def, tick: tickNow });
       }
@@ -160547,7 +160595,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             if (target < 0) continue;
           }
           const imprint = r20Imprint(units, sides, row, target, skill, tick);
-          if (imprint) add(kind, readParts(row, imprint.views, false), imprint.rounds, imprint.chance, imprint.names, skillId(skill));
+          if (imprint) add(kind, readParts(row, imprint.views, false, imprint.once), imprint.rounds, imprint.chance, imprint.names, skillId(skill));
         }
       }
       // (The deciding side's own units list their skills; an enemy's are what it has shown, and what it has laid.)
