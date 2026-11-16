@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:0fcde2dbf3fabcab9564dd4f5249405d6d3a175c0a3e31a6f0d08274d2809377|MVU_Schema_Runtime.js:2238d407288fa6b310350b791bfb3c00bb4039ce22551776b28f1c321309f631|BattlePreview_Module.js:187b4f6fa977d96a2c8011aadfdeaaeee99834c799ad5466562440dab262e950|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:c263dd8ca8acb30c15b8af739e14115b4cea4bb14dc4d7fa9980fdde9ddeb31e|BattleRuntime_Module.js:b7edade0b0a35af5787e662609e75d922f4fc747f666c46c41d36d0544fe6d02 */
+/* sources-sha256: MVU_Skill_Runtime.js:0fcde2dbf3fabcab9564dd4f5249405d6d3a175c0a3e31a6f0d08274d2809377|MVU_Schema_Runtime.js:8b834a3647f4c7f34ab30bc928b0ad93ca6c58b1be08d8922ac6f816a3872e44|BattlePreview_Module.js:187b4f6fa977d96a2c8011aadfdeaaeee99834c799ad5466562440dab262e950|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:c263dd8ca8acb30c15b8af739e14115b4cea4bb14dc4d7fa9980fdde9ddeb31e|BattleRuntime_Module.js:b7edade0b0a35af5787e662609e75d922f4fc747f666c46c41d36d0544fe6d02 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -30854,6 +30854,63 @@ function 应用本命召唤兽转化_V1(宿主 = {}, 记录 = {}, 根数据 = {}
   return true;
 }
 
+// 魂兽转化·魂灵 / 献祭（同上设计）：{ 类型: '魂灵' | '献祭', 来源, 武魂?, 魂灵位?, 魂环位?, 年限?, 契合度?, 魂骨?（献祭：部位） }——
+// 给宿主那一武魂加一个来自这只魂兽的魂灵：物种名取魂兽名，年限取记录（缺省按魂兽等级：90 级起十万年、70 级起万年、50 级起千年，
+// 其余百年），品质与魂环颜色按年限；它所给的魂环（魂环位缺省为宿主现有最大环位 + 1）放魂兽血脉之力的第一个技能，十万年的
+// 再放第二个到 _2 槽；魂兽没有技能时空着，交给生成器。献祭另给一块魂骨（记录写了部位且该位空着时），年限同魂兽。只生成一次
+// （魂灵记着 来源魂兽），之后读档不覆盖；记录记 已完成。
+function 应用魂兽化灵转化_V1(宿主 = {}, 记录 = {}, 根数据 = {}) {
+  const 类型 = String(记录?.类型 || '').trim();
+  if (!宿主 || typeof 宿主 !== 'object' || !['魂灵', '献祭'].includes(类型) || 记录.已完成 === true) return false;
+  const 全部角色 = 根数据?.char && typeof 根数据.char === 'object' ? 根数据.char : {};
+  const 来源 = String(记录?.来源 || '').trim();
+  const 名字 = 角色 => [角色?.name, 角色?.名称, 角色?.属性?.姓名].map(值 => String(值 || '').trim()).filter(Boolean);
+  const 条目 = 来源 && 来源 !== '无' ? (全部角色[来源] ? [来源, 全部角色[来源]] : Object.entries(全部角色).find(([, 角色]) => 名字(角色).includes(来源))) : null;
+  if (!条目 || 条目[1] === 宿主) return false;
+  const [魂兽键, 魂兽] = 条目, 魂兽名 = 名字(魂兽)[0] || 魂兽键;
+  const 武魂键 = String(记录?.武魂 || '第1武魂').trim(), 武魂 = 宿主[武魂键];
+  if (!武魂 || typeof 武魂 !== 'object') return false;
+  if (Object.values(武魂).some(值 => 值 && typeof 值 === 'object' && 值.来源魂兽 === 魂兽键)) { 记录.已完成 = true; return false; }
+  const 等级 = Number(魂兽?.属性?.等级 ?? 魂兽?.等级) || 0;
+  const 年限 = Math.max(10, Math.floor(Number(记录?.年限) || (等级 >= 90 ? 100000 : 等级 >= 70 ? 10000 : 等级 >= 50 ? 1000 : 100)));
+  const 颜色 = 年限 >= 100000 ? '红' : 年限 >= 10000 ? '黑' : 年限 >= 1000 ? '紫' : 年限 >= 100 ? '黄' : '白';
+  const 品质 = 年限 >= 100000 ? 'S' : 年限 >= 10000 ? 'A' : 年限 >= 1000 ? 'B' : 'C';
+  let 魂灵位 = Math.floor(Number(记录?.魂灵位) || 0);
+  if (!(魂灵位 > 0) || 武魂[`第${魂灵位}魂灵`]) { 魂灵位 = 1; while (武魂[`第${魂灵位}魂灵`]) 魂灵位 += 1; }
+  let 魂环位 = Math.floor(Number(记录?.魂环位) || 0);
+  if (!(魂环位 > 0)) {
+    let 最大 = 0;
+    Object.values(武魂).forEach(值 => { if (值 && typeof 值 === 'object') Object.keys(值).forEach(键 => { const 位 = Number(String(键).match(/^第(\d+)魂环$/)?.[1]); if (位 > 最大) 最大 = 位; }); });
+    魂环位 = 最大 + 1;
+  }
+  const 技能 = Object.values(魂兽?.血脉之力?.技能 || {}).filter(值 => 值 && typeof 值 === 'object' && Array.isArray(值._效果数组) && 值._效果数组.length)
+    .map(值 => JSON.parse(JSON.stringify(值)));
+  const 魂环 = { 年限, 颜色, 来源: 魂兽名 };
+  if (技能[0]) 魂环[`第${魂环位}魂技`] = 技能[0];
+  if (年限 >= 100000 && 技能[1]) 魂环[`第${魂环位}魂技_2`] = 技能[1];
+  const 面板 = 魂兽?.属性 || {};
+  武魂[`第${魂灵位}魂灵`] = {
+    表象名称: 魂兽名, 描述: String(魂兽?.摘要 || 魂兽?.外貌?.长相描述 || `${魂兽名}${类型 === '献祭' ? '献祭' : '化为魂灵'}而来`),
+    年限, 品质, 契合度: Math.max(0, Math.min(100, Number(记录?.契合度) || (类型 === '献祭' ? 100 : 80))), 状态: '觉醒', 来源魂兽: 魂兽键,
+    ...(['力量', '防御', '敏捷'].some(键 => Number(面板?.[键]) > 0) ? { 战力面板: { 对标等级: 等级, str: Number(面板.力量) || 0, def: Number(面板.防御) || 0, agi: Number(面板.敏捷) || 0,
+      vit_max: Number(面板.体力上限) || 0, men_max: Number(面板.精神力上限) || 0, sp_max: Number(面板.魂力上限) || 0 } } : {}),
+    [`第${魂环位}魂环`]: 魂环,
+  };
+  const 部位 = String(记录?.魂骨 || '').trim();
+  if (类型 === '献祭' && 部位 && 部位 !== '无') {
+    if (!宿主.魂骨 || typeof 宿主.魂骨 !== 'object') 宿主.魂骨 = {};
+    const 键 = /魂骨$/.test(部位) ? 部位 : `${部位}魂骨`;
+    const 现有骨 = 宿主.魂骨[键];
+    if (!现有骨 || !String(现有骨?.名称 || '').trim() || String(现有骨.名称).trim() === '无') {
+      const 被动 = Object.values(魂兽?.血脉之力?.被动 || {}).find(值 => 值 && typeof 值 === 'object' && Array.isArray(值._效果数组) && 值._效果数组.length);
+      宿主.魂骨[键] = { 名称: `${年限 >= 100000 ? '十万年' : 年限 >= 10000 ? '万年' : ''}${魂兽名}${键.replace(/魂骨$/, '')}骨`, 表象名称: 魂兽名, 年限, 来源: 魂兽名,
+        品质: 年限 >= 100000 ? '传说' : 年限 >= 10000 ? '史诗' : '稀有', 描述: `${魂兽名}献祭后留下的魂骨`, ...(被动 ? { 附带技能: { [被动.魂技名 || '献祭遗泽']: JSON.parse(JSON.stringify(被动)) } } : {}) };
+    }
+  }
+  记录.已完成 = true;
+  return true;
+}
+
 function 合成魂技融合技能数据_V1(融合技 = {}, 融合技名 = '', 根数据 = {}) {
   const 参与者列表 = Array.isArray(融合技?.融合参与者) ? 融合技.融合参与者 : [];
   if (参与者列表.length < 2) return null;
@@ -34838,8 +34895,8 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
           const 合成 = 合成魂技融合技能数据_V1(融合技, 融合技名, data);
           if (合成) 融合技.技能数据 = 合成;
         });
-        // 魂兽转化（11-17）：本命召唤兽按魂兽当前数据写成宿主的召唤魂技（应用本命召唤兽转化_V1）；魂灵、献祭待第二阶段后半。
-        (Array.isArray(charData.转化记录) ? charData.转化记录 : []).forEach(记录 => 应用本命召唤兽转化_V1(charData, 记录, data));
+        // 魂兽转化（11-17）：本命召唤兽按魂兽当前数据写成宿主的召唤魂技（应用本命召唤兽转化_V1）；魂灵、献祭生成一次魂灵节点（应用魂兽化灵转化_V1）。
+        (Array.isArray(charData.转化记录) ? charData.转化记录 : []).forEach(记录 => { 应用本命召唤兽转化_V1(charData, 记录, data); 应用魂兽化灵转化_V1(charData, 记录, data); });
       });
 
       const visibleChars = {};
