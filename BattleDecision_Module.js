@@ -4625,11 +4625,13 @@
 
   // 魂导器（接入方案 S80-B）：装配的魂导器的装备技能来源类别记「魂导器」；没写消耗（或「无」）的按魂导等级对标第 N 环的标准
   // 魂力消耗（MVU 构建魂技消耗文本_V1，9 级以上按第 9 环）——此前写成「无」的魂导炮可以白放。装备对象换成带这些技能的视图。
-  // 弹药（S80-B 一次性弹药类，定装魂导炮弹等）：装配件写了 弹药（剩余发数）的，打空了它的技能就不在候选里；每放一次
-  // BattleRuntime 扣一发（技能带 __魂导器槽位）。视图按弹药数缓存（弹药在原对象上扣）。
+  // 弹药（S80-B 一次性弹药类，定装魂导炮弹等）：装配件的剩余发数——写了 弹药 的读它，否则读随背包批次带来的 剩余使用次数
+  // （11-16 用户「结构尽量简单」：不另加字段）；打空了它的技能就不在候选里；每放一次 BattleRuntime 扣一发（技能带 __魂导器槽位）。
+  // 视图按弹药数缓存（弹药在原对象上扣）。
   const soulToolViews = new WeakMap();
+  const soulToolAmmoField = item => item && typeof item === 'object' ? (item.弹药 !== undefined ? '弹药' : item.剩余使用次数 !== undefined ? '剩余使用次数' : '') : '';
   const soulToolAmmoKey = equipment => Object.entries(equipment?.魂导器?.装配 || {})
-    .map(([slot, item]) => (item && typeof item === 'object' && item.弹药 !== undefined ? `${slot}:${Number(item.弹药)}` : '')).filter(Boolean).join('|');
+    .map(([slot, item]) => (soulToolAmmoField(item) ? `${slot}:${Number(item[soulToolAmmoField(item)])}` : '')).filter(Boolean).join('|');
   function soulToolSkillView(equipment = null) {
     const fitted = equipment?.魂导器?.装配;
     if (!fitted || typeof fitted !== 'object') return equipment;
@@ -4639,12 +4641,12 @@
     const costText = root.__LWCS_SKILL_COST_HELPERS_V1__?.构建魂技消耗文本_V1;
     const slots = Object.fromEntries(Object.entries(fitted).map(([slot, item]) => {
       if (!item || typeof item !== 'object' || !item.装备技能 || typeof item.装备技能 !== 'object') return [slot, item];
-      if (item.弹药 !== undefined && !(Number(item.弹药) > 0)) return [slot, { ...item, 装备技能: {} }];
+      if (soulToolAmmoField(item) && !(Number(item[soulToolAmmoField(item)]) > 0)) return [slot, { ...item, 装备技能: {} }];
       const tier = Math.max(1, Math.min(9, Math.floor(Number(item.魂导等级) || 1)));
       const skills = Object.fromEntries(Object.entries(item.装备技能).map(([name, skill]) => {
         if (!skill || typeof skill !== 'object') return [name, skill];
         const unpaid = !skill.消耗 || String(skill.消耗).trim() === '无';
-        return [name, { ...skill, 来源类别: skill.来源类别 || '魂导器', ...(item.弹药 !== undefined ? { __魂导器槽位: slot } : {}),
+        return [name, { ...skill, 来源类别: skill.来源类别 || '魂导器', ...(soulToolAmmoField(item) ? { __魂导器槽位: slot } : {}),
           ...(unpaid && typeof costText === 'function' ? { 消耗: costText('纯耗魂力', 50, tier) } : {}) }];
       }));
       return [slot, { ...item, 装备技能: skills }];

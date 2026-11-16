@@ -11838,17 +11838,19 @@
       if (actionKind === 'RELEASE_SKILL' && declaration?.skill?.__魂导器槽位 && skillEffectIndex === 0 && !conditionalMeta?.conditionalDepth) {
         const spentHere = actionEvent.__triggerLimitSpent ||= new Set();
         const fitted = actor?.装备?.魂导器?.装配?.[declaration.skill.__魂导器槽位];
-        if (!spentHere.has('__ammo') && fitted && typeof fitted === 'object' && Number.isFinite(Number(fitted.弹药))) {
+        // 剩余发数：写了 弹药 的扣它，否则扣随背包批次带来的 剩余使用次数（BattleDecision soulToolSkillView 同口径）。
+        const ammoField = fitted && typeof fitted === 'object' ? (fitted.弹药 !== undefined ? '弹药' : fitted.剩余使用次数 !== undefined ? '剩余使用次数' : '') : '';
+        if (!spentHere.has('__ammo') && ammoField && Number.isFinite(Number(fitted[ammoField]))) {
           spentHere.add('__ammo');
-          const ammoBefore = Math.max(0, Math.floor(Number(fitted.弹药)));
-          fitted.弹药 = Math.max(0, ammoBefore - 1);
+          const ammoBefore = Math.max(0, Math.floor(Number(fitted[ammoField])));
+          fitted[ammoField] = Math.max(0, ammoBefore - 1);
           writeLedgerEvent(combatData, {
             eventKind: 'resource_change', round: Number(combatData?.回合 || 0),
             actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor), targetId: previewRuntime.unitId(actor), targetName: previewRuntime.unitName(actor),
             actionName: String(fitted.名称 || declaration.skill.魂技名 || '魂导器'), actionType: 'soul_tool_ammo', actorControl: 'SYSTEM', actionRole: 'STATE_TICK',
             sourceActionId: String(actionEvent?.actionId || ''), result: 'loss', resultState: 'LOSS', primaryOutcome: 'resource_reduced', operation: 'REDUCE',
             ruleCode: 'SOUL_TOOL_AMMO', allowImplicitActionSource: true,
-            meta: { source: 'soul_tool_ammo', slot: declaration.skill.__魂导器槽位, before: ammoBefore, after: fitted.弹药, auditOnly: true },
+            meta: { source: 'soul_tool_ammo', slot: declaration.skill.__魂导器槽位, field: ammoField, before: ammoBefore, after: fitted[ammoField], auditOnly: true },
           });
         }
       }
