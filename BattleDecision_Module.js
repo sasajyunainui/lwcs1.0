@@ -67305,6 +67305,16 @@
         const lands = cachedBaseActionValue(units[row], units[target], 'RELEASE_SKILL', charge.skill, context, world) / 100;
         if (lands > 0) (table.strikes ||= []).push({ from: row, to: target, at: turns, delta: sides[target] === sides[row] ? lands : -lands * keep[target][row] });
       }
+      // 放出时的自损反噬（行为检查目录第 16 题，11-17）：蓄的这一招写明的「自损反噬」（技能释放者、效果生效后/命中后必付，
+      // BattlePreview 换成每回合 dot_damage_ratio × 持续回合）在放出那一刻记到蓄力者自己身上——落空也照付，所以让它落空有价值；
+      // 被打断或中断应对时随蓄力一起按比例取消（r20DropCharge）。self 标记：放弃蓄力时这笔是省下的，不是丢掉的（见 struck 的 whole）。
+      const backlash = (Array.isArray(charge.skill?.副作用列表) ? charge.skill.副作用列表 : []).reduce((sum, risk) => {
+        if (String(risk?.副作用类型 || '').trim() !== '自损反噬' || String(risk?.生效对象 || '技能释放者').trim() !== '技能释放者') return sum;
+        if (!['效果生效后', '命中后'].includes(String(risk?.触发时机 || '效果生效后').trim())) return sum;
+        const ratio = Math.abs(Number.parseFloat(String(risk?.数值 ?? '').replace(/^\+/, '')) || 0) / 100;
+        return sum + clamp(Number(risk?.触发概率 ?? 1), 0, 1) * ratio * Math.max(1, Math.floor(Number(risk?.持续回合 || 1)));
+      }, 0);
+      if (backlash > 0) (table.strikes ||= []).push({ from: row, to: row, at: turns, delta: -Math.min(1, backlash), self: true });
     }
     if (table.strikes) table.strikes.sort((left, right) => left.at - right.at);
     Object.assign(table, r20Derive(table));
@@ -67770,7 +67780,8 @@
         const chargeRow = r20ChargeRow(table, row);
         if (chargeRow !== undefined) {
           const lostHere = Math.max(0, table.remaining[row] - remaining[row]), ratioHp = stand.attackerHpMax / stand.hpMax;
-          const whole = strikes.reduce((sum, strike) => sum + (strike.from === chargeRow ? Math.abs(Number(strike.delta) || 0) : 0), 0);
+          // 放出时的自损反噬（self）不算丢掉的：放弃蓄力反而省下它。
+          const whole = strikes.reduce((sum, strike) => sum + (strike.from !== chargeRow ? 0 : (strike.self ? -1 : 1) * Math.abs(Number(strike.delta) || 0)), 0);
           const hasty = r20HastyShare(table, row, chargeRow);
           const plain = r20Meet({ ...stand, strikes: (stand.strikes || []).filter(option => option.move?.skill?.__chargeRelease !== true) }, weight, stance, follow);
           const met = meet.move?.skill?.__chargeRelease === true;
