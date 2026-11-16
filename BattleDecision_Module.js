@@ -7220,6 +7220,14 @@
         });
       });
     });
+    // 蓄满握住（11-17）: a full charge at its release may be held one more turn instead (BattleRuntime holdChargeOneTurn) — only
+    // when it can be released at all (a release with no legal target fizzles as before, not held).
+    if (forcedSkill && input.actionOpportunity?.chargeHoldAllowed === true && (!opportunityRole || opportunityRole.toUpperCase() === 'ACTIVE') &&
+      candidates.some(candidate => candidate?.declaration?.actionKind === 'RELEASE_SKILL')) candidates.push({
+      candidateId: `${actorId}:PASS_OPPORTUNITY`,
+      declaration: defensiveDeclaration(actorId, 'PASS_OPPORTUNITY'),
+      voluntaryOpportunityPass: true,
+    });
     if (forcedSkill) return candidates;
     // 被控时的解控出手（BattleRuntime breakout）: only the skills that clear the control, or passing.
     if (input.actionOpportunity?.breakoutOnly === true) return candidates.filter(candidate => candidate.voluntaryOpportunityPass === true ||
@@ -67348,6 +67356,7 @@
     return { keep, release, end: release > keep + R20_RELEASE_MARGIN, carriers: carriers.map(([key]) => key) };
   }
 
+  const R20_CHARGE_HOLD_UPKEEP = 0.1;
   // The row whose charge `row` is in while it is charging (BattlePreview isCharging) — its own, or the holder's of a fusion
   // skill it charges with; undefined when none (a charge already cut short only waits for its holder's next action).
   function r20ChargeRow(table, row) {
@@ -67689,6 +67698,20 @@
     // 接战链 阶段二: an answer that meets the move (a clash's difference, a preemption's damage) is not answered in turn and
     // leaves no attack opening (BattleRuntime settleStructuredEngagement settles it as a REACTION).
     const answering = String(request.actionOpportunity?.role || '').toUpperCase() === 'REACTION';
+    // 蓄力释放（11-17）: releasing the charge now lands it in the candidate's own settlement — its pending strike on the table
+    // (r20Facts strikes) goes; holding it (蓄满握住: the PASS offered at the release) keeps it, at CHARGE_HOLD_UPKEEP of the
+    // skill's startup cost (BattleRuntime holdChargeOneTurn), read here as spent.
+    if (request.actionOpportunity?.forcedChargeRelease === true && actorRow !== undefined && table.units[actorRow]?.蓄力技能) {
+      const kind = String(candidate?.declaration?.actionKind || '').trim().toUpperCase();
+      if (kind === 'RELEASE_SKILL') { r20DropCharge(table, strikes, busy, actorRow, 0); seen += 1; }
+      else if (kind === 'PASS_OPPORTUNITY' && request.actionOpportunity?.chargeHoldAllowed === true) {
+        const holder = table.units[actorRow], stages = preview.readSkillCostStages(holder.蓄力技能.skill || {}, { costActor: holder })?.启动 || {};
+        for (const [resource, amount] of Object.entries(stages)) {
+          const maximum = Math.max(1, preview.readResourceMax(holder, resource));
+          spent += R20_CHARGE_HOLD_UPKEEP * Math.max(0, Number(preview.resolveSkillResourceCost(holder, resource, amount)) || 0) / maximum;
+        }
+      }
+    }
     // 蓄力中应对（11-17）: an answer of a unit charging gives the charge up; letting the move go by keeps it.
     if (answering && actorRow !== undefined && String(candidate?.declaration?.actionKind || '').trim().toUpperCase() !== 'PASS_OPPORTUNITY') {
       const chargeRow = r20ChargeRow(table, actorRow);
@@ -68067,7 +68090,8 @@
         : preview.collectEffects(declaration.skill || {}).every(effect => /自身|己方|友方/.test(String(effect?.目标 || ''))) ? R20_REVEAL_SELF
         // 效果目标写「单体」、声明时点的是己方单位（辅助给队友上增益）：也只亮自己的魂环（11-16 行为检查目录第 46 题：此前按攻击魂技全额扣）。
         : (declaration.targetIds || []).length && (declaration.targetIds || []).every(id => { const row = table.index.get(String(id)); return row !== undefined && table.sides[row] === request.actorSide; }) ? R20_REVEAL_SELF : 1;
-    const reveal = declaration?.actionKind === 'RELEASE_SKILL' && unseen > 0 && race + tempo > 0
+    // A charge released (蓄力释放) showed its rings when the charge began: nothing more is shown now.
+    const reveal = declaration?.actionKind === 'RELEASE_SKILL' && request.actionOpportunity?.forcedChargeRelease !== true && unseen > 0 && race + tempo > 0
       ? revealScale() * Math.min(R20_REVEAL_CAP, (R20_REVEAL_BASE + R20_REVEAL_SHARE * clamp(spent / R20_TRUMP_SPENT, 0, 1)) * wary) * (race + tempo) : 0;
     // 留手: in a spar, what of a hit lands below the 重伤 line (R20_SPAR_INJURY_LINE of the target's HP) is held against it.
     let restraint = 0;

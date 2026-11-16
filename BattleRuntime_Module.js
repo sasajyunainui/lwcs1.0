@@ -14232,6 +14232,36 @@
     });
   }
 
+  // 蓄满握住: what keeping a full charge one more turn takes (CHARGE_HOLD_UPKEEP of each startup cost of its skill, read as the
+  // settlement reads a cost: BattlePreview resolveSkillResourceCost), and whether the holder has it.
+  const CHARGE_HOLD_UPKEEP = 0.1, CHARGE_HOLD_LIMIT = 2;
+  const CHARGE_HOLD_RESOURCE_KEYS = Object.freeze({ 魂力: 'sp', 精神力: 'men', 体力: 'vit' });
+  function chargeHoldUpkeep(unit = {}, charge = {}) {
+    const stages = previewRuntime.readSkillCostStages?.(charge?.skill || {}, { costActor: unit }) || {};
+    return Object.entries(stages.启动 || {}).map(([resource, amount]) => [resource, Math.ceil(Math.max(0, Number(previewRuntime.resolveSkillResourceCost(unit, resource, amount)) || 0) * CHARGE_HOLD_UPKEEP)])
+      .filter(([resource, value]) => CHARGE_HOLD_RESOURCE_KEYS[resource] && value > 0);
+  }
+  function chargeHoldUpkeepPayable(unit = {}, charge = {}) {
+    return chargeHoldUpkeep(unit, charge).every(([resource, value]) => previewRuntime.readResource(unit, resource) >= value);
+  }
+  function holdChargeOneTurn(combatData = {}, unit = {}, charge = {}, node = {}) {
+    const paid = chargeHoldUpkeep(unit, charge);
+    for (const [resource, value] of paid) writeCombatResource(unit, CHARGE_HOLD_RESOURCE_KEYS[resource], previewRuntime.readResource(unit, resource) - value);
+    charge.cast_time = 0;
+    charge.heldRounds = Number(charge.heldRounds || 0) + 1;
+    const name = previewRuntime.unitName(unit);
+    const actionName = normalizeActionDisplayName(charge?.skill?.name || charge?.skill?.魂技名 || charge?.actionName || '蓄力行动');
+    return writeLedgerEvent(combatData, {
+      eventKind: 'charge_progress', round: Number(combatData?.回合 || 0),
+      actorId: previewRuntime.unitId(unit), actorName: name, targetIds: Array.isArray(charge?.targetIds) ? charge.targetIds : [],
+      actionName, actionType: 'charge_progress', actorControl: node?.actorControl || 'AI', actionRole: 'ACTIVE',
+      actionId: String(charge?.sourceActionId || '').trim(), sourceActionId: String(charge?.sourceActionId || '').trim(),
+      result: 'held', resultState: 'PENDING', ruleCode: 'CHARGE_HELD',
+      meta: { source: 'structured_runtime', heldRounds: charge.heldRounds, upkeep: Object.fromEntries(paid),
+        reasonText: `${name}蓄满【${actionName}】按住不发（第 ${charge.heldRounds} 回合，维持 ${paid.map(([resource, value]) => `${resource} ${value}`).join('、') || '无'}）` },
+    });
+  }
+
   // 蓄力迎击: the charge thrown at the attacker as the answer — it is spent on it.
   function spendChargeToMeet(combatData = {}, unit = {}, node = {}) {
     const charge = unit?.蓄力技能;
@@ -18743,12 +18773,20 @@
                   const unit = listCombatUnits(combatData).find(entry => isUnitIdentityMatch(entry, id));
                   return unit && previewRuntime.isBattleCapable(unit);
                 });
+                // 蓄满握住（用户 2026-11-17「该魂技消耗的10%吧」「注意不要把蓄力骗反击做成常用招了」；神界传说 88 章情绪之神握刀
+                // 不发）: a charge that is full may be held instead of released — the action let go by (PASS) — at
+                // CHARGE_HOLD_UPKEEP of its startup cost each time, for at most CHARGE_HOLD_LIMIT turns; not a charge cut short,
+                // nor a fusion's, nor one its holder cannot pay to keep.
+                const holdAllowed = !isCooperativeAssist && node.nodeKind === 'ACTIVE' && storedCharge.hasty !== true &&
+                  !(Array.isArray(storedCharge.fusionPartnerIds) && storedCharge.fusionPartnerIds.length) &&
+                  Number(storedCharge.heldRounds || 0) < CHARGE_HOLD_LIMIT && chargeHoldUpkeepPayable(actor, storedCharge);
                 const releaseWith = forcedTargetIds => decideForNode(actor, node, {
                   role: node.actionRole,
                   forcedSkill: chargedSkill,
                   forcedTargetIds,
                   forcedCreationRecipientId: storedCharge.creationRecipientId || '',
                   forcedChargeRelease: true,
+                  ...(holdAllowed ? { chargeHoldAllowed: true } : {}),
                 });
                 const noLegalRelease = error => error?.code === 'BATTLE_DECISION_CANDIDATE_POOL_EMPTY' && error.actorId === previewRuntime.unitId(actor);
                 let releaseError = null;
@@ -18784,6 +18822,13 @@
                 }
                 if (handleLostDecisionNode(decisionResult, node)) {
                   actor.蓄力技能 = null;
+                  continue;
+                }
+                if (holdAllowed && String(decisionResult?.selected?.declaration?.actionKind || '').trim().toUpperCase() === 'PASS_OPPORTUNITY') {
+                  holdChargeOneTurn(combatData, actor, storedCharge, node);
+                  if (naturalOpportunity && String(naturalOpportunity?.status || '').trim() === 'EXECUTING') naturalOpportunity.status = 'CONSUMED';
+                  consumeAutonomousSummonWindow(actor, node);
+                  queue.recordTrace('EXECUTED', node, { result: 'charge_held', heldRounds: storedCharge.heldRounds });
                   continue;
                 }
                 declaration = cloneValue(decisionResult?.selected?.declaration || {});

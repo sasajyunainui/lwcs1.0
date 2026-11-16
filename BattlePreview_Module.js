@@ -2837,9 +2837,10 @@
   // 融合蓄力（用户 2026-11-12）: a charged fusion skill is charged by its partners too — from the turn it starts to the
   // turn it is released each partner's natural turn goes to it. The unit charging a fusion skill that `unit` is a
   // partner of (its 蓄力技能 lists the partners), or null; a host that is down holds nobody.
-  // 仓促出手（用户 2026-11-17「可中断，可仓促出手」，原作 0515 谢邂「蓄势未满」一击、0758 白秀秀对清萝）: a charge given up to
-  // answer a move still lands, at the share of it already charged × HASTY_CHARGE_FACTOR of its power — the cost was paid
-  // in full. 0 when too little is charged to land anything (under HASTY_CHARGE_FLOOR), or the charge is already cut short.
+  // 仓促出手（用户 2026-11-17「可中断，可仓促出手」，原作 0515 谢邂「蓄势未满」一击）: a charge given up to answer a move
+  // still lands, at the share of it already charged × HASTY_CHARGE_FACTOR of its power — its whole cost paid at the release,
+  // as any charge pays (BattleRuntime charges nothing to start). 0 when too little is charged to land anything (under
+  // HASTY_CHARGE_FLOOR), or the charge is already cut short.
   const HASTY_CHARGE_FACTOR = 0.6, HASTY_CHARGE_FLOOR = 0.05;
   // The share of a charge's windup already charged (0 when it is not a charge under way).
   function chargedShare(charge = null) {
@@ -2853,8 +2854,9 @@
     return scale >= HASTY_CHARGE_FLOOR ? scale : 0;
   }
   // 蓄力迎击（同日用户选「3」；原作 0758 白秀秀对清萝、神界传说 88～90 章情绪之神「谁去攻击情绪之神，就要承受这一刀的威力」）:
-  // a unit charging may meet a move on it with the charge itself, thrown at the attacker at once — no windup left, nothing
-  // more to pay, its damage at the share charged (no hasty cut: it was aimed at this) — as any skill meets a move (the
+  // a unit charging may meet a move on it with the charge itself, thrown at the attacker at once — no windup left, its cost
+  // paid as any release pays it (a charge pays nothing to start: BattleRuntime charges at the release), its damage at the
+  // share charged (no hasty cut: it was aimed at this) — as any skill meets a move (the
   // clash / preemption of the engagement chain); the move still comes. The skill offered for that, one per charge (kept, so
   // its identity holds through a decision); null when nothing is charged enough, the charge is cut short, or is a fusion's.
   const chargeMeetSkills = new WeakMap();
@@ -2869,7 +2871,7 @@
     const skill = JSON.parse(JSON.stringify(charge.skill));
     const name = String(skill.魂技名 || skill.name || charge.actionName || '蓄力').trim();
     skill.魂技名 = `${name}（蓄力迎击）`; skill.name = skill.魂技名;
-    skill.前摇 = 0; skill.cast_time = 0; skill.消耗 = '无';
+    skill.前摇 = 0; skill.cast_time = 0;
     skill.__chargeRelease = true;
     for (const effect of Array.isArray(skill._效果数组) ? skill._效果数组 : []) {
       if (effect?.原型 === '伤害结算' && Number(effect.威力倍率) > 0) effect.威力倍率 = Math.max(1, Math.round(Number(effect.威力倍率) * share));
