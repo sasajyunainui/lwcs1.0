@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:3a7ab2b86114d7997e52efa71f2ebd4abfbfe0588597e12628cc11524a69319e|cockpit/designer-model.js:43e9907dc6a213586bc290bdf3e507a8178bd80879f0f020231ac30ffa7c4f99|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:57c95eeeab13ad433b470be8556aa17aaceffec1d9597bdd47aeecbdbae4d47e|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:9ef01701abf687f190fbbc86d8139e22119f99e36379e7fa56e1dd8b92cc62e3|BattleRuntime_Module.js:09e8b3668cc60f46364280a2393ae0869d3ccb9c39e5f0c0bf79901c03a3daa4|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:3a7ab2b86114d7997e52efa71f2ebd4abfbfe0588597e12628cc11524a69319e|cockpit/designer-model.js:43e9907dc6a213586bc290bdf3e507a8178bd80879f0f020231ac30ffa7c4f99|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:8dd53716466ef2089e149544f904d77396a61a81b003401e51fc1a0cb03a5323|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:608637f6d35ae34ac2ec4a777e03ca07c52818ccc60071d1602ffe082a3beef1|BattleRuntime_Module.js:b3d0239dd9e529587d5e893561ef7f96bba6e1138e1aefb109fc9a5ad318a7da|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -63241,6 +63241,51 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
   // 融合蓄力（用户 2026-11-12）: a charged fusion skill is charged by its partners too — from the turn it starts to the
   // turn it is released each partner's natural turn goes to it. The unit charging a fusion skill that `unit` is a
   // partner of (its 蓄力技能 lists the partners), or null; a host that is down holds nobody.
+  // 仓促出手（用户 2026-11-17「可中断，可仓促出手」，原作 0515 谢邂「蓄势未满」一击、0758 白秀秀对清萝）: a charge given up to
+  // answer a move still lands, at the share of it already charged × HASTY_CHARGE_FACTOR of its power — the cost was paid
+  // in full. 0 when too little is charged to land anything (under HASTY_CHARGE_FLOOR), or the charge is already cut short.
+  const HASTY_CHARGE_FACTOR = 0.6, HASTY_CHARGE_FLOOR = 0.05;
+  // The share of a charge's windup already charged (0 when it is not a charge under way).
+  function chargedShare(charge = null) {
+    if (!charge || typeof charge !== 'object' || charge.hasty === true) return 0;
+    const left = Math.max(0, Number(charge.cast_time ?? charge.remainingCastTime ?? 0) || 0);
+    const total = Math.max(left, Number(charge.total_cast_time ?? charge.skill?.前摇 ?? 0) || 0);
+    return total > 0 ? 1 - left / total : 0;
+  }
+  function hastyChargeScale(charge = null) {
+    const scale = chargedShare(charge) * HASTY_CHARGE_FACTOR;
+    return scale >= HASTY_CHARGE_FLOOR ? scale : 0;
+  }
+  // 蓄力迎击（同日用户选「3」；原作 0758 白秀秀对清萝、神界传说 88～90 章情绪之神「谁去攻击情绪之神，就要承受这一刀的威力」）:
+  // a unit charging may meet a move on it with the charge itself, thrown at the attacker at once — no windup left, nothing
+  // more to pay, its damage at the share charged (no hasty cut: it was aimed at this) — as any skill meets a move (the
+  // clash / preemption of the engagement chain); the move still comes. The skill offered for that, one per charge (kept, so
+  // its identity holds through a decision); null when nothing is charged enough, the charge is cut short, or is a fusion's.
+  const chargeMeetSkills = new WeakMap();
+  function chargeMeetSkill(unit = {}) {
+    const charge = unit?.蓄力技能;
+    if (!charge || typeof charge !== 'object' || !charge.skill || typeof charge.skill !== 'object' || charge.hasty === true ||
+      Array.isArray(charge.fusionPartnerIds) && charge.fusionPartnerIds.length) return null;
+    const share = chargedShare(charge);
+    if (!(share >= HASTY_CHARGE_FLOOR)) return null;
+    const kept = chargeMeetSkills.get(charge);
+    if (kept && kept.share === share) return kept.skill;
+    const skill = JSON.parse(JSON.stringify(charge.skill));
+    const name = String(skill.魂技名 || skill.name || charge.actionName || '蓄力').trim();
+    skill.魂技名 = `${name}（蓄力迎击）`; skill.name = skill.魂技名;
+    skill.前摇 = 0; skill.cast_time = 0; skill.消耗 = '无';
+    skill.__chargeRelease = true;
+    for (const effect of Array.isArray(skill._效果数组) ? skill._效果数组 : []) {
+      if (effect?.原型 === '伤害结算' && Number(effect.威力倍率) > 0) effect.威力倍率 = Math.max(1, Math.round(Number(effect.威力倍率) * share));
+    }
+    chargeMeetSkills.set(charge, { share, skill });
+    return skill;
+  }
+  // Whether a unit is charging (its own charge or a fusion skill's it charges along with): a charge cut short (hasty) is
+  // only waiting for its holder's next action, no longer charging.
+  function isCharging(worldSnapshot = {}, unit = {}) {
+    return !!(unit?.蓄力技能 && unit.蓄力技能.hasty !== true) || !!fusionChargeHost(worldSnapshot, unit);
+  }
   function fusionChargeHost(worldSnapshot = {}, unit = {}) {
     const id = unitId(unit);
     if (!id) return null;
@@ -84738,6 +84783,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // The weight factor on what a guard lets through, by the hit's share w of the HP maximum: GUARD_LIGHT up to
   // GUARD_LIGHT_SHARE, rising linearly to 1 at GUARD_EVEN_SHARE and to GUARD_HEAVY at GUARD_HEAVY_SHARE, flat after;
   // GUARD_TYPICAL when the hit is not known (table valuations). What gets through never exceeds GUARD_CAP.
+  const GUARD_DEFENSE_MID = 0.12, GUARD_DEFENSE_SLOPE = 1.0, GUARD_DEFENSE_CAP = 0.3;
   const GUARD_LIGHT = 0.4, GUARD_HEAVY = 1.2, GUARD_TYPICAL = 0.7, GUARD_LIGHT_SHARE = 0.05, GUARD_EVEN_SHARE = 0.2,
     GUARD_HEAVY_SHARE = 0.35, GUARD_CAP = 0.95;
   const COUNTER_GUARD_HELD = 0.15, COUNTER_BASE = 0.5, COUNTER_WINDUP_SWING = 0.3, COUNTER_FLOOR = 0.1, COUNTER_CAP = 0.9;
@@ -84948,9 +84994,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const defense = Math.max(1, readCombatStat(reactor, 'def'));
     const attack = Math.max(1, readCombatStat(sourceActor, 'str'));
     const staminaRatio = readResource(reactor, '体力') / Math.max(1, readResourceMax(reactor, '体力'));
+    // 防御值决定硬接（用户 2026-11-17 选甲，行为检查目录第 26 题）: the guard keeps GUARD_DEFENSE_MID of the hit off at an even
+    // 防御/(防御+力量), GUARD_DEFENSE_SLOPE more or less per unit of that share away from 0.5, within [0, GUARD_DEFENSE_CAP].
+    // Until 11-17 it was 0.24 × the share (at most 0.2): a 防御系 of 防御 5080 kept 0.391 of a hit, a 敏攻系 of 2543 0.419,
+    // so evasion (0.43–0.54 for a 敏攻系) never beat guarding.
     const ordinary = clamp(
       0.78 -
-      Math.min(0.2, defense / (defense + attack) * 0.24) -
+      clamp(GUARD_DEFENSE_MID + (defense / (defense + attack) - 0.5) * GUARD_DEFENSE_SLOPE, 0, GUARD_DEFENSE_CAP) -
       Math.min(0.08, staminaRatio * 0.08),
       0.45,
       0.82,
@@ -85398,6 +85448,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     declarationGrantsCounter,
     fusionSkillMetadata,
     fusionChargeHost,
+    hastyChargeScale,
+    chargedShare,
+    chargeMeetSkill,
+    isCharging,
     ACTION_STAMINA_RATES,
     ACTION_STAMINA_SCALE,
     resolveFusionAction,
@@ -99022,7 +99076,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const roots = [
       ...(Array.isArray(unit?.技能列表) && unit.技能列表.length ? [unit.技能列表] : []),
       // 融合技（非武魂融合，S80-E）: its 技能数据 is composed from the participants' skills (MVU_Schema_Runtime 合成魂技融合技能数据_V1).
-      ...Object.entries(unit).filter(([key, value]) => /^(?:第\d+)?武魂|血脉之力|魂骨|装备|自创魂技|技能|^融合技$/.test(key) && value && typeof value === 'object')
+      // 蓄力技能 (the charge under way, BattleRuntime) matches 技能 but is no skill table: its skill is one of these already,
+      // and read twice it gave a charging unit's counter two candidates of one identity (11-17).
+      ...Object.entries(unit).filter(([key, value]) => key !== '蓄力技能' && /^(?:第\d+)?武魂|血脉之力|魂骨|装备|自创魂技|技能|^融合技$/.test(key) && value && typeof value === 'object')
         .filter(([key]) => !(sealed.has('器武魂') && preview.toolSpiritKeys(unit).includes(key)))
         .map(([key, value]) => key !== '装备' ? value : soulToolSkillView(sealed.size ? sealedEquipmentView(equipment || value, sealed) : equipment || value)),
     ];
@@ -101205,10 +101261,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       hostile.length > 0 && withdrawalAllowed(worldSnapshot, actor, input.battleIntent)) {
       candidates.push({ candidateId: `${actorId}:WITHDRAW`, declaration: defensiveDeclaration(actorId, 'WITHDRAW') });
     }
+    // 蓄力迎击（11-17）: a unit charging may meet the move with the charge itself (BattlePreview chargeMeetSkill).
+    const chargeMeet = reactionOnly && !forcedSkill ? preview.chargeMeetSkill(actor) : null;
     const sourceSkills = forcedSkill
       ? [forcedSkill]
-      : grantedCounterSkill
-        ? [...collectSkills(actor), grantedCounterSkill]
+      : grantedCounterSkill || chargeMeet
+        ? [...collectSkills(actor), ...(grantedCounterSkill ? [grantedCounterSkill] : []), ...(chargeMeet ? [chargeMeet] : [])]
         : collectSkills(actor);
     if (summonSkillDisabled || (!forcedSkill || assistOnly) && !skillReleaseAllowed) {
       sourceSkills.forEach((sourceSkill, index) => recordRejected({
@@ -160880,6 +160938,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // time. 11-14: without it a 精神系 whose basic attack is too slow to clash was taken to clash every basic attack back for
     // 4.4% (it was never offered one), and a 强攻系 out of 魂力 kept to its stance for 40 rounds.
     if (!hasStateFlag(unit, 'disarm')) consider({ actionKind: 'BASIC_ATTACK', targetIds: [attackerId], skill: basicAttackSkill(unit) }, null);
+    // 蓄力迎击（11-17）: a unit charging meets the move with the charge itself (BattlePreview chargeMeetSkill) — the threat that
+    // keeps attackers off it (神界传说 88 章「谁去攻击情绪之神，就要承受这一刀的威力」).
+    const meetCharge = !hasStateFlag(unit, 'silence') ? preview.chargeMeetSkill(unit) : null;
+    if (meetCharge) consider({ actionKind: 'RELEASE_SKILL', targetIds: [attackerId], skill: meetCharge }, meetCharge);
     const guards = [];
     if (!hasStateFlag(unit, 'silence') && !preview.isSummonSkillDisabled(unit)) {
       const own = affordablePreparedSkills(unit), budget = preview.reactionWindupBudget(attacker, move, unit);
@@ -161689,6 +161751,29 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return { keep, release, end: release > keep + R20_RELEASE_MARGIN, carriers: carriers.map(([key]) => key) };
   }
 
+  // The row whose charge `row` is in while it is charging (BattlePreview isCharging) — its own, or the holder's of a fusion
+  // skill it charges with; undefined when none (a charge already cut short only waits for its holder's next action).
+  function r20ChargeRow(table, row) {
+    const unit = table.units[row];
+    if (!table.strikes || !unit || !preview.isCharging(table.world, unit)) return undefined;
+    if (unit.蓄力技能 && unit.蓄力技能.hasty !== true) return row;
+    const host = preview.fusionChargeHost(table.world, unit);
+    return host ? table.index.get(preview.unitId(host)) : undefined;
+  }
+  // What of a charge is kept when `row` answers (BattleRuntime abandonChargeToAnswer): its holder cuts it short (hastyChargeScale
+  // of its strike); a fusion partner breaks it (0).
+  const r20HastyShare = (table, row, chargeRow) => row === chargeRow ? preview.hastyChargeScale(table.units[chargeRow]?.蓄力技能) : 0;
+  // A charge broken off to answer (蓄力中应对): its strikes land `share` of themselves at the holder's next action (the damage
+  // read linearly in the power, a little under what the hasty skill lands), and its partners act again.
+  function r20DropCharge(table, strikes, busy, chargeRow, share = 0) {
+    for (const strike of strikes) if (strike.from === chargeRow) { strike.delta *= share; strike.at = Math.min(strike.at, 1); }
+    if (!busy) return;
+    const partners = new Set((table.units[chargeRow]?.蓄力技能?.fusionPartnerIds || []).map(String));
+    for (let row = 0; row < busy.length; row += 1) {
+      if (row === chargeRow) busy[row] = share > 0 ? Math.min(busy[row], 1) : 0;
+      else if (partners.has(table.ids[row])) busy[row] = 0;
+    }
+  }
   function r20Shadow(request, result, candidate = null) {
     if (!result || typeof result !== 'object') return null;
     // 认输与撤离 (方案第 4 条; 用户："决策的唯一核心是胜率"，"撤退 = 胜率严重不足"): leaving is valued as in the live valuation,
@@ -162007,6 +162092,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 接战链 阶段二: an answer that meets the move (a clash's difference, a preemption's damage) is not answered in turn and
     // leaves no attack opening (BattleRuntime settleStructuredEngagement settles it as a REACTION).
     const answering = String(request.actionOpportunity?.role || '').toUpperCase() === 'REACTION';
+    // 蓄力中应对（11-17）: an answer of a unit charging gives the charge up; letting the move go by keeps it.
+    if (answering && actorRow !== undefined && String(candidate?.declaration?.actionKind || '').trim().toUpperCase() !== 'PASS_OPPORTUNITY') {
+      const chargeRow = r20ChargeRow(table, actorRow);
+      // Met with the charge itself (蓄力迎击), it is spent on this answer (its blow is in the candidate's own settlement).
+      const spent = candidate?.declaration?.skill?.__chargeRelease === true;
+      if (chargeRow !== undefined) { r20DropCharge(table, strikes, busy, chargeRow, spent ? 0 : r20HastyShare(table, actorRow, chargeRow)); seen += 1; }
+    }
     if (actorRow !== undefined && alive[actorRow] > 0 && !answering) {
       const struck = new Set();
       for (const entry of result.contributions || []) {
@@ -162037,7 +162129,29 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         // stance 60 rounds against a 控制系 that stood in one too, every basic attack read as met by a skill clashing it back
         // for 10% (the 控制系 had one such answer in 60 rounds).
         const stance = r20StanceOf(table.units[row]);
-        const meet = r20Meet(r20Stand(table.units[row], table.units[actorRow], move, !!stance), weight, stance, stance ? null : r20Follow(table, row, actorRow, priorTarget, priorActor));
+        const stand = r20Stand(table.units[row], table.units[actorRow], move, !!stance), follow = stance ? null : r20Follow(table, row, actorRow, priorTarget, priorActor);
+        let meet = r20Meet(stand, weight, stance, follow);
+        // 蓄力中应对（11-17 用户「蓄力可以主动中断」「可中断，可仓促出手」「3」）: a target charging takes the whole move and keeps the
+        // charge; or breaks it off to answer (BattleRuntime abandonChargeToAnswer: what it charged goes out hastily, the share
+        // r20HastyShare); or meets the move with the charge itself (蓄力迎击: BattlePreview chargeMeetSkill, among its clashes,
+        // the charge spent). It takes the way it loses least by, as r20Meet weighs answers: what it takes of the move less what
+        // its answer lands back (shares of its HP maximum) plus what of the charge it gives up (its strikes, as shares of the
+        // HP of those they land on). Taking it whole, it strikes nothing back.
+        const chargeRow = r20ChargeRow(table, row);
+        if (chargeRow !== undefined) {
+          const lostHere = Math.max(0, table.remaining[row] - remaining[row]), ratioHp = stand.attackerHpMax / stand.hpMax;
+          const whole = strikes.reduce((sum, strike) => sum + (strike.from === chargeRow ? Math.abs(Number(strike.delta) || 0) : 0), 0);
+          const hasty = r20HastyShare(table, row, chargeRow);
+          const plain = r20Meet({ ...stand, strikes: (stand.strikes || []).filter(option => option.move?.skill?.__chargeRelease !== true) }, weight, stance, follow);
+          const met = meet.move?.skill?.__chargeRelease === true;
+          const ways = [{ way: 'take', loss: lostHere }, { way: 'answer', loss: lostHere * plain.share - plain.back * ratioHp + whole * (1 - hasty), meet: plain }];
+          if (met) ways.push({ way: 'meet', loss: lostHere * meet.share - meet.back * ratioHp + whole, meet });
+          const best = ways.reduce((low, option) => option.loss < low.loss - 1e-12 ? option : low);
+          if (best.way === 'take') continue;
+          meet = best.meet;
+          r20DropCharge(table, strikes, busy, chargeRow, best.way === 'meet' ? 0 : hasty);
+          seen += 1;
+        }
         if (meet.share < 1 - 1e-12) {
           const lost = Math.max(0, table.remaining[row] - remaining[row]);
           remaining[row] = Math.max(0, table.remaining[row] - lost * meet.share);
@@ -167746,7 +167860,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       }
       const rows = !shadow ? neutralCausalRows : Object.freeze(neutralCausalRows.map(row => !['OBJECTIVE_PROGRESS', 'OPPONENT_RESPONSE_PRESSURE'].includes(row.featureCode) ? row
         : Object.freeze({ ...row, value: clamp(shadow.value / R20_SHADOW_SCALE, -1, 1) })));
-      if (shadowHook) shadowHook({ request, candidate: frozenById.get(candidateId), rows, shadow, causalMs: 0, shadowMs: 0, chooser: true });
+      if (shadowHook) shadowHook({ request, candidate: frozenById.get(candidateId), rows, shadow, result: previewResultsById[candidateId], causalMs: 0, shadowMs: 0, chooser: true });
       return rows;
     };
     const exactCausalRows = shadowChooses ? shadowCausalRows : !shadowHook ? valuedCausalRows : candidateId => {
@@ -167754,7 +167868,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const rows = valuedCausalRows(candidateId);
       const valuedAt = performance.now();
       const shadow = illegalTargetCandidateIds.has(candidateId) ? null : r20Shadow(request, previewResultsById[candidateId], frozenById.get(candidateId));
-      shadowHook({ request, candidate: frozenById.get(candidateId), rows, shadow, causalMs: valuedAt - startedAt, shadowMs: performance.now() - valuedAt });
+      shadowHook({ request, candidate: frozenById.get(candidateId), rows, shadow, result: previewResultsById[candidateId], causalMs: valuedAt - startedAt, shadowMs: performance.now() - valuedAt });
       return rows;
     };
     const responseSurrogateRows = candidateId => {
@@ -183105,6 +183219,56 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
   }
 
+  // 蓄力中应对（用户 2026-11-17「蓄力可以主动中断」「可中断，可仓促出手」；原作 0515 谢邂影分身躲剑后「蓄势随之爆发」、0758
+  // 白秀秀被清萝冲近时瞬发场域）: a charging unit answers a move only by breaking its charge off. What it charged still goes
+  // out, hastily: the charge is ready at once, its damage at the share charged × 0.6 (BattlePreview hastyChargeScale), and is
+  // released on the holder's next action through the ordinary release; too little charged and it is given up. A fusion
+  // partner that answers breaks the fusion charge it shares. Null when the unit was charging nothing.
+  function abandonChargeToAnswer(combatData = {}, unit = {}, node = {}) {
+    if (!previewRuntime.isCharging(combatData, unit)) return null;
+    const charge = unit?.蓄力技能;
+    if (!charge || charge.hasty === true) return interruptFusionChargeByPartner({ combatData, partner: unit, reasonCode: 'PARTNER_ANSWERED' });
+    const scale = previewRuntime.hastyChargeScale(charge), name = previewRuntime.unitName(unit);
+    const actionName = normalizeActionDisplayName(charge?.skill?.name || charge?.skill?.魂技名 || charge?.actionName || '蓄力行动');
+    if (scale > 0) {
+      const skill = charge.skill && typeof charge.skill === 'object' ? charge.skill : null;
+      for (const effect of Array.isArray(skill?._效果数组) ? skill._效果数组 : []) {
+        if (effect?.原型 === '伤害结算' && Number(effect.威力倍率) > 0) effect.威力倍率 = Math.max(1, Math.round(Number(effect.威力倍率) * scale));
+      }
+      charge.cast_time = 0;
+      charge.hasty = true;
+      // Partners of a fusion charge are free once it is ready.
+      delete charge.fusionPartnerIds;
+    } else unit.蓄力技能 = null;
+    return writeLedgerEvent(combatData, {
+      eventKind: 'charge_interrupt', round: Number(combatData?.回合 || 0),
+      actorId: previewRuntime.unitId(unit), actorName: name, targetId: previewRuntime.unitId(unit), targetName: name,
+      actionName, actionType: 'charge_interrupt', actorControl: node?.actorControl || 'AI', actionRole: 'REACTION',
+      actionId: String(charge?.sourceActionId || '').trim(), sourceActionId: String(charge?.sourceActionId || '').trim(),
+      result: 'interrupted', resultState: scale > 0 ? 'PARTIAL' : 'ABORTED', ruleCode: scale > 0 ? 'CHARGE_CUT_SHORT_TO_ANSWER' : 'CHARGE_ABANDONED_TO_ANSWER',
+      meta: { source: 'structured_runtime', interruptedActionId: String(charge?.sourceActionId || '').trim(), hastyScale: scale,
+        reasonText: scale > 0 ? `${name}中断蓄力转为应对，【${actionName}】仓促出手（威力 ×${scale.toFixed(2)}，下一次行动放出）` : `${name}放弃蓄力，转为应对` },
+    });
+  }
+
+  // 蓄力迎击: the charge thrown at the attacker as the answer — it is spent on it.
+  function spendChargeToMeet(combatData = {}, unit = {}, node = {}) {
+    const charge = unit?.蓄力技能;
+    if (!charge) return null;
+    unit.蓄力技能 = null;
+    const name = previewRuntime.unitName(unit);
+    const actionName = normalizeActionDisplayName(charge?.skill?.name || charge?.skill?.魂技名 || charge?.actionName || '蓄力行动');
+    return writeLedgerEvent(combatData, {
+      eventKind: 'charge_interrupt', round: Number(combatData?.回合 || 0),
+      actorId: previewRuntime.unitId(unit), actorName: name, targetId: previewRuntime.unitId(unit), targetName: name,
+      actionName, actionType: 'charge_interrupt', actorControl: node?.actorControl || 'AI', actionRole: 'REACTION',
+      actionId: String(charge?.sourceActionId || '').trim(), sourceActionId: String(charge?.sourceActionId || '').trim(),
+      result: 'released', resultState: 'COMPLETED', ruleCode: 'CHARGE_THROWN_TO_MEET',
+      meta: { source: 'structured_runtime', interruptedActionId: String(charge?.sourceActionId || '').trim(), chargedShare: previewRuntime.chargedShare(charge),
+        reasonText: `${name}以蓄力中的【${actionName}】迎击来袭` },
+    });
+  }
+
   // 裁判（用户 2026-11-12："有裁判的话，并且裁判足够应付的话可以让裁判出手阻挡（同样是计算敏捷，走守护路线。注意敏捷差距大
   // 的话是可以一回合救多人的，救援的前提是判定这一击会导致生命低于10%，被救的人出局"；"裁判需要接入游戏吧，而且不止是赶不赶得上，
   // 还要看实力够不够，可以说裁判就是一个中立的负责护卫行动的角色，可以用魂技护卫，可以抵挡，也可以救走"；"没有填裁判就是没有裁判";
@@ -183884,6 +184048,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const engagementDepth = Math.max(0, Number(input?.engagementDepth || 0));
     if (!combatData || !reactor || !sourceActor || !parentActionEvent?.actionId || !reaction?.opensCounterCheck) return null;
     if (!structuredActorCanAct(reactor, 'COUNTER') || !structuredActorPhysicallyAlive(sourceActor)) return null;
+    // 蓄力中应对（11-17）: a unit still charging let the move go by to keep the charge — it strikes back no more than it answered.
+    if (previewRuntime.isCharging(combatData, reactor)) return null;
     // 位移重做: 脱离 closes the enemy's strike-back window against its user for the round (BattlePreview positionClosesCounterWindow).
     if (previewRuntime.positionClosesCounterWindow(sourceActor, Number(combatData?.回合 || 0))) return null;
     const receivedDamage = (Array.isArray(settlementFacts) ? settlementFacts : []).reduce((sum, event) => {
@@ -185564,6 +185730,25 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           Object.entries(shared.reactionByTarget).forEach(([targetId, reaction]) => {
             const reactor = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, targetId));
             if (!reactor) return;
+            // 仓促出手（同日「可中断，可仓促出手」；原作 0515「叶星陌一剑落空，蓄势随之爆发」）: a charge broken off to answer this
+            // move goes out as soon as the exchange is settled, through the ordinary release (a follow-up of the holder's own,
+            // not its natural action).
+            if (reactor.蓄力技能?.hasty === true && reactor.蓄力技能.queued !== true && structuredActorPhysicallyAlive(reactor)) {
+              reactor.蓄力技能.queued = true;
+              queue.enqueue({
+                actorEntry: { char: reactor, side: inferUnitSide(combatData, reactor) },
+                actorControl: 'AI',
+                actorTurnSequence: node.actorTurnSequence,
+                parentActionSequence: node.parentActionSequence || node.actionSequence,
+                phasePriority: 60,
+                grantId: `hasty_charge:${actionEvent.actionId}:${targetId}`,
+                nodeKind: 'CONTINUATION',
+                actionRole: 'ACTIVE',
+                sourceActionId: actionEvent.actionId,
+                grantType: 'HASTY_CHARGE_RELEASE',
+                state: { continuationDepth: 1, parentActionEvent: actionEvent, hastyRelease: true },
+              });
+            }
             if (previewRuntime.guardBrokenOf(reactor, guardRound)) return;
             // A strike back needs room for itself, the answers to it and its settlement: with the action's node
             // budget nearly spent the exchange ends here instead of failing the battle.
@@ -187020,6 +187205,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 : summonGuard
                   ? { actorId, actionKind: 'DEFEND', targetIds: [actorId] }
                   : cloneValue(decisionResult.selected.declaration);
+              // 蓄力中应对（用户 2026-11-17「蓄力可以主动中断」）: a unit charging — or charging a fusion skill with its holder —
+              // answers only by giving the charge up; letting the move go by keeps the charge and takes the whole hit.
+              // 蓄力迎击（同日「3」）: met with the charge itself (BattlePreview chargeMeetSkill), the charge is thrown now and spent.
+              if (reactionDeclaration?.skill?.__chargeRelease === true) spendChargeToMeet(combatData, actor, node);
+              else if (String(reactionDeclaration?.actionKind || '').trim().toUpperCase() !== 'PASS_OPPORTUNITY') abandonChargeToAnswer(combatData, actor, node);
               const reactionSettlementStartedAt = collectPerformanceBreakdown
                 ? performanceNow()
                 : 0;
@@ -187482,7 +187672,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               }
               cooperativeOptions = { validTargetIds: hostileTargets.map(previewRuntime.unitId).filter(Boolean), preferredTargetIds };
             }
-            let storedCharge = (node.nodeKind === 'ACTIVE' || isCooperativeAssist) && actor?.蓄力技能 && typeof actor.蓄力技能 === 'object'
+            let storedCharge = (node.nodeKind === 'ACTIVE' || isCooperativeAssist || node?.state?.hastyRelease === true) && actor?.蓄力技能 && typeof actor.蓄力技能 === 'object'
               ? actor.蓄力技能
               : null;
             // 沉默/封技 (用户 2026-11-12 "该接的接完"): a silenced unit releases no skill, a charged one included — the charge is
@@ -187510,6 +187700,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 interruptFusionChargeByPartner({ combatData, partner: lostPartner, host: actor, reasonCode: 'PARTNER_UNAVAILABLE' });
                 storedCharge = null;
               }
+            }
+            // A hasty release whose charge is gone by now (silenced, released) is nothing more: no free action in its place.
+            if (!storedCharge && node?.state?.hastyRelease === true) {
+              queue.recordTrace('CANCELLED', node, { reason: 'HASTY_CHARGE_GONE' });
+              continue;
             }
             if (storedCharge) {
               const remainingCastTime = Math.max(0, Number(storedCharge?.cast_time ?? storedCharge?.remainingCastTime ?? storedCharge?.skill?.前摇 ?? 0));
@@ -187949,6 +188144,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               actor.蓄力技能 = {
                 skill: chargeSkillPackage,
                 cast_time: castTime - naturalActionBudget,
+                // The whole windup, for the share charged when it is cut short (BattlePreview hastyChargeScale).
+                total_cast_time: castTime,
                 targetIds: cloneValue(declaration.targetIds || []),
                 ...(declaration.creationRecipientId ? { creationRecipientId: String(declaration.creationRecipientId).trim() } : {}),
                 actionName,
