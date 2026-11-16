@@ -25068,6 +25068,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     evaluateMechanicalBasisRouteScalarColumns,
     deriveStateCombatEffect,
     deriveStatePanelRatios,
+    // 推演的增益/减益格（BattleDecision r20Imprint）：把一个效果按结算的写法挂到单位视图上、按结算的写法撤掉状态。
+    addState,
+    removeProjectedStates,
     statePolarity,
     negativeEffectIsImmune,
     conditionMatchesFilter,

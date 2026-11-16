@@ -1839,9 +1839,12 @@
           ...(String(state?.原型 || '').trim() ? { prototype: String(state.原型).trim() } : {}),
           ...(String(state?.规则 || '').trim() ? { rule: String(state.规则).trim() } : {}),
           ...(String(state?.防御对象 || '').trim() ? { defenseTarget: String(state.防御对象).trim() } : {}),
-          // 护卫: who stands guard is in plain sight (the guard is in front of its charge) — r20Cover reads it (11-16 第 4 题).
-          ...(String(state?.状态 || state?.状态名称 || '').trim() === '护卫' && String(state?.来源角色 || '').trim()
-            ? { source: String(state.来源角色).trim() } : {}),
+          // Who laid it is in plain sight (a skill released on a unit is seen): 护卫 — the guard in front of its charge (r20Cover,
+          // 11-16 第 4 题); a buff — the support behind it, which can lay it again (r20Assists, 第 5 题「打让全队变强的节点」).
+          ...(String(state?.来源角色 || '').trim() ? { source: String(state.来源角色).trim() } : {}),
+          // What it does to the panel shows too (a 力量 buff glows on its holder): without it the unit was pictured at its bare panel.
+          ...(state?.面板修改比例 && Object.keys(state.面板修改比例).length ? { panelRatios: cloneValue(state.面板修改比例) } : {}),
+          ...(state?.面板固定修正 && Object.keys(state.面板固定修正).length ? { panelFixed: cloneValue(state.面板固定修正) } : {}),
           applicationProbability: clamp(
             Number(
               state?.__previewApplicationProbability ?? 1,
@@ -2268,6 +2271,8 @@
         ...(state?.rule ? { 规则: state.rule } : {}),
         ...(state?.defenseTarget ? { 防御对象: state.defenseTarget } : {}),
         ...(state?.source ? { 来源角色: state.source } : {}),
+        ...(state?.panelRatios ? { 面板修改比例: cloneValue(state.panelRatios) } : {}),
+        ...(state?.panelFixed ? { 面板固定修正: cloneValue(state.panelFixed) } : {}),
         __previewApplicationProbability: clamp(Number(state?.applicationProbability ?? 1), 0, 1),
         ...(Number(state?.shieldRatio || 0) > 1e-12
           ? {
@@ -2413,6 +2418,12 @@
       for (const stance of ['attackOpening', 'guardBroken']) {
         const value = sourceUnit?.__battleRuntime?.[stance];
         if (value && typeof value === 'object') projected.__battleRuntime = { ...projected.__battleRuntime, [stance]: { ...value } };
+      }
+      // A visible state that changes the panel (visibleStates panelRatios / panelFixed) counts in it: a unit with no final
+      // panel is read at its bare fields (BattlePreview readCombatStat), so an enemy's +40% buff in plain sight hit no
+      // harder (11-16 第 5 题). The panel is built as the engine builds it.
+      if (Object.values(states).some(state => Object.keys(state.面板修改比例 || {}).length || Object.keys(state.面板固定修正 || {}).length)) {
+        projected.final = { ...preview.buildNumericCombatStats(projected, Number(worldSnapshot?.当前世界tick ?? worldSnapshot?.当前tick ?? 0)) };
       }
       return projected;
     };
@@ -65839,7 +65850,7 @@
   // What the valuation did and what it took (milliseconds), by stage: every behaviour added to it must show here.
   // root.__LWCS_DECISION_DEBUG__.r20Work reads it.
   const r20Work = { tables: 0, sheets: 0, rebuiltUnits: 0, ownCellRebuilds: 0, addedUnits: 0, cells: 0, races: 0,
-    tableMs: 0, readMs: 0, rebuildMs: 0, addedMs: 0, termsMs: 0, raceMs: 0 };
+    tableMs: 0, readMs: 0, rebuildMs: 0, addedMs: 0, termsMs: 0, raceMs: 0, assistMs: 0 };
   // One cell: the best action of `unit` on `other` — an enemy, or with `friendly` a unit of its own side (`self`: itself).
   // For an enemy it also leaves in r20Struck the best strike back `unit` has on it: its basic attack or a skill it can
   // release at once on one enemy (BattleRuntime COUNTER: 前摇 within the action budget, a direct damage effect, a single
@@ -65990,6 +66001,229 @@
     return { stop: best, control: Object.freeze({ ...(kept || R20_NO_CONTROL.control), expose, exposePace }) };
   }
   const R20_NO_CONTROL = Object.freeze({ stop: 0, control: Object.freeze({ lock: 0, pace: 0, hard: 0, expose: 0, exposePace: 0 }) });
+  // 增益/减益格（11-16 用户「所有技能不是都应该考虑到吗」；推演覆盖表：生成的主动魂技 42% 在格子里整招为 0——属性修正、结算修正、
+  // 判定修正、非生命的资源变化、状态移除、非控制的状态施加）: what a skill does besides what the cells read (damage, healing,
+  // shields: r20Cell) and the controls and 破防 r20Control keeps, written on the units it reaches the way the settlement writes it
+  // (BattlePreview addState / removeProjectedStates, the panel rebuilt; a refill set on the pool) — and what that changes of their
+  // cells (r20Assists). The race keeps the best of these up the way it keeps a control (r20Race).
+  // What r20Control already keeps of a hostile state (its control and 破防) is taken off the state written here, so it counts once.
+  const R20_CONTROL_KEYS = ['cannot_act', 'skip_turn', 'cannot_react', 'random_target_rate', 'hit_penalty', 'blind', 'reaction_penalty', 'dodge_penalty'];
+  const R20_IMPRINT_STATES = new Set(['属性修正', '判定修正', '结算修正', '状态施加', '决策干扰']);
+  // The rounds a change with no clock of its own is read for (a refill, a cleanse of states with no rounds left on them).
+  const R20_IMPRINT_ONCE = R20_UPKEEP_ROUNDS;
+  // Writes one effect on `view` (a copy of the unit); the rounds it lasts, 0 when it writes nothing.
+  function r20ImprintEffect(view, effect, key, hostile, tick) {
+    const prototype = String(effect?.原型 || '').trim();
+    if (prototype === '资源变化') {
+      if (/生命|HP/i.test(String(effect.资源 || ''))) return 0;
+      let wrote = false;
+      for (const label of String(effect.资源 || '魂力').split(/[,，、]/).map(text => text.trim()).filter(Boolean)) {
+        if (/生命|HP/i.test(label)) continue;
+        const maximum = Math.max(0, Number(preview.readResourceMax(view, label)) || 0), now = Number(preview.readResource(view, label)) || 0;
+        const next = clamp(now + (Number(preview.parseSignedValue(effect.数值, maximum)) || 0), 0, maximum);
+        if (!(Math.abs(next - now) > 1e-9)) continue;
+        // BattlePreview setResource's fields (not called: it also writes the stamina cut on the unit's runtime record).
+        const field = /精神/.test(label) ? ['men', '精神力'] : /体力/.test(label) ? ['vit', '体力'] : ['sp', '魂力'];
+        if (field[0] in view || !(field[1] in view)) view[field[0]] = next;
+        if (view.属性 && typeof view.属性 === 'object') view.属性[field[1]] = next;
+        wrote = true;
+      }
+      return wrote ? R20_IMPRINT_ONCE : 0;
+    }
+    if (prototype === '状态移除') {
+      const removed = preview.removeProjectedStates(view, { selector: String(effect?.状态 || '任意状态').trim(), limit: Math.max(0, Number(effect?.数量 || 0)) }, tick);
+      if (!removed.length) return 0;
+      const rounds = Math.max(0, ...removed.map(([, state]) => Number(state?.duration ?? state?.持续回合)).filter(Number.isFinite));
+      return rounds > 0 ? Math.min(rounds, R20_RACE_ROUNDS) : R20_IMPRINT_ONCE;
+    }
+    // 机制授予: the grant the settlement writes (BattlePreview, 机制授予 record) — the recipient has its 授予技 among its skills.
+    if (prototype === '机制授予') {
+      const granted = Array.isArray(effect?.授予效果) ? effect.授予效果 : [];
+      if (!granted.length) return 0;
+      const trigger = String(effect?.触发条件 || '主动触发').trim(), rounds = Math.max(1, Math.floor(Number(effect?.持续回合 || 1)));
+      view.状态效果 = { ...(view.状态效果 || {}), [`preview:${key}:机制授予`]: { 状态: '机制授予', 状态名称: '机制授予', 类型: 'buff', 原型: prototype, 来源原型摘要: prototype,
+        来源技能: '推演', 授予技能名: `推演·${key}·授予技`, 授予触发条件: trigger, 触发条件: trigger, 授予效果: granted,
+        可用次数: trigger === '随下次行动触发' ? 1 : Math.max(1, Math.floor(Number(effect?.可用次数 || 1))), duration: rounds, 持续回合: rounds,
+        战斗效果: {}, 面板修改比例: {}, 面板固定修正: {} } };
+      return rounds;
+    }
+    if (!R20_IMPRINT_STATES.has(prototype) || prototype === '状态施加' && /护盾|屏障|结界/.test(String(effect?.状态 || ''))) return 0;
+    if (hostile && preview.negativeEffectIsImmune(view, effect)) return 0;
+    const before = view.状态效果;
+    view.状态效果 = { ...(before || {}) };
+    if (!preview.addState(view, effect, key)) { view.状态效果 = before; return 0; }
+    let wrote = false;
+    for (const [name, state] of Object.entries(view.状态效果)) {
+      if (before?.[name] === state) continue;
+      let next = state;
+      if (hostile && R20_CONTROL_KEYS.some(field => next?.战斗效果?.[field])) {
+        const combat = { ...next.战斗效果 };
+        for (const field of R20_CONTROL_KEYS) delete combat[field];
+        next = { ...next, 战斗效果: combat };
+        view.状态效果[name] = next;
+      }
+      wrote = true;
+    }
+    return wrote ? Math.max(1, Number(effect?.持续回合) || 1) : 0;
+  }
+  // A skill of the unit at `row` cast on `target`: the views of the units it changes (row → view), the rounds the change lasts
+  // and the chance it lands; null when it writes nothing the cells could read.
+  function r20Imprint(units, sides, row, target, skill, tick) {
+    const views = new Map();
+    let rounds = 0, chance = 0;
+    // The skill's own effects (collectEffects would also list what a grant gives the recipient to use, as if it were on it).
+    (Array.isArray(skill?._效果数组) ? skill._效果数组 : []).forEach((effect, index) => {
+      if (!effect || typeof effect !== 'object') return;
+      const at = /自身/.test(String(effect?.目标 || '')) ? row : target, hostile = sides[at] !== sides[row];
+      if (!views.has(at)) {
+        const unit = units[at];
+        views.set(at, { ...unit, 状态效果: { ...(unit.状态效果 || {}) }, ...(unit.属性 && typeof unit.属性 === 'object' ? { 属性: { ...unit.属性 } } : {}), final: { ...(unit.final || {}) } });
+      }
+      const view = views.get(at), lasts = r20ImprintEffect(view, effect, `r20:${index}`, hostile, tick);
+      if (!(lasts > 0)) return;
+      view.__r20Imprinted = true;
+      rounds = Math.max(rounds, lasts);
+      chance = Math.max(chance, clamp(preview.normalizeEffectProbability(effect?.触发概率, 1) *
+        (hostile ? preview.stateApplicationProbabilityMultiplier(units[at], effect) : 1), 0, 1));
+    });
+    const changed = [...views].filter(([, view]) => view.__r20Imprinted);
+    if (!changed.length || !(chance > 0)) return null;
+    // The names of the states it writes: a unit that already carries one of them has the change up (r20Race).
+    const names = new Set();
+    for (const [at, view] of changed) for (const [key, state] of Object.entries(view.状态效果 || {})) {
+      if (units[at].状态效果?.[key] !== state) names.add(String(state?.状态 || state?.状态名称 || '').trim());
+    }
+    return { views: changed.map(([at, view]) => { delete view.__r20Imprinted;
+      view.final = { ...view.final, ...preview.buildNumericCombatStats(view, tick) };
+      return [at, preview.inheritOverlayOrigin(view, units[at])]; }), rounds, chance, names: [...names].filter(Boolean) };
+  }
+  // The changes each unit's skills can keep up (r20Imprint), read off the cells: for every unit a change reaches, the share
+  // of its hits and help it brings (off), of the hits it takes past its guard (def), and its periodic HP (tick: shares of its
+  // HP maximum a round). Each skill is read on one unit it may reach — itself, the ally that brings most, or the enemy that
+  // brings most — and the race carries the shares to whichever such unit it keeps it on. The best R20_ASSIST_KEPT a unit has.
+  // An enemy as believed lists no skills: what it has laid on the field (a state whose 来源角色 is it, BattleDecision
+  // visibleStates) it can lay again — read the other way, the unit with the state against the unit without it.
+  const R20_ASSIST_KEPT = 3;
+  function r20Assists(table, request, context) {
+    const { cellUnits: units, sides, ids, world } = table, count = units.length, tick = Number(world?.当前世界tick ?? world?.当前tick ?? 0);
+    const brings = row => Math.max(0, ...table.out[row], ...table.support[row]);
+    // What the cells read of the units at `views` ([row, view]) against the same units as they are: their shares — with the
+    // units as they are as the change and the views as the field without it when `inverse`. Both read with no projection
+    // context, as the late cells are: the table's context answers for a unit by its id, as the world has it, so a view's
+    // changed panel read as the unit's own (an enemy's +40% buff taken off it changed nothing).
+    const before = new Map();
+    const readParts = (row, views, inverse) => {
+      const now = units.slice();
+      for (const [at, view] of views) now[at] = view;
+      const parts = [];
+      // Read on the pairs that weigh most in the table (each a cell's whole skill list valued, the dearest part of the
+      // table): the enemy the unit hits hardest, the enemy that hits it hardest, the unit of its side it helps most.
+      const pairs = at => {
+        let hit = -1, hitBy = -1, help = -1;
+        for (let other = 0; other < count; other += 1) {
+          if (!(table.remaining[other] > 0)) continue;
+          if (sides[other] === sides[at]) { if (help < 0 || table.support[at][other] > table.support[at][help]) help = other; continue; }
+          if (hit < 0 || table.out[at][other] > table.out[at][hit]) hit = other;
+          if (hitBy < 0 || table.out[other][at] * table.keep[at][other] > table.out[hitBy][at] * table.keep[at][hitBy]) hitBy = other;
+        }
+        return { hit, hitBy, help };
+      };
+      // stand: whether the unit's answers can have changed (its 防御 or 敏捷, or a state on it that does something in a fight);
+      // a change that only adds to its hits leaves what it keeps off as the table has it.
+      const read = (at, unit, field, stand = true) => {
+        const { hit, hitBy, help } = pairs(at);
+        let out = 0, taken = 0;
+        if (table.acts[at] && help >= 0) out += r20Cell(unit, field[help], true, help === at, null, world, null);
+        if (table.acts[at] && hit >= 0) {
+          const bound = r20Bound(world, unit);
+          if (!bound || bound.has(ids[hit])) out += r20Aim(unit, sides.filter(side => side === sides[at]).length / Math.max(1, count)) * r20Cell(unit, field[hit], false, false, null, world, null);
+        }
+        if (hitBy >= 0 && table.acts[hitBy] && (!table.bound[hitBy] || table.bound[hitBy].has(ids[at]))) {
+          const incoming = r20Cell(field[hitBy], unit, false, false, null, world, null);
+          taken = incoming * (!table.acts[at] ? 1 : stand ? r20Meet(r20Stand(unit, field[hitBy]), r20Weight(incoming)).keep : table.keep[at][hitBy]);
+        }
+        return { out, taken };
+      };
+      for (const [at, view] of views) {
+        const original = units[at], prior = original.状态效果 || {};
+        const stand = ['def', 'agi'].some(key => preview.readCombatStat(view, key) !== preview.readCombatStat(original, key)) ||
+          Object.entries(view.状态效果 || {}).some(([key, state]) => prior[key] !== state && Object.values(state?.战斗效果 || {}).some(Boolean)) ||
+          Object.entries(prior).some(([key, state]) => view.状态效果?.[key] !== state && Object.values(state?.战斗效果 || {}).some(Boolean));
+        let { out, taken } = read(at, view, now, stand);
+        // The unit as it is, read on a copy (the base action values cached for it are the table's, read with the context).
+        const priorKey = `${at}|${stand}`;
+        if (!before.has(priorKey)) before.set(priorKey, read(at, { ...original }, units, stand));
+        const { out: outBefore, taken: takenBefore } = before.get(priorKey);
+        // A control it gains on an enemy (a 授予技 that stuns): what keeping it up would gain over its own hits (as the race
+        // weighs a control: lock × the enemy's worth less the share of its actions it takes × its own), on the best enemy.
+        if (table.acts[at]) {
+          let gained = 0;
+          for (let other = 0; other < count; other += 1) {
+            if (sides[other] === sides[at] || !(table.remaining[other] > 0)) continue;
+            const kept = r20Control(view, now[other]).control, before = table.control[at][other];
+            const value = control => (Number(control?.lock) || 0) * table.worth[other] - (Number(control?.pace) || 0) * brings(at);
+            gained = Math.max(gained, value(kept) - Math.max(0, value(before)));
+          }
+          out += inverse ? -gained : gained;
+        }
+        const ratio = (value, before) => inverse ? (value > 1e-9 ? before / value : 1) : (before > 1e-9 ? value / before : 1);
+        const off = ratio(out, outBefore), def = ratio(taken, takenBefore);
+        const tickNow = (r20Tick(request, view) - table.tick[at]) * (inverse ? -1 : 1);
+        if (Math.abs(off - 1) > 1e-3 || Math.abs(def - 1) > 1e-3 || Math.abs(tickNow) > 1e-4) parts.push({ self: at === row, off, def, tick: tickNow });
+      }
+      return parts;
+    };
+    const assist = units.map(() => null);
+    for (let row = 0; row < count; row += 1) {
+      const unit = units[row];
+      if (!table.acts[row] || hasStateFlag(unit, 'silence') || preview.isSummonSkillDisabled(unit)) continue;
+      const own = affordablePreparedSkills(unit), shown = own.length ? null : r20Shown(unit), options = [];
+      const add = (kind, parts, rounds, chance, names, skill) => {
+        if (!parts.length) return;
+        const size = parts.reduce((sum, part) => sum + Math.abs(part.off - 1) + Math.abs(part.def - 1) + Math.abs(part.tick), 0) * chance;
+        options.push(Object.freeze({ kind, skill, parts: Object.freeze(parts), pace: 1 / Math.max(1, rounds), chance, size, names: Object.freeze(names) }));
+      };
+      for (const entry of shown || own) {
+        if (!shown && entry.fusionMetadata) continue;
+        const skill = shown ? entry : entry.skill, profile = targetProfile(skill);
+        // ANY_SINGLE goes the way its effects do (BattlePreview statePolarity): a buff on an ally, a debuff on an enemy.
+        const polarity = profile === 'ANY_SINGLE' ? (Array.isArray(skill?._效果数组) ? skill._效果数组 : []).reduce((sum, effect) => sum + Math.sign(Number(preview.statePolarity(effect)) || 0), 0) : 0;
+        const kinds = profile === 'SELF' ? ['self'] : profile.startsWith('FRIENDLY_') ? ['ally'] : profile.startsWith('HOSTILE_') ? ['enemy']
+          : profile === 'ANY_SINGLE' ? (polarity > 0 ? ['ally'] : polarity < 0 ? ['enemy'] : ['ally', 'enemy']) : [];
+        for (const kind of kinds) {
+          let target = row;
+          if (kind !== 'self') {
+            target = -1;
+            for (let other = 0; other < count; other += 1) {
+              if ((sides[other] === sides[row]) !== (kind === 'ally') || !(table.remaining[other] > 0)) continue;
+              if (target < 0 || brings(other) > brings(target)) target = other;
+            }
+            if (target < 0) continue;
+          }
+          const imprint = r20Imprint(units, sides, row, target, skill, tick);
+          if (imprint) add(kind, readParts(row, imprint.views, false), imprint.rounds, imprint.chance, imprint.names, skillId(skill));
+        }
+      }
+      // (The deciding side's own units list their skills; an enemy's are what it has shown, and what it has laid.)
+      if (sides[row] !== request.actorSide) {
+        const name = preview.unitName(table.units[row]);
+        for (let at = 0; name && at < count; at += 1) {
+          if (!(table.remaining[at] > 0)) continue;
+          for (const [key, state] of Object.entries(units[at].状态效果 || {})) {
+            const label = String(state?.状态 || state?.状态名称 || '').trim();
+            if (String(state?.来源角色 || '').trim() !== name || !label || label === '护卫' || /护盾|屏障|结界/.test(label)) continue;
+            const view = { ...units[at], 状态效果: { ...units[at].状态效果 } };
+            delete view.状态效果[key];
+            view.final = { ...(view.final || {}), ...preview.buildNumericCombatStats(view, tick) };
+            const kind = at === row ? 'self' : sides[at] === sides[row] ? 'ally' : 'enemy';
+            add(kind, readParts(row, [[at, preview.inheritOverlayOrigin(view, units[at])]], true), Number(state?.持续回合 ?? state?.duration) || 1, 1, [label], `laid:${label}`);
+          }
+        }
+      }
+      if (options.length) assist[row] = Object.freeze(options.sort((left, right) => right.size - left.size).slice(0, R20_ASSIST_KEPT));
+    }
+    return assist;
+  }
   // The whole hits a unit's charges take before its HP counts: rule blocks and death saves.
   const r20Guard = unit => preview.ruleBlockCount(unit) + preview.deathSaveCount(unit);
   // 护卫（BattlePreview resolveTargets: a single-target hostile effect on a unit under 护卫 goes to the one who guards it while
@@ -66519,6 +66753,10 @@
     // pace[u]: the share of u's own actions it spends keeping a control up (r20Control).
     // exposed[u]: the share of what u would keep off a hit that the enemies' 破防 takes away this step.
     const heldShare = new Array(count).fill(0), heldHard = new Array(count).fill(0), exposed = new Array(count).fill(0), pace = new Array(count).fill(0);
+    // offMul[u] / defMul[u] / tickAdd[u]: the share of its hits and help u brings, of the hits it takes, and the periodic HP
+    // it gains, under the changes kept up on it this step (r20Assists); a unit beyond the table's (a summon a candidate
+    // brought) has none of its own.
+    const assist = facts.assist || null, offMul = new Array(count).fill(1), defMul = new Array(count).fill(1), tickAdd = new Array(count).fill(0);
     let released = 0;
     const horizon = Math.max(1, Math.min(R20_RACE_ROUNDS, Number(facts.horizon) || R20_RACE_ROUNDS)), tick = facts.tick || null, tickRounds = facts.tickRounds || null;
     const dealt = new Array(count), mended = new Array(count), hits = new Array(count), worth = new Array(count), pressed = new Array(count);
@@ -66526,13 +66764,15 @@
     for (let step = 0; step < 64 && time < horizon - 1e-9; step += 1) {
       // Which cells a pair reads now: a unit the candidate brought, the candidate's; a unit it changed, the candidate's
       // while that change lasts; anyone else the table's — from R20_LATE_ROUNDS on the table's late cells.
-      const settled = base.late && time >= R20_LATE_ROUNDS - 1e-9 ? base.late : base;
+      const later = base.late && time >= R20_LATE_ROUNDS - 1e-9 ? base.late : base;
+      // A pair whose clocked states have all run out reads the field after them (r20Facts bare).
+      const settled = (unit, other) => base.bare && unit < held && other < held && time >= Math.max(R20_LATE_ROUNDS, base.bare.ends[unit], base.bare.ends[other]) - 1e-9 ? base.bare : later;
       // A change with no clock goes on to the candidate's own late cells (r20Shadow rebuildCells) when there are any.
       const lasting = facts.late && time >= R20_LATE_ROUNDS - 1e-9 ? facts.late : facts;
       // A paid release that has lapsed goes on to its cells after it (plan.expired), not back to the table's.
-      const lapsed = (unit, other) => expired && (expired.rows.has(unit) || expired.rows.has(other)) ? expired : settled;
+      const lapsed = (unit, other) => expired && (expired.rows.has(unit) || expired.rows.has(other)) ? expired : settled(unit, other);
       const cells = (unit, other) => unit >= held || other >= held ? facts
-        : changed && (changed[unit] || changed[other]) ? (time < until[unit] && time < until[other] ? lasting : lapsed(unit, other)) : settled;
+        : changed && (changed[unit] || changed[other]) ? (time < until[unit] && time < until[other] ? lasting : lapsed(unit, other)) : settled(unit, other);
       const acting = unit => left[unit] > 1e-9 && !(denied && time < denied[unit]) && !(busy && time < busy[unit]);
       const striking = unit => acting(unit) && !(idle && time < idle[unit]);
       // What a unit still does of its own actions (held by the enemies' controls, or spent keeping its own up).
@@ -66591,17 +66831,77 @@
         ctlWorth[unit] = worth[unit] + bestGain;
       }
       for (let unit = 0; unit < count; unit += 1) worth[unit] = ctlWorth[unit];
-      const focus = {};
-      // A host is worth its summons too: they leave with it.
-      if (host) for (let unit = 0; unit < count; unit += 1) aimed[unit] = 0;
-      if (host) for (let unit = 0; unit < count; unit += 1) if (host[unit] >= 0 && left[unit] > 1e-9) aimed[host[unit]] += worth[unit];
-      for (let unit = 0; unit < count; unit += 1) {
-        if (!(left[unit] > 1e-9)) continue;
-        const rank = (worth[unit] + (host ? aimed[unit] : 0)) / Math.max(R20_ROUNDS_FLOOR, pressed[unit] > 1e-9 ? left[unit] / pressed[unit] : R20_ROUNDS_CAP);
-        const held = focus[sides[unit]];
-        if (!held || rank > held.rank) focus[sides[unit]] = { unit, rank };
+      const pickFocus = () => {
+        const focus = {};
+        // A host is worth its summons too: they leave with it.
+        if (host) for (let unit = 0; unit < count; unit += 1) aimed[unit] = 0;
+        if (host) for (let unit = 0; unit < count; unit += 1) if (host[unit] >= 0 && left[unit] > 1e-9) aimed[host[unit]] += worth[unit];
+        for (let unit = 0; unit < count; unit += 1) {
+          if (!(left[unit] > 1e-9)) continue;
+          const rank = (worth[unit] + (host ? aimed[unit] : 0)) / Math.max(R20_ROUNDS_FLOOR, pressed[unit] > 1e-9 ? left[unit] / pressed[unit] : R20_ROUNDS_CAP);
+          const held = focus[sides[unit]];
+          if (!held || rank > held.rank) focus[sides[unit]] = { unit, rank };
+        }
+        if (host) for (let unit = 0; unit < count; unit += 1) aimed[unit] = -1;
+        return focus;
+      };
+      let focus = pickFocus();
+      // 增益/减益（r20Assists）: a unit keeping no control up may keep one of its changes up, on the unit it pays most on, when
+      // that moves the two clocks more than recasting it costs. Weighed as the race runs them (战斗决策原理「我方的钟先走完」):
+      // what it raises of its side's hits (off − 1 of that unit's worth, over all its side brings) or slows of the hits its side
+      // takes (1 − def, on the unit its enemies turn on), or the same cut from the enemy's — against the share of its side's
+      // hits it gives up (the share of its actions recasting takes × its worth, over all its side brings). By flows alone a
+      // 防御系 losing a duel kept a −82% guard up every round and struck no more: it fell later and left its enemy whole (11-16
+      // class pairs). The changed shares carry into the strikes, the help and the periodic HP of this step; the side turns
+      // again with the worth they leave.
+      offMul.fill(1); defMul.fill(1); tickAdd.fill(0);
+      if (assist && Object.keys(focus).length >= 2) {
+        const brings = {}, takesIn = {};
+        for (let unit = 0; unit < count; unit += 1) if (left[unit] > 1e-9 && striking(unit)) brings[sides[unit]] = (brings[sides[unit]] || 0) + worth[unit] * free(unit);
+        for (const side of Object.keys(focus)) takesIn[side] = pressed[focus[side].unit] || 0;
+        let kept = false;
+        for (let unit = 0; unit < count; unit += 1) {
+          if (!assist[unit] || !striking(unit) || pace[unit] > 0) continue;
+          const mine = sides[unit], ownOut = Math.max(1e-6, brings[mine] || 0);
+          // up: what the unit keeps of a change it has up already — not paid for again while it lasts, but the unit is worth it
+          // to the side that turns on it (downed, it lays it no more: 第 5 题「打让全队变强的节点」).
+          let best = 0, pick = null, up = 0;
+          for (const option of assist[unit]) for (let to = 0; to < count; to += 1) {
+            if (!(left[to] > 1e-9) || (option.kind === 'self' ? to !== unit : (sides[to] === sides[unit]) !== (option.kind === 'ally'))) continue;
+            // The candidate's own lasting change on that unit is in its cells already, and so is a state of the change it still has up.
+            if (changed && changed[to] && until && time < until[to]) continue;
+            const still = option.names.some(name => (base.stateEnds?.[to]?.[name] || 0) > time + 1e-9);
+            let gain = 0;
+            for (const part of option.parts) {
+              const at = part.self ? unit : to, side = sides[at], turnedOn = focus[side]?.unit === at;
+              if (side === mine) {
+                gain += (part.off - 1) * worth[at] / ownOut + (turnedOn ? 1 - part.def : 0) +
+                  (part.tick < 0 ? part.tick / Math.max(1e-6, takesIn[mine] || 0) : turnedOn ? part.tick / Math.max(1e-6, takesIn[mine] || 0) : 0);
+              } else {
+                gain += (1 - part.off) * worth[at] / Math.max(1e-6, brings[side] || 0) + (turnedOn ? part.def - 1 : 0) - Math.min(0, part.tick) / ownOut;
+              }
+            }
+            gain = gain * option.chance - option.pace * worth[unit] / ownOut;
+            if (still) up = Math.max(up, gain);
+            else if (gain > best) { best = gain; pick = [option, to]; }
+          }
+          // In its side's hits (the scale of worth).
+          if (!pick) { if (up > 0) { worth[unit] += up * ownOut; kept = true; } continue; }
+          const [option, to] = pick;
+          pace[unit] = option.pace;
+          for (const part of option.parts) {
+            const at = part.self ? unit : to;
+            offMul[at] *= 1 + (part.off - 1) * option.chance; defMul[at] *= 1 + (part.def - 1) * option.chance;
+            tickAdd[at] += part.tick * option.chance;
+          }
+          worth[unit] += best * ownOut;
+          kept = true;
+        }
+        if (kept) {
+          for (let unit = 0; unit < count; unit += 1) { worth[unit] *= offMul[unit]; pressed[unit] *= defMul[unit]; }
+          focus = pickFocus();
+        }
       }
-      if (host) for (let unit = 0; unit < count; unit += 1) aimed[unit] = -1;
       const sideNames = Object.keys(focus);
       if (sideNames.length < 2) break;
       // 破防（11-16 第 58 题：生成的控制系多是迟缓、判定修正、标记）: a unit not keeping a control up may keep a 破防 on the
@@ -66636,8 +66936,8 @@
           if (value > strike) { strike = value; target = other; }
         }
         const share = free(unit);
-        strike *= share;
-        const help = cells(unit, ally).support[unit][ally] * share;
+        strike *= share * offMul[unit] * defMul[target];
+        const help = cells(unit, ally).support[unit][ally] * share * offMul[unit];
         // The exchange its strike opens; a unit that would take more than it lands aims at the enemy it does best
         // against instead, and failing that helps or holds.
         const open = aim => { const view = cells(unit, aim), answers = acting(aim), still = 1 - heldHard[aim];
@@ -66650,7 +66950,7 @@
           for (let aim = 0; aim < count; aim += 1) {
             const other = struck(aim);
             if (other === target || sides[other] === sides[unit] || !(left[aim] > 1e-9)) continue;
-            const hit = cells(unit, other).out[unit][other] * takes(cells(unit, other), other, unit) * share;
+            const hit = cells(unit, other).out[unit][other] * takes(cells(unit, other), other, unit) * share * offMul[unit] * defMul[other];
             if (!(hit > 0)) continue;
             const trial = open(other), net = hit + trial.more - trial.taken;
             if (net > best) { best = net; exchange = trial; strike = hit; target = other; }
@@ -66658,13 +66958,19 @@
         }
         if (!exchange) { if (help > 0) { mended[ally] += help; aimed[unit] = ally; landed[unit] = -help; } }
         else {
-          dealt[target] += strike + exchange.more; hits[target] += 1;
-          aimed[unit] = target; landed[unit] = strike + exchange.more;
+          const more = exchange.more * offMul[unit] * defMul[target], taken = exchange.taken * offMul[target] * defMul[unit];
+          dealt[target] += strike + more; hits[target] += 1;
+          aimed[unit] = target; landed[unit] = strike + more;
           // What it lands gives it HP back (伤害吸收), in its own HP maximum.
           if (drain && drain[unit] > 0) mended[unit] += landed[unit] * drain[unit] * facts.hpMax[target] / facts.hpMax[unit];
           // A share of what lands is thrown back at the attacker (反伤), in its own HP maximum.
-          dealt[unit] += exchange.taken + (facts.reflect?.[target] > 0 ? (strike + exchange.more) * facts.reflect[target] * facts.hpMax[target] / facts.hpMax[unit] : 0);
+          dealt[unit] += taken + (facts.reflect?.[target] > 0 ? (strike + more) * facts.reflect[target] * facts.hpMax[target] / facts.hpMax[unit] : 0);
         }
+      }
+      // The periodic HP the kept changes bring (r20Assists tick).
+      if (assist) for (let unit = 0; unit < count; unit += 1) {
+        if (!(left[unit] > 1e-9) || !tickAdd[unit]) continue;
+        if (tickAdd[unit] < 0) dealt[unit] -= tickAdd[unit]; else mended[unit] += tickAdd[unit];
       }
       let stepTime = nextChange - time;
       const falls = new Array(count).fill(Infinity);
@@ -66805,9 +67111,30 @@
       const views = units.map(unit => r20FullStrength(r10WindowView(r10DecisionTable(request), world, unit, R20_LATE_ROUNDS, unit)));
       late = { ...r20Cells(views, sides, ids, world, null, null), units: views };
     }
+    // 到期（11-16 第 5 题「打让全队变强的节点」）: the late cells keep what still has rounds left R20_LATE_ROUNDS on to the
+    // race's end — a support's three-round buff never ran out, so laying it again, and the support, were worth nothing. A pair
+    // goes on to the field with every clocked state now on either unit run out (`bare`, the window view that far on) once
+    // both of theirs have (ends[u], r10StateLifetime); stateEnds[u] are the rounds each state of u has left, by its name.
+    let bare = null;
+    const stateEnds = units.map(unit => {
+      const ends = {};
+      for (const [key, state] of Object.entries(unit.状态效果 || {})) {
+        const lifetime = r10StateLifetime(world, unit, key, state, unit), name = String(state?.状态 || state?.状态名称 || '').trim();
+        if (name) ends[name] = Math.max(ends[name] || 0, Number.isFinite(lifetime) ? lifetime : Infinity);
+      }
+      return ends;
+    });
+    if (late) {
+      const ends = stateEnds.map(byName => Math.max(0, ...Object.values(byName).filter(Number.isFinite)));
+      const far = Math.min(R20_RACE_ROUNDS, Math.ceil(Math.max(0, ...ends)));
+      if (far > R20_LATE_ROUNDS) {
+        const views = units.map(unit => r20FullStrength(r10WindowView(r10DecisionTable(request), world, unit, far, unit)));
+        bare = { ...r20Cells(views, sides, ids, world, null, null), units: views, ends };
+      }
+    }
     const round = Number(world?.回合 || 0);
     const waiting = Array.isArray(request.actionOpportunity?.pendingNaturalActorIds) ? new Set(request.actionOpportunity.pendingNaturalActorIds.map(String)) : null;
-    const table = { request, world, contexts, units, cellUnits, ids, index: new Map(ids.map((id, row) => [id, row])), sides, acts, bound, out, support, stop, control, keep, keepBack, answer, answerOpen, back, turn, late, against,
+    const table = { request, world, contexts, units, cellUnits, ids, index: new Map(ids.map((id, row) => [id, row])), sides, acts, bound, out, support, stop, control, keep, keepBack, answer, answerOpen, back, turn, late, bare, stateEnds, against,
       held: units.map(unit => r20Held(unit)),
       remaining: units.map((unit, row) => r20Left(unit, sides[row] === request.actorSide, against[sides[row]])),
       stamina: units.map((unit, row) => sides[row] === request.actorSide ? r20Stamina(unit) : null),
@@ -66844,6 +67171,9 @@
     }
     if (table.strikes) table.strikes.sort((left, right) => left.at - right.at);
     Object.assign(table, r20Derive(table));
+    const assistStartedAt = performance.now();
+    table.assist = r20Assists(table, request, context);
+    r20Work.assistMs += performance.now() - assistStartedAt;
     // Conditions besides bringing the other side down (坚持回合, 先倒, 抽魂, 保护): their progress counts beside the race.
     const objectives = request?.objectiveContract || request?.battleIntent?.objectives || world?.胜负条件 || {};
     table.objectives = /"type":"(?!TEAM_INCAPACITATED")/.test(JSON.stringify(objectives) || '') ? objectives : null;
@@ -67499,7 +67829,7 @@
     const cover = (table.cover || []).slice();
     for (const [row, next] of rebuilt) cover[row] = r20Cover(next, table.units, table.sides, row);
     while (cover.length < sidesNow.length) cover.push(null);
-    const facts = { cover, sides: sidesNow, out, support, stop, control, keep, keepBack, answer, answerOpen, back, turn, host, remaining, stamina, alive, guard, revive, drain, tick, tickRounds, reflect, hpMax, horizon: table.horizon, late: lateCells };
+    const facts = { assist: table.assist, cover, sides: sidesNow, out, support, stop, control, keep, keepBack, answer, answerOpen, back, turn, host, remaining, stamina, alive, guard, revive, drain, tick, tickRounds, reflect, hpMax, horizon: table.horizon, late: lateCells };
     const changed = new Array(count).fill(false);
     for (const [row] of rebuilt) if (!unchangedRows.has(row)) changed[row] = true;
     strikes.sort((left, right) => left.at - right.at);
