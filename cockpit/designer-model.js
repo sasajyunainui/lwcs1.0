@@ -5812,7 +5812,13 @@
       ...((() => {
         const 装配索引 = 路径.findIndex(片段 => normalizeSkillUiText(片段, '') === '装配');
         const 魂导等级 = 路径.includes('魂导器') && 装配索引 >= 0 ? Number(deepGet(根数据, 路径.slice(0, 装配索引 + 2), {})?.魂导等级) : 0;
-        return 魂导等级 > 0 ? { 魂导等级 } : {};
+        if (魂导等级 > 0) return { 魂导等级 };
+        // 其余装备按稀有度对标魂环位（11-17）：取 装备技能 所在物品的品质；物品自带魂导等级的（不在装配槽的魂导器）仍按魂导等级。
+        const 技能段 = 路径.findIndex(片段 => normalizeSkillUiText(片段, '') === '装备技能');
+        const 所在物品 = 技能段 > 0 ? deepGet(根数据, 路径.slice(0, 技能段), {}) || {} : {};
+        if (Number(所在物品.魂导等级) > 0) return { 魂导等级: Number(所在物品.魂导等级) };
+        const 装备品质 = normalizeSkillUiText(所在物品.品质, '');
+        return 装备品质 ? { 装备品质 } : {};
       })()),
       ringAge: 魂环数据?.年限,
       ringColor: 魂环数据?.颜色,
