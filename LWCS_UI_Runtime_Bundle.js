@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:3a7ab2b86114d7997e52efa71f2ebd4abfbfe0588597e12628cc11524a69319e|cockpit/designer-model.js:43e9907dc6a213586bc290bdf3e507a8178bd80879f0f020231ac30ffa7c4f99|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:add5d559c5536284c325daef48499bb9b6137d1c46b6d63cbc08d15c55610a4c|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:75288b5c0f652db82a6e30ce5cd550f789bbe1c5b2f10ab4d2bb6d27ac76e059|BattleRuntime_Module.js:0e521bfa5e259a4f50c89d3cbbbcafc7e9f03fb910bdf68e8df0f7bc15d7c625|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:3a7ab2b86114d7997e52efa71f2ebd4abfbfe0588597e12628cc11524a69319e|cockpit/designer-model.js:43e9907dc6a213586bc290bdf3e507a8178bd80879f0f020231ac30ffa7c4f99|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:add5d559c5536284c325daef48499bb9b6137d1c46b6d63cbc08d15c55610a4c|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:62c8987714cbc0f2d0138dd32a28b1bfddf62c40984f0048c0dc3001a91e9fe6|BattleRuntime_Module.js:aa01447cd152fede06c4c4480f3b34fe71c8a0fc739040b61470e319d39d4cc6|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -99020,7 +99020,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     const roots = [
       ...(Array.isArray(unit?.技能列表) && unit.技能列表.length ? [unit.技能列表] : []),
-      ...Object.entries(unit).filter(([key, value]) => /^(?:第\d+)?武魂|血脉之力|魂骨|装备|自创魂技|技能/.test(key) && value && typeof value === 'object')
+      // 融合技（非武魂融合，S80-E）: its 技能数据 is composed from the participants' skills (MVU_Schema_Runtime 合成魂技融合技能数据_V1).
+      ...Object.entries(unit).filter(([key, value]) => /^(?:第\d+)?武魂|血脉之力|魂骨|装备|自创魂技|技能|^融合技$/.test(key) && value && typeof value === 'object')
         .filter(([key]) => !(sealed.has('器武魂') && preview.toolSpiritKeys(unit).includes(key)))
         .map(([key, value]) => key !== '装备' ? value : soulToolSkillView(sealed.size ? sealedEquipmentView(equipment || value, sealed) : equipment || value)),
     ];
@@ -170187,6 +170188,48 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
   }
 
+  // 融合技（非武魂融合，S80-E）：参与者里谁先轮到谁起手（原作 苍晖学院七位一体、海上生明月）——存在一人身上的融合技，战斗里
+  // 给每名在场参与者各放一份（参与者自身改作「自身」）；同名同参与者的 fusionKey 相同，一次性用法照旧只放一次。不改存档里的那份。
+  function ensureSkillFusionMirrors(combatData = {}) {
+    const units = listCombatUnits(combatData);
+    const nameOf = unit => [previewRuntime.unitId(unit), previewRuntime.unitName(unit)].filter(Boolean);
+    // 合成的一招里既有打敌人的单体效果又有给己方的单体效果（贡献的魂技一攻一辅）时，给己方的改作己方群体：一个声明只有一个
+    // 单体目标阵营（BattleDecision 的目标合法性），否则整招被判目标不合法、从不出手。判法同 BattleDecision targetProfile。
+    const helpers = root.__LWCS_SKILL_COST_HELPERS_V1__ || {};
+    const friendly = effect => {
+      const prototype = String(effect?.原型 || '').trim();
+      if (['伤害结算', '资源锁定', '机制抹消'].includes(prototype)) return false;
+      if (prototype === '护盾变化') return String(effect?.护盾模式 || '').trim() === '正向护盾' || !String(effect?.护盾模式 || '').trim();
+      if (prototype === '结算修正' && typeof helpers.结算修正是否增益语义_V1 === 'function') return !!helpers.结算修正是否增益语义_V1(effect);
+      if (prototype === '判定修正' && typeof helpers.判定修正是否增益语义_V1 === 'function') return !!helpers.判定修正是否增益语义_V1(effect);
+      if (prototype === '属性修正') return !/^-/.test(String(effect?.数值 ?? '').trim());
+      return !!previewRuntime.effectTargetsAllies(effect);
+    };
+    const settleTargets = skill => {
+      const single = (Array.isArray(skill?._效果数组) ? skill._效果数组 : []).filter(effect => String(effect?.目标 || '').trim() === '单体');
+      if (!single.some(friendly) || single.every(friendly)) return;
+      single.filter(friendly).forEach(effect => { effect.目标 = '群体'; });
+    };
+    units.forEach(holder => {
+      Object.entries(holder?.融合技 || {}).forEach(([name, entry]) => {
+        if (!entry || typeof entry !== 'object' || entry.__镜像 || !Array.isArray(entry.融合参与者)) return;
+        if (entry.技能数据 && typeof entry.技能数据 === 'object') settleTargets(entry.技能数据);
+        entry.融合参与者.forEach(participant => {
+          const ids = [participant?.角色键, participant?.角色名].map(value => String(value || '').trim()).filter(Boolean);
+          const partner = units.find(unit => unit !== holder && nameOf(unit).some(id => ids.includes(id)));
+          if (!partner || partner.融合技?.[name]) return;
+          const mirror = cloneValue(entry);
+          mirror.融合参与者 = mirror.融合参与者.map(other => {
+            const own = [other?.角色键, other?.角色名].map(value => String(value || '').trim()).some(id => nameOf(partner).includes(id));
+            return { ...other, 类型: own ? '自身' : '搭档' };
+          });
+          mirror.__镜像 = true;
+          partner.融合技 = { ...(partner.融合技 || {}), [name]: mirror };
+        });
+      });
+    });
+  }
+
   function applyBattleInitiative(combatData = {}) {
     const text = String(combatData?.先攻 || '').trim();
     if (!text || text === '无') return;
@@ -185077,6 +185120,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         });
         logs.push(...beginBattleRound(combatData, combatData.回合).filter(Boolean));
         ensureArmourUnreleased(combatData);
+        ensureSkillFusionMirrors(combatData);
         if (Number(combatData.回合) === 1) applyBattleInitiative(combatData);
         invalidateRouteUnitHashes(combatData);
         settleStaminaExhaustion(combatData);
