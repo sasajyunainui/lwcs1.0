@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:b8f0e0f67165d5264ac9d3d853652ef8344027cd713816bbecb5e3a710628f88|MVU_Schema_Runtime.js:d3ffbc45bd2b8deeace72d2ef6786a1c273cee0f29ff1d5ff8b792968c988c76|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:1f7a519a850bc170c3da108bfe22614d098b593bc573d8b38a5c0a7bec81aba5 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:73d576c007ee6b73e8af60bf86e05cad60a465b0a03bb6018c7cccff0280a106|MVU_Schema_Runtime.js:dce6a623582f19c4f4d78df4d731af3954eac25bacbf97ee71ddcdae1c5f05a5|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:1f7a519a850bc170c3da108bfe22614d098b593bc573d8b38a5c0a7bec81aba5 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -6989,6 +6989,29 @@ const 旅行能力运行时_V1 = Object.freeze({
 globalThis.__LWCS_TRAVEL_CAPABILITY_RUNTIME_V1__ = 旅行能力运行时_V1;
 try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_TRAVEL_CAPABILITY_RUNTIME_V1__ = 旅行能力运行时_V1; } catch (错误) {}
 try { if (globalThis.top && globalThis.top !== globalThis) globalThis.top.__LWCS_TRAVEL_CAPABILITY_RUNTIME_V1__ = 旅行能力运行时_V1; } catch (错误) {}
+
+// 领域技进生成（接入方案 S80-C，用户 2026-11-16「进吧，属于极品技能，概率极低」）：非自身效果全是群体/全场且持续 2 回合以上的魂技
+// （本来就是笼罩一片的招；读档规范化魂灵时按魂灵品质与环位标，生成中途的技能会被后续轮次替换），按品质与环位取概率（领域生成概率_V1：S+ 级与 S 级第 6 环起，A 级第 8 环起；生成的 S 级极少，75/95 级
+// 144 个角色里一个没有，A 级第 8 环起的同类招约 13 个——2% 约每 550 个高等级角色出一个），按技能内容的哈希抽——不动效果与
+// COST，也不占用生成的随机数序列（否则此后每个角色的生成都会变）。等级：A 级 1～2、S 级 2～3、S+ 级 4～5（环越高越高）。
+var 领域生成概率_V1 = { 'S+': 0.1, S: 0.05, A: 0.02 };
+function 标记生成领域技_V1(技能 = {}, 品质 = '', 魂环位 = 1, 来源 = '魂技') {
+  if (!技能 || typeof 技能 !== 'object' || 技能.领域 || 来源 !== '魂技') return false;
+  const 品质文本 = String(品质 || '').trim();
+  const 档 = /^S\+|神品/.test(品质文本) ? 'S+' : /^S|极品/.test(品质文本) ? 'S' : /^A|优秀/.test(品质文本) ? 'A' : '';
+  const 环 = Math.max(1, Math.floor(Number(魂环位) || 1));
+  if (!档 || 环 < (档 === 'A' ? 8 : 6)) return false;
+  const 效果 = (Array.isArray(技能._效果数组) ? 技能._效果数组 : []).filter(效果项 => String(效果项?.目标 || '').trim() !== '自身');
+  if (!效果.length || !效果.every(效果项 => /群体|全场/.test(String(效果项?.目标 || '')) && Number(效果项?.持续回合) >= 2)) return false;
+  const 抽样 = hashBattleSeedValue(JSON.stringify([技能.魂技名 || '', 技能._效果数组])) / 4294967296;
+  if (!(抽样 < Number(领域生成概率_V1?.[档] ?? 0))) return false;
+  const 落点 = 效果.map(效果项 => String(效果项?.目标 || '').trim());
+  技能.领域 = {
+    等级: 档 === 'S+' ? (环 >= 9 ? 5 : 4) : 档 === 'S' ? (环 >= 8 ? 3 : 2) : (环 >= 9 ? 2 : 1),
+    范围: 落点.some(目标 => /全场/.test(目标)) ? '全场' : 落点.every(目标 => /友方|己方/.test(目标)) ? '己方' : '敌方',
+  };
+  return true;
+}
 
 function hashBattleSeedValue(seedText = '') {
   const text = String(seedText || '');
@@ -39168,6 +39191,22 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
           });
           ensureFusionSkillMentalCost(fusionData?.技能数据, 0.5);
         });
+        // 领域技（S80-C）：生成的魂技按魂环年限定档（十万年 S+、五万年 S、万年 A——生成时的品质骰不落盘）与环位标；补环生成的
+        // 魂技这一次读档还没经过 规范化魂灵Schema_V1，所以在这里标。
+        if (typeof 标记生成领域技_V1 === 'function') Object.entries(charData).forEach(([武魂键, 武魂]) => {
+          if (!/^第\d+武魂$/.test(武魂键) || !武魂 || typeof 武魂 !== 'object') return;
+          Object.entries(武魂).forEach(([魂灵键, 魂灵]) => {
+            if (!/^第\d+魂灵$/.test(魂灵键) || !魂灵 || typeof 魂灵 !== 'object') return;
+            Object.entries(魂灵).forEach(([环键, 魂环]) => {
+              const 环位 = Number(String(环键).match(/^第(\d+)魂环$/)?.[1]);
+              if (!环位 || !魂环 || typeof 魂环 !== 'object') return;
+              Object.entries(魂环).forEach(([技键, 魂技]) => {
+                const 年限 = Number(魂环.年限) || 0, 档 = 年限 >= 100000 ? 'S+' : 年限 >= 50000 ? 'S' : 年限 >= 10000 ? 'A' : '';
+                if (档 && /^第\d+魂技/.test(技键) && 魂技 && typeof 魂技 === 'object' && 魂技.计价版本 !== undefined) 标记生成领域技_V1(魂技, 档, 环位, '魂技');
+              });
+            });
+          });
+        });
         // 融合技（非武魂融合，S80-E）：每次读档按参与者当前贡献的魂技重新合成，参与者不全或魂技找不到的保留原样。
         _(charData.融合技 || {}).forEach((融合技, 融合技名) => {
           if (!融合技 || typeof 融合技 !== 'object') return;
@@ -40171,6 +40210,15 @@ function 规范化魂环Schema_V1(魂环) {
 function 规范化魂灵Schema_V1(魂灵) {
     Object.keys(魂灵).forEach(键 => {
       if (是魂环槽位键_V1(键)) 魂灵[键] = 读取MVUSchema部件_V1('SoulRingSchema').parse(魂灵[键]);
+    });
+    // 领域技（S80-C）：生成的魂技（带计价版本）按魂灵品质与环位、技能内容的哈希标成领域（MVU_Skill_Runtime 标记生成领域技_V1）。
+    if (typeof 标记生成领域技_V1 === 'function') Object.entries(魂灵).forEach(([环键, 魂环]) => {
+      const 环位 = Number(String(环键).match(/^第(\d+)魂环$/)?.[1]);
+      if (!环位 || !魂环 || typeof 魂环 !== 'object') return;
+      Object.entries(魂环).forEach(([技键, 魂技]) => {
+        const 年限 = Number(魂环.年限) || 0, 档 = 年限 >= 100000 ? 'S+' : 年限 >= 50000 ? 'S' : 年限 >= 10000 ? 'A' : '';
+        if (档 && 是魂技槽位键_V1(技键) && 魂技 && typeof 魂技 === 'object' && 魂技.计价版本 !== undefined) 标记生成领域技_V1(魂技, 档, 环位, '魂技');
+      });
     });
     delete 魂灵.魂环;
     return 魂灵;

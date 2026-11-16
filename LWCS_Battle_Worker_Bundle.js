@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:b8f0e0f67165d5264ac9d3d853652ef8344027cd713816bbecb5e3a710628f88|MVU_Schema_Runtime.js:d3ffbc45bd2b8deeace72d2ef6786a1c273cee0f29ff1d5ff8b792968c988c76|BattlePreview_Module.js:add5d559c5536284c325daef48499bb9b6137d1c46b6d63cbc08d15c55610a4c|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:62c8987714cbc0f2d0138dd32a28b1bfddf62c40984f0048c0dc3001a91e9fe6|BattleRuntime_Module.js:09e8b3668cc60f46364280a2393ae0869d3ccb9c39e5f0c0bf79901c03a3daa4 */
+/* sources-sha256: MVU_Skill_Runtime.js:73d576c007ee6b73e8af60bf86e05cad60a465b0a03bb6018c7cccff0280a106|MVU_Schema_Runtime.js:dce6a623582f19c4f4d78df4d731af3954eac25bacbf97ee71ddcdae1c5f05a5|BattlePreview_Module.js:57c95eeeab13ad433b470be8556aa17aaceffec1d9597bdd47aeecbdbae4d47e|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:15f0830250071783e0053ece764b09dc6ed12aa61da944e76a6ae73c1cbfadc4|BattleRuntime_Module.js:09e8b3668cc60f46364280a2393ae0869d3ccb9c39e5f0c0bf79901c03a3daa4 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -2468,6 +2468,29 @@ const 旅行能力运行时_V1 = Object.freeze({
 globalThis.__LWCS_TRAVEL_CAPABILITY_RUNTIME_V1__ = 旅行能力运行时_V1;
 try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_TRAVEL_CAPABILITY_RUNTIME_V1__ = 旅行能力运行时_V1; } catch (错误) {}
 try { if (globalThis.top && globalThis.top !== globalThis) globalThis.top.__LWCS_TRAVEL_CAPABILITY_RUNTIME_V1__ = 旅行能力运行时_V1; } catch (错误) {}
+
+// 领域技进生成（接入方案 S80-C，用户 2026-11-16「进吧，属于极品技能，概率极低」）：非自身效果全是群体/全场且持续 2 回合以上的魂技
+// （本来就是笼罩一片的招；读档规范化魂灵时按魂灵品质与环位标，生成中途的技能会被后续轮次替换），按品质与环位取概率（领域生成概率_V1：S+ 级与 S 级第 6 环起，A 级第 8 环起；生成的 S 级极少，75/95 级
+// 144 个角色里一个没有，A 级第 8 环起的同类招约 13 个——2% 约每 550 个高等级角色出一个），按技能内容的哈希抽——不动效果与
+// COST，也不占用生成的随机数序列（否则此后每个角色的生成都会变）。等级：A 级 1～2、S 级 2～3、S+ 级 4～5（环越高越高）。
+var 领域生成概率_V1 = { 'S+': 0.1, S: 0.05, A: 0.02 };
+function 标记生成领域技_V1(技能 = {}, 品质 = '', 魂环位 = 1, 来源 = '魂技') {
+  if (!技能 || typeof 技能 !== 'object' || 技能.领域 || 来源 !== '魂技') return false;
+  const 品质文本 = String(品质 || '').trim();
+  const 档 = /^S\+|神品/.test(品质文本) ? 'S+' : /^S|极品/.test(品质文本) ? 'S' : /^A|优秀/.test(品质文本) ? 'A' : '';
+  const 环 = Math.max(1, Math.floor(Number(魂环位) || 1));
+  if (!档 || 环 < (档 === 'A' ? 8 : 6)) return false;
+  const 效果 = (Array.isArray(技能._效果数组) ? 技能._效果数组 : []).filter(效果项 => String(效果项?.目标 || '').trim() !== '自身');
+  if (!效果.length || !效果.every(效果项 => /群体|全场/.test(String(效果项?.目标 || '')) && Number(效果项?.持续回合) >= 2)) return false;
+  const 抽样 = hashBattleSeedValue(JSON.stringify([技能.魂技名 || '', 技能._效果数组])) / 4294967296;
+  if (!(抽样 < Number(领域生成概率_V1?.[档] ?? 0))) return false;
+  const 落点 = 效果.map(效果项 => String(效果项?.目标 || '').trim());
+  技能.领域 = {
+    等级: 档 === 'S+' ? (环 >= 9 ? 5 : 4) : 档 === 'S' ? (环 >= 8 ? 3 : 2) : (环 >= 9 ? 2 : 1),
+    范围: 落点.some(目标 => /全场/.test(目标)) ? '全场' : 落点.every(目标 => /友方|己方/.test(目标)) ? '己方' : '敌方',
+  };
+  return true;
+}
 
 function hashBattleSeedValue(seedText = '') {
   const text = String(seedText || '');
@@ -34647,6 +34670,22 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
           });
           ensureFusionSkillMentalCost(fusionData?.技能数据, 0.5);
         });
+        // 领域技（S80-C）：生成的魂技按魂环年限定档（十万年 S+、五万年 S、万年 A——生成时的品质骰不落盘）与环位标；补环生成的
+        // 魂技这一次读档还没经过 规范化魂灵Schema_V1，所以在这里标。
+        if (typeof 标记生成领域技_V1 === 'function') Object.entries(charData).forEach(([武魂键, 武魂]) => {
+          if (!/^第\d+武魂$/.test(武魂键) || !武魂 || typeof 武魂 !== 'object') return;
+          Object.entries(武魂).forEach(([魂灵键, 魂灵]) => {
+            if (!/^第\d+魂灵$/.test(魂灵键) || !魂灵 || typeof 魂灵 !== 'object') return;
+            Object.entries(魂灵).forEach(([环键, 魂环]) => {
+              const 环位 = Number(String(环键).match(/^第(\d+)魂环$/)?.[1]);
+              if (!环位 || !魂环 || typeof 魂环 !== 'object') return;
+              Object.entries(魂环).forEach(([技键, 魂技]) => {
+                const 年限 = Number(魂环.年限) || 0, 档 = 年限 >= 100000 ? 'S+' : 年限 >= 50000 ? 'S' : 年限 >= 10000 ? 'A' : '';
+                if (档 && /^第\d+魂技/.test(技键) && 魂技 && typeof 魂技 === 'object' && 魂技.计价版本 !== undefined) 标记生成领域技_V1(魂技, 档, 环位, '魂技');
+              });
+            });
+          });
+        });
         // 融合技（非武魂融合，S80-E）：每次读档按参与者当前贡献的魂技重新合成，参与者不全或魂技找不到的保留原样。
         _(charData.融合技 || {}).forEach((融合技, 融合技名) => {
           if (!融合技 || typeof 融合技 !== 'object') return;
@@ -35650,6 +35689,15 @@ function 规范化魂环Schema_V1(魂环) {
 function 规范化魂灵Schema_V1(魂灵) {
     Object.keys(魂灵).forEach(键 => {
       if (是魂环槽位键_V1(键)) 魂灵[键] = 读取MVUSchema部件_V1('SoulRingSchema').parse(魂灵[键]);
+    });
+    // 领域技（S80-C）：生成的魂技（带计价版本）按魂灵品质与环位、技能内容的哈希标成领域（MVU_Skill_Runtime 标记生成领域技_V1）。
+    if (typeof 标记生成领域技_V1 === 'function') Object.entries(魂灵).forEach(([环键, 魂环]) => {
+      const 环位 = Number(String(环键).match(/^第(\d+)魂环$/)?.[1]);
+      if (!环位 || !魂环 || typeof 魂环 !== 'object') return;
+      Object.entries(魂环).forEach(([技键, 魂技]) => {
+        const 年限 = Number(魂环.年限) || 0, 档 = 年限 >= 100000 ? 'S+' : 年限 >= 50000 ? 'S' : 年限 >= 10000 ? 'A' : '';
+        if (档 && 是魂技槽位键_V1(技键) && 魂技 && typeof 魂技 === 'object' && 魂技.计价版本 !== undefined) 标记生成领域技_V1(魂技, 档, 环位, '魂技');
+      });
     });
     delete 魂灵.魂环;
     return 魂灵;
@@ -62166,6 +62214,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     addState,
     removeProjectedStates,
     applyProjectedRuleState,
+    timeWindowStateMatches,
     statePolarity,
     negativeEffectIsImmune,
     conditionMatchesFilter,
@@ -137178,7 +137227,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // brings most — and the race carries the shares to whichever such unit it keeps it on. The best R20_ASSIST_KEPT a unit has.
   // An enemy as believed lists no skills: what it has laid on the field (a state whose 来源角色 is it, BattleDecision
   // visibleStates) it can lay again — read the other way, the unit with the state against the unit without it.
-  const R20_ASSIST_KEPT = 3;
+  const R20_ASSIST_KEPT = 3, R20_ASSIST_SHARE_MIN = 0.1, R20_ASSIST_SHARE_MAX = 3;
   function r20Assists(table, request, context) {
     const { cellUnits: units, sides, ids, world } = table, count = units.length, tick = Number(world?.当前世界tick ?? world?.当前tick ?? 0);
     const brings = row => Math.max(0, ...table.out[row], ...table.support[row]);
@@ -137242,7 +137291,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           out += inverse ? -gained : gained;
         }
         const ratio = (value, before) => inverse ? (value > 1e-9 ? before / value : 1) : (before > 1e-9 ? value / before : 1);
-        let off = ratio(out, outBefore), def = ratio(taken, takenBefore);
+        // Shares within [R20_ASSIST_SHARE_MIN, R20_ASSIST_SHARE_MAX]: a ratio over a cell near nothing reads a change as tenfold.
+        let off = clamp(ratio(out, outBefore), R20_ASSIST_SHARE_MIN, R20_ASSIST_SHARE_MAX), def = clamp(ratio(taken, takenBefore), R20_ASSIST_SHARE_MIN, R20_ASSIST_SHARE_MAX);
         // The hits that come at it a round: one from each enemy that can reach it.
         const hitters = Math.max(1, units.reduce((sum, unit, other) => sum + (sides[other] !== sides[at] && table.remaining[other] > 0 && table.acts[other] ? 1 : 0), 0));
         // 一次性闪避（位移）只挡来的第一下。
@@ -137260,10 +137310,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const unit = units[row];
       if (!table.acts[row] || hasStateFlag(unit, 'silence') || preview.isSummonSkillDisabled(unit)) continue;
       const own = affordablePreparedSkills(unit), shown = own.length ? null : r20Shown(unit), options = [];
-      const add = (kind, parts, rounds, chance, names, skill) => {
+      const add = (kind, parts, rounds, chance, names, skill, extra = null) => {
         if (!parts.length) return;
-        const size = parts.reduce((sum, part) => sum + Math.abs(part.off - 1) + Math.abs(part.def - 1) + Math.abs(part.tick), 0) * chance;
-        options.push(Object.freeze({ kind, skill, parts: Object.freeze(parts), pace: 1 / Math.max(1, rounds), chance, size, names: Object.freeze(names) }));
+        const size = parts.reduce((sum, part) => sum + Math.abs(part.off - 1) + Math.abs(part.def - 1) + Math.abs(part.tick) + (part.extra > 0 ? part.extra / Math.max(1e-6, brings(row)) : 0), 0) * chance;
+        options.push(Object.freeze({ kind, skill, parts: Object.freeze(parts), pace: 1 / Math.max(1, rounds), chance, size, names: Object.freeze(names),
+          ...(extra?.whileUp ? { whileUp: Object.freeze(extra.whileUp) } : {}), ...(extra?.hosted ? { hosted: true } : {}) }));
       };
       for (const entry of shown || own) {
         if (!shown && entry.fusionMetadata) continue;
@@ -137284,6 +137335,41 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           }
           const imprint = r20Imprint(units, sides, row, target, skill, tick);
           if (imprint) add(kind, readParts(row, imprint.views, false, imprint.once), imprint.rounds, imprint.chance, imprint.names, skillId(skill));
+          for (const effect of Array.isArray(skill?._效果数组) ? skill._效果数组 : []) {
+            const prototype = String(effect?.原型 || '').trim();
+            // 时窗修正（调整持续回合）: the states on the unit it reaches that it moves, the way that pays (BattlePreview
+            // timeWindowStateMatches picks them) — 延长 one's own buffs or the enemy's debuffs keeps them k rounds more a cast
+            // (read as keeping them up: with them against without, after they would have run out); 压缩 the enemy's buffs or
+            // one's own debuffs takes k rounds off them (read while they are up).
+            if (prototype === '时窗修正' && ['', '持续回合'].includes(String(effect?.调整字段 || '').trim())) {
+              const rounds = Math.abs(Number(effect?.调整回合) || 0), compress = /压缩|减少|缩短/.test(String(effect?.调整方式 || ''));
+              if (!(rounds > 0)) continue;
+              const wanted = (sides[target] === sides[row]) !== compress ? 'buff' : 'debuff', unit = units[target];
+              const matched = Object.entries(unit.状态效果 || {}).filter(([key, state]) => String(state?.类型 || '').trim() === wanted &&
+                Number.isFinite(Number(state?.duration)) && preview.timeWindowStateMatches(effect, key, state) &&
+                // A control held longer is the control's (the race holds the unit by r20Held), not a change of its cells.
+                !(sides[target] !== sides[row] && R20_CONTROL_KEYS.some(field => state?.战斗效果?.[field])));
+              if (!matched.length) continue;
+              const view = { ...unit, 状态效果: { ...unit.状态效果 } };
+              matched.forEach(([key]) => { delete view.状态效果[key]; });
+              view.final = { ...(view.final || {}), ...preview.buildNumericCombatStats(view, tick) };
+              const names = [...new Set(matched.map(([, state]) => String(state?.状态 || state?.状态名称 || '').trim()).filter(Boolean))];
+              add(kind, readParts(row, [[target, preview.inheritOverlayOrigin(view, unit)]], !compress), rounds,
+                clamp(preview.normalizeEffectProbability(effect?.触发概率, 1), 0, 1), compress ? [] : names, `${skillId(skill)}:时窗`, compress ? { whileUp: names } : null);
+            }
+            // 召唤生成（之后再召）: what its summons bring beside it — each a share (继承属性比例) of the caster's own basic attack, as
+            // many as it brings — for the rounds they stay; not while summons of its own still stand (r20Race: hosted).
+            if (prototype === '召唤生成' && kind === 'self') {
+              // 强度 reads as the share too (BattleRuntime: 强度 2 = 继承 200%).
+              const ratio = clamp(Number(effect?.继承属性比例 ?? effect?.强度 ?? effect?.召唤强度) || 0, 0, 2), many = Math.max(1, Math.floor(Number(effect?.数量) || 1));
+              let foe = -1;
+              for (let other = 0; other < count; other += 1) if (sides[other] !== sides[row] && table.remaining[other] > 0 && (foe < 0 || table.out[row][other] > table.out[row][foe])) foe = other;
+              const basic = foe >= 0 ? cachedBaseActionValue(unit, units[foe], 'BASIC_ATTACK', null, context, world) / 100 : 0;
+              if (!(ratio > 0) || !(basic > 0) || !(brings(row) > 0)) continue;
+              add('self', [{ self: true, off: 1, def: 1, tick: 0, extra: many * ratio * basic }], Math.max(1, Number(effect?.持续回合) || R20_UPKEEP_ROUNDS), 1, [],
+                `${skillId(skill)}:召唤`, { hosted: true });
+            }
+          }
         }
       }
       // (The deciding side's own units list their skills; an enemy's are what it has shown, and what it has laid.)
@@ -137838,7 +137924,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // offMul[u] / defMul[u] / tickAdd[u]: the share of its hits and help u brings, of the hits it takes, and the periodic HP
     // it gains, under the changes kept up on it this step (r20Assists); a unit beyond the table's (a summon a candidate
     // brought) has none of its own.
-    const assist = facts.assist || null, offMul = new Array(count).fill(1), defMul = new Array(count).fill(1), tickAdd = new Array(count).fill(0);
+    // summonOut[u]: what the summons u keeps calling land a round on the enemy its side turns on (r20Assists extra).
+    const assist = facts.assist || null, offMul = new Array(count).fill(1), defMul = new Array(count).fill(1), tickAdd = new Array(count).fill(0), summonOut = new Array(count).fill(0);
     let released = 0;
     const horizon = Math.max(1, Math.min(R20_RACE_ROUNDS, Number(facts.horizon) || R20_RACE_ROUNDS)), tick = facts.tick || null, tickRounds = facts.tickRounds || null;
     const dealt = new Array(count), mended = new Array(count), hits = new Array(count), worth = new Array(count), pressed = new Array(count);
@@ -137936,14 +138023,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       // 防御系 losing a duel kept a −82% guard up every round and struck no more: it fell later and left its enemy whole (11-16
       // class pairs). The changed shares carry into the strikes, the help and the periodic HP of this step; the side turns
       // again with the worth they leave.
-      offMul.fill(1); defMul.fill(1); tickAdd.fill(0);
+      offMul.fill(1); defMul.fill(1); tickAdd.fill(0); summonOut.fill(0);
       if (assist && Object.keys(focus).length >= 2) {
         const brings = {}, takesIn = {};
         for (let unit = 0; unit < count; unit += 1) if (left[unit] > 1e-9 && striking(unit)) brings[sides[unit]] = (brings[sides[unit]] || 0) + worth[unit] * free(unit);
         for (const side of Object.keys(focus)) takesIn[side] = pressed[focus[side].unit] || 0;
         let kept = false;
         for (let unit = 0; unit < count; unit += 1) {
-          if (!assist[unit] || !striking(unit) || pace[unit] > 0) continue;
+          // The deciding unit's action this round is the one being valued (a summon or a buff cast now): it keeps nothing else up
+          // before the round ends — else every other action of its looked as good, with the same summon called for free at 0.
+          if (!assist[unit] || !striking(unit) || pace[unit] > 0 || unit === (base.actorRow ?? -1) && time < 1 - 1e-9) continue;
           const mine = sides[unit], ownOut = Math.max(1e-6, brings[mine] || 0);
           // up: what the unit keeps of a change it has up already — not paid for again while it lasts, but the unit is worth it
           // to the side that turns on it (downed, it lays it no more: 第 5 题「打让全队变强的节点」).
@@ -137953,11 +138042,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             // The candidate's own lasting change on that unit is in its cells already, and so is a state of the change it still has up.
             if (changed && changed[to] && until && time < until[to]) continue;
             const still = option.names.some(name => (base.stateEnds?.[to]?.[name] || 0) > time + 1e-9);
+            // 压缩 takes rounds off states only while they are up; a summoner recalls only once its summons are gone.
+            if (option.whileUp && !option.whileUp.some(name => (base.stateEnds?.[to]?.[name] || 0) > time + 1e-9)) continue;
+            if (option.hosted && host && host.some((hostRow, other) => hostRow === unit && left[other] > 1e-9)) continue;
             let gain = 0;
             for (const part of option.parts) {
               const at = part.self ? unit : to, side = sides[at], turnedOn = focus[side]?.unit === at;
+              // On itself a change raises only the hits it still makes (the share of its actions recasting leaves it); a summon
+              // strikes on its own (extra).
+              const ownShare = at === unit ? 1 - option.pace : 1;
+              if (part.extra > 0) gain += part.extra / ownOut;
               if (side === mine) {
-                gain += (part.off - 1) * worth[at] / ownOut + (turnedOn ? 1 - part.def : 0) +
+                gain += (part.off - 1) * ownShare * worth[at] / ownOut + (turnedOn ? 1 - part.def : 0) +
                   (part.tick < 0 ? part.tick / Math.max(1e-6, takesIn[mine] || 0) : turnedOn ? part.tick / Math.max(1e-6, takesIn[mine] || 0) : 0);
               } else {
                 gain += (1 - part.off) * worth[at] / Math.max(1e-6, brings[side] || 0) + (turnedOn ? part.def - 1 : 0) - Math.min(0, part.tick) / ownOut;
@@ -137975,6 +138071,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             const at = part.self ? unit : to;
             offMul[at] *= 1 + (part.off - 1) * option.chance; defMul[at] *= 1 + (part.def - 1) * option.chance;
             tickAdd[at] += part.tick * option.chance;
+            if (part.extra > 0) summonOut[unit] += part.extra * option.chance;
           }
           worth[unit] += best * ownOut;
           kept = true;
@@ -138048,6 +138145,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           // A share of what lands is thrown back at the attacker (反伤), in its own HP maximum.
           dealt[unit] += taken + (facts.reflect?.[target] > 0 ? (strike + more) * facts.reflect[target] * facts.hpMax[target] / facts.hpMax[unit] : 0);
         }
+      }
+      // The summons kept called strike the enemy their side turns on.
+      if (assist) for (let unit = 0; unit < count; unit += 1) {
+        if (!(summonOut[unit] > 0) || !(left[unit] > 1e-9)) continue;
+        const foe = sideNames.find(side => side !== sides[unit]), target = foe !== undefined ? struck(focus[foe].unit) : -1;
+        if (target >= 0 && left[target] > 1e-9) { dealt[target] += summonOut[unit] * defMul[target]; hits[target] += 1; }
       }
       // The periodic HP the kept changes bring (r20Assists tick).
       if (assist) for (let unit = 0; unit < count; unit += 1) {
@@ -138222,6 +138325,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       stamina: units.map((unit, row) => sides[row] === request.actorSide ? r20Stamina(unit) : null),
       alive: new Array(count).fill(1), guard: units.map(unit => r20Guard(unit)), revive: units.map(unit => r20Revive(unit)),
       cover: units.map((unit, row) => r20Cover(unit, units, sides, row)),
+      // The deciding unit: its action this round is the one being valued (r20Race keeps it from keeping a change up before 1).
+      actorRow: ids.indexOf(String(request.actorId)),
       drain: units.map(unit => r20Absorb(unit).dealt), host: units.map((unit, row) => r20HostRow(unit, units, ids, sides, row)), skippedSkills: skipped.count,
       tick: units.map(unit => r20Tick(request, unit)), tickRounds: units.map(unit => r20TickRounds(unit)),
       reflect: units.map(unit => preview.counterDamageRatio(unit)), hpMax: units.map(unit => Math.max(1, preview.readHpMax(unit))),
