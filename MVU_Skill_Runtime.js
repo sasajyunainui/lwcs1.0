@@ -9101,7 +9101,9 @@ function rollExtraMechanics(main, grade, ringIndex, preferredSecondary = [], typ
   const 双副机制骰 = 副机制骰 < secondaryChance ? Math.random() * 100 : null;
   // 副机制上限 comes only from the retention regeneration (规格 1); the dice are still rolled so the random stream is unchanged.
   const 副机制上限 = Number.isFinite(Number(context?.副机制上限)) ? Math.max(0, Math.floor(Number(context.副机制上限))) : Infinity;
-  const 目标数量 = Math.min(副机制上限, 副机制骰 < secondaryChance ? (双副机制骰 < doubleChance ? 2 : 1) : 0);
+  const 目标数量 = Math.min(副机制上限, 强制融合技副机制_V1
+    ? (双副机制骰 !== null && 双副机制骰 < doubleChance ? 2 : 1)
+    : 副机制骰 < secondaryChance ? (双副机制骰 < doubleChance ? 2 : 1) : 0);
   记录技能生成事件_V1(context, {
     类型: '副机制机会',
     主机制大类: main,
@@ -17691,7 +17693,20 @@ function 缩减技能持续次数份额_V1(效果数组 = [], 份额 = 0, 评估
   return 改动数;
 }
 
+// 武魂融合技单效果上限（D1）：生成一个武魂融合技期间（ensureSkillStructGenerated 按来源置位）补强与预算估算都按它封顶。
+var 武魂融合技单效果上限_V1 = Object.freeze({ 百分比: 150, 威力倍率: 3300, 持续回合: 4, 单体硬控持续回合: 3 });
+var 正在生成武魂融合技_V1 = false, 强制融合技副机制_V1 = false; // var：模块加载时预算表就会读它（声明在后）
+function cloneSkillGenerationInput_V1(skill = {}) { return JSON.parse(JSON.stringify(skill || {})); }
 function 读取生成补强数值上限_V1(效果 = {}, 字段名 = '数值') {
+  const 上限 = 读取生成补强数值通用上限_V1(效果, 字段名);
+  if (!正在生成武魂融合技_V1) return 上限;
+  if (字段名 === '威力倍率') return Math.min(上限, 武魂融合技单效果上限_V1.威力倍率);
+  // 负向的（降属性、降判定）到 −100% 就到头了（同 受到伤害/造成伤害 负值封 100，用户 11-15）。
+  if (字段名 === '数值' || 字段名 === '副数值') return Math.min(上限, /^-/.test(String(效果?.[字段名] ?? '').trim()) ? 100 : 武魂融合技单效果上限_V1.百分比);
+  return 上限;
+}
+
+function 读取生成补强数值通用上限_V1(效果 = {}, 字段名 = '数值') {
   const 原型 = String(效果?.原型 || '').trim();
   if (字段名 === '威力倍率') return 5000;
   if (字段名 === '继承属性比例') return 1;
@@ -17805,6 +17820,13 @@ function 按明细目标COST补强效果数值_V1(效果 = {}, 明细 = {}, 目�
 }
 
 function 读取生成补强数字字段上限_V1(效果 = {}, 字段名 = '') {
+  const 上限 = 读取生成补强数字字段通用上限_V1(效果, 字段名);
+  if (!正在生成武魂融合技_V1 || 字段名 !== '持续回合' || !(上限 > 0)) return 上限;
+  const 单体硬控 = String(效果?.原型 || '').trim() === '状态施加' && 读取状态施加分类_V1(效果.状态) === '硬控封禁类';
+  return Math.min(上限, 单体硬控 ? 武魂融合技单效果上限_V1.单体硬控持续回合 : 武魂融合技单效果上限_V1.持续回合);
+}
+
+function 读取生成补强数字字段通用上限_V1(效果 = {}, 字段名 = '') {
   const 原型 = String(效果?.原型 || '').trim();
   if (字段名 === '持续回合') {
     if (原型 === '位移执行' && 技能原型字段值是百分比修正_V1(效果.数值) && parseSkillSignedChangeNumber(效果.数值) === 0) return 0;
@@ -19364,7 +19386,8 @@ function 生成阶段按目标COST填充效果强度_V1(技能 = {}, 上下文 =
       return;
     }
     if (项.类型 === '伤害') {
-      项.效果.威力倍率 = 按伤害COST反推威力倍率_V1(分配COST, 项.效果, 预算上下文);
+      // 武魂融合技（D1）：反推的威力也按单效果上限封顶（此前融合技一个伤害效果被反推到 16356）。
+      项.效果.威力倍率 = Math.min(按伤害COST反推威力倍率_V1(分配COST, 项.效果, 预算上下文), 正在生成武魂融合技_V1 ? 武魂融合技单效果上限_V1.威力倍率 : Infinity);
       return;
     }
     const 倍率 = Math.max(1, 分配COST / Math.max(0.01, 项.COST));
@@ -26988,6 +27011,32 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
 // 魂技消耗成长：进入前把「固定+N%」魂技还原成锚定绝对值消耗，流程内一切预算/校验/收敛按现行口径；收尾换算回固定+N% 并记锚定。
 function ensureSkillStructGenerated(skill, context = {}) {
   if (!skill || typeof skill !== 'object') return skill;
+  const 融合技 = [context?.来源, context?.sourceCategory, context?.来源类别].some(value => String(value || '').trim() === '武魂融合技');
+  if (融合技 && !正在生成武魂融合技_V1) {
+    // 先强制带副机制生成；超出门禁（副机制压不回预算）就从原样重来、副机制按骰子——单效果上限两次都在。
+    const 原样 = cloneSkillGenerationInput_V1(skill);
+    const 生成一次 = 强制副机制 => {
+      正在生成武魂融合技_V1 = true; 强制融合技副机制_V1 = 强制副机制;
+      try {
+        const result = ensureSkillStructGenerated(skill, context);
+        // 驱动属性在收敛之后还会放大数值：负向的百分比到 −100% 为止（降属性、降判定、降前摇再往下没有意义）。
+        for (const 效果 of Array.isArray(skill._效果数组) ? skill._效果数组 : []) {
+          for (const 字段 of ['数值', '副数值']) {
+            const 文本 = String(效果?.[字段] ?? '').trim();
+            if (/^-[\d.]+%$/.test(文本) && Number.parseFloat(文本) < -100) 效果[字段] = '-100%';
+          }
+        }
+        return result;
+      } finally { 正在生成武魂融合技_V1 = false; 强制融合技副机制_V1 = false; }
+    };
+    const result = 生成一次(true);
+    let 评估 = null;
+    try { 评估 = 评估技能预算_V1(skill, context); } catch (错误) { 评估 = null; }
+    if (!(Number(评估?.实际COST) > Number(评估?.实际门禁) * 1.01)) return result;
+    Object.keys(skill).forEach(key => { delete skill[key]; });
+    Object.assign(skill, cloneSkillGenerationInput_V1(原样));
+    return 生成一次(false);
+  }
   const 位 = Math.max(1, Math.floor(Number(context?.获得阶段魂环数 ?? context?.ringIndex ?? context?.魂环位 ?? 读取技能结构魂环位_V1(skill) ?? 1)) || 1);
   const 成长上下文 = { ...(context || {}), ringIndex: 位, 魂环位: 位 };
   try { 展开魂技成长消耗为锚定口径_V1(skill, 成长上下文); } catch (错误) { /* 还原失败时按现有消耗走现行流程 */ }
