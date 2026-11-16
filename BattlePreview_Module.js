@@ -2751,6 +2751,16 @@
     return capable;
   }
 
+  // 召唤面板（11-17 魂兽转化与本命召唤兽设计）: a summon effect that carries the creature's own panel (a 本命召唤兽 made of a
+  // beast, 召唤对象) builds the summon on it as it is — no level table, no 继承属性比例. null when the effect has none.
+  const SUMMON_PANEL_KEYS = Object.freeze({ hp: '生命上限', vit: '体力上限', sp: '魂力上限', men: '精神力上限', str: '力量', def: '防御', agi: '敏捷' });
+  function summonFixedPanel(effect = {}) {
+    const panel = effect?.召唤面板;
+    if (!panel || typeof panel !== 'object') return null;
+    const read = key => Math.max(1, Math.floor(Number(panel[SUMMON_PANEL_KEYS[key]]) || 0));
+    if (!(Number(panel[SUMMON_PANEL_KEYS.hp]) > 0)) return null;
+    return Object.fromEntries(Object.keys(SUMMON_PANEL_KEYS).map(key => [key, read(key)]));
+  }
   function isSummonUnit(unit = {}) {
     return String(unit?.单位性质 || unit?.类型 || '').trim() === '召唤物' ||
       Boolean(unit?.召唤键 || unit?.__battleRuntime?.summonWindow);
@@ -15644,10 +15654,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           const levelPanel = summonType === '本命召唤兽' && typeof root.__LWCS_GET_BASE_STATS__ === 'function' ? root.__LWCS_GET_BASE_STATS__(summonLevel) || null : null;
           const panelOf = (resource, key) => levelPanel ? Number(levelPanel[key]) || 0
             : resource === 'hp' ? readHpMax(actor) : resource === 'stat' ? readCombatStat(actor, key) : readResourceMax(actor, resource);
-          const hpMax = Math.max(1, Math.floor(panelOf('hp', 'vit_max') * inheritRatio));
-          const staminaMax = Math.max(1, Math.floor(panelOf('体力', 'vit_max') * inheritRatio));
-          const soulMax = Math.max(1, Math.floor(panelOf('魂力', 'sp_max') * inheritRatio));
-          const mentalMax = Math.max(1, Math.floor(panelOf('精神力', 'men_max') * inheritRatio));
+          const fixed = summonFixedPanel(effect);
+          const hpMax = fixed ? fixed.hp : Math.max(1, Math.floor(panelOf('hp', 'vit_max') * inheritRatio));
+          const staminaMax = fixed ? fixed.vit : Math.max(1, Math.floor(panelOf('体力', 'vit_max') * inheritRatio));
+          const soulMax = fixed ? fixed.sp : Math.max(1, Math.floor(panelOf('魂力', 'sp_max') * inheritRatio));
+          const mentalMax = fixed ? fixed.men : Math.max(1, Math.floor(panelOf('精神力', 'men_max') * inheritRatio));
           const summonUnit = {
             id: summonId,
             name: displayName,
@@ -15691,9 +15702,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             men_max: mentalMax,
             精神力: mentalMax,
             精神力上限: mentalMax,
-            str: Math.max(1, Math.floor(panelOf('stat', 'str') * inheritRatio)),
-            def: Math.max(1, Math.floor(panelOf('stat', 'def') * inheritRatio)),
-            agi: Math.max(1, Math.floor(panelOf('stat', 'agi') * inheritRatio)),
+            str: fixed ? fixed.str : Math.max(1, Math.floor(panelOf('stat', 'str') * inheritRatio)),
+            def: fixed ? fixed.def : Math.max(1, Math.floor(panelOf('stat', 'def') * inheritRatio)),
+            agi: fixed ? fixed.agi : Math.max(1, Math.floor(panelOf('stat', 'agi') * inheritRatio)),
             状态: { 存活: true },
             状态效果: {},
             持续效果: {},
@@ -25047,6 +25058,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     fusionSkillMetadata,
     fusionChargeHost,
     hastyChargeScale,
+    summonFixedPanel,
     chargedShare,
     chargeMeetSkill,
     isCharging,

@@ -10352,10 +10352,12 @@
       const panelOf = (resource, key) => levelPanel ? Number(levelPanel[key]) || 0
         : resource === 'hp' ? previewRuntime.readHpMax(actor) : resource === 'stat' ? previewRuntime.readCombatStat(actor, key) : previewRuntime.readResourceMax(actor, resource);
       const stateKey = `召唤:${displayName}`;
-      const hpMax = Math.max(1, Math.floor(panelOf('hp', 'vit_max') * inheritRatio));
-      const staminaMax = Math.max(1, Math.floor(panelOf('体力', 'vit_max') * inheritRatio));
-      const soulMax = Math.max(1, Math.floor(panelOf('魂力', 'sp_max') * inheritRatio));
-      const mentalMax = Math.max(1, Math.floor(panelOf('精神力', 'men_max') * inheritRatio));
+      // 召唤面板（11-17）: a creature's own panel when the effect carries one (BattlePreview summonFixedPanel).
+      const fixed = previewRuntime.summonFixedPanel(effect);
+      const hpMax = fixed ? fixed.hp : Math.max(1, Math.floor(panelOf('hp', 'vit_max') * inheritRatio));
+      const staminaMax = fixed ? fixed.vit : Math.max(1, Math.floor(panelOf('体力', 'vit_max') * inheritRatio));
+      const soulMax = fixed ? fixed.sp : Math.max(1, Math.floor(panelOf('魂力', 'sp_max') * inheritRatio));
+      const mentalMax = fixed ? fixed.men : Math.max(1, Math.floor(panelOf('精神力', 'men_max') * inheritRatio));
       // 死亡反噬（同日「本命召唤兽和分身死亡都有反噬，精神力分身反噬精神力，物理分身反噬血量，本命召唤兽反噬血量+精神力」「30%，按驱动区分」）。
       const backlash = bonded ? '本命' : summonType === '分身' ? (String(effect?.驱动属性 || '').trim() === '精神力上限' ? '精神' : '物理') : '';
       const sourceState = {
@@ -10382,9 +10384,9 @@
         vit: staminaMax, vit_max: staminaMax, sta: staminaMax, sta_max: staminaMax, 体力: staminaMax, 体力上限: staminaMax,
         sp: soulMax, sp_max: soulMax, 魂力: soulMax, 魂力上限: soulMax,
         men: mentalMax, men_max: mentalMax, 精神力: mentalMax, 精神力上限: mentalMax,
-        str: Math.max(1, Math.floor(panelOf('stat', 'str') * inheritRatio)),
-        def: Math.max(1, Math.floor(panelOf('stat', 'def') * inheritRatio)),
-        agi: Math.max(1, Math.floor(panelOf('stat', 'agi') * inheritRatio)),
+        str: fixed ? fixed.str : Math.max(1, Math.floor(panelOf('stat', 'str') * inheritRatio)),
+        def: fixed ? fixed.def : Math.max(1, Math.floor(panelOf('stat', 'def') * inheritRatio)),
+        agi: fixed ? fixed.agi : Math.max(1, Math.floor(panelOf('stat', 'agi') * inheritRatio)),
         ...(backlash ? { __死亡反噬: backlash } : {}),
         状态: { 存活: true }, 状态效果: {}, 持续效果: {},
         __definitionHash: definitionHash,
