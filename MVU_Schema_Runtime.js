@@ -8831,6 +8831,14 @@ function 规范化角色Schema_V1(char) {
 
     const customSkillAttributeState = buildCharacterCustomSkillAttributeState(char);
     const customSkillElementProfile = buildElementProfileFromAttributeState(customSkillAttributeState);
+    // 领域技按描述生成（S80-C a，用户 11-17 选 A）：精神领域 / 斗铠.领域 → 自创魂技里一个带 领域 的魂技（MVU_Skill_Runtime 生成角色领域技_V1）。
+    if (typeof 生成角色领域技_V1 === 'function') 生成角色领域技_V1(char, {
+      type: 主武魂系别, 武魂系别: 主武魂系别, 角色: char, talentTier: char.属性.天赋梯队,
+      age: Math.max(1000, genericSkillAge), ringAge: Math.max(1000, genericSkillAge),
+      ringIndex: Math.max(1, Math.ceil(Number(char.属性.等级 || 1) / 10)), compatibility: 100,
+      elementProfile: customSkillElementProfile, 可调用元素: customSkillAttributeState.可调用元素, callableElements: customSkillAttributeState.可调用元素,
+      elementTrigger: '自创', 恢复增益重复账本缓存,
+    });
     ensureSkillMapGenerated(char.自创魂技, (_, skillName) => ({
       type: 主武魂系别,
       武魂系别: 主武魂系别,

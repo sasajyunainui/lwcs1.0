@@ -269,6 +269,8 @@ const SkillStructSchema = z
       .object({
         等级: z.coerce.number().min(1).max(5).prefault(1).describe('领域等级 1～5：同场敌对领域按 精神力上限×(1+0.25×(等级−1)) 比强弱，弱者效果减半'),
         范围: z.string().prefault('全场').describe('全场/己方/敌方：领域状态落在谁身上（效果数组的目标照此写）'),
+        来源: z.string().optional().describe('按描述生成的领域技的出处：精神领域 / 斗铠（MVU_Skill_Runtime 生成角色领域技_V1）'),
+        描述哈希: z.coerce.number().optional().describe('生成时领域名与描述的哈希；描述改了就重新生成'),
       })
       .optional()
       .describe('领域技：展开后这一招挂的状态都属于施法者的领域；一人一领域，展开新领域撤掉旧的'),
