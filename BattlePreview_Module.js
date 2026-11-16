@@ -20856,7 +20856,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ...grants.map(entry => ({ ...entry.effect, effectId: entry.effectId })),
       ...baseEffects,
     ];
-    if (!effects.length && !['PASS_OPPORTUNITY', 'DEFEND', 'EVADE', 'WITHDRAW', 'EQUIP', 'OBSERVE'].includes(String(declaration?.actionKind || '').trim())) {
+    if (!effects.length && !['PASS_OPPORTUNITY', 'DEFEND', 'EVADE', 'WITHDRAW', 'EQUIP', 'OBSERVE', 'GUARD'].includes(String(declaration?.actionKind || '').trim())) {
       throw new Error('battle_preview_action_effects_missing');
     }
     const nodeBudget = { count: 0, limit: budgetLimit, activeFingerprints: new Set() };

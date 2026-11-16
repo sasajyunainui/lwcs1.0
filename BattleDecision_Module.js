@@ -6846,7 +6846,15 @@
       candidates.push({ candidateId: `${actorId}:COUNTER`, declaration: defensiveDeclaration(actorId, 'COUNTER') });
     }
     const allies = aliveEntries(worldSnapshot).filter(entry => entry.side === sideOf(worldSnapshot, actor) && preview.unitId(entry.unit) !== actorId);
-    if (!forcedSkill && !reactionOnly && !counterOnly && allies.length && input.actionOpportunity?.interceptThreat === true) {
+    // 守护（用户 2026-11-17 选「加守护主动动作」；原作 2v2-a09 唐舞麟「把古月护在身后正面硬接」）: an action spent standing before an
+    // ally — until the guard's next action, single-target hostile effects on that ally land on the guard instead (BattleRuntime lays
+    // 护卫 on it; BattlePreview resolveTargets redirects them), whatever their windup. Offered to a primary unit on its own turn,
+    // for each ally of its side that is not a summon.
+    const guardOffered = !forcedSkill && !reactionOnly && !counterOnly && !assistOnly && !actor?.召唤键 && !preview.isSummonUnit(actor) &&
+      (!opportunityRole || opportunityRole.toUpperCase() === 'ACTIVE') && input.actionOpportunity?.continuationGrant !== true;
+    if (guardOffered) allies.filter(entry => !preview.isSummonUnit(entry.unit)).forEach(entry => candidates.push({ candidateId: `${actorId}:GUARD:${preview.unitId(entry.unit)}`,
+      declaration: { actionId: `${actorId}:GUARD:${preview.unitId(entry.unit)}`, actorId, actionKind: 'GUARD', targetIds: [preview.unitId(entry.unit)] } }));
+    else if (!forcedSkill && !reactionOnly && !counterOnly && allies.length && input.actionOpportunity?.interceptThreat === true) {
       allies.forEach(entry => candidates.push({ candidateId: `${actorId}:GUARD:${preview.unitId(entry.unit)}`, declaration: { actionId: `${actorId}:GUARD:${preview.unitId(entry.unit)}`, actorId, actionKind: 'GUARD', targetIds: [preview.unitId(entry.unit)] } }));
     }
     if (!forcedSkill && !reactionOnly && !counterOnly && input.beliefState?.observationGranted === true && Number(input.beliefState?.confidence || 0) < 1) {
@@ -67767,6 +67775,8 @@
           const ways = [{ way: 'take', loss: lostHere }, { way: 'answer', loss: lostHere * plain.share - plain.back * ratioHp + whole * (1 - hasty), meet: plain }];
           if (met) ways.push({ way: 'meet', loss: lostHere * meet.share - meet.back * ratioHp + whole, meet });
           const best = ways.reduce((low, option) => option.loss < low.loss - 1e-12 ? option : low);
+          // Development hook (absent in play): the ways a charging target weighs.
+          root.__LWCS_DECISION_DEBUG__?.onChargeWays?.({ actorId: request.actorId, row, ways: ways.map(option => ({ way: option.way, loss: option.loss, share: option.meet?.share, back: option.meet?.back, kind: option.meet?.kind })), lostHere, whole, hasty });
           if (best.way === 'take') continue;
           meet = best.meet;
           r20DropCharge(table, strikes, busy, chargeRow, best.way === 'meet' ? 0 : hasty);
@@ -68021,6 +68031,11 @@
     }
     for (let row = 0; row < remaining.length; row += 1) if (typeof stamina[row] === 'number') stamina[row] = Math.max(0, stamina[row] - r20Injury * Math.max(0, hpMark[row] - remaining[row]));
     const cover = (table.cover || []).slice();
+    // 守护: the ally it stands before is covered by the actor until the actor's next action (r20Race cover).
+    if (String(candidate?.declaration?.actionKind || '').toUpperCase() === 'GUARD' && String(request.actionOpportunity?.role || 'ACTIVE').toUpperCase() === 'ACTIVE' && actorRow !== undefined) {
+      const ward = table.index.get(String(candidate.declaration.targetIds?.[0] || ''));
+      if (ward !== undefined && ward !== actorRow && table.sides[ward] === table.sides[actorRow]) { cover[ward] = { row: actorRow, until: 1 }; seen += 1; }
+    }
     for (const [row, next] of rebuilt) cover[row] = r20Cover(next, table.units, table.sides, row);
     while (cover.length < sidesNow.length) cover.push(null);
     const facts = { assist: table.assist, cover, sides: sidesNow, out, support, stop, control, keep, keepBack, answer, answerOpen, back, turn, host, remaining, stamina, alive, guard, revive, drain, tick, tickRounds, reflect, hpMax, horizon: table.horizon, late: lateCells };

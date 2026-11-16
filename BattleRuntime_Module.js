@@ -11131,12 +11131,25 @@
       // 攻击破绽（BattlePreview attackOpeningOf）：正式行动先清掉旧破绽，进攻留下新的；反应（闪避、防御）不算下一次行动。
       if (actionRole !== 'REACTION') previewRuntime.setAttackOpening(actor, previewRuntime.attackOpeningStrength(combatData, actor, { ...declaration, actionKind },
         targetId => listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, targetId))), actionEvent.actionId);
+      // 守护 lasts until the guard's next action: a formal action of its own lifts what it laid.
+      if (actionRole === 'ACTIVE') liftOwnGuard(combatData, actor);
     }
     const pendingActionGrantedEffects = actionRole === 'STATE_TICK' || declaration?.__includeGrantedEffects === false
       ? []
       : previewRuntime.pendingGrantedEffects(actor, actionKind);
     if (['PASS_OPPORTUNITY', 'DEFEND', 'EVADE', 'OBSERVE', 'WITHDRAW', 'GUARD'].includes(actionKind)) {
       const eventKind = actionKind === 'DEFEND' || actionKind === 'GUARD' ? 'defend' : actionKind === 'EVADE' ? 'dodge' : 'pass';
+      // 守护（用户 2026-11-17）: an ACTIVE guard stands before the ally it names — 护卫 on that ally, its 来源角色 the guard, until the
+      // guard's next action (liftOwnGuard; two round ends at most). BattlePreview resolveTargets sends single-target hostile effects
+      // on the ally to the guard while it can act.
+      if (actionKind === 'GUARD' && actionRole === 'ACTIVE') {
+        const ward = (Array.isArray(declaration?.targetIds) ? declaration.targetIds : []).map(id => listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, id))).find(Boolean);
+        if (ward && ward !== actor && inferUnitSide(combatData, ward) === inferUnitSide(combatData, actor)) {
+          ward.状态效果 = ward.状态效果 && typeof ward.状态效果 === 'object' ? ward.状态效果 : {};
+          ward.状态效果[`守护·${previewRuntime.unitName(actor)}`] = { 状态: '护卫', 状态名称: '护卫', 类型: 'buff', 来源角色: previewRuntime.unitName(actor), 来源ID: previewRuntime.unitId(actor),
+            duration: 2, 持续回合: 2, 战斗效果: { guarded: true }, __守护: true, 描述: `${previewRuntime.unitName(actor)}守在身前，单体攻击先落到守护者身上` };
+        }
+      }
       const preparedDefense = allowPreparedDefense !== false &&
         actionRole === 'ACTIVE' &&
         ['DEFEND', 'EVADE'].includes(actionKind);
@@ -14232,6 +14245,14 @@
     });
   }
 
+  // 守护: the guard's own 守护 states lifted (its next formal action ends the guard it set up).
+  function liftOwnGuard(combatData = {}, guard = {}) {
+    const guardId = previewRuntime.unitId(guard);
+    for (const unit of listCombatUnits(combatData)) {
+      for (const [key, state] of Object.entries(unit?.状态效果 || {})) if (state?.__守护 === true && String(state.来源ID || '') === guardId) delete unit.状态效果[key];
+    }
+  }
+
   // 蓄满握住: what keeping a full charge one more turn takes (CHARGE_HOLD_UPKEEP of each startup cost of its skill, read as the
   // settlement reads a cost: BattlePreview resolveSkillResourceCost), and whether the holder has it.
   const CHARGE_HOLD_UPKEEP = 0.1, CHARGE_HOLD_LIMIT = 2;
@@ -14617,6 +14638,17 @@
     const round = Number(combatData?.回合 || 0), side = inferUnitSide(combatData, target);
     // 位移重做: 换位拉进己方阵中的敌人，本回合援护盖不到它。
     if (previewRuntime.positionDeniesCover(target, round)) return null;
+    // Development hook (absent in play): each ally of the target and the first gate it fails (援护 is rare: 11-17 第 34 题).
+    const gateHook = globalThis.__LWCS_DECISION_DEBUG__?.onInterceptGate;
+    if (typeof gateHook === 'function') for (const unit of listPrimaryCombatUnits(combatData)) {
+      if (!unit || unit === target || unit.召唤键 || inferUnitSide(combatData, unit) !== side) continue;
+      const opportunity = unit.__battleRuntime?.naturalOpportunity;
+      gateHook({ allyId: previewRuntime.unitId(unit), targetId: previewRuntime.unitId(target), attackerId: previewRuntime.unitId(attacker),
+        gate: !previewRuntime.isBattleCapable(unit) || !structuredActorCanAct(unit, 'ACTIVE') ? 'CANNOT_ACT' : unit.蓄力技能 || previewRuntime.fusionChargeHost(combatData, unit) ? 'CHARGING'
+          : previewRuntime.guardBrokenOf(unit, round) ? 'GUARD_BROKEN' : String(opportunity?.status || '').trim() !== 'PENDING' || Number(opportunity?.round || 0) !== round ? `ACTED:${String(opportunity?.status || 'NONE')}`
+            : previewRuntime.interceptWindupBudget(attacker, declaration, unit) < 0 ? 'TOO_FAST' : 'OK',
+        windup: previewRuntime.actionWindup(attacker, declaration), budget: previewRuntime.interceptWindupBudget(attacker, declaration, unit) });
+    }
     const candidates = listPrimaryCombatUnits(combatData).filter(unit => unit && unit !== target && !unit.召唤键 &&
       inferUnitSide(combatData, unit) === side && previewRuntime.isBattleCapable(unit) && structuredActorCanAct(unit, 'ACTIVE') &&
       !unit.蓄力技能 && !previewRuntime.fusionChargeHost(combatData, unit) && !previewRuntime.guardBrokenOf(unit, round) &&
