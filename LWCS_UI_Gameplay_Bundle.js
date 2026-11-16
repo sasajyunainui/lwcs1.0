@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:187b4f6fa977d96a2c8011aadfdeaaeee99834c799ad5466562440dab262e950|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:c263dd8ca8acb30c15b8af739e14115b4cea4bb14dc4d7fa9980fdde9ddeb31e|BattleRuntime_Module.js:b7edade0b0a35af5787e662609e75d922f4fc747f666c46c41d36d0544fe6d02|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:e164cbb025419e4db10c01c673513d0a24635db814bcce9057a3bcbc78c6803b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:c7a20b5b73792e02bd5524864bd855470144b3404a4bd544b220ca7181be47b6|BattleRuntime_Module.js:b7edade0b0a35af5787e662609e75d922f4fc747f666c46c41d36d0544fe6d02|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -15843,7 +15843,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       entry.side === actorSide && targetIsEligible(entry.unit) &&
       (!excludesActorEndpoint || unitId(entry.unit) !== unitId(actor))
     ).map(entry => entry.unit);
-    const hostile = all.filter(entry => entry.side !== actorSide && isBattleCapable(entry.unit)).map(entry => entry.unit);
+    // 隐匿（11-17 第 56 题）：声明的单体目标因隐匿被滤掉后，退回的敌方目标同样不能是隐匿者（此前只查 isBattleCapable，单体攻击总能打到隐匿的人）。
+    const hostile = all.filter(entry => entry.side !== actorSide && targetIsEligible(entry.unit)).map(entry => entry.unit);
     if (/友方|己方/.test(targetText) ||
       (!/敌方|对方/.test(targetText) && effectTargetsAllies(effect))) {
       return friendly.slice(0, 1);
@@ -31024,7 +31025,24 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const dodge = prepared ? clamp(ordinary + (1 - ordinary) * 0.25 * passiveStreakFactor(reactor), 0.03, 0.92) : ordinary;
     const strikeClass = declaration ? declarationDamageClass(declaration) : null;
     const ranged = strikeClass === 'RANGED' ? clamp(dodge * RANGED_DODGE_MULT, 0, 0.95) : strikeClass === 'MENTAL' ? dodge * MENTAL_DODGE_MULT : dodge;
-    return ranged * (1 - ATTACK_OPENING_DODGE_CUT * attackOpeningOf(reactor));
+    const opened = ranged * (1 - ATTACK_OPENING_DODGE_CUT * attackOpeningOf(reactor));
+    // 状态修正也进反应闪避（用户 2026-11-17「计入，直接加减」）：与命中判定（estimateHitProbability）同一套——
+    // 闪避方 dodge_bonus − max(dodge_penalty, lock_level)，攻击方 − (hit_bonus − hit_penalty)。没有这些状态时不变。
+    const adjustment = reactionDodgeStateAdjustment(reactor, sourceActor);
+    return adjustment ? clamp(opened + adjustment, DODGE_FLOOR, 0.95) : opened;
+  }
+
+  function reactionDodgeStateAdjustment(reactor = {}, sourceActor = {}) {
+    const avoidance = stateEntries(reactor, 'INCOMING_HIT').reduce((sum, [, state]) => {
+      const stateEffect = state?.战斗效果 || {};
+      return sum + Number(stateEffect?.dodge_bonus || 0) - Math.max(Number(stateEffect?.dodge_penalty || 0), Number(stateEffect?.lock_level || 0));
+    }, 0);
+    const hit = stateEntries(sourceActor, 'OUTGOING_HIT').reduce((sum, [, state]) => {
+      const stateEffect = state?.战斗效果 || {};
+      return sum + Number(stateEffect?.hit_bonus || 0) - Number(stateEffect?.hit_penalty || 0);
+    }, 0);
+    const total = avoidance - hit;
+    return Number.isFinite(total) && Math.abs(total) > 1e-9 ? total : 0;
   }
 
   // The chance to catch the opening once an answer has worked: the two units' effective agility (agility under speed
@@ -47148,9 +47166,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         input?.beliefState?.targetInterferencePossible === true ||
         input?.beliefState?.confused === true
       );
+    // 隐匿（11-17 第 56 题）：普攻是单体，主动出手时打不到隐匿者（BattlePreview stealthBlocksSingleTarget，结算记 TARGET_LOST），不列这类候选；反击照旧对着来袭者。
     let directBasicTargets = interferencePossible
       ? aliveEntries(worldSnapshot).map(entry => entry.unit)
-      : directHostile;
+      : counterOnly ? directHostile
+        : directHostile.filter(target => !preview.stealthBlocksSingleTarget(actor, target, { 目标: '单体' }, {}));
     if (!basicAttackAllowed) {
       recordRejected({
         actionKind: 'BASIC_ATTACK',
