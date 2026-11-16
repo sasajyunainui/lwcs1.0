@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:3a7ab2b86114d7997e52efa71f2ebd4abfbfe0588597e12628cc11524a69319e|cockpit/designer-model.js:cbbb8156854ed85b560637420324e21db9e899fb9cbef68ba1ccca6d0d217fc2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:e164cbb025419e4db10c01c673513d0a24635db814bcce9057a3bcbc78c6803b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:c7a20b5b73792e02bd5524864bd855470144b3404a4bd544b220ca7181be47b6|BattleRuntime_Module.js:b7edade0b0a35af5787e662609e75d922f4fc747f666c46c41d36d0544fe6d02|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:3a7ab2b86114d7997e52efa71f2ebd4abfbfe0588597e12628cc11524a69319e|cockpit/designer-model.js:cbbb8156854ed85b560637420324e21db9e899fb9cbef68ba1ccca6d0d217fc2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:6bf7fe4bbf52c95ea57b135030bea98fce204517e377f2bdeabbd5fecf8f9283|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:1912e62a5cdb863a829ee187d2c9254e826140c99ea111d0866eadfd8b65b4a6|BattleRuntime_Module.js:b7edade0b0a35af5787e662609e75d922f4fc747f666c46c41d36d0544fe6d02|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -60944,7 +60944,9 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     const values = stages.启动 || {};
     if (!Object.keys(values).length) return null;
     const percent = Object.values(values).some(value => /%\s*$/.test(String(value?.值 ?? value ?? '').trim()));
-    if (PASSIVE_SKILL_COST_TRIGGER_SCOPE === PASSIVE_SKILL_COST_TRIGGER_SCOPES.PERCENT && !percent) return null;
+    // 被动魂导器（MVU 读取物品被动技能条目_V1 记 __魂导等级）：固定值消耗也每次触发都付（用户 2026-11-17「被动触发时扣魂力」）。
+    const soulTool = Number(skill?.__魂导等级) > 0;
+    if (PASSIVE_SKILL_COST_TRIGGER_SCOPE === PASSIVE_SKILL_COST_TRIGGER_SCOPES.PERCENT && !percent && !soulTool) return null;
     return Object.freeze({ values, 非法项: Object.freeze([...(stages.非法项 || [])]) });
   }
 
@@ -161746,6 +161748,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const lands = cachedBaseActionValue(units[row], units[target], 'RELEASE_SKILL', charge.skill, context, world) / 100;
         if (lands > 0) (table.strikes ||= []).push({ from: row, to: target, at: turns, delta: sides[target] === sides[row] ? lands : -lands * keep[target][row] });
       }
+      // 放出时的自损反噬（行为检查目录第 16 题，11-17）：蓄的这一招写明的「自损反噬」（技能释放者、效果生效后/命中后必付，
+      // BattlePreview 换成每回合 dot_damage_ratio × 持续回合）在放出那一刻记到蓄力者自己身上——落空也照付，所以让它落空有价值；
+      // 被打断或中断应对时随蓄力一起按比例取消（r20DropCharge）。self 标记：放弃蓄力时这笔是省下的，不是丢掉的（见 struck 的 whole）。
+      const backlash = (Array.isArray(charge.skill?.副作用列表) ? charge.skill.副作用列表 : []).reduce((sum, risk) => {
+        if (String(risk?.副作用类型 || '').trim() !== '自损反噬' || String(risk?.生效对象 || '技能释放者').trim() !== '技能释放者') return sum;
+        if (!['效果生效后', '命中后'].includes(String(risk?.触发时机 || '效果生效后').trim())) return sum;
+        const ratio = Math.abs(Number.parseFloat(String(risk?.数值 ?? '').replace(/^\+/, '')) || 0) / 100;
+        return sum + clamp(Number(risk?.触发概率 ?? 1), 0, 1) * ratio * Math.max(1, Math.floor(Number(risk?.持续回合 || 1)));
+      }, 0);
+      if (backlash > 0) (table.strikes ||= []).push({ from: row, to: row, at: turns, delta: -Math.min(1, backlash), self: true });
     }
     if (table.strikes) table.strikes.sort((left, right) => left.at - right.at);
     Object.assign(table, r20Derive(table));
@@ -162211,7 +162223,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const chargeRow = r20ChargeRow(table, row);
         if (chargeRow !== undefined) {
           const lostHere = Math.max(0, table.remaining[row] - remaining[row]), ratioHp = stand.attackerHpMax / stand.hpMax;
-          const whole = strikes.reduce((sum, strike) => sum + (strike.from === chargeRow ? Math.abs(Number(strike.delta) || 0) : 0), 0);
+          // 放出时的自损反噬（self）不算丢掉的：放弃蓄力反而省下它。
+          const whole = strikes.reduce((sum, strike) => sum + (strike.from !== chargeRow ? 0 : (strike.self ? -1 : 1) * Math.abs(Number(strike.delta) || 0)), 0);
           const hasty = r20HastyShare(table, row, chargeRow);
           const plain = r20Meet({ ...stand, strikes: (stand.strikes || []).filter(option => option.move?.skill?.__chargeRelease !== true) }, weight, stance, follow);
           const met = meet.move?.skill?.__chargeRelease === true;

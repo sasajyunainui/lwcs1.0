@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:39c4d495cdc98bb15b5b0d78c71a73db7d734c866e6d9add150a4500dfe25ddb|MVU_Schema_Runtime.js:de73b7b99c63672d9314d492ec2dac4baf3f83f1fb14714d8e983e7a8ffc8790|BattlePreview_Module.js:e164cbb025419e4db10c01c673513d0a24635db814bcce9057a3bcbc78c6803b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:c7a20b5b73792e02bd5524864bd855470144b3404a4bd544b220ca7181be47b6|BattleRuntime_Module.js:b7edade0b0a35af5787e662609e75d922f4fc747f666c46c41d36d0544fe6d02 */
+/* sources-sha256: MVU_Skill_Runtime.js:dac188893de98943232f4611837611e5921f3afa94bde4a6952a30f30634cabe|MVU_Schema_Runtime.js:de73b7b99c63672d9314d492ec2dac4baf3f83f1fb14714d8e983e7a8ffc8790|BattlePreview_Module.js:6bf7fe4bbf52c95ea57b135030bea98fce204517e377f2bdeabbd5fecf8f9283|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:1912e62a5cdb863a829ee187d2c9254e826140c99ea111d0866eadfd8b65b4a6|BattleRuntime_Module.js:b7edade0b0a35af5787e662609e75d922f4fc747f666c46c41d36d0544fe6d02 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -479,10 +479,18 @@ function 读取物品被动技能条目_V1(物品 = {}, 选项 = {}) {
       const 身份键 = `${字段名}|${技能名}|${JSON.stringify(效果数组)}`;
       if (已见.has(身份键)) return;
       已见.add(身份键);
+      // 被动魂导器每次触发扣魂力（用户 2026-11-17「被动触发时扣魂力」）：带魂导等级的物品，技能记 __魂导等级；没写消耗的按
+      // 该魂导等级的标准魂力消耗补上（与主动魂导器 BattleDecision soulToolSkillView 同一做法）。付费见 BattlePreview passiveSkillTriggerCosts。
+      const 魂导等级 = Math.max(0, Math.min(9, Math.floor(Number(物品.魂导等级) || 0)));
+      const 技能副本 = cloneJsonValue(技能, {});
+      if (魂导等级 > 0) {
+        技能副本.__魂导等级 = 魂导等级;
+        if (!技能副本.消耗 || String(技能副本.消耗).trim() === '无') 技能副本.消耗 = 构建魂技消耗文本_V1('纯耗魂力', 50, 魂导等级);
+      }
       条目.push({
         字段: 字段名,
         技能名: String(技能名 || 技能.魂技名 || '被动技能').trim() || '被动技能',
-        技能: cloneJsonValue(技能, {}),
+        技能: 技能副本,
         效果数组: 超神器比例 !== null && 超神器比例 < 1 ? 缩放技能效果数组_V1(效果数组, 超神器比例) : cloneJsonValue(效果数组, []),
         来源物品: String(选项.来源物品 || 物品.名称 || 物品.name || 物品.物品名 || '').trim(),
         来源槽位: String(选项.来源槽位 || '').trim(),
@@ -16912,6 +16920,7 @@ function 计算技能效果累计COST_V1(技能 = {}, 上下文 = {}) {
       计入COST,
     })),
   });
+  let 代价累计 = 0;
   const 访问列表 = (列表, 路径, 继承抵扣率 = 0, 分支角色 = '基础') => {
     const 统计 = 新建统计();
     (Array.isArray(列表) ? 列表 : []).forEach((效果, 序号) => {
@@ -16930,7 +16939,11 @@ function 计算技能效果累计COST_V1(技能 = {}, 上下文 = {}) {
         百分比: false, 数值类型: '造物有效期', 单位COST: 0, 数值倍率: 1, 目标系数: 1, 持续系数: 1,
       }
       : 计算单项效果COST_V1(效果, 上下文);
-    const 原始COST = Number(单项.COST || 0);
+    // 自加消耗/前摇是代价（用户 2026-11-17「按代价抵扣」）：不计入收益，记进代价累计，评估时与副作用同一抵扣通道。
+    // 只取实际计入的分支（基础、追加），替换候选不重复记。
+    const 是代价 = 是自身消耗前摇增加_V1(效果);
+    if (是代价 && ['基础', '追加'].includes(分支角色)) 代价累计 += Math.max(0, Number(单项.COST || 0));
+    const 原始COST = 是代价 ? 0 : Number(单项.COST || 0);
     const 限制信息 = 读取效果限制抵扣信息_V1(效果, 继承抵扣率, {
       限制抵扣上限,
       // 抵扣率为 0 时造物继承到的只可能是技能自身的触发限制
@@ -17030,8 +17043,19 @@ function 计算技能效果累计COST_V1(技能 = {}, 上下文 = {}) {
     绝对值COST: Number(绝对值累计.toFixed(2)),
     限制COST: Number(限制累计.toFixed(2)),
     净COST: Number(Math.max(0, 总COST - 限制累计).toFixed(2)),
+    代价COST: Number(代价累计.toFixed(2)),
     明细,
   };
+}
+
+// 对自身/己方「结算修正·消耗或前摇」的增加（多花资源、出手更慢）是代价，不是收益（11-17）；对敌方的增加仍是削弱、照常计价。
+function 是自身消耗前摇增加_V1(效果 = {}) {
+  if (!效果 || typeof 效果 !== 'object' || String(效果.原型 || '').trim() !== '结算修正') return false;
+  if (!['消耗', '前摇'].includes(String(效果.结算 || '').trim())) return false;
+  if (!/自身|己方|友方/.test(String(效果.目标 || '').trim())) return false;
+  const 文本 = String(效果.数值 ?? '').trim();
+  const 数值 = Number.parseFloat(文本.replace(/^\+/, ''));
+  return Number.isFinite(数值) && 数值 > 0 && !文本.startsWith('-');
 }
 
 function 读取魂环年限原始值_V1(角色 = {}, 魂技位 = 1, 上下文 = {}) {
@@ -17496,7 +17520,9 @@ function 评估技能预算_V1(技能 = {}, 上下文或魂技位 = {}, 旧上�
   const 承载消耗比例 = 读取技能承载消耗比例_V1(技能, 资源上下文);
   const 实际消耗 = Number.isFinite(标准消耗) ? 读取技能实际消耗_V1(技能, 资源上下文, 标准消耗) : 0;
   // 魂导器技能没写消耗时，战斗按魂导等级的标准魂力消耗补上（BattleDecision soulToolSkillView），预算同样按标准消耗（倍数 1）。
-  const 魂导器缺省消耗 = 来源 === '装备技能' && Number(上下文?.魂导等级) > 0 && String(技能?.承载方式 || '').trim() !== '被动' &&
+  // 被动魂导器同样按标准消耗（11-17：被动触发时扣魂力，读取物品被动技能条目_V1 补消耗）；被动没有前摇，前摇倍数按 1。
+  const 被动魂导器 = 来源 === '装备技能' && Number(上下文?.魂导等级) > 0 && String(技能?.承载方式 || '').trim() === '被动';
+  const 魂导器缺省消耗 = 来源 === '装备技能' && Number(上下文?.魂导等级) > 0 &&
     (!技能?.消耗 || String(技能.消耗).trim() === '无');
   const 消耗倍数 = 魂导器缺省消耗
     ? 1
@@ -17505,7 +17531,7 @@ function 评估技能预算_V1(技能 = {}, 上下文或魂技位 = {}, 旧上�
     : Number.isFinite(标准消耗) && 标准消耗 > 0
       ? Math.max(0.05, Math.min(4, 实际消耗 / Math.max(1, 标准消耗)))
       : 1;
-  const 前摇倍数 = 计算前摇倍数_V1(技能, 上下文);
+  const 前摇倍数 = 被动魂导器 ? 1 : 计算前摇倍数_V1(技能, 上下文);
   const 标准前摇 = 获取标准前摇_V1();
   const 实际前摇 = 读取技能实际前摇_V1(技能, 上下文);
   const 基础参考 = 获取基础预算_V1(魂技位);
@@ -17514,7 +17540,8 @@ function 评估技能预算_V1(技能 = {}, 上下文或魂技位 = {}, 旧上�
   const 副作用明细 = 计算技能副作用COST_V1(技能);
   const 效果原始COST = COST明细.总COST;
   const 限制COST = COST明细.限制COST;
-  const 副作用原始COST = 副作用明细.总COST;
+  // 自加消耗/前摇的代价（计算技能效果累计COST_V1 代价COST）并入副作用抵扣：同样只限制不超过效果本身。
+  const 副作用原始COST = 副作用明细.总COST + Math.max(0, Number(COST明细.代价COST || 0));
   const 百分比COST = COST明细.百分比COST;
   const 绝对值COST = COST明细.绝对值COST;
 
@@ -37914,7 +37941,9 @@ try {
     const values = stages.启动 || {};
     if (!Object.keys(values).length) return null;
     const percent = Object.values(values).some(value => /%\s*$/.test(String(value?.值 ?? value ?? '').trim()));
-    if (PASSIVE_SKILL_COST_TRIGGER_SCOPE === PASSIVE_SKILL_COST_TRIGGER_SCOPES.PERCENT && !percent) return null;
+    // 被动魂导器（MVU 读取物品被动技能条目_V1 记 __魂导等级）：固定值消耗也每次触发都付（用户 2026-11-17「被动触发时扣魂力」）。
+    const soulTool = Number(skill?.__魂导等级) > 0;
+    if (PASSIVE_SKILL_COST_TRIGGER_SCOPE === PASSIVE_SKILL_COST_TRIGGER_SCOPES.PERCENT && !percent && !soulTool) return null;
     return Object.freeze({ values, 非法项: Object.freeze([...(stages.非法项 || [])]) });
   }
 
@@ -138716,6 +138745,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const lands = cachedBaseActionValue(units[row], units[target], 'RELEASE_SKILL', charge.skill, context, world) / 100;
         if (lands > 0) (table.strikes ||= []).push({ from: row, to: target, at: turns, delta: sides[target] === sides[row] ? lands : -lands * keep[target][row] });
       }
+      // 放出时的自损反噬（行为检查目录第 16 题，11-17）：蓄的这一招写明的「自损反噬」（技能释放者、效果生效后/命中后必付，
+      // BattlePreview 换成每回合 dot_damage_ratio × 持续回合）在放出那一刻记到蓄力者自己身上——落空也照付，所以让它落空有价值；
+      // 被打断或中断应对时随蓄力一起按比例取消（r20DropCharge）。self 标记：放弃蓄力时这笔是省下的，不是丢掉的（见 struck 的 whole）。
+      const backlash = (Array.isArray(charge.skill?.副作用列表) ? charge.skill.副作用列表 : []).reduce((sum, risk) => {
+        if (String(risk?.副作用类型 || '').trim() !== '自损反噬' || String(risk?.生效对象 || '技能释放者').trim() !== '技能释放者') return sum;
+        if (!['效果生效后', '命中后'].includes(String(risk?.触发时机 || '效果生效后').trim())) return sum;
+        const ratio = Math.abs(Number.parseFloat(String(risk?.数值 ?? '').replace(/^\+/, '')) || 0) / 100;
+        return sum + clamp(Number(risk?.触发概率 ?? 1), 0, 1) * ratio * Math.max(1, Math.floor(Number(risk?.持续回合 || 1)));
+      }, 0);
+      if (backlash > 0) (table.strikes ||= []).push({ from: row, to: row, at: turns, delta: -Math.min(1, backlash), self: true });
     }
     if (table.strikes) table.strikes.sort((left, right) => left.at - right.at);
     Object.assign(table, r20Derive(table));
@@ -139181,7 +139220,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const chargeRow = r20ChargeRow(table, row);
         if (chargeRow !== undefined) {
           const lostHere = Math.max(0, table.remaining[row] - remaining[row]), ratioHp = stand.attackerHpMax / stand.hpMax;
-          const whole = strikes.reduce((sum, strike) => sum + (strike.from === chargeRow ? Math.abs(Number(strike.delta) || 0) : 0), 0);
+          // 放出时的自损反噬（self）不算丢掉的：放弃蓄力反而省下它。
+          const whole = strikes.reduce((sum, strike) => sum + (strike.from !== chargeRow ? 0 : (strike.self ? -1 : 1) * Math.abs(Number(strike.delta) || 0)), 0);
           const hasty = r20HastyShare(table, row, chargeRow);
           const plain = r20Meet({ ...stand, strikes: (stand.strikes || []).filter(option => option.move?.skill?.__chargeRelease !== true) }, weight, stance, follow);
           const met = meet.move?.skill?.__chargeRelease === true;

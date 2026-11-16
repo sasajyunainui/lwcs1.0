@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:e164cbb025419e4db10c01c673513d0a24635db814bcce9057a3bcbc78c6803b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:c7a20b5b73792e02bd5524864bd855470144b3404a4bd544b220ca7181be47b6|BattleRuntime_Module.js:b7edade0b0a35af5787e662609e75d922f4fc747f666c46c41d36d0544fe6d02|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:6bf7fe4bbf52c95ea57b135030bea98fce204517e377f2bdeabbd5fecf8f9283|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:1912e62a5cdb863a829ee187d2c9254e826140c99ea111d0866eadfd8b65b4a6|BattleRuntime_Module.js:b7edade0b0a35af5787e662609e75d922f4fc747f666c46c41d36d0544fe6d02|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -6897,7 +6897,9 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     const values = stages.启动 || {};
     if (!Object.keys(values).length) return null;
     const percent = Object.values(values).some(value => /%\s*$/.test(String(value?.值 ?? value ?? '').trim()));
-    if (PASSIVE_SKILL_COST_TRIGGER_SCOPE === PASSIVE_SKILL_COST_TRIGGER_SCOPES.PERCENT && !percent) return null;
+    // 被动魂导器（MVU 读取物品被动技能条目_V1 记 __魂导等级）：固定值消耗也每次触发都付（用户 2026-11-17「被动触发时扣魂力」）。
+    const soulTool = Number(skill?.__魂导等级) > 0;
+    if (PASSIVE_SKILL_COST_TRIGGER_SCOPE === PASSIVE_SKILL_COST_TRIGGER_SCOPES.PERCENT && !percent && !soulTool) return null;
     return Object.freeze({ values, 非法项: Object.freeze([...(stages.非法项 || [])]) });
   }
 
@@ -107699,6 +107701,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const lands = cachedBaseActionValue(units[row], units[target], 'RELEASE_SKILL', charge.skill, context, world) / 100;
         if (lands > 0) (table.strikes ||= []).push({ from: row, to: target, at: turns, delta: sides[target] === sides[row] ? lands : -lands * keep[target][row] });
       }
+      // 放出时的自损反噬（行为检查目录第 16 题，11-17）：蓄的这一招写明的「自损反噬」（技能释放者、效果生效后/命中后必付，
+      // BattlePreview 换成每回合 dot_damage_ratio × 持续回合）在放出那一刻记到蓄力者自己身上——落空也照付，所以让它落空有价值；
+      // 被打断或中断应对时随蓄力一起按比例取消（r20DropCharge）。self 标记：放弃蓄力时这笔是省下的，不是丢掉的（见 struck 的 whole）。
+      const backlash = (Array.isArray(charge.skill?.副作用列表) ? charge.skill.副作用列表 : []).reduce((sum, risk) => {
+        if (String(risk?.副作用类型 || '').trim() !== '自损反噬' || String(risk?.生效对象 || '技能释放者').trim() !== '技能释放者') return sum;
+        if (!['效果生效后', '命中后'].includes(String(risk?.触发时机 || '效果生效后').trim())) return sum;
+        const ratio = Math.abs(Number.parseFloat(String(risk?.数值 ?? '').replace(/^\+/, '')) || 0) / 100;
+        return sum + clamp(Number(risk?.触发概率 ?? 1), 0, 1) * ratio * Math.max(1, Math.floor(Number(risk?.持续回合 || 1)));
+      }, 0);
+      if (backlash > 0) (table.strikes ||= []).push({ from: row, to: row, at: turns, delta: -Math.min(1, backlash), self: true });
     }
     if (table.strikes) table.strikes.sort((left, right) => left.at - right.at);
     Object.assign(table, r20Derive(table));
@@ -108164,7 +108176,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const chargeRow = r20ChargeRow(table, row);
         if (chargeRow !== undefined) {
           const lostHere = Math.max(0, table.remaining[row] - remaining[row]), ratioHp = stand.attackerHpMax / stand.hpMax;
-          const whole = strikes.reduce((sum, strike) => sum + (strike.from === chargeRow ? Math.abs(Number(strike.delta) || 0) : 0), 0);
+          // 放出时的自损反噬（self）不算丢掉的：放弃蓄力反而省下它。
+          const whole = strikes.reduce((sum, strike) => sum + (strike.from !== chargeRow ? 0 : (strike.self ? -1 : 1) * Math.abs(Number(strike.delta) || 0)), 0);
           const hasty = r20HastyShare(table, row, chargeRow);
           const plain = r20Meet({ ...stand, strikes: (stand.strikes || []).filter(option => option.move?.skill?.__chargeRelease !== true) }, weight, stance, follow);
           const met = meet.move?.skill?.__chargeRelease === true;
