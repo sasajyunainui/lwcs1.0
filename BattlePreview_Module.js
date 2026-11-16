@@ -9762,7 +9762,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         }
       } else if (/拉近|突进|追击/.test(positionType)) {
         const pullHit = Math.min(0.3, POSITION_PULL_HIT * scale), avoidCut = Math.min(0.75, POSITION_PULL_AVOID_CUT * scale);
-        combatEffect.hit_bonus = pullHit + avoidCut; once.hit = true;
+        // 拉到敌人身上（接收者 enemy）：被拉过来的那个下一次被击更难躲——此前不分接收者都给持有者命中 +70%，拉近一个敌人等于
+        // 给了它下一击的命中（11-16 推演覆盖排查）。
+        if (role === 'enemy') { combatEffect.dodge_penalty = pullHit + avoidCut; once.dodge = true; }
+        else { combatEffect.hit_bonus = pullHit + avoidCut; once.hit = true; }
         combatEffect.position_pull_detail = { hit: pullHit, targetAvoidCut: avoidCut };
       } else if (/击退|击飞/.test(positionType)) {
         if (role !== 'self') {
@@ -25071,6 +25074,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 推演的增益/减益格（BattleDecision r20Imprint）：把一个效果按结算的写法挂到单位视图上、按结算的写法撤掉状态。
     addState,
     removeProjectedStates,
+    applyProjectedRuleState,
     statePolarity,
     negativeEffectIsImmune,
     conditionMatchesFilter,
