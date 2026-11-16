@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:690bd56a279fcf957be20aa04a50bf8be6715784b8db6290628001dd35ee1d95|MVU_Schema_Runtime.js:a1dc3f0817dd821f0711e7ad8ff05b4a720d174294f6b7f328570b4d6eef9c06|BattlePreview_Module.js:add5d559c5536284c325daef48499bb9b6137d1c46b6d63cbc08d15c55610a4c|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:62c8987714cbc0f2d0138dd32a28b1bfddf62c40984f0048c0dc3001a91e9fe6|BattleRuntime_Module.js:aa01447cd152fede06c4c4480f3b34fe71c8a0fc739040b61470e319d39d4cc6 */
+/* sources-sha256: MVU_Skill_Runtime.js:690bd56a279fcf957be20aa04a50bf8be6715784b8db6290628001dd35ee1d95|MVU_Schema_Runtime.js:d3ffbc45bd2b8deeace72d2ef6786a1c273cee0f29ff1d5ff8b792968c988c76|BattlePreview_Module.js:add5d559c5536284c325daef48499bb9b6137d1c46b6d63cbc08d15c55610a4c|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:62c8987714cbc0f2d0138dd32a28b1bfddf62c40984f0048c0dc3001a91e9fe6|BattleRuntime_Module.js:aa01447cd152fede06c4c4480f3b34fe71c8a0fc739040b61470e319d39d4cc6 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -30743,7 +30743,7 @@ function 合成魂技融合技能数据_V1(融合技 = {}, 融合技名 = '', �
     前摇: Math.max(0, ...贡献.map(项 => Number(项.魂技.前摇) || 0)),
     消耗: Object.keys(合成消耗).length ? 合成消耗 : '无',
     _效果数组: 效果,
-    描述: `${贡献.map(项 => `${项.角色名}「${项.魂技名}」`).join('、')}合成的融合技（合力 ×${合力.toFixed(1)}）`,
+    效果描述: `${贡献.map(项 => `${项.角色名}「${项.魂技名}」`).join('、')}合成的融合技（合力 ×${合力.toFixed(1)}）`,
   };
 }
 
