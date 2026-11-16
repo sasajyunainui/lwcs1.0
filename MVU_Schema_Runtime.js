@@ -6968,6 +6968,22 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
           });
           ensureFusionSkillMentalCost(fusionData?.技能数据, 0.5);
         });
+        // 领域技（S80-C）：生成的魂技按魂环年限定档（十万年 S+、五万年 S、万年 A——生成时的品质骰不落盘）与环位标；补环生成的
+        // 魂技这一次读档还没经过 规范化魂灵Schema_V1，所以在这里标。
+        if (typeof 标记生成领域技_V1 === 'function') Object.entries(charData).forEach(([武魂键, 武魂]) => {
+          if (!/^第\d+武魂$/.test(武魂键) || !武魂 || typeof 武魂 !== 'object') return;
+          Object.entries(武魂).forEach(([魂灵键, 魂灵]) => {
+            if (!/^第\d+魂灵$/.test(魂灵键) || !魂灵 || typeof 魂灵 !== 'object') return;
+            Object.entries(魂灵).forEach(([环键, 魂环]) => {
+              const 环位 = Number(String(环键).match(/^第(\d+)魂环$/)?.[1]);
+              if (!环位 || !魂环 || typeof 魂环 !== 'object') return;
+              Object.entries(魂环).forEach(([技键, 魂技]) => {
+                const 年限 = Number(魂环.年限) || 0, 档 = 年限 >= 100000 ? 'S+' : 年限 >= 50000 ? 'S' : 年限 >= 10000 ? 'A' : '';
+                if (档 && /^第\d+魂技/.test(技键) && 魂技 && typeof 魂技 === 'object' && 魂技.计价版本 !== undefined) 标记生成领域技_V1(魂技, 档, 环位, '魂技');
+              });
+            });
+          });
+        });
         // 融合技（非武魂融合，S80-E）：每次读档按参与者当前贡献的魂技重新合成，参与者不全或魂技找不到的保留原样。
         _(charData.融合技 || {}).forEach((融合技, 融合技名) => {
           if (!融合技 || typeof 融合技 !== 'object') return;
@@ -7971,6 +7987,15 @@ function 规范化魂环Schema_V1(魂环) {
 function 规范化魂灵Schema_V1(魂灵) {
     Object.keys(魂灵).forEach(键 => {
       if (是魂环槽位键_V1(键)) 魂灵[键] = 读取MVUSchema部件_V1('SoulRingSchema').parse(魂灵[键]);
+    });
+    // 领域技（S80-C）：生成的魂技（带计价版本）按魂灵品质与环位、技能内容的哈希标成领域（MVU_Skill_Runtime 标记生成领域技_V1）。
+    if (typeof 标记生成领域技_V1 === 'function') Object.entries(魂灵).forEach(([环键, 魂环]) => {
+      const 环位 = Number(String(环键).match(/^第(\d+)魂环$/)?.[1]);
+      if (!环位 || !魂环 || typeof 魂环 !== 'object') return;
+      Object.entries(魂环).forEach(([技键, 魂技]) => {
+        const 年限 = Number(魂环.年限) || 0, 档 = 年限 >= 100000 ? 'S+' : 年限 >= 50000 ? 'S' : 年限 >= 10000 ? 'A' : '';
+        if (档 && 是魂技槽位键_V1(技键) && 魂技 && typeof 魂技 === 'object' && 魂技.计价版本 !== undefined) 标记生成领域技_V1(魂技, 档, 环位, '魂技');
+      });
     });
     delete 魂灵.魂环;
     return 魂灵;

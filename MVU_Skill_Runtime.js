@@ -2464,6 +2464,29 @@ globalThis.__LWCS_TRAVEL_CAPABILITY_RUNTIME_V1__ = 旅行能力运行时_V1;
 try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_TRAVEL_CAPABILITY_RUNTIME_V1__ = 旅行能力运行时_V1; } catch (错误) {}
 try { if (globalThis.top && globalThis.top !== globalThis) globalThis.top.__LWCS_TRAVEL_CAPABILITY_RUNTIME_V1__ = 旅行能力运行时_V1; } catch (错误) {}
 
+// 领域技进生成（接入方案 S80-C，用户 2026-11-16「进吧，属于极品技能，概率极低」）：非自身效果全是群体/全场且持续 2 回合以上的魂技
+// （本来就是笼罩一片的招；读档规范化魂灵时按魂灵品质与环位标，生成中途的技能会被后续轮次替换），按品质与环位取概率（领域生成概率_V1：S+ 级与 S 级第 6 环起，A 级第 8 环起；生成的 S 级极少，75/95 级
+// 144 个角色里一个没有，A 级第 8 环起的同类招约 13 个——2% 约每 550 个高等级角色出一个），按技能内容的哈希抽——不动效果与
+// COST，也不占用生成的随机数序列（否则此后每个角色的生成都会变）。等级：A 级 1～2、S 级 2～3、S+ 级 4～5（环越高越高）。
+var 领域生成概率_V1 = { 'S+': 0.1, S: 0.05, A: 0.02 };
+function 标记生成领域技_V1(技能 = {}, 品质 = '', 魂环位 = 1, 来源 = '魂技') {
+  if (!技能 || typeof 技能 !== 'object' || 技能.领域 || 来源 !== '魂技') return false;
+  const 品质文本 = String(品质 || '').trim();
+  const 档 = /^S\+|神品/.test(品质文本) ? 'S+' : /^S|极品/.test(品质文本) ? 'S' : /^A|优秀/.test(品质文本) ? 'A' : '';
+  const 环 = Math.max(1, Math.floor(Number(魂环位) || 1));
+  if (!档 || 环 < (档 === 'A' ? 8 : 6)) return false;
+  const 效果 = (Array.isArray(技能._效果数组) ? 技能._效果数组 : []).filter(效果项 => String(效果项?.目标 || '').trim() !== '自身');
+  if (!效果.length || !效果.every(效果项 => /群体|全场/.test(String(效果项?.目标 || '')) && Number(效果项?.持续回合) >= 2)) return false;
+  const 抽样 = hashBattleSeedValue(JSON.stringify([技能.魂技名 || '', 技能._效果数组])) / 4294967296;
+  if (!(抽样 < Number(领域生成概率_V1?.[档] ?? 0))) return false;
+  const 落点 = 效果.map(效果项 => String(效果项?.目标 || '').trim());
+  技能.领域 = {
+    等级: 档 === 'S+' ? (环 >= 9 ? 5 : 4) : 档 === 'S' ? (环 >= 8 ? 3 : 2) : (环 >= 9 ? 2 : 1),
+    范围: 落点.some(目标 => /全场/.test(目标)) ? '全场' : 落点.every(目标 => /友方|己方/.test(目标)) ? '己方' : '敌方',
+  };
+  return true;
+}
+
 function hashBattleSeedValue(seedText = '') {
   const text = String(seedText || '');
   let hash = 2166136261;
