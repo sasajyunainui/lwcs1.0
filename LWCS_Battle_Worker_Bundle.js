@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:0fcde2dbf3fabcab9564dd4f5249405d6d3a175c0a3e31a6f0d08274d2809377|MVU_Schema_Runtime.js:de73b7b99c63672d9314d492ec2dac4baf3f83f1fb14714d8e983e7a8ffc8790|BattlePreview_Module.js:187b4f6fa977d96a2c8011aadfdeaaeee99834c799ad5466562440dab262e950|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:c263dd8ca8acb30c15b8af739e14115b4cea4bb14dc4d7fa9980fdde9ddeb31e|BattleRuntime_Module.js:b7edade0b0a35af5787e662609e75d922f4fc747f666c46c41d36d0544fe6d02 */
+/* sources-sha256: MVU_Skill_Runtime.js:39c4d495cdc98bb15b5b0d78c71a73db7d734c866e6d9add150a4500dfe25ddb|MVU_Schema_Runtime.js:de73b7b99c63672d9314d492ec2dac4baf3f83f1fb14714d8e983e7a8ffc8790|BattlePreview_Module.js:187b4f6fa977d96a2c8011aadfdeaaeee99834c799ad5466562440dab262e950|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:c263dd8ca8acb30c15b8af739e14115b4cea4bb14dc4d7fa9980fdde9ddeb31e|BattleRuntime_Module.js:b7edade0b0a35af5787e662609e75d922f4fc747f666c46c41d36d0544fe6d02 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -7658,7 +7658,10 @@ function 估算自动生成预算摘要_V1(context = {}) {
   );
   const 初始倍率 = 读取自动生成初始消耗前摇倍率_V1({}, { ...(context || {}), 预算评估摘要: { 运转基准 } });
   // 魂骨技能门禁对标魂环位的标准 COST（消耗/前摇倍数按 1），被动魂骨技能没有消耗，不能让 0.05 倍消耗把门禁压到 0.5。
-  const 代价能量 = 来源 === '魂骨技能' ? 1 : 计算运转代价能量_V1(初始倍率.消耗倍率, 初始倍率.前摇倍率);
+  // 非魂导器的装备技能同理（11-17）：物品被动没有消耗，按稀有度对标魂环位；魂导器有魂力消耗，照常按消耗/前摇倍数算。
+  const 代价能量 = 来源 === '魂骨技能' || (来源 === '装备技能' && !(Number(context?.魂导等级) > 0) && String(context?.技能?.承载方式 || context?.承载方式 || '').trim() === '被动')
+    ? 1
+    : 计算运转代价能量_V1(初始倍率.消耗倍率, 初始倍率.前摇倍率);
   const 位级倍率上限 = 读取魂技位COST倍率上限_V1(虚拟魂技位);
   const 位级硬上限 = context?.forceTrueBody === true || 来源 === '武魂融合技'
     ? Infinity
@@ -17258,6 +17261,8 @@ function 推断技能来源_V1(path = []) {
 }
 
 // v4：从来源 + 上下文映射虚拟魂技位（用于无固有位级的来源）
+var 装备稀有度魂技位_V1 = Object.freeze({ 普通: 1, 优秀: 2, 稀有: 3, 史诗: 5, 传说: 7, 神器: 8, 超神器: 9 });
+
 function 推断虚拟魂技位_V1(来源 = '魂技', 上下文 = {}) {
   const { 角色 = {}, 魂骨年限, 魂环位 } = 上下文 || {};
   const 角色等级 = Number(角色?.等级 ?? 0);
@@ -17281,6 +17286,11 @@ function 推断虚拟魂技位_V1(来源 = '魂技', 上下文 = {}) {
   }
   // 魂导器（接入方案 S80-B）：魂导等级 N 对标第 N 环（9 级以上按第 9 环），与魂骨对标魂环位同一做法。
   if (来源 === '装备技能' && Number(上下文?.魂导等级) > 0) return Math.max(1, Math.min(9, Math.floor(Number(上下文.魂导等级))));
+  // 其余装备按物品稀有度对标魂环位（用户 2026-11-17「按稀有度加」，与魂骨按年限对标同一做法）。
+  if (来源 === '装备技能') {
+    const 稀有度位 = 装备稀有度魂技位_V1[String(上下文?.装备品质 ?? 上下文?.物品品质 ?? '').trim()];
+    if (稀有度位) return 稀有度位;
+  }
   // 血脉/气血/精神领域/装备/物品 等：用角色等级映射，否则中位
   if (角色等级 > 0) return Math.max(1, Math.min(9, Math.floor(角色等级 / 10)));
   return 5;
@@ -17485,7 +17495,12 @@ function 评估技能预算_V1(技能 = {}, 上下文或魂技位 = {}, 旧上�
   const 资源上下文 = { ...上下文, 技能, 角色, 等级: 上下文?.等级 ?? 角色?.属性?.等级 };
   const 承载消耗比例 = 读取技能承载消耗比例_V1(技能, 资源上下文);
   const 实际消耗 = Number.isFinite(标准消耗) ? 读取技能实际消耗_V1(技能, 资源上下文, 标准消耗) : 0;
-  const 消耗倍数 = 武魂真身百分比消耗 || 武魂融合技百分比消耗
+  // 魂导器技能没写消耗时，战斗按魂导等级的标准魂力消耗补上（BattleDecision soulToolSkillView），预算同样按标准消耗（倍数 1）。
+  const 魂导器缺省消耗 = 来源 === '装备技能' && Number(上下文?.魂导等级) > 0 && String(技能?.承载方式 || '').trim() !== '被动' &&
+    (!技能?.消耗 || String(技能.消耗).trim() === '无');
+  const 消耗倍数 = 魂导器缺省消耗
+    ? 1
+    : 武魂真身百分比消耗 || 武魂融合技百分比消耗
     ? Math.max(0.05, Math.min(4, 承载消耗比例 / 获取武魂真身运转标准消耗比例_V1()))
     : Number.isFinite(标准消耗) && 标准消耗 > 0
       ? Math.max(0.05, Math.min(4, 实际消耗 / Math.max(1, 标准消耗)))
@@ -17506,7 +17521,9 @@ function 评估技能预算_V1(技能 = {}, 上下文或魂技位 = {}, 旧上�
   const 触发档 = 评估触发限制档_V1(技能);
   const 副作用档 = 评估副作用预算档_V1(技能);
 
-  const 代价能量 = 来源 === '魂骨技能' ? 1 : 计算运转代价能量_V1(消耗倍数, 前摇倍数);
+  // 物品被动（非魂导器装备、承载方式「被动」）没有消耗，门禁按稀有度对标的魂环位标准 COST（11-17，与魂骨同理）；魂导器与主动装备技能照常按消耗/前摇倍数。
+  const 物品被动免代价 = 来源 === '装备技能' && !(Number(上下文?.魂导等级) > 0) && String(技能?.承载方式 || '').trim() === '被动';
+  const 代价能量 = 来源 === '魂骨技能' || 物品被动免代价 ? 1 : 计算运转代价能量_V1(消耗倍数, 前摇倍数);
   const 特殊预算 = 武魂真身百分比消耗
     ? 计算武魂真身预算基准_V1(角色, 实际魂环位, 上下文)
     : 来源 === '武魂融合技'
