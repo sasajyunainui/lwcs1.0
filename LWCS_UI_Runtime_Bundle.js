@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:3a7ab2b86114d7997e52efa71f2ebd4abfbfe0588597e12628cc11524a69319e|cockpit/designer-model.js:43e9907dc6a213586bc290bdf3e507a8178bd80879f0f020231ac30ffa7c4f99|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:8dd53716466ef2089e149544f904d77396a61a81b003401e51fc1a0cb03a5323|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:608637f6d35ae34ac2ec4a777e03ca07c52818ccc60071d1602ffe082a3beef1|BattleRuntime_Module.js:b3d0239dd9e529587d5e893561ef7f96bba6e1138e1aefb109fc9a5ad318a7da|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:3a7ab2b86114d7997e52efa71f2ebd4abfbfe0588597e12628cc11524a69319e|cockpit/designer-model.js:43e9907dc6a213586bc290bdf3e507a8178bd80879f0f020231ac30ffa7c4f99|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:719194b05f165a828865be24e01b31257142ef85d3ce09b8ce2fc1e2becfbe2f|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:e16daf2b60dbd069cfcc6de8a08abbbda42b553bf4872c635410012f1932799e|BattleRuntime_Module.js:9f5c192f215b9a4dd90d098f254daa40f0e45577b1dcda0407ed35fac2b6bf8a|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -63241,9 +63241,10 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
   // 融合蓄力（用户 2026-11-12）: a charged fusion skill is charged by its partners too — from the turn it starts to the
   // turn it is released each partner's natural turn goes to it. The unit charging a fusion skill that `unit` is a
   // partner of (its 蓄力技能 lists the partners), or null; a host that is down holds nobody.
-  // 仓促出手（用户 2026-11-17「可中断，可仓促出手」，原作 0515 谢邂「蓄势未满」一击、0758 白秀秀对清萝）: a charge given up to
-  // answer a move still lands, at the share of it already charged × HASTY_CHARGE_FACTOR of its power — the cost was paid
-  // in full. 0 when too little is charged to land anything (under HASTY_CHARGE_FLOOR), or the charge is already cut short.
+  // 仓促出手（用户 2026-11-17「可中断，可仓促出手」，原作 0515 谢邂「蓄势未满」一击）: a charge given up to answer a move
+  // still lands, at the share of it already charged × HASTY_CHARGE_FACTOR of its power — its whole cost paid at the release,
+  // as any charge pays (BattleRuntime charges nothing to start). 0 when too little is charged to land anything (under
+  // HASTY_CHARGE_FLOOR), or the charge is already cut short.
   const HASTY_CHARGE_FACTOR = 0.6, HASTY_CHARGE_FLOOR = 0.05;
   // The share of a charge's windup already charged (0 when it is not a charge under way).
   function chargedShare(charge = null) {
@@ -63257,8 +63258,9 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     return scale >= HASTY_CHARGE_FLOOR ? scale : 0;
   }
   // 蓄力迎击（同日用户选「3」；原作 0758 白秀秀对清萝、神界传说 88～90 章情绪之神「谁去攻击情绪之神，就要承受这一刀的威力」）:
-  // a unit charging may meet a move on it with the charge itself, thrown at the attacker at once — no windup left, nothing
-  // more to pay, its damage at the share charged (no hasty cut: it was aimed at this) — as any skill meets a move (the
+  // a unit charging may meet a move on it with the charge itself, thrown at the attacker at once — no windup left, its cost
+  // paid as any release pays it (a charge pays nothing to start: BattleRuntime charges at the release), its damage at the
+  // share charged (no hasty cut: it was aimed at this) — as any skill meets a move (the
   // clash / preemption of the engagement chain); the move still comes. The skill offered for that, one per charge (kept, so
   // its identity holds through a decision); null when nothing is charged enough, the charge is cut short, or is a fusion's.
   const chargeMeetSkills = new WeakMap();
@@ -63273,7 +63275,7 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     const skill = JSON.parse(JSON.stringify(charge.skill));
     const name = String(skill.魂技名 || skill.name || charge.actionName || '蓄力').trim();
     skill.魂技名 = `${name}（蓄力迎击）`; skill.name = skill.魂技名;
-    skill.前摇 = 0; skill.cast_time = 0; skill.消耗 = '无';
+    skill.前摇 = 0; skill.cast_time = 0;
     skill.__chargeRelease = true;
     for (const effect of Array.isArray(skill._效果数组) ? skill._效果数组 : []) {
       if (effect?.原型 === '伤害结算' && Number(effect.威力倍率) > 0) effect.威力倍率 = Math.max(1, Math.round(Number(effect.威力倍率) * share));
@@ -101622,6 +101624,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         });
         });
       });
+    });
+    // 蓄满握住（11-17）: a full charge at its release may be held one more turn instead (BattleRuntime holdChargeOneTurn) — only
+    // when it can be released at all (a release with no legal target fizzles as before, not held).
+    if (forcedSkill && input.actionOpportunity?.chargeHoldAllowed === true && (!opportunityRole || opportunityRole.toUpperCase() === 'ACTIVE') &&
+      candidates.some(candidate => candidate?.declaration?.actionKind === 'RELEASE_SKILL')) candidates.push({
+      candidateId: `${actorId}:PASS_OPPORTUNITY`,
+      declaration: defensiveDeclaration(actorId, 'PASS_OPPORTUNITY'),
+      voluntaryOpportunityPass: true,
     });
     if (forcedSkill) return candidates;
     // 被控时的解控出手（BattleRuntime breakout）: only the skills that clear the control, or passing.
@@ -161751,6 +161761,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return { keep, release, end: release > keep + R20_RELEASE_MARGIN, carriers: carriers.map(([key]) => key) };
   }
 
+  const R20_CHARGE_HOLD_UPKEEP = 0.1;
   // The row whose charge `row` is in while it is charging (BattlePreview isCharging) — its own, or the holder's of a fusion
   // skill it charges with; undefined when none (a charge already cut short only waits for its holder's next action).
   function r20ChargeRow(table, row) {
@@ -162092,6 +162103,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 接战链 阶段二: an answer that meets the move (a clash's difference, a preemption's damage) is not answered in turn and
     // leaves no attack opening (BattleRuntime settleStructuredEngagement settles it as a REACTION).
     const answering = String(request.actionOpportunity?.role || '').toUpperCase() === 'REACTION';
+    // 蓄力释放（11-17）: releasing the charge now lands it in the candidate's own settlement — its pending strike on the table
+    // (r20Facts strikes) goes; holding it (蓄满握住: the PASS offered at the release) keeps it, at CHARGE_HOLD_UPKEEP of the
+    // skill's startup cost (BattleRuntime holdChargeOneTurn), read here as spent.
+    if (request.actionOpportunity?.forcedChargeRelease === true && actorRow !== undefined && table.units[actorRow]?.蓄力技能) {
+      const kind = String(candidate?.declaration?.actionKind || '').trim().toUpperCase();
+      if (kind === 'RELEASE_SKILL') { r20DropCharge(table, strikes, busy, actorRow, 0); seen += 1; }
+      else if (kind === 'PASS_OPPORTUNITY' && request.actionOpportunity?.chargeHoldAllowed === true) {
+        const holder = table.units[actorRow], stages = preview.readSkillCostStages(holder.蓄力技能.skill || {}, { costActor: holder })?.启动 || {};
+        for (const [resource, amount] of Object.entries(stages)) {
+          const maximum = Math.max(1, preview.readResourceMax(holder, resource));
+          spent += R20_CHARGE_HOLD_UPKEEP * Math.max(0, Number(preview.resolveSkillResourceCost(holder, resource, amount)) || 0) / maximum;
+        }
+      }
+    }
     // 蓄力中应对（11-17）: an answer of a unit charging gives the charge up; letting the move go by keeps it.
     if (answering && actorRow !== undefined && String(candidate?.declaration?.actionKind || '').trim().toUpperCase() !== 'PASS_OPPORTUNITY') {
       const chargeRow = r20ChargeRow(table, actorRow);
@@ -162470,7 +162495,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         : preview.collectEffects(declaration.skill || {}).every(effect => /自身|己方|友方/.test(String(effect?.目标 || ''))) ? R20_REVEAL_SELF
         // 效果目标写「单体」、声明时点的是己方单位（辅助给队友上增益）：也只亮自己的魂环（11-16 行为检查目录第 46 题：此前按攻击魂技全额扣）。
         : (declaration.targetIds || []).length && (declaration.targetIds || []).every(id => { const row = table.index.get(String(id)); return row !== undefined && table.sides[row] === request.actorSide; }) ? R20_REVEAL_SELF : 1;
-    const reveal = declaration?.actionKind === 'RELEASE_SKILL' && unseen > 0 && race + tempo > 0
+    // A charge released (蓄力释放) showed its rings when the charge began: nothing more is shown now.
+    const reveal = declaration?.actionKind === 'RELEASE_SKILL' && request.actionOpportunity?.forcedChargeRelease !== true && unseen > 0 && race + tempo > 0
       ? revealScale() * Math.min(R20_REVEAL_CAP, (R20_REVEAL_BASE + R20_REVEAL_SHARE * clamp(spent / R20_TRUMP_SPENT, 0, 1)) * wary) * (race + tempo) : 0;
     // 留手: in a spar, what of a hit lands below the 重伤 line (R20_SPAR_INJURY_LINE of the target's HP) is held against it.
     let restraint = 0;
@@ -183251,6 +183277,36 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
   }
 
+  // 蓄满握住: what keeping a full charge one more turn takes (CHARGE_HOLD_UPKEEP of each startup cost of its skill, read as the
+  // settlement reads a cost: BattlePreview resolveSkillResourceCost), and whether the holder has it.
+  const CHARGE_HOLD_UPKEEP = 0.1, CHARGE_HOLD_LIMIT = 2;
+  const CHARGE_HOLD_RESOURCE_KEYS = Object.freeze({ 魂力: 'sp', 精神力: 'men', 体力: 'vit' });
+  function chargeHoldUpkeep(unit = {}, charge = {}) {
+    const stages = previewRuntime.readSkillCostStages?.(charge?.skill || {}, { costActor: unit }) || {};
+    return Object.entries(stages.启动 || {}).map(([resource, amount]) => [resource, Math.ceil(Math.max(0, Number(previewRuntime.resolveSkillResourceCost(unit, resource, amount)) || 0) * CHARGE_HOLD_UPKEEP)])
+      .filter(([resource, value]) => CHARGE_HOLD_RESOURCE_KEYS[resource] && value > 0);
+  }
+  function chargeHoldUpkeepPayable(unit = {}, charge = {}) {
+    return chargeHoldUpkeep(unit, charge).every(([resource, value]) => previewRuntime.readResource(unit, resource) >= value);
+  }
+  function holdChargeOneTurn(combatData = {}, unit = {}, charge = {}, node = {}) {
+    const paid = chargeHoldUpkeep(unit, charge);
+    for (const [resource, value] of paid) writeCombatResource(unit, CHARGE_HOLD_RESOURCE_KEYS[resource], previewRuntime.readResource(unit, resource) - value);
+    charge.cast_time = 0;
+    charge.heldRounds = Number(charge.heldRounds || 0) + 1;
+    const name = previewRuntime.unitName(unit);
+    const actionName = normalizeActionDisplayName(charge?.skill?.name || charge?.skill?.魂技名 || charge?.actionName || '蓄力行动');
+    return writeLedgerEvent(combatData, {
+      eventKind: 'charge_progress', round: Number(combatData?.回合 || 0),
+      actorId: previewRuntime.unitId(unit), actorName: name, targetIds: Array.isArray(charge?.targetIds) ? charge.targetIds : [],
+      actionName, actionType: 'charge_progress', actorControl: node?.actorControl || 'AI', actionRole: 'ACTIVE',
+      actionId: String(charge?.sourceActionId || '').trim(), sourceActionId: String(charge?.sourceActionId || '').trim(),
+      result: 'held', resultState: 'PENDING', ruleCode: 'CHARGE_HELD',
+      meta: { source: 'structured_runtime', heldRounds: charge.heldRounds, upkeep: Object.fromEntries(paid),
+        reasonText: `${name}蓄满【${actionName}】按住不发（第 ${charge.heldRounds} 回合，维持 ${paid.map(([resource, value]) => `${resource} ${value}`).join('、') || '无'}）` },
+    });
+  }
+
   // 蓄力迎击: the charge thrown at the attacker as the answer — it is spent on it.
   function spendChargeToMeet(combatData = {}, unit = {}, node = {}) {
     const charge = unit?.蓄力技能;
@@ -187762,12 +187818,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                   const unit = listCombatUnits(combatData).find(entry => isUnitIdentityMatch(entry, id));
                   return unit && previewRuntime.isBattleCapable(unit);
                 });
+                // 蓄满握住（用户 2026-11-17「该魂技消耗的10%吧」「注意不要把蓄力骗反击做成常用招了」；神界传说 88 章情绪之神握刀
+                // 不发）: a charge that is full may be held instead of released — the action let go by (PASS) — at
+                // CHARGE_HOLD_UPKEEP of its startup cost each time, for at most CHARGE_HOLD_LIMIT turns; not a charge cut short,
+                // nor a fusion's, nor one its holder cannot pay to keep.
+                const holdAllowed = !isCooperativeAssist && node.nodeKind === 'ACTIVE' && storedCharge.hasty !== true &&
+                  !(Array.isArray(storedCharge.fusionPartnerIds) && storedCharge.fusionPartnerIds.length) &&
+                  Number(storedCharge.heldRounds || 0) < CHARGE_HOLD_LIMIT && chargeHoldUpkeepPayable(actor, storedCharge);
                 const releaseWith = forcedTargetIds => decideForNode(actor, node, {
                   role: node.actionRole,
                   forcedSkill: chargedSkill,
                   forcedTargetIds,
                   forcedCreationRecipientId: storedCharge.creationRecipientId || '',
                   forcedChargeRelease: true,
+                  ...(holdAllowed ? { chargeHoldAllowed: true } : {}),
                 });
                 const noLegalRelease = error => error?.code === 'BATTLE_DECISION_CANDIDATE_POOL_EMPTY' && error.actorId === previewRuntime.unitId(actor);
                 let releaseError = null;
@@ -187803,6 +187867,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 }
                 if (handleLostDecisionNode(decisionResult, node)) {
                   actor.蓄力技能 = null;
+                  continue;
+                }
+                if (holdAllowed && String(decisionResult?.selected?.declaration?.actionKind || '').trim().toUpperCase() === 'PASS_OPPORTUNITY') {
+                  holdChargeOneTurn(combatData, actor, storedCharge, node);
+                  if (naturalOpportunity && String(naturalOpportunity?.status || '').trim() === 'EXECUTING') naturalOpportunity.status = 'CONSUMED';
+                  consumeAutonomousSummonWindow(actor, node);
+                  queue.recordTrace('EXECUTED', node, { result: 'charge_held', heldRounds: storedCharge.heldRounds });
                   continue;
                 }
                 declaration = cloneValue(decisionResult?.selected?.declaration || {});
