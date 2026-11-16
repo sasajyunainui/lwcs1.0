@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:2a32ed08ac77df6a5c0d137b0cf5bff4e0f478322e6b6e831a6441eab9820c6a|MVU_Schema_Runtime.js:24aed5e223712a53c09c5b745a3e4891a729d4e20843aa1ddf7aa5ca96328d1f|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:1f7a519a850bc170c3da108bfe22614d098b593bc573d8b38a5c0a7bec81aba5 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:2a32ed08ac77df6a5c0d137b0cf5bff4e0f478322e6b6e831a6441eab9820c6a|MVU_Schema_Runtime.js:86c286db1a3234f6f16e1fff0d8c738c06231808a55651bd57c8978c2e442719|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:1f7a519a850bc170c3da108bfe22614d098b593bc573d8b38a5c0a7bec81aba5 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -37581,9 +37581,11 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       return 规划.sort((a, b) => (a.魂环位列表?.[0] || a.魂环位 || 0) - (b.魂环位列表?.[0] || b.魂环位 || 0));
     }
 
+    // 整十级是瓶颈（用户 2026-11-16）：40 级是三环、吸收第四魂环才到 41（与存档底线「N 环至少 10N+1 级」一致），
+    // 所以按「等级 − 1」取环——此前按 等级 ÷ 10 给满 N 环，读档又按底线把等级抬到 10N+1。
     function 读取初始化武魂目标魂环数_V1(武魂槽位 = '第1武魂', 等级 = 1, 是否魂兽 = false) {
       if (是否魂兽) return 0;
-      const 等级值 = Math.max(1, Number(等级 || 1));
+      const 等级值 = Math.max(0, Number(等级 || 1) - 1);
       if (武魂槽位 === '第2武魂') {
         if (等级值 < 70) return 0;
         if (等级值 < 75) return 1;

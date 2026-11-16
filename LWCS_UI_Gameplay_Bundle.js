@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:11ac0c3399216db1e1abac9ea8e8cb5f9a1b10d38755a31e21d47b3b7ac87c73|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:65a26bf395fc46ebb9f7b65a7ade0fcb1d46a0816f80ffc737d60ffa41fd8e8a|BattleRuntime_Module.js:34143db65a3a325210de4537479330896cca69eeb116c03d8e65a1db28ac5058|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:11ac0c3399216db1e1abac9ea8e8cb5f9a1b10d38755a31e21d47b3b7ac87c73|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:dac8edad5035930d5ce76c75590005470feb656c3d6d8d27b75aabf43771931b|BattleRuntime_Module.js:0e521bfa5e259a4f50c89d3cbbbcafc7e9f03fb910bdf68e8df0f7bc15d7c625|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -44928,11 +44928,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
 
   // 魂导器（接入方案 S80-B）：装配的魂导器的装备技能来源类别记「魂导器」；没写消耗（或「无」）的按魂导等级对标第 N 环的标准
   // 魂力消耗（MVU 构建魂技消耗文本_V1，9 级以上按第 9 环）——此前写成「无」的魂导炮可以白放。装备对象换成带这些技能的视图。
-  // 弹药（S80-B 一次性弹药类，定装魂导炮弹等）：装配件写了 弹药（剩余发数）的，打空了它的技能就不在候选里；每放一次
-  // BattleRuntime 扣一发（技能带 __魂导器槽位）。视图按弹药数缓存（弹药在原对象上扣）。
+  // 弹药（S80-B 一次性弹药类，定装魂导炮弹等）：装配件的剩余发数——写了 弹药 的读它，否则读随背包批次带来的 剩余使用次数
+  // （11-16 用户「结构尽量简单」：不另加字段）；打空了它的技能就不在候选里；每放一次 BattleRuntime 扣一发（技能带 __魂导器槽位）。
+  // 视图按弹药数缓存（弹药在原对象上扣）。
   const soulToolViews = new WeakMap();
+  const soulToolAmmoField = item => item && typeof item === 'object' ? (item.弹药 !== undefined ? '弹药' : item.剩余使用次数 !== undefined ? '剩余使用次数' : '') : '';
   const soulToolAmmoKey = equipment => Object.entries(equipment?.魂导器?.装配 || {})
-    .map(([slot, item]) => (item && typeof item === 'object' && item.弹药 !== undefined ? `${slot}:${Number(item.弹药)}` : '')).filter(Boolean).join('|');
+    .map(([slot, item]) => (soulToolAmmoField(item) ? `${slot}:${Number(item[soulToolAmmoField(item)])}` : '')).filter(Boolean).join('|');
   function soulToolSkillView(equipment = null) {
     const fitted = equipment?.魂导器?.装配;
     if (!fitted || typeof fitted !== 'object') return equipment;
@@ -44942,12 +44944,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const costText = root.__LWCS_SKILL_COST_HELPERS_V1__?.构建魂技消耗文本_V1;
     const slots = Object.fromEntries(Object.entries(fitted).map(([slot, item]) => {
       if (!item || typeof item !== 'object' || !item.装备技能 || typeof item.装备技能 !== 'object') return [slot, item];
-      if (item.弹药 !== undefined && !(Number(item.弹药) > 0)) return [slot, { ...item, 装备技能: {} }];
+      if (soulToolAmmoField(item) && !(Number(item[soulToolAmmoField(item)]) > 0)) return [slot, { ...item, 装备技能: {} }];
       const tier = Math.max(1, Math.min(9, Math.floor(Number(item.魂导等级) || 1)));
       const skills = Object.fromEntries(Object.entries(item.装备技能).map(([name, skill]) => {
         if (!skill || typeof skill !== 'object') return [name, skill];
         const unpaid = !skill.消耗 || String(skill.消耗).trim() === '无';
-        return [name, { ...skill, 来源类别: skill.来源类别 || '魂导器', ...(item.弹药 !== undefined ? { __魂导器槽位: slot } : {}),
+        return [name, { ...skill, 来源类别: skill.来源类别 || '魂导器', ...(soulToolAmmoField(item) ? { __魂导器槽位: slot } : {}),
           ...(unpaid && typeof costText === 'function' ? { 消耗: costText('纯耗魂力', 50, tier) } : {}) }];
       }));
       return [slot, { ...item, 装备技能: skills }];
@@ -126586,17 +126588,19 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (actionKind === 'RELEASE_SKILL' && declaration?.skill?.__魂导器槽位 && skillEffectIndex === 0 && !conditionalMeta?.conditionalDepth) {
         const spentHere = actionEvent.__triggerLimitSpent ||= new Set();
         const fitted = actor?.装备?.魂导器?.装配?.[declaration.skill.__魂导器槽位];
-        if (!spentHere.has('__ammo') && fitted && typeof fitted === 'object' && Number.isFinite(Number(fitted.弹药))) {
+        // 剩余发数：写了 弹药 的扣它，否则扣随背包批次带来的 剩余使用次数（BattleDecision soulToolSkillView 同口径）。
+        const ammoField = fitted && typeof fitted === 'object' ? (fitted.弹药 !== undefined ? '弹药' : fitted.剩余使用次数 !== undefined ? '剩余使用次数' : '') : '';
+        if (!spentHere.has('__ammo') && ammoField && Number.isFinite(Number(fitted[ammoField]))) {
           spentHere.add('__ammo');
-          const ammoBefore = Math.max(0, Math.floor(Number(fitted.弹药)));
-          fitted.弹药 = Math.max(0, ammoBefore - 1);
+          const ammoBefore = Math.max(0, Math.floor(Number(fitted[ammoField])));
+          fitted[ammoField] = Math.max(0, ammoBefore - 1);
           writeLedgerEvent(combatData, {
             eventKind: 'resource_change', round: Number(combatData?.回合 || 0),
             actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor), targetId: previewRuntime.unitId(actor), targetName: previewRuntime.unitName(actor),
             actionName: String(fitted.名称 || declaration.skill.魂技名 || '魂导器'), actionType: 'soul_tool_ammo', actorControl: 'SYSTEM', actionRole: 'STATE_TICK',
             sourceActionId: String(actionEvent?.actionId || ''), result: 'loss', resultState: 'LOSS', primaryOutcome: 'resource_reduced', operation: 'REDUCE',
             ruleCode: 'SOUL_TOOL_AMMO', allowImplicitActionSource: true,
-            meta: { source: 'soul_tool_ammo', slot: declaration.skill.__魂导器槽位, before: ammoBefore, after: fitted.弹药, auditOnly: true },
+            meta: { source: 'soul_tool_ammo', slot: declaration.skill.__魂导器槽位, field: ammoField, before: ammoBefore, after: fitted[ammoField], auditOnly: true },
           });
         }
       }
