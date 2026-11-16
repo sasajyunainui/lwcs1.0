@@ -894,6 +894,18 @@ const CharacterSchema = z
       )
       .prefault({})
       .describe('融合技（非武魂融合）：参与者各贡献一个魂技合成一招，效果由贡献的魂技合并、按人数加成'),
+    // 魂兽转化（魂兽转化与本命召唤兽设计，用户 2026-11-17）：剧情里魂兽成为本命召唤兽、魂灵，或献祭给此人时写一条；
+    // 具体结构由读档代码按魂兽数据生成（MVU_Schema_Runtime 应用魂兽转化_V1），不写技能数据。
+    转化记录: z
+      .array(
+        z.looseObject({
+          类型: z.string().prefault('本命召唤兽').describe('本命召唤兽 / 魂灵 / 献祭'),
+          来源: z.string().prefault('无').describe('魂兽在 char 中的键名或名字'),
+          魂技名: z.string().optional().describe('本命召唤兽：召唤魂技的名字，缺省为「召唤＋魂兽名」'),
+        }),
+      )
+      .prefault([])
+      .describe('魂兽转化记录'),
     精神领域: z
       .object({
         名称: z.string().prefault('无').describe('精神领域名称，例如：时光回溯、情绪剥夺'),
