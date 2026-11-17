@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:02d88b6a5c41ed8f960db322273e32175a96625f93bfba05bc1d6e6609450cab|cockpit/designer-model.js:cbbb8156854ed85b560637420324e21db9e899fb9cbef68ba1ccca6d0d217fc2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:27b6ca3f2833c031b38869085a2b66f37285bd92de7a85bb9f7a945ecbb56486|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:302bd8b216533548297d71de900e0f78199fbbe047291aa26ee5ba1198e6867f|BattleRuntime_Module.js:762928c28c62934808485d1e0aa795d3f1916bc4ff3fe9faf84ddba083b992bf|BattleReport_Module.js:b88d2e9f196caea566784d2d036aaec1193fa81041ebd861e3a52d4cbc1e0bc9|BattleUI_Module.js:14335e61b58eae9ac17590a496fa99f8fa38f49dac69ef4686368cb6a2765e01|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:02d88b6a5c41ed8f960db322273e32175a96625f93bfba05bc1d6e6609450cab|cockpit/designer-model.js:cbbb8156854ed85b560637420324e21db9e899fb9cbef68ba1ccca6d0d217fc2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:27b6ca3f2833c031b38869085a2b66f37285bd92de7a85bb9f7a945ecbb56486|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:302bd8b216533548297d71de900e0f78199fbbe047291aa26ee5ba1198e6867f|BattleRuntime_Module.js:762928c28c62934808485d1e0aa795d3f1916bc4ff3fe9faf84ddba083b992bf|BattleReport_Module.js:09f73fb09d0c291becb4ec718b5d13d2ac95dfe4e56fe49651a85906c38a95cb|BattleUI_Module.js:14335e61b58eae9ac17590a496fa99f8fa38f49dac69ef4686368cb6a2765e01|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -164408,6 +164408,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     engagementTerms: 'PUBLIC',
     enemyReasoning: 'INTENT_UNTIL_END',
   });
+  /* 给 AI 的出招理由范围（T26 第 3 批，拍板 2）——待用户拍板：
+     'LAST_TWO_ROUNDS' 最后两回合、至多 6 条（默认，维持现状）| 'KEY_PER_ROUND' 每回合挑一手关键的（意图有变化的优先，
+     其次主导分项差最大的），全场一条线（推荐）| 'ALL' 全部。 */
+  const REPORT_AI_REASON_SCOPE = 'LAST_TWO_ROUNDS';
+  /* 自估胜算怎么展示（T26 第 3 批，拍板 4）——待用户拍板：
+     'PERCENT' 精确百分比（默认，维持现状）| 'TIER' 档位（稳占上风 / 占优 / 势均力敌 / 处于劣势 / 危急；开发视图仍给精确数字，推荐）。 */
+  const REPORT_WIN_DISPLAY = 'PERCENT';
+  // 测试用覆盖（覆盖测试与样例脚本切换上面两个开关；游戏里不设）：root.__LWCS_REPORT_OPTIONS__ = { aiReasonScope, winDisplay }。
+  function reportOption(name, fallback) {
+    const value = root.__LWCS_REPORT_OPTIONS__?.[name];
+    return typeof value === 'string' && value ? value : fallback;
+  }
   const internalSummonPattern = /(?:structured-summon|battle-summon|summon-instance|preview-summon):[^\s,，。；;|]+/gi;
   const internalSummonIdPattern = /^(?:structured-summon|battle-summon|summon-instance|preview-summon):/i;
   /*
@@ -164536,9 +164548,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     ACTORS_UNABLE: '当前没有单位能够继续行动，本次推进结束。',
     RUNTIME_VALIDATION_FAILED: '战斗运行校验未通过。',
     PREVIEW_INTERRUPTED: '本次预演提前中断，战斗仍可继续。',
-    // 中途罢手（BattleRuntime：对方提议、等战斗界面同意框）：本回合打完即停，战斗仍可继续。
-    TRUCE_PENDING: '对方提议罢手，等待回应，战斗仍可继续。',
+    // 中途罢手（BattleRuntime：对方提议、等战斗界面同意框）：本回合打完即停，战斗仍可继续。模板，{proposer} 是提议者（拍板 5）。
+    TRUCE_PENDING: '{proposer}提议罢手，等待回应，战斗仍可继续。',
   });
+  // 停止原因模板的参数（T26 第 3 批）：哪些码要哪些参数；参数是给人看的短名字，不许带模板符号。
+  const previewStopReasonParams = Object.freeze({ TRUCE_PENDING: Object.freeze(['proposer']) });
+  function renderStopReasonText(code = '', params = {}) {
+    const template = previewStopReasonText[code];
+    if (!template) return '';
+    return template.replace(/\{(\w+)\}/g, (match, key) => text(params?.[key]) || match);
+  }
+  function validStopReasonParam(value = '') {
+    const name = text(value);
+    return !!name && name.length <= 40 && !/[{}<>\n]/.test(name);
+  }
 
   function cloneValue(value) {
     return runtime.cloneValue(value);
@@ -166186,12 +166209,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     ) return '';
     let actionId = text(event?.sourceActionId || event?.actionId);
     if (!actionId && text(event?.eventKind) === 'action_start') actionId = text(event?.actionId);
+    // 蓄力释放的 action_start 自己（sourceActionId 指向前一回合的 charge_start）：从它自己的动作起算，见下面循环里的同一条。
+    const ownChargeSource = actionStarts.get(text(event?.sourceActionId));
+    if (text(event?.eventKind) === 'action_start' && text(event?.actionId) && text(ownChargeSource?.eventKind) === 'charge_start' &&
+      number(event?.round, 0) !== number(ownChargeSource?.round, 0)) actionId = text(event.actionId);
     const visited = new Set();
     for (let depth = 0; actionId && depth < 16 && !visited.has(actionId); depth += 1) {
       visited.add(actionId);
       const start = actionStarts.get(actionId);
       const sourceActionId = text(start?.sourceActionId);
       if (!sourceActionId || !actionStarts.has(sourceActionId)) break;
+      // 蓄力释放（拍板 6，T26 第 3 批）：后面回合放出来的那一招自成一次交锋，挂在实际释放的回合，不并回蓄力开始那一回合。
+      const source = actionStarts.get(sourceActionId);
+      if (text(start?.eventKind) === 'action_start' && text(source?.eventKind) === 'charge_start' &&
+        number(start?.round, 0) !== number(source?.round, 0)) break;
       actionId = sourceActionId;
     }
     return actionId;
@@ -166284,8 +166315,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           : ['action_start', 'charge_start', 'pass', 'blocked_action', 'target_fail'];
     for (const eventKind of preferredKinds) {
       for (const exchange of exchanges) {
-        // 落点按事实自己的回合认：蓄力释放（CHARGE_RELEASE）的 action_start 归在蓄力开始那一回合的交锋里，交锋回合比决策早，
-        // 原先按交锋回合过滤，这一手的决策就在因果链上找不到落点（DECISION_ADJUDICATION_MISSING，决策数比投影多 1）。
+        // 落点按事实自己的回合认：原先蓄力释放（CHARGE_RELEASE）的 action_start 归在蓄力开始那一回合的交锋里，交锋回合比决策早，
+        // 按交锋回合过滤时这一手的决策找不到落点（DECISION_ADJUDICATION_MISSING，决策数比投影多 1）。T26 第 3 批起跨回合释放自成交锋
+        // （resolveRootActionId），交锋回合与事实回合一致；按事实回合认的写法保留（同回合的急放仍并在蓄力交锋里）。
         const exchangeRound = number(exchange?.round, 0);
         if (exchangeRound > round) continue;
         const anchor = exchange.factIds
@@ -168800,6 +168832,37 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return 'CHOICE';
   }
 
+  /* 出招记录的依据（T26 第 3 批，factRefs）：这一手落点之前、已经发生的机制事实里，和这一手相关的那几条（每类最近一条）。
+     - 交手约定：本场有就引（约定管着双方能怎么出手）；
+     - 赌约进度 / 破防判定：出手方或目标是这名行动者的；
+     - 罢手：本回合或上一回合的提议、回应；
+     - 佯装：对手摆出、还没收回的佯装（本回合或上一回合）；
+     - 冥想：对手本回合坐下、还没被打断的冥想。
+     只在战报里算（不回写决策、不进存档），先后按账本顺序。 */
+  function decisionFactRefs(decision = {}, anchorLedgerIndex = -1, mechanicRows = [], directory = new Map()) {
+    if (!(anchorLedgerIndex >= 0) || !mechanicRows.length) return [];
+    const actorId = text(decision?.actorId);
+    const actorSide = text(entityEntry(directory, actorId)?.side);
+    const round = number(decision?.round, 0);
+    const opponent = id => {
+      const side = text(entityEntry(directory, id)?.side);
+      return !!side && !!actorSide && side !== actorSide;
+    };
+    const before = mechanicRows.filter(row => row.index < anchorLedgerIndex);
+    const latest = predicate => [...before].reverse().find(predicate) || null;
+    const picks = [
+      latest(row => row.kind === 'ENGAGEMENT_TERMS'),
+      latest(row => row.kind === 'OBJECTIVE_PROGRESS' && row.subjectIds.includes(actorId)),
+      latest(row => row.kind === 'GUARD_BREAK' && row.subjectIds.includes(actorId)),
+      latest(row => row.kind === 'TRUCE' && row.round >= round - 1),
+    ];
+    const feint = latest(row => row.kind === 'FEINT' && row.round >= round - 1 && opponent(row.subjectIds[0]));
+    if (feint?.phase === 'declared') picks.push(feint);
+    const meditation = latest(row => row.kind === 'MEDITATION' && row.round === round && opponent(row.subjectIds[0]) && ['started', 'interrupted'].includes(row.phase));
+    if (meditation?.phase === 'started') picks.push(meditation);
+    return unique(picks.filter(Boolean).map(row => row.factId));
+  }
+
   function buildNarrativeChain(input = {}) {
     const {
       draft = {},
@@ -168809,9 +168872,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       sourceEventsByFactId = new Map(),
       ledger = [],
       remainingHpById = new Map(),
+      decisionRefs = new Map(),
     } = input;
 
     const decisions = Array.isArray(draft?.decisionAudit) ? draft.decisionAudit : [];
+    const ledgerIndexById = new Map((Array.isArray(ledger) ? ledger : []).map((event, index) => [text(event?.eventId), index]));
+    const mechanicRows = [...factsById.values()].filter(fact => fact?.mechanic && typeof fact.mechanic === 'object').map(fact => ({
+      factId: fact.factId, kind: text(fact.mechanic.kind), phase: text(fact.mechanic.phase), round: number(fact.round, 0),
+      subjectIds: (fact.mechanic.subjectIds || []).map(text), index: number(ledgerIndexById.get(text(fact.factId)), -1),
+    })).filter(row => row.index >= 0).sort((left, right) => left.index - right.index);
     const claimedFactIds = new Set();
     const matchedByExchangeId = new Map();
     decisions.forEach(decision => {
@@ -168824,6 +168893,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         sourceEventsByFactId,
       );
       if (!matched?.exchange) return;
+      const refs = decisionFactRefs(decision, number(ledgerIndexById.get(text(matched.anchor?.factId)), -1), mechanicRows, directory);
+      decisionRefs.set(decision, refs);
       const key = text(matched.exchange.exchangeId);
       if (!matchedByExchangeId.has(key)) matchedByExchangeId.set(key, []);
       matchedByExchangeId.get(key).push({ decision, anchor: matched.anchor });
@@ -168862,7 +168933,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         anchorSourceActionId: text(
           rawEventOf(item.anchor?.factId)?.sourceActionId || item.anchor?.sourceActionId,
         ),
-        trace: adaptDecisionTrace(item.decision, directory),
+        trace: (() => {
+          const trace = adaptDecisionTrace(item.decision, directory);
+          if (trace?.reasonRecord) trace.reasonRecord = { ...trace.reasonRecord, factRefs: decisionRefs.get(item.decision) || [] };
+          return trace;
+        })(),
         lostOpportunityReason: item.decision?.lostOpportunity?.reasonCode
           ? playerSafeText(
               item.decision.lostOpportunity.reasonText || item.decision.lostOpportunity.reasonCode,
@@ -169651,7 +169726,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return '';
   }
 
-  function latestSideIntent(decisions = [], sideUnits = [], directory = new Map(), terminal = {}, side = '') {
+  function latestSideIntent(decisions = [], sideUnits = [], directory = new Map(), terminal = {}, side = '', visibilityMode = 'PLAYER') {
     if (terminal?.terminal === true) {
       const winner = text(terminal?.winner);
       const terminalReason = text(terminal?.terminalReason || terminal?.status);
@@ -169681,7 +169756,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     /* 新估值的出招记录（T24 第 4 步）：引擎自己算出的意图与自估胜算，不是战报反推。 */
     if (latest?.reasonRecord?.intent && !latest.reasonRecord.error) {
       const win = Number(latest.reasonRecord.win);
-      return `最近一手意图：${text(latest.reasonRecord.intent)}${Number.isFinite(win) ? `（自估胜算 ${Math.round(win * 100)}%）` : ''}`;
+      // 敌方自估胜算跟推导同口径（拍板 1：战斗中只给意图）；档位开关（拍板 4）下写档位（T26 第 3 批）。
+      const winHidden = visibilityMode !== 'DEVELOPER' && side === 'enemy' && (REPORT_VISIBILITY.enemyReasoning === 'INTENT_ONLY' ||
+        REPORT_VISIBILITY.enemyReasoning === 'INTENT_UNTIL_END' && terminal?.terminal !== true);
+      const winText = !Number.isFinite(win) || winHidden ? ''
+        : visibilityMode !== 'DEVELOPER' && reportOption('winDisplay', REPORT_WIN_DISPLAY) === 'TIER' ? `（自估局面：${winTier(win)}）` : `（自估胜算 ${Math.round(win * 100)}%）`;
+      return `最近一手意图：${text(latest.reasonRecord.intent)}${winText}`;
     }
     const focus = publicEntityName(directory, latest?.teamIntent?.focusTarget, latest?.teamIntent?.focusTarget);
     const protect = publicEntityName(directory, latest?.teamIntent?.protectTarget, latest?.teamIntent?.protectTarget);
@@ -169763,8 +169843,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (!tacticalWindows.length) tacticalWindows.push('当前没有已公开的持续状态或召唤窗口');
     const decisions = Array.isArray(draft?.decisionAudit) ? draft.decisionAudit : [];
     const nextIntents = {
-      player: latestSideIntent(decisions, playerUnits, directory, terminal, 'player'),
-      enemy: latestSideIntent(decisions, enemyUnits, directory, terminal, 'enemy'),
+      player: latestSideIntent(decisions, playerUnits, directory, terminal, 'player', visibilityMode),
+      enemy: latestSideIntent(decisions, enemyUnits, directory, terminal, 'enemy', visibilityMode),
     };
     const terminalDetail = terminalConditionText(terminal);
     const formatUnit = unit => {
@@ -169805,25 +169885,65 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     };
   }
 
-  /* 出招理由（新估值的出招记录，T24 第 4 步）：最后两回合里带记录的决策，一条一行（意图、自估胜算、对次优手的主导分项差）；
-     按可见性投影（敌方不给次优手是什么招），至多 RECENT_REASON_LIMIT 条，每行已在决策层限长并标明截断。 */
+  /* 出招理由（新估值的出招记录，T24 第 4 步）：带记录的决策，一条一行（意图、自估胜算、对次优手的主导分项差），
+     按可见性投影（敌方不给次优手是什么招；战斗中敌方只给意图），每行已在决策层限长并标明截断。
+     范围（REPORT_AI_REASON_SCOPE，拍板 2）：LAST_TWO_ROUNDS 最后两回合至多 RECENT_REASON_LIMIT 条（默认）；
+     KEY_PER_ROUND 每回合一手——意图和这名行动者上一手不同的优先，其次主导分项差最大的；ALL 全部。
+     依据（T26 第 3 批）：这一手 factRefs 指向的机制事实摘要（交手约定已在 mechanicFacts 里，不重复），放在 basis。 */
   const RECENT_REASON_LIMIT = 6;
-  function recentReasonLines(draft = {}, directory = new Map(), visibilityMode = 'PLAYER') {
+  function recentReasonLines(draft = {}, directory = new Map(), visibilityMode = 'PLAYER', decisionRefs = new Map(), factsById = new Map()) {
+    const battleOver = draft?.terminalResult?.terminal === true;
     const rows = (Array.isArray(draft?.decisionAudit) ? draft.decisionAudit : [])
-      .filter(decision => decision?.reasonRecord && !decision.reasonRecord.error && text(decision.reasonRecord.aiLine));
-    if (!rows.length) return [];
-    const lastRound = Math.max(...rows.map(decision => number(decision?.round, 0)));
-    return rows.filter(decision => number(decision?.round, 0) >= lastRound - 1)
-      .slice(-RECENT_REASON_LIMIT)
+      .filter(decision => decision?.reasonRecord && !decision.reasonRecord.error && text(decision.reasonRecord.aiLine))
       .map(decision => {
         const side = text(entityEntry(directory, decision?.actorId)?.side);
-        const projected = publicReasonRecord(decision.reasonRecord, side, visibilityMode, draft?.terminalResult?.terminal === true);
-        return { round: number(decision?.round, 0), actor: publicEntityName(directory, decision?.actorId, decision?.actorId), line: text(projected?.aiLine) };
+        const projected = publicReasonRecord({ ...decision.reasonRecord, factRefs: decisionRefs.get(decision) || [] }, side, visibilityMode, battleOver);
+        const lead = Math.abs(number(decision.reasonRecord?.lead?.[0]?.d, 0));
+        const basis = unique((projected?.factRefs || []).map(id => factsById.get(id))
+          .filter(fact => fact && text(fact?.mechanic?.kind) !== 'ENGAGEMENT_TERMS').map(fact => text(fact.summary)).filter(Boolean));
+        return { decision, round: number(decision?.round, 0), actorId: text(decision?.actorId), intent: text(projected?.intent), lead,
+          actor: publicEntityName(directory, decision?.actorId, decision?.actorId), line: text(projected?.aiLine), basis };
       })
       .filter(row => row.line);
+    if (!rows.length) return [];
+    const scope = reportOption('aiReasonScope', REPORT_AI_REASON_SCOPE);
+    let picked;
+    if (scope === 'ALL') picked = rows;
+    else if (scope === 'KEY_PER_ROUND') {
+      const lastIntent = new Map();
+      const byRound = new Map();
+      for (const row of rows) {
+        const changed = !!row.intent && lastIntent.has(row.actorId) && lastIntent.get(row.actorId) !== row.intent || !lastIntent.has(row.actorId);
+        if (row.intent) lastIntent.set(row.actorId, row.intent);
+        const best = byRound.get(row.round);
+        const better = !best || (changed && !best.changed) || (changed === best.changed && row.lead > best.lead);
+        if (better) byRound.set(row.round, { ...row, changed });
+      }
+      picked = [...byRound.values()].sort((left, right) => left.round - right.round);
+    } else {
+      const lastRound = Math.max(...rows.map(row => row.round));
+      picked = rows.filter(row => row.round >= lastRound - 1).slice(-RECENT_REASON_LIMIT);
+    }
+    return picked.map(row => ({ round: row.round, actor: row.actor, line: row.line, ...(row.basis.length ? { basis: row.basis } : {}) }));
   }
 
-  function buildAiSummaryInput(finalSummary = {}, roundOverview = [], recentReasons = [], truceResponse = '') {
+  /* 给 AI 的机制事实（T26 第 3 批）：本场约定、胜负进度、罢手状态，每类一句，取本次结算里最近的一条；
+     和玩家同口径（摘要已按 REPORT_VISIBILITY 投影），没有就不出这一类。 */
+  function aiMechanicFacts(factRegistry = []) {
+    const latest = kinds => [...factRegistry].reverse().find(fact => kinds.includes(text(fact?.mechanic?.kind)) && text(fact?.summary)) || null;
+    const terms = latest(['ENGAGEMENT_TERMS']);
+    // 胜负进度：破了防就写破防；否则写最近的出手计数；只有破防判定没有计数（单是破防赌约）时写最近一次破防判定。
+    const broken = [...factRegistry].reverse().find(fact => text(fact?.mechanic?.kind) === 'GUARD_BREAK' && text(fact?.mechanic?.phase) === 'broken') || null;
+    const progress = broken || latest(['OBJECTIVE_PROGRESS']) || latest(['GUARD_BREAK']);
+    const truce = latest(['TRUCE']);
+    return {
+      ...(terms ? { terms: text(terms.summary) } : {}),
+      ...(progress ? { progress: text(progress.summary) } : {}),
+      ...(truce ? { truce: text(truce.summary) } : {}),
+    };
+  }
+
+  function buildAiSummaryInput(finalSummary = {}, roundOverview = [], recentReasons = [], truceResponse = '', mechanicFacts = {}) {
     const compactUnit = unit => ({
       name: unit.name,
       hp: unit.hp,
@@ -169853,9 +169973,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       tacticalWindows: [...(finalSummary?.tacticalWindows || [])],
       nextIntents: cloneValue(finalSummary?.nextIntents || {}),
       recentRoundSummaries: roundOverview.slice(-3).map(row => ({ round: row.round, summary: row.summary })),
-      recentReasons: (Array.isArray(recentReasons) ? recentReasons : []).map(row => ({ round: row.round, actor: row.actor, line: row.line })),
+      recentReasons: (Array.isArray(recentReasons) ? recentReasons : []).map(row => ({ round: row.round, actor: row.actor, line: row.line,
+        ...(Array.isArray(row.basis) && row.basis.length ? { basis: row.basis.map(text) } : {}) })),
       // 罢手的同意与拒绝（拍板 9）：只放一句事实，没有就不出这个字段。
       ...(text(truceResponse) ? { truceResponse: text(truceResponse) } : {}),
+      // 本场约定、胜负进度、罢手状态（T26 第 3 批），每类一句。
+      ...(mechanicFacts && Object.keys(mechanicFacts).length ? { mechanicFacts: cloneValue(mechanicFacts) } : {}),
     };
   }
 
@@ -170226,21 +170349,40 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return numbers;
   }
 
-  /* 出招记录的可见投影：玩家看得到己方的完整推导；敌方只给选中手的推导，次优手是什么招不给（那是没亮出来的底牌）。 */
+  /* 自估胜算的档位（拍板 4，REPORT_WIN_DISPLAY = 'TIER'）：按自估胜算分五档；开发视图仍给精确数字。 */
+  const winTierLabels = Object.freeze([[0.8, '稳占上风'], [0.6, '占优'], [0.4, '势均力敌'], [0.2, '处于劣势'], [-Infinity, '危急']]);
+  function winTier(win) {
+    const value = Number(win);
+    return Number.isFinite(value) ? winTierLabels.find(([floor]) => value >= floor)[1] : '';
+  }
+  function winDisplayLine(line = '', win = null, visibilityMode = 'PLAYER') {
+    if (visibilityMode === 'DEVELOPER' || reportOption('winDisplay', REPORT_WIN_DISPLAY) !== 'TIER') return line;
+    const tier = winTier(win);
+    return text(line).replace(/自估胜算 (?:\d+%|未知)/u, tier ? `自估局面：${tier}` : '自估局面：未知');
+  }
+
+  /* 出招记录的可见投影：玩家看得到己方的完整推导；敌方只给选中手的推导，次优手是什么招不给（那是没亮出来的底牌）。
+     factRefs（T26 第 3 批）：这一手依据的机制事实 id，跟推导同口径可见（敌方推导不可见时也不给）。 */
   function publicReasonRecord(record = null, actorSide = '', visibilityMode = 'PLAYER', battleOver = false) {
     if (!record || typeof record !== 'object' || record.error) return null;
+    const refs = (Array.isArray(record.factRefs) ? record.factRefs : []).map(text).filter(Boolean);
+    const tierMode = visibilityMode !== 'DEVELOPER' && reportOption('winDisplay', REPORT_WIN_DISPLAY) === 'TIER';
+    const winOut = win => tierMode ? null : win ?? null;
+    const tierOut = win => tierMode && Number.isFinite(Number(win)) && win !== null ? { winTier: winTier(win) } : {};
     if (visibilityMode === 'DEVELOPER' || actorSide !== 'enemy') {
-      return { intent: text(record.intent), win: record.win ?? null, aiLine: formatTextNumbers(text(record.aiLine)), derivation: (record.derivation || []).map(line => formatTextNumbers(text(line))) };
+      return { intent: text(record.intent), win: winOut(record.win), ...tierOut(record.win), aiLine: formatTextNumbers(winDisplayLine(text(record.aiLine), record.win, visibilityMode)),
+        derivation: (record.derivation || []).map(line => formatTextNumbers(text(line))), factRefs: refs };
     }
     // 敌方：INTENT_UNTIL_END 战斗进行中只给意图和结果（选了哪手、意图），结束后解锁；INTENT_ONLY 始终如此（REPORT_VISIBILITY）。
     const intentOnly = REPORT_VISIBILITY.enemyReasoning === 'INTENT_ONLY' || (REPORT_VISIBILITY.enemyReasoning === 'INTENT_UNTIL_END' && battleOver !== true);
     if (intentOnly) {
-      return { intent: text(record.intent), win: null, aiLine: formatTextNumbers(text(record.aiLine).split('；')[0]), derivation: [] };
+      return { intent: text(record.intent), win: null, aiLine: formatTextNumbers(text(record.aiLine).split('；')[0]), derivation: [], factRefs: [] };
     }
     const runner = text(record?.runnerUp?.label);
     const hide = line => runner ? text(line).split(runner).join('另一方案') : text(line);
     const cut = (record.derivation || []).findIndex(line => /^(次优|最优)【/.test(text(line)));
-    return { intent: text(record.intent), win: record.win ?? null, aiLine: formatTextNumbers(hide(record.aiLine)), derivation: (cut >= 0 ? record.derivation.slice(0, cut) : record.derivation || []).map(line => formatTextNumbers(text(line))) };
+    return { intent: text(record.intent), win: winOut(record.win), ...tierOut(record.win), aiLine: formatTextNumbers(winDisplayLine(hide(record.aiLine), record.win, visibilityMode)),
+      derivation: (cut >= 0 ? record.derivation.slice(0, cut) : record.derivation || []).map(line => formatTextNumbers(text(line))), factRefs: refs };
   }
 
   function projectDecisionTraceForVisibility(
@@ -170785,7 +170927,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       })),
       narrowing: (Array.isArray(trace?.narrowing) ? trace.narrowing : []).map(stage => publicDecisionStage(stage)),
       reasonRecord: trace?.reasonRecord && typeof trace.reasonRecord === 'object'
-        ? { intent: text(trace.reasonRecord.intent), win: trace.reasonRecord.win ?? null, aiLine: formatTextNumbers(text(trace.reasonRecord.aiLine)), derivation: (trace.reasonRecord.derivation || []).map(line => formatTextNumbers(text(line))) }
+        ? { intent: text(trace.reasonRecord.intent), win: trace.reasonRecord.win ?? null, ...(text(trace.reasonRecord.winTier) ? { winTier: text(trace.reasonRecord.winTier) } : {}),
+          aiLine: formatTextNumbers(text(trace.reasonRecord.aiLine)), derivation: (trace.reasonRecord.derivation || []).map(line => formatTextNumbers(text(line))),
+          factRefs: (Array.isArray(trace.reasonRecord.factRefs) ? trace.reasonRecord.factRefs : []).map(text).filter(Boolean) }
         : null,
     };
   }
@@ -170899,10 +171043,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     };
   }
 
-  function publicPreviewStopReason(reason = {}) {
+  function publicPreviewStopReason(reason = {}, params = null) {
     const code = text(reason?.code);
-    const playerText = previewStopReasonText[code] || '本次战斗推进已经停止。';
-    return { code, text: playerText };
+    const wanted = previewStopReasonParams[code] || [];
+    const given = params && typeof params === 'object' ? params : reason?.params && typeof reason.params === 'object' ? reason.params : {};
+    const ownParams = Object.fromEntries(wanted.map(key => [key, text(given?.[key])]));
+    const playerText = previewStopReasonText[code] ? renderStopReasonText(code, ownParams) : '本次战斗推进已经停止。';
+    return { code, text: playerText, ...(wanted.length ? { params: ownParams } : {}) };
+  }
+  // TRUCE_PENDING 的提议者：本次结算里「待回应」那条罢手事实写的提议者（没有就写「对方」）。
+  function stopReasonParams(code = '', factRegistry = []) {
+    if (code !== 'TRUCE_PENDING') return null;
+    const pending = [...factRegistry].reverse().find(fact => text(fact?.mechanic?.kind) === 'TRUCE' && text(fact?.mechanic?.phase) === 'pending');
+    const proposer = text(pending?.mechanic?.values?.proposer);
+    return { proposer: validStopReasonParam(proposer) ? proposer : '对方' };
   }
 
   function publicFinalSummary(summary = {}) {
@@ -170914,7 +171068,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return result;
   }
 
-  function publicAiSummary(summary = {}, roundOverview = [], recentReasons = [], truceResponse = '') {
+  function publicAiSummary(summary = {}, roundOverview = [], recentReasons = [], truceResponse = '', mechanicFacts = null) {
     const compactUnit = unit => ({
       name: text(unit?.name),
       hp: number(unit?.hp, 0),
@@ -170955,8 +171109,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         })),
       recentReasons: (Array.isArray(recentReasons) ? recentReasons : []).map(row => ({
         round: Math.max(0, number(row?.round, 0)), actor: text(row?.actor), line: text(row?.line),
+        ...(Array.isArray(row?.basis) && row.basis.length ? { basis: row.basis.map(text).filter(Boolean) } : {}),
       })),
       ...(text(truceResponse) ? { truceResponse: text(truceResponse) } : {}),
+      ...(mechanicFacts && typeof mechanicFacts === 'object' && Object.keys(mechanicFacts).length
+        ? { mechanicFacts: Object.fromEntries(['terms', 'progress', 'truce'].filter(key => text(mechanicFacts[key])).map(key => [key, text(mechanicFacts[key])])) } : {}),
     };
   }
 
@@ -171035,7 +171192,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       exchanges,
       narrativeChain: (Array.isArray(report?.narrativeChain) ? report.narrativeChain : [])
         .map(publicNarrativeNode),
-      aiStructuredSummary: publicAiSummary(finalSummary, roundOverview, report?.aiStructuredSummary?.recentReasons, report?.aiStructuredSummary?.truceResponse),
+      aiStructuredSummary: publicAiSummary(finalSummary, roundOverview, report?.aiStructuredSummary?.recentReasons, report?.aiStructuredSummary?.truceResponse,
+        report?.aiStructuredSummary?.mechanicFacts),
       battleHeadline: text(report?.battleHeadline),
       // 机制事实（T26 第 2 批）：已按可见性投影。
       mechanicFacts: cloneValue(Array.isArray(report?.mechanicFacts) ? report.mechanicFacts : []),
@@ -171161,7 +171319,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     finalSummary.canonicalFactIds = finalCanonicalFactIds;
     // 罢手的同意与拒绝（拍板 9）：本次结算里最近的一条回应，一句事实。
     const latestTruceAnswer = [...factRegistry].reverse().find(fact => fact?.mechanic?.kind === 'TRUCE' && ['accepted', 'declined'].includes(text(fact.mechanic.phase)));
-    const aiSummaryInput = buildAiSummaryInput(finalSummary, roundOverview, recentReasonLines(draft, directory, visibilityMode), text(latestTruceAnswer?.summary));
+    // 决策 → 依据的机制事实（buildNarrativeChain 按落点填），AI 理由行与因果链共用。
+    const decisionRefs = new Map();
 
     /* 因果链主轴：局面 → 决策 → 机制结算 → 对账。
        它复用上面已经算好并会被 auditProjection 校验的 exchange 分组，
@@ -171174,7 +171333,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       sourceEventsByFactId,
       ledger,
       remainingHpById: buildRemainingHpIndex(draft),
+      decisionRefs,
     });
+    const aiSummaryInput = buildAiSummaryInput(finalSummary, roundOverview, recentReasonLines(draft, directory, visibilityMode, decisionRefs, factsById),
+      text(latestTruceAnswer?.summary), aiMechanicFacts(factRegistry));
     const pipelineStats = buildPipelineStats(narrativeChain);
     const decisionExplanations = buildDecisionTimeExplanations(
       narrativeChain,
@@ -171217,7 +171379,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       termDictionaryVersion: reportTermDictionaryVersion,
       visibilityMode,
       actualRoundCount: Math.max(0, number(draft?.actualRoundCount, 0)),
-      previewStopReason: publicPreviewStopReason(draft?.previewStopReason || {}),
+      previewStopReason: publicPreviewStopReason(draft?.previewStopReason || {}, stopReasonParams(text(draft?.previewStopReason?.code), factRegistry)),
       terminalResult: projectedTerminal,
       projectionStatus: 'PENDING',
       sourceDecisionCount,
@@ -171296,7 +171458,24 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       pushFatal('REPORT_STOP_REASON_INVALID', { reason: 'STOP_REASON_MISSING' });
     } else {
       const stopReasonCode = text(stopReason?.code);
-      const expectedStopReasonText = previewStopReasonText[stopReasonCode];
+      // 按模板校验（T26 第 3 批，拍板 5）：带参数的码先验参数（齐全、是短名字；罢手提议者要么是本场「待回应」事实里的提议者，要么是「对方」），
+      // 再把参数填进模板，和文字逐字比对。
+      const wantedParams = previewStopReasonParams[stopReasonCode] || [];
+      const stopParams = stopReason?.params && typeof stopReason.params === 'object' ? stopReason.params : {};
+      const badParam = wantedParams.find(key => !validStopReasonParam(stopParams[key]));
+      if (badParam) {
+        pushFatal('REPORT_STOP_REASON_INVALID', { reason: 'STOP_REASON_PARAM_INVALID', stopReasonCode, param: badParam });
+      }
+      if (stopReasonCode === 'TRUCE_PENDING' && !badParam) {
+        const proposers = new Set((Array.isArray(report?.factRegistry) ? report.factRegistry : [])
+          .filter(fact => text(fact?.mechanic?.kind) === 'TRUCE' && text(fact?.mechanic?.phase) === 'pending')
+          .map(fact => text(fact?.mechanic?.values?.proposer)).filter(Boolean));
+        const proposer = text(stopParams.proposer);
+        if (!(proposers.has(proposer) || (!proposers.size && proposer === '对方'))) {
+          pushFatal('REPORT_STOP_REASON_INVALID', { reason: 'STOP_REASON_PARAM_UNSOURCED', stopReasonCode, param: 'proposer' });
+        }
+      }
+      const expectedStopReasonText = previewStopReasonText[stopReasonCode] ? renderStopReasonText(stopReasonCode, stopParams) : '';
       if (!expectedStopReasonText) {
         pushFatal('REPORT_STOP_REASON_INVALID', {
           reason: 'STOP_REASON_CODE_UNKNOWN',
@@ -172058,8 +172237,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     {
       const textKeys = new Set(['text', 'summary', 'passiveSummary', 'playerText', 'reasonText', 'reasonPlayerText', 'aiLine', 'line',
         'headline', 'battleHeadline', 'outcomeSummary', 'declarationSummary', 'lostOpportunityReason', 'explanation', 'responseSummary',
-        'resultSummary', 'continuationSummary', 'advantage', 'trend', 'intent', 'player', 'enemy', 'alternativeSummary']);
-      const arrayTextKeys = new Set(['derivation', 'risks', 'tacticalWindows', 'settlementTexts']);
+        'resultSummary', 'continuationSummary', 'advantage', 'trend', 'intent', 'player', 'enemy', 'alternativeSummary',
+        'truceResponse', 'terms', 'progress', 'truce', 'winTier']);
+      const arrayTextKeys = new Set(['derivation', 'risks', 'tacticalWindows', 'settlementTexts', 'basis']);
       const codePattern = /(?<![A-Za-z0-9])[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+(?![A-Za-z0-9])|【[A-Z][A-Z_]{2,}】/;
       const visit = (value, path, key, parentKey, depth) => {
         if (diagnostics.internalCodeLeaks.length >= 64 || depth > 12 || value === null || value === undefined) return;
@@ -172075,6 +172255,19 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ['battleHeadline', 'finalSummary', 'roundOverview', 'exchanges', 'narrativeChain', 'decisionExplanations', 'aiStructuredSummary']
         .forEach(field => visit(report?.[field], field, field, '', 0));
     }
+    /* 因果链结算步骤里的长小数（T26 第 3 批）：只报警告、不判致命（不挡提交）；交锋文本与终局总结的长小数仍按原规则判致命。 */
+    diagnostics.settlementStepLongDecimals = [];
+    (Array.isArray(report?.narrativeChain) ? report.narrativeChain : []).forEach((node, nodeIndex) => {
+      (Array.isArray(node?.settlement?.steps) ? node.settlement.steps : []).forEach((step, stepIndex) => {
+        for (const key of ['text', 'playerText']) {
+          const value = text(step?.[key]);
+          const match = value.match(/\d+\.\d{3,}/u);
+          if (match && diagnostics.settlementStepLongDecimals.length < 64) {
+            diagnostics.settlementStepLongDecimals.push({ location: `narrativeChain[${nodeIndex}].settlement.steps[${stepIndex}].${key}`, sample: match[0] });
+          }
+        }
+      });
+    });
 
     if (developerMode) {
       diagnostics.unconfirmedPredictions.forEach(entry => pushFatal('PREDICTION_UNCONFIRMED', entry));
@@ -172100,7 +172293,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         diagnostics.unconfirmedPredictions.length +
         diagnostics.divergedMagnitudes.length +
         diagnostics.unknownRejectionCodes.length +
-        diagnostics.internalCodeLeaks.length,
+        diagnostics.internalCodeLeaks.length +
+        diagnostics.settlementStepLongDecimals.length,
       reportHash,
       reportDto: sealedReportDto,
     });
