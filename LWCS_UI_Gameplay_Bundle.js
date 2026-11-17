@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:a79a2c83bc2019b57972a289e2e36f1d808ddf3bc6314e6746f697958f627cab|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:b832cd2cb61a57e8784a2aa8994b5f6d21cb831246d587a07730541b8b1070ef|BattleRuntime_Module.js:8c845921fce3b0b2b8e252828a42f39c0c31d1528f5efe584ca055857d885191|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:835e7d989e9182684a6b35145a4231b6b90598b97203a7db2714dafdd6d1b41f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:ee38520337fcdf71e0f3fb0cd3bef74a285c3390d9edd83898f38361e5627271|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:3e56b18fe8205f561d3749f0c8de8094ae6f5debe301cc2a5fa27d458c81cf13|BattleRuntime_Module.js:093d12dc479e1d516d2f55ea268253c8326aa8bf5ae5aa89bb58c6770d00bee9|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:d4803a151501089445d0a8567201e83b8fdeef0aac4b1ec0f755d22159a6154a */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -15162,6 +15162,48 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return [{ slot: '生命之火', name: '点燃生命之火', windup: 0, aftermath: LIFE_FIRE_AFTERMATH,
       effect: { 原型: '状态施加', 目标: '自身', 状态: '生命之火', 持续回合: ARMOUR_LASTING_ROUNDS, 触发方式: '立即触发', 生效方式: '独立生效' } }];
   }
+  // 冥想（用户 2026-11-17 选「加冥想动作」；第 22 题 王冬开场前坐地冥想、戴沐白透支后由朱竹清接住）: a unit short of 魂力 or 精神力 may
+  // spend its action sitting down to recover — 「冥想」 (an __auto__ key) gives back at the round end MEDITATION_MULT times its natural
+  // recovery of each (BattleRuntime naturalRecoveryAtRoundEndProfile: 0.5%, more with 魂核) on top of it. It lasts the round: in it
+  // the unit makes no answer (BattleDecision lets the move land); a hit breaks it (interruptMeditation) — half the recovery, and it
+  // may answer again. The same release path as 开武魂, but it takes the action (windup 10).
+  const MEDITATION_KEY = '__auto__:冥想', MEDITATION_MULT = 8, MEDITATION_SHORT = 0.95;
+  const isMeditationEffect = effect => String(effect?.原型 || '').trim() === '状态施加' && String(effect?.状态 || '').trim() === '冥想';
+  function naturalRecoveryRatios(unit = {}) {
+    const cores = Math.max(0, Math.floor(Number(unit?.魂核?.核心?.数量 || 0)));
+    return { 魂力: 0.005 + (cores >= 1 ? 0.01 : 0) + (cores >= 3 ? 0.01 : 0), 精神力: 0.005 + (cores >= 2 ? 0.01 : 0), 体力: 0.005 };
+  }
+  function meditating(unit = {}) {
+    const state = unit?.状态效果?.[MEDITATION_KEY];
+    return !!state && state.__冥想中断 !== true;
+  }
+  function meditationOptions(unit = {}) {
+    if (!unit || isSummonUnit(unit) || unit?.状态效果?.[MEDITATION_KEY]) return [];
+    if (!['魂力', '精神力'].some(resource => readResource(unit, resource) < readResourceMax(unit, resource) * MEDITATION_SHORT)) return [];
+    const natural = naturalRecoveryRatios(unit), percent = value => Math.round(value * MEDITATION_MULT * 1000) / 10;
+    return [{ slot: '冥想', name: '冥想', windup: 10,
+      description: `坐下冥想：本回合末额外恢复魂力 ${percent(natural.魂力)}%、精神力 ${percent(natural.精神力)}%；冥想中不能应对，被打中就中断、只恢复一半。`,
+      effect: { 原型: '状态施加', 目标: '自身', 状态: '冥想', 持续回合: 1, 触发方式: '立即触发', 生效方式: '独立生效' } }];
+  }
+  // Puts it on `unit` in place; false when it already sits in one this round.
+  function beginMeditation(unit = {}) {
+    if (unit?.状态效果?.[MEDITATION_KEY]) return false;
+    const natural = naturalRecoveryRatios(unit);
+    unit.状态效果 = { ...(unit.状态效果 || {}), [MEDITATION_KEY]: { 状态: '冥想', 状态名称: '冥想', 类型: 'buff', duration: 1, 持续回合: 1,
+      描述: '冥想：回合末额外恢复魂力与精神力；冥想中不能应对，被打中就中断、只恢复一半', 面板修改比例: {}, 面板固定修正: {},
+      // cannot_react: no answer while it sits (BattleRuntime gives it no answer, the race's stand is blocked).
+      战斗效果: { sp_gain_ratio: natural.魂力 * MEDITATION_MULT, men_gain_ratio: natural.精神力 * MEDITATION_MULT, cannot_react: true }, __冥想: true } };
+    return true;
+  }
+  // A hit on a meditating unit breaks it: half the recovery, and it answers again. A new state object (frozen battles).
+  function interruptMeditation(unit = {}) {
+    const state = unit?.状态效果?.[MEDITATION_KEY];
+    if (!state || state.__冥想中断 === true) return false;
+    const effects = state.战斗效果 || {};
+    unit.状态效果 = { ...unit.状态效果, [MEDITATION_KEY]: { ...state, __冥想中断: true, 描述: '冥想被打断：回合末只恢复一半',
+      战斗效果: { ...effects, sp_gain_ratio: Number(effects.sp_gain_ratio || 0) / 2, men_gain_ratio: Number(effects.men_gain_ratio || 0) / 2, cannot_react: false } } };
+    return true;
+  }
   // Lights it on `unit` in place: the state, the panel and the pools; false when it is already burning.
   function igniteLifeFire(unit = {}, currentTick = 0) {
     if (lifeFireLit(unit)) return false;
@@ -15536,7 +15578,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         // 释放斗铠 / 机甲的内部结算（S80-A armourReleaseEffect）：不在技能表里，设计台与生成都用不到。
         // 开武魂（spiritReleaseOptions）同样是内部状态「武魂已释放」。
         const internal = prototype === '结算修正' && field === '结算' && normalized === '装备吸收' && !!effect?.__装备释放 ||
-          prototype === '状态施加' && field === '状态' && ['武魂已释放', '生命之火'].includes(normalized);
+          prototype === '状态施加' && field === '状态' && ['武魂已释放', '生命之火', '冥想'].includes(normalized);
         if (normalized && !internal && !(accepted ? accepted.has(normalized) : fieldDefinition.选项.includes(normalized))) {
           throw new Error(`battle_preview_unknown_enum:${prototype}:${field}:${normalized}`);
         }
@@ -17741,6 +17783,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 开武魂: 「武魂已释放」 takes the 「武魂未释放」 key (spiritReleasedMarker), so the round start does not lay it again.
     // 点燃生命之火 (igniteLifeFire): its own key, panel and pools.
     if (isLifeFireEffect(effect)) return igniteLifeFire(unit, 0);
+    // 冥想 (beginMeditation): its own key and recovery.
+    if (isMeditationEffect(effect)) return beginMeditation(unit);
     if (isSpiritReleaseEffect(effect)) {
       if (!spiritUnreleased(unit)) return false;
       unit.状态效果 = { ...(unit.状态效果 || {}), [SPIRIT_UNRELEASED_KEY]: spiritReleasedMarker(unit) };
@@ -31967,6 +32011,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     engagementTerms,
     suppressionStates,
     suppressionBlocksSkill,
+    meditationOptions,
+    meditating,
+    beginMeditation,
+    interruptMeditation,
+    naturalRecoveryRatios,
     spiritReleasedMarker,
     lifeFireOptions,
     truceAvailable,
@@ -47453,6 +47502,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const kept = candidates.filter(candidate => !refused(candidate));
       if (kept.length) candidates = kept;
     }
+    // 冥想中（BattlePreview meditating）: no answer — the move lands (a hit breaks it, and the next answer is its own again).
+    if (Array.isArray(candidates) && termsActor && preview.meditating?.(termsActor) &&
+      ['REACTION', 'COUNTER'].includes(String(input?.actionOpportunity?.role || '').trim().toUpperCase())) {
+      const kept = candidates.filter(candidate => candidate?.voluntaryOpportunityPass === true || candidate?.counterDeclineFallback === true);
+      for (const candidate of candidates.filter(candidate => !kept.includes(candidate))) input?.rejectionCollector?.({
+        actionKind: candidate.declaration?.actionKind, sourceActionId: String(candidate.declaration?.actionId || candidate.candidateId || '').trim(),
+        targetIds: Array.isArray(candidate.declaration?.targetIds) ? candidate.declaration.targetIds.map(String) : [],
+        rejectionCode: 'RULE_MEDITATING', rejectionStage: 'OPPORTUNITY',
+      });
+      if (kept.length) candidates = kept;
+    }
     const sustained = Array.isArray(candidates) ? sustainedSkillNames(worldSnapshot, findUnitInWorld(worldSnapshot, input?.actorId)) : null;
     if (sustained) {
       const repeat = candidate => candidate?.declaration?.actionKind === 'RELEASE_SKILL' &&
@@ -48192,14 +48252,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 开武魂（信息模型 0a）: the same release path, windup 0 (BattlePreview spiritReleaseOptions).
     // 点燃生命之火（只在实战，BattlePreview lifeFireOptions）: the same path; its after-battle cost goes with it (aftermath, priced
     // by postBattleCostShare in the valuation — not as the skill's side effects, which the runtime would settle in the battle too).
+    // 冥想（BattlePreview meditationOptions）: the same path, taking the action.
     [...(preview.spiritReleaseOptions?.(actor) || []), ...(preview.lifeFireOptions?.(actor, worldSnapshot, input.battleIntent) || []),
-      ...(preview.armourReleaseOptions?.(actor, worldSnapshot) || [])].forEach(option => {
+      ...(preview.armourReleaseOptions?.(actor, worldSnapshot) || []), ...(preview.meditationOptions?.(actor) || [])].forEach(option => {
       const id = `${actorId}:release:${option.slot}`;
       candidates.push({
         candidateId: id,
         declaration: { actionId: id, actorId, actionKind: 'EQUIP', targetIds: [actorId], releaseSlot: option.slot, equipmentSignature: `release:${option.slot}`,
           ...(option.aftermath ? { aftermath: option.aftermath } : {}),
-          skill: { name: option.name, 魂技名: option.name, 前摇: option.windup, 消耗: '无', _效果数组: [option.effect] } },
+          skill: { name: option.name, 魂技名: option.name, 前摇: option.windup, 消耗: '无', ...(option.description ? { 效果描述: option.description } : {}), _效果数组: [option.effect] } },
         equipmentSignature: `release:${option.slot}`,
       });
     });
@@ -106883,6 +106944,30 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     try { return partners.reduce((sum, partner) => sum + 100 * r20Cell(partner, other, friendly, partner === other, context, world, null), 0); }
     finally { r20FusionNested = false; r20Struck = struck; }
   }
+  // What a unit can spend over the race: what it has, and what its states still give back of 魂力 / 精神力 at the round ends within
+  // the horizon (冥想, BattlePreview meditationOptions, and any state of the kind) — without it a meditation read as a pass
+  // (11-17, 第 22 题: −0.004 beside 0 for letting the turn go).
+  function r20CapacityResources(unit) {
+    const base = r9v2LinearCapacityResources(unit);
+    let sp = base.sp, men = base.men;
+    for (const state of Object.values(unit?.状态效果 || {})) {
+      const effects = state?.战斗效果 || {}, rounds = Math.min(R20_HORIZON, Math.max(0, Number(state?.duration ?? state?.持续回合 ?? 0) || 0));
+      if (!(rounds > 0)) continue;
+      if (Number(effects.sp_gain_ratio) > 0) sp += Number(effects.sp_gain_ratio) * preview.readResourceMax(unit, '魂力') * rounds;
+      if (Number(effects.men_gain_ratio) > 0) men += Number(effects.men_gain_ratio) * preview.readResourceMax(unit, '精神力') * rounds;
+    }
+    return sp === base.sp && men === base.men ? base
+      : Object.freeze({ ...base, sp: Math.min(sp, preview.readResourceMax(unit, '魂力')), men: Math.min(men, preview.readResourceMax(unit, '精神力')) });
+  }
+  // The share of its pools (魂力 + 精神力) a unit's states still give back at the round ends within the horizon.
+  function r20RegenOwed(unit) {
+    let owed = 0;
+    for (const state of Object.values(unit?.状态效果 || {})) {
+      const effects = state?.战斗效果 || {}, rounds = Math.min(R20_HORIZON, Math.max(0, Number(state?.duration ?? state?.持续回合 ?? 0) || 0));
+      if (rounds > 0) owed += (Math.max(0, Number(effects.sp_gain_ratio) || 0) + Math.max(0, Number(effects.men_gain_ratio) || 0)) * rounds;
+    }
+    return owed;
+  }
   function r20Cell(unit, other, friendly, self, context, world, skipped) {
     r20Work.cells += 1;
     // A hidden unit (隐匿/隐身/潜行) cannot be aimed at by a single-target action of an enemy that does not see through it.
@@ -106923,10 +107008,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       // A fusion is paid by all its participants together, once only when it is written so, and not while a partner is held.
       const costs = r9v2LinearCapacityCostVector(unit, startupCosts);
       let uses = R20_HORIZON;
-      const pool = crew ? [unit, ...crew].map(member => r9v2LinearCapacityResources(member)) : null;
+      const pool = crew ? [unit, ...crew].map(member => r20CapacityResources(member)) : null;
       if (costs.valid) for (const key of ['sp', 'men']) {
         if (!(costs[key] > 0)) continue;
-        const have = pool ? pool.reduce((sum, member) => sum + (Number(member[key]) || 0), 0) : (resources ||= r9v2LinearCapacityResources(unit))[key];
+        const have = pool ? pool.reduce((sum, member) => sum + (Number(member[key]) || 0), 0) : (resources ||= r20CapacityResources(unit))[key];
         uses = Math.min(uses, Math.floor(have / costs[key] + 1e-9));
       }
       if (crew) {
@@ -108488,7 +108573,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const until = new Array(count).fill(Infinity), tick = table.tick.slice(), tickRounds = table.tickRounds.slice(), reflect = table.reflect.slice(), hpMax = table.hpMax.slice();
     const rebuilt = [], hushed = {}, expiring = [], cuts = [];
     let added = [];
-    let spent = 0, outside = 0, seen = 0;
+    let spent = 0, outside = 0, seen = 0, regenGain = 0;
     for (const id of touched) {
       const row = table.index.get(id);
       if (row === undefined) {
@@ -108586,6 +108671,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (row === actorRow && String(request.actionOpportunity?.role || '').toUpperCase() !== 'REACTION') for (const resource of ['魂力', '精神力']) {
         spent += Math.max(0, preview.readResource(prior, resource) - preview.readResource(next, resource)) / Math.max(1, preview.readResourceMax(prior, resource));
       }
+      // 冥想（11-17，第 22 题）: what its states will give back over the horizon counts at the price spending costs (R20_RESOURCE_PRICE).
+      if (row === actorRow) regenGain += Math.max(0, r20RegenOwed(next) - r20RegenOwed(prior));
     }
     // 融合技（r20Fusion）: a host's cells hang on its partners — a partner the candidate changed, holds or took off the field
     // changes the fusion the host can cast, so the host's own cells are read again on the world it leaves, for as long as the
@@ -109177,6 +109264,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 赢家省资源（同上）：对方后面还有人时，赢下这场要带着剩下的资源接着打——花出去的按胜算加价；之后还有团战时至少加一半。
     const followKeep = follow ? Math.max(follow.keep ? 0.5 : 0, follow.foeFollow ? r20ExitOutlook(request, table.units[actorRow] || {}).win : 0) : 0;
     const cost = R20_RESOURCE_PRICE * spent * (1 + (followCarry ? 0 : R20_PROBE_PREMIUM * unseen)) * (spar ? R20_SPAR_PRICE : 1) * (1 + followKeep);
+    // What it gets back is worth what it would have cost — more when it has fights after this one (followKeep).
+    const regen = R20_RESOURCE_PRICE * regenGain * (1 + followKeep);
     // 亮魂环（同上）: any 魂技 lights the rings — the enemy sees how many and how old, and what the spirit does — so against one
     // not yet seen it costs a base share (R20_REVEAL_BASE) of what it stands to gain, more for a bigger card, at most R20_REVEAL_CAP.
     // 试探（用户 2026-11-15「在不清楚对方能力前，最重要的就是试探」「不能过多提高战局中普攻占比」）: a big card (the share of
@@ -109277,7 +109366,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // Leaving is valued apart (认输与撤离, at the top). Observing is worth a little.
     let leave = 0;
     if (actionKind === 'OBSERVE') leave = R20_OBSERVE_VALUE;
-    return { value: race + tempo + granted + objective + leave + stock + info - cost - fusionCost - asset - restraint - reveal - idleStance, idleStance, race, tempo, granted, objective, leave, stock, info, cost, fusionCost, asset, restraint, reveal, counter, rebuilt: rebuilt.length, added: added.length, outside,
+    return { value: race + tempo + granted + objective + leave + stock + info + regen - cost - fusionCost - asset - restraint - reveal - idleStance, idleStance, race, tempo, granted, objective, leave, stock, info, regen, cost, fusionCost, asset, restraint, reveal, counter, rebuilt: rebuilt.length, added: added.length, outside,
       seen: seen + added.length + Number(granted !== 0) + Number(objective !== 0) + Number(leave !== 0) };
   }
 
@@ -121587,11 +121676,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     };
   }
 
+  // 冥想（BattlePreview interruptMeditation）: a hit that does damage breaks it.
+  function breakMeditationOnHit(combatData = {}, payload = {}) {
+    if (String(payload?.eventKind || '').trim() !== 'hit_result' || !(Number(payload?.meta?.incomingDamage ?? payload?.meta?.appliedDamage ?? 0) > 0)) return;
+    const targetId = String(payload.targetId || '').trim();
+    const target = targetId ? listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, targetId)) : null;
+    if (target && previewRuntime.meditating?.(target)) previewRuntime.interruptMeditation(target);
+  }
+
   function writeLedgerEvent(combatData = {}, payload = {}, inventoryBefore = null) {
     // 接战链 阶段 2e: stamina deductions queued by writeCombatResource go in first.
     if (pendingStaminaDeductions.length && !flushingStaminaDeductions) flushStaminaDeductions(combatLedgerRoot(combatData));
     const rootData = combatLedgerRoot(combatData);
     tallyAttack(rootData, payload);
+    breakMeditationOnHit(rootData, payload);
     const ledger = ensureLedger(rootData);
     const runtimeState = ensureCombatRuntime(rootData);
     const ledgerSequence = ++runtimeState.ledgerSequence;
@@ -122038,9 +122136,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         return resourceMatches && typeMatches ? Math.max(ruleMaximum, Number(rule?.比例 || 0)) : ruleMaximum;
       }, 0));
     }, 0));
-    const coreCount = Math.max(0, Math.floor(Number(unit?.魂核?.核心?.数量 || 0)));
-    const soulRatio = 0.005 + (coreCount >= 1 ? 0.01 : 0) + (coreCount >= 3 ? 0.01 : 0);
-    const mentalRatio = 0.005 + (coreCount >= 2 ? 0.01 : 0);
+    // The ratios are BattlePreview naturalRecoveryRatios (冥想 recovers a multiple of them).
+    const natural = previewRuntime.naturalRecoveryRatios(unit);
+    const soulRatio = natural.魂力, mentalRatio = natural.精神力;
     return [
       { key: 'sp', label: '魂力', ratio: soulRatio, max: previewRuntime.readResourceMax(unit, '魂力'), current: previewRuntime.readResource(unit, '魂力') },
       { key: 'men', label: '精神力', ratio: mentalRatio, max: previewRuntime.readResourceMax(unit, '精神力'), current: previewRuntime.readResource(unit, '精神力') },
@@ -129170,6 +129268,23 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         // 开武魂（信息模型 0a）: 「武魂已释放」 takes the 「武魂未释放」 key, so the round start does not lay it again, and the panel
         // comes back at once (BattlePreview addState does the same in a projection).
         // 点燃生命之火: its own key, panel and pools (BattlePreview igniteLifeFire); put out when the battle ends (the save prices it).
+        // 冥想: its own key and recovery (BattlePreview beginMeditation).
+        if (stateName === '冥想' && previewRuntime.beginMeditation) {
+          const sat = previewRuntime.beginMeditation(target);
+          if (sat) {
+            const state = target.状态效果['__auto__:冥想'];
+            if (state) state.战斗效果 = { ...createEmptyCombatEffectMap(), ...(state.战斗效果 || {}) };
+          }
+          facts.push(writeLedgerEvent(combatData, {
+            eventKind: 'state_apply', round: Number(combatData?.回合 || 0), actorName: previewRuntime.unitName(actor), targetName: previewRuntime.unitName(target),
+            actionName, actionType: actionKind, actorControl, actionRole, actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
+            parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
+            result: sat ? 'applied' : 'no_effect', resultState: sat ? 'APPLIED' : 'NO_EFFECT', primaryOutcome: sat ? 'state_applied' : 'no_effect', duration: 1,
+            effectPrototype: prototype, factType: 'STATE', sourceEffectId, operation: 'STATE_APPLY',
+            meta: { source: 'structured_runtime', effectIndex, stateName, resolutionReason: sat ? 'MEDITATION_BEGUN' : 'MEDITATION_ALREADY', operation: 'STATE_APPLY' },
+          }));
+          return;
+        }
         if (stateName === '生命之火' && previewRuntime.igniteLifeFire) {
           const lit = previewRuntime.igniteLifeFire(target, Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0));
           if (lit) {
@@ -150362,7 +150477,10 @@ class BattleUIComponent {
           candidates.forEach(candidate => {
             const declaration = cloneBattleValue(candidate?.declaration || {});
             const actionKind = String(declaration.actionKind || '').trim();
-            const meta = actionKindMeta[actionKind];
+            // 冥想（BattlePreview meditationOptions）goes the release path but is a special action of its own.
+            const meta = actionKind === 'EQUIP' && declaration.releaseSlot === '冥想'
+              ? { type: 'tactical', actionType: '冥想', name: '冥想', category: '特殊动作' }
+              : actionKindMeta[actionKind];
             if (!meta) return;
             const skill = actionKind === 'WITHDRAW'
               ? { 效果描述: exitHint() }
@@ -151182,7 +151300,7 @@ class BattleUIComponent {
           const 动作类型 = String(动作.action_type || '').trim();
           const 目标文本 = 动作类型 === '撤离'
               ? '撤离'
-              : ['防御', '闪避', '穿戴装备', '收回召唤', '认输', '提议罢手'].includes(动作类型)
+              : ['防御', '闪避', '穿戴装备', '收回召唤', '认输', '提议罢手', '冥想'].includes(动作类型)
                 ? '自身'
                 : String(技能?.目标 || (Array.isArray(动作?.target_names) && 动作.target_names.length > 1 ? '可选单体' : 动作.target_name || '未指定')).trim();
           const 描述行 = 读取动作技能描述文本(动作);
@@ -151312,7 +151430,7 @@ class BattleUIComponent {
               .map(entry => entry.unit)
               .filter(unit => candidateNames.has(String(BATTLE_PREVIEW.unitName(unit) || '').trim()));
           }
-          if (['防御', '闪避', '撤离', '认输', '穿戴装备', '收回召唤', '提议罢手'].includes(String(action?.action_type || ''))) return [];
+          if (['防御', '闪避', '撤离', '认输', '穿戴装备', '收回召唤', '提议罢手', '冥想'].includes(String(action?.action_type || ''))) return [];
           const targetText = String(skill?.目标 || '').trim();
           if (/自身/.test(targetText)) return playerTeam.slice(0, 1);
           if (/友方|己方/.test(targetText) && !/群体|全体|全场/.test(targetText)) return playerTeam;
