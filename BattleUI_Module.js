@@ -4288,6 +4288,7 @@ class BattleUIComponent {
           const combatData = cloneBattleValue(getUiCombatData() || state.combatData || {});
           if (!combatData?.参战者 || combatData?.罢手?.状态 !== '待回应') return { ok: false, reason: 'truce_missing' };
           const proposer = String(combatData.罢手.提议者 || '对方').trim();
+          const truceBefore = { ...combatData.罢手 };
           if (!BATTLE_RUNTIME.respondToTruce(combatData, accept === true)) return { ok: false, reason: 'truce_not_pending' };
           await Promise.resolve(window.BattleUIBridge?.persistCombatData?.(combatData, {
             analysis: accept ? 'Frontend battle truce accepted: both sides stop, the battle ends as a draw.' : 'Frontend battle truce declined: the battle goes on.',
@@ -4298,7 +4299,28 @@ class BattleUIComponent {
           const applied = await window.__LWCS_APPLY_BATTLE_ADJUDICATION__?.({
             模块结算: { 是否结束: true, 胜方: '无', 败方: '无', 败方剩余HP比例: 100, 终局类型: 'time_limit', 终局原因: `${proposer}提议罢手，双方停手` },
           });
-          return { ok: true, accepted: true, applied: applied || null };
+          // 同意罢手不跑战报，AI 原先拿不到「同意」这一句（T26 第 3b 批，方案 A）：裁断写回成功后补发一次，和结算后发给 AI 的格式一样
+          //（<battle_result> + <battle_summary>）。句子由 BattleReport.buildTruceAcceptedSummary 生成；上一份摘要取界面内存里上一次结算的
+          // aiStructuredSummary（不在 MVU 里），对不上这次待回应就只发终局加这一句。发送失败只记日志，不影响已经写回的裁断。
+          let aiRequest = null;
+          if (applied?.handled === true) {
+            try {
+              const previous = state.actualBattleResult?.reportDto?.aiStructuredSummary || state.actualBattleResult?.aiStructuredSummary || null;
+              const built = window.__LWCS_BATTLE_REPORT__?.buildTruceAcceptedSummary?.(previous, { proposer, proposerSide: String(truceBefore?.提议方 || '').trim() });
+              if (built && typeof window.sendToAI === 'function') {
+                aiRequest = window.sendToAI(
+                  `<battle_result>${built.battleResult}</battle_result>`,
+                  `<battle_summary>\n${JSON.stringify(built.summary)}\n</battle_summary>`,
+                  { requestKind: 'battle_settlement_plot' },
+                );
+              } else {
+                console.warn('[battle] 同意罢手后未能补发 AI 摘要：战报模块或发送接口缺失');
+              }
+            } catch (error) {
+              console.warn('[battle] 同意罢手后补发 AI 摘要失败', error);
+            }
+          }
+          return { ok: true, accepted: true, applied: applied || null, aiRequest };
         }
 
         function resolveSoulTowerSettlement(action = 'end') {
