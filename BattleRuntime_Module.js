@@ -5782,11 +5782,20 @@
     };
   }
 
+  // 冥想（BattlePreview interruptMeditation）: a hit that does damage breaks it.
+  function breakMeditationOnHit(combatData = {}, payload = {}) {
+    if (String(payload?.eventKind || '').trim() !== 'hit_result' || !(Number(payload?.meta?.incomingDamage ?? payload?.meta?.appliedDamage ?? 0) > 0)) return;
+    const targetId = String(payload.targetId || '').trim();
+    const target = targetId ? listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, targetId)) : null;
+    if (target && previewRuntime.meditating?.(target)) previewRuntime.interruptMeditation(target);
+  }
+
   function writeLedgerEvent(combatData = {}, payload = {}, inventoryBefore = null) {
     // 接战链 阶段 2e: stamina deductions queued by writeCombatResource go in first.
     if (pendingStaminaDeductions.length && !flushingStaminaDeductions) flushStaminaDeductions(combatLedgerRoot(combatData));
     const rootData = combatLedgerRoot(combatData);
     tallyAttack(rootData, payload);
+    breakMeditationOnHit(rootData, payload);
     const ledger = ensureLedger(rootData);
     const runtimeState = ensureCombatRuntime(rootData);
     const ledgerSequence = ++runtimeState.ledgerSequence;
@@ -6233,9 +6242,9 @@
         return resourceMatches && typeMatches ? Math.max(ruleMaximum, Number(rule?.比例 || 0)) : ruleMaximum;
       }, 0));
     }, 0));
-    const coreCount = Math.max(0, Math.floor(Number(unit?.魂核?.核心?.数量 || 0)));
-    const soulRatio = 0.005 + (coreCount >= 1 ? 0.01 : 0) + (coreCount >= 3 ? 0.01 : 0);
-    const mentalRatio = 0.005 + (coreCount >= 2 ? 0.01 : 0);
+    // The ratios are BattlePreview naturalRecoveryRatios (冥想 recovers a multiple of them).
+    const natural = previewRuntime.naturalRecoveryRatios(unit);
+    const soulRatio = natural.魂力, mentalRatio = natural.精神力;
     return [
       { key: 'sp', label: '魂力', ratio: soulRatio, max: previewRuntime.readResourceMax(unit, '魂力'), current: previewRuntime.readResource(unit, '魂力') },
       { key: 'men', label: '精神力', ratio: mentalRatio, max: previewRuntime.readResourceMax(unit, '精神力'), current: previewRuntime.readResource(unit, '精神力') },
@@ -13365,6 +13374,23 @@
         // 开武魂（信息模型 0a）: 「武魂已释放」 takes the 「武魂未释放」 key, so the round start does not lay it again, and the panel
         // comes back at once (BattlePreview addState does the same in a projection).
         // 点燃生命之火: its own key, panel and pools (BattlePreview igniteLifeFire); put out when the battle ends (the save prices it).
+        // 冥想: its own key and recovery (BattlePreview beginMeditation).
+        if (stateName === '冥想' && previewRuntime.beginMeditation) {
+          const sat = previewRuntime.beginMeditation(target);
+          if (sat) {
+            const state = target.状态效果['__auto__:冥想'];
+            if (state) state.战斗效果 = { ...createEmptyCombatEffectMap(), ...(state.战斗效果 || {}) };
+          }
+          facts.push(writeLedgerEvent(combatData, {
+            eventKind: 'state_apply', round: Number(combatData?.回合 || 0), actorName: previewRuntime.unitName(actor), targetName: previewRuntime.unitName(target),
+            actionName, actionType: actionKind, actorControl, actionRole, actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
+            parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
+            result: sat ? 'applied' : 'no_effect', resultState: sat ? 'APPLIED' : 'NO_EFFECT', primaryOutcome: sat ? 'state_applied' : 'no_effect', duration: 1,
+            effectPrototype: prototype, factType: 'STATE', sourceEffectId, operation: 'STATE_APPLY',
+            meta: { source: 'structured_runtime', effectIndex, stateName, resolutionReason: sat ? 'MEDITATION_BEGUN' : 'MEDITATION_ALREADY', operation: 'STATE_APPLY' },
+          }));
+          return;
+        }
         if (stateName === '生命之火' && previewRuntime.igniteLifeFire) {
           const lit = previewRuntime.igniteLifeFire(target, Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0));
           if (lit) {

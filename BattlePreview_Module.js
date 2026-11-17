@@ -8799,6 +8799,48 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return [{ slot: '生命之火', name: '点燃生命之火', windup: 0, aftermath: LIFE_FIRE_AFTERMATH,
       effect: { 原型: '状态施加', 目标: '自身', 状态: '生命之火', 持续回合: ARMOUR_LASTING_ROUNDS, 触发方式: '立即触发', 生效方式: '独立生效' } }];
   }
+  // 冥想（用户 2026-11-17 选「加冥想动作」；第 22 题 王冬开场前坐地冥想、戴沐白透支后由朱竹清接住）: a unit short of 魂力 or 精神力 may
+  // spend its action sitting down to recover — 「冥想」 (an __auto__ key) gives back at the round end MEDITATION_MULT times its natural
+  // recovery of each (BattleRuntime naturalRecoveryAtRoundEndProfile: 0.5%, more with 魂核) on top of it. It lasts the round: in it
+  // the unit makes no answer (BattleDecision lets the move land); a hit breaks it (interruptMeditation) — half the recovery, and it
+  // may answer again. The same release path as 开武魂, but it takes the action (windup 10).
+  const MEDITATION_KEY = '__auto__:冥想', MEDITATION_MULT = 8, MEDITATION_SHORT = 0.95;
+  const isMeditationEffect = effect => String(effect?.原型 || '').trim() === '状态施加' && String(effect?.状态 || '').trim() === '冥想';
+  function naturalRecoveryRatios(unit = {}) {
+    const cores = Math.max(0, Math.floor(Number(unit?.魂核?.核心?.数量 || 0)));
+    return { 魂力: 0.005 + (cores >= 1 ? 0.01 : 0) + (cores >= 3 ? 0.01 : 0), 精神力: 0.005 + (cores >= 2 ? 0.01 : 0), 体力: 0.005 };
+  }
+  function meditating(unit = {}) {
+    const state = unit?.状态效果?.[MEDITATION_KEY];
+    return !!state && state.__冥想中断 !== true;
+  }
+  function meditationOptions(unit = {}) {
+    if (!unit || isSummonUnit(unit) || unit?.状态效果?.[MEDITATION_KEY]) return [];
+    if (!['魂力', '精神力'].some(resource => readResource(unit, resource) < readResourceMax(unit, resource) * MEDITATION_SHORT)) return [];
+    const natural = naturalRecoveryRatios(unit), percent = value => Math.round(value * MEDITATION_MULT * 1000) / 10;
+    return [{ slot: '冥想', name: '冥想', windup: 10,
+      description: `坐下冥想：本回合末额外恢复魂力 ${percent(natural.魂力)}%、精神力 ${percent(natural.精神力)}%；冥想中不能应对，被打中就中断、只恢复一半。`,
+      effect: { 原型: '状态施加', 目标: '自身', 状态: '冥想', 持续回合: 1, 触发方式: '立即触发', 生效方式: '独立生效' } }];
+  }
+  // Puts it on `unit` in place; false when it already sits in one this round.
+  function beginMeditation(unit = {}) {
+    if (unit?.状态效果?.[MEDITATION_KEY]) return false;
+    const natural = naturalRecoveryRatios(unit);
+    unit.状态效果 = { ...(unit.状态效果 || {}), [MEDITATION_KEY]: { 状态: '冥想', 状态名称: '冥想', 类型: 'buff', duration: 1, 持续回合: 1,
+      描述: '冥想：回合末额外恢复魂力与精神力；冥想中不能应对，被打中就中断、只恢复一半', 面板修改比例: {}, 面板固定修正: {},
+      // cannot_react: no answer while it sits (BattleRuntime gives it no answer, the race's stand is blocked).
+      战斗效果: { sp_gain_ratio: natural.魂力 * MEDITATION_MULT, men_gain_ratio: natural.精神力 * MEDITATION_MULT, cannot_react: true }, __冥想: true } };
+    return true;
+  }
+  // A hit on a meditating unit breaks it: half the recovery, and it answers again. A new state object (frozen battles).
+  function interruptMeditation(unit = {}) {
+    const state = unit?.状态效果?.[MEDITATION_KEY];
+    if (!state || state.__冥想中断 === true) return false;
+    const effects = state.战斗效果 || {};
+    unit.状态效果 = { ...unit.状态效果, [MEDITATION_KEY]: { ...state, __冥想中断: true, 描述: '冥想被打断：回合末只恢复一半',
+      战斗效果: { ...effects, sp_gain_ratio: Number(effects.sp_gain_ratio || 0) / 2, men_gain_ratio: Number(effects.men_gain_ratio || 0) / 2, cannot_react: false } } };
+    return true;
+  }
   // Lights it on `unit` in place: the state, the panel and the pools; false when it is already burning.
   function igniteLifeFire(unit = {}, currentTick = 0) {
     if (lifeFireLit(unit)) return false;
@@ -9173,7 +9215,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         // 释放斗铠 / 机甲的内部结算（S80-A armourReleaseEffect）：不在技能表里，设计台与生成都用不到。
         // 开武魂（spiritReleaseOptions）同样是内部状态「武魂已释放」。
         const internal = prototype === '结算修正' && field === '结算' && normalized === '装备吸收' && !!effect?.__装备释放 ||
-          prototype === '状态施加' && field === '状态' && ['武魂已释放', '生命之火'].includes(normalized);
+          prototype === '状态施加' && field === '状态' && ['武魂已释放', '生命之火', '冥想'].includes(normalized);
         if (normalized && !internal && !(accepted ? accepted.has(normalized) : fieldDefinition.选项.includes(normalized))) {
           throw new Error(`battle_preview_unknown_enum:${prototype}:${field}:${normalized}`);
         }
@@ -11378,6 +11420,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 开武魂: 「武魂已释放」 takes the 「武魂未释放」 key (spiritReleasedMarker), so the round start does not lay it again.
     // 点燃生命之火 (igniteLifeFire): its own key, panel and pools.
     if (isLifeFireEffect(effect)) return igniteLifeFire(unit, 0);
+    // 冥想 (beginMeditation): its own key and recovery.
+    if (isMeditationEffect(effect)) return beginMeditation(unit);
     if (isSpiritReleaseEffect(effect)) {
       if (!spiritUnreleased(unit)) return false;
       unit.状态效果 = { ...(unit.状态效果 || {}), [SPIRIT_UNRELEASED_KEY]: spiritReleasedMarker(unit) };
@@ -25604,6 +25648,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     engagementTerms,
     suppressionStates,
     suppressionBlocksSkill,
+    meditationOptions,
+    meditating,
+    beginMeditation,
+    interruptMeditation,
+    naturalRecoveryRatios,
     spiritReleasedMarker,
     lifeFireOptions,
     truceAvailable,

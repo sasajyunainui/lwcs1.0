@@ -2035,7 +2035,10 @@ class BattleUIComponent {
           candidates.forEach(candidate => {
             const declaration = cloneBattleValue(candidate?.declaration || {});
             const actionKind = String(declaration.actionKind || '').trim();
-            const meta = actionKindMeta[actionKind];
+            // 冥想（BattlePreview meditationOptions）goes the release path but is a special action of its own.
+            const meta = actionKind === 'EQUIP' && declaration.releaseSlot === '冥想'
+              ? { type: 'tactical', actionType: '冥想', name: '冥想', category: '特殊动作' }
+              : actionKindMeta[actionKind];
             if (!meta) return;
             const skill = actionKind === 'WITHDRAW'
               ? { 效果描述: exitHint() }
@@ -2855,7 +2858,7 @@ class BattleUIComponent {
           const 动作类型 = String(动作.action_type || '').trim();
           const 目标文本 = 动作类型 === '撤离'
               ? '撤离'
-              : ['防御', '闪避', '穿戴装备', '收回召唤', '认输', '提议罢手'].includes(动作类型)
+              : ['防御', '闪避', '穿戴装备', '收回召唤', '认输', '提议罢手', '冥想'].includes(动作类型)
                 ? '自身'
                 : String(技能?.目标 || (Array.isArray(动作?.target_names) && 动作.target_names.length > 1 ? '可选单体' : 动作.target_name || '未指定')).trim();
           const 描述行 = 读取动作技能描述文本(动作);
@@ -2985,7 +2988,7 @@ class BattleUIComponent {
               .map(entry => entry.unit)
               .filter(unit => candidateNames.has(String(BATTLE_PREVIEW.unitName(unit) || '').trim()));
           }
-          if (['防御', '闪避', '撤离', '认输', '穿戴装备', '收回召唤', '提议罢手'].includes(String(action?.action_type || ''))) return [];
+          if (['防御', '闪避', '撤离', '认输', '穿戴装备', '收回召唤', '提议罢手', '冥想'].includes(String(action?.action_type || ''))) return [];
           const targetText = String(skill?.目标 || '').trim();
           if (/自身/.test(targetText)) return playerTeam.slice(0, 1);
           if (/友方|己方/.test(targetText) && !/群体|全体|全场/.test(targetText)) return playerTeam;

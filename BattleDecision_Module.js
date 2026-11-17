@@ -6709,6 +6709,17 @@
       const kept = candidates.filter(candidate => !refused(candidate));
       if (kept.length) candidates = kept;
     }
+    // 冥想中（BattlePreview meditating）: no answer — the move lands (a hit breaks it, and the next answer is its own again).
+    if (Array.isArray(candidates) && termsActor && preview.meditating?.(termsActor) &&
+      ['REACTION', 'COUNTER'].includes(String(input?.actionOpportunity?.role || '').trim().toUpperCase())) {
+      const kept = candidates.filter(candidate => candidate?.voluntaryOpportunityPass === true || candidate?.counterDeclineFallback === true);
+      for (const candidate of candidates.filter(candidate => !kept.includes(candidate))) input?.rejectionCollector?.({
+        actionKind: candidate.declaration?.actionKind, sourceActionId: String(candidate.declaration?.actionId || candidate.candidateId || '').trim(),
+        targetIds: Array.isArray(candidate.declaration?.targetIds) ? candidate.declaration.targetIds.map(String) : [],
+        rejectionCode: 'RULE_MEDITATING', rejectionStage: 'OPPORTUNITY',
+      });
+      if (kept.length) candidates = kept;
+    }
     const sustained = Array.isArray(candidates) ? sustainedSkillNames(worldSnapshot, findUnitInWorld(worldSnapshot, input?.actorId)) : null;
     if (sustained) {
       const repeat = candidate => candidate?.declaration?.actionKind === 'RELEASE_SKILL' &&
@@ -7448,14 +7459,15 @@
     // 开武魂（信息模型 0a）: the same release path, windup 0 (BattlePreview spiritReleaseOptions).
     // 点燃生命之火（只在实战，BattlePreview lifeFireOptions）: the same path; its after-battle cost goes with it (aftermath, priced
     // by postBattleCostShare in the valuation — not as the skill's side effects, which the runtime would settle in the battle too).
+    // 冥想（BattlePreview meditationOptions）: the same path, taking the action.
     [...(preview.spiritReleaseOptions?.(actor) || []), ...(preview.lifeFireOptions?.(actor, worldSnapshot, input.battleIntent) || []),
-      ...(preview.armourReleaseOptions?.(actor, worldSnapshot) || [])].forEach(option => {
+      ...(preview.armourReleaseOptions?.(actor, worldSnapshot) || []), ...(preview.meditationOptions?.(actor) || [])].forEach(option => {
       const id = `${actorId}:release:${option.slot}`;
       candidates.push({
         candidateId: id,
         declaration: { actionId: id, actorId, actionKind: 'EQUIP', targetIds: [actorId], releaseSlot: option.slot, equipmentSignature: `release:${option.slot}`,
           ...(option.aftermath ? { aftermath: option.aftermath } : {}),
-          skill: { name: option.name, 魂技名: option.name, 前摇: option.windup, 消耗: '无', _效果数组: [option.effect] } },
+          skill: { name: option.name, 魂技名: option.name, 前摇: option.windup, 消耗: '无', ...(option.description ? { 效果描述: option.description } : {}), _效果数组: [option.effect] } },
         equipmentSignature: `release:${option.slot}`,
       });
     });
@@ -66139,6 +66151,30 @@
     try { return partners.reduce((sum, partner) => sum + 100 * r20Cell(partner, other, friendly, partner === other, context, world, null), 0); }
     finally { r20FusionNested = false; r20Struck = struck; }
   }
+  // What a unit can spend over the race: what it has, and what its states still give back of 魂力 / 精神力 at the round ends within
+  // the horizon (冥想, BattlePreview meditationOptions, and any state of the kind) — without it a meditation read as a pass
+  // (11-17, 第 22 题: −0.004 beside 0 for letting the turn go).
+  function r20CapacityResources(unit) {
+    const base = r9v2LinearCapacityResources(unit);
+    let sp = base.sp, men = base.men;
+    for (const state of Object.values(unit?.状态效果 || {})) {
+      const effects = state?.战斗效果 || {}, rounds = Math.min(R20_HORIZON, Math.max(0, Number(state?.duration ?? state?.持续回合 ?? 0) || 0));
+      if (!(rounds > 0)) continue;
+      if (Number(effects.sp_gain_ratio) > 0) sp += Number(effects.sp_gain_ratio) * preview.readResourceMax(unit, '魂力') * rounds;
+      if (Number(effects.men_gain_ratio) > 0) men += Number(effects.men_gain_ratio) * preview.readResourceMax(unit, '精神力') * rounds;
+    }
+    return sp === base.sp && men === base.men ? base
+      : Object.freeze({ ...base, sp: Math.min(sp, preview.readResourceMax(unit, '魂力')), men: Math.min(men, preview.readResourceMax(unit, '精神力')) });
+  }
+  // The share of its pools (魂力 + 精神力) a unit's states still give back at the round ends within the horizon.
+  function r20RegenOwed(unit) {
+    let owed = 0;
+    for (const state of Object.values(unit?.状态效果 || {})) {
+      const effects = state?.战斗效果 || {}, rounds = Math.min(R20_HORIZON, Math.max(0, Number(state?.duration ?? state?.持续回合 ?? 0) || 0));
+      if (rounds > 0) owed += (Math.max(0, Number(effects.sp_gain_ratio) || 0) + Math.max(0, Number(effects.men_gain_ratio) || 0)) * rounds;
+    }
+    return owed;
+  }
   function r20Cell(unit, other, friendly, self, context, world, skipped) {
     r20Work.cells += 1;
     // A hidden unit (隐匿/隐身/潜行) cannot be aimed at by a single-target action of an enemy that does not see through it.
@@ -66179,10 +66215,10 @@
       // A fusion is paid by all its participants together, once only when it is written so, and not while a partner is held.
       const costs = r9v2LinearCapacityCostVector(unit, startupCosts);
       let uses = R20_HORIZON;
-      const pool = crew ? [unit, ...crew].map(member => r9v2LinearCapacityResources(member)) : null;
+      const pool = crew ? [unit, ...crew].map(member => r20CapacityResources(member)) : null;
       if (costs.valid) for (const key of ['sp', 'men']) {
         if (!(costs[key] > 0)) continue;
-        const have = pool ? pool.reduce((sum, member) => sum + (Number(member[key]) || 0), 0) : (resources ||= r9v2LinearCapacityResources(unit))[key];
+        const have = pool ? pool.reduce((sum, member) => sum + (Number(member[key]) || 0), 0) : (resources ||= r20CapacityResources(unit))[key];
         uses = Math.min(uses, Math.floor(have / costs[key] + 1e-9));
       }
       if (crew) {
@@ -67744,7 +67780,7 @@
     const until = new Array(count).fill(Infinity), tick = table.tick.slice(), tickRounds = table.tickRounds.slice(), reflect = table.reflect.slice(), hpMax = table.hpMax.slice();
     const rebuilt = [], hushed = {}, expiring = [], cuts = [];
     let added = [];
-    let spent = 0, outside = 0, seen = 0;
+    let spent = 0, outside = 0, seen = 0, regenGain = 0;
     for (const id of touched) {
       const row = table.index.get(id);
       if (row === undefined) {
@@ -67842,6 +67878,8 @@
       if (row === actorRow && String(request.actionOpportunity?.role || '').toUpperCase() !== 'REACTION') for (const resource of ['魂力', '精神力']) {
         spent += Math.max(0, preview.readResource(prior, resource) - preview.readResource(next, resource)) / Math.max(1, preview.readResourceMax(prior, resource));
       }
+      // 冥想（11-17，第 22 题）: what its states will give back over the horizon counts at the price spending costs (R20_RESOURCE_PRICE).
+      if (row === actorRow) regenGain += Math.max(0, r20RegenOwed(next) - r20RegenOwed(prior));
     }
     // 融合技（r20Fusion）: a host's cells hang on its partners — a partner the candidate changed, holds or took off the field
     // changes the fusion the host can cast, so the host's own cells are read again on the world it leaves, for as long as the
@@ -68433,6 +68471,8 @@
     // 赢家省资源（同上）：对方后面还有人时，赢下这场要带着剩下的资源接着打——花出去的按胜算加价；之后还有团战时至少加一半。
     const followKeep = follow ? Math.max(follow.keep ? 0.5 : 0, follow.foeFollow ? r20ExitOutlook(request, table.units[actorRow] || {}).win : 0) : 0;
     const cost = R20_RESOURCE_PRICE * spent * (1 + (followCarry ? 0 : R20_PROBE_PREMIUM * unseen)) * (spar ? R20_SPAR_PRICE : 1) * (1 + followKeep);
+    // What it gets back is worth what it would have cost — more when it has fights after this one (followKeep).
+    const regen = R20_RESOURCE_PRICE * regenGain * (1 + followKeep);
     // 亮魂环（同上）: any 魂技 lights the rings — the enemy sees how many and how old, and what the spirit does — so against one
     // not yet seen it costs a base share (R20_REVEAL_BASE) of what it stands to gain, more for a bigger card, at most R20_REVEAL_CAP.
     // 试探（用户 2026-11-15「在不清楚对方能力前，最重要的就是试探」「不能过多提高战局中普攻占比」）: a big card (the share of
@@ -68533,7 +68573,7 @@
     // Leaving is valued apart (认输与撤离, at the top). Observing is worth a little.
     let leave = 0;
     if (actionKind === 'OBSERVE') leave = R20_OBSERVE_VALUE;
-    return { value: race + tempo + granted + objective + leave + stock + info - cost - fusionCost - asset - restraint - reveal - idleStance, idleStance, race, tempo, granted, objective, leave, stock, info, cost, fusionCost, asset, restraint, reveal, counter, rebuilt: rebuilt.length, added: added.length, outside,
+    return { value: race + tempo + granted + objective + leave + stock + info + regen - cost - fusionCost - asset - restraint - reveal - idleStance, idleStance, race, tempo, granted, objective, leave, stock, info, regen, cost, fusionCost, asset, restraint, reveal, counter, rebuilt: rebuilt.length, added: added.length, outside,
       seen: seen + added.length + Number(granted !== 0) + Number(objective !== 0) + Number(leave !== 0) };
   }
 
