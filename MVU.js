@@ -1267,6 +1267,7 @@ const SchemaRootObject = z
             交手约定: z.any().optional().describe('交手约定：不还手、只硬接、压制修为（按参战者名字）'),
             攻击记录: z.any().optional().describe('各参战者出手次数与单次最大伤害占比（系统自动维护）'),
             佯装记录: z.any().optional().describe('本场各参战者佯装蓄力的次数（系统自动维护）'),
+            战前已开武魂: z.any().optional().describe('开战前已放出武魂的参战者名字（推进预设填写）'),
             参战者: z
               .record(z.string().describe('参战槽位或参战者姓名'), z.any())
               .prefault({})

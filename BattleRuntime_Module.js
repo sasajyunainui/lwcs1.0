@@ -1331,6 +1331,9 @@
   // 未释放不落盘也不跟着走，所以每次都补；释放会抵掉它）；释放状态里的耐久同步回 装备（战后随装备写回存档），耗尽记损毁。
   function ensureArmourUnreleased(combatData = {}) {
     listCombatUnits(combatData).forEach(unit => {
+      // 战前已开武魂（推进预设的战斗登记行，world.战斗.战前已开武魂: [名字]）: such a unit starts with its 武魂 released.
+      const openedBefore = Array.isArray(combatData?.战前已开武魂) ? combatData.战前已开武魂.map(String) : [];
+      if (openedBefore.length && unit.战前已开武魂 !== true && [previewRuntime.unitName(unit), previewRuntime.unitId(unit)].some(name => openedBefore.includes(String(name)))) unit.战前已开武魂 = true;
       // 交手约定·只硬接（BattlePreview engagementTerms）: it does not release its 武魂 as it answers (the answer node and the
       // decision's spiritOpensOnAnswer both read spiritHidden).
       // blockOnly: a hit that does not break its guard does nothing (BattlePreview calculateDefenseDamageMultiplier).

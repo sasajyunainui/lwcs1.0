@@ -1040,6 +1040,8 @@ class BattleUIComponent {
       '攻击记录',
       // 佯装蓄力的次数（BattleDecision feintSeeThroughChance：佯装过越多越容易看破）。
       '佯装记录',
+      // 开战前已放出武魂的参战者（推进预设的战斗登记行）。
+      '战前已开武魂',
     ];
 
     function compactCombatParticipantForPersistence(participant) {
