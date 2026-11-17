@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:dac188893de98943232f4611837611e5921f3afa94bde4a6952a30f30634cabe|MVU_Schema_Runtime.js:49b19d46acb65daa6331a69604b36c5ea833c157c70b633975c015ff4953374a|BattlePreview_Module.js:37a74448295386b739845923fb6a4e2cb27b65f44cae55baea1b865bfb8e609b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:d89b189f7df5f4812668e0f733ee9c4777a132562bc6e87c931632c3b8f0c26d|BattleRuntime_Module.js:c18495b57347b831e60171f438f752b256da73eca187cba8b5155d5d2a3ae6b2 */
+/* sources-sha256: MVU_Skill_Runtime.js:dac188893de98943232f4611837611e5921f3afa94bde4a6952a30f30634cabe|MVU_Schema_Runtime.js:49b19d46acb65daa6331a69604b36c5ea833c157c70b633975c015ff4953374a|BattlePreview_Module.js:37a74448295386b739845923fb6a4e2cb27b65f44cae55baea1b865bfb8e609b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:60ad2221b5e0fe6c2bcd01436b2f604665e2be1d790b2aeac6b463daf4527486|BattleRuntime_Module.js:c18495b57347b831e60171f438f752b256da73eca187cba8b5155d5d2a3ae6b2 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -137689,6 +137689,25 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     for (const skill of known) if (Array.isArray(skill?._效果数组) && !names.has(skillName(skill))) skills.push(skill);
     return skills;
   };
+  // The skills a unit has released in this battle (the ledger's action_start of RELEASE_SKILL), by name — the enemies present saw them.
+  const r20ReleasedCache = new WeakMap();
+  const r20ReleasedThisBattle = (world, actorId) => {
+    const ledger = Array.isArray(world?.__battleEventLedger) ? world.__battleEventLedger : null;
+    if (!ledger) return new Set();
+    let cached = r20ReleasedCache.get(ledger);
+    if (!cached || cached.length !== ledger.length) {
+      const byActor = new Map();
+      for (const event of ledger) {
+        if (event?.eventKind !== 'action_start' || String(event.actionType || '').toUpperCase() !== 'RELEASE_SKILL') continue;
+        const id = String(event.actorId || '').trim();
+        if (!byActor.has(id)) byActor.set(id, new Set());
+        byActor.get(id).add(String(event.actionName || '').trim());
+      }
+      cached = { length: ledger.length, byActor };
+      r20ReleasedCache.set(ledger, cached);
+    }
+    return cached.byActor.get(String(actorId)) || new Set();
+  };
   // A unit seen paying for its skills (costShares) that has less left than every one of them took: its routine attack
   // (a typical skill of its level) is out of reach too.
   const r20Drained = unit => {
@@ -140054,8 +140073,26 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         // 效果目标写「单体」、声明时点的是己方单位（辅助给队友上增益）：也只亮自己的魂环（11-16 行为检查目录第 46 题：此前按攻击魂技全额扣）。
         : (declaration.targetIds || []).length && (declaration.targetIds || []).every(id => { const row = table.index.get(String(id)); return row !== undefined && table.sides[row] === request.actorSide; }) ? R20_REVEAL_SELF : 1;
     // A charge released (蓄力释放) showed its rings when the charge began: nothing more is shown now.
-    const reveal = declaration?.actionKind === 'RELEASE_SKILL' && request.actionOpportunity?.forcedChargeRelease !== true && unseen > 0 && race + tempo > 0
-      ? revealScale() * Math.min(R20_REVEAL_CAP, (R20_REVEAL_BASE + R20_REVEAL_SHARE * clamp(spent / R20_TRUMP_SPENT, 0, 1)) * wary) * (race + tempo) : 0;
+    // 亮底牌拆成两半（用户 2026-11-17 选「拆成两半，已暴露的招免②」）: ① what the enemy may meet it with that the actor cannot
+    // see — by how unseen the enemy is to the actor (wary, as before); ② what the enemy learns of it — by how unseen the actor is
+    // to that enemy (their exchanges with it and the acquaintance, both ways alike: beliefExchangeCounts, beliefFamiliarExchanges),
+    // and nothing when it has seen the skill already: released in this battle (the ledger), or in earlier ones (战斗暴露) when it
+    // knows of them (beliefKnowsExposure). Each half takes half the base and of the bigger card's share.
+    const releasing = declaration?.actionKind === 'RELEASE_SKILL' && request.actionOpportunity?.forcedChargeRelease !== true && race + tempo > 0;
+    let learn = 0;
+    if (releasing && actorRow !== undefined && foes.length) {
+      const actorUnit = table.units[actorRow], name = skillName(declaration.skill || {});
+      const shownHere = r20ReleasedThisBattle(table.world, request.actorId).has(name);
+      const shownBefore = !shownHere && (preview.exposedSkills?.(actorUnit) || []).some(skill => skillName(skill) === name);
+      if (!shownHere) for (const [unit, row] of foes) {
+        if (shownBefore && beliefKnowsExposure(actorUnit, unit, table.world)) continue;
+        const seen = Number(beliefExchangeCounts(table.world, table.sides[row]).get(String(request.actorId)) || 0) + beliefFamiliarExchanges(actorUnit, unit, table.world);
+        learn += (1 - seen / (seen + BELIEF_EXCHANGE_PRIOR)) ** 2 / foes.length;
+      }
+    }
+    const revealHalf = (R20_REVEAL_BASE + R20_REVEAL_SHARE * clamp(spent / R20_TRUMP_SPENT, 0, 1)) / 2;
+    const reveal = releasing && (unseen > 0 || learn > 0)
+      ? revealScale() * Math.min(R20_REVEAL_CAP, revealHalf * wary + revealHalf * learn) * (race + tempo) : 0;
     // 信息收益（信息模型 B，用户 2026-11-17 批准；行为检查目录第 57 题「试探：付多少成本去换信息」）: an action that reaches an enemy not
     // yet seen (a hit, a state, a stop) is one more exchange with it — its clarity seen/(seen+2) goes to (seen+1)/(seen+3)
     // (beliefExchangeCounts) — and what is unseen of it weighs that much less on the actor's bigger cards to come: the drop of

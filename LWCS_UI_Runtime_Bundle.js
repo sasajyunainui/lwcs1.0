@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:d51023b57553645a17d2eaeab05f0ea15b47218f404d35fd51cbc9dc4cccf26f|cockpit/designer-model.js:cbbb8156854ed85b560637420324e21db9e899fb9cbef68ba1ccca6d0d217fc2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:37a74448295386b739845923fb6a4e2cb27b65f44cae55baea1b865bfb8e609b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:d89b189f7df5f4812668e0f733ee9c4777a132562bc6e87c931632c3b8f0c26d|BattleRuntime_Module.js:c18495b57347b831e60171f438f752b256da73eca187cba8b5155d5d2a3ae6b2|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:a544b975e98ad8c5606b10845ace10baa7a96f4f3e1b4819a9b19a21325870bd|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:d51023b57553645a17d2eaeab05f0ea15b47218f404d35fd51cbc9dc4cccf26f|cockpit/designer-model.js:cbbb8156854ed85b560637420324e21db9e899fb9cbef68ba1ccca6d0d217fc2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:37a74448295386b739845923fb6a4e2cb27b65f44cae55baea1b865bfb8e609b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:60ad2221b5e0fe6c2bcd01436b2f604665e2be1d790b2aeac6b463daf4527486|BattleRuntime_Module.js:c18495b57347b831e60171f438f752b256da73eca187cba8b5155d5d2a3ae6b2|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:a544b975e98ad8c5606b10845ace10baa7a96f4f3e1b4819a9b19a21325870bd|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -160687,6 +160687,25 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     for (const skill of known) if (Array.isArray(skill?._效果数组) && !names.has(skillName(skill))) skills.push(skill);
     return skills;
   };
+  // The skills a unit has released in this battle (the ledger's action_start of RELEASE_SKILL), by name — the enemies present saw them.
+  const r20ReleasedCache = new WeakMap();
+  const r20ReleasedThisBattle = (world, actorId) => {
+    const ledger = Array.isArray(world?.__battleEventLedger) ? world.__battleEventLedger : null;
+    if (!ledger) return new Set();
+    let cached = r20ReleasedCache.get(ledger);
+    if (!cached || cached.length !== ledger.length) {
+      const byActor = new Map();
+      for (const event of ledger) {
+        if (event?.eventKind !== 'action_start' || String(event.actionType || '').toUpperCase() !== 'RELEASE_SKILL') continue;
+        const id = String(event.actorId || '').trim();
+        if (!byActor.has(id)) byActor.set(id, new Set());
+        byActor.get(id).add(String(event.actionName || '').trim());
+      }
+      cached = { length: ledger.length, byActor };
+      r20ReleasedCache.set(ledger, cached);
+    }
+    return cached.byActor.get(String(actorId)) || new Set();
+  };
   // A unit seen paying for its skills (costShares) that has less left than every one of them took: its routine attack
   // (a typical skill of its level) is out of reach too.
   const r20Drained = unit => {
@@ -163052,8 +163071,26 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         // 效果目标写「单体」、声明时点的是己方单位（辅助给队友上增益）：也只亮自己的魂环（11-16 行为检查目录第 46 题：此前按攻击魂技全额扣）。
         : (declaration.targetIds || []).length && (declaration.targetIds || []).every(id => { const row = table.index.get(String(id)); return row !== undefined && table.sides[row] === request.actorSide; }) ? R20_REVEAL_SELF : 1;
     // A charge released (蓄力释放) showed its rings when the charge began: nothing more is shown now.
-    const reveal = declaration?.actionKind === 'RELEASE_SKILL' && request.actionOpportunity?.forcedChargeRelease !== true && unseen > 0 && race + tempo > 0
-      ? revealScale() * Math.min(R20_REVEAL_CAP, (R20_REVEAL_BASE + R20_REVEAL_SHARE * clamp(spent / R20_TRUMP_SPENT, 0, 1)) * wary) * (race + tempo) : 0;
+    // 亮底牌拆成两半（用户 2026-11-17 选「拆成两半，已暴露的招免②」）: ① what the enemy may meet it with that the actor cannot
+    // see — by how unseen the enemy is to the actor (wary, as before); ② what the enemy learns of it — by how unseen the actor is
+    // to that enemy (their exchanges with it and the acquaintance, both ways alike: beliefExchangeCounts, beliefFamiliarExchanges),
+    // and nothing when it has seen the skill already: released in this battle (the ledger), or in earlier ones (战斗暴露) when it
+    // knows of them (beliefKnowsExposure). Each half takes half the base and of the bigger card's share.
+    const releasing = declaration?.actionKind === 'RELEASE_SKILL' && request.actionOpportunity?.forcedChargeRelease !== true && race + tempo > 0;
+    let learn = 0;
+    if (releasing && actorRow !== undefined && foes.length) {
+      const actorUnit = table.units[actorRow], name = skillName(declaration.skill || {});
+      const shownHere = r20ReleasedThisBattle(table.world, request.actorId).has(name);
+      const shownBefore = !shownHere && (preview.exposedSkills?.(actorUnit) || []).some(skill => skillName(skill) === name);
+      if (!shownHere) for (const [unit, row] of foes) {
+        if (shownBefore && beliefKnowsExposure(actorUnit, unit, table.world)) continue;
+        const seen = Number(beliefExchangeCounts(table.world, table.sides[row]).get(String(request.actorId)) || 0) + beliefFamiliarExchanges(actorUnit, unit, table.world);
+        learn += (1 - seen / (seen + BELIEF_EXCHANGE_PRIOR)) ** 2 / foes.length;
+      }
+    }
+    const revealHalf = (R20_REVEAL_BASE + R20_REVEAL_SHARE * clamp(spent / R20_TRUMP_SPENT, 0, 1)) / 2;
+    const reveal = releasing && (unseen > 0 || learn > 0)
+      ? revealScale() * Math.min(R20_REVEAL_CAP, revealHalf * wary + revealHalf * learn) * (race + tempo) : 0;
     // 信息收益（信息模型 B，用户 2026-11-17 批准；行为检查目录第 57 题「试探：付多少成本去换信息」）: an action that reaches an enemy not
     // yet seen (a hit, a state, a stop) is one more exchange with it — its clarity seen/(seen+2) goes to (seen+1)/(seen+3)
     // (beliefExchangeCounts) — and what is unseen of it weighs that much less on the actor's bigger cards to come: the drop of
