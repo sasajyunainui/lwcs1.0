@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:dac188893de98943232f4611837611e5921f3afa94bde4a6952a30f30634cabe|MVU_Schema_Runtime.js:49b19d46acb65daa6331a69604b36c5ea833c157c70b633975c015ff4953374a|BattlePreview_Module.js:37a74448295386b739845923fb6a4e2cb27b65f44cae55baea1b865bfb8e609b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:60ad2221b5e0fe6c2bcd01436b2f604665e2be1d790b2aeac6b463daf4527486|BattleRuntime_Module.js:c18495b57347b831e60171f438f752b256da73eca187cba8b5155d5d2a3ae6b2 */
+/* sources-sha256: MVU_Skill_Runtime.js:dac188893de98943232f4611837611e5921f3afa94bde4a6952a30f30634cabe|MVU_Schema_Runtime.js:49b19d46acb65daa6331a69604b36c5ea833c157c70b633975c015ff4953374a|BattlePreview_Module.js:a071ad3027b45f1e3a9d624048bd29042577ce83892a0793b67ee287451f8faa|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:b4740505429eb6a154dddefd4e468cd1db2576c6bd5ff07cd66d60d3c91366d6|BattleRuntime_Module.js:2adc1e48422e7a95ab54d88979a66043caf847f03b42c0317491e337d6e49301 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -40993,6 +40993,22 @@ try {
     if (rules.match) return rules.refereed ? EXIT_FATE.REFEREED_MATCH : rules.lethal ? EXIT_FATE.DEATH : EXIT_FATE.MATCH;
     return rules.lethal ? EXIT_FATE.DEATH : EXIT_FATE.SUBDUED;
   }
+  // 中途罢手（用户 2026-11-17：死战也可；我方提议一律成立，对方提议弹同意框；对方每场最多 2 次、被拒后隔 3 回合）: whether the
+  // unit's side may propose it now (combatData.罢手 the proposal under way, 罢手记录 each side's count and last declined round).
+  const TRUCE_MAX_PROPOSALS = 2, TRUCE_RETRY_ROUNDS = 3;
+  function truceAvailable(worldSnapshot = {}, unit = {}) {
+    if (!unit || isSummonUnit(unit) || ['待回应', '成立'].includes(String(worldSnapshot?.罢手?.状态 || ''))) return false;
+    const side = sideOf(worldSnapshot, unit), record = worldSnapshot?.罢手记录?.[side] || {}, round = Number(worldSnapshot?.回合 || 0);
+    if (!side || side !== 'team_player' && Number(record.次数 || 0) >= TRUCE_MAX_PROPOSALS) return false;
+    return !(Number(record.上次被拒回合) > 0 && round - Number(record.上次被拒回合) < TRUCE_RETRY_ROUNDS);
+  }
+  // What fighting on is worth to the unit's side on the stake's scale (won +1, lost −1 and its fate; a draw 0) — the
+  // exitValuation's stay, with the outlook the valuation gives (R20 its race) or the field's own.
+  function battleStayWorth(worldSnapshot = {}, battleIntent = {}, unit = {}, outlook = null) {
+    const side = sideOf(worldSnapshot, unit), fate = exitFate(worldSnapshot, battleIntent);
+    const view = outlook && typeof outlook === 'object' ? { ...battleStandingOutlook(worldSnapshot, side), ...outlook } : battleStandingOutlook(worldSnapshot, side);
+    return { worth: view.win - view.lose - view.lose * fate, win: view.win, lose: view.lose };
+  }
   // What each unit has done so far, as shares of HP maxima: HP taken off the other side's units (dealt) and put back on
   // its own side's (mended) — hits, HP resource changes; a summon's to its host. Kept per ledger while it grows.
   const exitObservedShareCache = new WeakMap();
@@ -58499,7 +58515,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ...grants.map(entry => ({ ...entry.effect, effectId: entry.effectId })),
       ...baseEffects,
     ];
-    if (!effects.length && !['PASS_OPPORTUNITY', 'DEFEND', 'EVADE', 'WITHDRAW', 'EQUIP', 'OBSERVE', 'GUARD'].includes(String(declaration?.actionKind || '').trim())) {
+    if (!effects.length && !['PASS_OPPORTUNITY', 'DEFEND', 'EVADE', 'WITHDRAW', 'EQUIP', 'OBSERVE', 'GUARD', 'TRUCE'].includes(String(declaration?.actionKind || '').trim())) {
       throw new Error('battle_preview_action_effects_missing');
     }
     const nodeBudget = { count: 0, limit: budgetLimit, activeFingerprints: new Set() };
@@ -62900,6 +62916,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     spiritBlocksSkill,
     spiritReleasedMarker,
     lifeFireOptions,
+    truceAvailable,
+    battleStayWorth,
     lifeFireLit,
     igniteLifeFire,
     exposedSkills,
@@ -73313,7 +73331,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   let decisionRevisionSequence = 0;
   const actionKinds = Object.freeze([
     'BASIC_ATTACK', 'DEFEND', 'EVADE', 'COUNTER', 'OBSERVE',
-    'GUARD', 'WITHDRAW', 'RELEASE_SKILL', 'USE_ITEM', 'EQUIP',
+    'GUARD', 'WITHDRAW', 'RELEASE_SKILL', 'USE_ITEM', 'EQUIP', 'TRUCE',
   ]);
 
   function clamp(value, min, max) {
@@ -78673,6 +78691,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (!forcedSkill && !reactionOnly && !counterOnly && !assistOnly && (!opportunityRole || opportunityRole === 'ACTIVE') &&
       hostile.length > 0 && withdrawalAllowed(worldSnapshot, actor, input.battleIntent)) {
       candidates.push({ candidateId: `${actorId}:WITHDRAW`, declaration: defensiveDeclaration(actorId, 'WITHDRAW') });
+    }
+    // 中途罢手（用户 2026-11-17）: proposed as one's own action, with someone still there to stop fighting (BattlePreview truceAvailable).
+    if (!forcedSkill && !reactionOnly && !counterOnly && !assistOnly && (!opportunityRole || opportunityRole === 'ACTIVE') &&
+      hostile.length > 0 && preview.truceAvailable?.(worldSnapshot, actor)) {
+      candidates.push({ candidateId: `${actorId}:TRUCE`, declaration: defensiveDeclaration(actorId, 'TRUCE') });
     }
     // 蓄力迎击（11-17）: a unit charging may meet the move with the charge itself (BattlePreview chargeMeetSkill).
     const chargeMeet = reactionOnly && !forcedSkill ? preview.chargeMeetSkill(actor) : null;
@@ -139346,6 +139369,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // withdrawal's odds and pursuit — on the race's scale of the stake (R20_WIN_VALUE a battle won). The race is not run
     // for it: what the actor would have done is in the outlook it no longer adds to. (Before: worth what staying stood to
     // lose, read at a chance of 1 whatever the contest's.)
+    if (truceCandidate(candidate)) {
+      const truce = r9v2LinearTruceValuation(request, 'r20');
+      if (truce) {
+        const leave = R20_WIN_VALUE * truce.delta;
+        return { value: leave, race: 0, tempo: 0, granted: 0, objective: 0, leave, stock: 0, cost: 0, fusionCost: 0, asset: 0, counter: 0, rebuilt: 0, added: 0, outside: 0, seen: 1 };
+      }
+    }
     if (exitCandidate(candidate, result)) {
       const exit = r9v2LinearExitValuation(request, result, 'r20');
       if (exit) {
@@ -141452,6 +141482,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // exitValuation: the side's chance to win with and without the actor, the fates losing brings, a withdrawal's odds
     // and pursuit), carried by OBJECTIVE_PROGRESS on its scale (a battle won +1, lost −1), every other row 0: the actor is
     // gone, and what it would have done is in the chance it no longer adds. No look-ahead and no threshold.
+    if (!conditioned && truceCandidate(candidate)) {
+      const truce = r9v2LinearTruceValuation(request);
+      if (truce) return Object.freeze(r9v2LinearZeroCausalFeatureRows.map(row => row.featureCode !== 'OBJECTIVE_PROGRESS' ? row
+        : Object.freeze({ ...row, value: truce.delta })));
+    }
     if (!conditioned && exitCandidate(candidate, result)) {
       const exit = r9v2LinearExitValuation(request, result);
       if (exit) return Object.freeze(r9v2LinearZeroCausalFeatureRows.map(row => row.featureCode !== 'OBJECTIVE_PROGRESS' ? row
@@ -144819,6 +144854,25 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // settlement carries. Development hook (absent in play): __LWCS_DECISION_DEBUG__.onExit sees each one.
   // A candidate valued as leaving: a withdrawal, or a 群体撤离 the settlement found possible (its contest is there:
   // BattlePreview groupWithdrawalContest) — the whole side leaving together.
+  // 中途罢手（用户 2026-11-17）: a proposal is worth the draw it brings (0 on the stake's scale) against fighting on (BattlePreview
+  // battleStayWorth; R20 its race's outlook), at the chance the user's 同意框 agrees (TRUCE_AGREE_SHARE); declined, the turn is
+  // gone and nothing else changes (on the pass baseline in R20, as an exit). The player's side's AI does not propose for the user
+  // (「这就是用户想要安排的剧情」): −1.
+  const TRUCE_AGREE_SHARE = 0.5, TRUCE_MIN_ROUND = 2, TRUCE_MAX_WIN = 0.4;
+  const truceCandidate = candidate => String(candidate?.declaration?.actionKind || '').trim().toUpperCase() === 'TRUCE';
+  function r9v2LinearTruceValuation(request = {}, valuation = 'r9v2') {
+    const world = request.visibleWorld || request.worldSnapshot || {};
+    const actor = findUnitInWorld(world, request.actorId);
+    if (!actor) return null;
+    if (sideOf(world, actor) === 'team_player') return { delta: -1 };
+    const raced = valuation === 'r20' ? r20ExitOutlook(request, actor) : null;
+    const intent = { ...(request.battleIntent || {}), objectives: request.objectiveContract || request.battleIntent?.objectives || world.胜负条件 || {} };
+    // 原作的罢手都在交过手、一方明显不利或两败俱伤之后：第 TRUCE_MIN_ROUND 回合起、自己胜算不到 TRUCE_MAX_WIN 才提（同级对局里
+    // 「平局胜过一半输面的结局代价」否则开局就提，同意框弹得太勤）。
+    const stay = preview.battleStayWorth(world, intent, actor, raced);
+    if (Number(world?.回合 || 0) < TRUCE_MIN_ROUND || !(stay.win < TRUCE_MAX_WIN)) return { delta: -1 };
+    return { delta: clamp(TRUCE_AGREE_SHARE * (0 - stay.worth), -1, 1) };
+  }
   function exitCandidate(candidate = {}, result = {}) {
     if (String(candidate?.declaration?.actionKind || '').trim().toUpperCase() === 'WITHDRAW') return true;
     return (result?.contributions || []).some(entry => entry?.outcomeKind === 'WITHDRAWAL_CONTEST' && entry?.evidence?.groupWithdrawal === true);
@@ -145496,7 +145550,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     };
     const shadowCausalRows = candidateId => {
       let shadow = illegalTargetCandidateIds.has(candidateId) ? null : r20Shadow(request, previewResultsById[candidateId], frozenById.get(candidateId));
-      if (shadow && String(frozenById.get(candidateId)?.declaration?.actionKind || '').trim().toUpperCase() === 'WITHDRAW') {
+      if (shadow && ['WITHDRAW', 'TRUCE'].includes(String(frozenById.get(candidateId)?.declaration?.actionKind || '').trim().toUpperCase())) {
         const base = r20PassBaseline();
         shadow = { ...shadow, value: shadow.value + base, passBaseline: base };
       }
@@ -146694,7 +146748,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
 
   const actionKinds = Object.freeze([
     'BASIC_ATTACK', 'PASS_OPPORTUNITY', 'DEFEND', 'EVADE', 'COUNTER', 'OBSERVE',
-    'GUARD', 'WITHDRAW', 'RELEASE_SKILL', 'USE_ITEM', 'EQUIP',
+    'GUARD', 'WITHDRAW', 'RELEASE_SKILL', 'USE_ITEM', 'EQUIP', 'TRUCE',
   ]);
   const actionRoles = Object.freeze(['ACTIVE', 'REACTION', 'COUNTER', 'ASSIST', 'STATE_TICK']);
   const opportunityGrantTypes = Object.freeze([
@@ -151059,7 +151113,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     const actionType = {
       BASIC_ATTACK: '常规攻击', DEFEND: '防御', EVADE: '闪避', COUNTER: '反击',
-      OBSERVE: '观察', GUARD: '保护队友', WITHDRAW: previewRuntime.battleExitLabel(combatData) || '撤退', PASS_OPPORTUNITY: '让过行动',
+      OBSERVE: '观察', GUARD: '保护队友', WITHDRAW: previewRuntime.battleExitLabel(combatData) || '撤退', PASS_OPPORTUNITY: '让过行动', TRUCE: '提议罢手',
     }[actionKind] || '防御';
     const actionName = actionKind === 'BASIC_ATTACK' ? '普通攻击' : actionType;
     const skill = { name: actionName, 目标: actionKind === 'GUARD' ? '友方单体' : actionKind === 'BASIC_ATTACK' ? '单体' : '自身', 消耗: '无',
@@ -153579,15 +153633,34 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (withdrawnSides.length) { runtime.withdrawalSuccess = true; runtime.withdrawalSuccessSides = withdrawnSides; }
   }
 
+  // 中途罢手的回应（BattleUI 同意框、或无界面时的 truceResponse）：同意即成立（下一次结算立即以平局结束）；拒绝则清掉提议，记下
+  // 被拒的回合（BattlePreview truceAvailable：隔 TRUCE_RETRY_ROUNDS 回合才能再提）。
+  function respondToTruce(combatData = {}, accept = false) {
+    const truce = combatData?.罢手;
+    if (!truce || truce.状态 !== '待回应') return false;
+    if (accept) { combatData.罢手 = { ...truce, 状态: '成立' }; return true; }
+    const side = String(truce.提议方 || '');
+    // A new record each time: the battle's objects may be frozen by a decision's prepared world.
+    const records = combatData.罢手记录 && typeof combatData.罢手记录 === 'object' ? combatData.罢手记录 : {};
+    combatData.罢手记录 = { ...records, [side]: { ...(records[side] || {}), 上次被拒回合: Number(truce.回合 || combatData?.回合 || 0) } };
+    delete combatData.罢手;
+    return true;
+  }
+
   function evaluateBattleTerminal(context = {}, adapterOptions = {}) {
     const combatData = context?.combatData || {};
     const objectives = previewRuntime.normalizeBattleObjectives(combatData?.胜负条件 || {}, combatData);
     combatData.胜负条件 = cloneValue(objectives);
-    const resolution = previewRuntime.evaluateBattleObjectives(combatData, objectives, {
+    let resolution = previewRuntime.evaluateBattleObjectives(combatData, objectives, {
       round: Number(context?.currentRound ?? combatData?.回合 ?? 0),
       roundCompleted: context?.roundCompleted === true,
       enforceRoundLimit: adapterOptions.enforceRoundLimit === true,
     });
+    // 中途罢手成立：双方停手，本场平局（BattleUI / bridge 走平局的裁断与写回）。
+    if (combatData?.罢手?.状态 === '成立' && !resolution.terminal) {
+      resolution = { ...resolution, terminal: true, winner: 'draw', status: 'TRUCE', terminalReason: `${String(combatData.罢手.提议者 || '')}提议罢手，双方停手`,
+        matchedDetails: [...(Array.isArray(resolution.matchedDetails) ? resolution.matchedDetails : []), { condition: { type: 'TRUCE' }, unitResults: [] }] };
+    }
     const runtime = ensureCombatRuntime(combatData);
     runtime.objectiveResolution = cloneValue(resolution);
     if (resolution.terminal) {
@@ -157830,7 +157903,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const pendingActionGrantedEffects = actionRole === 'STATE_TICK' || declaration?.__includeGrantedEffects === false
       ? []
       : previewRuntime.pendingGrantedEffects(actor, actionKind);
-    if (['PASS_OPPORTUNITY', 'DEFEND', 'EVADE', 'OBSERVE', 'WITHDRAW', 'GUARD'].includes(actionKind)) {
+    if (['PASS_OPPORTUNITY', 'DEFEND', 'EVADE', 'OBSERVE', 'WITHDRAW', 'GUARD', 'TRUCE'].includes(actionKind)) {
       const eventKind = actionKind === 'DEFEND' || actionKind === 'GUARD' ? 'defend' : actionKind === 'EVADE' ? 'dodge' : 'pass';
       // 守护（用户 2026-11-17）: an ACTIVE guard stands before the ally it names — 护卫 on that ally, its 来源角色 the guard, until the
       // guard's next action (liftOwnGuard; two round ends at most). BattlePreview resolveTargets sends single-target hostile effects
@@ -157867,6 +157940,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         preparedDefense,
         voluntaryOpportunityPass: actionKind === 'PASS_OPPORTUNITY',
       };
+      // 中途罢手（用户 2026-11-17，死战也可）: the proposal takes the turn. The player's side's stands (「这就是用户想要安排的剧情」) —
+      // the battle ends as a draw at this round's end; the other side's waits for the user's answer (the run's round end). A
+      // side proposes at most TRUCE_MAX_PROPOSALS times a battle (BattlePreview truceAvailable).
+      if (actionKind === 'TRUCE') {
+        const side = previewRuntime.sideOf(combatData, actor), round = Number(combatData?.回合 || 0);
+        const records = combatData.罢手记录 && typeof combatData.罢手记录 === 'object' ? combatData.罢手记录 : {};
+        combatData.罢手记录 = { ...records, [side]: { ...(records[side] || {}), 次数: Number(records[side]?.次数 || 0) + 1 } };
+        combatData.罢手 = { 状态: side === 'team_player' ? '成立' : '待回应', 提议方: side, 提议者: previewRuntime.unitName(actor), 回合: round };
+        primaryOutcome = 'truce_proposed';
+        meta.truce = { ...combatData.罢手 };
+      }
       if (actionKind === 'WITHDRAW') {
         const actorSide = previewRuntime.sideOf(combatData, actor);
         const contest = previewRuntime.buildWithdrawalContest(
@@ -163157,6 +163241,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         previewRuntime.bindWorldActionContext(combatData, input.worldActionContext);
       }
       for (let roundOffset = 1; roundOffset <= roundLimit; roundOffset += 1) {
+        // 中途罢手已在两次结算之间被同意（BattleUI 同意框 → respondToTruce）：不再开新回合，直接按平局收尾。
+        if (combatData.罢手?.状态 === '成立') {
+          terminal = evaluateBattleTerminal({ combatData, currentRound: combatData.回合, rounds: roundOffset - 1, roundCompleted: true }, {});
+          break;
+        }
         const roundPreparationStartedAt = collectPerformanceBreakdown
           ? performanceNow()
           : 0;
@@ -166262,6 +166351,22 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (terminal?.terminal === true) {
           addPerformanceTime('roundEndMs', roundEndStartedAt);
           break;
+        }
+        // 中途罢手（用户 2026-11-17「对方提议罢手的话就弹出同意框即可」）: the enemy's proposal waits for the user's answer — with the
+        // battle screen (input.truceInteractive) the run stops at this round's end for its 同意框 (respondToTruce on the answer);
+        // without one (tests) it is answered by input.truceResponse ('accept'; anything else declines).
+        if (combatData.罢手?.状态 === '待回应') {
+          if (input?.truceInteractive === true) {
+            continuationStopReason = { code: 'TRUCE_PENDING', text: `${String(combatData.罢手.提议者 || '对方')}提议罢手，等待回应。` };
+            addPerformanceTime('roundEndMs', roundEndStartedAt);
+            break;
+          }
+          respondToTruce(combatData, input?.truceResponse === 'accept');
+          if (combatData.罢手?.状态 === '成立') {
+            terminal = evaluateBattleTerminal({ combatData, currentRound: combatData.回合, rounds: roundOffset, roundCompleted: true }, {});
+            addPerformanceTime('roundEndMs', roundEndStartedAt);
+            break;
+          }
         }
         if (roundOffset < roundLimit) {
           const hasAutoContinueSettings = input?.settings && [
@@ -171426,6 +171531,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     prepareCombatData,
     collectPostBattleCosts,
     evaluateBattleTerminal,
+    respondToTruce,
     syncSummonUnitMirror: syncSummonMirror,
     writeCombatResource,
     readCombatResource: persistentResourceValue,

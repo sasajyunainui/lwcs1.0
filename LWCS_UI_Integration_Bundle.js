@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:d51023b57553645a17d2eaeab05f0ea15b47218f404d35fd51cbc9dc4cccf26f|cockpit/designer-model.js:cbbb8156854ed85b560637420324e21db9e899fb9cbef68ba1ccca6d0d217fc2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:d385444163db8270ed7cfed64d203e5e67daea1ded21b57e68446572fae47412|cockpit/designer-model.js:cbbb8156854ed85b560637420324e21db9e899fb9cbef68ba1ccca6d0d217fc2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -10226,10 +10226,13 @@
       };
     }
     if (settlement.终局类型 === 'time_limit') {
+      // 中途罢手（战斗数据 罢手 成立，或裁断原因写明罢手）：同一条平局写回，措辞换成罢手。
+      const 罢手 = combatData?.罢手?.状态 === '成立' || /罢手|停手|休战/.test(toText(settlement.终局原因, ''));
+      const 罢手提议者 = toText(combatData?.罢手?.提议者, '').trim();
       const patches = [
         { op: 'replace', path: '/world/战斗/进行中', value: false },
-        { op: 'replace', path: '/world/战斗/裁断结果', value: `达到最大回合，双方未分胜负：${settlement.终局原因}` },
-        { op: 'replace', path: '/sys/系统播报', value: `[战斗裁断] 达到最大回合，双方停止交锋，本场平局。` },
+        { op: 'replace', path: '/world/战斗/裁断结果', value: 罢手 ? `双方罢手，本场平局：${settlement.终局原因}` : `达到最大回合，双方未分胜负：${settlement.终局原因}` },
+        { op: 'replace', path: '/sys/系统播报', value: 罢手 ? `[战斗裁断] ${罢手提议者 ? `${罢手提议者}提议罢手，` : ''}双方停手，本场平局。` : `[战斗裁断] 达到最大回合，双方停止交锋，本场平局。` },
       ];
       await applyBattlePatchOpsByEditor(patches, { force: true });
       await 结算赛事战斗_桥接({ 平局: true, 比分: [0, 0] });
@@ -10239,9 +10242,9 @@
         finished: true,
         reason: 'battle_adjudication_draw_applied',
         settlement,
-        summary: '达到最大回合，双方未分胜负。',
+        summary: 罢手 ? '双方罢手，本场平局。' : '达到最大回合，双方未分胜负。',
         patchOps: patches,
-        runtimeEvent: '<battle_adjudication_result>\n状态：已结束\n事实：达到最大回合，双方未分胜负。\n约束：后续剧情只承接平局结果，不要继续结算本场战斗。\n</battle_adjudication_result>',
+        runtimeEvent: `<battle_adjudication_result>\n状态：已结束\n事实：${罢手 ? '双方罢手，本场平局' : '达到最大回合，双方未分胜负'}。\n约束：后续剧情只承接平局结果，不要继续结算本场战斗。\n</battle_adjudication_result>`,
       };
     }
     const loserName = settlement.败方;
@@ -26781,6 +26784,7 @@ ${播报文本}
               <div class="battle-action-summary" id="ui-action-summary"></div>
                   <div class="battle-target-controls" id="ui-target-controls" hidden></div>
                   <div class="tower-settlement-panel" id="ui-tower-settlement" hidden></div>
+                  <div class="tower-settlement-panel" id="ui-truce-pending" hidden></div>
                   <input id="ui-intent-output" type="hidden" value="">
             </div>
           </section>
@@ -29070,6 +29074,8 @@ ${播报文本}
       mode: battleMode,
       executionMode: 规范化战斗提交模式(options.executionMode),
       rounds: maxRounds,
+      // 中途罢手：对方提议时本回合打完即停，由战斗界面弹同意框（BattleRuntime respondToTruce）。
+      truceInteractive: true,
       ...(battleMode === 'multi_round'
         ? {
             settings: {
@@ -29502,7 +29508,7 @@ ${播报文本}
         ? '玩家方取得阶段胜势'
         : 战果类型 === 'enemy_win'
           ? '敌方取得阶段胜势'
-          : 战果类型 === 'draw' ? '达到最大回合，双方未分胜负' : '战斗仍在持续';
+          : 战果类型 === 'draw' ? (终局条件.includes('TRUCE') ? '双方罢手，本场平局' : '达到最大回合，双方未分胜负') : '战斗仍在持续';
     return [
       `[前端战果类型]\n${战果类型}`,
       `[前端战果说明]\n${战果说明}`,
