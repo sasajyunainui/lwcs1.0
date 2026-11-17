@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:27b6ca3f2833c031b38869085a2b66f37285bd92de7a85bb9f7a945ecbb56486|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:302bd8b216533548297d71de900e0f78199fbbe047291aa26ee5ba1198e6867f|BattleRuntime_Module.js:762928c28c62934808485d1e0aa795d3f1916bc4ff3fe9faf84ddba083b992bf|BattleReport_Module.js:09f73fb09d0c291becb4ec718b5d13d2ac95dfe4e56fe49651a85906c38a95cb|BattleUI_Module.js:14335e61b58eae9ac17590a496fa99f8fa38f49dac69ef4686368cb6a2765e01 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:27b6ca3f2833c031b38869085a2b66f37285bd92de7a85bb9f7a945ecbb56486|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:302bd8b216533548297d71de900e0f78199fbbe047291aa26ee5ba1198e6867f|BattleRuntime_Module.js:762928c28c62934808485d1e0aa795d3f1916bc4ff3fe9faf84ddba083b992bf|BattleReport_Module.js:29c76a42427d963b5201864baa721e6be1c813ec3838dd6d1ecf3e909bfab823|BattleUI_Module.js:bbdd909bb8ba56a04bc447dde50a41befe38b83153e74703a97a2abf36785e61 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -111589,6 +111589,37 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return null;
   }
 
+  // 罢手的一句话（战报事实、AI 摘要、界面同意后补发的摘要共用这一个写法）。
+  function truceSentence(phase = '', proposer = '', proposerSide = '', responderSide = '') {
+    const sideLabel = side => side === 'team_player' ? '我方' : side === 'team_enemy' ? '敌方' : '';
+    const proposerName = text(proposer) || sideLabel(proposerSide) || '对方';
+    const responder = sideLabel(responderSide) || '对方';
+    if (phase === 'accepted') return `${responder}同意了${proposerName}的罢手提议`;
+    if (phase === 'declined') return `${responder}拒绝了${proposerName}的罢手提议`;
+    return `${proposerName}提议罢手，等待回应`;
+  }
+
+  /* 蓄力被放下（T26 第 3b 批）：运行时的 charge_interrupt 按原因写，不再一律「被中止」。
+     佯装的蓄力是不是佯装，看它的动作 id 是不是一次佯装行动（build 开头从账本收进 currentFeintActionIds）。 */
+  let currentFeintActionIds = new Set();
+  function chargeInterruptText(event = {}, actor = '', action = '') {
+    const code = text(event?.ruleCode);
+    const feint = currentFeintActionIds.has(text(event?.actionId || event?.sourceActionId));
+    const skill = action ? `【${action}】` : '';
+    if (code === 'CHARGE_ABANDONED_TO_ANSWER') return feint ? `${actor}收起佯装${skill}，转去应对` : `${actor}放下蓄力中的${skill}，转去应对`;
+    if (code === 'CHARGE_CUT_SHORT_TO_ANSWER') {
+      const scale = number(event?.meta?.hastyScale, 0);
+      return `${actor}中断蓄力转去应对，${skill}仓促出手${scale > 0 ? `（威力×${displayNumber(scale)}，下一次行动放出）` : ''}`;
+    }
+    if (code === 'CHARGE_INTERRUPTED_BY_PARTNER') return `${actor}的融合蓄力因搭档转去应对而中断`;
+    if (code === 'CHARGE_INTERRUPTED_BY_SILENCE') return `${actor}被封住魂技，${skill}的蓄力中断`;
+    if (code === 'CHARGE_ACTOR_UNAVAILABLE') return `${actor}失去行动能力，${skill}的蓄力中断`;
+    if (code === 'CHARGE_RELEASE_NO_LEGAL_TARGET') return `${actor}蓄满的${skill}找不到可打的目标，落空`;
+    if (code === 'CHARGE_THROWN_TO_MEET') return feint ? `${actor}亮出佯装时保留的${skill}迎击来袭` : `${actor}把蓄力中的${skill}提前放出迎击`;
+    if (code === 'FEINT_ENDED') return `${actor}收回佯装时保留的${skill || '魂技'}，没人冲上来`;
+    return `${actor}的${skill || '蓄力'}被中止`;
+  }
+
   function summarizeMechanicEvent(event = {}, directory = new Map(), actor = '', target = '') {
     const mechanic = buildMechanic(event, directory);
     if (!mechanic) return '';
@@ -111611,13 +111642,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         ? `${values.attacker || actor}破了${values.target || target}的防（破防比值${ratio}，过了门槛）`
         : `${values.target || target}守住了${values.attacker || actor}这一击，没被破防（破防比值${ratio}，未过门槛）`;
     }
-    if (mechanic.kind === 'TRUCE') {
-      const proposer = values.proposer || sideLabel(values.proposerSide) || '对方';
-      const responder = sideLabel(values.responderSide) || '对方';
-      if (mechanic.phase === 'accepted') return `${responder}同意了${proposer}的罢手提议`;
-      if (mechanic.phase === 'declined') return `${responder}拒绝了${proposer}的罢手提议`;
-      return `${proposer}提议罢手，等待回应`;
-    }
+    if (mechanic.kind === 'TRUCE') return truceSentence(mechanic.phase, values.proposer, values.proposerSide, values.responderSide);
     if (mechanic.kind === 'MEDITATION') {
       if (mechanic.phase === 'interrupted') return `${values.unit || actor}的冥想被${values.by || '对方'}打断，回合末只恢复一半`;
       if (mechanic.phase === 'recovered') return `${values.unit || actor}冥想额外恢复${values.resource || '资源'}${displayNumber(values.amount)}点`;
@@ -111913,7 +111938,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     if (kind === 'state_expire') return event.ruleCode === 'STATE_WINDOW_EXPIRED' && Object.hasOwn(meta, 'remainingStateNames')
       ? runtime.describeObservedStateExpiry(event, target || actor, namedState || action).summary : `${target || actor}的【${namedState || action}】到期`;
-    if (kind === 'charge_interrupt') return `${actor}的【${action}】被中止`;
+    if (kind === 'charge_interrupt') return chargeInterruptText(event, actor, action);
     if (kind === 'summon_create') {
       const summonName = publicEntityName(directory, meta?.summonKey || event?.targetId, meta?.summonName || event?.targetName || '召唤物');
       return `${actor}通过【${action}】召唤${summonName}`;
@@ -112187,7 +112212,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         ? ['action_start', 'defend', 'blocked_action']
         : actionKind === 'EVADE'
           ? ['action_start', 'dodge', 'blocked_action']
-          : ['action_start', 'charge_start', 'pass', 'blocked_action', 'target_fail'];
+          // 蓄满按住不发（CHARGE_HELD）这一手是「让过」：运行时只写 charge_progress，没有 pass（T26 第 3b 批，原先落不了点）。
+          : ['action_start', 'charge_start', 'pass', 'blocked_action', 'target_fail', ...(actionKind === 'PASS_OPPORTUNITY' ? ['charge_progress'] : [])];
     for (const eventKind of preferredKinds) {
       for (const exchange of exchanges) {
         // 落点按事实自己的回合认：原先蓄力释放（CHARGE_RELEASE）的 action_start 归在蓄力开始那一回合的交锋里，交锋回合比决策早，
@@ -112211,16 +112237,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 text(fact.actionRole || 'ACTIVE').toUpperCase() !== actionRole &&
                 !(actionRole === 'COUNTER' && eventKind === 'counter_window')
               ) return false;
+              const heldCharge = eventKind === 'charge_progress';
+              if (heldCharge && text(rawFact?.ruleCode) !== 'CHARGE_HELD') return false;
               if (
                 actionName &&
+                !heldCharge &&
                 text(fact.actionName) !== actionName &&
                 !(actionRole === 'COUNTER' && eventKind === 'counter_window') &&
                 !(decision?.lostOpportunity?.reasonCode && eventKind !== 'action_start')
               ) return false;
               const rawOpportunityId = text(rawFact?.opportunityId || rawFact?.meta?.opportunityId);
               const rawGrantId = text(rawFact?.grantId || rawFact?.meta?.grantId);
-              if (decisionOpportunityId && rawOpportunityId !== decisionOpportunityId) return false;
-              if (decisionGrantId && rawGrantId !== decisionGrantId) return false;
+              // 按住蓄力的 charge_progress 不带行动机会与授予 id（运行时没写），只按回合、行动者、角色认。
+              if (decisionOpportunityId && rawOpportunityId !== decisionOpportunityId && !(heldCharge && !rawOpportunityId)) return false;
+              if (decisionGrantId && rawGrantId !== decisionGrantId && !(heldCharge && !rawGrantId)) return false;
               if (!counterDecline) return true;
               const rawSourceActionId = text(rawFact?.sourceActionId);
               if (counterSourceActionId && rawSourceActionId !== counterSourceActionId) return false;
@@ -114523,7 +114553,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         ? `${actor}正在蓄力【${action}】，还要等${remaining}次行动机会`
         : `${actor}正在蓄力【${action}】`;
     }
-    if (kind === 'charge_interrupt') return `${actor}的蓄力被打断了`;
+    if (kind === 'charge_interrupt') return chargeInterruptText(rawEvent, actor, action);
     if (kind === 'lost_opportunity' || kind === 'blocked_action') {
       const reasonCode = text(
         meta?.reasonCode ||
@@ -117090,6 +117120,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     );
     const directory = buildEntityDirectory(draft, ledger);
     const actionReferences = buildActionReferenceMap(ledger);
+    // 佯装行动的动作 id（chargeInterruptText 用）：本次构建内有效。
+    currentFeintActionIds = new Set(ledger.filter(event => text(event?.actionType).toUpperCase() === 'FEINT' && ['action_start', 'pass'].includes(text(event?.eventKind)))
+      .map(event => text(event?.actionId)).filter(Boolean));
     const factRegistry = ledger.map(event => buildFact(event, visibilityMode, directory, actionReferences));
     const factsById = new Map(factRegistry.map(fact => [fact.factId, fact]));
     const sourceEventsByFactId = new Map(ledger.map(event => [text(event?.eventId), event]));
@@ -118197,7 +118230,41 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   }
 
 
+  /* 界面里同意罢手（BattleUI resolveTruce → 直接平局裁断，不跑战报）后补发给 AI 的摘要（T26 第 3b 批，方案 A）。
+     previousSummary：上一次结算的 aiStructuredSummary（界面内存里 BattleUI.state.actualBattleResult；不进 MVU）。
+     只有它就是这次「待回应」那份（mechanicFacts.truce 正是这名提议者的待回应句）时才在它上面改：truceResponse、mechanicFacts.truce
+     换成同意句，终局写法换成罢手平局；否则 summary 为 null，界面只发 battle_result 加这一句事实。
+     返回 { battleResult, summary, fact }，句子都出自本模块（truceSentence、terminalOutcomeText、latestSideIntent 的罢手写法）。 */
+  function buildTruceAcceptedSummary(previousSummary = null, { proposer = '', proposerSide = '' } = {}) {
+    const side = text(proposerSide);
+    const responderSide = side === 'team_player' ? 'team_enemy' : side === 'team_enemy' ? 'team_player' : '';
+    const fact = truceSentence('accepted', proposer, side, responderSide);
+    const truceTerminal = { terminal: true, status: 'TRUCE', winner: 'draw' };
+    const outcome = terminalOutcomeText(truceTerminal);
+    const battleResult = `${outcome}（${fact}）`;
+    const pendingSentence = truceSentence('pending', proposer, side, responderSide);
+    const usable = previousSummary && typeof previousSummary === 'object' && !Array.isArray(previousSummary) &&
+      text(previousSummary.schemaVersion) === 'AIPlayerSummaryV1' && text(previousSummary?.mechanicFacts?.truce) === pendingSentence;
+    if (!usable) {
+      return { battleResult, summary: { schemaVersion: 'AIPlayerSummaryV1', outcomeSummary: outcome, truceResponse: fact, mechanicFacts: { truce: fact } }, fact, basedOnPrevious: false };
+    }
+    const settled = latestSideIntent([], [], new Map(), truceTerminal, 'player');
+    const summary = {
+      ...cloneValue(previousSummary),
+      headline: outcome,
+      outcomeSummary: outcome,
+      nextIntents: { player: settled, enemy: settled },
+      // 罢手成立即终局：待回应那一刻的风险与战术窗口（「敌方仍有可行动威胁」等）已不成立，不再带给 AI。
+      risks: [],
+      tacticalWindows: [],
+      truceResponse: fact,
+      mechanicFacts: { ...cloneValue(previousSummary.mechanicFacts || {}), truce: fact },
+    };
+    return { battleResult, summary, fact, basedOnPrevious: true };
+  }
+
   root.__LWCS_BATTLE_REPORT__ = Object.freeze({
+    buildTruceAcceptedSummary,
     version: reportSchemaVersion,
     visibilityModes,
     reportTermDictionary,
@@ -122513,6 +122580,7 @@ class BattleUIComponent {
           const combatData = cloneBattleValue(getUiCombatData() || state.combatData || {});
           if (!combatData?.参战者 || combatData?.罢手?.状态 !== '待回应') return { ok: false, reason: 'truce_missing' };
           const proposer = String(combatData.罢手.提议者 || '对方').trim();
+          const truceBefore = { ...combatData.罢手 };
           if (!BATTLE_RUNTIME.respondToTruce(combatData, accept === true)) return { ok: false, reason: 'truce_not_pending' };
           await Promise.resolve(window.BattleUIBridge?.persistCombatData?.(combatData, {
             analysis: accept ? 'Frontend battle truce accepted: both sides stop, the battle ends as a draw.' : 'Frontend battle truce declined: the battle goes on.',
@@ -122523,7 +122591,28 @@ class BattleUIComponent {
           const applied = await window.__LWCS_APPLY_BATTLE_ADJUDICATION__?.({
             模块结算: { 是否结束: true, 胜方: '无', 败方: '无', 败方剩余HP比例: 100, 终局类型: 'time_limit', 终局原因: `${proposer}提议罢手，双方停手` },
           });
-          return { ok: true, accepted: true, applied: applied || null };
+          // 同意罢手不跑战报，AI 原先拿不到「同意」这一句（T26 第 3b 批，方案 A）：裁断写回成功后补发一次，和结算后发给 AI 的格式一样
+          //（<battle_result> + <battle_summary>）。句子由 BattleReport.buildTruceAcceptedSummary 生成；上一份摘要取界面内存里上一次结算的
+          // aiStructuredSummary（不在 MVU 里），对不上这次待回应就只发终局加这一句。发送失败只记日志，不影响已经写回的裁断。
+          let aiRequest = null;
+          if (applied?.handled === true) {
+            try {
+              const previous = state.actualBattleResult?.reportDto?.aiStructuredSummary || state.actualBattleResult?.aiStructuredSummary || null;
+              const built = window.__LWCS_BATTLE_REPORT__?.buildTruceAcceptedSummary?.(previous, { proposer, proposerSide: String(truceBefore?.提议方 || '').trim() });
+              if (built && typeof window.sendToAI === 'function') {
+                aiRequest = window.sendToAI(
+                  `<battle_result>${built.battleResult}</battle_result>`,
+                  `<battle_summary>\n${JSON.stringify(built.summary)}\n</battle_summary>`,
+                  { requestKind: 'battle_settlement_plot' },
+                );
+              } else {
+                console.warn('[battle] 同意罢手后未能补发 AI 摘要：战报模块或发送接口缺失');
+              }
+            } catch (error) {
+              console.warn('[battle] 同意罢手后补发 AI 摘要失败', error);
+            }
+          }
+          return { ok: true, accepted: true, applied: applied || null, aiRequest };
         }
 
         function resolveSoulTowerSettlement(action = 'end') {
