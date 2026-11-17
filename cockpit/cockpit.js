@@ -1000,7 +1000,7 @@
   const dots = $('.dots');
   dots.addEventListener('click', e => { const b = e.target.closest('button'); if (b) setFace(Number(b.dataset.face)); });
   let drag = null;
-  screens.addEventListener('pointerdown', e => { if (!isMobile() || e.target.closest('button,input,select,textarea,a,label')) return; drag = { x: e.clientX, y: e.clientY, base: -state.face * 60, moved: false }; });
+  screens.addEventListener('pointerdown', e => { if (!isMobile() || e.target.closest('button,input,select,textarea,a,label')) return; drag = { x: e.clientX, y: e.clientY, base: -state.face * 60, moved: false, t: performance.now(), lx: e.clientX, lt: performance.now(), v: 0 }; });
   // 拖动期间直接写 transform（--turn 是会被整棵子树继承的自定义属性，每次改都让座舱全部节点重算样式）；每帧最多写一次，--turn 到松手 setFace 时才更新
   let dragRaf = 0, dragTurn = 0;
   const applyDragTurn = () => { dragRaf = 0; screens.style.transform = `translateZ(calc(var(--r) * -1)) rotateY(${dragTurn}deg)`; };
@@ -1008,18 +1008,27 @@
     if (!drag) return;
     const dx = e.clientX - drag.x;
     if (!drag.moved && Math.abs(dx) < 8) return;
-    if (!drag.moved && Math.abs(e.clientY - drag.y) > Math.abs(dx)) { drag = null; return; }
+    // 起手偏竖（页面纵向滚动）才放弃；斜着划时横向分量够大仍算转向，不再因起手几像素偏竖整次作废
+    if (!drag.moved && Math.abs(e.clientY - drag.y) > Math.abs(dx) * 1.6) { drag = null; return; }
     drag.moved = true; screens.classList.add('dragging');
+    { const now = performance.now(), dt = now - drag.lt; if (dt >= 16) { drag.v = (e.clientX - drag.lx) / dt; drag.lx = e.clientX; drag.lt = now; } }
     dragTurn = Math.max(-75, Math.min(75, drag.base + dx / (drag.w ||= screens.clientWidth) * 70));
     if (!dragRaf) dragRaf = requestAnimationFrame(applyDragTurn);
   });
-  addEventListener('pointerup', e => {
+  const endDrag = e => {
     if (!drag) return;
     screens.classList.remove('dragging');
     cancelAnimationFrame(dragRaf); dragRaf = 0;
-    if (drag.moved) { setFace(Math.max(-1, Math.min(1, Math.round(-dragTurn / 60)))); }
+    if (drag.moved) {
+      // 按一次滑动翻一面：拖过屏宽约 15% 或甩得够快就翻到下一面（左划 → 往右一面）；原先要把画面拖过 43% 才会翻，最右 / 最左两面几乎转不回去
+      const dx = (e.clientX ?? drag.lx) - drag.x, w = drag.w || screens.clientWidth || 1, fling = Math.abs(drag.v) > .45 && Math.abs(dx) > 24;
+      const step = e.type === 'pointercancel' ? 0 : (Math.abs(dx) > w * .15 || fling) ? (dx < 0 ? 1 : -1) : 0;
+      setFace(Math.max(-1, Math.min(1, state.face + step)));
+    }
     drag = null;
-  });
+  };
+  addEventListener('pointerup', endDrag);
+  addEventListener('pointercancel', endDrag);
 
   // ---------- 惯性视差 ----------
   const cockpit = $('.cockpit'), stage = $('.stage'), arc = $('.arc');

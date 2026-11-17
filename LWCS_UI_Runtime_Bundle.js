@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:bd51662fa802655e8897da74c87d2ac367bd71126fe67f26c603574631ad426e|cockpit/designer-model.js:cbbb8156854ed85b560637420324e21db9e899fb9cbef68ba1ccca6d0d217fc2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:6f5eec015ee7491f95495057ec9b84dbd85f503b19154f53aef891347ea23711|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:f7191368391821afb0b31748256f85726d5b7abcdc6edf2c14481e2c7f0587b5|BehaviorDecisionPipeline_Module.js:44ff9800d0baeebb82ddafd0d55ae7750e1a3e491afbd29d508fcdb187407aba|BattleDecision_Module.js:a4277356048412fb88652c982dcb7efdb9d7d72f81ad762cbbbf92e4003742be|BattleRuntime_Module.js:a1702f93aa8017321c3243b5185137b4b121f52ccdf908a358e0717ed9d3f826|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:26f8f1e8c82cf62f2af431f7becab2e0a8924003e14c5f8b96210cd58a01a209|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:bd51662fa802655e8897da74c87d2ac367bd71126fe67f26c603574631ad426e|cockpit/designer-model.js:cbbb8156854ed85b560637420324e21db9e899fb9cbef68ba1ccca6d0d217fc2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:f7191368391821afb0b31748256f85726d5b7abcdc6edf2c14481e2c7f0587b5|BehaviorDecisionPipeline_Module.js:44ff9800d0baeebb82ddafd0d55ae7750e1a3e491afbd29d508fcdb187407aba|BattleDecision_Module.js:a4277356048412fb88652c982dcb7efdb9d7d72f81ad762cbbbf92e4003742be|BattleRuntime_Module.js:a1702f93aa8017321c3243b5185137b4b121f52ccdf908a358e0717ed9d3f826|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:26f8f1e8c82cf62f2af431f7becab2e0a8924003e14c5f8b96210cd58a01a209|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -49546,7 +49546,7 @@ ${播报文本}
   const dots = $('.dots');
   dots.addEventListener('click', e => { const b = e.target.closest('button'); if (b) setFace(Number(b.dataset.face)); });
   let drag = null;
-  screens.addEventListener('pointerdown', e => { if (!isMobile() || e.target.closest('button,input,select,textarea,a,label')) return; drag = { x: e.clientX, y: e.clientY, base: -state.face * 60, moved: false }; });
+  screens.addEventListener('pointerdown', e => { if (!isMobile() || e.target.closest('button,input,select,textarea,a,label')) return; drag = { x: e.clientX, y: e.clientY, base: -state.face * 60, moved: false, t: performance.now(), lx: e.clientX, lt: performance.now(), v: 0 }; });
   // 拖动期间直接写 transform（--turn 是会被整棵子树继承的自定义属性，每次改都让座舱全部节点重算样式）；每帧最多写一次，--turn 到松手 setFace 时才更新
   let dragRaf = 0, dragTurn = 0;
   const applyDragTurn = () => { dragRaf = 0; screens.style.transform = `translateZ(calc(var(--r) * -1)) rotateY(${dragTurn}deg)`; };
@@ -49554,18 +49554,27 @@ ${播报文本}
     if (!drag) return;
     const dx = e.clientX - drag.x;
     if (!drag.moved && Math.abs(dx) < 8) return;
-    if (!drag.moved && Math.abs(e.clientY - drag.y) > Math.abs(dx)) { drag = null; return; }
+    // 起手偏竖（页面纵向滚动）才放弃；斜着划时横向分量够大仍算转向，不再因起手几像素偏竖整次作废
+    if (!drag.moved && Math.abs(e.clientY - drag.y) > Math.abs(dx) * 1.6) { drag = null; return; }
     drag.moved = true; screens.classList.add('dragging');
+    { const now = performance.now(), dt = now - drag.lt; if (dt >= 16) { drag.v = (e.clientX - drag.lx) / dt; drag.lx = e.clientX; drag.lt = now; } }
     dragTurn = Math.max(-75, Math.min(75, drag.base + dx / (drag.w ||= screens.clientWidth) * 70));
     if (!dragRaf) dragRaf = requestAnimationFrame(applyDragTurn);
   });
-  addEventListener('pointerup', e => {
+  const endDrag = e => {
     if (!drag) return;
     screens.classList.remove('dragging');
     cancelAnimationFrame(dragRaf); dragRaf = 0;
-    if (drag.moved) { setFace(Math.max(-1, Math.min(1, Math.round(-dragTurn / 60)))); }
+    if (drag.moved) {
+      // 按一次滑动翻一面：拖过屏宽约 15% 或甩得够快就翻到下一面（左划 → 往右一面）；原先要把画面拖过 43% 才会翻，最右 / 最左两面几乎转不回去
+      const dx = (e.clientX ?? drag.lx) - drag.x, w = drag.w || screens.clientWidth || 1, fling = Math.abs(drag.v) > .45 && Math.abs(dx) > 24;
+      const step = e.type === 'pointercancel' ? 0 : (Math.abs(dx) > w * .15 || fling) ? (dx < 0 ? 1 : -1) : 0;
+      setFace(Math.max(-1, Math.min(1, state.face + step)));
+    }
     drag = null;
-  });
+  };
+  addEventListener('pointerup', endDrag);
+  addEventListener('pointercancel', endDrag);
 
   // ---------- 惯性视差 ----------
   const cockpit = $('.cockpit'), stage = $('.stage'), arc = $('.arc');

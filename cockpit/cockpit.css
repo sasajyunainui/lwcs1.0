@@ -302,6 +302,8 @@ button.tile{appearance:none;border:0;font:inherit;color:inherit;text-align:left;
   .pad{overflow:visible}
   .screens{display:block;position:relative;height:var(--carousel-h,520px);transition:height .45s cubic-bezier(.2,.8,.2,1),transform .6s cubic-bezier(.2,.9,.25,1);transform:translateZ(calc(var(--r) * -1)) rotateY(var(--turn,0deg));--r:calc(50cqw * 1.732);touch-action:pan-y}
   .screens.dragging{transition:height .45s}
+  /* 横向手势归座舱处理：屏内可滚动区默认 touch-action:auto，浏览器会抢走起手的横向拖动并取消指针，表现为要划两次才转；:where 不加权重，沙盘等自带声明的照旧 */
+  :where(.screens *){touch-action:pan-y}
   .screens>.wing,.screens>.center{position:absolute;top:0;left:3%;width:94%;height:auto;margin:0;backface-visibility:hidden}
   .screens>.center{transform:translateZ(var(--r))}
   .screens>.wing.l{transform:rotateY(-60deg) translateZ(var(--r));transform-origin:50% 50%}
