@@ -100,11 +100,11 @@
 .sp-sub .nx.ok{color:#a87400}
 
 /* 悬停投影台 → 3D 魂环塔（与原项目档案魂灵卡 .mvu-archive-spirit-card:hover 同一套规则，魂环造型不覆盖）；浮出魂技卡期间（激活态）塔保持展开 */
-.soul-card:hover,.soul-card:focus-within,.soul-card:has(.mvu-hover-floating-active){z-index:5}
-.soul-card:hover .mvu-soul-ring-stage,.soul-card:focus-within .mvu-soul-ring-stage{transform:rotateX(65deg) rotateZ(-15deg)}
-.soul-card:hover .mvu-soul-ring-slot,.soul-card:focus-within .mvu-soul-ring-slot{pointer-events:none;opacity:var(--ring-depth-opacity,.92);transform:translate(-50%,-50%) translateZ(var(--ring-z,0px)) translateY(var(--ring-hover-y,0)) scale(var(--ring-depth-scale,1))}
+.soul-card:hover,.soul-card:focus-within,.soul-card.tower,.soul-card:has(.mvu-hover-floating-active){z-index:5}
+.soul-card:hover .mvu-soul-ring-stage,.soul-card:focus-within .mvu-soul-ring-stage,.soul-card.tower .mvu-soul-ring-stage{transform:rotateX(65deg) rotateZ(-15deg)}
+.soul-card:hover .mvu-soul-ring-slot,.soul-card:focus-within .mvu-soul-ring-slot,.soul-card.tower .mvu-soul-ring-slot{pointer-events:none;opacity:var(--ring-depth-opacity,.92);transform:translate(-50%,-50%) translateZ(var(--ring-z,0px)) translateY(var(--ring-hover-y,0)) scale(var(--ring-depth-scale,1))}
 .soul-card .mvu-soul-ring-stage{transition:transform .48s cubic-bezier(.2,.8,.2,1),translate .48s cubic-bezier(.2,.8,.2,1)}
-.soul-card:is(:hover,:focus-within,:has(.mvu-hover-floating-active)) .mvu-soul-ring-stage{translate:0 -12px}
+.soul-card:is(:hover,:focus-within,.tower,:has(.mvu-hover-floating-active)) .mvu-soul-ring-stage{translate:0 -12px}
 .soul-deck>.inline-detail{grid-column:1/-1}
 /* 三座投影台（两个武魂 + 血脉）：同排三列、魂环缩小。auto-fit 换成两行时第二行会溢出武魂区、压住下方伤势条 */
 .soul-deck:has(>.soul-card+.soul-card+.soul-card){grid-template-columns:repeat(3,minmax(0,1fr))}

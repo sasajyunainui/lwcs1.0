@@ -430,6 +430,7 @@
   const setFace = i => {
     state.face = i;
     screens.style.setProperty('--turn', `${-i * 60}deg`);
+    screens.style.removeProperty('transform'); // 拖动期间的内联变换在此交还给样式表（过渡从拖到的位置滑向目标面）
     $$('.dots button').forEach(b => b.classList.toggle('on', Number(b.dataset.face) === i));
     requestAnimationFrame(fitCarousel);
   };
@@ -606,7 +607,7 @@
   // 魂环扫描：魂环的命中带是细窄的环线（成塔后只剩几像素高），直接悬停很难瞄准。
   // 声明 data-scan 的容器（武魂卡）整片都是扫描区：取离鼠标最近的一圈。首次打开约 0.09 秒防误触，之后切换即时、浮窗复用不闪。
   const nearestRing = (host, x, y) => {
-    const tower = host.matches(':hover,:focus-within') || !!host.querySelector('.mvu-hover-floating-active');
+    const tower = host.classList.contains('tower') || (hoverable() && host.matches(':hover,:focus-within')) || !!host.querySelector('.mvu-hover-floating-active');
     let best = null, bd = Infinity;
     for (const el of host.querySelectorAll('[data-inspect]')) {
       const r = (el.querySelector('svg') || el).getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
@@ -649,7 +650,7 @@
     openTimer = setTimeout(() => { hoverPending = false; if (!item.isConnected || holding || item.closest('.grabbing')) return; const [kind, ...rest] = key.split(':'); openInspector(kind, rest.join(':'), item, 'hover'); }, Number(item.dataset.hoverDelay) || hoverMs());
   });
   // 点浮窗与条目以外的地方、或屏内滚动时收起（浮窗锚点会移动）
-  addEventListener('pointerdown', e => { if (floatOpen() && !e.target.closest('.fcard,.inline-detail,[data-inspect],[data-scan],.picker-list,.ie-floatbox')) closeInspector(); });
+  addEventListener('pointerdown', e => { if (!e.target.closest('[data-scan],.fcard,.inline-detail')) $$('[data-scan].tower').forEach(h => h.classList.remove('tower')); if (floatOpen() && !e.target.closest('.fcard,.inline-detail,[data-inspect],[data-scan],.picker-list,.ie-floatbox')) closeInspector(); });
   cockpitEl.addEventListener('scroll', e => { if (layer.firstChild && !e.target.closest?.('.fcard')) closeInspector(); }, true);
 
   let editing = null, holding = false;
@@ -929,6 +930,8 @@
     const ieEl = e.target.closest('.ie'); if (ieEl) { e.stopPropagation(); return beginEdit(ieEl); }
     const scanHost = !e.target.closest('.fcard,.inline-detail,[data-go]') && e.target.closest('[data-scan]');
     if (scanHost) {
+      // 触屏没有悬停：第一下点武魂卡先把魂环展开成塔（同心叠环点不准），塔里再点哪一圈就选哪一圈；点卡片外收起
+      if (!hoverable() && !scanHost.classList.contains('tower') && !scanHost.querySelector('.mvu-hover-floating-active')) { $$('[data-scan].tower').forEach(h => h.classList.remove('tower')); scanHost.classList.add('tower'); return; }
       const el = (state.inspect && scanHost.querySelector('[data-inspect].on')) || nearestRing(scanHost, e.clientX, e.clientY);
       if (el) { const [kind, ...rest] = el.dataset.inspect.split(':'); return openInspector(kind, rest.join(':'), el); }
     }
@@ -998,19 +1001,23 @@
   dots.addEventListener('click', e => { const b = e.target.closest('button'); if (b) setFace(Number(b.dataset.face)); });
   let drag = null;
   screens.addEventListener('pointerdown', e => { if (!isMobile() || e.target.closest('button,input,select,textarea,a,label')) return; drag = { x: e.clientX, y: e.clientY, base: -state.face * 60, moved: false }; });
+  // 拖动期间直接写 transform（--turn 是会被整棵子树继承的自定义属性，每次改都让座舱全部节点重算样式）；每帧最多写一次，--turn 到松手 setFace 时才更新
+  let dragRaf = 0, dragTurn = 0;
+  const applyDragTurn = () => { dragRaf = 0; screens.style.transform = `translateZ(calc(var(--r) * -1)) rotateY(${dragTurn}deg)`; };
   addEventListener('pointermove', e => {
     if (!drag) return;
     const dx = e.clientX - drag.x;
     if (!drag.moved && Math.abs(dx) < 8) return;
     if (!drag.moved && Math.abs(e.clientY - drag.y) > Math.abs(dx)) { drag = null; return; }
     drag.moved = true; screens.classList.add('dragging');
-    const turn = Math.max(-75, Math.min(75, drag.base + dx / screens.clientWidth * 70));
-    screens.style.setProperty('--turn', `${turn}deg`);
+    dragTurn = Math.max(-75, Math.min(75, drag.base + dx / (drag.w ||= screens.clientWidth) * 70));
+    if (!dragRaf) dragRaf = requestAnimationFrame(applyDragTurn);
   });
   addEventListener('pointerup', e => {
     if (!drag) return;
     screens.classList.remove('dragging');
-    if (drag.moved) { const turn = parseFloat(screens.style.getPropertyValue('--turn')) || 0; setFace(Math.max(-1, Math.min(1, Math.round(-turn / 60)))); }
+    cancelAnimationFrame(dragRaf); dragRaf = 0;
+    if (drag.moved) { setFace(Math.max(-1, Math.min(1, Math.round(-dragTurn / 60)))); }
     drag = null;
   });
 

@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:bd51662fa802655e8897da74c87d2ac367bd71126fe67f26c603574631ad426e|cockpit/designer-model.js:cbbb8156854ed85b560637420324e21db9e899fb9cbef68ba1ccca6d0d217fc2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:bd51662fa802655e8897da74c87d2ac367bd71126fe67f26c603574631ad426e|cockpit/designer-model.js:cbbb8156854ed85b560637420324e21db9e899fb9cbef68ba1ccca6d0d217fc2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:6f5eec015ee7491f95495057ec9b84dbd85f503b19154f53aef891347ea23711|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -48976,6 +48976,7 @@ ${播报文本}
   const setFace = i => {
     state.face = i;
     screens.style.setProperty('--turn', `${-i * 60}deg`);
+    screens.style.removeProperty('transform'); // 拖动期间的内联变换在此交还给样式表（过渡从拖到的位置滑向目标面）
     $$('.dots button').forEach(b => b.classList.toggle('on', Number(b.dataset.face) === i));
     requestAnimationFrame(fitCarousel);
   };
@@ -49152,7 +49153,7 @@ ${播报文本}
   // 魂环扫描：魂环的命中带是细窄的环线（成塔后只剩几像素高），直接悬停很难瞄准。
   // 声明 data-scan 的容器（武魂卡）整片都是扫描区：取离鼠标最近的一圈。首次打开约 0.09 秒防误触，之后切换即时、浮窗复用不闪。
   const nearestRing = (host, x, y) => {
-    const tower = host.matches(':hover,:focus-within') || !!host.querySelector('.mvu-hover-floating-active');
+    const tower = host.classList.contains('tower') || (hoverable() && host.matches(':hover,:focus-within')) || !!host.querySelector('.mvu-hover-floating-active');
     let best = null, bd = Infinity;
     for (const el of host.querySelectorAll('[data-inspect]')) {
       const r = (el.querySelector('svg') || el).getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
@@ -49195,7 +49196,7 @@ ${播报文本}
     openTimer = setTimeout(() => { hoverPending = false; if (!item.isConnected || holding || item.closest('.grabbing')) return; const [kind, ...rest] = key.split(':'); openInspector(kind, rest.join(':'), item, 'hover'); }, Number(item.dataset.hoverDelay) || hoverMs());
   });
   // 点浮窗与条目以外的地方、或屏内滚动时收起（浮窗锚点会移动）
-  addEventListener('pointerdown', e => { if (floatOpen() && !e.target.closest('.fcard,.inline-detail,[data-inspect],[data-scan],.picker-list,.ie-floatbox')) closeInspector(); });
+  addEventListener('pointerdown', e => { if (!e.target.closest('[data-scan],.fcard,.inline-detail')) $$('[data-scan].tower').forEach(h => h.classList.remove('tower')); if (floatOpen() && !e.target.closest('.fcard,.inline-detail,[data-inspect],[data-scan],.picker-list,.ie-floatbox')) closeInspector(); });
   cockpitEl.addEventListener('scroll', e => { if (layer.firstChild && !e.target.closest?.('.fcard')) closeInspector(); }, true);
 
   let editing = null, holding = false;
@@ -49475,6 +49476,8 @@ ${播报文本}
     const ieEl = e.target.closest('.ie'); if (ieEl) { e.stopPropagation(); return beginEdit(ieEl); }
     const scanHost = !e.target.closest('.fcard,.inline-detail,[data-go]') && e.target.closest('[data-scan]');
     if (scanHost) {
+      // 触屏没有悬停：第一下点武魂卡先把魂环展开成塔（同心叠环点不准），塔里再点哪一圈就选哪一圈；点卡片外收起
+      if (!hoverable() && !scanHost.classList.contains('tower') && !scanHost.querySelector('.mvu-hover-floating-active')) { $$('[data-scan].tower').forEach(h => h.classList.remove('tower')); scanHost.classList.add('tower'); return; }
       const el = (state.inspect && scanHost.querySelector('[data-inspect].on')) || nearestRing(scanHost, e.clientX, e.clientY);
       if (el) { const [kind, ...rest] = el.dataset.inspect.split(':'); return openInspector(kind, rest.join(':'), el); }
     }
@@ -49544,19 +49547,23 @@ ${播报文本}
   dots.addEventListener('click', e => { const b = e.target.closest('button'); if (b) setFace(Number(b.dataset.face)); });
   let drag = null;
   screens.addEventListener('pointerdown', e => { if (!isMobile() || e.target.closest('button,input,select,textarea,a,label')) return; drag = { x: e.clientX, y: e.clientY, base: -state.face * 60, moved: false }; });
+  // 拖动期间直接写 transform（--turn 是会被整棵子树继承的自定义属性，每次改都让座舱全部节点重算样式）；每帧最多写一次，--turn 到松手 setFace 时才更新
+  let dragRaf = 0, dragTurn = 0;
+  const applyDragTurn = () => { dragRaf = 0; screens.style.transform = `translateZ(calc(var(--r) * -1)) rotateY(${dragTurn}deg)`; };
   addEventListener('pointermove', e => {
     if (!drag) return;
     const dx = e.clientX - drag.x;
     if (!drag.moved && Math.abs(dx) < 8) return;
     if (!drag.moved && Math.abs(e.clientY - drag.y) > Math.abs(dx)) { drag = null; return; }
     drag.moved = true; screens.classList.add('dragging');
-    const turn = Math.max(-75, Math.min(75, drag.base + dx / screens.clientWidth * 70));
-    screens.style.setProperty('--turn', `${turn}deg`);
+    dragTurn = Math.max(-75, Math.min(75, drag.base + dx / (drag.w ||= screens.clientWidth) * 70));
+    if (!dragRaf) dragRaf = requestAnimationFrame(applyDragTurn);
   });
   addEventListener('pointerup', e => {
     if (!drag) return;
     screens.classList.remove('dragging');
-    if (drag.moved) { const turn = parseFloat(screens.style.getPropertyValue('--turn')) || 0; setFace(Math.max(-1, Math.min(1, Math.round(-turn / 60)))); }
+    cancelAnimationFrame(dragRaf); dragRaf = 0;
+    if (drag.moved) { setFace(Math.max(-1, Math.min(1, Math.round(-dragTurn / 60)))); }
     drag = null;
   });
 
