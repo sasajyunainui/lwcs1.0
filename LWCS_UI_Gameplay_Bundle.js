@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:37a74448295386b739845923fb6a4e2cb27b65f44cae55baea1b865bfb8e609b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:144a2e513268ea505b6fb914de37bc8072c1bb4bf90aa893d878cc1ad6fbba59|BattleRuntime_Module.js:c18495b57347b831e60171f438f752b256da73eca187cba8b5155d5d2a3ae6b2|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:a544b975e98ad8c5606b10845ace10baa7a96f4f3e1b4819a9b19a21325870bd */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:37a74448295386b739845923fb6a4e2cb27b65f44cae55baea1b865bfb8e609b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:d89b189f7df5f4812668e0f733ee9c4777a132562bc6e87c931632c3b8f0c26d|BattleRuntime_Module.js:c18495b57347b831e60171f438f752b256da73eca187cba8b5155d5d2a3ae6b2|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:a544b975e98ad8c5606b10845ace10baa7a96f4f3e1b4819a9b19a21325870bd */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -106598,7 +106598,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     R20_CAUTION_WEAK = Number(root.__LWCS_TUNE__?.CAUTION_WEAK ?? 1),
     // A stance that changes nothing this round (it lapses at the round end and adds one to 久守必失's run) is worth a hair
     // less than letting the turn pass.
-    R20_IDLE_STANCE = 1e-3;
+    R20_IDLE_STANCE = 1e-3,
+    // 信息收益（r20Shadow info）: the releases of its best skill the actor still has to make against an enemy a clearer picture pays off on.
+    R20_INFO_RELEASES = Number(root.__LWCS_TUNE__?.INFO_RELEASES ?? 1);
   const r20Tables = new WeakMap();
   // The round of the decision being valued (a broken guard lasts the round), and what its actor has seen.
   let r20Round = 0, r20Belief = null;
@@ -109004,6 +109006,25 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // A charge released (蓄力释放) showed its rings when the charge began: nothing more is shown now.
     const reveal = declaration?.actionKind === 'RELEASE_SKILL' && request.actionOpportunity?.forcedChargeRelease !== true && unseen > 0 && race + tempo > 0
       ? revealScale() * Math.min(R20_REVEAL_CAP, (R20_REVEAL_BASE + R20_REVEAL_SHARE * clamp(spent / R20_TRUMP_SPENT, 0, 1)) * wary) * (race + tempo) : 0;
+    // 信息收益（信息模型 B，用户 2026-11-17 批准；行为检查目录第 57 题「试探：付多少成本去换信息」）: an action that reaches an enemy not
+    // yet seen (a hit, a state, a stop) is one more exchange with it — its clarity seen/(seen+2) goes to (seen+1)/(seen+3)
+    // (beliefExchangeCounts) — and what is unseen of it weighs that much less on the actor's bigger cards to come: the drop of
+    // its share of 亮底牌's wary (unseen² × caution), on what the actor's best skill brings over its basic attack against it
+    // (the cells), for R20_INFO_RELEASES releases of it. So a cheap touch first is worth something before a big card; against
+    // an enemy already seen, or by a stance, nothing is learned.
+    let info = 0;
+    if (actorRow !== undefined && foes.length && unseen > 0) {
+      const reached = new Set((result.contributions || []).filter(entry => entry.targetId &&
+        ['HP_DELTA', 'STATE_CHANGED', 'ACTION_CANCELLED', 'NEXT_ACTION_QUALITY_CHANGED'].includes(entry.outcomeKind)).map(entry => String(entry.targetId)));
+      for (const [unit, row] of foes) {
+        const clarity = clamp(Number(unit?.__clarity ?? 1), 0, 1);
+        if (clarity >= 1 - 1e-9 || !reached.has(String(table.ids[row]))) continue;
+        const seen = clarity * BELIEF_EXCHANGE_PRIOR / (1 - clarity), next = (seen + 1) / (seen + 1 + BELIEF_EXCHANGE_PRIOR);
+        const drop = ((1 - clarity) ** 2 - (1 - next) ** 2) * caution((Number(unit?.__perceivedLevel ?? unitLevel(unit)) || ownLevel) - ownLevel, row) / foes.length;
+        const basic = cachedBaseActionValue(table.units[actorRow], unit, 'BASIC_ATTACK', null, null, table.world) / 100;
+        info += R20_REVEAL_BASE * drop * Math.max(0, Number(table.out[actorRow]?.[row] || 0) - basic) * R20_INFO_RELEASES;
+      }
+    }
     // 留手: in a spar, what of a hit lands below the 重伤 line (R20_SPAR_INJURY_LINE of the target's HP) is held against it.
     let restraint = 0;
     if (spar && actorRow !== undefined) for (const [unit, row] of foes) {
@@ -109052,7 +109073,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // Leaving is valued apart (认输与撤离, at the top). Observing is worth a little.
     let leave = 0;
     if (actionKind === 'OBSERVE') leave = R20_OBSERVE_VALUE;
-    return { value: race + tempo + granted + objective + leave + stock - cost - fusionCost - asset - restraint - reveal - idleStance, idleStance, race, tempo, granted, objective, leave, stock, cost, fusionCost, asset, restraint, reveal, counter, rebuilt: rebuilt.length, added: added.length, outside,
+    return { value: race + tempo + granted + objective + leave + stock + info - cost - fusionCost - asset - restraint - reveal - idleStance, idleStance, race, tempo, granted, objective, leave, stock, info, cost, fusionCost, asset, restraint, reveal, counter, rebuilt: rebuilt.length, added: added.length, outside,
       seen: seen + added.length + Number(granted !== 0) + Number(objective !== 0) + Number(leave !== 0) };
   }
 
