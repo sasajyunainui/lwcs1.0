@@ -10651,6 +10651,9 @@
     if (actionKind === 'RELEASE_SKILL' && actionRole !== 'STATE_TICK' && previewRuntime.isSummonSkillDisabled(actor)) {
       throw new Error('battle_structured_summon_skill_disabled');
     }
+    // 战斗暴露（信息模型 0c）: a skill released in front of the enemy is out — its bit goes into the unit's 战斗暴露 (written
+    // back to the save after the battle, BattleUI / bridge 战斗提交角色字段).
+    if (actionKind === 'RELEASE_SKILL' && actionRole !== 'STATE_TICK' && !actor?.召唤键) previewRuntime.recordExposure?.(actor, declaration.skill || {});
     for (const participant of listCombatUnits(combatData)) delete participant.__本阶段已触发复活;
     const combatRuntime = ensureCombatRuntime(combatData);
     if (actionRole !== 'STATE_TICK' && !combatRuntime.itemPassiveBattleStarted) {

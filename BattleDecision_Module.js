@@ -2154,18 +2154,34 @@
     // How much an enemy that has not seen the actor holds its routine skill back for a probe (the R20 reveal base).
     BELIEF_PROBE_SHARE = Number(root.__LWCS_TUNE__?.BELIEF_PROBE_SHARE ?? 0.7);
   const BELIEF_CLOSE_RELATION = /挚友|好友|朋友|恋|伴侣|夫|妻|兄|弟|姐|妹|父|母|儿|女|师|徒|队友|同伴|伙伴|搭档|宿敌|对手|亲密|同门|同学|同事/;
-  function beliefFamiliarExchanges(observer = {}, target = {}) {
-    const names = [preview.unitName(target), preview.unitId(target)].map(name => String(name || '').trim()).filter(Boolean);
-    const recordOf = table => names.map(name => table?.[name]).find(Boolean);
-    const battles = Number(recordOf(observer?.战斗历史 || observer?.属性?.战斗历史)?.次数 || 0);
-    const relation = String(recordOf(observer?.社交?.关系)?.关系 || '').trim();
-    let prior = battles > 0 ? BELIEF_FAMILIAR_BATTLE : 0;
+  // 跨场情报（信息模型 0c，用户 2026-11-17）: a battle fought with it fades — half of it a year of world time on (战斗历史.最近tick,
+  // BELIEF_YEAR_TICKS), as the target grows and changes. Only those close to it on its own side (BELIEF_INTIMATE_RELATION: kin,
+  // friends, teammates, master and pupil, lovers) know it as it is (beliefIntimate); a rival, an opponent and anyone it has fought
+  // know it by what it has shown (战斗暴露, beliefKnowsExposure) and by the clarity of the exchanges.
+  const BELIEF_YEAR_TICKS = 51840;
+  const BELIEF_INTIMATE_RELATION = /挚友|好友|朋友|恋|伴侣|夫|妻|兄|弟|姐|妹|父|母|儿|女|师|徒|队友|同伴|伙伴|搭档|亲密|同门|同学/;
+  const beliefRecordOf = (table, target) => [preview.unitName(target), preview.unitId(target)].map(name => String(name || '').trim()).filter(Boolean)
+    .map(name => table?.[name]).find(Boolean);
+  const beliefRelation = (observer, target) => String(beliefRecordOf(observer?.社交?.关系, target)?.关系 || '').trim();
+  function beliefIntimate(observer = {}, target = {}) {
+    const relation = beliefRelation(observer, target);
+    return !!relation && relation !== '陌生' && !/宿敌|对手|仇/.test(relation) && BELIEF_INTIMATE_RELATION.test(relation);
+  }
+  function beliefKnowsExposure(observer = {}, target = {}, world = {}) {
+    const relation = beliefRelation(observer, target);
+    return Number(beliefRecordOf(observer?.战斗历史 || observer?.属性?.战斗历史, target)?.次数 || 0) > 0 || !!relation && relation !== '陌生' ||
+      !!(world?.赛事上下文 && typeof world.赛事上下文 === 'object');
+  }
+  function beliefFamiliarExchanges(observer = {}, target = {}, world = {}) {
+    const relation = beliefRelation(observer, target);
+    const record = beliefRecordOf(observer?.战斗历史 || observer?.属性?.战斗历史, target);
+    const battles = Number(record?.次数 || 0);
+    const now = Number(world?.当前世界tick ?? world?.当前tick ?? 0), then = Number(record?.最近tick || 0);
+    const fade = now > 0 && then > 0 && now > then ? 0.5 ** ((now - then) / BELIEF_YEAR_TICKS) : 1;
+    let prior = battles > 0 ? BELIEF_FAMILIAR_BATTLE * fade : 0;
     if (relation && relation !== '陌生') prior += BELIEF_CLOSE_RELATION.test(relation) ? BELIEF_FAMILIAR_CLOSE : BELIEF_FAMILIAR_RELATION;
     return Math.min(BELIEF_FAMILIAR_CAP, prior);
   }
-  // 精神力感知（用户 2026-11-15「精神力不如对方时，开局无法看出对方实力。精神力高于对方，且精神力高于1000时，能一定程度估摸个
-  // 大概」「精神力比对方高只能看到魂力波动，也不知道对方是什么系别，有什么能力」）: a sense that outreaches the enemy's gauges
-  // its strength (level, pools, panel) before any exchange — not its abilities.
   // 系别信念（信息模型 0b，用户 2026-11-17「根据释放的魂技原型可进一步加深判断」）: what one sees of a skill an enemy releases —
   // the kind of its first (main) effect: 伤害 (on an enemy), 硬控 / 软控 (a state, interference or debuff on an enemy: one that
   // takes the turn, or one that does not), 治疗 (HP back to one's side), 自身增益 / 友方增益 (a buff, shield or modifier on
@@ -2225,12 +2241,17 @@
     return (SPIRIT_TENDENCY_KEYWORDS.find(([, pattern]) => pattern.test(look)) || ['无'])[0];
   }
   // The spread of systems the deciding side gives an enemy: its leaning's, weighed by the skills it has been seen to release.
-  function beliefSystemPosterior(unit = {}, beliefState = {}) {
+  // Each skill counts once however often it is seen; `known` are the skills known from earlier battles (战斗暴露, 信息模型 0c).
+  function beliefSystemPosterior(unit = {}, beliefState = {}, known = []) {
     const leaning = spiritLeaning(unit);
     const weights = { ...(leaning ? SYSTEM_PRIOR_BY_TENDENCY[leaning] || SYSTEM_PRIOR_BY_TENDENCY.无 : SYSTEM_PRIOR_UNSEEN) };
+    const seen = new Map();
     for (const entry of beliefState?.publicResponses?.[preview.unitId(unit)] || []) {
       const skill = entry?.declaration?.skill;
-      if (String(entry?.declaration?.actionKind || '').trim() !== 'RELEASE_SKILL' || !skill || typeof skill !== 'object') continue;
+      if (String(entry?.declaration?.actionKind || '').trim() === 'RELEASE_SKILL' && skill && typeof skill === 'object') seen.set(skillName(skill), skill);
+    }
+    for (const skill of known) if (skill && typeof skill === 'object' && !seen.has(skillName(skill))) seen.set(skillName(skill), skill);
+    for (const skill of seen.values()) {
       const kind = skillObservationClass(skill);
       let total = 0;
       for (const name of BELIEF_SYSTEMS) total += (weights[name] *= SKILL_CLASS_LIKELIHOOD[name]?.[kind] ?? 0.01);
@@ -2264,6 +2285,9 @@
     if (['状态施加', '判定修正', '结算修正', '属性修正', '护盾变化', '资源变化'].includes(prototype)) return own ? '自身增益' : side ? '友方增益' : '其他';
     return '其他';
   }
+  // 精神力感知（用户 2026-11-15「精神力不如对方时，开局无法看出对方实力。精神力高于对方，且精神力高于1000时，能一定程度估摸个
+  // 大概」「精神力比对方高只能看到魂力波动，也不知道对方是什么系别，有什么能力」）: a sense that outreaches the enemy's gauges
+  // its strength (level, pools, panel) before any exchange — not its abilities.
   function beliefSenses(observer = {}, target = {}) {
     const sense = Number(preview.readResourceMax(observer, '精神力')) || 0, theirs = Number(preview.readResourceMax(target, '精神力')) || 0;
     return sense > BELIEF_SENSE_FLOOR && sense > theirs;
@@ -2305,7 +2329,7 @@
     const projectUnit = (sourceUnit, publicSide = '') => {
       // 熟人知根知底（用户 2026-11-15「原本就很熟悉的两人，或者近期对战过的，就没必要试探了」）: an enemy the actor has fought or
       // is close to is pictured as it is — its skills and panel — like the actor's own side.
-      if (alreadyPublic === true || sideOf(worldSnapshot, sourceUnit) === actorSide || beliefFamiliarExchanges(sourceActor, sourceUnit) >= BELIEF_FAMILIAR_BATTLE) {
+      if (alreadyPublic === true || sideOf(worldSnapshot, sourceUnit) === actorSide || beliefIntimate(sourceActor, sourceUnit)) {
         const unit = preview.inheritProjectedStateSourceWindows(cloneValue(sourceUnit), sourceUnit, worldSnapshot);
         if (sideOf(worldSnapshot, sourceUnit) === actorSide && !Number.isFinite(Number(unit?.routine_attack_ratio))) unit.routine_attack_ratio = knownRoutineAttackRatio(unit);
         if (sideOf(worldSnapshot, sourceUnit) !== actorSide && spiritOpensOnAnswer(sourceUnit)) {
@@ -2328,7 +2352,7 @@
       // the unit — a battle fought with it (战斗历史) and a relation (社交.关系) — counts as exchanges seen before this one.
       // Its abilities are known by the exchanges and the acquaintance (clarity); its strength by those and by a sense that
       // outreaches it (strengthClarity, beliefSenses).
-      const seen = Number(exchanges.get(id) || 0) + beliefFamiliarExchanges(sourceActor, sourceUnit), clarity = seen / (seen + BELIEF_EXCHANGE_PRIOR);
+      const seen = Number(exchanges.get(id) || 0) + beliefFamiliarExchanges(sourceActor, sourceUnit, worldSnapshot), clarity = seen / (seen + BELIEF_EXCHANGE_PRIOR);
       const senses = beliefSenses(sourceActor, sourceUnit);
       const gauged = seen + (senses ? BELIEF_SENSE_EXCHANGES : 0), strengthClarity = gauged / (gauged + BELIEF_EXCHANGE_PRIOR);
       const toward = (estimate, truth) => Number.isFinite(Number(truth)) ? estimate + (Number(truth) - estimate) * strengthClarity : estimate;
@@ -2343,7 +2367,9 @@
       const publicUnitRole = String(beliefUnit.publicUnitRole || '').trim().toUpperCase();
       // 系别信念（0b）: the system as the deciding side believes it (beliefSystemPosterior) — the pictured panel, the typical attack
       // and the agility correction are the believed systems' blended by their weights; 系别 names the likeliest.
-      const systemBelief = publicUnitRole === 'SUMMON' ? { [String(beliefUnit.visibleSystem || '').trim()]: 1 } : beliefSystemPosterior(sourceUnit, beliefState);
+      // 跨场情报（0c）: what it showed in earlier battles, when the deciding unit knows of them (beliefKnowsExposure).
+      const exposed = publicUnitRole !== 'SUMMON' && beliefKnowsExposure(sourceActor, sourceUnit, worldSnapshot) ? preview.exposedSkills(sourceUnit) : [];
+      const systemBelief = publicUnitRole === 'SUMMON' ? { [String(beliefUnit.visibleSystem || '').trim()]: 1 } : beliefSystemPosterior(sourceUnit, beliefState, exposed);
       const system = beliefMostLikelySystem(systemBelief);
       const blend = read => Object.entries(systemBelief).reduce((sum, [name, weight]) => sum + weight * read(name), 0);
       const systemScale = Object.fromEntries(['str', 'def', 'agi'].map(key => [key, blend(name => systemPanelScale(name)[key])]));
@@ -2455,6 +2481,7 @@
         ...(publicUnitRole !== 'SUMMON' && (systemBelief.控制系 || 0) > 0.01 ? { routine_preempt_share: BELIEF_ROUTINE_PREEMPT_SHARE * (1 - clarity) * systemBelief.控制系 } : {}),
         // 系别信念（0b）: the spread behind 系别 (信息模型 A/B read it).
         __systemBelief: systemBelief,
+        ...(exposed.length ? { __exposedSkills: exposed } : {}),
         // How well the deciding unit has seen it (exchanges ÷ (exchanges + prior)): the price of spending against it (R20_PROBE_PREMIUM).
         __clarity: publicUnitRole === 'SUMMON' ? 1 : clarity,
         // Its strength as pictured (谨慎: an enemy gauged as strong as the actor or stronger calls for more care, R20_CAUTION_SLOPE).
@@ -65963,11 +65990,13 @@
     if (!shares) return null;
     return Object.fromEntries(Object.entries(shares).map(([resource, share]) => [resource, share * Math.max(1, preview.readResourceMax(unit, resource))]));
   };
+  // 跨场情报（信息模型 0c）: and the skills it showed in earlier battles (its picture's __exposedSkills, cost unknown).
   const r20Shown = unit => {
     const shown = r20Belief?.publicResponses?.[preview.unitId(unit)];
-    if (!Array.isArray(shown) || !shown.length) return [];
+    const known = Array.isArray(unit?.__exposedSkills) ? unit.__exposedSkills : [];
+    if ((!Array.isArray(shown) || !shown.length) && !known.length) return [];
     const skills = [];
-    for (const entry of shown) {
+    for (const entry of shown || []) {
       const skill = entry?.declaration?.skill;
       // Not while what it has left (as the unit sees it) is less than the skill was seen to take.
       if (Object.entries(entry?.costShares || {}).some(([resource, share]) =>
@@ -65977,6 +66006,8 @@
         if (entry?.costShares) r20ShownCosts.set(skill, entry.costShares);
       }
     }
+    const names = new Set(skills.map(skill => skillName(skill)));
+    for (const skill of known) if (Array.isArray(skill?._效果数组) && !names.has(skillName(skill))) skills.push(skill);
     return skills;
   };
   // A unit seen paying for its skills (costShares) that has less left than every one of them took: its routine attack

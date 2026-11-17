@@ -875,7 +875,8 @@ class BattleUIComponent {
         const hpSnapshot = buildCanonicalCombatStatSnapshot(source, ['HP', 'HP上限']);
         if (hpSnapshot) snapshot.属性 = { ...(snapshot.属性 || {}), ...hpSnapshot };
       }
-      ['决策记忆', '血脉之力', '复制效果'].forEach(key => {
+      // 战斗暴露（信息模型 0c）：在别人面前放过的魂技位图，只加不减。
+      ['决策记忆', '血脉之力', '复制效果', '战斗暴露'].forEach(key => {
         if (source[key] !== undefined) snapshot[key] = clonePersistedCombatValue(source[key]);
       });
       const equipmentSnapshot = source.装备;

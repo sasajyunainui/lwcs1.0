@@ -8667,6 +8667,75 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const name = String(skill?.魂技名 || skill?.name || skill?.技能名称 || skill?.名称 || '').trim();
     return !!name && spiritSkillNames(unit).has(name);
   }
+  // 战斗暴露（信息模型 0c，用户 2026-11-17「交叉对战想储存起来太繁琐」→ 每个角色一个位图）: the skills a unit has released in
+  // front of others, as bits of its 战斗暴露 (base36, kept in the save; only ever grows). A skill's bit is its place: 0–9 the
+  // 1st 武魂's 1st–10th ring, 10–19 the 2nd's, 20–21 their 武魂真身, then its 自创魂技 and 融合技 by name. 魂骨 and equipment
+  // are not counted (they are seen as things, not as the spirit). A new ring's skill sits on a bit never set: unknown.
+  const exposureSlotCache = new WeakMap();
+  function exposureSlots(unit = {}) {
+    const origin = overlayUnitOriginCache.get(unit) || unit;
+    let slots = exposureSlotCache.get(origin);
+    if (slots) return slots;
+    const bySkill = new Map(), byBit = new Map(), extras = new Set(), seen = new Set();
+    const nameOf = skill => String(skill?.魂技名 || skill?.name || skill?.技能名称 || skill?.名称 || '').trim();
+    const visit = (value, path) => {
+      if (!value || typeof value !== 'object' || seen.has(value)) return;
+      seen.add(value);
+      if (Array.isArray(value)) { value.forEach(item => visit(item, path)); return; }
+      const name = nameOf(value);
+      if (Array.isArray(value._效果数组) && name) {
+        const spirit = Number(path.match(/第(\d+)武魂/)?.[1] || 0), ring = Number(path.match(/第(\d+)魂环/)?.[1] || 0);
+        let bit = -1;
+        if (spirit >= 1 && spirit <= 2 && /武魂真身/.test(path)) bit = 20 + spirit - 1;
+        else if (spirit >= 1 && spirit <= 2 && ring >= 1 && ring <= 10) bit = (spirit - 1) * 10 + ring - 1;
+        else if (/^(?:自创魂技|融合技)/.test(path)) extras.add(name);
+        if (bit >= 0 && !byBit.has(bit)) { byBit.set(bit, name); bySkill.set(name, bit); }
+      }
+      Object.entries(value).forEach(([key, child]) => visit(child, `${path}.${key}`));
+    };
+    Object.entries(origin || {}).forEach(([key, value]) => { if (/^(?:第[12]武魂|自创魂技|融合技)/.test(key)) visit(value, key); });
+    [...extras].filter(name => !bySkill.has(name)).sort().forEach((name, index) => { byBit.set(22 + index, name); bySkill.set(name, 22 + index); });
+    slots = { bySkill, byBit };
+    exposureSlotCache.set(origin, slots);
+    return slots;
+  }
+  function decodeExposure(text = '') {
+    let value = 0n;
+    for (const char of String(text || '').trim().toLowerCase()) {
+      const digit = parseInt(char, 36);
+      if (!Number.isFinite(digit)) return 0n;
+      value = value * 36n + BigInt(digit);
+    }
+    return value;
+  }
+  // The skills of `unit` its 战斗暴露 shows (objects of the unit itself).
+  function exposedSkills(unit = {}) {
+    const bits = decodeExposure(unit?.战斗暴露);
+    if (bits === 0n) return [];
+    const { byBit } = exposureSlots(unit);
+    const names = new Set([...byBit].filter(([bit]) => (bits >> BigInt(bit)) & 1n).map(([, name]) => name));
+    const skills = [], seen = new Set();
+    const visit = value => {
+      if (!value || typeof value !== 'object' || seen.has(value)) return;
+      seen.add(value);
+      if (Array.isArray(value)) { value.forEach(visit); return; }
+      const name = String(value?.魂技名 || value?.name || value?.技能名称 || value?.名称 || '').trim();
+      if (Array.isArray(value._效果数组) && names.has(name)) { skills.push(value); names.delete(name); }
+      Object.values(value).forEach(visit);
+    };
+    Object.entries(unit || {}).forEach(([key, value]) => { if (/^(?:第[12]武魂|自创魂技|融合技)/.test(key)) visit(value); });
+    return skills;
+  }
+  // A release in front of others sets the skill's bit (BattleRuntime, at the declaration); true when it changed.
+  function recordExposure(unit = {}, skill = {}) {
+    const name = String(skill?.魂技名 || skill?.name || skill?.技能名称 || skill?.名称 || '').trim().replace(/（蓄力迎击）$/, '');
+    const bit = name ? exposureSlots(unit).bySkill.get(name) : undefined;
+    if (bit === undefined) return false;
+    const before = decodeExposure(unit.战斗暴露), after = before | (1n << BigInt(bit));
+    if (after === before) return false;
+    unit.战斗暴露 = after.toString(36);
+    return true;
+  }
   // The releases the unit may declare now (BattleDecision): a worn piece still unreleased, not under 封甲, not banned by the match.
   function armourReleaseOptions(unit = {}, worldSnapshot = {}) {
     const banned = new Set((Array.isArray(worldSnapshot?.赛事上下文?.禁止装备) ? worldSnapshot.赛事上下文.禁止装备 : []).map(value => String(value || '').trim()));
@@ -25377,6 +25446,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     spiritUnreleased,
     spiritBlocksSkill,
     spiritReleasedMarker,
+    exposedSkills,
+    recordExposure,
     SPIRIT_UNRELEASED_KEY,
     armourReleaseState,
     armourStateAtDurability,
