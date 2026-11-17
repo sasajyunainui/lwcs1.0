@@ -41324,13 +41324,19 @@
     TRUCE: '罢手', WITHDRAW: '撤离', GUARD: '守护', USE_ITEM: '用道具', EQUIP: '换装', OBSERVE: '观察' });
   const R20_REASON_TEXT_CAP = 160;
   const r20ReasonCap = text => { const value = String(text || ''); return value.length > R20_REASON_TEXT_CAP ? `${value.slice(0, R20_REASON_TEXT_CAP)}…（截断）` : value; };
-  function r20CandidateLabel(candidate = {}) {
+  // 出招记录里写单位名（T26 第 1 批：原先取 id 前缀，写成「A0」「B0」）。
+  function r20UnitLabel(world = {}, id = '') {
+    const unit = findUnitInWorld(world, id);
+    return String((unit && preview.unitName(unit)) || String(id).split(':').pop() || id).trim();
+  }
+  function r20CandidateLabel(candidate = {}, world = null) {
     const declaration = candidate?.declaration || {};
     const kind = String(declaration.actionKind || '').toUpperCase();
     const name = String(declaration.skill?.魂技名 || declaration.skill?.name || declaration.feintSkill?.魂技名 || '').trim();
     const mode = declaration.engagement?.mode === 'CLASH' ? '对轰' : declaration.engagement?.mode === 'PREEMPT' ? '抢先' : '';
     const label = kind === 'EQUIP' && declaration.releaseSlot ? (declaration.releaseSlot === '武魂' ? '开武魂' : String(declaration.releaseSlot)) : name || R20_KIND_LABELS[kind] || kind;
-    const targets = (Array.isArray(declaration.targetIds) ? declaration.targetIds : []).map(id => String(id).split(':')[0]).filter(id => id && id !== String(declaration.actorId || '').split(':')[0]);
+    const targets = (Array.isArray(declaration.targetIds) ? declaration.targetIds : []).map(String)
+      .filter(id => id && id !== String(declaration.actorId || '')).map(id => world ? r20UnitLabel(world, id) : id.split(':').pop());
     return `${mode ? `${mode}·` : ''}${label}${targets.length ? `→${targets.join('、')}` : ''}`;
   }
   // 推演类意图按自估胜算分档（第 5 步：胜算一成上下还写「扩大推演优势」不对）。
@@ -41372,7 +41378,7 @@
           shadow.value += base;
         }
       }
-      rows.push({ id: pick.candidate.candidateId, label: r20CandidateLabel(pick.candidate), value: Number(Number(shadow.value).toFixed(4)), terms: trace.terms || [],
+      rows.push({ id: pick.candidate.candidateId, label: r20CandidateLabel(pick.candidate, request.visibleWorld), value: Number(Number(shadow.value).toFixed(4)), terms: trace.terms || [],
         falls: trace.falls || [], counter: trace.counter || 0, unseen: trace.unseen, wary: trace.wary });
     }
     if (!rows.length) return null;
@@ -41400,12 +41406,14 @@
       : Math.abs(chosen.value - runner.value) < 0.005 ? `；与【${runner.label}】几乎持平` : `；胜过【${runner.label}】${two(chosen.value - runner.value)}，主要在${lead || '各项相近'}`;
     // 动作本身就是意图（开武魂）时不重复写意图。
     const aiLine = r20ReasonCap(`${name}选【${chosen.label}】${intent && intent !== chosen.label ? `，意图：${intent}` : ''}；自估胜算 ${pct}${against}`);
-    const fallText = falls => falls.map(entry => `${entry.id.split(':')[0]}${entry.side === 'own' ? '（本方）' : ''}在第 ${entry.time} 回合倒下`).join('，');
+    // 推导给人看（T26 第 1 批，拍板 3）：数字保留两位小数，倒下时刻取整写「约第 N 回合」；结构字段（terms、falls）保留原精度。
+    const fallText = falls => falls.map(entry => `${r20UnitLabel(request.visibleWorld, entry.id)}${entry.side === 'own' ? '（本方）' : ''}约第 ${Math.max(1, Math.round(Number(entry.time) || 0))} 回合倒下`).join('，');
+    const twoDecimals = line => String(line).replace(/-?\d+\.\d+/g, number => two(Number(number)));
     const derivation = [];
     for (const [tag, row] of [['选中', chosen], [options.drawn ? '最优' : '次优', runner]]) {
       if (!row) continue;
-      derivation.push(r20ReasonCap(`${tag}【${row.label}】= ${r20Num(row.value)}`));
-      for (const term of row.terms) derivation.push(r20ReasonCap(`  ${R20_TERM_LABELS[term.k] || term.k} ${term.v > 0 ? '+' : ''}${r20Num(term.v)}：${term.f}`));
+      derivation.push(r20ReasonCap(twoDecimals(`${tag}【${row.label}】= ${r20Num(row.value)}`)));
+      for (const term of row.terms) derivation.push(r20ReasonCap(twoDecimals(`  ${R20_TERM_LABELS[term.k] || term.k} ${term.v > 0 ? '+' : ''}${r20Num(term.v)}：${term.f}`)));
       if (row.falls.length) derivation.push(r20ReasonCap(`  推演：${fallText(row.falls)}`));
     }
     return Object.freeze({
@@ -42348,7 +42356,7 @@
       const terms = [];
       const add = (k, v, f) => { if (Math.abs(Number(v) || 0) > 1e-6) terms.push({ k, v: Number(Number(v).toFixed(4)), f }); };
       add('race', race, `推演终局 ${r20Num(raced)} − 现局 ${r20Num(table.score[own])}`);
-      if (tempo) add('tempo', tempo, table.ids.map((id, row) => table.sides[row] === foe && table.pending[row] && alive[row] < 1 ? `${id.split(':')[0]} 身价 ${r20Num(table.worth[row])} × 本回合倒下 ${r20Num(1 - alive[row])}` : '').filter(Boolean).join(' + '));
+      if (tempo) add('tempo', tempo, table.ids.map((id, row) => table.sides[row] === foe && table.pending[row] && alive[row] < 1 ? `${r20UnitLabel(request.visibleWorld, id)} 身价 ${r20Num(table.worth[row])} × 本回合倒下 ${r20Num(1 - alive[row])}` : '').filter(Boolean).join(' + '));
       if (objective && table.objectives) {
         const terminal = r9v2LinearTerminalValue(preview.evaluateBattleObjectivesCompact(objectiveWorld, table.objectives), own);
         add('objective', objective, `权重 ${R20_OBJECTIVE_WEIGHT} ×（终局 ${r20Num(terminal)} + 进展 ${r20Num(objective / R20_OBJECTIVE_WEIGHT + table.objectiveBase - terminal)} − 原有 ${r20Num(table.objectiveBase)}）`);

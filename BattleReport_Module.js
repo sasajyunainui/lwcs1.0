@@ -83,6 +83,8 @@
     HIT: '命中',
     MISS: '未命中',
     DRAW: '平局',
+    // 观察类事实（副作用资格窗口、维持来源结束）：兜底句里不外露英文结果码（T26 第 1 批）。
+    OBSERVED: '已记录',
   });
   const problemLabels = Object.freeze({
     TERMINAL_OPPORTUNITY: '终结机会',
@@ -115,6 +117,11 @@
     UNCOMPENSATED_SELF_DEFEAT: '会造成无补偿的自毁',
     TERMINAL_OBJECTIVE_CONFLICT: '与当前战斗目标冲突',
     SUMMON_WINDOW_MISSING: '召唤物没有可兑现的行动窗口',
+    // 决策层候选排除码（T26 第 1 批：原先查不到就退回内部码原文）。
+    RULE_ENGAGEMENT_TERMS: '违反交手约定（不还手或只硬接）',
+    RULE_MEDITATING: '冥想中不能应对',
+    CAST_EXCEEDS_IMMEDIATE_BUDGET: '前摇太长，这次行动机会里放不出来',
+    REACTION_BUDGET_EXCEEDED: '前摇太长，来不及用来应对',
   });
   const resourceLabels = Object.freeze({
     hp: '生命',
@@ -141,6 +148,9 @@
     EQUIP: '装备',
     PASS_OPPORTUNITY: '让过行动',
     FUSION_SKILL: '武魂融合技',
+    // T26 第 1 批：佯装、罢手的动作码不外露。
+    FEINT: '佯装蓄力',
+    TRUCE: '提议罢手',
   });
   const previewStopReasonText = Object.freeze({
     BATTLE_TERMINAL: '已达到战斗终局。',
@@ -1169,6 +1179,9 @@
           ? `${actor}没有采取额外应对`
           : `${actor}主动让过这次行动机会`;
       }
+      // 佯装蓄力、提议罢手也以 pass 结束本次行动机会，但都不是让过（T26 第 1 批）；罢手的目标是对方全体，不写「作用于N个目标」。
+      if (actionType === 'FEINT') return `${actor}佯装蓄力`;
+      if (actionType === 'TRUCE') return `${actor}提议罢手`;
       if (kind === 'pass') return `${actor}主动让过这次行动机会`;
       if (actionType === 'WITHDRAW') return `${actor}选择离场（认输或撤离）`;
       if (target === actor && ['DEFEND', 'EVADE', 'OBSERVE'].includes(actionType)) return `${actor}采取【${action}】`;
@@ -1412,11 +1425,18 @@
       return effectSummary ? `${actor}通过【${action}】${effectSummary}` : '';
     }
     if (kind === 'round_summary') return `第${number(event?.round, 0)}回合完成`;
+    // 维持来源结束（最后一个持续效果已移走或到期，之后不再收维持费）：原先走兜底句，写成「使出【X】，OBSERVED」（T26 第 1 批）。
+    if (kind === 'sustain_source_closed') return `${actor}的【${action}】不再维持，之后不再收维持费用`;
+    // 副作用资格窗口（观察类事实，不是一次出手）：原先写成「X使出【Y】，已记录」。
+    if (kind === 'side_effect_window') return `${actor}的【${action}】进入副作用判定`;
     if (kind === 'battle_objective_resolved') {
       const winner = text(meta?.winner || event?.result);
+      // 罢手、双方同时成立、上限平局、到上限判守方胜各写各的（T26 第 1 批）。
+      const outcome = terminalOutcomeText({ ...meta, winner });
+      if (outcome) return outcome;
       return winner === 'player' ? '我方达成战斗目标'
         : winner === 'enemy' ? '敌方达成战斗目标'
-          : winner === 'draw' ? '达到回合上限，双方未分胜负'
+          : winner === 'draw' ? '双方未分胜负'
             : '战斗目标完成裁断';
     }
     /* 兜底句原本是"完成【X】结算，结果为成功"这种纯日志腔，
@@ -3965,6 +3985,8 @@
           ? `${actor}没有采取额外应对`
           : `${actor}主动让过这次行动机会`;
       }
+      if (actionType === 'FEINT') return `${actor}佯装蓄力`;
+      if (actionType === 'TRUCE') return `${actor}提议罢手`;
       if (actionType === 'WITHDRAW') return `${actor}想要离场`;
       if (['DEFEND', 'EVADE', 'OBSERVE'].includes(actionType) || !target || target === actor) {
         return `${actor}摆开【${action}】的架势`;
@@ -4252,51 +4274,6 @@
     );
   }
 
-  /*
-   * AI 战报文本投影
-   *
-   * 这份文本是 AI 扩写自然战斗叙述的唯一依据，因此每一行都必须是事实，不能是解释。
-   * 三条硬规则：
-   *   1 只用离散事实做主干（谁对谁、用什么、命中没命中、状态上没上、被什么码排除）。
-   *     PP/HEPP 这类连续量一律不出现——它们翻成人话必然失真，而离散量天然就是人话。
-   *   2 不反推意图。引擎没有"意图"这个概念，它只算标量；写"意图：打断蓄力"是编的。
-   *     能写的是"这条路线含行动取消效果"这类事实性因果。
-   *   3 只有对账为 CONFIRMED 的效果才由 settlement 如实叙述；MISSED/PREEMPTED 写成明确否定；
-   *     UNCONFIRMED 完全不出现在文本里——AI 看不到就不会写，这是杜绝误写战况的根本手段。
-   */
-  const aiReconciliationDenials = Object.freeze({
-    HP_DELTA: { MISSED: '攻击未命中，未造成伤害', PREEMPTED: '攻击未能打出' },
-    IRREVERSIBLE_ASSET_LOST: { MISSED: '预定消耗的物品未被消耗', PREEMPTED: '物品未被消耗' },
-    NEXT_ACTION_QUALITY_CHANGED: { MISSED: '预定的能力修正未能挂上', PREEMPTED: '能力修正未生效' },
-    RULE_CHANGED: { MISSED: '预定的规则改写未能生效', PREEMPTED: '规则改写未生效' },
-    SCHEDULED_HP_DELTA: { MISSED: '持续伤害未生效', PREEMPTED: '持续伤害未能挂上' },
-    SHIELD_DELTA: { MISSED: '护盾未建立', PREEMPTED: '护盾未能建立' },
-    STATE_CHANGED: { MISSED: '状态被抵抗，未生效', PREEMPTED: '状态未能施加' },
-    STATE_SCHEDULED: { MISSED: '延迟状态未能登记', PREEMPTED: '延迟状态未能登记' },
-    ACTION_CANCELLED: { MISSED: '未能打断对方行动', PREEMPTED: '打断未能生效' },
-    SUMMON_WINDOW: { MISSED: '召唤未成立', PREEMPTED: '召唤未能建立' },
-    RESOURCE_OPTION_CHANGED: { MISSED: '资源变化未发生', PREEMPTED: '资源变化未发生' },
-    PAYMENT: { MISSED: '消耗未支付', PREEMPTED: '消耗未支付' },
-    TERMINAL: { MISSED: '未达成预期的终局条件', PREEMPTED: '终局未达成' },
-  });
-
-  function aiDenialLine(row = {}) {
-    const status = text(row?.status);
-    if (status !== 'MISSED' && status !== 'PREEMPTED') return '';
-    const template = aiReconciliationDenials[text(row?.kind)];
-    const base = row.kind === 'STATE_CHANGED' && Number.isSafeInteger(row.expected?.registrationRound)
-      ? '延迟状态未形成新的施加或刷新' : text(template?.[status]);
-    if (!base) return '';
-    const stateName = text(row?.expected?.stateName);
-    const target = text(row?.targetName);
-    const subject = stateName ? `${stateName}` : '';
-    return [
-      target ? `对${target}` : '',
-      subject ? `${subject}：` : '',
-      base,
-    ].filter(Boolean).join('');
-  }
-
   /* 一行战果：同时用于楼层留存（玩家可读、不污染上下文）与 AI 战报的抬头。
      终局必须用人话，不能把 winner 的原始枚举值直接抛出去。 */
   function buildBattleHeadline(input = {}) {
@@ -4312,96 +4289,6 @@
       `${Math.max(0, number(input?.roundCount, 0))}回合`,
       outcome,
     ].filter(Boolean).join(' · ');
-  }
-
-  /*
-   * inject 体积上限。
-   *
-   * 这份战报每轮都会作为 system inject 发出，长战斗（20 回合团战单回合就有 30 个决策）
-   * 若不设上限会膨胀到数万字符，挤占正文生成预算。
-   * 压缩策略：最近若干回合保留完整因果链（AI 主要要写的就是这几回合），
-   * 更早的回合退化为每回合一行，并显式标注"已压缩"——绝不静默截断，
-   * 否则 AI 会以为前面什么都没发生。
-   */
-  const aiReportCharBudget = 6000;
-
-  function compressAiReportRounds(roundBlocks = [], budget = aiReportCharBudget) {
-    const blocks = Array.isArray(roundBlocks) ? roundBlocks : [];
-    const totalOf = rows => rows.reduce((sum, row) => sum + row.text.length, 0);
-    if (totalOf(blocks) <= budget) return { blocks, compressedRounds: 0 };
-    /* 从最早的回合开始逐个压缩，直到进入预算；最近两回合无论如何保留完整。 */
-    const kept = blocks.map(block => ({ ...block }));
-    let compressed = 0;
-    for (let index = 0; index < kept.length - 2; index += 1) {
-      if (totalOf(kept) <= budget) break;
-      kept[index] = {
-        ...kept[index],
-        text: `[第${kept[index].round}回合] ${kept[index].digest}`,
-      };
-      compressed += 1;
-    }
-    return { blocks: kept, compressedRounds: compressed };
-  }
-
-  /* 压缩后每回合只留一行时用的摘要：谁出手、造成多少伤害、有谁倒下。
-     必须来自已确认事实，压缩不等于可以放宽真实性要求。 */
-  function digestRoundForAI(nodes = []) {
-    const actors = unique(nodes.map(node => text(node?.actorName)).filter(Boolean));
-    const damage = nodes.reduce((sum, node) => sum + (node?.reconciliation || [])
-      .filter(row => text(row?.status) === 'CONFIRMED' && text(row?.kind) === 'HP_DELTA')
-      .reduce((inner, row) => inner + Math.max(0, number(row?.magnitude?.applied, 0)), 0), 0);
-    const denied = nodes.some(node => (node?.settlement?.steps || [])
-      .some(step => ['charge_interrupt', 'blocked_action', 'lost_opportunity'].includes(text(step?.eventKind))));
-    return [
-      actors.length ? `${actors.join('、')}先后出手` : '无人行动',
-      damage > 0 ? `合计造成${Math.round(damage)}点伤害` : '',
-      denied ? '期间有行动被打断或落空' : '',
-    ].filter(Boolean).join('，');
-  }
-
-  function renderChainForAI(input = {}) {
-    const chain = Array.isArray(input?.chain) ? input.chain : [];
-    const sides = input?.sides || {};
-
-    /* 先按回合切块再拼接，这样超预算时可以整回合压缩，而不是从中间截断。 */
-    const roundBlocks = [];
-    const nodesByRound = new Map();
-    chain.forEach(node => {
-      const round = number(node?.round, 0);
-      if (!nodesByRound.has(round)) nodesByRound.set(round, []);
-      nodesByRound.get(round).push(node);
-    });
-
-    nodesByRound.forEach((nodes, round) => {
-      const lines = [`[第${round}回合]`];
-      nodes.forEach(node => renderChainNodeForAI(node, lines));
-      roundBlocks.push({
-        round,
-        text: lines.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd(),
-        digest: digestRoundForAI(nodes),
-      });
-    });
-
-    const { blocks, compressedRounds } = compressAiReportRounds(roundBlocks);
-
-    const finalState = [...(Array.isArray(sides?.player) ? sides.player : []), ...(Array.isArray(sides?.enemy) ? sides.enemy : [])]
-      .map(unit => {
-        const hp = Number(unit?.hp);
-        const hpMax = Number(unit?.hpMax);
-        return Number.isFinite(hp) && Number.isFinite(hpMax)
-          ? `${text(unit?.name)} ${hp}/${hpMax}`
-          : text(unit?.name);
-      })
-      .filter(Boolean);
-
-    return [
-      buildBattleHeadline(input),
-      /* 压缩必须显式告知，否则 AI 会以为前面几个回合什么都没发生。 */
-      compressedRounds > 0 ? `（前${compressedRounds}个回合已压缩为单行概要，细节从下方完整回合起算）` : '',
-      '',
-      blocks.map(block => block.text).join('\n\n'),
-      finalState.length ? `\n[终态] ${finalState.join(' | ')}` : '',
-    ].filter(Boolean).join('\n').replace(/\n{3,}/g, '\n\n').trim();
   }
 
   /*
@@ -4429,105 +4316,6 @@
         steps: rows.filter(step => text(step?.targetName) === targetName),
       })).filter(group => group.steps.length),
     };
-  }
-
-  function renderChainNodeForAI(node = {}, lines = []) {
-    {
-      /* 局面：只报会在下一个窗口兑现、且不是行动者自己的蓄力，其余属于噪音。 */
-      (node?.context?.pendingCharges || [])
-        .filter(charge => charge.imminent && text(charge.actorId) !== text(node.actorId))
-        .forEach(charge => {
-          lines.push(`  ! ${charge.actorName}蓄力中【${charge.actionName}】，下个行动窗口即可打出`);
-        });
-
-      if (node.decisionKind === 'LOST_OPPORTUNITY') {
-        lines.push(`${node.actorName} 失去行动：${node.lostOpportunityReason || '无法行动'}`);
-        lines.push('');
-        return lines;
-      }
-
-      const targets = node.targetNames.filter(name => name && name !== node.actorName);
-      lines.push([
-        node.actorName,
-        targets.length ? `→ ${targets.join('、')}` : '',
-        `· ${node.action.name}`,
-      ].filter(Boolean).join(' '));
-
-      /* 出招理由：新估值的出招记录（引擎自己的估值，不是战报反推的意图——不违反上面「不反推意图」那条）。一行：意图、自估胜算、对次优手的主导分项差。 */
-      if (text(node?.decision?.reasonRecord?.aiLine)) lines.push(`  理由：${text(node.decision.reasonRecord.aiLine)}`);
-      if (node.decisionKind === 'PLAYER_LOCKED') lines.push('  玩家指定动作');
-      if (node.decisionKind === 'FORCED') lines.push('  前一窗口已声明，本次按既定动作兑现');
-
-      /* 被排除的候选最多列两条避免刷屏，但截断必须告知——
-         否则"排除了 8 个候选"和"排除了 2 个候选"在战报上长得一模一样，
-         可疑的排除会被静默藏在截断线以下。 */
-      const 全部排除 = (node?.decision?.candidates || [])
-        .filter(candidate => candidate.status === 'EXCLUDED' && candidate.reasonText);
-      全部排除.slice(0, 2).forEach(candidate => {
-        lines.push(`  未选${candidate.name}：${candidate.reasonText}`);
-      });
-      if (全部排除.length > 2) {
-        lines.push(`  另有${全部排除.length - 2}个行动方案未采用（详见判定依据）`);
-      }
-
-      /* 按真实时序逐步输出，一步一行。回应方的步骤加"对此"前缀，
-         让"谁在回应谁"从文本上直接可读，而不是靠 AI 猜并列分句的关系。 */
-      const steps = Array.isArray(node?.settlement?.steps) ? node.settlement.steps : [];
-      const 可叙述 = steps.filter(step => !(step.stepRole === 'DECLARE' && step.actorName === node.actorName));
-      const 分组 = groupStepsByTarget(可叙述, node.actorName);
-      if (分组) {
-        分组.shared.forEach(step => lines.push(`  ${step.text}`));
-        分组.groups.forEach(group => {
-          lines.push(`  对${group.targetName}：`);
-          group.steps.forEach(step => lines.push(`    ${step.text}`));
-        });
-      } else {
-        /* 因果连接词由 ledger 的 sourceActionId 决定：
-           这一步的来源动作是本次交锋的根动作，且执行者不是发起方 → 它是对根动作的回应。
-           原先靠"上一步是不是发起方"推断，那只是启发式，会标错归属。 */
-        const rootActionIds = new Set(
-          可叙述.filter(step => !step.byResponder).map(step => text(step.actionId)).filter(Boolean),
-        );
-        可叙述.forEach(step => {
-          const 回应根动作 = step.byResponder && rootActionIds.has(text(step.sourceActionId));
-          lines.push(`  ${回应根动作 ? '对此，' : ''}${step.text}`);
-        });
-      }
-      if (!steps.length && text(node?.settlement?.declarationSummary)) {
-        lines.push(`  ${text(node.settlement.declarationSummary)}`);
-      }
-
-      /* 对账否定行只在结算步骤没覆盖到时才补。
-         若判定 MISSED 所依据的事实已经被某个步骤叙述过（例如"未能命中X"），
-         再输出一句"攻击未命中，未造成伤害"就是同一件事说两遍。 */
-      const 已叙述事实 = new Set(steps.map(step => step.factId));
-      (node?.reconciliation || [])
-        .filter(row => !(Array.isArray(row?.actualFactIds) ? row.actualFactIds : [])
-          .some(factId => 已叙述事实.has(text(factId))))
-        .map(aiDenialLine)
-        .filter(Boolean)
-        .forEach(line => lines.push(`  ${line}`));
-
-      /* 同一次交锋里对方做出的反应/反击决策也是真实发生的判断，必须一并交代，
-         否则 AI 会以为对方毫无反应。 */
-      (node?.decisions || []).slice(1).forEach(entry => {
-        if (entry.kind === 'LOST_OPPORTUNITY') {
-          lines.push(`  ${entry.actorName}未能应对：${entry.lostOpportunityReason || '没有可用的应对动作'}`);
-          return;
-        }
-        if (entry.kind === 'DECLINED') {
-          lines.push(`  ${entry.actorName}放弃了本次反击机会`);
-          return;
-        }
-        if (text(entry.trace?.selectionLabel) === 'REACTION_DECLINED') {
-          lines.push(`  ${entry.actorName}没有能改变本次结算的应对动作`);
-        }
-      });
-
-      /* 节点之间留空行，否则局面提示会看起来像挂在上一个单位身上。 */
-      lines.push('');
-    }
-    return lines;
   }
 
   /*
@@ -5115,11 +4903,55 @@
     return terminal?.terminal === true ? '战斗已结束' : '战斗仍在继续';
   }
 
+  /* 终局的种类（T26 第 1 批）：平局不再一律写成「达到回合上限」。terminal 是 terminalResult 或 battle_objective_resolved 的 meta。
+     TRUCE 罢手成立 / CONFLICT 双方条件同时成立 / MUTUAL_EXHAUSTION 双方同时失去战斗能力 / TIME_LIMIT 上限平局 /
+     TIME_LIMIT_HOLDOUT 上限判守方胜（接满攻击次数，攻方没出满）/ CONDITION 某条胜负条件成立 / '' 未结束。 */
+  function terminalOutcomeCode(terminal = {}) {
+    const status = text(terminal?.status).toUpperCase();
+    const winner = text(terminal?.winner);
+    const reason = text(terminal?.terminalReason).toUpperCase();
+    const details = Array.isArray(terminal?.matchedDetails) ? terminal.matchedDetails : [];
+    if (status === 'TRUCE' || details.some(item => text(item?.condition?.type).toUpperCase() === 'TRUCE')) return 'TRUCE';
+    const matchedCondition = details.some(item => item?.matched === true && item?.condition);
+    if (winner === 'draw') {
+      if (reason === 'OBJECTIVE_CONFLICT') return 'CONFLICT';
+      if (reason === 'BATTLEFIELD_EXHAUSTION') return 'MUTUAL_EXHAUSTION';
+      if (terminal?.timeLimitReached === true || reason === 'ROUND_LIMIT_REACHED') return 'TIME_LIMIT';
+      return matchedCondition ? 'CONFLICT' : 'TIME_LIMIT';
+    }
+    if ((winner === 'player' || winner === 'enemy') && terminal?.timeLimitReached === true && !matchedCondition) return 'TIME_LIMIT_HOLDOUT';
+    if (winner === 'player' || winner === 'enemy') return 'CONDITION';
+    return '';
+  }
+
+  // 到上限判攻方输（T20，第 7 条拍板）：守方撑满回合，攻方没能在约定回合内出满 X 次，归入守方达成赌约。
+  function timeLimitHoldoutText(terminal = {}) {
+    const groups = terminal?.objectives || {};
+    const group = text(terminal?.winner) === 'player' ? groups.victory : groups.defeat;
+    const condition = (Array.isArray(group?.conditions) ? group.conditions : [])
+      .find(item => text(item?.type).toUpperCase() === 'ATTACKS_ENDURED');
+    const count = Math.max(0, Math.floor(number(condition?.count, 0)));
+    return `守方撑满回合上限，攻方没能在约定回合内出满${count > 0 ? `${count}次` : '约定次数的'}攻击，守方达成赌约`;
+  }
+
+  function terminalOutcomeText(terminal = {}) {
+    const code = terminalOutcomeCode(terminal);
+    if (code === 'TRUCE') return '双方罢手，本场平局';
+    if (code === 'CONFLICT') return '双方终止条件同时成立，本场平局';
+    if (code === 'MUTUAL_EXHAUSTION') return '双方同时失去战斗能力，本场平局';
+    if (code === 'TIME_LIMIT') return '达到回合上限，双方未分胜负';
+    if (code === 'TIME_LIMIT_HOLDOUT') return timeLimitHoldoutText(terminal);
+    return '';
+  }
+
   function terminalConditionText(terminal = {}) {
     const detail = (Array.isArray(terminal?.matchedDetails) ? terminal.matchedDetails : [])
       .find(item => item?.matched === true && item?.condition);
     const condition = detail?.condition || null;
     if (!condition) {
+      const code = terminalOutcomeCode(terminal);
+      if (code === 'TRUCE') return '双方罢手';
+      if (code === 'TIME_LIMIT_HOLDOUT') return timeLimitHoldoutText(terminal);
       return terminal?.timeLimitReached === true ? '达到回合上限' : '';
     }
     const sideLabel = text(condition?.side).toUpperCase() === 'PLAYER' ? '我方' : '敌方';
@@ -5147,6 +4979,20 @@
     if (type === 'UNIT_DEAD') return `${targetLabel}死亡`;
     if (type === 'UNIT_DAMAGED') return `${targetLabel}受到伤害`;
     if (type === 'WITHDRAW_SUCCESS') return `${sideLabel}成功撤离`;
+    // 交手约定与资源条件（T26 第 1 批：原先返回空串，终局写不出原因）。
+    if (type === 'RESOURCE_RATIO_AT_OR_BELOW') {
+      return `${targetLabel}${text(condition?.resource) || '资源'}降至${displayNumber(number(condition?.threshold, 0) * 100)}%或以下`;
+    }
+    if (type === 'ATTACKS_ENDURED') {
+      const count = Math.max(0, Math.floor(number(condition?.count, 0)));
+      return `${targetLabel}接满${count > 0 ? `${count}次` : '约定次数的'}攻击`;
+    }
+    if (type === 'SPIRIT_RELEASED') return `${targetLabel}被逼出武魂`;
+    if (type === 'HIT_SHARE_AT_OR_ABOVE') {
+      return `${targetLabel}单次所受伤害达到生命上限的${displayNumber(number(condition?.threshold, 0) * 100)}%`;
+    }
+    if (type === 'GUARD_BROKEN') return `${targetLabel}被破防`;
+    if (type === 'TRUCE') return '双方罢手';
     return '';
   }
 
@@ -5155,9 +5001,17 @@
       const winner = text(terminal?.winner);
       const terminalReason = text(terminal?.terminalReason || terminal?.status);
       if (winner === 'draw') {
-        return terminal?.timeLimitReached === true || /TIME_LIMIT|回合上限/i.test(terminalReason)
+        const code = terminalOutcomeCode(terminal);
+        if (code === 'TRUCE') return '双方罢手，本场平局，转入收势与战后确认';
+        if (code === 'MUTUAL_EXHAUSTION') return '双方同时失去战斗能力，本次交锋停止并等待裁断';
+        return code === 'TIME_LIMIT' || /TIME_LIMIT|回合上限/i.test(terminalReason)
           ? '达到回合上限，本次交锋停止，保留当前战况等待后续裁断'
           : '双方终止条件同时成立，本次交锋停止并等待裁断';
+      }
+      if (winner && side && terminalOutcomeCode(terminal) === 'TIME_LIMIT_HOLDOUT') {
+        return winner === side
+          ? '撑满回合上限，守住了赌约，转入收势与战后确认'
+          : '没能在约定回合内出满攻击次数，赌约落败，停止继续行动';
       }
       if (winner && side) {
         return winner === side
@@ -5719,12 +5573,12 @@
   function publicReasonRecord(record = null, actorSide = '', visibilityMode = 'PLAYER') {
     if (!record || typeof record !== 'object' || record.error) return null;
     if (visibilityMode === 'DEVELOPER' || actorSide !== 'enemy') {
-      return { intent: text(record.intent), win: record.win ?? null, aiLine: text(record.aiLine), derivation: (record.derivation || []).map(text) };
+      return { intent: text(record.intent), win: record.win ?? null, aiLine: formatTextNumbers(text(record.aiLine)), derivation: (record.derivation || []).map(line => formatTextNumbers(text(line))) };
     }
     const runner = text(record?.runnerUp?.label);
     const hide = line => runner ? text(line).split(runner).join('另一方案') : text(line);
     const cut = (record.derivation || []).findIndex(line => /^(次优|最优)【/.test(text(line)));
-    return { intent: text(record.intent), win: record.win ?? null, aiLine: hide(record.aiLine), derivation: (cut >= 0 ? record.derivation.slice(0, cut) : record.derivation || []).map(text) };
+    return { intent: text(record.intent), win: record.win ?? null, aiLine: formatTextNumbers(hide(record.aiLine)), derivation: (cut >= 0 ? record.derivation.slice(0, cut) : record.derivation || []).map(line => formatTextNumbers(text(line))) };
   }
 
   function projectDecisionTraceForVisibility(
@@ -6266,7 +6120,7 @@
       })),
       narrowing: (Array.isArray(trace?.narrowing) ? trace.narrowing : []).map(stage => publicDecisionStage(stage)),
       reasonRecord: trace?.reasonRecord && typeof trace.reasonRecord === 'object'
-        ? { intent: text(trace.reasonRecord.intent), win: trace.reasonRecord.win ?? null, aiLine: text(trace.reasonRecord.aiLine), derivation: (trace.reasonRecord.derivation || []).map(text) }
+        ? { intent: text(trace.reasonRecord.intent), win: trace.reasonRecord.win ?? null, aiLine: formatTextNumbers(text(trace.reasonRecord.aiLine)), derivation: (trace.reasonRecord.derivation || []).map(line => formatTextNumbers(text(line))) }
         : null,
     };
   }
@@ -7526,6 +7380,30 @@
     });
     diagnostics.unknownRejectionCodes = unique(diagnostics.unknownRejectionCodes);
 
+    /* 玩家文本里的内部码（T26 第 1 批，先只报警告、不阻断提交）：带下划线的大写码（RULE_ENGAGEMENT_TERMS）、
+       【】里的英文动作码（【FEINT】）。只扫给人看的文字字段，id、事件种类、状态码这些结构字段不扫。 */
+    diagnostics.internalCodeLeaks = [];
+    {
+      const textKeys = new Set(['text', 'summary', 'passiveSummary', 'playerText', 'reasonText', 'reasonPlayerText', 'aiLine', 'line',
+        'headline', 'battleHeadline', 'outcomeSummary', 'declarationSummary', 'lostOpportunityReason', 'explanation', 'responseSummary',
+        'resultSummary', 'continuationSummary', 'advantage', 'trend', 'intent', 'player', 'enemy', 'alternativeSummary']);
+      const arrayTextKeys = new Set(['derivation', 'risks', 'tacticalWindows', 'settlementTexts']);
+      const codePattern = /(?<![A-Za-z0-9])[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+(?![A-Za-z0-9])|【[A-Z][A-Z_]{2,}】/;
+      const visit = (value, path, key, parentKey, depth) => {
+        if (diagnostics.internalCodeLeaks.length >= 64 || depth > 12 || value === null || value === undefined) return;
+        if (typeof value === 'string') {
+          if ((textKeys.has(key) || arrayTextKeys.has(parentKey)) && codePattern.test(value)) {
+            diagnostics.internalCodeLeaks.push({ location: path, sample: value.match(codePattern)[0] });
+          }
+          return;
+        }
+        if (Array.isArray(value)) { value.forEach((item, index) => visit(item, `${path}[${index}]`, key, key, depth + 1)); return; }
+        if (typeof value === 'object') Object.entries(value).forEach(([childKey, child]) => visit(child, path ? `${path}.${childKey}` : childKey, childKey, key, depth + 1));
+      };
+      ['battleHeadline', 'finalSummary', 'roundOverview', 'exchanges', 'narrativeChain', 'decisionExplanations', 'aiStructuredSummary']
+        .forEach(field => visit(report?.[field], field, field, '', 0));
+    }
+
     if (developerMode) {
       diagnostics.unconfirmedPredictions.forEach(entry => pushFatal('PREDICTION_UNCONFIRMED', entry));
       diagnostics.divergedMagnitudes.forEach(entry => pushFatal('PREDICTION_MAGNITUDE_DIVERGED', entry));
@@ -7549,7 +7427,8 @@
       diagnosticCount:
         diagnostics.unconfirmedPredictions.length +
         diagnostics.divergedMagnitudes.length +
-        diagnostics.unknownRejectionCodes.length,
+        diagnostics.unknownRejectionCodes.length +
+        diagnostics.internalCodeLeaks.length,
       reportHash,
       reportDto: sealedReportDto,
     });
@@ -7593,7 +7472,6 @@
     buildNarrativeChain,
     buildDecisionTimeExplanations,
     projectNarrativeChainForVisibility,
-    renderChainForAI,
     buildPipelineStats,
     buildBattleHeadline,
     groupStepsByTarget,

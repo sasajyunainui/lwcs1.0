@@ -20145,6 +20145,9 @@
       PASS_OPPORTUNITY: '让过行动',
       USE_ITEM: '使用物品',
       EQUIP: '穿戴装备',
+      // T26 第 1 批：佯装、罢手的动作码不外露。
+      FEINT: '佯装蓄力',
+      TRUCE: '提议罢手',
     };
     if (actionKindNames[text]) return actionKindNames[text];
     if (text === '常规攻击' || text === '主动压迫') return '普通攻击';
@@ -21295,8 +21298,12 @@
         effectSummary: describeResolvedEffect(event),
         summary,
         remainingCastTime: Math.max(0, Number(event?.meta?.remainingCastTime || 0)),
+        // T26 第 1 批：到回合上限一律带 TIME_LIMIT——平局记 TIME_LIMIT，分出胜负（接满攻击次数，攻方没出满）记 TIME_LIMIT_HOLDOUT；
+        // 罢手成立记 TRUCE。
         objectiveReason: kind === 'battle_objective_resolved'
-          ? String(event?.meta?.winner || event?.result || '').trim() === 'draw' && event?.meta?.timeLimitReached === true ? 'TIME_LIMIT'
+          ? String(event?.meta?.status || '').trim().toUpperCase() === 'TRUCE' ? 'TRUCE'
+            : event?.meta?.timeLimitReached === true
+              ? String(event?.meta?.winner || event?.result || '').trim() === 'draw' ? 'TIME_LIMIT' : 'TIME_LIMIT_HOLDOUT'
             : Array.isArray(event?.meta?.victoryMatches) && event.meta.victoryMatches.some(Boolean) &&
               Array.isArray(event?.meta?.defeatMatches) && event.meta.defeatMatches.some(Boolean) ? 'CONFLICT'
               : 'CONDITION'
@@ -21443,7 +21450,10 @@
         }
         if (fact.factType === 'BATTLE_OBJECTIVE') {
           const winner = String(fact.resultState || '').trim();
-          push(winner === 'player' ? '我方胜利条件已经成立，战斗结束' : winner === 'enemy' ? '我方失败条件已经成立，战斗结束' : fact.objectiveReason === 'TIME_LIMIT' ? '达到回合上限，双方未分胜负' : '双方终止条件同时成立，战斗结束');
+          push(fact.objectiveReason === 'TIME_LIMIT_HOLDOUT'
+            ? `守方撑满回合上限，攻方没能在约定回合内出满攻击次数，${winner === 'player' ? '我方' : '敌方'}（守方）达成赌约，战斗结束`
+            : winner === 'player' ? '我方胜利条件已经成立，战斗结束' : winner === 'enemy' ? '我方失败条件已经成立，战斗结束'
+              : fact.objectiveReason === 'TRUCE' ? '双方罢手，本场平局' : fact.objectiveReason === 'TIME_LIMIT' ? '达到回合上限，双方未分胜负' : '双方终止条件同时成立，战斗结束');
           return;
         }
         if (fact.factType === 'STATE_TICK') {
@@ -21758,7 +21768,16 @@
             if (!declared) return '';
             const sourceEvent = eventById.get(String(declared?.factId || '').trim());
             const labels = reportActorTargetLabels(sourceEvent, declared.actorName || '行动者', declared.targetName || '');
-            return `${labels.actor}以【${declared.actionName || '行动'}】${declared.targetName ? `指向${labels.target}` : '展开行动'}`;
+            // 目标是行动者自己（开武魂、防御、冥想……）不写「指向自己」；动作码换成中文名（T26 第 1 批）。
+            const actionName = normalizeActionDisplayName(declared.actionName || '') || '行动';
+            // 同名的两个单位按 id 区分（reportActorTargetLabels 会给它们加上阵营），不当成自己。
+            const declaredTargetIds = [sourceEvent?.targetId, ...(Array.isArray(sourceEvent?.targetIds) ? sourceEvent.targetIds : [])]
+              .map(value => String(value || '').trim()).filter(Boolean);
+            const actorEventId = String(sourceEvent?.actorId || '').trim();
+            const selfTarget = !declared.targetName || (declaredTargetIds.length && actorEventId
+              ? declaredTargetIds.every(id => id === actorEventId)
+              : labels.target === labels.actor);
+            return selfTarget ? `${labels.actor}以【${actionName}】展开行动` : `${labels.actor}以【${actionName}】指向${labels.target}`;
           })
           .filter((text, index, list) => text && list.indexOf(text) === index);
         if (!actions.length) return '';
@@ -22131,8 +22150,10 @@
     const enemyDefeated = enemyMetric.alive <= 0 && enemyMetric.total > 0;
     const objectiveEvent = [...ledger].reverse().find(event => String(event?.eventKind || '').trim() === 'battle_objective_resolved');
     const objectiveWinner = String(objectiveEvent?.meta?.winner || objectiveEvent?.result || '').trim();
-    const objectiveTimedOut = objectiveWinner === 'draw' && objectiveEvent?.meta?.timeLimitReached === true;
-    const objectiveConflict = !objectiveTimedOut && objectiveWinner === 'draw' &&
+    // 罢手成立（status TRUCE）是平局，但不是上限、也不是双方条件同时成立（T26 第 1 批）。
+    const objectiveTruce = String(objectiveEvent?.meta?.status || '').trim().toUpperCase() === 'TRUCE';
+    const objectiveTimedOut = !objectiveTruce && objectiveWinner === 'draw' && objectiveEvent?.meta?.timeLimitReached === true;
+    const objectiveConflict = !objectiveTruce && !objectiveTimedOut && objectiveWinner === 'draw' &&
       Array.isArray(objectiveEvent?.meta?.victoryMatches) && objectiveEvent.meta.victoryMatches.some(Boolean) &&
       Array.isArray(objectiveEvent?.meta?.defeatMatches) && objectiveEvent.meta.defeatMatches.some(Boolean);
     const objectiveStatusText = objectiveWinner === 'player' ? '我方胜利' : objectiveWinner === 'enemy' ? '敌方胜利' : objectiveWinner === 'draw' ? '平局' : '';
@@ -22144,7 +22165,7 @@
       scoreGap >= 8 ? 'PLAYER' : scoreGap >= 2 ? 'PLAYER_EDGE' : scoreGap <= -8 ? 'ENEMY' : scoreGap <= -2 ? 'ENEMY_EDGE' : 'EVEN';
     const advantageText = advantage === 'PLAYER_VICTORY' ? '我方获胜' :
       advantage === 'ENEMY_VICTORY' ? '敌方获胜' :
-      advantage === 'DRAW' ? objectiveTimedOut ? '达到回合上限，双方未分胜负' : objectiveConflict ? '双方终止条件同时成立，战斗以平局结束' : '战斗以平局结束' :
+      advantage === 'DRAW' ? objectiveTruce ? '双方罢手，本场平局' : objectiveTimedOut ? '达到回合上限，双方未分胜负' : objectiveConflict ? '双方终止条件同时成立，战斗以平局结束' : '战斗以平局结束' :
       advantage === 'PLAYER' ? '我方占优' :
       advantage === 'PLAYER_EDGE' ? '我方略占上风' :
         advantage === 'ENEMY' ? '敌方占优' :
@@ -22165,8 +22186,8 @@
     };
     const resolvedIntents = battleEnded
       ? advantage === 'DRAW' ? {
-          playerIntent: objectiveTimedOut ? '我方未能在回合上限前达成胜利条件，停止交锋' : '我方与敌方同时触发终止条件，停止交锋',
-          enemyIntent: objectiveTimedOut ? '敌方同样未在回合上限前终结战斗，停止交锋' : '敌方与我方同时触发终止条件，停止交锋',
+          playerIntent: objectiveTruce ? '双方罢手，我方停止交锋' : objectiveTimedOut ? '我方未能在回合上限前达成胜利条件，停止交锋' : '我方与敌方同时触发终止条件，停止交锋',
+          enemyIntent: objectiveTruce ? '双方罢手，敌方停止交锋' : objectiveTimedOut ? '敌方同样未在回合上限前终结战斗，停止交锋' : '敌方与我方同时触发终止条件，停止交锋',
         } : {
           playerIntent: advantage === 'ENEMY_VICTORY' ? '我方未能满足战斗目标，转入战后处置' : '我方已满足战斗目标，转入收势与战后确认',
           enemyIntent: advantage === 'PLAYER_VICTORY' ? '敌方已触发我方胜利条件，停止继续行动' : '敌方已满足其阻止条件，转入战后处置',
@@ -22194,7 +22215,7 @@
     });
     const hpRatioGap = playerMetric.hpRatio - enemyMetric.hpRatio;
     if (battleEnded) {
-      tacticalWindows.push(objectiveTimedOut ? '本场已达到回合上限，双方停止交锋' : objectiveEvent ? `胜负条件已成立（${objectiveStatusText}），本场交锋已经结束` : enemyDefeated ? '敌方已失去战斗能力，本场交锋已经结束' : '我方已失去战斗能力，本场交锋已经结束');
+      tacticalWindows.push(objectiveTruce ? '双方已罢手，本场交锋已经结束' : objectiveTimedOut ? '本场已达到回合上限，双方停止交锋' : objectiveEvent ? `胜负条件已成立（${objectiveStatusText}），本场交锋已经结束` : enemyDefeated ? '敌方已失去战斗能力，本场交锋已经结束' : '我方已失去战斗能力，本场交锋已经结束');
       const survivingSide = advantage === 'DRAW' ? [...playerSummary, ...enemySummary] : advantage === 'PLAYER_VICTORY' ? playerSummary : enemySummary;
       const damagedSurvivors = survivingSide.filter(unit => unit.hp > 0 && unit.hp < unit.hpMax);
       if (damagedSurvivors.length) risks.push(`${damagedSurvivors.map(unit => unit.name).join('、')}仍有战损，需要进行战后恢复`);
