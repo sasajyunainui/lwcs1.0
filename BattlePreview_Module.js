@@ -3185,10 +3185,14 @@
       敌方全员死亡: 'TEAM_DEAD',
       我方全员死亡: 'TEAM_DEAD',
       成功撤离: 'WITHDRAW_SUCCESS',
+      // 交手约定（用户 11-17）：接满 N 次攻击（被攻方撑过 攻击方 合计 N 次出手）、逼出武魂、单次伤害门槛（一次攻击打到目标的伤害 ≥ 阈值 × 生命上限）。
+      接满攻击次数: 'ATTACKS_ENDURED',
+      逼出武魂: 'SPIRIT_RELEASED',
+      单次伤害门槛: 'HIT_SHARE_AT_OR_ABOVE',
     };
     const rawType = String(condition.type || condition.类型 || '').trim();
     const type = String(typeAliases[rawType] || rawType).trim().toUpperCase();
-    if (!['TEAM_INCAPACITATED', 'TEAM_DEAD', 'HP_RATIO_AT_OR_BELOW', 'RESOURCE_RATIO_AT_OR_BELOW', 'ROUND_REACHED', 'UNIT_DAMAGED', 'UNIT_INCAPACITATED', 'UNIT_DEAD', 'WITHDRAW_SUCCESS'].includes(type)) return null;
+    if (!['TEAM_INCAPACITATED', 'TEAM_DEAD', 'HP_RATIO_AT_OR_BELOW', 'RESOURCE_RATIO_AT_OR_BELOW', 'ROUND_REACHED', 'UNIT_DAMAGED', 'UNIT_INCAPACITATED', 'UNIT_DEAD', 'WITHDRAW_SUCCESS', 'ATTACKS_ENDURED', 'SPIRIT_RELEASED', 'HIT_SHARE_AT_OR_ABOVE'].includes(type)) return null;
     const resourceAlias = { 魂力阈值: '魂力', 体力阈值: '体力', 精神力阈值: '精神力' }[rawType];
     const resource = type === 'RESOURCE_RATIO_AT_OR_BELOW'
       ? String(condition.resource || condition.资源 || resourceAlias || '').trim()
@@ -3209,10 +3213,15 @@
     const baselineHp = condition.baselineHp && typeof condition.baselineHp === 'object'
       ? Object.fromEntries(Object.entries(condition.baselineHp).map(([key, value]) => [String(key), Math.max(0, Number(value) || 0)]))
       : {};
+    const attackerSource = condition.attackers || condition.攻击方 || [];
+    const attackers = (Array.isArray(attackerSource) ? attackerSource : String(attackerSource || '').split(/[、,，]/u)).map(item => String(item || '').trim()).filter(Boolean);
+    const count = Math.max(0, Math.floor(Number(condition.count ?? condition.次数 ?? 0) || 0));
+    if (type === 'ATTACKS_ENDURED' && !(count > 0)) return null;
     return Object.freeze({
       type,
       side,
       targetIds: Object.freeze(targetIds),
+      ...(type === 'ATTACKS_ENDURED' ? { attackers: Object.freeze(attackers), count } : {}),
       scope: /^(ALL|全部|全体)$/i.test(String(condition.scope || condition.判定 || (['TEAM_INCAPACITATED', 'TEAM_DEAD'].includes(type) ? 'ALL' : 'ANY')).trim()) ? 'ALL' : 'ANY',
       threshold,
       ...(resource ? { resource } : {}),
@@ -3904,6 +3913,18 @@
     return '';
   }
 
+  // 交手约定的胜负条件读 战斗.攻击记录（BattleRuntime tallyAttack）: the moves the attackers have made (all of the other side when
+  // none is named), and the largest share of its HP maximum one move took off a unit.
+  function attacksMadeAgainst(worldSnapshot = {}, condition = {}, targets = []) {
+    const counts = worldSnapshot?.攻击记录?.次数 && typeof worldSnapshot.攻击记录.次数 === 'object' ? worldSnapshot.攻击记录.次数 : {};
+    const named = Array.isArray(condition.attackers) && condition.attackers.length ? new Set(condition.attackers) : null;
+    const own = new Set(targets.map(unit => unitName(unit)));
+    return Object.entries(counts).reduce((sum, [name, value]) => sum + (named ? named.has(name) : !own.has(name)) * (Number(value) || 0), 0);
+  }
+  function largestHitShare(worldSnapshot = {}, unit = {}) {
+    return Number(worldSnapshot?.攻击记录?.单次伤害?.[unitName(unit)] || 0) || 0;
+  }
+
   function evaluateObjectiveConditionCore(
     worldSnapshot = {},
     condition = {},
@@ -3978,6 +3999,15 @@
       const matched = unitResults.length > 0 && unitResults.some(result => result.matched);
       return Object.freeze({ condition, matched, unitResults: Object.freeze(unitResults), reason: matched ? 'ROUND_REACHED' : '' });
     }
+    if (condition.type === 'ATTACKS_ENDURED') {
+      // 接满攻击次数: the attackers have made their count of moves (攻击记录, BattleRuntime tallyAttack) and one of the targets still stands.
+      const units = objectiveUnits(worldSnapshot, condition, options.unitIndex);
+      const matched = attacksMadeAgainst(worldSnapshot, condition, units) >= condition.count &&
+        (!condition.requireActive || units.some(unit => objectiveUnitState(unit, options).capable));
+      return includeDetails
+        ? Object.freeze({ condition, matched, unitResults: Object.freeze([]), reason: matched ? 'ATTACKS_ENDURED' : '' })
+        : matched;
+    }
     const units = objectiveUnits(
       worldSnapshot,
       condition,
@@ -4023,6 +4053,8 @@
           ? 'UNIT_DAMAGED'
           : '';
       }
+      if (condition.type === 'SPIRIT_RELEASED') return hasMartialSpirit(unit) && !spiritUnreleased(unit) ? 'SPIRIT_RELEASED' : '';
+      if (condition.type === 'HIT_SHARE_AT_OR_ABOVE') return largestHitShare(worldSnapshot, unit) >= condition.threshold - 1e-9 ? 'HIT_SHARE_REACHED' : '';
       return '';
     };
     if (!includeDetails) {
@@ -4117,6 +4149,13 @@
     const playerEscaped = escapedBy(objectives.victory, victory), enemyEscaped = escapedBy(objectives.defeat, defeat);
     if (playerEscaped) defeat = discountEscape(objectives.defeat, defeat, 'PLAYER');
     if (enemyEscaped) victory = discountEscape(objectives.victory, victory, 'ENEMY');
+    // 接满攻击次数 met by the very move that met the other side's goal (the last of the three lands its hit): that goal wins.
+    const onlyEndured = (group, evaluated) => evaluated.matched && group.conditions.every((condition, index) => !evaluated.matches[index] || condition.type === 'ATTACKS_ENDURED');
+    if (victory.matched && defeat.matched) {
+      const victoryEndured = onlyEndured(objectives.victory, victory), defeatEndured = onlyEndured(objectives.defeat, defeat);
+      if (defeatEndured && !victoryEndured) defeat = { ...defeat, matched: false };
+      else if (victoryEndured && !defeatEndured) victory = { ...victory, matched: false };
+    }
     // A side with nobody left able to fight has lost, whatever the declared objectives (an endure or drain objective
     // does not keep a battle running against a fallen opponent); both sides down together is a draw.
     const playerExhausted = !playerEscaped && unitIndex.playerUnits.length > 0 &&
@@ -4228,8 +4267,11 @@
         const baseline = Number(condition.baselineHp?.[unitId(unit)] ?? condition.baselineHp?.[unitName(unit)] ?? readHpMax(unit));
         return state.hp < Math.max(0, baseline) - 1e-9 ? 1 : 0;
       }
+      if (condition.type === 'SPIRIT_RELEASED') return hasMartialSpirit(unit) && !spiritUnreleased(unit) ? 1 : 0;
+      if (condition.type === 'HIT_SHARE_AT_OR_ABOVE') return clamp(largestHitShare(worldSnapshot, unit) / Math.max(1e-9, condition.threshold), 0, 1);
       return 0;
     };
+    if (condition.type === 'ATTACKS_ENDURED') return clamp(attacksMadeAgainst(worldSnapshot, condition, members) / Math.max(1, condition.count), 0, 1);
     const values = members.map(closeness);
     return condition.scope === 'ALL' ? values.reduce((sum, value) => sum + value, 0) / values.length : Math.max(...values);
   }
@@ -8687,6 +8729,51 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (!spiritUnreleased(unit)) return false;
     const name = String(skill?.魂技名 || skill?.name || skill?.技能名称 || skill?.名称 || '').trim();
     return !!name && spiritSkillNames(unit).has(name);
+  }
+  // 交手约定（用户 2026-11-17 选「拆成积木」；原作绝世唐门 206～207 章龙逍遥「我只用五十级魂力，不还手」、龙王传说 1190 章龙夜月接一击）:
+  // world.战斗.交手约定 { 不还手: [名字], 只硬接: [名字], 压制修为: { 名字: 等级 } }, by a participant's name (or id) — a battle-level field,
+  // as a participant's own entry keeps only its name when the battle is stored. 不还手: no move on an enemy of its own (no basic
+  // attack, no skill or item on one) and no strike back or meeting a move; it may block, evade, act on itself or its side, guard,
+  // offer a truce, concede. 只硬接: an answer is a block (DEFEND) or letting it land — no evading, meeting it, or releasing its 武魂
+  // as it answers. BattleDecision enumerateCandidates holds a unit to them; BattleRuntime keeps its 武魂 shut on an answer.
+  const NO_ENGAGEMENT_TERMS = Object.freeze({ noStrike: false, blockOnly: false, suppressLevel: 0 });
+  function engagementTerms(worldSnapshot = {}, unit = {}) {
+    const terms = worldSnapshot?.交手约定;
+    if (!terms || typeof terms !== 'object' || !unit || typeof unit !== 'object') return NO_ENGAGEMENT_TERMS;
+    const names = new Set([unitName(unit), unitId(unit)].map(value => String(value || '').trim()).filter(Boolean));
+    const listed = value => (Array.isArray(value) ? value : String(value || '').split(/[、,，]/u)).some(name => names.has(String(name || '').trim()));
+    const caps = terms.压制修为 && typeof terms.压制修为 === 'object' ? terms.压制修为 : {};
+    const suppressLevel = Math.max(0, Math.floor([...names].map(name => Number(caps[name]) || 0).find(level => level > 0) || 0));
+    const noStrike = listed(terms.不还手), blockOnly = listed(terms.只硬接);
+    return noStrike || blockOnly || suppressLevel ? { noStrike, blockOnly, suppressLevel } : NO_ENGAGEMENT_TERMS;
+  }
+  // 压制修为至 N 级（交手约定）: 「压制修为」 (an __auto__ key, put at the round start like 武魂未释放) — 力量、防御、敏捷 × the level-N
+  // typical panel over its own level's (base stats × the typical ratio, BattleDecision typicalStatRatio, passed in as `typicalRatio`),
+  // so its own build is kept; HP and the pools stay. Only the first floor(N / 10) rings and, under 70, no 武魂真身
+  // (suppressionBlocksSkill). One at or below N is not held.
+  const SUPPRESSION_KEY = '__auto__:压制修为';
+  function suppressionStates(unit = {}, worldSnapshot = {}, typicalRatio = null) {
+    const cap = engagementTerms(worldSnapshot, unit).suppressLevel;
+    const level = Number(unit?.属性?.等级 ?? unit?.等级 ?? unit?.level ?? 0) || 0;
+    if (!(cap > 0) || !(level > cap) || isSummonUnit(unit) || unit?.状态效果?.[SUPPRESSION_KEY] || typeof root.__LWCS_GET_BASE_STATS__ !== 'function') return [];
+    const typical = lv => (typeof typicalRatio === 'function' ? typicalRatio(lv) : null) || {};
+    const low = root.__LWCS_GET_BASE_STATS__(cap) || {}, high = root.__LWCS_GET_BASE_STATS__(level) || {};
+    const ratios = Object.fromEntries(['str', 'def', 'agi'].map(key => {
+      const at = lv => Number((lv === cap ? low : high)[key]) * (Number(typical(lv)[key]) || 1);
+      const ratio = at(cap) / at(level);
+      return [key, Number.isFinite(ratio) && ratio > 0 ? clamp(Math.round(ratio * 1000) / 1000, 0.01, 1) : 1];
+    }));
+    return [[SUPPRESSION_KEY, { 状态: '压制修为', 状态名称: '压制修为', 类型: '', duration: ARMOUR_LASTING_ROUNDS, 持续回合: ARMOUR_LASTING_ROUNDS,
+      描述: `压制修为至${cap}级：力量、防御、敏捷按${cap}级计，只用前${Math.floor(cap / 10)}环魂技`, 面板修改比例: ratios, 面板固定修正: {},
+      __压制修为: cap, __压制环数: Math.floor(cap / 10) }]];
+  }
+  function suppressionBlocksSkill(unit = {}, skill = {}) {
+    const state = unit?.状态效果?.[SUPPRESSION_KEY];
+    if (!(Number(state?.__压制修为) > 0)) return false;
+    const name = String(skill?.魂技名 || skill?.name || skill?.技能名称 || skill?.名称 || '').trim();
+    const bit = name ? exposureSlots(unit).bySkill.get(name) : undefined;
+    if (bit === undefined || bit >= 22) return false;
+    return bit < 20 ? bit % 10 + 1 > Number(state.__压制环数 || 0) : Number(state.__压制修为) < 70;
   }
   // 点燃生命之火（用户 2026-11-17「搏命不是已经有点燃生命之火这个手段了吗」）: a soul master of five rings or more may burn its life in a real fight (实战:
   // DUEL or DEATH, not a spar or a match) — windup 0, no action taken, as 开武魂 — for 魂力/精神力/体力 maxima and 力量/防御/
@@ -20892,6 +20979,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         spiritBlocksSkill(actor, declaration?.skill || {})) {
       throw new Error('battle_preview_spirit_unreleased');
     }
+    // 压制修为（交手约定）: no ring above the held level (suppressionBlocksSkill).
+    if (String(declaration?.actionKind || '').trim().toUpperCase() === 'RELEASE_SKILL' && !continuedSettlement &&
+        suppressionBlocksSkill(actor, declaration?.skill || {})) {
+      throw new Error('battle_preview_suppressed_ring');
+    }
     const declaredCostStages = declaration?.skill && typeof declaration.skill === 'object'
       ? readSkillCostStages(declaration.skill, { 来源模块: 'BattlePreview_Module', ...declaration, costActor: actor })
       : Object.freeze({ 启动: Object.freeze({}), 维持: Object.freeze({}), 形式: 'absolute', 非法项: Object.freeze([]) });
@@ -25509,6 +25601,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     spiritUnreleasedStates,
     spiritUnreleased,
     spiritBlocksSkill,
+    engagementTerms,
+    suppressionStates,
+    suppressionBlocksSkill,
     spiritReleasedMarker,
     lifeFireOptions,
     truceAvailable,

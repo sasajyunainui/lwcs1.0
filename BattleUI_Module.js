@@ -1034,6 +1034,9 @@ class BattleUIComponent {
       // 中途罢手（BattleRuntime respondToTruce）：进行中的提议与各方提议记录。
       '罢手',
       '罢手记录',
+      // 交手约定（试招、赌约）与它的胜负条件读的攻击记录（BattleRuntime tallyAttack）。
+      '交手约定',
+      '攻击记录',
     ];
 
     function compactCombatParticipantForPersistence(participant) {

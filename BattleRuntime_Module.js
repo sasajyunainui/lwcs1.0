@@ -1331,8 +1331,15 @@
   // 未释放不落盘也不跟着走，所以每次都补；释放会抵掉它）；释放状态里的耐久同步回 装备（战后随装备写回存档），耗尽记损毁。
   function ensureArmourUnreleased(combatData = {}) {
     listCombatUnits(combatData).forEach(unit => {
+      // 交手约定·只硬接（BattlePreview engagementTerms）: it does not release its 武魂 as it answers (the answer node and the
+      // decision's spiritOpensOnAnswer both read spiritHidden).
+      if (previewRuntime.engagementTerms?.(combatData, unit)?.blockOnly && unit.__battleRuntime?.spiritHidden !== true) {
+        unit.__battleRuntime = { ...(unit.__battleRuntime && typeof unit.__battleRuntime === 'object' ? unit.__battleRuntime : {}), spiritHidden: true };
+      }
       // 开武魂（信息模型 0a）: 「武魂未释放」 the same way (BattlePreview spiritUnreleasedStates).
-      const additions = [...(previewRuntime.armourUnreleasedStates?.(unit) || []), ...(previewRuntime.spiritUnreleasedStates?.(unit) || [])];
+      // 压制修为（交手约定）: 「压制修为」 too (BattlePreview suppressionStates; the typical panel by level from BattleDecision).
+      const additions = [...(previewRuntime.armourUnreleasedStates?.(unit) || []), ...(previewRuntime.spiritUnreleasedStates?.(unit) || []),
+        ...(previewRuntime.suppressionStates?.(unit, combatData, decisionRuntime?.typicalStatRatio) || [])];
       if (additions.length) {
         unit.状态效果 = unit.状态效果 && typeof unit.状态效果 === 'object' ? unit.状态效果 : {};
         additions.forEach(([key, state]) => { unit.状态效果[key] = { ...state, 战斗效果: { ...createEmptyCombatEffectMap(), ...(state.战斗效果 || {}) } }; });
@@ -5737,10 +5744,49 @@
     } else records.delete(key);
   }
 
+  // 攻击记录（交手约定的胜负条件「接满攻击次数」「单次伤害门槛」，BattlePreview evaluateObjectiveCondition）: a move of one side on the
+  // other counts once for its maker (by its actionId) when it reaches a target — landed, evaded, blocked, let land, or a state laid;
+  // what one move did to a target in all (into shields and HP, whatever the answer) is kept at its largest share of the target's HP
+  // maximum (用户 11-17「判定会对自己造成多少伤害」). Summons' moves are not counted. A new record each time (frozen objects, 罢手记录).
+  // Only a battle whose conditions read it keeps one (MVU 减负): a 胜负条件 naming 接满攻击次数 or 单次伤害门槛.
+  const attackTallyWanted = new WeakMap();
+  function wantsAttackTally(combatData = {}) {
+    const objectives = combatData?.胜负条件;
+    if (!objectives || typeof objectives !== 'object') return false;
+    if (!attackTallyWanted.has(objectives)) attackTallyWanted.set(objectives, /接满攻击次数|单次伤害门槛|ATTACKS_ENDURED|HIT_SHARE_AT_OR_ABOVE/.test(JSON.stringify(objectives) || ''));
+    return attackTallyWanted.get(objectives);
+  }
+  function tallyAttack(combatData = {}, payload = {}) {
+    const kind = String(payload?.eventKind || '').trim(), role = String(payload?.actionRole || '').trim().toUpperCase();
+    if (role === 'STATE_TICK' || !wantsAttackTally(combatData)) return;
+    const answer = role === 'REACTION' && ['dodge', 'defend', 'pass'].includes(kind);
+    if (!answer && !['hit_result', 'state_apply'].includes(kind)) return;
+    const units = listCombatUnits(combatData);
+    const find = id => (id ? units.find(unit => isUnitIdentityMatch(unit, String(id).trim())) : null);
+    const attacker = find(answer ? payload.targetId : payload.actorId), target = find(answer ? payload.actorId : payload.targetId);
+    const actionId = String(payload.actionId || payload.sourceActionId || '').trim();
+    if (!attacker || !target || attacker === target || !actionId || attacker.召唤键 || previewRuntime.isSummonUnit(attacker) ||
+      inferUnitSide(combatData, previewRuntime.unitId(attacker)) === inferUnitSide(combatData, previewRuntime.unitId(target))) return;
+    const name = previewRuntime.unitName(attacker), targetName = previewRuntime.unitName(target), pair = `${name}>${targetName}`;
+    const record = combatData.攻击记录 && typeof combatData.攻击记录 === 'object' ? combatData.攻击记录 : {};
+    const fresh = record.最近?.[name] !== actionId;
+    const damage = kind === 'hit_result' ? Math.max(0, Number(payload?.meta?.incomingDamage ?? payload?.meta?.appliedDamage ?? 0) || 0) : 0;
+    if (!fresh && !(damage > 0)) return;
+    const running = (record.本次?.[pair]?.actionId === actionId ? Number(record.本次[pair].伤害 || 0) : 0) + damage;
+    const share = Math.round(running / Math.max(1, previewRuntime.readHpMax(target)) * 10000) / 10000;
+    combatData.攻击记录 = {
+      次数: { ...(record.次数 || {}), ...(fresh ? { [name]: Number(record.次数?.[name] || 0) + 1 } : {}) },
+      最近: { ...(record.最近 || {}), [name]: actionId },
+      本次: { ...(record.本次 || {}), [pair]: { actionId, 伤害: running } },
+      单次伤害: { ...(record.单次伤害 || {}), [targetName]: Math.max(Number(record.单次伤害?.[targetName] || 0), share) },
+    };
+  }
+
   function writeLedgerEvent(combatData = {}, payload = {}, inventoryBefore = null) {
     // 接战链 阶段 2e: stamina deductions queued by writeCombatResource go in first.
     if (pendingStaminaDeductions.length && !flushingStaminaDeductions) flushStaminaDeductions(combatLedgerRoot(combatData));
     const rootData = combatLedgerRoot(combatData);
+    tallyAttack(rootData, payload);
     const ledger = ensureLedger(rootData);
     const runtimeState = ensureCombatRuntime(rootData);
     const ledgerSequence = ++runtimeState.ledgerSequence;

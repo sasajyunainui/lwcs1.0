@@ -6322,7 +6322,7 @@
     const intensity = preview.battleIntensity(worldSnapshot, input.battleIntent);
     collectSkills(actor).forEach((sourceSkill, index) => {
       // 开武魂（信息模型 0a）: no skill of the unreleased 武魂 meets a move either (BattlePreview spiritBlocksSkill).
-      if (preview.spiritBlocksSkill?.(actor, sourceSkill)) return;
+      if (preview.spiritBlocksSkill?.(actor, sourceSkill) || preview.suppressionBlocksSkill?.(actor, sourceSkill)) return;
       const skill = preview.applySkillSettlementModifiers(actor, applyEquipmentPassivesToSkill(actor, sourceSkill)).skill;
       if (!Array.isArray(skill?._效果数组) || !skill._效果数组.length || skill.__mechanismGrantReactionOnly === true ||
         nonExecutableBattlePrototype(skill)) return;
@@ -6681,6 +6681,34 @@
       });
       candidates = candidates.filter(fits);
     }
+    // 交手约定（BattlePreview engagementTerms）: 不还手 — nothing on an enemy (attacks, skills or items aimed at one, strikes back,
+    // meeting a move); 只硬接 — an answer is a block or letting it land. The player's locked choice is held to them too.
+    const termsActor = Array.isArray(candidates) ? findUnitInWorld(worldSnapshot, input?.actorId) : null;
+    const terms = termsActor ? preview.engagementTerms(worldSnapshot, termsActor) : null;
+    if (terms && (terms.noStrike || terms.blockOnly)) {
+      const ownSide = sideOf(worldSnapshot, termsActor);
+      const hostileIds = new Set(aliveEntries(worldSnapshot).filter(entry => entry.side !== ownSide).map(entry => preview.unitId(entry.unit)));
+      const answering = ['REACTION', 'COUNTER'].includes(String(input?.actionOpportunity?.role || '').trim().toUpperCase());
+      const strikes = candidate => {
+        const declaration = candidate?.declaration || {}, kind = String(declaration.actionKind || '').trim().toUpperCase();
+        if (['BASIC_ATTACK', 'COUNTER'].includes(kind) || declaration.engagement) return true;
+        if (!['RELEASE_SKILL', 'USE_ITEM'].includes(kind)) return false;
+        const targets = Array.isArray(declaration.targetIds) ? declaration.targetIds.map(String) : [];
+        return targets.some(id => hostileIds.has(id)) || !targets.length && /敌/.test(String(declaration.skill?.目标 || ''));
+      };
+      // 只硬接 also takes no evading stance of its own (it would only prepare the evasion it may not make).
+      const refused = candidate => terms.noStrike && strikes(candidate) ||
+        terms.blockOnly && String(candidate?.declaration?.actionKind || '').trim().toUpperCase() === 'EVADE' || terms.blockOnly && answering &&
+        !(candidate?.voluntaryOpportunityPass === true || candidate?.counterDeclineFallback === true ||
+          String(candidate?.declaration?.actionKind || '').trim().toUpperCase() === 'DEFEND' && !candidate?.declaration?.engagement);
+      for (const candidate of candidates.filter(refused)) input?.rejectionCollector?.({
+        actionKind: candidate.declaration?.actionKind, sourceActionId: String(candidate.declaration?.actionId || candidate.candidateId || '').trim(),
+        targetIds: Array.isArray(candidate.declaration?.targetIds) ? candidate.declaration.targetIds.map(String) : [],
+        rejectionCode: 'RULE_ENGAGEMENT_TERMS', rejectionStage: 'OPPORTUNITY',
+      });
+      const kept = candidates.filter(candidate => !refused(candidate));
+      if (kept.length) candidates = kept;
+    }
     const sustained = Array.isArray(candidates) ? sustainedSkillNames(worldSnapshot, findUnitInWorld(worldSnapshot, input?.actorId)) : null;
     if (sustained) {
       const repeat = candidate => candidate?.declaration?.actionKind === 'RELEASE_SKILL' &&
@@ -7028,6 +7056,12 @@
       // 开武魂（信息模型 0a）: a skill of the unreleased 武魂 (or 自创魂技, 融合技) is not offered (BattlePreview spiritBlocksSkill).
       if (!forcedSkill && preview.spiritBlocksSkill?.(actor, sourceSkill)) {
         recordRejected({ actionKind: 'RELEASE_SKILL', sourceActionId: `${actorId}:skill:${sourceSkillId}`, rejectionCode: 'RULE_SPIRIT_UNRELEASED',
+          skillId: sourceSkillId, skillName: sourceSkillName });
+        return;
+      }
+      // 压制修为（交手约定）: no ring above the held level (BattlePreview suppressionBlocksSkill).
+      if (!forcedSkill && preview.suppressionBlocksSkill?.(actor, sourceSkill)) {
+        recordRejected({ actionKind: 'RELEASE_SKILL', sourceActionId: `${actorId}:skill:${sourceSkillId}`, rejectionCode: 'RULE_SUPPRESSED_RING',
           skillId: sourceSkillId, skillName: sourceSkillName });
         return;
       }
@@ -74872,6 +74906,7 @@
     skillObservationClass,
     beliefSystemPosterior,
     typicalAttackRatio,
+    typicalStatRatio,
     projectCooperativeSummonDeclaration,
     actionCompletesWithinBattleHorizon,
     chooseInterceptor,
