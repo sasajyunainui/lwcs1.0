@@ -2987,6 +2987,21 @@
           usageMode: metadata.usageMode,
         });
       }
+      // 搭档被控制则融合无法完成（行为检查目录第 51 题「任一方被控制则无法完成」）: a partner held by a control that takes its
+      // turn (眩晕、冰冻…) cannot take part, whether or not its turn has come yet.
+      if (Object.values(partner?.状态效果 || {}).some(state => state && typeof state === 'object' && structuredControlConsumesActiveOpportunity(state))) {
+        return Object.freeze({
+          required: true,
+          valid: false,
+          reason: 'FUSION_PARTNER_CONTROLLED',
+          fusionKey: '',
+          participantIds: Object.freeze([unitId(actor)].filter(Boolean)),
+          partnerIds: Object.freeze([]),
+          participants: Object.freeze([actor].filter(Boolean)),
+          partners: Object.freeze([]),
+          usageMode: metadata.usageMode,
+        });
+      }
       if (!partners.some(existing => unitId(existing) === unitId(partner))) partners.push(partner);
     }
     // A partner charging a skill of its own, or charging a fusion with someone else, has no turn to give.
@@ -20775,11 +20790,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         ).trim();
       });
     }
-    const fusion = resolveFusionAction(worldSnapshot, actor, declaration?.skill || {}, {
-      resourceCosts: declaredStartupCosts.values,
-      requirePendingOpportunity: input?.allowProjectedFusion !== true,
-      ignoreResourceAvailability: input?.allowProjectedFusion === true,
-    });
+    // An effect of a fusion already started, committed by the runtime one at a time (BattleRuntime
+    // commitStructuredPreviewPrototype: no cost, the action's own id as its source) is no new fusion: it was checked and its
+    // use recorded when it started (prepareStructuredFusion), and checking it again found a once-only one used
+    // (battle_preview_fusion_already_used stopped the battle whenever a fusion with a state or modifier effect was released).
+    const fusion = continuedSettlement && input?.releaseEffectsResolved === true
+      ? resolveFusionAction(worldSnapshot, actor, {}, {})
+      : resolveFusionAction(worldSnapshot, actor, declaration?.skill || {}, {
+        resourceCosts: declaredStartupCosts.values,
+        requirePendingOpportunity: input?.allowProjectedFusion !== true,
+        ignoreResourceAvailability: input?.allowProjectedFusion === true,
+      });
     if (fusion.required && !fusion.valid) throw new Error(`battle_preview_${fusion.reason.toLowerCase()}`);
     const costPayers = fusion.required ? fusion.participants : [actor];
     const formalPayment = paymentMode === 'FORMAL'

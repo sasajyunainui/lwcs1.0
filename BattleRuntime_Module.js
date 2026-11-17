@@ -1370,24 +1370,30 @@
       if (!single.some(friendly) || single.every(friendly)) return;
       single.filter(friendly).forEach(effect => { effect.目标 = '群体'; });
     };
-    units.forEach(holder => {
-      Object.entries(holder?.融合技 || {}).forEach(([name, entry]) => {
+    // 武魂融合技 too（用户 2026-11-17「任一参与者可发起」）: it is written on its holder only, and only the holder could start it
+    // with the partner's turn still to come — a partner quicker than its holder left it never castable (行为检查目录第 51 题:
+    // 0 of 16). Mirrored the same way, whoever of them comes first starts it and the other gives its turn; the use key is
+    // the participants' (BattlePreview resolveFusionAction), so a once-only one is still once. The battle's write back to
+    // the save (BattleUI buildCanonicalParticipantPersistenceSnapshot) does not carry either.
+    units.forEach(holder => ['融合技', '武魂融合技'].forEach(container => {
+      Object.entries(holder?.[container] || {}).forEach(([name, entry]) => {
         if (!entry || typeof entry !== 'object' || entry.__镜像 || !Array.isArray(entry.融合参与者)) return;
-        if (entry.技能数据 && typeof entry.技能数据 === 'object') settleTargets(entry.技能数据);
+        if (container === '融合技' && entry.技能数据 && typeof entry.技能数据 === 'object') settleTargets(entry.技能数据);
         entry.融合参与者.forEach(participant => {
           const ids = [participant?.角色键, participant?.角色名].map(value => String(value || '').trim()).filter(Boolean);
           const partner = units.find(unit => unit !== holder && nameOf(unit).some(id => ids.includes(id)));
-          if (!partner || partner.融合技?.[name]) return;
+          if (!partner || partner[container]?.[name]) return;
           const mirror = cloneValue(entry);
           mirror.融合参与者 = mirror.融合参与者.map(other => {
             const own = [other?.角色键, other?.角色名].map(value => String(value || '').trim()).some(id => nameOf(partner).includes(id));
             return { ...other, 类型: own ? '自身' : '搭档' };
           });
+          if (container === '武魂融合技') mirror.融合对象 = previewRuntime.unitName(holder) || mirror.融合对象;
           mirror.__镜像 = true;
-          partner.融合技 = { ...(partner.融合技 || {}), [name]: mirror };
+          partner[container] = { ...(partner[container] || {}), [name]: mirror };
         });
       });
-    });
+    }));
   }
 
   // 领域（接入方案 S80-C，用户 2026-11-16）：带 领域{等级, 范围} 的魂技展开后，这次动作在场上挂的状态都属于这个领域
