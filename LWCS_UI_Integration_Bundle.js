@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:d385444163db8270ed7cfed64d203e5e67daea1ded21b57e68446572fae47412|cockpit/designer-model.js:cbbb8156854ed85b560637420324e21db9e899fb9cbef68ba1ccca6d0d217fc2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:2145aabbd932dedcf1aad4a015b3e2e595e832569f30bde4517b862c5be09a0f|cockpit/designer-model.js:cbbb8156854ed85b560637420324e21db9e899fb9cbef68ba1ccca6d0d217fc2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -26827,7 +26827,7 @@ ${播报文本}
                         <div class="battle-terminal-row">
                           <span class="battle-terminal-label">续推上限</span>
                           <label class="battle-number-field">
-                            <input id="ui-auto-round-max" type="number" min="1" max="20" step="1" inputmode="numeric" value="4">
+                            <input id="ui-auto-round-max" type="number" min="1" max="100" step="1" inputmode="numeric" value="4">
                             <em>回合</em>
                           </label>
                         </div>
@@ -29048,7 +29048,7 @@ ${播报文本}
     }
     const runtimeState = runtime.ensureCombatRuntime(combatData);
     const maxRounds = battleMode === 'multi_round'
-      ? Math.max(1, Math.floor(toNumber(options.rounds || combatData?.胜负条件?.maxRounds, 20)))
+      ? Math.max(1, Math.floor(toNumber(options.rounds || combatData?.胜负条件?.maxRounds, 100)))
       : 1;
     const autoContinueSource = options.autoContinueConfig && typeof options.autoContinueConfig === 'object'
       ? options.autoContinueConfig
@@ -29580,10 +29580,10 @@ ${播报文本}
       const 请求续推配置 = request?.autoContinueConfig && typeof request.autoContinueConfig === 'object'
         ? request.autoContinueConfig
         : {};
-      // 用户 2026-11-14："胜负条件的上限不删，固定上限如果有的话删掉"：20 只是没给时的默认，不再夹紧。
+      // 用户 2026-11-14："胜负条件的上限不删，固定上限如果有的话删掉"：100（11-17「回合数上限设到100吧」）只是没给时的默认，不再夹紧。
       const 回合上限 = Math.max(1, Math.floor(toNumber(
         请求续推配置.maxRounds,
-        toNumber(战斗数据?.胜负条件?.maxRounds, 20),
+        toNumber(战斗数据?.胜负条件?.maxRounds, 100),
       )));
       const 停推阈值百分比 = Math.max(0, Math.min(100, toNumber(
         请求续推配置.stopDamagePercent,
@@ -30381,7 +30381,7 @@ ${播报文本}
         }).filter(([id]) => id));
       return normalized;
     };
-    const maxRounds = Math.max(1, Math.floor(toNumber(existing?.maxRounds ?? existing?.回合上限 ?? detail?.最大回合 ?? detail?.回合上限, 20)));
+    const maxRounds = Math.max(1, Math.floor(toNumber(existing?.maxRounds ?? existing?.回合上限 ?? detail?.最大回合 ?? detail?.回合上限, 100)));
     if ([...safeVictory, ...safeDefeat].some(condition => condition?.type === 'ROUND_REACHED' && Number(condition?.round || 0) > maxRounds)) return null;
     const victoryLogicInput = existing?.victory?.logic || existing?.胜利?.逻辑 || detail?.胜利条件关系;
     const defeatLogicInput = existing?.defeat?.logic || existing?.失败?.逻辑 || detail?.失败条件关系;
@@ -32501,7 +32501,7 @@ ${播报文本}
             失败条件: 克隆战斗条件输入(payload.失败条件),
             胜利条件关系: toText(payload.胜利条件关系, 'OR'),
             失败条件关系: toText(payload.失败条件关系, 'OR'),
-            最大回合: Math.max(1, Math.floor(toNumber(payload.最大回合 ?? payload.回合上限, 20))),
+            最大回合: Math.max(1, Math.floor(toNumber(payload.最大回合 ?? payload.回合上限, 100))),
             // 接战链 阶段三: "裁判：角色名" or "裁判：名称|等级=60" (解析模块路由裁判); none given, no referee.
             ...(解析模块路由裁判(payload.裁判) ? { 裁判: 解析模块路由裁判(payload.裁判) } : {}),
             // 先攻（11-15 用户定的推进预设行）: the ambushers' names, 、-separated; left out, a fair start.
