@@ -6997,6 +6997,8 @@
       round: Number(context?.currentRound ?? combatData?.回合 ?? 0),
       roundCompleted: context?.roundCompleted === true,
       enforceRoundLimit: adapterOptions.enforceRoundLimit === true,
+      // T20（11-18）: the queue still holds a move's settlement — a count filled by that move is judged after it lands.
+      deferAttacksEndured: context?.deferAttacksEndured === true,
     });
     // 中途罢手成立：双方停手，本场平局（BattleUI / bridge 走平局的裁断与写回）。
     if (combatData?.罢手?.状态 === '成立' && !resolution.terminal) {
@@ -18136,8 +18138,11 @@
             Number(performanceBreakdown.actionSettlementMs || 0) +
             Number(performanceBreakdown.settlementObservationMs || 0)
           : 0;
+        // T20（11-18）: 接满攻击次数 is judged once the move that fills the count has settled — while a move's settlement node is still
+        // queued (its target has answered, tallyAttack has counted it) the count is not read (BattlePreview deferAttacksEndured).
+        const settlementQueued = () => queue.hasPending(queued => queued.nodeKind === 'PRIMARY_SETTLEMENT');
         while (queue.pendingCount > 0 && !queue.fatal) {
-          terminal = evaluateBattleTerminal({ combatData, currentRound: combatData.回合, rounds: roundOffset, roundCompleted: false }, {});
+          terminal = evaluateBattleTerminal({ combatData, currentRound: combatData.回合, rounds: roundOffset, roundCompleted: false, deferAttacksEndured: settlementQueued() }, {});
           if (terminal?.terminal === true) {
             cancelQueueForTerminal();
             break;
@@ -19712,7 +19717,7 @@
               validTargetIds,
             });
           }
-          terminal = evaluateBattleTerminal({ combatData, currentRound: combatData.回合, rounds: roundOffset, roundCompleted: false }, {});
+          terminal = evaluateBattleTerminal({ combatData, currentRound: combatData.回合, rounds: roundOffset, roundCompleted: false, deferAttacksEndured: settlementQueued() }, {});
           if (terminal?.terminal === true) {
             cancelQueueForTerminal();
             break;

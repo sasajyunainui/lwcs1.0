@@ -3663,7 +3663,8 @@
   // uncertain by EXIT_FORECAST_SPREAD in log time, widened while few rounds have been seen (× √(1 + prior ÷ rounds)):
   // a side twice as fast is first about three times in four once the fight has shown itself. (Rounds seen: from the
   // ledger's first round, the current one counted as half.) win: the own side first and
-  // in time; lose: the other side first and in time; else the rounds run out (a draw, 0 on the stake).
+  // in time; lose: the other side first and in time; else the rounds run out (a draw, 0 on the stake — in a battle holding 接满攻击次数
+  // the side holding out wins it instead, T20).
   const EXIT_FORECAST_PRIOR_ROUNDS = 3;
   const EXIT_FORECAST_SPREAD = 0.6;
   function exitFate(worldSnapshot = {}, battleIntent = {}) {
@@ -3764,7 +3765,15 @@
     const first = standardNormalCdf((Math.log(otherTime) - Math.log(ownTime)) / (spread * Math.SQRT2));
     const win = first * standardNormalCdf((Math.log(remaining) - Math.log(ownTime)) / spread);
     const lose = (1 - first) * standardNormalCdf((Math.log(remaining) - Math.log(otherTime)) / spread);
-    return Object.freeze({ win, lose, draw: Math.max(0, 1 - win - lose), ownTime, otherTime, remaining });
+    const runOut = Math.max(0, 1 - win - lose);
+    // T20（11-18, 用户 11-17 拍板）: the rounds running out is not a draw in a battle holding 接满攻击次数 — the side holding out has
+    // withstood the attackers and wins (evaluateBattleObjectivesCore holdsEndure; a victory condition's holder is the player, a defeat
+    // condition's the enemy), so exit and truce valuations read the same result the battle is settled by. Others stay as they were.
+    const holds = group => (group?.conditions || []).some(condition => condition.type === 'ATTACKS_ENDURED');
+    const playerHolds = holds(objectives.victory), enemyHolds = holds(objectives.defeat);
+    const holder = playerHolds && !enemyHolds ? 'team_player' : enemyHolds && !playerHolds ? 'team_enemy' : '';
+    if (holder && runOut > 0) return Object.freeze({ win: holder === side ? win + runOut : win, lose: holder === side ? lose : lose + runOut, draw: 0, ownTime, otherTime, remaining });
+    return Object.freeze({ win, lose, draw: runOut, ownTime, otherTime, remaining });
   }
   // Whether `side` (a side key) is out to get away: a success condition of its own is 成功撤离 (a victory condition for
   // the player, a defeat condition for the enemy, unless the condition names its side).
@@ -4091,8 +4100,12 @@
     }
     if (condition.type === 'ATTACKS_ENDURED') {
       // 接满攻击次数: the attackers have made their count of moves (攻击记录, BattleRuntime tallyAttack) and one of the targets still stands.
+      // T20（11-18）: options.deferAttacksEndured — a move is counted when its target answers it (BattleRuntime tallyAttack) but
+      // settles after, so the move that fills the count is not judged while its settlement is still queued: it lands first, and a
+      // guard it breaks is the other side's goal met by the very move (evaluateBattleObjectivesCore onlyEndured). Before, the
+      // last of N moves was cancelled unsettled and the attacker had N − 1.
       const units = objectiveUnits(worldSnapshot, condition, options.unitIndex);
-      const matched = attacksMadeAgainst(worldSnapshot, condition, units) >= condition.count &&
+      const matched = options.deferAttacksEndured !== true && attacksMadeAgainst(worldSnapshot, condition, units) >= condition.count &&
         (!condition.requireActive || units.some(unit => objectiveUnitState(unit, options).capable));
       return includeDetails
         ? Object.freeze({ condition, matched, unitResults: Object.freeze([]), reason: matched ? 'ATTACKS_ENDURED' : '' })
@@ -4266,7 +4279,15 @@
       reason: matched ? 'BATTLEFIELD_EXHAUSTION' : '',
     });
     const elapsedRounds = Math.max(0, Number(options.round ?? worldSnapshot?.回合 ?? 0) - objectives.startRound);
-    const timeLimitReached = options.roundCompleted === true && options.enforceRoundLimit === true && elapsedRounds >= objectives.maxRounds;
+    // 接满攻击次数遇到回合上限（T20，用户 11-17 拍板）: the attackers did not make their count within the rounds, so the side holding out has
+    // withstood it — a victory condition's holder is the player, a defeat condition's the enemy (mvu_logic_bridge names them so) — and it
+    // wins; the attackers lose. Only a battle holding such a condition is held to the limit (no caller passes enforceRoundLimit, so the
+    // limit was never enforced and an attacker could stall for ever); every other condition is read as before.
+    const holdsEndure = group => (group?.conditions || []).some(condition => condition.type === 'ATTACKS_ENDURED' &&
+      (!condition.requireActive || objectiveUnits(worldSnapshot, condition, unitIndex).some(unit => objectiveUnitState(unit, options).capable)));
+    const roundLimitDue = options.roundCompleted === true && elapsedRounds >= objectives.maxRounds;
+    const playerHoldsOut = roundLimitDue && holdsEndure(objectives.victory), enemyHoldsOut = roundLimitDue && holdsEndure(objectives.defeat);
+    const timeLimitReached = roundLimitDue && (options.enforceRoundLimit === true || playerHoldsOut || enemyHoldsOut);
     const implicitVictory = includeDetails
       ? exhaustionDetail('ENEMY', enemyExhausted)
       : null;
@@ -4283,7 +4304,7 @@
     if (effectiveVictoryMatched && effectiveDefeatMatched) status = bothSidesDown || objectives.resolutionPriority === 'DRAW_ON_CONFLICT' ? 'DRAW' : 'ENEMY_WIN';
     else if (effectiveVictoryMatched) status = 'PLAYER_WIN';
     else if (effectiveDefeatMatched) status = 'ENEMY_WIN';
-    else if (timeLimitReached) status = 'DRAW';
+    else if (timeLimitReached) status = playerHoldsOut && !enemyHoldsOut ? 'PLAYER_WIN' : enemyHoldsOut && !playerHoldsOut ? 'ENEMY_WIN' : 'DRAW';
     const exhaustionResolution = includeDetails && (enemyExhausted || playerExhausted)
       ? Object.freeze({
           playerExhausted,
@@ -4375,7 +4396,18 @@
       }
       return 0;
     };
-    if (condition.type === 'ATTACKS_ENDURED') return clamp(attacksMadeAgainst(worldSnapshot, condition, members) / Math.max(1, condition.count), 0, 1);
+    if (condition.type === 'ATTACKS_ENDURED') {
+      const made = attacksMadeAgainst(worldSnapshot, condition, members);
+      if (!(options?.objectives && made < condition.count)) return clamp(made / Math.max(1, condition.count), 0, 1);
+      // T20（11-18）: the rounds running out is the holder's win as well (evaluateBattleObjectivesCore holdsEndure), so until the count is
+      // filled the holder stands as near as the clock has brought it — not as near as the moves made have: an attacker's move is then
+      // no step towards its own defeat (the clock brings that on whatever it does; counting each move as one gave a wait that cost
+      // nothing against an attack that cost 1 ÷ N, and an attacker in a bet never attacked). The last move still loses (the count
+      // filled, evaluateBattleObjectives). Moves made in the real world stay as they are; the candidates' own are only counted into
+      // the projection when BattleDecision R20_COUNT_OWN_ATTACK is on, which is what this reading is for.
+      const elapsed = Math.max(0, Number(worldSnapshot?.回合 || 0) - Number(options.objectives.startRound || 0));
+      return clamp(elapsed / Math.max(1, Number(options.objectives.maxRounds) || 1), 0, 1);
+    }
     const values = members.map(closeness);
     return condition.scope === 'ALL' ? values.reduce((sum, value) => sum + value, 0) / values.length : Math.max(...values);
   }
@@ -4389,7 +4421,7 @@
     // every hit and crowded out setups (sample C1). Only the other kinds of condition add their own distance.
     const counted = condition => !(['TEAM_INCAPACITATED', 'TEAM_DEAD'].includes(condition.type) && condition.scope === 'ALL');
     const group = entry => {
-      const values = (entry?.conditions || []).filter(counted).map(condition => objectiveConditionCloseness(worldSnapshot, condition, unitIndex, options));
+      const values = (entry?.conditions || []).filter(counted).map(condition => objectiveConditionCloseness(worldSnapshot, condition, unitIndex, { ...options, objectives }));
       if (!values.length) return 0;
       return entry.logic === 'ALL' ? values.reduce((sum, value) => sum + value, 0) / values.length : Math.max(...values);
     };

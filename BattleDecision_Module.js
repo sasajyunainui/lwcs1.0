@@ -41199,6 +41199,9 @@
     r20Work.assistMs += performance.now() - assistStartedAt;
     // Conditions besides bringing the other side down (坚持回合, 先倒, 抽魂, 保护): their progress counts beside the race.
     const objectives = request?.objectiveContract || request?.battleIntent?.objectives || world?.胜负条件 || {};
+    // 接满攻击次数、破防（交手约定，看板 T20）: the projection keeps no 攻击记录 of its own (BattleRuntime tallyAttack and the 破防 record
+    // count off the ledger), so r20Shadow records the candidate's own move (r20WithMoveRecorded) before the progress is read.
+    table.countsAttacks = /ATTACKS_ENDURED|接满攻击次数|GUARD_BROKEN|破防/.test(JSON.stringify(objectives) || '');
     table.objectives = /"type":"(?!TEAM_INCAPACITATED")/.test(JSON.stringify(objectives) || '') ? objectives : null;
     if (table.objectives) table.objectiveBase = r9v2LinearTerminalValue(preview.evaluateBattleObjectivesCompact(world, objectives), request.actorSide) +
       // T23-B（11-18）: who can still strike this round — the units the table has pending and the actor itself (it is about to act).
@@ -41277,6 +41280,38 @@
       if (row === chargeRow) busy[row] = share > 0 ? Math.min(busy[row], 1) : 0;
       else if (partners.has(table.ids[row])) busy[row] = 0;
     }
+  }
+  // Whether a candidate is a move on an enemy, as BattleRuntime tallyAttack counts one (an attack, a skill or item on one, a meeting).
+  function r20StrikesEnemy(declaration = {}, table = {}, actorRow = 0) {
+    const kind = String(declaration?.actionKind || '').trim().toUpperCase();
+    if (['BASIC_ATTACK', 'COUNTER'].includes(kind) || declaration?.engagement) return true;
+    if (!['RELEASE_SKILL', 'USE_ITEM'].includes(kind)) return false;
+    return (declaration.targetIds || []).some(id => { const row = table.index.get(String(id)); return row !== undefined && table.sides[row] !== table.sides[actorRow]; });
+  }
+  // T20（11-18）: whether a candidate's own move on an enemy is counted into 接满攻击次数 in the projection (as BattleRuntime tallyAttack
+  // counts it). Off: the rounds running out lose the bet as the last move does (BattlePreview holdsEndure), so a move kept back is no
+  // saving — counted, each move was a step towards the attacker's own defeat that waiting was not, and with a guard it believed it
+  // could not break (what it believes of the enemy's 防御 is not what it is) an attacker in a bet never made its last move, or any
+  // (t20 报告 §3). The guard a move breaks is predicted either way.
+  const R20_COUNT_OWN_ATTACK = false;
+  // The guards a move breaks marked in the projection (破防, BattlePreview guardBreaks — defending, as a unit held to blocking does, and
+  // on the stats as they stand before the move: a hit that does not break the guard lands nothing, so a cut the same skill lays after
+  // its hit does not help that hit), as the runtime records it (BattleRuntime 破防 record); the move counted too when
+  // R20_COUNT_OWN_ATTACK. A summon's move is not counted.
+  function r20WithMoveRecorded(world = {}, unit = {}, declaration = {}, table = {}, actorRow = 0) {
+    if (!unit || preview.isSummonUnit(unit)) return world;
+    const name = preview.unitName(unit), record = world?.攻击记录 && typeof world.攻击记录 === 'object' ? world.攻击记录 : {};
+    const kind = String(declaration?.actionKind || '').trim().toUpperCase();
+    const effect = kind === 'BASIC_ATTACK' ? { 伤害类型: '近身攻击' } : preview.collectEffects(declaration?.skill || {}).find(entry => entry?.原型 === '伤害结算') || null;
+    const broken = {};
+    if (effect) for (const id of declaration.targetIds || []) {
+      const row = table.index.get(String(id)), target = row !== undefined ? table.units[row] : null;
+      if (target && table.sides[row] !== table.sides[actorRow] && preview.guardBreaks(unit, effect, target, true)) broken[preview.unitName(target)] = Number(world?.回合 || 0);
+    }
+    if (!R20_COUNT_OWN_ATTACK && !Object.keys(broken).length) return world;
+    return { ...world, 攻击记录: { ...record,
+      ...(R20_COUNT_OWN_ATTACK ? { 次数: { ...(record.次数 || {}), [name]: Number(record.次数?.[name] || 0) + 1 } } : {}),
+      ...(Object.keys(broken).length ? { 破防: { ...(record.破防 || {}), ...broken } } : {}) } };
   }
   // 出招记录（T24 第 4 步；用户「战报要写为什么……也包括决策层的估值如何来的」）: after the choice, the chosen candidate and the
   // runner-up are valued once more with a trace (r20Shadow trace — the same table, the same race, nothing else valued); the record
@@ -42232,10 +42267,14 @@
     // 点燃生命之火: put out after the battle at the save's price (BattlePreview lifeFireOptions aftermath).
     if (Array.isArray(declaration?.aftermath)) asset += preview.postBattleCostShare({ 副作用列表: declaration.aftermath });
     let objective = 0;
-    if (table.objectives) objective = R20_OBJECTIVE_WEIGHT * (r9v2LinearTerminalValue(preview.evaluateBattleObjectivesCompact(after, table.objectives), own) +
+    // 交手约定·破防、接满攻击次数（看板 T20）: a move on an enemy is recorded here as the runtime will record it before the progress is
+    // read — one that breaks the guard is the win it is (and, with R20_COUNT_OWN_ATTACK, each of the few attacks is spent).
+    const objectiveWorld = table.countsAttacks && table.objectives && actorRow !== undefined && r20StrikesEnemy(declaration, table, actorRow)
+      ? r20WithMoveRecorded(after, table.units[actorRow], declaration, table, actorRow) : after;
+    if (table.objectives) objective = R20_OBJECTIVE_WEIGHT * (r9v2LinearTerminalValue(preview.evaluateBattleObjectivesCompact(objectiveWorld, table.objectives), own) +
       // T23-B（11-18）: after the action the actor has spent its turn: its next strike comes next round, when a cut that lapses at
       // this round's end is gone (BattleRuntime settleConditionsAtRoundEnd); those still pending this round strike with it on.
-      preview.battleObjectiveProgress(after, table.objectives, own,
+      preview.battleObjectiveProgress(objectiveWorld, table.objectives, own,
         { pendingIds: new Set(table.ids.filter((id, row) => table.pending[row] && row !== actorRow)) }) - table.objectiveBase);
     // An item made for later (造物; first version, to be measured): what its use would give its recipient — healing and
     // shield as shares of HP, a refill at the price of that share of the pool, any other effect a flat
@@ -42311,7 +42350,7 @@
       add('race', race, `推演终局 ${r20Num(raced)} − 现局 ${r20Num(table.score[own])}`);
       if (tempo) add('tempo', tempo, table.ids.map((id, row) => table.sides[row] === foe && table.pending[row] && alive[row] < 1 ? `${id.split(':')[0]} 身价 ${r20Num(table.worth[row])} × 本回合倒下 ${r20Num(1 - alive[row])}` : '').filter(Boolean).join(' + '));
       if (objective && table.objectives) {
-        const terminal = r9v2LinearTerminalValue(preview.evaluateBattleObjectivesCompact(after, table.objectives), own);
+        const terminal = r9v2LinearTerminalValue(preview.evaluateBattleObjectivesCompact(objectiveWorld, table.objectives), own);
         add('objective', objective, `权重 ${R20_OBJECTIVE_WEIGHT} ×（终局 ${r20Num(terminal)} + 进展 ${r20Num(objective / R20_OBJECTIVE_WEIGHT + table.objectiveBase - terminal)} − 原有 ${r20Num(table.objectiveBase)}）`);
       }
       add('cost', -cost, `单价 ${R20_RESOURCE_PRICE} × 花掉的资源份额 ${r20Num(spent)} ×（1 + 试探溢价 ${followCarry ? 0 : R20_PROBE_PREMIUM} × 未看清 ${r20Num(unseen)}）${spar ? ` × 切磋 ${R20_SPAR_PRICE}` : ''} ×（1 + 后续场次 ${r20Num(followKeep)}）`);
