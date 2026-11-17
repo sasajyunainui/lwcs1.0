@@ -2166,6 +2166,30 @@
   // 精神力感知（用户 2026-11-15「精神力不如对方时，开局无法看出对方实力。精神力高于对方，且精神力高于1000时，能一定程度估摸个
   // 大概」「精神力比对方高只能看到魂力波动，也不知道对方是什么系别，有什么能力」）: a sense that outreaches the enemy's gauges
   // its strength (level, pools, panel) before any exchange — not its abilities.
+  // 系别信念（信息模型 0b，用户 2026-11-17「根据释放的魂技原型可进一步加深判断」）: what one sees of a skill an enemy releases —
+  // the kind of its first (main) effect: 伤害 (on an enemy), 硬控 / 软控 (a state, interference or debuff on an enemy: one that
+  // takes the turn, or one that does not), 治疗 (HP back to one's side), 自身增益 / 友方增益 (a buff, shield or modifier on
+  // itself / its side), 召唤, 造物, 其他. The likelihood of each kind by system is SKILL_CLASS_LIKELIHOOD (the game's generator).
+  // 应对时顺带开武魂（用户 2026-11-17）: an enemy with its 武魂 unreleased and not hidden releases it as it answers a move
+  // (BattleRuntime releaseSpiritInPlace), so a move on it is valued against it released.
+  const spiritOpensOnAnswer = unit => !!preview.spiritUnreleased?.(unit) && unit?.__battleRuntime?.spiritHidden !== true;
+  function skillObservationClass(skill = {}) {
+    if (String(skill?.承载方式 || '').trim() === '造物承载') return '造物';
+    const effect = preview.collectEffects(skill)[0];
+    if (!effect) return '其他';
+    const prototype = String(effect?.原型 || '').trim(), target = String(effect?.目标 || '').trim();
+    if (prototype === '召唤生成') return '召唤';
+    const own = /自身/.test(target), side = /友方|己方/.test(target) || preview.effectTargetsAllies(effect);
+    if (prototype === '伤害结算') return own || side ? '其他' : '伤害';
+    if (prototype === '资源变化' && /生命|HP/i.test(String(effect?.资源 || '')) && !/^-/.test(String(effect?.数值 ?? '').trim())) return own || side ? '治疗' : '其他';
+    const negative = Math.sign(Number(preview.statePolarity(effect)) || 0) < 0 || /^-/.test(String(effect?.数值 ?? '').trim()) && !own && !side;
+    if (['状态施加', '决策干扰', '判定修正', '结算修正', '属性修正', '资源锁定', '机制抹消'].includes(prototype) && negative && !own) {
+      const stops = preview.deriveStateCombatEffect(effect) || {};
+      return prototype === '状态施加' && (stops.cannot_act === true || stops.skip_turn === true) ? '硬控' : '软控';
+    }
+    if (['状态施加', '判定修正', '结算修正', '属性修正', '护盾变化', '资源变化'].includes(prototype)) return own ? '自身增益' : side ? '友方增益' : '其他';
+    return '其他';
+  }
   function beliefSenses(observer = {}, target = {}) {
     const sense = Number(preview.readResourceMax(observer, '精神力')) || 0, theirs = Number(preview.readResourceMax(target, '精神力')) || 0;
     return sense > BELIEF_SENSE_FLOOR && sense > theirs;
@@ -2210,6 +2234,10 @@
       if (alreadyPublic === true || sideOf(worldSnapshot, sourceUnit) === actorSide || beliefFamiliarExchanges(sourceActor, sourceUnit) >= BELIEF_FAMILIAR_BATTLE) {
         const unit = preview.inheritProjectedStateSourceWindows(cloneValue(sourceUnit), sourceUnit, worldSnapshot);
         if (sideOf(worldSnapshot, sourceUnit) === actorSide && !Number.isFinite(Number(unit?.routine_attack_ratio))) unit.routine_attack_ratio = knownRoutineAttackRatio(unit);
+        if (sideOf(worldSnapshot, sourceUnit) !== actorSide && spiritOpensOnAnswer(sourceUnit)) {
+          delete unit.状态效果[preview.SPIRIT_UNRELEASED_KEY];
+          unit.final = { ...(unit.final || {}), ...preview.buildNumericCombatStats(unit, Number(worldSnapshot?.当前世界tick ?? worldSnapshot?.当前tick ?? 0)) };
+        }
         return unit;
       }
       const id = preview.unitId(sourceUnit);
@@ -2262,7 +2290,8 @@
       const soulMax = toward(baseStats.sp_max * typical.sp_max, preview.readResourceMax(sourceUnit, '魂力'));
       const spiritMax = toward(baseStats.men_max * typical.men_max, preview.readResourceMax(sourceUnit, '精神力'));
       const staminaMax = toward(baseStats.vit_max * typical.vit_max, preview.readResourceMax(sourceUnit, '体力'));
-      const states = Object.fromEntries((beliefUnit.visibleStates || []).map((state, index) => [`visible:${id}:${index}`, {
+      // 应对时顺带开武魂: an enemy that has not hidden its 武魂 meets a move released (spiritOpensOnAnswer).
+      const states = Object.fromEntries((beliefUnit.visibleStates || []).filter(state => !(String(state?.name || '').trim() === '武魂未释放' && spiritOpensOnAnswer(sourceUnit))).map((state, index) => [`visible:${id}:${index}`, {
         状态: String(state?.name || '').trim(),
         duration: Math.max(0, Number(state?.duration || 0)),
         类型: String(state?.type || '').trim(),
@@ -6190,6 +6219,8 @@
     if (hasStateFlag(actor, 'silence') || preview.isSummonSkillDisabled(actor)) return out;
     const intensity = preview.battleIntensity(worldSnapshot, input.battleIntent);
     collectSkills(actor).forEach((sourceSkill, index) => {
+      // 开武魂（信息模型 0a）: no skill of the unreleased 武魂 meets a move either (BattlePreview spiritBlocksSkill).
+      if (preview.spiritBlocksSkill?.(actor, sourceSkill)) return;
       const skill = preview.applySkillSettlementModifiers(actor, applyEquipmentPassivesToSkill(actor, sourceSkill)).skill;
       if (!Array.isArray(skill?._效果数组) || !skill._效果数组.length || skill.__mechanismGrantReactionOnly === true ||
         nonExecutableBattlePrototype(skill)) return;
@@ -6887,6 +6918,12 @@
     (!summonSkillDisabled && (skillReleaseAllowed || forcedSkill && !assistOnly) ? sourceSkills : []).forEach((sourceSkill, index) => {
       const sourceSkillId = skillId(sourceSkill, index);
       const sourceSkillName = skillName(sourceSkill, index);
+      // 开武魂（信息模型 0a）: a skill of the unreleased 武魂 (or 自创魂技, 融合技) is not offered (BattlePreview spiritBlocksSkill).
+      if (!forcedSkill && preview.spiritBlocksSkill?.(actor, sourceSkill)) {
+        recordRejected({ actionKind: 'RELEASE_SKILL', sourceActionId: `${actorId}:skill:${sourceSkillId}`, rejectionCode: 'RULE_SPIRIT_UNRELEASED',
+          skillId: sourceSkillId, skillName: sourceSkillName });
+        return;
+      }
       const settledSkill = preview.applySkillSettlementModifiers(
         actor,
         applyEquipmentPassivesToSkill(actor, sourceSkill),
@@ -7267,7 +7304,8 @@
     const equipmentHistory = new Set(Array.isArray(actor?.__battleRuntime?.equipmentDecisionSignatures) ? actor.__battleRuntime.equipmentDecisionSignatures.map(String) : []);
     // 释放斗铠 / 机甲（接入方案 S80-A）：身穿而未释放的，用换装行动释放（BattlePreview armourReleaseOptions：前摇、吸收、耐久，
     // 封甲与比赛禁止装备时不给）。估值走效果本身：释放状态加回加成并吸收来袭伤害。
-    (preview.armourReleaseOptions?.(actor, worldSnapshot) || []).forEach(option => {
+    // 开武魂（信息模型 0a）: the same release path, windup 0 (BattlePreview spiritReleaseOptions).
+    [...(preview.spiritReleaseOptions?.(actor) || []), ...(preview.armourReleaseOptions?.(actor, worldSnapshot) || [])].forEach(option => {
       const id = `${actorId}:release:${option.slot}`;
       candidates.push({
         candidateId: id,
@@ -36656,7 +36694,9 @@
     const frozenCandidates = candidates.map(candidate => {
       const candidateId = String(candidate?.candidateId || '').trim();
       if (!candidateId || candidateIds.has(candidateId)) {
-        throw new Error(`battle_decision_candidate_identity_invalid:${candidateId || 'missing'}`);
+        const twins = candidates.filter(entry => String(entry?.candidateId || '').trim() === candidateId)
+          .map(entry => `${entry?.declaration?.actionKind || '?'}/${entry?.declaration?.engagement?.mode || ''}/${entry?.declaration?.skill?.魂技名 || entry?.declaration?.skill?.name || ''}`);
+        throw new Error(`battle_decision_candidate_identity_invalid:${candidateId || 'missing'}:${twins.join('|')}`);
       }
       candidateIds.add(candidateId);
       const sourceSkill = candidate?.declaration?.skill;
@@ -74623,6 +74663,7 @@
     collectSkills,
     affordablePreparedSkills,
     knownRoutineAttackRatio,
+    skillObservationClass,
     typicalAttackRatio,
     projectCooperativeSummonDeclaration,
     actionCompletesWithinBattleHorizon,

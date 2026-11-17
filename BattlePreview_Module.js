@@ -2883,6 +2883,9 @@
     const skill = JSON.parse(JSON.stringify(charge.skill));
     const name = String(skill.魂技名 || skill.name || charge.actionName || '蓄力').trim();
     skill.魂技名 = `${name}（蓄力迎击）`; skill.name = skill.魂技名;
+    // Its own identity: beside the charged skill itself among a unit's answers, the two shared one candidate id (11-17,
+    // battle_decision_candidate_identity_invalid). BattleRuntime knows it by __chargeRelease.
+    if (skill.id || skill.技能ID || skill.魂技ID) skill.id = `${String(skill.id || skill.技能ID || skill.魂技ID).trim()}:蓄力迎击`;
     skill.前摇 = 0; skill.cast_time = 0;
     skill.__chargeRelease = true;
     for (const effect of Array.isArray(skill._效果数组) ? skill._效果数组 : []) {
@@ -8595,6 +8598,75 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         __装备未释放: slot }];
     });
   }
+  // 开武魂（信息模型 0a，用户 2026-11-17「开武魂前不能使用魂技，全属性减半」）: a unit with a 武魂 starts a battle with it
+  // unreleased — 「武魂未释放」 (an __auto__ key, like 斗铠未释放): 力量、防御、敏捷 ×0.5 (the combat panel; HP and the pools
+  // stay), and no skill of its 武魂 (its rings, 武魂真身, 武魂融合技), 自创魂技 or 融合技 — 血脉、魂骨、装备 skills, items, the
+  // basic attack and the stances go on. 「开武魂」 (an EQUIP release, windup 0: it takes no action) puts 「武魂已释放」 in the
+  // same key, so the round start does not lay it again; it shows the spirit's look (表象名称) to everyone (信息模型 0b). A
+  // summon, a 魂兽 and a unit without a 武魂 have none; one marked 战前已开武魂 (an ambush, a fighter ready before it began)
+  // starts released.
+  const SPIRIT_UNRELEASED_KEY = '__auto__:武魂未释放';
+  const SPIRIT_SKILL_ROOT = /^(?:第\d+)?武魂|^自创魂技$|^融合技$/;
+  function hasMartialSpirit(unit = {}) {
+    if (!unit || typeof unit !== 'object' || isSummonUnit(unit)) return false;
+    if (/魂兽/.test(String(unit?.单位性质 || unit?.身份 || unit?.种族 || unit?.属性?.种族 || ''))) return false;
+    return Object.entries(unit).some(([key, value]) => /^第\d+武魂$/.test(key) && value && typeof value === 'object');
+  }
+  function spiritAppearance(unit = {}) {
+    return Object.entries(unit || {}).filter(([key, value]) => /^第\d+武魂$/.test(key) && value && typeof value === 'object')
+      .map(([key, value]) => ({ 武魂: key, 表象名称: String(value?.表象名称 || value?.名称 || '').trim() })).filter(entry => entry.表象名称);
+  }
+  function spiritReleasedMarker(unit = {}) {
+    return { 状态: '武魂已释放', 状态名称: '武魂已释放', 类型: '', duration: ARMOUR_LASTING_ROUNDS, 持续回合: ARMOUR_LASTING_ROUNDS,
+      描述: '武魂已释放', 面板修改比例: {}, 面板固定修正: {}, __武魂已释放: true, __武魂外观: spiritAppearance(unit) };
+  }
+  // The release's effect, known by its internal state name (the runtime's skill normalisation drops the effect's own marks).
+  const isSpiritReleaseEffect = effect => String(effect?.原型 || '').trim() === '状态施加' && String(effect?.状态 || '').trim() === '武魂已释放';
+  function spiritUnreleased(unit = {}) {
+    return unit?.状态效果?.[SPIRIT_UNRELEASED_KEY]?.__武魂未释放 === true;
+  }
+  // What a battle's round start puts on a unit with a 武魂 that has neither (BattleRuntime ensureArmourUnreleased).
+  function spiritUnreleasedStates(unit = {}) {
+    if (!hasMartialSpirit(unit) || unit?.状态效果?.[SPIRIT_UNRELEASED_KEY]) return [];
+    if (unit?.战前已开武魂 === true || unit?.属性?.战前已开武魂 === true) return [[SPIRIT_UNRELEASED_KEY, spiritReleasedMarker(unit)]];
+    return [[SPIRIT_UNRELEASED_KEY, { 状态: '武魂未释放', 状态名称: '武魂未释放', 类型: '', duration: ARMOUR_LASTING_ROUNDS, 持续回合: ARMOUR_LASTING_ROUNDS,
+      描述: '武魂尚未释放：力量、防御、敏捷减半，不能使用武魂魂技、武魂真身、融合技与自创魂技', 面板修改比例: { str: 0.5, def: 0.5, agi: 0.5 }, 面板固定修正: {},
+      __武魂未释放: true }]];
+  }
+  // The release the unit may declare now (BattleDecision): its 武魂 still unreleased.
+  function spiritReleaseOptions(unit = {}) {
+    if (!spiritUnreleased(unit)) return [];
+    return [{ slot: '武魂', name: '开武魂', windup: 0,
+      effect: { 原型: '状态施加', 目标: '自身', 状态: '武魂已释放', 持续回合: ARMOUR_LASTING_ROUNDS, 触发方式: '立即触发', 生效方式: '独立生效' } }];
+  }
+  // The names of the skills its 武魂 holds (rings, 武魂真身, 武魂融合技), its 自创魂技 and 融合技 — by name, as a skill is
+  // copied through projections.
+  const spiritSkillNameCache = new WeakMap();
+  function spiritSkillNames(unit = {}) {
+    const origin = overlayUnitOriginCache.get(unit) || unit;
+    let names = spiritSkillNameCache.get(origin);
+    if (names) return names;
+    names = new Set();
+    const seen = new Set();
+    const visit = value => {
+      if (!value || typeof value !== 'object' || seen.has(value)) return;
+      seen.add(value);
+      if (Array.isArray(value)) { value.forEach(visit); return; }
+      if (Array.isArray(value._效果数组)) {
+        const name = String(value.魂技名 || value.name || value.技能名称 || value.名称 || '').trim();
+        if (name) names.add(name);
+      }
+      Object.values(value).forEach(visit);
+    };
+    Object.entries(origin || {}).forEach(([key, value]) => { if (SPIRIT_SKILL_ROOT.test(key)) visit(value); });
+    spiritSkillNameCache.set(origin, names);
+    return names;
+  }
+  function spiritBlocksSkill(unit = {}, skill = {}) {
+    if (!spiritUnreleased(unit)) return false;
+    const name = String(skill?.魂技名 || skill?.name || skill?.技能名称 || skill?.名称 || '').trim();
+    return !!name && spiritSkillNames(unit).has(name);
+  }
   // The releases the unit may declare now (BattleDecision): a worn piece still unreleased, not under 封甲, not banned by the match.
   function armourReleaseOptions(unit = {}, worldSnapshot = {}) {
     const banned = new Set((Array.isArray(worldSnapshot?.赛事上下文?.禁止装备) ? worldSnapshot.赛事上下文.禁止装备 : []).map(value => String(value || '').trim()));
@@ -8884,7 +8956,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           ? new Set([...fieldDefinition.选项, ...passiveTriggerEnums])
           : null;
         // 释放斗铠 / 机甲的内部结算（S80-A armourReleaseEffect）：不在技能表里，设计台与生成都用不到。
-        const internal = prototype === '结算修正' && field === '结算' && normalized === '装备吸收' && !!effect?.__装备释放;
+        // 开武魂（spiritReleaseOptions）同样是内部状态「武魂已释放」。
+        const internal = prototype === '结算修正' && field === '结算' && normalized === '装备吸收' && !!effect?.__装备释放 ||
+          prototype === '状态施加' && field === '状态' && normalized === '武魂已释放';
         if (normalized && !internal && !(accepted ? accepted.has(normalized) : fieldDefinition.选项.includes(normalized))) {
           throw new Error(`battle_preview_unknown_enum:${prototype}:${field}:${normalized}`);
         }
@@ -11085,6 +11159,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (String(effect?.原型 || '').trim() === '位移执行') {
       const derived = deriveStateCombatEffect(effect);
       if (!derived.position_once && derived.counter_window_closed !== true && derived.no_cover !== true) return false;
+    }
+    // 开武魂: 「武魂已释放」 takes the 「武魂未释放」 key (spiritReleasedMarker), so the round start does not lay it again.
+    if (isSpiritReleaseEffect(effect)) {
+      if (!spiritUnreleased(unit)) return false;
+      unit.状态效果 = { ...(unit.状态效果 || {}), [SPIRIT_UNRELEASED_KEY]: spiritReleasedMarker(unit) };
+      return true;
     }
     let existingEntry = findStateEntry(unit, effect, source);
     // 位移重做: a position state is one-shot and may be half spent; casting it again re-arms it whole.
@@ -14863,7 +14943,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               __previewApplicationProbability: effectiveApplicationProbability,
             }, context.effectInstanceId, (key, state) => replacedStates.push([key, state]), context.rootActionId);
             // A state that moves the panel (封禁装备's 面板固定修正) takes effect at once, as a 属性修正 does.
-            if (marginal && statePanelChanges(sourcedEffect)) {
+            // 开武魂 lifts 「武魂未释放」's halving the same way (addState puts 「武魂已释放」 in its key).
+            if (marginal && (statePanelChanges(sourcedEffect) || isSpiritReleaseEffect(sourcedEffect))) {
               unit.final = { ...unit.final, ...buildNumericCombatStats(unit, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0)) };
               syncStaminaMaxGain(unit);
             }
@@ -20673,6 +20754,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         !continuedSettlement && isSummonSkillDisabled(actor)) {
       throw new Error('battle_preview_summon_skill_disabled');
     }
+    // 开武魂: no skill of the 武魂 (or 自创魂技, 融合技) before it is released (spiritBlocksSkill).
+    if (String(declaration?.actionKind || '').trim().toUpperCase() === 'RELEASE_SKILL' && !continuedSettlement &&
+        spiritBlocksSkill(actor, declaration?.skill || {})) {
+      throw new Error('battle_preview_spirit_unreleased');
+    }
     const declaredCostStages = declaration?.skill && typeof declaration.skill === 'object'
       ? readSkillCostStages(declaration.skill, { 来源模块: 'BattlePreview_Module', ...declaration, costActor: actor })
       : Object.freeze({ 启动: Object.freeze({}), 维持: Object.freeze({}), 形式: 'absolute', 非法项: Object.freeze([]) });
@@ -25286,6 +25372,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     matchFollowUp,
     armourReleaseOptions,
     armourUnreleasedStates,
+    spiritReleaseOptions,
+    spiritUnreleasedStates,
+    spiritUnreleased,
+    spiritBlocksSkill,
+    spiritReleasedMarker,
+    SPIRIT_UNRELEASED_KEY,
     armourReleaseState,
     armourStateAtDurability,
     settlementLinkPartners,

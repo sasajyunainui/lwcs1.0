@@ -1331,10 +1331,11 @@
   // 未释放不落盘也不跟着走，所以每次都补；释放会抵掉它）；释放状态里的耐久同步回 装备（战后随装备写回存档），耗尽记损毁。
   function ensureArmourUnreleased(combatData = {}) {
     listCombatUnits(combatData).forEach(unit => {
-      const additions = previewRuntime.armourUnreleasedStates?.(unit) || [];
+      // 开武魂（信息模型 0a）: 「武魂未释放」 the same way (BattlePreview spiritUnreleasedStates).
+      const additions = [...(previewRuntime.armourUnreleasedStates?.(unit) || []), ...(previewRuntime.spiritUnreleasedStates?.(unit) || [])];
       if (additions.length) {
         unit.状态效果 = unit.状态效果 && typeof unit.状态效果 === 'object' ? unit.状态效果 : {};
-        additions.forEach(([key, state]) => { unit.状态效果[key] = { ...state, 战斗效果: createEmptyCombatEffectMap() }; });
+        additions.forEach(([key, state]) => { unit.状态效果[key] = { ...state, 战斗效果: { ...createEmptyCombatEffectMap(), ...(state.战斗效果 || {}) } }; });
         unit.final = buildCombatFinalStats(unit);
       }
       ['斗铠', '机甲'].forEach(slot => {
@@ -1345,6 +1346,24 @@
         item.耐久上限 = Math.max(1, Math.round(Number(released.__装备耐久上限) || 1));
         if (item.耐久 <= 0) item.装备状态 = '损毁';
       });
+    });
+  }
+
+  // 开武魂（信息模型 0a）: 「武魂已释放」 put in the 「武魂未释放」 key (BattlePreview spiritReleasedMarker), the panel back at once,
+  // and a ledger fact (its look, 表象名称, is what everyone sees). `event` carries the action's identity when it is one.
+  function releaseSpiritInPlace(combatData = {}, unit = {}, event = {}) {
+    if (!previewRuntime.spiritUnreleased?.(unit)) return null;
+    const before = unit.状态效果[previewRuntime.SPIRIT_UNRELEASED_KEY];
+    unit.状态效果[previewRuntime.SPIRIT_UNRELEASED_KEY] = previewRuntime.spiritReleasedMarker(unit);
+    unit.final = buildCombatFinalStats(unit);
+    return writeLedgerEvent(combatData, {
+      eventKind: 'state_apply', round: Number(combatData?.回合 || 0), actorName: previewRuntime.unitName(unit), targetName: previewRuntime.unitName(unit),
+      actionName: '开武魂', actionType: event.actionType || 'EQUIP', actorControl: event.actorControl || 'SYSTEM', actionRole: event.actionRole || 'ACTIVE',
+      actionId: event.actionId || '', sourceActionId: event.actionId || '', parentNodeId: event.chainNodeId || '', sourceNodeId: event.chainNodeId || '',
+      result: 'applied', resultState: 'APPLIED', primaryOutcome: 'state_applied', duration: 1, effectPrototype: '状态施加', factType: 'STATE',
+      sourceEffectId: event.sourceEffectId || '', operation: 'STATE_APPLY',
+      meta: { source: 'structured_runtime', effectIndex: event.effectIndex ?? 0, stateName: '武魂已释放', resolutionReason: 'SPIRIT_RELEASED',
+        before: before?.状态 || '', after: '武魂已释放', appearance: cloneValue(unit.状态效果[previewRuntime.SPIRIT_UNRELEASED_KEY].__武魂外观 || []), operation: 'STATE_APPLY' },
     });
   }
 
@@ -4373,7 +4392,7 @@
       const equipment = cloneValue(declaration.skill || {});
       return { id: declaration.actionId, type: 'equipment', action_type: declaration?.releaseSlot ? '释放装备' : '穿戴装备', name: equipment.name || equipment.名称 || '装备', skill: equipment, target_name: targetName || actor.name || actor.名称 || '',
         // 释放斗铠 / 机甲（S80-A）的前摇按字数 / 品级（BattlePreview armourReleaseOptions）；穿戴背包里的装备照旧 10。
-        cast_time: declaration?.releaseSlot ? Math.max(1, Number(equipment.前摇) || 10) : 10, __equipmentSignature: String(declaration?.equipmentSignature || '').trim() };
+        cast_time: declaration?.releaseSlot === '武魂' ? 0 : declaration?.releaseSlot ? Math.max(1, Number(equipment.前摇) || 10) : 10, __equipmentSignature: String(declaration?.equipmentSignature || '').trim() };
     }
     const actionType = {
       BASIC_ATTACK: '常规攻击', DEFEND: '防御', EVADE: '闪避', COUNTER: '反击',
@@ -13263,6 +13282,13 @@
           return;
         }
         if (!target.状态效果 || typeof target.状态效果 !== 'object') target.状态效果 = {};
+        // 开武魂（信息模型 0a）: 「武魂已释放」 takes the 「武魂未释放」 key, so the round start does not lay it again, and the panel
+        // comes back at once (BattlePreview addState does the same in a projection).
+        if (stateName === '武魂已释放' && previewRuntime.spiritUnreleased?.(target)) {
+          facts.push(releaseSpiritInPlace(combatData, target, { actionType: actionKind, actorControl, actionRole, actionId: actionEvent.actionId,
+            chainNodeId: actionEvent.chainNodeId, sourceEffectId, effectIndex }));
+          return;
+        }
         const duration = Math.max(1, Number(effect?.持续回合 || 1));
         const polarity = previewRuntime.statePolarity(effect);
         // 来源技能的计价版本（gen1c）：「标记」的战斗效果只对带当前计价版本戳的技能生效（BattlePreview deriveStateCombatEffect）。
@@ -18193,6 +18219,10 @@
                 continue;
               }
               const actorId = previewRuntime.unitId(actor);
+              // 应对时顺带开武魂（用户 2026-11-17）: a unit struck before its own turn releases its 武魂 as it answers — no answer
+              // spent, no windup — and meets the move at full panel. __battleRuntime.spiritHidden keeps it hidden (信息模型 0b
+              // decides when hiding the look is worth the halving).
+              if (actor.__battleRuntime?.spiritHidden !== true) releaseSpiritInPlace(combatData, actor, { actionRole: 'REACTION', actionType: 'EQUIP' });
               const reactionTargetId = String(node?.state?.targetId || actorId).trim();
               const summonGuard = node?.state?.summonGuard === true && !!actor?.召唤键;
               const sourceActorId = previewRuntime.unitId(sourceActor);
@@ -18588,7 +18618,10 @@
                   structuredActorPhysicallyAlive(target) && structuredActorCanAct(target, 'REACTION');
               });
               let chained = false;
-              if (chainLink && !hardControlled && !enemyAnswers && ['BASIC_ATTACK', 'RELEASE_SKILL', 'USE_ITEM'].includes(chainKind) && (chainWindup > 0 || freeWindup) &&
+              // 开武魂（用户 2026-11-17「不占行动」）: windup 0 and once a battle, so it goes on to the turn's action.
+              const spiritRelease = chainKind === 'EQUIP' && String(shared.declaration?.releaseSlot || '').trim() === '武魂';
+              if (chainLink && !hardControlled && !enemyAnswers && (['BASIC_ATTACK', 'RELEASE_SKILL', 'USE_ITEM'].includes(chainKind) || spiritRelease) &&
+                (chainWindup > 0 || freeWindup || spiritRelease) &&
                 chainWindup <= naturalActionBudget && chainUsed < previewRuntime.CONTINUOUS_ACTION_BUDGET && structuredActorPhysicallyAlive(actor) &&
                 Number(node?.state?.chainDepth || 0) < 8) {
                 chained = true;
