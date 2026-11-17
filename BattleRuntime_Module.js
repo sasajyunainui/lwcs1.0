@@ -4392,7 +4392,7 @@
       const equipment = cloneValue(declaration.skill || {});
       return { id: declaration.actionId, type: 'equipment', action_type: declaration?.releaseSlot ? '释放装备' : '穿戴装备', name: equipment.name || equipment.名称 || '装备', skill: equipment, target_name: targetName || actor.name || actor.名称 || '',
         // 释放斗铠 / 机甲（S80-A）的前摇按字数 / 品级（BattlePreview armourReleaseOptions）；穿戴背包里的装备照旧 10。
-        cast_time: declaration?.releaseSlot === '武魂' ? 0 : declaration?.releaseSlot ? Math.max(1, Number(equipment.前摇) || 10) : 10, __equipmentSignature: String(declaration?.equipmentSignature || '').trim() };
+        cast_time: ['武魂', '生命之火'].includes(declaration?.releaseSlot) ? 0 : declaration?.releaseSlot ? Math.max(1, Number(equipment.前摇) || 10) : 10, __equipmentSignature: String(declaration?.equipmentSignature || '').trim() };
     }
     const actionType = {
       BASIC_ATTACK: '常规攻击', DEFEND: '防御', EVADE: '闪避', COUNTER: '反击',
@@ -13287,6 +13287,24 @@
         if (!target.状态效果 || typeof target.状态效果 !== 'object') target.状态效果 = {};
         // 开武魂（信息模型 0a）: 「武魂已释放」 takes the 「武魂未释放」 key, so the round start does not lay it again, and the panel
         // comes back at once (BattlePreview addState does the same in a projection).
+        // 点燃生命之火: its own key, panel and pools (BattlePreview igniteLifeFire); put out when the battle ends (the save prices it).
+        if (stateName === '生命之火' && previewRuntime.igniteLifeFire) {
+          const lit = previewRuntime.igniteLifeFire(target, Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0));
+          if (lit) {
+            const fire = target.状态效果['__auto__:生命之火'];
+            if (fire) fire.战斗效果 = { ...createEmptyCombatEffectMap(), ...(fire.战斗效果 || {}) };
+            target.final = buildCombatFinalStats(target);
+          }
+          facts.push(writeLedgerEvent(combatData, {
+            eventKind: 'state_apply', round: Number(combatData?.回合 || 0), actorName: previewRuntime.unitName(actor), targetName: previewRuntime.unitName(target),
+            actionName, actionType: actionKind, actorControl, actionRole, actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
+            parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
+            result: lit ? 'applied' : 'no_effect', resultState: lit ? 'APPLIED' : 'NO_EFFECT', primaryOutcome: lit ? 'state_applied' : 'no_effect', duration: 1,
+            effectPrototype: prototype, factType: 'STATE', sourceEffectId, operation: 'STATE_APPLY',
+            meta: { source: 'structured_runtime', effectIndex, stateName, resolutionReason: lit ? 'LIFE_FIRE_LIT' : 'LIFE_FIRE_ALREADY_LIT', operation: 'STATE_APPLY' },
+          }));
+          return;
+        }
         if (stateName === '武魂已释放' && previewRuntime.spiritUnreleased?.(target)) {
           facts.push(releaseSpiritInPlace(combatData, target, { actionType: actionKind, actorControl, actionRole, actionId: actionEvent.actionId,
             chainNodeId: actionEvent.chainNodeId, sourceEffectId, effectIndex }));
@@ -18622,7 +18640,7 @@
               });
               let chained = false;
               // 开武魂（用户 2026-11-17「不占行动」）: windup 0 and once a battle, so it goes on to the turn's action.
-              const spiritRelease = chainKind === 'EQUIP' && String(shared.declaration?.releaseSlot || '').trim() === '武魂';
+              const spiritRelease = chainKind === 'EQUIP' && ['武魂', '生命之火'].includes(String(shared.declaration?.releaseSlot || '').trim());
               if (chainLink && !hardControlled && !enemyAnswers && (['BASIC_ATTACK', 'RELEASE_SKILL', 'USE_ITEM'].includes(chainKind) || spiritRelease) &&
                 (chainWindup > 0 || freeWindup || spiritRelease) &&
                 chainWindup <= naturalActionBudget && chainUsed < previewRuntime.CONTINUOUS_ACTION_BUDGET && structuredActorPhysicallyAlive(actor) &&

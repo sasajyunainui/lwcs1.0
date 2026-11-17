@@ -394,6 +394,8 @@ const BloodlinePowerSchema = z
     解封层数: z.coerce.number().prefault(0).describe('血脉封印解除层数'),
     核心: z.string().prefault('未凝聚').describe('气血魂核状态'),
     生命之火: z.boolean().prefault(false).describe('生命之火状态'),
+    // 战斗里点燃的生命之火战后熄灭（BattlePreview igniteLifeFire）：战斗写回此标记，MVU_Schema_Runtime 按熄灭规则扣级后清除。
+    生命之火熄灭结算: z.boolean().optional().describe('战斗中点燃的生命之火待熄灭结算（系统自动维护）'),
     技能: z.record(z.string(), SkillStructSchema).prefault({}).describe('血脉主动散技(无魂环)'),
     被动: z.record(z.string(), SkillStructSchema).prefault({}).describe('血脉被动特性'),
     永久加成: z

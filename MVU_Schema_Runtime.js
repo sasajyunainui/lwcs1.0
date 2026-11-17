@@ -6497,7 +6497,13 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       }
 
       const hadLifeFireActive = LIFE_FIRE_STATE_CACHE[charName] === true;
-      if (hadLifeFireActive && c.血脉之力?.生命之火 === false) {
+      // 战斗里点燃、战后熄灭（战斗写回 生命之火熄灭结算）：同一条熄灭规则，结算后清掉标记。
+      const lifeFireSpentInBattle = c.血脉之力?.生命之火熄灭结算 === true;
+      if (lifeFireSpentInBattle) {
+        delete c.血脉之力.生命之火熄灭结算;
+        c.血脉之力.生命之火 = false;
+      }
+      if ((hadLifeFireActive || lifeFireSpentInBattle) && c.血脉之力?.生命之火 === false) {
         追加系统播报文本(data, `[生命之火熄灭] ${charName} 透支本源，修为暴跌 3 级，陷入濒死！`);
         c.属性.等级 = Math.max(1, c.属性.等级 - 3);
         c.属性.等级惩罚 += 3;

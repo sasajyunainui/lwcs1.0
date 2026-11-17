@@ -7407,11 +7407,15 @@
     // 释放斗铠 / 机甲（接入方案 S80-A）：身穿而未释放的，用换装行动释放（BattlePreview armourReleaseOptions：前摇、吸收、耐久，
     // 封甲与比赛禁止装备时不给）。估值走效果本身：释放状态加回加成并吸收来袭伤害。
     // 开武魂（信息模型 0a）: the same release path, windup 0 (BattlePreview spiritReleaseOptions).
-    [...(preview.spiritReleaseOptions?.(actor) || []), ...(preview.armourReleaseOptions?.(actor, worldSnapshot) || [])].forEach(option => {
+    // 点燃生命之火（只在实战，BattlePreview lifeFireOptions）: the same path; its after-battle cost goes with it (aftermath, priced
+    // by postBattleCostShare in the valuation — not as the skill's side effects, which the runtime would settle in the battle too).
+    [...(preview.spiritReleaseOptions?.(actor) || []), ...(preview.lifeFireOptions?.(actor, worldSnapshot, input.battleIntent) || []),
+      ...(preview.armourReleaseOptions?.(actor, worldSnapshot) || [])].forEach(option => {
       const id = `${actorId}:release:${option.slot}`;
       candidates.push({
         candidateId: id,
         declaration: { actionId: id, actorId, actionKind: 'EQUIP', targetIds: [actorId], releaseSlot: option.slot, equipmentSignature: `release:${option.slot}`,
+          ...(option.aftermath ? { aftermath: option.aftermath } : {}),
           skill: { name: option.name, 魂技名: option.name, 前摇: option.windup, 消耗: '无', _效果数组: [option.effect] } },
         equipmentSignature: `release:${option.slot}`,
       });
@@ -68396,6 +68400,8 @@
     }
     // What the skill costs its user after the battle (战后长期代价: BattlePreview postBattleCostShare).
     if (declaration?.actionKind === 'RELEASE_SKILL') asset += preview.postBattleCostShare(declaration.skill);
+    // 点燃生命之火: put out after the battle at the save's price (BattlePreview lifeFireOptions aftermath).
+    if (Array.isArray(declaration?.aftermath)) asset += preview.postBattleCostShare({ 副作用列表: declaration.aftermath });
     let objective = 0;
     if (table.objectives) objective = R20_OBJECTIVE_WEIGHT * (r9v2LinearTerminalValue(preview.evaluateBattleObjectivesCompact(after, table.objectives), own) +
       preview.battleObjectiveProgress(after, table.objectives, own) - table.objectiveBase);

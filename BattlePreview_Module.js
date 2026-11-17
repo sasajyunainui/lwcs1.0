@@ -8667,6 +8667,44 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const name = String(skill?.魂技名 || skill?.name || skill?.技能名称 || skill?.名称 || '').trim();
     return !!name && spiritSkillNames(unit).has(name);
   }
+  // 点燃生命之火（用户 2026-11-17「搏命不是已经有点燃生命之火这个手段了吗」）: a soul master of five rings or more may burn its life in a real fight (实战:
+  // DUEL or DEATH, not a spar or a match) — windup 0, no action taken, as 开武魂 — for 魂力/精神力/体力 maxima and 力量/防御/
+  // 敏捷 ×2 (the save's own rule, MVU_Schema_Runtime allMult), what it has of each doubled with them. It is put out when the
+  // battle ends: 血脉之力.生命之火熄灭结算 goes back with the battle and the save then takes the save's own price (永久 −3 级, HP
+  // 3%, 体力 1). The decision prices it as that after-battle cost (postBattleCostShare: 本源损耗 3% and 重伤昏迷 a month). One
+  // already burning (the story lit it) cannot light it again.
+  // 生命透支（用户 11-17 选「每回合末扣生命，烧到死」；原作血九「一旦燃烧，在很短时间内就会出现生命透支，直到死亡」）: each round end
+  // takes LIFE_FIRE_DRAIN of its HP maximum as a periodic loss (dot_damage_ratio: past shields, and its own cost, so held at no line).
+  const LIFE_FIRE_KEY = '__auto__:生命之火', LIFE_FIRE_MIN_LEVEL = 51, LIFE_FIRE_DRAIN = 0.15;
+  const LIFE_FIRE_PANEL = Object.freeze({ str: 2, def: 2, agi: 2, sp_max: 2, men_max: 2, vit_max: 2 });
+  const LIFE_FIRE_AFTERMATH = Object.freeze([{ 副作用类型: '本源损耗', 数值: 3 }, { 副作用类型: '重伤昏迷', 数值: 1 }]);
+  const isLifeFireEffect = effect => String(effect?.原型 || '').trim() === '状态施加' && String(effect?.状态 || '').trim() === '生命之火';
+  function lifeFireLit(unit = {}) {
+    return unit?.血脉之力?.生命之火 === true || !!unit?.状态效果?.[LIFE_FIRE_KEY];
+  }
+  function lifeFireOptions(unit = {}, worldSnapshot = {}, battleIntent = {}) {
+    // As any skill with a lasting after-battle cost (skillPermittedAtIntensity): only once its side is losing badly (sideDesperate).
+    // 原作（龙王传说 1106 章血九）：「任何魂师修为超过五环以上，都有点燃自身生命之火的能力」— the fifth ring at level 51 (整十级少一环).
+    const level = Number(unit?.属性?.等级 ?? unit?.等级 ?? unit?.level ?? 0) || 0;
+    if (!hasMartialSpirit(unit) || level < LIFE_FIRE_MIN_LEVEL || lifeFireLit(unit) || !['DUEL', 'DEATH'].includes(battleIntensity(worldSnapshot, battleIntent)) ||
+      !sideDesperate(worldSnapshot, unit)) return [];
+    return [{ slot: '生命之火', name: '点燃生命之火', windup: 0, aftermath: LIFE_FIRE_AFTERMATH,
+      effect: { 原型: '状态施加', 目标: '自身', 状态: '生命之火', 持续回合: ARMOUR_LASTING_ROUNDS, 触发方式: '立即触发', 生效方式: '独立生效' } }];
+  }
+  // Lights it on `unit` in place: the state, the panel and the pools; false when it is already burning.
+  function igniteLifeFire(unit = {}, currentTick = 0) {
+    if (lifeFireLit(unit)) return false;
+    const before = Object.fromEntries(['魂力', '精神力'].map(resource => [resource, readResource(unit, resource)]));
+    unit.状态效果 = { ...(unit.状态效果 || {}), [LIFE_FIRE_KEY]: { 状态: '生命之火', 状态名称: '生命之火', 类型: 'buff', duration: ARMOUR_LASTING_ROUNDS,
+      持续回合: ARMOUR_LASTING_ROUNDS, 描述: `燃烧生命之火：魂力、精神力、体力上限与力量、防御、敏捷翻倍；每回合末透支 ${Math.round(LIFE_FIRE_DRAIN * 100)}% 生命上限直至烧尽；战斗结束时熄灭（永久跌落 3 级，陷入濒死）`,
+      面板修改比例: { ...LIFE_FIRE_PANEL }, 面板固定修正: {}, 战斗效果: { dot_damage_ratio: LIFE_FIRE_DRAIN }, __生命之火: true } };
+    unit.final = { ...(unit.final || {}), ...buildNumericCombatStats(unit, currentTick) };
+    // 魂力 and 精神力 doubled with their maxima; 体力 takes what its maximum gained (syncStaminaMaxGain, as any rise of it).
+    for (const [resource, value] of Object.entries(before)) setResource(unit, resource, Math.min(readResourceMax(unit, resource), value * 2));
+    syncStaminaMaxGain(unit);
+    unit.血脉之力 = { ...(unit.血脉之力 && typeof unit.血脉之力 === 'object' ? unit.血脉之力 : {}), 生命之火熄灭结算: true };
+    return true;
+  }
   // 战斗暴露（信息模型 0c，用户 2026-11-17「交叉对战想储存起来太繁琐」→ 每个角色一个位图）: the skills a unit has released in
   // front of others, as bits of its 战斗暴露 (base36, kept in the save; only ever grows). A skill's bit is its place: 0–9 the
   // 1st 武魂's 1st–10th ring, 10–19 the 2nd's, 20–21 their 武魂真身, then its 自创魂技 and 融合技 by name. 魂骨 and equipment
@@ -9027,7 +9065,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         // 释放斗铠 / 机甲的内部结算（S80-A armourReleaseEffect）：不在技能表里，设计台与生成都用不到。
         // 开武魂（spiritReleaseOptions）同样是内部状态「武魂已释放」。
         const internal = prototype === '结算修正' && field === '结算' && normalized === '装备吸收' && !!effect?.__装备释放 ||
-          prototype === '状态施加' && field === '状态' && normalized === '武魂已释放';
+          prototype === '状态施加' && field === '状态' && ['武魂已释放', '生命之火'].includes(normalized);
         if (normalized && !internal && !(accepted ? accepted.has(normalized) : fieldDefinition.选项.includes(normalized))) {
           throw new Error(`battle_preview_unknown_enum:${prototype}:${field}:${normalized}`);
         }
@@ -11230,6 +11268,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (!derived.position_once && derived.counter_window_closed !== true && derived.no_cover !== true) return false;
     }
     // 开武魂: 「武魂已释放」 takes the 「武魂未释放」 key (spiritReleasedMarker), so the round start does not lay it again.
+    // 点燃生命之火 (igniteLifeFire): its own key, panel and pools.
+    if (isLifeFireEffect(effect)) return igniteLifeFire(unit, 0);
     if (isSpiritReleaseEffect(effect)) {
       if (!spiritUnreleased(unit)) return false;
       unit.状态效果 = { ...(unit.状态效果 || {}), [SPIRIT_UNRELEASED_KEY]: spiritReleasedMarker(unit) };
@@ -15013,7 +15053,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             }, context.effectInstanceId, (key, state) => replacedStates.push([key, state]), context.rootActionId);
             // A state that moves the panel (封禁装备's 面板固定修正) takes effect at once, as a 属性修正 does.
             // 开武魂 lifts 「武魂未释放」's halving the same way (addState puts 「武魂已释放」 in its key).
-            if (marginal && (statePanelChanges(sourcedEffect) || isSpiritReleaseEffect(sourcedEffect))) {
+            if (marginal && (statePanelChanges(sourcedEffect) || isSpiritReleaseEffect(sourcedEffect) || isLifeFireEffect(sourcedEffect))) {
               unit.final = { ...unit.final, ...buildNumericCombatStats(unit, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0)) };
               syncStaminaMaxGain(unit);
             }
@@ -25446,6 +25486,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     spiritUnreleased,
     spiritBlocksSkill,
     spiritReleasedMarker,
+    lifeFireOptions,
+    lifeFireLit,
+    igniteLifeFire,
     exposedSkills,
     recordExposure,
     SPIRIT_UNRELEASED_KEY,
