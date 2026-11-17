@@ -9085,7 +9085,7 @@
     if (!previewRuntime.unitId(actor) || !previewRuntime.unitId(target) || actor === target || !(actualDamage > 0)) return [];
     const runtime = ensureCombatRuntime(combatData);
     if (Number(runtime.counterDamageDepth || 0) > 0) return [];
-    const ratio = previewRuntime.counterDamageRatio(target);
+    const ratio = previewRuntime.counterDamageRatio(target, input?.effect ? { attacker: actor, incomingEffect: input.effect } : {});
     if (!(ratio > 0)) return [];
     // 击倒线: 反伤 is the target's doing, held at the line.
     const reflectFloor = hostileSource(combatData, target, actor) ? knockdownFloorOf(combatData, actor) : 0;
@@ -12766,6 +12766,7 @@
               combatData,
               actor,
               target,
+              effect,
               action,
               actionEvent,
               damageEvent,

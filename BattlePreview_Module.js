@@ -6507,8 +6507,13 @@
       Boolean(findPassiveReviveCandidate(unit)));
   }
 
-  function counterDamageRatio(unit = {}) {
+  // options.attacker / options.incomingEffect（第 14 题：天魔倒转只反近身）: a 反伤 limited to an attack type (限定攻击类型), an element or a
+  // kind of attacker throws back only matching hits — as 免伤 does (blockStateAgainst). Without the hit (a unit's standing summary) it counts.
+  function counterDamageRatio(unit = {}, options = {}) {
+    const attacker = options?.attacker, incomingEffect = options?.incomingEffect;
     return Object.values(unit.状态效果 || {}).reduce((total, state) => {
+      if (attacker !== undefined && !unitSourceRestrictionMatches(state, attacker)) return total;
+      if (incomingEffect && !limitedEntryMatches(incomingEffect, { 限定元素: state?.限定元素, 限定攻击类型: state?.限定攻击类型 }, attacker)) return total;
       const effects = state?.战斗效果 || {};
       const explicit = Math.max(0, Number(effects.counter_attack_ratio || effects.damage_reflect_ratio || 0));
       const sourceText = [state?.__equipmentSkillName, state?.来源技能, state?.状态, state?.状态名称]
@@ -6560,9 +6565,9 @@
   // What follows a hit on another unit beside the damage itself: the share thrown back (反伤, `ratio`) and 伤害吸收.
   // null: nothing does.
   // `floor`: the line 反伤 on `actor` is held at (indirectHpFloor, type1c).
-  function damageFollowUp(actor = {}, target = {}, skill = null, floor = 0) {
+  function damageFollowUp(actor = {}, target = {}, skill = null, floor = 0, effect = null) {
     if (unitId(actor) === unitId(target)) return null;
-    const ratio = counterDamageRatio(target), absorption = damageAbsorptionRatios(actor, target, skill);
+    const ratio = counterDamageRatio(target, effect ? { attacker: actor, incomingEffect: effect } : {}), absorption = damageAbsorptionRatios(actor, target, skill);
     return ratio > 0 || absorption.soak > 0 || absorption.drain > 0 || absorption.gains || absorption.store || absorption.release
       ? { actor, target, ratio, floor: Math.max(0, Number(floor) || 0), ...absorption } : null;
   }
@@ -11330,6 +11335,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         ...(effect?.资源 !== undefined ? { 资源: cloneValue(effect.资源) } : {}),
         ...(lockRules.length ? { 锁定类型: lockRules[0].锁定类型, 资源锁定规则: lockRules } : {}),
         ...(effect?.触发消耗 !== undefined ? { 触发消耗: cloneValue(effect.触发消耗) } : {}),
+        ...(effect?.限定攻击类型 !== undefined ? { 限定攻击类型: cloneValue(effect.限定攻击类型) } : {}),
         战斗效果: { ...(existing?.战斗效果 || {}), ...deriveStateCombatEffect(effect) },
       };
       return true;
@@ -11366,6 +11372,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ...(effect?.资源 !== undefined ? { 资源: cloneValue(effect.资源) } : {}),
       ...(lockRules.length ? { 锁定类型: lockRules[0].锁定类型, 资源锁定规则: lockRules } : {}),
       ...(effect?.触发消耗 !== undefined ? { 触发消耗: cloneValue(effect.触发消耗) } : {}),
+      // 反伤限定攻击类型（第 14 题）：counterDamageRatio 只让对应的来招反伤。
+      ...(effect?.限定攻击类型 !== undefined ? { 限定攻击类型: cloneValue(effect.限定攻击类型) } : {}),
       __previewApplicationProbability: clamp(Number(effect?.__previewApplicationProbability ?? 1), 0, 1),
       战斗效果: deriveStateCombatEffect(effect),
       ...(effect?.属性快照 && typeof effect.属性快照 === 'object' ? { 属性快照: cloneValue(effect.属性快照) } : {}),
@@ -13216,7 +13224,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const shieldProfile = incomingShieldProfile(target, input.effect, actor);
       const hpBefore = readHp(target), shieldBefore = shieldProfile.shieldBefore;
       const hpDamageLimit = Math.max(0, hpBefore - input.nonlethalHpFloor);
-      const ratio = actorId !== targetId ? counterDamageRatio(target) : 0;
+      const ratio = actorId !== targetId ? counterDamageRatio(target, { attacker: actor, incomingEffect: input.effect }) : 0;
       const expectation = expectedSegmentedDamageOutcome({ segments: 1, perSegmentDamage: input.perSegmentDamage,
         hitProbability: input.hitProbability, applicationProbability: 1, ...shieldProfile, hpDamageLimit, preserveHitOutcome: true,
         deathSaveCount: input.nonlethalHpFloor > 0 ? 0 : deathSaveCount(target, { segments: 1, actionId: context.rootActionId }),
@@ -13784,9 +13792,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             reactionDamageMultiplier * environmentDamageMultiplier,
           );
           const reviveTarget = !nonlethalHpFloor && segments * perSegmentDamage >= shieldBefore + hpDamageLimit && hasDamageRevival(currentTarget) ? currentTarget : null;
-          const reflectRatio = unitId(actor) !== unitId(target) ? counterDamageRatio(currentTarget) : 0;
+          const reflectRatio = unitId(actor) !== unitId(target) ? counterDamageRatio(currentTarget, { attacker: actor, incomingEffect: effect }) : 0;
           const reflection = damageFollowUp(overlay.readUnit(unitId(actor)), currentTarget, context.declaration?.skill,
-            indirectHpFloor(context?.worldSnapshot || {}, context?.battleIntent || {}, actor, unitId(currentTarget)));
+            indirectHpFloor(context?.worldSnapshot || {}, context?.battleIntent || {}, actor, unitId(currentTarget)), effect);
           const requiredOutcomeKey = String(
             context?.requiredOutcomeKeyByTarget?.get(unitId(target)) || ''
           ).trim();
