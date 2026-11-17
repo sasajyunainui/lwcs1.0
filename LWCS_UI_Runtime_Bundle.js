@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:3a7ab2b86114d7997e52efa71f2ebd4abfbfe0588597e12628cc11524a69319e|cockpit/designer-model.js:cbbb8156854ed85b560637420324e21db9e899fb9cbef68ba1ccca6d0d217fc2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:208a9ca0c49afc810f99cfe3d1cd49d787bf89923ac828a5e98dbca601754178|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:50555fda89f1e490214dc674ce3ff8c7c4d881ac6cdcc42d5cf6659351a36e93|BattleRuntime_Module.js:0bf7157497f8b71e8f782c327b5b36c218491a5ce26aad447aeae2b70c0c6f81|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:3a7ab2b86114d7997e52efa71f2ebd4abfbfe0588597e12628cc11524a69319e|cockpit/designer-model.js:cbbb8156854ed85b560637420324e21db9e899fb9cbef68ba1ccca6d0d217fc2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:208a9ca0c49afc810f99cfe3d1cd49d787bf89923ac828a5e98dbca601754178|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:ea417814d4a4496dca1946d7b803e5d203c4f2afd0cad46a75397ad9ef7a3e0a|BattleRuntime_Module.js:0bf7157497f8b71e8f782c327b5b36c218491a5ce26aad447aeae2b70c0c6f81|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -96726,6 +96726,80 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // the kind of its first (main) effect: 伤害 (on an enemy), 硬控 / 软控 (a state, interference or debuff on an enemy: one that
   // takes the turn, or one that does not), 治疗 (HP back to one's side), 自身增益 / 友方增益 (a buff, shield or modifier on
   // itself / its side), 召唤, 造物, 其他. The likelihood of each kind by system is SKILL_CLASS_LIKELIHOOD (the game's generator).
+  // 系别信念（信息模型 0b，用户 2026-11-17「开武魂后对方能看出自己武魂倾向……根据倾向猜测自身是什么系别……根据释放的魂技原型
+  // 可进一步加深判断……结果自己其实是控制系」）: an enemy's system is not public. Before its 武魂 is out it is the battles' own
+  // spread (SYSTEM_PRIOR_UNSEEN); once out, its look (表象名称) gives a leaning (SPIRIT_TENDENCY_KEYWORDS, the first that matches)
+  // and the spread of systems behind that leaning (SYSTEM_PRIOR_BY_TENDENCY); each skill it is seen to release then weighs each
+  // system by how often that kind of skill is in its kits (SKILL_CLASS_LIKELIHOOD) — so a 控制系 that opens with a buff on itself
+  // and a hit is taken for a 强攻系 until its controls tell. Tables: scratchpad c13/info/spirit-tendency.cjs (the four role
+  // libraries' 517 looks and systems, +1 smoothing) and skill-class-calibration.mjs (the game's generator, 5 levels × 12 a cell,
+  // +0.5 smoothing); rerun them when the libraries or the generator change.
+  const BELIEF_SYSTEMS = Object.freeze(['强攻系', '敏攻系', '防御系', '控制系', '元素系', '精神系', '辅助系', '治疗系', '召唤系', '食物系']);
+  const SPIRIT_TENDENCY_KEYWORDS = Object.freeze([
+    ['食物', /包子|香肠|馒头|鸡腿|糖|雪茄|饼|肉|酒/],
+    ['召唤', /幡|神笔|召唤|之门/],
+    ['精神', /眼|瞳|眸|脑|识|精神|灵魂本源|梦/],
+    ['治疗', /针|莲|生命|祈愿|生机|翡翠|雪莲/],
+    ['辅助', /塔|炉|光环|冠|书|彩虹|樱花|仙草|麒麟|阁/],
+    ['防御', /盾|甲|龟|犀|猛犸|象|鼎|壁|鳄|刺豚|金身/],
+    ['控制', /草|藤|锁|链|绳|网|铃|镜|盘|棋|琴|箫|笛|埙|珠|伞|钟|罩|扇|蛇|狐|蝶|蛛|蚕|海棠|含羞|葫芦|天书|球|旋涡|沙|雾|偶|傀/],
+    ['敏捷', /匕|刺|镰|鹰|燕|猫|豹|隼|蜂|影|风|翼|翅|鸟|雀|镖|兔|螳螂|蝙蝠|飞|闪/],
+    ['元素', /冰|雷|电|火|焰|炎|水|潮|土|岩|光|暗|月|日|阳|元素/],
+    ['攻击', /剑|刀|枪|戟|锤|槌|斧|棍|棒|矛|拳|爪|弓|镰刀|龙|虎|熊|狮|猿|狼|牛|鲸|鲨|兽|魔|神|王|皇/],
+  ]);
+  const SYSTEM_PRIOR_UNSEEN = Object.freeze({ 强攻系: 0.493, 敏攻系: 0.122, 防御系: 0.036, 控制系: 0.204, 元素系: 0.025, 精神系: 0.016, 辅助系: 0.073, 治疗系: 0.012, 召唤系: 0.009, 食物系: 0.009 });
+  const SYSTEM_PRIOR_BY_TENDENCY = Object.freeze({
+    控制: { 强攻系: 0.253, 敏攻系: 0.023, 防御系: 0.011, 控制系: 0.575, 元素系: 0.057, 精神系: 0.034, 辅助系: 0.011, 治疗系: 0.011, 召唤系: 0.011, 食物系: 0.011 },
+    无: { 强攻系: 0.422, 敏攻系: 0.088, 防御系: 0.027, 控制系: 0.245, 元素系: 0.007, 精神系: 0.027, 辅助系: 0.156, 治疗系: 0.014, 召唤系: 0.007, 食物系: 0.007 },
+    攻击: { 强攻系: 0.796, 敏攻系: 0.049, 防御系: 0.015, 控制系: 0.068, 元素系: 0.034, 精神系: 0.005, 辅助系: 0.015, 治疗系: 0.005, 召唤系: 0.01, 食物系: 0.005 },
+    元素: { 强攻系: 0.591, 敏攻系: 0.064, 防御系: 0.009, 控制系: 0.2, 元素系: 0.073, 精神系: 0.009, 辅助系: 0.027, 治疗系: 0.009, 召唤系: 0.009, 食物系: 0.009 },
+    敏捷: { 强攻系: 0.15, 敏攻系: 0.688, 防御系: 0.013, 控制系: 0.037, 元素系: 0.013, 精神系: 0.013, 辅助系: 0.05, 治疗系: 0.013, 召唤系: 0.013, 食物系: 0.013 },
+    食物: { 强攻系: 0.053, 敏攻系: 0.053, 防御系: 0.053, 控制系: 0.053, 元素系: 0.053, 精神系: 0.053, 辅助系: 0.211, 治疗系: 0.053, 召唤系: 0.053, 食物系: 0.368 },
+    辅助: { 强攻系: 0.069, 敏攻系: 0.034, 防御系: 0.034, 控制系: 0.103, 元素系: 0.034, 精神系: 0.034, 辅助系: 0.586, 治疗系: 0.034, 召唤系: 0.034, 食物系: 0.034 },
+    召唤: { 强攻系: 0.118, 敏攻系: 0.059, 防御系: 0.059, 控制系: 0.118, 元素系: 0.059, 精神系: 0.059, 辅助系: 0.059, 治疗系: 0.059, 召唤系: 0.353, 食物系: 0.059 },
+    精神: { 强攻系: 0.143, 敏攻系: 0.029, 防御系: 0.057, 控制系: 0.429, 元素系: 0.029, 精神系: 0.2, 辅助系: 0.029, 治疗系: 0.029, 召唤系: 0.029, 食物系: 0.029 },
+    防御: { 强攻系: 0.156, 敏攻系: 0.031, 防御系: 0.594, 控制系: 0.031, 元素系: 0.031, 精神系: 0.031, 辅助系: 0.031, 治疗系: 0.031, 召唤系: 0.031, 食物系: 0.031 },
+    治疗: { 强攻系: 0.105, 敏攻系: 0.053, 防御系: 0.053, 控制系: 0.053, 元素系: 0.053, 精神系: 0.053, 辅助系: 0.105, 治疗系: 0.421, 召唤系: 0.053, 食物系: 0.053 },
+  });
+  const SKILL_CLASS_LIKELIHOOD = Object.freeze({
+    强攻系: { 伤害: 0.384, 硬控: 0.008, 软控: 0.229, 治疗: 0.002, 自身增益: 0.247, 友方增益: 0.083, 召唤: 0.008, 造物: 0.002, 其他: 0.038 },
+    敏攻系: { 伤害: 0.219, 硬控: 0.005, 软控: 0.144, 治疗: 0.002, 自身增益: 0.425, 友方增益: 0.02, 召唤: 0.023, 造物: 0.002, 其他: 0.162 },
+    防御系: { 伤害: 0.09, 硬控: 0.005, 软控: 0.126, 治疗: 0.002, 自身增益: 0.46, 友方增益: 0.256, 召唤: 0.008, 造物: 0.002, 其他: 0.053 },
+    控制系: { 伤害: 0.038, 硬控: 0.059, 软控: 0.67, 治疗: 0.002, 自身增益: 0.107, 友方增益: 0.026, 召唤: 0.008, 造物: 0.002, 其他: 0.089 },
+    元素系: { 伤害: 0.28, 硬控: 0.004, 软控: 0.349, 治疗: 0.001, 自身增益: 0.199, 友方增益: 0.073, 召唤: 0.025, 造物: 0.001, 其他: 0.064 },
+    精神系: { 伤害: 0.174, 硬控: 0.05, 软控: 0.495, 治疗: 0.002, 自身增益: 0.116, 友方增益: 0.05, 召唤: 0.041, 造物: 0.002, 其他: 0.071 },
+    辅助系: { 伤害: 0.026, 硬控: 0.002, 软控: 0.047, 治疗: 0.002, 自身增益: 0.135, 友方增益: 0.607, 召唤: 0.023, 造物: 0.002, 其他: 0.159 },
+    治疗系: { 伤害: 0.032, 硬控: 0.014, 软控: 0.108, 治疗: 0.184, 自身增益: 0.239, 友方增益: 0.336, 召唤: 0.029, 造物: 0.002, 其他: 0.056 },
+    召唤系: { 伤害: 0.029, 硬控: 0.005, 软控: 0.056, 治疗: 0.002, 自身增益: 0.311, 友方增益: 0.093, 召唤: 0.472, 造物: 0.002, 其他: 0.032 },
+    食物系: { 伤害: 0.019, 硬控: 0.001, 软控: 0.013, 治疗: 0.001, 自身增益: 0.061, 友方增益: 0.001, 召唤: 0.004, 造物: 0.886, 其他: 0.01 },
+  });
+  // The look of a unit's 武魂 once it is out (BattlePreview spiritReleasedMarker, __武魂外观), and the leaning read off it.
+  function spiritLeaning(unit = {}) {
+    const marker = unit?.状态效果?.[preview.SPIRIT_UNRELEASED_KEY];
+    if (marker?.__武魂已释放 !== true) return null;
+    const look = (Array.isArray(marker.__武魂外观) ? marker.__武魂外观 : []).map(entry => String(entry?.表象名称 || '').trim()).find(Boolean) || '';
+    return (SPIRIT_TENDENCY_KEYWORDS.find(([, pattern]) => pattern.test(look)) || ['无'])[0];
+  }
+  // The spread of systems the deciding side gives an enemy: its leaning's, weighed by the skills it has been seen to release.
+  function beliefSystemPosterior(unit = {}, beliefState = {}) {
+    const leaning = spiritLeaning(unit);
+    const weights = { ...(leaning ? SYSTEM_PRIOR_BY_TENDENCY[leaning] || SYSTEM_PRIOR_BY_TENDENCY.无 : SYSTEM_PRIOR_UNSEEN) };
+    for (const entry of beliefState?.publicResponses?.[preview.unitId(unit)] || []) {
+      const skill = entry?.declaration?.skill;
+      if (String(entry?.declaration?.actionKind || '').trim() !== 'RELEASE_SKILL' || !skill || typeof skill !== 'object') continue;
+      const kind = skillObservationClass(skill);
+      let total = 0;
+      for (const name of BELIEF_SYSTEMS) total += (weights[name] *= SKILL_CLASS_LIKELIHOOD[name]?.[kind] ?? 0.01);
+      if (!(total > 0)) return { ...SYSTEM_PRIOR_UNSEEN };
+      for (const name of BELIEF_SYSTEMS) weights[name] /= total;
+    }
+    return weights;
+  }
+  const beliefMostLikelySystem = weights => Object.entries(weights).reduce((best, entry) => entry[1] > best[1] ? entry : best, ['', -1])[0];
+  // A system's combat panel against the level's typical one (the believed enemy's str / def / agi).
+  const systemPanelScale = system => /敏攻/.test(system) ? { str: 0.95, def: 0.82, agi: 1.28 }
+    : /防御/.test(system) ? { str: 0.9, def: 1.3, agi: 0.78 }
+      : /辅助|治疗|食物/.test(system) ? { str: 0.78, def: 0.9, agi: 0.95 } : { str: 1.08, def: 1, agi: 0.96 };
   // 应对时顺带开武魂（用户 2026-11-17）: an enemy with its 武魂 unreleased and not hidden releases it as it answers a move
   // (BattleRuntime releaseSpiritInPlace), so a move on it is valued against it released.
   const spiritOpensOnAnswer = unit => !!preview.spiritUnreleased?.(unit) && unit?.__battleRuntime?.spiritHidden !== true;
@@ -96822,15 +96896,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         throw new Error(`battle_decision_base_stats_invalid:${perceivedLevel}`);
       }
       const combatBase = Math.cbrt(baseStats.str * baseStats.def * baseStats.agi);
-      const system = String(beliefUnit.visibleSystem || '').trim();
       const publicUnitRole = String(beliefUnit.publicUnitRole || '').trim().toUpperCase();
-      const systemScale = /敏攻/.test(system)
-        ? { str: 0.95, def: 0.82, agi: 1.28 }
-        : /防御/.test(system)
-          ? { str: 0.9, def: 1.3, agi: 0.78 }
-          : /辅助|治疗|食物/.test(system)
-            ? { str: 0.78, def: 0.9, agi: 0.95 }
-            : { str: 1.08, def: 1, agi: 0.96 };
+      // 系别信念（0b）: the system as the deciding side believes it (beliefSystemPosterior) — the pictured panel, the typical attack
+      // and the agility correction are the believed systems' blended by their weights; 系别 names the likeliest.
+      const systemBelief = publicUnitRole === 'SUMMON' ? { [String(beliefUnit.visibleSystem || '').trim()]: 1 } : beliefSystemPosterior(sourceUnit, beliefState);
+      const system = beliefMostLikelySystem(systemBelief);
+      const blend = read => Object.entries(systemBelief).reduce((sum, [name, weight]) => sum + weight * read(name), 0);
+      const systemScale = Object.fromEntries(['str', 'def', 'agi'].map(key => [key, blend(name => systemPanelScale(name)[key])]));
+      const typicalAttack = blend(name => typicalAttackRatio(perceivedLevel, name));
       const typical = typicalStatRatio(perceivedLevel);
       const hpMax = toward(baseStats.vit_max * typical.hp_max, preview.readHpMax(sourceUnit));
       const hp = hpMax * clamp(beliefUnit.hpRatio ?? 1, 0, 1);
@@ -96868,7 +96941,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           : {}),
       }]));
       // 接战链 阶段 2e/2f: the agility pictured, and the bounds settled clashes and preemptions put on it.
-      const pictureAgility = toward(combatBase * systemScale.agi * typical.agi * systemAgilityCorrection(perceivedLevel, system), truePanel('agi'));
+      const pictureAgility = toward(combatBase * systemScale.agi * typical.agi * blend(name => systemAgilityCorrection(perceivedLevel, name)), truePanel('agi'));
       const boundLow = Number(beliefState?.agilityBounds?.[id]?.lo) || 0, boundHigh = Number(beliefState?.agilityBounds?.[id]?.hi) || Infinity;
       const projected = {
         id,
@@ -96926,16 +96999,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         // 对方也会试探（R20 底牌，同日）: an enemy that has not seen the actor either opens with a probe more than with its routine
         // skill — the routine attack is drawn toward the basic attack by the same reveal share, fading with the exchanges.
         routine_attack_ratio: publicUnitRole === 'SUMMON' ? 1 : 1 + (Math.max(1, clarity > 0
-          ? toward(typicalAttackRatio(perceivedLevel, system), knownRoutineAttackRatio(sourceUnit))
-          : typicalAttackRatio(perceivedLevel, system)) - 1) * (1 - BELIEF_PROBE_SHARE * (1 - clarity) ** 2),
+          ? toward(typicalAttack, knownRoutineAttackRatio(sourceUnit))
+          : typicalAttack) - 1) * (1 - BELIEF_PROBE_SHARE * (1 - clarity) ** 2),
         // 不打试探折扣的常规攻击：R20 推演的格子用它（r20FullStrength）——试探只是开头几次交手的样子。
         __routine_full_ratio: publicUnitRole === 'SUMMON' ? 1 : Math.max(1, clarity > 0
-          ? toward(typicalAttackRatio(perceivedLevel, system), knownRoutineAttackRatio(sourceUnit))
-          : typicalAttackRatio(perceivedLevel, system)),
+          ? toward(typicalAttack, knownRoutineAttackRatio(sourceUnit))
+          : typicalAttack),
         // S84 (11-14 推演—实际对账): an unseen 控制系 meets 16% of hits with a skill (38 of 242) — mostly a control thrown first —
         // and those took 12% → 7% of its HP; the table, seeing no skills, gave it 4%. Its own controls take over as they are
         // shown (r20Shown), so the expectation fades with the exchanges seen.
-        ...(publicUnitRole !== 'SUMMON' && /控制/.test(system) ? { routine_preempt_share: BELIEF_ROUTINE_PREEMPT_SHARE * (1 - clarity) } : {}),
+        ...(publicUnitRole !== 'SUMMON' && (systemBelief.控制系 || 0) > 0.01 ? { routine_preempt_share: BELIEF_ROUTINE_PREEMPT_SHARE * (1 - clarity) * systemBelief.控制系 } : {}),
+        // 系别信念（0b）: the spread behind 系别 (信息模型 A/B read it).
+        __systemBelief: systemBelief,
         // How well the deciding unit has seen it (exchanges ÷ (exchanges + prior)): the price of spending against it (R20_PROBE_PREMIUM).
         __clarity: publicUnitRole === 'SUMMON' ? 1 : clarity,
         // Its strength as pictured (谨慎: an enemy gauged as strong as the actor or stronger calls for more care, R20_CAUTION_SLOPE).
@@ -169220,6 +169295,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     affordablePreparedSkills,
     knownRoutineAttackRatio,
     skillObservationClass,
+    beliefSystemPosterior,
     typicalAttackRatio,
     projectCooperativeSummonDeclaration,
     actionCompletesWithinBattleHorizon,
