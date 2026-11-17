@@ -25105,7 +25105,7 @@ ${播报文本}
                         <div class="battle-terminal-row">
                           <span class="battle-terminal-label">续推上限</span>
                           <label class="battle-number-field">
-                            <input id="ui-auto-round-max" type="number" min="1" max="20" step="1" inputmode="numeric" value="4">
+                            <input id="ui-auto-round-max" type="number" min="1" max="100" step="1" inputmode="numeric" value="4">
                             <em>回合</em>
                           </label>
                         </div>
@@ -27326,7 +27326,7 @@ ${播报文本}
     }
     const runtimeState = runtime.ensureCombatRuntime(combatData);
     const maxRounds = battleMode === 'multi_round'
-      ? Math.max(1, Math.floor(toNumber(options.rounds || combatData?.胜负条件?.maxRounds, 20)))
+      ? Math.max(1, Math.floor(toNumber(options.rounds || combatData?.胜负条件?.maxRounds, 100)))
       : 1;
     const autoContinueSource = options.autoContinueConfig && typeof options.autoContinueConfig === 'object'
       ? options.autoContinueConfig
@@ -27858,10 +27858,10 @@ ${播报文本}
       const 请求续推配置 = request?.autoContinueConfig && typeof request.autoContinueConfig === 'object'
         ? request.autoContinueConfig
         : {};
-      // 用户 2026-11-14："胜负条件的上限不删，固定上限如果有的话删掉"：20 只是没给时的默认，不再夹紧。
+      // 用户 2026-11-14："胜负条件的上限不删，固定上限如果有的话删掉"：100（11-17「回合数上限设到100吧」）只是没给时的默认，不再夹紧。
       const 回合上限 = Math.max(1, Math.floor(toNumber(
         请求续推配置.maxRounds,
-        toNumber(战斗数据?.胜负条件?.maxRounds, 20),
+        toNumber(战斗数据?.胜负条件?.maxRounds, 100),
       )));
       const 停推阈值百分比 = Math.max(0, Math.min(100, toNumber(
         请求续推配置.stopDamagePercent,
@@ -28659,7 +28659,7 @@ ${播报文本}
         }).filter(([id]) => id));
       return normalized;
     };
-    const maxRounds = Math.max(1, Math.floor(toNumber(existing?.maxRounds ?? existing?.回合上限 ?? detail?.最大回合 ?? detail?.回合上限, 20)));
+    const maxRounds = Math.max(1, Math.floor(toNumber(existing?.maxRounds ?? existing?.回合上限 ?? detail?.最大回合 ?? detail?.回合上限, 100)));
     if ([...safeVictory, ...safeDefeat].some(condition => condition?.type === 'ROUND_REACHED' && Number(condition?.round || 0) > maxRounds)) return null;
     const victoryLogicInput = existing?.victory?.logic || existing?.胜利?.逻辑 || detail?.胜利条件关系;
     const defeatLogicInput = existing?.defeat?.logic || existing?.失败?.逻辑 || detail?.失败条件关系;
@@ -30779,7 +30779,7 @@ ${播报文本}
             失败条件: 克隆战斗条件输入(payload.失败条件),
             胜利条件关系: toText(payload.胜利条件关系, 'OR'),
             失败条件关系: toText(payload.失败条件关系, 'OR'),
-            最大回合: Math.max(1, Math.floor(toNumber(payload.最大回合 ?? payload.回合上限, 20))),
+            最大回合: Math.max(1, Math.floor(toNumber(payload.最大回合 ?? payload.回合上限, 100))),
             // 接战链 阶段三: "裁判：角色名" or "裁判：名称|等级=60" (解析模块路由裁判); none given, no referee.
             ...(解析模块路由裁判(payload.裁判) ? { 裁判: 解析模块路由裁判(payload.裁判) } : {}),
             // 先攻（11-15 用户定的推进预设行）: the ambushers' names, 、-separated; left out, a fair start.

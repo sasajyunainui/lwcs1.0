@@ -2589,6 +2589,8 @@
         const value = sourceUnit?.__battleRuntime?.[stance];
         if (value && typeof value === 'object') projected.__battleRuntime = { ...projected.__battleRuntime, [stance]: { ...value } };
       }
+      // 交手约定·只硬接 is known to everyone: a hit that does not break its guard does nothing (BattlePreview calculateDefenseDamageMultiplier).
+      if (sourceUnit?.__battleRuntime?.blockOnly === true) projected.__battleRuntime = { ...projected.__battleRuntime, blockOnly: true };
       // A visible state that changes the panel (visibleStates panelRatios / panelFixed) counts in it: a unit with no final
       // panel is read at its bare fields (BattlePreview readCombatStat), so an enemy's +40% buff in plain sight hit no
       // harder (11-16 第 5 题). The panel is built as the engine builds it.
@@ -6728,9 +6730,11 @@
       const ownSide = sideOf(worldSnapshot, termsActor);
       const hostileIds = new Set(aliveEntries(worldSnapshot).filter(entry => entry.side !== ownSide).map(entry => preview.unitId(entry.unit)));
       const answering = ['REACTION', 'COUNTER'].includes(String(input?.actionOpportunity?.role || '').trim().toUpperCase());
+      const blockOffered = candidates.some(candidate => String(candidate?.declaration?.actionKind || '').trim().toUpperCase() === 'DEFEND' && !candidate?.declaration?.engagement);
       const strikes = candidate => {
         const declaration = candidate?.declaration || {}, kind = String(declaration.actionKind || '').trim().toUpperCase();
-        if (['BASIC_ATTACK', 'COUNTER'].includes(kind) || declaration.engagement) return true;
+        // 佯装蓄力 is a strike in waiting: its kept skill meets whoever comes (BattleRuntime feintMeetDeclaration).
+        if (['BASIC_ATTACK', 'COUNTER', 'FEINT'].includes(kind) || declaration.engagement) return true;
         if (!['RELEASE_SKILL', 'USE_ITEM'].includes(kind)) return false;
         const targets = Array.isArray(declaration.targetIds) ? declaration.targetIds.map(String) : [];
         return targets.some(id => hostileIds.has(id)) || !targets.length && /敌/.test(String(declaration.skill?.目标 || ''));
@@ -6738,7 +6742,8 @@
       // 只硬接 also takes no evading stance of its own (it would only prepare the evasion it may not make).
       const refused = candidate => terms.noStrike && strikes(candidate) ||
         terms.blockOnly && String(candidate?.declaration?.actionKind || '').trim().toUpperCase() === 'EVADE' || terms.blockOnly && answering &&
-        !(candidate?.voluntaryOpportunityPass === true || candidate?.counterDeclineFallback === true ||
+        // 只硬接 blocks: letting a move land unguarded only when no block is offered at all.
+        !(candidate?.voluntaryOpportunityPass === true && !blockOffered || candidate?.counterDeclineFallback === true ||
           String(candidate?.declaration?.actionKind || '').trim().toUpperCase() === 'DEFEND' && !candidate?.declaration?.engagement);
       for (const candidate of candidates.filter(refused)) input?.rejectionCollector?.({
         actionKind: candidate.declaration?.actionKind, sourceActionId: String(candidate.declaration?.actionId || candidate.candidateId || '').trim(),

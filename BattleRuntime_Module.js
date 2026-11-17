@@ -1333,8 +1333,9 @@
     listCombatUnits(combatData).forEach(unit => {
       // 交手约定·只硬接（BattlePreview engagementTerms）: it does not release its 武魂 as it answers (the answer node and the
       // decision's spiritOpensOnAnswer both read spiritHidden).
-      if (previewRuntime.engagementTerms?.(combatData, unit)?.blockOnly && unit.__battleRuntime?.spiritHidden !== true) {
-        unit.__battleRuntime = { ...(unit.__battleRuntime && typeof unit.__battleRuntime === 'object' ? unit.__battleRuntime : {}), spiritHidden: true };
+      // blockOnly: a hit that does not break its guard does nothing (BattlePreview calculateDefenseDamageMultiplier).
+      if (previewRuntime.engagementTerms?.(combatData, unit)?.blockOnly && unit.__battleRuntime?.blockOnly !== true) {
+        unit.__battleRuntime = { ...(unit.__battleRuntime && typeof unit.__battleRuntime === 'object' ? unit.__battleRuntime : {}), spiritHidden: true, blockOnly: true };
       }
       // 开武魂（信息模型 0a）: 「武魂未释放」 the same way (BattlePreview spiritUnreleasedStates).
       // 压制修为（交手约定）: 「压制修为」 too (BattlePreview suppressionStates; the typical panel by level from BattleDecision).
@@ -5753,7 +5754,7 @@
   function wantsAttackTally(combatData = {}) {
     const objectives = combatData?.胜负条件;
     if (!objectives || typeof objectives !== 'object') return false;
-    if (!attackTallyWanted.has(objectives)) attackTallyWanted.set(objectives, /接满攻击次数|单次伤害门槛|ATTACKS_ENDURED|HIT_SHARE_AT_OR_ABOVE/.test(JSON.stringify(objectives) || ''));
+    if (!attackTallyWanted.has(objectives)) attackTallyWanted.set(objectives, /接满攻击次数|单次伤害门槛|破防|ATTACKS_ENDURED|HIT_SHARE_AT_OR_ABOVE|GUARD_BROKEN/.test(JSON.stringify(objectives) || ''));
     return attackTallyWanted.get(objectives);
   }
   function tallyAttack(combatData = {}, payload = {}) {
@@ -15161,7 +15162,8 @@
       // The weight of the hit: the whole move's damage on the unit it lands on, as a share of that unit's HP maximum.
       const hitShare = incomingDeclaration ? previewRuntime.incomingHitShare(sourceActor, incomingDeclaration, hitTarget, combatData) : null;
       const guardBase = previewRuntime.calculateGuardBaseMultiplier(reactor, sourceActor, !!preparedDefense);
-      const damageMultiplier = previewRuntime.calculateDefenseDamageMultiplier(reactor, sourceActor, !!preparedDefense, hitShare);
+      const damageMultiplier = previewRuntime.calculateDefenseDamageMultiplier(reactor, sourceActor, !!preparedDefense, hitShare, null,
+        incomingDeclaration ? structuredDamageEffects(incomingDeclaration)[0] || null : null);
       const event = writeLedgerEvent(combatData, {
         ...common,
         eventKind: 'defend',
@@ -18739,6 +18741,11 @@
                 const answered = String(shared.reactionByTarget[previewRuntime.unitId(struck)]?.actionKind || '').trim().toUpperCase();
                 if (!previewRuntime.guardBreaks(actor, breakEffect, struck, ['DEFEND', 'GUARD'].includes(answered))) continue;
                 previewRuntime.setGuardBroken(struck, guardRound, settlement.actionEvent?.actionId || '');
+                // 交手约定的胜负条件「破防」读它（攻击记录，只在用到时才记）。
+                if (wantsAttackTally(combatData)) {
+                  const record = combatData.攻击记录 && typeof combatData.攻击记录 === 'object' ? combatData.攻击记录 : {};
+                  combatData.攻击记录 = { ...record, 破防: { ...(record.破防 || {}), [previewRuntime.unitName(struck)]: guardRound } };
+                }
                 logs.push(`[破防] ${previewRuntime.unitName(struck)}被${previewRuntime.unitName(actor)}破防，本回合无法应对与反击。`);
               }
               enqueueCounterWindows({ node, actor, shared, actionEvent: settlement.actionEvent, facts: settlement.facts, guardRound });

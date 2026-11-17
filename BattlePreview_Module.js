@@ -34,8 +34,8 @@
   // Joint outcome graphs up to this static size are always enumerated in full.
   const OPERATION_GRAPH_SMALL_JOINT_LIMIT = 512;
   // R08: the round limit when a caller names none. 用户 2026-11-14（"胜负条件的上限不删，固定上限如果有的话删掉"）: it is a
-  // default only — a battle's 胜负条件 (or a caller's rounds) may name more, and nothing clamps it.
-  const BATTLE_ROUND_LIMIT = 40;
+  // default only — a battle's 胜负条件 (or a caller's rounds) may name more, and nothing clamps it. 用户 2026-11-17「回合数上限设到100吧」.
+  const BATTLE_ROUND_LIMIT = 100;
   const MAX_RECURSION_DEPTH = 4;
   const effectHashCache = new WeakMap();
   const effectArrayHashCache = new WeakMap();
@@ -1928,10 +1928,19 @@
   // GUARD_BREAK_DEFENDED_RATIO times when the target took the hit defending — breaks its guard: for the rest of the round
   // it answers no attack and strikes nothing back. The hit itself settles as it was answered.
   const GUARD_BREAK_RATIO = 2, GUARD_BREAK_DEFENDED_RATIO = 2.5;
-  function guardBreaks(attacker = {}, effect = {}, target = {}, defended = false) {
+  // 削弱防御（用户 11-17「霍雨浩当时是连用三招，其实是类似于削弱对方防御能力的」）: what of the target's defence a 防御剥夺 / 精神抗性剥夺
+  // takes away does not stand against the break either (its panel cuts — 虚弱 — are in its stat already), nor what the attacker's
+  // 防御穿透 gets past.
+  function guardBreakRatio(attacker = {}, effect = {}, target = {}, defended = false) {
     const mental = classifyDamageType(effect?.伤害类型) === 'MENTAL';
-    return readCombatStat(attacker, mental ? 'men' : 'str') > Math.max(1, readCombatStat(target, mental ? 'men' : 'def')) *
-      (defended ? GUARD_BREAK_DEFENDED_RATIO : GUARD_BREAK_RATIO);
+    const strip = clamp(Object.values(target?.状态效果 || {}).reduce((sum, state) => sum + Math.max(0, Number(state?.战斗效果?.[mental ? 'spirit_resist_strip' : 'defense_strip'] || 0)), 0), 0, 0.95);
+    // The attacker's own 防御穿透 (armor_pen) gets past that much of it too.
+    const pen = mental ? 0 : clamp(Object.values(attacker?.状态效果 || {}).reduce((sum, state) => sum + Math.max(0, Number(state?.战斗效果?.armor_pen || 0)), 0), 0, 0.95);
+    return readCombatStat(attacker, mental ? 'men' : 'str') / (Math.max(1, readCombatStat(target, mental ? 'men' : 'def')) * (1 - strip) * (1 - pen) *
+      (defended ? GUARD_BREAK_DEFENDED_RATIO : GUARD_BREAK_RATIO));
+  }
+  function guardBreaks(attacker = {}, effect = {}, target = {}, defended = false) {
+    return guardBreakRatio(attacker, effect, target, defended) > 1;
   }
   function guardBrokenOf(unit = {}, round = 0) {
     const mark = unit?.__battleRuntime?.guardBroken;
@@ -3229,10 +3238,13 @@
       接满攻击次数: 'ATTACKS_ENDURED',
       逼出武魂: 'SPIRIT_RELEASED',
       单次伤害门槛: 'HIT_SHARE_AT_OR_ABOVE',
+      // 破防（用户 11-17「按照能不能破防来看，而不是伤害」）：目标被破防（guardBreaks）即达成。
+      破防: 'GUARD_BROKEN',
+      逼破防: 'GUARD_BROKEN',
     };
     const rawType = String(condition.type || condition.类型 || '').trim();
     const type = String(typeAliases[rawType] || rawType).trim().toUpperCase();
-    if (!['TEAM_INCAPACITATED', 'TEAM_DEAD', 'HP_RATIO_AT_OR_BELOW', 'RESOURCE_RATIO_AT_OR_BELOW', 'ROUND_REACHED', 'UNIT_DAMAGED', 'UNIT_INCAPACITATED', 'UNIT_DEAD', 'WITHDRAW_SUCCESS', 'ATTACKS_ENDURED', 'SPIRIT_RELEASED', 'HIT_SHARE_AT_OR_ABOVE'].includes(type)) return null;
+    if (!['TEAM_INCAPACITATED', 'TEAM_DEAD', 'HP_RATIO_AT_OR_BELOW', 'RESOURCE_RATIO_AT_OR_BELOW', 'ROUND_REACHED', 'UNIT_DAMAGED', 'UNIT_INCAPACITATED', 'UNIT_DEAD', 'WITHDRAW_SUCCESS', 'ATTACKS_ENDURED', 'SPIRIT_RELEASED', 'HIT_SHARE_AT_OR_ABOVE', 'GUARD_BROKEN'].includes(type)) return null;
     const resourceAlias = { 魂力阈值: '魂力', 体力阈值: '体力', 精神力阈值: '精神力' }[rawType];
     const resource = type === 'RESOURCE_RATIO_AT_OR_BELOW'
       ? String(condition.resource || condition.资源 || resourceAlias || '').trim()
@@ -4095,6 +4107,7 @@
       }
       if (condition.type === 'SPIRIT_RELEASED') return hasMartialSpirit(unit) && !spiritUnreleased(unit) ? 'SPIRIT_RELEASED' : '';
       if (condition.type === 'HIT_SHARE_AT_OR_ABOVE') return largestHitShare(worldSnapshot, unit) >= condition.threshold - 1e-9 ? 'HIT_SHARE_REACHED' : '';
+      if (condition.type === 'GUARD_BROKEN') return worldSnapshot?.攻击记录?.破防?.[unitName(unit)] ? 'GUARD_BROKEN' : '';
       return '';
     };
     if (!includeDetails) {
@@ -4309,6 +4322,14 @@
       }
       if (condition.type === 'SPIRIT_RELEASED') return hasMartialSpirit(unit) && !spiritUnreleased(unit) ? 1 : 0;
       if (condition.type === 'HIT_SHARE_AT_OR_ABOVE') return clamp(largestHitShare(worldSnapshot, unit) / Math.max(1e-9, condition.threshold), 0, 1);
+      // 破防: done, or how near the strongest enemy stands to it (attack ÷ the guard it must beat): cutting the guard down moves it.
+      if (condition.type === 'GUARD_BROKEN') {
+        if (worldSnapshot?.攻击记录?.破防?.[unitName(unit)]) return 1;
+        const side = objectiveSideOfEntry(listUnits(worldSnapshot).find(entry => entry.unit === unit) || {});
+        const near = listUnits(worldSnapshot).filter(entry => objectiveSideOfEntry(entry) !== side && isBattleCapable(entry.unit))
+          .reduce((best, entry) => Math.max(best, guardBreakRatio(entry.unit, { 伤害类型: '近身攻击' }, unit, true)), 0);
+        return clamp(near, 0, 0.99);
+      }
       return 0;
     };
     if (condition.type === 'ATTACKS_ENDURED') return clamp(attacksMadeAgainst(worldSnapshot, condition, members) / Math.max(1, condition.count), 0, 1);
@@ -8789,7 +8810,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   }
   // 压制修为至 N 级（交手约定）: 「压制修为」 (an __auto__ key, put at the round start like 武魂未释放) — 力量、防御、敏捷 × the level-N
   // typical panel over its own level's (base stats × the typical ratio, BattleDecision typicalStatRatio, passed in as `typicalRatio`),
-  // so its own build is kept; HP and the pools stay. Only the first floor(N / 10) rings and, under 70, no 武魂真身
+  // so its own build is kept; HP stays, and of its 魂力 only that share may be spent. Only the first floor(N / 10) rings and, under 70, no 武魂真身
   // (suppressionBlocksSkill). One at or below N is not held.
   const SUPPRESSION_KEY = '__auto__:压制修为';
   function suppressionStates(unit = {}, worldSnapshot = {}, typicalRatio = null) {
@@ -8803,8 +8824,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const ratio = at(cap) / at(level);
       return [key, Number.isFinite(ratio) && ratio > 0 ? clamp(Math.round(ratio * 1000) / 1000, 0.01, 1) : 1];
     }));
+    // 魂力（用户 11-17「不压制血量，但是要压制魂力」）: only the N-level share of what it has may be spent — the rest is locked
+    // (资源池锁定, readSpendableResource), not taken: the save keeps its 魂力 after the battle.
+    const soulAt = lv => Number((lv === cap ? low : high).sp_max) * (Number(typical(lv).sp_max) || 1);
+    const soul = soulAt(cap) / soulAt(level), soulShare = Number.isFinite(soul) && soul > 0 ? clamp(soul, 0.01, 1) : 1;
     return [[SUPPRESSION_KEY, { 状态: '压制修为', 状态名称: '压制修为', 类型: '', duration: ARMOUR_LASTING_ROUNDS, 持续回合: ARMOUR_LASTING_ROUNDS,
-      描述: `压制修为至${cap}级：力量、防御、敏捷按${cap}级计，只用前${Math.floor(cap / 10)}环魂技`, 面板修改比例: ratios, 面板固定修正: {},
+      描述: `压制修为至${cap}级：力量、防御、敏捷与可用魂力按${cap}级计，只用前${Math.floor(cap / 10)}环魂技`, 面板修改比例: ratios, 面板固定修正: {},
+      ...(soulShare < 1 ? { 资源锁定规则: [{ 资源: ['魂力'], 锁定类型: '资源池锁定', 比例: Math.round((1 - soulShare) * 1000) / 1000 }] } : {}),
       __压制修为: cap, __压制环数: Math.floor(cap / 10) }]];
   }
   function suppressionBlocksSkill(unit = {}, skill = {}) {
@@ -25063,7 +25089,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   }
   // `incoming`: the hit's weight (a number, its share of the defender's HP maximum), or the move coming (its weight is
   // read off it: incomingHitShare on `worldSnapshot`), or nothing (GUARD_TYPICAL).
-  function calculateDefenseDamageMultiplier(reactor = {}, sourceActor = {}, prepared = false, incoming = null, worldSnapshot = null) {
+  // 交手约定·只硬接（用户 11-17「设定一个破防标准吧，不破防的话不受伤，按照能不能破防来看」）: a unit held to blocking
+  // (__battleRuntime.blockOnly, BattleRuntime from engagementTerms) takes nothing from a hit that does not break its guard
+  // (guardBreaks, defending); one that breaks it lands as any guarded hit. breakEffect: the hit's damage effect when known.
+  function calculateDefenseDamageMultiplier(reactor = {}, sourceActor = {}, prepared = false, incoming = null, worldSnapshot = null, breakEffect = null) {
+    if (reactor?.__battleRuntime?.blockOnly === true) {
+      const effect = breakEffect || (incomingMove(incoming) ? collectEffects(incoming.skill || {}).find(entry => entry?.原型 === '伤害结算') : null) || { 伤害类型: '近身攻击' };
+      if (!guardBreaks(sourceActor, effect, reactor, true)) return 0;
+    }
     const hitShare = typeof incoming === 'number' ? incoming
       : incomingMove(incoming) ? incomingHitShare(sourceActor, incoming, reactor, worldSnapshot) : null;
     return applyGuardWeight(calculateGuardBaseMultiplier(reactor, sourceActor, prepared), hitShare);

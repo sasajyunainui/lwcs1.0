@@ -241,7 +241,8 @@ class BattleUIComponent {
             来源.maxRounds ?? 来源.autoContinueMaxRounds ?? 来源.最大回合,
             自动续推默认设置.maxRounds,
             1,
-            20,
+            // 用户 2026-11-17「回合数上限设到100吧」。
+            100,
           ))
         : 1;
       const 停推阈值百分比 = 夹取自动续推数值(阈值原始值, 自动续推默认设置.stopDamagePercent, 0, 100);
