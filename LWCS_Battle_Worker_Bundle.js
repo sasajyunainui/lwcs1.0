@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:dac188893de98943232f4611837611e5921f3afa94bde4a6952a30f30634cabe|MVU_Schema_Runtime.js:49b19d46acb65daa6331a69604b36c5ea833c157c70b633975c015ff4953374a|BattlePreview_Module.js:f7191368391821afb0b31748256f85726d5b7abcdc6edf2c14481e2c7f0587b5|BehaviorDecisionPipeline_Module.js:44ff9800d0baeebb82ddafd0d55ae7750e1a3e491afbd29d508fcdb187407aba|BattleDecision_Module.js:941f3d90d92d52365615f8588a26ef8965d12d0f61b91060f306fb016be25e3e|BattleRuntime_Module.js:db26e56c76034dcac8757ec83da2d6e373062e9844dae5f940829b9d74172480 */
+/* sources-sha256: MVU_Skill_Runtime.js:dac188893de98943232f4611837611e5921f3afa94bde4a6952a30f30634cabe|MVU_Schema_Runtime.js:49b19d46acb65daa6331a69604b36c5ea833c157c70b633975c015ff4953374a|BattlePreview_Module.js:f7191368391821afb0b31748256f85726d5b7abcdc6edf2c14481e2c7f0587b5|BehaviorDecisionPipeline_Module.js:44ff9800d0baeebb82ddafd0d55ae7750e1a3e491afbd29d508fcdb187407aba|BattleDecision_Module.js:941f3d90d92d52365615f8588a26ef8965d12d0f61b91060f306fb016be25e3e|BattleRuntime_Module.js:ddebe3155f0f5c9e65b9daa962a329574884ee5c945d3e66c8418afd4e3a09ae */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -148425,6 +148425,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // 未释放不落盘也不跟着走，所以每次都补；释放会抵掉它）；释放状态里的耐久同步回 装备（战后随装备写回存档），耗尽记损毁。
   function ensureArmourUnreleased(combatData = {}) {
     listCombatUnits(combatData).forEach(unit => {
+      // 战前已开武魂（推进预设的战斗登记行，world.战斗.战前已开武魂: [名字]）: such a unit starts with its 武魂 released.
+      const openedBefore = Array.isArray(combatData?.战前已开武魂) ? combatData.战前已开武魂.map(String) : [];
+      if (openedBefore.length && unit.战前已开武魂 !== true && [previewRuntime.unitName(unit), previewRuntime.unitId(unit)].some(name => openedBefore.includes(String(name)))) unit.战前已开武魂 = true;
       // 交手约定·只硬接（BattlePreview engagementTerms）: it does not release its 武魂 as it answers (the answer node and the
       // decision's spiritOpensOnAnswer both read spiritHidden).
       // blockOnly: a hit that does not break its guard does nothing (BattlePreview calculateDefenseDamageMultiplier).

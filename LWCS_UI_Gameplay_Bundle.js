@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:f7191368391821afb0b31748256f85726d5b7abcdc6edf2c14481e2c7f0587b5|BehaviorDecisionPipeline_Module.js:44ff9800d0baeebb82ddafd0d55ae7750e1a3e491afbd29d508fcdb187407aba|BattleDecision_Module.js:941f3d90d92d52365615f8588a26ef8965d12d0f61b91060f306fb016be25e3e|BattleRuntime_Module.js:db26e56c76034dcac8757ec83da2d6e373062e9844dae5f940829b9d74172480|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:ecb31c7af165002efbdc2a201573e5ae7156778fd5c035636530d022a810ce78 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:f7191368391821afb0b31748256f85726d5b7abcdc6edf2c14481e2c7f0587b5|BehaviorDecisionPipeline_Module.js:44ff9800d0baeebb82ddafd0d55ae7750e1a3e491afbd29d508fcdb187407aba|BattleDecision_Module.js:941f3d90d92d52365615f8588a26ef8965d12d0f61b91060f306fb016be25e3e|BattleRuntime_Module.js:ddebe3155f0f5c9e65b9daa962a329574884ee5c945d3e66c8418afd4e3a09ae|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:26f8f1e8c82cf62f2af431f7becab2e0a8924003e14c5f8b96210cd58a01a209 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -117375,6 +117375,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // 未释放不落盘也不跟着走，所以每次都补；释放会抵掉它）；释放状态里的耐久同步回 装备（战后随装备写回存档），耗尽记损毁。
   function ensureArmourUnreleased(combatData = {}) {
     listCombatUnits(combatData).forEach(unit => {
+      // 战前已开武魂（推进预设的战斗登记行，world.战斗.战前已开武魂: [名字]）: such a unit starts with its 武魂 released.
+      const openedBefore = Array.isArray(combatData?.战前已开武魂) ? combatData.战前已开武魂.map(String) : [];
+      if (openedBefore.length && unit.战前已开武魂 !== true && [previewRuntime.unitName(unit), previewRuntime.unitId(unit)].some(name => openedBefore.includes(String(name)))) unit.战前已开武魂 = true;
       // 交手约定·只硬接（BattlePreview engagementTerms）: it does not release its 武魂 as it answers (the answer node and the
       // decision's spiritOpensOnAnswer both read spiritHidden).
       // blockOnly: a hit that does not break its guard does nothing (BattlePreview calculateDefenseDamageMultiplier).
@@ -149679,6 +149682,8 @@ class BattleUIComponent {
       '攻击记录',
       // 佯装蓄力的次数（BattleDecision feintSeeThroughChance：佯装过越多越容易看破）。
       '佯装记录',
+      // 开战前已放出武魂的参战者（推进预设的战斗登记行）。
+      '战前已开武魂',
     ];
 
     function compactCombatParticipantForPersistence(participant) {

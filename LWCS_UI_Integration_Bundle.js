@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:2145aabbd932dedcf1aad4a015b3e2e595e832569f30bde4517b862c5be09a0f|cockpit/designer-model.js:cbbb8156854ed85b560637420324e21db9e899fb9cbef68ba1ccca6d0d217fc2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:bd51662fa802655e8897da74c87d2ac367bd71126fe67f26c603574631ad426e|cockpit/designer-model.js:cbbb8156854ed85b560637420324e21db9e899fb9cbef68ba1ccca6d0d217fc2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -28893,6 +28893,16 @@ ${播报文本}
       战斗意图: 写明战斗意图 || 开战缺省战斗意图_桥接(战斗类型, 胜负条件, 允许撤离, 裁判),
       ...(裁判 ? { 裁判 } : {}),
       先攻: toText(detail.先攻, '').trim() || '无',
+      // 交手约定（试招、赌约，用户 11-17）与战前已开武魂：推进预设的战斗登记行，名字用顿号分隔，压制修为写 名称=等级。
+      ...((() => {
+        const 名单 = value => toText(value, '').split(/[、,，]/u).map(item => item.trim()).filter(item => item && item !== '无');
+        const 不还手 = 名单(detail.不还手), 只硬接 = 名单(detail.只硬接);
+        const 压制修为 = Object.fromEntries(名单(detail.压制修为).map(item => item.split(/[=＝:：]/u).map(part => part.trim()))
+          .filter(([名称, 等级]) => 名称 && Number(等级) > 0).map(([名称, 等级]) => [名称, Math.floor(Number(等级))]));
+        const 约定 = { ...(不还手.length ? { 不还手 } : {}), ...(只硬接.length ? { 只硬接 } : {}), ...(Object.keys(压制修为).length ? { 压制修为 } : {}) };
+        const 战前已开武魂 = 名单(detail.战前已开武魂);
+        return { ...(Object.keys(约定).length ? { 交手约定: 约定 } : {}), ...(战前已开武魂.length ? { 战前已开武魂 } : {}) };
+      })()),
       允许撤离,
       回合: 0,
       环境: {
@@ -30235,7 +30245,7 @@ ${播报文本}
     return Number.isFinite(数值) ? 数值 : value;
   }
 
-  const 战斗目标条件字段模式 = '(?:类型|type|作用方|阵营|side|目标|targets?|targetIds|阈值|threshold|目标回合|回合数|回合|rounds?|判定|scope|存活要求|requireActive)';
+  const 战斗目标条件字段模式 = '(?:类型|type|作用方|阵营|side|目标|targets?|targetIds|阈值|threshold|目标回合|回合数|回合|rounds?|判定|scope|存活要求|requireActive|攻击方|attackers|次数|count)';
 
   function 解析战斗目标条件字段(value) {
     const 文本 = toText(value, '').replace(/\r/g, ' ').trim();
@@ -30254,7 +30264,8 @@ ${播报文本}
   }
 
   function 推断战斗目标默认阵营(type = '', group = 'victory') {
-    if (['ROUND_REACHED', 'WITHDRAW_SUCCESS'].includes(type)) return group === 'defeat' ? 'ENEMY' : 'PLAYER';
+    // 接满攻击次数 names the side that holds out, as 坚持回合 does.
+    if (['ROUND_REACHED', 'WITHDRAW_SUCCESS', 'ATTACKS_ENDURED'].includes(type)) return group === 'defeat' ? 'ENEMY' : 'PLAYER';
     return group === 'defeat' ? 'PLAYER' : 'ENEMY';
   }
 
@@ -30274,6 +30285,13 @@ ${播报文本}
           ? 'ROUND_REACHED'
           : /成功撤离|WITHDRAW_SUCCESS/i.test(类型文本)
             ? 'WITHDRAW_SUCCESS'
+          // 交手约定（用户 11-17）：接满攻击次数、逼出武魂、破防。
+          : /接满攻击次数|攻击次数|ATTACKS_ENDURED/i.test(类型文本)
+            ? 'ATTACKS_ENDURED'
+          : /逼出武魂|SPIRIT_RELEASED/i.test(类型文本)
+            ? 'SPIRIT_RELEASED'
+          : /破防|GUARD_BROKEN/i.test(类型文本)
+            ? 'GUARD_BROKEN'
           : /受伤|UNIT_DAMAGED/i.test(类型文本)
             ? 'UNIT_DAMAGED'
             : /死亡|UNIT_DEAD/i.test(类型文本)
@@ -30296,8 +30314,12 @@ ${播报文本}
     const 阈值文本 = toText(字段.阈值 || 字段.threshold, '').trim();
     const 阈值数值 = Number.parseFloat(阈值文本.replace('%', ''));
     const 回合 = Math.max(0, Math.floor(toNumber(字段.目标回合 || 字段.回合 || 字段.回合数 || 字段.round || 字段.rounds, 0)));
+    const 攻击方原值 = 字段.攻击方 ?? 字段.attackers ?? '';
+    const attackers = (Array.isArray(攻击方原值) ? 攻击方原值 : toText(攻击方原值, '').split(/[、,，]/u)).map(item => toText(item, '').trim()).filter(Boolean);
+    const 次数 = Math.max(0, Math.floor(toNumber(字段.次数 ?? 字段.count, 0)));
     return {
       type: 类型,
+      ...(类型 === 'ATTACKS_ENDURED' ? { attackers, count: 次数 } : {}),
       side,
       targetIds,
       scope: /全部|全体|全员|ALL/i.test(toText(字段.目标要求 || 字段.targetScope || 字段.判定 || 字段.scope, 目标文本)) ? 'ALL' : 'ANY',
@@ -30339,7 +30361,8 @@ ${播报文本}
       ...(Array.isArray(participants?.team_enemy) ? participants.team_enemy : []).filter(Boolean).map(unit => ({ unit, side: 'ENEMY' })),
     ];
     const 查找目标单位 = target => units.find(({ unit }) => [unit?.id, unit?.角色ID, unit?.name, unit?.名称].map(item => toText(item, '').trim()).filter(Boolean).includes(toText(target, '').trim()));
-    const allowedTypes = new Set(['TEAM_INCAPACITATED', 'TEAM_DEAD', 'HP_RATIO_AT_OR_BELOW', 'ROUND_REACHED', 'UNIT_DAMAGED', 'UNIT_INCAPACITATED', 'UNIT_DEAD', 'WITHDRAW_SUCCESS']);
+    const allowedTypes = new Set(['TEAM_INCAPACITATED', 'TEAM_DEAD', 'HP_RATIO_AT_OR_BELOW', 'ROUND_REACHED', 'UNIT_DAMAGED', 'UNIT_INCAPACITATED', 'UNIT_DEAD', 'WITHDRAW_SUCCESS',
+      'ATTACKS_ENDURED', 'SPIRIT_RELEASED', 'GUARD_BROKEN']);
     const conditionIsValid = condition => {
       const type = toText(condition?.type || condition?.类型, '').trim();
       if (!allowedTypes.has(type)) return false;
@@ -30352,6 +30375,9 @@ ${播报文本}
       })) return false;
       if (type === 'HP_RATIO_AT_OR_BELOW') return Number(condition?.threshold ?? condition?.阈值) > 0 && Number(condition?.threshold ?? condition?.阈值) <= 1;
       if (type === 'ROUND_REACHED') return Number(condition?.round ?? condition?.回合 ?? condition?.回合数) > 0;
+      // 接满攻击次数: a count, and attackers (when named) standing on the other side.
+      if (type === 'ATTACKS_ENDURED') return Number(condition?.count ?? condition?.次数) > 0 &&
+        (Array.isArray(condition?.attackers) ? condition.attackers : []).every(name => { const matched = 查找目标单位(name); return !!matched && matched.side !== side; });
       if (['UNIT_DAMAGED', 'UNIT_INCAPACITATED', 'UNIT_DEAD'].includes(type)) {
         return targetIds.length > 0;
       }
@@ -30570,7 +30596,7 @@ ${播报文本}
           payload[当前条件字段].push(当前条件项);
           return;
         }
-        const 子字段匹配 = 行文本.match(/^\s+(作用方|阵营|side|目标|targets?|targetIds|阈值|threshold|目标回合|回合数|回合|rounds?|目标要求|targetScope|存活要求|requireActive)\s*[:：=_]\s*(.*?)\s*$/iu);
+        const 子字段匹配 = 行文本.match(/^\s+(作用方|阵营|side|目标|targets?|targetIds|阈值|threshold|目标回合|回合数|回合|rounds?|目标要求|targetScope|存活要求|requireActive|攻击方|attackers|次数|count)\s*[:：=_]\s*(.*?)\s*$/iu);
         if (子字段匹配 && 当前条件项) {
           当前条件项[子字段匹配[1]] = toText(子字段匹配[2], '').trim();
           return;
@@ -32506,6 +32532,8 @@ ${播报文本}
             ...(解析模块路由裁判(payload.裁判) ? { 裁判: 解析模块路由裁判(payload.裁判) } : {}),
             // 先攻（11-15 用户定的推进预设行）: the ambushers' names, 、-separated; left out, a fair start.
             ...(toText(payload.先攻, '').trim() && toText(payload.先攻, '').trim() !== '无' ? { 先攻: toText(payload.先攻, '').trim() } : {}),
+            // 交手约定与战前已开武魂（11-17 用户定的推进预设行）: passed on as written; the battle's opening reads them into world.战斗.
+            ...Object.fromEntries(['战前已开武魂', '不还手', '只硬接', '压制修为'].map(键 => [键, toText(payload[键], '').trim()]).filter(([, 值]) => 值 && 值 !== '无')),
           };
         }
       }
