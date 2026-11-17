@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:02d88b6a5c41ed8f960db322273e32175a96625f93bfba05bc1d6e6609450cab|cockpit/designer-model.js:cbbb8156854ed85b560637420324e21db9e899fb9cbef68ba1ccca6d0d217fc2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:8276d35f23b79c872097b0219876e82119c76880c0970160fd1b7f1390607da6|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:5d875065050cbed80b0785f3f6b0db9be2e6cbe505027b26340a509ea391e5d4|BattleRuntime_Module.js:ca43c1d4a7b829fa0b05fca928b77353a93d976599f7dd207ef5e04463587b84|BattleReport_Module.js:f585055058a664a63b25afe4bbe0a178018d152db5b1f7954e8eea213bc00a5c|BattleUI_Module.js:14335e61b58eae9ac17590a496fa99f8fa38f49dac69ef4686368cb6a2765e01|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:02d88b6a5c41ed8f960db322273e32175a96625f93bfba05bc1d6e6609450cab|cockpit/designer-model.js:cbbb8156854ed85b560637420324e21db9e899fb9cbef68ba1ccca6d0d217fc2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:8276d35f23b79c872097b0219876e82119c76880c0970160fd1b7f1390607da6|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:5d875065050cbed80b0785f3f6b0db9be2e6cbe505027b26340a509ea391e5d4|BattleRuntime_Module.js:ca43c1d4a7b829fa0b05fca928b77353a93d976599f7dd207ef5e04463587b84|BattleReport_Module.js:b008936b7790ee035f576e95580ec31fd41ccf7b5cbaa791eb7a5d8f5feab249|BattleUI_Module.js:14335e61b58eae9ac17590a496fa99f8fa38f49dac69ef4686368cb6a2765e01|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -164268,6 +164268,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     ACTORS_UNABLE: '当前没有单位能够继续行动，本次推进结束。',
     RUNTIME_VALIDATION_FAILED: '战斗运行校验未通过。',
     PREVIEW_INTERRUPTED: '本次预演提前中断，战斗仍可继续。',
+    // 中途罢手（BattleRuntime：对方提议、等战斗界面同意框）：本回合打完即停，战斗仍可继续。
+    TRUCE_PENDING: '对方提议罢手，等待回应，战斗仍可继续。',
   });
 
   function cloneValue(value) {
@@ -164902,9 +164904,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return `${displayNumber(percent)}%`;
   }
 
+  // 文本里的小数按报告的数字格式（displayNumber：百位以上一位小数，其余两位）写给玩家与 AI，例如库角色解析后的技能数值
+  // 「+36.8939%」、维持费用「4958.628点」；原值留在事实与账本里。
+  function formatTextNumbers(value = '') {
+    return String(value).replace(/\d+\.\d+/g, number => displayNumber(number));
+  }
+
   function signedValueText(value) {
     const raw = text(value);
-    if (raw) return raw;
+    if (raw) return formatTextNumbers(raw);
     const numeric = Number(value);
     if (!Number.isFinite(numeric)) return '';
     return numeric > 0 ? `+${displayNumber(numeric)}` : displayNumber(numeric);
@@ -165393,7 +165401,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         text(event?.resultState).toUpperCase() === 'SUCCESS'
       ) {
         const { costDescription } = runtime.describeSustainCostAttachment(event);
-        return `${actor}的【${action}】已登记维持费用（${costDescription}），待回合末结算`;
+        return `${actor}的【${action}】已登记维持费用（${formatTextNumbers(costDescription)}），待回合末结算`;
       }
       const sustainBreakSummary = summarizeSustainBreakEvent(event, directory);
       if (sustainBreakSummary) return sustainBreakSummary;
@@ -165587,7 +165595,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       resultCategory: structuredResultCategory(event),
       stateName: movement ? unique(movement.moves.map(move => playerStateName(move.stateName, directory))).join('、')
         : persistentRemovedNames === null ? playerStateName(stateName(event), directory) : persistentRemovedNames.join('、'),
-      summary: summarizeEvent(event, directory),
+      // 事实摘要是战报各处文字的来源（回合概览、交锋、因果链），小数统一按报告的数字格式。
+      summary: formatTextNumbers(summarizeEvent(event, directory)),
       numericTokens: numericTokens(event, visibilityMode),
       castTimePoints: ['charge_start', 'charge_progress'].includes(text(event?.eventKind))
         ? Math.max(0, number(event?.meta?.remainingCastTime, 0))
@@ -165717,13 +165726,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           : ['action_start', 'charge_start', 'pass', 'blocked_action', 'target_fail'];
     for (const eventKind of preferredKinds) {
       for (const exchange of exchanges) {
-        if (number(exchange?.round, 0) !== round) continue;
+        // 落点按事实自己的回合认：蓄力释放（CHARGE_RELEASE）的 action_start 归在蓄力开始那一回合的交锋里，交锋回合比决策早，
+        // 原先按交锋回合过滤，这一手的决策就在因果链上找不到落点（DECISION_ADJUDICATION_MISSING，决策数比投影多 1）。
+        const exchangeRound = number(exchange?.round, 0);
+        if (exchangeRound > round) continue;
         const anchor = exchange.factIds
           .map(factId => factsById.get(factId))
           .find(fact =>
             (() => {
               if (
                 !fact ||
+                (Number.isFinite(Number(fact.round)) ? number(fact.round, 0) : exchangeRound) !== round ||
                 claimedFactIds.has(fact.factId) ||
                 text(fact.eventKind) !== eventKind ||
                 text(fact.actorId) !== actorId
