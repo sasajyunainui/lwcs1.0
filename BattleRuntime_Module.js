@@ -15413,6 +15413,7 @@
       ? declaration.skill
       : {};
     return {
+      ...(decision?.reasonRecord ? { reasonRecord: cloneValue(decision.reasonRecord) } : {}),
       version: String(decision?.version || '').trim(),
       schemaVersion: String(decision?.schemaVersion || '').trim(),
       decisionEngine: String(
@@ -21045,6 +21046,8 @@
         isSameReportName(readDecisionActor(item), actorName || '')
       ) : null);
       if (!decision) return '';
+      // 新估值的出招记录（BattleDecision r20ReasonRecord）：意图、自估胜算、对次优手的主导分项差。
+      if (decision?.reasonRecord?.aiLine) return String(decision.reasonRecord.aiLine);
       const selected = readSelected(decision);
       const actionKind = String(selected?.declaration?.actionKind || selected?.actionKind || '').trim();
       const problemIds = new Set((Array.isArray(decision?.problems) ? decision.problems : []).map(problem => String(problem?.problemId || '').trim()).filter(Boolean));
@@ -24099,6 +24102,8 @@
       };
     };
     return cloneValue({
+      // 出招记录（BattleDecision r20ReasonRecord，T24 第 4 步）: for the report; not written to the save.
+      ...(decision?.reasonRecord ? { reasonRecord: decision.reasonRecord } : {}),
       version: decision?.version || '',
       schemaVersion: decision?.schemaVersion || '',
       decisionEngine: String(

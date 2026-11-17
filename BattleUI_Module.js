@@ -3745,6 +3745,18 @@ class BattleUIComponent {
             + '</li>';
         }
 
+        /* 出招理由（新估值的出招记录，T24 第 4 步）：一行理由 + 选中手 / 次优手各估值项的推导。每行已在决策层限长并标明截断；
+           说明放悬停（title），不放正文。界面样式留到 T26。 */
+        function 渲染出招理由(record = null) {
+          if (!record || typeof record !== 'object') return '';
+          const 推导 = (Array.isArray(record.derivation) ? record.derivation : [])
+            .map(line => `<li>${htmlEscapeText(String(line || ''))}</li>`).join('');
+          return '<div class="battle-chain-reason" title="新估值的出招记录：意图、自估胜算，以及选中手与次优手各估值项（表值 × 系数 × 输入）">'
+            + `<p class="battle-chain-reason-line">${htmlEscapeText(String(record.aiLine || ''))}</p>`
+            + (推导 ? `<ol class="battle-chain-reason-derivation" title="正数加分，负数扣分；「推演」一行是推演里谁在第几回合倒下">${推导}</ol>` : '')
+            + '</div>';
+        }
+
         function 渲染因果链判定依据(node = {}) {
           const decisions = Array.isArray(node?.decisions) ? node.decisions : [];
           if (!decisions.length && !(node?.reconciliation || []).length) return '';
@@ -3786,6 +3798,7 @@ class BattleUIComponent {
               + (收敛 ? `<ol class="battle-chain-narrowing">${收敛}</ol>` : '')
               + (候选行 ? `<ul class="battle-chain-candidates">${候选行}</ul>` : '')
               + 非最优
+              + 渲染出招理由(trace.reasonRecord)
               + '</section>';
           }).join('');
 

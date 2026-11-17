@@ -6139,18 +6139,15 @@
 // ===== linearScoreProvider (BehaviorLinearScoreProvider_Module.js) =====
 
 /* BehaviorLinearScoreProvider_Module.js
- * Task 6 core batch A: online lightweight LINEAR_SCORE_V1 provider (r9v2).
- * Pure candidate-only selection: frozen candidates -> public immediate features
- * -> frozen 31-code scalarization + embedded two-code reaction head +
- * 13-code causal active/reaction heads ->
- * total linear score -> hard-exclusion removal ->
- * deterministic ordering (score desc, exact-tie candidateId UTF-16 asc) ->
- * structural alternative -> same-source structured reason factors.
- * The sealed model whitelist constants are embedded (never read from
- * gitignored artifacts at runtime): normalization, linear, featureAggregation,
- * modelHash, weightsHash, featureSchemaHash. Old Kernel/direct/future-route/S4
- * traversal has zero calls and zero fallback inside the provider; bounded
- * public causal outcome features arrive through the frozen feature document.
+ * The decision's ranking (r9v2 provider id kept for the decision record): frozen candidates -> hard-exclusion removal
+ * (the BIF immediate document's HARD_EXCLUSION rows) -> each candidate's R20 value (BattleDecision r20Shadow, carried in
+ * document.valuation; T24 转正 2026-11-18) as its score -> pure-damage Pareto removal (ACTIVE: a pure-damage candidate
+ * another pure-damage candidate on the same targets matches or beats at no greater cost) -> deterministic ordering
+ * (score desc; an exact tie: less start cost first — the shares of the actor's resource maxima — then holding back
+ * (让过, 放弃反击/应对) before acting, then candidateId UTF-16 asc) -> structural alternative -> one reason factor (the value, under the
+ * contribution trace's OBJECTIVE_PROGRESS code).
+ * The former linear model (31 public features, the reaction head and the causal heads with their sealed normalization
+ * and weights) is gone with the old valuation (用户 11-17「转正后直接删掉旧估值」).
  */
 (function (root) {
   'use strict';
@@ -6158,313 +6155,25 @@
   const { Number, String, Object, Array, Math, JSON, Map, Set } = root;
   const PROVIDER_ID = 'r9v2';
   const ENGINE = 'R9V2_LINEAR';
-  const SCHEMA_VERSION = 'BehaviorLinearScoreProviderV3';
+  const SCHEMA_VERSION = 'BehaviorR20ScoreProviderV1';
   const MOUNT_NAME = '__LWCS_BEHAVIOR_LINEAR_PROVIDER__';
-
-  // Sealed runtime binding for the exact base, reaction and causal definitions
-  // embedded below. Runtime never reads an external training artifact.
-  const BASE_MODEL_HASH = '9ada527dea24d4df882aeffaf2f8057e57e95d22eb836616c82e7a793b20a499';
-  const MODEL_HASH = '6ca55cf48790533db04272c146c98ba21c91b746c59e7053cf5a8d943976d145';
-  const WEIGHTS_HASH = '190c00a8f137b0cbf2d186f685718df1786d9be17324a4083f43927a858f5e7d';
-  const FEATURE_SCHEMA_HASH = '1ae9cd7d4d2353efd76df73576d6a235bcefb72fe9ee26d40b626f1afc52a76f';
-  const DBP_REVISION = 18;
-  const DBP_CONTRACT_HASH = '69f353556b6bc555db1f67e8d0549a68bed5de18f112ff89496912559c784de8';
-  const BIF_CONTRACT_HASH = '8dc4ff92e2ac2d81bee176e8839b23c8ab34ceec951b2ab91ebe80c12ec02a76';
-  const BASE_SECTION_HASH = '64783fa923cc70215dadaba0bb75390200c3297e82a68ef6d0a25d9b12a4fcb2';
-  const REACTION_HEAD_HASH = 'b08565ade014bed633f5917aaa3891ba2730a18f8c9885c1c9c983db5c8f4a62';
-  const BASE_WEIGHT_POLICY = Object.freeze({
-    id: 'CAUSAL_PROGRESS_BASE_WEIGHT_V3',
-    reactionCounter: 1,
-    active: Object.freeze({
-      creationCandidate: 0,
-      nonDamageSkill: 0.4,
-      noCausalProgress: 0,
-      otherwise: 1,
-    }),
-  });
-  const BASE_WEIGHT_POLICY_HASH = 'd26e55be24f9e72ec5d9c3e264c4d3d9b7efc20076b1999541ef625b6043d00f';
+  // The value's factor in the contribution trace (its closed code set): the R20 value is the decision's whole score.
+  const VALUE_CODE = 'OBJECTIVE_PROGRESS';
+  const MODEL_HASH = 'r20-value-score-v1';
+  const WEIGHTS_HASH = 'r20-value-score-v1';
   const PURE_DAMAGE_DOMINANCE_POLICY = Object.freeze({
-    id: 'ACTIVE_PURE_DAMAGE_PARETO_V1',
+    id: 'ACTIVE_PURE_DAMAGE_PARETO_V2',
     actionRole: 'ACTIVE',
     targetComparison: 'EXACT_TARGET_SET',
-    benefit: 'OPPONENT_RESPONSE_PRESSURE',
+    benefit: 'R20_VALUE',
     costComparison: 'PER_RESOURCE_NO_GREATER_SAME_UNIT',
   });
-  const PURE_DAMAGE_DOMINANCE_POLICY_HASH = 'f168750b8747402ff8657583ab65b1d42539b25eb4d129dbb4988a15646f310d';
-  const MODEL_COMPOSITE_HASH = '6f17b052583747aedf910ae13d8f8e74566d8b00653384f0e1356a1e02b4425d';
-  const REACTION_ALGORITHM_HASH = '5ddd1dff3f07d3aa7c1b48f627cd5a3c64de9025941fab25923b52851b8a1852';
-  const DAMAGE_POWER_TRANSFORM = 'DAMAGE_POWER_EFFECTIVE_V1';
-  const DAMAGE_POWER_TRANSFORM_HASH = '5562d24109a11e67b447817aa73d1e60748bcec6611fa0b4132caceecba6a3aa';
-  const OP_DAMAGE_POWER = 'NEUMAIER\u005fSUM';
-  const OP_DAMAGE_SEGMENTS = 'INTEGER\u005fSUM';
-  const OP_RESOURCE_DELTA = 'SAME\u005fRESOURCE\u005fSUM';
-
-  // 35-code catalog: 31 scoreable + 2 exclusion-only + 2 catalog-only.
-  const SCOREABLE_CODES = Object.freeze([
-    'RELATION_TARGET_COUNT', 'RELATION_TARGET_SIDE', 'SUCCESS_PROBABILITY',
-    'PUBLIC_HP_RATIO', 'PUBLIC_RESOURCE_RATIO', 'COST_AFFORDABILITY',
-    'REVEAL_STRENGTH', 'OVERKILL_AVAILABILITY', 'OUTSIDE_BATCH1_ROW_COUNT',
-    'DAMAGE_POWER', 'DAMAGE_SEGMENTS', 'DAMAGE_PENETRATION', 'DAMAGE_TYPE',
-    'RESOURCE_DELTA', 'SHIELD_DELTA', 'ATTRIBUTE_DELTA', 'JUDGMENT_DELTA',
-    'STATE_PRESENCE', 'STATE_DURATION', 'STATE_DELTA_PERCENT',
-    'SETTLEMENT_MODIFIER_PERCENT', 'SUMMON_COUNT', 'SUMMON_STRENGTH',
-    'SUMMON_DURATION', 'RESOURCE_DELTA_PERCENT',
-    'TEAM_EFFECT_MARGINAL_GAIN', 'TEAM_EFFECT_REDUNDANCY_RATIO',
-    'RESOURCE_DEFICIT_COVERAGE', 'RESOURCE_CONSUMER_FIT', 'TEAM_FOLLOWUP_COVERAGE',
-    'PUBLIC_RECIPIENT_NEED_MATCH',
-  ]);
-  const RELATIONAL_CODES = Object.freeze([
-    'TEAM_EFFECT_MARGINAL_GAIN', 'TEAM_EFFECT_REDUNDANCY_RATIO',
-    'RESOURCE_DEFICIT_COVERAGE', 'RESOURCE_CONSUMER_FIT', 'TEAM_FOLLOWUP_COVERAGE',
-  ]);
-  const CAUSAL_CODES = Object.freeze([
-    'OBJECTIVE_PROGRESS', 'SELF_FOLLOWUP_POOL_GAIN',
-    'SELF_FOLLOWUP_MECHANICAL_GAIN', 'RESOURCE_RUNWAY_GAIN',
-    'ENEMY_RESPONSE_OPTION_DENIAL', 'OPPONENT_RESPONSE_PRESSURE',
-    'REACTION_FOLLOWUP_GAIN', 'SETUP_INTERRUPT_RISK',
-    'ALLY_OPTION_GAIN', 'ALLY_RESOURCE_RUNWAY_GAIN', 'FOCUS_TARGET_MARGINAL_GAIN',
-    'PROTECTION_MARGINAL_GAIN', 'TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL',
-  ]);
-  const EXCLUSION_ONLY = Object.freeze(['HARD_EXCLUSION', 'HARD_EXCLUSION_REASON']);
-  const CATALOG_ONLY = Object.freeze(['SETTLEMENT_DAMAGE', 'ROLL_REALIZATION']);
-  const ENUM_CODES = new Set(['RELATION_TARGET_SIDE']);
   const HARD_EXCLUSION_CODES = Object.freeze([
     'ACTOR_DISABLED', 'ACTOR_TERMINAL', 'TARGET_EMPTY', 'INVALID_OPTION_VALUE',
     'MISSING_REQUIRED_FIELD', 'UNKNOWN_STATE', 'UNKNOWN_RULE',
     'AMBIGUOUS_TAUNT_TARGET', 'ILLEGAL_TARGET', 'RESOURCE_INSUFFICIENT', 'PREVIEW_BUDGET_EXCEEDED',
     'FULL_HP_HEAL', 'REDUNDANT_STATE', 'NO_EFFECT_ACTION', 'FULL_RESOURCE_RESTORE',
   ]);
-
-  // DistilledBehaviorPolicyV1 rev15 missingPolicyV1 (scoreable codes only).
-  const MISSING_POLICY = deepFreeze({
-    RELATION_TARGET_COUNT: { unknown: 'REQUIRE_KNOWN', na: 'REQUIRE_KNOWN' },
-    RELATION_TARGET_SIDE: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'REQUIRE_KNOWN' },
-    SUCCESS_PROBABILITY: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'UNKNOWN_TO_TRAIN_MEAN' },
-    PUBLIC_HP_RATIO: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'REQUIRE_KNOWN' },
-    PUBLIC_RESOURCE_RATIO: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'REQUIRE_KNOWN' },
-    COST_AFFORDABILITY: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'UNKNOWN_TO_TRAIN_MEAN' },
-    REVEAL_STRENGTH: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'REQUIRE_KNOWN' },
-    OVERKILL_AVAILABILITY: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'REQUIRE_KNOWN' },
-    OUTSIDE_BATCH1_ROW_COUNT: { unknown: 'REQUIRE_KNOWN', na: 'REQUIRE_KNOWN' },
-    DAMAGE_POWER: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'REQUIRE_KNOWN' },
-    DAMAGE_SEGMENTS: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'REQUIRE_KNOWN' },
-    DAMAGE_PENETRATION: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'REQUIRE_KNOWN' },
-    DAMAGE_TYPE: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'REQUIRE_KNOWN' },
-    RESOURCE_DELTA: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'REQUIRE_KNOWN' },
-    SHIELD_DELTA: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'REQUIRE_KNOWN' },
-    ATTRIBUTE_DELTA: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'REQUIRE_KNOWN' },
-    JUDGMENT_DELTA: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'REQUIRE_KNOWN' },
-    STATE_PRESENCE: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'REQUIRE_KNOWN' },
-    STATE_DURATION: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'NOT_APPLICABLE_TO_SEMANTIC_ZERO', zeroReasons: ['NO_DURATION'] },
-    STATE_DELTA_PERCENT: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'REQUIRE_KNOWN' },
-    SETTLEMENT_MODIFIER_PERCENT: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'REQUIRE_KNOWN' },
-    SUMMON_COUNT: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'REQUIRE_KNOWN' },
-    SUMMON_STRENGTH: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'REQUIRE_KNOWN' },
-    SUMMON_DURATION: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'REQUIRE_KNOWN' },
-    RESOURCE_DELTA_PERCENT: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'REQUIRE_KNOWN' },
-    TEAM_EFFECT_MARGINAL_GAIN: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'NOT_APPLICABLE_TO_SEMANTIC_ZERO', zeroReasons: ['NO_CANDIDATE_TEAM_EFFECT'] },
-    TEAM_EFFECT_REDUNDANCY_RATIO: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'NOT_APPLICABLE_TO_SEMANTIC_ZERO', zeroReasons: ['NO_CANDIDATE_TEAM_EFFECT'] },
-    RESOURCE_DEFICIT_COVERAGE: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'NOT_APPLICABLE_TO_SEMANTIC_ZERO', zeroReasons: ['NO_RESOURCE_DEFICIT', 'NO_RESOURCE_SUPPLY'] },
-    RESOURCE_CONSUMER_FIT: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'NOT_APPLICABLE_TO_SEMANTIC_ZERO', zeroReasons: ['NO_RESOURCE_CONSUMER'] },
-    TEAM_FOLLOWUP_COVERAGE: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'NOT_APPLICABLE_TO_SEMANTIC_ZERO', zeroReasons: ['NO_FOLLOW_UP_GRANT'] },
-    PUBLIC_RECIPIENT_NEED_MATCH: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'REQUIRE_KNOWN' },
-  });
-
-  // Per-code duplicate-row aggregation, exactly the frozen DBP rev14 table.
-  const AGGREGATION = Object.freeze({
-    JUDGMENT_DELTA: 'SUM',
-    STATE_DURATION: 'MAX',
-    STATE_DELTA_PERCENT: 'SUM',
-    SETTLEMENT_MODIFIER_PERCENT: 'SUM',
-    RESOURCE_DELTA_PERCENT: 'MAX',
-    RESOURCE_DELTA: OP_RESOURCE_DELTA,
-    DAMAGE_POWER: OP_DAMAGE_POWER,
-    DAMAGE_SEGMENTS: OP_DAMAGE_SEGMENTS,
-    DAMAGE_TYPE: 'MAX',
-  });
-
-  // Multi-row closure inventory (AGGREGATION_CLOSURE_V3): the 31 scoreable
-  // codes are partitioned into contract-adjudicated multi-row codes with a
-  // frozen operator (multiRowCodes, 9), fail-closed multi-row-capable codes
-  // (5), and single-row codes (17).
-  // (singleRowCodes, 17: candidate-scope BIF codes + five relational codes +
-  // ATTRIBUTE_DELTA/SHIELD_DELTA, collapsed inside BIF). Codes outside
-  // multiRowCodes keep the fatal as a source-drift safety net.
-  const AGGREGATION_CLOSURE = Object.freeze({
-    version: 'AGGREGATION_CLOSURE_V3',
-    multiRowCodes: Object.freeze([
-      'JUDGMENT_DELTA', 'STATE_DURATION', 'STATE_DELTA_PERCENT',
-      'SETTLEMENT_MODIFIER_PERCENT', 'RESOURCE_DELTA_PERCENT',
-      'RESOURCE_DELTA', 'DAMAGE_POWER', 'DAMAGE_SEGMENTS', 'DAMAGE_TYPE',
-    ]),
-    failClosedMultiRowCodes: Object.freeze([
-      'DAMAGE_PENETRATION',
-      'STATE_PRESENCE', 'SUMMON_COUNT',
-      'SUMMON_STRENGTH', 'SUMMON_DURATION',
-    ]),
-    singleRowCodes: Object.freeze([
-      'RELATION_TARGET_COUNT', 'RELATION_TARGET_SIDE', 'SUCCESS_PROBABILITY',
-      'PUBLIC_HP_RATIO', 'PUBLIC_RESOURCE_RATIO', 'COST_AFFORDABILITY',
-      'REVEAL_STRENGTH', 'OVERKILL_AVAILABILITY', 'OUTSIDE_BATCH1_ROW_COUNT',
-      'PUBLIC_RECIPIENT_NEED_MATCH',
-      'TEAM_EFFECT_MARGINAL_GAIN', 'TEAM_EFFECT_REDUNDANCY_RATIO',
-      'RESOURCE_DEFICIT_COVERAGE', 'RESOURCE_CONSUMER_FIT',
-      'TEAM_FOLLOWUP_COVERAGE',
-      'ATTRIBUTE_DELTA', 'SHIELD_DELTA',
-    ]),
-    collapsedInBif: Object.freeze(['ATTRIBUTE_DELTA', 'SHIELD_DELTA']),
-  });
-
-  // Sealed normalization (training KNOWN rows only; scales = std + 1e-6), except
-  // PUBLIC_RECIPIENT_NEED_MATCH. That feature is zero-inflated: its historical
-  // near-zero standard deviation amplified ordinary 4%-9% resource gaps into
-  // +4 to +10 score points. Deep-route audits classified those creations as
-  // ZERO_EFFECT_COSTLY, so recipient need uses a stable 10 percentage-point
-  // domain scale instead of the sparse empirical standard deviation.
-  const NORMALIZATION = Object.freeze({
-    means: Object.freeze({
-      ATTRIBUTE_DELTA: 14.5, COST_AFFORDABILITY: 1, DAMAGE_PENETRATION: 14.225806451612904,
-      DAMAGE_POWER: 23.38761904761905, DAMAGE_SEGMENTS: 2.142857142857143, DAMAGE_TYPE: 1,
-      JUDGMENT_DELTA: -2.609375, OUTSIDE_BATCH1_ROW_COUNT: 0.10471204188481675,
-      OVERKILL_AVAILABILITY: 0, PUBLIC_HP_RATIO: 0.9090386642361269,
-      PUBLIC_RECIPIENT_NEED_MATCH: 0, PUBLIC_RESOURCE_RATIO: 0.6952879581151833,
-      RELATION_TARGET_COUNT: 1.1151832460732984, RELATION_TARGET_SIDE: 0,
-      RESOURCE_CONSUMER_FIT: 0, RESOURCE_DEFICIT_COVERAGE: 0, RESOURCE_DELTA: 0,
-      RESOURCE_DELTA_PERCENT: 15.344, REVEAL_STRENGTH: 0, SETTLEMENT_MODIFIER_PERCENT: 4,
-      SHIELD_DELTA: 0, STATE_DELTA_PERCENT: -11.5, STATE_DURATION: 1.0441176470588236,
-      STATE_PRESENCE: 1, SUCCESS_PROBABILITY: 0.6946307757209801, SUMMON_COUNT: 1,
-      SUMMON_DURATION: 1, SUMMON_STRENGTH: 0.11, TEAM_EFFECT_MARGINAL_GAIN: 1,
-      TEAM_EFFECT_REDUNDANCY_RATIO: 0, TEAM_FOLLOWUP_COVERAGE: 0,
-    }),
-    scales: Object.freeze({
-      ATTRIBUTE_DELTA: 1, COST_AFFORDABILITY: 1, DAMAGE_PENETRATION: 8.43842952446704,
-      DAMAGE_POWER: 27.46451106988264, DAMAGE_SEGMENTS: 2.5501777312373113, DAMAGE_TYPE: 1,
-      JUDGMENT_DELTA: 5.167106051126307, OUTSIDE_BATCH1_ROW_COUNT: 0.42132873903100887,
-      OVERKILL_AVAILABILITY: 1, PUBLIC_HP_RATIO: 0.22487126666354648,
-      PUBLIC_RECIPIENT_NEED_MATCH: 0.1, PUBLIC_RESOURCE_RATIO: 0.24281348191416682,
-      RELATION_TARGET_COUNT: 0.4659401719641251, RELATION_TARGET_SIDE: 1,
-      RESOURCE_CONSUMER_FIT: 1, RESOURCE_DEFICIT_COVERAGE: 1, RESOURCE_DELTA: 1,
-      RESOURCE_DELTA_PERCENT: 4.10187179269935, REVEAL_STRENGTH: 1,
-      SETTLEMENT_MODIFIER_PERCENT: 3.714836124201342, SHIELD_DELTA: 1,
-      STATE_DELTA_PERCENT: 5.286365740907786, STATE_DURATION: 0.20535747123189627,
-      STATE_PRESENCE: 1, SUCCESS_PROBABILITY: 0.09415521560514117, SUMMON_COUNT: 1,
-      SUMMON_DURATION: 1, SUMMON_STRENGTH: 1, TEAM_EFFECT_MARGINAL_GAIN: 1,
-      TEAM_EFFECT_REDUNDANCY_RATIO: 1, TEAM_FOLLOWUP_COVERAGE: 1,
-    }),
-    missingMask: Object.freeze(['HARD_EXCLUSION', 'HARD_EXCLUSION_REASON']),
-  });
-
-  // JUDGMENT_DELTA and SETTLEMENT_MODIFIER_PERCENT remain in the audit
-  // inventory, but their legacy scalar heads cannot distinguish semantic type
-  // and recipient side. Realized value is owned by the target-aware causal
-  // option features below.
-  const LINEAR = Object.freeze({
-    intercept: 0,
-    coefficients: Object.freeze({
-      ATTRIBUTE_DELTA: 0, COST_AFFORDABILITY: 0, DAMAGE_PENETRATION: 0.27101009737338333,
-      DAMAGE_POWER: 0.9005159950810252, DAMAGE_SEGMENTS: -0.10897479287395434, DAMAGE_TYPE: 0,
-      JUDGMENT_DELTA: 0, OUTSIDE_BATCH1_ROW_COUNT: -1.1292992745534087,
-      OVERKILL_AVAILABILITY: 0, PUBLIC_HP_RATIO: -0.19953006499152975,
-      PUBLIC_RECIPIENT_NEED_MATCH: 0.45252268447270233, PUBLIC_RESOURCE_RATIO: -1.2035997079030496,
-      RELATION_TARGET_COUNT: 0.799682677937762, RELATION_TARGET_SIDE: 0,
-      RESOURCE_CONSUMER_FIT: 0, RESOURCE_DEFICIT_COVERAGE: 0, RESOURCE_DELTA: 0,
-      RESOURCE_DELTA_PERCENT: -0.3984230873845778, REVEAL_STRENGTH: 0,
-      SETTLEMENT_MODIFIER_PERCENT: 0, SHIELD_DELTA: 0,
-      STATE_DELTA_PERCENT: 0.18441615865944933, STATE_DURATION: 0.0019588051160184944,
-      STATE_PRESENCE: 0, SUCCESS_PROBABILITY: 0.8567163732632611, SUMMON_COUNT: 0,
-      SUMMON_DURATION: 0, SUMMON_STRENGTH: 0, TEAM_EFFECT_MARGINAL_GAIN: 0,
-      TEAM_EFFECT_REDUNDANCY_RATIO: 0, TEAM_FOLLOWUP_COVERAGE: 0,
-    }),
-  });
-
-  // R4B1 constrained head. These constants are embedded for runtime binding;
-  // the Provider never reads the offline artifact.
-  const REACTION_CODES = Object.freeze([
-    'REACTION_DAMAGE_MULTIPLIER', 'REACTION_DODGE_PROBABILITY',
-  ]);
-  const SCOREABLE_INVENTORY = Object.freeze(SCOREABLE_CODES.concat(REACTION_CODES, CAUSAL_CODES));
-  const REACTION_NORMALIZATION = Object.freeze({
-    means: Object.freeze({
-      REACTION_DAMAGE_MULTIPLIER: 0.820427777816285,
-      REACTION_DODGE_PROBABILITY: 0.1576148028913787,
-    }),
-    scales: Object.freeze({
-      REACTION_DAMAGE_MULTIPLIER: 0.2541751975645827,
-      REACTION_DODGE_PROBABILITY: 0.2268679023040783,
-    }),
-  });
-  const REACTION_LINEAR = Object.freeze({
-    k: 2.4687377286545256,
-    intercept: 0,
-    coefficients: Object.freeze({
-      REACTION_DAMAGE_MULTIPLIER: -0.6274918999159032,
-      REACTION_DODGE_PROBABILITY: 0.5600773498387871,
-    }),
-  });
-  const CAUSAL_NORMALIZATION = Object.freeze({
-    means: Object.freeze(Object.fromEntries(CAUSAL_CODES.map(code => [code, 0]))),
-    scales: Object.freeze(Object.fromEntries(CAUSAL_CODES.map(code => [code, 1]))),
-  });
-  const ACTIVE_CAUSAL_LINEAR = Object.freeze({
-    intercept: 0,
-    coefficients: Object.freeze({
-      OBJECTIVE_PROGRESS: 33.38215225116526,
-      SELF_FOLLOWUP_POOL_GAIN: 10.302556723848836,
-      SELF_FOLLOWUP_MECHANICAL_GAIN: 8.201659516257939,
-      RESOURCE_RUNWAY_GAIN: 14.848683457044219,
-      // W6 (2026-11-09): the feature is now the enemy damage it denies, as a share of the actor's HP maximum, which
-      // is what OBJECTIVE_PROGRESS counts for the actor's own damage, so it takes that coefficient. Before, it was a
-      // capability share averaged over enemies, fitted to 1.48 in d6c028b (hand-set 4 beside OBJECTIVE_PROGRESS 8),
-      // which priced a full-round stun at under a third of one basic attack.
-      ENEMY_RESPONSE_OPTION_DENIAL: 33.38215225116526,
-      OPPONENT_RESPONSE_PRESSURE: 11.747833245997066,
-      REACTION_FOLLOWUP_GAIN: 0,
-      SETUP_INTERRUPT_RISK: 0,
-      ALLY_OPTION_GAIN: 19.07586472591921,
-      ALLY_RESOURCE_RUNWAY_GAIN: 41.29002102614034,
-      FOCUS_TARGET_MARGINAL_GAIN: 11.747833245997066,
-      PROTECTION_MARGINAL_GAIN: 115.88679861250772,
-      TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL: -3.5849163455251323,
-    }),
-  });
-  const REACTION_CAUSAL_LINEAR = Object.freeze({
-    intercept: 0,
-    coefficients: Object.freeze({
-      OBJECTIVE_PROGRESS: 0,
-      // A response that costs the actor its own later actions (a self 僵直 side effect cancels its natural action) loses
-      // them just as an active action would; at 0.25 that loss was free, and a 防御系 blocked with its stiffening shield
-      // skill for twelve rounds without ever attacking (1v1-0135, lost on 坚持回合). Same price as the active head.
-      SELF_FOLLOWUP_POOL_GAIN: ACTIVE_CAUSAL_LINEAR.coefficients.SELF_FOLLOWUP_POOL_GAIN,
-      SELF_FOLLOWUP_MECHANICAL_GAIN: ACTIVE_CAUSAL_LINEAR.coefficients.SELF_FOLLOWUP_MECHANICAL_GAIN,
-      // Spending resources in an immediate response can remove the actor's
-      // remaining skill routes just as an active action can. The causal
-      // feature already measures that loss; ignoring it made costly counters
-      // compare as if their future skill pool were free.
-      RESOURCE_RUNWAY_GAIN: 14.848683457044219,
-      ENEMY_RESPONSE_OPTION_DENIAL: 0.25,
-      OPPONENT_RESPONSE_PRESSURE: 0,
-      REACTION_FOLLOWUP_GAIN: 72,
-      SETUP_INTERRUPT_RISK: -0.25,
-      ALLY_OPTION_GAIN: 0.25,
-      ALLY_RESOURCE_RUNWAY_GAIN: 0.25,
-      FOCUS_TARGET_MARGINAL_GAIN: 0,
-      PROTECTION_MARGINAL_GAIN: 29.400890343687756,
-      TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL: -0.25,
-    }),
-  });
-  const REACTION_MISSING_POLICY = deepFreeze({
-    REACTION_DAMAGE_MULTIPLIER: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'REQUIRE_KNOWN' },
-    REACTION_DODGE_PROBABILITY: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'REQUIRE_KNOWN' },
-  });
-  const CAUSAL_MISSING_POLICY = deepFreeze(Object.fromEntries(CAUSAL_CODES.map(code => [
-    code,
-    { unknown: 'REQUIRE_KNOWN', na: 'REQUIRE_KNOWN' },
-  ])));
-  const SCOREABLE_MISSING_POLICY = deepFreeze({
-    ...MISSING_POLICY,
-    ...REACTION_MISSING_POLICY,
-    ...CAUSAL_MISSING_POLICY,
-  });
 
   const metrics = { selectCalls: 0, fatalCount: 0, lastWorkUnits: 0, totalWorkUnits: 0 };
 
@@ -6493,316 +6202,6 @@
   }
   function canonicalHash(value) { return sha256Utf8(canonicalJson(value)); }
   function compareUtf16(a, b) { return String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0; }
-
-  const PROVENANCE_AGGREGATION_CODES = new Set([
-    'DAMAGE_POWER', 'DAMAGE_SEGMENTS', 'DAMAGE_TYPE', 'RESOURCE_DELTA',
-  ]);
-  function aggregationRowsOf(rows, code) {
-    const seen = new Set();
-    const prepared = rows.map((row, index) => {
-      const refs = row && row.sourceFactIds;
-      const ref = Array.isArray(refs) && refs.length === 1 ? refs[0] : null;
-      const split = typeof ref === 'string' ? ref.lastIndexOf('::') : -1;
-      const sourceEffectId = split > 0 ? ref.slice(0, split) : '';
-      const key = split >= 0 ? ref.slice(split + 2) : null;
-      if (!/^[^\u0000-\u001f\u007f]{1,512}$/.test(sourceEffectId) || typeof key !== 'string' || key.length > 512 || /[\u0000-\u001f\u007f]/.test(key)) {
-        fail('AGGREGATION_MISSING_EFFECT_ID', code + ':' + index);
-      }
-      if (typeof row.value !== 'number' || !Number.isFinite(row.value)) fail('AGGREGATION_NON_FINITE_VALUE', code + ':' + index);
-      // One admitted resource effect may contain several resource keys. They
-      // remain a vector (masked below), not duplicate deliveries or an ABS sum.
-      const identity = code === 'RESOURCE_DELTA' ? JSON.stringify([sourceEffectId, key]) : sourceEffectId;
-      if (seen.has(identity)) fail('AGGREGATION_DUPLICATE_SOURCE_EFFECT', code + ':' + sourceEffectId);
-      seen.add(identity);
-      const value = Object.is(row.value, -0) ? 0 : row.value;
-      if (code === 'DAMAGE_SEGMENTS' && !Number.isSafeInteger(value)) fail('AGGREGATION_INVALID_SEGMENT_DOMAIN', code + ':' + value);
-      if (code === 'DAMAGE_TYPE' && value !== 0 && value !== 1) fail('AGGREGATION_INVALID_TYPE_DOMAIN', code + ':' + value);
-      return { sourceEffectId, key, value };
-    });
-    prepared.sort((left, right) => compareUtf16(left.sourceEffectId, right.sourceEffectId));
-    return prepared;
-  }
-  function neumaierSum(values) {
-    let sum = 0;
-    let correction = 0;
-    for (const value of values) {
-      const next = sum + value;
-      correction += Math.abs(sum) >= Math.abs(value) ? (sum - next) + value : (value - next) + sum;
-      sum = next;
-    }
-    const result = sum + correction;
-    if (!Number.isFinite(result)) fail('AGGREGATION_NON_FINITE_RESULT');
-    return Object.is(result, -0) ? 0 : result;
-  }
-
-  // Settlement compresses power above 100 per damage effect. Scoring must use
-  // the same effective domain before effects are aggregated.
-  const SETTLEMENT_NULLIFIED_CODES = Object.freeze(['DAMAGE_POWER', 'DAMAGE_SEGMENTS', 'DAMAGE_PENETRATION', 'DAMAGE_TYPE', 'SUCCESS_PROBABILITY']);
-  function effectiveDamagePower(value) {
-    const power = Math.max(0, Number(value) || 0);
-    return power <= 100 ? power : 100 * Math.pow(power / 100, 0.25);
-  }
-
-  // Per-candidate 35-code scalarization, isomorphic to the trainer's
-  // scalarizeCode (single-instance identity; duplicate rows via frozen perCode
-  // SUM/MAX; ENUM identity; missing rows become UNKNOWN:NOT_EMITTED).
-  function scalarizeCode(doc, code, aggregation, rowsByScope) {
-    const scope = CAUSAL_CODES.indexOf(code) >= 0 ? 'causal'
-      : RELATIONAL_CODES.indexOf(code) >= 0 ? 'relational' : 'immediate';
-    let rowsByCode = rowsByScope.get(scope);
-    if (!rowsByCode) {
-      const features = scope === 'causal' ? (doc.document.causal?.features || [])
-        : (doc.document[scope].features || []);
-      rowsByCode = new Map();
-      if (!Array.isArray(features)) {
-        // Keep the existing filter boundary for malformed/non-array inputs.
-        rowsByCode.set(code, scope === 'causal'
-          ? (doc.document.causal?.features || []).filter(f => f.featureCode === code)
-          : scope === 'relational'
-            ? (doc.document.relational.features || []).filter(f => f.featureCode === code)
-            : (doc.document.immediate.features || []).filter(f => f.featureCode === code));
-      } else {
-        features.forEach(feature => {
-          const featureCode = feature.featureCode;
-          let rows = rowsByCode.get(featureCode);
-          if (!rows) {
-            rows = [];
-            rowsByCode.set(featureCode, rows);
-          }
-          rows.push(feature);
-        });
-        rowsByScope.set(scope, rowsByCode);
-      }
-    }
-    const sourceRows = rowsByCode.get(code) || [];
-    if (sourceRows.length === 0) return { status: 'UNKNOWN', value: null, reasonCode: 'NOT_EMITTED', rowCount: 0, kind: 'NONE' };
-    const knownRows = sourceRows.filter(r => r.status === 'KNOWN');
-    if (knownRows.length > 0) {
-      if (ENUM_CODES.has(code)) {
-        if (typeof knownRows[0].value !== 'string') fail('ENUM_EXPECTS_STRING_VALUE', code + ':' + String(knownRows[0].value));
-        const allSame = knownRows.every(r => String(r.value) === String(knownRows[0].value));
-        if (!allSame) fail('ENUM_VALUE_MIXED_WITHIN_CANDIDATE_NO_FIRST', code + ':' + knownRows.map(r => r.value).join(','));
-        return { status: 'KNOWN', value: String(knownRows[0].value), reasonCode: 'OK', rowCount: knownRows.length, kind: 'ENUM' };
-      }
-      const aggregationRows = PROVENANCE_AGGREGATION_CODES.has(code) ? aggregationRowsOf(knownRows, code) : null;
-      const numeric = aggregationRows
-        ? aggregationRows.map(row => code === 'DAMAGE_POWER' ? effectiveDamagePower(row.value) : row.value)
-        : knownRows.map(r => Number(r.value)).filter(Number.isFinite);
-      if (numeric.length !== knownRows.length) fail('NON_NUMERIC_KNOWN_VALUE', code + ':' + knownRows.map(r => String(r.value)).join(','));
-      let value;
-      if (knownRows.length === 1) {
-        value = numeric[0];
-      } else {
-        const op = aggregation && aggregation[code];
-        if (!op) fail('AGGREGATION_MISSING_IN_CONTRACT', code + ':rows=' + knownRows.length);
-        if (op === 'MAX') value = Math.max(...numeric);
-        else if (op === 'SUM') value = numeric.reduce((sum, v) => sum + v, 0);
-        else if (op === OP_RESOURCE_DELTA) {
-          const resourceKeys = new Set(aggregationRows.map(row => row.key));
-          if (resourceKeys.size !== 1) {
-            // Absolute soul-power, mental-power, stamina and HP values are not
-            // commensurate. Preserve the candidate and provenance, but mask this
-            // legacy scalar cell; the keyed causal resource chain owns the real
-            // option/runway value instead of inventing a cross-resource sum.
-            return {
-              status: 'UNKNOWN', value: null, reasonCode: 'MULTI_RESOURCE_VECTOR_REQUIRED',
-              rowCount: knownRows.length, kind: 'NONE',
-            };
-          }
-          value = neumaierSum(numeric);
-        }
-        else if (op === OP_DAMAGE_POWER) value = neumaierSum(numeric);
-        else if (op === OP_DAMAGE_SEGMENTS) {
-          value = numeric.reduce((sum, v) => {
-            const next = sum + v;
-            if (!Number.isSafeInteger(next)) fail('AGGREGATION_NON_FINITE_RESULT', code + ':' + next);
-            return next;
-          }, 0);
-        }
-        else fail('AGGREGATION_OPERATOR_UNKNOWN_OR_NOT_ADJUDICATED', code + ':' + op);
-      }
-      if (Object.is(value, -0)) value = 0;
-      return { status: 'KNOWN', value, reasonCode: 'OK', rowCount: knownRows.length, kind: 'NUMERIC' };
-    }
-    const na = sourceRows.find(r => r.status === 'NOT_APPLICABLE');
-    if (na) return { status: 'NOT_APPLICABLE', value: null, reasonCode: na.reasonCode || 'NA', rowCount: 1, kind: 'NONE' };
-    const unk = sourceRows.find(r => r.status === 'UNKNOWN');
-    if (unk) return { status: 'UNKNOWN', value: null, reasonCode: unk.reasonCode || 'UNKNOWN', rowCount: 1, kind: 'NONE' };
-    return { status: 'UNKNOWN', value: null, reasonCode: sourceRows[0].reasonCode || 'UNKNOWN', rowCount: sourceRows.length, kind: 'NONE' };
-  }
-
-  function assertScorable(cells) {
-    for (const code of SCOREABLE_CODES) {
-      const cell = cells[code];
-      if (!cell || cell.status === 'KNOWN') continue;
-      const policy = MISSING_POLICY[code];
-      if (cell.status === 'NOT_APPLICABLE') {
-        if (policy.na === 'REQUIRE_KNOWN') fail('NOT_SCORABLE_INPUT', code + ':NA:' + cell.reasonCode);
-      } else if (policy.unknown === 'REQUIRE_KNOWN') {
-        fail('NOT_SCORABLE_INPUT', code + ':' + cell.reasonCode);
-      }
-    }
-    for (const code of REACTION_CODES) {
-      const cell = cells[code];
-      if (!cell || cell.status === 'KNOWN') continue;
-      const policy = REACTION_MISSING_POLICY[code];
-      if (cell.status === 'NOT_APPLICABLE') {
-        if (policy.na === 'REQUIRE_KNOWN') fail('NOT_SCORABLE_INPUT', code + ':NA:' + cell.reasonCode);
-      } else if (policy.unknown === 'REQUIRE_KNOWN') {
-        fail('NOT_SCORABLE_INPUT', code + ':' + cell.reasonCode);
-      }
-    }
-    for (const code of CAUSAL_CODES) {
-      const cell = cells[code];
-      if (!cell || cell.status === 'KNOWN') continue;
-      const policy = CAUSAL_MISSING_POLICY[code];
-      if (cell.status === 'NOT_APPLICABLE') {
-        if (policy.na === 'REQUIRE_KNOWN') fail('NOT_SCORABLE_INPUT', code + ':NA:' + cell.reasonCode);
-      } else if (policy.unknown === 'REQUIRE_KNOWN') {
-        fail('NOT_SCORABLE_INPUT', code + ':' + cell.reasonCode);
-      }
-    }
-  }
-
-  function zOf(cells, code) {
-    const cell = cells[code];
-    const policy = MISSING_POLICY[code];
-    const scale = NORMALIZATION.scales[code];
-    const mean = NORMALIZATION.means[code];
-    const targetSide = cells.RELATION_TARGET_SIDE;
-    if (
-      code === 'PUBLIC_RESOURCE_RATIO' &&
-      targetSide?.status === 'KNOWN' &&
-      ['SELF', 'ALLY'].includes(String(targetSide.value || '').trim())
-    ) {
-      // Resource remaining describes hostile vulnerability. It must not punish
-      // a friendly buff/creation target; recipient need and runway are scored
-      // by the causal feature head instead.
-      return 0;
-    }
-    if (cell.status === 'KNOWN') {
-      if (ENUM_CODES.has(code)) return 0;
-      // W9 (2026-11-09): the success probability was trained on 0.695 ± 0.094 (almost all 0.5–0.9). Far outside that
-      // the linear term only extrapolates — a 5% attack scored -5.9 here, below doing nothing (2v2-1623-o2: a 1.9%-HP
-      // enemy left alone for nine rounds of defending) — while the causal head already prices the miss in its expected
-      // outcome. It is held to the trained range (±2 standard deviations).
-      if (code === 'SUCCESS_PROBABILITY') return Math.max(-2, Math.min(2, (cell.value - mean) / scale));
-      return (cell.value - mean) / scale;
-    }
-    if (cell.status === 'NOT_APPLICABLE') {
-      if (policy.na === 'NOT_APPLICABLE_TO_SEMANTIC_ZERO') {
-        if ((policy.zeroReasons || []).indexOf(cell.reasonCode) >= 0) return (0 - mean) / scale;
-        return 0;
-      }
-      return 0;
-    }
-    return 0;
-  }
-
-  function contributionOf(cells, code) {
-    const z = zOf(cells, code);
-    const coefficient = LINEAR.coefficients[code];
-    return {
-      code, raw: cells[code].value, mean: NORMALIZATION.means[code], scale: NORMALIZATION.scales[code],
-      z, coefficient, contribution: coefficient * z, status: cells[code].status,
-      reasonCode: cells[code].reasonCode, rowCount: cells[code].rowCount,
-    };
-  }
-
-  function reactionZOf(cells, code) {
-    const cell = cells[code];
-    if (cell.status === 'KNOWN') {
-      if (typeof cell.value !== 'number' || !Number.isFinite(cell.value)) fail('NON_FINITE_REACTION_VALUE', code);
-      return (cell.value - REACTION_NORMALIZATION.means[code]) / REACTION_NORMALIZATION.scales[code];
-    }
-    return 0;
-  }
-
-  function reactionContributionOf(cells, code) {
-    const cell = cells[code];
-    const z = reactionZOf(cells, code);
-    const factor = {
-      code,
-      mean: REACTION_NORMALIZATION.means[code],
-      scale: REACTION_NORMALIZATION.scales[code],
-      z,
-      coefficient: REACTION_LINEAR.coefficients[code],
-      contribution: REACTION_LINEAR.coefficients[code] * z,
-      status: cell.status,
-      reasonCode: cell.reasonCode,
-      rowCount: cell.rowCount,
-    };
-    if (cell.status === 'KNOWN') factor.raw = cell.value;
-    return factor;
-  }
-
-  function causalZOf(cells, code) {
-    const cell = cells[code];
-    if (!cell || cell.status !== 'KNOWN' || typeof cell.value !== 'number' || !Number.isFinite(cell.value)) {
-      fail('NON_FINITE_CAUSAL_VALUE', code);
-    }
-    return (cell.value - CAUSAL_NORMALIZATION.means[code]) / CAUSAL_NORMALIZATION.scales[code];
-  }
-
-  // Analytics only (paired win-rate tests of the causal scale): __LWCS_CAUSAL_COEFFICIENT_OVERRIDE__ = { sides, active }
-  // replaces active-head coefficients for the listed sides. It is never set in the game.
-  function causalLinearForRole(role, side = '') {
-    const linear = ['REACTION', 'COUNTER'].includes(String(role || '').trim().toUpperCase())
-      ? REACTION_CAUSAL_LINEAR
-      : ACTIVE_CAUSAL_LINEAR;
-    const override = globalThis.__LWCS_CAUSAL_COEFFICIENT_OVERRIDE__;
-    if (!override || !Array.isArray(override.sides) || !override.sides.includes(side)) return linear;
-    // `active` replaces active-head coefficients, `reaction` the reaction and counter head's.
-    const replaced = linear === ACTIVE_CAUSAL_LINEAR ? override.active : override.reaction;
-    return replaced ? { intercept: linear.intercept, coefficients: { ...linear.coefficients, ...replaced } } : linear;
-  }
-
-  function causalContributionOf(cells, code, role, side = '') {
-    const cell = cells[code];
-    const linear = causalLinearForRole(role, side);
-    const z = causalZOf(cells, code);
-    return {
-      code,
-      raw: cell.value,
-      mean: CAUSAL_NORMALIZATION.means[code],
-      scale: CAUSAL_NORMALIZATION.scales[code],
-      z,
-      coefficient: linear.coefficients[code],
-      contribution: linear.coefficients[code] * z,
-      status: cell.status,
-      reasonCode: cell.reasonCode,
-      rowCount: cell.rowCount,
-    };
-  }
-
-  function baseScoreOf(cells) {
-    let score = LINEAR.intercept;
-    for (const code of SCOREABLE_CODES) score += LINEAR.coefficients[code] * zOf(cells, code);
-    return score;
-  }
-
-  function reactionScoreOf(cells) {
-    let score = REACTION_LINEAR.intercept;
-    for (const code of REACTION_CODES) score += REACTION_LINEAR.coefficients[code] * reactionZOf(cells, code);
-    return score;
-  }
-
-  function causalScoreOf(cells, role, side = '') {
-    const linear = causalLinearForRole(role, side);
-    let score = linear.intercept;
-    for (const code of CAUSAL_CODES) score += linear.coefficients[code] * causalZOf(cells, code);
-    return score;
-  }
-
-  function candidateHasImmediateDamage(candidate) {
-    const actionKind = String(candidate?.declaration?.actionKind || '').trim().toUpperCase();
-    if (actionKind === 'BASIC_ATTACK') return true;
-    const skill = candidate?.declaration?.skill || candidate?.skill || candidate?.item || {};
-    const effects = Array.isArray(skill?._效果数组)
-      ? skill._效果数组
-      : Array.isArray(skill?.效果数组) ? skill.效果数组 : [];
-    return effects.some(effect => String(effect?.原型 || '').trim() === '伤害结算');
-  }
 
   function candidateIsPureImmediateDamage(candidate) {
     const actionKind = String(candidate?.declaration?.actionKind || '').trim().toUpperCase();
@@ -6872,34 +6271,7 @@
     return { noGreater: true, strict };
   }
 
-  function activeBaseWeight(candidate, frozenCandidates, actionRole, cells) {
-    if (['REACTION', 'COUNTER'].includes(actionRole)) return BASE_WEIGHT_POLICY.reactionCounter;
-    const actionKind = String(candidate?.declaration?.actionKind || '').trim().toUpperCase();
-    if (
-      actionKind === 'RELEASE_SKILL' &&
-      !candidateHasImmediateDamage(candidate) &&
-      !CAUSAL_CODES.some(code =>
-        Number(ACTIVE_CAUSAL_LINEAR.coefficients[code] || 0) > 0 &&
-        cells?.[code]?.status === 'KNOWN' &&
-        Number(cells[code].value) > 1e-9
-      )
-    ) return BASE_WEIGHT_POLICY.active.noCausalProgress;
-    if (frozenCandidates.some(entry => entry?.creation)) {
-      if (candidate?.creation) return BASE_WEIGHT_POLICY.active.creationCandidate;
-      return actionKind === 'RELEASE_SKILL' &&
-        !candidateHasImmediateDamage(candidate)
-        ? BASE_WEIGHT_POLICY.active.nonDamageSkill
-        : BASE_WEIGHT_POLICY.active.otherwise;
-    }
-    return frozenCandidates.some(candidate =>
-      String(candidate?.declaration?.actionKind || '').trim().toUpperCase() === 'RELEASE_SKILL' &&
-      !candidateHasImmediateDamage(candidate),
-    ) ? BASE_WEIGHT_POLICY.active.nonDamageSkill : BASE_WEIGHT_POLICY.active.otherwise;
-  }
-
-  // Exclusion-surface reader (closed 11-code set). HARD_EXCLUSION is a BOOL
-  // row and HARD_EXCLUSION_REASON an ENUM row; they are read verbatim for the
-  // exclusion judgement only and never scalarized into the 31-code cells.
+  // Exclusion surface: HARD_EXCLUSION is a BOOL row and HARD_EXCLUSION_REASON an ENUM row of the BIF immediate document.
   function readExclusion(doc) {
     const features = doc && doc.document && doc.document.immediate && Array.isArray(doc.document.immediate.features) ? doc.document.immediate.features : [];
     const hardRow = features.find(f => f && f.featureCode === 'HARD_EXCLUSION');
@@ -6909,6 +6281,23 @@
     return { hard, reason };
   }
 
+  function readValue(doc, candidateId) {
+    const valuation = doc && doc.document && doc.document.valuation;
+    if (!valuation || valuation.schemaVersion !== 'R20ValuationV1') fail('VALUATION_MISSING', candidateId);
+    const value = Number(valuation.value);
+    if (!Number.isFinite(value)) fail('NON_FINITE_SCORE', candidateId);
+    return value;
+  }
+  // A candidate's start cost as shares of the actor's resource maxima (the tie-break: less spent first).
+  // A candidate that holds back (让过, 放弃反击, 放弃应对): preferred over acting when value and spend are equal.
+  function readHold(doc) {
+    return !!(doc && doc.document && doc.document.valuation && doc.document.valuation.hold === true);
+  }
+  function readSpend(doc) {
+    const spend = Number(doc && doc.document && doc.document.valuation && doc.document.valuation.spend);
+    return Number.isFinite(spend) && spend > 0 ? spend : 0;
+  }
+
   // ---------------------------------------------------------------------------
   // Selection
   // ---------------------------------------------------------------------------
@@ -6916,78 +6305,37 @@
     metrics.selectCalls += 1;
     const request = input && input.request ? input.request : {};
     const actionRole = String(request?.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase();
-    const scoringSide = String(request?.actorSide || '').trim();
     const featureInputs = input && input.featureInputs;
     const frozenCandidates = Array.isArray(request.frozenCandidates) ? request.frozenCandidates : [];
     if (!frozenCandidates.length) fail('NO_LEGAL_CANDIDATES', 'frozenCandidates empty');
-    const work = { candidates: frozenCandidates.length, scalarizeCalls: 0, sortComparisons: 0, reasonFactors: 0, documentBuilds: 0 };
+    const work = { candidates: frozenCandidates.length, sortComparisons: 0 };
     const candidateIds = frozenCandidates.map(candidate => String(candidate.candidateId || '').trim());
     if (candidateIds.some(id => !id) || new Set(candidateIds).size !== candidateIds.length) {
       fail('CANDIDATE_ID_UNIQUE', 'frozen candidates must be unique non-empty ids');
     }
-    if (featureInputs === undefined || featureInputs === null) {
-      fail('FEATURE_INPUTS_REQUIRED', 'featureInputs required');
-    }
+    if (featureInputs === undefined || featureInputs === null) fail('FEATURE_INPUTS_REQUIRED', 'featureInputs required');
     if (!Array.isArray(featureInputs)) fail('FEATURE_INPUTS_SHAPE', 'featureInputs must be an array');
-    const documents = featureInputs;
-    work.documentBuilds = 0;
-    const docByCandidate = new Map(documents.map(doc => [String(doc && doc.candidateId || '').trim(), doc]));
-    const candidateById = new Map(frozenCandidates.map(candidate => [
-      String(candidate?.candidateId || '').trim(),
-      candidate,
-    ]));
+    const docByCandidate = new Map(featureInputs.map(doc => [String(doc && doc.candidateId || '').trim(), doc]));
+    const candidateById = new Map(frozenCandidates.map(candidate => [String(candidate?.candidateId || '').trim(), candidate]));
     if (docByCandidate.size !== candidateIds.length || candidateIds.some(id => !docByCandidate.has(id))) {
       fail('CANDIDATE_SET_CONSERVATION', 'featureInputs must cover frozenCandidates exactly, no re-enumeration');
     }
     const rows = [];
-    const featureVector = [];
+    const valueVector = [];
     const hardExclusionAudit = [];
     for (const candidateId of candidateIds) {
       const doc = docByCandidate.get(candidateId);
-      const cells = {};
-      const rowsByScope = new Map();
-      for (const code of SCOREABLE_INVENTORY) {
-        cells[code] = scalarizeCode(doc, code, AGGREGATION, rowsByScope);
-        work.scalarizeCalls += 1;
-      }
-      // B5: the decision's preview found this damage lands nothing on any enemy; its declared damage carries no
-      // information, so these cells read as unknown (train mean, zero contribution) rather than a full hit.
-      if (doc && doc.document && doc.document.settlement && doc.document.settlement.damageNullified === true) {
-        for (const code of SETTLEMENT_NULLIFIED_CODES) {
-          if (cells[code]) cells[code] = { status: 'UNKNOWN', value: null, reasonCode: 'SETTLEMENT_DAMAGE_NULLIFIED', rowCount: 0, kind: 'NONE' };
-        }
-      }
       const exclusion = readExclusion(doc);
-      const hardExcluded = exclusion.hard;
-      const baseWeight = activeBaseWeight(
-        candidateById.get(candidateId),
-        frozenCandidates,
-        actionRole,
-        cells,
-      );
-      work.exclusionRows = (work.exclusionRows || 0) + 2;
       let reasonCode = null;
-      if (hardExcluded) {
+      if (exclusion.hard) {
         reasonCode = exclusion.reason;
         if (HARD_EXCLUSION_CODES.indexOf(reasonCode) < 0) fail('HARD_EXCLUSION_CODE_UNKNOWN', reasonCode);
         hardExclusionAudit.push({ candidateId, disposition: 'HARD_EXCLUDED_PREVIEW_SKIPPED', reasonCode, source: 'BIF_IMMEDIATE_PUBLIC' });
       }
-      const row = { candidateId, cells, hardExcluded, eligible: !hardExcluded, rawBaseScore: null, baseWeight, baseScore: null, extensionScore: null, causalScore: null, score: null };
-      featureVector.push({
-        candidateId,
-        cells,
-        hardExclusion: { hard: hardExcluded, reason: reasonCode },
-      });
-      if (!hardExcluded) {
-        assertScorable(cells);
-        row.rawBaseScore = baseScoreOf(cells);
-        row.baseScore = row.rawBaseScore * baseWeight;
-        row.extensionScore = reactionScoreOf(cells);
-        row.causalScore = causalScoreOf(cells, actionRole, scoringSide);
-        row.score = row.baseScore + row.extensionScore + row.causalScore;
-        if (!Number.isFinite(row.score)) fail('NON_FINITE_SCORE');
-      }
-      rows.push(row);
+      const score = exclusion.hard ? null : readValue(doc, candidateId);
+      const spend = readSpend(doc), hold = readHold(doc);
+      rows.push({ candidateId, eligible: !exclusion.hard, score, spend, hold });
+      valueVector.push({ candidateId, value: score, spend, hold, hardExclusion: { hard: exclusion.hard, reason: reasonCode } });
     }
     const eligible = rows.filter(row => row.eligible);
     if (!eligible.length) fail('NO_ELIGIBLE_CANDIDATES', hardExclusionAudit.map(row => `${row.candidateId}=${row.reasonCode}`).join(';'));
@@ -6995,29 +6343,18 @@
     if (actionRole === 'ACTIVE') {
       for (const row of eligible) {
         const candidate = candidateById.get(row.candidateId);
-        const pressure = row.cells.OPPONENT_RESPONSE_PRESSURE;
-        if (
-          !candidateIsPureImmediateDamage(candidate) ||
-          pressure?.status !== 'KNOWN' ||
-          !Number.isFinite(Number(pressure.value))
-        ) continue;
+        if (!candidateIsPureImmediateDamage(candidate)) continue;
         const candidateTargetKey = targetSetKey(candidate);
         const dominator = eligible.find(other => {
           if (other === row) return false;
           const otherCandidate = candidateById.get(other.candidateId);
-          const otherPressure = other.cells.OPPONENT_RESPONSE_PRESSURE;
           if (
             !candidateIsPureImmediateDamage(otherCandidate) ||
             targetSetKey(otherCandidate) !== candidateTargetKey ||
-            otherPressure?.status !== 'KNOWN' ||
-            !Number.isFinite(Number(otherPressure.value)) ||
-            Number(otherPressure.value) < Number(pressure.value) - 1e-9
+            other.score < row.score - 1e-9
           ) return false;
           const costRelation = costVectorRelation(otherCandidate, candidate);
-          return costRelation.noGreater && (
-            Number(otherPressure.value) > Number(pressure.value) + 1e-9 ||
-            costRelation.strict
-          );
+          return costRelation.noGreater && (other.score > row.score + 1e-9 || costRelation.strict);
         });
         if (!dominator) continue;
         row.contextuallyDominated = true;
@@ -7026,7 +6363,7 @@
           candidateId: row.candidateId,
           dominatedBy: dominator.candidateId,
           disposition: 'PARETO_DOMINATED_PURE_DAMAGE',
-          source: 'REALIZED_RESPONSE_PRESSURE_AND_RESOURCE_COST',
+          source: 'R20_VALUE_AND_RESOURCE_COST',
         });
       }
     }
@@ -7034,7 +6371,10 @@
     if (!selectable.length) fail('NO_SELECTABLE_CANDIDATES');
     const compareRanked = (a, b) => {
       work.sortComparisons += 1;
-      return a.score !== b.score ? b.score - a.score : compareUtf16(a.candidateId, b.candidateId);
+      // Equal values: less spent first (no value difference tells them apart: keep the resources and the later options), then
+      // holding back before acting (keeps the options open and shows the opponent nothing), then candidateId.
+      return a.score !== b.score ? b.score - a.score : a.spend !== b.spend ? a.spend - b.spend
+        : a.hold !== b.hold ? (a.hold ? -1 : 1) : compareUtf16(a.candidateId, b.candidateId);
     };
     const rankedSelectable = selectable.slice().sort(compareRanked);
     const ranked = [
@@ -7047,56 +6387,31 @@
     const rankedSummary = ranked.map(row => ({
       candidateId: row.candidateId,
       score: row.score,
-      rawBaseScore: row.rawBaseScore,
-      baseWeight: row.baseWeight,
-      baseScore: row.baseScore,
-      extensionScore: row.extensionScore,
-      causalScore: row.causalScore,
+      spend: row.spend,
       contextuallyDominated: row.contextuallyDominated === true,
       dominatedBy: String(row.dominatedBy || ''),
       tieGroup: ranked.filter(other => other.score === row.score).map(other => other.candidateId).sort(compareUtf16),
     }));
     const scoreContributions = {};
     for (const row of eligible) {
-      const factors = [];
-      for (const code of SCOREABLE_INVENTORY) {
-        let factor =
-          CAUSAL_CODES.indexOf(code) >= 0
-            ? causalContributionOf(row.cells, code, actionRole, scoringSide)
-            : REACTION_CODES.indexOf(code) >= 0
-              ? reactionContributionOf(row.cells, code)
-              : contributionOf(row.cells, code);
-        if (CAUSAL_CODES.indexOf(code) < 0 && REACTION_CODES.indexOf(code) < 0 && row.baseWeight !== 1) {
-          factor = {
-            ...factor,
-            coefficient: factor.coefficient * row.baseWeight,
-            contribution: factor.contribution * row.baseWeight,
-          };
-        }
-        factors.push(factor);
-        work.reasonFactors += 1;
-      }
       scoreContributions[row.candidateId] = {
         score: row.score,
-        rawBaseScore: row.rawBaseScore,
-        baseWeight: row.baseWeight,
-        baseScore: row.baseScore,
-        extensionScore: row.extensionScore,
-        causalScore: row.causalScore,
         contextuallyDominated: row.contextuallyDominated === true,
         dominatedBy: String(row.dominatedBy || ''),
-        causalHead: ['REACTION', 'COUNTER'].includes(actionRole) ? 'REACTION_COUNTER' : 'ACTIVE_ASSIST',
-        factors,
+        factors: [{
+          code: VALUE_CODE, raw: row.score, mean: 0, scale: 1, z: row.score, coefficient: 1, contribution: row.score,
+          status: 'KNOWN', reasonCode: 'R20_VALUE', rowCount: 1,
+        }],
       };
     }
-    metrics.lastWorkUnits = work.candidates * SCOREABLE_INVENTORY.length + work.scalarizeCalls;
+    metrics.lastWorkUnits = work.candidates;
     metrics.totalWorkUnits += metrics.lastWorkUnits;
     const result = {
       providerId: PROVIDER_ID,
       engine: ENGINE,
       schemaVersion: SCHEMA_VERSION,
       requestHash: String(request.requestHash || '').trim(),
-      featureInputHash: canonicalHash(featureVector),
+      featureInputHash: canonicalHash(valueVector),
       selected: {
         candidateId: selected.candidateId,
         declaration: selectedDeclaration,
@@ -7116,13 +6431,7 @@
       alternative,
       workMetrics: {
         candidateCount: work.candidates,
-        scalarizeCalls: work.scalarizeCalls,
-        scalarizePerCandidate: work.candidates ? work.scalarizeCalls / work.candidates : 0,
-        expectedCBy31: work.candidates * SCOREABLE_CODES.length,
-        expectedCBy46: work.candidates * SCOREABLE_INVENTORY.length,
         sortComparisons: work.sortComparisons,
-        reasonFactorCount: work.reasonFactors,
-        documentBuilds: work.documentBuilds,
       },
     };
     result.providerResultHash = canonicalHash(result);
@@ -7170,47 +6479,12 @@
     engine: ENGINE,
     schemaVersion: SCHEMA_VERSION,
     modelHash: MODEL_HASH,
-    baseModelHash: BASE_MODEL_HASH,
     weightsHash: WEIGHTS_HASH,
-    featureSchemaHash: FEATURE_SCHEMA_HASH,
-    dbpRevision: DBP_REVISION,
-    dbpContractHash: DBP_CONTRACT_HASH,
-    bifContractHash: BIF_CONTRACT_HASH,
-    baseSectionHash: BASE_SECTION_HASH,
-    reactionHeadHash: REACTION_HEAD_HASH,
-    modelCompositeHash: MODEL_COMPOSITE_HASH,
-    baseWeightPolicyHash: BASE_WEIGHT_POLICY_HASH,
-    pureDamageDominancePolicyHash: PURE_DAMAGE_DOMINANCE_POLICY_HASH,
-    damagePowerTransformHash: DAMAGE_POWER_TRANSFORM_HASH,
-    intercept: LINEAR.intercept,
-    effectiveDamagePower,
+    intercept: 0,
     constants: Object.freeze({
-      damagePowerTransform: DAMAGE_POWER_TRANSFORM,
-      scoreableCodes: SCOREABLE_INVENTORY.slice(),
-      baseScoreableCodes: SCOREABLE_CODES.slice(),
-      reactionCodes: REACTION_CODES.slice(),
-      causalCodes: CAUSAL_CODES.slice(),
-      baseWeightPolicy: BASE_WEIGHT_POLICY,
+      valueCode: VALUE_CODE,
       pureDamageDominancePolicy: PURE_DAMAGE_DOMINANCE_POLICY,
-      relationalCodes: RELATIONAL_CODES.slice(),
-      exclusionOnly: EXCLUSION_ONLY.slice(),
-      catalogOnly: CATALOG_ONLY.slice(),
       hardExclusionCodes: HARD_EXCLUSION_CODES.slice(),
-      missingPolicy: SCOREABLE_MISSING_POLICY,
-      aggregation: AGGREGATION,
-      aggregationClosure: AGGREGATION_CLOSURE,
-      reaction: Object.freeze({
-        k: REACTION_LINEAR.k,
-        intercept: REACTION_LINEAR.intercept,
-        normalization: REACTION_NORMALIZATION,
-        coefficients: REACTION_LINEAR.coefficients,
-        algorithmHash: REACTION_ALGORITHM_HASH,
-      }),
-      causal: Object.freeze({
-        normalization: CAUSAL_NORMALIZATION,
-        activeAssist: ACTIVE_CAUSAL_LINEAR,
-        reactionCounter: REACTION_CAUSAL_LINEAR,
-      }),
     }),
     selectPreparedRequest,
     readMetrics,

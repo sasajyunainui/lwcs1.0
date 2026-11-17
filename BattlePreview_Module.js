@@ -1931,12 +1931,41 @@
   // 削弱防御（用户 11-17「霍雨浩当时是连用三招，其实是类似于削弱对方防御能力的」）: what of the target's defence a 防御剥夺 / 精神抗性剥夺
   // takes away does not stand against the break either (its panel cuts — 虚弱 — are in its stat already), nor what the attacker's
   // 防御穿透 gets past.
-  function guardBreakRatio(attacker = {}, effect = {}, target = {}, defended = false) {
+  // T23-B（11-18）: whether a timed state is still on after this round's end (BattleRuntime settleConditionsAtRoundEnd: a state laid
+  // this round with 「本回合新附加」 skips one tick; any other loses one, and goes at 0). Untimed states stay.
+  // A state the round start lays again (__auto__: 武魂未释放 / 斗铠未释放 / 压制修为, BattleRuntime ensureArmourUnreleased) stays; so does one
+  // whose rounds are not known (an enemy's state as believed carries 0: buildDecisionWorldOutcomes visibleStates).
+  function stateOutlastsRound(state = {}, key = '') {
+    if (String(key || '').startsWith('__auto__:')) return true;
+    const duration = Number(state?.duration ?? state?.持续回合);
+    if (!Number.isFinite(duration) || !(duration > 0)) return true;
+    return duration - (state?.__本回合新附加 === true ? 0 : 1) >= 1;
+  }
+  // A unit's panel stat with only the states that outlast this round (the additive panel of buildNumericCombatStats: base ×
+  // max(0.1, 1 + Σ(ratio − 1)) + Σ fixed; read back from the stat as it stands, so nothing is rebuilt or copied).
+  function combatStatAfterRound(unit = {}, key = '') {
+    const now = readCombatStat(unit, key), axis = key === 'men' ? 'men_max' : key;
+    let ratioAll = 0, ratioKept = 0, fixedAll = 0, fixedKept = 0;
+    for (const [stateKey, state] of Object.entries(unit?.状态效果 || {})) {
+      const ratio = Number(state?.面板修改比例?.[axis] ?? 1) - 1, fixed = Number(state?.面板固定修正?.[axis] || 0);
+      if (!ratio && !fixed) continue;
+      ratioAll += ratio; fixedAll += fixed;
+      if (stateOutlastsRound(state, stateKey)) { ratioKept += ratio; fixedKept += fixed; }
+    }
+    if (ratioAll === ratioKept && fixedAll === fixedKept) return now;
+    const base = (now - fixedAll) / Math.max(0.1, 1 + ratioAll);
+    return Math.max(1, base * Math.max(0.1, 1 + ratioKept) + fixedKept);
+  }
+  // options.nextRound: the ratio as it stands when the attacker strikes next round — the cuts on the target (防御剥夺, 虚弱 / 属性修正
+  // on its panel) and the attacker's own 防御穿透 / panel that lapse at this round's end left out (objectiveConditionCloseness).
+  function guardBreakRatio(attacker = {}, effect = {}, target = {}, defended = false, options = {}) {
     const mental = classifyDamageType(effect?.伤害类型) === 'MENTAL';
-    const strip = clamp(Object.values(target?.状态效果 || {}).reduce((sum, state) => sum + Math.max(0, Number(state?.战斗效果?.[mental ? 'spirit_resist_strip' : 'defense_strip'] || 0)), 0), 0, 0.95);
+    const lasting = options?.nextRound === true ? ([key, state]) => stateOutlastsRound(state, key) : () => true;
+    const strip = clamp(Object.entries(target?.状态效果 || {}).filter(lasting).reduce((sum, [, state]) => sum + Math.max(0, Number(state?.战斗效果?.[mental ? 'spirit_resist_strip' : 'defense_strip'] || 0)), 0), 0, 0.95);
     // The attacker's own 防御穿透 (armor_pen) gets past that much of it too.
-    const pen = mental ? 0 : clamp(Object.values(attacker?.状态效果 || {}).reduce((sum, state) => sum + Math.max(0, Number(state?.战斗效果?.armor_pen || 0)), 0), 0, 0.95);
-    return readCombatStat(attacker, mental ? 'men' : 'str') / (Math.max(1, readCombatStat(target, mental ? 'men' : 'def')) * (1 - strip) * (1 - pen) *
+    const pen = mental ? 0 : clamp(Object.entries(attacker?.状态效果 || {}).filter(lasting).reduce((sum, [, state]) => sum + Math.max(0, Number(state?.战斗效果?.armor_pen || 0)), 0), 0, 0.95);
+    const stat = options?.nextRound === true ? combatStatAfterRound : readCombatStat;
+    return stat(attacker, mental ? 'men' : 'str') / (Math.max(1, stat(target, mental ? 'men' : 'def')) * (1 - strip) * (1 - pen) *
       (defended ? GUARD_BREAK_DEFENDED_RATIO : GUARD_BREAK_RATIO));
   }
   function guardBreaks(attacker = {}, effect = {}, target = {}, defended = false) {
@@ -3621,7 +3650,9 @@
     if (!record || typeof record !== 'object') return null;
     const carry = Number(record.接续) > 0 ? 1 : record.团战 === true ? 0.5 : 0, keep = record.团战 === true ? 1 : 0;
     const foeFollow = Number(records?.[side === 'team_enemy' ? 'PLAYER' : 'ENEMY']?.接续) > 0;
-    return carry || keep || foeFollow ? { carry, keep, foeFollow } : null;
+    // 剩余场次（第 22 题）：之后在赛事里还要打几场（桥接 赛事剩余场次_桥接）。
+    const remaining = Math.max(0, Math.floor(Number(record.剩余场次) || 0));
+    return carry || keep || foeFollow || remaining ? { carry, keep, foeFollow, remaining } : null;
   }
   // The outlook (battleStandingOutlook) is read off the field: who brings the other side down first, and whether before
   // the battle's rounds run out (胜负条件 maxRounds). A side's time to bring the other down is the other's HP shares (units
@@ -3800,8 +3831,15 @@
     const left = ((escapes ? 1 : -1) + others * worth(without)) / (others + 1) + followLeft;
     const success = rules.concede ? 1 : clamp(Number(contest?.successProbability ?? 1), 0, 1);
     const pursuit = rules.concede ? 0 : Math.max(0, Number(contest?.expectedPursuitDamage || 0)) / Math.max(1, readHpMax(actor));
+    // 没亮武魂不认输（T24 11-18；记忆「撤退 = 胜率严重不足」）: the outlook pictures the actor as it stands, and one with its 武魂
+    // still unreleased fights at half panel with none of its 武魂 skills — its chance read so is not its chance. Releasing takes
+    // no action of the turn, so it releases first and weighs leaving after (a side out to get away excepted: it flees as it is).
+    // Only while it can release it now (11-18 边界): the release on offer (spiritReleaseOptions, the path the decision offers 开武魂
+    // by) and nothing holding the unit from acting — one that cannot release its 武魂 is weighed as it stands.
+    const unopened = !escapes && spiritReleaseOptions(actor).length > 0 && actor?.__battleRuntime?.spiritHidden !== true &&
+      !Object.values(actor?.状态效果 || {}).some(state => state?.战斗效果?.cannot_act === true || state?.战斗效果?.skip_turn === true);
     return Object.freeze({ kind: rules.exit, fate, win: outlook.win, lose: outlook.lose, withoutWin: without.win, withoutLose: without.lose,
-      others, stay, left, escapes, success, pursuit, ...(follow ? { followStay, followLeft } : {}), delta: success * (left - stay) - pursuit });
+      others, stay, left, escapes, success, pursuit, unopened, ...(follow ? { followStay, followLeft } : {}), delta: unopened ? -1 : success * (left - stay) - pursuit });
   }
   // WITHDRAW_SUCCESS (方案第 3 条): a side that got someone away (__battleRuntime.withdrawalSuccessSides) with no one left
   // on the field. `sideKey` PLAYER / ENEMY (or a side key); '' any side.
@@ -4302,7 +4340,7 @@
   // a share, fell one of them, keep an ally standing — and every skill should be released with them in view. This is
   // a continuous distance to each condition: 0 untouched … 1 met. A group takes its best member (ANY) or the mean
   // (ALL). ROUND_REACHED moves with the clock only and WITHDRAW_SUCCESS by its own route, so no action changes them.
-  function objectiveConditionCloseness(worldSnapshot = {}, condition = {}, unitIndex = null) {
+  function objectiveConditionCloseness(worldSnapshot = {}, condition = {}, unitIndex = null, options = {}) {
     const listed = objectiveUnits(worldSnapshot, condition, unitIndex);
     const roles = listed.filter(unit => !isSummonUnit(unit));
     const members = roles.length ? roles : listed;
@@ -4326,8 +4364,13 @@
       if (condition.type === 'GUARD_BROKEN') {
         if (worldSnapshot?.攻击记录?.破防?.[unitName(unit)]) return 1;
         const side = objectiveSideOfEntry(listUnits(worldSnapshot).find(entry => entry.unit === unit) || {});
+        // T23-B（11-18）: each breaker against the guard as it stands when that breaker strikes next — this round for one still
+        // pending (options.pendingIds), else after this round's end, when a cut that lapses then is gone (guardBreakRatio nextRound).
+        // Without the list (callers that do not know who is pending) every cut counts as it stands, as before.
+        const pending = options?.pendingIds instanceof Set ? options.pendingIds : null;
         const near = listUnits(worldSnapshot).filter(entry => objectiveSideOfEntry(entry) !== side && isBattleCapable(entry.unit))
-          .reduce((best, entry) => Math.max(best, guardBreakRatio(entry.unit, { 伤害类型: '近身攻击' }, unit, true)), 0);
+          .reduce((best, entry) => Math.max(best, guardBreakRatio(entry.unit, { 伤害类型: '近身攻击' }, unit, true,
+            { nextRound: !!pending && !pending.has(String(unitId(entry.unit))) })), 0);
         return clamp(near, 0, 0.99);
       }
       return 0;
@@ -4338,14 +4381,15 @@
   }
 
   // How far a side stands toward winning: its victory closeness minus its defeat closeness, in [-1, 1].
-  function battleObjectiveProgress(worldSnapshot = {}, rawObjectives = {}, side = 'team_player') {
+  // options.pendingIds（T23-B）: the units that can still strike this round; any other strikes next round (objectiveConditionCloseness).
+  function battleObjectiveProgress(worldSnapshot = {}, rawObjectives = {}, side = 'team_player', options = {}) {
     const objectives = normalizeBattleObjectives(rawObjectives, worldSnapshot);
     const unitIndex = buildObjectiveUnitIndex(worldSnapshot);
     // Felling a whole team is what the damage features already value; counting it here again doubled the weight of
     // every hit and crowded out setups (sample C1). Only the other kinds of condition add their own distance.
     const counted = condition => !(['TEAM_INCAPACITATED', 'TEAM_DEAD'].includes(condition.type) && condition.scope === 'ALL');
     const group = entry => {
-      const values = (entry?.conditions || []).filter(counted).map(condition => objectiveConditionCloseness(worldSnapshot, condition, unitIndex));
+      const values = (entry?.conditions || []).filter(counted).map(condition => objectiveConditionCloseness(worldSnapshot, condition, unitIndex, options));
       if (!values.length) return 0;
       return entry.logic === 'ALL' ? values.reduce((sum, value) => sum + value, 0) / values.length : Math.max(...values);
     };
@@ -15274,7 +15318,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             }, context.effectInstanceId, (key, state) => replacedStates.push([key, state]), context.rootActionId);
             // A state that moves the panel (封禁装备's 面板固定修正) takes effect at once, as a 属性修正 does.
             // 开武魂 lifts 「武魂未释放」's halving the same way (addState puts 「武魂已释放」 in its key).
-            if (marginal && (statePanelChanges(sourcedEffect) || isSpiritReleaseEffect(sourcedEffect) || isLifeFireEffect(sourcedEffect))) {
+            // T23-A（11-18）: the panel is read as addState lays it (deriveStatePanelRatios: 「虚弱」 carries its cut in 数值, not in a
+            // 面板修改比例 of the effect) — as the runtime reads the state it laid (BattleRuntime statePanelChanges(appliedState)).
+            // Read off the effect alone, a 虚弱 left unit.final as it was: 群体虚弱 −27% moved the target's 防御 by nothing in the
+            // projection (t23/after-world-001), so a cut that broke the guard 4 in 8 in battle was worth 0 to the valuation.
+            if (marginal && (statePanelChanges({ 面板修改比例: deriveStatePanelRatios(sourcedEffect), 面板固定修正: sourcedEffect?.面板固定修正 }) ||
+              isSpiritReleaseEffect(sourcedEffect) || isLifeFireEffect(sourcedEffect))) {
               unit.final = { ...unit.final, ...buildNumericCombatStats(unit, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0)) };
               syncStaminaMaxGain(unit);
             }
@@ -23366,6 +23415,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             (key, state) => replacedStates.push([key, state]),
             event.rootActionId,
           );
+          // T23-A（11-18）: a state that moves the panel (as addState lays it) takes effect at once here too.
+          if (statePanelChanges({ 面板修改比例: deriveStatePanelRatios(payload.effect), 面板固定修正: payload.effect?.面板固定修正 })) {
+            unit.final = { ...unit.final, ...buildNumericCombatStats(unit, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0)) };
+            syncStaminaMaxGain(unit);
+          }
           applyProjectedEndRiskOutcomes(unit, replacedStates, payload.endRiskProfiles, assignments, overlay);
           return;
         }
@@ -25393,7 +25447,6 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     sourcedStateKey,
     settlePreviewLethalSideEffect,
     stateEndRisks,
-    operationGraphRequiredKeys,
     ContributionLedger,
     stableHash,
     summonInstanceId,
@@ -25519,7 +25572,6 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     estimateHitProbabilityAttribution,
     effectTargetsAllies,
     resolveTargets,
-    conditionMatches,
     collectEffects,
     effectArrayHash,
     declarationCounterGrantProfile,
@@ -25635,7 +25687,6 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     expectedDamageAbsorption,
     stealthBlocksSingleTarget,
     hasDamageRevival,
-    applyDamageRevivalOutcomes,
     refreshSustainRuntimeLoad,
     clearC2FoodMaintenanceRuntime,
     isPassiveSkill,
@@ -25654,7 +25705,6 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     unitEnvironmentFingerprint,
     worldEnvironmentFingerprint,
     clearFingerprints,
-    passiveTriggerProfile,
     reactiveControlState,
     specialPassiveTriggerEvents,
     passiveApplicationKey,
@@ -25684,8 +25734,6 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     healStrikeDamageShare,
     healingMultiplierDetails,
     unitIsLiving,
-    effectMatchesMechanismMatcher,
-    applyMechanismSuppression,
     actorSuppressesEffect,
     pendingGrantedEffects,
     consumeGrantedStateUses,
@@ -25788,13 +25836,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     readActionOutcomeExpectation,
     combineActionOutcomeResults,
     passivePhaseFrames,
-    postActionPassiveOutcomes,
-    beforeDamagePassiveFrames,
     hasBeforeActionPassives,
     hasSpecialActionPassives,
-    specialPassiveBoundaryFrames,
     hasPostActionPassives,
-    hasUnresolvedActionOutcomes,
     contributionProbability,
     unitAfterResourceCosts,
     normalizeProjectedAttributeUnit,

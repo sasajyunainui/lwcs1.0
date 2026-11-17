@@ -7439,6 +7439,24 @@
 
   // 子场开战名单（赛事上下文.子场序号 指向赛程的下一子场时）：按排阵定人，不用模型写的我方／敌方。玩家不在这一场就只是旁观。
   // 对手里还没实体化的代号，按顺序取模型写的敌方里没用过的单位，并记下 代号→名字（结算时 应用赛事代号绑定_桥接）。
+  // 第 22 题（用户 11-17「按后面还剩几场给资源加价」）: how many matches a side of this bout still has in the event, as far as it goes on
+  // winning — this 项目's rounds after this one (an elimination: ⌈log2 参赛总数⌉ rounds; a round robin: its own bouts of later rounds)
+  // and each other 项目 not finished that one of its members is entered in (one at least). The valuation prices resources by it.
+  function 赛事剩余场次_桥接(根 = {}, 上下文 = {}, 下标 = 0) {
+    const 赛事 = 根?.world?.赛事?.[上下文?.赛事ID];
+    const 进度 = 赛事?._进度?.[上下文?.项目], 对局 = 进度?.对局?.[上下文?.对局ID];
+    if (!赛事 || !进度 || !对局) return 0;
+    const 参赛者ID = (对局.参赛者 || [])[下标];
+    const 成员 = 进度.实体?.[参赛者ID]?.成员 || 赛事.项目?.[上下文.项目]?.参赛者?.[参赛者ID]?.成员 || [];
+    const 项目 = 赛事.项目?.[上下文.项目] || {}, 轮次 = toNumber(对局.轮次, 1);
+    const 本项目 = /淘汰/.test(toText(项目.流程, '')) && toNumber(项目.参赛总数, 0) > 1
+      ? Math.max(0, Math.ceil(Math.log2(toNumber(项目.参赛总数, 2))) - 轮次)
+      : Object.values(进度.对局 || {}).filter(记录 => toNumber(记录?.轮次, 0) > 轮次 && (记录?.参赛者 || []).includes(参赛者ID)).length;
+    const 其他项目 = Object.entries(赛事.项目 || {}).filter(([名, 定义]) => 名 !== 上下文.项目 && toText(赛事._进度?.[名]?.状态, '') !== '已结束' &&
+      Object.values(定义?.参赛者 || {}).some(条目 => (条目?.成员 || []).some(人 => 成员.includes(人)))).length;
+    return 本项目 + 其他项目;
+  }
+
   function 构建赛事子场名单_桥接(snapshot = {}, detail = {}) {
     const 根 = snapshot?.rootData || {};
     const 上下文 = 根?.world?.战斗?.赛事上下文;
@@ -27203,7 +27221,16 @@ ${播报文本}
           const 禁止 = deepGet(snapshot, ['rootData', 'world', '赛事', toText(赛事上下文原值?.赛事ID, ''), '项目', toText(赛事上下文原值?.项目, ''), '参赛限制', '禁止装备'], []);
           return Array.isArray(禁止) && 禁止.length ? { 禁止装备: 禁止.map(值 => toText(值, '').trim()).filter(Boolean) } : {};
         })()),
-        ...(rosterResult.后续 ? { 后续: cloneJsonValue(rosterResult.后续, {}) } : {}) } } : {}),
+        ...((() => {
+          // 后续：擂台接续与团战（构建赛事子场名单_桥接），加上每方之后还要打的场次（赛事剩余场次_桥接）。
+          const 根 = snapshot?.rootData || {}, 对局 = 根?.world?.赛事?.[赛事上下文原值?.赛事ID]?._进度?.[赛事上下文原值?.项目]?.对局?.[赛事上下文原值?.对局ID];
+          const 玩家方 = 对局 ? 读取赛事玩家方_桥接(根, 赛事上下文原值.赛事ID, 赛事上下文原值.项目, 对局) : 0;
+          const 剩余 = [赛事剩余场次_桥接(根, 赛事上下文原值, 玩家方), 赛事剩余场次_桥接(根, 赛事上下文原值, 1 - 玩家方)];
+          const 后续 = cloneJsonValue(rosterResult.后续 || {}, {});
+          if (剩余[0] > 0) 后续.PLAYER = { ...(后续.PLAYER || {}), 剩余场次: 剩余[0] };
+          if (剩余[1] > 0) 后续.ENEMY = { ...(后续.ENEMY || {}), 剩余场次: 剩余[1] };
+          return Object.keys(后续).length ? { 后续 } : {};
+        })()) } } : {}),
       ...(soulTowerCombat
         ? {
             floor: soulTowerFloor,

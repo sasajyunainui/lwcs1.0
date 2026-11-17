@@ -3148,6 +3148,8 @@
         Math.abs(number(selectedRow.rank, 0) - number(topRanked.rank, 0)) <= 1e-9;
     return {
       engineLabel: 'R9V2_LINEAR',
+      // 新估值的出招记录（BattleDecision r20ReasonRecord，T24 第 4 步）：引擎自己的估值推导，不是战报推测的意图。
+      reasonRecord: decision?.reasonRecord && typeof decision.reasonRecord === 'object' && !decision.reasonRecord.error ? decision.reasonRecord : null,
       candidateCount,
       candidates: rows,
       narrowing,
@@ -4438,6 +4440,8 @@
         `· ${node.action.name}`,
       ].filter(Boolean).join(' '));
 
+      /* 出招理由：新估值的出招记录（引擎自己的估值，不是战报反推的意图——不违反上面「不反推意图」那条）。一行：意图、自估胜算、对次优手的主导分项差。 */
+      if (text(node?.decision?.reasonRecord?.aiLine)) lines.push(`  理由：${text(node.decision.reasonRecord.aiLine)}`);
       if (node.decisionKind === 'PLAYER_LOCKED') lines.push('  玩家指定动作');
       if (node.decisionKind === 'FORCED') lines.push('  前一窗口已声明，本次按既定动作兑现');
 
@@ -5152,6 +5156,11 @@
     const names = new Set(sideUnits.map(unit => unit.name));
     const latest = [...decisions].reverse().find(decision => names.has(publicEntityName(directory, decision?.actorId, decision?.actorId)));
     if (!latest) return '保留当前战术，等待下一次自然行动';
+    /* 新估值的出招记录（T24 第 4 步）：引擎自己算出的意图与自估胜算，不是战报反推。 */
+    if (latest?.reasonRecord?.intent && !latest.reasonRecord.error) {
+      const win = Number(latest.reasonRecord.win);
+      return `最近一手意图：${text(latest.reasonRecord.intent)}${Number.isFinite(win) ? `（自估胜算 ${Math.round(win * 100)}%）` : ''}`;
+    }
     const focus = publicEntityName(directory, latest?.teamIntent?.focusTarget, latest?.teamIntent?.focusTarget);
     const protect = publicEntityName(directory, latest?.teamIntent?.protectTarget, latest?.teamIntent?.protectTarget);
     if (protect) return `优先保护${protect}并降低下一次回应风险`;
@@ -5274,7 +5283,25 @@
     };
   }
 
-  function buildAiSummaryInput(finalSummary = {}, roundOverview = []) {
+  /* 出招理由（新估值的出招记录，T24 第 4 步）：最后两回合里带记录的决策，一条一行（意图、自估胜算、对次优手的主导分项差）；
+     按可见性投影（敌方不给次优手是什么招），至多 RECENT_REASON_LIMIT 条，每行已在决策层限长并标明截断。 */
+  const RECENT_REASON_LIMIT = 6;
+  function recentReasonLines(draft = {}, directory = new Map(), visibilityMode = 'PLAYER') {
+    const rows = (Array.isArray(draft?.decisionAudit) ? draft.decisionAudit : [])
+      .filter(decision => decision?.reasonRecord && !decision.reasonRecord.error && text(decision.reasonRecord.aiLine));
+    if (!rows.length) return [];
+    const lastRound = Math.max(...rows.map(decision => number(decision?.round, 0)));
+    return rows.filter(decision => number(decision?.round, 0) >= lastRound - 1)
+      .slice(-RECENT_REASON_LIMIT)
+      .map(decision => {
+        const side = text(entityEntry(directory, decision?.actorId)?.side);
+        const projected = publicReasonRecord(decision.reasonRecord, side, visibilityMode);
+        return { round: number(decision?.round, 0), actor: publicEntityName(directory, decision?.actorId, decision?.actorId), line: text(projected?.aiLine) };
+      })
+      .filter(row => row.line);
+  }
+
+  function buildAiSummaryInput(finalSummary = {}, roundOverview = [], recentReasons = []) {
     const compactUnit = unit => ({
       name: unit.name,
       hp: unit.hp,
@@ -5304,6 +5331,7 @@
       tacticalWindows: [...(finalSummary?.tacticalWindows || [])],
       nextIntents: cloneValue(finalSummary?.nextIntents || {}),
       recentRoundSummaries: roundOverview.slice(-3).map(row => ({ round: row.round, summary: row.summary })),
+      recentReasons: (Array.isArray(recentReasons) ? recentReasons : []).map(row => ({ round: row.round, actor: row.actor, line: row.line })),
     };
   }
 
@@ -5674,6 +5702,18 @@
     return numbers;
   }
 
+  /* 出招记录的可见投影：玩家看得到己方的完整推导；敌方只给选中手的推导，次优手是什么招不给（那是没亮出来的底牌）。 */
+  function publicReasonRecord(record = null, actorSide = '', visibilityMode = 'PLAYER') {
+    if (!record || typeof record !== 'object' || record.error) return null;
+    if (visibilityMode === 'DEVELOPER' || actorSide !== 'enemy') {
+      return { intent: text(record.intent), win: record.win ?? null, aiLine: text(record.aiLine), derivation: (record.derivation || []).map(text) };
+    }
+    const runner = text(record?.runnerUp?.label);
+    const hide = line => runner ? text(line).split(runner).join('另一方案') : text(line);
+    const cut = (record.derivation || []).findIndex(line => /^(次优|最优)【/.test(text(line)));
+    return { intent: text(record.intent), win: record.win ?? null, aiLine: hide(record.aiLine), derivation: (cut >= 0 ? record.derivation.slice(0, cut) : record.derivation || []).map(text) };
+  }
+
   function projectDecisionTraceForVisibility(
     trace = {},
     visibilityMode = 'PLAYER',
@@ -5699,6 +5739,7 @@
       narrowing: actorSide === 'enemy'
         ? []
         : (Array.isArray(trace?.narrowing) ? trace.narrowing : []).map(stage => publicDecisionStage(stage)),
+      reasonRecord: publicReasonRecord(trace?.reasonRecord, actorSide, visibilityMode),
     };
   }
 
@@ -6211,6 +6252,9 @@
         reason: text(candidate?.reason || candidate?.reasonPlayerText || candidate?.reasonText),
       })),
       narrowing: (Array.isArray(trace?.narrowing) ? trace.narrowing : []).map(stage => publicDecisionStage(stage)),
+      reasonRecord: trace?.reasonRecord && typeof trace.reasonRecord === 'object'
+        ? { intent: text(trace.reasonRecord.intent), win: trace.reasonRecord.win ?? null, aiLine: text(trace.reasonRecord.aiLine), derivation: (trace.reasonRecord.derivation || []).map(text) }
+        : null,
     };
   }
 
@@ -6338,7 +6382,7 @@
     return result;
   }
 
-  function publicAiSummary(summary = {}, roundOverview = []) {
+  function publicAiSummary(summary = {}, roundOverview = [], recentReasons = []) {
     const compactUnit = unit => ({
       name: text(unit?.name),
       hp: number(unit?.hp, 0),
@@ -6377,6 +6421,9 @@
           round: Math.max(0, number(row?.round, 0)),
           summary: text(row?.summary),
         })),
+      recentReasons: (Array.isArray(recentReasons) ? recentReasons : []).map(row => ({
+        round: Math.max(0, number(row?.round, 0)), actor: text(row?.actor), line: text(row?.line),
+      })),
     };
   }
 
@@ -6455,7 +6502,7 @@
       exchanges,
       narrativeChain: (Array.isArray(report?.narrativeChain) ? report.narrativeChain : [])
         .map(publicNarrativeNode),
-      aiStructuredSummary: publicAiSummary(finalSummary, roundOverview),
+      aiStructuredSummary: publicAiSummary(finalSummary, roundOverview, report?.aiStructuredSummary?.recentReasons),
       battleHeadline: text(report?.battleHeadline),
     };
   }
@@ -6577,7 +6624,7 @@
       visibilityMode,
     );
     finalSummary.canonicalFactIds = finalCanonicalFactIds;
-    const aiSummaryInput = buildAiSummaryInput(finalSummary, roundOverview);
+    const aiSummaryInput = buildAiSummaryInput(finalSummary, roundOverview, recentReasonLines(draft, directory, visibilityMode));
 
     /* 因果链主轴：局面 → 决策 → 机制结算 → 对账。
        它复用上面已经算好并会被 auditProjection 校验的 exchange 分组，
