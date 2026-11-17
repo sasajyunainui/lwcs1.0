@@ -6361,7 +6361,10 @@
     }
     if (hasStateFlag(actor, 'silence') || preview.isSummonSkillDisabled(actor)) return out;
     const intensity = preview.battleIntensity(worldSnapshot, input.battleIntent);
-    collectSkills(actor).forEach((sourceSkill, index) => {
+    // 蓄力迎击 (BattlePreview chargeMeetSkill: 「如同任何魂技迎击来招——接战链的对轰」): the charge thrown at the attacker meets its
+    // move as a clash, as any skill does (T18, 11-17: offered only as a plain answer, it took the whole move and was hit-rolled).
+    const chargeMeet = preview.chargeMeetSkill(actor);
+    [...collectSkills(actor), ...(chargeMeet ? [chargeMeet] : [])].forEach((sourceSkill, index) => {
       // 开武魂（信息模型 0a）: no skill of the unreleased 武魂 meets a move either (BattlePreview spiritBlocksSkill).
       if (preview.spiritBlocksSkill?.(actor, sourceSkill) || preview.suppressionBlocksSkill?.(actor, sourceSkill)) return;
       const skill = preview.applySkillSettlementModifiers(actor, applyEquipmentPassivesToSkill(actor, sourceSkill)).skill;
@@ -68547,7 +68550,9 @@
     // to that enemy (their exchanges with it and the acquaintance, both ways alike: beliefExchangeCounts, beliefFamiliarExchanges),
     // and nothing when it has seen the skill already: released in this battle (the ledger), or in earlier ones (战斗暴露) when it
     // knows of them (beliefKnowsExposure). Each half takes half the base and of the bigger card's share.
-    const releasing = declaration?.actionKind === 'RELEASE_SKILL' && request.actionOpportunity?.forcedChargeRelease !== true && race + tempo > 0;
+    // 蓄力迎击 (BattlePreview chargeMeetSkill) is that charge too: shown when it began.
+    const releasing = declaration?.actionKind === 'RELEASE_SKILL' && request.actionOpportunity?.forcedChargeRelease !== true &&
+      declaration.skill?.__chargeRelease !== true && race + tempo > 0;
     let learn = 0;
     if (releasing && actorRow !== undefined && foes.length) {
       const actorUnit = table.units[actorRow], name = skillName(declaration.skill || {});

@@ -14441,14 +14441,19 @@
   // 佯装蓄力（BattlePreview feintRecord；方案「被冲上来打时以它对撞/抢先结算」）: a move on a feint is met with the kept skill — the
   // holder's answer by the rule (as a held stance is), aimed at the one who came, when it can pay for it now; else nothing is
   // given and the unit answers as it chooses (any other answer drops the feint: abandonChargeToAnswer).
-  function feintMeetDeclaration(unit = {}, sourceActorId = '') {
+  function feintMeetDeclaration(unit = {}, sourceActorId = '', incoming = null) {
     if (!previewRuntime.isFeint(unit?.蓄力技能) || !sourceActorId) return null;
     const skill = previewRuntime.chargeMeetSkill(unit);
     if (!skill) return null;
     const stages = previewRuntime.readSkillCostStages?.(skill, { costActor: unit }) || {};
     const payable = Object.entries(stages.启动 || {}).every(([resource, amount]) =>
       previewRuntime.readResource(unit, resource) >= (Number(previewRuntime.resolveSkillResourceCost(unit, resource, amount)) || 0));
-    return payable ? { actorId: previewRuntime.unitId(unit), actionKind: 'RELEASE_SKILL', targetIds: [String(sourceActorId)], skill: cloneValue(skill) } : null;
+    if (!payable) return null;
+    // As a clash (接战链 对轰): it meets the move, as 蓄力迎击 does (BattleDecision engagementCandidates).
+    const move = incoming && typeof incoming === 'object' ? incoming : null;
+    return { actorId: previewRuntime.unitId(unit), actionKind: 'RELEASE_SKILL', targetIds: [String(sourceActorId)], skill: cloneValue(skill),
+      ...(move ? { engagement: { mode: 'CLASH', sourceActorId: String(sourceActorId), incoming: { actorId: String(sourceActorId), actionKind: String(move.actionKind || '').trim().toUpperCase(),
+        targetIds: (Array.isArray(move.targetIds) ? move.targetIds : []).map(String), skill: move.skill || null } } } : {}) };
   }
   function chargeHoldUpkeepPayable(unit = {}, charge = {}) {
     return chargeHoldUpkeep(unit, charge).every(([resource, value]) => previewRuntime.readResource(unit, resource) >= value);
@@ -18411,7 +18416,7 @@
                 sourceFactIds: sourceFactIds.slice(),
                 sourceEventIds: sourceEventIds.slice(),
               };
-              const feintMeet = preparedDefense || summonGuard ? null : feintMeetDeclaration(actor, sourceActorId);
+              const feintMeet = preparedDefense || summonGuard ? null : feintMeetDeclaration(actor, sourceActorId, shared.declaration);
               const decisionResult = preparedDefense || summonGuard || feintMeet ? null : yield* decideForNode(actor, node, {
                 role: 'REACTION',
                 imminentThreat: true,
