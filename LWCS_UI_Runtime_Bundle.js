@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:02d88b6a5c41ed8f960db322273e32175a96625f93bfba05bc1d6e6609450cab|cockpit/designer-model.js:cbbb8156854ed85b560637420324e21db9e899fb9cbef68ba1ccca6d0d217fc2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:8276d35f23b79c872097b0219876e82119c76880c0970160fd1b7f1390607da6|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:5d875065050cbed80b0785f3f6b0db9be2e6cbe505027b26340a509ea391e5d4|BattleRuntime_Module.js:ca43c1d4a7b829fa0b05fca928b77353a93d976599f7dd207ef5e04463587b84|BattleReport_Module.js:b008936b7790ee035f576e95580ec31fd41ccf7b5cbaa791eb7a5d8f5feab249|BattleUI_Module.js:14335e61b58eae9ac17590a496fa99f8fa38f49dac69ef4686368cb6a2765e01|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:02d88b6a5c41ed8f960db322273e32175a96625f93bfba05bc1d6e6609450cab|cockpit/designer-model.js:cbbb8156854ed85b560637420324e21db9e899fb9cbef68ba1ccca6d0d217fc2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:a448533014f32ec45453627efbfbd5f8c35ee2bb067401d0086b6e32ed13a6b2|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:4961e4e7392e3ec015a299f9b2014718af4163ca9179404a79f531ab77e59e4e|BattleRuntime_Module.js:9d532ca0de318567d8d3653f004e631b54c6cc69328aef64c63c77ea343d8d41|BattleReport_Module.js:b008936b7790ee035f576e95580ec31fd41ccf7b5cbaa791eb7a5d8f5feab249|BattleUI_Module.js:14335e61b58eae9ac17590a496fa99f8fa38f49dac69ef4686368cb6a2765e01|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -64151,7 +64151,8 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
   // uncertain by EXIT_FORECAST_SPREAD in log time, widened while few rounds have been seen (× √(1 + prior ÷ rounds)):
   // a side twice as fast is first about three times in four once the fight has shown itself. (Rounds seen: from the
   // ledger's first round, the current one counted as half.) win: the own side first and
-  // in time; lose: the other side first and in time; else the rounds run out (a draw, 0 on the stake).
+  // in time; lose: the other side first and in time; else the rounds run out (a draw, 0 on the stake — in a battle holding 接满攻击次数
+  // the side holding out wins it instead, T20).
   const EXIT_FORECAST_PRIOR_ROUNDS = 3;
   const EXIT_FORECAST_SPREAD = 0.6;
   function exitFate(worldSnapshot = {}, battleIntent = {}) {
@@ -64252,7 +64253,15 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     const first = standardNormalCdf((Math.log(otherTime) - Math.log(ownTime)) / (spread * Math.SQRT2));
     const win = first * standardNormalCdf((Math.log(remaining) - Math.log(ownTime)) / spread);
     const lose = (1 - first) * standardNormalCdf((Math.log(remaining) - Math.log(otherTime)) / spread);
-    return Object.freeze({ win, lose, draw: Math.max(0, 1 - win - lose), ownTime, otherTime, remaining });
+    const runOut = Math.max(0, 1 - win - lose);
+    // T20（11-18, 用户 11-17 拍板）: the rounds running out is not a draw in a battle holding 接满攻击次数 — the side holding out has
+    // withstood the attackers and wins (evaluateBattleObjectivesCore holdsEndure; a victory condition's holder is the player, a defeat
+    // condition's the enemy), so exit and truce valuations read the same result the battle is settled by. Others stay as they were.
+    const holds = group => (group?.conditions || []).some(condition => condition.type === 'ATTACKS_ENDURED');
+    const playerHolds = holds(objectives.victory), enemyHolds = holds(objectives.defeat);
+    const holder = playerHolds && !enemyHolds ? 'team_player' : enemyHolds && !playerHolds ? 'team_enemy' : '';
+    if (holder && runOut > 0) return Object.freeze({ win: holder === side ? win + runOut : win, lose: holder === side ? lose : lose + runOut, draw: 0, ownTime, otherTime, remaining });
+    return Object.freeze({ win, lose, draw: runOut, ownTime, otherTime, remaining });
   }
   // Whether `side` (a side key) is out to get away: a success condition of its own is 成功撤离 (a victory condition for
   // the player, a defeat condition for the enemy, unless the condition names its side).
@@ -64579,8 +64588,12 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     }
     if (condition.type === 'ATTACKS_ENDURED') {
       // 接满攻击次数: the attackers have made their count of moves (攻击记录, BattleRuntime tallyAttack) and one of the targets still stands.
+      // T20（11-18）: options.deferAttacksEndured — a move is counted when its target answers it (BattleRuntime tallyAttack) but
+      // settles after, so the move that fills the count is not judged while its settlement is still queued: it lands first, and a
+      // guard it breaks is the other side's goal met by the very move (evaluateBattleObjectivesCore onlyEndured). Before, the
+      // last of N moves was cancelled unsettled and the attacker had N − 1.
       const units = objectiveUnits(worldSnapshot, condition, options.unitIndex);
-      const matched = attacksMadeAgainst(worldSnapshot, condition, units) >= condition.count &&
+      const matched = options.deferAttacksEndured !== true && attacksMadeAgainst(worldSnapshot, condition, units) >= condition.count &&
         (!condition.requireActive || units.some(unit => objectiveUnitState(unit, options).capable));
       return includeDetails
         ? Object.freeze({ condition, matched, unitResults: Object.freeze([]), reason: matched ? 'ATTACKS_ENDURED' : '' })
@@ -64754,7 +64767,15 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
       reason: matched ? 'BATTLEFIELD_EXHAUSTION' : '',
     });
     const elapsedRounds = Math.max(0, Number(options.round ?? worldSnapshot?.回合 ?? 0) - objectives.startRound);
-    const timeLimitReached = options.roundCompleted === true && options.enforceRoundLimit === true && elapsedRounds >= objectives.maxRounds;
+    // 接满攻击次数遇到回合上限（T20，用户 11-17 拍板）: the attackers did not make their count within the rounds, so the side holding out has
+    // withstood it — a victory condition's holder is the player, a defeat condition's the enemy (mvu_logic_bridge names them so) — and it
+    // wins; the attackers lose. Only a battle holding such a condition is held to the limit (no caller passes enforceRoundLimit, so the
+    // limit was never enforced and an attacker could stall for ever); every other condition is read as before.
+    const holdsEndure = group => (group?.conditions || []).some(condition => condition.type === 'ATTACKS_ENDURED' &&
+      (!condition.requireActive || objectiveUnits(worldSnapshot, condition, unitIndex).some(unit => objectiveUnitState(unit, options).capable)));
+    const roundLimitDue = options.roundCompleted === true && elapsedRounds >= objectives.maxRounds;
+    const playerHoldsOut = roundLimitDue && holdsEndure(objectives.victory), enemyHoldsOut = roundLimitDue && holdsEndure(objectives.defeat);
+    const timeLimitReached = roundLimitDue && (options.enforceRoundLimit === true || playerHoldsOut || enemyHoldsOut);
     const implicitVictory = includeDetails
       ? exhaustionDetail('ENEMY', enemyExhausted)
       : null;
@@ -64771,7 +64792,7 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     if (effectiveVictoryMatched && effectiveDefeatMatched) status = bothSidesDown || objectives.resolutionPriority === 'DRAW_ON_CONFLICT' ? 'DRAW' : 'ENEMY_WIN';
     else if (effectiveVictoryMatched) status = 'PLAYER_WIN';
     else if (effectiveDefeatMatched) status = 'ENEMY_WIN';
-    else if (timeLimitReached) status = 'DRAW';
+    else if (timeLimitReached) status = playerHoldsOut && !enemyHoldsOut ? 'PLAYER_WIN' : enemyHoldsOut && !playerHoldsOut ? 'ENEMY_WIN' : 'DRAW';
     const exhaustionResolution = includeDetails && (enemyExhausted || playerExhausted)
       ? Object.freeze({
           playerExhausted,
@@ -64863,7 +64884,18 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
       }
       return 0;
     };
-    if (condition.type === 'ATTACKS_ENDURED') return clamp(attacksMadeAgainst(worldSnapshot, condition, members) / Math.max(1, condition.count), 0, 1);
+    if (condition.type === 'ATTACKS_ENDURED') {
+      const made = attacksMadeAgainst(worldSnapshot, condition, members);
+      if (!(options?.objectives && made < condition.count)) return clamp(made / Math.max(1, condition.count), 0, 1);
+      // T20（11-18）: the rounds running out is the holder's win as well (evaluateBattleObjectivesCore holdsEndure), so until the count is
+      // filled the holder stands as near as the clock has brought it — not as near as the moves made have: an attacker's move is then
+      // no step towards its own defeat (the clock brings that on whatever it does; counting each move as one gave a wait that cost
+      // nothing against an attack that cost 1 ÷ N, and an attacker in a bet never attacked). The last move still loses (the count
+      // filled, evaluateBattleObjectives). Moves made in the real world stay as they are; the candidates' own are only counted into
+      // the projection when BattleDecision R20_COUNT_OWN_ATTACK is on, which is what this reading is for.
+      const elapsed = Math.max(0, Number(worldSnapshot?.回合 || 0) - Number(options.objectives.startRound || 0));
+      return clamp(elapsed / Math.max(1, Number(options.objectives.maxRounds) || 1), 0, 1);
+    }
     const values = members.map(closeness);
     return condition.scope === 'ALL' ? values.reduce((sum, value) => sum + value, 0) / values.length : Math.max(...values);
   }
@@ -64877,7 +64909,7 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     // every hit and crowded out setups (sample C1). Only the other kinds of condition add their own distance.
     const counted = condition => !(['TEAM_INCAPACITATED', 'TEAM_DEAD'].includes(condition.type) && condition.scope === 'ALL');
     const group = entry => {
-      const values = (entry?.conditions || []).filter(counted).map(condition => objectiveConditionCloseness(worldSnapshot, condition, unitIndex, options));
+      const values = (entry?.conditions || []).filter(counted).map(condition => objectiveConditionCloseness(worldSnapshot, condition, unitIndex, { ...options, objectives }));
       if (!values.length) return 0;
       return entry.logic === 'ALL' ? values.reduce((sum, value) => sum + value, 0) / values.length : Math.max(...values);
     };
@@ -135511,6 +135543,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     r20Work.assistMs += performance.now() - assistStartedAt;
     // Conditions besides bringing the other side down (坚持回合, 先倒, 抽魂, 保护): their progress counts beside the race.
     const objectives = request?.objectiveContract || request?.battleIntent?.objectives || world?.胜负条件 || {};
+    // 接满攻击次数、破防（交手约定，看板 T20）: the projection keeps no 攻击记录 of its own (BattleRuntime tallyAttack and the 破防 record
+    // count off the ledger), so r20Shadow records the candidate's own move (r20WithMoveRecorded) before the progress is read.
+    table.countsAttacks = /ATTACKS_ENDURED|接满攻击次数|GUARD_BROKEN|破防/.test(JSON.stringify(objectives) || '');
     table.objectives = /"type":"(?!TEAM_INCAPACITATED")/.test(JSON.stringify(objectives) || '') ? objectives : null;
     if (table.objectives) table.objectiveBase = r9v2LinearTerminalValue(preview.evaluateBattleObjectivesCompact(world, objectives), request.actorSide) +
       // T23-B（11-18）: who can still strike this round — the units the table has pending and the actor itself (it is about to act).
@@ -135589,6 +135624,38 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (row === chargeRow) busy[row] = share > 0 ? Math.min(busy[row], 1) : 0;
       else if (partners.has(table.ids[row])) busy[row] = 0;
     }
+  }
+  // Whether a candidate is a move on an enemy, as BattleRuntime tallyAttack counts one (an attack, a skill or item on one, a meeting).
+  function r20StrikesEnemy(declaration = {}, table = {}, actorRow = 0) {
+    const kind = String(declaration?.actionKind || '').trim().toUpperCase();
+    if (['BASIC_ATTACK', 'COUNTER'].includes(kind) || declaration?.engagement) return true;
+    if (!['RELEASE_SKILL', 'USE_ITEM'].includes(kind)) return false;
+    return (declaration.targetIds || []).some(id => { const row = table.index.get(String(id)); return row !== undefined && table.sides[row] !== table.sides[actorRow]; });
+  }
+  // T20（11-18）: whether a candidate's own move on an enemy is counted into 接满攻击次数 in the projection (as BattleRuntime tallyAttack
+  // counts it). Off: the rounds running out lose the bet as the last move does (BattlePreview holdsEndure), so a move kept back is no
+  // saving — counted, each move was a step towards the attacker's own defeat that waiting was not, and with a guard it believed it
+  // could not break (what it believes of the enemy's 防御 is not what it is) an attacker in a bet never made its last move, or any
+  // (t20 报告 §3). The guard a move breaks is predicted either way.
+  const R20_COUNT_OWN_ATTACK = false;
+  // The guards a move breaks marked in the projection (破防, BattlePreview guardBreaks — defending, as a unit held to blocking does, and
+  // on the stats as they stand before the move: a hit that does not break the guard lands nothing, so a cut the same skill lays after
+  // its hit does not help that hit), as the runtime records it (BattleRuntime 破防 record); the move counted too when
+  // R20_COUNT_OWN_ATTACK. A summon's move is not counted.
+  function r20WithMoveRecorded(world = {}, unit = {}, declaration = {}, table = {}, actorRow = 0) {
+    if (!unit || preview.isSummonUnit(unit)) return world;
+    const name = preview.unitName(unit), record = world?.攻击记录 && typeof world.攻击记录 === 'object' ? world.攻击记录 : {};
+    const kind = String(declaration?.actionKind || '').trim().toUpperCase();
+    const effect = kind === 'BASIC_ATTACK' ? { 伤害类型: '近身攻击' } : preview.collectEffects(declaration?.skill || {}).find(entry => entry?.原型 === '伤害结算') || null;
+    const broken = {};
+    if (effect) for (const id of declaration.targetIds || []) {
+      const row = table.index.get(String(id)), target = row !== undefined ? table.units[row] : null;
+      if (target && table.sides[row] !== table.sides[actorRow] && preview.guardBreaks(unit, effect, target, true)) broken[preview.unitName(target)] = Number(world?.回合 || 0);
+    }
+    if (!R20_COUNT_OWN_ATTACK && !Object.keys(broken).length) return world;
+    return { ...world, 攻击记录: { ...record,
+      ...(R20_COUNT_OWN_ATTACK ? { 次数: { ...(record.次数 || {}), [name]: Number(record.次数?.[name] || 0) + 1 } } : {}),
+      ...(Object.keys(broken).length ? { 破防: { ...(record.破防 || {}), ...broken } } : {}) } };
   }
   // 出招记录（T24 第 4 步；用户「战报要写为什么……也包括决策层的估值如何来的」）: after the choice, the chosen candidate and the
   // runner-up are valued once more with a trace (r20Shadow trace — the same table, the same race, nothing else valued); the record
@@ -136544,10 +136611,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 点燃生命之火: put out after the battle at the save's price (BattlePreview lifeFireOptions aftermath).
     if (Array.isArray(declaration?.aftermath)) asset += preview.postBattleCostShare({ 副作用列表: declaration.aftermath });
     let objective = 0;
-    if (table.objectives) objective = R20_OBJECTIVE_WEIGHT * (r9v2LinearTerminalValue(preview.evaluateBattleObjectivesCompact(after, table.objectives), own) +
+    // 交手约定·破防、接满攻击次数（看板 T20）: a move on an enemy is recorded here as the runtime will record it before the progress is
+    // read — one that breaks the guard is the win it is (and, with R20_COUNT_OWN_ATTACK, each of the few attacks is spent).
+    const objectiveWorld = table.countsAttacks && table.objectives && actorRow !== undefined && r20StrikesEnemy(declaration, table, actorRow)
+      ? r20WithMoveRecorded(after, table.units[actorRow], declaration, table, actorRow) : after;
+    if (table.objectives) objective = R20_OBJECTIVE_WEIGHT * (r9v2LinearTerminalValue(preview.evaluateBattleObjectivesCompact(objectiveWorld, table.objectives), own) +
       // T23-B（11-18）: after the action the actor has spent its turn: its next strike comes next round, when a cut that lapses at
       // this round's end is gone (BattleRuntime settleConditionsAtRoundEnd); those still pending this round strike with it on.
-      preview.battleObjectiveProgress(after, table.objectives, own,
+      preview.battleObjectiveProgress(objectiveWorld, table.objectives, own,
         { pendingIds: new Set(table.ids.filter((id, row) => table.pending[row] && row !== actorRow)) }) - table.objectiveBase);
     // An item made for later (造物; first version, to be measured): what its use would give its recipient — healing and
     // shield as shares of HP, a refill at the price of that share of the pool, any other effect a flat
@@ -136623,7 +136694,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       add('race', race, `推演终局 ${r20Num(raced)} − 现局 ${r20Num(table.score[own])}`);
       if (tempo) add('tempo', tempo, table.ids.map((id, row) => table.sides[row] === foe && table.pending[row] && alive[row] < 1 ? `${id.split(':')[0]} 身价 ${r20Num(table.worth[row])} × 本回合倒下 ${r20Num(1 - alive[row])}` : '').filter(Boolean).join(' + '));
       if (objective && table.objectives) {
-        const terminal = r9v2LinearTerminalValue(preview.evaluateBattleObjectivesCompact(after, table.objectives), own);
+        const terminal = r9v2LinearTerminalValue(preview.evaluateBattleObjectivesCompact(objectiveWorld, table.objectives), own);
         add('objective', objective, `权重 ${R20_OBJECTIVE_WEIGHT} ×（终局 ${r20Num(terminal)} + 进展 ${r20Num(objective / R20_OBJECTIVE_WEIGHT + table.objectiveBase - terminal)} − 原有 ${r20Num(table.objectiveBase)}）`);
       }
       add('cost', -cost, `单价 ${R20_RESOURCE_PRICE} × 花掉的资源份额 ${r20Num(spent)} ×（1 + 试探溢价 ${followCarry ? 0 : R20_PROBE_PREMIUM} × 未看清 ${r20Num(unseen)}）${spar ? ` × 切磋 ${R20_SPAR_PRICE}` : ''} ×（1 + 后续场次 ${r20Num(followKeep)}）`);
@@ -146051,6 +146122,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       round: Number(context?.currentRound ?? combatData?.回合 ?? 0),
       roundCompleted: context?.roundCompleted === true,
       enforceRoundLimit: adapterOptions.enforceRoundLimit === true,
+      // T20（11-18）: the queue still holds a move's settlement — a count filled by that move is judged after it lands.
+      deferAttacksEndured: context?.deferAttacksEndured === true,
     });
     // 中途罢手成立：双方停手，本场平局（BattleUI / bridge 走平局的裁断与写回）。
     if (combatData?.罢手?.状态 === '成立' && !resolution.terminal) {
@@ -157190,8 +157263,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             Number(performanceBreakdown.actionSettlementMs || 0) +
             Number(performanceBreakdown.settlementObservationMs || 0)
           : 0;
+        // T20（11-18）: 接满攻击次数 is judged once the move that fills the count has settled — while a move's settlement node is still
+        // queued (its target has answered, tallyAttack has counted it) the count is not read (BattlePreview deferAttacksEndured).
+        const settlementQueued = () => queue.hasPending(queued => queued.nodeKind === 'PRIMARY_SETTLEMENT');
         while (queue.pendingCount > 0 && !queue.fatal) {
-          terminal = evaluateBattleTerminal({ combatData, currentRound: combatData.回合, rounds: roundOffset, roundCompleted: false }, {});
+          terminal = evaluateBattleTerminal({ combatData, currentRound: combatData.回合, rounds: roundOffset, roundCompleted: false, deferAttacksEndured: settlementQueued() }, {});
           if (terminal?.terminal === true) {
             cancelQueueForTerminal();
             break;
@@ -158766,7 +158842,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               validTargetIds,
             });
           }
-          terminal = evaluateBattleTerminal({ combatData, currentRound: combatData.回合, rounds: roundOffset, roundCompleted: false }, {});
+          terminal = evaluateBattleTerminal({ combatData, currentRound: combatData.回合, rounds: roundOffset, roundCompleted: false, deferAttacksEndured: settlementQueued() }, {});
           if (terminal?.terminal === true) {
             cancelQueueForTerminal();
             break;
