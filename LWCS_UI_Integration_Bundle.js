@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:bd51662fa802655e8897da74c87d2ac367bd71126fe67f26c603574631ad426e|cockpit/designer-model.js:cbbb8156854ed85b560637420324e21db9e899fb9cbef68ba1ccca6d0d217fc2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:02d88b6a5c41ed8f960db322273e32175a96625f93bfba05bc1d6e6609450cab|cockpit/designer-model.js:cbbb8156854ed85b560637420324e21db9e899fb9cbef68ba1ccca6d0d217fc2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -9161,6 +9161,24 @@
 
   // 子场开战名单（赛事上下文.子场序号 指向赛程的下一子场时）：按排阵定人，不用模型写的我方／敌方。玩家不在这一场就只是旁观。
   // 对手里还没实体化的代号，按顺序取模型写的敌方里没用过的单位，并记下 代号→名字（结算时 应用赛事代号绑定_桥接）。
+  // 第 22 题（用户 11-17「按后面还剩几场给资源加价」）: how many matches a side of this bout still has in the event, as far as it goes on
+  // winning — this 项目's rounds after this one (an elimination: ⌈log2 参赛总数⌉ rounds; a round robin: its own bouts of later rounds)
+  // and each other 项目 not finished that one of its members is entered in (one at least). The valuation prices resources by it.
+  function 赛事剩余场次_桥接(根 = {}, 上下文 = {}, 下标 = 0) {
+    const 赛事 = 根?.world?.赛事?.[上下文?.赛事ID];
+    const 进度 = 赛事?._进度?.[上下文?.项目], 对局 = 进度?.对局?.[上下文?.对局ID];
+    if (!赛事 || !进度 || !对局) return 0;
+    const 参赛者ID = (对局.参赛者 || [])[下标];
+    const 成员 = 进度.实体?.[参赛者ID]?.成员 || 赛事.项目?.[上下文.项目]?.参赛者?.[参赛者ID]?.成员 || [];
+    const 项目 = 赛事.项目?.[上下文.项目] || {}, 轮次 = toNumber(对局.轮次, 1);
+    const 本项目 = /淘汰/.test(toText(项目.流程, '')) && toNumber(项目.参赛总数, 0) > 1
+      ? Math.max(0, Math.ceil(Math.log2(toNumber(项目.参赛总数, 2))) - 轮次)
+      : Object.values(进度.对局 || {}).filter(记录 => toNumber(记录?.轮次, 0) > 轮次 && (记录?.参赛者 || []).includes(参赛者ID)).length;
+    const 其他项目 = Object.entries(赛事.项目 || {}).filter(([名, 定义]) => 名 !== 上下文.项目 && toText(赛事._进度?.[名]?.状态, '') !== '已结束' &&
+      Object.values(定义?.参赛者 || {}).some(条目 => (条目?.成员 || []).some(人 => 成员.includes(人)))).length;
+    return 本项目 + 其他项目;
+  }
+
   function 构建赛事子场名单_桥接(snapshot = {}, detail = {}) {
     const 根 = snapshot?.rootData || {};
     const 上下文 = 根?.world?.战斗?.赛事上下文;
@@ -28925,7 +28943,16 @@ ${播报文本}
           const 禁止 = deepGet(snapshot, ['rootData', 'world', '赛事', toText(赛事上下文原值?.赛事ID, ''), '项目', toText(赛事上下文原值?.项目, ''), '参赛限制', '禁止装备'], []);
           return Array.isArray(禁止) && 禁止.length ? { 禁止装备: 禁止.map(值 => toText(值, '').trim()).filter(Boolean) } : {};
         })()),
-        ...(rosterResult.后续 ? { 后续: cloneJsonValue(rosterResult.后续, {}) } : {}) } } : {}),
+        ...((() => {
+          // 后续：擂台接续与团战（构建赛事子场名单_桥接），加上每方之后还要打的场次（赛事剩余场次_桥接）。
+          const 根 = snapshot?.rootData || {}, 对局 = 根?.world?.赛事?.[赛事上下文原值?.赛事ID]?._进度?.[赛事上下文原值?.项目]?.对局?.[赛事上下文原值?.对局ID];
+          const 玩家方 = 对局 ? 读取赛事玩家方_桥接(根, 赛事上下文原值.赛事ID, 赛事上下文原值.项目, 对局) : 0;
+          const 剩余 = [赛事剩余场次_桥接(根, 赛事上下文原值, 玩家方), 赛事剩余场次_桥接(根, 赛事上下文原值, 1 - 玩家方)];
+          const 后续 = cloneJsonValue(rosterResult.后续 || {}, {});
+          if (剩余[0] > 0) 后续.PLAYER = { ...(后续.PLAYER || {}), 剩余场次: 剩余[0] };
+          if (剩余[1] > 0) 后续.ENEMY = { ...(后续.ENEMY || {}), 剩余场次: 剩余[1] };
+          return Object.keys(后续).length ? { 后续 } : {};
+        })()) } } : {}),
       ...(soulTowerCombat
         ? {
             floor: soulTowerFloor,
