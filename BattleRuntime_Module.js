@@ -5784,25 +5784,97 @@
       本次: { ...(record.本次 || {}), [pair]: { actionId, 伤害: running } },
       单次伤害: { ...(record.单次伤害 || {}), [targetName]: Math.max(Number(record.单次伤害?.[targetName] || 0), share) },
     };
+    // 赌约进度（T26 第 2 批）：「接满攻击次数」的计数这一下变了，交给 writeLedgerEvent 在这条事件之后记一条 objective_progress。
+    if (!fresh) return null;
+    const endure = attackEnduredConditions(combatData).find(condition => {
+      const attackers = condition.attackers, targets = condition.targetIds;
+      const names = list => list.map(item => String(item || '').trim()).filter(Boolean);
+      return (!names(attackers).length || names(attackers).some(item => item === name || isUnitIdentityMatch(attacker, item))) &&
+        (!names(targets).length || names(targets).some(item => item === targetName || isUnitIdentityMatch(target, item)));
+    });
+    if (!endure) return null;
+    return { progressKind: 'ATTACK_COUNT', attackerId: previewRuntime.unitId(attacker), attackerName: name, targetId: previewRuntime.unitId(target),
+      targetName, count: Number(combatData.攻击记录.次数[name] || 0), required: endure.count, holderSide: endure.holderSide, sourceActionId: actionId };
   }
 
-  // 冥想（BattlePreview interruptMeditation）: a hit that does damage breaks it.
+  // 「接满攻击次数」条件（victory 的持有者是 PLAYER，defeat 的是 ENEMY——mvu_logic_bridge 这么命名），读归一化后的胜负条件。
+  function attackEnduredConditions(combatData = {}) {
+    const objectives = combatData?.胜负条件 || {};
+    const rows = [];
+    for (const [group, holderSide] of [['victory', 'PLAYER'], ['defeat', 'ENEMY']]) {
+      for (const condition of Array.isArray(objectives?.[group]?.conditions) ? objectives[group].conditions : []) {
+        const type = String(condition?.type || condition?.类型 || '').trim();
+        if (type !== 'ATTACKS_ENDURED' && type !== '接满攻击次数') continue;
+        const listOf = value => Array.isArray(value) ? value : String(value || '').split(/[、,，]/u);
+        rows.push({ holderSide, count: Math.max(0, Math.floor(Number(condition.count ?? condition.次数 ?? 0) || 0)),
+          attackers: listOf(condition.attackers || condition.攻击方 || []), targetIds: listOf(condition.targetIds || condition.目标 || []) });
+      }
+    }
+    return rows;
+  }
+
+  // 机制事实（T26 第 2 批）：交手约定、赌约进度、罢手回应、冥想被打断——系统观察，不进因果链（skipResolutionTrace），
+  // 回合概览里出；只在账本里（战斗数据的不可枚举属性），不写进 MVU。
+  // 零行为变化：不占 nextRuntimeId 的共用计数，也不推进账本序号（writeLedgerEvent 见 mechanic_runtime）——动作、事件 id 进了
+  // 随机种子（目标干扰的 gateRoll / targetRoll 等），多占一个号就会让之后的掷骰全部错位。id 取「当前序号-本序号下第几条」。
+  function writeMechanicEvent(combatData = {}, payload = {}) {
+    const root = combatLedgerRoot(combatData);
+    const sequence = Math.max(1, Number(ensureCombatRuntime(root).ledgerSequence || 0));
+    const prefix = `battle-mechanic-${runtimeIdContext}-${sequence.toString(36)}-`;
+    const ordinal = (Array.isArray(root?.__battleEventLedger) ? root.__battleEventLedger : []).filter(event => String(event?.eventId || '').startsWith(prefix)).length + 1;
+    return writeLedgerEvent(combatData, {
+      eventId: `${prefix}${ordinal}`,
+      round: Number(combatData?.回合 || 0), actorName: 'SYSTEM', actorControl: 'SYSTEM', actionRole: 'STATE_TICK',
+      actionType: String(payload.eventKind || 'mechanic'), allowImplicitActionSource: false, resultState: 'COMPLETED', factType: 'OBSERVATION',
+      ...payload,
+      meta: { source: 'mechanic_runtime', skipResolutionTrace: true, ...(payload.meta || {}) },
+    });
+  }
+
+  // 罢手回应（T26 第 2 批）：同意或拒绝，谁回应的。界面里拒绝发生在两次结算之间，下一次结算开头补记（emitPendingTruceDecline）。
+  // reportRound：事件挂在哪个回合（结算开头补记的拒绝挂在本次结算的第一回合，否则战报找不到归属回合）。
+  function writeTruceResponse(combatData = {}, truce = {}, accepted = false, reportRound = null) {
+    const proposerSide = String(truce?.提议方 || '').trim();
+    const responderSide = proposerSide === 'team_player' ? 'team_enemy' : proposerSide === 'team_enemy' ? 'team_player' : '';
+    return writeMechanicEvent(combatData, {
+      eventKind: 'truce_response', actionName: '罢手回应', result: accepted ? 'accepted' : 'declined',
+      round: Number(reportRound ?? (truce?.回合 || combatData?.回合 || 0)),
+      meta: { truce: { proposer: String(truce?.提议者 || '').trim(), proposerSide, responderSide, accepted, round: Number(truce?.回合 || combatData?.回合 || 0) } },
+    });
+  }
+  function emitPendingTruceDecline(combatData = {}, sourceRound = 0) {
+    const records = combatData?.罢手记录 && typeof combatData.罢手记录 === 'object' ? combatData.罢手记录 : null;
+    if (!records) return;
+    for (const [side, record] of Object.entries(records)) {
+      const declinedRound = Number(record?.上次被拒回合);
+      if (!Number.isFinite(declinedRound) || declinedRound !== Number(sourceRound) || Number(record?.已告知回合) === declinedRound) continue;
+      writeTruceResponse(combatData, { 提议方: side, 提议者: String(record?.提议者 || '').trim(), 回合: declinedRound }, false, Number(sourceRound) + 1);
+      combatData.罢手记录 = { ...combatData.罢手记录, [side]: { ...record, 已告知回合: declinedRound } };
+    }
+  }
+
+  // 冥想（BattlePreview interruptMeditation）: a hit that does damage breaks it. Returns the unit broken out of it (T26 第 2 批：
+  // writeLedgerEvent 在这一击之后记 meditation_interrupted).
   function breakMeditationOnHit(combatData = {}, payload = {}) {
-    if (String(payload?.eventKind || '').trim() !== 'hit_result' || !(Number(payload?.meta?.incomingDamage ?? payload?.meta?.appliedDamage ?? 0) > 0)) return;
+    if (String(payload?.eventKind || '').trim() !== 'hit_result' || !(Number(payload?.meta?.incomingDamage ?? payload?.meta?.appliedDamage ?? 0) > 0)) return null;
     const targetId = String(payload.targetId || '').trim();
     const target = targetId ? listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, targetId)) : null;
-    if (target && previewRuntime.meditating?.(target)) previewRuntime.interruptMeditation(target);
+    if (target && previewRuntime.meditating?.(target)) { previewRuntime.interruptMeditation(target); return target; }
+    return null;
   }
 
   function writeLedgerEvent(combatData = {}, payload = {}, inventoryBefore = null) {
     // 接战链 阶段 2e: stamina deductions queued by writeCombatResource go in first.
     if (pendingStaminaDeductions.length && !flushingStaminaDeductions) flushStaminaDeductions(combatLedgerRoot(combatData));
     const rootData = combatLedgerRoot(combatData);
-    tallyAttack(rootData, payload);
-    breakMeditationOnHit(rootData, payload);
+    const attackProgress = tallyAttack(rootData, payload);
+    const meditationBroken = breakMeditationOnHit(rootData, payload);
     const ledger = ensureLedger(rootData);
     const runtimeState = ensureCombatRuntime(rootData);
-    const ledgerSequence = ++runtimeState.ledgerSequence;
+    // 机制事实（T26 第 2 批）不推进账本序号：沿用触发它的那条事件的序号（排序时按事件 id 排在它后面），
+    // 后面事件的序号与 side-effect-window 等按序号取的 id 都和不记机制事实时一样。
+    const mechanicObservation = payload?.meta?.source === 'mechanic_runtime';
+    const ledgerSequence = mechanicObservation ? Math.max(1, Number(runtimeState.ledgerSequence || 0)) : ++runtimeState.ledgerSequence;
     if (combatData && rootData !== combatData) {
       const childLedger = Array.isArray(combatData.__battleEventLedger) ? combatData.__battleEventLedger : [];
       const existingEventIds = new Set(ledger.map(item => String(item?.eventId || '').trim()).filter(Boolean));
@@ -6187,6 +6259,19 @@
     ledger.push(event);
     appendRuntimeEventContracts(rootData, event);
     recordRuntimeLedgerEvent(rootData, event);
+    // 机制事实跟在触发它的这条事件之后（T26 第 2 批）。
+    if (attackProgress) {
+      writeMechanicEvent(rootData, { eventKind: 'objective_progress', actionName: '赌约进度', round,
+        actorId: attackProgress.attackerId, actorName: attackProgress.attackerName, targetId: attackProgress.targetId, targetName: attackProgress.targetName,
+        result: attackProgress.required > 0 && attackProgress.count >= attackProgress.required ? 'reached' : 'counted',
+        meta: { progress: { ...attackProgress, triggeringEventId: String(event?.eventId || '').trim() } } });
+    }
+    if (meditationBroken) {
+      writeMechanicEvent(rootData, { eventKind: 'meditation_interrupted', actionName: '冥想', round,
+        actorId: previewRuntime.unitId(meditationBroken), actorName: previewRuntime.unitName(meditationBroken), targetId: previewRuntime.unitId(meditationBroken), targetName: previewRuntime.unitName(meditationBroken),
+        result: 'interrupted', meta: { meditation: { unitName: previewRuntime.unitName(meditationBroken), byActorId: String(event?.actorId || '').trim(),
+          byActorName: String(event?.actorName || '').trim(), triggeringEventId: String(event?.eventId || '').trim() } } });
+    }
     return event;
   }
 
@@ -6984,7 +7069,9 @@
     const side = String(truce.提议方 || '');
     // A new record each time: the battle's objects may be frozen by a decision's prepared world.
     const records = combatData.罢手记录 && typeof combatData.罢手记录 === 'object' ? combatData.罢手记录 : {};
-    combatData.罢手记录 = { ...records, [side]: { ...(records[side] || {}), 上次被拒回合: Number(truce.回合 || combatData?.回合 || 0) } };
+    // 提议者留着，下一次结算开头补记「拒绝罢手」时写得出是谁提的（T26 第 2 批）。
+    combatData.罢手记录 = { ...records, [side]: { ...(records[side] || {}), 上次被拒回合: Number(truce.回合 || combatData?.回合 || 0),
+      提议者: String(truce.提议者 || '').trim() } };
     delete combatData.罢手;
     return true;
   }
@@ -14453,10 +14540,14 @@
     if (!payable) return null;
     // As a clash (接战链 对轰): it meets the move, as 蓄力迎击 does (BattleDecision engagementCandidates).
     const move = incoming && typeof incoming === 'object' ? incoming : null;
-    return { actorId: previewRuntime.unitId(unit), actionKind: 'RELEASE_SKILL', targetIds: [String(sourceActorId)], skill: cloneValue(skill),
+    const meet = { actorId: previewRuntime.unitId(unit), actionKind: 'RELEASE_SKILL', targetIds: [String(sourceActorId)], skill: cloneValue(skill),
       ...(move ? { engagement: { mode: 'CLASH', sourceActorId: String(sourceActorId), incoming: { actorId: String(sourceActorId), actionKind: String(move.actionKind || '').trim().toUpperCase(),
         targetIds: (Array.isArray(move.targetIds) ? move.targetIds : []).map(String), skill: move.skill || null } } } : {}) };
+    // 战报用（T26 第 2 批）：记在声明对象外面——声明内容进了动作身份哈希与掷骰种子，不能多加字段。
+    feintMeetDeclarations.add(meet);
+    return meet;
   }
+  const feintMeetDeclarations = new WeakSet();
   function chargeHoldUpkeepPayable(unit = {}, charge = {}) {
     return chargeHoldUpkeep(unit, charge).every(([resource, value]) => previewRuntime.readResource(unit, resource) >= value);
   }
@@ -14912,6 +15003,8 @@
   function settleStructuredEngagement({ input, combatData, reactor, sourceActor, declaration, incomingDeclaration,
     parentActionEvent, common, reactionMeta, mode }) {
     const sourceId = previewRuntime.unitId(sourceActor);
+    // 佯装被冲上来：它以保留的那一招迎击（feintMeetDeclaration）——记在交锋事件上，战报写「佯装迎击」（T26 第 2 批）。
+    const feintMeet = feintMeetDeclarations.has(declaration) || previewRuntime.isFeint?.(reactor?.蓄力技能) === true;
     const clash = mode === 'CLASH' ? previewRuntime.clashOutcome(reactor, declaration, sourceActor, incomingDeclaration, combatData) : null;
     // 接战链 阶段 2c: the answering move must fit the clash window (BattlePreview clashWindupBudget, the attack read on the
     // true agility; an ally that stepped in has INTERCEPT_WINDUP less). Thrown too late (LATE) it comes to nothing and the
@@ -14994,6 +15087,7 @@
         incomingMoveKind: String(incomingDeclaration?.actionKind || '').trim(),
         intercept: input?.intercept === true,
         answered,
+        ...(feintMeet ? { feintMeet: true } : {}),
         ...(clash ? { clashResult, reactorDamage: clash.mine, attackerDamage: clash.theirs, clashRatio: Number.isFinite(clash.ratio) ? clash.ratio : null,
           clashThreshold: clash.threshold, outScale: clash.outScale, inScale: clash.inScale } : mode === 'CLASH' ? { clashResult, clashUnresolved: true } : {}),
         ...(mode === 'CLASH' ? { clashWindow, clashWindup, clashInTime } : {}),
@@ -16321,6 +16415,19 @@
         audit: { fatalCount: 0, warningCount: 0, fatals: [], warnings: [] },
         beliefObservations: [],
       };
+    }
+    // 机制事实（T26 第 2 批）：本次结算开头记下交手约定；界面上一次拒绝的罢手也在这里补记（拒绝发生在两次结算之间）。
+    {
+      const terms = combatData?.交手约定 && typeof combatData.交手约定 === 'object' ? combatData.交手约定 : null;
+      const names = value => (Array.isArray(value) ? value : String(value || '').split(/[、,，]/u)).map(item => String(item || '').trim()).filter(Boolean);
+      const caps = terms?.压制修为 && typeof terms.压制修为 === 'object' && !Array.isArray(terms.压制修为)
+        ? Object.fromEntries(Object.entries(terms.压制修为).map(([name, level]) => [String(name).trim(), Math.floor(Number(level) || 0)]).filter(([name, level]) => name && level > 0))
+        : {};
+      if (terms && (names(terms.不还手).length || names(terms.只硬接).length || Object.keys(caps).length)) {
+        writeMechanicEvent(combatData, { eventKind: 'engagement_terms', actionName: '交手约定', round: sourceRound + 1, result: 'declared',
+          meta: { terms: { 不还手: names(terms.不还手), 只硬接: names(terms.只硬接), 压制修为: caps } } });
+      }
+      emitPendingTruceDecline(combatData, sourceRound);
     }
     const rawSelectedAction = input?.selectedAction && typeof input.selectedAction === 'object' ? input.selectedAction : null;
     const selectedActorId = String(
@@ -18747,13 +18854,28 @@
               // 破防: every enemy a hit of this action landed on has its guard broken when the attack stat outweighs its
               // defence (BattlePreview guardBreaks; more is needed against a unit that took the hit defending).
               const guardRound = Number(combatData?.回合 || 0), breakEffect = structuredDamageEffects(shared.declaration)[0];
+              // 赌约「破防」的判定演算（T26 第 2 批）：有这条胜负条件的战斗里，每一击对敌人的破防判定都记一条 objective_progress。
+              const guardObjective = breakEffect && /GUARD_BROKEN|破防/.test(JSON.stringify(combatData?.胜负条件 || {}));
               if (breakEffect) for (const event of settlement.facts || []) {
-                if (event?.eventKind !== 'hit_result' || !(Number(event?.appliedDamage || event?.meta?.appliedDamage || 0) > 0)) continue;
+                if (event?.eventKind !== 'hit_result') continue;
+                const landed = Number(event?.appliedDamage || event?.meta?.appliedDamage || 0) > 0;
+                if (!landed && !guardObjective) continue;
                 const struck = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, event?.targetId || event?.targetName || ''));
                 if (!struck || struck === actor || inferUnitSide(combatData, struck) === inferUnitSide(combatData, actor) ||
                   previewRuntime.guardBrokenOf(struck, guardRound)) continue;
                 const answered = String(shared.reactionByTarget[previewRuntime.unitId(struck)]?.actionKind || '').trim().toUpperCase();
-                if (!previewRuntime.guardBreaks(actor, breakEffect, struck, ['DEFEND', 'GUARD'].includes(answered))) continue;
+                const defended = ['DEFEND', 'GUARD'].includes(answered);
+                if (guardObjective) {
+                  const judgement = previewRuntime.guardBreakJudgement(actor, breakEffect, struck, defended);
+                  writeMechanicEvent(combatData, { eventKind: 'objective_progress', actionName: '破防判定', round: guardRound,
+                    actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
+                    targetId: previewRuntime.unitId(struck), targetName: previewRuntime.unitName(struck),
+                    result: landed && judgement.broken ? 'broken' : 'held',
+                    meta: { progress: { progressKind: 'GUARD_BREAK', sourceActionId: String(settlement.actionEvent?.actionId || '').trim(),
+                      triggeringEventId: String(event?.eventId || '').trim(), landed, ...judgement, broken: landed && judgement.broken } } });
+                }
+                if (!landed) continue;
+                if (!previewRuntime.guardBreaks(actor, breakEffect, struck, defended)) continue;
                 previewRuntime.setGuardBroken(struck, guardRound, settlement.actionEvent?.actionId || '');
                 // 交手约定的胜负条件「破防」读它（攻击记录，只在用到时才记）。
                 if (wantsAttackTally(combatData)) {
@@ -19774,11 +19896,22 @@
         // without one (tests) it is answered by input.truceResponse ('accept'; anything else declines).
         if (combatData.罢手?.状态 === '待回应') {
           if (input?.truceInteractive === true) {
+            // 待回应也记一条（T26 第 2 批），战报里看得到这场停在等回应上。
+            writeMechanicEvent(combatData, { eventKind: 'truce_response', actionName: '罢手回应', result: 'pending', round: Number(combatData.罢手.回合 || combatData.回合 || 0),
+              meta: { truce: { proposer: String(combatData.罢手.提议者 || '').trim(), proposerSide: String(combatData.罢手.提议方 || '').trim(), pending: true,
+                round: Number(combatData.罢手.回合 || combatData.回合 || 0) } } });
             continuationStopReason = { code: 'TRUCE_PENDING', text: `${String(combatData.罢手.提议者 || '对方')}提议罢手，等待回应。` };
             addPerformanceTime('roundEndMs', roundEndStartedAt);
             break;
           }
+          const truceBeforeAnswer = cloneValue(combatData.罢手);
           respondToTruce(combatData, input?.truceResponse === 'accept');
+          writeTruceResponse(combatData, truceBeforeAnswer, input?.truceResponse === 'accept');
+          // 已经当场记过，下一次结算开头不再补记。
+          if (input?.truceResponse !== 'accept' && combatData.罢手记录?.[String(truceBeforeAnswer?.提议方 || '')]) {
+            const side = String(truceBeforeAnswer.提议方);
+            combatData.罢手记录 = { ...combatData.罢手记录, [side]: { ...combatData.罢手记录[side], 已告知回合: Number(combatData.罢手记录[side].上次被拒回合) } };
+          }
           if (combatData.罢手?.状态 === '成立') {
             terminal = evaluateBattleTerminal({ combatData, currentRound: combatData.回合, rounds: roundOffset, roundCompleted: true }, {});
             addPerformanceTime('roundEndMs', roundEndStartedAt);

@@ -1971,6 +1971,17 @@
   function guardBreaks(attacker = {}, effect = {}, target = {}, defended = false) {
     return guardBreakRatio(attacker, effect, target, defended) > 1;
   }
+  // 破防判定的演算（T26 第 2 批，战报用）：和 guardBreakRatio 同一算式，把各项拆开给出。
+  function guardBreakJudgement(attacker = {}, effect = {}, target = {}, defended = false) {
+    const mental = classifyDamageType(effect?.伤害类型) === 'MENTAL';
+    const strip = clamp(Object.values(target?.状态效果 || {}).reduce((sum, state) => sum + Math.max(0, Number(state?.战斗效果?.[mental ? 'spirit_resist_strip' : 'defense_strip'] || 0)), 0), 0, 0.95);
+    const pen = mental ? 0 : clamp(Object.values(attacker?.状态效果 || {}).reduce((sum, state) => sum + Math.max(0, Number(state?.战斗效果?.armor_pen || 0)), 0), 0, 0.95);
+    const attack = readCombatStat(attacker, mental ? 'men' : 'str'), defense = Math.max(1, readCombatStat(target, mental ? 'men' : 'def'));
+    const multiplier = defended ? GUARD_BREAK_DEFENDED_RATIO : GUARD_BREAK_RATIO;
+    const ratio = guardBreakRatio(attacker, effect, target, defended);
+    return { attackStat: mental ? '精神力' : '力量', defenseStat: mental ? '精神力' : '防御', attack, defense, strip, pen, defended: defended === true,
+      multiplier, ratio, broken: ratio > 1 };
+  }
   function guardBrokenOf(unit = {}, round = 0) {
     const mark = unit?.__battleRuntime?.guardBroken;
     return !!mark && Number(mark.round) === Number(round);
@@ -25568,6 +25579,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     attackOpeningStrength,
     setAttackOpening,
     guardBreaks,
+    guardBreakJudgement,
     guardBrokenOf,
     setGuardBroken,
     battleIntensity,

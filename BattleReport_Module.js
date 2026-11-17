@@ -34,6 +34,14 @@
     ]),
   });
   const reportAuditAttestations = new WeakMap();
+  /* 战报可见性（T26 第 2 批）——待用户拍板，改这里就能切：
+     engagementTerms（拍板 10，交手约定）：'PUBLIC' 双方公示（默认，推荐）| 'OWN_SIDE' 只公示我方单位的约定。
+     enemyReasoning（拍板 1，敌方出招推导）：'INTENT_UNTIL_END' 战斗进行中只给意图和结果、战斗结束后解锁全部（默认，推荐）|
+       'FULL' 一直全部可见（次优手仍写「另一方案」）| 'INTENT_ONLY' 始终只给意图和结果。 */
+  const REPORT_VISIBILITY = Object.freeze({
+    engagementTerms: 'PUBLIC',
+    enemyReasoning: 'INTENT_UNTIL_END',
+  });
   const internalSummonPattern = /(?:structured-summon|battle-summon|summon-instance|preview-summon):[^\s,，。；;|]+/gi;
   const internalSummonIdPattern = /^(?:structured-summon|battle-summon|summon-instance|preview-summon):/i;
   /*
@@ -492,7 +500,9 @@
     });
     return result
       .replace(internalSummonPattern, '召唤物')
-      .replace(internalEffectInstancePattern, '召唤物');
+      .replace(internalEffectInstancePattern, '召唤物')
+      // 系统状态键（冥想、开武魂等的 __auto__: 前缀）不给玩家看（T26 第 2 批：「受【__auto__:冥想】影响」）。
+      .replace(/__auto__:/g, '');
   }
 
   /* 对账诊断（matchDiagnostic）的 expectedTargetId/expectedEffectInstanceId 等字段
@@ -755,6 +765,7 @@
         push(eventNumberToken(event, '审计成本', cost, resourceName(event), 'COST_AUDIT', 'SET', visibilityMode));
       }
     }
+    pushMechanicTokens(event, push, visibilityMode);
     return tokens;
   }
 
@@ -1141,6 +1152,278 @@
     };
   }
 
+  /*
+   * 机制事实（T26 第 2 批，战报骨架设计-20261118 第二节 A）
+   *
+   * 账本里的机制事件落成 fact.mechanic = { kind, phase, subjectIds, values, judgement, visibility }：
+   *   ENGAGEMENT_TERMS 交手约定 / OBJECTIVE_PROGRESS 赌约进度（接满攻击次数）/ GUARD_BREAK 破防判定 / TRUCE 罢手回应 /
+   *   MEDITATION 冥想（开始、被打断、额外恢复）/ FEINT 佯装（摆出、迎击、收回）/ CLASH 对轰 / PREEMPT 抢先 / REFEREE 裁判出手。
+   * judgement 的写法和出招记录的分项一致：check（判什么）、inputs（参与的量）、rule（怎么判）、ratio、outcome。
+   * 对轰、抢先只给比值、门槛和结果，不给双方威力原值（拍板 11）。
+   */
+  function mechanicSideOf(directory = new Map(), id = '') {
+    return text(entityEntry(directory, id)?.side);
+  }
+
+  function mechanicNames(directory = new Map(), values = []) {
+    return (Array.isArray(values) ? values : []).map(value => publicEntityName(directory, value, value)).filter(Boolean);
+  }
+
+  // 交手约定可见性：PUBLIC 双方公示；OWN_SIDE 只公示我方单位的约定（见 REPORT_VISIBILITY）。
+  function visibleEngagementTerms(terms = {}, directory = new Map()) {
+    const ownOnly = REPORT_VISIBILITY.engagementTerms === 'OWN_SIDE';
+    const keep = name => !ownOnly || mechanicSideOf(directory, name) === 'player';
+    const listed = value => (Array.isArray(value) ? value : []).map(text).filter(Boolean).filter(keep);
+    const caps = Object.fromEntries(Object.entries(terms?.压制修为 && typeof terms.压制修为 === 'object' ? terms.压制修为 : {})
+      .map(([name, level]) => [text(name), Math.floor(number(level, 0))]).filter(([name, level]) => name && level > 0 && keep(name)));
+    return { 不还手: listed(terms?.不还手), 只硬接: listed(terms?.只硬接), 压制修为: caps };
+  }
+
+  const clashResultTexts = Object.freeze({
+    won: '压过了对方',
+    even: '势均力敌，双方都被震到',
+    lost: '被对方压过',
+    late: '出手慢了一步，没赶上',
+  });
+  const preemptResultTexts = Object.freeze({
+    held: '拦下了这一招',
+    disrupted: '扰乱了这一招',
+    failed: '没能拦下',
+  });
+
+  function isMeditationEvent(event = {}) {
+    const name = text(event?.meta?.stateName || event?.actionName);
+    return name === '冥想' || name === '__auto__:冥想';
+  }
+
+  // 判定演算里的数给人看：两位小数（与战报文字 displayNumber 同口径；缺值保持 NaN，调用处按 Number.isFinite 判断）。
+  function roundJudgement(value) {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? Number(numeric.toFixed(Math.abs(numeric) >= 100 ? 1 : 2)) : NaN;
+  }
+
+  function buildMechanic(event = {}, directory = new Map()) {
+    const kind = text(event?.eventKind);
+    const meta = event?.meta && typeof event.meta === 'object' ? event.meta : {};
+    const result = text(event?.result).toLowerCase();
+    const visibility = { player: 'FULL', ai: 'OUTCOME_ONLY' };
+    const actorId = text(event?.actorId);
+    const targetId = text(event?.targetId);
+    if (kind === 'engagement_terms') {
+      const terms = visibleEngagementTerms(meta?.terms || {}, directory);
+      return {
+        kind: 'ENGAGEMENT_TERMS', phase: 'declared',
+        subjectIds: unique([...terms.不还手, ...terms.只硬接, ...Object.keys(terms.压制修为)]),
+        values: terms, judgement: null,
+        visibility: { player: REPORT_VISIBILITY.engagementTerms === 'PUBLIC' ? 'FULL' : 'OWN_ONLY', ai: REPORT_VISIBILITY.engagementTerms === 'PUBLIC' ? 'FULL' : 'OWN_ONLY' },
+      };
+    }
+    if (kind === 'objective_progress') {
+      const progress = meta?.progress || {};
+      if (text(progress?.progressKind) === 'GUARD_BREAK') {
+        const broken = progress?.broken === true;
+        return {
+          kind: 'GUARD_BREAK', phase: broken ? 'broken' : 'held', subjectIds: [actorId, targetId].filter(Boolean),
+          values: { attacker: publicEntityName(directory, actorId, event?.actorName), target: publicEntityName(directory, targetId, event?.targetName), landed: progress?.landed === true },
+          judgement: {
+            check: '破防',
+            inputs: {
+              [text(progress?.attackStat) || '力量']: roundJudgement(number(progress?.attack, 0)),
+              [text(progress?.defenseStat) || '防御']: roundJudgement(number(progress?.defense, 0)),
+              在防御: progress?.defended === true,
+              削防: roundJudgement(number(progress?.strip, 0)),
+              穿透: roundJudgement(number(progress?.pen, 0)),
+              门槛倍数: number(progress?.multiplier, 0),
+            },
+            rule: `${text(progress?.attackStat) || '力量'} ÷ (${text(progress?.defenseStat) || '防御'} × (1 − 削防) × (1 − 穿透) × 门槛倍数) > 1 即破防`,
+            ratio: roundJudgement(number(progress?.ratio, 0)),
+            outcome: broken ? '破防' : '未破防',
+          },
+          visibility,
+        };
+      }
+      return {
+        kind: 'OBJECTIVE_PROGRESS', phase: result === 'reached' ? 'reached' : 'progress', subjectIds: [actorId, targetId].filter(Boolean),
+        values: {
+          progressKind: text(progress?.progressKind) || 'ATTACK_COUNT',
+          attacker: publicEntityName(directory, actorId, event?.actorName), target: publicEntityName(directory, targetId, event?.targetName),
+          count: Math.max(0, Math.floor(number(progress?.count, 0))), required: Math.max(0, Math.floor(number(progress?.required, 0))),
+          holderSide: text(progress?.holderSide),
+        },
+        judgement: null, visibility,
+      };
+    }
+    if (kind === 'truce_response') {
+      const truce = meta?.truce || {};
+      return {
+        kind: 'TRUCE', phase: result === 'accepted' ? 'accepted' : result === 'declined' ? 'declined' : 'pending',
+        subjectIds: [], values: {
+          proposer: text(truce?.proposer), proposerSide: text(truce?.proposerSide), responderSide: text(truce?.responderSide),
+          round: Math.max(0, Math.floor(number(truce?.round, 0))),
+        },
+        judgement: null, visibility: { player: 'FULL', ai: 'FULL' },
+      };
+    }
+    if (kind === 'meditation_interrupted') {
+      return {
+        kind: 'MEDITATION', phase: 'interrupted', subjectIds: [actorId].filter(Boolean),
+        values: { unit: publicEntityName(directory, actorId, event?.actorName), by: publicEntityName(directory, meta?.meditation?.byActorId, meta?.meditation?.byActorName) },
+        judgement: null, visibility,
+      };
+    }
+    if ((kind === 'state_apply' || kind === 'state_replace') && isMeditationEvent(event)) {
+      return { kind: 'MEDITATION', phase: 'started', subjectIds: [targetId || actorId].filter(Boolean),
+        values: { unit: publicEntityName(directory, targetId || actorId, event?.targetName || event?.actorName) }, judgement: null, visibility };
+    }
+    if ((kind === 'state_tick' || kind === 'resource_change') && isMeditationEvent(event) && number(event?.delta ?? meta?.delta, 0) > 0) {
+      return { kind: 'MEDITATION', phase: 'recovered', subjectIds: [targetId || actorId].filter(Boolean),
+        values: { unit: publicEntityName(directory, targetId || actorId, event?.targetName || event?.actorName), resource: resourceName(event), amount: number(event?.delta ?? meta?.delta, 0) },
+        judgement: null, visibility };
+    }
+    if (kind === 'pass' && text(event?.actionType).toUpperCase() === 'FEINT') {
+      return { kind: 'FEINT', phase: 'declared', subjectIds: [actorId].filter(Boolean),
+        values: { skill: playerSafeText(text(meta?.feint?.skill), directory), seenBy: mechanicNames(directory, meta?.feint?.seenBy) }, judgement: null, visibility };
+    }
+    if (kind === 'charge_interrupt' && text(event?.ruleCode) === 'FEINT_ENDED') {
+      return { kind: 'FEINT', phase: 'unmet', subjectIds: [actorId].filter(Boolean),
+        values: { skill: playerSafeText(text(event?.actionName), directory) }, judgement: null, visibility };
+    }
+    if (kind === 'clash') {
+      const ratio = roundJudgement(meta?.clashRatio), threshold = roundJudgement(meta?.clashThreshold);
+      return {
+        kind: 'CLASH', phase: result || text(meta?.clashResult).toLowerCase(), subjectIds: [actorId, targetId].filter(Boolean),
+        // 佯装迎击时运行时把保留的招式名带上「（佯装蓄力）」后缀，句子里已经写了「佯装时保留的」，去掉免得重复。
+        values: { move: playerSafeText(text(meta?.moveName), directory).replace(meta?.feintMeet === true ? /（佯装蓄力）$/u : /$^/u, ''), incomingMove: playerSafeText(text(meta?.incomingMoveName), directory), feintMeet: meta?.feintMeet === true },
+        judgement: {
+          check: '对轰',
+          inputs: { ...(Number.isFinite(ratio) ? { 威力比: ratio } : {}), ...(Number.isFinite(threshold) ? { 门槛: threshold } : {}), 赶上时机: meta?.clashInTime !== false },
+          rule: '来得及出手时，威力比过门槛压过对方，接近门槛势均力敌，不到则被压过；来不及就落空',
+          ratio: Number.isFinite(ratio) ? ratio : null,
+          outcome: clashResultTexts[result] || result,
+        },
+        visibility,
+      };
+    }
+    if (kind === 'preempt') {
+      return {
+        kind: 'PREEMPT', phase: result, subjectIds: [actorId, targetId].filter(Boolean),
+        values: { move: playerSafeText(text(meta?.moveName), directory), incomingMove: playerSafeText(text(meta?.incomingMoveName), directory) },
+        judgement: {
+          check: '抢先',
+          inputs: { 更快: meta?.faster === true, ...(Number.isFinite(Number(meta?.margin)) ? { 时机差: roundJudgement(meta.margin) } : {}) },
+          rule: '比对方先出手，并让对方这一招打不出来（被控住、倒下或被封住）才算拦下',
+          ratio: null,
+          outcome: preemptResultTexts[result] || result,
+        },
+        visibility,
+      };
+    }
+    if (kind === 'referee') {
+      return { kind: 'REFEREE', phase: text(meta?.refereeMode).toLowerCase() || result, subjectIds: [actorId, targetId].filter(Boolean),
+        values: { reasonText: playerSafeText(text(meta?.reasonText), directory) }, judgement: null, visibility: { player: 'FULL', ai: 'FULL' } };
+    }
+    return null;
+  }
+
+  function summarizeMechanicEvent(event = {}, directory = new Map(), actor = '', target = '') {
+    const mechanic = buildMechanic(event, directory);
+    if (!mechanic) return '';
+    const values = mechanic.values || {};
+    const sideLabel = side => side === 'team_player' ? '我方' : side === 'team_enemy' ? '敌方' : '';
+    if (mechanic.kind === 'ENGAGEMENT_TERMS') {
+      const parts = [
+        values.不还手?.length ? `${values.不还手.join('、')}不还手` : '',
+        values.只硬接?.length ? `${values.只硬接.join('、')}只硬接` : '',
+        ...Object.entries(values.压制修为 || {}).map(([name, level]) => `${name}压制修为至${level}级`),
+      ].filter(Boolean);
+      return parts.length ? `交手约定：${parts.join('，')}` : '交手约定已生效';
+    }
+    if (mechanic.kind === 'OBJECTIVE_PROGRESS') {
+      return `${values.attacker || actor}对${values.target || target}已出手${values.count}次${values.required > 0 ? `（约定${values.required}次）` : ''}${mechanic.phase === 'reached' ? '，已出满约定次数' : ''}`;
+    }
+    if (mechanic.kind === 'GUARD_BREAK') {
+      const ratio = displayNumber(mechanic.judgement?.ratio || 0);
+      return mechanic.phase === 'broken'
+        ? `${values.attacker || actor}破了${values.target || target}的防（破防比值${ratio}，过了门槛）`
+        : `${values.target || target}守住了${values.attacker || actor}这一击，没被破防（破防比值${ratio}，未过门槛）`;
+    }
+    if (mechanic.kind === 'TRUCE') {
+      const proposer = values.proposer || sideLabel(values.proposerSide) || '对方';
+      const responder = sideLabel(values.responderSide) || '对方';
+      if (mechanic.phase === 'accepted') return `${responder}同意了${proposer}的罢手提议`;
+      if (mechanic.phase === 'declined') return `${responder}拒绝了${proposer}的罢手提议`;
+      return `${proposer}提议罢手，等待回应`;
+    }
+    if (mechanic.kind === 'MEDITATION') {
+      if (mechanic.phase === 'interrupted') return `${values.unit || actor}的冥想被${values.by || '对方'}打断，回合末只恢复一半`;
+      if (mechanic.phase === 'recovered') return `${values.unit || actor}冥想额外恢复${values.resource || '资源'}${displayNumber(values.amount)}点`;
+      return `${values.unit || target || actor}坐下冥想`;
+    }
+    if (mechanic.kind === 'FEINT') {
+      if (mechanic.phase === 'unmet') return `${actor}收回佯装时保留的【${values.skill || '魂技'}】，没人冲上来`;
+      return `${actor}佯装蓄力${values.skill ? `【${values.skill}】` : ''}${values.seenBy?.length ? `，被${values.seenBy.join('、')}看破` : '，没人看破'}`;
+    }
+    if (mechanic.kind === 'CLASH') {
+      const ratio = mechanic.judgement?.inputs?.威力比, threshold = mechanic.judgement?.inputs?.门槛;
+      // 没赶上（late）不比威力，不写比值。
+      const numbers = mechanic.phase !== 'late' && Number.isFinite(ratio) ? `（威力比${displayNumber(ratio)}${Number.isFinite(threshold) ? `，门槛${displayNumber(threshold)}` : ''}）` : '';
+      const head = values.feintMeet
+        ? `${actor}以佯装时保留的【${values.move || '魂技'}】迎击${target}的【${values.incomingMove || '攻击'}】`
+        : `${actor}以【${values.move || '魂技'}】对轰${target}的【${values.incomingMove || '攻击'}】`;
+      return `${head}，${clashResultTexts[mechanic.phase] || '结果已记录'}${numbers}`;
+    }
+    if (mechanic.kind === 'PREEMPT') {
+      return `${actor}以【${values.move || '魂技'}】抢先${target}的【${values.incomingMove || '攻击'}】，${preemptResultTexts[mechanic.phase] || '结果已记录'}`;
+    }
+    if (mechanic.kind === 'REFEREE') return values.reasonText || `裁判出手`;
+    return '';
+  }
+
+  // 机制事实的数字（审计要求每个数字都有来源与推导）。
+  function pushMechanicTokens(event = {}, push = () => {}, visibilityMode = 'PLAYER') {
+    const mechanic = buildMechanic(event, new Map());
+    if (!mechanic) return;
+    const values = mechanic.values || {};
+    if (mechanic.kind === 'OBJECTIVE_PROGRESS') {
+      push(eventNumberToken(event, '已出手次数', values.count, '次', 'OBJECTIVE', 'SET', visibilityMode, {
+        operands: [{ name: '攻击记录累计', value: values.count, unit: '次' }], derivationRule: '按攻击记录累计的出手次数' }));
+      if (values.required > 0) {
+        push(eventNumberToken(event, '约定次数', values.required, '次', 'OBJECTIVE', 'SET', visibilityMode, {
+          operands: [{ name: '胜负条件约定', value: values.required, unit: '次' }], derivationRule: '按胜负条件约定的次数' }));
+      }
+    }
+    if (mechanic.kind === 'GUARD_BREAK') {
+      const inputs = mechanic.judgement?.inputs || {};
+      const numeric = Object.entries(inputs).filter(([, value]) => typeof value === 'number' && Number.isFinite(value))
+        .map(([name, value]) => ({ name, value, unit: ['削防', '穿透'].includes(name) ? '比例' : name === '门槛倍数' ? '倍' : '点' }));
+      push(eventNumberToken(event, '破防比值', mechanic.judgement?.ratio, '倍', 'JUDGEMENT', 'DIVIDE', visibilityMode, {
+        operands: numeric.length ? numeric : [{ name: '破防比值', value: number(mechanic.judgement?.ratio, 0), unit: '倍' }], derivationRule: mechanic.judgement?.rule }));
+    }
+    if (mechanic.kind === 'CLASH' && Number.isFinite(mechanic.judgement?.inputs?.威力比)) {
+      const inputs = mechanic.judgement.inputs;
+      push(eventNumberToken(event, '对轰威力比', inputs.威力比, '倍', 'JUDGEMENT', 'COMPARE', visibilityMode, {
+        operands: [{ name: '威力比', value: inputs.威力比, unit: '倍' }, ...(Number.isFinite(inputs.门槛) ? [{ name: '门槛', value: inputs.门槛, unit: '倍' }] : [])],
+        derivationRule: mechanic.judgement.rule }));
+    }
+    if (mechanic.kind === 'MEDITATION' && mechanic.phase === 'recovered') {
+      // 已由资源变化的数字给出（resource_change 的 RESOURCE token），这里不重复。
+    }
+  }
+
+  // 公开 DTO 里的机制事实（按可见性投影）：玩家界面与覆盖检查读这里，factRegistry 不进公开 DTO。
+  function publicMechanicFacts(factRegistry = [], visibilityMode = 'PLAYER') {
+    return (Array.isArray(factRegistry) ? factRegistry : [])
+      .filter(fact => fact?.mechanic && typeof fact.mechanic === 'object')
+      .map(fact => ({
+        factId: text(fact.factId), round: number(fact.round, 0), eventKind: text(fact.eventKind),
+        kind: text(fact.mechanic.kind), phase: text(fact.mechanic.phase), summary: text(fact.summary),
+        values: cloneValue(fact.mechanic.values || {}),
+        judgement: visibilityMode === 'DEVELOPER' || fact.mechanic.visibility?.player !== 'OUTCOME_ONLY'
+          ? cloneValue(fact.mechanic.judgement || null)
+          : fact.mechanic.judgement ? { check: text(fact.mechanic.judgement.check), outcome: text(fact.mechanic.judgement.outcome) } : null,
+      }));
+  }
+
   function summarizeEvent(event = {}, directory = new Map()) {
     const kind = text(event?.eventKind);
     const rawActor = publicEntityName(directory, event?.actorId || event?.actorName, event?.actorName) || '系统';
@@ -1161,6 +1444,9 @@
     const shield = number(meta?.amount ?? event?.amount, 0);
     const duration = number(event?.duration ?? meta?.duration, 0);
     const namedState = playerStateDescription(event, directory);
+    // 机制事实（T26 第 2 批）先出：交手约定、赌约进度、破防判定、罢手回应、冥想、佯装、对轰、抢先、裁判。
+    const mechanicSummary = summarizeMechanicEvent(event, directory, actor, target);
+    if (mechanicSummary) return mechanicSummary;
     const sideEffectSummary = summarizeSideEffectEvent(event, directory);
     if (sideEffectSummary) return sideEffectSummary;
     const movement = event?.ruleCode === 'PERSISTENT_STATE_TRANSFER' || meta.source === 'persistent_state_transfer' ? runtime.describeStateMovement(event, {
@@ -1501,6 +1787,8 @@
         : persistentRemovedNames === null ? playerStateName(stateName(event), directory) : persistentRemovedNames.join('、'),
       // 事实摘要是战报各处文字的来源（回合概览、交锋、因果链），小数统一按报告的数字格式。
       summary: formatTextNumbers(summarizeEvent(event, directory)),
+      // 机制事实（T26 第 2 批）：没有机制的事件为 null。
+      mechanic: buildMechanic(event, directory),
       numericTokens: numericTokens(event, visibilityMode),
       castTimePoints: ['charge_start', 'charge_progress'].includes(text(event?.eventKind))
         ? Math.max(0, number(event?.meta?.remainingCastTime, 0))
@@ -3816,7 +4104,8 @@
       text: [
         actionSummary,
         responseSummary ? `应对：${responseSummary}` : '',
-        resultSummary ? `结果：${resultSummary}` : '',
+        // 结果与动作本身同一句（「X提议罢手。结果：X提议罢手」）时不重复（T26 第 2 批）。
+        resultSummary && resultSummary !== actionSummary ? `结果：${resultSummary}` : '',
         continuationSummary ? `后续：${continuationSummary}` : '',
       ].filter(Boolean).join('。'),
     };
@@ -4016,9 +4305,9 @@
         return `${receiver}的【${state}】生效结果未记录，无法确认是否生效`;
       }
       if (kind === 'state_replace') {
-        return `${receiver}的【${state}】被更新${dur > 0 ? `，可持续${dur}回合` : ''}`;
+        return `${receiver}的【${state}】被更新${dur > 0 ? `，可持续${displayNumber(dur)}回合` : ''}`;
       }
-      return `${receiver}${stateApplicationText(rawEvent, state)}${dur > 0 ? `，持续${dur}回合` : ''}`;
+      return `${receiver}${stateApplicationText(rawEvent, state)}${dur > 0 ? `，持续${displayNumber(dur)}回合` : ''}`;
     }
     if (kind === 'ring_burst') return `${actor}发动炸环`;
     if (kind === 'schedule_descriptor') return `${actor}留下了后续生效的效果`;
@@ -5162,13 +5451,13 @@
       .slice(-RECENT_REASON_LIMIT)
       .map(decision => {
         const side = text(entityEntry(directory, decision?.actorId)?.side);
-        const projected = publicReasonRecord(decision.reasonRecord, side, visibilityMode);
+        const projected = publicReasonRecord(decision.reasonRecord, side, visibilityMode, draft?.terminalResult?.terminal === true);
         return { round: number(decision?.round, 0), actor: publicEntityName(directory, decision?.actorId, decision?.actorId), line: text(projected?.aiLine) };
       })
       .filter(row => row.line);
   }
 
-  function buildAiSummaryInput(finalSummary = {}, roundOverview = [], recentReasons = []) {
+  function buildAiSummaryInput(finalSummary = {}, roundOverview = [], recentReasons = [], truceResponse = '') {
     const compactUnit = unit => ({
       name: unit.name,
       hp: unit.hp,
@@ -5199,6 +5488,8 @@
       nextIntents: cloneValue(finalSummary?.nextIntents || {}),
       recentRoundSummaries: roundOverview.slice(-3).map(row => ({ round: row.round, summary: row.summary })),
       recentReasons: (Array.isArray(recentReasons) ? recentReasons : []).map(row => ({ round: row.round, actor: row.actor, line: row.line })),
+      // 罢手的同意与拒绝（拍板 9）：只放一句事实，没有就不出这个字段。
+      ...(text(truceResponse) ? { truceResponse: text(truceResponse) } : {}),
     };
   }
 
@@ -5570,10 +5861,15 @@
   }
 
   /* 出招记录的可见投影：玩家看得到己方的完整推导；敌方只给选中手的推导，次优手是什么招不给（那是没亮出来的底牌）。 */
-  function publicReasonRecord(record = null, actorSide = '', visibilityMode = 'PLAYER') {
+  function publicReasonRecord(record = null, actorSide = '', visibilityMode = 'PLAYER', battleOver = false) {
     if (!record || typeof record !== 'object' || record.error) return null;
     if (visibilityMode === 'DEVELOPER' || actorSide !== 'enemy') {
       return { intent: text(record.intent), win: record.win ?? null, aiLine: formatTextNumbers(text(record.aiLine)), derivation: (record.derivation || []).map(line => formatTextNumbers(text(line))) };
+    }
+    // 敌方：INTENT_UNTIL_END 战斗进行中只给意图和结果（选了哪手、意图），结束后解锁；INTENT_ONLY 始终如此（REPORT_VISIBILITY）。
+    const intentOnly = REPORT_VISIBILITY.enemyReasoning === 'INTENT_ONLY' || (REPORT_VISIBILITY.enemyReasoning === 'INTENT_UNTIL_END' && battleOver !== true);
+    if (intentOnly) {
+      return { intent: text(record.intent), win: null, aiLine: formatTextNumbers(text(record.aiLine).split('；')[0]), derivation: [] };
     }
     const runner = text(record?.runnerUp?.label);
     const hide = line => runner ? text(line).split(runner).join('另一方案') : text(line);
@@ -5585,6 +5881,7 @@
     trace = {},
     visibilityMode = 'PLAYER',
     actorSide = '',
+    battleOver = false,
   ) {
     if (visibilityMode === 'DEVELOPER') return cloneValue(trace);
     const visibleCandidates = (Array.isArray(trace?.candidates) ? trace.candidates : [])
@@ -5606,7 +5903,7 @@
       narrowing: actorSide === 'enemy'
         ? []
         : (Array.isArray(trace?.narrowing) ? trace.narrowing : []).map(stage => publicDecisionStage(stage)),
-      reasonRecord: publicReasonRecord(trace?.reasonRecord, actorSide, visibilityMode),
+      reasonRecord: publicReasonRecord(trace?.reasonRecord, actorSide, visibilityMode, battleOver),
     };
   }
 
@@ -5614,12 +5911,13 @@
     narrativeChain = [],
     visibilityMode = 'PLAYER',
     directory = new Map(),
+    battleOver = false,
   ) {
     return (Array.isArray(narrativeChain) ? narrativeChain : []).map(node => {
       const projected = cloneValue(node);
       const primaryActorSide = text(entityEntry(directory, node?.actorId)?.side);
       projected.decision = node?.decision
-        ? projectDecisionTraceForVisibility(node.decision, visibilityMode, primaryActorSide)
+        ? projectDecisionTraceForVisibility(node.decision, visibilityMode, primaryActorSide, battleOver)
         : null;
       projected.decisions = (Array.isArray(node?.decisions) ? node.decisions : []).map(row => {
         const actorId = text(row?.actorId);
@@ -5632,6 +5930,7 @@
             row?.trace || {},
             visibilityMode,
             text(entityEntry(directory, actorId)?.side),
+            battleOver,
           ),
           lostOpportunityReason: text(row?.lostOpportunityReason),
         };
@@ -6249,7 +6548,7 @@
     return result;
   }
 
-  function publicAiSummary(summary = {}, roundOverview = [], recentReasons = []) {
+  function publicAiSummary(summary = {}, roundOverview = [], recentReasons = [], truceResponse = '') {
     const compactUnit = unit => ({
       name: text(unit?.name),
       hp: number(unit?.hp, 0),
@@ -6291,6 +6590,7 @@
       recentReasons: (Array.isArray(recentReasons) ? recentReasons : []).map(row => ({
         round: Math.max(0, number(row?.round, 0)), actor: text(row?.actor), line: text(row?.line),
       })),
+      ...(text(truceResponse) ? { truceResponse: text(truceResponse) } : {}),
     };
   }
 
@@ -6369,8 +6669,10 @@
       exchanges,
       narrativeChain: (Array.isArray(report?.narrativeChain) ? report.narrativeChain : [])
         .map(publicNarrativeNode),
-      aiStructuredSummary: publicAiSummary(finalSummary, roundOverview, report?.aiStructuredSummary?.recentReasons),
+      aiStructuredSummary: publicAiSummary(finalSummary, roundOverview, report?.aiStructuredSummary?.recentReasons, report?.aiStructuredSummary?.truceResponse),
       battleHeadline: text(report?.battleHeadline),
+      // 机制事实（T26 第 2 批）：已按可见性投影。
+      mechanicFacts: cloneValue(Array.isArray(report?.mechanicFacts) ? report.mechanicFacts : []),
     };
   }
 
@@ -6491,7 +6793,9 @@
       visibilityMode,
     );
     finalSummary.canonicalFactIds = finalCanonicalFactIds;
-    const aiSummaryInput = buildAiSummaryInput(finalSummary, roundOverview, recentReasonLines(draft, directory, visibilityMode));
+    // 罢手的同意与拒绝（拍板 9）：本次结算里最近的一条回应，一句事实。
+    const latestTruceAnswer = [...factRegistry].reverse().find(fact => fact?.mechanic?.kind === 'TRUCE' && ['accepted', 'declined'].includes(text(fact.mechanic.phase)));
+    const aiSummaryInput = buildAiSummaryInput(finalSummary, roundOverview, recentReasonLines(draft, directory, visibilityMode), text(latestTruceAnswer?.summary));
 
     /* 因果链主轴：局面 → 决策 → 机制结算 → 对账。
        它复用上面已经算好并会被 auditProjection 校验的 exchange 分组，
@@ -6515,6 +6819,7 @@
       narrativeChain,
       visibilityMode,
       directory,
+      draft?.terminalResult?.terminal === true,
     );
     /* 决策投影完整性不变量：draft 里每一条决策都必须在因果链上找到落点。
        这条检查原先挂在 adjudications 上（DECISION_ADJUDICATION_MISSING），
@@ -6554,6 +6859,7 @@
       sourceDraftHash: draftHash,
       sourceLedgerCount: ledger.length,
       factRegistry,
+      mechanicFacts: publicMechanicFacts(factRegistry, visibilityMode),
       roundOverview,
       exchanges,
       finalSummary,
