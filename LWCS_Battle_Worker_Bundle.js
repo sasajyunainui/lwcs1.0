@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:dac188893de98943232f4611837611e5921f3afa94bde4a6952a30f30634cabe|MVU_Schema_Runtime.js:de73b7b99c63672d9314d492ec2dac4baf3f83f1fb14714d8e983e7a8ffc8790|BattlePreview_Module.js:19448477e6e707ee923d9a77dec7990694368534bb47b3eb2d84da8fdcb10df7|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:d35ba0218ec85689c10d89db6f75097720106d70f1cb680f0ea05eb06725f5e2|BattleRuntime_Module.js:e019e7cb7ec1e9d21d9e08c055eb4644ac84bd3ace1eba042c03ce0b7eeb7663 */
+/* sources-sha256: MVU_Skill_Runtime.js:dac188893de98943232f4611837611e5921f3afa94bde4a6952a30f30634cabe|MVU_Schema_Runtime.js:49b19d46acb65daa6331a69604b36c5ea833c157c70b633975c015ff4953374a|BattlePreview_Module.js:37a74448295386b739845923fb6a4e2cb27b65f44cae55baea1b865bfb8e609b|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:144a2e513268ea505b6fb914de37bc8072c1bb4bf90aa893d878cc1ad6fbba59|BattleRuntime_Module.js:c18495b57347b831e60171f438f752b256da73eca187cba8b5155d5d2a3ae6b2 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -34350,7 +34350,13 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       }
 
       const hadLifeFireActive = LIFE_FIRE_STATE_CACHE[charName] === true;
-      if (hadLifeFireActive && c.血脉之力?.生命之火 === false) {
+      // 战斗里点燃、战后熄灭（战斗写回 生命之火熄灭结算）：同一条熄灭规则，结算后清掉标记。
+      const lifeFireSpentInBattle = c.血脉之力?.生命之火熄灭结算 === true;
+      if (lifeFireSpentInBattle) {
+        delete c.血脉之力.生命之火熄灭结算;
+        c.血脉之力.生命之火 = false;
+      }
+      if ((hadLifeFireActive || lifeFireSpentInBattle) && c.血脉之力?.生命之火 === false) {
         追加系统播报文本(data, `[生命之火熄灭] ${charName} 透支本源，修为暴跌 3 级，陷入濒死！`);
         c.属性.等级 = Math.max(1, c.属性.等级 - 3);
         c.属性.等级惩罚 += 3;
@@ -46074,6 +46080,44 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const name = String(skill?.魂技名 || skill?.name || skill?.技能名称 || skill?.名称 || '').trim();
     return !!name && spiritSkillNames(unit).has(name);
   }
+  // 点燃生命之火（用户 2026-11-17「搏命不是已经有点燃生命之火这个手段了吗」）: a soul master of five rings or more may burn its life in a real fight (实战:
+  // DUEL or DEATH, not a spar or a match) — windup 0, no action taken, as 开武魂 — for 魂力/精神力/体力 maxima and 力量/防御/
+  // 敏捷 ×2 (the save's own rule, MVU_Schema_Runtime allMult), what it has of each doubled with them. It is put out when the
+  // battle ends: 血脉之力.生命之火熄灭结算 goes back with the battle and the save then takes the save's own price (永久 −3 级, HP
+  // 3%, 体力 1). The decision prices it as that after-battle cost (postBattleCostShare: 本源损耗 3% and 重伤昏迷 a month). One
+  // already burning (the story lit it) cannot light it again.
+  // 生命透支（用户 11-17 选「每回合末扣生命，烧到死」；原作血九「一旦燃烧，在很短时间内就会出现生命透支，直到死亡」）: each round end
+  // takes LIFE_FIRE_DRAIN of its HP maximum as a periodic loss (dot_damage_ratio: past shields, and its own cost, so held at no line).
+  const LIFE_FIRE_KEY = '__auto__:生命之火', LIFE_FIRE_MIN_LEVEL = 51, LIFE_FIRE_DRAIN = 0.15;
+  const LIFE_FIRE_PANEL = Object.freeze({ str: 2, def: 2, agi: 2, sp_max: 2, men_max: 2, vit_max: 2 });
+  const LIFE_FIRE_AFTERMATH = Object.freeze([{ 副作用类型: '本源损耗', 数值: 3 }, { 副作用类型: '重伤昏迷', 数值: 1 }]);
+  const isLifeFireEffect = effect => String(effect?.原型 || '').trim() === '状态施加' && String(effect?.状态 || '').trim() === '生命之火';
+  function lifeFireLit(unit = {}) {
+    return unit?.血脉之力?.生命之火 === true || !!unit?.状态效果?.[LIFE_FIRE_KEY];
+  }
+  function lifeFireOptions(unit = {}, worldSnapshot = {}, battleIntent = {}) {
+    // As any skill with a lasting after-battle cost (skillPermittedAtIntensity): only once its side is losing badly (sideDesperate).
+    // 原作（龙王传说 1106 章血九）：「任何魂师修为超过五环以上，都有点燃自身生命之火的能力」— the fifth ring at level 51 (整十级少一环).
+    const level = Number(unit?.属性?.等级 ?? unit?.等级 ?? unit?.level ?? 0) || 0;
+    if (!hasMartialSpirit(unit) || level < LIFE_FIRE_MIN_LEVEL || lifeFireLit(unit) || !['DUEL', 'DEATH'].includes(battleIntensity(worldSnapshot, battleIntent)) ||
+      !sideDesperate(worldSnapshot, unit)) return [];
+    return [{ slot: '生命之火', name: '点燃生命之火', windup: 0, aftermath: LIFE_FIRE_AFTERMATH,
+      effect: { 原型: '状态施加', 目标: '自身', 状态: '生命之火', 持续回合: ARMOUR_LASTING_ROUNDS, 触发方式: '立即触发', 生效方式: '独立生效' } }];
+  }
+  // Lights it on `unit` in place: the state, the panel and the pools; false when it is already burning.
+  function igniteLifeFire(unit = {}, currentTick = 0) {
+    if (lifeFireLit(unit)) return false;
+    const before = Object.fromEntries(['魂力', '精神力'].map(resource => [resource, readResource(unit, resource)]));
+    unit.状态效果 = { ...(unit.状态效果 || {}), [LIFE_FIRE_KEY]: { 状态: '生命之火', 状态名称: '生命之火', 类型: 'buff', duration: ARMOUR_LASTING_ROUNDS,
+      持续回合: ARMOUR_LASTING_ROUNDS, 描述: `燃烧生命之火：魂力、精神力、体力上限与力量、防御、敏捷翻倍；每回合末透支 ${Math.round(LIFE_FIRE_DRAIN * 100)}% 生命上限直至烧尽；战斗结束时熄灭（永久跌落 3 级，陷入濒死）`,
+      面板修改比例: { ...LIFE_FIRE_PANEL }, 面板固定修正: {}, 战斗效果: { dot_damage_ratio: LIFE_FIRE_DRAIN }, __生命之火: true } };
+    unit.final = { ...(unit.final || {}), ...buildNumericCombatStats(unit, currentTick) };
+    // 魂力 and 精神力 doubled with their maxima; 体力 takes what its maximum gained (syncStaminaMaxGain, as any rise of it).
+    for (const [resource, value] of Object.entries(before)) setResource(unit, resource, Math.min(readResourceMax(unit, resource), value * 2));
+    syncStaminaMaxGain(unit);
+    unit.血脉之力 = { ...(unit.血脉之力 && typeof unit.血脉之力 === 'object' ? unit.血脉之力 : {}), 生命之火熄灭结算: true };
+    return true;
+  }
   // 战斗暴露（信息模型 0c，用户 2026-11-17「交叉对战想储存起来太繁琐」→ 每个角色一个位图）: the skills a unit has released in
   // front of others, as bits of its 战斗暴露 (base36, kept in the save; only ever grows). A skill's bit is its place: 0–9 the
   // 1st 武魂's 1st–10th ring, 10–19 the 2nd's, 20–21 their 武魂真身, then its 自创魂技 and 融合技 by name. 魂骨 and equipment
@@ -46434,7 +46478,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         // 释放斗铠 / 机甲的内部结算（S80-A armourReleaseEffect）：不在技能表里，设计台与生成都用不到。
         // 开武魂（spiritReleaseOptions）同样是内部状态「武魂已释放」。
         const internal = prototype === '结算修正' && field === '结算' && normalized === '装备吸收' && !!effect?.__装备释放 ||
-          prototype === '状态施加' && field === '状态' && normalized === '武魂已释放';
+          prototype === '状态施加' && field === '状态' && ['武魂已释放', '生命之火'].includes(normalized);
         if (normalized && !internal && !(accepted ? accepted.has(normalized) : fieldDefinition.选项.includes(normalized))) {
           throw new Error(`battle_preview_unknown_enum:${prototype}:${field}:${normalized}`);
         }
@@ -48637,6 +48681,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (!derived.position_once && derived.counter_window_closed !== true && derived.no_cover !== true) return false;
     }
     // 开武魂: 「武魂已释放」 takes the 「武魂未释放」 key (spiritReleasedMarker), so the round start does not lay it again.
+    // 点燃生命之火 (igniteLifeFire): its own key, panel and pools.
+    if (isLifeFireEffect(effect)) return igniteLifeFire(unit, 0);
     if (isSpiritReleaseEffect(effect)) {
       if (!spiritUnreleased(unit)) return false;
       unit.状态效果 = { ...(unit.状态效果 || {}), [SPIRIT_UNRELEASED_KEY]: spiritReleasedMarker(unit) };
@@ -52420,7 +52466,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             }, context.effectInstanceId, (key, state) => replacedStates.push([key, state]), context.rootActionId);
             // A state that moves the panel (封禁装备's 面板固定修正) takes effect at once, as a 属性修正 does.
             // 开武魂 lifts 「武魂未释放」's halving the same way (addState puts 「武魂已释放」 in its key).
-            if (marginal && (statePanelChanges(sourcedEffect) || isSpiritReleaseEffect(sourcedEffect))) {
+            if (marginal && (statePanelChanges(sourcedEffect) || isSpiritReleaseEffect(sourcedEffect) || isLifeFireEffect(sourcedEffect))) {
               unit.final = { ...unit.final, ...buildNumericCombatStats(unit, Number(overlay.baseWorld?.当前世界tick ?? overlay.baseWorld?.当前tick ?? 0)) };
               syncStaminaMaxGain(unit);
             }
@@ -62853,6 +62899,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     spiritUnreleased,
     spiritBlocksSkill,
     spiritReleasedMarker,
+    lifeFireOptions,
+    lifeFireLit,
+    igniteLifeFire,
     exposedSkills,
     recordExposure,
     SPIRIT_UNRELEASED_KEY,
@@ -79031,11 +79080,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 释放斗铠 / 机甲（接入方案 S80-A）：身穿而未释放的，用换装行动释放（BattlePreview armourReleaseOptions：前摇、吸收、耐久，
     // 封甲与比赛禁止装备时不给）。估值走效果本身：释放状态加回加成并吸收来袭伤害。
     // 开武魂（信息模型 0a）: the same release path, windup 0 (BattlePreview spiritReleaseOptions).
-    [...(preview.spiritReleaseOptions?.(actor) || []), ...(preview.armourReleaseOptions?.(actor, worldSnapshot) || [])].forEach(option => {
+    // 点燃生命之火（只在实战，BattlePreview lifeFireOptions）: the same path; its after-battle cost goes with it (aftermath, priced
+    // by postBattleCostShare in the valuation — not as the skill's side effects, which the runtime would settle in the battle too).
+    [...(preview.spiritReleaseOptions?.(actor) || []), ...(preview.lifeFireOptions?.(actor, worldSnapshot, input.battleIntent) || []),
+      ...(preview.armourReleaseOptions?.(actor, worldSnapshot) || [])].forEach(option => {
       const id = `${actorId}:release:${option.slot}`;
       candidates.push({
         candidateId: id,
         declaration: { actionId: id, actorId, actionKind: 'EQUIP', targetIds: [actorId], releaseSlot: option.slot, equipmentSignature: `release:${option.slot}`,
+          ...(option.aftermath ? { aftermath: option.aftermath } : {}),
           skill: { name: option.name, 魂技名: option.name, 前摇: option.windup, 消耗: '无', _效果数组: [option.effect] } },
         equipmentSignature: `release:${option.slot}`,
       });
@@ -140020,6 +140073,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     // What the skill costs its user after the battle (战后长期代价: BattlePreview postBattleCostShare).
     if (declaration?.actionKind === 'RELEASE_SKILL') asset += preview.postBattleCostShare(declaration.skill);
+    // 点燃生命之火: put out after the battle at the save's price (BattlePreview lifeFireOptions aftermath).
+    if (Array.isArray(declaration?.aftermath)) asset += preview.postBattleCostShare({ 副作用列表: declaration.aftermath });
     let objective = 0;
     if (table.objectives) objective = R20_OBJECTIVE_WEIGHT * (r9v2LinearTerminalValue(preview.evaluateBattleObjectivesCompact(after, table.objectives), own) +
       preview.battleObjectiveProgress(after, table.objectives, own) - table.objectiveBase);
@@ -150942,7 +150997,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const equipment = cloneValue(declaration.skill || {});
       return { id: declaration.actionId, type: 'equipment', action_type: declaration?.releaseSlot ? '释放装备' : '穿戴装备', name: equipment.name || equipment.名称 || '装备', skill: equipment, target_name: targetName || actor.name || actor.名称 || '',
         // 释放斗铠 / 机甲（S80-A）的前摇按字数 / 品级（BattlePreview armourReleaseOptions）；穿戴背包里的装备照旧 10。
-        cast_time: declaration?.releaseSlot === '武魂' ? 0 : declaration?.releaseSlot ? Math.max(1, Number(equipment.前摇) || 10) : 10, __equipmentSignature: String(declaration?.equipmentSignature || '').trim() };
+        cast_time: ['武魂', '生命之火'].includes(declaration?.releaseSlot) ? 0 : declaration?.releaseSlot ? Math.max(1, Number(equipment.前摇) || 10) : 10, __equipmentSignature: String(declaration?.equipmentSignature || '').trim() };
     }
     const actionType = {
       BASIC_ATTACK: '常规攻击', DEFEND: '防御', EVADE: '闪避', COUNTER: '反击',
@@ -159837,6 +159892,24 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (!target.状态效果 || typeof target.状态效果 !== 'object') target.状态效果 = {};
         // 开武魂（信息模型 0a）: 「武魂已释放」 takes the 「武魂未释放」 key, so the round start does not lay it again, and the panel
         // comes back at once (BattlePreview addState does the same in a projection).
+        // 点燃生命之火: its own key, panel and pools (BattlePreview igniteLifeFire); put out when the battle ends (the save prices it).
+        if (stateName === '生命之火' && previewRuntime.igniteLifeFire) {
+          const lit = previewRuntime.igniteLifeFire(target, Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0));
+          if (lit) {
+            const fire = target.状态效果['__auto__:生命之火'];
+            if (fire) fire.战斗效果 = { ...createEmptyCombatEffectMap(), ...(fire.战斗效果 || {}) };
+            target.final = buildCombatFinalStats(target);
+          }
+          facts.push(writeLedgerEvent(combatData, {
+            eventKind: 'state_apply', round: Number(combatData?.回合 || 0), actorName: previewRuntime.unitName(actor), targetName: previewRuntime.unitName(target),
+            actionName, actionType: actionKind, actorControl, actionRole, actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
+            parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
+            result: lit ? 'applied' : 'no_effect', resultState: lit ? 'APPLIED' : 'NO_EFFECT', primaryOutcome: lit ? 'state_applied' : 'no_effect', duration: 1,
+            effectPrototype: prototype, factType: 'STATE', sourceEffectId, operation: 'STATE_APPLY',
+            meta: { source: 'structured_runtime', effectIndex, stateName, resolutionReason: lit ? 'LIFE_FIRE_LIT' : 'LIFE_FIRE_ALREADY_LIT', operation: 'STATE_APPLY' },
+          }));
+          return;
+        }
         if (stateName === '武魂已释放' && previewRuntime.spiritUnreleased?.(target)) {
           facts.push(releaseSpiritInPlace(combatData, target, { actionType: actionKind, actorControl, actionRole, actionId: actionEvent.actionId,
             chainNodeId: actionEvent.chainNodeId, sourceEffectId, effectIndex }));
@@ -165172,7 +165245,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               });
               let chained = false;
               // 开武魂（用户 2026-11-17「不占行动」）: windup 0 and once a battle, so it goes on to the turn's action.
-              const spiritRelease = chainKind === 'EQUIP' && String(shared.declaration?.releaseSlot || '').trim() === '武魂';
+              const spiritRelease = chainKind === 'EQUIP' && ['武魂', '生命之火'].includes(String(shared.declaration?.releaseSlot || '').trim());
               if (chainLink && !hardControlled && !enemyAnswers && (['BASIC_ATTACK', 'RELEASE_SKILL', 'USE_ITEM'].includes(chainKind) || spiritRelease) &&
                 (chainWindup > 0 || freeWindup || spiritRelease) &&
                 chainWindup <= naturalActionBudget && chainUsed < previewRuntime.CONTINUOUS_ACTION_BUDGET && structuredActorPhysicallyAlive(actor) &&
