@@ -31,7 +31,7 @@
 
   const actionKinds = Object.freeze([
     'BASIC_ATTACK', 'PASS_OPPORTUNITY', 'DEFEND', 'EVADE', 'COUNTER', 'OBSERVE',
-    'GUARD', 'WITHDRAW', 'RELEASE_SKILL', 'USE_ITEM', 'EQUIP', 'TRUCE',
+    'GUARD', 'WITHDRAW', 'RELEASE_SKILL', 'USE_ITEM', 'EQUIP', 'TRUCE', 'FEINT',
   ]);
   const actionRoles = Object.freeze(['ACTIVE', 'REACTION', 'COUNTER', 'ASSIST', 'STATE_TICK']);
   const opportunityGrantTypes = Object.freeze([
@@ -4403,7 +4403,7 @@
     }
     const actionType = {
       BASIC_ATTACK: '常规攻击', DEFEND: '防御', EVADE: '闪避', COUNTER: '反击',
-      OBSERVE: '观察', GUARD: '保护队友', WITHDRAW: previewRuntime.battleExitLabel(combatData) || '撤退', PASS_OPPORTUNITY: '让过行动', TRUCE: '提议罢手',
+      OBSERVE: '观察', GUARD: '保护队友', WITHDRAW: previewRuntime.battleExitLabel(combatData) || '撤退', PASS_OPPORTUNITY: '让过行动', TRUCE: '提议罢手', FEINT: '蓄力',
     }[actionKind] || '防御';
     const actionName = actionKind === 'BASIC_ATTACK' ? '普通攻击' : actionType;
     const skill = { name: actionName, 目标: actionKind === 'GUARD' ? '友方单体' : actionKind === 'BASIC_ATTACK' ? '单体' : '自身', 消耗: '无',
@@ -11241,7 +11241,7 @@
     const pendingActionGrantedEffects = actionRole === 'STATE_TICK' || declaration?.__includeGrantedEffects === false
       ? []
       : previewRuntime.pendingGrantedEffects(actor, actionKind);
-    if (['PASS_OPPORTUNITY', 'DEFEND', 'EVADE', 'OBSERVE', 'WITHDRAW', 'GUARD', 'TRUCE'].includes(actionKind)) {
+    if (['PASS_OPPORTUNITY', 'DEFEND', 'EVADE', 'OBSERVE', 'WITHDRAW', 'GUARD', 'TRUCE', 'FEINT'].includes(actionKind)) {
       const eventKind = actionKind === 'DEFEND' || actionKind === 'GUARD' ? 'defend' : actionKind === 'EVADE' ? 'dodge' : 'pass';
       // 守护（用户 2026-11-17）: an ACTIVE guard stands before the ally it names — 护卫 on that ally, its 来源角色 the guard, until the
       // guard's next action (liftOwnGuard; two round ends at most). BattlePreview resolveTargets sends single-target hostile effects
@@ -11281,6 +11281,20 @@
       // 中途罢手（用户 2026-11-17，死战也可）: the proposal takes the turn. The player's side's stands (「这就是用户想要安排的剧情」) —
       // the battle ends as a draw at this round's end; the other side's waits for the user's answer (the run's round end). A
       // side proposes at most TRUCE_MAX_PROPOSALS times a battle (BattlePreview truceAvailable).
+      // 佯装蓄力（用户 2026-11-17；BattlePreview feintRecord）: the turn spent seeming to charge the declared skill. Each enemy sees
+      // through it or not, rolled now (BattleDecision feintSeeThroughChance); it shows no ring (no 战斗暴露: nothing is cast).
+      if (actionKind === 'FEINT' && declaration?.feintSkill && typeof declaration.feintSkill === 'object' && !actor.蓄力技能) {
+        const ownSide = previewRuntime.sideOf(combatData, actor);
+        const seenBy = listCombatUnits(combatData).filter(unit => previewRuntime.isBattleCapable(unit) && previewRuntime.sideOf(combatData, unit) !== ownSide)
+          .filter(unit => Math.random() < Number(decisionRuntime.feintSeeThroughChance?.(combatData, unit, actor, declaration.feintSkill) ?? 0))
+          .map(unit => previewRuntime.unitId(unit));
+        actor.蓄力技能 = previewRuntime.feintRecord(declaration.feintSkill, declaration.targetIds || [], actionEvent.actionId, seenBy);
+        // 佯装记录 { 名字: 次数 } (a battle-level field, kept across requests): each feint makes the next easier to see through.
+        const shown = combatData.佯装记录 && typeof combatData.佯装记录 === 'object' ? combatData.佯装记录 : {}, feinterName = previewRuntime.unitName(actor);
+        combatData.佯装记录 = { ...shown, [feinterName]: Number(shown[feinterName] || 0) + 1 };
+        primaryOutcome = 'charge_started';
+        meta.feint = { skill: actor.蓄力技能.actionName, seenBy };
+      }
       if (actionKind === 'TRUCE') {
         const side = previewRuntime.sideOf(combatData, actor), round = Number(combatData?.回合 || 0);
         const records = combatData.罢手记录 && typeof combatData.罢手记录 === 'object' ? combatData.罢手记录 : {};
@@ -14419,6 +14433,18 @@
     const stages = previewRuntime.readSkillCostStages?.(charge?.skill || {}, { costActor: unit }) || {};
     return Object.entries(stages.启动 || {}).map(([resource, amount]) => [resource, Math.ceil(Math.max(0, Number(previewRuntime.resolveSkillResourceCost(unit, resource, amount)) || 0) * CHARGE_HOLD_UPKEEP)])
       .filter(([resource, value]) => CHARGE_HOLD_RESOURCE_KEYS[resource] && value > 0);
+  }
+  // 佯装蓄力（BattlePreview feintRecord；方案「被冲上来打时以它对撞/抢先结算」）: a move on a feint is met with the kept skill — the
+  // holder's answer by the rule (as a held stance is), aimed at the one who came, when it can pay for it now; else nothing is
+  // given and the unit answers as it chooses (any other answer drops the feint: abandonChargeToAnswer).
+  function feintMeetDeclaration(unit = {}, sourceActorId = '') {
+    if (!previewRuntime.isFeint(unit?.蓄力技能) || !sourceActorId) return null;
+    const skill = previewRuntime.chargeMeetSkill(unit);
+    if (!skill) return null;
+    const stages = previewRuntime.readSkillCostStages?.(skill, { costActor: unit }) || {};
+    const payable = Object.entries(stages.启动 || {}).every(([resource, amount]) =>
+      previewRuntime.readResource(unit, resource) >= (Number(previewRuntime.resolveSkillResourceCost(unit, resource, amount)) || 0));
+    return payable ? { actorId: previewRuntime.unitId(unit), actionKind: 'RELEASE_SKILL', targetIds: [String(sourceActorId)], skill: cloneValue(skill) } : null;
   }
   function chargeHoldUpkeepPayable(unit = {}, charge = {}) {
     return chargeHoldUpkeep(unit, charge).every(([resource, value]) => previewRuntime.readResource(unit, resource) >= value);
@@ -18380,7 +18406,8 @@
                 sourceFactIds: sourceFactIds.slice(),
                 sourceEventIds: sourceEventIds.slice(),
               };
-              const decisionResult = preparedDefense || summonGuard ? null : yield* decideForNode(actor, node, {
+              const feintMeet = preparedDefense || summonGuard ? null : feintMeetDeclaration(actor, sourceActorId);
+              const decisionResult = preparedDefense || summonGuard || feintMeet ? null : yield* decideForNode(actor, node, {
                 role: 'REACTION',
                 imminentThreat: true,
                 sourceActorId,
@@ -18414,7 +18441,7 @@
                 ? { actorId, actionKind: preparedDefense.actionKind, targetIds: [actorId] }
                 : summonGuard
                   ? { actorId, actionKind: 'DEFEND', targetIds: [actorId] }
-                  : cloneValue(decisionResult.selected.declaration);
+                  : feintMeet || cloneValue(decisionResult.selected.declaration);
               // 蓄力中应对（用户 2026-11-17「蓄力可以主动中断」）: a unit charging — or charging a fusion skill with its holder —
               // answers only by giving the charge up; letting the move go by keeps the charge and takes the whole hit.
               // 蓄力迎击（同日「3」）: met with the charge itself (BattlePreview chargeMeetSkill), the charge is thrown now and spent.
@@ -18913,6 +18940,19 @@
                 interruptFusionChargeByPartner({ combatData, partner: lostPartner, host: actor, reasonCode: 'PARTNER_UNAVAILABLE' });
                 storedCharge = null;
               }
+            }
+            // 佯装蓄力 (BattlePreview isFeint): its holder's next turn ends it — nothing is released, the turn is its own.
+            if (storedCharge && previewRuntime.isFeint(storedCharge)) {
+              actor.蓄力技能 = null;
+              writeLedgerEvent(combatData, {
+                eventKind: 'charge_interrupt', round: Number(combatData.回合 || 0), actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
+                targetName: previewRuntime.unitName(actor), actionName: normalizeActionDisplayName(storedCharge.actionName || '蓄力行动'),
+                actionType: 'charge_interrupt', actorControl: node.actorControl, actionRole: node.actionRole,
+                sourceActionId: String(storedCharge?.sourceActionId || '').trim(),
+                result: 'feint_ended', resultState: 'ABORTED', ruleCode: 'FEINT_ENDED',
+                meta: { source: 'structured_runtime', grantId: node.grantId, reason: 'FEINT_ENDED', interruptedActionId: String(storedCharge?.sourceActionId || '').trim() },
+              });
+              storedCharge = null;
             }
             // A hasty release whose charge is gone by now (silenced, released) is nothing more: no free action in its place.
             if (!storedCharge && node?.state?.hastyRelease === true) {

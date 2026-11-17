@@ -1640,7 +1640,7 @@
   let decisionRevisionSequence = 0;
   const actionKinds = Object.freeze([
     'BASIC_ATTACK', 'DEFEND', 'EVADE', 'COUNTER', 'OBSERVE',
-    'GUARD', 'WITHDRAW', 'RELEASE_SKILL', 'USE_ITEM', 'EQUIP', 'TRUCE',
+    'GUARD', 'WITHDRAW', 'RELEASE_SKILL', 'USE_ITEM', 'EQUIP', 'TRUCE', 'FEINT',
   ]);
 
   function clamp(value, min, max) {
@@ -2295,6 +2295,39 @@
   // The share of a hit an unseen 控制系 keeps off by a control thrown first (S84: 16% of hits × the 42% they kept off).
   const BELIEF_ROUTINE_PREEMPT_SHARE = 0.16 * 0.42;
   const beliefExchangeCache = new WeakMap();
+  // 佯装蓄力 (BattlePreview feintRecord): the chance an enemy sees through a feint — FEINT_SEE_BASE, more by how clearly it has the
+  // feinter (FEINT_SEE_CLARITY × the clarity of their exchanges and acquaintance), more for a 精神系 (FEINT_SEE_MENTAL); one that
+  // knows the skill (its 战斗暴露 bit, known to it) knows it needs no charge. Rolled per enemy when the feint starts (BattleRuntime).
+  // Each feint it has already put on in the battle (战斗.佯装记录, BattleRuntime) adds FEINT_SEE_REPEAT: one fooled, or one that watched
+  // a charge melt away unreleased, is wary of the next (11-17: a 精神系 at a quarter HP feinted 40 turns running against a 控制系
+  // that kept guarding — 400 rounds).
+  const FEINT_SEE_BASE = 0.15, FEINT_SEE_CLARITY = 0.6, FEINT_SEE_MENTAL = 0.2, FEINT_SEE_REPEAT = 0.35;
+  function feintSeeThroughChance(world = {}, observer = {}, feinter = {}, skill = {}) {
+    const name = String(skill?.魂技名 || skill?.name || '').trim();
+    if (name && beliefKnowsExposure(observer, feinter, world) && preview.exposedSkills(feinter).some(known => String(known?.魂技名 || known?.name || '').trim() === name)) return 1;
+    const seen = Number(beliefExchangeCounts(world, sideOf(world, observer)).get(preview.unitId(feinter)) || 0) + beliefFamiliarExchanges(observer, feinter, world);
+    const mental = /精神/.test(String(observer?.系别 || observer?.type || observer?.第1武魂?.系别 || observer?.属性?.系别 || '')) ? FEINT_SEE_MENTAL : 0;
+    const shown = Number(world?.佯装记录?.[preview.unitName(feinter)] || 0) || 0;
+    return clamp(FEINT_SEE_BASE + FEINT_SEE_CLARITY * seen / (seen + BELIEF_EXCHANGE_PRIOR) + mental + FEINT_SEE_REPEAT * shown, 0, 1);
+  }
+
+  // The skill a feint keeps ready: the heaviest (its damage power on enemies) of the unit's affordable single-target skills that
+  // strike an enemy and are quick enough to meet a move at once (windup ≤ FEINT_MAX_WINDUP); null when it has none.
+  const FEINT_MAX_WINDUP = 40;
+  function feintSkill(actor = {}) {
+    let best = null, bestPower = 0;
+    for (const entry of affordablePreparedSkills(actor)) {
+      const skill = entry?.skill;
+      // Single-target: the meet is aimed at the one who comes (a group skill's target set is no legal answer to one move).
+      if (!skill || entry.fusionMetadata || !['HOSTILE_SINGLE', 'ANY_SINGLE'].includes(targetProfile(skill))) continue;
+      if (preview.spiritBlocksSkill?.(actor, skill) || preview.suppressionBlocksSkill?.(actor, skill)) continue;
+      if (Math.max(0, Number(skill?.前摇 ?? skill?.cast_time ?? 10) || 0) > FEINT_MAX_WINDUP) continue;
+      const power = preview.collectEffects(skill).filter(effect => effect?.原型 === '伤害结算').reduce((sum, effect) => sum + Math.max(0, Number(effect.威力倍率) || 0), 0);
+      if (power > bestPower) { best = skill; bestPower = power; }
+    }
+    return best;
+  }
+
   function beliefExchangeCounts(worldSnapshot = {}, side = '') {
     const ledger = Array.isArray(worldSnapshot?.__battleEventLedger) ? worldSnapshot.__battleEventLedger : null;
     if (!ledger || !ledger.length || !side) return new Map();
@@ -2331,6 +2364,10 @@
       // is close to is pictured as it is — its skills and panel — like the actor's own side.
       if (alreadyPublic === true || sideOf(worldSnapshot, sourceUnit) === actorSide || beliefIntimate(sourceActor, sourceUnit)) {
         const unit = preview.inheritProjectedStateSourceWindows(cloneValue(sourceUnit), sourceUnit, worldSnapshot);
+        // 佯装蓄力 of an enemy known well: still a feint it may or may not have seen through (BattlePreview feintShown).
+        if (sideOf(worldSnapshot, sourceUnit) !== actorSide && preview.isFeint(unit.蓄力技能)) {
+          unit.蓄力技能 = (unit.蓄力技能.__佯装.看破 || []).map(String).includes(String(actorId)) ? null : preview.feintShown(unit.蓄力技能);
+        }
         if (sideOf(worldSnapshot, sourceUnit) === actorSide && !Number.isFinite(Number(unit?.routine_attack_ratio))) unit.routine_attack_ratio = knownRoutineAttackRatio(unit);
         if (sideOf(worldSnapshot, sourceUnit) !== actorSide && spiritOpensOnAnswer(sourceUnit)) {
           delete unit.状态效果[preview.SPIRIT_UNRELEASED_KEY];
@@ -2528,8 +2565,10 @@
         防御: projected.def,
         敏捷: projected.agi,
       };
-      if (sourceUnit?.蓄力技能) {
-        projected.蓄力技能 = cloneValue(sourceUnit.蓄力技能);
+      // 佯装蓄力: an enemy that saw through it sees no charge; any other sees it as a charge (BattlePreview feintShown).
+      const feintSeen = preview.isFeint(sourceUnit?.蓄力技能) && (sourceUnit.蓄力技能.__佯装.看破 || []).map(String).includes(String(actorId));
+      if (sourceUnit?.蓄力技能 && !feintSeen) {
+        projected.蓄力技能 = preview.feintShown(cloneValue(sourceUnit.蓄力技能));
         const natural = sourceUnit.__battleRuntime?.naturalOpportunity;
         if (natural && typeof natural === 'object' && !Array.isArray(natural)) {
           // A public committed cast also has a public natural-turn schedule.
@@ -7044,6 +7083,14 @@
     if (!forcedSkill && !reactionOnly && !counterOnly && !assistOnly && (!opportunityRole || opportunityRole === 'ACTIVE') &&
       hostile.length > 0 && preview.truceAvailable?.(worldSnapshot, actor)) {
       candidates.push({ candidateId: `${actorId}:TRUCE`, declaration: defensiveDeclaration(actorId, 'TRUCE') });
+    }
+    // 佯装蓄力（用户 2026-11-17；BattlePreview feintRecord）: on its own turn, not charging, a unit may seem to charge its heaviest skill
+    // quick enough to meet a move at once (feintSkill) — aimed at the first enemy standing.
+    if (!forcedSkill && !reactionOnly && !counterOnly && !assistOnly && (!opportunityRole || opportunityRole === 'ACTIVE') && skillReleaseAllowed &&
+      hostile.length > 0 && !actor?.蓄力技能 && !actor?.召唤键 && !preview.isSummonUnit(actor) && input.actionOpportunity?.continuationGrant !== true) {
+      const kept = feintSkill(actor);
+      if (kept) candidates.push({ candidateId: `${actorId}:FEINT`, declaration: { actionId: `${actorId}:FEINT`, actorId, actionKind: 'FEINT',
+        targetIds: [preview.unitId(hostile[0])], feintSkill: kept } });
     }
     // 蓄力迎击（11-17）: a unit charging may meet the move with the charge itself (BattlePreview chargeMeetSkill).
     const chargeMeet = reactionOnly && !forcedSkill ? preview.chargeMeetSkill(actor) : null;
@@ -66012,6 +66059,9 @@
   // their value is read on the world as it stands; skippedSkills stays 0). The cells are the settlement layer's to build;
   // they sit here until they move there.
   // ---------------------------------------------------------------------------------------------------------------------
+  // 佯装蓄力: the chance an enemy not seeing through a feint comes to cut it short, shared among the feinter's side standing
+  // (r20Shadow feint). Measured 11-17: met 3 of 8 feints in 1v1, 18 of 66 in 3v3 (0.3 summed over the enemies read ~50% there).
+  const R20_FEINT_BAIT = Number(root.__LWCS_TUNE__?.FEINT_BAIT ?? 0.4);
   const R20_ROUNDS_CAP = 99, R20_ROUNDS_FLOOR = 0.25, R20_HORIZON = 6, R20_RESOURCE_PRICE = 0.15, R20_ROUND_DISCOUNT = 0.85, R20_SHADOW_SCALE = 30,
     R20_UPKEEP_ROUNDS = 3, R20_CHAIN_LIMIT = 8, R20_WIN_SLOPE = 2,
     R20_OBJECTIVE_WEIGHT = 2, R20_OBSERVE_VALUE = 0.02, R20_ITEM_EFFECT_VALUE = 0.1, R20_ITEM_USE_SHARE = 0.375,
@@ -67631,7 +67681,8 @@
     // and releases at the one that covers the rest): busy until then, and then the skill lands on its targets.
     for (let row = 0; row < count; row += 1) {
       const charge = units[row].蓄力技能;
-      if (!charge || typeof charge !== 'object' || !charge.skill || !acts[row]) continue;
+      // 佯装蓄力: a feint of the deciding side is no charge to it (an enemy's reaches here as shown: BattlePreview feintShown).
+      if (!charge || typeof charge !== 'object' || !charge.skill || !acts[row] || preview.isFeint(charge)) continue;
       const budget = Number(preview.CONTINUOUS_ACTION_BUDGET) || 40;
       const turns = Math.max(1, Math.ceil(Math.max(0, Number(charge.cast_time ?? charge.remainingCastTime) || 0) / budget));
       (table.busy ||= new Array(count).fill(0))[row] = turns;
@@ -68570,10 +68621,27 @@
         if (stock > 0) seen += 1;
       }
     }
+    // 佯装蓄力 (BattlePreview feintRecord): each enemy that does not see through it (feintSeeThroughChance) comes to cut the
+    // "charge" short with a chance R20_FEINT_BAIT, and the first that comes is met at once by the kept skill at full power.
+    let feint = 0;
+    // The kept skill rides as feintSkill (not skill): nothing is cast now, so the projection settles no effect or cost of it.
+    if (actionKind === 'FEINT' && declaration?.feintSkill && actorRow !== undefined) {
+      const context = r9v2LinearCapacityProjectionContext(table.world, table.contexts), feinter = table.units[actorRow];
+      // The kept skill meets one move only: the chance someone comes (1 − Π(1 − p)) times what it lands on whoever does, by their odds.
+      // Each enemy picks among the feinter's side standing: its chance to come at the feinter is shared out among them.
+      const ownStanding = Math.max(1, table.sides.filter((side, row) => side === table.sides[actorRow] && table.alive[row] > 0).length);
+      let none = 1, odds = 0, landed = 0;
+      for (const [unit] of foes) {
+        const p = (1 - feintSeeThroughChance(table.world, unit, feinter, declaration.feintSkill)) * R20_FEINT_BAIT / ownStanding;
+        none *= 1 - p; odds += p;
+        landed += p * cachedBaseActionValue(feinter, unit, 'RELEASE_SKILL', declaration.feintSkill, context, table.world) / 100;
+      }
+      feint = odds > 0 ? (1 - none) * landed / odds : 0;
+    }
     // Leaving is valued apart (认输与撤离, at the top). Observing is worth a little.
     let leave = 0;
     if (actionKind === 'OBSERVE') leave = R20_OBSERVE_VALUE;
-    return { value: race + tempo + granted + objective + leave + stock + info + regen - cost - fusionCost - asset - restraint - reveal - idleStance, idleStance, race, tempo, granted, objective, leave, stock, info, regen, cost, fusionCost, asset, restraint, reveal, counter, rebuilt: rebuilt.length, added: added.length, outside,
+    return { value: race + tempo + granted + objective + leave + stock + info + regen + feint - cost - fusionCost - asset - restraint - reveal - idleStance, idleStance, race, tempo, granted, objective, leave, stock, info, regen, feint, cost, fusionCost, asset, restraint, reveal, counter, rebuilt: rebuilt.length, added: added.length, outside,
       seen: seen + added.length + Number(granted !== 0) + Number(objective !== 0) + Number(leave !== 0) };
   }
 
@@ -74947,6 +75015,7 @@
     beliefSystemPosterior,
     typicalAttackRatio,
     typicalStatRatio,
+    feintSeeThroughChance,
     projectCooperativeSummonDeclaration,
     actionCompletesWithinBattleHorizon,
     chooseInterceptor,

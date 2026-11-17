@@ -2856,7 +2856,8 @@
   const HASTY_CHARGE_FACTOR = 0.6, HASTY_CHARGE_FLOOR = 0.05;
   // The share of a charge's windup already charged (0 when it is not a charge under way).
   function chargedShare(charge = null) {
-    if (!charge || typeof charge !== 'object' || charge.hasty === true) return 0;
+    // A feint (佯装蓄力) has nothing charged: given up to answer, it is gone (its holder's own view; its enemies see feintShown).
+    if (!charge || typeof charge !== 'object' || charge.hasty === true || charge.__佯装) return 0;
     const left = Math.max(0, Number(charge.cast_time ?? charge.remainingCastTime ?? 0) || 0);
     const total = Math.max(left, Number(charge.total_cast_time ?? charge.skill?.前摇 ?? 0) || 0);
     return total > 0 ? 1 - left / total : 0;
@@ -2871,9 +2872,48 @@
   // share charged (no hasty cut: it was aimed at this) — as any skill meets a move (the
   // clash / preemption of the engagement chain); the move still comes. The skill offered for that, one per charge (kept, so
   // its identity holds through a decision); null when nothing is charged enough, the charge is cut short, or is a fusion's.
+  // 佯装蓄力（用户 2026-11-17 选「加，AI 也会用」；原作 0758 白秀秀对清萝：原本前摇很低的招，故意摆出蓄力的样子引对方来打断）: a unit
+  // spends its action seeming to charge — its 蓄力技能 is a feint (__佯装): its enemies see that skill charged up to
+  // FEINT_DISPLAY_POWER times its power, a long windup just begun (FEINT_DISPLAY_SHARE of it done), unless they see through it
+  // (__佯装.看破, rolled when it starts: BattleDecision feintSeeThroughChance; BattleDecision shows them no charge). A move on
+  // it is met at once by the skill itself at its full power (chargeMeetSkill; paid as any release). It ends at its holder's
+  // next turn (BattleRuntime: that turn is its own) or when it answers otherwise (nothing charged: abandonChargeToAnswer drops
+  // it). Its own side does not count it as a charge (BattleDecision r20Facts).
+  const FEINT_DISPLAY_POWER = 2, FEINT_DISPLAY_WINDUP = 120, FEINT_DISPLAY_SHARE = 0.25;
+  const isFeint = charge => !!(charge && typeof charge === 'object' && charge.__佯装);
+  function feintRecord(skill = {}, targetIds = [], sourceActionId = '', seenBy = []) {
+    const display = JSON.parse(JSON.stringify(skill || {}));
+    for (const effect of Array.isArray(display._效果数组) ? display._效果数组 : []) {
+      if (effect?.原型 === '伤害结算' && Number(effect.威力倍率) > 0) effect.威力倍率 = Math.round(Number(effect.威力倍率) * FEINT_DISPLAY_POWER);
+    }
+    const total = Math.max(FEINT_DISPLAY_WINDUP, 4 * Math.max(0, Number(skill?.前摇 ?? skill?.cast_time ?? 0) || 0));
+    display.前摇 = total; display.cast_time = total;
+    const actionName = String(skill?.魂技名 || skill?.name || '蓄力').trim();
+    return { skill: display, cast_time: Math.round(total * (1 - FEINT_DISPLAY_SHARE)), total_cast_time: total,
+      targetIds: (Array.isArray(targetIds) ? targetIds : []).map(String), actionName, sourceActionId: String(sourceActionId || ''),
+      __佯装: { hidden: JSON.parse(JSON.stringify(skill || {})), 看破: (Array.isArray(seenBy) ? seenBy : []).map(String) } };
+  }
+  // What an enemy that has not seen through it is shown: the charge, its feint mark taken off.
+  function feintShown(charge = null) {
+    if (!isFeint(charge)) return charge;
+    const { __佯装, ...shown } = charge;
+    return JSON.parse(JSON.stringify(shown));
+  }
   const chargeMeetSkills = new WeakMap();
   function chargeMeetSkill(unit = {}) {
     const charge = unit?.蓄力技能;
+    if (isFeint(charge)) {
+      const kept = chargeMeetSkills.get(charge);
+      if (kept) return kept.skill;
+      const skill = JSON.parse(JSON.stringify(charge.__佯装.hidden || {}));
+      const name = String(skill.魂技名 || skill.name || charge.actionName || '佯装蓄力').trim();
+      skill.魂技名 = `${name}（佯装蓄力）`; skill.name = skill.魂技名;
+      if (skill.id || skill.技能ID || skill.魂技ID) skill.id = `${String(skill.id || skill.技能ID || skill.魂技ID).trim()}:佯装蓄力`;
+      skill.前摇 = 0; skill.cast_time = 0;
+      skill.__chargeRelease = true;
+      chargeMeetSkills.set(charge, { share: 1, skill });
+      return skill;
+    }
     if (!charge || typeof charge !== 'object' || !charge.skill || typeof charge.skill !== 'object' || charge.hasty === true ||
       Array.isArray(charge.fusionPartnerIds) && charge.fusionPartnerIds.length) return null;
     const share = chargedShare(charge);
@@ -21246,7 +21286,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ...grants.map(entry => ({ ...entry.effect, effectId: entry.effectId })),
       ...baseEffects,
     ];
-    if (!effects.length && !['PASS_OPPORTUNITY', 'DEFEND', 'EVADE', 'WITHDRAW', 'EQUIP', 'OBSERVE', 'GUARD', 'TRUCE'].includes(String(declaration?.actionKind || '').trim())) {
+    if (!effects.length && !['PASS_OPPORTUNITY', 'DEFEND', 'EVADE', 'WITHDRAW', 'EQUIP', 'OBSERVE', 'GUARD', 'TRUCE', 'FEINT'].includes(String(declaration?.actionKind || '').trim())) {
       throw new Error('battle_preview_action_effects_missing');
     }
     const nodeBudget = { count: 0, limit: budgetLimit, activeFingerprints: new Set() };
@@ -25649,6 +25689,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     suppressionStates,
     suppressionBlocksSkill,
     meditationOptions,
+    isFeint,
+    feintRecord,
+    feintShown,
     meditating,
     beginMeditation,
     interruptMeditation,

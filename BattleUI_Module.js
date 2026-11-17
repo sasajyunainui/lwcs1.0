@@ -1037,6 +1037,8 @@ class BattleUIComponent {
       // 交手约定（试招、赌约）与它的胜负条件读的攻击记录（BattleRuntime tallyAttack）。
       '交手约定',
       '攻击记录',
+      // 佯装蓄力的次数（BattleDecision feintSeeThroughChance：佯装过越多越容易看破）。
+      '佯装记录',
     ];
 
     function compactCombatParticipantForPersistence(participant) {
@@ -2015,6 +2017,8 @@ class BattleUIComponent {
             EQUIP: { type: 'equip', actionType: '穿戴装备', name: '穿戴装备', category: '装备' },
             // 中途罢手（用户 2026-11-17）：我方提议即成立，本场平局。
             TRUCE: { type: 'tactical', actionType: '提议罢手', name: '提议罢手', category: '特殊动作' },
+            // 佯装蓄力（用户 2026-11-17）：摆出蓄力的样子引对方来打断，以伏招迎击。
+            FEINT: { type: 'tactical', actionType: '佯装蓄力', name: '佯装蓄力', category: '特殊动作' },
           };
           // 认输与撤离 (认输与撤离方案-20261113 第 5 条): leaving is offered as the decision enumerates it (no way out, not
           // offered), named by the battle's rules — 认输 in a spar or a match, 撤离 in a real fight (BattlePreview
@@ -2044,6 +2048,9 @@ class BattleUIComponent {
               ? { 效果描述: exitHint() }
               : actionKind === 'TRUCE'
                 ? { 效果描述: '提议双方停手：立即结束本场，记为平局，保留双方当前的生命与状态。' }
+              : actionKind === 'FEINT'
+                ? { ...(declaration.feintSkill || {}), 魂技名: `佯装蓄力·${String(declaration.feintSkill?.魂技名 || declaration.feintSkill?.name || '').trim()}`,
+                    效果描述: `花一次行动摆出蓄力【${String(declaration.feintSkill?.魂技名 || declaration.feintSkill?.name || '').trim()}】的样子；有人冲上来打断时，立刻以这一招全力迎击（放出时才付消耗）；没人上当就白花这一次行动。对你看得越清、见过这招的对手越容易看破。` }
               : declaration.skill && typeof declaration.skill === 'object' ? declaration.skill : {};
             const baseDisplayName = String(skill?.魂技名 || skill?.name || skill?.技能名称 || meta.name).trim() || meta.name;
             const displayName = declaration.ringLabel ? `${baseDisplayName}·${declaration.ringLabel}` : baseDisplayName;

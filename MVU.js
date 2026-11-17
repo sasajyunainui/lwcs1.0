@@ -1266,6 +1266,7 @@ const SchemaRootObject = z
             // 交手约定（试招、赌约）：{ 不还手: [名字], 只硬接: [名字], 压制修为: { 名字: 等级 } }；胜负条件可配 接满攻击次数 / 逼出武魂 / 单次伤害门槛。
             交手约定: z.any().optional().describe('交手约定：不还手、只硬接、压制修为（按参战者名字）'),
             攻击记录: z.any().optional().describe('各参战者出手次数与单次最大伤害占比（系统自动维护）'),
+            佯装记录: z.any().optional().describe('本场各参战者佯装蓄力的次数（系统自动维护）'),
             参战者: z
               .record(z.string().describe('参战槽位或参战者姓名'), z.any())
               .prefault({})

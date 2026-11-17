@@ -6990,7 +6990,7 @@
       rows.push(row);
     }
     const eligible = rows.filter(row => row.eligible);
-    if (!eligible.length) fail('NO_ELIGIBLE_CANDIDATES');
+    if (!eligible.length) fail('NO_ELIGIBLE_CANDIDATES', hardExclusionAudit.map(row => `${row.candidateId}=${row.reasonCode}`).join(';'));
     const dominanceAudit = [];
     if (actionRole === 'ACTIVE') {
       for (const row of eligible) {
