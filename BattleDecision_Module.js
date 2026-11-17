@@ -1640,7 +1640,7 @@
   let decisionRevisionSequence = 0;
   const actionKinds = Object.freeze([
     'BASIC_ATTACK', 'DEFEND', 'EVADE', 'COUNTER', 'OBSERVE',
-    'GUARD', 'WITHDRAW', 'RELEASE_SKILL', 'USE_ITEM', 'EQUIP',
+    'GUARD', 'WITHDRAW', 'RELEASE_SKILL', 'USE_ITEM', 'EQUIP', 'TRUCE',
   ]);
 
   function clamp(value, min, max) {
@@ -7000,6 +7000,11 @@
     if (!forcedSkill && !reactionOnly && !counterOnly && !assistOnly && (!opportunityRole || opportunityRole === 'ACTIVE') &&
       hostile.length > 0 && withdrawalAllowed(worldSnapshot, actor, input.battleIntent)) {
       candidates.push({ candidateId: `${actorId}:WITHDRAW`, declaration: defensiveDeclaration(actorId, 'WITHDRAW') });
+    }
+    // 中途罢手（用户 2026-11-17）: proposed as one's own action, with someone still there to stop fighting (BattlePreview truceAvailable).
+    if (!forcedSkill && !reactionOnly && !counterOnly && !assistOnly && (!opportunityRole || opportunityRole === 'ACTIVE') &&
+      hostile.length > 0 && preview.truceAvailable?.(worldSnapshot, actor)) {
+      candidates.push({ candidateId: `${actorId}:TRUCE`, declaration: defensiveDeclaration(actorId, 'TRUCE') });
     }
     // 蓄力迎击（11-17）: a unit charging may meet the move with the charge itself (BattlePreview chargeMeetSkill).
     const chargeMeet = reactionOnly && !forcedSkill ? preview.chargeMeetSkill(actor) : null;
@@ -67673,6 +67678,13 @@
     // withdrawal's odds and pursuit — on the race's scale of the stake (R20_WIN_VALUE a battle won). The race is not run
     // for it: what the actor would have done is in the outlook it no longer adds to. (Before: worth what staying stood to
     // lose, read at a chance of 1 whatever the contest's.)
+    if (truceCandidate(candidate)) {
+      const truce = r9v2LinearTruceValuation(request, 'r20');
+      if (truce) {
+        const leave = R20_WIN_VALUE * truce.delta;
+        return { value: leave, race: 0, tempo: 0, granted: 0, objective: 0, leave, stock: 0, cost: 0, fusionCost: 0, asset: 0, counter: 0, rebuilt: 0, added: 0, outside: 0, seen: 1 };
+      }
+    }
     if (exitCandidate(candidate, result)) {
       const exit = r9v2LinearExitValuation(request, result, 'r20');
       if (exit) {
@@ -69779,6 +69791,11 @@
     // exitValuation: the side's chance to win with and without the actor, the fates losing brings, a withdrawal's odds
     // and pursuit), carried by OBJECTIVE_PROGRESS on its scale (a battle won +1, lost −1), every other row 0: the actor is
     // gone, and what it would have done is in the chance it no longer adds. No look-ahead and no threshold.
+    if (!conditioned && truceCandidate(candidate)) {
+      const truce = r9v2LinearTruceValuation(request);
+      if (truce) return Object.freeze(r9v2LinearZeroCausalFeatureRows.map(row => row.featureCode !== 'OBJECTIVE_PROGRESS' ? row
+        : Object.freeze({ ...row, value: truce.delta })));
+    }
     if (!conditioned && exitCandidate(candidate, result)) {
       const exit = r9v2LinearExitValuation(request, result);
       if (exit) return Object.freeze(r9v2LinearZeroCausalFeatureRows.map(row => row.featureCode !== 'OBJECTIVE_PROGRESS' ? row
@@ -73146,6 +73163,25 @@
   // settlement carries. Development hook (absent in play): __LWCS_DECISION_DEBUG__.onExit sees each one.
   // A candidate valued as leaving: a withdrawal, or a 群体撤离 the settlement found possible (its contest is there:
   // BattlePreview groupWithdrawalContest) — the whole side leaving together.
+  // 中途罢手（用户 2026-11-17）: a proposal is worth the draw it brings (0 on the stake's scale) against fighting on (BattlePreview
+  // battleStayWorth; R20 its race's outlook), at the chance the user's 同意框 agrees (TRUCE_AGREE_SHARE); declined, the turn is
+  // gone and nothing else changes (on the pass baseline in R20, as an exit). The player's side's AI does not propose for the user
+  // (「这就是用户想要安排的剧情」): −1.
+  const TRUCE_AGREE_SHARE = 0.5, TRUCE_MIN_ROUND = 2, TRUCE_MAX_WIN = 0.4;
+  const truceCandidate = candidate => String(candidate?.declaration?.actionKind || '').trim().toUpperCase() === 'TRUCE';
+  function r9v2LinearTruceValuation(request = {}, valuation = 'r9v2') {
+    const world = request.visibleWorld || request.worldSnapshot || {};
+    const actor = findUnitInWorld(world, request.actorId);
+    if (!actor) return null;
+    if (sideOf(world, actor) === 'team_player') return { delta: -1 };
+    const raced = valuation === 'r20' ? r20ExitOutlook(request, actor) : null;
+    const intent = { ...(request.battleIntent || {}), objectives: request.objectiveContract || request.battleIntent?.objectives || world.胜负条件 || {} };
+    // 原作的罢手都在交过手、一方明显不利或两败俱伤之后：第 TRUCE_MIN_ROUND 回合起、自己胜算不到 TRUCE_MAX_WIN 才提（同级对局里
+    // 「平局胜过一半输面的结局代价」否则开局就提，同意框弹得太勤）。
+    const stay = preview.battleStayWorth(world, intent, actor, raced);
+    if (Number(world?.回合 || 0) < TRUCE_MIN_ROUND || !(stay.win < TRUCE_MAX_WIN)) return { delta: -1 };
+    return { delta: clamp(TRUCE_AGREE_SHARE * (0 - stay.worth), -1, 1) };
+  }
   function exitCandidate(candidate = {}, result = {}) {
     if (String(candidate?.declaration?.actionKind || '').trim().toUpperCase() === 'WITHDRAW') return true;
     return (result?.contributions || []).some(entry => entry?.outcomeKind === 'WITHDRAWAL_CONTEST' && entry?.evidence?.groupWithdrawal === true);
@@ -73823,7 +73859,7 @@
     };
     const shadowCausalRows = candidateId => {
       let shadow = illegalTargetCandidateIds.has(candidateId) ? null : r20Shadow(request, previewResultsById[candidateId], frozenById.get(candidateId));
-      if (shadow && String(frozenById.get(candidateId)?.declaration?.actionKind || '').trim().toUpperCase() === 'WITHDRAW') {
+      if (shadow && ['WITHDRAW', 'TRUCE'].includes(String(frozenById.get(candidateId)?.declaration?.actionKind || '').trim().toUpperCase())) {
         const base = r20PassBaseline();
         shadow = { ...shadow, value: shadow.value + base, passBaseline: base };
       }

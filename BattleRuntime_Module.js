@@ -31,7 +31,7 @@
 
   const actionKinds = Object.freeze([
     'BASIC_ATTACK', 'PASS_OPPORTUNITY', 'DEFEND', 'EVADE', 'COUNTER', 'OBSERVE',
-    'GUARD', 'WITHDRAW', 'RELEASE_SKILL', 'USE_ITEM', 'EQUIP',
+    'GUARD', 'WITHDRAW', 'RELEASE_SKILL', 'USE_ITEM', 'EQUIP', 'TRUCE',
   ]);
   const actionRoles = Object.freeze(['ACTIVE', 'REACTION', 'COUNTER', 'ASSIST', 'STATE_TICK']);
   const opportunityGrantTypes = Object.freeze([
@@ -4396,7 +4396,7 @@
     }
     const actionType = {
       BASIC_ATTACK: '常规攻击', DEFEND: '防御', EVADE: '闪避', COUNTER: '反击',
-      OBSERVE: '观察', GUARD: '保护队友', WITHDRAW: previewRuntime.battleExitLabel(combatData) || '撤退', PASS_OPPORTUNITY: '让过行动',
+      OBSERVE: '观察', GUARD: '保护队友', WITHDRAW: previewRuntime.battleExitLabel(combatData) || '撤退', PASS_OPPORTUNITY: '让过行动', TRUCE: '提议罢手',
     }[actionKind] || '防御';
     const actionName = actionKind === 'BASIC_ATTACK' ? '普通攻击' : actionType;
     const skill = { name: actionName, 目标: actionKind === 'GUARD' ? '友方单体' : actionKind === 'BASIC_ATTACK' ? '单体' : '自身', 消耗: '无',
@@ -6916,15 +6916,34 @@
     if (withdrawnSides.length) { runtime.withdrawalSuccess = true; runtime.withdrawalSuccessSides = withdrawnSides; }
   }
 
+  // 中途罢手的回应（BattleUI 同意框、或无界面时的 truceResponse）：同意即成立（下一次结算立即以平局结束）；拒绝则清掉提议，记下
+  // 被拒的回合（BattlePreview truceAvailable：隔 TRUCE_RETRY_ROUNDS 回合才能再提）。
+  function respondToTruce(combatData = {}, accept = false) {
+    const truce = combatData?.罢手;
+    if (!truce || truce.状态 !== '待回应') return false;
+    if (accept) { combatData.罢手 = { ...truce, 状态: '成立' }; return true; }
+    const side = String(truce.提议方 || '');
+    // A new record each time: the battle's objects may be frozen by a decision's prepared world.
+    const records = combatData.罢手记录 && typeof combatData.罢手记录 === 'object' ? combatData.罢手记录 : {};
+    combatData.罢手记录 = { ...records, [side]: { ...(records[side] || {}), 上次被拒回合: Number(truce.回合 || combatData?.回合 || 0) } };
+    delete combatData.罢手;
+    return true;
+  }
+
   function evaluateBattleTerminal(context = {}, adapterOptions = {}) {
     const combatData = context?.combatData || {};
     const objectives = previewRuntime.normalizeBattleObjectives(combatData?.胜负条件 || {}, combatData);
     combatData.胜负条件 = cloneValue(objectives);
-    const resolution = previewRuntime.evaluateBattleObjectives(combatData, objectives, {
+    let resolution = previewRuntime.evaluateBattleObjectives(combatData, objectives, {
       round: Number(context?.currentRound ?? combatData?.回合 ?? 0),
       roundCompleted: context?.roundCompleted === true,
       enforceRoundLimit: adapterOptions.enforceRoundLimit === true,
     });
+    // 中途罢手成立：双方停手，本场平局（BattleUI / bridge 走平局的裁断与写回）。
+    if (combatData?.罢手?.状态 === '成立' && !resolution.terminal) {
+      resolution = { ...resolution, terminal: true, winner: 'draw', status: 'TRUCE', terminalReason: `${String(combatData.罢手.提议者 || '')}提议罢手，双方停手`,
+        matchedDetails: [...(Array.isArray(resolution.matchedDetails) ? resolution.matchedDetails : []), { condition: { type: 'TRUCE' }, unitResults: [] }] };
+    }
     const runtime = ensureCombatRuntime(combatData);
     runtime.objectiveResolution = cloneValue(resolution);
     if (resolution.terminal) {
@@ -11167,7 +11186,7 @@
     const pendingActionGrantedEffects = actionRole === 'STATE_TICK' || declaration?.__includeGrantedEffects === false
       ? []
       : previewRuntime.pendingGrantedEffects(actor, actionKind);
-    if (['PASS_OPPORTUNITY', 'DEFEND', 'EVADE', 'OBSERVE', 'WITHDRAW', 'GUARD'].includes(actionKind)) {
+    if (['PASS_OPPORTUNITY', 'DEFEND', 'EVADE', 'OBSERVE', 'WITHDRAW', 'GUARD', 'TRUCE'].includes(actionKind)) {
       const eventKind = actionKind === 'DEFEND' || actionKind === 'GUARD' ? 'defend' : actionKind === 'EVADE' ? 'dodge' : 'pass';
       // 守护（用户 2026-11-17）: an ACTIVE guard stands before the ally it names — 护卫 on that ally, its 来源角色 the guard, until the
       // guard's next action (liftOwnGuard; two round ends at most). BattlePreview resolveTargets sends single-target hostile effects
@@ -11204,6 +11223,17 @@
         preparedDefense,
         voluntaryOpportunityPass: actionKind === 'PASS_OPPORTUNITY',
       };
+      // 中途罢手（用户 2026-11-17，死战也可）: the proposal takes the turn. The player's side's stands (「这就是用户想要安排的剧情」) —
+      // the battle ends as a draw at this round's end; the other side's waits for the user's answer (the run's round end). A
+      // side proposes at most TRUCE_MAX_PROPOSALS times a battle (BattlePreview truceAvailable).
+      if (actionKind === 'TRUCE') {
+        const side = previewRuntime.sideOf(combatData, actor), round = Number(combatData?.回合 || 0);
+        const records = combatData.罢手记录 && typeof combatData.罢手记录 === 'object' ? combatData.罢手记录 : {};
+        combatData.罢手记录 = { ...records, [side]: { ...(records[side] || {}), 次数: Number(records[side]?.次数 || 0) + 1 } };
+        combatData.罢手 = { 状态: side === 'team_player' ? '成立' : '待回应', 提议方: side, 提议者: previewRuntime.unitName(actor), 回合: round };
+        primaryOutcome = 'truce_proposed';
+        meta.truce = { ...combatData.罢手 };
+      }
       if (actionKind === 'WITHDRAW') {
         const actorSide = previewRuntime.sideOf(combatData, actor);
         const contest = previewRuntime.buildWithdrawalContest(
@@ -16494,6 +16524,11 @@
         previewRuntime.bindWorldActionContext(combatData, input.worldActionContext);
       }
       for (let roundOffset = 1; roundOffset <= roundLimit; roundOffset += 1) {
+        // 中途罢手已在两次结算之间被同意（BattleUI 同意框 → respondToTruce）：不再开新回合，直接按平局收尾。
+        if (combatData.罢手?.状态 === '成立') {
+          terminal = evaluateBattleTerminal({ combatData, currentRound: combatData.回合, rounds: roundOffset - 1, roundCompleted: true }, {});
+          break;
+        }
         const roundPreparationStartedAt = collectPerformanceBreakdown
           ? performanceNow()
           : 0;
@@ -19599,6 +19634,22 @@
         if (terminal?.terminal === true) {
           addPerformanceTime('roundEndMs', roundEndStartedAt);
           break;
+        }
+        // 中途罢手（用户 2026-11-17「对方提议罢手的话就弹出同意框即可」）: the enemy's proposal waits for the user's answer — with the
+        // battle screen (input.truceInteractive) the run stops at this round's end for its 同意框 (respondToTruce on the answer);
+        // without one (tests) it is answered by input.truceResponse ('accept'; anything else declines).
+        if (combatData.罢手?.状态 === '待回应') {
+          if (input?.truceInteractive === true) {
+            continuationStopReason = { code: 'TRUCE_PENDING', text: `${String(combatData.罢手.提议者 || '对方')}提议罢手，等待回应。` };
+            addPerformanceTime('roundEndMs', roundEndStartedAt);
+            break;
+          }
+          respondToTruce(combatData, input?.truceResponse === 'accept');
+          if (combatData.罢手?.状态 === '成立') {
+            terminal = evaluateBattleTerminal({ combatData, currentRound: combatData.回合, rounds: roundOffset, roundCompleted: true }, {});
+            addPerformanceTime('roundEndMs', roundEndStartedAt);
+            break;
+          }
         }
         if (roundOffset < roundLimit) {
           const hasAutoContinueSettings = input?.settings && [
@@ -24763,6 +24814,7 @@
     prepareCombatData,
     collectPostBattleCosts,
     evaluateBattleTerminal,
+    respondToTruce,
     syncSummonUnitMirror: syncSummonMirror,
     writeCombatResource,
     readCombatResource: persistentResourceValue,

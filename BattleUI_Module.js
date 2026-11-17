@@ -1031,6 +1031,9 @@ class BattleUIComponent {
       '魂灵塔待结算',
       '试炼状态',
       '虚拟裁断数据',
+      // 中途罢手（BattleRuntime respondToTruce）：进行中的提议与各方提议记录。
+      '罢手',
+      '罢手记录',
     ];
 
     function compactCombatParticipantForPersistence(participant) {
@@ -2007,6 +2010,8 @@ class BattleUIComponent {
             RELEASE_SKILL: { type: 'skill', actionType: '释放魂技', name: '释放魂技', category: '魂技' },
             USE_ITEM: { type: 'item', actionType: '使用物品', name: '使用物品', category: '物品' },
             EQUIP: { type: 'equip', actionType: '穿戴装备', name: '穿戴装备', category: '装备' },
+            // 中途罢手（用户 2026-11-17）：我方提议即成立，本场平局。
+            TRUCE: { type: 'tactical', actionType: '提议罢手', name: '提议罢手', category: '特殊动作' },
           };
           // 认输与撤离 (认输与撤离方案-20261113 第 5 条): leaving is offered as the decision enumerates it (no way out, not
           // offered), named by the battle's rules — 认输 in a spar or a match, 撤离 in a real fight (BattlePreview
@@ -2031,6 +2036,8 @@ class BattleUIComponent {
             if (!meta) return;
             const skill = actionKind === 'WITHDRAW'
               ? { 效果描述: exitHint() }
+              : actionKind === 'TRUCE'
+                ? { 效果描述: '提议双方停手：立即结束本场，记为平局，保留双方当前的生命与状态。' }
               : declaration.skill && typeof declaration.skill === 'object' ? declaration.skill : {};
             const baseDisplayName = String(skill?.魂技名 || skill?.name || skill?.技能名称 || meta.name).trim() || meta.name;
             const displayName = declaration.ringLabel ? `${baseDisplayName}·${declaration.ringLabel}` : baseDisplayName;
@@ -2845,7 +2852,7 @@ class BattleUIComponent {
           const 动作类型 = String(动作.action_type || '').trim();
           const 目标文本 = 动作类型 === '撤离'
               ? '撤离'
-              : ['防御', '闪避', '穿戴装备', '收回召唤', '认输'].includes(动作类型)
+              : ['防御', '闪避', '穿戴装备', '收回召唤', '认输', '提议罢手'].includes(动作类型)
                 ? '自身'
                 : String(技能?.目标 || (Array.isArray(动作?.target_names) && 动作.target_names.length > 1 ? '可选单体' : 动作.target_name || '未指定')).trim();
           const 描述行 = 读取动作技能描述文本(动作);
@@ -2975,7 +2982,7 @@ class BattleUIComponent {
               .map(entry => entry.unit)
               .filter(unit => candidateNames.has(String(BATTLE_PREVIEW.unitName(unit) || '').trim()));
           }
-          if (['防御', '闪避', '撤离', '认输', '穿戴装备', '收回召唤'].includes(String(action?.action_type || ''))) return [];
+          if (['防御', '闪避', '撤离', '认输', '穿戴装备', '收回召唤', '提议罢手'].includes(String(action?.action_type || ''))) return [];
           const targetText = String(skill?.目标 || '').trim();
           if (/自身/.test(targetText)) return playerTeam.slice(0, 1);
           if (/友方|己方/.test(targetText) && !/群体|全体|全场/.test(targetText)) return playerTeam;
@@ -3306,6 +3313,7 @@ class BattleUIComponent {
           }
           渲染动作摘要(selectedAction);
           renderSoulTowerSettlementPanel(pendingTowerSettlement);
+          renderTrucePendingPanel(combatData);
           const 智能警报列表 = 计算战斗智能警报(combatData, previousState.智能警报列表 || []);
           window.BattleUI.state.智能警报列表 = 智能警报列表;
           window.BattleUI.state.警报确认表 = 智能警报列表.reduce((表, 警报) => {
@@ -4211,6 +4219,59 @@ class BattleUIComponent {
           });
         }
 
+        // 中途罢手的同意框（用户 2026-11-17「对方提议罢手的话就弹出同意框即可」）：对方在回合里提议后，本回合打完即停（BattleRuntime
+        // truceInteractive），战斗数据带着 罢手 { 状态: 待回应 } 回来；同意或拒绝之前不能再结算。说明只走悬停。
+        function renderTrucePendingPanel(combatData = {}) {
+          const node = byId('ui-truce-pending');
+          const truce = combatData?.罢手?.状态 === '待回应' ? combatData.罢手 : null;
+          const state = window.BattleUI?.state || {};
+          state.pendingTruce = !!truce;
+          设置战斗事务等待状态(state.battleTransactionPending === true);
+          if (!node) return;
+          if (!truce) {
+            node.hidden = true;
+            node.innerHTML = '';
+            return;
+          }
+          node.hidden = false;
+          node.innerHTML = `
+            <div class="tower-settlement-card">
+              <div class="tower-settlement-head">
+                <b>${htmlEscapeText(truce.提议者 || '对方')}提议罢手</b>
+                <span>第${htmlEscapeText(truce.回合 || combatData?.回合 || '')}回合</span>
+              </div>
+              <div class="tower-settlement-actions">
+                <button class="ghost-btn tower-settlement-action primary" type="button" data-truce-answer="accept" title="双方停手，本场记为平局，保留当前生命与状态。">同意罢手</button>
+                <button class="ghost-btn tower-settlement-action" type="button" data-truce-answer="decline" title="拒绝后战斗继续；对方至少隔三回合才会再提，每场最多提两次。">拒绝</button>
+              </div>
+            </div>
+          `;
+          node.querySelectorAll('[data-truce-answer]').forEach(button => {
+            button.addEventListener('click', () => {
+              window.BattleUI?.resolveTruce?.(button.getAttribute('data-truce-answer') === 'accept');
+            });
+          });
+        }
+
+        // 同意：写回「成立」，再走平局裁断收尾（bridge time_limit 路径，措辞按罢手）；拒绝：写回被拒的回合，战斗照常。
+        async function resolveTruce(accept = false) {
+          const state = window.BattleUI?.state || {};
+          const combatData = cloneBattleValue(getUiCombatData() || state.combatData || {});
+          if (!combatData?.参战者 || combatData?.罢手?.状态 !== '待回应') return { ok: false, reason: 'truce_missing' };
+          const proposer = String(combatData.罢手.提议者 || '对方').trim();
+          if (!BATTLE_RUNTIME.respondToTruce(combatData, accept === true)) return { ok: false, reason: 'truce_not_pending' };
+          await Promise.resolve(window.BattleUIBridge?.persistCombatData?.(combatData, {
+            analysis: accept ? 'Frontend battle truce accepted: both sides stop, the battle ends as a draw.' : 'Frontend battle truce declined: the battle goes on.',
+            syncHpRecoveryOnly: false,
+          }));
+          renderTrucePendingPanel(accept ? {} : combatData);
+          if (!accept) return { ok: true, accepted: false };
+          const applied = await window.__LWCS_APPLY_BATTLE_ADJUDICATION__?.({
+            模块结算: { 是否结束: true, 胜方: '无', 败方: '无', 败方剩余HP比例: 100, 终局类型: 'time_limit', 终局原因: `${proposer}提议罢手，双方停手` },
+          });
+          return { ok: true, accepted: true, applied: applied || null };
+        }
+
         function resolveSoulTowerSettlement(action = 'end') {
           const choice = action === 'continue' ? 'continue' : 'end';
           const state = window.BattleUI?.state || {};
@@ -4328,7 +4389,7 @@ class BattleUIComponent {
         function 设置战斗事务等待状态(pending) {
           const state = window.BattleUI?.state || {};
           state.battleTransactionPending = pending === true;
-          const locked = state.battleTransactionPending || !!state.pendingTowerSettlement;
+          const locked = state.battleTransactionPending || !!state.pendingTowerSettlement || state.pendingTruce === true;
           const arbitrateBtn = byId('ui-arbitrate');
           const previewBtn = byId('ui-battle-preview');
           [arbitrateBtn, previewBtn].forEach(button => {
@@ -4564,6 +4625,7 @@ class BattleUIComponent {
               renderReport,
               读取可提交战斗动作队列,
               resolveSoulTowerSettlement,
+              resolveTruce,
             });
           };
         }

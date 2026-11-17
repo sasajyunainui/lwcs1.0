@@ -8504,10 +8504,13 @@
       };
     }
     if (settlement.终局类型 === 'time_limit') {
+      // 中途罢手（战斗数据 罢手 成立，或裁断原因写明罢手）：同一条平局写回，措辞换成罢手。
+      const 罢手 = combatData?.罢手?.状态 === '成立' || /罢手|停手|休战/.test(toText(settlement.终局原因, ''));
+      const 罢手提议者 = toText(combatData?.罢手?.提议者, '').trim();
       const patches = [
         { op: 'replace', path: '/world/战斗/进行中', value: false },
-        { op: 'replace', path: '/world/战斗/裁断结果', value: `达到最大回合，双方未分胜负：${settlement.终局原因}` },
-        { op: 'replace', path: '/sys/系统播报', value: `[战斗裁断] 达到最大回合，双方停止交锋，本场平局。` },
+        { op: 'replace', path: '/world/战斗/裁断结果', value: 罢手 ? `双方罢手，本场平局：${settlement.终局原因}` : `达到最大回合，双方未分胜负：${settlement.终局原因}` },
+        { op: 'replace', path: '/sys/系统播报', value: 罢手 ? `[战斗裁断] ${罢手提议者 ? `${罢手提议者}提议罢手，` : ''}双方停手，本场平局。` : `[战斗裁断] 达到最大回合，双方停止交锋，本场平局。` },
       ];
       await applyBattlePatchOpsByEditor(patches, { force: true });
       await 结算赛事战斗_桥接({ 平局: true, 比分: [0, 0] });
@@ -8517,9 +8520,9 @@
         finished: true,
         reason: 'battle_adjudication_draw_applied',
         settlement,
-        summary: '达到最大回合，双方未分胜负。',
+        summary: 罢手 ? '双方罢手，本场平局。' : '达到最大回合，双方未分胜负。',
         patchOps: patches,
-        runtimeEvent: '<battle_adjudication_result>\n状态：已结束\n事实：达到最大回合，双方未分胜负。\n约束：后续剧情只承接平局结果，不要继续结算本场战斗。\n</battle_adjudication_result>',
+        runtimeEvent: `<battle_adjudication_result>\n状态：已结束\n事实：${罢手 ? '双方罢手，本场平局' : '达到最大回合，双方未分胜负'}。\n约束：后续剧情只承接平局结果，不要继续结算本场战斗。\n</battle_adjudication_result>`,
       };
     }
     const loserName = settlement.败方;
@@ -25059,6 +25062,7 @@ ${播报文本}
               <div class="battle-action-summary" id="ui-action-summary"></div>
                   <div class="battle-target-controls" id="ui-target-controls" hidden></div>
                   <div class="tower-settlement-panel" id="ui-tower-settlement" hidden></div>
+                  <div class="tower-settlement-panel" id="ui-truce-pending" hidden></div>
                   <input id="ui-intent-output" type="hidden" value="">
             </div>
           </section>
@@ -27348,6 +27352,8 @@ ${播报文本}
       mode: battleMode,
       executionMode: 规范化战斗提交模式(options.executionMode),
       rounds: maxRounds,
+      // 中途罢手：对方提议时本回合打完即停，由战斗界面弹同意框（BattleRuntime respondToTruce）。
+      truceInteractive: true,
       ...(battleMode === 'multi_round'
         ? {
             settings: {
@@ -27780,7 +27786,7 @@ ${播报文本}
         ? '玩家方取得阶段胜势'
         : 战果类型 === 'enemy_win'
           ? '敌方取得阶段胜势'
-          : 战果类型 === 'draw' ? '达到最大回合，双方未分胜负' : '战斗仍在持续';
+          : 战果类型 === 'draw' ? (终局条件.includes('TRUCE') ? '双方罢手，本场平局' : '达到最大回合，双方未分胜负') : '战斗仍在持续';
     return [
       `[前端战果类型]\n${战果类型}`,
       `[前端战果说明]\n${战果说明}`,

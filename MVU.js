@@ -1260,6 +1260,9 @@ const SchemaRootObject = z
               .describe('本次战斗的主观意图，决定是否允许致死与前端建议结局'),
             裁断结果: z.string().prefault(''),
             赛事上下文: 赛事战斗上下文Schema_V1.optional(),
+            // 中途罢手（战斗系统维护）：进行中的提议 { 状态 待回应/成立, 提议方, 提议者, 回合 } 与各方的提议次数、上次被拒回合。
+            罢手: z.any().optional().describe('进行中的罢手提议（系统自动维护）'),
+            罢手记录: z.any().optional().describe('各方罢手提议次数与被拒回合（系统自动维护）'),
             参战者: z
               .record(z.string().describe('参战槽位或参战者姓名'), z.any())
               .prefault({})

@@ -3580,6 +3580,22 @@
     if (rules.match) return rules.refereed ? EXIT_FATE.REFEREED_MATCH : rules.lethal ? EXIT_FATE.DEATH : EXIT_FATE.MATCH;
     return rules.lethal ? EXIT_FATE.DEATH : EXIT_FATE.SUBDUED;
   }
+  // 中途罢手（用户 2026-11-17：死战也可；我方提议一律成立，对方提议弹同意框；对方每场最多 2 次、被拒后隔 3 回合）: whether the
+  // unit's side may propose it now (combatData.罢手 the proposal under way, 罢手记录 each side's count and last declined round).
+  const TRUCE_MAX_PROPOSALS = 2, TRUCE_RETRY_ROUNDS = 3;
+  function truceAvailable(worldSnapshot = {}, unit = {}) {
+    if (!unit || isSummonUnit(unit) || ['待回应', '成立'].includes(String(worldSnapshot?.罢手?.状态 || ''))) return false;
+    const side = sideOf(worldSnapshot, unit), record = worldSnapshot?.罢手记录?.[side] || {}, round = Number(worldSnapshot?.回合 || 0);
+    if (!side || side !== 'team_player' && Number(record.次数 || 0) >= TRUCE_MAX_PROPOSALS) return false;
+    return !(Number(record.上次被拒回合) > 0 && round - Number(record.上次被拒回合) < TRUCE_RETRY_ROUNDS);
+  }
+  // What fighting on is worth to the unit's side on the stake's scale (won +1, lost −1 and its fate; a draw 0) — the
+  // exitValuation's stay, with the outlook the valuation gives (R20 its race) or the field's own.
+  function battleStayWorth(worldSnapshot = {}, battleIntent = {}, unit = {}, outlook = null) {
+    const side = sideOf(worldSnapshot, unit), fate = exitFate(worldSnapshot, battleIntent);
+    const view = outlook && typeof outlook === 'object' ? { ...battleStandingOutlook(worldSnapshot, side), ...outlook } : battleStandingOutlook(worldSnapshot, side);
+    return { worth: view.win - view.lose - view.lose * fate, win: view.win, lose: view.lose };
+  }
   // What each unit has done so far, as shares of HP maxima: HP taken off the other side's units (dealt) and put back on
   // its own side's (mended) — hits, HP resource changes; a summon's to its host. Kept per ledger while it grows.
   const exitObservedShareCache = new WeakMap();
@@ -21086,7 +21102,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ...grants.map(entry => ({ ...entry.effect, effectId: entry.effectId })),
       ...baseEffects,
     ];
-    if (!effects.length && !['PASS_OPPORTUNITY', 'DEFEND', 'EVADE', 'WITHDRAW', 'EQUIP', 'OBSERVE', 'GUARD'].includes(String(declaration?.actionKind || '').trim())) {
+    if (!effects.length && !['PASS_OPPORTUNITY', 'DEFEND', 'EVADE', 'WITHDRAW', 'EQUIP', 'OBSERVE', 'GUARD', 'TRUCE'].includes(String(declaration?.actionKind || '').trim())) {
       throw new Error('battle_preview_action_effects_missing');
     }
     const nodeBudget = { count: 0, limit: budgetLimit, activeFingerprints: new Set() };
@@ -25487,6 +25503,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     spiritBlocksSkill,
     spiritReleasedMarker,
     lifeFireOptions,
+    truceAvailable,
+    battleStayWorth,
     lifeFireLit,
     igniteLifeFire,
     exposedSkills,
