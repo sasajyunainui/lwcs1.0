@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:f7191368391821afb0b31748256f85726d5b7abcdc6edf2c14481e2c7f0587b5|BehaviorDecisionPipeline_Module.js:44ff9800d0baeebb82ddafd0d55ae7750e1a3e491afbd29d508fcdb187407aba|BattleDecision_Module.js:941f3d90d92d52365615f8588a26ef8965d12d0f61b91060f306fb016be25e3e|BattleRuntime_Module.js:ddebe3155f0f5c9e65b9daa962a329574884ee5c945d3e66c8418afd4e3a09ae|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:26f8f1e8c82cf62f2af431f7becab2e0a8924003e14c5f8b96210cd58a01a209 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:f7191368391821afb0b31748256f85726d5b7abcdc6edf2c14481e2c7f0587b5|BehaviorDecisionPipeline_Module.js:44ff9800d0baeebb82ddafd0d55ae7750e1a3e491afbd29d508fcdb187407aba|BattleDecision_Module.js:a4277356048412fb88652c982dcb7efdb9d7d72f81ad762cbbbf92e4003742be|BattleRuntime_Module.js:a1702f93aa8017321c3243b5185137b4b121f52ccdf908a358e0717ed9d3f826|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:26f8f1e8c82cf62f2af431f7becab2e0a8924003e14c5f8b96210cd58a01a209 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -47230,7 +47230,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     if (hasStateFlag(actor, 'silence') || preview.isSummonSkillDisabled(actor)) return out;
     const intensity = preview.battleIntensity(worldSnapshot, input.battleIntent);
-    collectSkills(actor).forEach((sourceSkill, index) => {
+    // 蓄力迎击 (BattlePreview chargeMeetSkill: 「如同任何魂技迎击来招——接战链的对轰」): the charge thrown at the attacker meets its
+    // move as a clash, as any skill does (T18, 11-17: offered only as a plain answer, it took the whole move and was hit-rolled).
+    const chargeMeet = preview.chargeMeetSkill(actor);
+    [...collectSkills(actor), ...(chargeMeet ? [chargeMeet] : [])].forEach((sourceSkill, index) => {
       // 开武魂（信息模型 0a）: no skill of the unreleased 武魂 meets a move either (BattlePreview spiritBlocksSkill).
       if (preview.spiritBlocksSkill?.(actor, sourceSkill) || preview.suppressionBlocksSkill?.(actor, sourceSkill)) return;
       const skill = preview.applySkillSettlementModifiers(actor, applyEquipmentPassivesToSkill(actor, sourceSkill)).skill;
@@ -109416,7 +109419,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // to that enemy (their exchanges with it and the acquaintance, both ways alike: beliefExchangeCounts, beliefFamiliarExchanges),
     // and nothing when it has seen the skill already: released in this battle (the ledger), or in earlier ones (战斗暴露) when it
     // knows of them (beliefKnowsExposure). Each half takes half the base and of the bigger card's share.
-    const releasing = declaration?.actionKind === 'RELEASE_SKILL' && request.actionOpportunity?.forcedChargeRelease !== true && race + tempo > 0;
+    // 蓄力迎击 (BattlePreview chargeMeetSkill) is that charge too: shown when it began.
+    const releasing = declaration?.actionKind === 'RELEASE_SKILL' && request.actionOpportunity?.forcedChargeRelease !== true &&
+      declaration.skill?.__chargeRelease !== true && race + tempo > 0;
     let learn = 0;
     if (releasing && actorRow !== undefined && foes.length) {
       const actorUnit = table.units[actorRow], name = skillName(declaration.skill || {});
@@ -130485,14 +130490,19 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // 佯装蓄力（BattlePreview feintRecord；方案「被冲上来打时以它对撞/抢先结算」）: a move on a feint is met with the kept skill — the
   // holder's answer by the rule (as a held stance is), aimed at the one who came, when it can pay for it now; else nothing is
   // given and the unit answers as it chooses (any other answer drops the feint: abandonChargeToAnswer).
-  function feintMeetDeclaration(unit = {}, sourceActorId = '') {
+  function feintMeetDeclaration(unit = {}, sourceActorId = '', incoming = null) {
     if (!previewRuntime.isFeint(unit?.蓄力技能) || !sourceActorId) return null;
     const skill = previewRuntime.chargeMeetSkill(unit);
     if (!skill) return null;
     const stages = previewRuntime.readSkillCostStages?.(skill, { costActor: unit }) || {};
     const payable = Object.entries(stages.启动 || {}).every(([resource, amount]) =>
       previewRuntime.readResource(unit, resource) >= (Number(previewRuntime.resolveSkillResourceCost(unit, resource, amount)) || 0));
-    return payable ? { actorId: previewRuntime.unitId(unit), actionKind: 'RELEASE_SKILL', targetIds: [String(sourceActorId)], skill: cloneValue(skill) } : null;
+    if (!payable) return null;
+    // As a clash (接战链 对轰): it meets the move, as 蓄力迎击 does (BattleDecision engagementCandidates).
+    const move = incoming && typeof incoming === 'object' ? incoming : null;
+    return { actorId: previewRuntime.unitId(unit), actionKind: 'RELEASE_SKILL', targetIds: [String(sourceActorId)], skill: cloneValue(skill),
+      ...(move ? { engagement: { mode: 'CLASH', sourceActorId: String(sourceActorId), incoming: { actorId: String(sourceActorId), actionKind: String(move.actionKind || '').trim().toUpperCase(),
+        targetIds: (Array.isArray(move.targetIds) ? move.targetIds : []).map(String), skill: move.skill || null } } } : {}) };
   }
   function chargeHoldUpkeepPayable(unit = {}, charge = {}) {
     return chargeHoldUpkeep(unit, charge).every(([resource, value]) => previewRuntime.readResource(unit, resource) >= value);
@@ -134455,7 +134465,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 sourceFactIds: sourceFactIds.slice(),
                 sourceEventIds: sourceEventIds.slice(),
               };
-              const feintMeet = preparedDefense || summonGuard ? null : feintMeetDeclaration(actor, sourceActorId);
+              const feintMeet = preparedDefense || summonGuard ? null : feintMeetDeclaration(actor, sourceActorId, shared.declaration);
               const decisionResult = preparedDefense || summonGuard || feintMeet ? null : yield* decideForNode(actor, node, {
                 role: 'REACTION',
                 imminentThreat: true,
