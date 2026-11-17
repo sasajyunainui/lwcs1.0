@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:3a7ab2b86114d7997e52efa71f2ebd4abfbfe0588597e12628cc11524a69319e|cockpit/designer-model.js:cbbb8156854ed85b560637420324e21db9e899fb9cbef68ba1ccca6d0d217fc2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:6bf7fe4bbf52c95ea57b135030bea98fce204517e377f2bdeabbd5fecf8f9283|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:1912e62a5cdb863a829ee187d2c9254e826140c99ea111d0866eadfd8b65b4a6|BattleRuntime_Module.js:b7edade0b0a35af5787e662609e75d922f4fc747f666c46c41d36d0544fe6d02|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:3a7ab2b86114d7997e52efa71f2ebd4abfbfe0588597e12628cc11524a69319e|cockpit/designer-model.js:cbbb8156854ed85b560637420324e21db9e899fb9cbef68ba1ccca6d0d217fc2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:846b8c41ba05d32d4e4acafd83610200f9ce59ef6f24be65ec1c1e5da71b18ce|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:b1ab1c810dd59cd6e2125c89fa3b3b058f45a6c319c513e48a9b8355ca60c967|BehaviorDecisionPipeline_Module.js:b9e36ad77d2883e543b0b415524d548580166b4ba6a7744d5608676136f61bed|BattleDecision_Module.js:6c1f21b1c046409a74a7e221084cb88c762d861346a051d24dcac82804d15da1|BattleRuntime_Module.js:718bedfc3dbe940b0d20ff1d842f10029dee83220ec685432b1cc7f4dbe6e801|BattleReport_Module.js:09b36c4f7bc3d5c75e1892e90b4fbce0cec07e0d654f6437694107ea68be6084|BattleUI_Module.js:3124c945ea62864916d2b4d606c3d50f67d092574a49cd3e17232cfbdbe5968d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -63397,6 +63397,21 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
           usageMode: metadata.usageMode,
         });
       }
+      // 搭档被控制则融合无法完成（行为检查目录第 51 题「任一方被控制则无法完成」）: a partner held by a control that takes its
+      // turn (眩晕、冰冻…) cannot take part, whether or not its turn has come yet.
+      if (Object.values(partner?.状态效果 || {}).some(state => state && typeof state === 'object' && structuredControlConsumesActiveOpportunity(state))) {
+        return Object.freeze({
+          required: true,
+          valid: false,
+          reason: 'FUSION_PARTNER_CONTROLLED',
+          fusionKey: '',
+          participantIds: Object.freeze([unitId(actor)].filter(Boolean)),
+          partnerIds: Object.freeze([]),
+          participants: Object.freeze([actor].filter(Boolean)),
+          partners: Object.freeze([]),
+          usageMode: metadata.usageMode,
+        });
+      }
       if (!partners.some(existing => unitId(existing) === unitId(partner))) partners.push(partner);
     }
     // A partner charging a skill of its own, or charging a fusion with someone else, has no turn to give.
@@ -81185,11 +81200,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         ).trim();
       });
     }
-    const fusion = resolveFusionAction(worldSnapshot, actor, declaration?.skill || {}, {
-      resourceCosts: declaredStartupCosts.values,
-      requirePendingOpportunity: input?.allowProjectedFusion !== true,
-      ignoreResourceAvailability: input?.allowProjectedFusion === true,
-    });
+    // An effect of a fusion already started, committed by the runtime one at a time (BattleRuntime
+    // commitStructuredPreviewPrototype: no cost, the action's own id as its source) is no new fusion: it was checked and its
+    // use recorded when it started (prepareStructuredFusion), and checking it again found a once-only one used
+    // (battle_preview_fusion_already_used stopped the battle whenever a fusion with a state or modifier effect was released).
+    const fusion = continuedSettlement && input?.releaseEffectsResolved === true
+      ? resolveFusionAction(worldSnapshot, actor, {}, {})
+      : resolveFusionAction(worldSnapshot, actor, declaration?.skill || {}, {
+        resourceCosts: declaredStartupCosts.values,
+        requirePendingOpportunity: input?.allowProjectedFusion !== true,
+        ignoreResourceAvailability: input?.allowProjectedFusion === true,
+      });
     if (fusion.required && !fusion.valid) throw new Error(`battle_preview_${fusion.reason.toLowerCase()}`);
     const costPayers = fusion.required ? fusion.participants : [actor];
     const formalPayment = paymentMode === 'FORMAL'
@@ -160254,7 +160275,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   //   guard[t]       the whole hits t's charges take first (rule blocks, death saves, a revival), counted into rounds;
   //   stop[u][t]     the rounds of t's actions u's best control takes (chance × duration); worth counts it at t's worth.
   // A taunted unit's cells hold only its taunters. Read by nothing in play (root.__LWCS_DECISION_DEBUG__.onFacts shows
-  // it). Not in it yet: summons' assists and guard summons, fusions (skills with condition branches are in since 11-15:
+  // it). Not in it yet: summons' assists and guard summons (fusions are in since 11-17, r20Fusion; skills with condition branches since 11-15:
   // their value is read on the world as it stands; skippedSkills stays 0). The cells are the settlement layer's to build;
   // they sit here until they move there.
   // ---------------------------------------------------------------------------------------------------------------------
@@ -160331,6 +160352,47 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   const R20_ROUTINE_COUNTER_SHARE = 0.2;
   const r20StrikesBack = skill => Math.max(0, Number(skill?.前摇 ?? skill?.cast_time ?? 0)) <= (Number(preview.CONTINUOUS_ACTION_BUDGET) || 40) &&
     ['HOSTILE_SINGLE', 'ANY_SINGLE'].includes(targetProfile(skill)) && preview.collectEffects(skill).some(effect => effect?.原型 === '伤害结算');
+  // 融合技进格子（S80 D2，11-17；行为检查目录第 51、52 题）: a fusion skill counts in its host's cells while it can be cast
+  // over the horizon — every partner on the field, able to fight, not charging anything else, a once-only one not yet used,
+  // and all of them together able to pay (BattlePreview resolveFusionAction without this round's opportunity: the cells are
+  // what a unit keeps up, not this turn), and no partner held by a control (r20Shadow reads the host's cells again while
+  // a candidate's control on a partner lasts). It takes the partners' actions too (BattleRuntime: the participants give their
+  // turn to it), so it is read for what it brings past them: in a hit or help cell, its value less what the partners would
+  // land on the same unit by themselves; in a control, per action it takes (÷ participants), and the race spends the
+  // partners' actions on keeping it up as well (control.crew). A unit with no partner to call (融合模式 self) casts it as
+  // any skill. null: not castable now (or a partner's own cell being read: no fusion within a fusion).
+  let r20FusionNested = false;
+  function r20Fusion(unit, skill, startupCosts, world) {
+    if (r20FusionNested) return null;
+    const fusion = preview.resolveFusionAction(world || r20World || {}, unit, skill, { resourceCosts: startupCosts || {}, requirePendingOpportunity: false });
+    return fusion.required && fusion.valid ? fusion : null;
+  }
+  const r20FusionOnce = fusion => /一次|single|once/i.test(String(fusion?.usageMode || ''));
+  // fusionHosts[p]: the rows whose fusion skills call on row p (null when nobody has one) — a candidate that changes p, or
+  // takes it off the field, changes what those hosts can cast (r20Shadow reads their cells again).
+  function r20FusionHosts(units, ids, world) {
+    let hosts = null;
+    units.forEach((unit, row) => {
+      for (const { skill, startupCosts, fusionMetadata } of affordablePreparedSkills(unit)) {
+        if (!fusionMetadata) continue;
+        const fusion = preview.resolveFusionAction(world, unit, skill, { resourceCosts: startupCosts || {}, requirePendingOpportunity: false });
+        for (const partner of fusion.partners || []) {
+          const at = ids.indexOf(preview.unitId(partner));
+          if (at < 0 || at === row) continue;
+          hosts ||= units.map(() => []);
+          if (!hosts[at].includes(row)) hosts[at].push(row);
+        }
+      }
+    });
+    return hosts;
+  }
+  // What the partners would land on (or give) `other` by themselves in the actions the fusion takes, in the cells' percent.
+  function r20CrewCell(partners, other, friendly, context, world) {
+    const struck = r20Struck;
+    r20FusionNested = true;
+    try { return partners.reduce((sum, partner) => sum + 100 * r20Cell(partner, other, friendly, partner === other, context, world, null), 0); }
+    finally { r20FusionNested = false; r20Struck = struck; }
+  }
   function r20Cell(unit, other, friendly, self, context, world, skipped) {
     r20Work.cells += 1;
     // A hidden unit (隐匿/隐身/潜行) cannot be aimed at by a single-target action of an enemy that does not see through it.
@@ -160351,29 +160413,42 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (!friendly && r20StrikesBack(skill)) struck = Math.max(struck, value);
     }
     for (const { skill, startupCosts, fusionMetadata } of own) {
-      if (fusionMetadata || !skillHasBaseActionValue(skill)) continue;
+      if (!skillHasBaseActionValue(skill)) continue;
       const profile = targetProfile(skill);
       if (friendly ? !(profile.startsWith('FRIENDLY_') || profile === 'ANY_SINGLE' || profile === 'SELF' && self)
         : !(profile.startsWith('HOSTILE_') || profile === 'ANY_SINGLE')) continue;
+      const fusion = fusionMetadata ? r20Fusion(unit, skill, startupCosts, world) : null;
+      if (fusionMetadata && !fusion) continue;
+      const crew = fusion?.partners?.length ? fusion.partners : null;
+      if (crew && crew.some(partner => r20Held(partner) > 0)) continue;
       // 条件技能（替换/追加分支，或跟随主原型的伤害/回复）也进格子（11-15）：单招估值按当下世界缓存（cachedBaseActionValue 对
       // 带条件分支的技能以世界快照为键），条件成立与否已在其中——目标冻住时冰爆的格子就是冰爆的值。此前整条跳过，对手的条件
       // 技能不进压力，自己的也不进后劲。
       if (hidden(preview.collectEffects(skill)[0])) continue;
-      const value = cachedBaseActionValue(unit, other, 'RELEASE_SKILL', skill, context, world);
+      let value = cachedBaseActionValue(unit, other, 'RELEASE_SKILL', skill, context, world);
       if (!(value > basic)) continue;
+      if (crew && !((value -= r20CrewCell(crew, other, friendly, context, world)) > basic)) continue;
       // What the unit can keep up over the horizon: a skill its 魂力 and 精神力 pay for only a few more times counts for
       // those rounds and the basic attack (nothing, for a support) for the rest — so spending them shows in the cells.
+      // A fusion is paid by all its participants together, once only when it is written so, and not while a partner is held.
       const costs = r9v2LinearCapacityCostVector(unit, startupCosts);
       let uses = R20_HORIZON;
+      const pool = crew ? [unit, ...crew].map(member => r9v2LinearCapacityResources(member)) : null;
       if (costs.valid) for (const key of ['sp', 'men']) {
-        if (costs[key] > 0) uses = Math.min(uses, Math.floor((resources ||= r9v2LinearCapacityResources(unit))[key] / costs[key] + 1e-9));
+        if (!(costs[key] > 0)) continue;
+        const have = pool ? pool.reduce((sum, member) => sum + (Number(member[key]) || 0), 0) : (resources ||= r9v2LinearCapacityResources(unit))[key];
+        uses = Math.min(uses, Math.floor(have / costs[key] + 1e-9));
+      }
+      if (crew) {
+        if (r20FusionOnce(fusion)) uses = Math.min(uses, 1);
+        if (!(uses >= 1)) continue;
       }
       const kept = basic + (value - basic) * Math.max(1, uses) / R20_HORIZON;
       best = Math.max(best, kept);
       // A strike back is one release, at what it lands now (the skill is affordable now): not the per-round average the
       // cell keeps for its output. 11-14 (推演—实际对账, 72 battles): a strike back was read at 2.7% a time against 5.0%
-      // landed, on a 强攻系 6.1% against 21.5%.
-      if (!friendly && r20StrikesBack(skill)) struck = Math.max(struck, value);
+      // landed, on a 强攻系 6.1% against 21.5%. A fusion is no answer (BattleRuntime offers none as a reaction or counter).
+      if (!friendly && !fusionMetadata && r20StrikesBack(skill)) struck = Math.max(struck, value);
     }
     // A unit whose skills the decision cannot see (an enemy as believed: no skill list) hits by its routine attack — the
     // typical skill of its level and type over its basic attack (routine_attack_ratio, routineAttackEffect). Without it
@@ -160434,13 +160509,26 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   function r20Stop(unit, other) {
     return r20Control(unit, other).stop;
   }
-  function r20Control(unit, other) {
+  function r20Control(unit, other, world = null) {
     if (hasStateFlag(unit, 'silence') || preview.isSummonSkillDisabled(unit)) return R20_NO_CONTROL;
     let best = 0, kept = null, keptRounds = 0, expose = 0, exposePace = 0, exposeRounds = 0;
     // An enemy as believed lists no skills: the controls it has shown count.
     const own = affordablePreparedSkills(unit), shown = own.length ? null : r20Shown(unit);
     for (const entry of shown || own) {
-      if (!shown && entry.fusionMetadata) continue;
+      // A fusion's control (r20Fusion): per action it takes — its rounds ÷ participants, and keeping it up takes each
+      // partner's actions as the host's (crew, r20Race). A once-only one stops a charge or a turn once, nothing to keep up;
+      // no 破防 is kept up by one.
+      let crew = null, per = 1, once = false;
+      if (!shown && entry.fusionMetadata) {
+        const fusion = r20Fusion(unit, entry.skill, entry.startupCosts, world);
+        if (!fusion) continue;
+        if (fusion.partners?.length) {
+          if (fusion.partners.some(partner => r20Held(partner) > 0)) continue;
+          crew = Object.freeze(fusion.partners.map(partner => preview.unitId(partner)));
+          per = 1 / (crew.length + 1);
+          once = r20FusionOnce(fusion);
+        }
+      }
       const skill = shown ? entry : entry.skill, profile = targetProfile(skill);
       if (!(profile.startsWith('HOSTILE_') || profile === 'ANY_SINGLE')) continue;
       for (const effect of preview.collectEffects(skill)) {
@@ -160451,7 +160539,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const astray = clamp(Number(stops.random_target_rate) || 0, 0, 1), miss = clamp(Number(stops.hit_penalty) || 0, 0, 1);
         const share = hard ? 1 : astray + (1 - astray) * miss;
         const open = hard ? 0 : clamp(Math.max(Number(stops.reaction_penalty) || 0, Number(stops.dodge_penalty) || 0), 0, 1);
-        if (open > 0) {
+        if (open > 0 && !crew) {
           const chance = clamp(preview.normalizeEffectProbability(effect.触发概率, 1) * preview.stateApplicationProbabilityMultiplier(other, effect), 0, 1);
           const duration = Math.max(1, Number(effect.持续回合) || 1);
           if (chance * open * duration > exposeRounds) { exposeRounds = chance * open * duration; expose = chance * open; exposePace = 1 / duration; }
@@ -160461,8 +160549,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const chance = clamp(preview.normalizeEffectProbability(effect.触发概率, 1) *
           preview.stateApplicationProbabilityMultiplier(other, effect) * (hard ? 1 - preview.struggleChance(other, unit, effect) : 1), 0, 1);
         const duration = Math.max(1, Number(effect.持续回合) || 1);
-        if (hard) best = Math.max(best, chance * duration);
-        if (chance * share * duration > keptRounds) { keptRounds = chance * share * duration; kept = { lock: chance * share, pace: 1 / duration, hard: hard ? chance : 0 }; }
+        if (hard) best = Math.max(best, chance * duration * per);
+        if (!once && chance * share * duration * per > keptRounds) {
+          keptRounds = chance * share * duration * per;
+          kept = { lock: chance * share, pace: 1 / duration, hard: hard ? chance : 0, ...(crew ? { crew } : {}) };
+        }
       }
     }
     if (!(best > 0) && !kept && !(expose > 0)) return R20_NO_CONTROL;
@@ -160691,14 +160782,24 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const unit = units[row];
       if (!table.acts[row] || hasStateFlag(unit, 'silence') || preview.isSummonSkillDisabled(unit)) continue;
       const own = affordablePreparedSkills(unit), shown = own.length ? null : r20Shown(unit), options = [];
+      // A fusion's change (r20Fusion) is kept up by its partners' actions too (crew, r20Race); a once-only one keeps nothing up.
+      let crew = null;
       const add = (kind, parts, rounds, chance, names, skill, extra = null) => {
         if (!parts.length) return;
         const size = parts.reduce((sum, part) => sum + Math.abs(part.off - 1) + Math.abs(part.def - 1) + Math.abs(part.tick) + (part.extra > 0 ? part.extra / Math.max(1e-6, brings(row)) : 0), 0) * chance;
         options.push(Object.freeze({ kind, skill, parts: Object.freeze(parts), pace: 1 / Math.max(1, rounds), chance, size, names: Object.freeze(names),
-          ...(extra?.whileUp ? { whileUp: Object.freeze(extra.whileUp) } : {}), ...(extra?.hosted ? { hosted: true } : {}) }));
+          ...(extra?.whileUp ? { whileUp: Object.freeze(extra.whileUp) } : {}), ...(extra?.hosted ? { hosted: true } : {}), ...(crew ? { crew } : {}) }));
       };
       for (const entry of shown || own) {
-        if (!shown && entry.fusionMetadata) continue;
+        crew = null;
+        if (!shown && entry.fusionMetadata) {
+          const fusion = r20Fusion(unit, entry.skill, entry.startupCosts, world);
+          if (!fusion) continue;
+          if (fusion.partners?.length) {
+            if (r20FusionOnce(fusion) || fusion.partners.some(partner => r20Held(partner) > 0)) continue;
+            crew = Object.freeze(fusion.partners.map(partner => preview.unitId(partner)));
+          }
+        }
         const skill = shown ? entry : entry.skill, profile = targetProfile(skill);
         // ANY_SINGLE goes the way its effects do (BattlePreview statePolarity): a buff on an ally, a debuff on an enemy.
         const polarity = profile === 'ANY_SINGLE' ? (Array.isArray(skill?._效果数组) ? skill._效果数组 : []).reduce((sum, effect) => sum + Math.sign(Number(preview.statePolarity(effect)) || 0), 0) : 0;
@@ -160754,6 +160855,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         }
       }
       // (The deciding side's own units list their skills; an enemy's are what it has shown, and what it has laid.)
+      crew = null;
       if (sides[row] !== request.actorSide) {
         const name = preview.unitName(table.units[row]);
         for (let at = 0; name && at < count; at += 1) {
@@ -161370,18 +161472,28 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       // controller's worth counts the control, so the race also turns on it first.
       heldShare.fill(0); heldHard.fill(0); exposed.fill(0); pace.fill(0);
       const ctlWorth = worth.slice();
+      // A fusion's control (r20Control crew) is kept up by its partners' actions too: only while each of them stands and acts,
+      // and their worth goes into what it takes.
+      const crewRows = kept => {
+        if (!kept?.crew) return [];
+        const rows = kept.crew.map(id => base.index?.get(String(id)));
+        return rows.every(row => row !== undefined && striking(row) && pace[row] < 1) ? rows : null;
+      };
       for (let unit = 0; unit < count; unit += 1) {
         if (!striking(unit)) continue;
-        let bestGain = 0, bestTarget = -1, bestPace = 0;
+        let bestGain = 0, bestTarget = -1, bestPace = 0, bestCrew = [];
         for (let other = 0; other < count; other += 1) {
           if (sides[other] === sides[unit] || !(left[other] > 1e-9) || !striking(other)) continue;
           const kept = cells(unit, other).control?.[unit]?.[other];
           if (!(kept?.lock > 0) || !(kept.pace > 0)) continue;
-          const gain = kept.lock * worth[other] - kept.pace * worth[unit];
-          if (gain > bestGain) { bestGain = gain; bestTarget = other; bestPace = kept.pace; }
+          const crew = crewRows(kept);
+          if (!crew) continue;
+          const gain = kept.lock * worth[other] - kept.pace * crew.reduce((sum, row) => sum + worth[row], worth[unit]);
+          if (gain > bestGain) { bestGain = gain; bestTarget = other; bestPace = kept.pace; bestCrew = crew; }
         }
         if (bestTarget < 0) continue;
-        pace[unit] = bestPace;
+        pace[unit] = Math.min(1, pace[unit] + bestPace);
+        for (const row of bestCrew) pace[row] = Math.min(1, pace[row] + bestPace);
         const kept = cells(unit, bestTarget).control[unit][bestTarget];
         heldShare[bestTarget] = 1 - (1 - heldShare[bestTarget]) * (1 - kept.lock);
         heldHard[bestTarget] = 1 - (1 - heldHard[bestTarget]) * (1 - kept.hard);
@@ -161438,6 +161550,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             // 压缩 takes rounds off states only while they are up; a summoner recalls only once its summons are gone.
             if (option.whileUp && !option.whileUp.some(name => (base.stateEnds?.[to]?.[name] || 0) > time + 1e-9)) continue;
             if (option.hosted && host && host.some((hostRow, other) => hostRow === unit && left[other] > 1e-9)) continue;
+            const crew = crewRows(option);
+            if (!crew) continue;
             let gain = 0;
             for (const part of option.parts) {
               const at = part.self ? unit : to, side = sides[at], turnedOn = focus[side]?.unit === at;
@@ -161452,14 +161566,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 gain += (1 - part.off) * worth[at] / Math.max(1e-6, brings[side] || 0) + (turnedOn ? part.def - 1 : 0) - Math.min(0, part.tick) / ownOut;
               }
             }
-            gain = gain * option.chance - option.pace * worth[unit] / ownOut;
+            gain = gain * option.chance - option.pace * crew.reduce((sum, row) => sum + worth[row], worth[unit]) / ownOut;
             if (still) up = Math.max(up, gain);
-            else if (gain > best) { best = gain; pick = [option, to]; }
+            else if (gain > best) { best = gain; pick = [option, to, crew]; }
           }
           // In its side's hits (the scale of worth).
           if (!pick) { if (up > 0) { worth[unit] += up * ownOut; kept = true; } continue; }
-          const [option, to] = pick;
+          const [option, to, crew] = pick;
           pace[unit] = option.pace;
+          for (const row of crew) pace[row] = Math.min(1, pace[row] + option.pace);
           for (const part of option.parts) {
             const at = part.self ? unit : to;
             offMul[at] *= 1 + (part.off - 1) * option.chance; defMul[at] *= 1 + (part.def - 1) * option.chance;
@@ -161630,7 +161745,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (!acts[index] || bound[index] && !bound[index].has(ids[other])) continue;
         out[index][other] = aim[index] * r20Cell(units[index], units[other], false, false, context, world, skipped);
         back[index][other] = aim[index] * r20Struck;
-        ({ stop: stop[index][other], control: control[index][other] } = r20Control(units[index], units[other]));
+        ({ stop: stop[index][other], control: control[index][other] } = r20Control(units[index], units[other], world));
       }
     }
     // What each keeps off and answers of the other's hits, by their weight (接战链 阶段一: the attacker's out and back on
@@ -161721,6 +161836,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       // The deciding unit: its action this round is the one being valued (r20Race keeps it from keeping a change up before 1).
       actorRow: ids.indexOf(String(request.actorId)),
       drain: units.map(unit => r20Absorb(unit).dealt), host: units.map((unit, row) => r20HostRow(unit, units, ids, sides, row)), skippedSkills: skipped.count,
+      fusionHosts: r20FusionHosts(units, ids, world),
       tick: units.map(unit => r20Tick(request, unit)), tickRounds: units.map(unit => r20TickRounds(unit)),
       reflect: units.map(unit => preview.counterDamageRatio(unit)), hpMax: units.map(unit => Math.max(1, preview.readHpMax(unit))),
       horizon: Number.isFinite(Number(request.actionOpportunity?.battleHorizon?.remainingRounds)) ? Number(request.actionOpportunity.battleHorizon.remainingRounds) + 1 : R20_RACE_ROUNDS,
@@ -161974,6 +162090,21 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         spent += Math.max(0, preview.readResource(prior, resource) - preview.readResource(next, resource)) / Math.max(1, preview.readResourceMax(prior, resource));
       }
     }
+    // 融合技（r20Fusion）: a host's cells hang on its partners — a partner the candidate changed, holds or took off the field
+    // changes the fusion the host can cast, so the host's own cells are read again on the world it leaves, for as long as the
+    // partner's change lasts.
+    if (table.fusionHosts) for (let row = 0; row < count; row += 1) {
+      const hosts = table.fusionHosts[row];
+      if (!hosts?.length) continue;
+      const moved = rebuilt.some(entry => entry[0] === row) || !(alive[row] > 0) || denied[row] !== (table.held?.[row] || 0);
+      if (!moved) continue;
+      for (const hostRow of hosts) {
+        if (!(alive[hostRow] > 0) || rebuilt.some(entry => entry[0] === hostRow)) continue;
+        const hostNow = findUnitInWorld(after, table.ids[hostRow]) || table.units[hostRow];
+        rebuilt.push([hostRow, hostNow, true]);
+        until[hostRow] = !(alive[row] > 0) ? Infinity : Math.max(until[row] < Infinity ? until[row] : 0, denied[row] || 0) || Infinity;
+      }
+    }
     // The chance a hit's outcomes bring a unit down, its damage scaled by `share` (接战链 阶段二补充: what of it gets past
     // the target's answer); the outcome distributions are kept per unit for that.
     const alivePreHit = alive.slice(), hitOutcomes = new Map();
@@ -162067,13 +162198,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           const aimed = free ? r20Aim(next, table.sides.filter(side => side === table.sides[row]).length / Math.max(1, count)) : 0;
           out[row][other] = free ? aimed * r20Cell(next, units[other], false, false, context, after, null) : 0;
           back[row][other] = free ? aimed * r20Struck : 0;
-          ({ stop: stop[row][other], control: control[row][other] } = free ? r20Control(next, units[other]) : R20_NO_CONTROL);
+          ({ stop: stop[row][other], control: control[row][other] } = free ? r20Control(next, units[other], after) : R20_NO_CONTROL);
           // What the other keeps off and answers of its hits goes with their weight.
           r20FillPair(cells, units, acts, other, row);
           if (ownCellsOnly) continue;
           out[other][row] = reach ? r20Cell(units[other], next, false, false, context, after, null) : 0;
           back[other][row] = reach ? r20Struck : 0;
-          ({ stop: stop[other][row], control: control[other][row] } = reach ? r20Control(units[other], next) : R20_NO_CONTROL);
+          ({ stop: stop[other][row], control: control[other][row] } = reach ? r20Control(units[other], next, after) : R20_NO_CONTROL);
           r20FillPair(cells, units, acts, row, other);
         }
       }
@@ -170481,24 +170612,30 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (!single.some(friendly) || single.every(friendly)) return;
       single.filter(friendly).forEach(effect => { effect.目标 = '群体'; });
     };
-    units.forEach(holder => {
-      Object.entries(holder?.融合技 || {}).forEach(([name, entry]) => {
+    // 武魂融合技 too（用户 2026-11-17「任一参与者可发起」）: it is written on its holder only, and only the holder could start it
+    // with the partner's turn still to come — a partner quicker than its holder left it never castable (行为检查目录第 51 题:
+    // 0 of 16). Mirrored the same way, whoever of them comes first starts it and the other gives its turn; the use key is
+    // the participants' (BattlePreview resolveFusionAction), so a once-only one is still once. The battle's write back to
+    // the save (BattleUI buildCanonicalParticipantPersistenceSnapshot) does not carry either.
+    units.forEach(holder => ['融合技', '武魂融合技'].forEach(container => {
+      Object.entries(holder?.[container] || {}).forEach(([name, entry]) => {
         if (!entry || typeof entry !== 'object' || entry.__镜像 || !Array.isArray(entry.融合参与者)) return;
-        if (entry.技能数据 && typeof entry.技能数据 === 'object') settleTargets(entry.技能数据);
+        if (container === '融合技' && entry.技能数据 && typeof entry.技能数据 === 'object') settleTargets(entry.技能数据);
         entry.融合参与者.forEach(participant => {
           const ids = [participant?.角色键, participant?.角色名].map(value => String(value || '').trim()).filter(Boolean);
           const partner = units.find(unit => unit !== holder && nameOf(unit).some(id => ids.includes(id)));
-          if (!partner || partner.融合技?.[name]) return;
+          if (!partner || partner[container]?.[name]) return;
           const mirror = cloneValue(entry);
           mirror.融合参与者 = mirror.融合参与者.map(other => {
             const own = [other?.角色键, other?.角色名].map(value => String(value || '').trim()).some(id => nameOf(partner).includes(id));
             return { ...other, 类型: own ? '自身' : '搭档' };
           });
+          if (container === '武魂融合技') mirror.融合对象 = previewRuntime.unitName(holder) || mirror.融合对象;
           mirror.__镜像 = true;
-          partner.融合技 = { ...(partner.融合技 || {}), [name]: mirror };
+          partner[container] = { ...(partner[container] || {}), [name]: mirror };
         });
       });
-    });
+    }));
   }
 
   // 领域（接入方案 S80-C，用户 2026-11-16）：带 领域{等级, 范围} 的魂技展开后，这次动作在场上挂的状态都属于这个领域
