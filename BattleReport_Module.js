@@ -152,6 +152,8 @@
     ACTORS_UNABLE: '当前没有单位能够继续行动，本次推进结束。',
     RUNTIME_VALIDATION_FAILED: '战斗运行校验未通过。',
     PREVIEW_INTERRUPTED: '本次预演提前中断，战斗仍可继续。',
+    // 中途罢手（BattleRuntime：对方提议、等战斗界面同意框）：本回合打完即停，战斗仍可继续。
+    TRUCE_PENDING: '对方提议罢手，等待回应，战斗仍可继续。',
   });
 
   function cloneValue(value) {
@@ -786,9 +788,15 @@
     return `${displayNumber(percent)}%`;
   }
 
+  // 文本里的小数按报告的数字格式（displayNumber：百位以上一位小数，其余两位）写给玩家与 AI，例如库角色解析后的技能数值
+  // 「+36.8939%」、维持费用「4958.628点」；原值留在事实与账本里。
+  function formatTextNumbers(value = '') {
+    return String(value).replace(/\d+\.\d+/g, number => displayNumber(number));
+  }
+
   function signedValueText(value) {
     const raw = text(value);
-    if (raw) return raw;
+    if (raw) return formatTextNumbers(raw);
     const numeric = Number(value);
     if (!Number.isFinite(numeric)) return '';
     return numeric > 0 ? `+${displayNumber(numeric)}` : displayNumber(numeric);
@@ -1277,7 +1285,7 @@
         text(event?.resultState).toUpperCase() === 'SUCCESS'
       ) {
         const { costDescription } = runtime.describeSustainCostAttachment(event);
-        return `${actor}的【${action}】已登记维持费用（${costDescription}），待回合末结算`;
+        return `${actor}的【${action}】已登记维持费用（${formatTextNumbers(costDescription)}），待回合末结算`;
       }
       const sustainBreakSummary = summarizeSustainBreakEvent(event, directory);
       if (sustainBreakSummary) return sustainBreakSummary;
@@ -1471,7 +1479,8 @@
       resultCategory: structuredResultCategory(event),
       stateName: movement ? unique(movement.moves.map(move => playerStateName(move.stateName, directory))).join('、')
         : persistentRemovedNames === null ? playerStateName(stateName(event), directory) : persistentRemovedNames.join('、'),
-      summary: summarizeEvent(event, directory),
+      // 事实摘要是战报各处文字的来源（回合概览、交锋、因果链），小数统一按报告的数字格式。
+      summary: formatTextNumbers(summarizeEvent(event, directory)),
       numericTokens: numericTokens(event, visibilityMode),
       castTimePoints: ['charge_start', 'charge_progress'].includes(text(event?.eventKind))
         ? Math.max(0, number(event?.meta?.remainingCastTime, 0))
@@ -1601,13 +1610,17 @@
           : ['action_start', 'charge_start', 'pass', 'blocked_action', 'target_fail'];
     for (const eventKind of preferredKinds) {
       for (const exchange of exchanges) {
-        if (number(exchange?.round, 0) !== round) continue;
+        // 落点按事实自己的回合认：蓄力释放（CHARGE_RELEASE）的 action_start 归在蓄力开始那一回合的交锋里，交锋回合比决策早，
+        // 原先按交锋回合过滤，这一手的决策就在因果链上找不到落点（DECISION_ADJUDICATION_MISSING，决策数比投影多 1）。
+        const exchangeRound = number(exchange?.round, 0);
+        if (exchangeRound > round) continue;
         const anchor = exchange.factIds
           .map(factId => factsById.get(factId))
           .find(fact =>
             (() => {
               if (
                 !fact ||
+                (Number.isFinite(Number(fact.round)) ? number(fact.round, 0) : exchangeRound) !== round ||
                 claimedFactIds.has(fact.factId) ||
                 text(fact.eventKind) !== eventKind ||
                 text(fact.actorId) !== actorId
