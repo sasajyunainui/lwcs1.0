@@ -1353,6 +1353,41 @@
         visibility,
       };
     }
+    /* 两档距离（T25）：开场站位、突进（赶路时间的演算）、前压 / 后撤、位移改站位。突进只给赶路时间与倍数，不露双方敏捷（敌方隐藏面板）。 */
+    if (kind === 'position_opening') {
+      return { kind: 'POSITION', phase: 'opening', subjectIds: [],
+        values: { front: mechanicNames(directory, meta?.front), back: mechanicNames(directory, meta?.back), ambush: meta?.ambush === true },
+        judgement: null, visibility: { player: 'FULL', ai: 'FULL' } };
+    }
+    if (kind === 'position_advance') {
+      const travel = roundJudgement(meta?.travel), ratio = roundJudgement(meta?.ratio), own = roundJudgement(meta?.ownWindup);
+      return { kind: 'POSITION', phase: 'advance', subjectIds: [actorId, targetId].filter(Boolean),
+        values: { attacker: publicEntityName(directory, actorId, event?.actorName), target: publicEntityName(directory, targetId, event?.targetName) },
+        judgement: {
+          check: '突进',
+          inputs: { ...(Number.isFinite(own) ? { 招式前摇: own } : {}), ...(Number.isFinite(roundJudgement(meta?.base)) ? { 赶路基准: roundJudgement(meta.base) } : {}),
+            ...(Number.isFinite(ratio) ? { 敏捷倍数: ratio } : {}) },
+          rule: '近身攻击打不贴身的目标要先突进：赶路时间 = 赶路基准 × 目标敏捷 ÷ 自己敏捷（0.5～2 倍），加在前摇上，对方在这段时间里能应对；打完双方都在前',
+          ratio: null,
+          outcome: Number.isFinite(travel) ? `赶路 ${displayNumber(travel)}` : '突进',
+        },
+        visibility: { player: 'FULL', ai: 'FULL' } };
+    }
+    if (kind === 'position_pursuit') {
+      return { kind: 'POSITION', phase: 'pursuit', subjectIds: [actorId, targetId].filter(Boolean),
+        values: { pursuer: publicEntityName(directory, actorId, event?.actorName), unit: publicEntityName(directory, targetId, event?.targetName) },
+        judgement: null, visibility: { player: 'FULL', ai: 'FULL' } };
+    }
+    if (kind === 'position_shift') {
+      return { kind: 'POSITION', phase: 'shift', subjectIds: [targetId].filter(Boolean),
+        values: { unit: publicEntityName(directory, targetId, event?.targetName), position: text(meta?.position), positionType: text(meta?.positionType) },
+        judgement: null, visibility: { player: 'FULL', ai: 'FULL' } };
+    }
+    if ((kind === 'state_apply') && ['POSITION_MOVED', 'POSITION_ALREADY'].includes(text(meta?.resolutionReason))) {
+      return { kind: 'POSITION', phase: text(meta?.position) === '后' ? 'retreat' : 'press', subjectIds: [targetId || actorId].filter(Boolean),
+        values: { unit: publicEntityName(directory, targetId || actorId, event?.targetName || event?.actorName), moved: text(meta?.resolutionReason) === 'POSITION_MOVED' },
+        judgement: null, visibility: { player: 'FULL', ai: 'FULL' } };
+    }
     if (kind === 'referee') {
       return { kind: 'REFEREE', phase: text(meta?.refereeMode).toLowerCase() || result, subjectIds: [actorId, targetId].filter(Boolean),
         values: { reasonText: playerSafeText(text(meta?.reasonText), directory) }, judgement: null, visibility: { player: 'FULL', ai: 'FULL' } };
@@ -1457,6 +1492,17 @@
     if (mechanic.kind === 'PREEMPT') {
       return `${actor}以【${values.move || '魂技'}】抢先${target}的【${values.incomingMove || '攻击'}】，${preemptResultTexts[mechanic.phase] || '结果已记录'}`;
     }
+    if (mechanic.kind === 'POSITION') {
+      if (mechanic.phase === 'opening') {
+        const parts = [values.front?.length ? `${values.front.join('、')}在前` : '', values.back?.length ? `${values.back.join('、')}在后` : ''].filter(Boolean);
+        return `开场站位：${parts.join('；') || '双方拉开'}${values.ambush ? '（先攻一方已经贴上去）' : ''}`;
+      }
+      if (mechanic.phase === 'advance') return `这一击是${values.attacker || actor}突进到${values.target || target}身前打的（${mechanic.judgement?.outcome || '突进'}），打完双方都在前`;
+      if (mechanic.phase === 'pursuit') return `${values.unit || target}贴身后撤，${values.pursuer || actor}趁他转身追了上来`;
+      if (mechanic.phase === 'shift') return `${values.unit || target}被${values.positionType ? `【${values.positionType}】` : '位移'}${values.position === '后' ? '挪到了后排' : '拉到了前排'}`;
+      if (mechanic.phase === 'retreat') return values.moved ? `${values.unit || actor}后撤，退到后排拉开距离` : `${values.unit || actor}已在后排`;
+      return values.moved ? `${values.unit || actor}前压，站到前排` : `${values.unit || actor}已在前排`;
+    }
     if (mechanic.kind === 'REFEREE') return values.reasonText || `裁判出手`;
     return '';
   }
@@ -1486,6 +1532,12 @@
       push(eventNumberToken(event, '对轰威力比', inputs.威力比, '倍', 'JUDGEMENT', 'COMPARE', visibilityMode, {
         operands: [{ name: '威力比', value: inputs.威力比, unit: '倍' }, ...(Number.isFinite(inputs.门槛) ? [{ name: '门槛', value: inputs.门槛, unit: '倍' }] : [])],
         derivationRule: mechanic.judgement.rule }));
+    }
+    if (mechanic.kind === 'POSITION' && mechanic.phase === 'advance') {
+      const travel = roundJudgement(event?.meta?.travel), inputs = mechanic.judgement?.inputs || {};
+      if (Number.isFinite(travel)) push(eventNumberToken(event, '赶路时间', travel, '点', 'JUDGEMENT', 'MULTIPLY', visibilityMode, {
+        operands: Object.entries(inputs).filter(([name]) => name !== '招式前摇').map(([name, value]) => ({ name, value, unit: name === '敏捷倍数' ? '倍' : '点' })),
+        derivationRule: mechanic.judgement?.rule }));
     }
     if (mechanic.kind === 'MEDITATION' && mechanic.phase === 'recovered') {
       // 已由资源变化的数字给出（resource_change 的 RESOURCE token），这里不重复。

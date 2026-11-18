@@ -1050,6 +1050,8 @@ class BattleUIComponent {
       '攻击记录',
       // 佯装蓄力的次数（BattleDecision feintSeeThroughChance：佯装过越多越容易看破）。
       '佯装记录',
+      // 两档距离的站位（BattleRuntime syncBattlePositions / recordBattlePositions）。
+      '站位',
       // 开战前已放出武魂的参战者（推进预设的战斗登记行）。
       '战前已开武魂',
     ];
@@ -2053,8 +2055,9 @@ class BattleUIComponent {
             const declaration = cloneBattleValue(candidate?.declaration || {});
             const actionKind = String(declaration.actionKind || '').trim();
             // 冥想（BattlePreview meditationOptions）goes the release path but is a special action of its own.
-            const meta = actionKind === 'EQUIP' && declaration.releaseSlot === '冥想'
-              ? { type: 'tactical', actionType: '冥想', name: '冥想', category: '特殊动作' }
+            // 前压 / 后撤（两档距离 T25，BattlePreview positionOptions）: the same, the move to the other line.
+            const meta = actionKind === 'EQUIP' && ['冥想', '前压', '后撤'].includes(String(declaration.releaseSlot || ''))
+              ? { type: 'tactical', actionType: declaration.releaseSlot, name: declaration.releaseSlot, category: '特殊动作' }
               : actionKindMeta[actionKind];
             if (!meta) return;
             const skill = actionKind === 'WITHDRAW'
@@ -2433,7 +2436,62 @@ class BattleUIComponent {
           setUiBar(`ui-${prefix}-men-bar`, safeUnit.men, safeUnit.men_max);
           renderUiStats(`ui-${prefix}-stats`, safeUnit);
           renderUiBuffs(`ui-${prefix}-buffs`, safeUnit);
+          渲染站位徽记(prefix, unit, safeUnit);
           return safeUnit;
+        }
+
+        /* 两档距离（T25，用户 11-17：角色卡角上标「前 / 后」徽记，悬停说明，点它可改）。站位读运行态单位，没有就读战斗层 站位 记录；
+           都没有（还没开战）就不显示。点己方的徽记等于在行动列表里选「前压 / 后撤」（占这次行动，与选动作卡同一条路），不是白挪一次。 */
+        function 读取单位站位(unit = {}, name = '') {
+          const own = unit?.__battleRuntime?.position;
+          if (own === '前' || own === '后') return own;
+          let recorded = null;
+          try { recorded = getUiCombatData?.()?.站位 || null; } catch (error) { recorded = null; }
+          const value = recorded && typeof recorded === 'object' ? recorded[name] : null;
+          return value === '前' || value === '后' ? value : '';
+        }
+        function 渲染站位徽记(prefix, unit, safeUnit) {
+          const card = byId(`ui-${prefix}-panel`);
+          if (!card) return;
+          let badge = byId(`ui-${prefix}-pos`);
+          if (!badge) {
+            badge = document.createElement('button');
+            badge.type = 'button';
+            badge.id = `ui-${prefix}-pos`;
+            badge.className = 'position-badge';
+            card.appendChild(badge);
+            badge.addEventListener('click', () => 点击站位徽记(prefix));
+          }
+          const position = 读取单位站位(unit, safeUnit?.name || '');
+          badge.hidden = !position;
+          if (!position) return;
+          const back = position === '后', own = prefix === 'player';
+          badge.textContent = position;
+          badge.classList.toggle('position-badge--back', back);
+          badge.classList.toggle('position-badge--front', !back);
+          badge.classList.toggle('position-badge--own', own);
+          badge.setAttribute('aria-label', `站位：${back ? '在后' : '在前'}`);
+          badge.title = (back
+            ? '在后：拉开了距离。敌人的近身攻击要先突进，赶路的这段时间你能应对；远程与精神攻击不受影响。'
+            : '在前：与在前的敌人贴身。近身攻击不必突进，也会被对方的近身攻击直接打到。')
+            + (own ? `\n点它：${back ? '前压' : '后撤'}（占这次行动）` : '');
+        }
+        function 点击站位徽记(prefix) {
+          if (prefix !== 'player') return;
+          const state = window.BattleUI?.state || {};
+          const want = byId(`ui-${prefix}-pos`)?.textContent === '后' ? '前压' : '后撤';
+          const action = (state.availableActions || []).find(item => [item?.action_type, item?.name].map(value => String(value || '')).includes(want) && item.enabled !== false);
+          if (!action) {
+            显示战斗提示(`现在不能${want}`, 'info');
+            return;
+          }
+          关闭技能悬浮();
+          state.selectedAction = action;
+          state.selectedSkillActions = [action];
+          写入普通动作目标(action, state);
+          清空战斗预演面板();
+          刷新战斗意图输出(action);
+          renderUiActionGrid(state.availableActions || [], state.activeCategory || '全部');
         }
 
         function 选择战斗动作目标(目标名 = '', 动作来源 = null) {
@@ -3790,7 +3848,8 @@ class BattleUIComponent {
             .map(line => `<li>${htmlEscapeText(String(line || ''))}</li>`).join('');
           const 依据 = (Array.isArray(record.factRefs) ? record.factRefs : [])
             // 交手约定已在战报顶部「本场约定」，不在每一手下面重复。
-            .map(id => 机制事实.get(String(id))).filter(fact => fact && fact.kind !== 'ENGAGEMENT_TERMS').map(渲染机制事实行).join('');
+            .map(id => 机制事实.get(String(id))).filter(fact => fact && fact.kind !== 'ENGAGEMENT_TERMS' && !(fact.kind === 'POSITION' && fact.phase === 'opening'))
+            .map(渲染机制事实行).join('');
           return '<div class="battle-chain-reason">'
             + `<p class="battle-chain-reason-line" title="新估值的出招记录：意图与自估胜算">${htmlEscapeText(String(record.aiLine || ''))}</p>`
             + (依据 ? `<ul class="battle-chain-reason-basis" title="这一手之前已经发生、和它相关的机制事实">${依据}</ul>` : '')
@@ -4102,11 +4161,13 @@ class BattleUIComponent {
              不属于任何行动的（罢手回应、冥想被打断、出手次数到账等）放在该回合末尾。 */
           const 机制事实 = new Map((Array.isArray(reportDto?.mechanicFacts) ? reportDto.mechanicFacts : [])
             .filter(fact => fact && fact.factId).map(fact => [String(fact.factId), fact]));
-          const 约定 = [...机制事实.values()].filter(fact => fact.kind === 'ENGAGEMENT_TERMS' && fact.summary);
+          // 开场站位（两档距离 T25）与交手约定一起置顶。
+          const 置顶 = fact => fact.kind === 'ENGAGEMENT_TERMS' || fact.kind === 'POSITION' && fact.phase === 'opening';
+          const 约定 = [...机制事实.values()].filter(fact => 置顶(fact) && fact.summary);
           const 已挂 = new Set(chain.flatMap(node => (Array.isArray(node?.mechanicFactIds) ? node.mechanicFactIds : []).map(String)));
           const 散落 = new Map();
           机制事实.forEach(fact => {
-            if (fact.kind === 'ENGAGEMENT_TERMS' || 已挂.has(String(fact.factId)) || !fact.summary) return;
+            if (置顶(fact) || 已挂.has(String(fact.factId)) || !fact.summary) return;
             const 回合 = Math.max(0, Number(fact.round || 0));
             散落.set(回合, [...(散落.get(回合) || []), fact]);
           });
@@ -4114,7 +4175,7 @@ class BattleUIComponent {
             ? `<section class="battle-chain-section battle-chain-mechanics"><h4>本回合其他判定</h4><ul>${散落.get(回合).map(渲染机制事实行).join('')}</ul></section>`
             : '';
           const 分段 = 约定.length
-            ? [`<section class="battle-chain-section battle-chain-terms"><h4>本场约定</h4><ul>${约定.map(渲染机制事实行).join('')}</ul></section>`]
+            ? [`<section class="battle-chain-section battle-chain-terms"><h4>${约定.some(fact => fact.kind === 'ENGAGEMENT_TERMS') ? '本场约定' : '开场'}</h4><ul>${约定.map(渲染机制事实行).join('')}</ul></section>`]
             : [];
           let 当前回合 = null;
           chain.forEach(node => {

@@ -50,6 +50,15 @@
 .lwcs-ck-battle .battle-alert-card.is-acknowledged{opacity:.6}
 
 /* ---------- 交战卡：名牌 / 资源条 / 三维 / 状态 / 队列 ---------- */
+/* 站位徽记（两档距离 T25）：卡片右上角的盾形小牌，前 = 赤金、后 = 蓝；己方可点（选前压 / 后撤），悬停只提亮不位移 */
+.lwcs-ck-battle .position-badge{position:absolute;top:.35em;right:.4em;z-index:2;appearance:none;border:0;margin:0;min-width:1.9em;height:2.1em;padding:0 .35em .2em;font-weight:900;font-size:.95em;line-height:1.9em;color:#fff;letter-spacing:0;cursor:help;clip-path:polygon(0 0,100% 0,100% 72%,50% 100%,0 72%);text-shadow:0 1px 0 rgba(0,0,0,.35)}
+.lwcs-ck-battle .position-badge[hidden]{display:none}
+.lwcs-ck-battle .position-badge--front{background:linear-gradient(180deg,#f0b04a,var(--bt-red) 70%);box-shadow:inset 0 0 0 1px rgba(255,236,190,.6)}
+.lwcs-ck-battle .position-badge--back{background:linear-gradient(180deg,#7cc4ff,var(--blue-d) 75%);box-shadow:inset 0 0 0 1px rgba(210,236,255,.6)}
+.lwcs-ck-battle .position-badge--own{cursor:pointer}
+.lwcs-ck-battle .position-badge--own:hover{filter:brightness(1.12) drop-shadow(0 0 4px rgba(255,255,255,.7))}
+.lwcs-ck-battle .position-badge:focus-visible{outline:2px solid var(--cyan);outline-offset:1px}
+.lwcs-ck-battle .combatant-card:has(>.position-badge:not([hidden]))>.name-row{padding-right:2.3em}
 .lwcs-ck-battle .combatant-card{position:relative;display:flex;flex-direction:column;gap:.55em;padding:.75em .8em .8em;background:var(--brush),linear-gradient(180deg,rgba(255,255,255,.88),rgba(226,233,243,.8));box-shadow:inset 0 0 0 1px rgba(30,48,80,.18),0 3px 0 rgba(74,86,107,.35);clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)}
 .lwcs-ck-battle .combatant-card.player{box-shadow:inset 3px 0 0 var(--blue),inset 0 0 0 1px rgba(30,48,80,.18),0 3px 0 rgba(74,86,107,.35)}
 .lwcs-ck-battle .combatant-card.enemy{box-shadow:inset -3px 0 0 var(--bt-red),inset 0 0 0 1px rgba(30,48,80,.18),0 3px 0 rgba(74,86,107,.35)}

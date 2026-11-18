@@ -1981,6 +1981,8 @@
     if (kind === 'BASIC_ATTACK') return declarationIsRanged(declaration) ? 'ATTACK_RANGED' : 'ATTACK';
     if (kind === 'EVADE') return 'EVADE';
     if (kind === 'DEFEND' || kind === 'GUARD') return 'DEFEND';
+    // 两档距离（T25，用户 11-18「后撤前进都要耗体力才对」）：前压 / 后撤按闪避同价付体力。
+    if (kind === 'EQUIP' && /^(前压|后撤)$/.test(String(declaration?.releaseSlot || ''))) return 'EVADE';
     if (kind !== 'RELEASE_SKILL' && kind !== 'USE_ITEM') return '';
     const effects = Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组 : [];
     const prototypes = new Set(effects.map(effect => String(effect?.原型 || '').trim()));
@@ -2177,12 +2179,76 @@
     const probe = { 前摇: BASIC_ATTACK_WINDUP, _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 }] };
     return Math.max(0, Number(applySkillSettlementModifiers(actor, probe).skill.前摇 ?? BASIC_ATTACK_WINDUP));
   }
-  function actionWindup(actor = {}, declaration = {}) {
+  // options.travel === false：不含突进的赶路时间（蓄力判定用——赶路不让一记近身攻击变成蓄力）。
+  function actionWindup(actor = {}, declaration = {}, options = {}) {
     const kind = String(declaration?.actionKind || '').trim().toUpperCase();
+    const travel = options?.travel === false ? 0 : Math.max(0, Number(declaration?.advanceWindup || 0));
     if (kind === 'USE_ITEM') return ITEM_USE_WINDUP;
-    if (kind === 'BASIC_ATTACK') return basicAttackWindup(actor);
-    if (kind === 'RELEASE_SKILL') return Math.max(0, Number(declaration?.skill?.前摇 ?? declaration?.skill?.cast_time ?? 0));
+    if (kind === 'BASIC_ATTACK') return basicAttackWindup(actor) + travel;
+    if (kind === 'RELEASE_SKILL') return Math.max(0, Number(declaration?.skill?.前摇 ?? declaration?.skill?.cast_time ?? 0)) + travel;
     return 0;
+  }
+
+  /* 两档距离（T25，用户 2026-11-17；方案 两档距离方案-20261117.md）：每人一个「前 / 后」位置（相对整个敌方，不做两两距离）。
+     双方都在前才算贴身。近身攻击（含普攻）打一个不贴身的目标要先突进：声明带 advanceWindup = ADVANCE_WINDUP_BASE × 目标有效敏捷 ÷
+     自己有效敏捷（夹 ADVANCE_RATIO_MIN～MAX 倍），actionWindup 加上它——对方的反应、对轰、抢先、援护窗口与出手破绽都随之变宽，
+     蓄力判定不加；出手结算后双方都在前。远程、精神攻击不受距离限制。前压 / 后撤是两张占行动的特殊动作卡（positionOptions）；
+     位移执行改位置（positionShiftOf）。没有记录的单位按在前（旧局面、推演里新建的单位行为不变）。起始值，按原文战例校准。 */
+  const POSITION_FRONT = '前', POSITION_BACK = '后';
+  const ADVANCE_WINDUP_BASE = Number(root.__LWCS_TUNE__?.ADVANCE_WINDUP_BASE ?? 10), ADVANCE_RATIO_MIN = 0.5, ADVANCE_RATIO_MAX = 2, POSITION_MOVE_WINDUP = 10;
+  function unitPosition(unit = {}) {
+    return unit?.__battleRuntime?.position === POSITION_BACK ? POSITION_BACK : POSITION_FRONT;
+  }
+  // 改位置（新对象，冻结的战斗快照不原地改）；位置没变返回 false。
+  function setUnitPosition(unit = {}, position = POSITION_FRONT) {
+    if (!unit || typeof unit !== 'object' || Object.isFrozen(unit)) return false;
+    const next = position === POSITION_BACK ? POSITION_BACK : POSITION_FRONT;
+    if (unitPosition(unit) === next && unit.__battleRuntime?.position) return false;
+    unit.__battleRuntime = { ...(unit.__battleRuntime || {}), position: next };
+    return true;
+  }
+  function unitsEngaged(left = {}, right = {}) {
+    return unitPosition(left) === POSITION_FRONT && unitPosition(right) === POSITION_FRONT;
+  }
+  // 近身攻击打 target 要多走的赶路时间；贴身、非近身、没有目标为 0。
+  function advanceWindupFor(actor = {}, target = null, declaration = {}) {
+    if (!target || target === actor || declarationDamageClass(declaration) !== 'MELEE' || unitsEngaged(actor, target)) return 0;
+    const own = Number(naturalActionOrderProfile(actor).effectiveAgility), theirs = Number(naturalActionOrderProfile(target).effectiveAgility);
+    const ratio = own > 0 && theirs > 0 ? clamp(theirs / own, ADVANCE_RATIO_MIN, ADVANCE_RATIO_MAX) : 1;
+    return ADVANCE_WINDUP_BASE * ratio;
+  }
+  // 按当前位置给声明记上赶路时间（首个目标；群体近身按最远的那一个）。返回新声明；不需要突进时去掉旧记录。
+  function withAdvanceWindup(world = {}, actor = {}, declaration = {}) {
+    if (!declaration || typeof declaration !== 'object') return declaration;
+    const ids = (Array.isArray(declaration.targetIds) ? declaration.targetIds : []).map(String);
+    const units = ids.length ? listUnits(world).map(entry => entry.unit).filter(unit => ids.includes(String(unitId(unit)))) : [];
+    const travel = units.reduce((most, target) => Math.max(most, advanceWindupFor(actor, target, declaration)), 0);
+    if (travel > 0) return Number(declaration.advanceWindup) === travel ? declaration : { ...declaration, advanceWindup: travel };
+    if (declaration.advanceWindup === undefined) return declaration;
+    const { advanceWindup, ...rest } = declaration;
+    return rest;
+  }
+  // 前压 / 后撤（特殊动作卡，同冥想的释放路径，占这次行动）：已在那个位置时不给；召唤物不给。
+  function positionOptions(unit = {}) {
+    if (!unit || isSummonUnit(unit)) return [];
+    const back = unitPosition(unit) === POSITION_BACK;
+    return [back
+      ? { slot: '前压', name: '前压', windup: POSITION_MOVE_WINDUP, description: '压到前排，与在前的敌人贴身：近身攻击不必再突进，也会被对方近身攻击直接打到。',
+          effect: { 原型: '状态施加', 目标: '自身', 状态: '前压', 持续回合: 1, 触发方式: '立即触发', 生效方式: '独立生效' } }
+      : { slot: '后撤', name: '后撤', windup: POSITION_MOVE_WINDUP, description: '退到后排拉开距离：敌人的近身攻击要先突进，赶路的这段时间你能应对；远程与精神攻击不受影响。',
+          effect: { 原型: '状态施加', 目标: '自身', 状态: '后撤', 持续回合: 1, 触发方式: '立即触发', 生效方式: '独立生效' } }];
+  }
+  const positionMoveOf = effect => String(effect?.原型 || '').trim() === '状态施加' && /^(前压|后撤)$/.test(String(effect?.状态 || '').trim())
+    ? (String(effect.状态).trim() === '前压' ? POSITION_FRONT : POSITION_BACK) : null;
+  // 位移执行落到接收者身上后的位置：脱离（自己/友方）→ 后；击退、击飞（敌方）→ 后；拉近、突进、追击 → 前（被拉的敌方与冲上去的自己）；
+  // 瞬移、换位不改。null：不改。
+  function positionShiftOf(effect = {}) {
+    if (String(effect?.原型 || '').trim() !== '位移执行') return null;
+    const type = String(effect?.位移类型 || '').trim(), role = String(effect?.__位移接收者 || 'self').trim();
+    if (/脱离/.test(type)) return role === 'enemy' ? null : POSITION_BACK;
+    if (/击退|击飞/.test(type)) return role === 'self' ? null : POSITION_BACK;
+    if (/拉近|突进|追击/.test(type)) return POSITION_FRONT;
+    return null;
   }
   // 2026-11-11 (用户："B的反应需要根据A的敏捷+前摇，决定自己来不来得及反应和释放技能。A是进攻方，所以B的允许前摇可以比A长一点，
   // 这个长可根据敏捷比例来算"；"这个数字后面调也行"；"A 的前摇超过 40 时不是应该默认B随便使用低于40的技能吗"): the windup a
@@ -2216,8 +2282,12 @@
   // ally takes INTERCEPT_WINDUP of the windup a reactor has against the attack (reactionWindupBudget); what is left is the
   // windup its own response skill may take. Negative: it cannot get there. The number is a starting value.
   const INTERCEPT_WINDUP = 10;
-  function interceptWindupBudget(attacker = {}, declaration = {}, interceptor = {}) {
-    return reactionWindupBudget(attacker, declaration, interceptor) - INTERCEPT_WINDUP;
+  // 两档距离（T25）: an ally held back steps in front of a target that stands in front only by running up to it first
+  // (ADVANCE_WINDUP_BASE more); one in front, or beside a target held back, does not. A strike that runs up to a target held
+  // back carries its travel (advanceWindup), so the front line has that much longer to cut it off.
+  function interceptWindupBudget(attacker = {}, declaration = {}, interceptor = {}, target = null) {
+    const runUp = target && unitPosition(interceptor) === POSITION_BACK && unitPosition(target) === POSITION_FRONT ? ADVANCE_WINDUP_BASE : 0;
+    return reactionWindupBudget(attacker, declaration, interceptor) - INTERCEPT_WINDUP - runUp;
   }
 
   // 接战链 阶段 2c (方案 §9.5; the coordinator set the number with the user's leave, 2026-11-12): meeting a move with one's
@@ -2332,10 +2402,15 @@
     const opponent = (Array.isArray(declaration?.targetIds) ? declaration.targetIds : [])
       .map(id => readUnit(String(id || '').trim()))
       .find(unit => unit && sideOf(worldSnapshot, unit) && sideOf(worldSnapshot, unit) !== actorSide) || null;
-    const amount = actionStaminaCost(actor, nature, opponent) * declarationStaminaFactor(declaration);
+    const amount = actionStaminaCost(actor, nature, opponent) * declarationStaminaFactor(declaration) + advanceStaminaCost(actor, declaration);
     // 近身与远程（11-15）：远程另付精神力（BattleRuntime payActionStamina 同价），推演与估值一并扣。
     const mental = nature === 'ATTACK_RANGED' ? rangedActionMentalCost(actor) * declarationStaminaFactor(declaration) : 0;
     return amount > 0 || mental > 0 ? { nature, amount, mental } : null;
+  }
+
+  // 两档距离（T25）：突进的那一段路另付一份闪避同价的体力（出手本身的体力照付）。
+  function advanceStaminaCost(actor = {}, declaration = {}) {
+    return Number(declaration?.advanceWindup || 0) > 0 ? actionStaminaCost(actor, 'EVADE', null) : 0;
   }
 
   function refreshStaminaAdjustedFinal(unit = {}) {
@@ -9470,7 +9545,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         // 释放斗铠 / 机甲的内部结算（S80-A armourReleaseEffect）：不在技能表里，设计台与生成都用不到。
         // 开武魂（spiritReleaseOptions）同样是内部状态「武魂已释放」。
         const internal = prototype === '结算修正' && field === '结算' && normalized === '装备吸收' && !!effect?.__装备释放 ||
-          prototype === '状态施加' && field === '状态' && ['武魂已释放', '生命之火', '冥想'].includes(normalized);
+          prototype === '状态施加' && field === '状态' && ['武魂已释放', '生命之火', '冥想', '前压', '后撤'].includes(normalized);
         if (normalized && !internal && !(accepted ? accepted.has(normalized) : fieldDefinition.选项.includes(normalized))) {
           throw new Error(`battle_preview_unknown_enum:${prototype}:${field}:${normalized}`);
         }
@@ -11667,8 +11742,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       Number(effect?.__previewApplicationProbability ?? 1) <= 1e-12
     ) return false;
     unit.状态效果 = unit.状态效果 && typeof unit.状态效果 === 'object' ? unit.状态效果 : {};
+    // 两档距离（T25）: 前压 / 后撤 only move the unit; a 位移执行 moves its recipient besides what it leaves on it.
+    const positionMove = positionMoveOf(effect);
+    if (positionMove) return setUnitPosition(unit, positionMove) || unitPosition(unit) === positionMove;
     // 位移重做: a recipient the position leaves nothing on (the caster of a swap, say) gets no state at all.
     if (String(effect?.原型 || '').trim() === '位移执行') {
+      const shift = positionShiftOf(effect);
+      if (shift) setUnitPosition(unit, shift);
       const derived = deriveStateCombatEffect(effect);
       if (!derived.position_once && derived.counter_window_closed !== true && derived.no_cover !== true) return false;
     }
@@ -25919,6 +25999,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     suppressionStates,
     suppressionBlocksSkill,
     meditationOptions,
+    // 两档距离（T25）
+    POSITION_FRONT, POSITION_BACK, ADVANCE_WINDUP_BASE, advanceStaminaCost, unitPosition, setUnitPosition, unitsEngaged, advanceWindupFor, withAdvanceWindup, positionOptions,
+    positionMoveOf, positionShiftOf,
     isFeint,
     feintRecord,
     feintShown,

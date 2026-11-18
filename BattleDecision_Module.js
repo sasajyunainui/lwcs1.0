@@ -2365,8 +2365,10 @@
         // How long it has kept to stances is seen too (久守必失: BattlePreview passiveStreakFactor).
         // So is whether its 体力 has already been halved for running low on 魂力 / 精神力 (资源低位砍体力).
         // So is a stance it has taken and not yet used (it meets the next hit with it: BattleDecision r20StanceOf).
+        // And where it stands (两档距离 T25, BattlePreview unitPosition): in front or held back, plain to see.
         ...(sourceUnit?.__battleRuntime?.lastReleasedSkill || Number(sourceUnit?.__battleRuntime?.passiveStreak) > 0 || sourceUnit?.__battleRuntime?.lowResourceStaminaCut ||
-          sourceUnit?.__battleRuntime?.activeDefenseStance ? { __battleRuntime: {
+          sourceUnit?.__battleRuntime?.activeDefenseStance || sourceUnit?.__battleRuntime?.position ? { __battleRuntime: {
+          ...(sourceUnit.__battleRuntime.position ? { position: sourceUnit.__battleRuntime.position } : {}),
           ...(sourceUnit.__battleRuntime.activeDefenseStance ? { activeDefenseStance: cloneValue(sourceUnit.__battleRuntime.activeDefenseStance) } : {}),
           ...(sourceUnit.__battleRuntime.lastReleasedSkill ? { lastReleasedSkill: cloneValue(sourceUnit.__battleRuntime.lastReleasedSkill) } : {}),
           ...(Number(sourceUnit.__battleRuntime.passiveStreak) > 0 ? { passiveStreak: Number(sourceUnit.__battleRuntime.passiveStreak) } : {}),
@@ -6549,6 +6551,13 @@
     const worldSnapshot = input?.worldSnapshot || {};
     let candidates = withCounterStaminaFactor(withoutTargetlessCandidates(enumerateCandidatesUnchecked(input),
       typeof input?.rejectionCollector === 'function' ? input.rejectionCollector : null), input?.actionOpportunity);
+    // 两档距离（T25）: a melee candidate at a unit the actor is not engaged with carries its run-up (BattlePreview withAdvanceWindup), as
+    // the runtime stamps it at the strike — every answer window and the attack opening read it through actionWindup.
+    const advanceActor = Array.isArray(candidates) && preview.withAdvanceWindup ? findUnitInWorld(worldSnapshot, input?.actorId) : null;
+    if (advanceActor) candidates = candidates.map(candidate => {
+      const declaration = candidate?.declaration ? preview.withAdvanceWindup(worldSnapshot, advanceActor, candidate.declaration) : null;
+      return declaration && declaration !== candidate.declaration && !Object.isFrozen(candidate) ? Object.assign(candidate, { declaration }) : declaration && declaration !== candidate.declaration ? { ...candidate, declaration } : candidate;
+    });
     if (Array.isArray(candidates) && input?.actionOpportunity?.enforceImmediateBudget === true) {
       const budget = Math.max(0, Number(input.actionOpportunity.immediateBudget ?? 0)), budgetActor = findUnitInWorld(worldSnapshot, input?.actorId);
       const fits = candidate => !['BASIC_ATTACK', 'USE_ITEM'].includes(candidate?.declaration?.actionKind) ||
@@ -6635,7 +6644,7 @@
         (Array.isArray(declaration.targetIds) ? declaration.targetIds : [])
           .map(id => findUnitInWorld(worldSnapshot, id))
           .find(unit => unit && preview.sideOf(worldSnapshot, unit) && preview.sideOf(worldSnapshot, unit) !== actorSide) || null;
-      const price = preview.actionStaminaCost(actor, nature, opponent) * preview.declarationStaminaFactor(declaration);
+      const price = preview.actionStaminaCost(actor, nature, opponent) * preview.declarationStaminaFactor(declaration) + (preview.advanceStaminaCost?.(actor, declaration) || 0);
       // A skill's own declared 体力 fee is paid first; the action's stamina comes on top of it.
       const declaredRaw = declaration?.resourceCosts?.体力;
       const declaredPlan = declaredRaw === undefined ? null : preview.assessResourcePayment([actor], { 体力: declaredRaw });
@@ -7351,7 +7360,9 @@
     // by postBattleCostShare in the valuation — not as the skill's side effects, which the runtime would settle in the battle too).
     // 冥想（BattlePreview meditationOptions）: the same path, taking the action.
     [...(preview.spiritReleaseOptions?.(actor) || []), ...(preview.lifeFireOptions?.(actor, worldSnapshot, input.battleIntent) || []),
-      ...(preview.armourReleaseOptions?.(actor, worldSnapshot) || []), ...(preview.meditationOptions?.(actor) || [])].forEach(option => {
+      ...(preview.armourReleaseOptions?.(actor, worldSnapshot) || []), ...(preview.meditationOptions?.(actor) || []),
+      // 前压 / 后撤（两档距离 T25, BattlePreview positionOptions）: the same path, taking the action.
+      ...(preview.positionOptions?.(actor) || [])].forEach(option => {
       const id = `${actorId}:release:${option.slot}`;
       candidates.push({
         candidateId: id,
@@ -40282,14 +40293,21 @@
   // only out of an answer that worked and then by catching the opening). A unit's basic answers to another's hits, read
   // once a pair: the guard before the hit's weight, the chance to evade and the chance to catch the opening; `incoming`
   // the attacker's move when it is known (its windup and reach move both chances), `prepared` a stance.
-  const r20Stand = (unit, attacker, incoming = null, prepared = false) => ({
+  // 两档距离（T25）: an attacker that has to run up to the unit (BattlePreview advanceWindupFor) is evaded and caught on the
+  // longer windup the run-up gives (a basic attack assumed when the move is not known).
+  const r20RunUp = (unit, attacker, incoming = null) => {
+    const move = incoming || R20_ASSUMED_MOVE;
+    const travel = preview.advanceWindupFor && !(Number(move?.advanceWindup) > 0) ? Number(preview.advanceWindupFor(attacker, unit, move)) || 0 : 0;
+    return travel > 0 ? { ...move, advanceWindup: travel } : incoming;
+  };
+  const r20Stand = (unit, attacker, incoming = null, prepared = false, runUp = r20RunUp(unit, attacker, incoming)) => ({
     blocked: hasStateFlag(unit, 'cannot_react') || preview.guardBrokenOf(unit, r20Round),
     // An unseen 控制系's routine preemption (routine_preempt_share); not out of a stance.
     preempt: prepared ? 0 : clamp(Number(unit?.routine_preempt_share) || 0, 0, 1),
     soak: r20Soak(unit),
     guard: preview.calculateGuardBaseMultiplier(unit, attacker, prepared),
-    dodge: preview.calculateDodgeProbability(unit, attacker, prepared, incoming),
-    catch: preview.counterOpeningProbability(unit, attacker, incoming, { prepared }),
+    dodge: preview.calculateDodgeProbability(unit, attacker, prepared, runUp),
+    catch: preview.counterOpeningProbability(unit, attacker, runUp, { prepared }),
     // 接战链 阶段二: what the unit could meet the hit with instead (r20Engage); not out of a stance.
     ...(prepared ? { strikes: [], stops: [], guards: [] } : r20Engage(unit, attacker, incoming)),
     // 接战链 阶段 2c: what each plain answer costs (a stance was paid for when it was taken).
@@ -40365,9 +40383,14 @@
   const r20Engages = new WeakMap();
   const R20_ASSUMED_MOVE = Object.freeze({ actionKind: 'BASIC_ATTACK' }), R20_SKILL_MOVE = Object.freeze({ actionKind: 'RELEASE_SKILL' });
   function r20Engage(unit, attacker, incoming = null) {
+    // 两档距离（T25）: an attacker not engaged with the unit runs up first (BattlePreview advanceWindupFor) — the move it is met as
+    // carries the travel, and every answer window below widens with it. Read on where the two stand now; cached per travel.
+    const plainMove = incoming || R20_ASSUMED_MOVE;
+    const travel = preview.advanceWindupFor && !(Number(plainMove?.advanceWindup) > 0) ? Number(preview.advanceWindupFor(attacker, unit, plainMove)) || 0 : 0;
     let byAttacker = incoming ? null : r20Engages.get(unit);
-    if (byAttacker?.has(attacker)) return byAttacker.get(attacker);
-    const move = incoming || R20_ASSUMED_MOVE, attackerId = preview.unitId(attacker);
+    const cached = byAttacker?.get(attacker)?.get(travel);
+    if (cached) return cached;
+    const move = travel > 0 ? { ...plainMove, advanceWindup: travel } : plainMove, attackerId = preview.unitId(attacker);
 
     const strikes = [], stops = [];
     const consider = (declaration, skill) => {
@@ -40423,8 +40446,12 @@
         if (guard) guards.push({ ...guard, price: r20AnswerPrice(unit, attacker, { actionKind: 'RELEASE_SKILL', targetIds: [preview.unitId(unit)], skill: entry.skill, ...seen }).price });
       }
     }
-    const engage = { strikes, stops, guards };
-    if (!incoming) { if (!byAttacker) r20Engages.set(unit, byAttacker = new Map()); byAttacker.set(attacker, engage); }
+    const engage = { strikes, stops, guards, travel };
+    if (!incoming) {
+      if (!byAttacker) r20Engages.set(unit, byAttacker = new Map());
+      if (!byAttacker.has(attacker)) byAttacker.set(attacker, new Map());
+      byAttacker.get(attacker).set(travel, engage);
+    }
     return engage;
   }
   // 防御魂技应对 (S55③, 11-14): a skill `unit` can raise against the hit within `budget` (the reaction windup it has) — its
@@ -41558,6 +41585,25 @@
         const states = { ...(view.状态效果 || {}) };
         for (const [key] of onceDodges) if (states[key]) states[key] = { ...states[key], 战斗效果: { ...states[key].战斗效果, dodge_bonus: 0, incoming_only: false } };
         view = preview.inheritOverlayOrigin({ ...view, 状态效果: states }, next);
+      }
+      // 两档距离（T25）: a unit that moved (前压 / 后撤, a 位移执行 that shifts it) is met and meets others on the run-up its new
+      // place puts between them (r20Stand / r20Engage read the travel) — its cells both ways are read again, for good.
+      // Held back, the gap lasts only until the next enemy runs up (a strike that ran up leaves both engaged): one round of the race,
+      // unless states the candidate laid last longer. Pressed forward, it lasts.
+      const moved = preview.unitPosition && preview.unitPosition(next) !== preview.unitPosition(prior);
+      if (moved) {
+        changed = true;
+        if (preview.unitPosition(next) === preview.POSITION_BACK) lasting = Math.max(lasting, 1);
+        // 追击（用户 11-18 选 A，BattleRuntime enqueuePursuitWindows）: an actor that pulls back from enemies it stood engaged with
+        // takes one hit from each of them as it turns — what each lands on it in the table (out × keep, read as it stood, still close),
+        // off what it has left; a 脱离 does not (positionClosesCounterWindow).
+        if (row === actorRow && preview.unitPosition(next) === preview.POSITION_BACK && preview.unitPosition(prior) === preview.POSITION_FRONT &&
+          !preview.positionClosesCounterWindow?.(next, r20Round)) {
+          for (let other = 0; other < count; other += 1) {
+            if (table.sides[other] === table.sides[row] || !(table.alive[other] > 0) || preview.unitPosition(table.units[other]) !== preview.POSITION_FRONT) continue;
+            remaining[row] = Math.max(0, remaining[row] - (Number(table.out?.[other]?.[row]) || 0) * (Number(table.keep?.[row]?.[other] ?? 1) || 0));
+          }
+        }
       }
       if (changed || preview.staminaScaleForUnit(next) !== preview.staminaScaleForUnit(prior)) {
         rebuilt.push([row, view, false]);
