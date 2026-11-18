@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:dac188893de98943232f4611837611e5921f3afa94bde4a6952a30f30634cabe|MVU_Schema_Runtime.js:49b19d46acb65daa6331a69604b36c5ea833c157c70b633975c015ff4953374a|BattlePreview_Module.js:6440c5668f87659ecdf174fed668ca64d8bf2f4440a78909d098a8706ef4d779|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:d3f311f618eb2b6f4748d0043eaee49b7f1805576ef7bb69e12ed07c46a99845|BattleRuntime_Module.js:4c60c324ba10298782c006f3b51d890b1f6ec6c1ffb749787be9c9214688587d */
+/* sources-sha256: MVU_Skill_Runtime.js:dac188893de98943232f4611837611e5921f3afa94bde4a6952a30f30634cabe|MVU_Schema_Runtime.js:49b19d46acb65daa6331a69604b36c5ea833c157c70b633975c015ff4953374a|BattlePreview_Module.js:ba50497a505a2a5767d21887193b076b2e8fc1231ec6c6d7a120a4d046f29de5|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:98fe63b97dcc7c6edb825aec6621537ae480c2e98ea6680f2cdbaf556f8ba5d1|BattleRuntime_Module.js:2ffc4ac5fd8241f4fc21c42621408b5b1ec34a96bf0be2cdec900cd5fed713f7 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -39394,6 +39394,8 @@ try {
     if (kind === 'BASIC_ATTACK') return declarationIsRanged(declaration) ? 'ATTACK_RANGED' : 'ATTACK';
     if (kind === 'EVADE') return 'EVADE';
     if (kind === 'DEFEND' || kind === 'GUARD') return 'DEFEND';
+    // 两档距离（T25，用户 11-18「后撤前进都要耗体力才对」）：前压 / 后撤按闪避同价付体力。
+    if (kind === 'EQUIP' && /^(前压|后撤)$/.test(String(declaration?.releaseSlot || ''))) return 'EVADE';
     if (kind !== 'RELEASE_SKILL' && kind !== 'USE_ITEM') return '';
     const effects = Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组 : [];
     const prototypes = new Set(effects.map(effect => String(effect?.原型 || '').trim()));
@@ -39590,12 +39592,76 @@ try {
     const probe = { 前摇: BASIC_ATTACK_WINDUP, _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 }] };
     return Math.max(0, Number(applySkillSettlementModifiers(actor, probe).skill.前摇 ?? BASIC_ATTACK_WINDUP));
   }
-  function actionWindup(actor = {}, declaration = {}) {
+  // options.travel === false：不含突进的赶路时间（蓄力判定用——赶路不让一记近身攻击变成蓄力）。
+  function actionWindup(actor = {}, declaration = {}, options = {}) {
     const kind = String(declaration?.actionKind || '').trim().toUpperCase();
+    const travel = options?.travel === false ? 0 : Math.max(0, Number(declaration?.advanceWindup || 0));
     if (kind === 'USE_ITEM') return ITEM_USE_WINDUP;
-    if (kind === 'BASIC_ATTACK') return basicAttackWindup(actor);
-    if (kind === 'RELEASE_SKILL') return Math.max(0, Number(declaration?.skill?.前摇 ?? declaration?.skill?.cast_time ?? 0));
+    if (kind === 'BASIC_ATTACK') return basicAttackWindup(actor) + travel;
+    if (kind === 'RELEASE_SKILL') return Math.max(0, Number(declaration?.skill?.前摇 ?? declaration?.skill?.cast_time ?? 0)) + travel;
     return 0;
+  }
+
+  /* 两档距离（T25，用户 2026-11-17；方案 两档距离方案-20261117.md）：每人一个「前 / 后」位置（相对整个敌方，不做两两距离）。
+     双方都在前才算贴身。近身攻击（含普攻）打一个不贴身的目标要先突进：声明带 advanceWindup = ADVANCE_WINDUP_BASE × 目标有效敏捷 ÷
+     自己有效敏捷（夹 ADVANCE_RATIO_MIN～MAX 倍），actionWindup 加上它——对方的反应、对轰、抢先、援护窗口与出手破绽都随之变宽，
+     蓄力判定不加；出手结算后双方都在前。远程、精神攻击不受距离限制。前压 / 后撤是两张占行动的特殊动作卡（positionOptions）；
+     位移执行改位置（positionShiftOf）。没有记录的单位按在前（旧局面、推演里新建的单位行为不变）。起始值，按原文战例校准。 */
+  const POSITION_FRONT = '前', POSITION_BACK = '后';
+  const ADVANCE_WINDUP_BASE = Number(root.__LWCS_TUNE__?.ADVANCE_WINDUP_BASE ?? 10), ADVANCE_RATIO_MIN = 0.5, ADVANCE_RATIO_MAX = 2, POSITION_MOVE_WINDUP = 10;
+  function unitPosition(unit = {}) {
+    return unit?.__battleRuntime?.position === POSITION_BACK ? POSITION_BACK : POSITION_FRONT;
+  }
+  // 改位置（新对象，冻结的战斗快照不原地改）；位置没变返回 false。
+  function setUnitPosition(unit = {}, position = POSITION_FRONT) {
+    if (!unit || typeof unit !== 'object' || Object.isFrozen(unit)) return false;
+    const next = position === POSITION_BACK ? POSITION_BACK : POSITION_FRONT;
+    if (unitPosition(unit) === next && unit.__battleRuntime?.position) return false;
+    unit.__battleRuntime = { ...(unit.__battleRuntime || {}), position: next };
+    return true;
+  }
+  function unitsEngaged(left = {}, right = {}) {
+    return unitPosition(left) === POSITION_FRONT && unitPosition(right) === POSITION_FRONT;
+  }
+  // 近身攻击打 target 要多走的赶路时间；贴身、非近身、没有目标为 0。
+  function advanceWindupFor(actor = {}, target = null, declaration = {}) {
+    if (!target || target === actor || declarationDamageClass(declaration) !== 'MELEE' || unitsEngaged(actor, target)) return 0;
+    const own = Number(naturalActionOrderProfile(actor).effectiveAgility), theirs = Number(naturalActionOrderProfile(target).effectiveAgility);
+    const ratio = own > 0 && theirs > 0 ? clamp(theirs / own, ADVANCE_RATIO_MIN, ADVANCE_RATIO_MAX) : 1;
+    return ADVANCE_WINDUP_BASE * ratio;
+  }
+  // 按当前位置给声明记上赶路时间（首个目标；群体近身按最远的那一个）。返回新声明；不需要突进时去掉旧记录。
+  function withAdvanceWindup(world = {}, actor = {}, declaration = {}) {
+    if (!declaration || typeof declaration !== 'object') return declaration;
+    const ids = (Array.isArray(declaration.targetIds) ? declaration.targetIds : []).map(String);
+    const units = ids.length ? listUnits(world).map(entry => entry.unit).filter(unit => ids.includes(String(unitId(unit)))) : [];
+    const travel = units.reduce((most, target) => Math.max(most, advanceWindupFor(actor, target, declaration)), 0);
+    if (travel > 0) return Number(declaration.advanceWindup) === travel ? declaration : { ...declaration, advanceWindup: travel };
+    if (declaration.advanceWindup === undefined) return declaration;
+    const { advanceWindup, ...rest } = declaration;
+    return rest;
+  }
+  // 前压 / 后撤（特殊动作卡，同冥想的释放路径，占这次行动）：已在那个位置时不给；召唤物不给。
+  function positionOptions(unit = {}) {
+    if (!unit || isSummonUnit(unit)) return [];
+    const back = unitPosition(unit) === POSITION_BACK;
+    return [back
+      ? { slot: '前压', name: '前压', windup: POSITION_MOVE_WINDUP, description: '压到前排，与在前的敌人贴身：近身攻击不必再突进，也会被对方近身攻击直接打到。',
+          effect: { 原型: '状态施加', 目标: '自身', 状态: '前压', 持续回合: 1, 触发方式: '立即触发', 生效方式: '独立生效' } }
+      : { slot: '后撤', name: '后撤', windup: POSITION_MOVE_WINDUP, description: '退到后排拉开距离：敌人的近身攻击要先突进，赶路的这段时间你能应对；远程与精神攻击不受影响。',
+          effect: { 原型: '状态施加', 目标: '自身', 状态: '后撤', 持续回合: 1, 触发方式: '立即触发', 生效方式: '独立生效' } }];
+  }
+  const positionMoveOf = effect => String(effect?.原型 || '').trim() === '状态施加' && /^(前压|后撤)$/.test(String(effect?.状态 || '').trim())
+    ? (String(effect.状态).trim() === '前压' ? POSITION_FRONT : POSITION_BACK) : null;
+  // 位移执行落到接收者身上后的位置：脱离（自己/友方）→ 后；击退、击飞（敌方）→ 后；拉近、突进、追击 → 前（被拉的敌方与冲上去的自己）；
+  // 瞬移、换位不改。null：不改。
+  function positionShiftOf(effect = {}) {
+    if (String(effect?.原型 || '').trim() !== '位移执行') return null;
+    const type = String(effect?.位移类型 || '').trim(), role = String(effect?.__位移接收者 || 'self').trim();
+    if (/脱离/.test(type)) return role === 'enemy' ? null : POSITION_BACK;
+    if (/击退|击飞/.test(type)) return role === 'self' ? null : POSITION_BACK;
+    if (/拉近|突进|追击/.test(type)) return POSITION_FRONT;
+    return null;
   }
   // 2026-11-11 (用户："B的反应需要根据A的敏捷+前摇，决定自己来不来得及反应和释放技能。A是进攻方，所以B的允许前摇可以比A长一点，
   // 这个长可根据敏捷比例来算"；"这个数字后面调也行"；"A 的前摇超过 40 时不是应该默认B随便使用低于40的技能吗"): the windup a
@@ -39629,8 +39695,12 @@ try {
   // ally takes INTERCEPT_WINDUP of the windup a reactor has against the attack (reactionWindupBudget); what is left is the
   // windup its own response skill may take. Negative: it cannot get there. The number is a starting value.
   const INTERCEPT_WINDUP = 10;
-  function interceptWindupBudget(attacker = {}, declaration = {}, interceptor = {}) {
-    return reactionWindupBudget(attacker, declaration, interceptor) - INTERCEPT_WINDUP;
+  // 两档距离（T25）: an ally held back steps in front of a target that stands in front only by running up to it first
+  // (ADVANCE_WINDUP_BASE more); one in front, or beside a target held back, does not. A strike that runs up to a target held
+  // back carries its travel (advanceWindup), so the front line has that much longer to cut it off.
+  function interceptWindupBudget(attacker = {}, declaration = {}, interceptor = {}, target = null) {
+    const runUp = target && unitPosition(interceptor) === POSITION_BACK && unitPosition(target) === POSITION_FRONT ? ADVANCE_WINDUP_BASE : 0;
+    return reactionWindupBudget(attacker, declaration, interceptor) - INTERCEPT_WINDUP - runUp;
   }
 
   // 接战链 阶段 2c (方案 §9.5; the coordinator set the number with the user's leave, 2026-11-12): meeting a move with one's
@@ -39745,10 +39815,15 @@ try {
     const opponent = (Array.isArray(declaration?.targetIds) ? declaration.targetIds : [])
       .map(id => readUnit(String(id || '').trim()))
       .find(unit => unit && sideOf(worldSnapshot, unit) && sideOf(worldSnapshot, unit) !== actorSide) || null;
-    const amount = actionStaminaCost(actor, nature, opponent) * declarationStaminaFactor(declaration);
+    const amount = actionStaminaCost(actor, nature, opponent) * declarationStaminaFactor(declaration) + advanceStaminaCost(actor, declaration);
     // 近身与远程（11-15）：远程另付精神力（BattleRuntime payActionStamina 同价），推演与估值一并扣。
     const mental = nature === 'ATTACK_RANGED' ? rangedActionMentalCost(actor) * declarationStaminaFactor(declaration) : 0;
     return amount > 0 || mental > 0 ? { nature, amount, mental } : null;
+  }
+
+  // 两档距离（T25）：突进的那一段路另付一份闪避同价的体力（出手本身的体力照付）。
+  function advanceStaminaCost(actor = {}, declaration = {}) {
+    return Number(declaration?.advanceWindup || 0) > 0 ? actionStaminaCost(actor, 'EVADE', null) : 0;
   }
 
   function refreshStaminaAdjustedFinal(unit = {}) {
@@ -46883,7 +46958,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         // 释放斗铠 / 机甲的内部结算（S80-A armourReleaseEffect）：不在技能表里，设计台与生成都用不到。
         // 开武魂（spiritReleaseOptions）同样是内部状态「武魂已释放」。
         const internal = prototype === '结算修正' && field === '结算' && normalized === '装备吸收' && !!effect?.__装备释放 ||
-          prototype === '状态施加' && field === '状态' && ['武魂已释放', '生命之火', '冥想'].includes(normalized);
+          prototype === '状态施加' && field === '状态' && ['武魂已释放', '生命之火', '冥想', '前压', '后撤'].includes(normalized);
         if (normalized && !internal && !(accepted ? accepted.has(normalized) : fieldDefinition.选项.includes(normalized))) {
           throw new Error(`battle_preview_unknown_enum:${prototype}:${field}:${normalized}`);
         }
@@ -49080,8 +49155,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       Number(effect?.__previewApplicationProbability ?? 1) <= 1e-12
     ) return false;
     unit.状态效果 = unit.状态效果 && typeof unit.状态效果 === 'object' ? unit.状态效果 : {};
+    // 两档距离（T25）: 前压 / 后撤 only move the unit; a 位移执行 moves its recipient besides what it leaves on it.
+    const positionMove = positionMoveOf(effect);
+    if (positionMove) return setUnitPosition(unit, positionMove) || unitPosition(unit) === positionMove;
     // 位移重做: a recipient the position leaves nothing on (the caster of a swap, say) gets no state at all.
     if (String(effect?.原型 || '').trim() === '位移执行') {
+      const shift = positionShiftOf(effect);
+      if (shift) setUnitPosition(unit, shift);
       const derived = deriveStateCombatEffect(effect);
       if (!derived.position_once && derived.counter_window_closed !== true && derived.no_cover !== true) return false;
     }
@@ -63332,6 +63412,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     suppressionStates,
     suppressionBlocksSkill,
     meditationOptions,
+    // 两档距离（T25）
+    POSITION_FRONT, POSITION_BACK, ADVANCE_WINDUP_BASE, advanceStaminaCost, unitPosition, setUnitPosition, unitsEngaged, advanceWindupFor, withAdvanceWindup, positionOptions,
+    positionMoveOf, positionShiftOf,
     isFeint,
     feintRecord,
     feintShown,
@@ -73751,8 +73834,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         // How long it has kept to stances is seen too (久守必失: BattlePreview passiveStreakFactor).
         // So is whether its 体力 has already been halved for running low on 魂力 / 精神力 (资源低位砍体力).
         // So is a stance it has taken and not yet used (it meets the next hit with it: BattleDecision r20StanceOf).
+        // And where it stands (两档距离 T25, BattlePreview unitPosition): in front or held back, plain to see.
         ...(sourceUnit?.__battleRuntime?.lastReleasedSkill || Number(sourceUnit?.__battleRuntime?.passiveStreak) > 0 || sourceUnit?.__battleRuntime?.lowResourceStaminaCut ||
-          sourceUnit?.__battleRuntime?.activeDefenseStance ? { __battleRuntime: {
+          sourceUnit?.__battleRuntime?.activeDefenseStance || sourceUnit?.__battleRuntime?.position ? { __battleRuntime: {
+          ...(sourceUnit.__battleRuntime.position ? { position: sourceUnit.__battleRuntime.position } : {}),
           ...(sourceUnit.__battleRuntime.activeDefenseStance ? { activeDefenseStance: cloneValue(sourceUnit.__battleRuntime.activeDefenseStance) } : {}),
           ...(sourceUnit.__battleRuntime.lastReleasedSkill ? { lastReleasedSkill: cloneValue(sourceUnit.__battleRuntime.lastReleasedSkill) } : {}),
           ...(Number(sourceUnit.__battleRuntime.passiveStreak) > 0 ? { passiveStreak: Number(sourceUnit.__battleRuntime.passiveStreak) } : {}),
@@ -77935,6 +78020,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const worldSnapshot = input?.worldSnapshot || {};
     let candidates = withCounterStaminaFactor(withoutTargetlessCandidates(enumerateCandidatesUnchecked(input),
       typeof input?.rejectionCollector === 'function' ? input.rejectionCollector : null), input?.actionOpportunity);
+    // 两档距离（T25）: a melee candidate at a unit the actor is not engaged with carries its run-up (BattlePreview withAdvanceWindup), as
+    // the runtime stamps it at the strike — every answer window and the attack opening read it through actionWindup.
+    const advanceActor = Array.isArray(candidates) && preview.withAdvanceWindup ? findUnitInWorld(worldSnapshot, input?.actorId) : null;
+    if (advanceActor) candidates = candidates.map(candidate => {
+      const declaration = candidate?.declaration ? preview.withAdvanceWindup(worldSnapshot, advanceActor, candidate.declaration) : null;
+      return declaration && declaration !== candidate.declaration && !Object.isFrozen(candidate) ? Object.assign(candidate, { declaration }) : declaration && declaration !== candidate.declaration ? { ...candidate, declaration } : candidate;
+    });
     if (Array.isArray(candidates) && input?.actionOpportunity?.enforceImmediateBudget === true) {
       const budget = Math.max(0, Number(input.actionOpportunity.immediateBudget ?? 0)), budgetActor = findUnitInWorld(worldSnapshot, input?.actorId);
       const fits = candidate => !['BASIC_ATTACK', 'USE_ITEM'].includes(candidate?.declaration?.actionKind) ||
@@ -78021,7 +78113,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         (Array.isArray(declaration.targetIds) ? declaration.targetIds : [])
           .map(id => findUnitInWorld(worldSnapshot, id))
           .find(unit => unit && preview.sideOf(worldSnapshot, unit) && preview.sideOf(worldSnapshot, unit) !== actorSide) || null;
-      const price = preview.actionStaminaCost(actor, nature, opponent) * preview.declarationStaminaFactor(declaration);
+      const price = preview.actionStaminaCost(actor, nature, opponent) * preview.declarationStaminaFactor(declaration) + (preview.advanceStaminaCost?.(actor, declaration) || 0);
       // A skill's own declared 体力 fee is paid first; the action's stamina comes on top of it.
       const declaredRaw = declaration?.resourceCosts?.体力;
       const declaredPlan = declaredRaw === undefined ? null : preview.assessResourcePayment([actor], { 体力: declaredRaw });
@@ -78737,7 +78829,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // by postBattleCostShare in the valuation — not as the skill's side effects, which the runtime would settle in the battle too).
     // 冥想（BattlePreview meditationOptions）: the same path, taking the action.
     [...(preview.spiritReleaseOptions?.(actor) || []), ...(preview.lifeFireOptions?.(actor, worldSnapshot, input.battleIntent) || []),
-      ...(preview.armourReleaseOptions?.(actor, worldSnapshot) || []), ...(preview.meditationOptions?.(actor) || [])].forEach(option => {
+      ...(preview.armourReleaseOptions?.(actor, worldSnapshot) || []), ...(preview.meditationOptions?.(actor) || []),
+      // 前压 / 后撤（两档距离 T25, BattlePreview positionOptions）: the same path, taking the action.
+      ...(preview.positionOptions?.(actor) || [])].forEach(option => {
       const id = `${actorId}:release:${option.slot}`;
       candidates.push({
         candidateId: id,
@@ -111668,14 +111762,21 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // only out of an answer that worked and then by catching the opening). A unit's basic answers to another's hits, read
   // once a pair: the guard before the hit's weight, the chance to evade and the chance to catch the opening; `incoming`
   // the attacker's move when it is known (its windup and reach move both chances), `prepared` a stance.
-  const r20Stand = (unit, attacker, incoming = null, prepared = false) => ({
+  // 两档距离（T25）: an attacker that has to run up to the unit (BattlePreview advanceWindupFor) is evaded and caught on the
+  // longer windup the run-up gives (a basic attack assumed when the move is not known).
+  const r20RunUp = (unit, attacker, incoming = null) => {
+    const move = incoming || R20_ASSUMED_MOVE;
+    const travel = preview.advanceWindupFor && !(Number(move?.advanceWindup) > 0) ? Number(preview.advanceWindupFor(attacker, unit, move)) || 0 : 0;
+    return travel > 0 ? { ...move, advanceWindup: travel } : incoming;
+  };
+  const r20Stand = (unit, attacker, incoming = null, prepared = false, runUp = r20RunUp(unit, attacker, incoming)) => ({
     blocked: hasStateFlag(unit, 'cannot_react') || preview.guardBrokenOf(unit, r20Round),
     // An unseen 控制系's routine preemption (routine_preempt_share); not out of a stance.
     preempt: prepared ? 0 : clamp(Number(unit?.routine_preempt_share) || 0, 0, 1),
     soak: r20Soak(unit),
     guard: preview.calculateGuardBaseMultiplier(unit, attacker, prepared),
-    dodge: preview.calculateDodgeProbability(unit, attacker, prepared, incoming),
-    catch: preview.counterOpeningProbability(unit, attacker, incoming, { prepared }),
+    dodge: preview.calculateDodgeProbability(unit, attacker, prepared, runUp),
+    catch: preview.counterOpeningProbability(unit, attacker, runUp, { prepared }),
     // 接战链 阶段二: what the unit could meet the hit with instead (r20Engage); not out of a stance.
     ...(prepared ? { strikes: [], stops: [], guards: [] } : r20Engage(unit, attacker, incoming)),
     // 接战链 阶段 2c: what each plain answer costs (a stance was paid for when it was taken).
@@ -111751,9 +111852,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   const r20Engages = new WeakMap();
   const R20_ASSUMED_MOVE = Object.freeze({ actionKind: 'BASIC_ATTACK' }), R20_SKILL_MOVE = Object.freeze({ actionKind: 'RELEASE_SKILL' });
   function r20Engage(unit, attacker, incoming = null) {
+    // 两档距离（T25）: an attacker not engaged with the unit runs up first (BattlePreview advanceWindupFor) — the move it is met as
+    // carries the travel, and every answer window below widens with it. Read on where the two stand now; cached per travel.
+    const plainMove = incoming || R20_ASSUMED_MOVE;
+    const travel = preview.advanceWindupFor && !(Number(plainMove?.advanceWindup) > 0) ? Number(preview.advanceWindupFor(attacker, unit, plainMove)) || 0 : 0;
     let byAttacker = incoming ? null : r20Engages.get(unit);
-    if (byAttacker?.has(attacker)) return byAttacker.get(attacker);
-    const move = incoming || R20_ASSUMED_MOVE, attackerId = preview.unitId(attacker);
+    const cached = byAttacker?.get(attacker)?.get(travel);
+    if (cached) return cached;
+    const move = travel > 0 ? { ...plainMove, advanceWindup: travel } : plainMove, attackerId = preview.unitId(attacker);
 
     const strikes = [], stops = [];
     const consider = (declaration, skill) => {
@@ -111809,8 +111915,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (guard) guards.push({ ...guard, price: r20AnswerPrice(unit, attacker, { actionKind: 'RELEASE_SKILL', targetIds: [preview.unitId(unit)], skill: entry.skill, ...seen }).price });
       }
     }
-    const engage = { strikes, stops, guards };
-    if (!incoming) { if (!byAttacker) r20Engages.set(unit, byAttacker = new Map()); byAttacker.set(attacker, engage); }
+    const engage = { strikes, stops, guards, travel };
+    if (!incoming) {
+      if (!byAttacker) r20Engages.set(unit, byAttacker = new Map());
+      if (!byAttacker.has(attacker)) byAttacker.set(attacker, new Map());
+      byAttacker.get(attacker).set(travel, engage);
+    }
     return engage;
   }
   // 防御魂技应对 (S55③, 11-14): a skill `unit` can raise against the hit within `budget` (the reaction windup it has) — its
@@ -112944,6 +113054,25 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const states = { ...(view.状态效果 || {}) };
         for (const [key] of onceDodges) if (states[key]) states[key] = { ...states[key], 战斗效果: { ...states[key].战斗效果, dodge_bonus: 0, incoming_only: false } };
         view = preview.inheritOverlayOrigin({ ...view, 状态效果: states }, next);
+      }
+      // 两档距离（T25）: a unit that moved (前压 / 后撤, a 位移执行 that shifts it) is met and meets others on the run-up its new
+      // place puts between them (r20Stand / r20Engage read the travel) — its cells both ways are read again, for good.
+      // Held back, the gap lasts only until the next enemy runs up (a strike that ran up leaves both engaged): one round of the race,
+      // unless states the candidate laid last longer. Pressed forward, it lasts.
+      const moved = preview.unitPosition && preview.unitPosition(next) !== preview.unitPosition(prior);
+      if (moved) {
+        changed = true;
+        if (preview.unitPosition(next) === preview.POSITION_BACK) lasting = Math.max(lasting, 1);
+        // 追击（用户 11-18 选 A，BattleRuntime enqueuePursuitWindows）: an actor that pulls back from enemies it stood engaged with
+        // takes one hit from each of them as it turns — what each lands on it in the table (out × keep, read as it stood, still close),
+        // off what it has left; a 脱离 does not (positionClosesCounterWindow).
+        if (row === actorRow && preview.unitPosition(next) === preview.POSITION_BACK && preview.unitPosition(prior) === preview.POSITION_FRONT &&
+          !preview.positionClosesCounterWindow?.(next, r20Round)) {
+          for (let other = 0; other < count; other += 1) {
+            if (table.sides[other] === table.sides[row] || !(table.alive[other] > 0) || preview.unitPosition(table.units[other]) !== preview.POSITION_FRONT) continue;
+            remaining[row] = Math.max(0, remaining[row] - (Number(table.out?.[other]?.[row]) || 0) * (Number(table.keep?.[row]?.[other] ?? 1) || 0));
+          }
+        }
       }
       if (changed || preview.staminaScaleForUnit(next) !== preview.staminaScaleForUnit(prior)) {
         rebuilt.push([row, view, false]);
@@ -117675,6 +117804,36 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (holds(unit)) mark(unit, '__先攻·先手', '先手', { initiative_first: true });
       else if (ambushing[1 - index] && !ambushing[index] && isUnitAbleToFight(unit)) mark(unit, '__先攻·措手不及', '措手不及', { reaction_window_mult: 0.5 });
     }));
+  }
+
+  /* 两档距离（T25，BattlePreview unitPosition）的站位跨请求保存在战斗层 combatData.站位 { 名字: 前|后 }（MVU 战斗.站位，BattleUI 写回白名单）。
+     每回合开始读回到单位上；第 1 回合没有记录时开场：先攻名单里的人在前（偷袭得手，贴上去了），其余全在后（比赛、切磋、实战一律拉开）。
+     回合末写回（settleBattleRoundEnd）。召唤物不记（随主人，按在前）。 */
+  function syncBattlePositions(combatData = {}) {
+    const recorded = combatData?.站位 && typeof combatData.站位 === 'object' ? combatData.站位 : null;
+    const units = listCombatUnits(combatData).filter(unit => !previewRuntime.isSummonUnit?.(unit));
+    if (recorded) {
+      units.forEach(unit => {
+        const value = recorded[previewRuntime.unitName(unit)] ?? recorded[previewRuntime.unitId(unit)];
+        if (value === previewRuntime.POSITION_FRONT || value === previewRuntime.POSITION_BACK) previewRuntime.setUnitPosition(unit, value);
+      });
+      return;
+    }
+    if (Number(combatData?.回合) !== 1) return;
+    const names = new Set(String(combatData?.先攻 || '').trim().split(/[、,，;；\s]+/).map(name => name.trim()).filter(name => name && name !== '无'));
+    units.forEach(unit => previewRuntime.setUnitPosition(unit,
+      names.has(String(previewRuntime.unitName(unit) || '').trim()) || names.has(String(previewRuntime.unitId(unit) || '').trim())
+        ? previewRuntime.POSITION_FRONT : previewRuntime.POSITION_BACK));
+    recordBattlePositions(combatData);
+    // 战报事实（POSITION opening）：开场谁在前、谁在后。
+    const named = position => units.filter(unit => previewRuntime.unitPosition(unit) === position).map(unit => previewRuntime.unitName(unit));
+    writeMechanicEvent(combatData, { eventKind: 'position_opening', actionName: '开场站位', round: 1, result: 'declared',
+      meta: { front: named(previewRuntime.POSITION_FRONT), back: named(previewRuntime.POSITION_BACK), ambush: names.size > 0 } });
+  }
+  function recordBattlePositions(combatData = {}) {
+    const units = listCombatUnits(combatData).filter(unit => !previewRuntime.isSummonUnit?.(unit) && unit?.__battleRuntime?.position);
+    if (!units.length) return;
+    combatData.站位 = Object.fromEntries(units.map(unit => [previewRuntime.unitName(unit), previewRuntime.unitPosition(unit)]));
   }
 
   function settleConditionsAtRoundEnd(unit = {}, label = '', combatData = {}) {
@@ -124724,6 +124883,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   }
 
   function settleBattleRoundEnd(combatData = {}, logs = [], adapterOptions = {}) {
+    recordBattlePositions(combatData);
     const rootData = combatLedgerRoot(combatData), previousObservation = periodicResourcePhaseByWorld.get(rootData);
     const observation = { version: 1, scope: 'PERIODIC_STATE_RESOURCE_PHASES', round: Number(combatData.回合 || 0),
       status: previousObservation?.round === Number(combatData.回合 || 0) ? 'MULTIPLE_PHASES' : 'RUNNING',
@@ -127505,6 +127665,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const staminaFactor = actionRole === 'COUNTER' && ['BASIC_ATTACK', 'RELEASE_SKILL'].includes(String(actionKind || '').trim().toUpperCase())
         ? previewRuntime.declarationStaminaFactor(declaration) : 1;
       if (staminaNature) facts.push(...payActionStamina({ combatData, actor, nature: staminaNature, opponent, action, actionEvent, actionRole, actorControl, factor: staminaFactor }));
+      // 两档距离（T25）：突进那一段路另付体力（BattlePreview advanceStaminaCost，闪避同价）。
+      if (staminaNature && Number(declaration?.advanceWindup || 0) > 0) facts.push(...payActionStamina({ combatData, actor, nature: 'EVADE', opponent: null, action, actionEvent, actionRole, actorControl, factor: 1 }));
       // 攻击破绽（BattlePreview attackOpeningOf）：正式行动先清掉旧破绽，进攻留下新的；反应（闪避、防御）不算下一次行动。
       if (actionRole !== 'REACTION') previewRuntime.setAttackOpening(actor, previewRuntime.attackOpeningStrength(combatData, actor, { ...declaration, actionKind },
         targetId => listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, targetId))), actionEvent.actionId);
@@ -127558,8 +127720,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       // through it or not, rolled now (BattleDecision feintSeeThroughChance); it shows no ring (no 战斗暴露: nothing is cast).
       if (actionKind === 'FEINT' && declaration?.feintSkill && typeof declaration.feintSkill === 'object' && !actor.蓄力技能) {
         const ownSide = previewRuntime.sideOf(combatData, actor);
+        // Development hook (absent in play): __LWCS_DECISION_DEBUG__.feintNeverSeen — no one sees through (the report coverage check of a
+        // feint unseen in the middle of a battle; a rare roll otherwise).
+        const neverSeen = globalThis.__LWCS_DECISION_DEBUG__?.feintNeverSeen === true;
         const seenBy = listCombatUnits(combatData).filter(unit => previewRuntime.isBattleCapable(unit) && previewRuntime.sideOf(combatData, unit) !== ownSide)
-          .filter(unit => Math.random() < Number(decisionRuntime.feintSeeThroughChance?.(combatData, unit, actor, declaration.feintSkill) ?? 0))
+          .filter(unit => !neverSeen && Math.random() < Number(decisionRuntime.feintSeeThroughChance?.(combatData, unit, actor, declaration.feintSkill) ?? 0))
           .map(unit => previewRuntime.unitId(unit));
         actor.蓄力技能 = previewRuntime.feintRecord(declaration.feintSkill, declaration.targetIds || [], actionEvent.actionId, seenBy);
         // 佯装记录 { 名字: 次数 } (a battle-level field, kept across requests): each feint makes the next easier to see through.
@@ -129661,6 +129826,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         // 开武魂（信息模型 0a）: 「武魂已释放」 takes the 「武魂未释放」 key, so the round start does not lay it again, and the panel
         // comes back at once (BattlePreview addState does the same in a projection).
         // 点燃生命之火: its own key, panel and pools (BattlePreview igniteLifeFire); put out when the battle ends (the save prices it).
+        // 两档距离（T25）: 前压 / 后撤 only move the unit (BattlePreview positionOptions); no state is left on it.
+        const positionMove = previewRuntime.positionMoveOf?.(effect);
+        if (positionMove) {
+          const moved = previewRuntime.setUnitPosition(target, positionMove);
+          facts.push(writeLedgerEvent(combatData, {
+            eventKind: 'state_apply', round: Number(combatData?.回合 || 0), actorName: previewRuntime.unitName(actor), targetName: previewRuntime.unitName(target),
+            actionName, actionType: actionKind, actorControl, actionRole, actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
+            parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
+            result: moved ? 'applied' : 'no_effect', resultState: moved ? 'APPLIED' : 'NO_EFFECT', primaryOutcome: moved ? 'state_applied' : 'no_effect', duration: 0,
+            effectPrototype: prototype, factType: 'STATE', sourceEffectId, operation: 'STATE_APPLY',
+            meta: { source: 'structured_runtime', effectIndex, stateName, position: positionMove, resolutionReason: moved ? 'POSITION_MOVED' : 'POSITION_ALREADY', operation: 'STATE_APPLY' },
+          }));
+          return;
+        }
         // 冥想: its own key and recovery (BattlePreview beginMeditation).
         if (stateName === '冥想' && previewRuntime.beginMeditation) {
           const sat = previewRuntime.beginMeditation(target);
@@ -129800,6 +129979,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               },
             });
             target.状态效果[stateKey] = appliedState;
+            // 两档距离（T25）: a 位移执行 moves its recipient as well (BattlePreview positionShiftOf).
+            if (prototype === '位移执行' && previewRuntime.positionShiftOf) {
+              const role = target === actor ? 'self' : inferUnitSide(combatData, actor) === inferUnitSide(combatData, target) ? 'ally' : 'enemy';
+              const shift = previewRuntime.positionShiftOf({ ...effect, __位移接收者: role });
+              if (shift && previewRuntime.setUnitPosition(target, shift)) {
+                // 战报事实（POSITION shift）：位移把谁挪到了前排 / 后排。
+                facts.push(writeMechanicEvent(combatData, { eventKind: 'position_shift', actionName: actionName || '位移', actionRole: String(actionEvent?.actionRole || 'ACTIVE'), actorControl: String(actionEvent?.actorControl || 'AI'),
+                  actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor), targetId: previewRuntime.unitId(target), targetName: previewRuntime.unitName(target),
+                  actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
+                  result: shift === previewRuntime.POSITION_BACK ? 'back' : 'front', meta: { positionType: String(effect?.位移类型 || '').trim(), position: shift } }));
+              }
+            }
             // A state that moves the panel (封禁装备's 面板固定修正) takes effect at once.
             if (previewRuntime.statePanelChanges(appliedState)) target.final = buildCombatFinalStats(target, Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0));
             const chargeInterrupt = result === 'applied'
@@ -130017,6 +130208,22 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       });
       positionOnceRolledTargets.forEach(unit => spendPositionOnce(unit, ['dodge']));
       if (positionOnceAttacked) spendPositionOnce(actor, ['hit', 'target_reaction']);
+    }
+    // 两档距离（T25）: a strike that ran up (advanceWindup) leaves both sides engaged, hit or not — the attacker and every unit
+    // it struck at (an interceptor that stepped in is the one struck at).
+    if (positionOnceAttacked && Number(declaration?.advanceWindup || 0) > 0 && previewRuntime.setUnitPosition) {
+      previewRuntime.setUnitPosition(actor, previewRuntime.POSITION_FRONT);
+      const struckIds = new Set((Array.isArray(declaration?.targetIds) ? declaration.targetIds : []).map(String));
+      const struck = listCombatUnits(combatData).filter(unit => struckIds.has(String(previewRuntime.unitId(unit))));
+      struck.forEach(unit => previewRuntime.setUnitPosition(unit, previewRuntime.POSITION_FRONT));
+      // 战报事实（POSITION advance）：这一击先突进，赶路时间多给了对方应对的时间。
+      const travel = Number(declaration.advanceWindup);
+      facts.push(writeMechanicEvent(combatData, { eventKind: 'position_advance', actionName: '突进', actionRole: String(actionEvent?.actionRole || 'ACTIVE'), actorControl: String(actionEvent?.actorControl || 'AI'),
+        actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
+        targetId: previewRuntime.unitId(struck[0] || {}), targetName: previewRuntime.unitName(struck[0] || {}), targetIds: struck.map(unit => previewRuntime.unitId(unit)),
+        actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
+        result: 'advanced', meta: { travel, ratio: travel / Math.max(1e-9, Number(previewRuntime.ADVANCE_WINDUP_BASE) || 10), base: Number(previewRuntime.ADVANCE_WINDUP_BASE) || 10,
+          ownWindup: previewRuntime.actionWindup(actor, declaration, { travel: false }) } }));
     }
     const committedEquipmentPassiveTriggers = new Set();
     equipmentPassiveTriggerRows.forEach(row => {
@@ -131112,15 +131319,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       gateHook({ allyId: previewRuntime.unitId(unit), targetId: previewRuntime.unitId(target), attackerId: previewRuntime.unitId(attacker),
         gate: !previewRuntime.isBattleCapable(unit) || !structuredActorCanAct(unit, 'ACTIVE') ? 'CANNOT_ACT' : unit.蓄力技能 || previewRuntime.fusionChargeHost(combatData, unit) ? 'CHARGING'
           : previewRuntime.guardBrokenOf(unit, round) ? 'GUARD_BROKEN' : String(opportunity?.status || '').trim() !== 'PENDING' || Number(opportunity?.round || 0) !== round ? `ACTED:${String(opportunity?.status || 'NONE')}`
-            : previewRuntime.interceptWindupBudget(attacker, declaration, unit) < 0 ? 'TOO_FAST' : 'OK',
-        windup: previewRuntime.actionWindup(attacker, declaration), budget: previewRuntime.interceptWindupBudget(attacker, declaration, unit) });
+            : previewRuntime.interceptWindupBudget(attacker, declaration, unit, target) < 0 ? 'TOO_FAST' : 'OK',
+        windup: previewRuntime.actionWindup(attacker, declaration), budget: previewRuntime.interceptWindupBudget(attacker, declaration, unit, target) });
     }
     const candidates = listPrimaryCombatUnits(combatData).filter(unit => unit && unit !== target && !unit.召唤键 &&
       inferUnitSide(combatData, unit) === side && previewRuntime.isBattleCapable(unit) && structuredActorCanAct(unit, 'ACTIVE') &&
       !unit.蓄力技能 && !previewRuntime.fusionChargeHost(combatData, unit) && !previewRuntime.guardBrokenOf(unit, round) &&
       String(unit.__battleRuntime?.naturalOpportunity?.status || '').trim() === 'PENDING' &&
       Number(unit.__battleRuntime.naturalOpportunity.round || 0) === round &&
-      previewRuntime.interceptWindupBudget(attacker, declaration, unit) >= 0);
+      previewRuntime.interceptWindupBudget(attacker, declaration, unit, target) >= 0);
     if (!candidates.length) return null;
     const chosen = String(decisionRuntime.chooseInterceptor({
       worldSnapshot: combatData, sourceActorId: previewRuntime.unitId(attacker), targetId: previewRuntime.unitId(target), declaration,
@@ -132942,6 +133149,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         ensureArmourUnreleased(combatData);
         ensureSkillFusionMirrors(combatData);
         if (Number(combatData.回合) === 1) applyBattleInitiative(combatData);
+        syncBattlePositions(combatData);
         invalidateRouteUnitHashes(combatData);
         settleStaminaExhaustion(combatData);
         const queueTrace = runtime.actionQueueTrace;
@@ -133328,6 +133536,55 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               },
             });
           });
+        };
+        // 两档距离（T25，用户 11-18 选 A）：贴身时后撤，原本贴着的、在前的敌人可以趁转身追上来打一下——一个反击节点（打不打由它自己的
+        // 决策定），不必突进（转身那一刻还贴着：state.pursuit 跳过 withAdvanceWindup）。用位移魂技「脱离」走的不挨
+        // （positionClosesCounterWindow）；后撤之前就在前的敌人才追得上。
+        const enqueuePursuitWindows = ({ node, actor, shared, actionEvent, facts = [] }) => {
+          const retreated = String(shared?.declaration?.releaseSlot || '') === '后撤' &&
+            facts.some(event => event?.meta?.resolutionReason === 'POSITION_MOVED' && event?.meta?.position === previewRuntime.POSITION_BACK);
+          if (!retreated || !structuredActorPhysicallyAlive(actor)) return;
+          const round = Number(combatData?.回合 || 0);
+          if (previewRuntime.positionClosesCounterWindow(actor, round)) return;
+          const actorSide = inferUnitSide(combatData, actor);
+          const pursuers = listCombatUnits(combatData).filter(unit => unit && unit !== actor && inferUnitSide(combatData, unit) && inferUnitSide(combatData, unit) !== actorSide &&
+            previewRuntime.unitPosition(unit) === previewRuntime.POSITION_FRONT && structuredActorCanAct(unit, 'COUNTER') &&
+            !previewRuntime.isCharging(combatData, unit) && !previewRuntime.guardBrokenOf(unit, round));
+          for (const pursuer of pursuers) {
+            if (queue.room({ actorTurnSequence: node.actorTurnSequence, parentActionSequence: node.parentActionSequence || node.actionSequence }) < 12) return;
+            const pursuerId = previewRuntime.unitId(pursuer);
+            const event = writeMechanicEvent(combatData, { eventKind: 'position_pursuit', actionName: '追击',
+              actorId: pursuerId, actorName: previewRuntime.unitName(pursuer), targetId: previewRuntime.unitId(actor), targetName: previewRuntime.unitName(actor),
+              targetIds: [previewRuntime.unitId(actor)].filter(Boolean), actionRole: 'REACTION', actorControl: 'SYSTEM',
+              sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
+              result: 'opened', meta: { reason: 'RETREAT_FROM_ENGAGED' } });
+            queue.enqueue({
+              actorEntry: { char: pursuer, side: inferUnitSide(combatData, pursuer) },
+              actorControl: 'AI',
+              actorTurnSequence: node.actorTurnSequence,
+              parentActionSequence: node.parentActionSequence || node.actionSequence,
+              phasePriority: 60,
+              grantId: `pursuit:${actionEvent.actionId}:${pursuerId}:1`,
+              nodeKind: 'COUNTER',
+              actionRole: 'COUNTER',
+              sourceActionId: actionEvent.actionId,
+              sourceActorId: previewRuntime.unitId(actor),
+              grantType: 'COUNTER_WINDOW',
+              validTargetIds: [previewRuntime.unitId(actor)].filter(Boolean),
+              state: {
+                sourceActorId: previewRuntime.unitId(actor),
+                sourceActorName: previewRuntime.unitName(actor),
+                sourceActorSide: actorSide,
+                incomingAction: shared.declaration,
+                parentActionEvent: actionEvent,
+                reactionEvent: null,
+                counterWindowEvent: event,
+                pursuit: true,
+                engagementDepth: Number(node?.state?.engagementDepth || 0) + 1,
+                counterCounts: { ...engagementCounterCounts(node) },
+              },
+            });
+          }
         };
         const registerPredictedEvidence = (actionEvent, decisionResult) => {
           if (!actionEvent?.actionId || !Array.isArray(decisionResult?.selected?.predictedOutcomeEvidence)) return;
@@ -135065,6 +135322,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 logs.push(`[破防] ${previewRuntime.unitName(struck)}被${previewRuntime.unitName(actor)}破防，本回合无法应对与反击。`);
               }
               enqueueCounterWindows({ node, actor, shared, actionEvent: settlement.actionEvent, facts: settlement.facts, guardRound });
+              enqueuePursuitWindows({ node, actor, shared, actionEvent: settlement.actionEvent, facts: settlement.facts });
               // 连续行动: a natural action that leaves its turn's windup total under CONTINUOUS_ACTION_BUDGET lets the actor act
               // again in the same turn, choosing among actions that still fit (or passing). Reactions and counters to it resolve
               // first; a turn-ending action (defend, evade, pass) or a charged release ends the chain.
@@ -135678,7 +135936,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               consumeAutonomousSummonWindow(actor, node);
               continue;
             }
-            const castTime = previewRuntime.actionWindup(actor, declaration);
+            // 两档距离（T25）: a melee strike at a unit it is not engaged with runs up first — the declaration carries the travel
+            // (BattlePreview withAdvanceWindup), widening every answer's window; a charge is judged on the move's own windup.
+            // A pursuit (enqueuePursuitWindows) strikes while the two are still close: no run-up (the decision, seeing the one pulling
+            // back already in back, may have stamped one), and so it leaves the gap the retreat opened.
+            if (node?.state?.pursuit === true && declaration && declaration.advanceWindup !== undefined) {
+              const { advanceWindup, ...close } = declaration;
+              declaration = close;
+            } else if (previewRuntime.withAdvanceWindup) declaration = previewRuntime.withAdvanceWindup(combatData, actor, declaration);
+            const castTime = previewRuntime.actionWindup(actor, declaration, { travel: false });
             if (!storedCharge && (node.nodeKind === 'ACTIVE' || isCooperativeAssist) && castTime > naturalActionBudget) {
               // 融合蓄力: the partners must have this round's turn to give; they give it now and every turn until the release.
               const chargeFusion = node.nodeKind === 'ACTIVE' && String(declaration?.actionKind || '').trim() === 'RELEASE_SKILL'
