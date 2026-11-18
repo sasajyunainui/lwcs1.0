@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:02d88b6a5c41ed8f960db322273e32175a96625f93bfba05bc1d6e6609450cab|cockpit/designer-model.js:cbbb8156854ed85b560637420324e21db9e899fb9cbef68ba1ccca6d0d217fc2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:27b6ca3f2833c031b38869085a2b66f37285bd92de7a85bb9f7a945ecbb56486|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:302bd8b216533548297d71de900e0f78199fbbe047291aa26ee5ba1198e6867f|BattleRuntime_Module.js:762928c28c62934808485d1e0aa795d3f1916bc4ff3fe9faf84ddba083b992bf|BattleReport_Module.js:29c76a42427d963b5201864baa721e6be1c813ec3838dd6d1ecf3e909bfab823|BattleUI_Module.js:bbdd909bb8ba56a04bc447dde50a41befe38b83153e74703a97a2abf36785e61|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:02d88b6a5c41ed8f960db322273e32175a96625f93bfba05bc1d6e6609450cab|cockpit/designer-model.js:cbbb8156854ed85b560637420324e21db9e899fb9cbef68ba1ccca6d0d217fc2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:27b6ca3f2833c031b38869085a2b66f37285bd92de7a85bb9f7a945ecbb56486|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:302bd8b216533548297d71de900e0f78199fbbe047291aa26ee5ba1198e6867f|BattleRuntime_Module.js:762928c28c62934808485d1e0aa795d3f1916bc4ff3fe9faf84ddba083b992bf|BattleReport_Module.js:2c422dc4fe1f1640fb0c03ed68a0b52c4a6020f021b9a9125d560937adbe94bf|BattleUI_Module.js:bbdd909bb8ba56a04bc447dde50a41befe38b83153e74703a97a2abf36785e61|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -164400,21 +164400,22 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     ]),
   });
   const reportAuditAttestations = new WeakMap();
-  /* 战报可见性（T26 第 2 批）——待用户拍板，改这里就能切：
-     engagementTerms（拍板 10，交手约定）：'PUBLIC' 双方公示（默认，推荐）| 'OWN_SIDE' 只公示我方单位的约定。
-     enemyReasoning（拍板 1，敌方出招推导）：'INTENT_UNTIL_END' 战斗进行中只给意图和结果、战斗结束后解锁全部（默认，推荐）|
-       'FULL' 一直全部可见（次优手仍写「另一方案」）| 'INTENT_ONLY' 始终只给意图和结果。 */
+  /* 战报可见性（T26 第 2 批起；11-18 用户拍板）：
+     engagementTerms（交手约定）：'PUBLIC' 双方公示（11-18 用户拍板维持公示：约定当众说定）| 'OWN_SIDE' 只公示我方单位的约定。
+     enemyReasoning（敌方出招推导给玩家看到什么程度）：'HIDDEN_UNTIL_END'（11-18 用户拍板，默认；原话「战中意图也不该看吧」）
+       战斗进行中敌方的意图、推导、自估胜算（含档位）玩家一概看不到，只看动作和结果，没被我方看破的佯装也只看到摆出蓄力的架势；
+       战斗结束后在判定依据里全部解锁 | 'INTENT_UNTIL_END' 战中只给意图 | 'FULL' 一直可见 | 'INTENT_ONLY' 始终只给意图。
+     给 AI 的那一套不走这里（11-18 用户拍板「AI 能看敌方意图和理由」）：见 audience 'AI' 的投影（aiStructuredSummary）。 */
   const REPORT_VISIBILITY = Object.freeze({
     engagementTerms: 'PUBLIC',
-    enemyReasoning: 'INTENT_UNTIL_END',
+    enemyReasoning: 'HIDDEN_UNTIL_END',
   });
-  /* 给 AI 的出招理由范围（T26 第 3 批，拍板 2）——待用户拍板：
-     'LAST_TWO_ROUNDS' 最后两回合、至多 6 条（默认，维持现状）| 'KEY_PER_ROUND' 每回合挑一手关键的（意图有变化的优先，
-     其次主导分项差最大的），全场一条线（推荐）| 'ALL' 全部。 */
-  const REPORT_AI_REASON_SCOPE = 'LAST_TWO_ROUNDS';
-  /* 自估胜算怎么展示（T26 第 3 批，拍板 4）——待用户拍板：
-     'PERCENT' 精确百分比（默认，维持现状）| 'TIER' 档位（稳占上风 / 占优 / 势均力敌 / 处于劣势 / 危急；开发视图仍给精确数字，推荐）。 */
-  const REPORT_WIN_DISPLAY = 'PERCENT';
+  /* 给 AI 的出招理由范围（11-18 用户拍板：'ALL' 全部给）| 'KEY_PER_ROUND' 每回合挑一手关键的（意图有变化的优先，其次主导分项差最大的）|
+     'LAST_TWO_ROUNDS' 最后两回合、至多 6 条（原先的写法）。 */
+  const REPORT_AI_REASON_SCOPE = 'ALL';
+  /* 自估胜算怎么展示（11-18 用户拍板：'TIER' 档位，AI 和玩家都用档位——稳占上风 / 占优 / 势均力敌 / 处于劣势 / 危急，开发视图保留精确数字）|
+     'PERCENT' 精确百分比（原先的写法）。 */
+  const REPORT_WIN_DISPLAY = 'TIER';
   // 测试用覆盖（覆盖测试与样例脚本切换上面两个开关；游戏里不设）：root.__LWCS_REPORT_OPTIONS__ = { aiReasonScope, winDisplay }。
   function reportOption(name, fallback) {
     const value = root.__LWCS_REPORT_OPTIONS__?.[name];
@@ -165670,10 +165671,19 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         judgement: null, visibility };
     }
     if (kind === 'pass' && text(event?.actionType).toUpperCase() === 'FEINT') {
+      // 藏起来的佯装（feintConcealed）：玩家这边只是一次蓄力架势。
+      if (feintConcealed(actorId, (Array.isArray(meta?.feint?.seenBy) ? meta.feint.seenBy : []).map(text))) {
+        return { kind: 'CHARGE_POSE', phase: 'posed', subjectIds: [actorId].filter(Boolean),
+          values: { skill: playerSafeText(text(meta?.feint?.skill), directory) }, judgement: null, visibility };
+      }
       return { kind: 'FEINT', phase: 'declared', subjectIds: [actorId].filter(Boolean),
         values: { skill: playerSafeText(text(meta?.feint?.skill), directory), seenBy: mechanicNames(directory, meta?.feint?.seenBy) }, judgement: null, visibility };
     }
     if (kind === 'charge_interrupt' && text(event?.ruleCode) === 'FEINT_ENDED') {
+      if (feintConcealed(actorId, currentFeintConceal.seenByAction.get(text(event?.actionId || event?.sourceActionId)))) {
+        return { kind: 'CHARGE_POSE', phase: 'withdrawn', subjectIds: [actorId].filter(Boolean),
+          values: { skill: playerSafeText(text(event?.actionName), directory) }, judgement: null, visibility };
+      }
       return { kind: 'FEINT', phase: 'unmet', subjectIds: [actorId].filter(Boolean),
         values: { skill: playerSafeText(text(event?.actionName), directory) }, judgement: null, visibility };
     }
@@ -165682,7 +165692,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       return {
         kind: 'CLASH', phase: result || text(meta?.clashResult).toLowerCase(), subjectIds: [actorId, targetId].filter(Boolean),
         // 佯装迎击时运行时把保留的招式名带上「（佯装蓄力）」后缀，句子里已经写了「佯装时保留的」，去掉免得重复。
-        values: { move: playerSafeText(text(meta?.moveName), directory).replace(meta?.feintMeet === true ? /（佯装蓄力）$/u : /$^/u, ''), incomingMove: playerSafeText(text(meta?.incomingMoveName), directory), feintMeet: meta?.feintMeet === true },
+        values: { move: playerSafeText(text(meta?.moveName), directory).replace(meta?.feintMeet === true ? /（佯装蓄力）$/u : /$^/u, ''), incomingMove: playerSafeText(text(meta?.incomingMoveName), directory),
+          // 藏起来的佯装被冲上来：玩家这边就是一次普通的对轰。
+          feintMeet: meta?.feintMeet === true && !feintConcealed(actorId) },
         judgement: {
           check: '对轰',
           inputs: { ...(Number.isFinite(ratio) ? { 威力比: ratio } : {}), ...(Number.isFinite(threshold) ? { 门槛: threshold } : {}), 赶上时机: meta?.clashInTime !== false },
@@ -165727,9 +165739,27 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   /* 蓄力被放下（T26 第 3b 批）：运行时的 charge_interrupt 按原因写，不再一律「被中止」。
      佯装的蓄力是不是佯装，看它的动作 id 是不是一次佯装行动（build 开头从账本收进 currentFeintActionIds）。 */
   let currentFeintActionIds = new Set();
+  /* 佯装对玩家藏不藏（T26 第 3c 批，11-18 用户拍板「战中意图也不该看吧」）：敌方的佯装，我方没人看破、战斗还没结束、给玩家看时，
+     它就只是一次「摆出蓄力的架势」——是佯装、有没有人冲上来、拿保留的招迎击，这些都不写；战斗结束后解锁。
+     build 开头填：active（这次构建要不要藏）、seenByAction（佯装动作 id → 看破者 id）、seenByActor（行动者 → 最近一次佯装的看破者）、directory。 */
+  let currentFeintConceal = { active: false, seenByAction: new Map(), seenByActor: new Map(), directory: new Map() };
+  function feintConcealed(actorId = '', seenBy = null) {
+    if (!currentFeintConceal.active) return false;
+    const directory = currentFeintConceal.directory;
+    if (text(entityEntry(directory, actorId)?.side) !== 'enemy') return false;
+    const seers = Array.isArray(seenBy) ? seenBy : currentFeintConceal.seenByActor.get(text(actorId)) || [];
+    return !seers.some(id => text(entityEntry(directory, id)?.side) === 'player');
+  }
+  // 藏起来的佯装保留的那一招叫「X（佯装蓄力）」（BattlePreview chargeMeetSkill）：给玩家的文字去掉后缀；佯装这一动作写成蓄力架势。
+  function concealFeintName(value = '', event = {}) {
+    const line = String(value ?? '');
+    if (!currentFeintConceal.active || !/佯装蓄力/.test(line) || !feintConcealed(text(event?.actorId))) return line;
+    return line.replace(/（佯装蓄力）/g, '').replace(/佯装蓄力·?/g, '蓄力');
+  }
   function chargeInterruptText(event = {}, actor = '', action = '') {
     const code = text(event?.ruleCode);
-    const feint = currentFeintActionIds.has(text(event?.actionId || event?.sourceActionId));
+    const feintActionId = text(event?.actionId || event?.sourceActionId);
+    const feint = currentFeintActionIds.has(feintActionId) && !feintConcealed(event?.actorId, currentFeintConceal.seenByAction.get(feintActionId));
     const skill = action ? `【${action}】` : '';
     if (code === 'CHARGE_ABANDONED_TO_ANSWER') return feint ? `${actor}收起佯装${skill}，转去应对` : `${actor}放下蓄力中的${skill}，转去应对`;
     if (code === 'CHARGE_CUT_SHORT_TO_ANSWER') {
@@ -165772,6 +165802,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (mechanic.phase === 'interrupted') return `${values.unit || actor}的冥想被${values.by || '对方'}打断，回合末只恢复一半`;
       if (mechanic.phase === 'recovered') return `${values.unit || actor}冥想额外恢复${values.resource || '资源'}${displayNumber(values.amount)}点`;
       return `${values.unit || target || actor}坐下冥想`;
+    }
+    if (mechanic.kind === 'CHARGE_POSE') {
+      if (mechanic.phase === 'withdrawn') return `${actor}收起蓄力的架势，没有出手`;
+      return `${actor}摆出蓄力${values.skill ? `【${values.skill}】` : ''}的架势`;
     }
     if (mechanic.kind === 'FEINT') {
       if (mechanic.phase === 'unmet') return `${actor}收回佯装时保留的【${values.skill || '魂技'}】，没人冲上来`;
@@ -165880,7 +165914,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           : `${actor}主动让过这次行动机会`;
       }
       // 佯装蓄力、提议罢手也以 pass 结束本次行动机会，但都不是让过（T26 第 1 批）；罢手的目标是对方全体，不写「作用于N个目标」。
-      if (actionType === 'FEINT') return `${actor}佯装蓄力`;
+      if (actionType === 'FEINT') return feintConcealed(text(event?.actorId)) ? `${actor}摆出蓄力的架势` : `${actor}佯装蓄力`;
       if (actionType === 'TRUCE') return `${actor}提议罢手`;
       if (kind === 'pass') return `${actor}主动让过这次行动机会`;
       if (actionType === 'WITHDRAW') return `${actor}选择离场（认输或撤离）`;
@@ -166200,7 +166234,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       stateName: movement ? unique(movement.moves.map(move => playerStateName(move.stateName, directory))).join('、')
         : persistentRemovedNames === null ? playerStateName(stateName(event), directory) : persistentRemovedNames.join('、'),
       // 事实摘要是战报各处文字的来源（回合概览、交锋、因果链），小数统一按报告的数字格式。
-      summary: formatTextNumbers(summarizeEvent(event, directory)),
+      // 藏起来的佯装（feintConcealed）：它保留的那一招带着「（佯装蓄力）」的名字出手，玩家这边去掉。
+      summary: formatTextNumbers(concealFeintName(summarizeEvent(event, directory), event)),
       // 机制事实（T26 第 2 批）：没有机制的事件为 null。
       mechanic: buildMechanic(event, directory),
       numericTokens: numericTokens(event, visibilityMode),
@@ -168702,7 +168737,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           ? `${actor}没有采取额外应对`
           : `${actor}主动让过这次行动机会`;
       }
-      if (actionType === 'FEINT') return `${actor}佯装蓄力`;
+      if (actionType === 'FEINT') return feintConcealed(text(rawEvent?.actorId)) ? `${actor}摆出蓄力的架势` : `${actor}佯装蓄力`;
       if (actionType === 'TRUCE') return `${actor}提议罢手`;
       if (actionType === 'WITHDRAW') return `${actor}想要离场`;
       if (['DEFEND', 'EVADE', 'OBSERVE'].includes(actionType) || !target || target === actor) {
@@ -168845,7 +168880,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           byResponder: text(entry.fact.actorId) !== text(exchange?.actorId),
           text: segmentPrefix + text(entry.fact.summary),
           /* 玩家版没有覆盖到的事件类型回落到 AI 版，宁可稍显生硬也不能凭空造句。 */
-          playerText: segmentPrefix + (playerStepText(entry.raw, entry.fact) || text(entry.fact.summary)),
+          playerText: segmentPrefix + concealFeintName(playerStepText(entry.raw, entry.fact) || text(entry.fact.summary), entry.raw),
           numericTokens: Array.isArray(entry.fact.numericTokens) ? entry.fact.numericTokens : [],
         };
       })
@@ -169756,7 +169791,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return '';
   }
 
-  function latestSideIntent(decisions = [], sideUnits = [], directory = new Map(), terminal = {}, side = '', visibilityMode = 'PLAYER') {
+  function latestSideIntent(decisions = [], sideUnits = [], directory = new Map(), terminal = {}, side = '', visibilityMode = 'PLAYER', audience = 'PLAYER') {
     if (terminal?.terminal === true) {
       const winner = text(terminal?.winner);
       const terminalReason = text(terminal?.terminalReason || terminal?.status);
@@ -169780,15 +169815,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       }
       return '战斗已经结束，转入战后处置';
     }
+    // 敌方打算（11-18 用户拍板）：战斗中给玩家的一侧不写对方的意图、胜算与围绕谁打，只说看不出来；给 AI 的照写。
+    const concealment = enemyReasonConcealment(side, visibilityMode, terminal?.terminal === true, audience);
+    if (concealment === 'ALL') return '对方的打算看不出来，只能从动作判断';
     const names = new Set(sideUnits.map(unit => unit.name));
     const latest = [...decisions].reverse().find(decision => names.has(publicEntityName(directory, decision?.actorId, decision?.actorId)));
     if (!latest) return '保留当前战术，等待下一次自然行动';
     /* 新估值的出招记录（T24 第 4 步）：引擎自己算出的意图与自估胜算，不是战报反推。 */
     if (latest?.reasonRecord?.intent && !latest.reasonRecord.error) {
       const win = Number(latest.reasonRecord.win);
-      // 敌方自估胜算跟推导同口径（拍板 1：战斗中只给意图）；档位开关（拍板 4）下写档位（T26 第 3 批）。
-      const winHidden = visibilityMode !== 'DEVELOPER' && side === 'enemy' && (REPORT_VISIBILITY.enemyReasoning === 'INTENT_ONLY' ||
-        REPORT_VISIBILITY.enemyReasoning === 'INTENT_UNTIL_END' && terminal?.terminal !== true);
+      // 敌方自估胜算跟推导同口径（只给意图时不给胜算）；档位（11-18 用户拍板 TIER）下写档位。
+      const winHidden = concealment === 'INTENT';
       const winText = !Number.isFinite(win) || winHidden ? ''
         : visibilityMode !== 'DEVELOPER' && reportOption('winDisplay', REPORT_WIN_DISPLAY) === 'TIER' ? `（自估局面：${winTier(win)}）` : `（自估胜算 ${Math.round(win * 100)}%）`;
       return `最近一手意图：${text(latest.reasonRecord.intent)}${winText}`;
@@ -169921,13 +169958,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
      KEY_PER_ROUND 每回合一手——意图和这名行动者上一手不同的优先，其次主导分项差最大的；ALL 全部。
      依据（T26 第 3 批）：这一手 factRefs 指向的机制事实摘要（交手约定已在 mechanicFacts 里，不重复），放在 basis。 */
   const RECENT_REASON_LIMIT = 6;
+  // 读者是 AI（aiStructuredSummary）：敌方的意图、理由、依据、档位胜算都给，战斗中也给（11-18 用户拍板）。
   function recentReasonLines(draft = {}, directory = new Map(), visibilityMode = 'PLAYER', decisionRefs = new Map(), factsById = new Map()) {
     const battleOver = draft?.terminalResult?.terminal === true;
     const rows = (Array.isArray(draft?.decisionAudit) ? draft.decisionAudit : [])
       .filter(decision => decision?.reasonRecord && !decision.reasonRecord.error && text(decision.reasonRecord.aiLine))
       .map(decision => {
         const side = text(entityEntry(directory, decision?.actorId)?.side);
-        const projected = publicReasonRecord({ ...decision.reasonRecord, factRefs: decisionRefs.get(decision) || [] }, side, visibilityMode, battleOver);
+        const projected = publicReasonRecord({ ...decision.reasonRecord, factRefs: decisionRefs.get(decision) || [] }, side, visibilityMode, battleOver, 'AI');
         const lead = Math.abs(number(decision.reasonRecord?.lead?.[0]?.d, 0));
         const basis = unique((projected?.factRefs || []).map(id => factsById.get(id))
           .filter(fact => fact && text(fact?.mechanic?.kind) !== 'ENGAGEMENT_TERMS').map(fact => text(fact.summary)).filter(Boolean));
@@ -169973,7 +170011,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     };
   }
 
-  function buildAiSummaryInput(finalSummary = {}, roundOverview = [], recentReasons = [], truceResponse = '', mechanicFacts = {}) {
+  function buildAiSummaryInput(finalSummary = {}, roundOverview = [], recentReasons = [], truceResponse = '', mechanicFacts = {}, aiNextIntents = null) {
     const compactUnit = unit => ({
       name: unit.name,
       hp: unit.hp,
@@ -170001,7 +170039,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       trend: text(finalSummary?.trend),
       risks: [...(finalSummary?.risks || [])],
       tacticalWindows: [...(finalSummary?.tacticalWindows || [])],
-      nextIntents: cloneValue(finalSummary?.nextIntents || {}),
+      // 给 AI 的下一意图（敌方那侧也写，11-18 用户拍板）；玩家看的 finalSummary.nextIntents 战中不写敌方打算。
+      nextIntents: cloneValue(aiNextIntents || finalSummary?.nextIntents || {}),
       recentRoundSummaries: roundOverview.slice(-3).map(row => ({ round: row.round, summary: row.summary })),
       recentReasons: (Array.isArray(recentReasons) ? recentReasons : []).map(row => ({ round: row.round, actor: row.actor, line: row.line,
         ...(Array.isArray(row.basis) && row.basis.length ? { basis: row.basis.map(text) } : {}) })),
@@ -170391,10 +170430,24 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return text(line).replace(/自估胜算 (?:\d+%|未知)/u, tier ? `自估局面：${tier}` : '自估局面：未知');
   }
 
-  /* 出招记录的可见投影：玩家看得到己方的完整推导；敌方只给选中手的推导，次优手是什么招不给（那是没亮出来的底牌）。
+  /* 敌方推导对这一读者藏到什么程度（11-18 用户拍板）：'ALL' 一概不给（意图、推导、胜算都没有）| 'INTENT' 只给意图 | 'NONE' 不藏。
+     audience 'AI'（aiStructuredSummary）：敌方意图和理由都给，战斗中也给（用户「AI 能看敌方意图和理由」）；开发视图不藏。 */
+  function enemyReasonConcealment(actorSide = '', visibilityMode = 'PLAYER', battleOver = false, audience = 'PLAYER') {
+    if (visibilityMode === 'DEVELOPER' || audience === 'AI' || actorSide !== 'enemy') return 'NONE';
+    const mode = REPORT_VISIBILITY.enemyReasoning;
+    if (mode === 'FULL') return 'NONE';
+    if (mode === 'INTENT_ONLY') return 'INTENT';
+    if (battleOver === true) return 'NONE';
+    return mode === 'INTENT_UNTIL_END' ? 'INTENT' : 'ALL';
+  }
+
+  /* 出招记录的可见投影：玩家看得到己方的完整推导；敌方战斗中一概不给（HIDDEN_UNTIL_END），结束后给选中手的推导，
+     次优手是什么招不给（那是没亮出来的底牌，给 AI 也写「另一方案」）。
      factRefs（T26 第 3 批）：这一手依据的机制事实 id，跟推导同口径可见（敌方推导不可见时也不给）。 */
-  function publicReasonRecord(record = null, actorSide = '', visibilityMode = 'PLAYER', battleOver = false) {
+  function publicReasonRecord(record = null, actorSide = '', visibilityMode = 'PLAYER', battleOver = false, audience = 'PLAYER') {
     if (!record || typeof record !== 'object' || record.error) return null;
+    const concealment = enemyReasonConcealment(actorSide, visibilityMode, battleOver, audience);
+    if (concealment === 'ALL') return null;
     const refs = (Array.isArray(record.factRefs) ? record.factRefs : []).map(text).filter(Boolean);
     const tierMode = visibilityMode !== 'DEVELOPER' && reportOption('winDisplay', REPORT_WIN_DISPLAY) === 'TIER';
     const winOut = win => tierMode ? null : win ?? null;
@@ -170403,9 +170456,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       return { intent: text(record.intent), win: winOut(record.win), ...tierOut(record.win), aiLine: formatTextNumbers(winDisplayLine(text(record.aiLine), record.win, visibilityMode)),
         derivation: (record.derivation || []).map(line => formatTextNumbers(text(line))), factRefs: refs };
     }
-    // 敌方：INTENT_UNTIL_END 战斗进行中只给意图和结果（选了哪手、意图），结束后解锁；INTENT_ONLY 始终如此（REPORT_VISIBILITY）。
-    const intentOnly = REPORT_VISIBILITY.enemyReasoning === 'INTENT_ONLY' || (REPORT_VISIBILITY.enemyReasoning === 'INTENT_UNTIL_END' && battleOver !== true);
-    if (intentOnly) {
+    // 敌方只给意图（INTENT_UNTIL_END 战中、INTENT_ONLY 始终）：选了哪手、意图，没有推导与胜算。
+    if (concealment === 'INTENT') {
       return { intent: text(record.intent), win: null, aiLine: formatTextNumbers(text(record.aiLine).split('；')[0]), derivation: [], factRefs: [] };
     }
     const runner = text(record?.runnerUp?.label);
@@ -170420,6 +170472,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     visibilityMode = 'PLAYER',
     actorSide = '',
     battleOver = false,
+    actorId = '',
   ) {
     if (visibilityMode === 'DEVELOPER') return cloneValue(trace);
     const visibleCandidates = (Array.isArray(trace?.candidates) ? trace.candidates : [])
@@ -170433,7 +170486,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         ? visibleCandidates.length
         : Math.max(0, number(trace?.candidateCount, 0)),
       candidates: visibleCandidates.map(candidate => ({
-        name: text(candidate?.name),
+        name: concealFeintName(text(candidate?.name), { actorId }),
         targetNames: unique(candidate?.targetNames || []).map(text).filter(Boolean),
         status: text(candidate?.status),
         reason: text(candidate?.reasonPlayerText),
@@ -170455,8 +170508,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const projected = cloneValue(node);
       const primaryActorSide = text(entityEntry(directory, node?.actorId)?.side);
       projected.decision = node?.decision
-        ? projectDecisionTraceForVisibility(node.decision, visibilityMode, primaryActorSide, battleOver)
+        ? projectDecisionTraceForVisibility(node.decision, visibilityMode, primaryActorSide, battleOver, text(node?.actorId))
         : null;
+      if (projected.action && typeof projected.action === 'object') projected.action.name = concealFeintName(text(projected.action.name), { actorId: text(node?.actorId) });
       projected.decisions = (Array.isArray(node?.decisions) ? node.decisions : []).map(row => {
         const actorId = text(row?.actorId);
         return {
@@ -170469,6 +170523,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             visibilityMode,
             text(entityEntry(directory, actorId)?.side),
             battleOver,
+            actorId,
           ),
           lostOpportunityReason: text(row?.lostOpportunityReason),
         };
@@ -170588,7 +170643,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             ),
           }));
         const alternatives = comparisonRows.map(({ candidate, comparison }) => ({
-          name: text(candidate?.name),
+          name: concealFeintName(text(candidate?.name), { actorId }),
           targetNames: unique(candidate?.targetNames || []).map(text).filter(Boolean),
           status: text(candidate?.status),
           reason: text(comparison.reason),
@@ -170681,7 +170736,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             narrowing: publicNarrowing,
           },
           selected: {
-            name: selectedName,
+            name: concealFeintName(selectedName, { actorId }),
             targetNames: decisionKind === 'LOST_OPPORTUNITY'
               ? []
               : unique(
@@ -171098,7 +171153,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return result;
   }
 
-  function publicAiSummary(summary = {}, roundOverview = [], recentReasons = [], truceResponse = '', mechanicFacts = null) {
+  // aiNextIntents：给 AI 的下一意图（含敌方打算）；没有就用 summary 里的（玩家口径）。
+  function publicAiSummary(summary = {}, roundOverview = [], recentReasons = [], truceResponse = '', mechanicFacts = null, aiNextIntents = null) {
     const compactUnit = unit => ({
       name: text(unit?.name),
       hp: number(unit?.hp, 0),
@@ -171128,8 +171184,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       risks: [...(summary?.risks || [])].map(text).filter(Boolean),
       tacticalWindows: [...(summary?.tacticalWindows || [])].map(text).filter(Boolean),
       nextIntents: {
-        player: text(summary?.nextIntents?.player),
-        enemy: text(summary?.nextIntents?.enemy),
+        player: text(aiNextIntents?.player || summary?.nextIntents?.player),
+        enemy: text(aiNextIntents?.enemy || summary?.nextIntents?.enemy),
       },
       recentRoundSummaries: (Array.isArray(roundOverview) ? roundOverview : [])
         .slice(-3)
@@ -171223,7 +171279,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       narrativeChain: (Array.isArray(report?.narrativeChain) ? report.narrativeChain : [])
         .map(publicNarrativeNode),
       aiStructuredSummary: publicAiSummary(finalSummary, roundOverview, report?.aiStructuredSummary?.recentReasons, report?.aiStructuredSummary?.truceResponse,
-        report?.aiStructuredSummary?.mechanicFacts),
+        report?.aiStructuredSummary?.mechanicFacts, report?.aiStructuredSummary?.nextIntents),
       battleHeadline: text(report?.battleHeadline),
       // 机制事实（T26 第 2 批）：已按可见性投影。
       mechanicFacts: cloneValue(Array.isArray(report?.mechanicFacts) ? report.mechanicFacts : []),
@@ -171248,6 +171304,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 佯装行动的动作 id（chargeInterruptText 用）：本次构建内有效。
     currentFeintActionIds = new Set(ledger.filter(event => text(event?.actionType).toUpperCase() === 'FEINT' && ['action_start', 'pass'].includes(text(event?.eventKind)))
       .map(event => text(event?.actionId)).filter(Boolean));
+    {
+      const feintPasses = ledger.filter(event => text(event?.eventKind) === 'pass' && text(event?.actionType).toUpperCase() === 'FEINT');
+      const seersOf = event => (Array.isArray(event?.meta?.feint?.seenBy) ? event.meta.feint.seenBy : []).map(text).filter(Boolean);
+      currentFeintConceal = {
+        active: visibilityMode !== 'DEVELOPER' && REPORT_VISIBILITY.enemyReasoning !== 'FULL' &&
+          (REPORT_VISIBILITY.enemyReasoning === 'INTENT_ONLY' || draft?.terminalResult?.terminal !== true),
+        seenByAction: new Map(feintPasses.map(event => [text(event?.actionId), seersOf(event)])),
+        // 行动者按原始 id 与公开 id 各记一份（因果链、判定依据里用的是公开 id）。
+        seenByActor: new Map(feintPasses.flatMap(event => [[text(event?.actorId), seersOf(event)], [text(publicEntityId(directory, event?.actorId)), seersOf(event)]])),
+        directory,
+      };
+    }
     const factRegistry = ledger.map(event => buildFact(event, visibilityMode, directory, actionReferences));
     const factsById = new Map(factRegistry.map(fact => [fact.factId, fact]));
     const sourceEventsByFactId = new Map(ledger.map(event => [text(event?.eventId), event]));
@@ -171368,8 +171436,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       remainingHpById: buildRemainingHpIndex(draft),
       decisionRefs,
     });
+    // 给 AI 的下一意图（11-18 用户拍板：AI 能看敌方意图）：同一套写法，读者换成 AI；玩家那份在 finalSummary.nextIntents 里。
+    const aiNextIntents = {
+      player: latestSideIntent(draft?.decisionAudit || [], finalSummary?.sides?.player?.units || [], directory, finalSummary?.terminalResult || {}, 'player', visibilityMode, 'AI'),
+      enemy: latestSideIntent(draft?.decisionAudit || [], finalSummary?.sides?.enemy?.units || [], directory, finalSummary?.terminalResult || {}, 'enemy', visibilityMode, 'AI'),
+    };
     const aiSummaryInput = buildAiSummaryInput(finalSummary, roundOverview, recentReasonLines(draft, directory, visibilityMode, decisionRefs, factsById),
-      text(latestTruceAnswer?.summary), aiMechanicFacts(factRegistry));
+      text(latestTruceAnswer?.summary), aiMechanicFacts(factRegistry), aiNextIntents);
     const pipelineStats = buildPipelineStats(narrativeChain);
     const decisionExplanations = buildDecisionTimeExplanations(
       narrativeChain,
