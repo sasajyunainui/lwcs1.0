@@ -2468,6 +2468,10 @@
       if (Object.values(states).some(state => Object.keys(state.面板修改比例 || {}).length || Object.keys(state.面板固定修正 || {}).length)) {
         projected.final = { ...preview.buildNumericCombatStats(projected, Number(worldSnapshot?.当前世界tick ?? worldSnapshot?.当前tick ?? 0)) };
       }
+      // 规则 C 的上限加成记账（11-18）：推想出来的敌方单位是新建的，没带 __生命上限加成 等记账字段，它的当前值已经是战斗视角
+      //（按看到的比例摆好）。不补记账的话，推演里第一次同步（r10RefreshPanel、状态到期重算面板）会把看得见的上限加成当成新加的，
+      // 再给当前值加一遍。这里只记账、不动当前值。
+      preview.syncStaminaMaxGain(projected, { credit: false });
       return projected;
     };
     const participants = worldSnapshot?.参战者 || {};
