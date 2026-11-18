@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:dac188893de98943232f4611837611e5921f3afa94bde4a6952a30f30634cabe|MVU_Schema_Runtime.js:49b19d46acb65daa6331a69604b36c5ea833c157c70b633975c015ff4953374a|BattlePreview_Module.js:0d5c3af412e77cfd84f93dba2598f826c1a988856d12ea9be220fee9bf9d4a8c|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:302bd8b216533548297d71de900e0f78199fbbe047291aa26ee5ba1198e6867f|BattleRuntime_Module.js:4c60c324ba10298782c006f3b51d890b1f6ec6c1ffb749787be9c9214688587d */
+/* sources-sha256: MVU_Skill_Runtime.js:dac188893de98943232f4611837611e5921f3afa94bde4a6952a30f30634cabe|MVU_Schema_Runtime.js:49b19d46acb65daa6331a69604b36c5ea833c157c70b633975c015ff4953374a|BattlePreview_Module.js:6440c5668f87659ecdf174fed668ca64d8bf2f4440a78909d098a8706ef4d779|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:d3f311f618eb2b6f4748d0043eaee49b7f1805576ef7bb69e12ed07c46a99845|BattleRuntime_Module.js:4c60c324ba10298782c006f3b51d890b1f6ec6c1ffb749787be9c9214688587d */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -39140,17 +39140,28 @@ try {
     return value;
   }
 
-  /* 上限加成与当前值（11-18 用户拍板选项 C，取代 11-08 的「只截断」；生命与体力同一口径）：
-     - 上限升高（加成生效、叠加）：当前值加上同样的量；
-     - 上限回落（加成结束、减少一部分）：当前值 = 当前值 × 新上限 ÷ 旧上限，都按有效上限算（例：21796/45469 收起 → 21796 × 11673 ÷ 45469 ≈ 5596）；
-       四舍五入，原本大于 0 的不会因缩放变成 0；缩放不算受伤（不扣体力、不判倒下）。
-     - 记账：__生命上限加成 / __体力上限加成 是已经记进当前值的那部分上限（有效上限 − 基础上限），旧上限 = 基础上限 + 记账。
-     - credit:false 只记账、不动当前值（保留给需要原样记账的调用方）。
-     - 存档是「本体视角」：写回 MVU 时，加成还挂着就把当前值按 基础上限 ÷ 有效上限 折算（persistedResourceValue），所以 MVU 里的
-       HP 不会超过 HP上限，规范化属性Schema_V1 的截断不再丢信息；进战斗时加成还在，按 有效上限 ÷ 基础上限 放大回来（enterBattleMaxGain）。 */
+  /* 上限加成与当前值（生命、体力、魂力、精神力同一口径）：
+     - 11-18 用户拍板：上限升高、回落都按比例——当前值 = 当前值 × 新上限 ÷ 旧上限，都按有效上限算。取代同日早些时候定的选项 C
+       「升高加同量、回落按比例」（那样抬上限的技能在资源低时用会净回一大截，回落后还留着；也取代 11-08 的「只截断」）。
+       例：生命 1167/11673（10%）开 +289.52%（有效上限 45469）→ 4546/45469，仍是 10%；结束回落 → 1167/11673，仍是 10%；
+       期间受伤到 21796/45469 再回落 → 21796 × 11673 ÷ 45469 ≈ 5596。
+     - 四舍五入，原本大于 0 的不会因缩放变成 0；缩放不算受伤、不算消耗——只改数值（不扣体力、不判倒下、不触发魂力/精神力跌破一成砍体力）。
+     - 记账：__生命上限加成 / __体力上限加成 / __魂力上限加成 / __精神力上限加成 是已经记进当前值的那部分上限（有效上限 − 基础上限），
+       旧上限 = 基础上限 + 记账（升高时按旧上限截断原始当前值再缩放）。credit:false 只记账、不动当前值。
+     - 存档是「本体视角」：写回 MVU 时，加成还挂着就把当前值按 基础上限 ÷ 有效上限 折算（persistedResourceValue），所以 MVU 里的当前值
+       不会超过存档上限，读档截断不丢信息；进战斗时加成还在，按 有效上限 ÷ 基础上限 放大回来（enterBattleMaxGain）。
+     - 生命之火：魂力、精神力、体力上限 ×2，当前值随同步按比例 ×2（与原设计「连同上限一起翻倍」一致，igniteLifeFire 不再手写 ×2）；
+       之后它到期回落仍按比例缩；写回折算按有效上限整体折（含生命之火那部分），与生命同口径。
+     - 上限读数（readResourceMax / readHpMax / 精神力上限兼作的精神攻击）都不变，这里只改当前值。 */
   function readBaseStaminaMax(unit = {}) {
     const direct = toNumber(unit?.vit_max);
     return maxNumber(1, isFiniteNumber(direct) ? direct : readNumber(unit, ['vit_max', 'sta_max', '体力上限'], 1));
+  }
+  // 魂力、精神力的基础上限：readResourceMax 加面板修正之前的那个数（同一读法）。
+  function readBasePoolMax(unit = {}, resource = '魂力') {
+    const spirit = resourceStorageKey(resource) === 'men';
+    const direct = toNumber(spirit ? unit?.men_max : unit?.sp_max);
+    return maxNumber(1, isFiniteNumber(direct) ? direct : readNumber(unit, spirit ? ['men_max', '精神力上限'] : ['sp_max', '魂力上限'], 1));
   }
   // 原始当前值（不按当前有效上限截断：上限刚回落时要拿回落前的值来缩放）。
   function readRawHp(unit = {}) {
@@ -39160,6 +39171,11 @@ try {
   function readRawStamina(unit = {}) {
     const direct = toNumber(unit?.vit);
     return Math.max(0, isFiniteNumber(direct) ? direct : readNumber(unit, ['vit', 'sta', '体力'], readResourceMax(unit, '体力')));
+  }
+  function readRawPool(unit = {}, resource = '魂力') {
+    const spirit = resourceStorageKey(resource) === 'men';
+    const direct = toNumber(spirit ? unit?.men : unit?.sp);
+    return Math.max(0, isFiniteNumber(direct) ? direct : readNumber(unit, spirit ? ['men', '精神力'] : ['sp', '魂力'], readResourceMax(unit, resource)));
   }
   // 只改数值的写法（与 setHp 写同一组字段），不走受伤扣体力、倒下判定——上限变化不是受伤。
   function writeHpValue(unit = {}, value = 0) {
@@ -39172,65 +39188,88 @@ try {
       else if ('体力' in unit.属性 && !('hp' in unit)) unit.属性.体力 = next;
     }
   }
+  // 魂力、精神力只改数值的写法（与 setResource 写同一组字段），不走 applyLowResourceStaminaCut——上限按比例回落不是消耗，
+  // 比例没变，不该被当成「从一成以上跌到一成以下」去砍体力。
+  function writePoolValue(unit = {}, resource = '魂力', value = 0) {
+    const mapping = resourceStorageKey(resource) === 'men' ? ['men', '精神力'] : ['sp', '魂力'];
+    const next = Math.max(0, Math.min(readResourceMax(unit, mapping[1]), value));
+    if (mapping[0] in unit || !(mapping[1] in unit)) unit[mapping[0]] = next;
+    if (unit.属性 && typeof unit.属性 === 'object') unit.属性[mapping[1]] = next;
+  }
   function scaleToMaximum(current = 0, fromMax = 1, toMax = 1) {
     if (!(fromMax > 0) || !(current > 0)) return Math.max(0, current);
     return Math.max(1, Math.round(current * toMax / fromMax));
   }
+  // 四种资源各自的基础上限、有效上限、当前值（截断读）、原始当前值、只改数值的写法、记账键。
+  const MAX_GAIN_RESOURCES = Object.freeze({
+    HP: Object.freeze({ ledgerKey: '__生命上限加成', base: unit => readBaseHpMax(unit), maximum: unit => readHpMax(unit),
+      current: unit => readHp(unit), raw: unit => readRawHp(unit), write: (unit, value) => writeHpValue(unit, value) }),
+    体力: Object.freeze({ ledgerKey: '__体力上限加成', base: unit => readBaseStaminaMax(unit), maximum: unit => readResourceMax(unit, '体力'),
+      current: unit => readResource(unit, '体力'), raw: unit => readRawStamina(unit), write: (unit, value) => setResource(unit, '体力', value) }),
+    魂力: Object.freeze({ ledgerKey: '__魂力上限加成', base: unit => readBasePoolMax(unit, '魂力'), maximum: unit => readResourceMax(unit, '魂力'),
+      current: unit => readResource(unit, '魂力'), raw: unit => readRawPool(unit, '魂力'), write: (unit, value) => writePoolValue(unit, '魂力', value) }),
+    精神力: Object.freeze({ ledgerKey: '__精神力上限加成', base: unit => readBasePoolMax(unit, '精神力'), maximum: unit => readResourceMax(unit, '精神力'),
+      current: unit => readResource(unit, '精神力'), raw: unit => readRawPool(unit, '精神力'), write: (unit, value) => writePoolValue(unit, '精神力', value) }),
+  });
+  function maxGainResourceOf(resource = '') {
+    const label = String(resource ?? '');
+    if (/HP|生命/i.test(label)) return MAX_GAIN_RESOURCES.HP;
+    const key = resourceStorageKey(label);
+    return key === 'men' ? MAX_GAIN_RESOURCES.精神力 : key === 'vit' ? MAX_GAIN_RESOURCES.体力 : MAX_GAIN_RESOURCES.魂力;
+  }
   // 一种资源的上限变化落到当前值上。返回记账的变化量。
-  function syncMaxGain(unit, { base, maximum, ledgerKey, readRaw, write, credit }) {
+  function syncResourceMaxGain(unit = null, resource = 'HP', { credit = true } = {}) {
+    if (!unit || typeof unit !== 'object' || Object.isFrozen(unit)) return 0;
+    const spec = maxGainResourceOf(resource);
+    const base = spec.base(unit), maximum = spec.maximum(unit);
     const bonus = Math.max(0, maximum - base);
-    const credited = Math.max(0, Number(unit[ledgerKey] || 0));
+    const credited = Math.max(0, Number(unit[spec.ledgerKey] || 0));
     if (bonus === credited) return 0;
     if (credit) {
       const previousMax = base + credited;
-      const current = Math.min(readRaw(unit), previousMax);
-      write(unit, bonus > credited ? current + bonus - credited : scaleToMaximum(current, previousMax, maximum));
+      const current = Math.min(spec.raw(unit), previousMax);
+      // 升高、回落都按比例（11-18 用户选方案 1）。
+      spec.write(unit, scaleToMaximum(current, previousMax, maximum));
     }
-    if (bonus > 0) unit[ledgerKey] = bonus;
-    else delete unit[ledgerKey];
+    if (bonus > 0) unit[spec.ledgerKey] = bonus;
+    else delete unit[spec.ledgerKey];
     return bonus - credited;
   }
   function syncLifeMaxGain(unit = null, { credit = true } = {}) {
-    if (!unit || typeof unit !== 'object' || Object.isFrozen(unit)) return 0;
-    return syncMaxGain(unit, { base: readBaseHpMax(unit), maximum: readHpMax(unit), ledgerKey: '__生命上限加成', readRaw: readRawHp, write: writeHpValue, credit });
+    return syncResourceMaxGain(unit, 'HP', { credit });
   }
 
+  // 面板变了以后的统一同步（各处调用点都走这里）：生命、魂力、精神力、体力。返回体力记账的变化量（沿用原返回值）。
   function syncStaminaMaxGain(unit = null, { credit = true } = {}) {
     if (!unit || typeof unit !== 'object' || Object.isFrozen(unit)) return 0;
-    syncLifeMaxGain(unit, { credit });
-    return syncMaxGain(unit, { base: readBaseStaminaMax(unit), maximum: readResourceMax(unit, '体力'), ledgerKey: '__体力上限加成',
-      readRaw: readRawStamina, write: (target, value) => setResource(target, '体力', value), credit });
+    syncResourceMaxGain(unit, 'HP', { credit });
+    syncResourceMaxGain(unit, '魂力', { credit });
+    syncResourceMaxGain(unit, '精神力', { credit });
+    return syncResourceMaxGain(unit, '体力', { credit });
   }
 
   // 进战斗（mergeBattleParticipant）：从存档来的单位没有记账字段，它的当前值是本体视角——加成在就按 有效上限 ÷ 基础上限 放大，并记账；
   // 已带记账字段的（战斗里的单位、临时单位）已经是战斗视角，按上面的规则同步。
   function enterBattleMaxGain(unit = null) {
     if (!unit || typeof unit !== 'object' || Object.isFrozen(unit)) return;
-    const enter = (ledgerKey, base, maximum, readRaw, write) => {
-      if (unit[ledgerKey] !== undefined) return false;
-      if (maximum > base) {
-        write(unit, scaleToMaximum(Math.min(readRaw(unit), base), base, maximum));
-        unit[ledgerKey] = maximum - base;
-      }
-      return true;
-    };
-    if (!enter('__生命上限加成', readBaseHpMax(unit), readHpMax(unit), readRawHp, writeHpValue)) syncLifeMaxGain(unit);
-    if (!enter('__体力上限加成', readBaseStaminaMax(unit), readResourceMax(unit, '体力'), readRawStamina, (target, value) => setResource(target, '体力', value))) {
-      syncMaxGain(unit, { base: readBaseStaminaMax(unit), maximum: readResourceMax(unit, '体力'), ledgerKey: '__体力上限加成',
-        readRaw: readRawStamina, write: (target, value) => setResource(target, '体力', value), credit: true });
+    for (const name of ['HP', '魂力', '精神力', '体力']) {
+      const spec = MAX_GAIN_RESOURCES[name];
+      if (unit[spec.ledgerKey] !== undefined) { syncResourceMaxGain(unit, name); continue; }
+      const base = spec.base(unit), maximum = spec.maximum(unit);
+      if (!(maximum > base)) continue;
+      spec.write(unit, scaleToMaximum(Math.min(spec.raw(unit), base), base, maximum));
+      unit[spec.ledgerKey] = maximum - base;
     }
   }
 
-  // 写回存档用的当前值（本体视角）：'HP' 或 '体力'。加成没挂着时就是当前值；挂着时按 基础上限 ÷ 有效上限 折算。
-  // 返回 null 表示这个对象身上没有加成（例如存档里的角色数据），调用方照原字段写。
+  // 写回存档用的当前值（本体视角）：'HP'、'体力'、'魂力' 或 '精神力'。加成没挂着时返回 null（调用方照原字段写）；
+  // 挂着时按 基础上限 ÷ 有效上限 折算（含生命之火那部分上限）。存档里的角色数据身上没有加成，也返回 null。
   function persistedResourceValue(unit = {}, resource = 'HP') {
     if (!unit || typeof unit !== 'object') return null;
-    const life = /HP|生命/i.test(resource);
-    const base = life ? readBaseHpMax(unit) : readBaseStaminaMax(unit);
-    const maximum = life ? readHpMax(unit) : readResourceMax(unit, '体力');
+    const spec = maxGainResourceOf(resource);
+    const base = spec.base(unit), maximum = spec.maximum(unit);
     if (!(maximum > base)) return null;
-    const current = life ? readHp(unit) : readResource(unit, '体力');
-    return Math.min(base, scaleToMaximum(current, maximum, base));
+    return Math.min(base, scaleToMaximum(spec.current(unit), maximum, base));
   }
 
   function readResource(unit = {}, resource = '') {
@@ -46474,13 +46513,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // Lights it on `unit` in place: the state, the panel and the pools; false when it is already burning.
   function igniteLifeFire(unit = {}, currentTick = 0) {
     if (lifeFireLit(unit)) return false;
-    const before = Object.fromEntries(['魂力', '精神力'].map(resource => [resource, readResource(unit, resource)]));
     unit.状态效果 = { ...(unit.状态效果 || {}), [LIFE_FIRE_KEY]: { 状态: '生命之火', 状态名称: '生命之火', 类型: 'buff', duration: ARMOUR_LASTING_ROUNDS,
       持续回合: ARMOUR_LASTING_ROUNDS, 描述: `燃烧生命之火：魂力、精神力、体力上限与力量、防御、敏捷翻倍；每回合末透支 ${Math.round(LIFE_FIRE_DRAIN * 100)}% 生命上限直至烧尽；战斗结束时熄灭（永久跌落 3 级，陷入濒死）`,
       面板修改比例: { ...LIFE_FIRE_PANEL }, 面板固定修正: {}, 战斗效果: { dot_damage_ratio: LIFE_FIRE_DRAIN }, __生命之火: true } };
     unit.final = { ...(unit.final || {}), ...buildNumericCombatStats(unit, currentTick) };
-    // 魂力 and 精神力 doubled with their maxima; 体力 takes what its maximum gained (syncStaminaMaxGain, as any rise of it).
-    for (const [resource, value] of Object.entries(before)) setResource(unit, resource, Math.min(readResourceMax(unit, resource), value * 2));
+    // 魂力、精神力、体力连同上限一起翻倍：上限 ×2 由上面的面板给出，当前值由同步按比例给出（11-18 上限升降都按比例，
+    // 和原先手写的「当前值 ×2、封顶」结果一致：6000/10000 → 12000/20000；体力原先是「加同量」，现在同样按比例 ×2）。
     syncStaminaMaxGain(unit);
     unit.血脉之力 = { ...(unit.血脉之力 && typeof unit.血脉之力 === 'object' ? unit.血脉之力 : {}), 生命之火熄灭结算: true };
     return true;
@@ -63018,6 +63056,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     readResource,
     readResourceMax,
     syncStaminaMaxGain,
+    syncResourceMaxGain,
     enterBattleMaxGain,
     persistedResourceValue,
     battleObjectiveProgress,
@@ -73815,6 +73854,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (Object.values(states).some(state => Object.keys(state.面板修改比例 || {}).length || Object.keys(state.面板固定修正 || {}).length)) {
         projected.final = { ...preview.buildNumericCombatStats(projected, Number(worldSnapshot?.当前世界tick ?? worldSnapshot?.当前tick ?? 0)) };
       }
+      // 规则 C 的上限加成记账（11-18）：推想出来的敌方单位是新建的，没带 __生命上限加成 等记账字段，它的当前值已经是战斗视角
+      //（按看到的比例摆好）。不补记账的话，推演里第一次同步（r10RefreshPanel、状态到期重算面板）会把看得见的上限加成当成新加的，
+      // 再给当前值加一遍。这里只记账、不动当前值。
+      preview.syncStaminaMaxGain(projected, { credit: false });
       return projected;
     };
     const participants = worldSnapshot?.参战者 || {};
