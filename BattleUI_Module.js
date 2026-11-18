@@ -1941,7 +1941,8 @@ class BattleUIComponent {
           if (!dryRun && !commitReceipt?.committed) throw new Error('battle_package_commit_missing');
           const reportDto = transactionResult.reportDto;
         const aiStructuredSummary = reportDto?.aiStructuredSummary || {};
-        const aiStructuredSummaryText = JSON.stringify(aiStructuredSummary);
+        // 写正文的 AI 读叙述版（BattleReport narrativeSummaryText：中文字段、带说明、不带自估局面与估值推导）。
+        const aiStructuredSummaryText = window.__LWCS_BATTLE_REPORT__?.narrativeSummaryText?.(aiStructuredSummary) || JSON.stringify(aiStructuredSummary);
           const output = {
           ...transactionResult,
           preview: dryRun,
@@ -4438,7 +4439,7 @@ class BattleUIComponent {
               if (built && typeof window.sendToAI === 'function') {
                 aiRequest = window.sendToAI(
                   `<battle_result>${built.battleResult}</battle_result>`,
-                  `<battle_summary>\n${JSON.stringify(built.summary)}\n</battle_summary>`,
+                  `<battle_summary>\n${window.__LWCS_BATTLE_REPORT__?.narrativeSummaryText?.(built.summary) || JSON.stringify(built.summary)}\n</battle_summary>`,
                   { requestKind: 'battle_settlement_plot' },
                 );
               } else {

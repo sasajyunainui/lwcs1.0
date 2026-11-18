@@ -27340,7 +27340,8 @@ ${播报文本}
 
   function 构建自动战斗结构化摘要(执行结果 = {}) {
     const 摘要输入 = 执行结果?.reportDto?.aiStructuredSummary || {};
-    return JSON.stringify(摘要输入);
+    // 写正文的 AI 读叙述版（BattleReport narrativeSummaryText：中文字段、带说明、不带自估局面与估值推导）。
+    return window.__LWCS_BATTLE_REPORT__?.narrativeSummaryText?.(摘要输入) || JSON.stringify(摘要输入);
   }
 
   /* AI 只读取 PLAYER 级结构化摘要；Report 内部因果链不进入 AI 消息。 */
