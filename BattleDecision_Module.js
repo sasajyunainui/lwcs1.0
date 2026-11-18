@@ -42156,6 +42156,10 @@
       const stanceActor = { ...actor, __battleRuntime: { ...(actor.__battleRuntime || {}),
         passiveStreak: Math.max(0, Number(actor.__battleRuntime?.passiveStreak) || 0) + 1 } };
       const standing = table.sides.reduce((sum, side, row) => sum + Number(side === own && alive[row] > 0 && remaining[row] > 0), 0);
+      // 卖破绽（T32）: one bait meets one strike — the first that comes uses it up (BattleRuntime preparedDefense) — so of the
+      // enemies it may draw, only the one it gains most from counts (11-19: summed over a 精神系's clones, a 35 级强攻系 baited
+      // 115 rounds where it had won in 4 by attacking).
+      let baitBest = null;
       for (let row = 0; row < count; row += 1) {
         if (table.sides[row] === own || !table.pending[row] || !acts[row] || !(alive[row] > 0) || denied[row] > 0) continue;
         seen += 1;
@@ -42193,11 +42197,11 @@
           const baited = r20Exchange(answer[actorRow][row], answer[row][actorRow], strikeAgain, strikeBack * (Number(preview.BAIT_COUNTER_BONUS) || 1), 1);
           const seenComes = out[row][actorRow] * stance.keep + baited.more > baited.taken;
           const coming = (comesUnprepared ? (1 - seenShare) * turned : 0) + (seenComes ? seenShare * turnedBraced : 0);
-          if (comesUnprepared && !seenComes) remaining[actorRow] += seenShare * turned * (out[row][actorRow] * keep[actorRow][row] + ordinary.more) / Math.max(1, standing);
-          if (!(coming > 0)) continue;
-          remaining[actorRow] += coming * out[row][actorRow] * Math.max(0, keep[actorRow][row] - stance.keep);
-          remaining[row] = Math.max(0, remaining[row] - coming * Math.max(0, baited.taken - ordinary.taken));
-          remaining[actorRow] = Math.max(0, remaining[actorRow] - coming * Math.max(0, baited.more - ordinary.more));
+          const turnedAway = comesUnprepared && !seenComes ? seenShare * turned * (out[row][actorRow] * keep[actorRow][row] + ordinary.more) / Math.max(1, standing) : 0;
+          const kept = coming > 0 ? coming * out[row][actorRow] * Math.max(0, keep[actorRow][row] - stance.keep) : 0;
+          const dealt = coming > 0 ? coming * Math.max(0, baited.taken - ordinary.taken) : 0, struck = coming > 0 ? coming * Math.max(0, baited.more - ordinary.more) : 0;
+          const gain = turnedAway + kept + dealt - struck;
+          if (!baitBest || gain > baitBest.gain) baitBest = { row, gain, own: turnedAway + kept - struck, dealt };
           continue;
         }
         if (comesUnprepared && !comesPrepared) {
@@ -42210,6 +42214,10 @@
         remaining[actorRow] += turnedBraced * out[row][actorRow] * Math.max(0, keep[actorRow][row] - stance.keep);
         remaining[row] = Math.max(0, remaining[row] - turnedBraced * Math.max(0, prepared.taken - ordinary.taken));
         remaining[actorRow] = Math.max(0, remaining[actorRow] - turnedBraced * Math.max(0, prepared.more - ordinary.more));
+      }
+      if (baitBest) {
+        remaining[actorRow] = Math.max(0, remaining[actorRow] + baitBest.own);
+        remaining[baitBest.row] = Math.max(0, remaining[baitBest.row] - baitBest.dealt);
       }
     }
     // A charged skill (前摇 over a turn's budget): nothing lands now. Its release lands what the skill's own cell says
