@@ -2366,10 +2366,15 @@
         // So is whether its 体力 has already been halved for running low on 魂力 / 精神力 (资源低位砍体力).
         // So is a stance it has taken and not yet used (it meets the next hit with it: BattleDecision r20StanceOf).
         // And where it stands (两档距离 T25, BattlePreview unitPosition): in front or held back, plain to see.
+        // And who closed in on it this round (夹击 T30, BattlePreview pincerCut).
         ...(sourceUnit?.__battleRuntime?.lastReleasedSkill || Number(sourceUnit?.__battleRuntime?.passiveStreak) > 0 || sourceUnit?.__battleRuntime?.lowResourceStaminaCut ||
-          sourceUnit?.__battleRuntime?.activeDefenseStance || sourceUnit?.__battleRuntime?.position ? { __battleRuntime: {
+          sourceUnit?.__battleRuntime?.activeDefenseStance || sourceUnit?.__battleRuntime?.position || sourceUnit?.__battleRuntime?.closeStruck ? { __battleRuntime: {
           ...(sourceUnit.__battleRuntime.position ? { position: sourceUnit.__battleRuntime.position } : {}),
-          ...(sourceUnit.__battleRuntime.activeDefenseStance ? { activeDefenseStance: cloneValue(sourceUnit.__battleRuntime.activeDefenseStance) } : {}),
+          ...(sourceUnit.__battleRuntime.closeStruck ? { closeStruck: cloneValue(sourceUnit.__battleRuntime.closeStruck) } : {}),
+          // 卖破绽（T32）: one that has not seen through it sees no stance, only the opening shown (BattlePreview BAIT_OPENING).
+          ...(sourceUnit.__battleRuntime.activeDefenseStance?.bait === true && !(sourceUnit.__battleRuntime.activeDefenseStance.seenBy || []).map(String).includes(String(actorId))
+            ? { attackOpening: { strength: Number(preview.BAIT_OPENING) || 1 } }
+            : sourceUnit.__battleRuntime.activeDefenseStance ? { activeDefenseStance: cloneValue(sourceUnit.__battleRuntime.activeDefenseStance) } : {}),
           ...(sourceUnit.__battleRuntime.lastReleasedSkill ? { lastReleasedSkill: cloneValue(sourceUnit.__battleRuntime.lastReleasedSkill) } : {}),
           ...(Number(sourceUnit.__battleRuntime.passiveStreak) > 0 ? { passiveStreak: Number(sourceUnit.__battleRuntime.passiveStreak) } : {}),
           ...(sourceUnit.__battleRuntime.lowResourceStaminaCut ? { lowResourceStaminaCut: { ...sourceUnit.__battleRuntime.lowResourceStaminaCut } } : {}) } } : {}),
@@ -6547,6 +6552,18 @@
     });
   }
 
+  // 砸控制物（T29）的候选：release 路径的 EQUIP 卡，目标是被控者（自己或队友）。
+  function controlStrikeCandidates(actor = {}, worldSnapshot = {}, actorId = '', options = {}) {
+    if (!preview.controlStrikeOptions) return [];
+    const findSkill = (caster, name) => name ? collectSkills(caster).find(skill => String(skill?.魂技名 || skill?.name || '').trim() === name) || null : null;
+    return preview.controlStrikeOptions(actor, worldSnapshot, findSkill, options).map(option => {
+      const id = `${actorId}:release:${option.slot}`;
+      return { candidateId: id, equipmentSignature: `release:${option.slot}`,
+        declaration: { actionId: id, actorId, actionKind: 'EQUIP', targetIds: [String(option.holderId || actorId)], releaseSlot: option.slot, equipmentSignature: `release:${option.slot}`,
+          skill: { name: option.name, 魂技名: option.name, 前摇: option.windup, 消耗: '无', 效果描述: option.description, _效果数组: [option.effect] } } };
+    });
+  }
+
   function enumerateCandidates(input = {}) {
     const worldSnapshot = input?.worldSnapshot || {};
     let candidates = withCounterStaminaFactor(withoutTargetlessCandidates(enumerateCandidatesUnchecked(input),
@@ -6554,6 +6571,47 @@
     // 两档距离（T25）: a melee candidate at a unit the actor is not engaged with carries its run-up (BattlePreview withAdvanceWindup), as
     // the runtime stamps it at the strike — every answer window and the attack opening read it through actionWindup.
     const advanceActor = Array.isArray(candidates) && preview.withAdvanceWindup ? findUnitInWorld(worldSnapshot, input?.actorId) : null;
+    // 绕后（T30，BattlePreview canFlank）：主动出手、近身打单个敌人、自己有效敏捷高于目标时，普攻与威力最高的一个近身魂技各多出一份
+    // 「绕后」（declaration.flank），绕路由下面的 withAdvanceWindup 一并加进前摇。
+    if (advanceActor && preview.canFlank && String(input?.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase() === 'ACTIVE') {
+      const actorSideNow = sideOf(worldSnapshot, advanceActor);
+      const flankable = candidates.filter(candidate => {
+        const declaration = candidate?.declaration || {};
+        if (declaration.flank || !['BASIC_ATTACK', 'RELEASE_SKILL'].includes(String(declaration.actionKind || '').toUpperCase())) return false;
+        if (!Array.isArray(declaration.targetIds) || declaration.targetIds.length !== 1) return false;
+        const target = findUnitInWorld(worldSnapshot, declaration.targetIds[0]);
+        return !!target && sideOf(worldSnapshot, target) !== actorSideNow && preview.canFlank(advanceActor, target, declaration);
+      });
+      const power = declaration => preview.collectEffects(declaration?.skill || {}).filter(effect => effect?.原型 === '伤害结算')
+        .reduce((sum, effect) => sum + Math.max(0, Number(effect.威力倍率) || 0), 0);
+      const skillName = declaration => String(declaration?.skill?.name || declaration?.skill?.魂技名 || '');
+      const strongest = flankable.filter(candidate => candidate.declaration.actionKind === 'RELEASE_SKILL')
+        .sort((left, right) => power(right.declaration) - power(left.declaration))[0];
+      const picked = flankable.filter(candidate => candidate.declaration.actionKind === 'BASIC_ATTACK' ||
+        (strongest && skillName(candidate.declaration) === skillName(strongest.declaration)));
+      if (picked.length) candidates = [...candidates, ...picked.map(candidate => ({ ...candidate, candidateId: `${candidate.candidateId}:flank`,
+        declaration: { ...candidate.declaration, flank: true, actionId: `${candidate.declaration.actionId || candidate.candidateId}:flank` } }))];
+    }
+    // 虚招（T32，BattlePreview canFeintStrike）：主动出手时，对每个单体敌人的最强一击（威力最高的伤害魂技，没有就普攻）多出一份「虚招」，
+    // feintStrike.seen 是目标看破的概率（feintSeeThroughChance，佯装记录一起算）；结算时再掷。
+    if (advanceActor && preview.canFeintStrike && String(input?.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase() === 'ACTIVE') {
+      const actorSideNow = sideOf(worldSnapshot, advanceActor);
+      const power = declaration => declaration.actionKind === 'BASIC_ATTACK' ? 0 : preview.collectEffects(declaration?.skill || {})
+        .filter(effect => effect?.原型 === '伤害结算').reduce((sum, effect) => sum + Math.max(0, Number(effect.威力倍率) || 0), 0);
+      const best = new Map();
+      for (const candidate of candidates) {
+        const declaration = candidate?.declaration || {};
+        if (declaration.flank || declaration.feintStrike || !['BASIC_ATTACK', 'RELEASE_SKILL'].includes(String(declaration.actionKind || '').toUpperCase())) continue;
+        if (!Array.isArray(declaration.targetIds) || declaration.targetIds.length !== 1) continue;
+        const target = findUnitInWorld(worldSnapshot, declaration.targetIds[0]);
+        if (!target || sideOf(worldSnapshot, target) === actorSideNow || !preview.canFeintStrike(advanceActor, target, declaration)) continue;
+        const key = String(declaration.targetIds[0]), held = best.get(key);
+        if (!held || power(declaration) > power(held.candidate.declaration)) best.set(key, { candidate, target });
+      }
+      for (const { candidate, target } of best.values()) candidates.push({ ...candidate, candidateId: `${candidate.candidateId}:feint`,
+        declaration: { ...candidate.declaration, feintStrike: { seen: clamp(Number(feintSeeThroughChance(worldSnapshot, target, advanceActor, {})) || 0, 0, 1) },
+          actionId: `${candidate.declaration.actionId || candidate.candidateId}:feint` } });
+    }
     if (advanceActor) candidates = candidates.map(candidate => {
       const declaration = candidate?.declaration ? preview.withAdvanceWindup(worldSnapshot, advanceActor, candidate.declaration) : null;
       return declaration && declaration !== candidate.declaration && !Object.isFrozen(candidate) ? Object.assign(candidate, { declaration }) : declaration && declaration !== candidate.declaration ? { ...candidate, declaration } : candidate;
@@ -6906,6 +6964,22 @@
         candidateId: `${actorId}:${actionKind}`,
         declaration: defensiveDeclaration(actorId, actionKind),
       }));
+      // 卖破绽（T32, BattlePreview BAIT_OPENING）: on its own turn, a guard stance that shows an opening instead.
+      if (String(input.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase() === 'ACTIVE' && !actor?.__battleRuntime?.activeDefenseStance) {
+        candidates.push({ candidateId: `${actorId}:BAIT`, declaration: { ...defensiveDeclaration(actorId, 'DEFEND'), actionId: `${actorId}:BAIT`, bait: true } });
+      }
+      // 人盾（T33, BattlePreview humanShieldOptions）: answering a strike at itself, a held enemy close by may be pulled in front.
+      if (String(input.actionOpportunity?.role || '').trim().toUpperCase() === 'REACTION' && preview.humanShieldOptions) {
+        const source = findUnitInWorld(worldSnapshot, String(input.actionOpportunity?.sourceActorId || ''));
+        if (source) for (const held of preview.humanShieldOptions(worldSnapshot, actor, source, input.actionOpportunity?.incomingAction)) {
+          const heldId = String(preview.unitId(held));
+          candidates.push({ candidateId: `${actorId}:SHIELD:${heldId}`, declaration: { ...defensiveDeclaration(actorId, 'DEFEND'), actionId: `${actorId}:SHIELD:${heldId}`, humanShield: { unitId: heldId } } });
+        }
+      }
+      // 卸力（T31, BattlePreview canDeflect）: answering a physical single-target strike, the guard may turn it aside instead.
+      if (String(input.actionOpportunity?.role || '').trim().toUpperCase() === 'REACTION' && preview.canDeflect?.(input.actionOpportunity?.incomingAction)) {
+        candidates.push({ candidateId: `${actorId}:DEFLECT`, declaration: { ...defensiveDeclaration(actorId, 'DEFEND'), actionId: `${actorId}:DEFLECT`, deflect: true } });
+      }
     }
     if (!counterOnly && !forcedSkill && input.actionOpportunity?.counterWindow === true && input.actionOpportunity?.counterActionAvailable === true) {
       candidates.push({ candidateId: `${actorId}:COUNTER`, declaration: defensiveDeclaration(actorId, 'COUNTER') });
@@ -7327,10 +7401,12 @@
       voluntaryOpportunityPass: true,
     });
     if (forcedSkill) return candidates;
-    // 被控时的解控出手（BattleRuntime breakout）: only the skills that clear the control, or passing.
-    if (input.actionOpportunity?.breakoutOnly === true) return candidates.filter(candidate => candidate.voluntaryOpportunityPass === true ||
+    // 被控时的解控出手（BattleRuntime breakout）: only the skills that clear the control, or passing — or 砸 the thing that holds it
+    // (破坏控制物 T29, BattlePreview controlStrikeOptions).
+    if (input.actionOpportunity?.breakoutOnly === true) return [...candidates.filter(candidate => candidate.voluntaryOpportunityPass === true ||
       candidate.declaration?.actionKind === 'RELEASE_SKILL' && preview.isBreakoutSkill(candidate.declaration?.skill) &&
-      (!(candidate.declaration?.targetIds || []).length || candidate.declaration.targetIds.map(String).includes(actorId)));
+      (!(candidate.declaration?.targetIds || []).length || candidate.declaration.targetIds.map(String).includes(actorId))),
+      ...controlStrikeCandidates(actor, worldSnapshot, actorId, { holderOnly: true })];
     // 接战链 阶段二: meeting the move (对轰 / 抢先) beside guarding, evading and the response skills.
     if (reactionOnly) candidates.push(...engagementCandidates(input, actor, worldSnapshot, immediateBudget));
     if (reactionOnly || counterOnly || assistOnly) {
@@ -7372,6 +7448,8 @@
         equipmentSignature: `release:${option.slot}`,
       });
     });
+    // 砸控制物（T29, BattlePreview controlStrikeOptions）: 砸 a control on itself or an ally, the same path.
+    candidates.push(...controlStrikeCandidates(actor, worldSnapshot, actorId));
     collectInventory(actor).filter(entry => entry.quantity > 0).forEach((entry, index) => {
       const item = entry.item;
       if (isEquipment(item)) {
@@ -40306,6 +40384,8 @@
     preempt: prepared ? 0 : clamp(Number(unit?.routine_preempt_share) || 0, 0, 1),
     soak: r20Soak(unit),
     guard: preview.calculateGuardBaseMultiplier(unit, attacker, prepared),
+    // 卸力（T31）: what a deflection leaves of the hit (the move known, or the assumed basic attack), and the catch off balance.
+    deflect: prepared || !preview.deflectOutcome ? null : preview.deflectOutcome(unit, attacker, incoming || R20_ASSUMED_MOVE),
     dodge: preview.calculateDodgeProbability(unit, attacker, prepared, runUp),
     catch: preview.counterOpeningProbability(unit, attacker, runUp, { prepared }),
     // 接战链 阶段二: what the unit could meet the hit with instead (r20Engage); not out of a stance.
@@ -40505,6 +40585,9 @@
       { kind: 'DEFEND', keep: stand.soak * guard, share: guard, lands: 1, answer: preview.guardHolds(weight, guard * stand.soak) ? stand.catch : 0, back: 0, price: stand.defendPrice || 0 },
       { kind: 'EVADE', keep: stand.soak * (1 - stand.dodge), share: 1 - stand.dodge, lands: 1 - stand.dodge, answer: stand.dodge * stand.catch, back: 0, price: stand.evadePrice || 0 },
     ];
+    // 卸力（T31）: priced as defending; off balance the opening is caught DEFLECT_CATCH_BONUS more often.
+    if (stand.deflect) options.push({ kind: 'DEFLECT', keep: stand.soak * stand.deflect.multiplier, share: stand.deflect.multiplier, lands: 1,
+      answer: stand.deflect.failed ? 0 : clamp(stand.catch + (stand.deflect.unbalance > 0 ? Number(preview.DEFLECT_CATCH_BONUS) || 0 : 0), 0, 1), back: 0, price: stand.defendPrice || 0 });
     if (held) { const chosen = options.find(option => option.kind === held) || options[0]; return { ...chosen, defends: chosen.kind === 'DEFEND' }; }
     const theirs = Number(weight) > 0 ? Number(weight) * stand.hpMax : 0;
     const win = Number(preview.ENGAGEMENT_RULES?.CLASH_WIN) || 1.2, shock = Number(preview.ENGAGEMENT_RULES?.CLASH_SHOCK) || 0;
@@ -41364,8 +41447,11 @@
     const declaration = candidate?.declaration || {};
     const kind = String(declaration.actionKind || '').toUpperCase();
     const name = String(declaration.skill?.魂技名 || declaration.skill?.name || declaration.feintSkill?.魂技名 || '').trim();
-    const mode = declaration.engagement?.mode === 'CLASH' ? '对轰' : declaration.engagement?.mode === 'PREEMPT' ? '抢先' : '';
-    const label = kind === 'EQUIP' && declaration.releaseSlot ? (declaration.releaseSlot === '武魂' ? '开武魂' : String(declaration.releaseSlot)) : name || R20_KIND_LABELS[kind] || kind;
+    const mode = declaration.engagement?.mode === 'CLASH' ? '对轰' : declaration.engagement?.mode === 'PREEMPT' ? '抢先' : declaration.flank === true ? '绕后' : declaration.feintStrike ? '虚招' : '';
+    if (declaration.bait === true) return '卖破绽';
+    if (declaration.humanShield) return `人盾·${world ? r20UnitLabel(world, String(declaration.humanShield.unitId || '')) : String(declaration.humanShield.unitId || '').split(':').pop()}`;
+    const label = kind === 'EQUIP' && declaration.releaseSlot ? (declaration.releaseSlot === '武魂' ? '开武魂' : /^砸·/.test(String(declaration.releaseSlot)) ? name || '砸控制物' : String(declaration.releaseSlot))
+      : kind === 'DEFEND' && declaration.deflect === true ? '卸力' : name || R20_KIND_LABELS[kind] || kind;
     const targets = (Array.isArray(declaration.targetIds) ? declaration.targetIds : []).map(String)
       .filter(id => id && id !== String(declaration.actorId || '')).map(id => world ? r20UnitLabel(world, id) : id.split(':').pop());
     return `${mode ? `${mode}·` : ''}${label}${targets.length ? `→${targets.join('、')}` : ''}`;
@@ -41380,9 +41466,10 @@
     if (kind === 'FEINT') return '骗招';
     if (kind === 'GUARD') return '护住队友';
     if (role === 'REACTION') return declaration.engagement?.mode === 'CLASH' ? '对轰' : declaration.engagement?.mode === 'PREEMPT' ? '抢先打断'
-      : kind === 'DEFEND' ? '防住这一击' : kind === 'EVADE' ? '躲开这一击' : kind === 'PASS_OPPORTUNITY' ? '硬吃这一击、省下应对' : '以魂技应对';
+      : kind === 'DEFEND' && declaration.humanShield ? '拿人挡这一击' : kind === 'DEFEND' && declaration.deflect === true ? '卸开这一击' : kind === 'DEFEND' ? '防住这一击' : kind === 'EVADE' ? '躲开这一击' : kind === 'PASS_OPPORTUNITY' ? '硬吃这一击、省下应对' : '以魂技应对';
     if (role === 'COUNTER') return '反击';
     if (kind === 'EQUIP' && declaration.releaseSlot === '武魂') return '开武魂';
+    if (kind === 'DEFEND' && declaration.bait === true) return '卖破绽引对方来打';
     if (['DEFEND', 'EVADE', 'PASS_OPPORTUNITY'].includes(kind)) return kind === 'PASS_OPPORTUNITY' ? '保存资源、等待' : '等对方先出手';
     const top = (row.terms || []).filter(term => term.v > 0).sort((left, right) => right.v - left.v)[0];
     if (!top) return '止损（各选项都不利，取损失最小）';
@@ -42014,11 +42101,22 @@
       const soft = engagementMode === 'PREEMPT' ? preview.preemptDisruption(source, sourceNext, move) : null;
       const softDeflect = soft ? confidence * Math.max(soft.deflect, soft.blind) : 0;
       const softBrace = soft ? 1 - confidence * soft.slow * (1 - preview.calculateDefenseDamageMultiplier(actorNext, source, true, weight)) : 1;
-      const share = actionKind === 'DEFEND' ? preview.calculateDefenseDamageMultiplier(actorNext, source, false, weight) : actionKind === 'EVADE' ? 1 - dodge
+      // 卸力（T31, BattlePreview deflectOutcome）: a DEFEND that deflects takes what the strength ratio leaves; deflected in close, the
+      // attacker is off balance (its opening is caught the easier); not deflected, the hit lands whole and opens nothing.
+      const deflect = actionKind === 'DEFEND' && declaration?.deflect === true && move ? preview.deflectOutcome(actorNext, source, move) : null;
+      // 人盾（T33）: nothing lands on the actor; the move lands on the held enemy instead, as the attacker strikes it.
+      const shieldRow = actionKind === 'DEFEND' && declaration?.humanShield ? table.index.get(String(declaration.humanShield.unitId || '')) : undefined;
+      if (shieldRow !== undefined && alive[shieldRow] > 0) {
+        const shieldUnit = table.units[shieldRow];
+        const onShield = cachedBaseActionValue(source, shieldUnit, basicIncoming ? 'BASIC_ATTACK' : 'RELEASE_SKILL', basicIncoming ? null : incoming.skill || null,
+          r9v2LinearCapacityProjectionContext(after, table.contexts), after) / 100 * r20Soak(shieldUnit);
+        remaining[shieldRow] = Math.max(0, remaining[shieldRow] - onShield);
+      }
+      const share = shieldRow !== undefined ? 0 : deflect ? deflect.multiplier : actionKind === 'DEFEND' ? preview.calculateDefenseDamageMultiplier(actorNext, source, false, weight) : actionKind === 'EVADE' ? 1 - dodge
         : engagementMode === 'PREEMPT' ? (1 - preempt) * (1 - softDeflect) * softBrace : 1;
       const priorActor = Number(request.actionOpportunity?.counterPrior || 0), priorSource = Number(request.actionOpportunity?.opponentCounterPrior || 0);
-      const catches = preview.counterOpeningProbability(actorNext, source, move, { prior: priorActor });
-      const strikesBack = actionKind === 'DEFEND' ? (preview.guardHolds(weight, share * r20Soak(actorNext)) ? catches : 0)
+      const catches = preview.counterOpeningProbability(actorNext, source, move, { prior: priorActor, ...(deflect?.unbalance > 0 ? { unbalanced: true } : {}) });
+      const strikesBack = shieldRow !== undefined || deflect?.failed ? 0 : actionKind === 'DEFEND' ? (preview.guardHolds(weight, share * r20Soak(actorNext)) ? catches : 0)
         : actionKind === 'EVADE' ? dodge * catches : clash ? (clash.answered ? clashConfidence * catches : 0) : engagementMode === 'PREEMPT' ? (preempt + (1 - preempt) * softDeflect) * catches
           : preview.declarationGrantsCounter(declaration || {}) ? 1 : 0;
       const staminaMaximum = preview.readResourceMax(actorNext, '体力'), maximum = Math.max(1, preview.readHpMax(actorNext)), shield = preview.readShield(actorNext) / maximum;
@@ -42086,6 +42184,22 @@
         const comesPrepared = out[row][actorRow] * stance.keep + prepared.more > prepared.taken;
         // Turned away, an enemy with others of the actor's side standing strikes one of them instead (11-15: in 2v2/3v3
         // 33%～38% of those still came): what the actor keeps is its share among them.
+        // 卖破绽（T32）: the enemy sees through it (feintSeeThroughChance) or not. Not seen through, it sees no stance — it comes as
+        // it would at the actor unprepared — and is met with the stance, the strike back sure (answer 1) and heavier
+        // (BAIT_COUNTER_BONUS). Seen through, it sees the stance (the sure strike back too) and comes or turns away as at a stance.
+        if (declaration?.bait === true) {
+          idleStance = 0;
+          const seenShare = clamp(Number(feintSeeThroughChance(table.world, table.units[row], actor, {})) || 0, 0, 1);
+          const baited = r20Exchange(answer[actorRow][row], answer[row][actorRow], strikeAgain, strikeBack * (Number(preview.BAIT_COUNTER_BONUS) || 1), 1);
+          const seenComes = out[row][actorRow] * stance.keep + baited.more > baited.taken;
+          const coming = (comesUnprepared ? (1 - seenShare) * turned : 0) + (seenComes ? seenShare * turnedBraced : 0);
+          if (comesUnprepared && !seenComes) remaining[actorRow] += seenShare * turned * (out[row][actorRow] * keep[actorRow][row] + ordinary.more) / Math.max(1, standing);
+          if (!(coming > 0)) continue;
+          remaining[actorRow] += coming * out[row][actorRow] * Math.max(0, keep[actorRow][row] - stance.keep);
+          remaining[row] = Math.max(0, remaining[row] - coming * Math.max(0, baited.taken - ordinary.taken));
+          remaining[actorRow] = Math.max(0, remaining[actorRow] - coming * Math.max(0, baited.more - ordinary.more));
+          continue;
+        }
         if (comesUnprepared && !comesPrepared) {
           remaining[actorRow] += turned * (out[row][actorRow] * keep[actorRow][row] + ordinary.more) / Math.max(1, standing);
           idleStance = 0;
@@ -44276,6 +44390,10 @@
       selectedActionName: String(
         selectedDeclaration?.skill?.name ||
         selectedDeclaration?.skill?.魂技名 ||
+        // 卸力（T31）: named as its settlement names it.
+        (selectedDeclaration?.actionKind === 'DEFEND' && selectedDeclaration?.deflect === true ? '卸力' : '') ||
+        (selectedDeclaration?.actionKind === 'DEFEND' && selectedDeclaration?.bait === true ? '卖破绽' : '') ||
+        (selectedDeclaration?.actionKind === 'DEFEND' && selectedDeclaration?.humanShield ? '人盾' : '') ||
         selectedDeclaration?.actionKind ||
         selectedId ||
         '',

@@ -1503,6 +1503,13 @@
      回合末写回（settleBattleRoundEnd）。召唤物不记（随主人，按在前）。 */
   function syncBattlePositions(combatData = {}) {
     const recorded = combatData?.站位 && typeof combatData.站位 === 'object' ? combatData.站位 : null;
+    // 夹击的「这回合挨过谁的近身攻击」只管一回合（T30）；卖破绽换来的反击加成（T32 baitCounter）没用上也只管这一回合。
+    listCombatUnits(combatData).forEach(unit => {
+      if (unit?.__battleRuntime?.baitCounter) { const { baitCounter, ...rest } = unit.__battleRuntime; unit.__battleRuntime = rest; }
+      if (unit?.__battleRuntime?.closeStruck && Number(unit.__battleRuntime.closeStruck.round) !== Number(combatData?.回合)) {
+        const { closeStruck, ...rest } = unit.__battleRuntime; unit.__battleRuntime = rest;
+      }
+    });
     const units = listCombatUnits(combatData).filter(unit => !previewRuntime.isSummonUnit?.(unit));
     if (recorded) {
       units.forEach(unit => {
@@ -10860,14 +10867,19 @@
     }
     // 被控时的解控出手（structuredBreakoutAllowed）goes through with the skill that clears the control.
     if (actionRole === 'ACTIVE' && !structuredActorCanAct(actor, actionRole) &&
-      !(declaration?.__breakout === true && (actionKind === 'PASS_OPPORTUNITY' || actionKind === 'RELEASE_SKILL' && previewRuntime.isBreakoutSkill(declaration.skill)))) {
+      !(declaration?.__breakout === true && (actionKind === 'PASS_OPPORTUNITY' || actionKind === 'RELEASE_SKILL' && previewRuntime.isBreakoutSkill(declaration.skill) ||
+        // 破坏控制物（T29）: 砸 what holds it.
+        actionKind === 'EQUIP' && /^砸·/.test(String(declaration?.releaseSlot || ''))))) {
       throw new Error('battle_structured_actor_controlled');
     }
     // 认输与撤离: leaving keeps the action name 撤退 here — the decision trace names its choice so (normalizeActionDisplayName)
     // and the report anchors each decision on the action of that name; what it came to (认输 / 撤离) is the leaving's own
     // result and its state_apply (SURRENDERED / WITHDRAWN).
+    // 卸力 / 卖破绽（T31 / T32）: a DEFEND named as the decision names it (BattleDecision selectedActionName).
     const actionName = normalizeActionDisplayName(
-      declaration?.skill?.name || declaration?.skill?.魂技名 || declaration?.skill?.技能名称 || actionKind,
+      declaration?.skill?.name || declaration?.skill?.魂技名 || declaration?.skill?.技能名称 ||
+        (actionKind === 'DEFEND' && declaration?.bait === true ? '卖破绽' : actionKind === 'DEFEND' && declaration?.deflect === true ? '卸力'
+          : actionKind === 'DEFEND' && declaration?.humanShield ? '人盾' : '') || actionKind,
     );
     const settlementModifierAttribution = actionKind === 'RELEASE_SKILL' &&
       declaration?.skill &&
@@ -11357,8 +11369,12 @@
       const staminaFactor = actionRole === 'COUNTER' && ['BASIC_ATTACK', 'RELEASE_SKILL'].includes(String(actionKind || '').trim().toUpperCase())
         ? previewRuntime.declarationStaminaFactor(declaration) : 1;
       if (staminaNature) facts.push(...payActionStamina({ combatData, actor, nature: staminaNature, opponent, action, actionEvent, actionRole, actorControl, factor: staminaFactor }));
-      // 两档距离（T25）：突进那一段路另付体力（BattlePreview advanceStaminaCost，闪避同价）。
-      if (staminaNature && Number(declaration?.advanceWindup || 0) > 0) facts.push(...payActionStamina({ combatData, actor, nature: 'EVADE', opponent: null, action, actionEvent, actionRole, actorControl, factor: 1 }));
+      // 两档距离（T25）：突进那一段路另付体力（BattlePreview advanceStaminaCost，闪避同价）；绕后（T30）的绕路再付一份。
+      const moveShares = staminaNature ? previewRuntime.advanceStaminaShares(declaration) : 0;
+      for (let share = 0; share < moveShares; share += 1) facts.push(...payActionStamina({ combatData, actor, nature: 'EVADE', opponent: null, action, actionEvent, actionRole, actorControl, factor: 1 }));
+      // 虚招（T32）：作势那一下的体力（BattlePreview advanceStaminaCost 同价）。
+      if (staminaNature && declaration?.feintStrike) facts.push(...payActionStamina({ combatData, actor, nature: previewRuntime.declarationDamageClass?.(declaration) === 'RANGED' ? 'ATTACK_RANGED' : 'ATTACK',
+        opponent: null, action, actionEvent, actionRole, actorControl, factor: Number(previewRuntime.FEINT_STRIKE_STAMINA) || 0.5 }));
       // 攻击破绽（BattlePreview attackOpeningOf）：正式行动先清掉旧破绽，进攻留下新的；反应（闪避、防御）不算下一次行动。
       if (actionRole !== 'REACTION') previewRuntime.setAttackOpening(actor, previewRuntime.attackOpeningStrength(combatData, actor, { ...declaration, actionKind },
         targetId => listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, targetId))), actionEvent.actionId);
@@ -11393,6 +11409,18 @@
           sourceNodeId: actionEvent.chainNodeId || '',
           consumed: false,
         };
+        // 卖破绽（T32, BattlePreview BAIT_OPENING）: a guard that shows an opening. Each enemy sees through it or not, rolled now
+        // (BattleDecision feintSeeThroughChance, counted in 佯装记录 with the feints).
+        if (actionKind === 'DEFEND' && declaration?.bait === true) {
+          const ownSide = previewRuntime.sideOf(combatData, actor);
+          const neverSeen = globalThis.__LWCS_DECISION_DEBUG__?.feintNeverSeen === true;
+          const seenBy = listCombatUnits(combatData).filter(unit => previewRuntime.isBattleCapable(unit) && previewRuntime.sideOf(combatData, unit) !== ownSide)
+            .filter(unit => !neverSeen && Math.random() < Number(decisionRuntime.feintSeeThroughChance?.(combatData, unit, actor, {}) ?? 0))
+            .map(unit => String(previewRuntime.unitId(unit)));
+          actor.__battleRuntime.activeDefenseStance = { ...actor.__battleRuntime.activeDefenseStance, bait: true, seenBy };
+          const shown = combatData.佯装记录 && typeof combatData.佯装记录 === 'object' ? combatData.佯装记录 : {}, feinterName = previewRuntime.unitName(actor);
+          combatData.佯装记录 = { ...shown, [feinterName]: Number(shown[feinterName] || 0) + 1 };
+        }
       }
       let result = 'complete';
       let primaryOutcome = actionKind === 'PASS_OPPORTUNITY'
@@ -11909,7 +11937,9 @@
       eventId: '',
       };
     };
-    let actionDamageMultiplier = 1;
+    // 卖破绽（T32, BattlePreview BAIT_COUNTER_BONUS）: the strike back out of a bait hits the harder; used up by it.
+    let actionDamageMultiplier = actionRole === 'COUNTER' && actor?.__battleRuntime?.baitCounter === true ? Number(previewRuntime.BAIT_COUNTER_BONUS) || 1 : 1;
+    if (actionRole === 'COUNTER' && actor?.__battleRuntime?.baitCounter === true) { const { baitCounter, ...rest } = actor.__battleRuntime; actor.__battleRuntime = rest; }
     const captureSpecialPassiveHp = () => actionRole === 'STATE_TICK' || Number(ensureCombatRuntime(combatData).passiveConsumerDepth || 0) > 0
       ? null : new Map(listCombatUnits(combatData).map(unit => [previewRuntime.unitId(unit), previewRuntime.readHp(unit)]));
     const settleSpecialPassiveBoundary = (previousHp, effectFacts, sourceEffectId, segment = null, triggerTargetId = '') => {
@@ -12671,6 +12701,14 @@
           const hitModifierAttribution = typeof previewRuntime.estimateHitProbabilityAttribution === 'function'
             ? previewRuntime.estimateHitProbabilityAttribution(actor, target, effect)
             : [];
+          // 属性相生相克（T28, BattlePreview elementDamageProfile）：伤害里含的元素倍率，战报点明。
+          const elementHit = previewRuntime.elementDamageProfile?.(declaration?.skill && typeof declaration.skill === 'object' ? { ...effect, 技能: declaration.skill } : effect, actor, target) || null;
+          const elementMeta = elementHit && Math.abs(elementHit.multiplier - 1) > 1e-9 ? { element: { multiplier: elementHit.multiplier, combo: elementHit.combo, counter: elementHit.counter,
+            relation: elementHit.relation, attack: elementHit.attackElement, defense: elementHit.defense, elements: elementHit.elements, specials: elementHit.specials,
+            generator: elementHit.generator, isolated: elementHit.isolated } } : {};
+          // 夹击（T30）：命中里含的那一份，战报点明。
+          const pincerHit = String(effect?.原型 || '').trim() === '伤害结算' && previewRuntime.classifyDamageType?.(effect?.伤害类型) === 'MELEE'
+            ? Number(previewRuntime.pincerCut?.(target, actor) || 0) : 0;
           positionOnceAttacked = true;
           if (reaction?.evaded !== true) positionOnceRolledTargets.add(target);
           let anySegmentHit = false;
@@ -12697,6 +12735,7 @@
                    segments,
                    hitProbability,
                    hitModifierAttribution,
+                   ...(pincerHit > 0 ? { pincerCut: pincerHit } : {}),
                    roll: null,
                   rawDamage: segmentDamage,
                   rawDamageTotal: totalDamage,
@@ -12743,6 +12782,7 @@
                    segments,
                    hitProbability,
                    hitModifierAttribution,
+                   ...(pincerHit > 0 ? { pincerCut: pincerHit } : {}),
                    roll,
                   probabilityPassed: false,
                   rawDamage: segmentDamage,
@@ -12934,6 +12974,7 @@
               ...(deathSave ? { ruleCode: 'RULE_DEATH_SAVE_CONSUMED', applicationId: String(deathSave.state.__状态来源窗口?.[0] || deathSave.state.__状态来源键 || '') } : {}),
               meta: {
                 source: 'structured_runtime', effectIndex, segment: segment + 1, segments, hitProbability, hitModifierAttribution, roll,
+                ...(pincerHit > 0 ? { pincerCut: pincerHit } : {}), ...elementMeta,
                 windowId: effectWindowId,
                 probabilityPassed: true,
                 rawDamage: segmentDamage,
@@ -13532,6 +13573,45 @@
           }));
           return;
         }
+        // 破坏控制物（T29, BattlePreview applyControlStrike）: 砸 wears the control down by the actor's basic hit on it as things stand
+        // now, its durability set at the first blow; at 0 the control ends (settleExpiredConditionBase, as a struggle frees it).
+        const controlStrike = previewRuntime.controlStrikeOf?.(effect);
+        if (controlStrike) {
+          const state = target?.状态效果?.[String(controlStrike.key || '')];
+          const findSkill = (caster, name) => name && typeof decisionRuntime?.collectSkills === 'function'
+            ? decisionRuntime.collectSkills(caster).find(skill => String(skill?.魂技名 || skill?.name || '').trim() === name) || null : null;
+          const live = state ? { key: controlStrike.key, name: controlStrike.name,
+            durability: previewRuntime.controlDurability(combatData, target, state, findSkill), left: previewRuntime.controlHpLeft(combatData, target, state, findSkill),
+            damage: previewRuntime.controlStrikeDamage(combatData, actor, target, state) } : null;
+          const settled = live ? previewRuntime.applyControlStrike(target, live) : null;
+          const caster = String(state?.来源角色 || '').trim();
+          const strikeEvent = writeLedgerEvent(combatData, {
+            eventKind: 'control_strike', round: Number(combatData?.回合 || 0), actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
+            targetId: previewRuntime.unitId(target), targetName: previewRuntime.unitName(target),
+            actionName, actionType: actionKind, actorControl, actionRole, actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
+            parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
+            result: !settled ? 'no_effect' : settled.broken ? 'broken' : 'worn', resultState: !settled ? 'NO_EFFECT' : 'SUCCESS',
+            primaryOutcome: !settled ? 'no_effect' : settled.broken ? 'control_broken' : 'control_worn',
+            effectPrototype: prototype, factType: 'STATE_CHANGE', sourceEffectId, operation: 'STATE_APPLY',
+            meta: { source: 'structured_runtime', effectIndex, stateName: String(controlStrike.name || ''), stateKey: String(controlStrike.key || ''), caster,
+              ...(settled ? { damage: live.damage, before: settled.before, after: settled.after, durability: settled.durability, broken: settled.broken } : { resolutionReason: 'CONTROL_GONE' }) },
+          });
+          facts.push(strikeEvent);
+          if (settled?.broken) {
+            // applyControlStrike took the state off; settle its end as an expiry (facts, panel, the source window).
+            target.状态效果 = { ...target.状态效果, [controlStrike.key]: settled.state };
+            const expiry = writeLedgerEvent(combatData, {
+              eventKind: 'state_expire', round: Number(combatData?.回合 || 0), actorId: previewRuntime.unitId(target), actorName: previewRuntime.unitName(target),
+              targetId: previewRuntime.unitId(target), targetName: previewRuntime.unitName(target), actionName: String(controlStrike.name || ''),
+              actionType: 'control_strike', actorControl: 'SYSTEM', actionRole: 'STATE_TICK', result: 'expired', resultState: 'EXPIRED',
+              factType: 'STATE_CHANGE', ruleCode: 'CONTROL_BROKEN',
+              meta: { source: 'structured_runtime', stateKey: String(controlStrike.key || ''), stateName: String(controlStrike.name || ''), broken: true, by: previewRuntime.unitName(actor), caster },
+            });
+            settleExpiredConditionBase(target, controlStrike.key, settled.state, previewRuntime.unitName(target), combatData,
+              String(settled.state?.__状态来源窗口?.[0] || settled.state?.__状态来源键 || '').trim(), { event: expiry });
+          }
+          return;
+        }
         // 冥想: its own key and recovery (BattlePreview beginMeditation).
         if (stateName === '冥想' && previewRuntime.beginMeditation) {
           const sat = previewRuntime.beginMeditation(target);
@@ -13914,8 +13994,33 @@
         actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
         targetId: previewRuntime.unitId(struck[0] || {}), targetName: previewRuntime.unitName(struck[0] || {}), targetIds: struck.map(unit => previewRuntime.unitId(unit)),
         actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
-        result: 'advanced', meta: { travel, ratio: travel / Math.max(1e-9, Number(previewRuntime.ADVANCE_WINDUP_BASE) || 10), base: Number(previewRuntime.ADVANCE_WINDUP_BASE) || 10,
-          ownWindup: previewRuntime.actionWindup(actor, declaration, { travel: false }) } }));
+        result: declaration?.flank === true ? 'flanked' : 'advanced', meta: { travel, ratio: Math.max(0, travel - Number(declaration?.flankDetour || 0)) / Math.max(1e-9, Number(previewRuntime.ADVANCE_WINDUP_BASE) || 10),
+          base: Number(previewRuntime.ADVANCE_WINDUP_BASE) || 10, ownWindup: previewRuntime.actionWindup(actor, declaration, { travel: false }),
+          ...(declaration?.flank === true ? { flank: true, detour: Number(declaration?.flankDetour || 0),
+            detourRatio: Number(declaration?.flankDetour || 0) / Math.max(1e-9, (Number(previewRuntime.ADVANCE_WINDUP_BASE) || 10) / 2) } : {}) } }));
+    }
+    // 虚招（T32）：晃没晃到。没看破的目标被晃出一次应对，白付一次格挡的体力。
+    if (positionOnceAttacked && declaration?.feintStrike?.rolled === true) {
+      const targetId = String((declaration.targetIds || [])[0] || '');
+      const target = listCombatUnits(combatData).find(unit => String(previewRuntime.unitId(unit)) === targetId) || null;
+      const fooled = Number(declaration.feintStrike.seen) !== 1;
+      const feintEvent = writeMechanicEvent(combatData, { eventKind: 'feint_strike', actionName: '虚招', actionRole: String(actionEvent?.actionRole || 'ACTIVE'), actorControl: String(actionEvent?.actorControl || 'AI'),
+        actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor), targetId, targetName: previewRuntime.unitName(target || {}), targetIds: [targetId],
+        actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
+        result: fooled ? 'fooled' : 'seen', meta: { chance: Number(declaration.feintStrike.chance) || 0, fooled, window: Number(previewRuntime.FEINT_STRIKE_WINDOW) || 0.5 } });
+      facts.push(feintEvent);
+      if (fooled && target && previewRuntime.isBattleCapable(target)) facts.push(...payActionStamina({ combatData, actor: target, nature: 'DEFEND', opponent: actor,
+        action: { actionName: '被虚招晃出的应对', actionKind: 'DEFEND' }, actionEvent: feintEvent, actionRole: 'REACTION' }));
+    }
+    // 夹击（T30，BattlePreview pincerCut）：记下这回合谁挨过谁的近身攻击；同一回合里另一人再近身打它，它闪避更难。每回合开始清空（syncBattlePositions）。
+    if (positionOnceAttacked && previewRuntime.declarationDamageClass?.(declaration) === 'MELEE') {
+      const round = Number(combatData?.回合 || 0), actorId = String(previewRuntime.unitId(actor));
+      const struckIds = new Set((Array.isArray(declaration?.targetIds) ? declaration.targetIds : []).map(String));
+      listCombatUnits(combatData).filter(unit => struckIds.has(String(previewRuntime.unitId(unit)))).forEach(unit => {
+        const before = unit.__battleRuntime?.closeStruck;
+        const by = Number(before?.round) === round && Array.isArray(before?.by) ? before.by : [];
+        unit.__battleRuntime = { ...(unit.__battleRuntime || {}), closeStruck: { round, by: [...new Set([...by, actorId])] } };
+      });
     }
     const committedEquipmentPassiveTriggers = new Set();
     equipmentPassiveTriggerRows.forEach(row => {
@@ -14322,6 +14427,8 @@
     if (node.nodeKind !== 'ACTIVE' || previewRuntime.readIncapacityReason(unit)) return false;
     const blocking = Object.values(unit?.状态效果 || {}).filter(state => structuredControlPreventsOpportunity(state, 'ACTIVE'));
     if (!blocking.length || !blocking.every(state => structuredControlConsumesActiveOpportunity(state))) return false;
+    // 破坏控制物（T29）: a unit held by something it can 砸 has the turn to try.
+    if (previewRuntime.entityControls?.(unit).length && !previewRuntime.isSummonUnit?.(unit)) return true;
     const skills = typeof decisionRuntime?.collectSkills === 'function' ? decisionRuntime.collectSkills(unit) : [];
     return skills.some(skill => previewRuntime.isBreakoutSkill(skill) &&
       (typeof previewRuntime.canPaySkillCost !== 'function' || previewRuntime.canPaySkillCost(unit, skill) !== false));
@@ -15323,6 +15430,9 @@
           reactionAgilityBreakdown: contest.reactionAgilityBreakdown,
           sourceAgilityBreakdown: contest.sourceAgilityBreakdown,
           baseDodgeRate: contest.baseProbability,
+          // 绕后、夹击（T30）：战报在闪避句里点明。
+          ...(incomingDeclaration?.flank === true && (incomingDeclaration.targetIds || []).map(String).includes(String(previewRuntime.unitId(reactor))) ? { flanked: Number(previewRuntime.FLANK_SURPRISE) } : {}),
+          ...(previewRuntime.declarationDamageClass?.(incomingDeclaration || {}) === 'MELEE' && previewRuntime.pincerCut?.(reactor, sourceActor) > 0 ? { pincerCut: previewRuntime.pincerCut(reactor, sourceActor) } : {}),
           incomingWindupSwing: contest.windupSwing,
           incomingAreaMove: contest.areaMove,
           incomingKnown: contest.incomingKnown,
@@ -15341,30 +15451,49 @@
         opensCounterCheck: evaded,
       };
     }
+    // 人盾（T33, BattlePreview humanShieldOptions）: the held enemy is pulled in front — the move is turned onto it (applyHumanShieldRedirect).
+    const shieldId = actionKind === 'DEFEND' && declaration?.humanShield ? String(declaration.humanShield.unitId || '') : '';
+    const shieldUnit = shieldId && incomingDeclaration ? previewRuntime.humanShieldOptions(combatData, reactor, sourceActor, incomingDeclaration)
+      .find(unit => String(previewRuntime.unitId(unit)) === shieldId) || null : null;
+    if (shieldUnit) {
+      const event = writeLedgerEvent(combatData, {
+        ...common, eventKind: 'defend', actionName: '人盾', result: 'shielded', resultState: 'SUCCESS', primaryOutcome: 'human_shield', ruleCode: 'REACTION_SUCCEEDED',
+        meta: { ...reactionMeta, humanShield: true, shieldId, shieldName: previewRuntime.unitName(shieldUnit), damageMultiplier: 0 },
+      });
+      payActionStamina({ combatData, actor: reactor, nature: 'DEFEND', opponent: sourceActor, action: { actionName: '人盾', actionKind }, actionEvent: event, actionRole: 'REACTION' });
+      return { actionKind, event, evaded: false, damageMultiplier: 1, opensCounterCheck: false, humanShield: { unitId: shieldId } };
+    }
     if (actionKind === 'DEFEND' || actionKind === 'GUARD') {
       // The weight of the hit: the whole move's damage on the unit it lands on, as a share of that unit's HP maximum.
       const hitShare = incomingDeclaration ? previewRuntime.incomingHitShare(sourceActor, incomingDeclaration, hitTarget, combatData) : null;
       const guardBase = previewRuntime.calculateGuardBaseMultiplier(reactor, sourceActor, !!preparedDefense);
-      const damageMultiplier = previewRuntime.calculateDefenseDamageMultiplier(reactor, sourceActor, !!preparedDefense, hitShare, null,
+      // 卸力（T31, BattlePreview deflectOutcome）: a DEFEND that deflects — the share the strength ratio turns aside, or the hit whole.
+      const deflect = actionKind === 'DEFEND' && declaration?.deflect === true ? previewRuntime.deflectOutcome?.(reactor, sourceActor, incomingDeclaration) : null;
+      const damageMultiplier = deflect ? deflect.multiplier : previewRuntime.calculateDefenseDamageMultiplier(reactor, sourceActor, !!preparedDefense, hitShare, null,
         incomingDeclaration ? structuredDamageEffects(incomingDeclaration)[0] || null : null);
+      if (deflect) previewRuntime.applyDeflectUnbalance(sourceActor, deflect);
       const event = writeLedgerEvent(combatData, {
         ...common,
         eventKind: 'defend',
-        actionName: actionKind === 'GUARD' ? '护卫' : '防御',
-        result: 'guarded',
-        resultState: 'SUCCESS',
-        primaryOutcome: 'guarded',
-        ruleCode: 'REACTION_SUCCEEDED',
+        actionName: deflect ? '卸力' : actionKind === 'GUARD' ? '护卫' : '防御',
+        result: deflect?.failed ? 'deflect_failed' : deflect ? 'deflected' : 'guarded',
+        resultState: deflect?.failed ? 'FAILURE' : 'SUCCESS',
+        primaryOutcome: deflect?.failed ? 'deflect_failed' : deflect ? 'deflected' : 'guarded',
+        ruleCode: deflect?.failed ? 'REACTION_FAILED' : 'REACTION_SUCCEEDED',
         meta: { ...reactionMeta, damageMultiplier, guardBaseMultiplier: guardBase, hitShare,
-          guardWeightFactor: previewRuntime.guardWeightFactor(hitShare), preparedDefenseConsumed: !!preparedDefense },
+          guardWeightFactor: previewRuntime.guardWeightFactor(hitShare), preparedDefenseConsumed: !!preparedDefense,
+          // 卖破绽（T32）: the stance was a bait — the strike back is sure (openStructuredCounterWindow).
+          ...(preparedDefense?.bait === true ? { baitConsumed: true } : {}),
+          ...(deflect ? { deflect: true, deflected: deflect.deflected, strengthRatio: deflect.ratio, deflectFailed: deflect.failed, unbalance: deflect.unbalance } : {}) },
       });
-      if (!preparedDefense) payActionStamina({ combatData, actor: reactor, nature: 'DEFEND', opponent: sourceActor, action: { actionName: actionKind === 'GUARD' ? '护卫' : '防御', actionKind }, actionEvent: event, actionRole: 'REACTION' });
+      if (!preparedDefense) payActionStamina({ combatData, actor: reactor, nature: 'DEFEND', opponent: sourceActor, action: { actionName: deflect ? '卸力' : actionKind === 'GUARD' ? '护卫' : '防御', actionKind }, actionEvent: event, actionRole: 'REACTION' });
       return {
         actionKind,
         event,
         evaded: false,
         damageMultiplier,
-        opensCounterCheck: true,
+        // 卸不开就没有还手的空当。
+        opensCounterCheck: !deflect?.failed,
       };
     }
     // 接战链 阶段二 (BattlePreview clashOutcome / preemptTiming): meeting the move with one's own.
@@ -15399,6 +15528,36 @@
         settlement.facts.some(event => event?.resultState === 'SUCCESS'),
       counterGrantProfile: counterGrantProfile.granted ? counterGrantProfile : null,
     };
+  }
+
+  // 人盾（T33）: the move answered with a human shield lands on the held enemy instead (as a 换位 turns it, applySwapRedirect).
+  function applyHumanShieldRedirect({ combatData, shared, reaction, reactor, sourceActor, reactionTargetId } = {}) {
+    const shieldId = String(reaction?.humanShield?.unitId || '');
+    if (!shieldId || !Array.isArray(shared?.declaration?.targetIds)) return false;
+    const shield = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, shieldId));
+    const target = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, reactionTargetId)) || reactor;
+    if (!shield) return false;
+    reaction.nullified = true;
+    const redirected = { ...shared.declaration, targetIds: shared.declaration.targetIds.map(id => isUnitIdentityMatch(target, id) ? previewRuntime.unitId(shield) : id) };
+    shared.declaration = redirected;
+    if (shared.actionContext) {
+      shared.actionContext.declaration = redirected;
+      if (shared.actionContext.primaryTarget === target) shared.actionContext.primaryTarget = shield;
+    }
+    // The shield takes it as it comes: no answer of its own.
+    shared.reactionByTarget[String(previewRuntime.unitId(shield))] = { actionKind: 'UNAVAILABLE', evaded: false, damageMultiplier: 1, opensCounterCheck: false };
+    writeLedgerEvent(combatData, {
+      eventKind: 'runtime_trace', round: Number(combatData?.回合 || 0),
+      actorId: previewRuntime.unitId(reactor), actorName: previewRuntime.unitName(reactor),
+      targetId: previewRuntime.unitId(shield), targetName: previewRuntime.unitName(shield),
+      actionName: '人盾', actionType: 'human_shield', actorControl: 'AI', actionRole: 'REACTION',
+      sourceActionId: shared?.actionContext?.actionEvent?.actionId || '', parentNodeId: shared?.actionContext?.actionEvent?.chainNodeId || '',
+      sourceNodeId: shared?.actionContext?.actionEvent?.chainNodeId || '',
+      result: 'redirected', resultState: 'SUCCESS', ruleCode: 'HUMAN_SHIELD_REDIRECT',
+      meta: { source: 'structured_runtime', traceType: 'human_shield', attackerId: previewRuntime.unitId(sourceActor), shieldId,
+        reasonText: `${previewRuntime.unitName(reactor)}把被困住的${previewRuntime.unitName(shield)}拽到身前，${previewRuntime.unitName(sourceActor)}这一击落在了${previewRuntime.unitName(shield)}身上` },
+    });
+    return true;
   }
 
   // 位移重做: the redirect a successful 换位 reaction makes of the move it answers. The swapped-in unit is the answer's target on the
@@ -15486,9 +15645,12 @@
     // The defender will not strike back with stamina it cannot spare: a counter that would leave it at 0 is not taken.
     const staminaExhausted = strikeStamina > 0 && persistentResourceValue(reactor, 'vit') - strikeStamina <= 1e-9;
     const chainLimited = engagementDepth >= ENGAGEMENT_CHAIN_LIMIT;
-    const probability = !eligible ? 0 : counterGrantProfile || COUNTER_WINDOW_MODE !== 'PROBABILITY' ? 1 : contestProbability;
+    // 卖破绽（T32）: met out of a bait, the strike back is sure, and heavier (baitCounter, actionDamageMultiplier).
+    const baited = reaction?.event?.meta?.baitConsumed === true;
+    const probability = baited ? 1 : !eligible ? 0 : counterGrantProfile || COUNTER_WINDOW_MODE !== 'PROBABILITY' ? 1 : contestProbability;
     const roll = Math.random();
-    const opened = eligible && !staminaExhausted && !chainLimited && probabilitySucceeds(probability, roll);
+    const opened = (eligible || baited) && !staminaExhausted && !chainLimited && probabilitySucceeds(probability, roll);
+    if (opened && baited) reactor.__battleRuntime = { ...(reactor.__battleRuntime || {}), baitCounter: true };
     const closedReason = !eligible ? reaction.evaded === true || !defended ? 'COUNTER_WINDOW_NOT_ELIGIBLE' : 'COUNTER_WINDOW_GUARD_BROKEN_THROUGH'
       : staminaExhausted ? 'COUNTER_WINDOW_STAMINA_EXHAUSTED' : chainLimited ? 'ENGAGEMENT_CHAIN_LIMIT' : 'COUNTER_WINDOW_MISSED';
     const event = writeLedgerEvent(combatData, {
@@ -18758,6 +18920,7 @@
               // 位移重做（依斗二玄冥置换/玄武置换原文，第 89/286 章）: a 换位 answer that took on an enemy turns the incoming move — it lands on the
               // enemy swapped in, or comes to nothing when that is the attacker itself (or no one that can be struck).
               applySwapRedirect({ combatData, shared, reaction, reactionDeclaration, reactor: actor, sourceActor, reactionTargetId });
+              applyHumanShieldRedirect({ combatData, shared, reaction, reactor: actor, sourceActor, reactionTargetId });
               // 接战链 阶段二: a preemption that held stops the move on every target (PRIMARY_SETTLEMENT below).
               if (reaction?.preempted === true) {
                 shared.preempted = { reactorId: actorId, eventId: String(reaction?.engagementEvent?.eventId || '').trim() };
@@ -19636,6 +19799,18 @@
               const { advanceWindup, ...close } = declaration;
               declaration = close;
             } else if (previewRuntime.withAdvanceWindup) declaration = previewRuntime.withAdvanceWindup(combatData, actor, declaration);
+            // 虚招（T32, BattlePreview feintStrikeFooled）: the target sees through it or not, rolled now (BattleDecision feintSeeThroughChance,
+            // the feints so far counted with 佯装蓄力 in 佯装记录); the decision carried the chance, the settlement the roll.
+            if (declaration?.feintStrike && typeof declaration.feintStrike === 'object' && declaration.feintStrike.rolled !== true) {
+              const targetId = String((declaration.targetIds || [])[0] || '');
+              const target = listCombatUnits(combatData).find(unit => String(previewRuntime.unitId(unit)) === targetId) || null;
+              const chance = target ? Math.max(0, Math.min(1, Number(decisionRuntime.feintSeeThroughChance?.(combatData, target, actor, {}) ?? 0) || 0)) : 1;
+              const neverSeen = globalThis.__LWCS_DECISION_DEBUG__?.feintNeverSeen === true;
+              const seen = !neverSeen && Math.random() < chance ? 1 : 0;
+              declaration = { ...declaration, feintStrike: { seen, chance, rolled: true } };
+              const shown = combatData.佯装记录 && typeof combatData.佯装记录 === 'object' ? combatData.佯装记录 : {}, feinterName = previewRuntime.unitName(actor);
+              combatData.佯装记录 = { ...shown, [feinterName]: Number(shown[feinterName] || 0) + 1 };
+            }
             const castTime = previewRuntime.actionWindup(actor, declaration, { travel: false });
             if (!storedCharge && (node.nodeKind === 'ACTIVE' || isCooperativeAssist) && castTime > naturalActionBudget) {
               // 融合蓄力: the partners must have this round's turn to give; they give it now and every turn until the release.

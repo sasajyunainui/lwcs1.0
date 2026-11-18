@@ -1361,15 +1361,19 @@
     }
     if (kind === 'position_advance') {
       const travel = roundJudgement(meta?.travel), ratio = roundJudgement(meta?.ratio), own = roundJudgement(meta?.ownWindup);
+      const flank = meta?.flank === true, detour = roundJudgement(meta?.detour);
       return { kind: 'POSITION', phase: 'advance', subjectIds: [actorId, targetId].filter(Boolean),
-        values: { attacker: publicEntityName(directory, actorId, event?.actorName), target: publicEntityName(directory, targetId, event?.targetName) },
+        values: { attacker: publicEntityName(directory, actorId, event?.actorName), target: publicEntityName(directory, targetId, event?.targetName), ...(flank ? { flank: true } : {}) },
         judgement: {
-          check: '突进',
+          check: flank ? '绕后' : '突进',
           inputs: { ...(Number.isFinite(own) ? { 招式前摇: own } : {}), ...(Number.isFinite(roundJudgement(meta?.base)) ? { 赶路基准: roundJudgement(meta.base) } : {}),
-            ...(Number.isFinite(ratio) ? { 敏捷倍数: ratio } : {}) },
-          rule: '近身攻击打不贴身的目标要先突进：赶路时间 = 赶路基准 × 目标敏捷 ÷ 自己敏捷（0.5～2 倍），加在前摇上，对方在这段时间里能应对；打完双方都在前',
+            ...(Number.isFinite(ratio) && ratio > 0 ? { 敏捷倍数: ratio } : {}), ...(flank && Number.isFinite(detour) ? { 绕路: detour } : {}),
+            ...(flank && Number.isFinite(roundJudgement(meta?.detourRatio)) ? { 绕路敏捷倍数: roundJudgement(meta.detourRatio) } : {}) },
+          rule: flank
+            ? '绕后：比目标快才绕得过去，绕到侧后多走一段（赶路基准的一半 × 敏捷倍数），目标看不到这一段、反应再打七折；它的队友看得到一半；打完双方都在前'
+            : '近身攻击打不贴身的目标要先突进：赶路时间 = 赶路基准 × 目标敏捷 ÷ 自己敏捷（0.5～2 倍），加在前摇上，对方在这段时间里能应对；打完双方都在前',
           ratio: null,
-          outcome: Number.isFinite(travel) ? `赶路 ${displayNumber(travel)}` : '突进',
+          outcome: Number.isFinite(travel) ? `${flank ? '绕后，共' : '赶路 '}${displayNumber(travel)}` : flank ? '绕后' : '突进',
         },
         visibility: { player: 'FULL', ai: 'FULL' } };
     }
@@ -1377,6 +1381,16 @@
       return { kind: 'POSITION', phase: 'pursuit', subjectIds: [actorId, targetId].filter(Boolean),
         values: { pursuer: publicEntityName(directory, actorId, event?.actorName), unit: publicEntityName(directory, targetId, event?.targetName) },
         judgement: null, visibility: { player: 'FULL', ai: 'FULL' } };
+    }
+    // 虚招（T32）：晃到了（目标白付一次应对、真招来时应对窗口减半）或被看破。
+    if (kind === 'feint_strike') {
+      const fooled = meta?.fooled === true, chance = roundJudgement(meta?.chance);
+      return { kind: 'FEINT_STRIKE', phase: fooled ? 'fooled' : 'seen', subjectIds: [actorId, targetId].filter(Boolean),
+        values: { attacker: publicEntityName(directory, actorId, event?.actorName), target: publicEntityName(directory, targetId, event?.targetName) },
+        judgement: { check: '看破虚招', inputs: { ...(Number.isFinite(chance) ? { 看破概率: chance } : {}) },
+          rule: '虚招先作势晃一下：目标没看破就被晃出一次应对（白付一次格挡的体力），真招来时应对窗口减半；看破了就照常，虚招白花。看得越清、精神系、见过越多骗招越容易看破',
+          ratio: null, outcome: fooled ? '没看破' : '看破' },
+        visibility: { player: 'FULL', ai: 'FULL' } };
     }
     if (kind === 'position_shift') {
       return { kind: 'POSITION', phase: 'shift', subjectIds: [targetId].filter(Boolean),
@@ -1497,12 +1511,16 @@
         const parts = [values.front?.length ? `${values.front.join('、')}在前` : '', values.back?.length ? `${values.back.join('、')}在后` : ''].filter(Boolean);
         return `开场站位：${parts.join('；') || '双方拉开'}${values.ambush ? '（先攻一方已经贴上去）' : ''}`;
       }
+      if (mechanic.phase === 'advance' && values.flank) return `这一击是${values.attacker || actor}绕到${values.target || target}侧后打的（${mechanic.judgement?.outcome || '绕后'}），打完双方都在前`;
       if (mechanic.phase === 'advance') return `这一击是${values.attacker || actor}突进到${values.target || target}身前打的（${mechanic.judgement?.outcome || '突进'}），打完双方都在前`;
       if (mechanic.phase === 'pursuit') return `${values.unit || target}贴身后撤，${values.pursuer || actor}趁他转身追了上来`;
       if (mechanic.phase === 'shift') return `${values.unit || target}被${values.positionType ? `【${values.positionType}】` : '位移'}${values.position === '后' ? '挪到了后排' : '拉到了前排'}`;
       if (mechanic.phase === 'retreat') return values.moved ? `${values.unit || actor}后撤，退到后排拉开距离` : `${values.unit || actor}已在后排`;
       return values.moved ? `${values.unit || actor}前压，站到前排` : `${values.unit || actor}已在前排`;
     }
+    if (mechanic.kind === 'FEINT_STRIKE') return mechanic.phase === 'fooled'
+      ? `${values.attacker || actor}先虚晃一招，${values.target || target}被晃出了应对，真招来时措手不及`
+      : `${values.attacker || actor}想虚晃一招，被${values.target || target}看破了`;
     if (mechanic.kind === 'REFEREE') return values.reasonText || `裁判出手`;
     return '';
   }
@@ -1534,9 +1552,13 @@
         derivationRule: mechanic.judgement.rule }));
     }
     if (mechanic.kind === 'POSITION' && mechanic.phase === 'advance') {
-      const travel = roundJudgement(event?.meta?.travel), inputs = mechanic.judgement?.inputs || {};
-      if (Number.isFinite(travel)) push(eventNumberToken(event, '赶路时间', travel, '点', 'JUDGEMENT', 'MULTIPLY', visibilityMode, {
-        operands: Object.entries(inputs).filter(([name]) => name !== '招式前摇').map(([name, value]) => ({ name, value, unit: name === '敏捷倍数' ? '倍' : '点' })),
+      const detour = event?.meta?.flank === true ? roundJudgement(event?.meta?.detour) : null;
+      const travel = roundJudgement(Number(event?.meta?.travel) - (Number.isFinite(detour) ? detour : 0)), inputs = mechanic.judgement?.inputs || {};
+      if (Number.isFinite(travel) && travel > 0) push(eventNumberToken(event, '赶路时间', travel, '点', 'JUDGEMENT', 'MULTIPLY', visibilityMode, {
+        operands: Object.entries(inputs).filter(([name]) => !['招式前摇', '绕路', '绕路敏捷倍数'].includes(name)).map(([name, value]) => ({ name, value, unit: name === '敏捷倍数' ? '倍' : '点' })),
+        derivationRule: mechanic.judgement?.rule }));
+      if (Number.isFinite(detour) && detour > 0) push(eventNumberToken(event, '绕路', detour, '点', 'JUDGEMENT', 'MULTIPLY', visibilityMode, {
+        operands: [{ name: '赶路基准的一半', value: roundJudgement(Number(inputs.赶路基准 || 10) / 2), unit: '点' }, { name: '绕路敏捷倍数', value: inputs.绕路敏捷倍数, unit: '倍' }],
         derivationRule: mechanic.judgement?.rule }));
     }
     if (mechanic.kind === 'MEDITATION' && mechanic.phase === 'recovered') {
@@ -1633,6 +1655,11 @@
     }
     if (kind === 'dodge') {
       const succeeded = /SUCCESS|evaded|dodge_success/i.test(text(event?.resultState || event?.result));
+      // 绕后、夹击（T30）：闪避为什么更难。
+      const flanked = number(meta?.flanked, 0) > 0 ? `被绕到侧后，反应打${Math.round((1 - number(meta.flanked, 0)) * 10)}折` : '';
+      const pincer = number(meta?.pincerCut, 0) > 0 ? `这回合已被另一人近身缠住，闪避 −${Math.round(number(meta.pincerCut, 0) * 100)}%` : '';
+      const why = [flanked, pincer].filter(Boolean).join('；');
+      if (why && target && target !== actor) return succeeded ? `${actor}${why}，仍闪开了${target}的攻势` : `${actor}${why}，没能避开${target}的攻势`;
       return target && target !== actor
         ? succeeded
           ? `${actor}成功闪开${target}的攻势`
@@ -1640,6 +1667,16 @@
         : succeeded
           ? `${actor}的闪避姿态生效`
           : `${actor}进入闪避姿态，但未能直接避开攻势`;
+    }
+    // 卸力（T31）：偏开多少、对方失衡；拨不开就整招挨上。
+    // 人盾（T33）：拿困住的敌人挡。
+    if (kind === 'defend' && meta?.humanShield === true) return `${actor}把被困住的${String(meta?.shieldName || '敌人')}拽到身前，挡下了${target && target !== actor ? target : '对方'}的这一击`;
+    // 卖破绽（T32）：引来的这一击早有准备，反击必开。
+    if (kind === 'defend' && meta?.baitConsumed === true) return `${target && target !== actor ? target : '对方'}冲着${actor}卖的破绽打来，${actor}早有准备，稳稳接住并抓住了还手的空当`;
+    if (kind === 'defend' && meta?.deflect === true) {
+      const by = target && target !== actor ? target : '对方';
+      if (meta.deflectFailed === true) return `${actor}想卸开${by}的攻势，但力量差太多（力量比 ${Math.round(number(meta.strengthRatio, 0) * 100) / 100}）没拨开，整招挨上`;
+      return `${actor}以【卸力】拨开${by}的攻势，偏开${Math.round(number(meta.deflected, 0) * 1000) / 10}%${number(meta.unbalance, 0) > 0 ? `，${by}失衡露出空当` : ''}`;
     }
     if (kind === 'defend' || kind === 'guard') {
       const damageMultiplier = number(meta?.damageMultiplier, NaN);
@@ -1683,6 +1720,19 @@
         if (shieldAbsorb > 0) reductions.push(`护盾另吸收${Math.round(shieldAbsorb)}点`);
         if (meta?.intentLethalPrevented === true) reductions.push('非致命限制保留了目标生命');
         if (deathSave) reductions.push(deathSave);
+        // 属性相生相克（T28）：克制 / 被克 / 组合 / 相生 / 属性隔绝。
+        const element = meta?.element && typeof meta.element === 'object' ? meta.element : null;
+        if (element) {
+          const parts = [];
+          if (element.relation === 'COUNTER' && !element.isolated) parts.push(`${element.attack}克${element.defense}`);
+          if (element.relation === 'COUNTER' && element.isolated) parts.push(`${element.attack}克${element.defense}被属性隔绝挡下`);
+          if (element.relation === 'COUNTERED') parts.push(`${element.attack}被${element.defense}克`);
+          if (Array.isArray(element.elements) && element.elements.length > 1) parts.push(`${element.elements.join('')}${element.elements.length}元素合一${Array.isArray(element.specials) && element.specials.length ? `（${element.specials.join('、')}相成）` : ''}`);
+          if (element.generator) parts.push(`${element.generator}生${element.elements?.[0] || ''}`);
+          if (parts.length) reductions.unshift(`${parts.join('，')}，伤害按${Math.round(number(element.multiplier, 1) * 100)}%计`);
+        }
+        // 夹击（T30）：这回合已被另一人近身缠住，更难躲。
+        if (number(meta?.pincerCut, 0) > 0) reductions.unshift(`${target || '目标'}这回合已被另一人近身缠住、更难躲开`);
         return `${actor}以【${action}】命中${target || '目标'}，实际扣减${damage}点生命`
           + (reductions.length ? `（${reductions.join('；')}）` : '');
       }
@@ -1781,6 +1831,14 @@
       }
       return `${target || actor}移除【${namedState || action}】`;
     }
+    // 破坏控制物（T29）：砸一下、砸碎。
+    if (kind === 'control_strike') {
+      const name = String(meta?.stateName || action || '控制');
+      if (meta?.broken === true) return `${actor}砸碎了${actor === target ? '困住自己的' : `${target}身上的`}【${name}】`;
+      if (Number.isFinite(Number(meta?.after))) return `${actor}砸向${actor === target ? '困住自己的' : `${target}身上的`}【${name}】，耐久 ${Math.round(Number(meta.before))} → ${Math.round(Number(meta.after))}（共 ${Math.round(Number(meta.durability))}）`;
+      return `${actor}要砸的【${name}】已经不在了`;
+    }
+    if (kind === 'state_expire' && event.ruleCode === 'CONTROL_BROKEN') return `${target || actor}的【${namedState || action}】被${String(meta?.by || '人')}砸碎，解除了`;
     if (kind === 'state_expire') return event.ruleCode === 'STATE_WINDOW_EXPIRED' && Object.hasOwn(meta, 'remainingStateNames')
       ? runtime.describeObservedStateExpiry(event, target || actor, namedState || action).summary : `${target || actor}的【${namedState || action}】到期`;
     if (kind === 'charge_interrupt') return chargeInterruptText(event, actor, action);

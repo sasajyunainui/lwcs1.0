@@ -1983,6 +1983,8 @@
     if (kind === 'DEFEND' || kind === 'GUARD') return 'DEFEND';
     // 两档距离（T25，用户 11-18「后撤前进都要耗体力才对」）：前压 / 后撤按闪避同价付体力。
     if (kind === 'EQUIP' && /^(前压|后撤)$/.test(String(declaration?.releaseSlot || ''))) return 'EVADE';
+    // 砸控制物（T29）：按普攻付体力。
+    if (kind === 'EQUIP' && /^砸·/.test(String(declaration?.releaseSlot || ''))) return 'ATTACK';
     if (kind !== 'RELEASE_SKILL' && kind !== 'USE_ITEM') return '';
     const effects = Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组 : [];
     const prototypes = new Set(effects.map(effect => String(effect?.原型 || '').trim()));
@@ -2182,7 +2184,8 @@
   // options.travel === false：不含突进的赶路时间（蓄力判定用——赶路不让一记近身攻击变成蓄力）。
   function actionWindup(actor = {}, declaration = {}, options = {}) {
     const kind = String(declaration?.actionKind || '').trim().toUpperCase();
-    const travel = options?.travel === false ? 0 : Math.max(0, Number(declaration?.advanceWindup || 0));
+    // 虚招（T32）的作势那一下也算在前摇里（判蓄力时不算，同赶路）。
+    const travel = options?.travel === false ? 0 : Math.max(0, Number(declaration?.advanceWindup || 0)) + (declaration?.feintStrike ? FEINT_STRIKE_WINDUP : 0);
     if (kind === 'USE_ITEM') return ITEM_USE_WINDUP;
     if (kind === 'BASIC_ATTACK') return basicAttackWindup(actor) + travel;
     if (kind === 'RELEASE_SKILL') return Math.max(0, Number(declaration?.skill?.前摇 ?? declaration?.skill?.cast_time ?? 0)) + travel;
@@ -2222,11 +2225,92 @@
     if (!declaration || typeof declaration !== 'object') return declaration;
     const ids = (Array.isArray(declaration.targetIds) ? declaration.targetIds : []).map(String);
     const units = ids.length ? listUnits(world).map(entry => entry.unit).filter(unit => ids.includes(String(unitId(unit)))) : [];
-    const travel = units.reduce((most, target) => Math.max(most, advanceWindupFor(actor, target, declaration)), 0);
-    if (travel > 0) return Number(declaration.advanceWindup) === travel ? declaration : { ...declaration, advanceWindup: travel };
-    if (declaration.advanceWindup === undefined) return declaration;
-    const { advanceWindup, ...rest } = declaration;
+    const run = units.reduce((most, target) => Math.max(most, advanceWindupFor(actor, target, declaration)), 0);
+    // 绕后（T30）：绕到侧后要多走一段（FLANK_DETOUR_SHARE × 赶路基准 × 敏捷倍数），贴身时也要绕；记在 flankDetour 里。
+    const detour = declaration.flank === true ? units.reduce((most, target) => Math.max(most, flankDetourFor(actor, target)), 0) : 0;
+    const travel = run + detour;
+    if (travel > 0) {
+      if (Number(declaration.advanceWindup) === travel && Number(declaration.flankDetour || 0) === detour) return declaration;
+      return { ...declaration, advanceWindup: travel, ...(detour > 0 ? { flankDetour: detour } : {}) };
+    }
+    if (declaration.advanceWindup === undefined && declaration.flankDetour === undefined) return declaration;
+    const { advanceWindup, flankDetour, ...rest } = declaration;
     return rest;
+  }
+  /* 绕后与夹击（T30，用户 11-18；新机制方案 一）：近身攻击的一种打法，自己有效敏捷高于目标才给（BattleDecision 生成「·绕后」候选）。
+     绕路 = FLANK_DETOUR_SHARE × 赶路基准 × 敏捷倍数，加进前摇；目标看不到绕路这一段（它的应对窗口与闪避的前摇修正都不算绕路），
+     反应较量里再扣 FLANK_SURPRISE（同瞬移突袭）；目标的队友看得见，拦截窗口只多出绕路的 FLANK_INTERCEPT_SHARE（「队友毕竟更近」）。
+     夹击：同一回合里目标已挨过攻击方另一人的近身攻击（BattleRuntime 记 __battleRuntime.closeStruck），这一击目标闪避 −PINCER_DODGE_CUT。
+     都是起始值，实测校准。 */
+  const FLANK_DETOUR_SHARE = 0.5, FLANK_SURPRISE = 0.3, FLANK_INTERCEPT_SHARE = 0.5, PINCER_DODGE_CUT = 0.15;
+  function flankDetourFor(actor = {}, target = null) {
+    if (!target || target === actor) return 0;
+    const own = Number(naturalActionOrderProfile(actor).effectiveAgility), theirs = Number(naturalActionOrderProfile(target).effectiveAgility);
+    const ratio = own > 0 && theirs > 0 ? clamp(theirs / own, ADVANCE_RATIO_MIN, ADVANCE_RATIO_MAX) : 1;
+    return FLANK_DETOUR_SHARE * ADVANCE_WINDUP_BASE * ratio;
+  }
+  // 能不能绕：近身、单体、自己有效敏捷高于目标。
+  function canFlank(actor = {}, target = null, declaration = {}) {
+    if (!target || target === actor || declarationDamageClass(declaration) !== 'MELEE') return false;
+    return Number(naturalActionOrderProfile(actor).effectiveAgility) > Number(naturalActionOrderProfile(target).effectiveAgility);
+  }
+  // 这一击在 reactor 眼里的绕路：目标看不到（全扣），别人（拦截的队友）看得到一半（扣 1 − 0.5）。
+  function flankHiddenWindup(declaration = {}, reactor = {}) {
+    const detour = Math.max(0, Number(declaration?.flankDetour || 0));
+    if (!(detour > 0)) return 0;
+    const targeted = (Array.isArray(declaration?.targetIds) ? declaration.targetIds : []).map(String).includes(String(unitId(reactor)));
+    return targeted ? detour : detour * (1 - FLANK_INTERCEPT_SHARE);
+  }
+  /* 虚招（T32，用户 11-18「虚招 + 卖破绽」；新机制方案 四）：攻击的一种打法（declaration.feintStrike），先作势晃一下再出真招：
+     前摇 +FEINT_STRIKE_WINDUP、多付 FEINT_STRIKE_STAMINA 份攻击体力。目标没看破：它被晃出一次应对（白付一次格挡的体力，BattleRuntime），
+     真招来时措手不及，应对窗口（看到的前摇）×FEINT_STRIKE_WINDOW；看破了就照常，虚招白花。看破同佯装蓄力（BattleDecision
+     feintSeeThroughChance，佯装记录一起算）；决策时 feintStrike.seen 记目标看破的概率（期望），结算时掷出来写成 0 / 1。起始值。 */
+  const FEINT_STRIKE_WINDUP = 5, FEINT_STRIKE_STAMINA = 0.5, FEINT_STRIKE_WINDOW = 0.5;
+  /* 卖破绽（T32）：占一次行动摆出空当（装伤、装累、故意不躲）——格挡架势带 bait（BattleRuntime activeDefenseStance.bait，看破同虚招）。
+     没看破的敌人看不到架势，只看到它身上一个 BAIT_OPENING 的攻击破绽（BattleDecision 信念世界），更愿意来打；打过来时它按架势接，
+     反击窗口必开，反击伤害 ×BAIT_COUNTER_BONUS（BattleRuntime baitCounter）。看破的敌人看到的是架势本身；没人来打就白花。起始值。 */
+  const BAIT_OPENING = 1, BAIT_COUNTER_BONUS = 1.3;
+  function feintStrikeFooled(declaration = {}, reactor = {}) {
+    const feint = declaration?.feintStrike;
+    if (!feint || typeof feint !== 'object') return 0;
+    const targeted = (Array.isArray(declaration?.targetIds) ? declaration.targetIds : []).map(String).includes(String(unitId(reactor)));
+    return targeted ? 1 - clamp(Number(feint.seen ?? 0), 0, 1) : 0;
+  }
+  // reactor 眼里这一击的前摇：绕后看不到的那段不算（flankHiddenWindup），被虚招晃了按 ×FEINT_STRIKE_WINDOW（期望）。
+  function answerWindup(attacker = {}, declaration = {}, reactor = {}) {
+    const windup = Math.max(0, actionWindup(attacker, declaration) - flankHiddenWindup(declaration, reactor));
+    const fooled = feintStrikeFooled(declaration, reactor);
+    return fooled > 0 ? windup * (1 - fooled * (1 - FEINT_STRIKE_WINDOW)) : windup;
+  }
+  // 能不能虚招：对单个敌人的攻击（普攻或伤害魂技）。
+  function canFeintStrike(actor = {}, target = null, declaration = {}) {
+    if (!target || target === actor) return false;
+    const kind = String(declaration?.actionKind || '').trim().toUpperCase();
+    return kind === 'BASIC_ATTACK' || kind === 'RELEASE_SKILL' && collectEffects(declaration?.skill || {}).some(effect => String(effect?.原型 || '').trim() === '伤害结算');
+  }
+  /* 人盾（T33，用户 11-18「只做人盾」；新机制方案 五）：自己施加的束缚类控制（束缚、禁锢、缠绕、定身、擒拿，或实体控制）困住一个贴身的
+     敌人时，打向自己的一击单体实体攻击可以拿他挡（DEFEND 带 humanShield）：这一击改落到他身上（BattleRuntime applyHumanShieldRedirect）。
+     出手的本人不能拿来挡它自己的招；精神攻击、真实伤害、范围攻击挡不了。 */
+  const HUMAN_SHIELD_HOLDS = /束缚|禁锢|缠绕|定身|擒拿|锁喉|扣住/;
+  function humanShieldOptions(world = {}, reactor = {}, attacker = {}, incoming = null) {
+    const move = incomingMove(incoming);
+    if (!move || !reactor || !attacker || !canDeflect(move)) return [];
+    const ids = (Array.isArray(move.targetIds) ? move.targetIds : []).map(String);
+    if (ids.length !== 1 || ids[0] !== String(unitId(reactor))) return [];
+    const own = sideOf(world, reactor), name = unitName(reactor);
+    return listUnits(world).filter(entry => entry.side && entry.side !== own && entry.unit !== attacker && isBattleCapable(entry.unit) &&
+      unitsEngaged(reactor, entry.unit) && Object.values(entry.unit?.状态效果 || {}).some(state => state && typeof state === 'object' &&
+        String(state?.来源角色 || '').trim() === name && (HUMAN_SHIELD_HOLDS.test(stateName(state)) || isEntityControl(state)) &&
+        Number(state.duration ?? state.持续回合 ?? 1) > 0)).map(entry => entry.unit);
+  }
+  // 夹击：同一回合里这个单位挨过 attacker 一方别人的近身攻击。
+  function pincerCut(reactor = {}, attacker = {}, round = null) {
+    const struck = reactor?.__battleRuntime?.closeStruck;
+    if (!struck || typeof struck !== 'object') return 0;
+    const now = round !== null && round !== undefined && Number.isFinite(Number(round)) ? Number(round) : Number(struck.round);
+    if (Number(struck.round) !== now) return 0;
+    const by = (Array.isArray(struck.by) ? struck.by : []).map(String), self = String(unitId(attacker));
+    return by.some(id => id !== self) ? PINCER_DODGE_CUT : 0;
   }
   // 前压 / 后撤（特殊动作卡，同冥想的释放路径，占这次行动）：已在那个位置时不给；召唤物不给。
   function positionOptions(unit = {}) {
@@ -2250,6 +2334,78 @@
     if (/拉近|突进|追击/.test(type)) return POSITION_FRONT;
     return null;
   }
+  /* 破坏控制物（T29，用户 11-18；新机制方案 二）：有「东西」的控制（束缚、缠绕、囚笼、蛛网、藤蔓、锁链、冰封之类）带耐久，可以砸碎；
+     眩晕、混乱、魅惑这类打不碎，冻结另有受击即碎（WAKE_ON_HIT_STATES）。
+     耐久 = CONTROL_DURABILITY_COEF × 施法者用这一招打被控者一击的伤害（招的伤害威力，没有伤害的控制招按普攻），第一次挨砸时定下
+     （战斗效果.control_hp_max / control_hp）。砸 = 一张特殊动作卡「砸【X】」（同前压的释放路径，占这次行动、普攻的前摇与体力）：
+     按普攻打控制物，控制物的防御取施法者（修为高的人放的囚笼更难砸）；剩余耐久打到 0 就解除这个控制。
+     谁能砸：被控者自己（解控出手的机会里）和队友（正常行动里）。起始值，实测校准。 */
+  const ENTITY_CONTROL_STATES = /束缚|禁锢|缠绕|囚笼|牢笼|蛛网|藤蔓|锁链|冰封|冰牢/, CONTROL_DURABILITY_COEF = 2, CONTROL_STRIKE_STATE = '砸控制物';
+  function isEntityControl(state = {}) {
+    const name = stateName(state);
+    return !!name && ENTITY_CONTROL_STATES.test(name) && !/冻结/.test(name) && String(state?.类型 || '').trim() !== 'buff';
+  }
+  function entityControls(unit = {}) {
+    return Object.entries(unit?.状态效果 || {}).filter(([, state]) => state && typeof state === 'object' && isEntityControl(state) &&
+      Number(state.duration ?? state.持续回合 ?? 1) > 0);
+  }
+  function controlCasterOf(world = {}, state = {}, holder = null) {
+    const name = String(state?.来源角色 || '').trim();
+    return name ? listUnits(world).map(entry => entry.unit).find(unit => unit !== holder && unitName(unit) === name) || null : null;
+  }
+  // 耐久：已定下的读状态上的；没定的按施法者那一招（findSkill(施法者, 技能名) → 技能，可缺）。
+  function controlDurability(world = {}, holder = {}, state = {}, findSkill = null) {
+    const stored = Number(state?.战斗效果?.control_hp_max);
+    if (stored > 0) return stored;
+    const caster = controlCasterOf(world, state, holder) || holder;
+    const skill = typeof findSkill === 'function' ? findSkill(caster, String(state?.来源技能 || '').trim()) : null;
+    const strikes = collectEffects(skill || {}).filter(effect => String(effect?.原型 || '').trim() === '伤害结算');
+    const hit = strikes.length
+      ? strikes.reduce((sum, effect) => sum + calculateBaseDamage({ ...effect, 技能: skill }, caster, holder, null, { targetCount: 1 }), 0)
+      : calculateBaseDamage(BASIC_ATTACK_EFFECT, caster, holder, null, { targetCount: 1, resourceDriveEnabled: false });
+    return Math.max(1, CONTROL_DURABILITY_COEF * hit);
+  }
+  function controlHpLeft(world = {}, holder = {}, state = {}, findSkill = null) {
+    const left = Number(state?.战斗效果?.control_hp);
+    return Number.isFinite(left) ? Math.max(0, left) : controlDurability(world, holder, state, findSkill);
+  }
+  // 砸一下的伤害：actor 的普攻打在控制物上（防御取施法者，没有施法者取被控者）。
+  function controlStrikeDamage(world = {}, actor = {}, holder = {}, state = {}) {
+    const caster = controlCasterOf(world, state, holder) || holder;
+    return Math.max(0, calculateBaseDamage(BASIC_ATTACK_EFFECT, actor, caster, null, { targetCount: 1, resourceDriveEnabled: false }));
+  }
+  // 动作卡：actor 能砸的每个控制物（自己身上的、同一方队友身上的）一张；holderOnly 时只砸自己身上的（解控出手）。
+  function controlStrikeOptions(actor = {}, world = {}, findSkill = null, options = {}) {
+    if (!actor || isSummonUnit(actor)) return [];
+    const side = sideOf(world, actor);
+    const holders = options?.holderOnly === true ? [actor]
+      : listUnits(world).filter(entry => entry.side && entry.side === side && isBattleCapable(entry.unit)).map(entry => entry.unit);
+    const windup = actionWindup(actor, { actionKind: 'BASIC_ATTACK' }, { travel: false });
+    return holders.flatMap(holder => entityControls(holder).map(([key, state]) => {
+      const name = stateName(state), durability = controlDurability(world, holder, state, findSkill), left = controlHpLeft(world, holder, state, findSkill);
+      const damage = controlStrikeDamage(world, actor, holder, state), self = holder === actor;
+      return { slot: `砸·${unitId(holder)}·${key}`, name: `砸【${name}】`, windup, holderId: unitId(holder),
+        description: `${self ? '砸开困住自己的' : `替${unitName(holder)}砸开`}【${name}】：按普攻打它，剩余耐久 ${Math.round(left)} / ${Math.round(durability)}，这一下约 ${Math.round(damage)}，打到 0 就解除。`,
+        effect: { 原型: '状态施加', 目标: self ? '自身' : '单体', 状态: CONTROL_STRIKE_STATE, 持续回合: 1, 触发方式: '立即触发', 生效方式: '独立生效',
+          控制物: { key, name, damage, durability, left } } };
+    }));
+  }
+  const controlStrikeOf = effect => String(effect?.原型 || '').trim() === '状态施加' && String(effect?.状态 || '').trim() === CONTROL_STRIKE_STATE &&
+    effect?.控制物 && typeof effect.控制物 === 'object' ? effect.控制物 : null;
+  // 落到被控者身上：剩余耐久减去这一下；打到 0 删掉这个控制（返回 { broken, before, after, state }，没有这个控制时 null）。
+  function applyControlStrike(holder = {}, strike = {}) {
+    const key = String(strike?.key || ''), state = holder?.状态效果?.[key];
+    if (!state || typeof state !== 'object') return null;
+    const durability = Math.max(1, Number(state?.战斗效果?.control_hp_max) || Number(strike.durability) || 1);
+    const before = Number.isFinite(Number(state?.战斗效果?.control_hp)) ? Math.max(0, Number(state.战斗效果.control_hp)) : Math.max(0, Number(strike.left ?? durability));
+    const after = Math.max(0, before - Math.max(0, Number(strike.damage) || 0));
+    const states = { ...holder.状态效果 };
+    if (after <= 1e-9) delete states[key];
+    else states[key] = { ...state, 战斗效果: { ...(state.战斗效果 || {}), control_hp_max: durability, control_hp: after } };
+    holder.状态效果 = states;
+    return { broken: after <= 1e-9, before, after, durability, state };
+  }
+
   // 2026-11-11 (用户："B的反应需要根据A的敏捷+前摇，决定自己来不来得及反应和释放技能。A是进攻方，所以B的允许前摇可以比A长一点，
   // 这个长可根据敏捷比例来算"；"这个数字后面调也行"；"A 的前摇超过 40 时不是应该默认B随便使用低于40的技能吗"): the windup a
   // reactor's skill may take against an attack is the attack's windup scaled by the two units' effective agility (agility under
@@ -2267,7 +2423,7 @@
     return multiplier;
   }
   function reactionWindupBudget(attacker = {}, declaration = {}, reactor = {}) {
-    const windup = actionWindup(attacker, declaration), multiplier = reactionWindowMultiplier(reactor);
+    const windup = answerWindup(attacker, declaration, reactor), multiplier = reactionWindowMultiplier(reactor);
     if (windup > CONTINUOUS_ACTION_BUDGET) return CONTINUOUS_ACTION_BUDGET * multiplier;
     const attackerAgility = naturalActionOrderProfile(attacker).effectiveAgility;
     if (!(attackerAgility > 0)) return CONTINUOUS_ACTION_BUDGET * multiplier;
@@ -2303,7 +2459,7 @@
   // basic attack meets it, a basic attack does not meet a basic attack).
   const CLASH_READ_MARGIN = -0.1;
   function clashWindupBudget(attacker = {}, declaration = {}, reactor = {}, options = {}) {
-    const windup = actionWindup(attacker, declaration), intercept = options?.intercept === true ? INTERCEPT_WINDUP : 0;
+    const windup = answerWindup(attacker, declaration, reactor), intercept = options?.intercept === true ? INTERCEPT_WINDUP : 0;
     const attackerAgility = naturalActionOrderProfile(attacker).effectiveAgility;
     const span = windup > CONTINUOUS_ACTION_BUDGET || !(attackerAgility > 0) ? CONTINUOUS_ACTION_BUDGET
       : Math.min(CONTINUOUS_ACTION_BUDGET, windup * (naturalActionOrderProfile(reactor).effectiveAgility / attackerAgility) * (1 + CLASH_READ_MARGIN));
@@ -2321,7 +2477,7 @@
     const linear = margin === Infinity ? 1 : margin === -Infinity ? 0 : clamp(0.5 + 0.5 * margin / PREEMPT_SURE_MARGIN, 0, 1);
     // The margin with the attacker's and the answerer's effective agility scaled by `a` and `r` (the window scales with
     // their ratio unless the move is charged past the budget).
-    const windupIn = actionWindup(attacker, incomingDeclaration), attackerAgility = naturalActionOrderProfile(attacker).effectiveAgility;
+    const windupIn = answerWindup(attacker, incomingDeclaration, reactor), attackerAgility = naturalActionOrderProfile(attacker).effectiveAgility;
     const room = options?.intercept === true ? INTERCEPT_WINDUP : 0;
     const marginAt = (a = 1, r = 1) => {
       if (windupIn > CONTINUOUS_ACTION_BUDGET || !(attackerAgility > 0) || !(own > 0)) return margin;
@@ -2410,7 +2566,14 @@
 
   // 两档距离（T25）：突进的那一段路另付一份闪避同价的体力（出手本身的体力照付）。
   function advanceStaminaCost(actor = {}, declaration = {}) {
-    return Number(declaration?.advanceWindup || 0) > 0 ? actionStaminaCost(actor, 'EVADE', null) : 0;
+    return advanceStaminaShares(declaration) * actionStaminaCost(actor, 'EVADE', null) +
+      // 虚招（T32）：作势那一下的体力。
+      (declaration?.feintStrike ? FEINT_STRIKE_STAMINA * actionStaminaCost(actor, declarationIsRanged(declaration) ? 'ATTACK_RANGED' : 'ATTACK', null) : 0);
+  }
+  // 移动体力几份：突进那一段路一份，绕后（T30）的绕路另一份。
+  function advanceStaminaShares(declaration = {}) {
+    const run = Number(declaration?.advanceWindup || 0) - Number(declaration?.flankDetour || 0);
+    return (run > 1e-9 ? 1 : 0) + (declaration?.flank === true && Number(declaration?.flankDetour || 0) > 0 ? 1 : 0);
   }
 
   function refreshStaminaAdjustedFinal(unit = {}) {
@@ -6541,7 +6704,9 @@
     );
     const perSegment = total * actorMultiplier * limitedOutgoingMultiplier * targetMultiplier * limitedIncomingMultiplier / segments;
     const baseRawDamage = Math.max(0, perSegment * segments);
-    const normalizedActionMultiplier = Math.max(0, Number(actionDamageMultiplier ?? 1)) * detonationDamageMultiplier(effect, target);
+    // 属性相生相克（T28, elementDamageProfile）.
+    const elementProfile = elementDamageProfile(effect, actor, target);
+    const normalizedActionMultiplier = Math.max(0, Number(actionDamageMultiplier ?? 1)) * detonationDamageMultiplier(effect, target) * (elementProfile ? elementProfile.multiplier : 1);
     const rawDamage = Math.max(0, baseRawDamage * normalizedActionMultiplier);
     const modifierAttribution = modifierAttributionEnabled
       ? buildDamageModifierAttribution({
@@ -7352,7 +7517,9 @@
     const rangedProbability = strikeClass === 'RANGED' ? clamp(1 - (1 - probability) * RANGED_DODGE_MULT, 0.05, 0.99)
       : strikeClass === 'MENTAL' ? clamp(1 - (1 - probability) * MENTAL_DODGE_MULT, 0.05, 0.99) : probability;
     const opened = hitAgainstAttackOpening(rangedProbability, targetProfile ? Number(targetProfile.incomingAttackOpening || 0) : attackOpeningOf(target));
-    const bonus = areaSingleTargetHitBonus(effect, targetCount) + (options?.initiative === true ? INITIATIVE_HIT_BONUS : 0);
+    // 夹击（T30）：这回合已被对方另一人近身打过，近身来招的命中再 +PINCER_DODGE_CUT（它的闪避 −，同状态里的闪避减益）。
+    const bonus = areaSingleTargetHitBonus(effect, targetCount) + (options?.initiative === true ? INITIATIVE_HIT_BONUS : 0) +
+      (strikeClass === 'MELEE' ? pincerCut(target, actor) : 0);
     return bonus > 0 ? clamp(opened + bonus, 0.05, 0.99) : opened;
   }
 
@@ -9545,7 +9712,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         // 释放斗铠 / 机甲的内部结算（S80-A armourReleaseEffect）：不在技能表里，设计台与生成都用不到。
         // 开武魂（spiritReleaseOptions）同样是内部状态「武魂已释放」。
         const internal = prototype === '结算修正' && field === '结算' && normalized === '装备吸收' && !!effect?.__装备释放 ||
-          prototype === '状态施加' && field === '状态' && ['武魂已释放', '生命之火', '冥想', '前压', '后撤'].includes(normalized);
+          prototype === '状态施加' && field === '状态' && ['武魂已释放', '生命之火', '冥想', '前压', '后撤', CONTROL_STRIKE_STATE].includes(normalized);
         if (normalized && !internal && !(accepted ? accepted.has(normalized) : fieldDefinition.选项.includes(normalized))) {
           throw new Error(`battle_preview_unknown_enum:${prototype}:${field}:${normalized}`);
         }
@@ -9912,6 +10079,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const prototype = String(effect?.原型 || '').trim();
     // A food's second-portion backlash hurts the eater, an ally or itself; its negative value is not a hostile effect.
     if (effect?.__造物反噬 === true) return true;
+    // 砸控制物（T29）: 砸 the thing that holds an ally (or oneself).
+    if (prototype === '状态施加' && String(effect?.状态 || '').trim() === CONTROL_STRIKE_STATE) return true;
     if (prototype === '资源转移') {
       const mode = String(effect?.资源转移方式 || '').trim();
       if (mode === '吞噬') return false;
@@ -10825,6 +10994,108 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ))];
   }
 
+  /* 属性相生相克（T28，用户 11-18/19；新机制方案 六（续）第二版）。招式的元素读「附带属性」（库与生成都写了），归并：雪→冰、黑暗→暗、
+     植物/草/藤→木、圣光/光明/净化/神圣→光……；只有 金木水火土冰雷光暗风 参与相克（空间、深渊、切割、精神、毁灭、时间等不参与）。
+     关系：五行单向（金克木、木克土、土克水、水克火、火克金）＋火克木、雷克木（原文）；冰↔火、水↔火、光↔暗双向，强的一方克弱的，
+     平手时水火按五行（水克火）；风、土不相克。强弱按修为：每差 ELEMENT_TIER_LEVELS 级一档（倍数 2^档），极致属性（武魂 极致属性 字段）高一档。
+     克制：1 + ELEMENT_COUNTER_STEP × min(2, 强弱倍数)（同级 ×1.25、强一档 ×1.5）；克制方弱到 ELEMENT_HOLD_RATIO 以下克不住。被克：
+     1 − ELEMENT_COUNTERED_STEP × min(2, 对方强弱倍数)（同级 ×0.8）。守方元素不预设：挨在身上时取它身上起作用的元素——已释放的武魂只有
+     一种参与相克的元素时取它，说不清的（多种、没放武魂）按无元素；用招接的（对轰）按两招各自打在对方身上的伤害各算各的。
+     组合：一招含 n 种参与相克的元素 ×(1 + ELEMENT_COMBO_STEP × (n − 1))，特殊组合（水火、风火、光暗、光木、火木，土压缩水/火/风）每对再
+     +ELEMENT_SPECIAL_STEP。招内相生（只给属性体系为五行的人）：放单个五行元素的招，自己会生它的那个元素（木生火、火生土、土生金、
+     金生水、水生木）时威力 ×(1 + WUXING_GENERATION_POWER)。属性隔绝（状态名含「属性隔绝」或 战斗效果.attribute_isolation）：克制加成作废，
+     伤害照常。都是起始值，实测再定。 */
+  const ELEMENT_ALIASES = Object.freeze({ 雪: '冰', 冰雪: '冰', 寒冰: '冰', 黑暗: '暗', 暗黑: '暗', 植物: '木', 草: '木', 藤: '木', 圣光: '光', 光明: '光',
+    净化: '光', 神圣: '光', 雷电: '雷', 闪电: '雷', 火焰: '火', 烈焰: '火', 飓风: '风', 大地: '土', 岩石: '土', 金属: '金', 水流: '水', 海洋: '水' });
+  const COUNTER_ELEMENTS = new Set(['金', '木', '水', '火', '土', '冰', '雷', '光', '暗', '风']);
+  const ELEMENT_ONE_WAY = Object.freeze({ 金: ['木'], 木: ['土'], 土: ['水'], 水: ['火'], 火: ['金', '木'], 雷: ['木'] });
+  const ELEMENT_TWO_WAY = new Set(['冰|火', '火|冰', '水|火', '火|水', '光|暗', '暗|光']);
+  const ELEMENT_SPECIAL_PAIRS = [['水', '火'], ['风', '火'], ['光', '暗'], ['光', '木'], ['火', '木'], ['土', '水'], ['土', '火'], ['土', '风']];
+  const WUXING_GENERATES = Object.freeze({ 木: '火', 火: '土', 土: '金', 金: '水', 水: '木' });
+  const ELEMENT_TIER_LEVELS = 10, ELEMENT_COUNTER_STEP = 0.25, ELEMENT_COUNTERED_STEP = 0.2, ELEMENT_HOLD_RATIO = 0.7;
+  // 组合加成至多 ×ELEMENT_COMBO_CAP（四元素含五对特殊组合不封顶是 ×1.8，COST 不跟着变，先封住，实测再定）。
+  // 招内相生：威力 ×(1 + WUXING_GENERATION_POWER)，魂力等消耗 ×WUXING_GENERATION_COST（用户 11-18「相生不是应该少付魂力吗？」）。
+  const ELEMENT_COMBO_STEP = 0.1, ELEMENT_SPECIAL_STEP = 0.1, ELEMENT_COMBO_CAP = 1.5, WUXING_GENERATION_POWER = 0.15, WUXING_GENERATION_COST = 0.85;
+  function counterElementTokens(value) {
+    return [...new Set(normalizedElementTokens(value).map(token => ELEMENT_ALIASES[token] || token).filter(token => COUNTER_ELEMENTS.has(token)))];
+  }
+  // 这一击的元素：效果上的附带属性，再加它所属那招的。
+  function attackElementsOf(effect = {}) {
+    const skill = effect?.技能 && typeof effect.技能 === 'object' ? effect.技能 : null;
+    return counterElementTokens([...(Array.isArray(effect?.附带属性) ? effect.附带属性 : [effect?.附带属性]),
+      ...(Array.isArray(skill?.附带属性) ? skill.附带属性 : [skill?.附带属性])]);
+  }
+  function unitSpirits(unit = {}) {
+    return [unit?.第1武魂, unit?.第2武魂].filter(spirit => spirit && typeof spirit === 'object');
+  }
+  // 身上起作用的元素：武魂放出来了、且只有一种参与相克的元素；否则无。
+  function bodyElementOf(unit = {}) {
+    // 武魂已释放沿用武魂未释放的键（spiritReleasedMarker），看 spiritUnreleased。
+    if (!unit || spiritUnreleased(unit)) return '';
+    const elements = counterElementTokens(unitSpirits(unit).flatMap(spirit => Array.isArray(spirit.可调用元素) ? spirit.可调用元素 : []));
+    return elements.length === 1 ? elements[0] : '';
+  }
+  function elementStrength(unit = {}, element = '') {
+    const extreme = counterElementTokens([unit?.极致属性, ...unitSpirits(unit).map(spirit => spirit.极致属性)]).includes(element);
+    return readEffectiveUnitLevel(unit) + (extreme ? ELEMENT_TIER_LEVELS : 0);
+  }
+  // 一对元素碰上：{ multiplier, relation: COUNTER / COUNTERED / HELD（克不住）/ 空, ratio（攻方对守方的强弱倍数） }。
+  function elementPair(attackElement = '', defenseElement = '', attacker = {}, defender = {}) {
+    const ratio = 2 ** ((elementStrength(attacker, attackElement) - elementStrength(defender, defenseElement)) / ELEMENT_TIER_LEVELS);
+    const counter = x => ({ multiplier: 1 + ELEMENT_COUNTER_STEP * Math.min(2, x), relation: 'COUNTER', ratio });
+    const countered = x => ({ multiplier: Math.max(0, 1 - ELEMENT_COUNTERED_STEP * Math.min(2, x)), relation: 'COUNTERED', ratio });
+    const forward = (ELEMENT_ONE_WAY[attackElement] || []).includes(defenseElement), backward = (ELEMENT_ONE_WAY[defenseElement] || []).includes(attackElement);
+    if (ELEMENT_TWO_WAY.has(attackElement + '|' + defenseElement)) {
+      if (ratio > 1 + 1e-9) return counter(ratio);
+      if (ratio < 1 - 1e-9) return countered(1 / ratio);
+      return forward ? counter(1) : backward ? countered(1) : { multiplier: 1, relation: '', ratio };
+    }
+    if (forward) return ratio >= ELEMENT_HOLD_RATIO ? counter(ratio) : { multiplier: 1, relation: 'HELD', ratio };
+    if (backward) return 1 / ratio >= ELEMENT_HOLD_RATIO ? countered(1 / ratio) : { multiplier: 1, relation: 'HELD', ratio };
+    return { multiplier: 1, relation: '', ratio };
+  }
+  function attributeIsolated(unit = {}) {
+    return Object.entries(unit?.状态效果 || {}).some(([key, state]) => state && typeof state === 'object' &&
+      (state?.战斗效果?.attribute_isolation === true || /属性隔绝/.test(String(state?.状态 || state?.状态名称 || key || ''))));
+  }
+  /* 体内凝聚（T28，用户 11-18「寂灭神雷需要体内凝聚」「涉及到压缩度和身体强度」）：魂技带 体内凝聚（字段为 true，或承载方式写了体内凝聚）
+     时，威力随施法者身体强度涨——身体 = 防御、体力上限对同级基础表之比的平均；威力 ×(1 + CONDENSE_GAIN × (min(身体, 2) − 1))，至少
+     ×CONDENSE_FLOOR；身体不到同级标准有自损反噬：生命上限的 CONDENSE_BACKLASH × (1 − 身体)。起始值，实测再定（用户「实测再定」）。 */
+  const CONDENSE_GAIN = 0.5, CONDENSE_FLOOR = 0.5, CONDENSE_BACKLASH = 0.15;
+  function bodyCondensation(unit = {}, skill = {}) {
+    if (!(skill?.体内凝聚 === true || /体内凝聚/.test(String(skill?.承载方式 || '')))) return null;
+    const level = readEffectiveUnitLevel(unit);
+    const base = typeof root.__LWCS_GET_BASE_STATS__ === 'function' ? root.__LWCS_GET_BASE_STATS__(level) : null;
+    if (!base || !(Number(base.def) > 0) || !(Number(base.vit_max) > 0)) return null;
+    const body = (Math.max(0, Number(readCombatStat(unit, 'def')) || 0) / Number(base.def) + Math.max(0, Number(readResourceMax(unit, '体力')) || 0) / Number(base.vit_max)) / 2;
+    return Object.freeze({ body, power: Math.max(CONDENSE_FLOOR, 1 + CONDENSE_GAIN * (Math.min(body, 2) - 1)), backlash: body < 1 ? CONDENSE_BACKLASH * (1 - body) : 0 });
+  }
+  // 招内相生：属性体系为五行的人放单个五行元素的招（elements），自己会生它的那个元素时，返回那个元素；否则空。
+  function wuxingGeneratorOf(actor = {}, elements = []) {
+    if (!Array.isArray(elements) || elements.length !== 1 || !unitSpirits(actor).some(spirit => /五行/.test(String(spirit?.属性体系 || '')))) return '';
+    const own = counterElementTokens(unitSpirits(actor).flatMap(spirit => Array.isArray(spirit.可调用元素) ? spirit.可调用元素 : []));
+    return Object.keys(WUXING_GENERATES).find(source => WUXING_GENERATES[source] === elements[0] && own.includes(source)) || '';
+  }
+  // 这一击的元素倍率与来由（战报读它）；没有参与相克的元素的招 null。
+  function elementDamageProfile(effect = {}, actor = {}, target = {}) {
+    const elements = attackElementsOf(effect);
+    if (!elements.length) return null;
+    const specials = ELEMENT_SPECIAL_PAIRS.filter(([left, right]) => elements.includes(left) && elements.includes(right)).map(pair => pair.join(''));
+    const combo = Math.min(ELEMENT_COMBO_CAP, 1 + ELEMENT_COMBO_STEP * (elements.length - 1) + ELEMENT_SPECIAL_STEP * specials.length);
+    const generator = wuxingGeneratorOf(actor, elements);
+    const generation = generator ? 1 + WUXING_GENERATION_POWER : 1;
+    const defense = bodyElementOf(target);
+    let pair = { multiplier: 1, relation: '', ratio: 1 }, attackElement = '';
+    if (defense) for (const element of elements) {
+      const next = elementPair(element, defense, actor, target);
+      if (!attackElement || next.multiplier > pair.multiplier) { pair = next; attackElement = element; }
+    }
+    const isolated = pair.multiplier > 1 && attributeIsolated(target);
+    const counter = isolated ? 1 : pair.multiplier;
+    return Object.freeze({ elements, specials, combo, generator, generation, defense, attackElement, relation: pair.relation, ratio: pair.ratio,
+      counter, isolated, multiplier: combo * generation * counter });
+  }
+
   function readActionDurationTicks(input = {}, declaration = {}) {
     const value = Number(input?.durationTicks ?? declaration?.durationTicks ?? 0);
     return Number.isFinite(value) ? Math.max(0, Math.round(value * 10) / 10) : 0;
@@ -11317,9 +11588,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       );
     // 反噬 (deriveStateCombatEffect cast_backlash_ratio): a skill its holder releases takes that share of the holder's HP
     // maximum, an effect on the caster added after the skill's own; states from different sources add up.
+    // 体内凝聚（T28, bodyCondensation）：身体不够的自损反噬并进施技反噬，威力并进技能效果倍率（下面）。
+    const condensation = bodyCondensation(unit, skill);
     const castBacklash = clamp(modifiers.reduce((sum, [, state]) =>
-      sum + Math.max(0, Number(state?.战斗效果?.cast_backlash_ratio || 0)), 0), 0, 1);
-    let skillEffectMultiplier = 1;
+      sum + Math.max(0, Number(state?.战斗效果?.cast_backlash_ratio || 0)), 0) + (condensation ? condensation.backlash : 0), 0, 1);
+    let skillEffectMultiplier = condensation ? condensation.power : 1;
     let costMultiplier = 1;
     let costSurcharge = 0;
     let surchargeSource = null;
@@ -11393,6 +11666,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
     const selfDrive = skillSelfDriveMultipliers(unit, skill);
     costMultiplier *= selfDrive.cost;
+    // 五行招内相生（T28, wuxingGeneratorOf）：少付消耗。
+    if (wuxingGeneratorOf(unit, attackElementsOf({ 技能: skill }))) costMultiplier *= WUXING_GENERATION_COST;
     windupMultiplier *= selfDrive.windup;
     if (costSurcharge > 0) {
       costMultiplier *= 1 + costSurcharge;
@@ -11745,6 +12020,19 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 两档距离（T25）: 前压 / 后撤 only move the unit; a 位移执行 moves its recipient besides what it leaves on it.
     const positionMove = positionMoveOf(effect);
     if (positionMove) return setUnitPosition(unit, positionMove) || unitPosition(unit) === positionMove;
+    // 破坏控制物（T29）: 砸 only wears the control down (or breaks it); no state is left.
+    const controlStrike = controlStrikeOf(effect);
+    if (controlStrike) {
+      const settled = applyControlStrike(unit, controlStrike);
+      if (settled?.broken && statePanelChanges(settled.state)) unit.final = { ...(unit.final || {}), ...buildNumericCombatStats(unit, 0) };
+      // 推演里没砸碎：控制按剩余耐久的份额留着（同 wakeOnHit 的写法），估值读得到砸的进度；结算按耐久精确扣，不走这里。
+      if (settled && !settled.broken && settled.before > 0) {
+        const key = String(controlStrike.key), state = unit.状态效果[key];
+        unit.状态效果 = { ...unit.状态效果, [key]: { ...state,
+          __previewApplicationProbability: clamp(Number(state?.__previewApplicationProbability ?? 1), 0, 1) * clamp(settled.after / settled.before, 0, 1) } };
+      }
+      return !!settled;
+    }
     // 位移重做: a recipient the position leaves nothing on (the caster of a swap, say) gets no state at all.
     if (String(effect?.原型 || '').trim() === '位移执行') {
       const shift = positionShiftOf(effect);
@@ -25127,10 +25415,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const kind = String(declaration?.actionKind || '').trim().toUpperCase();
     return kind === 'BASIC_ATTACK' || kind === 'RELEASE_SKILL' || kind === 'USE_ITEM' ? declaration : null;
   }
-  function incomingWindupSwing(attacker = {}, declaration = null) {
+  // reactor（可选）：绕后的绕路它看不到的那部分不算（flankHiddenWindup）。
+  function incomingWindupSwing(attacker = {}, declaration = null, reactor = null) {
     const move = incomingMove(declaration);
     if (!move) return 0;
-    const windup = Math.min(CONTINUOUS_ACTION_BUDGET, actionWindup(attacker, move));
+    const windup = Math.min(CONTINUOUS_ACTION_BUDGET, (reactor ? answerWindup(attacker, move, reactor) : actionWindup(attacker, move)));
     return clamp((windup - WINDUP_PIVOT) / WINDUP_SPAN, -1, 1);
   }
   function incomingDamageEffects(declaration = null) {
@@ -25180,7 +25469,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const reactionDetails = calculateWithdrawalPressureDetails(reactor, sourceActor, 'WITHDRAW');
     const attackDetails = calculateWithdrawalPressureDetails(sourceActor, reactor, 'PURSUIT');
     // 位移重做: the source's one-shot "target reaction −X%" (瞬移's突袭 −30%) cuts the reactor's pressure in this contest.
-    const surpriseCut = clamp(stateEntries(sourceActor, 'WITHDRAWAL').reduce((sum, [, state]) => sum + Math.max(0, Number(state?.战斗效果?.target_reaction_penalty || 0)), 0), 0, 0.9);
+    // 绕后（T30）：被绕到侧后的目标这一击措手不及，同样扣 FLANK_SURPRISE。
+    const flanked = declaration?.flank === true && (Array.isArray(declaration?.targetIds) ? declaration.targetIds : []).map(String).includes(String(unitId(reactor))) ? FLANK_SURPRISE : 0;
+    const surpriseCut = clamp(stateEntries(sourceActor, 'WITHDRAWAL').reduce((sum, [, state]) => sum + Math.max(0, Number(state?.战斗效果?.target_reaction_penalty || 0)), 0) + flanked, 0, 0.9);
     const reactionPressure = reactionDetails.value * (1 - surpriseCut);
     const attackPressure = attackDetails.value;
     const share = reactionPressure / Math.max(1, reactionPressure + attackPressure);
@@ -25189,7 +25480,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const baseProbability = clamp(DODGE_BASE + (share - 0.5) * DODGE_SHARE_SLOPE + seasoned, DODGE_BASE_FLOOR, DODGE_BASE_CAP);
     // Not knowing the move: no windup or reach correction.
     const move = incomingMove(declaration);
-    const windupSwing = move ? incomingWindupSwing(sourceActor, move) : 0;
+    const windupSwing = move ? incomingWindupSwing(sourceActor, move, reactor) : 0;
     const area = move ? incomingIsArea(move) : false;
     return Object.freeze({
       probability: move
@@ -25380,6 +25671,46 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       : incomingMove(incoming) ? incomingHitShare(sourceActor, incoming, reactor, worldSnapshot) : null;
     return applyGuardWeight(calculateGuardBaseMultiplier(reactor, sourceActor, prepared), hitShare);
   }
+  /* 卸力（T31，用户 11-18；新机制方案 三）：顺着来招拨开，格挡、闪避、对轰之外的一种应对（DEFEND 带 deflect）。
+     偏开的份额 = DEFLECT_SHARE_AT_PAR × 自己力量 ÷ 这一招的力（近身取对方力量，远程取对方魂力按基础表折成力量），至多 DEFLECT_CAP；
+     力量比不到 DEFLECT_FAIL_RATIO 拨不开，整招挨上（比格挡挨得多）。只卸实体的单体攻击：精神攻击、真实伤害、范围攻击不能卸。
+     近身卸开了，对方失衡：攻击破绽 +DEFLECT_UNBALANCE（同进攻留下的破绽，到它下一次行动清掉），这回合抓它空当 +DEFLECT_CATCH_BONUS。
+     远程被卸只减伤。都是起始值，实测校准。 */
+  const DEFLECT_SHARE_AT_PAR = 0.45, DEFLECT_CAP = 0.8, DEFLECT_FAIL_RATIO = 0.6, DEFLECT_UNBALANCE = 0.5, DEFLECT_CATCH_BONUS = 0.15;
+  function canDeflect(incoming = null) {
+    const move = incomingMove(incoming);
+    if (!move) return false;
+    const kind = declarationDamageClass(move);
+    return (kind === 'MELEE' || kind === 'RANGED') && !incomingIsArea(move);
+  }
+  // 这一招的力（力量口径）：近身是对方力量，远程是对方魂力上限 × 基础表的 力量 ÷ 魂力上限（同等级两人对等为 1）。
+  function deflectForce(sourceActor = {}, incoming = null) {
+    const strength = Math.max(1, Number(readCombatStat(sourceActor, 'str')) || 1);
+    if (declarationDamageClass(incomingMove(incoming) || {}) !== 'RANGED') return strength;
+    const level = Number(sourceActor?.属性?.等级 ?? sourceActor?.等级 ?? sourceActor?.level ?? 0);
+    const base = typeof root.__LWCS_GET_BASE_STATS__ === 'function' && level > 0 ? root.__LWCS_GET_BASE_STATS__(level) : null;
+    const soul = Number(readResourceMax(sourceActor, '魂力')) || 0;
+    if (!base || !(soul > 0) || !(Number(base.sp_max) > 0)) return strength;
+    return Math.max(1, soul * Number(base.str || 1) / Number(base.sp_max));
+  }
+  // { multiplier（挨上的份额）, deflected, ratio, failed, unbalance（近身卸开才有）}；卸不了的来招 null。
+  function deflectOutcome(reactor = {}, sourceActor = {}, incoming = null) {
+    if (!canDeflect(incoming)) return null;
+    const ratio = Math.max(0, Number(readCombatStat(reactor, 'str')) || 0) / deflectForce(sourceActor, incoming);
+    const failed = ratio < DEFLECT_FAIL_RATIO;
+    const deflected = failed ? 0 : clamp(DEFLECT_SHARE_AT_PAR * ratio, 0, DEFLECT_CAP);
+    const melee = declarationDamageClass(incomingMove(incoming)) === 'MELEE';
+    return Object.freeze({ multiplier: 1 - deflected, deflected, ratio, failed, unbalance: !failed && melee ? DEFLECT_UNBALANCE : 0 });
+  }
+  // 失衡：卸开的那一刻给对方加破绽（attackOpening 记 unbalanced），这回合抓空当更容易。
+  function applyDeflectUnbalance(sourceActor = {}, outcome = null) {
+    if (!outcome || !(outcome.unbalance > 0)) return false;
+    const current = sourceActor?.__battleRuntime?.attackOpening;
+    setAttackOpening(sourceActor, clamp(Number(current?.strength || 0) + outcome.unbalance, 0, ATTACK_OPENING_MAX), current?.sourceActionId || '');
+    sourceActor.__battleRuntime.attackOpening.unbalanced = true;
+    return true;
+  }
+
   // Whether a guard held: what the hit took through it (`hitShare` × `multiplier`, or the HP it actually took as a share,
   // `hitShare` alone with multiplier 1) stayed under COUNTER_GUARD_HELD. Not knowing the hit: it held.
   function guardHolds(hitShare = null, multiplier = 1) {
@@ -25395,7 +25726,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const opened = ranged * (1 - ATTACK_OPENING_DODGE_CUT * attackOpeningOf(reactor));
     // 状态修正也进反应闪避（用户 2026-11-17「计入，直接加减」）：与命中判定（estimateHitProbability）同一套——
     // 闪避方 dodge_bonus − max(dodge_penalty, lock_level)，攻击方 − (hit_bonus − hit_penalty)。没有这些状态时不变。
-    const adjustment = reactionDodgeStateAdjustment(reactor, sourceActor);
+    // 夹击（T30）：同一回合里挨过对方另一人的近身攻击，这一击闪避 −PINCER_DODGE_CUT（近身来招才算）。
+    const adjustment = reactionDodgeStateAdjustment(reactor, sourceActor) - (strikeClass === 'MELEE' ? pincerCut(reactor, sourceActor) : 0);
     return adjustment ? clamp(opened + adjustment, DODGE_FLOOR, 0.95) : opened;
   }
 
@@ -25419,8 +25751,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const own = Math.max(0, Number(naturalActionOrderProfile(reactor).effectiveAgility) || 0);
     const theirs = Math.max(0, Number(naturalActionOrderProfile(sourceActor).effectiveAgility) || 0);
     const speed = own + theirs > 0 ? (own - theirs) / (own + theirs) : 0;
-    const base = clamp(COUNTER_BASE + speed + incomingWindupSwing(sourceActor, declaration) * COUNTER_WINDUP_SWING +
-      (options?.prepared === true ? COUNTER_STANCE_BONUS : 0), COUNTER_FLOOR, COUNTER_CAP);
+    // 卸力（T31）：对方被卸得失衡，这回合抓它空当 +DEFLECT_CATCH_BONUS（options.unbalanced：推演里刚卸开的那一下）。
+    const unbalanced = options?.unbalanced === true || sourceActor?.__battleRuntime?.attackOpening?.unbalanced === true ? DEFLECT_CATCH_BONUS : 0;
+    const base = clamp(COUNTER_BASE + speed + incomingWindupSwing(sourceActor, declaration, reactor) * COUNTER_WINDUP_SWING +
+      (options?.prepared === true ? COUNTER_STANCE_BONUS : 0) + unbalanced, COUNTER_FLOOR, COUNTER_CAP);
     // 战斗经验抓空当：× (1 + (经验 − 0.5) × EXPERIENCE_COUNTER_SLOPE)。
     const seasoned = 1 + (battleExperience(reactor) - 0.5) * EXPERIENCE_COUNTER_SLOPE;
     return clamp(base * seasoned, 0, COUNTER_CAP) * passiveStreakFactor(reactor) * COUNTER_FADE ** Math.max(0, Math.floor(Number(options?.prior) || 0)) *
@@ -25590,7 +25924,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   const PREEMPT_SURE_MARGIN = 0.15;
   function preemptTiming(reactor = {}, declaration = {}, attacker = {}, incomingDeclaration = {}) {
     const own = actionWindup(reactor, declaration);
-    const theirs = Math.min(CONTINUOUS_ACTION_BUDGET, actionWindup(attacker, incomingDeclaration));
+    const theirs = Math.min(CONTINUOUS_ACTION_BUDGET, answerWindup(attacker, incomingDeclaration, reactor));
     const ownAgility = Math.max(0, Number(naturalActionOrderProfile(reactor).effectiveAgility) || 0);
     const theirAgility = Math.max(0, Number(naturalActionOrderProfile(attacker).effectiveAgility) || 0);
     const ownTime = own * theirAgility, theirTime = theirs * ownAgility;
@@ -26000,7 +26334,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     suppressionBlocksSkill,
     meditationOptions,
     // 两档距离（T25）
-    POSITION_FRONT, POSITION_BACK, ADVANCE_WINDUP_BASE, advanceStaminaCost, unitPosition, setUnitPosition, unitsEngaged, advanceWindupFor, withAdvanceWindup, positionOptions,
+    POSITION_FRONT, POSITION_BACK, ADVANCE_WINDUP_BASE, bodyCondensation, elementDamageProfile, attackElementsOf, bodyElementOf, elementPair, humanShieldOptions, BAIT_OPENING, BAIT_COUNTER_BONUS, FEINT_STRIKE_STAMINA, FEINT_STRIKE_WINDOW, feintStrikeFooled, answerWindup, canFeintStrike, canDeflect, deflectForce, deflectOutcome, applyDeflectUnbalance, DEFLECT_UNBALANCE, DEFLECT_CATCH_BONUS, isEntityControl, entityControls, controlDurability, controlHpLeft, controlStrikeDamage, controlStrikeOptions, controlStrikeOf, applyControlStrike, CONTROL_STRIKE_STATE, advanceStaminaCost, advanceStaminaShares, classifyDamageType, canFlank, flankDetourFor, pincerCut, FLANK_SURPRISE, unitPosition, setUnitPosition, unitsEngaged, advanceWindupFor, withAdvanceWindup, positionOptions,
     positionMoveOf, positionShiftOf,
     isFeint,
     feintRecord,

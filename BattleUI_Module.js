@@ -2057,12 +2057,29 @@ class BattleUIComponent {
             const actionKind = String(declaration.actionKind || '').trim();
             // 冥想（BattlePreview meditationOptions）goes the release path but is a special action of its own.
             // 前压 / 后撤（两档距离 T25，BattlePreview positionOptions）: the same, the move to the other line.
+            // 砸控制物（T29，BattlePreview controlStrikeOptions）: the same path, 砸 what holds oneself or an ally.
             const meta = actionKind === 'EQUIP' && ['冥想', '前压', '后撤'].includes(String(declaration.releaseSlot || ''))
               ? { type: 'tactical', actionType: declaration.releaseSlot, name: declaration.releaseSlot, category: '特殊动作' }
+              // 卸力（T31，BattlePreview deflectOutcome）: a DEFEND that turns the hit aside.
+              : actionKind === 'DEFEND' && declaration.deflect === true
+                ? { type: 'tactical', actionType: '卸力', name: '卸力', category: '战术' }
+              // 卖破绽（T32）/ 人盾（T33）: DEFENDs of their own.
+              : actionKind === 'DEFEND' && declaration.bait === true
+                ? { type: 'tactical', actionType: '卖破绽', name: '卖破绽', category: '特殊动作' }
+              : actionKind === 'DEFEND' && declaration.humanShield
+                ? { type: 'tactical', actionType: '人盾', name: `人盾·${unitNameById(String(declaration.humanShield.unitId || ''))}`, category: '战术' }
+              : actionKind === 'EQUIP' && /^砸·/.test(String(declaration.releaseSlot || ''))
+                ? { type: 'tactical', actionType: '砸控制物', name: String(declaration.skill?.name || '砸控制物'), category: '特殊动作' }
               : actionKindMeta[actionKind];
             if (!meta) return;
             const skill = actionKind === 'WITHDRAW'
               ? { 效果描述: exitHint() }
+              : actionKind === 'DEFEND' && declaration.bait === true
+                ? { 效果描述: '花一次行动故意露出空当（装伤、装累、故意不躲）：没看破的对手更愿意来打你，打过来时你早有准备地接住，反击必开、反击更重；被看破或没人来打就白花这一次行动。' }
+              : actionKind === 'DEFEND' && declaration.humanShield
+                ? { 效果描述: '把被你困住、贴在身边的敌人拽到身前，这一击落在他身上。' }
+              : actionKind === 'DEFEND' && declaration.deflect === true
+                ? { 效果描述: '顺着来招拨开：力量越比这一招的力大，偏开得越多；力量差太多就拨不开，整招挨上。近身攻击被卸开时对方失衡，更容易被抓空当反击。' }
               : actionKind === 'TRUCE'
                 ? { 效果描述: '提议双方停手：立即结束本场，记为平局，保留双方当前的生命与状态。' }
               : actionKind === 'FEINT'
@@ -2070,7 +2087,8 @@ class BattleUIComponent {
                     效果描述: `花一次行动摆出蓄力【${String(declaration.feintSkill?.魂技名 || declaration.feintSkill?.name || '').trim()}】的样子；有人冲上来打断时，立刻以这一招全力迎击（放出时才付消耗）；没人上当就白花这一次行动。对你看得越清、见过这招的对手越容易看破。` }
               : declaration.skill && typeof declaration.skill === 'object' ? declaration.skill : {};
             const baseDisplayName = String(skill?.魂技名 || skill?.name || skill?.技能名称 || meta.name).trim() || meta.name;
-            const displayName = declaration.ringLabel ? `${baseDisplayName}·${declaration.ringLabel}` : baseDisplayName;
+            // 绕后（T30）: its own entry beside the plain strike.
+            const displayName = `${declaration.ringLabel ? `${baseDisplayName}·${declaration.ringLabel}` : baseDisplayName}${declaration.flank === true ? '·绕后' : ''}`;
             const sourceContext = actionKind === 'RELEASE_SKILL' ? 读取战斗来源类别上下文(skill, meta.category) : { 来源类别: meta.category, 来源明细: meta.category };
             const identity = actionKind === 'RELEASE_SKILL'
               ? `${String(skill?.id || skill?.技能ID || skill?.魂技ID || baseDisplayName).trim()}:${String(declaration.ringId || '').trim()}`
@@ -2078,8 +2096,10 @@ class BattleUIComponent {
                 ? String(skill?.__物品名 || skill?.物品名 || displayName).trim()
                 : actionKind === 'EQUIP'
                   ? String(declaration.equipmentSignature || skill?.id || displayName).trim()
-                  : actionKind;
-            const groupKey = `${actionKind}:${identity}:${BATTLE_PREVIEW.stableHash(skill?._效果数组 || [])}`;
+                  : actionKind === 'DEFEND' && declaration.deflect === true ? 'DEFLECT'
+                    : actionKind === 'DEFEND' && declaration.bait === true ? 'BAIT'
+                    : actionKind === 'DEFEND' && declaration.humanShield ? `SHIELD:${String(declaration.humanShield.unitId || '')}` : actionKind;
+            const groupKey = `${actionKind}:${identity}:${BATTLE_PREVIEW.stableHash(skill?._效果数组 || [])}${declaration.flank === true ? ':flank' : ''}`;
             const targetNames = (Array.isArray(declaration.targetIds) ? declaration.targetIds : []).map(unitNameById).filter(Boolean);
             let action = grouped.get(groupKey);
             if (!action) {
@@ -2096,7 +2116,7 @@ class BattleUIComponent {
                     );
               const costInvalid = actionKind === 'RELEASE_SKILL' && /^不可用：/.test(costText);
               action = {
-                id: `decision_${BATTLE_PREVIEW.stableHash({ actionKind, identity }).slice(0, 16)}`,
+                id: `decision_${BATTLE_PREVIEW.stableHash(declaration.flank === true ? { actionKind, identity, flank: true } : { actionKind, identity }).slice(0, 16)}`,
                 type: meta.type,
                 action_type: meta.actionType,
                 actionKind,
