@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:ba50497a505a2a5767d21887193b076b2e8fc1231ec6c6d7a120a4d046f29de5|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:98fe63b97dcc7c6edb825aec6621537ae480c2e98ea6680f2cdbaf556f8ba5d1|BattleRuntime_Module.js:2ffc4ac5fd8241f4fc21c42621408b5b1ec34a96bf0be2cdec900cd5fed713f7|BattleReport_Module.js:5b687be4739c24c5360bc941ea8c2d5c3aed6f6342f43dd82bacd2d2cc76dcdb|BattleUI_Module.js:59eb63481fdba709c4860340658fb86c3d09c6300d86f348e45594ecccad6d07 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:ba50497a505a2a5767d21887193b076b2e8fc1231ec6c6d7a120a4d046f29de5|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:98fe63b97dcc7c6edb825aec6621537ae480c2e98ea6680f2cdbaf556f8ba5d1|BattleRuntime_Module.js:2ffc4ac5fd8241f4fc21c42621408b5b1ec34a96bf0be2cdec900cd5fed713f7|BattleReport_Module.js:8ccbba734eead93c8ed3920fa1ffbc9848fcc9f3e8aeec136708468fce8c05c6|BattleUI_Module.js:4650f2159bac64ff11a4dcfae09f01066441014b024380a9a0c03f1bb1067bdc */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -116336,10 +116336,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const broken = [...factRegistry].reverse().find(fact => text(fact?.mechanic?.kind) === 'GUARD_BREAK' && text(fact?.mechanic?.phase) === 'broken') || null;
     const progress = broken || latest(['OBJECTIVE_PROGRESS']) || latest(['GUARD_BREAK']);
     const truce = latest(['TRUCE']);
+    // 站位（两档距离 T25，用户 11-18 第 10 条）：开场站位，加最近三次站位变化（后撤、前压、突进、追击、位移挪动）。
+    const opening = factRegistry.find(fact => text(fact?.mechanic?.kind) === 'POSITION' && text(fact?.mechanic?.phase) === 'opening' && text(fact?.summary));
+    const moves = factRegistry.filter(fact => text(fact?.mechanic?.kind) === 'POSITION' && text(fact?.mechanic?.phase) !== 'opening' && text(fact?.summary)).slice(-3);
+    const position = [opening, ...moves].filter(Boolean).map(fact => text(fact.summary)).join('；');
     return {
       ...(terms ? { terms: text(terms.summary) } : {}),
       ...(progress ? { progress: text(progress.summary) } : {}),
       ...(truce ? { truce: text(truce.summary) } : {}),
+      ...(position ? { position } : {}),
     };
   }
 
@@ -117532,9 +117537,65 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       })),
       ...(text(truceResponse) ? { truceResponse: text(truceResponse) } : {}),
       ...(mechanicFacts && typeof mechanicFacts === 'object' && Object.keys(mechanicFacts).length
-        ? { mechanicFacts: Object.fromEntries(['terms', 'progress', 'truce'].filter(key => text(mechanicFacts[key])).map(key => [key, text(mechanicFacts[key])])) } : {}),
+        ? { mechanicFacts: Object.fromEntries(['terms', 'progress', 'truce', 'position'].filter(key => text(mechanicFacts[key])).map(key => [key, text(mechanicFacts[key])])) } : {}),
     };
   }
+
+  /* 叙述版战斗摘要（用户 11-18 提示词第 7～10 条）：写正文的 AI 读的 <battle_summary>。从源头拆开——角色的自估局面（档位、
+     百分比）与估值推导（胜过次优手多少、主要在哪项）只是决策内部的数，不进叙述（用户：「为什么不一开始就不交给AI这些会污染AI
+     的内容」）；胜负、剩余由战斗引擎写进变量，推进那一步读卷宗与变量。字段名用中文，另带「说明」；约束写正向，不举反例（粉红大象）。
+     敌方的意图与依据照给（作者视角，11-18 拍板）。 */
+  const NARRATIVE_SUMMARY_NOTES = Object.freeze([
+    '场上事实是已经成立的事，可以直接写进叙述。',
+    '各手打算是每个角色出每一手时的意图和他看到的依据，用来写角色的心理活动和临场判断。',
+    '对手的打算通过对手自己的言行、神情、气势表现出来；战斗结束后的复盘里可以直接点明。',
+    '站位是双方的远近：在后的人要被近身攻击，对方得先冲过来。',
+  ]);
+  // 去掉一行打算里的估值部分：「X选【招】，意图：…；自估局面：…；胜过【…】…」→「X选【招】，意图：…」。
+  const narrativeLine = line => text(line).split('；')[0].replace(/（?自估(?:局面|胜算)[：:][^）；]*）?/g, '').trim();
+  const narrativeIntent = line => text(line).replace(/（自估(?:局面|胜算)[：:][^）]*）/g, '').replace(/；?自估(?:局面|胜算)[：:][^；]*/g, '').trim();
+  const NARRATIVE_RESOURCE_NAMES = Object.freeze([['soul', '魂力'], ['spirit', '精神力'], ['stamina', '体力']]);
+  const narrativeResources = (resources = null) => {
+    if (!resources || typeof resources !== 'object') return null;
+    const pairs = NARRATIVE_RESOURCE_NAMES.filter(([key]) => Number.isFinite(Number(resources[key])))
+      .map(([key, name]) => [name, `${Math.round(Number(resources[key]))}/${Math.round(Number(resources[`${key}Max`] ?? resources[key]))}`]);
+    return pairs.length ? Object.fromEntries(pairs) : null;
+  };
+  function narrativeSummaryForAI(summary = {}) {
+    const unit = row => ({
+      名字: text(row?.name), 生命: number(row?.hp, 0), 生命上限: number(row?.hpMax, 0),
+      ...(number(row?.shield, 0) > 0 ? { 护盾: number(row?.shield, 0) } : {}),
+      ...(narrativeResources(row?.resources) ? { 资源: narrativeResources(row.resources) } : {}),
+      ...((row?.states || []).length ? { 状态: row.states.map(state => (state.duration > 0 ? `${state.name}（剩${state.duration}回合）` : state.name)) } : {}),
+      ...(text(row?.actionState) ? { 行动状态: text(row.actionState) } : {}),
+    });
+    const facts = summary?.mechanicFacts || {};
+    const sceneFacts = Object.fromEntries([['交手约定', facts.terms], ['赌约进度', facts.progress], ['罢手', facts.truce], ['站位', facts.position]]
+      .filter(([, value]) => text(value)).map(([key, value]) => [key, text(value)]));
+    // 依据里已经写在场上事实里的那一句不重复（拒绝罢手之后每一手都会带着它）。
+    const factLines = new Set(Object.values(sceneFacts));
+    const basisOf = row => (row?.basis || []).map(text).filter(line => line && !factLines.has(line));
+    const intents = Object.fromEntries([['我方', summary?.nextIntents?.player], ['敌方', summary?.nextIntents?.enemy]]
+      .map(([key, value]) => [key, narrativeIntent(value)]).filter(([, value]) => value));
+    return {
+      说明: [...NARRATIVE_SUMMARY_NOTES],
+      战果: text(summary?.headline),
+      回合数: Math.max(0, number(summary?.actualRoundCount, 0)),
+      双方: { 我方: (summary?.sides?.player || []).map(unit), 敌方: (summary?.sides?.enemy || []).map(unit) },
+      // 局势只留结论那一句（前面是存活人数、平均生命比例这些统计，双方栏里已经有）。
+      ...(text(summary?.advantage) ? { 局势: text(summary.advantage).split('；').pop().trim() } : {}),
+      ...(text(summary?.trend) ? { 走势: text(summary.trend) } : {}),
+      ...((summary?.risks || []).length ? { 隐患: [...summary.risks].map(text).filter(Boolean) } : {}),
+      ...((summary?.tacticalWindows || []).length ? { 战机: [...summary.tacticalWindows].map(text).filter(Boolean) } : {}),
+      ...(Object.keys(sceneFacts).length ? { 场上事实: sceneFacts } : {}),
+      ...(text(summary?.truceResponse) && !sceneFacts.罢手 ? { 罢手回应: text(summary.truceResponse) } : {}),
+      近几回合: (summary?.recentRoundSummaries || []).map(row => ({ 回合: number(row?.round, 0), 经过: text(row?.summary) })).filter(row => row.经过),
+      各手打算: (summary?.recentReasons || []).map(row => ({ 回合: number(row?.round, 0), 打算: narrativeLine(row?.line),
+        ...(basisOf(row).length ? { 依据: basisOf(row) } : {}) })).filter(row => row.打算),
+      ...(Object.keys(intents).length ? { 接下来的打算: intents } : {}),
+    };
+  }
+  const narrativeSummaryText = summary => JSON.stringify(narrativeSummaryForAI(summary));
 
   function publicDecisionExplanation(explanation = {}, index = 0) {
     return {
@@ -118798,6 +118859,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
 
   root.__LWCS_BATTLE_REPORT__ = Object.freeze({
     buildTruceAcceptedSummary,
+    narrativeSummaryForAI,
+    narrativeSummaryText,
     version: reportSchemaVersion,
     visibilityModes,
     reportTermDictionary,
@@ -120766,7 +120829,8 @@ class BattleUIComponent {
           if (!dryRun && !commitReceipt?.committed) throw new Error('battle_package_commit_missing');
           const reportDto = transactionResult.reportDto;
         const aiStructuredSummary = reportDto?.aiStructuredSummary || {};
-        const aiStructuredSummaryText = JSON.stringify(aiStructuredSummary);
+        // 写正文的 AI 读叙述版（BattleReport narrativeSummaryText：中文字段、带说明、不带自估局面与估值推导）。
+        const aiStructuredSummaryText = window.__LWCS_BATTLE_REPORT__?.narrativeSummaryText?.(aiStructuredSummary) || JSON.stringify(aiStructuredSummary);
           const output = {
           ...transactionResult,
           preview: dryRun,
@@ -123263,7 +123327,7 @@ class BattleUIComponent {
               if (built && typeof window.sendToAI === 'function') {
                 aiRequest = window.sendToAI(
                   `<battle_result>${built.battleResult}</battle_result>`,
-                  `<battle_summary>\n${JSON.stringify(built.summary)}\n</battle_summary>`,
+                  `<battle_summary>\n${window.__LWCS_BATTLE_REPORT__?.narrativeSummaryText?.(built.summary) || JSON.stringify(built.summary)}\n</battle_summary>`,
                   { requestKind: 'battle_settlement_plot' },
                 );
               } else {
