@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:27b6ca3f2833c031b38869085a2b66f37285bd92de7a85bb9f7a945ecbb56486|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:302bd8b216533548297d71de900e0f78199fbbe047291aa26ee5ba1198e6867f|BattleRuntime_Module.js:762928c28c62934808485d1e0aa795d3f1916bc4ff3fe9faf84ddba083b992bf|BattleReport_Module.js:2c422dc4fe1f1640fb0c03ed68a0b52c4a6020f021b9a9125d560937adbe94bf|BattleUI_Module.js:bbdd909bb8ba56a04bc447dde50a41befe38b83153e74703a97a2abf36785e61 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:0d5c3af412e77cfd84f93dba2598f826c1a988856d12ea9be220fee9bf9d4a8c|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:302bd8b216533548297d71de900e0f78199fbbe047291aa26ee5ba1198e6867f|BattleRuntime_Module.js:4c60c324ba10298782c006f3b51d890b1f6ec6c1ffb749787be9c9214688587d|BattleReport_Module.js:b59bcc08f199f08dcf94b04441014ee3494217223721db3bc98afb28e7efe90f|BattleUI_Module.js:721b96469f47d9739e712f74804fa051c84ba8f9d939b4704804868d0b7091b7 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -8090,33 +8090,97 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     return value;
   }
 
-  // 用户 2026-11-08: raising 体力上限 raises current 体力 by the same amount, so a stamina-maximum buff never reads as
-  // fatigue; when the bonus ends, current stamina is only capped at the lower maximum (readResource clamps it).
-  // __体力上限加成 is the part of the maximum already credited to current stamina; credit:false records it without
-  // crediting (a unit entering battle already carries its buffed stamina).
+  /* 上限加成与当前值（11-18 用户拍板选项 C，取代 11-08 的「只截断」；生命与体力同一口径）：
+     - 上限升高（加成生效、叠加）：当前值加上同样的量；
+     - 上限回落（加成结束、减少一部分）：当前值 = 当前值 × 新上限 ÷ 旧上限，都按有效上限算（例：21796/45469 收起 → 21796 × 11673 ÷ 45469 ≈ 5596）；
+       四舍五入，原本大于 0 的不会因缩放变成 0；缩放不算受伤（不扣体力、不判倒下）。
+     - 记账：__生命上限加成 / __体力上限加成 是已经记进当前值的那部分上限（有效上限 − 基础上限），旧上限 = 基础上限 + 记账。
+     - credit:false 只记账、不动当前值（保留给需要原样记账的调用方）。
+     - 存档是「本体视角」：写回 MVU 时，加成还挂着就把当前值按 基础上限 ÷ 有效上限 折算（persistedResourceValue），所以 MVU 里的
+       HP 不会超过 HP上限，规范化属性Schema_V1 的截断不再丢信息；进战斗时加成还在，按 有效上限 ÷ 基础上限 放大回来（enterBattleMaxGain）。 */
+  function readBaseStaminaMax(unit = {}) {
+    const direct = toNumber(unit?.vit_max);
+    return maxNumber(1, isFiniteNumber(direct) ? direct : readNumber(unit, ['vit_max', 'sta_max', '体力上限'], 1));
+  }
+  // 原始当前值（不按当前有效上限截断：上限刚回落时要拿回落前的值来缩放）。
+  function readRawHp(unit = {}) {
+    const direct = toNumber(unit?.hp);
+    return Math.max(0, isFiniteNumber(direct) ? direct : readNumber(unit, ['hp', 'HP', '生命', 'vit', '体力'], readHpMax(unit)));
+  }
+  function readRawStamina(unit = {}) {
+    const direct = toNumber(unit?.vit);
+    return Math.max(0, isFiniteNumber(direct) ? direct : readNumber(unit, ['vit', 'sta', '体力'], readResourceMax(unit, '体力')));
+  }
+  // 只改数值的写法（与 setHp 写同一组字段），不走受伤扣体力、倒下判定——上限变化不是受伤。
+  function writeHpValue(unit = {}, value = 0) {
+    const next = Math.max(0, Math.min(readHpMax(unit), value));
+    if ('hp' in unit || !('HP' in unit)) unit.hp = next;
+    if ('HP' in unit) unit.HP = next;
+    if (unit.属性 && typeof unit.属性 === 'object') {
+      if ('HP' in unit.属性) unit.属性.HP = next;
+      else if ('生命' in unit.属性) unit.属性.生命 = next;
+      else if ('体力' in unit.属性 && !('hp' in unit)) unit.属性.体力 = next;
+    }
+  }
+  function scaleToMaximum(current = 0, fromMax = 1, toMax = 1) {
+    if (!(fromMax > 0) || !(current > 0)) return Math.max(0, current);
+    return Math.max(1, Math.round(current * toMax / fromMax));
+  }
+  // 一种资源的上限变化落到当前值上。返回记账的变化量。
+  function syncMaxGain(unit, { base, maximum, ledgerKey, readRaw, write, credit }) {
+    const bonus = Math.max(0, maximum - base);
+    const credited = Math.max(0, Number(unit[ledgerKey] || 0));
+    if (bonus === credited) return 0;
+    if (credit) {
+      const previousMax = base + credited;
+      const current = Math.min(readRaw(unit), previousMax);
+      write(unit, bonus > credited ? current + bonus - credited : scaleToMaximum(current, previousMax, maximum));
+    }
+    if (bonus > 0) unit[ledgerKey] = bonus;
+    else delete unit[ledgerKey];
+    return bonus - credited;
+  }
   function syncLifeMaxGain(unit = null, { credit = true } = {}) {
     if (!unit || typeof unit !== 'object' || Object.isFrozen(unit)) return 0;
-    const bonus = Math.max(0, readHpMax(unit) - readBaseHpMax(unit));
-    const credited = Math.max(0, Number(unit.__生命上限加成 || 0));
-    if (bonus === credited) return 0;
-    if (credit && bonus > credited) setHp(unit, readHp(unit) + bonus - credited);
-    if (bonus > 0) unit.__生命上限加成 = bonus;
-    else delete unit.__生命上限加成;
-    return bonus - credited;
+    return syncMaxGain(unit, { base: readBaseHpMax(unit), maximum: readHpMax(unit), ledgerKey: '__生命上限加成', readRaw: readRawHp, write: writeHpValue, credit });
   }
 
   function syncStaminaMaxGain(unit = null, { credit = true } = {}) {
     if (!unit || typeof unit !== 'object' || Object.isFrozen(unit)) return 0;
     syncLifeMaxGain(unit, { credit });
-    const direct = toNumber(unit?.vit_max);
-    const base = maxNumber(1, isFiniteNumber(direct) ? direct : readNumber(unit, ['vit_max', 'sta_max', '体力上限'], 1));
-    const bonus = Math.max(0, readResourceMax(unit, '体力') - base);
-    const credited = Math.max(0, Number(unit.__体力上限加成 || 0));
-    if (bonus === credited) return 0;
-    if (credit && bonus > credited) setResource(unit, '体力', readResource(unit, '体力') + bonus - credited);
-    if (bonus > 0) unit.__体力上限加成 = bonus;
-    else delete unit.__体力上限加成;
-    return bonus - credited;
+    return syncMaxGain(unit, { base: readBaseStaminaMax(unit), maximum: readResourceMax(unit, '体力'), ledgerKey: '__体力上限加成',
+      readRaw: readRawStamina, write: (target, value) => setResource(target, '体力', value), credit });
+  }
+
+  // 进战斗（mergeBattleParticipant）：从存档来的单位没有记账字段，它的当前值是本体视角——加成在就按 有效上限 ÷ 基础上限 放大，并记账；
+  // 已带记账字段的（战斗里的单位、临时单位）已经是战斗视角，按上面的规则同步。
+  function enterBattleMaxGain(unit = null) {
+    if (!unit || typeof unit !== 'object' || Object.isFrozen(unit)) return;
+    const enter = (ledgerKey, base, maximum, readRaw, write) => {
+      if (unit[ledgerKey] !== undefined) return false;
+      if (maximum > base) {
+        write(unit, scaleToMaximum(Math.min(readRaw(unit), base), base, maximum));
+        unit[ledgerKey] = maximum - base;
+      }
+      return true;
+    };
+    if (!enter('__生命上限加成', readBaseHpMax(unit), readHpMax(unit), readRawHp, writeHpValue)) syncLifeMaxGain(unit);
+    if (!enter('__体力上限加成', readBaseStaminaMax(unit), readResourceMax(unit, '体力'), readRawStamina, (target, value) => setResource(target, '体力', value))) {
+      syncMaxGain(unit, { base: readBaseStaminaMax(unit), maximum: readResourceMax(unit, '体力'), ledgerKey: '__体力上限加成',
+        readRaw: readRawStamina, write: (target, value) => setResource(target, '体力', value), credit: true });
+    }
+  }
+
+  // 写回存档用的当前值（本体视角）：'HP' 或 '体力'。加成没挂着时就是当前值；挂着时按 基础上限 ÷ 有效上限 折算。
+  // 返回 null 表示这个对象身上没有加成（例如存档里的角色数据），调用方照原字段写。
+  function persistedResourceValue(unit = {}, resource = 'HP') {
+    if (!unit || typeof unit !== 'object') return null;
+    const life = /HP|生命/i.test(resource);
+    const base = life ? readBaseHpMax(unit) : readBaseStaminaMax(unit);
+    const maximum = life ? readHpMax(unit) : readResourceMax(unit, '体力');
+    if (!(maximum > base)) return null;
+    const current = life ? readHp(unit) : readResource(unit, '体力');
+    return Math.min(base, scaleToMaximum(current, maximum, base));
   }
 
   function readResource(unit = {}, resource = '') {
@@ -31904,6 +31968,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     readResource,
     readResourceMax,
     syncStaminaMaxGain,
+    enterBattleMaxGain,
+    persistedResourceValue,
     battleObjectiveProgress,
     setResourceValue,
     skillCostResourceKey,
@@ -88816,8 +88882,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
     merged.存活 = merged.状态?.存活 !== false && previewRuntime.readHp(merged) > 0;
     syncEquipmentPassiveRuntime(merged, Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0), { rebuildFinal: false });
-    // A unit enters battle with its stamina already counted against any buffed maximum it carries.
-    previewRuntime.syncStaminaMaxGain(merged, { credit: false });
+    // 进战斗（11-18 用户拍板选项 C）：存档里的生命、体力是本体视角（基础上限下的值），身上带着上限加成就按 有效上限 ÷ 基础上限 放大并记账；
+    // 已带记账字段的单位（战斗中的、临时单位）照比例规则同步。原先 credit:false 只记账不放大，续推时真身加出来的血就丢了。
+    previewRuntime.enterBattleMaxGain(merged);
     merged.final = buildCombatFinalStats(merged);
     // 位移重做: 瞬移 / 换位瞬间发动，只含位移的技能前摇按 0（BattlePreview isInstantPositionSkill）。
     previewRuntime.normalizeInstantPositionWindup(merged);
@@ -115083,12 +115150,41 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     };
   }
 
+  /* 单位资源读有效值（11-18 生命超上限显示修正）：和 BattleRuntime getBattleSnapshot 同一读法——上限含面板修正（真身的生命上限修正等），
+     当前值按有效上限截断。原先直接读原始字段：生命上限加成结束后原始 hp 不扣（BattlePreview syncLifeMaxGain 只截断），
+     战报就写出「HP 43284/11521」；加成还在时又把有效上限写成基础上限。拿不到 BattlePreview 时退回原始字段。 */
+  function effectiveUnitResources(unit = {}) {
+    const preview = root.__LWCS_BATTLE_PREVIEW__;
+    const raw = {
+      hp: number(unit?.hp ?? unit?.HP ?? unit?.属性?.HP, 0),
+      hpMax: Math.max(1, number(unit?.hp_max ?? unit?.HP上限 ?? unit?.属性?.HP上限, 1)),
+      soul: number(unit?.sp ?? unit?.魂力 ?? unit?.属性?.魂力, 0),
+      soulMax: Math.max(0, number(unit?.sp_max ?? unit?.魂力上限 ?? unit?.属性?.魂力上限, 0)),
+      spirit: number(unit?.men ?? unit?.精神力 ?? unit?.属性?.精神力, 0),
+      spiritMax: Math.max(0, number(unit?.men_max ?? unit?.精神力上限 ?? unit?.属性?.精神力上限, 0)),
+      stamina: number(unit?.vit ?? unit?.sta ?? unit?.体力 ?? unit?.属性?.体力, 0),
+      staminaMax: Math.max(0, number(unit?.vit_max ?? unit?.sta_max ?? unit?.体力上限 ?? unit?.属性?.体力上限, 0)),
+    };
+    if (!preview || typeof preview.readHp !== 'function' || typeof preview.readResourceMax !== 'function' || !unit || typeof unit !== 'object') return raw;
+    try {
+      return {
+        hp: number(preview.readHp(unit), raw.hp), hpMax: Math.max(1, number(preview.readHpMax(unit), raw.hpMax)),
+        soul: number(preview.readResource(unit, '魂力'), raw.soul), soulMax: Math.max(0, number(preview.readResourceMax(unit, '魂力'), raw.soulMax)),
+        spirit: number(preview.readResource(unit, '精神力'), raw.spirit), spiritMax: Math.max(0, number(preview.readResourceMax(unit, '精神力'), raw.spiritMax)),
+        stamina: number(preview.readResource(unit, '体力'), raw.stamina), staminaMax: Math.max(0, number(preview.readResourceMax(unit, '体力'), raw.staminaMax)),
+      };
+    } catch (error) {
+      return raw;
+    }
+  }
+
   function unitStateFromSnapshot(unit = {}, side = '', directory = new Map(), visibilityMode = 'DEVELOPER') {
     const id = publicEntityId(directory, unit?.id || unit?.召唤键 || unit?.name || unit?.名称);
     const name = publicEntityName(directory, unit?.id || unit?.召唤键 || unit?.name || unit?.名称, unit?.name || unit?.名称);
     const hidePrivateResources = visibilityMode !== 'DEVELOPER' && side === 'enemy';
-    const hp = number(unit?.hp ?? unit?.HP ?? unit?.属性?.HP, 0);
-    const stamina = number(unit?.vit ?? unit?.sta ?? unit?.体力 ?? unit?.属性?.体力, 0);
+    const effective = effectiveUnitResources(unit);
+    const hp = effective.hp;
+    const stamina = effective.stamina;
     const rawActionState = text(
       unit?.__战斗失能原因 || unit?.actionState || unit?.行动状态,
     );
@@ -115108,16 +115204,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       name,
       side,
       hp,
-      hpMax: Math.max(1, number(unit?.hp_max ?? unit?.HP上限 ?? unit?.属性?.HP上限, 1)),
+      hpMax: effective.hpMax,
       shield: Math.max(0, number(unit?.shield ?? unit?.护盾, 0)),
       resourceVisibility: hidePrivateResources ? 'HIDDEN' : 'PUBLIC',
       resources: hidePrivateResources ? null : {
-        soul: number(unit?.sp ?? unit?.魂力 ?? unit?.属性?.魂力, 0),
-        soulMax: Math.max(0, number(unit?.sp_max ?? unit?.魂力上限 ?? unit?.属性?.魂力上限, 0)),
-        spirit: number(unit?.men ?? unit?.精神力 ?? unit?.属性?.精神力, 0),
-        spiritMax: Math.max(0, number(unit?.men_max ?? unit?.精神力上限 ?? unit?.属性?.精神力上限, 0)),
+        soul: effective.soul,
+        soulMax: effective.soulMax,
+        spirit: effective.spirit,
+        spiritMax: effective.spiritMax,
         stamina,
-        staminaMax: Math.max(0, number(unit?.vit_max ?? unit?.sta_max ?? unit?.体力上限 ?? unit?.属性?.体力上限, 0)),
+        staminaMax: effective.staminaMax,
       },
       actionState: playerActionStateName(
         actionState,
@@ -119213,6 +119309,16 @@ class BattleUIComponent {
         if (key === '状态效果') {
           snapshot[key] = buildCombatConditionMapPersistenceSnapshot(sourceStat[key]);
           return;
+        }
+        // 生命、体力写进存档用本体视角（11-18 用户拍板选项 C）：战斗中的单位挂着上限加成时，按 基础上限 ÷ 有效上限 折算
+        //（BattlePreview persistedResourceValue）；存档里的角色数据身上没有加成，返回 null，照原值写。
+        if (key === 'HP' || key === '体力') {
+          let persisted = null;
+          try { persisted = BATTLE_PREVIEW?.persistedResourceValue?.(participant, key) ?? null; } catch (error) { persisted = null; }
+          if (persisted !== null && Number.isFinite(Number(persisted))) {
+            snapshot[key] = Number(persisted);
+            return;
+          }
         }
         snapshot[key] = clonePersistedCombatValue(sourceStat[key]);
       });
