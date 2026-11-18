@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:a9d1df2457d380dbc752fdb1f6e185e2c08279a583c00586b2e0ce0964dc8bfe|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:9074c189e83ea573748ea1add1439e466ab17cdd3902b14186c8682ff5a9535d|BattleRuntime_Module.js:afdc8fe3b1dbc6d1148d3672a0449bf80ab046589dda091b06a7b06df73ff736|BattleReport_Module.js:4b3c87f3188dc60d24d0c4d8bcd3afb3789827a8d7b1f5a3b09e6a843a313bb4|BattleUI_Module.js:b0a9ca72412554bdb7aefec6687cba12f332d6a270b5d5b39d764ce8e4d2f11e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:a9d1df2457d380dbc752fdb1f6e185e2c08279a583c00586b2e0ce0964dc8bfe|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:4ccbd7dfc3c4ed146a04aa7734cc4c1c820c83ffc3dbae4d2a7d79b8afe10181|BattleRuntime_Module.js:afdc8fe3b1dbc6d1148d3672a0449bf80ab046589dda091b06a7b06df73ff736|BattleReport_Module.js:4b3c87f3188dc60d24d0c4d8bcd3afb3789827a8d7b1f5a3b09e6a843a313bb4|BattleUI_Module.js:b0a9ca72412554bdb7aefec6687cba12f332d6a270b5d5b39d764ce8e4d2f11e */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -82909,6 +82909,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const stanceActor = { ...actor, __battleRuntime: { ...(actor.__battleRuntime || {}),
         passiveStreak: Math.max(0, Number(actor.__battleRuntime?.passiveStreak) || 0) + 1 } };
       const standing = table.sides.reduce((sum, side, row) => sum + Number(side === own && alive[row] > 0 && remaining[row] > 0), 0);
+      // 卖破绽（T32）: one bait meets one strike — the first that comes uses it up (BattleRuntime preparedDefense) — so of the
+      // enemies it may draw, only the one it gains most from counts (11-19: summed over a 精神系's clones, a 35 级强攻系 baited
+      // 115 rounds where it had won in 4 by attacking).
+      let baitBest = null;
       for (let row = 0; row < count; row += 1) {
         if (table.sides[row] === own || !table.pending[row] || !acts[row] || !(alive[row] > 0) || denied[row] > 0) continue;
         seen += 1;
@@ -82946,11 +82950,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           const baited = r20Exchange(answer[actorRow][row], answer[row][actorRow], strikeAgain, strikeBack * (Number(preview.BAIT_COUNTER_BONUS) || 1), 1);
           const seenComes = out[row][actorRow] * stance.keep + baited.more > baited.taken;
           const coming = (comesUnprepared ? (1 - seenShare) * turned : 0) + (seenComes ? seenShare * turnedBraced : 0);
-          if (comesUnprepared && !seenComes) remaining[actorRow] += seenShare * turned * (out[row][actorRow] * keep[actorRow][row] + ordinary.more) / Math.max(1, standing);
-          if (!(coming > 0)) continue;
-          remaining[actorRow] += coming * out[row][actorRow] * Math.max(0, keep[actorRow][row] - stance.keep);
-          remaining[row] = Math.max(0, remaining[row] - coming * Math.max(0, baited.taken - ordinary.taken));
-          remaining[actorRow] = Math.max(0, remaining[actorRow] - coming * Math.max(0, baited.more - ordinary.more));
+          const turnedAway = comesUnprepared && !seenComes ? seenShare * turned * (out[row][actorRow] * keep[actorRow][row] + ordinary.more) / Math.max(1, standing) : 0;
+          const kept = coming > 0 ? coming * out[row][actorRow] * Math.max(0, keep[actorRow][row] - stance.keep) : 0;
+          const dealt = coming > 0 ? coming * Math.max(0, baited.taken - ordinary.taken) : 0, struck = coming > 0 ? coming * Math.max(0, baited.more - ordinary.more) : 0;
+          const gain = turnedAway + kept + dealt - struck;
+          if (!baitBest || gain > baitBest.gain) baitBest = { row, gain, own: turnedAway + kept - struck, dealt };
           continue;
         }
         if (comesUnprepared && !comesPrepared) {
@@ -82963,6 +82967,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         remaining[actorRow] += turnedBraced * out[row][actorRow] * Math.max(0, keep[actorRow][row] - stance.keep);
         remaining[row] = Math.max(0, remaining[row] - turnedBraced * Math.max(0, prepared.taken - ordinary.taken));
         remaining[actorRow] = Math.max(0, remaining[actorRow] - turnedBraced * Math.max(0, prepared.more - ordinary.more));
+      }
+      if (baitBest) {
+        remaining[actorRow] = Math.max(0, remaining[actorRow] + baitBest.own);
+        remaining[baitBest.row] = Math.max(0, remaining[baitBest.row] - baitBest.dealt);
       }
     }
     // A charged skill (前摇 over a turn's budget): nothing lands now. Its release lands what the skill's own cell says
