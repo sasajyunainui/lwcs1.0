@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:04aea5a179cd2585877fc6afd814b03007951127c81d8f34318348407b5bcfb0|cockpit/designer-model.js:cbbb8156854ed85b560637420324e21db9e899fb9cbef68ba1ccca6d0d217fc2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:6440c5668f87659ecdf174fed668ca64d8bf2f4440a78909d098a8706ef4d779|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:d3f311f618eb2b6f4748d0043eaee49b7f1805576ef7bb69e12ed07c46a99845|BattleRuntime_Module.js:4c60c324ba10298782c006f3b51d890b1f6ec6c1ffb749787be9c9214688587d|BattleReport_Module.js:b59bcc08f199f08dcf94b04441014ee3494217223721db3bc98afb28e7efe90f|BattleUI_Module.js:34f8006e618365cbc12b894096b41d629cda49bbdf42e7fabc36bccc1ac159c4|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:04aea5a179cd2585877fc6afd814b03007951127c81d8f34318348407b5bcfb0|cockpit/designer-model.js:cbbb8156854ed85b560637420324e21db9e899fb9cbef68ba1ccca6d0d217fc2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:6440c5668f87659ecdf174fed668ca64d8bf2f4440a78909d098a8706ef4d779|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:d3f311f618eb2b6f4748d0043eaee49b7f1805576ef7bb69e12ed07c46a99845|BattleRuntime_Module.js:4c60c324ba10298782c006f3b51d890b1f6ec6c1ffb749787be9c9214688587d|BattleReport_Module.js:33f1003bdaa7772602ebacd69a2147e3f0c13a0f79c752659810836654f66a8f|BattleUI_Module.js:2676ce69f63705ae9174cec28a53514fccf621030f8ba82ac2cc24c4c4bea49b|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -171198,7 +171198,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     };
   }
 
-  function publicNarrativeNode(node = {}) {
+  function publicNarrativeNode(node = {}, mechanicFactIds = new Set()) {
     const decisions = (Array.isArray(node?.decisions) ? node.decisions : []).map(row => ({
       actorName: text(row?.actorName),
       isPrimary: row?.isPrimary === true,
@@ -171225,6 +171225,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       decision: publicDecisionTrace(node?.decision),
       decisions,
       lostOpportunityReason: text(node?.lostOpportunityReason),
+      mechanicFactIds: (Array.isArray(node?.factIds) ? node.factIds : []).map(text).filter(id => mechanicFactIds.has(id)),
       settlement: {
         declarationSummary: text(node?.settlement?.declarationSummary),
         steps: (Array.isArray(node?.settlement?.steps) ? node.settlement.steps : [])
@@ -171403,6 +171404,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       .map(publicRoundSummary);
     const finalSummary = publicFinalSummary(report?.finalSummary || {});
     const exchanges = (Array.isArray(report?.exchanges) ? report.exchanges : []).map(publicExchange);
+    // 每张行动卡挂着哪些机制事实（T26 第 4 批）：界面据此把对轰、破防的演算放进这张卡的判定依据。只给机制事实的 id，其余事实 id 不进公开 DTO。
+    const mechanicFactIds = new Set((Array.isArray(report?.mechanicFacts) ? report.mechanicFacts : []).map(fact => text(fact?.factId)).filter(Boolean));
     return {
       schemaVersion: reportSchemaVersion,
       battleId: text(report?.battleId || report?.sourceDraftHash),
@@ -171432,7 +171435,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       finalSummary,
       exchanges,
       narrativeChain: (Array.isArray(report?.narrativeChain) ? report.narrativeChain : [])
-        .map(publicNarrativeNode),
+        .map(node => publicNarrativeNode(node, mechanicFactIds)),
       aiStructuredSummary: publicAiSummary(finalSummary, roundOverview, report?.aiStructuredSummary?.recentReasons, report?.aiStructuredSummary?.truceResponse,
         report?.aiStructuredSummary?.mechanicFacts, report?.aiStructuredSummary?.nextIntents),
       battleHeadline: text(report?.battleHeadline),
@@ -176236,7 +176239,8 @@ class BattleUIComponent {
         function 格式化ReportDto数字值(value, unit = '') {
           const numeric = Number(value);
           if (!Number.isFinite(numeric)) return '';
-          return `${numeric.toFixed(Math.abs(numeric) < 10 ? 2 : 0)}${unit || ''}`;
+          // 去掉末尾的 0（「1.00回合」写成「1回合」），与战报文字的 displayNumber 同口径。
+          return `${Number(numeric.toFixed(Math.abs(numeric) < 10 ? 2 : 0))}${unit || ''}`;
         }
 
         function 格式化ReportDto操作数(operands = []) {
@@ -176400,21 +176404,54 @@ class BattleUIComponent {
             + '</li>';
         }
 
-        /* 出招理由（新估值的出招记录，T24 第 4 步）：一行理由 + 选中手 / 次优手各估值项的推导。每行已在决策层限长并标明截断；
-           说明放悬停（title），不放正文。界面样式留到 T26。 */
-        function 渲染出招理由(record = null) {
-          if (!record || typeof record !== 'object') return '';
-          const 推导 = (Array.isArray(record.derivation) ? record.derivation : [])
-            .map(line => `<li>${htmlEscapeText(String(line || ''))}</li>`).join('');
-          return '<div class="battle-chain-reason" title="新估值的出招记录：意图、自估胜算，以及选中手与次优手各估值项（表值 × 系数 × 输入）">'
-            + `<p class="battle-chain-reason-line">${htmlEscapeText(String(record.aiLine || ''))}</p>`
-            + (推导 ? `<ol class="battle-chain-reason-derivation" title="正数加分，负数扣分；「推演」一行是推演里谁在第几回合倒下">${推导}</ol>` : '')
+        /* 机制判定的演算（T26 第 4 批）：战报 DTO 的 mechanicFacts[].judgement = { check, inputs, rule, ratio, outcome }。
+           一行：判什么 · 参与的量 · 比值 → 结果；判定规则放悬停（title）。敌方隐藏面板时战报层已只留 check 与 outcome。 */
+        function 渲染判定演算(fact = null) {
+          const judgement = fact?.judgement;
+          if (!judgement || typeof judgement !== 'object') return '';
+          const 输入 = Object.entries(judgement.inputs && typeof judgement.inputs === 'object' ? judgement.inputs : {})
+            .map(([name, value]) => typeof value === 'boolean'
+              ? `<span class="battle-chain-judgement-input">${htmlEscapeText(name)}：${value ? '是' : '否'}</span>`
+              : `<span class="battle-chain-judgement-input">${htmlEscapeText(name)} <b>${htmlEscapeText(String(value ?? ''))}</b></span>`)
+            .join('');
+          // 比值已作为输入列出（对轰的威力比）时不再重复。
+          const 比值已列 = Object.values(judgement.inputs || {}).some(value => typeof value === 'number' && value === judgement.ratio);
+          const 比值 = Number.isFinite(Number(judgement.ratio)) && judgement.ratio !== null && !比值已列
+            ? `<span class="battle-chain-judgement-ratio">比值 <b>${htmlEscapeText(String(judgement.ratio))}</b></span>` : '';
+          return `<div class="battle-chain-judgement"${judgement.rule ? ` title="${htmlEscapeText(judgement.rule)}"` : ''}>`
+            + `<span class="battle-chain-judgement-check">${htmlEscapeText(judgement.check || '判定')}</span>`
+            + 输入 + 比值
+            + `<span class="battle-chain-judgement-outcome">${htmlEscapeText(judgement.outcome || '')}</span>`
             + '</div>';
         }
 
-        function 渲染因果链判定依据(node = {}) {
+        function 渲染机制事实行(fact = {}) {
+          return `<li class="battle-chain-mechanic battle-chain-mechanic--${htmlEscapeText(String(fact?.kind || '').toLowerCase())}">`
+            + `<span>${htmlEscapeText(fact?.summary || '')}</span>${渲染判定演算(fact)}</li>`;
+        }
+
+        /* 出招理由（新估值的出招记录，T24 第 4 步）：一行理由 + 选中手 / 次优手各估值项的推导。每行已在决策层限长并标明截断；
+           说明放悬停（title），不放正文。依据（factRefs，T26 第 3 批）是这一手落点前、和它相关的机制事实。 */
+        function 渲染出招理由(record = null, 机制事实 = new Map()) {
+          if (!record || typeof record !== 'object') return '';
+          const 推导 = (Array.isArray(record.derivation) ? record.derivation : [])
+            .map(line => `<li>${htmlEscapeText(String(line || ''))}</li>`).join('');
+          const 依据 = (Array.isArray(record.factRefs) ? record.factRefs : [])
+            // 交手约定已在战报顶部「本场约定」，不在每一手下面重复。
+            .map(id => 机制事实.get(String(id))).filter(fact => fact && fact.kind !== 'ENGAGEMENT_TERMS').map(渲染机制事实行).join('');
+          return '<div class="battle-chain-reason">'
+            + `<p class="battle-chain-reason-line" title="新估值的出招记录：意图与自估胜算">${htmlEscapeText(String(record.aiLine || ''))}</p>`
+            + (依据 ? `<ul class="battle-chain-reason-basis" title="这一手之前已经发生、和它相关的机制事实">${依据}</ul>` : '')
+            + (推导 ? `<ol class="battle-chain-reason-derivation" title="选中手与次优手各估值项（表值 × 系数 × 输入）；正数加分，负数扣分；「推演」一行是推演里谁在第几回合倒下">${推导}</ol>` : '')
+            + '</div>';
+        }
+
+        function 渲染因果链判定依据(node = {}, 机制事实 = new Map()) {
           const decisions = Array.isArray(node?.decisions) ? node.decisions : [];
-          if (!decisions.length && !(node?.reconciliation || []).length) return '';
+          /* 这次行动里带演算的机制事实（破防、对轰、抢先）：事实句已在结算里，这里只补演算。 */
+          const 演算 = (Array.isArray(node?.mechanicFactIds) ? node.mechanicFactIds : [])
+            .map(id => 机制事实.get(String(id))).filter(fact => fact?.judgement).map(渲染判定演算).join('');
+          if (!decisions.length && !(node?.reconciliation || []).length && !演算) return '';
 
           const 决策块 = decisions.map(entry => {
             const trace = entry?.trace || {};
@@ -176453,7 +176490,7 @@ class BattleUIComponent {
               + (收敛 ? `<ol class="battle-chain-narrowing">${收敛}</ol>` : '')
               + (候选行 ? `<ul class="battle-chain-candidates">${候选行}</ul>` : '')
               + 非最优
-              + 渲染出招理由(trace.reasonRecord)
+              + 渲染出招理由(trace.reasonRecord, 机制事实)
               + '</section>';
           }).join('');
 
@@ -176465,12 +176502,13 @@ class BattleUIComponent {
 
           return '<details class="battle-preview-trace-fold battle-chain-fold">'
             + '<summary>判定依据</summary>'
+            + (演算 ? `<section class="battle-chain-decision battle-chain-judgements"><h5>判定演算</h5>${演算}</section>` : '')
             + 决策块
             + (未确认 ? `<section class="battle-chain-unconfirmed"><h5>未能确认的预测</h5><ul>${未确认}</ul></section>` : '')
             + '</details>';
         }
 
-        function 渲染因果链节点(node = {}, factsById = new Map()) {
+        function 渲染因果链节点(node = {}, 机制事实 = new Map()) {
           const 回合 = Math.max(0, Number(node?.round || 0));
           const 行动者 = String(node?.actorName || '行动者');
           const 动作 = String(node?.action?.name || '行动');
@@ -176559,7 +176597,7 @@ class BattleUIComponent {
             + (结算 ? `<section class="battle-chain-section battle-chain-section--settle"><h4>结算</h4>${结算}</section>` : '')
             + (对账 ? `<section class="battle-chain-section battle-chain-section--check"><h4>没能做到</h4><ul class="battle-chain-checks">${对账}</ul></section>` : '')
             + (数字 ? `<div class="battle-preview-report-badges">${数字}</div>` : '')
-            + 渲染因果链判定依据(node)
+            + 渲染因果链判定依据(node, 机制事实)
             + '</article>';
         }
 
@@ -176707,17 +176745,39 @@ class BattleUIComponent {
           }
           const chain = Array.isArray(reportDto?.narrativeChain) ? reportDto.narrativeChain : [];
           if (!chain.length) return '<div class="battle-preview-empty">暂无战报</div>';
-          /* 单一因果链时间线：按回合分段，每次行动一张卡，卡内顺序即因果顺序。 */
-          const 分段 = [];
+          /* 单一因果链时间线：按回合分段，每次行动一张卡，卡内顺序即因果顺序。
+             机制事实（T26 第 4 批）：交手约定置顶；挂在某次行动上的随卡走（演算进判定依据）；
+             不属于任何行动的（罢手回应、冥想被打断、出手次数到账等）放在该回合末尾。 */
+          const 机制事实 = new Map((Array.isArray(reportDto?.mechanicFacts) ? reportDto.mechanicFacts : [])
+            .filter(fact => fact && fact.factId).map(fact => [String(fact.factId), fact]));
+          const 约定 = [...机制事实.values()].filter(fact => fact.kind === 'ENGAGEMENT_TERMS' && fact.summary);
+          const 已挂 = new Set(chain.flatMap(node => (Array.isArray(node?.mechanicFactIds) ? node.mechanicFactIds : []).map(String)));
+          const 散落 = new Map();
+          机制事实.forEach(fact => {
+            if (fact.kind === 'ENGAGEMENT_TERMS' || 已挂.has(String(fact.factId)) || !fact.summary) return;
+            const 回合 = Math.max(0, Number(fact.round || 0));
+            散落.set(回合, [...(散落.get(回合) || []), fact]);
+          });
+          const 回合末 = 回合 => (散落.get(回合) || []).length
+            ? `<section class="battle-chain-section battle-chain-mechanics"><h4>本回合其他判定</h4><ul>${散落.get(回合).map(渲染机制事实行).join('')}</ul></section>`
+            : '';
+          const 分段 = 约定.length
+            ? [`<section class="battle-chain-section battle-chain-terms"><h4>本场约定</h4><ul>${约定.map(渲染机制事实行).join('')}</ul></section>`]
+            : [];
           let 当前回合 = null;
           chain.forEach(node => {
             const 回合 = Math.max(0, Number(node?.round || 0));
             if (回合 !== 当前回合) {
+              if (当前回合 !== null) 分段.push(回合末(当前回合));
               当前回合 = 回合;
               分段.push(`<h3 class="battle-chain-round">第${回合}回合</h3>`);
             }
-            分段.push(渲染因果链节点(node));
+            分段.push(渲染因果链节点(node, 机制事实));
           });
+          if (当前回合 !== null) 分段.push(回合末(当前回合));
+          /* 没有行动卡的回合（例如只有罢手回应）也要露出来。 */
+          [...散落.keys()].filter(回合 => !chain.some(node => Math.max(0, Number(node?.round || 0)) === 回合)).sort((a, b) => a - b)
+            .forEach(回合 => 分段.push(`<h3 class="battle-chain-round">第${回合}回合</h3>`, 回合末(回合)));
           return `<div class="battle-preview-report battle-chain">${分段.join('')}</div>`;
         }
 
