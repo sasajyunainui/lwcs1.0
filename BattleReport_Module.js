@@ -6706,7 +6706,7 @@
     };
   }
 
-  function publicNarrativeNode(node = {}) {
+  function publicNarrativeNode(node = {}, mechanicFactIds = new Set()) {
     const decisions = (Array.isArray(node?.decisions) ? node.decisions : []).map(row => ({
       actorName: text(row?.actorName),
       isPrimary: row?.isPrimary === true,
@@ -6733,6 +6733,7 @@
       decision: publicDecisionTrace(node?.decision),
       decisions,
       lostOpportunityReason: text(node?.lostOpportunityReason),
+      mechanicFactIds: (Array.isArray(node?.factIds) ? node.factIds : []).map(text).filter(id => mechanicFactIds.has(id)),
       settlement: {
         declarationSummary: text(node?.settlement?.declarationSummary),
         steps: (Array.isArray(node?.settlement?.steps) ? node.settlement.steps : [])
@@ -6911,6 +6912,8 @@
       .map(publicRoundSummary);
     const finalSummary = publicFinalSummary(report?.finalSummary || {});
     const exchanges = (Array.isArray(report?.exchanges) ? report.exchanges : []).map(publicExchange);
+    // 每张行动卡挂着哪些机制事实（T26 第 4 批）：界面据此把对轰、破防的演算放进这张卡的判定依据。只给机制事实的 id，其余事实 id 不进公开 DTO。
+    const mechanicFactIds = new Set((Array.isArray(report?.mechanicFacts) ? report.mechanicFacts : []).map(fact => text(fact?.factId)).filter(Boolean));
     return {
       schemaVersion: reportSchemaVersion,
       battleId: text(report?.battleId || report?.sourceDraftHash),
@@ -6940,7 +6943,7 @@
       finalSummary,
       exchanges,
       narrativeChain: (Array.isArray(report?.narrativeChain) ? report.narrativeChain : [])
-        .map(publicNarrativeNode),
+        .map(node => publicNarrativeNode(node, mechanicFactIds)),
       aiStructuredSummary: publicAiSummary(finalSummary, roundOverview, report?.aiStructuredSummary?.recentReasons, report?.aiStructuredSummary?.truceResponse,
         report?.aiStructuredSummary?.mechanicFacts, report?.aiStructuredSummary?.nextIntents),
       battleHeadline: text(report?.battleHeadline),

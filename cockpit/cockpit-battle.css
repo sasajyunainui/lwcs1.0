@@ -194,8 +194,8 @@
 .lwcs-ck-battle .battle-preview-head,.lwcs-ck-battle .battle-structured-report-head,.lwcs-ck-battle .battle-final-summary-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:.3em .7em;font-weight:900;color:#fff}
 .lwcs-ck-battle .battle-preview-report,.lwcs-ck-battle .battle-preview-report-group,.lwcs-ck-battle .battle-final-summary,.lwcs-ck-battle .battle-chain{display:flex;flex-direction:column;gap:.4em;padding:.5em .6em;background:rgba(140,200,255,.05);box-shadow:inset 0 0 0 1px rgba(140,200,255,.16)}
 .lwcs-ck-battle .battle-preview-report-badges,.lwcs-ck-battle .battle-final-summary-sides{display:flex;flex-wrap:wrap;gap:.3em}
-.lwcs-ck-battle .battle-preview-report-badge{font-size:.86em;font-weight:800;padding:.05em .5em;color:#cfe0f7;box-shadow:inset 0 0 0 1px rgba(140,200,255,.3)}
-.lwcs-ck-battle .battle-preview-report-badge--resource{color:#ffd36b;box-shadow:inset 0 0 0 1px rgba(255,211,107,.4)}
+.lwcs-ck-battle .battle-preview-report-badge{appearance:none;border:0;cursor:help;font-size:.86em;font-weight:800;padding:.05em .5em;color:#cfe0f7;background:rgba(140,200,255,.06);box-shadow:inset 0 0 0 1px rgba(140,200,255,.3)}
+.lwcs-ck-battle .battle-preview-report-badge--resource{color:#ffd36b;background:rgba(255,211,107,.07);box-shadow:inset 0 0 0 1px rgba(255,211,107,.4)}
 .lwcs-ck-battle .battle-final-summary-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(14em,1fr));gap:.4em}
 .lwcs-ck-battle .battle-final-summary-side,.lwcs-ck-battle .battle-final-summary-unit{padding:.35em .5em;background:rgba(140,200,255,.06)}
 .lwcs-ck-battle .battle-final-summary-list{display:flex;flex-direction:column;gap:.2em}
@@ -213,6 +213,33 @@
 .lwcs-ck-battle .battle-chain-candidate-reason,.lwcs-ck-battle .battle-chain-check-kind{color:#8ea6c8}
 .lwcs-ck-battle .battle-chain-suboptimal,.lwcs-ck-battle .battle-chain-lost{color:#ff9d8a}
 .lwcs-ck-battle .battle-chain-unconfirmed{color:#ffd36b}
+/* 出招理由、判定演算、机制事实（T26 第 4 批）：理由一行金色引言，依据与推导收在细框里；演算是一排读数芯片，结果用亮色收尾 */
+.lwcs-ck-battle .battle-chain-round{margin:.5em 0 0;font-size:1em;font-weight:900;color:#9fd0ff;letter-spacing:.08em}
+.lwcs-ck-battle .battle-chain-decision{display:flex;flex-direction:column;gap:.3em;margin-top:.35em;padding:.4em .5em;background:rgba(10,24,48,.45);box-shadow:inset 0 0 0 1px rgba(140,200,255,.14)}
+.lwcs-ck-battle .battle-chain-decision>h5{display:flex;flex-wrap:wrap;align-items:baseline;gap:.2em .6em;margin:0;font-size:.95em;color:#fff}
+.lwcs-ck-battle .battle-chain-selection{font-size:.85em;font-weight:800;padding:0 .45em;color:#9fd0ff;box-shadow:inset 0 0 0 1px rgba(95,196,255,.4)}
+.lwcs-ck-battle .battle-chain-candidates,.lwcs-ck-battle .battle-chain-narrowing{margin:0;padding-left:1.1em}
+.lwcs-ck-battle .battle-chain-candidates .battle-chain-candidate{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:baseline;gap:0 .6em}
+.lwcs-ck-battle .battle-chain-candidate>:not(.battle-chain-candidate-state){grid-column:2;overflow-wrap:anywhere}
+.lwcs-ck-battle .battle-chain-narrowing{font-size:.9em;color:#8ea6c8}
+.lwcs-ck-battle .battle-chain-unconfirmed>h5{margin:0;font-size:.95em}
+.lwcs-ck-battle .battle-chain-candidate-state{font-size:.85em;font-weight:800;color:#8ea6c8}
+.lwcs-ck-battle .battle-chain-candidate--selected .battle-chain-candidate-state{color:#ffd36b}
+.lwcs-ck-battle .battle-chain-candidate-checked{color:#7f93b2;font-size:.9em}
+.lwcs-ck-battle .battle-chain-reason{display:flex;flex-direction:column;gap:.3em;padding:.35em .55em;background:linear-gradient(90deg,rgba(255,211,107,.1),rgba(255,211,107,0) 70%);box-shadow:inset 2px 0 0 rgba(255,211,107,.75)}
+.lwcs-ck-battle .battle-chain-reason-line{margin:0;font-weight:800;color:#ffe3a1}
+.lwcs-ck-battle .battle-chain-reason-basis,.lwcs-ck-battle .battle-chain-terms ul,.lwcs-ck-battle .battle-chain-mechanics ul{display:flex;flex-direction:column;gap:.25em;margin:0;padding:0;list-style:none}
+.lwcs-ck-battle .battle-chain-reason-derivation{margin:0;padding:.3em .5em .3em 1.8em;max-height:16em;overflow:auto;font-family:Bahnschrift,Consolas,monospace;font-size:.88em;color:#b9cbe6;background:rgba(0,0,0,.25);overflow-wrap:anywhere}
+.lwcs-ck-battle .battle-chain-mechanic{display:flex;flex-direction:column;gap:.2em;color:#cfe0f7}
+.lwcs-ck-battle .battle-chain-judgement{display:flex;flex-wrap:wrap;align-items:center;gap:.25em .35em;font-family:Bahnschrift,Consolas,monospace;font-size:.88em;cursor:help}
+.lwcs-ck-battle .battle-chain-judgement-check{font-weight:900;padding:0 .45em;color:#06142b;background:linear-gradient(180deg,#9fd0ff,#5aa5ff)}
+.lwcs-ck-battle .battle-chain-judgement-input,.lwcs-ck-battle .battle-chain-judgement-ratio{padding:0 .4em;color:#9fb6d6;box-shadow:inset 0 0 0 1px rgba(140,200,255,.25)}
+.lwcs-ck-battle .battle-chain-judgement-input b,.lwcs-ck-battle .battle-chain-judgement-ratio b{color:#fff}
+.lwcs-ck-battle .battle-chain-judgement-ratio{box-shadow:inset 0 0 0 1px rgba(255,211,107,.5)}
+.lwcs-ck-battle .battle-chain-judgement-outcome{font-weight:900;color:#ffd36b}
+.lwcs-ck-battle .battle-chain-judgement-outcome::before{content:'→ ';color:#8ea6c8;font-weight:400}
+.lwcs-ck-battle .battle-chain-terms{box-shadow:inset 2px 0 0 rgba(180,140,255,.7);background:rgba(120,90,200,.08);padding:.35em .55em}
+.lwcs-ck-battle .battle-chain-mechanics{box-shadow:inset 2px 0 0 rgba(140,200,255,.35)}
 .lwcs-ck-battle details>summary{cursor:pointer;font-weight:800;color:#9fd0ff}
 .lwcs-ck-battle .tag-chip{display:inline-block;font-size:.85em;font-weight:800;padding:0 .45em;color:#cfe0f7;box-shadow:inset 0 0 0 1px rgba(140,200,255,.3)}
 

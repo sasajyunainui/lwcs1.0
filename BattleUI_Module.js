@@ -3591,7 +3591,8 @@ class BattleUIComponent {
         function 格式化ReportDto数字值(value, unit = '') {
           const numeric = Number(value);
           if (!Number.isFinite(numeric)) return '';
-          return `${numeric.toFixed(Math.abs(numeric) < 10 ? 2 : 0)}${unit || ''}`;
+          // 去掉末尾的 0（「1.00回合」写成「1回合」），与战报文字的 displayNumber 同口径。
+          return `${Number(numeric.toFixed(Math.abs(numeric) < 10 ? 2 : 0))}${unit || ''}`;
         }
 
         function 格式化ReportDto操作数(operands = []) {
@@ -3755,21 +3756,54 @@ class BattleUIComponent {
             + '</li>';
         }
 
-        /* 出招理由（新估值的出招记录，T24 第 4 步）：一行理由 + 选中手 / 次优手各估值项的推导。每行已在决策层限长并标明截断；
-           说明放悬停（title），不放正文。界面样式留到 T26。 */
-        function 渲染出招理由(record = null) {
-          if (!record || typeof record !== 'object') return '';
-          const 推导 = (Array.isArray(record.derivation) ? record.derivation : [])
-            .map(line => `<li>${htmlEscapeText(String(line || ''))}</li>`).join('');
-          return '<div class="battle-chain-reason" title="新估值的出招记录：意图、自估胜算，以及选中手与次优手各估值项（表值 × 系数 × 输入）">'
-            + `<p class="battle-chain-reason-line">${htmlEscapeText(String(record.aiLine || ''))}</p>`
-            + (推导 ? `<ol class="battle-chain-reason-derivation" title="正数加分，负数扣分；「推演」一行是推演里谁在第几回合倒下">${推导}</ol>` : '')
+        /* 机制判定的演算（T26 第 4 批）：战报 DTO 的 mechanicFacts[].judgement = { check, inputs, rule, ratio, outcome }。
+           一行：判什么 · 参与的量 · 比值 → 结果；判定规则放悬停（title）。敌方隐藏面板时战报层已只留 check 与 outcome。 */
+        function 渲染判定演算(fact = null) {
+          const judgement = fact?.judgement;
+          if (!judgement || typeof judgement !== 'object') return '';
+          const 输入 = Object.entries(judgement.inputs && typeof judgement.inputs === 'object' ? judgement.inputs : {})
+            .map(([name, value]) => typeof value === 'boolean'
+              ? `<span class="battle-chain-judgement-input">${htmlEscapeText(name)}：${value ? '是' : '否'}</span>`
+              : `<span class="battle-chain-judgement-input">${htmlEscapeText(name)} <b>${htmlEscapeText(String(value ?? ''))}</b></span>`)
+            .join('');
+          // 比值已作为输入列出（对轰的威力比）时不再重复。
+          const 比值已列 = Object.values(judgement.inputs || {}).some(value => typeof value === 'number' && value === judgement.ratio);
+          const 比值 = Number.isFinite(Number(judgement.ratio)) && judgement.ratio !== null && !比值已列
+            ? `<span class="battle-chain-judgement-ratio">比值 <b>${htmlEscapeText(String(judgement.ratio))}</b></span>` : '';
+          return `<div class="battle-chain-judgement"${judgement.rule ? ` title="${htmlEscapeText(judgement.rule)}"` : ''}>`
+            + `<span class="battle-chain-judgement-check">${htmlEscapeText(judgement.check || '判定')}</span>`
+            + 输入 + 比值
+            + `<span class="battle-chain-judgement-outcome">${htmlEscapeText(judgement.outcome || '')}</span>`
             + '</div>';
         }
 
-        function 渲染因果链判定依据(node = {}) {
+        function 渲染机制事实行(fact = {}) {
+          return `<li class="battle-chain-mechanic battle-chain-mechanic--${htmlEscapeText(String(fact?.kind || '').toLowerCase())}">`
+            + `<span>${htmlEscapeText(fact?.summary || '')}</span>${渲染判定演算(fact)}</li>`;
+        }
+
+        /* 出招理由（新估值的出招记录，T24 第 4 步）：一行理由 + 选中手 / 次优手各估值项的推导。每行已在决策层限长并标明截断；
+           说明放悬停（title），不放正文。依据（factRefs，T26 第 3 批）是这一手落点前、和它相关的机制事实。 */
+        function 渲染出招理由(record = null, 机制事实 = new Map()) {
+          if (!record || typeof record !== 'object') return '';
+          const 推导 = (Array.isArray(record.derivation) ? record.derivation : [])
+            .map(line => `<li>${htmlEscapeText(String(line || ''))}</li>`).join('');
+          const 依据 = (Array.isArray(record.factRefs) ? record.factRefs : [])
+            // 交手约定已在战报顶部「本场约定」，不在每一手下面重复。
+            .map(id => 机制事实.get(String(id))).filter(fact => fact && fact.kind !== 'ENGAGEMENT_TERMS').map(渲染机制事实行).join('');
+          return '<div class="battle-chain-reason">'
+            + `<p class="battle-chain-reason-line" title="新估值的出招记录：意图与自估胜算">${htmlEscapeText(String(record.aiLine || ''))}</p>`
+            + (依据 ? `<ul class="battle-chain-reason-basis" title="这一手之前已经发生、和它相关的机制事实">${依据}</ul>` : '')
+            + (推导 ? `<ol class="battle-chain-reason-derivation" title="选中手与次优手各估值项（表值 × 系数 × 输入）；正数加分，负数扣分；「推演」一行是推演里谁在第几回合倒下">${推导}</ol>` : '')
+            + '</div>';
+        }
+
+        function 渲染因果链判定依据(node = {}, 机制事实 = new Map()) {
           const decisions = Array.isArray(node?.decisions) ? node.decisions : [];
-          if (!decisions.length && !(node?.reconciliation || []).length) return '';
+          /* 这次行动里带演算的机制事实（破防、对轰、抢先）：事实句已在结算里，这里只补演算。 */
+          const 演算 = (Array.isArray(node?.mechanicFactIds) ? node.mechanicFactIds : [])
+            .map(id => 机制事实.get(String(id))).filter(fact => fact?.judgement).map(渲染判定演算).join('');
+          if (!decisions.length && !(node?.reconciliation || []).length && !演算) return '';
 
           const 决策块 = decisions.map(entry => {
             const trace = entry?.trace || {};
@@ -3808,7 +3842,7 @@ class BattleUIComponent {
               + (收敛 ? `<ol class="battle-chain-narrowing">${收敛}</ol>` : '')
               + (候选行 ? `<ul class="battle-chain-candidates">${候选行}</ul>` : '')
               + 非最优
-              + 渲染出招理由(trace.reasonRecord)
+              + 渲染出招理由(trace.reasonRecord, 机制事实)
               + '</section>';
           }).join('');
 
@@ -3820,12 +3854,13 @@ class BattleUIComponent {
 
           return '<details class="battle-preview-trace-fold battle-chain-fold">'
             + '<summary>判定依据</summary>'
+            + (演算 ? `<section class="battle-chain-decision battle-chain-judgements"><h5>判定演算</h5>${演算}</section>` : '')
             + 决策块
             + (未确认 ? `<section class="battle-chain-unconfirmed"><h5>未能确认的预测</h5><ul>${未确认}</ul></section>` : '')
             + '</details>';
         }
 
-        function 渲染因果链节点(node = {}, factsById = new Map()) {
+        function 渲染因果链节点(node = {}, 机制事实 = new Map()) {
           const 回合 = Math.max(0, Number(node?.round || 0));
           const 行动者 = String(node?.actorName || '行动者');
           const 动作 = String(node?.action?.name || '行动');
@@ -3914,7 +3949,7 @@ class BattleUIComponent {
             + (结算 ? `<section class="battle-chain-section battle-chain-section--settle"><h4>结算</h4>${结算}</section>` : '')
             + (对账 ? `<section class="battle-chain-section battle-chain-section--check"><h4>没能做到</h4><ul class="battle-chain-checks">${对账}</ul></section>` : '')
             + (数字 ? `<div class="battle-preview-report-badges">${数字}</div>` : '')
-            + 渲染因果链判定依据(node)
+            + 渲染因果链判定依据(node, 机制事实)
             + '</article>';
         }
 
@@ -4062,17 +4097,39 @@ class BattleUIComponent {
           }
           const chain = Array.isArray(reportDto?.narrativeChain) ? reportDto.narrativeChain : [];
           if (!chain.length) return '<div class="battle-preview-empty">暂无战报</div>';
-          /* 单一因果链时间线：按回合分段，每次行动一张卡，卡内顺序即因果顺序。 */
-          const 分段 = [];
+          /* 单一因果链时间线：按回合分段，每次行动一张卡，卡内顺序即因果顺序。
+             机制事实（T26 第 4 批）：交手约定置顶；挂在某次行动上的随卡走（演算进判定依据）；
+             不属于任何行动的（罢手回应、冥想被打断、出手次数到账等）放在该回合末尾。 */
+          const 机制事实 = new Map((Array.isArray(reportDto?.mechanicFacts) ? reportDto.mechanicFacts : [])
+            .filter(fact => fact && fact.factId).map(fact => [String(fact.factId), fact]));
+          const 约定 = [...机制事实.values()].filter(fact => fact.kind === 'ENGAGEMENT_TERMS' && fact.summary);
+          const 已挂 = new Set(chain.flatMap(node => (Array.isArray(node?.mechanicFactIds) ? node.mechanicFactIds : []).map(String)));
+          const 散落 = new Map();
+          机制事实.forEach(fact => {
+            if (fact.kind === 'ENGAGEMENT_TERMS' || 已挂.has(String(fact.factId)) || !fact.summary) return;
+            const 回合 = Math.max(0, Number(fact.round || 0));
+            散落.set(回合, [...(散落.get(回合) || []), fact]);
+          });
+          const 回合末 = 回合 => (散落.get(回合) || []).length
+            ? `<section class="battle-chain-section battle-chain-mechanics"><h4>本回合其他判定</h4><ul>${散落.get(回合).map(渲染机制事实行).join('')}</ul></section>`
+            : '';
+          const 分段 = 约定.length
+            ? [`<section class="battle-chain-section battle-chain-terms"><h4>本场约定</h4><ul>${约定.map(渲染机制事实行).join('')}</ul></section>`]
+            : [];
           let 当前回合 = null;
           chain.forEach(node => {
             const 回合 = Math.max(0, Number(node?.round || 0));
             if (回合 !== 当前回合) {
+              if (当前回合 !== null) 分段.push(回合末(当前回合));
               当前回合 = 回合;
               分段.push(`<h3 class="battle-chain-round">第${回合}回合</h3>`);
             }
-            分段.push(渲染因果链节点(node));
+            分段.push(渲染因果链节点(node, 机制事实));
           });
+          if (当前回合 !== null) 分段.push(回合末(当前回合));
+          /* 没有行动卡的回合（例如只有罢手回应）也要露出来。 */
+          [...散落.keys()].filter(回合 => !chain.some(node => Math.max(0, Number(node?.round || 0)) === 回合)).sort((a, b) => a - b)
+            .forEach(回合 => 分段.push(`<h3 class="battle-chain-round">第${回合}回合</h3>`, 回合末(回合)));
           return `<div class="battle-preview-report battle-chain">${分段.join('')}</div>`;
         }
 
