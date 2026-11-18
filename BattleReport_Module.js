@@ -4842,12 +4842,41 @@
     };
   }
 
+  /* 单位资源读有效值（11-18 生命超上限显示修正）：和 BattleRuntime getBattleSnapshot 同一读法——上限含面板修正（真身的生命上限修正等），
+     当前值按有效上限截断。原先直接读原始字段：生命上限加成结束后原始 hp 不扣（BattlePreview syncLifeMaxGain 只截断），
+     战报就写出「HP 43284/11521」；加成还在时又把有效上限写成基础上限。拿不到 BattlePreview 时退回原始字段。 */
+  function effectiveUnitResources(unit = {}) {
+    const preview = root.__LWCS_BATTLE_PREVIEW__;
+    const raw = {
+      hp: number(unit?.hp ?? unit?.HP ?? unit?.属性?.HP, 0),
+      hpMax: Math.max(1, number(unit?.hp_max ?? unit?.HP上限 ?? unit?.属性?.HP上限, 1)),
+      soul: number(unit?.sp ?? unit?.魂力 ?? unit?.属性?.魂力, 0),
+      soulMax: Math.max(0, number(unit?.sp_max ?? unit?.魂力上限 ?? unit?.属性?.魂力上限, 0)),
+      spirit: number(unit?.men ?? unit?.精神力 ?? unit?.属性?.精神力, 0),
+      spiritMax: Math.max(0, number(unit?.men_max ?? unit?.精神力上限 ?? unit?.属性?.精神力上限, 0)),
+      stamina: number(unit?.vit ?? unit?.sta ?? unit?.体力 ?? unit?.属性?.体力, 0),
+      staminaMax: Math.max(0, number(unit?.vit_max ?? unit?.sta_max ?? unit?.体力上限 ?? unit?.属性?.体力上限, 0)),
+    };
+    if (!preview || typeof preview.readHp !== 'function' || typeof preview.readResourceMax !== 'function' || !unit || typeof unit !== 'object') return raw;
+    try {
+      return {
+        hp: number(preview.readHp(unit), raw.hp), hpMax: Math.max(1, number(preview.readHpMax(unit), raw.hpMax)),
+        soul: number(preview.readResource(unit, '魂力'), raw.soul), soulMax: Math.max(0, number(preview.readResourceMax(unit, '魂力'), raw.soulMax)),
+        spirit: number(preview.readResource(unit, '精神力'), raw.spirit), spiritMax: Math.max(0, number(preview.readResourceMax(unit, '精神力'), raw.spiritMax)),
+        stamina: number(preview.readResource(unit, '体力'), raw.stamina), staminaMax: Math.max(0, number(preview.readResourceMax(unit, '体力'), raw.staminaMax)),
+      };
+    } catch (error) {
+      return raw;
+    }
+  }
+
   function unitStateFromSnapshot(unit = {}, side = '', directory = new Map(), visibilityMode = 'DEVELOPER') {
     const id = publicEntityId(directory, unit?.id || unit?.召唤键 || unit?.name || unit?.名称);
     const name = publicEntityName(directory, unit?.id || unit?.召唤键 || unit?.name || unit?.名称, unit?.name || unit?.名称);
     const hidePrivateResources = visibilityMode !== 'DEVELOPER' && side === 'enemy';
-    const hp = number(unit?.hp ?? unit?.HP ?? unit?.属性?.HP, 0);
-    const stamina = number(unit?.vit ?? unit?.sta ?? unit?.体力 ?? unit?.属性?.体力, 0);
+    const effective = effectiveUnitResources(unit);
+    const hp = effective.hp;
+    const stamina = effective.stamina;
     const rawActionState = text(
       unit?.__战斗失能原因 || unit?.actionState || unit?.行动状态,
     );
@@ -4867,16 +4896,16 @@
       name,
       side,
       hp,
-      hpMax: Math.max(1, number(unit?.hp_max ?? unit?.HP上限 ?? unit?.属性?.HP上限, 1)),
+      hpMax: effective.hpMax,
       shield: Math.max(0, number(unit?.shield ?? unit?.护盾, 0)),
       resourceVisibility: hidePrivateResources ? 'HIDDEN' : 'PUBLIC',
       resources: hidePrivateResources ? null : {
-        soul: number(unit?.sp ?? unit?.魂力 ?? unit?.属性?.魂力, 0),
-        soulMax: Math.max(0, number(unit?.sp_max ?? unit?.魂力上限 ?? unit?.属性?.魂力上限, 0)),
-        spirit: number(unit?.men ?? unit?.精神力 ?? unit?.属性?.精神力, 0),
-        spiritMax: Math.max(0, number(unit?.men_max ?? unit?.精神力上限 ?? unit?.属性?.精神力上限, 0)),
+        soul: effective.soul,
+        soulMax: effective.soulMax,
+        spirit: effective.spirit,
+        spiritMax: effective.spiritMax,
         stamina,
-        staminaMax: Math.max(0, number(unit?.vit_max ?? unit?.sta_max ?? unit?.体力上限 ?? unit?.属性?.体力上限, 0)),
+        staminaMax: effective.staminaMax,
       },
       actionState: playerActionStateName(
         actionState,

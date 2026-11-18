@@ -27544,6 +27544,20 @@ ${播报文本}
     });
   }
 
+  // 写回存档的生命、体力用本体视角（11-18 用户拍板选项 C）：上限加成还挂着时按 基础上限 ÷ 有效上限 折算（BattlePreview persistedResourceValue），
+  // MVU 里的 HP 不超过 HP上限，读档截断不丢真身加出来的那部分；下次进战斗再按 有效上限 ÷ 基础上限 放大（enterBattleMaxGain）。
+  // 没有加成或拿不到战斗预览模块时返回 null，照原字段写。
+  function 战斗写回本体视角值_桥接(participant = {}, key = 'HP') {
+    const preview = window.__LWCS_BATTLE_PREVIEW__;
+    if (!preview || typeof preview.persistedResourceValue !== 'function') return null;
+    try {
+      const value = preview.persistedResourceValue(participant, key);
+      return Number.isFinite(Number(value)) && value !== null ? Number(value) : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
   function 构建正式战斗写回补丁(finalSnapshot = {}, createdInventoryAssets = [], postBattleCosts = []) {
     if (!finalSnapshot || typeof finalSnapshot !== 'object' || Array.isArray(finalSnapshot)) {
       throw new Error('battle_commit_final_snapshot_invalid');
@@ -27591,7 +27605,9 @@ ${播报文本}
                 ? participant.状态效果
                 : attributeSource.状态效果,
             )
-          : attributeSource[key];
+          : (key === 'HP' || key === '体力') && 战斗写回本体视角值_桥接(participant, key) !== null
+            ? 战斗写回本体视角值_桥接(participant, key)
+            : attributeSource[key];
         追加战斗提交字段补丁(
           patchOps,
           currentRoot,

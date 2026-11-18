@@ -3796,8 +3796,9 @@
     });
     merged.存活 = merged.状态?.存活 !== false && previewRuntime.readHp(merged) > 0;
     syncEquipmentPassiveRuntime(merged, Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0), { rebuildFinal: false });
-    // A unit enters battle with its stamina already counted against any buffed maximum it carries.
-    previewRuntime.syncStaminaMaxGain(merged, { credit: false });
+    // 进战斗（11-18 用户拍板选项 C）：存档里的生命、体力是本体视角（基础上限下的值），身上带着上限加成就按 有效上限 ÷ 基础上限 放大并记账；
+    // 已带记账字段的单位（战斗中的、临时单位）照比例规则同步。原先 credit:false 只记账不放大，续推时真身加出来的血就丢了。
+    previewRuntime.enterBattleMaxGain(merged);
     merged.final = buildCombatFinalStats(merged);
     // 位移重做: 瞬移 / 换位瞬间发动，只含位移的技能前摇按 0（BattlePreview isInstantPositionSkill）。
     previewRuntime.normalizeInstantPositionWindup(merged);

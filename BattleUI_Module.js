@@ -849,6 +849,16 @@ class BattleUIComponent {
           snapshot[key] = buildCombatConditionMapPersistenceSnapshot(sourceStat[key]);
           return;
         }
+        // 生命、体力写进存档用本体视角（11-18 用户拍板选项 C）：战斗中的单位挂着上限加成时，按 基础上限 ÷ 有效上限 折算
+        //（BattlePreview persistedResourceValue）；存档里的角色数据身上没有加成，返回 null，照原值写。
+        if (key === 'HP' || key === '体力') {
+          let persisted = null;
+          try { persisted = BATTLE_PREVIEW?.persistedResourceValue?.(participant, key) ?? null; } catch (error) { persisted = null; }
+          if (persisted !== null && Number.isFinite(Number(persisted))) {
+            snapshot[key] = Number(persisted);
+            return;
+          }
+        }
         snapshot[key] = clonePersistedCombatValue(sourceStat[key]);
       });
       return Object.keys(snapshot).length ? snapshot : undefined;
