@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:14b1832c7291424be45db95f8a87dee2233ba867c03680df8b9e125269c5afa1|MVU_Schema_Runtime.js:ce8f3eaf08bd1716340035e3c08dbba15bc92d0da2980e52a6573e9b418bd123|BattlePreview_Module.js:ef9c82c219ab3b396aacfbcb4915d413312e15df2ad87cc246dcb50a9de9e232|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:6fb3647fe2d793448bdd285c574318c774d07d74ad37986a35795922c656c25a|BattleRuntime_Module.js:a2efc7788a3ae7218641b0888772e3b9e507b842f849ac93fd2089ed800d054b */
+/* sources-sha256: MVU_Skill_Runtime.js:14b1832c7291424be45db95f8a87dee2233ba867c03680df8b9e125269c5afa1|MVU_Schema_Runtime.js:ce8f3eaf08bd1716340035e3c08dbba15bc92d0da2980e52a6573e9b418bd123|BattlePreview_Module.js:ef9c82c219ab3b396aacfbcb4915d413312e15df2ad87cc246dcb50a9de9e232|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:302c686d8fd45ea17e768a94b0ee94abcc895e586162dba921f565d65363db3d|BattleRuntime_Module.js:a2efc7788a3ae7218641b0888772e3b9e507b842f849ac93fd2089ed800d054b */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -74024,14 +74024,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // rolls it per answer). FORESEE_BASE, more by how clearly it has the attacker (FORESEE_CLARITY × the clarity of their exchanges and
   // acquaintance), more for a 精神系 (FORESEE_MENTAL) and for a sense that outreaches the attacker's (FORESEE_SENSE, beliefSenses),
   // more again when it has seen this very skill (FORESEE_KNOWN); at most FORESEE_CAP. Starting values, measured later.
+  // FORESEE_SCALE（root.__LWCS_TUNE__.FORESEE_SCALE）scales the whole chance, for calibrating against the novel.
   const FORESEE_BASE = 0.1, FORESEE_CLARITY = 0.4, FORESEE_MENTAL = 0.15, FORESEE_SENSE = 0.15, FORESEE_KNOWN = 0.3, FORESEE_CAP = 0.9;
+  const FORESEE_SCALE = Number(root.__LWCS_TUNE__?.FORESEE_SCALE ?? 1);
   function foreseeChance(world = {}, observer = {}, attacker = {}, skill = {}) {
     const name = String(skill?.魂技名 || skill?.name || '').trim();
     const known = name && beliefKnowsExposure(observer, attacker, world) && preview.exposedSkills(attacker).some(entry => String(entry?.魂技名 || entry?.name || '').trim() === name);
     const seen = Number(beliefExchangeCounts(world, sideOf(world, observer)).get(preview.unitId(attacker)) || 0) + beliefFamiliarExchanges(observer, attacker, world);
     const mental = /精神/.test(String(observer?.系别 || observer?.type || observer?.第1武魂?.系别 || observer?.属性?.系别 || '')) ? FORESEE_MENTAL : 0;
-    return clamp(FORESEE_BASE + FORESEE_CLARITY * seen / (seen + BELIEF_EXCHANGE_PRIOR) + mental + (beliefSenses(observer, attacker) ? FORESEE_SENSE : 0) +
-      (known ? FORESEE_KNOWN : 0), 0, FORESEE_CAP);
+    return clamp(FORESEE_SCALE * (FORESEE_BASE + FORESEE_CLARITY * seen / (seen + BELIEF_EXCHANGE_PRIOR) + mental + (beliefSenses(observer, attacker) ? FORESEE_SENSE : 0) +
+      (known ? FORESEE_KNOWN : 0)), 0, FORESEE_CAP);
   }
 
   // The skill a feint keeps ready: the heaviest (its damage power on enemies) of the unit's affordable single-target skills that
