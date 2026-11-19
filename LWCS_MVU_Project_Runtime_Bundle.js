@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:14b1832c7291424be45db95f8a87dee2233ba867c03680df8b9e125269c5afa1|MVU_Schema_Runtime.js:6e8b944fdfc051eda07329f5d6d2ab527228d22bebeabef0842558a6f5bc2e86|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:1f7a519a850bc170c3da108bfe22614d098b593bc573d8b38a5c0a7bec81aba5 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:14b1832c7291424be45db95f8a87dee2233ba867c03680df8b9e125269c5afa1|MVU_Schema_Runtime.js:ead5c44b6030214f373f811f8cbfc5ca51dec92264c2836028bdc36a96d0447d|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:1f7a519a850bc170c3da108bfe22614d098b593bc573d8b38a5c0a7bec81aba5 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -35647,8 +35647,10 @@ function 写入已过时成长技能模板_V1(角色 = {}, 角色名 = '', 当�
   const 角色记录 = 读取内置角色库_V1(数据根, 当前tick).角色?.[String(角色名 || '').trim()] || 读取内置角色记录_V1(角色名, 当前tick, 数据根);
   const 模板列表 = Array.isArray(角色记录?.成长技能模板) ? 角色记录.成长技能模板 : [];
   let 写入数 = 0;
+  // 魂环魂技跟着魂环来（11-19 用户定「魂环魂技只看魂环数」）：有这个环就有这招，不看原著首次写到它的时间（时间取的是「原著第一次
+  // 写到」，常晚于拿到魂环——小舞 37 级三环原先全是占位）；自创魂技、融合技、魂骨技能等不跟魂环走的仍按时间。
   模板列表
-    .filter(模板 => Number.isFinite(Number(模板?.原著触发tick)) && Number(模板.原著触发tick) <= Number(当前tick || 0))
+    .filter(模板 => 模板?.写入类型 === '魂环魂技' || Number.isFinite(Number(模板?.原著触发tick)) && Number(模板.原著触发tick) <= Number(当前tick || 0))
     .sort((左, 右) => (Number(左?.需求魂环数) || 0) - (Number(右?.需求魂环数) || 0))
     .forEach(模板 => {
       if (模板?.写入类型 === '魂环魂技') {

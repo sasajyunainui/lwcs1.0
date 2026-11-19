@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:ef9c82c219ab3b396aacfbcb4915d413312e15df2ad87cc246dcb50a9de9e232|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:aef4c220ef2b5b135e322f4fb20884e6b075ee3558a4eaba7d5a636d2aee6580|BattleRuntime_Module.js:a2efc7788a3ae7218641b0888772e3b9e507b842f849ac93fd2089ed800d054b|BattleReport_Module.js:a541fb97fcb77f2434fcc8e81f1e09d5552a1e225a5c4f9b6f301646684607ae|BattleUI_Module.js:b0a9ca72412554bdb7aefec6687cba12f332d6a270b5d5b39d764ce8e4d2f11e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:8b3ef9c2dc3447d3767c9ee023943d403c12d67bc364d93b38a5d1b49704c8a1|BehaviorDecisionPipeline_Module.js:e55d1d0a40ff9a1a3a37cf0f16c94dbd9bafe338489e7af952c1279ca0025977|BattleDecision_Module.js:b8dcfdba43a0581645948cb47163b9f5241a7daa5b2266372871db8302807d1d|BattleRuntime_Module.js:e2fd0c7f8492c99cbb0c7d20c59d51887feb559829fe0844515365e7cf4a0829|BattleReport_Module.js:24ef681a4a158d9e06e98ddc681ad3e632276bed4e599ff5437c6fe8c285f73e|BattleUI_Module.js:b0a9ca72412554bdb7aefec6687cba12f332d6a270b5d5b39d764ce8e4d2f11e */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -8632,7 +8632,8 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
   /* 卖破绽（T32）：占一次行动摆出空当（装伤、装累、故意不躲）——格挡架势带 bait（BattleRuntime activeDefenseStance.bait，看破同虚招）。
      没看破的敌人看不到架势，只看到它身上一个 BAIT_OPENING 的攻击破绽（BattleDecision 信念世界），更愿意来打；打过来时它按架势接，
      反击窗口必开，反击伤害 ×BAIT_COUNTER_BONUS（BattleRuntime baitCounter）。看破的敌人看到的是架势本身；没人来打就白花。起始值。 */
-  const BAIT_OPENING = 1, BAIT_COUNTER_BONUS = 1.3;
+  // 校准入口（root.__LWCS_TUNE__.BAIT_COUNTER_BONUS），默认值不变。
+  const BAIT_OPENING = 1, BAIT_COUNTER_BONUS = Number(root.__LWCS_TUNE__?.BAIT_COUNTER_BONUS ?? 1.3);
   function feintStrikeFooled(declaration = {}, reactor = {}) {
     const feint = declaration?.feintStrike;
     if (!feint || typeof feint !== 'object') return 0;
@@ -39094,6 +39095,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   function readHold(doc) {
     return !!(doc && doc.document && doc.document.valuation && doc.document.valuation.hold === true);
   }
+  // A variant of a plain action (卖破绽、卸力、虚招、绕后、人盾 on DEFEND / attack): on a tie with its plain form it gives nothing more,
+  // so the plain form is preferred (11-19: bait tied defend in 51 of 60 picks and won on candidateId order alone).
+  function readVariant(doc) {
+    return !!(doc && doc.document && doc.document.valuation && doc.document.valuation.variant === true);
+  }
   function readSpend(doc) {
     const spend = Number(doc && doc.document && doc.document.valuation && doc.document.valuation.spend);
     return Number.isFinite(spend) && spend > 0 ? spend : 0;
@@ -39134,8 +39140,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         hardExclusionAudit.push({ candidateId, disposition: 'HARD_EXCLUDED_PREVIEW_SKIPPED', reasonCode, source: 'BIF_IMMEDIATE_PUBLIC' });
       }
       const score = exclusion.hard ? null : readValue(doc, candidateId);
-      const spend = readSpend(doc), hold = readHold(doc);
-      rows.push({ candidateId, eligible: !exclusion.hard, score, spend, hold });
+      const spend = readSpend(doc), hold = readHold(doc), variant = readVariant(doc);
+      rows.push({ candidateId, eligible: !exclusion.hard, score, spend, hold, variant });
       valueVector.push({ candidateId, value: score, spend, hold, hardExclusion: { hard: exclusion.hard, reason: reasonCode } });
     }
     const eligible = rows.filter(row => row.eligible);
@@ -39173,9 +39179,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const compareRanked = (a, b) => {
       work.sortComparisons += 1;
       // Equal values: less spent first (no value difference tells them apart: keep the resources and the later options), then
-      // holding back before acting (keeps the options open and shows the opponent nothing), then candidateId.
+      // holding back before acting (keeps the options open and shows the opponent nothing), then the plain form before a variant, then candidateId.
       return a.score !== b.score ? b.score - a.score : a.spend !== b.spend ? a.spend - b.spend
-        : a.hold !== b.hold ? (a.hold ? -1 : 1) : compareUtf16(a.candidateId, b.candidateId);
+        : a.hold !== b.hold ? (a.hold ? -1 : 1) : a.variant !== b.variant ? (a.variant ? 1 : -1) : compareUtf16(a.candidateId, b.candidateId);
     };
     const rankedSelectable = selectable.slice().sort(compareRanked);
     const ranked = [
@@ -83001,11 +83007,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           idleStance = 0;
           const seenShare = clamp(Number(feintSeeThroughChance(table.world, table.units[row], actor, {})) || 0, 0, 1);
           const baited = r20Exchange(answer[actorRow][row], answer[row][actorRow], strikeAgain, strikeBack * (Number(preview.BAIT_COUNTER_BONUS) || 1), 1);
-          const seenComes = out[row][actorRow] * stance.keep + baited.more > baited.taken;
-          const coming = (comesUnprepared ? (1 - seenShare) * turned : 0) + (seenComes ? seenShare * turnedBraced : 0);
-          const turnedAway = comesUnprepared && !seenComes ? seenShare * turned * (out[row][actorRow] * keep[actorRow][row] + ordinary.more) / Math.max(1, standing) : 0;
-          const kept = coming > 0 ? coming * out[row][actorRow] * Math.max(0, keep[actorRow][row] - stance.keep) : 0;
-          const dealt = coming > 0 ? coming * Math.max(0, baited.taken - ordinary.taken) : 0, struck = coming > 0 ? coming * Math.max(0, baited.more - ordinary.more) : 0;
+          // 11-19 用户定「硬挨换反击」（BattleRuntime baitTaken）：没看穿的来者整招打实，换来必开、加重的反击；看穿的来者面对的
+          // 就是普通防守架势（格挡照常，反击照架势判）——和防御一样，来不来按架势（comesPrepared）算。
+          const comingUnseen = comesUnprepared ? (1 - seenShare) * turned : 0, comingSeen = comesPrepared ? seenShare * turnedBraced : 0;
+          const turnedAway = comesUnprepared && !comesPrepared ? seenShare * turned * (out[row][actorRow] * keep[actorRow][row] + ordinary.more) / Math.max(1, standing) : 0;
+          const kept = comingSeen > 0 ? comingSeen * out[row][actorRow] * Math.max(0, keep[actorRow][row] - stance.keep) : 0;
+          const dealt = comingUnseen * Math.max(0, baited.taken - ordinary.taken) + comingSeen * Math.max(0, prepared.taken - ordinary.taken);
+          const struck = comingUnseen * Math.max(0, baited.more - ordinary.more) + comingSeen * Math.max(0, prepared.more - ordinary.more);
           const gain = turnedAway + kept + dealt - struck;
           if (!baitBest || gain > baitBest.gain) baitBest = { row, gain, own: turnedAway + kept - struck, dealt };
           continue;
@@ -84714,6 +84722,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const spendOf = candidateId => r9v2LinearPublicCost(frozenById.get(candidateId)?.declaration, valuationActor)
       .reduce((sum, row) => { const max = preview.readResourceMax(valuationActor, row.resource); return sum + (max > 0 ? row.amount / max : 0); }, 0);
     // 平手再一条（第 5c 步）：花费也相同时不出手类（让过、放弃反击、放弃应对）优先——保留余地，也不把意图暴露给对手。
+    // 变体（卖破绽、卸力、虚招、绕后、人盾）：与原型打平时让原型（BehaviorDecisionPipeline 平手规则）。
+    const variantOf = candidateId => {
+      const declaration = frozenById.get(candidateId)?.declaration || {};
+      return declaration.bait === true || declaration.deflect === true || !!declaration.feintStrike || !!declaration.flank || !!declaration.humanShield;
+    };
     const holdOf = candidateId => {
       const candidate = frozenById.get(candidateId);
       return candidate?.counterDeclineFallback === true || String(candidate?.declaration?.actionKind || '').trim().toUpperCase() === 'PASS_OPPORTUNITY';
@@ -84723,7 +84736,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       document: {
         immediate: bifDocs[candidateId],
         relational: relationalByCandidate.get(candidateId),
-        valuation: { schemaVersion: 'R20ValuationV1', value: valueOf(candidateId), spend: spendOf(candidateId), hold: holdOf(candidateId) },
+        valuation: { schemaVersion: 'R20ValuationV1', value: valueOf(candidateId), spend: spendOf(candidateId), hold: holdOf(candidateId), variant: variantOf(candidateId) },
       },
     }));
     addFeatureBuildTime('valuationMs', valuationStartedAt);
@@ -85071,7 +85084,26 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // a chain that never closed (11-15: a 35 级 强攻 vs 召唤 run hit ACTION_QUEUE_NODE_LIMIT_EXCEEDED).
     if (providerDepth !== 1 || !(DECISION_DIVERSITY_TEMPERATURE > 0) || request?.playerLockedDeclaration ||
       String(request?.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase() !== 'ACTIVE') return bestId;
-    const rows = ranked.filter(row => row && row.contextuallyDominated !== true && Number.isFinite(Number(row.score)));
+    // 变体（卖破绽、卸力、虚招、绕后、人盾）不比它的原型（同动作、同目标、同魂技、不带变体标记）多得到什么时，不进抽取池：
+    // 11-19 卖破绽 60 次里 51 次与防御估值完全相等，靠等权抽取占了一半（原著卖破绽约占主动步 1%）。
+    const declarations = new Map((request?.frozenCandidates || []).map(candidate => [String(candidate?.candidateId || ''), candidate?.declaration || {}]));
+    const isVariant = declaration => declaration.bait === true || declaration.deflect === true || !!declaration.feintStrike || !!declaration.flank || !!declaration.humanShield;
+    const plainKey = declaration => [String(declaration.actionKind || '').toUpperCase(), (declaration.targetIds || []).map(String).sort().join(','),
+      declaration.skill ? skillId(declaration.skill) : '', String(declaration.releaseSlot || '')].join('|');
+    const plainBest = new Map();
+    for (const row of ranked) {
+      const declaration = declarations.get(String(row?.candidateId || ''));
+      if (!declaration || isVariant(declaration) || !Number.isFinite(Number(row.score))) continue;
+      const key = plainKey(declaration);
+      plainBest.set(key, Math.max(plainBest.get(key) ?? -Infinity, Number(row.score)));
+    }
+    const rows = ranked.filter(row => {
+      if (!row || row.contextuallyDominated === true || !Number.isFinite(Number(row.score))) return false;
+      const declaration = declarations.get(String(row.candidateId || ''));
+      if (!declaration || !isVariant(declaration) || String(row.candidateId) === bestId) return true;
+      const plain = plainBest.get(plainKey(declaration));
+      return !(Number.isFinite(plain) && Number(row.score) <= plain + 1e-9);
+    });
     if (rows.length < 2) return bestId;
     const scores = rows.map(row => Number(row.score)).sort((a, b) => b - a);
     const best = scores[0], temperature = DECISION_DIVERSITY_TEMPERATURE * Math.max(0, best - scores[Math.floor(scores.length / 2)]);
@@ -101253,7 +101285,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const guardBase = previewRuntime.calculateGuardBaseMultiplier(reactor, sourceActor, !!preparedDefense);
       // 卸力（T31, BattlePreview deflectOutcome）: a DEFEND that deflects — the share the strength ratio turns aside, or the hit whole.
       const deflect = actionKind === 'DEFEND' && declaration?.deflect === true ? previewRuntime.deflectOutcome?.(reactor, sourceActor, incomingDeclaration) : null;
-      const damageMultiplier = deflect ? deflect.multiplier : previewRuntime.calculateDefenseDamageMultiplier(reactor, sourceActor, !!preparedDefense, hitShare, null,
+      // 卖破绽不格挡（11-19 用户定「硬挨换反击」；原作「故意不躲，露出右胸」）：没看穿的来者这一击整招挨上，换来必开、加重的反击；
+      // 看穿的来者照普通架势（格挡照常）。
+      const baitTaken = preparedDefense?.bait === true && !(preparedDefense.seenBy || []).map(String).includes(String(previewRuntime.unitId(sourceActor)));
+      const damageMultiplier = deflect ? deflect.multiplier : baitTaken ? 1 : previewRuntime.calculateDefenseDamageMultiplier(reactor, sourceActor, !!preparedDefense, hitShare, null,
         incomingDeclaration ? structuredDamageEffects(incomingDeclaration)[0] || null : null);
       if (deflect) previewRuntime.applyDeflectUnbalance(sourceActor, deflect);
       const event = writeLedgerEvent(combatData, {
@@ -101267,7 +101302,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         meta: { ...reactionMeta, damageMultiplier, guardBaseMultiplier: guardBase, hitShare,
           guardWeightFactor: previewRuntime.guardWeightFactor(hitShare), preparedDefenseConsumed: !!preparedDefense,
           // 卖破绽（T32）: the stance was a bait — the strike back is sure (openStructuredCounterWindow).
-          ...(preparedDefense?.bait === true ? { baitConsumed: true } : {}),
+          // 看穿的来者面对的只是普通架势：反击照普通架势判，不必开、不加重（baitConsumed 只给没看穿的）。
+          ...(baitTaken ? { baitConsumed: true, baitTaken: true } : {}),
           ...(deflect ? { deflect: true, deflected: deflect.deflected, strengthRatio: deflect.ratio, deflectFailed: deflect.failed, unbalance: deflect.unbalance, ...(deflect.art ? { deflectArt: '控鹤擒龙' } : {}) } : {}) },
       });
       if (!preparedDefense) payActionStamina({ combatData, actor: reactor, nature: 'DEFEND', opponent: sourceActor, action: { actionName: deflect ? '卸力' : actionKind === 'GUARD' ? '护卫' : '防御', actionKind }, actionEvent: event, actionRole: 'REACTION' });
@@ -113019,8 +113055,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 卸力（T31）：偏开多少、对方失衡；拨不开就整招挨上。
     // 人盾（T33）：拿困住的敌人挡。
     if (kind === 'defend' && meta?.humanShield === true) return `${actor}把被困住的${String(meta?.shieldName || '敌人')}拽到身前，挡下了${target && target !== actor ? target : '对方'}的这一击`;
-    // 卖破绽（T32）：引来的这一击早有准备，反击必开。
-    if (kind === 'defend' && meta?.baitConsumed === true) return `${target && target !== actor ? target : '对方'}冲着${actor}卖的破绽打来，${actor}早有准备，稳稳接住并抓住了还手的空当`;
+    // 卖破绽（T32）：没看穿的来者——硬挨这一击，换来必开的反击（11-19 不再格挡）；看穿的——当普通架势接住。
+    if (kind === 'defend' && meta?.baitTaken === true) return `${target && target !== actor ? target : '对方'}冲着${actor}卖的破绽打来，${actor}故意不躲、硬挨下这一击，换来了还手的空当`;
+    if (kind === 'defend' && meta?.baitConsumed === true) return `${target && target !== actor ? target : '对方'}看穿了${actor}卖的破绽，仍正面打来，${actor}早有准备，稳稳接住并抓住了还手的空当`;
     if (kind === 'defend' && meta?.deflect === true) {
       const by = target && target !== actor ? target : '对方';
       if (meta.deflectFailed === true) return `${actor}想卸开${by}的攻势，但力量差太多（力量比 ${Math.round(number(meta.strengthRatio, 0) * 100) / 100}）没拨开，整招挨上`;
