@@ -6083,8 +6083,12 @@
     );
   }
 
+  // 应对时放魂技前摇打折（用户 11-20「按你推荐的来」；原作还原第二步：魂技前摇多为 20～31、普攻 10，面对普攻任何魂技都放不进应对）：
+  // 应对与反击窗口里，魂技的前摇按 REACTION_CAST_SHARE 算（只在判断放不放得进窗口时打折，主动回合的节奏不变）。起始值，按原作战例校准。
+  const REACTION_CAST_SHARE = Number(root.__LWCS_TUNE__?.REACTION_CAST_SHARE ?? 0.6);
+  const reactionCastTime = skill => Math.max(0, Number(skill?.前摇 ?? skill?.cast_time ?? 10)) * REACTION_CAST_SHARE;
   function isImmediateReactionSkill(skill = {}, immediateBudget = 0) {
-    const castTime = Math.max(0, Number(skill?.前摇 ?? skill?.cast_time ?? 10));
+    const castTime = reactionCastTime(skill);
     const effects = directImmediateSkillEffects(skill);
     const triggerText = [
       skill?.技能分类,
@@ -6146,11 +6150,11 @@
   // on any target: a buff, a 武魂真身, a strike on another enemy, a heal for an ally. Before it only defensive skills (and the clash
   // and preemption of engagementCandidates) were offered.
   function isWithinReactionWindow(skill = {}, immediateBudget = 0) {
-    return directImmediateSkillEffects(skill).length > 0 && Math.max(0, Number(skill?.前摇 ?? skill?.cast_time ?? 10)) <= immediateBudget;
+    return directImmediateSkillEffects(skill).length > 0 && reactionCastTime(skill) <= immediateBudget;
   }
 
   function isExplicitCounterSkill(skill = {}, immediateBudget = 0) {
-    const castTime = Math.max(0, Number(skill?.前摇 ?? skill?.cast_time ?? 10));
+    const castTime = reactionCastTime(skill);
     const text = `${skillName(skill)} ${skill?.技能分类 || ''} ${skill?.触发方式 || ''} ${skill?.反应类型 || ''}`;
     const effects = directImmediateSkillEffects(skill);
     const reactivePattern = /受击前|即时反应|受击触发|被攻击时|遭受攻击时|命中前|结算前触发/;
