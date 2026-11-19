@@ -2491,6 +2491,88 @@
     }
     return { broken: true, before, after, durability, gear };
   }
+  /* 投出武器（用户 11-19「离手、召回、磕飞都做」，补充「控鹤擎龙可以召回任意武器」；原作王秋儿投出黄金龙枪、唐三掷昊天锤、
+     龙枪被磕飞后瞬移握回）：
+     - 投掷：普攻的变体（declaration.throwWeapon），只给手里有器武魂（已开）或兵器的；按远程算（不用突进、对方的应对窗口照远程），
+       伤害照普攻。投完挂「武器离手」/「武魂离手」（同缴械：兵器的加成、器武魂的属性倾向从面板去掉，它们的被动与技能不生效，只能空手打）。
+     - 召回：一张占行动的卡「召回【X】」（前摇同开武魂）。器武魂随时能召回；兵器落在被投的人身边，要贴身才捡得回——身上有
+       「控鹤擎龙」的（唐门手法）随时能召回。器武魂（或会控鹤擎龙的）召回时可以顺势再打一次：普攻的变体 recallStrike，按远程算，打完回手。
+     - 磕飞、抓住：对方挡住或闪开都不改变什么——这一下落空，武器照样离手，落在对方身边（所以兵器要去对方身边捡）。 */
+  const THROW_STATE_WEAPON = '武器离手', THROW_STATE_SPIRIT = '武魂离手', THROW_STATE_KEY = '__auto__:武器离手', RECALL_STATE = '召回武器';
+  const RECALL_ANYWHERE_SKILL = /控鹤擎龙/;
+  // 手里能投的那一件：已开的器武魂优先，其次兵器（打坏的、已经投出去的不算）。
+  function throwableWeapon(unit = {}) {
+    if (!unit || unit?.状态效果?.[THROW_STATE_KEY]) return null;
+    const spiritKey = toolSpiritKeys(unit)[0];
+    if (spiritKey && !spiritUnreleased(unit)) {
+      const spirit = unit[spiritKey] || {};
+      return { kind: '器武魂', key: spiritKey, name: String(spirit.表象名称 || spirit.名称 || spirit.name || spiritKey).trim() };
+    }
+    const weapon = battleEquipment(unit)?.武器;
+    if (sealableWeapon(weapon) && !/损毁/.test(String(weapon.装备状态 || '')) && !unit?.状态效果?.[GEAR_BROKEN_KEY]) {
+      return { kind: '兵器', key: '武器', name: String(weapon.名称 || weapon.name).trim() };
+    }
+    return null;
+  }
+  const weaponThrownState = unit => unit?.状态效果?.[THROW_STATE_KEY] || null;
+  function canThrowWeapon(actor = {}, target = null, declaration = {}) {
+    return String(declaration?.actionKind || '').trim().toUpperCase() === 'BASIC_ATTACK' && !!target && target !== actor && !!throwableWeapon(actor);
+  }
+  const canRecallAnywhere = unit => [...collectSkillNames(unit)].some(name => RECALL_ANYWHERE_SKILL.test(name));
+  function collectSkillNames(unit = {}) {
+    const names = new Set();
+    const visit = value => {
+      if (!value || typeof value !== 'object') return;
+      if (Array.isArray(value)) { value.forEach(visit); return; }
+      const name = String(value.魂技名 || '').trim();
+      if (name) names.add(name);
+      Object.values(value).forEach(visit);
+    };
+    Object.entries(unit || {}).forEach(([key, value]) => { if (/^第\d+武魂$|^血脉之力$|^魂骨$|^自创魂技$/.test(key)) visit(value); });
+    return names;
+  }
+  // 投出后挂在出手者身上的状态（落点：被投的人）。
+  function thrownWeaponState(actor = {}, weapon = {}, targetId = '') {
+    const spirit = weapon.kind === '器武魂';
+    const panel = spirit
+      ? Object.fromEntries(Object.entries(toolSpiritTendencyPanel(actor)).map(([key, value]) => [key, -Number(value || 0)]))
+      : { ...(equipmentSealEffect({ 原型: '状态施加', 状态: THROW_STATE_WEAPON }, {}, actor, actor)?.面板固定修正 || {}) };
+    const name = spirit ? THROW_STATE_SPIRIT : THROW_STATE_WEAPON;
+    return { 状态: name, 状态名称: name, 类型: 'debuff', duration: ARMOUR_LASTING_ROUNDS, 持续回合: ARMOUR_LASTING_ROUNDS,
+      描述: `【${weapon.name}】投出去了，召回前只能空手打`, 面板固定修正: panel, 封禁部位: [spirit ? '器武魂' : '武器'],
+      __离手: weapon.kind, __离手名: weapon.name, __落点: String(targetId || ''), 战斗效果: { equipment_seal: true } };
+  }
+  // 投掷那一下结算完：挂离手状态（overlay 或结算里的单位都行）。
+  function applyWeaponThrow(unit = {}, weapon = null, targetId = '') {
+    const held = weapon || throwableWeapon(unit);
+    if (!held) return false;
+    unit.状态效果 = { ...(unit.状态效果 || {}), [THROW_STATE_KEY]: thrownWeaponState(unit, held, targetId) };
+    return true;
+  }
+  function applyWeaponRecall(unit = {}) {
+    if (!weaponThrownState(unit)) return false;
+    const { [THROW_STATE_KEY]: _thrown, ...rest } = unit.状态效果 || {};
+    unit.状态效果 = rest;
+    return true;
+  }
+  // 能不能召回：器武魂、会控鹤擎龙的随时；兵器要和落点那个人贴身。
+  function canRecallWeapon(unit = {}, world = {}) {
+    const thrown = weaponThrownState(unit);
+    if (!thrown) return false;
+    if (thrown.__离手 === '器武魂' || canRecallAnywhere(unit)) return true;
+    const holder = findUnit(world, String(thrown.__落点 || ''));
+    return !holder || unitsEngaged(unit, holder);
+  }
+  const canRecallStrike = unit => { const thrown = weaponThrownState(unit); return !!thrown && (thrown.__离手 === '器武魂' || canRecallAnywhere(unit)); };
+  // 动作卡「召回【X】」。
+  function recallOptions(actor = {}, world = {}) {
+    const thrown = weaponThrownState(actor);
+    if (!thrown || !canRecallWeapon(actor, world)) return [];
+    const name = String(thrown.__离手名 || '武器');
+    return [{ slot: `召回·${name}`, name: `召回【${name}】`, windup: 0,
+      description: `把投出去的【${name}】召回手里，之后照常用它的普攻与魂技。`,
+      effect: { 原型: '状态施加', 目标: '自身', 状态: RECALL_STATE, 持续回合: 1, 触发方式: '立即触发', 生效方式: '独立生效' } }];
+  }
   // 落到被控者身上：剩余耐久减去这一下；打到 0 删掉这个控制（返回 { broken, before, after, state }，没有这个控制时 null）。
   function applyControlStrike(holder = {}, strike = {}) {
     const key = String(strike?.key || ''), state = holder?.状态效果?.[key];
@@ -6470,6 +6552,8 @@
   const MENTAL_DODGE_MULT = 0.5, MENTAL_COUNTER_MULT = 0.4, MENTAL_CLASH_LOSS_MULT = 2, MENTAL_CLASH_SHOCK = 0.5;
   // The class of a move's strike: its first 伤害结算's (a basic attack carries its own, melee by default); null: no strike.
   function declarationDamageClass(declaration = {}) {
+    // 投出武器：投掷与召回时顺势一击按远程（伤害照普攻）。
+    if (declaration?.throwWeapon || declaration?.recallStrike === true) return 'RANGED';
     const effects = collectEffects(declaration?.skill || {});
     const strike = effects.find(effect => String(effect?.原型 || '').trim() === '伤害结算');
     if (strike) return classifyDamageType(strike?.伤害类型);
@@ -9262,6 +9346,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   const EQUIPMENT_SEAL_SLOTS = Object.freeze({ 缴械: Object.freeze(['武器']), 封甲: Object.freeze(['斗铠', '机甲']),
     // 道具破坏：打坏的兵器同缴械（GEAR_BROKEN_STATE）。
     武器损毁: Object.freeze(['武器']),
+    // 投出武器：离手期间同缴械（武器、器武魂各一个名）。
+    武器离手: Object.freeze(['武器']), 武魂离手: Object.freeze(['器武魂']),
     // 未释放的斗铠 / 机甲（S80-A）也算封住；释放以后（armourReleaseState）不算。
     斗铠未释放: Object.freeze(['斗铠']), 机甲未释放: Object.freeze(['机甲']) });
   const EQUIPMENT_SEAL_STATS = Object.freeze([['力量', 'str'], ['防御', 'def'], ['敏捷', 'agi'], ['精神力上限', 'men_max']]);
@@ -9908,7 +9994,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         // 释放斗铠 / 机甲的内部结算（S80-A armourReleaseEffect）：不在技能表里，设计台与生成都用不到。
         // 开武魂（spiritReleaseOptions）同样是内部状态「武魂已释放」。
         const internal = prototype === '结算修正' && field === '结算' && normalized === '装备吸收' && !!effect?.__装备释放 ||
-          prototype === '状态施加' && field === '状态' && ['武魂已释放', '生命之火', '冥想', '前压', '后撤', CONTROL_STRIKE_STATE, GEAR_STRIKE_STATE].includes(normalized);
+          prototype === '状态施加' && field === '状态' && ['武魂已释放', '生命之火', '冥想', '前压', '后撤', CONTROL_STRIKE_STATE, GEAR_STRIKE_STATE, RECALL_STATE].includes(normalized);
         if (normalized && !internal && !(accepted ? accepted.has(normalized) : fieldDefinition.选项.includes(normalized))) {
           throw new Error(`battle_preview_unknown_enum:${prototype}:${field}:${normalized}`);
         }
@@ -12253,6 +12339,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           __previewApplicationProbability: clamp(Number(state?.__previewApplicationProbability ?? 1), 0, 1) * clamp(settled.after / settled.before, 0, 1) } };
       }
       return !!settled;
+    }
+    // 投出武器：召回只拿掉离手状态。
+    if (String(effect?.原型 || '').trim() === '状态施加' && String(effect?.状态 || '').trim() === RECALL_STATE) {
+      const recalled = applyWeaponRecall(unit);
+      if (recalled) unit.final = { ...(unit.final || {}), ...buildNumericCombatStats(unit, 0) };
+      return recalled;
     }
     // 道具破坏：砸只扣装备耐久（打坏了兵器挂「武器损毁」），不留「砸装备」状态。
     const gearStrike = gearStrikeOf(effect);
@@ -22489,6 +22581,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       }
       context.recordPrimaryResolution?.();
     });
+    // 投出武器：投掷那一下结算完武器离手；召回时顺势一击打完回手。
+    if (declaration?.throwWeapon && !continuedSettlement) overlay.changeUnit(unitId(actor), unit => {
+      if (applyWeaponThrow(unit, null, (declaration.targetIds || [])[0])) unit.final = { ...(unit.final || {}), ...buildNumericCombatStats(unit, 0) };
+    });
+    if (declaration?.recallStrike === true && !continuedSettlement) overlay.changeUnit(unitId(actor), unit => {
+      if (applyWeaponRecall(unit)) unit.final = { ...(unit.final || {}), ...buildNumericCombatStats(unit, 0) };
+    });
     // 出界判负：这一击打出界的人离场（settleRingOuts）。
     {
       const marked = listUnits(overlay.snapshot()).filter(unit => unit?.__battleRuntime?.pendingRingOut !== undefined).map(unit => unitId(unit));
@@ -26375,6 +26474,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     clashTiming,
     withStrengthKnockback,
     concedeHoldsBack,
+    throwableWeapon,
+    canThrowWeapon,
+    canRecallStrike,
+    recallOptions,
+    applyWeaponThrow,
+    applyWeaponRecall,
+    weaponThrownState,
     gearStrikeOptions,
     gearStrikeOf,
     applyGearStrike,

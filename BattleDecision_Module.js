@@ -6632,6 +6632,24 @@
       if (picked.length) candidates = [...candidates, ...picked.map(candidate => ({ ...candidate, candidateId: `${candidate.candidateId}:flank`,
         declaration: { ...candidate.declaration, flank: true, actionId: `${candidate.declaration.actionId || candidate.candidateId}:flank` } }))];
     }
+    // 投出武器（11-19，BattlePreview canThrowWeapon / canRecallStrike）：主动出手时，打单个敌人的普攻多出一份「投掷」（throwWeapon，
+    // 按远程、不用突进，投完武器离手）；武器已经离手、又能随时召回的（器武魂、会控鹤擎龙的），普攻多出一份「召回时顺势一击」（recallStrike）。
+    if (advanceActor && preview.canThrowWeapon && String(input?.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase() === 'ACTIVE') {
+      const actorSideNow = sideOf(worldSnapshot, advanceActor);
+      const basics = candidates.filter(candidate => {
+        const declaration = candidate?.declaration || {};
+        if (declaration.flank || declaration.feintStrike || declaration.throwWeapon || String(declaration.actionKind || '').toUpperCase() !== 'BASIC_ATTACK') return false;
+        if (!Array.isArray(declaration.targetIds) || declaration.targetIds.length !== 1) return false;
+        const target = findUnitInWorld(worldSnapshot, declaration.targetIds[0]);
+        return !!target && sideOf(worldSnapshot, target) !== actorSideNow;
+      });
+      const weapon = preview.throwableWeapon(advanceActor);
+      if (weapon) candidates = [...candidates, ...basics.filter(candidate => preview.canThrowWeapon(advanceActor, findUnitInWorld(worldSnapshot, candidate.declaration.targetIds[0]), candidate.declaration))
+        .map(candidate => ({ ...candidate, candidateId: `${candidate.candidateId}:throw`,
+          declaration: { ...candidate.declaration, throwWeapon: { kind: weapon.kind, name: weapon.name }, actionId: `${candidate.declaration.actionId || candidate.candidateId}:throw` } }))];
+      else if (preview.canRecallStrike(advanceActor)) candidates = [...candidates, ...basics.map(candidate => ({ ...candidate, candidateId: `${candidate.candidateId}:recall`,
+        declaration: { ...candidate.declaration, recallStrike: true, actionId: `${candidate.declaration.actionId || candidate.candidateId}:recall` } }))];
+    }
     // 虚招（T32，BattlePreview canFeintStrike）：主动出手时，对每个单体敌人的最强一击（威力最高的伤害魂技，没有就普攻）多出一份「虚招」，
     // feintStrike.seen 是目标看破的概率（feintSeeThroughChance，佯装记录一起算）；结算时再掷。
     if (advanceActor && preview.canFeintStrike && String(input?.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase() === 'ACTIVE') {
@@ -7503,6 +7521,13 @@
     // 砸控制物（T29, BattlePreview controlStrikeOptions）: 砸 a control on itself or an ally, the same path.
     candidates.push(...controlStrikeCandidates(actor, worldSnapshot, actorId));
     candidates.push(...gearStrikeCandidates(actor, worldSnapshot, actorId));
+    // 投出武器（BattlePreview recallOptions）：把投出去的武器召回手里。
+    if (preview.recallOptions) preview.recallOptions(actor, worldSnapshot).forEach(option => {
+      const id = `${actorId}:release:${option.slot}`;
+      candidates.push({ candidateId: id, equipmentSignature: `release:${option.slot}`,
+        declaration: { actionId: id, actorId, actionKind: 'EQUIP', targetIds: [actorId], releaseSlot: option.slot, equipmentSignature: `release:${option.slot}`,
+          skill: { name: option.name, 魂技名: option.name, 前摇: option.windup, 消耗: '无', 效果描述: option.description, _效果数组: [option.effect] } } });
+    });
     collectInventory(actor).filter(entry => entry.quantity > 0).forEach((entry, index) => {
       const item = entry.item;
       if (isEquipment(item)) {
@@ -41514,7 +41539,8 @@
     const declaration = candidate?.declaration || {};
     const kind = String(declaration.actionKind || '').toUpperCase();
     const name = String(declaration.skill?.魂技名 || declaration.skill?.name || declaration.feintSkill?.魂技名 || '').trim();
-    const mode = declaration.engagement?.mode === 'CLASH' ? '对轰' : declaration.engagement?.mode === 'PREEMPT' ? '抢先' : declaration.flank === true ? '绕后' : declaration.feintStrike ? '虚招' : '';
+    const mode = declaration.engagement?.mode === 'CLASH' ? '对轰' : declaration.engagement?.mode === 'PREEMPT' ? '抢先' : declaration.flank === true ? '绕后' : declaration.feintStrike ? '虚招' :
+      declaration.throwWeapon ? `掷出${declaration.throwWeapon.name ? `【${declaration.throwWeapon.name}】` : '武器'}` : declaration.recallStrike === true ? '召回顺势一击' : '';
     if (declaration.bait === true) return '卖破绽';
     if (declaration.humanShield) return `人盾·${world ? r20UnitLabel(world, String(declaration.humanShield.unitId || '')) : String(declaration.humanShield.unitId || '').split(':').pop()}`;
     const label = kind === 'EQUIP' && declaration.releaseSlot ? (declaration.releaseSlot === '武魂' ? '开武魂' : /^砸(?:装备)?·/.test(String(declaration.releaseSlot)) ? name || '砸控制物' : String(declaration.releaseSlot))
@@ -43982,7 +44008,8 @@
     // 变体（卖破绽、卸力、虚招、绕后、人盾）：与原型打平时让原型（BehaviorDecisionPipeline 平手规则）。
     const variantOf = candidateId => {
       const declaration = frozenById.get(candidateId)?.declaration || {};
-      return declaration.bait === true || declaration.deflect === true || !!declaration.feintStrike || !!declaration.flank || !!declaration.humanShield || declaration.retreat === true;
+      return declaration.bait === true || declaration.deflect === true || !!declaration.feintStrike || !!declaration.flank || !!declaration.humanShield || declaration.retreat === true ||
+        !!declaration.throwWeapon || declaration.recallStrike === true;
     };
     const holdOf = candidateId => {
       const candidate = frozenById.get(candidateId);

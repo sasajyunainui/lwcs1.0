@@ -11261,6 +11261,29 @@
         }));
       });
     }
+    // 投出武器（BattlePreview applyWeaponThrow / applyWeaponRecall）：投掷那一下结算完武器离手；召回时顺势一击打完回手。
+    {
+      const declaration = context.declaration || {};
+      const tick = Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0);
+      const note = (stateName, reasonText) => facts.push(writeLedgerEvent(combatData, {
+        eventKind: 'state_apply', round: Number(combatData?.回合 || 0),
+        actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor), targetId: previewRuntime.unitId(actor), targetName: previewRuntime.unitName(actor),
+        actionName: stateName, actionType: 'weapon_throw', actorControl: String(actionEvent?.actorControl || 'AI'), actionRole: String(actionEvent?.actionRole || 'ACTIVE'),
+        actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId, result: 'applied', resultState: 'SUCCESS', factType: 'STATE', operation: 'STATE_APPLY',
+        meta: { source: 'structured_runtime', stateName, reasonText, operation: 'STATE_APPLY' },
+      }));
+      if (declaration.throwWeapon && previewRuntime.applyWeaponThrow?.(actor, null, (declaration.targetIds || [])[0])) {
+        actor.final = buildCombatFinalStats(actor, tick);
+        const thrown = previewRuntime.weaponThrownState(actor);
+        note(String(thrown?.状态 || '武器离手'), `${previewRuntime.unitName(actor)}的【${String(thrown?.__离手名 || '武器')}】投出去了，召回前只能空手打`);
+      }
+      if (declaration.recallStrike === true && previewRuntime.weaponThrownState?.(actor)) {
+        const name = String(previewRuntime.weaponThrownState(actor)?.__离手名 || '武器');
+        previewRuntime.applyWeaponRecall(actor);
+        actor.final = buildCombatFinalStats(actor, tick);
+        note('召回武器', `${previewRuntime.unitName(actor)}召回【${name}】，顺势打了一下`);
+      }
+    }
     const end = ensureLedger(combatData).at(-1) || actionEvent;
     actionEvent.meta.declarationSettlement = {
       phase: 'POST_EFFECTS_PRE_FOLLOWUPS', status: 'CLOSED',
@@ -13698,6 +13721,20 @@
             settleExpiredConditionBase(target, controlStrike.key, settled.state, previewRuntime.unitName(target), combatData,
               String(settled.state?.__状态来源窗口?.[0] || settled.state?.__状态来源键 || '').trim(), { event: expiry });
           }
+          return;
+        }
+        // 投出武器：召回卡只拿掉离手状态（BattlePreview applyWeaponRecall）。
+        if (prototype === '状态施加' && stateName === '召回武器' && previewRuntime.applyWeaponRecall) {
+          const thrownName = String(previewRuntime.weaponThrownState(target)?.__离手名 || '武器');
+          const recalled = previewRuntime.applyWeaponRecall(target);
+          if (recalled) target.final = buildCombatFinalStats(target, Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0));
+          facts.push(writeLedgerEvent(combatData, {
+            eventKind: 'state_apply', round: Number(combatData?.回合 || 0), actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
+            targetId: previewRuntime.unitId(target), targetName: previewRuntime.unitName(target), actionName, actionType: actionKind, actorControl, actionRole,
+            actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId, result: recalled ? 'applied' : 'no_effect', resultState: recalled ? 'SUCCESS' : 'NO_EFFECT',
+            effectPrototype: prototype, factType: 'STATE', sourceEffectId, operation: 'STATE_APPLY',
+            meta: { source: 'structured_runtime', effectIndex, stateName: '召回武器', reasonText: `${previewRuntime.unitName(target)}把【${thrownName}】召回手里` },
+          }));
           return;
         }
         // 道具破坏（BattlePreview applyGearStrike）：砸敌人的兵器或魂导器，按此刻的普攻扣耐久；打到 0 兵器挂「武器损毁」、装备状态记损毁。
