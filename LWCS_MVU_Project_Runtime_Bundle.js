@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:a3e6568e8e626eb1deec3756396cef12b1515fd67e840709d14abfb44e9162cd|MVU_Schema_Runtime.js:a49c1c4c520032097c34bfd35e675a92e0d40dd51368aaffd246138bab0e8555|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:1f7a519a850bc170c3da108bfe22614d098b593bc573d8b38a5c0a7bec81aba5 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:9960e8cd9c197b10dc1288571f1d08b4cbbef1f9cdc281ad54865bb7d801d960|MVU_Schema_Runtime.js:a49c1c4c520032097c34bfd35e675a92e0d40dd51368aaffd246138bab0e8555|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:1f7a519a850bc170c3da108bfe22614d098b593bc573d8b38a5c0a7bec81aba5 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -29662,10 +29662,12 @@ function getCombatSpeciesFlags(char = {}) {
   const factionMap = social?.势力 && typeof social.势力 === 'object' ? social.势力 : {};
   const factionNames = Object.keys(factionMap);
   const age = Math.max(0, Math.floor(Number(char?.属性?.年龄 || 0)));
-  const isBeast =
-    factionNames.includes('魂兽一族') ||
+  // 击杀奖励只给明确的魂兽（用户 11-19）：势力带「魂兽」或单位性质魂兽，且没有真实武魂（古月娜这类在魂兽阵营的魂师不算）；
+  // 原来年龄 ≥ 100 就按魂兽结算，百岁以上的魂师被击杀也会掉魂兽奖励。
+  const hasRealSpirit = Object.entries(char || {}).some(([key, value]) => /^第\d+武魂$/.test(key) && 是否真实武魂数据_V1(value));
+  const isBeast = !hasRealSpirit && (
     factionNames.some(name => String(name || '').includes('魂兽')) ||
-    age >= 100;
+    String(char?.单位性质 || '').trim() === '魂兽');
   const isAbyss =
     factionNames.includes('深渊生物') ||
     factionNames.some(name => String(name || '').includes('深渊'));

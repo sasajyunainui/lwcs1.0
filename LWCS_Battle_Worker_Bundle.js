@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:a3e6568e8e626eb1deec3756396cef12b1515fd67e840709d14abfb44e9162cd|MVU_Schema_Runtime.js:a49c1c4c520032097c34bfd35e675a92e0d40dd51368aaffd246138bab0e8555|BattlePreview_Module.js:8b3ef9c2dc3447d3767c9ee023943d403c12d67bc364d93b38a5d1b49704c8a1|BehaviorDecisionPipeline_Module.js:e55d1d0a40ff9a1a3a37cf0f16c94dbd9bafe338489e7af952c1279ca0025977|BattleDecision_Module.js:b8dcfdba43a0581645948cb47163b9f5241a7daa5b2266372871db8302807d1d|BattleRuntime_Module.js:e2fd0c7f8492c99cbb0c7d20c59d51887feb559829fe0844515365e7cf4a0829 */
+/* sources-sha256: MVU_Skill_Runtime.js:9960e8cd9c197b10dc1288571f1d08b4cbbef1f9cdc281ad54865bb7d801d960|MVU_Schema_Runtime.js:a49c1c4c520032097c34bfd35e675a92e0d40dd51368aaffd246138bab0e8555|BattlePreview_Module.js:8b3ef9c2dc3447d3767c9ee023943d403c12d67bc364d93b38a5d1b49704c8a1|BehaviorDecisionPipeline_Module.js:e55d1d0a40ff9a1a3a37cf0f16c94dbd9bafe338489e7af952c1279ca0025977|BattleDecision_Module.js:b8dcfdba43a0581645948cb47163b9f5241a7daa5b2266372871db8302807d1d|BattleRuntime_Module.js:e2fd0c7f8492c99cbb0c7d20c59d51887feb559829fe0844515365e7cf4a0829 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -25141,10 +25141,12 @@ function getCombatSpeciesFlags(char = {}) {
   const factionMap = social?.势力 && typeof social.势力 === 'object' ? social.势力 : {};
   const factionNames = Object.keys(factionMap);
   const age = Math.max(0, Math.floor(Number(char?.属性?.年龄 || 0)));
-  const isBeast =
-    factionNames.includes('魂兽一族') ||
+  // 击杀奖励只给明确的魂兽（用户 11-19）：势力带「魂兽」或单位性质魂兽，且没有真实武魂（古月娜这类在魂兽阵营的魂师不算）；
+  // 原来年龄 ≥ 100 就按魂兽结算，百岁以上的魂师被击杀也会掉魂兽奖励。
+  const hasRealSpirit = Object.entries(char || {}).some(([key, value]) => /^第\d+武魂$/.test(key) && 是否真实武魂数据_V1(value));
+  const isBeast = !hasRealSpirit && (
     factionNames.some(name => String(name || '').includes('魂兽')) ||
-    age >= 100;
+    String(char?.单位性质 || '').trim() === '魂兽');
   const isAbyss =
     factionNames.includes('深渊生物') ||
     factionNames.some(name => String(name || '').includes('深渊'));

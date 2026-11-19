@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: CharacterLibrary.js:8d897c41200fbc575d6d4aac2ffd86d34cd0f6a782b9db70f5f95c70820b3bc0|ItemLibrary.js:b197f22e9e47710e6190b0a5337f24b23b7dc0ff2d60a69554a6256702907443|FactionLibrary.js:255b37b457bfca7deb43134747c9165b31dded4ad76838ba20c369eaee318200|LocationLibrary.js:f2e07a35c4839d094b7a6e9bdd6635afc703cf0542222bf5241f045b7d65fefc|timeline.js:26b59eba2d288d6ce89b4e1fa60d9ea3c39ffec882d6deaccf2c8b20316ac35d */
+/* sources-sha256: CharacterLibrary.js:c415bf7a1ae2625c1ad35afc73f0f153286af7d6074eeab13d01cff082773708|ItemLibrary.js:b197f22e9e47710e6190b0a5337f24b23b7dc0ff2d60a69554a6256702907443|FactionLibrary.js:255b37b457bfca7deb43134747c9165b31dded4ad76838ba20c369eaee318200|LocationLibrary.js:f2e07a35c4839d094b7a6e9bdd6635afc703cf0542222bf5241f045b7d65fefc|timeline.js:26b59eba2d288d6ce89b4e1fa60d9ea3c39ffec882d6deaccf2c8b20316ac35d */
 ;
 /* source: CharacterLibrary.js */
 !(function () {
@@ -13434,7 +13434,7 @@
               状态: {
                 存活: true,
               },
-              社交: {
+              社交: { "势力": { "魂兽一族": { "身份": "族人", "权限级": 7 } },
                 声望: 99000,
                 主身份: '万兽台位面之主',
               },
