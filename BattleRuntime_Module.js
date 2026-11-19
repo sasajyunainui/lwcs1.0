@@ -3946,7 +3946,13 @@
     }[resourceKey] || null;
     if (!config) return 0;
     const maxValue = previewRuntime.readResourceMax(unit, { hp: '生命', vit: '体力', sp: '魂力', men: '精神力' }[resourceKey]);
-    const nextValue = Math.round(Math.max(0, Math.min(maxValue, Number(value || 0))));
+    let nextValue = Math.round(Math.max(0, Math.min(maxValue, Number(value || 0))));
+    // 深渊杀不死（BattlePreview isAbyssUnit / abyssKillingBlow，用户 11-19）：不是能杀死它的一击（主攻击路径挂 __深渊可灭），体力留 1、
+    // 退出战斗（退回深渊），不死、没有击杀奖励。DoT、反伤等没有出招来源的一律杀不死。
+    if (resourceKey === 'hp' && nextValue <= 0 && previewRuntime.isAbyssUnit(unit) && unit.__深渊可灭 !== true && previewRuntime.readHp(unit) > 0) {
+      nextValue = Math.min(1, maxValue);
+      if (!String(unit.__战斗失能原因 || '').trim()) unit.__战斗失能原因 = previewRuntime.ABYSS_REPELLED;
+    }
     // 受伤同步扣体力（用户 2026-11-09）：同 BattlePreview setHp——生命少掉的比例，体力扣同样比例的体力上限。
     const hpBefore = resourceKey === 'hp' ? previewRuntime.readHp(unit) : 0;
     if (resourceKey === 'hp' && nextValue < hpBefore && previewRuntime.readResourceMax(unit, '体力') > 0) {
@@ -12950,7 +12956,12 @@
                 facts.push(shieldEvent);
               }
             }
+            const abyssKillable = before - damage <= 0 && previewRuntime.isAbyssUnit(target) && previewRuntime.abyssKillingBlow(actor, declaration?.skill);
+            if (abyssKillable) target.__深渊可灭 = true;
+            const reasonBeforeHit = String(target.__战斗失能原因 || '').trim();
             writeCombatResource(target, 'hp', before - damage);
+            delete target.__深渊可灭;
+            const abyssRepelled = !reasonBeforeHit && target.__战斗失能原因 === previewRuntime.ABYSS_REPELLED;
             if (damage > 0) applyRuntimeDamageRedirects({ combatData, actor, target, dealt: damage, action, actionEvent, actionRole, facts, sourceEffectId });
             const hpAfter = previewRuntime.readHp(target);
             const traumaUnconscious = previewRuntime.shouldTriggerTraumaUnconscious(damage, hpAfter, previewRuntime.readHpMax(target));
@@ -12960,7 +12971,7 @@
             // Held at the knockdown line: subdued, out of the fight (BattlePreview battleRules knockdown).
             const knockedDown = knockdownFloor > 0 && !nonlethal && !alreadyOut && before > 0 && (before > knockdownFloor
               ? damage >= before - knockdownFloor - 1e-9 : settledSegmentDamage > shieldBefore + 1e-9);
-            const nonlethalIncapacitated = heldAtLine || leftUnderLine || knockedDown;
+            const nonlethalIncapacitated = heldAtLine || leftUnderLine || knockedDown || abyssRepelled;
             const damageEvent = writeLedgerEvent(combatData, {
               eventKind: 'hit_result', round: Number(combatData?.回合 || 0),
               actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
@@ -13024,17 +13035,17 @@
               actionRole,
             }));
             if (traumaUnconscious || nonlethalIncapacitated) {
-              const actionState = traumaUnconscious ? '昏迷' : '失去战斗力';
+              const actionState = abyssRepelled ? '退回深渊' : traumaUnconscious ? '昏迷' : '失去战斗力';
               const hpMax = previewRuntime.readHpMax(target);
               const beforeActionState = cloneValue(target?.状态 || {});
-              target.__战斗失能原因 = traumaUnconscious ? 'UNCONSCIOUS' : knockedDown ? 'SUBDUED' : 'INCAPACITATED';
+              target.__战斗失能原因 = abyssRepelled ? previewRuntime.ABYSS_REPELLED : traumaUnconscious ? 'UNCONSCIOUS' : knockedDown ? 'SUBDUED' : 'INCAPACITATED';
               facts.push(writeLedgerEvent(combatData, {
                 eventKind: 'state_apply', round: Number(combatData?.回合 || 0),
                 actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
                 targetId: previewRuntime.unitId(target), targetName: previewRuntime.unitName(target),
                 actionName, actionType: 'incapacitation', actorControl, actionRole, actionId: actionEvent.actionId,
                 sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
-                ruleCode: traumaUnconscious ? 'TRAUMA_UNCONSCIOUS' : refereeRescue ? 'REFEREE_RESCUE' : knockedDown ? 'KNOCKDOWN_SUBDUED'
+                ruleCode: abyssRepelled ? 'ABYSS_REPELLED' : traumaUnconscious ? 'TRAUMA_UNCONSCIOUS' : refereeRescue ? 'REFEREE_RESCUE' : knockedDown ? 'KNOCKDOWN_SUBDUED'
                   : leftUnderLine ? 'LIFE_THREAT_WITHDRAWN' : 'NONLETHAL_INTENT_DISABLE',
                 result: 'applied', resultState: 'SUCCESS', primaryOutcome: traumaUnconscious ? 'trauma_unconscious' : 'nonlethal_incapacitation',
                 effectPrototype: prototype, factType: 'STATE', sourceEffectId, operation: 'STATE_APPLY',

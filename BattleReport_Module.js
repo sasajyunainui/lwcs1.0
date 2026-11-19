@@ -878,6 +878,7 @@
       SUBDUED: '被制服',
       SURRENDERED: '认输',
       WITHDRAWN: '已撤离',
+      ABYSS_REPELLED: '退回深渊（未被杀死）',
       CONTROLLED: '受控制',
       UNAVAILABLE: '暂时无法行动',
     };
@@ -2207,10 +2208,10 @@
     hp: '生命',
   });
   const preemptionEventKinds = Object.freeze(['lost_opportunity', 'blocked_action', 'target_fail']);
-  const controlDenialReasonPattern = /^(?:CONTROLLED|UNCONSCIOUS|INCAPACITATED|SUBDUED|DEAD)/i;
+  const controlDenialReasonPattern = /^(?:CONTROLLED|UNCONSCIOUS|INCAPACITATED|SUBDUED|DEAD|ABYSS_REPELLED)/i;
   /* 失能兑现的两种写法：运行时用 ruleCode 标注成因，用 stateName 标注结果，两者都要认。 */
-  const incapacitationRulePattern = /^(?:TRAUMA_UNCONSCIOUS|NONLETHAL_INTENT_DISABLE)/i;
-  const incapacitationStatePattern = /昏迷|失去战斗力|失能/;
+  const incapacitationRulePattern = /^(?:TRAUMA_UNCONSCIOUS|NONLETHAL_INTENT_DISABLE|ABYSS_REPELLED)/i;
+  const incapacitationStatePattern = /昏迷|失去战斗力|失能|退回深渊/;
 
   function rawMeta(event = {}) {
     return event && typeof event.meta === 'object' && event.meta ? event.meta : {};
@@ -5002,7 +5003,7 @@
     const rawActionState = text(
       unit?.__战斗失能原因 || unit?.actionState || unit?.行动状态,
     );
-    const explicitIncapacity = /(?:DEAD|UNCONSCIOUS|INCAPACITATED|STAMINA_EXHAUSTED|SUBDUED|SURRENDERED|WITHDRAWN|CONTROLLED|UNAVAILABLE|死亡|昏迷|失去战斗力|体力耗尽|被制服|认输|撤离|受控制|暂时无法行动)/iu.test(rawActionState);
+    const explicitIncapacity = /(?:DEAD|UNCONSCIOUS|INCAPACITATED|STAMINA_EXHAUSTED|SUBDUED|SURRENDERED|WITHDRAWN|CONTROLLED|UNAVAILABLE|ABYSS_REPELLED|退回深渊|死亡|昏迷|失去战斗力|体力耗尽|被制服|认输|撤离|受控制|暂时无法行动)/iu.test(rawActionState);
     const actionState = hp <= 0 && !explicitIncapacity
       ? 'INCAPACITATED'
       : stamina <= 0 && !explicitIncapacity
@@ -5452,7 +5453,7 @@
   function sideMetric(units = [], includeResources = true) {
     const alive = units.filter(unit => unit.hp > 0 && !/死亡/.test(unit.actionState)).length;
     const combatReady = units.filter(unit =>
-      unit.hp > 0 && !/死亡|失去战斗力|昏迷/.test(unit.actionState)
+      unit.hp > 0 && !/死亡|失去战斗力|昏迷|退回深渊/.test(unit.actionState)
     ).length;
     const hpRatio = units.length
       ? units.reduce((sum, unit) => sum + unit.hp / Math.max(1, unit.hpMax), 0) / units.length

@@ -636,6 +636,9 @@ const CharacterSchema = z
     外貌: AppearanceSchema,
     穿搭: ClothingSchema,
     性格: z.string().prefault(AI_TODO_PERSONALITY).describe('角色的性格特征，随经历可能发生改变'),
+    // 种族（用户 11-19）：不写即魂师（斗罗大陆出生的人，先天零魂力也算）；写错的值按没写处理，存档不补空字段。
+    种族: z.enum(['魂师', '魂兽', '深渊', '其他']).optional().catch(undefined)
+      .describe('种族：魂师（斗罗大陆出生的人，含先天零魂力）／魂兽／深渊／其他（如外星、异界来客）；不写即魂师'),
     魂骨: SoulBoneSchema,
     血脉之力: BloodlinePowerSchema,
     魂核: z

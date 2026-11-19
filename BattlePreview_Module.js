@@ -3965,6 +3965,39 @@
   // no one left, and a side with no one left has lost unless it got away: evaluateBattleObjectivesCore), and beyond that
   // no one's target, friend or foe (resolveTargets), and no round end settles anything on it (BattleRuntime
   // settleBattleRoundEnd): it keeps the HP and states it left with, and the save gets them as they are.
+  // 深渊杀不死（用户 11-19）：深渊生物被普通手段打到 0 只算被打败——体力留 1、退出战斗（ABYSS_REPELLED，退回深渊），不死、
+  // 没有击杀奖励；只有最后一击附带属性带「泯灭」，或带生命吸收（资源转移、资源为生命；或像黄金龙枪那样终结目标时吸收其生命力的
+  // 装备／被动）才真正杀死。深渊单位：种族深渊、势力带「深渊」、临时单位单位性质深渊。
+  const ABYSS_REPELLED = 'ABYSS_REPELLED';
+  function isAbyssUnit(unit = {}) {
+    if (String(unit?.种族 || '').trim() === '深渊' || String(unit?.单位性质 || '').trim() === '深渊') return true;
+    const factions = [...Object.keys(unit?.社交?.势力 || {}), ...(typeof unit?.势力 === 'string' ? [unit.势力] : Object.keys(unit?.势力 || {}))];
+    return factions.some(name => String(name).includes('深渊'));
+  }
+  const lifeDrainEffect = effect => effect && String(effect.资源 || '').trim() === '生命' && (String(effect.原型 || '').trim() === '资源转移' ||
+    (String(effect.原型 || '').trim() === '资源变化' && JSON.stringify(effect.条件分支 || []).includes('"终结"')));
+  const lifeDrainCache = new WeakMap();
+  function unitHasLifeDrain(unit = {}) {
+    if (!unit || typeof unit !== 'object') return false;
+    if (lifeDrainCache.has(unit)) return lifeDrainCache.get(unit);
+    // 只看常驻的：装备上的技能、被动（承载方式被动或放在「被动」表里）；主动技能看这一击用的那招（abyssKillingBlow）。
+    let found = false; const seen = new Set();
+    const visit = (value, depth, standing) => {
+      if (found || !value || typeof value !== 'object' || seen.has(value) || depth > 8) return;
+      seen.add(value);
+      if (Array.isArray(value._效果数组) && (standing || String(value.承载方式 || '').trim() === '被动') && value._效果数组.some(lifeDrainEffect)) { found = true; return; }
+      Object.entries(value).forEach(([key, child]) => visit(child, depth + 1, standing || key === '被动'));
+    };
+    for (const [key, value] of Object.entries(unit)) if (/^(?:第\d+)?武魂$|血脉之力|魂骨|装备|自创魂技|技能列表/.test(key)) visit(value, 0, key === '装备');
+    lifeDrainCache.set(unit, found);
+    return found;
+  }
+  function abyssKillingBlow(actor = {}, skill = null) {
+    const attributes = Array.isArray(skill?.附带属性) ? skill.附带属性.map(String) : [];
+    if (attributes.some(name => name.includes('泯灭'))) return true;
+    if (Array.isArray(skill?._效果数组) && skill._效果数组.some(lifeDrainEffect)) return true;
+    return unitHasLifeDrain(actor);
+  }
   const LEFT_BATTLE_REASONS = Object.freeze({ CONCEDE: 'SURRENDERED', WITHDRAW: 'WITHDRAWN' });
   function hasLeftBattle(unit = {}) {
     const reason = String(unit?.__战斗失能原因 || '').trim();
@@ -26138,6 +26171,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     interceptWindupBudget,
     clashWindupBudget,
     clashTiming,
+    ABYSS_REPELLED,
+    isAbyssUnit,
+    abyssKillingBlow,
     engagementAgilityBounds,
     basicAttackWindup,
     CONTINUOUS_ACTION_BUDGET,

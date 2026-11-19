@@ -1353,15 +1353,35 @@ function getBeastStats(age, species) {
   };
 }
 
-// 魂兽（按魂兽处理：不配斗铠机甲魂骨、不补魂环、不自动突破、不发津贴）——11-19 用户定：
-// 有真实武魂的是魂师（势力只表示阵营：古月娜、蓝佛子在魂兽一族里也是魂师；唐舞麟复生后 10006 岁曾被当成魂兽，斗铠、魂骨被清掉）；
-// 没有武魂时，势力魂兽一族／深渊生物、单位性质魂兽／深渊算魂兽；都没有才按年龄 ≥ 10000 推断。
-// 库里把本体写成第1武魂的魂兽、深渊生物已改成库标准格式（无武魂、势力魂兽一族或深渊生物）。
+// 种族（用户 11-19）：魂师／魂兽／深渊／其他。魂师指斗罗大陆出生的人（先天零魂力也算）；魂兽、深渊、其他（外星、异界来客等）
+// 都不走魂师规则（不补武魂魂环、不配斗铠机甲、不发津贴、不自动突破）；只有魂兽走魂兽规则（清空斗铠魂骨、按本体推系别、击杀给魂兽奖励）。
+// 角色写了「种族」就按写的；没写时：有真实武魂 → 魂师（势力只表示阵营：古月娜在魂兽一族里也是魂师）；势力带「魂兽」→ 魂兽；
+// 势力带「深渊」→ 深渊；临时战斗单位看单位性质；其余 → 魂师。不按年龄推断（原来 ≥ 10000 岁即魂兽，唐舞麟复生后被清掉斗铠魂骨）。
+var 角色种族选项_V1 = Object.freeze(['魂师', '魂兽', '深渊', '其他']);
+// 重生魂兽（用户 11-19：小舞、阿银）：写了种族魂兽、却有真实武魂。修炼一律按魂师（突破、补环、斗铠魂骨、战斗系别）；
+// 「是不是魂兽」的身份 70 级前按魂兽（种族显示、被击杀给魂兽奖励），70 级起按魂师。
+var 重生魂兽转魂师等级_V1 = 70;
+function 是否重生魂兽_V1(char = {}) {
+  return String(char?.种族 || '').trim() === '魂兽' &&
+    Object.entries(char || {}).some(([key, value]) => /^第\d+武魂$/.test(key) && 是否真实武魂数据_V1(value));
+}
+function 读取角色种族_V1(char = {}) {
+  const 显式 = String(char?.种族 || '').trim();
+  if (是否重生魂兽_V1(char)) return Number(char?.属性?.等级 || 0) < 重生魂兽转魂师等级_V1 ? '魂兽' : '魂师';
+  if (角色种族选项_V1.includes(显式)) return 显式;
+  if (Object.entries(char || {}).some(([key, value]) => /^第\d+武魂$/.test(key) && 是否真实武魂数据_V1(value))) return '魂师';
+  const 势力名 = Object.keys(char?.社交?.势力 || {}).map(String);
+  const 单位性质 = String(char?.单位性质 || '').trim();
+  if (势力名.some(名 => 名.includes('魂兽')) || 单位性质 === '魂兽') return '魂兽';
+  if (势力名.some(名 => 名.includes('深渊')) || 单位性质 === '深渊') return '深渊';
+  return '魂师';
+}
+// 修炼规则看这两个：重生魂兽始终按魂师。身份（击杀奖励、种族显示）看 读取角色种族_V1。
+function 是否魂师种族_V1(char = {}) {
+  return 是否重生魂兽_V1(char) || 读取角色种族_V1(char) === '魂师';
+}
 function isSoulBeastCharacter(char = {}) {
-  if (Object.entries(char || {}).some(([key, value]) => /^第\d+武魂$/.test(key) && 是否真实武魂数据_V1(value))) return false;
-  const 势力名 = Object.keys(char?.社交?.势力 || {});
-  if (势力名.includes('魂兽一族') || 势力名.some(名 => String(名).includes('深渊')) || ['魂兽', '深渊'].includes(String(char?.单位性质 || '').trim())) return true;
-  return Number(char?.属性?.年龄 || 0) >= 10000;
+  return !是否重生魂兽_V1(char) && 读取角色种族_V1(char) === '魂兽';
 }
 
 function formatCultivationLevelText(level, fallback = '未知') {
@@ -1754,8 +1774,7 @@ function 判断本轮等级上升角色_V1(角色 = null, 角色名 = '') {
 function autoBreakthrough(data, 选项 = {}) {
   _(data.char).forEach((c, charName) => {
     if (!c.状态?.存活) return;
-    const isBeast = isSoulBeastCharacter(c);
-    if (isBeast) return;
+    if (!是否魂师种族_V1(c)) return; // 只有魂师按修炼自动突破（魂兽、深渊、其他不走）
     const pendingRingState = String(c.状态?.待选魂环?.状态 || '').trim();
     if (pendingRingState && !['已处理', 'handled', '无'].includes(pendingRingState)) return;
     const currentTick = Number(data?.world?.时间?.tick || 0);
@@ -25149,19 +25168,12 @@ function getBattleRewardRecipientName(data = {}, defeatedName = '') {
 }
 
 function getCombatSpeciesFlags(char = {}) {
-  const social = char?.社交 && typeof char.社交 === 'object' ? char.社交 : {};
-  const factionMap = social?.势力 && typeof social.势力 === 'object' ? social.势力 : {};
-  const factionNames = Object.keys(factionMap);
   const age = Math.max(0, Math.floor(Number(char?.属性?.年龄 || 0)));
-  // 击杀奖励只给明确的魂兽（用户 11-19）：势力带「魂兽」或单位性质魂兽，且没有真实武魂（古月娜这类在魂兽阵营的魂师不算）；
+  // 击杀奖励按种族结算（用户 11-19「需要是明确的魂兽才是魂兽结算」）：魂兽给魂兽奖励、深渊给深渊奖励，魂师与其他都没有。
   // 原来年龄 ≥ 100 就按魂兽结算，百岁以上的魂师被击杀也会掉魂兽奖励。
-  const hasRealSpirit = Object.entries(char || {}).some(([key, value]) => /^第\d+武魂$/.test(key) && 是否真实武魂数据_V1(value));
-  const isBeast = !hasRealSpirit && (
-    factionNames.some(name => String(name || '').includes('魂兽')) ||
-    String(char?.单位性质 || '').trim() === '魂兽');
-  const isAbyss =
-    factionNames.includes('深渊生物') ||
-    factionNames.some(name => String(name || '').includes('深渊'));
+  const 种族 = 读取角色种族_V1(char);
+  const isBeast = 种族 === '魂兽';
+  const isAbyss = 种族 === '深渊';
   return { isBeast, isAbyss, age };
 }
 
@@ -27408,7 +27420,9 @@ function 初始化补齐角色技能效果数组_V1(rootData = {}) {
       def: Number(char?.属性?.防御 || 0),
       agi: Number(char?.属性?.敏捷 || 0),
       men_max: Number(char?.属性?.精神力上限 || 0),
-    }) : 取角色主武魂系别_V1(char);
+    }) : 读取角色种族_V1(char) === '深渊' && !取角色武魂条目_V1(char).some(([, 武魂]) => 是否真实武魂数据_V1(武魂))
+      ? inferTemporaryAbyssCombatType(魂兽名称, { str: Number(char?.属性?.力量 || 0), def: Number(char?.属性?.防御 || 0), agi: Number(char?.属性?.敏捷 || 0), men_max: Number(char?.属性?.精神力上限 || 0) })
+      : 取角色主武魂系别_V1(char);
     const 天赋梯队 = String(char?.属性?.天赋梯队 || '').trim() || (是持久魂兽 ? '顶级天才' : '正常');
     const 魂兽自创魂技档位 = new Map(持久魂兽自创魂技档位_V1.map(档位 => [档位.技能键, 档位]));
 

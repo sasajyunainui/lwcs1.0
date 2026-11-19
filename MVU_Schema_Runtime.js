@@ -4110,10 +4110,8 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
 
     const isSoulMasterStipendEligible_ACU = char => {
       if (!char || typeof char !== 'object') return false;
-      if (isSoulBeastCharacter(char)) return false;
+      if (!是否魂师种族_V1(char)) return false; // 魂兽、深渊、其他不发魂师津贴
       if (char?.属性?.邪魂师 === true) return false;
-      const unitNature = String(char?.单位性质 || '').trim();
-      if (unitNature === '魂兽' || unitNature === '深渊') return false;
       return Math.max(0, Math.floor(Number(char?.属性?.等级 || 0))) > 0;
     };
 
@@ -6130,7 +6128,8 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       记录当前资源比例基准(charName, char);
       delete char.持续效果;
       delete char.蓄力技能;
-      let isBeast = isSoulBeastCharacter(char);
+      // 只有魂师补武魂、补魂环（魂兽、深渊、其他不补；用户 11-19 种族）。
+      const 不走魂师规则 = !是否魂师种族_V1(char);
       let firstSpiritName = '第1武魂';
       syncSoulTowerRecordEligibility(char);
 
@@ -6142,6 +6141,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
 
       if (
         spiritEntries.length === 0 &&
+        !不走魂师规则 &&
         !isNoSoulPowerTalentTier(char?.属性?.天赋梯队) &&
         Math.max(0, Number(char?.属性?.等级 || 0) || 0) > 0
       ) {
@@ -6168,7 +6168,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       const 待补武魂列表 = spiritEntries
         .map(([spiritKey, targetSpirit]) => {
           if (!targetSpirit || typeof targetSpirit !== 'object') return null;
-          const expectedRings = 读取初始化武魂目标魂环数_V1(spiritKey, char.属性.等级, isBeast);
+          const expectedRings = 读取初始化武魂目标魂环数_V1(spiritKey, char.属性.等级, 不走魂师规则);
           if (expectedRings <= 0) return null;
           const 已有魂环位集合 = 读取武魂已有魂环位集合_V1(targetSpirit);
           const 缺失魂环位列表 = [];
@@ -8810,14 +8810,16 @@ function 规范化角色Schema_V1(char) {
     else char.属性.精神境界 = '灵元境';
 
     let tier = char.属性.天赋梯队;
+    // 魂兽清空斗铠、机甲、魂骨；只有魂师按天赋自动配斗铠、机甲（深渊、其他库里写什么留什么；用户 11-19 种族）。
     const isBeast = isSoulBeastCharacter(char);
+    const 是魂师 = 是否魂师种族_V1(char);
     const 角色势力名集合 = new Set(Object.keys(char?.社交?.势力 || {}));
     const 属于军方联邦势力 = Array.from(角色势力名集合).some(势力名 =>
       /斗罗联邦|联邦|帝国|军方|军团|军$/.test(String(势力名 || '')),
     );
     const 机甲初始化概率 = 属于军方联邦势力 ? 0.7 : 0.18;
     const 可初始化机甲 =
-      !isBeast && char.属性.等级 < 95 && !角色势力名集合.has('史莱克学院') && Math.random() < 机甲初始化概率;
+      是魂师 && char.属性.等级 < 95 && !角色势力名集合.has('史莱克学院') && Math.random() < 机甲初始化概率;
     const 斗铠名称文本 = String(char?.装备?.斗铠?.名称 || '').trim();
     const 机甲等级文本 = String(char?.装备?.机甲?.等级 || '').trim();
     const 机甲名称文本 = String(char?.装备?.机甲?.名称 || '').trim();
@@ -8858,7 +8860,7 @@ function 规范化角色Schema_V1(char) {
       补齐角色魂骨槽位_V1(char);
     }
 
-    if (!isBeast && ['绝世妖孽', '顶级天才', '天才'].includes(tier)) {
+    if (是魂师 && ['绝世妖孽', '顶级天才', '天才'].includes(tier)) {
       let armorLv = 0;
       if (char.属性.等级 >= 99) {
         armorLv = 4;
@@ -8892,7 +8894,7 @@ function 规范化角色Schema_V1(char) {
         char.装备.斗铠.装备状态 = '未装备';
         取内置角色斗铠部件列表_V1(char).forEach(p => (char.装备.斗铠.部件[p] = { 状态: '完好', 品质系数: 1.0 }));
       }
-    } else if (!isBeast && tier === '优秀' && 可初始化机甲 && !已有明确机甲) {
+    } else if (是魂师 && tier === '优秀' && 可初始化机甲 && !已有明确机甲) {
       if (char.属性.等级 >= 70) {
         char.装备.机甲.等级 = '黑级';
         char.装备.机甲.名称 = '黑级机甲';
