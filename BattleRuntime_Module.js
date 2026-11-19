@@ -1343,7 +1343,8 @@
       // 开武魂（信息模型 0a）: 「武魂未释放」 the same way (BattlePreview spiritUnreleasedStates).
       // 压制修为（交手约定）: 「压制修为」 too (BattlePreview suppressionStates; the typical panel by level from BattleDecision).
       const additions = [...(previewRuntime.armourUnreleasedStates?.(unit) || []), ...(previewRuntime.spiritUnreleasedStates?.(unit) || []),
-        ...(previewRuntime.suppressionStates?.(unit, combatData, decisionRuntime?.typicalStatRatio) || [])];
+        ...(previewRuntime.suppressionStates?.(unit, combatData, decisionRuntime?.typicalStatRatio) || []),
+        ...(previewRuntime.ringCapStates?.(unit, combatData) || [])];
       if (additions.length) {
         unit.状态效果 = unit.状态效果 && typeof unit.状态效果 === 'object' ? unit.状态效果 : {};
         additions.forEach(([key, state]) => { unit.状态效果[key] = { ...state, 战斗效果: { ...createEmptyCombatEffectMap(), ...(state.战斗效果 || {}) } }; });
@@ -16750,9 +16751,11 @@
       const caps = terms?.压制修为 && typeof terms.压制修为 === 'object' && !Array.isArray(terms.压制修为)
         ? Object.fromEntries(Object.entries(terms.压制修为).map(([name, level]) => [String(name).trim(), Math.floor(Number(level) || 0)]).filter(([name, level]) => name && level > 0))
         : {};
-      if (terms && (names(terms.不还手).length || names(terms.只硬接).length || Object.keys(caps).length)) {
+      const ringCap = terms?.限魂技 && typeof terms.限魂技 === 'object' ? terms.限魂技 : Math.floor(Number(terms?.限魂技) || 0);
+      const hasRingCap = typeof ringCap === 'object' ? Object.keys(ringCap).length > 0 : ringCap > 0;
+      if (terms && (names(terms.不还手).length || names(terms.只硬接).length || Object.keys(caps).length || hasRingCap)) {
         writeMechanicEvent(combatData, { eventKind: 'engagement_terms', actionName: '交手约定', round: sourceRound + 1, result: 'declared',
-          meta: { terms: { 不还手: names(terms.不还手), 只硬接: names(terms.只硬接), 压制修为: caps } } });
+          meta: { terms: { 不还手: names(terms.不还手), 只硬接: names(terms.只硬接), 压制修为: caps, ...(hasRingCap ? { 限魂技: ringCap } : {}) } } });
       }
       emitPendingTruceDecline(combatData, sourceRound);
     }

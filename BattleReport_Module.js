@@ -1201,7 +1201,12 @@
     const listed = value => (Array.isArray(value) ? value : []).map(text).filter(Boolean).filter(keep);
     const caps = Object.fromEntries(Object.entries(terms?.压制修为 && typeof terms.压制修为 === 'object' ? terms.压制修为 : {})
       .map(([name, level]) => [text(name), Math.floor(number(level, 0))]).filter(([name, level]) => name && level > 0 && keep(name)));
-    return { 不还手: listed(terms?.不还手), 只硬接: listed(terms?.只硬接), 压制修为: caps };
+    const ringTerm = terms?.限魂技;
+    const ringCaps = ringTerm && typeof ringTerm === 'object'
+      ? Object.fromEntries(Object.entries(ringTerm).map(([name, cap]) => [text(name), Math.floor(number(cap, 0))]).filter(([name, cap]) => name && cap > 0 && keep(name)))
+      : {};
+    const ringCapAll = ringTerm && typeof ringTerm === 'object' ? 0 : Math.max(0, Math.floor(number(ringTerm, 0)));
+    return { 不还手: listed(terms?.不还手), 只硬接: listed(terms?.只硬接), 压制修为: caps, 限魂技: ringCaps, 全体限魂技: ringCapAll };
   }
 
   const clashResultTexts = Object.freeze({
@@ -1238,7 +1243,7 @@
       const terms = visibleEngagementTerms(meta?.terms || {}, directory);
       return {
         kind: 'ENGAGEMENT_TERMS', phase: 'declared',
-        subjectIds: unique([...terms.不还手, ...terms.只硬接, ...Object.keys(terms.压制修为)]),
+        subjectIds: unique([...terms.不还手, ...terms.只硬接, ...Object.keys(terms.压制修为), ...Object.keys(terms.限魂技)]),
         values: terms, judgement: null,
         visibility: { player: REPORT_VISIBILITY.engagementTerms === 'PUBLIC' ? 'FULL' : 'OWN_ONLY', ai: REPORT_VISIBILITY.engagementTerms === 'PUBLIC' ? 'FULL' : 'OWN_ONLY' },
       };
@@ -1479,6 +1484,8 @@
         values.不还手?.length ? `${values.不还手.join('、')}不还手` : '',
         values.只硬接?.length ? `${values.只硬接.join('、')}只硬接` : '',
         ...Object.entries(values.压制修为 || {}).map(([name, level]) => `${name}压制修为至${level}级`),
+        values.全体限魂技 > 0 ? `只准用前${values.全体限魂技}个魂技` : '',
+        ...Object.entries(values.限魂技 || {}).map(([name, cap]) => `${name}只用前${cap}个魂技`),
       ].filter(Boolean);
       return parts.length ? `交手约定：${parts.join('，')}` : '交手约定已生效';
     }

@@ -9280,7 +9280,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // attack, no skill or item on one) and no strike back or meeting a move; it may block, evade, act on itself or its side, guard,
   // offer a truce, concede. 只硬接: an answer is a block (DEFEND) or letting it land — no evading, meeting it, or releasing its 武魂
   // as it answers. BattleDecision enumerateCandidates holds a unit to them; BattleRuntime keeps its 武魂 shut on an answer.
-  const NO_ENGAGEMENT_TERMS = Object.freeze({ noStrike: false, blockOnly: false, suppressLevel: 0 });
+  // 限魂技: N（用户 11-19「限魂技 : N 不就行了？」；原作「稍候战斗中不得使用第四魂技以上的能力」）: everyone in the battle may cast
+  // only the skills of its 1st–Nth rings, 武魂真身 counting as the 7th; 魂骨、血脉、道具 and basic attacks are not held. { 名字: N }
+  // holds only those named.
+  const NO_ENGAGEMENT_TERMS = Object.freeze({ noStrike: false, blockOnly: false, suppressLevel: 0, ringCap: 0 });
   function engagementTerms(worldSnapshot = {}, unit = {}) {
     const terms = worldSnapshot?.交手约定;
     if (!terms || typeof terms !== 'object' || !unit || typeof unit !== 'object') return NO_ENGAGEMENT_TERMS;
@@ -9289,7 +9292,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const caps = terms.压制修为 && typeof terms.压制修为 === 'object' ? terms.压制修为 : {};
     const suppressLevel = Math.max(0, Math.floor([...names].map(name => Number(caps[name]) || 0).find(level => level > 0) || 0));
     const noStrike = listed(terms.不还手), blockOnly = listed(terms.只硬接);
-    return noStrike || blockOnly || suppressLevel ? { noStrike, blockOnly, suppressLevel } : NO_ENGAGEMENT_TERMS;
+    const ringTerm = terms.限魂技;
+    const ringCap = Math.max(0, Math.floor(ringTerm && typeof ringTerm === 'object'
+      ? [...names].map(name => Number(ringTerm[name]) || 0).find(cap => cap > 0) || 0 : Number(ringTerm) || 0));
+    return noStrike || blockOnly || suppressLevel || ringCap ? { noStrike, blockOnly, suppressLevel, ringCap } : NO_ENGAGEMENT_TERMS;
   }
   // 压制修为至 N 级（交手约定）: 「压制修为」 (an __auto__ key, put at the round start like 武魂未释放) — 力量、防御、敏捷 × the level-N
   // typical panel over its own level's (base stats × the typical ratio, BattleDecision typicalStatRatio, passed in as `typicalRatio`),
@@ -9316,13 +9322,24 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ...(soulShare < 1 ? { 资源锁定规则: [{ 资源: ['魂力'], 锁定类型: '资源池锁定', 比例: Math.round((1 - soulShare) * 1000) / 1000 }] } : {}),
       __压制修为: cap, __压制环数: Math.floor(cap / 10) }]];
   }
+  // 限魂技（交手约定）: 「限魂技」, an __auto__ key put at the round start as 压制修为 is.
+  const RING_CAP_KEY = '__auto__:限魂技';
+  function ringCapStates(unit = {}, worldSnapshot = {}) {
+    const cap = engagementTerms(worldSnapshot, unit).ringCap;
+    if (!(cap > 0) || isSummonUnit(unit) || unit?.状态效果?.[RING_CAP_KEY]) return [];
+    return [[RING_CAP_KEY, { 状态: '限魂技', 状态名称: '限魂技', 类型: '', duration: ARMOUR_LASTING_ROUNDS, 持续回合: ARMOUR_LASTING_ROUNDS,
+      描述: `交手约定：只用前${cap}个魂技（武魂真身算第七魂技）`, __限魂技: cap }]];
+  }
   function suppressionBlocksSkill(unit = {}, skill = {}) {
-    const state = unit?.状态效果?.[SUPPRESSION_KEY];
-    if (!(Number(state?.__压制修为) > 0)) return false;
+    const state = unit?.状态效果?.[SUPPRESSION_KEY], ringCap = Number(unit?.状态效果?.[RING_CAP_KEY]?.__限魂技) || 0;
+    if (!(Number(state?.__压制修为) > 0) && !(ringCap > 0)) return false;
     const name = String(skill?.魂技名 || skill?.name || skill?.技能名称 || skill?.名称 || '').trim();
     const bit = name ? exposureSlots(unit).bySkill.get(name) : undefined;
     if (bit === undefined || bit >= 22) return false;
-    return bit < 20 ? bit % 10 + 1 > Number(state.__压制环数 || 0) : Number(state.__压制修为) < 70;
+    const ring = bit < 20 ? bit % 10 + 1 : 7;
+    if (ringCap > 0 && ring > ringCap) return true;
+    if (!(Number(state?.__压制修为) > 0)) return false;
+    return bit < 20 ? ring > Number(state.__压制环数 || 0) : Number(state.__压制修为) < 70;
   }
   // 点燃生命之火（用户 2026-11-17「搏命不是已经有点燃生命之火这个手段了吗」）: a soul master of five rings or more may burn its life in a real fight (实战:
   // DUEL or DEATH, not a spar or a match) — windup 0, no action taken, as 开武魂 — for 魂力/精神力/体力 maxima and 力量/防御/
@@ -26423,6 +26440,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     spiritBlocksSkill,
     engagementTerms,
     suppressionStates,
+    ringCapStates,
     suppressionBlocksSkill,
     meditationOptions,
     // 两档距离（T25）
