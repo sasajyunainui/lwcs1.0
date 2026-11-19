@@ -25136,10 +25136,12 @@ function getCombatSpeciesFlags(char = {}) {
   const factionMap = social?.势力 && typeof social.势力 === 'object' ? social.势力 : {};
   const factionNames = Object.keys(factionMap);
   const age = Math.max(0, Math.floor(Number(char?.属性?.年龄 || 0)));
-  const isBeast =
-    factionNames.includes('魂兽一族') ||
+  // 击杀奖励只给明确的魂兽（用户 11-19）：势力带「魂兽」或单位性质魂兽，且没有真实武魂（古月娜这类在魂兽阵营的魂师不算）；
+  // 原来年龄 ≥ 100 就按魂兽结算，百岁以上的魂师被击杀也会掉魂兽奖励。
+  const hasRealSpirit = Object.entries(char || {}).some(([key, value]) => /^第\d+武魂$/.test(key) && 是否真实武魂数据_V1(value));
+  const isBeast = !hasRealSpirit && (
     factionNames.some(name => String(name || '').includes('魂兽')) ||
-    age >= 100;
+    String(char?.单位性质 || '').trim() === '魂兽');
   const isAbyss =
     factionNames.includes('深渊生物') ||
     factionNames.some(name => String(name || '').includes('深渊'));
