@@ -12954,9 +12954,12 @@
             // 接战链 阶段三 (structuredRefereeIntervention): in a match a hit that would take the unit under the line brings the
             // referee in. A guard skill keeps the unit in, the rest of this effect's hit scaled down against the shield it put
             // up; a block or a carry takes the unit out and the hit no further; neither, the hit lands whole.
-            const refereeAct = protectedBattle && !sparring && !alreadyOut && threatDamage > threatShield + Math.max(0, before - lifeFloor) + 1e-9
+            // 应对时认输·裁判挡（BattlePreview refereeCatchesConcede）：喊了认输的人，裁判把这一击整个挡下——生命线提到他此刻的生命。
+            const concedeCalled = !!actionEvent?.actionId && String(target?.__battleRuntime?.pendingConcede ?? '') === String(actionEvent.actionId);
+            const refereeFloor = concedeCalled && combatData?.裁判 ? Math.max(lifeFloor, before) : lifeFloor;
+            const refereeAct = protectedBattle && !sparring && !alreadyOut && threatDamage > threatShield + Math.max(0, before - refereeFloor) + 1e-9
               ? structuredRefereeIntervention({ combatData, attacker: actor, declaration, target, effect, segmentDamage: threatDamage, segments, segment,
-                shieldBefore: threatShield, before, lifeFloor, actionEvent, actionRole,
+                shieldBefore: threatShield, before, lifeFloor: refereeFloor, actionEvent, actionRole,
                 damageOptions: { targetCount: resolvedTargets.length, actionDamageMultiplier,
                   resourceDriveEnabled: String(declaration?.actionKind || '').trim().toUpperCase() !== 'BASIC_ATTACK' } })
               : null;
@@ -12989,17 +12992,18 @@
                   before, after: before, operation: 'DAMAGE',
                 },
               }));
-              target.__战斗失能原因 = 'INCAPACITATED';
+              // 应对时认输：裁判挡下的是认输的人——记认输离场（SURRENDERED），不是失去战斗力。
+              target.__战斗失能原因 = concedeCalled ? previewRuntime.LEFT_BATTLE_REASONS.CONCEDE : 'INCAPACITATED';
               facts.push(writeLedgerEvent(combatData, {
                 eventKind: 'state_apply', round: Number(combatData?.回合 || 0),
                 actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
                 targetId: previewRuntime.unitId(target), targetName: previewRuntime.unitName(target),
                 actionName, actionType: 'incapacitation', actorControl, actionRole, actionId: actionEvent.actionId,
                 sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
-                ruleCode: 'REFEREE_RESCUE', result: 'applied', resultState: 'SUCCESS', primaryOutcome: 'nonlethal_incapacitation',
+                ruleCode: 'REFEREE_RESCUE', result: 'applied', resultState: 'SUCCESS', primaryOutcome: concedeCalled ? 'surrendered' : 'nonlethal_incapacitation',
                 effectPrototype: prototype, factType: 'STATE', sourceEffectId, operation: 'STATE_APPLY',
                 meta: {
-                  source: 'structured_runtime', stateName: '失去战斗力', hpAfter: before, hpRatioAfter: before / Math.max(1, hpMax),
+                  source: 'structured_runtime', stateName: concedeCalled ? '认输' : '失去战斗力', ...(concedeCalled ? { leftBattle: true, reactionConcede: true } : {}), hpAfter: before, hpRatioAfter: before / Math.max(1, hpMax),
                   triggerDamage: 0, singleHitRatio: 0, nonlethalHpFloor: lifeFloor, nonlethalIncapacitated: true,
                   refereeMode: refereeRescue.mode, refereeRescue: { name: refereeRescue.refereeName, mode: refereeRescue.mode, count: refereeRescue.count,
                     reach: refereeRescue.timing.reach, eventId: String(refereeRescue.event?.eventId || '') },

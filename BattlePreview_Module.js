@@ -4188,6 +4188,15 @@
       (own > 0 && theirs > 0 ? own / theirs : 1);
     return need < actionWindup(attacker, incoming) - 1e-9;
   }
+  // 应对时认输·裁判挡（用户 11-19「必须马上认输让裁判挡」「故意趁对方发大招时认输，让裁判帮忙抵挡，借此消耗对方」）：有裁判的比赛里，
+  // 喊了认输，裁判就照援护的算法赶来挡这一击（结算 BattleRuntime structuredRefereeIntervention，生命线提到认输者此刻的生命：一点也不让落下）。
+  // 估值的近似：裁判赶得到（refereeTiming block ≥ 0）就当这一击落空；裁判还没备好（只有名字、等级）时按挡得住算（同方案 §3.8：估值按线守得住）。
+  function refereeCatchesConcede(world = {}, attacker = {}, incoming = null) {
+    const referee = world?.裁判;
+    if (!incoming || !referee || typeof referee !== 'object' || !battleRules(world).match) return false;
+    if (referee.__refereePrepared !== true) return true;
+    return refereeTiming(attacker, incoming, referee, 1).block >= -1e-9;
+  }
   const LEFT_BATTLE_REASONS = Object.freeze({ CONCEDE: 'SURRENDERED', WITHDRAW: 'WITHDRAWN' });
   function hasLeftBattle(unit = {}) {
     const reason = String(unit?.__战斗失能原因 || '').trim();
@@ -26474,6 +26483,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     clashTiming,
     withStrengthKnockback,
     concedeHoldsBack,
+    refereeCatchesConcede,
     throwableWeapon,
     canThrowWeapon,
     canRecallStrike,

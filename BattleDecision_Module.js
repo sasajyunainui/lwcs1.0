@@ -42219,8 +42219,9 @@
         ? preview.actionStaminaCost(actorNext, actionKind, source) * (declaration?.retreat === true ? 2 : 1) / staminaMaximum : 0;
       // What of the move lands on the actor, a share of its HP maximum.
       // A clash: won, nothing; even, CLASH_SHOCK of the move; lost, the difference (clashOutcome inScale).
-      // 应对时认输：近身一击收得住就什么也落不下（BattlePreview concedeHoldsBack）。
-      const pulled = declaration?.concede === true && move && preview.concedeHoldsBack?.(source, move, table.units[actorRow]);
+      // 应对时认输：近身一击收得住就什么也落不下（BattlePreview concedeHoldsBack）；有裁判的比赛里裁判赶得到也落不下（refereeCatchesConcede）。
+      const pulled = declaration?.concede === true && move && (preview.concedeHoldsBack?.(source, move, table.units[actorRow]) ||
+        preview.refereeCatchesConcede?.(table.world, source, move));
       const taken = pulled ? 0 : clash ? clashConfidence * clash.theirs * clash.inScale / maximum * r20Soak(actorNext) + (1 - clashConfidence) * hit : hit * share;
       diag.taken = taken; diag.hit = hit; diag.share = share;
       const hpLeft = Math.max(0, preview.readHp(actorNext) - r20Floor(actorNext)) / maximum + shield - taken;
