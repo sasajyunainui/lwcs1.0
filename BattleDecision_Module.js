@@ -41517,7 +41517,7 @@
     const mode = declaration.engagement?.mode === 'CLASH' ? '对轰' : declaration.engagement?.mode === 'PREEMPT' ? '抢先' : declaration.flank === true ? '绕后' : declaration.feintStrike ? '虚招' : '';
     if (declaration.bait === true) return '卖破绽';
     if (declaration.humanShield) return `人盾·${world ? r20UnitLabel(world, String(declaration.humanShield.unitId || '')) : String(declaration.humanShield.unitId || '').split(':').pop()}`;
-    const label = kind === 'EQUIP' && declaration.releaseSlot ? (declaration.releaseSlot === '武魂' ? '开武魂' : /^砸·/.test(String(declaration.releaseSlot)) ? name || '砸控制物' : String(declaration.releaseSlot))
+    const label = kind === 'EQUIP' && declaration.releaseSlot ? (declaration.releaseSlot === '武魂' ? '开武魂' : /^砸(?:装备)?·/.test(String(declaration.releaseSlot)) ? name || '砸控制物' : String(declaration.releaseSlot))
       : declaration.concede === true ? '认输' : kind === 'DEFEND' && declaration.deflect === true ? '卸力' : kind === 'EVADE' && declaration.retreat === true ? '后撤闪避' : name || R20_KIND_LABELS[kind] || kind;
     const targets = (Array.isArray(declaration.targetIds) ? declaration.targetIds : []).map(String)
       .filter(id => id && id !== String(declaration.actorId || '')).map(id => world ? r20UnitLabel(world, id) : id.split(':').pop());

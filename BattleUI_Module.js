@@ -2070,6 +2070,9 @@ class BattleUIComponent {
                 ? { type: 'tactical', actionType: '人盾', name: `人盾·${unitNameById(String(declaration.humanShield.unitId || ''))}`, category: '战术' }
               : actionKind === 'EQUIP' && /^砸·/.test(String(declaration.releaseSlot || ''))
                 ? { type: 'tactical', actionType: '砸控制物', name: String(declaration.skill?.name || '砸控制物'), category: '特殊动作' }
+              // 道具破坏（11-19）：砸敌人的兵器或魂导器。
+              : actionKind === 'EQUIP' && /^砸装备·/.test(String(declaration.releaseSlot || ''))
+                ? { type: 'tactical', actionType: '砸装备', name: String(declaration.skill?.name || '砸装备'), category: '特殊动作' }
               : actionKindMeta[actionKind];
             if (!meta) return;
             const skill = actionKind === 'WITHDRAW'

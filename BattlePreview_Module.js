@@ -1984,7 +1984,7 @@
     // 两档距离（T25，用户 11-18「后撤前进都要耗体力才对」）：前压 / 后撤按闪避同价付体力。
     if (kind === 'EQUIP' && /^(前压|后撤)$/.test(String(declaration?.releaseSlot || ''))) return 'EVADE';
     // 砸控制物（T29）：按普攻付体力。
-    if (kind === 'EQUIP' && /^砸·/.test(String(declaration?.releaseSlot || ''))) return 'ATTACK';
+    if (kind === 'EQUIP' && /^砸(?:装备)?·/.test(String(declaration?.releaseSlot || ''))) return 'ATTACK';
     if (kind !== 'RELEASE_SKILL' && kind !== 'USE_ITEM') return '';
     const effects = Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组 : [];
     const prototypes = new Set(effects.map(effect => String(effect?.原型 || '').trim()));
