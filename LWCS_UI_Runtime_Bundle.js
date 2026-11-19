@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:4f309f816302ff60f70f671bf976b6c7077704d1793976f168a4683e55c7d85a|cockpit/designer-model.js:cfd30db8a8ca67e544a32c52788feaaa864725e4385577ba70616d16bd767aee|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:8b3ef9c2dc3447d3767c9ee023943d403c12d67bc364d93b38a5d1b49704c8a1|BehaviorDecisionPipeline_Module.js:e55d1d0a40ff9a1a3a37cf0f16c94dbd9bafe338489e7af952c1279ca0025977|BattleDecision_Module.js:b8dcfdba43a0581645948cb47163b9f5241a7daa5b2266372871db8302807d1d|BattleRuntime_Module.js:e2fd0c7f8492c99cbb0c7d20c59d51887feb559829fe0844515365e7cf4a0829|BattleReport_Module.js:24ef681a4a158d9e06e98ddc681ad3e632276bed4e599ff5437c6fe8c285f73e|BattleUI_Module.js:b0a9ca72412554bdb7aefec6687cba12f332d6a270b5d5b39d764ce8e4d2f11e|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:4f309f816302ff60f70f671bf976b6c7077704d1793976f168a4683e55c7d85a|cockpit/designer-model.js:cfd30db8a8ca67e544a32c52788feaaa864725e4385577ba70616d16bd767aee|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:799ccc85cfcc69287cedb1ca9219e3fa78947a942626b97169d8c42e77185673|BehaviorDecisionPipeline_Module.js:e55d1d0a40ff9a1a3a37cf0f16c94dbd9bafe338489e7af952c1279ca0025977|BattleDecision_Module.js:47f788093e8dab00fe72c157184ebd7ebdcd4624f6186ad4012604d04c1978ef|BattleRuntime_Module.js:fde8632da18f2ca293e4e0e6f750ec1ec3b1de0eba264e1856abbeda12ad6a9a|BattleReport_Module.js:24ef681a4a158d9e06e98ddc681ad3e632276bed4e599ff5437c6fe8c285f73e|BattleUI_Module.js:b0a9ca72412554bdb7aefec6687cba12f332d6a270b5d5b39d764ce8e4d2f11e|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -62980,6 +62980,11 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
   // halved, same direction: × 0.9, a window of 18 against a basic attack of equal speed (a move a tenth quicker than a
   // basic attack meets it, a basic attack does not meet a basic attack).
   const CLASH_READ_MARGIN = -0.1;
+  // 晚出手的对轰（用户 11-19「慢的也能对轰，但出手晚要吃亏」；原作里慢的一方也硬对上去）：应对的那一招没放进窗口，晚了
+  // (自己前摇 − 窗口) ÷ 自己前摇，不超过这个比例照样撞上，只是还没蓄满——它计入对轰的伤害按晚了的比例打折（clashOutcome）。
+  // 取 0.2（11-19 实测，84 局 1v1 + 原作复现 128 场）：应对里选对轰的占比 改前 16.5% → 0.2 时 21.8%（0.3 25.1%、0.5 28.3%，
+  // 原作约 16%）；原作复现对轰锁定 27 → 34 步、总锁定 358 → 366（0.5 也是 34 步、总锁定 356）。普攻对普攻：敏捷约为对方 0.89 倍以上。
+  const CLASH_LATE_LIMIT = Number(root.__LWCS_TUNE__?.CLASH_LATE_LIMIT ?? 0.2);
   function clashWindupBudget(attacker = {}, declaration = {}, reactor = {}, options = {}) {
     const windup = answerWindup(attacker, declaration, reactor), intercept = options?.intercept === true ? INTERCEPT_WINDUP : 0;
     const attackerAgility = naturalActionOrderProfile(attacker).effectiveAgility;
@@ -62995,7 +63000,9 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
   // preemptTiming does for a preemption.
   function clashTiming(attacker = {}, incomingDeclaration = {}, reactor = {}, declaration = {}, options = {}) {
     const window = clashWindupBudget(attacker, incomingDeclaration, reactor, options), own = actionWindup(reactor, declaration);
-    const margin = own > 0 ? (window - own) / own : window >= 0 ? Infinity : -Infinity;
+    // 晚出手（CLASH_LATE_LIMIT）以内也算对上：把握按「晚到上限还剩多少余地」算，即余地整体右移 CLASH_LATE_LIMIT。
+    const late = own > 0 ? clamp((own - window) / own, 0, 1) : 0;
+    const margin = own > 0 ? (window - own) / own + CLASH_LATE_LIMIT : window >= 0 ? Infinity : -Infinity;
     const linear = margin === Infinity ? 1 : margin === -Infinity ? 0 : clamp(0.5 + 0.5 * margin / PREEMPT_SURE_MARGIN, 0, 1);
     // The margin with the attacker's and the answerer's effective agility scaled by `a` and `r` (the window scales with
     // their ratio unless the move is charged past the budget).
@@ -63004,9 +63011,9 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     const marginAt = (a = 1, r = 1) => {
       if (windupIn > CONTINUOUS_ACTION_BUDGET || !(attackerAgility > 0) || !(own > 0)) return margin;
       const scaled = Math.min(CONTINUOUS_ACTION_BUDGET, (window + room) * r / Math.max(1e-9, a)) - room;
-      return (scaled - own) / own;
+      return (scaled - own) / own + CLASH_LATE_LIMIT;
     };
-    return Object.freeze({ window, own, margin, inTime: own <= window + 1e-9,
+    return Object.freeze({ window, own, margin, late, inTime: own <= window + 1e-9 || (own > 0 && late <= CLASH_LATE_LIMIT + 1e-9),
       confidence: oneSidedTimingConfidence(attacker, reactor, margin, linear, marginAt) });
   }
   // 接战链 阶段 2f (方案 §15.2: "吃过一次亏就不再押同一招"): a believed unit held by a bound a settled clash or preemption
@@ -63041,7 +63048,7 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     const inc = actionWindup(attacker, incoming), own = actionWindup(reactor, declaration);
     let factor = 0; // attacker effective ≤ (in time) or > (late) reactor effective × factor
     if (String(mode).toUpperCase() === 'CLASH') {
-      const room = own + (intercept ? INTERCEPT_WINDUP : 0);
+      const room = own * (1 - CLASH_LATE_LIMIT) + (intercept ? INTERCEPT_WINDUP : 0); // 晚出手上限以内都算对上
       if (!(inc > 0) || inc > CONTINUOUS_ACTION_BUDGET || !(room > 0)) return null;
       factor = inc * (1 + CLASH_READ_MARGIN) / room;
     } else if (String(mode).toUpperCase() === 'PREEMPT') {
@@ -86363,16 +86370,19 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // damaging move. outScale: the share of the answer's damage that lands on the attacker (won: the difference; even:
   // CLASH_SHOCK); inScale: the share of the attack's that lands on the reactor (lost: the difference; even: CLASH_SHOCK).
   // `shock`: an even clash, whose shares carry damage only.
-  function clashOutcome(reactor = {}, reactorDeclaration = null, attacker = {}, incomingDeclaration = null, worldSnapshot = null) {
+  function clashOutcome(reactor = {}, reactorDeclaration = null, attacker = {}, incomingDeclaration = null, worldSnapshot = null, options = {}) {
     const theirs = incomingMoveDamage(attacker, incomingDeclaration, reactor, worldSnapshot);
-    const mine = incomingMoveDamage(reactor, reactorDeclaration, attacker, worldSnapshot);
-    if (theirs === null || mine === null) return null;
+    const whole = incomingMoveDamage(reactor, reactorDeclaration, attacker, worldSnapshot);
+    if (theirs === null || whole === null) return null;
+    // 晚出手的对轰（CLASH_LATE_LIMIT）：还没蓄满就撞上，计入的伤害按晚了的比例打折。
+    const late = reactorDeclaration && incomingDeclaration ? clashTiming(attacker, incomingDeclaration, reactor, reactorDeclaration, options).late : 0;
+    const mine = whole * (1 - clamp(late, 0, CLASH_LATE_LIMIT));
     const ratio = theirs > 0 ? mine / theirs : mine > 0 ? Infinity : 1;
     const result = ratio >= CLASH_WIN - 1e-12 ? 'WIN' : ratio <= 1 / CLASH_WIN + 1e-12 ? 'LOSE' : 'EVEN';
     const mentalClash = declarationDamageClass(reactorDeclaration || {}) === 'MENTAL' && declarationDamageClass(incomingDeclaration || {}) === 'MENTAL';
     const loss = mentalClash ? MENTAL_CLASH_LOSS_MULT : 1, shock = mentalClash ? MENTAL_CLASH_SHOCK : CLASH_SHOCK;
     return Object.freeze({
-      mine, theirs, ratio, result, threshold: CLASH_WIN, shock: result === 'EVEN', mentalClash,
+      mine, theirs, ratio, result, threshold: CLASH_WIN, shock: result === 'EVEN', mentalClash, late,
       outScale: result === 'WIN' && mine > 0 ? (mine - theirs) / mine * loss : result === 'EVEN' ? shock : 0,
       inScale: result === 'LOSE' && theirs > 0 ? (theirs - mine) / theirs * loss : result === 'EVEN' ? shock : 0,
       answered: result !== 'LOSE',
@@ -100553,7 +100563,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const confidence = preview.clashTiming(attacker, move, unit, answer, { intercept }).confidence;
         if (!(confidence > 0)) return;
         if (skill && !directImmediateSkillEffects(skill).some(effect => effect?.原型 === '伤害结算')) return;
-        const clash = preview.clashOutcome(unit, answer, attacker, move, world);
+        const clash = preview.clashOutcome(unit, answer, attacker, move, world, { intercept });
         if (clash) shares.push(confidence * clash.inScale + (1 - confidence));
       };
       if (!hasStateFlag(unit, 'disarm')) tryMove({ actionKind: 'BASIC_ATTACK', targetIds: [preview.unitId(attacker)] }, null);
@@ -155165,7 +155175,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const sourceId = previewRuntime.unitId(sourceActor);
     // 佯装被冲上来：它以保留的那一招迎击（feintMeetDeclaration）——记在交锋事件上，战报写「佯装迎击」（T26 第 2 批）。
     const feintMeet = feintMeetDeclarations.has(declaration) || previewRuntime.isFeint?.(reactor?.蓄力技能) === true;
-    const clash = mode === 'CLASH' ? previewRuntime.clashOutcome(reactor, declaration, sourceActor, incomingDeclaration, combatData) : null;
+    const clash = mode === 'CLASH' ? previewRuntime.clashOutcome(reactor, declaration, sourceActor, incomingDeclaration, combatData, { intercept: input?.intercept === true }) : null;
     // 接战链 阶段 2c: the answering move must fit the clash window (BattlePreview clashWindupBudget, the attack read on the
     // true agility; an ally that stepped in has INTERCEPT_WINDUP less). Thrown too late (LATE) it comes to nothing and the
     // move lands on the answerer unguarded, rolling to hit as ever — a misjudged speed is paid for, as with preempting.
