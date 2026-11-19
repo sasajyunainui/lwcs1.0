@@ -11480,6 +11480,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const relevantSpace = actionRequiresDeployment(declaration);
     const relevantVehicle = actionRequiresDeployment(declaration, 'vehicle');
     const relevantSummon = actionRequiresDeployment(declaration, 'summon');
+    // 武魂可展开 false（用户 11-19；原作龙王传说 949 章深渊通道「否则的话，是没法动用武魂的」）：开武魂与武魂的魂技（含真身、融合技）
+    // 都放不出来，有对应防护（防护来源标签，如深渊隔绝护罩）的不受限。只看本地点规则，开局没开的武魂就一直没开。
+    const relevantSpirit = String(declaration?.actionKind || '').trim().toUpperCase() === 'EQUIP' && String(declaration?.releaseSlot || '').trim() === '武魂' ||
+      String(declaration?.actionKind || '').trim().toUpperCase() === 'RELEASE_SKILL' && !!declaration?.skill &&
+        spiritSkillNames(actor).has(String(declaration.skill?.魂技名 || declaration.skill?.name || declaration.skill?.技能名称 || declaration.skill?.名称 || '').trim());
+    let spiritBlocked = false;
     const battleModifiers = isPlainRecord(resolved?.modifiers?.战斗) ? resolved.modifiers.战斗 : {};
     const environmentRules = isPlainRecord(battleModifiers.环境规则) ? battleModifiers.环境规则 : {};
     const environmentRuleEntries = [
@@ -11511,6 +11517,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         deployment.summonBlocked = true;
         addUnique(displayEffects, '当前环境无法展开召唤物');
       }
+      if (rule.武魂可展开 === false && relevantSpirit) spiritBlocked = true;
     });
     const activeCosts = maintenance ? sustainCosts : startupCosts;
     const rawSoulPowerDisabled = environmentRules.魂力可用 === false ||
@@ -11543,6 +11550,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (deployment.spaceBlocked) addUnique(blockReasons, '环境限制：当前空间不足以展开');
     if (deployment.vehicleBlocked) addUnique(blockReasons, '环境限制：当前环境无法展开载具');
     if (deployment.summonBlocked) addUnique(blockReasons, '环境限制：当前环境无法展开召唤物');
+    if (spiritBlocked && !environmentProtectionForTarget(input?.worldSnapshot || {}, actor, resolved, environmentRules.防护来源标签).sourceMatched) {
+      addUnique(blockReasons, '环境限制：当前环境无法动用武魂');
+    }
     actionAvailability = clamp(actionAvailability, 0, 1);
     if (actionAvailability <= 1e-9) addUnique(blockReasons, '环境限制：当前行动无法进行');
     if (actionAvailability < 1 - 1e-9 && !displayEffects.length) addUnique(displayEffects, '行动效率受到环境影响');

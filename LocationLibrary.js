@@ -1966,8 +1966,7 @@
       功能档案: ['军方'],
       覆盖: {
         环境规则: {
-          魂力可用: false,
-          魂力动作: '禁止',
+          武魂可展开: false,
           来源标签: 'env:abyss-passage:soul-power-suppression',
           防护来源标签: 'env:abyss-passage:soul-power-suppression',
         },
