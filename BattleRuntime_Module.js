@@ -13700,6 +13700,25 @@
           }
           return;
         }
+        // 道具破坏（BattlePreview applyGearStrike）：砸敌人的兵器或魂导器，按此刻的普攻扣耐久；打到 0 兵器挂「武器损毁」、装备状态记损毁。
+        const gearStrike = previewRuntime.gearStrikeOf?.(effect);
+        if (gearStrike) {
+          const live = { ...gearStrike, damage: previewRuntime.gearStrikeDamage(actor, target) };
+          const settled = previewRuntime.applyGearStrike(target, live);
+          if (settled?.broken) target.final = buildCombatFinalStats(target, Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0));
+          facts.push(writeLedgerEvent(combatData, {
+            eventKind: 'gear_strike', round: Number(combatData?.回合 || 0), actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
+            targetId: previewRuntime.unitId(target), targetName: previewRuntime.unitName(target),
+            actionName, actionType: actionKind, actorControl, actionRole, actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
+            parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
+            result: !settled ? 'no_effect' : settled.broken ? 'broken' : 'worn', resultState: !settled ? 'NO_EFFECT' : 'SUCCESS',
+            primaryOutcome: !settled ? 'no_effect' : settled.broken ? 'gear_broken' : 'gear_worn',
+            effectPrototype: prototype, factType: 'STATE_CHANGE', sourceEffectId, operation: 'STATE_APPLY',
+            meta: { source: 'structured_runtime', effectIndex, gearName: String(gearStrike.name || ''), gearSlot: String(gearStrike.slot || ''),
+              ...(settled ? { damage: live.damage, before: settled.before, after: settled.after, durability: settled.durability, broken: settled.broken } : { resolutionReason: 'GEAR_GONE' }) },
+          }));
+          return;
+        }
         // 冥想: its own key and recovery (BattlePreview beginMeditation).
         if (stateName === '冥想' && previewRuntime.beginMeditation) {
           const sat = previewRuntime.beginMeditation(target);

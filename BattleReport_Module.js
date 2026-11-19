@@ -1859,6 +1859,13 @@
       if (Number.isFinite(Number(meta?.after))) return `${actor}砸向${actor === target ? '困住自己的' : `${target}身上的`}【${name}】，耐久 ${Math.round(Number(meta.before))} → ${Math.round(Number(meta.after))}（共 ${Math.round(Number(meta.durability))}）`;
       return `${actor}要砸的【${name}】已经不在了`;
     }
+    // 道具破坏（11-19）：砸一下、砸坏。
+    if (kind === 'gear_strike') {
+      const name = String(meta?.gearName || action || '装备');
+      if (meta?.broken === true) return `${actor}砸坏了${target}的【${name}】`;
+      if (Number.isFinite(Number(meta?.after))) return `${actor}砸向${target}的【${name}】，耐久 ${Math.round(Number(meta.before))} → ${Math.round(Number(meta.after))}`;
+      return `${actor}要砸的【${name}】已经不在了`;
+    }
     if (kind === 'state_expire' && event.ruleCode === 'CONTROL_BROKEN') return `${target || actor}的【${namedState || action}】被${String(meta?.by || '人')}砸碎，解除了`;
     if (kind === 'state_expire') return event.ruleCode === 'STATE_WINDOW_EXPIRED' && Object.hasOwn(meta, 'remainingStateNames')
       ? runtime.describeObservedStateExpiry(event, target || actor, namedState || action).summary : `${target || actor}的【${namedState || action}】到期`;

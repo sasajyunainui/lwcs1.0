@@ -2426,6 +2426,71 @@
   }
   const controlStrikeOf = effect => String(effect?.原型 || '').trim() === '状态施加' && String(effect?.状态 || '').trim() === CONTROL_STRIKE_STATE &&
     effect?.控制物 && typeof effect.控制物 === 'object' ? effect.控制物 : null;
+  /* 道具破坏（用户 11-19「可以砸，战后写回损毁」；原作擎天神枪击碎长剑、震散魂导器）：敌人手里的兵器与装配的魂导器带耐久（同斗铠
+     的算法 armourDurabilityMax：等效等级的基础体力上限 × 品级 × 品质系数；器武魂、神器以上打不坏）。砸 = 一张特殊动作卡「砸【X】」
+     （同砸控制物的释放路径，占这次行动、普攻的前摇与体力，只砸贴身的敌人）：按普攻打它，装备的防御取持有者；剩余耐久记在
+     __battleRuntime.gearHp，打到 0：兵器挂「武器损毁」（同缴械：面板去掉它的加成，被动与技能不生效），魂导器这场不能再用；
+     装备状态 同时记「损毁」、耐久 0，战后随装备写回存档（修理另走修理师、魂导师）。起始值，实测校准。 */
+  const GEAR_STRIKE_STATE = '砸装备', GEAR_BROKEN_STATE = '武器损毁', GEAR_BROKEN_KEY = '__auto__:武器损毁';
+  const GEAR_UNBREAKABLE = /神器/;
+  function breakableGear(unit = {}) {
+    const equipment = battleEquipment(unit) || {}, out = [];
+    const weapon = equipment.武器;
+    if (sealableWeapon(weapon) && !GEAR_UNBREAKABLE.test(String(weapon.品质 || weapon.品阶 || '')) && !unit?.状态效果?.[GEAR_BROKEN_KEY] &&
+      !/损毁/.test(String(weapon.装备状态 || ''))) out.push({ key: '武器', slot: '武器', name: String(weapon.名称 || weapon.name).trim(), item: weapon });
+    for (const [fitSlot, item] of Object.entries(equipment?.魂导器?.装配 || {})) {
+      const name = String(item?.名称 || item?.name || '').trim();
+      if (!item || typeof item !== 'object' || !name || name === '无' || /损毁/.test(String(item.装备状态 || '')) || GEAR_UNBREAKABLE.test(String(item.品质 || ''))) continue;
+      out.push({ key: `魂导器:${fitSlot}`, slot: '魂导器', fitSlot, name, item });
+    }
+    return out;
+  }
+  const gearDurabilityMax = (unit, gear) => armourDurabilityMax(unit, gear.slot, gear.item);
+  function gearHpLeft(unit = {}, gear = {}) {
+    const stored = Number(unit?.__battleRuntime?.gearHp?.[gear.key]);
+    return Number.isFinite(stored) ? Math.max(0, stored) : gearDurabilityMax(unit, gear);
+  }
+  function gearStrikeDamage(actor = {}, holder = {}) {
+    return Math.max(0, calculateBaseDamage(BASIC_ATTACK_EFFECT, actor, holder, null, { targetCount: 1, resourceDriveEnabled: false }));
+  }
+  // 动作卡：actor 能砸的每件敌人装备一张（双方都在前、贴身才给）。
+  function gearStrikeOptions(actor = {}, world = {}) {
+    if (!actor || isSummonUnit(actor) || unitPosition(actor) !== POSITION_FRONT) return [];
+    const side = sideOf(world, actor);
+    const windup = actionWindup(actor, { actionKind: 'BASIC_ATTACK' }, { travel: false });
+    return listUnits(world).filter(entry => entry.side && entry.side !== side && isBattleCapable(entry.unit) && unitPosition(entry.unit) === POSITION_FRONT)
+      .flatMap(({ unit: holder }) => breakableGear(holder).map(gear => {
+        const durability = gearDurabilityMax(holder, gear), left = gearHpLeft(holder, gear), damage = gearStrikeDamage(actor, holder);
+        return { slot: `砸装备·${unitId(holder)}·${gear.key}`, name: `砸【${gear.name}】`, windup, holderId: unitId(holder),
+          description: `砸${unitName(holder)}的【${gear.name}】：按普攻打它，剩余耐久 ${Math.round(left)} / ${Math.round(durability)}，这一下约 ${Math.round(damage)}，打到 0 就坏了。`,
+          effect: { 原型: '状态施加', 目标: '敌方单体', 状态: GEAR_STRIKE_STATE, 持续回合: 1, 触发方式: '立即触发', 生效方式: '独立生效',
+            装备: { key: gear.key, name: gear.name, slot: gear.slot, damage, durability, left } } };
+      }));
+  }
+  const gearStrikeOf = effect => String(effect?.原型 || '').trim() === '状态施加' && String(effect?.状态 || '').trim() === GEAR_STRIKE_STATE &&
+    effect?.装备 && typeof effect.装备 === 'object' ? effect.装备 : null;
+  // 落到持有者身上：剩余耐久减这一下；打到 0 兵器挂「武器损毁」、装备状态记损毁（返回 { broken, before, after, durability, gear }，装备已不在时 null）。
+  function applyGearStrike(holder = {}, strike = {}) {
+    const gear = breakableGear(holder).find(entry => entry.key === String(strike?.key || ''));
+    if (!gear) return null;
+    const durability = gearDurabilityMax(holder, gear), before = gearHpLeft(holder, gear);
+    const after = Math.max(0, before - Math.max(0, Number(strike?.damage) || 0));
+    holder.__battleRuntime = { ...(holder.__battleRuntime || {}), gearHp: { ...(holder.__battleRuntime?.gearHp || {}), [gear.key]: after } };
+    if (after > 1e-9) return { broken: false, before, after, durability, gear };
+    if (gear.slot === '武器') {
+      const seal = equipmentSealEffect({ 原型: '状态施加', 状态: GEAR_BROKEN_STATE }, {}, holder, holder);
+      holder.状态效果 = { ...(holder.状态效果 || {}), [GEAR_BROKEN_KEY]: { 状态: GEAR_BROKEN_STATE, 状态名称: GEAR_BROKEN_STATE, 类型: 'debuff',
+        duration: ARMOUR_LASTING_ROUNDS, 持续回合: ARMOUR_LASTING_ROUNDS, 描述: `【${gear.name}】被打坏了`, 面板固定修正: { ...(seal?.面板固定修正 || {}) },
+        封禁部位: ['武器'], 战斗效果: { equipment_seal: true } } };
+    }
+    const equipment = holder?.装备 && typeof holder.装备 === 'object' ? holder.装备 : null;
+    if (equipment && gear.slot === '武器' && equipment.武器) holder.装备 = { ...equipment, 武器: { ...equipment.武器, 装备状态: '损毁', 耐久: 0 } };
+    else if (equipment && gear.slot === '魂导器' && equipment.魂导器?.装配?.[gear.fitSlot]) {
+      holder.装备 = { ...equipment, 魂导器: { ...equipment.魂导器, 装配: { ...equipment.魂导器.装配,
+        [gear.fitSlot]: { ...equipment.魂导器.装配[gear.fitSlot], 装备状态: '损毁', 耐久: 0 } } } };
+    }
+    return { broken: true, before, after, durability, gear };
+  }
   // 落到被控者身上：剩余耐久减去这一下；打到 0 删掉这个控制（返回 { broken, before, after, state }，没有这个控制时 null）。
   function applyControlStrike(holder = {}, strike = {}) {
     const key = String(strike?.key || ''), state = holder?.状态效果?.[key];
@@ -9195,6 +9260,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // EQUIPMENT_SEAL_SOUL_LIMIT times the caster's; an artifact's (无条件封禁) lands as it is, and its 缴械 also seals a 器武魂
   // of a unit under level 100 (no basic attack, none of that spirit's skills). Nothing to seal: the effect is nothing.
   const EQUIPMENT_SEAL_SLOTS = Object.freeze({ 缴械: Object.freeze(['武器']), 封甲: Object.freeze(['斗铠', '机甲']),
+    // 道具破坏：打坏的兵器同缴械（GEAR_BROKEN_STATE）。
+    武器损毁: Object.freeze(['武器']),
     // 未释放的斗铠 / 机甲（S80-A）也算封住；释放以后（armourReleaseState）不算。
     斗铠未释放: Object.freeze(['斗铠']), 机甲未释放: Object.freeze(['机甲']) });
   const EQUIPMENT_SEAL_STATS = Object.freeze([['力量', 'str'], ['防御', 'def'], ['敏捷', 'agi'], ['精神力上限', 'men_max']]);
@@ -9841,7 +9908,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         // 释放斗铠 / 机甲的内部结算（S80-A armourReleaseEffect）：不在技能表里，设计台与生成都用不到。
         // 开武魂（spiritReleaseOptions）同样是内部状态「武魂已释放」。
         const internal = prototype === '结算修正' && field === '结算' && normalized === '装备吸收' && !!effect?.__装备释放 ||
-          prototype === '状态施加' && field === '状态' && ['武魂已释放', '生命之火', '冥想', '前压', '后撤', CONTROL_STRIKE_STATE].includes(normalized);
+          prototype === '状态施加' && field === '状态' && ['武魂已释放', '生命之火', '冥想', '前压', '后撤', CONTROL_STRIKE_STATE, GEAR_STRIKE_STATE].includes(normalized);
         if (normalized && !internal && !(accepted ? accepted.has(normalized) : fieldDefinition.选项.includes(normalized))) {
           throw new Error(`battle_preview_unknown_enum:${prototype}:${field}:${normalized}`);
         }
@@ -12185,6 +12252,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         unit.状态效果 = { ...unit.状态效果, [key]: { ...state,
           __previewApplicationProbability: clamp(Number(state?.__previewApplicationProbability ?? 1), 0, 1) * clamp(settled.after / settled.before, 0, 1) } };
       }
+      return !!settled;
+    }
+    // 道具破坏：砸只扣装备耐久（打坏了兵器挂「武器损毁」），不留「砸装备」状态。
+    const gearStrike = gearStrikeOf(effect);
+    if (gearStrike) {
+      const settled = applyGearStrike(unit, gearStrike);
+      if (settled?.broken) unit.final = { ...(unit.final || {}), ...buildNumericCombatStats(unit, 0) };
       return !!settled;
     }
     // 位移重做: a recipient the position leaves nothing on (the caster of a swap, say) gets no state at all.
@@ -26301,6 +26375,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     clashTiming,
     withStrengthKnockback,
     concedeHoldsBack,
+    gearStrikeOptions,
+    gearStrikeOf,
+    applyGearStrike,
+    gearStrikeDamage,
+    GEAR_BROKEN_STATE,
     mirrorStatesAgainst,
     RING_OUT_RULE,
     ringOutShift,

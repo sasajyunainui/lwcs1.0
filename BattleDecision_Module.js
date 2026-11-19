@@ -4705,7 +4705,7 @@
   const soulToolViews = new WeakMap();
   const soulToolAmmoField = item => item && typeof item === 'object' ? (item.弹药 !== undefined ? '弹药' : item.剩余使用次数 !== undefined ? '剩余使用次数' : '') : '';
   const soulToolAmmoKey = equipment => Object.entries(equipment?.魂导器?.装配 || {})
-    .map(([slot, item]) => (soulToolAmmoField(item) ? `${slot}:${Number(item[soulToolAmmoField(item)])}` : '')).filter(Boolean).join('|');
+    .map(([slot, item]) => (soulToolAmmoField(item) ? `${slot}:${Number(item[soulToolAmmoField(item)])}` : '') + (/损毁/.test(String(item?.装备状态 || '')) ? `${slot}:损毁` : '')).filter(Boolean).join('|');
   function soulToolSkillView(equipment = null) {
     const fitted = equipment?.魂导器?.装配;
     if (!fitted || typeof fitted !== 'object') return equipment;
@@ -4716,6 +4716,8 @@
     const slots = Object.fromEntries(Object.entries(fitted).map(([slot, item]) => {
       if (!item || typeof item !== 'object' || !item.装备技能 || typeof item.装备技能 !== 'object') return [slot, item];
       if (soulToolAmmoField(item) && !(Number(item[soulToolAmmoField(item)]) > 0)) return [slot, { ...item, 装备技能: {} }];
+      // 道具破坏：打坏的魂导器（装备状态 损毁）这场不能再用。
+      if (/损毁/.test(String(item.装备状态 || ''))) return [slot, { ...item, 装备技能: {} }];
       const tier = Math.max(1, Math.min(9, Math.floor(Number(item.魂导等级) || 1)));
       const skills = Object.fromEntries(Object.entries(item.装备技能).map(([name, skill]) => {
         if (!skill || typeof skill !== 'object') return [name, skill];
@@ -6591,6 +6593,17 @@
     });
   }
 
+  // 道具破坏（11-19, BattlePreview gearStrikeOptions）：砸贴身敌人的兵器或魂导器，同砸控制物的 EQUIP 卡，目标是持有者。
+  function gearStrikeCandidates(actor = {}, worldSnapshot = {}, actorId = '') {
+    if (!preview.gearStrikeOptions) return [];
+    return preview.gearStrikeOptions(actor, worldSnapshot).map(option => {
+      const id = `${actorId}:release:${option.slot}`;
+      return { candidateId: id, equipmentSignature: `release:${option.slot}`,
+        declaration: { actionId: id, actorId, actionKind: 'EQUIP', targetIds: [String(option.holderId)], releaseSlot: option.slot, equipmentSignature: `release:${option.slot}`,
+          skill: { name: option.name, 魂技名: option.name, 前摇: option.windup, 消耗: '无', 效果描述: option.description, _效果数组: [option.effect] } } };
+    });
+  }
+
   function enumerateCandidates(input = {}) {
     const worldSnapshot = input?.worldSnapshot || {};
     let candidates = withCounterStaminaFactor(withoutTargetlessCandidates(enumerateCandidatesUnchecked(input),
@@ -7489,6 +7502,7 @@
     });
     // 砸控制物（T29, BattlePreview controlStrikeOptions）: 砸 a control on itself or an ally, the same path.
     candidates.push(...controlStrikeCandidates(actor, worldSnapshot, actorId));
+    candidates.push(...gearStrikeCandidates(actor, worldSnapshot, actorId));
     collectInventory(actor).filter(entry => entry.quantity > 0).forEach((entry, index) => {
       const item = entry.item;
       if (isEquipment(item)) {
