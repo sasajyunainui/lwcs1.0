@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:4f309f816302ff60f70f671bf976b6c7077704d1793976f168a4683e55c7d85a|cockpit/designer-model.js:cfd30db8a8ca67e544a32c52788feaaa864725e4385577ba70616d16bd767aee|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:b3724c01b919b02dc3e3be8a9746838c4daedba3c17dcc51873de2d4689433f0|BehaviorDecisionPipeline_Module.js:e55d1d0a40ff9a1a3a37cf0f16c94dbd9bafe338489e7af952c1279ca0025977|BattleDecision_Module.js:adfafb37820834bbed393e1950cec4f158184396df67cc3390afbd86e0866dcf|BattleRuntime_Module.js:3194f078cf210bcb330ad6c7c31621abc8ff29a5cc82d14cadf463c19c12e56b|BattleReport_Module.js:625791fc418b40704e587102e1d8496cfb68780a9caebf7fb4e49c17df327456|BattleUI_Module.js:b0a9ca72412554bdb7aefec6687cba12f332d6a270b5d5b39d764ce8e4d2f11e|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:eac69f3516bee5bda74e36e6729858da9192c8072bb756e6db5c2736506140bb|cockpit/designer-model.js:cfd30db8a8ca67e544a32c52788feaaa864725e4385577ba70616d16bd767aee|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:5ddbc75fa912e53d30974a8544039f1d7a52f1a429349e1dc5845befb393e5e1|BehaviorDecisionPipeline_Module.js:e55d1d0a40ff9a1a3a37cf0f16c94dbd9bafe338489e7af952c1279ca0025977|BattleDecision_Module.js:f2644004211937dea6b71ac4ba9d6b7cda3612e9a24f7e58ede00d573bd554c2|BattleRuntime_Module.js:82c6c49154e6f48c20e5f173da21bf27243362162ce66377ecc247b3c80a8bf6|BattleReport_Module.js:b5adc68fd9074be7cef1ffba12e6ff1c529b26d0ce23d176010e6a662a8169ea|BattleUI_Module.js:908fe9d513f83c52cd60f0bed9a1602231928ed164dd51f72b68dbcc9585a22c|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -34596,6 +34596,8 @@ ${播报文本}
         const 合并物品 = 合并物品定义与状态_桥接(statData, 物品名, 背包状态);
         const 分类 = 规范化物品定义分类_桥接(合并物品.物品分类 || 合并物品.分类, '');
         if (!['近战武器', '防具装备', '斗铠部件', '机甲机体'].includes(分类)) return [];
+        // 神器以上无法外力修复，只能自身温养（用户 11-19）。
+        if (/神器/.test(toText(合并物品.品质 || 合并物品.品阶, ''))) return [];
         const 基础耐久 = Math.max(100, Math.floor(toNumber(合并物品.基础耐久, 100)));
         const 候选列表 = [];
         读取背包批次列表_桥接(背包状态).forEach((批次, 批次索引) => {
@@ -62505,7 +62507,7 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     // 两档距离（T25，用户 11-18「后撤前进都要耗体力才对」）：前压 / 后撤按闪避同价付体力。
     if (kind === 'EQUIP' && /^(前压|后撤)$/.test(String(declaration?.releaseSlot || ''))) return 'EVADE';
     // 砸控制物（T29）：按普攻付体力。
-    if (kind === 'EQUIP' && /^砸·/.test(String(declaration?.releaseSlot || ''))) return 'ATTACK';
+    if (kind === 'EQUIP' && /^砸(?:装备)?·/.test(String(declaration?.releaseSlot || ''))) return 'ATTACK';
     if (kind !== 'RELEASE_SKILL' && kind !== 'USE_ITEM') return '';
     const effects = Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组 : [];
     const prototypes = new Set(effects.map(effect => String(effect?.原型 || '').trim()));
@@ -62727,9 +62729,15 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
   function setUnitPosition(unit = {}, position = POSITION_FRONT) {
     if (!unit || typeof unit !== 'object' || Object.isFrozen(unit)) return false;
     const next = position === POSITION_BACK ? POSITION_BACK : POSITION_FRONT;
+    // 出界判负：被打飞退到后排的记 pushedBack，回到前排就清掉。
+    if (next === POSITION_FRONT && unit.__battleRuntime?.pushedBack !== undefined) { const { pushedBack, ...rest } = unit.__battleRuntime; unit.__battleRuntime = rest; }
     if (unitPosition(unit) === next && unit.__battleRuntime?.position) return false;
     unit.__battleRuntime = { ...(unit.__battleRuntime || {}), position: next };
     return true;
+  }
+  function markPushedBack(unit = {}) {
+    if (!unit || typeof unit !== 'object' || Object.isFrozen(unit)) return;
+    unit.__battleRuntime = { ...(unit.__battleRuntime || {}), position: POSITION_BACK, pushedBack: true };
   }
   function unitsEngaged(left = {}, right = {}) {
     return unitPosition(left) === POSITION_FRONT && unitPosition(right) === POSITION_FRONT;
@@ -62848,6 +62856,33 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     ? (String(effect.状态).trim() === '前压' ? POSITION_FRONT : POSITION_BACK) : null;
   // 位移执行落到接收者身上后的位置：脱离（自己/友方）→ 后；击退、击飞（敌方）→ 后；拉近、突进、追击 → 前（被拉的敌方与冲上去的自己）；
   // 瞬移、换位不改。null：不改。
+  /* 出界判负（用户 11-19「后排再被打飞就出界」；原作霍雨浩把冻住的人踹下擂台、金升天把人送出圈外）：比赛里（battleRules match，
+     切磋、实战与生死斗不判），一个已经被打飞退到后排（pushedBack；开局在后排、自己后撤的不算，回到前排清掉）的人又被敌人的
+     击退／击飞打中（力量打飞或击退类魂技），就出界判负——同认输离场
+     （SURRENDERED，另记 __出界）。打中时先记 pendingRingOut（这一击的动作 id），这次出招结算完再判（预演 settleRingOuts、
+     结算 BattleRuntime 同处的应对认输）；不是比赛就清掉。 */
+  const RING_OUT_RULE = 'RING_OUT';
+  function ringOutShift(unit = {}, effect = {}) {
+    return pushedByEnemy(effect) && unitPosition(unit) === POSITION_BACK && unit?.__battleRuntime?.pushedBack === true;
+  }
+  function pushedByEnemy(effect = {}) {
+    return /击退|击飞/.test(String(effect?.位移类型 || '')) && String(effect?.__位移接收者 || '').trim() === 'enemy';
+  }
+  function markRingOut(unit = {}, actionId = '') {
+    unit.__battleRuntime = { ...(unit.__battleRuntime || {}), pendingRingOut: String(actionId || '') || true };
+  }
+  // A unit marked this move goes out (a match) or loses the mark. Returns the units that went out.
+  function settleRingOuts(units = [], worldSnapshot = {}) {
+    const match = battleRules(worldSnapshot).match, out = [];
+    units.forEach(unit => {
+      if (!unit || unit.__battleRuntime?.pendingRingOut === undefined) return;
+      const { pendingRingOut, ...rest } = unit.__battleRuntime; unit.__battleRuntime = rest;
+      if (!match || isDead(unit) || String(unit.__战斗失能原因 || '').trim()) return;
+      unit.__战斗失能原因 = LEFT_BATTLE_REASONS.CONCEDE; unit.__出界 = true;
+      out.push(unit);
+    });
+    return out;
+  }
   function positionShiftOf(effect = {}) {
     if (String(effect?.原型 || '').trim() !== '位移执行') return null;
     const type = String(effect?.位移类型 || '').trim(), role = String(effect?.__位移接收者 || 'self').trim();
@@ -62914,6 +62949,153 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
   }
   const controlStrikeOf = effect => String(effect?.原型 || '').trim() === '状态施加' && String(effect?.状态 || '').trim() === CONTROL_STRIKE_STATE &&
     effect?.控制物 && typeof effect.控制物 === 'object' ? effect.控制物 : null;
+  /* 道具破坏（用户 11-19「可以砸，战后写回损毁」；原作擎天神枪击碎长剑、震散魂导器）：敌人手里的兵器与装配的魂导器带耐久（同斗铠
+     的算法 armourDurabilityMax：等效等级的基础体力上限 × 品级 × 品质系数；器武魂、神器以上打不坏）。砸 = 一张特殊动作卡「砸【X】」
+     （同砸控制物的释放路径，占这次行动、普攻的前摇与体力，只砸贴身的敌人）：按普攻打它，装备的防御取持有者；剩余耐久记在
+     __battleRuntime.gearHp，打到 0：兵器挂「武器损毁」（同缴械：面板去掉它的加成，被动与技能不生效），魂导器这场不能再用；
+     装备状态 同时记「损毁」、耐久 0，战后随装备写回存档（修理另走修理师、魂导师）。起始值，实测校准。 */
+  const GEAR_STRIKE_STATE = '砸装备', GEAR_BROKEN_STATE = '武器损毁', GEAR_BROKEN_KEY = '__auto__:武器损毁';
+  const GEAR_UNBREAKABLE = /神器/;
+  function breakableGear(unit = {}) {
+    const equipment = battleEquipment(unit) || {}, out = [];
+    const weapon = equipment.武器;
+    if (sealableWeapon(weapon) && !GEAR_UNBREAKABLE.test(String(weapon.品质 || weapon.品阶 || '')) && !unit?.状态效果?.[GEAR_BROKEN_KEY] &&
+      !/损毁/.test(String(weapon.装备状态 || ''))) out.push({ key: '武器', slot: '武器', name: String(weapon.名称 || weapon.name).trim(), item: weapon });
+    for (const [fitSlot, item] of Object.entries(equipment?.魂导器?.装配 || {})) {
+      const name = String(item?.名称 || item?.name || '').trim();
+      if (!item || typeof item !== 'object' || !name || name === '无' || /损毁/.test(String(item.装备状态 || '')) || GEAR_UNBREAKABLE.test(String(item.品质 || ''))) continue;
+      out.push({ key: `魂导器:${fitSlot}`, slot: '魂导器', fitSlot, name, item });
+    }
+    return out;
+  }
+  const gearDurabilityMax = (unit, gear) => armourDurabilityMax(unit, gear.slot, gear.item);
+  function gearHpLeft(unit = {}, gear = {}) {
+    const stored = Number(unit?.__battleRuntime?.gearHp?.[gear.key]);
+    return Number.isFinite(stored) ? Math.max(0, stored) : gearDurabilityMax(unit, gear);
+  }
+  function gearStrikeDamage(actor = {}, holder = {}) {
+    return Math.max(0, calculateBaseDamage(BASIC_ATTACK_EFFECT, actor, holder, null, { targetCount: 1, resourceDriveEnabled: false }));
+  }
+  // 动作卡：actor 能砸的每件敌人装备一张（双方都在前、贴身才给）。
+  function gearStrikeOptions(actor = {}, world = {}) {
+    if (!actor || isSummonUnit(actor) || unitPosition(actor) !== POSITION_FRONT) return [];
+    const side = sideOf(world, actor);
+    const windup = actionWindup(actor, { actionKind: 'BASIC_ATTACK' }, { travel: false });
+    return listUnits(world).filter(entry => entry.side && entry.side !== side && isBattleCapable(entry.unit) && unitPosition(entry.unit) === POSITION_FRONT)
+      .flatMap(({ unit: holder }) => breakableGear(holder).map(gear => {
+        const durability = gearDurabilityMax(holder, gear), left = gearHpLeft(holder, gear), damage = gearStrikeDamage(actor, holder);
+        return { slot: `砸装备·${unitId(holder)}·${gear.key}`, name: `砸【${gear.name}】`, windup, holderId: unitId(holder),
+          description: `砸${unitName(holder)}的【${gear.name}】：按普攻打它，剩余耐久 ${Math.round(left)} / ${Math.round(durability)}，这一下约 ${Math.round(damage)}，打到 0 就坏了。`,
+          effect: { 原型: '状态施加', 目标: '敌方单体', 状态: GEAR_STRIKE_STATE, 持续回合: 1, 触发方式: '立即触发', 生效方式: '独立生效',
+            装备: { key: gear.key, name: gear.name, slot: gear.slot, damage, durability, left } } };
+      }));
+  }
+  const gearStrikeOf = effect => String(effect?.原型 || '').trim() === '状态施加' && String(effect?.状态 || '').trim() === GEAR_STRIKE_STATE &&
+    effect?.装备 && typeof effect.装备 === 'object' ? effect.装备 : null;
+  // 落到持有者身上：剩余耐久减这一下；打到 0 兵器挂「武器损毁」、装备状态记损毁（返回 { broken, before, after, durability, gear }，装备已不在时 null）。
+  function applyGearStrike(holder = {}, strike = {}) {
+    const gear = breakableGear(holder).find(entry => entry.key === String(strike?.key || ''));
+    if (!gear) return null;
+    const durability = gearDurabilityMax(holder, gear), before = gearHpLeft(holder, gear);
+    const after = Math.max(0, before - Math.max(0, Number(strike?.damage) || 0));
+    holder.__battleRuntime = { ...(holder.__battleRuntime || {}), gearHp: { ...(holder.__battleRuntime?.gearHp || {}), [gear.key]: after } };
+    if (after > 1e-9) return { broken: false, before, after, durability, gear };
+    if (gear.slot === '武器') {
+      const seal = equipmentSealEffect({ 原型: '状态施加', 状态: GEAR_BROKEN_STATE }, {}, holder, holder);
+      holder.状态效果 = { ...(holder.状态效果 || {}), [GEAR_BROKEN_KEY]: { 状态: GEAR_BROKEN_STATE, 状态名称: GEAR_BROKEN_STATE, 类型: 'debuff',
+        duration: ARMOUR_LASTING_ROUNDS, 持续回合: ARMOUR_LASTING_ROUNDS, 描述: `【${gear.name}】被打坏了`, 面板固定修正: { ...(seal?.面板固定修正 || {}) },
+        封禁部位: ['武器'], 战斗效果: { equipment_seal: true } } };
+    }
+    const equipment = holder?.装备 && typeof holder.装备 === 'object' ? holder.装备 : null;
+    if (equipment && gear.slot === '武器' && equipment.武器) holder.装备 = { ...equipment, 武器: { ...equipment.武器, 装备状态: '损毁', 耐久: 0 } };
+    else if (equipment && gear.slot === '魂导器' && equipment.魂导器?.装配?.[gear.fitSlot]) {
+      holder.装备 = { ...equipment, 魂导器: { ...equipment.魂导器, 装配: { ...equipment.魂导器.装配,
+        [gear.fitSlot]: { ...equipment.魂导器.装配[gear.fitSlot], 装备状态: '损毁', 耐久: 0 } } } };
+    }
+    return { broken: true, before, after, durability, gear };
+  }
+  /* 投出武器（用户 11-19「离手、召回、磕飞都做」，补充「控鹤擎龙可以召回任意武器」；原作王秋儿投出黄金龙枪、唐三掷昊天锤、
+     龙枪被磕飞后瞬移握回）：
+     - 投掷：普攻的变体（declaration.throwWeapon），只给手里有器武魂（已开）或兵器的；按远程算（不用突进、对方的应对窗口照远程），
+       伤害照普攻。投完挂「武器离手」/「武魂离手」（同缴械：兵器的加成、器武魂的属性倾向从面板去掉，它们的被动与技能不生效，只能空手打）。
+     - 召回：一张占行动的卡「召回【X】」（前摇同开武魂）。器武魂随时能召回；兵器落在被投的人身边，要贴身才捡得回——身上有
+       「控鹤擎龙」的（唐门手法）随时能召回。器武魂（或会控鹤擎龙的）召回时可以顺势再打一次：普攻的变体 recallStrike，按远程算，打完回手。
+     - 磕飞、抓住：对方挡住或闪开都不改变什么——这一下落空，武器照样离手，落在对方身边（所以兵器要去对方身边捡）。 */
+  const THROW_STATE_WEAPON = '武器离手', THROW_STATE_SPIRIT = '武魂离手', THROW_STATE_KEY = '__auto__:武器离手', RECALL_STATE = '召回武器';
+  const RECALL_ANYWHERE_SKILL = /控鹤擎龙/;
+  // 手里能投的那一件：已开的器武魂优先，其次兵器（打坏的、已经投出去的不算）。
+  function throwableWeapon(unit = {}) {
+    if (!unit || unit?.状态效果?.[THROW_STATE_KEY]) return null;
+    const spiritKey = toolSpiritKeys(unit)[0];
+    if (spiritKey && !spiritUnreleased(unit)) {
+      const spirit = unit[spiritKey] || {};
+      return { kind: '器武魂', key: spiritKey, name: String(spirit.表象名称 || spirit.名称 || spirit.name || spiritKey).trim() };
+    }
+    const weapon = battleEquipment(unit)?.武器;
+    if (sealableWeapon(weapon) && !/损毁/.test(String(weapon.装备状态 || '')) && !unit?.状态效果?.[GEAR_BROKEN_KEY]) {
+      return { kind: '兵器', key: '武器', name: String(weapon.名称 || weapon.name).trim() };
+    }
+    return null;
+  }
+  const weaponThrownState = unit => unit?.状态效果?.[THROW_STATE_KEY] || null;
+  function canThrowWeapon(actor = {}, target = null, declaration = {}) {
+    return String(declaration?.actionKind || '').trim().toUpperCase() === 'BASIC_ATTACK' && !!target && target !== actor && !!throwableWeapon(actor);
+  }
+  const canRecallAnywhere = unit => [...collectSkillNames(unit)].some(name => RECALL_ANYWHERE_SKILL.test(name));
+  function collectSkillNames(unit = {}) {
+    const names = new Set();
+    const visit = value => {
+      if (!value || typeof value !== 'object') return;
+      if (Array.isArray(value)) { value.forEach(visit); return; }
+      const name = String(value.魂技名 || '').trim();
+      if (name) names.add(name);
+      Object.values(value).forEach(visit);
+    };
+    Object.entries(unit || {}).forEach(([key, value]) => { if (/^第\d+武魂$|^血脉之力$|^魂骨$|^自创魂技$/.test(key)) visit(value); });
+    return names;
+  }
+  // 投出后挂在出手者身上的状态（落点：被投的人）。
+  function thrownWeaponState(actor = {}, weapon = {}, targetId = '') {
+    const spirit = weapon.kind === '器武魂';
+    const panel = spirit
+      ? Object.fromEntries(Object.entries(toolSpiritTendencyPanel(actor)).map(([key, value]) => [key, -Number(value || 0)]))
+      : { ...(equipmentSealEffect({ 原型: '状态施加', 状态: THROW_STATE_WEAPON }, {}, actor, actor)?.面板固定修正 || {}) };
+    const name = spirit ? THROW_STATE_SPIRIT : THROW_STATE_WEAPON;
+    return { 状态: name, 状态名称: name, 类型: 'debuff', duration: ARMOUR_LASTING_ROUNDS, 持续回合: ARMOUR_LASTING_ROUNDS,
+      描述: `【${weapon.name}】投出去了，召回前只能空手打`, 面板固定修正: panel, 封禁部位: [spirit ? '器武魂' : '武器'],
+      __离手: weapon.kind, __离手名: weapon.name, __落点: String(targetId || ''), 战斗效果: { equipment_seal: true } };
+  }
+  // 投掷那一下结算完：挂离手状态（overlay 或结算里的单位都行）。
+  function applyWeaponThrow(unit = {}, weapon = null, targetId = '') {
+    const held = weapon || throwableWeapon(unit);
+    if (!held) return false;
+    unit.状态效果 = { ...(unit.状态效果 || {}), [THROW_STATE_KEY]: thrownWeaponState(unit, held, targetId) };
+    return true;
+  }
+  function applyWeaponRecall(unit = {}) {
+    if (!weaponThrownState(unit)) return false;
+    const { [THROW_STATE_KEY]: _thrown, ...rest } = unit.状态效果 || {};
+    unit.状态效果 = rest;
+    return true;
+  }
+  // 能不能召回：器武魂、会控鹤擎龙的随时；兵器要和落点那个人贴身。
+  function canRecallWeapon(unit = {}, world = {}) {
+    const thrown = weaponThrownState(unit);
+    if (!thrown) return false;
+    if (thrown.__离手 === '器武魂' || canRecallAnywhere(unit)) return true;
+    const holder = findUnit(world, String(thrown.__落点 || ''));
+    return !holder || unitsEngaged(unit, holder);
+  }
+  const canRecallStrike = unit => { const thrown = weaponThrownState(unit); return !!thrown && (thrown.__离手 === '器武魂' || canRecallAnywhere(unit)); };
+  // 动作卡「召回【X】」。
+  function recallOptions(actor = {}, world = {}) {
+    const thrown = weaponThrownState(actor);
+    if (!thrown || !canRecallWeapon(actor, world)) return [];
+    const name = String(thrown.__离手名 || '武器');
+    return [{ slot: `召回·${name}`, name: `召回【${name}】`, windup: 0,
+      description: `把投出去的【${name}】召回手里，之后照常用它的普攻与魂技。`,
+      effect: { 原型: '状态施加', 目标: '自身', 状态: RECALL_STATE, 持续回合: 1, 触发方式: '立即触发', 生效方式: '独立生效' } }];
+  }
   // 落到被控者身上：剩余耐久减去这一下；打到 0 删掉这个控制（返回 { broken, before, after, state }，没有这个控制时 null）。
   function applyControlStrike(holder = {}, strike = {}) {
     const key = String(strike?.key || ''), state = holder?.状态效果?.[key];
@@ -64528,6 +64710,15 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     const need = actionWindup(attacker, { actorId: unitId(attacker), actionKind: 'BASIC_ATTACK', targetIds: [unitId(conceder)] }, { travel: false }) *
       (own > 0 && theirs > 0 ? own / theirs : 1);
     return need < actionWindup(attacker, incoming) - 1e-9;
+  }
+  // 应对时认输·裁判挡（用户 11-19「必须马上认输让裁判挡」「故意趁对方发大招时认输，让裁判帮忙抵挡，借此消耗对方」）：有裁判的比赛里，
+  // 喊了认输，裁判就照援护的算法赶来挡这一击（结算 BattleRuntime structuredRefereeIntervention，生命线提到认输者此刻的生命：一点也不让落下）。
+  // 估值的近似：裁判赶得到（refereeTiming block ≥ 0）就当这一击落空；裁判还没备好（只有名字、等级）时按挡得住算（同方案 §3.8：估值按线守得住）。
+  function refereeCatchesConcede(world = {}, attacker = {}, incoming = null) {
+    const referee = world?.裁判;
+    if (!incoming || !referee || typeof referee !== 'object' || !battleRules(world).match) return false;
+    if (referee.__refereePrepared !== true) return true;
+    return refereeTiming(attacker, incoming, referee, 1).block >= -1e-9;
   }
   const LEFT_BATTLE_REASONS = Object.freeze({ CONCEDE: 'SURRENDERED', WITHDRAW: 'WITHDRAWN' });
   function hasLeftBattle(unit = {}) {
@@ -66562,7 +66753,10 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     block: Object.freeze({ count: 'block_count', wholeMove: 'block_whole_move', cast: 'block_cast' }),
     deathSave: Object.freeze({ count: 'death_save_count', wholeMove: 'death_save_whole_move', cast: 'death_save_cast' }),
   });
-  const isBlockState = state => String(state?.规则 || state?.防御对象 || '').trim() === '免伤';
+  // 反射（用户 11-19）：挡下这一击同免伤（同一套次数），另按 mirror_ratio 把这一段打回出手者（damageFollowUp mirror）。
+  const isBlockState = state => ['免伤', '反射'].includes(String(state?.规则 || state?.防御对象 || '').trim());
+  const MIRROR_DEFAULT_RATIO = 0.5;
+  const mirrorRatioOf = effect => clamp(Number(effect?.反射比例 ?? MIRROR_DEFAULT_RATIO) || 0, 0, 1);
   function ruleDefenseStateRemovable(state = {}) {
     const effects = state?.战斗效果 || {};
     return state?.__equipmentPassiveState !== true && String(state?.来源原型摘要 || '').trim() === '规则防御' &&
@@ -66890,6 +67084,8 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
   const MENTAL_DODGE_MULT = 0.5, MENTAL_COUNTER_MULT = 0.4, MENTAL_CLASH_LOSS_MULT = 2, MENTAL_CLASH_SHOCK = 0.5;
   // The class of a move's strike: its first 伤害结算's (a basic attack carries its own, melee by default); null: no strike.
   function declarationDamageClass(declaration = {}) {
+    // 投出武器：投掷与召回时顺势一击按远程（伤害照普攻）。
+    if (declaration?.throwWeapon || declaration?.recallStrike === true) return 'RANGED';
     const effects = collectEffects(declaration?.skill || {});
     const strike = effects.find(effect => String(effect?.原型 || '').trim() === '伤害结算');
     if (strike) return classifyDamageType(strike?.伤害类型);
@@ -67670,11 +67866,19 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
   // What follows a hit on another unit beside the damage itself: the share thrown back (反伤, `ratio`) and 伤害吸收.
   // null: nothing does.
   // `floor`: the line 反伤 on `actor` is held at (indirectHpFloor, type1c).
+  // 反射：target 身上还有次数、对这一击生效的反射状态。
+  function mirrorStatesAgainst(target = {}, attacker = undefined, incomingEffect = undefined) {
+    if (findRuleSuppression(target, '规则防御', '规则', '免伤')) return [];
+    const matches = blockStateAgainst(attacker, incomingEffect ?? undefined);
+    return Object.values(target?.状态效果 || {}).filter(state => state && typeof state === 'object' && matches(state) &&
+      Number(state?.战斗效果?.mirror_ratio) > 0 && Number(state?.战斗效果?.block_count || 0) > 0);
+  }
   function damageFollowUp(actor = {}, target = {}, skill = null, floor = 0, effect = null) {
     if (unitId(actor) === unitId(target)) return null;
     const ratio = counterDamageRatio(target, effect ? { attacker: actor, incomingEffect: effect } : {}), absorption = damageAbsorptionRatios(actor, target, skill);
-    return ratio > 0 || absorption.soak > 0 || absorption.drain > 0 || absorption.gains || absorption.store || absorption.release
-      ? { actor, target, ratio, floor: Math.max(0, Number(floor) || 0), ...absorption } : null;
+    const mirror = mirrorStatesAgainst(target, actor, effect).length > 0;
+    return ratio > 0 || mirror || absorption.soak > 0 || absorption.drain > 0 || absorption.gains || absorption.store || absorption.release
+      ? { actor, target, ratio, mirror, floor: Math.max(0, Number(floor) || 0), ...absorption } : null;
   }
 
   // An outcome's `absorption` laid on the world: resources gained by the attacker and the target, what the target put
@@ -67808,7 +68012,22 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
         };
         const chargeCast = { actionId: input.ruleBlockCastId || 'projected-cast' };
         for (let hit = 0; hit < hitCount && (readHp(unit) > hpFloor || readHp(unit) > 0 && shield > 0); hit++) {
-          if (blocked < blockCount && consumeRuleBlockCharges(unit, 1, chargeCast).length) { blocked++; continue; }
+          if (blocked < blockCount) {
+            const spent = consumeRuleBlockCharges(unit, 1, chargeCast);
+            if (spent.length) {
+              blocked++;
+              // 反射：挡下的这一段按 mirror_ratio 打回出手者（同反伤，守击倒线 follow.floor）。
+              const mirror = Number(spent[0]?.state?.战斗效果?.mirror_ratio || 0);
+              if (reflectedActor && mirror > 0 && readHp(reflectedActor) > 0) {
+                const reflected = Math.max(0, Math.min(readHp(reflectedActor) - Number(follow?.floor || 0), Math.floor(perSegmentDamage * mirror)));
+                if (reflected > 0) {
+                  reflectedDamage += reflected; setHp(reflectedActor, readHp(reflectedActor) - reflected);
+                  if (readHp(reflectedActor) <= 0) triggerRevive(reflectedActor, '', setResourceValue, () => { reflectedHealing += readHp(reflectedActor); });
+                }
+              }
+              continue;
+            }
+          }
           const hp = readHp(unit), amount = Math.min((input.shieldIncomingCap === 0 ? 0 : shield) + hp - hpFloor, perSegmentDamage), absorbed = Math.min(shield, amount);
           shield -= absorbed; incoming += amount;
           let loss = Math.min(hp - hpFloor, Math.max(0, amount - absorbed));
@@ -69657,6 +69876,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // EQUIPMENT_SEAL_SOUL_LIMIT times the caster's; an artifact's (无条件封禁) lands as it is, and its 缴械 also seals a 器武魂
   // of a unit under level 100 (no basic attack, none of that spirit's skills). Nothing to seal: the effect is nothing.
   const EQUIPMENT_SEAL_SLOTS = Object.freeze({ 缴械: Object.freeze(['武器']), 封甲: Object.freeze(['斗铠', '机甲']),
+    // 道具破坏：打坏的兵器同缴械（GEAR_BROKEN_STATE）。
+    武器损毁: Object.freeze(['武器']),
+    // 投出武器：离手期间同缴械（武器、器武魂各一个名）。
+    武器离手: Object.freeze(['武器']), 武魂离手: Object.freeze(['器武魂']),
     // 未释放的斗铠 / 机甲（S80-A）也算封住；释放以后（armourReleaseState）不算。
     斗铠未释放: Object.freeze(['斗铠']), 机甲未释放: Object.freeze(['机甲']) });
   const EQUIPMENT_SEAL_STATS = Object.freeze([['力量', 'str'], ['防御', 'def'], ['敏捷', 'agi'], ['精神力上限', 'men_max']]);
@@ -69801,7 +70024,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // attack, no skill or item on one) and no strike back or meeting a move; it may block, evade, act on itself or its side, guard,
   // offer a truce, concede. 只硬接: an answer is a block (DEFEND) or letting it land — no evading, meeting it, or releasing its 武魂
   // as it answers. BattleDecision enumerateCandidates holds a unit to them; BattleRuntime keeps its 武魂 shut on an answer.
-  const NO_ENGAGEMENT_TERMS = Object.freeze({ noStrike: false, blockOnly: false, suppressLevel: 0 });
+  // 限魂技: N（用户 11-19「限魂技 : N 不就行了？」；原作「稍候战斗中不得使用第四魂技以上的能力」）: everyone in the battle may cast
+  // only the skills of its 1st–Nth rings, 武魂真身 counting as the 7th; 魂骨、血脉、道具 and basic attacks are not held. { 名字: N }
+  // holds only those named.
+  const NO_ENGAGEMENT_TERMS = Object.freeze({ noStrike: false, blockOnly: false, suppressLevel: 0, ringCap: 0 });
   function engagementTerms(worldSnapshot = {}, unit = {}) {
     const terms = worldSnapshot?.交手约定;
     if (!terms || typeof terms !== 'object' || !unit || typeof unit !== 'object') return NO_ENGAGEMENT_TERMS;
@@ -69810,7 +70036,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const caps = terms.压制修为 && typeof terms.压制修为 === 'object' ? terms.压制修为 : {};
     const suppressLevel = Math.max(0, Math.floor([...names].map(name => Number(caps[name]) || 0).find(level => level > 0) || 0));
     const noStrike = listed(terms.不还手), blockOnly = listed(terms.只硬接);
-    return noStrike || blockOnly || suppressLevel ? { noStrike, blockOnly, suppressLevel } : NO_ENGAGEMENT_TERMS;
+    const ringTerm = terms.限魂技;
+    const ringCap = Math.max(0, Math.floor(ringTerm && typeof ringTerm === 'object'
+      ? [...names].map(name => Number(ringTerm[name]) || 0).find(cap => cap > 0) || 0 : Number(ringTerm) || 0));
+    return noStrike || blockOnly || suppressLevel || ringCap ? { noStrike, blockOnly, suppressLevel, ringCap } : NO_ENGAGEMENT_TERMS;
   }
   // 压制修为至 N 级（交手约定）: 「压制修为」 (an __auto__ key, put at the round start like 武魂未释放) — 力量、防御、敏捷 × the level-N
   // typical panel over its own level's (base stats × the typical ratio, BattleDecision typicalStatRatio, passed in as `typicalRatio`),
@@ -69837,13 +70066,24 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ...(soulShare < 1 ? { 资源锁定规则: [{ 资源: ['魂力'], 锁定类型: '资源池锁定', 比例: Math.round((1 - soulShare) * 1000) / 1000 }] } : {}),
       __压制修为: cap, __压制环数: Math.floor(cap / 10) }]];
   }
+  // 限魂技（交手约定）: 「限魂技」, an __auto__ key put at the round start as 压制修为 is.
+  const RING_CAP_KEY = '__auto__:限魂技';
+  function ringCapStates(unit = {}, worldSnapshot = {}) {
+    const cap = engagementTerms(worldSnapshot, unit).ringCap;
+    if (!(cap > 0) || isSummonUnit(unit) || unit?.状态效果?.[RING_CAP_KEY]) return [];
+    return [[RING_CAP_KEY, { 状态: '限魂技', 状态名称: '限魂技', 类型: '', duration: ARMOUR_LASTING_ROUNDS, 持续回合: ARMOUR_LASTING_ROUNDS,
+      描述: `交手约定：只用前${cap}个魂技（武魂真身算第七魂技）`, __限魂技: cap }]];
+  }
   function suppressionBlocksSkill(unit = {}, skill = {}) {
-    const state = unit?.状态效果?.[SUPPRESSION_KEY];
-    if (!(Number(state?.__压制修为) > 0)) return false;
+    const state = unit?.状态效果?.[SUPPRESSION_KEY], ringCap = Number(unit?.状态效果?.[RING_CAP_KEY]?.__限魂技) || 0;
+    if (!(Number(state?.__压制修为) > 0) && !(ringCap > 0)) return false;
     const name = String(skill?.魂技名 || skill?.name || skill?.技能名称 || skill?.名称 || '').trim();
     const bit = name ? exposureSlots(unit).bySkill.get(name) : undefined;
     if (bit === undefined || bit >= 22) return false;
-    return bit < 20 ? bit % 10 + 1 > Number(state.__压制环数 || 0) : Number(state.__压制修为) < 70;
+    const ring = bit < 20 ? bit % 10 + 1 : 7;
+    if (ringCap > 0 && ring > ringCap) return true;
+    if (!(Number(state?.__压制修为) > 0)) return false;
+    return bit < 20 ? ring > Number(state.__压制环数 || 0) : Number(state.__压制修为) < 70;
   }
   // 点燃生命之火（用户 2026-11-17「搏命不是已经有点燃生命之火这个手段了吗」）: a soul master of five rings or more may burn its life in a real fight (实战:
   // DUEL or DEATH, not a spar or a match) — windup 0, no action taken, as 开武魂 — for 魂力/精神力/体力 maxima and 力量/防御/
@@ -70014,6 +70254,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     overlay.changeUnit(holderId, unit => {
       unit.状态效果 = { ...(unit.状态效果 || {}), [key]: next };
       unit.final = { ...(unit.final || {}), ...buildNumericCombatStats(unit, Number(context?.worldSnapshot?.当前世界tick ?? 0)) };
+      // 机甲赛：机甲打碎，机师传送出场判负（出招结算完 settleRingOuts）。
+      if (state.__装备释放 === '机甲' && before > 0 && after <= 0 && context?.worldSnapshot?.赛事上下文?.机甲赛 === true) markRingOut(unit, context?.rootActionId);
     });
     ledger.addOutcome({ ...context, actor: holder, targetId: holderId,
       effectInstanceId: `${context.effectInstanceId}:absorb:${stableHash([holderId, key])}:${index}`,
@@ -70284,7 +70526,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         // 释放斗铠 / 机甲的内部结算（S80-A armourReleaseEffect）：不在技能表里，设计台与生成都用不到。
         // 开武魂（spiritReleaseOptions）同样是内部状态「武魂已释放」。
         const internal = prototype === '结算修正' && field === '结算' && normalized === '装备吸收' && !!effect?.__装备释放 ||
-          prototype === '状态施加' && field === '状态' && ['武魂已释放', '生命之火', '冥想', '前压', '后撤', CONTROL_STRIKE_STATE].includes(normalized);
+          prototype === '状态施加' && field === '状态' && ['武魂已释放', '生命之火', '冥想', '前压', '后撤', CONTROL_STRIKE_STATE, GEAR_STRIKE_STATE, RECALL_STATE].includes(normalized);
         if (normalized && !internal && !(accepted ? accepted.has(normalized) : fieldDefinition.选项.includes(normalized))) {
           throw new Error(`battle_preview_unknown_enum:${prototype}:${field}:${normalized}`);
         }
@@ -71357,8 +71599,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       combatEffect.探查反制 = true;
       combatEffect.sense_pierce = true;
     }
-    if (prototype === '规则防御' && String(effect?.规则 || effect?.防御对象 || '').trim() === '免伤') {
+    if (prototype === '规则防御' && ['免伤', '反射'].includes(String(effect?.规则 || effect?.防御对象 || '').trim())) {
       combatEffect.block_count = Math.max(1, Number(effect?.次数 || 1));
+      if (String(effect?.规则 || effect?.防御对象 || '').trim() === '反射') combatEffect.mirror_ratio = mirrorRatioOf(effect);
     }
     // 控制分档（用户 2026-11-15「要有点区分度，麻痹才是行动变慢，反应变差。僵直改成有反应窗口判定时固定判为无法应对，但是之后可以
     // 行动」）: 眩晕 and the binds stop the unit whole; 麻痹 slows its moves and its answers; 僵直 leaves it no answer to a hit
@@ -71922,6 +72165,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const relevantSpace = actionRequiresDeployment(declaration);
     const relevantVehicle = actionRequiresDeployment(declaration, 'vehicle');
     const relevantSummon = actionRequiresDeployment(declaration, 'summon');
+    // 武魂可展开 false（用户 11-19；原作龙王传说 949 章深渊通道「否则的话，是没法动用武魂的」）：开武魂与武魂的魂技（含真身、融合技）
+    // 都放不出来，有对应防护（防护来源标签，如深渊隔绝护罩）的不受限。只看本地点规则，开局没开的武魂就一直没开。
+    const relevantSpirit = String(declaration?.actionKind || '').trim().toUpperCase() === 'EQUIP' && String(declaration?.releaseSlot || '').trim() === '武魂' ||
+      String(declaration?.actionKind || '').trim().toUpperCase() === 'RELEASE_SKILL' && !!declaration?.skill &&
+        spiritSkillNames(actor).has(String(declaration.skill?.魂技名 || declaration.skill?.name || declaration.skill?.技能名称 || declaration.skill?.名称 || '').trim());
+    let spiritBlocked = false;
     const battleModifiers = isPlainRecord(resolved?.modifiers?.战斗) ? resolved.modifiers.战斗 : {};
     const environmentRules = isPlainRecord(battleModifiers.环境规则) ? battleModifiers.环境规则 : {};
     const environmentRuleEntries = [
@@ -71953,6 +72202,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         deployment.summonBlocked = true;
         addUnique(displayEffects, '当前环境无法展开召唤物');
       }
+      if (rule.武魂可展开 === false && relevantSpirit) spiritBlocked = true;
     });
     const activeCosts = maintenance ? sustainCosts : startupCosts;
     const rawSoulPowerDisabled = environmentRules.魂力可用 === false ||
@@ -71985,6 +72235,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (deployment.spaceBlocked) addUnique(blockReasons, '环境限制：当前空间不足以展开');
     if (deployment.vehicleBlocked) addUnique(blockReasons, '环境限制：当前环境无法展开载具');
     if (deployment.summonBlocked) addUnique(blockReasons, '环境限制：当前环境无法展开召唤物');
+    if (spiritBlocked && !environmentProtectionForTarget(input?.worldSnapshot || {}, actor, resolved, environmentRules.防护来源标签).sourceMatched) {
+      addUnique(blockReasons, '环境限制：当前环境无法动用武魂');
+    }
     actionAvailability = clamp(actionAvailability, 0, 1);
     if (actionAvailability <= 1e-9) addUnique(blockReasons, '环境限制：当前行动无法进行');
     if (actionAvailability < 1 - 1e-9 && !displayEffects.length) addUnique(displayEffects, '行动效率受到环境影响');
@@ -72619,10 +72872,25 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       }
       return !!settled;
     }
+    // 投出武器：召回只拿掉离手状态。
+    if (String(effect?.原型 || '').trim() === '状态施加' && String(effect?.状态 || '').trim() === RECALL_STATE) {
+      const recalled = applyWeaponRecall(unit);
+      if (recalled) unit.final = { ...(unit.final || {}), ...buildNumericCombatStats(unit, 0) };
+      return recalled;
+    }
+    // 道具破坏：砸只扣装备耐久（打坏了兵器挂「武器损毁」），不留「砸装备」状态。
+    const gearStrike = gearStrikeOf(effect);
+    if (gearStrike) {
+      const settled = applyGearStrike(unit, gearStrike);
+      if (settled?.broken) unit.final = { ...(unit.final || {}), ...buildNumericCombatStats(unit, 0) };
+      return !!settled;
+    }
     // 位移重做: a recipient the position leaves nothing on (the caster of a swap, say) gets no state at all.
     if (String(effect?.原型 || '').trim() === '位移执行') {
       const shift = positionShiftOf(effect);
+      if (shift === POSITION_BACK && ringOutShift(unit, effect)) markRingOut(unit, sourceActionId);
       if (shift) setUnitPosition(unit, shift);
+      if (shift === POSITION_BACK && pushedByEnemy(effect)) markPushedBack(unit);
       const derived = deriveStateCombatEffect(effect);
       if (!derived.position_once && derived.counter_window_closed !== true && derived.no_cover !== true) return false;
     }
@@ -73599,8 +73867,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (rule === '免死') {
         combatEffect.death_save_count = Math.max(1, Number(effect?.次数 || 1));
         if (wholeMove) combatEffect.death_save_whole_move = true;
-      } else if (rule === '免伤') {
+      } else if (rule === '免伤' || rule === '反射') {
         combatEffect.block_count = Math.max(1, Number(effect?.次数 || 1));
+        if (rule === '反射') combatEffect.mirror_ratio = mirrorRatioOf(effect);
         if (wholeMove) combatEffect.block_whole_move = true;
         if (effect?.__时光回溯 === true) combatEffect.rewind_restore = true;
       } else combatEffect.damage_reduction = clamp(magnitude || 0.5, 0, 0.95);
@@ -82844,6 +83113,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       }
       context.recordPrimaryResolution?.();
     });
+    // 投出武器：投掷那一下结算完武器离手；召回时顺势一击打完回手。
+    if (declaration?.throwWeapon && !continuedSettlement) overlay.changeUnit(unitId(actor), unit => {
+      if (applyWeaponThrow(unit, null, (declaration.targetIds || [])[0])) unit.final = { ...(unit.final || {}), ...buildNumericCombatStats(unit, 0) };
+    });
+    if (declaration?.recallStrike === true && !continuedSettlement) overlay.changeUnit(unitId(actor), unit => {
+      if (applyWeaponRecall(unit)) unit.final = { ...(unit.final || {}), ...buildNumericCombatStats(unit, 0) };
+    });
+    // 出界判负：这一击打出界的人离场（settleRingOuts）。
+    {
+      const marked = listUnits(overlay.snapshot()).filter(unit => unit?.__battleRuntime?.pendingRingOut !== undefined).map(unit => unitId(unit));
+      marked.forEach(id => overlay.changeUnit(id, unit => { settleRingOuts([unit], worldSnapshot); }));
+    }
     const consumedGrantKeys = grants.map(entry => entry.stateKey);
     // A structured per-effect commit is not another use of its source skill.
     // Its formal Native declaration owns the single consume and ledger receipt.
@@ -86725,6 +87006,25 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     clashTiming,
     withStrengthKnockback,
     concedeHoldsBack,
+    refereeCatchesConcede,
+    throwableWeapon,
+    canThrowWeapon,
+    canRecallStrike,
+    recallOptions,
+    applyWeaponThrow,
+    applyWeaponRecall,
+    weaponThrownState,
+    gearStrikeOptions,
+    gearStrikeOf,
+    applyGearStrike,
+    gearStrikeDamage,
+    GEAR_BROKEN_STATE,
+    mirrorStatesAgainst,
+    RING_OUT_RULE,
+    ringOutShift,
+    markPushedBack,
+    markRingOut,
+    settleRingOuts,
     ABYSS_REPELLED,
     isAbyssUnit,
     abyssKillingBlow,
@@ -86944,6 +87244,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     spiritBlocksSkill,
     engagementTerms,
     suppressionStates,
+    ringCapStates,
     suppressionBlocksSkill,
     meditationOptions,
     // 两档距离（T25）
@@ -99713,7 +100014,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   const soulToolViews = new WeakMap();
   const soulToolAmmoField = item => item && typeof item === 'object' ? (item.弹药 !== undefined ? '弹药' : item.剩余使用次数 !== undefined ? '剩余使用次数' : '') : '';
   const soulToolAmmoKey = equipment => Object.entries(equipment?.魂导器?.装配 || {})
-    .map(([slot, item]) => (soulToolAmmoField(item) ? `${slot}:${Number(item[soulToolAmmoField(item)])}` : '')).filter(Boolean).join('|');
+    .map(([slot, item]) => (soulToolAmmoField(item) ? `${slot}:${Number(item[soulToolAmmoField(item)])}` : '') + (/损毁/.test(String(item?.装备状态 || '')) ? `${slot}:损毁` : '')).filter(Boolean).join('|');
   function soulToolSkillView(equipment = null) {
     const fitted = equipment?.魂导器?.装配;
     if (!fitted || typeof fitted !== 'object') return equipment;
@@ -99724,6 +100025,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const slots = Object.fromEntries(Object.entries(fitted).map(([slot, item]) => {
       if (!item || typeof item !== 'object' || !item.装备技能 || typeof item.装备技能 !== 'object') return [slot, item];
       if (soulToolAmmoField(item) && !(Number(item[soulToolAmmoField(item)]) > 0)) return [slot, { ...item, 装备技能: {} }];
+      // 道具破坏：打坏的魂导器（装备状态 损毁）这场不能再用。
+      if (/损毁/.test(String(item.装备状态 || ''))) return [slot, { ...item, 装备技能: {} }];
       const tier = Math.max(1, Math.min(9, Math.floor(Number(item.魂导等级) || 1)));
       const skills = Object.fromEntries(Object.entries(item.装备技能).map(([name, skill]) => {
         if (!skill || typeof skill !== 'object') return [name, skill];
@@ -101599,6 +101902,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
   }
 
+  // 道具破坏（11-19, BattlePreview gearStrikeOptions）：砸贴身敌人的兵器或魂导器，同砸控制物的 EQUIP 卡，目标是持有者。
+  function gearStrikeCandidates(actor = {}, worldSnapshot = {}, actorId = '') {
+    if (!preview.gearStrikeOptions) return [];
+    return preview.gearStrikeOptions(actor, worldSnapshot).map(option => {
+      const id = `${actorId}:release:${option.slot}`;
+      return { candidateId: id, equipmentSignature: `release:${option.slot}`,
+        declaration: { actionId: id, actorId, actionKind: 'EQUIP', targetIds: [String(option.holderId)], releaseSlot: option.slot, equipmentSignature: `release:${option.slot}`,
+          skill: { name: option.name, 魂技名: option.name, 前摇: option.windup, 消耗: '无', 效果描述: option.description, _效果数组: [option.effect] } } };
+    });
+  }
+
   function enumerateCandidates(input = {}) {
     const worldSnapshot = input?.worldSnapshot || {};
     let candidates = withCounterStaminaFactor(withoutTargetlessCandidates(enumerateCandidatesUnchecked(input),
@@ -101626,6 +101940,24 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         (strongest && skillName(candidate.declaration) === skillName(strongest.declaration)));
       if (picked.length) candidates = [...candidates, ...picked.map(candidate => ({ ...candidate, candidateId: `${candidate.candidateId}:flank`,
         declaration: { ...candidate.declaration, flank: true, actionId: `${candidate.declaration.actionId || candidate.candidateId}:flank` } }))];
+    }
+    // 投出武器（11-19，BattlePreview canThrowWeapon / canRecallStrike）：主动出手时，打单个敌人的普攻多出一份「投掷」（throwWeapon，
+    // 按远程、不用突进，投完武器离手）；武器已经离手、又能随时召回的（器武魂、会控鹤擎龙的），普攻多出一份「召回时顺势一击」（recallStrike）。
+    if (advanceActor && preview.canThrowWeapon && String(input?.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase() === 'ACTIVE') {
+      const actorSideNow = sideOf(worldSnapshot, advanceActor);
+      const basics = candidates.filter(candidate => {
+        const declaration = candidate?.declaration || {};
+        if (declaration.flank || declaration.feintStrike || declaration.throwWeapon || String(declaration.actionKind || '').toUpperCase() !== 'BASIC_ATTACK') return false;
+        if (!Array.isArray(declaration.targetIds) || declaration.targetIds.length !== 1) return false;
+        const target = findUnitInWorld(worldSnapshot, declaration.targetIds[0]);
+        return !!target && sideOf(worldSnapshot, target) !== actorSideNow;
+      });
+      const weapon = preview.throwableWeapon(advanceActor);
+      if (weapon) candidates = [...candidates, ...basics.filter(candidate => preview.canThrowWeapon(advanceActor, findUnitInWorld(worldSnapshot, candidate.declaration.targetIds[0]), candidate.declaration))
+        .map(candidate => ({ ...candidate, candidateId: `${candidate.candidateId}:throw`,
+          declaration: { ...candidate.declaration, throwWeapon: { kind: weapon.kind, name: weapon.name }, actionId: `${candidate.declaration.actionId || candidate.candidateId}:throw` } }))];
+      else if (preview.canRecallStrike(advanceActor)) candidates = [...candidates, ...basics.map(candidate => ({ ...candidate, candidateId: `${candidate.candidateId}:recall`,
+        declaration: { ...candidate.declaration, recallStrike: true, actionId: `${candidate.declaration.actionId || candidate.candidateId}:recall` } }))];
     }
     // 虚招（T32，BattlePreview canFeintStrike）：主动出手时，对每个单体敌人的最强一击（威力最高的伤害魂技，没有就普攻）多出一份「虚招」，
     // feintStrike.seen 是目标看破的概率（feintSeeThroughChance，佯装记录一起算）；结算时再掷。
@@ -102497,6 +102829,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
     // 砸控制物（T29, BattlePreview controlStrikeOptions）: 砸 a control on itself or an ally, the same path.
     candidates.push(...controlStrikeCandidates(actor, worldSnapshot, actorId));
+    candidates.push(...gearStrikeCandidates(actor, worldSnapshot, actorId));
+    // 投出武器（BattlePreview recallOptions）：把投出去的武器召回手里。
+    if (preview.recallOptions) preview.recallOptions(actor, worldSnapshot).forEach(option => {
+      const id = `${actorId}:release:${option.slot}`;
+      candidates.push({ candidateId: id, equipmentSignature: `release:${option.slot}`,
+        declaration: { actionId: id, actorId, actionKind: 'EQUIP', targetIds: [actorId], releaseSlot: option.slot, equipmentSignature: `release:${option.slot}`,
+          skill: { name: option.name, 魂技名: option.name, 前摇: option.windup, 消耗: '无', 效果描述: option.description, _效果数组: [option.effect] } } });
+    });
     collectInventory(actor).filter(entry => entry.quantity > 0).forEach((entry, index) => {
       const item = entry.item;
       if (isEquipment(item)) {
@@ -136508,10 +136848,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const declaration = candidate?.declaration || {};
     const kind = String(declaration.actionKind || '').toUpperCase();
     const name = String(declaration.skill?.魂技名 || declaration.skill?.name || declaration.feintSkill?.魂技名 || '').trim();
-    const mode = declaration.engagement?.mode === 'CLASH' ? '对轰' : declaration.engagement?.mode === 'PREEMPT' ? '抢先' : declaration.flank === true ? '绕后' : declaration.feintStrike ? '虚招' : '';
+    const mode = declaration.engagement?.mode === 'CLASH' ? '对轰' : declaration.engagement?.mode === 'PREEMPT' ? '抢先' : declaration.flank === true ? '绕后' : declaration.feintStrike ? '虚招' :
+      declaration.throwWeapon ? `掷出${declaration.throwWeapon.name ? `【${declaration.throwWeapon.name}】` : '武器'}` : declaration.recallStrike === true ? '召回顺势一击' : '';
     if (declaration.bait === true) return '卖破绽';
     if (declaration.humanShield) return `人盾·${world ? r20UnitLabel(world, String(declaration.humanShield.unitId || '')) : String(declaration.humanShield.unitId || '').split(':').pop()}`;
-    const label = kind === 'EQUIP' && declaration.releaseSlot ? (declaration.releaseSlot === '武魂' ? '开武魂' : /^砸·/.test(String(declaration.releaseSlot)) ? name || '砸控制物' : String(declaration.releaseSlot))
+    const label = kind === 'EQUIP' && declaration.releaseSlot ? (declaration.releaseSlot === '武魂' ? '开武魂' : /^砸(?:装备)?·/.test(String(declaration.releaseSlot)) ? name || '砸控制物' : String(declaration.releaseSlot))
       : declaration.concede === true ? '认输' : kind === 'DEFEND' && declaration.deflect === true ? '卸力' : kind === 'EVADE' && declaration.retreat === true ? '后撤闪避' : name || R20_KIND_LABELS[kind] || kind;
     const targets = (Array.isArray(declaration.targetIds) ? declaration.targetIds : []).map(String)
       .filter(id => id && id !== String(declaration.actorId || '')).map(id => world ? r20UnitLabel(world, id) : id.split(':').pop());
@@ -137187,8 +137528,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         ? preview.actionStaminaCost(actorNext, actionKind, source) * (declaration?.retreat === true ? 2 : 1) / staminaMaximum : 0;
       // What of the move lands on the actor, a share of its HP maximum.
       // A clash: won, nothing; even, CLASH_SHOCK of the move; lost, the difference (clashOutcome inScale).
-      // 应对时认输：近身一击收得住就什么也落不下（BattlePreview concedeHoldsBack）。
-      const pulled = declaration?.concede === true && move && preview.concedeHoldsBack?.(source, move, table.units[actorRow]);
+      // 应对时认输：近身一击收得住就什么也落不下（BattlePreview concedeHoldsBack）；有裁判的比赛里裁判赶得到也落不下（refereeCatchesConcede）。
+      const pulled = declaration?.concede === true && move && (preview.concedeHoldsBack?.(source, move, table.units[actorRow]) ||
+        preview.refereeCatchesConcede?.(table.world, source, move));
       const taken = pulled ? 0 : clash ? clashConfidence * clash.theirs * clash.inScale / maximum * r20Soak(actorNext) + (1 - clashConfidence) * hit : hit * share;
       diag.taken = taken; diag.hit = hit; diag.share = share;
       const hpLeft = Math.max(0, preview.readHp(actorNext) - r20Floor(actorNext)) / maximum + shield - taken;
@@ -138976,7 +139318,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 变体（卖破绽、卸力、虚招、绕后、人盾）：与原型打平时让原型（BehaviorDecisionPipeline 平手规则）。
     const variantOf = candidateId => {
       const declaration = frozenById.get(candidateId)?.declaration || {};
-      return declaration.bait === true || declaration.deflect === true || !!declaration.feintStrike || !!declaration.flank || !!declaration.humanShield || declaration.retreat === true;
+      return declaration.bait === true || declaration.deflect === true || !!declaration.feintStrike || !!declaration.flank || !!declaration.humanShield || declaration.retreat === true ||
+        !!declaration.throwWeapon || declaration.recallStrike === true;
     };
     const holdOf = candidateId => {
       const candidate = frozenById.get(candidateId);
@@ -141410,7 +141753,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       // 开武魂（信息模型 0a）: 「武魂未释放」 the same way (BattlePreview spiritUnreleasedStates).
       // 压制修为（交手约定）: 「压制修为」 too (BattlePreview suppressionStates; the typical panel by level from BattleDecision).
       const additions = [...(previewRuntime.armourUnreleasedStates?.(unit) || []), ...(previewRuntime.spiritUnreleasedStates?.(unit) || []),
-        ...(previewRuntime.suppressionStates?.(unit, combatData, decisionRuntime?.typicalStatRatio) || [])];
+        ...(previewRuntime.suppressionStates?.(unit, combatData, decisionRuntime?.typicalStatRatio) || []),
+        ...(previewRuntime.ringCapStates?.(unit, combatData) || [])];
       if (additions.length) {
         unit.状态效果 = unit.状态效果 && typeof unit.状态效果 === 'object' ? unit.状态效果 : {};
         additions.forEach(([key, state]) => { unit.状态效果[key] = { ...state, 战斗效果: { ...createEmptyCombatEffectMap(), ...(state.战斗效果 || {}) } }; });
@@ -149348,7 +149692,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (!previewRuntime.unitId(actor) || !previewRuntime.unitId(target) || actor === target || !(actualDamage > 0)) return [];
     const runtime = ensureCombatRuntime(combatData);
     if (Number(runtime.counterDamageDepth || 0) > 0) return [];
-    const ratio = previewRuntime.counterDamageRatio(target, input?.effect ? { attacker: actor, incomingEffect: input.effect } : {});
+    // 反射（consumeRuleDefenseBlock）：挡下的一段按反射状态的比例打回，不读反伤。
+    const ratio = Number.isFinite(Number(input?.mirrorRatio)) ? Number(input.mirrorRatio)
+      : previewRuntime.counterDamageRatio(target, input?.effect ? { attacker: actor, incomingEffect: input.effect } : {});
     if (!(ratio > 0)) return [];
     // 击倒线: 反伤 is the target's doing, held at the line.
     const reflectFloor = hostileSource(combatData, target, actor) ? knockdownFloorOf(combatData, actor) : 0;
@@ -149394,6 +149740,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             0,
           ),
           counterRatio: ratio,
+          ...(Number.isFinite(Number(input?.mirrorRatio)) ? { mirror: true } : {}),
           reflectedDamage: reflected,
           before,
           after,
@@ -149419,10 +149766,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // R3: the action's id scopes a whole-move (整招) charge to this cast's segments.
     const entry = previewRuntime.consumeRuleBlockCharges(target, 1, { actionId: actionEvent.actionId })[0];
     if (!entry) return null;
+    const mirrorRatio = Number(entry.state?.战斗效果?.mirror_ratio || 0);
     const { stateKey, state, remainingCount: remaining } = entry;
     const stateApplicationId = String(state.__状态来源窗口?.[0] || state.__状态来源键 || '').trim();
     const stateSource = stateApplicationId ? findStateSource(combatData, { applicationId: stateApplicationId }) || state : state;
-    return writeLedgerEvent(combatData, {
+    const blockedEvent = writeLedgerEvent(combatData, {
       eventKind: 'hit_result',
       round: Number(combatData?.回合 || 0),
       actorId: previewRuntime.unitId(actor),
@@ -149449,7 +149797,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       appliedDamage: 0,
       meta: {
         source: 'structured_runtime',
-        rule: '免伤',
+        rule: mirrorRatio > 0 ? '反射' : '免伤',
         stateKey,
         consumed: entry.amount,
         remaining,
@@ -149475,7 +149823,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         stateSourceEffectId: String(stateSource.sourceEffectId || '').trim(),
       },
     });
+    // 反射（用户 11-19）：挡下的这一段按反射比例打回出手者（settleCounterDamage，事实标 mirror），跟在挡下事实后面。
+    if (mirrorRatio > 0) mirrorFactsByBlock.set(blockedEvent, settleCounterDamage({ combatData, actor, target, action, actionEvent,
+      damageEvent: blockedEvent, actionRole, actualDamage: Math.max(0, Number(input.rawDamage) || 0), mirrorRatio }));
+    return blockedEvent;
   }
+  const mirrorFactsByBlock = new WeakMap();
 
   function consumeEquivalentLevelProtectionCheck(input = {}) {
     const combatData = input?.combatData || {};
@@ -151250,6 +151603,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
   }
 
+  // 出界判负：一个单位身上击退／击飞状态的签名（source 给了就只看这个出手者放的）；没有就是 ''。
+  function knockbackSignature(unit = {}, source = '') {
+    const rows = Object.entries(unit?.状态效果 || {}).filter(([, state]) => state && typeof state === 'object' &&
+      /击退|击飞/.test(String(state?.战斗效果?.position_type || '')) && (!source || String(state?.来源角色 || '').trim() === source))
+      .map(([key, state]) => [key, String(state?.来源角色 || ''), String(state?.来源动作ID || ''), Number(state?.duration ?? state?.持续回合 ?? 0)]);
+    return rows.length ? JSON.stringify(rows) : '';
+  }
+  // 机甲赛：已释放机甲的剩余耐久（没有释放的机甲：-1）。
+  function mechaDurability(unit = {}) {
+    const state = Object.values(unit?.状态效果 || {}).find(item => item && typeof item === 'object' && item.__装备释放 === '机甲');
+    return state ? Math.max(0, Number(state.__装备耐久) || 0) : -1;
+  }
   function finishStructuredDeclaration(context, facts, terminal) {
     const { combatData, actionEvent, actor, primaryTarget } = context;
     // Some committed mutations (prepared reactions, passive limits, grants)
@@ -151275,6 +151640,59 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         meta: { source: 'structured_runtime', stateName: '认输', hpAfter: previewRuntime.readHp(unit), hpRatioAfter: previewRuntime.readHp(unit) / Math.max(1, previewRuntime.readHpMax(unit)),
           leftBattle: true, reactionConcede: true, reasonText: `${previewRuntime.unitName(unit)}认输，退出了战斗`, before: beforeActionState, after: cloneValue(unit.状态 || {}), operation: 'STATE_APPLY' },
       }));
+    }
+    // 出界判负（BattlePreview settleRingOuts）：这一击把本来在后排的人又打飞——比赛里出界离场（预演提交过来的已离场，这里补记事实）。
+    if (previewRuntime.settleRingOuts) {
+      const units = listCombatUnits(combatData), before = context.__ringOutBefore;
+      // 出招前就在后排、身上多了出手者这一下的击退／击飞（状态签名变了）的敌人：同样记出界。
+      if (before) units.forEach(unit => {
+        const was = before.get(String(previewRuntime.unitId(unit)));
+        if (!was || was.position !== previewRuntime.POSITION_BACK || !was.pushed || inferUnitSide(combatData, unit) === inferUnitSide(combatData, actor)) return;
+        const now = knockbackSignature(unit, previewRuntime.unitName(actor));
+        if (now && now !== knockbackSignature({ 状态效果: {} }) && now !== was.knock && knockbackSignature(unit) !== was.knock) previewRuntime.markRingOut(unit, actionEvent?.actionId);
+      });
+      // 机甲赛（赛事上下文.机甲赛）：机甲耐久这一下打到 0，机师被传送出场判负（原作机甲大赛；同出界离场）。
+      if (before && combatData?.赛事上下文?.机甲赛 === true) units.forEach(unit => {
+        const was = before.get(String(previewRuntime.unitId(unit)));
+        if (was && was.mecha > 0 && mechaDurability(unit) === 0) previewRuntime.markRingOut(unit, actionEvent?.actionId);
+      });
+      previewRuntime.settleRingOuts(units, combatData);
+      units.filter(unit => unit?.__出界 === true && unit.__出界已记 !== true).forEach(unit => {
+        unit.__出界已记 = true;
+        facts.push(writeLedgerEvent(combatData, {
+          eventKind: 'state_apply', round: Number(combatData?.回合 || 0),
+          actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor), targetId: previewRuntime.unitId(unit), targetName: previewRuntime.unitName(unit),
+          actionName: '出界', actionType: 'incapacitation', actorControl: 'SYSTEM', actionRole: String(actionEvent?.actionRole || 'ACTIVE'),
+          actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
+          ruleCode: previewRuntime.RING_OUT_RULE, result: 'applied', resultState: 'SUCCESS', primaryOutcome: 'surrendered', factType: 'STATE', operation: 'STATE_APPLY',
+          meta: { source: 'structured_runtime', stateName: '出界', hpAfter: previewRuntime.readHp(unit), hpRatioAfter: previewRuntime.readHp(unit) / Math.max(1, previewRuntime.readHpMax(unit)),
+            leftBattle: true, ringOut: true, reasonText: combatData?.赛事上下文?.机甲赛 === true && mechaDurability(unit) === 0
+              ? `${previewRuntime.unitName(unit)}的机甲被${previewRuntime.unitName(actor)}打碎，传送出场判负` : `${previewRuntime.unitName(unit)}被${previewRuntime.unitName(actor)}打出场外，判负离场`, operation: 'STATE_APPLY' },
+        }));
+      });
+    }
+    // 投出武器（BattlePreview applyWeaponThrow / applyWeaponRecall）：投掷那一下结算完武器离手；召回时顺势一击打完回手。
+    {
+      const declaration = context.declaration || {};
+      const tick = Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0);
+      const note = (stateName, reasonText) => facts.push(writeLedgerEvent(combatData, {
+        eventKind: 'state_apply', round: Number(combatData?.回合 || 0),
+        actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor), targetId: previewRuntime.unitId(actor), targetName: previewRuntime.unitName(actor),
+        actionName: stateName, actionType: 'weapon_throw', actorControl: String(actionEvent?.actorControl || 'AI'), actionRole: String(actionEvent?.actionRole || 'ACTIVE'),
+        actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId, result: 'applied', resultState: 'SUCCESS', factType: 'STATE', operation: 'STATE_APPLY',
+        meta: { source: 'structured_runtime', stateName, reasonText, operation: 'STATE_APPLY' },
+      }));
+      if (declaration.throwWeapon && previewRuntime.applyWeaponThrow?.(actor, null, (declaration.targetIds || [])[0])) {
+        actor.final = buildCombatFinalStats(actor, tick);
+        const thrown = previewRuntime.weaponThrownState(actor);
+        note(String(thrown?.状态 || '武器离手'), `${previewRuntime.unitName(actor)}的【${String(thrown?.__离手名 || '武器')}】投出去了，召回前只能空手打`);
+      }
+      if (declaration.recallStrike === true && previewRuntime.weaponThrownState?.(actor)) {
+        const name = String(previewRuntime.weaponThrownState(actor)?.__离手名 || '武器');
+        previewRuntime.applyWeaponRecall(actor);
+        actor.final = buildCombatFinalStats(actor, tick);
+        note('召回武器', `${previewRuntime.unitName(actor)}召回【${name}】，顺势打了一下`);
+      }
     }
     const end = ensureLedger(combatData).at(-1) || actionEvent;
     actionEvent.meta.declarationSettlement = {
@@ -151302,6 +151720,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       allowPreparedDefense,
     } = context;
     if (!combatData || !declaration || !actor || !actionEvent) throw new TypeError('battle_structured_action_context_invalid');
+    // 出界判负：出招前每个人的站位与身上的击退状态（finishStructuredDeclaration 比对：本来在后排、这一下又被击退的出界）。
+    if (!context.__ringOutBefore) context.__ringOutBefore = new Map(listCombatUnits(combatData).map(unit => [String(previewRuntime.unitId(unit)),
+      { position: previewRuntime.unitPosition(unit), pushed: unit?.__battleRuntime?.pushedBack === true, knock: knockbackSignature(unit), mecha: mechaDurability(unit) }]));
     // 位移重做（S81）: the units an attack of this action rolled to hit, and whether it attacked at all — the one-shot position
     // effects they were waiting for are spent once the action's effects have settled (spendPositionOnce, below).
     const positionOnceRolledTargets = new Set();
@@ -152909,7 +153330,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               damageType: effect?.伤害类型 || '',
             });
             if (blockedByRule) {
-              facts.push(blockedByRule);
+              facts.push(blockedByRule, ...(mirrorFactsByBlock.get(blockedByRule) || []));
               anySegmentHit = true;
               continue;
             }
@@ -152943,9 +153364,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             // 接战链 阶段三 (structuredRefereeIntervention): in a match a hit that would take the unit under the line brings the
             // referee in. A guard skill keeps the unit in, the rest of this effect's hit scaled down against the shield it put
             // up; a block or a carry takes the unit out and the hit no further; neither, the hit lands whole.
-            const refereeAct = protectedBattle && !sparring && !alreadyOut && threatDamage > threatShield + Math.max(0, before - lifeFloor) + 1e-9
+            // 应对时认输·裁判挡（BattlePreview refereeCatchesConcede）：喊了认输的人，裁判把这一击整个挡下——生命线提到他此刻的生命。
+            const concedeCalled = !!actionEvent?.actionId && String(target?.__battleRuntime?.pendingConcede ?? '') === String(actionEvent.actionId);
+            const refereeFloor = concedeCalled && combatData?.裁判 ? Math.max(lifeFloor, before) : lifeFloor;
+            const refereeAct = protectedBattle && !sparring && !alreadyOut && threatDamage > threatShield + Math.max(0, before - refereeFloor) + 1e-9
               ? structuredRefereeIntervention({ combatData, attacker: actor, declaration, target, effect, segmentDamage: threatDamage, segments, segment,
-                shieldBefore: threatShield, before, lifeFloor, actionEvent, actionRole,
+                shieldBefore: threatShield, before, lifeFloor: refereeFloor, actionEvent, actionRole,
                 damageOptions: { targetCount: resolvedTargets.length, actionDamageMultiplier,
                   resourceDriveEnabled: String(declaration?.actionKind || '').trim().toUpperCase() !== 'BASIC_ATTACK' } })
               : null;
@@ -152978,17 +153402,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                   before, after: before, operation: 'DAMAGE',
                 },
               }));
-              target.__战斗失能原因 = 'INCAPACITATED';
+              // 应对时认输：裁判挡下的是认输的人——记认输离场（SURRENDERED），不是失去战斗力。
+              target.__战斗失能原因 = concedeCalled ? previewRuntime.LEFT_BATTLE_REASONS.CONCEDE : 'INCAPACITATED';
               facts.push(writeLedgerEvent(combatData, {
                 eventKind: 'state_apply', round: Number(combatData?.回合 || 0),
                 actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
                 targetId: previewRuntime.unitId(target), targetName: previewRuntime.unitName(target),
                 actionName, actionType: 'incapacitation', actorControl, actionRole, actionId: actionEvent.actionId,
                 sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
-                ruleCode: 'REFEREE_RESCUE', result: 'applied', resultState: 'SUCCESS', primaryOutcome: 'nonlethal_incapacitation',
+                ruleCode: 'REFEREE_RESCUE', result: 'applied', resultState: 'SUCCESS', primaryOutcome: concedeCalled ? 'surrendered' : 'nonlethal_incapacitation',
                 effectPrototype: prototype, factType: 'STATE', sourceEffectId, operation: 'STATE_APPLY',
                 meta: {
-                  source: 'structured_runtime', stateName: '失去战斗力', hpAfter: before, hpRatioAfter: before / Math.max(1, hpMax),
+                  source: 'structured_runtime', stateName: concedeCalled ? '认输' : '失去战斗力', ...(concedeCalled ? { leftBattle: true, reactionConcede: true } : {}), hpAfter: before, hpRatioAfter: before / Math.max(1, hpMax),
                   triggerDamage: 0, singleHitRatio: 0, nonlethalHpFloor: lifeFloor, nonlethalIncapacitated: true,
                   refereeMode: refereeRescue.mode, refereeRescue: { name: refereeRescue.refereeName, mode: refereeRescue.mode, count: refereeRescue.count,
                     reach: refereeRescue.timing.reach, eventId: String(refereeRescue.event?.eventId || '') },
@@ -153712,6 +154137,39 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           }
           return;
         }
+        // 投出武器：召回卡只拿掉离手状态（BattlePreview applyWeaponRecall）。
+        if (prototype === '状态施加' && stateName === '召回武器' && previewRuntime.applyWeaponRecall) {
+          const thrownName = String(previewRuntime.weaponThrownState(target)?.__离手名 || '武器');
+          const recalled = previewRuntime.applyWeaponRecall(target);
+          if (recalled) target.final = buildCombatFinalStats(target, Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0));
+          facts.push(writeLedgerEvent(combatData, {
+            eventKind: 'state_apply', round: Number(combatData?.回合 || 0), actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
+            targetId: previewRuntime.unitId(target), targetName: previewRuntime.unitName(target), actionName, actionType: actionKind, actorControl, actionRole,
+            actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId, result: recalled ? 'applied' : 'no_effect', resultState: recalled ? 'SUCCESS' : 'NO_EFFECT',
+            effectPrototype: prototype, factType: 'STATE', sourceEffectId, operation: 'STATE_APPLY',
+            meta: { source: 'structured_runtime', effectIndex, stateName: '召回武器', reasonText: `${previewRuntime.unitName(target)}把【${thrownName}】召回手里` },
+          }));
+          return;
+        }
+        // 道具破坏（BattlePreview applyGearStrike）：砸敌人的兵器或魂导器，按此刻的普攻扣耐久；打到 0 兵器挂「武器损毁」、装备状态记损毁。
+        const gearStrike = previewRuntime.gearStrikeOf?.(effect);
+        if (gearStrike) {
+          const live = { ...gearStrike, damage: previewRuntime.gearStrikeDamage(actor, target) };
+          const settled = previewRuntime.applyGearStrike(target, live);
+          if (settled?.broken) target.final = buildCombatFinalStats(target, Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0));
+          facts.push(writeLedgerEvent(combatData, {
+            eventKind: 'gear_strike', round: Number(combatData?.回合 || 0), actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
+            targetId: previewRuntime.unitId(target), targetName: previewRuntime.unitName(target),
+            actionName, actionType: actionKind, actorControl, actionRole, actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
+            parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
+            result: !settled ? 'no_effect' : settled.broken ? 'broken' : 'worn', resultState: !settled ? 'NO_EFFECT' : 'SUCCESS',
+            primaryOutcome: !settled ? 'no_effect' : settled.broken ? 'gear_broken' : 'gear_worn',
+            effectPrototype: prototype, factType: 'STATE_CHANGE', sourceEffectId, operation: 'STATE_APPLY',
+            meta: { source: 'structured_runtime', effectIndex, gearName: String(gearStrike.name || ''), gearSlot: String(gearStrike.slot || ''),
+              ...(settled ? { damage: live.damage, before: settled.before, after: settled.after, durability: settled.durability, broken: settled.broken } : { resolutionReason: 'GEAR_GONE' }) },
+          }));
+          return;
+        }
         // 冥想: its own key and recovery (BattlePreview beginMeditation).
         if (stateName === '冥想' && previewRuntime.beginMeditation) {
           const sat = previewRuntime.beginMeditation(target);
@@ -153857,9 +154315,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               const shift = previewRuntime.positionShiftOf({ ...effect, __位移接收者: role });
               // 被这一击击退／击飞到后排的目标：突进结算不再把它带回前排（同后撤闪避，retreatEvaded 记这一击的动作 id；原来技能写的击退也会被覆盖）。
               const heldBack = shift === previewRuntime.POSITION_BACK && role === 'enemy';
+              // 出界判负：本来就在后排又被打飞（BattlePreview ringOutShift），这次出招结算完判。
+              if (heldBack && previewRuntime.ringOutShift?.(target, { ...effect, __位移接收者: role })) previewRuntime.markRingOut(target, actionEvent?.actionId);
               if (heldBack) target.__battleRuntime = { ...(target.__battleRuntime || {}), retreatEvaded: String(actionEvent?.actionId || '') };
+              const pushedNow = heldBack && /击退|击飞/.test(String(effect?.位移类型 || ''));
               // 本来就在后排、被突进过来的一击打回去（不然会被带到前排）也写事实。
-              if (shift && (previewRuntime.setUnitPosition(target, shift) || heldBack)) {
+              const shiftMoved = shift ? previewRuntime.setUnitPosition(target, shift) : false;
+              if (pushedNow) previewRuntime.markPushedBack?.(target);
+              if (shift && (shiftMoved || heldBack)) {
                 // 战报事实（POSITION shift）：位移把谁挪到了前排 / 后排。
                 facts.push(writeMechanicEvent(combatData, { eventKind: 'position_shift', actionName: actionName || '位移', actionRole: String(actionEvent?.actionRole || 'ACTIVE'), actorControl: String(actionEvent?.actorControl || 'AI'),
                   actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor), targetId: previewRuntime.unitId(target), targetName: previewRuntime.unitName(target),
@@ -154098,6 +154561,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       struck.forEach(unit => {
         if (knockedBack(unit)) {
           previewRuntime.setUnitPosition(unit, previewRuntime.POSITION_BACK);
+          previewRuntime.markPushedBack?.(unit);
           facts.push(writeMechanicEvent(combatData, { eventKind: 'position_shift', actionName: actionName || '击退', actionRole: String(actionEvent?.actionRole || 'ACTIVE'), actorControl: String(actionEvent?.actorControl || 'AI'),
             actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor), targetId: previewRuntime.unitId(unit), targetName: previewRuntime.unitName(unit),
             actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
@@ -156817,9 +157281,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const caps = terms?.压制修为 && typeof terms.压制修为 === 'object' && !Array.isArray(terms.压制修为)
         ? Object.fromEntries(Object.entries(terms.压制修为).map(([name, level]) => [String(name).trim(), Math.floor(Number(level) || 0)]).filter(([name, level]) => name && level > 0))
         : {};
-      if (terms && (names(terms.不还手).length || names(terms.只硬接).length || Object.keys(caps).length)) {
+      const ringCap = terms?.限魂技 && typeof terms.限魂技 === 'object' ? terms.限魂技 : Math.floor(Number(terms?.限魂技) || 0);
+      const hasRingCap = typeof ringCap === 'object' ? Object.keys(ringCap).length > 0 : ringCap > 0;
+      if (terms && (names(terms.不还手).length || names(terms.只硬接).length || Object.keys(caps).length || hasRingCap)) {
         writeMechanicEvent(combatData, { eventKind: 'engagement_terms', actionName: '交手约定', round: sourceRound + 1, result: 'declared',
-          meta: { terms: { 不还手: names(terms.不还手), 只硬接: names(terms.只硬接), 压制修为: caps } } });
+          meta: { terms: { 不还手: names(terms.不还手), 只硬接: names(terms.只硬接), 压制修为: caps, ...(hasRingCap ? { 限魂技: ringCap } : {}) } } });
       }
       emitPendingTruceDecline(combatData, sourceRound);
     }
@@ -166585,6 +167051,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       SURRENDERED: '认输',
       WITHDRAWN: '已撤离',
       ABYSS_REPELLED: '退回深渊（未被杀死）',
+      RING_OUT: '出界判负',
       CONTROLLED: '受控制',
       UNAVAILABLE: '暂时无法行动',
     };
@@ -166907,7 +167374,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const listed = value => (Array.isArray(value) ? value : []).map(text).filter(Boolean).filter(keep);
     const caps = Object.fromEntries(Object.entries(terms?.压制修为 && typeof terms.压制修为 === 'object' ? terms.压制修为 : {})
       .map(([name, level]) => [text(name), Math.floor(number(level, 0))]).filter(([name, level]) => name && level > 0 && keep(name)));
-    return { 不还手: listed(terms?.不还手), 只硬接: listed(terms?.只硬接), 压制修为: caps };
+    const ringTerm = terms?.限魂技;
+    const ringCaps = ringTerm && typeof ringTerm === 'object'
+      ? Object.fromEntries(Object.entries(ringTerm).map(([name, cap]) => [text(name), Math.floor(number(cap, 0))]).filter(([name, cap]) => name && cap > 0 && keep(name)))
+      : {};
+    const ringCapAll = ringTerm && typeof ringTerm === 'object' ? 0 : Math.max(0, Math.floor(number(ringTerm, 0)));
+    return { 不还手: listed(terms?.不还手), 只硬接: listed(terms?.只硬接), 压制修为: caps, 限魂技: ringCaps, 全体限魂技: ringCapAll };
   }
 
   const clashResultTexts = Object.freeze({
@@ -166944,7 +167416,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const terms = visibleEngagementTerms(meta?.terms || {}, directory);
       return {
         kind: 'ENGAGEMENT_TERMS', phase: 'declared',
-        subjectIds: unique([...terms.不还手, ...terms.只硬接, ...Object.keys(terms.压制修为)]),
+        subjectIds: unique([...terms.不还手, ...terms.只硬接, ...Object.keys(terms.压制修为), ...Object.keys(terms.限魂技)]),
         values: terms, judgement: null,
         visibility: { player: REPORT_VISIBILITY.engagementTerms === 'PUBLIC' ? 'FULL' : 'OWN_ONLY', ai: REPORT_VISIBILITY.engagementTerms === 'PUBLIC' ? 'FULL' : 'OWN_ONLY' },
       };
@@ -167185,6 +167657,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         values.不还手?.length ? `${values.不还手.join('、')}不还手` : '',
         values.只硬接?.length ? `${values.只硬接.join('、')}只硬接` : '',
         ...Object.entries(values.压制修为 || {}).map(([name, level]) => `${name}压制修为至${level}级`),
+        values.全体限魂技 > 0 ? `只准用前${values.全体限魂技}个魂技` : '',
+        ...Object.entries(values.限魂技 || {}).map(([name, cap]) => `${name}只用前${cap}个魂技`),
       ].filter(Boolean);
       return parts.length ? `交手约定：${parts.join('，')}` : '交手约定已生效';
     }
@@ -167555,6 +168029,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const name = String(meta?.stateName || action || '控制');
       if (meta?.broken === true) return `${actor}砸碎了${actor === target ? '困住自己的' : `${target}身上的`}【${name}】`;
       if (Number.isFinite(Number(meta?.after))) return `${actor}砸向${actor === target ? '困住自己的' : `${target}身上的`}【${name}】，耐久 ${Math.round(Number(meta.before))} → ${Math.round(Number(meta.after))}（共 ${Math.round(Number(meta.durability))}）`;
+      return `${actor}要砸的【${name}】已经不在了`;
+    }
+    // 道具破坏（11-19）：砸一下、砸坏。
+    if (kind === 'gear_strike') {
+      const name = String(meta?.gearName || action || '装备');
+      if (meta?.broken === true) return `${actor}砸坏了${target}的【${name}】`;
+      if (Number.isFinite(Number(meta?.after))) return `${actor}砸向${target}的【${name}】，耐久 ${Math.round(Number(meta.before))} → ${Math.round(Number(meta.after))}`;
       return `${actor}要砸的【${name}】已经不在了`;
     }
     if (kind === 'state_expire' && event.ruleCode === 'CONTROL_BROKEN') return `${target || actor}的【${namedState || action}】被${String(meta?.by || '人')}砸碎，解除了`;
@@ -169677,8 +170158,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         return token ? Math.max(0, number(token.value, 0)) : remaining;
       }, 0);
       summaries.push(finalRemaining > 0
-        ? `${fact.targetName || fact.actorName}的护盾累计吸收${absorbed}点伤害，剩余${finalRemaining}点`
-        : `${fact.targetName || fact.actorName}的护盾累计吸收${absorbed}点伤害后破裂`);
+        // 按比例算的护盾会带小数，显示取整（擂台连场模拟里出现「剩余594.3157351809084点」被审计拦下）。
+        ? `${fact.targetName || fact.actorName}的护盾累计吸收${Math.round(absorbed)}点伤害，剩余${Math.round(finalRemaining)}点`
+        : `${fact.targetName || fact.actorName}的护盾累计吸收${Math.round(absorbed)}点伤害后破裂`);
     });
     return unique(summaries).join('；');
   }
@@ -171037,9 +171519,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         ['我方', shieldBySide.player],
         ['敌方', shieldBySide.enemy],
       ].flatMap(([label, values]) => [
-        values.gained > 0 ? `${label}护盾增加${values.gained}点` : '',
-        values.absorbed > 0 ? `${label}护盾吸收${values.absorbed}点伤害` : '',
-        values.lost > values.absorbed ? `${label}另有${values.lost - values.absorbed}点护盾消散` : '',
+        // 护盾值按比例算会带小数（擂台连场模拟里出现「护盾增加2283.9999999999995点」），合计后取整显示。
+        values.gained > 0 ? `${label}护盾增加${Math.round(values.gained)}点` : '',
+        values.absorbed > 0 ? `${label}护盾吸收${Math.round(values.absorbed)}点伤害` : '',
+        Math.round(values.lost - values.absorbed) > 0 ? `${label}另有${Math.round(values.lost - values.absorbed)}点护盾消散` : '',
       ]).filter(Boolean);
       if (shieldParts.length) summaryParts.push(shieldParts.join('，'));
       const resourceParts = Object.entries(resourceDeltaBySide).flatMap(([side, resources]) => {
@@ -176118,6 +176601,9 @@ class BattleUIComponent {
                 ? { type: 'tactical', actionType: '人盾', name: `人盾·${unitNameById(String(declaration.humanShield.unitId || ''))}`, category: '战术' }
               : actionKind === 'EQUIP' && /^砸·/.test(String(declaration.releaseSlot || ''))
                 ? { type: 'tactical', actionType: '砸控制物', name: String(declaration.skill?.name || '砸控制物'), category: '特殊动作' }
+              // 道具破坏（11-19）：砸敌人的兵器或魂导器。
+              : actionKind === 'EQUIP' && /^砸装备·/.test(String(declaration.releaseSlot || ''))
+                ? { type: 'tactical', actionType: '砸装备', name: String(declaration.skill?.name || '砸装备'), category: '特殊动作' }
               : actionKindMeta[actionKind];
             if (!meta) return;
             const skill = actionKind === 'WITHDRAW'
