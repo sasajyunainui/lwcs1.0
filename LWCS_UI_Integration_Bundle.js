@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:dac04abb407e84206b2956adb5dcc8a9e25d6b67e668b492bc6213291b30d33b|cockpit/designer-model.js:cbbb8156854ed85b560637420324e21db9e899fb9cbef68ba1ccca6d0d217fc2|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:f7863a467968413b22ccad70a98850936cd3577803f6f3ff0fa3659692a28734|cockpit/designer-model.js:9fa525d85da9e93e60685dcb60d39e224db56c6cd15d88cefe9c37e9e9d580ac|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -23052,10 +23052,11 @@
     );
     safeRecords(deepGet(activeChar, '功法', {})).forEach(art => {
       const 是紫极魔瞳 = toText(art.name, '') === '紫极魔瞳';
+      const 有境界 = 是紫极魔瞳 || toText(art.name, '') === '控鹤擒龙' && toText(art.境界, '');
       extraSkills.push({
         category: '功法绝学',
         name: art.name,
-        level: 是紫极魔瞳 ? `Lv.${art.lv || 1} / ${toText(art.境界, '纵观')}` : '已掌握',
+        level: 有境界 ? `Lv.${art.lv || 1} / ${toText(art.境界, 是紫极魔瞳 ? '纵观' : '入门')}` : '已掌握',
         desc: toText(art.描述, '暂无描述'),
         preview: '',
       });
@@ -27637,8 +27638,9 @@ ${播报文本}
   function 构建功法学习记录_桥接(功法名 = '', 描述 = '未知', 根数据 = {}) {
     const 名称 = toText(功法名, '').trim();
     const 功法描述 = normalizeSkillUiText(描述, '未知');
-    if (名称 !== '紫极魔瞳') return { 描述: 功法描述 };
     const 当前tick = Math.max(0, Math.floor(toNumber(deepGet(根数据, ['world', '时间', 'tick'], 0), 0)));
+    if (名称 === '控鹤擒龙') return { 境界: '入门', lv: 1, 获得tick: 当前tick, 描述: 功法描述 };
+    if (名称 !== '紫极魔瞳') return { 描述: 功法描述 };
     return { 境界: '纵观', lv: 1, 获得tick: 当前tick, 描述: 功法描述 };
   }
 
@@ -46278,6 +46280,16 @@ ${播报文本}
             获得tick: Math.max(0, Math.floor(已有获得tick)),
             描述: normalizeSkillUiText(nextSkill?.效果描述, '无'),
           } });
+        } else if (功法名 === '控鹤擒龙') {
+          // 控鹤擒龙存境界（11-19，MVU_Schema_Runtime 控鹤擒龙境界等级表_V1）：入门 / 小成 / 大成；获得tick 保留原值（开局就会的没有）。
+          const 已有获得tick = deepGet(rootData, [...功法路径, '获得tick'], undefined);
+          const 境界 = ['入门', '小成', '大成'].includes(功法境界) ? 功法境界 : toText(deepGet(rootData, [...功法路径, '境界'], ''), '') || '入门';
+          updates.push({ path: 功法路径, value: {
+            境界,
+            lv: { 入门: 1, 小成: 2, 大成: 3 }[境界] || 1,
+            ...(已有获得tick !== undefined ? { 获得tick: Math.max(0, Math.floor(toNumber(已有获得tick, 0))) } : {}),
+            描述: normalizeSkillUiText(nextSkill?.效果描述, '无'),
+          } });
         } else {
           updates.push({ path: 功法路径, value: { 描述: normalizeSkillUiText(nextSkill?.效果描述, '无') } });
         }
@@ -47462,6 +47474,8 @@ ${播报文本}
     const 下拉 = (选项, 当前, 空) => ({ kind: 'select', ...设计台下拉(选项, 当前, 空) });
     const 使用限制无 = (designerDraft.使用限制周期 || '无限制') === '无限制';
     const 是紫极魔瞳功法 = previewMeta.scope === 'art' && (designerDraft.name || previewMeta.label) === '紫极魔瞳';
+    // 控鹤擒龙也存境界（入门 / 小成 / 大成，等级 1～3）。
+    const 是控鹤擒龙功法 = previewMeta.scope === 'art' && (designerDraft.name || previewMeta.label) === '控鹤擒龙';
     const top = {
       name: { kind: 'text', value: 属性回读(designerDraft.name), placeholder: 属性回读(`请输入${scopeLabels.nameFieldLabel}`) },
       type: { kind: 'hidden', value: 属性回读(designerDraft.type || '输出') },
@@ -47473,8 +47487,8 @@ ${播报文本}
       被动触发: 下拉(技能设计台被动触发选项, designerDraft.被动触发 || '常驻'),
       被动触发周期: 下拉(技能设计台被动触发周期选项, 上下文.被动触发限制.周期),
       被动触发次数: { kind: 'number', min: '1', step: '1', value: 数字输入回读(String(上下文.被动触发限制.次数)) },
-      artStage: 是紫极魔瞳功法 ? { kind: 'text', value: 属性回读(designerDraft.artStage || '未入门') } : null,
-      artLevel: 是紫极魔瞳功法 ? { kind: 'number', min: '1', max: '4', step: '1', value: 数字输入回读(String(Math.max(1, toNumber(designerDraft.artLevel, 1)))) } : null,
+      artStage: 是紫极魔瞳功法 || 是控鹤擒龙功法 ? { kind: 'text', value: 属性回读(designerDraft.artStage || '未入门') } : null,
+      artLevel: 是紫极魔瞳功法 || 是控鹤擒龙功法 ? { kind: 'number', min: '1', max: 是控鹤擒龙功法 ? '3' : '4', step: '1', value: 数字输入回读(String(Math.max(1, toNumber(designerDraft.artLevel, 1)))) } : null,
       constructItemCount: { kind: 'number', min: '1', step: '1', value: 数字输入回读(String(Math.max(1, toNumber(designerDraft.constructItemCount, 1)))) },
       constructDurationTick: 描述tick输入({ label: '有效期', hint: '' }, 'constructDurationTick', Math.max(0, toNumber(designerDraft.constructDurationTick, 0)), { 最小tick: 0, 默认tick: 0 }),
       constructDescription: { kind: 'text', value: 属性回读(designerDraft.constructDescription || ''), placeholder: '例如：闪烁着暗金光芒的晶体' },

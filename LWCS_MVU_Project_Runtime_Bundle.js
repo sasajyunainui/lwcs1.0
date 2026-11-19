@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:dac188893de98943232f4611837611e5921f3afa94bde4a6952a30f30634cabe|MVU_Schema_Runtime.js:49b19d46acb65daa6331a69604b36c5ea833c157c70b633975c015ff4953374a|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:1f7a519a850bc170c3da108bfe22614d098b593bc573d8b38a5c0a7bec81aba5 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:14b1832c7291424be45db95f8a87dee2233ba867c03680df8b9e125269c5afa1|MVU_Schema_Runtime.js:ce8f3eaf08bd1716340035e3c08dbba15bc92d0da2980e52a6573e9b418bd123|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:1f7a519a850bc170c3da108bfe22614d098b593bc573d8b38a5c0a7bec81aba5 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -9381,7 +9381,7 @@ var SKILL_MECHANISM_NAME_TO_PROTOTYPES_V1 = Object.freeze({
   群体撤离: [原型编译条目('群体撤离')],
 });
 
-var 技能状态选项_V1 = Object.freeze(['中毒', '流血', '灼烧', '冻伤', '持续创伤', '持续恢复', '迟缓', '资源燃烧', '眩晕', '束缚', '冻结', '沉睡', '沉默', '缴械', '封甲', '致盲', '禁疗', '治疗反转', '隐匿', '探查屏蔽', '共享视野', '护盾', '无视异常', '霸体', '异常抗性', '标记', '封技', '护卫', '嘲讽', '防御剥夺', '精神抗性剥夺', '虚弱', '失控', '反噬', '精神紊乱', '魂力枯竭', '僵直', '麻痹', '混乱', '坚挺金苍蝇·武魂真身维持']);
+var 技能状态选项_V1 = Object.freeze(['中毒', '流血', '灼烧', '冻伤', '持续创伤', '持续恢复', '迟缓', '资源燃烧', '眩晕', '束缚', '冻结', '沉睡', '沉默', '缴械', '封甲', '致盲', '禁疗', '治疗反转', '隐匿', '探查屏蔽', '共享视野', '护盾', '无视异常', '霸体', '属性隔绝', '异常抗性', '标记', '封技', '护卫', '嘲讽', '防御剥夺', '精神抗性剥夺', '虚弱', '失控', '反噬', '精神紊乱', '魂力枯竭', '僵直', '麻痹', '混乱', '坚挺金苍蝇·武魂真身维持']);
 var 技能负面状态选项_V1 = Object.freeze(['中毒', '流血', '灼烧', '冻伤', '持续创伤', '迟缓', '资源燃烧', '眩晕', '束缚', '冻结', '沉睡', '沉默', '缴械', '封甲', '致盲', '禁疗', '治疗反转', '标记', '封技', '嘲讽', '防御剥夺', '精神抗性剥夺', '虚弱', '失控', '反噬', '精神紊乱', '魂力枯竭', '僵直', '麻痹', '混乱']);
 var 战斗外可继承技能状态选项_V1 = Object.freeze(['中毒', '灼烧', '冻伤', '虚弱', '反噬', '精神紊乱', '魂力枯竭']);
 var 日常系统状态选项_V1 = Object.freeze(['饥饿']);
@@ -10482,7 +10482,8 @@ var 状态施加状态分类矩阵_V1 = Object.freeze({
   持续伤害类: Object.freeze(['中毒', '流血', '灼烧', '冻伤', '持续创伤']),
   恢复资源类: Object.freeze(['持续恢复']),
   硬控封禁类: Object.freeze(['眩晕', '束缚', '冻结', '沉睡', '沉默', '致盲', '封技', '缴械', '封甲', '麻痹', '混乱', '僵直', '失控', '精神紊乱']),
-  防御布尔类: Object.freeze(['霸体', '无视异常']),
+  // 属性隔绝（T28，11-19 用户定「进目录，归防御布尔类」）：隔开元素——克制加成作废、元素附带效果挡掉，伤害照常打在身上（BattlePreview attributeIsolated）。
+  防御布尔类: Object.freeze(['霸体', '无视异常', '属性隔绝']),
   防御数值类: Object.freeze(['护盾', '护卫', '异常抗性']),
   增益类: Object.freeze(['隐匿', '探查屏蔽', '共享视野']),
   削弱标记类: Object.freeze(['标记', '嘲讽', '防御剥夺', '精神抗性剥夺', '虚弱', '禁疗', '治疗反转', '迟缓', '资源燃烧', '反噬', '魂力枯竭']),
@@ -21041,7 +21042,7 @@ function 效果是正向辅助_V1(效果 = {}) {
   }
   if (原型 === '状态施加') {
     const 状态 = String(效果?.状态 || '').trim();
-    return ['持续恢复', '护盾', '隐匿', '共享视野', '无视异常', '霸体', '异常抗性', '护卫'].includes(状态);
+    return ['持续恢复', '护盾', '隐匿', '共享视野', '无视异常', '霸体', '属性隔绝', '异常抗性', '护卫'].includes(状态);
   }
   return false;
 }
@@ -21053,7 +21054,7 @@ function 效果是防御辅助_V1(效果 = {}) {
     const 结算 = String(效果?.结算 || '').trim();
     return ['受到伤害', '伤害分摊', '伤害吸收', '伤害转移'].includes(结算);
   }
-  if (原型 === '状态施加') return ['护盾', '无视异常', '霸体', '异常抗性', '护卫'].includes(String(效果?.状态 || '').trim());
+  if (原型 === '状态施加') return ['护盾', '无视异常', '霸体', '属性隔绝', '异常抗性', '护卫'].includes(String(效果?.状态 || '').trim());
   return false;
 }
 
@@ -32753,6 +32754,12 @@ function 收集当前时间线命中内置角色名_V1(当前tick = 0, 文本 = 
 
 var 紫极魔瞳境界等级表_V1 = Object.freeze({ 纵观: 1, 入微: 2, 芥子: 3, 浩瀚: 4 });
 var 紫极魔瞳精神境界阶位表_V1 = Object.freeze({ 灵元境: 1, 灵通境: 2, 灵海境: 3, 灵渊境: 4, 灵域境: 5, 神元境: 6 });
+// 控鹤擒龙境界（11-19 用户定存境界）：入门 → 小成 → 大成。库里与开局就会的（没有获得tick）按等级定：不到 30 级入门、不到 60 级小成、
+// 60 级起大成；游戏里学会的（研读秘籍、传授，带获得tick）按会了多久：满 1 年小成、满 5 年大成。只升不降。战斗里卸力按它加成
+// （BattlePreview deflectArt）。
+var 控鹤擒龙境界等级表_V1 = Object.freeze({ 入门: 1, 小成: 2, 大成: 3 });
+var 控鹤擒龙小成tick_V1 = 51840;
+var 控鹤擒龙大成tick_V1 = 5 * 51840;
 var 紫极魔瞳三月tick_V1 = 3 * 30 * 144;
 var 紫极魔瞳三年tick_V1 = 3 * 51840;
 var 紫极魔瞳十年tick_V1 = 10 * 51840;
@@ -32793,6 +32800,12 @@ function 构建最新功法记录_V1(功法名 = '', 记录 = {}) {
   const 名称 = String(功法名 || '').trim();
   const 来源 = 记录 && typeof 记录 === 'object' && !Array.isArray(记录) ? 记录 : {};
   const 描述 = String(来源.描述 || 来源.效果描述 || 来源.画面描述 || '无').trim() || '无';
+  if (名称 === '控鹤擒龙') {
+    const 已有境界 = 控鹤擒龙境界等级表_V1[String(来源.境界 || '').trim()] ? String(来源.境界).trim() : '';
+    const 输出 = { ...(已有境界 ? { 境界: 已有境界, lv: 控鹤擒龙境界等级表_V1[已有境界] } : {}), 描述 };
+    if (Object.prototype.hasOwnProperty.call(来源, '获得tick')) 输出.获得tick = Math.max(0, Math.floor(Number(来源.获得tick || 0)));
+    return 输出;
+  }
   if (名称 !== '紫极魔瞳') return { 描述 };
   const 境界 = 紫极魔瞳境界等级表_V1[String(来源.境界 || '').trim()] ? String(来源.境界).trim() : '纵观';
   const 输出 = {
@@ -32829,6 +32842,24 @@ function 计算紫极魔瞳境界_V1(角色 = {}, 当前tick = 0) {
   }
   功法.境界 = 境界;
   功法.lv = 紫极魔瞳境界等级表_V1[境界];
+  return 功法;
+}
+
+function 计算控鹤擒龙境界_V1(角色 = {}, 当前tick = 0) {
+  const 功法 = 角色?.功法?.['控鹤擒龙'];
+  if (!功法 || typeof 功法 !== 'object' || Array.isArray(功法)) return null;
+  let 境界 = '入门';
+  if (Object.prototype.hasOwnProperty.call(功法, '获得tick')) {
+    const 持有tick = Math.max(0, Math.floor(Number(当前tick || 0)) - Math.max(0, Math.floor(Number(功法.获得tick || 0))));
+    境界 = 持有tick >= 控鹤擒龙大成tick_V1 ? '大成' : 持有tick >= 控鹤擒龙小成tick_V1 ? '小成' : '入门';
+  } else {
+    const 等级 = Math.max(0, Number(角色?.属性?.等级 || 0));
+    境界 = 等级 >= 60 ? '大成' : 等级 >= 30 ? '小成' : '入门';
+  }
+  const 当前等级 = Math.max(0, Number(功法.lv || 0), 控鹤擒龙境界等级表_V1[String(功法.境界 || '').trim()] || 0);
+  if (当前等级 > 控鹤擒龙境界等级表_V1[境界]) 境界 = Object.keys(控鹤擒龙境界等级表_V1).find(名 => 控鹤擒龙境界等级表_V1[名] === Math.min(3, 当前等级)) || 境界;
+  功法.境界 = 境界;
+  功法.lv = 控鹤擒龙境界等级表_V1[境界];
   return 功法;
 }
 
@@ -36827,6 +36858,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       if (!(safeDelta > 0) || !c?.属性) return;
       const segmentTick = Math.max(0, Number(segmentCurrentTick ?? currentTick) || 0);
       计算紫极魔瞳境界_V1(c, segmentTick);
+      计算控鹤擒龙境界_V1(c, segmentTick);
       const normalizedActionMode = normalizeCharacterActionMode_ACU(actionMode);
       const 应用伤势恢复到生命值 = 基础恢复倍率 => {
         const 安全基础恢复倍率 = Math.max(0, Number(基础恢复倍率 || 0));

@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:a9d1df2457d380dbc752fdb1f6e185e2c08279a583c00586b2e0ce0964dc8bfe|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:4ccbd7dfc3c4ed146a04aa7734cc4c1c820c83ffc3dbae4d2a7d79b8afe10181|BattleRuntime_Module.js:afdc8fe3b1dbc6d1148d3672a0449bf80ab046589dda091b06a7b06df73ff736|BattleReport_Module.js:4b3c87f3188dc60d24d0c4d8bcd3afb3789827a8d7b1f5a3b09e6a843a313bb4|BattleUI_Module.js:b0a9ca72412554bdb7aefec6687cba12f332d6a270b5d5b39d764ce8e4d2f11e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:ef9c82c219ab3b396aacfbcb4915d413312e15df2ad87cc246dcb50a9de9e232|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:2a440da1f4435d1ac7f7b338e5f3a8528f8a664431bd36239733e3c41596aaca|BattleRuntime_Module.js:405ce462986d65a792833110d2dcec72623c8336a8f43b9bb1162b17a7416078|BattleReport_Module.js:03e1480d2db33716caa41db47e6596be5f95592aca6637327406401814fe5450|BattleUI_Module.js:b0a9ca72412554bdb7aefec6687cba12f332d6a270b5d5b39d764ce8e4d2f11e */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -32040,6 +32040,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
      近身卸开了，对方失衡：攻击破绽 +DEFLECT_UNBALANCE（同进攻留下的破绽，到它下一次行动清掉），这回合抓它空当 +DEFLECT_CATCH_BONUS。
      远程被卸只减伤。都是起始值，实测校准。 */
   const DEFLECT_SHARE_AT_PAR = 0.45, DEFLECT_CAP = 0.8, DEFLECT_FAIL_RATIO = 0.6, DEFLECT_UNBALANCE = 0.5, DEFLECT_CATCH_BONUS = 0.15;
+  /* 控鹤擒龙（11-19 用户定「卸力份额加成，按境界」）：唐门擒拿控劲绝学（功法，描述「隔空牵引、卸力与夺势」），每一境
+     （MVU 控鹤擒龙境界等级表_V1：入门 1、小成 2、大成 3）卸开的份额 +DEFLECT_ART_SHARE，拨得开的力量比下限低 DEFLECT_ART_FAIL；
+     记录里还没有境界的（MVU 还没结算过）按同一条等级规则：不到 30 级入门、不到 60 级小成、60 级起大成。起始值，实测再定。 */
+  const DEFLECT_ART = '控鹤擒龙', DEFLECT_ART_SHARE = 0.05, DEFLECT_ART_FAIL = 0.05;
+  const DEFLECT_ART_LEVELS = Object.freeze({ 入门: 1, 小成: 2, 大成: 3 });
+  function deflectArt(unit = {}) {
+    const art = unit?.功法 && typeof unit.功法 === 'object' ? unit.功法[DEFLECT_ART] : null;
+    if (!art || typeof art !== 'object') return 0;
+    const level = Number(readEffectiveUnitLevel(unit)) || 0;
+    return Math.max(1, Math.min(3, Number(art.lv) || DEFLECT_ART_LEVELS[String(art.境界 || '').trim()] || (level >= 60 ? 3 : level >= 30 ? 2 : 1)));
+  }
   function canDeflect(incoming = null) {
     const move = incomingMove(incoming);
     if (!move) return false;
@@ -32056,14 +32067,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (!base || !(soul > 0) || !(Number(base.sp_max) > 0)) return strength;
     return Math.max(1, soul * Number(base.str || 1) / Number(base.sp_max));
   }
-  // { multiplier（挨上的份额）, deflected, ratio, failed, unbalance（近身卸开才有）}；卸不了的来招 null。
+  // { multiplier（挨上的份额）, deflected, ratio, failed, unbalance（近身卸开才有）, art（会控鹤擒龙）}；卸不了的来招 null。
   function deflectOutcome(reactor = {}, sourceActor = {}, incoming = null) {
     if (!canDeflect(incoming)) return null;
     const ratio = Math.max(0, Number(readCombatStat(reactor, 'str')) || 0) / deflectForce(sourceActor, incoming);
-    const failed = ratio < DEFLECT_FAIL_RATIO;
-    const deflected = failed ? 0 : clamp(DEFLECT_SHARE_AT_PAR * ratio, 0, DEFLECT_CAP);
+    const art = deflectArt(reactor);
+    const failed = ratio < DEFLECT_FAIL_RATIO - art * DEFLECT_ART_FAIL;
+    const deflected = failed ? 0 : clamp(DEFLECT_SHARE_AT_PAR * ratio + art * DEFLECT_ART_SHARE, 0, DEFLECT_CAP);
     const melee = declarationDamageClass(incomingMove(incoming)) === 'MELEE';
-    return Object.freeze({ multiplier: 1 - deflected, deflected, ratio, failed, unbalance: !failed && melee ? DEFLECT_UNBALANCE : 0 });
+    return Object.freeze({ multiplier: 1 - deflected, deflected, ratio, failed, unbalance: !failed && melee ? DEFLECT_UNBALANCE : 0, art: art > 0, artLevel: art });
   }
   // 失衡：卸开的那一刻给对方加破绽（attackOpening 记 unbalanced），这回合抓空当更容易。
   function applyDeflectUnbalance(sourceActor = {}, outcome = null) {
@@ -81910,6 +81922,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // every candidate of a mirror match worth the whole battle or nothing), worth more the sooner it is decided.
     return score + R20_WIN_VALUE * Math.tanh(R20_WIN_SLOPE * score) * R20_ROUND_DISCOUNT ** (standing.size === 1 ? time : horizon);
   }
+  // The rows the race brings down with the actor letting its action of this round go by (idle until its next round, as
+  // r20Shadow plays every candidate) — 留手 holds nothing against hurting them, they are hurt to the floor anyway. Once per
+  // table, side and actor (the table is sealed: the cache sits beside it).
+  const r20DownAnywayCache = new WeakMap();
+  function r20DownAnyway(table, own, actorRow) {
+    if (!r20DownAnywayCache.has(table)) r20DownAnywayCache.set(table, new Map());
+    const cache = r20DownAnywayCache.get(table), key = `${own}|${actorRow}`;
+    if (cache.has(key)) return cache.get(key);
+    const plan = { falls: [], idle: table.sides.map((side, row) => (row === actorRow ? 1 : 0)) };
+    r20Race(table, own, plan);
+    const down = new Set(plan.falls.map(entry => entry.row));
+    cache.set(key, down);
+    return down;
+  }
   // The cells of a set of units: who can act, whom a taunt binds, and for every pair what one lands on, gives, stops,
   // keeps off and answers the other.
   function r20Cells(units, sides, ids, world, context, skipped) {
@@ -83046,7 +83072,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const changed = new Array(count).fill(false);
     for (const [row] of rebuilt) if (!unchangedRows.has(row)) changed[row] = true;
     strikes.sort((left, right) => left.at - right.at);
-    const plan = { denied, until, base: table, leaves, baseCount: count, changed, busy, strikes: strikes.length ? strikes : null, expired: expiredCells, cuts: cuts.length ? cuts : null, ...(trace ? { falls: [] } : {}) };
+    // 本回合已用掉（T36 11-19 用户定）: the actor's action this round is the candidate being valued, so the race has it bring
+    // nothing more of its own until its next round (idle, as 援护 has it: it still answers what comes at it). Before, letting the
+    // action go by kept the actor's output of this round in the race: holding back cost nearly nothing, and a hair of cost or 留手
+    // tipped every strike to it, round after round (35 级强攻×精神, 切磋: the foe at 15.6% fell "at 0.25" whether it was struck or
+    // not — 115 rounds where the old valuation took 4).
+    const idle = actorRow !== undefined && String(request.actionOpportunity?.role || 'ACTIVE').toUpperCase() === 'ACTIVE'
+      ? table.sides.map((side, row) => (row === actorRow ? 1 : 0)) : null;
+    const plan = { denied, until, base: table, leaves, baseCount: count, changed, busy, strikes: strikes.length ? strikes : null, expired: expiredCells, cuts: cuts.length ? cuts : null, idle, ...(trace ? { falls: [] } : {}) };
     // A unit that may or may not be down is valued both ways (the settlement is not run again): the race with it gone
     // and with what is left of it if it stands, by the chance of each — only the most open such unit; the others keep
     // their chance as a weight.
@@ -83178,9 +83211,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         diag.infoOdds = odds;
       }
     }
-    // 留手: in a spar, what of a hit lands below the 重伤 line (R20_SPAR_INJURY_LINE of the target's HP) is held against it.
+    // 留手: in a spar, what of a hit lands below the 重伤 line (R20_SPAR_INJURY_LINE of the target's HP) is held against it —
+    // only what the action adds (T36 11-19 用户定「只扣推演里本不会发生的」): a foe the race brings down to the spar's floor anyway,
+    // the actor letting this action go by (r20DownAnyway), is hurt below the line whoever lands it and whenever, so the hit that
+    // does it now is not held against it. Before, the finishing hit always paid and the race's later hits never did.
     let restraint = 0;
+    const downAnyway = spar && actorRow !== undefined ? r20DownAnyway(table, own, actorRow) : null;
     if (spar && actorRow !== undefined) for (const [unit, row] of foes) {
+      if (downAnyway.has(row)) continue;
       const now = findUnitInWorld(after, preview.unitId(unit));
       if (!now) continue;
       const maximum = Math.max(1, preview.readHpMax(unit)), line = R20_SPAR_INJURY_LINE * maximum;
@@ -101202,7 +101240,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           guardWeightFactor: previewRuntime.guardWeightFactor(hitShare), preparedDefenseConsumed: !!preparedDefense,
           // 卖破绽（T32）: the stance was a bait — the strike back is sure (openStructuredCounterWindow).
           ...(preparedDefense?.bait === true ? { baitConsumed: true } : {}),
-          ...(deflect ? { deflect: true, deflected: deflect.deflected, strengthRatio: deflect.ratio, deflectFailed: deflect.failed, unbalance: deflect.unbalance } : {}) },
+          ...(deflect ? { deflect: true, deflected: deflect.deflected, strengthRatio: deflect.ratio, deflectFailed: deflect.failed, unbalance: deflect.unbalance, ...(deflect.art ? { deflectArt: '控鹤擒龙' } : {}) } : {}) },
       });
       if (!preparedDefense) payActionStamina({ combatData, actor: reactor, nature: 'DEFEND', opponent: sourceActor, action: { actionName: deflect ? '卸力' : actionKind === 'GUARD' ? '护卫' : '防御', actionKind }, actionEvent: event, actionRole: 'REACTION' });
       return {
@@ -112928,7 +112966,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (kind === 'defend' && meta?.deflect === true) {
       const by = target && target !== actor ? target : '对方';
       if (meta.deflectFailed === true) return `${actor}想卸开${by}的攻势，但力量差太多（力量比 ${Math.round(number(meta.strengthRatio, 0) * 100) / 100}）没拨开，整招挨上`;
-      return `${actor}以【卸力】拨开${by}的攻势，偏开${Math.round(number(meta.deflected, 0) * 1000) / 10}%${number(meta.unbalance, 0) > 0 ? `，${by}失衡露出空当` : ''}`;
+      return `${actor}${meta.deflectArt ? `运起${meta.deflectArt}，` : ''}以【卸力】拨开${by}的攻势，偏开${Math.round(number(meta.deflected, 0) * 1000) / 10}%${number(meta.unbalance, 0) > 0 ? `，${by}失衡露出空当` : ''}`;
     }
     if (kind === 'defend' || kind === 'guard') {
       const damageMultiplier = number(meta?.damageMultiplier, NaN);

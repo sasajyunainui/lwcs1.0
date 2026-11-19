@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:dac188893de98943232f4611837611e5921f3afa94bde4a6952a30f30634cabe|MVU_Schema_Runtime.js:49b19d46acb65daa6331a69604b36c5ea833c157c70b633975c015ff4953374a|BattlePreview_Module.js:a9d1df2457d380dbc752fdb1f6e185e2c08279a583c00586b2e0ce0964dc8bfe|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:4ccbd7dfc3c4ed146a04aa7734cc4c1c820c83ffc3dbae4d2a7d79b8afe10181|BattleRuntime_Module.js:afdc8fe3b1dbc6d1148d3672a0449bf80ab046589dda091b06a7b06df73ff736 */
+/* sources-sha256: MVU_Skill_Runtime.js:14b1832c7291424be45db95f8a87dee2233ba867c03680df8b9e125269c5afa1|MVU_Schema_Runtime.js:ce8f3eaf08bd1716340035e3c08dbba15bc92d0da2980e52a6573e9b418bd123|BattlePreview_Module.js:ef9c82c219ab3b396aacfbcb4915d413312e15df2ad87cc246dcb50a9de9e232|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:2a440da1f4435d1ac7f7b338e5f3a8528f8a664431bd36239733e3c41596aaca|BattleRuntime_Module.js:405ce462986d65a792833110d2dcec72623c8336a8f43b9bb1162b17a7416078 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -4860,7 +4860,7 @@ var SKILL_MECHANISM_NAME_TO_PROTOTYPES_V1 = Object.freeze({
   群体撤离: [原型编译条目('群体撤离')],
 });
 
-var 技能状态选项_V1 = Object.freeze(['中毒', '流血', '灼烧', '冻伤', '持续创伤', '持续恢复', '迟缓', '资源燃烧', '眩晕', '束缚', '冻结', '沉睡', '沉默', '缴械', '封甲', '致盲', '禁疗', '治疗反转', '隐匿', '探查屏蔽', '共享视野', '护盾', '无视异常', '霸体', '异常抗性', '标记', '封技', '护卫', '嘲讽', '防御剥夺', '精神抗性剥夺', '虚弱', '失控', '反噬', '精神紊乱', '魂力枯竭', '僵直', '麻痹', '混乱', '坚挺金苍蝇·武魂真身维持']);
+var 技能状态选项_V1 = Object.freeze(['中毒', '流血', '灼烧', '冻伤', '持续创伤', '持续恢复', '迟缓', '资源燃烧', '眩晕', '束缚', '冻结', '沉睡', '沉默', '缴械', '封甲', '致盲', '禁疗', '治疗反转', '隐匿', '探查屏蔽', '共享视野', '护盾', '无视异常', '霸体', '属性隔绝', '异常抗性', '标记', '封技', '护卫', '嘲讽', '防御剥夺', '精神抗性剥夺', '虚弱', '失控', '反噬', '精神紊乱', '魂力枯竭', '僵直', '麻痹', '混乱', '坚挺金苍蝇·武魂真身维持']);
 var 技能负面状态选项_V1 = Object.freeze(['中毒', '流血', '灼烧', '冻伤', '持续创伤', '迟缓', '资源燃烧', '眩晕', '束缚', '冻结', '沉睡', '沉默', '缴械', '封甲', '致盲', '禁疗', '治疗反转', '标记', '封技', '嘲讽', '防御剥夺', '精神抗性剥夺', '虚弱', '失控', '反噬', '精神紊乱', '魂力枯竭', '僵直', '麻痹', '混乱']);
 var 战斗外可继承技能状态选项_V1 = Object.freeze(['中毒', '灼烧', '冻伤', '虚弱', '反噬', '精神紊乱', '魂力枯竭']);
 var 日常系统状态选项_V1 = Object.freeze(['饥饿']);
@@ -5961,7 +5961,8 @@ var 状态施加状态分类矩阵_V1 = Object.freeze({
   持续伤害类: Object.freeze(['中毒', '流血', '灼烧', '冻伤', '持续创伤']),
   恢复资源类: Object.freeze(['持续恢复']),
   硬控封禁类: Object.freeze(['眩晕', '束缚', '冻结', '沉睡', '沉默', '致盲', '封技', '缴械', '封甲', '麻痹', '混乱', '僵直', '失控', '精神紊乱']),
-  防御布尔类: Object.freeze(['霸体', '无视异常']),
+  // 属性隔绝（T28，11-19 用户定「进目录，归防御布尔类」）：隔开元素——克制加成作废、元素附带效果挡掉，伤害照常打在身上（BattlePreview attributeIsolated）。
+  防御布尔类: Object.freeze(['霸体', '无视异常', '属性隔绝']),
   防御数值类: Object.freeze(['护盾', '护卫', '异常抗性']),
   增益类: Object.freeze(['隐匿', '探查屏蔽', '共享视野']),
   削弱标记类: Object.freeze(['标记', '嘲讽', '防御剥夺', '精神抗性剥夺', '虚弱', '禁疗', '治疗反转', '迟缓', '资源燃烧', '反噬', '魂力枯竭']),
@@ -16520,7 +16521,7 @@ function 效果是正向辅助_V1(效果 = {}) {
   }
   if (原型 === '状态施加') {
     const 状态 = String(效果?.状态 || '').trim();
-    return ['持续恢复', '护盾', '隐匿', '共享视野', '无视异常', '霸体', '异常抗性', '护卫'].includes(状态);
+    return ['持续恢复', '护盾', '隐匿', '共享视野', '无视异常', '霸体', '属性隔绝', '异常抗性', '护卫'].includes(状态);
   }
   return false;
 }
@@ -16532,7 +16533,7 @@ function 效果是防御辅助_V1(效果 = {}) {
     const 结算 = String(效果?.结算 || '').trim();
     return ['受到伤害', '伤害分摊', '伤害吸收', '伤害转移'].includes(结算);
   }
-  if (原型 === '状态施加') return ['护盾', '无视异常', '霸体', '异常抗性', '护卫'].includes(String(效果?.状态 || '').trim());
+  if (原型 === '状态施加') return ['护盾', '无视异常', '霸体', '属性隔绝', '异常抗性', '护卫'].includes(String(效果?.状态 || '').trim());
   return false;
 }
 
@@ -28232,6 +28233,12 @@ function 收集当前时间线命中内置角色名_V1(当前tick = 0, 文本 = 
 
 var 紫极魔瞳境界等级表_V1 = Object.freeze({ 纵观: 1, 入微: 2, 芥子: 3, 浩瀚: 4 });
 var 紫极魔瞳精神境界阶位表_V1 = Object.freeze({ 灵元境: 1, 灵通境: 2, 灵海境: 3, 灵渊境: 4, 灵域境: 5, 神元境: 6 });
+// 控鹤擒龙境界（11-19 用户定存境界）：入门 → 小成 → 大成。库里与开局就会的（没有获得tick）按等级定：不到 30 级入门、不到 60 级小成、
+// 60 级起大成；游戏里学会的（研读秘籍、传授，带获得tick）按会了多久：满 1 年小成、满 5 年大成。只升不降。战斗里卸力按它加成
+// （BattlePreview deflectArt）。
+var 控鹤擒龙境界等级表_V1 = Object.freeze({ 入门: 1, 小成: 2, 大成: 3 });
+var 控鹤擒龙小成tick_V1 = 51840;
+var 控鹤擒龙大成tick_V1 = 5 * 51840;
 var 紫极魔瞳三月tick_V1 = 3 * 30 * 144;
 var 紫极魔瞳三年tick_V1 = 3 * 51840;
 var 紫极魔瞳十年tick_V1 = 10 * 51840;
@@ -28272,6 +28279,12 @@ function 构建最新功法记录_V1(功法名 = '', 记录 = {}) {
   const 名称 = String(功法名 || '').trim();
   const 来源 = 记录 && typeof 记录 === 'object' && !Array.isArray(记录) ? 记录 : {};
   const 描述 = String(来源.描述 || 来源.效果描述 || 来源.画面描述 || '无').trim() || '无';
+  if (名称 === '控鹤擒龙') {
+    const 已有境界 = 控鹤擒龙境界等级表_V1[String(来源.境界 || '').trim()] ? String(来源.境界).trim() : '';
+    const 输出 = { ...(已有境界 ? { 境界: 已有境界, lv: 控鹤擒龙境界等级表_V1[已有境界] } : {}), 描述 };
+    if (Object.prototype.hasOwnProperty.call(来源, '获得tick')) 输出.获得tick = Math.max(0, Math.floor(Number(来源.获得tick || 0)));
+    return 输出;
+  }
   if (名称 !== '紫极魔瞳') return { 描述 };
   const 境界 = 紫极魔瞳境界等级表_V1[String(来源.境界 || '').trim()] ? String(来源.境界).trim() : '纵观';
   const 输出 = {
@@ -28308,6 +28321,24 @@ function 计算紫极魔瞳境界_V1(角色 = {}, 当前tick = 0) {
   }
   功法.境界 = 境界;
   功法.lv = 紫极魔瞳境界等级表_V1[境界];
+  return 功法;
+}
+
+function 计算控鹤擒龙境界_V1(角色 = {}, 当前tick = 0) {
+  const 功法 = 角色?.功法?.['控鹤擒龙'];
+  if (!功法 || typeof 功法 !== 'object' || Array.isArray(功法)) return null;
+  let 境界 = '入门';
+  if (Object.prototype.hasOwnProperty.call(功法, '获得tick')) {
+    const 持有tick = Math.max(0, Math.floor(Number(当前tick || 0)) - Math.max(0, Math.floor(Number(功法.获得tick || 0))));
+    境界 = 持有tick >= 控鹤擒龙大成tick_V1 ? '大成' : 持有tick >= 控鹤擒龙小成tick_V1 ? '小成' : '入门';
+  } else {
+    const 等级 = Math.max(0, Number(角色?.属性?.等级 || 0));
+    境界 = 等级 >= 60 ? '大成' : 等级 >= 30 ? '小成' : '入门';
+  }
+  const 当前等级 = Math.max(0, Number(功法.lv || 0), 控鹤擒龙境界等级表_V1[String(功法.境界 || '').trim()] || 0);
+  if (当前等级 > 控鹤擒龙境界等级表_V1[境界]) 境界 = Object.keys(控鹤擒龙境界等级表_V1).find(名 => 控鹤擒龙境界等级表_V1[名] === Math.min(3, 当前等级)) || 境界;
+  功法.境界 = 境界;
+  功法.lv = 控鹤擒龙境界等级表_V1[境界];
   return 功法;
 }
 
@@ -32306,6 +32337,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       if (!(safeDelta > 0) || !c?.属性) return;
       const segmentTick = Math.max(0, Number(segmentCurrentTick ?? currentTick) || 0);
       计算紫极魔瞳境界_V1(c, segmentTick);
+      计算控鹤擒龙境界_V1(c, segmentTick);
       const normalizedActionMode = normalizeCharacterActionMode_ACU(actionMode);
       const 应用伤势恢复到生命值 = 基础恢复倍率 => {
         const 安全基础恢复倍率 = Math.max(0, Number(基础恢复倍率 || 0));
@@ -63090,6 +63122,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
      近身卸开了，对方失衡：攻击破绽 +DEFLECT_UNBALANCE（同进攻留下的破绽，到它下一次行动清掉），这回合抓它空当 +DEFLECT_CATCH_BONUS。
      远程被卸只减伤。都是起始值，实测校准。 */
   const DEFLECT_SHARE_AT_PAR = 0.45, DEFLECT_CAP = 0.8, DEFLECT_FAIL_RATIO = 0.6, DEFLECT_UNBALANCE = 0.5, DEFLECT_CATCH_BONUS = 0.15;
+  /* 控鹤擒龙（11-19 用户定「卸力份额加成，按境界」）：唐门擒拿控劲绝学（功法，描述「隔空牵引、卸力与夺势」），每一境
+     （MVU 控鹤擒龙境界等级表_V1：入门 1、小成 2、大成 3）卸开的份额 +DEFLECT_ART_SHARE，拨得开的力量比下限低 DEFLECT_ART_FAIL；
+     记录里还没有境界的（MVU 还没结算过）按同一条等级规则：不到 30 级入门、不到 60 级小成、60 级起大成。起始值，实测再定。 */
+  const DEFLECT_ART = '控鹤擒龙', DEFLECT_ART_SHARE = 0.05, DEFLECT_ART_FAIL = 0.05;
+  const DEFLECT_ART_LEVELS = Object.freeze({ 入门: 1, 小成: 2, 大成: 3 });
+  function deflectArt(unit = {}) {
+    const art = unit?.功法 && typeof unit.功法 === 'object' ? unit.功法[DEFLECT_ART] : null;
+    if (!art || typeof art !== 'object') return 0;
+    const level = Number(readEffectiveUnitLevel(unit)) || 0;
+    return Math.max(1, Math.min(3, Number(art.lv) || DEFLECT_ART_LEVELS[String(art.境界 || '').trim()] || (level >= 60 ? 3 : level >= 30 ? 2 : 1)));
+  }
   function canDeflect(incoming = null) {
     const move = incomingMove(incoming);
     if (!move) return false;
@@ -63106,14 +63149,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (!base || !(soul > 0) || !(Number(base.sp_max) > 0)) return strength;
     return Math.max(1, soul * Number(base.str || 1) / Number(base.sp_max));
   }
-  // { multiplier（挨上的份额）, deflected, ratio, failed, unbalance（近身卸开才有）}；卸不了的来招 null。
+  // { multiplier（挨上的份额）, deflected, ratio, failed, unbalance（近身卸开才有）, art（会控鹤擒龙）}；卸不了的来招 null。
   function deflectOutcome(reactor = {}, sourceActor = {}, incoming = null) {
     if (!canDeflect(incoming)) return null;
     const ratio = Math.max(0, Number(readCombatStat(reactor, 'str')) || 0) / deflectForce(sourceActor, incoming);
-    const failed = ratio < DEFLECT_FAIL_RATIO;
-    const deflected = failed ? 0 : clamp(DEFLECT_SHARE_AT_PAR * ratio, 0, DEFLECT_CAP);
+    const art = deflectArt(reactor);
+    const failed = ratio < DEFLECT_FAIL_RATIO - art * DEFLECT_ART_FAIL;
+    const deflected = failed ? 0 : clamp(DEFLECT_SHARE_AT_PAR * ratio + art * DEFLECT_ART_SHARE, 0, DEFLECT_CAP);
     const melee = declarationDamageClass(incomingMove(incoming)) === 'MELEE';
-    return Object.freeze({ multiplier: 1 - deflected, deflected, ratio, failed, unbalance: !failed && melee ? DEFLECT_UNBALANCE : 0 });
+    return Object.freeze({ multiplier: 1 - deflected, deflected, ratio, failed, unbalance: !failed && melee ? DEFLECT_UNBALANCE : 0, art: art > 0, artLevel: art });
   }
   // 失衡：卸开的那一刻给对方加破绽（attackOpening 记 unbalanced），这回合抓空当更容易。
   function applyDeflectUnbalance(sourceActor = {}, outcome = null) {
@@ -112960,6 +113004,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // every candidate of a mirror match worth the whole battle or nothing), worth more the sooner it is decided.
     return score + R20_WIN_VALUE * Math.tanh(R20_WIN_SLOPE * score) * R20_ROUND_DISCOUNT ** (standing.size === 1 ? time : horizon);
   }
+  // The rows the race brings down with the actor letting its action of this round go by (idle until its next round, as
+  // r20Shadow plays every candidate) — 留手 holds nothing against hurting them, they are hurt to the floor anyway. Once per
+  // table, side and actor (the table is sealed: the cache sits beside it).
+  const r20DownAnywayCache = new WeakMap();
+  function r20DownAnyway(table, own, actorRow) {
+    if (!r20DownAnywayCache.has(table)) r20DownAnywayCache.set(table, new Map());
+    const cache = r20DownAnywayCache.get(table), key = `${own}|${actorRow}`;
+    if (cache.has(key)) return cache.get(key);
+    const plan = { falls: [], idle: table.sides.map((side, row) => (row === actorRow ? 1 : 0)) };
+    r20Race(table, own, plan);
+    const down = new Set(plan.falls.map(entry => entry.row));
+    cache.set(key, down);
+    return down;
+  }
   // The cells of a set of units: who can act, whom a taunt binds, and for every pair what one lands on, gives, stops,
   // keeps off and answers the other.
   function r20Cells(units, sides, ids, world, context, skipped) {
@@ -114096,7 +114154,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const changed = new Array(count).fill(false);
     for (const [row] of rebuilt) if (!unchangedRows.has(row)) changed[row] = true;
     strikes.sort((left, right) => left.at - right.at);
-    const plan = { denied, until, base: table, leaves, baseCount: count, changed, busy, strikes: strikes.length ? strikes : null, expired: expiredCells, cuts: cuts.length ? cuts : null, ...(trace ? { falls: [] } : {}) };
+    // 本回合已用掉（T36 11-19 用户定）: the actor's action this round is the candidate being valued, so the race has it bring
+    // nothing more of its own until its next round (idle, as 援护 has it: it still answers what comes at it). Before, letting the
+    // action go by kept the actor's output of this round in the race: holding back cost nearly nothing, and a hair of cost or 留手
+    // tipped every strike to it, round after round (35 级强攻×精神, 切磋: the foe at 15.6% fell "at 0.25" whether it was struck or
+    // not — 115 rounds where the old valuation took 4).
+    const idle = actorRow !== undefined && String(request.actionOpportunity?.role || 'ACTIVE').toUpperCase() === 'ACTIVE'
+      ? table.sides.map((side, row) => (row === actorRow ? 1 : 0)) : null;
+    const plan = { denied, until, base: table, leaves, baseCount: count, changed, busy, strikes: strikes.length ? strikes : null, expired: expiredCells, cuts: cuts.length ? cuts : null, idle, ...(trace ? { falls: [] } : {}) };
     // A unit that may or may not be down is valued both ways (the settlement is not run again): the race with it gone
     // and with what is left of it if it stands, by the chance of each — only the most open such unit; the others keep
     // their chance as a weight.
@@ -114228,9 +114293,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         diag.infoOdds = odds;
       }
     }
-    // 留手: in a spar, what of a hit lands below the 重伤 line (R20_SPAR_INJURY_LINE of the target's HP) is held against it.
+    // 留手: in a spar, what of a hit lands below the 重伤 line (R20_SPAR_INJURY_LINE of the target's HP) is held against it —
+    // only what the action adds (T36 11-19 用户定「只扣推演里本不会发生的」): a foe the race brings down to the spar's floor anyway,
+    // the actor letting this action go by (r20DownAnyway), is hurt below the line whoever lands it and whenever, so the hit that
+    // does it now is not held against it. Before, the finishing hit always paid and the race's later hits never did.
     let restraint = 0;
+    const downAnyway = spar && actorRow !== undefined ? r20DownAnyway(table, own, actorRow) : null;
     if (spar && actorRow !== undefined) for (const [unit, row] of foes) {
+      if (downAnyway.has(row)) continue;
       const now = findUnitInWorld(after, preview.unitId(unit));
       if (!now) continue;
       const maximum = Math.max(1, preview.readHpMax(unit)), line = R20_SPAR_INJURY_LINE * maximum;
@@ -132252,7 +132322,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           guardWeightFactor: previewRuntime.guardWeightFactor(hitShare), preparedDefenseConsumed: !!preparedDefense,
           // 卖破绽（T32）: the stance was a bait — the strike back is sure (openStructuredCounterWindow).
           ...(preparedDefense?.bait === true ? { baitConsumed: true } : {}),
-          ...(deflect ? { deflect: true, deflected: deflect.deflected, strengthRatio: deflect.ratio, deflectFailed: deflect.failed, unbalance: deflect.unbalance } : {}) },
+          ...(deflect ? { deflect: true, deflected: deflect.deflected, strengthRatio: deflect.ratio, deflectFailed: deflect.failed, unbalance: deflect.unbalance, ...(deflect.art ? { deflectArt: '控鹤擒龙' } : {}) } : {}) },
       });
       if (!preparedDefense) payActionStamina({ combatData, actor: reactor, nature: 'DEFEND', opponent: sourceActor, action: { actionName: deflect ? '卸力' : actionKind === 'GUARD' ? '护卫' : '防御', actionKind }, actionEvent: event, actionRole: 'REACTION' });
       return {
