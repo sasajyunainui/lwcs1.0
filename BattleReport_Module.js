@@ -3986,8 +3986,9 @@
         return token ? Math.max(0, number(token.value, 0)) : remaining;
       }, 0);
       summaries.push(finalRemaining > 0
-        ? `${fact.targetName || fact.actorName}的护盾累计吸收${absorbed}点伤害，剩余${finalRemaining}点`
-        : `${fact.targetName || fact.actorName}的护盾累计吸收${absorbed}点伤害后破裂`);
+        // 按比例算的护盾会带小数，显示取整（擂台连场模拟里出现「剩余594.3157351809084点」被审计拦下）。
+        ? `${fact.targetName || fact.actorName}的护盾累计吸收${Math.round(absorbed)}点伤害，剩余${Math.round(finalRemaining)}点`
+        : `${fact.targetName || fact.actorName}的护盾累计吸收${Math.round(absorbed)}点伤害后破裂`);
     });
     return unique(summaries).join('；');
   }
@@ -5346,9 +5347,10 @@
         ['我方', shieldBySide.player],
         ['敌方', shieldBySide.enemy],
       ].flatMap(([label, values]) => [
-        values.gained > 0 ? `${label}护盾增加${values.gained}点` : '',
-        values.absorbed > 0 ? `${label}护盾吸收${values.absorbed}点伤害` : '',
-        values.lost > values.absorbed ? `${label}另有${values.lost - values.absorbed}点护盾消散` : '',
+        // 护盾值按比例算会带小数（擂台连场模拟里出现「护盾增加2283.9999999999995点」），合计后取整显示。
+        values.gained > 0 ? `${label}护盾增加${Math.round(values.gained)}点` : '',
+        values.absorbed > 0 ? `${label}护盾吸收${Math.round(values.absorbed)}点伤害` : '',
+        Math.round(values.lost - values.absorbed) > 0 ? `${label}另有${Math.round(values.lost - values.absorbed)}点护盾消散` : '',
       ]).filter(Boolean);
       if (shieldParts.length) summaryParts.push(shieldParts.join('，'));
       const resourceParts = Object.entries(resourceDeltaBySide).flatMap(([side, resources]) => {
