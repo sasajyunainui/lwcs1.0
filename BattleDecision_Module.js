@@ -2177,14 +2177,16 @@
   // rolls it per answer). FORESEE_BASE, more by how clearly it has the attacker (FORESEE_CLARITY × the clarity of their exchanges and
   // acquaintance), more for a 精神系 (FORESEE_MENTAL) and for a sense that outreaches the attacker's (FORESEE_SENSE, beliefSenses),
   // more again when it has seen this very skill (FORESEE_KNOWN); at most FORESEE_CAP. Starting values, measured later.
+  // FORESEE_SCALE（root.__LWCS_TUNE__.FORESEE_SCALE）scales the whole chance, for calibrating against the novel.
   const FORESEE_BASE = 0.1, FORESEE_CLARITY = 0.4, FORESEE_MENTAL = 0.15, FORESEE_SENSE = 0.15, FORESEE_KNOWN = 0.3, FORESEE_CAP = 0.9;
+  const FORESEE_SCALE = Number(root.__LWCS_TUNE__?.FORESEE_SCALE ?? 1);
   function foreseeChance(world = {}, observer = {}, attacker = {}, skill = {}) {
     const name = String(skill?.魂技名 || skill?.name || '').trim();
     const known = name && beliefKnowsExposure(observer, attacker, world) && preview.exposedSkills(attacker).some(entry => String(entry?.魂技名 || entry?.name || '').trim() === name);
     const seen = Number(beliefExchangeCounts(world, sideOf(world, observer)).get(preview.unitId(attacker)) || 0) + beliefFamiliarExchanges(observer, attacker, world);
     const mental = /精神/.test(String(observer?.系别 || observer?.type || observer?.第1武魂?.系别 || observer?.属性?.系别 || '')) ? FORESEE_MENTAL : 0;
-    return clamp(FORESEE_BASE + FORESEE_CLARITY * seen / (seen + BELIEF_EXCHANGE_PRIOR) + mental + (beliefSenses(observer, attacker) ? FORESEE_SENSE : 0) +
-      (known ? FORESEE_KNOWN : 0), 0, FORESEE_CAP);
+    return clamp(FORESEE_SCALE * (FORESEE_BASE + FORESEE_CLARITY * seen / (seen + BELIEF_EXCHANGE_PRIOR) + mental + (beliefSenses(observer, attacker) ? FORESEE_SENSE : 0) +
+      (known ? FORESEE_KNOWN : 0)), 0, FORESEE_CAP);
   }
 
   // The skill a feint keeps ready: the heaviest (its damage power on enemies) of the unit's affordable single-target skills that
