@@ -879,6 +879,7 @@
       SURRENDERED: '认输',
       WITHDRAWN: '已撤离',
       ABYSS_REPELLED: '退回深渊（未被杀死）',
+      RING_OUT: '出界判负',
       CONTROLLED: '受控制',
       UNAVAILABLE: '暂时无法行动',
     };

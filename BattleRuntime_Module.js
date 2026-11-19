@@ -11184,6 +11184,18 @@
     });
   }
 
+  // 出界判负：一个单位身上击退／击飞状态的签名（source 给了就只看这个出手者放的）；没有就是 ''。
+  function knockbackSignature(unit = {}, source = '') {
+    const rows = Object.entries(unit?.状态效果 || {}).filter(([, state]) => state && typeof state === 'object' &&
+      /击退|击飞/.test(String(state?.战斗效果?.position_type || '')) && (!source || String(state?.来源角色 || '').trim() === source))
+      .map(([key, state]) => [key, String(state?.来源角色 || ''), String(state?.来源动作ID || ''), Number(state?.duration ?? state?.持续回合 ?? 0)]);
+    return rows.length ? JSON.stringify(rows) : '';
+  }
+  // 机甲赛：已释放机甲的剩余耐久（没有释放的机甲：-1）。
+  function mechaDurability(unit = {}) {
+    const state = Object.values(unit?.状态效果 || {}).find(item => item && typeof item === 'object' && item.__装备释放 === '机甲');
+    return state ? Math.max(0, Number(state.__装备耐久) || 0) : -1;
+  }
   function finishStructuredDeclaration(context, facts, terminal) {
     const { combatData, actionEvent, actor, primaryTarget } = context;
     // Some committed mutations (prepared reactions, passive limits, grants)
@@ -11209,6 +11221,36 @@
         meta: { source: 'structured_runtime', stateName: '认输', hpAfter: previewRuntime.readHp(unit), hpRatioAfter: previewRuntime.readHp(unit) / Math.max(1, previewRuntime.readHpMax(unit)),
           leftBattle: true, reactionConcede: true, reasonText: `${previewRuntime.unitName(unit)}认输，退出了战斗`, before: beforeActionState, after: cloneValue(unit.状态 || {}), operation: 'STATE_APPLY' },
       }));
+    }
+    // 出界判负（BattlePreview settleRingOuts）：这一击把本来在后排的人又打飞——比赛里出界离场（预演提交过来的已离场，这里补记事实）。
+    if (previewRuntime.settleRingOuts) {
+      const units = listCombatUnits(combatData), before = context.__ringOutBefore;
+      // 出招前就在后排、身上多了出手者这一下的击退／击飞（状态签名变了）的敌人：同样记出界。
+      if (before) units.forEach(unit => {
+        const was = before.get(String(previewRuntime.unitId(unit)));
+        if (!was || was.position !== previewRuntime.POSITION_BACK || !was.pushed || inferUnitSide(combatData, unit) === inferUnitSide(combatData, actor)) return;
+        const now = knockbackSignature(unit, previewRuntime.unitName(actor));
+        if (now && now !== knockbackSignature({ 状态效果: {} }) && now !== was.knock && knockbackSignature(unit) !== was.knock) previewRuntime.markRingOut(unit, actionEvent?.actionId);
+      });
+      // 机甲赛（赛事上下文.机甲赛）：机甲耐久这一下打到 0，机师被传送出场判负（原作机甲大赛；同出界离场）。
+      if (before && combatData?.赛事上下文?.机甲赛 === true) units.forEach(unit => {
+        const was = before.get(String(previewRuntime.unitId(unit)));
+        if (was && was.mecha > 0 && mechaDurability(unit) === 0) previewRuntime.markRingOut(unit, actionEvent?.actionId);
+      });
+      previewRuntime.settleRingOuts(units, combatData);
+      units.filter(unit => unit?.__出界 === true && unit.__出界已记 !== true).forEach(unit => {
+        unit.__出界已记 = true;
+        facts.push(writeLedgerEvent(combatData, {
+          eventKind: 'state_apply', round: Number(combatData?.回合 || 0),
+          actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor), targetId: previewRuntime.unitId(unit), targetName: previewRuntime.unitName(unit),
+          actionName: '出界', actionType: 'incapacitation', actorControl: 'SYSTEM', actionRole: String(actionEvent?.actionRole || 'ACTIVE'),
+          actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
+          ruleCode: previewRuntime.RING_OUT_RULE, result: 'applied', resultState: 'SUCCESS', primaryOutcome: 'surrendered', factType: 'STATE', operation: 'STATE_APPLY',
+          meta: { source: 'structured_runtime', stateName: '出界', hpAfter: previewRuntime.readHp(unit), hpRatioAfter: previewRuntime.readHp(unit) / Math.max(1, previewRuntime.readHpMax(unit)),
+            leftBattle: true, ringOut: true, reasonText: combatData?.赛事上下文?.机甲赛 === true && mechaDurability(unit) === 0
+              ? `${previewRuntime.unitName(unit)}的机甲被${previewRuntime.unitName(actor)}打碎，传送出场判负` : `${previewRuntime.unitName(unit)}被${previewRuntime.unitName(actor)}打出场外，判负离场`, operation: 'STATE_APPLY' },
+        }));
+      });
     }
     const end = ensureLedger(combatData).at(-1) || actionEvent;
     actionEvent.meta.declarationSettlement = {
@@ -11236,6 +11278,9 @@
       allowPreparedDefense,
     } = context;
     if (!combatData || !declaration || !actor || !actionEvent) throw new TypeError('battle_structured_action_context_invalid');
+    // 出界判负：出招前每个人的站位与身上的击退状态（finishStructuredDeclaration 比对：本来在后排、这一下又被击退的出界）。
+    if (!context.__ringOutBefore) context.__ringOutBefore = new Map(listCombatUnits(combatData).map(unit => [String(previewRuntime.unitId(unit)),
+      { position: previewRuntime.unitPosition(unit), pushed: unit?.__battleRuntime?.pushedBack === true, knock: knockbackSignature(unit), mecha: mechaDurability(unit) }]));
     // 位移重做（S81）: the units an attack of this action rolled to hit, and whether it attacked at all — the one-shot position
     // effects they were waiting for are spent once the action's effects have settled (spendPositionOnce, below).
     const positionOnceRolledTargets = new Set();
@@ -13791,9 +13836,14 @@
               const shift = previewRuntime.positionShiftOf({ ...effect, __位移接收者: role });
               // 被这一击击退／击飞到后排的目标：突进结算不再把它带回前排（同后撤闪避，retreatEvaded 记这一击的动作 id；原来技能写的击退也会被覆盖）。
               const heldBack = shift === previewRuntime.POSITION_BACK && role === 'enemy';
+              // 出界判负：本来就在后排又被打飞（BattlePreview ringOutShift），这次出招结算完判。
+              if (heldBack && previewRuntime.ringOutShift?.(target, { ...effect, __位移接收者: role })) previewRuntime.markRingOut(target, actionEvent?.actionId);
               if (heldBack) target.__battleRuntime = { ...(target.__battleRuntime || {}), retreatEvaded: String(actionEvent?.actionId || '') };
+              const pushedNow = heldBack && /击退|击飞/.test(String(effect?.位移类型 || ''));
               // 本来就在后排、被突进过来的一击打回去（不然会被带到前排）也写事实。
-              if (shift && (previewRuntime.setUnitPosition(target, shift) || heldBack)) {
+              const shiftMoved = shift ? previewRuntime.setUnitPosition(target, shift) : false;
+              if (pushedNow) previewRuntime.markPushedBack?.(target);
+              if (shift && (shiftMoved || heldBack)) {
                 // 战报事实（POSITION shift）：位移把谁挪到了前排 / 后排。
                 facts.push(writeMechanicEvent(combatData, { eventKind: 'position_shift', actionName: actionName || '位移', actionRole: String(actionEvent?.actionRole || 'ACTIVE'), actorControl: String(actionEvent?.actorControl || 'AI'),
                   actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor), targetId: previewRuntime.unitId(target), targetName: previewRuntime.unitName(target),
@@ -14032,6 +14082,7 @@
       struck.forEach(unit => {
         if (knockedBack(unit)) {
           previewRuntime.setUnitPosition(unit, previewRuntime.POSITION_BACK);
+          previewRuntime.markPushedBack?.(unit);
           facts.push(writeMechanicEvent(combatData, { eventKind: 'position_shift', actionName: actionName || '击退', actionRole: String(actionEvent?.actionRole || 'ACTIVE'), actorControl: String(actionEvent?.actorControl || 'AI'),
             actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor), targetId: previewRuntime.unitId(unit), targetName: previewRuntime.unitName(unit),
             actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',

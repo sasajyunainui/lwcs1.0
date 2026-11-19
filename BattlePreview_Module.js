@@ -2206,9 +2206,15 @@
   function setUnitPosition(unit = {}, position = POSITION_FRONT) {
     if (!unit || typeof unit !== 'object' || Object.isFrozen(unit)) return false;
     const next = position === POSITION_BACK ? POSITION_BACK : POSITION_FRONT;
+    // 出界判负：被打飞退到后排的记 pushedBack，回到前排就清掉。
+    if (next === POSITION_FRONT && unit.__battleRuntime?.pushedBack !== undefined) { const { pushedBack, ...rest } = unit.__battleRuntime; unit.__battleRuntime = rest; }
     if (unitPosition(unit) === next && unit.__battleRuntime?.position) return false;
     unit.__battleRuntime = { ...(unit.__battleRuntime || {}), position: next };
     return true;
+  }
+  function markPushedBack(unit = {}) {
+    if (!unit || typeof unit !== 'object' || Object.isFrozen(unit)) return;
+    unit.__battleRuntime = { ...(unit.__battleRuntime || {}), position: POSITION_BACK, pushedBack: true };
   }
   function unitsEngaged(left = {}, right = {}) {
     return unitPosition(left) === POSITION_FRONT && unitPosition(right) === POSITION_FRONT;
@@ -2327,6 +2333,33 @@
     ? (String(effect.状态).trim() === '前压' ? POSITION_FRONT : POSITION_BACK) : null;
   // 位移执行落到接收者身上后的位置：脱离（自己/友方）→ 后；击退、击飞（敌方）→ 后；拉近、突进、追击 → 前（被拉的敌方与冲上去的自己）；
   // 瞬移、换位不改。null：不改。
+  /* 出界判负（用户 11-19「后排再被打飞就出界」；原作霍雨浩把冻住的人踹下擂台、金升天把人送出圈外）：比赛里（battleRules match，
+     切磋、实战与生死斗不判），一个已经被打飞退到后排（pushedBack；开局在后排、自己后撤的不算，回到前排清掉）的人又被敌人的
+     击退／击飞打中（力量打飞或击退类魂技），就出界判负——同认输离场
+     （SURRENDERED，另记 __出界）。打中时先记 pendingRingOut（这一击的动作 id），这次出招结算完再判（预演 settleRingOuts、
+     结算 BattleRuntime 同处的应对认输）；不是比赛就清掉。 */
+  const RING_OUT_RULE = 'RING_OUT';
+  function ringOutShift(unit = {}, effect = {}) {
+    return pushedByEnemy(effect) && unitPosition(unit) === POSITION_BACK && unit?.__battleRuntime?.pushedBack === true;
+  }
+  function pushedByEnemy(effect = {}) {
+    return /击退|击飞/.test(String(effect?.位移类型 || '')) && String(effect?.__位移接收者 || '').trim() === 'enemy';
+  }
+  function markRingOut(unit = {}, actionId = '') {
+    unit.__battleRuntime = { ...(unit.__battleRuntime || {}), pendingRingOut: String(actionId || '') || true };
+  }
+  // A unit marked this move goes out (a match) or loses the mark. Returns the units that went out.
+  function settleRingOuts(units = [], worldSnapshot = {}) {
+    const match = battleRules(worldSnapshot).match, out = [];
+    units.forEach(unit => {
+      if (!unit || unit.__battleRuntime?.pendingRingOut === undefined) return;
+      const { pendingRingOut, ...rest } = unit.__battleRuntime; unit.__battleRuntime = rest;
+      if (!match || isDead(unit) || String(unit.__战斗失能原因 || '').trim()) return;
+      unit.__战斗失能原因 = LEFT_BATTLE_REASONS.CONCEDE; unit.__出界 = true;
+      out.push(unit);
+    });
+    return out;
+  }
   function positionShiftOf(effect = {}) {
     if (String(effect?.原型 || '').trim() !== '位移执行') return null;
     const type = String(effect?.位移类型 || '').trim(), role = String(effect?.__位移接收者 || 'self').trim();
@@ -9510,6 +9543,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     overlay.changeUnit(holderId, unit => {
       unit.状态效果 = { ...(unit.状态效果 || {}), [key]: next };
       unit.final = { ...(unit.final || {}), ...buildNumericCombatStats(unit, Number(context?.worldSnapshot?.当前世界tick ?? 0)) };
+      // 机甲赛：机甲打碎，机师传送出场判负（出招结算完 settleRingOuts）。
+      if (state.__装备释放 === '机甲' && before > 0 && after <= 0 && context?.worldSnapshot?.赛事上下文?.机甲赛 === true) markRingOut(unit, context?.rootActionId);
     });
     ledger.addOutcome({ ...context, actor: holder, targetId: holderId,
       effectInstanceId: `${context.effectInstanceId}:absorb:${stableHash([holderId, key])}:${index}`,
@@ -12118,7 +12153,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 位移重做: a recipient the position leaves nothing on (the caster of a swap, say) gets no state at all.
     if (String(effect?.原型 || '').trim() === '位移执行') {
       const shift = positionShiftOf(effect);
+      if (shift === POSITION_BACK && ringOutShift(unit, effect)) markRingOut(unit, sourceActionId);
       if (shift) setUnitPosition(unit, shift);
+      if (shift === POSITION_BACK && pushedByEnemy(effect)) markPushedBack(unit);
       const derived = deriveStateCombatEffect(effect);
       if (!derived.position_once && derived.counter_window_closed !== true && derived.no_cover !== true) return false;
     }
@@ -22340,6 +22377,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       }
       context.recordPrimaryResolution?.();
     });
+    // 出界判负：这一击打出界的人离场（settleRingOuts）。
+    {
+      const marked = listUnits(overlay.snapshot()).filter(unit => unit?.__battleRuntime?.pendingRingOut !== undefined).map(unit => unitId(unit));
+      marked.forEach(id => overlay.changeUnit(id, unit => { settleRingOuts([unit], worldSnapshot); }));
+    }
     const consumedGrantKeys = grants.map(entry => entry.stateKey);
     // A structured per-effect commit is not another use of its source skill.
     // Its formal Native declaration owns the single consume and ledger receipt.
@@ -26221,6 +26263,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     clashTiming,
     withStrengthKnockback,
     concedeHoldsBack,
+    RING_OUT_RULE,
+    ringOutShift,
+    markPushedBack,
+    markRingOut,
+    settleRingOuts,
     ABYSS_REPELLED,
     isAbyssUnit,
     abyssKillingBlow,
