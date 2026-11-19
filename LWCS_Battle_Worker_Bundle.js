@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:14b1832c7291424be45db95f8a87dee2233ba867c03680df8b9e125269c5afa1|MVU_Schema_Runtime.js:ead5c44b6030214f373f811f8cbfc5ca51dec92264c2836028bdc36a96d0447d|BattlePreview_Module.js:8b3ef9c2dc3447d3767c9ee023943d403c12d67bc364d93b38a5d1b49704c8a1|BehaviorDecisionPipeline_Module.js:e55d1d0a40ff9a1a3a37cf0f16c94dbd9bafe338489e7af952c1279ca0025977|BattleDecision_Module.js:b8dcfdba43a0581645948cb47163b9f5241a7daa5b2266372871db8302807d1d|BattleRuntime_Module.js:e2fd0c7f8492c99cbb0c7d20c59d51887feb559829fe0844515365e7cf4a0829 */
+/* sources-sha256: MVU_Skill_Runtime.js:003492bd72b433e22135c36bd8a929657b2760594de5d6c877f252c80725db2e|MVU_Schema_Runtime.js:661031d49664fd75c150ee9a80b91e00b1114297c2074fa2ca87d7df51747724|BattlePreview_Module.js:8b3ef9c2dc3447d3767c9ee023943d403c12d67bc364d93b38a5d1b49704c8a1|BehaviorDecisionPipeline_Module.js:e55d1d0a40ff9a1a3a37cf0f16c94dbd9bafe338489e7af952c1279ca0025977|BattleDecision_Module.js:b8dcfdba43a0581645948cb47163b9f5241a7daa5b2266372871db8302807d1d|BattleRuntime_Module.js:e2fd0c7f8492c99cbb0c7d20c59d51887feb559829fe0844515365e7cf4a0829 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -1349,8 +1349,15 @@ function getBeastStats(age, species) {
   };
 }
 
+// 魂兽（按魂兽处理：不配斗铠机甲魂骨、不补魂环、不自动突破、不发津贴）——11-19 用户定：
+// 有真实武魂的是魂师（势力只表示阵营：古月娜、蓝佛子在魂兽一族里也是魂师；唐舞麟复生后 10006 岁曾被当成魂兽，斗铠、魂骨被清掉）；
+// 没有武魂时，势力魂兽一族／深渊生物、单位性质魂兽／深渊算魂兽；都没有才按年龄 ≥ 10000 推断。
+// 库里把本体写成第1武魂的魂兽、深渊生物已改成库标准格式（无武魂、势力魂兽一族或深渊生物）。
 function isSoulBeastCharacter(char = {}) {
-  return !!(Number(char?.属性?.年龄 || 0) >= 10000 || char?.社交?.势力?.['魂兽一族']);
+  if (Object.entries(char || {}).some(([key, value]) => /^第\d+武魂$/.test(key) && 是否真实武魂数据_V1(value))) return false;
+  const 势力名 = Object.keys(char?.社交?.势力 || {});
+  if (势力名.includes('魂兽一族') || 势力名.some(名 => String(名).includes('深渊')) || ['魂兽', '深渊'].includes(String(char?.单位性质 || '').trim())) return true;
+  return Number(char?.属性?.年龄 || 0) >= 10000;
 }
 
 function formatCultivationLevelText(level, fallback = '未知') {
@@ -36082,15 +36089,21 @@ function 规范化显式天赋梯队_V1(天赋梯队 = '') {
     return ['天赋极差', '劣等', '正常', '优秀', '天才', '顶级天才', '绝世妖孽'].includes(文本) ? 文本 : '';
 }
 
+const 反推天赋基准缓存_V1 = new Map();
 function 计算等级反推天赋梯队_V1(年龄 = 0, 等级 = 1, 生日 = '') {
     const 等级值 = Math.max(0, Number(等级 || 0) || 0);
     if (等级值 <= 0) return '天赋极差';
-    const 年龄值 = Math.max(0, Number(年龄 || 0) || 0);
+    // 基准等级是从 6 岁逐日模拟修炼算出来的；200 岁以后各档基准不再变化（11-19 实测 200/400/800 岁六档相同），
+    // 再往后只是空耗——千古清风等上万岁、没写天赋梯队的角色读档会卡几分钟。按 200 岁封顶，并按年龄缓存。
+    const 年龄值 = Math.min(200, Math.max(0, Number(年龄 || 0) || 0));
     const 档位列表 = ['劣等', '正常', '优秀', '天才', '顶级天才', '绝世妖孽'];
-    const 基准列表 = 档位列表.map(档位 => ({
+    const 生日值 = 年龄值 >= 200 ? '' : 生日; // 封顶后生日差的那几个月不影响基准，各人共用一份缓存
+    const 缓存键 = `${年龄值}|${生日值}`;
+    const 基准列表 = 反推天赋基准缓存_V1.get(缓存键) || 档位列表.map(档位 => ({
       档位,
-      基准等级: Number(计算初始化修为等级(档位, 年龄值, 1, 生日)) || 1,
+      基准等级: Number(计算初始化修为等级(档位, 年龄值, 1, 生日值)) || 1,
     }));
+    反推天赋基准缓存_V1.set(缓存键, 基准列表);
     const 基准组列表 = [];
     for (const 项 of 基准列表) {
       const 末组 = 基准组列表[基准组列表.length - 1];
