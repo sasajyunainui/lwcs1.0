@@ -9826,6 +9826,16 @@
             获得tick: Math.max(0, Math.floor(已有获得tick)),
             描述: normalizeSkillUiText(nextSkill?.效果描述, '无'),
           } });
+        } else if (功法名 === '控鹤擒龙') {
+          // 控鹤擒龙存境界（11-19，MVU_Schema_Runtime 控鹤擒龙境界等级表_V1）：入门 / 小成 / 大成；获得tick 保留原值（开局就会的没有）。
+          const 已有获得tick = deepGet(rootData, [...功法路径, '获得tick'], undefined);
+          const 境界 = ['入门', '小成', '大成'].includes(功法境界) ? 功法境界 : toText(deepGet(rootData, [...功法路径, '境界'], ''), '') || '入门';
+          updates.push({ path: 功法路径, value: {
+            境界,
+            lv: { 入门: 1, 小成: 2, 大成: 3 }[境界] || 1,
+            ...(已有获得tick !== undefined ? { 获得tick: Math.max(0, Math.floor(toNumber(已有获得tick, 0))) } : {}),
+            描述: normalizeSkillUiText(nextSkill?.效果描述, '无'),
+          } });
         } else {
           updates.push({ path: 功法路径, value: { 描述: normalizeSkillUiText(nextSkill?.效果描述, '无') } });
         }
@@ -11010,6 +11020,8 @@
     const 下拉 = (选项, 当前, 空) => ({ kind: 'select', ...设计台下拉(选项, 当前, 空) });
     const 使用限制无 = (designerDraft.使用限制周期 || '无限制') === '无限制';
     const 是紫极魔瞳功法 = previewMeta.scope === 'art' && (designerDraft.name || previewMeta.label) === '紫极魔瞳';
+    // 控鹤擒龙也存境界（入门 / 小成 / 大成，等级 1～3）。
+    const 是控鹤擒龙功法 = previewMeta.scope === 'art' && (designerDraft.name || previewMeta.label) === '控鹤擒龙';
     const top = {
       name: { kind: 'text', value: 属性回读(designerDraft.name), placeholder: 属性回读(`请输入${scopeLabels.nameFieldLabel}`) },
       type: { kind: 'hidden', value: 属性回读(designerDraft.type || '输出') },
@@ -11021,8 +11033,8 @@
       被动触发: 下拉(技能设计台被动触发选项, designerDraft.被动触发 || '常驻'),
       被动触发周期: 下拉(技能设计台被动触发周期选项, 上下文.被动触发限制.周期),
       被动触发次数: { kind: 'number', min: '1', step: '1', value: 数字输入回读(String(上下文.被动触发限制.次数)) },
-      artStage: 是紫极魔瞳功法 ? { kind: 'text', value: 属性回读(designerDraft.artStage || '未入门') } : null,
-      artLevel: 是紫极魔瞳功法 ? { kind: 'number', min: '1', max: '4', step: '1', value: 数字输入回读(String(Math.max(1, toNumber(designerDraft.artLevel, 1)))) } : null,
+      artStage: 是紫极魔瞳功法 || 是控鹤擒龙功法 ? { kind: 'text', value: 属性回读(designerDraft.artStage || '未入门') } : null,
+      artLevel: 是紫极魔瞳功法 || 是控鹤擒龙功法 ? { kind: 'number', min: '1', max: 是控鹤擒龙功法 ? '3' : '4', step: '1', value: 数字输入回读(String(Math.max(1, toNumber(designerDraft.artLevel, 1)))) } : null,
       constructItemCount: { kind: 'number', min: '1', step: '1', value: 数字输入回读(String(Math.max(1, toNumber(designerDraft.constructItemCount, 1)))) },
       constructDurationTick: 描述tick输入({ label: '有效期', hint: '' }, 'constructDurationTick', Math.max(0, toNumber(designerDraft.constructDurationTick, 0)), { 最小tick: 0, 默认tick: 0 }),
       constructDescription: { kind: 'text', value: 属性回读(designerDraft.constructDescription || ''), placeholder: '例如：闪烁着暗金光芒的晶体' },

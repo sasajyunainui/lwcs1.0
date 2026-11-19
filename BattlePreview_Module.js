@@ -25677,6 +25677,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
      近身卸开了，对方失衡：攻击破绽 +DEFLECT_UNBALANCE（同进攻留下的破绽，到它下一次行动清掉），这回合抓它空当 +DEFLECT_CATCH_BONUS。
      远程被卸只减伤。都是起始值，实测校准。 */
   const DEFLECT_SHARE_AT_PAR = 0.45, DEFLECT_CAP = 0.8, DEFLECT_FAIL_RATIO = 0.6, DEFLECT_UNBALANCE = 0.5, DEFLECT_CATCH_BONUS = 0.15;
+  /* 控鹤擒龙（11-19 用户定「卸力份额加成，按境界」）：唐门擒拿控劲绝学（功法，描述「隔空牵引、卸力与夺势」），每一境
+     （MVU 控鹤擒龙境界等级表_V1：入门 1、小成 2、大成 3）卸开的份额 +DEFLECT_ART_SHARE，拨得开的力量比下限低 DEFLECT_ART_FAIL；
+     记录里还没有境界的（MVU 还没结算过）按同一条等级规则：不到 30 级入门、不到 60 级小成、60 级起大成。起始值，实测再定。 */
+  const DEFLECT_ART = '控鹤擒龙', DEFLECT_ART_SHARE = 0.05, DEFLECT_ART_FAIL = 0.05;
+  const DEFLECT_ART_LEVELS = Object.freeze({ 入门: 1, 小成: 2, 大成: 3 });
+  function deflectArt(unit = {}) {
+    const art = unit?.功法 && typeof unit.功法 === 'object' ? unit.功法[DEFLECT_ART] : null;
+    if (!art || typeof art !== 'object') return 0;
+    const level = Number(readEffectiveUnitLevel(unit)) || 0;
+    return Math.max(1, Math.min(3, Number(art.lv) || DEFLECT_ART_LEVELS[String(art.境界 || '').trim()] || (level >= 60 ? 3 : level >= 30 ? 2 : 1)));
+  }
   function canDeflect(incoming = null) {
     const move = incomingMove(incoming);
     if (!move) return false;
@@ -25693,14 +25704,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (!base || !(soul > 0) || !(Number(base.sp_max) > 0)) return strength;
     return Math.max(1, soul * Number(base.str || 1) / Number(base.sp_max));
   }
-  // { multiplier（挨上的份额）, deflected, ratio, failed, unbalance（近身卸开才有）}；卸不了的来招 null。
+  // { multiplier（挨上的份额）, deflected, ratio, failed, unbalance（近身卸开才有）, art（会控鹤擒龙）}；卸不了的来招 null。
   function deflectOutcome(reactor = {}, sourceActor = {}, incoming = null) {
     if (!canDeflect(incoming)) return null;
     const ratio = Math.max(0, Number(readCombatStat(reactor, 'str')) || 0) / deflectForce(sourceActor, incoming);
-    const failed = ratio < DEFLECT_FAIL_RATIO;
-    const deflected = failed ? 0 : clamp(DEFLECT_SHARE_AT_PAR * ratio, 0, DEFLECT_CAP);
+    const art = deflectArt(reactor);
+    const failed = ratio < DEFLECT_FAIL_RATIO - art * DEFLECT_ART_FAIL;
+    const deflected = failed ? 0 : clamp(DEFLECT_SHARE_AT_PAR * ratio + art * DEFLECT_ART_SHARE, 0, DEFLECT_CAP);
     const melee = declarationDamageClass(incomingMove(incoming)) === 'MELEE';
-    return Object.freeze({ multiplier: 1 - deflected, deflected, ratio, failed, unbalance: !failed && melee ? DEFLECT_UNBALANCE : 0 });
+    return Object.freeze({ multiplier: 1 - deflected, deflected, ratio, failed, unbalance: !failed && melee ? DEFLECT_UNBALANCE : 0, art: art > 0, artLevel: art });
   }
   // 失衡：卸开的那一刻给对方加破绽（attackOpening 记 unbalanced），这回合抓空当更容易。
   function applyDeflectUnbalance(sourceActor = {}, outcome = null) {

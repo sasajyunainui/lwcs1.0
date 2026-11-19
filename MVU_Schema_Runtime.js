@@ -379,6 +379,12 @@ function 收集当前时间线命中内置角色名_V1(当前tick = 0, 文本 = 
 
 var 紫极魔瞳境界等级表_V1 = Object.freeze({ 纵观: 1, 入微: 2, 芥子: 3, 浩瀚: 4 });
 var 紫极魔瞳精神境界阶位表_V1 = Object.freeze({ 灵元境: 1, 灵通境: 2, 灵海境: 3, 灵渊境: 4, 灵域境: 5, 神元境: 6 });
+// 控鹤擒龙境界（11-19 用户定存境界）：入门 → 小成 → 大成。库里与开局就会的（没有获得tick）按等级定：不到 30 级入门、不到 60 级小成、
+// 60 级起大成；游戏里学会的（研读秘籍、传授，带获得tick）按会了多久：满 1 年小成、满 5 年大成。只升不降。战斗里卸力按它加成
+// （BattlePreview deflectArt）。
+var 控鹤擒龙境界等级表_V1 = Object.freeze({ 入门: 1, 小成: 2, 大成: 3 });
+var 控鹤擒龙小成tick_V1 = 51840;
+var 控鹤擒龙大成tick_V1 = 5 * 51840;
 var 紫极魔瞳三月tick_V1 = 3 * 30 * 144;
 var 紫极魔瞳三年tick_V1 = 3 * 51840;
 var 紫极魔瞳十年tick_V1 = 10 * 51840;
@@ -419,6 +425,12 @@ function 构建最新功法记录_V1(功法名 = '', 记录 = {}) {
   const 名称 = String(功法名 || '').trim();
   const 来源 = 记录 && typeof 记录 === 'object' && !Array.isArray(记录) ? 记录 : {};
   const 描述 = String(来源.描述 || 来源.效果描述 || 来源.画面描述 || '无').trim() || '无';
+  if (名称 === '控鹤擒龙') {
+    const 已有境界 = 控鹤擒龙境界等级表_V1[String(来源.境界 || '').trim()] ? String(来源.境界).trim() : '';
+    const 输出 = { ...(已有境界 ? { 境界: 已有境界, lv: 控鹤擒龙境界等级表_V1[已有境界] } : {}), 描述 };
+    if (Object.prototype.hasOwnProperty.call(来源, '获得tick')) 输出.获得tick = Math.max(0, Math.floor(Number(来源.获得tick || 0)));
+    return 输出;
+  }
   if (名称 !== '紫极魔瞳') return { 描述 };
   const 境界 = 紫极魔瞳境界等级表_V1[String(来源.境界 || '').trim()] ? String(来源.境界).trim() : '纵观';
   const 输出 = {
@@ -455,6 +467,24 @@ function 计算紫极魔瞳境界_V1(角色 = {}, 当前tick = 0) {
   }
   功法.境界 = 境界;
   功法.lv = 紫极魔瞳境界等级表_V1[境界];
+  return 功法;
+}
+
+function 计算控鹤擒龙境界_V1(角色 = {}, 当前tick = 0) {
+  const 功法 = 角色?.功法?.['控鹤擒龙'];
+  if (!功法 || typeof 功法 !== 'object' || Array.isArray(功法)) return null;
+  let 境界 = '入门';
+  if (Object.prototype.hasOwnProperty.call(功法, '获得tick')) {
+    const 持有tick = Math.max(0, Math.floor(Number(当前tick || 0)) - Math.max(0, Math.floor(Number(功法.获得tick || 0))));
+    境界 = 持有tick >= 控鹤擒龙大成tick_V1 ? '大成' : 持有tick >= 控鹤擒龙小成tick_V1 ? '小成' : '入门';
+  } else {
+    const 等级 = Math.max(0, Number(角色?.属性?.等级 || 0));
+    境界 = 等级 >= 60 ? '大成' : 等级 >= 30 ? '小成' : '入门';
+  }
+  const 当前等级 = Math.max(0, Number(功法.lv || 0), 控鹤擒龙境界等级表_V1[String(功法.境界 || '').trim()] || 0);
+  if (当前等级 > 控鹤擒龙境界等级表_V1[境界]) 境界 = Object.keys(控鹤擒龙境界等级表_V1).find(名 => 控鹤擒龙境界等级表_V1[名] === Math.min(3, 当前等级)) || 境界;
+  功法.境界 = 境界;
+  功法.lv = 控鹤擒龙境界等级表_V1[境界];
   return 功法;
 }
 
@@ -4453,6 +4483,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       if (!(safeDelta > 0) || !c?.属性) return;
       const segmentTick = Math.max(0, Number(segmentCurrentTick ?? currentTick) || 0);
       计算紫极魔瞳境界_V1(c, segmentTick);
+      计算控鹤擒龙境界_V1(c, segmentTick);
       const normalizedActionMode = normalizeCharacterActionMode_ACU(actionMode);
       const 应用伤势恢复到生命值 = 基础恢复倍率 => {
         const 安全基础恢复倍率 = Math.max(0, Number(基础恢复倍率 || 0));

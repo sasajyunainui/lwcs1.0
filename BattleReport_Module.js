@@ -1676,7 +1676,7 @@
     if (kind === 'defend' && meta?.deflect === true) {
       const by = target && target !== actor ? target : '对方';
       if (meta.deflectFailed === true) return `${actor}想卸开${by}的攻势，但力量差太多（力量比 ${Math.round(number(meta.strengthRatio, 0) * 100) / 100}）没拨开，整招挨上`;
-      return `${actor}以【卸力】拨开${by}的攻势，偏开${Math.round(number(meta.deflected, 0) * 1000) / 10}%${number(meta.unbalance, 0) > 0 ? `，${by}失衡露出空当` : ''}`;
+      return `${actor}${meta.deflectArt ? `运起${meta.deflectArt}，` : ''}以【卸力】拨开${by}的攻势，偏开${Math.round(number(meta.deflected, 0) * 1000) / 10}%${number(meta.unbalance, 0) > 0 ? `，${by}失衡露出空当` : ''}`;
     }
     if (kind === 'defend' || kind === 'guard') {
       const damageMultiplier = number(meta?.damageMultiplier, NaN);

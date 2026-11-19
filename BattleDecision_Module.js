@@ -41157,6 +41157,20 @@
     // every candidate of a mirror match worth the whole battle or nothing), worth more the sooner it is decided.
     return score + R20_WIN_VALUE * Math.tanh(R20_WIN_SLOPE * score) * R20_ROUND_DISCOUNT ** (standing.size === 1 ? time : horizon);
   }
+  // The rows the race brings down with the actor letting its action of this round go by (idle until its next round, as
+  // r20Shadow plays every candidate) — 留手 holds nothing against hurting them, they are hurt to the floor anyway. Once per
+  // table, side and actor (the table is sealed: the cache sits beside it).
+  const r20DownAnywayCache = new WeakMap();
+  function r20DownAnyway(table, own, actorRow) {
+    if (!r20DownAnywayCache.has(table)) r20DownAnywayCache.set(table, new Map());
+    const cache = r20DownAnywayCache.get(table), key = `${own}|${actorRow}`;
+    if (cache.has(key)) return cache.get(key);
+    const plan = { falls: [], idle: table.sides.map((side, row) => (row === actorRow ? 1 : 0)) };
+    r20Race(table, own, plan);
+    const down = new Set(plan.falls.map(entry => entry.row));
+    cache.set(key, down);
+    return down;
+  }
   // The cells of a set of units: who can act, whom a taunt binds, and for every pair what one lands on, gives, stops,
   // keeps off and answers the other.
   function r20Cells(units, sides, ids, world, context, skipped) {
@@ -42293,7 +42307,14 @@
     const changed = new Array(count).fill(false);
     for (const [row] of rebuilt) if (!unchangedRows.has(row)) changed[row] = true;
     strikes.sort((left, right) => left.at - right.at);
-    const plan = { denied, until, base: table, leaves, baseCount: count, changed, busy, strikes: strikes.length ? strikes : null, expired: expiredCells, cuts: cuts.length ? cuts : null, ...(trace ? { falls: [] } : {}) };
+    // 本回合已用掉（T36 11-19 用户定）: the actor's action this round is the candidate being valued, so the race has it bring
+    // nothing more of its own until its next round (idle, as 援护 has it: it still answers what comes at it). Before, letting the
+    // action go by kept the actor's output of this round in the race: holding back cost nearly nothing, and a hair of cost or 留手
+    // tipped every strike to it, round after round (35 级强攻×精神, 切磋: the foe at 15.6% fell "at 0.25" whether it was struck or
+    // not — 115 rounds where the old valuation took 4).
+    const idle = actorRow !== undefined && String(request.actionOpportunity?.role || 'ACTIVE').toUpperCase() === 'ACTIVE'
+      ? table.sides.map((side, row) => (row === actorRow ? 1 : 0)) : null;
+    const plan = { denied, until, base: table, leaves, baseCount: count, changed, busy, strikes: strikes.length ? strikes : null, expired: expiredCells, cuts: cuts.length ? cuts : null, idle, ...(trace ? { falls: [] } : {}) };
     // A unit that may or may not be down is valued both ways (the settlement is not run again): the race with it gone
     // and with what is left of it if it stands, by the chance of each — only the most open such unit; the others keep
     // their chance as a weight.
@@ -42425,9 +42446,14 @@
         diag.infoOdds = odds;
       }
     }
-    // 留手: in a spar, what of a hit lands below the 重伤 line (R20_SPAR_INJURY_LINE of the target's HP) is held against it.
+    // 留手: in a spar, what of a hit lands below the 重伤 line (R20_SPAR_INJURY_LINE of the target's HP) is held against it —
+    // only what the action adds (T36 11-19 用户定「只扣推演里本不会发生的」): a foe the race brings down to the spar's floor anyway,
+    // the actor letting this action go by (r20DownAnyway), is hurt below the line whoever lands it and whenever, so the hit that
+    // does it now is not held against it. Before, the finishing hit always paid and the race's later hits never did.
     let restraint = 0;
+    const downAnyway = spar && actorRow !== undefined ? r20DownAnyway(table, own, actorRow) : null;
     if (spar && actorRow !== undefined) for (const [unit, row] of foes) {
+      if (downAnyway.has(row)) continue;
       const now = findUnitInWorld(after, preview.unitId(unit));
       if (!now) continue;
       const maximum = Math.max(1, preview.readHpMax(unit)), line = R20_SPAR_INJURY_LINE * maximum;

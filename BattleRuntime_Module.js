@@ -15484,7 +15484,7 @@
           guardWeightFactor: previewRuntime.guardWeightFactor(hitShare), preparedDefenseConsumed: !!preparedDefense,
           // 卖破绽（T32）: the stance was a bait — the strike back is sure (openStructuredCounterWindow).
           ...(preparedDefense?.bait === true ? { baitConsumed: true } : {}),
-          ...(deflect ? { deflect: true, deflected: deflect.deflected, strengthRatio: deflect.ratio, deflectFailed: deflect.failed, unbalance: deflect.unbalance } : {}) },
+          ...(deflect ? { deflect: true, deflected: deflect.deflected, strengthRatio: deflect.ratio, deflectFailed: deflect.failed, unbalance: deflect.unbalance, ...(deflect.art ? { deflectArt: '控鹤擒龙' } : {}) } : {}) },
       });
       if (!preparedDefense) payActionStamina({ combatData, actor: reactor, nature: 'DEFEND', opponent: sourceActor, action: { actionName: deflect ? '卸力' : actionKind === 'GUARD' ? '护卫' : '防御', actionKind }, actionEvent: event, actionRole: 'REACTION' });
       return {

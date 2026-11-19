@@ -21330,10 +21330,11 @@
     );
     safeRecords(deepGet(activeChar, '功法', {})).forEach(art => {
       const 是紫极魔瞳 = toText(art.name, '') === '紫极魔瞳';
+      const 有境界 = 是紫极魔瞳 || toText(art.name, '') === '控鹤擒龙' && toText(art.境界, '');
       extraSkills.push({
         category: '功法绝学',
         name: art.name,
-        level: 是紫极魔瞳 ? `Lv.${art.lv || 1} / ${toText(art.境界, '纵观')}` : '已掌握',
+        level: 有境界 ? `Lv.${art.lv || 1} / ${toText(art.境界, 是紫极魔瞳 ? '纵观' : '入门')}` : '已掌握',
         desc: toText(art.描述, '暂无描述'),
         preview: '',
       });
@@ -25915,8 +25916,9 @@ ${播报文本}
   function 构建功法学习记录_桥接(功法名 = '', 描述 = '未知', 根数据 = {}) {
     const 名称 = toText(功法名, '').trim();
     const 功法描述 = normalizeSkillUiText(描述, '未知');
-    if (名称 !== '紫极魔瞳') return { 描述: 功法描述 };
     const 当前tick = Math.max(0, Math.floor(toNumber(deepGet(根数据, ['world', '时间', 'tick'], 0), 0)));
+    if (名称 === '控鹤擒龙') return { 境界: '入门', lv: 1, 获得tick: 当前tick, 描述: 功法描述 };
+    if (名称 !== '紫极魔瞳') return { 描述: 功法描述 };
     return { 境界: '纵观', lv: 1, 获得tick: 当前tick, 描述: 功法描述 };
   }
 
