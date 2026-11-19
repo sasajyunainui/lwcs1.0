@@ -7003,6 +7003,18 @@
           candidates.push({ candidateId: `${actorId}:SHIELD:${heldId}`, declaration: { ...defensiveDeclaration(actorId, 'DEFEND'), actionId: `${actorId}:SHIELD:${heldId}`, humanShield: { unitId: heldId } } });
         }
       }
+      // 后撤闪避（11-19）: answering a close strike, the evasion may carry it back — from the front to the back, or held back it is not
+      // drawn into the front by the strike that ran up (BattleRuntime: on a dodge; twice the stamina, no strike back).
+      if (String(input.actionOpportunity?.role || '').trim().toUpperCase() === 'REACTION' &&
+        preview.declarationDamageClass?.(input.actionOpportunity?.incomingAction || {}) === 'MELEE') {
+        candidates.push({ candidateId: `${actorId}:EVADE_BACK`, declaration: { ...defensiveDeclaration(actorId, 'EVADE'), actionId: `${actorId}:EVADE_BACK`, retreat: true, staminaFactor: 2 } });
+      }
+      // 应对时认输（11-19）: in a battle one may concede (比赛、切磋), shouting it while guarding or evading the strike coming (BattlePreview
+      // concedeHoldsBack: a close strike may be pulled; otherwise it lands, and the unit leaves after it).
+      if (String(input.actionOpportunity?.role || '').trim().toUpperCase() === 'REACTION' && withdrawalAllowed(worldSnapshot, actor, input.battleIntent) &&
+        preview.battleExitLabel?.(worldSnapshot, input.battleIntent) === '认输') {
+        for (const kind of ['DEFEND', 'EVADE']) candidates.push({ candidateId: `${actorId}:CONCEDE_${kind}`, declaration: { ...defensiveDeclaration(actorId, kind), actionId: `${actorId}:CONCEDE_${kind}`, concede: true } });
+      }
       // 卸力（T31, BattlePreview canDeflect）: answering a physical single-target strike, the guard may turn it aside instead.
       if (String(input.actionOpportunity?.role || '').trim().toUpperCase() === 'REACTION' && preview.canDeflect?.(input.actionOpportunity?.incomingAction)) {
         candidates.push({ candidateId: `${actorId}:DEFLECT`, declaration: { ...defensiveDeclaration(actorId, 'DEFEND'), actionId: `${actorId}:DEFLECT`, deflect: true } });
@@ -41492,7 +41504,7 @@
     if (declaration.bait === true) return '卖破绽';
     if (declaration.humanShield) return `人盾·${world ? r20UnitLabel(world, String(declaration.humanShield.unitId || '')) : String(declaration.humanShield.unitId || '').split(':').pop()}`;
     const label = kind === 'EQUIP' && declaration.releaseSlot ? (declaration.releaseSlot === '武魂' ? '开武魂' : /^砸·/.test(String(declaration.releaseSlot)) ? name || '砸控制物' : String(declaration.releaseSlot))
-      : kind === 'DEFEND' && declaration.deflect === true ? '卸力' : name || R20_KIND_LABELS[kind] || kind;
+      : declaration.concede === true ? '认输' : kind === 'DEFEND' && declaration.deflect === true ? '卸力' : kind === 'EVADE' && declaration.retreat === true ? '后撤闪避' : name || R20_KIND_LABELS[kind] || kind;
     const targets = (Array.isArray(declaration.targetIds) ? declaration.targetIds : []).map(String)
       .filter(id => id && id !== String(declaration.actorId || '')).map(id => world ? r20UnitLabel(world, id) : id.split(':').pop());
     return `${mode ? `${mode}·` : ''}${label}${targets.length ? `→${targets.join('、')}` : ''}`;
@@ -41507,7 +41519,7 @@
     if (kind === 'FEINT') return '骗招';
     if (kind === 'GUARD') return '护住队友';
     if (role === 'REACTION') return declaration.engagement?.mode === 'CLASH' ? '对轰' : declaration.engagement?.mode === 'PREEMPT' ? '抢先打断'
-      : kind === 'DEFEND' && declaration.humanShield ? '拿人挡这一击' : kind === 'DEFEND' && declaration.deflect === true ? '卸开这一击' : kind === 'DEFEND' ? '防住这一击' : kind === 'EVADE' ? '躲开这一击' : kind === 'PASS_OPPORTUNITY' ? '硬吃这一击、省下应对' : '以魂技应对';
+      : kind === 'DEFEND' && declaration.humanShield ? '拿人挡这一击' : kind === 'DEFEND' && declaration.deflect === true ? '卸开这一击' : declaration.concede === true ? '喊认输' : kind === 'DEFEND' ? '防住这一击' : kind === 'EVADE' && declaration.retreat === true ? '闪开并退到后排' : kind === 'EVADE' ? '躲开这一击' : kind === 'PASS_OPPORTUNITY' ? '硬吃这一击、省下应对' : '以魂技应对';
     if (role === 'COUNTER') return '反击';
     if (kind === 'EQUIP' && declaration.releaseSlot === '武魂') return '开武魂';
     if (kind === 'DEFEND' && declaration.bait === true) return '卖破绽引对方来打';
@@ -42158,16 +42170,18 @@
       const priorActor = Number(request.actionOpportunity?.counterPrior || 0), priorSource = Number(request.actionOpportunity?.opponentCounterPrior || 0);
       const catches = preview.counterOpeningProbability(actorNext, source, move, { prior: priorActor, ...(deflect?.unbalance > 0 ? { unbalanced: true } : {}) });
       const strikesBack = shieldRow !== undefined || deflect?.failed ? 0 : actionKind === 'DEFEND' ? (preview.guardHolds(weight, share * r20Soak(actorNext)) ? catches : 0)
-        : actionKind === 'EVADE' ? dodge * catches : clash ? (clash.answered ? clashConfidence * catches : 0) : engagementMode === 'PREEMPT' ? (preempt + (1 - preempt) * softDeflect) * catches
+        : declaration?.concede === true ? 0 : actionKind === 'EVADE' ? (declaration?.retreat === true ? 0 : dodge * catches) : clash ? (clash.answered ? clashConfidence * catches : 0) : engagementMode === 'PREEMPT' ? (preempt + (1 - preempt) * softDeflect) * catches
           : preview.declarationGrantsCounter(declaration || {}) ? 1 : 0;
       const staminaMaximum = preview.readResourceMax(actorNext, '体力'), maximum = Math.max(1, preview.readHpMax(actorNext)), shield = preview.readShield(actorNext) / maximum;
       // 接战链 阶段 2c: what the answer costs, priced by the same function the table's expectation of an answer uses.
       if (actionKind !== 'PASS_OPPORTUNITY') { const paid = r20AnswerPrice(table.units[actorRow], source, declaration || {}); spent += paid.sp + paid.men + paid.vit; }
       const answerCost = ['DEFEND', 'EVADE'].includes(actionKind) && staminaMaximum > 0 && preview.actionStaminaEnabled(table.world)
-        ? preview.actionStaminaCost(actorNext, actionKind, source) / staminaMaximum : 0;
+        ? preview.actionStaminaCost(actorNext, actionKind, source) * (declaration?.retreat === true ? 2 : 1) / staminaMaximum : 0;
       // What of the move lands on the actor, a share of its HP maximum.
       // A clash: won, nothing; even, CLASH_SHOCK of the move; lost, the difference (clashOutcome inScale).
-      const taken = clash ? clashConfidence * clash.theirs * clash.inScale / maximum * r20Soak(actorNext) + (1 - clashConfidence) * hit : hit * share;
+      // 应对时认输：近身一击收得住就什么也落不下（BattlePreview concedeHoldsBack）。
+      const pulled = declaration?.concede === true && move && preview.concedeHoldsBack?.(source, move, table.units[actorRow]);
+      const taken = pulled ? 0 : clash ? clashConfidence * clash.theirs * clash.inScale / maximum * r20Soak(actorNext) + (1 - clashConfidence) * hit : hit * share;
       diag.taken = taken; diag.hit = hit; diag.share = share;
       const hpLeft = Math.max(0, preview.readHp(actorNext) - r20Floor(actorNext)) / maximum + shield - taken;
       remaining[actorRow] = Math.max(0, hpLeft);
@@ -43954,7 +43968,7 @@
     // 变体（卖破绽、卸力、虚招、绕后、人盾）：与原型打平时让原型（BehaviorDecisionPipeline 平手规则）。
     const variantOf = candidateId => {
       const declaration = frozenById.get(candidateId)?.declaration || {};
-      return declaration.bait === true || declaration.deflect === true || !!declaration.feintStrike || !!declaration.flank || !!declaration.humanShield;
+      return declaration.bait === true || declaration.deflect === true || !!declaration.feintStrike || !!declaration.flank || !!declaration.humanShield || declaration.retreat === true;
     };
     const holdOf = candidateId => {
       const candidate = frozenById.get(candidateId);
@@ -44316,7 +44330,7 @@
     // 变体（卖破绽、卸力、虚招、绕后、人盾）不比它的原型（同动作、同目标、同魂技、不带变体标记）多得到什么时，不进抽取池：
     // 11-19 卖破绽 60 次里 51 次与防御估值完全相等，靠等权抽取占了一半（原著卖破绽约占主动步 1%）。
     const declarations = new Map((request?.frozenCandidates || []).map(candidate => [String(candidate?.candidateId || ''), candidate?.declaration || {}]));
-    const isVariant = declaration => declaration.bait === true || declaration.deflect === true || !!declaration.feintStrike || !!declaration.flank || !!declaration.humanShield;
+    const isVariant = declaration => declaration.bait === true || declaration.deflect === true || !!declaration.feintStrike || !!declaration.flank || !!declaration.humanShield || declaration.retreat === true;
     const plainKey = declaration => [String(declaration.actionKind || '').toUpperCase(), (declaration.targetIds || []).map(String).sort().join(','),
       declaration.skill ? skillId(declaration.skill) : '', String(declaration.releaseSlot || '')].join('|');
     const plainBest = new Map();

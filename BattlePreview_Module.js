@@ -3998,6 +3998,16 @@
     if (Array.isArray(skill?._效果数组) && skill._效果数组.some(lifeDrainEffect)) return true;
     return unitHasLifeDrain(actor);
   }
+  // 应对时认输（用户 11-19）：喊认输，同时照样防御或闪避。近身一击，出手者要「听到并收手」——需要的时间 = 一记普攻的前摇 ×
+  //（出手者有效敏捷 ÷ 认输者有效敏捷：出手越快、认输的越慢，越喊不及），短于这一招的前摇就收得住（这一招落空）；收不住、远程与精神攻击
+  // 照常落下（对方默认不收手，靠自己挡或裁判），这一击结算完认输者离场（BattleRuntime pendingConcede）。只在能认输的战斗（比赛、切磋）。
+  function concedeHoldsBack(attacker = {}, incoming = null, conceder = {}) {
+    if (!incoming || declarationDamageClass(incoming) !== 'MELEE') return false;
+    const own = Number(naturalActionOrderProfile(attacker).effectiveAgility), theirs = Number(naturalActionOrderProfile(conceder).effectiveAgility);
+    const need = actionWindup(attacker, { actorId: unitId(attacker), actionKind: 'BASIC_ATTACK', targetIds: [unitId(conceder)] }, { travel: false }) *
+      (own > 0 && theirs > 0 ? own / theirs : 1);
+    return need < actionWindup(attacker, incoming) - 1e-9;
+  }
   const LEFT_BATTLE_REASONS = Object.freeze({ CONCEDE: 'SURRENDERED', WITHDRAW: 'WITHDRAWN' });
   function hasLeftBattle(unit = {}) {
     const reason = String(unit?.__战斗失能原因 || '').trim();
@@ -10529,6 +10539,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // 位移的距离与强度（用户 2026-11-15 第 5 条）: 脱离、拉近、击退 scale each one-shot effect by (0.75 + 距离/40) × (1 + 数值),
   // 数值 within ±45%, 距离 1～30 (10 when unset) — the factor MVU_Skill_Runtime 计算位移效果倍率_V1 prices them by. 瞬移、换位 land
   // at once: neither counts. Until 11-15 距离 and 数值 were checked and priced (数值 as 单价 × 百分点) and did nothing.
+  // 力量打飞（用户 11-19「按力量差打飞」，例：一拳打飞对面）：没写位移的近身单体伤害攻击（普攻、单纯伤害魂技），出手者力量 ÷ 目标力量
+  // ≥ STRENGTH_KNOCKBACK_RATIO 时追加一条击退（位移执行·击退，跟随主原型：命中才生效），效果同技能写的击退——退到后排、打断蓄力、
+  // 下一次出手命中 −30%、下一次应对反应 −15%。预演与运行时整理完效果后都过这里（BattleRuntime executeStructuredDeclaration）。倍数起始值。
+  const STRENGTH_KNOCKBACK_RATIO = Number(root.__LWCS_TUNE__?.STRENGTH_KNOCKBACK_RATIO ?? 2);
+  function withStrengthKnockback(actor = {}, declaration = {}, effects = [], world = {}) {
+    if (!Array.isArray(effects) || !effects.length || declarationDamageClass(declaration) !== 'MELEE') return effects;
+    if (!effects.some(effect => String(effect?.原型 || '').trim() === '伤害结算') || effects.some(effect => String(effect?.原型 || '').trim() === '位移执行')) return effects;
+    const ids = (Array.isArray(declaration?.targetIds) ? declaration.targetIds : []).map(String);
+    if (ids.length !== 1) return effects;
+    const target = findUnit(world, ids[0]);
+    if (!target || target === actor) return effects;
+    if (battlePanelStat(actor, 'str') < STRENGTH_KNOCKBACK_RATIO * battlePanelStat(target, 'str')) return effects;
+    return [...effects, { 原型: '位移执行', 目标: '单体', 位移类型: '击退', 位移对象: '目标', 生效方式: '跟随主原型', 来源: '力量打飞' }];
+  }
   function positionEffectScale(effect = {}) {
     if (/瞬移|换位/.test(String(effect?.位移类型 || ''))) return 1;
     const distance = clamp(Number(effect?.距离 || 10) || 10, 1, 30);
@@ -21909,6 +21933,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         : [];
     if (input.releaseEffectsResolved !== true) baseEffects = releaseSkillEffects(actor, declaration, baseEffects,
       input?.actionRole || input?.actionOpportunity?.role || declaration?.actionRole);
+    baseEffects = withStrengthKnockback(actor, declaration, baseEffects, worldSnapshot);
     const grants = declaration?.__includeGrantedEffects === false || String(input?.actionRole || declaration?.actionRole || '').trim().toUpperCase() === 'STATE_TICK'
       ? [] : pendingGrantedEffects(actor, declaration?.actionKind);
     const effects = [
@@ -21945,6 +21970,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (Number(contest.successProbability) >= 1 - 1e-12) {
         overlay.changeUnit(unitId(actor), unit => { unit.__战斗失能原因 = contest.concede ? LEFT_BATTLE_REASONS.CONCEDE : LEFT_BATTLE_REASONS.WITHDRAW; });
       }
+    }
+    // 后撤闪避（11-19）：预演按闪开算，退到后排（估值按闪避率另算反击、不接反击）；体力按 staminaFactor 2 倍付。
+    // 应对时认输：预演按认输离场算（这一击落不落下由估值按 concedeHoldsBack 另算）。
+    if (declaration?.concede === true) overlay.changeUnit(unitId(actor), unit => { unit.__战斗失能原因 = LEFT_BATTLE_REASONS.CONCEDE; });
+    if (String(declaration?.actionKind || '').trim().toUpperCase() === 'EVADE' && declaration?.retreat === true) {
+      overlay.changeUnit(unitId(actor), unit => { setUnitPosition(unit, POSITION_BACK); });
     }
     // 接战链 阶段二: a move that came to nothing in a clash brings no effect (its costs are paid above); a unit the move
     // came to nothing on (`nullifiedTargetIds`: it won or evened a clash against it, or a preemption held) takes none of it.
@@ -26171,6 +26202,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     interceptWindupBudget,
     clashWindupBudget,
     clashTiming,
+    withStrengthKnockback,
+    concedeHoldsBack,
     ABYSS_REPELLED,
     isAbyssUnit,
     abyssKillingBlow,

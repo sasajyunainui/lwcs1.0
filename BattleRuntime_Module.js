@@ -7143,7 +7143,10 @@
         removeSummonUnit(
           combatData,
           summon,
-          `战斗终局：${String(resolution.terminalReason || resolution.status || '目标已裁断').trim()}`,
+          // 终局原因是内部代码（OBJECTIVE_VICTORY 等），给玩家看的离场原因换成中文（11-19 覆盖检查查出原样漏进战报）。
+          `战斗终局：${({ OBJECTIVE_VICTORY: '一方达成胜利目标', OBJECTIVE_DEFEAT: '一方达成失败条件', OBJECTIVE_CONFLICT: '胜负条件同时达成',
+            BATTLEFIELD_EXHAUSTION: '一方失去战斗能力', ROUND_LIMIT_REACHED: '到达回合上限', TRUCE: '双方罢手' })[String(resolution.terminalReason || '').trim()] ||
+            String(resolution.terminalReason || '').trim() || '目标已裁断'}`,
         );
       });
     }
@@ -11187,6 +11190,25 @@
     // state to its sole persistent mirror at the declaration boundary.
     settleFallenSummonBacklash(combatData);
     listSummonCombatUnits(combatData).forEach(syncSummonMirror);
+    // 应对时认输（settleStructuredReaction 记 pendingConcede）：这一击结算完，还站着的认输者离场（SURRENDERED，同主动认输）。
+    for (const unit of listCombatUnits(combatData)) {
+      const pending = unit?.__battleRuntime?.pendingConcede;
+      if (pending === undefined) continue;
+      if (pending !== String(actionEvent?.actionId || '')) continue;
+      const { pendingConcede, ...rest } = unit.__battleRuntime; unit.__battleRuntime = rest;
+      if (previewRuntime.isDead(unit) || String(unit.__战斗失能原因 || '').trim()) continue;
+      const beforeActionState = cloneValue(unit?.状态 || {});
+      unit.__战斗失能原因 = previewRuntime.LEFT_BATTLE_REASONS.CONCEDE;
+      facts.push(writeLedgerEvent(combatData, {
+        eventKind: 'state_apply', round: Number(combatData?.回合 || 0),
+        actorId: previewRuntime.unitId(unit), actorName: previewRuntime.unitName(unit), targetId: previewRuntime.unitId(unit), targetName: previewRuntime.unitName(unit),
+        actionName: '认输', actionType: 'incapacitation', actorControl: 'SYSTEM', actionRole: 'REACTION',
+        actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
+        ruleCode: unit.__战斗失能原因, result: 'applied', resultState: 'SUCCESS', primaryOutcome: 'surrendered', factType: 'STATE', operation: 'STATE_APPLY',
+        meta: { source: 'structured_runtime', stateName: '认输', hpAfter: previewRuntime.readHp(unit), hpRatioAfter: previewRuntime.readHp(unit) / Math.max(1, previewRuntime.readHpMax(unit)),
+          leftBattle: true, reactionConcede: true, reasonText: `${previewRuntime.unitName(unit)}认输，退出了战斗`, before: beforeActionState, after: cloneValue(unit.状态 || {}), operation: 'STATE_APPLY' },
+      }));
+    }
     const end = ensureLedger(combatData).at(-1) || actionEvent;
     actionEvent.meta.declarationSettlement = {
       phase: 'POST_EFFECTS_PRE_FOLLOWUPS', status: 'CLOSED',
@@ -11245,8 +11267,8 @@
       else if (['BASIC_ATTACK', 'RELEASE_SKILL', 'USE_ITEM'].includes(actionKind)) actor.__battleRuntime.passiveStreak = 0;
     }
     const useEffects = previewRuntime.inventoryUseEffects(actor, declaration, combatData, declaration?.skill?._效果数组);
-    const explicitEffects = previewRuntime.releaseSkillEffects(actor, declaration,
-      Array.isArray(useEffects) ? useEffects.filter(effect => effect && typeof effect === 'object') : [], actionRole);
+    const explicitEffects = previewRuntime.withStrengthKnockback(actor, declaration, previewRuntime.releaseSkillEffects(actor, declaration,
+      Array.isArray(useEffects) ? useEffects.filter(effect => effect && typeof effect === 'object') : [], actionRole), combatData);
     if (declaration?.skill?.__mechanismGrantTemporarySkill === true) {
       const stateKey = String(declaration.skill.__mechanismGrantStateKey || '').trim();
       const state = actor?.状态效果?.[stateKey];
@@ -13766,7 +13788,11 @@
             if (prototype === '位移执行' && previewRuntime.positionShiftOf) {
               const role = target === actor ? 'self' : inferUnitSide(combatData, actor) === inferUnitSide(combatData, target) ? 'ally' : 'enemy';
               const shift = previewRuntime.positionShiftOf({ ...effect, __位移接收者: role });
-              if (shift && previewRuntime.setUnitPosition(target, shift)) {
+              // 被这一击击退／击飞到后排的目标：突进结算不再把它带回前排（同后撤闪避，retreatEvaded 记这一击的动作 id；原来技能写的击退也会被覆盖）。
+              const heldBack = shift === previewRuntime.POSITION_BACK && role === 'enemy';
+              if (heldBack) target.__battleRuntime = { ...(target.__battleRuntime || {}), retreatEvaded: String(actionEvent?.actionId || '') };
+              // 本来就在后排、被突进过来的一击打回去（不然会被带到前排）也写事实。
+              if (shift && (previewRuntime.setUnitPosition(target, shift) || heldBack)) {
                 // 战报事实（POSITION shift）：位移把谁挪到了前排 / 后排。
                 facts.push(writeMechanicEvent(combatData, { eventKind: 'position_shift', actionName: actionName || '位移', actionRole: String(actionEvent?.actionRole || 'ACTIVE'), actorControl: String(actionEvent?.actorControl || 'AI'),
                   actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor), targetId: previewRuntime.unitId(target), targetName: previewRuntime.unitName(target),
@@ -13998,7 +14024,25 @@
       previewRuntime.setUnitPosition(actor, previewRuntime.POSITION_FRONT);
       const struckIds = new Set((Array.isArray(declaration?.targetIds) ? declaration.targetIds : []).map(String));
       const struck = listCombatUnits(combatData).filter(unit => struckIds.has(String(previewRuntime.unitId(unit))));
-      struck.forEach(unit => previewRuntime.setUnitPosition(unit, previewRuntime.POSITION_FRONT));
+      // 后撤闪避闪开、或被这一击击退的目标留在后排（retreatEvaded 只管这一击，用完清掉）。
+      // 被这一击击退／击飞的（位移执行经预演提交落到目标上，状态带 position_type、来源角色是出手者）：留在后排，写站位事实。
+      const knockedBack = unit => Object.values(unit?.状态效果 || {}).some(state => state && typeof state === 'object' &&
+        /击退|击飞/.test(String(state?.战斗效果?.position_type || '')) && String(state?.来源角色 || '').trim() === String(previewRuntime.unitName(actor)));
+      struck.forEach(unit => {
+        if (knockedBack(unit)) {
+          previewRuntime.setUnitPosition(unit, previewRuntime.POSITION_BACK);
+          facts.push(writeMechanicEvent(combatData, { eventKind: 'position_shift', actionName: actionName || '击退', actionRole: String(actionEvent?.actionRole || 'ACTIVE'), actorControl: String(actionEvent?.actorControl || 'AI'),
+            actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor), targetId: previewRuntime.unitId(unit), targetName: previewRuntime.unitName(unit),
+            actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
+            result: 'back', meta: { positionType: '击退', position: previewRuntime.POSITION_BACK } }));
+          return;
+        }
+        if (unit?.__battleRuntime?.retreatEvaded !== undefined) {
+          const { retreatEvaded, ...rest } = unit.__battleRuntime; unit.__battleRuntime = rest;
+          if (retreatEvaded === String(actionEvent?.actionId || '')) return;
+        }
+        previewRuntime.setUnitPosition(unit, previewRuntime.POSITION_FRONT);
+      });
       // 战报事实（POSITION advance）：这一击先突进，赶路时间多给了对方应对的时间。
       const travel = Number(declaration.advanceWindup);
       facts.push(writeMechanicEvent(combatData, { eventKind: 'position_advance', actionName: '突进', actionRole: String(actionEvent?.actionRole || 'ACTIVE'), actorControl: String(actionEvent?.actorControl || 'AI'),
@@ -15413,6 +15457,19 @@
     // through — BattlePreview calculateDodgeProbability / calculateDefenseDamageMultiplier), and the unit it lands on.
     const incomingDeclaration = input?.incomingDeclaration && typeof input.incomingDeclaration === 'object' ? input.incomingDeclaration : null;
     const hitTarget = input?.hitTarget && typeof input.hitTarget === 'object' ? input.hitTarget : reactor;
+    // 应对时认输（用户 11-19，BattlePreview concedeHoldsBack）：喊了认输，这一击结算完离场（finishStructuredDeclaration 看 pendingConcede）；
+    // 近身一击对方收得住就落空，收不住、远程照常按选的防御／闪避结算。
+    if (declaration?.concede === true) {
+      reactor.__battleRuntime = { ...(reactor.__battleRuntime || {}), pendingConcede: String(parentActionEvent?.actionId || '') };
+      if (previewRuntime.concedeHoldsBack(sourceActor, incomingDeclaration, reactor)) {
+        // 事件类型与动作名跟所选的应对一致（战报按「动作名＋事件类型」把决策挂到交锋上）。
+        const guard = actionKind === 'DEFEND';
+        const event = writeLedgerEvent(combatData, { ...common, eventKind: guard ? 'defend' : 'dodge', actionName: guard ? '防御' : '闪避', result: guard ? 'guarded' : 'evaded', resultState: 'SUCCESS',
+          primaryOutcome: guard ? 'guarded' : 'dodged', ruleCode: 'CONCEDE_PULLED', meta: { ...reactionMeta, concede: true, pulled: true,
+            reasonText: `${actorName}喊了认输，${sourceName}及时收住了这一招` } });
+        return { actionKind, event, evaded: true, damageMultiplier: 0, opensCounterCheck: false };
+      }
+    }
     if (actionKind === 'EVADE') {
       const contest = structuredReactionContest(reactor, sourceActor, incomingDeclaration);
       const probability = previewRuntime.calculateDodgeProbability(reactor, sourceActor, !!preparedDefense, incomingDeclaration);
@@ -15450,8 +15507,22 @@
           preparedDefenseConsumed: !!preparedDefense,
         },
       });
+      // 后撤闪避（用户 11-19；原作梦红尘倒飞、墨珏振翼拉开、卢宇星闪电后退）：闪开就顺势退到后排，近身招式要重新贴近；
+      // 多付一份移动体力（同主动后撤，闪避同价），这一下不接反击。闪不开照常挨打、不退。
+      const retreat = declaration?.retreat === true && !preparedDefense;
       // A prepared stance was paid for when it was taken; a reaction pays for itself (R07).
-      if (!preparedDefense) payActionStamina({ combatData, actor: reactor, nature: 'EVADE', opponent: sourceActor, action: { actionName: '闪避', actionKind }, actionEvent: event, actionRole: 'REACTION' });
+      if (!preparedDefense) payActionStamina({ combatData, actor: reactor, nature: 'EVADE', opponent: sourceActor, action: { actionName: retreat ? '后撤闪避' : '闪避', actionKind }, actionEvent: event, actionRole: 'REACTION', factor: retreat ? 2 : 1 });
+      if (retreat && evaded) {
+        // 在前排：退到后排；在后排：闪开后不被突进的一击带到前排（下面突进结算跳过带 retreatEvaded 的目标）。
+        previewRuntime.setUnitPosition(reactor, previewRuntime.POSITION_BACK);
+        if (Number(incomingDeclaration?.advanceWindup || 0) > 0) reactor.__battleRuntime = { ...(reactor.__battleRuntime || {}), retreatEvaded: String(parentActionEvent?.actionId || '') };
+        event.meta.retreat = true;
+        // 战报事实（POSITION shift，位移类型「后撤闪避」）：闪开后退到后排。
+        writeMechanicEvent(combatData, { eventKind: 'position_shift', actionName: '后撤闪避', actionRole: 'REACTION', actorControl: String(common?.actorControl || 'AI'),
+          actorId: previewRuntime.unitId(reactor), actorName: previewRuntime.unitName(reactor), targetId: previewRuntime.unitId(reactor), targetName: previewRuntime.unitName(reactor),
+          actionId: event.actionId || common?.actionId || '', sourceActionId: common?.sourceActionId || event.actionId || '', parentNodeId: common?.parentNodeId || '', sourceNodeId: common?.sourceNodeId || '',
+          result: 'back', meta: { positionType: '后撤闪避', position: previewRuntime.POSITION_BACK } });
+      }
       return {
         actionKind,
         event,
@@ -15459,7 +15530,7 @@
         damageMultiplier: 1,
         // 2026-11-12 (用户：敏攻"选择闪避，等对方攻击露出破绽，也就是所谓的闪避反击"；主动姿态成功后也允许反击): a prepared
         // stance strikes back like any evasion that succeeds; it used to give the better odds and no counter.
-        opensCounterCheck: evaded,
+        opensCounterCheck: evaded && !retreat,
       };
     }
     // 人盾（T33, BattlePreview humanShieldOptions）: the held enemy is pulled in front — the move is turned onto it (applyHumanShieldRedirect).
