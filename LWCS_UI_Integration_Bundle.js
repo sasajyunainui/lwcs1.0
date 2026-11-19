@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:f7863a467968413b22ccad70a98850936cd3577803f6f3ff0fa3659692a28734|cockpit/designer-model.js:9fa525d85da9e93e60685dcb60d39e224db56c6cd15d88cefe9c37e9e9d580ac|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:4f309f816302ff60f70f671bf976b6c7077704d1793976f168a4683e55c7d85a|cockpit/designer-model.js:cfd30db8a8ca67e544a32c52788feaaa864725e4385577ba70616d16bd767aee|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -19985,7 +19985,7 @@
     let 预算角色 = 角色属性;
     if (['魂技', 'independent_ring_skill'].includes(范围)) {
       来源类别 = '魂技';
-      预算角色 = 构建技能设计台标准战斗属性(10 * Math.min(9, 魂环位) + 1, 角色属性.type || 草稿?.type || '强攻系', {
+      预算角色 = 构建技能设计台标准战斗属性(Math.min(180, 10 * Math.min(18, 魂环位) + 1), 角色属性.type || 草稿?.type || '强攻系', {
         天赋梯队: 角色属性?.属性?.天赋梯队 || 角色数据?.属性?.天赋梯队 || 角色数据?.天赋梯队 || '正常',
       });
     } else if (范围 === 'blood_ring_skill') {
@@ -42225,7 +42225,7 @@ ${播报文本}
       // 没有角色数据（空白新技能）时才回落到本环标准角色。此前一律按本环标准角色，显示的合格区间与游戏里不一致。
       预算角色 = 角色数据 && 角色数据.属性 && Object.keys(角色数据).length
         ? 角色数据
-        : 构建技能设计台标准战斗属性(10 * Math.min(9, 魂环位) + 1, 角色属性.type || 草稿?.type || '强攻系', {
+        : 构建技能设计台标准战斗属性(Math.min(180, 10 * Math.min(18, 魂环位) + 1), 角色属性.type || 草稿?.type || '强攻系', {
           天赋梯队: 角色属性?.属性?.天赋梯队 || 角色数据?.属性?.天赋梯队 || 角色数据?.天赋梯队 || '正常',
         });
       const 魂灵索引 = 路径.findIndex(片段 => /^第\d+魂灵$/.test(normalizeSkillUiText(片段, '')));
@@ -42312,7 +42312,7 @@ ${播报文本}
   function 计算技能设计台固定结算消耗比例(draft = {}) {
     const effects = buildSkillDesignerRuntimeEffects(buildSkillDesignerFormStateFromDraft(draft, {}), {}, {});
     if (!effects.some(effect => normalizeSkillUiText(effect && effect['原型'], '') === '伤害结算')) return 0;
-    const ringIndex = Math.max(1, Math.min(9, Math.floor(Number(draft.ringIndex || draft.ring || 1) || 1)));
+    const ringIndex = Math.max(1, Math.min(18, Math.floor(Number(draft.ringIndex || draft.ring || 1) || 1)));
     if (ringIndex === 7) return 0;
     return Math.max(0, Math.min(0.27, ringIndex * 0.03));
   }
@@ -51215,7 +51215,7 @@ ${播报文本}
   function 计算技能设计台固定结算消耗比例(draft = {}) {
     const effects = Array.isArray(draft.prototypeEffects) ? draft.prototypeEffects : [];
     if (!effects.some(effect => normalizeSkillUiText(effect && effect['原型'], '') === '伤害结算')) return 0;
-    const ringIndex = Math.max(1, Math.min(9, Math.floor(Number(draft.ringIndex || draft.ring || 1) || 1)));
+    const ringIndex = Math.max(1, Math.min(18, Math.floor(Number(draft.ringIndex || draft.ring || 1) || 1)));
     if (ringIndex === 7) return 0;
     return Math.max(0, Math.min(0.27, ringIndex * 0.03));
   }
@@ -51271,9 +51271,11 @@ ${播报文本}
   }
 
   function 获取技能设计台标准攻击威力倍率(等级 = 1) {
-    const ringIndex = Math.max(1, Math.min(9, Math.ceil(Math.max(1, Number(等级 || 1)) / 10)));
+    // 第十位起（神级魂环，100 级起每 10 级一环）照同一指数公式 70 × 30^((N−1)/8) 延伸（11-19）。
+    const 等级值 = Math.max(1, Number(等级 || 1));
+    const ringIndex = 等级值 >= 100 ? Math.min(18, 10 + Math.floor((Math.min(180, 等级值) - 100) / 10)) : Math.min(9, Math.ceil(等级值 / 10));
     if (ringIndex === 7) return 770;
-    return [70, 104, 155, 232, 346, 516, 770, 1149, 2100][ringIndex - 1] || 70;
+    return [70, 104, 155, 232, 346, 516, 770, 1149, 2100][ringIndex - 1] || Math.round(70 * Math.pow(30, (ringIndex - 1) / 8));
   }
 
   function 计算技能设计台伤害次数系数(effect = {}) {

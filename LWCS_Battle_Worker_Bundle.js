@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:003492bd72b433e22135c36bd8a929657b2760594de5d6c877f252c80725db2e|MVU_Schema_Runtime.js:661031d49664fd75c150ee9a80b91e00b1114297c2074fa2ca87d7df51747724|BattlePreview_Module.js:8b3ef9c2dc3447d3767c9ee023943d403c12d67bc364d93b38a5d1b49704c8a1|BehaviorDecisionPipeline_Module.js:e55d1d0a40ff9a1a3a37cf0f16c94dbd9bafe338489e7af952c1279ca0025977|BattleDecision_Module.js:b8dcfdba43a0581645948cb47163b9f5241a7daa5b2266372871db8302807d1d|BattleRuntime_Module.js:e2fd0c7f8492c99cbb0c7d20c59d51887feb559829fe0844515365e7cf4a0829 */
+/* sources-sha256: MVU_Skill_Runtime.js:a3e6568e8e626eb1deec3756396cef12b1515fd67e840709d14abfb44e9162cd|MVU_Schema_Runtime.js:a49c1c4c520032097c34bfd35e675a92e0d40dd51368aaffd246138bab0e8555|BattlePreview_Module.js:8b3ef9c2dc3447d3767c9ee023943d403c12d67bc364d93b38a5d1b49704c8a1|BehaviorDecisionPipeline_Module.js:e55d1d0a40ff9a1a3a37cf0f16c94dbd9bafe338489e7af952c1279ca0025977|BattleDecision_Module.js:b8dcfdba43a0581645948cb47163b9f5241a7daa5b2266372871db8302807d1d|BattleRuntime_Module.js:e2fd0c7f8492c99cbb0c7d20c59d51887feb559829fe0844515365e7cf4a0829 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -1004,6 +1004,15 @@ function getRingColorByAge(age) {
 }
 
 var 自动生成魂灵最低年限_V1 = 10;
+// 神级魂环（用户 11-19 定）：100 级成神得第十环（原著「一旦成神，到了第十魂环」），之后每 10 级一环，180 级 18 环；
+// 两个武魂一样；第十环起一律 100 万年。99 级及以下的魂环数、年限照旧。
+var 神级魂环起始等级_V1 = 100;
+var 最大魂环数_V1 = 18;
+var 神级魂环年限_V1 = 1000000;
+function 读取神级后魂环数_V1(等级 = 0) {
+  const 等级值 = Math.min(180, Number(等级) || 0);
+  return 等级值 >= 神级魂环起始等级_V1 ? Math.min(最大魂环数_V1, 10 + Math.floor((等级值 - 神级魂环起始等级_V1) / 10)) : 0;
+}
 
 function 读取魂灵年限承载上限_V1(魂灵数据 = {}) {
   const 年限 = Math.max(0, Math.floor(Number(typeof 魂灵数据 === 'number' ? 魂灵数据 : 魂灵数据?.年限 || 0)));
@@ -5539,8 +5548,10 @@ function 构建武魂真身默认承载消耗_V1(type = '强攻系', grade = 'B'
 }
 function 获取标准前摇_V1() { return SKILL_STANDARD_CAST_TIME_V1; }
 function 获取基础预算_V1(魂技位 = 1) {
-  const 序号 = Math.max(1, Math.min(9, Math.floor(Number(魂技位 || 1)))) - 1;
-  return SKILL_BASE_BUDGET_BY_TIER_V1[序号];
+  const 位 = Math.max(1, Math.min(最大魂环数_V1, Math.floor(Number(魂技位 || 1))));
+  // 第十位起（神级魂环）沿用第二位起每位 +10 的规律（用户 11-19 定）。
+  if (位 > SKILL_BASE_BUDGET_BY_TIER_V1.length) return SKILL_BASE_BUDGET_BY_TIER_V1[SKILL_BASE_BUDGET_BY_TIER_V1.length - 1] + 10 * (位 - SKILL_BASE_BUDGET_BY_TIER_V1.length);
+  return SKILL_BASE_BUDGET_BY_TIER_V1[位 - 1];
 }
 
 function 计算运转代价能量_V1(消耗倍数 = 1, 前摇倍数 = 1) {
@@ -7647,7 +7658,7 @@ function 估算自动生成预算摘要_V1(context = {}) {
   if (缓存 && 缓存.has(缓存键)) return 缓存.get(缓存键);
   const 魂环位 = Math.max(1, Math.floor(Number(context?.ringIndex ?? context?.魂环位 ?? 1) || 1));
   const 来源 = String(context?.sourceCategory || context?.来源 || context?.来源类别 || '魂技').trim() || '魂技';
-  const 标准等级 = Math.max(1, 10 * Math.min(9, 魂环位) + 1);
+  const 标准等级 = Math.max(1, Math.min(180, 10 * Math.min(最大魂环数_V1, 魂环位) + 1));
   const 原始角色 = context?.角色 && typeof context.角色 === 'object' && !Array.isArray(context.角色)
     ? context.角色
     : getBaseStats(标准等级);
@@ -13792,11 +13803,13 @@ function buildSkillCombatProfile(blueprint, qualityCtx = {}) {
   // 第N魂技位 B 级标准威力 = 70 × 30^((N-1)/8)，让 70=1魂(10 COST) ... 2100=9魂(90 COST)
   const v5_魂技位B级威力 = [70, 104, 155, 232, 346, 516, 770, 1149, 2100];
   const v5_品质倍率 = { F级_残缺: 0.21, D级_粗糙: 0.33, C级_劣质: 0.5, B级_普通: 1.0, A级_优秀: 1.67, S级_极品: 2.5, 'S+级_神品': 3.17 };
-  const v5_魂技位序 = Math.max(1, Math.min(9, Math.floor(Number(ringIndex || 1)))) - 1;
+  const v5_魂技位序 = Math.max(1, Math.min(最大魂环数_V1, Math.floor(Number(ringIndex || 1)))) - 1;
+  // 第十位起（神级魂环）照同一指数公式往后延伸（用户 11-19 定）。
+  const v5_位威力 = v5_魂技位B级威力[v5_魂技位序] ?? Math.round(70 * Math.pow(30, v5_魂技位序 / 8));
   const v5_品质倍 = v5_品质倍率[quality] || 1.0;
   // v9.2：powerBase ±25% 随机波动，避免同位同品质的伤害技能威力完全一致
   const v9_2_威力波动 = 0.75 + Math.random() * 0.5;  // 0.75-1.25
-  const powerMap = { [quality]: Math.round(v5_魂技位B级威力[v5_魂技位序] * v5_品质倍 * v9_2_威力波动) };
+  const powerMap = { [quality]: Math.round(v5_位威力 * v5_品质倍 * v9_2_威力波动) };
   const powerBase = Math.max(1, Math.round(powerMap[quality] || 120));
   const randomRangeRaw = (min, max) => (min === max ? min : min + Math.random() * (max - min));
   const grade = { F级_残缺: 'F', D级_粗糙: 'D', C级_劣质: 'C', B级_普通: 'B', A级_优秀: 'A', S级_极品: 'S', 'S+级_神品': 'S+' }[quality] || 'B';
@@ -15455,12 +15468,12 @@ function 读取魂技成长魂技位_V1(skill = {}, 上下文 = {}) {
   const 来源判定 = 判定技能消耗来源_V1(skill, { ...上下文, 技能: skill });
   if (来源判定.成本类型 !== 'ordinary') return 0;
   const 魂技位 = Math.floor(Number(推断虚拟魂技位_V1(类别, { ...上下文, 魂环位: 上下文?.魂环位 ?? 上下文?.ringIndex })));
-  return 魂技位 >= 1 && 魂技位 <= 9 && 魂技位 !== 7 ? 魂技位 : 0;
+  return 魂技位 >= 1 && 魂技位 <= 最大魂环数_V1 && 魂技位 !== 7 ? 魂技位 : 0;
 }
 
 // 「第 N 魂技在 10N 级获得」时的资源上限：魂力走时代魂力需求（含双武魂/底子波动），精神力/体力走基础面板。
 function 读取魂技获得时资源上限_V1(角色 = {}, 资源 = '魂力', 魂技位 = 1) {
-  const 获得等级 = Math.max(1, Math.min(9, Math.floor(Number(魂技位) || 1))) * 10;
+  const 获得等级 = Math.max(1, Math.min(最大魂环数_V1, Math.floor(Number(魂技位) || 1))) * 10; // 第十位起：100 级成神得第十环，之后每 10 级一环
   if (资源 === '魂力') return Math.max(1, Number(getCharacterBaseSoulPowerRequirementAtLevel(角色, 获得等级)) || 1);
   if (资源 === '精神力') return Math.max(1, Number(getBaseStats(获得等级)?.men_max) || 1);
   return Math.max(1, Number(getBaseStats(获得等级)?.vit_max) || 1);
@@ -17299,8 +17312,8 @@ function 推断虚拟魂技位_V1(来源 = '魂技', 上下文 = {}) {
   const { 角色 = {}, 魂骨年限, 魂环位 } = 上下文 || {};
   const 角色等级 = Number(角色?.等级 ?? 0);
   if (来源 === '魂技' || 来源 === '自创魂技') {
-    if (Number.isFinite(Number(魂环位))) return Math.max(1, Math.min(9, Math.floor(Number(魂环位))));
-    if (角色等级 > 0) return Math.max(1, Math.min(9, Math.floor(角色等级 / 10)));
+    if (Number.isFinite(Number(魂环位))) return Math.max(1, Math.min(最大魂环数_V1, Math.floor(Number(魂环位))));
+    if (角色等级 > 0) return Math.max(1, 读取神级后魂环数_V1(角色等级) || Math.min(9, Math.floor(角色等级 / 10)));
     return 1;
   }
   if (来源 === '武魂融合技') {
@@ -17466,7 +17479,7 @@ function 计算生成目标COST_V1(评估 = {}, 上下文 = {}) {
 
 function 构建自动生成预算上下文_V1(上下文 = {}) {
   const 魂环位 = Math.max(1, Math.floor(Number(上下文?.ringIndex ?? 上下文?.魂环位 ?? 1) || 1));
-  const 标准等级 = Math.max(1, 10 * Math.min(9, 魂环位) + 1);
+  const 标准等级 = Math.max(1, Math.min(180, 10 * Math.min(最大魂环数_V1, 魂环位) + 1));
   const 原始角色 = 上下文?.角色 && typeof 上下文.角色 === 'object' && !Array.isArray(上下文.角色) ? 上下文.角色 : null;
   const 角色 = 原始角色 ? cloneJsonValue(原始角色, {}) : getBaseStats(标准等级);
   if (!角色.属性 || typeof 角色.属性 !== 'object' || Array.isArray(角色.属性)) 角色.属性 = {};
@@ -30584,12 +30597,13 @@ function 计算内置角色投影等级_V1(角色 = {}, 角色记录 = {}, 快�
 
 function 读取真实魂环等级底线_V1(角色 = {}) {
   const 魂环数 = 读取角色实际魂环数量_V1(角色);
+  if (魂环数 >= 10) return Math.min(180, 神级魂环起始等级_V1 + (魂环数 - 10) * 10); // 第十环起是成神后的神级魂环
   return 魂环数 > 0 ? Math.min(99, 魂环数 * 10 + 1) : 0;
 }
 
 function 裁剪内置角色魂环到等级_V1(角色 = {}) {
   const 等级 = Math.max(0, Number(角色?.属性?.等级 || 0) || 0);
-  const 最大第一武魂魂环数 = Math.max(0, Math.min(9, Math.floor(等级 / 10)));
+  const 最大第一武魂魂环数 = 读取神级后魂环数_V1(等级) || Math.max(0, Math.min(9, Math.floor(等级 / 10)));
   Object.entries(角色 || {}).forEach(([武魂键, 武魂]) => {
     if (!/^第\d+武魂$/.test(武魂键) || !武魂 || typeof 武魂 !== 'object' || Array.isArray(武魂)) return;
     const 武魂序号 = 读取槽位序号_V1(武魂键, 1);
@@ -33536,6 +33550,8 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
     // 所以按「等级 − 1」取环——此前按 等级 ÷ 10 给满 N 环，读档又按底线把等级抬到 10N+1。
     function 读取初始化武魂目标魂环数_V1(武魂槽位 = '第1武魂', 等级 = 1, 是否魂兽 = false) {
       if (是否魂兽) return 0;
+      const 神级魂环数 = 读取神级后魂环数_V1(等级); // 100 级起两个武魂一样：第十环起每 10 级一环
+      if (神级魂环数 > 0) return 神级魂环数;
       const 等级值 = Math.max(0, Number(等级 || 1) - 1);
       if (武魂槽位 === '第2武魂') {
         if (等级值 < 70) return 0;
@@ -33778,7 +33794,27 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       return 按空间比例提升魂灵年限_V1(魂灵条目, Math.max(0, 目标总年限 - 当前总年限));
     }
 
+    // 第十环起（神级魂环）：每环一个独立魂灵，按库里第十环的写法放在「第N魂灵.第N魂环」，年限一律 100 万年（用户 11-19 定）。
+    // 第一到第九环照原规则补（补九环内魂环_V1），互不影响。
     function 补齐武魂缺失魂环_V1(char = {}, 武魂槽位 = '第1武魂', 武魂数据 = {}, 目标魂环数 = 0, 待补武魂数 = 1) {
+      if (!武魂数据 || typeof 武魂数据 !== 'object') return false;
+      const 目标总数 = Math.max(0, Math.min(最大魂环数_V1, Math.floor(Number(目标魂环数 || 0))));
+      let 已补齐 = 补齐武魂缺失九环内魂环_V1(char, 武魂槽位, 武魂数据, Math.min(9, 目标总数), 待补武魂数);
+      if (目标总数 <= 9) return 已补齐;
+      const 已有魂环位集合 = 读取武魂已有魂环位集合_V1(武魂数据);
+      for (let 魂环位 = 10; 魂环位 <= 目标总数; 魂环位++) {
+        if (已有魂环位集合.has(魂环位)) continue;
+        const 魂灵槽位名 = 武魂数据[`第${魂环位}魂灵`] ? 读取下一个魂灵槽位名_V1(武魂数据) : `第${魂环位}魂灵`;
+        const 色 = getRingColorByAge(神级魂环年限_V1);
+        武魂数据[魂灵槽位名] = 构建初始化魂灵数据_V1(char, { age: 神级魂环年限_V1, color: 色 }, 读取槽位序号_V1(魂灵槽位名, 1) - 1);
+        武魂数据[魂灵槽位名][`第${魂环位}魂环`] = 创建默认魂环数据_V1(魂环位, 神级魂环年限_V1);
+        已有魂环位集合.add(魂环位);
+        已补齐 = true;
+      }
+      return 已补齐;
+    }
+
+    function 补齐武魂缺失九环内魂环_V1(char = {}, 武魂槽位 = '第1武魂', 武魂数据 = {}, 目标魂环数 = 0, 待补武魂数 = 1) {
       if (!武魂数据 || typeof 武魂数据 !== 'object') return false;
       const 目标总数 = Math.max(0, Math.min(9, Math.floor(Number(目标魂环数 || 0))));
       if (目标总数 <= 0) return false;
