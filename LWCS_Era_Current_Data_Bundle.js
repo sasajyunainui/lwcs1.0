@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: CharacterLibrary.js:700d35e2c4eeef009b87fbcda1ea05ad7eeea28b79ad7e141d08796ea4635c06|ItemLibrary.js:b197f22e9e47710e6190b0a5337f24b23b7dc0ff2d60a69554a6256702907443|FactionLibrary.js:255b37b457bfca7deb43134747c9165b31dded4ad76838ba20c369eaee318200|LocationLibrary.js:f2e07a35c4839d094b7a6e9bdd6635afc703cf0542222bf5241f045b7d65fefc|timeline.js:26b59eba2d288d6ce89b4e1fa60d9ea3c39ffec882d6deaccf2c8b20316ac35d */
+/* sources-sha256: CharacterLibrary.js:9e74a13fe50c84244caaa69b024cffffd502819fe55f37dbdb37141045a975f9|ItemLibrary.js:b197f22e9e47710e6190b0a5337f24b23b7dc0ff2d60a69554a6256702907443|FactionLibrary.js:255b37b457bfca7deb43134747c9165b31dded4ad76838ba20c369eaee318200|LocationLibrary.js:f2e07a35c4839d094b7a6e9bdd6635afc703cf0542222bf5241f045b7d65fefc|timeline.js:26b59eba2d288d6ce89b4e1fa60d9ea3c39ffec882d6deaccf2c8b20316ac35d */
 ;
 /* source: CharacterLibrary.js */
 !(function () {
@@ -32052,6 +32052,15 @@
                  "数值": "-7.88%",
                  "驱动属性": "精神力上限",
                  "影响方向": "成功率"
+               },
+               // 11-19 用户批「苏沐两个光环加控制标记」：迟缓光环是控制链起手，加群体迟缓。
+               {
+                 "原型": "状态施加",
+                 "目标": "群体",
+                 "持续回合": 1,
+                 "生效方式": "跟随主原型",
+                 "状态": "迟缓",
+                 "数值": "-9.66%"
                }
              ],
     },
@@ -32084,6 +32093,14 @@
                  "数值": "-23.33%",
                  "驱动属性": "精神力上限",
                  "影响方向": "成功率"
+               },
+               // 11-19 用户批「苏沐两个光环加控制标记」：魂力被强行剥离外泄，加群体魂力枯竭。
+               {
+                 "原型": "状态施加",
+                 "目标": "群体",
+                 "持续回合": 1,
+                 "生效方式": "跟随主原型",
+                 "状态": "魂力枯竭"
                }
              ],
     },
