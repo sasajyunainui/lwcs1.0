@@ -1344,8 +1344,15 @@ function getBeastStats(age, species) {
   };
 }
 
+// 魂兽（按魂兽处理：不配斗铠机甲魂骨、不补魂环、不自动突破、不发津贴）——11-19 用户定：
+// 有真实武魂的是魂师（势力只表示阵营：古月娜、蓝佛子在魂兽一族里也是魂师；唐舞麟复生后 10006 岁曾被当成魂兽，斗铠、魂骨被清掉）；
+// 没有武魂时，势力魂兽一族／深渊生物、单位性质魂兽／深渊算魂兽；都没有才按年龄 ≥ 10000 推断。
+// 库里把本体写成第1武魂的魂兽、深渊生物已改成库标准格式（无武魂、势力魂兽一族或深渊生物）。
 function isSoulBeastCharacter(char = {}) {
-  return !!(Number(char?.属性?.年龄 || 0) >= 10000 || char?.社交?.势力?.['魂兽一族']);
+  if (Object.entries(char || {}).some(([key, value]) => /^第\d+武魂$/.test(key) && 是否真实武魂数据_V1(value))) return false;
+  const 势力名 = Object.keys(char?.社交?.势力 || {});
+  if (势力名.includes('魂兽一族') || 势力名.some(名 => String(名).includes('深渊')) || ['魂兽', '深渊'].includes(String(char?.单位性质 || '').trim())) return true;
+  return Number(char?.属性?.年龄 || 0) >= 10000;
 }
 
 function formatCultivationLevelText(level, fallback = '未知') {
