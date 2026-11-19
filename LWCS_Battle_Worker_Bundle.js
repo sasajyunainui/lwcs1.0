@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:14b1832c7291424be45db95f8a87dee2233ba867c03680df8b9e125269c5afa1|MVU_Schema_Runtime.js:6e8b944fdfc051eda07329f5d6d2ab527228d22bebeabef0842558a6f5bc2e86|BattlePreview_Module.js:ef9c82c219ab3b396aacfbcb4915d413312e15df2ad87cc246dcb50a9de9e232|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:302c686d8fd45ea17e768a94b0ee94abcc895e586162dba921f565d65363db3d|BattleRuntime_Module.js:a2efc7788a3ae7218641b0888772e3b9e507b842f849ac93fd2089ed800d054b */
+/* sources-sha256: MVU_Skill_Runtime.js:14b1832c7291424be45db95f8a87dee2233ba867c03680df8b9e125269c5afa1|MVU_Schema_Runtime.js:6e8b944fdfc051eda07329f5d6d2ab527228d22bebeabef0842558a6f5bc2e86|BattlePreview_Module.js:ef9c82c219ab3b396aacfbcb4915d413312e15df2ad87cc246dcb50a9de9e232|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:aef4c220ef2b5b135e322f4fb20884e6b075ee3558a4eaba7d5a636d2aee6580|BattleRuntime_Module.js:a2efc7788a3ae7218641b0888772e3b9e507b842f849ac93fd2089ed800d054b */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -75282,8 +75282,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return clamp(text.includes('%') || numeric > 1 ? numeric / 100 : numeric, 0, 1);
   }
 
+  // 魂技槽位（11-19 用户定「候选 ID 带上魂技槽位」）：没有显式 ID 的魂技按它在角色身上的槽位路径认（collectSkills 记下），
+  // 同名魂技（库里重名、多个「待补全」占位）不再撞成一个候选 ID（battle_decision_candidate_identity_invalid）。
+  const skillSlotPaths = new WeakMap();
   function skillId(skill = {}, index = 0) {
-    return String(skill?.id || skill?.技能ID || skill?.魂技ID || skill?.name || skill?.魂技名 || skill?.技能名称 || `skill:${index}`).trim();
+    const slot = skill && typeof skill === 'object' ? skillSlotPaths.get(skill) : '';
+    return String(skill?.id || skill?.技能ID || skill?.魂技ID || slot || skill?.name || skill?.魂技名 || skill?.技能名称 || `skill:${index}`).trim();
   }
 
   function skillName(skill = {}, index = 0) {
@@ -76622,6 +76626,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         ? Object.freeze([...cachedUnitSkills, ...activeGrantedSkills])
         : cachedUnitSkills;
     }
+    const rootLabels = new Map();
     const roots = [
       ...(Array.isArray(unit?.技能列表) && unit.技能列表.length ? [unit.技能列表] : []),
       // 融合技（非武魂融合，S80-E）: its 技能数据 is composed from the participants' skills (MVU_Schema_Runtime 合成魂技融合技能数据_V1).
@@ -76629,19 +76634,24 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       // and read twice it gave a charging unit's counter two candidates of one identity (11-17).
       ...Object.entries(unit).filter(([key, value]) => key !== '蓄力技能' && /^(?:第\d+)?武魂|血脉之力|魂骨|装备|自创魂技|技能|^融合技$/.test(key) && value && typeof value === 'object')
         .filter(([key]) => !(sealed.has('器武魂') && preview.toolSpiritKeys(unit).includes(key)))
-        .map(([key, value]) => key !== '装备' ? value : soulToolSkillView(sealed.size ? sealedEquipmentView(equipment || value, sealed) : equipment || value)),
+        .map(([key, value]) => {
+          const view = key !== '装备' ? value : soulToolSkillView(sealed.size ? sealedEquipmentView(equipment || value, sealed) : equipment || value);
+          if (view && typeof view === 'object') rootLabels.set(view, key);
+          return view;
+        }),
     ];
     const collectRoot = skillRoot => {
       const cached = skillRootCache.get(skillRoot);
       if (cached) return cached;
       const entries = [];
       const seenObjects = new Set();
+      const rootLabel = rootLabels.get(skillRoot) || '技能列表';
       // R8 (被动技能修复方案 2026-11-12): what a 被动 table holds is a passive whatever its 承载方式 says — never an action.
-      const visit = (value, inPassiveTable = false) => {
+      const visit = (value, inPassiveTable = false, path = rootLabel) => {
         if (!value || typeof value !== 'object' || seenObjects.has(value)) return;
         seenObjects.add(value);
         if (Array.isArray(value)) {
-          value.forEach(item => visit(item, inPassiveTable));
+          value.forEach((item, position) => visit(item, inPassiveTable, `${path}[${position}]`));
           return;
         }
         if (inPassiveTable && Array.isArray(value._效果数组) && value._效果数组.length) return;
@@ -76659,12 +76669,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               : preview.stableHash(value._效果数组);
             effectFingerprintCache.set(value._效果数组, effectFingerprint);
           }
+          if (!skillSlotPaths.has(value)) skillSlotPaths.set(value, path);
           entries.push({ skill: value, effectFingerprint });
           return;
         }
         Object.entries(value).forEach(([key, child]) => {
           if (/状态效果|战斗历史|历史快照|参战者|复制效果/.test(key)) return;
-          visit(child, inPassiveTable || preview.isPassiveSkillTableKey(key));
+          visit(child, inPassiveTable || preview.isPassiveSkillTableKey(key), `${path}.${key}`);
         });
       };
       visit(skillRoot);

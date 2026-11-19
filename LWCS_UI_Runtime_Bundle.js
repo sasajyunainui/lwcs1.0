@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:f7863a467968413b22ccad70a98850936cd3577803f6f3ff0fa3659692a28734|cockpit/designer-model.js:9fa525d85da9e93e60685dcb60d39e224db56c6cd15d88cefe9c37e9e9d580ac|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:ef9c82c219ab3b396aacfbcb4915d413312e15df2ad87cc246dcb50a9de9e232|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:302c686d8fd45ea17e768a94b0ee94abcc895e586162dba921f565d65363db3d|BattleRuntime_Module.js:a2efc7788a3ae7218641b0888772e3b9e507b842f849ac93fd2089ed800d054b|BattleReport_Module.js:a541fb97fcb77f2434fcc8e81f1e09d5552a1e225a5c4f9b6f301646684607ae|BattleUI_Module.js:b0a9ca72412554bdb7aefec6687cba12f332d6a270b5d5b39d764ce8e4d2f11e|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:f7863a467968413b22ccad70a98850936cd3577803f6f3ff0fa3659692a28734|cockpit/designer-model.js:9fa525d85da9e93e60685dcb60d39e224db56c6cd15d88cefe9c37e9e9d580ac|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:417f71152e44d66e07227aa8321b3c938362c61283f03da07fc2962d295e64fb|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:ef9c82c219ab3b396aacfbcb4915d413312e15df2ad87cc246dcb50a9de9e232|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:aef4c220ef2b5b135e322f4fb20884e6b075ee3558a4eaba7d5a636d2aee6580|BattleRuntime_Module.js:a2efc7788a3ae7218641b0888772e3b9e507b842f849ac93fd2089ed800d054b|BattleReport_Module.js:a541fb97fcb77f2434fcc8e81f1e09d5552a1e225a5c4f9b6f301646684607ae|BattleUI_Module.js:b0a9ca72412554bdb7aefec6687cba12f332d6a270b5d5b39d764ce8e4d2f11e|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -98321,8 +98321,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return clamp(text.includes('%') || numeric > 1 ? numeric / 100 : numeric, 0, 1);
   }
 
+  // 魂技槽位（11-19 用户定「候选 ID 带上魂技槽位」）：没有显式 ID 的魂技按它在角色身上的槽位路径认（collectSkills 记下），
+  // 同名魂技（库里重名、多个「待补全」占位）不再撞成一个候选 ID（battle_decision_candidate_identity_invalid）。
+  const skillSlotPaths = new WeakMap();
   function skillId(skill = {}, index = 0) {
-    return String(skill?.id || skill?.技能ID || skill?.魂技ID || skill?.name || skill?.魂技名 || skill?.技能名称 || `skill:${index}`).trim();
+    const slot = skill && typeof skill === 'object' ? skillSlotPaths.get(skill) : '';
+    return String(skill?.id || skill?.技能ID || skill?.魂技ID || slot || skill?.name || skill?.魂技名 || skill?.技能名称 || `skill:${index}`).trim();
   }
 
   function skillName(skill = {}, index = 0) {
@@ -99661,6 +99665,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         ? Object.freeze([...cachedUnitSkills, ...activeGrantedSkills])
         : cachedUnitSkills;
     }
+    const rootLabels = new Map();
     const roots = [
       ...(Array.isArray(unit?.技能列表) && unit.技能列表.length ? [unit.技能列表] : []),
       // 融合技（非武魂融合，S80-E）: its 技能数据 is composed from the participants' skills (MVU_Schema_Runtime 合成魂技融合技能数据_V1).
@@ -99668,19 +99673,24 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       // and read twice it gave a charging unit's counter two candidates of one identity (11-17).
       ...Object.entries(unit).filter(([key, value]) => key !== '蓄力技能' && /^(?:第\d+)?武魂|血脉之力|魂骨|装备|自创魂技|技能|^融合技$/.test(key) && value && typeof value === 'object')
         .filter(([key]) => !(sealed.has('器武魂') && preview.toolSpiritKeys(unit).includes(key)))
-        .map(([key, value]) => key !== '装备' ? value : soulToolSkillView(sealed.size ? sealedEquipmentView(equipment || value, sealed) : equipment || value)),
+        .map(([key, value]) => {
+          const view = key !== '装备' ? value : soulToolSkillView(sealed.size ? sealedEquipmentView(equipment || value, sealed) : equipment || value);
+          if (view && typeof view === 'object') rootLabels.set(view, key);
+          return view;
+        }),
     ];
     const collectRoot = skillRoot => {
       const cached = skillRootCache.get(skillRoot);
       if (cached) return cached;
       const entries = [];
       const seenObjects = new Set();
+      const rootLabel = rootLabels.get(skillRoot) || '技能列表';
       // R8 (被动技能修复方案 2026-11-12): what a 被动 table holds is a passive whatever its 承载方式 says — never an action.
-      const visit = (value, inPassiveTable = false) => {
+      const visit = (value, inPassiveTable = false, path = rootLabel) => {
         if (!value || typeof value !== 'object' || seenObjects.has(value)) return;
         seenObjects.add(value);
         if (Array.isArray(value)) {
-          value.forEach(item => visit(item, inPassiveTable));
+          value.forEach((item, position) => visit(item, inPassiveTable, `${path}[${position}]`));
           return;
         }
         if (inPassiveTable && Array.isArray(value._效果数组) && value._效果数组.length) return;
@@ -99698,12 +99708,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               : preview.stableHash(value._效果数组);
             effectFingerprintCache.set(value._效果数组, effectFingerprint);
           }
+          if (!skillSlotPaths.has(value)) skillSlotPaths.set(value, path);
           entries.push({ skill: value, effectFingerprint });
           return;
         }
         Object.entries(value).forEach(([key, child]) => {
           if (/状态效果|战斗历史|历史快照|参战者|复制效果/.test(key)) return;
-          visit(child, inPassiveTable || preview.isPassiveSkillTableKey(key));
+          visit(child, inPassiveTable || preview.isPassiveSkillTableKey(key), `${path}.${key}`);
         });
       };
       visit(skillRoot);
