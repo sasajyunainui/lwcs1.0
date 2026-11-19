@@ -999,6 +999,15 @@ function getRingColorByAge(age) {
 }
 
 var 自动生成魂灵最低年限_V1 = 10;
+// 神级魂环（用户 11-19 定）：100 级成神得第十环（原著「一旦成神，到了第十魂环」），之后每 10 级一环，180 级 18 环；
+// 两个武魂一样；第十环起一律 100 万年。99 级及以下的魂环数、年限照旧。
+var 神级魂环起始等级_V1 = 100;
+var 最大魂环数_V1 = 18;
+var 神级魂环年限_V1 = 1000000;
+function 读取神级后魂环数_V1(等级 = 0) {
+  const 等级值 = Math.min(180, Number(等级) || 0);
+  return 等级值 >= 神级魂环起始等级_V1 ? Math.min(最大魂环数_V1, 10 + Math.floor((等级值 - 神级魂环起始等级_V1) / 10)) : 0;
+}
 
 function 读取魂灵年限承载上限_V1(魂灵数据 = {}) {
   const 年限 = Math.max(0, Math.floor(Number(typeof 魂灵数据 === 'number' ? 魂灵数据 : 魂灵数据?.年限 || 0)));
@@ -5534,8 +5543,10 @@ function 构建武魂真身默认承载消耗_V1(type = '强攻系', grade = 'B'
 }
 function 获取标准前摇_V1() { return SKILL_STANDARD_CAST_TIME_V1; }
 function 获取基础预算_V1(魂技位 = 1) {
-  const 序号 = Math.max(1, Math.min(9, Math.floor(Number(魂技位 || 1)))) - 1;
-  return SKILL_BASE_BUDGET_BY_TIER_V1[序号];
+  const 位 = Math.max(1, Math.min(最大魂环数_V1, Math.floor(Number(魂技位 || 1))));
+  // 第十位起（神级魂环）沿用第二位起每位 +10 的规律（用户 11-19 定）。
+  if (位 > SKILL_BASE_BUDGET_BY_TIER_V1.length) return SKILL_BASE_BUDGET_BY_TIER_V1[SKILL_BASE_BUDGET_BY_TIER_V1.length - 1] + 10 * (位 - SKILL_BASE_BUDGET_BY_TIER_V1.length);
+  return SKILL_BASE_BUDGET_BY_TIER_V1[位 - 1];
 }
 
 function 计算运转代价能量_V1(消耗倍数 = 1, 前摇倍数 = 1) {
@@ -7642,7 +7653,7 @@ function 估算自动生成预算摘要_V1(context = {}) {
   if (缓存 && 缓存.has(缓存键)) return 缓存.get(缓存键);
   const 魂环位 = Math.max(1, Math.floor(Number(context?.ringIndex ?? context?.魂环位 ?? 1) || 1));
   const 来源 = String(context?.sourceCategory || context?.来源 || context?.来源类别 || '魂技').trim() || '魂技';
-  const 标准等级 = Math.max(1, 10 * Math.min(9, 魂环位) + 1);
+  const 标准等级 = Math.max(1, Math.min(180, 10 * Math.min(最大魂环数_V1, 魂环位) + 1));
   const 原始角色 = context?.角色 && typeof context.角色 === 'object' && !Array.isArray(context.角色)
     ? context.角色
     : getBaseStats(标准等级);
@@ -13787,11 +13798,13 @@ function buildSkillCombatProfile(blueprint, qualityCtx = {}) {
   // 第N魂技位 B 级标准威力 = 70 × 30^((N-1)/8)，让 70=1魂(10 COST) ... 2100=9魂(90 COST)
   const v5_魂技位B级威力 = [70, 104, 155, 232, 346, 516, 770, 1149, 2100];
   const v5_品质倍率 = { F级_残缺: 0.21, D级_粗糙: 0.33, C级_劣质: 0.5, B级_普通: 1.0, A级_优秀: 1.67, S级_极品: 2.5, 'S+级_神品': 3.17 };
-  const v5_魂技位序 = Math.max(1, Math.min(9, Math.floor(Number(ringIndex || 1)))) - 1;
+  const v5_魂技位序 = Math.max(1, Math.min(最大魂环数_V1, Math.floor(Number(ringIndex || 1)))) - 1;
+  // 第十位起（神级魂环）照同一指数公式往后延伸（用户 11-19 定）。
+  const v5_位威力 = v5_魂技位B级威力[v5_魂技位序] ?? Math.round(70 * Math.pow(30, v5_魂技位序 / 8));
   const v5_品质倍 = v5_品质倍率[quality] || 1.0;
   // v9.2：powerBase ±25% 随机波动，避免同位同品质的伤害技能威力完全一致
   const v9_2_威力波动 = 0.75 + Math.random() * 0.5;  // 0.75-1.25
-  const powerMap = { [quality]: Math.round(v5_魂技位B级威力[v5_魂技位序] * v5_品质倍 * v9_2_威力波动) };
+  const powerMap = { [quality]: Math.round(v5_位威力 * v5_品质倍 * v9_2_威力波动) };
   const powerBase = Math.max(1, Math.round(powerMap[quality] || 120));
   const randomRangeRaw = (min, max) => (min === max ? min : min + Math.random() * (max - min));
   const grade = { F级_残缺: 'F', D级_粗糙: 'D', C级_劣质: 'C', B级_普通: 'B', A级_优秀: 'A', S级_极品: 'S', 'S+级_神品': 'S+' }[quality] || 'B';
@@ -15450,12 +15463,12 @@ function 读取魂技成长魂技位_V1(skill = {}, 上下文 = {}) {
   const 来源判定 = 判定技能消耗来源_V1(skill, { ...上下文, 技能: skill });
   if (来源判定.成本类型 !== 'ordinary') return 0;
   const 魂技位 = Math.floor(Number(推断虚拟魂技位_V1(类别, { ...上下文, 魂环位: 上下文?.魂环位 ?? 上下文?.ringIndex })));
-  return 魂技位 >= 1 && 魂技位 <= 9 && 魂技位 !== 7 ? 魂技位 : 0;
+  return 魂技位 >= 1 && 魂技位 <= 最大魂环数_V1 && 魂技位 !== 7 ? 魂技位 : 0;
 }
 
 // 「第 N 魂技在 10N 级获得」时的资源上限：魂力走时代魂力需求（含双武魂/底子波动），精神力/体力走基础面板。
 function 读取魂技获得时资源上限_V1(角色 = {}, 资源 = '魂力', 魂技位 = 1) {
-  const 获得等级 = Math.max(1, Math.min(9, Math.floor(Number(魂技位) || 1))) * 10;
+  const 获得等级 = Math.max(1, Math.min(最大魂环数_V1, Math.floor(Number(魂技位) || 1))) * 10; // 第十位起：100 级成神得第十环，之后每 10 级一环
   if (资源 === '魂力') return Math.max(1, Number(getCharacterBaseSoulPowerRequirementAtLevel(角色, 获得等级)) || 1);
   if (资源 === '精神力') return Math.max(1, Number(getBaseStats(获得等级)?.men_max) || 1);
   return Math.max(1, Number(getBaseStats(获得等级)?.vit_max) || 1);
@@ -17294,8 +17307,8 @@ function 推断虚拟魂技位_V1(来源 = '魂技', 上下文 = {}) {
   const { 角色 = {}, 魂骨年限, 魂环位 } = 上下文 || {};
   const 角色等级 = Number(角色?.等级 ?? 0);
   if (来源 === '魂技' || 来源 === '自创魂技') {
-    if (Number.isFinite(Number(魂环位))) return Math.max(1, Math.min(9, Math.floor(Number(魂环位))));
-    if (角色等级 > 0) return Math.max(1, Math.min(9, Math.floor(角色等级 / 10)));
+    if (Number.isFinite(Number(魂环位))) return Math.max(1, Math.min(最大魂环数_V1, Math.floor(Number(魂环位))));
+    if (角色等级 > 0) return Math.max(1, 读取神级后魂环数_V1(角色等级) || Math.min(9, Math.floor(角色等级 / 10)));
     return 1;
   }
   if (来源 === '武魂融合技') {
@@ -17461,7 +17474,7 @@ function 计算生成目标COST_V1(评估 = {}, 上下文 = {}) {
 
 function 构建自动生成预算上下文_V1(上下文 = {}) {
   const 魂环位 = Math.max(1, Math.floor(Number(上下文?.ringIndex ?? 上下文?.魂环位 ?? 1) || 1));
-  const 标准等级 = Math.max(1, 10 * Math.min(9, 魂环位) + 1);
+  const 标准等级 = Math.max(1, Math.min(180, 10 * Math.min(最大魂环数_V1, 魂环位) + 1));
   const 原始角色 = 上下文?.角色 && typeof 上下文.角色 === 'object' && !Array.isArray(上下文.角色) ? 上下文.角色 : null;
   const 角色 = 原始角色 ? cloneJsonValue(原始角色, {}) : getBaseStats(标准等级);
   if (!角色.属性 || typeof 角色.属性 !== 'object' || Array.isArray(角色.属性)) 角色.属性 = {};

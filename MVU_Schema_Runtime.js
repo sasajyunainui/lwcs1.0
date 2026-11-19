@@ -2723,12 +2723,13 @@ function 计算内置角色投影等级_V1(角色 = {}, 角色记录 = {}, 快�
 
 function 读取真实魂环等级底线_V1(角色 = {}) {
   const 魂环数 = 读取角色实际魂环数量_V1(角色);
+  if (魂环数 >= 10) return Math.min(180, 神级魂环起始等级_V1 + (魂环数 - 10) * 10); // 第十环起是成神后的神级魂环
   return 魂环数 > 0 ? Math.min(99, 魂环数 * 10 + 1) : 0;
 }
 
 function 裁剪内置角色魂环到等级_V1(角色 = {}) {
   const 等级 = Math.max(0, Number(角色?.属性?.等级 || 0) || 0);
-  const 最大第一武魂魂环数 = Math.max(0, Math.min(9, Math.floor(等级 / 10)));
+  const 最大第一武魂魂环数 = 读取神级后魂环数_V1(等级) || Math.max(0, Math.min(9, Math.floor(等级 / 10)));
   Object.entries(角色 || {}).forEach(([武魂键, 武魂]) => {
     if (!/^第\d+武魂$/.test(武魂键) || !武魂 || typeof 武魂 !== 'object' || Array.isArray(武魂)) return;
     const 武魂序号 = 读取槽位序号_V1(武魂键, 1);
@@ -5675,6 +5676,8 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
     // 所以按「等级 − 1」取环——此前按 等级 ÷ 10 给满 N 环，读档又按底线把等级抬到 10N+1。
     function 读取初始化武魂目标魂环数_V1(武魂槽位 = '第1武魂', 等级 = 1, 是否魂兽 = false) {
       if (是否魂兽) return 0;
+      const 神级魂环数 = 读取神级后魂环数_V1(等级); // 100 级起两个武魂一样：第十环起每 10 级一环
+      if (神级魂环数 > 0) return 神级魂环数;
       const 等级值 = Math.max(0, Number(等级 || 1) - 1);
       if (武魂槽位 === '第2武魂') {
         if (等级值 < 70) return 0;
@@ -5917,7 +5920,27 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       return 按空间比例提升魂灵年限_V1(魂灵条目, Math.max(0, 目标总年限 - 当前总年限));
     }
 
+    // 第十环起（神级魂环）：每环一个独立魂灵，按库里第十环的写法放在「第N魂灵.第N魂环」，年限一律 100 万年（用户 11-19 定）。
+    // 第一到第九环照原规则补（补九环内魂环_V1），互不影响。
     function 补齐武魂缺失魂环_V1(char = {}, 武魂槽位 = '第1武魂', 武魂数据 = {}, 目标魂环数 = 0, 待补武魂数 = 1) {
+      if (!武魂数据 || typeof 武魂数据 !== 'object') return false;
+      const 目标总数 = Math.max(0, Math.min(最大魂环数_V1, Math.floor(Number(目标魂环数 || 0))));
+      let 已补齐 = 补齐武魂缺失九环内魂环_V1(char, 武魂槽位, 武魂数据, Math.min(9, 目标总数), 待补武魂数);
+      if (目标总数 <= 9) return 已补齐;
+      const 已有魂环位集合 = 读取武魂已有魂环位集合_V1(武魂数据);
+      for (let 魂环位 = 10; 魂环位 <= 目标总数; 魂环位++) {
+        if (已有魂环位集合.has(魂环位)) continue;
+        const 魂灵槽位名 = 武魂数据[`第${魂环位}魂灵`] ? 读取下一个魂灵槽位名_V1(武魂数据) : `第${魂环位}魂灵`;
+        const 色 = getRingColorByAge(神级魂环年限_V1);
+        武魂数据[魂灵槽位名] = 构建初始化魂灵数据_V1(char, { age: 神级魂环年限_V1, color: 色 }, 读取槽位序号_V1(魂灵槽位名, 1) - 1);
+        武魂数据[魂灵槽位名][`第${魂环位}魂环`] = 创建默认魂环数据_V1(魂环位, 神级魂环年限_V1);
+        已有魂环位集合.add(魂环位);
+        已补齐 = true;
+      }
+      return 已补齐;
+    }
+
+    function 补齐武魂缺失九环内魂环_V1(char = {}, 武魂槽位 = '第1武魂', 武魂数据 = {}, 目标魂环数 = 0, 待补武魂数 = 1) {
       if (!武魂数据 || typeof 武魂数据 !== 'object') return false;
       const 目标总数 = Math.max(0, Math.min(9, Math.floor(Number(目标魂环数 || 0))));
       if (目标总数 <= 0) return false;

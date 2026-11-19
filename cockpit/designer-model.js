@@ -5771,7 +5771,7 @@
       // 没有角色数据（空白新技能）时才回落到本环标准角色。此前一律按本环标准角色，显示的合格区间与游戏里不一致。
       预算角色 = 角色数据 && 角色数据.属性 && Object.keys(角色数据).length
         ? 角色数据
-        : 构建技能设计台标准战斗属性(10 * Math.min(9, 魂环位) + 1, 角色属性.type || 草稿?.type || '强攻系', {
+        : 构建技能设计台标准战斗属性(Math.min(180, 10 * Math.min(18, 魂环位) + 1), 角色属性.type || 草稿?.type || '强攻系', {
           天赋梯队: 角色属性?.属性?.天赋梯队 || 角色数据?.属性?.天赋梯队 || 角色数据?.天赋梯队 || '正常',
         });
       const 魂灵索引 = 路径.findIndex(片段 => /^第\d+魂灵$/.test(normalizeSkillUiText(片段, '')));
@@ -5858,7 +5858,7 @@
   function 计算技能设计台固定结算消耗比例(draft = {}) {
     const effects = buildSkillDesignerRuntimeEffects(buildSkillDesignerFormStateFromDraft(draft, {}), {}, {});
     if (!effects.some(effect => normalizeSkillUiText(effect && effect['原型'], '') === '伤害结算')) return 0;
-    const ringIndex = Math.max(1, Math.min(9, Math.floor(Number(draft.ringIndex || draft.ring || 1) || 1)));
+    const ringIndex = Math.max(1, Math.min(18, Math.floor(Number(draft.ringIndex || draft.ring || 1) || 1)));
     if (ringIndex === 7) return 0;
     return Math.max(0, Math.min(0.27, ringIndex * 0.03));
   }

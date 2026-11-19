@@ -990,7 +990,7 @@
   function 计算技能设计台固定结算消耗比例(draft = {}) {
     const effects = Array.isArray(draft.prototypeEffects) ? draft.prototypeEffects : [];
     if (!effects.some(effect => normalizeSkillUiText(effect && effect['原型'], '') === '伤害结算')) return 0;
-    const ringIndex = Math.max(1, Math.min(9, Math.floor(Number(draft.ringIndex || draft.ring || 1) || 1)));
+    const ringIndex = Math.max(1, Math.min(18, Math.floor(Number(draft.ringIndex || draft.ring || 1) || 1)));
     if (ringIndex === 7) return 0;
     return Math.max(0, Math.min(0.27, ringIndex * 0.03));
   }
@@ -1046,9 +1046,11 @@
   }
 
   function 获取技能设计台标准攻击威力倍率(等级 = 1) {
-    const ringIndex = Math.max(1, Math.min(9, Math.ceil(Math.max(1, Number(等级 || 1)) / 10)));
+    // 第十位起（神级魂环，100 级起每 10 级一环）照同一指数公式 70 × 30^((N−1)/8) 延伸（11-19）。
+    const 等级值 = Math.max(1, Number(等级 || 1));
+    const ringIndex = 等级值 >= 100 ? Math.min(18, 10 + Math.floor((Math.min(180, 等级值) - 100) / 10)) : Math.min(9, Math.ceil(等级值 / 10));
     if (ringIndex === 7) return 770;
-    return [70, 104, 155, 232, 346, 516, 770, 1149, 2100][ringIndex - 1] || 70;
+    return [70, 104, 155, 232, 346, 516, 770, 1149, 2100][ringIndex - 1] || Math.round(70 * Math.pow(30, (ringIndex - 1) / 8));
   }
 
   function 计算技能设计台伤害次数系数(effect = {}) {
