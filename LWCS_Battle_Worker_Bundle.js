@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:14b1832c7291424be45db95f8a87dee2233ba867c03680df8b9e125269c5afa1|MVU_Schema_Runtime.js:ce8f3eaf08bd1716340035e3c08dbba15bc92d0da2980e52a6573e9b418bd123|BattlePreview_Module.js:ef9c82c219ab3b396aacfbcb4915d413312e15df2ad87cc246dcb50a9de9e232|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:2a440da1f4435d1ac7f7b338e5f3a8528f8a664431bd36239733e3c41596aaca|BattleRuntime_Module.js:405ce462986d65a792833110d2dcec72623c8336a8f43b9bb1162b17a7416078 */
+/* sources-sha256: MVU_Skill_Runtime.js:14b1832c7291424be45db95f8a87dee2233ba867c03680df8b9e125269c5afa1|MVU_Schema_Runtime.js:ce8f3eaf08bd1716340035e3c08dbba15bc92d0da2980e52a6573e9b418bd123|BattlePreview_Module.js:ef9c82c219ab3b396aacfbcb4915d413312e15df2ad87cc246dcb50a9de9e232|BehaviorDecisionPipeline_Module.js:c013425328fde3b473c8e81003f24cfdbd21b32c3ca419b8e611b69c9bf6b44f|BattleDecision_Module.js:6fb3647fe2d793448bdd285c574318c774d07d74ad37986a35795922c656c25a|BattleRuntime_Module.js:a2efc7788a3ae7218641b0888772e3b9e507b842f849ac93fd2089ed800d054b */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -74019,6 +74019,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const shown = Number(world?.佯装记录?.[preview.unitName(feinter)] || 0) || 0;
     return clamp(FEINT_SEE_BASE + FEINT_SEE_CLARITY * seen / (seen + BELIEF_EXCHANGE_PRIOR) + mental + FEINT_SEE_REPEAT * shown, 0, 1);
   }
+  // 看穿来招（T34 11-19 用户定「看穿来招可提前出手」；原作 38 步应对时放魂技——缠绕、魅惑、蛛网束缚、护体铠甲）: the chance a unit
+  // reads a move as it starts, so its answer may take as long as the move's whole windup on top of its reaction window (BattleRuntime
+  // rolls it per answer). FORESEE_BASE, more by how clearly it has the attacker (FORESEE_CLARITY × the clarity of their exchanges and
+  // acquaintance), more for a 精神系 (FORESEE_MENTAL) and for a sense that outreaches the attacker's (FORESEE_SENSE, beliefSenses),
+  // more again when it has seen this very skill (FORESEE_KNOWN); at most FORESEE_CAP. Starting values, measured later.
+  const FORESEE_BASE = 0.1, FORESEE_CLARITY = 0.4, FORESEE_MENTAL = 0.15, FORESEE_SENSE = 0.15, FORESEE_KNOWN = 0.3, FORESEE_CAP = 0.9;
+  function foreseeChance(world = {}, observer = {}, attacker = {}, skill = {}) {
+    const name = String(skill?.魂技名 || skill?.name || '').trim();
+    const known = name && beliefKnowsExposure(observer, attacker, world) && preview.exposedSkills(attacker).some(entry => String(entry?.魂技名 || entry?.name || '').trim() === name);
+    const seen = Number(beliefExchangeCounts(world, sideOf(world, observer)).get(preview.unitId(attacker)) || 0) + beliefFamiliarExchanges(observer, attacker, world);
+    const mental = /精神/.test(String(observer?.系别 || observer?.type || observer?.第1武魂?.系别 || observer?.属性?.系别 || '')) ? FORESEE_MENTAL : 0;
+    return clamp(FORESEE_BASE + FORESEE_CLARITY * seen / (seen + BELIEF_EXCHANGE_PRIOR) + mental + (beliefSenses(observer, attacker) ? FORESEE_SENSE : 0) +
+      (known ? FORESEE_KNOWN : 0), 0, FORESEE_CAP);
+  }
 
   // The skill a feint keeps ready: the heaviest (its damage power on enemies) of the unit's affordable single-target skills that
   // strike an enemy and are quick enough to meet a move at once (windup ≤ FEINT_MAX_WINDUP); null when it has none.
@@ -116684,6 +116698,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     typicalAttackRatio,
     typicalStatRatio,
     feintSeeThroughChance,
+    foreseeChance,
     projectCooperativeSummonDeclaration,
     actionCompletesWithinBattleHorizon,
     chooseInterceptor,
@@ -135659,14 +135674,25 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 sourceEventIds: sourceEventIds.slice(),
               };
               const feintMeet = preparedDefense || summonGuard ? null : feintMeetDeclaration(actor, sourceActorId, shared.declaration);
+              // 看穿来招（T34 11-19 用户定）: a reactor that reads the move as it starts (BattleDecision foreseeChance, rolled now) answers
+              // from its start — the window takes the move's whole windup as the reactor sees it (BattlePreview answerWindup) on top, at
+              // most CONTINUOUS_ACTION_BUDGET; an ally stepping in does not (it has the way to cover first).
+              const plainBudget = node?.state?.intercept === true
+                ? Math.max(0, previewRuntime.interceptWindupBudget(sourceActor, shared.declaration, actor))
+                : previewRuntime.reactionWindupBudget(sourceActor, shared.declaration, actor);
+              const foreseeOdds = preparedDefense || summonGuard || feintMeet || node?.state?.intercept === true ? 0
+                : Math.max(0, Math.min(1, Number(decisionRuntime.foreseeChance?.(combatData, actor, sourceActor, shared.declaration?.skill || {}) ?? 0) || 0));
+              const foresaw = foreseeOdds > 0 && Math.random() < foreseeOdds;
+              const foreseeBudget = foresaw
+                ? Math.min(Number(previewRuntime.CONTINUOUS_ACTION_BUDGET) || 40, plainBudget + Math.max(0, Number(previewRuntime.answerWindup(sourceActor, shared.declaration, actor)) || 0))
+                : plainBudget;
               const decisionResult = preparedDefense || summonGuard || feintMeet ? null : yield* decideForNode(actor, node, {
                 role: 'REACTION',
                 imminentThreat: true,
                 sourceActorId,
-                // What the reactor's skill may take against this attack (BattlePreview reactionWindupBudget).
-                immediateBudget: node?.state?.intercept === true
-                  ? Math.max(0, previewRuntime.interceptWindupBudget(sourceActor, shared.declaration, actor))
-                  : previewRuntime.reactionWindupBudget(sourceActor, shared.declaration, actor),
+                // What the reactor's skill may take against this attack (BattlePreview reactionWindupBudget; more once it read the move).
+                immediateBudget: foreseeBudget,
+                ...(foresaw ? { foresaw: true } : {}),
                 actionContext,
                 incomingAction,
                 // 接战链 阶段一: the strike backs each side has made in this exchange (the next one costs more and is caught less).
@@ -135694,6 +135720,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 : summonGuard
                   ? { actorId, actionKind: 'DEFEND', targetIds: [actorId] }
                   : feintMeet || cloneValue(decisionResult.selected.declaration);
+              // 看穿来招：答的是一个照常来不及的魂技时记一笔（战报写「看穿来招，抢先出手」）。
+              const answerWindupTaken = Math.max(0, Number(reactionDeclaration?.skill?.前摇 ?? reactionDeclaration?.skill?.cast_time ?? 0) || 0);
+              if (foresaw && String(reactionDeclaration?.actionKind || '').toUpperCase() === 'RELEASE_SKILL' && answerWindupTaken > plainBudget) {
+                writeMechanicEvent(combatData, { eventKind: 'foresee', actionName: '看穿来招', actionRole: 'REACTION', actorControl: String(actor?.__battleRuntime?.control || 'AI'),
+                  actorId, actorName: previewRuntime.unitName(actor), targetId: String(sourceActorId), targetName: previewRuntime.unitName(sourceActor), targetIds: [String(sourceActorId)],
+                  actionId: sourceActionId, sourceActionId, parentNodeId: String(node?.id || ''), sourceNodeId: String(node?.id || ''), result: 'foresaw',
+                  meta: { chance: foreseeOdds, plainWindow: plainBudget, window: foreseeBudget, skillName: String(reactionDeclaration?.skill?.魂技名 || ''), skillWindup: answerWindupTaken } });
+              }
               // 蓄力中应对（用户 2026-11-17「蓄力可以主动中断」）: a unit charging — or charging a fusion skill with its holder —
               // answers only by giving the charge up; letting the move go by keeps the charge and takes the whole hit.
               // 蓄力迎击（同日「3」）: met with the charge itself (BattlePreview chargeMeetSkill), the charge is thrown now and spent.
