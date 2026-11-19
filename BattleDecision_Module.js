@@ -5624,7 +5624,7 @@
         const confidence = preview.clashTiming(attacker, move, unit, answer, { intercept }).confidence;
         if (!(confidence > 0)) return;
         if (skill && !directImmediateSkillEffects(skill).some(effect => effect?.原型 === '伤害结算')) return;
-        const clash = preview.clashOutcome(unit, answer, attacker, move, world);
+        const clash = preview.clashOutcome(unit, answer, attacker, move, world, { intercept });
         if (clash) shares.push(confidence * clash.inScale + (1 - confidence));
       };
       if (!hasStateFlag(unit, 'disarm')) tryMove({ actionKind: 'BASIC_ATTACK', targetIds: [preview.unitId(attacker)] }, null);

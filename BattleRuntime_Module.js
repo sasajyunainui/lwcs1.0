@@ -15191,7 +15191,7 @@
     const sourceId = previewRuntime.unitId(sourceActor);
     // 佯装被冲上来：它以保留的那一招迎击（feintMeetDeclaration）——记在交锋事件上，战报写「佯装迎击」（T26 第 2 批）。
     const feintMeet = feintMeetDeclarations.has(declaration) || previewRuntime.isFeint?.(reactor?.蓄力技能) === true;
-    const clash = mode === 'CLASH' ? previewRuntime.clashOutcome(reactor, declaration, sourceActor, incomingDeclaration, combatData) : null;
+    const clash = mode === 'CLASH' ? previewRuntime.clashOutcome(reactor, declaration, sourceActor, incomingDeclaration, combatData, { intercept: input?.intercept === true }) : null;
     // 接战链 阶段 2c: the answering move must fit the clash window (BattlePreview clashWindupBudget, the attack read on the
     // true agility; an ally that stepped in has INTERCEPT_WINDUP less). Thrown too late (LATE) it comes to nothing and the
     // move lands on the answerer unguarded, rolling to hit as ever — a misjudged speed is paid for, as with preempting.

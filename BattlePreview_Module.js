@@ -2459,6 +2459,11 @@
   // halved, same direction: × 0.9, a window of 18 against a basic attack of equal speed (a move a tenth quicker than a
   // basic attack meets it, a basic attack does not meet a basic attack).
   const CLASH_READ_MARGIN = -0.1;
+  // 晚出手的对轰（用户 11-19「慢的也能对轰，但出手晚要吃亏」；原作里慢的一方也硬对上去）：应对的那一招没放进窗口，晚了
+  // (自己前摇 − 窗口) ÷ 自己前摇，不超过这个比例照样撞上，只是还没蓄满——它计入对轰的伤害按晚了的比例打折（clashOutcome）。
+  // 取 0.2（11-19 实测，84 局 1v1 + 原作复现 128 场）：应对里选对轰的占比 改前 16.5% → 0.2 时 21.8%（0.3 25.1%、0.5 28.3%，
+  // 原作约 16%）；原作复现对轰锁定 27 → 34 步、总锁定 358 → 366（0.5 也是 34 步、总锁定 356）。普攻对普攻：敏捷约为对方 0.89 倍以上。
+  const CLASH_LATE_LIMIT = Number(root.__LWCS_TUNE__?.CLASH_LATE_LIMIT ?? 0.2);
   function clashWindupBudget(attacker = {}, declaration = {}, reactor = {}, options = {}) {
     const windup = answerWindup(attacker, declaration, reactor), intercept = options?.intercept === true ? INTERCEPT_WINDUP : 0;
     const attackerAgility = naturalActionOrderProfile(attacker).effectiveAgility;
@@ -2474,7 +2479,9 @@
   // preemptTiming does for a preemption.
   function clashTiming(attacker = {}, incomingDeclaration = {}, reactor = {}, declaration = {}, options = {}) {
     const window = clashWindupBudget(attacker, incomingDeclaration, reactor, options), own = actionWindup(reactor, declaration);
-    const margin = own > 0 ? (window - own) / own : window >= 0 ? Infinity : -Infinity;
+    // 晚出手（CLASH_LATE_LIMIT）以内也算对上：把握按「晚到上限还剩多少余地」算，即余地整体右移 CLASH_LATE_LIMIT。
+    const late = own > 0 ? clamp((own - window) / own, 0, 1) : 0;
+    const margin = own > 0 ? (window - own) / own + CLASH_LATE_LIMIT : window >= 0 ? Infinity : -Infinity;
     const linear = margin === Infinity ? 1 : margin === -Infinity ? 0 : clamp(0.5 + 0.5 * margin / PREEMPT_SURE_MARGIN, 0, 1);
     // The margin with the attacker's and the answerer's effective agility scaled by `a` and `r` (the window scales with
     // their ratio unless the move is charged past the budget).
@@ -2483,9 +2490,9 @@
     const marginAt = (a = 1, r = 1) => {
       if (windupIn > CONTINUOUS_ACTION_BUDGET || !(attackerAgility > 0) || !(own > 0)) return margin;
       const scaled = Math.min(CONTINUOUS_ACTION_BUDGET, (window + room) * r / Math.max(1e-9, a)) - room;
-      return (scaled - own) / own;
+      return (scaled - own) / own + CLASH_LATE_LIMIT;
     };
-    return Object.freeze({ window, own, margin, inTime: own <= window + 1e-9,
+    return Object.freeze({ window, own, margin, late, inTime: own <= window + 1e-9 || (own > 0 && late <= CLASH_LATE_LIMIT + 1e-9),
       confidence: oneSidedTimingConfidence(attacker, reactor, margin, linear, marginAt) });
   }
   // 接战链 阶段 2f (方案 §15.2: "吃过一次亏就不再押同一招"): a believed unit held by a bound a settled clash or preemption
@@ -2520,7 +2527,7 @@
     const inc = actionWindup(attacker, incoming), own = actionWindup(reactor, declaration);
     let factor = 0; // attacker effective ≤ (in time) or > (late) reactor effective × factor
     if (String(mode).toUpperCase() === 'CLASH') {
-      const room = own + (intercept ? INTERCEPT_WINDUP : 0);
+      const room = own * (1 - CLASH_LATE_LIMIT) + (intercept ? INTERCEPT_WINDUP : 0); // 晚出手上限以内都算对上
       if (!(inc > 0) || inc > CONTINUOUS_ACTION_BUDGET || !(room > 0)) return null;
       factor = inc * (1 + CLASH_READ_MARGIN) / room;
     } else if (String(mode).toUpperCase() === 'PREEMPT') {
@@ -25842,16 +25849,19 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // damaging move. outScale: the share of the answer's damage that lands on the attacker (won: the difference; even:
   // CLASH_SHOCK); inScale: the share of the attack's that lands on the reactor (lost: the difference; even: CLASH_SHOCK).
   // `shock`: an even clash, whose shares carry damage only.
-  function clashOutcome(reactor = {}, reactorDeclaration = null, attacker = {}, incomingDeclaration = null, worldSnapshot = null) {
+  function clashOutcome(reactor = {}, reactorDeclaration = null, attacker = {}, incomingDeclaration = null, worldSnapshot = null, options = {}) {
     const theirs = incomingMoveDamage(attacker, incomingDeclaration, reactor, worldSnapshot);
-    const mine = incomingMoveDamage(reactor, reactorDeclaration, attacker, worldSnapshot);
-    if (theirs === null || mine === null) return null;
+    const whole = incomingMoveDamage(reactor, reactorDeclaration, attacker, worldSnapshot);
+    if (theirs === null || whole === null) return null;
+    // 晚出手的对轰（CLASH_LATE_LIMIT）：还没蓄满就撞上，计入的伤害按晚了的比例打折。
+    const late = reactorDeclaration && incomingDeclaration ? clashTiming(attacker, incomingDeclaration, reactor, reactorDeclaration, options).late : 0;
+    const mine = whole * (1 - clamp(late, 0, CLASH_LATE_LIMIT));
     const ratio = theirs > 0 ? mine / theirs : mine > 0 ? Infinity : 1;
     const result = ratio >= CLASH_WIN - 1e-12 ? 'WIN' : ratio <= 1 / CLASH_WIN + 1e-12 ? 'LOSE' : 'EVEN';
     const mentalClash = declarationDamageClass(reactorDeclaration || {}) === 'MENTAL' && declarationDamageClass(incomingDeclaration || {}) === 'MENTAL';
     const loss = mentalClash ? MENTAL_CLASH_LOSS_MULT : 1, shock = mentalClash ? MENTAL_CLASH_SHOCK : CLASH_SHOCK;
     return Object.freeze({
-      mine, theirs, ratio, result, threshold: CLASH_WIN, shock: result === 'EVEN', mentalClash,
+      mine, theirs, ratio, result, threshold: CLASH_WIN, shock: result === 'EVEN', mentalClash, late,
       outScale: result === 'WIN' && mine > 0 ? (mine - theirs) / mine * loss : result === 'EVEN' ? shock : 0,
       inScale: result === 'LOSE' && theirs > 0 ? (theirs - mine) / theirs * loss : result === 'EVEN' ? shock : 0,
       answered: result !== 'LOSE',
