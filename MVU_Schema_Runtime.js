@@ -6108,6 +6108,8 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       return 已补齐;
     }
 
+    // 远处 NPC 突破到魂环关口、魂灵都满了时，autoBreakthrough 用它当场按读档补环的规则生成新魂灵带上这一环（用户 11-19）。
+    const 突破补环选项 = { 补齐魂环: (角色, 武魂槽位, 武魂数据, 魂环位) => 补齐武魂缺失魂环_V1(角色, 武魂槽位, 武魂数据, 魂环位, 1) };
     const resourceStateBeforeRecalc = new Map();
     const 本轮补齐魂环角色 = new Set();
     const 记录当前资源比例基准 = (charName, char) => {
@@ -6382,11 +6384,11 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
           syncRoundedDisplaySoulPower_ACU(c);
         }
       });
-      autoBreakthrough(data);
+      autoBreakthrough(data, 突破补环选项);
       refreshQuestBoardFrames(data, currentTick);
       data.world.时间._上次结算tick = currentTick;
     } else {
-      autoBreakthrough(data);
+      autoBreakthrough(data, 突破补环选项);
     }
     // 魂技预算复核（11-15）：新魂环的魂技在这里按当前面板生成，面板在下面才重算，变了就在重算后复核一次。
     const 魂技预算面板快照表 = new Map(Object.entries(data.char || {}).map(([角色名, 角色数据]) => [角色名, typeof 面板预算快照_V1 === 'function' ? 面板预算快照_V1(角色数据) : '']));

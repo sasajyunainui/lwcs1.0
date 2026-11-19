@@ -1751,7 +1751,7 @@ function 判断本轮等级上升角色_V1(角色 = null, 角色名 = '') {
   );
 }
 
-function autoBreakthrough(data) {
+function autoBreakthrough(data, 选项 = {}) {
   _(data.char).forEach((c, charName) => {
     if (!c.状态?.存活) return;
     const isBeast = isSoulBeastCharacter(c);
@@ -1766,10 +1766,16 @@ function autoBreakthrough(data) {
       const finalCap = cultivationRuntime && typeof cultivationRuntime.finalLevelCap === 'function'
         ? Number(cultivationRuntime.finalLevelCap(c, { currentTick }))
         : 100;
-      if (currentLv >= finalCap) return;
-      const nextLevelStep = getNextCultivationLevelStep(currentLv);
+      // 等级是在别处升进魂环关口的（时间流逝里按天修炼直接涨等级），关口那一环没处理：这一轮不升级，先按当前等级处理关口
+      //（11-19：唐舞麟补算 7 年在修炼结算里从 28 升到 30，第 3 环没人给，2 环上限 30，从此卡死）。
+      const 主武魂 = 取角色武魂条目_V1(c)[0]?.[1];
+      const 当前关口未处理 = currentLv < 100 && isSoulRingGateLevel(currentLv) && !!主武魂 &&
+        计算武魂当前魂环数量_V1(主武魂) < Math.round(currentLv / 10);
+      const nextLevelStep = 当前关口未处理 ? currentLv : getNextCultivationLevelStep(currentLv);
+      if (!当前关口未处理 && currentLv >= finalCap) return;
       if (nextLevelStep === null) return;
 
+      if (!当前关口未处理) {
       const baseSoulPowerForBreakthrough = Math.max(
         0,
         Math.floor(Number(c.属性?.魂力上限 || 0) - getCharacterCurrentRingAndBoneSoulPowerBonus_ACU(c)),
@@ -1789,6 +1795,7 @@ function autoBreakthrough(data) {
 
       c.属性.等级 = nextLevelStep;
       标记本轮等级上升角色_V1(c, charName);
+      }
       const newLv = Number(c.属性.等级 || nextLevelStep);
       const newLvText = formatBreakthroughLevelText(newLv);
       let shouldStopAfterThisBreak = false;
@@ -1901,7 +1908,15 @@ function autoBreakthrough(data) {
             } else if (isNearPlayer) {
               data.sys.系统播报 += ` [修为突破] ${charName} 踏入 ${newLvText}！达到魂环门槛，但当前场景内禁止后台立即生成新魂灵，请通过剧情处理。`;
             }
-            shouldStopAfterThisBreak = true;
+            // 不在玩家附近的 NPC（用户 11-19「不是的话自动补」）：魂灵都满了，就当场按读档补环的规则生成新魂灵带上这一环
+            //（读档转换传进来的 选项.补齐魂环 = 补齐武魂缺失魂环_V1，按魂灵预算定年限；原著成长模板在下次读档写入），接着突破。
+            // 原来这里一律停下，远处 NPC 魂灵一满就永久卡住（龙王传说库唐舞麟 13 岁 28 级，时间流逝补算 7 年只到 30 级）。
+            // 精神力承载不了更多魂灵的、没有回调的调用照旧停下。
+            if (!isPlayer && !isNearPlayer && 剩余魂灵年限预算 >= 自动生成魂灵最低年限_V1 && typeof 选项?.补齐魂环 === 'function' &&
+              选项.补齐魂环(c, spiritKey, targetSpirit, ringIndex) && 计算武魂当前魂环数量_V1(targetSpirit) >= ringIndex) {
+              ringAssigned = true;
+              data.sys.系统播报 += ` [修为突破] ${charName} 踏入 ${newLvText}！吸收新魂灵，为【${spiritKey}】附加第 ${ringIndex} 个魂环。`;
+            } else shouldStopAfterThisBreak = true;
           }
 
           if (ringAssigned || shouldStopAfterThisBreak) break;
@@ -1912,6 +1927,8 @@ function autoBreakthrough(data) {
       }
 
       if (shouldStopAfterThisBreak) return;
+      // 补处理的关口仍没给上环（没有可承载的魂灵等）：停，免得原地空转。
+      if (当前关口未处理 && 计算武魂当前魂环数量_V1(主武魂) < Math.round(currentLv / 10)) return;
     }
   });
 }
