@@ -6074,7 +6074,10 @@
     block: Object.freeze({ count: 'block_count', wholeMove: 'block_whole_move', cast: 'block_cast' }),
     deathSave: Object.freeze({ count: 'death_save_count', wholeMove: 'death_save_whole_move', cast: 'death_save_cast' }),
   });
-  const isBlockState = state => String(state?.规则 || state?.防御对象 || '').trim() === '免伤';
+  // 反射（用户 11-19）：挡下这一击同免伤（同一套次数），另按 mirror_ratio 把这一段打回出手者（damageFollowUp mirror）。
+  const isBlockState = state => ['免伤', '反射'].includes(String(state?.规则 || state?.防御对象 || '').trim());
+  const MIRROR_DEFAULT_RATIO = 0.5;
+  const mirrorRatioOf = effect => clamp(Number(effect?.反射比例 ?? MIRROR_DEFAULT_RATIO) || 0, 0, 1);
   function ruleDefenseStateRemovable(state = {}) {
     const effects = state?.战斗效果 || {};
     return state?.__equipmentPassiveState !== true && String(state?.来源原型摘要 || '').trim() === '规则防御' &&
@@ -7182,11 +7185,19 @@
   // What follows a hit on another unit beside the damage itself: the share thrown back (反伤, `ratio`) and 伤害吸收.
   // null: nothing does.
   // `floor`: the line 反伤 on `actor` is held at (indirectHpFloor, type1c).
+  // 反射：target 身上还有次数、对这一击生效的反射状态。
+  function mirrorStatesAgainst(target = {}, attacker = undefined, incomingEffect = undefined) {
+    if (findRuleSuppression(target, '规则防御', '规则', '免伤')) return [];
+    const matches = blockStateAgainst(attacker, incomingEffect ?? undefined);
+    return Object.values(target?.状态效果 || {}).filter(state => state && typeof state === 'object' && matches(state) &&
+      Number(state?.战斗效果?.mirror_ratio) > 0 && Number(state?.战斗效果?.block_count || 0) > 0);
+  }
   function damageFollowUp(actor = {}, target = {}, skill = null, floor = 0, effect = null) {
     if (unitId(actor) === unitId(target)) return null;
     const ratio = counterDamageRatio(target, effect ? { attacker: actor, incomingEffect: effect } : {}), absorption = damageAbsorptionRatios(actor, target, skill);
-    return ratio > 0 || absorption.soak > 0 || absorption.drain > 0 || absorption.gains || absorption.store || absorption.release
-      ? { actor, target, ratio, floor: Math.max(0, Number(floor) || 0), ...absorption } : null;
+    const mirror = mirrorStatesAgainst(target, actor, effect).length > 0;
+    return ratio > 0 || mirror || absorption.soak > 0 || absorption.drain > 0 || absorption.gains || absorption.store || absorption.release
+      ? { actor, target, ratio, mirror, floor: Math.max(0, Number(floor) || 0), ...absorption } : null;
   }
 
   // An outcome's `absorption` laid on the world: resources gained by the attacker and the target, what the target put
@@ -7320,7 +7331,22 @@
         };
         const chargeCast = { actionId: input.ruleBlockCastId || 'projected-cast' };
         for (let hit = 0; hit < hitCount && (readHp(unit) > hpFloor || readHp(unit) > 0 && shield > 0); hit++) {
-          if (blocked < blockCount && consumeRuleBlockCharges(unit, 1, chargeCast).length) { blocked++; continue; }
+          if (blocked < blockCount) {
+            const spent = consumeRuleBlockCharges(unit, 1, chargeCast);
+            if (spent.length) {
+              blocked++;
+              // 反射：挡下的这一段按 mirror_ratio 打回出手者（同反伤，守击倒线 follow.floor）。
+              const mirror = Number(spent[0]?.state?.战斗效果?.mirror_ratio || 0);
+              if (reflectedActor && mirror > 0 && readHp(reflectedActor) > 0) {
+                const reflected = Math.max(0, Math.min(readHp(reflectedActor) - Number(follow?.floor || 0), Math.floor(perSegmentDamage * mirror)));
+                if (reflected > 0) {
+                  reflectedDamage += reflected; setHp(reflectedActor, readHp(reflectedActor) - reflected);
+                  if (readHp(reflectedActor) <= 0) triggerRevive(reflectedActor, '', setResourceValue, () => { reflectedHealing += readHp(reflectedActor); });
+                }
+              }
+              continue;
+            }
+          }
           const hp = readHp(unit), amount = Math.min((input.shieldIncomingCap === 0 ? 0 : shield) + hp - hpFloor, perSegmentDamage), absorbed = Math.min(shield, amount);
           shield -= absorbed; incoming += amount;
           let loss = Math.min(hp - hpFloor, Math.max(0, amount - absorbed));
@@ -10888,8 +10914,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       combatEffect.探查反制 = true;
       combatEffect.sense_pierce = true;
     }
-    if (prototype === '规则防御' && String(effect?.规则 || effect?.防御对象 || '').trim() === '免伤') {
+    if (prototype === '规则防御' && ['免伤', '反射'].includes(String(effect?.规则 || effect?.防御对象 || '').trim())) {
       combatEffect.block_count = Math.max(1, Number(effect?.次数 || 1));
+      if (String(effect?.规则 || effect?.防御对象 || '').trim() === '反射') combatEffect.mirror_ratio = mirrorRatioOf(effect);
     }
     // 控制分档（用户 2026-11-15「要有点区分度，麻痹才是行动变慢，反应变差。僵直改成有反应窗口判定时固定判为无法应对，但是之后可以
     // 行动」）: 眩晕 and the binds stop the unit whole; 麻痹 slows its moves and its answers; 僵直 leaves it no answer to a hit
@@ -13132,8 +13159,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (rule === '免死') {
         combatEffect.death_save_count = Math.max(1, Number(effect?.次数 || 1));
         if (wholeMove) combatEffect.death_save_whole_move = true;
-      } else if (rule === '免伤') {
+      } else if (rule === '免伤' || rule === '反射') {
         combatEffect.block_count = Math.max(1, Number(effect?.次数 || 1));
+        if (rule === '反射') combatEffect.mirror_ratio = mirrorRatioOf(effect);
         if (wholeMove) combatEffect.block_whole_move = true;
         if (effect?.__时光回溯 === true) combatEffect.rewind_restore = true;
       } else combatEffect.damage_reduction = clamp(magnitude || 0.5, 0, 0.95);
@@ -26263,6 +26291,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     clashTiming,
     withStrengthKnockback,
     concedeHoldsBack,
+    mirrorStatesAgainst,
     RING_OUT_RULE,
     ringOutShift,
     markPushedBack,

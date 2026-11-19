@@ -9282,7 +9282,9 @@
     if (!previewRuntime.unitId(actor) || !previewRuntime.unitId(target) || actor === target || !(actualDamage > 0)) return [];
     const runtime = ensureCombatRuntime(combatData);
     if (Number(runtime.counterDamageDepth || 0) > 0) return [];
-    const ratio = previewRuntime.counterDamageRatio(target, input?.effect ? { attacker: actor, incomingEffect: input.effect } : {});
+    // 反射（consumeRuleDefenseBlock）：挡下的一段按反射状态的比例打回，不读反伤。
+    const ratio = Number.isFinite(Number(input?.mirrorRatio)) ? Number(input.mirrorRatio)
+      : previewRuntime.counterDamageRatio(target, input?.effect ? { attacker: actor, incomingEffect: input.effect } : {});
     if (!(ratio > 0)) return [];
     // 击倒线: 反伤 is the target's doing, held at the line.
     const reflectFloor = hostileSource(combatData, target, actor) ? knockdownFloorOf(combatData, actor) : 0;
@@ -9328,6 +9330,7 @@
             0,
           ),
           counterRatio: ratio,
+          ...(Number.isFinite(Number(input?.mirrorRatio)) ? { mirror: true } : {}),
           reflectedDamage: reflected,
           before,
           after,
@@ -9353,10 +9356,11 @@
     // R3: the action's id scopes a whole-move (整招) charge to this cast's segments.
     const entry = previewRuntime.consumeRuleBlockCharges(target, 1, { actionId: actionEvent.actionId })[0];
     if (!entry) return null;
+    const mirrorRatio = Number(entry.state?.战斗效果?.mirror_ratio || 0);
     const { stateKey, state, remainingCount: remaining } = entry;
     const stateApplicationId = String(state.__状态来源窗口?.[0] || state.__状态来源键 || '').trim();
     const stateSource = stateApplicationId ? findStateSource(combatData, { applicationId: stateApplicationId }) || state : state;
-    return writeLedgerEvent(combatData, {
+    const blockedEvent = writeLedgerEvent(combatData, {
       eventKind: 'hit_result',
       round: Number(combatData?.回合 || 0),
       actorId: previewRuntime.unitId(actor),
@@ -9383,7 +9387,7 @@
       appliedDamage: 0,
       meta: {
         source: 'structured_runtime',
-        rule: '免伤',
+        rule: mirrorRatio > 0 ? '反射' : '免伤',
         stateKey,
         consumed: entry.amount,
         remaining,
@@ -9409,7 +9413,12 @@
         stateSourceEffectId: String(stateSource.sourceEffectId || '').trim(),
       },
     });
+    // 反射（用户 11-19）：挡下的这一段按反射比例打回出手者（settleCounterDamage，事实标 mirror），跟在挡下事实后面。
+    if (mirrorRatio > 0) mirrorFactsByBlock.set(blockedEvent, settleCounterDamage({ combatData, actor, target, action, actionEvent,
+      damageEvent: blockedEvent, actionRole, actualDamage: Math.max(0, Number(input.rawDamage) || 0), mirrorRatio }));
+    return blockedEvent;
   }
+  const mirrorFactsByBlock = new WeakMap();
 
   function consumeEquivalentLevelProtectionCheck(input = {}) {
     const combatData = input?.combatData || {};
@@ -12888,7 +12897,7 @@
               damageType: effect?.伤害类型 || '',
             });
             if (blockedByRule) {
-              facts.push(blockedByRule);
+              facts.push(blockedByRule, ...(mirrorFactsByBlock.get(blockedByRule) || []));
               anySegmentHit = true;
               continue;
             }
