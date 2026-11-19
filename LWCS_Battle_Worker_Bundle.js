@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:1b8644dbb6e4b754fb252baa0fb65661e6b4e81ffc44006baa8d4cd94516fac0|MVU_Schema_Runtime.js:5fddc6ff6ac2edd26aba9b2457a097ecfe692dac6bd43812e9d6472e40f98e52|BattlePreview_Module.js:799ccc85cfcc69287cedb1ca9219e3fa78947a942626b97169d8c42e77185673|BehaviorDecisionPipeline_Module.js:e55d1d0a40ff9a1a3a37cf0f16c94dbd9bafe338489e7af952c1279ca0025977|BattleDecision_Module.js:47f788093e8dab00fe72c157184ebd7ebdcd4624f6186ad4012604d04c1978ef|BattleRuntime_Module.js:fde8632da18f2ca293e4e0e6f750ec1ec3b1de0eba264e1856abbeda12ad6a9a */
+/* sources-sha256: MVU_Skill_Runtime.js:fc30d1e38bdf1db30359905f324a4dcd7f2b72ce72c429a7fb6ebaa9dc618f9c|MVU_Schema_Runtime.js:672948895cf0dda1ef1b7f422fe00b63d1cc81bf5784b73fe691d50510b6a73e|BattlePreview_Module.js:fe6d125baa764227a6b335f0ba8e8fb2a39989b7a011207ba6a6a7fcef938c8b|BehaviorDecisionPipeline_Module.js:e55d1d0a40ff9a1a3a37cf0f16c94dbd9bafe338489e7af952c1279ca0025977|BattleDecision_Module.js:47f788093e8dab00fe72c157184ebd7ebdcd4624f6186ad4012604d04c1978ef|BattleRuntime_Module.js:74d408f229ef06ae501e213d77c5ec22c5c133a57b95df87448cbeaa9018faea */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -1358,15 +1358,35 @@ function getBeastStats(age, species) {
   };
 }
 
-// 魂兽（按魂兽处理：不配斗铠机甲魂骨、不补魂环、不自动突破、不发津贴）——11-19 用户定：
-// 有真实武魂的是魂师（势力只表示阵营：古月娜、蓝佛子在魂兽一族里也是魂师；唐舞麟复生后 10006 岁曾被当成魂兽，斗铠、魂骨被清掉）；
-// 没有武魂时，势力魂兽一族／深渊生物、单位性质魂兽／深渊算魂兽；都没有才按年龄 ≥ 10000 推断。
-// 库里把本体写成第1武魂的魂兽、深渊生物已改成库标准格式（无武魂、势力魂兽一族或深渊生物）。
+// 种族（用户 11-19）：魂师／魂兽／深渊／其他。魂师指斗罗大陆出生的人（先天零魂力也算）；魂兽、深渊、其他（外星、异界来客等）
+// 都不走魂师规则（不补武魂魂环、不配斗铠机甲、不发津贴、不自动突破）；只有魂兽走魂兽规则（清空斗铠魂骨、按本体推系别、击杀给魂兽奖励）。
+// 角色写了「种族」就按写的；没写时：有真实武魂 → 魂师（势力只表示阵营：古月娜在魂兽一族里也是魂师）；势力带「魂兽」→ 魂兽；
+// 势力带「深渊」→ 深渊；临时战斗单位看单位性质；其余 → 魂师。不按年龄推断（原来 ≥ 10000 岁即魂兽，唐舞麟复生后被清掉斗铠魂骨）。
+var 角色种族选项_V1 = Object.freeze(['魂师', '魂兽', '深渊', '其他']);
+// 重生魂兽（用户 11-19：小舞、阿银）：写了种族魂兽、却有真实武魂。修炼一律按魂师（突破、补环、斗铠魂骨、战斗系别）；
+// 「是不是魂兽」的身份 70 级前按魂兽（种族显示、被击杀给魂兽奖励），70 级起按魂师。
+var 重生魂兽转魂师等级_V1 = 70;
+function 是否重生魂兽_V1(char = {}) {
+  return String(char?.种族 || '').trim() === '魂兽' &&
+    Object.entries(char || {}).some(([key, value]) => /^第\d+武魂$/.test(key) && 是否真实武魂数据_V1(value));
+}
+function 读取角色种族_V1(char = {}) {
+  const 显式 = String(char?.种族 || '').trim();
+  if (是否重生魂兽_V1(char)) return Number(char?.属性?.等级 || 0) < 重生魂兽转魂师等级_V1 ? '魂兽' : '魂师';
+  if (角色种族选项_V1.includes(显式)) return 显式;
+  if (Object.entries(char || {}).some(([key, value]) => /^第\d+武魂$/.test(key) && 是否真实武魂数据_V1(value))) return '魂师';
+  const 势力名 = Object.keys(char?.社交?.势力 || {}).map(String);
+  const 单位性质 = String(char?.单位性质 || '').trim();
+  if (势力名.some(名 => 名.includes('魂兽')) || 单位性质 === '魂兽') return '魂兽';
+  if (势力名.some(名 => 名.includes('深渊')) || 单位性质 === '深渊') return '深渊';
+  return '魂师';
+}
+// 修炼规则看这两个：重生魂兽始终按魂师。身份（击杀奖励、种族显示）看 读取角色种族_V1。
+function 是否魂师种族_V1(char = {}) {
+  return 是否重生魂兽_V1(char) || 读取角色种族_V1(char) === '魂师';
+}
 function isSoulBeastCharacter(char = {}) {
-  if (Object.entries(char || {}).some(([key, value]) => /^第\d+武魂$/.test(key) && 是否真实武魂数据_V1(value))) return false;
-  const 势力名 = Object.keys(char?.社交?.势力 || {});
-  if (势力名.includes('魂兽一族') || 势力名.some(名 => String(名).includes('深渊')) || ['魂兽', '深渊'].includes(String(char?.单位性质 || '').trim())) return true;
-  return Number(char?.属性?.年龄 || 0) >= 10000;
+  return !是否重生魂兽_V1(char) && 读取角色种族_V1(char) === '魂兽';
 }
 
 function formatCultivationLevelText(level, fallback = '未知') {
@@ -1759,8 +1779,7 @@ function 判断本轮等级上升角色_V1(角色 = null, 角色名 = '') {
 function autoBreakthrough(data, 选项 = {}) {
   _(data.char).forEach((c, charName) => {
     if (!c.状态?.存活) return;
-    const isBeast = isSoulBeastCharacter(c);
-    if (isBeast) return;
+    if (!是否魂师种族_V1(c)) return; // 只有魂师按修炼自动突破（魂兽、深渊、其他不走）
     const pendingRingState = String(c.状态?.待选魂环?.状态 || '').trim();
     if (pendingRingState && !['已处理', 'handled', '无'].includes(pendingRingState)) return;
     const currentTick = Number(data?.world?.时间?.tick || 0);
@@ -25154,19 +25173,12 @@ function getBattleRewardRecipientName(data = {}, defeatedName = '') {
 }
 
 function getCombatSpeciesFlags(char = {}) {
-  const social = char?.社交 && typeof char.社交 === 'object' ? char.社交 : {};
-  const factionMap = social?.势力 && typeof social.势力 === 'object' ? social.势力 : {};
-  const factionNames = Object.keys(factionMap);
   const age = Math.max(0, Math.floor(Number(char?.属性?.年龄 || 0)));
-  // 击杀奖励只给明确的魂兽（用户 11-19）：势力带「魂兽」或单位性质魂兽，且没有真实武魂（古月娜这类在魂兽阵营的魂师不算）；
+  // 击杀奖励按种族结算（用户 11-19「需要是明确的魂兽才是魂兽结算」）：魂兽给魂兽奖励、深渊给深渊奖励，魂师与其他都没有。
   // 原来年龄 ≥ 100 就按魂兽结算，百岁以上的魂师被击杀也会掉魂兽奖励。
-  const hasRealSpirit = Object.entries(char || {}).some(([key, value]) => /^第\d+武魂$/.test(key) && 是否真实武魂数据_V1(value));
-  const isBeast = !hasRealSpirit && (
-    factionNames.some(name => String(name || '').includes('魂兽')) ||
-    String(char?.单位性质 || '').trim() === '魂兽');
-  const isAbyss =
-    factionNames.includes('深渊生物') ||
-    factionNames.some(name => String(name || '').includes('深渊'));
+  const 种族 = 读取角色种族_V1(char);
+  const isBeast = 种族 === '魂兽';
+  const isAbyss = 种族 === '深渊';
   return { isBeast, isAbyss, age };
 }
 
@@ -27413,7 +27425,9 @@ function 初始化补齐角色技能效果数组_V1(rootData = {}) {
       def: Number(char?.属性?.防御 || 0),
       agi: Number(char?.属性?.敏捷 || 0),
       men_max: Number(char?.属性?.精神力上限 || 0),
-    }) : 取角色主武魂系别_V1(char);
+    }) : 读取角色种族_V1(char) === '深渊' && !取角色武魂条目_V1(char).some(([, 武魂]) => 是否真实武魂数据_V1(武魂))
+      ? inferTemporaryAbyssCombatType(魂兽名称, { str: Number(char?.属性?.力量 || 0), def: Number(char?.属性?.防御 || 0), agi: Number(char?.属性?.敏捷 || 0), men_max: Number(char?.属性?.精神力上限 || 0) })
+      : 取角色主武魂系别_V1(char);
     const 天赋梯队 = String(char?.属性?.天赋梯队 || '').trim() || (是持久魂兽 ? '顶级天才' : '正常');
     const 魂兽自创魂技档位 = new Map(持久魂兽自创魂技档位_V1.map(档位 => [档位.技能键, 档位]));
 
@@ -32003,10 +32017,8 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
 
     const isSoulMasterStipendEligible_ACU = char => {
       if (!char || typeof char !== 'object') return false;
-      if (isSoulBeastCharacter(char)) return false;
+      if (!是否魂师种族_V1(char)) return false; // 魂兽、深渊、其他不发魂师津贴
       if (char?.属性?.邪魂师 === true) return false;
-      const unitNature = String(char?.单位性质 || '').trim();
-      if (unitNature === '魂兽' || unitNature === '深渊') return false;
       return Math.max(0, Math.floor(Number(char?.属性?.等级 || 0))) > 0;
     };
 
@@ -34023,7 +34035,8 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       记录当前资源比例基准(charName, char);
       delete char.持续效果;
       delete char.蓄力技能;
-      let isBeast = isSoulBeastCharacter(char);
+      // 只有魂师补武魂、补魂环（魂兽、深渊、其他不补；用户 11-19 种族）。
+      const 不走魂师规则 = !是否魂师种族_V1(char);
       let firstSpiritName = '第1武魂';
       syncSoulTowerRecordEligibility(char);
 
@@ -34035,6 +34048,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
 
       if (
         spiritEntries.length === 0 &&
+        !不走魂师规则 &&
         !isNoSoulPowerTalentTier(char?.属性?.天赋梯队) &&
         Math.max(0, Number(char?.属性?.等级 || 0) || 0) > 0
       ) {
@@ -34061,7 +34075,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       const 待补武魂列表 = spiritEntries
         .map(([spiritKey, targetSpirit]) => {
           if (!targetSpirit || typeof targetSpirit !== 'object') return null;
-          const expectedRings = 读取初始化武魂目标魂环数_V1(spiritKey, char.属性.等级, isBeast);
+          const expectedRings = 读取初始化武魂目标魂环数_V1(spiritKey, char.属性.等级, 不走魂师规则);
           if (expectedRings <= 0) return null;
           const 已有魂环位集合 = 读取武魂已有魂环位集合_V1(targetSpirit);
           const 缺失魂环位列表 = [];
@@ -36703,14 +36717,16 @@ function 规范化角色Schema_V1(char) {
     else char.属性.精神境界 = '灵元境';
 
     let tier = char.属性.天赋梯队;
+    // 魂兽清空斗铠、机甲、魂骨；只有魂师按天赋自动配斗铠、机甲（深渊、其他库里写什么留什么；用户 11-19 种族）。
     const isBeast = isSoulBeastCharacter(char);
+    const 是魂师 = 是否魂师种族_V1(char);
     const 角色势力名集合 = new Set(Object.keys(char?.社交?.势力 || {}));
     const 属于军方联邦势力 = Array.from(角色势力名集合).some(势力名 =>
       /斗罗联邦|联邦|帝国|军方|军团|军$/.test(String(势力名 || '')),
     );
     const 机甲初始化概率 = 属于军方联邦势力 ? 0.7 : 0.18;
     const 可初始化机甲 =
-      !isBeast && char.属性.等级 < 95 && !角色势力名集合.has('史莱克学院') && Math.random() < 机甲初始化概率;
+      是魂师 && char.属性.等级 < 95 && !角色势力名集合.has('史莱克学院') && Math.random() < 机甲初始化概率;
     const 斗铠名称文本 = String(char?.装备?.斗铠?.名称 || '').trim();
     const 机甲等级文本 = String(char?.装备?.机甲?.等级 || '').trim();
     const 机甲名称文本 = String(char?.装备?.机甲?.名称 || '').trim();
@@ -36751,7 +36767,7 @@ function 规范化角色Schema_V1(char) {
       补齐角色魂骨槽位_V1(char);
     }
 
-    if (!isBeast && ['绝世妖孽', '顶级天才', '天才'].includes(tier)) {
+    if (是魂师 && ['绝世妖孽', '顶级天才', '天才'].includes(tier)) {
       let armorLv = 0;
       if (char.属性.等级 >= 99) {
         armorLv = 4;
@@ -36785,7 +36801,7 @@ function 规范化角色Schema_V1(char) {
         char.装备.斗铠.装备状态 = '未装备';
         取内置角色斗铠部件列表_V1(char).forEach(p => (char.装备.斗铠.部件[p] = { 状态: '完好', 品质系数: 1.0 }));
       }
-    } else if (!isBeast && tier === '优秀' && 可初始化机甲 && !已有明确机甲) {
+    } else if (是魂师 && tier === '优秀' && 可初始化机甲 && !已有明确机甲) {
       if (char.属性.等级 >= 70) {
         char.装备.机甲.等级 = '黑级';
         char.装备.机甲.名称 = '黑级机甲';
@@ -41517,6 +41533,39 @@ try {
   // no one left, and a side with no one left has lost unless it got away: evaluateBattleObjectivesCore), and beyond that
   // no one's target, friend or foe (resolveTargets), and no round end settles anything on it (BattleRuntime
   // settleBattleRoundEnd): it keeps the HP and states it left with, and the save gets them as they are.
+  // 深渊杀不死（用户 11-19）：深渊生物被普通手段打到 0 只算被打败——体力留 1、退出战斗（ABYSS_REPELLED，退回深渊），不死、
+  // 没有击杀奖励；只有最后一击附带属性带「泯灭」，或带生命吸收（资源转移、资源为生命；或像黄金龙枪那样终结目标时吸收其生命力的
+  // 装备／被动）才真正杀死。深渊单位：种族深渊、势力带「深渊」、临时单位单位性质深渊。
+  const ABYSS_REPELLED = 'ABYSS_REPELLED';
+  function isAbyssUnit(unit = {}) {
+    if (String(unit?.种族 || '').trim() === '深渊' || String(unit?.单位性质 || '').trim() === '深渊') return true;
+    const factions = [...Object.keys(unit?.社交?.势力 || {}), ...(typeof unit?.势力 === 'string' ? [unit.势力] : Object.keys(unit?.势力 || {}))];
+    return factions.some(name => String(name).includes('深渊'));
+  }
+  const lifeDrainEffect = effect => effect && String(effect.资源 || '').trim() === '生命' && (String(effect.原型 || '').trim() === '资源转移' ||
+    (String(effect.原型 || '').trim() === '资源变化' && JSON.stringify(effect.条件分支 || []).includes('"终结"')));
+  const lifeDrainCache = new WeakMap();
+  function unitHasLifeDrain(unit = {}) {
+    if (!unit || typeof unit !== 'object') return false;
+    if (lifeDrainCache.has(unit)) return lifeDrainCache.get(unit);
+    // 只看常驻的：装备上的技能、被动（承载方式被动或放在「被动」表里）；主动技能看这一击用的那招（abyssKillingBlow）。
+    let found = false; const seen = new Set();
+    const visit = (value, depth, standing) => {
+      if (found || !value || typeof value !== 'object' || seen.has(value) || depth > 8) return;
+      seen.add(value);
+      if (Array.isArray(value._效果数组) && (standing || String(value.承载方式 || '').trim() === '被动') && value._效果数组.some(lifeDrainEffect)) { found = true; return; }
+      Object.entries(value).forEach(([key, child]) => visit(child, depth + 1, standing || key === '被动'));
+    };
+    for (const [key, value] of Object.entries(unit)) if (/^(?:第\d+)?武魂$|血脉之力|魂骨|装备|自创魂技|技能列表/.test(key)) visit(value, 0, key === '装备');
+    lifeDrainCache.set(unit, found);
+    return found;
+  }
+  function abyssKillingBlow(actor = {}, skill = null) {
+    const attributes = Array.isArray(skill?.附带属性) ? skill.附带属性.map(String) : [];
+    if (attributes.some(name => name.includes('泯灭'))) return true;
+    if (Array.isArray(skill?._效果数组) && skill._效果数组.some(lifeDrainEffect)) return true;
+    return unitHasLifeDrain(actor);
+  }
   const LEFT_BATTLE_REASONS = Object.freeze({ CONCEDE: 'SURRENDERED', WITHDRAW: 'WITHDRAWN' });
   function hasLeftBattle(unit = {}) {
     const reason = String(unit?.__战斗失能原因 || '').trim();
@@ -63690,6 +63739,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     interceptWindupBudget,
     clashWindupBudget,
     clashTiming,
+    ABYSS_REPELLED,
+    isAbyssUnit,
+    abyssKillingBlow,
     engagementAgilityBounds,
     basicAttackWindup,
     CONTINUOUS_ACTION_BUDGET,
@@ -120961,7 +121013,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }[resourceKey] || null;
     if (!config) return 0;
     const maxValue = previewRuntime.readResourceMax(unit, { hp: '生命', vit: '体力', sp: '魂力', men: '精神力' }[resourceKey]);
-    const nextValue = Math.round(Math.max(0, Math.min(maxValue, Number(value || 0))));
+    let nextValue = Math.round(Math.max(0, Math.min(maxValue, Number(value || 0))));
+    // 深渊杀不死（BattlePreview isAbyssUnit / abyssKillingBlow，用户 11-19）：不是能杀死它的一击（主攻击路径挂 __深渊可灭），体力留 1、
+    // 退出战斗（退回深渊），不死、没有击杀奖励。DoT、反伤等没有出招来源的一律杀不死。
+    if (resourceKey === 'hp' && nextValue <= 0 && previewRuntime.isAbyssUnit(unit) && unit.__深渊可灭 !== true && previewRuntime.readHp(unit) > 0) {
+      nextValue = Math.min(1, maxValue);
+      if (!String(unit.__战斗失能原因 || '').trim()) unit.__战斗失能原因 = previewRuntime.ABYSS_REPELLED;
+    }
     // 受伤同步扣体力（用户 2026-11-09）：同 BattlePreview setHp——生命少掉的比例，体力扣同样比例的体力上限。
     const hpBefore = resourceKey === 'hp' ? previewRuntime.readHp(unit) : 0;
     if (resourceKey === 'hp' && nextValue < hpBefore && previewRuntime.readResourceMax(unit, '体力') > 0) {
@@ -129965,7 +130023,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 facts.push(shieldEvent);
               }
             }
+            const abyssKillable = before - damage <= 0 && previewRuntime.isAbyssUnit(target) && previewRuntime.abyssKillingBlow(actor, declaration?.skill);
+            if (abyssKillable) target.__深渊可灭 = true;
+            const reasonBeforeHit = String(target.__战斗失能原因 || '').trim();
             writeCombatResource(target, 'hp', before - damage);
+            delete target.__深渊可灭;
+            const abyssRepelled = !reasonBeforeHit && target.__战斗失能原因 === previewRuntime.ABYSS_REPELLED;
             if (damage > 0) applyRuntimeDamageRedirects({ combatData, actor, target, dealt: damage, action, actionEvent, actionRole, facts, sourceEffectId });
             const hpAfter = previewRuntime.readHp(target);
             const traumaUnconscious = previewRuntime.shouldTriggerTraumaUnconscious(damage, hpAfter, previewRuntime.readHpMax(target));
@@ -129975,7 +130038,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             // Held at the knockdown line: subdued, out of the fight (BattlePreview battleRules knockdown).
             const knockedDown = knockdownFloor > 0 && !nonlethal && !alreadyOut && before > 0 && (before > knockdownFloor
               ? damage >= before - knockdownFloor - 1e-9 : settledSegmentDamage > shieldBefore + 1e-9);
-            const nonlethalIncapacitated = heldAtLine || leftUnderLine || knockedDown;
+            const nonlethalIncapacitated = heldAtLine || leftUnderLine || knockedDown || abyssRepelled;
             const damageEvent = writeLedgerEvent(combatData, {
               eventKind: 'hit_result', round: Number(combatData?.回合 || 0),
               actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
@@ -130039,17 +130102,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               actionRole,
             }));
             if (traumaUnconscious || nonlethalIncapacitated) {
-              const actionState = traumaUnconscious ? '昏迷' : '失去战斗力';
+              const actionState = abyssRepelled ? '退回深渊' : traumaUnconscious ? '昏迷' : '失去战斗力';
               const hpMax = previewRuntime.readHpMax(target);
               const beforeActionState = cloneValue(target?.状态 || {});
-              target.__战斗失能原因 = traumaUnconscious ? 'UNCONSCIOUS' : knockedDown ? 'SUBDUED' : 'INCAPACITATED';
+              target.__战斗失能原因 = abyssRepelled ? previewRuntime.ABYSS_REPELLED : traumaUnconscious ? 'UNCONSCIOUS' : knockedDown ? 'SUBDUED' : 'INCAPACITATED';
               facts.push(writeLedgerEvent(combatData, {
                 eventKind: 'state_apply', round: Number(combatData?.回合 || 0),
                 actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
                 targetId: previewRuntime.unitId(target), targetName: previewRuntime.unitName(target),
                 actionName, actionType: 'incapacitation', actorControl, actionRole, actionId: actionEvent.actionId,
                 sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
-                ruleCode: traumaUnconscious ? 'TRAUMA_UNCONSCIOUS' : refereeRescue ? 'REFEREE_RESCUE' : knockedDown ? 'KNOCKDOWN_SUBDUED'
+                ruleCode: abyssRepelled ? 'ABYSS_REPELLED' : traumaUnconscious ? 'TRAUMA_UNCONSCIOUS' : refereeRescue ? 'REFEREE_RESCUE' : knockedDown ? 'KNOCKDOWN_SUBDUED'
                   : leftUnderLine ? 'LIFE_THREAT_WITHDRAWN' : 'NONLETHAL_INTENT_DISABLE',
                 result: 'applied', resultState: 'SUCCESS', primaryOutcome: traumaUnconscious ? 'trauma_unconscious' : 'nonlethal_incapacitation',
                 effectPrototype: prototype, factType: 'STATE', sourceEffectId, operation: 'STATE_APPLY',

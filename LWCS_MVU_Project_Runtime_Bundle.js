@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:1b8644dbb6e4b754fb252baa0fb65661e6b4e81ffc44006baa8d4cd94516fac0|MVU_Schema_Runtime.js:5fddc6ff6ac2edd26aba9b2457a097ecfe692dac6bd43812e9d6472e40f98e52|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:1f7a519a850bc170c3da108bfe22614d098b593bc573d8b38a5c0a7bec81aba5 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:fc30d1e38bdf1db30359905f324a4dcd7f2b72ce72c429a7fb6ebaa9dc618f9c|MVU_Schema_Runtime.js:672948895cf0dda1ef1b7f422fe00b63d1cc81bf5784b73fe691d50510b6a73e|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:1f7a519a850bc170c3da108bfe22614d098b593bc573d8b38a5c0a7bec81aba5 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -5879,15 +5879,35 @@ function getBeastStats(age, species) {
   };
 }
 
-// 魂兽（按魂兽处理：不配斗铠机甲魂骨、不补魂环、不自动突破、不发津贴）——11-19 用户定：
-// 有真实武魂的是魂师（势力只表示阵营：古月娜、蓝佛子在魂兽一族里也是魂师；唐舞麟复生后 10006 岁曾被当成魂兽，斗铠、魂骨被清掉）；
-// 没有武魂时，势力魂兽一族／深渊生物、单位性质魂兽／深渊算魂兽；都没有才按年龄 ≥ 10000 推断。
-// 库里把本体写成第1武魂的魂兽、深渊生物已改成库标准格式（无武魂、势力魂兽一族或深渊生物）。
+// 种族（用户 11-19）：魂师／魂兽／深渊／其他。魂师指斗罗大陆出生的人（先天零魂力也算）；魂兽、深渊、其他（外星、异界来客等）
+// 都不走魂师规则（不补武魂魂环、不配斗铠机甲、不发津贴、不自动突破）；只有魂兽走魂兽规则（清空斗铠魂骨、按本体推系别、击杀给魂兽奖励）。
+// 角色写了「种族」就按写的；没写时：有真实武魂 → 魂师（势力只表示阵营：古月娜在魂兽一族里也是魂师）；势力带「魂兽」→ 魂兽；
+// 势力带「深渊」→ 深渊；临时战斗单位看单位性质；其余 → 魂师。不按年龄推断（原来 ≥ 10000 岁即魂兽，唐舞麟复生后被清掉斗铠魂骨）。
+var 角色种族选项_V1 = Object.freeze(['魂师', '魂兽', '深渊', '其他']);
+// 重生魂兽（用户 11-19：小舞、阿银）：写了种族魂兽、却有真实武魂。修炼一律按魂师（突破、补环、斗铠魂骨、战斗系别）；
+// 「是不是魂兽」的身份 70 级前按魂兽（种族显示、被击杀给魂兽奖励），70 级起按魂师。
+var 重生魂兽转魂师等级_V1 = 70;
+function 是否重生魂兽_V1(char = {}) {
+  return String(char?.种族 || '').trim() === '魂兽' &&
+    Object.entries(char || {}).some(([key, value]) => /^第\d+武魂$/.test(key) && 是否真实武魂数据_V1(value));
+}
+function 读取角色种族_V1(char = {}) {
+  const 显式 = String(char?.种族 || '').trim();
+  if (是否重生魂兽_V1(char)) return Number(char?.属性?.等级 || 0) < 重生魂兽转魂师等级_V1 ? '魂兽' : '魂师';
+  if (角色种族选项_V1.includes(显式)) return 显式;
+  if (Object.entries(char || {}).some(([key, value]) => /^第\d+武魂$/.test(key) && 是否真实武魂数据_V1(value))) return '魂师';
+  const 势力名 = Object.keys(char?.社交?.势力 || {}).map(String);
+  const 单位性质 = String(char?.单位性质 || '').trim();
+  if (势力名.some(名 => 名.includes('魂兽')) || 单位性质 === '魂兽') return '魂兽';
+  if (势力名.some(名 => 名.includes('深渊')) || 单位性质 === '深渊') return '深渊';
+  return '魂师';
+}
+// 修炼规则看这两个：重生魂兽始终按魂师。身份（击杀奖励、种族显示）看 读取角色种族_V1。
+function 是否魂师种族_V1(char = {}) {
+  return 是否重生魂兽_V1(char) || 读取角色种族_V1(char) === '魂师';
+}
 function isSoulBeastCharacter(char = {}) {
-  if (Object.entries(char || {}).some(([key, value]) => /^第\d+武魂$/.test(key) && 是否真实武魂数据_V1(value))) return false;
-  const 势力名 = Object.keys(char?.社交?.势力 || {});
-  if (势力名.includes('魂兽一族') || 势力名.some(名 => String(名).includes('深渊')) || ['魂兽', '深渊'].includes(String(char?.单位性质 || '').trim())) return true;
-  return Number(char?.属性?.年龄 || 0) >= 10000;
+  return !是否重生魂兽_V1(char) && 读取角色种族_V1(char) === '魂兽';
 }
 
 function formatCultivationLevelText(level, fallback = '未知') {
@@ -6280,8 +6300,7 @@ function 判断本轮等级上升角色_V1(角色 = null, 角色名 = '') {
 function autoBreakthrough(data, 选项 = {}) {
   _(data.char).forEach((c, charName) => {
     if (!c.状态?.存活) return;
-    const isBeast = isSoulBeastCharacter(c);
-    if (isBeast) return;
+    if (!是否魂师种族_V1(c)) return; // 只有魂师按修炼自动突破（魂兽、深渊、其他不走）
     const pendingRingState = String(c.状态?.待选魂环?.状态 || '').trim();
     if (pendingRingState && !['已处理', 'handled', '无'].includes(pendingRingState)) return;
     const currentTick = Number(data?.world?.时间?.tick || 0);
@@ -29675,19 +29694,12 @@ function getBattleRewardRecipientName(data = {}, defeatedName = '') {
 }
 
 function getCombatSpeciesFlags(char = {}) {
-  const social = char?.社交 && typeof char.社交 === 'object' ? char.社交 : {};
-  const factionMap = social?.势力 && typeof social.势力 === 'object' ? social.势力 : {};
-  const factionNames = Object.keys(factionMap);
   const age = Math.max(0, Math.floor(Number(char?.属性?.年龄 || 0)));
-  // 击杀奖励只给明确的魂兽（用户 11-19）：势力带「魂兽」或单位性质魂兽，且没有真实武魂（古月娜这类在魂兽阵营的魂师不算）；
+  // 击杀奖励按种族结算（用户 11-19「需要是明确的魂兽才是魂兽结算」）：魂兽给魂兽奖励、深渊给深渊奖励，魂师与其他都没有。
   // 原来年龄 ≥ 100 就按魂兽结算，百岁以上的魂师被击杀也会掉魂兽奖励。
-  const hasRealSpirit = Object.entries(char || {}).some(([key, value]) => /^第\d+武魂$/.test(key) && 是否真实武魂数据_V1(value));
-  const isBeast = !hasRealSpirit && (
-    factionNames.some(name => String(name || '').includes('魂兽')) ||
-    String(char?.单位性质 || '').trim() === '魂兽');
-  const isAbyss =
-    factionNames.includes('深渊生物') ||
-    factionNames.some(name => String(name || '').includes('深渊'));
+  const 种族 = 读取角色种族_V1(char);
+  const isBeast = 种族 === '魂兽';
+  const isAbyss = 种族 === '深渊';
   return { isBeast, isAbyss, age };
 }
 
@@ -31934,7 +31946,9 @@ function 初始化补齐角色技能效果数组_V1(rootData = {}) {
       def: Number(char?.属性?.防御 || 0),
       agi: Number(char?.属性?.敏捷 || 0),
       men_max: Number(char?.属性?.精神力上限 || 0),
-    }) : 取角色主武魂系别_V1(char);
+    }) : 读取角色种族_V1(char) === '深渊' && !取角色武魂条目_V1(char).some(([, 武魂]) => 是否真实武魂数据_V1(武魂))
+      ? inferTemporaryAbyssCombatType(魂兽名称, { str: Number(char?.属性?.力量 || 0), def: Number(char?.属性?.防御 || 0), agi: Number(char?.属性?.敏捷 || 0), men_max: Number(char?.属性?.精神力上限 || 0) })
+      : 取角色主武魂系别_V1(char);
     const 天赋梯队 = String(char?.属性?.天赋梯队 || '').trim() || (是持久魂兽 ? '顶级天才' : '正常');
     const 魂兽自创魂技档位 = new Map(持久魂兽自创魂技档位_V1.map(档位 => [档位.技能键, 档位]));
 
@@ -36524,10 +36538,8 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
 
     const isSoulMasterStipendEligible_ACU = char => {
       if (!char || typeof char !== 'object') return false;
-      if (isSoulBeastCharacter(char)) return false;
+      if (!是否魂师种族_V1(char)) return false; // 魂兽、深渊、其他不发魂师津贴
       if (char?.属性?.邪魂师 === true) return false;
-      const unitNature = String(char?.单位性质 || '').trim();
-      if (unitNature === '魂兽' || unitNature === '深渊') return false;
       return Math.max(0, Math.floor(Number(char?.属性?.等级 || 0))) > 0;
     };
 
@@ -38544,7 +38556,8 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       记录当前资源比例基准(charName, char);
       delete char.持续效果;
       delete char.蓄力技能;
-      let isBeast = isSoulBeastCharacter(char);
+      // 只有魂师补武魂、补魂环（魂兽、深渊、其他不补；用户 11-19 种族）。
+      const 不走魂师规则 = !是否魂师种族_V1(char);
       let firstSpiritName = '第1武魂';
       syncSoulTowerRecordEligibility(char);
 
@@ -38556,6 +38569,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
 
       if (
         spiritEntries.length === 0 &&
+        !不走魂师规则 &&
         !isNoSoulPowerTalentTier(char?.属性?.天赋梯队) &&
         Math.max(0, Number(char?.属性?.等级 || 0) || 0) > 0
       ) {
@@ -38582,7 +38596,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       const 待补武魂列表 = spiritEntries
         .map(([spiritKey, targetSpirit]) => {
           if (!targetSpirit || typeof targetSpirit !== 'object') return null;
-          const expectedRings = 读取初始化武魂目标魂环数_V1(spiritKey, char.属性.等级, isBeast);
+          const expectedRings = 读取初始化武魂目标魂环数_V1(spiritKey, char.属性.等级, 不走魂师规则);
           if (expectedRings <= 0) return null;
           const 已有魂环位集合 = 读取武魂已有魂环位集合_V1(targetSpirit);
           const 缺失魂环位列表 = [];
@@ -41224,14 +41238,16 @@ function 规范化角色Schema_V1(char) {
     else char.属性.精神境界 = '灵元境';
 
     let tier = char.属性.天赋梯队;
+    // 魂兽清空斗铠、机甲、魂骨；只有魂师按天赋自动配斗铠、机甲（深渊、其他库里写什么留什么；用户 11-19 种族）。
     const isBeast = isSoulBeastCharacter(char);
+    const 是魂师 = 是否魂师种族_V1(char);
     const 角色势力名集合 = new Set(Object.keys(char?.社交?.势力 || {}));
     const 属于军方联邦势力 = Array.from(角色势力名集合).some(势力名 =>
       /斗罗联邦|联邦|帝国|军方|军团|军$/.test(String(势力名 || '')),
     );
     const 机甲初始化概率 = 属于军方联邦势力 ? 0.7 : 0.18;
     const 可初始化机甲 =
-      !isBeast && char.属性.等级 < 95 && !角色势力名集合.has('史莱克学院') && Math.random() < 机甲初始化概率;
+      是魂师 && char.属性.等级 < 95 && !角色势力名集合.has('史莱克学院') && Math.random() < 机甲初始化概率;
     const 斗铠名称文本 = String(char?.装备?.斗铠?.名称 || '').trim();
     const 机甲等级文本 = String(char?.装备?.机甲?.等级 || '').trim();
     const 机甲名称文本 = String(char?.装备?.机甲?.名称 || '').trim();
@@ -41272,7 +41288,7 @@ function 规范化角色Schema_V1(char) {
       补齐角色魂骨槽位_V1(char);
     }
 
-    if (!isBeast && ['绝世妖孽', '顶级天才', '天才'].includes(tier)) {
+    if (是魂师 && ['绝世妖孽', '顶级天才', '天才'].includes(tier)) {
       let armorLv = 0;
       if (char.属性.等级 >= 99) {
         armorLv = 4;
@@ -41306,7 +41322,7 @@ function 规范化角色Schema_V1(char) {
         char.装备.斗铠.装备状态 = '未装备';
         取内置角色斗铠部件列表_V1(char).forEach(p => (char.装备.斗铠.部件[p] = { 状态: '完好', 品质系数: 1.0 }));
       }
-    } else if (!isBeast && tier === '优秀' && 可初始化机甲 && !已有明确机甲) {
+    } else if (是魂师 && tier === '优秀' && 可初始化机甲 && !已有明确机甲) {
       if (char.属性.等级 >= 70) {
         char.装备.机甲.等级 = '黑级';
         char.装备.机甲.名称 = '黑级机甲';

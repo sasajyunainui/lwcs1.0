@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:4f309f816302ff60f70f671bf976b6c7077704d1793976f168a4683e55c7d85a|cockpit/designer-model.js:cfd30db8a8ca67e544a32c52788feaaa864725e4385577ba70616d16bd767aee|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:799ccc85cfcc69287cedb1ca9219e3fa78947a942626b97169d8c42e77185673|BehaviorDecisionPipeline_Module.js:e55d1d0a40ff9a1a3a37cf0f16c94dbd9bafe338489e7af952c1279ca0025977|BattleDecision_Module.js:47f788093e8dab00fe72c157184ebd7ebdcd4624f6186ad4012604d04c1978ef|BattleRuntime_Module.js:fde8632da18f2ca293e4e0e6f750ec1ec3b1de0eba264e1856abbeda12ad6a9a|BattleReport_Module.js:24ef681a4a158d9e06e98ddc681ad3e632276bed4e599ff5437c6fe8c285f73e|BattleUI_Module.js:b0a9ca72412554bdb7aefec6687cba12f332d6a270b5d5b39d764ce8e4d2f11e|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:4f309f816302ff60f70f671bf976b6c7077704d1793976f168a4683e55c7d85a|cockpit/designer-model.js:cfd30db8a8ca67e544a32c52788feaaa864725e4385577ba70616d16bd767aee|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:c9c716f238dc83e58ee33407d371e21ea3a543ddbc4dd7999f14c3d1bcaf08dd|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:fe6d125baa764227a6b335f0ba8e8fb2a39989b7a011207ba6a6a7fcef938c8b|BehaviorDecisionPipeline_Module.js:e55d1d0a40ff9a1a3a37cf0f16c94dbd9bafe338489e7af952c1279ca0025977|BattleDecision_Module.js:47f788093e8dab00fe72c157184ebd7ebdcd4624f6186ad4012604d04c1978ef|BattleRuntime_Module.js:74d408f229ef06ae501e213d77c5ec22c5c133a57b95df87448cbeaa9018faea|BattleReport_Module.js:625791fc418b40704e587102e1d8496cfb68780a9caebf7fb4e49c17df327456|BattleUI_Module.js:b0a9ca72412554bdb7aefec6687cba12f332d6a270b5d5b39d764ce8e4d2f11e|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -64486,6 +64486,39 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
   // no one left, and a side with no one left has lost unless it got away: evaluateBattleObjectivesCore), and beyond that
   // no one's target, friend or foe (resolveTargets), and no round end settles anything on it (BattleRuntime
   // settleBattleRoundEnd): it keeps the HP and states it left with, and the save gets them as they are.
+  // 深渊杀不死（用户 11-19）：深渊生物被普通手段打到 0 只算被打败——体力留 1、退出战斗（ABYSS_REPELLED，退回深渊），不死、
+  // 没有击杀奖励；只有最后一击附带属性带「泯灭」，或带生命吸收（资源转移、资源为生命；或像黄金龙枪那样终结目标时吸收其生命力的
+  // 装备／被动）才真正杀死。深渊单位：种族深渊、势力带「深渊」、临时单位单位性质深渊。
+  const ABYSS_REPELLED = 'ABYSS_REPELLED';
+  function isAbyssUnit(unit = {}) {
+    if (String(unit?.种族 || '').trim() === '深渊' || String(unit?.单位性质 || '').trim() === '深渊') return true;
+    const factions = [...Object.keys(unit?.社交?.势力 || {}), ...(typeof unit?.势力 === 'string' ? [unit.势力] : Object.keys(unit?.势力 || {}))];
+    return factions.some(name => String(name).includes('深渊'));
+  }
+  const lifeDrainEffect = effect => effect && String(effect.资源 || '').trim() === '生命' && (String(effect.原型 || '').trim() === '资源转移' ||
+    (String(effect.原型 || '').trim() === '资源变化' && JSON.stringify(effect.条件分支 || []).includes('"终结"')));
+  const lifeDrainCache = new WeakMap();
+  function unitHasLifeDrain(unit = {}) {
+    if (!unit || typeof unit !== 'object') return false;
+    if (lifeDrainCache.has(unit)) return lifeDrainCache.get(unit);
+    // 只看常驻的：装备上的技能、被动（承载方式被动或放在「被动」表里）；主动技能看这一击用的那招（abyssKillingBlow）。
+    let found = false; const seen = new Set();
+    const visit = (value, depth, standing) => {
+      if (found || !value || typeof value !== 'object' || seen.has(value) || depth > 8) return;
+      seen.add(value);
+      if (Array.isArray(value._效果数组) && (standing || String(value.承载方式 || '').trim() === '被动') && value._效果数组.some(lifeDrainEffect)) { found = true; return; }
+      Object.entries(value).forEach(([key, child]) => visit(child, depth + 1, standing || key === '被动'));
+    };
+    for (const [key, value] of Object.entries(unit)) if (/^(?:第\d+)?武魂$|血脉之力|魂骨|装备|自创魂技|技能列表/.test(key)) visit(value, 0, key === '装备');
+    lifeDrainCache.set(unit, found);
+    return found;
+  }
+  function abyssKillingBlow(actor = {}, skill = null) {
+    const attributes = Array.isArray(skill?.附带属性) ? skill.附带属性.map(String) : [];
+    if (attributes.some(name => name.includes('泯灭'))) return true;
+    if (Array.isArray(skill?._效果数组) && skill._效果数组.some(lifeDrainEffect)) return true;
+    return unitHasLifeDrain(actor);
+  }
   const LEFT_BATTLE_REASONS = Object.freeze({ CONCEDE: 'SURRENDERED', WITHDRAW: 'WITHDRAWN' });
   function hasLeftBattle(unit = {}) {
     const reason = String(unit?.__战斗失能原因 || '').trim();
@@ -86659,6 +86692,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     interceptWindupBudget,
     clashWindupBudget,
     clashTiming,
+    ABYSS_REPELLED,
+    isAbyssUnit,
+    abyssKillingBlow,
     engagementAgilityBounds,
     basicAttackWindup,
     CONTINUOUS_ACTION_BUDGET,
@@ -143930,7 +143966,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }[resourceKey] || null;
     if (!config) return 0;
     const maxValue = previewRuntime.readResourceMax(unit, { hp: '生命', vit: '体力', sp: '魂力', men: '精神力' }[resourceKey]);
-    const nextValue = Math.round(Math.max(0, Math.min(maxValue, Number(value || 0))));
+    let nextValue = Math.round(Math.max(0, Math.min(maxValue, Number(value || 0))));
+    // 深渊杀不死（BattlePreview isAbyssUnit / abyssKillingBlow，用户 11-19）：不是能杀死它的一击（主攻击路径挂 __深渊可灭），体力留 1、
+    // 退出战斗（退回深渊），不死、没有击杀奖励。DoT、反伤等没有出招来源的一律杀不死。
+    if (resourceKey === 'hp' && nextValue <= 0 && previewRuntime.isAbyssUnit(unit) && unit.__深渊可灭 !== true && previewRuntime.readHp(unit) > 0) {
+      nextValue = Math.min(1, maxValue);
+      if (!String(unit.__战斗失能原因 || '').trim()) unit.__战斗失能原因 = previewRuntime.ABYSS_REPELLED;
+    }
     // 受伤同步扣体力（用户 2026-11-09）：同 BattlePreview setHp——生命少掉的比例，体力扣同样比例的体力上限。
     const hpBefore = resourceKey === 'hp' ? previewRuntime.readHp(unit) : 0;
     if (resourceKey === 'hp' && nextValue < hpBefore && previewRuntime.readResourceMax(unit, '体力') > 0) {
@@ -152934,7 +152976,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 facts.push(shieldEvent);
               }
             }
+            const abyssKillable = before - damage <= 0 && previewRuntime.isAbyssUnit(target) && previewRuntime.abyssKillingBlow(actor, declaration?.skill);
+            if (abyssKillable) target.__深渊可灭 = true;
+            const reasonBeforeHit = String(target.__战斗失能原因 || '').trim();
             writeCombatResource(target, 'hp', before - damage);
+            delete target.__深渊可灭;
+            const abyssRepelled = !reasonBeforeHit && target.__战斗失能原因 === previewRuntime.ABYSS_REPELLED;
             if (damage > 0) applyRuntimeDamageRedirects({ combatData, actor, target, dealt: damage, action, actionEvent, actionRole, facts, sourceEffectId });
             const hpAfter = previewRuntime.readHp(target);
             const traumaUnconscious = previewRuntime.shouldTriggerTraumaUnconscious(damage, hpAfter, previewRuntime.readHpMax(target));
@@ -152944,7 +152991,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             // Held at the knockdown line: subdued, out of the fight (BattlePreview battleRules knockdown).
             const knockedDown = knockdownFloor > 0 && !nonlethal && !alreadyOut && before > 0 && (before > knockdownFloor
               ? damage >= before - knockdownFloor - 1e-9 : settledSegmentDamage > shieldBefore + 1e-9);
-            const nonlethalIncapacitated = heldAtLine || leftUnderLine || knockedDown;
+            const nonlethalIncapacitated = heldAtLine || leftUnderLine || knockedDown || abyssRepelled;
             const damageEvent = writeLedgerEvent(combatData, {
               eventKind: 'hit_result', round: Number(combatData?.回合 || 0),
               actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
@@ -153008,17 +153055,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               actionRole,
             }));
             if (traumaUnconscious || nonlethalIncapacitated) {
-              const actionState = traumaUnconscious ? '昏迷' : '失去战斗力';
+              const actionState = abyssRepelled ? '退回深渊' : traumaUnconscious ? '昏迷' : '失去战斗力';
               const hpMax = previewRuntime.readHpMax(target);
               const beforeActionState = cloneValue(target?.状态 || {});
-              target.__战斗失能原因 = traumaUnconscious ? 'UNCONSCIOUS' : knockedDown ? 'SUBDUED' : 'INCAPACITATED';
+              target.__战斗失能原因 = abyssRepelled ? previewRuntime.ABYSS_REPELLED : traumaUnconscious ? 'UNCONSCIOUS' : knockedDown ? 'SUBDUED' : 'INCAPACITATED';
               facts.push(writeLedgerEvent(combatData, {
                 eventKind: 'state_apply', round: Number(combatData?.回合 || 0),
                 actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
                 targetId: previewRuntime.unitId(target), targetName: previewRuntime.unitName(target),
                 actionName, actionType: 'incapacitation', actorControl, actionRole, actionId: actionEvent.actionId,
                 sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
-                ruleCode: traumaUnconscious ? 'TRAUMA_UNCONSCIOUS' : refereeRescue ? 'REFEREE_RESCUE' : knockedDown ? 'KNOCKDOWN_SUBDUED'
+                ruleCode: abyssRepelled ? 'ABYSS_REPELLED' : traumaUnconscious ? 'TRAUMA_UNCONSCIOUS' : refereeRescue ? 'REFEREE_RESCUE' : knockedDown ? 'KNOCKDOWN_SUBDUED'
                   : leftUnderLine ? 'LIFE_THREAT_WITHDRAWN' : 'NONLETHAL_INTENT_DISABLE',
                 result: 'applied', resultState: 'SUCCESS', primaryOutcome: traumaUnconscious ? 'trauma_unconscious' : 'nonlethal_incapacitation',
                 effectPrototype: prototype, factType: 'STATE', sourceEffectId, operation: 'STATE_APPLY',
@@ -166419,6 +166466,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       SUBDUED: '被制服',
       SURRENDERED: '认输',
       WITHDRAWN: '已撤离',
+      ABYSS_REPELLED: '退回深渊（未被杀死）',
       CONTROLLED: '受控制',
       UNAVAILABLE: '暂时无法行动',
     };
@@ -167748,10 +167796,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     hp: '生命',
   });
   const preemptionEventKinds = Object.freeze(['lost_opportunity', 'blocked_action', 'target_fail']);
-  const controlDenialReasonPattern = /^(?:CONTROLLED|UNCONSCIOUS|INCAPACITATED|SUBDUED|DEAD)/i;
+  const controlDenialReasonPattern = /^(?:CONTROLLED|UNCONSCIOUS|INCAPACITATED|SUBDUED|DEAD|ABYSS_REPELLED)/i;
   /* 失能兑现的两种写法：运行时用 ruleCode 标注成因，用 stateName 标注结果，两者都要认。 */
-  const incapacitationRulePattern = /^(?:TRAUMA_UNCONSCIOUS|NONLETHAL_INTENT_DISABLE)/i;
-  const incapacitationStatePattern = /昏迷|失去战斗力|失能/;
+  const incapacitationRulePattern = /^(?:TRAUMA_UNCONSCIOUS|NONLETHAL_INTENT_DISABLE|ABYSS_REPELLED)/i;
+  const incapacitationStatePattern = /昏迷|失去战斗力|失能|退回深渊/;
 
   function rawMeta(event = {}) {
     return event && typeof event.meta === 'object' && event.meta ? event.meta : {};
@@ -170543,7 +170591,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const rawActionState = text(
       unit?.__战斗失能原因 || unit?.actionState || unit?.行动状态,
     );
-    const explicitIncapacity = /(?:DEAD|UNCONSCIOUS|INCAPACITATED|STAMINA_EXHAUSTED|SUBDUED|SURRENDERED|WITHDRAWN|CONTROLLED|UNAVAILABLE|死亡|昏迷|失去战斗力|体力耗尽|被制服|认输|撤离|受控制|暂时无法行动)/iu.test(rawActionState);
+    const explicitIncapacity = /(?:DEAD|UNCONSCIOUS|INCAPACITATED|STAMINA_EXHAUSTED|SUBDUED|SURRENDERED|WITHDRAWN|CONTROLLED|UNAVAILABLE|ABYSS_REPELLED|退回深渊|死亡|昏迷|失去战斗力|体力耗尽|被制服|认输|撤离|受控制|暂时无法行动)/iu.test(rawActionState);
     const actionState = hp <= 0 && !explicitIncapacity
       ? 'INCAPACITATED'
       : stamina <= 0 && !explicitIncapacity
@@ -170993,7 +171041,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   function sideMetric(units = [], includeResources = true) {
     const alive = units.filter(unit => unit.hp > 0 && !/死亡/.test(unit.actionState)).length;
     const combatReady = units.filter(unit =>
-      unit.hp > 0 && !/死亡|失去战斗力|昏迷/.test(unit.actionState)
+      unit.hp > 0 && !/死亡|失去战斗力|昏迷|退回深渊/.test(unit.actionState)
     ).length;
     const hpRatio = units.length
       ? units.reduce((sum, unit) => sum + unit.hp / Math.max(1, unit.hpMax), 0) / units.length
