@@ -1392,6 +1392,16 @@
           ratio: null, outcome: fooled ? '没看破' : '看破' },
         visibility: { player: 'FULL', ai: 'FULL' } };
     }
+    // 看穿来招（T34 11-19）：看穿了对方这一招，应对从对方起手就开始，放出照常来不及的魂技。
+    if (kind === 'foresee') {
+      const chance = roundJudgement(meta?.chance);
+      return { kind: 'FORESEE', phase: 'foresaw', subjectIds: [actorId, targetId].filter(Boolean),
+        values: { reactor: publicEntityName(directory, actorId, event?.actorName), attacker: publicEntityName(directory, targetId, event?.targetName), skill: String(meta?.skillName || '') },
+        judgement: { check: '看穿来招', inputs: { ...(Number.isFinite(chance) ? { 看穿概率: chance } : {}), 照常窗口: roundJudgement(meta?.plainWindow), 看穿后窗口: roundJudgement(meta?.window), 魂技前摇: roundJudgement(meta?.skillWindup) },
+          rule: '看穿了来招，就从对方起手那一刻开始应对：窗口加上这一招的全部前摇，照常来不及的魂技也放得出。交手越多、精神系、精神力压过对方、见过这一招越容易看穿',
+          ratio: null, outcome: '看穿' },
+        visibility: { player: 'FULL', ai: 'FULL' } };
+    }
     if (kind === 'position_shift') {
       return { kind: 'POSITION', phase: 'shift', subjectIds: [targetId].filter(Boolean),
         values: { unit: publicEntityName(directory, targetId, event?.targetName), position: text(meta?.position), positionType: text(meta?.positionType) },
@@ -1521,6 +1531,7 @@
     if (mechanic.kind === 'FEINT_STRIKE') return mechanic.phase === 'fooled'
       ? `${values.attacker || actor}先虚晃一招，${values.target || target}被晃出了应对，真招来时措手不及`
       : `${values.attacker || actor}想虚晃一招，被${values.target || target}看破了`;
+    if (mechanic.kind === 'FORESEE') return `${values.reactor || actor}看穿了${values.attacker || target}的来招，抢在前头放出${values.skill ? `【${values.skill}】` : '魂技'}`;
     if (mechanic.kind === 'REFEREE') return values.reasonText || `裁判出手`;
     return '';
   }

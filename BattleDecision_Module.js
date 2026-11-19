@@ -2172,6 +2172,20 @@
     const shown = Number(world?.佯装记录?.[preview.unitName(feinter)] || 0) || 0;
     return clamp(FEINT_SEE_BASE + FEINT_SEE_CLARITY * seen / (seen + BELIEF_EXCHANGE_PRIOR) + mental + FEINT_SEE_REPEAT * shown, 0, 1);
   }
+  // 看穿来招（T34 11-19 用户定「看穿来招可提前出手」；原作 38 步应对时放魂技——缠绕、魅惑、蛛网束缚、护体铠甲）: the chance a unit
+  // reads a move as it starts, so its answer may take as long as the move's whole windup on top of its reaction window (BattleRuntime
+  // rolls it per answer). FORESEE_BASE, more by how clearly it has the attacker (FORESEE_CLARITY × the clarity of their exchanges and
+  // acquaintance), more for a 精神系 (FORESEE_MENTAL) and for a sense that outreaches the attacker's (FORESEE_SENSE, beliefSenses),
+  // more again when it has seen this very skill (FORESEE_KNOWN); at most FORESEE_CAP. Starting values, measured later.
+  const FORESEE_BASE = 0.1, FORESEE_CLARITY = 0.4, FORESEE_MENTAL = 0.15, FORESEE_SENSE = 0.15, FORESEE_KNOWN = 0.3, FORESEE_CAP = 0.9;
+  function foreseeChance(world = {}, observer = {}, attacker = {}, skill = {}) {
+    const name = String(skill?.魂技名 || skill?.name || '').trim();
+    const known = name && beliefKnowsExposure(observer, attacker, world) && preview.exposedSkills(attacker).some(entry => String(entry?.魂技名 || entry?.name || '').trim() === name);
+    const seen = Number(beliefExchangeCounts(world, sideOf(world, observer)).get(preview.unitId(attacker)) || 0) + beliefFamiliarExchanges(observer, attacker, world);
+    const mental = /精神/.test(String(observer?.系别 || observer?.type || observer?.第1武魂?.系别 || observer?.属性?.系别 || '')) ? FORESEE_MENTAL : 0;
+    return clamp(FORESEE_BASE + FORESEE_CLARITY * seen / (seen + BELIEF_EXCHANGE_PRIOR) + mental + (beliefSenses(observer, attacker) ? FORESEE_SENSE : 0) +
+      (known ? FORESEE_KNOWN : 0), 0, FORESEE_CAP);
+  }
 
   // The skill a feint keeps ready: the heaviest (its damage power on enemies) of the unit's affordable single-target skills that
   // strike an enemy and are quick enough to meet a move at once (windup ≤ FEINT_MAX_WINDUP); null when it has none.
@@ -44837,6 +44851,7 @@
     typicalAttackRatio,
     typicalStatRatio,
     feintSeeThroughChance,
+    foreseeChance,
     projectCooperativeSummonDeclaration,
     actionCompletesWithinBattleHorizon,
     chooseInterceptor,

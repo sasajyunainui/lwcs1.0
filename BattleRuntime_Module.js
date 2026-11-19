@@ -18821,14 +18821,25 @@
                 sourceEventIds: sourceEventIds.slice(),
               };
               const feintMeet = preparedDefense || summonGuard ? null : feintMeetDeclaration(actor, sourceActorId, shared.declaration);
+              // 看穿来招（T34 11-19 用户定）: a reactor that reads the move as it starts (BattleDecision foreseeChance, rolled now) answers
+              // from its start — the window takes the move's whole windup as the reactor sees it (BattlePreview answerWindup) on top, at
+              // most CONTINUOUS_ACTION_BUDGET; an ally stepping in does not (it has the way to cover first).
+              const plainBudget = node?.state?.intercept === true
+                ? Math.max(0, previewRuntime.interceptWindupBudget(sourceActor, shared.declaration, actor))
+                : previewRuntime.reactionWindupBudget(sourceActor, shared.declaration, actor);
+              const foreseeOdds = preparedDefense || summonGuard || feintMeet || node?.state?.intercept === true ? 0
+                : Math.max(0, Math.min(1, Number(decisionRuntime.foreseeChance?.(combatData, actor, sourceActor, shared.declaration?.skill || {}) ?? 0) || 0));
+              const foresaw = foreseeOdds > 0 && Math.random() < foreseeOdds;
+              const foreseeBudget = foresaw
+                ? Math.min(Number(previewRuntime.CONTINUOUS_ACTION_BUDGET) || 40, plainBudget + Math.max(0, Number(previewRuntime.answerWindup(sourceActor, shared.declaration, actor)) || 0))
+                : plainBudget;
               const decisionResult = preparedDefense || summonGuard || feintMeet ? null : yield* decideForNode(actor, node, {
                 role: 'REACTION',
                 imminentThreat: true,
                 sourceActorId,
-                // What the reactor's skill may take against this attack (BattlePreview reactionWindupBudget).
-                immediateBudget: node?.state?.intercept === true
-                  ? Math.max(0, previewRuntime.interceptWindupBudget(sourceActor, shared.declaration, actor))
-                  : previewRuntime.reactionWindupBudget(sourceActor, shared.declaration, actor),
+                // What the reactor's skill may take against this attack (BattlePreview reactionWindupBudget; more once it read the move).
+                immediateBudget: foreseeBudget,
+                ...(foresaw ? { foresaw: true } : {}),
                 actionContext,
                 incomingAction,
                 // 接战链 阶段一: the strike backs each side has made in this exchange (the next one costs more and is caught less).
@@ -18856,6 +18867,14 @@
                 : summonGuard
                   ? { actorId, actionKind: 'DEFEND', targetIds: [actorId] }
                   : feintMeet || cloneValue(decisionResult.selected.declaration);
+              // 看穿来招：答的是一个照常来不及的魂技时记一笔（战报写「看穿来招，抢先出手」）。
+              const answerWindupTaken = Math.max(0, Number(reactionDeclaration?.skill?.前摇 ?? reactionDeclaration?.skill?.cast_time ?? 0) || 0);
+              if (foresaw && String(reactionDeclaration?.actionKind || '').toUpperCase() === 'RELEASE_SKILL' && answerWindupTaken > plainBudget) {
+                writeMechanicEvent(combatData, { eventKind: 'foresee', actionName: '看穿来招', actionRole: 'REACTION', actorControl: String(actor?.__battleRuntime?.control || 'AI'),
+                  actorId, actorName: previewRuntime.unitName(actor), targetId: String(sourceActorId), targetName: previewRuntime.unitName(sourceActor), targetIds: [String(sourceActorId)],
+                  actionId: sourceActionId, sourceActionId, parentNodeId: String(node?.id || ''), sourceNodeId: String(node?.id || ''), result: 'foresaw',
+                  meta: { chance: foreseeOdds, plainWindow: plainBudget, window: foreseeBudget, skillName: String(reactionDeclaration?.skill?.魂技名 || ''), skillWindup: answerWindupTaken } });
+              }
               // 蓄力中应对（用户 2026-11-17「蓄力可以主动中断」）: a unit charging — or charging a fusion skill with its holder —
               // answers only by giving the charge up; letting the move go by keeps the charge and takes the whole hit.
               // 蓄力迎击（同日「3」）: met with the charge itself (BattlePreview chargeMeetSkill), the charge is thrown now and spent.
