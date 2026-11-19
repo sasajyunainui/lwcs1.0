@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:fc30d1e38bdf1db30359905f324a4dcd7f2b72ce72c429a7fb6ebaa9dc618f9c|MVU_Schema_Runtime.js:672948895cf0dda1ef1b7f422fe00b63d1cc81bf5784b73fe691d50510b6a73e|BattlePreview_Module.js:fe6d125baa764227a6b335f0ba8e8fb2a39989b7a011207ba6a6a7fcef938c8b|BehaviorDecisionPipeline_Module.js:e55d1d0a40ff9a1a3a37cf0f16c94dbd9bafe338489e7af952c1279ca0025977|BattleDecision_Module.js:47f788093e8dab00fe72c157184ebd7ebdcd4624f6186ad4012604d04c1978ef|BattleRuntime_Module.js:74d408f229ef06ae501e213d77c5ec22c5c133a57b95df87448cbeaa9018faea */
+/* sources-sha256: MVU_Skill_Runtime.js:fc30d1e38bdf1db30359905f324a4dcd7f2b72ce72c429a7fb6ebaa9dc618f9c|MVU_Schema_Runtime.js:672948895cf0dda1ef1b7f422fe00b63d1cc81bf5784b73fe691d50510b6a73e|BattlePreview_Module.js:b3724c01b919b02dc3e3be8a9746838c4daedba3c17dcc51873de2d4689433f0|BehaviorDecisionPipeline_Module.js:e55d1d0a40ff9a1a3a37cf0f16c94dbd9bafe338489e7af952c1279ca0025977|BattleDecision_Module.js:adfafb37820834bbed393e1950cec4f158184396df67cc3390afbd86e0866dcf|BattleRuntime_Module.js:3194f078cf210bcb330ad6c7c31621abc8ff29a5cc82d14cadf463c19c12e56b */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -41566,6 +41566,16 @@ try {
     if (Array.isArray(skill?._效果数组) && skill._效果数组.some(lifeDrainEffect)) return true;
     return unitHasLifeDrain(actor);
   }
+  // 应对时认输（用户 11-19）：喊认输，同时照样防御或闪避。近身一击，出手者要「听到并收手」——需要的时间 = 一记普攻的前摇 ×
+  //（出手者有效敏捷 ÷ 认输者有效敏捷：出手越快、认输的越慢，越喊不及），短于这一招的前摇就收得住（这一招落空）；收不住、远程与精神攻击
+  // 照常落下（对方默认不收手，靠自己挡或裁判），这一击结算完认输者离场（BattleRuntime pendingConcede）。只在能认输的战斗（比赛、切磋）。
+  function concedeHoldsBack(attacker = {}, incoming = null, conceder = {}) {
+    if (!incoming || declarationDamageClass(incoming) !== 'MELEE') return false;
+    const own = Number(naturalActionOrderProfile(attacker).effectiveAgility), theirs = Number(naturalActionOrderProfile(conceder).effectiveAgility);
+    const need = actionWindup(attacker, { actorId: unitId(attacker), actionKind: 'BASIC_ATTACK', targetIds: [unitId(conceder)] }, { travel: false }) *
+      (own > 0 && theirs > 0 ? own / theirs : 1);
+    return need < actionWindup(attacker, incoming) - 1e-9;
+  }
   const LEFT_BATTLE_REASONS = Object.freeze({ CONCEDE: 'SURRENDERED', WITHDRAW: 'WITHDRAWN' });
   function hasLeftBattle(unit = {}) {
     const reason = String(unit?.__战斗失能原因 || '').trim();
@@ -48097,6 +48107,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // 位移的距离与强度（用户 2026-11-15 第 5 条）: 脱离、拉近、击退 scale each one-shot effect by (0.75 + 距离/40) × (1 + 数值),
   // 数值 within ±45%, 距离 1～30 (10 when unset) — the factor MVU_Skill_Runtime 计算位移效果倍率_V1 prices them by. 瞬移、换位 land
   // at once: neither counts. Until 11-15 距离 and 数值 were checked and priced (数值 as 单价 × 百分点) and did nothing.
+  // 力量打飞（用户 11-19「按力量差打飞」，例：一拳打飞对面）：没写位移的近身单体伤害攻击（普攻、单纯伤害魂技），出手者力量 ÷ 目标力量
+  // ≥ STRENGTH_KNOCKBACK_RATIO 时追加一条击退（位移执行·击退，跟随主原型：命中才生效），效果同技能写的击退——退到后排、打断蓄力、
+  // 下一次出手命中 −30%、下一次应对反应 −15%。预演与运行时整理完效果后都过这里（BattleRuntime executeStructuredDeclaration）。倍数起始值。
+  const STRENGTH_KNOCKBACK_RATIO = Number(root.__LWCS_TUNE__?.STRENGTH_KNOCKBACK_RATIO ?? 2);
+  function withStrengthKnockback(actor = {}, declaration = {}, effects = [], world = {}) {
+    if (!Array.isArray(effects) || !effects.length || declarationDamageClass(declaration) !== 'MELEE') return effects;
+    if (!effects.some(effect => String(effect?.原型 || '').trim() === '伤害结算') || effects.some(effect => String(effect?.原型 || '').trim() === '位移执行')) return effects;
+    const ids = (Array.isArray(declaration?.targetIds) ? declaration.targetIds : []).map(String);
+    if (ids.length !== 1) return effects;
+    const target = findUnit(world, ids[0]);
+    if (!target || target === actor) return effects;
+    if (battlePanelStat(actor, 'str') < STRENGTH_KNOCKBACK_RATIO * battlePanelStat(target, 'str')) return effects;
+    return [...effects, { 原型: '位移执行', 目标: '单体', 位移类型: '击退', 位移对象: '目标', 生效方式: '跟随主原型', 来源: '力量打飞' }];
+  }
   function positionEffectScale(effect = {}) {
     if (/瞬移|换位/.test(String(effect?.位移类型 || ''))) return 1;
     const distance = clamp(Number(effect?.距离 || 10) || 10, 1, 30);
@@ -59477,6 +59501,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         : [];
     if (input.releaseEffectsResolved !== true) baseEffects = releaseSkillEffects(actor, declaration, baseEffects,
       input?.actionRole || input?.actionOpportunity?.role || declaration?.actionRole);
+    baseEffects = withStrengthKnockback(actor, declaration, baseEffects, worldSnapshot);
     const grants = declaration?.__includeGrantedEffects === false || String(input?.actionRole || declaration?.actionRole || '').trim().toUpperCase() === 'STATE_TICK'
       ? [] : pendingGrantedEffects(actor, declaration?.actionKind);
     const effects = [
@@ -59513,6 +59538,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (Number(contest.successProbability) >= 1 - 1e-12) {
         overlay.changeUnit(unitId(actor), unit => { unit.__战斗失能原因 = contest.concede ? LEFT_BATTLE_REASONS.CONCEDE : LEFT_BATTLE_REASONS.WITHDRAW; });
       }
+    }
+    // 后撤闪避（11-19）：预演按闪开算，退到后排（估值按闪避率另算反击、不接反击）；体力按 staminaFactor 2 倍付。
+    // 应对时认输：预演按认输离场算（这一击落不落下由估值按 concedeHoldsBack 另算）。
+    if (declaration?.concede === true) overlay.changeUnit(unitId(actor), unit => { unit.__战斗失能原因 = LEFT_BATTLE_REASONS.CONCEDE; });
+    if (String(declaration?.actionKind || '').trim().toUpperCase() === 'EVADE' && declaration?.retreat === true) {
+      overlay.changeUnit(unitId(actor), unit => { setUnitPosition(unit, POSITION_BACK); });
     }
     // 接战链 阶段二: a move that came to nothing in a clash brings no effect (its costs are paid above); a unit the move
     // came to nothing on (`nullifiedTargetIds`: it won or evened a clash against it, or a preemption held) takes none of it.
@@ -63739,6 +63770,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     interceptWindupBudget,
     clashWindupBudget,
     clashTiming,
+    withStrengthKnockback,
+    concedeHoldsBack,
     ABYSS_REPELLED,
     isAbyssUnit,
     abyssKillingBlow,
@@ -79024,6 +79057,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           const heldId = String(preview.unitId(held));
           candidates.push({ candidateId: `${actorId}:SHIELD:${heldId}`, declaration: { ...defensiveDeclaration(actorId, 'DEFEND'), actionId: `${actorId}:SHIELD:${heldId}`, humanShield: { unitId: heldId } } });
         }
+      }
+      // 后撤闪避（11-19）: answering a close strike, the evasion may carry it back — from the front to the back, or held back it is not
+      // drawn into the front by the strike that ran up (BattleRuntime: on a dodge; twice the stamina, no strike back).
+      if (String(input.actionOpportunity?.role || '').trim().toUpperCase() === 'REACTION' &&
+        preview.declarationDamageClass?.(input.actionOpportunity?.incomingAction || {}) === 'MELEE') {
+        candidates.push({ candidateId: `${actorId}:EVADE_BACK`, declaration: { ...defensiveDeclaration(actorId, 'EVADE'), actionId: `${actorId}:EVADE_BACK`, retreat: true, staminaFactor: 2 } });
+      }
+      // 应对时认输（11-19）: in a battle one may concede (比赛、切磋), shouting it while guarding or evading the strike coming (BattlePreview
+      // concedeHoldsBack: a close strike may be pulled; otherwise it lands, and the unit leaves after it).
+      if (String(input.actionOpportunity?.role || '').trim().toUpperCase() === 'REACTION' && withdrawalAllowed(worldSnapshot, actor, input.battleIntent) &&
+        preview.battleExitLabel?.(worldSnapshot, input.battleIntent) === '认输') {
+        for (const kind of ['DEFEND', 'EVADE']) candidates.push({ candidateId: `${actorId}:CONCEDE_${kind}`, declaration: { ...defensiveDeclaration(actorId, kind), actionId: `${actorId}:CONCEDE_${kind}`, concede: true } });
       }
       // 卸力（T31, BattlePreview canDeflect）: answering a physical single-target strike, the guard may turn it aside instead.
       if (String(input.actionOpportunity?.role || '').trim().toUpperCase() === 'REACTION' && preview.canDeflect?.(input.actionOpportunity?.incomingAction)) {
@@ -113514,7 +113559,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (declaration.bait === true) return '卖破绽';
     if (declaration.humanShield) return `人盾·${world ? r20UnitLabel(world, String(declaration.humanShield.unitId || '')) : String(declaration.humanShield.unitId || '').split(':').pop()}`;
     const label = kind === 'EQUIP' && declaration.releaseSlot ? (declaration.releaseSlot === '武魂' ? '开武魂' : /^砸·/.test(String(declaration.releaseSlot)) ? name || '砸控制物' : String(declaration.releaseSlot))
-      : kind === 'DEFEND' && declaration.deflect === true ? '卸力' : name || R20_KIND_LABELS[kind] || kind;
+      : declaration.concede === true ? '认输' : kind === 'DEFEND' && declaration.deflect === true ? '卸力' : kind === 'EVADE' && declaration.retreat === true ? '后撤闪避' : name || R20_KIND_LABELS[kind] || kind;
     const targets = (Array.isArray(declaration.targetIds) ? declaration.targetIds : []).map(String)
       .filter(id => id && id !== String(declaration.actorId || '')).map(id => world ? r20UnitLabel(world, id) : id.split(':').pop());
     return `${mode ? `${mode}·` : ''}${label}${targets.length ? `→${targets.join('、')}` : ''}`;
@@ -113529,7 +113574,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (kind === 'FEINT') return '骗招';
     if (kind === 'GUARD') return '护住队友';
     if (role === 'REACTION') return declaration.engagement?.mode === 'CLASH' ? '对轰' : declaration.engagement?.mode === 'PREEMPT' ? '抢先打断'
-      : kind === 'DEFEND' && declaration.humanShield ? '拿人挡这一击' : kind === 'DEFEND' && declaration.deflect === true ? '卸开这一击' : kind === 'DEFEND' ? '防住这一击' : kind === 'EVADE' ? '躲开这一击' : kind === 'PASS_OPPORTUNITY' ? '硬吃这一击、省下应对' : '以魂技应对';
+      : kind === 'DEFEND' && declaration.humanShield ? '拿人挡这一击' : kind === 'DEFEND' && declaration.deflect === true ? '卸开这一击' : declaration.concede === true ? '喊认输' : kind === 'DEFEND' ? '防住这一击' : kind === 'EVADE' && declaration.retreat === true ? '闪开并退到后排' : kind === 'EVADE' ? '躲开这一击' : kind === 'PASS_OPPORTUNITY' ? '硬吃这一击、省下应对' : '以魂技应对';
     if (role === 'COUNTER') return '反击';
     if (kind === 'EQUIP' && declaration.releaseSlot === '武魂') return '开武魂';
     if (kind === 'DEFEND' && declaration.bait === true) return '卖破绽引对方来打';
@@ -114180,16 +114225,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const priorActor = Number(request.actionOpportunity?.counterPrior || 0), priorSource = Number(request.actionOpportunity?.opponentCounterPrior || 0);
       const catches = preview.counterOpeningProbability(actorNext, source, move, { prior: priorActor, ...(deflect?.unbalance > 0 ? { unbalanced: true } : {}) });
       const strikesBack = shieldRow !== undefined || deflect?.failed ? 0 : actionKind === 'DEFEND' ? (preview.guardHolds(weight, share * r20Soak(actorNext)) ? catches : 0)
-        : actionKind === 'EVADE' ? dodge * catches : clash ? (clash.answered ? clashConfidence * catches : 0) : engagementMode === 'PREEMPT' ? (preempt + (1 - preempt) * softDeflect) * catches
+        : declaration?.concede === true ? 0 : actionKind === 'EVADE' ? (declaration?.retreat === true ? 0 : dodge * catches) : clash ? (clash.answered ? clashConfidence * catches : 0) : engagementMode === 'PREEMPT' ? (preempt + (1 - preempt) * softDeflect) * catches
           : preview.declarationGrantsCounter(declaration || {}) ? 1 : 0;
       const staminaMaximum = preview.readResourceMax(actorNext, '体力'), maximum = Math.max(1, preview.readHpMax(actorNext)), shield = preview.readShield(actorNext) / maximum;
       // 接战链 阶段 2c: what the answer costs, priced by the same function the table's expectation of an answer uses.
       if (actionKind !== 'PASS_OPPORTUNITY') { const paid = r20AnswerPrice(table.units[actorRow], source, declaration || {}); spent += paid.sp + paid.men + paid.vit; }
       const answerCost = ['DEFEND', 'EVADE'].includes(actionKind) && staminaMaximum > 0 && preview.actionStaminaEnabled(table.world)
-        ? preview.actionStaminaCost(actorNext, actionKind, source) / staminaMaximum : 0;
+        ? preview.actionStaminaCost(actorNext, actionKind, source) * (declaration?.retreat === true ? 2 : 1) / staminaMaximum : 0;
       // What of the move lands on the actor, a share of its HP maximum.
       // A clash: won, nothing; even, CLASH_SHOCK of the move; lost, the difference (clashOutcome inScale).
-      const taken = clash ? clashConfidence * clash.theirs * clash.inScale / maximum * r20Soak(actorNext) + (1 - clashConfidence) * hit : hit * share;
+      // 应对时认输：近身一击收得住就什么也落不下（BattlePreview concedeHoldsBack）。
+      const pulled = declaration?.concede === true && move && preview.concedeHoldsBack?.(source, move, table.units[actorRow]);
+      const taken = pulled ? 0 : clash ? clashConfidence * clash.theirs * clash.inScale / maximum * r20Soak(actorNext) + (1 - clashConfidence) * hit : hit * share;
       diag.taken = taken; diag.hit = hit; diag.share = share;
       const hpLeft = Math.max(0, preview.readHp(actorNext) - r20Floor(actorNext)) / maximum + shield - taken;
       remaining[actorRow] = Math.max(0, hpLeft);
@@ -115976,7 +116023,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 变体（卖破绽、卸力、虚招、绕后、人盾）：与原型打平时让原型（BehaviorDecisionPipeline 平手规则）。
     const variantOf = candidateId => {
       const declaration = frozenById.get(candidateId)?.declaration || {};
-      return declaration.bait === true || declaration.deflect === true || !!declaration.feintStrike || !!declaration.flank || !!declaration.humanShield;
+      return declaration.bait === true || declaration.deflect === true || !!declaration.feintStrike || !!declaration.flank || !!declaration.humanShield || declaration.retreat === true;
     };
     const holdOf = candidateId => {
       const candidate = frozenById.get(candidateId);
@@ -116338,7 +116385,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 变体（卖破绽、卸力、虚招、绕后、人盾）不比它的原型（同动作、同目标、同魂技、不带变体标记）多得到什么时，不进抽取池：
     // 11-19 卖破绽 60 次里 51 次与防御估值完全相等，靠等权抽取占了一半（原著卖破绽约占主动步 1%）。
     const declarations = new Map((request?.frozenCandidates || []).map(candidate => [String(candidate?.candidateId || ''), candidate?.declaration || {}]));
-    const isVariant = declaration => declaration.bait === true || declaration.deflect === true || !!declaration.feintStrike || !!declaration.flank || !!declaration.humanShield;
+    const isVariant = declaration => declaration.bait === true || declaration.deflect === true || !!declaration.feintStrike || !!declaration.flank || !!declaration.humanShield || declaration.retreat === true;
     const plainKey = declaration => [String(declaration.actionKind || '').toUpperCase(), (declaration.targetIds || []).map(String).sort().join(','),
       declaration.skill ? skillId(declaration.skill) : '', String(declaration.releaseSlot || '')].join('|');
     const plainBest = new Map();
@@ -124210,7 +124257,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         removeSummonUnit(
           combatData,
           summon,
-          `战斗终局：${String(resolution.terminalReason || resolution.status || '目标已裁断').trim()}`,
+          // 终局原因是内部代码（OBJECTIVE_VICTORY 等），给玩家看的离场原因换成中文（11-19 覆盖检查查出原样漏进战报）。
+          `战斗终局：${({ OBJECTIVE_VICTORY: '一方达成胜利目标', OBJECTIVE_DEFEAT: '一方达成失败条件', OBJECTIVE_CONFLICT: '胜负条件同时达成',
+            BATTLEFIELD_EXHAUSTION: '一方失去战斗能力', ROUND_LIMIT_REACHED: '到达回合上限', TRUCE: '双方罢手' })[String(resolution.terminalReason || '').trim()] ||
+            String(resolution.terminalReason || '').trim() || '目标已裁断'}`,
         );
       });
     }
@@ -128254,6 +128304,25 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // state to its sole persistent mirror at the declaration boundary.
     settleFallenSummonBacklash(combatData);
     listSummonCombatUnits(combatData).forEach(syncSummonMirror);
+    // 应对时认输（settleStructuredReaction 记 pendingConcede）：这一击结算完，还站着的认输者离场（SURRENDERED，同主动认输）。
+    for (const unit of listCombatUnits(combatData)) {
+      const pending = unit?.__battleRuntime?.pendingConcede;
+      if (pending === undefined) continue;
+      if (pending !== String(actionEvent?.actionId || '')) continue;
+      const { pendingConcede, ...rest } = unit.__battleRuntime; unit.__battleRuntime = rest;
+      if (previewRuntime.isDead(unit) || String(unit.__战斗失能原因 || '').trim()) continue;
+      const beforeActionState = cloneValue(unit?.状态 || {});
+      unit.__战斗失能原因 = previewRuntime.LEFT_BATTLE_REASONS.CONCEDE;
+      facts.push(writeLedgerEvent(combatData, {
+        eventKind: 'state_apply', round: Number(combatData?.回合 || 0),
+        actorId: previewRuntime.unitId(unit), actorName: previewRuntime.unitName(unit), targetId: previewRuntime.unitId(unit), targetName: previewRuntime.unitName(unit),
+        actionName: '认输', actionType: 'incapacitation', actorControl: 'SYSTEM', actionRole: 'REACTION',
+        actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
+        ruleCode: unit.__战斗失能原因, result: 'applied', resultState: 'SUCCESS', primaryOutcome: 'surrendered', factType: 'STATE', operation: 'STATE_APPLY',
+        meta: { source: 'structured_runtime', stateName: '认输', hpAfter: previewRuntime.readHp(unit), hpRatioAfter: previewRuntime.readHp(unit) / Math.max(1, previewRuntime.readHpMax(unit)),
+          leftBattle: true, reactionConcede: true, reasonText: `${previewRuntime.unitName(unit)}认输，退出了战斗`, before: beforeActionState, after: cloneValue(unit.状态 || {}), operation: 'STATE_APPLY' },
+      }));
+    }
     const end = ensureLedger(combatData).at(-1) || actionEvent;
     actionEvent.meta.declarationSettlement = {
       phase: 'POST_EFFECTS_PRE_FOLLOWUPS', status: 'CLOSED',
@@ -128312,8 +128381,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       else if (['BASIC_ATTACK', 'RELEASE_SKILL', 'USE_ITEM'].includes(actionKind)) actor.__battleRuntime.passiveStreak = 0;
     }
     const useEffects = previewRuntime.inventoryUseEffects(actor, declaration, combatData, declaration?.skill?._效果数组);
-    const explicitEffects = previewRuntime.releaseSkillEffects(actor, declaration,
-      Array.isArray(useEffects) ? useEffects.filter(effect => effect && typeof effect === 'object') : [], actionRole);
+    const explicitEffects = previewRuntime.withStrengthKnockback(actor, declaration, previewRuntime.releaseSkillEffects(actor, declaration,
+      Array.isArray(useEffects) ? useEffects.filter(effect => effect && typeof effect === 'object') : [], actionRole), combatData);
     if (declaration?.skill?.__mechanismGrantTemporarySkill === true) {
       const stateKey = String(declaration.skill.__mechanismGrantStateKey || '').trim();
       const state = actor?.状态效果?.[stateKey];
@@ -130833,7 +130902,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             if (prototype === '位移执行' && previewRuntime.positionShiftOf) {
               const role = target === actor ? 'self' : inferUnitSide(combatData, actor) === inferUnitSide(combatData, target) ? 'ally' : 'enemy';
               const shift = previewRuntime.positionShiftOf({ ...effect, __位移接收者: role });
-              if (shift && previewRuntime.setUnitPosition(target, shift)) {
+              // 被这一击击退／击飞到后排的目标：突进结算不再把它带回前排（同后撤闪避，retreatEvaded 记这一击的动作 id；原来技能写的击退也会被覆盖）。
+              const heldBack = shift === previewRuntime.POSITION_BACK && role === 'enemy';
+              if (heldBack) target.__battleRuntime = { ...(target.__battleRuntime || {}), retreatEvaded: String(actionEvent?.actionId || '') };
+              // 本来就在后排、被突进过来的一击打回去（不然会被带到前排）也写事实。
+              if (shift && (previewRuntime.setUnitPosition(target, shift) || heldBack)) {
                 // 战报事实（POSITION shift）：位移把谁挪到了前排 / 后排。
                 facts.push(writeMechanicEvent(combatData, { eventKind: 'position_shift', actionName: actionName || '位移', actionRole: String(actionEvent?.actionRole || 'ACTIVE'), actorControl: String(actionEvent?.actorControl || 'AI'),
                   actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor), targetId: previewRuntime.unitId(target), targetName: previewRuntime.unitName(target),
@@ -131065,7 +131138,25 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       previewRuntime.setUnitPosition(actor, previewRuntime.POSITION_FRONT);
       const struckIds = new Set((Array.isArray(declaration?.targetIds) ? declaration.targetIds : []).map(String));
       const struck = listCombatUnits(combatData).filter(unit => struckIds.has(String(previewRuntime.unitId(unit))));
-      struck.forEach(unit => previewRuntime.setUnitPosition(unit, previewRuntime.POSITION_FRONT));
+      // 后撤闪避闪开、或被这一击击退的目标留在后排（retreatEvaded 只管这一击，用完清掉）。
+      // 被这一击击退／击飞的（位移执行经预演提交落到目标上，状态带 position_type、来源角色是出手者）：留在后排，写站位事实。
+      const knockedBack = unit => Object.values(unit?.状态效果 || {}).some(state => state && typeof state === 'object' &&
+        /击退|击飞/.test(String(state?.战斗效果?.position_type || '')) && String(state?.来源角色 || '').trim() === String(previewRuntime.unitName(actor)));
+      struck.forEach(unit => {
+        if (knockedBack(unit)) {
+          previewRuntime.setUnitPosition(unit, previewRuntime.POSITION_BACK);
+          facts.push(writeMechanicEvent(combatData, { eventKind: 'position_shift', actionName: actionName || '击退', actionRole: String(actionEvent?.actionRole || 'ACTIVE'), actorControl: String(actionEvent?.actorControl || 'AI'),
+            actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor), targetId: previewRuntime.unitId(unit), targetName: previewRuntime.unitName(unit),
+            actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
+            result: 'back', meta: { positionType: '击退', position: previewRuntime.POSITION_BACK } }));
+          return;
+        }
+        if (unit?.__battleRuntime?.retreatEvaded !== undefined) {
+          const { retreatEvaded, ...rest } = unit.__battleRuntime; unit.__battleRuntime = rest;
+          if (retreatEvaded === String(actionEvent?.actionId || '')) return;
+        }
+        previewRuntime.setUnitPosition(unit, previewRuntime.POSITION_FRONT);
+      });
       // 战报事实（POSITION advance）：这一击先突进，赶路时间多给了对方应对的时间。
       const travel = Number(declaration.advanceWindup);
       facts.push(writeMechanicEvent(combatData, { eventKind: 'position_advance', actionName: '突进', actionRole: String(actionEvent?.actionRole || 'ACTIVE'), actorControl: String(actionEvent?.actorControl || 'AI'),
@@ -132480,6 +132571,19 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // through — BattlePreview calculateDodgeProbability / calculateDefenseDamageMultiplier), and the unit it lands on.
     const incomingDeclaration = input?.incomingDeclaration && typeof input.incomingDeclaration === 'object' ? input.incomingDeclaration : null;
     const hitTarget = input?.hitTarget && typeof input.hitTarget === 'object' ? input.hitTarget : reactor;
+    // 应对时认输（用户 11-19，BattlePreview concedeHoldsBack）：喊了认输，这一击结算完离场（finishStructuredDeclaration 看 pendingConcede）；
+    // 近身一击对方收得住就落空，收不住、远程照常按选的防御／闪避结算。
+    if (declaration?.concede === true) {
+      reactor.__battleRuntime = { ...(reactor.__battleRuntime || {}), pendingConcede: String(parentActionEvent?.actionId || '') };
+      if (previewRuntime.concedeHoldsBack(sourceActor, incomingDeclaration, reactor)) {
+        // 事件类型与动作名跟所选的应对一致（战报按「动作名＋事件类型」把决策挂到交锋上）。
+        const guard = actionKind === 'DEFEND';
+        const event = writeLedgerEvent(combatData, { ...common, eventKind: guard ? 'defend' : 'dodge', actionName: guard ? '防御' : '闪避', result: guard ? 'guarded' : 'evaded', resultState: 'SUCCESS',
+          primaryOutcome: guard ? 'guarded' : 'dodged', ruleCode: 'CONCEDE_PULLED', meta: { ...reactionMeta, concede: true, pulled: true,
+            reasonText: `${actorName}喊了认输，${sourceName}及时收住了这一招` } });
+        return { actionKind, event, evaded: true, damageMultiplier: 0, opensCounterCheck: false };
+      }
+    }
     if (actionKind === 'EVADE') {
       const contest = structuredReactionContest(reactor, sourceActor, incomingDeclaration);
       const probability = previewRuntime.calculateDodgeProbability(reactor, sourceActor, !!preparedDefense, incomingDeclaration);
@@ -132517,8 +132621,22 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           preparedDefenseConsumed: !!preparedDefense,
         },
       });
+      // 后撤闪避（用户 11-19；原作梦红尘倒飞、墨珏振翼拉开、卢宇星闪电后退）：闪开就顺势退到后排，近身招式要重新贴近；
+      // 多付一份移动体力（同主动后撤，闪避同价），这一下不接反击。闪不开照常挨打、不退。
+      const retreat = declaration?.retreat === true && !preparedDefense;
       // A prepared stance was paid for when it was taken; a reaction pays for itself (R07).
-      if (!preparedDefense) payActionStamina({ combatData, actor: reactor, nature: 'EVADE', opponent: sourceActor, action: { actionName: '闪避', actionKind }, actionEvent: event, actionRole: 'REACTION' });
+      if (!preparedDefense) payActionStamina({ combatData, actor: reactor, nature: 'EVADE', opponent: sourceActor, action: { actionName: retreat ? '后撤闪避' : '闪避', actionKind }, actionEvent: event, actionRole: 'REACTION', factor: retreat ? 2 : 1 });
+      if (retreat && evaded) {
+        // 在前排：退到后排；在后排：闪开后不被突进的一击带到前排（下面突进结算跳过带 retreatEvaded 的目标）。
+        previewRuntime.setUnitPosition(reactor, previewRuntime.POSITION_BACK);
+        if (Number(incomingDeclaration?.advanceWindup || 0) > 0) reactor.__battleRuntime = { ...(reactor.__battleRuntime || {}), retreatEvaded: String(parentActionEvent?.actionId || '') };
+        event.meta.retreat = true;
+        // 战报事实（POSITION shift，位移类型「后撤闪避」）：闪开后退到后排。
+        writeMechanicEvent(combatData, { eventKind: 'position_shift', actionName: '后撤闪避', actionRole: 'REACTION', actorControl: String(common?.actorControl || 'AI'),
+          actorId: previewRuntime.unitId(reactor), actorName: previewRuntime.unitName(reactor), targetId: previewRuntime.unitId(reactor), targetName: previewRuntime.unitName(reactor),
+          actionId: event.actionId || common?.actionId || '', sourceActionId: common?.sourceActionId || event.actionId || '', parentNodeId: common?.parentNodeId || '', sourceNodeId: common?.sourceNodeId || '',
+          result: 'back', meta: { positionType: '后撤闪避', position: previewRuntime.POSITION_BACK } });
+      }
       return {
         actionKind,
         event,
@@ -132526,7 +132644,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         damageMultiplier: 1,
         // 2026-11-12 (用户：敏攻"选择闪避，等对方攻击露出破绽，也就是所谓的闪避反击"；主动姿态成功后也允许反击): a prepared
         // stance strikes back like any evasion that succeeds; it used to give the better odds and no counter.
-        opensCounterCheck: evaded,
+        opensCounterCheck: evaded && !retreat,
       };
     }
     // 人盾（T33, BattlePreview humanShieldOptions）: the held enemy is pulled in front — the move is turned onto it (applyHumanShieldRedirect).
