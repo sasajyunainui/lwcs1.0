@@ -42236,11 +42236,13 @@
           idleStance = 0;
           const seenShare = clamp(Number(feintSeeThroughChance(table.world, table.units[row], actor, {})) || 0, 0, 1);
           const baited = r20Exchange(answer[actorRow][row], answer[row][actorRow], strikeAgain, strikeBack * (Number(preview.BAIT_COUNTER_BONUS) || 1), 1);
-          const seenComes = out[row][actorRow] * stance.keep + baited.more > baited.taken;
-          const coming = (comesUnprepared ? (1 - seenShare) * turned : 0) + (seenComes ? seenShare * turnedBraced : 0);
-          const turnedAway = comesUnprepared && !seenComes ? seenShare * turned * (out[row][actorRow] * keep[actorRow][row] + ordinary.more) / Math.max(1, standing) : 0;
-          const kept = coming > 0 ? coming * out[row][actorRow] * Math.max(0, keep[actorRow][row] - stance.keep) : 0;
-          const dealt = coming > 0 ? coming * Math.max(0, baited.taken - ordinary.taken) : 0, struck = coming > 0 ? coming * Math.max(0, baited.more - ordinary.more) : 0;
+          // 11-19 用户定「硬挨换反击」（BattleRuntime baitTaken）：没看穿的来者整招打实，换来必开、加重的反击；看穿的来者面对的
+          // 就是普通防守架势（格挡照常，反击照架势判）——和防御一样，来不来按架势（comesPrepared）算。
+          const comingUnseen = comesUnprepared ? (1 - seenShare) * turned : 0, comingSeen = comesPrepared ? seenShare * turnedBraced : 0;
+          const turnedAway = comesUnprepared && !comesPrepared ? seenShare * turned * (out[row][actorRow] * keep[actorRow][row] + ordinary.more) / Math.max(1, standing) : 0;
+          const kept = comingSeen > 0 ? comingSeen * out[row][actorRow] * Math.max(0, keep[actorRow][row] - stance.keep) : 0;
+          const dealt = comingUnseen * Math.max(0, baited.taken - ordinary.taken) + comingSeen * Math.max(0, prepared.taken - ordinary.taken);
+          const struck = comingUnseen * Math.max(0, baited.more - ordinary.more) + comingSeen * Math.max(0, prepared.more - ordinary.more);
           const gain = turnedAway + kept + dealt - struck;
           if (!baitBest || gain > baitBest.gain) baitBest = { row, gain, own: turnedAway + kept - struck, dealt };
           continue;
@@ -43949,6 +43951,11 @@
     const spendOf = candidateId => r9v2LinearPublicCost(frozenById.get(candidateId)?.declaration, valuationActor)
       .reduce((sum, row) => { const max = preview.readResourceMax(valuationActor, row.resource); return sum + (max > 0 ? row.amount / max : 0); }, 0);
     // 平手再一条（第 5c 步）：花费也相同时不出手类（让过、放弃反击、放弃应对）优先——保留余地，也不把意图暴露给对手。
+    // 变体（卖破绽、卸力、虚招、绕后、人盾）：与原型打平时让原型（BehaviorDecisionPipeline 平手规则）。
+    const variantOf = candidateId => {
+      const declaration = frozenById.get(candidateId)?.declaration || {};
+      return declaration.bait === true || declaration.deflect === true || !!declaration.feintStrike || !!declaration.flank || !!declaration.humanShield;
+    };
     const holdOf = candidateId => {
       const candidate = frozenById.get(candidateId);
       return candidate?.counterDeclineFallback === true || String(candidate?.declaration?.actionKind || '').trim().toUpperCase() === 'PASS_OPPORTUNITY';
@@ -43958,7 +43965,7 @@
       document: {
         immediate: bifDocs[candidateId],
         relational: relationalByCandidate.get(candidateId),
-        valuation: { schemaVersion: 'R20ValuationV1', value: valueOf(candidateId), spend: spendOf(candidateId), hold: holdOf(candidateId) },
+        valuation: { schemaVersion: 'R20ValuationV1', value: valueOf(candidateId), spend: spendOf(candidateId), hold: holdOf(candidateId), variant: variantOf(candidateId) },
       },
     }));
     addFeatureBuildTime('valuationMs', valuationStartedAt);
@@ -44306,7 +44313,26 @@
     // a chain that never closed (11-15: a 35 级 强攻 vs 召唤 run hit ACTION_QUEUE_NODE_LIMIT_EXCEEDED).
     if (providerDepth !== 1 || !(DECISION_DIVERSITY_TEMPERATURE > 0) || request?.playerLockedDeclaration ||
       String(request?.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase() !== 'ACTIVE') return bestId;
-    const rows = ranked.filter(row => row && row.contextuallyDominated !== true && Number.isFinite(Number(row.score)));
+    // 变体（卖破绽、卸力、虚招、绕后、人盾）不比它的原型（同动作、同目标、同魂技、不带变体标记）多得到什么时，不进抽取池：
+    // 11-19 卖破绽 60 次里 51 次与防御估值完全相等，靠等权抽取占了一半（原著卖破绽约占主动步 1%）。
+    const declarations = new Map((request?.frozenCandidates || []).map(candidate => [String(candidate?.candidateId || ''), candidate?.declaration || {}]));
+    const isVariant = declaration => declaration.bait === true || declaration.deflect === true || !!declaration.feintStrike || !!declaration.flank || !!declaration.humanShield;
+    const plainKey = declaration => [String(declaration.actionKind || '').toUpperCase(), (declaration.targetIds || []).map(String).sort().join(','),
+      declaration.skill ? skillId(declaration.skill) : '', String(declaration.releaseSlot || '')].join('|');
+    const plainBest = new Map();
+    for (const row of ranked) {
+      const declaration = declarations.get(String(row?.candidateId || ''));
+      if (!declaration || isVariant(declaration) || !Number.isFinite(Number(row.score))) continue;
+      const key = plainKey(declaration);
+      plainBest.set(key, Math.max(plainBest.get(key) ?? -Infinity, Number(row.score)));
+    }
+    const rows = ranked.filter(row => {
+      if (!row || row.contextuallyDominated === true || !Number.isFinite(Number(row.score))) return false;
+      const declaration = declarations.get(String(row.candidateId || ''));
+      if (!declaration || !isVariant(declaration) || String(row.candidateId) === bestId) return true;
+      const plain = plainBest.get(plainKey(declaration));
+      return !(Number.isFinite(plain) && Number(row.score) <= plain + 1e-9);
+    });
     if (rows.length < 2) return bestId;
     const scores = rows.map(row => Number(row.score)).sort((a, b) => b - a);
     const best = scores[0], temperature = DECISION_DIVERSITY_TEMPERATURE * Math.max(0, best - scores[Math.floor(scores.length / 2)]);

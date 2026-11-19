@@ -6293,6 +6293,11 @@
   function readHold(doc) {
     return !!(doc && doc.document && doc.document.valuation && doc.document.valuation.hold === true);
   }
+  // A variant of a plain action (卖破绽、卸力、虚招、绕后、人盾 on DEFEND / attack): on a tie with its plain form it gives nothing more,
+  // so the plain form is preferred (11-19: bait tied defend in 51 of 60 picks and won on candidateId order alone).
+  function readVariant(doc) {
+    return !!(doc && doc.document && doc.document.valuation && doc.document.valuation.variant === true);
+  }
   function readSpend(doc) {
     const spend = Number(doc && doc.document && doc.document.valuation && doc.document.valuation.spend);
     return Number.isFinite(spend) && spend > 0 ? spend : 0;
@@ -6333,8 +6338,8 @@
         hardExclusionAudit.push({ candidateId, disposition: 'HARD_EXCLUDED_PREVIEW_SKIPPED', reasonCode, source: 'BIF_IMMEDIATE_PUBLIC' });
       }
       const score = exclusion.hard ? null : readValue(doc, candidateId);
-      const spend = readSpend(doc), hold = readHold(doc);
-      rows.push({ candidateId, eligible: !exclusion.hard, score, spend, hold });
+      const spend = readSpend(doc), hold = readHold(doc), variant = readVariant(doc);
+      rows.push({ candidateId, eligible: !exclusion.hard, score, spend, hold, variant });
       valueVector.push({ candidateId, value: score, spend, hold, hardExclusion: { hard: exclusion.hard, reason: reasonCode } });
     }
     const eligible = rows.filter(row => row.eligible);
@@ -6372,9 +6377,9 @@
     const compareRanked = (a, b) => {
       work.sortComparisons += 1;
       // Equal values: less spent first (no value difference tells them apart: keep the resources and the later options), then
-      // holding back before acting (keeps the options open and shows the opponent nothing), then candidateId.
+      // holding back before acting (keeps the options open and shows the opponent nothing), then the plain form before a variant, then candidateId.
       return a.score !== b.score ? b.score - a.score : a.spend !== b.spend ? a.spend - b.spend
-        : a.hold !== b.hold ? (a.hold ? -1 : 1) : compareUtf16(a.candidateId, b.candidateId);
+        : a.hold !== b.hold ? (a.hold ? -1 : 1) : a.variant !== b.variant ? (a.variant ? 1 : -1) : compareUtf16(a.candidateId, b.candidateId);
     };
     const rankedSelectable = selectable.slice().sort(compareRanked);
     const ranked = [

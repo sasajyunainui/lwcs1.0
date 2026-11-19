@@ -2269,7 +2269,8 @@
   /* 卖破绽（T32）：占一次行动摆出空当（装伤、装累、故意不躲）——格挡架势带 bait（BattleRuntime activeDefenseStance.bait，看破同虚招）。
      没看破的敌人看不到架势，只看到它身上一个 BAIT_OPENING 的攻击破绽（BattleDecision 信念世界），更愿意来打；打过来时它按架势接，
      反击窗口必开，反击伤害 ×BAIT_COUNTER_BONUS（BattleRuntime baitCounter）。看破的敌人看到的是架势本身；没人来打就白花。起始值。 */
-  const BAIT_OPENING = 1, BAIT_COUNTER_BONUS = 1.3;
+  // 校准入口（root.__LWCS_TUNE__.BAIT_COUNTER_BONUS），默认值不变。
+  const BAIT_OPENING = 1, BAIT_COUNTER_BONUS = Number(root.__LWCS_TUNE__?.BAIT_COUNTER_BONUS ?? 1.3);
   function feintStrikeFooled(declaration = {}, reactor = {}) {
     const feint = declaration?.feintStrike;
     if (!feint || typeof feint !== 'object') return 0;

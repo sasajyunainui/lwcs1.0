@@ -1682,8 +1682,9 @@
     // 卸力（T31）：偏开多少、对方失衡；拨不开就整招挨上。
     // 人盾（T33）：拿困住的敌人挡。
     if (kind === 'defend' && meta?.humanShield === true) return `${actor}把被困住的${String(meta?.shieldName || '敌人')}拽到身前，挡下了${target && target !== actor ? target : '对方'}的这一击`;
-    // 卖破绽（T32）：引来的这一击早有准备，反击必开。
-    if (kind === 'defend' && meta?.baitConsumed === true) return `${target && target !== actor ? target : '对方'}冲着${actor}卖的破绽打来，${actor}早有准备，稳稳接住并抓住了还手的空当`;
+    // 卖破绽（T32）：没看穿的来者——硬挨这一击，换来必开的反击（11-19 不再格挡）；看穿的——当普通架势接住。
+    if (kind === 'defend' && meta?.baitTaken === true) return `${target && target !== actor ? target : '对方'}冲着${actor}卖的破绽打来，${actor}故意不躲、硬挨下这一击，换来了还手的空当`;
+    if (kind === 'defend' && meta?.baitConsumed === true) return `${target && target !== actor ? target : '对方'}看穿了${actor}卖的破绽，仍正面打来，${actor}早有准备，稳稳接住并抓住了还手的空当`;
     if (kind === 'defend' && meta?.deflect === true) {
       const by = target && target !== actor ? target : '对方';
       if (meta.deflectFailed === true) return `${actor}想卸开${by}的攻势，但力量差太多（力量比 ${Math.round(number(meta.strengthRatio, 0) * 100) / 100}）没拨开，整招挨上`;

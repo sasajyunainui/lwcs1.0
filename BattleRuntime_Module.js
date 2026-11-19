@@ -15469,7 +15469,10 @@
       const guardBase = previewRuntime.calculateGuardBaseMultiplier(reactor, sourceActor, !!preparedDefense);
       // 卸力（T31, BattlePreview deflectOutcome）: a DEFEND that deflects — the share the strength ratio turns aside, or the hit whole.
       const deflect = actionKind === 'DEFEND' && declaration?.deflect === true ? previewRuntime.deflectOutcome?.(reactor, sourceActor, incomingDeclaration) : null;
-      const damageMultiplier = deflect ? deflect.multiplier : previewRuntime.calculateDefenseDamageMultiplier(reactor, sourceActor, !!preparedDefense, hitShare, null,
+      // 卖破绽不格挡（11-19 用户定「硬挨换反击」；原作「故意不躲，露出右胸」）：没看穿的来者这一击整招挨上，换来必开、加重的反击；
+      // 看穿的来者照普通架势（格挡照常）。
+      const baitTaken = preparedDefense?.bait === true && !(preparedDefense.seenBy || []).map(String).includes(String(previewRuntime.unitId(sourceActor)));
+      const damageMultiplier = deflect ? deflect.multiplier : baitTaken ? 1 : previewRuntime.calculateDefenseDamageMultiplier(reactor, sourceActor, !!preparedDefense, hitShare, null,
         incomingDeclaration ? structuredDamageEffects(incomingDeclaration)[0] || null : null);
       if (deflect) previewRuntime.applyDeflectUnbalance(sourceActor, deflect);
       const event = writeLedgerEvent(combatData, {
@@ -15483,7 +15486,8 @@
         meta: { ...reactionMeta, damageMultiplier, guardBaseMultiplier: guardBase, hitShare,
           guardWeightFactor: previewRuntime.guardWeightFactor(hitShare), preparedDefenseConsumed: !!preparedDefense,
           // 卖破绽（T32）: the stance was a bait — the strike back is sure (openStructuredCounterWindow).
-          ...(preparedDefense?.bait === true ? { baitConsumed: true } : {}),
+          // 看穿的来者面对的只是普通架势：反击照普通架势判，不必开、不加重（baitConsumed 只给没看穿的）。
+          ...(baitTaken ? { baitConsumed: true, baitTaken: true } : {}),
           ...(deflect ? { deflect: true, deflected: deflect.deflected, strengthRatio: deflect.ratio, deflectFailed: deflect.failed, unbalance: deflect.unbalance, ...(deflect.art ? { deflectArt: '控鹤擒龙' } : {}) } : {}) },
       });
       if (!preparedDefense) payActionStamina({ combatData, actor: reactor, nature: 'DEFEND', opponent: sourceActor, action: { actionName: deflect ? '卸力' : actionKind === 'GUARD' ? '护卫' : '防御', actionKind }, actionEvent: event, actionRole: 'REACTION' });
