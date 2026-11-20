@@ -1860,7 +1860,9 @@
       return `${actor}要砸的【${name}】已经不在了`;
     }
     // 收招（11-20）：对方迎上来对轰占不到便宜，收住这一招。
-    if (kind === 'pull_back') return `${actor}看${target}迎上来对轰占不到便宜，收住了【${String(meta?.moveName || action || '这一招')}】`;
+    if (kind === 'pull_back') return text(event?.ruleCode) === 'PULL_BACK_RETARGET'
+      ? `${actor}看${publicEntityName(directory, meta?.fromId || meta?.fromName, meta?.fromName) || '对方'}迎上来对轰占不到便宜，把【${String(meta?.moveName || '这一招')}】转向${target}`
+      : `${actor}看${target}迎上来对轰占不到便宜，收住了【${String(meta?.moveName || action || '这一招')}】`;
     // 道具破坏（11-19）：砸一下、砸坏。
     if (kind === 'gear_strike') {
       const name = String(meta?.gearName || action || '装备');

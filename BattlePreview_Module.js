@@ -4200,7 +4200,7 @@
   // 收招（用户 11-19 选「看到应对后可收、可改向」，11-20 按推荐做 A，先做局部估值版）：对方迎上来对轰时，出手者在这一招落下前
   // 比「继续」与「收招」——继续的得失按这一下对轰（clashOutcome）：打掉对方的生命份额减去自己挨的份额；收招两边都落空（0）。
   // 继续不划算（得失为负）、又来得及收手就收：需要的时间 = 一记普攻的前摇 ×（出手者有效敏捷 ÷ 迎击者有效敏捷）——同应对认输的
-  // 收手（concedeHoldsBack），不限近身——短于这一招的前摇才收得住。收住付这一招一半的消耗。改打另一人留到后面（要给新目标重开应对窗口）。
+  // 收手（concedeHoldsBack），不限近身——短于这一招的前摇才收得住。收住按前摇已过的比例（need ÷ windup）付消耗。改打另一人留到后面（要给新目标重开应对窗口）。
   // 返回 null：不是对轰、或不是能比的伤害招。
   function pullBackChoice(attacker = {}, incoming = null, reactor = {}, reactorDeclaration = null, worldSnapshot = null) {
     if (!incoming || !reactorDeclaration) return null;
@@ -4215,6 +4215,21 @@
     const windup = actionWindup(attacker, incoming);
     const holds = need < windup - 1e-9;
     return Object.freeze({ pull: holds && value < -1e-9, holds, value, dealt, taken, need, windup, clash: clash.result });
+  }
+  // 改向（方案 §4「多人战可以改向，转打另一个敌人，剩余前摇照付」）：收住的单体招转给另一个还能打的敌人——按这一招打在各人身上的
+  // 生命份额挑最大的；新目标只剩「这一招前摇 − 收手所需时间」来应对。null：没有别的敌人可打。
+  function retargetChoice(attacker = {}, incoming = null, reactor = {}, worldSnapshot = null) {
+    if (!incoming || !worldSnapshot) return null;
+    const side = sideOf(worldSnapshot, attacker), skip = new Set([unitId(attacker), unitId(reactor), ...(incoming.targetIds || []).map(String)]);
+    let best = null;
+    for (const { unit } of listUnits(worldSnapshot)) {
+      const id = unitId(unit);
+      if (!id || skip.has(id) || sideOf(worldSnapshot, unit) === side || readHp(unit) <= 0 || !isBattleCapable(unit) || unit?.已消散 === true) continue;
+      const damage = incomingMoveDamage(attacker, { ...incoming, targetIds: [id] }, unit, worldSnapshot);
+      const share = Math.max(0, Number(damage) || 0) / Math.max(1, readHpMax(unit));
+      if (share > 1e-9 && (!best || share > best.share)) best = { targetId: id, share };
+    }
+    return best ? Object.freeze(best) : null;
   }
   const LEFT_BATTLE_REASONS = Object.freeze({ CONCEDE: 'SURRENDERED', WITHDRAW: 'WITHDRAWN' });
   function hasLeftBattle(unit = {}) {
@@ -26512,6 +26527,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     withStrengthKnockback,
     concedeHoldsBack,
     pullBackChoice,
+    retargetChoice,
     MENTAL_NATURAL_CEILING,
     refereeCatchesConcede,
     throwableWeapon,
