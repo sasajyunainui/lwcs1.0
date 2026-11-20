@@ -2499,7 +2499,8 @@
        「控鹤擎龙」的（唐门手法）随时能召回。器武魂（或会控鹤擎龙的）召回时可以顺势再打一次：普攻的变体 recallStrike，按远程算，打完回手。
      - 磕飞、抓住：对方挡住或闪开都不改变什么——这一下落空，武器照样离手，落在对方身边（所以兵器要去对方身边捡）。 */
   const THROW_STATE_WEAPON = '武器离手', THROW_STATE_SPIRIT = '武魂离手', THROW_STATE_KEY = '__auto__:武器离手', RECALL_STATE = '召回武器';
-  const RECALL_ANYWHERE_SKILL = /控鹤擎龙/;
+  // 功法名是「控鹤擒龙」（库与 MVU 都这么写；用户口头也说「擎」），两种写法都认。
+  const RECALL_ANYWHERE_SKILL = /控鹤[擒擎]龙/;
   // 手里能投的那一件：已开的器武魂优先，其次兵器（打坏的、已经投出去的不算）。
   function throwableWeapon(unit = {}) {
     if (!unit || unit?.状态效果?.[THROW_STATE_KEY]) return null;
@@ -2518,7 +2519,9 @@
   function canThrowWeapon(actor = {}, target = null, declaration = {}) {
     return String(declaration?.actionKind || '').trim().toUpperCase() === 'BASIC_ATTACK' && !!target && target !== actor && !!throwableWeapon(actor);
   }
-  const canRecallAnywhere = unit => [...collectSkillNames(unit)].some(name => RECALL_ANYWHERE_SKILL.test(name));
+  // 功法存在角色的「功法」栏里、以功法名为键（没有魂技名），也要看（11-20：原先只按魂技名找，会控鹤擒龙的从来召回不了）。
+  const canRecallAnywhere = unit => Object.keys(unit?.功法 && typeof unit.功法 === 'object' ? unit.功法 : {}).some(name => RECALL_ANYWHERE_SKILL.test(name)) ||
+    [...collectSkillNames(unit)].some(name => RECALL_ANYWHERE_SKILL.test(name));
   function collectSkillNames(unit = {}) {
     const names = new Set();
     const visit = value => {
