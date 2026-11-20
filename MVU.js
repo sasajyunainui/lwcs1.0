@@ -120,6 +120,10 @@ const EquipmentSchema = z
           })
           .prefault({}),
         加成方向: z.array(z.enum(['魂力上限', '精神力上限', '力量', '防御', '敏捷', '体力上限', '全属性'])).prefault([]),
+        // 道具破坏（11-19）：战中打坏记「损毁」、耐久 0；修好或神器温养回满后恢复。可选，平时不落盘。
+        装备状态: z.string().optional(),
+        耐久: z.coerce.number().optional(),
+        耐久上限: z.coerce.number().optional(),
       })
       .prefault({}),
     防具: z
@@ -127,6 +131,8 @@ const EquipmentSchema = z
         名称: z.string().prefault('无'),
         品阶: z.string().prefault('无').describe('普通防具、防护装备或魂导护具品阶'),
         装备状态: z.string().prefault('未装备'),
+        耐久: z.coerce.number().optional(),
+        耐久上限: z.coerce.number().optional(),
         特性: z
           .record(z.string(), z.object({ 描述: z.string().prefault('无'), 限定来源: z.string().optional() }).prefault({}))
           .prefault({})

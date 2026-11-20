@@ -2949,6 +2949,9 @@ class ProfessionUIComponent {
     }
     if (cfg.mode === 'repair') {
       if (targetName.trim() && !this.currentInventory[targetName.trim()]) return '修现存物品必须在背包中。';
+      // 神器以上无法外力修复，只能自身温养（用户 11-19）。
+      const 修理目标定义 = targetName.trim() ? (this.currentInventory[targetName.trim()] || {}) : {};
+      if (/神器/.test(String(修理目标定义.品质 || 修理目标定义.品阶 || this.getItemDefinition?.(targetName.trim())?.品质 || ''))) return '神器以上无法外力修复，只能自身温养。';
       const req = this.getRepairRequirement(targetName.trim());
       if (materialNames.length === 0) return `至少需要【${req.required}】。`;
       if (!this.getRepairRequirementSatisfied(materialNames, req)) return `当前损伤为【${req.label}】，至少需要【${req.required}】。`;

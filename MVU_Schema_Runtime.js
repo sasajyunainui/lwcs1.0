@@ -1036,6 +1036,8 @@ function 计算装备属性加成_V1(装备 = {}, 角色 = {}) {
 
 function 计算装备属性加成未缩放_V1(装备 = {}, 角色 = {}) {
   const 结果 = {};
+  // 损毁的装备不给加成（道具破坏 11-19：战中打坏的兵器、魂导器记「损毁」，修好或神器温养回满后恢复）。
+  if (/损毁/.test(String(装备?.装备状态 || ''))) return 结果;
   const 分类 = String(装备?.物品分类 || 装备?.分类 || '').trim();
   const 品质 = 规范化物品经济品质_V1(装备?.品质 || 装备?.品阶 || 装备?.类型 || '普通', 装备?.名称 || '', 分类);
   const 是神器装备 = 判断神器品质_V1(品质);
@@ -1275,8 +1277,9 @@ function 压缩角色应用物品引用_V1(data = {}) {
   Object.values(data?.char || {}).forEach(char => {
     if (!char || typeof char !== 'object' || Array.isArray(char)) return;
     if (char.装备 && typeof char.装备 === 'object' && !Array.isArray(char.装备)) {
-      char.装备.武器 = 压缩应用物品记录_V1(char.装备.武器, { 状态字段: ['耐久', '剩余使用次数', '绑定者', '有效期至tick'] });
-      char.装备.防具 = 压缩应用物品记录_V1(char.装备.防具, { 状态字段: ['装备状态', '耐久', '绑定者', '有效期至tick'] });
+      // 道具破坏（11-19）：武器的「装备状态」（损毁）与 耐久上限 也留着。
+      char.装备.武器 = 压缩应用物品记录_V1(char.装备.武器, { 状态字段: ['装备状态', '耐久', '耐久上限', '剩余使用次数', '绑定者', '有效期至tick'] });
+      char.装备.防具 = 压缩应用物品记录_V1(char.装备.防具, { 状态字段: ['装备状态', '耐久', '耐久上限', '绑定者', '有效期至tick'] });
       char.装备.机甲 = 压缩应用物品记录_V1(char.装备.机甲, { 状态字段: ['等级', '型号', '状态', '装备状态', '品质系数', '耐久', '绑定者', '有效期至tick', '_属性加成', '_温养进度tick'] });
       Object.entries(char.装备.斗铠?.部件 || {}).forEach(([部件名, 部件]) => {
         char.装备.斗铠.部件[部件名] = 压缩应用物品记录_V1(部件, { 状态字段: ['状态', '品质系数', '耐久', '绑定者'] });
@@ -4589,6 +4592,23 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       if (hasNoSoulPowerTalent) spRate = 0;
       c.属性.魂力 = Math.min(c.属性.魂力上限, roundRuntimeGrowthValue_ACU(c.属性.魂力 + c.属性.魂力上限 * spRate * safeDelta));
 
+      // 神器温养自愈（用户 11-19「神器以上的话无法外力修复，只能自身温养」）：品质含「神器」的装备与背包批次，耐久不满时每天自行回
+      // 基础耐久的 5%（每 tick 5% ÷ 144），回满后装备状态从「损毁」回到「已装备」。不论动作模式（战斗中也照常温养）。
+      {
+        const 每tick回复 = 0.05 / 144 * safeDelta;
+        const 温养 = (item, 品质 = '') => {
+          if (!item || typeof item !== 'object' || Array.isArray(item) || !/神器/.test(String(品质 || item.品质 || item.品阶 || ''))) return;
+          const 上限 = Math.max(1, Number(item.耐久上限 || item.基础耐久 || 100));
+          const 当前 = Number(item.耐久);
+          if (!Number.isFinite(当前) || 当前 >= 上限) return;
+          item.耐久 = Math.min(上限, roundRuntimeGrowthValue_ACU(当前 + 上限 * 每tick回复));
+          if (item.耐久 >= 上限 && String(item.装备状态 || '').trim() === '损毁') item.装备状态 = '已装备';
+        };
+        const 装备 = c.装备 && typeof c.装备 === 'object' ? c.装备 : {};
+        ['武器', '防具', '饰品', '斗铠', '机甲'].forEach(槽 => 温养(装备[槽]));
+        Object.values(装备.魂导器?.装配 || {}).forEach(item => 温养(item));
+        Object.values(c.背包 && typeof c.背包 === 'object' ? c.背包 : {}).forEach(项 => (Array.isArray(项?.批次) ? 项.批次 : []).forEach(批次 => 温养(批次, String(项?.品质 || 项?.品阶 || ''))));
+      }
       const 血脉核心 = String(c.血脉之力?.核心 || '').trim();
       if (血脉核心 && 血脉核心 !== '未凝聚' && 血脉核心 !== '无') {
         c.属性.体力 = Math.min(c.属性.体力上限, roundRuntimeGrowthValue_ACU(c.属性.体力 + c.属性.体力上限 * 0.05 * safeDelta));
