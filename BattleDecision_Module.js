@@ -4732,6 +4732,27 @@
     return view;
   }
 
+  // 功法的战斗动作（用户 11-20「能」：原作徐笠智应对时以玄玉手挡招）。存档里的功法只留描述（MVU 构建最新功法记录_V1），所以按名字现场
+  // 生成：玄玉手（唐门手法，淬炼双手抗性）挡招——这一回合受到的伤害按境界降低；境界同控鹤擒龙按等级分档（不到 30 级入门、不到 60 级
+  // 小成、60 级起大成）。前摇 10、消耗魂力上限 3%。起始值，实测再定。存档里已带 _效果数组 的功法条目照原样可用。
+  const MARTIAL_ART_ACTIONS = Object.freeze({
+    玄玉手: tier => ({ 魂技名: '玄玉手', 来源类别: '功法', 承载方式: '直接生效', 附带属性: ['防御', '近战'], 消耗: '魂力:3%', 前摇: 10,
+      效果描述: '双手玉化挡招，这一回合受到的伤害降低。',
+      _效果数组: [{ 原型: '结算修正', 目标: '自身', 生效方式: '独立生效', 结算: '受到伤害', 数值: `-${[15, 25, 35][tier - 1]}%`, 持续回合: 1 }] }),
+  });
+  const martialArtViews = new WeakMap();
+  function martialArtSkillView(arts = {}, unit = {}) {
+    if (!arts || typeof arts !== 'object') return arts;
+    const level = Number(preview.readEffectiveUnitLevel?.(unit) ?? unit?.属性?.等级) || 0;
+    const tier = level >= 60 ? 3 : level >= 30 ? 2 : 1;
+    const cached = martialArtViews.get(arts);
+    if (cached && cached.tier === tier) return cached.view;
+    const view = Object.fromEntries(Object.entries(arts).map(([name, art]) =>
+      [name, MARTIAL_ART_ACTIONS[name] && !(Array.isArray(art?._效果数组) && art._效果数组.length) ? MARTIAL_ART_ACTIONS[name](tier) : art]));
+    martialArtViews.set(arts, { tier, view });
+    return view;
+  }
+
   function collectSkills(unit = {}) {
     const activeGrantedSkills = collectActiveGrantedSkills(unit);
     // 封禁装备 (BattlePreview sealedEquipmentSlots): a sealed weapon, armour or mecha carries no skill, nor a sealed 器武魂.
@@ -4756,7 +4777,8 @@
       ...Object.entries(unit).filter(([key, value]) => key !== '蓄力技能' && /^(?:第\d+)?武魂|血脉之力|魂骨|装备|自创魂技|技能|^功法$|^融合技$/.test(key) && value && typeof value === 'object')
         .filter(([key]) => !(sealed.has('器武魂') && preview.toolSpiritKeys(unit).includes(key)))
         .map(([key, value]) => {
-          const view = key !== '装备' ? value : soulToolSkillView(sealed.size ? sealedEquipmentView(equipment || value, sealed) : equipment || value);
+          const view = key === '功法' ? martialArtSkillView(value, unit)
+            : key !== '装备' ? value : soulToolSkillView(sealed.size ? sealedEquipmentView(equipment || value, sealed) : equipment || value);
           if (view && typeof view === 'object') rootLabels.set(view, key);
           return view;
         }),
