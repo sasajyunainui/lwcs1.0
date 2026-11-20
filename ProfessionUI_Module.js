@@ -2293,6 +2293,25 @@ class ProfessionUIComponent {
     return { 分类, 定义: 新定义 };
   }
 
+  // 魂导器由对应级别的魂导师修（用户 11-19「魂导器的话由对应级别的魂导师修，按造价和修复比例支付代价」）：魂导师等级不低于魂导等级，
+  // 不用修理耗材，代价 = 基础价格 × 修复比例（1 − 耐久 ÷ 耐久上限），用该魂导器的默认货币（缺省法定货币）支付。不是魂导器返回 null。
+  读取魂导器修理计划(targetName = '') {
+    const 名称 = String(targetName || '').trim();
+    if (!名称) return null;
+    const item = this.resolveInventoryItem(名称);
+    const 魂导等级 = Math.max(0, Math.floor(Number(item?.魂导等级 || 0)));
+    if (!(魂导等级 > 0) && !/魂导器/.test(String(item?.物品分类 || item?.分类 || ''))) return null;
+    const 魂导师等级 = Math.max(0, Math.floor(Number(this.读取副职业认证运行时('魂导师')?.lv || 0)));
+    const 上限 = Math.max(1, Number(item?.耐久上限 || item?.基础耐久 || 100));
+    const 比例 = Math.max(0, Math.min(1, 1 - Math.max(0, Number(item?.耐久 ?? 上限)) / 上限));
+    const 货币 = String(item?.默认货币 || '').trim() || this.getLegalCurrency();
+    const 代价 = Math.ceil(Math.max(0, Number(item?.基础价格 || 0)) * 比例);
+    const 资金 = Math.max(0, Number(this.charData?.财富?.[货币] || 0));
+    const error = 魂导师等级 < 魂导等级 ? `魂导器要由 ${魂导等级} 级以上的魂导师修（现在是 ${魂导师等级} 级魂导师）。`
+      : !(比例 > 0) ? '这件魂导器没有损伤。' : 资金 < 代价 ? `修理代价 ${代价} ${货币}，资金不足。` : '';
+    return { 魂导等级, 魂导师等级, 比例, 货币, 代价, 资金, error };
+  }
+
   getRepairRequirement(targetName) {
     const item = this.resolveInventoryItem(targetName);
     const durability = Number(item?.耐久 ?? item?.完整度 ?? 100);
@@ -2952,9 +2971,13 @@ class ProfessionUIComponent {
       // 神器以上无法外力修复，只能自身温养（用户 11-19）。
       const 修理目标定义 = targetName.trim() ? (this.currentInventory[targetName.trim()] || {}) : {};
       if (/神器/.test(String(修理目标定义.品质 || 修理目标定义.品阶 || this.getItemDefinition?.(targetName.trim())?.品质 || ''))) return '神器以上无法外力修复，只能自身温养。';
-      const req = this.getRepairRequirement(targetName.trim());
-      if (materialNames.length === 0) return `至少需要【${req.required}】。`;
-      if (!this.getRepairRequirementSatisfied(materialNames, req)) return `当前损伤为【${req.label}】，至少需要【${req.required}】。`;
+      const 魂导器修理 = this.读取魂导器修理计划(targetName.trim());
+      if (魂导器修理) { if (魂导器修理.error) return 魂导器修理.error; }
+      else {
+        const req = this.getRepairRequirement(targetName.trim());
+        if (materialNames.length === 0) return `至少需要【${req.required}】。`;
+        if (!this.getRepairRequirementSatisfied(materialNames, req)) return `当前损伤为【${req.label}】，至少需要【${req.required}】。`;
+      }
     }
     return null;
   }
@@ -3012,7 +3035,10 @@ class ProfessionUIComponent {
           if (recipe?.mode === 'mech' || recipe?.mode === 'armor') noteText = recipe.note;
           if (recipe?.mode === 'soul_tool') noteText = recipe.note;
         }
-        if (cfg.mode === 'repair') {
+        const 魂导器修理预览 = cfg.mode === 'repair' ? this.读取魂导器修理计划(targetName) : null;
+        if (魂导器修理预览) {
+          noteText = `魂导器修理：${魂导器修理预览.魂导等级} 级魂导器，修复比例 ${Math.round(魂导器修理预览.比例 * 100)}%，代价 ${魂导器修理预览.代价} ${魂导器修理预览.货币}（魂导师 ${魂导器修理预览.魂导师等级} 级）`;
+        } else if (cfg.mode === 'repair') {
           const req = this.getRepairRequirement(targetName);
           noteText = isComp ? `目标判定：${req.label} / 已选${materialNames.length}种修理耗材 / 要求：${req.required}` : `目标判定：${req.label} / 要求：${req.required}`;
         }
@@ -3486,7 +3512,11 @@ class ProfessionUIComponent {
     });
 
     if (this.activeMode === 'repair' && 修理成功标记) {
-      const repairDesc = this.getRepairDescriptor(materialNames);
+      const 魂导器修理执行 = this.读取魂导器修理计划(targetName);
+      if (魂导器修理执行 && !魂导器修理执行.error && 魂导器修理执行.代价 > 0) {
+        patchOps.push({ op: 'replace', path: `${this.activeCharBasePath}/财富/${this.escapeJsonPointer(魂导器修理执行.货币)}`, value: Math.max(0, 魂导器修理执行.资金 - 魂导器修理执行.代价) });
+      }
+      const repairDesc = 魂导器修理执行 && !魂导器修理执行.error ? { status: '魂导师修理完成', desc: `由魂导师修复（代价 ${魂导器修理执行.代价} ${魂导器修理执行.货币}）` } : this.getRepairDescriptor(materialNames);
       const definition = this.resolveInventoryItem(targetName);
       if (!this.查找物品定义(targetName)) {
         const 修理定义 = this.构建修理目标物品定义(targetName, definition, repairDesc);
