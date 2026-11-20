@@ -30421,8 +30421,9 @@ ${播报文本}
 
   function 日常动作资源足够(charData = {}, actionMode = '') {
     const 属性 = charData && typeof charData === 'object' ? charData.属性 || {} : {};
-    if (actionMode === '肉体训练') return Number(属性.体力 || 0) >= Math.max(1, Number(属性.体力上限 || 1)) * 0.3;
-    if (actionMode === '精神训练') return Number(属性.精神力 || 0) > Math.max(1, Number(属性.精神力上限 || 1)) * 0.1;
+    // 训练门槛（11-20 按场下恢复调）：肉体训练要满体力，精神训练要 45% 精神力（MVU_Schema_Runtime 训练消耗）。
+    if (actionMode === '肉体训练') return Number(属性.体力 || 0) >= Math.max(1, Number(属性.体力上限 || 1)) * 0.999;
+    if (actionMode === '精神训练') return Number(属性.精神力 || 0) >= Math.max(1, Number(属性.精神力上限 || 1)) * 0.45 - 1e-9;
     return true;
   }
 
