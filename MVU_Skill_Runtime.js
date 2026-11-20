@@ -24895,10 +24895,9 @@ function pruneExtendedBloodlineData(charData = null, charName = '') {
   if (shouldKeepExtendedBloodlineData(charName, charData)) return;
   const bloodline = charData.血脉之力;
   if (!bloodline || typeof bloodline !== 'object') return;
+  // 只删龙族血脉专有的字段；血脉技能与被动是通用的，留下（11-20：雪帝、帝天、白龙王刘锋等 11 个非龙族角色的血脉技能读档后全被清空）。
   delete bloodline.解封层数;
   delete bloodline.核心;
-  delete bloodline.技能;
-  delete bloodline.被动;
   delete bloodline.永久加成;
   Object.keys(bloodline).forEach(键 => {
     if (是气血魂环槽位键_V1(键)) delete bloodline[键];

@@ -3308,6 +3308,20 @@ function 写入已过时成长技能模板_V1(角色 = {}, 角色名 = '', 当�
   return 写入数;
 }
 
+// 原著时间已过、却还没写进角色的非魂环模板（血脉技能、自创魂技、魂骨技能等）：没有魂环可补的魂兽（雪帝）也要写（11-20：雪帝补的四招读档后一个没有）。
+function 角色有未写入的过时非魂环模板_V1(角色 = {}, 角色名 = '', 当前tick = 0, 数据根 = {}) {
+  const 角色记录 = 读取内置角色库_V1(数据根, 当前tick).角色?.[String(角色名 || '').trim()];
+  const 模板列表 = Array.isArray(角色记录?.成长技能模板) ? 角色记录.成长技能模板 : [];
+  return 模板列表.some(模板 => {
+    if (!模板 || 模板.写入类型 === '魂环魂技' || !Number.isFinite(Number(模板.原著触发tick)) || Number(模板.原著触发tick) > Number(当前tick || 0)) return false;
+    const 片段 = String(模板.写入路径 || '').split('.').map(片 => 片.trim()).filter(Boolean);
+    if (!片段.length) return false;
+    let 节点 = 角色;
+    for (const 片 of 片段) { if (!节点 || typeof 节点 !== 'object') return true; 节点 = 节点[片]; }
+    return !节点 || typeof 节点 !== 'object';
+  });
+}
+
 // 占位魂技，或一个魂技都没有的空魂环（11-20：桐宇第 4、7 环是空环，既不是刚补的、也没有占位，成长模板的麒麟变一直写不进去）。
 function 角色存在占位魂环魂技_V1(角色 = {}) {
   return 取角色武魂条目_V1(角色).some(([, 武魂]) => 取武魂魂灵条目_V1(武魂).some(([, 魂灵]) =>
@@ -6255,7 +6269,8 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       });
       if (提升已有初始化魂灵年限预算_V1(char)) 本轮补齐魂环角色.add(charName);
       // 补出来的占位魂环换成原著时间已过的成长模板魂技（写入已过时成长技能模板_V1）。
-      if ((本轮补齐魂环角色.has(charName) || 角色存在占位魂环魂技_V1(char)) && 写入已过时成长技能模板_V1(char, charName, currentTick, data) > 0) 本轮补齐魂环角色.add(charName);
+      if ((本轮补齐魂环角色.has(charName) || 角色存在占位魂环魂技_V1(char) || 角色有未写入的过时非魂环模板_V1(char, charName, currentTick, data)) &&
+        写入已过时成长技能模板_V1(char, charName, currentTick, data) > 0) 本轮补齐魂环角色.add(charName);
     });
 
     const isIntelRequestKey = requestKey => String(requestKey || '').trim().startsWith('intel_');
