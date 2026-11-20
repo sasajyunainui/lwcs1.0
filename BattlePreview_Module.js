@@ -9598,7 +9598,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // recovery of each (BattleRuntime naturalRecoveryAtRoundEndProfile: 0.5%, more with 魂核) on top of it. It lasts the round: in it
   // the unit makes no answer (BattleDecision lets the move land); a hit breaks it (interruptMeditation) — half the recovery, and it
   // may answer again. The same release path as 开武魂, but it takes the action (windup 10).
-  const MEDITATION_KEY = '__auto__:冥想', MEDITATION_MULT = 8, MEDITATION_SHORT = 0.95;
+  const MEDITATION_KEY = '__auto__:冥想', MEDITATION_MULT = 8, MEDITATION_SHORT = 0.95, MENTAL_NATURAL_CEILING = 0.9;
   const isMeditationEffect = effect => String(effect?.原型 || '').trim() === '状态施加' && String(effect?.状态 || '').trim() === '冥想';
   function naturalRecoveryRatios(unit = {}) {
     const cores = Math.max(0, Math.floor(Number(unit?.魂核?.核心?.数量 || 0)));
@@ -9624,7 +9624,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     unit.状态效果 = { ...(unit.状态效果 || {}), [MEDITATION_KEY]: { 状态: '冥想', 状态名称: '冥想', 类型: 'buff', duration: 1, 持续回合: 1,
       描述: '冥想：回合末额外恢复魂力与精神力；冥想中不能应对，被打中就中断、只恢复一半', 面板修改比例: {}, 面板固定修正: {},
       // cannot_react: no answer while it sits (BattleRuntime gives it no answer, the race's stand is blocked).
-      战斗效果: { sp_gain_ratio: natural.魂力 * MEDITATION_MULT, men_gain_ratio: natural.精神力 * MEDITATION_MULT, cannot_react: true }, __冥想: true } };
+      // 精神力自然恢复最多回到 90%，只有睡觉能回满（用户 11-20）：冥想回的精神力也到此为止。
+      战斗效果: { sp_gain_ratio: natural.魂力 * MEDITATION_MULT, men_gain_ratio: natural.精神力 * MEDITATION_MULT, men_gain_ceiling: MENTAL_NATURAL_CEILING, cannot_react: true }, __冥想: true } };
     return true;
   }
   // A hit on a meditating unit breaks it: half the recovery, and it answers again. A new state object (frozen battles).
@@ -26491,6 +26492,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     clashTiming,
     withStrengthKnockback,
     concedeHoldsBack,
+    MENTAL_NATURAL_CEILING,
     refereeCatchesConcede,
     throwableWeapon,
     canThrowWeapon,

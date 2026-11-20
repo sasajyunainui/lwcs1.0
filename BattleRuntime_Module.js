@@ -6399,7 +6399,9 @@
     const logs = [];
     naturalRecoveryAtRoundEndProfile(unit).forEach(resource => {
       // 体力自然恢复不超过当前生命（用户 11-20）：生命上限与体力上限同为 vit_max，按数值比；本来就高于生命的不扣，只是不再回。
-      const ceiling = resource.key === 'vit' ? Math.min(resource.max, Math.max(resource.current, previewRuntime.readHp(unit))) : resource.max;
+      // 精神力自然恢复最多回到 90%，只有睡觉能回满（用户 11-20）；本来高于的不扣。
+      const ceiling = resource.key === 'vit' ? Math.min(resource.max, Math.max(resource.current, previewRuntime.readHp(unit)))
+        : resource.key === 'men' ? Math.max(resource.current, Math.floor(resource.max * (previewRuntime.MENTAL_NATURAL_CEILING ?? 0.9))) : resource.max;
       if (resource.current >= ceiling) return;
       writeCombatResource(unit, resource.key, Math.min(ceiling, resource.current + resource.recovery));
       const actual = Math.max(0, Number(unit[resource.key] || 0) - resource.current);
@@ -6560,7 +6562,9 @@
         return;
       }
       const amount = resource.ratio > 0 ? requested : Math.min(before, requested);
-      const next = resource.ratio > 0 ? Math.min(max, before + amount) : Math.max(0, before - amount);
+      // 冥想回的精神力到 90% 为止（men_gain_ceiling，BattlePreview 冥想状态）。
+      const ceiling = resource.key === 'men' && Number(effects.men_gain_ceiling) > 0 ? Math.max(before, Math.floor(max * Number(effects.men_gain_ceiling))) : max;
+      const next = resource.ratio > 0 ? Math.min(ceiling, before + amount) : Math.max(0, before - amount);
       const actual = resource.ratio > 0 ? Math.max(0, next - before) : Math.max(0, before - next);
       if (!(actual > 0)) return;
       const blocked = Boolean(findResourceSuppression(unit, resource.label));
