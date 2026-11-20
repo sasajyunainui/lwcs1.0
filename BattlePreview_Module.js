@@ -9602,7 +9602,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   const isMeditationEffect = effect => String(effect?.原型 || '').trim() === '状态施加' && String(effect?.状态 || '').trim() === '冥想';
   function naturalRecoveryRatios(unit = {}) {
     const cores = Math.max(0, Math.floor(Number(unit?.魂核?.核心?.数量 || 0)));
-    return { 魂力: 0.005 + (cores >= 1 ? 0.01 : 0) + (cores >= 3 ? 0.01 : 0), 精神力: 0.005 + (cores >= 2 ? 0.01 : 0), 体力: 0.005 };
+    // 无魂核时 魂力 = 体力 > 精神力（用户 11-20），精神力取一半。
+    return { 魂力: 0.005 + (cores >= 1 ? 0.01 : 0) + (cores >= 3 ? 0.01 : 0), 精神力: 0.0025 + (cores >= 2 ? 0.01 : 0), 体力: 0.005 };
   }
   function meditating(unit = {}) {
     const state = unit?.状态效果?.[MEDITATION_KEY];

@@ -4563,12 +4563,13 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       // 场上场下恢复统一（用户 11-20「提高场下恢复，训练轮数按天封顶」「一回合算一分钟吧」）：一回合 = 1 分钟、1 tick = 10 分钟 = 10 回合；
       // 场上自然恢复每回合 0.5%（BattlePreview naturalRecoveryRatios），场下平时、休息同为每 tick 5%，睡眠 7.5%；冥想按场上冥想 8 倍（魂力、
       // 精神力随魂核加），体力 5%。训练是发力，期间不恢复，轮数按天封顶（见下）。之前：平时魂力 1%、精神力体力 0，睡眠 1%，冥想魂力 5%～40%。
-      const 场下平时恢复率 = 0.05, 场下睡眠恢复率 = 0.075, 场上每tick回合数 = 10, 场上冥想倍数 = 8;
+      // 无魂核时 魂力 = 体力 > 精神力（用户 11-20），精神力取一半（同场上 BattlePreview naturalRecoveryRatios）。
+      const 场下平时恢复率 = 0.05, 场下睡眠恢复率 = 0.075, 场上每tick回合数 = 10, 场上冥想倍数 = 8, 精神力恢复比 = 0.5;
       const 训练中 = /训练/.test(normalizedActionMode);
       if (normalizedActionMode === '冥想') {
         spRate = 场上每tick回合数 * 场上冥想倍数 * (0.005 + (coreCount >= 1 ? 0.01 : 0) + (coreCount >= 3 ? 0.01 : 0));
         vitMenRate = 场下平时恢复率;
-        const menRate = 场上每tick回合数 * 场上冥想倍数 * (0.005 + (coreCount >= 2 ? 0.01 : 0));
+        const menRate = 场上每tick回合数 * 场上冥想倍数 * (0.0025 + (coreCount >= 2 ? 0.01 : 0));
         c.属性.精神力 = Math.min(c.属性.精神力上限, roundRuntimeGrowthValue_ACU(c.属性.精神力 + c.属性.精神力上限 * menRate * safeDelta));
         c.属性.体力 = Math.min(c.属性.体力上限, roundRuntimeGrowthValue_ACU(c.属性.体力 + c.属性.体力上限 * vitMenRate * safeDelta));
         应用伤势恢复到生命值(0.0008);
@@ -4578,13 +4579,13 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       } else if (normalizedActionMode === '睡眠') {
         spRate = 场下睡眠恢复率;
         const sleepRate = 场下睡眠恢复率;
-        c.属性.精神力 = Math.min(c.属性.精神力上限, roundRuntimeGrowthValue_ACU(c.属性.精神力 + c.属性.精神力上限 * sleepRate * safeDelta));
+        c.属性.精神力 = Math.min(c.属性.精神力上限, roundRuntimeGrowthValue_ACU(c.属性.精神力 + c.属性.精神力上限 * sleepRate * 精神力恢复比 * safeDelta));
         c.属性.体力 = Math.min(c.属性.体力上限, roundRuntimeGrowthValue_ACU(c.属性.体力 + c.属性.体力上限 * sleepRate * safeDelta));
         应用伤势恢复到生命值(0.0015);
       } else {
         // 平时、休息：每 tick 5%；训练中不恢复（魂力照旧 1%）。
         if (!训练中) { spRate = 场下平时恢复率; vitMenRate = 场下平时恢复率; }
-        c.属性.精神力 = Math.min(c.属性.精神力上限, roundRuntimeGrowthValue_ACU(c.属性.精神力 + c.属性.精神力上限 * vitMenRate * safeDelta));
+        c.属性.精神力 = Math.min(c.属性.精神力上限, roundRuntimeGrowthValue_ACU(c.属性.精神力 + c.属性.精神力上限 * vitMenRate * 精神力恢复比 * safeDelta));
         c.属性.体力 = Math.min(c.属性.体力上限, roundRuntimeGrowthValue_ACU(c.属性.体力 + c.属性.体力上限 * vitMenRate * safeDelta));
         应用伤势恢复到生命值(0.0004);
       }
