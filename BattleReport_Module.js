@@ -1859,6 +1859,8 @@
       if (Number.isFinite(Number(meta?.after))) return `${actor}砸向${actor === target ? '困住自己的' : `${target}身上的`}【${name}】，耐久 ${Math.round(Number(meta.before))} → ${Math.round(Number(meta.after))}（共 ${Math.round(Number(meta.durability))}）`;
       return `${actor}要砸的【${name}】已经不在了`;
     }
+    // 收招（11-20）：对方迎上来对轰占不到便宜，收住这一招。
+    if (kind === 'pull_back') return `${actor}看${target}迎上来对轰占不到便宜，收住了【${String(meta?.moveName || action || '这一招')}】`;
     // 道具破坏（11-19）：砸一下、砸坏。
     if (kind === 'gear_strike') {
       const name = String(meta?.gearName || action || '装备');

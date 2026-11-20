@@ -18878,7 +18878,7 @@
               result: 'preempted', resultState: 'ABORTED', ruleCode: 'ENGAGEMENT_PREEMPTED',
               meta: { source: 'structured_runtime', grantId: node.grantId, reasonCode: 'ENGAGEMENT_PREEMPTED',
                 preemptedById: String(shared.preempted.reactorId || ''), preemptEventId: String(shared.preempted.eventId || ''),
-                reasonText: `${previewRuntime.unitName(actor)}的【${shared.actionContext.actionName}】被抢先打断` },
+                reasonText: shared.preempted.pulled === true ? `${previewRuntime.unitName(actor)}收住了【${shared.actionContext.actionName}】` : `${previewRuntime.unitName(actor)}的【${shared.actionContext.actionName}】被抢先打断` },
             });
             if (actor && actorPresentInBattle && structuredActorPhysicallyAlive(actor)) {
               enqueueCounterWindows({ node, actor, shared, actionEvent, facts: [] });
@@ -19095,6 +19095,55 @@
               // 蓄力迎击（同日「3」）: met with the charge itself (BattlePreview chargeMeetSkill), the charge is thrown now and spent.
               if (reactionDeclaration?.skill?.__chargeRelease === true) spendChargeToMeet(combatData, actor, node);
               else if (String(reactionDeclaration?.actionKind || '').trim().toUpperCase() !== 'PASS_OPPORTUNITY') abandonChargeToAnswer(combatData, actor, node);
+              // 收招（BattlePreview pullBackChoice，用户 11-19 选 A、11-20 局部估值版）：对方迎上来对轰，出手者比「继续」与「收招」，
+              // 继续不划算又来得及收手就收——这一招整个不落下（同被抢先打断，主结算取消），对方迎上来的那一下也落空；收招付这一招一半的消耗。
+              if (String(reactionDeclaration?.engagement?.mode || '').trim().toUpperCase() === 'CLASH' && sourceActor && previewRuntime.pullBackChoice &&
+                structuredActorCanAct(sourceActor, 'ACTIVE')) {
+                const pull = previewRuntime.pullBackChoice(sourceActor, shared.declaration, actor, reactionDeclaration, combatData);
+                if (pull?.pull) {
+                  const skill = shared.declaration?.skill;
+                  const paid = {};
+                  if (skill && typeof skill === 'object') {
+                    const stages = previewRuntime.readSkillCostStages(skill, { 来源模块: 'BattleRuntime_Module', costActor: sourceActor });
+                    const costs = previewRuntime.normalizeSkillCostMap(stages.启动, stages.形式 === 'percentage' ? 'percentage' : 'absolute').values || {};
+                    [['魂力', 'sp'], ['精神力', 'men']].forEach(([resource, key]) => {
+                      const half = Math.floor(Math.max(0, Number(costs[resource]) || 0) / 2);
+                      if (!(half > 0)) return;
+                      const before = previewRuntime.readResource(sourceActor, resource);
+                      writeCombatResource(sourceActor, key, Math.max(0, before - half));
+                      paid[resource] = before - previewRuntime.readResource(sourceActor, resource);
+                    });
+                  }
+                  const moveName = normalizeActionDisplayName(skill?.name || skill?.魂技名 || shared.actionContext?.actionName || '这一招');
+                  const pullEvent = writeLedgerEvent(combatData, {
+                    eventKind: 'pull_back', round: Number(combatData.回合 || 0),
+                    actorId: sourceActorId, actorName: previewRuntime.unitName(sourceActor), targetId: actorId, targetName: previewRuntime.unitName(actor),
+                    actionName: '收招', actionType: 'pull_back', actorControl: 'AI', actionRole: 'ACTIVE',
+                    actionId: shared.actionContext.actionEvent.actionId, sourceActionId: shared.actionContext.actionEvent.actionId,
+                    parentNodeId: String(node?.id || ''), sourceNodeId: String(node?.id || ''), result: 'pulled', resultState: 'ABORTED', ruleCode: 'PULL_BACK',
+                    meta: { source: 'structured_runtime', moveName, clash: pull.clash, value: pull.value, need: pull.need, windup: pull.windup, paid,
+                      reasonText: `${previewRuntime.unitName(sourceActor)}看${previewRuntime.unitName(actor)}迎上来对轰占不到便宜，收住了【${moveName}】` },
+                  });
+                  // 迎击的一方这一下落空：记成它的行动没落下（战报给它的决策落点，同其他被取消的应对）。
+                  const answerName = normalizeActionDisplayName(reactionDeclaration?.skill?.name || reactionDeclaration?.skill?.魂技名 ||
+                    reactionDeclaration?.skill?.技能名称 || String(reactionDeclaration?.actionKind || '').trim());
+                  writeLedgerEvent(combatData, {
+                    eventKind: 'blocked_action', round: Number(combatData.回合 || 0),
+                    actorId, actorName: previewRuntime.unitName(actor), targetId: sourceActorId, targetName: previewRuntime.unitName(sourceActor),
+                    actionName: answerName, actionType: String(reactionDeclaration?.actionKind || '').trim().toLowerCase(),
+                    actorControl: 'AI', actionRole: 'REACTION', actionId: shared.actionContext.actionEvent.actionId,
+                    sourceActionId: shared.actionContext.actionEvent.actionId, parentNodeId: String(node?.id || ''),
+                    opportunityId: node.opportunityId, grantId: node.grantId,
+                    result: 'pulled', resultState: 'ABORTED', ruleCode: 'PULL_BACK_ANSWER_VOID',
+                    meta: { source: 'structured_runtime', grantId: node.grantId, opportunityId: node.opportunityId, reasonCode: 'PULL_BACK_ANSWER_VOID',
+                      reasonText: `${previewRuntime.unitName(sourceActor)}收招，${previewRuntime.unitName(actor)}的【${answerName}】落空` },
+                  });
+                  shared.preempted = { reactorId: actorId, eventId: String(pullEvent?.eventId || ''), pulled: true };
+                  shared.reactionByTarget[reactionTargetId] = { actionKind: 'PULLED', evaded: false, damageMultiplier: 0, nullified: true, opensCounterCheck: false };
+                  queue.recordTrace('CANCELLED', node, { reason: 'PULL_BACK', actionId: shared.actionContext.actionEvent.actionId });
+                  continue;
+                }
+              }
               const reactionSettlementStartedAt = collectPerformanceBreakdown
                 ? performanceNow()
                 : 0;

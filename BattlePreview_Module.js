@@ -4197,6 +4197,25 @@
     if (referee.__refereePrepared !== true) return true;
     return refereeTiming(attacker, incoming, referee, 1).block >= -1e-9;
   }
+  // 收招（用户 11-19 选「看到应对后可收、可改向」，11-20 按推荐做 A，先做局部估值版）：对方迎上来对轰时，出手者在这一招落下前
+  // 比「继续」与「收招」——继续的得失按这一下对轰（clashOutcome）：打掉对方的生命份额减去自己挨的份额；收招两边都落空（0）。
+  // 继续不划算（得失为负）、又来得及收手就收：需要的时间 = 一记普攻的前摇 ×（出手者有效敏捷 ÷ 迎击者有效敏捷）——同应对认输的
+  // 收手（concedeHoldsBack），不限近身——短于这一招的前摇才收得住。收住付这一招一半的消耗。改打另一人留到后面（要给新目标重开应对窗口）。
+  // 返回 null：不是对轰、或不是能比的伤害招。
+  function pullBackChoice(attacker = {}, incoming = null, reactor = {}, reactorDeclaration = null, worldSnapshot = null) {
+    if (!incoming || !reactorDeclaration) return null;
+    const clash = clashOutcome(reactor, reactorDeclaration, attacker, incoming, worldSnapshot);
+    if (!clash) return null;
+    const dealt = Math.max(0, Number(clash.theirs) || 0) * Math.max(0, Number(clash.inScale) || 0);
+    const taken = Math.max(0, Number(clash.mine) || 0) * Math.max(0, Number(clash.outScale) || 0);
+    const value = dealt / Math.max(1, readHpMax(reactor)) - taken / Math.max(1, readHpMax(attacker));
+    const own = Number(naturalActionOrderProfile(attacker).effectiveAgility), theirs = Number(naturalActionOrderProfile(reactor).effectiveAgility);
+    const need = actionWindup(attacker, { actorId: unitId(attacker), actionKind: 'BASIC_ATTACK', targetIds: [unitId(reactor)] }, { travel: false }) *
+      (own > 0 && theirs > 0 ? own / theirs : 1);
+    const windup = actionWindup(attacker, incoming);
+    const holds = need < windup - 1e-9;
+    return Object.freeze({ pull: holds && value < -1e-9, holds, value, dealt, taken, need, windup, clash: clash.result });
+  }
   const LEFT_BATTLE_REASONS = Object.freeze({ CONCEDE: 'SURRENDERED', WITHDRAW: 'WITHDRAWN' });
   function hasLeftBattle(unit = {}) {
     const reason = String(unit?.__战斗失能原因 || '').trim();
@@ -26492,6 +26511,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     clashTiming,
     withStrengthKnockback,
     concedeHoldsBack,
+    pullBackChoice,
     MENTAL_NATURAL_CEILING,
     refereeCatchesConcede,
     throwableWeapon,
