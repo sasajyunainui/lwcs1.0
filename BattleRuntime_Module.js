@@ -3843,6 +3843,26 @@
     return merged;
   }
 
+  // 装备技能充能（用户 11-20「加」，天女斗篷「每使用一次，都需要经过一年的充能」）：技能带「充能年数」的，记下它在哪个装备槽
+  // （__充能槽位，放出时 BattleRuntime 在该装备上记 充能至tick，随装备写回存档）；装备的 充能至tick 还没到，这场它不能用
+  // （__战斗禁用，BattleDecision collectSkills 跳过）。一场之内的次数走技能的 触发限制（每战 1 次）。
+  const EQUIPMENT_CHARGE_TICKS_PER_YEAR = 365 * 144;
+  function prepareEquipmentCharges(combatData = {}) {
+    const tick = Math.max(0, Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0) || 0);
+    listCombatUnits(combatData).forEach(unit => {
+      const equipment = unit?.装备;
+      if (!equipment || typeof equipment !== 'object' || Array.isArray(equipment)) return;
+      Object.entries(equipment).forEach(([slot, item]) => {
+        if (!item || typeof item !== 'object' || !item.装备技能 || typeof item.装备技能 !== 'object') return;
+        if (!Object.values(item.装备技能).some(skill => Number(skill?.充能年数) > 0)) return;
+        const charging = Number(item.充能至tick || 0) > tick;
+        item.装备技能 = Object.fromEntries(Object.entries(item.装备技能).map(([name, skill]) => [name,
+          !skill || typeof skill !== 'object' || !(Number(skill.充能年数) > 0) ? skill
+            : { ...skill, __充能槽位: slot, ...(charging ? { __战斗禁用: true } : {}) }]));
+      });
+    });
+  }
+
   function prepareCombatData(combatData = {}, resolveCharacter = null) {
     if (!combatData?.参战者 || typeof combatData.参战者 !== 'object') return combatData;
     const readCharacter = typeof resolveCharacter === 'function' ? resolveCharacter : () => null;
@@ -12344,6 +12364,14 @@
         const spentHere = actionEvent.__triggerLimitSpent ||= new Set(), skillKey = previewRuntime.activeTriggerLimitKey(declaration.skill, '技能');
         if (!spentHere.has(skillKey)) { spentHere.add(skillKey); previewRuntime.triggerLimitAllowed(actor, declaration.skill.触发限制, skillKey, combatData?.回合, true); }
       }
+      // 装备技能充能（prepareEquipmentCharges）：放出就在那件装备上记 充能至tick（当前 + 充能年数 × 一年），随装备写回存档。
+      if (actionKind === 'RELEASE_SKILL' && declaration?.skill?.__充能槽位 && Number(declaration.skill.充能年数) > 0 && skillEffectIndex === 0 && !conditionalMeta?.conditionalDepth) {
+        const item = actor?.装备?.[declaration.skill.__充能槽位];
+        if (item && typeof item === 'object') {
+          const tick = Math.max(0, Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0) || 0);
+          item.充能至tick = Math.floor(tick + Number(declaration.skill.充能年数) * EQUIPMENT_CHARGE_TICKS_PER_YEAR);
+        }
+      }
       // 魂导器弹药（S80-B）：带 __魂导器槽位 的技能（BattleDecision soulToolSkillView）放一次扣装配件一发，随装备写回存档。
       if (actionKind === 'RELEASE_SKILL' && declaration?.skill?.__魂导器槽位 && skillEffectIndex === 0 && !conditionalMeta?.conditionalDepth) {
         const spentHere = actionEvent.__triggerLimitSpent ||= new Set();
@@ -16799,6 +16827,8 @@
     }
     if (input?.referee && typeof input.referee === 'object') combatData.裁判 = cloneValue(input.referee);
     normalizeLatestBattleRuntime(combatData);
+    // 装备技能充能：每次执行都按装备上的 充能至tick 重标（可重复执行）。
+    prepareEquipmentCharges(combatData);
     // 接战链 阶段三: the referee as a whole character outside both sides (a role given whole, or a level).
     prepareBattleReferee(combatData);
     performanceTrace('runtime-normalized', {

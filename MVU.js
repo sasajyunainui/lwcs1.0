@@ -124,6 +124,8 @@ const EquipmentSchema = z
         装备状态: z.string().optional(),
         耐久: z.coerce.number().optional(),
         耐久上限: z.coerce.number().optional(),
+        // 装备技能充能（11-20，天女斗篷「每使用一次需一年充能」）：技能带「充能年数」，用过后到这个时间才能再用。可选。
+        充能至tick: z.coerce.number().optional(),
       })
       .prefault({}),
     防具: z
@@ -133,6 +135,7 @@ const EquipmentSchema = z
         装备状态: z.string().prefault('未装备'),
         耐久: z.coerce.number().optional(),
         耐久上限: z.coerce.number().optional(),
+        充能至tick: z.coerce.number().optional(),
         特性: z
           .record(z.string(), z.object({ 描述: z.string().prefault('无'), 限定来源: z.string().optional() }).prefault({}))
           .prefault({})
