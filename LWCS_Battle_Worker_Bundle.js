@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:40a7eee0a5363dffa7081ee8814e42de4eb0ed66f551597979ca86ac50b8dbb5|MVU_Schema_Runtime.js:a6554721688432a5c6c0a7effcc612363cd5f5335295e54e57016d4f0c4cb56c|BattlePreview_Module.js:950c9d7aebe40a5083497bbfe1dfad91ebb7933e9127cb5a696598622233f47d|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:a21df642cb0d7bbff8768383501dcfbec6c99956bd3390d905e19e1ecbf9ddcc|BattleRuntime_Module.js:42a75d479f8061beeedad61da02b8975bcbd6a5481cc5046c7a11c38dbb20df5 */
+/* sources-sha256: MVU_Skill_Runtime.js:ea1dd8bdbe85fa606c23d555396ca34afc02043e6d7b11ba92cc7aaa07409455|MVU_Schema_Runtime.js:abf261be1affb92bc57cebd52c6d3665f5720a3d96929f5814617266fb48986f|BattlePreview_Module.js:950c9d7aebe40a5083497bbfe1dfad91ebb7933e9127cb5a696598622233f47d|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:a21df642cb0d7bbff8768383501dcfbec6c99956bd3390d905e19e1ecbf9ddcc|BattleRuntime_Module.js:42a75d479f8061beeedad61da02b8975bcbd6a5481cc5046c7a11c38dbb20df5 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -24900,10 +24900,9 @@ function pruneExtendedBloodlineData(charData = null, charName = '') {
   if (shouldKeepExtendedBloodlineData(charName, charData)) return;
   const bloodline = charData.血脉之力;
   if (!bloodline || typeof bloodline !== 'object') return;
+  // 只删龙族血脉专有的字段；血脉技能与被动是通用的，留下（11-20：雪帝、帝天、白龙王刘锋等 11 个非龙族角色的血脉技能读档后全被清空）。
   delete bloodline.解封层数;
   delete bloodline.核心;
-  delete bloodline.技能;
-  delete bloodline.被动;
   delete bloodline.永久加成;
   Object.keys(bloodline).forEach(键 => {
     if (是气血魂环槽位键_V1(键)) delete bloodline[键];
@@ -31225,6 +31224,20 @@ function 写入已过时成长技能模板_V1(角色 = {}, 角色名 = '', 当�
   return 写入数;
 }
 
+// 原著时间已过、却还没写进角色的非魂环模板（血脉技能、自创魂技、魂骨技能等）：没有魂环可补的魂兽（雪帝）也要写（11-20：雪帝补的四招读档后一个没有）。
+function 角色有未写入的过时非魂环模板_V1(角色 = {}, 角色名 = '', 当前tick = 0, 数据根 = {}) {
+  const 角色记录 = 读取内置角色库_V1(数据根, 当前tick).角色?.[String(角色名 || '').trim()];
+  const 模板列表 = Array.isArray(角色记录?.成长技能模板) ? 角色记录.成长技能模板 : [];
+  return 模板列表.some(模板 => {
+    if (!模板 || 模板.写入类型 === '魂环魂技' || !Number.isFinite(Number(模板.原著触发tick)) || Number(模板.原著触发tick) > Number(当前tick || 0)) return false;
+    const 片段 = String(模板.写入路径 || '').split('.').map(片 => 片.trim()).filter(Boolean);
+    if (!片段.length) return false;
+    let 节点 = 角色;
+    for (const 片 of 片段) { if (!节点 || typeof 节点 !== 'object') return true; 节点 = 节点[片]; }
+    return !节点 || typeof 节点 !== 'object';
+  });
+}
+
 // 占位魂技，或一个魂技都没有的空魂环（11-20：桐宇第 4、7 环是空环，既不是刚补的、也没有占位，成长模板的麒麟变一直写不进去）。
 function 角色存在占位魂环魂技_V1(角色 = {}) {
   return 取角色武魂条目_V1(角色).some(([, 武魂]) => 取武魂魂灵条目_V1(武魂).some(([, 魂灵]) =>
@@ -34172,7 +34185,8 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       });
       if (提升已有初始化魂灵年限预算_V1(char)) 本轮补齐魂环角色.add(charName);
       // 补出来的占位魂环换成原著时间已过的成长模板魂技（写入已过时成长技能模板_V1）。
-      if ((本轮补齐魂环角色.has(charName) || 角色存在占位魂环魂技_V1(char)) && 写入已过时成长技能模板_V1(char, charName, currentTick, data) > 0) 本轮补齐魂环角色.add(charName);
+      if ((本轮补齐魂环角色.has(charName) || 角色存在占位魂环魂技_V1(char) || 角色有未写入的过时非魂环模板_V1(char, charName, currentTick, data)) &&
+        写入已过时成长技能模板_V1(char, charName, currentTick, data) > 0) 本轮补齐魂环角色.add(charName);
     });
 
     const isIntelRequestKey = requestKey => String(requestKey || '').trim().startsWith('intel_');

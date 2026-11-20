@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:144d1f5faad0c4f60a3aa40fab28fd5a53053feaed347969af3eb376ebcf3eff|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:40a7eee0a5363dffa7081ee8814e42de4eb0ed66f551597979ca86ac50b8dbb5|MVU_Schema_Runtime.js:a6554721688432a5c6c0a7effcc612363cd5f5335295e54e57016d4f0c4cb56c|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:1f7a519a850bc170c3da108bfe22614d098b593bc573d8b38a5c0a7bec81aba5 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:144d1f5faad0c4f60a3aa40fab28fd5a53053feaed347969af3eb376ebcf3eff|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:ea1dd8bdbe85fa606c23d555396ca34afc02043e6d7b11ba92cc7aaa07409455|MVU_Schema_Runtime.js:abf261be1affb92bc57cebd52c6d3665f5720a3d96929f5814617266fb48986f|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:1f7a519a850bc170c3da108bfe22614d098b593bc573d8b38a5c0a7bec81aba5 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -29435,10 +29435,9 @@ function pruneExtendedBloodlineData(charData = null, charName = '') {
   if (shouldKeepExtendedBloodlineData(charName, charData)) return;
   const bloodline = charData.血脉之力;
   if (!bloodline || typeof bloodline !== 'object') return;
+  // 只删龙族血脉专有的字段；血脉技能与被动是通用的，留下（11-20：雪帝、帝天、白龙王刘锋等 11 个非龙族角色的血脉技能读档后全被清空）。
   delete bloodline.解封层数;
   delete bloodline.核心;
-  delete bloodline.技能;
-  delete bloodline.被动;
   delete bloodline.永久加成;
   Object.keys(bloodline).forEach(键 => {
     if (是气血魂环槽位键_V1(键)) delete bloodline[键];
@@ -35760,6 +35759,20 @@ function 写入已过时成长技能模板_V1(角色 = {}, 角色名 = '', 当�
   return 写入数;
 }
 
+// 原著时间已过、却还没写进角色的非魂环模板（血脉技能、自创魂技、魂骨技能等）：没有魂环可补的魂兽（雪帝）也要写（11-20：雪帝补的四招读档后一个没有）。
+function 角色有未写入的过时非魂环模板_V1(角色 = {}, 角色名 = '', 当前tick = 0, 数据根 = {}) {
+  const 角色记录 = 读取内置角色库_V1(数据根, 当前tick).角色?.[String(角色名 || '').trim()];
+  const 模板列表 = Array.isArray(角色记录?.成长技能模板) ? 角色记录.成长技能模板 : [];
+  return 模板列表.some(模板 => {
+    if (!模板 || 模板.写入类型 === '魂环魂技' || !Number.isFinite(Number(模板.原著触发tick)) || Number(模板.原著触发tick) > Number(当前tick || 0)) return false;
+    const 片段 = String(模板.写入路径 || '').split('.').map(片 => 片.trim()).filter(Boolean);
+    if (!片段.length) return false;
+    let 节点 = 角色;
+    for (const 片 of 片段) { if (!节点 || typeof 节点 !== 'object') return true; 节点 = 节点[片]; }
+    return !节点 || typeof 节点 !== 'object';
+  });
+}
+
 // 占位魂技，或一个魂技都没有的空魂环（11-20：桐宇第 4、7 环是空环，既不是刚补的、也没有占位，成长模板的麒麟变一直写不进去）。
 function 角色存在占位魂环魂技_V1(角色 = {}) {
   return 取角色武魂条目_V1(角色).some(([, 武魂]) => 取武魂魂灵条目_V1(武魂).some(([, 魂灵]) =>
@@ -38707,7 +38720,8 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       });
       if (提升已有初始化魂灵年限预算_V1(char)) 本轮补齐魂环角色.add(charName);
       // 补出来的占位魂环换成原著时间已过的成长模板魂技（写入已过时成长技能模板_V1）。
-      if ((本轮补齐魂环角色.has(charName) || 角色存在占位魂环魂技_V1(char)) && 写入已过时成长技能模板_V1(char, charName, currentTick, data) > 0) 本轮补齐魂环角色.add(charName);
+      if ((本轮补齐魂环角色.has(charName) || 角色存在占位魂环魂技_V1(char) || 角色有未写入的过时非魂环模板_V1(char, charName, currentTick, data)) &&
+        写入已过时成长技能模板_V1(char, charName, currentTick, data) > 0) 本轮补齐魂环角色.add(charName);
     });
 
     const isIntelRequestKey = requestKey => String(requestKey || '').trim().startsWith('intel_');
