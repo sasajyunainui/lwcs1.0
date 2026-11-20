@@ -4752,7 +4752,8 @@
       // 融合技（非武魂融合，S80-E）: its 技能数据 is composed from the participants' skills (MVU_Schema_Runtime 合成魂技融合技能数据_V1).
       // 蓄力技能 (the charge under way, BattleRuntime) matches 技能 but is no skill table: its skill is one of these already,
       // and read twice it gave a charging unit's counter two candidates of one identity (11-17).
-      ...Object.entries(unit).filter(([key, value]) => key !== '蓄力技能' && /^(?:第\d+)?武魂|血脉之力|魂骨|装备|自创魂技|技能|^融合技$/.test(key) && value && typeof value === 'object')
+      // 功法（用户 11-20「能」：原作徐笠智应对时以玄玉手挡招）：带 _效果数组 的功法条目同魂技一样可用；只有境界、描述的不是可执行动作。
+      ...Object.entries(unit).filter(([key, value]) => key !== '蓄力技能' && /^(?:第\d+)?武魂|血脉之力|魂骨|装备|自创魂技|技能|^功法$|^融合技$/.test(key) && value && typeof value === 'object')
         .filter(([key]) => !(sealed.has('器武魂') && preview.toolSpiritKeys(unit).includes(key)))
         .map(([key, value]) => {
           const view = key !== '装备' ? value : soulToolSkillView(sealed.size ? sealedEquipmentView(equipment || value, sealed) : equipment || value);
