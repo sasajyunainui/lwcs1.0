@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:b0b01ebec93a39f8e28caa50984085e8bc8ce27bc88797473a08410567608ccd|MVU_Schema_Runtime.js:07eae31da8767db5fce3f9812822d7a5ba9f4763a09edf59614a477913f7f01b|BattlePreview_Module.js:6fbc0288bd37c1065bfa7d05b81f81c42396ac6f7bf8f67ab6239c630da46e32|BehaviorDecisionPipeline_Module.js:e55d1d0a40ff9a1a3a37cf0f16c94dbd9bafe338489e7af952c1279ca0025977|BattleDecision_Module.js:ecdb70b09ace2edb6baa613ace0775fda354c068700596f73d482256a6446804|BattleRuntime_Module.js:1e311991adffe082f268f483ce7f3d6a7de12f649082991003af67e07cf5f0a0 */
+/* sources-sha256: MVU_Skill_Runtime.js:40a7eee0a5363dffa7081ee8814e42de4eb0ed66f551597979ca86ac50b8dbb5|MVU_Schema_Runtime.js:a6554721688432a5c6c0a7effcc612363cd5f5335295e54e57016d4f0c4cb56c|BattlePreview_Module.js:950c9d7aebe40a5083497bbfe1dfad91ebb7933e9127cb5a696598622233f47d|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:a21df642cb0d7bbff8768383501dcfbec6c99956bd3390d905e19e1ecbf9ddcc|BattleRuntime_Module.js:42a75d479f8061beeedad61da02b8975bcbd6a5481cc5046c7a11c38dbb20df5 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -27570,9 +27570,11 @@ function 初始化补齐角色技能效果数组_V1(rootData = {}) {
 
     const 自创属性状态 = buildCharacterCustomSkillAttributeState(char);
     const 自创元素画像 = buildElementProfileFromAttributeState(自创属性状态);
-    补齐技能映射(char.自创魂技, (_, skillName) => {
+    补齐技能映射(char.自创魂技, (skill, skillName) => {
       const 魂兽档位 = 是持久魂兽 ? 魂兽自创魂技档位.get(String(skillName || '').trim()) : null;
       return {
+        // 承载方式「被动」的自创魂技按被动收口（11-20：乐正宇 神圣不死身 死亡转存活只能用于被动技能，读档报错）。
+        ...(String(skill?.承载方式 || '').trim() === '被动' ? { passiveMode: true } : {}),
         type: 系别,
         武魂系别: 系别,
         角色: char,
@@ -30630,8 +30632,12 @@ function 计算内置角色投影等级_V1(角色 = {}, 角色记录 = {}, 快�
   // 从快照年龄到当前年龄的增量往后推，不低于快照等级；快照已是神级（≥100）的不推，其余至多 99。
   if (Number(当前tick || 0) >= 快照tick) {
     const 快照年龄 = Math.max(0, Number(快照?.年龄 ?? 快照?.角色?.属性?.年龄 ?? 投影年龄) || 投影年龄);
-    if (!(投影年龄 > 快照年龄) || 快照等级 >= 100) return Math.max(0, Math.floor(快照等级));
-    const 增量 = 计算内置角色默认修为等级_V1(角色, 投影年龄, 当前tick) - 计算内置角色默认修为等级_V1(角色, 快照年龄, 快照tick);
+    // 只推人类魂师、寿命以内的年纪：魂兽、深渊等的年龄动辄几十万年，修炼曲线逐年模拟会卡死（11-20 雪帝第 281 章构建卡超过 100 秒）。
+    const 种族 = typeof 读取角色种族_V1 === 'function' ? 读取角色种族_V1(角色) : '魂师';
+    if (!(投影年龄 > 快照年龄) || 快照等级 >= 100 || 快照年龄 > 150 || 投影年龄 > 150 || (种族 && 种族 !== '魂师')) return Math.max(0, Math.floor(快照等级));
+    // 先算快照年龄、再算当前年龄：修炼曲线有检查点缓存（EraCultivation estimateInitialLevel），后一次从前一次接着往后算。
+    const 快照年龄默认 = 计算内置角色默认修为等级_V1(角色, 快照年龄, 快照tick);
+    const 增量 = 计算内置角色默认修为等级_V1(角色, 投影年龄, 当前tick) - 快照年龄默认;
     return Math.max(Math.floor(快照等级), Math.min(99, Math.floor(快照等级 + Math.max(0, 增量))));
   }
   const 前置快照 = 取内置角色前置等级快照_V1(角色记录, 快照);
@@ -30837,6 +30843,8 @@ function 写入成长魂环魂技_V1(角色 = {}, 模板 = {}, 变更列表 = nu
     ringAge: Math.max(1000, Number(魂环?.年限 || 0)),
     sourceCategory: '魂技',
     来源: '魂技',
+    // 承载方式「被动」的模板（11-20：乐正宇 神圣不死身 死亡转存活只能用于被动技能，写入时没带 passiveMode 读档报错）。
+    ...(String(魂环[技能键]?.承载方式 || '').trim() === '被动' ? { passiveMode: true } : {}),
     textContext: { spiritName: 模板?.魂技名 || 技能键, type: 取角色主武魂系别_V1(角色) },
   });
 }
@@ -30862,6 +30870,7 @@ function 写入成长自创魂技_V1(角色 = {}, 模板 = {}, 变更列表 = nu
     ringAge: Math.max(1000, 获得阶段魂环数 * 2000),
     sourceCategory: '自创魂技',
     来源: '自创魂技',
+    ...(String(角色.自创魂技[技能键]?.承载方式 || '').trim() === '被动' ? { passiveMode: true } : {}),
     textContext: { spiritName: 技能键, type: 系别 },
   });
 }
@@ -31216,9 +31225,10 @@ function 写入已过时成长技能模板_V1(角色 = {}, 角色名 = '', 当�
   return 写入数;
 }
 
+// 占位魂技，或一个魂技都没有的空魂环（11-20：桐宇第 4、7 环是空环，既不是刚补的、也没有占位，成长模板的麒麟变一直写不进去）。
 function 角色存在占位魂环魂技_V1(角色 = {}) {
   return 取角色武魂条目_V1(角色).some(([, 武魂]) => 取武魂魂灵条目_V1(武魂).some(([, 魂灵]) =>
-    取魂灵魂环条目_V1(魂灵).some(([, 魂环]) => Object.entries(魂环 || {}).some(([键, 技能]) =>
+    取魂灵魂环条目_V1(魂灵).some(([, 魂环]) => !Object.keys(魂环 || {}).some(键 => 是魂技槽位键_V1(键)) || Object.entries(魂环 || {}).some(([键, 技能]) =>
       是魂技槽位键_V1(键) && 技能 && typeof 技能 === 'object' && /待补全|AI_TODO/.test(String(技能.魂技名 || ''))))));
 }
 
@@ -40130,7 +40140,8 @@ try {
        「控鹤擎龙」的（唐门手法）随时能召回。器武魂（或会控鹤擎龙的）召回时可以顺势再打一次：普攻的变体 recallStrike，按远程算，打完回手。
      - 磕飞、抓住：对方挡住或闪开都不改变什么——这一下落空，武器照样离手，落在对方身边（所以兵器要去对方身边捡）。 */
   const THROW_STATE_WEAPON = '武器离手', THROW_STATE_SPIRIT = '武魂离手', THROW_STATE_KEY = '__auto__:武器离手', RECALL_STATE = '召回武器';
-  const RECALL_ANYWHERE_SKILL = /控鹤擎龙/;
+  // 功法名是「控鹤擒龙」（库与 MVU 都这么写；用户口头也说「擎」），两种写法都认。
+  const RECALL_ANYWHERE_SKILL = /控鹤[擒擎]龙/;
   // 手里能投的那一件：已开的器武魂优先，其次兵器（打坏的、已经投出去的不算）。
   function throwableWeapon(unit = {}) {
     if (!unit || unit?.状态效果?.[THROW_STATE_KEY]) return null;
@@ -40149,7 +40160,9 @@ try {
   function canThrowWeapon(actor = {}, target = null, declaration = {}) {
     return String(declaration?.actionKind || '').trim().toUpperCase() === 'BASIC_ATTACK' && !!target && target !== actor && !!throwableWeapon(actor);
   }
-  const canRecallAnywhere = unit => [...collectSkillNames(unit)].some(name => RECALL_ANYWHERE_SKILL.test(name));
+  // 功法存在角色的「功法」栏里、以功法名为键（没有魂技名），也要看（11-20：原先只按魂技名找，会控鹤擒龙的从来召回不了）。
+  const canRecallAnywhere = unit => Object.keys(unit?.功法 && typeof unit.功法 === 'object' ? unit.功法 : {}).some(name => RECALL_ANYWHERE_SKILL.test(name)) ||
+    [...collectSkillNames(unit)].some(name => RECALL_ANYWHERE_SKILL.test(name));
   function collectSkillNames(unit = {}) {
     const names = new Set();
     const visit = value => {
@@ -40288,8 +40301,15 @@ try {
   // own) ÷ own (a move of no windup inside a window that is not shut: sure) — PREEMPT_SURE_MARGIN or more to spare counts
   // as sure (1), none as an even chance (0.5), PREEMPT_SURE_MARGIN or more short as hopeless (0), linear between; as
   // preemptTiming does for a preemption.
+  // 应对时放魂技前摇打折（用户 11-20 按推荐：应对与反击窗口里魂技前摇按六成判断；BattleDecision REACTION_CAST_SHARE 同一常数）：
+  // 拿魂技对轰、抢先也是应对时放魂技，计时按打折后的前摇（此前只有防御类应对打折，对轰、抢先按全前摇，原作复现里对轰缺口 20 步）。
+  const REACTION_CAST_SHARE = Number(root.__LWCS_TUNE__?.REACTION_CAST_SHARE ?? 0.6);
+  const answerOwnWindup = (reactor, declaration) => {
+    const full = actionWindup(reactor, declaration);
+    return String(declaration?.actionKind || '').trim().toUpperCase() === 'RELEASE_SKILL' ? full * REACTION_CAST_SHARE : full;
+  };
   function clashTiming(attacker = {}, incomingDeclaration = {}, reactor = {}, declaration = {}, options = {}) {
-    const window = clashWindupBudget(attacker, incomingDeclaration, reactor, options), own = actionWindup(reactor, declaration);
+    const window = clashWindupBudget(attacker, incomingDeclaration, reactor, options), own = answerOwnWindup(reactor, declaration);
     // 晚出手（CLASH_LATE_LIMIT）以内也算对上：把握按「晚到上限还剩多少余地」算，即余地整体右移 CLASH_LATE_LIMIT。
     const late = own > 0 ? clamp((own - window) / own, 0, 1) : 0;
     const margin = own > 0 ? (window - own) / own + CLASH_LATE_LIMIT : window >= 0 ? Infinity : -Infinity;
@@ -63965,7 +63985,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // behind as hopeless (0), linear between.
   const PREEMPT_SURE_MARGIN = 0.15;
   function preemptTiming(reactor = {}, declaration = {}, attacker = {}, incomingDeclaration = {}) {
-    const own = actionWindup(reactor, declaration);
+    const own = answerOwnWindup(reactor, declaration);
     const theirs = Math.min(CONTINUOUS_ACTION_BUDGET, answerWindup(attacker, incomingDeclaration, reactor));
     const ownAgility = Math.max(0, Number(naturalActionOrderProfile(reactor).effectiveAgility) || 0);
     const theirAgility = Math.max(0, Number(naturalActionOrderProfile(attacker).effectiveAgility) || 0);
@@ -66927,6 +66947,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return null;
   }
 
+  // 召唤物的编号由召唤它那一手的编号拼成，召唤物对召唤物出手时事件编号会超过 512 字（11-20 回归 ec3|3|1：541 字被 BIF 拒）。
+  // 超长的压成「前 200 字 + # + 整串哈希」：确定、唯一，同一串总压成同一个。
+  function shortFactEventId(id) {
+    if (typeof id !== 'string' || id.length <= 480) return id;
+    var h1 = 2166136261, h2 = 5381;
+    for (var k = 0; k < id.length; k += 1) { var code = id.charCodeAt(k); h1 = Math.imul(h1 ^ code, 16777619) >>> 0; h2 = (Math.imul(h2, 33) + code) >>> 0; }
+    return id.slice(0, 200) + '#' + h1.toString(36) + h2.toString(36) + ':' + id.length;
+  }
   function atomicFromContributions(canonicalActionId, contributions) {
     var facts = [];
     var untranscribed = [];
@@ -66943,7 +66971,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         var effectId = typeof c.effectInstanceId === 'string' ? c.effectInstanceId : '';
         var targetId = typeof c.targetId === 'string' ? c.targetId : '';
         if (!effectId || !targetId) {
-          facts.push({ eventId: c.eventId, sourceActionId: c.sourceActionId,
+          facts.push({ eventId: shortFactEventId(c.eventId), sourceActionId: c.sourceActionId,
             outcomeKind: c.outcomeKind, expectedDelta: normZero(c.expectedDelta),
             hitCheckApplicability: 'UNKNOWN' });
           continue;
@@ -66954,7 +66982,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         var rawP = c.evidence && c.evidence.hitProbability;
         var pFinite = isFiniteNumber(rawP);
         var fact = {
-          eventId: c.eventId,
+          eventId: shortFactEventId(c.eventId),
           sourceActionId: c.sourceActionId,
           outcomeKind: c.outcomeKind,
           expectedDelta: normZero(c.expectedDelta),
@@ -66974,7 +67002,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         continue;
       }
       facts.push({
-        eventId: c.eventId,
+        eventId: shortFactEventId(c.eventId),
         sourceActionId: c.sourceActionId,
         outcomeKind: c.outcomeKind,
         expectedDelta: normZero(c.expectedDelta),
@@ -77199,6 +77227,27 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return view;
   }
 
+  // 功法的战斗动作（用户 11-20「能」：原作徐笠智应对时以玄玉手挡招）。存档里的功法只留描述（MVU 构建最新功法记录_V1），所以按名字现场
+  // 生成：玄玉手（唐门手法，淬炼双手抗性）挡招——这一回合受到的伤害按境界降低；境界同控鹤擒龙按等级分档（不到 30 级入门、不到 60 级
+  // 小成、60 级起大成）。前摇 10、消耗魂力上限 3%。起始值，实测再定。存档里已带 _效果数组 的功法条目照原样可用。
+  const MARTIAL_ART_ACTIONS = Object.freeze({
+    玄玉手: tier => ({ 魂技名: '玄玉手', 来源类别: '功法', 承载方式: '直接生效', 附带属性: ['防御', '近战'], 消耗: '魂力:3%', 前摇: 10,
+      效果描述: '双手玉化挡招，这一回合受到的伤害降低。',
+      _效果数组: [{ 原型: '结算修正', 目标: '自身', 生效方式: '独立生效', 结算: '受到伤害', 数值: `-${[15, 25, 35][tier - 1]}%`, 持续回合: 1 }] }),
+  });
+  const martialArtViews = new WeakMap();
+  function martialArtSkillView(arts = {}, unit = {}) {
+    if (!arts || typeof arts !== 'object') return arts;
+    const level = Number(preview.readEffectiveUnitLevel?.(unit) ?? unit?.属性?.等级) || 0;
+    const tier = level >= 60 ? 3 : level >= 30 ? 2 : 1;
+    const cached = martialArtViews.get(arts);
+    if (cached && cached.tier === tier) return cached.view;
+    const view = Object.fromEntries(Object.entries(arts).map(([name, art]) =>
+      [name, MARTIAL_ART_ACTIONS[name] && !(Array.isArray(art?._效果数组) && art._效果数组.length) ? MARTIAL_ART_ACTIONS[name](tier) : art]));
+    martialArtViews.set(arts, { tier, view });
+    return view;
+  }
+
   function collectSkills(unit = {}) {
     const activeGrantedSkills = collectActiveGrantedSkills(unit);
     // 封禁装备 (BattlePreview sealedEquipmentSlots): a sealed weapon, armour or mecha carries no skill, nor a sealed 器武魂.
@@ -77219,10 +77268,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       // 融合技（非武魂融合，S80-E）: its 技能数据 is composed from the participants' skills (MVU_Schema_Runtime 合成魂技融合技能数据_V1).
       // 蓄力技能 (the charge under way, BattleRuntime) matches 技能 but is no skill table: its skill is one of these already,
       // and read twice it gave a charging unit's counter two candidates of one identity (11-17).
-      ...Object.entries(unit).filter(([key, value]) => key !== '蓄力技能' && /^(?:第\d+)?武魂|血脉之力|魂骨|装备|自创魂技|技能|^融合技$/.test(key) && value && typeof value === 'object')
+      // 功法（用户 11-20「能」：原作徐笠智应对时以玄玉手挡招）：带 _效果数组 的功法条目同魂技一样可用；只有境界、描述的不是可执行动作。
+      ...Object.entries(unit).filter(([key, value]) => key !== '蓄力技能' && /^(?:第\d+)?武魂|血脉之力|魂骨|装备|自创魂技|技能|^功法$|^融合技$/.test(key) && value && typeof value === 'object')
         .filter(([key]) => !(sealed.has('器武魂') && preview.toolSpiritKeys(unit).includes(key)))
         .map(([key, value]) => {
-          const view = key !== '装备' ? value : soulToolSkillView(sealed.size ? sealedEquipmentView(equipment || value, sealed) : equipment || value);
+          const view = key === '功法' ? martialArtSkillView(value, unit)
+            : key !== '装备' ? value : soulToolSkillView(sealed.size ? sealedEquipmentView(equipment || value, sealed) : equipment || value);
           if (view && typeof view === 'object') rootLabels.set(view, key);
           return view;
         }),
@@ -79141,8 +79192,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         declaration: { ...candidate.declaration, feintStrike: { seen: clamp(Number(feintSeeThroughChance(worldSnapshot, target, advanceActor, {})) || 0, 0, 1) },
           actionId: `${candidate.declaration.actionId || candidate.candidateId}:feint` } });
     }
+    // 迎面撞上（11-20 两档距离检查 B3：强攻系被突进时对轰、抢先 32%，贴身时 58%）：对方近身冲过来，迎向来招者的答招不用赶路——
+    // 原先也给它记了突进前摇，把握算成来不及。来招是远程时照常记（够不着射来的那个人）。
+    const headOnSource = String(input?.actionOpportunity?.sourceActorId || '').trim();
+    const metHeadOn = String(input?.actionOpportunity?.role || '').trim().toUpperCase() === 'REACTION' && !!headOnSource &&
+      preview.declarationDamageClass?.(input?.actionOpportunity?.incomingAction || {}) === 'MELEE';
+    const answersSource = declaration => metHeadOn && (declaration?.targetIds || []).length > 0 &&
+      declaration.targetIds.every(id => String(id) === headOnSource);
     if (advanceActor) candidates = candidates.map(candidate => {
-      const declaration = candidate?.declaration ? preview.withAdvanceWindup(worldSnapshot, advanceActor, candidate.declaration) : null;
+      const declaration = candidate?.declaration && answersSource(candidate.declaration) ? candidate.declaration
+        : candidate?.declaration ? preview.withAdvanceWindup(worldSnapshot, advanceActor, candidate.declaration) : null;
       return declaration && declaration !== candidate.declaration && !Object.isFrozen(candidate) ? Object.assign(candidate, { declaration }) : declaration && declaration !== candidate.declaration ? { ...candidate, declaration } : candidate;
     });
     if (Array.isArray(candidates) && input?.actionOpportunity?.enforceImmediateBudget === true) {
@@ -79764,12 +79823,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           })
         : fusion;
       const profile = targetProfile(skill);
+      // 群体攻击也能立即反击（11-20 原作复现：卢宇星溃散黄沙漫天覆盖反击，原先只许单体攻击魂技）：群体覆盖得到出手者；反击照占自然行动。
       if (
         counterOnly &&
-        (
-          !['HOSTILE_SINGLE', 'HOSTILE_GROUP', 'ANY_SINGLE'].includes(profile) ||
-          (immediateOffensiveCounterEligible && !['HOSTILE_SINGLE', 'ANY_SINGLE'].includes(profile))
-        )
+        !['HOSTILE_SINGLE', 'HOSTILE_GROUP', 'ANY_SINGLE'].includes(profile)
       ) {
         recordRejected({
           actionKind: 'RELEASE_SKILL', sourceActionId: `${actorId}:skill:${sourceSkillId}`,
@@ -141563,6 +141620,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           });
         }
       }
+      // 追击（两档距离 T25 enqueuePursuitWindows）：贴着的人追打后撤的一方，来源是对方的「后撤」，那一手的目标是后撤者自己
+      //（11-20 两档距离检查：每局都报 COUNTER_ACTOR_SOURCE_INVALID）。
+      const pursuitOfRetreat = !!sourceAction && String(sourceAction?.actionName || '').trim() === '后撤' &&
+        isSameReportName(targetName, String(sourceAction?.actorName || '').trim());
       if (kind === 'counter_window') {
         const sourceActorName = String(sourceAction?.actorName || '').trim();
         if (
@@ -141571,7 +141632,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           !sourceActorName ||
           isSameReportName(actorName, sourceActorName) ||
           !isSameReportName(targetName, sourceActorName) ||
-          !sourceTargetsActor(sourceAction, actorName)
+          !sourceTargetsActor(sourceAction, actorName) && !pursuitOfRetreat
         ) {
           pushFatal('COUNTER_ACTOR_SOURCE_INVALID', {
             eventId: event?.eventId || '',
@@ -141591,7 +141652,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           !sourceActorName ||
           isSameReportName(actorName, sourceActorName) ||
           !isSameReportName(targetName, sourceActorName) ||
-          (kind === 'action_start' && !sourceTargetsActor(sourceAction, actorName))
+          (kind === 'action_start' && !sourceTargetsActor(sourceAction, actorName) && !pursuitOfRetreat)
         ) {
           pushFatal('COUNTER_ACTOR_SOURCE_INVALID', {
             eventId: event?.eventId || '',

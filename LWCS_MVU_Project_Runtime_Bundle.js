@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:b0b01ebec93a39f8e28caa50984085e8bc8ce27bc88797473a08410567608ccd|MVU_Schema_Runtime.js:07eae31da8767db5fce3f9812822d7a5ba9f4763a09edf59614a477913f7f01b|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:1f7a519a850bc170c3da108bfe22614d098b593bc573d8b38a5c0a7bec81aba5 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:144d1f5faad0c4f60a3aa40fab28fd5a53053feaed347969af3eb376ebcf3eff|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:40a7eee0a5363dffa7081ee8814e42de4eb0ed66f551597979ca86ac50b8dbb5|MVU_Schema_Runtime.js:a6554721688432a5c6c0a7effcc612363cd5f5335295e54e57016d4f0c4cb56c|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:1f7a519a850bc170c3da108bfe22614d098b593bc573d8b38a5c0a7bec81aba5 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -4166,6 +4166,9 @@
     return { totalGrowth, coresCompleted, levelsAdvanced, elapsed, remaining };
   }
 
+  // 逐日模拟的检查点（11-20：库角色按时间点往后推等级要算两个年龄，每次都从 6 岁逐日模拟，20 岁 0.4 秒、60 岁 1.5 秒）。
+  // 结果只取决于天赋、底子波动、时代与时代混合比例：同一组参数模拟到过的年龄存一份状态，下次从不超过目标年龄的最近一份接着算。
+  const initialLevelCheckpoints = new Map();
   function estimateInitialLevel(options = {}) {
     const targetAge = Math.max(0, finite(options.age, 6));
     if (targetAge < Number(PARAMETERS.meta.startAge || 6)) return 0;
@@ -4196,6 +4199,11 @@
       魂核: { 核心: { 数量: 0, 进度: 0 } },
     };
     if (targetAge <= char.属性.年龄 + 1e-9) return initialLevel;
+    const blendNow = resolveBlend(options.currentTick, {});
+    const checkpointKey = [talent, variation.toFixed(6), era, blendNow ? `${blendNow.current}|${blendNow.zjdl}` : '-'].join('|');
+    const checkpoints = initialLevelCheckpoints.get(checkpointKey) || [];
+    const resume = checkpoints.filter(point => point.age <= targetAge + 1e-9).reduce((best, point) => !best || point.age > best.age ? point : best, null);
+    if (resume) Object.assign(char, JSON.parse(resume.state));
     let remainingDays = (targetAge - char.属性.年龄) * Number(PARAMETERS.meta.yearDays || 360);
     while (remainingDays > 1e-9) {
       const days = Math.min(1, remainingDays);
@@ -4228,6 +4236,12 @@
       advanceNaturalLevel(char, { cultivationEra: era });
       char.属性.年龄 += days / 720;
       remainingDays -= days;
+    }
+    if (!resume || resume.age < char.属性.年龄 - 1e-9) {
+      checkpoints.push({ age: char.属性.年龄, state: JSON.stringify(char) });
+      if (checkpoints.length > 64) checkpoints.splice(0, checkpoints.length - 64);
+      initialLevelCheckpoints.set(checkpointKey, checkpoints);
+      if (initialLevelCheckpoints.size > 256) initialLevelCheckpoints.delete(initialLevelCheckpoints.keys().next().value);
     }
     advanceNaturalLevel(char, { cultivationEra: era });
     const level = finite(char.属性.等级, 1);
@@ -32091,9 +32105,11 @@ function 初始化补齐角色技能效果数组_V1(rootData = {}) {
 
     const 自创属性状态 = buildCharacterCustomSkillAttributeState(char);
     const 自创元素画像 = buildElementProfileFromAttributeState(自创属性状态);
-    补齐技能映射(char.自创魂技, (_, skillName) => {
+    补齐技能映射(char.自创魂技, (skill, skillName) => {
       const 魂兽档位 = 是持久魂兽 ? 魂兽自创魂技档位.get(String(skillName || '').trim()) : null;
       return {
+        // 承载方式「被动」的自创魂技按被动收口（11-20：乐正宇 神圣不死身 死亡转存活只能用于被动技能，读档报错）。
+        ...(String(skill?.承载方式 || '').trim() === '被动' ? { passiveMode: true } : {}),
         type: 系别,
         武魂系别: 系别,
         角色: char,
@@ -35151,8 +35167,12 @@ function 计算内置角色投影等级_V1(角色 = {}, 角色记录 = {}, 快�
   // 从快照年龄到当前年龄的增量往后推，不低于快照等级；快照已是神级（≥100）的不推，其余至多 99。
   if (Number(当前tick || 0) >= 快照tick) {
     const 快照年龄 = Math.max(0, Number(快照?.年龄 ?? 快照?.角色?.属性?.年龄 ?? 投影年龄) || 投影年龄);
-    if (!(投影年龄 > 快照年龄) || 快照等级 >= 100) return Math.max(0, Math.floor(快照等级));
-    const 增量 = 计算内置角色默认修为等级_V1(角色, 投影年龄, 当前tick) - 计算内置角色默认修为等级_V1(角色, 快照年龄, 快照tick);
+    // 只推人类魂师、寿命以内的年纪：魂兽、深渊等的年龄动辄几十万年，修炼曲线逐年模拟会卡死（11-20 雪帝第 281 章构建卡超过 100 秒）。
+    const 种族 = typeof 读取角色种族_V1 === 'function' ? 读取角色种族_V1(角色) : '魂师';
+    if (!(投影年龄 > 快照年龄) || 快照等级 >= 100 || 快照年龄 > 150 || 投影年龄 > 150 || (种族 && 种族 !== '魂师')) return Math.max(0, Math.floor(快照等级));
+    // 先算快照年龄、再算当前年龄：修炼曲线有检查点缓存（EraCultivation estimateInitialLevel），后一次从前一次接着往后算。
+    const 快照年龄默认 = 计算内置角色默认修为等级_V1(角色, 快照年龄, 快照tick);
+    const 增量 = 计算内置角色默认修为等级_V1(角色, 投影年龄, 当前tick) - 快照年龄默认;
     return Math.max(Math.floor(快照等级), Math.min(99, Math.floor(快照等级 + Math.max(0, 增量))));
   }
   const 前置快照 = 取内置角色前置等级快照_V1(角色记录, 快照);
@@ -35358,6 +35378,8 @@ function 写入成长魂环魂技_V1(角色 = {}, 模板 = {}, 变更列表 = nu
     ringAge: Math.max(1000, Number(魂环?.年限 || 0)),
     sourceCategory: '魂技',
     来源: '魂技',
+    // 承载方式「被动」的模板（11-20：乐正宇 神圣不死身 死亡转存活只能用于被动技能，写入时没带 passiveMode 读档报错）。
+    ...(String(魂环[技能键]?.承载方式 || '').trim() === '被动' ? { passiveMode: true } : {}),
     textContext: { spiritName: 模板?.魂技名 || 技能键, type: 取角色主武魂系别_V1(角色) },
   });
 }
@@ -35383,6 +35405,7 @@ function 写入成长自创魂技_V1(角色 = {}, 模板 = {}, 变更列表 = nu
     ringAge: Math.max(1000, 获得阶段魂环数 * 2000),
     sourceCategory: '自创魂技',
     来源: '自创魂技',
+    ...(String(角色.自创魂技[技能键]?.承载方式 || '').trim() === '被动' ? { passiveMode: true } : {}),
     textContext: { spiritName: 技能键, type: 系别 },
   });
 }
@@ -35737,9 +35760,10 @@ function 写入已过时成长技能模板_V1(角色 = {}, 角色名 = '', 当�
   return 写入数;
 }
 
+// 占位魂技，或一个魂技都没有的空魂环（11-20：桐宇第 4、7 环是空环，既不是刚补的、也没有占位，成长模板的麒麟变一直写不进去）。
 function 角色存在占位魂环魂技_V1(角色 = {}) {
   return 取角色武魂条目_V1(角色).some(([, 武魂]) => 取武魂魂灵条目_V1(武魂).some(([, 魂灵]) =>
-    取魂灵魂环条目_V1(魂灵).some(([, 魂环]) => Object.entries(魂环 || {}).some(([键, 技能]) =>
+    取魂灵魂环条目_V1(魂灵).some(([, 魂环]) => !Object.keys(魂环 || {}).some(键 => 是魂技槽位键_V1(键)) || Object.entries(魂环 || {}).some(([键, 技能]) =>
       是魂技槽位键_V1(键) && 技能 && typeof 技能 === 'object' && /待补全|AI_TODO/.test(String(技能.魂技名 || ''))))));
 }
 

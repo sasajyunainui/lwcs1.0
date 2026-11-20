@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:78a0c30e86f738904688ad41ab5651b61e801f96aca5286f35ceacf2abc1531d|cockpit/designer-model.js:cfd30db8a8ca67e544a32c52788feaaa864725e4385577ba70616d16bd767aee|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:121696c1481708bb05eaebf52d3f96efbeeac57ce6bc43311b2512fc2bda9596|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:6fbc0288bd37c1065bfa7d05b81f81c42396ac6f7bf8f67ab6239c630da46e32|BehaviorDecisionPipeline_Module.js:e55d1d0a40ff9a1a3a37cf0f16c94dbd9bafe338489e7af952c1279ca0025977|BattleDecision_Module.js:ecdb70b09ace2edb6baa613ace0775fda354c068700596f73d482256a6446804|BattleRuntime_Module.js:1e311991adffe082f268f483ce7f3d6a7de12f649082991003af67e07cf5f0a0|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:908fe9d513f83c52cd60f0bed9a1602231928ed164dd51f72b68dbcc9585a22c|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:78a0c30e86f738904688ad41ab5651b61e801f96aca5286f35ceacf2abc1531d|cockpit/designer-model.js:cfd30db8a8ca67e544a32c52788feaaa864725e4385577ba70616d16bd767aee|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:121696c1481708bb05eaebf52d3f96efbeeac57ce6bc43311b2512fc2bda9596|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:950c9d7aebe40a5083497bbfe1dfad91ebb7933e9127cb5a696598622233f47d|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:a21df642cb0d7bbff8768383501dcfbec6c99956bd3390d905e19e1ecbf9ddcc|BattleRuntime_Module.js:42a75d479f8061beeedad61da02b8975bcbd6a5481cc5046c7a11c38dbb20df5|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:908fe9d513f83c52cd60f0bed9a1602231928ed164dd51f72b68dbcc9585a22c|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -63100,7 +63100,8 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
        「控鹤擎龙」的（唐门手法）随时能召回。器武魂（或会控鹤擎龙的）召回时可以顺势再打一次：普攻的变体 recallStrike，按远程算，打完回手。
      - 磕飞、抓住：对方挡住或闪开都不改变什么——这一下落空，武器照样离手，落在对方身边（所以兵器要去对方身边捡）。 */
   const THROW_STATE_WEAPON = '武器离手', THROW_STATE_SPIRIT = '武魂离手', THROW_STATE_KEY = '__auto__:武器离手', RECALL_STATE = '召回武器';
-  const RECALL_ANYWHERE_SKILL = /控鹤擎龙/;
+  // 功法名是「控鹤擒龙」（库与 MVU 都这么写；用户口头也说「擎」），两种写法都认。
+  const RECALL_ANYWHERE_SKILL = /控鹤[擒擎]龙/;
   // 手里能投的那一件：已开的器武魂优先，其次兵器（打坏的、已经投出去的不算）。
   function throwableWeapon(unit = {}) {
     if (!unit || unit?.状态效果?.[THROW_STATE_KEY]) return null;
@@ -63119,7 +63120,9 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
   function canThrowWeapon(actor = {}, target = null, declaration = {}) {
     return String(declaration?.actionKind || '').trim().toUpperCase() === 'BASIC_ATTACK' && !!target && target !== actor && !!throwableWeapon(actor);
   }
-  const canRecallAnywhere = unit => [...collectSkillNames(unit)].some(name => RECALL_ANYWHERE_SKILL.test(name));
+  // 功法存在角色的「功法」栏里、以功法名为键（没有魂技名），也要看（11-20：原先只按魂技名找，会控鹤擒龙的从来召回不了）。
+  const canRecallAnywhere = unit => Object.keys(unit?.功法 && typeof unit.功法 === 'object' ? unit.功法 : {}).some(name => RECALL_ANYWHERE_SKILL.test(name)) ||
+    [...collectSkillNames(unit)].some(name => RECALL_ANYWHERE_SKILL.test(name));
   function collectSkillNames(unit = {}) {
     const names = new Set();
     const visit = value => {
@@ -63258,8 +63261,15 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
   // own) ÷ own (a move of no windup inside a window that is not shut: sure) — PREEMPT_SURE_MARGIN or more to spare counts
   // as sure (1), none as an even chance (0.5), PREEMPT_SURE_MARGIN or more short as hopeless (0), linear between; as
   // preemptTiming does for a preemption.
+  // 应对时放魂技前摇打折（用户 11-20 按推荐：应对与反击窗口里魂技前摇按六成判断；BattleDecision REACTION_CAST_SHARE 同一常数）：
+  // 拿魂技对轰、抢先也是应对时放魂技，计时按打折后的前摇（此前只有防御类应对打折，对轰、抢先按全前摇，原作复现里对轰缺口 20 步）。
+  const REACTION_CAST_SHARE = Number(root.__LWCS_TUNE__?.REACTION_CAST_SHARE ?? 0.6);
+  const answerOwnWindup = (reactor, declaration) => {
+    const full = actionWindup(reactor, declaration);
+    return String(declaration?.actionKind || '').trim().toUpperCase() === 'RELEASE_SKILL' ? full * REACTION_CAST_SHARE : full;
+  };
   function clashTiming(attacker = {}, incomingDeclaration = {}, reactor = {}, declaration = {}, options = {}) {
-    const window = clashWindupBudget(attacker, incomingDeclaration, reactor, options), own = actionWindup(reactor, declaration);
+    const window = clashWindupBudget(attacker, incomingDeclaration, reactor, options), own = answerOwnWindup(reactor, declaration);
     // 晚出手（CLASH_LATE_LIMIT）以内也算对上：把握按「晚到上限还剩多少余地」算，即余地整体右移 CLASH_LATE_LIMIT。
     const late = own > 0 ? clamp((own - window) / own, 0, 1) : 0;
     const margin = own > 0 ? (window - own) / own + CLASH_LATE_LIMIT : window >= 0 ? Infinity : -Infinity;
@@ -86935,7 +86945,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // behind as hopeless (0), linear between.
   const PREEMPT_SURE_MARGIN = 0.15;
   function preemptTiming(reactor = {}, declaration = {}, attacker = {}, incomingDeclaration = {}) {
-    const own = actionWindup(reactor, declaration);
+    const own = answerOwnWindup(reactor, declaration);
     const theirs = Math.min(CONTINUOUS_ACTION_BUDGET, answerWindup(attacker, incomingDeclaration, reactor));
     const ownAgility = Math.max(0, Number(naturalActionOrderProfile(reactor).effectiveAgility) || 0);
     const theirAgility = Math.max(0, Number(naturalActionOrderProfile(attacker).effectiveAgility) || 0);
@@ -89897,6 +89907,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return null;
   }
 
+  // 召唤物的编号由召唤它那一手的编号拼成，召唤物对召唤物出手时事件编号会超过 512 字（11-20 回归 ec3|3|1：541 字被 BIF 拒）。
+  // 超长的压成「前 200 字 + # + 整串哈希」：确定、唯一，同一串总压成同一个。
+  function shortFactEventId(id) {
+    if (typeof id !== 'string' || id.length <= 480) return id;
+    var h1 = 2166136261, h2 = 5381;
+    for (var k = 0; k < id.length; k += 1) { var code = id.charCodeAt(k); h1 = Math.imul(h1 ^ code, 16777619) >>> 0; h2 = (Math.imul(h2, 33) + code) >>> 0; }
+    return id.slice(0, 200) + '#' + h1.toString(36) + h2.toString(36) + ':' + id.length;
+  }
   function atomicFromContributions(canonicalActionId, contributions) {
     var facts = [];
     var untranscribed = [];
@@ -89913,7 +89931,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         var effectId = typeof c.effectInstanceId === 'string' ? c.effectInstanceId : '';
         var targetId = typeof c.targetId === 'string' ? c.targetId : '';
         if (!effectId || !targetId) {
-          facts.push({ eventId: c.eventId, sourceActionId: c.sourceActionId,
+          facts.push({ eventId: shortFactEventId(c.eventId), sourceActionId: c.sourceActionId,
             outcomeKind: c.outcomeKind, expectedDelta: normZero(c.expectedDelta),
             hitCheckApplicability: 'UNKNOWN' });
           continue;
@@ -89924,7 +89942,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         var rawP = c.evidence && c.evidence.hitProbability;
         var pFinite = isFiniteNumber(rawP);
         var fact = {
-          eventId: c.eventId,
+          eventId: shortFactEventId(c.eventId),
           sourceActionId: c.sourceActionId,
           outcomeKind: c.outcomeKind,
           expectedDelta: normZero(c.expectedDelta),
@@ -89944,7 +89962,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         continue;
       }
       facts.push({
-        eventId: c.eventId,
+        eventId: shortFactEventId(c.eventId),
         sourceActionId: c.sourceActionId,
         outcomeKind: c.outcomeKind,
         expectedDelta: normZero(c.expectedDelta),
@@ -100169,6 +100187,27 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return view;
   }
 
+  // 功法的战斗动作（用户 11-20「能」：原作徐笠智应对时以玄玉手挡招）。存档里的功法只留描述（MVU 构建最新功法记录_V1），所以按名字现场
+  // 生成：玄玉手（唐门手法，淬炼双手抗性）挡招——这一回合受到的伤害按境界降低；境界同控鹤擒龙按等级分档（不到 30 级入门、不到 60 级
+  // 小成、60 级起大成）。前摇 10、消耗魂力上限 3%。起始值，实测再定。存档里已带 _效果数组 的功法条目照原样可用。
+  const MARTIAL_ART_ACTIONS = Object.freeze({
+    玄玉手: tier => ({ 魂技名: '玄玉手', 来源类别: '功法', 承载方式: '直接生效', 附带属性: ['防御', '近战'], 消耗: '魂力:3%', 前摇: 10,
+      效果描述: '双手玉化挡招，这一回合受到的伤害降低。',
+      _效果数组: [{ 原型: '结算修正', 目标: '自身', 生效方式: '独立生效', 结算: '受到伤害', 数值: `-${[15, 25, 35][tier - 1]}%`, 持续回合: 1 }] }),
+  });
+  const martialArtViews = new WeakMap();
+  function martialArtSkillView(arts = {}, unit = {}) {
+    if (!arts || typeof arts !== 'object') return arts;
+    const level = Number(preview.readEffectiveUnitLevel?.(unit) ?? unit?.属性?.等级) || 0;
+    const tier = level >= 60 ? 3 : level >= 30 ? 2 : 1;
+    const cached = martialArtViews.get(arts);
+    if (cached && cached.tier === tier) return cached.view;
+    const view = Object.fromEntries(Object.entries(arts).map(([name, art]) =>
+      [name, MARTIAL_ART_ACTIONS[name] && !(Array.isArray(art?._效果数组) && art._效果数组.length) ? MARTIAL_ART_ACTIONS[name](tier) : art]));
+    martialArtViews.set(arts, { tier, view });
+    return view;
+  }
+
   function collectSkills(unit = {}) {
     const activeGrantedSkills = collectActiveGrantedSkills(unit);
     // 封禁装备 (BattlePreview sealedEquipmentSlots): a sealed weapon, armour or mecha carries no skill, nor a sealed 器武魂.
@@ -100189,10 +100228,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       // 融合技（非武魂融合，S80-E）: its 技能数据 is composed from the participants' skills (MVU_Schema_Runtime 合成魂技融合技能数据_V1).
       // 蓄力技能 (the charge under way, BattleRuntime) matches 技能 but is no skill table: its skill is one of these already,
       // and read twice it gave a charging unit's counter two candidates of one identity (11-17).
-      ...Object.entries(unit).filter(([key, value]) => key !== '蓄力技能' && /^(?:第\d+)?武魂|血脉之力|魂骨|装备|自创魂技|技能|^融合技$/.test(key) && value && typeof value === 'object')
+      // 功法（用户 11-20「能」：原作徐笠智应对时以玄玉手挡招）：带 _效果数组 的功法条目同魂技一样可用；只有境界、描述的不是可执行动作。
+      ...Object.entries(unit).filter(([key, value]) => key !== '蓄力技能' && /^(?:第\d+)?武魂|血脉之力|魂骨|装备|自创魂技|技能|^功法$|^融合技$/.test(key) && value && typeof value === 'object')
         .filter(([key]) => !(sealed.has('器武魂') && preview.toolSpiritKeys(unit).includes(key)))
         .map(([key, value]) => {
-          const view = key !== '装备' ? value : soulToolSkillView(sealed.size ? sealedEquipmentView(equipment || value, sealed) : equipment || value);
+          const view = key === '功法' ? martialArtSkillView(value, unit)
+            : key !== '装备' ? value : soulToolSkillView(sealed.size ? sealedEquipmentView(equipment || value, sealed) : equipment || value);
           if (view && typeof view === 'object') rootLabels.set(view, key);
           return view;
         }),
@@ -102111,8 +102152,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         declaration: { ...candidate.declaration, feintStrike: { seen: clamp(Number(feintSeeThroughChance(worldSnapshot, target, advanceActor, {})) || 0, 0, 1) },
           actionId: `${candidate.declaration.actionId || candidate.candidateId}:feint` } });
     }
+    // 迎面撞上（11-20 两档距离检查 B3：强攻系被突进时对轰、抢先 32%，贴身时 58%）：对方近身冲过来，迎向来招者的答招不用赶路——
+    // 原先也给它记了突进前摇，把握算成来不及。来招是远程时照常记（够不着射来的那个人）。
+    const headOnSource = String(input?.actionOpportunity?.sourceActorId || '').trim();
+    const metHeadOn = String(input?.actionOpportunity?.role || '').trim().toUpperCase() === 'REACTION' && !!headOnSource &&
+      preview.declarationDamageClass?.(input?.actionOpportunity?.incomingAction || {}) === 'MELEE';
+    const answersSource = declaration => metHeadOn && (declaration?.targetIds || []).length > 0 &&
+      declaration.targetIds.every(id => String(id) === headOnSource);
     if (advanceActor) candidates = candidates.map(candidate => {
-      const declaration = candidate?.declaration ? preview.withAdvanceWindup(worldSnapshot, advanceActor, candidate.declaration) : null;
+      const declaration = candidate?.declaration && answersSource(candidate.declaration) ? candidate.declaration
+        : candidate?.declaration ? preview.withAdvanceWindup(worldSnapshot, advanceActor, candidate.declaration) : null;
       return declaration && declaration !== candidate.declaration && !Object.isFrozen(candidate) ? Object.assign(candidate, { declaration }) : declaration && declaration !== candidate.declaration ? { ...candidate, declaration } : candidate;
     });
     if (Array.isArray(candidates) && input?.actionOpportunity?.enforceImmediateBudget === true) {
@@ -102734,12 +102783,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           })
         : fusion;
       const profile = targetProfile(skill);
+      // 群体攻击也能立即反击（11-20 原作复现：卢宇星溃散黄沙漫天覆盖反击，原先只许单体攻击魂技）：群体覆盖得到出手者；反击照占自然行动。
       if (
         counterOnly &&
-        (
-          !['HOSTILE_SINGLE', 'HOSTILE_GROUP', 'ANY_SINGLE'].includes(profile) ||
-          (immediateOffensiveCounterEligible && !['HOSTILE_SINGLE', 'ANY_SINGLE'].includes(profile))
-        )
+        !['HOSTILE_SINGLE', 'HOSTILE_GROUP', 'ANY_SINGLE'].includes(profile)
       ) {
         recordRejected({
           actionKind: 'RELEASE_SKILL', sourceActionId: `${actorId}:skill:${sourceSkillId}`,
@@ -164533,6 +164580,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           });
         }
       }
+      // 追击（两档距离 T25 enqueuePursuitWindows）：贴着的人追打后撤的一方，来源是对方的「后撤」，那一手的目标是后撤者自己
+      //（11-20 两档距离检查：每局都报 COUNTER_ACTOR_SOURCE_INVALID）。
+      const pursuitOfRetreat = !!sourceAction && String(sourceAction?.actionName || '').trim() === '后撤' &&
+        isSameReportName(targetName, String(sourceAction?.actorName || '').trim());
       if (kind === 'counter_window') {
         const sourceActorName = String(sourceAction?.actorName || '').trim();
         if (
@@ -164541,7 +164592,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           !sourceActorName ||
           isSameReportName(actorName, sourceActorName) ||
           !isSameReportName(targetName, sourceActorName) ||
-          !sourceTargetsActor(sourceAction, actorName)
+          !sourceTargetsActor(sourceAction, actorName) && !pursuitOfRetreat
         ) {
           pushFatal('COUNTER_ACTOR_SOURCE_INVALID', {
             eventId: event?.eventId || '',
@@ -164561,7 +164612,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           !sourceActorName ||
           isSameReportName(actorName, sourceActorName) ||
           !isSameReportName(targetName, sourceActorName) ||
-          (kind === 'action_start' && !sourceTargetsActor(sourceAction, actorName))
+          (kind === 'action_start' && !sourceTargetsActor(sourceAction, actorName) && !pursuitOfRetreat)
         ) {
           pushFatal('COUNTER_ACTOR_SOURCE_INVALID', {
             eventId: event?.eventId || '',
