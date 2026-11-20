@@ -23929,6 +23929,10 @@
           });
         }
       }
+      // 追击（两档距离 T25 enqueuePursuitWindows）：贴着的人追打后撤的一方，来源是对方的「后撤」，那一手的目标是后撤者自己
+      //（11-20 两档距离检查：每局都报 COUNTER_ACTOR_SOURCE_INVALID）。
+      const pursuitOfRetreat = !!sourceAction && String(sourceAction?.actionName || '').trim() === '后撤' &&
+        isSameReportName(targetName, String(sourceAction?.actorName || '').trim());
       if (kind === 'counter_window') {
         const sourceActorName = String(sourceAction?.actorName || '').trim();
         if (
@@ -23937,7 +23941,7 @@
           !sourceActorName ||
           isSameReportName(actorName, sourceActorName) ||
           !isSameReportName(targetName, sourceActorName) ||
-          !sourceTargetsActor(sourceAction, actorName)
+          !sourceTargetsActor(sourceAction, actorName) && !pursuitOfRetreat
         ) {
           pushFatal('COUNTER_ACTOR_SOURCE_INVALID', {
             eventId: event?.eventId || '',
@@ -23957,7 +23961,7 @@
           !sourceActorName ||
           isSameReportName(actorName, sourceActorName) ||
           !isSameReportName(targetName, sourceActorName) ||
-          (kind === 'action_start' && !sourceTargetsActor(sourceAction, actorName))
+          (kind === 'action_start' && !sourceTargetsActor(sourceAction, actorName) && !pursuitOfRetreat)
         ) {
           pushFatal('COUNTER_ACTOR_SOURCE_INVALID', {
             eventId: event?.eventId || '',
