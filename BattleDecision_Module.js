@@ -39709,7 +39709,7 @@
   const R20_FOLLOW_PER_MATCH = Number(root.__LWCS_TUNE__?.FOLLOW_PER_MATCH ?? 1), R20_FOLLOW_MATCH_CAP = 4;
   // 逼对手花的资源按半份生命（同 BattlePreview FOLLOW_RESOURCE_SHARE）。
   const R20_FOE_DRAIN_SHARE = 0.5;
-  const R20_MATCH_BUDGET_ON = root.__LWCS_TUNE__?.MATCH_BUDGET !== false;
+  const R20_MATCH_BUDGET_ON = root.__LWCS_TUNE__?.MATCH_BUDGET !== false, R20_FOE_DRAIN_ON = root.__LWCS_TUNE__?.FOE_DRAIN !== false;
   // 这一场还剩的资源预算（魂力、精神力各自的份额）：开打时的份额 ÷（剩余场次 + 1）减这场已花的。开打时 = 现在 + 已花（账本 action_cost，
   // 按行动者名字）。每张桌面（请求）算一次。
   const r20MatchBudgets = new WeakMap();
@@ -42495,7 +42495,7 @@
     const cost = R20_RESOURCE_PRICE * (spent * (1 + followBase) + overBudget * followMatches) * (1 + (followCarry ? 0 : R20_PROBE_PREMIUM * unseen)) * (spar ? R20_SPAR_PRICE : 1);
     // 逼对手花资源（用户 11-20「加上」，原作萧萧逼出薛兵的武魂真身）：有队友接着打这个对手（接续）时，这一手让对手花掉的资源
     // 按半份生命计（同认输估值 FOLLOW_RESOURCE_SHARE）。
-    const foeDrain = followCarry ? R20_FOE_DRAIN_SHARE * foeSpent : 0;
+    const foeDrain = followCarry && R20_FOE_DRAIN_ON ? R20_FOE_DRAIN_SHARE * foeSpent : 0;
     // What it gets back is worth what it would have cost — more when it has fights after this one (followKeep).
     const regen = R20_RESOURCE_PRICE * regenGain * (1 + followKeep);
     // 亮魂环（同上）: any 魂技 lights the rings — the enemy sees how many and how old, and what the spirit does — so against one
