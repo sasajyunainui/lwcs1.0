@@ -43493,6 +43493,8 @@
       const withoutWin = odds(alone.margin);
       without = { win: withoutWin, lose: 1 - withoutWin, draw: 0 };
     }
+    // Development hook (absent in play): the race behind an exit's odds.
+    if (typeof root.__LWCS_DECISION_DEBUG__?.onExitOutlook === 'function') root.__LWCS_DECISION_DEBUG__.onExitOutlook({ request, raced, raceWin, mineOut, foeOut, win, time });
     return { win, lose: 1 - win, draw: 0, drained, drainedRes, actorKept, actorRes: fuel(actorUnit), actorSpend: Math.min(fuel(actorUnit), rate(actorUnit) * time), worthRatio, time, without };
   }
   function r20ExitMargin(request = {}) {
