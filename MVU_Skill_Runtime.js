@@ -27565,9 +27565,11 @@ function 初始化补齐角色技能效果数组_V1(rootData = {}) {
 
     const 自创属性状态 = buildCharacterCustomSkillAttributeState(char);
     const 自创元素画像 = buildElementProfileFromAttributeState(自创属性状态);
-    补齐技能映射(char.自创魂技, (_, skillName) => {
+    补齐技能映射(char.自创魂技, (skill, skillName) => {
       const 魂兽档位 = 是持久魂兽 ? 魂兽自创魂技档位.get(String(skillName || '').trim()) : null;
       return {
+        // 承载方式「被动」的自创魂技按被动收口（11-20：乐正宇 神圣不死身 死亡转存活只能用于被动技能，读档报错）。
+        ...(String(skill?.承载方式 || '').trim() === '被动' ? { passiveMode: true } : {}),
         type: 系别,
         武魂系别: 系别,
         角色: char,

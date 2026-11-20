@@ -2922,6 +2922,8 @@ function 写入成长魂环魂技_V1(角色 = {}, 模板 = {}, 变更列表 = nu
     ringAge: Math.max(1000, Number(魂环?.年限 || 0)),
     sourceCategory: '魂技',
     来源: '魂技',
+    // 承载方式「被动」的模板（11-20：乐正宇 神圣不死身 死亡转存活只能用于被动技能，写入时没带 passiveMode 读档报错）。
+    ...(String(魂环[技能键]?.承载方式 || '').trim() === '被动' ? { passiveMode: true } : {}),
     textContext: { spiritName: 模板?.魂技名 || 技能键, type: 取角色主武魂系别_V1(角色) },
   });
 }
@@ -2947,6 +2949,7 @@ function 写入成长自创魂技_V1(角色 = {}, 模板 = {}, 变更列表 = nu
     ringAge: Math.max(1000, 获得阶段魂环数 * 2000),
     sourceCategory: '自创魂技',
     来源: '自创魂技',
+    ...(String(角色.自创魂技[技能键]?.承载方式 || '').trim() === '被动' ? { passiveMode: true } : {}),
     textContext: { spiritName: 技能键, type: 系别 },
   });
 }
