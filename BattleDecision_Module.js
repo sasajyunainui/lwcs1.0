@@ -6674,8 +6674,16 @@
         declaration: { ...candidate.declaration, feintStrike: { seen: clamp(Number(feintSeeThroughChance(worldSnapshot, target, advanceActor, {})) || 0, 0, 1) },
           actionId: `${candidate.declaration.actionId || candidate.candidateId}:feint` } });
     }
+    // 迎面撞上（11-20 两档距离检查 B3：强攻系被突进时对轰、抢先 32%，贴身时 58%）：对方近身冲过来，迎向来招者的答招不用赶路——
+    // 原先也给它记了突进前摇，把握算成来不及。来招是远程时照常记（够不着射来的那个人）。
+    const headOnSource = String(input?.actionOpportunity?.sourceActorId || '').trim();
+    const metHeadOn = String(input?.actionOpportunity?.role || '').trim().toUpperCase() === 'REACTION' && !!headOnSource &&
+      preview.declarationDamageClass?.(input?.actionOpportunity?.incomingAction || {}) === 'MELEE';
+    const answersSource = declaration => metHeadOn && (declaration?.targetIds || []).length > 0 &&
+      declaration.targetIds.every(id => String(id) === headOnSource);
     if (advanceActor) candidates = candidates.map(candidate => {
-      const declaration = candidate?.declaration ? preview.withAdvanceWindup(worldSnapshot, advanceActor, candidate.declaration) : null;
+      const declaration = candidate?.declaration && answersSource(candidate.declaration) ? candidate.declaration
+        : candidate?.declaration ? preview.withAdvanceWindup(worldSnapshot, advanceActor, candidate.declaration) : null;
       return declaration && declaration !== candidate.declaration && !Object.isFrozen(candidate) ? Object.assign(candidate, { declaration }) : declaration && declaration !== candidate.declaration ? { ...candidate, declaration } : candidate;
     });
     if (Array.isArray(candidates) && input?.actionOpportunity?.enforceImmediateBudget === true) {
