@@ -2293,6 +2293,19 @@ class ProfessionUIComponent {
     return { 分类, 定义: 新定义 };
   }
 
+  // 修理师产出修复道具（用户 11-19「也可以设计该级别修理师所生产的道具」）：修理工序里目标填修复道具的名字、背包里又没有时，按制作处理。
+  // 档位按修理师等级（1～2 级一档、3～4 二档、5～6 三档、7～8 四档、9 五档）：基础维护套件 一档、精密修复模块 二档、斗铠本源蕴养液 四档、
+  // 神级重塑核心 五档（不含神器——神器只能自身温养）。不是修复道具返回 null。
+  读取修复道具制作计划(targetName = '') {
+    const 名称 = String(targetName || '').trim();
+    const 档位表 = { 基础维护套件: 1, 精密修复模块: 2, 斗铠本源蕴养液: 4, 神级重塑核心: 5 };
+    if (!档位表[名称] || this.currentInventory?.[名称]) return null;
+    const 修理师等级 = Math.max(0, Math.floor(Number(this.读取副职业认证运行时('修理师')?.lv || 0)));
+    const 修理师档位 = 修理师等级 >= 9 ? 5 : 修理师等级 >= 7 ? 4 : 修理师等级 >= 5 ? 3 : 修理师等级 >= 3 ? 2 : 修理师等级 >= 1 ? 1 : 0;
+    const 需要档位 = 档位表[名称], 需要等级 = { 1: 1, 2: 3, 3: 5, 4: 7, 5: 9 }[需要档位];
+    return { 名称, 需要档位, 修理师等级, error: 修理师档位 < 需要档位 ? `【${名称}】要 ${需要等级} 级以上的修理师才能做（现在是 ${修理师等级} 级）。` : '' };
+  }
+
   // 魂导器由对应级别的魂导师修（用户 11-19「魂导器的话由对应级别的魂导师修，按造价和修复比例支付代价」）：魂导师等级不低于魂导等级，
   // 不用修理耗材，代价 = 基础价格 × 修复比例（1 − 耐久 ÷ 耐久上限），用该魂导器的默认货币（缺省法定货币）支付。不是魂导器返回 null。
   读取魂导器修理计划(targetName = '') {
@@ -2967,6 +2980,8 @@ class ProfessionUIComponent {
       if (armorTier && armorTier !== tier) return `目标阶位不匹配。`;
     }
     if (cfg.mode === 'repair') {
+      const 修复道具制作 = this.读取修复道具制作计划(targetName.trim());
+      if (修复道具制作) return 修复道具制作.error || null;
       if (targetName.trim() && !this.currentInventory[targetName.trim()]) return '修现存物品必须在背包中。';
       // 神器以上无法外力修复，只能自身温养（用户 11-19）。
       const 修理目标定义 = targetName.trim() ? (this.currentInventory[targetName.trim()] || {}) : {};
@@ -3036,7 +3051,10 @@ class ProfessionUIComponent {
           if (recipe?.mode === 'soul_tool') noteText = recipe.note;
         }
         const 魂导器修理预览 = cfg.mode === 'repair' ? this.读取魂导器修理计划(targetName) : null;
-        if (魂导器修理预览) {
+        const 修复道具预览 = cfg.mode === 'repair' ? this.读取修复道具制作计划(targetName) : null;
+        if (修复道具预览) {
+          noteText = `制作修复道具【${修复道具预览.名称}】（${修复道具预览.需要档位} 档，修理师 ${修复道具预览.修理师等级} 级）`;
+        } else if (魂导器修理预览) {
           noteText = `魂导器修理：${魂导器修理预览.魂导等级} 级魂导器，修复比例 ${Math.round(魂导器修理预览.比例 * 100)}%，代价 ${魂导器修理预览.代价} ${魂导器修理预览.货币}（魂导师 ${魂导器修理预览.魂导师等级} 级）`;
         } else if (cfg.mode === 'repair') {
           const req = this.getRepairRequirement(targetName);
@@ -3511,7 +3529,11 @@ class ProfessionUIComponent {
       patchOps.push(...this.buildInventoryAddPatches(产物名, 物品数据, Number(数据.数量 || 1), Object.keys(批次数据).length > 0));
     });
 
-    if (this.activeMode === 'repair' && 修理成功标记) {
+    const 修复道具制作执行 = this.activeMode === 'repair' && 修理成功标记 ? this.读取修复道具制作计划(targetName) : null;
+    if (修复道具制作执行 && !修复道具制作执行.error) {
+      const 道具定义 = this.查找物品定义(修复道具制作执行.名称)?.定义 || { 分类: '一次性道具', 品质: '普通', 描述: '修理师制作的修复道具。' };
+      patchOps.push(...this.buildInventoryAddPatches(修复道具制作执行.名称, { ...道具定义, 数量: 1 }, 1, false));
+    } else if (this.activeMode === 'repair' && 修理成功标记) {
       const 魂导器修理执行 = this.读取魂导器修理计划(targetName);
       if (魂导器修理执行 && !魂导器修理执行.error && 魂导器修理执行.代价 > 0) {
         patchOps.push({ op: 'replace', path: `${this.activeCharBasePath}/财富/${this.escapeJsonPointer(魂导器修理执行.货币)}`, value: Math.max(0, 魂导器修理执行.资金 - 魂导器修理执行.代价) });
