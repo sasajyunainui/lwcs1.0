@@ -2429,6 +2429,14 @@
     return null;
   }
 
+  // 召唤物的编号由召唤它那一手的编号拼成，召唤物对召唤物出手时事件编号会超过 512 字（11-20 回归 ec3|3|1：541 字被 BIF 拒）。
+  // 超长的压成「前 200 字 + # + 整串哈希」：确定、唯一，同一串总压成同一个。
+  function shortFactEventId(id) {
+    if (typeof id !== 'string' || id.length <= 480) return id;
+    var h1 = 2166136261, h2 = 5381;
+    for (var k = 0; k < id.length; k += 1) { var code = id.charCodeAt(k); h1 = Math.imul(h1 ^ code, 16777619) >>> 0; h2 = (Math.imul(h2, 33) + code) >>> 0; }
+    return id.slice(0, 200) + '#' + h1.toString(36) + h2.toString(36) + ':' + id.length;
+  }
   function atomicFromContributions(canonicalActionId, contributions) {
     var facts = [];
     var untranscribed = [];
@@ -2445,7 +2453,7 @@
         var effectId = typeof c.effectInstanceId === 'string' ? c.effectInstanceId : '';
         var targetId = typeof c.targetId === 'string' ? c.targetId : '';
         if (!effectId || !targetId) {
-          facts.push({ eventId: c.eventId, sourceActionId: c.sourceActionId,
+          facts.push({ eventId: shortFactEventId(c.eventId), sourceActionId: c.sourceActionId,
             outcomeKind: c.outcomeKind, expectedDelta: normZero(c.expectedDelta),
             hitCheckApplicability: 'UNKNOWN' });
           continue;
@@ -2456,7 +2464,7 @@
         var rawP = c.evidence && c.evidence.hitProbability;
         var pFinite = isFiniteNumber(rawP);
         var fact = {
-          eventId: c.eventId,
+          eventId: shortFactEventId(c.eventId),
           sourceActionId: c.sourceActionId,
           outcomeKind: c.outcomeKind,
           expectedDelta: normZero(c.expectedDelta),
@@ -2476,7 +2484,7 @@
         continue;
       }
       facts.push({
-        eventId: c.eventId,
+        eventId: shortFactEventId(c.eventId),
         sourceActionId: c.sourceActionId,
         outcomeKind: c.outcomeKind,
         expectedDelta: normZero(c.expectedDelta),
