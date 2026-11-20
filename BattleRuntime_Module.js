@@ -6398,8 +6398,10 @@
     if (disabled) return '';
     const logs = [];
     naturalRecoveryAtRoundEndProfile(unit).forEach(resource => {
-      if (resource.current >= resource.max) return;
-      writeCombatResource(unit, resource.key, Math.min(resource.max, resource.current + resource.recovery));
+      // 体力自然恢复不超过当前生命（用户 11-20）：生命上限与体力上限同为 vit_max，按数值比；本来就高于生命的不扣，只是不再回。
+      const ceiling = resource.key === 'vit' ? Math.min(resource.max, Math.max(resource.current, previewRuntime.readHp(unit))) : resource.max;
+      if (resource.current >= ceiling) return;
+      writeCombatResource(unit, resource.key, Math.min(ceiling, resource.current + resource.recovery));
       const actual = Math.max(0, Number(unit[resource.key] || 0) - resource.current);
       if (!(actual > 0) || !recordEvents) return;
       writeRoundEndResourceEvent(combatData, unit, label, resource.key, actual, {

@@ -4515,6 +4515,13 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       }
     };
 
+    // 体力自然恢复不超过当前生命（用户 11-20「体力不能超过当前血量」「指的自然恢复」）：生命上限与体力上限同为 vit_max，按数值比；
+    // 本来就高于生命的不扣，只是不再回。
+    const 体力自然恢复后_ACU = (c, 增量) => {
+      const 当前 = Number(c.属性.体力 || 0), 上限 = Number(c.属性.体力上限 || 0);
+      const 顶 = Math.min(上限, Math.max(当前, Number(c.属性.HP ?? 上限)));
+      return Math.min(顶, roundRuntimeGrowthValue_ACU(当前 + Number(增量 || 0)));
+    };
     const applyCharacterActionSegment_ACU = (c, actionMode, segmentDelta, trainedBonus, 角色名 = '', segmentCurrentTick = currentTick) => {
       const safeDelta = Math.max(0, Number(segmentDelta || 0));
       if (!(safeDelta > 0) || !c?.属性) return;
@@ -4571,7 +4578,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
         vitMenRate = 场下平时恢复率;
         const menRate = 场上每tick回合数 * 场上冥想倍数 * (0.0025 + (coreCount >= 2 ? 0.01 : 0));
         c.属性.精神力 = Math.min(c.属性.精神力上限, roundRuntimeGrowthValue_ACU(c.属性.精神力 + c.属性.精神力上限 * menRate * safeDelta));
-        c.属性.体力 = Math.min(c.属性.体力上限, roundRuntimeGrowthValue_ACU(c.属性.体力 + c.属性.体力上限 * vitMenRate * safeDelta));
+        c.属性.体力 = 体力自然恢复后_ACU(c, c.属性.体力上限 * vitMenRate * safeDelta);
         应用伤势恢复到生命值(0.0008);
       } else if (normalizedActionMode === '战斗') {
         spRate = 0;
@@ -4580,13 +4587,13 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
         spRate = 场下睡眠恢复率;
         const sleepRate = 场下睡眠恢复率;
         c.属性.精神力 = Math.min(c.属性.精神力上限, roundRuntimeGrowthValue_ACU(c.属性.精神力 + c.属性.精神力上限 * sleepRate * 精神力恢复比 * safeDelta));
-        c.属性.体力 = Math.min(c.属性.体力上限, roundRuntimeGrowthValue_ACU(c.属性.体力 + c.属性.体力上限 * sleepRate * safeDelta));
+        c.属性.体力 = 体力自然恢复后_ACU(c, c.属性.体力上限 * sleepRate * safeDelta);
         应用伤势恢复到生命值(0.0015);
       } else {
         // 平时、休息：每 tick 5%；训练中不恢复（魂力照旧 1%）。
         if (!训练中) { spRate = 场下平时恢复率; vitMenRate = 场下平时恢复率; }
         c.属性.精神力 = Math.min(c.属性.精神力上限, roundRuntimeGrowthValue_ACU(c.属性.精神力 + c.属性.精神力上限 * vitMenRate * 精神力恢复比 * safeDelta));
-        c.属性.体力 = Math.min(c.属性.体力上限, roundRuntimeGrowthValue_ACU(c.属性.体力 + c.属性.体力上限 * vitMenRate * safeDelta));
+        c.属性.体力 = 体力自然恢复后_ACU(c, c.属性.体力上限 * vitMenRate * safeDelta);
         应用伤势恢复到生命值(0.0004);
       }
 
@@ -4612,7 +4619,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       }
       const 血脉核心 = String(c.血脉之力?.核心 || '').trim();
       if (血脉核心 && 血脉核心 !== '未凝聚' && 血脉核心 !== '无') {
-        c.属性.体力 = Math.min(c.属性.体力上限, roundRuntimeGrowthValue_ACU(c.属性.体力 + c.属性.体力上限 * 0.05 * safeDelta));
+        c.属性.体力 = 体力自然恢复后_ACU(c, c.属性.体力上限 * 0.05 * safeDelta);
         应用伤势恢复到生命值(0.003);
       }
 
