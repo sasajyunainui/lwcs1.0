@@ -2710,7 +2710,15 @@ function 计算内置角色投影等级_V1(角色 = {}, 角色记录 = {}, 快�
   if (投影年龄 < 6) return 0;
   if (快照等级 === null) return 计算内置角色默认修为等级_V1(角色, 投影年龄, 当前tick);
   const 快照tick = Number(快照?.tick);
-  if (!Number.isFinite(快照tick) || Number(当前tick || 0) >= 快照tick) return Math.max(0, Math.floor(快照等级));
+  if (!Number.isFinite(快照tick)) return Math.max(0, Math.floor(快照等级));
+  // 比最近快照晚（11-20：唐舞麟最晚快照 13 岁 28 级，龙王 655～1364 章按时间点构建一直是 28 级）：同往前倒推，按默认修炼曲线
+  // 从快照年龄到当前年龄的增量往后推，不低于快照等级；快照已是神级（≥100）的不推，其余至多 99。
+  if (Number(当前tick || 0) >= 快照tick) {
+    const 快照年龄 = Math.max(0, Number(快照?.年龄 ?? 快照?.角色?.属性?.年龄 ?? 投影年龄) || 投影年龄);
+    if (!(投影年龄 > 快照年龄) || 快照等级 >= 100) return Math.max(0, Math.floor(快照等级));
+    const 增量 = 计算内置角色默认修为等级_V1(角色, 投影年龄, 当前tick) - 计算内置角色默认修为等级_V1(角色, 快照年龄, 快照tick);
+    return Math.max(Math.floor(快照等级), Math.min(99, Math.floor(快照等级 + Math.max(0, 增量))));
+  }
   const 前置快照 = 取内置角色前置等级快照_V1(角色记录, 快照);
   if (前置快照 && Number(当前tick || 0) >= Number(前置快照.tick)) {
     const 前置等级 = 读取内置角色快照等级_V1(前置快照);
