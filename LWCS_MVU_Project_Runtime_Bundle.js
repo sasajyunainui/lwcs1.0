@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:94115b3ecbdee199da8ac5e02fee9614c3cf02f5701d22d012dcb7d010922404|MVU_Schema_Runtime.js:dba2cddc8b314abfa559e4b1aa4dc9c68f357d27a14b9051d109c1475ce665cc|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:1f7a519a850bc170c3da108bfe22614d098b593bc573d8b38a5c0a7bec81aba5 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:b0b01ebec93a39f8e28caa50984085e8bc8ce27bc88797473a08410567608ccd|MVU_Schema_Runtime.js:07eae31da8767db5fce3f9812822d7a5ba9f4763a09edf59614a477913f7f01b|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:1f7a519a850bc170c3da108bfe22614d098b593bc573d8b38a5c0a7bec81aba5 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -14831,6 +14831,7 @@ var 技能正式根字段集合_V1 = new Set([
   '场外冷却至tick',
   '剩余次数',
   '次数恢复至tick',
+  '充能年数',
   '技能掌控度',
   '_效果数组',
   '副作用列表',
@@ -33713,8 +33714,8 @@ function 压缩角色应用物品引用_V1(data = {}) {
     if (!char || typeof char !== 'object' || Array.isArray(char)) return;
     if (char.装备 && typeof char.装备 === 'object' && !Array.isArray(char.装备)) {
       // 道具破坏（11-19）：武器的「装备状态」（损毁）与 耐久上限 也留着。
-      char.装备.武器 = 压缩应用物品记录_V1(char.装备.武器, { 状态字段: ['装备状态', '耐久', '耐久上限', '剩余使用次数', '绑定者', '有效期至tick'] });
-      char.装备.防具 = 压缩应用物品记录_V1(char.装备.防具, { 状态字段: ['装备状态', '耐久', '耐久上限', '绑定者', '有效期至tick'] });
+      char.装备.武器 = 压缩应用物品记录_V1(char.装备.武器, { 状态字段: ['装备状态', '耐久', '耐久上限', '充能至tick', '剩余使用次数', '绑定者', '有效期至tick'] });
+      char.装备.防具 = 压缩应用物品记录_V1(char.装备.防具, { 状态字段: ['装备状态', '耐久', '耐久上限', '充能至tick', '绑定者', '有效期至tick'] });
       char.装备.机甲 = 压缩应用物品记录_V1(char.装备.机甲, { 状态字段: ['等级', '型号', '状态', '装备状态', '品质系数', '耐久', '绑定者', '有效期至tick', '_属性加成', '_温养进度tick'] });
       Object.entries(char.装备.斗铠?.部件 || {}).forEach(([部件名, 部件]) => {
         char.装备.斗铠.部件[部件名] = 压缩应用物品记录_V1(部件, { 状态字段: ['状态', '品质系数', '耐久', '绑定者'] });
@@ -35145,7 +35146,15 @@ function 计算内置角色投影等级_V1(角色 = {}, 角色记录 = {}, 快�
   if (投影年龄 < 6) return 0;
   if (快照等级 === null) return 计算内置角色默认修为等级_V1(角色, 投影年龄, 当前tick);
   const 快照tick = Number(快照?.tick);
-  if (!Number.isFinite(快照tick) || Number(当前tick || 0) >= 快照tick) return Math.max(0, Math.floor(快照等级));
+  if (!Number.isFinite(快照tick)) return Math.max(0, Math.floor(快照等级));
+  // 比最近快照晚（11-20：唐舞麟最晚快照 13 岁 28 级，龙王 655～1364 章按时间点构建一直是 28 级）：同往前倒推，按默认修炼曲线
+  // 从快照年龄到当前年龄的增量往后推，不低于快照等级；快照已是神级（≥100）的不推，其余至多 99。
+  if (Number(当前tick || 0) >= 快照tick) {
+    const 快照年龄 = Math.max(0, Number(快照?.年龄 ?? 快照?.角色?.属性?.年龄 ?? 投影年龄) || 投影年龄);
+    if (!(投影年龄 > 快照年龄) || 快照等级 >= 100) return Math.max(0, Math.floor(快照等级));
+    const 增量 = 计算内置角色默认修为等级_V1(角色, 投影年龄, 当前tick) - 计算内置角色默认修为等级_V1(角色, 快照年龄, 快照tick);
+    return Math.max(Math.floor(快照等级), Math.min(99, Math.floor(快照等级 + Math.max(0, 增量))));
+  }
   const 前置快照 = 取内置角色前置等级快照_V1(角色记录, 快照);
   if (前置快照 && Number(当前tick || 0) >= Number(前置快照.tick)) {
     const 前置等级 = 读取内置角色快照等级_V1(前置快照);

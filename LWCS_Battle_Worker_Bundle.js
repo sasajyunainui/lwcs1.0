@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:94115b3ecbdee199da8ac5e02fee9614c3cf02f5701d22d012dcb7d010922404|MVU_Schema_Runtime.js:dba2cddc8b314abfa559e4b1aa4dc9c68f357d27a14b9051d109c1475ce665cc|BattlePreview_Module.js:f1597a796dcbd1c1df495c8245e7f037f9016e51f7653c88e0abb16773cb8010|BehaviorDecisionPipeline_Module.js:e55d1d0a40ff9a1a3a37cf0f16c94dbd9bafe338489e7af952c1279ca0025977|BattleDecision_Module.js:4cafc4be5f36218fa27b29a07f347aa75cdffc89c238b201b193a8fa34e80b20|BattleRuntime_Module.js:3df6c35b87afa6e76b048d55bd8dbed9ef675407b39c5eedc6f73370dbeb28b7 */
+/* sources-sha256: MVU_Skill_Runtime.js:b0b01ebec93a39f8e28caa50984085e8bc8ce27bc88797473a08410567608ccd|MVU_Schema_Runtime.js:07eae31da8767db5fce3f9812822d7a5ba9f4763a09edf59614a477913f7f01b|BattlePreview_Module.js:6fbc0288bd37c1065bfa7d05b81f81c42396ac6f7bf8f67ab6239c630da46e32|BehaviorDecisionPipeline_Module.js:e55d1d0a40ff9a1a3a37cf0f16c94dbd9bafe338489e7af952c1279ca0025977|BattleDecision_Module.js:ecdb70b09ace2edb6baa613ace0775fda354c068700596f73d482256a6446804|BattleRuntime_Module.js:1e311991adffe082f268f483ce7f3d6a7de12f649082991003af67e07cf5f0a0 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -10310,6 +10310,7 @@ var 技能正式根字段集合_V1 = new Set([
   '场外冷却至tick',
   '剩余次数',
   '次数恢复至tick',
+  '充能年数',
   '技能掌控度',
   '_效果数组',
   '副作用列表',
@@ -29192,8 +29193,8 @@ function 压缩角色应用物品引用_V1(data = {}) {
     if (!char || typeof char !== 'object' || Array.isArray(char)) return;
     if (char.装备 && typeof char.装备 === 'object' && !Array.isArray(char.装备)) {
       // 道具破坏（11-19）：武器的「装备状态」（损毁）与 耐久上限 也留着。
-      char.装备.武器 = 压缩应用物品记录_V1(char.装备.武器, { 状态字段: ['装备状态', '耐久', '耐久上限', '剩余使用次数', '绑定者', '有效期至tick'] });
-      char.装备.防具 = 压缩应用物品记录_V1(char.装备.防具, { 状态字段: ['装备状态', '耐久', '耐久上限', '绑定者', '有效期至tick'] });
+      char.装备.武器 = 压缩应用物品记录_V1(char.装备.武器, { 状态字段: ['装备状态', '耐久', '耐久上限', '充能至tick', '剩余使用次数', '绑定者', '有效期至tick'] });
+      char.装备.防具 = 压缩应用物品记录_V1(char.装备.防具, { 状态字段: ['装备状态', '耐久', '耐久上限', '充能至tick', '绑定者', '有效期至tick'] });
       char.装备.机甲 = 压缩应用物品记录_V1(char.装备.机甲, { 状态字段: ['等级', '型号', '状态', '装备状态', '品质系数', '耐久', '绑定者', '有效期至tick', '_属性加成', '_温养进度tick'] });
       Object.entries(char.装备.斗铠?.部件 || {}).forEach(([部件名, 部件]) => {
         char.装备.斗铠.部件[部件名] = 压缩应用物品记录_V1(部件, { 状态字段: ['状态', '品质系数', '耐久', '绑定者'] });
@@ -30624,7 +30625,15 @@ function 计算内置角色投影等级_V1(角色 = {}, 角色记录 = {}, 快�
   if (投影年龄 < 6) return 0;
   if (快照等级 === null) return 计算内置角色默认修为等级_V1(角色, 投影年龄, 当前tick);
   const 快照tick = Number(快照?.tick);
-  if (!Number.isFinite(快照tick) || Number(当前tick || 0) >= 快照tick) return Math.max(0, Math.floor(快照等级));
+  if (!Number.isFinite(快照tick)) return Math.max(0, Math.floor(快照等级));
+  // 比最近快照晚（11-20：唐舞麟最晚快照 13 岁 28 级，龙王 655～1364 章按时间点构建一直是 28 级）：同往前倒推，按默认修炼曲线
+  // 从快照年龄到当前年龄的增量往后推，不低于快照等级；快照已是神级（≥100）的不推，其余至多 99。
+  if (Number(当前tick || 0) >= 快照tick) {
+    const 快照年龄 = Math.max(0, Number(快照?.年龄 ?? 快照?.角色?.属性?.年龄 ?? 投影年龄) || 投影年龄);
+    if (!(投影年龄 > 快照年龄) || 快照等级 >= 100) return Math.max(0, Math.floor(快照等级));
+    const 增量 = 计算内置角色默认修为等级_V1(角色, 投影年龄, 当前tick) - 计算内置角色默认修为等级_V1(角色, 快照年龄, 快照tick);
+    return Math.max(Math.floor(快照等级), Math.min(99, Math.floor(快照等级 + Math.max(0, 增量))));
+  }
   const 前置快照 = 取内置角色前置等级快照_V1(角色记录, 快照);
   if (前置快照 && Number(当前tick || 0) >= Number(前置快照.tick)) {
     const 前置等级 = 读取内置角色快照等级_V1(前置快照);
@@ -63997,6 +64006,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const attacker = findUnit(worldSnapshot, engagement.sourceActorId);
     const clash = reactor && attacker ? clashOutcome(reactor, declaration, attacker, engagement.incoming, worldSnapshot) : null;
     if (!clash) return { ...input, __engagementResolved: true };
+    // 收招（pullBackChoice）：出手者看到这一下对轰占不到便宜、又收得住就收——迎击照付代价，效果落空（BattleRuntime 同口径）。
+    if (pullBackChoice(attacker, engagement.incoming, reactor, declaration, worldSnapshot)?.pull === true) return { ...input, __engagementResolved: true, __engagementVoidEffects: true };
     if (!(clash.outScale > 0)) return { ...input, __engagementResolved: true, __engagementVoidEffects: true };
     const attackerId = unitId(attacker), resolver = input.hitProbabilityResolver, given = input.damageMultiplierByTarget;
     return { ...input, __engagementResolved: true, ...(clash.shock ? { __engagementShockTargetId: attackerId } : {}),
@@ -112163,6 +112174,30 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   const R20_FEINT_BAIT = Number(root.__LWCS_TUNE__?.FEINT_BAIT ?? 0.4);
   // 资源按之后的场次加价（第 22 题，数值待实测）。
   const R20_FOLLOW_PER_MATCH = Number(root.__LWCS_TUNE__?.FOLLOW_PER_MATCH ?? 1), R20_FOLLOW_MATCH_CAP = 4;
+  // 逼对手花的资源按半份生命（同 BattlePreview FOLLOW_RESOURCE_SHARE）。
+  const R20_FOE_DRAIN_SHARE = 0.5;
+  const R20_MATCH_BUDGET_ON = root.__LWCS_TUNE__?.MATCH_BUDGET !== false, R20_FOE_DRAIN_ON = root.__LWCS_TUNE__?.FOE_DRAIN !== false;
+  // 这一场还剩的资源预算（魂力、精神力各自的份额）：开打时的份额 ÷（剩余场次 + 1）减这场已花的。开打时 = 现在 + 已花（账本 action_cost，
+  // 按行动者名字）。每张桌面（请求）算一次。
+  const r20MatchBudgets = new WeakMap();
+  function r20MatchBudgetLeft(request = {}, actor = {}, remaining = 0) {
+    const table = r20Facts(request);
+    const cached = r20MatchBudgets.get(table);
+    if (cached && cached.actor === actor && cached.remaining === remaining) return cached.left;
+    const name = String(preview.unitName(actor) || '').trim();
+    const ledger = Array.isArray(table.world?.__battleEventLedger) ? table.world.__battleEventLedger : [];
+    const left = { 魂力: 0, 精神力: 0 };
+    for (const resource of ['魂力', '精神力']) {
+      const max = preview.readResourceMax(actor, resource);
+      if (!(max > 0)) continue;
+      const used = ledger.reduce((sum, event) => event?.eventKind === 'action_cost' && String(event?.meta?.resource || '') === resource &&
+        String(event?.actorName || '').trim() === name ? sum + Math.max(0, Number(event?.meta?.amount) || 0) : sum, 0) / max;
+      const start = clamp(preview.readResource(actor, resource) / max, 0, 1) + used;
+      left[resource] = Math.max(0, start / (Math.max(0, remaining) + 1) - used);
+    }
+    r20MatchBudgets.set(table, { actor, remaining, left });
+    return left;
+  }
   const R20_ROUNDS_CAP = 99, R20_ROUNDS_FLOOR = 0.25, R20_HORIZON = 6, R20_RESOURCE_PRICE = 0.15, R20_ROUND_DISCOUNT = 0.85,
     R20_UPKEEP_ROUNDS = 3, R20_CHAIN_LIMIT = 8, R20_WIN_SLOPE = 2,
     R20_OBJECTIVE_WEIGHT = 2, R20_OBSERVE_VALUE = 0.02, R20_ITEM_EFFECT_VALUE = 0.1, R20_ITEM_USE_SHARE = 0.375,
@@ -114146,7 +114181,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const until = new Array(count).fill(Infinity), tick = table.tick.slice(), tickRounds = table.tickRounds.slice(), reflect = table.reflect.slice(), hpMax = table.hpMax.slice();
     const rebuilt = [], hushed = {}, expiring = [], cuts = [];
     let added = [];
-    let spent = 0, outside = 0, seen = 0, regenGain = 0;
+    let spent = 0, outside = 0, seen = 0, regenGain = 0, foeSpent = 0;
+    const spentBy = { 魂力: 0, 精神力: 0 };
     // 对账用（不进估值）: what the sheet read of an answer and of a stance, for checking against what the runtime settles.
     const diag = {};
     for (const id of touched) {
@@ -114264,7 +114300,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       }
       // An answer (REACTION) is priced by r20AnswerPrice below instead (接战链 阶段 2c).
       if (row === actorRow && String(request.actionOpportunity?.role || '').toUpperCase() !== 'REACTION') for (const resource of ['魂力', '精神力']) {
-        spent += Math.max(0, preview.readResource(prior, resource) - preview.readResource(next, resource)) / Math.max(1, preview.readResourceMax(prior, resource));
+        const share = Math.max(0, preview.readResource(prior, resource) - preview.readResource(next, resource)) / Math.max(1, preview.readResourceMax(prior, resource));
+        spent += share;
+        spentBy[resource] += share;
+      }
+      // 逼对手花的资源（用户 11-20「加上」）：这一手让敌方花掉的魂力、精神力份额，接续时下面计价。
+      if (table.sides[row] !== request.actorSide && !preview.isSummonUnit(prior)) for (const resource of ['魂力', '精神力']) {
+        foeSpent += Math.max(0, preview.readResource(prior, resource) - preview.readResource(next, resource)) / Math.max(1, preview.readResourceMax(prior, resource));
       }
       // 冥想（11-17，第 22 题）: what its states will give back over the horizon counts at the price spending costs (R20_RESOURCE_PRICE).
       if (row === actorRow) regenGain += Math.max(0, r20RegenOwed(next) - r20RegenOwed(prior));
@@ -114631,6 +114673,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       // action it spends on the move (BattleRuntime consumeStructuredControlActiveBudget).
       const engagementMode = String(declaration?.engagement?.mode || '').toUpperCase();
       const clash = engagementMode === 'CLASH' && move ? preview.clashOutcome(table.units[actorRow], declaration, source, move, table.world) : null;
+      // 收招（BattlePreview pullBackChoice，11-20 擂台：估值不知道对方会收，擂主每场白迎 6 次）：出手者会收，这一招不落下、迎击落空
+      // （代价照付，上面的结算预览已按落空算）、没有破绽可抓。
+      const attackerPulls = !!clash && preview.pullBackChoice?.(source, move, table.units[actorRow], declaration, table.world)?.pull === true;
       // 接战链 阶段 2d (方案 §11.3): the clash is in time as often as the timing the actor sees lets it be sure
       // (clashTiming confidence; the runtime reads the true agility). Too late, the actor's move comes to nothing and
       // the move lands whole, unguarded: what the actor's move lands on the attacker counts only when it is in time.
@@ -114670,7 +114715,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const priorActor = Number(request.actionOpportunity?.counterPrior || 0), priorSource = Number(request.actionOpportunity?.opponentCounterPrior || 0);
       const catches = preview.counterOpeningProbability(actorNext, source, move, { prior: priorActor, ...(deflect?.unbalance > 0 ? { unbalanced: true } : {}) });
       const strikesBack = shieldRow !== undefined || deflect?.failed ? 0 : actionKind === 'DEFEND' ? (preview.guardHolds(weight, share * r20Soak(actorNext)) ? catches : 0)
-        : declaration?.concede === true ? 0 : actionKind === 'EVADE' ? (declaration?.retreat === true ? 0 : dodge * catches) : clash ? (clash.answered ? clashConfidence * catches : 0) : engagementMode === 'PREEMPT' ? (preempt + (1 - preempt) * softDeflect) * catches
+        : declaration?.concede === true ? 0 : actionKind === 'EVADE' ? (declaration?.retreat === true ? 0 : dodge * catches) : attackerPulls ? 0 : clash ? (clash.answered ? clashConfidence * catches : 0) : engagementMode === 'PREEMPT' ? (preempt + (1 - preempt) * softDeflect) * catches
           : preview.declarationGrantsCounter(declaration || {}) ? 1 : 0;
       const staminaMaximum = preview.readResourceMax(actorNext, '体力'), maximum = Math.max(1, preview.readHpMax(actorNext)), shield = preview.readShield(actorNext) / maximum;
       // 接战链 阶段 2c: what the answer costs, priced by the same function the table's expectation of an answer uses.
@@ -114682,7 +114727,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       // 应对时认输：近身一击收得住就什么也落不下（BattlePreview concedeHoldsBack）；有裁判的比赛里裁判赶得到也落不下（refereeCatchesConcede）。
       const pulled = declaration?.concede === true && move && (preview.concedeHoldsBack?.(source, move, table.units[actorRow]) ||
         preview.refereeCatchesConcede?.(table.world, source, move));
-      const taken = pulled ? 0 : clash ? clashConfidence * clash.theirs * clash.inScale / maximum * r20Soak(actorNext) + (1 - clashConfidence) * hit : hit * share;
+      const taken = pulled || attackerPulls ? 0 : clash ? clashConfidence * clash.theirs * clash.inScale / maximum * r20Soak(actorNext) + (1 - clashConfidence) * hit : hit * share;
       diag.taken = taken; diag.hit = hit; diag.share = share;
       const hpLeft = Math.max(0, preview.readHp(actorNext) - r20Floor(actorNext)) / maximum + shield - taken;
       remaining[actorRow] = Math.max(0, hpLeft);
@@ -114908,9 +114953,19 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const followCarry = Number(follow?.carry || 0) >= 1;
     // 赢家省资源（同上）：对方后面还有人时，赢下这场要带着剩下的资源接着打——花出去的按胜算加价；之后还有团战时至少加一半。
     // 第 22 题（用户 11-17「按后面还剩几场给资源加价」）：之后在赛事里每还有一场，资源再贵 R20_FOLLOW_PER_MATCH 倍，至多 R20_FOLLOW_MATCH_CAP 场。
-    const followKeep = follow ? Math.max(follow.keep ? 0.5 : 0, follow.foeFollow ? r20ExitOutlook(request, table.units[actorRow] || {}).win : 0) +
-      R20_FOLLOW_PER_MATCH * Math.min(R20_FOLLOW_MATCH_CAP, Number(follow.remaining) || 0) : 0;
-    const cost = R20_RESOURCE_PRICE * spent * (1 + (followCarry ? 0 : R20_PROBE_PREMIUM * unseen)) * (spar ? R20_SPAR_PRICE : 1) * (1 + followKeep);
+    const followBase = follow ? Math.max(follow.keep ? 0.5 : 0, follow.foeFollow ? r20ExitOutlook(request, table.units[actorRow] || {}).win : 0) : 0;
+    const followMatches = follow ? R20_FOLLOW_PER_MATCH * Math.min(R20_FOLLOW_MATCH_CAP, Number(follow.remaining) || 0) : 0;
+    const followKeep = followBase + followMatches;
+    // 每场预算（用户 11-20「改成每场预算」）：后面还有 N 场时，这一场的魂力、精神力预算 = 开打时的份额 ÷（N + 1）；预算以内只按
+    // followBase 加价，超出预算的部分再加后续场次的价（followMatches）。开打时 = 现在剩的 + 这场已花的（账本 action_cost）。
+    // 两种资源各算各的（合在一起算，没用的精神力预算会被挪给魂力）。
+    // 校准入口 __LWCS_TUNE__.MATCH_BUDGET = false：不分预算，花的全按后续场次加价（改前的口径）。
+    const budgetLeft = followMatches > 0 && R20_MATCH_BUDGET_ON ? r20MatchBudgetLeft(request, table.units[actorRow], Number(follow.remaining) || 0) : null;
+    const overBudget = budgetLeft ? ['魂力', '精神力'].reduce((sum, resource) => sum + Math.max(0, spentBy[resource] - budgetLeft[resource]), 0) : spent;
+    const cost = R20_RESOURCE_PRICE * (spent * (1 + followBase) + overBudget * followMatches) * (1 + (followCarry ? 0 : R20_PROBE_PREMIUM * unseen)) * (spar ? R20_SPAR_PRICE : 1);
+    // 逼对手花资源（用户 11-20「加上」，原作萧萧逼出薛兵的武魂真身）：有队友接着打这个对手（接续）时，这一手让对手花掉的资源
+    // 按半份生命计（同认输估值 FOLLOW_RESOURCE_SHARE）。
+    const foeDrain = followCarry && R20_FOE_DRAIN_ON ? R20_FOE_DRAIN_SHARE * foeSpent : 0;
     // What it gets back is worth what it would have cost — more when it has fights after this one (followKeep).
     const regen = R20_RESOURCE_PRICE * regenGain * (1 + followKeep);
     // 亮魂环（同上）: any 魂技 lights the rings — the enemy sees how many and how old, and what the spirit does — so against one
@@ -115103,7 +115158,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const terminal = r9v2LinearTerminalValue(preview.evaluateBattleObjectivesCompact(objectiveWorld, table.objectives), own);
         add('objective', objective, `权重 ${R20_OBJECTIVE_WEIGHT} ×（终局 ${r20Num(terminal)} + 进展 ${r20Num(objective / R20_OBJECTIVE_WEIGHT + table.objectiveBase - terminal)} − 原有 ${r20Num(table.objectiveBase)}）`);
       }
-      add('cost', -cost, `单价 ${R20_RESOURCE_PRICE} × 花掉的资源份额 ${r20Num(spent)} ×（1 + 试探溢价 ${followCarry ? 0 : R20_PROBE_PREMIUM} × 未看清 ${r20Num(unseen)}）${spar ? ` × 切磋 ${R20_SPAR_PRICE}` : ''} ×（1 + 后续场次 ${r20Num(followKeep)}）`);
+      add('cost', -cost, `单价 ${R20_RESOURCE_PRICE} ×（花掉的资源份额 ${r20Num(spent)} ×（1 + ${r20Num(followBase)}）+ 超出本场预算 ${r20Num(overBudget)} × 后续场次 ${r20Num(followMatches)}）×（1 + 试探溢价 ${followCarry ? 0 : R20_PROBE_PREMIUM} × 未看清 ${r20Num(unseen)}）${spar ? ` × 切磋 ${R20_SPAR_PRICE}` : ''}`);
+      if (foeDrain) add('foeDrain', foeDrain, `接续：逼对手花掉的资源份额 ${r20Num(foeSpent)} × ${R20_FOE_DRAIN_SHARE}`);
       add('regen', regen, `单价 ${R20_RESOURCE_PRICE} × 回复份额 ${r20Num(regenGain)} ×（1 + 后续场次 ${r20Num(followKeep)}）`);
       add('reveal', -reveal, `底牌规模 ${r20Num(reveal ? revealScale() : 0)} × min(${R20_REVEAL_CAP} × 收益 ${r20Num(gain)}, 半基数 ${r20Num(revealHalf)} × 警惕 ${r20Num(wary)} × 收益 + 半基数 × 对方学到 ${r20Num(learn)} × min(收益, 招式优势 ${r20Num(learnEdge)}))`);
       add('info', info, `基数 ${R20_REVEAL_BASE} × 看清程度变化 × 招式优势 = ${r20Num(diag.infoRaw ?? info)} × 未定胜负 4·${r20Num(diag.infoOdds ?? 0.5)}·(1−${r20Num(diag.infoOdds ?? 0.5)})`);
@@ -115121,7 +115177,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         .slice(0, 4).map(entry => ({ id: table.ids[entry.row], side: table.sides[entry.row] === own ? 'own' : 'foe', time: entry.time }));
       trace.unseen = Number(unseen.toFixed(3)); trace.wary = Number(wary.toFixed(3));
     }
-    return { value: race + tempo + granted + objective + leave + stock + info + regen + feint - cost - fusionCost - asset - restraint - reveal - idleStance, idleStance, race, tempo, granted, objective, leave, stock, info, regen, feint, cost, fusionCost, asset, restraint, reveal, revealWary, revealLearn, diag, counter, rebuilt: rebuilt.length, added: added.length, outside,
+    return { value: race + tempo + granted + objective + leave + stock + info + regen + feint + foeDrain - cost - fusionCost - asset - restraint - reveal - idleStance, idleStance, race, tempo, granted, objective, leave, stock, info, regen, feint, foeDrain, cost, fusionCost, asset, restraint, reveal, revealWary, revealLearn, diag, counter, rebuilt: rebuilt.length, added: added.length, outside,
       seen: seen + added.length + Number(granted !== 0) + Number(objective !== 0) + Number(leave !== 0) };
   }
 
@@ -121419,6 +121475,26 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 位移重做: 瞬移 / 换位瞬间发动，只含位移的技能前摇按 0（BattlePreview isInstantPositionSkill）。
     previewRuntime.normalizeInstantPositionWindup(merged);
     return merged;
+  }
+
+  // 装备技能充能（用户 11-20「加」，天女斗篷「每使用一次，都需要经过一年的充能」）：技能带「充能年数」的，记下它在哪个装备槽
+  // （__充能槽位，放出时 BattleRuntime 在该装备上记 充能至tick，随装备写回存档）；装备的 充能至tick 还没到，这场它不能用
+  // （__战斗禁用，BattleDecision collectSkills 跳过）。一场之内的次数走技能的 触发限制（每战 1 次）。
+  const EQUIPMENT_CHARGE_TICKS_PER_YEAR = 365 * 144;
+  function prepareEquipmentCharges(combatData = {}) {
+    const tick = Math.max(0, Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0) || 0);
+    listCombatUnits(combatData).forEach(unit => {
+      const equipment = unit?.装备;
+      if (!equipment || typeof equipment !== 'object' || Array.isArray(equipment)) return;
+      Object.entries(equipment).forEach(([slot, item]) => {
+        if (!item || typeof item !== 'object' || !item.装备技能 || typeof item.装备技能 !== 'object') return;
+        if (!Object.values(item.装备技能).some(skill => Number(skill?.充能年数) > 0)) return;
+        const charging = Number(item.充能至tick || 0) > tick;
+        item.装备技能 = Object.fromEntries(Object.entries(item.装备技能).map(([name, skill]) => [name,
+          !skill || typeof skill !== 'object' || !(Number(skill.充能年数) > 0) ? skill
+            : { ...skill, __充能槽位: slot, ...(charging ? { __战斗禁用: true } : {}) }]));
+      });
+    });
   }
 
   function prepareCombatData(combatData = {}, resolveCharacter = null) {
@@ -129922,6 +129998,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const spentHere = actionEvent.__triggerLimitSpent ||= new Set(), skillKey = previewRuntime.activeTriggerLimitKey(declaration.skill, '技能');
         if (!spentHere.has(skillKey)) { spentHere.add(skillKey); previewRuntime.triggerLimitAllowed(actor, declaration.skill.触发限制, skillKey, combatData?.回合, true); }
       }
+      // 装备技能充能（prepareEquipmentCharges）：放出就在那件装备上记 充能至tick（当前 + 充能年数 × 一年），随装备写回存档。
+      if (actionKind === 'RELEASE_SKILL' && declaration?.skill?.__充能槽位 && Number(declaration.skill.充能年数) > 0 && skillEffectIndex === 0 && !conditionalMeta?.conditionalDepth) {
+        const item = actor?.装备?.[declaration.skill.__充能槽位];
+        if (item && typeof item === 'object') {
+          const tick = Math.max(0, Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0) || 0);
+          item.充能至tick = Math.floor(tick + Number(declaration.skill.充能年数) * EQUIPMENT_CHARGE_TICKS_PER_YEAR);
+        }
+      }
       // 魂导器弹药（S80-B）：带 __魂导器槽位 的技能（BattleDecision soulToolSkillView）放一次扣装配件一发，随装备写回存档。
       if (actionKind === 'RELEASE_SKILL' && declaration?.skill?.__魂导器槽位 && skillEffectIndex === 0 && !conditionalMeta?.conditionalDepth) {
         const spentHere = actionEvent.__triggerLimitSpent ||= new Set();
@@ -134377,6 +134461,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     if (input?.referee && typeof input.referee === 'object') combatData.裁判 = cloneValue(input.referee);
     normalizeLatestBattleRuntime(combatData);
+    // 装备技能充能：每次执行都按装备上的 充能至tick 重标（可重复执行）。
+    prepareEquipmentCharges(combatData);
     // 接战链 阶段三: the referee as a whole character outside both sides (a role given whole, or a level).
     prepareBattleReferee(combatData);
     performanceTrace('runtime-normalized', {

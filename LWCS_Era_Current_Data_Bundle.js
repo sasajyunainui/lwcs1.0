@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: CharacterLibrary.js:955726aca0ab36b3abcd1369c8fbedcb42ac3965c6d34b4764c87068eec88908|ItemLibrary.js:dd6606f60526d3c6a4f6bf8f1cc726c4b65df4421ea561d0563e5a50e5812289|FactionLibrary.js:255b37b457bfca7deb43134747c9165b31dded4ad76838ba20c369eaee318200|LocationLibrary.js:2846d5768127291aa960977844bb4601e2a3dc5a47277beb72655a0788fc5a72|timeline.js:26b59eba2d288d6ce89b4e1fa60d9ea3c39ffec882d6deaccf2c8b20316ac35d */
+/* sources-sha256: CharacterLibrary.js:955726aca0ab36b3abcd1369c8fbedcb42ac3965c6d34b4764c87068eec88908|ItemLibrary.js:7a2028a20822c9eea6f97d2bae5972a668597166015acf846fa117d23e915f16|FactionLibrary.js:255b37b457bfca7deb43134747c9165b31dded4ad76838ba20c369eaee318200|LocationLibrary.js:2846d5768127291aa960977844bb4601e2a3dc5a47277beb72655a0788fc5a72|timeline.js:26b59eba2d288d6ce89b4e1fa60d9ea3c39ffec882d6deaccf2c8b20316ac35d */
 ;
 /* source: CharacterLibrary.js */
 !(function () {
@@ -35495,25 +35495,6 @@
 
   const 内置物品库 = {
   "近战武器": {
-    "魂导匕首": {
-      "品质": "稀有",
-      "描述": "漆黑如墨的魂导器匕首，并非武魂，而是持于双手的一对魂导器。腾腾借其近身突刺，配合影分身从背后扑向对手两侧。",
-      "魂导等级": 5,
-      "基础价格": 1500000,
-      "默认货币": "联邦币",
-      "使用效果": [
-        {
-          "原型": "伤害结算",
-          "目标": "单体",
-          "威力倍率": 150,
-          "对应等级": 59,
-          "伤害类型": "近身攻击",
-          "防御穿透": 10
-        }
-      ],
-      "基础使用次数": 10,
-      "装备槽位": "武器"
-    },
     "黑级机甲巨锤": {
       "品质": "史诗",
       "描述": "黑级机甲的一对实心稀有金属巨锤，每柄长约五米、锤头直径约两米，重达五千斤以上，原为机甲武器；机甲卖出后唐舞麟仍留下了这对巨锤。由魂师操控机甲挥动，在金龙血脉增幅下一锤足以把重装对手砸进比赛台。",
@@ -37730,6 +37711,8 @@
           "魂技名": "天女光罩",
           "画面描述": "透明斗篷覆身，星光被弹开，斗篷化为光罩将持有者护在其中。",
           "承载方式": "直接生效",
+          "触发限制": {"周期": "每战", "次数": 1},
+          "充能年数": 1,
           "消耗": "魂力:50000",
           "前摇": 8,
           "_效果数组": [
