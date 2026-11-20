@@ -2657,8 +2657,15 @@
   // own) ÷ own (a move of no windup inside a window that is not shut: sure) — PREEMPT_SURE_MARGIN or more to spare counts
   // as sure (1), none as an even chance (0.5), PREEMPT_SURE_MARGIN or more short as hopeless (0), linear between; as
   // preemptTiming does for a preemption.
+  // 应对时放魂技前摇打折（用户 11-20 按推荐：应对与反击窗口里魂技前摇按六成判断；BattleDecision REACTION_CAST_SHARE 同一常数）：
+  // 拿魂技对轰、抢先也是应对时放魂技，计时按打折后的前摇（此前只有防御类应对打折，对轰、抢先按全前摇，原作复现里对轰缺口 20 步）。
+  const REACTION_CAST_SHARE = Number(root.__LWCS_TUNE__?.REACTION_CAST_SHARE ?? 0.6);
+  const answerOwnWindup = (reactor, declaration) => {
+    const full = actionWindup(reactor, declaration);
+    return String(declaration?.actionKind || '').trim().toUpperCase() === 'RELEASE_SKILL' ? full * REACTION_CAST_SHARE : full;
+  };
   function clashTiming(attacker = {}, incomingDeclaration = {}, reactor = {}, declaration = {}, options = {}) {
-    const window = clashWindupBudget(attacker, incomingDeclaration, reactor, options), own = actionWindup(reactor, declaration);
+    const window = clashWindupBudget(attacker, incomingDeclaration, reactor, options), own = answerOwnWindup(reactor, declaration);
     // 晚出手（CLASH_LATE_LIMIT）以内也算对上：把握按「晚到上限还剩多少余地」算，即余地整体右移 CLASH_LATE_LIMIT。
     const late = own > 0 ? clamp((own - window) / own, 0, 1) : 0;
     const margin = own > 0 ? (window - own) / own + CLASH_LATE_LIMIT : window >= 0 ? Infinity : -Infinity;
@@ -26334,7 +26341,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // behind as hopeless (0), linear between.
   const PREEMPT_SURE_MARGIN = 0.15;
   function preemptTiming(reactor = {}, declaration = {}, attacker = {}, incomingDeclaration = {}) {
-    const own = actionWindup(reactor, declaration);
+    const own = answerOwnWindup(reactor, declaration);
     const theirs = Math.min(CONTINUOUS_ACTION_BUDGET, answerWindup(attacker, incomingDeclaration, reactor));
     const ownAgility = Math.max(0, Number(naturalActionOrderProfile(reactor).effectiveAgility) || 0);
     const theirAgility = Math.max(0, Number(naturalActionOrderProfile(attacker).effectiveAgility) || 0);
