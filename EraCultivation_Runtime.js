@@ -573,6 +573,9 @@
     return { totalGrowth, coresCompleted, levelsAdvanced, elapsed, remaining };
   }
 
+  // 逐日模拟的检查点（11-20：库角色按时间点往后推等级要算两个年龄，每次都从 6 岁逐日模拟，20 岁 0.4 秒、60 岁 1.5 秒）。
+  // 结果只取决于天赋、底子波动、时代与时代混合比例：同一组参数模拟到过的年龄存一份状态，下次从不超过目标年龄的最近一份接着算。
+  const initialLevelCheckpoints = new Map();
   function estimateInitialLevel(options = {}) {
     const targetAge = Math.max(0, finite(options.age, 6));
     if (targetAge < Number(PARAMETERS.meta.startAge || 6)) return 0;
@@ -603,6 +606,11 @@
       魂核: { 核心: { 数量: 0, 进度: 0 } },
     };
     if (targetAge <= char.属性.年龄 + 1e-9) return initialLevel;
+    const blendNow = resolveBlend(options.currentTick, {});
+    const checkpointKey = [talent, variation.toFixed(6), era, blendNow ? `${blendNow.current}|${blendNow.zjdl}` : '-'].join('|');
+    const checkpoints = initialLevelCheckpoints.get(checkpointKey) || [];
+    const resume = checkpoints.filter(point => point.age <= targetAge + 1e-9).reduce((best, point) => !best || point.age > best.age ? point : best, null);
+    if (resume) Object.assign(char, JSON.parse(resume.state));
     let remainingDays = (targetAge - char.属性.年龄) * Number(PARAMETERS.meta.yearDays || 360);
     while (remainingDays > 1e-9) {
       const days = Math.min(1, remainingDays);
@@ -635,6 +643,12 @@
       advanceNaturalLevel(char, { cultivationEra: era });
       char.属性.年龄 += days / 720;
       remainingDays -= days;
+    }
+    if (!resume || resume.age < char.属性.年龄 - 1e-9) {
+      checkpoints.push({ age: char.属性.年龄, state: JSON.stringify(char) });
+      if (checkpoints.length > 64) checkpoints.splice(0, checkpoints.length - 64);
+      initialLevelCheckpoints.set(checkpointKey, checkpoints);
+      if (initialLevelCheckpoints.size > 256) initialLevelCheckpoints.delete(initialLevelCheckpoints.keys().next().value);
     }
     advanceNaturalLevel(char, { cultivationEra: era });
     const level = finite(char.属性.等级, 1);
