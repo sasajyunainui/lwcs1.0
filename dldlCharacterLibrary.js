@@ -7593,6 +7593,13 @@ const 内置角色库_C级 = {
     开场节点: 内置角色库.开场节点,
     角色: Object.assign({}, 内置角色库.角色, 内置角色库_C级.角色),
   };
+  // C 级配角的成长技能模板（C级角色成长技能模板，51 人 91 条）原先只定义、没挂到角色记录上，读档从来用不到（11-20 补库查出：
+  // 唐虎第六魂技、火无双、不乐等全是占位）。记录自己没写模板的，挂上这张表里的。
+  Object.entries(C级角色成长技能模板).forEach(([名字, 模板列表]) => {
+    const 记录 = 斗罗角色库.角色[名字];
+    if (!记录 || (Array.isArray(记录.成长技能模板) && 记录.成长技能模板.length)) return;
+    斗罗角色库.角色[名字] = { ...记录, 成长技能模板: 模板列表 };
+  });
 
   if (typeof globalThis !== 'undefined') {
     globalThis.__DLDL_CHARACTER_LIBRARY__ = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compileCharacterLibrary(斗罗角色库, 'dldl');
