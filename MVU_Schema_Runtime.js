@@ -4557,10 +4557,15 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       let spRate = 0.01;
       let vitMenRate = 0;
 
+      // 场上场下恢复统一（用户 11-20「提高场下恢复，训练轮数按天封顶」「一回合算一分钟吧」）：一回合 = 1 分钟、1 tick = 10 分钟 = 10 回合；
+      // 场上自然恢复每回合 0.5%（BattlePreview naturalRecoveryRatios），场下平时、休息同为每 tick 5%，睡眠 7.5%；冥想按场上冥想 8 倍（魂力、
+      // 精神力随魂核加），体力 5%。训练是发力，期间不恢复，轮数按天封顶（见下）。之前：平时魂力 1%、精神力体力 0，睡眠 1%，冥想魂力 5%～40%。
+      const 场下平时恢复率 = 0.05, 场下睡眠恢复率 = 0.075, 场上每tick回合数 = 10, 场上冥想倍数 = 8;
+      const 训练中 = /训练/.test(normalizedActionMode);
       if (normalizedActionMode === '冥想') {
-        spRate = coreCount === 0 ? 0.05 : coreCount === 1 ? 0.2 : coreCount === 2 ? 0.3 : 0.4;
-        vitMenRate = 0.005;
-        const menRate = 0.008;
+        spRate = 场上每tick回合数 * 场上冥想倍数 * (0.005 + (coreCount >= 1 ? 0.01 : 0) + (coreCount >= 3 ? 0.01 : 0));
+        vitMenRate = 场下平时恢复率;
+        const menRate = 场上每tick回合数 * 场上冥想倍数 * (0.005 + (coreCount >= 2 ? 0.01 : 0));
         c.属性.精神力 = Math.min(c.属性.精神力上限, roundRuntimeGrowthValue_ACU(c.属性.精神力 + c.属性.精神力上限 * menRate * safeDelta));
         c.属性.体力 = Math.min(c.属性.体力上限, roundRuntimeGrowthValue_ACU(c.属性.体力 + c.属性.体力上限 * vitMenRate * safeDelta));
         应用伤势恢复到生命值(0.0008);
@@ -4568,12 +4573,14 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
         spRate = 0;
         vitMenRate = 0;
       } else if (normalizedActionMode === '睡眠') {
-        spRate = 0.01;
-        const sleepRate = 0.01;
+        spRate = 场下睡眠恢复率;
+        const sleepRate = 场下睡眠恢复率;
         c.属性.精神力 = Math.min(c.属性.精神力上限, roundRuntimeGrowthValue_ACU(c.属性.精神力 + c.属性.精神力上限 * sleepRate * safeDelta));
         c.属性.体力 = Math.min(c.属性.体力上限, roundRuntimeGrowthValue_ACU(c.属性.体力 + c.属性.体力上限 * sleepRate * safeDelta));
         应用伤势恢复到生命值(0.0015);
       } else {
+        // 平时、休息：每 tick 5%；训练中不恢复（魂力照旧 1%）。
+        if (!训练中) { spRate = 场下平时恢复率; vitMenRate = 场下平时恢复率; }
         c.属性.精神力 = Math.min(c.属性.精神力上限, roundRuntimeGrowthValue_ACU(c.属性.精神力 + c.属性.精神力上限 * vitMenRate * safeDelta));
         c.属性.体力 = Math.min(c.属性.体力上限, roundRuntimeGrowthValue_ACU(c.属性.体力 + c.属性.体力上限 * vitMenRate * safeDelta));
         应用伤势恢复到生命值(0.0004);
@@ -4630,11 +4637,24 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
         }
       }
 
+      // 训练每天封顶（场下恢复提到每 tick 5% 后，体力、精神力不再卡住训练）：按旧规则一天能持续练到的轮数——肉体训练没血脉核心 2 轮、
+      // 有血脉核心 16 轮（旧规则下血脉核心每 tick 回 5% 体力，几乎每小时能练），精神训练 2 轮。计数记在 属性._训练日计数 { 日, 肉体, 精神 }，
+      // 只在训练时写。修炼曲线按此不变。
+      const 训练日 = Math.floor(segmentTick / 144);
+      const 训练计数 = () => {
+        const 旧 = c.属性._训练日计数;
+        if (!旧 || typeof 旧 !== 'object' || Number(旧.日) !== 训练日) c.属性._训练日计数 = { 日: 训练日, 肉体: 0, 精神: 0 };
+        return c.属性._训练日计数;
+      };
+      const 有血脉核心 = (() => { const 核心 = String(c.血脉之力?.核心 || '').trim(); return !!核心 && 核心 !== '未凝聚' && 核心 !== '无'; })();
+      const 肉体训练日上限 = 有血脉核心 ? 16 : 2, 精神训练日上限 = 2;
       if (normalizedActionMode === '肉体训练') {
         const cycles = Math.floor(safeDelta / 6);
         let actualCycles = 0;
         for (let i = 0; i < cycles; i++) {
+          if (训练计数().肉体 >= 肉体训练日上限) break;
           if (c.属性.体力 >= c.属性.体力上限 * 0.3) {
+            训练计数().肉体 += 1;
             c.属性.体力 -= c.属性.体力上限 * 0.3;
             actualCycles++;
           } else break;
@@ -4652,7 +4672,9 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
         const cycles = Math.floor(safeDelta / 6);
         let actualCycles = 0;
         for (let i = 0; i < cycles; i++) {
+          if (训练计数().精神 >= 精神训练日上限) break;
           if (c.属性.精神力 > c.属性.精神力上限 * 0.1) {
+            训练计数().精神 += 1;
             c.属性.精神力 -= c.属性.精神力 * 0.8;
             actualCycles++;
           } else break;

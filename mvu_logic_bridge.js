@@ -7423,8 +7423,10 @@
     });
   }
 
-  // 子场之间「休息一分钟」（用户「3 + 小幅恢复」）：这一场上过场的角色魂力、精神力、体力各回上限的 5%，生命不回。
+  // 子场之间「休息一分钟」（用户「3 + 小幅恢复」）：这一场上过场的角色魂力、精神力、体力按场下平时恢复走一分钟——每 tick（10 分钟）5%，
+  // 一分钟 0.5%（11-20 场上场下恢复统一；之前一律 5%），生命不回。
   // 生命、资源与未到期状态本来就随战斗写回角色存档，下一子场开战时从存档展开，自然带入。
+  const 子场休息分钟 = 1, 场下平时每分钟恢复 = 0.005;
   function 子场休整恢复_桥接(数据根 = {}) {
     const 参战者 = 数据根?.world?.战斗?.参战者 || {};
     [...(参战者.team_player || []), ...(参战者.team_enemy || [])].forEach(单位 => {
@@ -7432,7 +7434,7 @@
       if (!属性 || typeof 属性 !== 'object') return;
       [['魂力', '魂力上限'], ['精神力', '精神力上限'], ['体力', '体力上限']].forEach(([当前键, 上限键]) => {
         const 上限 = toNumber(属性[上限键], 0);
-        if (上限 > 0) 属性[当前键] = Math.min(上限, Math.round(toNumber(属性[当前键], 0) + 上限 * 0.05));
+        if (上限 > 0) 属性[当前键] = Math.min(上限, Math.round(toNumber(属性[当前键], 0) + 上限 * 子场休息分钟 * 场下平时每分钟恢复));
       });
     });
   }
@@ -27581,6 +27583,21 @@ ${播报文本}
       path: '/world/战斗',
       value: compactCombatData,
     }];
+    // 战斗时长计入世界时间（用户 11-20「一回合算一分钟吧」）：一回合 1 分钟 = 1/10 tick（1 tick = 10 分钟），按这次新打的回合数推进；
+    // 同一场分几次写回时只算新增的回合。结算起点一并推到新时间：战斗这段不按日常结算恢复（MVU「战斗」模式本就全为 0，场上恢复战斗里已算）。
+    {
+      const 旧战斗 = deepGet(currentRoot, ['world', '战斗'], null);
+      const 已结回合 = 旧战斗 && 旧战斗.进行中 === true ? Math.max(0, toNumber(旧战斗.回合, 0)) : 0;
+      const 新增回合 = Math.max(0, toNumber(finalSnapshot.回合, 0) - 已结回合);
+      const 当前tick = toNumber(deepGet(currentRoot, ['world', '时间', 'tick'], NaN), NaN);
+      if (新增回合 > 0 && Number.isFinite(当前tick)) {
+        const 新tick = Math.round((当前tick + 新增回合 / 10) * 10) / 10;
+        if (新tick > 当前tick) {
+          patchOps.push({ op: 'replace', path: '/world/时间/tick', value: 新tick });
+          patchOps.push({ op: deepGet(currentRoot, ['world', '时间', '_上次结算tick'], undefined) === undefined ? 'add' : 'replace', path: '/world/时间/_上次结算tick', value: 新tick });
+        }
+      }
+    }
     const createdByOwner = new Map();
     (Array.isArray(createdInventoryAssets) ? createdInventoryAssets : []).forEach(({ ownerId, assetId }) => {
       if (!ownerId || !assetId) return;
