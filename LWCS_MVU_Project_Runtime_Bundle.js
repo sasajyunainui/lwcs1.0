@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:94115b3ecbdee199da8ac5e02fee9614c3cf02f5701d22d012dcb7d010922404|MVU_Schema_Runtime.js:5528e4ecc9c8fe744473f2591af9ab4326d6fe88b30a3e1d56a2634e51a81699|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:1f7a519a850bc170c3da108bfe22614d098b593bc573d8b38a5c0a7bec81aba5 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:b0d9fd38d2628a983fe267ac8abd905be3f76d49274d9c5ce7cd8ce432232a47|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:94115b3ecbdee199da8ac5e02fee9614c3cf02f5701d22d012dcb7d010922404|MVU_Schema_Runtime.js:dba2cddc8b314abfa559e4b1aa4dc9c68f357d27a14b9051d109c1475ce665cc|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:1f7a519a850bc170c3da108bfe22614d098b593bc573d8b38a5c0a7bec81aba5 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -33471,6 +33471,8 @@ function 计算装备属性加成_V1(装备 = {}, 角色 = {}) {
 
 function 计算装备属性加成未缩放_V1(装备 = {}, 角色 = {}) {
   const 结果 = {};
+  // 损毁的装备不给加成（道具破坏 11-19：战中打坏的兵器、魂导器记「损毁」，修好或神器温养回满后恢复）。
+  if (/损毁/.test(String(装备?.装备状态 || ''))) return 结果;
   const 分类 = String(装备?.物品分类 || 装备?.分类 || '').trim();
   const 品质 = 规范化物品经济品质_V1(装备?.品质 || 装备?.品阶 || 装备?.类型 || '普通', 装备?.名称 || '', 分类);
   const 是神器装备 = 判断神器品质_V1(品质);
@@ -33710,8 +33712,9 @@ function 压缩角色应用物品引用_V1(data = {}) {
   Object.values(data?.char || {}).forEach(char => {
     if (!char || typeof char !== 'object' || Array.isArray(char)) return;
     if (char.装备 && typeof char.装备 === 'object' && !Array.isArray(char.装备)) {
-      char.装备.武器 = 压缩应用物品记录_V1(char.装备.武器, { 状态字段: ['耐久', '剩余使用次数', '绑定者', '有效期至tick'] });
-      char.装备.防具 = 压缩应用物品记录_V1(char.装备.防具, { 状态字段: ['装备状态', '耐久', '绑定者', '有效期至tick'] });
+      // 道具破坏（11-19）：武器的「装备状态」（损毁）与 耐久上限 也留着。
+      char.装备.武器 = 压缩应用物品记录_V1(char.装备.武器, { 状态字段: ['装备状态', '耐久', '耐久上限', '剩余使用次数', '绑定者', '有效期至tick'] });
+      char.装备.防具 = 压缩应用物品记录_V1(char.装备.防具, { 状态字段: ['装备状态', '耐久', '耐久上限', '绑定者', '有效期至tick'] });
       char.装备.机甲 = 压缩应用物品记录_V1(char.装备.机甲, { 状态字段: ['等级', '型号', '状态', '装备状态', '品质系数', '耐久', '绑定者', '有效期至tick', '_属性加成', '_温养进度tick'] });
       Object.entries(char.装备.斗铠?.部件 || {}).forEach(([部件名, 部件]) => {
         char.装备.斗铠.部件[部件名] = 压缩应用物品记录_V1(部件, { 状态字段: ['状态', '品质系数', '耐久', '绑定者'] });
@@ -36947,6 +36950,19 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       }
     };
 
+    // 体力自然恢复不超过当前生命（用户 11-20「体力不能超过当前血量」「指的自然恢复」）：生命上限与体力上限同为 vit_max，按数值比；
+    // 本来就高于生命的不扣，只是不再回。
+    // 精神力自然恢复最多回到 90%，只有睡觉能回满（用户 11-20）；本来高于的不扣。
+    const 精神力自然恢复后_ACU = (c, 增量, 可回满 = false) => {
+      const 当前 = Number(c.属性.精神力 || 0), 上限 = Number(c.属性.精神力上限 || 0);
+      const 顶 = 可回满 ? 上限 : Math.min(上限, Math.max(当前, 上限 * 0.9));
+      return Math.min(顶, roundRuntimeGrowthValue_ACU(当前 + Number(增量 || 0)));
+    };
+    const 体力自然恢复后_ACU = (c, 增量) => {
+      const 当前 = Number(c.属性.体力 || 0), 上限 = Number(c.属性.体力上限 || 0);
+      const 顶 = Math.min(上限, Math.max(当前, Number(c.属性.HP ?? 上限)));
+      return Math.min(顶, roundRuntimeGrowthValue_ACU(当前 + Number(增量 || 0)));
+    };
     const applyCharacterActionSegment_ACU = (c, actionMode, segmentDelta, trainedBonus, 角色名 = '', segmentCurrentTick = currentTick) => {
       const safeDelta = Math.max(0, Number(segmentDelta || 0));
       if (!(safeDelta > 0) || !c?.属性) return;
@@ -36992,34 +37008,60 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       let spRate = 0.01;
       let vitMenRate = 0;
 
+      // 场上场下恢复统一（用户 11-20「提高场下恢复，训练轮数按天封顶」「一回合算一分钟吧」）：一回合 = 1 分钟、1 tick = 10 分钟 = 10 回合；
+      // 场上自然恢复每回合 0.5%（BattlePreview naturalRecoveryRatios），场下平时、休息同为每 tick 5%，睡眠 7.5%；冥想按场上冥想 8 倍（魂力、
+      // 精神力随魂核加），体力 5%。训练是发力，期间不恢复，轮数按天封顶（见下）。之前：平时魂力 1%、精神力体力 0，睡眠 1%，冥想魂力 5%～40%。
+      // 无魂核时 魂力 = 体力 > 精神力（用户 11-20），精神力取一半（同场上 BattlePreview naturalRecoveryRatios）。
+      const 场下平时恢复率 = 0.05, 场下睡眠恢复率 = 0.075, 场上每tick回合数 = 10, 场上冥想倍数 = 8, 精神力恢复比 = 0.5;
+      const 训练中 = /训练/.test(normalizedActionMode);
       if (normalizedActionMode === '冥想') {
-        spRate = coreCount === 0 ? 0.05 : coreCount === 1 ? 0.2 : coreCount === 2 ? 0.3 : 0.4;
-        vitMenRate = 0.005;
-        const menRate = 0.008;
-        c.属性.精神力 = Math.min(c.属性.精神力上限, roundRuntimeGrowthValue_ACU(c.属性.精神力 + c.属性.精神力上限 * menRate * safeDelta));
-        c.属性.体力 = Math.min(c.属性.体力上限, roundRuntimeGrowthValue_ACU(c.属性.体力 + c.属性.体力上限 * vitMenRate * safeDelta));
+        spRate = 场上每tick回合数 * 场上冥想倍数 * (0.005 + (coreCount >= 1 ? 0.01 : 0) + (coreCount >= 3 ? 0.01 : 0));
+        vitMenRate = 场下平时恢复率;
+        const menRate = 场上每tick回合数 * 场上冥想倍数 * (0.0025 + (coreCount >= 2 ? 0.01 : 0));
+        c.属性.精神力 = 精神力自然恢复后_ACU(c, c.属性.精神力上限 * menRate * safeDelta);
+        c.属性.体力 = 体力自然恢复后_ACU(c, c.属性.体力上限 * vitMenRate * safeDelta);
         应用伤势恢复到生命值(0.0008);
       } else if (normalizedActionMode === '战斗') {
         spRate = 0;
         vitMenRate = 0;
       } else if (normalizedActionMode === '睡眠') {
-        spRate = 0.01;
-        const sleepRate = 0.01;
-        c.属性.精神力 = Math.min(c.属性.精神力上限, roundRuntimeGrowthValue_ACU(c.属性.精神力 + c.属性.精神力上限 * sleepRate * safeDelta));
-        c.属性.体力 = Math.min(c.属性.体力上限, roundRuntimeGrowthValue_ACU(c.属性.体力 + c.属性.体力上限 * sleepRate * safeDelta));
+        spRate = 场下睡眠恢复率;
+        const sleepRate = 场下睡眠恢复率;
+        c.属性.精神力 = 精神力自然恢复后_ACU(c, c.属性.精神力上限 * sleepRate * 精神力恢复比 * safeDelta, true);
+        c.属性.体力 = 体力自然恢复后_ACU(c, c.属性.体力上限 * sleepRate * safeDelta);
         应用伤势恢复到生命值(0.0015);
       } else {
-        c.属性.精神力 = Math.min(c.属性.精神力上限, roundRuntimeGrowthValue_ACU(c.属性.精神力 + c.属性.精神力上限 * vitMenRate * safeDelta));
-        c.属性.体力 = Math.min(c.属性.体力上限, roundRuntimeGrowthValue_ACU(c.属性.体力 + c.属性.体力上限 * vitMenRate * safeDelta));
+        // 平时、休息：每 tick 5%；训练中不恢复（魂力照旧 1%）。
+        if (!训练中) { spRate = 场下平时恢复率; vitMenRate = 场下平时恢复率; }
+        c.属性.精神力 = 精神力自然恢复后_ACU(c, c.属性.精神力上限 * vitMenRate * 精神力恢复比 * safeDelta);
+        c.属性.体力 = 体力自然恢复后_ACU(c, c.属性.体力上限 * vitMenRate * safeDelta);
         应用伤势恢复到生命值(0.0004);
       }
 
       if (hasNoSoulPowerTalent) spRate = 0;
       c.属性.魂力 = Math.min(c.属性.魂力上限, roundRuntimeGrowthValue_ACU(c.属性.魂力 + c.属性.魂力上限 * spRate * safeDelta));
 
+      // 神器温养自愈（用户 11-19「神器以上的话无法外力修复，只能自身温养」）：品质含「神器」的装备与背包批次，耐久不满时每天自行回
+      // 基础耐久的 5%（每 tick 5% ÷ 144），回满后装备状态从「损毁」回到「已装备」。不论动作模式（战斗中也照常温养）。
+      {
+        const 每tick回复 = 0.05 / 144 * safeDelta;
+        const 温养 = (item, 品质 = '') => {
+          if (!item || typeof item !== 'object' || Array.isArray(item) || !/神器/.test(String(品质 || item.品质 || item.品阶 || ''))) return;
+          const 上限 = Math.max(1, Number(item.耐久上限 || item.基础耐久 || 100));
+          const 当前 = Number(item.耐久);
+          if (!Number.isFinite(当前) || 当前 >= 上限) return;
+          item.耐久 = Math.min(上限, roundRuntimeGrowthValue_ACU(当前 + 上限 * 每tick回复));
+          if (item.耐久 >= 上限 && String(item.装备状态 || '').trim() === '损毁') item.装备状态 = '已装备';
+        };
+        const 装备 = c.装备 && typeof c.装备 === 'object' ? c.装备 : {};
+        ['武器', '防具', '饰品', '斗铠', '机甲'].forEach(槽 => 温养(装备[槽]));
+        Object.values(装备.魂导器?.装配 || {}).forEach(item => 温养(item));
+        Object.values(c.背包 && typeof c.背包 === 'object' ? c.背包 : {}).forEach(项 => (Array.isArray(项?.批次) ? 项.批次 : []).forEach(批次 => 温养(批次, String(项?.品质 || 项?.品阶 || ''))));
+      }
       const 血脉核心 = String(c.血脉之力?.核心 || '').trim();
       if (血脉核心 && 血脉核心 !== '未凝聚' && 血脉核心 !== '无') {
-        c.属性.体力 = Math.min(c.属性.体力上限, roundRuntimeGrowthValue_ACU(c.属性.体力 + c.属性.体力上限 * 0.05 * safeDelta));
+        // 血脉核心的体力加成：睡眠速度的 5 倍（旧规则 5% 对旧睡眠 1%），场下睡眠提到 7.5% 后同比放大到 37.5%（用户 11-20）。
+        c.属性.体力 = 体力自然恢复后_ACU(c, c.属性.体力上限 * 0.375 * safeDelta);
         应用伤势恢复到生命值(0.003);
       }
 
@@ -37065,17 +37107,22 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
         }
       }
 
+      // 训练消耗按场下恢复调（用户 11-20「训练还是不封顶吧，根据当前恢复调整消耗好点」，选「每轮花满体力、每轮收益打六七折」）：
+      // 场下睡眠每 tick 回 7.5% 后，旧的每轮 30% 体力几乎能一直练。肉体训练改为满体力才练、一轮花光（睡满要 18 tick，整天训练一天约
+      // 6 轮），每轮收益 × 2/3，一天总收益与旧规则整天训练的 4 轮一样；精神训练每轮花 45% 精神力上限、不到 45% 不练（睡回 45% 要 12 tick，
+      // 一天 8 轮，同旧规则）。血脉核心的体力加成同比放大（见下，旧规则是睡眠的 5 倍）。
+      const 肉体训练每轮收益比 = 2 / 3, 精神训练每轮消耗 = 0.45;
       if (normalizedActionMode === '肉体训练') {
         const cycles = Math.floor(safeDelta / 6);
         let actualCycles = 0;
         for (let i = 0; i < cycles; i++) {
-          if (c.属性.体力 >= c.属性.体力上限 * 0.3) {
-            c.属性.体力 -= c.属性.体力上限 * 0.3;
+          if (c.属性.体力 >= c.属性.体力上限 * 0.999) {
+            c.属性.体力 -= c.属性.体力上限;
             actualCycles++;
           } else break;
         }
         if (actualCycles > 0) {
-          const gain = 0.05 * actualCycles * 基础成长倍率 * 肉体训练收益倍率;
+          const gain = 0.05 * actualCycles * 肉体训练每轮收益比 * 基础成长倍率 * 肉体训练收益倍率;
           addNumericStatBonusEntries(trainedBonus, {
             力量: gain * 读取属性成长倍率('力量'),
             防御: gain * 读取属性成长倍率('防御'),
@@ -37087,8 +37134,8 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
         const cycles = Math.floor(safeDelta / 6);
         let actualCycles = 0;
         for (let i = 0; i < cycles; i++) {
-          if (c.属性.精神力 > c.属性.精神力上限 * 0.1) {
-            c.属性.精神力 -= c.属性.精神力 * 0.8;
+          if (c.属性.精神力 >= c.属性.精神力上限 * 精神训练每轮消耗 - 1e-9) {
+            c.属性.精神力 -= c.属性.精神力上限 * 精神训练每轮消耗;
             actualCycles++;
           } else break;
         }

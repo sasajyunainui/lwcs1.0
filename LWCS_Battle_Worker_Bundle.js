@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:94115b3ecbdee199da8ac5e02fee9614c3cf02f5701d22d012dcb7d010922404|MVU_Schema_Runtime.js:5528e4ecc9c8fe744473f2591af9ab4326d6fe88b30a3e1d56a2634e51a81699|BattlePreview_Module.js:5ddbc75fa912e53d30974a8544039f1d7a52f1a429349e1dc5845befb393e5e1|BehaviorDecisionPipeline_Module.js:e55d1d0a40ff9a1a3a37cf0f16c94dbd9bafe338489e7af952c1279ca0025977|BattleDecision_Module.js:f2644004211937dea6b71ac4ba9d6b7cda3612e9a24f7e58ede00d573bd554c2|BattleRuntime_Module.js:82c6c49154e6f48c20e5f173da21bf27243362162ce66377ecc247b3c80a8bf6 */
+/* sources-sha256: MVU_Skill_Runtime.js:94115b3ecbdee199da8ac5e02fee9614c3cf02f5701d22d012dcb7d010922404|MVU_Schema_Runtime.js:dba2cddc8b314abfa559e4b1aa4dc9c68f357d27a14b9051d109c1475ce665cc|BattlePreview_Module.js:f1597a796dcbd1c1df495c8245e7f037f9016e51f7653c88e0abb16773cb8010|BehaviorDecisionPipeline_Module.js:e55d1d0a40ff9a1a3a37cf0f16c94dbd9bafe338489e7af952c1279ca0025977|BattleDecision_Module.js:4cafc4be5f36218fa27b29a07f347aa75cdffc89c238b201b193a8fa34e80b20|BattleRuntime_Module.js:3df6c35b87afa6e76b048d55bd8dbed9ef675407b39c5eedc6f73370dbeb28b7 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -28950,6 +28950,8 @@ function 计算装备属性加成_V1(装备 = {}, 角色 = {}) {
 
 function 计算装备属性加成未缩放_V1(装备 = {}, 角色 = {}) {
   const 结果 = {};
+  // 损毁的装备不给加成（道具破坏 11-19：战中打坏的兵器、魂导器记「损毁」，修好或神器温养回满后恢复）。
+  if (/损毁/.test(String(装备?.装备状态 || ''))) return 结果;
   const 分类 = String(装备?.物品分类 || 装备?.分类 || '').trim();
   const 品质 = 规范化物品经济品质_V1(装备?.品质 || 装备?.品阶 || 装备?.类型 || '普通', 装备?.名称 || '', 分类);
   const 是神器装备 = 判断神器品质_V1(品质);
@@ -29189,8 +29191,9 @@ function 压缩角色应用物品引用_V1(data = {}) {
   Object.values(data?.char || {}).forEach(char => {
     if (!char || typeof char !== 'object' || Array.isArray(char)) return;
     if (char.装备 && typeof char.装备 === 'object' && !Array.isArray(char.装备)) {
-      char.装备.武器 = 压缩应用物品记录_V1(char.装备.武器, { 状态字段: ['耐久', '剩余使用次数', '绑定者', '有效期至tick'] });
-      char.装备.防具 = 压缩应用物品记录_V1(char.装备.防具, { 状态字段: ['装备状态', '耐久', '绑定者', '有效期至tick'] });
+      // 道具破坏（11-19）：武器的「装备状态」（损毁）与 耐久上限 也留着。
+      char.装备.武器 = 压缩应用物品记录_V1(char.装备.武器, { 状态字段: ['装备状态', '耐久', '耐久上限', '剩余使用次数', '绑定者', '有效期至tick'] });
+      char.装备.防具 = 压缩应用物品记录_V1(char.装备.防具, { 状态字段: ['装备状态', '耐久', '耐久上限', '绑定者', '有效期至tick'] });
       char.装备.机甲 = 压缩应用物品记录_V1(char.装备.机甲, { 状态字段: ['等级', '型号', '状态', '装备状态', '品质系数', '耐久', '绑定者', '有效期至tick', '_属性加成', '_温养进度tick'] });
       Object.entries(char.装备.斗铠?.部件 || {}).forEach(([部件名, 部件]) => {
         char.装备.斗铠.部件[部件名] = 压缩应用物品记录_V1(部件, { 状态字段: ['状态', '品质系数', '耐久', '绑定者'] });
@@ -32426,6 +32429,19 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       }
     };
 
+    // 体力自然恢复不超过当前生命（用户 11-20「体力不能超过当前血量」「指的自然恢复」）：生命上限与体力上限同为 vit_max，按数值比；
+    // 本来就高于生命的不扣，只是不再回。
+    // 精神力自然恢复最多回到 90%，只有睡觉能回满（用户 11-20）；本来高于的不扣。
+    const 精神力自然恢复后_ACU = (c, 增量, 可回满 = false) => {
+      const 当前 = Number(c.属性.精神力 || 0), 上限 = Number(c.属性.精神力上限 || 0);
+      const 顶 = 可回满 ? 上限 : Math.min(上限, Math.max(当前, 上限 * 0.9));
+      return Math.min(顶, roundRuntimeGrowthValue_ACU(当前 + Number(增量 || 0)));
+    };
+    const 体力自然恢复后_ACU = (c, 增量) => {
+      const 当前 = Number(c.属性.体力 || 0), 上限 = Number(c.属性.体力上限 || 0);
+      const 顶 = Math.min(上限, Math.max(当前, Number(c.属性.HP ?? 上限)));
+      return Math.min(顶, roundRuntimeGrowthValue_ACU(当前 + Number(增量 || 0)));
+    };
     const applyCharacterActionSegment_ACU = (c, actionMode, segmentDelta, trainedBonus, 角色名 = '', segmentCurrentTick = currentTick) => {
       const safeDelta = Math.max(0, Number(segmentDelta || 0));
       if (!(safeDelta > 0) || !c?.属性) return;
@@ -32471,34 +32487,60 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       let spRate = 0.01;
       let vitMenRate = 0;
 
+      // 场上场下恢复统一（用户 11-20「提高场下恢复，训练轮数按天封顶」「一回合算一分钟吧」）：一回合 = 1 分钟、1 tick = 10 分钟 = 10 回合；
+      // 场上自然恢复每回合 0.5%（BattlePreview naturalRecoveryRatios），场下平时、休息同为每 tick 5%，睡眠 7.5%；冥想按场上冥想 8 倍（魂力、
+      // 精神力随魂核加），体力 5%。训练是发力，期间不恢复，轮数按天封顶（见下）。之前：平时魂力 1%、精神力体力 0，睡眠 1%，冥想魂力 5%～40%。
+      // 无魂核时 魂力 = 体力 > 精神力（用户 11-20），精神力取一半（同场上 BattlePreview naturalRecoveryRatios）。
+      const 场下平时恢复率 = 0.05, 场下睡眠恢复率 = 0.075, 场上每tick回合数 = 10, 场上冥想倍数 = 8, 精神力恢复比 = 0.5;
+      const 训练中 = /训练/.test(normalizedActionMode);
       if (normalizedActionMode === '冥想') {
-        spRate = coreCount === 0 ? 0.05 : coreCount === 1 ? 0.2 : coreCount === 2 ? 0.3 : 0.4;
-        vitMenRate = 0.005;
-        const menRate = 0.008;
-        c.属性.精神力 = Math.min(c.属性.精神力上限, roundRuntimeGrowthValue_ACU(c.属性.精神力 + c.属性.精神力上限 * menRate * safeDelta));
-        c.属性.体力 = Math.min(c.属性.体力上限, roundRuntimeGrowthValue_ACU(c.属性.体力 + c.属性.体力上限 * vitMenRate * safeDelta));
+        spRate = 场上每tick回合数 * 场上冥想倍数 * (0.005 + (coreCount >= 1 ? 0.01 : 0) + (coreCount >= 3 ? 0.01 : 0));
+        vitMenRate = 场下平时恢复率;
+        const menRate = 场上每tick回合数 * 场上冥想倍数 * (0.0025 + (coreCount >= 2 ? 0.01 : 0));
+        c.属性.精神力 = 精神力自然恢复后_ACU(c, c.属性.精神力上限 * menRate * safeDelta);
+        c.属性.体力 = 体力自然恢复后_ACU(c, c.属性.体力上限 * vitMenRate * safeDelta);
         应用伤势恢复到生命值(0.0008);
       } else if (normalizedActionMode === '战斗') {
         spRate = 0;
         vitMenRate = 0;
       } else if (normalizedActionMode === '睡眠') {
-        spRate = 0.01;
-        const sleepRate = 0.01;
-        c.属性.精神力 = Math.min(c.属性.精神力上限, roundRuntimeGrowthValue_ACU(c.属性.精神力 + c.属性.精神力上限 * sleepRate * safeDelta));
-        c.属性.体力 = Math.min(c.属性.体力上限, roundRuntimeGrowthValue_ACU(c.属性.体力 + c.属性.体力上限 * sleepRate * safeDelta));
+        spRate = 场下睡眠恢复率;
+        const sleepRate = 场下睡眠恢复率;
+        c.属性.精神力 = 精神力自然恢复后_ACU(c, c.属性.精神力上限 * sleepRate * 精神力恢复比 * safeDelta, true);
+        c.属性.体力 = 体力自然恢复后_ACU(c, c.属性.体力上限 * sleepRate * safeDelta);
         应用伤势恢复到生命值(0.0015);
       } else {
-        c.属性.精神力 = Math.min(c.属性.精神力上限, roundRuntimeGrowthValue_ACU(c.属性.精神力 + c.属性.精神力上限 * vitMenRate * safeDelta));
-        c.属性.体力 = Math.min(c.属性.体力上限, roundRuntimeGrowthValue_ACU(c.属性.体力 + c.属性.体力上限 * vitMenRate * safeDelta));
+        // 平时、休息：每 tick 5%；训练中不恢复（魂力照旧 1%）。
+        if (!训练中) { spRate = 场下平时恢复率; vitMenRate = 场下平时恢复率; }
+        c.属性.精神力 = 精神力自然恢复后_ACU(c, c.属性.精神力上限 * vitMenRate * 精神力恢复比 * safeDelta);
+        c.属性.体力 = 体力自然恢复后_ACU(c, c.属性.体力上限 * vitMenRate * safeDelta);
         应用伤势恢复到生命值(0.0004);
       }
 
       if (hasNoSoulPowerTalent) spRate = 0;
       c.属性.魂力 = Math.min(c.属性.魂力上限, roundRuntimeGrowthValue_ACU(c.属性.魂力 + c.属性.魂力上限 * spRate * safeDelta));
 
+      // 神器温养自愈（用户 11-19「神器以上的话无法外力修复，只能自身温养」）：品质含「神器」的装备与背包批次，耐久不满时每天自行回
+      // 基础耐久的 5%（每 tick 5% ÷ 144），回满后装备状态从「损毁」回到「已装备」。不论动作模式（战斗中也照常温养）。
+      {
+        const 每tick回复 = 0.05 / 144 * safeDelta;
+        const 温养 = (item, 品质 = '') => {
+          if (!item || typeof item !== 'object' || Array.isArray(item) || !/神器/.test(String(品质 || item.品质 || item.品阶 || ''))) return;
+          const 上限 = Math.max(1, Number(item.耐久上限 || item.基础耐久 || 100));
+          const 当前 = Number(item.耐久);
+          if (!Number.isFinite(当前) || 当前 >= 上限) return;
+          item.耐久 = Math.min(上限, roundRuntimeGrowthValue_ACU(当前 + 上限 * 每tick回复));
+          if (item.耐久 >= 上限 && String(item.装备状态 || '').trim() === '损毁') item.装备状态 = '已装备';
+        };
+        const 装备 = c.装备 && typeof c.装备 === 'object' ? c.装备 : {};
+        ['武器', '防具', '饰品', '斗铠', '机甲'].forEach(槽 => 温养(装备[槽]));
+        Object.values(装备.魂导器?.装配 || {}).forEach(item => 温养(item));
+        Object.values(c.背包 && typeof c.背包 === 'object' ? c.背包 : {}).forEach(项 => (Array.isArray(项?.批次) ? 项.批次 : []).forEach(批次 => 温养(批次, String(项?.品质 || 项?.品阶 || ''))));
+      }
       const 血脉核心 = String(c.血脉之力?.核心 || '').trim();
       if (血脉核心 && 血脉核心 !== '未凝聚' && 血脉核心 !== '无') {
-        c.属性.体力 = Math.min(c.属性.体力上限, roundRuntimeGrowthValue_ACU(c.属性.体力 + c.属性.体力上限 * 0.05 * safeDelta));
+        // 血脉核心的体力加成：睡眠速度的 5 倍（旧规则 5% 对旧睡眠 1%），场下睡眠提到 7.5% 后同比放大到 37.5%（用户 11-20）。
+        c.属性.体力 = 体力自然恢复后_ACU(c, c.属性.体力上限 * 0.375 * safeDelta);
         应用伤势恢复到生命值(0.003);
       }
 
@@ -32544,17 +32586,22 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
         }
       }
 
+      // 训练消耗按场下恢复调（用户 11-20「训练还是不封顶吧，根据当前恢复调整消耗好点」，选「每轮花满体力、每轮收益打六七折」）：
+      // 场下睡眠每 tick 回 7.5% 后，旧的每轮 30% 体力几乎能一直练。肉体训练改为满体力才练、一轮花光（睡满要 18 tick，整天训练一天约
+      // 6 轮），每轮收益 × 2/3，一天总收益与旧规则整天训练的 4 轮一样；精神训练每轮花 45% 精神力上限、不到 45% 不练（睡回 45% 要 12 tick，
+      // 一天 8 轮，同旧规则）。血脉核心的体力加成同比放大（见下，旧规则是睡眠的 5 倍）。
+      const 肉体训练每轮收益比 = 2 / 3, 精神训练每轮消耗 = 0.45;
       if (normalizedActionMode === '肉体训练') {
         const cycles = Math.floor(safeDelta / 6);
         let actualCycles = 0;
         for (let i = 0; i < cycles; i++) {
-          if (c.属性.体力 >= c.属性.体力上限 * 0.3) {
-            c.属性.体力 -= c.属性.体力上限 * 0.3;
+          if (c.属性.体力 >= c.属性.体力上限 * 0.999) {
+            c.属性.体力 -= c.属性.体力上限;
             actualCycles++;
           } else break;
         }
         if (actualCycles > 0) {
-          const gain = 0.05 * actualCycles * 基础成长倍率 * 肉体训练收益倍率;
+          const gain = 0.05 * actualCycles * 肉体训练每轮收益比 * 基础成长倍率 * 肉体训练收益倍率;
           addNumericStatBonusEntries(trainedBonus, {
             力量: gain * 读取属性成长倍率('力量'),
             防御: gain * 读取属性成长倍率('防御'),
@@ -32566,8 +32613,8 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
         const cycles = Math.floor(safeDelta / 6);
         let actualCycles = 0;
         for (let i = 0; i < cycles; i++) {
-          if (c.属性.精神力 > c.属性.精神力上限 * 0.1) {
-            c.属性.精神力 -= c.属性.精神力 * 0.8;
+          if (c.属性.精神力 >= c.属性.精神力上限 * 精神训练每轮消耗 - 1e-9) {
+            c.属性.精神力 -= c.属性.精神力上限 * 精神训练每轮消耗;
             actualCycles++;
           } else break;
         }
@@ -41772,6 +41819,42 @@ try {
     if (referee.__refereePrepared !== true) return true;
     return refereeTiming(attacker, incoming, referee, 1).block >= -1e-9;
   }
+  // 收招（用户 11-19 选「看到应对后可收、可改向」，11-20 按推荐做 A，先做局部估值版）：对方迎上来对轰时，出手者在这一招落下前
+  // 比「继续」与「收招」——继续的得失按这一下对轰（clashOutcome）：打掉对方的生命份额减去自己挨的份额；收招两边都落空（0）。
+  // 继续不划算（得失为负）、又来得及收手就收：需要的时间 = 一记普攻的前摇 ×（出手者有效敏捷 ÷ 迎击者有效敏捷）——同应对认输的
+  // 收手（concedeHoldsBack），不限近身——短于这一招的前摇才收得住。收住按前摇已过的比例（need ÷ windup）付消耗。改打另一人留到后面（要给新目标重开应对窗口）。
+  // 返回 null：不是对轰、或不是能比的伤害招。
+  // 校准入口（root.__LWCS_TUNE__.PULL_BACK = false 关掉收招与改向），默认开。
+  const PULL_BACK_ON = root.__LWCS_TUNE__?.PULL_BACK !== false;
+  function pullBackChoice(attacker = {}, incoming = null, reactor = {}, reactorDeclaration = null, worldSnapshot = null) {
+    if (!PULL_BACK_ON || !incoming || !reactorDeclaration) return null;
+    const clash = clashOutcome(reactor, reactorDeclaration, attacker, incoming, worldSnapshot);
+    if (!clash) return null;
+    const dealt = Math.max(0, Number(clash.theirs) || 0) * Math.max(0, Number(clash.inScale) || 0);
+    const taken = Math.max(0, Number(clash.mine) || 0) * Math.max(0, Number(clash.outScale) || 0);
+    const value = dealt / Math.max(1, readHpMax(reactor)) - taken / Math.max(1, readHpMax(attacker));
+    const own = Number(naturalActionOrderProfile(attacker).effectiveAgility), theirs = Number(naturalActionOrderProfile(reactor).effectiveAgility);
+    const need = actionWindup(attacker, { actorId: unitId(attacker), actionKind: 'BASIC_ATTACK', targetIds: [unitId(reactor)] }, { travel: false }) *
+      (own > 0 && theirs > 0 ? own / theirs : 1);
+    const windup = actionWindup(attacker, incoming);
+    const holds = need < windup - 1e-9;
+    return Object.freeze({ pull: holds && value < -1e-9, holds, value, dealt, taken, need, windup, clash: clash.result });
+  }
+  // 改向（方案 §4「多人战可以改向，转打另一个敌人，剩余前摇照付」）：收住的单体招转给另一个还能打的敌人——按这一招打在各人身上的
+  // 生命份额挑最大的；新目标只剩「这一招前摇 − 收手所需时间」来应对。null：没有别的敌人可打。
+  function retargetChoice(attacker = {}, incoming = null, reactor = {}, worldSnapshot = null) {
+    if (!incoming || !worldSnapshot) return null;
+    const side = sideOf(worldSnapshot, attacker), skip = new Set([unitId(attacker), unitId(reactor), ...(incoming.targetIds || []).map(String)]);
+    let best = null;
+    for (const { unit } of listUnits(worldSnapshot)) {
+      const id = unitId(unit);
+      if (!id || skip.has(id) || sideOf(worldSnapshot, unit) === side || readHp(unit) <= 0 || !isBattleCapable(unit) || unit?.已消散 === true) continue;
+      const damage = incomingMoveDamage(attacker, { ...incoming, targetIds: [id] }, unit, worldSnapshot);
+      const share = Math.max(0, Number(damage) || 0) / Math.max(1, readHpMax(unit));
+      if (share > 1e-9 && (!best || share > best.share)) best = { targetId: id, share };
+    }
+    return best ? Object.freeze(best) : null;
+  }
   const LEFT_BATTLE_REASONS = Object.freeze({ CONCEDE: 'SURRENDERED', WITHDRAW: 'WITHDRAWN' });
   function hasLeftBattle(unit = {}) {
     const reason = String(unit?.__战斗失能原因 || '').trim();
@@ -41810,6 +41893,8 @@ try {
   //   接着打的队友记满，只有团战在后记一半。
   //   之后还有团战：自己的生命也带进团战（保留，FOLLOW_KEEP）——认输保住此刻的生命，留下来赢了保住、输了剩一成。
   const FOLLOW_DRAIN = 0.6, FOLLOW_KEEP = 0.6, FOLLOW_RESOURCE_SHARE = 0.5;
+  // 后面还有比赛时被打倒的额外代价（起始值，与比赛被打倒的 0.3 同量：重伤带进后面的比赛，代价翻倍）。
+  const EXIT_INJURY_FATE = Number(root.__LWCS_TUNE__?.EXIT_INJURY_FATE ?? 0.3);
   // foeFollow: the other side has someone after this one in the 擂台 — winning, the actor fights on with what it has left.
   function matchFollowUp(worldSnapshot = {}, side = '') {
     const records = worldSnapshot?.赛事上下文?.后续;
@@ -41956,7 +42041,9 @@ try {
     const rules = battleRules(worldSnapshot, battleIntent);
     if (!rules.exit || !actor || typeof actor !== 'object') return null;
     const side = sideOf(worldSnapshot, actor), id = unitId(actor);
-    const fate = exitFate(worldSnapshot, battleIntent);
+    // 后面还有比赛（剩余场次，用户 11-20「输不应该是血量为 0 或者过低……不然重伤的话后面的比赛怎么打？」）：被打倒的代价再加
+    // EXIT_INJURY_FATE——重伤带进后面的比赛；认输以此刻的状态离场，不吃这一份。
+    const fate = exitFate(worldSnapshot, battleIntent) + (matchFollowUp(worldSnapshot, side)?.remaining > 0 ? EXIT_INJURY_FATE : 0);
     // 群体撤离 (groupWithdrawalContest): the whole side leaves together, so no one is left to fight on.
     const others = contest?.groupWithdrawal === true ? 0 : listUnits(worldSnapshot).filter(entry => entry.side === side && unitId(entry.unit) !== id &&
       isBattleCapable(entry.unit) && !isSummonUnit(entry.unit)).length;
@@ -41991,7 +42078,10 @@ try {
         const hpLossRound = Math.max(0, share(actor) - Math.max(LIFE_THREAT_RATIO, Math.min(share(actor), racedNumber('actorKept') ?? 0))) / rounds;
         const resLossRound = Math.max(0, racedNumber('actorSpend') ?? 0) / rounds;
         const winWorth = 1 + FOLLOW_KEEP * follow.keep * Math.max(LIFE_THREAT_RATIO, Math.min(share(actor), racedNumber('actorKept') ?? share(actor)));
-        const loseWorth = -1 + followLeft - FOLLOW_KEEP * follow.keep * (hpLossRound + FOLLOW_RESOURCE_SHARE * resLossRound) + FOLLOW_DRAIN * follow.carry * drainRound;
+        // 这一回合里就结束的那部分（推演的结束时间不到一回合按必定）等不到「下回合再认输」，输了照吃被打倒的代价（11-20：之前一律不计，
+        // 每回合都觉得再打一回合更好，擂台模拟 80 场里擂主 0 次认输、生命打到 2%～10% 才出局）。
+        const endsNow = racedNumber('time') > 0 ? clamp(1 / racedNumber('time'), 0, 1) : 1;
+        const loseWorth = -1 - fate * endsNow + followLeft - FOLLOW_KEEP * follow.keep * (hpLossRound + FOLLOW_RESOURCE_SHARE * resLossRound) + FOLLOW_DRAIN * follow.carry * drainRound;
         const oneMore = outlook.win * winWorth + (1 - outlook.win) * loseWorth;
         followStay = oneMore - stay;
         stay = oneMore;
@@ -47166,11 +47256,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // recovery of each (BattleRuntime naturalRecoveryAtRoundEndProfile: 0.5%, more with 魂核) on top of it. It lasts the round: in it
   // the unit makes no answer (BattleDecision lets the move land); a hit breaks it (interruptMeditation) — half the recovery, and it
   // may answer again. The same release path as 开武魂, but it takes the action (windup 10).
-  const MEDITATION_KEY = '__auto__:冥想', MEDITATION_MULT = 8, MEDITATION_SHORT = 0.95;
+  const MEDITATION_KEY = '__auto__:冥想', MEDITATION_MULT = 8, MEDITATION_SHORT = 0.95, MENTAL_NATURAL_CEILING = 0.9;
   const isMeditationEffect = effect => String(effect?.原型 || '').trim() === '状态施加' && String(effect?.状态 || '').trim() === '冥想';
   function naturalRecoveryRatios(unit = {}) {
     const cores = Math.max(0, Math.floor(Number(unit?.魂核?.核心?.数量 || 0)));
-    return { 魂力: 0.005 + (cores >= 1 ? 0.01 : 0) + (cores >= 3 ? 0.01 : 0), 精神力: 0.005 + (cores >= 2 ? 0.01 : 0), 体力: 0.005 };
+    // 无魂核时 魂力 = 体力 > 精神力（用户 11-20），精神力取一半。
+    return { 魂力: 0.005 + (cores >= 1 ? 0.01 : 0) + (cores >= 3 ? 0.01 : 0), 精神力: 0.0025 + (cores >= 2 ? 0.01 : 0), 体力: 0.005 };
   }
   function meditating(unit = {}) {
     const state = unit?.状态效果?.[MEDITATION_KEY];
@@ -47191,7 +47282,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     unit.状态效果 = { ...(unit.状态效果 || {}), [MEDITATION_KEY]: { 状态: '冥想', 状态名称: '冥想', 类型: 'buff', duration: 1, 持续回合: 1,
       描述: '冥想：回合末额外恢复魂力与精神力；冥想中不能应对，被打中就中断、只恢复一半', 面板修改比例: {}, 面板固定修正: {},
       // cannot_react: no answer while it sits (BattleRuntime gives it no answer, the race's stand is blocked).
-      战斗效果: { sp_gain_ratio: natural.魂力 * MEDITATION_MULT, men_gain_ratio: natural.精神力 * MEDITATION_MULT, cannot_react: true }, __冥想: true } };
+      // 精神力自然恢复最多回到 90%，只有睡觉能回满（用户 11-20）：冥想回的精神力也到此为止。
+      战斗效果: { sp_gain_ratio: natural.魂力 * MEDITATION_MULT, men_gain_ratio: natural.精神力 * MEDITATION_MULT, men_gain_ceiling: MENTAL_NATURAL_CEILING, cannot_react: true }, __冥想: true } };
     return true;
   }
   // A hit on a meditating unit breaks it: half the recovery, and it answers again. A new state object (frozen battles).
@@ -64058,6 +64150,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     clashTiming,
     withStrengthKnockback,
     concedeHoldsBack,
+    pullBackChoice,
+    retargetChoice,
+    MENTAL_NATURAL_CEILING,
     refereeCatchesConcede,
     throwableWeapon,
     canThrowWeapon,
@@ -78444,8 +78539,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     );
   }
 
+  // 应对时放魂技前摇打折（用户 11-20「按你推荐的来」；原作还原第二步：魂技前摇多为 20～31、普攻 10，面对普攻任何魂技都放不进应对）：
+  // 应对与反击窗口里，魂技的前摇按 REACTION_CAST_SHARE 算（只在判断放不放得进窗口时打折，主动回合的节奏不变）。起始值，按原作战例校准。
+  const REACTION_CAST_SHARE = Number(root.__LWCS_TUNE__?.REACTION_CAST_SHARE ?? 0.6);
+  const reactionCastTime = skill => Math.max(0, Number(skill?.前摇 ?? skill?.cast_time ?? 10)) * REACTION_CAST_SHARE;
   function isImmediateReactionSkill(skill = {}, immediateBudget = 0) {
-    const castTime = Math.max(0, Number(skill?.前摇 ?? skill?.cast_time ?? 10));
+    const castTime = reactionCastTime(skill);
     const effects = directImmediateSkillEffects(skill);
     const triggerText = [
       skill?.技能分类,
@@ -78507,11 +78606,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // on any target: a buff, a 武魂真身, a strike on another enemy, a heal for an ally. Before it only defensive skills (and the clash
   // and preemption of engagementCandidates) were offered.
   function isWithinReactionWindow(skill = {}, immediateBudget = 0) {
-    return directImmediateSkillEffects(skill).length > 0 && Math.max(0, Number(skill?.前摇 ?? skill?.cast_time ?? 10)) <= immediateBudget;
+    return directImmediateSkillEffects(skill).length > 0 && reactionCastTime(skill) <= immediateBudget;
   }
 
   function isExplicitCounterSkill(skill = {}, immediateBudget = 0) {
-    const castTime = Math.max(0, Number(skill?.前摇 ?? skill?.cast_time ?? 10));
+    const castTime = reactionCastTime(skill);
     const text = `${skillName(skill)} ${skill?.技能分类 || ''} ${skill?.触发方式 || ''} ${skill?.反应类型 || ''}`;
     const effects = directImmediateSkillEffects(skill);
     const reactivePattern = /受击前|即时反应|受击触发|被攻击时|遭受攻击时|命中前|结算前触发/;
@@ -115776,7 +115875,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // 认输估值的胜算（11-15 用户「现在就换胜算」）：R20 下按桌面原样推演一遍（r20Race）——胜算取胜负项的 tanh(R20_WIN_SLOPE × 分差)
   // 换到 0～1，推演结束时对手还剩的（我倒下前打不掉的）与自己还剩的给后续出场的消耗与保留（BattlePreview exitValuation）。
   // 此前按场上已打出的伤害速率粗估：开局还没出手时，弱方能打掉对手多少估成 0，胜算也偏高。每张桌面每方算一次。
-  const r20ExitOutlooks = new WeakMap(), R20_EXIT_SPEND_PRIOR = 0.1, R20_EXIT_ODDS = Object.freeze({ solo: Object.freeze([-0.02, 1.62]), team: Object.freeze([-0.25, 0.94]) });
+  const r20ExitOutlooks = new WeakMap(), R20_EXIT_SPEND_PRIOR = 0.1, R20_EXIT_VIT_PRIOR = 0.02, R20_EXIT_ODDS = Object.freeze({ solo: Object.freeze([-0.02, 1.62]), team: Object.freeze([-0.25, 0.94]) });
   function r20ExitOutlook(request = {}, actor = {}) {
     const table = r20Facts(request);
     const own = request.actorSide;
@@ -115819,7 +115918,22 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const teamShare = clamp((sideSize - 1) / 2, 0, 1);
     const [oddsBase, oddsSlope] = [R20_EXIT_ODDS.solo[0] + (R20_EXIT_ODDS.team[0] - R20_EXIT_ODDS.solo[0]) * teamShare, R20_EXIT_ODDS.solo[1] + (R20_EXIT_ODDS.team[1] - R20_EXIT_ODDS.solo[1]) * teamShare];
     const odds = margin => clamp(1 / (1 + Math.exp(-(oddsBase + oddsSlope * (Number(margin) || 0)))), 0, 1);
-    const win = odds(raced.margin);
+    // 体力先耗光（用户 11-20「魂力、体力见底基本就得认输」；擂台连场：估胜算 94%、45% 的两场都是体力耗尽判负）：推演只比掉血，不走资源。
+    // 按这场已花的体力速率（同上 rate 的先验）估算还能撑几回合，比推演的结束时间早就多半撑不到（log 时间比，σ(2·log(结束/耗尽))）：
+    // 自己先耗光，赢的那部分变输；对手先耗光，输的那部分变赢（两边都先耗光的按各自比例）。
+    const vitShare = unit => preview.readResourceMax(unit, '体力') > 0 ? clamp(preview.readResource(unit, '体力') / preview.readResourceMax(unit, '体力'), 0, 1) : 1;
+    // 体力的先验另取每回合 R20_EXIT_VIT_PRIOR（擂台连场实测：30 回合约花一半体力，不到 2%／回合；魂力那份 0.1 对体力太高）。
+    const vitRate = unit => ((1 - vitShare(unit)) + 2 * R20_EXIT_VIT_PRIOR) / (elapsed + 2);
+    const exhaustFirst = unit => {
+      if (!(time > 0) || preview.readResourceMax(unit, '体力') <= 0) return 0;
+      const last = vitShare(unit) / Math.max(1e-9, vitRate(unit));
+      return last <= 1e-9 ? 1 : 1 / (1 + Math.exp(-2 * (Math.log(time) - Math.log(last))));
+    };
+    const mineOut = exhaustFirst(actorUnit);
+    const foeOut = table.units.reduce((most, unit, row) => table.sides[row] !== own && (Number(table.alive[row]) || 0) > 0 && !preview.isSummonUnit(unit)
+      ? Math.max(most, exhaustFirst(unit)) : most, 0);
+    const raceWin = odds(raced.margin);
+    const win = clamp(raceWin * (1 - mineOut) + (1 - raceWin) * foeOut * (1 - mineOut), 0, 1);
     // 走了之后队友的胜算（11-16 行为检查目录第 5 题：3v3 近均势比赛第 1 回合认输）：同一张桌面让行动者开局即离场再推演一遍
     // （plan.leaves），按同一映射给胜算。此前按场上已打出的速率粗估，开局还没打出伤害时给「胜 0 负 0」，走了算队友平局，
     // 比留下（推演胜算 25%）还好。
@@ -115835,6 +115949,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const withoutWin = odds(alone.margin);
       without = { win: withoutWin, lose: 1 - withoutWin, draw: 0 };
     }
+    // Development hook (absent in play): the race behind an exit's odds.
+    if (typeof root.__LWCS_DECISION_DEBUG__?.onExitOutlook === 'function') root.__LWCS_DECISION_DEBUG__.onExitOutlook({ request, raced, raceWin, mineOut, foeOut, win, time });
     return { win, lose: 1 - win, draw: 0, drained, drainedRes, actorKept, actorRes: fuel(actorUnit), actorSpend: Math.min(fuel(actorUnit), rate(actorUnit) * time), worthRatio, time, without };
   }
   function r20ExitMargin(request = {}) {
@@ -123860,8 +123976,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (disabled) return '';
     const logs = [];
     naturalRecoveryAtRoundEndProfile(unit).forEach(resource => {
-      if (resource.current >= resource.max) return;
-      writeCombatResource(unit, resource.key, Math.min(resource.max, resource.current + resource.recovery));
+      // 体力自然恢复不超过当前生命（用户 11-20）：生命上限与体力上限同为 vit_max，按数值比；本来就高于生命的不扣，只是不再回。
+      // 精神力自然恢复最多回到 90%，只有睡觉能回满（用户 11-20）；本来高于的不扣。
+      const ceiling = resource.key === 'vit' ? Math.min(resource.max, Math.max(resource.current, previewRuntime.readHp(unit)))
+        : resource.key === 'men' ? Math.max(resource.current, Math.floor(resource.max * (previewRuntime.MENTAL_NATURAL_CEILING ?? 0.9))) : resource.max;
+      if (resource.current >= ceiling) return;
+      writeCombatResource(unit, resource.key, Math.min(ceiling, resource.current + resource.recovery));
       const actual = Math.max(0, Number(unit[resource.key] || 0) - resource.current);
       if (!(actual > 0) || !recordEvents) return;
       writeRoundEndResourceEvent(combatData, unit, label, resource.key, actual, {
@@ -124020,7 +124140,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         return;
       }
       const amount = resource.ratio > 0 ? requested : Math.min(before, requested);
-      const next = resource.ratio > 0 ? Math.min(max, before + amount) : Math.max(0, before - amount);
+      // 冥想回的精神力到 90% 为止（men_gain_ceiling，BattlePreview 冥想状态）。
+      const ceiling = resource.key === 'men' && Number(effects.men_gain_ceiling) > 0 ? Math.max(before, Math.floor(max * Number(effects.men_gain_ceiling))) : max;
+      const next = resource.ratio > 0 ? Math.min(ceiling, before + amount) : Math.max(0, before - amount);
       const actual = resource.ratio > 0 ? Math.max(0, next - before) : Math.max(0, before - next);
       if (!(actual > 0)) return;
       const blocked = Boolean(findResourceSuppression(unit, resource.label));
@@ -136334,9 +136456,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               result: 'preempted', resultState: 'ABORTED', ruleCode: 'ENGAGEMENT_PREEMPTED',
               meta: { source: 'structured_runtime', grantId: node.grantId, reasonCode: 'ENGAGEMENT_PREEMPTED',
                 preemptedById: String(shared.preempted.reactorId || ''), preemptEventId: String(shared.preempted.eventId || ''),
-                reasonText: `${previewRuntime.unitName(actor)}的【${shared.actionContext.actionName}】被抢先打断` },
+                reasonText: shared.preempted.pulled === true ? `${previewRuntime.unitName(actor)}收住了【${shared.actionContext.actionName}】` : `${previewRuntime.unitName(actor)}的【${shared.actionContext.actionName}】被抢先打断` },
             });
-            if (actor && actorPresentInBattle && structuredActorPhysicallyAlive(actor)) {
+            // 收招（shared.preempted.pulled）两边都落空，没有破绽可抓，不开反击窗口——开了会「反击→迎上来→收招→再开反击」绕满队列。
+            if (actor && actorPresentInBattle && structuredActorPhysicallyAlive(actor) && shared.preempted.pulled !== true) {
               enqueueCounterWindows({ node, actor, shared, actionEvent, facts: [] });
             }
             if (actor && String(structuredActorIncapacityReason(actor, 'ACTIVE') || '').startsWith('CONTROLLED:')) consumeStructuredControlActiveBudget(combatData, actor, node);
@@ -136497,7 +136620,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               // most CONTINUOUS_ACTION_BUDGET; an ally stepping in does not (it has the way to cover first).
               const plainBudget = node?.state?.intercept === true
                 ? Math.max(0, previewRuntime.interceptWindupBudget(sourceActor, shared.declaration, actor))
-                : previewRuntime.reactionWindupBudget(sourceActor, shared.declaration, actor);
+                : Math.max(0, previewRuntime.reactionWindupBudget(sourceActor, shared.declaration, actor) - Math.max(0, Number(node?.state?.windupSpent) || 0));
               const foreseeOdds = preparedDefense || summonGuard || feintMeet || node?.state?.intercept === true ? 0
                 : Math.max(0, Math.min(1, Number(decisionRuntime.foreseeChance?.(combatData, actor, sourceActor, shared.declaration?.skill || {}) ?? 0) || 0));
               const foresaw = foreseeOdds > 0 && Math.random() < foreseeOdds;
@@ -136551,6 +136674,103 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               // 蓄力迎击（同日「3」）: met with the charge itself (BattlePreview chargeMeetSkill), the charge is thrown now and spent.
               if (reactionDeclaration?.skill?.__chargeRelease === true) spendChargeToMeet(combatData, actor, node);
               else if (String(reactionDeclaration?.actionKind || '').trim().toUpperCase() !== 'PASS_OPPORTUNITY') abandonChargeToAnswer(combatData, actor, node);
+              // 收招（BattlePreview pullBackChoice，用户 11-19 选 A、11-20 局部估值版）：对方迎上来对轰，出手者比「继续」与「收招」，
+              // 继续不划算又来得及收手就收——这一招整个不落下（同被抢先打断，主结算取消），对方迎上来的那一下也落空；魂力、精神力按前摇已过的比例付
+              // （收手所需时间 ÷ 这一招前摇，方案 第一步新机制方案-20261119 §4）。
+              // 只管单体招：群体招一个人迎上来，收手会让其他人也不挨（留待以后）。
+              if (String(reactionDeclaration?.engagement?.mode || '').trim().toUpperCase() === 'CLASH' && sourceActor && previewRuntime.pullBackChoice &&
+                structuredActorCanAct(sourceActor, 'ACTIVE') && (shared.declaration?.targetIds || []).length === 1) {
+                const pull = previewRuntime.pullBackChoice(sourceActor, shared.declaration, actor, reactionDeclaration, combatData);
+                // Development hook (absent in play).
+                if (typeof globalThis.__LWCS_DECISION_DEBUG__?.onPullBack === 'function') globalThis.__LWCS_DECISION_DEBUG__.onPullBack({ round: combatData.回合, attacker: previewRuntime.unitName(sourceActor),
+                  reactor: previewRuntime.unitName(actor), pull, retargeted: node?.state?.retargeted === true, nodeId: node?.id, parentActionSequence: node.parentActionSequence, actorTurnSequence: node.actorTurnSequence,
+                  move: shared.actionContext?.actionName, actionId: shared.actionContext?.actionEvent?.actionId,
+                  role: shared.actionContext?.actionEvent?.actionRole, grant: shared.actionContext?.actionEvent?.grantId || shared.actionContext?.actionEvent?.meta?.grantId });
+                if (pull?.pull) {
+                  // 迎击的一方这一下已经打出去了：照常开始、付消耗与体力，效果落空（同对轰输了的 voidEffects）——不付代价就能每次白迎，
+                  // 召唤物成群时会「攻击→迎击→收招」绕满队列（回归 cp7|35|控制系|召唤系|2 一场收招 294 次）。
+                  const answerContext = beginStructuredDeclaration({
+                    combatData, declaration: reactionDeclaration, actionRole: 'REACTION', actorControl: 'AI',
+                    sourceActionId: shared.actionContext.actionEvent.actionId, opportunityId: node.opportunityId, opportunitySequence: node.opportunitySequence,
+                    grantId: node.grantId, decisionCandidateId: String(decisionResult?.selected?.candidateId || '').trim(),
+                    parentNodeId: shared.actionContext.actionEvent.chainNodeId || '', reactionNodeId: shared.actionContext.actionEvent.chainNodeId || '',
+                  });
+                  answerContext.actionEvent.meta.engagementMode = 'CLASH';
+                  answerContext.actionEvent.meta.pulledBack = true;
+                  executeStructuredDeclaration({ combatData, declaration: reactionDeclaration, actionContext: answerContext, voidEffects: true });
+                  // 改向（方案 §4）：场上还有别的敌人可打，就把这一招转过去，前摇照走、消耗照付（结算时）；新目标只剩余下的前摇来应对，
+                  // 再迎上来也只收不再改（retargeted）。
+                  const retarget = node?.state?.retargeted === true ? null : previewRuntime.retargetChoice?.(sourceActor, shared.declaration, actor, combatData);
+                  const newTarget = retarget ? listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, retarget.targetId)) : null;
+                  if (newTarget) {
+                    const redirected = { ...shared.declaration, targetIds: [retarget.targetId] };
+                    shared.declaration = redirected;
+                    shared.actionContext.declaration = redirected;
+                    if (shared.actionContext.primaryTarget) shared.actionContext.primaryTarget = newTarget;
+                    shared.reactionByTarget[reactionTargetId] = { actionKind: 'PULLED', evaded: false, damageMultiplier: 0, nullified: true, opensCounterCheck: false };
+                    const moveName = normalizeActionDisplayName(shared.declaration?.skill?.name || shared.declaration?.skill?.魂技名 || shared.actionContext?.actionName || '这一招');
+                    writeLedgerEvent(combatData, {
+                      eventKind: 'pull_back', round: Number(combatData.回合 || 0),
+                      actorId: sourceActorId, actorName: previewRuntime.unitName(sourceActor), targetId: retarget.targetId, targetName: previewRuntime.unitName(newTarget),
+                      actionName: '改向', actionType: 'retarget', actorControl: 'AI', actionRole: 'ACTIVE',
+                      sourceActionId: shared.actionContext.actionEvent.actionId, parentNodeId: String(node?.id || ''), sourceNodeId: String(node?.id || ''),
+                      result: 'redirected', resultState: 'SUCCESS', ruleCode: 'PULL_BACK_RETARGET',
+                      meta: { source: 'structured_runtime', moveName, fromName: previewRuntime.unitName(actor), fromId: actorId, toId: retarget.targetId, share: retarget.share, need: pull.need, windup: pull.windup,
+                        reasonText: `${previewRuntime.unitName(sourceActor)}看${previewRuntime.unitName(actor)}迎上来对轰占不到便宜，把【${moveName}】转向${previewRuntime.unitName(newTarget)}` },
+                    });
+                    const reopened = consumeStructuredReactionOpportunity(combatData, newTarget, shared.actionContext.actionEvent.actionId);
+                    if (reopened.ok) {
+                      queue.enqueue({
+                        actorEntry: { char: newTarget, side: inferUnitSide(combatData, newTarget) },
+                        actorControl: 'AI',
+                        actorTurnSequence: node.actorTurnSequence,
+                        parentActionSequence: node.parentActionSequence,
+                        phasePriority: 20,
+                        grantId: reopened.grantId,
+                        opportunityId: reopened.opportunityId,
+                        nodeKind: 'REACTION',
+                        actionRole: 'REACTION',
+                        sourceActionId: shared.actionContext.actionEvent.actionId,
+                        sourceActorId,
+                        grantType: 'DEFEND_WINDOW',
+                        validTargetIds: [sourceActorId].filter(Boolean),
+                        state: { shared, targetId: retarget.targetId, retargeted: true, windupSpent: pull.need,
+                          counterCounts: { ...(node?.state?.counterCounts || {}) } },
+                      });
+                    }
+                    queue.recordTrace('CANCELLED', node, { reason: 'PULL_BACK_RETARGET', actionId: shared.actionContext.actionEvent.actionId });
+                    continue;
+                  }
+                  const skill = shared.declaration?.skill;
+                  const paid = {};
+                  if (skill && typeof skill === 'object') {
+                    const stages = previewRuntime.readSkillCostStages(skill, { 来源模块: 'BattleRuntime_Module', costActor: sourceActor });
+                    [['魂力', 'sp'], ['精神力', 'men']].forEach(([resource, key]) => {
+                      const amount = (stages.启动 || {})[resource];
+                      const half = amount === undefined ? 0 : Math.floor(Math.max(0, Number(previewRuntime.resolveSkillResourceCost(sourceActor, resource, amount)) || 0) *
+                        Math.min(1, pull.windup > 0 ? pull.need / pull.windup : 1));
+                      if (!(half > 0)) return;
+                      const before = previewRuntime.readResource(sourceActor, resource);
+                      writeCombatResource(sourceActor, key, Math.max(0, before - half));
+                      paid[resource] = before - previewRuntime.readResource(sourceActor, resource);
+                    });
+                  }
+                  const moveName = normalizeActionDisplayName(skill?.name || skill?.魂技名 || shared.actionContext?.actionName || '这一招');
+                  const pullEvent = writeLedgerEvent(combatData, {
+                    eventKind: 'pull_back', round: Number(combatData.回合 || 0),
+                    actorId: sourceActorId, actorName: previewRuntime.unitName(sourceActor), targetId: actorId, targetName: previewRuntime.unitName(actor),
+                    actionName: '收招', actionType: 'pull_back', actorControl: 'AI', actionRole: 'ACTIVE',
+                    actionId: shared.actionContext.actionEvent.actionId, sourceActionId: shared.actionContext.actionEvent.actionId,
+                    parentNodeId: String(node?.id || ''), sourceNodeId: String(node?.id || ''), result: 'pulled', resultState: 'ABORTED', ruleCode: 'PULL_BACK',
+                    meta: { source: 'structured_runtime', moveName, clash: pull.clash, value: pull.value, need: pull.need, windup: pull.windup, paid,
+                      reasonText: `${previewRuntime.unitName(sourceActor)}看${previewRuntime.unitName(actor)}迎上来对轰占不到便宜，收住了【${moveName}】` },
+                  });
+                  shared.preempted = { reactorId: actorId, eventId: String(pullEvent?.eventId || ''), pulled: true };
+                  shared.reactionByTarget[reactionTargetId] = { actionKind: 'PULLED', evaded: false, damageMultiplier: 0, nullified: true, opensCounterCheck: false };
+                  queue.recordTrace('CANCELLED', node, { reason: 'PULL_BACK', actionId: shared.actionContext.actionEvent.actionId });
+                  continue;
+                }
+              }
               const reactionSettlementStartedAt = collectPerformanceBreakdown
                 ? performanceNow()
                 : 0;

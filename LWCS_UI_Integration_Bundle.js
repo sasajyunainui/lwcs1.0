@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:eac69f3516bee5bda74e36e6729858da9192c8072bb756e6db5c2736506140bb|cockpit/designer-model.js:cfd30db8a8ca67e544a32c52788feaaa864725e4385577ba70616d16bd767aee|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:78a0c30e86f738904688ad41ab5651b61e801f96aca5286f35ceacf2abc1531d|cockpit/designer-model.js:cfd30db8a8ca67e544a32c52788feaaa864725e4385577ba70616d16bd767aee|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -9145,16 +9145,23 @@
     });
   }
 
-  // 子场之间「休息一分钟」（用户「3 + 小幅恢复」）：这一场上过场的角色魂力、精神力、体力各回上限的 5%，生命不回。
+  // 子场之间「休息一分钟」（用户「3 + 小幅恢复」）：这一场上过场的角色魂力、精神力、体力按场下平时恢复走一分钟——每 tick（10 分钟）5%，
+  // 一分钟 0.5%（11-20 场上场下恢复统一；之前一律 5%），生命不回。
   // 生命、资源与未到期状态本来就随战斗写回角色存档，下一子场开战时从存档展开，自然带入。
+  const 子场休息分钟 = 1, 场下平时每分钟恢复 = 0.005;
   function 子场休整恢复_桥接(数据根 = {}) {
     const 参战者 = 数据根?.world?.战斗?.参战者 || {};
     [...(参战者.team_player || []), ...(参战者.team_enemy || [])].forEach(单位 => {
       const 属性 = 数据根?.char?.[toText(单位?.name ?? 单位, '').trim()]?.属性;
       if (!属性 || typeof 属性 !== 'object') return;
-      [['魂力', '魂力上限'], ['精神力', '精神力上限'], ['体力', '体力上限']].forEach(([当前键, 上限键]) => {
+      // 精神力恢复只有魂力、体力的一半（用户 11-20：无魂核时 魂力 = 体力 > 精神力）。
+      [['魂力', '魂力上限', 1], ['精神力', '精神力上限', 0.5], ['体力', '体力上限', 1]].forEach(([当前键, 上限键, 比]) => {
         const 上限 = toNumber(属性[上限键], 0);
-        if (上限 > 0) 属性[当前键] = Math.min(上限, Math.round(toNumber(属性[当前键], 0) + 上限 * 0.05));
+        // 体力自然恢复不超过当前生命（用户 11-20）。
+        // 精神力自然恢复最多回到 90%（只有睡觉能回满）。
+        const 顶 = 当前键 === '体力' ? Math.min(上限, Math.max(toNumber(属性[当前键], 0), toNumber(属性.HP, 上限)))
+          : 当前键 === '精神力' ? Math.max(toNumber(属性[当前键], 0), 上限 * 0.9) : 上限;
+        if (上限 > 0) 属性[当前键] = Math.min(顶, Math.round(toNumber(属性[当前键], 0) + 上限 * 子场休息分钟 * 场下平时每分钟恢复 * 比));
       });
     });
   }
@@ -29303,6 +29310,21 @@ ${播报文本}
       path: '/world/战斗',
       value: compactCombatData,
     }];
+    // 战斗时长计入世界时间（用户 11-20「一回合算一分钟吧」）：一回合 1 分钟 = 1/10 tick（1 tick = 10 分钟），按这次新打的回合数推进；
+    // 同一场分几次写回时只算新增的回合。结算起点一并推到新时间：战斗这段不按日常结算恢复（MVU「战斗」模式本就全为 0，场上恢复战斗里已算）。
+    {
+      const 旧战斗 = deepGet(currentRoot, ['world', '战斗'], null);
+      const 已结回合 = 旧战斗 && 旧战斗.进行中 === true ? Math.max(0, toNumber(旧战斗.回合, 0)) : 0;
+      const 新增回合 = Math.max(0, toNumber(finalSnapshot.回合, 0) - 已结回合);
+      const 当前tick = toNumber(deepGet(currentRoot, ['world', '时间', 'tick'], NaN), NaN);
+      if (新增回合 > 0 && Number.isFinite(当前tick)) {
+        const 新tick = Math.round((当前tick + 新增回合 / 10) * 10) / 10;
+        if (新tick > 当前tick) {
+          patchOps.push({ op: 'replace', path: '/world/时间/tick', value: 新tick });
+          patchOps.push({ op: deepGet(currentRoot, ['world', '时间', '_上次结算tick'], undefined) === undefined ? 'add' : 'replace', path: '/world/时间/_上次结算tick', value: 新tick });
+        }
+      }
+    }
     const createdByOwner = new Map();
     (Array.isArray(createdInventoryAssets) ? createdInventoryAssets : []).forEach(({ ownerId, assetId }) => {
       if (!ownerId || !assetId) return;
@@ -32121,8 +32143,9 @@ ${播报文本}
 
   function 日常动作资源足够(charData = {}, actionMode = '') {
     const 属性 = charData && typeof charData === 'object' ? charData.属性 || {} : {};
-    if (actionMode === '肉体训练') return Number(属性.体力 || 0) >= Math.max(1, Number(属性.体力上限 || 1)) * 0.3;
-    if (actionMode === '精神训练') return Number(属性.精神力 || 0) > Math.max(1, Number(属性.精神力上限 || 1)) * 0.1;
+    // 训练门槛（11-20 按场下恢复调）：肉体训练要满体力，精神训练要 45% 精神力（MVU_Schema_Runtime 训练消耗）。
+    if (actionMode === '肉体训练') return Number(属性.体力 || 0) >= Math.max(1, Number(属性.体力上限 || 1)) * 0.999;
+    if (actionMode === '精神训练') return Number(属性.精神力 || 0) >= Math.max(1, Number(属性.精神力上限 || 1)) * 0.45 - 1e-9;
     return true;
   }
 
