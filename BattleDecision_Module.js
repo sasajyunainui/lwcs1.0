@@ -42206,6 +42206,9 @@
       // action it spends on the move (BattleRuntime consumeStructuredControlActiveBudget).
       const engagementMode = String(declaration?.engagement?.mode || '').toUpperCase();
       const clash = engagementMode === 'CLASH' && move ? preview.clashOutcome(table.units[actorRow], declaration, source, move, table.world) : null;
+      // 收招（BattlePreview pullBackChoice，11-20 擂台：估值不知道对方会收，擂主每场白迎 6 次）：出手者会收，这一招不落下、迎击落空
+      // （代价照付，上面的结算预览已按落空算）、没有破绽可抓。
+      const attackerPulls = !!clash && preview.pullBackChoice?.(source, move, table.units[actorRow], declaration, table.world)?.pull === true;
       // 接战链 阶段 2d (方案 §11.3): the clash is in time as often as the timing the actor sees lets it be sure
       // (clashTiming confidence; the runtime reads the true agility). Too late, the actor's move comes to nothing and
       // the move lands whole, unguarded: what the actor's move lands on the attacker counts only when it is in time.
@@ -42245,7 +42248,7 @@
       const priorActor = Number(request.actionOpportunity?.counterPrior || 0), priorSource = Number(request.actionOpportunity?.opponentCounterPrior || 0);
       const catches = preview.counterOpeningProbability(actorNext, source, move, { prior: priorActor, ...(deflect?.unbalance > 0 ? { unbalanced: true } : {}) });
       const strikesBack = shieldRow !== undefined || deflect?.failed ? 0 : actionKind === 'DEFEND' ? (preview.guardHolds(weight, share * r20Soak(actorNext)) ? catches : 0)
-        : declaration?.concede === true ? 0 : actionKind === 'EVADE' ? (declaration?.retreat === true ? 0 : dodge * catches) : clash ? (clash.answered ? clashConfidence * catches : 0) : engagementMode === 'PREEMPT' ? (preempt + (1 - preempt) * softDeflect) * catches
+        : declaration?.concede === true ? 0 : actionKind === 'EVADE' ? (declaration?.retreat === true ? 0 : dodge * catches) : attackerPulls ? 0 : clash ? (clash.answered ? clashConfidence * catches : 0) : engagementMode === 'PREEMPT' ? (preempt + (1 - preempt) * softDeflect) * catches
           : preview.declarationGrantsCounter(declaration || {}) ? 1 : 0;
       const staminaMaximum = preview.readResourceMax(actorNext, '体力'), maximum = Math.max(1, preview.readHpMax(actorNext)), shield = preview.readShield(actorNext) / maximum;
       // 接战链 阶段 2c: what the answer costs, priced by the same function the table's expectation of an answer uses.
@@ -42257,7 +42260,7 @@
       // 应对时认输：近身一击收得住就什么也落不下（BattlePreview concedeHoldsBack）；有裁判的比赛里裁判赶得到也落不下（refereeCatchesConcede）。
       const pulled = declaration?.concede === true && move && (preview.concedeHoldsBack?.(source, move, table.units[actorRow]) ||
         preview.refereeCatchesConcede?.(table.world, source, move));
-      const taken = pulled ? 0 : clash ? clashConfidence * clash.theirs * clash.inScale / maximum * r20Soak(actorNext) + (1 - clashConfidence) * hit : hit * share;
+      const taken = pulled || attackerPulls ? 0 : clash ? clashConfidence * clash.theirs * clash.inScale / maximum * r20Soak(actorNext) + (1 - clashConfidence) * hit : hit * share;
       diag.taken = taken; diag.hit = hit; diag.share = share;
       const hpLeft = Math.max(0, preview.readHp(actorNext) - r20Floor(actorNext)) / maximum + shield - taken;
       remaining[actorRow] = Math.max(0, hpLeft);

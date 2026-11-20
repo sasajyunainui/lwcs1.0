@@ -26375,6 +26375,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const attacker = findUnit(worldSnapshot, engagement.sourceActorId);
     const clash = reactor && attacker ? clashOutcome(reactor, declaration, attacker, engagement.incoming, worldSnapshot) : null;
     if (!clash) return { ...input, __engagementResolved: true };
+    // 收招（pullBackChoice）：出手者看到这一下对轰占不到便宜、又收得住就收——迎击照付代价，效果落空（BattleRuntime 同口径）。
+    if (pullBackChoice(attacker, engagement.incoming, reactor, declaration, worldSnapshot)?.pull === true) return { ...input, __engagementResolved: true, __engagementVoidEffects: true };
     if (!(clash.outScale > 0)) return { ...input, __engagementResolved: true, __engagementVoidEffects: true };
     const attackerId = unitId(attacker), resolver = input.hitProbabilityResolver, given = input.damageMultiplierByTarget;
     return { ...input, __engagementResolved: true, ...(clash.shock ? { __engagementShockTargetId: attackerId } : {}),
