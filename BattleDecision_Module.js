@@ -43419,7 +43419,7 @@
   // 认输估值的胜算（11-15 用户「现在就换胜算」）：R20 下按桌面原样推演一遍（r20Race）——胜算取胜负项的 tanh(R20_WIN_SLOPE × 分差)
   // 换到 0～1，推演结束时对手还剩的（我倒下前打不掉的）与自己还剩的给后续出场的消耗与保留（BattlePreview exitValuation）。
   // 此前按场上已打出的伤害速率粗估：开局还没出手时，弱方能打掉对手多少估成 0，胜算也偏高。每张桌面每方算一次。
-  const r20ExitOutlooks = new WeakMap(), R20_EXIT_SPEND_PRIOR = 0.1, R20_EXIT_ODDS = Object.freeze({ solo: Object.freeze([-0.02, 1.62]), team: Object.freeze([-0.25, 0.94]) });
+  const r20ExitOutlooks = new WeakMap(), R20_EXIT_SPEND_PRIOR = 0.1, R20_EXIT_VIT_PRIOR = 0.02, R20_EXIT_ODDS = Object.freeze({ solo: Object.freeze([-0.02, 1.62]), team: Object.freeze([-0.25, 0.94]) });
   function r20ExitOutlook(request = {}, actor = {}) {
     const table = r20Facts(request);
     const own = request.actorSide;
@@ -43462,7 +43462,22 @@
     const teamShare = clamp((sideSize - 1) / 2, 0, 1);
     const [oddsBase, oddsSlope] = [R20_EXIT_ODDS.solo[0] + (R20_EXIT_ODDS.team[0] - R20_EXIT_ODDS.solo[0]) * teamShare, R20_EXIT_ODDS.solo[1] + (R20_EXIT_ODDS.team[1] - R20_EXIT_ODDS.solo[1]) * teamShare];
     const odds = margin => clamp(1 / (1 + Math.exp(-(oddsBase + oddsSlope * (Number(margin) || 0)))), 0, 1);
-    const win = odds(raced.margin);
+    // 体力先耗光（用户 11-20「魂力、体力见底基本就得认输」；擂台连场：估胜算 94%、45% 的两场都是体力耗尽判负）：推演只比掉血，不走资源。
+    // 按这场已花的体力速率（同上 rate 的先验）估算还能撑几回合，比推演的结束时间早就多半撑不到（log 时间比，σ(2·log(结束/耗尽))）：
+    // 自己先耗光，赢的那部分变输；对手先耗光，输的那部分变赢（两边都先耗光的按各自比例）。
+    const vitShare = unit => preview.readResourceMax(unit, '体力') > 0 ? clamp(preview.readResource(unit, '体力') / preview.readResourceMax(unit, '体力'), 0, 1) : 1;
+    // 体力的先验另取每回合 R20_EXIT_VIT_PRIOR（擂台连场实测：30 回合约花一半体力，不到 2%／回合；魂力那份 0.1 对体力太高）。
+    const vitRate = unit => ((1 - vitShare(unit)) + 2 * R20_EXIT_VIT_PRIOR) / (elapsed + 2);
+    const exhaustFirst = unit => {
+      if (!(time > 0) || preview.readResourceMax(unit, '体力') <= 0) return 0;
+      const last = vitShare(unit) / Math.max(1e-9, vitRate(unit));
+      return last <= 1e-9 ? 1 : 1 / (1 + Math.exp(-2 * (Math.log(time) - Math.log(last))));
+    };
+    const mineOut = exhaustFirst(actorUnit);
+    const foeOut = table.units.reduce((most, unit, row) => table.sides[row] !== own && (Number(table.alive[row]) || 0) > 0 && !preview.isSummonUnit(unit)
+      ? Math.max(most, exhaustFirst(unit)) : most, 0);
+    const raceWin = odds(raced.margin);
+    const win = clamp(raceWin * (1 - mineOut) + (1 - raceWin) * foeOut * (1 - mineOut), 0, 1);
     // 走了之后队友的胜算（11-16 行为检查目录第 5 题：3v3 近均势比赛第 1 回合认输）：同一张桌面让行动者开局即离场再推演一遍
     // （plan.leaves），按同一映射给胜算。此前按场上已打出的速率粗估，开局还没打出伤害时给「胜 0 负 0」，走了算队友平局，
     // 比留下（推演胜算 25%）还好。

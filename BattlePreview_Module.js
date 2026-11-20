@@ -4235,6 +4235,8 @@
   //   接着打的队友记满，只有团战在后记一半。
   //   之后还有团战：自己的生命也带进团战（保留，FOLLOW_KEEP）——认输保住此刻的生命，留下来赢了保住、输了剩一成。
   const FOLLOW_DRAIN = 0.6, FOLLOW_KEEP = 0.6, FOLLOW_RESOURCE_SHARE = 0.5;
+  // 后面还有比赛时被打倒的额外代价（起始值，与比赛被打倒的 0.3 同量：重伤带进后面的比赛，代价翻倍）。
+  const EXIT_INJURY_FATE = Number(root.__LWCS_TUNE__?.EXIT_INJURY_FATE ?? 0.3);
   // foeFollow: the other side has someone after this one in the 擂台 — winning, the actor fights on with what it has left.
   function matchFollowUp(worldSnapshot = {}, side = '') {
     const records = worldSnapshot?.赛事上下文?.后续;
@@ -4381,7 +4383,9 @@
     const rules = battleRules(worldSnapshot, battleIntent);
     if (!rules.exit || !actor || typeof actor !== 'object') return null;
     const side = sideOf(worldSnapshot, actor), id = unitId(actor);
-    const fate = exitFate(worldSnapshot, battleIntent);
+    // 后面还有比赛（剩余场次，用户 11-20「输不应该是血量为 0 或者过低……不然重伤的话后面的比赛怎么打？」）：被打倒的代价再加
+    // EXIT_INJURY_FATE——重伤带进后面的比赛；认输以此刻的状态离场，不吃这一份。
+    const fate = exitFate(worldSnapshot, battleIntent) + (matchFollowUp(worldSnapshot, side)?.remaining > 0 ? EXIT_INJURY_FATE : 0);
     // 群体撤离 (groupWithdrawalContest): the whole side leaves together, so no one is left to fight on.
     const others = contest?.groupWithdrawal === true ? 0 : listUnits(worldSnapshot).filter(entry => entry.side === side && unitId(entry.unit) !== id &&
       isBattleCapable(entry.unit) && !isSummonUnit(entry.unit)).length;
@@ -4416,7 +4420,10 @@
         const hpLossRound = Math.max(0, share(actor) - Math.max(LIFE_THREAT_RATIO, Math.min(share(actor), racedNumber('actorKept') ?? 0))) / rounds;
         const resLossRound = Math.max(0, racedNumber('actorSpend') ?? 0) / rounds;
         const winWorth = 1 + FOLLOW_KEEP * follow.keep * Math.max(LIFE_THREAT_RATIO, Math.min(share(actor), racedNumber('actorKept') ?? share(actor)));
-        const loseWorth = -1 + followLeft - FOLLOW_KEEP * follow.keep * (hpLossRound + FOLLOW_RESOURCE_SHARE * resLossRound) + FOLLOW_DRAIN * follow.carry * drainRound;
+        // 这一回合里就结束的那部分（推演的结束时间不到一回合按必定）等不到「下回合再认输」，输了照吃被打倒的代价（11-20：之前一律不计，
+        // 每回合都觉得再打一回合更好，擂台模拟 80 场里擂主 0 次认输、生命打到 2%～10% 才出局）。
+        const endsNow = racedNumber('time') > 0 ? clamp(1 / racedNumber('time'), 0, 1) : 1;
+        const loseWorth = -1 - fate * endsNow + followLeft - FOLLOW_KEEP * follow.keep * (hpLossRound + FOLLOW_RESOURCE_SHARE * resLossRound) + FOLLOW_DRAIN * follow.carry * drainRound;
         const oneMore = outlook.win * winWorth + (1 - outlook.win) * loseWorth;
         followStay = oneMore - stay;
         stay = oneMore;
