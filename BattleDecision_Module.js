@@ -39707,6 +39707,29 @@
   const R20_FEINT_BAIT = Number(root.__LWCS_TUNE__?.FEINT_BAIT ?? 0.4);
   // 资源按之后的场次加价（第 22 题，数值待实测）。
   const R20_FOLLOW_PER_MATCH = Number(root.__LWCS_TUNE__?.FOLLOW_PER_MATCH ?? 1), R20_FOLLOW_MATCH_CAP = 4;
+  // 逼对手花的资源按半份生命（同 BattlePreview FOLLOW_RESOURCE_SHARE）。
+  const R20_FOE_DRAIN_SHARE = 0.5;
+  // 这一场还剩的资源预算（魂力、精神力各自的份额）：开打时的份额 ÷（剩余场次 + 1）减这场已花的。开打时 = 现在 + 已花（账本 action_cost，
+  // 按行动者名字）。每张桌面（请求）算一次。
+  const r20MatchBudgets = new WeakMap();
+  function r20MatchBudgetLeft(request = {}, actor = {}, remaining = 0) {
+    const table = r20Facts(request);
+    const cached = r20MatchBudgets.get(table);
+    if (cached && cached.actor === actor && cached.remaining === remaining) return cached.left;
+    const name = String(preview.unitName(actor) || '').trim();
+    const ledger = Array.isArray(table.world?.__battleEventLedger) ? table.world.__battleEventLedger : [];
+    const left = { 魂力: 0, 精神力: 0 };
+    for (const resource of ['魂力', '精神力']) {
+      const max = preview.readResourceMax(actor, resource);
+      if (!(max > 0)) continue;
+      const used = ledger.reduce((sum, event) => event?.eventKind === 'action_cost' && String(event?.meta?.resource || '') === resource &&
+        String(event?.actorName || '').trim() === name ? sum + Math.max(0, Number(event?.meta?.amount) || 0) : sum, 0) / max;
+      const start = clamp(preview.readResource(actor, resource) / max, 0, 1) + used;
+      left[resource] = Math.max(0, start / (Math.max(0, remaining) + 1) - used);
+    }
+    r20MatchBudgets.set(table, { actor, remaining, left });
+    return left;
+  }
   const R20_ROUNDS_CAP = 99, R20_ROUNDS_FLOOR = 0.25, R20_HORIZON = 6, R20_RESOURCE_PRICE = 0.15, R20_ROUND_DISCOUNT = 0.85,
     R20_UPKEEP_ROUNDS = 3, R20_CHAIN_LIMIT = 8, R20_WIN_SLOPE = 2,
     R20_OBJECTIVE_WEIGHT = 2, R20_OBSERVE_VALUE = 0.02, R20_ITEM_EFFECT_VALUE = 0.1, R20_ITEM_USE_SHARE = 0.375,
@@ -41690,7 +41713,8 @@
     const until = new Array(count).fill(Infinity), tick = table.tick.slice(), tickRounds = table.tickRounds.slice(), reflect = table.reflect.slice(), hpMax = table.hpMax.slice();
     const rebuilt = [], hushed = {}, expiring = [], cuts = [];
     let added = [];
-    let spent = 0, outside = 0, seen = 0, regenGain = 0;
+    let spent = 0, outside = 0, seen = 0, regenGain = 0, foeSpent = 0;
+    const spentBy = { 魂力: 0, 精神力: 0 };
     // 对账用（不进估值）: what the sheet read of an answer and of a stance, for checking against what the runtime settles.
     const diag = {};
     for (const id of touched) {
@@ -41808,7 +41832,13 @@
       }
       // An answer (REACTION) is priced by r20AnswerPrice below instead (接战链 阶段 2c).
       if (row === actorRow && String(request.actionOpportunity?.role || '').toUpperCase() !== 'REACTION') for (const resource of ['魂力', '精神力']) {
-        spent += Math.max(0, preview.readResource(prior, resource) - preview.readResource(next, resource)) / Math.max(1, preview.readResourceMax(prior, resource));
+        const share = Math.max(0, preview.readResource(prior, resource) - preview.readResource(next, resource)) / Math.max(1, preview.readResourceMax(prior, resource));
+        spent += share;
+        spentBy[resource] += share;
+      }
+      // 逼对手花的资源（用户 11-20「加上」）：这一手让敌方花掉的魂力、精神力份额，接续时下面计价。
+      if (table.sides[row] !== request.actorSide && !preview.isSummonUnit(prior)) for (const resource of ['魂力', '精神力']) {
+        foeSpent += Math.max(0, preview.readResource(prior, resource) - preview.readResource(next, resource)) / Math.max(1, preview.readResourceMax(prior, resource));
       }
       // 冥想（11-17，第 22 题）: what its states will give back over the horizon counts at the price spending costs (R20_RESOURCE_PRICE).
       if (row === actorRow) regenGain += Math.max(0, r20RegenOwed(next) - r20RegenOwed(prior));
@@ -42452,9 +42482,18 @@
     const followCarry = Number(follow?.carry || 0) >= 1;
     // 赢家省资源（同上）：对方后面还有人时，赢下这场要带着剩下的资源接着打——花出去的按胜算加价；之后还有团战时至少加一半。
     // 第 22 题（用户 11-17「按后面还剩几场给资源加价」）：之后在赛事里每还有一场，资源再贵 R20_FOLLOW_PER_MATCH 倍，至多 R20_FOLLOW_MATCH_CAP 场。
-    const followKeep = follow ? Math.max(follow.keep ? 0.5 : 0, follow.foeFollow ? r20ExitOutlook(request, table.units[actorRow] || {}).win : 0) +
-      R20_FOLLOW_PER_MATCH * Math.min(R20_FOLLOW_MATCH_CAP, Number(follow.remaining) || 0) : 0;
-    const cost = R20_RESOURCE_PRICE * spent * (1 + (followCarry ? 0 : R20_PROBE_PREMIUM * unseen)) * (spar ? R20_SPAR_PRICE : 1) * (1 + followKeep);
+    const followBase = follow ? Math.max(follow.keep ? 0.5 : 0, follow.foeFollow ? r20ExitOutlook(request, table.units[actorRow] || {}).win : 0) : 0;
+    const followMatches = follow ? R20_FOLLOW_PER_MATCH * Math.min(R20_FOLLOW_MATCH_CAP, Number(follow.remaining) || 0) : 0;
+    const followKeep = followBase + followMatches;
+    // 每场预算（用户 11-20「改成每场预算」）：后面还有 N 场时，这一场的魂力、精神力预算 = 开打时的份额 ÷（N + 1）；预算以内只按
+    // followBase 加价，超出预算的部分再加后续场次的价（followMatches）。开打时 = 现在剩的 + 这场已花的（账本 action_cost）。
+    // 两种资源各算各的（合在一起算，没用的精神力预算会被挪给魂力）。
+    const budgetLeft = followMatches > 0 ? r20MatchBudgetLeft(request, table.units[actorRow], Number(follow.remaining) || 0) : null;
+    const overBudget = budgetLeft ? ['魂力', '精神力'].reduce((sum, resource) => sum + Math.max(0, spentBy[resource] - budgetLeft[resource]), 0) : 0;
+    const cost = R20_RESOURCE_PRICE * (spent * (1 + followBase) + overBudget * followMatches) * (1 + (followCarry ? 0 : R20_PROBE_PREMIUM * unseen)) * (spar ? R20_SPAR_PRICE : 1);
+    // 逼对手花资源（用户 11-20「加上」，原作萧萧逼出薛兵的武魂真身）：有队友接着打这个对手（接续）时，这一手让对手花掉的资源
+    // 按半份生命计（同认输估值 FOLLOW_RESOURCE_SHARE）。
+    const foeDrain = followCarry ? R20_FOE_DRAIN_SHARE * foeSpent : 0;
     // What it gets back is worth what it would have cost — more when it has fights after this one (followKeep).
     const regen = R20_RESOURCE_PRICE * regenGain * (1 + followKeep);
     // 亮魂环（同上）: any 魂技 lights the rings — the enemy sees how many and how old, and what the spirit does — so against one
@@ -42647,7 +42686,8 @@
         const terminal = r9v2LinearTerminalValue(preview.evaluateBattleObjectivesCompact(objectiveWorld, table.objectives), own);
         add('objective', objective, `权重 ${R20_OBJECTIVE_WEIGHT} ×（终局 ${r20Num(terminal)} + 进展 ${r20Num(objective / R20_OBJECTIVE_WEIGHT + table.objectiveBase - terminal)} − 原有 ${r20Num(table.objectiveBase)}）`);
       }
-      add('cost', -cost, `单价 ${R20_RESOURCE_PRICE} × 花掉的资源份额 ${r20Num(spent)} ×（1 + 试探溢价 ${followCarry ? 0 : R20_PROBE_PREMIUM} × 未看清 ${r20Num(unseen)}）${spar ? ` × 切磋 ${R20_SPAR_PRICE}` : ''} ×（1 + 后续场次 ${r20Num(followKeep)}）`);
+      add('cost', -cost, `单价 ${R20_RESOURCE_PRICE} ×（花掉的资源份额 ${r20Num(spent)} ×（1 + ${r20Num(followBase)}）+ 超出本场预算 ${r20Num(overBudget)} × 后续场次 ${r20Num(followMatches)}）×（1 + 试探溢价 ${followCarry ? 0 : R20_PROBE_PREMIUM} × 未看清 ${r20Num(unseen)}）${spar ? ` × 切磋 ${R20_SPAR_PRICE}` : ''}`);
+      if (foeDrain) add('foeDrain', foeDrain, `接续：逼对手花掉的资源份额 ${r20Num(foeSpent)} × ${R20_FOE_DRAIN_SHARE}`);
       add('regen', regen, `单价 ${R20_RESOURCE_PRICE} × 回复份额 ${r20Num(regenGain)} ×（1 + 后续场次 ${r20Num(followKeep)}）`);
       add('reveal', -reveal, `底牌规模 ${r20Num(reveal ? revealScale() : 0)} × min(${R20_REVEAL_CAP} × 收益 ${r20Num(gain)}, 半基数 ${r20Num(revealHalf)} × 警惕 ${r20Num(wary)} × 收益 + 半基数 × 对方学到 ${r20Num(learn)} × min(收益, 招式优势 ${r20Num(learnEdge)}))`);
       add('info', info, `基数 ${R20_REVEAL_BASE} × 看清程度变化 × 招式优势 = ${r20Num(diag.infoRaw ?? info)} × 未定胜负 4·${r20Num(diag.infoOdds ?? 0.5)}·(1−${r20Num(diag.infoOdds ?? 0.5)})`);
@@ -42665,7 +42705,7 @@
         .slice(0, 4).map(entry => ({ id: table.ids[entry.row], side: table.sides[entry.row] === own ? 'own' : 'foe', time: entry.time }));
       trace.unseen = Number(unseen.toFixed(3)); trace.wary = Number(wary.toFixed(3));
     }
-    return { value: race + tempo + granted + objective + leave + stock + info + regen + feint - cost - fusionCost - asset - restraint - reveal - idleStance, idleStance, race, tempo, granted, objective, leave, stock, info, regen, feint, cost, fusionCost, asset, restraint, reveal, revealWary, revealLearn, diag, counter, rebuilt: rebuilt.length, added: added.length, outside,
+    return { value: race + tempo + granted + objective + leave + stock + info + regen + feint + foeDrain - cost - fusionCost - asset - restraint - reveal - idleStance, idleStance, race, tempo, granted, objective, leave, stock, info, regen, feint, foeDrain, cost, fusionCost, asset, restraint, reveal, revealWary, revealLearn, diag, counter, rebuilt: rebuilt.length, added: added.length, outside,
       seen: seen + added.length + Number(granted !== 0) + Number(objective !== 0) + Number(leave !== 0) };
   }
 
