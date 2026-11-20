@@ -4202,8 +4202,10 @@
   // 继续不划算（得失为负）、又来得及收手就收：需要的时间 = 一记普攻的前摇 ×（出手者有效敏捷 ÷ 迎击者有效敏捷）——同应对认输的
   // 收手（concedeHoldsBack），不限近身——短于这一招的前摇才收得住。收住按前摇已过的比例（need ÷ windup）付消耗。改打另一人留到后面（要给新目标重开应对窗口）。
   // 返回 null：不是对轰、或不是能比的伤害招。
+  // 校准入口（root.__LWCS_TUNE__.PULL_BACK = false 关掉收招与改向），默认开。
+  const PULL_BACK_ON = root.__LWCS_TUNE__?.PULL_BACK !== false;
   function pullBackChoice(attacker = {}, incoming = null, reactor = {}, reactorDeclaration = null, worldSnapshot = null) {
-    if (!incoming || !reactorDeclaration) return null;
+    if (!PULL_BACK_ON || !incoming || !reactorDeclaration) return null;
     const clash = clashOutcome(reactor, reactorDeclaration, attacker, incoming, worldSnapshot);
     if (!clash) return null;
     const dealt = Math.max(0, Number(clash.theirs) || 0) * Math.max(0, Number(clash.inScale) || 0);

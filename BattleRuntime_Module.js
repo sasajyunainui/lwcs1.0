@@ -18880,7 +18880,8 @@
                 preemptedById: String(shared.preempted.reactorId || ''), preemptEventId: String(shared.preempted.eventId || ''),
                 reasonText: shared.preempted.pulled === true ? `${previewRuntime.unitName(actor)}收住了【${shared.actionContext.actionName}】` : `${previewRuntime.unitName(actor)}的【${shared.actionContext.actionName}】被抢先打断` },
             });
-            if (actor && actorPresentInBattle && structuredActorPhysicallyAlive(actor)) {
+            // 收招（shared.preempted.pulled）两边都落空，没有破绽可抓，不开反击窗口——开了会「反击→迎上来→收招→再开反击」绕满队列。
+            if (actor && actorPresentInBattle && structuredActorPhysicallyAlive(actor) && shared.preempted.pulled !== true) {
               enqueueCounterWindows({ node, actor, shared, actionEvent, facts: [] });
             }
             if (actor && String(structuredActorIncapacityReason(actor, 'ACTIVE') || '').startsWith('CONTROLLED:')) consumeStructuredControlActiveBudget(combatData, actor, node);
@@ -19102,21 +19103,23 @@
               if (String(reactionDeclaration?.engagement?.mode || '').trim().toUpperCase() === 'CLASH' && sourceActor && previewRuntime.pullBackChoice &&
                 structuredActorCanAct(sourceActor, 'ACTIVE') && (shared.declaration?.targetIds || []).length === 1) {
                 const pull = previewRuntime.pullBackChoice(sourceActor, shared.declaration, actor, reactionDeclaration, combatData);
+                // Development hook (absent in play).
+                if (typeof globalThis.__LWCS_DECISION_DEBUG__?.onPullBack === 'function') globalThis.__LWCS_DECISION_DEBUG__.onPullBack({ round: combatData.回合, attacker: previewRuntime.unitName(sourceActor),
+                  reactor: previewRuntime.unitName(actor), pull, retargeted: node?.state?.retargeted === true, nodeId: node?.id, parentActionSequence: node.parentActionSequence, actorTurnSequence: node.actorTurnSequence,
+                  move: shared.actionContext?.actionName, actionId: shared.actionContext?.actionEvent?.actionId,
+                  role: shared.actionContext?.actionEvent?.actionRole, grant: shared.actionContext?.actionEvent?.grantId || shared.actionContext?.actionEvent?.meta?.grantId });
                 if (pull?.pull) {
-                  // 迎击的一方这一下落空：记成它的行动没落下（战报给它的决策落点，同其他被取消的应对）。
-                  const answerName = normalizeActionDisplayName(reactionDeclaration?.skill?.name || reactionDeclaration?.skill?.魂技名 ||
-                    reactionDeclaration?.skill?.技能名称 || String(reactionDeclaration?.actionKind || '').trim());
-                  writeLedgerEvent(combatData, {
-                    eventKind: 'blocked_action', round: Number(combatData.回合 || 0),
-                    actorId, actorName: previewRuntime.unitName(actor), targetId: sourceActorId, targetName: previewRuntime.unitName(sourceActor),
-                    actionName: answerName, actionType: String(reactionDeclaration?.actionKind || '').trim().toLowerCase(),
-                    actorControl: 'AI', actionRole: 'REACTION', actionId: shared.actionContext.actionEvent.actionId,
-                    sourceActionId: shared.actionContext.actionEvent.actionId, parentNodeId: String(node?.id || ''),
-                    opportunityId: node.opportunityId, grantId: node.grantId,
-                    result: 'pulled', resultState: 'ABORTED', ruleCode: 'PULL_BACK_ANSWER_VOID',
-                    meta: { source: 'structured_runtime', grantId: node.grantId, opportunityId: node.opportunityId, reasonCode: 'PULL_BACK_ANSWER_VOID',
-                      reasonText: `${previewRuntime.unitName(sourceActor)}收招，${previewRuntime.unitName(actor)}的【${answerName}】落空` },
+                  // 迎击的一方这一下已经打出去了：照常开始、付消耗与体力，效果落空（同对轰输了的 voidEffects）——不付代价就能每次白迎，
+                  // 召唤物成群时会「攻击→迎击→收招」绕满队列（回归 cp7|35|控制系|召唤系|2 一场收招 294 次）。
+                  const answerContext = beginStructuredDeclaration({
+                    combatData, declaration: reactionDeclaration, actionRole: 'REACTION', actorControl: 'AI',
+                    sourceActionId: shared.actionContext.actionEvent.actionId, opportunityId: node.opportunityId, opportunitySequence: node.opportunitySequence,
+                    grantId: node.grantId, decisionCandidateId: String(decisionResult?.selected?.candidateId || '').trim(),
+                    parentNodeId: shared.actionContext.actionEvent.chainNodeId || '', reactionNodeId: shared.actionContext.actionEvent.chainNodeId || '',
                   });
+                  answerContext.actionEvent.meta.engagementMode = 'CLASH';
+                  answerContext.actionEvent.meta.pulledBack = true;
+                  executeStructuredDeclaration({ combatData, declaration: reactionDeclaration, actionContext: answerContext, voidEffects: true });
                   // 改向（方案 §4）：场上还有别的敌人可打，就把这一招转过去，前摇照走、消耗照付（结算时）；新目标只剩余下的前摇来应对，
                   // 再迎上来也只收不再改（retargeted）。
                   const retarget = node?.state?.retargeted === true ? null : previewRuntime.retargetChoice?.(sourceActor, shared.declaration, actor, combatData);
