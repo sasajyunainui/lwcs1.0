@@ -39709,6 +39709,7 @@
   const R20_FOLLOW_PER_MATCH = Number(root.__LWCS_TUNE__?.FOLLOW_PER_MATCH ?? 1), R20_FOLLOW_MATCH_CAP = 4;
   // 逼对手花的资源按半份生命（同 BattlePreview FOLLOW_RESOURCE_SHARE）。
   const R20_FOE_DRAIN_SHARE = 0.5;
+  const R20_MATCH_BUDGET_ON = root.__LWCS_TUNE__?.MATCH_BUDGET !== false;
   // 这一场还剩的资源预算（魂力、精神力各自的份额）：开打时的份额 ÷（剩余场次 + 1）减这场已花的。开打时 = 现在 + 已花（账本 action_cost，
   // 按行动者名字）。每张桌面（请求）算一次。
   const r20MatchBudgets = new WeakMap();
@@ -42488,8 +42489,9 @@
     // 每场预算（用户 11-20「改成每场预算」）：后面还有 N 场时，这一场的魂力、精神力预算 = 开打时的份额 ÷（N + 1）；预算以内只按
     // followBase 加价，超出预算的部分再加后续场次的价（followMatches）。开打时 = 现在剩的 + 这场已花的（账本 action_cost）。
     // 两种资源各算各的（合在一起算，没用的精神力预算会被挪给魂力）。
-    const budgetLeft = followMatches > 0 ? r20MatchBudgetLeft(request, table.units[actorRow], Number(follow.remaining) || 0) : null;
-    const overBudget = budgetLeft ? ['魂力', '精神力'].reduce((sum, resource) => sum + Math.max(0, spentBy[resource] - budgetLeft[resource]), 0) : 0;
+    // 校准入口 __LWCS_TUNE__.MATCH_BUDGET = false：不分预算，花的全按后续场次加价（改前的口径）。
+    const budgetLeft = followMatches > 0 && R20_MATCH_BUDGET_ON ? r20MatchBudgetLeft(request, table.units[actorRow], Number(follow.remaining) || 0) : null;
+    const overBudget = budgetLeft ? ['魂力', '精神力'].reduce((sum, resource) => sum + Math.max(0, spentBy[resource] - budgetLeft[resource]), 0) : spent;
     const cost = R20_RESOURCE_PRICE * (spent * (1 + followBase) + overBudget * followMatches) * (1 + (followCarry ? 0 : R20_PROBE_PREMIUM * unseen)) * (spar ? R20_SPAR_PRICE : 1);
     // 逼对手花资源（用户 11-20「加上」，原作萧萧逼出薛兵的武魂真身）：有队友接着打这个对手（接续）时，这一手让对手花掉的资源
     // 按半份生命计（同认输估值 FOLLOW_RESOURCE_SHARE）。
