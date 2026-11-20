@@ -7305,12 +7305,10 @@
           })
         : fusion;
       const profile = targetProfile(skill);
+      // 群体攻击也能立即反击（11-20 原作复现：卢宇星溃散黄沙漫天覆盖反击，原先只许单体攻击魂技）：群体覆盖得到出手者；反击照占自然行动。
       if (
         counterOnly &&
-        (
-          !['HOSTILE_SINGLE', 'HOSTILE_GROUP', 'ANY_SINGLE'].includes(profile) ||
-          (immediateOffensiveCounterEligible && !['HOSTILE_SINGLE', 'ANY_SINGLE'].includes(profile))
-        )
+        !['HOSTILE_SINGLE', 'HOSTILE_GROUP', 'ANY_SINGLE'].includes(profile)
       ) {
         recordRejected({
           actionKind: 'RELEASE_SKILL', sourceActionId: `${actorId}:skill:${sourceSkillId}`,
