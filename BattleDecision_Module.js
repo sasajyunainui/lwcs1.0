@@ -40251,7 +40251,7 @@
   // An enemy as believed lists no skills: what it has laid on the field (a state whose 来源角色 is it, BattleDecision
   // visibleStates) it can lay again — read the other way, the unit with the state against the unit without it.
   const R20_ASSIST_KEPT = 3, R20_ASSIST_SHARE_MIN = 0.1, R20_ASSIST_SHARE_MAX = 3;
-  function r20Assists(table, request, context) {
+  function r20Assists(table, request, context, rows = null) {
     const { cellUnits: units, sides, ids, world } = table, count = units.length, tick = Number(world?.当前世界tick ?? world?.当前tick ?? 0);
     const brings = row => Math.max(0, ...table.out[row], ...table.support[row]);
     // What the cells read of the units at `views` ([row, view]) against the same units as they are: their shares — with the
@@ -40330,6 +40330,7 @@
     };
     const assist = units.map(() => null);
     for (let row = 0; row < count; row += 1) {
+      if (rows && !rows.has(row)) continue;
       const unit = units[row];
       if (!table.acts[row] || hasStateFlag(unit, 'silence') || preview.isSummonSkillDisabled(unit)) continue;
       const own = affordablePreparedSkills(unit), shown = own.length ? null : r20Shown(unit), options = [];
@@ -41009,6 +41010,22 @@
     }
     return { locked, lockCost, lockChase };
   }
+  // 多线程分摊援护评估的接口（BattleRuntime 线程池 / 测试脚本）：r20AssistSlice 算请求的估值表到援护为止、只算 rows 这几行援护并交回
+  // （纯数据，{ 行号: 选项 }）；r20AssistGive 交给请求合并好的整份援护，之后估值照常（r20Facts 复用已建好的部分补完收尾）。
+  function r20AssistSlice(request, rows) {
+    if (r20Tables.has(request)) { const table = r20Tables.get(request); return { count: table.assist.length, rows: Object.fromEntries([...rows].filter(row => row < table.assist.length).map(row => [row, table.assist[row]])) }; }
+    const plan = { rows: new Set(rows) };
+    r20AssistPlans.set(request, plan);
+    r20Facts(request);
+    const count = plan.core?.table?.cellUnits?.length ?? 0;
+    return { count, rows: Object.fromEntries([...plan.rows].filter(row => row < count).map(row => [row, plan.slice?.[row] ?? null])) };
+  }
+  function r20AssistGive(request, assist) {
+    if (r20Tables.has(request)) return;
+    const plan = r20AssistPlans.get(request) || {};
+    plan.given = Object.freeze(assist.map(entry => entry ? Object.freeze(entry) : null));
+    r20AssistPlans.set(request, plan);
+  }
   // 简化演算开关（座舱设置「战斗演算」写 __LWCS_BATTLE_SIMPLE__）。
   const r20Simple = () => { try { return root.__LWCS_BATTLE_SIMPLE__ === true || root.parent?.__LWCS_BATTLE_SIMPLE__ === true; } catch (error) { return root.__LWCS_BATTLE_SIMPLE__ === true; } };
   const R20_SIMPLE_KEEP = 4;
@@ -41529,6 +41546,12 @@
     ? { ...unit, routine_attack_ratio: unit.__routine_full_ratio } : unit);
   function r20Facts(request) {
     if (r20Tables.has(request)) return r20Tables.get(request);
+    { const plan = r20AssistPlans.get(request);
+      if (plan?.core && plan.given) {
+        const world = request.visibleWorld;
+        r20Round = Number(world?.回合 || 0); r20World = world; r20Intent = request.battleIntent || null; r20Belief = request.beliefState || null;
+        return r20FinishFacts(plan.core, request, plan);
+      } }
     r20Work.tables += 1;
     const tableStartedAt = performance.now();
     if (root.__LWCS_DECISION_DEBUG__ && root.__LWCS_DECISION_DEBUG__.r20Work !== r20Work) { root.__LWCS_DECISION_DEBUG__.r20Work = r20Work; root.__LWCS_DECISION_DEBUG__.r20Race = r20Race; }
@@ -41631,8 +41654,23 @@
     if (table.strikes) table.strikes.sort((left, right) => left.at - right.at);
     Object.assign(table, r20Locks(world, table.units));
     Object.assign(table, r20Derive(table));
+    const core = { table, context, world, ids, sides, tableStartedAt };
+    // 多线程分摊援护评估（11-22）：分工计划只要几行时，建完表的其余部分就停下，算这几行交回；拿到合并好的援护再补完收尾。
+    const plan = r20AssistPlans.get(request);
+    if (plan?.rows && !plan.given) {
+      const assistStartedAt = performance.now();
+      plan.core = core; plan.slice = r20Assists(table, request, context, plan.rows);
+      r20Work.assistMs += performance.now() - assistStartedAt;
+      return null;
+    }
+    return r20FinishFacts(core, request, plan);
+  }
+  // 援护评估与收尾（目标条件进度、双方推演打分）；plan.given 是各线程分算后合并的援护（与整张一起算的逐位相同）。
+  const r20AssistPlans = new WeakMap();
+  function r20FinishFacts(core, request, plan = null) {
+    const { table, context, world, ids, sides, tableStartedAt } = core;
     const assistStartedAt = performance.now();
-    table.assist = r20Assists(table, request, context);
+    table.assist = plan?.given ? plan.given : r20Assists(table, request, context);
     r20Work.assistMs += performance.now() - assistStartedAt;
     // Conditions besides bringing the other side down (坚持回合, 先倒, 抽魂, 保护): their progress counts beside the race.
     const objectives = request?.objectiveContract || request?.battleIntent?.objectives || world?.胜负条件 || {};
@@ -45382,6 +45420,8 @@
     r9v2LinearPublicSnapshot,
     runR9v2LinearProviderForTest,
     runProvider,
+    r20AssistSlice,
+    r20AssistGive,
     validatePlayerLockedDeclaration: input => {
       const rejectedCandidates = [];
       const candidates = enumerateCandidates({
