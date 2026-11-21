@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:f1da5e5bb37cb504d102f6cb91141cbd5a4ce2765118746ad3a55ef8657ee12b|mvu_logic_bridge.js:96a5ad3cc701b192833d3be65334ea512e37dbc9bf3b8bed011e2f8c5736f577|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:25c29baa1f83737bc5d5a8cbce13c143ef14ef60cc45112b79c4bc9b73863f34|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:022ab507ac10cce533d3babd95291a8f13120f25098ad99b520d4857c7ae65d3|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:f1da5e5bb37cb504d102f6cb91141cbd5a4ce2765118746ad3a55ef8657ee12b|mvu_logic_bridge.js:718fe86a69fe5118603b42f1d1f3b6786eaf5d88dd26ff675d1505215d8acc73|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:25c29baa1f83737bc5d5a8cbce13c143ef14ef60cc45112b79c4bc9b73863f34|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:022ab507ac10cce533d3babd95291a8f13120f25098ad99b520d4857c7ae65d3|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -24255,7 +24255,7 @@
     const genderText = toText(deepGet(activeChar, '属性.性别', ''), '');
     if (!isFemaleGenderText(genderText)) return false;
     const ageValue = getPrivateArchiveAgeValue(deepGet(activeChar, '属性.年龄', null));
-    return Number.isFinite(ageValue) && ageValue >= 6;
+    return Number.isFinite(ageValue) && ageValue >= 5;
   }
 
   function getActiveNsfwPath(snapshot) {
@@ -54423,12 +54423,13 @@ ${播报文本}
   const SET_KEY = 'lwcs-cockpit-settings';
   const readSet = () => { try { return JSON.parse(localStorage.getItem(SET_KEY) || '{}'); } catch (e) { return {}; } };
 // 每个选项：[值, 图标, 悬停说明]；设置项图标
-  const SET_ICON = { motion: 'wand-magic-sparkles', hover: 'arrow-pointer', scan: 'bullseye', battle: 'khanda' };
+  const SET_ICON = { motion: 'wand-magic-sparkles', hover: 'arrow-pointer', scan: 'bullseye', battle: 'khanda', calc: 'microchip' };
   const SET_OPTS = {
     motion: [['标准', 'wand-magic-sparkles'], ['柔和', 'feather'], ['关闭', 'ban']],
     hover: [['快', 'bolt'], ['标准', 'arrow-pointer'], ['慢', 'hourglass-half']],
     scan: [['开启', 'bullseye'], ['关闭', 'circle']],
     battle: [['自动', 'robot', 'AI 代为出手'], ['手动', 'hand', '每回合自己选'], ['自由', 'feather-pointed', '只叙事不结算']],
+    calc: [['完整', 'layer-group', '每种打法都推演到底'], ['简化', 'gauge-high', '算得快，偶尔选得不如完整']],
   };
   const SET_GROUPS = [
     ['显示', 'palette', [
@@ -54440,9 +54441,13 @@ ${播报文本}
     ]],
     ['战斗', 'khanda', [
       ['battle', '代理模式', '自动：AI 代为出手；手动：每回合自己选；自由：只叙事不结算。', ['自动', '手动', '自由'], '手动'],
+      ['calc', '战斗演算', '完整：AI 把每种打法都推演到底。简化：挨打时只算这一下怎么接，同一招只比较最值得打的几个目标；人多的战斗快很多，但 AI 偶尔会选得不如完整。机器吃力时再开。', ['完整', '简化'], '完整'],
     ]],
   ];
   try { const m = JSON.parse(localStorage.getItem('lwcs-cockpit-settings') || '{}').motion; if (m) document.querySelector('.cockpit').dataset.motion = m; } catch (e) {}
+  // 战斗演算档位（用户 11-21：简化做成可选项，性能不足时用）：写到战斗引擎读的全局开关上（BattleDecision r20Simple）。
+  const applyCalc = val => { const on = val === '简化'; try { window.__LWCS_BATTLE_SIMPLE__ = on; } catch (e) {} try { if (window.parent && window.parent !== window) window.parent.__LWCS_BATTLE_SIMPLE__ = on; } catch (e) {} };
+  try { applyCalc(JSON.parse(localStorage.getItem('lwcs-cockpit-settings') || '{}').calc || '完整'); } catch (e) {}
   // 战斗代理模式存在原项目（BattleUIBridge，存储键 lwcs_battle_submit_mode），座舱只做中文显示映射
   const BATTLE_MODE = { 自动: 'auto', 手动: 'manual', 自由: 'free_narrative' };
   const battleBridge = () => window.COCKPIT.rt('BattleUIBridge');
@@ -54470,6 +54475,7 @@ ${播报文本}
     b.closest('[data-setting-group]')?.querySelectorAll('[data-setting]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); });
     if (k === 'motion') document.querySelector('.cockpit').dataset.motion = val;
     if (k === 'battle') battleBridge()?.setBattleSubmitMode?.(BATTLE_MODE[val]);
+    if (k === 'calc') applyCalc(val);
   });
 
   // 行动按钮：捕获阶段写好确认文案与动作规格（data-act），确认后由座舱交给原项目执行——

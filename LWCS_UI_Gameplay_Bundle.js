@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:121696c1481708bb05eaebf52d3f96efbeeac57ce6bc43311b2512fc2bda9596|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:d6818552f379190ba590a295c7f198810cb8d24d271e8e419335fe709e95bbdc|BattleRuntime_Module.js:62af09000c4cc8511c17683b52a012f3272add485766956e381fea8670d432d6|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:5e0db96d8b53e77d3c6169d38ead7aa477f9c3c90023621125d862c40a5ef06d */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:121696c1481708bb05eaebf52d3f96efbeeac57ce6bc43311b2512fc2bda9596|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:ba3747a2dee1252a9433213638b5373ad7873ac06a1bbe3b9723e4a8ae8fb9a3|BattleRuntime_Module.js:62af09000c4cc8511c17683b52a012f3272add485766956e381fea8670d432d6|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:5e0db96d8b53e77d3c6169d38ead7aa477f9c3c90023621125d862c40a5ef06d */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -81587,7 +81587,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // An enemy as believed lists no skills: what it has laid on the field (a state whose 来源角色 is it, BattleDecision
   // visibleStates) it can lay again — read the other way, the unit with the state against the unit without it.
   const R20_ASSIST_KEPT = 3, R20_ASSIST_SHARE_MIN = 0.1, R20_ASSIST_SHARE_MAX = 3;
-  function r20Assists(table, request, context) {
+  function r20Assists(table, request, context, rows = null) {
     const { cellUnits: units, sides, ids, world } = table, count = units.length, tick = Number(world?.当前世界tick ?? world?.当前tick ?? 0);
     const brings = row => Math.max(0, ...table.out[row], ...table.support[row]);
     // What the cells read of the units at `views` ([row, view]) against the same units as they are: their shares — with the
@@ -81666,6 +81666,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     };
     const assist = units.map(() => null);
     for (let row = 0; row < count; row += 1) {
+      if (rows && !rows.has(row)) continue;
       const unit = units[row];
       if (!table.acts[row] || hasStateFlag(unit, 'silence') || preview.isSummonSkillDisabled(unit)) continue;
       const own = affordablePreparedSkills(unit), shown = own.length ? null : r20Shown(unit), options = [];
@@ -82345,6 +82346,57 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     return { locked, lockCost, lockChase };
   }
+  // 多线程分摊援护评估的接口（BattleRuntime 线程池 / 测试脚本）：r20AssistSlice 算请求的估值表到援护为止、只算 rows 这几行援护并交回
+  // （纯数据，{ 行号: 选项 }）；r20AssistGive 交给请求合并好的整份援护，之后估值照常（r20Facts 复用已建好的部分补完收尾）。
+  function r20AssistSlice(request, rows) {
+    if (r20Tables.has(request)) { const table = r20Tables.get(request); return { count: table.assist.length, rows: Object.fromEntries([...rows].filter(row => row < table.assist.length).map(row => [row, table.assist[row]])) }; }
+    const plan = { rows: new Set(rows) };
+    r20AssistPlans.set(request, plan);
+    r20Facts(request);
+    const count = plan.core?.table?.cellUnits?.length ?? 0;
+    return { count, rows: Object.fromEntries([...plan.rows].filter(row => row < count).map(row => [row, plan.slice?.[row] ?? null])) };
+  }
+  function r20AssistGive(request, assist) {
+    if (r20Tables.has(request)) return;
+    const plan = r20AssistPlans.get(request) || {};
+    plan.given = Object.freeze(assist.map(entry => entry ? Object.freeze(entry) : null));
+    r20AssistPlans.set(request, plan);
+  }
+  // 简化演算开关（座舱设置「战斗演算」写 __LWCS_BATTLE_SIMPLE__）。
+  const r20Simple = () => { try { return root.__LWCS_BATTLE_SIMPLE__ === true || root.parent?.__LWCS_BATTLE_SIMPLE__ === true; } catch (error) { return root.__LWCS_BATTLE_SIMPLE__ === true; } };
+  const R20_SIMPLE_KEEP = 4;
+  function r20SimplePrune(request, candidateIds, frozenById) {
+    if (!r20Simple() || !isPreparedDecisionRequest(request)) return null;
+    const table = r20Facts(request), out = new Set();
+    const actorRow = table.index.get(String(request.actorId || ''));
+    if (actorRow === undefined) return null;
+    const enemies = table.sides.map((side, row) => row).filter(row => table.sides[row] !== table.sides[actorRow] && table.remaining[row] > 0);
+    if (enemies.length <= R20_SIMPLE_KEEP) return null;
+    const must = new Set(table.locked?.[actorRow] || []);
+    const pick = score => { let best = -1; for (const row of enemies) if (best < 0 || score(row) > score(best)) best = row; if (best >= 0) must.add(best); };
+    pick(row => -table.remaining[row]);
+    pick(row => table.priority[row] || 0);
+    pick(row => table.out[row]?.[actorRow] || 0);
+    const groups = new Map();
+    for (const candidateId of candidateIds) {
+      const declaration = frozenById.get(candidateId)?.declaration || {}, targets = Array.isArray(declaration.targetIds) ? declaration.targetIds : [];
+      if (targets.length !== 1 || !['BASIC_ATTACK', 'RELEASE_SKILL'].includes(String(declaration.actionKind || '').toUpperCase())) continue;
+      const row = table.index.get(String(targets[0]));
+      if (row === undefined || table.sides[row] === table.sides[actorRow]) continue;
+      const key = [declaration.actionKind, declaration.skill?.魂技名 || declaration.skill?.name || '', !!declaration.bait, !!declaration.deflect, !!declaration.feintStrike, !!declaration.flank,
+        !!declaration.humanShield, !!declaration.retreat, !!declaration.throwWeapon, !!declaration.recallStrike].join('|');
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push({ candidateId, row, score: (table.out[actorRow]?.[row] || 0) * (table.priority[row] || 0) });
+    }
+    for (const list of groups.values()) {
+      if (list.length <= R20_SIMPLE_KEEP) continue;
+      list.sort((one, other) => other.score - one.score);
+      list.forEach((item, index) => { if (index >= R20_SIMPLE_KEEP && !must.has(item.row)) out.add(item.candidateId); });
+    }
+    // Development hook (absent in play): how many candidates simple mode left out of a decision.
+    root.__LWCS_DECISION_DEBUG__?.onSimplePrune?.({ candidates: candidateIds.length, pruned: out.size });
+    return out.size ? out : null;
+  }
   // The columns derived from the cells. `alive` weighs a unit that may be down (1 on the decision world).
   function r20Derive(facts) {
     const { sides, out, support, stop, keep, remaining, alive, guard } = facts, count = sides.length;
@@ -82762,16 +82814,26 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   }
   // The cells of a set of units: who can act, whom a taunt binds, and for every pair what one lands on, gives, stops,
   // keeps off and answers the other.
-  function r20Cells(units, sides, ids, world, context, skipped) {
+  // 多线程分摊格子（11-22）：stage 为空时整张算；{ phase: 'O', rows } 只算这几行的输出、反击、支援、控制并交回；{ phase: 'F', rows, O }
+  // 拿合并好的第一阶段（各行的那几项）只算这几行的挨打与应对（r20FillPair）并交回；{ phase: 'done', O, F } 直接拼成整张。逐位与整张算的相同。
+  const R20_O_KEYS = ['out', 'back', 'support', 'stop', 'control'], R20_F_KEYS = ['keep', 'keepBack', 'answer', 'answerOpen'];
+  function r20Cells(units, sides, ids, world, context, skipped, stage = null) {
     const count = units.length;
     // A controlled unit still acts in the table; the race holds it for the rounds its controls have left (r20Held).
     const acts = units.map(() => true), bound = units.map(unit => r20Bound(world, unit));
     const ownShare = side => sides.filter(other => other === side).length / Math.max(1, count);
     const aim = units.map((unit, row) => r20Aim(unit, ownShare(sides[row]))), turn = units.map(unit => r20Turn(unit));
     const out = [], support = [], stop = [], control = [], keep = [], keepBack = [], answer = [], answerOpen = [], back = [];
+    const mine = index => !stage?.rows || stage.rows.has(index);
     for (let index = 0; index < count; index += 1) {
       out.push(new Array(count).fill(0)); support.push(new Array(count).fill(0)); stop.push(new Array(count).fill(0)); control.push(new Array(count).fill(R20_NO_CONTROL.control)); keep.push(new Array(count).fill(1));
       keepBack.push(new Array(count).fill(1)); answer.push(new Array(count).fill(0)); answerOpen.push(new Array(count).fill(0)); back.push(new Array(count).fill(0));
+      if (stage && stage.phase !== 'O') {
+        const given = stage.O?.[index];
+        if (given) { out[index] = given.out.slice(); back[index] = given.back.slice(); support[index] = given.support.slice(); stop[index] = given.stop.slice(); control[index] = given.control.slice(); }
+        continue;
+      }
+      if (!mine(index)) continue;
       for (let other = 0; other < count; other += 1) {
         if (sides[index] === sides[other]) { if (acts[index]) support[index][other] = r20Cell(units[index], units[other], true, index === other, context, world, skipped); continue; }
         if (!acts[index] || bound[index] && !bound[index].has(ids[other])) continue;
@@ -82782,10 +82844,19 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     // What each keeps off and answers of the other's hits, by their weight (接战链 阶段一: the attacker's out and back on
     // it, estimates of the whole hit's share of its HP maximum).
+    const matrices = { out, back, support, stop, control, keep, keepBack, answer, answerOpen };
+    const pickRows = keys => Object.fromEntries([...stage.rows].filter(index => index < count).map(index => [index, Object.fromEntries(keys.map(key => [key, matrices[key][index]]))]));
+    if (stage?.phase === 'O') return { O: pickRows(R20_O_KEYS) };
     const cells = { out, back, keep, keepBack, answer, answerOpen };
-    for (let index = 0; index < count; index += 1) for (let other = 0; other < count; other += 1) {
-      if (sides[index] !== sides[other]) r20FillPair(cells, units, acts, index, other);
+    if (stage?.phase === 'done') {
+      for (let index = 0; index < count; index += 1) {
+        const given = stage.F?.[index];
+        if (given) { keep[index] = given.keep.slice(); keepBack[index] = given.keepBack.slice(); answer[index] = given.answer.slice(); answerOpen[index] = given.answerOpen.slice(); }
+      }
+    } else for (let index = 0; index < count; index += 1) for (let other = 0; other < count; other += 1) {
+      if (mine(index) && sides[index] !== sides[other]) r20FillPair(cells, units, acts, index, other);
     }
+    if (stage?.phase === 'F') return { F: pickRows(R20_F_KEYS) };
     // A guard summon (护卫) answers for its host (BattleRuntime: the guard with the most defence takes the reaction): the
     // host keeps off no more than its guard would by defending.
     for (let index = 0; index < count; index += 1) {
@@ -82830,6 +82901,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     ? { ...unit, routine_attack_ratio: unit.__routine_full_ratio } : unit);
   function r20Facts(request) {
     if (r20Tables.has(request)) return r20Tables.get(request);
+    { const plan = r20AssistPlans.get(request);
+      if (plan?.core && plan.given) {
+        const world = request.visibleWorld;
+        r20Round = Number(world?.回合 || 0); r20World = world; r20Intent = request.battleIntent || null; r20Belief = request.beliefState || null;
+        return r20FinishFacts(plan.core, request, plan);
+      } }
     r20Work.tables += 1;
     const tableStartedAt = performance.now();
     if (root.__LWCS_DECISION_DEBUG__ && root.__LWCS_DECISION_DEBUG__.r20Work !== r20Work) { root.__LWCS_DECISION_DEBUG__.r20Work = r20Work; root.__LWCS_DECISION_DEBUG__.r20Race = r20Race; }
@@ -82845,7 +82922,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const count = units.length, ids = units.map(unit => preview.unitId(unit));
     const skipped = { count: 0 };
     const cellUnits = units.map(r20FullStrength);
-    const { acts, bound, out, support, stop, control, keep, keepBack, answer, answerOpen, back, turn } = r20Cells(cellUnits, sides, ids, world, context, skipped);
+    // 多线程分摊格子（r20CellSlice）：分工计划在第一、二阶段时三遍格子只算指定行，算完就停（不建表）；完成阶段直接拼整张。
+    const cellPlan = r20CellPlans.get(request), staged = !!cellPlan && cellPlan.phase !== 'done';
+    const stageFor = variant => !cellPlan ? null : cellPlan.phase === 'O' ? { phase: 'O', rows: cellPlan.rows }
+      : cellPlan.phase === 'F' ? { phase: 'F', rows: cellPlan.rows, O: cellPlan.O?.[variant] } : { phase: 'done', O: cellPlan.O?.[variant], F: cellPlan.F?.[variant] };
+    const keepStaged = (variant, cells) => { if (staged) (cellPlan.result ||= {})[variant] = cells.O || cells.F; return cells; };
+    const { acts, bound, out, support, stop, control, keep, keepBack, answer, answerOpen, back, turn } = keepStaged('cur', r20Cells(cellUnits, sides, ids, world, context, skipped, stageFor('cur')));
     const against = Object.fromEntries([...new Set(sides)].map(side => [side, units.filter((unit, row) => sides[row] !== side)]));
     // The field R20_LATE_ROUNDS round ends on, when anything on it runs on a clock (a state with rounds left, a sustain,
     // a periodic change): every unit as the engine's own window view leaves it (r10WindowView: states past their time
@@ -82853,8 +82935,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // sustain broken). The race reads these cells from then on, so a buff about to lapse is not counted as lasting.
     let late = null;
     if (units.some(unit => Object.keys(unit.持续效果 || {}).length || Object.values(unit.状态效果 || {}).some(state => typeof state?.duration === 'number'))) {
-      const views = units.map(unit => r20FullStrength(r10WindowView(r10DecisionTable(request), world, unit, R20_LATE_ROUNDS, unit)));
-      late = { ...r20Cells(views, sides, ids, world, null, null), units: views };
+      const views = cellPlan?.views?.late || units.map(unit => r20FullStrength(r10WindowView(r10DecisionTable(request), world, unit, R20_LATE_ROUNDS, unit)));
+      if (cellPlan) (cellPlan.views ||= {}).late = views;
+      late = { ...keepStaged('late', r20Cells(views, sides, ids, world, null, null, stageFor('late'))), units: views };
     }
     // 到期（11-16 第 5 题「打让全队变强的节点」）: the late cells keep what still has rounds left R20_LATE_ROUNDS on to the
     // race's end — a support's three-round buff never ran out, so laying it again, and the support, were worth nothing. A pair
@@ -82873,10 +82956,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const ends = stateEnds.map(byName => Math.max(0, ...Object.values(byName).filter(Number.isFinite)));
       const far = Math.min(R20_RACE_ROUNDS, Math.ceil(Math.max(0, ...ends)));
       if (far > R20_LATE_ROUNDS) {
-        const views = units.map(unit => r20FullStrength(r10WindowView(r10DecisionTable(request), world, unit, far, unit)));
-        bare = { ...r20Cells(views, sides, ids, world, null, null), units: views, ends };
+        const views = cellPlan?.views?.bare || units.map(unit => r20FullStrength(r10WindowView(r10DecisionTable(request), world, unit, far, unit)));
+        if (cellPlan) (cellPlan.views ||= {}).bare = views;
+        bare = { ...keepStaged('bare', r20Cells(views, sides, ids, world, null, null, stageFor('bare'))), units: views, ends };
       }
     }
+    if (staged) { cellPlan.count = count; return null; }
     const round = Number(world?.回合 || 0);
     const waiting = Array.isArray(request.actionOpportunity?.pendingNaturalActorIds) ? new Set(request.actionOpportunity.pendingNaturalActorIds.map(String)) : null;
     const table = { request, world, contexts, units, cellUnits, ids, index: new Map(ids.map((id, row) => [id, row])), sides, acts, bound, out, support, stop, control, keep, keepBack, answer, answerOpen, back, turn, late, bare, stateEnds, against,
@@ -82932,8 +83017,39 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (table.strikes) table.strikes.sort((left, right) => left.at - right.at);
     Object.assign(table, r20Locks(world, table.units));
     Object.assign(table, r20Derive(table));
+    const core = { table, context, world, ids, sides, tableStartedAt };
+    // 多线程分摊援护评估（11-22）：分工计划只要几行时，建完表的其余部分就停下，算这几行交回；拿到合并好的援护再补完收尾。
+    const plan = r20AssistPlans.get(request);
+    if (plan?.rows && !plan.given) {
+      const assistStartedAt = performance.now();
+      plan.core = core; plan.slice = r20Assists(table, request, context, plan.rows);
+      r20Work.assistMs += performance.now() - assistStartedAt;
+      return null;
+    }
+    return r20FinishFacts(core, request, plan);
+  }
+  // 多线程分摊格子的接口：r20CellSlice(request, 'O', rows) 交回三遍格子这几行的第一阶段；r20CellSlice(request, 'F', rows, O) 交回第二阶段
+  // （O 是合并好的第一阶段 { cur|late|bare: { 行号: {...} } }）；r20CellGive(request, O, F) 交给整份，之后照常建表（援护分摊照旧可用）。
+  const r20CellPlans = new WeakMap();
+  function r20CellSlice(request, phase, rows, O = null) {
+    const plan = r20CellPlans.get(request) || {};
+    Object.assign(plan, { phase, rows: new Set(rows), result: {} });
+    if (O) plan.O = O;
+    r20CellPlans.set(request, plan);
+    r20Facts(request);
+    return { count: plan.count ?? 0, variants: plan.result };
+  }
+  function r20CellGive(request, O, F) {
+    const plan = r20CellPlans.get(request) || {};
+    Object.assign(plan, { phase: 'done', O, F, rows: null, result: null });
+    r20CellPlans.set(request, plan);
+  }
+  // 援护评估与收尾（目标条件进度、双方推演打分）；plan.given 是各线程分算后合并的援护（与整张一起算的逐位相同）。
+  const r20AssistPlans = new WeakMap();
+  function r20FinishFacts(core, request, plan = null) {
+    const { table, context, world, ids, sides, tableStartedAt } = core;
     const assistStartedAt = performance.now();
-    table.assist = r20Assists(table, request, context);
+    table.assist = plan?.given ? plan.given : r20Assists(table, request, context);
     r20Work.assistMs += performance.now() - assistStartedAt;
     // Conditions besides bringing the other side down (坚持回合, 先倒, 抽魂, 保护): their progress counts beside the race.
     const objectives = request?.objectiveContract || request?.battleIntent?.objectives || world?.胜负条件 || {};
@@ -85572,7 +85688,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const pass = passId ? r20Shadow(request, previewResultsById[passId], frozenById.get(passId)) : null;
       return (passValue = Number(pass?.value || 0));
     };
+    // 简化演算（用户 11-21，设置「战斗演算：简化」，默认完整）：同一招打多个敌方单体目标时，只把粗估（表里这一招对目标的输出 ×
+    // 目标优先级）前 R20_SIMPLE_KEEP 名和必留目标（缠斗对手、残血最低、优先级最高、对自己输出最高）送去完整估值；其余不估，
+    // 分数记为保留者最低分以下（不会被选中）。粗估实测只中 65%～74%（11-21 测量 B），所以只在用户选了简化时用。
+    const pruned = r20SimplePrune(request, candidateIds, frozenById);
     const valueOf = candidateId => {
+      if (pruned?.has(candidateId)) return null;
       const candidate = frozenById.get(candidateId);
       let shadow = null, value = null;
       if (parallelPlan?.given?.has(candidateId)) value = parallelPlan.given.get(candidateId);
@@ -85611,6 +85732,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         valuation: { schemaVersion: 'R20ValuationV1', value: valueOf(candidateId), spend: spendOf(candidateId), hold: holdOf(candidateId), variant: variantOf(candidateId) },
       },
     }));
+    if (pruned?.size) {
+      const kept = featureInputs.map(input => input.document.valuation.value).filter(value => value !== null);
+      const floor = (kept.length ? Math.min(...kept) : 0) - 1;
+      for (const input of featureInputs) if (input.document.valuation.value === null) input.document.valuation.value = floor;
+    }
     addFeatureBuildTime('valuationMs', valuationStartedAt);
     if (collectPerformanceBreakdown) {
       featureBuildPerformance.totalMs = Number(
@@ -86673,6 +86799,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     r9v2LinearPublicSnapshot,
     runR9v2LinearProviderForTest,
     runProvider,
+    r20AssistSlice,
+    r20AssistGive,
+    r20CellSlice,
+    r20CellGive,
     validatePlayerLockedDeclaration: input => {
       const rejectedCandidates = [];
       const candidates = enumerateCandidates({
