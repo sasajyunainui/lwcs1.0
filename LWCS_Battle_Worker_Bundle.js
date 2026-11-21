@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:ea1dd8bdbe85fa606c23d555396ca34afc02043e6d7b11ba92cc7aaa07409455|MVU_Schema_Runtime.js:abf261be1affb92bc57cebd52c6d3665f5720a3d96929f5814617266fb48986f|BattlePreview_Module.js:20f11b016b6007cb8a0af955e4f7e473c77a99450e8183b5284c524d88a865ea|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:4d81f3f9369ba01cd2b886f9325adbc48770656cf3fd6ee19811e6763ad22e4c|BattleRuntime_Module.js:42a75d479f8061beeedad61da02b8975bcbd6a5481cc5046c7a11c38dbb20df5 */
+/* sources-sha256: MVU_Skill_Runtime.js:ea1dd8bdbe85fa606c23d555396ca34afc02043e6d7b11ba92cc7aaa07409455|MVU_Schema_Runtime.js:abf261be1affb92bc57cebd52c6d3665f5720a3d96929f5814617266fb48986f|BattlePreview_Module.js:6c11f3647a5235ac96013f5b06ea4e6d553aa811de95daf2571f2acfa26e99f9|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:9cc7a21ef4faaf072812402022ba3ef1630f395a59be3e8b9b73c0ca09407359|BattleRuntime_Module.js:42a75d479f8061beeedad61da02b8975bcbd6a5481cc5046c7a11c38dbb20df5 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -40322,15 +40322,25 @@ try {
     const full = actionWindup(reactor, declaration);
     return String(declaration?.actionKind || '').trim().toUpperCase() === 'RELEASE_SKILL' ? full * REACTION_CAST_SHARE : full;
   };
-  function clashTiming(attacker = {}, incomingDeclaration = {}, reactor = {}, declaration = {}, options = {}) {
-    const window = clashWindupBudget(attacker, incomingDeclaration, reactor, options), own = answerOwnWindup(reactor, declaration);
+  // 性能（11-21）：一对单位对同一来招的时机数据（来招前摇、双方有效敏捷、不插手的对轰窗口）与拿哪一招应对无关；
+  // BattleDecision r20Engage 对每个应对技能都要判一次，先算好这一份传进 clashTiming / preemptTiming（pair），结果与现算相同。
+  function answerTimingPair(attacker = {}, incomingDeclaration = {}, reactor = {}) {
+    return Object.freeze({
+      windupIn: answerWindup(attacker, incomingDeclaration, reactor),
+      window: clashWindupBudget(attacker, incomingDeclaration, reactor, {}),
+      attackerAgility: naturalActionOrderProfile(attacker).effectiveAgility,
+      reactorAgility: naturalActionOrderProfile(reactor).effectiveAgility,
+    });
+  }
+  function clashTiming(attacker = {}, incomingDeclaration = {}, reactor = {}, declaration = {}, options = {}, pair = null) {
+    const window = pair && options?.intercept !== true ? pair.window : clashWindupBudget(attacker, incomingDeclaration, reactor, options), own = answerOwnWindup(reactor, declaration);
     // 晚出手（CLASH_LATE_LIMIT）以内也算对上：把握按「晚到上限还剩多少余地」算，即余地整体右移 CLASH_LATE_LIMIT。
     const late = own > 0 ? clamp((own - window) / own, 0, 1) : 0;
     const margin = own > 0 ? (window - own) / own + CLASH_LATE_LIMIT : window >= 0 ? Infinity : -Infinity;
     const linear = margin === Infinity ? 1 : margin === -Infinity ? 0 : clamp(0.5 + 0.5 * margin / PREEMPT_SURE_MARGIN, 0, 1);
     // The margin with the attacker's and the answerer's effective agility scaled by `a` and `r` (the window scales with
     // their ratio unless the move is charged past the budget).
-    const windupIn = answerWindup(attacker, incomingDeclaration, reactor), attackerAgility = naturalActionOrderProfile(attacker).effectiveAgility;
+    const windupIn = pair ? pair.windupIn : answerWindup(attacker, incomingDeclaration, reactor), attackerAgility = pair ? pair.attackerAgility : naturalActionOrderProfile(attacker).effectiveAgility;
     const room = options?.intercept === true ? INTERCEPT_WINDUP : 0;
     const marginAt = (a = 1, r = 1) => {
       if (windupIn > CONTINUOUS_ACTION_BUDGET || !(attackerAgility > 0) || !(own > 0)) return margin;
@@ -48971,11 +48981,21 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return scaled;
   }
   // The caster's own drive on its skill's cost and windup (the first effect in it driving each).
+  // 性能（11-21）：哪些效果带「消耗」「前摇」驱动只看技能本身，按技能对象记下（效果数组换了就重算）；多数技能一条也没有。
+  const selfDriveEffectCache = new WeakMap();
+  function selfDriveEffects(skill) {
+    if (!skill || typeof skill !== 'object') return collectEffects(skill || {}).map(effect => [effect, driveDirections(effect)])
+      .filter(([, directions]) => directions.includes('消耗') || directions.includes('前摇'));
+    const cached = selfDriveEffectCache.get(skill);
+    if (cached && cached.effects === skill._效果数组 && cached.use === skill.使用效果) return cached.list;
+    const list = collectEffects(skill).map(effect => [effect, driveDirections(effect)])
+      .filter(([, directions]) => directions.includes('消耗') || directions.includes('前摇'));
+    selfDriveEffectCache.set(skill, { effects: skill._效果数组, use: skill.使用效果, list });
+    return list;
+  }
   function skillSelfDriveMultipliers(unit = {}, skill = {}) {
     let cost = 1, windup = 1, costSet = false, windupSet = false;
-    collectEffects(skill || {}).forEach(effect => {
-      const directions = driveDirections(effect);
-      if (!directions.includes('消耗') && !directions.includes('前摇')) return;
+    selfDriveEffects(skill).forEach(([effect, directions]) => {
       const factor = driveFactor(driveRatio(unit, null, effect, true), 0.67, 1.5);
       if (directions.includes('消耗') && !costSet) { cost = 1 / factor; costSet = true; }
       if (directions.includes('前摇') && !windupSet) { windup = 1 / factor; windupSet = true; }
@@ -64001,11 +64021,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // PREEMPT_SURE_MARGIN or more ahead counts as sure (1), level as an even chance (0.5), PREEMPT_SURE_MARGIN or more
   // behind as hopeless (0), linear between.
   const PREEMPT_SURE_MARGIN = 0.15;
-  function preemptTiming(reactor = {}, declaration = {}, attacker = {}, incomingDeclaration = {}) {
+  function preemptTiming(reactor = {}, declaration = {}, attacker = {}, incomingDeclaration = {}, pair = null) {
     const own = answerOwnWindup(reactor, declaration);
-    const theirs = Math.min(CONTINUOUS_ACTION_BUDGET, answerWindup(attacker, incomingDeclaration, reactor));
-    const ownAgility = Math.max(0, Number(naturalActionOrderProfile(reactor).effectiveAgility) || 0);
-    const theirAgility = Math.max(0, Number(naturalActionOrderProfile(attacker).effectiveAgility) || 0);
+    const theirs = Math.min(CONTINUOUS_ACTION_BUDGET, pair ? pair.windupIn : answerWindup(attacker, incomingDeclaration, reactor));
+    const ownAgility = Math.max(0, Number(pair ? pair.reactorAgility : naturalActionOrderProfile(reactor).effectiveAgility) || 0);
+    const theirAgility = Math.max(0, Number(pair ? pair.attackerAgility : naturalActionOrderProfile(attacker).effectiveAgility) || 0);
     const ownTime = own * theirAgility, theirTime = theirs * ownAgility;
     const margin = own > CONTINUOUS_ACTION_BUDGET ? -Infinity
       : theirTime > 0 ? 1 - ownTime / theirTime : ownTime > 0 ? -Infinity : 0;
@@ -64196,6 +64216,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     interceptWindupBudget,
     clashWindupBudget,
     clashTiming,
+    answerTimingPair,
     withStrengthKnockback,
     concedeHoldsBack,
     pullBackChoice,
@@ -113085,12 +113106,27 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     return price;
   }
+  // 性能（11-21）：启动消耗只看出手单位与技能（costActor 的结算修正），与对手无关；r20AnswerPrices 按对手分键，对手换了新对象就
+  // 重读一遍。按（单位、技能）记下。
+  const r20StartCostCache = new WeakMap();
+  function r20StartCosts(unit, declaration) {
+    const skill = declaration.skill;
+    const keyed = unit && typeof unit === 'object' && skill && typeof skill === 'object';
+    let bySkill = keyed ? r20StartCostCache.get(unit) : null;
+    if (bySkill?.has(skill)) return bySkill.get(skill);
+    const costs = preview.readSkillCostStages(skill, { ...declaration, costActor: unit })?.启动 || {};
+    if (keyed) {
+      if (!bySkill) r20StartCostCache.set(unit, bySkill = new WeakMap());
+      bySkill.set(skill, costs);
+    }
+    return costs;
+  }
   function r20AnswerPriceUncached(unit, attacker, declaration = {}) {
     const shares = { sp: 0, men: 0, vit: 0 };
     const labels = { sp: '魂力', men: '精神力', vit: '体力' };
     if (String(declaration?.actionKind || '').toUpperCase() === 'RELEASE_SKILL' && declaration.skill) {
       const costs = declaration.resourceCosts && typeof declaration.resourceCosts === 'object' ? declaration.resourceCosts
-        : preview.readSkillCostStages(declaration.skill, { ...declaration, costActor: unit })?.启动 || {};
+        : r20StartCosts(unit, declaration);
       for (const [resource, raw] of Object.entries(costs)) {
         const key = preview.skillCostResourceKey(resource), amount = Number(preview.resolveSkillResourceCost(unit, resource, raw));
         if (!key || !Object.hasOwn(shares, key) || !(amount > 0)) continue;
@@ -113156,6 +113192,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const move = travel > 0 ? { ...plainMove, advanceWindup: travel } : plainMove, attackerId = preview.unitId(attacker);
 
     const strikes = [], stops = [];
+    let timingPair;
+    const pairTiming = () => timingPair ??= preview.answerTimingPair ? preview.answerTimingPair(attacker, move, unit) : null;
     const consider = (declaration, skill) => {
       let price = null;
       const priced = () => price ??= r20AnswerPrice(unit, attacker, declaration).price;
@@ -113163,14 +113201,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (parts && !parts.aimed) return;
       // 接战链 阶段 2d: a clash by the confidence of its timing (BattlePreview clashTiming, on the agility the unit sees).
       const clashConfidence = !skill || parts.damage
-        ? preview.clashTiming(attacker, move, unit, declaration).confidence : 0;
+        ? preview.clashTiming(attacker, move, unit, declaration, {}, pairTiming()).confidence : 0;
       if (clashConfidence > 0) {
         const strike = Number(preview.incomingMoveDamage(unit, declaration, attacker, r20World)) || 0;
         if (strike > 0) strikes.push({ strike, price: priced(), confidence: clashConfidence, move: declaration });
       }
       // 接战链 阶段二补充: a control that stops this move's kind (a known move; else a skill or a basic attack), by the
       // confidence the timing the unit sees gives it (preemptTiming confidence).
-      const confidence = skill ? preview.preemptTiming(unit, declaration, attacker, move).confidence : 0;
+      const confidence = skill ? preview.preemptTiming(unit, declaration, attacker, move, pairTiming()).confidence : 0;
       let stop = 0;
       if (confidence > 0 && !incoming) {
         for (const { effect, chance } of parts.stops) {
