@@ -41009,6 +41009,41 @@
     }
     return { locked, lockCost, lockChase };
   }
+  // 简化演算开关（座舱设置「战斗演算」写 __LWCS_BATTLE_SIMPLE__）。
+  const r20Simple = () => { try { return root.__LWCS_BATTLE_SIMPLE__ === true || root.parent?.__LWCS_BATTLE_SIMPLE__ === true; } catch (error) { return root.__LWCS_BATTLE_SIMPLE__ === true; } };
+  const R20_SIMPLE_KEEP = 4;
+  function r20SimplePrune(request, candidateIds, frozenById) {
+    if (!r20Simple() || !isPreparedDecisionRequest(request)) return null;
+    const table = r20Facts(request), out = new Set();
+    const actorRow = table.index.get(String(request.actorId || ''));
+    if (actorRow === undefined) return null;
+    const enemies = table.sides.map((side, row) => row).filter(row => table.sides[row] !== table.sides[actorRow] && table.remaining[row] > 0);
+    if (enemies.length <= R20_SIMPLE_KEEP) return null;
+    const must = new Set(table.locked?.[actorRow] || []);
+    const pick = score => { let best = -1; for (const row of enemies) if (best < 0 || score(row) > score(best)) best = row; if (best >= 0) must.add(best); };
+    pick(row => -table.remaining[row]);
+    pick(row => table.priority[row] || 0);
+    pick(row => table.out[row]?.[actorRow] || 0);
+    const groups = new Map();
+    for (const candidateId of candidateIds) {
+      const declaration = frozenById.get(candidateId)?.declaration || {}, targets = Array.isArray(declaration.targetIds) ? declaration.targetIds : [];
+      if (targets.length !== 1 || !['BASIC_ATTACK', 'RELEASE_SKILL'].includes(String(declaration.actionKind || '').toUpperCase())) continue;
+      const row = table.index.get(String(targets[0]));
+      if (row === undefined || table.sides[row] === table.sides[actorRow]) continue;
+      const key = [declaration.actionKind, declaration.skill?.魂技名 || declaration.skill?.name || '', !!declaration.bait, !!declaration.deflect, !!declaration.feintStrike, !!declaration.flank,
+        !!declaration.humanShield, !!declaration.retreat, !!declaration.throwWeapon, !!declaration.recallStrike].join('|');
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push({ candidateId, row, score: (table.out[actorRow]?.[row] || 0) * (table.priority[row] || 0) });
+    }
+    for (const list of groups.values()) {
+      if (list.length <= R20_SIMPLE_KEEP) continue;
+      list.sort((one, other) => other.score - one.score);
+      list.forEach((item, index) => { if (index >= R20_SIMPLE_KEEP && !must.has(item.row)) out.add(item.candidateId); });
+    }
+    // Development hook (absent in play): how many candidates simple mode left out of a decision.
+    root.__LWCS_DECISION_DEBUG__?.onSimplePrune?.({ candidates: candidateIds.length, pruned: out.size });
+    return out.size ? out : null;
+  }
   // The columns derived from the cells. `alive` weighs a unit that may be down (1 on the decision world).
   function r20Derive(facts) {
     const { sides, out, support, stop, keep, remaining, alive, guard } = facts, count = sides.length;
@@ -44236,7 +44271,12 @@
       const pass = passId ? r20Shadow(request, previewResultsById[passId], frozenById.get(passId)) : null;
       return (passValue = Number(pass?.value || 0));
     };
+    // 简化演算（用户 11-21，设置「战斗演算：简化」，默认完整）：同一招打多个敌方单体目标时，只把粗估（表里这一招对目标的输出 ×
+    // 目标优先级）前 R20_SIMPLE_KEEP 名和必留目标（缠斗对手、残血最低、优先级最高、对自己输出最高）送去完整估值；其余不估，
+    // 分数记为保留者最低分以下（不会被选中）。粗估实测只中 65%～74%（11-21 测量 B），所以只在用户选了简化时用。
+    const pruned = r20SimplePrune(request, candidateIds, frozenById);
     const valueOf = candidateId => {
+      if (pruned?.has(candidateId)) return null;
       const candidate = frozenById.get(candidateId);
       let shadow = null, value = null;
       if (parallelPlan?.given?.has(candidateId)) value = parallelPlan.given.get(candidateId);
@@ -44275,6 +44315,11 @@
         valuation: { schemaVersion: 'R20ValuationV1', value: valueOf(candidateId), spend: spendOf(candidateId), hold: holdOf(candidateId), variant: variantOf(candidateId) },
       },
     }));
+    if (pruned?.size) {
+      const kept = featureInputs.map(input => input.document.valuation.value).filter(value => value !== null);
+      const floor = (kept.length ? Math.min(...kept) : 0) - 1;
+      for (const input of featureInputs) if (input.document.valuation.value === null) input.document.valuation.value = floor;
+    }
     addFeatureBuildTime('valuationMs', valuationStartedAt);
     if (collectPerformanceBreakdown) {
       featureBuildPerformance.totalMs = Number(

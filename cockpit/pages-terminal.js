@@ -455,12 +455,13 @@
   const SET_KEY = 'lwcs-cockpit-settings';
   const readSet = () => { try { return JSON.parse(localStorage.getItem(SET_KEY) || '{}'); } catch (e) { return {}; } };
 // 每个选项：[值, 图标, 悬停说明]；设置项图标
-  const SET_ICON = { motion: 'wand-magic-sparkles', hover: 'arrow-pointer', scan: 'bullseye', battle: 'khanda' };
+  const SET_ICON = { motion: 'wand-magic-sparkles', hover: 'arrow-pointer', scan: 'bullseye', battle: 'khanda', calc: 'microchip' };
   const SET_OPTS = {
     motion: [['标准', 'wand-magic-sparkles'], ['柔和', 'feather'], ['关闭', 'ban']],
     hover: [['快', 'bolt'], ['标准', 'arrow-pointer'], ['慢', 'hourglass-half']],
     scan: [['开启', 'bullseye'], ['关闭', 'circle']],
     battle: [['自动', 'robot', 'AI 代为出手'], ['手动', 'hand', '每回合自己选'], ['自由', 'feather-pointed', '只叙事不结算']],
+    calc: [['完整', 'layer-group', '每种打法都推演到底'], ['简化', 'gauge-high', '算得快，偶尔选得不如完整']],
   };
   const SET_GROUPS = [
     ['显示', 'palette', [
@@ -472,9 +473,13 @@
     ]],
     ['战斗', 'khanda', [
       ['battle', '代理模式', '自动：AI 代为出手；手动：每回合自己选；自由：只叙事不结算。', ['自动', '手动', '自由'], '手动'],
+      ['calc', '战斗演算', '完整：AI 把每种打法都推演到底。简化：挨打时只算这一下怎么接，同一招只比较最值得打的几个目标；人多的战斗快很多，但 AI 偶尔会选得不如完整。机器吃力时再开。', ['完整', '简化'], '完整'],
     ]],
   ];
   try { const m = JSON.parse(localStorage.getItem('lwcs-cockpit-settings') || '{}').motion; if (m) document.querySelector('.cockpit').dataset.motion = m; } catch (e) {}
+  // 战斗演算档位（用户 11-21：简化做成可选项，性能不足时用）：写到战斗引擎读的全局开关上（BattleDecision r20Simple）。
+  const applyCalc = val => { const on = val === '简化'; try { window.__LWCS_BATTLE_SIMPLE__ = on; } catch (e) {} try { if (window.parent && window.parent !== window) window.parent.__LWCS_BATTLE_SIMPLE__ = on; } catch (e) {} };
+  try { applyCalc(JSON.parse(localStorage.getItem('lwcs-cockpit-settings') || '{}').calc || '完整'); } catch (e) {}
   // 战斗代理模式存在原项目（BattleUIBridge，存储键 lwcs_battle_submit_mode），座舱只做中文显示映射
   const BATTLE_MODE = { 自动: 'auto', 手动: 'manual', 自由: 'free_narrative' };
   const battleBridge = () => window.COCKPIT.rt('BattleUIBridge');
@@ -502,6 +507,7 @@
     b.closest('[data-setting-group]')?.querySelectorAll('[data-setting]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); });
     if (k === 'motion') document.querySelector('.cockpit').dataset.motion = val;
     if (k === 'battle') battleBridge()?.setBattleSubmitMode?.(BATTLE_MODE[val]);
+    if (k === 'calc') applyCalc(val);
   });
 
   // 行动按钮：捕获阶段写好确认文案与动作规格（data-act），确认后由座舱交给原项目执行——
