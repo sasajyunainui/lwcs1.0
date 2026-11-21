@@ -74,8 +74,12 @@ function applyUnifiedMountHostStyle(mountEl) {
   mountEl.style.zIndex = '';
 }
 
+function 酒馆底部菜单可能展开(菜单) {
+  return 菜单 instanceof HTMLElement && !菜单.hidden && 菜单.style.display !== 'none';
+}
+
 function 贴合酒馆底部菜单到按钮(按钮, 菜单) {
-  if (!(按钮 instanceof HTMLElement) || !(菜单 instanceof HTMLElement)) return;
+  if (!(按钮 instanceof HTMLElement) || !酒馆底部菜单可能展开(菜单)) return;
   if (window.getComputedStyle(菜单).display === 'none') return;
   const 按钮矩形 = 按钮.getBoundingClientRect();
   const 菜单矩形 = 菜单.getBoundingClientRect();
@@ -113,6 +117,9 @@ function 启动酒馆底部菜单位置修正() {
   let 动画帧 = 0;
   const 安排修正 = () => {
     if (动画帧) return;
+    // 宿主关闭菜单时设置内联 display:none。滚动中先读这一标记，避免对隐藏菜单强制计算布局。
+    if (!酒馆底部菜单可能展开(document.getElementById('options')) &&
+        !酒馆底部菜单可能展开(document.getElementById('extensionsMenu'))) return;
     动画帧 = requestAnimationFrame(() => {
       动画帧 = 0;
       修正酒馆底部原生菜单位置();

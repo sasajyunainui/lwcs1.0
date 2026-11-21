@@ -897,13 +897,24 @@
   const scrollable = el => el.scrollHeight > el.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(el).overflowY);
   const outerScroller = () => { for (let el = ROOT.parentElement; el; el = el.parentElement) if (scrollable(el)) return el; return document.scrollingElement; };
   let wheelGesture = null;
+  const cancelWheelGesture = () => {
+    if (!wheelGesture) return;
+    cancelAnimationFrame(wheelGesture.raf);
+    clearTimeout(wheelGesture.snap);
+    wheelGesture = null;
+  };
+  document.addEventListener('wheel', e => {
+    // 光标留在原地时，座舱也可能随聊天滚出光标下方。由外部滚轮事件终止接力，避免旧目标覆盖原生滚动。
+    if (wheelGesture && !screens.contains(e.target)) cancelWheelGesture();
+  }, { capture: true, passive: true });
   screens.addEventListener('wheel', e => {
-    if (e.defaultPrevented || e.ctrlKey || isMobile()) return;
-    const panel = e.target.closest('.wing,.center'); if (!panel) return;
+    const panel = e.target.closest('.wing,.center');
+    if (e.defaultPrevented || e.ctrlKey || isMobile() || !panel) { cancelWheelGesture(); return; }
     const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? panel.clientHeight : 1); if (!dy) return;
     const room = el => dy > 0 ? el.scrollHeight - el.clientHeight - el.scrollTop > 1 : el.scrollTop > 0;
     const now = performance.now(), dir = Math.sign(dy);
     if (!wheelGesture || now - wheelGesture.t > 200 || wheelGesture.dir !== dir || wheelGesture.panel !== panel) {
+      cancelWheelGesture();
       let inner = null;
       for (let el = e.target; el && el !== panel; el = el.parentElement) if (scrollable(el) && room(el)) { inner = el; break; }
       if (!inner) { const main = $$('.face:not(.leaving) :is(.pad,.scroll,.list,.q-list,.dz-body,.set-tiles,.dz2-skills)', panel).find(scrollable); if (main && room(main)) inner = main; }
@@ -922,8 +933,27 @@
     e.preventDefault();
     const g = wheelGesture, outer = g.outer ||= outerScroller(); if (!outer) return;
     g.to = Math.max(0, Math.min(outer.scrollHeight - outer.clientHeight, (g.to ?? outer.scrollTop) + dy));
-    if (!g.raf) { const step = () => { const d = g.to - outer.scrollTop; if (Math.abs(d) < 1) { outer.scrollTop = g.to; g.raf = 0; return; } outer.scrollTop += Math.sign(d) * Math.max(1, Math.abs(d) * .32); g.raf = requestAnimationFrame(step); }; g.raf = requestAnimationFrame(step); }
-    clearTimeout(g.snap); g.snap = setTimeout(() => { cancelAnimationFrame(g.raf); g.raf = 0; outer.scrollTop = g.to; }, 300);
+    if (!g.raf) {
+      const step = () => {
+        const distance = g.to - outer.scrollTop;
+        if (Math.abs(distance) < 1) {
+          outer.scrollTop = g.to;
+          g.raf = 0;
+          clearTimeout(g.snap);
+          g.snap = 0;
+          return;
+        }
+        outer.scrollTop += Math.sign(distance) * Math.max(1, Math.abs(distance) * .32);
+        g.raf = requestAnimationFrame(step);
+      };
+      g.raf = requestAnimationFrame(step);
+    }
+    clearTimeout(g.snap);
+    g.snap = setTimeout(() => {
+      cancelAnimationFrame(g.raf);
+      g.raf = g.snap = 0;
+      outer.scrollTop = g.to;
+    }, 300);
   }, { passive: false });
   $('.cockpit').addEventListener('click', e => {
     if (e.target.closest('.ie-edit')) return;

@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:f1da5e5bb37cb504d102f6cb91141cbd5a4ce2765118746ad3a55ef8657ee12b|mvu_logic_bridge.js:96a5ad3cc701b192833d3be65334ea512e37dbc9bf3b8bed011e2f8c5736f577|cockpit/designer-model.js:401f0250a96e04360a4d182373508f0251baace6b04f5684e2cdcedd709c6981|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:5ed5d9ced35d7f161a1076d3e377534d38130b95f21cc9f5dc8037ef3f455cd1|cockpit/pages-ability.js:022ab507ac10cce533d3babd95291a8f13120f25098ad99b520d4857c7ae65d3|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:f1da5e5bb37cb504d102f6cb91141cbd5a4ce2765118746ad3a55ef8657ee12b|mvu_logic_bridge.js:96a5ad3cc701b192833d3be65334ea512e37dbc9bf3b8bed011e2f8c5736f577|cockpit/designer-model.js:401f0250a96e04360a4d182373508f0251baace6b04f5684e2cdcedd709c6981|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:69c6066a3d964398df9bcb457d712556f9fc58c6019c6dd1d20d65b0080390ec|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:5ed5d9ced35d7f161a1076d3e377534d38130b95f21cc9f5dc8037ef3f455cd1|cockpit/pages-ability.js:022ab507ac10cce533d3babd95291a8f13120f25098ad99b520d4857c7ae65d3|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -49644,13 +49644,24 @@ ${播报文本}
   const scrollable = el => el.scrollHeight > el.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(el).overflowY);
   const outerScroller = () => { for (let el = ROOT.parentElement; el; el = el.parentElement) if (scrollable(el)) return el; return document.scrollingElement; };
   let wheelGesture = null;
+  const cancelWheelGesture = () => {
+    if (!wheelGesture) return;
+    cancelAnimationFrame(wheelGesture.raf);
+    clearTimeout(wheelGesture.snap);
+    wheelGesture = null;
+  };
+  document.addEventListener('wheel', e => {
+    // 光标留在原地时，座舱也可能随聊天滚出光标下方。由外部滚轮事件终止接力，避免旧目标覆盖原生滚动。
+    if (wheelGesture && !screens.contains(e.target)) cancelWheelGesture();
+  }, { capture: true, passive: true });
   screens.addEventListener('wheel', e => {
-    if (e.defaultPrevented || e.ctrlKey || isMobile()) return;
-    const panel = e.target.closest('.wing,.center'); if (!panel) return;
+    const panel = e.target.closest('.wing,.center');
+    if (e.defaultPrevented || e.ctrlKey || isMobile() || !panel) { cancelWheelGesture(); return; }
     const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? panel.clientHeight : 1); if (!dy) return;
     const room = el => dy > 0 ? el.scrollHeight - el.clientHeight - el.scrollTop > 1 : el.scrollTop > 0;
     const now = performance.now(), dir = Math.sign(dy);
     if (!wheelGesture || now - wheelGesture.t > 200 || wheelGesture.dir !== dir || wheelGesture.panel !== panel) {
+      cancelWheelGesture();
       let inner = null;
       for (let el = e.target; el && el !== panel; el = el.parentElement) if (scrollable(el) && room(el)) { inner = el; break; }
       if (!inner) { const main = $$('.face:not(.leaving) :is(.pad,.scroll,.list,.q-list,.dz-body,.set-tiles,.dz2-skills)', panel).find(scrollable); if (main && room(main)) inner = main; }
@@ -49669,8 +49680,27 @@ ${播报文本}
     e.preventDefault();
     const g = wheelGesture, outer = g.outer ||= outerScroller(); if (!outer) return;
     g.to = Math.max(0, Math.min(outer.scrollHeight - outer.clientHeight, (g.to ?? outer.scrollTop) + dy));
-    if (!g.raf) { const step = () => { const d = g.to - outer.scrollTop; if (Math.abs(d) < 1) { outer.scrollTop = g.to; g.raf = 0; return; } outer.scrollTop += Math.sign(d) * Math.max(1, Math.abs(d) * .32); g.raf = requestAnimationFrame(step); }; g.raf = requestAnimationFrame(step); }
-    clearTimeout(g.snap); g.snap = setTimeout(() => { cancelAnimationFrame(g.raf); g.raf = 0; outer.scrollTop = g.to; }, 300);
+    if (!g.raf) {
+      const step = () => {
+        const distance = g.to - outer.scrollTop;
+        if (Math.abs(distance) < 1) {
+          outer.scrollTop = g.to;
+          g.raf = 0;
+          clearTimeout(g.snap);
+          g.snap = 0;
+          return;
+        }
+        outer.scrollTop += Math.sign(distance) * Math.max(1, Math.abs(distance) * .32);
+        g.raf = requestAnimationFrame(step);
+      };
+      g.raf = requestAnimationFrame(step);
+    }
+    clearTimeout(g.snap);
+    g.snap = setTimeout(() => {
+      cancelAnimationFrame(g.raf);
+      g.raf = g.snap = 0;
+      outer.scrollTop = g.to;
+    }, 300);
   }, { passive: false });
   $('.cockpit').addEventListener('click', e => {
     if (e.target.closest('.ie-edit')) return;
