@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:78a0c30e86f738904688ad41ab5651b61e801f96aca5286f35ceacf2abc1531d|cockpit/designer-model.js:cfd30db8a8ca67e544a32c52788feaaa864725e4385577ba70616d16bd767aee|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:121696c1481708bb05eaebf52d3f96efbeeac57ce6bc43311b2512fc2bda9596|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:6c11f3647a5235ac96013f5b06ea4e6d553aa811de95daf2571f2acfa26e99f9|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:75416010c0d5548be97cf6b5eb5f0ef3421068ab549fddcaf9e836871220732d|BattleRuntime_Module.js:42a75d479f8061beeedad61da02b8975bcbd6a5481cc5046c7a11c38dbb20df5|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:908fe9d513f83c52cd60f0bed9a1602231928ed164dd51f72b68dbcc9585a22c|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:78a0c30e86f738904688ad41ab5651b61e801f96aca5286f35ceacf2abc1531d|cockpit/designer-model.js:cfd30db8a8ca67e544a32c52788feaaa864725e4385577ba70616d16bd767aee|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:121696c1481708bb05eaebf52d3f96efbeeac57ce6bc43311b2512fc2bda9596|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:d6818552f379190ba590a295c7f198810cb8d24d271e8e419335fe709e95bbdc|BattleRuntime_Module.js:62af09000c4cc8511c17683b52a012f3272add485766956e381fea8670d432d6|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:5e0db96d8b53e77d3c6169d38ead7aa477f9c3c90023621125d862c40a5ef06d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -62827,6 +62827,45 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     const ratio = own > 0 && theirs > 0 ? clamp(theirs / own, ADVANCE_RATIO_MIN, ADVANCE_RATIO_MAX) : 1;
     return ADVANCE_WINDUP_BASE * ratio;
   }
+  /* 交战关系（缠斗，用户 11-21 定稿；方案 project-state 交战关系与候选预筛审核-20261121.md）：两人近身出手、对轰、反击、追击过就缠在
+     一起（远程被贴脸也算缠住），记在双方 __battleRuntime.engaged { 对方id: 最近交手回合 }（BattleRuntime recordEngagement；跨请求存
+     战斗层 缠斗）。一整回合没交手就散（最近交手回合 ≥ 当前回合 − 1 才算）；任一方不在前排（后撤、被打飞）、倒下、离场也散。
+     丢下缠斗对手去打别人要付脱身代价：对手追击一下（撤离对追击判定 estimateWithdrawal，追上了白挨一下普攻，部分追上挨半下）；
+     安全脱离不付：对手被硬控（不能行动）、对手正在蓄力；被打飞、用位移魂技脱身直接散（BattleRuntime）。 */
+  function unitsLocked(world = {}, unit = {}, other = {}) {
+    if (!unit || !other || unit === other) return false;
+    const last = Number(unit?.__battleRuntime?.engaged?.[String(unitId(other))]);
+    if (!Number.isFinite(last) || last < Number(world?.回合 || 0) - 1) return false;
+    return isBattleCapable(unit) && isBattleCapable(other) && !hasLeftBattle(unit) && !hasLeftBattle(other) &&
+      unitPosition(unit) === POSITION_FRONT && unitPosition(other) === POSITION_FRONT;
+  }
+  // 现在和 unit 缠在一起的敌人（单位）。
+  function lockedOpponentsOf(world = {}, unit = {}) {
+    const ids = Object.keys(unit?.__battleRuntime?.engaged || {});
+    if (!ids.length) return [];
+    return listUnits(world).map(entry => entry.unit).filter(other => ids.includes(String(unitId(other))) && unitsLocked(world, unit, other));
+  }
+  // 丢下 opponent 是否安全：它被硬控（身上有让它不能行动的状态）或正在蓄力。
+  function disengageIsSafe(world = {}, unit = {}, opponent = {}) {
+    if (!opponent || !isBattleCapable(opponent)) return true;
+    if (Object.values(opponent.状态效果 || {}).some(state => state && typeof state === 'object' && unitStateBlocksMove(state, null))) return true;
+    return isCharging(world, opponent);
+  }
+  // 丢下缠斗对手的代价（unit 去打别人时）：每个不安全的对手追击一下的期望伤害（unit 生命上限的份额）与被追上的概率。
+  function disengageCost(world = {}, unit = {}, keepIds = []) {
+    const keep = new Set((keepIds || []).map(String));
+    let share = 0, chased = 0;
+    const hpMax = Math.max(1, readHpMax(unit));
+    for (const opponent of lockedOpponentsOf(world, unit)) {
+      if (keep.has(String(unitId(opponent))) || disengageIsSafe(world, unit, opponent)) continue;
+      const estimate = estimateWithdrawal(unit, opponent);
+      const strike = Math.max(0, Number(incomingMoveDamage(opponent, { actionKind: 'BASIC_ATTACK', targetIds: [unitId(unit)] }, unit, world)) || 0);
+      const hit = estimate.failureProbability + 0.5 * estimate.partialProbability;
+      share += hit * strike / hpMax;
+      chased = 1 - (1 - chased) * (1 - hit);
+    }
+    return { share, chased };
+  }
   // 按当前位置给声明记上赶路时间（首个目标；群体近身按最远的那一个）。返回新声明；不需要突进时去掉旧记录。
   function withAdvanceWindup(world = {}, actor = {}, declaration = {}) {
     if (!declaration || typeof declaration !== 'object') return declaration;
@@ -87411,7 +87450,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     suppressionBlocksSkill,
     meditationOptions,
     // 两档距离（T25）
-    POSITION_FRONT, POSITION_BACK, ADVANCE_WINDUP_BASE, bodyCondensation, elementDamageProfile, attackElementsOf, bodyElementOf, elementPair, humanShieldOptions, BAIT_OPENING, BAIT_COUNTER_BONUS, FEINT_STRIKE_STAMINA, FEINT_STRIKE_WINDOW, feintStrikeFooled, answerWindup, canFeintStrike, canDeflect, deflectForce, deflectOutcome, applyDeflectUnbalance, DEFLECT_UNBALANCE, DEFLECT_CATCH_BONUS, isEntityControl, entityControls, controlDurability, controlHpLeft, controlStrikeDamage, controlStrikeOptions, controlStrikeOf, applyControlStrike, CONTROL_STRIKE_STATE, advanceStaminaCost, advanceStaminaShares, classifyDamageType, canFlank, flankDetourFor, pincerCut, FLANK_SURPRISE, unitPosition, setUnitPosition, unitsEngaged, advanceWindupFor, withAdvanceWindup, positionOptions,
+    POSITION_FRONT, POSITION_BACK, ADVANCE_WINDUP_BASE, bodyCondensation, elementDamageProfile, attackElementsOf, bodyElementOf, elementPair, humanShieldOptions, BAIT_OPENING, BAIT_COUNTER_BONUS, FEINT_STRIKE_STAMINA, FEINT_STRIKE_WINDOW, feintStrikeFooled, answerWindup, canFeintStrike, canDeflect, deflectForce, deflectOutcome, applyDeflectUnbalance, DEFLECT_UNBALANCE, DEFLECT_CATCH_BONUS, isEntityControl, entityControls, controlDurability, controlHpLeft, controlStrikeDamage, controlStrikeOptions, controlStrikeOf, applyControlStrike, CONTROL_STRIKE_STATE, advanceStaminaCost, advanceStaminaShares, classifyDamageType, canFlank, flankDetourFor, pincerCut, FLANK_SURPRISE, unitPosition, setUnitPosition, unitsEngaged, unitsLocked, lockedOpponentsOf, disengageIsSafe, disengageCost, advanceWindupFor, withAdvanceWindup, positionOptions,
     positionMoveOf, positionShiftOf,
     isFeint,
     feintRecord,
@@ -97862,11 +97901,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         // So is whether its 体力 has already been halved for running low on 魂力 / 精神力 (资源低位砍体力).
         // So is a stance it has taken and not yet used (it meets the next hit with it: BattleDecision r20StanceOf).
         // And where it stands (两档距离 T25, BattlePreview unitPosition): in front or held back, plain to see.
-        // And who closed in on it this round (夹击 T30, BattlePreview pincerCut).
+        // And who closed in on it this round (夹击 T30, BattlePreview pincerCut), and whom it is locked with (交战关系 11-21, BattlePreview unitsLocked).
         ...(sourceUnit?.__battleRuntime?.lastReleasedSkill || Number(sourceUnit?.__battleRuntime?.passiveStreak) > 0 || sourceUnit?.__battleRuntime?.lowResourceStaminaCut ||
-          sourceUnit?.__battleRuntime?.activeDefenseStance || sourceUnit?.__battleRuntime?.position || sourceUnit?.__battleRuntime?.closeStruck ? { __battleRuntime: {
+          sourceUnit?.__battleRuntime?.activeDefenseStance || sourceUnit?.__battleRuntime?.position || sourceUnit?.__battleRuntime?.closeStruck || sourceUnit?.__battleRuntime?.engaged ? { __battleRuntime: {
           ...(sourceUnit.__battleRuntime.position ? { position: sourceUnit.__battleRuntime.position } : {}),
           ...(sourceUnit.__battleRuntime.closeStruck ? { closeStruck: cloneValue(sourceUnit.__battleRuntime.closeStruck) } : {}),
+          ...(sourceUnit.__battleRuntime.engaged ? { engaged: { ...sourceUnit.__battleRuntime.engaged } } : {}),
           // 卖破绽（T32）: one that has not seen through it sees no stance, only the opening shown (BattlePreview BAIT_OPENING).
           ...(sourceUnit.__battleRuntime.activeDefenseStance?.bait === true && !(sourceUnit.__battleRuntime.activeDefenseStance.seenBy || []).map(String).includes(String(actorId))
             ? { attackOpening: { strength: Number(preview.BAIT_OPENING) || 1 } }
@@ -136464,6 +136504,30 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const sources = visibleTauntSources(world, unit).map(row => row.sourceId);
     return sources.length ? new Set(sources) : null;
   };
+  // 交战关系（缠斗，用户 11-21 定稿；BattlePreview unitsLocked / disengageCost）：每行和哪几行缠在一起（locked），丢下它们去打别人的
+  // 代价（lockCost，自己生命上限的份额）与被追上的概率（lockChase）。rows 给出时只重算这几行，其余沿用 base。
+  // R20_ENGAGE_HOLD（LWCS_TUNE.ENGAGE_HOLD，起始 1）：缠着别人的敌人对你的压力 × (1 − ENGAGE_HOLD × 被追上的概率)，按原作校准。
+  const R20_ENGAGE_ON = root.__LWCS_TUNE__?.ENGAGE !== false;
+  const R20_ENGAGE_HOLD = Number(root.__LWCS_TUNE__?.ENGAGE_HOLD ?? 1);
+  function r20Locks(world, units, rows = null, base = null) {
+    const count = units.length;
+    const locked = base ? base.locked.slice() : new Array(count).fill(null), lockCost = base ? base.lockCost.slice() : new Array(count).fill(0), lockChase = base ? base.lockChase.slice() : new Array(count).fill(0);
+    while (locked.length < count) { locked.push(null); lockCost.push(0); lockChase.push(0); }
+    if (!R20_ENGAGE_ON || !preview.unitsLocked) return { locked, lockCost, lockChase };
+    const redo = rows ? new Set(rows) : null;
+    for (let row = 0; row < count; row += 1) {
+      // 重算的行连同和它相关的对子：它锁住的人那一行也要看它（缠斗是双向的）。
+      if (redo && !redo.has(row) && !(locked[row] && [...locked[row]].some(other => redo.has(other)))) continue;
+      const unit = units[row];
+      if (!unit?.__battleRuntime?.engaged) { locked[row] = null; lockCost[row] = 0; lockChase[row] = 0; continue; }
+      const set = new Set();
+      for (let other = 0; other < count; other += 1) if (other !== row && preview.unitsLocked(world, unit, units[other])) set.add(other);
+      locked[row] = set.size ? set : null;
+      const cost = set.size ? preview.disengageCost(world, unit) : { share: 0, chased: 0 };
+      lockCost[row] = cost.share; lockChase[row] = cost.chased;
+    }
+    return { locked, lockCost, lockChase };
+  }
   // The columns derived from the cells. `alive` weighs a unit that may be down (1 on the decision world).
   function r20Derive(facts) {
     const { sides, out, support, stop, keep, remaining, alive, guard } = facts, count = sides.length;
@@ -136475,7 +136539,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       for (let other = 0; other < count; other += 1) {
         if (!(remaining[other] > 0)) continue;
         if (sides[other] === sides[index]) mend[index] = Math.max(mend[index], support[other][index] * alive[other]);
-        else if (out[other][index] > 0) { pressure[index] += out[other][index] * keep[index][other] * alive[other]; hitters += alive[other]; }
+        else if (out[other][index] > 0) {
+          // 交战关系：缠着别人的敌人丢下对手来打它的可能 = 1 − ENGAGE_HOLD × 被对手追上的概率。
+          const away = facts.locked?.[other] && !facts.locked[other].has(index) ? clamp(1 - R20_ENGAGE_HOLD * (facts.lockChase?.[other] || 0), 0, 1) : 1;
+          pressure[index] += out[other][index] * keep[index][other] * alive[other] * away; hitters += alive[other] * away;
+        }
       }
       const net = pressure[index] - mend[index];
       // Charges last as many rounds as it takes the enemies who can hit this unit to spend them, one hit each a round.
@@ -136740,6 +136808,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           const other = struck(aim), value = cells(unit, other).out[unit][other] * takes(cells(unit, other), other, unit);
           if (value > strike) { strike = value; target = other; }
         }
+        // 交战关系：缠斗中的人默认打自己的对手；集火目标的这一下减去脱身代价（对手追击）仍比打对手划算才换（用户 11-21）。
+        const lockedTo = facts.locked?.[unit], switchCost = row => lockedTo && !lockedTo.has(row) ? facts.lockCost?.[unit] || 0 : 0;
+        if (lockedTo && !lockedTo.has(target)) {
+          let best = -1, bestValue = 0;
+          for (const row of lockedTo) {
+            if (!(left[row] > 1e-9)) continue;
+            const other = struck(row), value = cells(unit, other).out[unit][other] * takes(cells(unit, other), other, unit);
+            if (value > bestValue) { bestValue = value; best = other; }
+          }
+          if (best >= 0 && !(strike - switchCost(target) > bestValue)) { target = best; strike = bestValue; }
+        }
         const share = free(unit);
         strike *= share * offMul[unit] * defMul[target];
         const help = cells(unit, ally).support[unit][ally] * share * offMul[unit];
@@ -136757,7 +136836,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             if (other === target || sides[other] === sides[unit] || !(left[aim] > 1e-9)) continue;
             const hit = cells(unit, other).out[unit][other] * takes(cells(unit, other), other, unit) * share * offMul[unit] * defMul[other];
             if (!(hit > 0)) continue;
-            const trial = open(other), net = hit + trial.more - trial.taken;
+            const trial = open(other), net = hit + trial.more - trial.taken - switchCost(other);
             if (net > best) { best = net; exchange = trial; strike = hit; target = other; }
           }
         }
@@ -137034,6 +137113,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (backlash > 0) (table.strikes ||= []).push({ from: row, to: row, at: turns, delta: -Math.min(1, backlash), self: true });
     }
     if (table.strikes) table.strikes.sort((left, right) => left.at - right.at);
+    Object.assign(table, r20Locks(world, table.units));
     Object.assign(table, r20Derive(table));
     const assistStartedAt = performance.now();
     table.assist = r20Assists(table, request, context);
@@ -138040,7 +138120,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     for (const [row, next] of rebuilt) cover[row] = r20Cover(next, table.units, table.sides, row);
     while (cover.length < sidesNow.length) cover.push(null);
-    const facts = { assist: table.assist, cover, sides: sidesNow, out, support, stop, control, keep, keepBack, answer, answerOpen, back, turn, host, remaining, stamina, shieldLeft, alive, guard, revive, drain, tick, tickRounds, reflect, hpMax, horizon: table.horizon, late: lateCells };
+    // 交战关系（用户 11-21）：主动出手打别人、目标里没有自己的缠斗对手，先扣对手追击的期望伤害（BattleRuntime 同一判定）。
+    if (R20_ENGAGE_ON && table.locked?.[actorRow] && String(request?.actionOpportunity?.role || 'ACTIVE').toUpperCase() === 'ACTIVE' &&
+      ['BASIC_ATTACK', 'RELEASE_SKILL'].includes(String(candidate?.declaration?.actionKind || '').toUpperCase())) {
+      const aimed = (Array.isArray(candidate.declaration.targetIds) ? candidate.declaration.targetIds : []).map(id => table.index.get(String(id))).filter(row => row !== undefined);
+      if (aimed.some(row => table.sides[row] !== table.sides[actorRow]) && !aimed.some(row => table.locked[actorRow].has(row))) {
+        remaining[actorRow] = Math.max(0, remaining[actorRow] - (table.lockCost?.[actorRow] || 0));
+      }
+    }
+    const facts = { assist: table.assist, cover, sides: sidesNow, out, support, stop, control, keep, keepBack, answer, answerOpen, back, turn, host, remaining, stamina, shieldLeft, alive, guard, revive, drain, tick, tickRounds, reflect, hpMax, horizon: table.horizon, late: lateCells,
+      ...r20Locks(after, unitsNow, rebuilt.map(([row]) => row), table) };
     const changed = new Array(count).fill(false);
     for (const [row] of rebuilt) if (!unchangedRows.has(row)) changed[row] = true;
     strikes.sort((left, right) => left.at - right.at);
@@ -142295,6 +142384,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
      每回合开始读回到单位上；第 1 回合没有记录时开场：先攻名单里的人在前（偷袭得手，贴上去了），其余全在后（比赛、切磋、实战一律拉开）。
      回合末写回（settleBattleRoundEnd）。召唤物不记（随主人，按在前）。 */
   function syncBattlePositions(combatData = {}) {
+    syncEngagements(combatData);
     const recorded = combatData?.站位 && typeof combatData.站位 === 'object' ? combatData.站位 : null;
     // 夹击的「这回合挨过谁的近身攻击」只管一回合（T30）；卖破绽换来的反击加成（T32 baitCounter）没用上也只管这一回合。
     listCombatUnits(combatData).forEach(unit => {
@@ -142322,7 +142412,51 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     writeMechanicEvent(combatData, { eventKind: 'position_opening', actionName: '开场站位', round: 1, result: 'declared',
       meta: { front: named(previewRuntime.POSITION_FRONT), back: named(previewRuntime.POSITION_BACK), ambush: names.size > 0 } });
   }
+  /* 交战关系（缠斗，用户 11-21 定稿；BattlePreview unitsLocked）：近身交手的两人互记最近交手回合 __battleRuntime.engaged { 对方id: 回合 }。
+     跨请求存战斗层 缠斗 { 名字: { 对方名字: 回合 } }（MVU 战斗.缠斗，BattleUI 写回白名单）；每回合开始读回、清掉一整回合没交手的。 */
+  function recordEngagement(combatData = {}, unit = null, other = null) {
+    if (!unit || !other || unit === other || inferUnitSide(combatData, unit) === inferUnitSide(combatData, other)) return;
+    const round = Number(combatData?.回合 || 0);
+    for (const [one, two] of [[unit, other], [other, unit]]) {
+      one.__battleRuntime = { ...(one.__battleRuntime || {}), engaged: { ...(one.__battleRuntime?.engaged || {}), [String(previewRuntime.unitId(two))]: round } };
+    }
+  }
+  function clearEngagementsOf(combatData = {}, unit = null) {
+    if (!unit) return;
+    const id = String(previewRuntime.unitId(unit));
+    if (unit.__battleRuntime?.engaged) { const { engaged, ...rest } = unit.__battleRuntime; unit.__battleRuntime = rest; }
+    listCombatUnits(combatData).forEach(other => {
+      const engaged = other?.__battleRuntime?.engaged;
+      if (!engaged || !Object.hasOwn(engaged, id)) return;
+      const { [id]: dropped, ...left } = engaged;
+      other.__battleRuntime = { ...other.__battleRuntime, engaged: left };
+    });
+  }
+  function syncEngagements(combatData = {}) {
+    const recorded = combatData?.缠斗 && typeof combatData.缠斗 === 'object' ? combatData.缠斗 : null;
+    const round = Number(combatData?.回合 || 0), units = listCombatUnits(combatData);
+    const byName = new Map(units.map(unit => [String(previewRuntime.unitName(unit)), unit]));
+    units.forEach(unit => {
+      const fromRecord = recorded?.[String(previewRuntime.unitName(unit))];
+      const source = unit?.__battleRuntime?.engaged || (fromRecord ? Object.fromEntries(Object.entries(fromRecord)
+        .map(([name, last]) => [byName.get(String(name)) ? String(previewRuntime.unitId(byName.get(String(name)))) : '', last]).filter(([id]) => id)) : null);
+      if (!source) return;
+      const kept = Object.fromEntries(Object.entries(source).filter(([, last]) => Number(last) >= round - 1));
+      const { engaged, ...rest } = unit.__battleRuntime || {};
+      unit.__battleRuntime = Object.keys(kept).length ? { ...rest, engaged: kept } : rest;
+    });
+  }
+  function recordEngagements(combatData = {}) {
+    const units = listCombatUnits(combatData), nameOf = new Map(units.map(unit => [String(previewRuntime.unitId(unit)), String(previewRuntime.unitName(unit))]));
+    const out = {};
+    units.forEach(unit => {
+      const entries = Object.entries(unit?.__battleRuntime?.engaged || {}).filter(([id]) => nameOf.has(id)).map(([id, last]) => [nameOf.get(id), Number(last)]);
+      if (entries.length) out[String(previewRuntime.unitName(unit))] = Object.fromEntries(entries);
+    });
+    if (Object.keys(out).length) combatData.缠斗 = out; else if (combatData && Object.hasOwn(combatData, '缠斗')) delete combatData.缠斗;
+  }
   function recordBattlePositions(combatData = {}) {
+    recordEngagements(combatData);
     const units = listCombatUnits(combatData).filter(unit => !previewRuntime.isSummonUnit?.(unit) && unit?.__battleRuntime?.position);
     if (!units.length) return;
     combatData.站位 = Object.fromEntries(units.map(unit => [previewRuntime.unitName(unit), previewRuntime.unitPosition(unit)]));
@@ -154738,6 +154872,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               // 本来就在后排、被突进过来的一击打回去（不然会被带到前排）也写事实。
               const shiftMoved = shift ? previewRuntime.setUnitPosition(target, shift) : false;
               if (pushedNow) previewRuntime.markPushedBack?.(target);
+              // 交战关系：用位移魂技挪开自己就脱离了缠斗（安全脱离）。
+              if (role === 'self') clearEngagementsOf(combatData, target);
               if (shift && (shiftMoved || heldBack)) {
                 // 战报事实（POSITION shift）：位移把谁挪到了前排 / 后排。
                 facts.push(writeMechanicEvent(combatData, { eventKind: 'position_shift', actionName: actionName || '位移', actionRole: String(actionEvent?.actionRole || 'ACTIVE'), actorControl: String(actionEvent?.actorControl || 'AI'),
@@ -155014,6 +155150,40 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (fooled && target && previewRuntime.isBattleCapable(target)) facts.push(...payActionStamina({ combatData, actor: target, nature: 'DEFEND', opponent: actor,
         action: { actionName: '被虚招晃出的应对', actionKind: 'DEFEND' }, actionEvent: feintEvent, actionRole: 'REACTION' }));
     }
+    // 交战关系（缠斗，用户 11-21）：主动出手打别人、打的目标里没有自己的缠斗对手，每个不安全的对手追击一下——撤离对追击判定
+    // （BattlePreview estimateWithdrawal），追上了白挨对手一下普攻，部分追上挨半下；对手被硬控或正在蓄力不追（disengageIsSafe）。
+    if (previewRuntime.lockedOpponentsOf && root.__LWCS_TUNE__?.ENGAGE !== false && String(actionEvent?.actionRole || 'ACTIVE') === 'ACTIVE' && ['BASIC_ATTACK', 'RELEASE_SKILL'].includes(String(declaration?.actionKind || '').toUpperCase()) &&
+      previewRuntime.isBattleCapable(actor)) {
+      const targetIds = new Set((Array.isArray(declaration?.targetIds) ? declaration.targetIds : []).map(String));
+      const actorSide = inferUnitSide(combatData, actor);
+      const hostile = listCombatUnits(combatData).some(unit => targetIds.has(String(previewRuntime.unitId(unit))) && inferUnitSide(combatData, unit) !== actorSide);
+      const opponents = hostile ? previewRuntime.lockedOpponentsOf(combatData, actor) : [];
+      if (opponents.length && !opponents.some(unit => targetIds.has(String(previewRuntime.unitId(unit))))) {
+        for (const pursuer of opponents) {
+          if (!previewRuntime.isBattleCapable(actor) || previewRuntime.disengageIsSafe(combatData, actor, pursuer)) continue;
+          const estimate = previewRuntime.estimateWithdrawal(actor, pursuer), roll = Math.random();
+          const outcome = roll < estimate.successProbability ? 'SUCCESS' : roll < estimate.successProbability + estimate.partialProbability ? 'PARTIAL' : 'FAILURE';
+          if (outcome === 'SUCCESS') continue;
+          const strike = Math.max(0, Number(previewRuntime.incomingMoveDamage(pursuer, { actionKind: 'BASIC_ATTACK', targetIds: [previewRuntime.unitId(actor)] }, actor, combatData)) || 0);
+          const beforeHp = previewRuntime.readHp(actor);
+          const afterHp = writeCombatResource(actor, 'hp', beforeHp - knockdownHeldLoss(actor, (outcome === 'PARTIAL' ? 0.5 : 1) * strike, knockdownFloorOf(combatData, actor)));
+          const appliedDamage = Math.max(0, beforeHp - afterHp);
+          if (!(appliedDamage > 1e-9)) continue;
+          facts.push(writeLedgerEvent(combatData, {
+            eventKind: 'hit_result', round: Number(combatData?.回合 || 0),
+            actorId: previewRuntime.unitId(pursuer), actorName: previewRuntime.unitName(pursuer),
+            targetId: previewRuntime.unitId(actor), targetName: previewRuntime.unitName(actor), targetIds: [previewRuntime.unitId(actor)],
+            actionName: '脱身追击', sourceActionName: actionName, actionType: 'WITHDRAW_PURSUIT', actorControl: 'SYSTEM', actionRole: 'REACTION',
+            actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
+            result: 'hit', resultState: 'SUCCESS', actionStatus: 'COMPLETED', primaryOutcome: 'pursuit_damage', appliedDamage, factType: 'DAMAGE',
+            effectPrototype: '撤离追击', sourceEffectId: `${actionEvent.actionId}:disengage:${previewRuntime.unitId(pursuer)}`, operation: 'DAMAGE',
+            meta: { source: 'structured_runtime', disengage: true, withdrawalOutcome: outcome, pursuerId: previewRuntime.unitId(pursuer),
+              successProbability: estimate.successProbability, partialProbability: estimate.partialProbability, roll,
+              before: beforeHp, after: afterHp, delta: -appliedDamage, damage: appliedDamage, appliedDamage, directHpDamage: true, sourceActionId: actionEvent.actionId },
+          }));
+        }
+      }
+    }
     // 夹击（T30，BattlePreview pincerCut）：记下这回合谁挨过谁的近身攻击；同一回合里另一人再近身打它，它闪避更难。每回合开始清空（syncBattlePositions）。
     if (positionOnceAttacked && previewRuntime.declarationDamageClass?.(declaration) === 'MELEE') {
       const round = Number(combatData?.回合 || 0), actorId = String(previewRuntime.unitId(actor));
@@ -155022,6 +155192,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const before = unit.__battleRuntime?.closeStruck;
         const by = Number(before?.round) === round && Array.isArray(before?.by) ? before.by : [];
         unit.__battleRuntime = { ...(unit.__battleRuntime || {}), closeStruck: { round, by: [...new Set([...by, actorId])] } };
+        // 交战关系：近身交手的两人缠在一起（对轰、反击、追击也是近身出手，同走这里）。
+        recordEngagement(combatData, actor, unit);
       });
     }
     const committedEquipmentPassiveTriggers = new Set();
@@ -176107,6 +176279,8 @@ class BattleUIComponent {
       '佯装记录',
       // 两档距离的站位（BattleRuntime syncBattlePositions / recordBattlePositions）。
       '站位',
+      // 交战关系：谁和谁缠在一起（BattleRuntime syncEngagements / recordEngagements）。
+      '缠斗',
       // 开战前已放出武魂的参战者（推进预设的战斗登记行）。
       '战前已开武魂',
     ];
