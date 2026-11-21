@@ -22427,7 +22427,7 @@
     const genderText = toText(deepGet(activeChar, '属性.性别', ''), '');
     if (!isFemaleGenderText(genderText)) return false;
     const ageValue = getPrivateArchiveAgeValue(deepGet(activeChar, '属性.年龄', null));
-    return Number.isFinite(ageValue) && ageValue >= 6;
+    return Number.isFinite(ageValue) && ageValue >= 5;
   }
 
   function getActiveNsfwPath(snapshot) {
