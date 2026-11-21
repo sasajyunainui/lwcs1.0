@@ -44535,14 +44535,23 @@
     const frozenById = new Map(
       request.frozenCandidates.map(candidate => [candidate.candidateId, candidate]),
     );
-    const lockedChoice = request?.playerLockedDeclaration
-      ? selectPlayerLockedCandidate(
-          request.frozenCandidates,
-          request.playerLockedDeclaration,
-          request.visibleWorld,
-          request?.rejectedCandidates || [],
-        )
-      : null;
+    const lockFallback = root.__LWCS_DECISION_DEBUG__?.lockFallback === true;
+    let lockedChoice = null;
+    if (request?.playerLockedDeclaration) {
+      try {
+        lockedChoice = selectPlayerLockedCandidate(request.frozenCandidates, request.playerLockedDeclaration, request.visibleWorld, request?.rejectedCandidates || []);
+      } catch (error) {
+        if (!lockFallback || !/mechanically_illegal/.test(String(error?.message || ''))) throw error;
+        if (typeof root.__LWCS_DECISION_DEBUG__.onLockRefused === 'function') root.__LWCS_DECISION_DEBUG__.onLockRefused({ request, candidateId: '' });
+      }
+    }
+    // Development hook (absent in play): __LWCS_DECISION_DEBUG__.lockFallback — a test harness locking a candidate the hard rules
+    // exclude gets the provider's own choice and onLockRefused, instead of the battle stopping (原作复现工具：枚举里有、排序时被硬规则排除的那一手).
+    if (lockedChoice && lockFallback &&
+      !ranked.some(row => row.candidateId === String(lockedChoice?.selected?.candidateId || '').trim())) {
+      if (typeof root.__LWCS_DECISION_DEBUG__.onLockRefused === 'function') root.__LWCS_DECISION_DEBUG__.onLockRefused({ request, candidateId: lockedChoice?.selected?.candidateId });
+      lockedChoice = null;
+    }
     const selectedId = String(lockedChoice?.selected?.candidateId || providerSelectedId).trim();
     const auditRow = (candidateId, index) => {
       const declaration = frozenById.get(candidateId)?.declaration || {};
@@ -44989,8 +44998,9 @@
     );
     if (!selectedCandidate) throw new Error('PROVIDER_UNKNOWN_CANDIDATE');
     const selectedDeclaration = decision?.selected?.declaration || Object.freeze({});
+    // 测试工具的锁定退路（lockFallback）下，被拒的锁定已改由 AI 选，不算覆盖。
     if (
-      request?.playerLockedDeclaration &&
+      request?.playerLockedDeclaration && root.__LWCS_DECISION_DEBUG__?.lockFallback !== true &&
       (
         !matchesPlayerLockedDeclaration(
           selectedCandidate,
