@@ -8291,6 +8291,9 @@ function 替换MVU运行时视图占位符_V1(文本 = '', 视图类型 = 'empty
     尝试生成('玩家角色表', 玩家角色表占位符_V1, () => 生成MVU玩家角色表_V1(数据根));
   }
   写入运行时视图诊断_V1(错误列表);
+  if (!错误列表.length && typeof 上下文?.onRuntimePlaceholderValues === 'function') {
+    上下文.onRuntimePlaceholderValues(替换值);
+  }
   const 替换后 = Array.from(替换值.entries()).reduce(
     (文本值, [占位符, 值]) => 文本值.replaceAll(占位符, 值),
     源文本,
