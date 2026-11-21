@@ -11955,7 +11955,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         Math.max(0, Number(state?.duration ?? state?.持续回合 ?? 1)) > 0 &&
         (String(state?.原型 || '').trim() === '结算修正' || Number(state?.战斗效果?.cost_delta_ratio || 0) > 0 ||
           Number(state?.战斗效果?.cast_backlash_ratio || 0) > 0) &&
-        skillMatchesLimitedElements(skill, state?.限定元素)
+        skillMatchesLimitedElements(skill, state?.限定元素) &&
+        // 限定攻击类型（11-21 补库：霸虎炼魂刀 霸刀斩「只对近身攻击」，原先技能效果与消耗的结算修正不看它，对所有技能生效）：技能里有一条效果是这种攻击才算。
+        (!limitedAttackTypes(state?.限定攻击类型).length ||
+          collectEffects(skill).some(effect => limitedEntryMatches(effect, { 限定攻击类型: state?.限定攻击类型 })))
       );
     // 反噬 (deriveStateCombatEffect cast_backlash_ratio): a skill its holder releases takes that share of the holder's HP
     // maximum, an effect on the caster added after the skill's own; states from different sources add up.
