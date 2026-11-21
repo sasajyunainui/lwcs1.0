@@ -42096,6 +42096,9 @@
       r20Work.ownCellRebuilds += rebuilt.filter(entry => entry[2]).length;
       ({ units: unitsNow, out, support, stop, control, keep, keepBack, answer, answerOpen, back, acts, turn } = rebuildCells(table, table.cellUnits || table.units,
         rebuilt.map(([row, next, ownCellsOnly]) => [row, r20FullStrength(next), ownCellsOnly])));
+      // Development hook (absent in play; nothing is computed without it): the cells a candidate's rebuilt rows came to,
+      // beside the table's (对子格子变化量测量，11-21).
+      root.__LWCS_DECISION_DEBUG__?.onRebuiltCells?.({ request, candidate, table, rows: rebuilt.map(([row]) => row), cells: { out, keep, keepBack, answer, answerOpen, back, support } });
       // A row rebuilt to the very cells it had (its stamina band moved by a hit, nothing it can do changed) is no change:
       // the race keeps the table's cells for it, late ones too (11-14: a basic attack that left both units as they were
       // but for the HP it took put the target on cells rebuilt from another starting world for the whole race, and a
