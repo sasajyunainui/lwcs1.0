@@ -2667,15 +2667,25 @@
     const full = actionWindup(reactor, declaration);
     return String(declaration?.actionKind || '').trim().toUpperCase() === 'RELEASE_SKILL' ? full * REACTION_CAST_SHARE : full;
   };
-  function clashTiming(attacker = {}, incomingDeclaration = {}, reactor = {}, declaration = {}, options = {}) {
-    const window = clashWindupBudget(attacker, incomingDeclaration, reactor, options), own = answerOwnWindup(reactor, declaration);
+  // 性能（11-21）：一对单位对同一来招的时机数据（来招前摇、双方有效敏捷、不插手的对轰窗口）与拿哪一招应对无关；
+  // BattleDecision r20Engage 对每个应对技能都要判一次，先算好这一份传进 clashTiming / preemptTiming（pair），结果与现算相同。
+  function answerTimingPair(attacker = {}, incomingDeclaration = {}, reactor = {}) {
+    return Object.freeze({
+      windupIn: answerWindup(attacker, incomingDeclaration, reactor),
+      window: clashWindupBudget(attacker, incomingDeclaration, reactor, {}),
+      attackerAgility: naturalActionOrderProfile(attacker).effectiveAgility,
+      reactorAgility: naturalActionOrderProfile(reactor).effectiveAgility,
+    });
+  }
+  function clashTiming(attacker = {}, incomingDeclaration = {}, reactor = {}, declaration = {}, options = {}, pair = null) {
+    const window = pair && options?.intercept !== true ? pair.window : clashWindupBudget(attacker, incomingDeclaration, reactor, options), own = answerOwnWindup(reactor, declaration);
     // 晚出手（CLASH_LATE_LIMIT）以内也算对上：把握按「晚到上限还剩多少余地」算，即余地整体右移 CLASH_LATE_LIMIT。
     const late = own > 0 ? clamp((own - window) / own, 0, 1) : 0;
     const margin = own > 0 ? (window - own) / own + CLASH_LATE_LIMIT : window >= 0 ? Infinity : -Infinity;
     const linear = margin === Infinity ? 1 : margin === -Infinity ? 0 : clamp(0.5 + 0.5 * margin / PREEMPT_SURE_MARGIN, 0, 1);
     // The margin with the attacker's and the answerer's effective agility scaled by `a` and `r` (the window scales with
     // their ratio unless the move is charged past the budget).
-    const windupIn = answerWindup(attacker, incomingDeclaration, reactor), attackerAgility = naturalActionOrderProfile(attacker).effectiveAgility;
+    const windupIn = pair ? pair.windupIn : answerWindup(attacker, incomingDeclaration, reactor), attackerAgility = pair ? pair.attackerAgility : naturalActionOrderProfile(attacker).effectiveAgility;
     const room = options?.intercept === true ? INTERCEPT_WINDUP : 0;
     const marginAt = (a = 1, r = 1) => {
       if (windupIn > CONTINUOUS_ACTION_BUDGET || !(attackerAgility > 0) || !(own > 0)) return margin;
@@ -26356,11 +26366,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // PREEMPT_SURE_MARGIN or more ahead counts as sure (1), level as an even chance (0.5), PREEMPT_SURE_MARGIN or more
   // behind as hopeless (0), linear between.
   const PREEMPT_SURE_MARGIN = 0.15;
-  function preemptTiming(reactor = {}, declaration = {}, attacker = {}, incomingDeclaration = {}) {
+  function preemptTiming(reactor = {}, declaration = {}, attacker = {}, incomingDeclaration = {}, pair = null) {
     const own = answerOwnWindup(reactor, declaration);
-    const theirs = Math.min(CONTINUOUS_ACTION_BUDGET, answerWindup(attacker, incomingDeclaration, reactor));
-    const ownAgility = Math.max(0, Number(naturalActionOrderProfile(reactor).effectiveAgility) || 0);
-    const theirAgility = Math.max(0, Number(naturalActionOrderProfile(attacker).effectiveAgility) || 0);
+    const theirs = Math.min(CONTINUOUS_ACTION_BUDGET, pair ? pair.windupIn : answerWindup(attacker, incomingDeclaration, reactor));
+    const ownAgility = Math.max(0, Number(pair ? pair.reactorAgility : naturalActionOrderProfile(reactor).effectiveAgility) || 0);
+    const theirAgility = Math.max(0, Number(pair ? pair.attackerAgility : naturalActionOrderProfile(attacker).effectiveAgility) || 0);
     const ownTime = own * theirAgility, theirTime = theirs * ownAgility;
     const margin = own > CONTINUOUS_ACTION_BUDGET ? -Infinity
       : theirTime > 0 ? 1 - ownTime / theirTime : ownTime > 0 ? -Infinity : 0;
@@ -26551,6 +26561,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     interceptWindupBudget,
     clashWindupBudget,
     clashTiming,
+    answerTimingPair,
     withStrengthKnockback,
     concedeHoldsBack,
     pullBackChoice,

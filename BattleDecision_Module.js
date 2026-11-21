@@ -40658,6 +40658,8 @@
     const move = travel > 0 ? { ...plainMove, advanceWindup: travel } : plainMove, attackerId = preview.unitId(attacker);
 
     const strikes = [], stops = [];
+    let timingPair;
+    const pairTiming = () => timingPair ??= preview.answerTimingPair ? preview.answerTimingPair(attacker, move, unit) : null;
     const consider = (declaration, skill) => {
       let price = null;
       const priced = () => price ??= r20AnswerPrice(unit, attacker, declaration).price;
@@ -40665,14 +40667,14 @@
       if (parts && !parts.aimed) return;
       // 接战链 阶段 2d: a clash by the confidence of its timing (BattlePreview clashTiming, on the agility the unit sees).
       const clashConfidence = !skill || parts.damage
-        ? preview.clashTiming(attacker, move, unit, declaration).confidence : 0;
+        ? preview.clashTiming(attacker, move, unit, declaration, {}, pairTiming()).confidence : 0;
       if (clashConfidence > 0) {
         const strike = Number(preview.incomingMoveDamage(unit, declaration, attacker, r20World)) || 0;
         if (strike > 0) strikes.push({ strike, price: priced(), confidence: clashConfidence, move: declaration });
       }
       // 接战链 阶段二补充: a control that stops this move's kind (a known move; else a skill or a basic attack), by the
       // confidence the timing the unit sees gives it (preemptTiming confidence).
-      const confidence = skill ? preview.preemptTiming(unit, declaration, attacker, move).confidence : 0;
+      const confidence = skill ? preview.preemptTiming(unit, declaration, attacker, move, pairTiming()).confidence : 0;
       let stop = 0;
       if (confidence > 0 && !incoming) {
         for (const { effect, chance } of parts.stops) {
