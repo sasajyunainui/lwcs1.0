@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:f1da5e5bb37cb504d102f6cb91141cbd5a4ce2765118746ad3a55ef8657ee12b|mvu_logic_bridge.js:96a5ad3cc701b192833d3be65334ea512e37dbc9bf3b8bed011e2f8c5736f577|cockpit/designer-model.js:401f0250a96e04360a4d182373508f0251baace6b04f5684e2cdcedd709c6981|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:69c6066a3d964398df9bcb457d712556f9fc58c6019c6dd1d20d65b0080390ec|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:5ed5d9ced35d7f161a1076d3e377534d38130b95f21cc9f5dc8037ef3f455cd1|cockpit/pages-ability.js:022ab507ac10cce533d3babd95291a8f13120f25098ad99b520d4857c7ae65d3|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:121696c1481708bb05eaebf52d3f96efbeeac57ce6bc43311b2512fc2bda9596|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:d6818552f379190ba590a295c7f198810cb8d24d271e8e419335fe709e95bbdc|BattleRuntime_Module.js:62af09000c4cc8511c17683b52a012f3272add485766956e381fea8670d432d6|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:5e0db96d8b53e77d3c6169d38ead7aa477f9c3c90023621125d862c40a5ef06d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:f1da5e5bb37cb504d102f6cb91141cbd5a4ce2765118746ad3a55ef8657ee12b|mvu_logic_bridge.js:96a5ad3cc701b192833d3be65334ea512e37dbc9bf3b8bed011e2f8c5736f577|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:cd23e10d3eae660ffe822116d3a5a5458f3a27d17ff9bfe8003cc425f2010b98|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:022ab507ac10cce533d3babd95291a8f13120f25098ad99b520d4857c7ae65d3|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:121696c1481708bb05eaebf52d3f96efbeeac57ce6bc43311b2512fc2bda9596|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:d6818552f379190ba590a295c7f198810cb8d24d271e8e419335fe709e95bbdc|BattleRuntime_Module.js:62af09000c4cc8511c17683b52a012f3272add485766956e381fea8670d432d6|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:5e0db96d8b53e77d3c6169d38ead7aa477f9c3c90023621125d862c40a5ef06d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -48474,6 +48474,7 @@ ${播报文本}
     const 起始 = 设计台原始草稿(skill, previewMeta, snapshot);
     const vf = 渲染并挂载(起始.designerDraft, previewMeta, snapshot);
     let 草稿 = 同步草稿(vf, previewMeta, snapshot);
+    let revision = 0;
     const 激活 = () => 设计台使用快照(snapshot.rootData, previewMeta);
     const 会话 = {
       meta: previewMeta,
@@ -48482,8 +48483,10 @@ ${播报文本}
       get form() { 激活(); return 同步草稿(vf, previewMeta, snapshot); },
       /** 最近一次 refreshPreview 实际使用的草稿（新增原型/副作用等动作原版直接用拼好的草稿刷新预览） */
       get previewForm() { return 草稿; },
+      get revision() { return revision; },
       act(动作) {
         激活();
+        revision++;
         (Array.isArray(动作) ? 动作 : [动作]).forEach(单个 => { 执行动作(vf, 单个, previewMeta, snapshot); 草稿 = 动作后刷新(vf, previewMeta, snapshot); });
         return 会话;
       },
@@ -48902,10 +48905,11 @@ ${播报文本}
     $$('.list .row, .roster .rc', pad).forEach(r => { r.hidden = !!q && !r.textContent.toLowerCase().includes(q); });
   };
   document.addEventListener('input', e => { const t = e.target.closest?.('[data-qs]'); if (!t) return; (state.ui.qs ||= {})[t.dataset.qs] = t.value; filterRows(t); });
+  let dataRevision = 0;
   const ctx = () => {
     if (!S.char[state.view]) state.view = S.sys.玩家名;
     const ch = S.char[state.view] || {};
-    return { rt, library, loc: window.LWCS_COCKPIT_LOC(S, rt), S, name: state.view, ch, st: ch.属性 || {}, isPlayer: state.view === S.sys.玩家名, player: S.sys.玩家名, souls: souls(ch), tickDate, rankTitle, yearTier, ringStage, ringMedal, ringColorClass, bar, count, sock, head, empty, kv, val, hint: hintMark, pick, esc, fmt, num, entries, blank, avatarSrc, standingSrc, miniAva, state, ed, search, P: (...p) => ['char', state.view, ...p] };
+    return { rt, library, loc: window.LWCS_COCKPIT_LOC(S, rt), S, dataRevision, name: state.view, ch, st: ch.属性 || {}, isPlayer: state.view === S.sys.玩家名, player: S.sys.玩家名, souls: souls(ch), tickDate, rankTitle, yearTier, ringStage, ringMedal, ringColorClass, bar, count, sock, head, empty, kv, val, hint: hintMark, pick, esc, fmt, num, entries, blank, avatarSrc, standingSrc, miniAva, state, ed, search, P: (...p) => ['char', state.view, ...p] };
   };
 
   // 写回：ops = [{ path, value }] 或 [{ path, del: true }]，path 是存档根下的键路径。
@@ -48921,6 +48925,7 @@ ${播报文本}
       catch (err) { console.error('[座舱] 写回失败', err); ADP.toast?.(err?.message || '变量写回失败', 'error'); api.refresh?.(); return false; }
     }
     for (const o of ops) o.del ? delAt(o.path) : setAt(o.path, o.value);
+    dataRevision++;
     api.refresh?.(); api.syncReadout?.();
     return true;
   };
@@ -48975,7 +48980,7 @@ ${播报文本}
     reproject() { api.reproject?.(); },
     view(name) { if (!S?.char?.[name]) return; state.view = name; state.inspect = null; ADP?.setActive?.(name); api.refresh?.(); },
     // 桥接刷新后回灌最新根数据：编辑进行中先记下，提交 / 取消后再重绘，不打断输入
-    setData(root) { if (!root || typeof root !== 'object') return; S = root; if (!S.char?.[state.view]) state.view = S.sys?.玩家名 || state.view; if (!mounted) return; if (api.isEditing?.()) { api.pending = true; return; } api.refresh?.(); api.syncReadout?.(); },
+    setData(root) { if (!root || typeof root !== 'object') return; S = root; dataRevision++; if (!S.char?.[state.view]) state.view = S.sys?.玩家名 || state.view; if (!mounted) return; if (api.isEditing?.()) { api.pending = true; return; } api.refresh?.(); api.syncReadout?.(); },
     // 挂到宿主元素里：首次构建座舱 DOM 并初始化；之后宿主重建时把同一棵 DOM 移过去（事件监听随节点保留）
     mount(host, adapter) {
       if (adapter) ADP = adapter;
@@ -49154,14 +49159,15 @@ ${播报文本}
     Object.assign(slider.style, column ? { left: '', width: '', top: tab.offsetTop + 'px', height: tab.offsetHeight + 'px' } : { top: '', height: '', left: tab.offsetLeft + 'px', width: tab.offsetWidth + 'px' });
   };
 
-  const currentView = () => {
+  const currentPage = () => {
     const d = domains[state.domain], key = state.page[state.domain] || d.keys[0].id;
     const page = d.keys.find(k => k.id === key) || d.keys[0];
-    return { d, page, v: page.view(ctx()) };
+    return { d, page };
   };
-  const applyWide = v => {
+  let renderedWide = '', renderedMobile;
+  const applyWide = () => {
     $('.cockpit').dataset.view = `${state.domain}/${state.page[state.domain] || domains[state.domain].keys[0].id}`;
-    const wide = isMobile() ? '' : (v.wide || '');
+    const wide = isMobile() ? '' : renderedWide;
     screens.classList.toggle('wide-l', wide === 'both' || wide === 'l');
     screens.classList.toggle('wide-r', wide === 'both' || wide === 'r');
   };
@@ -49174,11 +49180,26 @@ ${播报文本}
   const faceLabel = (html, rail, dflt) => (String(html || '').match(/<h2 class="h"><span class="sock[^"]*"><i[^>]*><\/i><\/span>([^<]+)/) || [])[1]?.trim()
     || (!html && (String(rail || '').match(/<small>([^<]+)<\/small>/) || [])[1]?.trim()) || dflt;
   const setFaceLabels = v => { const [l, , r] = $$('.dots button'); if (l) l.textContent = v.faces?.l || faceLabel(v.left, v.railL, '根基'); if (r) r.textContent = v.faces?.r || faceLabel(v.right, v.railR, '详情'); };
+  let faceIdleTimer = 0;
+  const beginFaceMotion = () => {
+    clearTimeout(faceIdleTimer);
+    faceIdleTimer = 0;
+    delete screens.dataset.idleFace;
+  };
+  const settleFace = () => {
+    clearTimeout(faceIdleTimer);
+    faceIdleTimer = 0;
+    screens.dataset.idleFace = String(state.face);
+  };
   const setFace = i => {
+    const moving = state.face !== i || !!screens.style.transform;
+    if (moving) beginFaceMotion();
     state.face = i;
     screens.style.setProperty('--turn', `${-i * 60}deg`);
     screens.style.removeProperty('transform'); // 拖动期间的内联变换在此交还给样式表（过渡从拖到的位置滑向目标面）
     $$('.dots button').forEach(b => b.classList.toggle('on', Number(b.dataset.face) === i));
+    if (moving && !reduce) faceIdleTimer = setTimeout(settleFace, 650);
+    else if (!faceIdleTimer && !screens.classList.contains('dragging')) settleFace();
     requestAnimationFrame(fitCarousel);
   };
   const fitCarousel = () => {
@@ -49200,13 +49221,15 @@ ${播报文本}
   // 页面可提供 mount(face, ctx) 挂交互（沙盘拖拽、缩放等），每次主屏换面后调用
   const mount = (v, face) => { if (face && typeof v.mount === 'function') try { v.mount(face, ctx()); } catch (err) { console.error(err); } };
   function renderPage(how) {
-    const { d, v } = currentView();
+    const { d, page } = currentPage(), v = page.view(ctx());
+    renderedWide = v.wide || '';
+    renderedMobile = isMobile();
     $('#ck-coreTag').textContent = v.tag || d.tag || 'CORE';
     // 两翼宽度在切换瞬间一次到位：原先列宽过渡 0.7s，每帧整个座舱重排重绘（世界页两翼都收窄，最卡）
     // 翼板角度只给领域 / 子页切换的动画用；数据刷新不读（读 CSS 自定义属性会强制整页样式重算，酒馆页面很重）
     const animated = how.kind === 'domain' || how.kind === 'page';
     const fromA = animated ? { l: angle('l'), r: angle('r') } : null;
-    applyWide(v); setFaceLabels(v); syncNav();
+    applyWide(); setFaceLabels(v); syncNav();
     const toA = animated ? { l: angle('l'), r: angle('r') } : null;
     if (how.kind === 'domain') {
       mount(v, put(host.c, v.core, { out: `translateX(${-how.dir * 9}%)`, in: `translateX(${how.dir * 9}%)` }));
@@ -49304,7 +49327,7 @@ ${播报文本}
   // mode：hover（鼠标悬停预览）/ click（点击：桌面端钉住浮窗，触屏端原位展开或收起）
   let pinned = false;
   function openInspector(kind, id, anchor, mode = 'click') {
-    const { page } = currentView();
+    const { page } = currentPage();
     if (!page.inspect) return;
     const same = state.inspect && state.inspect.kind === kind && state.inspect.id === id && floatOpen();
     if (same && (mode === 'hover' || mode === 'scan')) return;
@@ -49621,7 +49644,7 @@ ${播报文本}
   // 编辑浮窗里的字段后：用新数据重绘浮窗内容，保持钉住与锚点
   function reproject() {
     if (!state.inspect || !floatOpen()) return;
-    const { kind, id } = state.inspect, { page } = currentView();
+    const { kind, id } = state.inspect, { page } = currentPage();
     const html = page.inspect?.(ctx(), kind, id, pinned ? 'full' : 'hover'); if (!html) return closeInspector();
     const anchor = $$('[data-inspect]').find(el => el.dataset.inspect === `${kind}:${id}`), card = $('.fcard', layer);
     if (anchor) { anchor.classList.add('on'); ringSlotOf(anchor)?.classList.add('mvu-hover-floating-active'); }
@@ -49787,6 +49810,7 @@ ${播报文本}
     if (!drag.moved && Math.abs(dx) < 8) return;
     // 起手偏竖（页面纵向滚动）才放弃；斜着划时横向分量够大仍算转向，不再因起手几像素偏竖整次作废
     if (!drag.moved && Math.abs(e.clientY - drag.y) > Math.abs(dx) * 1.6) { drag = null; return; }
+    if (!drag.moved) beginFaceMotion();
     drag.moved = true; screens.classList.add('dragging');
     { const now = performance.now(), dt = now - drag.lt; if (dt >= 16) { drag.v = (e.clientX - drag.lx) / dt; drag.lx = e.clientX; drag.lt = now; } }
     dragTurn = Math.max(-75, Math.min(75, drag.base + dx / (drag.w ||= screens.clientWidth) * 70));
@@ -49900,12 +49924,30 @@ ${播报文本}
     slider.style.transition = 'none';
     switchDomain(order[0], null, true);
     requestAnimationFrame(() => { slider.style.transition = ''; });
-    addEventListener('resize', () => { moveSlider($('.tab.on', track)); size(); applyWide(currentView().v); fitCarousel(); });
+    addEventListener('resize', relayout);
+    if (typeof IntersectionObserver === 'function') {
+      new IntersectionObserver(([entry]) => {
+        ROOT.classList.toggle('ck-offscreen', !entry.isIntersecting);
+      }).observe(ROOT);
+    }
     size(); motes = Array.from({ length: 42 }, () => spawn(Math.random() * H));
     if (!reduce && motesOn()) requestAnimationFrame(draw);
   };
   // 宿主尺寸变化（挂到新宿主、聊天栏宽度变化）后重排
-  const relayout = () => { syncMobile(); readStageZ(); moveSlider($('.tab.on', track)); size(); if (state.domain) { applyWide(currentView().v); fitCarousel(); } if (tickText !== null) syncTicker(tickText); };
+  const relayout = () => {
+    syncMobile();
+    readStageZ();
+    moveSlider($('.tab.on', track));
+    size();
+    if (state.domain) {
+      if (renderedMobile !== isMobile()) {
+        if (isMobile()) settleFace();
+        renderPage({ kind: 'refresh' });
+      } else applyWide();
+      fitCarousel();
+    }
+    if (tickText !== null) syncTicker(tickText);
+  };
   api = { refresh: () => { if (!state.domain) return; if (editing) { api.pending = true; return; } renderPage({ kind: 'refresh' }); }, switchDomain, switchPage, openInspector, closeInspector, reproject, syncReadout, start, relayout, isEditing: () => !!editing || holding, hold: on => { if (holding === !!on) return; holding = !!on; if (!on) setTimeout(flushPending); }, pending: false };
   }
 })();
@@ -51976,7 +52018,6 @@ ${播报文本}
       // 魂骨实例上没有、取自物品定义的技能：会话仍挂在佩戴者路径上（预算按佩戴者算），技能显式传入，保存时改写到定义路径
       const writePath = cur.srcPath && !samePath(cur.srcPath, meta.path) ? cur.srcPath : null;
       ui.dz2[k] = { ss: M().session(writePath ? cur.src : null, meta, c.S), meta, writePath, entryKey: cur.key, isNew: !!cur.isNew };
-      ui.dz2[k].init = skillJson(ui.dz2[k].ss);
     }
     return ui.dz2[k];
   };
@@ -52005,20 +52046,33 @@ ${播报文本}
   };
 
   // 左翼底部：对抗试算；最终摘要放右翼预算明细之后（摘要只露几行，全文悬停看）
-  const readout = (c, ss, deps) => `<div class="dz-sim">${deps.dzSim(c, ss.tempSkill())}</div>`;
-  const summaryHtml = ss => { const sum = ss.summary(), none = sum === '未设置'; return `<div class="dz2-summary"><h3>最终摘要</h3><p class="${none ? 'empty' : 'clamp'}"${none ? '' : ` data-hint="${esc(sum)}"`}>${esc(sum)}</p></div>`; };
+  let latestPreview;
+  const previewFor = (c, ss) => {
+    const rules = M().rules;
+    const key = [
+      ss, ss.revision, c.S, c.ch, c.dataRevision,
+      rules.物品被动保持承载方式, rules.角色被动存为被动,
+      window.__LWCS_SKILL_COST_HELPERS_V1__, window.__LWCS_COMPILE_SKILL_STRUCTURE_TEXT__,
+      window.__LWCS_CALC_DIRECT_SETTLE_BUDGET__, window.__LWCS_ASSERT_DIRECT_SETTLE_BUDGET__,
+      window.__LWCS_GET_BASE_STATS__, window.LWCS_DESIGNER_SIM,
+    ];
+    if (!latestPreview || !key.every((value, i) => latestPreview.key[i] === value)) latestPreview = { key };
+    return latestPreview;
+  };
+  const readout = (c, ss, deps, preview) => preview.readout ??= `<div class="dz-sim">${deps.dzSim(c, preview.skill ??= ss.tempSkill())}</div>`;
+  const summaryHtml = sum => { const none = sum === '未设置'; return `<div class="dz2-summary"><h3>最终摘要</h3><p class="${none ? 'empty' : 'clamp'}"${none ? '' : ` data-hint="${esc(sum)}"`}>${esc(sum)}</p></div>`; };
   const withSummary = (html, sum) => { const i = html.search(/<div class="(?:warn|okline)">/); return i < 0 ? sum + html : html.slice(0, i) + sum + html.slice(i); };
-  const budget = (c, ss, cur, deps) => {
+  const budget = (c, ss, cur, deps, preview) => {
     // 一次保存试跑：拿到与保存断言同一技能、同一上下文的预算（原版魂环魂技按魂环位的标准角色算），以及原版保存校验结果
-    let res; try { res = ss.save(SAVE_OPTS); } catch (e) { res = { budget: null, messages: [{ level: 'error', text: String(e.message || e) }] }; }
+    let res; try { res = preview.budget ??= ss.save(SAVE_OPTS); } catch (e) { res = { budget: null, messages: [{ level: 'error', text: String(e.message || e) }] }; }
     const msgs = res.messages || [], err = msgs.find(m => m.level === 'error');
-    let html = res.budget ? deps.dzGauge(c, { r: res.budget, block: err ? String(err.text).replace(/^技能生成错误[:：]?/, '') : '' }) : deps.dzPreview(c, ss.tempSkill(), cur.ring);
+    let html = res.budget ? deps.dzGauge(c, { r: res.budget, block: err ? String(err.text).replace(/^技能生成错误[:：]?/, '') : '' }) : deps.dzPreview(c, preview.skill ??= ss.tempSkill(), cur.ring);
     // 保存按钮以数据层的原版保存校验为准（含 COST 断言与结构校验）
     // 魂骨 / 装备的技能取自物品定义时，保存写回定义：悬停保存键说明影响范围
     const defHint = cur.srcPath?.[0] === '物品' ? ` data-hint="${esc(`保存写回物品定义「${cur.srcPath[2]}」：持有这件物品的角色一起生效`)}"` : '';
     html = html.replace(/<button class="cta" type="button" data-dz-save[^>]*>/, `<button class="cta" type="button" data-dz2-save${err ? ' disabled' : ''}${defHint}>`);
     if (err && !/无法保存/.test(html)) html = html.replace('<button class="cta"', `<div class="warn"><i class="fa-solid fa-ban"></i><span>无法保存：${esc(err.text)}</span></div><button class="cta"`);
-    html = withSummary(html, summaryHtml(ss));
+    html = withSummary(html, summaryHtml(preview.summary ??= preview.view?.preview.summary ?? ss.summary()));
     const warns = msgs.filter(m => m.level === 'warn').map(m => `<li>${esc(m.text)}</li>`).join('');
     return html + (warns ? `<div class="dz2-warns"><i class="fa-solid fa-circle-exclamation"></i><span>保存提醒 ${msgs.filter(m => m.level === 'warn').length} 条</span>${c.hint(msgs.filter(m => m.level === 'warn').map(m => m.text).join('\n'))}</div>` : '');
   };
@@ -52031,7 +52085,11 @@ ${播报文本}
     const cur = all.find(s => s.key === ui.skill) || all[0], tabDef = TABS.find(t => t[0] === ui.dtab) || TABS[0], tab = tabDef[0];
     const S = sessionOf(c, cur); if (!S) return null;
     const { ss } = S; let v;
-    try { v = ss.view(); } catch (e) { console.error(e); return null; }
+    const preview = previewFor(c, ss);
+    try { v = preview.view ??= ss.view(); } catch (e) { console.error(e); return null; }
+    if (!cur.isNew && S.init === undefined) S.init = preview.skillJson ??= skillJson(ss);
+    const hasEdits = S.init && (preview.skillJson ??= skillJson(ss)) !== S.init;
+    const budgetHtml = budget(c, ss, cur, deps, preview);
     if (ui.dzRowFor !== cur.key) { ui.dzRow = 0; ui.dzRowFor = cur.key; }
     const secs = v.sections.filter(s => tabDef[2].includes(s.tab));
     const pend = window.COCKPIT.pending?.()?.skillDesign, pendHere = !!(pend && !pend.growth && samePath(pend.path, S.meta.path));
@@ -52051,9 +52109,9 @@ ${播报文本}
       </div>`,
       mount: face => mount(face, c, cur, S, deps),
       // 左翼：选技能 → 和标准对手比（对抗试算）；右翼：预算 → 最终摘要 → 保存
-      left: `<div class="pad">${c.head('book', '技能', 'Skills')}${c.search('dz2', '技能名或来源')}<div class="list dz2-skills">${all.map(s => `<button class="row${s === cur ? ' on' : ''}" type="button" data-set="skill=${esc(s.key)}" aria-current="${s === cur}">${s.ring ? c.ringMedal(s.ring, String(s.ring.slot).replace(/\D/g, ''), true) : c.sock(GROUP_ICON[s.group] || 'pen-ruler')}<div><strong>${esc(s.魂技名)}</strong><small>${s.isNew ? '未保存' : s.ring ? esc(s.from || '') : esc(s.group)}</small></div><span></span></button>`).join('')}</div>${newBtns()}<div class="groove"></div><div class="dz2-readout">${readout(c, ss, deps)}</div></div>`,
+      left: `<div class="pad">${c.head('book', '技能', 'Skills')}${c.search('dz2', '技能名或来源')}<div class="list dz2-skills">${all.map(s => `<button class="row${s === cur ? ' on' : ''}" type="button" data-set="skill=${esc(s.key)}" aria-current="${s === cur}">${s.ring ? c.ringMedal(s.ring, String(s.ring.slot).replace(/\D/g, ''), true) : c.sock(GROUP_ICON[s.group] || 'pen-ruler')}<div><strong>${esc(s.魂技名)}</strong><small>${s.isNew ? '未保存' : s.ring ? esc(s.from || '') : esc(s.group)}</small></div><span></span></button>`).join('')}</div>${newBtns()}<div class="groove"></div><div class="dz2-readout">${readout(c, ss, deps, preview)}</div></div>`,
       railL: `<div class="rail">${c.sock('pen-ruler', 'gd')}<b>${all.length}</b><small>可设计技能</small></div>`,
-      right: `<div class="pad">${c.head('scale-balanced', '预算核算', 'Budget', 'gd')}<div class="dz-preview">${pendHere ? budget(c, ss, cur, deps).replace(/(<button class="cta" type="button" data-dz2-save[^>]*)>([\s\S]*?)保存设计/, '$1 data-hint="保存后把这次设计交给叙事结算">$2保存并提交剧情') : budget(c, ss, cur, deps)}</div>${ui.dzSaved === cur.key ? '<div class="okline dz2-saved"><i class="fa-solid fa-floppy-disk"></i>已写入存档</div>' : ''}${cur.isNew ? '<button class="key-s danger dz2-discard" type="button" data-dz2-discard><i class="fa-solid fa-trash"></i> 放弃新建</button>' : S.init && skillJson(ss) !== S.init ? '<button class="key-s danger dz2-discard" type="button" data-dz2-reload data-hint="放弃这次未保存的改动，按存档重新载入"><i class="fa-solid fa-rotate-left"></i> 重新读取</button>' : ''}</div>`,
+      right: `<div class="pad">${c.head('scale-balanced', '预算核算', 'Budget', 'gd')}<div class="dz-preview">${pendHere ? budgetHtml.replace(/(<button class="cta" type="button" data-dz2-save[^>]*)>([\s\S]*?)保存设计/, '$1 data-hint="保存后把这次设计交给叙事结算">$2保存并提交剧情') : budgetHtml}</div>${ui.dzSaved === cur.key ? '<div class="okline dz2-saved"><i class="fa-solid fa-floppy-disk"></i>已写入存档</div>' : ''}${cur.isNew ? '<button class="key-s danger dz2-discard" type="button" data-dz2-discard><i class="fa-solid fa-trash"></i> 放弃新建</button>' : hasEdits ? '<button class="key-s danger dz2-discard" type="button" data-dz2-reload data-hint="放弃这次未保存的改动，按存档重新载入"><i class="fa-solid fa-rotate-left"></i> 重新读取</button>' : ''}</div>`,
     };
   };
 
@@ -52081,8 +52139,9 @@ ${播报文本}
     };
     // 输入中：只刷新预算 / 摘要 / 试算，不重绘表单（保住光标）；提交（change）时再整体重绘
     const livePreview = () => {
-      const pv = [...document.querySelectorAll('.dz-preview')].pop(); if (pv) pv.innerHTML = budget(c, ss, cur, deps);
-      const ro = [...document.querySelectorAll('.dz2-readout')].pop(); if (ro) ro.innerHTML = readout(c, ss, deps);
+      const current = window.COCKPIT.ctx(), preview = previewFor(current, ss);
+      const pv = [...document.querySelectorAll('.dz-preview')].pop(); if (pv) pv.innerHTML = budget(current, ss, cur, deps, preview);
+      const ro = [...document.querySelectorAll('.dz2-readout')].pop(); if (ro) ro.innerHTML = readout(current, ss, deps, preview);
     };
     const withValue = (a, value) => a.type === 'unit' ? { ...a, unit: value } : { ...a, value };
     face.addEventListener('picker:change', e => {
@@ -52153,7 +52212,7 @@ ${播报文本}
     const b = e.target.closest('[data-dz2-save]'); if (!b || b.disabled) return;
     const c = window.COCKPIT.ctx?.(), key = document.querySelector('[data-dz2-key]')?.dataset.dz2Key, S = c?.state.ui.dz2?.[key]; if (!S) return;
     const r = S.ss.save(SAVE_OPTS);
-    if (!r.ok) { c.state.ui.dzErr = (r.messages.find(m => m.level === 'error') || {}).text || '保存失败'; return window.COCKPIT.refresh(); }
+    if (!r.ok) { latestPreview = null; c.state.ui.dzErr = (r.messages.find(m => m.level === 'error') || {}).text || '保存失败'; return window.COCKPIT.refresh(); }
     // 保存结果的 updates 一次性写回（lwcs 经桥接走 MVU 校验落楼；原型改内存存档）
     const ops = (r.updates || []).map(u => ({ path: (S.writePath && samePath(u.path, S.meta.path) ? S.writePath : u.path).slice(), value: u.value }));
     if (S.isNew) dropNew(c, S.entryKey);

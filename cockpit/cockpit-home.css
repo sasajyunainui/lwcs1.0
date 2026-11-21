@@ -46,7 +46,7 @@
 .readout .tick>span{display:inline-block;white-space:nowrap}
 .readout .tick>span>span{display:inline-block}
 .readout .tick.run{mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent)}
-.readout .tick.run>span{animation:tick var(--tick-dur,20s) linear infinite}
+.readout .tick.run>span{animation:tick var(--tick-dur,20s) linear infinite var(--lwcs-cockpit-loop-state,running)}
 .readout .tick.run:hover>span{animation-play-state:paused}
 .readout .tick .tick-gap{display:inline-block;width:3em}
 .cockpit[data-view="page-archive/status"] #rRes{display:none}

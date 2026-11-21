@@ -233,7 +233,6 @@
       // 魂骨实例上没有、取自物品定义的技能：会话仍挂在佩戴者路径上（预算按佩戴者算），技能显式传入，保存时改写到定义路径
       const writePath = cur.srcPath && !samePath(cur.srcPath, meta.path) ? cur.srcPath : null;
       ui.dz2[k] = { ss: M().session(writePath ? cur.src : null, meta, c.S), meta, writePath, entryKey: cur.key, isNew: !!cur.isNew };
-      ui.dz2[k].init = skillJson(ui.dz2[k].ss);
     }
     return ui.dz2[k];
   };
@@ -262,20 +261,33 @@
   };
 
   // 左翼底部：对抗试算；最终摘要放右翼预算明细之后（摘要只露几行，全文悬停看）
-  const readout = (c, ss, deps) => `<div class="dz-sim">${deps.dzSim(c, ss.tempSkill())}</div>`;
-  const summaryHtml = ss => { const sum = ss.summary(), none = sum === '未设置'; return `<div class="dz2-summary"><h3>最终摘要</h3><p class="${none ? 'empty' : 'clamp'}"${none ? '' : ` data-hint="${esc(sum)}"`}>${esc(sum)}</p></div>`; };
+  let latestPreview;
+  const previewFor = (c, ss) => {
+    const rules = M().rules;
+    const key = [
+      ss, ss.revision, c.S, c.ch, c.dataRevision,
+      rules.物品被动保持承载方式, rules.角色被动存为被动,
+      window.__LWCS_SKILL_COST_HELPERS_V1__, window.__LWCS_COMPILE_SKILL_STRUCTURE_TEXT__,
+      window.__LWCS_CALC_DIRECT_SETTLE_BUDGET__, window.__LWCS_ASSERT_DIRECT_SETTLE_BUDGET__,
+      window.__LWCS_GET_BASE_STATS__, window.LWCS_DESIGNER_SIM,
+    ];
+    if (!latestPreview || !key.every((value, i) => latestPreview.key[i] === value)) latestPreview = { key };
+    return latestPreview;
+  };
+  const readout = (c, ss, deps, preview) => preview.readout ??= `<div class="dz-sim">${deps.dzSim(c, preview.skill ??= ss.tempSkill())}</div>`;
+  const summaryHtml = sum => { const none = sum === '未设置'; return `<div class="dz2-summary"><h3>最终摘要</h3><p class="${none ? 'empty' : 'clamp'}"${none ? '' : ` data-hint="${esc(sum)}"`}>${esc(sum)}</p></div>`; };
   const withSummary = (html, sum) => { const i = html.search(/<div class="(?:warn|okline)">/); return i < 0 ? sum + html : html.slice(0, i) + sum + html.slice(i); };
-  const budget = (c, ss, cur, deps) => {
+  const budget = (c, ss, cur, deps, preview) => {
     // 一次保存试跑：拿到与保存断言同一技能、同一上下文的预算（原版魂环魂技按魂环位的标准角色算），以及原版保存校验结果
-    let res; try { res = ss.save(SAVE_OPTS); } catch (e) { res = { budget: null, messages: [{ level: 'error', text: String(e.message || e) }] }; }
+    let res; try { res = preview.budget ??= ss.save(SAVE_OPTS); } catch (e) { res = { budget: null, messages: [{ level: 'error', text: String(e.message || e) }] }; }
     const msgs = res.messages || [], err = msgs.find(m => m.level === 'error');
-    let html = res.budget ? deps.dzGauge(c, { r: res.budget, block: err ? String(err.text).replace(/^技能生成错误[:：]?/, '') : '' }) : deps.dzPreview(c, ss.tempSkill(), cur.ring);
+    let html = res.budget ? deps.dzGauge(c, { r: res.budget, block: err ? String(err.text).replace(/^技能生成错误[:：]?/, '') : '' }) : deps.dzPreview(c, preview.skill ??= ss.tempSkill(), cur.ring);
     // 保存按钮以数据层的原版保存校验为准（含 COST 断言与结构校验）
     // 魂骨 / 装备的技能取自物品定义时，保存写回定义：悬停保存键说明影响范围
     const defHint = cur.srcPath?.[0] === '物品' ? ` data-hint="${esc(`保存写回物品定义「${cur.srcPath[2]}」：持有这件物品的角色一起生效`)}"` : '';
     html = html.replace(/<button class="cta" type="button" data-dz-save[^>]*>/, `<button class="cta" type="button" data-dz2-save${err ? ' disabled' : ''}${defHint}>`);
     if (err && !/无法保存/.test(html)) html = html.replace('<button class="cta"', `<div class="warn"><i class="fa-solid fa-ban"></i><span>无法保存：${esc(err.text)}</span></div><button class="cta"`);
-    html = withSummary(html, summaryHtml(ss));
+    html = withSummary(html, summaryHtml(preview.summary ??= preview.view?.preview.summary ?? ss.summary()));
     const warns = msgs.filter(m => m.level === 'warn').map(m => `<li>${esc(m.text)}</li>`).join('');
     return html + (warns ? `<div class="dz2-warns"><i class="fa-solid fa-circle-exclamation"></i><span>保存提醒 ${msgs.filter(m => m.level === 'warn').length} 条</span>${c.hint(msgs.filter(m => m.level === 'warn').map(m => m.text).join('\n'))}</div>` : '');
   };
@@ -288,7 +300,11 @@
     const cur = all.find(s => s.key === ui.skill) || all[0], tabDef = TABS.find(t => t[0] === ui.dtab) || TABS[0], tab = tabDef[0];
     const S = sessionOf(c, cur); if (!S) return null;
     const { ss } = S; let v;
-    try { v = ss.view(); } catch (e) { console.error(e); return null; }
+    const preview = previewFor(c, ss);
+    try { v = preview.view ??= ss.view(); } catch (e) { console.error(e); return null; }
+    if (!cur.isNew && S.init === undefined) S.init = preview.skillJson ??= skillJson(ss);
+    const hasEdits = S.init && (preview.skillJson ??= skillJson(ss)) !== S.init;
+    const budgetHtml = budget(c, ss, cur, deps, preview);
     if (ui.dzRowFor !== cur.key) { ui.dzRow = 0; ui.dzRowFor = cur.key; }
     const secs = v.sections.filter(s => tabDef[2].includes(s.tab));
     const pend = window.COCKPIT.pending?.()?.skillDesign, pendHere = !!(pend && !pend.growth && samePath(pend.path, S.meta.path));
@@ -308,9 +324,9 @@
       </div>`,
       mount: face => mount(face, c, cur, S, deps),
       // 左翼：选技能 → 和标准对手比（对抗试算）；右翼：预算 → 最终摘要 → 保存
-      left: `<div class="pad">${c.head('book', '技能', 'Skills')}${c.search('dz2', '技能名或来源')}<div class="list dz2-skills">${all.map(s => `<button class="row${s === cur ? ' on' : ''}" type="button" data-set="skill=${esc(s.key)}" aria-current="${s === cur}">${s.ring ? c.ringMedal(s.ring, String(s.ring.slot).replace(/\D/g, ''), true) : c.sock(GROUP_ICON[s.group] || 'pen-ruler')}<div><strong>${esc(s.魂技名)}</strong><small>${s.isNew ? '未保存' : s.ring ? esc(s.from || '') : esc(s.group)}</small></div><span></span></button>`).join('')}</div>${newBtns()}<div class="groove"></div><div class="dz2-readout">${readout(c, ss, deps)}</div></div>`,
+      left: `<div class="pad">${c.head('book', '技能', 'Skills')}${c.search('dz2', '技能名或来源')}<div class="list dz2-skills">${all.map(s => `<button class="row${s === cur ? ' on' : ''}" type="button" data-set="skill=${esc(s.key)}" aria-current="${s === cur}">${s.ring ? c.ringMedal(s.ring, String(s.ring.slot).replace(/\D/g, ''), true) : c.sock(GROUP_ICON[s.group] || 'pen-ruler')}<div><strong>${esc(s.魂技名)}</strong><small>${s.isNew ? '未保存' : s.ring ? esc(s.from || '') : esc(s.group)}</small></div><span></span></button>`).join('')}</div>${newBtns()}<div class="groove"></div><div class="dz2-readout">${readout(c, ss, deps, preview)}</div></div>`,
       railL: `<div class="rail">${c.sock('pen-ruler', 'gd')}<b>${all.length}</b><small>可设计技能</small></div>`,
-      right: `<div class="pad">${c.head('scale-balanced', '预算核算', 'Budget', 'gd')}<div class="dz-preview">${pendHere ? budget(c, ss, cur, deps).replace(/(<button class="cta" type="button" data-dz2-save[^>]*)>([\s\S]*?)保存设计/, '$1 data-hint="保存后把这次设计交给叙事结算">$2保存并提交剧情') : budget(c, ss, cur, deps)}</div>${ui.dzSaved === cur.key ? '<div class="okline dz2-saved"><i class="fa-solid fa-floppy-disk"></i>已写入存档</div>' : ''}${cur.isNew ? '<button class="key-s danger dz2-discard" type="button" data-dz2-discard><i class="fa-solid fa-trash"></i> 放弃新建</button>' : S.init && skillJson(ss) !== S.init ? '<button class="key-s danger dz2-discard" type="button" data-dz2-reload data-hint="放弃这次未保存的改动，按存档重新载入"><i class="fa-solid fa-rotate-left"></i> 重新读取</button>' : ''}</div>`,
+      right: `<div class="pad">${c.head('scale-balanced', '预算核算', 'Budget', 'gd')}<div class="dz-preview">${pendHere ? budgetHtml.replace(/(<button class="cta" type="button" data-dz2-save[^>]*)>([\s\S]*?)保存设计/, '$1 data-hint="保存后把这次设计交给叙事结算">$2保存并提交剧情') : budgetHtml}</div>${ui.dzSaved === cur.key ? '<div class="okline dz2-saved"><i class="fa-solid fa-floppy-disk"></i>已写入存档</div>' : ''}${cur.isNew ? '<button class="key-s danger dz2-discard" type="button" data-dz2-discard><i class="fa-solid fa-trash"></i> 放弃新建</button>' : hasEdits ? '<button class="key-s danger dz2-discard" type="button" data-dz2-reload data-hint="放弃这次未保存的改动，按存档重新载入"><i class="fa-solid fa-rotate-left"></i> 重新读取</button>' : ''}</div>`,
     };
   };
 
@@ -338,8 +354,9 @@
     };
     // 输入中：只刷新预算 / 摘要 / 试算，不重绘表单（保住光标）；提交（change）时再整体重绘
     const livePreview = () => {
-      const pv = [...document.querySelectorAll('.dz-preview')].pop(); if (pv) pv.innerHTML = budget(c, ss, cur, deps);
-      const ro = [...document.querySelectorAll('.dz2-readout')].pop(); if (ro) ro.innerHTML = readout(c, ss, deps);
+      const current = window.COCKPIT.ctx(), preview = previewFor(current, ss);
+      const pv = [...document.querySelectorAll('.dz-preview')].pop(); if (pv) pv.innerHTML = budget(current, ss, cur, deps, preview);
+      const ro = [...document.querySelectorAll('.dz2-readout')].pop(); if (ro) ro.innerHTML = readout(current, ss, deps, preview);
     };
     const withValue = (a, value) => a.type === 'unit' ? { ...a, unit: value } : { ...a, value };
     face.addEventListener('picker:change', e => {
@@ -410,7 +427,7 @@
     const b = e.target.closest('[data-dz2-save]'); if (!b || b.disabled) return;
     const c = window.COCKPIT.ctx?.(), key = document.querySelector('[data-dz2-key]')?.dataset.dz2Key, S = c?.state.ui.dz2?.[key]; if (!S) return;
     const r = S.ss.save(SAVE_OPTS);
-    if (!r.ok) { c.state.ui.dzErr = (r.messages.find(m => m.level === 'error') || {}).text || '保存失败'; return window.COCKPIT.refresh(); }
+    if (!r.ok) { latestPreview = null; c.state.ui.dzErr = (r.messages.find(m => m.level === 'error') || {}).text || '保存失败'; return window.COCKPIT.refresh(); }
     // 保存结果的 updates 一次性写回（lwcs 经桥接走 MVU 校验落楼；原型改内存存档）
     const ops = (r.updates || []).map(u => ({ path: (S.writePath && samePath(u.path, S.meta.path) ? S.writePath : u.path).slice(), value: u.value }));
     if (S.isNew) dropNew(c, S.entryKey);

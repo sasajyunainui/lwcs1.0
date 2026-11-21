@@ -4,6 +4,7 @@
 /* 高度随座舱自身（挂载点在聊天流里，跟着长高），不在内部再套一层滚动 */
 /* 根是尺寸容器：座舱字号（1.42cqw）按座舱实际宽度缩放，与原型的版面比例一致；嵌在窄聊天栏里时最小 12.5px */
 .lwcs-ck-root{container-type:inline-size;display:block;width:100%;padding:0;background:none;font-size:14px}
+.lwcs-ck-root.ck-offscreen{--lwcs-cockpit-loop-state:paused}
 /* 嵌在聊天流里不要原型页的外围舞台：座舱直接铺满聊天栏宽度，没有深色底、渐变光晕、光尘与宽度上限，上下只留必要间隙 */
 .cockpit{width:100%;background:none;padding:0 0 4px}
 .motes{display:none}

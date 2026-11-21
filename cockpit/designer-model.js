@@ -11889,6 +11889,7 @@
     const 起始 = 设计台原始草稿(skill, previewMeta, snapshot);
     const vf = 渲染并挂载(起始.designerDraft, previewMeta, snapshot);
     let 草稿 = 同步草稿(vf, previewMeta, snapshot);
+    let revision = 0;
     const 激活 = () => 设计台使用快照(snapshot.rootData, previewMeta);
     const 会话 = {
       meta: previewMeta,
@@ -11897,8 +11898,10 @@
       get form() { 激活(); return 同步草稿(vf, previewMeta, snapshot); },
       /** 最近一次 refreshPreview 实际使用的草稿（新增原型/副作用等动作原版直接用拼好的草稿刷新预览） */
       get previewForm() { return 草稿; },
+      get revision() { return revision; },
       act(动作) {
         激活();
+        revision++;
         (Array.isArray(动作) ? 动作 : [动作]).forEach(单个 => { 执行动作(vf, 单个, previewMeta, snapshot); 草稿 = 动作后刷新(vf, previewMeta, snapshot); });
         return 会话;
       },

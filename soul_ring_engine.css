@@ -298,12 +298,12 @@
 }
 
 .mvu-soul-ring-svg .spin-cw {
-  animation: spin-cw 42s linear infinite;
+  animation: spin-cw 42s linear infinite var(--lwcs-cockpit-loop-state, running);
   transform-origin: 100px 100px;
 }
 
 .mvu-soul-ring-svg .spin-ccw {
-  animation: spin-ccw 56s linear infinite;
+  animation: spin-ccw 56s linear infinite var(--lwcs-cockpit-loop-state, running);
   transform-origin: 100px 100px;
 }
 

@@ -155,10 +155,11 @@
     $$('.list .row, .roster .rc', pad).forEach(r => { r.hidden = !!q && !r.textContent.toLowerCase().includes(q); });
   };
   document.addEventListener('input', e => { const t = e.target.closest?.('[data-qs]'); if (!t) return; (state.ui.qs ||= {})[t.dataset.qs] = t.value; filterRows(t); });
+  let dataRevision = 0;
   const ctx = () => {
     if (!S.char[state.view]) state.view = S.sys.玩家名;
     const ch = S.char[state.view] || {};
-    return { rt, library, loc: window.LWCS_COCKPIT_LOC(S, rt), S, name: state.view, ch, st: ch.属性 || {}, isPlayer: state.view === S.sys.玩家名, player: S.sys.玩家名, souls: souls(ch), tickDate, rankTitle, yearTier, ringStage, ringMedal, ringColorClass, bar, count, sock, head, empty, kv, val, hint: hintMark, pick, esc, fmt, num, entries, blank, avatarSrc, standingSrc, miniAva, state, ed, search, P: (...p) => ['char', state.view, ...p] };
+    return { rt, library, loc: window.LWCS_COCKPIT_LOC(S, rt), S, dataRevision, name: state.view, ch, st: ch.属性 || {}, isPlayer: state.view === S.sys.玩家名, player: S.sys.玩家名, souls: souls(ch), tickDate, rankTitle, yearTier, ringStage, ringMedal, ringColorClass, bar, count, sock, head, empty, kv, val, hint: hintMark, pick, esc, fmt, num, entries, blank, avatarSrc, standingSrc, miniAva, state, ed, search, P: (...p) => ['char', state.view, ...p] };
   };
 
   // 写回：ops = [{ path, value }] 或 [{ path, del: true }]，path 是存档根下的键路径。
@@ -174,6 +175,7 @@
       catch (err) { console.error('[座舱] 写回失败', err); ADP.toast?.(err?.message || '变量写回失败', 'error'); api.refresh?.(); return false; }
     }
     for (const o of ops) o.del ? delAt(o.path) : setAt(o.path, o.value);
+    dataRevision++;
     api.refresh?.(); api.syncReadout?.();
     return true;
   };
@@ -228,7 +230,7 @@
     reproject() { api.reproject?.(); },
     view(name) { if (!S?.char?.[name]) return; state.view = name; state.inspect = null; ADP?.setActive?.(name); api.refresh?.(); },
     // 桥接刷新后回灌最新根数据：编辑进行中先记下，提交 / 取消后再重绘，不打断输入
-    setData(root) { if (!root || typeof root !== 'object') return; S = root; if (!S.char?.[state.view]) state.view = S.sys?.玩家名 || state.view; if (!mounted) return; if (api.isEditing?.()) { api.pending = true; return; } api.refresh?.(); api.syncReadout?.(); },
+    setData(root) { if (!root || typeof root !== 'object') return; S = root; dataRevision++; if (!S.char?.[state.view]) state.view = S.sys?.玩家名 || state.view; if (!mounted) return; if (api.isEditing?.()) { api.pending = true; return; } api.refresh?.(); api.syncReadout?.(); },
     // 挂到宿主元素里：首次构建座舱 DOM 并初始化；之后宿主重建时把同一棵 DOM 移过去（事件监听随节点保留）
     mount(host, adapter) {
       if (adapter) ADP = adapter;
@@ -407,14 +409,15 @@
     Object.assign(slider.style, column ? { left: '', width: '', top: tab.offsetTop + 'px', height: tab.offsetHeight + 'px' } : { top: '', height: '', left: tab.offsetLeft + 'px', width: tab.offsetWidth + 'px' });
   };
 
-  const currentView = () => {
+  const currentPage = () => {
     const d = domains[state.domain], key = state.page[state.domain] || d.keys[0].id;
     const page = d.keys.find(k => k.id === key) || d.keys[0];
-    return { d, page, v: page.view(ctx()) };
+    return { d, page };
   };
-  const applyWide = v => {
+  let renderedWide = '', renderedMobile;
+  const applyWide = () => {
     $('.cockpit').dataset.view = `${state.domain}/${state.page[state.domain] || domains[state.domain].keys[0].id}`;
-    const wide = isMobile() ? '' : (v.wide || '');
+    const wide = isMobile() ? '' : renderedWide;
     screens.classList.toggle('wide-l', wide === 'both' || wide === 'l');
     screens.classList.toggle('wide-r', wide === 'both' || wide === 'r');
   };
@@ -427,11 +430,26 @@
   const faceLabel = (html, rail, dflt) => (String(html || '').match(/<h2 class="h"><span class="sock[^"]*"><i[^>]*><\/i><\/span>([^<]+)/) || [])[1]?.trim()
     || (!html && (String(rail || '').match(/<small>([^<]+)<\/small>/) || [])[1]?.trim()) || dflt;
   const setFaceLabels = v => { const [l, , r] = $$('.dots button'); if (l) l.textContent = v.faces?.l || faceLabel(v.left, v.railL, '根基'); if (r) r.textContent = v.faces?.r || faceLabel(v.right, v.railR, '详情'); };
+  let faceIdleTimer = 0;
+  const beginFaceMotion = () => {
+    clearTimeout(faceIdleTimer);
+    faceIdleTimer = 0;
+    delete screens.dataset.idleFace;
+  };
+  const settleFace = () => {
+    clearTimeout(faceIdleTimer);
+    faceIdleTimer = 0;
+    screens.dataset.idleFace = String(state.face);
+  };
   const setFace = i => {
+    const moving = state.face !== i || !!screens.style.transform;
+    if (moving) beginFaceMotion();
     state.face = i;
     screens.style.setProperty('--turn', `${-i * 60}deg`);
     screens.style.removeProperty('transform'); // 拖动期间的内联变换在此交还给样式表（过渡从拖到的位置滑向目标面）
     $$('.dots button').forEach(b => b.classList.toggle('on', Number(b.dataset.face) === i));
+    if (moving && !reduce) faceIdleTimer = setTimeout(settleFace, 650);
+    else if (!faceIdleTimer && !screens.classList.contains('dragging')) settleFace();
     requestAnimationFrame(fitCarousel);
   };
   const fitCarousel = () => {
@@ -453,13 +471,15 @@
   // 页面可提供 mount(face, ctx) 挂交互（沙盘拖拽、缩放等），每次主屏换面后调用
   const mount = (v, face) => { if (face && typeof v.mount === 'function') try { v.mount(face, ctx()); } catch (err) { console.error(err); } };
   function renderPage(how) {
-    const { d, v } = currentView();
+    const { d, page } = currentPage(), v = page.view(ctx());
+    renderedWide = v.wide || '';
+    renderedMobile = isMobile();
     $('#ck-coreTag').textContent = v.tag || d.tag || 'CORE';
     // 两翼宽度在切换瞬间一次到位：原先列宽过渡 0.7s，每帧整个座舱重排重绘（世界页两翼都收窄，最卡）
     // 翼板角度只给领域 / 子页切换的动画用；数据刷新不读（读 CSS 自定义属性会强制整页样式重算，酒馆页面很重）
     const animated = how.kind === 'domain' || how.kind === 'page';
     const fromA = animated ? { l: angle('l'), r: angle('r') } : null;
-    applyWide(v); setFaceLabels(v); syncNav();
+    applyWide(); setFaceLabels(v); syncNav();
     const toA = animated ? { l: angle('l'), r: angle('r') } : null;
     if (how.kind === 'domain') {
       mount(v, put(host.c, v.core, { out: `translateX(${-how.dir * 9}%)`, in: `translateX(${how.dir * 9}%)` }));
@@ -557,7 +577,7 @@
   // mode：hover（鼠标悬停预览）/ click（点击：桌面端钉住浮窗，触屏端原位展开或收起）
   let pinned = false;
   function openInspector(kind, id, anchor, mode = 'click') {
-    const { page } = currentView();
+    const { page } = currentPage();
     if (!page.inspect) return;
     const same = state.inspect && state.inspect.kind === kind && state.inspect.id === id && floatOpen();
     if (same && (mode === 'hover' || mode === 'scan')) return;
@@ -874,7 +894,7 @@
   // 编辑浮窗里的字段后：用新数据重绘浮窗内容，保持钉住与锚点
   function reproject() {
     if (!state.inspect || !floatOpen()) return;
-    const { kind, id } = state.inspect, { page } = currentView();
+    const { kind, id } = state.inspect, { page } = currentPage();
     const html = page.inspect?.(ctx(), kind, id, pinned ? 'full' : 'hover'); if (!html) return closeInspector();
     const anchor = $$('[data-inspect]').find(el => el.dataset.inspect === `${kind}:${id}`), card = $('.fcard', layer);
     if (anchor) { anchor.classList.add('on'); ringSlotOf(anchor)?.classList.add('mvu-hover-floating-active'); }
@@ -1040,6 +1060,7 @@
     if (!drag.moved && Math.abs(dx) < 8) return;
     // 起手偏竖（页面纵向滚动）才放弃；斜着划时横向分量够大仍算转向，不再因起手几像素偏竖整次作废
     if (!drag.moved && Math.abs(e.clientY - drag.y) > Math.abs(dx) * 1.6) { drag = null; return; }
+    if (!drag.moved) beginFaceMotion();
     drag.moved = true; screens.classList.add('dragging');
     { const now = performance.now(), dt = now - drag.lt; if (dt >= 16) { drag.v = (e.clientX - drag.lx) / dt; drag.lx = e.clientX; drag.lt = now; } }
     dragTurn = Math.max(-75, Math.min(75, drag.base + dx / (drag.w ||= screens.clientWidth) * 70));
@@ -1153,12 +1174,30 @@
     slider.style.transition = 'none';
     switchDomain(order[0], null, true);
     requestAnimationFrame(() => { slider.style.transition = ''; });
-    addEventListener('resize', () => { moveSlider($('.tab.on', track)); size(); applyWide(currentView().v); fitCarousel(); });
+    addEventListener('resize', relayout);
+    if (typeof IntersectionObserver === 'function') {
+      new IntersectionObserver(([entry]) => {
+        ROOT.classList.toggle('ck-offscreen', !entry.isIntersecting);
+      }).observe(ROOT);
+    }
     size(); motes = Array.from({ length: 42 }, () => spawn(Math.random() * H));
     if (!reduce && motesOn()) requestAnimationFrame(draw);
   };
   // 宿主尺寸变化（挂到新宿主、聊天栏宽度变化）后重排
-  const relayout = () => { syncMobile(); readStageZ(); moveSlider($('.tab.on', track)); size(); if (state.domain) { applyWide(currentView().v); fitCarousel(); } if (tickText !== null) syncTicker(tickText); };
+  const relayout = () => {
+    syncMobile();
+    readStageZ();
+    moveSlider($('.tab.on', track));
+    size();
+    if (state.domain) {
+      if (renderedMobile !== isMobile()) {
+        if (isMobile()) settleFace();
+        renderPage({ kind: 'refresh' });
+      } else applyWide();
+      fitCarousel();
+    }
+    if (tickText !== null) syncTicker(tickText);
+  };
   api = { refresh: () => { if (!state.domain) return; if (editing) { api.pending = true; return; } renderPage({ kind: 'refresh' }); }, switchDomain, switchPage, openInspector, closeInspector, reproject, syncReadout, start, relayout, isEditing: () => !!editing || holding, hold: on => { if (holding === !!on) return; holding = !!on; if (!on) setTimeout(flushPending); }, pending: false };
   }
 })();
