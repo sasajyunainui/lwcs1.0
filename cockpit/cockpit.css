@@ -75,11 +75,11 @@ body{margin:0;padding:28px 16px;min-height:100vh;background:#12151b;font-family:
 .wing.l{--la:26deg;transform-origin:100% 50%;transform:rotateY(var(--la))}
 .wing.r{--ra:26deg;transform-origin:0 50%;transform:rotateY(calc(var(--ra) * -1))}
 .center{z-index:2;margin:0 -3px}
-.hinge{position:absolute;top:10%;bottom:10%;width:4px;z-index:3;border-radius:3px;background:linear-gradient(180deg,transparent,rgba(95,176,255,.55) 20%,rgba(95,176,255,.55) 80%,transparent);filter:drop-shadow(0 0 5px #4c9dff)}
-/* 铰链光点：整条铰链高的透明层里移动背景位置（只重绘这条 10px 窄带，不重排） */
-.hinge::after{content:"";position:absolute;left:-3px;top:0;bottom:0;width:10px;background:radial-gradient(closest-side,#ffffff,rgba(140,200,255,.8) 45%,transparent) 0 0/100% 26px no-repeat;animation:travel 5.5s ease-in-out infinite alternate}
+.hinge{position:absolute;top:10%;bottom:10%;width:4px;z-index:3;container-type:size;border-radius:3px;background:linear-gradient(180deg,transparent,rgba(95,176,255,.55) 20%,rgba(95,176,255,.55) 80%,transparent);filter:drop-shadow(0 0 5px #4c9dff)}
+/* 光点位移是铰链高度减去光点高度，保留两端位置并避免逐帧改背景位置。 */
+.hinge::after{content:"";position:absolute;left:-3px;top:0;width:10px;height:26px;background:radial-gradient(closest-side,#ffffff,rgba(140,200,255,.8) 45%,transparent);animation:travel 5.5s ease-in-out infinite alternate}
 .hinge.r::after{animation-delay:-2.75s}
-@keyframes travel{from{background-position:0 0}to{background-position:0 100%}}
+@keyframes travel{from{transform:translateY(0)}to{transform:translateY(calc(100cqh - 26px))}}
 .hinge.l{--lw:27%;left:calc(var(--lw) - 2px)}.hinge.r{--rw:27%;right:calc(var(--rw) - 2px)}
 
 .host{position:relative;height:100%}
