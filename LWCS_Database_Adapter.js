@@ -7,6 +7,16 @@
   const MVU运行时视图占位符 = '{{MVU_RUNTIME_VIEW}}';
   const MVU运行时更新占位符 = '{{MVU_RUNTIME_UPDATE}}';
   const MVU更新结构提示占位符 = '{{MVU_UPDATE_STRUCTURE_HINTS}}';
+  const MVUEJS占位符 = /\{\{(MVU_RUNTIME_VIEW|MVU_RUNTIME_UPDATE|MVU_UPDATE_STRUCTURE_HINTS)\}\}/g;
+  const MVUEJS表达式 = /<%-\s*lwcsPromptValue\("(MVU_RUNTIME_VIEW|MVU_RUNTIME_UPDATE|MVU_UPDATE_STRUCTURE_HINTS)",\s*"([a-z0-9-]+)"\)\s*%>/g;
+  const MVUEJS可发送占位符 = new Set([
+    MVU运行时视图占位符, MVU运行时更新占位符, MVU更新结构提示占位符,
+  ]);
+  const MeowssiahMVU条目标题 = /^【(?:\[mvu_plot\]正文视图变量列表|\[mvu_update\]变量列表|\[mvu_update\]变量输出格式)】/i;
+  const EJS发送钩子键 = '__LWCS_PROMPT_EJS_SEND_HOOKS__';
+  let MVUEJS发送轮次 = null;
+  let MVUEJS发送序号 = 0;
+
   const MVU相互可见性视图占位符 = '{{MVU_MUTUAL_VISIBILITY_VIEW}}';
   const 时间线预览占位符 = '{{剧情钩子._引导.时间线预览}}';
   const 远端原著时间线候选占位符 = '{{剧情钩子._引导.远端原著时间线候选}}';
@@ -685,8 +695,93 @@
     return await 前置承诺;
   }
 
+  function 还原MVUEJS占位符(文本) {
+    return String(文本 || '').replace(MVUEJS表达式, (_, 名称) => '{{' + 名称 + '}}');
+  }
+
+  function 读取MVUEJS发送键() {
+    return 构建前置键(读取最新角色消息元信息(), 读取最新用户消息元信息(), '');
+  }
+
+  function 清理Meowssiah缓存中的MVU模板(宿主窗口, 上下文) {
+    const 是旧MVU条目 = 条目 => typeof 条目 === 'string' &&
+      (MeowssiahMVU条目标题.test(条目.trim()) || Array.from(MVUEJS可发送占位符).some(占位符 => 条目.includes(占位符)));
+    const 清理字段 = (对象, 字段列表) => {
+      if (!对象 || typeof 对象 !== 'object') return;
+      for (const 字段 of 字段列表) {
+        const 条目列表 = 对象[字段];
+        if (Array.isArray(条目列表) && 条目列表.some(是旧MVU条目)) {
+          对象[字段] = 条目列表.filter(条目 => !是旧MVU条目(条目));
+        }
+      }
+    };
+    const 聊天ID = String(上下文.getCurrentChatId?.() ?? 上下文.chatId ?? 'default_chat');
+    const 账本 = 上下文.chatMetadata?.catgod_oracle?.ledger
+      ?? 宿主窗口.__catgodFallbackLedger?.[聊天ID]?.ledger;
+    清理字段(账本, ['baseWiChunks', 'baseDynamicWiChunks', 'baseD0Chunks']);
+    if (!账本) return;
+    for (const 消息 of 上下文.chat || []) {
+      const 存档 = 消息?.extra?.catgod_oracle;
+      清理字段(存档, ['activeWiChunks', 'activeD0Chunks']);
+      清理字段(存档?.delta, ['activated_info', 'd0_injections']);
+    }
+  }
+
+  function 安装MVUEJS发送钩子() {
+    for (const 宿主窗口 of 收集窗口()) {
+      try {
+        const 上下文 = 宿主窗口.SillyTavern?.getContext?.();
+        const 事件源 = 上下文?.eventSource;
+        if (typeof 事件源?.makeFirst !== 'function' || typeof 事件源.on !== 'function') continue;
+        宿主窗口[EJS发送钩子键]?.();
+        const 激活事件 = 上下文.eventTypes?.WORLD_INFO_ACTIVATED || 'world_info_activated';
+        const 标记激活条目 = 条目列表 => {
+          if (!Array.isArray(条目列表)) return;
+          MVUEJS发送轮次 = null;
+          const 轮次 = {
+            id: Date.now().toString(36) + '-' + (++MVUEJS发送序号).toString(36),
+            键: 读取MVUEJS发送键(),
+            值: new Map(),
+          };
+          let 有替换 = false;
+          for (const [序号, 条目] of 条目列表.entries()) {
+            if (typeof 条目?.content !== 'string') continue;
+            const 内容 = 条目.content.replace(MVUEJS占位符, (_, 名称) =>
+              '<%- lwcsPromptValue("' + 名称 + '", "' + 轮次.id + '") %>');
+            if (内容 === 条目.content) continue;
+            // 只改本次激活事件的副本，世界书原条目及触发条件仍由酒馆维护。
+            条目列表[序号] = { ...条目, content: 内容 };
+            有替换 = true;
+          }
+          if (有替换) {
+            MVUEJS发送轮次 = 轮次;
+            清理Meowssiah缓存中的MVU模板(宿主窗口, 上下文);
+          }
+        };
+        const 注入EJS取值 = 环境 => {
+          if (!环境 || typeof 环境 !== 'object') return;
+          环境.lwcsPromptValue = (名称, 轮次ID) => {
+            const 占位符 = '{{' + 名称 + '}}';
+            if (!MVUEJS可发送占位符.has(占位符)) return '';
+            const 轮次 = MVUEJS发送轮次;
+            return 轮次?.id === 轮次ID && 轮次.键 === 读取MVUEJS发送键()
+              ? 轮次.值.get(占位符) ?? 占位符
+              : 占位符;
+          };
+        };
+        事件源.makeFirst(激活事件, 标记激活条目);
+        事件源.on('prompt_template_prepare', 注入EJS取值);
+        宿主窗口[EJS发送钩子键] = () => {
+          事件源.removeListener?.(激活事件, 标记激活条目);
+          事件源.removeListener?.('prompt_template_prepare', 注入EJS取值);
+        };
+        break;
+      } catch (_) {}
+    }
+  }
+
   function 替换运行时占位符(content, viewType = 'empty', context = {}) {
-    const 源文本 = String(content || '');
+    const 源文本 = 还原MVUEJS占位符(content);
     if (
       !源文本.includes(MVU运行时视图占位符) &&
       !源文本.includes(MVU运行时更新占位符) &&
@@ -726,6 +821,7 @@
         plotText: context.plotText || '',
         场景线索种子文本: context.场景线索种子文本 || '',
         时间推进上下文: context.时间推进上下文 || null,
+        onRuntimePlaceholderValues: context.onRuntimePlaceholderValues,
         运行时提示已使用类型: 取本轮提示限流集合({
           ...context,
           viewType,
@@ -848,8 +944,11 @@
   }
 
   async function 处理提示词运行时内容(内容, 上下文 = {}) {
-    const 文本 = String(内容 || '');
+    const 文本 = 还原MVUEJS占位符(内容);
     const 视图类型 = String(上下文.viewType || 'empty');
+    const EJS轮次 = 视图类型 === 'story' && MVUEJS发送轮次?.键 === 读取MVUEJS发送键()
+      ? MVUEJS发送轮次
+      : null;
     const 用户输入文本 = String(上下文.userInput || '');
     const 最后角色消息文本 = String(上下文.lastCharMessage || '');
     const 近场上下文 = await 生成过滤后近场上下文(用户输入文本, 最后角色消息文本);
@@ -871,6 +970,12 @@
       latestCharMessageInfo: 上下文.latestCharMessageInfo,
       场景线索种子文本: 上下文.场景线索种子文本 || '',
       时间推进上下文: 上下文.时间推进上下文 || null,
+      onRuntimePlaceholderValues: EJS轮次 ? 替换值 => {
+        if (MVUEJS发送轮次 !== EJS轮次) return;
+        for (const [占位符, 值] of 替换值) {
+          if (MVUEJS可发送占位符.has(占位符)) EJS轮次.值.set(占位符, 值);
+        }
+      } : undefined,
       运行时提示已使用类型: 取本轮提示限流集合({
         ...上下文,
         userInput: 用户输入文本,
@@ -1197,7 +1302,7 @@
   }
 
   function 文本需要运行时处理(text = '') {
-    const 文本 = String(text || '');
+    const 文本 = 还原MVUEJS占位符(text);
     return 文本.includes(MVU运行时视图占位符)
       || 文本.includes(MVU运行时更新占位符)
       || 文本.includes(MVU更新结构提示占位符)
@@ -1264,4 +1369,5 @@
       当前窗口.__LWCS_REGISTER_BATTLE_SETTLEMENT_CONTEXT__ = 登记战斗结算上下文;
     } catch (_) {}
   }
+  安装MVUEJS发送钩子();
 })();
