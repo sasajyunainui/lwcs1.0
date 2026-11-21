@@ -2382,11 +2382,12 @@
         // So is whether its 体力 has already been halved for running low on 魂力 / 精神力 (资源低位砍体力).
         // So is a stance it has taken and not yet used (it meets the next hit with it: BattleDecision r20StanceOf).
         // And where it stands (两档距离 T25, BattlePreview unitPosition): in front or held back, plain to see.
-        // And who closed in on it this round (夹击 T30, BattlePreview pincerCut).
+        // And who closed in on it this round (夹击 T30, BattlePreview pincerCut), and whom it is locked with (交战关系 11-21, BattlePreview unitsLocked).
         ...(sourceUnit?.__battleRuntime?.lastReleasedSkill || Number(sourceUnit?.__battleRuntime?.passiveStreak) > 0 || sourceUnit?.__battleRuntime?.lowResourceStaminaCut ||
-          sourceUnit?.__battleRuntime?.activeDefenseStance || sourceUnit?.__battleRuntime?.position || sourceUnit?.__battleRuntime?.closeStruck ? { __battleRuntime: {
+          sourceUnit?.__battleRuntime?.activeDefenseStance || sourceUnit?.__battleRuntime?.position || sourceUnit?.__battleRuntime?.closeStruck || sourceUnit?.__battleRuntime?.engaged ? { __battleRuntime: {
           ...(sourceUnit.__battleRuntime.position ? { position: sourceUnit.__battleRuntime.position } : {}),
           ...(sourceUnit.__battleRuntime.closeStruck ? { closeStruck: cloneValue(sourceUnit.__battleRuntime.closeStruck) } : {}),
+          ...(sourceUnit.__battleRuntime.engaged ? { engaged: { ...sourceUnit.__battleRuntime.engaged } } : {}),
           // 卖破绽（T32）: one that has not seen through it sees no stance, only the opening shown (BattlePreview BAIT_OPENING).
           ...(sourceUnit.__battleRuntime.activeDefenseStance?.bait === true && !(sourceUnit.__battleRuntime.activeDefenseStance.seenBy || []).map(String).includes(String(actorId))
             ? { attackOpening: { strength: Number(preview.BAIT_OPENING) || 1 } }
@@ -40984,6 +40985,30 @@
     const sources = visibleTauntSources(world, unit).map(row => row.sourceId);
     return sources.length ? new Set(sources) : null;
   };
+  // 交战关系（缠斗，用户 11-21 定稿；BattlePreview unitsLocked / disengageCost）：每行和哪几行缠在一起（locked），丢下它们去打别人的
+  // 代价（lockCost，自己生命上限的份额）与被追上的概率（lockChase）。rows 给出时只重算这几行，其余沿用 base。
+  // R20_ENGAGE_HOLD（LWCS_TUNE.ENGAGE_HOLD，起始 1）：缠着别人的敌人对你的压力 × (1 − ENGAGE_HOLD × 被追上的概率)，按原作校准。
+  const R20_ENGAGE_ON = root.__LWCS_TUNE__?.ENGAGE !== false;
+  const R20_ENGAGE_HOLD = Number(root.__LWCS_TUNE__?.ENGAGE_HOLD ?? 1);
+  function r20Locks(world, units, rows = null, base = null) {
+    const count = units.length;
+    const locked = base ? base.locked.slice() : new Array(count).fill(null), lockCost = base ? base.lockCost.slice() : new Array(count).fill(0), lockChase = base ? base.lockChase.slice() : new Array(count).fill(0);
+    while (locked.length < count) { locked.push(null); lockCost.push(0); lockChase.push(0); }
+    if (!R20_ENGAGE_ON || !preview.unitsLocked) return { locked, lockCost, lockChase };
+    const redo = rows ? new Set(rows) : null;
+    for (let row = 0; row < count; row += 1) {
+      // 重算的行连同和它相关的对子：它锁住的人那一行也要看它（缠斗是双向的）。
+      if (redo && !redo.has(row) && !(locked[row] && [...locked[row]].some(other => redo.has(other)))) continue;
+      const unit = units[row];
+      if (!unit?.__battleRuntime?.engaged) { locked[row] = null; lockCost[row] = 0; lockChase[row] = 0; continue; }
+      const set = new Set();
+      for (let other = 0; other < count; other += 1) if (other !== row && preview.unitsLocked(world, unit, units[other])) set.add(other);
+      locked[row] = set.size ? set : null;
+      const cost = set.size ? preview.disengageCost(world, unit) : { share: 0, chased: 0 };
+      lockCost[row] = cost.share; lockChase[row] = cost.chased;
+    }
+    return { locked, lockCost, lockChase };
+  }
   // The columns derived from the cells. `alive` weighs a unit that may be down (1 on the decision world).
   function r20Derive(facts) {
     const { sides, out, support, stop, keep, remaining, alive, guard } = facts, count = sides.length;
@@ -40995,7 +41020,11 @@
       for (let other = 0; other < count; other += 1) {
         if (!(remaining[other] > 0)) continue;
         if (sides[other] === sides[index]) mend[index] = Math.max(mend[index], support[other][index] * alive[other]);
-        else if (out[other][index] > 0) { pressure[index] += out[other][index] * keep[index][other] * alive[other]; hitters += alive[other]; }
+        else if (out[other][index] > 0) {
+          // 交战关系：缠着别人的敌人丢下对手来打它的可能 = 1 − ENGAGE_HOLD × 被对手追上的概率。
+          const away = facts.locked?.[other] && !facts.locked[other].has(index) ? clamp(1 - R20_ENGAGE_HOLD * (facts.lockChase?.[other] || 0), 0, 1) : 1;
+          pressure[index] += out[other][index] * keep[index][other] * alive[other] * away; hitters += alive[other] * away;
+        }
       }
       const net = pressure[index] - mend[index];
       // Charges last as many rounds as it takes the enemies who can hit this unit to spend them, one hit each a round.
@@ -41260,6 +41289,17 @@
           const other = struck(aim), value = cells(unit, other).out[unit][other] * takes(cells(unit, other), other, unit);
           if (value > strike) { strike = value; target = other; }
         }
+        // 交战关系：缠斗中的人默认打自己的对手；集火目标的这一下减去脱身代价（对手追击）仍比打对手划算才换（用户 11-21）。
+        const lockedTo = facts.locked?.[unit], switchCost = row => lockedTo && !lockedTo.has(row) ? facts.lockCost?.[unit] || 0 : 0;
+        if (lockedTo && !lockedTo.has(target)) {
+          let best = -1, bestValue = 0;
+          for (const row of lockedTo) {
+            if (!(left[row] > 1e-9)) continue;
+            const other = struck(row), value = cells(unit, other).out[unit][other] * takes(cells(unit, other), other, unit);
+            if (value > bestValue) { bestValue = value; best = other; }
+          }
+          if (best >= 0 && !(strike - switchCost(target) > bestValue)) { target = best; strike = bestValue; }
+        }
         const share = free(unit);
         strike *= share * offMul[unit] * defMul[target];
         const help = cells(unit, ally).support[unit][ally] * share * offMul[unit];
@@ -41277,7 +41317,7 @@
             if (other === target || sides[other] === sides[unit] || !(left[aim] > 1e-9)) continue;
             const hit = cells(unit, other).out[unit][other] * takes(cells(unit, other), other, unit) * share * offMul[unit] * defMul[other];
             if (!(hit > 0)) continue;
-            const trial = open(other), net = hit + trial.more - trial.taken;
+            const trial = open(other), net = hit + trial.more - trial.taken - switchCost(other);
             if (net > best) { best = net; exchange = trial; strike = hit; target = other; }
           }
         }
@@ -41554,6 +41594,7 @@
       if (backlash > 0) (table.strikes ||= []).push({ from: row, to: row, at: turns, delta: -Math.min(1, backlash), self: true });
     }
     if (table.strikes) table.strikes.sort((left, right) => left.at - right.at);
+    Object.assign(table, r20Locks(world, table.units));
     Object.assign(table, r20Derive(table));
     const assistStartedAt = performance.now();
     table.assist = r20Assists(table, request, context);
@@ -42560,7 +42601,16 @@
     }
     for (const [row, next] of rebuilt) cover[row] = r20Cover(next, table.units, table.sides, row);
     while (cover.length < sidesNow.length) cover.push(null);
-    const facts = { assist: table.assist, cover, sides: sidesNow, out, support, stop, control, keep, keepBack, answer, answerOpen, back, turn, host, remaining, stamina, shieldLeft, alive, guard, revive, drain, tick, tickRounds, reflect, hpMax, horizon: table.horizon, late: lateCells };
+    // 交战关系（用户 11-21）：主动出手打别人、目标里没有自己的缠斗对手，先扣对手追击的期望伤害（BattleRuntime 同一判定）。
+    if (R20_ENGAGE_ON && table.locked?.[actorRow] && String(request?.actionOpportunity?.role || 'ACTIVE').toUpperCase() === 'ACTIVE' &&
+      ['BASIC_ATTACK', 'RELEASE_SKILL'].includes(String(candidate?.declaration?.actionKind || '').toUpperCase())) {
+      const aimed = (Array.isArray(candidate.declaration.targetIds) ? candidate.declaration.targetIds : []).map(id => table.index.get(String(id))).filter(row => row !== undefined);
+      if (aimed.some(row => table.sides[row] !== table.sides[actorRow]) && !aimed.some(row => table.locked[actorRow].has(row))) {
+        remaining[actorRow] = Math.max(0, remaining[actorRow] - (table.lockCost?.[actorRow] || 0));
+      }
+    }
+    const facts = { assist: table.assist, cover, sides: sidesNow, out, support, stop, control, keep, keepBack, answer, answerOpen, back, turn, host, remaining, stamina, shieldLeft, alive, guard, revive, drain, tick, tickRounds, reflect, hpMax, horizon: table.horizon, late: lateCells,
+      ...r20Locks(after, unitsNow, rebuilt.map(([row]) => row), table) };
     const changed = new Array(count).fill(false);
     for (const [row] of rebuilt) if (!unchangedRows.has(row)) changed[row] = true;
     strikes.sort((left, right) => left.at - right.at);

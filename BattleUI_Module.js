@@ -1052,6 +1052,8 @@ class BattleUIComponent {
       '佯装记录',
       // 两档距离的站位（BattleRuntime syncBattlePositions / recordBattlePositions）。
       '站位',
+      // 交战关系：谁和谁缠在一起（BattleRuntime syncEngagements / recordEngagements）。
+      '缠斗',
       // 开战前已放出武魂的参战者（推进预设的战斗登记行）。
       '战前已开武魂',
     ];

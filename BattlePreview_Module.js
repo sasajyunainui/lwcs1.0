@@ -2226,6 +2226,45 @@
     const ratio = own > 0 && theirs > 0 ? clamp(theirs / own, ADVANCE_RATIO_MIN, ADVANCE_RATIO_MAX) : 1;
     return ADVANCE_WINDUP_BASE * ratio;
   }
+  /* 交战关系（缠斗，用户 11-21 定稿；方案 project-state 交战关系与候选预筛审核-20261121.md）：两人近身出手、对轰、反击、追击过就缠在
+     一起（远程被贴脸也算缠住），记在双方 __battleRuntime.engaged { 对方id: 最近交手回合 }（BattleRuntime recordEngagement；跨请求存
+     战斗层 缠斗）。一整回合没交手就散（最近交手回合 ≥ 当前回合 − 1 才算）；任一方不在前排（后撤、被打飞）、倒下、离场也散。
+     丢下缠斗对手去打别人要付脱身代价：对手追击一下（撤离对追击判定 estimateWithdrawal，追上了白挨一下普攻，部分追上挨半下）；
+     安全脱离不付：对手被硬控（不能行动）、对手正在蓄力；被打飞、用位移魂技脱身直接散（BattleRuntime）。 */
+  function unitsLocked(world = {}, unit = {}, other = {}) {
+    if (!unit || !other || unit === other) return false;
+    const last = Number(unit?.__battleRuntime?.engaged?.[String(unitId(other))]);
+    if (!Number.isFinite(last) || last < Number(world?.回合 || 0) - 1) return false;
+    return isBattleCapable(unit) && isBattleCapable(other) && !hasLeftBattle(unit) && !hasLeftBattle(other) &&
+      unitPosition(unit) === POSITION_FRONT && unitPosition(other) === POSITION_FRONT;
+  }
+  // 现在和 unit 缠在一起的敌人（单位）。
+  function lockedOpponentsOf(world = {}, unit = {}) {
+    const ids = Object.keys(unit?.__battleRuntime?.engaged || {});
+    if (!ids.length) return [];
+    return listUnits(world).map(entry => entry.unit).filter(other => ids.includes(String(unitId(other))) && unitsLocked(world, unit, other));
+  }
+  // 丢下 opponent 是否安全：它被硬控（身上有让它不能行动的状态）或正在蓄力。
+  function disengageIsSafe(world = {}, unit = {}, opponent = {}) {
+    if (!opponent || !isBattleCapable(opponent)) return true;
+    if (Object.values(opponent.状态效果 || {}).some(state => state && typeof state === 'object' && unitStateBlocksMove(state, null))) return true;
+    return isCharging(world, opponent);
+  }
+  // 丢下缠斗对手的代价（unit 去打别人时）：每个不安全的对手追击一下的期望伤害（unit 生命上限的份额）与被追上的概率。
+  function disengageCost(world = {}, unit = {}, keepIds = []) {
+    const keep = new Set((keepIds || []).map(String));
+    let share = 0, chased = 0;
+    const hpMax = Math.max(1, readHpMax(unit));
+    for (const opponent of lockedOpponentsOf(world, unit)) {
+      if (keep.has(String(unitId(opponent))) || disengageIsSafe(world, unit, opponent)) continue;
+      const estimate = estimateWithdrawal(unit, opponent);
+      const strike = Math.max(0, Number(incomingMoveDamage(opponent, { actionKind: 'BASIC_ATTACK', targetIds: [unitId(unit)] }, unit, world)) || 0);
+      const hit = estimate.failureProbability + 0.5 * estimate.partialProbability;
+      share += hit * strike / hpMax;
+      chased = 1 - (1 - chased) * (1 - hit);
+    }
+    return { share, chased };
+  }
   // 按当前位置给声明记上赶路时间（首个目标；群体近身按最远的那一个）。返回新声明；不需要突进时去掉旧记录。
   function withAdvanceWindup(world = {}, actor = {}, declaration = {}) {
     if (!declaration || typeof declaration !== 'object') return declaration;
@@ -26810,7 +26849,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     suppressionBlocksSkill,
     meditationOptions,
     // 两档距离（T25）
-    POSITION_FRONT, POSITION_BACK, ADVANCE_WINDUP_BASE, bodyCondensation, elementDamageProfile, attackElementsOf, bodyElementOf, elementPair, humanShieldOptions, BAIT_OPENING, BAIT_COUNTER_BONUS, FEINT_STRIKE_STAMINA, FEINT_STRIKE_WINDOW, feintStrikeFooled, answerWindup, canFeintStrike, canDeflect, deflectForce, deflectOutcome, applyDeflectUnbalance, DEFLECT_UNBALANCE, DEFLECT_CATCH_BONUS, isEntityControl, entityControls, controlDurability, controlHpLeft, controlStrikeDamage, controlStrikeOptions, controlStrikeOf, applyControlStrike, CONTROL_STRIKE_STATE, advanceStaminaCost, advanceStaminaShares, classifyDamageType, canFlank, flankDetourFor, pincerCut, FLANK_SURPRISE, unitPosition, setUnitPosition, unitsEngaged, advanceWindupFor, withAdvanceWindup, positionOptions,
+    POSITION_FRONT, POSITION_BACK, ADVANCE_WINDUP_BASE, bodyCondensation, elementDamageProfile, attackElementsOf, bodyElementOf, elementPair, humanShieldOptions, BAIT_OPENING, BAIT_COUNTER_BONUS, FEINT_STRIKE_STAMINA, FEINT_STRIKE_WINDOW, feintStrikeFooled, answerWindup, canFeintStrike, canDeflect, deflectForce, deflectOutcome, applyDeflectUnbalance, DEFLECT_UNBALANCE, DEFLECT_CATCH_BONUS, isEntityControl, entityControls, controlDurability, controlHpLeft, controlStrikeDamage, controlStrikeOptions, controlStrikeOf, applyControlStrike, CONTROL_STRIKE_STATE, advanceStaminaCost, advanceStaminaShares, classifyDamageType, canFlank, flankDetourFor, pincerCut, FLANK_SURPRISE, unitPosition, setUnitPosition, unitsEngaged, unitsLocked, lockedOpponentsOf, disengageIsSafe, disengageCost, advanceWindupFor, withAdvanceWindup, positionOptions,
     positionMoveOf, positionShiftOf,
     isFeint,
     feintRecord,

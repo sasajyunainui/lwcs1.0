@@ -1503,6 +1503,7 @@
      每回合开始读回到单位上；第 1 回合没有记录时开场：先攻名单里的人在前（偷袭得手，贴上去了），其余全在后（比赛、切磋、实战一律拉开）。
      回合末写回（settleBattleRoundEnd）。召唤物不记（随主人，按在前）。 */
   function syncBattlePositions(combatData = {}) {
+    syncEngagements(combatData);
     const recorded = combatData?.站位 && typeof combatData.站位 === 'object' ? combatData.站位 : null;
     // 夹击的「这回合挨过谁的近身攻击」只管一回合（T30）；卖破绽换来的反击加成（T32 baitCounter）没用上也只管这一回合。
     listCombatUnits(combatData).forEach(unit => {
@@ -1530,7 +1531,51 @@
     writeMechanicEvent(combatData, { eventKind: 'position_opening', actionName: '开场站位', round: 1, result: 'declared',
       meta: { front: named(previewRuntime.POSITION_FRONT), back: named(previewRuntime.POSITION_BACK), ambush: names.size > 0 } });
   }
+  /* 交战关系（缠斗，用户 11-21 定稿；BattlePreview unitsLocked）：近身交手的两人互记最近交手回合 __battleRuntime.engaged { 对方id: 回合 }。
+     跨请求存战斗层 缠斗 { 名字: { 对方名字: 回合 } }（MVU 战斗.缠斗，BattleUI 写回白名单）；每回合开始读回、清掉一整回合没交手的。 */
+  function recordEngagement(combatData = {}, unit = null, other = null) {
+    if (!unit || !other || unit === other || inferUnitSide(combatData, unit) === inferUnitSide(combatData, other)) return;
+    const round = Number(combatData?.回合 || 0);
+    for (const [one, two] of [[unit, other], [other, unit]]) {
+      one.__battleRuntime = { ...(one.__battleRuntime || {}), engaged: { ...(one.__battleRuntime?.engaged || {}), [String(previewRuntime.unitId(two))]: round } };
+    }
+  }
+  function clearEngagementsOf(combatData = {}, unit = null) {
+    if (!unit) return;
+    const id = String(previewRuntime.unitId(unit));
+    if (unit.__battleRuntime?.engaged) { const { engaged, ...rest } = unit.__battleRuntime; unit.__battleRuntime = rest; }
+    listCombatUnits(combatData).forEach(other => {
+      const engaged = other?.__battleRuntime?.engaged;
+      if (!engaged || !Object.hasOwn(engaged, id)) return;
+      const { [id]: dropped, ...left } = engaged;
+      other.__battleRuntime = { ...other.__battleRuntime, engaged: left };
+    });
+  }
+  function syncEngagements(combatData = {}) {
+    const recorded = combatData?.缠斗 && typeof combatData.缠斗 === 'object' ? combatData.缠斗 : null;
+    const round = Number(combatData?.回合 || 0), units = listCombatUnits(combatData);
+    const byName = new Map(units.map(unit => [String(previewRuntime.unitName(unit)), unit]));
+    units.forEach(unit => {
+      const fromRecord = recorded?.[String(previewRuntime.unitName(unit))];
+      const source = unit?.__battleRuntime?.engaged || (fromRecord ? Object.fromEntries(Object.entries(fromRecord)
+        .map(([name, last]) => [byName.get(String(name)) ? String(previewRuntime.unitId(byName.get(String(name)))) : '', last]).filter(([id]) => id)) : null);
+      if (!source) return;
+      const kept = Object.fromEntries(Object.entries(source).filter(([, last]) => Number(last) >= round - 1));
+      const { engaged, ...rest } = unit.__battleRuntime || {};
+      unit.__battleRuntime = Object.keys(kept).length ? { ...rest, engaged: kept } : rest;
+    });
+  }
+  function recordEngagements(combatData = {}) {
+    const units = listCombatUnits(combatData), nameOf = new Map(units.map(unit => [String(previewRuntime.unitId(unit)), String(previewRuntime.unitName(unit))]));
+    const out = {};
+    units.forEach(unit => {
+      const entries = Object.entries(unit?.__battleRuntime?.engaged || {}).filter(([id]) => nameOf.has(id)).map(([id, last]) => [nameOf.get(id), Number(last)]);
+      if (entries.length) out[String(previewRuntime.unitName(unit))] = Object.fromEntries(entries);
+    });
+    if (Object.keys(out).length) combatData.缠斗 = out; else if (combatData && Object.hasOwn(combatData, '缠斗')) delete combatData.缠斗;
+  }
   function recordBattlePositions(combatData = {}) {
+    recordEngagements(combatData);
     const units = listCombatUnits(combatData).filter(unit => !previewRuntime.isSummonUnit?.(unit) && unit?.__battleRuntime?.position);
     if (!units.length) return;
     combatData.站位 = Object.fromEntries(units.map(unit => [previewRuntime.unitName(unit), previewRuntime.unitPosition(unit)]));
@@ -13946,6 +13991,8 @@
               // 本来就在后排、被突进过来的一击打回去（不然会被带到前排）也写事实。
               const shiftMoved = shift ? previewRuntime.setUnitPosition(target, shift) : false;
               if (pushedNow) previewRuntime.markPushedBack?.(target);
+              // 交战关系：用位移魂技挪开自己就脱离了缠斗（安全脱离）。
+              if (role === 'self') clearEngagementsOf(combatData, target);
               if (shift && (shiftMoved || heldBack)) {
                 // 战报事实（POSITION shift）：位移把谁挪到了前排 / 后排。
                 facts.push(writeMechanicEvent(combatData, { eventKind: 'position_shift', actionName: actionName || '位移', actionRole: String(actionEvent?.actionRole || 'ACTIVE'), actorControl: String(actionEvent?.actorControl || 'AI'),
@@ -14222,6 +14269,40 @@
       if (fooled && target && previewRuntime.isBattleCapable(target)) facts.push(...payActionStamina({ combatData, actor: target, nature: 'DEFEND', opponent: actor,
         action: { actionName: '被虚招晃出的应对', actionKind: 'DEFEND' }, actionEvent: feintEvent, actionRole: 'REACTION' }));
     }
+    // 交战关系（缠斗，用户 11-21）：主动出手打别人、打的目标里没有自己的缠斗对手，每个不安全的对手追击一下——撤离对追击判定
+    // （BattlePreview estimateWithdrawal），追上了白挨对手一下普攻，部分追上挨半下；对手被硬控或正在蓄力不追（disengageIsSafe）。
+    if (previewRuntime.lockedOpponentsOf && root.__LWCS_TUNE__?.ENGAGE !== false && String(actionEvent?.actionRole || 'ACTIVE') === 'ACTIVE' && ['BASIC_ATTACK', 'RELEASE_SKILL'].includes(String(declaration?.actionKind || '').toUpperCase()) &&
+      previewRuntime.isBattleCapable(actor)) {
+      const targetIds = new Set((Array.isArray(declaration?.targetIds) ? declaration.targetIds : []).map(String));
+      const actorSide = inferUnitSide(combatData, actor);
+      const hostile = listCombatUnits(combatData).some(unit => targetIds.has(String(previewRuntime.unitId(unit))) && inferUnitSide(combatData, unit) !== actorSide);
+      const opponents = hostile ? previewRuntime.lockedOpponentsOf(combatData, actor) : [];
+      if (opponents.length && !opponents.some(unit => targetIds.has(String(previewRuntime.unitId(unit))))) {
+        for (const pursuer of opponents) {
+          if (!previewRuntime.isBattleCapable(actor) || previewRuntime.disengageIsSafe(combatData, actor, pursuer)) continue;
+          const estimate = previewRuntime.estimateWithdrawal(actor, pursuer), roll = Math.random();
+          const outcome = roll < estimate.successProbability ? 'SUCCESS' : roll < estimate.successProbability + estimate.partialProbability ? 'PARTIAL' : 'FAILURE';
+          if (outcome === 'SUCCESS') continue;
+          const strike = Math.max(0, Number(previewRuntime.incomingMoveDamage(pursuer, { actionKind: 'BASIC_ATTACK', targetIds: [previewRuntime.unitId(actor)] }, actor, combatData)) || 0);
+          const beforeHp = previewRuntime.readHp(actor);
+          const afterHp = writeCombatResource(actor, 'hp', beforeHp - knockdownHeldLoss(actor, (outcome === 'PARTIAL' ? 0.5 : 1) * strike, knockdownFloorOf(combatData, actor)));
+          const appliedDamage = Math.max(0, beforeHp - afterHp);
+          if (!(appliedDamage > 1e-9)) continue;
+          facts.push(writeLedgerEvent(combatData, {
+            eventKind: 'hit_result', round: Number(combatData?.回合 || 0),
+            actorId: previewRuntime.unitId(pursuer), actorName: previewRuntime.unitName(pursuer),
+            targetId: previewRuntime.unitId(actor), targetName: previewRuntime.unitName(actor), targetIds: [previewRuntime.unitId(actor)],
+            actionName: '脱身追击', sourceActionName: actionName, actionType: 'WITHDRAW_PURSUIT', actorControl: 'SYSTEM', actionRole: 'REACTION',
+            actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
+            result: 'hit', resultState: 'SUCCESS', actionStatus: 'COMPLETED', primaryOutcome: 'pursuit_damage', appliedDamage, factType: 'DAMAGE',
+            effectPrototype: '撤离追击', sourceEffectId: `${actionEvent.actionId}:disengage:${previewRuntime.unitId(pursuer)}`, operation: 'DAMAGE',
+            meta: { source: 'structured_runtime', disengage: true, withdrawalOutcome: outcome, pursuerId: previewRuntime.unitId(pursuer),
+              successProbability: estimate.successProbability, partialProbability: estimate.partialProbability, roll,
+              before: beforeHp, after: afterHp, delta: -appliedDamage, damage: appliedDamage, appliedDamage, directHpDamage: true, sourceActionId: actionEvent.actionId },
+          }));
+        }
+      }
+    }
     // 夹击（T30，BattlePreview pincerCut）：记下这回合谁挨过谁的近身攻击；同一回合里另一人再近身打它，它闪避更难。每回合开始清空（syncBattlePositions）。
     if (positionOnceAttacked && previewRuntime.declarationDamageClass?.(declaration) === 'MELEE') {
       const round = Number(combatData?.回合 || 0), actorId = String(previewRuntime.unitId(actor));
@@ -14230,6 +14311,8 @@
         const before = unit.__battleRuntime?.closeStruck;
         const by = Number(before?.round) === round && Array.isArray(before?.by) ? before.by : [];
         unit.__battleRuntime = { ...(unit.__battleRuntime || {}), closeStruck: { round, by: [...new Set([...by, actorId])] } };
+        // 交战关系：近身交手的两人缠在一起（对轰、反击、追击也是近身出手，同走这里）。
+        recordEngagement(combatData, actor, unit);
       });
     }
     const committedEquipmentPassiveTriggers = new Set();
