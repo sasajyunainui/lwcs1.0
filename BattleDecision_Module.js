@@ -41478,16 +41478,26 @@
   }
   // The cells of a set of units: who can act, whom a taunt binds, and for every pair what one lands on, gives, stops,
   // keeps off and answers the other.
-  function r20Cells(units, sides, ids, world, context, skipped) {
+  // 多线程分摊格子（11-22）：stage 为空时整张算；{ phase: 'O', rows } 只算这几行的输出、反击、支援、控制并交回；{ phase: 'F', rows, O }
+  // 拿合并好的第一阶段（各行的那几项）只算这几行的挨打与应对（r20FillPair）并交回；{ phase: 'done', O, F } 直接拼成整张。逐位与整张算的相同。
+  const R20_O_KEYS = ['out', 'back', 'support', 'stop', 'control'], R20_F_KEYS = ['keep', 'keepBack', 'answer', 'answerOpen'];
+  function r20Cells(units, sides, ids, world, context, skipped, stage = null) {
     const count = units.length;
     // A controlled unit still acts in the table; the race holds it for the rounds its controls have left (r20Held).
     const acts = units.map(() => true), bound = units.map(unit => r20Bound(world, unit));
     const ownShare = side => sides.filter(other => other === side).length / Math.max(1, count);
     const aim = units.map((unit, row) => r20Aim(unit, ownShare(sides[row]))), turn = units.map(unit => r20Turn(unit));
     const out = [], support = [], stop = [], control = [], keep = [], keepBack = [], answer = [], answerOpen = [], back = [];
+    const mine = index => !stage?.rows || stage.rows.has(index);
     for (let index = 0; index < count; index += 1) {
       out.push(new Array(count).fill(0)); support.push(new Array(count).fill(0)); stop.push(new Array(count).fill(0)); control.push(new Array(count).fill(R20_NO_CONTROL.control)); keep.push(new Array(count).fill(1));
       keepBack.push(new Array(count).fill(1)); answer.push(new Array(count).fill(0)); answerOpen.push(new Array(count).fill(0)); back.push(new Array(count).fill(0));
+      if (stage && stage.phase !== 'O') {
+        const given = stage.O?.[index];
+        if (given) { out[index] = given.out.slice(); back[index] = given.back.slice(); support[index] = given.support.slice(); stop[index] = given.stop.slice(); control[index] = given.control.slice(); }
+        continue;
+      }
+      if (!mine(index)) continue;
       for (let other = 0; other < count; other += 1) {
         if (sides[index] === sides[other]) { if (acts[index]) support[index][other] = r20Cell(units[index], units[other], true, index === other, context, world, skipped); continue; }
         if (!acts[index] || bound[index] && !bound[index].has(ids[other])) continue;
@@ -41498,10 +41508,19 @@
     }
     // What each keeps off and answers of the other's hits, by their weight (接战链 阶段一: the attacker's out and back on
     // it, estimates of the whole hit's share of its HP maximum).
+    const matrices = { out, back, support, stop, control, keep, keepBack, answer, answerOpen };
+    const pickRows = keys => Object.fromEntries([...stage.rows].filter(index => index < count).map(index => [index, Object.fromEntries(keys.map(key => [key, matrices[key][index]]))]));
+    if (stage?.phase === 'O') return { O: pickRows(R20_O_KEYS) };
     const cells = { out, back, keep, keepBack, answer, answerOpen };
-    for (let index = 0; index < count; index += 1) for (let other = 0; other < count; other += 1) {
-      if (sides[index] !== sides[other]) r20FillPair(cells, units, acts, index, other);
+    if (stage?.phase === 'done') {
+      for (let index = 0; index < count; index += 1) {
+        const given = stage.F?.[index];
+        if (given) { keep[index] = given.keep.slice(); keepBack[index] = given.keepBack.slice(); answer[index] = given.answer.slice(); answerOpen[index] = given.answerOpen.slice(); }
+      }
+    } else for (let index = 0; index < count; index += 1) for (let other = 0; other < count; other += 1) {
+      if (mine(index) && sides[index] !== sides[other]) r20FillPair(cells, units, acts, index, other);
     }
+    if (stage?.phase === 'F') return { F: pickRows(R20_F_KEYS) };
     // A guard summon (护卫) answers for its host (BattleRuntime: the guard with the most defence takes the reaction): the
     // host keeps off no more than its guard would by defending.
     for (let index = 0; index < count; index += 1) {
@@ -41567,7 +41586,12 @@
     const count = units.length, ids = units.map(unit => preview.unitId(unit));
     const skipped = { count: 0 };
     const cellUnits = units.map(r20FullStrength);
-    const { acts, bound, out, support, stop, control, keep, keepBack, answer, answerOpen, back, turn } = r20Cells(cellUnits, sides, ids, world, context, skipped);
+    // 多线程分摊格子（r20CellSlice）：分工计划在第一、二阶段时三遍格子只算指定行，算完就停（不建表）；完成阶段直接拼整张。
+    const cellPlan = r20CellPlans.get(request), staged = !!cellPlan && cellPlan.phase !== 'done';
+    const stageFor = variant => !cellPlan ? null : cellPlan.phase === 'O' ? { phase: 'O', rows: cellPlan.rows }
+      : cellPlan.phase === 'F' ? { phase: 'F', rows: cellPlan.rows, O: cellPlan.O?.[variant] } : { phase: 'done', O: cellPlan.O?.[variant], F: cellPlan.F?.[variant] };
+    const keepStaged = (variant, cells) => { if (staged) (cellPlan.result ||= {})[variant] = cells.O || cells.F; return cells; };
+    const { acts, bound, out, support, stop, control, keep, keepBack, answer, answerOpen, back, turn } = keepStaged('cur', r20Cells(cellUnits, sides, ids, world, context, skipped, stageFor('cur')));
     const against = Object.fromEntries([...new Set(sides)].map(side => [side, units.filter((unit, row) => sides[row] !== side)]));
     // The field R20_LATE_ROUNDS round ends on, when anything on it runs on a clock (a state with rounds left, a sustain,
     // a periodic change): every unit as the engine's own window view leaves it (r10WindowView: states past their time
@@ -41575,8 +41599,9 @@
     // sustain broken). The race reads these cells from then on, so a buff about to lapse is not counted as lasting.
     let late = null;
     if (units.some(unit => Object.keys(unit.持续效果 || {}).length || Object.values(unit.状态效果 || {}).some(state => typeof state?.duration === 'number'))) {
-      const views = units.map(unit => r20FullStrength(r10WindowView(r10DecisionTable(request), world, unit, R20_LATE_ROUNDS, unit)));
-      late = { ...r20Cells(views, sides, ids, world, null, null), units: views };
+      const views = cellPlan?.views?.late || units.map(unit => r20FullStrength(r10WindowView(r10DecisionTable(request), world, unit, R20_LATE_ROUNDS, unit)));
+      if (cellPlan) (cellPlan.views ||= {}).late = views;
+      late = { ...keepStaged('late', r20Cells(views, sides, ids, world, null, null, stageFor('late'))), units: views };
     }
     // 到期（11-16 第 5 题「打让全队变强的节点」）: the late cells keep what still has rounds left R20_LATE_ROUNDS on to the
     // race's end — a support's three-round buff never ran out, so laying it again, and the support, were worth nothing. A pair
@@ -41595,10 +41620,12 @@
       const ends = stateEnds.map(byName => Math.max(0, ...Object.values(byName).filter(Number.isFinite)));
       const far = Math.min(R20_RACE_ROUNDS, Math.ceil(Math.max(0, ...ends)));
       if (far > R20_LATE_ROUNDS) {
-        const views = units.map(unit => r20FullStrength(r10WindowView(r10DecisionTable(request), world, unit, far, unit)));
-        bare = { ...r20Cells(views, sides, ids, world, null, null), units: views, ends };
+        const views = cellPlan?.views?.bare || units.map(unit => r20FullStrength(r10WindowView(r10DecisionTable(request), world, unit, far, unit)));
+        if (cellPlan) (cellPlan.views ||= {}).bare = views;
+        bare = { ...keepStaged('bare', r20Cells(views, sides, ids, world, null, null, stageFor('bare'))), units: views, ends };
       }
     }
+    if (staged) { cellPlan.count = count; return null; }
     const round = Number(world?.回合 || 0);
     const waiting = Array.isArray(request.actionOpportunity?.pendingNaturalActorIds) ? new Set(request.actionOpportunity.pendingNaturalActorIds.map(String)) : null;
     const table = { request, world, contexts, units, cellUnits, ids, index: new Map(ids.map((id, row) => [id, row])), sides, acts, bound, out, support, stop, control, keep, keepBack, answer, answerOpen, back, turn, late, bare, stateEnds, against,
@@ -41664,6 +41691,22 @@
       return null;
     }
     return r20FinishFacts(core, request, plan);
+  }
+  // 多线程分摊格子的接口：r20CellSlice(request, 'O', rows) 交回三遍格子这几行的第一阶段；r20CellSlice(request, 'F', rows, O) 交回第二阶段
+  // （O 是合并好的第一阶段 { cur|late|bare: { 行号: {...} } }）；r20CellGive(request, O, F) 交给整份，之后照常建表（援护分摊照旧可用）。
+  const r20CellPlans = new WeakMap();
+  function r20CellSlice(request, phase, rows, O = null) {
+    const plan = r20CellPlans.get(request) || {};
+    Object.assign(plan, { phase, rows: new Set(rows), result: {} });
+    if (O) plan.O = O;
+    r20CellPlans.set(request, plan);
+    r20Facts(request);
+    return { count: plan.count ?? 0, variants: plan.result };
+  }
+  function r20CellGive(request, O, F) {
+    const plan = r20CellPlans.get(request) || {};
+    Object.assign(plan, { phase: 'done', O, F, rows: null, result: null });
+    r20CellPlans.set(request, plan);
   }
   // 援护评估与收尾（目标条件进度、双方推演打分）；plan.given 是各线程分算后合并的援护（与整张一起算的逐位相同）。
   const r20AssistPlans = new WeakMap();
@@ -45422,6 +45465,8 @@
     runProvider,
     r20AssistSlice,
     r20AssistGive,
+    r20CellSlice,
+    r20CellGive,
     validatePlayerLockedDeclaration: input => {
       const rejectedCandidates = [];
       const candidates = enumerateCandidates({
