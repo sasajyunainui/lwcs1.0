@@ -26541,6 +26541,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     withStrengthKnockback,
     concedeHoldsBack,
     pullBackChoice,
+    validateEffect,
     retargetChoice,
     MENTAL_NATURAL_CEILING,
     refereeCatchesConcede,
