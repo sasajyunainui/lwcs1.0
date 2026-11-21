@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:f1da5e5bb37cb504d102f6cb91141cbd5a4ce2765118746ad3a55ef8657ee12b|mvu_logic_bridge.js:96a5ad3cc701b192833d3be65334ea512e37dbc9bf3b8bed011e2f8c5736f577|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:cd23e10d3eae660ffe822116d3a5a5458f3a27d17ff9bfe8003cc425f2010b98|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:022ab507ac10cce533d3babd95291a8f13120f25098ad99b520d4857c7ae65d3|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:121696c1481708bb05eaebf52d3f96efbeeac57ce6bc43311b2512fc2bda9596|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:d6818552f379190ba590a295c7f198810cb8d24d271e8e419335fe709e95bbdc|BattleRuntime_Module.js:62af09000c4cc8511c17683b52a012f3272add485766956e381fea8670d432d6|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:5e0db96d8b53e77d3c6169d38ead7aa477f9c3c90023621125d862c40a5ef06d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:f1da5e5bb37cb504d102f6cb91141cbd5a4ce2765118746ad3a55ef8657ee12b|mvu_logic_bridge.js:96a5ad3cc701b192833d3be65334ea512e37dbc9bf3b8bed011e2f8c5736f577|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:25c29baa1f83737bc5d5a8cbce13c143ef14ef60cc45112b79c4bc9b73863f34|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:022ab507ac10cce533d3babd95291a8f13120f25098ad99b520d4857c7ae65d3|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:121696c1481708bb05eaebf52d3f96efbeeac57ce6bc43311b2512fc2bda9596|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:d6818552f379190ba590a295c7f198810cb8d24d271e8e419335fe709e95bbdc|BattleRuntime_Module.js:62af09000c4cc8511c17683b52a012f3272add485766956e381fea8670d432d6|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:5e0db96d8b53e77d3c6169d38ead7aa477f9c3c90023621125d862c40a5ef06d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -49042,6 +49042,7 @@ ${播报文本}
   const track = $('#ck-track'), slider = $('.slider', track), screens = $('.screens');
   const host = { l: $('#ck-wingL'), c: $('#ck-core'), r: $('#ck-wingR') };
   const wingEl = { l: $('.wing.l'), r: $('.wing.r') };
+  const center = $('.center');
   // 窄屏判断缓存座舱宽度：切换和视差循环里反复调用，现读 clientWidth 会在 DOM 刚改完时触发强制同步布局。
   // 窗口 resize（本监听最先注册，先于其他 resize 处理）与 ResizeObserver 两处更新
   let mobileNow = $('.cockpit').clientWidth <= 700;
@@ -49119,14 +49120,19 @@ ${播报文本}
   const lastHtml = new WeakMap();
   const SCROLLERS = '.scroll,.dz-body,.pad,.list';
   const scrollOf = root => [root, ...$$(SCROLLERS, root)].map(e => e.scrollTop);
-  const put = (el, html, anim, quiet = false) => {
+  const put = (el, html, anim, quiet = false, keepScroll = quiet) => {
     // 只保留当前一层：先清掉上次切换残留的退场层（动画被打断、或窗口在后台不推进动画时 onfinish 不会触发）
     $$('.face.leaving', el).forEach(f => f.remove());
     const old = $$('.face', el).pop();
-    if (quiet && old && lastHtml.get(el) === html) return null;
+    if (quiet && keepScroll && old && lastHtml.get(el) === html) return null;
     lastHtml.set(el, html);
     const next = document.createElement('div'); next.className = 'face'; next.innerHTML = html;
-    if (quiet && old) { const st = scrollOf(old); el.replaceChildren(next); charge(next, true); [next, ...$$(SCROLLERS, next)].forEach((e, i) => { if (st[i]) e.scrollTop = st[i]; }); return next; }
+    if (quiet) {
+      const st = keepScroll && old ? scrollOf(old) : [];
+      el.replaceChildren(next); charge(next, true);
+      if (st.some(Boolean)) [next, ...$$(SCROLLERS, next)].forEach((e, i) => { if (st[i]) e.scrollTop = st[i]; });
+      return next;
+    }
     if (!old || reduce || !anim) { el.replaceChildren(next); charge(next); return next; }
     old.classList.add('leaving'); el.appendChild(next);
     const drop = () => old.remove();
@@ -49141,7 +49147,7 @@ ${播报文本}
   // from / to = 切换前后的翼板角度：收窄 / 展开时角度由这段动画带过去（只走合成），列宽已在切换瞬间一次到位
   const swing = (side, html, mode, from = angle(side), to = from) => {
     const el = wingEl[side], sign = side === 'l' ? 1 : -1;
-    if (reduce || isMobile()) { put(host[side], html, isMobile() ? { out: 'translateY(-3%)', in: 'translateY(3%)' } : null); return; }
+    if (reduce) { put(host[side], html, null); return; }
     const rot = a => `rotateY(${sign * a}deg)`;
     const frames = mode === 'fold'
       ? [{ transform: rot(from) }, { transform: `rotateY(${sign * -72}deg) translateZ(-40px)`, offset: .42 }, { transform: rot(to + 5), offset: .8 }, { transform: rot(to) }]
@@ -49154,7 +49160,7 @@ ${播报文本}
   };
   // 领域标签竖排（宽屏侧轨）时滑块按纵向定位，横排时按横向；另一方向交回样式表
   const moveSlider = tab => {
-    if (!tab) return;
+    if (!tab || isMobile()) return;
     const column = getComputedStyle(track).flexDirection === 'column';
     Object.assign(slider.style, column ? { left: '', width: '', top: tab.offsetTop + 'px', height: tab.offsetHeight + 'px' } : { top: '', height: '', left: tab.offsetLeft + 'px', width: tab.offsetWidth + 'px' });
   };
@@ -49184,29 +49190,45 @@ ${播报文本}
   const beginFaceMotion = () => {
     clearTimeout(faceIdleTimer);
     faceIdleTimer = 0;
+    screens.classList.remove('face-moving');
     delete screens.dataset.idleFace;
   };
   const settleFace = () => {
     clearTimeout(faceIdleTimer);
     faceIdleTimer = 0;
+    screens.classList.remove('face-moving');
     screens.dataset.idleFace = String(state.face);
   };
-  const setFace = i => {
+  const setFace = (i, immediate = false) => {
     const moving = state.face !== i || !!screens.style.transform;
-    if (moving) beginFaceMotion();
+    const animate = moving && !immediate && !reduce;
+    if (moving) {
+      beginFaceMotion();
+      screens.classList.toggle('face-moving', animate);
+    }
     state.face = i;
-    screens.style.setProperty('--turn', `${-i * 60}deg`);
+    screens.style.setProperty('--face-position', `${-i * 100}%`);
     screens.style.removeProperty('transform'); // 拖动期间的内联变换在此交还给样式表（过渡从拖到的位置滑向目标面）
     $$('.dots button').forEach(b => b.classList.toggle('on', Number(b.dataset.face) === i));
-    if (moving && !reduce) faceIdleTimer = setTimeout(settleFace, 650);
-    else if (!faceIdleTimer && !screens.classList.contains('dragging')) settleFace();
-    requestAnimationFrame(fitCarousel);
+    if (animate) faceIdleTimer = setTimeout(settleFace, 260);
+    else if (immediate || !faceIdleTimer) settleFace();
+    scheduleCarouselFit();
   };
   const fitCarousel = () => {
     if (!isMobile()) { screens.style.removeProperty('--carousel-h'); return; }
-    const el = state.face === -1 ? wingEl.l : state.face === 1 ? wingEl.r : $('.center');
-    screens.style.setProperty('--carousel-h', Math.max(320, el.scrollHeight) + 'px');
+    const height = Math.max(320, currentPanel().scrollHeight) + 'px';
+    if (screens.style.getPropertyValue('--carousel-h') !== height) screens.style.setProperty('--carousel-h', height);
   };
+  const currentPanel = () => state.face === -1 ? wingEl.l : state.face === 1 ? wingEl.r : center;
+  let carouselFitFrame = 0;
+  const scheduleCarouselFit = () => {
+    if (carouselFitFrame) return;
+    carouselFitFrame = requestAnimationFrame(() => { carouselFitFrame = 0; fitCarousel(); });
+  };
+  const panelResize = new ResizeObserver(entries => {
+    if (isMobile() && entries.some(entry => entry.target === currentPanel())) scheduleCarouselFit();
+  });
+  [wingEl.l, center, wingEl.r].forEach(panel => panelResize.observe(panel));
 
   // 领域内导航（不设子页标签）：首页上的控件本身就是入口——承载信息的同时点击跳到对应页面（名字 → 目录、修为 → 成长…，各页用 data-go 标出）；
   // 进到其他页面后，中屏顶边挂一块「‹ 首页名」返回牌，再点一次当前领域标签也回首页
@@ -49227,11 +49249,17 @@ ${播报文本}
     $('#ck-coreTag').textContent = v.tag || d.tag || 'CORE';
     // 两翼宽度在切换瞬间一次到位：原先列宽过渡 0.7s，每帧整个座舱重排重绘（世界页两翼都收窄，最卡）
     // 翼板角度只给领域 / 子页切换的动画用；数据刷新不读（读 CSS 自定义属性会强制整页样式重算，酒馆页面很重）
-    const animated = how.kind === 'domain' || how.kind === 'page';
+    const animated = !isMobile() && (how.kind === 'domain' || how.kind === 'page');
     const fromA = animated ? { l: angle('l'), r: angle('r') } : null;
     applyWide(); setFaceLabels(v); syncNav();
     const toA = animated ? { l: angle('l'), r: angle('r') } : null;
-    if (how.kind === 'domain') {
+    if (isMobile()) {
+      const keepScroll = how.kind === 'refresh';
+      mount(v, put(host.c, v.core, null, true, keepScroll));
+      put(host.l, wingHtml(v, 'l'), null, true, keepScroll);
+      put(host.r, wingHtml(v, 'r'), null, true, keepScroll);
+      scheduleCarouselFit();
+    } else if (how.kind === 'domain') {
       mount(v, put(host.c, v.core, { out: `translateX(${-how.dir * 9}%)`, in: `translateX(${how.dir * 9}%)` }));
       swing('l', wingHtml(v, 'l'), how.first ? 'none' : 'fold', fromA.l, toA.l);
       swing('r', wingHtml(v, 'r'), how.first ? 'none' : 'fold', fromA.r, toA.r);
@@ -49242,7 +49270,6 @@ ${播报文本}
     } else {
       mount(v, put(host.c, v.core, null, true)); put(host.l, wingHtml(v, 'l'), null, true); put(host.r, wingHtml(v, 'r'), null, true);
     }
-    setTimeout(fitCarousel, 700);
   }
 
   let busy = 0;
@@ -49255,15 +49282,15 @@ ${播报文本}
     // 点领域标签一律回该领域首页（不记上次停在哪个子页）；页面里的链接带 page 时直达
     state.page[id] = page || domains[id].keys[0].id;
     $$('.tab', track).forEach(t => { const on = t.dataset.tab === id; t.classList.toggle('on', on); on ? t.setAttribute('aria-current', 'page') : t.removeAttribute('aria-current'); if (on) moveSlider(t); });
-    if (isMobile()) setFace(0);
+    if (isMobile()) setFace(0, true);
     renderPage({ kind: 'domain', dir, first });
-    if (first && !reduce) $('.center').animate([{ transform: 'translateZ(-160px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 800, easing: 'cubic-bezier(.2,.9,.25,1)' });
+    if (first && !reduce && !isMobile()) $('.center').animate([{ transform: 'translateZ(-160px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 800, easing: 'cubic-bezier(.2,.9,.25,1)' });
   }
   function switchPage(key) {
     const d = domains[state.domain];
     if (!d.keys.some(k => k.id === key) || state.page[state.domain] === key) return;
     state.page[state.domain] = key; state.inspect = null; clearFloat();
-    if (isMobile()) setFace(0);
+    if (isMobile()) setFace(0, true);
     renderPage({ kind: 'page' });
   }
   // 锚定浮窗：贴在来源元素旁浮出，无遮罩、不阻断其他操作（严格禁止模态弹窗）；手机上在原位展开
@@ -49796,29 +49823,46 @@ ${播报文本}
     const r = new FileReader(); r.onload = async () => { if (ADP?.saveAvatar) await ADP.saveAvatar(f.dataset.name, r.result); else { try { localStorage.setItem(AVATAR_KEY + f.dataset.name, r.result); } catch (err) {} } C.refresh(); }; r.readAsDataURL(f.files[0]);
   });
 
-  // ---------- 手机：滑动绕球心转向 ----------
+  // ---------- 手机：单屏横滑 ----------
   const dots = $('.dots');
   dots.addEventListener('click', e => { const b = e.target.closest('button'); if (b) setFace(Number(b.dataset.face)); });
   let drag = null;
-  screens.addEventListener('pointerdown', e => { if (!isMobile() || e.target.closest('button,input,select,textarea,a,label')) return; drag = { x: e.clientX, y: e.clientY, base: -state.face * 60, moved: false, t: performance.now(), lx: e.clientX, lt: performance.now(), v: 0 }; });
-  // 拖动期间直接写 transform（--turn 是会被整棵子树继承的自定义属性，每次改都让座舱全部节点重算样式）；每帧最多写一次，--turn 到松手 setFace 时才更新
-  let dragRaf = 0, dragTurn = 0;
-  const applyDragTurn = () => { dragRaf = 0; screens.style.transform = `translateZ(calc(var(--r) * -1)) rotateY(${dragTurn}deg)`; };
+  let suppressSwipeClick = false;
+  screens.addEventListener('pointerdown', e => {
+    if (!isMobile() || !e.isPrimary || e.button !== 0) return;
+    suppressSwipeClick = false;
+    if (e.target.closest('input,select,textarea,label,[contenteditable],[data-table]')) return;
+    if (e.pointerType === 'mouse' && e.target.closest('button,a')) return;
+    drag = { id:e.pointerId, x:e.clientX, y:e.clientY, face:state.face, moved:false, lx:e.clientX, lt:performance.now(), v:0 };
+  });
+  // 卡片的预演等监听也会在 document 捕获 click，横滑结束时先拦住合成点击。
+  addEventListener('click', e => {
+    if (!suppressSwipeClick || !e.detail || !screens.contains(e.target)) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }, true);
+  let dragRaf = 0, dragPosition = '';
+  const applyDragPosition = () => { dragRaf = 0; screens.style.transform = dragPosition; };
   addEventListener('pointermove', e => {
-    if (!drag) return;
+    if (!drag || e.pointerId !== drag.id) return;
     const dx = e.clientX - drag.x;
     if (!drag.moved && Math.abs(dx) < 8) return;
     // 起手偏竖（页面纵向滚动）才放弃；斜着划时横向分量够大仍算转向，不再因起手几像素偏竖整次作废
     if (!drag.moved && Math.abs(e.clientY - drag.y) > Math.abs(dx) * 1.6) { drag = null; return; }
-    if (!drag.moved) beginFaceMotion();
-    drag.moved = true; screens.classList.add('dragging');
+    if (!drag.moved) {
+      beginFaceMotion();
+      screens.setPointerCapture(e.pointerId);
+      drag.moved = suppressSwipeClick = true;
+      drag.w = screens.clientWidth;
+    }
     { const now = performance.now(), dt = now - drag.lt; if (dt >= 16) { drag.v = (e.clientX - drag.lx) / dt; drag.lx = e.clientX; drag.lt = now; } }
-    dragTurn = Math.max(-75, Math.min(75, drag.base + dx / (drag.w ||= screens.clientWidth) * 70));
-    if (!dragRaf) dragRaf = requestAnimationFrame(applyDragTurn);
+    const limit = drag.w * .22;
+    const offset = Math.max(drag.face === 1 ? -limit : -drag.w, Math.min(drag.face === -1 ? limit : drag.w, dx));
+    dragPosition = `translateX(calc(${-drag.face * 100}% + ${offset}px))`;
+    if (!dragRaf) dragRaf = requestAnimationFrame(applyDragPosition);
   });
   const endDrag = e => {
-    if (!drag) return;
-    screens.classList.remove('dragging');
+    if (!drag || e.pointerId !== drag.id) return;
     cancelAnimationFrame(dragRaf); dragRaf = 0;
     if (drag.moved) {
       // 按一次滑动翻一面：拖过屏宽约 15% 或甩得够快就翻到下一面（左划 → 往右一面）；原先要把画面拖过 43% 才会翻，最右 / 最左两面几乎转不回去

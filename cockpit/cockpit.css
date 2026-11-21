@@ -294,21 +294,25 @@ button.tile{appearance:none;border:0;font:inherit;color:inherit;text-align:left;
 .sec>h3 .en{margin-left:.2em}
 .dots{display:none}
 
-/* ============ 手机：单屏 + 绕球心转向 ============ */
+/* ============ 手机：单屏横移 ============ */
 @container (max-width:700px){
-  .cockpit{padding-bottom:20px}
+  .cockpit{padding-bottom:20px;perspective:none}
   .stage{transform:none!important}
   .arc{width:100%;transform:none;margin-bottom:6px}.track{overflow-x:auto;justify-content:flex-start;scrollbar-width:none}
+  .slider{display:none}
+  .tab.on::before,.tab.on::after{content:"";position:absolute;z-index:-1;pointer-events:none}
+  .tab.on::before{inset:0;background:linear-gradient(180deg,#5aa5ff,#1a5ad6 60%,#1446b0);box-shadow:inset 0 1px 0 rgba(255,255,255,.55);clip-path:polygon(9px 0,100% 0,calc(100% - 9px) 100%,0 100%)}
+  .tab.on::after{left:20%;right:20%;bottom:2px;height:2px;background:#cfeaff;box-shadow:0 0 6px #8fd0ff}
   .pad{overflow:visible}
-  .screens{display:block;position:relative;height:var(--carousel-h,520px);transition:height .45s cubic-bezier(.2,.8,.2,1),transform .6s cubic-bezier(.2,.9,.25,1);transform:translateZ(calc(var(--r) * -1)) rotateY(var(--turn,0deg));--r:calc(50cqw * 1.732);touch-action:pan-y}
-  .screens.dragging{transition:height .45s}
+  .screens{display:block;height:var(--carousel-h,520px);transform-style:flat;transform:translateX(var(--face-position,0%));touch-action:pan-y}
+  .screens.face-moving{transition:transform .24s cubic-bezier(.2,.8,.2,1)}
   /* 横向手势归座舱处理：屏内可滚动区默认 touch-action:auto，浏览器会抢走起手的横向拖动并取消指针，表现为要划两次才转；:where 不加权重，沙盘等自带声明的照旧 */
   :where(.screens *){touch-action:pan-y}
-  .screens[data-idle-face="0"]>.wing,.screens[data-idle-face="-1"]>:is(.center,.wing.r),.screens[data-idle-face="1"]>:is(.center,.wing.l){--lwcs-cockpit-loop-state:paused}
-  .screens>.wing,.screens>.center{position:absolute;top:0;left:3%;width:94%;height:auto;margin:0;backface-visibility:hidden}
-  .screens>.center{transform:translateZ(var(--r))}
-  .screens>.wing.l{transform:rotateY(-60deg) translateZ(var(--r));transform-origin:50% 50%}
-  .screens>.wing.r{transform:rotateY(60deg) translateZ(var(--r));transform-origin:50% 50%}
+  .screens:not([data-idle-face]){--lwcs-cockpit-loop-state:paused}
+  .screens[data-idle-face="0"]>.wing,.screens[data-idle-face="-1"]>:is(.center,.wing.r),.screens[data-idle-face="1"]>:is(.center,.wing.l){visibility:hidden;--lwcs-cockpit-loop-state:paused}
+  .screens>.wing,.screens>.center{position:absolute;top:0;left:3%;width:94%;height:auto;margin:0;transform:none}
+  .screens>.wing.l{left:-97%}
+  .screens>.wing.r{left:103%}
   .hinge{display:none}
   /* 手机：返回牌放进流里（屏面上方没有余量） */
   .back-plate{position:relative;top:0;left:12px;margin-bottom:-2px}
