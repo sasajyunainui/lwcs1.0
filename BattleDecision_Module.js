@@ -41430,6 +41430,24 @@
   // 而己方按自己的魂技全力算——口径不对称，决策者偏乐观（3v3 推演「五五开」时实际约 15%：σ(−1.74 + 1.52·分差)）。
   // 格子用对手的全力视图算，候选重建同样套用；表里的单位本身不变（比对是否改动、读状态都照旧）；试探折扣只留给推演以外的
   // 即时判断（生死线、承压）。
+  // 性能（11-21）：同一次决策里，不同候选重建出内容完全相同的单位（同一招打不同目标时出手者自己的下一刻等，3v3 实测约三成）。
+  // 按内容指纹（contentFingerprint，含不可枚举属性；决策内有记忆）加 overlay 原单位的身份认出来，换成第一次出现的那个对象，
+  // 按对象的缓存就能命中；内容相同，算出的格子也相同。late（窗口视图）与当下分开记。
+  const r20CanonicalUnits = new WeakMap(), r20OriginIds = new WeakMap();
+  let r20OriginSequence = 0;
+  function r20CanonicalUnit(table, unit, late) {
+    if (!unit || typeof unit !== 'object' || typeof preview.contentFingerprint !== 'function') return unit;
+    let byKey = r20CanonicalUnits.get(table);
+    if (!byKey) r20CanonicalUnits.set(table, byKey = new Map());
+    const origin = preview.overlayOriginUnit ? preview.overlayOriginUnit(unit) : null;
+    let originId = 0;
+    if (origin) { originId = r20OriginIds.get(origin); if (!originId) r20OriginIds.set(origin, originId = ++r20OriginSequence); }
+    const key = (late ? 'L' : 'N') + originId + ':' + preview.contentFingerprint(unit);
+    const seen = byKey.get(key);
+    if (seen) { r20Work.canonicalHits = (r20Work.canonicalHits || 0) + 1; return seen; }
+    byKey.set(key, unit);
+    return unit;
+  }
   const r20FullStrength = unit => (Number(unit?.__routine_full_ratio) > Number(unit?.routine_attack_ratio) + 1e-9
     ? { ...unit, routine_attack_ratio: unit.__routine_full_ratio } : unit);
   function r20Facts(request) {
@@ -42039,6 +42057,7 @@
     // 魂力 lifted at the next round end and its +111% read as lasting the race).
     const rebuildCells = (base, baseUnits, entries, late = false) => {
       const context = late ? null : r9v2LinearCapacityProjectionContext(after, table.contexts);
+      entries = entries.map(entry => [entry[0], r20CanonicalUnit(table, entry[1], late), ...entry.slice(2)]);
       const units = baseUnits.slice();
       const out = base.out.map(row => row.slice()), support = base.support.map(row => row.slice()), stop = base.stop.map(row => row.slice()), keep = base.keep.map(row => row.slice());
       const control = base.control.map(row => row.slice());
