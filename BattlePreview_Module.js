@@ -11316,11 +11316,21 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return scaled;
   }
   // The caster's own drive on its skill's cost and windup (the first effect in it driving each).
+  // 性能（11-21）：哪些效果带「消耗」「前摇」驱动只看技能本身，按技能对象记下（效果数组换了就重算）；多数技能一条也没有。
+  const selfDriveEffectCache = new WeakMap();
+  function selfDriveEffects(skill) {
+    if (!skill || typeof skill !== 'object') return collectEffects(skill || {}).map(effect => [effect, driveDirections(effect)])
+      .filter(([, directions]) => directions.includes('消耗') || directions.includes('前摇'));
+    const cached = selfDriveEffectCache.get(skill);
+    if (cached && cached.effects === skill._效果数组 && cached.use === skill.使用效果) return cached.list;
+    const list = collectEffects(skill).map(effect => [effect, driveDirections(effect)])
+      .filter(([, directions]) => directions.includes('消耗') || directions.includes('前摇'));
+    selfDriveEffectCache.set(skill, { effects: skill._效果数组, use: skill.使用效果, list });
+    return list;
+  }
   function skillSelfDriveMultipliers(unit = {}, skill = {}) {
     let cost = 1, windup = 1, costSet = false, windupSet = false;
-    collectEffects(skill || {}).forEach(effect => {
-      const directions = driveDirections(effect);
-      if (!directions.includes('消耗') && !directions.includes('前摇')) return;
+    selfDriveEffects(skill).forEach(([effect, directions]) => {
       const factor = driveFactor(driveRatio(unit, null, effect, true), 0.67, 1.5);
       if (directions.includes('消耗') && !costSet) { cost = 1 / factor; costSet = true; }
       if (directions.includes('前摇') && !windupSet) { windup = 1 / factor; windupSet = true; }

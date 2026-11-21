@@ -40572,12 +40572,27 @@
     }
     return price;
   }
+  // 性能（11-21）：启动消耗只看出手单位与技能（costActor 的结算修正），与对手无关；r20AnswerPrices 按对手分键，对手换了新对象就
+  // 重读一遍。按（单位、技能）记下。
+  const r20StartCostCache = new WeakMap();
+  function r20StartCosts(unit, declaration) {
+    const skill = declaration.skill;
+    const keyed = unit && typeof unit === 'object' && skill && typeof skill === 'object';
+    let bySkill = keyed ? r20StartCostCache.get(unit) : null;
+    if (bySkill?.has(skill)) return bySkill.get(skill);
+    const costs = preview.readSkillCostStages(skill, { ...declaration, costActor: unit })?.启动 || {};
+    if (keyed) {
+      if (!bySkill) r20StartCostCache.set(unit, bySkill = new WeakMap());
+      bySkill.set(skill, costs);
+    }
+    return costs;
+  }
   function r20AnswerPriceUncached(unit, attacker, declaration = {}) {
     const shares = { sp: 0, men: 0, vit: 0 };
     const labels = { sp: '魂力', men: '精神力', vit: '体力' };
     if (String(declaration?.actionKind || '').toUpperCase() === 'RELEASE_SKILL' && declaration.skill) {
       const costs = declaration.resourceCosts && typeof declaration.resourceCosts === 'object' ? declaration.resourceCosts
-        : preview.readSkillCostStages(declaration.skill, { ...declaration, costActor: unit })?.启动 || {};
+        : r20StartCosts(unit, declaration);
       for (const [resource, raw] of Object.entries(costs)) {
         const key = preview.skillCostResourceKey(resource), amount = Number(preview.resolveSkillResourceCost(unit, resource, raw));
         if (!key || !Object.hasOwn(shares, key) || !(amount > 0)) continue;
