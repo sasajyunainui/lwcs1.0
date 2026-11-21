@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:78a0c30e86f738904688ad41ab5651b61e801f96aca5286f35ceacf2abc1531d|cockpit/designer-model.js:cfd30db8a8ca67e544a32c52788feaaa864725e4385577ba70616d16bd767aee|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:121696c1481708bb05eaebf52d3f96efbeeac57ce6bc43311b2512fc2bda9596|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:20f11b016b6007cb8a0af955e4f7e473c77a99450e8183b5284c524d88a865ea|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:e054ae6be35baeaca1f47b698e4f0dbf78fa7b0ec193393e004fbe71902366bb|BattleRuntime_Module.js:42a75d479f8061beeedad61da02b8975bcbd6a5481cc5046c7a11c38dbb20df5|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:908fe9d513f83c52cd60f0bed9a1602231928ed164dd51f72b68dbcc9585a22c|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:78a0c30e86f738904688ad41ab5651b61e801f96aca5286f35ceacf2abc1531d|cockpit/designer-model.js:cfd30db8a8ca67e544a32c52788feaaa864725e4385577ba70616d16bd767aee|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:121696c1481708bb05eaebf52d3f96efbeeac57ce6bc43311b2512fc2bda9596|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:20f11b016b6007cb8a0af955e4f7e473c77a99450e8183b5284c524d88a865ea|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:4d81f3f9369ba01cd2b886f9325adbc48770656cf3fd6ee19811e6763ad22e4c|BattleRuntime_Module.js:42a75d479f8061beeedad61da02b8975bcbd6a5481cc5046c7a11c38dbb20df5|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:908fe9d513f83c52cd60f0bed9a1602231928ed164dd51f72b68dbcc9585a22c|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -101569,7 +101569,23 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // 应对与反击窗口里，魂技的前摇按 REACTION_CAST_SHARE 算（只在判断放不放得进窗口时打折，主动回合的节奏不变）。起始值，按原作战例校准。
   const REACTION_CAST_SHARE = Number(root.__LWCS_TUNE__?.REACTION_CAST_SHARE ?? 0.6);
   const reactionCastTime = skill => Math.max(0, Number(skill?.前摇 ?? skill?.cast_time ?? 10)) * REACTION_CAST_SHARE;
+  // 性能（11-21）：除了窗口长度，结果只看技能本身——按技能对象记下窗口够与不够两种结果，窗口每次现比；同一对象的前摇或效果换了就重算。
+  const immediateReactionFacts = new WeakMap();
+  function immediateReactionFactsOf(skill) {
+    const castTime = reactionCastTime(skill);
+    let facts = immediateReactionFacts.get(skill);
+    if (!facts || facts.castTime !== castTime || facts.effects !== skill._效果数组) {
+      facts = { castTime, effects: skill._效果数组, inTime: immediateReactionSkillUncached(skill, Infinity), late: immediateReactionSkillUncached(skill, -Infinity) };
+      immediateReactionFacts.set(skill, facts);
+    }
+    return facts;
+  }
   function isImmediateReactionSkill(skill = {}, immediateBudget = 0) {
+    if (!skill || typeof skill !== 'object') return immediateReactionSkillUncached(skill, immediateBudget);
+    const facts = immediateReactionFactsOf(skill);
+    return facts.castTime > immediateBudget ? facts.late : facts.inTime;
+  }
+  function immediateReactionSkillUncached(skill = {}, immediateBudget = 0) {
     const castTime = reactionCastTime(skill);
     const effects = directImmediateSkillEffects(skill);
     const triggerText = [
@@ -136056,6 +136072,25 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // (r20AnswerPrice), `strikes` and `stops`, for r20Meet to weigh; once a unit and attacker pair for an unknown move.
   const r20Engages = new WeakMap();
   const R20_ASSUMED_MOVE = Object.freeze({ actionKind: 'BASIC_ATTACK' }), R20_SKILL_MOVE = Object.freeze({ actionKind: 'RELEASE_SKILL' });
+  // 性能（11-21）：r20Engage 里一个技能能不能拿来应对、带不带伤害、哪些效果能打断或干扰未知的来招，只看技能本身，按技能对象记下
+  // （效果数组换了就重算）；和对手有关的免疫、命中倍率、稳住系数照旧现算。已知来招（incoming）走原来的逐条判定。
+  const r20ConsiderCache = new WeakMap();
+  function r20ConsiderParts(skill) {
+    const cached = r20ConsiderCache.get(skill);
+    if (cached && cached.effects === skill._效果数组) return cached;
+    const aimed = ['HOSTILE_SINGLE', 'ANY_SINGLE', 'HOSTILE_GROUP'].includes(targetProfile(skill));
+    const stops = [], softs = [];
+    if (aimed) for (const effect of preview.collectEffects(skill)) {
+      if (/自身|己方|友方/.test(String(effect?.目标 || ''))) continue;
+      const chance = preview.normalizeEffectProbability(effect.触发概率, 1);
+      if (preview.effectBlocksMove(effect, R20_SKILL_MOVE) || preview.effectBlocksMove(effect, R20_ASSUMED_MOVE)) stops.push({ effect, chance });
+      const soft = preview.effectDisruptsMove(effect, null);
+      if (soft) softs.push({ effect, chance, soft });
+    }
+    const parts = { effects: skill._效果数组, aimed, damage: aimed && directImmediateSkillEffects(skill).some(effect => effect?.原型 === '伤害结算'), stops, softs };
+    r20ConsiderCache.set(skill, parts);
+    return parts;
+  }
   function r20Engage(unit, attacker, incoming = null) {
     // 两档距离（T25）: an attacker not engaged with the unit runs up first (BattlePreview advanceWindupFor) — the move it is met as
     // carries the travel, and every answer window below widens with it. Read on where the two stand now; cached per travel.
@@ -136070,12 +136105,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const consider = (declaration, skill) => {
       let price = null;
       const priced = () => price ??= r20AnswerPrice(unit, attacker, declaration).price;
-      if (skill) {
-        const profile = targetProfile(skill);
-        if (!['HOSTILE_SINGLE', 'ANY_SINGLE', 'HOSTILE_GROUP'].includes(profile)) return;
-      }
+      const parts = skill ? r20ConsiderParts(skill) : null;
+      if (parts && !parts.aimed) return;
       // 接战链 阶段 2d: a clash by the confidence of its timing (BattlePreview clashTiming, on the agility the unit sees).
-      const clashConfidence = !skill || directImmediateSkillEffects(skill).some(effect => effect?.原型 === '伤害结算')
+      const clashConfidence = !skill || parts.damage
         ? preview.clashTiming(attacker, move, unit, declaration).confidence : 0;
       if (clashConfidence > 0) {
         const strike = Number(preview.incomingMoveDamage(unit, declaration, attacker, r20World)) || 0;
@@ -136085,14 +136118,24 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       // confidence the timing the unit sees gives it (preemptTiming confidence).
       const confidence = skill ? preview.preemptTiming(unit, declaration, attacker, move).confidence : 0;
       let stop = 0;
-      if (confidence > 0) for (const effect of preview.collectEffects(skill)) {
+      if (confidence > 0 && !incoming) {
+        for (const { effect, chance } of parts.stops) {
+          if (preview.negativeEffectIsImmune(attacker, effect)) continue;
+          stop = Math.max(stop, confidence * chance * preview.stateApplicationProbabilityMultiplier(attacker, effect));
+        }
+        for (const { effect, chance, soft } of parts.softs) {
+          if (preview.negativeEffectIsImmune(attacker, effect)) continue;
+          const kept = 1 - (1 - Math.max(soft.deflect, soft.blind)) * (soft.slow ? preview.calculateGuardBaseMultiplier(unit, attacker, true) : 1);
+          stop = Math.max(stop, confidence * kept * chance * preview.stateApplicationProbabilityMultiplier(attacker, effect));
+        }
+      } else if (confidence > 0) for (const effect of preview.collectEffects(skill)) {
         if (/自身|己方|友方/.test(String(effect?.目标 || '')) || preview.negativeEffectIsImmune(attacker, effect) ||
           !(incoming ? preview.effectBlocksMove(effect, incoming) : preview.effectBlocksMove(effect, R20_SKILL_MOVE) || preview.effectBlocksMove(effect, R20_ASSUMED_MOVE))) continue;
         stop = Math.max(stop, confidence * preview.normalizeEffectProbability(effect.触发概率, 1) * preview.stateApplicationProbabilityMultiplier(attacker, effect));
       }
       // 软控抢先: a state that only gets in the move's way counts by what it keeps off — the move turned away (deflect /
       // blind) or met braced (slow: the guard out of a stance) — as a share of a stop.
-      if (confidence > 0) for (const effect of preview.collectEffects(skill)) {
+      if (confidence > 0 && incoming) for (const effect of preview.collectEffects(skill)) {
         if (/自身|己方|友方/.test(String(effect?.目标 || '')) || preview.negativeEffectIsImmune(attacker, effect)) continue;
         const soft = preview.effectDisruptsMove(effect, incoming || null);
         if (!soft) continue;
@@ -136133,24 +136176,42 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // (lateDefenseSkill) — read as what it keeps off: `cut`, the factor it leaves of the hit (refereeCutFactor; 无敌 0),
   // and `shield`, a share of the unit's HP maximum (calculateShieldGain), each by its chance. Before it the table took a
   // unit's answers as guard, evasion, clash and preemption only, and a 防御系 that raises a shield was thought open.
+  // 性能（11-21）：防御魂技每条效果的成功率、护盾与否、留下的伤害系数只看效果本身，按技能对象记下（效果数组换了就重算）。
+  const r20GuardPartsCache = new WeakMap();
+  function r20GuardParts(skill) {
+    const cached = r20GuardPartsCache.get(skill);
+    if (cached && cached.effects === skill._效果数组) return cached.parts;
+    const parts = [];
+    for (const effect of directImmediateSkillEffects(skill)) {
+      if (/敌方|对方/.test(String(effect?.目标 || ''))) continue;
+      const chance = preview.normalizeEffectProbability(effect.成功率 ?? effect.触发概率, 1);
+      if (String(effect?.原型 || '').trim() === '护盾变化') {
+        parts.push({ shield: true, positive: String(effect.护盾模式 || '正向护盾').trim() === '正向护盾', value: effect.数值, chance });
+        continue;
+      }
+      parts.push({ shield: false, chance, left: preview.deriveStateCombatEffect(effect)?.invincible === true ? 0 : preview.refereeCutFactor(effect) });
+    }
+    r20GuardPartsCache.set(skill, { effects: skill._效果数组, parts });
+    return parts;
+  }
   function r20GuardSkill(unit, skill, budget) {
     if (!skill || typeof skill !== 'object' || preview.isPassiveSkill(skill)) return null;
     let coverage = 1;
-    if (!isImmediateReactionSkill(skill, budget)) {
-      if (!(budget > 0) || !isImmediateReactionSkill({ ...skill, 前摇: budget, cast_time: budget }, budget)) return null;
+    const facts = immediateReactionFactsOf(skill);
+    if (!(facts.castTime > budget ? facts.late : facts.inTime)) {
+      // 前摇按窗口算时（原先复制一份前摇=窗口的技能再判）：效果没变，只是前摇换成窗口。
+      if (!(budget > 0) || !(Math.max(0, budget) * REACTION_CAST_SHARE > budget ? facts.late : facts.inTime)) return null;
       coverage = budget / Math.max(budget, Number(skill.前摇 ?? skill.cast_time ?? 10) || 0);
     }
     const hpMax = Math.max(1, preview.readHpMax(unit));
     let cut = 1, shield = 0;
-    for (const effect of directImmediateSkillEffects(skill)) {
-      if (/敌方|对方/.test(String(effect?.目标 || ''))) continue;
-      const chance = preview.normalizeEffectProbability(effect.成功率 ?? effect.触发概率, 1) * coverage;
-      if (String(effect?.原型 || '').trim() === '护盾变化') {
-        if (String(effect.护盾模式 || '正向护盾').trim() === '正向护盾') shield += chance * preview.calculateShieldGain(unit, Math.abs(Number(preview.parseSignedValue(effect.数值, hpMax)) || 0)) / hpMax;
+    for (const part of r20GuardParts(skill)) {
+      const chance = part.chance * coverage;
+      if (part.shield) {
+        if (part.positive) shield += chance * preview.calculateShieldGain(unit, Math.abs(Number(preview.parseSignedValue(part.value, hpMax)) || 0)) / hpMax;
         continue;
       }
-      const left = preview.deriveStateCombatEffect(effect)?.invincible === true ? 0 : preview.refereeCutFactor(effect);
-      cut *= 1 - chance * (1 - left);
+      cut *= 1 - chance * (1 - part.left);
     }
     return cut < 1 - 1e-9 || shield > 1e-9 ? { cut, shield } : null;
   }
