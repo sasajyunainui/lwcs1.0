@@ -41433,6 +41433,8 @@
   // 性能（11-21）：同一次决策里，不同候选重建出内容完全相同的单位（同一招打不同目标时出手者自己的下一刻等，3v3 实测约三成）。
   // 按内容指纹（contentFingerprint，含不可枚举属性；决策内有记忆）加 overlay 原单位的身份认出来，换成第一次出现的那个对象，
   // 按对象的缓存就能命中；内容相同，算出的格子也相同。late（窗口视图）与当下分开记。
+  // 第 7 项开关（对照用）：LWCS_TUNE.SAME_SIDE_REUSE = false 时同边对子照旧全部重算。
+  const R20_SAME_SIDE_REUSE_ON = root.__LWCS_TUNE__?.SAME_SIDE_REUSE !== false;
   const r20CanonicalUnits = new WeakMap(), r20OriginIds = new WeakMap();
   let r20OriginSequence = 0;
   function r20CanonicalUnit(table, unit, late) {
@@ -42066,10 +42068,14 @@
       const acts = base.acts.slice(), turn = base.turn.slice();
       const cells = { out, back, keep, keepBack, answer, answerOpen };
       for (const [row, next] of entries) { units[row] = next; acts[row] = true; turn[row] = r20Turn(next); }
+      const actorRow = table.index.get(String(candidate?.declaration?.actorId ?? request?.actorId ?? ''));
       for (const [row, next, ownCellsOnly] of entries) {
         const bound = r20Bound(after, next);
         for (let other = 0; other < count; other += 1) {
           if (table.sides[row] === table.sides[other]) {
+            // 同边对子沿用原表（11-21 实测：目标、旁人之间的支援格子 0.3%～1.3% 有变化，幅度为原值的万分之几）；牵涉出手者的照算
+            // （治疗系花了魂力、给队友加了血，支援格子会变）。原表里不能行动的行照算。
+            if (R20_SAME_SIDE_REUSE_ON && row !== actorRow && other !== actorRow && other !== row && table.acts[row] && base.acts?.[other] !== false) continue;
             support[row][other] = acts[row] ? r20Cell(next, units[other], true, other === row, context, after, null) : 0;
             if (other !== row && !ownCellsOnly) support[other][row] = acts[other] ? r20Cell(units[other], next, true, false, context, after, null) : 0;
             continue;
