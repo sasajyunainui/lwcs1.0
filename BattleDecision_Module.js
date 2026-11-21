@@ -6110,7 +6110,23 @@
   // 应对与反击窗口里，魂技的前摇按 REACTION_CAST_SHARE 算（只在判断放不放得进窗口时打折，主动回合的节奏不变）。起始值，按原作战例校准。
   const REACTION_CAST_SHARE = Number(root.__LWCS_TUNE__?.REACTION_CAST_SHARE ?? 0.6);
   const reactionCastTime = skill => Math.max(0, Number(skill?.前摇 ?? skill?.cast_time ?? 10)) * REACTION_CAST_SHARE;
+  // 性能（11-21）：除了窗口长度，结果只看技能本身——按技能对象记下窗口够与不够两种结果，窗口每次现比；同一对象的前摇或效果换了就重算。
+  const immediateReactionFacts = new WeakMap();
+  function immediateReactionFactsOf(skill) {
+    const castTime = reactionCastTime(skill);
+    let facts = immediateReactionFacts.get(skill);
+    if (!facts || facts.castTime !== castTime || facts.effects !== skill._效果数组) {
+      facts = { castTime, effects: skill._效果数组, inTime: immediateReactionSkillUncached(skill, Infinity), late: immediateReactionSkillUncached(skill, -Infinity) };
+      immediateReactionFacts.set(skill, facts);
+    }
+    return facts;
+  }
   function isImmediateReactionSkill(skill = {}, immediateBudget = 0) {
+    if (!skill || typeof skill !== 'object') return immediateReactionSkillUncached(skill, immediateBudget);
+    const facts = immediateReactionFactsOf(skill);
+    return facts.castTime > immediateBudget ? facts.late : facts.inTime;
+  }
+  function immediateReactionSkillUncached(skill = {}, immediateBudget = 0) {
     const castTime = reactionCastTime(skill);
     const effects = directImmediateSkillEffects(skill);
     const triggerText = [
@@ -40597,6 +40613,25 @@
   // (r20AnswerPrice), `strikes` and `stops`, for r20Meet to weigh; once a unit and attacker pair for an unknown move.
   const r20Engages = new WeakMap();
   const R20_ASSUMED_MOVE = Object.freeze({ actionKind: 'BASIC_ATTACK' }), R20_SKILL_MOVE = Object.freeze({ actionKind: 'RELEASE_SKILL' });
+  // 性能（11-21）：r20Engage 里一个技能能不能拿来应对、带不带伤害、哪些效果能打断或干扰未知的来招，只看技能本身，按技能对象记下
+  // （效果数组换了就重算）；和对手有关的免疫、命中倍率、稳住系数照旧现算。已知来招（incoming）走原来的逐条判定。
+  const r20ConsiderCache = new WeakMap();
+  function r20ConsiderParts(skill) {
+    const cached = r20ConsiderCache.get(skill);
+    if (cached && cached.effects === skill._效果数组) return cached;
+    const aimed = ['HOSTILE_SINGLE', 'ANY_SINGLE', 'HOSTILE_GROUP'].includes(targetProfile(skill));
+    const stops = [], softs = [];
+    if (aimed) for (const effect of preview.collectEffects(skill)) {
+      if (/自身|己方|友方/.test(String(effect?.目标 || ''))) continue;
+      const chance = preview.normalizeEffectProbability(effect.触发概率, 1);
+      if (preview.effectBlocksMove(effect, R20_SKILL_MOVE) || preview.effectBlocksMove(effect, R20_ASSUMED_MOVE)) stops.push({ effect, chance });
+      const soft = preview.effectDisruptsMove(effect, null);
+      if (soft) softs.push({ effect, chance, soft });
+    }
+    const parts = { effects: skill._效果数组, aimed, damage: aimed && directImmediateSkillEffects(skill).some(effect => effect?.原型 === '伤害结算'), stops, softs };
+    r20ConsiderCache.set(skill, parts);
+    return parts;
+  }
   function r20Engage(unit, attacker, incoming = null) {
     // 两档距离（T25）: an attacker not engaged with the unit runs up first (BattlePreview advanceWindupFor) — the move it is met as
     // carries the travel, and every answer window below widens with it. Read on where the two stand now; cached per travel.
@@ -40611,12 +40646,10 @@
     const consider = (declaration, skill) => {
       let price = null;
       const priced = () => price ??= r20AnswerPrice(unit, attacker, declaration).price;
-      if (skill) {
-        const profile = targetProfile(skill);
-        if (!['HOSTILE_SINGLE', 'ANY_SINGLE', 'HOSTILE_GROUP'].includes(profile)) return;
-      }
+      const parts = skill ? r20ConsiderParts(skill) : null;
+      if (parts && !parts.aimed) return;
       // 接战链 阶段 2d: a clash by the confidence of its timing (BattlePreview clashTiming, on the agility the unit sees).
-      const clashConfidence = !skill || directImmediateSkillEffects(skill).some(effect => effect?.原型 === '伤害结算')
+      const clashConfidence = !skill || parts.damage
         ? preview.clashTiming(attacker, move, unit, declaration).confidence : 0;
       if (clashConfidence > 0) {
         const strike = Number(preview.incomingMoveDamage(unit, declaration, attacker, r20World)) || 0;
@@ -40626,14 +40659,24 @@
       // confidence the timing the unit sees gives it (preemptTiming confidence).
       const confidence = skill ? preview.preemptTiming(unit, declaration, attacker, move).confidence : 0;
       let stop = 0;
-      if (confidence > 0) for (const effect of preview.collectEffects(skill)) {
+      if (confidence > 0 && !incoming) {
+        for (const { effect, chance } of parts.stops) {
+          if (preview.negativeEffectIsImmune(attacker, effect)) continue;
+          stop = Math.max(stop, confidence * chance * preview.stateApplicationProbabilityMultiplier(attacker, effect));
+        }
+        for (const { effect, chance, soft } of parts.softs) {
+          if (preview.negativeEffectIsImmune(attacker, effect)) continue;
+          const kept = 1 - (1 - Math.max(soft.deflect, soft.blind)) * (soft.slow ? preview.calculateGuardBaseMultiplier(unit, attacker, true) : 1);
+          stop = Math.max(stop, confidence * kept * chance * preview.stateApplicationProbabilityMultiplier(attacker, effect));
+        }
+      } else if (confidence > 0) for (const effect of preview.collectEffects(skill)) {
         if (/自身|己方|友方/.test(String(effect?.目标 || '')) || preview.negativeEffectIsImmune(attacker, effect) ||
           !(incoming ? preview.effectBlocksMove(effect, incoming) : preview.effectBlocksMove(effect, R20_SKILL_MOVE) || preview.effectBlocksMove(effect, R20_ASSUMED_MOVE))) continue;
         stop = Math.max(stop, confidence * preview.normalizeEffectProbability(effect.触发概率, 1) * preview.stateApplicationProbabilityMultiplier(attacker, effect));
       }
       // 软控抢先: a state that only gets in the move's way counts by what it keeps off — the move turned away (deflect /
       // blind) or met braced (slow: the guard out of a stance) — as a share of a stop.
-      if (confidence > 0) for (const effect of preview.collectEffects(skill)) {
+      if (confidence > 0 && incoming) for (const effect of preview.collectEffects(skill)) {
         if (/自身|己方|友方/.test(String(effect?.目标 || '')) || preview.negativeEffectIsImmune(attacker, effect)) continue;
         const soft = preview.effectDisruptsMove(effect, incoming || null);
         if (!soft) continue;
@@ -40674,24 +40717,42 @@
   // (lateDefenseSkill) — read as what it keeps off: `cut`, the factor it leaves of the hit (refereeCutFactor; 无敌 0),
   // and `shield`, a share of the unit's HP maximum (calculateShieldGain), each by its chance. Before it the table took a
   // unit's answers as guard, evasion, clash and preemption only, and a 防御系 that raises a shield was thought open.
+  // 性能（11-21）：防御魂技每条效果的成功率、护盾与否、留下的伤害系数只看效果本身，按技能对象记下（效果数组换了就重算）。
+  const r20GuardPartsCache = new WeakMap();
+  function r20GuardParts(skill) {
+    const cached = r20GuardPartsCache.get(skill);
+    if (cached && cached.effects === skill._效果数组) return cached.parts;
+    const parts = [];
+    for (const effect of directImmediateSkillEffects(skill)) {
+      if (/敌方|对方/.test(String(effect?.目标 || ''))) continue;
+      const chance = preview.normalizeEffectProbability(effect.成功率 ?? effect.触发概率, 1);
+      if (String(effect?.原型 || '').trim() === '护盾变化') {
+        parts.push({ shield: true, positive: String(effect.护盾模式 || '正向护盾').trim() === '正向护盾', value: effect.数值, chance });
+        continue;
+      }
+      parts.push({ shield: false, chance, left: preview.deriveStateCombatEffect(effect)?.invincible === true ? 0 : preview.refereeCutFactor(effect) });
+    }
+    r20GuardPartsCache.set(skill, { effects: skill._效果数组, parts });
+    return parts;
+  }
   function r20GuardSkill(unit, skill, budget) {
     if (!skill || typeof skill !== 'object' || preview.isPassiveSkill(skill)) return null;
     let coverage = 1;
-    if (!isImmediateReactionSkill(skill, budget)) {
-      if (!(budget > 0) || !isImmediateReactionSkill({ ...skill, 前摇: budget, cast_time: budget }, budget)) return null;
+    const facts = immediateReactionFactsOf(skill);
+    if (!(facts.castTime > budget ? facts.late : facts.inTime)) {
+      // 前摇按窗口算时（原先复制一份前摇=窗口的技能再判）：效果没变，只是前摇换成窗口。
+      if (!(budget > 0) || !(Math.max(0, budget) * REACTION_CAST_SHARE > budget ? facts.late : facts.inTime)) return null;
       coverage = budget / Math.max(budget, Number(skill.前摇 ?? skill.cast_time ?? 10) || 0);
     }
     const hpMax = Math.max(1, preview.readHpMax(unit));
     let cut = 1, shield = 0;
-    for (const effect of directImmediateSkillEffects(skill)) {
-      if (/敌方|对方/.test(String(effect?.目标 || ''))) continue;
-      const chance = preview.normalizeEffectProbability(effect.成功率 ?? effect.触发概率, 1) * coverage;
-      if (String(effect?.原型 || '').trim() === '护盾变化') {
-        if (String(effect.护盾模式 || '正向护盾').trim() === '正向护盾') shield += chance * preview.calculateShieldGain(unit, Math.abs(Number(preview.parseSignedValue(effect.数值, hpMax)) || 0)) / hpMax;
+    for (const part of r20GuardParts(skill)) {
+      const chance = part.chance * coverage;
+      if (part.shield) {
+        if (part.positive) shield += chance * preview.calculateShieldGain(unit, Math.abs(Number(preview.parseSignedValue(part.value, hpMax)) || 0)) / hpMax;
         continue;
       }
-      const left = preview.deriveStateCombatEffect(effect)?.invincible === true ? 0 : preview.refereeCutFactor(effect);
-      cut *= 1 - chance * (1 - left);
+      cut *= 1 - chance * (1 - part.left);
     }
     return cut < 1 - 1e-9 || shield > 1e-9 ? { cut, shield } : null;
   }
