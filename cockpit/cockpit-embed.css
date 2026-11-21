@@ -127,6 +127,13 @@ img{max-width:none}
 @container cockpit (min-width:701px){.martial-stage{grid-template-columns:minmax(0,1fr) minmax(0,15.5em)}}
 /* 手机：点按目标至少约 32px（小键、下拉、时长加减、提示「?」、可点编辑的数值）；提示按钮只扩点按区不改外观 */
 @container cockpit (max-width:700px){
+  /* 聊天流的窄屏保留金属外观，避免整屏和裁切后的资源条在纵向滚动时持续合成。 */
+  .float,.scr::before{animation:none}
+  .bar>.tr>i::after{content:none}
+  /* 资源行随面板直接显示，避免入场裁切先隐藏文字和条形。 */
+  .face .meter.reveal{animation:none}
+  .face .meter.reveal::after{content:none}
+  .home-top .bar>.tr>i{transition:none}
   .key-s{min-height:32px}
   .key-s.mini{min-height:28px}
   .picker-btn{min-height:34px}
