@@ -182,15 +182,17 @@
     </section>`;
   };
   const sideSec = (c, v, sec) => {
-    const list = Array.isArray(v.sideEffects) ? v.sideEffects : (v.sideEffects?.rows || []);
+    const use = sec.id === 'useSideEffects';
+    const scope = use ? '使用副作用列表' : '副作用列表';
+    const list = use ? v.useSideEffects : v.sideEffects;
     return `<section class="dz2-sec">${secHead(c, sec, list.length ? `${list.length} 条` : '')}
-      ${list.map((r, i) => `<div class="dz2-item"${r.summary ? ` data-hint="${esc(r.summary)}"` : ''}><div class="dz2-grid">${(r.fields || []).map(f => f.hidden ? '' : field(c, f, { type: 'sideEffectField', index: i, key: f.key })).join('')}</div>${btn({ type: 'removeSideEffect', index: i }, '<i class="fa-solid fa-xmark"></i>', { cls: 'danger', arm: true, title: '删除这条副作用' })}</div>`).join('')}
-      <div class="dz2-actions">${btn({ type: 'addSideEffect' }, '<i class="fa-solid fa-plus"></i> 副作用', { cls: 'mini' })}</div></section>`;
+      ${list.map((r, i) => `<div class="dz2-item"${r.summary ? ` data-hint="${esc(r.summary)}"` : ''}><div class="dz2-grid">${(r.fields || []).map(f => f.hidden ? '' : field(c, f, { type: 'sideEffectField', scope, index: i, key: f.key })).join('')}</div>${btn({ type: 'removeSideEffect', scope, index: i }, '<i class="fa-solid fa-xmark"></i>', { cls: 'danger', arm: true, title: '删除这条副作用' })}</div>`).join('')}
+      <div class="dz2-actions">${btn({ type: 'addSideEffect', scope }, '<i class="fa-solid fa-plus"></i> 副作用', { cls: 'mini' })}</div></section>`;
   };
   const sectionHtml = (c, v, sec, ui) => {
     if (sec.visible === false) return '';
     if (sec.id === 'prototypes') return effectsSec(c, v, sec, ui);
-    if (sec.id === 'sideEffects') return sideSec(c, v, sec);
+    if (sec.id === 'sideEffects' || sec.id === 'useSideEffects') return sideSec(c, v, sec);
     if (sec.id === 'fusion') { const pf = (sec.fields || []).find(f => f.kind === 'fusionParticipants'); return `<section class="dz2-sec">${secHead(c, sec, pf ? `${(pf.rows || []).length} 人` : '')}${topFields(c, sec, v)}${fusionRows(c, pf)}${pf?.canAdd ? `<div class="dz2-actions">${btn({ type: 'fusionAdd' }, '<i class="fa-solid fa-plus"></i> 融合对象', { cls: 'mini' })}</div>` : ''}</section>`; }
     if (!(sec.fields || []).some(f => f.visible !== false && f.kind !== 'hidden')) return '';
     const grow = (sec.fields || []).some(f => f.kind === 'textarea' && f.visible !== false);

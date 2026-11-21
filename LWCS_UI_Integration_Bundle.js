@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:f1da5e5bb37cb504d102f6cb91141cbd5a4ce2765118746ad3a55ef8657ee12b|mvu_logic_bridge.js:78a0c30e86f738904688ad41ab5651b61e801f96aca5286f35ceacf2abc1531d|cockpit/designer-model.js:cfd30db8a8ca67e544a32c52788feaaa864725e4385577ba70616d16bd767aee|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:f1da5e5bb37cb504d102f6cb91141cbd5a4ce2765118746ad3a55ef8657ee12b|mvu_logic_bridge.js:96a5ad3cc701b192833d3be65334ea512e37dbc9bf3b8bed011e2f8c5736f577|cockpit/designer-model.js:401f0250a96e04360a4d182373508f0251baace6b04f5684e2cdcedd709c6981|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:5ed5d9ced35d7f161a1076d3e377534d38130b95f21cc9f5dc8037ef3f455cd1|cockpit/pages-ability.js:022ab507ac10cce533d3babd95291a8f13120f25098ad99b520d4857c7ae65d3|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -37828,12 +37828,14 @@ ${播报文本}
   // —— B:18407-18416
   function buildSkillDesignerSideEffectSummary(draft = {}) {
     const 施展列表 = 规范化技能设计台副作用列表(draft && draft.副作用列表);
+    const 使用列表 = 是造物(draft) ? 规范化技能设计台副作用列表(draft.使用副作用列表) : [];
     const 格式化 = list => list
       .map(格式化技能设计台副作用摘要)
       .filter(Boolean)
       .join('；');
     const 片段 = [];
     if (施展列表.length) 片段.push(`施展副作用：${格式化(施展列表)}`);
+    if (使用列表.length) 片段.push(`使用副作用：${格式化(使用列表)}`);
     return 片段.join('；');
   }
   // —— B:18418-18465
@@ -37914,8 +37916,7 @@ ${播报文本}
   // —— B:18493-18497
   function 格式化技能设计台概率百分比(value = 1) {
     const 数值 = Math.max(0, Math.min(1, Number(value ?? 1)));
-    const 百分比 = 数值 * 100;
-    return `${Math.abs(百分比 % 1) < 0.0001 ? 百分比.toFixed(0) : 百分比.toFixed(1)}%`;
+    return `${Number((数值 * 100).toFixed(2))}%`;
   }
   // —— B:18499-18525
   function 格式化技能设计台副作用摘要(条目 = {}) {
@@ -47647,6 +47648,7 @@ ${播报文本}
         ? 描述原型效果行列表(designerDraft.prototypeEffects, designerDraft.target, false, { 固定首个独立生效: true }, { name: 'main' })
         : [],
       sideEffects: 描述副作用行列表(designerDraft['副作用列表'], { 字段名: '副作用列表' }),
+      useSideEffects: 描述副作用行列表(designerDraft['使用副作用列表'], { 字段名: '使用副作用列表' }),
       isConstruct: !!上下文.是造物承载,
       isFusion: !!上下文.isFusionDesigner,
     };
@@ -47778,7 +47780,7 @@ ${播报文本}
       fusionSourceSpirits: derivedFusionFields.fusionSourceSpirits,
       fusionParticipants: derivedFusionFields.fusionParticipants,
       副作用列表: 读取副作用行列表(vf.sideEffects),
-      使用副作用列表: 读取副作用行列表([]),
+      使用副作用列表: 读取副作用行列表(vf.useSideEffects),
       技能掌控度: levelControl,
       技能掌控度中心等级: 启用技能掌控度 ? readField('技能掌控度中心等级') : '',
       技能掌控度圆满等级: 启用技能掌控度 ? readField('技能掌控度圆满等级') : '',
@@ -47906,6 +47908,7 @@ ${播报文本}
     { id: 'construct', title: () => '实体凝结参数', hintKey: '', visible: form => 是造物(form) },
     // 模板标题「核心术式阵列 / 使用效果阵列」；挂载后 syncDeliverySections 把文本改成「原型设计 / 使用效果」，说明改走 title 属性
     { id: 'prototypes', title: form => (是造物(form) ? '使用效果' : '原型设计'), templateTitle: form => (是造物(form) ? '使用效果阵列' : '核心术式阵列'), hintKey: form => (是造物(form) ? '使用效果阵列' : '核心术式阵列'), marker: '[data-skill-designer-prototype-title]', visible: () => true },
+    { id: 'useSideEffects', title: () => '使用副作用', hintKey: '', visible: 是造物 },
     { id: 'sideEffects', title: form => (是造物(form) ? '施展副作用' : '副作用'), hintKey: '', marker: '[data-skill-designer-side-effect-title]', visible: () => true },
     { id: 'energy', title: () => '运转能量配置', hintKey: '运转能量配置', visible: () => true },
     { id: 'mastery', title: () => '技能掌控度', hintKey: '技能掌控度', visible: () => true },
@@ -48266,22 +48269,27 @@ ${播报文本}
       if (['类型', '比较'].includes(动作.key)) 同步条件行(条件, 条目);
       return;
     }
-    if (类型 === 'addSideEffect') {
-      const 当前 = 同步草稿(vf, previewMeta, snapshot);
-      const 下一列表 = [...规范化技能设计台副作用列表(当前['副作用列表']), 创建技能设计台默认副作用条目('自损反噬', { 生效对象: 读取技能设计台默认副作用对象(当前, '施展') })];
-      vf.sideEffects = 描述副作用行列表(下一列表, { 字段名: '副作用列表' });
-      vf.__post = { refresh: { ...当前, 副作用列表: 下一列表 } };
-      return;
-    }
-    if (类型 === 'removeSideEffect') {
-      vf.sideEffects.splice(动作.index, 1);
-      const 下一草稿 = 同步草稿(vf, previewMeta, snapshot);
-      vf.sideEffects = 描述副作用行列表(下一草稿['副作用列表'], { 字段名: '副作用列表' });
-      vf.__post = { refresh: 下一草稿 };
-      return;
-    }
-    if (类型 === 'sideEffectField') {
-      const 行 = vf.sideEffects[动作.index];
+    if (['addSideEffect', 'removeSideEffect', 'sideEffectField'].includes(类型)) {
+      const 是使用副作用 = 动作.scope === '使用副作用列表';
+      const 字段名 = 是使用副作用 ? '使用副作用列表' : '副作用列表';
+      const 列表键 = 是使用副作用 ? 'useSideEffects' : 'sideEffects';
+      const 行列表 = vf[列表键];
+      if (类型 === 'addSideEffect') {
+        const 当前 = 同步草稿(vf, previewMeta, snapshot);
+        const 生效对象 = 读取技能设计台默认副作用对象(当前, 是使用副作用 ? '使用' : '施展');
+        const 下一列表 = [...当前[字段名], 创建技能设计台默认副作用条目('自损反噬', { 生效对象 })];
+        vf[列表键] = 描述副作用行列表(下一列表, { 字段名 });
+        vf.__post = { refresh: { ...当前, [字段名]: 下一列表 } };
+        return;
+      }
+      if (类型 === 'removeSideEffect') {
+        行列表.splice(动作.index, 1);
+        const 下一草稿 = 同步草稿(vf, previewMeta, snapshot);
+        vf[列表键] = 描述副作用行列表(下一草稿[字段名], { 字段名 });
+        vf.__post = { refresh: 下一草稿 };
+        return;
+      }
+      const 行 = 行列表[动作.index];
       if (!行) throw new Error('副作用行不存在');
       const 控件 = 行.fields.find(c => c.key === 动作.key);
       if (!控件) throw new Error(`副作用没有字段：${动作.key}`);
@@ -48291,11 +48299,13 @@ ${播报文本}
         const 当前 = {};
         行.fields.forEach(c => { 当前[c.key] = normalizeSkillUiText(c.value, ''); });
         const 下一 = 规范化技能设计台副作用条目(当前, () => {}) || 创建技能设计台默认副作用条目();
-        vf.sideEffects[动作.index] = 描述副作用行(下一, 行.scope);
+        行列表[动作.index] = 描述副作用行(下一, 行.scope);
       } else {
         const 时机 = normalizeSkillUiText((行.fields.find(c => c.key === '触发时机') || {}).value, '效果生效后');
         const 关联 = 行.fields.find(c => c.key === '关联状态');
         if (关联) 关联.hidden = 时机 !== '效果结束后';
+        const [当前] = 读取副作用行列表([行]);
+        行.summary = 当前 && 当前.副作用类型 !== '致死献祭' ? 格式化技能设计台副作用摘要(当前) : '';
       }
       return;
     }
@@ -48502,6 +48512,7 @@ ${播报文本}
     const 分区 = 设计台分区列表(当前草稿, previewMeta, 上下文.标题提示表);
     const 字段 = 顶层字段描述(vf, 当前草稿, previewMeta);
     const scopeLabels = getSkillDesignerScopeLabels(previewMeta);
+    const 导出副作用行 = (行, index) => ({ index, scope: 行.scope, summary: 行.summary, fields: 行.fields.map(c => 导出控件(c, [])) });
     return {
       titles: scopeLabels,
       title: `${scopeLabels.studioTitle} / ${获取技能设计台当前标题(snapshot.rootData, previewMeta, deepGet(snapshot.rootData, previewMeta.path, {}) || {}) || 当前草稿.name || previewMeta.label || '未命名'}`,
@@ -48509,7 +48520,8 @@ ${播报文本}
       sections: 分区.map(区 => ({ ...区, fields: 字段[区.id] || [] })),
       rows: vf.rows.map((行, i) => 导出行(行, [i])),
       emptyGuide: vf.rows.length ? null : { icon: '✦', title: '术式阵列未装配', desc: '请点击下方按钮，为该技能添加基础机制（如：伤害、判定修正、状态授予等）。您可以组合多个原型来构建复杂技能。' },
-      sideEffects: vf.sideEffects.map((行, i) => ({ index: i, scope: 行.scope, summary: 行.summary, fields: 行.fields.map(c => 导出控件(c, [])) })),
+      sideEffects: vf.sideEffects.map(导出副作用行),
+      useSideEffects: vf.useSideEffects.map(导出副作用行),
       draft: 当前草稿,
       preview: {
         fusion: previewMeta.scope === '武魂融合技' ? buildSkillDesignerFusionSummary(当前草稿) || '未设置' : '',
@@ -51883,15 +51895,17 @@ ${播报文本}
     </section>`;
   };
   const sideSec = (c, v, sec) => {
-    const list = Array.isArray(v.sideEffects) ? v.sideEffects : (v.sideEffects?.rows || []);
+    const use = sec.id === 'useSideEffects';
+    const scope = use ? '使用副作用列表' : '副作用列表';
+    const list = use ? v.useSideEffects : v.sideEffects;
     return `<section class="dz2-sec">${secHead(c, sec, list.length ? `${list.length} 条` : '')}
-      ${list.map((r, i) => `<div class="dz2-item"${r.summary ? ` data-hint="${esc(r.summary)}"` : ''}><div class="dz2-grid">${(r.fields || []).map(f => f.hidden ? '' : field(c, f, { type: 'sideEffectField', index: i, key: f.key })).join('')}</div>${btn({ type: 'removeSideEffect', index: i }, '<i class="fa-solid fa-xmark"></i>', { cls: 'danger', arm: true, title: '删除这条副作用' })}</div>`).join('')}
-      <div class="dz2-actions">${btn({ type: 'addSideEffect' }, '<i class="fa-solid fa-plus"></i> 副作用', { cls: 'mini' })}</div></section>`;
+      ${list.map((r, i) => `<div class="dz2-item"${r.summary ? ` data-hint="${esc(r.summary)}"` : ''}><div class="dz2-grid">${(r.fields || []).map(f => f.hidden ? '' : field(c, f, { type: 'sideEffectField', scope, index: i, key: f.key })).join('')}</div>${btn({ type: 'removeSideEffect', scope, index: i }, '<i class="fa-solid fa-xmark"></i>', { cls: 'danger', arm: true, title: '删除这条副作用' })}</div>`).join('')}
+      <div class="dz2-actions">${btn({ type: 'addSideEffect', scope }, '<i class="fa-solid fa-plus"></i> 副作用', { cls: 'mini' })}</div></section>`;
   };
   const sectionHtml = (c, v, sec, ui) => {
     if (sec.visible === false) return '';
     if (sec.id === 'prototypes') return effectsSec(c, v, sec, ui);
-    if (sec.id === 'sideEffects') return sideSec(c, v, sec);
+    if (sec.id === 'sideEffects' || sec.id === 'useSideEffects') return sideSec(c, v, sec);
     if (sec.id === 'fusion') { const pf = (sec.fields || []).find(f => f.kind === 'fusionParticipants'); return `<section class="dz2-sec">${secHead(c, sec, pf ? `${(pf.rows || []).length} 人` : '')}${topFields(c, sec, v)}${fusionRows(c, pf)}${pf?.canAdd ? `<div class="dz2-actions">${btn({ type: 'fusionAdd' }, '<i class="fa-solid fa-plus"></i> 融合对象', { cls: 'mini' })}</div>` : ''}</section>`; }
     if (!(sec.fields || []).some(f => f.visible !== false && f.kind !== 'hidden')) return '';
     const grow = (sec.fields || []).some(f => f.kind === 'textarea' && f.visible !== false);
@@ -52299,15 +52313,28 @@ ${播报文本}
     const act = b.处理 === '替换效果' ? `改为 ${list(b.替换效果)}` : b.处理 === '追加效果' ? `追加 ${list(b.追加效果)}` : b.处理 === '禁用' ? '不生效' : '才生效';
     return `<div class="fx-if"><i class="fa-solid fa-code-branch"></i><span>若${cond}：${act}</span></div>`;
   };
+  const sideEffectRow = (c, list, label) => {
+    if (!Array.isArray(list) || !list.length) return '';
+    const summary = c.rt('__LWCS_COMPILE_SKILL_STRUCTURE_TEXT__')?.({ 副作用列表: list }, { asObject: true })?.副作用;
+    return summary ? `<div class="fx-if"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i><span><strong>${label}</strong> · ${c.esc(summary)}</span></div>` : '';
+  };
   // 悬停和点击都给完整魂技卡（悬停卡可移入、可滚动；点击钉住后可编辑）
   const skillDetail = (c, sk, page = false) => {
     const cond = sk.使用条件 || {}, lim = sk.触发限制, mast = sk.技能掌控度;
     // _效果数组 两种形态：造物承载是「包」列表（数量 / 有效期 / 使用效果），其余承载直接是效果列表——后者包成一个包
-    const list = Array.isArray(sk._效果数组) ? sk._效果数组.filter(Boolean) : [], pkgs = list.some(p => Array.isArray(p.使用效果)) ? list : list.length ? [{ 使用效果: list }] : [];
+    const list = Array.isArray(sk._效果数组) ? sk._效果数组.filter(Boolean) : [];
+    const hasPackages = list.some(p => Array.isArray(p.使用效果));
+    const pkgs = hasPackages ? list : list.length ? [{ 使用效果: list }] : [];
+    const castSideEffects = sideEffectRow(c, sk.副作用列表, hasPackages || sk.承载方式 === '造物承载' ? '施展副作用' : '副作用');
     const sp = spCost(c, sk), pool = c.num(c.st.魂力), casts = sp ? Math.floor(pool / sp) : 0;
     return `<div class="insp-head">${sk.ring ? c.ringMedal(sk.ring, String(sk.ring.slot || '').replace(/\D/g, '')) : c.sock('book', 'gd')}<div><strong style="font-size:1.15em">${c.esc(sk.魂技名)}</strong><br><small>${c.esc(sk.group)} · ${c.esc(sk.from)}</small></div>${page ? '' : '<button class="x" type="button" data-close-inspector aria-label="关闭">×</button>'}</div>
       <div style="display:flex;gap:.35em;flex-wrap:wrap">${sk.ring ? `<span class="chip">${c.yearTier(sk.ring.年限)} · ${c.fmt(sk.ring.年限)} 年</span>` : ''}${!c.blank(sk.承载方式) ? `<span class="chip s">${c.esc(sk.承载方式)}</span>` : ''}${sk.触发方式 ? `<span class="chip s">触发：${c.esc(sk.触发方式)}</span>` : ''}${(sk.附带属性 || []).map(a => `<span class="chip s">${c.esc(a)}</span>`).join('')}</div>
-      ${pkgs.length ? `<section class="sec"><h3>效果</h3>${pkgs.map(p => `${(p.使用效果 || []).map(e => fxRow(c, e) + (e.条件分支 || []).map(b => branchRow(c, b)).join('')).join('')}${p.有效期tick || p.数量 ? `<small style="padding-left:.2em">产出 ${c.fmt(p.数量 || 1)} 份${p.有效期tick ? ` · 有效期 ${Math.floor(p.有效期tick / 6)} 小时` : ''}</small>` : ''}`).join('')}</section>` : ''}
+      ${pkgs.length || castSideEffects ? `<section class="sec"><h3>效果</h3>${pkgs.map(p => {
+        const effects = (p.使用效果 || []).map(e => fxRow(c, e) + (e.条件分支 || []).map(b => branchRow(c, b)).join('')).join('');
+        const uses = sideEffectRow(c, p.副作用列表, '使用副作用');
+        const output = p.有效期tick || p.数量 ? `<small style="padding-left:.2em">产出 ${c.fmt(p.数量 || 1)} 份${p.有效期tick ? ` · 有效期 ${Math.floor(p.有效期tick / 6)} 小时` : ''}</small>` : '';
+        return effects + uses + output;
+      }).join('')}${castSideEffects}</section>` : ''}
       ${sk.ring && (sk.group === '魂环魂技' || sk.group === '独立魂环魂技') ? (rp => { const rows = [['palette', '颜色', c.ed(sk.ring.颜色 || '无', [...rp, '颜色'], { kind: 'enum', options: ['白', '黄', '紫', '黑', '红', '金', '无'] })], ['hourglass-half', '年限', c.ed(c.fmt(sk.ring.年限), [...rp, '年限'], { kind: 'number', integer: true, min: 0, raw: c.num(sk.ring.年限) })], ['map-pin', '来源', c.ed(c.blank(sk.ring.来源) ? '未记录' : sk.ring.来源, [...rp, '来源'], { raw: c.blank(sk.ring.来源) ? '' : sk.ring.来源 })]];
         // 典籍主屏用数据块；浮窗里仍是紧凑的键值行
         return `<section class="sec"><h3>魂环</h3>${page ? `<div class="tiles three">${rows.map(([i, l, v]) => `<div class="tile">${c.sock(i)}<b>${v}</b><small>${l}</small></div>`).join('')}</div>` : c.kv(rows.map(([, l, v]) => [l, v]))}</section>`; })(c.P(...sk.key.split('/').slice(0, sk.group === '独立魂环魂技' ? 2 : 3))) : ''}
@@ -52537,13 +52564,12 @@ ${播报文本}
     return lines.join('\n');
   };
   const sideWhy = (c, r) => {
-    if (!Number(r.副作用原始COST)) return '没有副作用，不扣减';
-    const rows = r.副作用明细 || [];
-    const lines = [`副作用 −${c.fmt(r.副作用COST)}${Number(r.副作用原始COST) !== Number(r.副作用COST) ? `（原始 ${c.fmt(r.副作用原始COST)}，最多扣到效果 COST 用完为止）` : ''}`];
-    for (const x of rows) {
+    const raw = Number(r.副作用原始COST) || 0;
+    const lines = [raw ? `副作用 −${c.fmt(r.副作用COST)}${raw !== Number(r.副作用COST) ? `（原始 ${c.fmt(raw)}，最多扣到效果 COST 用完为止）` : ''}` : '本次副作用抵扣为 0'];
+    for (const x of r.副作用明细 || []) {
       if (!x || typeof x !== 'object') continue;
       const name = x.副作用类型 || x.名称 || x.副作用状态 || '副作用', v = x.COST ?? x.原始COST ?? x.折算COST;
-      lines.push(`· ${name}${x.副作用状态 && x.副作用状态 !== name ? `（${x.副作用状态}）` : ''}${v != null ? `：${n2(v)}` : ''}`);
+      lines.push(`· ${x.来源 ? `${x.来源} · ` : ''}${name}${x.副作用状态 && x.副作用状态 !== name ? `（${x.副作用状态}）` : ''}${v != null ? `：${n2(v)}` : ''}`);
     }
     return lines.join('\n');
   };

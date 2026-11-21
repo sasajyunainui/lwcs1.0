@@ -1243,12 +1243,14 @@
   // —— B:18407-18416
   function buildSkillDesignerSideEffectSummary(draft = {}) {
     const 施展列表 = 规范化技能设计台副作用列表(draft && draft.副作用列表);
+    const 使用列表 = 是造物(draft) ? 规范化技能设计台副作用列表(draft.使用副作用列表) : [];
     const 格式化 = list => list
       .map(格式化技能设计台副作用摘要)
       .filter(Boolean)
       .join('；');
     const 片段 = [];
     if (施展列表.length) 片段.push(`施展副作用：${格式化(施展列表)}`);
+    if (使用列表.length) 片段.push(`使用副作用：${格式化(使用列表)}`);
     return 片段.join('；');
   }
   // —— B:18418-18465
@@ -1329,8 +1331,7 @@
   // —— B:18493-18497
   function 格式化技能设计台概率百分比(value = 1) {
     const 数值 = Math.max(0, Math.min(1, Number(value ?? 1)));
-    const 百分比 = 数值 * 100;
-    return `${Math.abs(百分比 % 1) < 0.0001 ? 百分比.toFixed(0) : 百分比.toFixed(1)}%`;
+    return `${Number((数值 * 100).toFixed(2))}%`;
   }
   // —— B:18499-18525
   function 格式化技能设计台副作用摘要(条目 = {}) {
@@ -11062,6 +11063,7 @@
         ? 描述原型效果行列表(designerDraft.prototypeEffects, designerDraft.target, false, { 固定首个独立生效: true }, { name: 'main' })
         : [],
       sideEffects: 描述副作用行列表(designerDraft['副作用列表'], { 字段名: '副作用列表' }),
+      useSideEffects: 描述副作用行列表(designerDraft['使用副作用列表'], { 字段名: '使用副作用列表' }),
       isConstruct: !!上下文.是造物承载,
       isFusion: !!上下文.isFusionDesigner,
     };
@@ -11193,7 +11195,7 @@
       fusionSourceSpirits: derivedFusionFields.fusionSourceSpirits,
       fusionParticipants: derivedFusionFields.fusionParticipants,
       副作用列表: 读取副作用行列表(vf.sideEffects),
-      使用副作用列表: 读取副作用行列表([]),
+      使用副作用列表: 读取副作用行列表(vf.useSideEffects),
       技能掌控度: levelControl,
       技能掌控度中心等级: 启用技能掌控度 ? readField('技能掌控度中心等级') : '',
       技能掌控度圆满等级: 启用技能掌控度 ? readField('技能掌控度圆满等级') : '',
@@ -11321,6 +11323,7 @@
     { id: 'construct', title: () => '实体凝结参数', hintKey: '', visible: form => 是造物(form) },
     // 模板标题「核心术式阵列 / 使用效果阵列」；挂载后 syncDeliverySections 把文本改成「原型设计 / 使用效果」，说明改走 title 属性
     { id: 'prototypes', title: form => (是造物(form) ? '使用效果' : '原型设计'), templateTitle: form => (是造物(form) ? '使用效果阵列' : '核心术式阵列'), hintKey: form => (是造物(form) ? '使用效果阵列' : '核心术式阵列'), marker: '[data-skill-designer-prototype-title]', visible: () => true },
+    { id: 'useSideEffects', title: () => '使用副作用', hintKey: '', visible: 是造物 },
     { id: 'sideEffects', title: form => (是造物(form) ? '施展副作用' : '副作用'), hintKey: '', marker: '[data-skill-designer-side-effect-title]', visible: () => true },
     { id: 'energy', title: () => '运转能量配置', hintKey: '运转能量配置', visible: () => true },
     { id: 'mastery', title: () => '技能掌控度', hintKey: '技能掌控度', visible: () => true },
@@ -11681,22 +11684,27 @@
       if (['类型', '比较'].includes(动作.key)) 同步条件行(条件, 条目);
       return;
     }
-    if (类型 === 'addSideEffect') {
-      const 当前 = 同步草稿(vf, previewMeta, snapshot);
-      const 下一列表 = [...规范化技能设计台副作用列表(当前['副作用列表']), 创建技能设计台默认副作用条目('自损反噬', { 生效对象: 读取技能设计台默认副作用对象(当前, '施展') })];
-      vf.sideEffects = 描述副作用行列表(下一列表, { 字段名: '副作用列表' });
-      vf.__post = { refresh: { ...当前, 副作用列表: 下一列表 } };
-      return;
-    }
-    if (类型 === 'removeSideEffect') {
-      vf.sideEffects.splice(动作.index, 1);
-      const 下一草稿 = 同步草稿(vf, previewMeta, snapshot);
-      vf.sideEffects = 描述副作用行列表(下一草稿['副作用列表'], { 字段名: '副作用列表' });
-      vf.__post = { refresh: 下一草稿 };
-      return;
-    }
-    if (类型 === 'sideEffectField') {
-      const 行 = vf.sideEffects[动作.index];
+    if (['addSideEffect', 'removeSideEffect', 'sideEffectField'].includes(类型)) {
+      const 是使用副作用 = 动作.scope === '使用副作用列表';
+      const 字段名 = 是使用副作用 ? '使用副作用列表' : '副作用列表';
+      const 列表键 = 是使用副作用 ? 'useSideEffects' : 'sideEffects';
+      const 行列表 = vf[列表键];
+      if (类型 === 'addSideEffect') {
+        const 当前 = 同步草稿(vf, previewMeta, snapshot);
+        const 生效对象 = 读取技能设计台默认副作用对象(当前, 是使用副作用 ? '使用' : '施展');
+        const 下一列表 = [...当前[字段名], 创建技能设计台默认副作用条目('自损反噬', { 生效对象 })];
+        vf[列表键] = 描述副作用行列表(下一列表, { 字段名 });
+        vf.__post = { refresh: { ...当前, [字段名]: 下一列表 } };
+        return;
+      }
+      if (类型 === 'removeSideEffect') {
+        行列表.splice(动作.index, 1);
+        const 下一草稿 = 同步草稿(vf, previewMeta, snapshot);
+        vf[列表键] = 描述副作用行列表(下一草稿[字段名], { 字段名 });
+        vf.__post = { refresh: 下一草稿 };
+        return;
+      }
+      const 行 = 行列表[动作.index];
       if (!行) throw new Error('副作用行不存在');
       const 控件 = 行.fields.find(c => c.key === 动作.key);
       if (!控件) throw new Error(`副作用没有字段：${动作.key}`);
@@ -11706,11 +11714,13 @@
         const 当前 = {};
         行.fields.forEach(c => { 当前[c.key] = normalizeSkillUiText(c.value, ''); });
         const 下一 = 规范化技能设计台副作用条目(当前, () => {}) || 创建技能设计台默认副作用条目();
-        vf.sideEffects[动作.index] = 描述副作用行(下一, 行.scope);
+        行列表[动作.index] = 描述副作用行(下一, 行.scope);
       } else {
         const 时机 = normalizeSkillUiText((行.fields.find(c => c.key === '触发时机') || {}).value, '效果生效后');
         const 关联 = 行.fields.find(c => c.key === '关联状态');
         if (关联) 关联.hidden = 时机 !== '效果结束后';
+        const [当前] = 读取副作用行列表([行]);
+        行.summary = 当前 && 当前.副作用类型 !== '致死献祭' ? 格式化技能设计台副作用摘要(当前) : '';
       }
       return;
     }
@@ -11917,6 +11927,7 @@
     const 分区 = 设计台分区列表(当前草稿, previewMeta, 上下文.标题提示表);
     const 字段 = 顶层字段描述(vf, 当前草稿, previewMeta);
     const scopeLabels = getSkillDesignerScopeLabels(previewMeta);
+    const 导出副作用行 = (行, index) => ({ index, scope: 行.scope, summary: 行.summary, fields: 行.fields.map(c => 导出控件(c, [])) });
     return {
       titles: scopeLabels,
       title: `${scopeLabels.studioTitle} / ${获取技能设计台当前标题(snapshot.rootData, previewMeta, deepGet(snapshot.rootData, previewMeta.path, {}) || {}) || 当前草稿.name || previewMeta.label || '未命名'}`,
@@ -11924,7 +11935,8 @@
       sections: 分区.map(区 => ({ ...区, fields: 字段[区.id] || [] })),
       rows: vf.rows.map((行, i) => 导出行(行, [i])),
       emptyGuide: vf.rows.length ? null : { icon: '✦', title: '术式阵列未装配', desc: '请点击下方按钮，为该技能添加基础机制（如：伤害、判定修正、状态授予等）。您可以组合多个原型来构建复杂技能。' },
-      sideEffects: vf.sideEffects.map((行, i) => ({ index: i, scope: 行.scope, summary: 行.summary, fields: 行.fields.map(c => 导出控件(c, [])) })),
+      sideEffects: vf.sideEffects.map(导出副作用行),
+      useSideEffects: vf.useSideEffects.map(导出副作用行),
       draft: 当前草稿,
       preview: {
         fusion: previewMeta.scope === '武魂融合技' ? buildSkillDesignerFusionSummary(当前草稿) || '未设置' : '',

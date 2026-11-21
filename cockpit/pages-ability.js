@@ -150,15 +150,28 @@
     const act = b.处理 === '替换效果' ? `改为 ${list(b.替换效果)}` : b.处理 === '追加效果' ? `追加 ${list(b.追加效果)}` : b.处理 === '禁用' ? '不生效' : '才生效';
     return `<div class="fx-if"><i class="fa-solid fa-code-branch"></i><span>若${cond}：${act}</span></div>`;
   };
+  const sideEffectRow = (c, list, label) => {
+    if (!Array.isArray(list) || !list.length) return '';
+    const summary = c.rt('__LWCS_COMPILE_SKILL_STRUCTURE_TEXT__')?.({ 副作用列表: list }, { asObject: true })?.副作用;
+    return summary ? `<div class="fx-if"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i><span><strong>${label}</strong> · ${c.esc(summary)}</span></div>` : '';
+  };
   // 悬停和点击都给完整魂技卡（悬停卡可移入、可滚动；点击钉住后可编辑）
   const skillDetail = (c, sk, page = false) => {
     const cond = sk.使用条件 || {}, lim = sk.触发限制, mast = sk.技能掌控度;
     // _效果数组 两种形态：造物承载是「包」列表（数量 / 有效期 / 使用效果），其余承载直接是效果列表——后者包成一个包
-    const list = Array.isArray(sk._效果数组) ? sk._效果数组.filter(Boolean) : [], pkgs = list.some(p => Array.isArray(p.使用效果)) ? list : list.length ? [{ 使用效果: list }] : [];
+    const list = Array.isArray(sk._效果数组) ? sk._效果数组.filter(Boolean) : [];
+    const hasPackages = list.some(p => Array.isArray(p.使用效果));
+    const pkgs = hasPackages ? list : list.length ? [{ 使用效果: list }] : [];
+    const castSideEffects = sideEffectRow(c, sk.副作用列表, hasPackages || sk.承载方式 === '造物承载' ? '施展副作用' : '副作用');
     const sp = spCost(c, sk), pool = c.num(c.st.魂力), casts = sp ? Math.floor(pool / sp) : 0;
     return `<div class="insp-head">${sk.ring ? c.ringMedal(sk.ring, String(sk.ring.slot || '').replace(/\D/g, '')) : c.sock('book', 'gd')}<div><strong style="font-size:1.15em">${c.esc(sk.魂技名)}</strong><br><small>${c.esc(sk.group)} · ${c.esc(sk.from)}</small></div>${page ? '' : '<button class="x" type="button" data-close-inspector aria-label="关闭">×</button>'}</div>
       <div style="display:flex;gap:.35em;flex-wrap:wrap">${sk.ring ? `<span class="chip">${c.yearTier(sk.ring.年限)} · ${c.fmt(sk.ring.年限)} 年</span>` : ''}${!c.blank(sk.承载方式) ? `<span class="chip s">${c.esc(sk.承载方式)}</span>` : ''}${sk.触发方式 ? `<span class="chip s">触发：${c.esc(sk.触发方式)}</span>` : ''}${(sk.附带属性 || []).map(a => `<span class="chip s">${c.esc(a)}</span>`).join('')}</div>
-      ${pkgs.length ? `<section class="sec"><h3>效果</h3>${pkgs.map(p => `${(p.使用效果 || []).map(e => fxRow(c, e) + (e.条件分支 || []).map(b => branchRow(c, b)).join('')).join('')}${p.有效期tick || p.数量 ? `<small style="padding-left:.2em">产出 ${c.fmt(p.数量 || 1)} 份${p.有效期tick ? ` · 有效期 ${Math.floor(p.有效期tick / 6)} 小时` : ''}</small>` : ''}`).join('')}</section>` : ''}
+      ${pkgs.length || castSideEffects ? `<section class="sec"><h3>效果</h3>${pkgs.map(p => {
+        const effects = (p.使用效果 || []).map(e => fxRow(c, e) + (e.条件分支 || []).map(b => branchRow(c, b)).join('')).join('');
+        const uses = sideEffectRow(c, p.副作用列表, '使用副作用');
+        const output = p.有效期tick || p.数量 ? `<small style="padding-left:.2em">产出 ${c.fmt(p.数量 || 1)} 份${p.有效期tick ? ` · 有效期 ${Math.floor(p.有效期tick / 6)} 小时` : ''}</small>` : '';
+        return effects + uses + output;
+      }).join('')}${castSideEffects}</section>` : ''}
       ${sk.ring && (sk.group === '魂环魂技' || sk.group === '独立魂环魂技') ? (rp => { const rows = [['palette', '颜色', c.ed(sk.ring.颜色 || '无', [...rp, '颜色'], { kind: 'enum', options: ['白', '黄', '紫', '黑', '红', '金', '无'] })], ['hourglass-half', '年限', c.ed(c.fmt(sk.ring.年限), [...rp, '年限'], { kind: 'number', integer: true, min: 0, raw: c.num(sk.ring.年限) })], ['map-pin', '来源', c.ed(c.blank(sk.ring.来源) ? '未记录' : sk.ring.来源, [...rp, '来源'], { raw: c.blank(sk.ring.来源) ? '' : sk.ring.来源 })]];
         // 典籍主屏用数据块；浮窗里仍是紧凑的键值行
         return `<section class="sec"><h3>魂环</h3>${page ? `<div class="tiles three">${rows.map(([i, l, v]) => `<div class="tile">${c.sock(i)}<b>${v}</b><small>${l}</small></div>`).join('')}</div>` : c.kv(rows.map(([, l, v]) => [l, v]))}</section>`; })(c.P(...sk.key.split('/').slice(0, sk.group === '独立魂环魂技' ? 2 : 3))) : ''}
@@ -388,13 +401,12 @@
     return lines.join('\n');
   };
   const sideWhy = (c, r) => {
-    if (!Number(r.副作用原始COST)) return '没有副作用，不扣减';
-    const rows = r.副作用明细 || [];
-    const lines = [`副作用 −${c.fmt(r.副作用COST)}${Number(r.副作用原始COST) !== Number(r.副作用COST) ? `（原始 ${c.fmt(r.副作用原始COST)}，最多扣到效果 COST 用完为止）` : ''}`];
-    for (const x of rows) {
+    const raw = Number(r.副作用原始COST) || 0;
+    const lines = [raw ? `副作用 −${c.fmt(r.副作用COST)}${raw !== Number(r.副作用COST) ? `（原始 ${c.fmt(raw)}，最多扣到效果 COST 用完为止）` : ''}` : '本次副作用抵扣为 0'];
+    for (const x of r.副作用明细 || []) {
       if (!x || typeof x !== 'object') continue;
       const name = x.副作用类型 || x.名称 || x.副作用状态 || '副作用', v = x.COST ?? x.原始COST ?? x.折算COST;
-      lines.push(`· ${name}${x.副作用状态 && x.副作用状态 !== name ? `（${x.副作用状态}）` : ''}${v != null ? `：${n2(v)}` : ''}`);
+      lines.push(`· ${x.来源 ? `${x.来源} · ` : ''}${name}${x.副作用状态 && x.副作用状态 !== name ? `（${x.副作用状态}）` : ''}${v != null ? `：${n2(v)}` : ''}`);
     }
     return lines.join('\n');
   };
