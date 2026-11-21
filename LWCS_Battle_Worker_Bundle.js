@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:ea1dd8bdbe85fa606c23d555396ca34afc02043e6d7b11ba92cc7aaa07409455|MVU_Schema_Runtime.js:abf261be1affb92bc57cebd52c6d3665f5720a3d96929f5814617266fb48986f|BattlePreview_Module.js:6c11f3647a5235ac96013f5b06ea4e6d553aa811de95daf2571f2acfa26e99f9|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:9cc7a21ef4faaf072812402022ba3ef1630f395a59be3e8b9b73c0ca09407359|BattleRuntime_Module.js:42a75d479f8061beeedad61da02b8975bcbd6a5481cc5046c7a11c38dbb20df5 */
+/* sources-sha256: MVU_Skill_Runtime.js:ea1dd8bdbe85fa606c23d555396ca34afc02043e6d7b11ba92cc7aaa07409455|MVU_Schema_Runtime.js:abf261be1affb92bc57cebd52c6d3665f5720a3d96929f5814617266fb48986f|BattlePreview_Module.js:6c11f3647a5235ac96013f5b06ea4e6d553aa811de95daf2571f2acfa26e99f9|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:8fdef395a8beef717ce4a880b801fd49ff09b81acd2c40014c777ddc3fae1275|BattleRuntime_Module.js:42a75d479f8061beeedad61da02b8975bcbd6a5481cc5046c7a11c38dbb20df5 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -113964,6 +113964,24 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // 而己方按自己的魂技全力算——口径不对称，决策者偏乐观（3v3 推演「五五开」时实际约 15%：σ(−1.74 + 1.52·分差)）。
   // 格子用对手的全力视图算，候选重建同样套用；表里的单位本身不变（比对是否改动、读状态都照旧）；试探折扣只留给推演以外的
   // 即时判断（生死线、承压）。
+  // 性能（11-21）：同一次决策里，不同候选重建出内容完全相同的单位（同一招打不同目标时出手者自己的下一刻等，3v3 实测约三成）。
+  // 按内容指纹（contentFingerprint，含不可枚举属性；决策内有记忆）加 overlay 原单位的身份认出来，换成第一次出现的那个对象，
+  // 按对象的缓存就能命中；内容相同，算出的格子也相同。late（窗口视图）与当下分开记。
+  const r20CanonicalUnits = new WeakMap(), r20OriginIds = new WeakMap();
+  let r20OriginSequence = 0;
+  function r20CanonicalUnit(table, unit, late) {
+    if (!unit || typeof unit !== 'object' || typeof preview.contentFingerprint !== 'function') return unit;
+    let byKey = r20CanonicalUnits.get(table);
+    if (!byKey) r20CanonicalUnits.set(table, byKey = new Map());
+    const origin = preview.overlayOriginUnit ? preview.overlayOriginUnit(unit) : null;
+    let originId = 0;
+    if (origin) { originId = r20OriginIds.get(origin); if (!originId) r20OriginIds.set(origin, originId = ++r20OriginSequence); }
+    const key = (late ? 'L' : 'N') + originId + ':' + preview.contentFingerprint(unit);
+    const seen = byKey.get(key);
+    if (seen) { r20Work.canonicalHits = (r20Work.canonicalHits || 0) + 1; return seen; }
+    byKey.set(key, unit);
+    return unit;
+  }
   const r20FullStrength = unit => (Number(unit?.__routine_full_ratio) > Number(unit?.routine_attack_ratio) + 1e-9
     ? { ...unit, routine_attack_ratio: unit.__routine_full_ratio } : unit);
   function r20Facts(request) {
@@ -114573,6 +114591,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 魂力 lifted at the next round end and its +111% read as lasting the race).
     const rebuildCells = (base, baseUnits, entries, late = false) => {
       const context = late ? null : r9v2LinearCapacityProjectionContext(after, table.contexts);
+      entries = entries.map(entry => [entry[0], r20CanonicalUnit(table, entry[1], late), ...entry.slice(2)]);
       const units = baseUnits.slice();
       const out = base.out.map(row => row.slice()), support = base.support.map(row => row.slice()), stop = base.stop.map(row => row.slice()), keep = base.keep.map(row => row.slice());
       const control = base.control.map(row => row.slice());
@@ -114611,6 +114630,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       r20Work.ownCellRebuilds += rebuilt.filter(entry => entry[2]).length;
       ({ units: unitsNow, out, support, stop, control, keep, keepBack, answer, answerOpen, back, acts, turn } = rebuildCells(table, table.cellUnits || table.units,
         rebuilt.map(([row, next, ownCellsOnly]) => [row, r20FullStrength(next), ownCellsOnly])));
+      // Development hook (absent in play; nothing is computed without it): the cells a candidate's rebuilt rows came to,
+      // beside the table's (对子格子变化量测量，11-21).
+      root.__LWCS_DECISION_DEBUG__?.onRebuiltCells?.({ request, candidate, table, rows: rebuilt.map(([row]) => row), cells: { out, keep, keepBack, answer, answerOpen, back, support } });
       // A row rebuilt to the very cells it had (its stamina band moved by a hit, nothing it can do changed) is no change:
       // the race keeps the table's cells for it, late ones too (11-14: a basic attack that left both units as they were
       // but for the HP it took put the target on cells rebuilt from another starting world for the whole race, and a
