@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:78a0c30e86f738904688ad41ab5651b61e801f96aca5286f35ceacf2abc1531d|cockpit/designer-model.js:cfd30db8a8ca67e544a32c52788feaaa864725e4385577ba70616d16bd767aee|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:121696c1481708bb05eaebf52d3f96efbeeac57ce6bc43311b2512fc2bda9596|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:950c9d7aebe40a5083497bbfe1dfad91ebb7933e9127cb5a696598622233f47d|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:a21df642cb0d7bbff8768383501dcfbec6c99956bd3390d905e19e1ecbf9ddcc|BattleRuntime_Module.js:42a75d479f8061beeedad61da02b8975bcbd6a5481cc5046c7a11c38dbb20df5|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:908fe9d513f83c52cd60f0bed9a1602231928ed164dd51f72b68dbcc9585a22c|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:70d5d96705702677d31ca88d9edc31d78044d35fc3699ed04388910417bafbb5|mvu_logic_bridge.js:78a0c30e86f738904688ad41ab5651b61e801f96aca5286f35ceacf2abc1531d|cockpit/designer-model.js:cfd30db8a8ca67e544a32c52788feaaa864725e4385577ba70616d16bd767aee|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:019feb345ff3e5b4246362a1b2072944a43ee6d3c2249e3815520a08abc2820b|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:9f4b624ed662079fd63f5e84ec425ef53d4431f4f57a89537e201e1962b8ece2|cockpit/pages-ability.js:c39255c26303433b455cc063b0689f7b426c42dffbe96b9dea18bd7d0b969530|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:b71004ef909b43f4878a9d4803d491e8fbbd69c3a35c11c6f2ecf8123fd6301e|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:121696c1481708bb05eaebf52d3f96efbeeac57ce6bc43311b2512fc2bda9596|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:20f11b016b6007cb8a0af955e4f7e473c77a99450e8183b5284c524d88a865ea|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:e054ae6be35baeaca1f47b698e4f0dbf78fa7b0ec193393e004fbe71902366bb|BattleRuntime_Module.js:42a75d479f8061beeedad61da02b8975bcbd6a5481cc5046c7a11c38dbb20df5|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:908fe9d513f83c52cd60f0bed9a1602231928ed164dd51f72b68dbcc9585a22c|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -72556,7 +72556,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         Math.max(0, Number(state?.duration ?? state?.持续回合 ?? 1)) > 0 &&
         (String(state?.原型 || '').trim() === '结算修正' || Number(state?.战斗效果?.cost_delta_ratio || 0) > 0 ||
           Number(state?.战斗效果?.cast_backlash_ratio || 0) > 0) &&
-        skillMatchesLimitedElements(skill, state?.限定元素)
+        skillMatchesLimitedElements(skill, state?.限定元素) &&
+        // 限定攻击类型（11-21 补库：霸虎炼魂刀 霸刀斩「只对近身攻击」，原先技能效果与消耗的结算修正不看它，对所有技能生效）：技能里有一条效果是这种攻击才算。
+        (!limitedAttackTypes(state?.限定攻击类型).length ||
+          collectEffects(skill).some(effect => limitedEntryMatches(effect, { 限定攻击类型: state?.限定攻击类型 })))
       );
     // 反噬 (deriveStateCombatEffect cast_backlash_ratio): a skill its holder releases takes that share of the holder's HP
     // maximum, an effect on the caster added after the skill's own; states from different sources add up.
@@ -87142,6 +87145,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     withStrengthKnockback,
     concedeHoldsBack,
     pullBackChoice,
+    validateEffect,
     retargetChoice,
     MENTAL_NATURAL_CEILING,
     refereeCatchesConcede,
@@ -139990,14 +139994,23 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const frozenById = new Map(
       request.frozenCandidates.map(candidate => [candidate.candidateId, candidate]),
     );
-    const lockedChoice = request?.playerLockedDeclaration
-      ? selectPlayerLockedCandidate(
-          request.frozenCandidates,
-          request.playerLockedDeclaration,
-          request.visibleWorld,
-          request?.rejectedCandidates || [],
-        )
-      : null;
+    const lockFallback = root.__LWCS_DECISION_DEBUG__?.lockFallback === true;
+    let lockedChoice = null;
+    if (request?.playerLockedDeclaration) {
+      try {
+        lockedChoice = selectPlayerLockedCandidate(request.frozenCandidates, request.playerLockedDeclaration, request.visibleWorld, request?.rejectedCandidates || []);
+      } catch (error) {
+        if (!lockFallback || !/mechanically_illegal/.test(String(error?.message || ''))) throw error;
+        if (typeof root.__LWCS_DECISION_DEBUG__.onLockRefused === 'function') root.__LWCS_DECISION_DEBUG__.onLockRefused({ request, candidateId: '' });
+      }
+    }
+    // Development hook (absent in play): __LWCS_DECISION_DEBUG__.lockFallback — a test harness locking a candidate the hard rules
+    // exclude gets the provider's own choice and onLockRefused, instead of the battle stopping (原作复现工具：枚举里有、排序时被硬规则排除的那一手).
+    if (lockedChoice && lockFallback &&
+      !ranked.some(row => row.candidateId === String(lockedChoice?.selected?.candidateId || '').trim())) {
+      if (typeof root.__LWCS_DECISION_DEBUG__.onLockRefused === 'function') root.__LWCS_DECISION_DEBUG__.onLockRefused({ request, candidateId: lockedChoice?.selected?.candidateId });
+      lockedChoice = null;
+    }
     const selectedId = String(lockedChoice?.selected?.candidateId || providerSelectedId).trim();
     const auditRow = (candidateId, index) => {
       const declaration = frozenById.get(candidateId)?.declaration || {};
@@ -140444,8 +140457,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     );
     if (!selectedCandidate) throw new Error('PROVIDER_UNKNOWN_CANDIDATE');
     const selectedDeclaration = decision?.selected?.declaration || Object.freeze({});
+    // 测试工具的锁定退路（lockFallback）下，被拒的锁定已改由 AI 选，不算覆盖。
     if (
-      request?.playerLockedDeclaration &&
+      request?.playerLockedDeclaration && root.__LWCS_DECISION_DEBUG__?.lockFallback !== true &&
       (
         !matchesPlayerLockedDeclaration(
           selectedCandidate,
