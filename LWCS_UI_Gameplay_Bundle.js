@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:121696c1481708bb05eaebf52d3f96efbeeac57ce6bc43311b2512fc2bda9596|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:6c11f3647a5235ac96013f5b06ea4e6d553aa811de95daf2571f2acfa26e99f9|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:8fdef395a8beef717ce4a880b801fd49ff09b81acd2c40014c777ddc3fae1275|BattleRuntime_Module.js:42a75d479f8061beeedad61da02b8975bcbd6a5481cc5046c7a11c38dbb20df5|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:908fe9d513f83c52cd60f0bed9a1602231928ed164dd51f72b68dbcc9585a22c */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:121696c1481708bb05eaebf52d3f96efbeeac57ce6bc43311b2512fc2bda9596|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:6c11f3647a5235ac96013f5b06ea4e6d553aa811de95daf2571f2acfa26e99f9|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:75416010c0d5548be97cf6b5eb5f0ef3421068ab549fddcaf9e836871220732d|BattleRuntime_Module.js:42a75d479f8061beeedad61da02b8975bcbd6a5481cc5046c7a11c38dbb20df5|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:908fe9d513f83c52cd60f0bed9a1602231928ed164dd51f72b68dbcc9585a22c */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -82730,6 +82730,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // 性能（11-21）：同一次决策里，不同候选重建出内容完全相同的单位（同一招打不同目标时出手者自己的下一刻等，3v3 实测约三成）。
   // 按内容指纹（contentFingerprint，含不可枚举属性；决策内有记忆）加 overlay 原单位的身份认出来，换成第一次出现的那个对象，
   // 按对象的缓存就能命中；内容相同，算出的格子也相同。late（窗口视图）与当下分开记。
+  // 第 7 项开关（对照用）：LWCS_TUNE.SAME_SIDE_REUSE = false 时同边对子照旧全部重算。
+  const R20_SAME_SIDE_REUSE_ON = root.__LWCS_TUNE__?.SAME_SIDE_REUSE !== false;
   const r20CanonicalUnits = new WeakMap(), r20OriginIds = new WeakMap();
   let r20OriginSequence = 0;
   function r20CanonicalUnit(table, unit, late) {
@@ -83363,10 +83365,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const acts = base.acts.slice(), turn = base.turn.slice();
       const cells = { out, back, keep, keepBack, answer, answerOpen };
       for (const [row, next] of entries) { units[row] = next; acts[row] = true; turn[row] = r20Turn(next); }
+      const actorRow = table.index.get(String(candidate?.declaration?.actorId ?? request?.actorId ?? ''));
       for (const [row, next, ownCellsOnly] of entries) {
         const bound = r20Bound(after, next);
         for (let other = 0; other < count; other += 1) {
           if (table.sides[row] === table.sides[other]) {
+            // 同边对子沿用原表（11-21 实测：目标、旁人之间的支援格子 0.3%～1.3% 有变化，幅度为原值的万分之几）；牵涉出手者的照算
+            // （治疗系花了魂力、给队友加了血，支援格子会变）。原表里不能行动的行照算。
+            if (R20_SAME_SIDE_REUSE_ON && row !== actorRow && other !== actorRow && other !== row && table.acts[row] && base.acts?.[other] !== false) continue;
             support[row][other] = acts[row] ? r20Cell(next, units[other], true, other === row, context, after, null) : 0;
             if (other !== row && !ownCellsOnly) support[other][row] = acts[other] ? r20Cell(units[other], next, true, false, context, after, null) : 0;
             continue;
