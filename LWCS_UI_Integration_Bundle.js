@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:514dbb9abc404c2f5afaca0a99812e80b7e0d9c97a91eb8e1d743ea6694489ab|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:ac03ca85786c26b54d3ee3c4088a92a92e7b09754abca129f50be3bc1267ad5e */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:514dbb9abc404c2f5afaca0a99812e80b7e0d9c97a91eb8e1d743ea6694489ab|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:a14424537ca86e3bee741831cc77461f69b1132cbafe7374530184e7bbfdae33 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -54673,6 +54673,10 @@ ${播报文本}
   // 战斗代理模式存在原项目（BattleUIBridge，存储键 lwcs_battle_submit_mode），座舱只做中文显示映射
   const BATTLE_MODE = { 自动: 'auto', 手动: 'manual', 自由: 'free_narrative' };
   const battleBridge = () => window.COCKPIT.rt('BattleUIBridge');
+  const plotSync = { busy: false, text: '', short: '' };
+  // 一键更新推进资源：与设置项同款整块面板，结果写在面板底部
+  const plotSyncTile = c => `<section class="set-tile"><header>${c.sock('cloud-arrow-down', 'gd')}<div><small${plotSync.text ? ` class="plot-sync" data-hint="${c.esc(plotSync.text)}"` : ''}>资源${plotSync.short ? ` · ${c.esc(plotSync.short)}` : ''}</small><strong>推进预设与终端${c.hint('从仓库拉取最新的剧情推进预设（导入数据库插件，当前聊天没绑别的推进预设就绑上）和推进终端正则（替换酒馆里已有的那条，启用状态与位置不变）。下一次推进起生效。')}</strong></div></header>
+      <div class="opts set-opts" style="--n:1"><button class="opt${plotSync.busy ? ' on' : ''}" type="button" data-plot-sync${plotSync.busy ? ' disabled' : ''}><i class="fa-solid fa-${plotSync.busy ? 'spinner fa-spin' : 'cloud-arrow-down'}"></i><span>${plotSync.busy ? '更新中…' : '一键更新'}</span></button></div></section>`;
   const settings = c => {
     const v = readSet();
     { const m = battleBridge()?.getBattleSubmitMode?.(); const zh = Object.keys(BATTLE_MODE).find(k => BATTLE_MODE[k] === m); if (zh) v.battle = zh; }
@@ -54683,13 +54687,27 @@ ${播报文本}
       tag: 'CORE · SYSTEM', wide: 'both',
       core: `<div class="pad">
         ${c.head('sliders', '设置', 'Settings', 'gd', c.hint('设置保存在本机，只影响这台设备。'))}
-        <div class="set-tiles">${SET_GROUPS.flatMap(([g, , rows]) => rows.map(r => tile(g, r))).join('')}</div>
+        <div class="set-tiles">${SET_GROUPS.flatMap(([g, , rows]) => rows.map(r => tile(g, r))).join('')}${plotSyncTile(c)}</div>
       </div>`,
       railL: `<div class="rail">${c.sock('sliders', 'gd')}<small>设置</small></div>`,
       // 运行环境：原型按本卡目标环境（TauriTavern）显示；移植时换成原项目 当前为TauriTavern环境_桥接()
       railR: `<div class="rail">${c.sock('circle-info')}<small>TauriTavern</small></div>`,
     };
   };
+  // 一键更新推进资源（ST_UI_Entry __LWCS_一键更新推进资源__）
+  document.addEventListener('click', async e => {
+    const b = e.target.closest('[data-plot-sync]'); if (!b || plotSync.busy) return;
+    const 更新 = (() => { for (const w of [window, window.parent, window.top]) { try { if (typeof w?.__LWCS_一键更新推进资源__ === 'function') return w.__LWCS_一键更新推进资源__; } catch (err) {} } return null; })();
+    if (!更新) { plotSync.text = '更新入口未就绪（重载一次酒馆再试）'; plotSync.short = '入口未就绪'; window.COCKPIT.refresh(); return; }
+    plotSync.busy = true; plotSync.text = ''; plotSync.short = ''; window.COCKPIT.refresh();
+    const r = await 更新().catch(err => ({ 预设错误: err?.message || String(err) }));
+    const 预设 = r.预设错误 ? `预设失败：${r.预设错误}` : r.预设?.skipped ? `预设已更新（当前聊天在用「${r.预设.presetName}」，未切换）` : '预设已更新';
+    const 正则 = r.正则错误 ? `终端失败：${r.正则错误}` : `终端已更新到 ${r.正则?.版本 || '最新'}${r.正则?.新建 ? '（新建到全局）' : ''}`;
+    plotSync.busy = false; plotSync.text = `${预设}；${正则}`;
+    plotSync.short = r.预设错误 || r.正则错误 ? '有失败' : `已更新 · ${(r.正则?.版本 || '').replace(/^剧情推进终端/, '终端 ') || '最新'}`;
+    try { (window.MVU_Toast || window.parent?.MVU_Toast)?.show?.(plotSync.text, r.预设错误 || r.正则错误 ? 'warning' : 'info'); } catch (err) {}
+    window.COCKPIT.refresh();
+  });
   document.addEventListener('click', e => {
     const b = e.target.closest('[data-setting]'); if (!b) return;
     const [k, val] = b.dataset.setting.split('='), v = readSet(); v[k] = val;

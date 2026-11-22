@@ -483,6 +483,10 @@
   // 战斗代理模式存在原项目（BattleUIBridge，存储键 lwcs_battle_submit_mode），座舱只做中文显示映射
   const BATTLE_MODE = { 自动: 'auto', 手动: 'manual', 自由: 'free_narrative' };
   const battleBridge = () => window.COCKPIT.rt('BattleUIBridge');
+  const plotSync = { busy: false, text: '', short: '' };
+  // 一键更新推进资源：与设置项同款整块面板，结果写在面板底部
+  const plotSyncTile = c => `<section class="set-tile"><header>${c.sock('cloud-arrow-down', 'gd')}<div><small${plotSync.text ? ` class="plot-sync" data-hint="${c.esc(plotSync.text)}"` : ''}>资源${plotSync.short ? ` · ${c.esc(plotSync.short)}` : ''}</small><strong>推进预设与终端${c.hint('从仓库拉取最新的剧情推进预设（导入数据库插件，当前聊天没绑别的推进预设就绑上）和推进终端正则（替换酒馆里已有的那条，启用状态与位置不变）。下一次推进起生效。')}</strong></div></header>
+      <div class="opts set-opts" style="--n:1"><button class="opt${plotSync.busy ? ' on' : ''}" type="button" data-plot-sync${plotSync.busy ? ' disabled' : ''}><i class="fa-solid fa-${plotSync.busy ? 'spinner fa-spin' : 'cloud-arrow-down'}"></i><span>${plotSync.busy ? '更新中…' : '一键更新'}</span></button></div></section>`;
   const settings = c => {
     const v = readSet();
     { const m = battleBridge()?.getBattleSubmitMode?.(); const zh = Object.keys(BATTLE_MODE).find(k => BATTLE_MODE[k] === m); if (zh) v.battle = zh; }
@@ -493,13 +497,27 @@
       tag: 'CORE · SYSTEM', wide: 'both',
       core: `<div class="pad">
         ${c.head('sliders', '设置', 'Settings', 'gd', c.hint('设置保存在本机，只影响这台设备。'))}
-        <div class="set-tiles">${SET_GROUPS.flatMap(([g, , rows]) => rows.map(r => tile(g, r))).join('')}</div>
+        <div class="set-tiles">${SET_GROUPS.flatMap(([g, , rows]) => rows.map(r => tile(g, r))).join('')}${plotSyncTile(c)}</div>
       </div>`,
       railL: `<div class="rail">${c.sock('sliders', 'gd')}<small>设置</small></div>`,
       // 运行环境：原型按本卡目标环境（TauriTavern）显示；移植时换成原项目 当前为TauriTavern环境_桥接()
       railR: `<div class="rail">${c.sock('circle-info')}<small>TauriTavern</small></div>`,
     };
   };
+  // 一键更新推进资源（ST_UI_Entry __LWCS_一键更新推进资源__）
+  document.addEventListener('click', async e => {
+    const b = e.target.closest('[data-plot-sync]'); if (!b || plotSync.busy) return;
+    const 更新 = (() => { for (const w of [window, window.parent, window.top]) { try { if (typeof w?.__LWCS_一键更新推进资源__ === 'function') return w.__LWCS_一键更新推进资源__; } catch (err) {} } return null; })();
+    if (!更新) { plotSync.text = '更新入口未就绪（重载一次酒馆再试）'; plotSync.short = '入口未就绪'; window.COCKPIT.refresh(); return; }
+    plotSync.busy = true; plotSync.text = ''; plotSync.short = ''; window.COCKPIT.refresh();
+    const r = await 更新().catch(err => ({ 预设错误: err?.message || String(err) }));
+    const 预设 = r.预设错误 ? `预设失败：${r.预设错误}` : r.预设?.skipped ? `预设已更新（当前聊天在用「${r.预设.presetName}」，未切换）` : '预设已更新';
+    const 正则 = r.正则错误 ? `终端失败：${r.正则错误}` : `终端已更新到 ${r.正则?.版本 || '最新'}${r.正则?.新建 ? '（新建到全局）' : ''}`;
+    plotSync.busy = false; plotSync.text = `${预设}；${正则}`;
+    plotSync.short = r.预设错误 || r.正则错误 ? '有失败' : `已更新 · ${(r.正则?.版本 || '').replace(/^剧情推进终端/, '终端 ') || '最新'}`;
+    try { (window.MVU_Toast || window.parent?.MVU_Toast)?.show?.(plotSync.text, r.预设错误 || r.正则错误 ? 'warning' : 'info'); } catch (err) {}
+    window.COCKPIT.refresh();
+  });
   document.addEventListener('click', e => {
     const b = e.target.closest('[data-setting]'); if (!b) return;
     const [k, val] = b.dataset.setting.split('='), v = readSet(); v[k] = val;

@@ -425,6 +425,53 @@
     if (window !== 宿主窗口) window.__LWCS_注入数据库剧情推进预设__ = 宿主窗口.__LWCS_注入数据库剧情推进预设__;
   } catch (错误) {}
 
+  // 推进终端正则更新：从仓库读最新的终端正则，替换酒馆里已有的「剧情推进终端」正则（全局 / 当前角色 / 当前预设三处都找），
+  // 只换名字（带版本号）与内容，启用状态和所在位置不动；哪里都没有就新建到全局
+  const 推进终端正则文件名 = 'regex-缝合怪東方花映塚剧情推进美化v1_0.json';
+  宿主窗口.__LWCS_更新推进终端正则__ = async function 更新推进终端正则() {
+    const 助手 = 宿主窗口.TavernHelper;
+    if (!助手 || typeof 助手.getTavernRegexes !== 'function' || typeof 助手.updateTavernRegexesWith !== 'function') throw new Error('酒馆助手正则接口未就绪');
+    const 源 = JSON.parse(await 读取文本资源(资源基础地址 + 推进终端正则文件名 + 资源版本后缀, 'LWCS 推进终端正则读取失败'));
+    if (!源 || !源.findRegex || typeof 源.replaceString !== 'string') throw new Error('推进终端正则文件不完整');
+    const 是终端 = 正则 => 正则 && (/^剧情推进终端/.test(String(正则.script_name || '')) || 正则.id === 源.id);
+    const 套用 = 正则 => ({ ...正则, script_name: 源.scriptName, find_regex: 源.findRegex, replace_string: 源.replaceString, trim_strings: Array.isArray(源.trimStrings) ? 源.trimStrings : [] });
+    let 更新数 = 0;
+    for (const 范围 of [{ type: 'global' }, { type: 'character', name: 'current' }, { type: 'preset', name: 'in_use' }]) {
+      let 列表 = [];
+      try { 列表 = 助手.getTavernRegexes(范围) || []; } catch (错误) { continue; }
+      const 命中数 = 列表.filter(是终端).length;
+      if (!命中数) continue;
+      await 助手.updateTavernRegexesWith(正则们 => 正则们.map(正则 => (是终端(正则) ? 套用(正则) : 正则)), 范围);
+      更新数 += 命中数;
+    }
+    if (!更新数) {
+      const 位置 = Array.isArray(源.placement) ? 源.placement.map(Number) : [2];
+      await 助手.updateTavernRegexesWith(正则们 => [...正则们, 套用({
+        id: 源.id,
+        enabled: 源.disabled !== true,
+        source: { user_input: 位置.includes(1), ai_output: 位置.includes(2), slash_command: 位置.includes(3), world_info: 位置.includes(5) },
+        destination: { display: 源.promptOnly !== true, prompt: 源.markdownOnly !== true },
+        run_on_edit: 源.runOnEdit === true,
+        min_depth: Number.isFinite(Number(源.minDepth)) && 源.minDepth !== null ? Number(源.minDepth) : null,
+        max_depth: Number.isFinite(Number(源.maxDepth)) && 源.maxDepth !== null ? Number(源.maxDepth) : null,
+      })], { type: 'global' });
+    }
+    return { success: true, 版本: 源.scriptName, 更新数, 新建: !更新数 };
+  };
+  // 一键更新推进资源：预设（覆盖导入数据库插件，当前聊天没绑别的推进预设就绑上）＋终端正则，两项各自报结果
+  宿主窗口.__LWCS_一键更新推进资源__ = async function 一键更新推进资源() {
+    const 结果 = {};
+    try { 结果.预设 = await 宿主窗口.__LWCS_注入数据库剧情推进预设__({ 来源: '一键更新' }); } catch (错误) { 结果.预设错误 = 错误 && 错误.message ? 错误.message : String(错误); }
+    try { 结果.正则 = await 宿主窗口.__LWCS_更新推进终端正则__(); } catch (错误) { 结果.正则错误 = 错误 && 错误.message ? 错误.message : String(错误); }
+    return 结果;
+  };
+  try {
+    if (window !== 宿主窗口) {
+      window.__LWCS_更新推进终端正则__ = 宿主窗口.__LWCS_更新推进终端正则__;
+      window.__LWCS_一键更新推进资源__ = 宿主窗口.__LWCS_一键更新推进资源__;
+    }
+  } catch (错误) {}
+
   function 记录阶段(阶段, 附加错误 = '') {
     加载状态.阶段 = 阶段;
     if (附加错误) {

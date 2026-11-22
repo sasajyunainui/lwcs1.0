@@ -751,3 +751,6 @@ div.rail-item{cursor:default}
 /* 选魂灵生成魂环：魂环台固定高度，内容多时屏内滚动（原先台子被压扁、底座压到数据块上） */
 .ring-pick>.soul-card{flex:none}
 .ring-pick .soul-stage{flex:0 0 auto;height:calc(var(--rsz) * 2.2);min-height:0}
+
+/* 设置页：一键更新推进资源 */
+.set-tile small.plot-sync{cursor:help}
