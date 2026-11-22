@@ -41158,10 +41158,12 @@
       const cells = (unit, other) => unit >= held || other >= held ? facts
         : changed && (changed[unit] || changed[other]) ? (time < until[unit] && time < until[other] ? lasting : lapsed(unit, other)) : settled(unit, other);
       const acting = unit => left[unit] > 1e-9 && !(denied && time < denied[unit]) && !(busy && time < busy[unit]);
-      // 持续守护（11-22）：第一回合照常护着；之后被保护者危险（照表里的压力，剩下的不到 R20_GUARD_DANGER_ROUNDS 回合）时掩护生效、守护者不出手，脱险了守护者照常打。
+      // 持续守护（11-22）：第一回合（守护这一手）全力掩护、不出手；之后被保护者危险（照表里的压力，剩下的不到 R20_GUARD_DANGER_ROUNDS 回合）时
+      // 守护者照常出手，但「出手可能会导致守护不到位」（用户 11-22）：打向被保护者的只有 R20_GUARD_HOLD_SHARE 由守护者挡下（partialWard），其余照样落在
+      // 被保护者身上；脱险了不再掩护。
       const endangered = row => { const net = (Number(pressureOf?.[row]) || 0) - (Number(mendOf?.[row]) || 0); return left[row] > 1e-9 && net > 1e-9 && left[row] / net < R20_GUARD_DANGER_ROUNDS; };
-      const guarding = unit => guardWard[unit] >= 0 && time >= 1 - 1e-9 && endangered(guardWard[unit]);
-      const striking = unit => acting(unit) && !(idle && time < idle[unit]) && !guarding(unit);
+      const partialWard = new Array(count).fill(-1);
+      const striking = unit => acting(unit) && !(idle && time < idle[unit]);
       // What a unit still does of its own actions (held by the enemies' controls, or spent keeping its own up).
       const free = unit => (1 - heldShare[unit]) * (1 - pace[unit]);
       // What of an attacker's hit a unit takes: its answer's share while it can answer; held (controlled — the hard control
@@ -41341,7 +41343,9 @@
       }
       // A hit on a unit under 护卫 lands on its guard while the guard stands, can act and the state lasts (r20Cover).
       const struck = row => { const by = cover?.[row];
-        return by && by.row >= 0 && time < by.until - 1e-9 && left[by.row] > 1e-9 && acting(by.row) && (!by.guard || time < 1 - 1e-9 || endangered(row)) ? by.row : row; };
+        if (!(by && by.row >= 0 && time < by.until - 1e-9 && left[by.row] > 1e-9 && acting(by.row) && (!by.guard || time < 1 - 1e-9 || endangered(row)))) return row;
+        if (by.guard && time >= 1 - 1e-9) partialWard[by.row] = row;
+        return by.row; };
       for (let unit = 0; unit < count; unit += 1) {
         if (!striking(unit)) continue;
         const foe = sideNames.find(side => side !== sides[unit]), ally = focus[sides[unit]].unit;
@@ -41386,7 +41390,16 @@
         if (!exchange) { if (help > 0) { mended[ally] += help; aimed[unit] = ally; landed[unit] = -help; } }
         else {
           const more = exchange.more * offMul[unit] * defMul[target], taken = exchange.taken * offMul[target] * defMul[unit];
-          dealt[target] += strike + more; hits[target] += 1;
+          const ward = partialWard[target];
+          if (ward >= 0 && ward !== target && sides[ward] === sides[target]) {
+            // 部分掩护（用户 11-22「守护者出手了，那出手时有其他人攻击被守护者，那守护者来不及反应」）：守护者出招占着的那段时间拦不了，
+            // 挡下的份额 = 1 − 它出招的前摇 ÷ 一次行动的时长（r20GuardHold，记在掩护上），其余落回被保护者（按出手者打两人的常规输出之比换算防御差别）。
+            const onGuard = cells(unit, target).out[unit][target], onWard = cells(unit, ward).out[unit][ward];
+            const hold = Number.isFinite(cover?.[ward]?.hold) ? cover[ward].hold : R20_GUARD_HOLD_SHARE;
+            dealt[target] += (strike + more) * hold;
+            dealt[ward] += (strike + more) * (1 - hold) * (onGuard > 1e-9 ? onWard / onGuard : 1); hits[ward] += 1;
+          } else dealt[target] += strike + more;
+          hits[target] += 1;
           aimed[unit] = target; landed[unit] = strike + more;
           // What it lands gives it HP back (伤害吸收), in its own HP maximum.
           if (drain && drain[unit] > 0) mended[unit] += landed[unit] * drain[unit] * facts.hpMax[target] / facts.hpMax[unit];
@@ -41569,6 +41582,17 @@
   const R20_SAME_SIDE_REUSE_ON = root.__LWCS_TUNE__?.SAME_SIDE_REUSE !== false;
   const R20_GUARD_PERSIST = root.__LWCS_TUNE__?.GUARD_PERSIST !== false;
   const R20_GUARD_DANGER_ROUNDS = Number(root.__LWCS_TUNE__?.GUARD_DANGER_ROUNDS ?? 2);
+  // 守护者边护边打时挡下的份额：出招占着的时间拦不了。出招前摇取普攻与它可用伤害魂技前摇中位数的平均（各按自身修正），
+  // 份额 = 1 − 前摇 ÷ 一次行动的时长（CONTINUOUS_ACTION_BUDGET）。起始取法，检查目录第 34/36/48 题校准；算不出时用 R20_GUARD_HOLD_SHARE。
+  const R20_GUARD_HOLD_SHARE = Number(root.__LWCS_TUNE__?.GUARD_HOLD_SHARE ?? 0.5);
+  function r20GuardHold(unit = {}) {
+    const budget = Number(preview.CONTINUOUS_ACTION_BUDGET) || 40;
+    const basic = Number(preview.actionWindup(unit, { actionKind: 'BASIC_ATTACK' }, { travel: false })) || 10;
+    const windups = affordablePreparedSkills(unit).filter(entry => preview.collectEffects(entry.skill).some(effect => String(effect?.原型 || '').trim() === '伤害结算'))
+      .map(entry => Number(preview.actionWindup(unit, { actionKind: 'RELEASE_SKILL', skill: entry.skill }, { travel: false })) || 0).filter(value => value > 0).sort((a, b) => a - b);
+    const skill = windups.length ? windups[Math.floor(windups.length / 2)] : basic;
+    return clamp(1 - ((basic + skill) / 2) / budget, 0, 1);
+  }
   const r20CanonicalUnits = new WeakMap(), r20OriginIds = new WeakMap();
   let r20OriginSequence = 0;
   function r20CanonicalUnit(table, unit, late) {
@@ -42744,7 +42768,7 @@
     let guarding = false;
     if (String(candidate?.declaration?.actionKind || '').toUpperCase() === 'GUARD' && String(request.actionOpportunity?.role || 'ACTIVE').toUpperCase() === 'ACTIVE' && actorRow !== undefined) {
       const ward = table.index.get(String(candidate.declaration.targetIds?.[0] || ''));
-      if (ward !== undefined && ward !== actorRow && table.sides[ward] === table.sides[actorRow]) { cover[ward] = R20_GUARD_PERSIST ? { row: actorRow, until: Infinity, guard: true } : { row: actorRow, until: 1 }; seen += 1; guarding = R20_GUARD_PERSIST; }
+      if (ward !== undefined && ward !== actorRow && table.sides[ward] === table.sides[actorRow]) { cover[ward] = R20_GUARD_PERSIST ? { row: actorRow, until: Infinity, guard: true, hold: r20GuardHold(table.units[actorRow]) } : { row: actorRow, until: 1 }; seen += 1; guarding = R20_GUARD_PERSIST; }
     }
     for (const [row, next] of rebuilt) cover[row] = r20Cover(next, table.units, table.sides, row);
     while (cover.length < sidesNow.length) cover.push(null);
