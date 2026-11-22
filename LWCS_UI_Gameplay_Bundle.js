@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:69b544c92f5cd74f4813856b6e4cb738fad107257d201fdd31305b7c38fd9e83|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:5a43736336bbb578498ec791ae4ec9229fa442bde67fd081c2895c7d9bbe0ee1|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:632153b682e98aec3ce323bc82c0e2637f68244e01ee25bd51d2cf28d6a8d2a5|BattleRuntime_Module.js:acd5ab4b09a7305e39bfbb07be5ce7da3e6ea98d24dcf9f12193a33000e0904b|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:56ac484d472c510850fb1aeba350fa5428128cbb7076150abf65f433a1cb72c3|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:5a43736336bbb578498ec791ae4ec9229fa442bde67fd081c2895c7d9bbe0ee1|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:632153b682e98aec3ce323bc82c0e2637f68244e01ee25bd51d2cf28d6a8d2a5|BattleRuntime_Module.js:acd5ab4b09a7305e39bfbb07be5ce7da3e6ea98d24dcf9f12193a33000e0904b|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -4705,11 +4705,25 @@ class ProfessionUIComponent {
     return { 基础金属列表, 目标金属, 金属特性 };
   }
 
-  构建金属特性装备技能(特性集合, 强度) {
-    const 效果数组 = [];
-    if (特性集合.has('防御穿透')) 效果数组.push({ 原型: '结算修正', 目标: '自身', 结算: '防御穿透', 数值: `+${Math.min(35, 强度 * 5)}%` });
-    if (特性集合.has('气息隔绝')) 效果数组.push({ 原型: '判定修正', 目标: '自身', 判定: '隐匿', 数值: `+${Math.min(30, 强度 * 4)}` });
-    if (特性集合.has('空间亲和')) 效果数组.push({ 原型: '判定修正', 目标: '自身', 判定: '闪避', 数值: `+${Math.min(25, 强度 * 3)}` });
+  // 金属特性对照表在 MVU_Skill_Runtime（副职业派生接口），工坊与斗铠属性共用一张
+  读取金属特性效果(特性集合 = new Set()) {
+    const 派生 = this.读取副职业派生接口();
+    return typeof 派生.读取金属特性效果 === 'function'
+      ? 派生.读取金属特性效果([...特性集合])
+      : { 属性: [], 伤害属性: '', 防御穿透: false, 气息隔绝: false, 锻造成功率修正: 0, 融锻成功率修正: 0, 耐久倍率: 1 };
+  }
+
+  // 锻造的工艺修正：材料金属的工艺特性改一点成功率（融锻另加融锻类）
+  读取锻造工艺修正(materialNames = [], isFusion = false) {
+    const 效果 = this.读取金属特性效果(new Set(this.读取工坊金属上下文('', materialNames).金属特性));
+    return 效果.锻造成功率修正 + (isFusion ? 效果.融锻成功率修正 : 0);
+  }
+
+  // 装备技能「金属特性」：只放附加小修正（物品被动按品质过 COST 门禁）
+  构建金属特性装备技能(特性效果 = {}) {
+    const 效果数组 = (特性效果.属性 || []).map(属性 => ({ 原型: '属性修正', 目标: '自身', 属性, 数值: '+3%' }));
+    if (特性效果.防御穿透) 效果数组.push({ 原型: '结算修正', 目标: '自身', 结算: '防御穿透', 数值: '+5%' });
+    if (特性效果.气息隔绝) 效果数组.push({ 原型: '判定修正', 目标: '自身', 判定: '隐匿', 数值: '+5' });
     if (!效果数组.length) return {};
     return {
       金属特性: {
@@ -4724,12 +4738,16 @@ class ProfessionUIComponent {
   构建工坊产物批次数据(分类 = '', targetName = '', materialNames = [], tier = 1, 品质系数 = 1, 魂导等级 = 0) {
     const 上下文 = this.读取工坊金属上下文(targetName, materialNames);
     const 特性集合 = new Set(上下文.金属特性);
+    const 特性效果 = this.读取金属特性效果(特性集合);
+    const 特性技能 = this.构建金属特性装备技能(特性效果);
     const 输出 = {};
     const 强度 = Math.max(1, Math.floor(Number(tier || 1)));
     // 单金属锻造的产物就是该金属（目标名「百锻精铁」只是显示名），材料的基础金属优先
     const 目标基础金属 = (上下文.基础金属列表.length === 1 ? 上下文.基础金属列表[0] : '') || 上下文.目标金属;
     if (分类 === '锻造金属') 输出.阶位 = Math.max(1, Math.min(5, 强度));
     if (目标基础金属 && (分类 === '锻造金属' || /金属块/.test(targetName))) 输出.基础金属 = 目标基础金属;
+    // 斗铠部件记下所用金属，穿上时并进斗铠「材质」，斗铠按金属特性给附加（11-22 用户「斗铠也要」）
+    if (分类 === '斗铠部件' && 上下文.基础金属列表.length) 输出.基础金属 = 上下文.基础金属列表.join('、');
     if (!['锻造金属', '设计图纸', '斗铠部件', '机甲机体'].includes(分类)) {
       const 库定义 = this.查找运行时物品定义(targetName)?.定义;
       const 有现成效果 = 库定义 && ((Array.isArray(库定义.使用效果) && 库定义.使用效果.length) || 库定义.属性加成 || (Array.isArray(库定义.加成方向) && 库定义.加成方向.length) || 库定义.装备技能 || 库定义.附带魂技);
@@ -4740,50 +4758,38 @@ class ProfessionUIComponent {
         });
         if (Number(库定义.基础耐久 || 0) > 0) { 输出.基础耐久 = Math.floor(Number(库定义.基础耐久)); 输出.耐久 = 输出.基础耐久; }
         if (Number(库定义.基础使用次数 || 0) > 0) { 输出.基础使用次数 = Math.floor(Number(库定义.基础使用次数)); 输出.剩余使用次数 = 输出.基础使用次数; }
+        // 材料金属特性叠在库里现成物品上（不改库里的数值）：装备加「金属特性」小技能，伤害没写属性的换成金属的伤害属性
+        if ((副职业装备物品分类集合.has(分类) || 输出.装备槽位) && Object.keys(特性技能).length) 输出.装备技能 = { ...特性技能, ...(输出.装备技能 || {}) };
+        if (特性效果.伤害属性 && Array.isArray(输出.使用效果)) {
+          输出.使用效果 = 输出.使用效果.map(效果 => 效果?.原型 === '伤害结算' && !效果.类型 ? { ...效果, 类型: 特性效果.伤害属性 } : 效果);
+        }
         return 输出;
       }
     }
-    if (!特性集合.size) return Object.keys(输出).length ? 输出 : {};
-
+    // 自制产物（库里没有）：主属性按类别给加成方向（兵器 力量、防具 防御），数值交运行时按品质结算；金属特性只给附加小修正
     const 质量倍率 = Math.max(0.8, Math.min(2, Number(品质系数 || 1)));
-    const 数值 = Math.max(5, Math.round(强度 * 6 * 质量倍率));
-    const 属性加成 = {};
-    const 加属性 = (字段, 值) => { 属性加成[字段] = Math.round(Number(属性加成[字段] || 0) + 值); };
-
-    ['高硬度', '极限硬度', '高韧性', '高坚固', '合金强化', '龙鳞化'].forEach(特性 => { if (特性集合.has(特性)) 加属性('防御', 数值); });
-    ['高密度', '血脉共鸣'].forEach(特性 => { if (特性集合.has(特性)) 加属性('力量', 数值); });
-    ['魂导传导', '魂力放大', '能量增幅', '元素增幅', '元素亲和', '法阵亲和', '七元素亲和', '多元素适配', '法则亲和', '武魂增幅'].forEach(特性 => { if (特性集合.has(特性)) 加属性('魂力上限', 数值); });
-    ['空间亲和', '高延展'].forEach(特性 => { if (特性集合.has(特性)) 加属性('敏捷', Math.max(3, Math.round(数值 / 2))); });
-    ['生命灵性', '活性灵性'].forEach(特性 => { if (特性集合.has(特性)) 加属性('体力上限', 数值); });
-    if (特性集合.has('暗属性') || 特性集合.has('阴冷属性')) 加属性('精神力上限', Math.max(3, Math.round(数值 / 2)));
-
-    if (副职业装备物品分类集合.has(分类)) {
-      const 耐久加成 = ['高硬度', '极限硬度', '高韧性', '高坚固', '合金强化', '高密度', '龙鳞化'].filter(特性 => 特性集合.has(特性)).length;
-      输出.基础耐久 = Math.max(100, Math.round((100 + 强度 * 80 + 耐久加成 * 40) * 质量倍率));
+    if (副职业装备物品分类集合.has(分类) && !['斗铠部件', '机甲机体', '魂骨'].includes(分类)) {
+      输出.基础耐久 = Math.max(100, Math.round((100 + 强度 * 80) * 质量倍率 * 特性效果.耐久倍率));
       输出.耐久 = 输出.基础耐久;
-      // 加成数值不自拟：金属特性只决定加成方向，数值由运行时按品质（档位）与品质系数从基础属性表算
-      if (Object.keys(属性加成).length) 输出.加成方向 = Object.keys(属性加成);
-      if (分类 === '近战武器') {
-        输出.装备槽位 = '武器';
-        const 装备技能 = this.构建金属特性装备技能(特性集合, 强度);
-        if (Object.keys(装备技能).length) 输出.装备技能 = 装备技能;
-      } else if (分类 === '防具装备') {
-        输出.装备槽位 = '防具';
-      }
+      const 主属性 = { 近战武器: '力量', 防具装备: '防御' }[分类];
+      if (主属性) 输出.加成方向 = [主属性];
+      if (分类 === '近战武器') 输出.装备槽位 = '武器';
+      else if (分类 === '防具装备') 输出.装备槽位 = '防具';
+      if (Object.keys(特性技能).length) 输出.装备技能 = 特性技能;
       return 输出;
     }
 
     if (分类 === '远程武器') {
       const 等级 = Math.max(0, Math.floor(Number(魂导等级 || 0)));
       const 对应等级 = 等级 > 0 ? Math.min(120, 等级 * 10 + 9) : Math.min(99, 强度 * 20 + 19);
-      const 穿透 = (特性集合.has('防御穿透') ? 12 : 0) + (特性集合.has('魂导传导') ? 5 : 0) + (特性集合.has('魂力放大') ? 5 : 0);
-      const 威力倍率 = Math.round((100 + 强度 * 45 + (属性加成.魂力上限 || 0)) * 质量倍率);
+      const 穿透 = 特性效果.防御穿透 ? 5 : 0;
+      const 威力倍率 = Math.round((100 + 强度 * 45) * 质量倍率);
       输出.基础使用次数 = /弹|炸弹/.test(targetName) ? 1 : 10;
       输出.剩余使用次数 = 输出.基础使用次数;
       输出.使用效果 = [{
         原型: '伤害结算',
         目标: /炮|炸弹|集束/.test(targetName) ? '群体' : '单体',
-        类型: /暗属性|阴冷/.test(上下文.金属特性.join(' ')) ? '暗属性' : '能量',
+        类型: 特性效果.伤害属性 || '能量',
         威力倍率,
         对应等级,
         段数: 1,
@@ -4792,12 +4798,13 @@ class ProfessionUIComponent {
       return 输出;
     }
 
-    if (副职业可使用物品分类集合.has(分类) && Object.keys(属性加成).length) {
-      输出.使用效果 = Object.entries(属性加成).map(([属性, 数值加成]) => ({
+    if (副职业可使用物品分类集合.has(分类) && 特性效果.属性.length) {
+      // 一次性道具的属性修正数值由运行时按品质结算（按品质结算道具使用效果列表），这里只定属性
+      输出.使用效果 = 特性效果.属性.map(属性 => ({
         原型: '属性修正',
         目标: '自身',
         属性,
-        数值: Math.max(1, Math.round(数值加成)),
+        数值: 1,
         对应等级: Math.min(99, 强度 * 20 + 19),
         持续回合: 3,
       }));
@@ -5691,7 +5698,7 @@ class ProfessionUIComponent {
       if (!ruleError) {
         const efc = Math.max(commissionCtx.fusionCount || 1, 1);
         const isFusion = efc > 1;
-        const rate = commissionCtx.isCommission ? Number(commissionCtx.successRate || 0) : (isFusion ? this.getForgeFusionSuccessRate(effectiveRuntime, efc) : this.getSingleTierSuccessRate(tier, effectiveRuntime));
+        const rate = this.clamp((commissionCtx.isCommission ? Number(commissionCtx.successRate || 0) : (isFusion ? this.getForgeFusionSuccessRate(effectiveRuntime, efc) : this.getSingleTierSuccessRate(tier, effectiveRuntime))) + this.读取锻造工艺修正(materialNames, isFusion), 0, 100);
         当前成功率数值 = Number(rate || 0);
         const firstMaterial = this.resolveInventoryItem(materialNames[0]);
         const dfr = isFusion ? Number(commissionCtx.fusionSync || (materialNames.length > 1 ? this.getForgeFusionRate(effectiveRuntime, materialNames) : 100)) : Number(firstMaterial?.副职业参数?.融合参数?.融合率 ?? 100);
@@ -6171,7 +6178,7 @@ class ProfessionUIComponent {
         if (资金单次消耗 > 0) 当前资金 = Math.max(0, 当前资金 - 资金单次消耗);
 
         const 本次成功率 = this.activeMode === 'forge'
-          ? (是否代工 ? Number(commissionCtx.successRate || 0) : (锻造是否融锻 ? this.getForgeFusionSuccessRate(effectiveRuntime, 锻造复合数) : this.getSingleTierSuccessRate(tier, effectiveRuntime)))
+          ? this.clamp((是否代工 ? Number(commissionCtx.successRate || 0) : (锻造是否融锻 ? this.getForgeFusionSuccessRate(effectiveRuntime, 锻造复合数) : this.getSingleTierSuccessRate(tier, effectiveRuntime))) + this.读取锻造工艺修正(materialNames, 锻造是否融锻), 0, 100)
           : this.读取本次通用成功率(cfg, effectiveRuntime, commissionCtx, tier, materialNames, targetName);
         // 锻造同单次规则：融锻一次最多尝试 金属数 次（容错 = 金属数 − 1），本人执行时灵锻 / 天锻每次失败结算反噬
         const 尝试上限 = this.activeMode === 'forge' && 锻造是否融锻 ? 锻造复合数 : 1;
@@ -6329,7 +6336,7 @@ class ProfessionUIComponent {
 
     const efc = Math.max(Number(commissionCtx.fusionCount || 1), 1);
     const isFusion = efc > 1;
-    const successRate = commissionCtx.isCommission ? Number(commissionCtx.successRate || 0) : (isFusion ? this.getForgeFusionSuccessRate(effectiveRuntime, efc) : this.getSingleTierSuccessRate(tier, effectiveRuntime));
+    const successRate = this.clamp((commissionCtx.isCommission ? Number(commissionCtx.successRate || 0) : (isFusion ? this.getForgeFusionSuccessRate(effectiveRuntime, efc) : this.getSingleTierSuccessRate(tier, effectiveRuntime))) + this.读取锻造工艺修正(materialNames, isFusion), 0, 100);
     const firstMaterial = this.resolveInventoryItem(materialNames[0]);
     const fusionRate = isFusion ? Number(commissionCtx.fusionSync || this.getForgeFusionRate(commissionCtx.executorRuntime || runtime, materialNames)) : Number(firstMaterial?.副职业参数?.融合参数?.融合率 ?? 100);
     const maxQ = this.getForgeMaxQ(tier, efc);

@@ -32628,6 +32628,13 @@ ${播报文本}
           if (slotInfo.mainSlot === 'armor') {
             newEquipData.状态 = toText(itemData.状态, '完好');
             if (itemData.品质系数 !== undefined) newEquipData.品质系数 = Math.max(0.1, Math.min(2, toNumber(itemData.品质系数, 1)));
+            // 部件所用金属（工坊记在批次 基础金属）并进斗铠「材质」，斗铠按金属特性给附加（11-22 用户「斗铠也要」）
+            const 拆金属 = 文本 => toText(文本, '').split(/[、,，/]/).map(名 => 名.trim()).filter(名 => 名 && 名 !== '无');
+            const 部件金属 = 拆金属(itemData.基础金属);
+            if (部件金属.length && 装备数据.斗铠 && typeof 装备数据.斗铠 === 'object') {
+              const 合并材质 = [...new Set([...拆金属(装备数据.斗铠.材质), ...部件金属])].join('、');
+              if (合并材质 !== toText(装备数据.斗铠.材质, '')) patches.push({ op: 'add', path: `${charPath}/装备/斗铠/材质`, value: 合并材质 });
+            }
           }
           if (slotInfo.subSlot && (!装备数据[equipKey] || !装备数据[equipKey].部件)) {
             patches.push({ op: 'add', path: `${charPath}/装备/${equipKey}/部件`, value: {} });

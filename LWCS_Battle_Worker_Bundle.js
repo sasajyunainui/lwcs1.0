@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:ea1dd8bdbe85fa606c23d555396ca34afc02043e6d7b11ba92cc7aaa07409455|MVU_Schema_Runtime.js:9eaa7b3d6efaa33adc90ec32c37fc9bdf36858480de591b9cc68157df0106051|BattlePreview_Module.js:5a43736336bbb578498ec791ae4ec9229fa442bde67fd081c2895c7d9bbe0ee1|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:632153b682e98aec3ce323bc82c0e2637f68244e01ee25bd51d2cf28d6a8d2a5|BattleRuntime_Module.js:acd5ab4b09a7305e39bfbb07be5ce7da3e6ea98d24dcf9f12193a33000e0904b */
+/* sources-sha256: MVU_Skill_Runtime.js:5974b59c91f02b8e809e35a42b37779f9e5bf30267f56ec8d950b17e437580f5|MVU_Schema_Runtime.js:9eaa7b3d6efaa33adc90ec32c37fc9bdf36858480de591b9cc68157df0106051|BattlePreview_Module.js:5a43736336bbb578498ec791ae4ec9229fa442bde67fd081c2895c7d9bbe0ee1|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:632153b682e98aec3ce323bc82c0e2637f68244e01ee25bd51d2cf28d6a8d2a5|BattleRuntime_Module.js:acd5ab4b09a7305e39bfbb07be5ce7da3e6ea98d24dcf9f12193a33000e0904b */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -363,6 +363,53 @@ function 读取装备品质档位_V1(品质 = 0) {
   return 4;
 }
 
+// 金属特性对照表（11-22 用户过目「整体可以」）：四个物品库的特性归三类——产物附加（属性类 / 伤害属性 / 小技能）、工艺（只影响锻造本身）、
+// 设定描述（不在表里 = 没有效果）。附加收益都很小：属性类每类 +3%（最多三类），防御穿透 +5%，隐匿 +5；工艺 锻造成功率 ±5（合计 ±10 封顶）、
+// 融锻成功率 +5（封顶 +10）、脆性每条耐久 ×0.9（最低 ×0.8）
+var 金属特性对照表_V1 = Object.freeze({
+  属性: Object.freeze({
+    防御: ['高硬度', '极限硬度', '高韧性', '高坚固', '合金强化', '龙鳞化', '超高硬度', '绝对硬度', '黑纹坚韧', '高强度', '高纯铁质', '抗魂力腐蚀', '不熔于火'],
+    力量: ['高密度', '血脉共鸣', '密度大', '物理攻击增幅'],
+    魂力上限: ['魂导传导', '魂力传导', '魂力放大', '能量增幅', '共振回转', '高能储存', '能量核心', '通用能源', '源龙化形', '正向循环', '元素增幅', '元素亲和', '法阵亲和', '七元素亲和', '七元素融合', '多元素适配', '法则亲和', '武魂增幅', '极寒属性', '冰系亲和'],
+    敏捷: ['空间亲和', '空间属性', '空源孕育', '高延展', '高可塑性', '内蕴发金丝', '可抽拉成丝'],
+    体力上限: ['生命灵性', '活性灵性'],
+    精神力上限: ['暗属性', '阴冷属性'],
+  }),
+  伤害属性: Object.freeze({ 暗属性: ['暗属性', '阴冷属性'], 冰属性: ['极寒属性', '冰系亲和'] }),
+  防御穿透: ['防御穿透'],
+  气息隔绝: ['气息隔绝'],
+  锻造成功率加: ['高灵性', '灵锻亲和', '锻造易成', '千锻强化', '千锻适配'],
+  锻造成功率减: ['高锻造难度', '需强者锤软'],
+  融锻成功率加: ['融锻媒介', '合金融合', '合金相容', '金水亲和', '金属亲和', '高融合度'],
+  耐久减: ['脆性结构', '能量不稳定'],
+});
+
+function 读取金属特性效果_V1(特性列表 = []) {
+  const 集合 = new Set((Array.isArray(特性列表) ? 特性列表 : []).map(特性 => String(特性 || '').trim()).filter(Boolean));
+  const 有 = 列表 => 列表.filter(特性 => 集合.has(特性)).length;
+  return {
+    属性: Object.entries(金属特性对照表_V1.属性).filter(([, 列表]) => 有(列表) > 0).map(([属性名]) => 属性名).slice(0, 3),
+    伤害属性: (Object.entries(金属特性对照表_V1.伤害属性).find(([, 列表]) => 有(列表) > 0) || [''])[0],
+    防御穿透: 有(金属特性对照表_V1.防御穿透) > 0,
+    气息隔绝: 有(金属特性对照表_V1.气息隔绝) > 0,
+    锻造成功率修正: Math.max(-10, Math.min(10, 有(金属特性对照表_V1.锻造成功率加) * 5 - 有(金属特性对照表_V1.锻造成功率减) * 5)),
+    融锻成功率修正: Math.min(10, 有(金属特性对照表_V1.融锻成功率加) * 5),
+    耐久倍率: Math.max(0.8, 0.9 ** 有(金属特性对照表_V1.耐久减)),
+  };
+}
+// 斗铠「材质」（部件所用金属，顿号分隔）里金属的特性 → 对应属性各 +3%（附加收益）。金属特性查内置物品库（战斗线程里没有就不加）
+function 读取斗铠材质特性属性_V1(斗铠 = {}) {
+  const 金属列表 = String(斗铠?.材质 || '').split(/[、,，/]/).map(名 => 名.trim()).filter(名 => 名 && 名 !== '无');
+  if (!金属列表.length) return [];
+  const 库列表 = ['__LWCS_内置物品库__', '__LWCS_斗罗大陆物品库__', '__LWCS_绝世唐门物品库__', '__LWCS_终极斗罗物品库__'].map(键 => { try { return globalThis[键]; } catch (错误) { return null; } });
+  const 查特性 = 名 => {
+    try { const 命中 = typeof 查找内置物品定义_V1 === 'function' ? 查找内置物品定义_V1(名) : null; if (命中?.定义?.金属特性) return 命中.定义.金属特性; } catch (错误) {}
+    for (const 库 of 库列表) { const 特性 = 库?.锻造金属?.[名]?.金属特性; if (Array.isArray(特性)) return 特性; }
+    return [];
+  };
+  const 特性 = 金属列表.flatMap(查特性);
+  return 读取金属特性效果_V1(特性).属性;
+}
 function 计算斗铠属性加成_V1(斗铠 = {}) {
   if (!(Number(斗铠?.等级 || 0) > 0)) {
     return { 属性加成: 创建空装备属性加成_V1(true), 已排异: false };
@@ -392,15 +439,17 @@ function 计算斗铠属性加成_V1(斗铠 = {}) {
   const 已排异 = 部件数 > 1 && 读取装备品质档位_V1(最高品质) !== 读取装备品质档位_V1(最低品质);
   if (已排异) 倍率 *= 0.2;
 
+  const 材质属性 = new Set(读取斗铠材质特性属性_V1(斗铠));
+  const 附加 = 属性名 => (材质属性.has(属性名) ? 1.03 : 1);
   return {
     属性加成: {
       等效等级: 0,
-      魂力上限: Math.floor(Number(基准?.sp_max || 0) * 倍率),
-      精神力上限: Math.floor(Number(基准?.men_max || 0) * 倍率),
-      力量: Math.floor(Number(基准?.str || 0) * 倍率),
-      防御: Math.floor(Number(基准?.str || 0) * 倍率),
-      敏捷: Math.floor(Number(基准?.agi || 0) * 倍率),
-      体力上限: Math.floor(Number(基准?.vit_max || 0) * 倍率),
+      魂力上限: Math.floor(Number(基准?.sp_max || 0) * 倍率 * 附加('魂力上限')),
+      精神力上限: Math.floor(Number(基准?.men_max || 0) * 倍率 * 附加('精神力上限')),
+      力量: Math.floor(Number(基准?.str || 0) * 倍率 * 附加('力量')),
+      防御: Math.floor(Number(基准?.str || 0) * 倍率 * 附加('防御')),
+      敏捷: Math.floor(Number(基准?.agi || 0) * 倍率 * 附加('敏捷')),
+      体力上限: Math.floor(Number(基准?.vit_max || 0) * 倍率 * 附加('体力上限')),
     },
     已排异,
   };
@@ -978,6 +1027,8 @@ try {
     读取最高支持融锻数: 读取副职业最高支持融锻数_V1,
     读取显示名: 读取副职业显示名_V1,
     派生运行时: 派生副职业运行时_V1,
+    金属特性对照表: 金属特性对照表_V1,
+    读取金属特性效果: 读取金属特性效果_V1,
   });
   globalThis.__LWCS_PROFESSION_DERIVATION__ = 副职业派生接口_V1;
   try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_PROFESSION_DERIVATION__ = 副职业派生接口_V1; } catch (错误) {}
