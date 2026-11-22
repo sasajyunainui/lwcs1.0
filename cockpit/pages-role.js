@@ -396,7 +396,7 @@
   const directory = c => {
     const names = Object.keys(c.S.char), me = c.S.char[c.player], here = me?.状态?.位置;
     const rel = me?.社交?.关系 || {}, loc = n => String(c.S.char[n]?.状态?.位置 || '未知').replace(/^斗罗大陆-/, '').replace(/-/g, ' · ');
-    const near = names.filter(n => c.S.char[n].状态?.位置 === here), far = names.filter(n => !near.includes(n)), known = names.filter(n => rel[n]);
+    const near = names.filter(n => locSegs(c, here) && locSegs(c, c.S.char[n].状态?.位置) === locSegs(c, here)), far = names.filter(n => !near.includes(n)), known = names.filter(n => rel[n]);
     const pool = { 全部: names, 同地: near, 已结识: known, 其他地点: far }, tab = pool[c.state.ui.dtab2] ? c.state.ui.dtab2 : '全部';
     const sel = c.name;
     const card = n => {

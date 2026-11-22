@@ -114,13 +114,15 @@
 .soul-deck:has(>.soul-card+.soul-card+.soul-card) .soul-plate{padding-inline:1.1em}
 .soul-deck:has(>.soul-card+.soul-card+.soul-card) .sp-sub{flex-wrap:wrap;row-gap:.1em;white-space:normal}
 
-/* 手机：身份与资源上下排，投影台单列。查询按座舱宽度（具名容器），不能落到武魂区自身 */
+/* 手机：身份与资源上下排，投影台两列并排（单列时两座台叠起来超过一屏）。查询按座舱宽度（具名容器），不能落到武魂区自身 */
 .cockpit{container-name:cockpit}
 @container cockpit (max-width:700px){
-  .home-top{grid-template-columns:1fr}
-  .soul-deck,.soul-deck:has(>.soul-card+.soul-card+.soul-card){grid-template-columns:1fr}
-  .soul-deck::before,.soul-deck>.soul-card+.soul-card::before{display:none}
-  .soul-card,.soul-deck:has(>.soul-card+.soul-card+.soul-card)>.soul-card{--rsz:86px}
-  .soul-stage{min-height:236px}
+  .home-top{grid-template-columns:1fr;gap:.55em}.home-top .meters{grid-template-columns:1fr 1fr;gap:.35em 1em}
+  .soul-deck,.soul-deck:has(>.soul-card+.soul-card+.soul-card){grid-template-columns:repeat(2,minmax(0,1fr))}
+  .soul-deck>.soul-card+.soul-card+.soul-card::before{display:none}
+  .soul-card,.soul-deck:has(>.soul-card+.soul-card+.soul-card)>.soul-card{--rsz:clamp(52px,17cqw,72px)}
+  .soul-stage{min-height:calc(var(--rsz) * 2.6)}
+  .soul-deck .soul-plate{min-width:0;width:100%;padding-inline:1.1em}
+  .soul-deck .sp-sub{flex-wrap:wrap;row-gap:.1em;white-space:normal}
 }
 @container cockpit (max-width:700px){.soul-card:is(:hover,:focus-within,:has(.mvu-hover-floating-active)) .mvu-soul-ring-stage{translate:none}}

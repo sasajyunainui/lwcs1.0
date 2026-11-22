@@ -37,6 +37,9 @@
 
 @container cockpit (max-width:700px){
   .dossier{grid-template-columns:1fr}
+  /* 手机上每面跟着内容长高：角色名册在屏内限高滚动，不把座舱撑到几屏高 */
+  .pad:has(.roster){max-height:640px;max-height:min(72svh,640px);overflow-y:auto;overscroll-behavior-y:auto;scrollbar-width:thin}
+  .roster.roster{gap:.6em}.roster .rc .mini-ava{width:3.4em;height:3.4em}
 }
 
 /* 魂师证：头像居中置顶（自带上传相机），下接身份牌 */
