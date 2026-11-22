@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:18584feab871c1b0ade5bda6b49c8b12a94cce33402c3315477d1a3938de811e|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:3a637c22c60a4599a9890bb6bc0b4af7cecaa59b3c04d46283919ddf7794e83d|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:5e02d3e20d1c68b369609fc852d74fd569cca715418d5088623d0e6453e64de2|BattleRuntime_Module.js:62af09000c4cc8511c17683b52a012f3272add485766956e381fea8670d432d6|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:5e0db96d8b53e77d3c6169d38ead7aa477f9c3c90023621125d862c40a5ef06d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:18584feab871c1b0ade5bda6b49c8b12a94cce33402c3315477d1a3938de811e|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:3a637c22c60a4599a9890bb6bc0b4af7cecaa59b3c04d46283919ddf7794e83d|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:672d043e73ac827b283de52f507240ed0da11334350bccf9629cc34dce69ec48|BattleRuntime_Module.js:30877d7a03ed70d75166003e4e294961bafb259dfd90064493369d57786335b9|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -98265,6 +98265,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const sense = Number(preview.readResourceMax(observer, '精神力')) || 0, theirs = Number(preview.readResourceMax(target, '精神力')) || 0;
     return sense > BELIEF_SENSE_FLOOR && sense > theirs;
   }
+  // 精神力优势（用户 11-22「战场上的判断和精神力有很大关系」）: how far the observer's sense outreaches the other's — 0 below
+  // BELIEF_SENSE_FLOOR or at most theirs, else (mine ÷ theirs − 1) up to 1 (twice theirs). Weighs reading a feint and a move.
+  function senseEdge(observer = {}, target = {}) {
+    const sense = Number(preview.readResourceMax(observer, '精神力')) || 0, theirs = Number(preview.readResourceMax(target, '精神力')) || 0;
+    return sense > BELIEF_SENSE_FLOOR && sense > theirs ? clamp(sense / Math.max(1, theirs) - 1, 0, 1) : 0;
+  }
+  // 探查、破隐、看破类状态（战斗效果 探查反制 / sense_pierce, BattlePreview）或破隐能力：原先只破隐身，11-22 起也看破骗招。
+  function sensePierces(unit = {}) {
+    return Object.values(unit?.状态效果 || {}).some(state => state?.战斗效果?.探查反制 === true || state?.战斗效果?.sense_pierce === true) ||
+      /探查|破隐|看破|神识锁定|感知反制/.test(String(unit?.破隐能力 || ''));
+  }
   // The share of a hit an unseen 控制系 keeps off by a control thrown first (S84: 16% of hits × the 42% they kept off).
   const BELIEF_ROUTINE_PREEMPT_SHARE = 0.16 * 0.42;
   const beliefExchangeCache = new WeakMap();
@@ -98273,30 +98284,55 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // knows the skill (its 战斗暴露 bit, known to it) knows it needs no charge. Rolled per enemy when the feint starts (BattleRuntime).
   // Each feint it has already put on in the battle (战斗.佯装记录, BattleRuntime) adds FEINT_SEE_REPEAT: one fooled, or one that watched
   // a charge melt away unreleased, is wary of the next (11-17: a 精神系 at a quarter HP feinted 40 turns running against a 控制系
-  // that kept guarding — 400 rounds).
-  const FEINT_SEE_BASE = 0.15, FEINT_SEE_CLARITY = 0.6, FEINT_SEE_MENTAL = 0.2, FEINT_SEE_REPEAT = 0.35;
+  // that kept guarding — 400 rounds). A sense that outreaches the feinter's adds FEINT_SEE_SENSE × senseEdge, a 探查/破隐/看破 state
+  // FEINT_SEE_PIERCE (11-22), a battle experience above the feinter's FEINT_SEE_EXPERIENCE × the gap (11-22「还是得考虑精神力，战斗经验
+  // 啥的决定」). Starting values, measured later against the novel's feints.
+  const FEINT_SEE_BASE = 0.15, FEINT_SEE_CLARITY = 0.6, FEINT_SEE_MENTAL = 0.2, FEINT_SEE_REPEAT = 0.35, FEINT_SEE_SENSE = 0.3, FEINT_SEE_PIERCE = 0.3,
+    FEINT_SEE_EXPERIENCE = 0.2;
   function feintSeeThroughChance(world = {}, observer = {}, feinter = {}, skill = {}) {
     const name = String(skill?.魂技名 || skill?.name || '').trim();
     if (name && beliefKnowsExposure(observer, feinter, world) && preview.exposedSkills(feinter).some(known => String(known?.魂技名 || known?.name || '').trim() === name)) return 1;
     const seen = Number(beliefExchangeCounts(world, sideOf(world, observer)).get(preview.unitId(feinter)) || 0) + beliefFamiliarExchanges(observer, feinter, world);
     const mental = /精神/.test(String(observer?.系别 || observer?.type || observer?.第1武魂?.系别 || observer?.属性?.系别 || '')) ? FEINT_SEE_MENTAL : 0;
     const shown = Number(world?.佯装记录?.[preview.unitName(feinter)] || 0) || 0;
-    return clamp(FEINT_SEE_BASE + FEINT_SEE_CLARITY * seen / (seen + BELIEF_EXCHANGE_PRIOR) + mental + FEINT_SEE_REPEAT * shown, 0, 1);
+    return clamp(FEINT_SEE_BASE + FEINT_SEE_CLARITY * seen / (seen + BELIEF_EXCHANGE_PRIOR) + mental + FEINT_SEE_REPEAT * shown +
+      FEINT_SEE_SENSE * senseEdge(observer, feinter) + (sensePierces(observer) ? FEINT_SEE_PIERCE : 0) +
+      FEINT_SEE_EXPERIENCE * Math.max(0, experienceOf(observer) - experienceOf(feinter)), 0, 1);
+  }
+  /* 看破第二层（用户 11-22「佯装者也不能被对面看破自己还天真的以为不会被看破吧？…首先是决定是否被看破，其次是决定那边是否能反应过来
+     被看破」）：骗招（佯装蓄力、卖破绽、虚招）被看破时，骗招者察觉自己被看破的概率——DECEPTION_REALIZE_BASE，加上它对看破者的了解
+     （DECEPTION_REALIZE_CLARITY × 交手与熟人的清楚程度）、精神力优势（DECEPTION_REALIZE_SENSE × senseEdge）、战斗经验高出的部分
+     （DECEPTION_REALIZE_EXPERIENCE × 差），至多 DECEPTION_REALIZE_CAP。BattleRuntime 对每个看破者掷，察觉了记进 骗招察觉
+     { 骗招者名字: { 看破者名字: 次数 } }。起始值，之后用原作骗招战例校准。 */
+  const DECEPTION_REALIZE_BASE = 0.2, DECEPTION_REALIZE_CLARITY = 0.4, DECEPTION_REALIZE_SENSE = 0.3, DECEPTION_REALIZE_EXPERIENCE = 0.2, DECEPTION_REALIZE_CAP = 0.9;
+  function deceptionRealizeChance(world = {}, deceiver = {}, seer = {}) {
+    const seen = Number(beliefExchangeCounts(world, sideOf(world, deceiver)).get(preview.unitId(seer)) || 0) + beliefFamiliarExchanges(deceiver, seer, world);
+    return clamp(DECEPTION_REALIZE_BASE + DECEPTION_REALIZE_CLARITY * seen / (seen + BELIEF_EXCHANGE_PRIOR) + DECEPTION_REALIZE_SENSE * senseEdge(deceiver, seer) +
+      DECEPTION_REALIZE_EXPERIENCE * Math.max(0, experienceOf(deceiver) - experienceOf(seer)), 0, DECEPTION_REALIZE_CAP);
+  }
+  // 骗招者估的看破率（估值用；运行时照旧按 feintSeeThroughChance 掷）：察觉过这个人看破自己，就对它更提防——剩下的那份再补
+  // DECEPTION_AWARE_WARY；没察觉过就按原式（「天真」）。
+  const DECEPTION_AWARE_WARY = 0.5;
+  function deceptionEstimate(world = {}, observer = {}, deceiver = {}, skill = {}) {
+    const chance = feintSeeThroughChance(world, observer, deceiver, skill);
+    const aware = Number(world?.骗招察觉?.[preview.unitName(deceiver)]?.[preview.unitName(observer)] || 0) > 0;
+    return aware ? chance + (1 - chance) * DECEPTION_AWARE_WARY : chance;
   }
   // 看穿来招（T34 11-19 用户定「看穿来招可提前出手」；原作 38 步应对时放魂技——缠绕、魅惑、蛛网束缚、护体铠甲）: the chance a unit
   // reads a move as it starts, so its answer may take as long as the move's whole windup on top of its reaction window (BattleRuntime
   // rolls it per answer). FORESEE_BASE, more by how clearly it has the attacker (FORESEE_CLARITY × the clarity of their exchanges and
-  // acquaintance), more for a 精神系 (FORESEE_MENTAL) and for a sense that outreaches the attacker's (FORESEE_SENSE, beliefSenses),
+  // acquaintance), more for a 精神系 (FORESEE_MENTAL) and by how far its sense outreaches the attacker's (FORESEE_SENSE × senseEdge;
+  // until 11-22 a flat 0.15 once it outreached at all, beliefSenses),
   // more again when it has seen this very skill (FORESEE_KNOWN); at most FORESEE_CAP. Starting values, measured later.
   // FORESEE_SCALE（root.__LWCS_TUNE__.FORESEE_SCALE）scales the whole chance, for calibrating against the novel.
-  const FORESEE_BASE = 0.1, FORESEE_CLARITY = 0.4, FORESEE_MENTAL = 0.15, FORESEE_SENSE = 0.15, FORESEE_KNOWN = 0.3, FORESEE_CAP = 0.9;
+  const FORESEE_BASE = 0.1, FORESEE_CLARITY = 0.4, FORESEE_MENTAL = 0.15, FORESEE_SENSE = 0.3, FORESEE_KNOWN = 0.3, FORESEE_CAP = 0.9;
   const FORESEE_SCALE = Number(root.__LWCS_TUNE__?.FORESEE_SCALE ?? 1);
   function foreseeChance(world = {}, observer = {}, attacker = {}, skill = {}) {
     const name = String(skill?.魂技名 || skill?.name || '').trim();
     const known = name && beliefKnowsExposure(observer, attacker, world) && preview.exposedSkills(attacker).some(entry => String(entry?.魂技名 || entry?.name || '').trim() === name);
     const seen = Number(beliefExchangeCounts(world, sideOf(world, observer)).get(preview.unitId(attacker)) || 0) + beliefFamiliarExchanges(observer, attacker, world);
     const mental = /精神/.test(String(observer?.系别 || observer?.type || observer?.第1武魂?.系别 || observer?.属性?.系别 || '')) ? FORESEE_MENTAL : 0;
-    return clamp(FORESEE_SCALE * (FORESEE_BASE + FORESEE_CLARITY * seen / (seen + BELIEF_EXCHANGE_PRIOR) + mental + (beliefSenses(observer, attacker) ? FORESEE_SENSE : 0) +
+    return clamp(FORESEE_SCALE * (FORESEE_BASE + FORESEE_CLARITY * seen / (seen + BELIEF_EXCHANGE_PRIOR) + mental + FORESEE_SENSE * senseEdge(observer, attacker) +
       (known ? FORESEE_KNOWN : 0)), 0, FORESEE_CAP);
   }
 
@@ -102825,7 +102861,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (!held || power(declaration) > power(held.candidate.declaration)) best.set(key, { candidate, target });
       }
       for (const { candidate, target } of best.values()) candidates.push({ ...candidate, candidateId: `${candidate.candidateId}:feint`,
-        declaration: { ...candidate.declaration, feintStrike: { seen: clamp(Number(feintSeeThroughChance(worldSnapshot, target, advanceActor, {})) || 0, 0, 1) },
+        declaration: { ...candidate.declaration, feintStrike: { seen: clamp(Number(deceptionEstimate(worldSnapshot, target, advanceActor, {})) || 0, 0, 1) },
           actionId: `${candidate.declaration.actionId || candidate.candidateId}:feint` } });
     }
     // 迎面撞上（11-20 两档距离检查 B3：强攻系被突进时对轰、抢先 32%，贴身时 58%）：对方近身冲过来，迎向来招者的答招不用赶路——
@@ -138968,7 +139004,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         // (BAIT_COUNTER_BONUS). Seen through, it sees the stance (the sure strike back too) and comes or turns away as at a stance.
         if (declaration?.bait === true) {
           idleStance = 0;
-          const seenShare = clamp(Number(feintSeeThroughChance(table.world, table.units[row], actor, {})) || 0, 0, 1);
+          const seenShare = clamp(Number(deceptionEstimate(table.world, table.units[row], actor, {})) || 0, 0, 1);
           const baited = r20Exchange(answer[actorRow][row], answer[row][actorRow], strikeAgain, strikeBack * (Number(preview.BAIT_COUNTER_BONUS) || 1), 1);
           // 11-19 用户定「硬挨换反击」（BattleRuntime baitTaken）：没看穿的来者整招打实，换来必开、加重的反击；看穿的来者面对的
           // 就是普通防守架势（格挡照常，反击照架势判）——和防御一样，来不来按架势（comesPrepared）算。
@@ -139300,7 +139336,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const ownStanding = Math.max(1, table.sides.filter((side, row) => side === table.sides[actorRow] && table.alive[row] > 0).length);
       let none = 1, odds = 0, landed = 0;
       for (const [unit] of foes) {
-        const p = (1 - feintSeeThroughChance(table.world, unit, feinter, declaration.feintSkill)) * R20_FEINT_BAIT / ownStanding;
+        const p = (1 - deceptionEstimate(table.world, unit, feinter, declaration.feintSkill)) * R20_FEINT_BAIT / ownStanding;
         none *= 1 - p; odds += p;
         landed += p * cachedBaseActionValue(feinter, unit, 'RELEASE_SKILL', declaration.feintSkill, context, table.world) / 100;
       }
@@ -139315,7 +139351,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (odds > 0 && feint > 0) {
         const meets = [];
         for (const [unit, row] of foes) {
-          const p = (1 - feintSeeThroughChance(table.world, unit, feinter, declaration.feintSkill)) * R20_FEINT_BAIT / ownStanding;
+          const p = (1 - deceptionEstimate(table.world, unit, feinter, declaration.feintSkill)) * R20_FEINT_BAIT / ownStanding;
           const lands = cachedBaseActionValue(feinter, unit, 'RELEASE_SKILL', declaration.feintSkill, context, table.world) / 100;
           if (p > 0 && lands > 0) meets.push({ from: actorRow, to: row, at: 0, delta: -(1 - none) * p / odds * lands });
         }
@@ -141693,6 +141729,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     typicalAttackRatio,
     typicalStatRatio,
     feintSeeThroughChance,
+    deceptionRealizeChance,
     foreseeChance,
     projectCooperativeSummonDeclaration,
     actionCompletesWithinBattleHorizon,
@@ -146145,6 +146182,21 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return combatData;
   }
 
+  // 看破第二层（用户 11-22）：骗招被看破时，对每个看破者掷骗招者察觉了没有（BattleDecision deceptionRealizeChance）；察觉了记进
+  // 骗招察觉 { 骗招者名字: { 看破者名字: 次数 } }（战斗层字段），骗招者之后对它行骗按更易被看破估（BattleDecision deceptionEstimate）。
+  function recordDeceptionRealized(combatData = {}, deceiver = {}, seerIds = []) {
+    if (typeof decisionRuntime?.deceptionRealizeChance !== 'function' || !Array.isArray(seerIds) || !seerIds.length) return [];
+    const realized = [];
+    for (const id of seerIds.map(String)) {
+      const seer = listCombatUnits(combatData).find(unit => String(previewRuntime.unitId(unit)) === id);
+      if (!seer || !(Math.random() < Number(decisionRuntime.deceptionRealizeChance(combatData, deceiver, seer) || 0))) continue;
+      realized.push(id);
+      const records = combatData.骗招察觉 && typeof combatData.骗招察觉 === 'object' ? combatData.骗招察觉 : {};
+      const name = previewRuntime.unitName(deceiver), seerName = previewRuntime.unitName(seer), own = records[name] || {};
+      combatData.骗招察觉 = { ...records, [name]: { ...own, [seerName]: Number(own[seerName] || 0) + 1 } };
+    }
+    return realized;
+  }
   function listCombatUnits(combatData = {}) {
     const seen = new Set();
     return [...listPrimaryCombatUnits(combatData), ...listSummonCombatUnits(combatData)].filter(unit => {
@@ -153447,6 +153499,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             .filter(unit => !neverSeen && Math.random() < Number(decisionRuntime.feintSeeThroughChance?.(combatData, unit, actor, {}) ?? 0))
             .map(unit => String(previewRuntime.unitId(unit)));
           actor.__battleRuntime.activeDefenseStance = { ...actor.__battleRuntime.activeDefenseStance, bait: true, seenBy };
+          recordDeceptionRealized(combatData, actor, seenBy);
           const shown = combatData.佯装记录 && typeof combatData.佯装记录 === 'object' ? combatData.佯装记录 : {}, feinterName = previewRuntime.unitName(actor);
           combatData.佯装记录 = { ...shown, [feinterName]: Number(shown[feinterName] || 0) + 1 };
         }
@@ -153476,6 +153529,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           .filter(unit => !neverSeen && Math.random() < Number(decisionRuntime.feintSeeThroughChance?.(combatData, unit, actor, declaration.feintSkill) ?? 0))
           .map(unit => previewRuntime.unitId(unit));
         actor.蓄力技能 = previewRuntime.feintRecord(declaration.feintSkill, declaration.targetIds || [], actionEvent.actionId, seenBy);
+        recordDeceptionRealized(combatData, actor, seenBy);
         // 佯装记录 { 名字: 次数 } (a battle-level field, kept across requests): each feint makes the next easier to see through.
         const shown = combatData.佯装记录 && typeof combatData.佯装记录 === 'object' ? combatData.佯装记录 : {}, feinterName = previewRuntime.unitName(actor);
         combatData.佯装记录 = { ...shown, [feinterName]: Number(shown[feinterName] || 0) + 1 };
@@ -162105,6 +162159,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               const neverSeen = globalThis.__LWCS_DECISION_DEBUG__?.feintNeverSeen === true;
               const seen = !neverSeen && Math.random() < chance ? 1 : 0;
               declaration = { ...declaration, feintStrike: { seen, chance, rolled: true } };
+              if (seen === 1 && target) recordDeceptionRealized(combatData, actor, [targetId]);
               const shown = combatData.佯装记录 && typeof combatData.佯装记录 === 'object' ? combatData.佯装记录 : {}, feinterName = previewRuntime.unitName(actor);
               combatData.佯装记录 = { ...shown, [feinterName]: Number(shown[feinterName] || 0) + 1 };
             }
@@ -177248,6 +177303,8 @@ class BattleUIComponent {
       '攻击记录',
       // 佯装蓄力的次数（BattleDecision feintSeeThroughChance：佯装过越多越容易看破）。
       '佯装记录',
+      // 看破第二层：骗招者察觉到谁看破过自己（BattleRuntime recordDeceptionRealized，BattleDecision deceptionEstimate）。
+      '骗招察觉',
       // 两档距离的站位（BattleRuntime syncBattlePositions / recordBattlePositions）。
       '站位',
       // 交战关系：谁和谁缠在一起（BattleRuntime syncEngagements / recordEngagements）。
