@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:121696c1481708bb05eaebf52d3f96efbeeac57ce6bc43311b2512fc2bda9596|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:4ddf9d949e2e8d84b5bfeba3687cdbfcfae21c9eb9ba2a3d9e442b1d764f2c75|BattleRuntime_Module.js:62af09000c4cc8511c17683b52a012f3272add485766956e381fea8670d432d6|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:5e0db96d8b53e77d3c6169d38ead7aa477f9c3c90023621125d862c40a5ef06d */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:121696c1481708bb05eaebf52d3f96efbeeac57ce6bc43311b2512fc2bda9596|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:e2e0cb315fa3ea64e20e5e7b85db90de876ce2c032a7e35521968f55fe62dc0a|BattleRuntime_Module.js:62af09000c4cc8511c17683b52a012f3272add485766956e381fea8670d432d6|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:5e0db96d8b53e77d3c6169d38ead7aa477f9c3c90023621125d862c40a5ef06d */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -43461,6 +43461,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     return weights;
   }
+  // 看不出系别（没有任何线索）时威胁按会打伤害的系别估（用户 11-22）。
+  const BELIEF_THREAT_SYSTEMS = Object.freeze(['强攻系', '敏攻系', '控制系', '元素系', '精神系', '召唤系']);
+  function beliefHasEvidence(unit = {}, beliefState = {}, known = []) {
+    if (spiritLeaning(unit) && spiritLeaning(unit) !== '无') return true;
+    if ((known || []).length || unit?.蓄力技能?.skill) return true;
+    return (beliefState?.publicResponses?.[preview.unitId(unit)] || []).some(entry => String(entry?.declaration?.actionKind || '').trim() === 'RELEASE_SKILL');
+  }
+  function beliefThreatWeights(weights = {}) {
+    const kept = Object.fromEntries(Object.entries(weights).filter(([name]) => BELIEF_THREAT_SYSTEMS.includes(name)));
+    const total = Object.values(kept).reduce((sum, value) => sum + value, 0);
+    return total > 1e-9 ? Object.fromEntries(Object.entries(kept).map(([name, value]) => [name, value / total])) : weights;
+  }
   const beliefMostLikelySystem = weights => Object.entries(weights).reduce((best, entry) => entry[1] > best[1] ? entry : best, ['', -1])[0];
   // A system's combat panel against the level's typical one (the believed enemy's str / def / agi).
   const systemPanelScale = system => /敏攻/.test(system) ? { str: 0.95, def: 0.82, agi: 1.28 }
@@ -43634,9 +43646,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const exposed = publicUnitRole !== 'SUMMON' && beliefKnowsExposure(sourceActor, sourceUnit, worldSnapshot) ? preview.exposedSkills(sourceUnit) : [];
       const systemBelief = publicUnitRole === 'SUMMON' ? { [String(beliefUnit.visibleSystem || '').trim()]: 1 } : beliefSystemPosterior(sourceUnit, beliefState, exposed);
       const system = beliefMostLikelySystem(systemBelief);
-      const blend = read => Object.entries(systemBelief).reduce((sum, [name, weight]) => sum + weight * read(name), 0);
-      const systemScale = Object.fromEntries(['str', 'def', 'agi'].map(key => [key, blend(name => systemPanelScale(name)[key])]));
-      const typicalAttack = blend(name => typicalAttackRatio(perceivedLevel, name));
+      const blend = (read, weights = systemBelief) => Object.entries(weights).reduce((sum, [name, weight]) => sum + weight * read(name), 0);
+      // 看不出系别时威胁偏谨慎（用户 11-22 定「威胁按偏强的系别估」）：没有任何线索（武魂没开或外观对不上、没亮过招、没在蓄力、没有往场情报）时，
+      // 力量与典型常规攻击只在会打伤害的系别里按信念平均（不混入辅助、治疗、食物、防御的低输出）；防御、敏捷仍按全体平均。有线索就照常按信念。
+      const threatBelief = publicUnitRole !== 'SUMMON' && !beliefHasEvidence(sourceUnit, beliefState, exposed) ? beliefThreatWeights(systemBelief) : systemBelief;
+      const systemScale = Object.fromEntries(['str', 'def', 'agi'].map(key => [key, blend(name => systemPanelScale(name)[key], key === 'str' ? threatBelief : systemBelief)]));
+      const typicalAttack = blend(name => typicalAttackRatio(perceivedLevel, name), threatBelief);
       const typical = typicalStatRatio(perceivedLevel);
       const hpMax = toward(baseStats.vit_max * typical.hp_max, preview.readHpMax(sourceUnit));
       const hp = hpMax * clamp(beliefUnit.hpRatio ?? 1, 0, 1);
