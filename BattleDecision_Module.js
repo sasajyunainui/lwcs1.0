@@ -41453,7 +41453,18 @@
       // A charge released: it lands if its caster still stands.
       if (strikes) for (; released < strikes.length && strikes[released].at <= time + 1e-9; released += 1) {
         const strike = strikes[released];
-        if (left[strike.from] > 1e-9 && left[strike.to] > 1e-9) left[strike.to] = Math.max(0, left[strike.to] + strike.delta);
+        // 守护挡大招（11-22，检查目录第 36 题）：敌方的蓄力一击落在被掩护的人身上时由守护者承受（struck），伤害按出手者平时打两人的输出之比换算
+        // （守护者防御更高就少掉）；此前蓄力一击直接扣在原目标头上，守护挡不了大招。自身反噬不转。
+        let to = strike.to, delta = strike.delta;
+        if (!strike.self && sides[strike.from] !== sides[strike.to]) {
+          const by = struck(strike.to);
+          if (by !== strike.to) {
+            const onWard = cells(strike.from, strike.to).out[strike.from][strike.to], onGuard = cells(strike.from, by).out[strike.from][by];
+            delta = onWard > 1e-9 && onGuard >= 0 ? delta * onGuard / onWard : delta * (Number(facts.hpMax?.[strike.to]) || 1) / Math.max(1, Number(facts.hpMax?.[by]) || 1);
+            to = by;
+          }
+        }
+        if (left[strike.from] > 1e-9 && left[to] > 1e-9) left[to] = Math.max(0, left[to] + delta);
       }
     }
     let score = 0, standing = new Set();
@@ -41674,7 +41685,11 @@
         const target = table.index.get(String(id));
         if (target === undefined) continue;
         const lands = cachedBaseActionValue(units[row], units[target], 'RELEASE_SKILL', charge.skill, context, world) / 100;
-        if (lands > 0) (table.strikes ||= []).push({ from: row, to: target, at: turns, delta: sides[target] === sides[row] ? lands : -lands * keep[target][row] });
+        // 蓄力一击按它自己的分量算目标能接下多少（11-22，检查目录第 36 题）：来招就是这一招、分量是它落下的份额（r20Meet），此前借用常规攻击的
+        // keep——目标对常规攻击能对轰或闪开（keep≈0），双倍威力的蓄力一击也被当成接得下，预计伤害成了 0，守护挡大招不值。
+        const meetCharge = sides[target] === sides[row] ? 1
+          : r20Meet(r20Stand(units[target], units[row], { actionKind: 'RELEASE_SKILL', skill: charge.skill, targetIds: [String(id)] }), r20Weight(lands)).keep;
+        if (lands > 0) (table.strikes ||= []).push({ from: row, to: target, at: turns, delta: sides[target] === sides[row] ? lands : -lands * meetCharge });
       }
       // 放出时的自损反噬（行为检查目录第 16 题，11-17）：蓄的这一招写明的「自损反噬」（技能释放者、效果生效后/命中后必付，
       // BattlePreview 换成每回合 dot_damage_ratio × 持续回合）在放出那一刻记到蓄力者自己身上——落空也照付，所以让它落空有价值；
